@@ -1,0 +1,1 @@
+# krx-trend-scanner
