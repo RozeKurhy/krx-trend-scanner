@@ -1,27 +1,36 @@
 """pattern_a_stage_oos_v01_manifest.py의 OOS Ground Truth Freeze 검증 테스트.
 
 이 테스트는 OOS manifest의 무결성 및 엄격한 독립성(Blind Policy)을 검증한다:
-- 중복 키 없음
-- ISO 날짜 파싱 가능
-- PatternAStage enum 유효성
-- 텍스트 필드(selection_reason, manual_stage_reason, episode_notes 등) 비어있지 않음
-- 기존 Stage calibration dataset(46건)과의 (ticker, date) 중복 없음
-- 기존 calibration ticker(27개)와의 완전한 ticker 독립성
-- classifier (`pattern_a_stage`) 및 score (`pattern_a_score`) import 금지 검증
-- 5개 Stage(WEAK, BASE, TRANSITION, EARLY_TREND, PROGRESSED) 전 영역 커버리지
-- 캐시 데이터 로드 가능성
+1. 35개 frozen identity (ticker, snapshot_date, manual_stage) 불변 회귀 검증
+2. ISO 날짜 파싱 및 PatternAStage enum 유효성
+3. 텍스트 필드(selection_reason, manual_stage_reason, episode_notes 등) 비어있지 않음
+4. 기존 모든 validation dataset과의 중복 검증 (Code-enforced):
+   - Stage calibration 46건: exact key overlap = 0, ticker overlap = 0
+   - OOS v0.1 diagnostic 29건: exact key overlap = 0
+   - OOS v0.2 validation 22건: exact key overlap = 0
+   - Negative Control 8건: exact key overlap = 0
+   - Holdout datasets: exact key overlap = 0
+5. classifier (`pattern_a_stage`) 및 score (`pattern_a_score`) import 금지 검증 (AST)
+6. 5개 Stage(WEAK, BASE, TRANSITION, EARLY_TREND, PROGRESSED) 각각 정확히 7건 (총 35건)
+7. HistoricalSnapshot 35건 provenance reconstruction & future bar leakage 없음 검증 (cache guard)
 """
 
 from __future__ import annotations
 
 import ast
+import importlib.util
+import sys
 from datetime import date
 from pathlib import Path
 
+import pandas as pd
 import pytest
 
 from trend_scanner.data.cache import ParquetCache
 from trend_scanner.patterns.pattern_a_feature_set import PatternAStage
+from trend_scanner.validation.historical_snapshot import build_historical_snapshot
+from trend_scanner.validation.oos_v01_manifest import OOS_V01_DIAGNOSTIC_SNAPSHOTS
+from trend_scanner.validation.oos_v02_manifest import OOS_V02_VALIDATION_SNAPSHOTS
 from trend_scanner.validation.pattern_a_stage_manifest import PATTERN_A_STAGE_LABELS
 from trend_scanner.validation.pattern_a_stage_oos_v01_manifest import (
     PATTERN_A_STAGE_OOS_V01_LABELS,
@@ -38,6 +47,71 @@ _MANIFEST_PATH = (
     / "pattern_a_stage_oos_v01_manifest.py"
 )
 
+# score_v02_candidate_compare.py 로드 (NEGATIVE_CONTROL_SNAPSHOTS / HOLDOUT_SNAPSHOTS 용)
+_COMPARE_SCRIPT_PATH = _REPO_ROOT / "scripts" / "score_v02_candidate_compare.py"
+_spec = importlib.util.spec_from_file_location("score_v02_candidate_compare", _COMPARE_SCRIPT_PATH)
+_compare = importlib.util.module_from_spec(_spec)
+assert _spec.loader is not None
+sys.modules[_spec.name] = _compare
+_spec.loader.exec_module(_compare)
+
+# 35개 frozen baseline identity fixture (e3506be 기준)
+_FROZEN_35_IDENTITIES: tuple[tuple[str, str, PatternAStage], ...] = (
+    # WEAK (7)
+    ("006360", "2023-10-31", PatternAStage.WEAK),
+    ("006360", "2022-11-30", PatternAStage.WEAK),
+    ("009830", "2024-04-30", PatternAStage.WEAK),
+    ("018880", "2024-06-30", PatternAStage.WEAK),
+    ("000720", "2024-03-31", PatternAStage.WEAK),
+    ("035420", "2022-10-31", PatternAStage.WEAK),
+    ("004170", "2024-08-31", PatternAStage.WEAK),
+    # BASE (7)
+    ("017670", "2023-12-31", PatternAStage.BASE),
+    ("030200", "2023-10-31", PatternAStage.BASE),
+    ("024110", "2023-11-30", PatternAStage.BASE),
+    ("028260", "2023-10-31", PatternAStage.BASE),
+    ("005940", "2023-10-31", PatternAStage.BASE),
+    ("271560", "2024-08-31", PatternAStage.BASE),
+    ("068270", "2023-09-30", PatternAStage.BASE),
+    # TRANSITION (7)
+    ("000660", "2023-05-31", PatternAStage.TRANSITION),
+    ("005830", "2023-06-30", PatternAStage.TRANSITION),
+    ("006260", "2022-10-31", PatternAStage.TRANSITION),
+    ("028050", "2021-03-31", PatternAStage.TRANSITION),
+    ("003230", "2022-04-30", PatternAStage.TRANSITION),
+    ("035900", "2020-07-31", PatternAStage.TRANSITION),
+    ("055550", "2024-01-31", PatternAStage.TRANSITION),
+    # EARLY_TREND (7)
+    ("000660", "2023-11-30", PatternAStage.EARLY_TREND),
+    ("005850", "2023-04-30", PatternAStage.EARLY_TREND),
+    ("005830", "2023-12-31", PatternAStage.EARLY_TREND),
+    ("006260", "2023-02-28", PatternAStage.EARLY_TREND),
+    ("028050", "2021-06-30", PatternAStage.EARLY_TREND),
+    ("003230", "2022-11-30", PatternAStage.EARLY_TREND),
+    ("272210", "2024-03-31", PatternAStage.EARLY_TREND),
+    # PROGRESSED (7)
+    ("000660", "2024-06-30", PatternAStage.PROGRESSED),
+    ("003230", "2024-06-30", PatternAStage.PROGRESSED),
+    ("086520", "2023-07-31", PatternAStage.PROGRESSED),
+    ("086520", "2023-11-30", PatternAStage.PROGRESSED),
+    ("035900", "2023-06-30", PatternAStage.PROGRESSED),
+    ("138040", "2024-08-31", PatternAStage.PROGRESSED),
+    ("006260", "2023-07-31", PatternAStage.PROGRESSED),
+)
+
+
+def _cache_has_all_manifest_tickers() -> bool:
+    cache = ParquetCache(base_dir=_CACHE_DIR)
+    for spec in PATTERN_A_STAGE_OOS_V01_LABELS:
+        daily = cache.load(spec.ticker)
+        if daily is None or daily.empty:
+            return False
+    return True
+
+
+_HAS_CACHE = _cache_has_all_manifest_tickers()
+_SKIP_REASON = "OOS manifest 종목의 KRX 캐시(data/raw/stocks)가 없어 skip합니다."
+
 
 def test_manifest_version_string():
     assert STAGE_OOS_V01_DATASET_VERSION == "pattern_a_stage_oos_v0.1_freeze"
@@ -46,6 +120,14 @@ def test_manifest_version_string():
 def test_manifest_has_no_duplicate_ticker_snapshot_date_keys():
     keys = [(spec.ticker, spec.snapshot_date) for spec in PATTERN_A_STAGE_OOS_V01_LABELS]
     assert len(keys) == len(set(keys)), f"Duplicate (ticker, date) keys found: {len(keys)} vs {len(set(keys))}"
+
+
+def test_frozen_identities_and_stages_are_exact_match():
+    current_identities = tuple(
+        (spec.ticker, spec.snapshot_date, spec.manual_stage)
+        for spec in PATTERN_A_STAGE_OOS_V01_LABELS
+    )
+    assert current_identities == _FROZEN_35_IDENTITIES, "Frozen 35 identities/stages were unexpectedly modified!"
 
 
 def test_all_snapshot_dates_are_iso_parseable():
@@ -79,19 +161,36 @@ def test_all_required_text_fields_are_non_empty():
         assert spec.manual_confidence in {"HIGH", "MEDIUM"}, f"Invalid confidence for {spec.ticker}"
 
 
-def test_no_overlap_with_calibration_truth_set():
-    calib_keys = {(s.ticker, s.snapshot_date) for s in PATTERN_A_STAGE_LABELS}
+def test_exact_overlap_with_all_existing_validation_datasets_is_zero():
     oos_keys = {(s.ticker, s.snapshot_date) for s in PATTERN_A_STAGE_OOS_V01_LABELS}
-    overlap = calib_keys & oos_keys
-    assert len(overlap) == 0, f"Found overlapping keys with calibration set: {overlap}"
+
+    # 1. Stage Calibration (46건)
+    calib_keys = {(s.ticker, s.snapshot_date) for s in PATTERN_A_STAGE_LABELS}
+    assert len(oos_keys & calib_keys) == 0, f"Overlap with Stage calibration set: {oos_keys & calib_keys}"
+
+    # 2. OOS v0.1 Diagnostic (29건)
+    oos1_keys = {(s.ticker, s.snapshot_date) for s in OOS_V01_DIAGNOSTIC_SNAPSHOTS}
+    assert len(oos_keys & oos1_keys) == 0, f"Overlap with OOS v0.1 diagnostic set: {oos_keys & oos1_keys}"
+
+    # 3. OOS v0.2 Validation (22건)
+    oos2_keys = {(s.ticker, s.snapshot_date) for s in OOS_V02_VALIDATION_SNAPSHOTS}
+    assert len(oos_keys & oos2_keys) == 0, f"Overlap with OOS v0.2 validation set: {oos_keys & oos2_keys}"
+
+    # 4. Negative Control (8건)
+    neg_keys = {(d["ticker"], d["date"]) for d in _compare.NEGATIVE_CONTROL_SNAPSHOTS}
+    assert len(oos_keys & neg_keys) == 0, f"Overlap with Negative Control set: {oos_keys & neg_keys}"
+
+    # 5. Holdout Snapshots
+    holdout_keys = {(d["ticker"], d["date"]) for d in _compare.HOLDOUT_SNAPSHOTS}
+    assert len(oos_keys & holdout_keys) == 0, f"Overlap with Holdout set: {oos_keys & holdout_keys}"
 
 
-def test_all_tickers_are_independent_new_tickers():
+def test_stage_calibration_ticker_overlap_is_zero():
     calib_tickers = {s.ticker for s in PATTERN_A_STAGE_LABELS}
     oos_tickers = {s.ticker for s in PATTERN_A_STAGE_OOS_V01_LABELS}
     overlap_tickers = calib_tickers & oos_tickers
-    assert len(overlap_tickers) == 0, f"Found overlapping tickers with calibration set: {overlap_tickers}"
-    assert len(oos_tickers) >= 20, f"Expected at least 20 unique tickers, got {len(oos_tickers)}"
+    assert len(overlap_tickers) == 0, f"Found overlapping tickers with Stage calibration set: {overlap_tickers}"
+    assert len(oos_tickers) == 24, f"Expected exactly 24 unique tickers, got {len(oos_tickers)}"
 
 
 def test_manifest_module_does_not_import_classifier_or_score():
@@ -108,7 +207,7 @@ def test_manifest_module_does_not_import_classifier_or_score():
             assert "pattern_a_score" not in module_name, f"Imported from pattern_a_score in manifest: {module_name}"
 
 
-def test_stage_distribution_covers_all_five_stages():
+def test_stage_distribution_is_exactly_seven_per_stage():
     counts: dict[PatternAStage, int] = {}
     for spec in PATTERN_A_STAGE_OOS_V01_LABELS:
         counts[spec.manual_stage] = counts.get(spec.manual_stage, 0) + 1
@@ -121,20 +220,43 @@ def test_stage_distribution_covers_all_five_stages():
         PatternAStage.PROGRESSED,
     ]
     for st in expected_stages:
-        assert counts.get(st, 0) >= 5, f"Stage {st} has only {counts.get(st, 0)} snapshots (min 5 required)"
+        assert counts.get(st, 0) == 7, f"Stage {st} expected exactly 7 snapshots, got {counts.get(st, 0)}"
+    assert len(PATTERN_A_STAGE_OOS_V01_LABELS) == 35, f"Total snapshots expected 35, got {len(PATTERN_A_STAGE_OOS_V01_LABELS)}"
 
 
-def test_total_snapshot_count_within_target_range():
-    total = len(PATTERN_A_STAGE_OOS_V01_LABELS)
-    assert 30 <= total <= 40, f"Total snapshots {total} outside recommended range 30~40"
-
-
-def test_all_candidates_have_valid_cached_raw_data():
-    import pandas as pd
+@pytest.mark.skipif(not _HAS_CACHE, reason=_SKIP_REASON)
+def test_all_oos_snapshots_reconstruct_without_future_data():
     cache = ParquetCache(base_dir=_CACHE_DIR)
     for spec in PATTERN_A_STAGE_OOS_V01_LABELS:
-        df = cache.load(spec.ticker)
-        assert df is not None and not df.empty, f"Missing cache for {spec.ticker} ({spec.name})"
-        ts = pd.Timestamp(spec.snapshot_date)
-        assert df.index.min() <= ts, f"Cache start date {df.index.min()} after snapshot {spec.snapshot_date}"
-        assert df.index.max() >= ts, f"Cache end date {df.index.max()} before snapshot {spec.snapshot_date}"
+        daily = cache.load(spec.ticker)
+        assert daily is not None and not daily.empty, f"Missing cache for {spec.ticker} ({spec.name})"
+
+        snapshot = build_historical_snapshot(
+            ticker=spec.ticker,
+            name=spec.name,
+            daily=daily,
+            snapshot_date=spec.snapshot_date,
+            include_incomplete_periods=False,
+        )
+
+        assert snapshot.requested_snapshot_date == pd.Timestamp(spec.snapshot_date)
+
+        req_ts = pd.Timestamp(spec.snapshot_date)
+
+        # 1. Effective date check (never in the future)
+        assert snapshot.effective_as_of is not None
+        assert pd.Timestamp(snapshot.effective_as_of) <= req_ts
+
+        # 2. Monthly completed bar check
+        assert snapshot.monthly_as_of is not None
+        assert pd.Timestamp(snapshot.monthly_as_of) <= req_ts
+        assert not snapshot.monthly.empty
+        assert snapshot.monthly.index.max() <= pd.Timestamp(snapshot.monthly_as_of)
+
+        # 3. Weekly completed bar check
+        assert snapshot.weekly_as_of is not None
+        assert pd.Timestamp(snapshot.weekly_as_of) <= req_ts
+
+        # 4. Feature Row calculated without crash
+        assert snapshot.features is not None
+        assert snapshot.features.ticker == spec.ticker
