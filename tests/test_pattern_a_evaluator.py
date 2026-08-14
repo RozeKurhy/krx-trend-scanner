@@ -1,12 +1,13 @@
 """Pattern A Evaluator Integration v0.1 유닛 및 통합 테스트.
 
 이 테스트는 다음을 검증한다:
-1. Evaluator 호출 시 Score/Stage 결과가 직접 호출 결과와 정확히 동일함 (동일성 & 무변경)
+1. Evaluator 호출 시 Score/Stage 결과가 직접 호출 결과와 정확히 동일함 (동일성 & 무변조)
 2. Score나 Stage를 cross-mutate하지 않음
 3. 동일한 snapshot 입력 시 항상 deterministic한 결과 반환
 4. Candidate State 매핑 (WEAK->BLOCKED, BASE->WATCH, TRANSITION/EARLY->CANDIDATE, PROGRESSED->LATE)
-5. Diagnostic conflict flag 감지 동작
-6. 5대 대표 통합 케이스 (GS건설, SK텔레콤, JYP, SK하이닉스, 에코프로) 검증
+5. Candidate State의 Score 완전 독립성 (Score 값에 상관없이 동일 Stage면 동일 Candidate State)
+6. 공식 lifecycle Stage 권위 검증 (evaluation.stage == evaluation.lifecycle_stage == stage_result.stage)
+7. 5대 대표 통합 케이스 (GS건설, SK텔레콤, JYP, SK하이닉스, 에코프로) 검증
 """
 
 from __future__ import annotations
@@ -82,6 +83,7 @@ def test_evaluator_score_and_stage_match_direct_calls_exactly():
         # 2. 편의 프로퍼티 일치 검증
         assert eval_result.score == direct_score_result.pattern_a_score
         assert eval_result.stage == direct_stage_result.stage
+        assert eval_result.lifecycle_stage == direct_stage_result.stage
         assert eval_result.stage_evidence == direct_stage_result.evidence
         assert eval_result.stage_context == direct_stage_result.context
         assert eval_result.stage_reason_codes == direct_stage_result.reason_codes
@@ -90,6 +92,24 @@ def test_evaluator_score_and_stage_match_direct_calls_exactly():
         assert eval_result.ticker == ticker
         assert eval_result.name == name
         assert eval_result.as_of == snapshot.effective_as_of
+
+
+@pytest.mark.skipif(not _HAS_CACHE, reason=_SKIP_REASON)
+def test_evaluator_lifecycle_stage_uses_stage_classifier_result():
+    cache = ParquetCache(base_dir=_CACHE_DIR)
+    ticker, name, date, _, _ = _REPRESENTATIVE_CASES[0]
+    daily = cache.load(ticker)
+    assert daily is not None and not daily.empty
+
+    snapshot = build_historical_snapshot(
+        ticker=ticker, name=name, daily=daily, snapshot_date=date, include_incomplete_periods=False
+    )
+
+    eval_result = evaluate_pattern_a(snapshot)
+
+    # 공식 stage authority는 stage_result.stage임을 검증
+    assert eval_result.stage == eval_result.stage_result.stage
+    assert eval_result.lifecycle_stage == eval_result.stage_result.stage
 
 
 @pytest.mark.skipif(not _HAS_CACHE, reason=_SKIP_REASON)
@@ -134,50 +154,33 @@ def test_candidate_state_mapping_logic():
     from trend_scanner.patterns.pattern_a_evaluator import _derive_candidate_state
 
     # WEAK -> BLOCKED
-    assert _derive_candidate_state(PatternAStage.WEAK, 50.0) == PatternACandidateState.BLOCKED
+    assert _derive_candidate_state(PatternAStage.WEAK) == PatternACandidateState.BLOCKED
 
     # BASE -> WATCH
-    assert _derive_candidate_state(PatternAStage.BASE, 50.0) == PatternACandidateState.WATCH
+    assert _derive_candidate_state(PatternAStage.BASE) == PatternACandidateState.WATCH
 
     # TRANSITION -> CANDIDATE
-    assert _derive_candidate_state(PatternAStage.TRANSITION, 50.0) == PatternACandidateState.CANDIDATE
+    assert _derive_candidate_state(PatternAStage.TRANSITION) == PatternACandidateState.CANDIDATE
 
     # EARLY_TREND -> CANDIDATE (Transition/Early 동등 candidate band)
-    assert _derive_candidate_state(PatternAStage.EARLY_TREND, 50.0) == PatternACandidateState.CANDIDATE
+    assert _derive_candidate_state(PatternAStage.EARLY_TREND) == PatternACandidateState.CANDIDATE
 
     # PROGRESSED -> LATE
-    assert _derive_candidate_state(PatternAStage.PROGRESSED, 50.0) == PatternACandidateState.LATE
+    assert _derive_candidate_state(PatternAStage.PROGRESSED) == PatternACandidateState.LATE
 
     # None / Missing -> INSUFFICIENT_DATA
-    assert _derive_candidate_state(None, 50.0) == PatternACandidateState.INSUFFICIENT_DATA
-    assert _derive_candidate_state(PatternAStage.BASE, None) == PatternACandidateState.INSUFFICIENT_DATA
-    assert _derive_candidate_state(None, None) == PatternACandidateState.INSUFFICIENT_DATA
+    assert _derive_candidate_state(None) == PatternACandidateState.INSUFFICIENT_DATA
 
 
-def test_diagnostic_conflicts_detection():
-    from trend_scanner.patterns.pattern_a_evaluator import _detect_conflicts
+def test_candidate_state_is_strictly_score_independent():
+    from trend_scanner.patterns.pattern_a_evaluator import _derive_candidate_state
 
-    # 1. High Score on WEAK
-    has_conflict, reasons = _detect_conflicts(PatternAStage.WEAK, 65.0)
-    assert has_conflict is True
-    assert "conflict_high_score_on_weak_stage" in reasons
-
-    # 2. Normal WEAK (Low Score) -> No conflict
-    has_conflict, reasons = _detect_conflicts(PatternAStage.WEAK, 20.0)
-    assert has_conflict is False
-    assert len(reasons) == 0
-
-    # 3. High Score on PROGRESSED
-    has_conflict, reasons = _detect_conflicts(PatternAStage.PROGRESSED, 75.0)
-    assert has_conflict is True
-    assert "conflict_high_score_on_progressed_stage" in reasons
-
-    # 4. Low Score on EARLY_TREND
-    has_conflict, reasons = _detect_conflicts(PatternAStage.EARLY_TREND, 35.0)
-    assert has_conflict is True
-    assert "conflict_low_score_on_early_trend_stage" in reasons
-
-    # 5. Very High Score on BASE
-    has_conflict, reasons = _detect_conflicts(PatternAStage.BASE, 80.0)
-    assert has_conflict is True
-    assert "conflict_high_score_on_base_stage" in reasons
+    # Stage가 같으면 Score와 무관하게 동일한 CandidateState가 파생됨을 검증
+    for stage, expected_state in [
+        (PatternAStage.WEAK, PatternACandidateState.BLOCKED),
+        (PatternAStage.BASE, PatternACandidateState.WATCH),
+        (PatternAStage.TRANSITION, PatternACandidateState.CANDIDATE),
+        (PatternAStage.EARLY_TREND, PatternACandidateState.CANDIDATE),
+        (PatternAStage.PROGRESSED, PatternACandidateState.LATE),
+    ]:
+        assert _derive_candidate_state(stage) == expected_state
