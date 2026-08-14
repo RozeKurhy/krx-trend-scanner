@@ -1289,10 +1289,15 @@ Score 코드는 손대지 않은 상태)로 development set 64 snapshot(explorat
 이미 결과를 아는 상태이므로 재차 강조: 이건 unbiased 성능 검증이 아니라
 후보 구조 비교다) 위에서 Transition Candidate A/B/C, Alignment Candidate
 A/B/C/D를 계산해 CSV(`data/processed/score_v02_candidate_compare.csv`,
-로컬 전용)로 남겼다. Candidate A는 재구현이 아니라 그 시점의
-`score_pattern_a()`를 그대로 호출한 진짜 v0.1 baseline이었다(주의:
-freeze 이후 이 스크립트를 다시 실행하면 Candidate A도 v0.2를 반환한다
-— 스크립트 자체의 버전 고정 안내 docstring 참고).
+로컬 전용)로 남겼다. **Candidate A는 당시(freeze 이전) `score_pattern_a()`
+호출 결과였지만, 재현성 후속 수정에서 `_score_v01_baseline()`이라는
+frozen v0.1 baseline 재현 함수로 고정됐다** — Base Score/harmonic mean/
+progressed penalty/required anchor는 pattern_a_score.py의 pure helper를
+그대로 재사용하고(v0.1/v0.2 공통이라 안전), Transition 가중합과 항상
++8인 alignment bonus만 스크립트 안에 v0.1 그대로 남겼다. 따라서 **현재
+main HEAD에서도 v0.1 baseline(A) / Candidate B / Candidate C(=production
+v0.2)** 비교를 재현할 수 있다 — 스크립트 실행 시 Candidate C가 실제
+`score_pattern_a()` 출력과 정확히 일치하는지도 매번 자동으로 확인한다.
 
 holdout_early_trend/exploration_early_trend는 이번 라운드에서 Stage
 Label Rubric으로 재감사하지 않았다(범위 밖) — OOS positive_early_trend
