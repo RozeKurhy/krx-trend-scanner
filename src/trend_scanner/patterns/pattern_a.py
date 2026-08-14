@@ -3,6 +3,14 @@
 점수 산식과 Hard Filter 임계값은 아직 검증되지 않았다. 자세한 스펙은
 docs/patterns/pattern_a.md 를 참고한다. 여기서는 결과 구조와 가중치만
 고정하고, 실제 스코어링은 구현하지 않는다.
+
+Feature Set Freeze v0.1(docs/patterns/pattern_a.md 참고) 이후: 아래
+PATTERN_A_WEIGHTS의 5영역 100점 배점은 **검증 이전의 초기 가설**이었고,
+Feature Validation/Historical Snapshot/Holdout/Negative Control 검증
+결과 이 구조를 그대로 쓸 근거가 약해졌다. 실제 배점은 Score Design
+단계에서 `pattern_a_feature_set.py`의 축 구조(Core/Supporting/Stage
+Context)를 기준으로 다시 설계한다. 이 상수는 기존 테스트가 참조하고
+있어 값은 그대로 남겨두지만, 최종 배점표로 취급하지 않는다.
 """
 
 from __future__ import annotations
