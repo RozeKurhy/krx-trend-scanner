@@ -225,34 +225,40 @@ row = audited_stage, col = predicted_stage:
 
 ## Major error type audit
 
-`scripts/pattern_a_stage_validate.py`가 실제 오분류를 관찰해서 분류한
-6가지 유형이다(원인이 서로 다른 실패를 하나로 뭉치지 않기 위해 나눴다).
+지정된 6가지 오류 유형(audited_stage → predicted_stage 방향)을
+`scripts/pattern_a_stage_validate.py`가 46건 실제 결과에 대조한다. 이
+6개는 사전에 정의된 유형이지 사후에 관찰해서 만든 분류가 아니다 — 그래서
+6개 중 실제로 발생한 것도 있고, 전혀 발생하지 않은 것도 있다.
 
-* **A. EARLY_TREND truth → PROGRESSED 예측**: 0건. 초기 설계(`price_extended`
-  단독으로 PROGRESSED 판정)에서는 7건이 이 유형으로 나왔었다 — Threshold
-  rationale에서 설명한 재설계로 전부 해소됐다.
-* **B. PROGRESSED truth → EARLY_TREND 예측 (episode continuation 미포착)**:
-  2건 — 079550 2023-12-31, 005490 2023-07-31. 위 "override를 쓰지 않는
+* **A. BASE → TRANSITION 과다**: 2건 — 000880 2024-12-31, 010620
+  2023-12-31. 둘 다 `core_or_weekly_turning_positive`(약한 양전환
+  신호)에 규칙이 민감하게 반응한 경우다.
+* **B. EARLY_TREND → TRANSITION**: 0건.
+* **C. PROGRESSED → EARLY_TREND**: 2건 — 079550 2023-12-31, 005490
+  2023-07-31. 위 "`StageLifecycleContext`를 최종 판정에 아직 쓰지 않는
   이유" 절에서 설명한, v0.1이 의도적으로 감수한 실패다.
-* **C. BASE truth → TRANSITION/WEAK 예측**: 3건 — 042700 2019-12-31(→WEAK),
-  000880 2024-12-31(→TRANSITION), 010620 2023-12-31(→TRANSITION). 셋 다
-  약한 신호(소폭 음수/양수 weekly, 완만한 ma24_slope)에 규칙이 민감하게
-  반응한 경우다.
-* **D. TRANSITION truth → PROGRESSED 예측**: 2건 — 012450(한화에어로스페이스)
-  2021-12-31(`avg_chg=+0.723`), 010130(고려아연) 2022-06-30
-  (`avg_chg=+0.312`). 둘 다 `avg_price_change_12m`이 threshold(0.30)를
-  넘는데도 사람은 TRANSITION으로 판정했다 — 급등성 12개월 변화율과 진짜
-  "이미 진행된 확장"을 `avg_price_change_12m` 단독으로 구분하지 못하는
-  게 원인으로 보인다(예: 변동성 큰 회복 구간 vs 꾸준한 상승).
-* **E. WEAK<->BASE 경계 오분류**: 1건(042700, C와 중복 표기 — active_decline
-  threshold 경계).
-* **F. 그 외**: 1건 — 005490 2022-12-31(truth TRANSITION → WEAK,
-  `active_decline` 발동). weekly_ma12_slope가 순간적으로 낮은 시점을
-  active_decline이 과다하게 잡은 사례로 보인다.
+* **D. WEAK → BASE**: 0건.
+* **E. WEAK → EARLY_TREND**: 0건.
+* **F. 새 episode인데 과거 expansion 때문에 PROGRESSED 유지**: 0건 —
+  **의도된 0건이다.** 바로 이 실패 유형을 막기 위해 episode continuation
+  override를 v0.1에서 채택하지 않기로 결정했다(위 절 참고). override를
+  넣었다면 이 유형이 실제로 발생했을 것이다(086790/010620/042660류가
+  여기 해당했을 사례).
+
+A-F 6개 유형에 안 들어가는 나머지 mismatch 4건도 투명성을 위해 별도로
+기록한다: 042700 2019-12-31(BASE→WEAK, active_decline threshold 경계),
+012450 2021-12-31(TRANSITION→PROGRESSED, `avg_chg=+0.723`), 010130
+2022-06-30(TRANSITION→PROGRESSED, `avg_chg=+0.312`), 005490 2022-12-31
+(TRANSITION→WEAK, active_decline 발동). 012450/010130 둘 다
+`avg_price_change_12m`이 PROGRESSED threshold(0.30)를 넘는데도 사람은
+TRANSITION으로 판정했다 — 급등성 12개월 변화율과 진짜 "이미 진행된
+확장"을 `avg_price_change_12m` 단독으로 구분하지 못하는 게 원인으로
+보인다(예: 변동성 큰 회복 구간 vs 꾸준한 상승).
 
 ## Challenge cases
 
-truth set 46건에는 없는 별도 (ticker, snapshot_date) 3건 — 공식
+**010620/042660** — truth set 46건에는 없는 별도 (ticker, snapshot_date),
+manifest 앞뒤 snapshot 사이의 adjacent boundary challenge case다. 공식
 `audited_stage`가 없어 match_type을 계산하지 않고 관찰만 한다(global
 rule에 반영 안 함).
 
@@ -260,11 +266,31 @@ rule에 반영 안 함).
 |---|---|---|---|---|
 | 010620 | HD현대미포 | 2024-06-30 | transition | manifest 2023-12-31(BASE)~2024-12-31(PROGRESSED) 중간 지점. TRANSITION은 이 둘 사이 자연스러운 경유 단계로 보인다. |
 | 042660 | 한화오션 | 2025-01-31 | early_trend | manifest 2024-10-31(TRANSITION)~2025-07-31(PROGRESSED) 중간 지점. EARLY_TREND도 자연스러운 경유 단계다. |
-| 011200 | HMM | 2025-04-30 | base | manifest 2024-10-31(WEAK) 이후 시점. WEAK에서 하락이 멈추고 새 BASE가 형성된 것으로 읽힌다 — cycle reset(WEAK→새 BASE) semantic과 일치하는 방향. |
 
-세 사례 모두 truth set 경계 사이에서 "말이 되는" 중간/사후 상태를
+두 사례 모두 truth set 경계 사이에서 "말이 되는" 중간 상태를
 예측했다 — overfitting 없이도 인접 시점에서 급격히 튀지 않는다는
-정성적 신호로 본다(통계적 증거는 아니다, n=3).
+정성적 신호로 본다(통계적 증거는 아니다, n=2).
+
+**011200 HMM 2024-10-31** — 이건 truth set 46건에 이미 포함된 WEAK 행
+(WEAK support=5 중 1건)이다. 새 snapshot이 아니라 "thin WEAK 사례"로서
+과적합 여부를 별도로 들여다보는 challenge case다. 결과는 EXACT match
+(predicted WEAK). `active_decline`의 3-branch OR 중 어느 것이 발동했는지
+확인한 결과:
+
+* branch1(`ma24_slope<=-0.045`): `ma24_slope=-0.0161` → 불발.
+* branch2(`ma24_slope_acceleration<0 and avg_price_change_12m<=-0.15`):
+  `acceleration=+0.0388`(양수) → 불발.
+* branch3(`weekly_ma12_slope<=0 and range_position<=0.20`):
+  `weekly=-0.0102<=0`(참), `range_position=0.1457<=0.20`(참) → **발동**.
+
+3개 branch 중 1개만 발동했고, 그 branch 안에서는 두 조건이 서로 다른
+Feature(weekly slope, range_position)에서 독립적으로 근거를 대므로
+단일 숫자 하나가 threshold를 겨우 넘겨서 우연히 맞은 경우는 아니다.
+다만 branch1/branch2가 전혀 근접하지 않았다는 점(다른 WEAK 진성
+사례들처럼 여러 branch가 동시에 발동하지 않음)은, 이 사례가 WEAK
+스펙트럼에서 상대적으로 "얇은" 쪽에 있다는 사용자의 우려와 일치한다 —
+과적합으로 판단할 근거는 없지만, WEAK support가 5건뿐이라는 sample
+크기 문제와 함께 v0.2에서 계속 지켜볼 대상으로 남긴다.
 
 ## Known failure modes (v0.2로 넘기는 것)
 

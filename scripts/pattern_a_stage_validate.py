@@ -52,23 +52,24 @@ _STAGE_ORDER = {
     PatternAStage.PROGRESSED: 4,
 }
 
-# Challenge case 3건은 truth set(PATTERN_A_STAGE_LABELS) 46건에는 없는
-# 별도 (ticker, snapshot_date)다. 공식 audited_stage가 없으므로
-# match_type을 계산하지 않고, predicted_stage/evidence만 별도 표로
-# 보고한다(global rule에는 반영하지 않는다).
-#   010620 HD현대미포: manifest에 2023-12-31(BASE)/2024-12-31(PROGRESSED)
-#     두 snapshot이 있다 — 그 사이 중간 지점(2024-06-30)에서 classifier가
-#     BASE->PROGRESSED 전환 과정 중 어디쯤을 찍는지 관찰한다.
-#   042660 한화오션: manifest에 2024-10-31(TRANSITION)/2025-07-31
-#     (PROGRESSED) 두 snapshot이 있다 — 중간 지점(2025-01-31) 관찰.
-#   011200 HMM: manifest에 2024-10-31(WEAK) 1건만 있다 — 그 이후
-#     시점(2025-04-30)에 WEAK가 계속 유지되는지, 다른 stage로 넘어가는지
-#     관찰한다(manifest 날짜와 겹치지 않는 별도 시점).
+# Challenge case 3건. 010620/042660은 truth set 46건에는 없는 별도
+# (ticker, snapshot_date)다 — adjacent boundary challenge case로,
+# manifest의 앞뒤 snapshot 사이 중간 지점에서 classifier가 어디쯤을
+# 찍는지 관찰한다.
+#   010620 HD현대미포: manifest 2023-12-31(BASE)/2024-12-31(PROGRESSED)
+#     중간 지점(2024-06-30).
+#   042660 한화오션: manifest 2024-10-31(TRANSITION)/2025-07-31
+#     (PROGRESSED) 중간 지점(2025-01-31).
+# 011200 HMM 2024-10-31은 이 둘과 다르다 — truth set 46건에 이미 들어있는
+# WEAK 행(WEAK support=5 중 1건)이다. "thin WEAK 사례"로서 과적합
+# 여부(다중 구조 신호로 뒷받침되는지, 단일 threshold를 겨우 넘겨서
+# 우연히 맞은 건 아닌지)를 별도로 들여다보는 challenge case다 — 그래서
+# 새 snapshot을 만들지 않고 truth set 결과(core_df)에서 그대로 뽑는다.
 _CHALLENGE_CASES = (
     ("010620", "HD현대미포", "2024-06-30"),
     ("042660", "한화오션", "2025-01-31"),
-    ("011200", "HMM", "2025-04-30"),
 )
+_THIN_WEAK_CHALLENGE_KEY = ("011200", "2024-10-31")
 
 
 def _match_type(predicted: PatternAStage | None, audited: PatternAStage) -> str:
@@ -200,41 +201,33 @@ def main() -> None:
                 print(sub[["ticker", "snapshot_date", "audited_stage", "predicted_stage", "reason_codes"]].to_string(index=False))
         print()
 
-    _report(
-        "A. EARLY_TREND truth -> PROGRESSED 예측 (확장 신호 과다 판정)",
-        (mism["audited_stage"] == "early_trend") & (mism["predicted_stage"] == "progressed"),
-    )
-    _report(
-        "B. PROGRESSED truth -> EARLY_TREND/TRANSITION 예측 (episode continuation 미포착)",
-        (mism["audited_stage"] == "progressed") & (mism["predicted_stage"].isin(["early_trend", "transition"])),
-    )
-    _report(
-        "C. BASE truth -> TRANSITION/WEAK 예측 (약한 신호에 과다 반응)",
-        (mism["audited_stage"] == "base") & (mism["predicted_stage"].isin(["transition", "weak"])),
-    )
-    _report(
-        "D. TRANSITION truth -> PROGRESSED 예측 (급등성 avg_price_change_12m을 진짜 progression과 혼동)",
-        (mism["audited_stage"] == "transition") & (mism["predicted_stage"] == "progressed"),
-    )
-    _report(
-        "E. WEAK<->BASE 경계 오분류 (active_decline threshold 경계)",
-        (mism["audited_stage"].isin(["weak", "base"])) & (mism["predicted_stage"].isin(["weak", "base"])),
-    )
-    _report(
-        "F. 그 외",
-        ~(
-            ((mism["audited_stage"] == "early_trend") & (mism["predicted_stage"] == "progressed"))
-            | ((mism["audited_stage"] == "progressed") & (mism["predicted_stage"].isin(["early_trend", "transition"])))
-            | ((mism["audited_stage"] == "base") & (mism["predicted_stage"].isin(["transition", "weak"])))
-            | ((mism["audited_stage"] == "transition") & (mism["predicted_stage"] == "progressed"))
-            | ((mism["audited_stage"].isin(["weak", "base"])) & (mism["predicted_stage"].isin(["weak", "base"])))
-        ),
-    )
+    # A-F는 사용자 스펙 item 28에 명시된 6개 오류 유형이다(audited_stage
+    # -> predicted_stage 방향). 실제 46건 결과에는 이 6개 유형 중 A/C만
+    # 해당 사례가 있었다 — B/D/E/F는 0건이다(F=0건은 특히 의도된 결과:
+    # "episode/cycle reset logic" 절에서 설명한 override를 애초에
+    # 채택하지 않았기 때문에 이 실패 유형 자체가 발생하지 않는다). A/C
+    # 외 나머지 4건 mismatch는 이 6개 유형에 안 들어가서 "기타"로 별도
+    # 표기한다.
+    _named_masks = {
+        "A. BASE -> TRANSITION 과다": (mism["audited_stage"] == "base") & (mism["predicted_stage"] == "transition"),
+        "B. EARLY_TREND -> TRANSITION": (mism["audited_stage"] == "early_trend") & (mism["predicted_stage"] == "transition"),
+        "C. PROGRESSED -> EARLY_TREND": (mism["audited_stage"] == "progressed") & (mism["predicted_stage"] == "early_trend"),
+        "D. WEAK -> BASE": (mism["audited_stage"] == "weak") & (mism["predicted_stage"] == "base"),
+        "E. WEAK -> EARLY_TREND": (mism["audited_stage"] == "weak") & (mism["predicted_stage"] == "early_trend"),
+        "F. 새 episode인데 과거 expansion 때문에 PROGRESSED 유지": pd.Series(False, index=mism.index),
+    }
+    for label, mask in _named_masks.items():
+        _report(label, mask)
+
+    combined = pd.Series(False, index=mism.index)
+    for mask in _named_masks.values():
+        combined = combined | mask
+    _report("기타 (A-F 6개 유형에 안 들어가는 나머지 mismatch)", ~combined)
 
     print("=" * 100)
-    print("Challenge cases (truth set 46건에는 없는 별도 snapshot) — 공식 audited_stage 없음,")
-    print("관찰 결과만 기록하고 global rule에는 반영하지 않는다")
+    print("Challenge cases")
     print("=" * 100)
+    print("-- 010620/042660: truth set에 없는 adjacent boundary challenge (공식 audited_stage 없음) --")
     challenge_rows = [_classify_row(ticker, name, snapshot_date) for ticker, name, snapshot_date in _CHALLENGE_CASES]
     challenge_df = pd.DataFrame(challenge_rows)
     challenge_display_cols = ["ticker", "name", "snapshot_date", "predicted_stage", "reason_codes"]
@@ -242,9 +235,19 @@ def main() -> None:
         print(challenge_df[challenge_display_cols].to_string(index=False))
     print()
 
-
-if __name__ == "__main__":
-    main()
+    print("-- 011200 HMM 2024-10-31: truth set 소속 thin WEAK 사례(WEAK support=5 중 1건) --")
+    thin_weak_ticker, thin_weak_date = _THIN_WEAK_CHALLENGE_KEY
+    thin_weak_row = core_df[(core_df["ticker"] == thin_weak_ticker) & (core_df["snapshot_date"] == thin_weak_date)]
+    with pd.option_context("display.max_columns", None, "display.width", 220, "display.max_colwidth", 80):
+        print(
+            thin_weak_row[
+                [
+                    "ticker", "name", "snapshot_date", "audited_stage", "predicted_stage", "match_type",
+                    "reason_codes", "active_decline", "previously_expanded_in_current_episode", "episode_broken",
+                ]
+            ].to_string(index=False)
+        )
+    print()
 
 
 if __name__ == "__main__":
