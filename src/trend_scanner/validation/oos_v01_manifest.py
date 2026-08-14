@@ -168,6 +168,12 @@ class StageAudit:
 # 감사에는 monthly만으로 충분했다). **원본 라벨(OOS_V01_DIAGNOSTIC_SNAPSHOTS의
 # original_group)은 바꾸지 않는다** — 이건 별도 병렬 기록이다.
 #
+# **as-of 원칙(재리뷰 후속)**: 각 판정은 반드시 close.index <= snapshot_date
+# 구간만 본다. 스냅샷 이후에 실제로 어떻게 됐는지(다음 달 돌파 확정, 이후
+# 급락 등)는 audit_note에도 적지 않는다 — 이 audit은 "그 시점까지의 가격
+# 구조만으로 지금 어느 Stage인가"를 판정하는 용도이지, 사후에 결과를 보고
+# 맞춰 끼우는 용도가 아니다.
+#
 # key = (ticker, snapshot_date). positive_pre_breakout/early_trend/
 # trend_progressed 15건만 감사 대상이다(hard_negative/boundary/
 # insufficient_data_check는 Stage 개념 자체가 적용 대상이 아니다).
@@ -179,7 +185,7 @@ OOS_V01_STAGE_AUDIT: dict[tuple[str, str], StageAudit] = {
     ("010620", "2024-06-30"): StageAudit(
         "PRE_BREAKOUT/EARLY_TREND 경계",
         "종가(93,000)가 2022-08 스파이크 고점(107,000) 아래이자 통상 박스 상단과 거의 겹침"
-        " — '돌파 시도 초기 단계'에 더 가까움. 다음 달(7월) 117,500으로 확정 돌파."
+        " — 스냅샷 시점까지의 정보만으로는 '돌파 시도 초기 단계'에 더 가까움."
         " 원본 라벨(EARLY_TREND)보다 보수적으로 판단.",
     ),
     ("010620", "2024-12-31"): StageAudit(
@@ -224,7 +230,7 @@ OOS_V01_STAGE_AUDIT: dict[tuple[str, str], StageAudit] = {
     ),
     ("005490", "2023-07-31"): StageAudit(
         "TREND_PROGRESSED",
-        "추가 +74%, 이 구간 전체 고점(이후 급락) — 원본 라벨과 일치",
+        "돌파 이후 추가 +74%, 스냅샷 시점까지 구간 내 최고가 — 원본 라벨과 일치",
     ),
     ("042660", "2024-10-31"): StageAudit(
         "PRE_BREAKOUT",

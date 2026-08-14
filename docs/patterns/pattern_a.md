@@ -877,7 +877,9 @@ raw monthly close(월봉 종가)만 먼저 조회해서 그 모양(박스권/돌
 transition_score, range_36m, ma24_slope 등은 그 이후
 `scripts/oos_validate.py`에서 처음 계산했다.
 
-**데이터 품질 스크리닝**: 12년치 일봉을 조회하면서 `validate_ohlcv`가
+**데이터 품질 스크리닝**: 2013-01-01~2026-08-14(절대 날짜로 고정,
+`OOS_V01_SELECTION_START`/`OOS_V01_SELECTION_END`) 구간의 일봉을
+조회하면서 `validate_ohlcv`가
 거부한 6종목(010140 삼성중공업, 009540 HD한국조선해양, 034020
 두산에너빌리티, 004990 롯데지주, 047810 한국항공우주, 042670 HD현대
 인프라코어 — 전부 OHLC 관계 위반)은 후보에서 제외했다(카카오 1원 위반
