@@ -12,11 +12,15 @@ build_feature_row()를 그대로 호출해서 현재 시점 계산과 과거 시
 그대로 쓴다(별도의 "가장 가까운 거래일 조회" 로직이 필요 없다 — index <=
 필터 자체가 이미 그 결과를 만든다).
 
-completed monthly 정책(v0.1 한계, calendar month 기준): include_incomplete_
-periods=False일 때, 진행 중인 월봉인지 판단할 실제 거래소 캘린더를 새로
-도입하지 않고 단순 calendar month 기준을 쓴다. snapshot_date가 그 달의
-calendar month 마지막 날보다 이르면 마지막 월봉을 "진행 중"으로 보고
-제거한다. weekly에는 이 정책을 적용하지 않는다(범위 밖).
+completed monthly/weekly 정책(v0.1 한계): 진행 중인 봉인지 판단할 실제
+거래소 캘린더를 새로 도입하지 않는다. validator/resampler는 건드리지
+않고, 이 계층(Historical Snapshot)에서만 마지막 봉을 잘라낸다.
+
+- monthly: calendar month 기준. snapshot_date가 그 달의 calendar month
+  마지막 날보다 이르면 마지막 월봉을 "진행 중"으로 보고 제거한다.
+- weekly: `weekly.index[-1] > effective_as_of`이면(W-FRI resample 특성상
+  snapshot_date가 월~목이면 그 주 금요일 label의 미완성 주봉이 생길 수
+  있다) 마지막 주봉을 제거한다.
 """
 
 from __future__ import annotations
@@ -36,6 +40,8 @@ class HistoricalSnapshot:
     requested_snapshot_date: pd.Timestamp
     effective_as_of: pd.Timestamp | None
     include_incomplete_periods: bool
+    monthly_as_of: pd.Timestamp | None
+    weekly_as_of: pd.Timestamp | None
     features: FeatureRow
 
 
@@ -50,6 +56,20 @@ def _drop_incomplete_current_month(monthly: pd.DataFrame, requested: pd.Timestam
     if same_month and requested < month_end:
         return monthly.iloc[:-1]
     return monthly
+
+
+def _drop_incomplete_weekly(weekly: pd.DataFrame, effective_as_of: pd.Timestamp | None) -> pd.DataFrame:
+    """weekly.index[-1] > effective_as_of이면 아직 완성되지 않은 마지막 주봉을 제거한다."""
+    if weekly.empty or effective_as_of is None:
+        return weekly
+
+    if weekly.index[-1] > effective_as_of:
+        return weekly.iloc[:-1]
+    return weekly
+
+
+def _last_or_none(df: pd.DataFrame) -> pd.Timestamp | None:
+    return df.index[-1] if len(df) else None
 
 
 def build_historical_snapshot(
@@ -70,6 +90,7 @@ def build_historical_snapshot(
     monthly = to_monthly(sliced)
     if not include_incomplete_periods:
         monthly = _drop_incomplete_current_month(monthly, requested)
+        weekly = _drop_incomplete_weekly(weekly, effective_as_of)
 
     features = build_feature_row(ticker, name, sliced, weekly, monthly)
 
@@ -77,6 +98,8 @@ def build_historical_snapshot(
         requested_snapshot_date=requested,
         effective_as_of=effective_as_of,
         include_incomplete_periods=include_incomplete_periods,
+        monthly_as_of=_last_or_none(monthly),
+        weekly_as_of=_last_or_none(weekly),
         features=features,
     )
 
@@ -87,6 +110,8 @@ def to_csv_row(label: str, snapshot: HistoricalSnapshot) -> dict[str, Any]:
         "requested_snapshot_date": snapshot.requested_snapshot_date,
         "effective_as_of": snapshot.effective_as_of,
         "include_incomplete_periods": snapshot.include_incomplete_periods,
+        "monthly_as_of": snapshot.monthly_as_of,
+        "weekly_as_of": snapshot.weekly_as_of,
     }
     row.update(_feature_row_to_csv_row(snapshot.features))
     return row

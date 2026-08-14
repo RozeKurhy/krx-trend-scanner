@@ -32,25 +32,50 @@ sliced = daily[daily.index <= requested]
 미치면 예외를 던지지 않고 해당 Feature가 NaN이 됩니다(`build_feature_row`의
 기존 동작을 그대로 물려받습니다).
 
-## completed monthly 정책 (v0.1 한계)
+## completed monthly/weekly 정책 (v0.1 한계)
 
-`include_incomplete_periods` 옵션으로 진행 중인 월봉 포함 여부를 고를 수
-있습니다.
+`include_incomplete_periods` 옵션으로 진행 중인 월봉/주봉 포함 여부를 고를
+수 있습니다. validator나 resampler는 건드리지 않고, 이 잘라내기는 전부
+Historical Snapshot 계층(`build_historical_snapshot` 내부)에서만 일어납니다.
 
 * `True`(live, 기본값): `snapshot_date`까지의 daily로 만든 주봉/월봉을
-  그대로 사용한다. `snapshot_date`가 월 중간이면 마지막 월봉은 미완성이다.
-* `False`(completed): 마지막 월봉이 진행 중인 달이면 제거하고, 완성된
-  월봉까지만 사용한다.
+  그대로 사용한다. `snapshot_date`가 월/주 중간이면 마지막 월봉/주봉은
+  미완성이다.
+* `False`(completed): 마지막 월봉이 진행 중인 달이면 제거하고, 마지막
+  주봉도 아직 완성되지 않았으면 제거한다.
 
-**한계**: "진행 중인 달인지"를 실제 거래소 캘린더가 아니라 단순 calendar
-month 기준으로 판단합니다(`requested_snapshot_date < 해당 달의 calendar
-month-end`이면 마지막 월봉을 제거). `snapshot_date`가 실제 마지막 거래일과
-정확히 일치하는지는 확인하지 않습니다. weekly에는 이 정책을 적용하지
-않습니다(월봉만 대상).
+**monthly 기준(한계)**: "진행 중인 달인지"를 실제 거래소 캘린더가 아니라
+단순 calendar month 기준으로 판단합니다(`requested_snapshot_date < 해당
+달의 calendar month-end`이면 마지막 월봉을 제거).
 
-**사람이 보는 메인 비교표의 기본값은 completed monthly입니다**(Pattern A가
-장기 구조를 보는 모델이라 진행 중인 달의 노이즈를 배제하는 쪽을 기본으로
-한다). live monthly 결과는 참고용으로만 씁니다.
+**weekly 기준(한계)**: `weekly.index[-1] > effective_as_of`이면 마지막
+주봉을 제거합니다. W-FRI resample 특성상 `snapshot_date`가 월~목이면 그
+주 금요일 label의 미완성 주봉이 생기는데, 이걸 완성된 주봉으로 착각하지
+않도록 하는 게 목적입니다. `snapshot_date`가 금요일이거나(그 주가 이미
+끝난 경우) 실제 마지막 거래일이 그 주의 금요일과 같으면 잘라낼 게 없어
+live와 completed가 같은 결과를 냅니다.
+
+이 두 정책을 적용한 뒤 실제로 쓰인 마지막 월봉/주봉 label을
+`monthly_as_of`/`weekly_as_of`로 노출합니다(둘 다 completed/live 모드
+공통, 아래 참고).
+
+**사람이 보는 메인 비교표의 기본값은 completed monthly/weekly입니다**
+(Pattern A가 장기 구조를 보는 모델이라 진행 중인 봉의 노이즈를 배제하는
+쪽을 기본으로 한다). live 결과는 참고용으로만 씁니다.
+
+## monthly_as_of / weekly_as_of
+
+`HistoricalSnapshot`에는 `requested_snapshot_date`/`effective_as_of`(daily
+기준) 외에, 실제로 Feature 계산에 쓰인 마지막 월봉/주봉 label을
+`monthly_as_of`/`weekly_as_of`로 담습니다. 데이터가 없으면(빈 monthly/
+weekly) `None`입니다. CSV에도 그대로 포함됩니다. 예:
+
+```text
+requested_snapshot_date = 2026-08-14
+effective_as_of         = 2026-08-14
+monthly_as_of(completed) = 2026-07-31   # 8월 봉은 진행 중이라 제외
+weekly_as_of(completed)  = 2026-08-14   # 그 주 금요일이 곧 effective_as_of라 제외 안 됨
+```
 
 ## Snapshot 날짜 선정
 
@@ -70,9 +95,24 @@ month-end`이면 마지막 월봉을 제거). `snapshot_date`가 실제 마지�
 위한 문자열일 뿐, Pattern A 점수나 다른 어떤 계산에도 사용되지 않습니다.
 
 각 종목에는 추가로 `current` label의 snapshot이 하나씩 더 있습니다 —
-snapshot_date를 캐시의 가장 최근 날짜(보통 월 중간)로 둬서, completed와
+snapshot_date를 캐시의 가장 최근 날짜(보통 월/주 중간)로 둬서, completed와
 live가 실제로 다른 결과를 내는 걸 눈으로 확인할 수 있게 한 참고용
 snapshot입니다.
+
+## Holdout set (exploration/holdout 분리)
+
+`SNAPSHOTS`(068270/035420/005930/000660)는 monthly close/MA24 slope/spread/
+compression 등 실제 Feature 값을 직접 보고 날짜를 골랐기 때문에 **선택
+편향이 있는 exploration set**으로 취급합니다.
+
+`HOLDOUT_SNAPSHOTS`(005380/051910/000270/006400/012330)는 이 편향을 줄이기
+위한 holdout set입니다. Feature 값은 전혀 계산/조회하지 않고, monthly
+raw close(시가/고가/저가/거래량/MA/spread 등 파생 Feature는 전혀 보지
+않음) 흐름만 눈으로 보고 "장기 횡보 후 breakout / 초입 / 확장 / 하락"
+구간을 먼저 고정한 뒤, 그 날짜로 Feature를 계산했습니다. 자동 상승
+시작일 탐지 로직은 이번에도 없습니다. 선정 근거는 완료 보고에 정리합니다.
+
+CSV의 `set` 컬럼(`exploration`/`holdout`)으로 두 집합을 구분합니다.
 
 ## CSV / 비교표
 

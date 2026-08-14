@@ -4,7 +4,7 @@ from dataclasses import fields
 import pandas as pd
 import pytest
 
-from trend_scanner.data.resampler import to_monthly
+from trend_scanner.data.resampler import to_monthly, to_weekly
 from trend_scanner.validation.feature_report import FeatureRow
 from trend_scanner.validation.historical_snapshot import (
     HistoricalSnapshot,
@@ -104,11 +104,12 @@ def test_future_data_does_not_change_past_snapshot():
     _assert_features_equal(snap_a.features, snap_b.features)
 
 
-def test_completed_vs_live_monthly_around_mid_month_snapshot():
-    # 2024-05-15(수)까지의 영업일 데이터. 5월은 진행 중인 달이다.
+def _mid_month_daily_frame() -> pd.DataFrame:
+    # 2024-05-15(수)까지의 영업일 데이터. 5월은 진행 중인 달이고, 그 주(5/13~5/17)도
+    # 수요일까지만 있어 진행 중인 주(금요일 label)다.
     index = pd.date_range("2020-01-01", "2024-05-15", freq="B")
     close = [100.0 + i * 0.1 for i in range(len(index))]
-    daily = pd.DataFrame(
+    return pd.DataFrame(
         {
             "open": close,
             "high": [c + 1 for c in close],
@@ -119,6 +120,10 @@ def test_completed_vs_live_monthly_around_mid_month_snapshot():
         },
         index=index,
     )
+
+
+def test_completed_vs_live_monthly_around_mid_month_snapshot():
+    daily = _mid_month_daily_frame()
     assert daily.index[-1] == pd.Timestamp("2024-05-15")
     snapshot_date = daily.index[-1]
 
@@ -137,6 +142,64 @@ def test_completed_vs_live_monthly_around_mid_month_snapshot():
     assert snap_completed.features.monthly_bar_may_be_incomplete is False
 
 
+def test_completed_mode_drops_incomplete_weekly_bar():
+    daily = _mid_month_daily_frame()
+    snapshot_date = daily.index[-1]  # 2024-05-15(수), 그 주 금요일(5/17)은 아직 안 옴
+
+    weekly_full = to_weekly(daily)
+
+    snap_completed = build_historical_snapshot(
+        "TEST", "테스트", daily, snapshot_date, include_incomplete_periods=False
+    )
+
+    assert snap_completed.weekly_as_of == weekly_full.index[-2]
+    assert snap_completed.features.weekly_rows == len(weekly_full) - 1
+    assert snap_completed.features.weekly_bar_may_be_incomplete is False
+
+
+def test_live_mode_keeps_incomplete_weekly_bar():
+    daily = _mid_month_daily_frame()
+    snapshot_date = daily.index[-1]
+
+    weekly_full = to_weekly(daily)
+
+    snap_live = build_historical_snapshot(
+        "TEST", "테스트", daily, snapshot_date, include_incomplete_periods=True
+    )
+
+    assert snap_live.weekly_as_of == weekly_full.index[-1]
+    assert snap_live.features.weekly_rows == len(weekly_full)
+
+
+def test_monthly_as_of_and_weekly_as_of_reflect_completed_trim():
+    daily = _mid_month_daily_frame()
+    snapshot_date = daily.index[-1]
+    monthly_full = to_monthly(daily)
+    weekly_full = to_weekly(daily)
+
+    snap_completed = build_historical_snapshot(
+        "TEST", "테스트", daily, snapshot_date, include_incomplete_periods=False
+    )
+    snap_live = build_historical_snapshot(
+        "TEST", "테스트", daily, snapshot_date, include_incomplete_periods=True
+    )
+
+    assert snap_completed.monthly_as_of == monthly_full.index[-2]
+    assert snap_completed.weekly_as_of == weekly_full.index[-2]
+    assert snap_live.monthly_as_of == monthly_full.index[-1]
+    assert snap_live.weekly_as_of == weekly_full.index[-1]
+
+
+def test_monthly_as_of_and_weekly_as_of_none_when_no_data():
+    daily = _daily_frame(40)
+    snapshot_date = daily.index[0] - pd.Timedelta(days=10)
+
+    snap = build_historical_snapshot("TEST", "테스트", daily, snapshot_date)
+
+    assert snap.monthly_as_of is None
+    assert snap.weekly_as_of is None
+
+
 def test_to_csv_row_includes_snapshot_metadata_and_feature_fields():
     daily = _daily_frame(1200)
     snapshot_date = daily.index[900]
@@ -150,5 +213,7 @@ def test_to_csv_row_includes_snapshot_metadata_and_feature_fields():
     assert row["requested_snapshot_date"] == snapshot_date
     assert row["effective_as_of"] == snapshot.effective_as_of
     assert row["include_incomplete_periods"] is False
+    assert row["monthly_as_of"] == snapshot.monthly_as_of
+    assert row["weekly_as_of"] == snapshot.weekly_as_of
     assert row["ticker"] == "068270"
     assert row["close"] == pytest.approx(snapshot.features.close)
