@@ -12,6 +12,7 @@ def _daily_frame() -> pd.DataFrame:
             "low": [v - 1 for v in range(40)],
             "close": [v + 0.5 for v in range(40)],
             "volume": [100] * 40,
+            "trading_value": [100.0 * v for v in range(40)],
         },
         index=index,
     )
@@ -30,6 +31,7 @@ def test_to_weekly_aggregates_ohlcv():
     assert first_week["high"] == first_week_daily["high"].max()
     assert first_week["low"] == first_week_daily["low"].min()
     assert first_week["volume"] == first_week_daily["volume"].sum()
+    assert first_week["trading_value"] == first_week_daily["trading_value"].sum()
 
 
 def test_to_monthly_aggregates_ohlcv():
@@ -44,3 +46,4 @@ def test_to_monthly_aggregates_ohlcv():
     assert jan["high"] == jan_daily["high"].max()
     assert jan["low"] == jan_daily["low"].min()
     assert jan["volume"] == jan_daily["volume"].sum()
+    assert jan["trading_value"] == jan_daily["trading_value"].sum()
