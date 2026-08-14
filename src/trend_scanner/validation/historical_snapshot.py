@@ -43,6 +43,11 @@ class HistoricalSnapshot:
     monthly_as_of: pd.Timestamp | None
     weekly_as_of: pd.Timestamp | None
     features: FeatureRow
+    # look-ahead 방지가 이미 적용된 월봉 원본(OHLCV) 프레임. FeatureRow에
+    # 없는 새 Feature 후보를 analysis-only로 시험할 때, 별도로 slicing
+    # 로직을 복제하지 않고 이 필드를 그대로 쓰기 위해 추가했다(v0.2 설계
+    # 재리뷰 후속). Score/FeatureRow 계산에는 쓰이지 않는다.
+    monthly: pd.DataFrame
 
 
 def _drop_incomplete_current_month(monthly: pd.DataFrame, requested: pd.Timestamp) -> pd.DataFrame:
@@ -101,6 +106,7 @@ def build_historical_snapshot(
         monthly_as_of=_last_or_none(monthly),
         weekly_as_of=_last_or_none(weekly),
         features=features,
+        monthly=monthly,
     )
 
 

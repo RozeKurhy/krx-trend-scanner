@@ -200,6 +200,20 @@ def test_monthly_as_of_and_weekly_as_of_none_when_no_data():
     assert snap.weekly_as_of is None
 
 
+def test_monthly_field_matches_features_and_excludes_post_snapshot_data():
+    """v0.2 설계 재리뷰 후속: HistoricalSnapshot.monthly는 FeatureRow 계산에
+    쓰인 것과 같은(look-ahead 방지 적용된) 프레임이어야 한다."""
+    daily = _daily_frame(1500)
+    snapshot_date = daily.index[900]
+
+    snap = build_historical_snapshot(
+        "TEST", "테스트", daily, snapshot_date, include_incomplete_periods=False
+    )
+
+    assert snap.monthly.index.max() <= snapshot_date
+    assert float(snap.monthly["close"].iloc[-1]) == pytest.approx(snap.features.close)
+
+
 def test_to_csv_row_includes_snapshot_metadata_and_feature_fields():
     daily = _daily_frame(1200)
     snapshot_date = daily.index[900]
