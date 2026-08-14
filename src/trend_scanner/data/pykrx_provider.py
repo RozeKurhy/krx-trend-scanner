@@ -20,12 +20,22 @@ OHLC는 adjusted 경로에서, 거래대금은 필요하면 unadjusted 경로에
 원본 거래량이라면 액면분할 시점에 거래량 기반 Feature(ATR 등 거래대금
 연동 지표는 아니지만 거래량 압축 판단)에 불연속이 생길 수 있다. 실제
 종목(예: 2018년 삼성전자 액면분할) 데이터로 Validation 단계에서 확인한다.
+
+인증: adjusted=False(KRX 원천) 경로는 KRX_ID/KRX_PW 환경 변수가 설정되어
+있으면 PyKRX가 내부적으로 로그인 세션을 사용한다(없어도 익명 요청으로
+자동 폴백하지만, 최근 KRX 쪽 정책상 익명 요청이 막힐 수 있다). 이 모듈을
+import하는 시점에 .env 파일이 있으면 자동으로 읽어 환경 변수로 등록한다.
+KRX_ID/KRX_PW 값 자체는 이 프로젝트 코드 어디에도 하드코딩하지 않는다.
 """
 
 from __future__ import annotations
 
 import pandas as pd
-from pykrx import stock
+from dotenv import load_dotenv
+
+load_dotenv()  # .env가 있으면 KRX_ID/KRX_PW를 pykrx import 전에 환경 변수로 등록한다.
+
+from pykrx import stock  # noqa: E402 (dotenv 로드가 pykrx import보다 먼저여야 한다)
 
 from trend_scanner.data.errors import MarketDataError
 

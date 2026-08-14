@@ -102,3 +102,30 @@ trading_value   float64   # adjusted=True 경로에서는 NaN일 수 있음
 
 Data Layer는 "이번 달/이번 주 봉이 완성됐는지"를 판단하지 않습니다. 오늘까지 존재하는
 일봉을 그대로 반환하며, 완료된 봉만 쓸지는 Feature/Pattern 계층의 책임입니다.
+
+## KRX 로그인 credential
+
+`adjusted=False`(KRX 원천, 거래대금 조회용) 경로는 `KRX_ID`/`KRX_PW` 환경 변수가
+있으면 PyKRX가 내부적으로 로그인 세션을 사용합니다. 없어도 익명 요청으로 폴백은
+하지만, 최근 KRX 쪽에서 익명 스크래핑을 막는 경우가 있어 실전에서는 계정이
+필요할 수 있습니다.
+
+- 실제 ID/PW는 코드·README·테스트·로그·예외 메시지 어디에도 하드코딩하지 않고
+  `KRX_ID`/`KRX_PW` 환경 변수로만 읽습니다.
+- 로컬 개발은 저장소 루트의 `.env` 파일을 사용합니다(`.gitignore`에 포함, 커밋되지
+  않습니다). `.env.example`을 복사해서 실제 값을 채우세요.
+
+  ```bash
+  cp .env.example .env
+  # .env를 열어 KRX_ID / KRX_PW에 실제 값을 채운다
+  ```
+
+- `pykrx_provider.py`는 import 시점에 `python-dotenv`로 `.env`를 자동으로 읽어
+  환경 변수로 등록합니다(이미 export된 환경 변수가 있으면 그걸 우선합니다).
+- Integration test(`tests/test_pykrx_provider_integration.py`)는 `KRX_ID`/`KRX_PW`가
+  없으면 자동으로 skip되고, 일반 unit test는 credential 유무와 무관하게 항상
+  정상 실행됩니다.
+- **알려진 한계**: PyKRX의 로그인 함수(`pykrx.website.comm.auth.build_krx_session`)가
+  로그인 시도 시 `KRX_ID` 값(비밀번호는 아님)을 자체적으로 `print`합니다. 이건
+  PyKRX 라이브러리 자체의 동작이라 이 프로젝트 코드로 막을 수 없습니다. CI 등에서
+  표준출력이 로그로 남는 환경이라면 유의하세요.

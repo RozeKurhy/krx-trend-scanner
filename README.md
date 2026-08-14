@@ -156,5 +156,6 @@ Pattern A의 점수 산식, Hard Filter 임계값은 아직 검증되지 않은 
 
 ```bash
 pip install -e ".[dev]"
+cp .env.example .env   # KRX_ID/KRX_PW가 필요하면 .env에 채운다 (docs/data_layer.md 참고)
 pytest
 ```
