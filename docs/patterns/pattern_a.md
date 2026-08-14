@@ -2,15 +2,20 @@
 
 ## 상태
 
-**Feature Set Freeze v0.1 완료.** Feature Validation → Historical Snapshot →
-Holdout → Negative Control → Outcome Audit → Base/Expansion Validation까지
-검증한 결과를 바탕으로, Pattern A가 실제로 사용할 Feature와 그 역할/축을
-이 문서에서 확정한다.
+**Feature Set Freeze v0.1 완료 + Score Design v0.1 완료.** Feature
+Validation → Historical Snapshot → Holdout → Negative Control → Outcome
+Audit → Base/Expansion Validation까지 검증한 결과로 Feature Set을
+확정했고(Freeze), 그 위에 `pattern_a_score.py`(`score_pattern_a`,
+`PatternAResult`)로 실제 Score 산식을 구현하고 기존 validation snapshot에
+적용해 분포를 검증했다(Score Design). 자세한 산식/근거/검증 결과는 아래
+"Score Design v0.1" 절 참고.
 
-`evaluate_pattern_a`는 여전히 구현되지 않았다(`NotImplementedError`).
-**점수, 가중치, threshold는 이 단계에서 정하지 않는다.** 아래 표에 남아있는
-"초기 점수 후보"들은 전부 **검증 이전 가설**이며, 이번 Freeze로 유지/폐기
-여부만 정리한다. 실제 배점은 다음 단계(Score Design)에서 결정한다.
+`pattern_a.py`의 `evaluate_pattern_a`(raw daily OHLCV 입력)는 여전히
+구현되지 않았다 — `score_pattern_a`는 FeatureRow를 입력받는 순수 함수이고,
+daily OHLCV -> 월봉/주봉 -> FeatureRow 조립 경로는 실제 스캐너 진입점을
+만드는 작업이라 스코프 밖이다(전체 시장 스캔 금지와 맞물린 경계). **미래
+수익률 기반 최적화, grid search, 그룹 분리 최대화, 전체 KOSPI/KOSDAQ
+스캔, 백테스트는 이번 Score Design에서도 하지 않았다.**
 
 ## Pattern A 정의 (재확정)
 
@@ -210,7 +215,7 @@ ma12/ma24 원시 레벨, volume/trading_value 참고 지표, pivot 상세 등)�
 | `compression_ratio` | 장기 Base 압축(12M/36M range 비율 낮음) | pre_breakout의 공통 특성으로 재현 안 됨(holdout 5종목 중 0.6 미만 없는 라운드도 있었음). negative_control 중앙값(0.60)이 오히려 positive pre(0.86)보다 낮음 — 방향이 반대로 나타난 사례도 있음 | Diagnostic | Low |
 | `atr_ratio` | 돌파 전 변동성 축소 | holdout pre_breakout 최소값이 1.03(압축된 사례가 사실상 없음). negative_control과 분포가 크게 겹침 | Diagnostic | Low |
 | `pivot_low_slope` | 저점 상승 구조 | exploration/holdout/negative_control 전부 값이 ±0.001 내외로 미미, 상태 구분력 없음 | Drop | Low |
-| `ma_spread` | MA 수렴 정도("좁을수록 Base") | "수렴" 방향으로는 약함(pre_breakout 중앙값 0.0774이 early_trend 0.0627보다 오히려 높아 비단조). "확장" 방향은 중앙값이 progressed(0.2777)에서 가장 높아 방향성은 있으나, confirmed_negative 1건(롯데케미칼 0.2626)이 progressed 최솟값(0.1828)보다 커서 노이즈가 큼 | Context(Base, Already Progressed 판별에 참고, Score에는 직접 안 넣음) | Low-Medium |
+| `ma_spread` | MA 수렴 정도("좁을수록 Base") | "수렴" 방향으로는 약함(pre_breakout 중앙값 0.0774이 early_trend 0.0627보다 오히려 높아 비단조). "확장" 방향은 중앙값이 progressed(0.2777)에서 가장 높아 방향성은 있으나, confirmed_negative 1건(롯데케미칼 0.2626)이 progressed 최솟값(0.1828)보다 커서 노이즈가 큼 | Context(Base). Score Design v0.1에서 Base Score의 15%로 실제 반영됨(단독 분리력이 약해 세 Base Feature 중 가장 작은 비중) | Low-Medium |
 | `ma_spread_ratio` | 과거 대비 수렴 진행도 | 편차가 극단적으로 큼(pre_breakout 0.62~6.57), 방향 불안정 | Diagnostic | Low |
 | `range_36m` | Base/Expansion 판별(장기 변동폭) | Base/Expansion Validation(아래 절)에서 trend_progressed 그룹을 나머지 세 그룹(holdout pre/early, confirmed_negative)에서 완전히 분리(progressed 최솟값 1.2614 > 나머지 최댓값 1.1767). pre/early/confirmed_negative 세 그룹끼리는 겹친다 — 지금까지 가장 깨끗한 Already Progressed 신호 | Context(Base) | High |
 | `avg_price_change_12m` | Base/Expansion 판별(12개월 가격 이동량) | 중앙값 차이는 매우 큼(progressed 0.7251 vs 나머지 -0.12~0.05)이나 confirmed_negative 1건(고려아연 0.3117)이 progressed 최솟값(0.2220)보다 커서 완전히 깨끗하진 않음 | Context(Base) | Medium |
@@ -346,7 +351,7 @@ Feature라 Stage Axis에 넣으면 이번에 막 분리한 Axis 구분이 다시
 | 최근 주요 저점 붕괴 | **판단 유보**. `pivot_low_slope` 자체는 Drop됐지만, "저점 붕괴 여부"라는 개념은 아직 다른 Feature 조합으로 재정의해볼 여지가 있다. |
 | 유동성 부족 | **판단 유보**. 이번 검증 대상 전부 대형주라 검증하지 않았다.
 
-## Stage 개념 (enum, 자동 분류 미구현)
+## Stage 개념 (enum, 초안 분류 구현됨)
 
 ```text
 BASE          장기 횡보/정체, Transition 신호 아직 없음
@@ -357,34 +362,47 @@ WEAK          하락 추세 또는 실패한 전환(negative_control에 대응)
 ```
 
 `src/trend_scanner/patterns/pattern_a_feature_set.py`의 `PatternAStage`
-enum으로 이름만 정의돼 있다. 자동 분류 threshold는 이번 단계에서
-구현하지 않는다. 지금까지의 검증 라벨(pre_breakout/early_trend/
-trend_progressed/unfavorable, failed_*)과 대략 대응하지만 1:1은 아니다.
+enum. **Score Design v0.1에서 자동 분류 threshold를 초안으로 구현했다**
+(`pattern_a_score._classify_stage`, 아래 "Score Design v0.1" 절의 "Stage
+분류 초안" 참고 — 알려진 오분류 사례 1건 포함). 지금까지의 검증 라벨
+(pre_breakout/early_trend/trend_progressed/unfavorable, failed_*)과
+대략 대응하지만 1:1은 아니다.
 
-## Pattern A v0.1 출력 구조 (초안, 미구현)
+## Pattern A v0.1 출력 구조 (구현됨)
 
-향후 `evaluate_pattern_a`가 반환할 정보의 초안이다. **이번 단계에서
-`total_score` 계산은 구현하지 않는다** — 아래는 문서상 구조 정의일 뿐,
-코드에 새 dataclass로 옮기지 않았다(기존 `PatternAResult`는 그대로 두되
-5영역 가중치 구조가 폐기 대상임을 주석으로 표시했다).
+Score Design v0.1로 실제 구현했다. `src/trend_scanner/patterns/
+pattern_a_score.py`의 `PatternAResult`(기존 5영역 구조를 완전히 대체 —
+`pattern_a.py`에 있던 구 `PatternAResult`/`PATTERN_A_WEIGHTS`는 삭제)와
+`score_pattern_a(features)`가 실제 코드다. 아래는 실제 필드와 값이 일치한다.
 
 ```text
-PatternAResult (v0.2 초안, 미구현)
-  stage: PatternAStage
+PatternAResult (실제 구조, src/trend_scanner/patterns/pattern_a_score.py)
+  base_score: float | None
+  base_valid_features: tuple[str, ...]
+  base_missing_features: tuple[str, ...]
 
-  rejected: bool
-  rejection_reasons: tuple[str, ...]
+  transition_score: float | None
+  transition_valid_features: tuple[str, ...]
+  transition_missing_features: tuple[str, ...]
 
-  flags: dict[str, bool]         # 예: transition_alignment, already_progressed 후보 등
-                                  # (threshold 미확정이라 실제 계산은 없음)
+  balanced_core_score: float | None   # harmonic_mean(base_score, transition_score)
+  alignment_bonus: float              # 0.0 또는 ALIGNMENT_BONUS(8.0)
+  progressed_penalty: float           # progressed_evidence_count에 따른 penalty
+  progressed_evidence_count: int      # 0~5
 
-  total_score: float | None      # 이번 단계에서 미구현, 항상 None
-  component_scores: dict | None  # 이번 단계에서 미구현, 항상 None
+  pattern_a_score: float | None       # clip(balanced_core + bonus - penalty, 0, 100)
+                                       # insufficient_data=True면 항상 None
 
-  feature_snapshot: FeatureRow   # 기존 Feature Validation의 FeatureRow 그대로 재사용
+  stage: PatternAStage | None         # insufficient_data=True면 항상 None(초안 heuristic)
+
+  flags: dict[str, bool]              # transition_alignment / already_progressed / insufficient_data
+
+  feature_snapshot: FeatureRow | None
 ```
 
-## 다음 Score Design 단계에서 사용할 Feature (최종 목록)
+산식/근거는 아래 "Score Design v0.1" 절 참고.
+
+## Score Design v0.1 입력 Feature (Feature Set Freeze 확정 목록)
 
 ```text
 Core candidate (Axis=Transition)
@@ -415,17 +433,18 @@ Drop
     pivot_low_slope
 ```
 
-실제 가중치·threshold·Hard Filter는 다음 단계(Pattern A v0.1 Score
-Design)에서 결정한다.
+실제 가중치·soft threshold는 Score Design v0.1(아래 절)에서 확정했다.
+Hard Filter는 이번에도 최소화했다(`insufficient_data` 상태만 별도로 둠,
+아래 "Already Progressed Penalty" 절 참고).
 
 ## 폐기된 기존 가설
 
 * **5영역 100점 배점(Base Quality 25 / Low Structure 20 / MA Transition
   25 / Volatility Compression 15 / Breakout Position 15)**: 초기
-  가설이었을 뿐 검증되지 않았다. `pattern_a.py`의 `PATTERN_A_WEIGHTS`는
-  코드에 남아있지만(기존 테스트가 참조 중) **이 구조를 최종 배점으로
-  쓰지 않는다** — 다음 Score Design 단계에서 위 축 구조를 기준으로
-  다시 설계한다.
+  가설이었을 뿐 검증되지 않았다. `pattern_a.py`에 있던 `PATTERN_A_WEIGHTS`와
+  구 `PatternAResult`는 Score Design v0.1로 완전히 **삭제**했다 —
+  `pattern_a_score.py`의 새 3축 구조(Base Context/Trend Transition/Stage
+  Context)로 대체됐다.
 * **`compression_ratio < 0.6` 가산점**: pre_breakout 공통 특성으로
   재현되지 않았고, 방향이 반대로 나타난 사례도 있어 대폭 약화(Diagnostic
   으로 강등).
@@ -438,12 +457,349 @@ Design)에서 결정한다.
   Drop과 별개로 "저점 상승"이라는 개념 자체를 단독 점수 요소로 쓰지
   않는다.
 
-## Score Momentum (다음 단계 계획, 미변경)
+## Score Design v0.1
+
+### 철학
+
+Pattern A는 단순 "MA 상승 종목 점수"가 아니다. 정의(위 "Pattern A 정의"
+절)대로 **Base / Long-Term Structure**와 **Trend Transition**이 둘 다
+있어야 높은 점수를 받아야 하고, 이미 상승이 너무 많이 진행된 종목은
+**Already Progressed Penalty**를 받아야 한다. 기본 구조:
+
+```text
+pattern_a_score = clip(
+    harmonic_mean(base_score, transition_score)
+    + transition_alignment_bonus
+    - already_progressed_penalty,
+    0, 100
+)
+```
+
+Stage/Breakout Context(`range_position` 등)는 Score와 분리해 해석 정보로만
+반환한다(아래 "Stage 분류" 절).
+
+### 후보 Design 비교 (A / B / C)
+
+Base 40% + Transition 60% 같은 **단순 가산식만 쓰면 안 된다** — Base가
+거의 없어도 Transition만 강하면 고득점할 수 있어서, SK하이닉스처럼 이미
+진행된 종목을 다시 높게 평가하는 문제가 재발한다. 이걸 실제 데이터로
+확인하려고 세 안을 같은 component score(base_score/transition_score)에
+적용해 비교했다(`scripts/score_design_validate.py`).
+
+```text
+Design A: 0.4 * base_score + 0.6 * transition_score               (단순 가산식)
+Design B: harmonic_mean(base_score, transition_score)              (균형만, bonus/penalty 없음)
+Design C: harmonic_mean(...) + alignment_bonus - progressed_penalty (채택안)
+```
+
+holdout_trend_progressed 그룹(5종목) 최종 점수 min/median/max:
+
+| Design | min | median | max |
+|---|---|---|---|
+| A (가산식) | 47.73 | 62.45 | 77.50 |
+| B (harmonic만) | 11.53 | 24.34 | 67.01 |
+| C (채택안) | 0.00 | 0.00 | 56.07 |
+
+Design A는 문제를 재현한다 — 006400(삼성SDI) trend_progressed는
+base_score=6.11(거의 0)인데 transition_score=100이라 Design A 점수가
+62.45로 나온다. 같은 종목의 holdout_early_trend Design A 점수(83.93)와
+큰 차이가 안 난다 — "Base가 거의 없어도 Transition만 강하면 고득점"이
+그대로 재현됐다.
+
+Design B(harmonic mean만)는 이 문제를 크게 완화한다(median 24.34로 급락)
+하지만 min~max 범위(11.53~67.01)가 early_trend 최저점(70.07)과 거의
+붙는다 — 가장 나쁜 progressed 사례(67.01, 012330 현대모비스)가 여전히
+early_trend 최저점 근처까지 올라온다.
+
+Design C(harmonic + bonus - penalty)가 가장 깨끗하게 분리한다 —
+trend_progressed 최댓값(56.07)이 early_trend 최솟값(70.07)보다 낮다.
+그래서 **Design C를 채택**한다.
+
+Base Feature 비중 후보도 하나 더 비교했다(item 5) — `range_36m` 비중을
+55%/60%로 바꿔봤다(`avg_price_change_12m` 30%/25%, `ma_spread` 15% 고정).
+holdout+confirmed_negative 20개 스냅샷 기준 두 후보 간 차이는 평균
+0.81점, 최대 2.11점으로 미미했다 — Feature 방향성이 이미 강하게 일치해서
+비중 조정의 영향이 작다. 검증 근거 강도 순서(range_36m High >
+avg_price_change_12m Medium > ma_spread Low-Medium)를 그대로 반영한
+**55% / 30% / 15%를 채택**한다(추가 튜닝 불필요).
+
+### Base Score 산식
+
+`BASE_WEIGHTS`(`pattern_a_score.py`): `range_36m` 55%, `avg_price_change_12m`
+30%, `ma_spread` 15%. 각 Feature를 0~100 soft piecewise linear로 먼저
+정규화한 뒤 가중합한다(결측 Feature는 가중치를 재정규화 — 아래 "Missing
+Feature 정책" 참고).
+
+Base Score의 의미는 "얼마나 압축돼 있는가"가 아니라 **"아직 장기적으로
+과도하게 확장되지 않았는가"**다. 그래서 세 Feature 모두 값이 작거나
+중간이면 높은 점수, 매우 크면 낮은 점수(단조 감소)로 설계했다.
+
+| Feature | breakpoint(x, y) | 근거 |
+|---|---|---|
+| `range_36m` | (0.6, 100) → (1.2, 60) → (2.0, 0) | Base/Expansion Validation에서 trend_progressed 최솟값(1.2614)이 나머지 세 그룹 최댓값(1.1767)보다 컸다. 1.2는 그 관찰된 gap을 정밀 조준한 값이 아니라 근처의 **라운드 넘버**다 — 이 하나만으로 progressed를 가르지 않는다(Already Progressed Penalty는 이 값 포함 5개 신호가 동시에 나타나야 붙는다, 아래 참고). |
+| `avg_price_change_12m` | (0.10, 100) → (0.30, 50) → (0.60, 0) | 낮거나 완만한 상승은 Base로 허용한다(early trend에서도 가격 중심이 오르는 건 정상). 절대 양수라는 이유만으로 감점하지 않는다 — 0.10까지는 만점. |
+| `ma_spread` | (0.10, 100) → (0.25, 50) → (0.40, 0) | 단독 분리력이 약하고(Low-Medium 확신도) 노이즈가 크므로 완만한 보조 지표로만 쓴다. 좁다고 무조건 좋은 Base로 보지 않고, 매우 넓을 때만 확장 가능성을 보조 반영한다. |
+
+### Transition Score 산식
+
+`TRANSITION_WEIGHTS`: `ma24_slope` 60%, `weekly_ma12_slope` 20%,
+`ma24_slope_acceleration` 20% — Core가 가장 큰 비중을 갖는다.
+
+| Feature | breakpoint(x, y) | 근거 |
+|---|---|---|
+| `ma24_slope` | (-0.05, 0) → (0.00, 50) → (0.05, 90) → (0.15, 100) | Hard binary(양수=만점/음수=0점)로 만들지 않는다 — Pattern A는 "전환 중"도 찾고 싶다. 0에서 50을 준 이유: negative_control도 0 근처에 몰려 있어(003550 LG +0.0102, 032830 삼성생명 −0.0207) 0 근처는 "가능성은 있으나 미확인" 정도로만 취급한다. 완만한 양수(0.05)부터 90으로 빠르게 올라간다. **지나치게 큰 양수를 여기서 다시 깎지 않는다** — 과도한 상승은 Already Progressed Penalty가 별도로 담당한다(이중 역할 금지, item 11). |
+| `weekly_ma12_slope` | (0.00, 20) → (0.15, 100) | 단독 양수가 negative_control에서도 흔했으므로(confirmed 80%, ambiguous 66.7%, Feature Set Freeze 참고) 큰 독립 점수를 주지 않는다 — 완만한 형태 + 작은 비중(20%)으로 이중 안전장치. |
+| `ma24_slope_acceleration` | (0.00, 30) → (0.05, 100) | 단독 positive가 false positive에서도 많았으므로(negative_control confirmed 80%) Supporting만 담당한다. |
+
+### harmonic mean / balance 구조
+
+```python
+balanced_core_score = harmonic_mean(base_score, transition_score)
+# = 2 * base * transition / (base + transition), base+transition<=0이면 0.0
+```
+
+한쪽이 낮으면 전체가 크게 낮아진다(단순 평균이 아님) — 예:
+`harmonic_mean(90, 90) = 90`, `harmonic_mean(90, 30) = 45`,
+`harmonic_mean(30, 90) = 45`. 0 division은 `a+b<=0`일 때 0.0을 직접
+반환해서 처리한다(base/transition은 설계상 음수가 나오지 않으므로 사실상
+"둘 다 0"인 경우만 해당).
+
+### transition_alignment 정의 및 bonus
+
+```text
+transition_alignment:
+    weekly_ma12_slope > 0
+    AND ma24_slope > 0
+    AND ma24_slope_acceleration > 0
+```
+
+검증에서 가장 의미 있었던 interaction(Combination E, Feature Set
+Freeze). Hard Filter가 아니라 **완전 충족 시에만** 소규모 bonus
+(`ALIGNMENT_BONUS = 8.0`)를 준다 — 부분 충족은 bonus 없음. 결측 Feature가
+하나라도 있으면 정렬 여부를 확인할 수 없으므로 False로 취급한다(미확인
+== 정렬 안 됨).
+
+### Already Progressed 판별 구조 / progressed penalty 산식
+
+후보 Feature 5개 중 몇 개가 "이미 진행됨" 기준을 넘는지 세는 composite
+evidence count로 설계했다(단일 Feature가 아니라 여러 신호 동시 발생만
+반영 — 아래 "Double Penalty 방지" 참고).
+
+| Feature | threshold | 비고 |
+|---|---|---|
+| `range_36m` | >= 1.2 | Base Score 곡선의 breakpoint를 재사용(관찰된 gap을 정밀 조준한 게 아니라 그 곡선을 "확장 신호로 셀 만큼 큰 값" 기준으로 재사용) |
+| `avg_price_change_12m` | >= 0.30 | Base Score 곡선의 breakpoint 재사용 |
+| `ma_spread` | >= 0.20 | Base Score 곡선의 breakpoint 재사용 |
+| `ma24_slope` | >= 0.10 | Transition Score가 90~100에 도달하는 구간과 겹침 |
+| `range_position` | >= 0.85 | Feature Set Freeze에서 early_trend 중앙값(0.885)과 근접한 라운드 넘버 |
+
+```text
+progressed_penalty by evidence_count:
+    0개 -> 0
+    1개 -> 0    (거의 없음)
+    2개 -> 10   (작은 penalty)
+    3개 -> 20   (의미 있는 penalty)
+    4개 -> 28
+    5개 -> 35   (최대, 0~40 권장 범위 안)
+```
+
+결측 Feature는 evidence로 세지 않는다(불확실 == 진행 증거 아님).
+
+### Double Penalty 방지
+
+`range_36m`/`avg_price_change_12m`/`ma_spread`는 이미 Base Score에
+반영된다. 같은 값으로 Base Score를 낮추고 Progressed Penalty도 또
+붙이면 double counting이다. 그래서 Progressed Penalty는:
+
+* Base Score처럼 연속값을 다시 감점 계산에 쓰지 않고, **threshold를
+  넘었는지 여부(boolean)만** 본다.
+* **1개 신호만으로는 penalty가 붙지 않는다**(evidence_count=1 → 0). 여러
+  신호(range_36m/avg_price_change_12m/ma_spread/ma24_slope/range_position)가
+  **동시에** 강하게 나타날 때만 추가로 붙는다 — Base Score의 "장기 구조
+  적합도" 하락과는 별개로, "여러 축이 한꺼번에 진행됨을 가리키는가"라는
+  다른 질문에 답하는 것이다.
+
+실제 데이터에서도 검증된다: holdout_pre_breakout/early_trend 15건은
+evidence_count가 0~1(현대차 early_trend, 기아 early_trend 등은 range_position
+만 0.85를 넘어 count=1 → penalty 0), confirmed_negative 5건은 0~1
+(penalty 전부 0). trend_progressed만 2~5(penalty 10~35)로 몰려 있다.
+
+### Missing Feature 정책
+
+Feature가 NaN이어도 0점 처리하지 않는다("Base가 나쁘다"가 아니라 "Base
+판정 불충분"). `ComponentScore`가 axis별로 `valid_features`/
+`missing_features`를 추적한다 — 결측 Feature는 가중치에서 빼고 남은
+Feature로 재정규화한다(예: `ma_spread`만 결측이면 `range_36m`/
+`avg_price_change_12m` 비중을 55:30 → 64.7:35.3으로 재정규화).
+
+Base Feature가 **전부** 결측이면 `base_score=None`. **Core Feature인
+`ma24_slope`가 결측이면 무조건 `insufficient_data=True`** — Transition의
+다른 Feature가 있어도 신뢰할 수 없다고 명시한다. `insufficient_data=True`
+면 `pattern_a_score`/`stage`는 항상 `None`이다(Hard Reject가 아니라
+"판정 보류" 상태).
+
+### PatternAResult 새 구조
+
+위 "Pattern A v0.1 출력 구조 (구현됨)" 절 참고. 기존 5영역 구조
+(`base_score`/`low_score`/`ma_score`/`volatility_score`/`breakout_score`,
+`rejected`/`rejection_reasons`)는 완전히 삭제하고 새 3축 구조로 교체했다.
+
+### Stage 분류 초안
+
+`_classify_stage(base_score, transition_score, progressed_evidence_count)`
+(`pattern_a_score.py`). Feature/component score → Stage 방향으로만
+흐른다(Stage가 Score를 역으로 결정하지 않는다). threshold는 모두 잠정치다.
+
+```text
+base_score/transition_score 중 하나라도 None       -> None(insufficient_data)
+progressed_evidence_count >= 3                      -> PROGRESSED
+transition_score < 40  AND base_score >= 60          -> BASE
+transition_score < 40  AND base_score < 60           -> WEAK
+transition_score >= 70                               -> EARLY_TREND
+그 외(40 <= transition_score < 70)                    -> TRANSITION
+```
+
+**알려진 한계**: holdout_trend_progressed의 005380(현대차)은
+evidence_count=2(3 미만이라 PROGRESSED 조건 불충족)이면서
+transition_score=85.12(>=70)라서 **EARLY_TREND로 분류된다** — 실제로는
+trend_progressed 라벨이다. Score Validation에서 이렇게 확인된 오분류를
+이번 라운드에서 threshold를 조정해 없애지 않는다(item 19: "정확한 stage
+threshold는 Score Validation을 보고 조정" — 그 조정은 다음 라운드
+과제로 남긴다). pattern_a_score 자체는 이 경우도 56.07로 낮게 나와서
+Score만 보면 문제가 크지 않다 — Stage 초안의 한계일 뿐이다.
+
+### Score Design Validation
+
+`scripts/score_design_validate.py`로 필수 5개 그룹(holdout_pre_breakout/
+early_trend/trend_progressed, confirmed_negative, ambiguous_negative) +
+exploration(참고용)에 Design C를 적용했다. 새 KRX fetch 없음, 기존 캐시만
+재사용. CSV는 `data/processed/score_design_validation.csv`(관찰용,
+`data/` 전체가 gitignore라 로컬 전용).
+
+**그룹별 final score(Design C) min / median / max**
+
+| group | n | min | median | max |
+|---|---|---|---|---|
+| holdout_pre_breakout | 5 | 34.27 | 65.69 | 88.52 |
+| holdout_early_trend | 5 | 70.07 | 90.25 | 95.58 |
+| holdout_trend_progressed | 5 | 0.00 | 0.00 | 56.07 |
+| confirmed_negative | 5 | 30.97 | 48.66 | 71.25 |
+| ambiguous_negative | 3 | 23.26 | 45.99 | 54.21 |
+
+**snapshot별 component score(holdout + negative_control)**
+
+| group | ticker | name | base | transition | balanced_core | bonus | penalty | final | stage |
+|---|---|---|---|---|---|---|---|---|---|
+| holdout_pre_breakout | 005380 현대차 | | 89.52 | 21.19 | 34.27 | 0 | 0 | 34.27 | base |
+| holdout_pre_breakout | 051910 LG화학 | | 99.31 | 31.63 | 47.98 | 0 | 0 | 47.98 | base |
+| holdout_pre_breakout | 000270 기아 | | 92.72 | 50.86 | 65.69 | 0 | 0 | 65.69 | transition |
+| holdout_pre_breakout | 006400 삼성SDI | | 85.01 | 76.48 | 80.52 | 8 | 0 | 88.52 | early_trend |
+| holdout_pre_breakout | 012330 현대모비스 | | 100.00 | 54.01 | 70.14 | 8 | 0 | 78.14 | transition |
+| holdout_early_trend | 005380 현대차 | | 89.15 | 73.42 | 80.53 | 8 | 0 | 88.53 | early_trend |
+| holdout_early_trend | 051910 LG화학 | | 92.65 | 83.04 | 87.58 | 8 | 0 | 95.58 | early_trend |
+| holdout_early_trend | 000270 기아 | | 93.26 | 76.31 | 83.93 | 8 | 0 | 91.93 | early_trend |
+| holdout_early_trend | 006400 삼성SDI | | 76.58 | 88.83 | 82.25 | 8 | 0 | 90.25 | early_trend |
+| holdout_early_trend | 012330 현대모비스 | | 100.00 | 53.92 | 70.07 | 0 | 0 | 70.07 | transition |
+| holdout_trend_progressed | 005380 현대차 | | 44.07 | 85.12 | 58.07 | 8 | 10 | 56.07 | early_trend* |
+| holdout_trend_progressed | 051910 LG화학 | | 7.31 | 98.12 | 13.60 | 8 | 28 | 0.00 | progressed |
+| holdout_trend_progressed | 000270 기아 | | 14.75 | 69.72 | 24.34 | 0 | 28 | 0.00 | progressed |
+| holdout_trend_progressed | 006400 삼성SDI | | 6.11 | 100.00 | 11.53 | 8 | 35 | 0.00 | progressed |
+| holdout_trend_progressed | 012330 현대모비스 | | 51.88 | 94.59 | 67.01 | 8 | 28 | 47.01 | progressed |
+| confirmed_negative | 003550 LG | | 95.50 | 47.28 | 63.25 | 8 | 0 | 71.25 | transition |
+| confirmed_negative | 010130 고려아연 | | 71.96 | 65.22 | 68.42 | 0 | 0 | 68.42 | transition |
+| confirmed_negative | 011170 롯데케미칼 | | 76.15 | 19.43 | 30.97 | 0 | 0 | 30.97 | base |
+| confirmed_negative | 032830 삼성생명 | | 76.69 | 35.64 | 48.66 | 0 | 0 | 48.66 | base |
+| confirmed_negative | 034730 SK | | 87.77 | 29.79 | 44.48 | 0 | 0 | 44.48 | base |
+| ambiguous_negative | 009150 삼성전기 | | 80.70 | 32.16 | 45.99 | 0 | 0 | 45.99 | base |
+| ambiguous_negative | 018260 삼성에스디에스 | | 93.54 | 13.28 | 23.26 | 0 | 0 | 23.26 | base |
+| ambiguous_negative | 011200 HMM | | 79.23 | 41.20 | 54.21 | 0 | 0 | 54.21 | transition |
+
+(\* Stage 초안의 알려진 오분류 — 위 "Stage 분류 초안" 절 참고. Score
+자체는 56.07로 낮게 나와 있다.)
+
+**pre_breakout 결과 해석**: median 65.69로 중상위권 — 아직 Transition이
+완전히 확인되지 않은 경우가 많아(현대차 21.19, LG화학 31.63) 최고점은
+아니다. Base Score는 5종목 모두 85 이상으로 매우 높다(장기 구조가 아직
+Base 안에 있다는 신호가 강하게 잡힘). **item 26 C 확인**: `range_position`
+은 Base Score/Transition Score 어디에도 직접 들어가지 않는다(Already
+Progressed evidence에서 0.85 이상일 때만 참고). pre_breakout 5종목의
+range_position은 0.32~0.56로 낮지만 evidence threshold(0.85)에 전혀
+안 걸려 점수에 영향이 없다 — 낮은 점수는 전부 Transition Score 자체가
+아직 낮기 때문이지, range_position 때문이 아니다.
+
+**early_trend 결과 해석**: median 90.25로 **5개 그룹 중 가장 높다**
+(item 26 D 확인). Base Score도 여전히 76~100으로 높게 유지되면서
+Transition Score가 53~89로 올라온 상태 — "Base 유지 + Transition 막
+시작"이라는 정의가 그대로 점수에 반영됐다.
+
+**trend_progressed 결과 해석**: median 0.00 — Base Score가 6~52로
+급락하고(evidence_count 2~5로 Progressed Penalty 10~35까지 붙어) 강한
+Transition(69~100)에도 불구하고 낮게 눌린다(item 26 A 확인: "Transition이
+강하다는 이유로 최고점이 되는가?" → 아니오). 유일하게 높은 사례
+(012330 현대모비스, 47.01)는 evidence_count=4로 penalty 28을 맞고도
+balanced_core 자체가 67.01로 높았던 경우 — base_score(51.88)가 다른
+4종목보다 훨씬 덜 무너졌기 때문이다(장기 range가 상대적으로 작음).
+
+**confirmed_negative 결과 해석**: median 48.66. 대부분 base_score는
+높지만(72~96) transition_score가 낮아서(19~65) 걸러진다. **알려진
+false positive 2건**(item 26 B 관련, 아래 "발견된 실패 사례" 참고):
+003550(LG) 71.25, 010130(고려아연) 68.42 — 둘 다 ma24_slope가 약하지만
+양수(+0.0102, +0.0520)라서 발생한다. weekly/acceleration 단독 양수만으로
+점수가 오른 건 아니다(item 26 B는 이 의미에서는 통과 — 아래 참고).
+
+**ambiguous_negative 결과 해석**: median 45.99. confirmed_negative와
+비슷한 수준. 009150/018260은 base 통과, transition 탈락으로 낮음(46,
+23). 011200(HMM)만 54.21로 약간 높다 — 정확히는 `ma24_slope_acceleration`
+만 양수(+0.0388)고 `weekly_ma12_slope`(−0.0102)와 `ma24_slope`(−0.0161)는
+둘 다 음수다(weekly/accel이 둘 다 양수인 게 아니다). ma24_slope도
+약한 음수라 50점 근처를 받고(33.9) accel이 84.3으로 끌어올려 transition이
+41.20까지 오른다. alignment는 ma24_slope(음수)라 당연히 불충족 —
+bonus 없음).
+
+### 발견된 실패 사례
+
+* **confirmed_negative 003550(LG) 71.25**: `ma24_slope=+0.0102`,
+  `weekly_ma12_slope=+0.0129`, `ma24_slope_acceleration=+0.0036` 셋 다
+  양수라 `transition_alignment`가 충족돼 +8 bonus까지 붙는다. Feature Set
+  Freeze의 Combination E 검증에서 이미 확인된 confirmed_negative
+  false positive 1/5(20%)가 그대로 재현된 것 — Score Design에서 새로
+  발생한 문제가 아니라 Feature 자체의 한계다. 이 샘플 하나 때문에 curve를
+  다시 조정하지 않는다(item 27: 표본 하나짜리 separation 튜닝 금지).
+* **confirmed_negative 010130(고려아연) 68.42**: `ma24_slope=+0.0520`로
+  Transition Score의 Core 요소가 90.2까지 올라간다. `weekly_ma12_slope`는
+  음수(−0.0239)라 alignment는 불충족(bonus 없음) — weekly/acceleration이
+  아니라 **ma24_slope 자체의 약한 양전환**이 원인이다. item 26 B("weekly/
+  acceleration 양수만으로 점수가 높아지는가")는 이 사례에서는 아니오 —
+  대신 "ma24_slope의 약한 양전환은 negative_control에서도 발생할 수
+  있다"는 Feature Set Freeze 결과의 재확인이다.
+* **Stage 초안 오분류(005380 trend_progressed → EARLY_TREND)**: 위
+  "Stage 분류 초안" 절 참고. Score(56.07)는 낮게 나와 심각하지 않지만
+  Stage 라벨 자체는 부정확하다.
+
+### 최종 Pattern A v0.1 Score 정의
+
+```python
+base_score = weighted_piecewise(range_36m=0.55, avg_price_change_12m=0.30, ma_spread=0.15)
+transition_score = weighted_piecewise(ma24_slope=0.60, weekly_ma12_slope=0.20, ma24_slope_acceleration=0.20)
+
+balanced_core_score = harmonic_mean(base_score, transition_score)
+alignment_bonus = 8.0 if (weekly>0 and ma24>0 and accel>0) else 0.0
+progressed_penalty = {0:0, 1:0, 2:10, 3:20, 4:28, 5:35}[progressed_evidence_count]
+
+pattern_a_score = clip(balanced_core_score + alignment_bonus - progressed_penalty, 0, 100)
+# ma24_slope 결측 또는 base_score/transition_score 계산 불가 -> insufficient_data=True, pattern_a_score=None
+```
+
+구현: `src/trend_scanner/patterns/pattern_a_score.py`
+(`score_pattern_a(features) -> PatternAResult`).
+
+## Score Momentum (다음 단계 계획, 이번 라운드에서는 구현하지 않음)
 
 매주 또는 매일 Pattern Score를 저장한다(`models/score.py`). 목표는
 이미 완성된 강한 상승주보다 점수가 빠르게 개선되고 있는 초기 후보를
-찾는 것이다. `total_score`가 아직 없으므로 이번 단계에서는 구현하지
-않는다 — Score Design이 끝난 뒤 그대로 적용 가능한 개념으로 남겨둔다.
+찾는 것이다. `pattern_a_score`가 이제 실제 점수를 계산하지만, 이번
+Score Design v0.1 라운드에서는 `score_momentum()`을 새 Score와 연결하지
+않는다(이번 라운드 금지 목록에 명시) — 다음 라운드에서 그대로 적용한다.
 
 ```python
 score_momentum_4w = current_score - score_4w_ago

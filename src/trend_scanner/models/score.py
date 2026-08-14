@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date
 
-from trend_scanner.patterns.pattern_a import PatternAResult
+from trend_scanner.patterns.pattern_a_score import PatternAResult
 
 
 @dataclass

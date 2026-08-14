@@ -1,5 +1,5 @@
 from trend_scanner.models.score import ScanResult, score_momentum
-from trend_scanner.patterns.pattern_a import PatternAResult
+from trend_scanner.patterns.pattern_a_score import PatternAResult
 
 
 def test_score_momentum_positive_when_improving():
@@ -12,26 +12,19 @@ def test_score_momentum_negative_when_declining():
 
 def _sample_pattern_a_result() -> PatternAResult:
     return PatternAResult(
-        pattern_a_score=76.0,
-        rejected=False,
-        rejection_reasons=(),
-        base_score=20.0,
-        low_score=16.0,
-        ma_score=20.0,
-        volatility_score=10.0,
-        breakout_score=10.0,
-        ma6_slope=0.02,
-        ma12_slope=0.01,
-        ma24_slope=0.0,
-        ma24_slope_acceleration=0.01,
-        ma_spread=0.08,
-        ma_spread_12m_ago=0.20,
-        ma_spread_ratio=0.40,
-        low_regression_slope=0.001,
-        atr_pct=0.03,
-        atr_ratio=0.7,
-        distance_to_resistance=0.1,
-        range_position=0.7,
+        base_score=76.0,
+        base_valid_features=("range_36m", "avg_price_change_12m", "ma_spread"),
+        base_missing_features=(),
+        transition_score=82.0,
+        transition_valid_features=("ma24_slope", "weekly_ma12_slope", "ma24_slope_acceleration"),
+        transition_missing_features=(),
+        balanced_core_score=78.9,
+        alignment_bonus=8.0,
+        progressed_penalty=0.0,
+        progressed_evidence_count=0,
+        pattern_a_score=86.9,
+        stage=None,
+        flags={"transition_alignment": True, "already_progressed": False, "insufficient_data": False},
     )
 
 
