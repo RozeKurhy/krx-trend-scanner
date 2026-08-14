@@ -1,0 +1,125 @@
+# Pattern A Score Momentum v0.1 설계 및 검증 보고서
+
+## 1. 개요 및 목적
+
+`Pattern A Score Momentum v0.1`은 Frozen 상태인 **Pattern A Score v0.2**를 완료된 월봉(Completed Monthly) 기준의 시간축으로 반복 평가하여, 최근 **1개월(1M), 3개월(3M), 6개월(6M)** 동안의 Score 변화량(Raw Delta) 및 세부 구성요소 변화량(Component Delta)을 산출하는 **순수 측정 계층(Pure Measurement Layer)**이다.
+
+> [!IMPORTANT]
+> **핵심 철학 및 분리 원칙**:
+> * **Score**: "지금 이 종목의 Pattern A 구조가 얼마나 매력적인가?" (현재 시점의 매력도, 0~100점)
+> * **Score Momentum**: "Pattern A Score가 최근 몇 개월 동안 어느 방향으로 얼마나 변화했는가?" (시간에 따른 Score 차분)
+> * **Stage Classifier**: "현재 이 종목이 어떤 라이프사이클 국면(WEAK, BASE, TRANSITION, EARLY_TREND, PROGRESSED)에 있는가?" (구조적 위치)
+> * **Candidate State**: 공식 Stage 기반의 해석 상태 (CANDIDATE, WATCH, LATE, BLOCKED, INSUFFICIENT_DATA)
+>
+> Score Momentum은 **새로운 alpha 모델이나 가중 점수(Unified Score)가 아니며**, 임의의 threshold(RISING, FALLING 등)나 good/bad 판단을 내리지 않고 순수한 시간축 관측값만을 제공한다.
+
+---
+
+## 2. 관측 주기 및 Anchor 기준 (Observation Cadence)
+
+1. **Completed Monthly Observation**:
+   * 주봉/일봉이나 진행 중인 미완성 월봉을 사용하지 않고, 오직 완성된 월봉(`include_incomplete_periods=False`)만을 anchor로 사용한다.
+2. **Momentum Anchor 결정**:
+   * 요청일(`as_of`)이 월 중순이면 직전 완성 월봉 말일(`latest completed calendar month end`)을 기준 Anchor $T$로 삼는다.
+   * 예: `as_of = 2026-08-14` ➔ `Momentum Anchor = 2026-07-31`.
+3. **관측 시점 (Observation Horizons)**:
+   * **1M ($T - 1$)**: 가장 최근의 1개월간 Score 변화.
+   * **3M ($T - 3$)**: 단기 추세의 지속성 및 구조 개선/약화 속도.
+   * **6M ($T - 6$)**: 중기 구조적 사이클 변화.
+   * 최근 7개 완성 월봉 시점($T-6, T-5, \dots, T$)의 Score를 순차 산출하여 `observations`에 보존.
+
+---
+
+## 3. Score Delta 및 Component Delta 산출 방식
+
+### 3.1 Raw Score Delta
+$$\Delta_{1M} = \text{Score}_T - \text{Score}_{T-1}$$
+$$\Delta_{3M} = \text{Score}_T - \text{Score}_{T-3}$$
+$$\Delta_{6M} = \text{Score}_T - \text{Score}_{T-6}$$
+
+* Percent change 대신 **단순 차분(Simple Difference)**을 사용한다 (Score가 0~100 유계 척도이므로 0 근처에서 왜곡 방지).
+
+### 3.2 Component Delta Decomposition
+Score 변화의 구체적인 동인을 파악하기 위해 기존 Frozen `PatternAResult`의 구성요소별 차분을 함께 제공한다:
+* `base_score_delta`: 베이스 안정성 변화
+* `transition_score_delta`: 전환 시그널 변화
+* `core_score_delta`: 핵심 점수 변화
+* `support_score_delta`: 보조 점수 변화
+* `confirmation_bonus_delta`: 확인 보너스 변화
+* `alignment_bonus_delta`: 정렬 보너스 변화 (이산적 변화 가능)
+* `progressed_penalty_delta`: 진행 과열 페널티 변화 (이산적 변화 가능)
+* `progressed_evidence_count_delta`: 과열 증거 개수 변화
+
+> [!NOTE]
+> Score는 0~100 유계/클리핑이 적용되므로, Component Delta의 단순 합이 Final Score Delta와 항상 일치하지 않을 수 있으며, Component Delta는 진단용으로만 사용된다.
+
+---
+
+## 4. 최소 히스토리 요구사항 및 Partial Readiness
+
+| 평가 항목 | 최소 완성 월봉 요구조건 (`MIN_HISTORY_MONTHS`) | 비고 |
+|---|---|---|
+| **Current Score only** | **36 completed monthly bars** | 36개월 미만 시 Current Score 산출 불가 |
+| **1M Momentum** | **37 completed monthly bars** | $T$ 및 $T-1$ 필요 |
+| **3M Momentum** | **39 completed monthly bars** | $T$ 및 $T-3$ 필요 |
+| **6M Momentum** | **42 completed monthly bars** | $T$ 및 $T-6$ 필요 |
+
+* **Partial Horizon Readiness**:
+  * 예컨대 39개월 데이터를 보유한 종목은 1M, 3M은 `ready=True`로 계산되고, 6M만 `ready=False` (`score_delta=None`, `INSUFFICIENT_HISTORY_6M`)로 안전하게 반환되며, 전체 연산이 중단되지 않는다.
+* **Universe Readiness와의 독립성**:
+  * 36개월 데이터를 가진 종목은 Universe Evaluator에는 정상 포함되며, 6M Momentum이 불가하더라도 Universe에서 제외되지 않는다.
+
+---
+
+## 5. 대표 사례 실측 관찰 결과 (Descriptive Historical Analysis)
+
+> 아래 결과는 Score Momentum이 과거 시점에서 어떻게 산출되는지 관찰하기 위한 실측 데이터이며, 모델의 적중률이나 성과를 주장하는 것이 아닙니다.
+
+### 5.1 SK하이닉스 (`000660`)
+* **2023-05-31 (바닥 탈출 전환 국면)**:
+  * Current Score: `18.96`
+  * 1M Delta: `+18.96` (0.00 ➔ 18.96)
+  * 3M Delta: `+15.57` (Base: `+8.99`, Transition: `+8.82`, Core: `+8.82`)
+  * 6M Delta: `-40.43` (59.38 ➔ 18.96)
+* **2023-11-30 (추세 폭발 국면)**:
+  * Current Score: `87.74`
+  * 1M Delta: `+1.41` (86.33 ➔ 87.74)
+  * 3M Delta: `+13.65` (Transition: `+12.02`, Core: `+10.02`)
+  * 6M Delta: `+68.78` (18.96 ➔ 87.74)
+* **2024-05-31 (대세 랠리 후반 진행 과열 국면)**:
+  * Current Score: `56.89`
+  * 3M Delta: `-24.67` (Base: `-32.38`, Transition: `+26.99`, Core: `+24.82`, Progressed Penalty: `+10.00`)
+  * 6M Delta: `-30.85` (87.74 ➔ 56.89)
+
+### 5.2 LS (`006260`)
+* **2022-10-31 (초기 안정 국면)**: Current Score: `81.12`, 3M Delta: `-9.01`
+* **2023-07-31 (시세 분출 후 과열 국면)**: Current Score: `51.40`, 3M Delta: `-28.59` (Base: `-40.45`, Penalty: `+10.00`)
+
+### 5.3 삼양식품 (`003230`)
+* **2022-04-29 (베이스 횡보 국면)**: Current Score: `58.55`, 3M Delta: `-0.75`
+* **2022-11-30 (본격 랠리 개시 국면)**: Current Score: `75.79`, 3M Delta: `+25.51` (Transition: `+30.31`, Core: `+26.90`)
+
+---
+
+## 6. 알려진 한계 (Known Limitations)
+
+1. **Monthly Cadence 시차**: Score Momentum은 완성 월봉 주기이므로, 월중에 발생하는 급격한 주간(weekly) 돌파나 단기 변동성을 실시간으로 반영하지 않는다.
+2. **Stage와의 반응 시차**: 공식 Stage Classifier는 52주 고가 및 주봉 MA12 기울기 등 주간 Context를 포함하므로, Stage 전이 시점과 Monthly Score Momentum의 반응 시점에 차이가 발생할 수 있다.
+3. **0~100 유계 클리핑 효과**: Score가 상한(100) 또는 하한(0)에 도달한 극단 구간에서는 추가적인 구조 변화가 Delta 수치에 온전히 반영되지 않고 압축될 수 있다.
+4. **이산적 보너스/페널티의 계단식 변동**: Alignment bonus(0, 3, 8) 및 Progressed penalty(10, 20 등)의 발동/해제 시 Delta가 불연속적인 계단식으로 변동할 수 있다.
+5. **예측성/수익률 검증 미포함**: 본 v0.1은 순수 측정 계층으로, 미래 수익률과의 상관관계나 매매 시그널로서의 유효성을 검증하거나 보장하지 않는다.
+
+---
+
+## 7. Current Status & Next Step
+
+### 7.1 확정 상태
+```text
+Pattern A Score v0.2: FROZEN
+Pattern A Stage Classifier v0.1: FROZEN (43ee01c)
+Pattern A Evaluator Integration v0.1: COMPLETED (51fc202)
+Data Quality & Universe Preparation v0.1: COMPLETED (0ce8012)
+Pattern A Score Momentum v0.1: COMPLETED (Frozen Measurement Layer)
+Unit & Integration Tests: 270 passed (100% Green)
+Next: Official Common Stock Cache Population -> Full Universe Scanner Integration
+```
