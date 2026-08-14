@@ -152,6 +152,10 @@ Pattern A의 점수 산식, Hard Filter 임계값은 아직 검증되지 않은 
 
 초기 단계에서는 정확도보다 좋은 후보를 놓치지 않는 것을 우선하며, 실제 종목 데이터를 이용해 False Positive를 분석하면서 규칙과 임계값을 반복적으로 개선할 예정입니다.
 
+## Project Roadmap
+
+Pattern A 실사용화부터 Pattern B~F, Market Leader Scanner까지 전체 개발 순서는 [docs/roadmap.md](docs/roadmap.md)를 참고하세요.
+
 ## 개발 환경
 
 ```bash
