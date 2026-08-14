@@ -85,7 +85,7 @@ def test_group_stats_empty_group_returns_nan_with_zero_n():
     assert math.isnan(stats.median)
 
 
-def test_condition_ratio_counts_matches_and_treats_nan_as_no_match():
+def test_condition_ratio_separates_missing_from_valid():
     rows = [
         _row(ma24_slope=0.1),
         _row(ma24_slope=-0.1),
@@ -93,39 +93,56 @@ def test_condition_ratio_counts_matches_and_treats_nan_as_no_match():
         _row(ma24_slope=0.05),
     ]
 
-    matched, total = condition_ratio(rows, CONDITIONS["ma24_slope>0"])
+    outcome = condition_ratio(rows, CONDITIONS["ma24_slope>0"])
 
-    assert total == 4
-    assert matched == 2  # 0.1, 0.05만 매칭. NaN과 음수는 매칭 안 됨.
+    assert outcome.missing_n == 1  # NaN 1개는 missing으로 따로 센다
+    assert outcome.valid_n == 3  # 나머지 3개만 유효 판정
+    assert outcome.matched == 2  # 0.1, 0.05만 매칭
+    assert math.isclose(outcome.pct, 2 / 3 * 100)  # pct는 valid_n(3) 기준
 
 
-def test_condition_ratio_combination_requires_all_parts_and_nan_safe():
+def test_condition_ratio_combination_requires_all_parts_and_treats_any_nan_as_missing():
     rows = [
         _row(weekly_ma12_slope=0.1, ma24_slope=-0.1),  # A 조건(weekly>0 & ma24<=0) 매칭
-        _row(weekly_ma12_slope=0.1, ma24_slope=0.2),  # 매칭 안 됨(ma24>0)
-        _row(weekly_ma12_slope=float("nan"), ma24_slope=-0.1),  # weekly가 NaN -> 매칭 안 됨
+        _row(weekly_ma12_slope=0.1, ma24_slope=0.2),  # 유효하지만 매칭 안 됨(ma24>0)
+        _row(weekly_ma12_slope=float("nan"), ma24_slope=-0.1),  # weekly가 NaN -> missing
     ]
 
-    matched, total = condition_ratio(rows, CONDITIONS["A: weekly>0 & ma24<=0"])
+    outcome = condition_ratio(rows, CONDITIONS["A: weekly>0 & ma24<=0"])
 
-    assert total == 3
-    assert matched == 1
+    assert outcome.missing_n == 1
+    assert outcome.valid_n == 2
+    assert outcome.matched == 1
+    assert outcome.pct == 50.0
 
 
-def test_condition_table_produces_kn_and_pct_per_group():
+def test_condition_ratio_all_missing_gives_nan_pct():
+    rows = [_row(ma24_slope=float("nan")), _row(ma24_slope=float("nan"))]
+
+    outcome = condition_ratio(rows, CONDITIONS["ma24_slope>0"])
+
+    assert outcome.valid_n == 0
+    assert outcome.missing_n == 2
+    assert outcome.matched == 0
+    assert math.isnan(outcome.pct)
+
+
+def test_condition_table_produces_matched_valid_missing_pct_per_group():
     groups = {
         "positive": [_row(ma24_slope=0.1), _row(ma24_slope=-0.1)],
-        "negative": [_row(ma24_slope=0.1), _row(ma24_slope=0.2), _row(ma24_slope=-0.1)],
+        "negative": [_row(ma24_slope=0.1), _row(ma24_slope=0.2), _row(ma24_slope=float("nan"))],
     }
 
     table = condition_table(groups, {"ma24_slope>0": CONDITIONS["ma24_slope>0"]})
 
     row = table.iloc[0]
     assert row["condition"] == "ma24_slope>0"
-    assert row["positive_k/n"] == "1/2"
+    assert row["positive_matched/valid"] == "1/2"
+    assert row["positive_missing"] == 0
     assert row["positive_pct"] == 50.0
-    assert row["negative_k/n"] == "2/3"
-    assert math.isclose(row["negative_pct"], 200 / 3)
+    assert row["negative_matched/valid"] == "2/2"
+    assert row["negative_missing"] == 1  # NaN 1건은 매칭 실패가 아니라 missing으로 분리
+    assert row["negative_pct"] == 100.0
 
 
 def test_stats_table_produces_rows_per_feature_and_group():

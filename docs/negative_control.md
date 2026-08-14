@@ -84,3 +84,41 @@ min/median/max와 단일/조합 조건 발생 비율(k/n, %)을 계산한다. �
 threshold를 확정하거나 가중치를 매기지 않는다 — "지금 후보로 거론되는
 조건이 실패 사례에서 얼마나 자주도 나타나는가"만 관찰한다. 실제 수치와
 해석은 완료 보고에 정리한다.
+
+**NaN 처리(재리뷰 반영)**: 조건이 참조하는 속성 중 하나라도 NaN이면 그
+행은 "판정 불가(missing)"로 따로 센다. `matched`/`valid_n`/`missing_n`을
+각각 계산하고, `pct`는 `matched / valid_n`으로 계산한다 — NaN을 조용히
+"조건 불만족(false)"으로 분모에 섞지 않는다.
+
+## CSV 출력 경로
+
+`data/processed/historical_snapshots.csv`는 `historical_snapshot_validate.py`
+(exploration/holdout, completed+live)만 쓴다. 이 negative_control 스크립트는
+별도 파일에만 쓴다.
+
+* `data/processed/negative_control_validation.csv`: negative_control
+  8건만(completed 기준).
+* `data/processed/outcome_audit.csv`: exploration/holdout/negative_control
+  세 세트 전체의 outcome metadata(아래 참고).
+
+두 스크립트가 같은 파일을 놓고 경쟁하지 않는다.
+
+## Outcome Audit
+
+`src/trend_scanner/validation/outcome_audit.py`는 Feature 계산과 완전히
+독립된 경로로, snapshot의 `effective_as_of` 이후 daily close를 이용해
+3/6/12개월 max return, 6/12개월 end return, 12개월 max drawdown, 12개월
+window 내 peak까지 걸린 개월 수를 계산한다.
+
+**중요**: 이 값들은 label(사람이 붙인 pre_breakout/failed_breakout 등
+문자열)을 검토하기 위한 참고 자료일 뿐이다.
+
+* Feature(`FeatureRow`)에 넣지 않는다.
+* Pattern A Score에 사용하지 않는다.
+* Feature threshold 최적화에도 사용하지 않는다.
+* 성공/실패 threshold를 새로 정의하지도 않는다 — raw 수치만 보여준다.
+
+`build_historical_snapshot()`의 look-ahead 방지 로직과는 반대 방향이다
+(그쪽은 `snapshot_date` **이하**만, 이쪽은 `effective_as_of` **이후**만
+의도적으로 본다). 두 계산 경로는 서로 데이터를 주고받지 않는다 — outcome
+계산 결과가 Feature 계산 함수의 인자로 들어가는 곳은 코드 어디에도 없다.

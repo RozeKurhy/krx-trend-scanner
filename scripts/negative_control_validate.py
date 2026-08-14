@@ -16,8 +16,14 @@ Feature 계산은 지금까지와 동일하게 build_historical_snapshot()이
 snapshot_date 이하 데이터만 사용해서 계산한다 — 미래 가격이 Feature
 계산에 섞여 들어가는 경로는 없다(look-ahead 방지 로직은 그대로).
 
+**Outcome Audit도 같은 원칙**: snapshot 이후 실제 수익률/drawdown을
+계산하는 outcome_audit 모듈은 Feature 계산과 완전히 분리된 별도 경로다.
+그 결과값은 label을 사람이 검토하기 위한 참고 자료일 뿐, Feature에도
+Pattern A Score에도 threshold 최적화에도 절대 쓰지 않는다.
+
 핵심 비교는 holdout(positive: pre_breakout/early_trend) vs negative_control.
-exploration은 선택 편향이 있어 참고용으로만 CSV에 남긴다.
+exploration은 선택 편향이 있어 참고용으로만 화면 출력에 남긴다(CSV에는
+안 남긴다 — 아래 CSV 경로 설명 참고).
 
 실행 (repo 루트에서, `pip install -e ".[dev]"` 이후):
     python scripts/negative_control_validate.py
@@ -25,6 +31,13 @@ exploration은 선택 편향이 있어 참고용으로만 CSV에 남긴다.
 새로 KRX를 호출하지 않는다. 아래 종목들이 먼저 캐시돼 있어야 한다
 (exploration 4종목, holdout 5종목은 이전 라운드에서 이미 캐시됨;
 negative_control 8종목은 이번 라운드에서 새로 fetch해서 캐시했다).
+
+**CSV 경로**: `data/processed/historical_snapshots.csv`는
+`scripts/historical_snapshot_validate.py`만 쓴다(exploration/holdout,
+completed+live). 이 스크립트는 별도로
+`data/processed/negative_control_validation.csv`(negative_control만,
+completed 기준)와 `data/processed/outcome_audit.csv`(세 세트 전체의
+outcome metadata)를 쓴다. 두 스크립트가 같은 파일을 놓고 경쟁하지 않는다.
 """
 
 from __future__ import annotations
@@ -44,10 +57,12 @@ from trend_scanner.validation.negative_control_analysis import (
     snapshot_csv_rows,
     stats_table,
 )
+from trend_scanner.validation.outcome_audit import compute_outcome, outcome_csv_row
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 CACHE_DIR = REPO_ROOT / "data" / "raw" / "stocks"
-OUTPUT_CSV = REPO_ROOT / "data" / "processed" / "historical_snapshots.csv"
+NEGATIVE_CONTROL_CSV = REPO_ROOT / "data" / "processed" / "negative_control_validation.csv"
+OUTCOME_AUDIT_CSV = REPO_ROOT / "data" / "processed" / "outcome_audit.csv"
 
 # --- exploration set (참고용, 선택 편향 있음) ---
 SNAPSHOTS: list[dict[str, str]] = [
@@ -206,18 +221,12 @@ def main() -> None:
     holdout_records = _build_completed_snapshots(HOLDOUT_SNAPSHOTS, holdout_daily)
     negative_records = _build_completed_snapshots(NEGATIVE_CONTROL_SNAPSHOTS, negative_daily)
 
-    # --- CSV: 세 세트 전부, set 컬럼으로 구분 ---
-    csv_rows = []
-    for set_name, records in (
-        ("exploration", exploration_records),
-        ("holdout", holdout_records),
-        ("negative_control", negative_records),
-    ):
-        labeled = [(label, snap) for _, label, snap in records]
-        csv_rows.extend(snapshot_csv_rows(labeled, set_name))
-    OUTPUT_CSV.parent.mkdir(parents=True, exist_ok=True)
-    pd.DataFrame(csv_rows).to_csv(OUTPUT_CSV, index=False)
-    print(f"CSV saved: {OUTPUT_CSV} ({len(csv_rows)} rows)")
+    # --- CSV: negative_control만. exploration/holdout은 historical_snapshots.csv가 소유한다. ---
+    negative_labeled = [(label, snap) for _, label, snap in negative_records]
+    negative_csv_rows = snapshot_csv_rows(negative_labeled, "negative_control")
+    NEGATIVE_CONTROL_CSV.parent.mkdir(parents=True, exist_ok=True)
+    pd.DataFrame(negative_csv_rows).to_csv(NEGATIVE_CONTROL_CSV, index=False)
+    print(f"CSV saved: {NEGATIVE_CONTROL_CSV} ({len(negative_csv_rows)} rows)")
     print()
 
     holdout_pre = [snap.features for t, label, snap in holdout_records if label == "pre_breakout"]
@@ -259,6 +268,57 @@ def main() -> None:
     cond_df = condition_table(groups, CONDITIONS)
     with pd.option_context("display.max_columns", None, "display.width", 200):
         print(cond_df.to_string(index=False))
+    print()
+
+    # --- Outcome Audit: label 검토용. Feature/Score/threshold에는 절대 사용하지 않는다. ---
+    daily_by_ticker = {**exploration_daily, **holdout_daily, **negative_daily}
+    all_records = (
+        [("exploration", *r) for r in exploration_records]
+        + [("holdout", *r) for r in holdout_records]
+        + [("negative_control", *r) for r in negative_records]
+    )
+    outcome_rows = []
+    for set_name, ticker, label, snap in all_records:
+        daily = daily_by_ticker[ticker]
+        outcome = compute_outcome(daily, snap.effective_as_of)
+        row = outcome_csv_row(ticker, snap.features.name, label, outcome)
+        row["set"] = set_name
+        outcome_rows.append(row)
+
+    OUTCOME_AUDIT_CSV.parent.mkdir(parents=True, exist_ok=True)
+    outcome_df = pd.DataFrame(outcome_rows)
+    outcome_df.to_csv(OUTCOME_AUDIT_CSV, index=False)
+    print(f"CSV saved: {OUTCOME_AUDIT_CSV} ({len(outcome_rows)} rows)")
+    print()
+
+    print("=" * 70)
+    print("Outcome Audit 전체 (snapshot 이후 실제 가격, label 검토용 — Feature/Score에 미사용)")
+    print("=" * 70)
+    display_cols = [
+        "set",
+        "ticker",
+        "name",
+        "label",
+        "base_date",
+        "return_3m_max",
+        "return_6m_max",
+        "return_12m_max",
+        "return_6m_end",
+        "return_12m_end",
+        "drawdown_12m_max",
+        "months_to_peak_12m",
+    ]
+    with pd.option_context("display.max_columns", None, "display.width", 220):
+        print(outcome_df[display_cols].to_string(index=False, float_format=lambda v: f"{v:.4f}"))
+    print()
+
+    print("=" * 70)
+    print("애매한 negative 사례 (003550 LG / 010130 고려아연 / 034730 SK / 011200 HMM)")
+    print("=" * 70)
+    focus_tickers = {"003550", "010130", "034730", "011200"}
+    focus_df = outcome_df[outcome_df["ticker"].isin(focus_tickers)]
+    with pd.option_context("display.max_columns", None, "display.width", 220):
+        print(focus_df[display_cols].to_string(index=False, float_format=lambda v: f"{v:.4f}"))
     print()
 
 
