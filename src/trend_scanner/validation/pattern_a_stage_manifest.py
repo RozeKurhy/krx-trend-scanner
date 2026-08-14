@@ -187,12 +187,18 @@ PATTERN_A_STAGE_LABELS: tuple[StageLabelSpec, ...] = (
         "원 case_group=positive_trend_progressed.",
     ),
     StageLabelSpec(
-        "015760", "한국전력", "2023-12-31", PatternAStage.WEAK,
-        "range_position=0.241로 다년 저점권, ma24_slope=-0.022로 여전히 "
-        "뚜렷한 하락, weekly_ma12_slope=+0.019는 방향 전환이라 보기엔 "
-        "너무 미미 — 안정된 박스조차 아직 형성 안 됨.",
+        "015760", "한국전력", "2023-12-31", PatternAStage.BASE,
+        "ma24_slope=-0.022로 가파른 하락 기준(대략 -0.045 이하)에 못 "
+        "미치고, ma24_slope_acceleration=+0.012로 하락이 감속 중, "
+        "weekly_ma12_slope=+0.019로 방향은 이미 양전환, ma_spread=0.095"
+        "로 비교군 중 좁은 편(수렴) — range_position=0.241로 절대 "
+        "위치는 낮지만 하락 속도/방향/수렴 기준으로는 BASE 게이트를 "
+        "통과함.",
         "OOS2_v0.2_manifest",
-        "원 case_group=downtrend_reversal_boundary.",
+        "원 case_group=downtrend_reversal_boundary. 재감사 전에는 "
+        "range_position 단독 기준으로 WEAK였으나, docs/validation/"
+        "pattern_a_stage.md의 BASE/WEAK 재정의(가파름/방향/가속/수렴 "
+        "4-gate) 재검토로 BASE로 재분류함.",
     ),
     StageLabelSpec(
         "034220", "LG디스플레이", "2020-12-31", PatternAStage.TRANSITION,
@@ -205,14 +211,14 @@ PATTERN_A_STAGE_LABELS: tuple[StageLabelSpec, ...] = (
     ),
     StageLabelSpec(
         "011210", "현대위아", "2019-12-31", PatternAStage.BASE,
-        "range_position=0.421로 중간대(WEAK 기준인 0.25 이하에 못 미침), "
-        "ma24_slope=-0.037로 약한 음수, weekly_ma12_slope=+0.010로 거의 "
-        "평탄 — 009150/032830과 같은 BASE 프로필.",
+        "avg_price_change_12m=+0.012로 사실상 보합(비교 대상 9건 중 "
+        "유일하게 플러스), ma_spread=0.050로 비교 대상 9건 중 가장 좁음"
+        "(가장 수렴), ma24_slope_acceleration=+0.018로 감속, "
+        "range_position_52w=0.642가 36개월 range_position(0.421)보다 "
+        "뚜렷하게 높음 — 9건 재감사에서 가장 뚜렷한 BASE 사례.",
         "OOS2_v0.2_manifest",
-        "원 case_group=downtrend_reversal_boundary. 초기 분석에서는 "
-        "range_position이 낮다는 이유로 WEAK 후보였으나, docs/validation/"
-        "pattern_a_stage.md의 WEAK 재정의(range_position<=0.25) 기준으로 "
-        "재검토해 BASE로 재분류함.",
+        "원 case_group=downtrend_reversal_boundary. BASE/WEAK 재감사 "
+        "9건 비교에서도 재확인됨(변경 없음).",
     ),
     StageLabelSpec(
         "023530", "롯데쇼핑", "2025-05-31", PatternAStage.TRANSITION,
@@ -224,25 +230,33 @@ PATTERN_A_STAGE_LABELS: tuple[StageLabelSpec, ...] = (
         "원 case_group=downtrend_reversal_boundary.",
     ),
     StageLabelSpec(
-        "023530", "롯데쇼핑", "2023-12-31", PatternAStage.WEAK,
-        "range_position=0.143로 다년 저점권, ma24_slope=-0.025로 여전히 "
-        "하락, weekly_ma12_slope=+0.021도 미미 — 안정된 박스 미형성.",
+        "023530", "롯데쇼핑", "2023-12-31", PatternAStage.BASE,
+        "ma24_slope=-0.025로 가파른 하락 기준(대략 -0.045 이하)에 못 "
+        "미치고, ma24_slope_acceleration=+0.023로 하락이 감속 중, "
+        "weekly_ma12_slope=+0.021로 방향은 이미 양전환 — "
+        "range_position=0.143로 비교군 중 가장 낮은 절대 위치지만 "
+        "하락 속도/방향/가속 기준으로는 BASE 게이트를 통과함(이번 BASE "
+        "10건 중 가장 얇은 근거이므로 notes에 경계로 남김).",
         "OOS2_v0.2_manifest",
         "원 case_group=hard_negative_false_turn. Stage 라벨 목적으로만 "
-        "재사용(WEAK 표본 보강) — 이 snapshot의 Score 결과 자체는 이번 "
-        "manifest와 무관하다.",
+        "재사용 — 이 snapshot의 Score 결과 자체는 이번 manifest와 "
+        "무관하다. 재감사 전에는 range_position 단독 기준으로 WEAK였으나 "
+        "BASE/WEAK 재정의(4-gate)로 재분류함. range_position=0.143이 "
+        "이번 BASE 그룹 최저치라 boundary case로 취급.",
     ),
     StageLabelSpec(
         "034220", "LG디스플레이", "2020-09-30", PatternAStage.WEAK,
-        "range_position=0.262로 다년 저점권, ma24_slope=-0.049로 이번 "
-        "WEAK 표본 중 가장 뚜렷한 하락 — 아직 안정된 박스 미형성. "
-        "weekly_ma12_slope=+0.107로 유독 높아 TRANSITION 신호로도 읽힐 "
-        "수 있는 divergence가 있음(notes 참고).",
+        "ma24_slope=-0.049로 가파른 하락 기준(대략 -0.045 이하)에 해당 "
+        "— weekly_ma12_slope=+0.107, ma24_slope_acceleration=+0.026로 "
+        "방향 전환/감속 신호는 있지만, 하락 자체가 여전히 가파른 수준"
+        "이라 BASE 게이트를 통과하지 못함. range_position=0.262.",
         "OOS2_v0.2_manifest",
         "원 case_group=weak_core_strong_support. Stage 라벨 목적으로만 "
-        "재사용(WEAK 표본 보강). weekly_ma12_slope 이상치는 "
-        "docs/validation/pattern_a_stage.md 'boundary/추가 사례 처리 "
-        "방식'에 별도 기록.",
+        "재사용(WEAK 표본 보강). 011170(2023-01-31, ma24_slope=-0.0475)"
+        "과 ma24_slope가 거의 동일해 재감사에서 직접 비교한 사례 — 둘 "
+        "다 가파른 하락 게이트에 걸려 WEAK 유지(011170도 동일 게이트로 "
+        "WEAK 재분류, 아래 참고). 즉 이 쌍의 결론은 '034220을 BASE로 "
+        "올린다'가 아니라 '011170을 WEAK로 내린다'임.",
     ),
     # ============================================================
     # Source: OOS_v0.1_stage_audit (13)
@@ -304,14 +318,23 @@ PATTERN_A_STAGE_LABELS: tuple[StageLabelSpec, ...] = (
     ),
     StageLabelSpec(
         "079550", "LIG넥스원", "2023-12-31", PatternAStage.PROGRESSED,
-        "range_position=0.861로 상단권 유지, ma24_slope=+0.078로 core "
-        "여전히 양수, ma_spread=0.072로 유지 — avg_price_change_12m"
-        "=+0.029로 최근 12개월 변화율은 낮지만 이평선 구조/위치 자체는 "
-        "여전히 진행형 확장 프로필 유지.",
+        "이번 snapshot 자체의 Feature(avg_price_change_12m=+0.029, "
+        "ma_spread=0.072, range_position=0.861)만 보면 EARLY_TREND와도 "
+        "구분이 어렵다. 하지만 이 snapshot 이전(2021-12-31: "
+        "avg_price_change_12m=+0.585/ma_spread=0.216)에 이미 큰 폭의 "
+        "breakout+expansion을 통과한 lifecycle 경로가 있고, Stage를 "
+        "lifecycle 개념으로 정의하기로 한 이번 라운드 결정(docs/"
+        "validation/pattern_a_stage.md 'Stage semantic' 참고)에 따라 "
+        "그 경로를 근거로 PROGRESSED를 유지한다 — '한 번 확장에 진입한 "
+        "종목이 잠시 쉬어간다고 EARLY_TREND로 되돌아가지 않는다'는 "
+        "원칙의 대표 사례.",
         "OOS_v0.1_stage_audit",
-        "원 audited_stage_label=TREND_PROGRESSED(선행 종목이 잠시 쉬어가는 "
-        "맥락). Feature만 보면 EARLY_TREND와도 경계에 있어 원 audit "
-        "판단을 존중해 유지함 — 필요시 classifier v0.1 이후 재검토.",
+        "원 audited_stage_label=TREND_PROGRESSED. snapshot_date "
+        "이전(<=2023-12-31)의 같은 티커 과거 이력만 근거로 썼으므로 "
+        "look-ahead가 아니다(2024년 이후 데이터는 쓰지 않음). Stage를 "
+        "current-state로 정의했다면 이 사례는 재라벨링이 필요했을 것 — "
+        "그 모순을 남기지 않기 위해 이번 라운드에서 semantic을 lifecycle"
+        "로 명시적으로 확정함.",
     ),
     StageLabelSpec(
         "005490", "POSCO홀딩스", "2022-12-31", PatternAStage.TRANSITION,
@@ -376,39 +399,53 @@ PATTERN_A_STAGE_LABELS: tuple[StageLabelSpec, ...] = (
         "원 label=failed_breakout(outcome 기반, Stage 판정에 미사용).",
     ),
     StageLabelSpec(
-        "011170", "롯데케미칼", "2023-01-31", PatternAStage.BASE,
-        "range_position=0.318로 중간대(WEAK 기준 0.25 초과), ma24_slope"
-        "=-0.048로 하락 중이지만 weekly_ma12_slope=+0.074로 약한 반등 "
-        "조짐 — 009150과 유사한 BASE 프로필.",
+        "011170", "롯데케미칼", "2023-01-31", PatternAStage.WEAK,
+        "ma24_slope=-0.048로 가파른 하락 기준(대략 -0.045 이하)에 "
+        "해당하고, ma24_slope_acceleration=-0.021로 하락이 오히려 "
+        "가속 중(비교 대상 9건 중 유일하게 가속) — avg_price_change_12m"
+        "=-0.276, ma_spread=0.263로 둘 다 비교 대상 9건 중 최댓값. "
+        "weekly_ma12_slope=+0.074(양전환)는 있지만 다른 세 지표가 "
+        "전부 활성 하락을 가리켜 WEAK로 재분류.",
         "negative_control_compare",
         "원 label=failed_higher_low(outcome 기반, Stage 판정에 미사용). "
-        "초기 분석에서는 WEAK 후보였으나 range_position 재검토로 BASE로 "
-        "재분류.",
+        "재감사 전에는 range_position=0.318이 WEAK 기준(0.25)보다 높다는 "
+        "이유로 BASE였으나, 이번 재감사에서 range_position을 게이트에서 "
+        "빼고 가파름/가속/수렴 기준으로 재검토해 WEAK로 재분류함. "
+        "034220(2020-09-30)과 ma24_slope가 거의 동일한 쌍으로 직접 "
+        "비교됨.",
     ),
     StageLabelSpec(
-        "009150", "삼성전기", "2022-12-31", PatternAStage.BASE,
-        "range_position=0.345 중간대, ma24_slope=-0.019로 약한 음수, "
-        "weekly_ma12_slope=+0.032로 미미한 양전환 — 아직 확인된 전환이 "
-        "아닌 박스권.",
+        "009150", "삼성전기", "2022-12-31", PatternAStage.WEAK,
+        "ma24_slope_acceleration=-0.016로 비교 대상 9건 중 011170 다음 "
+        "으로 하락이 가속 중, range_position_52w=0.282가 36개월 "
+        "range_position(0.345)보다 오히려 낮아 최근 1년이 3년 구간 "
+        "대비 개선되지 않음(비교 대상 9건 중 유일), ma_spread=0.250로 "
+        "넓은 편 — avg_price_change_12m=-0.200도 큰 하락.",
         "negative_control_compare",
-        "원 label=failed_momentum(outcome 기반, Stage 판정에 미사용).",
+        "원 label=failed_momentum(outcome 기반, Stage 판정에 미사용). "
+        "재감사 전에는 range_position=0.345 기준으로 BASE였으나, "
+        "가속/52주 gap/수렴 기준 재검토로 WEAK로 재분류함.",
     ),
     StageLabelSpec(
         "018260", "삼성에스디에스", "2023-07-31", PatternAStage.WEAK,
-        "range_position=0.131로 매우 낮은 다년 저점권, ma24_slope=-0.051"
-        "로 뚜렷한 하락 — 안정된 박스조차 형성 안 된 활성 하락 상태.",
+        "ma24_slope=-0.051로 비교 대상 9건 중 가장 가파른 하락(가파른 "
+        "하락 기준 -0.045를 크게 상회) — ma24_slope_acceleration=+0.008"
+        "로 감속 신호는 있지만 미미해 하락 속도 자체를 뒤집지 못함.",
         "negative_control_compare",
         "원 label=failed_breakout(outcome 기반, Stage 판정에 미사용). "
-        "이 경우는 raw Feature로도 WEAK 판정과 일치.",
+        "BASE/WEAK 재감사 9건 비교에서도 재확인됨(변경 없음) — 이번 "
+        "9건 중 하락 속도가 가장 빠른 사례.",
     ),
     StageLabelSpec(
         "032830", "삼성생명", "2021-02-28", PatternAStage.BASE,
-        "range_position=0.480 중간대, ma24_slope=-0.021로 약한 음수, "
-        "weekly_ma12_slope=+0.007로 거의 평탄 — 009150/011170과 같은 "
-        "BASE 프로필.",
+        "ma24_slope_acceleration=+0.026로 감속, range_position_52w"
+        "=0.777이 36개월 range_position(0.480)보다 크게 높음(비교 대상 "
+        "9건 중 두 번째로 큰 gap) — ma24_slope=-0.021로 가파른 하락 "
+        "기준(대략 -0.045 이하)에 못 미침.",
         "negative_control_compare",
         "원 label=failed_ma24_turn(outcome 기반, Stage 판정에 미사용). "
-        "라벨 이름과 달리 snapshot 시점 ma24_slope은 여전히 음수.",
+        "라벨 이름과 달리 snapshot 시점 ma24_slope은 여전히 음수. "
+        "BASE/WEAK 재감사 9건 비교에서도 재확인됨(변경 없음).",
     ),
     StageLabelSpec(
         "034730", "SK", "2020-12-31", PatternAStage.TRANSITION,
@@ -421,11 +458,15 @@ PATTERN_A_STAGE_LABELS: tuple[StageLabelSpec, ...] = (
     ),
     StageLabelSpec(
         "011200", "HMM", "2024-10-31", PatternAStage.WEAK,
-        "range_position=0.146로 매우 낮은 다년 저점권, ma24_slope=-0.016"
-        "로 완만하지만 하락 방향, weekly_ma12_slope=-0.010도 음수 — "
-        "안정된 박스 미형성.",
+        "weekly_ma12_slope=-0.010로 비교 대상 9건 중 유일하게 음수 — "
+        "단기 방향조차 아직 전환되지 않음. ma24_slope_acceleration"
+        "=+0.039(비교 대상 9건 중 가장 강한 감속)와 ma_spread=0.039"
+        "(가장 좁음)는 부분 안정화 신호지만, weekly가 아직 안 돈 것을 "
+        "우선해 WEAK 유지.",
         "negative_control_compare",
-        "원 label=failed_breakout(outcome 기반, Stage 판정에 미사용).",
+        "원 label=failed_breakout(outcome 기반, Stage 판정에 미사용). "
+        "BASE/WEAK 재감사 9건 비교에서도 재확인됨(변경 없음) — 감속/"
+        "수렴 신호는 가장 강하지만 weekly 미전환이 결정적 판별축.",
     ),
     # ============================================================
     # Source: holdout_early_trend_compare (3, EARLY_TREND 보강)
