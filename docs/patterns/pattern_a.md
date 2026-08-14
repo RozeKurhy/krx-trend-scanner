@@ -86,9 +86,11 @@ range_24m / range_12m    -> range_36m과 중복이거나 분리력이 약함 (Di
 자체가 이미 매우 컸던" 경우를 걸러내지 못하지만, range_36m은 그 확장을
 직접 드러낸다. Base/Expansion Validation에서 range_36m은 holdout
 trend_progressed 최솟값(1.2614)이 pre_breakout/early_trend/
-confirmed_negative 세 그룹의 최댓값(1.1767)보다 커서 4그룹을 완전히
-분리했다 — 지금까지 검증한 Feature 중 가장 깨끗한 Already Progressed
-판별 신호다. 다만 이번 단계에서 threshold는 정하지 않는다.
+confirmed_negative 세 그룹의 최댓값(1.1767)보다 커서 **trend_progressed
+그룹을 나머지 세 그룹에서 완전히 분리했다**(pre/early/confirmed_negative
+세 그룹끼리는 겹친다 — "4그룹을 전부 서로 분류할 수 있다"는 뜻은 아니다)
+— 지금까지 검증한 Feature 중 가장 깨끗한 Already Progressed 판별 신호다.
+다만 이번 단계에서 threshold는 정하지 않는다.
 
 ### Already Progressed / Expansion State
 
@@ -210,7 +212,7 @@ ma12/ma24 원시 레벨, volume/trading_value 참고 지표, pivot 상세 등)�
 | `pivot_low_slope` | 저점 상승 구조 | exploration/holdout/negative_control 전부 값이 ±0.001 내외로 미미, 상태 구분력 없음 | Drop | Low |
 | `ma_spread` | MA 수렴 정도("좁을수록 Base") | "수렴" 방향으로는 약함(pre_breakout 중앙값 0.0774이 early_trend 0.0627보다 오히려 높아 비단조). "확장" 방향은 중앙값이 progressed(0.2777)에서 가장 높아 방향성은 있으나, confirmed_negative 1건(롯데케미칼 0.2626)이 progressed 최솟값(0.1828)보다 커서 노이즈가 큼 | Context(Base, Already Progressed 판별에 참고, Score에는 직접 안 넣음) | Low-Medium |
 | `ma_spread_ratio` | 과거 대비 수렴 진행도 | 편차가 극단적으로 큼(pre_breakout 0.62~6.57), 방향 불안정 | Diagnostic | Low |
-| `range_36m` | Base/Expansion 판별(장기 변동폭) | Base/Expansion Validation(아래 절)에서 4그룹(holdout pre/early/progressed, confirmed_negative)을 완전히 분리(progressed 최솟값 1.2614 > 나머지 최댓값 1.1767) — 지금까지 가장 깨끗한 신호 | Context(Base) | High |
+| `range_36m` | Base/Expansion 판별(장기 변동폭) | Base/Expansion Validation(아래 절)에서 trend_progressed 그룹을 나머지 세 그룹(holdout pre/early, confirmed_negative)에서 완전히 분리(progressed 최솟값 1.2614 > 나머지 최댓값 1.1767). pre/early/confirmed_negative 세 그룹끼리는 겹친다 — 지금까지 가장 깨끗한 Already Progressed 신호 | Context(Base) | High |
 | `avg_price_change_12m` | Base/Expansion 판별(12개월 가격 이동량) | 중앙값 차이는 매우 큼(progressed 0.7251 vs 나머지 -0.12~0.05)이나 confirmed_negative 1건(고려아연 0.3117)이 progressed 최솟값(0.2220)보다 커서 완전히 깨끗하진 않음 | Context(Base) | Medium |
 | `range_24m` | (신규 후보) Base/Expansion 판별 | range_36m과 순위가 사실상 동일(인접 종목 1쌍만 뒤바뀜)하고 분리력도 비슷함 — range_36m과 정보 중복 | Diagnostic(range_36m과 중복) | Low |
 | `range_12m` | (신규 후보) Base/Expansion 판별 | range 계열 중 유일하게 4그룹 분리 실패(progressed 최솟값 0.9097 < confirmed_negative 최댓값 1.0693) | Diagnostic(분리력 부족) | Low |
@@ -282,16 +284,18 @@ negative_control.md의 `NEGATIVE_SUBGROUP` 그대로 재사용, ambiguous_negati
 
 ### Feature별 분석
 
-**`range_36m`** — 4그룹 완전 분리(progressed 최솟값 1.2614 > 나머지 세
-그룹 최댓값 1.1767). trend_progressed에서 일관되게 커지는가? **예, 가장
-명확하다.**
+**`range_36m`** — **trend_progressed 그룹을 나머지 세 그룹에서 완전히
+분리**(progressed 최솟값 1.2614 > 나머지 세 그룹 최댓값 1.1767). 정확히는
+"이미 진행된 종목만 골라낸다"는 뜻이지 pre/early/confirmed_negative
+세 그룹까지 서로 분류한다는 뜻은 아니다 — 그 셋끼리는 값이 겹친다.
+trend_progressed에서 일관되게 커지는가? **예, 가장 명확하다.**
 
-**`range_24m`** — trend_progressed 최솟값(1.1693)도 나머지 최댓값
-(confirmed_negative 1.0005)보다 커서 역시 4그룹을 분리한다. 다만
-range_36m과 종목별 순위가 사실상 동일하다(trend_progressed 그룹에서
-인접 종목 1쌍만 순서가 바뀜: 36m은 기아(1.7168)>현대차(1.6362), 24m은
-현대차(1.5865)>기아(1.5337); pre_breakout 그룹도 같은 패턴) — 사실상
-같은 정보를 중복해서 담고 있다.
+**`range_24m`** — range_36m과 같은 방식으로 **trend_progressed 그룹만
+나머지 세 그룹에서 분리**한다(progressed 최솟값 1.1693 > 나머지 최댓값
+confirmed_negative 1.0005). 종목별 순위도 range_36m과 사실상 동일하다
+(trend_progressed 그룹에서 인접 종목 1쌍만 순서가 바뀜: 36m은
+기아(1.7168)>현대차(1.6362), 24m은 현대차(1.5865)>기아(1.5337);
+pre_breakout 그룹도 같은 패턴) — 사실상 같은 정보를 중복해서 담고 있다.
 
 **`range_12m`** — range 계열 중 유일하게 분리에 실패한다.
 trend_progressed 최솟값(0.9097)이 confirmed_negative 최댓값(1.0693)보다
@@ -325,7 +329,10 @@ range_36m과 "중복"(순위가 사실상 동일)이라 내렸고, range_12m은
 "위치") Feature로 구성되는데, range_12m은 위치가 아니라 폭(magnitude)
 Feature라 Stage Axis에 넣으면 이번에 막 분리한 Axis 구분이 다시 흐려진다.
 분리력이 약하다는 사실은 축을 바꿀 이유가 아니라 Role을 낮출 이유로
-봤다(Base Axis 유지 + Diagnostic Role).
+봤다. 다만 코드(`FEATURE_AXES`)는 Diagnostic/Drop Feature에 Axis를
+부여하지 않으므로, 정확히는 "Base Axis를 유지"가 아니라 **"원래 Base
+후보였지만 Diagnostic으로 강등되어 현재는 Axis가 없다"**가 코드와
+일치하는 표현이다.
 
 ## Hard Filter 재분류
 
