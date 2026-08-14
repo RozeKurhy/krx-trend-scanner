@@ -9,18 +9,24 @@
 **Pattern A 점수 코드(pattern_a_score.py) 자체는 이 스크립트에서 건드리지
 않는다.** Candidate B/C는 이 스크립트 안에서만 존재하는 로컬 함수다.
 Candidate A는 `_score_v01_baseline()`이라는 이 스크립트 내부의 frozen
-v0.1 재현 함수다(재리뷰 후속, 아래 "버전 고정 안내" 참고) — Base Score/
-harmonic mean/progressed penalty/required anchor는 pattern_a_score.py의
-안정적인 pure helper(`_weighted_piecewise_score`, `_harmonic_mean`,
-`_piecewise_linear`, `BASE_WEIGHTS`, `BASE_POINTS`,
-`PROGRESSED_EVIDENCE_THRESHOLDS`, `PROGRESSED_PENALTY_BY_EVIDENCE_COUNT`
-등, v0.1/v0.2 공통이라 안전하게 재사용 가능)를 그대로 쓰고, Transition
-결합(0.60/0.20/0.20 가중합)과 alignment bonus(조건 충족 시 항상 +8)만
-이 스크립트 안에서 v0.1 그대로 재현한다 — `score_pattern_a()`/
-`_compute_transition()`/`_alignment_bonus()`는 이제 v0.2 동작이라 Candidate
-A 계산에 쓰지 않는다. `score_pattern_a()`는 별도로 "현재 production이
-실제로 무엇을 반환하는가"를 보여주는 `current_v02_score` 참고 컬럼에만
-쓴다.
+v0.1 재현 함수다(재리뷰 후속, 아래 "버전 고정 안내" 참고).
+
+**완전 독립 고정(재현성 최종 후속)**: `_score_v01_baseline()`은 Base
+curve/weight, Transition curve/weight, progressed evidence threshold/
+penalty table을 전부 `V01_*` 상수(이 스크립트 안에 리터럴로 직접 옮겨
+적음)로 계산한다 — production `pattern_a_score.py`의 `BASE_WEIGHTS`/
+`BASE_POINTS`/`MA24_SLOPE_POINTS`/`WEEKLY_MA12_SLOPE_POINTS`/
+`MA24_SLOPE_ACCELERATION_POINTS`/`PROGRESSED_EVIDENCE_THRESHOLDS`/
+`PROGRESSED_PENALTY_BY_EVIDENCE_COUNT`는 이 계산 경로 어디에서도
+참조하지 않는다. 값을 담지 않는 순수 계산 로직(`_weighted_piecewise_score`,
+`_harmonic_mean`, `_piecewise_linear`, `_is_missing`, `_transition_alignment`)
+만 production에서 재사용한다 — 이 함수들은 어떤 curve/weight/threshold도
+하드코딩하지 않고 인자로 받은 값만 계산하므로, production Score가 v0.3/
+v0.4로 바뀌어도 frozen v0.1 baseline 결과에 영향을 주지 않는다.
+`score_pattern_a()`/`_compute_transition()`/`_alignment_bonus()`는 이제
+v0.2 동작이라 Candidate A 계산에 전혀 쓰지 않는다 — `score_pattern_a()`는
+별도로 "현재 production이 실제로 무엇을 반환하는가"를 보여주는
+`current_v02_score` 참고 컬럼에만 쓴다.
 
 Transition Candidate:
     A. v0.1 그대로: 0.60*ma24_core + 0.20*weekly + 0.20*acceleration (가중합)
@@ -74,12 +80,8 @@ from trend_scanner.features.downtrend_structure import (
 )
 from trend_scanner.patterns.pattern_a_score import (
     ALIGNMENT_BONUS,
-    BASE_POINTS,
-    BASE_WEIGHTS,
     MA24_SLOPE_ACCELERATION_POINTS,
     MA24_SLOPE_POINTS,
-    PROGRESSED_EVIDENCE_THRESHOLDS,
-    PROGRESSED_PENALTY_BY_EVIDENCE_COUNT,
     WEEKLY_MA12_SLOPE_POINTS,
     _harmonic_mean,
     _is_missing,
@@ -88,6 +90,14 @@ from trend_scanner.patterns.pattern_a_score import (
     _weighted_piecewise_score,
     score_pattern_a,
 )
+
+# 주의(재현성 최종 후속): 위 4개(MA24_SLOPE_ACCELERATION_POINTS/
+# MA24_SLOPE_POINTS/WEEKLY_MA12_SLOPE_POINTS/ALIGNMENT_BONUS)는 Candidate
+# B/C(core_score/support_score 계산, align_variants의 "keep8" 옵션)에서만
+# 쓴다 — v0.1/v0.2가 이 개별 curve/상수는 그대로 공유하기 때문에 안전하고,
+# 이번 라운드도 Candidate B/C 로직은 건드리지 않는다(item 10). **Candidate
+# A(_score_v01_baseline)는 이 production import를 전혀 쓰지 않는다** —
+# 아래 V01_* 상수만 쓴다.
 from trend_scanner.validation.historical_snapshot import (
     HistoricalSnapshot,
     build_historical_snapshot,
@@ -194,26 +204,72 @@ def _feature_values(features: Any) -> dict[str, float]:
 # pattern_a_score.py는 이제 v0.2를 반환하므로(score_pattern_a,
 # _compute_transition, _alignment_bonus는 전부 v0.2 동작), Candidate A는
 # 이 스크립트 안에서 v0.1 Score Design(commit 6e7cc95~fffce85 직전)을
-# 명시적으로 재현한다. Base Score/harmonic mean/progressed penalty/
-# required anchor는 v0.1과 v0.2가 완전히 동일하므로 pattern_a_score.py의
-# pure helper를 그대로 재사용한다 — Transition 결합(가중합)과 alignment
-# bonus(조건 충족 시 항상 +8)만 v0.1 그대로 이 스크립트 안에 고정한다.
+# 명시적으로 재현한다.
+#
+# **완전 독립 고정(재현성 최종 후속)**: Base curve/weight, Transition
+# curve/weight, progressed evidence threshold/penalty table을 전부
+# V01_* 상수로 이 스크립트 안에 직접 옮겨 적었다 — production
+# pattern_a_score.py의 BASE_WEIGHTS/BASE_POINTS/MA24_SLOPE_POINTS/
+# WEEKLY_MA12_SLOPE_POINTS/MA24_SLOPE_ACCELERATION_POINTS/
+# PROGRESSED_EVIDENCE_THRESHOLDS/PROGRESSED_PENALTY_BY_EVIDENCE_COUNT는
+# _score_v01_baseline() 계산 경로 어디에서도 참조하지 않는다. 지금은
+# v0.1/v0.2가 이 값들을 그대로 공유해서 결과가 같지만, 그건 "우연히
+# 같다"이지 "같은 걸 가리킨다"가 아니다 — 앞으로 v0.3에서 이 curve/
+# threshold/penalty 중 하나라도 바뀌어도 frozen v0.1 baseline은 여기
+# 적힌 리터럴 값을 계속 쓴다. _piecewise_linear/_harmonic_mean/
+# _is_missing/_weighted_piecewise_score/_transition_alignment는 값을
+# 담고 있지 않은 순수 계산 로직이라 재사용한다(item 9).
+V01_RANGE_36M_POINTS: tuple[tuple[float, float], ...] = ((0.6, 100.0), (1.2, 60.0), (2.0, 0.0))
+V01_AVG_PRICE_CHANGE_12M_POINTS: tuple[tuple[float, float], ...] = ((0.10, 100.0), (0.30, 50.0), (0.60, 0.0))
+V01_MA_SPREAD_POINTS: tuple[tuple[float, float], ...] = ((0.10, 100.0), (0.25, 50.0), (0.40, 0.0))
+V01_BASE_WEIGHTS: dict[str, float] = {
+    "range_36m": 0.55,
+    "avg_price_change_12m": 0.30,
+    "ma_spread": 0.15,
+}
+V01_BASE_POINTS: dict[str, tuple[tuple[float, float], ...]] = {
+    "range_36m": V01_RANGE_36M_POINTS,
+    "avg_price_change_12m": V01_AVG_PRICE_CHANGE_12M_POINTS,
+    "ma_spread": V01_MA_SPREAD_POINTS,
+}
+
+V01_MA24_SLOPE_POINTS: tuple[tuple[float, float], ...] = (
+    (-0.05, 0.0),
+    (0.00, 50.0),
+    (0.05, 90.0),
+    (0.15, 100.0),
+)
+V01_WEEKLY_MA12_SLOPE_POINTS: tuple[tuple[float, float], ...] = ((0.00, 20.0), (0.15, 100.0))
+V01_MA24_SLOPE_ACCELERATION_POINTS: tuple[tuple[float, float], ...] = ((0.00, 30.0), (0.05, 100.0))
 V01_TRANSITION_WEIGHTS: dict[str, float] = {
     "ma24_slope": 0.60,
     "weekly_ma12_slope": 0.20,
     "ma24_slope_acceleration": 0.20,
 }
 V01_TRANSITION_POINTS: dict[str, tuple[tuple[float, float], ...]] = {
-    "ma24_slope": MA24_SLOPE_POINTS,
-    "weekly_ma12_slope": WEEKLY_MA12_SLOPE_POINTS,
-    "ma24_slope_acceleration": MA24_SLOPE_ACCELERATION_POINTS,
+    "ma24_slope": V01_MA24_SLOPE_POINTS,
+    "weekly_ma12_slope": V01_WEEKLY_MA12_SLOPE_POINTS,
+    "ma24_slope_acceleration": V01_MA24_SLOPE_ACCELERATION_POINTS,
 }
-# 리터럴로 고정한다(ALIGNMENT_BONUS를 import해서 재사용하지 않는다) —
-# 지금은 우연히 v0.2의 "full bonus" 값(8.0)과 같지만, 이 상수가 나중에
-# v0.3에서 바뀌면 frozen v0.1 baseline도 조용히 따라 바뀌는 걸 막기
-# 위해서다. v0.1 baseline은 "그 당시 실제로 썼던 숫자"를 재현하는 것이지
-# 현재 production 상수를 참조하는 게 아니다.
+
+# core strength 조건은 v0.1에 없다 — 정렬 충족 시 항상 전액 지급.
 V01_ALIGNMENT_BONUS = 8.0
+
+V01_PROGRESSED_EVIDENCE_THRESHOLDS: dict[str, float] = {
+    "range_36m": 1.2,
+    "avg_price_change_12m": 0.30,
+    "ma_spread": 0.20,
+    "ma24_slope": 0.10,
+    "range_position": 0.85,
+}
+V01_PROGRESSED_PENALTY_BY_EVIDENCE_COUNT: dict[int, float] = {
+    0: 0.0,
+    1: 0.0,
+    2: 10.0,
+    3: 20.0,
+    4: 28.0,
+    5: 35.0,
+}
 
 
 @dataclass
@@ -230,7 +286,7 @@ class V01BaselineResult:
 
 def _v01_progressed_evidence_count(fv: dict[str, float]) -> int:
     count = 0
-    for name, threshold in PROGRESSED_EVIDENCE_THRESHOLDS.items():
+    for name, threshold in V01_PROGRESSED_EVIDENCE_THRESHOLDS.items():
         value = fv.get(name)
         if _is_missing(value):
             continue
@@ -240,13 +296,15 @@ def _v01_progressed_evidence_count(fv: dict[str, float]) -> int:
 
 
 def _v01_progressed_penalty(evidence_count: int) -> float:
-    return PROGRESSED_PENALTY_BY_EVIDENCE_COUNT.get(evidence_count, 35.0)
+    return V01_PROGRESSED_PENALTY_BY_EVIDENCE_COUNT.get(evidence_count, 35.0)
 
 
 def _score_v01_baseline(fv: dict[str, float]) -> V01BaselineResult:
     """frozen v0.1 Score Design 그대로 재현한다(재구현이 아니라 v0.1이
-    실제로 썼던 가중합 Transition + 항상 +8 alignment bonus)."""
-    base = _weighted_piecewise_score(fv, BASE_WEIGHTS, BASE_POINTS)
+    실제로 썼던 가중합 Transition + 항상 +8 alignment bonus). 이 함수는
+    production pattern_a_score.py의 scoring constant를 하나도 참조하지
+    않는다 — 전부 위 V01_* 상수다."""
+    base = _weighted_piecewise_score(fv, V01_BASE_WEIGHTS, V01_BASE_POINTS)
     transition = _weighted_piecewise_score(fv, V01_TRANSITION_WEIGHTS, V01_TRANSITION_POINTS)
 
     required_missing = _is_missing(fv.get("range_36m")) or _is_missing(fv.get("ma24_slope"))

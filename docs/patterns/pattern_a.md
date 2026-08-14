@@ -1291,13 +1291,25 @@ Score 코드는 손대지 않은 상태)로 development set 64 snapshot(explorat
 A/B/C/D를 계산해 CSV(`data/processed/score_v02_candidate_compare.csv`,
 로컬 전용)로 남겼다. **Candidate A는 당시(freeze 이전) `score_pattern_a()`
 호출 결과였지만, 재현성 후속 수정에서 `_score_v01_baseline()`이라는
-frozen v0.1 baseline 재현 함수로 고정됐다** — Base Score/harmonic mean/
-progressed penalty/required anchor는 pattern_a_score.py의 pure helper를
-그대로 재사용하고(v0.1/v0.2 공통이라 안전), Transition 가중합과 항상
-+8인 alignment bonus만 스크립트 안에 v0.1 그대로 남겼다. 따라서 **현재
-main HEAD에서도 v0.1 baseline(A) / Candidate B / Candidate C(=production
-v0.2)** 비교를 재현할 수 있다 — 스크립트 실행 시 Candidate C가 실제
-`score_pattern_a()` 출력과 정확히 일치하는지도 매번 자동으로 확인한다.
+frozen v0.1 baseline 재현 함수로 고정됐다.** 따라서 **현재 main HEAD에서도
+v0.1 baseline(A) / Candidate B / Candidate C(=production v0.2)** 비교를
+재현할 수 있다 — 스크립트 실행 시 Candidate C가 실제 `score_pattern_a()`
+출력과 정확히 일치하는지도 매번 자동으로 확인한다.
+
+**완전 독립 고정(재현성 최종 후속)**: Score Design v0.1의 모든 scoring
+constant(Base curve/weight, Transition curve/weight, progressed evidence
+threshold/penalty table, alignment bonus 값)를 `V01_*` 상수로 스크립트
+안에 리터럴로 직접 옮겨 적었다 — production `pattern_a_score.py`의
+`BASE_WEIGHTS`/`BASE_POINTS`/`MA24_SLOPE_POINTS`/`WEEKLY_MA12_SLOPE_POINTS`/
+`MA24_SLOPE_ACCELERATION_POINTS`/`PROGRESSED_EVIDENCE_THRESHOLDS`/
+`PROGRESSED_PENALTY_BY_EVIDENCE_COUNT`는 Candidate A 계산 경로 어디에서도
+import하지 않는다. 재사용하는 건 값을 담지 않는 순수 계산 로직
+(`_weighted_piecewise_score`, `_harmonic_mean`, `_piecewise_linear`,
+`_is_missing`, `_transition_alignment`)뿐이다. 따라서 **향후 production
+Score가 v0.3/v0.4로 바뀌어 Base curve/Transition curve/penalty가
+달라져도 Candidate A 결과는 전혀 변하지 않는다** — 테스트에서 production
+상수를 monkeypatch로 임의 변경해도 v0.1 baseline 결과가 그대로임을
+직접 검증한다(`tests/test_score_v02_candidate_compare.py`).
 
 holdout_early_trend/exploration_early_trend는 이번 라운드에서 Stage
 Label Rubric으로 재감사하지 않았다(범위 밖) — OOS positive_early_trend

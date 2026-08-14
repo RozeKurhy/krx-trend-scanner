@@ -45,6 +45,98 @@ def _features(**overrides) -> SimpleNamespace:
     return SimpleNamespace(**base)
 
 
+# --- v0.1 baseline: production 상수로부터 완전 독립(재현성 최종 후속) ---
+
+
+def test_v01_baseline_does_not_import_production_base_or_penalty_constants():
+    """production BASE_WEIGHTS/BASE_POINTS/PROGRESSED_EVIDENCE_THRESHOLDS/
+    PROGRESSED_PENALTY_BY_EVIDENCE_COUNT를 다시 import하면 이 테스트가
+    실패한다 — v0.1 baseline이 production 상수에 조용히 재의존하는 걸
+    막는 구조적 가드다."""
+    forbidden = (
+        "BASE_WEIGHTS",
+        "BASE_POINTS",
+        "PROGRESSED_EVIDENCE_THRESHOLDS",
+        "PROGRESSED_PENALTY_BY_EVIDENCE_COUNT",
+    )
+    for name in forbidden:
+        assert not hasattr(compare, name), f"{name}은 production에서 import하면 안 된다(V01_* 상수만 써야 한다)"
+
+
+def test_v01_base_constants_are_frozen_literals():
+    assert compare.V01_RANGE_36M_POINTS == ((0.6, 100.0), (1.2, 60.0), (2.0, 0.0))
+    assert compare.V01_AVG_PRICE_CHANGE_12M_POINTS == ((0.10, 100.0), (0.30, 50.0), (0.60, 0.0))
+    assert compare.V01_MA_SPREAD_POINTS == ((0.10, 100.0), (0.25, 50.0), (0.40, 0.0))
+    assert compare.V01_BASE_WEIGHTS == {
+        "range_36m": 0.55,
+        "avg_price_change_12m": 0.30,
+        "ma_spread": 0.15,
+    }
+
+
+def test_v01_transition_constants_are_frozen_literals():
+    assert compare.V01_MA24_SLOPE_POINTS == ((-0.05, 0.0), (0.00, 50.0), (0.05, 90.0), (0.15, 100.0))
+    assert compare.V01_WEEKLY_MA12_SLOPE_POINTS == ((0.00, 20.0), (0.15, 100.0))
+    assert compare.V01_MA24_SLOPE_ACCELERATION_POINTS == ((0.00, 30.0), (0.05, 100.0))
+    assert compare.V01_TRANSITION_WEIGHTS == {
+        "ma24_slope": 0.60,
+        "weekly_ma12_slope": 0.20,
+        "ma24_slope_acceleration": 0.20,
+    }
+
+
+def test_v01_progressed_and_alignment_constants_are_frozen_literals():
+    assert compare.V01_PROGRESSED_EVIDENCE_THRESHOLDS == {
+        "range_36m": 1.2,
+        "avg_price_change_12m": 0.30,
+        "ma_spread": 0.20,
+        "ma24_slope": 0.10,
+        "range_position": 0.85,
+    }
+    assert compare.V01_PROGRESSED_PENALTY_BY_EVIDENCE_COUNT == {
+        0: 0.0,
+        1: 0.0,
+        2: 10.0,
+        3: 20.0,
+        4: 28.0,
+        5: 35.0,
+    }
+    assert compare.V01_ALIGNMENT_BONUS == 8.0
+
+
+def test_v01_baseline_survives_production_constant_mutation(monkeypatch):
+    """future drift 시뮬레이션(item 13): production 상수를 억지로 바꿔도
+    frozen v0.1 결과가 그대로여야 한다 — "지금 우연히 같아서 통과"가
+    아니라 "애초에 그 값을 안 본다"는 걸 직접 증명한다."""
+    import trend_scanner.patterns.pattern_a_score as production
+
+    fv = compare._feature_values(_skc_like_features())
+    before = compare._score_v01_baseline(fv)
+
+    monkeypatch.setattr(
+        production,
+        "BASE_WEIGHTS",
+        {"range_36m": 1.0, "avg_price_change_12m": 0.0, "ma_spread": 0.0},
+    )
+    monkeypatch.setattr(production, "MA24_SLOPE_POINTS", ((-1.0, 0.0), (1.0, 100.0)))
+    monkeypatch.setattr(production, "WEEKLY_MA12_SLOPE_POINTS", ((-1.0, 0.0), (1.0, 100.0)))
+    monkeypatch.setattr(production, "MA24_SLOPE_ACCELERATION_POINTS", ((-1.0, 0.0), (1.0, 100.0)))
+    monkeypatch.setattr(
+        production,
+        "PROGRESSED_PENALTY_BY_EVIDENCE_COUNT",
+        {0: 99.0, 1: 99.0, 2: 99.0, 3: 99.0, 4: 99.0, 5: 99.0},
+    )
+    monkeypatch.setattr(production, "ALIGNMENT_BONUS", 1.0)
+
+    after = compare._score_v01_baseline(fv)
+
+    assert after.base_score == before.base_score
+    assert after.transition_score == before.transition_score
+    assert after.alignment_bonus == before.alignment_bonus
+    assert after.progressed_penalty == before.progressed_penalty
+    assert after.pattern_a_score == pytest.approx(before.pattern_a_score)
+
+
 # --- v0.1 baseline: Transition formula ---
 
 
