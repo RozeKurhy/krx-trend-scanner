@@ -376,9 +376,254 @@ Classifier redesign 별도 예정). 이 불일치는 **diagnostic으로만
    봤던 방향 그대로 재현됐다. Strong Core Failure는 애초에 v0.2가
    풀려던 문제가 아니었고, 그대로 안 풀렸다(16절, 예상된 결과).
 
-**종합**: Score 산식을 수정하지 않고 **Pattern A Score v0.2 Final
-Freeze Confirmed**로 기록한다. v0.2가 설계 목표(Core/Supporting
-상호작용, alignment FP, Pattern A/B 경계)에서 의도한 방향으로
-개선됐다는 근거가 OOS2에서 재현됐다. 동시에 core=0 절대 붕괴라는
-새 failure mechanism 1건을 v0.3 development evidence로 등록한다 —
-이번 라운드에서는 수정하지 않는다.
+**종합(재리뷰 후속으로 잠정 하향)**: Score 산식은 수정하지 않는다.
+다만 hard_negative_false_turn 4건(median 74.65, max 100.00)이
+positive_pre_breakout median(64.64)보다 높게 나온 원인을 개별
+분해하지 않은 채 아래 문구로 확정했던 것은 성급했다 — 판정을
+"Hard Negative Failure Audit" 절(아래)의 결과가 나올 때까지
+한 단계 낮춘다.
+
+> **Pattern A Score v0.2 — Frozen after OOS2. Final confirmation
+> pending hard-negative audit.** (잠정. 아래 "## Hard Negative
+> Failure Audit" 절의 "v0.2 최종 판단"에서 **Final Freeze
+> Confirmed로 재확정**됐다 — 이 문서의 현재 상태 판정은 그 절이
+> 최종본이고, 여기 문구는 판단 과정을 남겨두기 위한 이력이다.)
+
+## Hard Negative Failure Audit
+
+`scripts/oos2_hard_negative_audit.py`로 manifest의 hard_negative_
+false_turn 4건(추가/삭제 없음, 그대로)을 다시 계산했다 — production
+`score_pattern_a()`/`_score_v01_baseline()`을 identity로 재사용하고,
+결과 필드에서 counterfactual만 사후에 유도했다. Feature/Score 자체는
+전부 snapshot_date 당시 데이터만 쓴다 — selection_reason의 미래
+outcome은 분류(왜 이 사례가 "false turn"인지)에만 쓰고 계산에는
+쓰지 않았다.
+
+### 4건 개별 component
+
+| ticker | name | snapshot_date | ma24_slope | weekly_ma12_slope | ma24_slope_accel | range_position | base_score | core_score | support_score | confirmation_bonus | transition_score | balanced_core_score | alignment_bonus | progressed_evidence_count | progressed_penalty | pattern_a_score | v0.1 | stage |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 015760 | 한국전력 | 2024-02-29 | -0.0050 | 0.0572 | 0.0213 | 0.768 | 100.00 | 44.99 | 55.17 | 0.00 | 44.99 | 62.06 | 0 | 0 | 0 | 62.06 | 65.83 | transition |
+| 023530 | 롯데쇼핑 | 2023-12-31 | -0.0250 | 0.0205 | 0.0230 | 0.143 | 91.32 | 25.00 | 46.54 | 0.00 | 25.00 | 39.25 | 0 | 0 | 0 | 39.25 | 49.14 | base |
+| 001450 | 현대해상 | 2017-08-31 | 0.0530 | 0.0820 | 0.0158 | 0.865 | 88.41 | 90.30 | 57.93 | 11.59 | 100.00 | 93.85 | 8 | 1 | 0 | **100.00** | 90.51 | early_trend |
+| 007070 | GS리테일 | 2017-04-30 | 0.0485 | 0.0181 | -0.0133 | 0.665 | 80.81 | 88.80 | 29.83 | 5.97 | 94.77 | 87.24 | 0 | 0 | 0 | 87.24 | 72.18 | early_trend |
+
+selection_reason 요약(전체는 manifest 참고): 015760은 일시 반등 후
+되돌림, 023530은 지속 하락 확인, 001450은 2017년 돌파 후 2019년까지
+2015년 수준으로 되돌림, 007070은 2017년 강세 후 2024년까지도 미회복.
+
+**중요한 관찰**: 4건이 균질하지 않다. 023530(39.25)과 015760(62.06)은
+positive_pre_breakout median(64.64)과 비슷하거나 낮다 — 이 둘은
+애초에 "높은 Score" 문제가 아니다. 그룹 median(74.65)과 max(100.00)를
+끌어올리는 건 001450과 007070 2건뿐이다.
+
+### Failure mechanism 분류
+
+| ticker | 분류 | 근거 |
+|---|---|---|
+| 015760 | F(Mixed, 문제 아님) | core_score 44.99로 약함, confirmation_bonus=0(gate 미작동, 정상), Base=100이 harmonic mean을 끌어올린 것뿐. 최종 62.06은 pre_breakout median 이하 |
+| 023530 | 해당 없음(정상 억제) | 39.25로 낮게 나옴 — 애초에 "false positive"가 아니라 v0.2가 의도대로 억제한 케이스 |
+| 001450 | **A. Strong Core Failure**(주), C는 부차적 | core_score=90.30(매우 강함), transition_score=100(정당한 core+confirmation), balanced_core=93.85 — alignment 없이도 이미 93.85로 매우 높음. alignment는 93.85→100(clip) 구간만 밀어올림 |
+| 007070 | **A. Strong Core Failure** | core_score=88.80, transition=94.77, alignment_bonus=0(acceleration이 음수라 정렬 조건 미충족) — alignment 관여 전혀 없이 balanced_core_score=87.24 자체가 최종값 |
+
+**B(Base False Positive)/D(Progressed Penalty Failure)/E(Core+
+Confirmation Failure)는 4건 전부 해당 없음** — 아래에서 각각 확인.
+
+### strong_core_failure 그룹과 비교
+
+| case_group | n | min | median | max |
+|---|---|---|---|
+| hard_negative_false_turn | 4 | 39.25 | 74.65 | 100.00 |
+| strong_core_failure | 5 | 30.44 | 64.89 | 98.17 |
+
+component median 비교:
+
+| | hard_negative_false_turn | strong_core_failure |
+|---|---|---|
+| base_score | **89.87** | 51.80 |
+| core_score | 66.90 | **92.87** |
+| support_score | 50.85 | 37.53 |
+| transition_score | 69.88 | 99.80 |
+
+core_score만 보면 hard_negative 그룹의 median(66.90)이 strong_core_
+failure(92.87)보다 낮아 보이지만, 이건 015760/023530(core 25~45)이
+median을 끌어내린 것이고, **001450/007070만 떼어 놓으면 core_score
+90.30/88.80으로 strong_core_failure 그룹의 median(92.87)과 사실상
+같은 구간**이다. 오히려 base_score는 001450/007070(88.41/80.81)이
+strong_core_failure 그룹 median(51.80)보다 훨씬 높다 — 즉 이 두
+건은 "strong_core_failure의 반복"일 뿐 아니라, **strong_core_failure
+그룹보다 Base까지 더 깨끗해 보이는 케이스였다**. Base+Core가 둘 다
+좋아 보였는데도 이후 실패했다는 뜻이라 A(Strong Core Failure) 분류를
+더 강하게 뒷받침한다 — snapshot 하나만 보는 구조로는 원리적으로
+가려낼 수 없는 persistence 문제라는 결론과 일치한다.
+
+### Base False Positive 분석 (item 7)
+
+**100점을 만든 001450/007070만 보면 안 된다** — item 7이 요구하는
+질문("Base가 매우 높은데 실제로는 장기 Base라고 보기 어려운 사례가
+있는가")에 대한 답은 오히려 **015760과 023530**에 있다.
+
+| ticker | base_score | range_36m | avg_price_change_12m | ma_spread | 실제 구조 |
+|---|---|---|---|---|---|
+| 015760 | **100.00** | 0.540 | -0.085 | 0.036 | 장기 하락 후 일시 반등, 되돌림(hard negative) |
+| 023530 | **91.32** | 0.755 | -0.160 | 0.160 | 2014~2024 지속 하락 확인(23절 selection_reason) |
+| 001450 | 88.41 | 0.803 | +0.143 | 0.119 | 실제 박스형 구조, 이후 실패(core 문제) |
+| 007070 | 80.81 | 1.123 | -0.064 | 0.033 | 실제 박스형 구조, 이후 실패(core 문제) |
+
+메커니즘: `avg_price_change_12m` 곡선의 왼쪽 끝이 `(0.10, 100.0)`이다
+— 0.10 미만이면 전부 100점이고, **음수(가격이 실제로 하락)도 예외
+없이 100점**이다. 015760(range_36m=0.540도 첫 breakpoint 0.6 미만이라
+100점, ma_spread=0.036도 첫 breakpoint 0.10 미만이라 100점)은 세
+Feature 전부가 각자의 clamp 구간에 걸려 base_score가 정확히 100.00이
+됐다 — "장기 박스"가 아니라 "장기 하락 중 반등 실패" 종목인데도 Base
+축 하나만 보면 만점이다. 023530도 직접 계산하면 재현된다: `0.55×
+89.64(range_36m) + 0.30×100(avg_price_change_12m, 음수 clamp) +
+0.15×80.10(ma_spread) = 91.32`.
+
+**001450/007070의 100점/87.24점은 Base 문제가 아니다** — 001450의
+avg_price_change_12m은 +0.143로 clamp 구간이 아니라 정상적인 완만한
+상승이고, 두 종목 다 실제로 타이트한 박스 구조였다(A. Strong Core
+Failure 결론 유지). 다만 **Base 축 자체는 "횡보"와 "하락"을 구분하지
+못한다**는 게 015760/023530에서 확인됐다 — 이번 4건의 높은 Score
+원인은 아니지만(core_score가 낮아 015760=62.06/023530=39.25로 최종
+결과는 억제됐다), Base 곡선 설계의 별도 gap으로 v0.3 evidence에
+등록한다(아래 "새롭게 확인된 failure mechanism" 참고).
+
+### Alignment counterfactual (item 8)
+
+| ticker | balanced_core_score | alignment_bonus | pattern_a_score | final_without_alignment | alignment_lift | raw_final_before_clip |
+|---|---|---|---|---|---|---|
+| 015760 | 62.06 | 0 | 62.06 | 62.06 | 0.00 | 62.06 |
+| 023530 | 39.25 | 0 | 39.25 | 39.25 | 0.00 | 39.25 |
+| 001450 | 93.85 | 8 | 100.00 | 93.85 | **6.15** | 101.85 |
+| 007070 | 87.24 | 0 | 87.24 | 87.24 | 0.00 | 87.24 |
+
+alignment가 관여한 건 001450 1건뿐이고, 그 1건도 **alignment 없이
+이미 93.85로 충분히 높다** — alignment_lift(6.15)는 93.85를 100
+clip까지 밀어올린 "추가 효과"이지 100점의 원인이 아니다. `raw_final_
+before_clip=101.85`로 clip 폭 자체도 1.85점(alignment 미포함 시
+93.85, alignment 포함 시 101.85 중 100을 넘는 부분만 1.85)이라 크지
+않다. **alignment는 보조적 기여이지 주된 원인이 아니다** — Alignment
+Amplification(C)을 독립적인 구조적 문제로 등록하지 않는다.
+
+### Progressed penalty 분석 (item 9)
+
+| ticker | range_position | avg_price_change_12m | progressed_evidence_count | progressed_penalty |
+|---|---|---|---|---|
+| 001450 | 0.865 | 0.143 | 1 (range_position만 threshold 0.85 초과) | 0 |
+| 007070 | 0.665 | -0.064 | 0 | 0 |
+
+001450은 range_position 하나만 threshold를 살짝 넘었고 나머지 4개
+evidence(range_36m/avg_price_change_12m/ma_spread/ma24_slope)는 전부
+threshold 미달이다 — "이미 많이 진행된 상태"라기보다 "막 신고가를
+찍은 신선한 돌파"에 더 가까운 프로필이라, evidence_count=1/penalty=0은
+설계 의도상 합리적이다. 007070은 avg_price_change_12m이 오히려
+음수라 evidence 0건이 당연하다. **Progressed Penalty Failure(D)로
+등록하지 않는다** — 두 사례 다 "아직 진행되지 않은 신선한 돌파처럼
+보였다"는 게 핵심이고, 그게 바로 Strong Core Failure의 정의 그
+자체다(진행되지 않았으니 페널티가 없는 게 당연하고, 그런데도 나중에
+실패했다).
+
+### Core + Confirmation 분석 (item 10)
+
+| ticker | core_score | support_score | confirmation_bonus | confirmation_share |
+|---|---|---|---|---|
+| 001450 | 90.30 | 57.93 | 11.59 | 0.116 |
+| 007070 | 88.80 | 29.83 | 5.97 | 0.063 |
+
+두 사례 다 core_score가 88~90으로 이미 매우 강해서 confirmation_
+share가 6~12%에 불과하다 — transition_score는 core_score가 거의
+전부를 설명하고 confirmation_bonus는 미미한 보정치다. **Weak Core +
+Strong Support 문제(E)가 재발한 게 아니다** — core가 이미 80~100
+구간이면 이 분류에 넣지 않는다는 기준에 따라 명확히 제외한다.
+
+### 100점 사례 완전 분해 (001450 현대해상, 2017-08-31)
+
+```
+Base       = 88.41                     (range_36m/avg_price_change_12m/ma_spread 가중합)
+Core       = 90.30  (ma24_slope=0.0530)
+Support    = 57.93  (weekly=0.0820, accel=0.0158 평균)
+Confirmation gate(core=90.30) ≈ 1.0 → confirmation_bonus = 20.0 * (57.93/100) * gate ≈ 11.59
+Transition = min(100, 90.30 + 11.59) = 100.00   (min() clip 발동)
+Balanced   = harmonic_mean(88.41, 100.00) = 93.85
+Alignment  = weekly>0 and ma24>0 and accel>0 → 전부 충족, core>=60 → +8.0
+Penalty    = evidence_count=1 → 0.0
+raw_final_before_clip = 93.85 + 8.0 - 0.0 = 101.85
+pattern_a_score = clip(101.85, 0, 100) = 100.00   (여기서도 clip 발동)
+```
+
+**clip이 두 번 발동한다**: transition_score 단계에서 한 번(90.30+11.59
+=101.89→100, 이건 core+confirmation이 이미 100을 넘어서인데 이 자체는
+core가 워낙 강해서 생긴 것), 최종 pattern_a_score 단계에서 한 번
+(101.85→100). raw_final_before_clip=101.85는 120처럼 극단적으로 큰
+값이 아니라 100을 살짝(1.85점) 넘는 수준이라 — "정책이 완전히
+고장났다"기보다 "core+alignment가 둘 다 만점 근처로 겹쳤을 때 자연스럽게
+생기는 ceiling 근접"으로 해석한다. 근본 원인은 alignment가 아니라
+**core_score=90.30 자체가 진짜로 강했다**는 것이다.
+
+### v0.1 vs v0.2 비교
+
+| ticker | v0.1 | v0.2 | diff | 분류 |
+|---|---|---|---|---|
+| 015760 | 65.83 | 62.06 | -3.77 | 거의 동일(소폭 개선) |
+| 023530 | 49.14 | 39.25 | -9.89 | 개선(억제) |
+| 001450 | 90.51 | 100.00 | **+9.49** | 악화 |
+| 007070 | 72.18 | 87.24 | **+15.06** | 악화 |
+
+001450/007070 둘 다 v0.2에서 v0.1보다 더 높아졌다 — core_score가
+강한 케이스에서 v0.2의 Core+Confirmation 구조(transition이 core를
+하한으로 갖고 confirmation_bonus가 추가됨)가 v0.1의 가중합(0.6·core+
+0.2·weekly+0.2·accel)보다 항상 크거나 같기 때문이다. **이건 새로운
+버그가 아니라 Core+Confirmation 구조의 known tradeoff**로 기록한다 —
+Weak Core+Strong Support를 억제하려고 만든 구조가, Core가 이미 강한
+케이스에서는 v0.1보다 더 관대해지는 것도 같은 설계의 반대쪽 효과다.
+
+### 새롭게 확인된 failure mechanism
+
+**4건의 높은 Score를 설명하는 새 *메커니즘*은 없다.** 그룹 median/max를
+끌어올리는 2건(001450/007070)은 전부 A(Strong Core Failure)로
+설명되고, B/D/E는 해당 없음, C(alignment)는 부차적 기여로만 확인됐다.
+나머지 2건(015760/023530)은 애초에 문제가 아니었다(pre_breakout
+median 이하).
+
+다만 이 audit 과정에서 확인된 **새 *정보* 2건**은 있다 — "4건의 높은
+Score를 설명하지는 않지만" v0.3에 남겨야 하는 것들이다: (1) Base
+`avg_price_change_12m` 음수 clamp가 하락 종목에 만점을 준다는 것
+(바로 위 절), (2) 001450/007070이 v0.1보다 v0.2에서 각각 +9.49/
++15.06 더 높아진 것(아래 "v0.1 vs v0.2 비교" 절 — 이건 이미 위에서
+다뤘고, known tradeoff로 기록했다).
+
+### 기존 core=0 failure와의 관계
+
+이번 audit과 무관하다 — 완전히 분리된 별개의 v0.3 evidence다. 이번
+4건 중 core_score=0인 케이스는 없다(015760이 가장 낮아도 44.99).
+v0.3 development evidence를 3건으로 분리해서 기록한다.
+
+- **A. core=0 collapse**(20절): `confirmation_gate(core=0)=0` →
+  `transition_score=0` → harmonic mean이 `base_score`를 무시하고
+  강제로 0. v0.2가 새로 만든 절대 붕괴 지점.
+- **B. hard negative / strong core failure persistence 문제**(이번
+  절): snapshot 하나만 보는 구조상, "지금 core가 강하다"와 "이 core가
+  유지될 것이다"를 구분할 신호가 Pattern A Score 안에 없다. v0.1에도
+  있던 한계이고 v0.2에서 core+confirmation 구조 때문에 오히려 살짝
+  더 두드러진다(001450: +9.49, 007070: +15.06). 두 evidence는
+  메커니즘이 다르므로 v0.3에서 서로 다른 해법이 필요할 수 있다(A는
+  transition의 하한 설계 문제, B는 애초에 단일 snapshot으로는 풀기
+  어려운 forward-looking 정보 부재 문제).
+- **C. Base `avg_price_change_12m` 음수 clamp**("Base False Positive
+  분석" 절): 곡선 좌단이 `(0.10, 100.0)`이라 음수(실제 가격 하락)도
+  전부 100점을 받는다 — 015760(base=100.00, 세 Feature 전부 clamp),
+  023530(base=91.32)에서 확인. 이번 4건의 높은 Score 원인은 아니지만
+  (core_score가 낮아 최종 결과는 억제됨), Base 축이 "횡보"와 "하락"을
+  구분 못한다는 건 A/B와 별개인 v0.3 candidate다.
+
+### v0.2 최종 판단
+
+audit 결과는 **Case A**에 해당한다 — hard negative 4건 중 그룹
+median/max를 견인하는 2건은 Strong Core Failure의 반복이고, Base/
+alignment/penalty에서 새로운 구조적 문제가 확인되지 않았다.
+
+> **Pattern A Score v0.2 — Final Freeze Confirmed.**
+
+(재확정. `pattern_a_score.py`는 이번 audit에서도 전혀 수정하지
+않았다.)
