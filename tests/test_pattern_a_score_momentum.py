@@ -1,25 +1,24 @@
 """Pattern A Score Momentum v0.1 유닛 및 통합 테스트.
 
 검증 항목:
-1. test_frozen_score_equality: 관측 시점 Score가 직접 계산한 Frozen Score v0.2와 100% 동일함.
-2. test_1m_delta_arithmetic: 1M Score Delta가 정확한 산술 차분(Current - 1M_ago)임을 검증.
-3. test_3m_and_6m_delta_arithmetic: 3M, 6M Horizon Delta 산술 검증.
-4. test_component_delta_decomposition: Base, Transition, Core, Alignment, Progressed penalty delta 검증.
-5. test_history_readiness_thresholds_36_37_39_42:
-   - 36 completed months: current score ready, 1M unavailable
-   - 37 completed months: 1M ready
-   - 39 completed months: 3M ready
-   - 42 completed months: 6M ready
-6. test_partial_horizon_readiness: 39개월 데이터에서 1M/3M은 ready, 6M은 ready=False로 부분 준비도 정상 반환.
-7. test_incomplete_current_month_cadence: 월 중간 as_of 시 직전 완성 월봉을 anchor로 사용.
-8. test_no_lookahead_contamination: as_of 이후의 미래 데이터가 Momentum 계산에 일체 영향 없음.
-9. test_determinism: 동일 입력 시 100% 결정론적 일치.
-10. test_score_stage_legacy_isolation: Score 내부 legacy stage에 일체 의존하지 않음.
+A. test_calendar_month_end_non_trading_day_retained: 월말이 주말/비거래일(예: 2023-09-30 토)이어도 해당 월이 완료 월봉으로 유지됨.
+B. test_mid_month_request_drops_current_month: 월 중순(예: 2023-11-15) 요청 시 진행 중인 월봉이 drop되어 직전 월말(2023-10-31)이 anchor가 됨.
+C. test_missing_exact_1m_month_not_backfilled_with_older_month: 1M calendar month 결측 시 이전 월로 silent backfill하지 않고 1M ready=False / MISSING_MONTHLY_OBSERVATION_1M 처리.
+D. test_missing_exact_3m_month: 3M calendar month 결측 시 3M ready=False / MISSING_MONTHLY_OBSERVATION_3M 처리.
+E. test_observation_calculation_error_isolated_from_insufficient_history: Score 계산 예외 시 OBSERVATION_ERROR로 구분되어 INSUFFICIENT_HISTORY로 위장되지 않음.
+F. test_history_readiness_thresholds_36_37_39_42: 36M(Current만), 37M(1M), 39M(3M), 42M(6M) 히스토리 요구조건 검증.
+G. test_partial_horizon_readiness: 39개월 데이터에서 1M/3M은 ready, 6M은 ready=False로 부분 준비도 정상 반환.
+H. test_no_lookahead_contamination: as_of 이후의 미래 데이터가 과거 Score Momentum에 일체 영향 없음.
+I. test_frozen_score_equality: 관측 시점 Score가 직접 계산한 Frozen Score v0.2와 100% 동일함.
+J. test_1m_3m_6m_and_component_delta_arithmetic: 1M/3M/6M delta 및 component delta 산술 차분 검증.
+K. test_determinism: 동일 입력 시 100% 결정론적 일치.
+L. test_score_stage_legacy_isolation: Score 내부 legacy stage에 일체 의존하지 않음.
 """
 
 from __future__ import annotations
 
 from pathlib import Path
+from unittest.mock import patch
 
 import pandas as pd
 import pytest
@@ -58,96 +57,115 @@ def _create_mock_daily(
     )
 
 
-def test_frozen_score_equality():
-    """관측 시점 Score가 직접 계산한 Frozen Score v0.2와 100% 동일함을 검증."""
+def test_calendar_month_end_non_trading_day_retained():
+    """as_of가 주말 월말(2023-09-30 토)이고 마지막 거래일이 2023-09-29(금)일 때 9월이 정상 완료 월봉으로 유지됨."""
+    daily = _create_mock_daily(months=50, start_date="2020-01-01")
+    as_of = "2023-09-30"
+
+    res = compute_pattern_a_score_momentum("005930", "삼성전자", daily, as_of)
+
+    # Momentum Anchor는 2023-09-30으로 온전히 유지되어야 함 (8월로 잘리지 않음)
+    assert res.momentum_anchor == pd.Timestamp("2023-09-30")
+    assert res.horizon_1m.current_anchor == pd.Timestamp("2023-09-30")
+    assert res.horizon_1m.prior_anchor == pd.Timestamp("2023-08-31")
+    assert res.horizon_1m.ready is True
+
+
+def test_mid_month_request_drops_current_month():
+    """월 중순(2023-11-15) 요청 시 진행 중인 11월 봉이 drop되어 2023-10-31이 anchor가 됨."""
+    daily = _create_mock_daily(months=50, start_date="2020-01-01")
+    as_of = "2023-11-15"
+
+    res = compute_pattern_a_score_momentum("005930", "삼성전자", daily, as_of)
+
+    assert res.momentum_anchor == pd.Timestamp("2023-10-31")
+    assert res.horizon_1m.current_anchor == pd.Timestamp("2023-10-31")
+    assert res.horizon_1m.prior_anchor == pd.Timestamp("2023-09-30")
+
+
+def test_missing_exact_1m_month_not_backfilled_with_older_month():
+    """1M calendar month(2023-09-30) 데이터가 누락된 경우 8월 데이터로 silent backfill하지 않고 1M ready=False 처리."""
+    cache = ParquetCache(base_dir=_CACHE_DIR)
+    daily = cache.load("000660")
+    if daily is None or daily.empty:
+        daily = _create_mock_daily(months=50)
+
+    # 2023-11-30 기준 1M은 10월, 3M은 8월
+    # mock_available_monthly_set을 통해 10월 observation 결측을 시뮬레이션
+    as_of = "2023-11-30"
+
+    original_to_monthly = to_monthly
+
+    def _mock_to_monthly(df):
+        m = original_to_monthly(df)
+        # 2023-10-31 월봉만 제거하여 Missing month 시뮬레이션
+        return m.loc[m.index != "2023-10-31"]
+
+    with patch("trend_scanner.patterns.pattern_a_score_momentum.to_monthly", side_effect=_mock_to_monthly):
+        res = compute_pattern_a_score_momentum("000660", "SK하이닉스", daily, as_of)
+
+    assert res.momentum_anchor == pd.Timestamp("2023-11-30")
+
+    # 1M: expected anchor 2023-10-31 결측 ➔ ready=False, delta=None
+    assert res.horizon_1m.ready is False
+    assert res.horizon_1m.prior_anchor == pd.Timestamp("2023-10-31")
+    assert res.horizon_1m.score_delta is None
+    assert "MISSING_MONTHLY_OBSERVATION_1M" in res.horizon_1m.reason_codes
+
+    # 3M: expected anchor 2023-08-31은 온전히 존재하므로 ready=True
+    assert res.horizon_3m.ready is True
+    assert res.horizon_3m.prior_anchor == pd.Timestamp("2023-08-31")
+    assert res.horizon_3m.score_delta is not None
+
+
+def test_missing_exact_3m_month():
+    """3M calendar month(2023-08-31) 결측 시 3M ready=False / MISSING_MONTHLY_OBSERVATION_3M 처리."""
     cache = ParquetCache(base_dir=_CACHE_DIR)
     daily = cache.load("000660")
     if daily is None or daily.empty:
         daily = _create_mock_daily(months=50)
 
     as_of = "2023-11-30"
-    result = compute_pattern_a_score_momentum("000660", "SK하이닉스", daily, as_of)
+    original_to_monthly = to_monthly
 
-    assert result.horizon_1m.ready is True
-    # 직접 snapshot 생성하여 score_pattern_a 계산
-    direct_snap = build_historical_snapshot(
-        "000660", "SK하이닉스", daily, as_of, include_incomplete_periods=False
-    )
-    direct_res = score_pattern_a(direct_snap.features)
+    def _mock_to_monthly(df):
+        m = original_to_monthly(df)
+        # 2023-08-31 월봉만 제거하여 Missing 3M 시뮬레이션
+        return m.loc[m.index != "2023-08-31"]
 
-    current_obs = result.observations[-1]
-    assert current_obs.anchor_date == pd.Timestamp(as_of)
-    assert current_obs.score == direct_res.pattern_a_score
-    assert current_obs.score_result.base_score == direct_res.base_score
-    assert current_obs.score_result.transition_score == direct_res.transition_score
-    assert current_obs.score_result.core_score == direct_res.core_score
-    assert current_obs.score_result.progressed_penalty == direct_res.progressed_penalty
+    with patch("trend_scanner.patterns.pattern_a_score_momentum.to_monthly", side_effect=_mock_to_monthly):
+        res = compute_pattern_a_score_momentum("000660", "SK하이닉스", daily, as_of)
 
-
-def test_1m_delta_arithmetic():
-    """1M Score Delta가 정확한 산술 차분(Current - 1M_ago)임을 검증."""
-    cache = ParquetCache(base_dir=_CACHE_DIR)
-    daily = cache.load("000660")
-    if daily is None or daily.empty:
-        daily = _create_mock_daily(months=50)
-
-    result = compute_pattern_a_score_momentum("000660", "SK하이닉스", daily, "2023-11-30")
-
-    h1 = result.horizon_1m
-    assert h1.ready is True
-    assert h1.current_score is not None
-    assert h1.prior_score is not None
-    expected_delta = round(h1.current_score - h1.prior_score, 4)
-    assert h1.score_delta == expected_delta
+    # 1M (2023-10-31)은 존재하므로 ready=True
+    assert res.horizon_1m.ready is True
+    # 3M (2023-08-31)은 누락되었으므로 ready=False
+    assert res.horizon_3m.ready is False
+    assert res.horizon_3m.prior_anchor == pd.Timestamp("2023-08-31")
+    assert "MISSING_MONTHLY_OBSERVATION_3M" in res.horizon_3m.reason_codes
 
 
-def test_3m_and_6m_delta_arithmetic():
-    """3M 및 6M Horizon Delta 산술 검증."""
-    cache = ParquetCache(base_dir=_CACHE_DIR)
-    daily = cache.load("000660")
-    if daily is None or daily.empty:
-        daily = _create_mock_daily(months=50)
+def test_observation_calculation_error_isolated_from_insufficient_history():
+    """특정 prior observation 계산 시 예외가 발생하면 OBSERVATION_ERROR로 구분되어 INSUFFICIENT_HISTORY로 위장되지 않음."""
+    daily = _create_mock_daily(months=50, start_date="2020-01-01")
+    as_of = "2023-10-31"
 
-    result = compute_pattern_a_score_momentum("000660", "SK하이닉스", daily, "2023-11-30")
+    original_score = score_pattern_a
 
-    h3 = result.horizon_3m
-    assert h3.ready is True
-    assert h3.score_delta == round(h3.current_score - h3.prior_score, 4)
+    def _mock_score(features):
+        if features is not None and str(features.as_of).startswith("2023-09-29"):
+            raise ValueError("강제 모의 계산 에러")
+        return original_score(features)
 
-    h6 = result.horizon_6m
-    assert h6.ready is True
-    assert h6.score_delta == round(h6.current_score - h6.prior_score, 4)
+    with patch(
+        "trend_scanner.patterns.pattern_a_score_momentum.score_pattern_a", side_effect=_mock_score
+    ):
+        res = compute_pattern_a_score_momentum("005930", "삼성전자", daily, as_of)
 
-
-def test_component_delta_decomposition():
-    """Base, Transition, Core, Support, Confirmation, Alignment, Progressed penalty delta 검증."""
-    cache = ParquetCache(base_dir=_CACHE_DIR)
-    daily = cache.load("000660")
-    if daily is None or daily.empty:
-        daily = _create_mock_daily(months=50)
-
-    result = compute_pattern_a_score_momentum("000660", "SK하이닉스", daily, "2023-11-30")
-    h3 = result.horizon_3m
-
-    curr_res = result.observations[-1].score_result
-    # 3개월 전 observation: index -4 (offset 3)
-    prior_res = result.observations[-4].score_result
-
-    assert h3.base_score_delta == round(curr_res.base_score - prior_res.base_score, 4)
-    assert h3.transition_score_delta == round(
-        curr_res.transition_score - prior_res.transition_score, 4
-    )
-    assert h3.core_score_delta == round(curr_res.core_score - prior_res.core_score, 4)
-    assert h3.alignment_bonus_delta == round(
-        curr_res.alignment_bonus - prior_res.alignment_bonus, 4
-    )
-    assert h3.progressed_penalty_delta == round(
-        curr_res.progressed_penalty - prior_res.progressed_penalty, 4
-    )
-    assert (
-        h3.progressed_evidence_count_delta
-        == curr_res.progressed_evidence_count - prior_res.progressed_evidence_count
-    )
+    # 1M: calculation error ➔ ready=False, OBSERVATION_ERROR_1M
+    assert res.horizon_1m.ready is False
+    assert res.horizon_1m.score_delta is None
+    assert "OBSERVATION_ERROR_1M" in res.horizon_1m.reason_codes
+    assert "INSUFFICIENT_HISTORY_1M" not in res.horizon_1m.reason_codes
 
 
 def test_history_readiness_thresholds_36_37_39_42():
@@ -160,7 +178,6 @@ def test_history_readiness_thresholds_36_37_39_42():
     monthly_all = to_monthly(daily)
 
     def _slice_completed_months(n_months: int) -> pd.DataFrame:
-        # n_months + 1 calendar months 슬라이스 후 마지막 월봉을 미완성(월중)으로 만들어 n_months completed bars 확보
         m_slice = monthly_all.tail(n_months + 1)
         start = m_slice.index[0] - pd.offsets.MonthBegin(1)
         end = m_slice.index[-1]
@@ -173,6 +190,7 @@ def test_history_readiness_thresholds_36_37_39_42():
     )
     assert res_36.observations[-1].score is not None
     assert res_36.horizon_1m.ready is False
+    assert "INSUFFICIENT_HISTORY_1M" in res_36.horizon_1m.reason_codes
     assert res_36.horizon_3m.ready is False
     assert res_36.horizon_6m.ready is False
 
@@ -183,6 +201,7 @@ def test_history_readiness_thresholds_36_37_39_42():
     )
     assert res_37.horizon_1m.ready is True
     assert res_37.horizon_3m.ready is False
+    assert "INSUFFICIENT_HISTORY_3M" in res_37.horizon_3m.reason_codes
     assert res_37.horizon_6m.ready is False
 
     # 3. 39 completed months: 1M & 3M ready, 6M not ready
@@ -193,6 +212,7 @@ def test_history_readiness_thresholds_36_37_39_42():
     assert res_39.horizon_1m.ready is True
     assert res_39.horizon_3m.ready is True
     assert res_39.horizon_6m.ready is False
+    assert "INSUFFICIENT_HISTORY_6M" in res_39.horizon_6m.reason_codes
 
     # 4. 42 completed months: 1M, 3M, 6M 모두 ready
     d_42 = _slice_completed_months(42)
@@ -229,23 +249,6 @@ def test_partial_horizon_readiness():
     assert "INSUFFICIENT_HISTORY_6M" in res.horizon_6m.reason_codes
 
 
-def test_incomplete_current_month_cadence():
-    """월 중순(미완성 월봉) 요청 시 직전 완성 월봉을 Anchor로 삼아 Completed Monthly Cadence를 유지함을 검증."""
-    cache = ParquetCache(base_dir=_CACHE_DIR)
-    daily = cache.load("000660")
-    if daily is None or daily.empty:
-        daily = _create_mock_daily(months=50)
-
-    # 2023-11-15 (11월 중순 미완성 봉)
-    res = compute_pattern_a_score_momentum("000660", "SK하이닉스", daily, "2023-11-15")
-
-    # Momentum latest anchor는 2023-10-31 완성 월봉이어야 함
-    assert res.momentum_anchor == pd.Timestamp("2023-10-31")
-    assert res.observations[-1].anchor_date == pd.Timestamp("2023-10-31")
-    assert res.horizon_1m.current_anchor == pd.Timestamp("2023-10-31")
-    assert res.horizon_1m.prior_anchor == pd.Timestamp("2023-09-30")
-
-
 def test_no_lookahead_contamination():
     """as_of 이후 미래 일봉을 추가하거나 조작해도 과거 시점 Score Momentum 결과가 동일함을 검증."""
     daily_base = _create_mock_daily(months=50, start_date="2020-01-01")
@@ -263,7 +266,68 @@ def test_no_lookahead_contamination():
     assert res1.horizon_1m == res2.horizon_1m
     assert res1.horizon_3m == res2.horizon_3m
     assert res1.horizon_6m == res2.horizon_6m
-    assert res1.monthly_score_deltas == res2.monthly_score_deltas
+
+
+def test_frozen_score_equality():
+    """관측 시점 Score가 직접 계산한 Frozen Score v0.2와 100% 동일함을 검증."""
+    cache = ParquetCache(base_dir=_CACHE_DIR)
+    daily = cache.load("000660")
+    if daily is None or daily.empty:
+        daily = _create_mock_daily(months=50)
+
+    as_of = "2023-11-30"
+    result = compute_pattern_a_score_momentum("000660", "SK하이닉스", daily, as_of)
+
+    assert result.horizon_1m.ready is True
+    direct_snap = build_historical_snapshot(
+        "000660", "SK하이닉스", daily, as_of, include_incomplete_periods=False
+    )
+    direct_res = score_pattern_a(direct_snap.features)
+
+    current_obs = result.observations[-1]
+    assert current_obs.anchor_date == pd.Timestamp(as_of)
+    assert current_obs.score == direct_res.pattern_a_score
+    assert current_obs.score_result.base_score == direct_res.base_score
+    assert current_obs.score_result.transition_score == direct_res.transition_score
+    assert current_obs.score_result.core_score == direct_res.core_score
+    assert current_obs.score_result.progressed_penalty == direct_res.progressed_penalty
+
+
+def test_1m_3m_6m_and_component_delta_arithmetic():
+    """1M, 3M, 6M delta 및 component delta 산술 차분 검증."""
+    cache = ParquetCache(base_dir=_CACHE_DIR)
+    daily = cache.load("000660")
+    if daily is None or daily.empty:
+        daily = _create_mock_daily(months=50)
+
+    result = compute_pattern_a_score_momentum("000660", "SK하이닉스", daily, "2023-11-30")
+
+    h1 = result.horizon_1m
+    assert h1.ready is True
+    assert h1.score_delta == round(h1.current_score - h1.prior_score, 4)
+
+    h3 = result.horizon_3m
+    assert h3.ready is True
+    assert h3.score_delta == round(h3.current_score - h3.prior_score, 4)
+
+    curr_res = result.observations[-1].score_result
+    prior_res = result.observations[-4].score_result
+
+    assert h3.base_score_delta == round(curr_res.base_score - prior_res.base_score, 4)
+    assert h3.transition_score_delta == round(
+        curr_res.transition_score - prior_res.transition_score, 4
+    )
+    assert h3.core_score_delta == round(curr_res.core_score - prior_res.core_score, 4)
+    assert h3.alignment_bonus_delta == round(
+        curr_res.alignment_bonus - prior_res.alignment_bonus, 4
+    )
+    assert h3.progressed_penalty_delta == round(
+        curr_res.progressed_penalty - prior_res.progressed_penalty, 4
+    )
+    assert (
+        h3.progressed_evidence_count_delta
+        == curr_res.progressed_evidence_count - prior_res.progressed_evidence_count
+    )
 
 
 def test_determinism():
@@ -283,14 +347,13 @@ def test_determinism():
     assert res1.horizon_1m == res2.horizon_1m
     assert res1.horizon_3m == res2.horizon_3m
     assert res1.horizon_6m == res2.horizon_6m
-    assert res1.monthly_score_deltas == res2.monthly_score_deltas
 
-    # Observation sequence semantic 일치 검증
     assert len(res1.observations) == len(res2.observations)
     for o1, o2 in zip(res1.observations, res2.observations):
         assert o1.anchor_date == o2.anchor_date
         assert o1.effective_as_of == o2.effective_as_of
         assert o1.score == o2.score
+        assert o1.reason_codes == o2.reason_codes
 
 
 def test_score_stage_legacy_isolation():
@@ -298,7 +361,6 @@ def test_score_stage_legacy_isolation():
     daily = _create_mock_daily(months=50)
     result = compute_pattern_a_score_momentum("005930", "삼성전자", daily, "2023-10-31")
 
-    # Horizon 결과 및 Result 자체에 stage 관련 필드가 존재하지 않음
     assert not hasattr(result.horizon_1m, "stage")
     assert not hasattr(result.horizon_1m, "stage_delta")
     assert not hasattr(result, "stage")

@@ -10,6 +10,7 @@ from trend_scanner.patterns.pattern_a_score import (
     score_pattern_a,
 )
 from trend_scanner.patterns.pattern_a_score_momentum import (
+    PatternAMonthlyScoreDelta,
     PatternAScoreMomentumHorizon,
     PatternAScoreMomentumResult,
     PatternAScoreObservation,
@@ -23,6 +24,7 @@ from trend_scanner.patterns.pattern_a_stage import (
 __all__ = [
     "PatternACandidateState",
     "PatternAEvaluationResult",
+    "PatternAMonthlyScoreDelta",
     "PatternAResult",
     "PatternAScoreMomentumHorizon",
     "PatternAScoreMomentumResult",
