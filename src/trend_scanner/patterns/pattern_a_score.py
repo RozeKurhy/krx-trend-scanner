@@ -274,7 +274,8 @@ class PatternAResult:
     (models/score.py의 ScanResult가 합친다).
 
     insufficient_data=True면 pattern_a_score/stage는 항상 None이다 —
-    ma24_slope(Core)가 결측이거나 Base Feature가 전부 결측인 경우.
+    required anchor(range_36m, ma24_slope) 중 하나라도 결측이거나, Base
+    또는 Transition Feature가 전부 결측인 경우.
     """
 
     base_score: float | None
@@ -318,8 +319,14 @@ def score_pattern_a(features: Any) -> PatternAResult:
     base = _weighted_piecewise_score(feature_values, BASE_WEIGHTS, BASE_POINTS)
     transition = _weighted_piecewise_score(feature_values, TRANSITION_WEIGHTS, TRANSITION_POINTS)
 
-    ma24_missing = _is_missing(feature_values.get("ma24_slope"))
-    insufficient_data = ma24_missing or base.score is None or transition.score is None
+    # required anchor: range_36m(Base/Expansion Validation에서 가장 강한 High
+    # 확신도 Base Feature)과 ma24_slope(Core Transition Feature)는 나머지
+    # Feature가 전부 있어도 재정규화로 대신할 수 없다 — 둘 중 하나라도
+    # 결측이면 Pattern A 자체를 판정할 근거가 없다고 본다.
+    required_missing = _is_missing(feature_values.get("range_36m")) or _is_missing(
+        feature_values.get("ma24_slope")
+    )
+    insufficient_data = required_missing or base.score is None or transition.score is None
 
     if insufficient_data:
         return PatternAResult(

@@ -632,11 +632,20 @@ Feature가 NaN이어도 0점 처리하지 않는다("Base가 나쁘다"가 아�
 Feature로 재정규화한다(예: `ma_spread`만 결측이면 `range_36m`/
 `avg_price_change_12m` 비중을 55:30 → 64.7:35.3으로 재정규화).
 
-Base Feature가 **전부** 결측이면 `base_score=None`. **Core Feature인
-`ma24_slope`가 결측이면 무조건 `insufficient_data=True`** — Transition의
-다른 Feature가 있어도 신뢰할 수 없다고 명시한다. `insufficient_data=True`
-면 `pattern_a_score`/`stage`는 항상 `None`이다(Hard Reject가 아니라
-"판정 보류" 상태).
+Base Feature가 **전부** 결측이면 `base_score=None`.
+
+**재리뷰 후속(Required Base Anchor)**: `range_36m`(Base/Expansion
+Validation에서 가장 강한 High 확신도 Base Feature)과 `ma24_slope`(Core
+Transition Feature)는 required anchor다 — 둘 중 **하나라도** 결측이면
+무조건 `insufficient_data=True`다. 나머지 Feature가 전부 있어도
+재정규화로 대신하지 않는다: `range_36m` 없이 `avg_price_change_12m`/
+`ma_spread`만으로 Base를 판정하거나, `ma24_slope` 없이 `weekly_ma12_slope`/
+`ma24_slope_acceleration`만으로 Transition을 판정하는 건 Pattern A의
+전제(장기 Base 구조 + Core Transition 신호) 자체를 건너뛰는 것이기
+때문이다. `avg_price_change_12m`/`ma_spread`/`weekly_ma12_slope`/
+`ma24_slope_acceleration`은 결측이어도 기존 재정규화 정책을 그대로
+쓴다. `insufficient_data=True`면 `pattern_a_score`/`stage`는 항상
+`None`이다(Hard Reject가 아니라 "판정 보류" 상태).
 
 ### PatternAResult 새 구조
 
@@ -787,7 +796,7 @@ alignment_bonus = 8.0 if (weekly>0 and ma24>0 and accel>0) else 0.0
 progressed_penalty = {0:0, 1:0, 2:10, 3:20, 4:28, 5:35}[progressed_evidence_count]
 
 pattern_a_score = clip(balanced_core_score + alignment_bonus - progressed_penalty, 0, 100)
-# ma24_slope 결측 또는 base_score/transition_score 계산 불가 -> insufficient_data=True, pattern_a_score=None
+# range_36m/ma24_slope(required anchor) 결측 또는 base_score/transition_score 계산 불가 -> insufficient_data=True, pattern_a_score=None
 ```
 
 구현: `src/trend_scanner/patterns/pattern_a_score.py`

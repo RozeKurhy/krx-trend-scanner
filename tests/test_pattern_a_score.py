@@ -170,6 +170,26 @@ def test_missing_non_core_base_feature_still_produces_a_score_via_renormalized_w
     assert result.base_score == pytest.approx(100.0)  # 남은 두 Feature 모두 만점 구간이라 재정규화해도 100
 
 
+def test_missing_range_36m_marks_insufficient_data_even_with_other_base_features_valid():
+    # range_36m은 required anchor라서 avg_price_change_12m/ma_spread가 멀쩡해도
+    # 재정규화로 대신할 수 없다.
+    features = _features(
+        # range_36m 결측
+        avg_price_change_12m=0.10,
+        ma_spread=0.10,
+        ma24_slope=0.05,
+        weekly_ma12_slope=0.05,
+        ma24_slope_acceleration=0.02,
+        range_position=0.5,
+    )
+    result = score_pattern_a(features)
+
+    assert result.flags["insufficient_data"] is True
+    assert result.pattern_a_score is None
+    assert result.stage is None
+    assert "range_36m" in result.base_missing_features
+
+
 def test_all_base_features_missing_marks_insufficient_data():
     features = _features(
         ma24_slope=0.05,
