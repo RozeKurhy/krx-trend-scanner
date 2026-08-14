@@ -365,7 +365,7 @@ def test_base_does_not_require_weekly_positive_slope():
     assert result.stage == PatternAStage.BASE
 
 
-# --- StageLifecycleContext: episode_broken reason_code (WEAK 경로에서만 사용) ---
+# --- StageLifecycleContext: semantic consistency ---
 
 
 def test_episode_broken_cycle_reset_reason_code_appended_when_past_expansion_then_break():
@@ -399,25 +399,151 @@ def test_episode_broken_cycle_reset_reason_code_appended_when_past_expansion_the
     )
     result = classify_pattern_a_stage(_make_snapshot(features, monthly=monthly))
     assert result.stage == PatternAStage.WEAK
-    assert result.context.previously_expanded_in_current_episode is True
-    assert result.context.episode_broken is True
+    assert result.context.prior_expansion_detected is True
+    assert result.context.episode_broken_after_expansion is True
+    assert result.context.previously_expanded_in_current_episode is False
     assert "episode_broken_cycle_reset" in result.reason_codes
 
 
-# --- Stage Truth Set 46건 회귀 (KRX 캐시 필요) ---
+def test_lifecycle_context_prior_expansion_and_not_broken():
+    from trend_scanner.patterns.pattern_a_stage import classify_pattern_a_stage
+
+    dates = pd.date_range("2020-01-31", periods=36, freq="ME")
+    monthly = pd.DataFrame(
+        {
+            "open": 1000.0,
+            "high": 1000.0,
+            "low": 1000.0,
+            "close": 1000.0,
+            "volume": 1000.0,
+        },
+        index=dates,
+    )
+    # 과거에 완만한 상승 확장 후 장기 지지 유지 (break 없음)
+    monthly.loc[dates[0:12], "close"] = [1000 + i * 10 for i in range(12)]
+    monthly.loc[dates[12:24], "close"] = [1120 + i * 50 for i in range(12)]
+    monthly.loc[dates[24:], "close"] = [1720 + i * 5 for i in range(12)]
+    monthly["open"] = monthly["high"] = monthly["low"] = monthly["close"]
+
+    features = _make_feature_row(
+        ma24_slope=0.02,
+        weekly_ma12_slope=0.05,
+        avg_price_change_12m=0.10,
+        range_position=0.75,
+    )
+    result = classify_pattern_a_stage(_make_snapshot(features, monthly=monthly))
+    assert result.context.prior_expansion_detected is True
+    assert result.context.episode_broken_after_expansion is False
+    assert result.context.previously_expanded_in_current_episode is True
+
+
+def test_lifecycle_context_no_prior_expansion():
+    from trend_scanner.patterns.pattern_a_stage import classify_pattern_a_stage
+
+    dates = pd.date_range("2020-01-31", periods=36, freq="ME")
+    monthly = pd.DataFrame(
+        {
+            "open": 1000.0,
+            "high": 1000.0,
+            "low": 1000.0,
+            "close": 1000.0,
+            "volume": 1000.0,
+        },
+        index=dates,
+    )
+    # 평탄한 박스권 (확장 없음)
+    features = _make_feature_row(
+        ma24_slope=0.0,
+        weekly_ma12_slope=0.0,
+        avg_price_change_12m=0.0,
+        range_position=0.4,
+    )
+    result = classify_pattern_a_stage(_make_snapshot(features, monthly=monthly))
+    assert result.context.prior_expansion_detected is False
+    assert result.context.episode_broken_after_expansion is False
+    assert result.context.previously_expanded_in_current_episode is False
+
+
+# --- Stage Truth Set 46건 Frozen v0.1 Regression Fixture (KRX 캐시 필요) ---
+
+EXPECTED_V01_PREDICTIONS: dict[tuple[str, str], PatternAStage] = {
+    ("042700", "2019-12-31"): PatternAStage.WEAK,
+    ("105560", "2023-12-31"): PatternAStage.BASE,
+    ("086790", "2023-12-31"): PatternAStage.BASE,
+    ("001040", "2023-12-31"): PatternAStage.TRANSITION,
+    ("000880", "2024-12-31"): PatternAStage.TRANSITION,
+    ("042700", "2020-11-30"): PatternAStage.EARLY_TREND,
+    ("105560", "2024-02-29"): PatternAStage.TRANSITION,
+    ("086790", "2024-02-29"): PatternAStage.EARLY_TREND,
+    ("001040", "2024-03-31"): PatternAStage.EARLY_TREND,
+    ("000880", "2025-02-28"): PatternAStage.EARLY_TREND,
+    ("042700", "2023-12-31"): PatternAStage.PROGRESSED,
+    ("105560", "2025-12-31"): PatternAStage.PROGRESSED,
+    ("086790", "2025-12-31"): PatternAStage.PROGRESSED,
+    ("214150", "2023-12-31"): PatternAStage.PROGRESSED,
+    ("000810", "2024-06-30"): PatternAStage.PROGRESSED,
+    ("015760", "2025-11-30"): PatternAStage.PROGRESSED,
+    ("015760", "2023-12-31"): PatternAStage.BASE,
+    ("034220", "2020-12-31"): PatternAStage.TRANSITION,
+    ("011210", "2019-12-31"): PatternAStage.BASE,
+    ("023530", "2025-05-31"): PatternAStage.TRANSITION,
+    ("023530", "2023-12-31"): PatternAStage.BASE,
+    ("034220", "2020-09-30"): PatternAStage.WEAK,
+    ("010620", "2023-12-31"): PatternAStage.TRANSITION,
+    ("010620", "2024-12-31"): PatternAStage.PROGRESSED,
+    ("012450", "2021-12-31"): PatternAStage.PROGRESSED,
+    ("012450", "2022-12-31"): PatternAStage.PROGRESSED,
+    ("012450", "2024-06-30"): PatternAStage.PROGRESSED,
+    ("079550", "2020-12-31"): PatternAStage.BASE,
+    ("079550", "2021-12-31"): PatternAStage.PROGRESSED,
+    ("079550", "2023-12-31"): PatternAStage.EARLY_TREND,
+    ("005490", "2022-12-31"): PatternAStage.WEAK,
+    ("005490", "2023-03-31"): PatternAStage.EARLY_TREND,
+    ("005490", "2023-07-31"): PatternAStage.EARLY_TREND,
+    ("042660", "2024-10-31"): PatternAStage.TRANSITION,
+    ("042660", "2025-07-31"): PatternAStage.PROGRESSED,
+    ("003550", "2020-12-31"): PatternAStage.TRANSITION,
+    ("010130", "2022-06-30"): PatternAStage.PROGRESSED,
+    ("011170", "2023-01-31"): PatternAStage.WEAK,
+    ("009150", "2022-12-31"): PatternAStage.WEAK,
+    ("018260", "2023-07-31"): PatternAStage.WEAK,
+    ("032830", "2021-02-28"): PatternAStage.BASE,
+    ("034730", "2020-12-31"): PatternAStage.TRANSITION,
+    ("011200", "2024-10-31"): PatternAStage.WEAK,
+    ("005380", "2020-08-31"): PatternAStage.EARLY_TREND,
+    ("051910", "2020-06-30"): PatternAStage.EARLY_TREND,
+    ("000270", "2020-09-30"): PatternAStage.EARLY_TREND,
+}
 
 
 @pytest.mark.skipif(not _HAS_CACHE, reason=_SKIP_REASON)
-def test_classifier_against_46_row_truth_set_produces_reasonable_exact_rate():
-    """46건 truth set에 대한 회귀 테스트. threshold를 46/46에 맞추지
-    않는다는 v0.1 설계 원칙에 따라, exact match rate에 낮은 baseline만
-    건다(향후 리팩터링이 크게 퇴보시키지 않았는지 확인하는 용도) — 정확한
-    수치/혼동행렬은 docs/validation/pattern_a_stage_classifier_v01.md와
-    scripts/pattern_a_stage_validate.py가 다룬다."""
+def test_frozen_v01_predictions_match_all_46_snapshots():
+    """v0.1 classifier가 frozen calibrated baseline이므로 46건 각각의
+    출력 결과가 정확히 EXPECTED_V01_PREDICTIONS fixture와 100% 일치해야 한다."""
+    from trend_scanner.patterns.pattern_a_stage import classify_pattern_a_stage
+
+    cache = ParquetCache(base_dir=_CACHE_DIR)
+    for spec in PATTERN_A_STAGE_LABELS:
+        key = (spec.ticker, spec.snapshot_date)
+        daily = cache.load(spec.ticker)
+        snap = build_historical_snapshot(
+            spec.ticker, spec.name, daily, spec.snapshot_date, include_incomplete_periods=False
+        )
+        result = classify_pattern_a_stage(snap)
+        assert result.stage == EXPECTED_V01_PREDICTIONS[key], (
+            f"{key} prediction mismatch: got {result.stage}, expected {EXPECTED_V01_PREDICTIONS[key]}"
+        )
+
+
+@pytest.mark.skipif(not _HAS_CACHE, reason=_SKIP_REASON)
+def test_classifier_against_46_row_truth_set_matches_frozen_baseline():
+    """46건 calibration truth set에 대한 frozen baseline 검증.
+    정확히 exact 38건(82.6%), adjacent 5건(10.9%), severe 3건(6.5%)이어야 한다."""
     from trend_scanner.patterns.pattern_a_stage import classify_pattern_a_stage
 
     cache = ParquetCache(base_dir=_CACHE_DIR)
     exact = 0
+    adjacent = 0
     severe = 0
     total = 0
     for spec in PATTERN_A_STAGE_LABELS:
@@ -427,17 +553,19 @@ def test_classifier_against_46_row_truth_set_produces_reasonable_exact_rate():
         )
         result = classify_pattern_a_stage(snap)
         total += 1
-        if result.stage is None:
-            continue
+        assert result.stage is not None
         if result.stage == spec.audited_stage:
             exact += 1
-        elif abs(_STAGE_ORDER[result.stage] - _STAGE_ORDER[spec.audited_stage]) >= 2:
+        elif abs(_STAGE_ORDER[result.stage] - _STAGE_ORDER[spec.audited_stage]) == 1:
+            adjacent += 1
+        else:
             severe += 1
 
     assert total == 46
-    exact_rate = exact / total
-    assert exact_rate >= 0.70, f"exact match rate {exact_rate:.1%}가 baseline(70%) 밑으로 떨어졌다"
-    assert severe <= 5, f"SEVERE mismatch {severe}건이 baseline(5건) 위로 늘었다"
+    assert exact == 38, f"EXACT match count expected 38, got {exact}"
+    assert adjacent == 5, f"ADJACENT mismatch count expected 5, got {adjacent}"
+    assert severe == 3, f"SEVERE mismatch count expected 3, got {severe}"
+    assert exact / total == pytest.approx(38 / 46)
 
 
 @pytest.mark.skipif(not _HAS_CACHE, reason=_SKIP_REASON)

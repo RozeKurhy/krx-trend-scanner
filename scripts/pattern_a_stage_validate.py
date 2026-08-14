@@ -111,8 +111,9 @@ def main() -> None:
             "weekly_turning_positive": result.evidence.weekly_turning_positive,
             "breakout_like_structure": result.evidence.breakout_like_structure,
             "expansion_present": result.evidence.expansion_present,
+            "prior_expansion_detected": result.context.prior_expansion_detected,
+            "episode_broken_after_expansion": result.context.episode_broken_after_expansion,
             "previously_expanded_in_current_episode": result.context.previously_expanded_in_current_episode,
-            "episode_broken": result.context.episode_broken,
             "no_cache": False,
         }
 
@@ -243,7 +244,7 @@ def main() -> None:
             thin_weak_row[
                 [
                     "ticker", "name", "snapshot_date", "audited_stage", "predicted_stage", "match_type",
-                    "reason_codes", "active_decline", "previously_expanded_in_current_episode", "episode_broken",
+                    "reason_codes", "active_decline", "prior_expansion_detected", "episode_broken_after_expansion", "previously_expanded_in_current_episode",
                 ]
             ].to_string(index=False)
         )

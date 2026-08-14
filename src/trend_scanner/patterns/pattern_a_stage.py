@@ -106,15 +106,27 @@ class StageEvidence:
 
 @dataclass(frozen=True)
 class StageLifecycleContext:
-    """현재 episode 안에서 과거에 확장이 있었는지, 그 확장이 이미 꺾여
-    episode가 끝났는지를 나타낸다. Pattern A episode/cycle reset 개념
-    (docs/validation/pattern_a_stage.md)을 판정용으로 옮긴 것 — Score에는
-    연결하지 않는다."""
+    """snapshot 이전 과거 구간에서 expansion proxy가 감지됐는지와,
+    그 이후 장기 추세 붕괴로 episode가 종료(cycle reset)되었는지를 나타낸다.
+    Pattern A episode/cycle reset 개념(docs/validation/pattern_a_stage.md)을
+    판정용으로 옮긴 것 — Score에는 연결하지 않는다.
 
-    previously_expanded_in_current_episode: bool
-    episode_broken: bool
+    - prior_expansion_detected: snapshot 이전에 strict historical expansion proxy
+      (ma24_slope > 0 AND avg_price_change_12m >= 0.30)가 한 번이라도 감지됐는가.
+    - episode_broken_after_expansion: 마지막 historical expansion 이후 현재 이전까지
+      episode break evidence(ma24_slope <= -0.045 OR range_position <= 0.20)가
+      발생했는가.
+    - last_expansion_month: 마지막 historical expansion proxy가 감지된 월.
+    - months_since_expansion: 마지막 historical expansion 이후 경과 개월 수.
+    - previously_expanded_in_current_episode: prior_expansion_detected AND NOT
+      episode_broken_after_expansion (현재 episode에 속하는 과거 확장이 존재하는가).
+    """
+
+    prior_expansion_detected: bool
+    episode_broken_after_expansion: bool
     last_expansion_month: str | None
     months_since_expansion: int | None
+    previously_expanded_in_current_episode: bool
 
 
 @dataclass(frozen=True)
@@ -228,16 +240,24 @@ def _historical_monthly_series(monthly: pd.DataFrame) -> dict[str, pd.Series]:
 
 
 def _build_lifecycle_context(monthly: pd.DataFrame) -> StageLifecycleContext:
-    """현재 snapshot 이전(과거) monthly 구간만 사용해 '이번 episode 안에서
-    이미 확장이 있었는지'와 '그 확장이 이미 꺾였는지'를 판정한다. 현재
-    시점(마지막 행)은 여기서 다루지 않는다 — 그건 StageEvidence의 몫이다.
+    """현재 snapshot 이전(과거) monthly 구간만 사용해 '과거 확장 프록시가
+    감지되었는지'와 '그 확장이 이후 꺾여 episode가 종료되었는지'를 판정한다.
+    현재 시점(마지막 행)은 여기서 다루지 않는다 — 그건 StageEvidence의 몫이다.
+
+    strict historical expansion proxy:
+        과거 어느 달에 ma24_slope > 0 AND avg_price_change_12m >= 0.30 (AND)
+        이 성립한 적이 있는가.
+        (direct PROGRESSED의 expansion_present[avg_chg>=0.30 OR ma_spread>=0.20]와
+        완전히 동일한 정의가 아니다 — historical 탐색에서는 오래된 확장 false positive를
+        줄이기 위해 더 엄격한 AND 기준을 사용한다).
     """
     if len(monthly) < 2:
         return StageLifecycleContext(
-            previously_expanded_in_current_episode=False,
-            episode_broken=False,
+            prior_expansion_detected=False,
+            episode_broken_after_expansion=False,
             last_expansion_month=None,
             months_since_expansion=None,
+            previously_expanded_in_current_episode=False,
         )
 
     series = _historical_monthly_series(monthly)
@@ -248,19 +268,19 @@ def _build_lifecycle_context(monthly: pd.DataFrame) -> StageLifecycleContext:
     # 구간(range_position이 이미 높지만 avg_price_change_12m은 아직 낮은
     # 상태)도 매달 걸려서 "직전 달"이 항상 last_expansion으로 잡히는
     # 문제가 실측으로 확인됐다(months_since_expansion이 거의 항상 1).
-    # 그래서 여기서는 direct PROGRESSED 판정과 동일한 기준
-    # (core_turning_positive and avg_price_change_12m 큰 폭)만 "진짜
-    # episode 안에서의 확장"으로 본다 — range_position 단독 신호는
-    # 쓰지 않는다.
+    # 그래서 여기서는 strict historical expansion proxy
+    # (core_turning_positive and avg_price_change_12m 큰 폭)만
+    # 과거 확장으로 본다 — range_position 단독 신호는 쓰지 않는다.
     expanded_mask = (past["ma24_slope"] > 0) & (past["avg_price_change_12m"] >= EPISODE_PEAK_AVG_CHG)
     expanded_mask = expanded_mask.fillna(False)
 
     if not expanded_mask.any():
         return StageLifecycleContext(
-            previously_expanded_in_current_episode=False,
-            episode_broken=False,
+            prior_expansion_detected=False,
+            episode_broken_after_expansion=False,
             last_expansion_month=None,
             months_since_expansion=None,
+            previously_expanded_in_current_episode=False,
         )
 
     last_expansion_idx = expanded_mask[expanded_mask].index[-1]
@@ -271,18 +291,20 @@ def _build_lifecycle_context(monthly: pd.DataFrame) -> StageLifecycleContext:
     window_ma24_slope = series["ma24_slope"].iloc[last_expansion_pos + 1 : current_pos]
     window_range_position = series["range_position"].iloc[last_expansion_pos + 1 : current_pos]
 
-    episode_broken = bool(
+    episode_broken_after_expansion = bool(
         (window_ma24_slope <= EPISODE_BREAK_MA24_SLOPE).fillna(False).any()
         or (window_range_position <= EPISODE_BREAK_RANGE_POSITION).fillna(False).any()
     )
 
     last_expansion_month = str(getattr(last_expansion_idx, "date", lambda: last_expansion_idx)())
+    previously_expanded_in_current_episode = not episode_broken_after_expansion
 
     return StageLifecycleContext(
-        previously_expanded_in_current_episode=True,
-        episode_broken=episode_broken,
+        prior_expansion_detected=True,
+        episode_broken_after_expansion=episode_broken_after_expansion,
         last_expansion_month=last_expansion_month,
         months_since_expansion=months_since,
+        previously_expanded_in_current_episode=previously_expanded_in_current_episode,
     )
 
 
@@ -292,9 +314,9 @@ def classify_pattern_a_stage(snapshot: HistoricalSnapshot) -> StageClassificatio
 
     Precedence(우선순위 순서, 하나의 blended score가 아니라 순서대로 검사):
     1. insufficient_data - 필요한 Feature 중 하나라도 없으면 stage=None.
-    2. active_decline -> WEAK. 단, 이미 episode 안에서 확장했다가 꺾인
-       상태(episode_broken)라도 WEAK로 본다 — "꺾인 뒤"이므로 새로운
-       cycle의 WEAK/BASE 후보로 재시작한 것이다.
+    2. active_decline -> WEAK. 단, 이미 과거에 확장했다가 꺾인
+       상태(prior_expansion_detected and episode_broken_after_expansion)라도
+       WEAK로 본다 — "꺾인 뒤"이므로 새로운 cycle의 WEAK/BASE 후보로 재시작한 것이다.
     3. core_turning_positive and expansion_present -> PROGRESSED(직접
        판정). weekly_turning_positive는 요구하지 않는다 — 실측 결과
        PROGRESSED 사례는 오히려 weekly_ma12_slope가 낮거나 음수인 경우가
@@ -312,20 +334,21 @@ def classify_pattern_a_stage(snapshot: HistoricalSnapshot) -> StageClassificatio
 
     **episode/cycle reset(StageLifecycleContext)을 최종 판정에 아직 쓰지
     않는 이유**: "이미 이 episode 안에서 확장했었고 아직 안 꺾였으면
-    PROGRESSED로 유지"라는 override를 넣어 46건에 실측 검증했더니, 079550
-    2023-12-31류(지금 evidence는 약하지만 실제로 PROGRESSED가 맞는 사례)를
-    올바르게 잡아주는 것보다, 오래 전 확장 이력이 있지만 이미 새 국면으로
-    넘어간 종목(086790/010620/042660 등)을 잘못 PROGRESSED로 밀어올리는
-    부작용이 더 컸다(override 적용 시 37/46, 미적용 시 38/46, 게다가
-    미적용이 SEVERE 오분류도 더 적었다). 079550 하나를 맞추려고 override를
-    유지하면 다른 종목에서 더 많은 오분류가 생긴다 — 특정 종목을 위해
-    global rule을 비틀지 않는다는 원칙에 따라, v0.1은 override 없이
-    출시하고 이 실패 모드를 그대로 문서화한다. `StageLifecycleContext`
-    계산 자체(episode/cycle reset 판정)는 이 함수가 항상 수행해서
-    `StageClassificationResult.context`로 반환한다 — WEAK 판정에서
-    `episode_broken_cycle_reset` reason_code로 실제로 쓰인다. 최종 stage
-    override로 안 쓸 뿐, 구조 자체는 v0.1에 존재하고 다음 버전이 이
-    데이터를 그대로 이어받아 recency 조건 등을 추가할 수 있다.
+    (previously_expanded_in_current_episode=True) PROGRESSED로 유지"라는
+    override를 넣어 46건에 실측 검증했더니, 079550 2023-12-31류(지금
+    evidence는 약하지만 실제로 PROGRESSED가 맞는 사례)를 올바르게 잡아주는
+    것보다, 오래 전 확장 이력이 있지만 이미 새 국면으로 넘어간 종목
+    (086790/010620/042660 등)을 잘못 PROGRESSED로 밀어올리는 부작용이 더
+    컸다(override 적용 시 37/46, 미적용 시 38/46, 게다가 미적용이 SEVERE
+    오분류도 더 적었다). 079550 하나를 맞추려고 override를 유지하면 다른
+    종목에서 더 많은 오분류가 생긴다 — 특정 종목을 위해 global rule을
+    비틀지 않는다는 원칙에 따라, v0.1은 override 없이 출시하고 이 실패
+    모드를 그대로 문서화한다. `StageLifecycleContext` 계산 자체(episode/cycle
+    reset 판정)는 이 함수가 항상 수행해서 `StageClassificationResult.context`로
+    반환한다 — WEAK 판정에서 `episode_broken_cycle_reset` reason_code로
+    실제로 쓰인다. 최종 stage override로 안 쓸 뿐, 구조 자체는 v0.1에
+    존재하고 다음 버전이 이 데이터를 그대로 이어받아 recency 조건 등을
+    추가할 수 있다.
     """
     features = snapshot.features
     evidence = _build_evidence(features)
@@ -336,10 +359,11 @@ def classify_pattern_a_stage(snapshot: HistoricalSnapshot) -> StageClassificatio
             reason_codes=("insufficient_data",),
             evidence=evidence,
             context=StageLifecycleContext(
-                previously_expanded_in_current_episode=False,
-                episode_broken=False,
+                prior_expansion_detected=False,
+                episode_broken_after_expansion=False,
                 last_expansion_month=None,
                 months_since_expansion=None,
+                previously_expanded_in_current_episode=False,
             ),
         )
 
@@ -347,7 +371,7 @@ def classify_pattern_a_stage(snapshot: HistoricalSnapshot) -> StageClassificatio
 
     if evidence.active_decline:
         reason = ["active_decline"]
-        if context.previously_expanded_in_current_episode and context.episode_broken:
+        if context.prior_expansion_detected and context.episode_broken_after_expansion:
             reason.append("episode_broken_cycle_reset")
         return StageClassificationResult(
             stage=PatternAStage.WEAK,
