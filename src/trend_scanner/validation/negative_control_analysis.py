@@ -69,11 +69,21 @@ CONDITIONS: dict[str, Condition] = {
 
 
 def evaluate_condition(row: Any, condition: Condition) -> bool | None:
-    """조건을 평가한다. 관련 속성 중 하나라도 NaN이면 None(판정 불가)을 반환한다."""
+    """조건을 평가한다. 관련 속성 중 하나라도 NaN이면 None(판정 불가)을 반환한다.
+
+    먼저 조건에 포함된 모든 속성을 확인해 NaN 여부를 전부 검사한 뒤에만
+    비교 연산을 수행한다. 앞쪽 속성의 비교가 이미 False라고 해서 뒤쪽
+    속성의 NaN 확인을 건너뛰지 않는다(그러면 "판정 불가"를 "조건 불만족"
+    으로 잘못 취급하게 된다).
+    """
+    checked: list[tuple[float, str, float]] = []
     for attr, op, threshold in condition:
         v = _value(row, attr)
         if _is_missing(v):
             return None
+        checked.append((v, op, threshold))
+
+    for v, op, threshold in checked:
         if not _OPS[op](v, threshold):
             return False
     return True

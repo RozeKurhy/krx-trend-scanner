@@ -122,3 +122,35 @@ window 내 peak까지 걸린 개월 수를 계산한다.
 (그쪽은 `snapshot_date` **이하**만, 이쪽은 `effective_as_of` **이후**만
 의도적으로 본다). 두 계산 경로는 서로 데이터를 주고받지 않는다 — outcome
 계산 결과가 Feature 계산 함수의 인자로 들어가는 곳은 코드 어디에도 없다.
+
+**drawdown 계산(재리뷰 수정)**: 12개월 max drawdown은 `base_close`를
+시작값으로 포함해서 running max를 만든다. base_close를 빼고 그 이후
+close만으로 running max를 만들면, snapshot 직후(구간 첫 거래일 이전)
+발생한 하락이 계산에서 빠진다 — 예: base_close=100인데 바로 다음 거래일
+부터 80, 70으로 떨어지면, close만 본 running max는 80에서 시작해 낙폭을
+-12.5%로 과소평가한다. base_close를 포함하면 100→80→70의 진짜 낙폭
+-30%가 잡힌다.
+
+**부분 horizon 처리(재리뷰 수정)**: `OutcomeMetrics`에
+`complete_3m`/`complete_6m`/`complete_12m`을 추가했다. 캐시된 daily가
+base_date + N개월까지 실제로 도달하지 못하면(가장 최근 snapshot들, 예:
+현대모비스 `trend_progressed`) 그 구간은 미완성이다. `return_6m_end`/
+`return_12m_end`는 구간이 미완성이면 NaN이다 — 있는 데이터의 마지막 값을
+"그 시점의 수익률"이라고 잘못 부르지 않기 위해서다. `return_*_max`/
+drawdown/peak까지 걸린 개월수는 미완성이어도 있는 데이터로 계산하되,
+`complete_*` 플래그를 반드시 같이 봐야 한다.
+
+## Negative Control 분석용 subgroup (label 확정 아님)
+
+`scripts/negative_control_validate.py`의 `NEGATIVE_SUBGROUP`이
+outcome_audit 결과(특히 12개월 end return, max 대비 반납 정도)를 근거로
+negative_control 8종목을 `confirmed_negative`/`ambiguous_negative`로
+나눈다. **기존 label(`failed_breakout` 등)은 바꾸지 않는다** — 이건
+Pattern A Feature 비교를 위한 분석용 grouping일 뿐이다.
+
+* `confirmed_negative`(5): 003550 LG, 010130 고려아연, 011170 롯데케미칼,
+  032830 삼성생명, 034730 SK. 12개월 뒤 수익률이 0% 근처거나 크게
+  음수여서 "실패" 라벨이 outcome과 잘 맞는다.
+* `ambiguous_negative`(3): 009150 삼성전기, 018260 삼성에스디에스,
+  011200 HMM. 12개월 뒤 수익률이 +14%~+20%로 꽤 견실하게 양수라, 순수
+  12개월 수익률만 보면 "실패"라고 부르기 애매하다.

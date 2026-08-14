@@ -124,6 +124,25 @@ NEGATIVE_CONTROL_SNAPSHOTS: list[dict[str, str]] = [
     {"ticker": "011200", "name": "HMM", "date": "2024-10-31", "label": "failed_breakout"},
 ]
 
+# --- negative_control 분석용 subgroup (Outcome Audit 재리뷰 후속) ---
+# 기존 label(failed_breakout 등)은 바꾸지 않는다. 이건 Outcome Audit 결과를
+# 바탕으로 한 "분석용" grouping일 뿐 label 확정이 아니다. outcome_audit.csv의
+# 12개월 outcome(특히 12M end return, max→end 반납 정도)을 근거로 나눴다:
+# LG/고려아연/롯데케미칼/삼성생명/SK는 12M end가 거의 0이거나 크게 음수(또는
+# max 대비 대부분 반납)라 "실패" 라벨이 outcome과 잘 맞는다(confirmed).
+# 삼성전기/삼성에스디에스/HMM은 12M end가 +14%~+20%로 꽤 견실하게 양수라
+# 순수 12개월 수익률만 보면 "실패"라고 부르기 애매하다(ambiguous).
+NEGATIVE_SUBGROUP: dict[str, str] = {
+    "003550": "confirmed_negative",
+    "010130": "confirmed_negative",
+    "011170": "confirmed_negative",
+    "032830": "confirmed_negative",
+    "034730": "confirmed_negative",
+    "009150": "ambiguous_negative",
+    "018260": "ambiguous_negative",
+    "011200": "ambiguous_negative",
+}
+
 MAIN_TABLE_COLUMNS = [
     "close",
     "range_36m",
@@ -232,6 +251,12 @@ def main() -> None:
     holdout_pre = [snap.features for t, label, snap in holdout_records if label == "pre_breakout"]
     holdout_early = [snap.features for t, label, snap in holdout_records if label == "early_trend"]
     negative = [snap.features for t, label, snap in negative_records]
+    confirmed_negative = [
+        snap.features for t, label, snap in negative_records if NEGATIVE_SUBGROUP[t] == "confirmed_negative"
+    ]
+    ambiguous_negative = [
+        snap.features for t, label, snap in negative_records if NEGATIVE_SUBGROUP[t] == "ambiguous_negative"
+    ]
 
     print("=" * 70)
     print("[NEGATIVE CONTROL] 전체 raw Feature 비교표 (completed monthly+weekly 기준)")
@@ -248,14 +273,18 @@ def main() -> None:
     print("=" * 70)
     _print_table(_main_rows([r for r in holdout_records if r[1] == "early_trend"]))
 
+    # 4그룹: negative_control을 confirmed/ambiguous로 나눈다. 이건 label 확정이
+    # 아니라 Pattern A Feature 비교를 위한 분석용 grouping이다(NEGATIVE_SUBGROUP
+    # 위 주석 참고). 기존 label(failed_breakout 등)은 그대로 둔다.
     groups = {
         "holdout_pre_breakout": holdout_pre,
         "holdout_early_trend": holdout_early,
-        "negative_control": negative,
+        "confirmed_negative": confirmed_negative,
+        "ambiguous_negative": ambiguous_negative,
     }
 
     print("=" * 70)
-    print("그룹별 min / median / max")
+    print("그룹별 min / median / max (4그룹: holdout_pre/early, confirmed/ambiguous_negative)")
     print("=" * 70)
     stats_df = stats_table(groups, STATS_ATTRS)
     with pd.option_context("display.max_columns", None, "display.width", 200):
@@ -263,7 +292,7 @@ def main() -> None:
     print()
 
     print("=" * 70)
-    print("조건별 발생 비율 (단일 Feature + 조합 A~E, 관찰용, threshold 확정 아님)")
+    print("조건별 발생 비율 (4그룹, 단일 Feature + 조합 A~E, 관찰용, threshold 확정 아님)")
     print("=" * 70)
     cond_df = condition_table(groups, CONDITIONS)
     with pd.option_context("display.max_columns", None, "display.width", 200):
@@ -307,18 +336,25 @@ def main() -> None:
         "return_12m_end",
         "drawdown_12m_max",
         "months_to_peak_12m",
+        "complete_6m",
+        "complete_12m",
     ]
     with pd.option_context("display.max_columns", None, "display.width", 220):
         print(outcome_df[display_cols].to_string(index=False, float_format=lambda v: f"{v:.4f}"))
     print()
 
     print("=" * 70)
-    print("애매한 negative 사례 (003550 LG / 010130 고려아연 / 034730 SK / 011200 HMM)")
+    print("negative_control outcome, confirmed/ambiguous subgroup 표기")
     print("=" * 70)
-    focus_tickers = {"003550", "010130", "034730", "011200"}
-    focus_df = outcome_df[outcome_df["ticker"].isin(focus_tickers)]
+    negative_outcome_df = outcome_df[outcome_df["set"] == "negative_control"].copy()
+    negative_outcome_df["subgroup"] = negative_outcome_df["ticker"].map(NEGATIVE_SUBGROUP)
+    negative_display_cols = ["subgroup"] + display_cols
     with pd.option_context("display.max_columns", None, "display.width", 220):
-        print(focus_df[display_cols].to_string(index=False, float_format=lambda v: f"{v:.4f}"))
+        print(
+            negative_outcome_df.sort_values("subgroup")[negative_display_cols].to_string(
+                index=False, float_format=lambda v: f"{v:.4f}"
+            )
+        )
     print()
 
 

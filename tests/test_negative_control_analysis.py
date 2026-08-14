@@ -8,6 +8,7 @@ from trend_scanner.validation.negative_control_analysis import (
     CONDITIONS,
     condition_ratio,
     condition_table,
+    evaluate_condition,
     group_stats,
     snapshot_csv_rows,
     stats_table,
@@ -99,6 +100,17 @@ def test_condition_ratio_separates_missing_from_valid():
     assert outcome.valid_n == 3  # 나머지 3개만 유효 판정
     assert outcome.matched == 2  # 0.1, 0.05만 매칭
     assert math.isclose(outcome.pct, 2 / 3 * 100)  # pct는 valid_n(3) 기준
+
+
+def test_evaluate_condition_does_not_skip_later_nan_check_after_earlier_false():
+    # weekly=-0.1(첫 조건 False로 만듦), ma24=NaN. 첫 조건이 이미 False라고
+    # 두 번째 조건의 NaN 확인을 건너뛰면 안 된다 -> 결과는 False가 아니라
+    # missing(None)이어야 한다.
+    row = _row(weekly_ma12_slope=-0.1, ma24_slope=float("nan"))
+
+    outcome = evaluate_condition(row, CONDITIONS["A: weekly>0 & ma24<=0"])
+
+    assert outcome is None
 
 
 def test_condition_ratio_combination_requires_all_parts_and_treats_any_nan_as_missing():
