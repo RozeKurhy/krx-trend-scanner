@@ -114,3 +114,41 @@ def test_load_daily_empty_response_returns_empty_standard_frame(monkeypatch):
     assert result.empty
     assert list(result.columns) == ["open", "high", "low", "close", "volume", "trading_value"]
     assert isinstance(result.index, pd.DatetimeIndex)
+
+
+def test_missing_source_column_raises_market_data_error(monkeypatch):
+    def fake_get_market_ohlcv_by_date(fromdate, todate, ticker, adjusted=True):
+        broken = _adjusted_korean_df().drop(columns=["거래량"])
+        return broken if adjusted else _unadjusted_korean_df()
+
+    monkeypatch.setattr(
+        pykrx_provider_module.stock, "get_market_ohlcv_by_date", fake_get_market_ohlcv_by_date
+    )
+
+    provider = PyKrxDataProvider(adjusted=True)
+    with pytest.raises(MarketDataError):
+        provider.load_daily("005930", "2024-01-02", "2024-01-03")
+
+
+@pytest.mark.parametrize(
+    "column,bad_value",
+    [
+        ("시가", "abc"),  # 문자열 -> float64 변환 실패
+        ("거래량", float("nan")),  # NaN -> int64 변환 실패
+    ],
+)
+def test_dtype_conversion_failure_raises_market_data_error(monkeypatch, column, bad_value):
+    def fake_get_market_ohlcv_by_date(fromdate, todate, ticker, adjusted=True):
+        if not adjusted:
+            return _unadjusted_korean_df()
+        broken = _adjusted_korean_df()
+        broken.loc[broken.index[0], column] = bad_value
+        return broken
+
+    monkeypatch.setattr(
+        pykrx_provider_module.stock, "get_market_ohlcv_by_date", fake_get_market_ohlcv_by_date
+    )
+
+    provider = PyKrxDataProvider(adjusted=True)
+    with pytest.raises(MarketDataError):
+        provider.load_daily("005930", "2024-01-02", "2024-01-03")

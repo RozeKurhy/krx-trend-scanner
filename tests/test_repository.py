@@ -130,3 +130,22 @@ def test_validator_error_propagates_and_cache_untouched(tmp_path):
         repo.get_daily("005930", "2024-01-01", "2024-01-03")
 
     assert cache.load("005930") is None
+
+
+def test_invalid_cached_data_raises_on_stable_cache_hit(tmp_path):
+    cache = ParquetCache(base_dir=tmp_path)
+    invalid_cached = _make_df("2024-01-01", 90, base_price=100.0)
+    invalid_cached.loc[invalid_cached.index[0], "open"] = -1.0  # 음수 가격, 이미 저장된 상태
+
+    # 검증 없이 직접 캐시에 심어서 "깨진 Parquet"를 재현한다.
+    cache.save("005930", invalid_cached)
+
+    provider = FakeProvider(lambda ticker, start, end: pd.DataFrame())
+    repo = MarketDataRepository(provider, cache)
+
+    # 요청 구간이 안정된 과거 캐시(overlap 범위 밖) 안에 있어 provider는 호출되지
+    # 않는 stable cache hit 경로인데도, 캐시 자체가 깨져 있으면 실패해야 한다.
+    with pytest.raises(MarketDataError):
+        repo.get_daily("005930", "2024-01-10", "2024-01-20")
+
+    assert provider.calls == []

@@ -29,6 +29,10 @@ class MarketDataRepository:
         end_ts = pd.Timestamp(end)
 
         cached = self._cache.load(ticker)
+        if cached is not None and not cached.empty:
+            # 깨진 Parquet, 예전 schema, 중복 index 등이 stable cache hit 경로를
+            # 통해 검증 없이 그대로 반환되지 않도록 읽을 때도 검증한다.
+            validate_ohlcv(cached)
         merged = cached
 
         fetch_range = self._missing_range(cached, start_ts, end_ts)
@@ -38,6 +42,7 @@ class MarketDataRepository:
                 ticker, fetch_start.strftime("%Y-%m-%d"), fetch_end.strftime("%Y-%m-%d")
             )
             merged = fetched if cached is None or cached.empty else self._merge(cached, fetched)
+            validate_ohlcv(merged)
             self._cache.save(ticker, merged)
 
         # fetch_range가 None이면 _missing_range 규칙상 cached는 항상 non-empty이므로

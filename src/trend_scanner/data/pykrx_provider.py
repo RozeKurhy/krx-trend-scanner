@@ -80,17 +80,29 @@ class PyKrxDataProvider:
         if price_df.empty:
             return pd.DataFrame(columns=list(_STANDARD_COLUMNS), index=pd.DatetimeIndex([]))
 
+        missing = [k for k in _KOREAN_TO_STANDARD if k not in price_df.columns]
+        if missing:
+            raise MarketDataError(f"PyKRX 응답 schema 오류: missing={missing}")
+
         index = pd.DatetimeIndex(price_df.index).rename(None)
         df = pd.DataFrame(index=index)
 
-        for korean, standard in _KOREAN_TO_STANDARD.items():
-            dtype = "int64" if standard == "volume" else "float64"
-            df[standard] = price_df[korean].to_numpy(dtype=dtype)
+        try:
+            for korean, standard in _KOREAN_TO_STANDARD.items():
+                series = price_df[korean]
+                if series.isna().any():
+                    # NaN -> int64 캐스팅은 예외 없이 조용히 쓰레기 값을 만들어낼 수
+                    # 있어(예: NaN -> INT64_MIN) 캐스팅 전에 명시적으로 막는다.
+                    raise MarketDataError(f"PyKRX 응답 정규화 실패: {korean} 컬럼에 NaN이 있습니다.")
+                dtype = "int64" if standard == "volume" else "float64"
+                df[standard] = series.to_numpy(dtype=dtype)
 
-        if trading_value is not None:
-            df = df.join(trading_value.rename("trading_value"))
-        else:
-            df["trading_value"] = float("nan")
-        df["trading_value"] = df["trading_value"].astype("float64")
+            if trading_value is not None:
+                df = df.join(trading_value.rename("trading_value"))
+            else:
+                df["trading_value"] = float("nan")
+            df["trading_value"] = df["trading_value"].astype("float64")
+        except (ValueError, TypeError) as exc:
+            raise MarketDataError(f"PyKRX 응답 정규화 실패: {exc}") from exc
 
         return df[list(_STANDARD_COLUMNS)].sort_index()

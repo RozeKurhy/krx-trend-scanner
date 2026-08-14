@@ -64,10 +64,31 @@ def test_nan_in_ohlc_raises():
         validate_ohlcv(df)
 
 
-def test_nan_in_trading_value_is_tolerated():
+def test_nan_in_volume_raises():
+    df = _valid_df()
+    df.loc[df.index[0], "volume"] = float("nan")
+    with pytest.raises(MarketDataError):
+        validate_ohlcv(df)
+
+
+def test_nan_in_some_trading_value_is_tolerated():
     df = _valid_df()
     df.loc[df.index[0], "trading_value"] = float("nan")
-    validate_ohlcv(df)  # raises nothing
+    validate_ohlcv(df)  # raises nothing (일부만 NaN)
+
+
+def test_all_trading_value_nan_raises():
+    df = _valid_df()
+    df["trading_value"] = float("nan")
+    with pytest.raises(MarketDataError):
+        validate_ohlcv(df)
+
+
+def test_negative_trading_value_raises():
+    df = _valid_df()
+    df.loc[df.index[0], "trading_value"] = -1.0
+    with pytest.raises(MarketDataError):
+        validate_ohlcv(df)
 
 
 def test_negative_price_raises():

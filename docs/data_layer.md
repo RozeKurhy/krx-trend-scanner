@@ -98,6 +98,23 @@ trading_value   float64   # adjusted=True 경로에서는 NaN일 수 있음
 병합 후 정렬하고 중복 거래일을 제거해 캐시에 다시 저장한 뒤, 요청 구간만 slice해서
 반환한다.
 
+## 검증 시점
+
+`validate_ohlcv`는 세 지점에서 실행된다.
+
+1. provider가 새로 조회한 데이터(캐시 반영 전)
+2. **캐시에서 읽은 기존 데이터**(non-empty일 때, provider 호출 여부와 무관하게)
+3. **캐시와 병합한 결과**(캐시에 다시 저장하기 직전)
+
+2번이 있어서, 요청 구간이 이미 안정된 과거 캐시로 완전히 커버돼 provider를 호출하지
+않는 "stable cache hit" 경로에서도 깨진 Parquet·예전 schema·중복 index 같은 문제가
+검증 없이 Pattern 계층까지 그대로 흘러가지 않는다.
+
+**주의**: 이전에는 캐시가 깨져 있어도 다음 조회에서 provider가 다시 호출되면서 새
+데이터로 자연히 덮어써질 여지가 있었지만, 이제는 깨진 캐시를 만나는 즉시
+`MarketDataError`로 실패한다. 복구는 자동으로 되지 않으며, 해당 종목의
+`data/raw/stocks/{ticker}.parquet` 파일을 수동으로 지워야 한다.
+
 ## 완료 봉 처리
 
 Data Layer는 "이번 달/이번 주 봉이 완성됐는지"를 판단하지 않습니다. 오늘까지 존재하는
