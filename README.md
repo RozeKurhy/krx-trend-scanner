@@ -102,8 +102,13 @@ krx-trend-scanner/
 ├── src/
 │   └── trend_scanner/
 │       ├── data/
-│       │   ├── loader.py
-│       │   └── resampler.py
+│       │   ├── provider.py        # MarketDataProvider Protocol
+│       │   ├── pykrx_provider.py  # PyKRX 구현체 (PyKRX 의존성은 여기에만)
+│       │   ├── repository.py      # Provider + Cache 조합, 증분 업데이트
+│       │   ├── cache.py           # 종목별 Parquet 캐시
+│       │   ├── validator.py       # 표준 OHLCV 검증
+│       │   ├── errors.py          # MarketDataError
+│       │   └── resampler.py       # 일봉 -> 주봉/월봉 (runtime 변환, 캐시 안 함)
 │       │
 │       ├── features/
 │       │   ├── moving_average.py
@@ -120,8 +125,9 @@ krx-trend-scanner/
 ├── tests/
 │
 └── docs/
-    └── patterns/
-        └── pattern_a.md
+    ├── patterns/
+    │   └── pattern_a.md
+    └── data_layer.md
 ```
 
 Pattern 로직은 데이터 공급자와 분리됩니다. `patterns/pattern_a.py`는 PyKRX 등 특정 데이터 소스를 직접 호출하지 않고, 표준 OHLCV `DataFrame`만 입력받습니다.
@@ -140,7 +146,7 @@ Pattern 평가
 
 ## 현재 개발 단계
 
-현재는 프로젝트 골격과 재사용 가능한 Feature 함수(이동평균 기울기, Pivot Low, ATR%, Range Position 등) 위주로 구현돼 있습니다.
+현재는 프로젝트 골격, 재사용 가능한 Feature 함수(이동평균 기울기, Pivot Low, ATR%, Range Position 등), 그리고 Data Layer(v0.1: PyKRX 조회 + Parquet 캐시 + 증분 업데이트)가 구현돼 있습니다. 자세한 내용은 [docs/data_layer.md](docs/data_layer.md)를 참고하세요.
 
 Pattern A의 점수 산식, Hard Filter 임계값은 아직 검증되지 않은 초기 후보값이며 [docs/patterns/pattern_a.md](docs/patterns/pattern_a.md)에 문서로만 정리돼 있고, `evaluate_pattern_a`는 아직 구현되지 않았습니다.
 

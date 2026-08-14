@@ -11,6 +11,8 @@ requires-python = ">=3.10"
 dependencies = [
     "pandas>=2.0",
     "numpy>=1.24",
+    "pykrx>=1.2",
+    "pyarrow>=14.0",
 ]
 
 [project.optional-dependencies]
@@ -24,3 +26,7 @@ packages = ["src/trend_scanner"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
+markers = [
+    "integration: 실제 외부 API(PyKRX)를 호출한다. 기본 실행에서 제외되며 `-m integration`으로만 실행한다.",
+]
+addopts = "-m 'not integration'"
