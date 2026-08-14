@@ -1,9 +1,9 @@
-"""Pattern A v0.1 Score Design.
+"""Pattern A Score Design v0.2.
 
 Feature Set Freeze v0.1(pattern_a_feature_set.py, docs/patterns/pattern_a.md)
 로 확정한 Feature Set을 이용해 Pattern A Score의 구조를 정의한다.
 
-핵심 철학:
+핵심 철학(v0.1과 동일, 유지):
 
     Base / Long-Term Structure  +  Trend Transition
 
@@ -16,7 +16,31 @@ Feature Set Freeze v0.1(pattern_a_feature_set.py, docs/patterns/pattern_a.md)
     balanced_core = harmonic_mean(base_score, transition_score)
     pattern_a_score = clip(balanced_core + alignment_bonus - progressed_penalty, 0, 100)
 
-Already Progressed Penalty는 Base Score와 같은 원본 값을 다시 감점하는
+v0.2에서 바뀐 것은 Transition Score와 alignment bonus를 만드는 방식뿐이다
+(OOS Case Validation v0.1에서 실제로 재현된 두 실패 메커니즘을 구조적으로
+고치기 위함 — 자세한 후보 비교/근거는 scripts/score_v02_candidate_compare.py와
+docs/patterns/pattern_a.md의 "Score Design v0.2" 절 참고):
+
+    core_score = ma24_slope를 곡선(MA24_SLOPE_POINTS)에 통과시킨 값. Core는
+        여전히 ma24_slope 하나뿐이다(Feature Set Freeze 그대로).
+    support_score = weekly_ma12_slope/ma24_slope_acceleration의 가중평균
+        곡선값. Supporting은 이제 "Core를 대신하는 독립 점수"가 아니라
+        "Core가 실제 전환 중인지 확인하는 신호"다 — core_score가 충분히
+        높을 때만(CONFIRMATION_GATE_POINTS) confirmation_bonus로 더해진다.
+    transition_score = min(100, core_score + confirmation_bonus)
+
+    SKC 사례(ma24_slope 약한 음수인데 weekly/acceleration이 매우 강해서
+    Supporting 40% 비중만으로 transition_score가 60점대까지 올라간 문제)가
+    이 구조에서는 core_score < 50이면 confirmation_bonus = 0이 되어 재현되지
+    않는다 — Supporting이 Core 없이 점수를 만들 수 없다.
+
+alignment bonus도 core_score 조건부로 바뀐다: weekly/ma24/acceleration이
+모두 양수라는 "정렬" 자체는 v0.1과 같은 조건이지만, core_score가 충분히
+높을 때만(ALIGNMENT_CORE_STRONG_THRESHOLD) 전체 보너스를 준다. core가
+약한데 정렬만 된 경우(LG 사례)는 작은 보너스만 받는다.
+
+Already Progressed Penalty는 v0.1에서 바뀌지 않았다(threshold/evidence
+개수별 penalty 전부 동일) — Base Score와 같은 원본 값을 다시 감점하는
 double counting을 피하기 위해, 개별 Feature 하나가 아니라 "여러 신호가
 동시에 진행됨을 가리킬 때만" 적용하는 composite evidence count로 만든다
 (progressed_evidence_count, 아래 참고).
@@ -123,23 +147,57 @@ WEEKLY_MA12_SLOPE_POINTS: tuple[tuple[float, float], ...] = ((0.00, 20.0), (0.15
 # Supporting 역할만 한다.
 MA24_SLOPE_ACCELERATION_POINTS: tuple[tuple[float, float], ...] = ((0.00, 30.0), (0.05, 100.0))
 
-TRANSITION_WEIGHTS: dict[str, float] = {
-    "ma24_slope": 0.60,
-    "weekly_ma12_slope": 0.20,
-    "ma24_slope_acceleration": 0.20,
+# support_score: weekly/acceleration을 동일 가중(0.5/0.5)으로 평균한
+# "Core가 실제 전환 중인지 확인하는" 보조 점수. Supporting 두 Feature
+# 사이의 상대적 우열은 검증되지 않았으므로 동률로 둔다(v0.1의 0.20/0.20
+# 비중과 같은 비율).
+SUPPORT_WEIGHTS: dict[str, float] = {
+    "weekly_ma12_slope": 0.5,
+    "ma24_slope_acceleration": 0.5,
 }
 
-TRANSITION_POINTS: dict[str, tuple[tuple[float, float], ...]] = {
-    "ma24_slope": MA24_SLOPE_POINTS,
+SUPPORT_POINTS: dict[str, tuple[tuple[float, float], ...]] = {
     "weekly_ma12_slope": WEEKLY_MA12_SLOPE_POINTS,
     "ma24_slope_acceleration": MA24_SLOPE_ACCELERATION_POINTS,
 }
 
+# --- Transition Score v0.2: Core + Confirmation ---
+#
+# v0.1 재리뷰(SKC 사례): ma24_slope가 약한 음수인데 weekly_ma12_slope/
+# ma24_slope_acceleration이 매우 강해서, 0.60/0.20/0.20 가중합만으로도
+# Supporting 두 개가 transition_score를 60점대까지 끌어올렸다. Feature
+# 역할 정의(Core/Supporting)상 Supporting은 Core를 "대신"하면 안 된다.
+#
+# v0.2는 Supporting을 독립 가중치가 아니라 confirmation bonus로 바꾼다 —
+# core_score가 충분히 높을 때만(CONFIRMATION_GATE_POINTS) Support가 점수를
+# 보탤 수 있다. core_score < 50이면 confirmation_bonus = 0이라, Supporting이
+# 아무리 강해도 transition_score는 core_score 그대로다(SKC형 실패 재현
+# 불가). Candidate A(v0.1 가중합)/B(Core gating multiplier)도 development
+# set에서 비교했지만, 이 confirmation 구조가 Feature 역할 정의와 가장
+# 일치하고 known failure(SKC/넷마블)를 가장 크게 줄여서 채택했다 — 비교
+# 표와 기각 이유는 docs/patterns/pattern_a.md 참고.
+CONFIRMATION_MAX = 20.0
+
+# core_score(0~100) 기준 confirmation 인정 비율. 50 미만이면 0(Support가
+# Core 없이 점수를 못 만든다), 80 이상이면 confirmation_bonus를 전부
+# 인정한다. 아래 alignment bonus의 core-strength 기준(60)과 breakpoint가
+# 다른 건 의도적이다 — 60은 development set에서 "정렬된 사례 대부분이
+# 모이는 지점"을 나타내고, 50/80은 confirmation 인정 구간의 경계라
+# 서로 다른 질문에 답한다(자세한 근거는 docs 참고).
+CONFIRMATION_GATE_POINTS: tuple[tuple[float, float], ...] = (
+    (0.0, 0.0),
+    (50.0, 0.0),
+    (80.0, 1.0),
+    (100.0, 1.0),
+)
+
 
 @dataclass
 class ComponentScore:
-    """축 하나(Base 또는 Transition)의 가중합 결과. 결측 Feature는 가중치를
-    재정규화해서 계산하고, 어떤 Feature도 유효하지 않으면 score=None이다."""
+    """Base 축 또는 Support 하위 구성(weekly/acceleration)의 가중합 결과.
+    결측 Feature는 가중치를 재정규화해서 계산하고, 어떤 Feature도 유효하지
+    않으면 score=None이다(v0.2부터 Transition 전체는 이 함수를 쓰지 않고
+    _compute_transition이 core_score + confirmation_bonus로 따로 계산한다)."""
 
     score: float | None
     valid_features: tuple[str, ...]
@@ -180,13 +238,84 @@ def _harmonic_mean(a: float | None, b: float | None) -> float | None:
     return 2 * a * b / (a + b)
 
 
+@dataclass
+class TransitionResult:
+    """Core + Confirmation 구조의 Transition Score 계산 결과."""
+
+    score: float | None
+    core_score: float | None
+    support_score: float | None
+    confirmation_bonus: float | None
+    valid_features: tuple[str, ...]
+    missing_features: tuple[str, ...]
+
+
+def _compute_transition(feature_values: dict[str, float]) -> TransitionResult:
+    ma24_slope = feature_values.get("ma24_slope")
+    if _is_missing(ma24_slope):
+        # ma24_slope는 required anchor라 이 경로는 이미 insufficient_data로
+        # 빠지지만, 방어적으로 완전한 결과를 반환한다.
+        support = _weighted_piecewise_score(feature_values, SUPPORT_WEIGHTS, SUPPORT_POINTS)
+        return TransitionResult(
+            score=None,
+            core_score=None,
+            support_score=support.score,
+            confirmation_bonus=None,
+            valid_features=(),
+            missing_features=("ma24_slope",) + support.missing_features,
+        )
+
+    core_score = _piecewise_linear(ma24_slope, MA24_SLOPE_POINTS)
+    support = _weighted_piecewise_score(feature_values, SUPPORT_WEIGHTS, SUPPORT_POINTS)
+
+    if support.score is None:
+        return TransitionResult(
+            score=core_score,
+            core_score=core_score,
+            support_score=None,
+            confirmation_bonus=0.0,
+            valid_features=("ma24_slope",),
+            missing_features=support.missing_features,
+        )
+
+    gate = _piecewise_linear(core_score, CONFIRMATION_GATE_POINTS)
+    confirmation_bonus = CONFIRMATION_MAX * (support.score / 100.0) * gate
+    score = min(100.0, core_score + confirmation_bonus)
+    return TransitionResult(
+        score=score,
+        core_score=core_score,
+        support_score=support.score,
+        confirmation_bonus=confirmation_bonus,
+        valid_features=("ma24_slope",) + support.valid_features,
+        missing_features=support.missing_features,
+    )
+
+
 # --- Transition Alignment ---
 #
 # 검증에서 가장 의미 있었던 interaction(Combination E). Hard Filter가
 # 아니라 완전 충족 시에만 소규모 bonus를 준다 — 부분 충족은 bonus 없음.
 # 결측 Feature가 하나라도 있으면 정렬 여부를 확인할 수 없으므로 False로
 # 취급한다(미확인 == 정렬 안 됨, bonus 없음).
+#
+# v0.2: alignment 조건(weekly/ma24/acceleration 전부 양수)은 그대로지만,
+# core_score가 충분히 높을 때만(ALIGNMENT_CORE_STRONG_THRESHOLD) 전체
+# 보너스를 준다. LG 사례(core_score=58.2, 정렬은 만족)처럼 core가 아직
+# "명확한 양수"가 아닌데 정렬만 된 경우는 축소된 보너스만 받는다 — Support
+# 신호(weekly/acceleration)는 이미 confirmation_bonus로 transition_score에
+# 들어가 있으므로, core가 약한데도 정렬 하나로 전체 보너스를 또 주면 같은
+# 신호를 두 번 보상하는 셈이 된다.
+#
+# threshold 60은 development set에서 alignment 조건을 만족한 26개 사례를
+# core_score 기준으로 정렬했을 때 나온 자연스러운 경계다 — 60 미만은
+# 사실상 2건(정상 holdout early_trend 1건 core=55.7, LG core=58.2)뿐이고
+# 나머지 24건은 62.5 이상에 모여 있다(가장 깨끗한 audited early_trend
+# 사례인 005490 core=66.0 포함). 80으로 더 엄격하게 잡으면 005490을 포함한
+# 다수의 진짜 positive까지 축소 보너스로 떨어뜨려 metric D("clean
+# EARLY_TREND 유지")를 해친다 — 자세한 표는 docs 참고.
 ALIGNMENT_BONUS = 8.0
+ALIGNMENT_BONUS_WEAK_CORE = 3.0
+ALIGNMENT_CORE_STRONG_THRESHOLD = 60.0
 
 
 def _transition_alignment(feature_values: dict[str, float]) -> bool:
@@ -196,6 +325,14 @@ def _transition_alignment(feature_values: dict[str, float]) -> bool:
     if _is_missing(weekly) or _is_missing(ma24) or _is_missing(accel):
         return False
     return weekly > 0 and ma24 > 0 and accel > 0
+
+
+def _alignment_bonus(aligned: bool, core_score: float | None) -> float:
+    if not aligned or core_score is None:
+        return 0.0
+    if core_score >= ALIGNMENT_CORE_STRONG_THRESHOLD:
+        return ALIGNMENT_BONUS
+    return ALIGNMENT_BONUS_WEAK_CORE
 
 
 # --- Already Progressed Penalty ---
@@ -270,12 +407,17 @@ def _classify_stage(
 
 @dataclass
 class PatternAResult:
-    """Pattern A v0.1 Score 결과. 종목 신원(ticker/name)은 포함하지 않는다
+    """Pattern A Score v0.2 결과. 종목 신원(ticker/name)은 포함하지 않는다
     (models/score.py의 ScanResult가 합친다).
 
     insufficient_data=True면 pattern_a_score/stage는 항상 None이다 —
     required anchor(range_36m, ma24_slope) 중 하나라도 결측이거나, Base
     또는 Transition Feature가 전부 결측인 경우.
+
+    core_score/support_score/confirmation_bonus는 v0.2에서 추가된 진단용
+    필드다(Transition Score가 어떻게 만들어졌는지 확인용) — API를 늘리되
+    기존 필드(base_score/transition_score/balanced_core_score/
+    progressed_penalty/pattern_a_score 등)는 그대로 유지한다.
     """
 
     base_score: float | None
@@ -285,6 +427,9 @@ class PatternAResult:
     transition_score: float | None
     transition_valid_features: tuple[str, ...]
     transition_missing_features: tuple[str, ...]
+    core_score: float | None
+    support_score: float | None
+    confirmation_bonus: float | None
 
     balanced_core_score: float | None
     alignment_bonus: float
@@ -301,7 +446,7 @@ class PatternAResult:
 
 
 def score_pattern_a(features: Any) -> PatternAResult:
-    """FeatureRow(또는 같은 속성을 가진 객체)를 받아 Pattern A v0.1 Score를
+    """FeatureRow(또는 같은 속성을 가진 객체)를 받아 Pattern A Score v0.2를
     계산한다. 순수 함수 — features 계산 자체는 하지 않는다."""
     feature_values = {
         name: getattr(features, name)
@@ -317,7 +462,7 @@ def score_pattern_a(features: Any) -> PatternAResult:
     }
 
     base = _weighted_piecewise_score(feature_values, BASE_WEIGHTS, BASE_POINTS)
-    transition = _weighted_piecewise_score(feature_values, TRANSITION_WEIGHTS, TRANSITION_POINTS)
+    transition = _compute_transition(feature_values)
 
     # required anchor: range_36m(Base/Expansion Validation에서 가장 강한 High
     # 확신도 Base Feature)과 ma24_slope(Core Transition Feature)는 나머지
@@ -336,6 +481,9 @@ def score_pattern_a(features: Any) -> PatternAResult:
             transition_score=transition.score,
             transition_valid_features=transition.valid_features,
             transition_missing_features=transition.missing_features,
+            core_score=transition.core_score,
+            support_score=transition.support_score,
+            confirmation_bonus=transition.confirmation_bonus,
             balanced_core_score=None,
             alignment_bonus=0.0,
             progressed_penalty=0.0,
@@ -352,7 +500,7 @@ def score_pattern_a(features: Any) -> PatternAResult:
 
     balanced_core = _harmonic_mean(base.score, transition.score)
     alignment = _transition_alignment(feature_values)
-    alignment_bonus = ALIGNMENT_BONUS if alignment else 0.0
+    alignment_bonus = _alignment_bonus(alignment, transition.core_score)
     evidence_count = _progressed_evidence_count(feature_values)
     penalty = _progressed_penalty(evidence_count)
 
@@ -368,6 +516,9 @@ def score_pattern_a(features: Any) -> PatternAResult:
         transition_score=transition.score,
         transition_valid_features=transition.valid_features,
         transition_missing_features=transition.missing_features,
+        core_score=transition.core_score,
+        support_score=transition.support_score,
+        confirmation_bonus=transition.confirmation_bonus,
         balanced_core_score=balanced_core,
         alignment_bonus=alignment_bonus,
         progressed_penalty=penalty,

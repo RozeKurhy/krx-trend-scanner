@@ -5,14 +5,23 @@ pattern_a_score.score_pattern_a()로 계산한 Score를 기존 historical_snapsh
 적용해 분포를 확인한다. 새 KRX fetch 없음. 실제 종목 추천/전체 스캔/
 백테스트/미래 수익률 튜닝은 하지 않는다 — 관찰용 표만 출력한다.
 
-Design 비교(item 28): 최종 채택안(Design C: harmonic + alignment bonus -
-progressed penalty)과 함께, 기각한 두 대안도 같은 component score로
-계산해서 나란히 비교한다.
+Design 비교(item 28, v0.1 라운드 기준): 최종 채택안(Design C: harmonic +
+alignment bonus - progressed penalty)과 함께, 기각한 두 대안도 같은
+component score로 계산해서 나란히 비교한다.
 
     Design A: 단순 가산식(base 40% + transition 60%) — item 2가 경고한
               "Base 없이 Transition만 강해도 고득점" 문제 재현용 비교 대상.
     Design B: harmonic mean만(alignment bonus/progressed penalty 없음).
     Design C: harmonic mean + alignment bonus - progressed penalty (채택안).
+
+**버전 고정 안내(Score Design v0.2 재리뷰 후속)**: 여기서 "Design C"는
+v0.1 시절의 harmonic+bonus-penalty 구조를 가리킨다 — v0.2에서 Transition
+Score(Core+Confirmation)와 alignment bonus(core-conditional) 계산 방식
+자체가 바뀌었으므로, `design_c_score` 컬럼은 이제 pattern_a_score.py의
+현재(v0.2) 출력을 그대로 반영한다. Design A/B는 이 스크립트 안에서만
+독립적으로 재계산하는 v0.1 시절 기각안이라 v0.2 전환과 무관하게 그대로
+동작한다. v0.1 vs v0.2 비교는 scripts/score_v02_candidate_compare.py와
+docs/patterns/pattern_a.md의 "Score Design v0.2" 절 참고.
 
 실행 (repo 루트에서, `pip install -e ".[dev]"` 이후):
     python scripts/score_design_validate.py

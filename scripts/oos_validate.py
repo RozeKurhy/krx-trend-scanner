@@ -15,6 +15,16 @@ range_36m/ma24_slope required anchor, commit 6e7cc95)을 새 종목/날짜에
 그대로 적용한다. holdout/negative_control은 이미 Score 설계(weight/
 threshold/penalty 확정)에 쓰였으므로 더 이상 out-of-sample이 아니다.
 
+**버전 고정 안내(Score Design v0.2 재리뷰 후속)**: 이 문서/CSV의 원래
+실행 결과는 v0.1 Score(commit 6e7cc95~11cf690)를 기준으로 만들어졌다.
+pattern_a_score.py는 이후 v0.2로 freeze됐다 — 이 스크립트를 지금 다시
+실행하면 `score_pattern_a()`가 v0.2(Core + Confirmation transition,
+core-conditional alignment)를 반환하므로 아래 그룹 통계와 다른 숫자가
+나온다. 이건 버그가 아니라 기대된 동작이다 — 이 스크립트는 "그 시점에
+frozen된 Score를 새 데이터에 적용하면 어떻게 되는가"를 보는 용도라서
+Score가 바뀌면 결과도 같이 바뀐다. v0.1과 v0.2의 직접 비교는 docs/
+patterns/pattern_a.md의 "Score Design v0.2" 절 참고.
+
 **중요 원칙(negative_control 선정 때와 동일)**: 종목/날짜를 고를 때
 Pattern A Score, base_score, transition_score, range_36m, ma24_slope 등
 어떤 Feature/Score 값도 보지 않았다. `scripts/_oos_fetch_and_inspect.py`로

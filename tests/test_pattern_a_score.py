@@ -6,6 +6,10 @@ import pytest
 
 from trend_scanner.patterns.pattern_a_feature_set import PatternAStage
 from trend_scanner.patterns.pattern_a_score import (
+    ALIGNMENT_BONUS,
+    ALIGNMENT_BONUS_WEAK_CORE,
+    ALIGNMENT_CORE_STRONG_THRESHOLD,
+    CONFIRMATION_MAX,
     PatternAResult,
     _harmonic_mean,
     _piecewise_linear,
@@ -245,3 +249,108 @@ def test_stage_is_progressed_when_evidence_count_reaches_three():
     )
     result = score_pattern_a(features)
     assert result.stage is PatternAStage.PROGRESSED
+
+
+# --- Transition Score v0.2: Core + Confirmation (재리뷰 후속) ---
+
+
+def test_weak_core_with_strong_support_cannot_score_high_via_supporting_alone():
+    # SKC 실패 재현 테스트: ma24_slope는 약한 음수(core_score < 50)인데
+    # weekly/acceleration은 최대치. v0.1이었다면 Supporting 40% 비중만으로
+    # transition_score가 60점대까지 올라갔지만, v0.2는 confirmation_gate가
+    # 0이라 Supporting이 아무리 강해도 transition_score는 core_score 그대로다.
+    features = _features(
+        range_36m=0.6,
+        avg_price_change_12m=0.10,
+        ma_spread=0.10,
+        ma24_slope=-0.01,
+        weekly_ma12_slope=0.20,
+        ma24_slope_acceleration=0.10,
+        range_position=0.5,
+    )
+    result = score_pattern_a(features)
+
+    assert result.core_score < 50.0
+    assert result.support_score == 100.0
+    assert result.confirmation_bonus == 0.0
+    assert result.transition_score == pytest.approx(result.core_score)
+    assert result.transition_score <= 40.0
+
+
+def test_strong_core_with_strong_support_allows_high_transition():
+    features = _features(
+        range_36m=0.6,
+        avg_price_change_12m=0.10,
+        ma_spread=0.10,
+        ma24_slope=0.15,  # core_score = 100
+        weekly_ma12_slope=0.20,
+        ma24_slope_acceleration=0.10,
+        range_position=0.5,
+    )
+    result = score_pattern_a(features)
+
+    assert result.core_score == 100.0
+    assert result.support_score == 100.0
+    assert result.confirmation_bonus > 0.0
+    assert result.transition_score == 100.0  # 100 + bonus를 100으로 clip
+
+
+def test_mid_core_with_strong_support_gives_partial_confirmation():
+    # core_score가 confirmation gate 구간(50~80) 안에 있으면 confirmation_bonus가
+    # 0도 최대치도 아닌 부분적인 값이어야 한다.
+    features = _features(
+        range_36m=0.6,
+        avg_price_change_12m=0.10,
+        ma_spread=0.10,
+        ma24_slope=0.02,  # core_score = 66 (50~90 구간 보간)
+        weekly_ma12_slope=0.20,
+        ma24_slope_acceleration=0.10,
+        range_position=0.5,
+    )
+    result = score_pattern_a(features)
+
+    assert 50.0 < result.core_score < 80.0
+    assert 0.0 < result.confirmation_bonus < CONFIRMATION_MAX
+    assert result.core_score < result.transition_score < result.core_score + CONFIRMATION_MAX
+
+
+def test_alignment_with_weak_core_does_not_get_full_bonus():
+    # 정렬 조건(weekly/ma24/accel 전부 양수)은 만족하지만 core_score가
+    # ALIGNMENT_CORE_STRONG_THRESHOLD 미만인 LG형 사례 — 축소된 보너스만 받는다.
+    features = _features(
+        range_36m=0.6,
+        avg_price_change_12m=0.10,
+        ma_spread=0.10,
+        ma24_slope=0.005,  # core_score < 60
+        weekly_ma12_slope=0.05,
+        ma24_slope_acceleration=0.01,
+        range_position=0.5,
+    )
+    result = score_pattern_a(features)
+
+    assert result.flags["transition_alignment"] is True
+    assert result.core_score < ALIGNMENT_CORE_STRONG_THRESHOLD
+    assert result.alignment_bonus == ALIGNMENT_BONUS_WEAK_CORE
+    assert result.alignment_bonus < ALIGNMENT_BONUS
+
+
+def test_alignment_with_strong_core_gets_full_bonus():
+    features = _features(
+        range_36m=0.6,
+        avg_price_change_12m=0.10,
+        ma_spread=0.10,
+        ma24_slope=0.06,  # core_score >= 60
+        weekly_ma12_slope=0.05,
+        ma24_slope_acceleration=0.01,
+        range_position=0.5,
+    )
+    result = score_pattern_a(features)
+
+    assert result.flags["transition_alignment"] is True
+    assert result.core_score >= ALIGNMENT_CORE_STRONG_THRESHOLD
+    assert result.alignment_bonus == ALIGNMENT_BONUS
+
+
+def test_pattern_a_result_has_core_and_support_diagnostic_fields():
+    field_names = {f.name for f in dataclasses.fields(PatternAResult)}
+    assert {"core_score", "support_score", "confirmation_bonus"} <= field_names

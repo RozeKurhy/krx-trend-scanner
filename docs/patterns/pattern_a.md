@@ -3,23 +3,26 @@
 ## 상태
 
 **Feature Set Freeze v0.1 완료 + Score Design v0.1 완료 + OOS Case
-Validation v0.1 완료 + v0.2 설계 준비 완료.** Feature Validation →
-Historical Snapshot → Holdout → Negative Control → Outcome Audit →
-Base/Expansion Validation까지 검증한 결과로 Feature Set을
+Validation v0.1 완료 + Score Design v0.2 완료(freeze).** Feature
+Validation → Historical Snapshot → Holdout → Negative Control → Outcome
+Audit → Base/Expansion Validation까지 검증한 결과로 Feature Set을
 확정했고(Freeze), 그 위에 `pattern_a_score.py`(`score_pattern_a`,
 `PatternAResult`)로 실제 Score 산식을 구현하고 기존 validation snapshot에
 적용해 분포를 검증했다(Score Design). 자세한 산식/근거/검증 결과는 아래
 "Score Design v0.1" 절 참고.
 
-**Score는 커밋 `6e7cc95`(range_36m required anchor 반영)에서 freeze됐다.**
-그 이후 "OOS Case Validation v0.1"(아래 절, 정식 명칭 — 시장 전체의
-unbiased 성능 검증이 아니다, 아래 caveat 참고)은 완전히 새로운 종목/
-날짜에 그 Score를 그대로 적용만 했다 — weight/threshold/bonus/penalty를
-전혀 수정하지 않았다. holdout/negative_control은 Score 설계에 이미
-쓰여서 더 이상 out-of-sample이 아니다. **Score v0.1의 최종 결론은
-"architecture는 baseline으로 유지, performance validation은 미완료"다**
-(자세한 근거는 "Score v0.1 상태: architecture 유지 vs performance
-validation" 절 참고) — 아직 최종 Score로 freeze 완료된 상태는 아니다.
+**Score v0.1은 커밋 `6e7cc95`에서 freeze됐고, OOS Case Validation v0.1**
+(아래 절, 정식 명칭 — 시장 전체의 unbiased 성능 검증이 아니다, 아래
+caveat 참고)에서 SKC형 Core/Supporting 실패, LG/한국타이어형 alignment
+false positive, 넷마블형 Pattern A/B 경계 침투 3가지 실패 메커니즘이
+실제로 재현됐다. 이를 근거로 **Score Design v0.2**(아래 절)에서 Transition
+Score 구조(Core + Confirmation)와 alignment bonus(core-strength 조건부)를
+재설계해 별도 커밋으로 freeze했다 — Base Score/harmonic mean 결합 구조/
+Already Progressed Penalty/required anchor(range_36m, ma24_slope)는
+v0.1 그대로 유지했다. **v0.2도 OOS2(아직 선정하지 않은 새 종목/날짜)로는
+아직 검증하지 않았다** — 이번 라운드는 development set(exploration/
+holdout/negative_control/OOS v0.1 29건, 전부 이미 결과를 아는 상태) 위
+비교/설계 라운드였다.
 
 `pattern_a.py`의 `evaluate_pattern_a`(raw daily OHLCV 입력)는 여전히
 구현되지 않았다 — `score_pattern_a`는 FeatureRow를 입력받는 순수 함수이고,
@@ -469,6 +472,12 @@ Hard Filter는 이번에도 최소화했다(`insufficient_data` 상태만 별도
   않는다.
 
 ## Score Design v0.1
+
+**이 절은 v0.1 이력 기록이다.** 아래 Transition Score 산식(0.60/0.20/0.20
+가중합)과 alignment bonus(조건 충족 시 항상 +8)는 이후 "Score Design
+v0.2" 절에서 대체됐다 — 현재 코드(`pattern_a_score.py`)의 실제 동작은
+v0.2 절 기준이다. Base Score/harmonic mean 결합/Already Progressed
+Penalty는 v0.2에서도 그대로이므로 이 절의 설명이 여전히 유효하다.
 
 ### 철학
 
@@ -1238,6 +1247,360 @@ TREND_PROGRESSED였다면(012450, 079550) 현재 penalty가 맞게 작동한
 문제**로 본다. 이번 감사에서는 후자(진짜 Score 문제)보다 전자(label
 문제)가 더 많았다 — 그렇다고 fast mover 문제가 전혀 없다는 뜻은
 아니다(042660이 남아있다).
+
+## Score Design v0.2
+
+### 왜 v0.2가 필요했는가
+
+OOS Case Validation v0.1에서 서로 다른 3가지 실패 메커니즘이 실제로
+재현됐다(각각 위 절 참고):
+
+```text
+SKC(011790, 2024-06-30, hard_negative_false_turn)
+    ma24_slope 약한 음수(core 신호 약함)인데 weekly_ma12_slope/
+    ma24_slope_acceleration이 최대치 근처 -> v0.1 가중합(0.60/0.20/0.20)
+    구조에서 Supporting 두 개(합 40% 비중)만으로 transition_score가
+    63점대까지 올라감. Feature 역할 정의(Core/Supporting)와 실제 계산
+    구조가 어긋남.
+
+LG(003550, 2020-12-31, confirmed_negative) / 한국타이어(161390,
+2024-04-30, hard_negative_false_turn)
+    weekly>0 AND ma24>0 AND accel>0 조건만으로 +8 alignment bonus 전액
+    지급. 실패 사례에서도 반복됨 — 특히 한국타이어는 alignment_bonus=8.0
+    이 최종 점수를 75점대까지 밀어올렸다.
+
+넷마블 boundary(251270, 2020-08-31, downtrend_reversal_boundary)
+    장기 하락 도중 반등(avg_price_change_12m 음수, ma24 약한 음수,
+    weekly/accel 강한 양수) 조합이 74.67점까지 올라옴 — Pattern A/B
+    경계가 avg_price_change_12m 커브 하나로는 충분히 지켜지지 않음.
+```
+
+**이번 라운드는 Score를 전면 재작성하지 않는다.** Base Score/harmonic
+mean 결합/Already Progressed Penalty(evidence threshold·penalty
+테이블)/range_36m·ma24_slope required anchor/Stage 분류 threshold는
+전부 v0.1 그대로 유지한다 — Transition Score의 결합 방식과 alignment
+bonus 지급 조건만 재설계한다.
+
+### 비교 방법
+
+`scripts/score_v02_candidate_compare.py`(freeze 이전 commit에서 실행,
+Score 코드는 손대지 않은 상태)로 development set 64 snapshot(exploration
+12 + holdout 15 + negative_control 8 + OOS v0.1 diagnostic 29 — 전부
+이미 결과를 아는 상태이므로 재차 강조: 이건 unbiased 성능 검증이 아니라
+후보 구조 비교다) 위에서 Transition Candidate A/B/C, Alignment Candidate
+A/B/C/D를 계산해 CSV(`data/processed/score_v02_candidate_compare.csv`,
+로컬 전용)로 남겼다. Candidate A는 재구현이 아니라 그 시점의
+`score_pattern_a()`를 그대로 호출한 진짜 v0.1 baseline이었다(주의:
+freeze 이후 이 스크립트를 다시 실행하면 Candidate A도 v0.2를 반환한다
+— 스크립트 자체의 버전 고정 안내 docstring 참고).
+
+holdout_early_trend/exploration_early_trend는 이번 라운드에서 Stage
+Label Rubric으로 재감사하지 않았다(범위 밖) — OOS positive_early_trend
+5건만 이미 감사가 끝나 있고, 그중 005490(2023-03-31)이 "가장 깨끗한
+audited EARLY_TREND"로 지정된 케이스다(아래 표에서 계속 이 케이스를
+기준으로 쓴다). holdout_early_trend 그룹 median을 "깨끗한 early_trend
+분포"의 증거로 쓰지 않는다.
+
+### Transition Candidate A / B / C 비교
+
+```text
+Candidate A (v0.1 baseline, 그대로)
+    transition_score = 0.60*core_score + 0.20*weekly_score + 0.20*accel_score
+
+Candidate B (Core gating)
+    support_multiplier = gate(core_score)  # 0(core<=0) ~ 1(core>=60)
+    transition_score = 0.60*core_score + 0.40*support_score*support_multiplier
+    -> A보다 항상 작거나 같다(순수 억제형).
+
+Candidate C (Core + Confirmation, 채택)
+    confirmation_bonus = 20 * (support_score/100) * gate(core_score)
+        gate: core_score<50 -> 0, 50~80 보간, core_score>=80 -> 1
+    transition_score = min(100, core_score + confirmation_bonus)
+```
+
+그룹별 final score(alignment은 v0.1 그대로 고정해서 Transition 구조
+효과만 분리) min/median/max:
+
+| group | n | A(min/med/max) | B | C |
+|---|---|---|---|---|
+| positive_pre_breakout | 5 | 36.0/59.3/80.7 | 33.9/59.0/80.7 | 42.7/70.9/94.9 |
+| positive_early_trend | 5 | 18.5/54.9/76.5 | 18.5/51.0/76.5 | 23.6/55.4/85.8 |
+| positive_trend_progressed | 5 | 0.0/59.8/78.6 | 0.0/59.8/78.6 | 0.0/63.2/84.0 |
+| confirmed_negative | 5 | 31.0/48.7/71.3 | 3.7/34.2/70.7 | 4.8/42.4/82.2 |
+| ambiguous_negative | 3 | 23.3/46.0/54.2 | 0.0/35.2/40.9 | 0.0/45.1/47.5 |
+| hard_negative_false_turn | 8 | 10.9/53.7/75.4 | 0.0/46.4/75.4 | 0.0/51.6/82.5 |
+| downtrend_reversal_boundary | 5 | 17.7/31.0/74.7 | 0.0/18.7/62.2 | 0.0/25.9/63.2 |
+
+SKC/넷마블 개별 비교(core/support/transition):
+
+| 사례 | core_score | support_score | transition A | transition B | transition C |
+|---|---|---|---|---|---|
+| SKC | 39.1 | 99.8 | 63.4 | 42.5 | **39.1**(core 그대로, confirmation 0) |
+| 넷마블 boundary | 42.9 | 100.0 | 65.7 | 48.6 | **42.9**(core 그대로) |
+
+**채택: Candidate C.** 우선순위 기준(item 22)으로 판단했다.
+
+1. **Feature 역할 정의와 일치** — "Supporting은 Core를 확인하는 신호"라는
+   정의를 confirmation_bonus 구조가 가장 직접적으로 구현한다. B(gating)도
+   방향은 맞지만 "곱셈으로 깎는 억제"이지 "확인해서 더하는" 개념은 아니다.
+2. **설명 가능성** — `core_score + confirmation_bonus`는 "Core 점수에
+   확인 보너스를 얹는다"로 그대로 말이 된다.
+3. **known failure 구조적 해결** — SKC(63.4→39.1, −24.3), 넷마블 boundary
+   (65.7→42.9, −22.8) 둘 다 B보다 C가 더 크게 줄인다.
+4. positive 훼손 여부는 아래 "known FP 4건" 절에서 별도로 확인한다(**여기서
+   중요한 예외가 나온다** — 바로 아래 절 참고).
+5. threshold 개수: B(gate 3점)와 C(gate 3점) 동일.
+
+Candidate B는 "모든 known FP를 v0.1 이하로 유지한다"는 장점이 있어
+**기각 이유를 명시해둔다**: B는 순수 억제(곱셈)라 core가 이미 높으면
+(한국타이어 core=92.2) multiplier가 1.0으로 포화돼 억제 효과가 전혀 없고,
+core가 중간인 진짜 positive(clean early 005490 core=66.0)도 같이 억제한다
+— confirmation처럼 "core가 확실할 때 더 얹어준다"는 방향성이 없어 순수
+가산식(v0.1)의 축소판에 가깝다. 반면 C는 명확한 confirmation 개념을
+가지면서 SKC/넷마블은 B보다 더 강하게, positive는 오히려 더 후하게
+평가한다(D. 참고).
+
+**80/10/10 가중치 조정만으로는 부족함(item 4 sensitivity check)**: 같은
+4개 사례에 v0.1 가중합의 비중만 80/10/10으로 바꿔보면 SKC
+transition=51.2(final 62.4), 넷마블=54.3(final 66.7) — Candidate C(각각
+39.1/52.5, 42.9/57.3)보다 개선폭이 절반 이하다. 구조를 바꾸지 않고
+가중치만 조정하는 방식은 "Supporting이 Core 없이도 점수를 만든다"는
+구조적 문제를 근본적으로 해결하지 못한다 — 예상대로다.
+
+### Known False Positive 4건 — 정직한 분해 (item 30 E에 대한 답)
+
+**중요: Candidate C + Alignment C(아래) 채택 후, 4건 중 2건은 v0.1보다
+오히려 올랐다.** 평균이나 "대체로 나아졌다"로 뭉개지 않고 개별로 report한다.
+
+| 사례 | v0.1 final | v0.2 final(C+alignC) | 변화 | 원인 |
+|---|---|---|---|---|
+| SKC (Core/Supporting FP) | 70.66 | **52.45** | **−18.21** | confirmation_bonus=0(core<50) — 구조적으로 해결됨 |
+| 넷마블 boundary (A/B 경계) | 74.67 | **57.32** | **−17.35** | 위와 동일 메커니즘으로 해결됨 |
+| LG (alignment FP) | 71.25 | **76.60** | **+5.35** | 원인 아래 서술 — 해결 안 됨(구조적 한계) |
+| 한국타이어 (alignment FP) | 75.36 | **82.49** | **+7.13** | 원인 아래 서술 — 해결 안 됨(penalty 영역) |
+
+**LG/한국타이어가 오히려 오른 이유**: v0.1의 가중합(core 60%)에서는
+core_score가 완전히 반영되지 못하고 40%가 Supporting에 깎였다(LG
+core=58.2인데 transition_a=47.3으로 축소). Candidate C는 core_score를
+그대로 살리므로(confirmation은 "더하는" 개념이라 core를 깎지 않는다)
+LG의 transition이 47.3→59.9로 오른다 — 이건 "confirmation 구조를
+채택한다"는 선택 자체에 내재된 결과이지 버그가 아니다. v0.1이 LG를
+낮게 유지한 건 사실 "Supporting이 Core를 약화시키는" 우연한 부작용이었지,
+의도한 설계가 아니었다.
+
+- **LG는 alignment 재설계(아래)로 부분 완화된다**: core_score=58.2 <
+  ALIGNMENT_CORE_STRONG_THRESHOLD(60)라서 alignment bonus가 8→3으로
+  줄어 최종 81.6→76.6으로 5점 내려온다. 여전히 v0.1(71.3)보다는 높다 —
+  **완전히 해결되지 않았다.**
+- **한국타이어는 alignment 재설계로도 해결되지 않는다**: core_score=92.2로
+  이미 threshold(60)를 크게 넘어 alignment bonus가 그대로 8.0이다.
+  한국타이어의 문제는 "약한 core에 지원사격이 과하다"가 아니라 "진짜로
+  강한 단기 추세가 이후 꺾인" 경우라서, Core/Supporting 구조나 alignment
+  bonus 어느 쪽으로도 구조적으로 못 잡는다 — 이건 Already Progressed
+  Penalty(evidence_count=2, penalty=10.0으로 약하게만 잡힘)의 영역이고,
+  이번 라운드는 penalty를 건드리지 않기로 했다(item 15) — **v0.3+
+  검토 후보로 남긴다.**
+
+이 정직한 분해가 이번 라운드의 핵심 트레이드오프다: **Candidate C는
+"Supporting이 Core를 대신하는" 문제(SKC/넷마블)를 구조적으로 고치지만,
+"Core 자체가 진짜로 강했는데 실패한" 문제(한국타이어)는 애초에 이
+카테고리의 문제가 아니라서 못 고친다.**
+
+### Alignment Candidate A / B / C / D 비교
+
+Candidate C(Transition) 확정 후, 그 core_score를 기준으로 alignment
+후보를 비교했다.
+
+```text
+A. 유지: aligned ? +8 : 0                              (v0.1 그대로)
+B. 축소: aligned ? +4 : 0
+C. Core-conditional(채택): aligned AND core_score>=60 ? +8
+                           : aligned ? +3 : 0
+D. 제거: 항상 0
+```
+
+그룹별 final(Transition=C 고정, alignment만 변화) median:
+
+| group | keep8(A) | reduced4(B) | core_conditional(C) | removed(D) |
+|---|---|---|---|---|
+| positive_early_trend | 55.4 | 51.4 | **55.4** | 47.4 |
+| positive_trend_progressed | 63.2 | 59.2 | **63.2** | 55.2 |
+| exploration_early_trend | 77.2 | 73.2 | **77.2** | 69.2 |
+| holdout_early_trend | 94.7 | 90.7 | **94.7** | 86.7 |
+
+같은 조건에서의 개별 사례 2건(그룹 median이 아니라 단일 snapshot):
+
+| 사례 | keep8(A) | reduced4(B) | core_conditional(C) | removed(D) |
+|---|---|---|---|---|
+| LG(003550) | 81.6 | 77.6 | **76.6** | 73.6 |
+| 한국타이어(161390) | 82.5 | 78.5 | **82.5**(core 강해서 안 바뀜) | 74.5 |
+
+**D(제거)는 채택하지 않는다** — clean early case(005490)가 85.8→77.8로
+8점 내려가고, positive_early_trend 그룹 median(47.4)이 pre_breakout
+(70.9)/trend_progressed(63.2)보다 낮아져 metric A/D("clean EARLY_TREND가
+유지되는가")를 오히려 v0.1보다 더 악화시킨다 — alignment bonus를 완전히
+없애면 confirmation_bonus와의 "이중 보상" 우려(item 8)는 해소되지만,
+그 대가로 애초에 이 라운드가 지키려던 목표(early_trend 대표 사례가
+낮게 깔리지 않게 하기)를 해친다. **B(축소)도 채택하지 않는다** — LG/
+한국타이어를 균일하게 4점씩 깎지만 clean early case도 똑같이 4점
+깎여서(85.8→81.8) "왜 깎였는지"를 core_score로 설명할 수 없다.
+
+**C(Core-conditional) 채택 근거**: clean early case(core=66.0)와
+042660(core=91.7/96.5)처럼 core가 실제로 강한 사례는 전액 보너스를
+유지하면서, LG(core=58.2)처럼 core가 아직 threshold 미만인데 정렬만
+된 사례만 선택적으로 축소한다 — "왜"가 core_score 하나로 설명된다.
+
+**threshold=60 근거(item 5 요청 — raw threshold 대신 이미 만든
+core_score 스케일 재사용)**: development set에서 alignment 조건을
+만족한 26개 사례를 core_score로 정렬하면, 60 미만은 딱 2건뿐이다 —
+holdout_early_trend 현대차 2020-08-31(core=55.7, 진짜 positive)과
+LG(core=58.2, 실패 사례). 나머지 24건은 62.5 이상에 몰려 있고, 그 안에
+clean early case(66.0)도 포함된다. 80으로 더 높이면 62.5~79.9 구간의
+정상 positive(005490 포함) 다수가 함께 축소 대상이 돼 metric D를
+해친다 — 60은 "이 둘(현대차/LG)만 걸러지는" 경계값이라 명시적으로
+고른 라운드 넘버다. 현대차 2020-08-31이 함께 걸리는 건 받아들인
+트레이드오프다(단일 holdout early_trend 스냅샷 하나, 그룹 median에는
+거의 영향 없음).
+
+### Pattern A / Pattern B boundary 처리
+
+**avg_price_change_12m curve는 이번 라운드에서 바꾸지 않는다**(item 14).
+Transition Candidate C 재설계만으로 넷마블 boundary가 74.67→57.32로
+17점 이상 내려가 pre_breakout 그룹 median(70.9)과의 격차가 커졌다 —
+Score 구조 변경이 avg_price_change_12m curve를 직접 만지는 것보다 더
+큰 효과를 냈다.
+
+새 downtrend 구조 신호 후보 2개는 검증했지만 **둘 다 Score에 연결하지
+않는다**:
+
+```text
+long_term_high_slope_36m
+    36개월을 오래된/최근 12개월 블록으로 나눠 최근 블록 고점이 가장
+    오래된 블록 고점 대비 얼마나 낮은가.
+
+prior_leg_drift_36m
+    avg_price_change_12m과 같은 계산을 12개월 더 과거 구간에 적용.
+```
+
+raw value 그룹별(n/min/median/max):
+
+| group | long_term_high_slope_36m | prior_leg_drift_36m |
+|---|---|---|
+| positive_pre_breakout | 5 / −0.38 / +0.11 / +0.41 | 5 / −0.25 / +0.21 / +0.57 |
+| downtrend_reversal_boundary | 5 / −0.20 / −0.17 / −0.06 | 5 / −0.28 / −0.12 / +0.31 |
+| confirmed_negative | 5 / −0.29 / 0.00 / +0.38 | 5 / −0.23 / −0.04 / +0.19 |
+| hard_negative_false_turn | 8 / −0.54 / −0.26 / +0.10 | 8 / −0.45 / −0.28 / 0.00 |
+
+`long_term_high_slope_36m`은 group 수준에서는 avg_price_change_12m보다
+낫다 — downtrend_reversal_boundary 5건 전부 음수(−0.20~−0.06)로 일관된
+반면, positive_pre_breakout은 5건 중 4건(−0.0041, +0.109, +0.263,
++0.413)이 boundary 그룹의 범위(−0.20~−0.06)보다 위에 있어 방향이
+분리된다(avg_price_change_12m으로 같은 비교를 하면 positive_pre_breakout
+5건 중 3건의 값 자체가 boundary 그룹 범위 안에 들어가 있었다 — 위
+"avg_price_change_12m 음수 방향 분석" 절 참고). long_term_high_slope_36m
+은 이 범위 내 겹침을 0건으로 줄인다 — 하지만 바로 아래에서 보듯 더 심한
+문제(범위 밖 극단값)가 남아있다.
+
+**그런데도 채택하지 않는다.** 079550(2020-12-31, 진짜 audited
+positive_pre_breakout)의 값이 −0.38로 **boundary 그룹 전체 범위
+(−0.20~−0.06)보다 더 낮다** — group median끼리는 분리되지만, 이
+단일 반례 때문에 이 Feature를 단조 감소(monotone) 방식으로 Score에
+넣으면 079550 같은 진짜 positive가 boundary 사례들보다 더 크게
+불이익을 받는다. `prior_leg_drift_36m`도 겹침이 더 크다(boundary
+max +0.31이 positive_pre 범위 안). **두 후보 모두 "검증됨, 그러나
+단일 threshold로 Score에 넣기엔 반례가 있어 보류"로 결론짓고 v0.3+
+후보로 남긴다** — Pattern A/B boundary는 이번 라운드엔 Transition
+구조 개선(Candidate C)만으로 대응한다.
+
+### Base Score / Progressed Penalty 변경 여부
+
+**둘 다 변경 없음.** RANGE_36M_POINTS/AVG_PRICE_CHANGE_12M_POINTS/
+MA_SPREAD_POINTS/BASE_WEIGHTS, PROGRESSED_EVIDENCE_THRESHOLDS/
+PROGRESSED_PENALTY_BY_EVIDENCE_COUNT 전부 v0.1 값 그대로다(item 15).
+한국타이어처럼 penalty 영역이 원인인 잔여 실패는 이번 라운드가 의도적으로
+남겨둔 것이다.
+
+### 042660(한화오션) fast mover 비교
+
+이 종목 하나 때문에 penalty 구조를 튜닝하지 않는다(item 16) — v0.1/v0.2
+간 차이만 관찰용으로 기록한다.
+
+| 날짜 | Stage audit | base | transition A→C | penalty | final v0.1→v0.2 |
+|---|---|---|---|---|---|
+| 2024-10-31 (pre_breakout) | PRE_BREAKOUT | 77.8 | 68.3→98.3 | 0.0 | 80.7→94.9 |
+| 2025-01-31 (early_trend) | EARLY/PROGRESSED 경계 | 50.9 | 97.5→100.0 | 20.0 | 54.9→55.4 |
+| 2025-07-31 (trend_progressed) | TREND_PROGRESSED | 3.1 | 70.0→100.0 | 35.0 | 0.0→0.0 |
+
+경계 사례(2025-01-31)는 penalty(20.0)가 이미 크게 작동 중이라 transition
+구조가 바뀌어도 final은 거의 그대로다(54.9→55.4) — v0.2가 이 사례를
+악화시키지 않는다는 것만 확인하고 넘어간다.
+
+### 최종 Pattern A Score v0.2 정의
+
+```text
+core_score = piecewise(ma24_slope, MA24_SLOPE_POINTS)                 # v0.1과 동일 커브
+support_score = 0.5*piecewise(weekly_ma12_slope, WEEKLY_MA12_SLOPE_POINTS)
+              + 0.5*piecewise(ma24_slope_acceleration, MA24_SLOPE_ACCELERATION_POINTS)
+confirmation_gate = piecewise(core_score, [(0,0), (50,0), (80,1), (100,1)])
+confirmation_bonus = 20 * (support_score/100) * confirmation_gate
+transition_score = min(100, core_score + confirmation_bonus)
+
+aligned = (weekly_ma12_slope>0) AND (ma24_slope>0) AND (ma24_slope_acceleration>0)
+alignment_bonus = not aligned          -> 0
+                   aligned & core>=60  -> 8
+                   aligned & core<60   -> 3
+
+balanced_core = harmonic_mean(base_score, transition_score)           # v0.1과 동일
+pattern_a_score = clip(balanced_core + alignment_bonus - progressed_penalty, 0, 100)
+```
+
+Base Score/required anchor(range_36m, ma24_slope)/Already Progressed
+Penalty/Stage 분류 threshold는 v0.1과 완전히 동일하다.
+
+### v0.1 대비 변경점 요약
+
+| 항목 | v0.1 | v0.2 |
+|---|---|---|
+| Transition 결합 | 0.60/0.20/0.20 가중합 | Core(ma24) + Confirmation bonus(Supporting) |
+| alignment bonus | 조건 충족 시 항상 +8 | 조건 충족 + core_score>=60일 때만 +8, 미만이면 +3 |
+| Base Score | 변경 없음 | 변경 없음 |
+| Already Progressed Penalty | 변경 없음 | 변경 없음 |
+| required anchor | range_36m, ma24_slope | 변경 없음 |
+| Stage 분류 threshold | 변경 없음 | 변경 없음(단, transition_score 분포 자체가 바뀌어 결과적으로 Stage 산출이 달라질 수 있음 — threshold는 안 건드림) |
+| PatternAResult 필드 | 5-tuple(base/transition axis) | core_score/support_score/confirmation_bonus 3개 진단 필드 추가, 기존 필드 전부 유지 |
+| 새 Feature(downtrend 구조) | 없음 | 검증했으나 미채택(위 절 참고) |
+
+### 완료 조건 점검 (item 30)
+
+```text
+A. Supporting이 Core를 대신하지 못하게 됐는가?
+   예 — SKC(core<50)에서 confirmation_bonus=0, transition_score=core_score.
+
+B. Alignment bonus가 Core strength를 무시하지 않는가?
+   예(부분) — LG는 core<60이라 bonus 축소. 단, progressed max는
+   78.6(v0.1)->84.0(v0.2)으로 올랐다(penalty 미조정, 예상된 잔차).
+
+C. Pattern A/B boundary에 avg_price_change 하나보다 나은 구조 신호가
+   생겼는가?
+   Transition 구조 개선만으로 넷마블 boundary가 17점 이상 하락. 새
+   Feature 후보는 검증했으나(079550 반례로) 미채택 — v0.3+ 후보.
+
+D. clean EARLY_TREND가 유지되는가?
+   예 — 005490 76.5(v0.1)->85.8(v0.2), 상승.
+
+E. SKC/LG/한국타이어/넷마블 failure mechanism이 줄었는가?
+   SKC/넷마블: 예, 구조적으로 줄었다(각각 -18.2/-17.4).
+   LG: 부분(alignment 재설계로 -5.0, 그래도 v0.1보다 높음).
+   한국타이어: 아니오(penalty 영역, 이번 라운드 범위 밖) — 위 "Known FP"
+   절에서 정직하게 기록함.
+
+F. Progressed penalty를 불필요하게 흔들지 않았는가?
+   예 — threshold/penalty 테이블 전부 v0.1 그대로.
+
+G. v0.2 Score가 OOS2 보기 전에 freeze됐는가?
+   예 — 이번 라운드는 OOS2 종목 선정/계산을 전혀 하지 않았다(commit
+   순서: 비교 스크립트 커밋 -> freeze 커밋, OOS2는 아직 없음).
+```
 
 ## Score Momentum (다음 단계 계획, 이번 라운드에서는 구현하지 않음)
 

@@ -32,6 +32,15 @@ PATTERN_A_FEATURE_SCOPE/Score 어디에도 아직 연결하지 않는다):
 negative_control/OOS v0.1 29건)만 재사용한다. OOS2는 선정도 계산도 하지
 않는다.
 
+**버전 고정 안내(중요)**: 이 스크립트는 pattern_a_score.py가 아직 v0.1인
+시점(freeze 이전 commit)에 실행해서 결과를 기록했다 — 그때는 Candidate
+A(`score_pattern_a()` 직접 호출)가 진짜 v0.1 baseline이었다. freeze 이후
+(v0.2가 pattern_a_score.py에 반영된 뒤) 이 스크립트를 다시 실행하면
+Candidate A도 v0.2를 반환하므로 "A=v0.1, B/C=신규 후보"라는 비교 전제가
+깨진다 — 재실행 결과를 v0.1 대비 비교로 쓰지 말 것. 이 스크립트는 그
+당시 실행 결과(CSV/print 출력, docs/patterns/pattern_a.md에 옮겨 적음)를
+남기기 위한 기록용 스크립트다.
+
 실행 (repo 루트에서, `pip install -e ".[dev]"` 이후):
     python scripts/score_v02_candidate_compare.py
 
