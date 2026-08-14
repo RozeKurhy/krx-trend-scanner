@@ -138,17 +138,17 @@ Total Predicted          |      10 |       5 |         10 |           3 |       
 
 ## 9. Calibration vs OOS 비교 분석
 
-| 지표 | Calibration (46 snapshots, 27 tickers) | OOS Validation (35 snapshots, 24 tickers) | Drift 분석 |
+| 지표 | Calibration (46 snapshots, 27 tickers) | OOS Validation (35 snapshots, 24 tickers) | 관찰된 특성 (Observational Notes) |
 |---|---|---|---|
-| **EXACT Match** | 38 / 46 (**82.6%**) | 24 / 35 (**68.6%**) | -14.0%p (Challenge Set 특성 반영) |
-| **ADJACENT Match** | 5 / 46 (**10.9%**) | 10 / 35 (**28.6%**) | +17.7%p (경계 사례 포용) |
-| **SEVERE Mismatch** | 3 / 46 (**6.5%**) | 1 / 35 (**2.9%**) | **-3.6%p (심각한 오류 감소)** |
-| **Dangerous Promotion** | **2 / 46 (4.3%)** | **0 / 35 (0.0%)** | **OOS challenge set에서 미관찰** |
-| **WEAK 정확도** | 5 / 5 (**100.0%**) | 7 / 7 (**100.0%**) | 유지 (단일 test set 기준) |
-| **BASE 정확도** | 7 / 10 (**70.0%**) | 3 / 7 (**42.9%**) | -27.1%p (경계 민감도 확인) |
-| **TRANSITION 정확도**| 7 / 10 (**70.0%**) | 4 / 7 (**57.1%**) | -12.9%p (보수적 판정) |
-| **EARLY_TREND 정확도**| 8 / 8 (**100.0%**) | 3 / 7 (**42.9%**) | -57.1%p (보수적 지연 관찰) |
-| **PROGRESSED 정확도** | **11 / 13 (84.6%)** | 7 / 7 (**100.0%**) | 유지 (단일 test set 기준) |
+| **EXACT Match** | 38 / 46 (**82.6%**) | 24 / 35 (**68.6%**) | OOS challenge set에서 더 낮은 exact 비율 관찰 |
+| **ADJACENT Match** | 5 / 46 (**10.9%**) | 10 / 35 (**28.6%**) | OOS challenge set에서 경계 bucket 비중이 더 높게 관찰 |
+| **SEVERE Mismatch** | 3 / 46 (**6.5%**) | 1 / 35 (**2.9%**) | OOS challenge set에서 더 낮은 severe 비율 관찰 |
+| **Dangerous Promotion** | **2 / 46 (4.3%)** | **0 / 35 (0.0%)** | 이번 OOS challenge set에서 dangerous promotion 미관찰 |
+| **WEAK 정확도** | 5 / 5 (**100.0%**) | 7 / 7 (**100.0%**) | 두 dataset 모두 포함된 WEAK 사례 전수 exact |
+| **BASE 정확도** | 7 / 10 (**70.0%**) | 3 / 7 (**42.9%**) | OOS challenge set에서 BASE 경계 민감도 관찰 |
+| **TRANSITION 정확도**| 7 / 10 (**70.0%**) | 4 / 7 (**57.1%**) | OOS challenge set에서 일부 보수적 판정 관찰 |
+| **EARLY_TREND 정확도**| 8 / 8 (**100.0%**) | 3 / 7 (**42.9%**) | OOS challenge set에서 TRANSITION으로 4건 지연 관찰 |
+| **PROGRESSED 정확도** | **11 / 13 (84.6%)** | 7 / 7 (**100.0%**) | 이번 OOS challenge set의 PROGRESSED 7건 전수 exact |
 
 ---
 
