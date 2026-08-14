@@ -7,7 +7,7 @@
 4. 기존 모든 validation dataset과의 중복 검증 (Code-enforced):
    - Stage calibration 46건: exact key overlap = 0, ticker overlap = 0
    - OOS v0.1 diagnostic 29건: exact key overlap = 0
-   - OOS v0.2 validation 22건: exact key overlap = 0
+   - OOS v0.2 validation 38건: exact key overlap = 0
    - Negative Control 8건: exact key overlap = 0
    - Holdout datasets: exact key overlap = 0
 5. classifier (`pattern_a_stage`) 및 score (`pattern_a_score`) import 금지 검증 (AST)
@@ -172,7 +172,7 @@ def test_exact_overlap_with_all_existing_validation_datasets_is_zero():
     oos1_keys = {(s.ticker, s.snapshot_date) for s in OOS_V01_DIAGNOSTIC_SNAPSHOTS}
     assert len(oos_keys & oos1_keys) == 0, f"Overlap with OOS v0.1 diagnostic set: {oos_keys & oos1_keys}"
 
-    # 3. OOS v0.2 Validation (22건)
+    # 3. OOS v0.2 Validation (38건)
     oos2_keys = {(s.ticker, s.snapshot_date) for s in OOS_V02_VALIDATION_SNAPSHOTS}
     assert len(oos_keys & oos2_keys) == 0, f"Overlap with OOS v0.2 validation set: {oos_keys & oos2_keys}"
 

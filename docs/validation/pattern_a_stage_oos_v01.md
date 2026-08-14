@@ -32,14 +32,14 @@
 
 ### 3.1 기존 Dataset과의 Overlap 0 검증 (Test-Enforced)
 
-[`tests/test_pattern_a_stage_oos_v01_manifest.py`](file:///Users/june/Documents/projects/krx-trend-scanner/tests/test_pattern_a_stage_oos_v01_manifest.py)를 통해 다음 무중복성이 코드로 강제 검증되었다.
+`tests/test_pattern_a_stage_oos_v01_manifest.py`를 통해 다음 무중복성이 코드로 강제 검증되었다.
 
 1. **Stage Calibration 46건**:
    - `exact key overlap = 0` (Test Enforced)
    - `ticker overlap = 0` (Test Enforced: 기존 27개 티커와 0% 중복, 100% 신규 24개 고유 티커)
 2. **OOS v0.1 Diagnostic (29 snapshots)**:
    - `exact key overlap = 0` (Test Enforced)
-3. **OOS v0.2 Validation (22 snapshots)**:
+3. **OOS v0.2 Validation (38 snapshots)**:
    - `exact key overlap = 0` (Test Enforced)
 4. **Negative Control (8 snapshots)**:
    - `exact key overlap = 0` (Test Enforced)
