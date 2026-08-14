@@ -130,6 +130,83 @@ def test_missing_source_column_raises_market_data_error(monkeypatch):
         provider.load_daily("005930", "2024-01-02", "2024-01-03")
 
 
+def test_phantom_holiday_rows_are_filtered_out(monkeypatch):
+    # 가운데 날짜(2024-01-03)는 open=high=low=volume=0, close만 직전 거래일 값을
+    # 들고 있는 휴장일 phantom row. 실측(NAVER 2018-10-08/10/11, 삼성전자
+    # 2018-04-30~05-03)과 동일한 형태를 재현한다.
+    index = pd.date_range("2024-01-02", periods=3, freq="D")
+    adjusted_df = pd.DataFrame(
+        {
+            "시가": [100, 0, 102],
+            "고가": [105, 0, 107],
+            "저가": [95, 0, 97],
+            "종가": [102, 102, 104],
+            "거래량": [1000, 0, 1200],
+            "등락률": [0.0, 0.0, 1.96],
+        },
+        index=index,
+    )
+    unadjusted_df = pd.DataFrame(
+        {
+            "시가": [99, 0, 101],
+            "고가": [104, 0, 106],
+            "저가": [94, 0, 96],
+            "종가": [101, 101, 103],
+            "거래량": [999, 0, 1199],
+            "거래대금": [100_000_000, 0, 120_000_000],
+            "등락률": [0.0, 0.0, 1.98],
+        },
+        index=index,
+    )
+
+    def fake_get_market_ohlcv_by_date(fromdate, todate, ticker, adjusted=True):
+        return adjusted_df if adjusted else unadjusted_df
+
+    monkeypatch.setattr(
+        pykrx_provider_module.stock, "get_market_ohlcv_by_date", fake_get_market_ohlcv_by_date
+    )
+
+    provider = PyKrxDataProvider(adjusted=True)
+    result = provider.load_daily("005930", "2024-01-02", "2024-01-04")
+
+    assert len(result) == 2
+    assert list(result.index) == [index[0], index[2]]
+
+
+def test_row_with_only_partial_zero_columns_is_not_filtered(monkeypatch):
+    # open만 0이고 high/low/volume은 0이 아니므로 phantom row 조건을 만족하지
+    # 않는다 — 필터링되면 안 된다.
+    index = pd.date_range("2024-01-02", periods=1, freq="D")
+    adjusted_df = pd.DataFrame(
+        {"시가": [0], "고가": [105], "저가": [95], "종가": [102], "거래량": [1000], "등락률": [0.0]},
+        index=index,
+    )
+    unadjusted_df = pd.DataFrame(
+        {
+            "시가": [0],
+            "고가": [104],
+            "저가": [94],
+            "종가": [101],
+            "거래량": [999],
+            "거래대금": [123_456_789],
+            "등락률": [0.0],
+        },
+        index=index,
+    )
+
+    def fake_get_market_ohlcv_by_date(fromdate, todate, ticker, adjusted=True):
+        return adjusted_df if adjusted else unadjusted_df
+
+    monkeypatch.setattr(
+        pykrx_provider_module.stock, "get_market_ohlcv_by_date", fake_get_market_ohlcv_by_date
+    )
+
+    provider = PyKrxDataProvider(adjusted=True)
+    result = provider.load_daily("005930", "2024-01-02", "2024-01-02")
+
+    assert len(result) == 1
+
+
 @pytest.mark.parametrize(
     "column,bad_value",
     [

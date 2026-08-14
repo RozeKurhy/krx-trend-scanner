@@ -37,15 +37,23 @@ Pattern/Feature/Resampler 계층은 `MarketDataProvider` Protocol과 표준 OHLC
 "API 응답이 깨져서 빈 응답"을 이 계층에서 구분할 수 없습니다. `validate_ohlcv`는
 빈 DataFrame을 유효한 것으로 취급합니다.
 
-**알려진 한계 2 (Feature Validation v0.1에서 발견, 관찰만 하고 아직 대응하지 않음)**:
-두 백엔드 모두 휴장일(공휴일 등)을 응답에서 제외하지 않고, open/high/low/volume이
-전부 0이고 close만 직전 거래일 값을 그대로 들고 있는 "phantom row"로 포함시키는
-경우가 있습니다. 실측: 035420(NAVER) 2018-10-08/10/11, 005930(삼성전자)
-2018-04-30~05-03. 이런 행은 `high < close` 등 OHLC 관계를 깨서 `validate_ohlcv`가
-정상적으로 거부합니다(의도한 동작). 다만 10년 단위로 조회하면 이런 구간을 만날
-확률이 높아, 실제로 4종목 중 2종목(NAVER, 삼성전자)이 이번 Feature Validation
-실행에서 이 문제로 막혔습니다. 대응 방향(provider 단에서 phantom row 필터링 vs
-validator에 허용오차 도입)은 아직 결정하지 않았습니다.
+**알려진 한계 2 — 해결됨 (`PyKrxDataProvider`에서 필터링)**: 두 백엔드 모두 휴장일
+(공휴일 등)을 응답에서 제외하지 않고, open/high/low/volume이 전부 0이고 close만
+직전 거래일 값을 그대로 들고 있는 "phantom row"로 포함시키는 경우가 있습니다.
+실측: 035420(NAVER) 2018-10-08/10/11, 005930(삼성전자) 2018-04-30~05-03. 이런 행은
+`high < close` 등 OHLC 관계를 깨서 `validate_ohlcv`가 거부했습니다. Validator를
+느슨하게 만들지 않고, `_to_standard_schema`에서 `open==0 and high==0 and low==0
+and volume==0 and close>0`인 행을 제거하는 방식으로 provider 단에서 해결했습니다.
+
+**알려진 한계 3 (미해결, 관찰만 하고 대응 방향 결정 대기)**: phantom row를 제거해도
+NAVER 15건, 삼성전자 1건의 OHLC 관계 위반이 남습니다. 실측해보니 phantom row와는
+다른 패턴으로, 값 자체는 정상적인 거래일 데이터인데 `high`가 `open`/`close`보다
+정확히 1원 낮은 식의 사소한 반올림 오차입니다(예: 005930 2016-08-18
+open=158624 고가=160426 종가=160427 → high가 close보다 1 작음). 두 종목 모두 이후
+액면분할(NAVER 2018-10, 삼성전자 2018-05)이 있었던 종목이라, 수정주가 계산 시
+분할 이전 구간의 각 필드(시가/고가/저가/종가)를 독립적으로 반올림하면서 생기는
+오차로 추정됩니다(확정하지 않음, 관찰만). 대응 방향(provider 단에서 가격 관계를
+보정할지, validator에 미세한 허용오차를 둘지, 그대로 둘지)은 결정하지 않았습니다.
 
 ## 수정주가 정책
 

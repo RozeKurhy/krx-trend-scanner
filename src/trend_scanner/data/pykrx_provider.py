@@ -15,11 +15,14 @@ OHLC는 adjusted 경로에서, 거래대금은 필요하면 unadjusted 경로에
 정상적인 빈 응답"과 "API 응답 형식이 깨진 실패"를 이 계층에서 구분할 수
 없다. 빈 DataFrame은 유효한 것으로 취급한다.
 
-미확인 사항: adjusted=True 경로의 거래량(volume)이 실제로 분할/액면 조정된
-값인지는 PyKRX 소스 코드만으로는 확인되지 않는다. 만약 조정되지 않은
-원본 거래량이라면 액면분할 시점에 거래량 기반 Feature(ATR 등 거래대금
-연동 지표는 아니지만 거래량 압축 판단)에 불연속이 생길 수 있다. 실제
-종목(예: 2018년 삼성전자 액면분할) 데이터로 Validation 단계에서 확인한다.
+확인됨(Feature Validation v0.1, 삼성전자 2018-05-04 50:1 액면분할 실측): adjusted=True
+경로의 거래량(volume)은 분할 조정되지 않은 원본 값이다. 가격만 조정되고 거래량은
+그대로라, 분할 경계를 넘는 장기 거래량 비교는 인위적 불연속이 생긴다. 거래대금은
+그날 실제 체결 기준이라 이 문제가 없다.
+
+휴장일 phantom row: 두 백엔드 모두 일부 휴장일을 응답에서 제외하지 않고
+open=high=low=volume=0, close=직전 거래일 값인 행을 포함시킨다. 이런 행은
+_to_standard_schema에서 필터링한다(아래).
 
 인증: adjusted=False(KRX 원천) 경로는 KRX_ID/KRX_PW 환경 변수가 설정되어
 있으면 PyKRX가 내부적으로 로그인 세션을 사용한다(없어도 익명 요청으로
@@ -48,6 +51,17 @@ _KOREAN_TO_STANDARD = {
     "종가": "close",
     "거래량": "volume",
 }
+
+
+def _is_phantom_holiday_row(df: pd.DataFrame) -> pd.Series:
+    """휴장일인데 open/high/low/volume=0, close만 직전 거래일 값을 들고 있는 행."""
+    return (
+        (df["open"] == 0)
+        & (df["high"] == 0)
+        & (df["low"] == 0)
+        & (df["volume"] == 0)
+        & (df["close"] > 0)
+    )
 
 
 class PyKrxDataProvider:
@@ -105,4 +119,8 @@ class PyKrxDataProvider:
         except (ValueError, TypeError) as exc:
             raise MarketDataError(f"PyKRX 응답 정규화 실패: {exc}") from exc
 
-        return df[list(_STANDARD_COLUMNS)].sort_index()
+        result = df[list(_STANDARD_COLUMNS)].sort_index()
+        phantom_mask = _is_phantom_holiday_row(result)
+        if phantom_mask.any():
+            result = result.loc[~phantom_mask]
+        return result

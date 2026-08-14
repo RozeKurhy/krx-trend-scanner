@@ -4,17 +4,23 @@ from __future__ import annotations
 
 import pandas as pd
 
+def _sum_min_count_1(series: pd.Series) -> float:
+    """구간 전체가 NaN이면 0이 아니라 NaN을 반환하는 sum.
+
+    trading_value는 개별 거래일 NaN(비수정 API 응답과 join 특성)이 있을 수 있는데,
+    pandas의 기본 sum은 NaN을 건너뛰어서 구간 전체가 NaN이어도 0을 반환한다.
+    min_count=1로 "합산할 실제 값이 하나도 없으면 NaN"이 되도록 한다.
+    """
+    return series.sum(min_count=1)
+
+
 _OHLCV_AGG = {
     "open": "first",
     "high": "max",
     "low": "min",
     "close": "last",
     "volume": "sum",
-    # trading_value는 개별 거래일 NaN(비수정 API 응답과 join 특성)이 있을 수 있는데,
-    # pandas의 sum은 기본적으로 NaN을 0으로 취급해서 건너뛴다. 즉 한 달 전체가 NaN이면
-    # 월봉 trading_value는 NaN이 아니라 0이 된다 — resample 특성상 자연히 생기는
-    # 동작이라 여기서 별도로 보정하지 않는다.
-    "trading_value": "sum",
+    "trading_value": _sum_min_count_1,
 }
 
 
