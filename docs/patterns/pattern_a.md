@@ -2,19 +2,24 @@
 
 ## 상태
 
-**Feature Set Freeze v0.1 완료 + Score Design v0.1 완료 + OOS Validation
-v0.1 완료.** Feature Validation → Historical Snapshot → Holdout →
-Negative Control → Outcome Audit → Base/Expansion Validation까지 검증한
-결과로 Feature Set을 확정했고(Freeze), 그 위에 `pattern_a_score.py`
-(`score_pattern_a`, `PatternAResult`)로 실제 Score 산식을 구현하고 기존
-validation snapshot에 적용해 분포를 검증했다(Score Design). 자세한
-산식/근거/검증 결과는 아래 "Score Design v0.1" 절 참고.
+**Feature Set Freeze v0.1 완료 + Score Design v0.1 완료 + OOS Case
+Validation v0.1 완료 + v0.2 설계 준비 완료.** Feature Validation →
+Historical Snapshot → Holdout → Negative Control → Outcome Audit →
+Base/Expansion Validation까지 검증한 결과로 Feature Set을
+확정했고(Freeze), 그 위에 `pattern_a_score.py`(`score_pattern_a`,
+`PatternAResult`)로 실제 Score 산식을 구현하고 기존 validation snapshot에
+적용해 분포를 검증했다(Score Design). 자세한 산식/근거/검증 결과는 아래
+"Score Design v0.1" 절 참고.
 
 **Score는 커밋 `6e7cc95`(range_36m required anchor 반영)에서 freeze됐다.**
-그 이후 OOS Validation(아래 절)은 완전히 새로운 종목/날짜에 그 Score를
-그대로 적용만 했다 — weight/threshold/bonus/penalty를 전혀 수정하지
-않았다. holdout/negative_control은 Score 설계에 이미 쓰여서 더 이상
-out-of-sample이 아니다.
+그 이후 "OOS Case Validation v0.1"(아래 절, 정식 명칭 — 시장 전체의
+unbiased 성능 검증이 아니다, 아래 caveat 참고)은 완전히 새로운 종목/
+날짜에 그 Score를 그대로 적용만 했다 — weight/threshold/bonus/penalty를
+전혀 수정하지 않았다. holdout/negative_control은 Score 설계에 이미
+쓰여서 더 이상 out-of-sample이 아니다. **Score v0.1의 최종 결론은
+"architecture는 baseline으로 유지, performance validation은 미완료"다**
+(자세한 근거는 "Score v0.1 상태: architecture 유지 vs performance
+validation" 절 참고) — 아직 최종 Score로 freeze 완료된 상태는 아니다.
 
 `pattern_a.py`의 `evaluate_pattern_a`(raw daily OHLCV 입력)는 여전히
 구현되지 않았다 — `score_pattern_a`는 FeatureRow를 입력받는 순수 함수이고,
@@ -808,7 +813,7 @@ pattern_a_score = clip(balanced_core_score + alignment_bonus - progressed_penalt
 구현: `src/trend_scanner/patterns/pattern_a_score.py`
 (`score_pattern_a(features) -> PatternAResult`).
 
-## OOS Validation v0.1
+## OOS Case Validation v0.1 (Frozen Score External Case Validation)
 
 Score Design v0.1(harmonic mean + alignment bonus - progressed penalty,
 range_36m required anchor)을 **완전히 새로운 종목/날짜**에 그대로
@@ -818,6 +823,50 @@ range_36m required anchor)을 **완전히 새로운 종목/날짜**에 그대로
 **이번 라운드에서 하지 않은 것**: weight/threshold/bonus/penalty 수정,
 grid search, 미래 수익률 최적화, 전체 시장 스캔, Stage threshold 조정.
 아래 발견된 문제는 전부 **다음 라운드 과제로만 기록**한다.
+
+### 성격 caveat: 이것은 시장 전체의 unbiased OOS 성능 검증이 아니다
+
+Score parameter(weight/threshold/bonus/penalty) 관점에서는 정상적인
+external validation이다 — 이 종목/날짜들은 Score 설계에 전혀 쓰이지
+않았다. **하지만 종목·날짜 자체를 "이후 상승했는지/다시 하락했는지"라는
+미래 outcome 정보를 이용해 선정했다**(positive는 이후 상승 지속,
+hard_negative는 이후 재하락, boundary는 아직 base가 없는 하락 도중의
+반등). 이건 outcome conditioned case selection이다.
+
+Score/Feature 값을 보지 않고 날짜를 고른 것(아래 "선정 방법" 참고)은
+사실이지만, **그룹 라벨 자체가 미래를 알고 붙인 것**이기 때문에 이
+결과의 비율을 실제 시장에서의 false positive rate나 precision으로
+해석하면 안 된다. 예를 들어 "hard_negative 8개 중 2개가 70점 이상"은
+"실제 시장에서 FP rate가 25%"라는 뜻이 아니다 — **의도적으로 고른 실패
+사례에 frozen score를 적용했을 때의 stress test 결과**일 뿐이다. 이
+문서와 스크립트에서는 앞으로 "OOS Case Validation" 또는 "Frozen Score
+External Case Validation"이라는 명칭만 쓴다(정확도가 필요 없는 문맥에서만
+"OOS"로 줄여 쓴다).
+
+### 데이터 경계: Development history / v0.2 diagnostic / 미래 OOS2
+
+이번 재리뷰로 세 그룹을 명확히 구분한다.
+
+```text
+Development history (Score v0.1 설계에 쓰임, 재사용 가능)
+    exploration, 원본 holdout(5종목), negative_control(8종목),
+    Base/Expansion Validation
+
+v0.2 diagnostic / development set (이번 라운드로 경계 고정)
+    OOS Case Validation v0.1의 29건(positive 15 + hard_negative 8 +
+    boundary 5 + insufficient_data_check 1). 이미 결과를 봤으므로
+    v0.2 설계·분석에는 재사용할 수 있지만(예: 이번 라운드의 Stage
+    audit), v0.2의 성능 검증에는 다시 쓰지 않는다.
+
+미래 OOS2 (아직 선정하지 않음)
+    v0.2 Score를 freeze하기 전까지는 OOS2 종목/날짜를 고르거나
+    Feature/Score를 계산하지 않는다.
+```
+
+`src/trend_scanner/validation/oos_v01_manifest.py`가 29건의 유일한
+출처다(`OOS_V01_DATASET_VERSION = "oos_v0.1"`로 태그돼 있다). `scripts/
+oos_validate.py`는 이 manifest를 그대로 가져다 쓴다 — 스크립트가 별도
+목록을 들고 있다가 조용히 어긋나는 걸 방지한다.
 
 ### 선정 방법(look-ahead 방지 원칙 재사용)
 
@@ -839,6 +888,14 @@ OCI홀딩스는 `validate_ohlcv`는 통과했지만 2023-04-27~05-29 거래정�
 때문이다. 042660(한화오션)의 2016-2017 장기 거래정지(대우조선해양
 분식회계 사태)는 이번에 쓴 스냅샷(2024-10 이후)과 36개월 트레일링
 구간이 겹치지 않아 문제없다.
+
+**선정 투명성**: 011070(LG이노텍), 010950(S-Oil), 000720(현대건설)도
+raw close를 조회했지만 최종 스냅샷에는 쓰지 않았다(가격 흐름이 어느
+그룹에도 깔끔하게 들어맞지 않아서 제외 — Feature/Score를 본 뒤 뺀 게
+아니다). 전체 후보 목록과 raw monthly close는 `scripts/
+_oos_fetch_and_inspect.py` 실행 결과인
+`data/processed/oos_selection_monthly_close.csv`(로컬 전용, close만
+포함)로 재현 가능하다.
 
 ### 그룹 구성
 
@@ -898,27 +955,91 @@ insufficient_data_check
 progressed(38.13 / 82.39), hard_negative_false_turn(76.50 / 38.73),
 downtrend_reversal_boundary(86.43 / 19.33).
 
-### A. early_trend가 여전히 높은 Score 영역인가? — **아니오**
+### Stage Label Rubric v0.1
+
+v0.2 curve를 손보기 전에, positive 라벨 정의부터 Score/Feature와
+**독립적으로** 고정한다. raw monthly/weekly close 구조만 쓰고, "pre
+이후 몇 개월 지났는가" 같은 고정 기간은 쓰지 않는다(fast mover는 2~3
+개월 만에도 PROGRESSED가 될 수 있다).
+
+```text
+PRE_BREAKOUT
+    장기 Base 구조 안에 있다. 명확한 장기 돌파가 아직 발생하지
+    않았거나, 돌파 시도가 초기 단계다(예: 이전 국지적 고점을 아직
+    못 넘었거나 방금 넘은 시점).
+
+EARLY_TREND
+    Base 상단을 의미 있게 벗어나기 시작했으나, 장기 구조 대비 가격
+    확장이 아직 초기다. 돌파 직후 또는 첫 상승 leg에 가깝다.
+
+TREND_PROGRESSED
+    돌파 이후 의미 있는 상승 leg가 이미 진행됐다. Base 대비 가격
+    레벨이 크게 이동했고, "이제 막 시작"이라고 보기 어렵다.
+```
+
+### 기존 positive 15건 Stage Label Audit
+
+새 rubric으로 positive_pre_breakout/early_trend/trend_progressed
+15건을 감사했다(Score/Feature 값 사용 안 함, raw monthly close만
+사용). **원본 라벨(`original_group`)은 바꾸지 않는다** — 아래는 별도
+병렬 기록이다(`src/trend_scanner/validation/oos_v01_manifest.py`의
+`OOS_V01_STAGE_AUDIT`).
+
+| ticker | snapshot_date | original_group | audited_stage_label | audit_note |
+|---|---|---|---|---|
+| 010620 | 2023-12-31 | pre_breakout | PRE_BREAKOUT | 박스 상단 근접, 2022-08 스파이크 고점(107,000) 미돌파 — 일치 |
+| 010620 | 2024-06-30 | early_trend | **PRE_BREAKOUT/EARLY_TREND 경계** | 종가(93,000)가 스파이크 고점(107,000) 아래이자 통상 박스 상단과 거의 겹침 — "돌파 시도 초기"에 더 가까움. 원본보다 보수적으로 판단 |
+| 010620 | 2024-12-31 | trend_progressed | TREND_PROGRESSED | 7월 돌파 이후 추가 +44% — 일치 |
+| 012450 | 2021-12-31 | pre_breakout | PRE_BREAKOUT | 2016년 고점 미회복, 다년 박스 상단 부근 — 일치 |
+| 012450 | 2022-12-31 | early_trend | **TREND_PROGRESSED** | 12개월 +53%, 전 구간 신고가 돌파 완료 + spike-pullback 패턴 — **불일치** |
+| 012450 | 2024-06-30 | trend_progressed | TREND_PROGRESSED | 추가 3배 이상 상승 — 일치 |
+| 079550 | 2020-12-31 | pre_breakout | PRE_BREAKOUT | 상대적으로 좁은 박스 내부 — 일치 |
+| 079550 | 2021-12-31 | early_trend | **TREND_PROGRESSED** | 12개월 +125% — "막 시작"으로 보기 어려움 — **불일치** |
+| 079550 | 2023-12-31 | trend_progressed | TREND_PROGRESSED | 추가 상승 지속 — 일치 |
+| 005490 | 2022-12-31 | pre_breakout | PRE_BREAKOUT | 박스 상단 부근, 돌파 전 — 일치 |
+| 005490 | 2023-03-31 | early_trend | EARLY_TREND | 3개월 만에 박스 상단 확실히 돌파(+33%) — 일치(5건 중 가장 깨끗한 사례) |
+| 005490 | 2023-07-31 | trend_progressed | TREND_PROGRESSED | 추가 +74%, 이 구간 전체 고점 — 일치 |
+| 042660 | 2024-10-31 | pre_breakout | PRE_BREAKOUT | 다년 박스(2023 실패한 반등 포함) 내부 — 일치 |
+| 042660 | 2025-01-31 | early_trend | **EARLY_TREND/TREND_PROGRESSED 경계** | 3개월 +114%로 단기 변동은 크지만, 절대 가격이 2014~2015 고점에 크게 못 미침 — 판단 어려움 |
+| 042660 | 2025-07-31 | trend_progressed | TREND_PROGRESSED | 추가 상승, 2014~2015 고점권 근접 — 일치 |
+
+**early_trend 5건 최종 판정**: 1건 깨끗이 일치(005490), 2건 TREND_
+PROGRESSED로 불일치(012450, 079550), 1건 PRE/EARLY 경계(010620), 1건
+EARLY/PROGRESSED 경계(042660).
+
+**item 23 G에 대한 답(fast mover 문제가 Score 문제인지 label 문제인지)**:
+**주로 label 문제였다.** 012450/079550은 raw price 구조로도 이미
+TREND_PROGRESSED였는데 달력 기준(pre 이후 약 12개월)으로 "early"라고
+잘못 붙였다 — Score의 progressed 판정(evidence_count=4)이 오히려 맞았다.
+042660만 진짜로 애매한 fast-mover 구조 사례로 남는다(절대 가격은 여전히
+낮은데 단기 변동률만 매우 큼 — 이건 다음 라운드에서 Score 문제로
+검토할 여지가 있다). 010620은 라벨이 살짝 관대했던 경계 사례다. 이
+결과가 "### A. early_trend가 여전히 높은 Score 영역인가?" 절의 median
+54.88이 왜 낮게 나왔는지 대부분 설명한다.
+
+### A. early_trend가 여전히 높은 Score 영역인가? — **OOS Case Validation에서는 재현되지 않았다**
 
 positive_early_trend median 54.88로 pre_breakout(59.35)/trend_progressed
-(59.80)보다 **오히려 낮다**. 원인은 두 갈래다.
+(59.80)보다 **오히려 낮다**. Score Design v0.1이 목표로 했던 "early_trend가
+가장 좋은 구간"이라는 패턴이 이번 새 사례 5건에서는 안정적으로
+재현되지 않았다 — 이건 그대로 기록한다(단순히 "확인됨"으로 넘기지
+않는다).
 
-1. **라벨 선정 창(window) 문제**: 012450/079550은 pre_breakout→early_trend
-   간격을 약 12개월로 잡았다(holdout은 보통 2~3개월). 그 12개월 사이에
-   두 종목 모두 range_36m/avg_price_change_12m이 이미 progressed
-   evidence threshold를 넘어(각각 evidence_count=4, penalty=28) stage도
-   `progressed`로 분류됐다. 간격 3개월(042660, 005490)은 각각 penalty
-   0/20으로 훨씬 덜 다쳤고, 간격 6개월(010620)은 penalty 0이었다 — 즉
-   **간격 길이와 점수 붕괴가 정확히 비례**한다.
-2. **fast mover 자체의 특성**: 042660은 간격이 3개월인데도 evidence_
-   count=3(+114% 3개월 만에)에 도달했다 — 달력상 "early"라는 라벨과
-   무관하게, 변동성이 큰 테마주는 실제로 몇 개월 안에 구조적으로 "이미
-   진행됨" 문턱을 넘을 수 있다.
+위 Stage Label Audit이 원인을 대부분 설명한다: early_trend 5건 중
+2건(012450, 079550)은 raw price 구조로도 이미 TREND_PROGRESSED였다 —
+**주로 label 문제**였고, 그 두 종목에서 Score의 progressed 판정
+(evidence_count=4)은 오히려 맞았다. 010620은 라벨이 살짝 관대했던
+PRE/EARLY 경계, 042660은 절대 가격은 낮은데 단기 변동률만 큰 진짜
+fast-mover 애매 사례로 남는다. 깨끗하게 label과 Score가 둘 다 "early"로
+일치한 건 005490 하나뿐이다(76.46, 5건 중 최고점).
 
 **날짜를 다시 고르지 않았다** — Score를 이미 본 뒤에 라벨을 바꾸면
-freeze 원칙이 무너진다. 두 원인 다 실제 발견이며, 다음 라운드에서
-"라벨 간격 표준화" 또는 "penalty가 종목의 변동성 특성에 따라 다르게
-작동하는 문제"로 검토할 후보다.
+freeze 원칙이 무너진다. **"6개월 이상 지속했을 때만 evidence로 센다"
+같은 관찰기간 조건은 이번 라운드에서 넣지 않는다** — Pattern A는 달력
+시간이 아니라 가격 구조를 찾는 패턴이므로, fast mover라고 penalty를
+늦춰주는 게 반드시 옳지는 않다(item 15). 042660처럼 audit으로도 판단이
+안 서는 사례가 남아있는 한, 이건 라벨/observation-period 문제와 진짜
+Score 문제가 섞여 있는 채로 다음 라운드 과제로 넘긴다.
 
 ### B. progressed가 Transition이 강하다는 이유로 최고점으로 올라오는가? — **아니오**
 
@@ -963,12 +1084,47 @@ harmonic_mean(86.43, 65.73)=74.67 — **아직 진짜 base가 아니라 다년�
 하락 중이던 종목이, "안 오른 게 아니라 계속 빠지고 있었다"는 신호를
 Base Score가 구분하지 못해서 높은 점수를 받은 사례**다.
 
-**item 6 결론**: 있다. `avg_price_change_12m`의 "큰 음수도 100점" curve와
+**item 6 결론**: 있다. `avg_price_change_12m`의 "음수는 전부 허용" curve와
 weekly/accel Supporting 조합이 겹치면 Pattern A/B 경계 사례가 고득점으로
 들어올 수 있다. 다만 4/5는 안전했다 — ma24_slope가 뚜렷한 음수로
 유지되는 한 transition_score가 낮게 눌려 보호된다. 위험은 "ma24_slope는
-아직 약한 음수인데 avg_price_change_12m은 이미 크게 음수이고 weekly/
-accel이 동시에 양수인" 특정 조합에서만 나타난다.
+아직 약한 음수인데 avg_price_change_12m은 이미 음수이고 weekly/accel이
+동시에 양수인" 특정 조합에서만 나타난다.
+
+### avg_price_change_12m 음수 방향 분석(development set)
+
+item 6/9의 hump-shape(양방향) curve 가설을 뒷받침하는 근거를 development
+set 값으로 확인했다(future return 최적화는 하지 않았다, 관찰만).
+
+| 그룹 | 종목 | avg_price_change_12m |
+|---|---|---|
+| holdout pre_breakout(5종목) | 현대차/LG화학/기아/삼성SDI/현대모비스 | -0.089 ~ +0.098 (전부 완만) |
+| holdout early_trend(5종목) | 〃 | -0.058 ~ +0.176 |
+| OOS positive_pre_breakout(5종목) | 010620/012450/079550/005490/042660 | -0.157 ~ +0.723(★) |
+| confirmed_negative(5종목) | LG/고려아연/롯데케미칼/삼성생명/SK | **-0.276, -0.204**, -0.121, -0.034, +0.312 |
+| downtrend_reversal_boundary(5종목) | 아모레/넷마블/현대백화점/CJ제일제당/미래에셋 | -0.184 ~ -0.014(전부 음수) |
+
+(★ 012450 pre_breakout=+0.7233은 이 Feature의 정의(최근 12개월 평균
+종가 vs 그 이전 12개월 평균 종가) 때문에, 절대 고점을 아직 안 넘었어도
+그 해 안에서 이미 크게 올랐으면 양수로 크게 나올 수 있다 — Base Score
+곡선과는 별개 이슈이자 이번 분석의 핵심은 아니다.)
+
+**재검토(당초 분석 오류 수정)**: 처음엔 "큰 음수는 positive Base 사례에
+전혀 없다"고 결론 내렸는데, OOS positive_pre_breakout을 다시 보니 틀린
+결론이었다 — 079550(-0.144)과 005490(-0.157)이 **-0.14~-0.16 구간에서
+진짜 pre_breakout 사례**로 존재한다. 이 구간은 boundary(4/5가
+-0.10~-0.18)와 완전히 겹친다. **-0.20보다 깊은 구간(롯데케미칼 -0.276,
+삼성생명 -0.204)만 confirmed_negative 전용**이고, 표본이 2개뿐이라
+근거가 얇다.
+
+**item 9 결론(수정)**: hump-shape curve 가설은 **후보로 유지하되
+단독으로는 Pattern A/B 경계를 못 가른다.** 넷마블 boundary 사례
+(-0.103)를 잡을 만큼 얕은 left shoulder를 만들면, 079550(-0.144)/
+005490(-0.157) 같은 진짜 pre_breakout 사례까지 함께 감점된다. 넷마블형
+누출은 avg_price_change_12m 하나의 curve 모양 문제가 아니라, "하락
+구조 자체"(예: 장기간 신저가 경신 여부, 또는 다른 Base 축 Feature와의
+조합)를 보는 별도 신호가 필요할 가능성이 있다 — 이번 라운드에서는
+breakpoint도 새 Feature도 확정하지 않고 **개념만** 남긴다.
 
 ### F. range_36m required 정책이 실제로 적절한가? — **예**
 
@@ -979,32 +1135,107 @@ accel이 동시에 양수인" 특정 조합에서만 나타난다.
 계산됐지만, required anchor 정책이 이를 무시하고 판정을 보류시켰다 —
 의도대로 동작한다.
 
-### Stage 오분류(재발, 빈도 증가)
+### Stage 오분류(재발, 빈도 증가) — Stage classifier는 별도 후속 작업
 
 positive_trend_progressed 5건 중 **3건**(010620, 079550, 005490)이
 evidence_count<3(2, 2, 1)인데 transition_score>=70이라 `PROGRESSED`가
 아니라 `EARLY_TREND`로 분류됐다 — Feature Set Freeze 재리뷰 때 holdout
 1건에서 확인한 것과 같은 한계인데, OOS에서는 5건 중 3건(60%)으로 빈도가
-훨씬 높다. Stage threshold는 이번에도 손대지 않는다(item 11: Score와
-Stage는 별도 평가, 조정은 후속 작업).
+훨씬 높다. 지금 수준(60% 오분류)은 실사용하기 어렵다.
 
-### 현재 Score를 유지할 수 있는가
+**Stage threshold는 이번에도 손대지 않는다.** `Stage classifier v0.2는
+Score Design v0.2와 별도 후속 작업`으로 명시한다 — Score curve/weight
+설계와 Stage 자동 분류 threshold 설계는 서로 다른 문제이고, 섞어서
+동시에 손대지 않는다.
 
-**구조(harmonic mean + alignment bonus + composite progressed penalty)는
-OOS에서도 의도대로 작동한다** — progressed가 최고점이 되지 않는다(2/5는
-0점까지 하락), hard_negative/boundary 대부분이 낮게 유지된다. **유지
-가능**하다고 본다.
+**향후 노출 시 주의(구현은 이번에 하지 않음)**: 지금은 Stage가 Scanner
+UI나 출력에 연결되기 전이라 문제없다. 나중에 실제 Scanner에 연결할
+때는 지금 수준의 heuristic Stage를 확정 label처럼 노출하지 않는다 —
+필요하면 `stage_confidence` 또는 `stage_experimental=True` 같은 형태를
+그때 검토한다.
 
-다만 OOS로 근거가 생긴 v0.2 검토 후보 3건을 기록한다(이번엔 아무것도
-고치지 않았다):
+### Score v0.1 상태: architecture 유지 vs performance validation
 
-1. `avg_price_change_12m`의 "음수는 무조건 허용" curve — 양방향(너무
-   많이 빠진 것도 다르게 봐야 하는지) 검토 필요(item 6 근거).
-2. Transition Score에서 Supporting 둘(weekly+accel, 합 40%)이 Core가
-   약할 때도 점수를 밀어올리는 문제 — 011790 사례.
-3. Progressed evidence threshold가 fast mover에서 "early" 라벨보다
-   먼저 발동하는 문제 — 라벨 간격 표준화 또는 evidence 판정에 "관찰
-   기간" 개념 추가 검토.
+**"현재 Score를 유지할 수 있다"는 표현을 엄밀하게 나눈다.**
+
+```text
+Score architecture(harmonic mean + alignment bonus + composite penalty) 유지
+    YES — progressed가 최고점이 되지 않는다(2/5는 0점까지 하락),
+    hard_negative/boundary 대부분이 낮게 유지된다. 구조 자체는 OOS에서도
+    의도대로 작동한다.
+
+Score performance validation 완료
+    NO — early_trend가 가장 높은 점수 구간을 형성한다는 Score Design
+    초기 목표가 이번 OOS Case Validation에서 재현되지 않았다(median
+    54.88이 pre_breakout/trend_progressed보다 낮음, 다만 원인의 상당
+    부분은 label 문제로 확인됨). alignment FP(한국타이어), 새로운
+    Supporting 우위 메커니즘(SKC), avg_price_change_12m 음수 방향
+    사각지대(넷마블 boundary)까지 서로 다른 3가지 실패 메커니즘이
+    새 사례에서 발견됐다.
+```
+
+**결론: v0.1은 baseline / reference implementation으로 유지한다.**
+최종 Score로 freeze 완료된 상태는 아니다. 위 caveat(outcome conditioned
+case selection)을 감안하면 "hard_negative 8개 중 2개가 70점대"라는
+숫자를 실제 시장 FP rate로 해석해서도 안 된다 — 이번 라운드가 답할 수
+있는 건 "이 구조가 그럴듯한 방향으로 작동하는가"까지다, "정확히 얼마나
+잘 작동하는가"는 아니다.
+
+### v0.2 검토 후보 1: avg_price_change_12m 양방향(hump-shape) curve
+
+위 "avg_price_change_12m 음수 방향 분석" 절 근거. 개념만 기록한다
+(breakpoint 미정):
+
+```text
+큰 음수      -> Base 적합도 낮음(가설, 단독으로는 불충분 — 위 분석 참고)
+완만한 음수/0 근처 -> 높음
+완만한 양수   -> 높음
+매우 큰 양수  -> Already Progressed 쪽으로 낮음
+```
+
+### v0.2 검토 후보 2: Core / Supporting interaction
+
+SKC 사례(ma24_slope 약한 음수, weekly/accel 강한 양수, alignment
+false인데도 transition_score 63점대)가 근거다. 현재 역할 정의(ma24_slope
+= Core, weekly/acceleration = Supporting)와 "가중합이면 Supporting
+둘의 합(40%)이 Core가 약해도 점수를 밀어올릴 수 있다"는 사실이
+충돌할 가능성이 있다. **바로 가중치를 줄이지 않는다**(예: 60/20/20 →
+80/10/10 같은 즉흥 조정 금지) — 대신 비교할 구조 후보만 기록한다.
+
+```text
+Candidate A: 현재 weighted sum 유지(baseline)
+
+Candidate B: Core gating
+    ma24_slope가 약할수록 weekly/acceleration의 기여도를 일부 축소.
+    ma24_slope가 충분히 개선됐을 때만 Supporting이 full contribution.
+
+Candidate C: Core + support interaction
+    core_score를 먼저 계산하고, Supporting은 core_score에 곱해지는
+    confirmation term으로 사용.
+    transition_score = core_score + support_factor(core_state) * support_score
+```
+
+정확한 식/threshold는 이번 라운드에서 확정하지 않는다.
+
+### v0.2 검토 후보 3: alignment bonus 재검토
+
+LG(Feature Set Freeze)와 한국타이어(OOS)에서 같은 alignment false
+positive가 반복됐다. `weekly>0 AND ma24>0 AND accel>0`가 strong
+confirmation인 건 맞지만 실패 종목에서도 나온다. **+8 bonus를 바로
+없애지 않는다** — 비교 후보만 기록한다: 현재 bonus 유지 / bonus 축소 /
+Core strength 조건부 bonus(ma24_slope가 일정 수준 이상 개선됐을 때만
+full bonus). 특히 "ma24가 겨우 +0.01인데 나머지 둘도 소폭 양수라는
+이유만으로 +8 full bonus"가 적절한지는 v0.2에서 검토한다.
+
+### progressed evidence / fast mover 판단 기준
+
+Stage Label Audit 결과를 기준으로 구분한다: **audit 결과 실제로
+TREND_PROGRESSED였다면(012450, 079550) 현재 penalty가 맞게 작동한
+것**이고, **audit 결과에서도 여전히 애매하거나 early라면(042660,
+경계 사례) progressed evidence가 fast mover를 너무 일찍 처벌하는
+문제**로 본다. 이번 감사에서는 후자(진짜 Score 문제)보다 전자(label
+문제)가 더 많았다 — 그렇다고 fast mover 문제가 전혀 없다는 뜻은
+아니다(042660이 남아있다).
 
 ## Score Momentum (다음 단계 계획, 이번 라운드에서는 구현하지 않음)
 
