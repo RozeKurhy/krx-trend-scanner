@@ -266,9 +266,14 @@ v0.2가 v0.1보다 더 신중하게 본다.
 붙어서 더 높게 나온다. **이 실패 메커니즘(스냅샷 시점엔 강해 보이지만
 이후 실패)은 v0.2가 해결하려던 문제가 아니었고(Core/Supporting
 상호작용·alignment FP·Pattern A/B 경계가 목표였다), 실제로도 OOS2에서
-개선되지 않았다** — snapshot 하나만 보는 구조상 원리적으로 풀 수 없는
-문제일 가능성이 높다(미래 정보 없이는 "지금 강한 core가 유지될지"를
-알 수 없다).
+개선되지 않았다** — 현재 Pattern A v0.2 Feature Set(range_36m/
+avg_price_change_12m/ma_spread/ma24_slope/weekly_ma12_slope/
+ma24_slope_acceleration/range_position)만으로는 snapshot 당시 강한
+Core가 이후에도 지속될지를 구분하지 못한 상태로 **미해결**이다 —
+"원리적으로 불가능"으로 단정하지 않는다. 상대강도(Relative
+Strength)/거래대금/변동성 구조/수급/Score Momentum 같은 추가 정보가
+Feature Set에 들어오면 이 실패 확률을 줄일 여지는 열어둔다(v0.3
+candidate 방향, 이번 라운드에서 구현하지 않음).
 
 ## 17. Alignment core threshold 60 audit — 판정 불가
 
@@ -335,6 +340,12 @@ development evidence로 등록한다: `core_score=0`일 때
 비례한 최소 바닥)을 갖게 하는 안, 또는 confirmation_gate 최저치를
 0이 아니게 하는 안 등을 v0.3에서 검토할 후보로 남긴다.
 
+(참고: 이건 Base가 **낮아서** 생기는 문제가 아니라 core=0이 harmonic
+mean을 강제로 0으로 만드는 Transition 결합 방식의 문제다 — Base 축
+자체의 별개 gap(하락 구조도 만점을 주는 negative clamp)은 "Hard
+Negative Failure Audit" 절에서 evidence C로 별도 등록했다. 서로
+다른 메커니즘이라 섞지 않는다.)
+
 ## 21. Manual Stage Audit 결과 (snapshot 시점 정보만 사용, diagnostic only)
 
 positive trajectory 16건 + boundary 4건에 대해 raw 종가 구조
@@ -370,11 +381,16 @@ Classifier redesign 별도 예정). 이 불일치는 **diagnostic으로만
    아니다. boundary max 49.41, progressed median 41.76로 과대평가
    없음.
 5. **새로운 failure mechanism이 등장하는가** — 그렇다. core=0 절대
-   붕괴(20절)는 v0.2가 새로 만든 지점이다.
+   붕괴(20절)는 v0.2가 새로 만든 지점이고, Hard Negative Audit
+   과정에서 Base `avg_price_change_12m` negative clamp(Base가 하락
+   구조도 만점 처리하는 gap)도 추가로 확인됐다 — 둘 다 v0.3
+   development evidence로 등록했다.
 6. **v0.1 대비 v0.2 변경 방향이 OOS2에서도 재현되는가** — 그렇다.
    Weak Core+Strong Support 억제, boundary 억제 모두 development set에서
    봤던 방향 그대로 재현됐다. Strong Core Failure는 애초에 v0.2가
-   풀려던 문제가 아니었고, 그대로 안 풀렸다(16절, 예상된 결과).
+   풀려던 문제가 아니었고, 현재 Feature Set으로는 미해결로 남았다
+   (16절 — "원리적으로 불가능"이 아니라 상대강도/거래대금/수급 같은
+   추가 정보가 들어오면 개선될 여지가 있는 상태다).
 
 **종합(재리뷰 후속으로 잠정 하향)**: Score 산식은 수정하지 않는다.
 다만 hard_negative_false_turn 4건(median 74.65, max 100.00)이
@@ -385,9 +401,13 @@ positive_pre_breakout median(64.64)보다 높게 나온 원인을 개별
 
 > **Pattern A Score v0.2 — Frozen after OOS2. Final confirmation
 > pending hard-negative audit.** (잠정. 아래 "## Hard Negative
-> Failure Audit" 절의 "v0.2 최종 판단"에서 **Final Freeze
-> Confirmed로 재확정**됐다 — 이 문서의 현재 상태 판정은 그 절이
-> 최종본이고, 여기 문구는 판단 과정을 남겨두기 위한 이력이다.)
+> Failure Audit" 절의 "v0.2 최종 판단"과 "문서 최종 상태 블록"이
+> 최종본이다 — 이 문서의 현재 상태 판정은 그 절을 따른다. hard
+> negative 4건의 직접 원인은 Strong Core Failure 반복으로 확인됐지만,
+> audit 과정에서 Base negative clamp라는 새 v0.3 evidence가 나와서
+> "Final Freeze Confirmed"가 아니라 **"v0.2 Frozen · OOS2 Validation
+> Completed · v0.3 Development Required"**로 정리됐다. 여기 문구는
+> 판단 과정을 남겨두기 위한 이력이다.)
 
 ## Hard Negative Failure Audit
 
@@ -421,13 +441,19 @@ positive_pre_breakout median(64.64)과 비슷하거나 낮다 — 이 둘은
 
 | ticker | 분류 | 근거 |
 |---|---|---|
-| 015760 | F(Mixed, 문제 아님) | core_score 44.99로 약함, confirmation_bonus=0(gate 미작동, 정상), Base=100이 harmonic mean을 끌어올린 것뿐. 최종 62.06은 pre_breakout median 이하 |
-| 023530 | 해당 없음(정상 억제) | 39.25로 낮게 나옴 — 애초에 "false positive"가 아니라 v0.2가 의도대로 억제한 케이스 |
+| 015760 | F(Mixed, 최종 결과는 문제 아님) — 단 Base=100 자체는 아래 B로 별도 등록 | core_score 44.99로 약함, confirmation_bonus=0(gate 미작동, 정상), core가 낮아 harmonic mean이 Base=100을 충분히 눌러 최종 62.06(pre_breakout median 이하)으로 억제됐다. 다만 Base=100이라는 값 자체는 "장기 하락 후 일시 반등" 종목에 나온 것이라 **B(Base False Positive) 구조 결함**의 증거로는 별도로 쓴다 |
+| 023530 | 해당 없음(정상 억제) — 단 Base=91.32 자체는 아래 B로 별도 등록 | 39.25로 낮게 나옴 — 애초에 최종 Score의 "false positive"가 아니라 v0.2가 의도대로 억제한 케이스. 다만 Base=91.32는 "2014~2024 지속 하락 확인" 종목에 나온 값이라 마찬가지로 **B**의 증거 |
 | 001450 | **A. Strong Core Failure**(주), C는 부차적 | core_score=90.30(매우 강함), transition_score=100(정당한 core+confirmation), balanced_core=93.85 — alignment 없이도 이미 93.85로 매우 높음. alignment는 93.85→100(clip) 구간만 밀어올림 |
 | 007070 | **A. Strong Core Failure** | core_score=88.80, transition=94.77, alignment_bonus=0(acceleration이 음수라 정렬 조건 미충족) — alignment 관여 전혀 없이 balanced_core_score=87.24 자체가 최종값 |
 
-**B(Base False Positive)/D(Progressed Penalty Failure)/E(Core+
-Confirmation Failure)는 4건 전부 해당 없음** — 아래에서 각각 확인.
+**001450/007070의 고득점 "직접 원인"으로는 B(Base False Positive)/
+D(Progressed Penalty Failure)/E(Core+Confirmation Failure) 전부
+해당하지 않는다** — 아래에서 각각 확인. 다만 B는 이 두 사례에서만
+"해당 없음"이다: **015760/023530에서는 실제로 별도의 Base False
+Positive 구조 결함이 확인됐다**(아래 "Base False Positive 분석"
+절). 이 Base 문제는 hard negative 4건의 고득점을 만든 직접 원인은
+아니지만(015760/023530 자체는 최종 점수가 낮게 나와 core가 결과를
+억제했다), v0.3 development evidence로는 별도로 유지한다.
 
 ### strong_core_failure 그룹과 비교
 
@@ -580,11 +606,16 @@ Weak Core+Strong Support를 억제하려고 만든 구조가, Core가 이미 강
 
 ### 새롭게 확인된 failure mechanism
 
-**4건의 높은 Score를 설명하는 새 *메커니즘*은 없다.** 그룹 median/max를
-끌어올리는 2건(001450/007070)은 전부 A(Strong Core Failure)로
-설명되고, B/D/E는 해당 없음, C(alignment)는 부차적 기여로만 확인됐다.
-나머지 2건(015760/023530)은 애초에 문제가 아니었다(pre_breakout
-median 이하).
+**001450/007070의 고득점을 설명하는 새 *메커니즘*은 없다** — 둘 다
+A(Strong Core Failure)로 설명되고, 이 둘의 고득점 "직접 원인"으로는
+B(Base False Positive)/D(Progressed Penalty Failure)/E(Core+
+Confirmation Failure)가 해당하지 않으며 C(alignment)는 부차적 기여로만
+확인됐다. 나머지 2건(015760/023530)은 애초에 문제가 아니었다
+(pre_breakout median 이하) — **하지만 이 2건에서 B(Base False
+Positive) 자체는 별도로 실제 확인됐다**(위 "Base False Positive
+분석" 절). B가 "4건 전부 해당 없음"이 아니라 "001450/007070의 고득점
+직접 원인은 아니지만 015760/023530에서 독립적으로 존재한다"는 게
+정확한 결론이다.
 
 다만 이 audit 과정에서 확인된 **새 *정보* 2건**은 있다 — "4건의 높은
 Score를 설명하지는 않지만" v0.3에 남겨야 하는 것들이다: (1) Base
@@ -617,13 +648,41 @@ v0.3 development evidence를 3건으로 분리해서 기록한다.
   (core_score가 낮아 최종 결과는 억제됨), Base 축이 "횡보"와 "하락"을
   구분 못한다는 건 A/B와 별개인 v0.3 candidate다.
 
-### v0.2 최종 판단
+### v0.2 최종 판단 (재리뷰 후속으로 수정)
 
-audit 결과는 **Case A**에 해당한다 — hard negative 4건 중 그룹
-median/max를 견인하는 2건은 Strong Core Failure의 반복이고, Base/
-alignment/penalty에서 새로운 구조적 문제가 확인되지 않았다.
+hard negative 4건 중 그룹 median/max를 견인하는 2건(001450/007070)은
+기존 Strong Core Failure 메커니즘의 반복이었다 — alignment, progressed
+penalty, weak core+strong support 재발이 주 원인은 아니었다. 다만 이
+audit 과정에서 **Base `avg_price_change_12m` negative clamp**라는
+별도의 구조적 gap을 새로 확인했다(015760/023530). 이건 hard negative
+4건의 고득점 원인은 아니지만, OOS2 전체를 통틀어 새로 확인된 v0.3
+development evidence이기 때문에, "이 설계가 최종 버전"이라는 의미의
+Final Freeze Confirmed는 더 이상 쓰지 않는다 — v0.2는 그대로 frozen
+baseline으로 유지하되, 상태를 아래처럼 정리한다.
 
-> **Pattern A Score v0.2 — Final Freeze Confirmed.**
+> **Pattern A Score v0.2 — Frozen. OOS2 Validation — Completed.
+> v0.2 production code — No further tuning. v0.3 Development —
+> Required.**
 
-(재확정. `pattern_a_score.py`는 이번 audit에서도 전혀 수정하지
-않았다.)
+v0.2가 "실패했다"는 뜻이 아니다 — 설계 방향(Weak Core+Strong Support
+억제, Pattern A/B boundary 개선, Clean Early Trend 보존, Progressed
+억제, Core/Supporting 역할 분리)은 OOS2에서 그대로 재현됐고 이 결론은
+그대로 유지한다(12절, 15절). 다만 OOS2 이후 구조적 improvement
+후보(A/B/C, 아래 최종 상태 블록)가 실제로 확인된 상태에서 "더 이상
+손댈 곳이 없다"는 의미의 문구를 쓰는 건 정확하지 않아서 내린다.
+`pattern_a_score.py`는 이번 audit에서도 전혀 수정하지 않았다.
+
+### 문서 최종 상태 블록
+
+| 항목 | 상태 |
+|---|---|
+| Pattern A Score v0.2 | Frozen |
+| OOS2 Validation | Completed |
+| Core + Confirmation redesign | Validated |
+| Weak Core + Strong Support | Improved |
+| Pattern A / B boundary | Improved |
+| Strong Core Failure | Unresolved (현재 Feature Set 한계, 원리적 불가능 아님) |
+| Alignment core threshold 60 | Inconclusive (표본 부족, 17절) |
+| Core Zero Collapse | v0.3 Evidence |
+| Base Negative Clamp | v0.3 Evidence |
+| v0.3 Development | Required |
