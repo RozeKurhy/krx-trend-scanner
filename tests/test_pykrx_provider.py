@@ -4,6 +4,7 @@ import pytest
 from trend_scanner.data import pykrx_provider as pykrx_provider_module
 from trend_scanner.data.errors import MarketDataError
 from trend_scanner.data.pykrx_provider import PyKrxDataProvider
+from trend_scanner.data.validator import validate_ohlcv
 
 
 def _adjusted_korean_df() -> pd.DataFrame:
@@ -205,6 +206,117 @@ def test_row_with_only_partial_zero_columns_is_not_filtered(monkeypatch):
     result = provider.load_daily("005930", "2024-01-02", "2024-01-02")
 
     assert len(result) == 1
+
+
+def _single_row_frames(*, high_correction=0, low_correction=0, with_trading_value=True):
+    """open=100, close=105 기준, high/low를 정상값에서 얼마나 벗어나게 할지로 조립한다."""
+    index = pd.date_range("2024-01-02", periods=1, freq="D")
+    normal_high, normal_low = 105, 100
+    high = normal_high - high_correction if high_correction else 106
+    low = normal_low + low_correction if low_correction else 99
+
+    adjusted_df = pd.DataFrame(
+        {"시가": [100], "고가": [high], "저가": [low], "종가": [105], "거래량": [1000], "등락률": [0.0]},
+        index=index,
+    )
+    unadjusted_row = {
+        "시가": [99],
+        "고가": [high - 1] if high_correction else [105],
+        "저가": [low - 1] if low_correction else [94],
+        "종가": [104],
+        "거래량": [999],
+        "등락률": [0.0],
+    }
+    if with_trading_value:
+        unadjusted_row["거래대금"] = [123_456_789]
+    unadjusted_df = pd.DataFrame(unadjusted_row, index=index)
+    return adjusted_df, unadjusted_df
+
+
+def test_high_one_won_below_close_is_corrected(monkeypatch):
+    # open=100, close=105, high=104 (close보다 1원 낮음) -> high가 105로 보정돼야 한다.
+    adjusted_df, unadjusted_df = _single_row_frames(high_correction=1)
+
+    def fake_get_market_ohlcv_by_date(fromdate, todate, ticker, adjusted=True):
+        return adjusted_df if adjusted else unadjusted_df
+
+    monkeypatch.setattr(
+        pykrx_provider_module.stock, "get_market_ohlcv_by_date", fake_get_market_ohlcv_by_date
+    )
+
+    provider = PyKrxDataProvider(adjusted=True)
+    result = provider.load_daily("005930", "2024-01-02", "2024-01-02")
+
+    assert result["high"].iloc[0] == 105.0
+    validate_ohlcv(result)  # 보정 후에는 관계 위반이 없어야 한다.
+
+
+def test_low_one_won_above_open_is_corrected(monkeypatch):
+    # open=100, close=105, low=101 (open보다 1원 높음) -> low가 100으로 보정돼야 한다.
+    adjusted_df, unadjusted_df = _single_row_frames(low_correction=1)
+
+    def fake_get_market_ohlcv_by_date(fromdate, todate, ticker, adjusted=True):
+        return adjusted_df if adjusted else unadjusted_df
+
+    monkeypatch.setattr(
+        pykrx_provider_module.stock, "get_market_ohlcv_by_date", fake_get_market_ohlcv_by_date
+    )
+
+    provider = PyKrxDataProvider(adjusted=True)
+    result = provider.load_daily("005930", "2024-01-02", "2024-01-02")
+
+    assert result["low"].iloc[0] == 100.0
+    validate_ohlcv(result)  # 보정 후에는 관계 위반이 없어야 한다.
+
+
+def test_two_won_violation_is_not_corrected_and_validator_rejects(monkeypatch):
+    # open=100, close=105, high=103 (close보다 2원 낮음) -> 보정하지 않고 그대로 둔다.
+    adjusted_df, unadjusted_df = _single_row_frames(high_correction=2)
+
+    def fake_get_market_ohlcv_by_date(fromdate, todate, ticker, adjusted=True):
+        return adjusted_df if adjusted else unadjusted_df
+
+    monkeypatch.setattr(
+        pykrx_provider_module.stock, "get_market_ohlcv_by_date", fake_get_market_ohlcv_by_date
+    )
+
+    provider = PyKrxDataProvider(adjusted=True)
+    result = provider.load_daily("005930", "2024-01-02", "2024-01-02")
+
+    assert result["high"].iloc[0] == 103.0  # 보정되지 않음
+    with pytest.raises(MarketDataError):
+        validate_ohlcv(result)
+
+
+def test_adjusted_false_one_won_violation_is_not_corrected(monkeypatch):
+    # adjusted=False(원본) 경로는 1원 위반이라도 절대 보정하지 않는다.
+    index = pd.date_range("2024-01-02", periods=1, freq="D")
+    unadjusted_df = pd.DataFrame(
+        {
+            "시가": [100],
+            "고가": [104],  # close(105)보다 1원 낮음
+            "저가": [99],
+            "종가": [105],
+            "거래량": [999],
+            "거래대금": [123_456_789],
+            "등락률": [0.0],
+        },
+        index=index,
+    )
+
+    def fake_get_market_ohlcv_by_date(fromdate, todate, ticker, adjusted=True):
+        return unadjusted_df
+
+    monkeypatch.setattr(
+        pykrx_provider_module.stock, "get_market_ohlcv_by_date", fake_get_market_ohlcv_by_date
+    )
+
+    provider = PyKrxDataProvider(adjusted=False)
+    result = provider.load_daily("005930", "2024-01-02", "2024-01-02")
+
+    assert result["high"].iloc[0] == 104.0  # 보정되지 않음
+    with pytest.raises(MarketDataError):
+        validate_ohlcv(result)
 
 
 @pytest.mark.parametrize(

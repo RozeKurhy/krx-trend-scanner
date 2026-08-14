@@ -24,6 +24,14 @@ OHLC는 adjusted 경로에서, 거래대금은 필요하면 unadjusted 경로에
 open=high=low=volume=0, close=직전 거래일 값인 행을 포함시킨다. 이런 행은
 _to_standard_schema에서 필터링한다(아래).
 
+1원 반올림 보정(adjusted=True 전용): 액면분할 등으로 수정주가를 소급 계산할 때
+OHLC 각 필드를 독립적으로 반올림하면서 high가 open/close보다 1원 낮거나 low가
+open/close보다 1원 높은 사소한 관계 위반이 생기는 경우가 있다(NAVER 15건,
+삼성전자 1건 실측). validator는 느슨하게 만들지 않고, adjusted=True 경로에서만
+_correct_minor_rounding_violations로 1원 이내 위반만 정상값으로 보정한다. 2원
+이상 벌어진 위반이나 adjusted=False(원본) 데이터는 보정하지 않고 그대로
+validate_ohlcv가 실패시키게 둔다.
+
 인증: adjusted=False(KRX 원천) 경로는 KRX_ID/KRX_PW 환경 변수가 설정되어
 있으면 PyKRX가 내부적으로 로그인 세션을 사용한다(없어도 익명 요청으로
 자동 폴백하지만, 최근 KRX 쪽 정책상 익명 요청이 막힐 수 있다). 이 모듈을
@@ -62,6 +70,28 @@ def _is_phantom_holiday_row(df: pd.DataFrame) -> pd.Series:
         & (df["volume"] == 0)
         & (df["close"] > 0)
     )
+
+
+def _correct_minor_rounding_violations(df: pd.DataFrame) -> pd.DataFrame:
+    """수정주가 소급 계산의 1원 이내 반올림 오차만 보정한다.
+
+    high가 open/close보다 낮거나 low가 open/close보다 높은 위반 중,
+    정상값(max/min(open, close))과의 차이가 1원 이하인 경우에만 보정한다.
+    2원 이상 벌어진 위반은 손대지 않고 validate_ohlcv가 그대로 실패시키게 둔다.
+    """
+    df = df.copy()
+
+    normal_high = df[["open", "close"]].max(axis=1)
+    high_diff = normal_high - df["high"]
+    correctable_high = (high_diff > 0) & (high_diff <= 1)
+    df.loc[correctable_high, "high"] = normal_high[correctable_high]
+
+    normal_low = df[["open", "close"]].min(axis=1)
+    low_diff = df["low"] - normal_low
+    correctable_low = (low_diff > 0) & (low_diff <= 1)
+    df.loc[correctable_low, "low"] = normal_low[correctable_low]
+
+    return df
 
 
 class PyKrxDataProvider:
@@ -123,4 +153,6 @@ class PyKrxDataProvider:
         phantom_mask = _is_phantom_holiday_row(result)
         if phantom_mask.any():
             result = result.loc[~phantom_mask]
+        if self._adjusted:
+            result = _correct_minor_rounding_violations(result)
         return result
