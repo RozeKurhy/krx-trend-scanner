@@ -24,10 +24,17 @@ PATTERN_A_WEIGHTS = {
 
 @dataclass
 class PatternAResult:
-    ticker: str
-    name: str
+    """Pattern A 평가 결과. 종목 신원(ticker/name)은 포함하지 않는다.
+
+    evaluate_pattern_a는 OHLCV DataFrame만 입력받는 순수 함수이므로 종목이
+    무엇인지 알지 못한다. 종목 식별 정보는 상위 스캐너 계층에서 ScanResult로
+    합친다(models/score.py 참고).
+    """
 
     pattern_a_score: float
+
+    rejected: bool
+    rejection_reasons: tuple[str, ...]
 
     base_score: float
     low_score: float

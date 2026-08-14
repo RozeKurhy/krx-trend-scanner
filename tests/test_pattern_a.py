@@ -17,10 +17,13 @@ def test_weights_sum_to_max_score():
 
 def test_pattern_a_result_has_documented_fields():
     field_names = {f.name for f in dataclasses.fields(PatternAResult)}
+    assert "ticker" not in field_names
+    assert "name" not in field_names
+
     expected = {
-        "ticker",
-        "name",
         "pattern_a_score",
+        "rejected",
+        "rejection_reasons",
         "base_score",
         "low_score",
         "ma_score",

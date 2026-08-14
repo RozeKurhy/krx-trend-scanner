@@ -21,9 +21,9 @@ def test_to_weekly_aggregates_ohlcv():
     daily = _daily_frame()
     weekly = to_weekly(daily)
 
-    # 2024-01-01(Mon)은 첫 주(2024-01-07 마감)에 속한다.
-    first_week = weekly.loc["2024-01-07"]
-    first_week_daily = daily.loc["2024-01-01":"2024-01-07"]
+    # KRX 거래주 기준(W-FRI): 2024-01-01(Mon)은 첫 주(2024-01-05 금요일 마감)에 속한다.
+    first_week = weekly.loc["2024-01-05"]
+    first_week_daily = daily.loc["2024-01-01":"2024-01-05"]
 
     assert first_week["open"] == first_week_daily["open"].iloc[0]
     assert first_week["close"] == first_week_daily["close"].iloc[-1]

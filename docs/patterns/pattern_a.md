@@ -216,38 +216,49 @@ if ma24_slope_6m < -0.08:
 점수만 저장하지 않습니다. 디버깅과 규칙 개선을 위해 원본 Feature를 같이 저장합니다
 (`patterns/pattern_a.py`의 `PatternAResult`).
 
+`PatternAResult`는 종목 신원(ticker/name)을 모르는 순수 결과 구조입니다.
+`evaluate_pattern_a(daily)`가 OHLCV DataFrame만 입력받는 순수 함수이기
+때문입니다. ticker/name은 상위 스캐너 계층에서 `models/score.py`의
+`ScanResult`로 합칩니다.
+
 ```text
-ticker
-name
+ScanResult
+  ticker
+  name
+  pattern_a: PatternAResult
 
-pattern_a_score
+PatternAResult
+  pattern_a_score
 
-base_score
-low_score
-ma_score
-volatility_score
-breakout_score
+  rejected
+  rejection_reasons        # Hard Filter에 걸려 탈락한 사유들
 
-ma6_slope
-ma12_slope
-ma24_slope
+  base_score
+  low_score
+  ma_score
+  volatility_score
+  breakout_score
 
-ma24_slope_acceleration
+  ma6_slope
+  ma12_slope
+  ma24_slope
 
-ma_spread
-ma_spread_12m_ago
-ma_spread_ratio
+  ma24_slope_acceleration
 
-low_regression_slope
+  ma_spread
+  ma_spread_12m_ago
+  ma_spread_ratio
 
-atr_pct
-atr_ratio
+  low_regression_slope
 
-distance_to_resistance
-range_position
+  atr_pct
+  atr_ratio
+
+  distance_to_resistance
+  range_position
 ```
 
-이렇게 해야 "왜 이 종목이 91점인가?"를 추적할 수 있습니다.
+이렇게 해야 "왜 이 종목이 91점인데 REJECTED인가?"까지 추적할 수 있습니다.
 
 ## Score Momentum
 
