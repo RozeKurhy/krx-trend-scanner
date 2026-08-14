@@ -1,10 +1,10 @@
 """pattern_a_stage_manifest.py의 Stage Label Audit Freeze 검증 테스트.
 
 이 테스트는 manifest 구조만 검증한다(중복 키, 날짜 파싱, enum 유효성,
-source_dataset 기록, Stage별 최소 건수, provenance, Feature reconstruction)
-— Stage classifier(threshold/rule)는 아직 구현되지 않았으므로 여기서
-분류 정확도를 검증하지 않는다. 그건 Commit B(classifier v0.1) 이후
-별도 테스트로 다룬다.
+source_dataset 기록, Stage별 최소 건수, provenance, Feature reconstruction,
+BASE 정의의 semantic consistency) — Stage classifier(threshold/rule)는
+아직 구현되지 않았으므로 여기서 분류 정확도를 검증하지 않는다. 그건
+Commit B(classifier v0.1) 이후 별도 테스트로 다룬다.
 
 provenance/reconstruction test는 이 manifest가 참조하는 4개 원본
 dataset(OOS_V02_VALIDATION_SNAPSHOTS/OOS_V01_STAGE_AUDIT/
@@ -147,6 +147,35 @@ def test_source_provenance_matches_original_dataset():
             )
         else:
             pytest.fail(f"unrecognized source_dataset: {spec.source_dataset!r}")
+
+
+@pytest.mark.skipif(not _HAS_CACHE, reason=_SKIP_REASON)
+def test_base_stage_does_not_require_weekly_positive_or_mild_slope():
+    """semantic consistency 회귀: docs/validation/pattern_a_stage.md의
+    BASE 최종 정의는 weekly_ma12_slope>0/ma24_slope cutoff/range_position
+    cutoff를 필수조건으로 두지 않는다고 명시한다. 이 매니페스트에는 이미
+    weekly_ma12_slope<=0이거나 ma24_slope가 가파른(<=-0.045) BASE 사례가
+    존재한다 — 이 테스트는 그 사례들이 실제로 존재하고 여전히 BASE로
+    남아있는지 확인해서, 누군가 나중에 diagnostic checklist를 global
+    rule처럼 다시 강제하는 방향으로 라벨을 "정리"하지 못하게 막는다."""
+    cache = ParquetCache(base_dir=_CACHE_DIR)
+    base_specs = {(s.ticker, s.snapshot_date): s for s in PATTERN_A_STAGE_LABELS if s.audited_stage == PatternAStage.BASE}
+
+    weekly_negative_or_zero = []
+    steep_ma24_slope = []
+    for (ticker, snapshot_date), spec in base_specs.items():
+        daily = cache.load(ticker)
+        snap = build_historical_snapshot(
+            ticker, spec.name, daily, snapshot_date, include_incomplete_periods=False
+        )
+        f = snap.features
+        if f.weekly_ma12_slope <= 0:
+            weekly_negative_or_zero.append((ticker, snapshot_date))
+        if f.ma24_slope <= -0.045:
+            steep_ma24_slope.append((ticker, snapshot_date))
+
+    assert weekly_negative_or_zero, "BASE 중 weekly_ma12_slope<=0인 사례가 없다 — 필수조건화됐을 가능성"
+    assert steep_ma24_slope, "BASE 중 ma24_slope<=-0.045인 사례가 없다 — checklist가 필수조건화됐을 가능성"
 
 
 @pytest.mark.skipif(not _HAS_CACHE, reason=_SKIP_REASON)

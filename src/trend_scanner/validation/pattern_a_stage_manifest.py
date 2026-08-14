@@ -188,17 +188,21 @@ PATTERN_A_STAGE_LABELS: tuple[StageLabelSpec, ...] = (
     ),
     StageLabelSpec(
         "015760", "한국전력", "2023-12-31", PatternAStage.BASE,
-        "ma24_slope=-0.022로 가파른 하락 기준(대략 -0.045 이하)에 못 "
-        "미치고, ma24_slope_acceleration=+0.012로 하락이 감속 중, "
-        "weekly_ma12_slope=+0.019로 방향은 이미 양전환, ma_spread=0.095"
-        "로 비교군 중 좁은 편(수렴) — range_position=0.241로 절대 "
-        "위치는 낮지만 하락 속도/방향/수렴 기준으로는 BASE 게이트를 "
-        "통과함.",
+        "월봉 이동평균 구조가 이미 상당히 수렴했고(ma_spread=0.095, "
+        "비교군 중 좁은 편), 하락 속도도 완만해지는 중(ma24_slope=-0.022"
+        "는 가파른 하락으로 보기 어려운 수준, ma24_slope_acceleration"
+        "=+0.012로 계속 감속)이며, weekly_ma12_slope=+0.019로 단기 "
+        "방향도 이미 양전환 — 절대 range_position(0.241)은 낮지만, "
+        "여러 구조 신호가 함께 활성 하락이 더 이상 지배적이지 않고 "
+        "베이스 형성 쪽으로 수렴하고 있음을 가리켜 현재 episode의 BASE"
+        "로 판단.",
         "OOS2_v0.2_manifest",
         "원 case_group=downtrend_reversal_boundary. 재감사 전에는 "
-        "range_position 단독 기준으로 WEAK였으나, docs/validation/"
-        "pattern_a_stage.md의 BASE/WEAK 재정의(가파름/방향/가속/수렴 "
-        "4-gate) 재검토로 BASE로 재분류함.",
+        "range_position 단독 기준으로 WEAK였다. docs/validation/"
+        "pattern_a_stage.md의 diagnostic checklist(가파름/방향/가속/"
+        "수렴)로 처음 재검토했고, 이후 gate 형태가 global rule처럼 "
+        "읽힌다는 지적을 반영해 질적 lifecycle 판단(활성 하락이 구조를 "
+        "지배하는지 여부)으로 다시 확인 — 결론(BASE)은 동일하게 유지됨.",
     ),
     StageLabelSpec(
         "034220", "LG디스플레이", "2020-12-31", PatternAStage.TRANSITION,
@@ -231,32 +235,37 @@ PATTERN_A_STAGE_LABELS: tuple[StageLabelSpec, ...] = (
     ),
     StageLabelSpec(
         "023530", "롯데쇼핑", "2023-12-31", PatternAStage.BASE,
-        "ma24_slope=-0.025로 가파른 하락 기준(대략 -0.045 이하)에 못 "
-        "미치고, ma24_slope_acceleration=+0.023로 하락이 감속 중, "
-        "weekly_ma12_slope=+0.021로 방향은 이미 양전환 — "
-        "range_position=0.143로 비교군 중 가장 낮은 절대 위치지만 "
-        "하락 속도/방향/가속 기준으로는 BASE 게이트를 통과함(이번 BASE "
-        "10건 중 가장 얇은 근거이므로 notes에 경계로 남김).",
+        "하락 속도가 완만해지는 중(ma24_slope=-0.025는 가파른 하락으로 "
+        "보기 어려운 수준, ma24_slope_acceleration=+0.023로 감속)이고 "
+        "weekly_ma12_slope=+0.021로 단기 방향도 양전환 — "
+        "range_position=0.143로 비교군 중 가장 낮은 절대 위치이고 "
+        "ma_spread=0.160도 완전히 좁혀진 수준은 아니라서, 이번 BASE "
+        "10건 중 가장 근거가 얇은 경계 사례다. 그럼에도 활성 하락이 "
+        "구조를 지배한다고 보기보다는 낮은 위치에서 새로운 베이스를 "
+        "만들어가는 초기 단계로 판단해 BASE 유지.",
         "OOS2_v0.2_manifest",
         "원 case_group=hard_negative_false_turn. Stage 라벨 목적으로만 "
         "재사용 — 이 snapshot의 Score 결과 자체는 이번 manifest와 "
-        "무관하다. 재감사 전에는 range_position 단독 기준으로 WEAK였으나 "
-        "BASE/WEAK 재정의(4-gate)로 재분류함. range_position=0.143이 "
-        "이번 BASE 그룹 최저치라 boundary case로 취급.",
+        "무관하다. 재감사 전에는 range_position 단독 기준으로 WEAK였다. "
+        "diagnostic checklist로 먼저 재검토했고, checklist가 global "
+        "rule처럼 읽힌다는 지적을 반영해 질적 lifecycle 판단으로 다시 "
+        "확인 — 결론(BASE, 다만 가장 얇은 근거)은 동일하게 유지됨.",
     ),
     StageLabelSpec(
         "034220", "LG디스플레이", "2020-09-30", PatternAStage.WEAK,
-        "ma24_slope=-0.049로 가파른 하락 기준(대략 -0.045 이하)에 해당 "
-        "— weekly_ma12_slope=+0.107, ma24_slope_acceleration=+0.026로 "
-        "방향 전환/감속 신호는 있지만, 하락 자체가 여전히 가파른 수준"
-        "이라 BASE 게이트를 통과하지 못함. range_position=0.262.",
+        "weekly_ma12_slope=+0.107과 ma24_slope_acceleration=+0.026로 "
+        "방향 전환/감속 조짐은 있지만, ma24_slope=-0.049는 여전히 가파른 "
+        "하락 수준이라 활성 하락이 아직 가격 구조를 지배한다고 본다 — "
+        "베이스가 충분히 형성됐다고 보기엔 이르다. range_position"
+        "=0.262.",
         "OOS2_v0.2_manifest",
         "원 case_group=weak_core_strong_support. Stage 라벨 목적으로만 "
         "재사용(WEAK 표본 보강). 011170(2023-01-31, ma24_slope=-0.0475)"
-        "과 ma24_slope가 거의 동일해 재감사에서 직접 비교한 사례 — 둘 "
-        "다 가파른 하락 게이트에 걸려 WEAK 유지(011170도 동일 게이트로 "
-        "WEAK 재분류, 아래 참고). 즉 이 쌍의 결론은 '034220을 BASE로 "
-        "올린다'가 아니라 '011170을 WEAK로 내린다'임.",
+        "과 ma24_slope가 거의 동일해 재감사에서 직접 비교한 사례 — "
+        "diagnostic checklist와 질적 lifecycle 판단 양쪽 모두 두 종목 "
+        "다 WEAK로 일치함(011170도 동일하게 WEAK 재분류, 아래 참고). "
+        "즉 이 쌍의 결론은 '034220을 BASE로 올린다'가 아니라 '011170을 "
+        "WEAK로 내린다'임.",
     ),
     # ============================================================
     # Source: OOS_v0.1_stage_audit (13)
@@ -400,31 +409,44 @@ PATTERN_A_STAGE_LABELS: tuple[StageLabelSpec, ...] = (
     ),
     StageLabelSpec(
         "011170", "롯데케미칼", "2023-01-31", PatternAStage.WEAK,
-        "ma24_slope=-0.048로 가파른 하락 기준(대략 -0.045 이하)에 "
-        "해당하고, ma24_slope_acceleration=-0.021로 하락이 오히려 "
-        "가속 중(비교 대상 9건 중 유일하게 가속) — avg_price_change_12m"
-        "=-0.276, ma_spread=0.263로 둘 다 비교 대상 9건 중 최댓값. "
-        "weekly_ma12_slope=+0.074(양전환)는 있지만 다른 세 지표가 "
-        "전부 활성 하락을 가리켜 WEAK로 재분류.",
+        "여러 구조 신호가 함께 활성 하락이 여전히 지배적임을 가리킨다 "
+        "— avg_price_change_12m=-0.276(비교 대상 9건 중 최대 낙폭), "
+        "ma_spread=0.263(비교 대상 9건 중 최대, 이동평균 가장 발산), "
+        "ma24_slope=-0.048(가파른 하락), ma24_slope_acceleration=-0.021"
+        "(비교 대상 9건 중 유일하게 하락이 오히려 가속). "
+        "weekly_ma12_slope=+0.074로 단기 반등은 있지만, 월봉 구조/낙폭/"
+        "가속 세 축이 전부 일관되게 활성 하락을 가리켜 이 반등을 구조적 "
+        "안정화가 아니라 하락 중 일시 반등으로 판단 — WEAK.",
         "negative_control_compare",
         "원 label=failed_higher_low(outcome 기반, Stage 판정에 미사용). "
-        "재감사 전에는 range_position=0.318이 WEAK 기준(0.25)보다 높다는 "
-        "이유로 BASE였으나, 이번 재감사에서 range_position을 게이트에서 "
-        "빼고 가파름/가속/수렴 기준으로 재검토해 WEAK로 재분류함. "
+        "재감사 전에는 range_position=0.318이 높다는 이유로 BASE였다. "
+        "diagnostic checklist로 먼저 재검토했고, checklist가 global "
+        "rule처럼 읽힌다는 지적을 반영해 단일 지표가 아니라 낙폭/spread/"
+        "가속 세 축이 모두 일치하는지로 다시 확인 — 결론(WEAK)은 동일. "
         "034220(2020-09-30)과 ma24_slope가 거의 동일한 쌍으로 직접 "
         "비교됨.",
     ),
     StageLabelSpec(
         "009150", "삼성전기", "2022-12-31", PatternAStage.WEAK,
-        "ma24_slope_acceleration=-0.016로 비교 대상 9건 중 011170 다음 "
-        "으로 하락이 가속 중, range_position_52w=0.282가 36개월 "
-        "range_position(0.345)보다 오히려 낮아 최근 1년이 3년 구간 "
-        "대비 개선되지 않음(비교 대상 9건 중 유일), ma_spread=0.250로 "
-        "넓은 편 — avg_price_change_12m=-0.200도 큰 하락.",
+        "acceleration 한 지표만으로 내린 판단이 아니다 — 세 가지가 함께 "
+        "월봉 구조가 아직 안정화되지 않았음을 가리킨다. (1) ma_spread"
+        "=0.250로 이동평균이 넓게 벌어진 채(비교 대상 9건 중 2번째로 "
+        "넓음) 아직 수렴하지 않았고, (2) range_position_52w=0.282가 "
+        "36개월 range_position(0.345)보다 오히려 낮아 최근 1년이 3년 "
+        "구간 대비 개선되지 않고 상대적으로 더 저점 쪽으로 밀렸으며"
+        "(비교 대상 9건 중 유일한 역전), (3) avg_price_change_12m"
+        "=-0.200으로 최근 12개월 낙폭 자체도 여전히 크다. "
+        "ma24_slope=-0.019 자체는 완만하고 ma24_slope_acceleration"
+        "=-0.016(하락이 소폭 재가속)은 세 신호 중 하나일 뿐 — 다만 "
+        "이동평균 미수렴+52주 역전+큰 낙폭이 함께 나타나 활성 하락이 "
+        "여전히 구조를 지배한다고 판단, WEAK 유지.",
         "negative_control_compare",
         "원 label=failed_momentum(outcome 기반, Stage 판정에 미사용). "
-        "재감사 전에는 range_position=0.345 기준으로 BASE였으나, "
-        "가속/52주 gap/수렴 기준 재검토로 WEAK로 재분류함.",
+        "재감사 전에는 range_position=0.345 기준으로 BASE였다. "
+        "diagnostic checklist로 먼저 재검토했고, checklist가 global "
+        "rule처럼 읽힌다는 지적을 반영해 acceleration 단일 신호가 아니라 "
+        "ma_spread/52주 gap/낙폭 세 축을 함께 다시 확인 — 결론(WEAK)은 "
+        "동일.",
     ),
     StageLabelSpec(
         "018260", "삼성에스디에스", "2023-07-31", PatternAStage.WEAK,
