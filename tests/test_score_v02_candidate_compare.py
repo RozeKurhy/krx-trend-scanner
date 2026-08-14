@@ -137,6 +137,58 @@ def test_v01_baseline_survives_production_constant_mutation(monkeypatch):
     assert after.pattern_a_score == pytest.approx(before.pattern_a_score)
 
 
+def test_v01_baseline_alignment_survives_production_alignment_function_mutation(monkeypatch):
+    """재현성 최종 마무리(alignment): production _transition_alignment()을
+    무조건 반대로 바꿔도 frozen v0.1의 alignment_bonus/최종 점수는 그대로여야
+    한다 — _score_v01_baseline()이 이제 production alignment 함수를 아예
+    호출하지 않고 _v01_transition_alignment()만 쓴다는 것을 증명한다."""
+    fv = compare._feature_values(
+        _features(
+            range_36m=0.6,
+            avg_price_change_12m=0.10,
+            ma_spread=0.10,
+            ma24_slope=0.05,
+            weekly_ma12_slope=0.15,
+            ma24_slope_acceleration=0.05,
+            range_position=0.5,
+        )
+    )
+    before = compare._score_v01_baseline(fv)
+    assert before.alignment_bonus == 8.0  # sanity: v0.1 정책상 정렬 케이스
+
+    # compare 모듈이 production에서 import해 쓰는 이름을 무조건 반대로 바꾼다
+    # (production._transition_alignment 자체를 바꿔도 compare는 import 시점에
+    # 함수 객체를 이미 바인딩했으므로, 실제로 compare 쪽에서 참조 가능한
+    # 이름을 패치해야 "production이 바뀌었다"는 상황을 재현할 수 있다).
+    monkeypatch.setattr(compare, "_transition_alignment", lambda _fv: False)
+
+    after = compare._score_v01_baseline(fv)
+    assert after.alignment_bonus == before.alignment_bonus == 8.0
+    assert after.pattern_a_score == pytest.approx(before.pattern_a_score)
+
+
+@pytest.mark.parametrize(
+    "missing_field", ["weekly_ma12_slope", "ma24_slope", "ma24_slope_acceleration"]
+)
+def test_v01_transition_alignment_false_when_any_field_missing(missing_field):
+    values = dict(
+        weekly_ma12_slope=0.05,
+        ma24_slope=0.05,
+        ma24_slope_acceleration=0.05,
+    )
+    values[missing_field] = float("nan")
+    fv = compare._feature_values(
+        _features(
+            range_36m=0.6,
+            avg_price_change_12m=0.10,
+            ma_spread=0.10,
+            range_position=0.5,
+            **values,
+        )
+    )
+    assert compare._v01_transition_alignment(fv) is False
+
+
 # --- v0.1 baseline: Transition formula ---
 
 

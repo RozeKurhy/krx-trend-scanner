@@ -1305,11 +1305,22 @@ threshold/penalty table, alignment bonus 값)를 `V01_*` 상수로 스크립트
 `PROGRESSED_PENALTY_BY_EVIDENCE_COUNT`는 Candidate A 계산 경로 어디에서도
 import하지 않는다. 재사용하는 건 값을 담지 않는 순수 계산 로직
 (`_weighted_piecewise_score`, `_harmonic_mean`, `_piecewise_linear`,
-`_is_missing`, `_transition_alignment`)뿐이다. 따라서 **향후 production
-Score가 v0.3/v0.4로 바뀌어 Base curve/Transition curve/penalty가
-달라져도 Candidate A 결과는 전혀 변하지 않는다** — 테스트에서 production
-상수를 monkeypatch로 임의 변경해도 v0.1 baseline 결과가 그대로임을
-직접 검증한다(`tests/test_score_v02_candidate_compare.py`).
+`_is_missing`)뿐이다. 따라서 **향후 production Score가 v0.3/v0.4로
+바뀌어 Base curve/Transition curve/penalty가 달라져도 Candidate A
+결과는 전혀 변하지 않는다** — 테스트에서 production 상수를 monkeypatch로
+임의 변경해도 v0.1 baseline 결과가 그대로임을 직접 검증한다
+(`tests/test_score_v02_candidate_compare.py`).
+
+**완전 독립 고정(재현성 최종 마무리)**: alignment 판정도 마찬가지로
+독립 고정했다. `_score_v01_baseline()`은 이제 production
+`_transition_alignment()`을 호출하지 않고, v0.1 당시 정책(weekly_ma12_slope/
+ma24_slope/ma24_slope_acceleration이 전부 0 초과, 하나라도 결측이면
+미정렬)을 그대로 리터럴로 고정한 `_v01_transition_alignment()`을 쓴다 —
+이 함수는 단순 수학 helper가 아니라 v0.1 scoring policy이므로 순수
+계산 로직과 구분해 별도로 freeze했다. production `_transition_alignment()`
+은 이제 Candidate B/C 비교(`align_variants()`)에서만 쓰이고 Candidate A
+경로에는 전혀 관여하지 않는다. 따라서 향후 production의 alignment
+정의가 변경돼도 Candidate A에는 영향을 주지 않는다.
 
 holdout_early_trend/exploration_early_trend는 이번 라운드에서 Stage
 Label Rubric으로 재감사하지 않았다(범위 밖) — OOS positive_early_trend

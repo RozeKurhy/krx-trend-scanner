@@ -19,14 +19,25 @@ penalty table을 전부 `V01_*` 상수(이 스크립트 안에 리터럴로 직�
 `MA24_SLOPE_ACCELERATION_POINTS`/`PROGRESSED_EVIDENCE_THRESHOLDS`/
 `PROGRESSED_PENALTY_BY_EVIDENCE_COUNT`는 이 계산 경로 어디에서도
 참조하지 않는다. 값을 담지 않는 순수 계산 로직(`_weighted_piecewise_score`,
-`_harmonic_mean`, `_piecewise_linear`, `_is_missing`, `_transition_alignment`)
-만 production에서 재사용한다 — 이 함수들은 어떤 curve/weight/threshold도
-하드코딩하지 않고 인자로 받은 값만 계산하므로, production Score가 v0.3/
-v0.4로 바뀌어도 frozen v0.1 baseline 결과에 영향을 주지 않는다.
+`_harmonic_mean`, `_piecewise_linear`, `_is_missing`)만 production에서
+재사용한다 — 이 함수들은 어떤 curve/weight/threshold도 하드코딩하지
+않고 인자로 받은 값만 계산하므로, production Score가 v0.3/v0.4로
+바뀌어도 frozen v0.1 baseline 결과에 영향을 주지 않는다.
 `score_pattern_a()`/`_compute_transition()`/`_alignment_bonus()`는 이제
 v0.2 동작이라 Candidate A 계산에 전혀 쓰지 않는다 — `score_pattern_a()`는
 별도로 "현재 production이 실제로 무엇을 반환하는가"를 보여주는
 `current_v02_score` 참고 컬럼에만 쓴다.
+
+**완전 독립 고정(재현성 최종 마무리)**: `_score_v01_baseline()`은 alignment
+판정에도 더 이상 production `_transition_alignment()`을 쓰지 않는다.
+이 함수는 순수 수학 helper가 아니라 v0.1 당시의 scoring policy(어떤
+feature가 얼마 이상이면 정렬로 볼지)이므로, 로컬 `_v01_transition_alignment()`
+로 그 정책을 그대로 리터럴 고정했다 — weekly_ma12_slope/ma24_slope/
+ma24_slope_acceleration이 전부 0 초과면 정렬, 하나라도 결측이면 미정렬.
+production `_transition_alignment()`은 이제 Candidate B/C 비교
+(`align_variants()`)에서만 쓰고, Candidate A 경로에는 전혀 관여하지
+않는다. 따라서 향후 production의 alignment 정의가 바뀌어도 Candidate A는
+영향받지 않는다.
 
 Transition Candidate:
     A. v0.1 그대로: 0.60*ma24_core + 0.20*weekly + 0.20*acceleration (가중합)
@@ -98,6 +109,9 @@ from trend_scanner.patterns.pattern_a_score import (
 # 이번 라운드도 Candidate B/C 로직은 건드리지 않는다(item 10). **Candidate
 # A(_score_v01_baseline)는 이 production import를 전혀 쓰지 않는다** —
 # 아래 V01_* 상수만 쓴다.
+# 주의(재현성 최종 마무리): _transition_alignment도 마찬가지로 이제
+# align_variants()(Candidate B/C 비교)에서만 쓴다. Candidate A는 이 이름을
+# 전혀 쓰지 않고 아래 정의된 _v01_transition_alignment()만 쓴다.
 from trend_scanner.validation.historical_snapshot import (
     HistoricalSnapshot,
     build_historical_snapshot,
@@ -217,8 +231,10 @@ def _feature_values(features: Any) -> dict[str, float]:
 # 같다"이지 "같은 걸 가리킨다"가 아니다 — 앞으로 v0.3에서 이 curve/
 # threshold/penalty 중 하나라도 바뀌어도 frozen v0.1 baseline은 여기
 # 적힌 리터럴 값을 계속 쓴다. _piecewise_linear/_harmonic_mean/
-# _is_missing/_weighted_piecewise_score/_transition_alignment는 값을
-# 담고 있지 않은 순수 계산 로직이라 재사용한다(item 9).
+# _is_missing/_weighted_piecewise_score는 값을 담고 있지 않은 순수 계산
+# 로직이라 재사용한다(item 9). alignment 판정은 정책이라 재사용하지
+# 않는다 — 아래 _v01_transition_alignment()가 v0.1 정책을 리터럴로
+# 고정한다(재현성 최종 마무리).
 V01_RANGE_36M_POINTS: tuple[tuple[float, float], ...] = ((0.6, 100.0), (1.2, 60.0), (2.0, 0.0))
 V01_AVG_PRICE_CHANGE_12M_POINTS: tuple[tuple[float, float], ...] = ((0.10, 100.0), (0.30, 50.0), (0.60, 0.0))
 V01_MA_SPREAD_POINTS: tuple[tuple[float, float], ...] = ((0.10, 100.0), (0.25, 50.0), (0.40, 0.0))
@@ -299,11 +315,26 @@ def _v01_progressed_penalty(evidence_count: int) -> float:
     return V01_PROGRESSED_PENALTY_BY_EVIDENCE_COUNT.get(evidence_count, 35.0)
 
 
+def _v01_transition_alignment(fv: dict[str, float]) -> bool:
+    """v0.1 당시 alignment 판정 정책을 리터럴로 고정한다. production
+    _transition_alignment()과 지금은 조건이 같지만, 이 함수는 그걸
+    호출하지 않는다 — production 쪽 정의가 v0.3에서 바뀌어도 이 함수는
+    weekly_ma12_slope/ma24_slope/ma24_slope_acceleration이 전부 0을
+    초과하는지만 계속 그대로 판정한다."""
+    weekly = fv.get("weekly_ma12_slope")
+    ma24 = fv.get("ma24_slope")
+    accel = fv.get("ma24_slope_acceleration")
+    if _is_missing(weekly) or _is_missing(ma24) or _is_missing(accel):
+        return False
+    return weekly > 0 and ma24 > 0 and accel > 0
+
+
 def _score_v01_baseline(fv: dict[str, float]) -> V01BaselineResult:
     """frozen v0.1 Score Design 그대로 재현한다(재구현이 아니라 v0.1이
     실제로 썼던 가중합 Transition + 항상 +8 alignment bonus). 이 함수는
-    production pattern_a_score.py의 scoring constant를 하나도 참조하지
-    않는다 — 전부 위 V01_* 상수다."""
+    production pattern_a_score.py의 scoring constant나 alignment 판정
+    함수를 하나도 참조하지 않는다 — 전부 위 V01_* 상수와
+    _v01_transition_alignment()다."""
     base = _weighted_piecewise_score(fv, V01_BASE_WEIGHTS, V01_BASE_POINTS)
     transition = _weighted_piecewise_score(fv, V01_TRANSITION_WEIGHTS, V01_TRANSITION_POINTS)
 
@@ -323,7 +354,7 @@ def _score_v01_baseline(fv: dict[str, float]) -> V01BaselineResult:
         )
 
     balanced_core = _harmonic_mean(base.score, transition.score)
-    aligned = _transition_alignment(fv)
+    aligned = _v01_transition_alignment(fv)
     alignment_bonus = V01_ALIGNMENT_BONUS if aligned else 0.0
     evidence_count = _v01_progressed_evidence_count(fv)
     penalty = _v01_progressed_penalty(evidence_count)
