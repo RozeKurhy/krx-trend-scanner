@@ -151,11 +151,11 @@ direct PROGRESSED 판정의 `expansion_present`는 `avg_price_change_12m >= 0.30
 또는 `ma_spread >= 0.20`(OR)이지만, historical lifecycle 탐색에서는
 더 엄격한 **strict historical expansion proxy**(`ma24_slope > 0 AND
 avg_price_change_12m >= 0.30`, AND)를 사용한다. 이유: historical 탐색에서
-`range_position`이나 `ma_spread` 단독 신호를 허용하면 EARLY_TREND 구간이나
-단기 노이즈가 매달 걸려서 "직전 달"이 무조건 마지막 확장으로 잡히는
-false positive가 실측으로 확인되었기 때문이다. 향후 Stage v0.2에서 필요시
-historical `ma_spread` 궤적 등을 추가해 두 정의를 재통합할 수 있지만,
-v0.1에서는 이 엄격한 프록시를 유지한다.
+`range_position` 경로는 실측으로 false positive가 확인되었고(EARLY_TREND
+구간도 걸려서 직전 달이 항상 마지막 확장으로 잡힘), `ma_spread` historical
+경로는 v0.1에서 채택하지 않았으며 향후 trajectory 기반 검증 후보로 남겨두었다.
+향후 Stage v0.2에서 필요시 historical `ma_spread` 궤적 등을 추가해 두 정의를
+재통합할 수 있지만, v0.1에서는 이 엄격한 프록시를 유지한다.
 
 재구성에 쓰는 series는 새 Feature가 아니라 기존 point formula
 (`build_feature_row`/`_avg_price_change_12m`/`resistance.range_position`)의

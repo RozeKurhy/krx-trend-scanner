@@ -79,12 +79,13 @@ EXPANSION_MA_SPREAD = 0.20
 ma_spread=0.185로 0.20 문턱을 근소하게 못 넘김)가 있어서, AND로 두면
 PROGRESSED가 EARLY_TREND로 밀린다."""
 
-# Episode/Cycle reset 판정에 쓰는 threshold. "확장이 있었다"의 기준은
-# direct PROGRESSED 판정과 동일하게 core_turning_positive(ma24_slope>0) +
-# avg_price_change_12m 큰 폭으로 잡는다 — range_position 단독 신호로
-# 잡으면 EARLY_TREND 구간(range_position은 이미 높지만 avg_price_change_12m
-# 은 아직 낮음)도 매달 걸려서 "직전 달"이 항상 last_expansion으로 잡히는
-# 문제가 실측으로 확인됐다(months_since_expansion이 거의 항상 1).
+# Episode/Cycle reset 판정에 쓰는 threshold. "과거 확장이 있었다"의 기준은
+# strict historical expansion proxy인 ma24_slope > 0 AND avg_price_change_12m >= 0.30 (AND)
+# 으로 잡는다 (direct PROGRESSED의 expansion_present[avg_chg>=0.30 OR ma_spread>=0.20]와
+# 달리, 과거 탐색 시 false positive를 줄이기 위해 더 엄격한 AND 기준 적용).
+# range_position 단독 신호로 잡으면 EARLY_TREND 구간(range_position은 이미 높지만
+# avg_price_change_12m은 아직 낮음)도 매달 걸려서 "직전 달"이 항상 last_expansion으로
+# 잡히는 문제가 실측으로 확인됐다(months_since_expansion이 거의 항상 1).
 EPISODE_PEAK_AVG_CHG = 0.30
 EPISODE_BREAK_MA24_SLOPE = -0.045
 EPISODE_BREAK_RANGE_POSITION = 0.20
