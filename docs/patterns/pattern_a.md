@@ -3,8 +3,9 @@
 ## 상태
 
 **Feature Set Freeze v0.1 완료.** Feature Validation → Historical Snapshot →
-Holdout → Negative Control → Outcome Audit까지 검증한 결과를 바탕으로,
-Pattern A가 실제로 사용할 Feature와 그 역할을 이 문서에서 확정한다.
+Holdout → Negative Control → Outcome Audit → Base/Expansion Validation까지
+검증한 결과를 바탕으로, Pattern A가 실제로 사용할 Feature와 그 역할/축을
+이 문서에서 확정한다.
 
 `evaluate_pattern_a`는 여전히 구현되지 않았다(`NotImplementedError`).
 **점수, 가중치, threshold는 이 단계에서 정하지 않는다.** 아래 표에 남아있는
@@ -65,19 +66,29 @@ compression_ratio는 실제 pre_breakout 사례들의 공통 특성으로 재현
 negative_control에서 더 낮게 나온 사례도 있었다.
 
 대신 다음 raw Feature 조합으로 "아직 장기 구조 안에 있는가"를 판단한다.
+**Base/Expansion Validation(아래 절)으로 재검증한 최종 결과**, 이 축의
+Context Role은 `range_36m` / `avg_price_change_12m` / `ma_spread` 셋만
+남는다 — `range_24m`/`range_12m`은 검증 결과에 따라 Diagnostic으로
+내려갔다(사유는 아래 Base/Expansion Validation 절 참고).
 
 ```text
-range_36m / range_24m / range_12m   -> 장기~중기 가격 변동폭 자체
-avg_price_change_12m                -> 최근 12개월 가격 중심 이동량
-ma_spread                           -> 이동평균선 간격(확장 정도)
+range_36m               -> 장기(36개월) 가격 변동폭 자체 (Base Context)
+avg_price_change_12m    -> 최근 12개월 가격 중심 이동량 (Base Context)
+ma_spread                -> 이동평균선 간격(확장 정도)  (Base Context)
+
+range_24m / range_12m    -> range_36m과 중복이거나 분리력이 약함 (Diagnostic으로 하향)
 ```
 
 **핵심 질문에 대한 답**: SK하이닉스처럼 이미 크게 상승한 종목을 Base로
 오인하지 않으려면, compression_ratio(12M/36M range 비율) 같은 "압축 정도"
 보다 range_36m·avg_price_change_12m·ma_spread 같은 **"확장 정도" 자체를
-직접 보는 게 더 유용해 보인다** — compression_ratio는 비율이라 "36개월
-range 자체가 이미 매우 컸던" 경우를 걸러내지 못하지만, range_36m은 그
-확장을 직접 드러낸다. 다만 이번 단계에서 threshold는 정하지 않는다.
+직접 보는 게 더 유용하다** — compression_ratio는 비율이라 "36개월 range
+자체가 이미 매우 컸던" 경우를 걸러내지 못하지만, range_36m은 그 확장을
+직접 드러낸다. Base/Expansion Validation에서 range_36m은 holdout
+trend_progressed 최솟값(1.2614)이 pre_breakout/early_trend/
+confirmed_negative 세 그룹의 최댓값(1.1767)보다 커서 4그룹을 완전히
+분리했다 — 지금까지 검증한 Feature 중 가장 깨끗한 Already Progressed
+판별 신호다. 다만 이번 단계에서 threshold는 정하지 않는다.
 
 ### Already Progressed / Expansion State
 
@@ -151,23 +162,37 @@ unbiased pre_breakout 중앙값 0.4154 vs negative_control 중앙값 0.4124 —
 **즉 "돌파 전 판별"이 아니라 "돌파 후 확인/단계 판별" 용도로 유용하다.**
 이번 단계에서 threshold는 정하지 않는다.
 
-## Feature Role (5분류)
+## Feature Role / Axis
 
 `src/trend_scanner/patterns/pattern_a_feature_set.py`에 상수로 고정돼
 있다. Score 계산과는 아직 연결하지 않는다.
 
-| Role | 정의 | Feature |
-|---|---|---|
-| **Core** | Pattern A 판단의 중심 | `ma24_slope` |
-| **Supporting** | Core 신호를 보강하지만 단독으로 결정하지 않음(transition confirmation 포함) | `weekly_ma12_slope`, `ma24_slope_acceleration` |
-| **Stage / Context** | 좋고 나쁨이 아니라 현재 단계·Base/Expansion 판별용 | `range_position`, `range_position_52w`, `distance_to_resistance`, `range_36m`, `range_24m`, `range_12m`, `avg_price_change_12m`, `ma_spread` |
-| **Diagnostic only** | 리포트엔 남기지만 Score에 직접 넣지 않음 | `ma_spread_ratio`, `atr_ratio`, `compression_ratio` |
-| **Drop** | v0.1에서 사용하지 않음 | `pivot_low_slope` |
+**재리뷰 후속으로 Role과 Axis를 분리했다.** Role은 "Score Design에서 이
+Feature를 어떻게 쓸 것인가"(핵심/보조/참고/진단용/미사용), Axis는
+"Pattern A의 어느 축 개념에 속하는가"(Base/Transition/Stage)를 답한다.
+예를 들어 `ma_spread`는 Core는 아니지만(Role=Context) Base Axis에
+속한다 — 이전의 5분류(Role만 있던 구조)로는 이 관계를 표현할 수 없었다.
+Diagnostic/Drop Feature에는 Axis를 부여하지 않는다(Score Design에 실제
+쓰이는 축 구조에만 매핑, 과도한 프레임워크 방지).
 
-이 목록은 지금까지 명시적으로 검증한 Feature만 다룬다. `FeatureRow`의
-나머지 필드(ma6/ma12/ma24 원시 레벨, volume/trading_value 참고 지표,
-pivot 상세 등)는 애초에 Pattern A 후보로 논의된 적이 없어 role 분류
-대상이 아니다.
+| Role | 정의 | Axis | Feature |
+|---|---|---|---|
+| **Core** | Pattern A 판단의 중심 | Transition | `ma24_slope` |
+| **Supporting** | Core 신호를 보강하지만 단독으로 결정하지 않음(transition confirmation 포함) | Transition | `weekly_ma12_slope`, `ma24_slope_acceleration` |
+| **Context** | 좋고 나쁨이 아니라 "이미 얼마나 진행됐는가"(폭/변화율) 판별용 | Base | `range_36m`, `avg_price_change_12m`, `ma_spread` |
+| **Context** | 좋고 나쁨이 아니라 "지금 어느 단계인가"(range 내 위치) 판별용 | Stage | `range_position`, `range_position_52w`, `distance_to_resistance` |
+| **Diagnostic only** | 리포트엔 남기지만 Score에 직접 넣지 않음 | — | `ma_spread_ratio`, `atr_ratio`, `compression_ratio`, `range_24m`, `range_12m` |
+| **Drop** | v0.1에서 사용하지 않음 | — | `pivot_low_slope` |
+
+Base Context와 Stage Context를 같은 축에 두지 않은 이유: 둘 다 "참고
+정보"라는 점은 같지만 단위가 다르다 — Base Context는 폭/변화율(스칼라
+크기), Stage Context는 range 내 위치(0~1 정규화)다. 코드에서도
+`BASE_CONTEXT_FEATURES`/`STAGE_CONTEXT_FEATURES`로 분리했다.
+
+`PATTERN_A_FEATURE_SCOPE`(15개)가 Pattern A 후보로 명시적으로 검토한
+Feature 전체를 나열한 ground truth다. `FeatureRow`의 나머지 필드(ma6/
+ma12/ma24 원시 레벨, volume/trading_value 참고 지표, pivot 상세 등)는
+애초에 Pattern A 후보로 논의된 적이 없어 여기 포함하지 않는다.
 
 ## Validation Evidence
 
@@ -177,15 +202,130 @@ pivot 상세 등)는 애초에 Pattern A 후보로 논의된 적이 없어 role 
 | `weekly_ma12_slope` | 월봉보다 먼저 도는 선행 신호 | winner에서 monthly보다 먼저 양전환하는 사례 확인(9종목 중 6종목). 하지만 negative_control에서도 단독 양수가 흔함(confirmed 80%, ambiguous 66.7%) | Supporting(ma24와 결합 시에만 유의미) | Medium |
 | `ma24_slope_acceleration` | 추세 전환 가속 신호 | early_trend에서 양수 많음(80%)이나 negative_control도 비슷하게 흔함(confirmed 80%, ambiguous 66.7%) — 단독 구분력 거의 없음. ma24_slope와 결합(Combination D/E)했을 때만 구분력 확인 | Supporting | Medium |
 | Combination E(`weekly>0 & ma24>0 & accel>0`) | 세 신호의 동시 정렬이 강한 신호 | early_trend 80% vs confirmed_negative 20%, ambiguous_negative 0% — 지금까지 중 최고 구분력. 표본 작음(각 3~5개) | 개념만 정의(`transition_alignment`), Hard Filter/threshold 미확정 | Medium(표본 작음) |
-| `range_position` | 장기 Range 내 위치로 돌파 임박 판단 | pre_breakout 단계 구분엔 약함(unbiased 중앙값이 negative와 사실상 동일: 0.4154 vs 0.4124). early_trend 확인에는 유용(중앙값 0.885) | Stage/Context | Medium(stage 확인용으로 한정) |
-| `range_position_52w` | 주봉 기준 range_position | range_position과 같은 패턴(단계 확인용, pre_breakout 판별력 약함) | Stage/Context | Medium |
-| `distance_to_resistance` | 저항까지 거리 | range_position과 상보적인 값, 별도 독립 검증은 약함 | Stage/Context | Low |
+| `range_position` | 장기 Range 내 위치로 돌파 임박 판단 | pre_breakout 단계 구분엔 약함(unbiased 중앙값이 negative와 사실상 동일: 0.4154 vs 0.4124). early_trend 확인에는 유용(중앙값 0.885) | Context(Stage) | Medium(stage 확인용으로 한정) |
+| `range_position_52w` | 주봉 기준 range_position | range_position과 같은 패턴(단계 확인용, pre_breakout 판별력 약함) | Context(Stage) | Medium |
+| `distance_to_resistance` | 저항까지 거리 | range_position과 상보적인 값, 별도 독립 검증은 약함 | Context(Stage) | Low |
 | `compression_ratio` | 장기 Base 압축(12M/36M range 비율 낮음) | pre_breakout의 공통 특성으로 재현 안 됨(holdout 5종목 중 0.6 미만 없는 라운드도 있었음). negative_control 중앙값(0.60)이 오히려 positive pre(0.86)보다 낮음 — 방향이 반대로 나타난 사례도 있음 | Diagnostic | Low |
 | `atr_ratio` | 돌파 전 변동성 축소 | holdout pre_breakout 최소값이 1.03(압축된 사례가 사실상 없음). negative_control과 분포가 크게 겹침 | Diagnostic | Low |
 | `pivot_low_slope` | 저점 상승 구조 | exploration/holdout/negative_control 전부 값이 ±0.001 내외로 미미, 상태 구분력 없음 | Drop | Low |
-| `ma_spread` | MA 수렴 정도("좁을수록 Base") | "수렴" 방향으로는 값 범위가 그룹 간 크게 겹쳐 약함(pre_breakout 4~9종목 기준 0.026~0.29로 편차 큼). 다만 "확장" 방향으로는 참고가 된다 — negative_control 중앙값(0.122)이 positive pre_breakout 중앙값(0.077)보다 넓고, trend_progressed 단계는 0.22~0.34로 더 넓다 | Stage/Context(Already Progressed 판별에 참고, Score에는 직접 안 넣음) | Low |
+| `ma_spread` | MA 수렴 정도("좁을수록 Base") | "수렴" 방향으로는 약함(pre_breakout 중앙값 0.0774이 early_trend 0.0627보다 오히려 높아 비단조). "확장" 방향은 중앙값이 progressed(0.2777)에서 가장 높아 방향성은 있으나, confirmed_negative 1건(롯데케미칼 0.2626)이 progressed 최솟값(0.1828)보다 커서 노이즈가 큼 | Context(Base, Already Progressed 판별에 참고, Score에는 직접 안 넣음) | Low-Medium |
 | `ma_spread_ratio` | 과거 대비 수렴 진행도 | 편차가 극단적으로 큼(pre_breakout 0.62~6.57), 방향 불안정 | Diagnostic | Low |
-| `range_36m`, `avg_price_change_12m` | (신규 후보) Base/Expansion 판별 | 아직 독립적인 hypothesis test는 안 했지만, compression_ratio의 대안으로 이 Freeze에서 채택 | Stage/Context(Base/Expansion) | 미검증(다음 라운드 후보) |
+| `range_36m` | Base/Expansion 판별(장기 변동폭) | Base/Expansion Validation(아래 절)에서 4그룹(holdout pre/early/progressed, confirmed_negative)을 완전히 분리(progressed 최솟값 1.2614 > 나머지 최댓값 1.1767) — 지금까지 가장 깨끗한 신호 | Context(Base) | High |
+| `avg_price_change_12m` | Base/Expansion 판별(12개월 가격 이동량) | 중앙값 차이는 매우 큼(progressed 0.7251 vs 나머지 -0.12~0.05)이나 confirmed_negative 1건(고려아연 0.3117)이 progressed 최솟값(0.2220)보다 커서 완전히 깨끗하진 않음 | Context(Base) | Medium |
+| `range_24m` | (신규 후보) Base/Expansion 판별 | range_36m과 순위가 사실상 동일(인접 종목 1쌍만 뒤바뀜)하고 분리력도 비슷함 — range_36m과 정보 중복 | Diagnostic(range_36m과 중복) | Low |
+| `range_12m` | (신규 후보) Base/Expansion 판별 | range 계열 중 유일하게 4그룹 분리 실패(progressed 최솟값 0.9097 < confirmed_negative 최댓값 1.0693) | Diagnostic(분리력 부족) | Low |
+
+## Base / Expansion Validation
+
+Feature Set Freeze v0.1 재리뷰 후속. compression_ratio를 대체한
+range_36m/range_24m/range_12m/avg_price_change_12m/ma_spread가 "아직
+Base/Transition 상태인 종목"과 "이미 상승이 상당히 진행된 종목"을 실제로
+구분하는지 검증한다. 성공/실패 예측이 목적이 아니다 — 새 데이터 인프라나
+KRX fetch 없이 기존 historical_snapshot 캐시(holdout 5종목, negative_control
+8종목)를 재사용했다(`scripts/base_expansion_validate.py`).
+
+**비교 그룹(4개)**: `holdout_pre_breakout`, `holdout_early_trend`,
+`holdout_trend_progressed`(전부 completed monthly+weekly 기준), `confirmed_negative`
+(negative_control 8종목 중 12개월 outcome이 "실패"와 잘 맞는 5종목 —
+negative_control.md의 `NEGATIVE_SUBGROUP` 그대로 재사용, ambiguous_negative
+3종목은 outcome이 견실하게 양수라 이번 비교에서 제외).
+
+### 종목별 raw value
+
+| ticker | name | group | range_36m | range_24m | range_12m | avg_price_change_12m | ma_spread |
+|---|---|---|---|---|---|---|---|
+| 005380 | 현대차 | holdout_pre_breakout | 0.7878 | 0.6553 | 0.6786 | -0.0891 | 0.1719 |
+| 051910 | LG화학 | holdout_pre_breakout | 0.6188 | 0.5593 | 0.5836 | -0.0801 | 0.0673 |
+| 000270 | 기아 | holdout_pre_breakout | 0.7078 | 0.6845 | 0.6594 | 0.0793 | 0.1665 |
+| 006400 | 삼성SDI | holdout_pre_breakout | 1.0087 | 0.7596 | 0.7030 | 0.0982 | 0.0774 |
+| 012330 | 현대모비스 | holdout_pre_breakout | 0.3958 | 0.3203 | 0.3104 | 0.0506 | 0.0263 |
+| 005380 | 현대차 | holdout_early_trend | 0.8959 | 0.9605 | 0.9898 | -0.0575 | 0.0471 |
+| 051910 | LG화학 | holdout_early_trend | 0.8004 | 0.8202 | 0.8351 | -0.0352 | 0.0627 |
+| 000270 | 기아 | holdout_early_trend | 0.7839 | 0.7475 | 0.7504 | -0.0077 | 0.0166 |
+| 006400 | 삼성SDI | holdout_early_trend | 1.0175 | 0.8778 | 0.8121 | 0.1761 | 0.1482 |
+| 012330 | 현대모비스 | holdout_early_trend | 0.4872 | 0.4349 | 0.4118 | 0.0636 | 0.0826 |
+| 005380 | 현대차 | holdout_trend_progressed | 1.6362 | 1.5865 | 1.4424 | 0.2220 | 0.2358 |
+| 051910 | LG화학 | holdout_trend_progressed | 1.9168 | 1.7752 | 1.3968 | 0.7430 | 0.3225 |
+| 000270 | 기아 | holdout_trend_progressed | 1.7168 | 1.5337 | 1.0549 | 0.7251 | 0.3387 |
+| 006400 | 삼성SDI | holdout_trend_progressed | 2.2071 | 1.9080 | 1.4778 | 0.8214 | 0.2777 |
+| 012330 | 현대모비스 | holdout_trend_progressed | 1.2614 | 1.1693 | 0.9097 | 0.3890 | 0.1828 |
+| 003550 | LG | confirmed_negative | 0.7227 | 0.7369 | 0.7498 | -0.0338 | 0.0606 |
+| 010130 | 고려아연 | confirmed_negative | 0.8563 | 0.6866 | 0.4444 | 0.3117 | 0.1611 |
+| 011170 | 롯데케미칼 | confirmed_negative | 1.0287 | 0.8982 | 0.4886 | -0.2761 | 0.2626 |
+| 032830 | 삼성생명 | confirmed_negative | 1.1767 | 0.8628 | 0.9395 | -0.2037 | 0.1433 |
+| 034730 | SK | confirmed_negative | 0.9335 | 1.0005 | 1.0693 | -0.1208 | 0.0747 |
+
+### 그룹별 min / median / max
+
+| feature | group | n | min | median | max |
+|---|---|---|---|---|---|
+| range_36m | holdout_pre_breakout | 5 | 0.3958 | 0.7078 | 1.0087 |
+| range_36m | holdout_early_trend | 5 | 0.4872 | 0.8004 | 1.0175 |
+| range_36m | holdout_trend_progressed | 5 | 1.2614 | 1.7168 | 2.2071 |
+| range_36m | confirmed_negative | 5 | 0.7227 | 0.9335 | 1.1767 |
+| range_24m | holdout_pre_breakout | 5 | 0.3203 | 0.6553 | 0.7596 |
+| range_24m | holdout_early_trend | 5 | 0.4349 | 0.8202 | 0.9605 |
+| range_24m | holdout_trend_progressed | 5 | 1.1693 | 1.5865 | 1.9080 |
+| range_24m | confirmed_negative | 5 | 0.6866 | 0.8628 | 1.0005 |
+| range_12m | holdout_pre_breakout | 5 | 0.3104 | 0.6594 | 0.7030 |
+| range_12m | holdout_early_trend | 5 | 0.4118 | 0.8121 | 0.9898 |
+| range_12m | holdout_trend_progressed | 5 | 0.9097 | 1.3968 | 1.4778 |
+| range_12m | confirmed_negative | 5 | 0.4444 | 0.7498 | 1.0693 |
+| avg_price_change_12m | holdout_pre_breakout | 5 | -0.0891 | 0.0506 | 0.0982 |
+| avg_price_change_12m | holdout_early_trend | 5 | -0.0575 | -0.0077 | 0.1761 |
+| avg_price_change_12m | holdout_trend_progressed | 5 | 0.2220 | 0.7251 | 0.8214 |
+| avg_price_change_12m | confirmed_negative | 5 | -0.2761 | -0.1208 | 0.3117 |
+| ma_spread | holdout_pre_breakout | 5 | 0.0263 | 0.0774 | 0.1719 |
+| ma_spread | holdout_early_trend | 5 | 0.0166 | 0.0627 | 0.1482 |
+| ma_spread | holdout_trend_progressed | 5 | 0.1828 | 0.2777 | 0.3387 |
+| ma_spread | confirmed_negative | 5 | 0.0606 | 0.1433 | 0.2626 |
+
+### Feature별 분석
+
+**`range_36m`** — 4그룹 완전 분리(progressed 최솟값 1.2614 > 나머지 세
+그룹 최댓값 1.1767). trend_progressed에서 일관되게 커지는가? **예, 가장
+명확하다.**
+
+**`range_24m`** — trend_progressed 최솟값(1.1693)도 나머지 최댓값
+(confirmed_negative 1.0005)보다 커서 역시 4그룹을 분리한다. 다만
+range_36m과 종목별 순위가 사실상 동일하다(trend_progressed 그룹에서
+인접 종목 1쌍만 순서가 바뀜: 36m은 기아(1.7168)>현대차(1.6362), 24m은
+현대차(1.5865)>기아(1.5337); pre_breakout 그룹도 같은 패턴) — 사실상
+같은 정보를 중복해서 담고 있다.
+
+**`range_12m`** — range 계열 중 유일하게 분리에 실패한다.
+trend_progressed 최솟값(0.9097)이 confirmed_negative 최댓값(1.0693)보다
+낮다(034730 SK). 종목별 순위도 36m/24m와 다르게 흔들린다(trend_progressed
+에서 기아·LG화학 순서가 뒤바뀜) — range_36m 대비 "추가 정보"가 아니라
+노이즈가 늘어난 것에 가깝다.
+
+**`avg_price_change_12m`** — 이미 상당히 상승한 종목에서 명확하게
+커지는가? **대체로 예** — 중앙값 차이가 매우 크다(progressed 0.7251 vs
+나머지 -0.12~0.05). 다만 완벽히 깨끗하진 않다: confirmed_negative
+1건(고려아연 0.3117)이 progressed 최솟값(현대차 0.2220)보다 크다.
+
+**`ma_spread`** — pre_breakout보다 progressed에서 실제로 넓어지는
+패턴이 반복되는가? **방향은 있으나 노이즈가 크다.** 중앙값은
+progressed(0.2777)에서 가장 높지만, pre_breakout(0.0774)이 early_trend
+(0.0627)보다 오히려 높아 비단조적이고, confirmed_negative 1건(롯데케미칼
+0.2626)이 progressed 최솟값(0.1828)보다 크다.
+
+### range 계열 중복성 판단
+
+`range_36m`/`range_24m`/`range_12m` 세 개를 모두 유지할 필요는 없다.
+**대표 하나(range_36m)만 Base Context Role로 유지하고, range_24m/
+range_12m은 Diagnostic으로 내린다.** 이유가 서로 다르다 — range_24m은
+range_36m과 "중복"(순위가 사실상 동일)이라 내렸고, range_12m은
+"분리력 부족"(range 계열 중 유일하게 4그룹 분리 실패)이라 내렸다. 둘 다
+같은 Diagnostic Role이지만 신뢰도 함의는 다르다: range_24m은 range_36m을
+쓰면 사실상 필요 없는 것이고, range_12m은 그 자체로 약한 신호다.
+
+**참고**: 사용자가 예시로 제시한 "range_12m → Stage 해석용으로 이동"과는
+다르게 판단했다. Stage Context Axis는 range_position류(0~1 정규화된
+"위치") Feature로 구성되는데, range_12m은 위치가 아니라 폭(magnitude)
+Feature라 Stage Axis에 넣으면 이번에 막 분리한 Axis 구분이 다시 흐려진다.
+분리력이 약하다는 사실은 축을 바꿀 이유가 아니라 Role을 낮출 이유로
+봤다(Base Axis 유지 + Diagnostic Role).
 
 ## Hard Filter 재분류
 
@@ -240,21 +380,19 @@ PatternAResult (v0.2 초안, 미구현)
 ## 다음 Score Design 단계에서 사용할 Feature (최종 목록)
 
 ```text
-Core candidate
+Core candidate (Axis=Transition)
     ma24_slope
 
-Interaction candidate (Supporting, ma24와 결합 시 유의미)
+Interaction candidate (Supporting, Axis=Transition, ma24와 결합 시 유의미)
     weekly_ma12_slope
     ma24_slope_acceleration
 
-Base / Expansion Context (Stage/Context 축, compression_ratio 대체)
+Base Context (Axis=Base, compression_ratio 대체, Base/Expansion Validation으로 확정)
     range_36m
-    range_24m
-    range_12m
     avg_price_change_12m
-    ma_spread                    # 절대값. "확장 정도" 서술에 참고
+    ma_spread
 
-Stage Context (breakout 단계 판별)
+Stage Context (Axis=Stage, breakout 단계 판별)
     range_position
     range_position_52w
     distance_to_resistance
@@ -263,6 +401,8 @@ Diagnostic (Score에 직접 안 넣음, 리포트엔 유지)
     compression_ratio
     atr_ratio
     ma_spread_ratio
+    range_24m             # range_36m과 중복(Base/Expansion Validation)
+    range_12m             # range 계열 중 분리력 부족(Base/Expansion Validation)
 
 Drop
     pivot_low_slope
