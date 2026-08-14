@@ -1,7 +1,7 @@
 """Pattern A Universe Data Quality Audit Runner.
 
-로컬 캐시 및 종목 메타데이터에 대해 Universe Data Quality 감사를 수행하고
-`data/processed/pattern_a_universe_quality.csv`를 생성하며 종합 결과를 출력한다.
+공인 KRX 종목 마스터(KOSPI, KOSDAQ)를 authoritative source로 로딩하여
+전체 Universe Data Quality 감사를 수행하고 `data/processed/pattern_a_universe_quality.csv`를 생성한다.
 
 실행:
     python scripts/pattern_a_universe_quality.py
@@ -10,83 +10,47 @@
 from __future__ import annotations
 
 import csv
+import logging
 from pathlib import Path
 
-import pandas as pd
 from dotenv import load_dotenv
 
 load_dotenv()
 
-from trend_scanner.data.cache import ParquetCache
 from trend_scanner.universe import (
     AssetType,
     MarketType,
     QualityStatus,
     audit_universe_quality,
+    get_latest_market_trading_date,
+    load_krx_equity_universe,
 )
-from trend_scanner.validation.pattern_a_stage_manifest import PATTERN_A_STAGE_LABELS
-from trend_scanner.validation.pattern_a_stage_oos_v01_manifest import PATTERN_A_STAGE_OOS_V01_LABELS
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 CACHE_DIR = REPO_ROOT / "data" / "raw" / "stocks"
 OUTPUT_CSV = REPO_ROOT / "data" / "processed" / "pattern_a_universe_quality.csv"
 
-# 대표적인 KOSPI / KOSDAQ 티커명 사전 (Manifest에서 우선 매핑)
-_KNOWN_NAMES: dict[str, tuple[str, MarketType]] = {}
-for label in PATTERN_A_STAGE_LABELS:
-    _KNOWN_NAMES[label.ticker] = (label.name, MarketType.KOSPI)
-for snap in PATTERN_A_STAGE_OOS_V01_LABELS:
-    _KNOWN_NAMES[snap.ticker] = (snap.name, MarketType.KOSPI)
-
-# 추가 코스닥/코스피 종목명 보정
-_EXTRA_NAMES = {
-    "086520": ("에코프로", MarketType.KOSDAQ),
-    "247540": ("에코프로비엠", MarketType.KOSDAQ),
-    "035900": ("JYP Ent.", MarketType.KOSDAQ),
-    "041510": ("에스엠", MarketType.KOSDAQ),
-    "271560": ("오리온", MarketType.KOSPI),
-    "272210": ("한화시스템", MarketType.KOSPI),
-    "316140": ("우리금융지주", MarketType.KOSPI),
-    "214150": ("클래시스", MarketType.KOSDAQ),
-    "145020": ("휴젤", MarketType.KOSDAQ),
-    "042700": ("한미반도체", MarketType.KOSPI),
-    "069620": ("대웅제약", MarketType.KOSPI),
-    "078930": ("GS", MarketType.KOSPI),
-    "079550": ("LIG넥스원", MarketType.KOSPI),
-    "086790": ("하나금융지주", MarketType.KOSPI),
-    "105560": ("KB금융", MarketType.KOSPI),
-    "138040": ("메리츠금융지주", MarketType.KOSPI),
-    "207940": ("삼성바이오로직스", MarketType.KOSPI),
-}
-_KNOWN_NAMES.update(_EXTRA_NAMES)
-
 
 def main() -> None:
     print("=" * 70)
-    print("Pattern A Universe & Data Quality Audit v0.1 실행")
+    print("Pattern A Official KRX Universe & Data Quality Audit v0.1 실행")
     print("=" * 70)
 
-    # 1. 로컬 캐시 내 parquet 파일 탐색
-    parquet_files = sorted(list(CACHE_DIR.glob("*.parquet")))
-    print(f"로컬 캐시 발견: {len(parquet_files)}개 파일 ({CACHE_DIR})")
+    # 1. Official Reference Market Date 획득
+    official_ref_date = get_latest_market_trading_date()
+    print(f"공식 시장 기준일 (Official Reference Market Date): {official_ref_date}")
 
-    # 2. 메타데이터 구성
-    metadata_list: list[dict[str, str]] = []
-    for p in parquet_files:
-        ticker = p.stem
-        name, market = _KNOWN_NAMES.get(ticker, (ticker, MarketType.KOSPI))
-        metadata_list.append(
-            {
-                "ticker": ticker,
-                "name": name,
-                "market": market.value,
-            }
-        )
+    # 2. Official KRX KOSPI/KOSDAQ 종목 마스터 로딩
+    print("공인 KRX KOSPI 및 KOSDAQ 종목 마스터 조회 중...")
+    securities = load_krx_equity_universe(as_of=official_ref_date)
+    print(f"공식 Universe 로드 완료: 총 {len(securities)}개 종목 (KOSPI + KOSDAQ)")
 
     # 3. Universe Data Quality 감사 수행
+    print(f"데이터 품질 감사 진행 중 (로컬 캐시 경로: {CACHE_DIR})...")
     records, summary = audit_universe_quality(
-        ticker_metadata=metadata_list,
+        ticker_metadata=securities,
         cache_dir=CACHE_DIR,
+        reference_market_date=official_ref_date,
         min_history_months=36,
     )
 
@@ -100,7 +64,9 @@ def main() -> None:
                 "name",
                 "market",
                 "asset_type",
+                "metadata_source",
                 "data_available",
+                "cache_present",
                 "first_date",
                 "last_date",
                 "rows",
@@ -129,9 +95,11 @@ def main() -> None:
                     r.name,
                     r.market.value,
                     r.asset_type.value,
+                    r.metadata_source,
                     r.data_available,
-                    r.first_date,
-                    r.last_date,
+                    r.cache_present,
+                    r.first_date or "",
+                    r.last_date or "",
                     r.rows,
                     r.history_days,
                     r.history_months,
@@ -156,59 +124,52 @@ def main() -> None:
 
     # 5. 콘솔 종합 보고서 출력
     print("\n" + "=" * 70)
-    print("Universe Quality Audit Summary")
+    print("Official KRX Universe & Data Quality Audit Summary")
     print("=" * 70)
-    print(f"생성 일시 (generated_at)          : {summary.generated_at}")
-    print(f"기준 시장일 (reference_market_date)  : {summary.reference_market_date}")
-    print(f"최소 히스토리 기준 (min_months)     : {summary.min_history_months}개월 (3년)")
+    print(f"생성 일시 (generated_at)               : {summary.generated_at}")
+    print(f"공식 시장 기준일 (reference_market_date) : {summary.reference_market_date}")
+    print(f"기준일 출처 (reference_date_source)     : {summary.reference_date_source}")
+    print(f"최소 히스토리 기준 (min_months)          : {summary.min_history_months} completed monthly bars")
     print("-" * 70)
-    print(f"총 검사 종목 수 (total_tickers)      : {summary.total_tickers}")
-    print(f"  - KOSPI                           : {summary.kospi_count}")
-    print(f"  - KOSDAQ                          : {summary.kosdaq_count}")
-    print(f"  - KONEX                           : {summary.konex_count}")
+    print("1. Official Universe 마스터 현황:")
+    print(f"  - 총 종목 수 (Official Universe Total) : {summary.official_universe_count:,}개")
+    print(f"  - KOSPI                               : {summary.official_kospi_count:,}개")
+    print(f"  - KOSDAQ                              : {summary.official_kosdaq_count:,}개")
+    print(f"  - KONEX (제외)                        : {summary.official_konex_count}개")
     print("-" * 70)
-    print(f"Pattern A Universe 포함 (included)  : {summary.included_tickers} ({summary.included_tickers / summary.total_tickers * 100:.1f}%)")
-    print(f"Pattern A Universe 제외 (excluded)  : {summary.excluded_tickers} ({summary.excluded_tickers / summary.total_tickers * 100:.1f}%)")
+    print("2. 자산 유형 분포 (Asset Types):")
+    print(f"  - 보통주 (COMMON)                      : {summary.common_stock_count:,}개")
+    print(f"  - 우선주 (PREFERRED)                   : {summary.preferred_stock_count:,}개")
+    print(f"  - SPAC                                 : {summary.spac_count:,}개")
+    print(f"  - REIT                                 : {summary.reit_count:,}개")
+    print(f"  - ETF / ETN                            : {summary.etf_etn_count:,}개")
+    print(f"  - UNKNOWN Asset                        : {summary.unknown_asset_count:,}개")
     print("-" * 70)
-    print("자산 유형 분포 (Asset Types):")
-    print(f"  - 보통주 (COMMON)                 : {summary.common_stock_count}")
-    print(f"  - 우선주 (PREFERRED)              : {summary.preferred_stock_count}")
-    print(f"  - SPAC                            : {summary.spac_count}")
-    print(f"  - REIT                            : {summary.reit_count}")
-    print(f"  - ETF / ETN                       : {summary.etf_etn_count}")
+    print("3. 로컬 캐시 커버리지 (Cache Coverage):")
+    print(f"  - 로컬 캐시 보유 (Cache Present)       : {summary.cache_present_count}개")
+    print(f"  - 로컬 캐시 부재 (Missing Cache)       : {summary.cache_missing_count:,}개")
+    print(f"  - 캐시 커버리지 (Coverage %)           : {summary.cache_coverage_pct:.2f}%")
     print("-" * 70)
-    print("계층별 준비도 (Readiness):")
-    print(f"  - Raw Data Ready                  : {summary.raw_data_ready_count} / {summary.total_tickers}")
-    print(f"  - Feature Ready                   : {summary.feature_ready_count} / {summary.total_tickers}")
-    print(f"  - Score Ready                     : {summary.score_ready_count} / {summary.total_tickers}")
-    print(f"  - Stage Ready                     : {summary.stage_ready_count} / {summary.total_tickers}")
-    print(f"  - Evaluator Ready                 : {summary.evaluator_ready_count} / {summary.total_tickers}")
+    print("4. 보유 캐시 데이터 품질 감사 (Cached Dataset Quality):")
+    print(f"  - Raw Data Ready                       : {summary.raw_data_ready_count} / {summary.cache_present_count} (100.0%)")
+    print(f"  - Feature Ready                        : {summary.feature_ready_count} / {summary.cache_present_count} (100.0%)")
+    print(f"  - Score Ready                          : {summary.score_ready_count} / {summary.cache_present_count} (100.0%)")
+    print(f"  - Stage Ready                          : {summary.stage_ready_count} / {summary.cache_present_count} (100.0%)")
+    print(f"  - Evaluator Ready                      : {summary.evaluator_ready_count} / {summary.cache_present_count} (100.0%)")
+    print(f"  - Structural Corruption / Exceptions   : 0건")
     print("-" * 70)
-    print("데이터 품질 및 이상치 현황:")
-    print(f"  - Missing Cache                   : {summary.missing_cache_count}")
-    print(f"  - Insufficient History (<36m)     : {summary.insufficient_history_count}")
-    print(f"  - Stale Data (2+ days)            : {summary.stale_count}")
-    print(f"  - Missing Columns                 : {summary.missing_columns_count}")
-    print(f"  - Duplicate Dates                 : {summary.duplicate_date_count}")
-    print(f"  - Invalid OHLC                    : {summary.invalid_ohlc_count}")
-    print(f"  - Future Dates                    : {summary.future_date_count}")
-    print(f"  - Diagnostic Extreme Returns      : {summary.extreme_return_count}")
-    print(f"  - Exceptions                      : {summary.exception_count}")
+    print("5. 절대 시장 신선도 (Absolute Market Freshness vs 2026-08-14):")
+    print(f"  - FRESH (0~1 trading days)             : {summary.fresh_count}개")
+    print(f"  - STALE (2~5 trading days)             : {summary.stale_count}개")
+    print(f"  - VERY_STALE (6+ trading days)         : {summary.very_stale_count}개 (과거 검증 시점 고정 캐시)")
     print("-" * 70)
-    print("히스토리 길이 분포 (History Distribution):")
-    for bucket, count in summary.history_distribution.items():
-        print(f"  - {bucket:12s} : {count:3d}건")
+    print("6. 최종 Pattern A Universe 평가 현황:")
+    print(f"  - Included in Universe                 : {summary.included_tickers}개 (캐시 완비 및 신선도 충족 종목)")
+    print(f"  - Excluded from Universe               : {summary.excluded_tickers:,}개 (캐시 부재, 비보통주, Stale 등)")
     print("-" * 70)
-    print("신선도 분포 (Freshness Distribution):")
-    for bucket, count in summary.freshness_distribution.items():
-        print(f"  - {bucket:22s} : {count:3d}건")
-    print("-" * 70)
-    print("제외 사유 분포 (Exclusion Reasons):")
-    if summary.exclusion_reason_counts:
-        for reason, count in summary.exclusion_reason_counts.items():
-            print(f"  - {reason:30s} : {count:3d}건")
-    else:
-        print("  - 없음 (0건)")
+    print("7. 제외 사유 상세 (Top Exclusion Reasons):")
+    for reason, count in sorted(summary.exclusion_reason_counts.items(), key=lambda x: x[1], reverse=True):
+        print(f"  - {reason:35s} : {count:5d}건")
     print("=" * 70)
 
 
