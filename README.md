@@ -160,6 +160,8 @@ Pattern A 실사용화부터 Pattern B~F, Market Leader Scanner까지 전체 개
 
 ```bash
 pip install -e ".[dev]"
+# 또는 uv 사용 시:
+# uv run --extra dev pytest
 cp .env.example .env   # KRX_ID/KRX_PW가 필요하면 .env에 채운다 (docs/data_layer.md 참고)
 pytest
 ```
