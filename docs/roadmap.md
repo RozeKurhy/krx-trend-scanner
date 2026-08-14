@@ -44,6 +44,12 @@
 | Frozen Score External Case Validation (OOS Case Validation v0.1) | DONE |
 | v0.2 diagnostic dataset 정리(OOS v0.1 29건 고정) | DONE |
 | Score Design v0.2 (implementation freeze `fffce85`) | DONE |
+| Pattern A v0.2 OOS2 Validation | DONE |
+| OOS2 Hard Negative Failure Audit | DONE |
+| Pattern A Stage Label Truth Set Freeze (46건) | DONE |
+| Pattern A Stage Semantic (BASE/WEAK 재정의, current-episode lifecycle) | DONE |
+| Pattern A Episode / Cycle Reset Semantic | DONE |
+| Pattern A Stage Classifier v0.1 | NEXT |
 
 **Pattern B~F**: 미착수(NOT STARTED)
 **전체 시장 Scanner**: 미착수(NOT STARTED)
@@ -71,45 +77,133 @@ freeze한다.
 
 중요: OOS2는 이 단계에서 절대 보지 않았다(실제로 보지 않았음).
 
-## Phase 2. Pattern A v0.2 OOS2 Validation — NEXT
+## Phase 2. Pattern A v0.2 OOS2 Validation — DONE
 
-v0.2를 완전히 freeze한 뒤 새로운 종목과 날짜를 사용한다.
+v0.2를 완전히 freeze한 뒤, 기존 exploration / holdout / negative
+control / OOS Case v0.1 diagnostic과 독립적인 새로운 종목/날짜
+38건(OOS2)에 적용해 검증했다.
 
-기존 exploration / holdout / negative control / OOS Case v0.1
-diagnostic에 사용된 종목/날짜와 독립적인 사례를 우선한다.
+검증 대상: positive pre breakout / clean early trend / trend
+progressed / false turn / Pattern A·Pattern B boundary / fast mover /
+insufficient history.
 
-검증 대상:
+핵심 결과:
 
-* positive pre breakout
-* clean early trend
-* trend progressed
-* false turn
-* Pattern A / Pattern B boundary
-* fast mover
-* insufficient history
+* Frozen Pattern A Score v0.2를 새로운 OOS2 snapshot에 적용 완료
+* Selection Manifest를 Score 계산 전에 freeze(look-ahead 없이 raw
+  가격 구조만으로 선정)
+* OOS2 전 과정에서 Score 수정 없음
+* Weak Core + Strong Support 억제 개선 확인
+* Pattern A / Pattern B boundary 개선 확인
+* Strong Core Failure는 현재 Feature Set으로는 unresolved limitation
+  (v0.3에서 재검토 여지)
+* core zero collapse를 v0.3 improvement evidence로 기록
+* Base avg_price_change_12m negative clamp를 v0.3 improvement
+  evidence로 기록
+* hard_negative_false_turn 4건 개별 component 분해(counterfactual
+  분석) 완료 — 새로운 failure mechanism이 아니라 기존 v0.3 evidence의
+  세분화로 확인
 
-목표: v0.2가 새로운 사례에서도 의도한 방식으로 작동하는지 확인한다.
+OOS2 Validation은 **Completed**.
 
-이 단계에서는 Score를 수정하지 않는다.
+이 단계에서는 Score를 수정하지 않았다.
 
-결과가 만족스러우면: **Pattern A Score v0.2 Final Freeze**.
+**최종 상태(Final Freeze라고 표현하지 않는다)**:
 
-## Phase 3. Pattern A Stage Classifier — PLANNED
+| 항목 | 상태 |
+|---|---|
+| Pattern A Score v0.2 | Frozen baseline |
+| OOS2 Validation | Completed |
+| v0.3 Development | Required |
 
-Score와 별도로 Stage classifier를 재설계한다.
+v0.2 production code는 더 이상 튜닝하지 않지만, v0.3 improvement
+evidence(core zero collapse / strong core persistence / Base negative
+clamp)가 이미 존재하므로 이 설계가 최종 버전이라는 의미의 "Final
+Freeze" 표현은 쓰지 않는다.
 
-현재 자동 Stage heuristic은 progressed 사례를 early trend로 오판하는
-문제가 확인됐다.
+## Phase 3. Pattern A Stage Classifier — IN PROGRESS
 
-목표 Stage: `PRE_BREAKOUT` / `EARLY_TREND` / `TREND_PROGRESSED`. 필요하면
-`WEAK` / `UNKNOWN` 등을 유지할 수 있다.
+Score와 별도로 Stage classifier를 재설계한다. 기존 자동 Stage
+heuristic(`PatternAStage`)은 자동 분류 threshold가 미구현 상태였고,
+OOS2의 Manual Stage Audit에서 신뢰할 수 없다는 게 확인됐다
+(pre_breakout 1/5, early_trend 3/5 agreement).
+
+목표 Stage: `BASE` / `TRANSITION` / `EARLY_TREND` / `PROGRESSED` /
+`WEAK`(`pattern_a_feature_set.py`의 `PatternAStage` enum 재사용).
+
+**Stage semantic**: Stage는 Score threshold에서 파생되는 값이 아니다.
+
+* Score: Pattern A 후보로서 얼마나 매력적인가.
+* Stage: 현재 Pattern A episode의 lifecycle에서 어디에 있는가.
+
+Stage progression: `WEAK`/`BASE` → `TRANSITION` → `EARLY_TREND` →
+`PROGRESSED`. 단 같은 episode에서 `PROGRESSED` → `EARLY_TREND`로 단순
+회귀하지 않는다.
+
+**Pattern A episode / cycle reset**: Stage는 종목 전체 역사에서
+영구적인 단일 lifecycle이 아니라 현재 Pattern A episode의 lifecycle이다.
+
+```text
+PROGRESSED -> 장기 구조 붕괴 -> 기존 episode 종료
+새로운 장기 안정화 -> 새로운 Pattern A episode -> BASE 또는 TRANSITION부터 다시 시작 가능
+```
+
+cycle reset의 실제 numerical threshold(몇 % 하락/몇 개월/slope 얼마)는
+아직 구현하지 않았다 — Stage Classifier v0.1 설계에서 다룬다.
 
 기준은 달력 시간이 아니라 가격 구조다 — "3개월 지났기 때문에 early" 같은
-규칙을 쓰지 않는다. fast mover는 몇 달 만에도 TREND_PROGRESSED가 될 수
-있다.
+규칙을 쓰지 않는다. fast mover는 몇 달 만에도 PROGRESSED가 될 수 있다.
 
-Manual Stage Rubric을 기준으로 자동 classifier를 별도 검증한다. Score
-threshold와 Stage threshold를 동시에 튜닝하지 않는다.
+**완료된 groundwork**:
+
+* Manual Stage Truth Set 46건 freeze(BASE 10 / TRANSITION 10 /
+  EARLY_TREND 8 / PROGRESSED 13 / WEAK 5)
+* Stage와 Score 의미 분리(단방향 의존 — Stage는 Score를 참조하지 않음)
+* Stage를 current Pattern A episode lifecycle로 정의
+* BASE / WEAK semantic 확정(숫자 gate가 아니라 질적 lifecycle 판단)
+* Pattern A episode 개념 확정
+* cycle reset semantic 확정(numerical threshold는 미구현)
+* provenance validation 완료(각 truth 항목이 실제 원본 dataset에서
+  나왔는지 코드로 검증)
+* 46 snapshot reconstruction validation 완료(look-ahead 없이 재현
+  가능함을 확인)
+
+**Stage Truth Set 상태**: 승인된 상태(46건 — BASE 10 / TRANSITION 10 /
+EARLY_TREND 8 / PROGRESSED 13 / WEAK 5). 앞으로 classifier가 이 truth
+set과 충돌할 경우, truth set을 classifier에 맞추는 것이 아니라
+classifier를 분석한다. 단 새로운 명백한 labeling evidence가 생기기
+전에는 truth set을 다시 튜닝하지 않는다.
+
+**NEXT: Pattern A Stage Classifier v0.1**
+
+목표:
+
+* Score와 독립적인 rule based Stage classifier 구현
+* `HistoricalSnapshot` 또는 `StageLifecycleContext` 기반(단일
+  `FeatureRow` 인자로 고정하지 않음)
+* 현재 episode의 historical path 사용 가능(과거 이력 참조는 look-ahead
+  아님)
+* future data 사용 금지
+* episode reset 감지 필요
+* Stage reason code 제공
+* manual truth set 46건 validation
+
+**validation 방향**: exact match / adjacent mismatch / severe
+mismatch / stage confusion matrix. 특히 확인할 오류:
+
+* BASE가 너무 빨리 TRANSITION이 되는 문제
+* EARLY_TREND가 TRANSITION에 오래 머무는 문제
+* PROGRESSED가 EARLY_TREND로 내려오는 문제
+* active decline이 BASE 또는 EARLY_TREND로 올라오는 문제
+* Pattern A episode reset 실패
+
+**notes**: 010620(2024-06-30)/042660(2025-01-31)는 truth set에서 제외된
+adjacent boundary challenge case — 향후 validation에서 별도 참고용으로
+쓸 수 있다. 011200 HMM(2024-10-31)은 상대적으로 얇은 근거의 WEAK
+사례라 Classifier v0.1 validation에서 주의 깊게 관찰한다.
+
+Manual Stage Truth Set을 기준으로 자동 classifier를 별도 검증한다.
+Score threshold와 Stage threshold를 동시에 튜닝하지 않는다.
 
 ## Phase 4. Pattern A Evaluator Integration — PLANNED
 
@@ -352,9 +446,9 @@ Quant Scanner -> 후보 압축 -> 월봉 검토 -> 주봉 검토 -> 일봉 진�
 ## Near Term Milestones
 
 1. Pattern A Score Design v0.2 — DONE
-2. Pattern A OOS2
-3. Pattern A Score Final Freeze
-4. Pattern A Stage Classifier
+2. Pattern A v0.2 OOS2 Validation — DONE
+3. Pattern A Stage Truth Set / Semantic / Episode / Cycle Reset — DONE
+4. Pattern A Stage Classifier v0.1 — NEXT
 5. Pattern A Evaluator Integration
 6. Data Quality / Corporate Action
 7. Score Momentum
