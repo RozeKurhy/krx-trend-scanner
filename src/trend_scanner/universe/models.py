@@ -165,6 +165,9 @@ class UniverseQualitySummary:
     official_kospi_count: int
     official_kosdaq_count: int
     official_konex_count: int
+    local_cache_file_count: int
+    official_universe_cache_present_count: int
+    orphan_cache_count: int
     cache_present_count: int
     cache_missing_count: int
     cache_coverage_pct: float
@@ -187,6 +190,7 @@ class UniverseQualitySummary:
     insufficient_history_count: int
     missing_columns_count: int
     duplicate_date_count: int
+    unsorted_date_count: int
     invalid_ohlc_count: int
     future_date_count: int
     extreme_return_count: int

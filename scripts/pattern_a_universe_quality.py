@@ -122,6 +122,14 @@ def main() -> None:
 
     print(f"\nCSV 저장 완료: {OUTPUT_CSV} ({len(records)} rows)")
 
+    # 동적 비율 계산 헬퍼
+    def _pct(num: int, den: int) -> str:
+        if den == 0:
+            return "0.0%"
+        return f"{num / den * 100.0:.1f}%"
+
+    cp = summary.cache_present_count
+
     # 5. 콘솔 종합 보고서 출력
     print("\n" + "=" * 70)
     print("Official KRX Universe & Data Quality Audit Summary")
@@ -145,20 +153,27 @@ def main() -> None:
     print(f"  - ETF / ETN                            : {summary.etf_etn_count:,}개")
     print(f"  - UNKNOWN Asset                        : {summary.unknown_asset_count:,}개")
     print("-" * 70)
-    print("3. 로컬 캐시 커버리지 (Cache Coverage):")
-    print(f"  - 로컬 캐시 보유 (Cache Present)       : {summary.cache_present_count}개")
+    print("3. 로컬 캐시 스코프 및 커버리지 (Cache Scope & Coverage):")
+    print(f"  - 로컬 캐시 파일 수 (Local Cache Files): {summary.local_cache_file_count}개")
+    print(f"  - 공식 Universe 교집합 캐시 (Intersect): {summary.official_universe_cache_present_count}개")
+    print(f"  - Orphan 캐시 (과거/상폐 등 Master 밖): {summary.orphan_cache_count}개")
     print(f"  - 로컬 캐시 부재 (Missing Cache)       : {summary.cache_missing_count:,}개")
     print(f"  - 캐시 커버리지 (Coverage %)           : {summary.cache_coverage_pct:.2f}%")
     print("-" * 70)
     print("4. 보유 캐시 데이터 품질 감사 (Cached Dataset Quality):")
-    print(f"  - Raw Data Ready                       : {summary.raw_data_ready_count} / {summary.cache_present_count} (100.0%)")
-    print(f"  - Feature Ready                        : {summary.feature_ready_count} / {summary.cache_present_count} (100.0%)")
-    print(f"  - Score Ready                          : {summary.score_ready_count} / {summary.cache_present_count} (100.0%)")
-    print(f"  - Stage Ready                          : {summary.stage_ready_count} / {summary.cache_present_count} (100.0%)")
-    print(f"  - Evaluator Ready                      : {summary.evaluator_ready_count} / {summary.cache_present_count} (100.0%)")
-    print(f"  - Structural Corruption / Exceptions   : 0건")
+    print(f"  - Raw Data Ready                       : {summary.raw_data_ready_count} / {cp} ({_pct(summary.raw_data_ready_count, cp)})")
+    print(f"  - Feature Ready                        : {summary.feature_ready_count} / {cp} ({_pct(summary.feature_ready_count, cp)})")
+    print(f"  - Score Ready                          : {summary.score_ready_count} / {cp} ({_pct(summary.score_ready_count, cp)})")
+    print(f"  - Stage Ready                          : {summary.stage_ready_count} / {cp} ({_pct(summary.stage_ready_count, cp)})")
+    print(f"  - Evaluator Ready                      : {summary.evaluator_ready_count} / {cp} ({_pct(summary.evaluator_ready_count, cp)})")
+    print(f"  - Missing Columns                      : {summary.missing_columns_count}건")
+    print(f"  - Duplicate Dates                      : {summary.duplicate_date_count}건")
+    print(f"  - Unsorted Dates                       : {summary.unsorted_date_count}건")
+    print(f"  - Invalid OHLC                         : {summary.invalid_ohlc_count}건")
+    print(f"  - Future Dates                         : {summary.future_date_count}건")
+    print(f"  - Structural Exceptions                : {summary.exception_count}건")
     print("-" * 70)
-    print("5. 절대 시장 신선도 (Absolute Market Freshness vs 2026-08-14):")
+    print(f"5. 절대 시장 신선도 (Absolute Market Freshness vs {summary.reference_market_date}):")
     print(f"  - FRESH (0~1 trading days)             : {summary.fresh_count}개")
     print(f"  - STALE (2~5 trading days)             : {summary.stale_count}개")
     print(f"  - VERY_STALE (6+ trading days)         : {summary.very_stale_count}개 (과거 검증 시점 고정 캐시)")

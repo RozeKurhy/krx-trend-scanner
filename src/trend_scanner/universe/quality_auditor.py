@@ -29,9 +29,12 @@ from trend_scanner.universe.models import (
     UniverseQualitySummary,
     UniverseSecurity,
 )
-from trend_scanner.validation.historical_snapshot import build_historical_snapshot
+from trend_scanner.validation.historical_snapshot import (
+    _drop_incomplete_current_month,
+    build_historical_snapshot,
+)
 
-# Pattern A Feature 및 Stage Classifier가 요구하는 최소 완성 월봉 수 (3년)
+# Pattern A Feature 및 Stage Classifier가 요구하는 최소 완성 월봉 수 (36 completed monthly bars)
 MIN_HISTORY_MONTHS: int = 36
 
 
@@ -175,16 +178,20 @@ def audit_ticker_quality(
         if zero_vol_ratio > 0.10:
             quality_flags.append("DIAGNOSTIC_HIGH_ZERO_VOLUME_DAYS")
 
-    # 5. 히스토리 길이 산출 (36 completed monthly bars 기준)
-    monthly_df = pd.DataFrame()
+    # 5. 완성 월봉(Completed Monthly Bars) 개수 산출
+    monthly_completed_df = pd.DataFrame()
     if not daily.empty and not missing_cols:
         try:
-            monthly_df = to_monthly(daily)
+            raw_monthly = to_monthly(daily)
+            if last_date_ts is not None:
+                monthly_completed_df = _drop_incomplete_current_month(raw_monthly, last_date_ts)
+            else:
+                monthly_completed_df = raw_monthly
         except Exception:
-            monthly_df = pd.DataFrame()
+            monthly_completed_df = pd.DataFrame()
 
     history_days = len(daily)
-    history_months = len(monthly_df)
+    history_months = len(monthly_completed_df)
     required_history_sufficient = history_months >= min_history_months
 
     if not required_history_sufficient and not missing_cols:
@@ -207,12 +214,13 @@ def audit_ticker_quality(
             quality_flags.append("VERY_STALE_DATA")
             exclusion_reasons.append("VERY_STALE_DATA")
 
-    # 7. 준비도(Readiness) 계층별 평가
+    # 7. 준비도(Readiness) 계층별 평가 (UNSORTED_DATE 시 raw_data_ready = False)
     raw_data_ready = (
         len(daily) > 0
         and "MISSING_COLUMNS" not in quality_flags
         and "INVALID_OHLC" not in quality_flags
         and "DUPLICATE_DATE" not in quality_flags
+        and "UNSORTED_DATE" not in quality_flags
         and "FUTURE_DATE" not in quality_flags
         and "MISSING_VALUES" not in quality_flags
     )
@@ -284,6 +292,8 @@ def audit_ticker_quality(
         final_quality_status = QualityStatus.INVALID_OHLC
     elif "DUPLICATE_DATE" in exclusion_reasons:
         final_quality_status = QualityStatus.DUPLICATE_DATE
+    elif "UNSORTED_DATE" in exclusion_reasons:
+        final_quality_status = QualityStatus.UNSORTED_DATE
     elif "FUTURE_DATE" in exclusion_reasons:
         final_quality_status = QualityStatus.FUTURE_DATE
     elif "VERY_STALE_DATA" in exclusion_reasons:
@@ -332,7 +342,13 @@ def audit_universe_quality(
     min_history_months: int = MIN_HISTORY_MONTHS,
 ) -> tuple[list[TickerQualityRecord], UniverseQualitySummary]:
     """전체 종목 메타데이터와 로컬 캐시를 바탕으로 Universe Data Quality 감사를 수행한다."""
-    cache = ParquetCache(base_dir=Path(cache_dir))
+    cache_path = Path(cache_dir)
+    cache = ParquetCache(base_dir=cache_path)
+
+    # 로컬 캐시 파일 전체 수 및 고유 티커 목록 파악
+    local_cache_files = list(cache_path.glob("*.parquet")) if cache_path.exists() else []
+    local_cache_tickers = set(p.stem for p in local_cache_files)
+    local_cache_file_count = len(local_cache_files)
 
     # Reference Market Date 결정
     if reference_market_date is not None:
@@ -352,6 +368,8 @@ def audit_universe_quality(
         ref_source = "CACHE_RELATIVE"
 
     records: list[TickerQualityRecord] = []
+    audited_official_tickers: set[str] = set()
+
     for item in ticker_metadata:
         if isinstance(item, UniverseSecurity):
             ticker = item.ticker
@@ -367,6 +385,8 @@ def audit_universe_quality(
                 market = MarketType(market_str)
             except ValueError:
                 market = MarketType.UNKNOWN
+
+        audited_official_tickers.add(ticker)
 
         try:
             daily = cache.load(ticker)
@@ -425,6 +445,8 @@ def audit_universe_quality(
         (cache_present_count / total_tickers * 100.0) if total_tickers > 0 else 0.0
     )
 
+    orphan_cache_count = len(local_cache_tickers - audited_official_tickers)
+
     common_stock_count = sum(1 for r in records if r.asset_type == AssetType.COMMON)
     preferred_stock_count = sum(1 for r in records if r.asset_type == AssetType.PREFERRED)
     spac_count = sum(1 for r in records if r.asset_type == AssetType.SPAC)
@@ -450,6 +472,7 @@ def audit_universe_quality(
     )
     missing_columns_count = sum(1 for r in records if "MISSING_COLUMNS" in r.quality_flags)
     duplicate_date_count = sum(1 for r in records if "DUPLICATE_DATE" in r.quality_flags)
+    unsorted_date_count = sum(1 for r in records if "UNSORTED_DATE" in r.quality_flags)
     invalid_ohlc_count = sum(1 for r in records if "INVALID_OHLC" in r.quality_flags)
     future_date_count = sum(1 for r in records if "FUTURE_DATE" in r.quality_flags)
     extreme_return_count = sum(
@@ -488,6 +511,9 @@ def audit_universe_quality(
         official_kospi_count=kospi_count,
         official_kosdaq_count=kosdaq_count,
         official_konex_count=konex_count,
+        local_cache_file_count=local_cache_file_count,
+        official_universe_cache_present_count=cache_present_count,
+        orphan_cache_count=orphan_cache_count,
         cache_present_count=cache_present_count,
         cache_missing_count=cache_missing_count,
         cache_coverage_pct=cache_coverage_pct,
@@ -510,6 +536,7 @@ def audit_universe_quality(
         insufficient_history_count=insufficient_history_count,
         missing_columns_count=missing_columns_count,
         duplicate_date_count=duplicate_date_count,
+        unsorted_date_count=unsorted_date_count,
         invalid_ohlc_count=invalid_ohlc_count,
         future_date_count=future_date_count,
         extreme_return_count=extreme_return_count,

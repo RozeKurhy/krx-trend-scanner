@@ -6,8 +6,6 @@ PyKRX를 통해 공인 KRX 종목 마스터(KOSPI, KOSDAQ) 및 최신 영업일�
 from __future__ import annotations
 
 import logging
-from datetime import datetime
-from typing import Any
 
 from dotenv import load_dotenv
 
@@ -35,6 +33,10 @@ def get_latest_market_trading_date() -> str:
 def load_krx_equity_universe(as_of: str | None = None) -> list[UniverseSecurity]:
     """공인 KRX KOSPI 및 KOSDAQ 주식 유니버스 종목 목록을 조회한다.
 
+    [Fail-Closed 원칙]:
+    - 공식 종목명 조회가 실패(None 또는 빈 문자열)하는 경우 ticker 코드로 대체하지 않고
+      명시적으로 MarketDataError를 발생시킨다 (불완전 metadata의 fail-open 방지).
+
     Args:
         as_of: 조회 기준일 (YYYY-MM-DD 또는 YYYYMMDD, 생략 시 최신 영업일)
 
@@ -58,11 +60,15 @@ def load_krx_equity_universe(as_of: str | None = None) -> list[UniverseSecurity]
         if not kospi_tickers:
             raise MarketDataError(f"KOSPI 종목 목록이 비어 있습니다 (date={target_date_api}).")
         for ticker in kospi_tickers:
-            name = stock.get_market_ticker_name(ticker) or ticker
+            raw_name = stock.get_market_ticker_name(ticker)
+            if not raw_name or not str(raw_name).strip():
+                raise MarketDataError(
+                    f"KOSPI 종목명 조회 실패 (ticker={ticker}, date={target_date_api})."
+                )
             securities.append(
                 UniverseSecurity(
                     ticker=str(ticker).strip().zfill(6),
-                    name=str(name).strip(),
+                    name=str(raw_name).strip(),
                     market=MarketType.KOSPI,
                     metadata_source="OFFICIAL_KRX",
                 )
@@ -76,11 +82,15 @@ def load_krx_equity_universe(as_of: str | None = None) -> list[UniverseSecurity]
         if not kosdaq_tickers:
             raise MarketDataError(f"KOSDAQ 종목 목록이 비어 있습니다 (date={target_date_api}).")
         for ticker in kosdaq_tickers:
-            name = stock.get_market_ticker_name(ticker) or ticker
+            raw_name = stock.get_market_ticker_name(ticker)
+            if not raw_name or not str(raw_name).strip():
+                raise MarketDataError(
+                    f"KOSDAQ 종목명 조회 실패 (ticker={ticker}, date={target_date_api})."
+                )
             securities.append(
                 UniverseSecurity(
                     ticker=str(ticker).strip().zfill(6),
-                    name=str(name).strip(),
+                    name=str(raw_name).strip(),
                     market=MarketType.KOSDAQ,
                     metadata_source="OFFICIAL_KRX",
                 )

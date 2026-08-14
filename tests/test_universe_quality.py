@@ -1,29 +1,30 @@
 """Pattern A Universe & Data Quality Audit 유닛 및 통합 테스트.
 
 검증 항목:
-A. Official KOSPI metadata preserved (KOSPI는 KOSPI로 유지)
-B. Official KOSDAQ metadata preserved (KOSDAQ은 KOSDAQ으로 유지)
-C. Missing cache detected from official universe (캐시 부재 감지 및 카운트)
-D. Unknown ticker not defaulted to KOSPI (임의의 KOSPI default 방지)
-E. Future corrupted ticker cannot move reference market date (2099년 오염 행이 기준일을 오염시키지 않음)
-F. Future corrupted ticker gets FUTURE_DATE (미래 날짜 오염 종목 hard exclusion)
-G. Normal ticker freshness unaffected by corrupt ticker (정상 종목 신선도 보존)
-H. 35 completed months insufficient (35개월 완성 월봉은 미달)
-I. 36 completed months sufficient (36개월 완성 월봉 충족)
-J. Incomplete current month does not falsely satisfy requirement (진행 중인 불완전 월봉 제거 후 산출)
-K. WEAK Stage still eligible if data healthy (WEAK도 데이터 정상 시 Universe 포함)
-L. PROGRESSED Stage still eligible if data healthy (PROGRESSED도 Universe 포함)
-M. Same semantic input produces deterministic records (결과 정렬 및 레코드 결정론적 일치)
+1. AssetType classifier (보통주, 우선주, SPAC, REIT, ETF, ETN, UNKNOWN)
+2. Official KOSPI/KOSDAQ metadata preserved without defaults (KOSPI는 KOSPI, KOSDAQ은 KOSDAQ)
+3. Missing cache detected from official universe (MISSING_CACHE 식별 및 집계)
+4. Future date corrupted ticker cannot move reference market date (미래 날짜 오염 방지)
+5. 35 vs 36 completed months requirement (35개 완성 월봉은 미달, 36개 완성 월봉은 충족)
+6. 35 completed + 1 incomplete month is insufficient (진행 중인 미완성 월봉으로 36개월 오판 방지)
+7. Incomplete current month handling (스냅샷 생성 시 미완성 월봉 안전 제외)
+8. Unsorted date forces raw and downstream readiness false (UNSORTED_DATE 시 준비도 계층 일치)
+9. Ticker name lookup failure raises MarketDataError (종목명 lookup 실패 시 fail closed)
+10. WEAK / PROGRESSED Stage stocks included if data valid (투자 신호와 데이터 품질 분리)
+11. Deterministic semantic records (결과 정렬 및 semantic 필드 100% 결정론적 일치)
 """
 
 from __future__ import annotations
 
 from pathlib import Path
+from unittest.mock import patch
 
 import pandas as pd
 import pytest
 
 from trend_scanner.data.cache import ParquetCache
+from trend_scanner.data.errors import MarketDataError
+from trend_scanner.data.resampler import to_monthly
 from trend_scanner.universe import (
     AssetType,
     FreshnessStatus,
@@ -33,10 +34,9 @@ from trend_scanner.universe import (
     audit_ticker_quality,
     audit_universe_quality,
     classify_asset_type,
+    load_krx_equity_universe,
 )
-from trend_scanner.validation.feature_report import build_feature_row
 from trend_scanner.validation.historical_snapshot import build_historical_snapshot
-from trend_scanner.data.resampler import to_monthly, to_weekly
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 _CACHE_DIR = _REPO_ROOT / "data" / "raw" / "stocks"
@@ -47,6 +47,7 @@ def _create_mock_daily(
     start_date: str = "2020-01-01",
     has_ohlc_violation: bool = False,
     has_duplicate_date: bool = False,
+    has_unsorted_date: bool = False,
     has_future_date: bool = False,
     missing_columns: list[str] | None = None,
 ) -> pd.DataFrame:
@@ -74,6 +75,12 @@ def _create_mock_daily(
         # 인덱스 중복 삽입
         new_index = list(df.index)
         new_index[10] = new_index[9]
+        df.index = pd.DatetimeIndex(new_index)
+
+    if has_unsorted_date and n > 10:
+        # 인덱스 순서 뒤섞기 (비정렬)
+        new_index = list(df.index)
+        new_index[5], new_index[10] = new_index[10], new_index[5]
         df.index = pd.DatetimeIndex(new_index)
 
     if has_future_date and n > 0:
@@ -218,8 +225,10 @@ def test_35_vs_36_completed_months_requirement():
         reference_market_date=str(daily_35_completed.index.max().strftime("%Y-%m-%d")),
         min_history_months=36,
     )
-    # 36 calendar months에서 마지막 봉이 drop되면 completed bars는 35개이므로 feature not ready / excluded
-    assert record_35.feature_ready is False or record_35.included_in_pattern_a_universe is False
+    assert record_35.required_history_sufficient is False
+    assert record_35.history_months <= 35
+    assert "INSUFFICIENT_HISTORY" in record_35.exclusion_reasons
+    assert record_35.included_in_pattern_a_universe is False
 
     # 2. 36 completed monthly bars (충족)
     monthly_37 = monthly_all.tail(37)
@@ -243,6 +252,29 @@ def test_35_vs_36_completed_months_requirement():
     assert record_36.included_in_pattern_a_universe is True
 
 
+def test_35_completed_plus_incomplete_month_is_insufficient():
+    """35개 완성 월봉 + 진행 중인 1개 미완성 월봉은 36개월 충족으로 오판되지 않음을 검증."""
+    # 2023-01-01부터 35개월 완성 월봉(2025-11-30) + 2025-12-15(15일치 미완성 봉)
+    daily = _create_mock_daily(months=36, start_date="2023-01-01")
+    # 2025년 12월 15일까지만 자름
+    daily_incomplete = daily.loc[daily.index <= "2025-12-15"]
+
+    record = audit_ticker_quality(
+        ticker="005930",
+        name="삼성전자",
+        market=MarketType.KOSPI,
+        daily=daily_incomplete,
+        reference_market_date="2025-12-15",
+        min_history_months=36,
+    )
+
+    # 완성 월봉은 35개이므로 insufficient
+    assert record.required_history_sufficient is False
+    assert record.history_months < 36
+    assert "INSUFFICIENT_HISTORY" in record.exclusion_reasons
+    assert record.included_in_pattern_a_universe is False
+
+
 def test_incomplete_current_month_handling():
     """월 중순 스냅샷(진행 중인 미완성 월봉)이 있을 때 HistoricalSnapshot이 완성 월봉만 취합함을 검증."""
     cache = ParquetCache(base_dir=_CACHE_DIR)
@@ -262,6 +294,37 @@ def test_incomplete_current_month_handling():
 
     # 미완성인 11월 봉은 잘리고 10월 말까지의 완성 월봉만 남아야 함
     assert snapshot.monthly.index.max() <= pd.Timestamp("2023-10-31")
+
+
+def test_unsorted_date_forces_raw_and_downstream_readiness_false():
+    """UNSORTED_DATE가 감지되면 raw_data_ready 및 downstream readiness가 모두 False로 차단됨을 검증."""
+    unsorted_daily = _create_mock_daily(months=48, has_unsorted_date=True)
+
+    record = audit_ticker_quality(
+        ticker="005930",
+        name="삼성전자",
+        market=MarketType.KOSPI,
+        daily=unsorted_daily,
+        reference_market_date="2026-02-27",
+    )
+
+    assert "UNSORTED_DATE" in record.quality_flags
+    assert "UNSORTED_DATE" in record.exclusion_reasons
+    assert record.raw_data_ready is False
+    assert record.feature_ready is False
+    assert record.score_ready is False
+    assert record.stage_ready is False
+    assert record.evaluator_ready is False
+    assert record.included_in_pattern_a_universe is False
+    assert record.quality_status == QualityStatus.UNSORTED_DATE
+
+
+def test_ticker_name_lookup_failure_raises_market_data_error():
+    """공식 종목명 조회 실패 시 ticker 코드로 fail-open되지 않고 MarketDataError를 발생시킴을 검증."""
+    with patch("pykrx.stock.get_market_ticker_list", return_value=["005930"]):
+        with patch("pykrx.stock.get_market_ticker_name", return_value=""):
+            with pytest.raises(MarketDataError, match="종목명 조회 실패"):
+                load_krx_equity_universe(as_of="20260814")
 
 
 def test_weak_and_progressed_stage_stocks_are_included_if_data_is_valid():

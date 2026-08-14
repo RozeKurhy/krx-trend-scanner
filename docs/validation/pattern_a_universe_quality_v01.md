@@ -2,12 +2,15 @@
 
 ## 1. 개요 및 목적
 
-`Pattern A Data Quality / Universe Preparation v0.1`은 Full Universe Scanner로 넘어가기 전에, 실제 공인 KRX 종목 마스터(KOSPI / KOSDAQ)를 authoritative source로 연결하고, 로컬 캐시의 커버리지와 데이터 무결성, 절대 시장 신선도(Absolute Market Freshness), 그리고 **Pattern A Score v0.2, Stage Classifier v0.1, Evaluator v0.1**의 실행 준비도를 엄격히 검증하는 인프라 단계이다.
+`Pattern A Data Quality / Universe Preparation v0.1`은 Full Universe Scanner로 넘어가기 전에, 실제 공인 KRX 종목 마스터(KOSPI / KOSDAQ)를 authoritative source로 직접 연결하고, 로컬 캐시의 스코프 및 커버리지, 데이터 무결성, 절대 시장 신선도(Absolute Market Freshness), 그리고 **Pattern A Score v0.2, Stage Classifier v0.1, Evaluator v0.1**의 실행 준비도를 엄격히 검증하는 인프라 단계이다.
 
 > [!NOTE]
 > **핵심 원칙**:
-> 1. Universe 선정은 투자 판단이 아니다. "이 종목을 Pattern A 시스템이 신뢰할 수 있는 데이터로 평가할 수 있는가?"만을 판단하며, Score가 낮거나 Stage가 WEAK여도 데이터가 정상이면 Universe에 포함된다.
-> 2. **Official Universe Scope 분리**: 전체 KRX 종목 마스터(`Official Universe`)와 현재 로컬에 저장된 캐시(`Cached Dataset`)의 통계를 엄격히 분리하여 보고한다.
+> 1. **Universe 선정은 투자 판단이 아니다**: "이 종목을 Pattern A 시스템이 신뢰할 수 있는 데이터로 평가할 수 있는가?"만을 판단하며, Score가 낮거나 Stage가 WEAK여도 데이터가 정상이면 Universe에 포함된다.
+> 2. **Authoritative Metadata Fail-Closed**: 공식 종목명 조회가 실패하면 ticker 코드로 fail-open 대체하지 않고 `MarketDataError`를 발생시키거나 `UNKNOWN` 자산으로 안전하게 제외한다.
+> 3. **Completed Period Semantics 통일**: Universe의 히스토리 충분성(`required_history_sufficient`)은 Evaluator와 동일하게 진행 중인 미완성 월봉을 제외한 **36개의 완성된 월봉(36 completed monthly bars)**을 기준으로 판정한다.
+> 4. **Readiness Hierarchy 일치**: `UNSORTED_DATE` 등 데이터 정렬/무결성 결함 발견 시 `raw_data_ready = False`로 차단하여 downstream 계산을 시도하지 않는다.
+> 5. **Cache Scope 분리 보고**: 전체 KRX 종목 마스터(`Official Universe`), 로컬 디스크 파일(`Local Cache Files`), 공식 유니버스 교집합 캐시(`Official Cache Intersect`), 및 Master 밖 캐시(`Orphan Cache`)를 엄격히 분리하여 보고한다.
 
 ---
 
@@ -45,12 +48,11 @@
 Pattern A Feature Set 및 Stage Classifier의 모든 필수 앵커를 결측 없이 완전하게 산출하기 위한 최소 히스토리 기준을 실측 검증하여 확정함.
 
 * **최소 완성 월봉 수 (`MIN_HISTORY_MONTHS`)**: **36 completed monthly bars (3년, 약 750 trading days)**
-* **산정 근거**:
-  * `range_36m`: 36 completed monthly bars 필요
-  * `ma24_slope_acceleration`: 24개월 MA + periods=3 + lag=3 ➔ 최소 30개월
-  * `ma_spread_12m_ago`: 13개월 전의 24개월 MA ➔ 24 + 12 = 36개월
-  * `avg_price_change_12m`: 최근 12개월 종가 평균 vs 직전 12개월 종가 평균 ➔ 최소 24개월
-  * 진행 중인 마지막 미완성 월봉(`include_incomplete_periods=False`)은 제외되므로, 실질적으로 36개의 완성된 월봉이 요구됨.
+* **산정 방식**:
+  * `_drop_incomplete_current_month`를 통해 진행 중인 미완성 월봉을 제외한 순수 완성 월봉(`monthly_completed_df`)만 집계.
+  * 35 completed bars ➔ `required_history_sufficient = False`
+  * 36 completed bars ➔ `required_history_sufficient = True`
+  * 35 completed bars + 1 incomplete month ➔ `required_history_sufficient = False` (미완성 봉 오인 원천 차단)
 
 ---
 
@@ -70,13 +72,14 @@ Pattern A Feature Set 및 Stage Classifier의 모든 필수 앵커를 결측 없
 | ├ REIT | 25 | 0.9% | 제외 대상 |
 | └ UNKNOWN | 23 | 0.8% | 보수적 제외 |
 
-### 5.2 로컬 캐시 커버리지 (Cache Coverage)
+### 5.2 캐시 스코프 및 커버리지 (Cache Scope & Provenance)
 
-| 항목 | 수치 (건수) | 비율 (%) |
-|---|---|---|
-| **Official Universe Total** | **2,763** | 100.0% |
-| ├ 로컬 캐시 보유 (Cache Present) | **67** | **2.42%** |
-| └ 로컬 캐시 부재 (Missing Cache) | **2,696** | **97.58%** |
+| 항목 | 수치 (건수) | 비율 (%) | 설명 |
+|---|---|---|---|
+| **Local Cache Files (디스크 전체)** | **69** | - | `data/raw/stocks/*.parquet` 전체 파일 수 |
+| ├ **공식 Universe 교집합 캐시 (Intersect)** | **67** | **2.42%** | 현재 공인 마스터에 존재하는 캐시 종목 |
+| └ **Orphan 캐시 (Master 밖 파일)** | **2** | - | `002270`(롯데푸드: 합병상폐), `010620`(HD현대미포: 과거 검증) |
+| **Missing Cache (공식 Universe 부재)** | **2,696** | **97.58%** | 향후 Cache Population 대상 |
 
 ### 5.3 보유 캐시 데이터 품질 감사 (Cached Dataset Quality: 67종목)
 
@@ -85,10 +88,10 @@ Pattern A Feature Set 및 Stage Classifier의 모든 필수 앵커를 결측 없
 * **Score Ready**: **67 / 67 (100.0%)**
 * **Stage Ready**: **67 / 67 (100.0%)**
 * **Evaluator Ready**: **67 / 67 (100.0%)**
-* **구조적 데이터 오염 (Missing Columns, Duplicates, Invalid OHLC, Future Dates)**: **0건 (0.0%)**
+* **데이터 결함 (Missing Columns, Duplicates, Unsorted, Invalid OHLC, Future Dates)**: **0건 (0.0%)**
 * **예외 발생 (Exceptions)**: **0건 (0.0%)**
 * **히스토리 길이**: 67건 전수 **48개월 이상 (48m+, 100%)** 보유.
-* **절대 시장 신선도 (vs 2026-08-14)**:
+* **절대 시장 신선도 (vs 2026-08-14 기준)**:
   * `VERY_STALE (6+ days)`: 67건 (과거 validation 및 OOS 테스트를 위해 고정된 시점의 캐시)
 
 ---
@@ -99,7 +102,7 @@ Pattern A Feature Set 및 Stage Classifier의 모든 필수 앵커를 결측 없
 
 #### 종합 평가:
 1. **Cached Dataset Quality Audit: PASSED**
-   - 로컬에 보유한 67개 캐시 파일 전수에서 데이터 무결성 100%, Feature/Score/Stage/Evaluator 실행 100% 정상 작동이 검증됨.
+   - 로컬에 보유한 67개 교집합 캐시 파일 전수에서 데이터 무결성 100%, Feature/Score/Stage/Evaluator 실행 100% 정상 작동이 검증됨.
 2. **Official KRX Universe Source: ESTABLISHED**
    - PyKRX 기반의 공인 종목 마스터(2,763개) 연동 및 자산 분류(보통주 2,528개, 우선주 116개, SPAC 71개, REIT 25개) 체계 확립.
 3. **Full Universe Scanner 전제 조건 (Condition)**:
@@ -114,10 +117,10 @@ Pattern A Feature Set 및 Stage Classifier의 모든 필수 앵커를 결측 없
 Pattern A Score v0.2: FROZEN
 Pattern A Stage Classifier v0.1: FROZEN (43ee01c)
 Pattern A Evaluator Integration v0.1: COMPLETED (51fc202)
-Data Quality & Universe Preparation v0.1: COMPLETED (Authoritative Universe Source Established)
+Data Quality & Universe Preparation v0.1: COMPLETED (Final Followup Clean)
+Official KRX Universe Master: ESTABLISHED (2,763 Tickers)
 Cached Dataset Quality: 67 / 67 (100.0% Clean & Evaluator Ready)
-Official KRX Universe: 2,763 Tickers (Common 2,528, Preferred 116, SPAC 71, REIT 25)
-Unit & Integration Tests: 259 passed
+Unit & Integration Tests: 260 passed (100% Green)
 Final Judgment: UNIVERSE CONDITIONALLY READY
 Next: Score Momentum
 ```
