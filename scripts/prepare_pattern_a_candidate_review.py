@@ -97,11 +97,12 @@ def main() -> None:
             sys.exit(1)
 
         manual_df = pd.read_csv(manual_csv, dtype={"ticker": str})
-        summary = summarize_manual_review(
-            manual_df,
-            scanner_commit=args.scanner_commit,
-            scanner_as_of=args.as_of,
-        )
+        try:
+            summary = summarize_manual_review(manual_df)
+        except CandidateReviewIntegrityError as exc:
+            logger.error("Manual review validation failed: %s", exc)
+            sys.exit(1)
+
         with open(summary_json, "w", encoding="utf-8") as f:
             json.dump(summary.to_dict(), f, indent=2, ensure_ascii=False)
 
@@ -110,6 +111,7 @@ def main() -> None:
         logger.info("  GOOD_FIT:   %d", summary.good_fit_count)
         logger.info("  BORDERLINE: %d", summary.borderline_count)
         logger.info("  NOT_FIT:    %d", summary.not_fit_count)
+        logger.info("  UNCERTAIN:  %d", summary.uncertain_count)
         return
 
     # 2. 전체 Review Dataset 추출 및 준비 모드

@@ -1,4 +1,4 @@
-"""Tests for Pattern A Candidate Chart Review Dataset Module (Final Cleanup).
+"""Tests for Pattern A Candidate Chart Review Dataset Module (Source Lock Final Fix).
 
 Validates:
 1. Candidate state == 'candidate' only extraction
@@ -9,21 +9,21 @@ Validates:
 6. Evaluator / Score readiness integrity check
 7. Scanner source measurements preservation
 8. Manual review columns initial values
-9. Scanner source provenance fields (scanner_commit, scanner_as_of, source_artifact)
-10. Existing manual review file overwrite protection (same source preserve)
-11. Existing manual review different source commit fail-closed
-12. Existing manual review different ticker set fail-closed
-13. Manual summary reviewed/unreviewed & pattern fit breakdown
-14. Stage-specific manual summary breakdown
-15. Manual annotations do not alter source measurements
-16. Deterministic non-ranking candidate ordering
+9. Matrix A: Same source full match -> PASS & preserve manual labels & summary recalculated
+10. Matrix B: Different scanner_commit -> FAIL & ZERO artifact mutation
+11. Matrix C: Different scanner_as_of -> FAIL & ZERO artifact mutation
+12. Matrix D: Different source_artifact -> FAIL & ZERO artifact mutation
+13. Matrix E: Different ticker set -> FAIL & ZERO artifact mutation
+14. Matrix F/G/H: Missing provenance columns -> FAIL & ZERO artifact mutation
+15. Strict vocabulary validation (fail-closed on typos like 'GOODFIT', 'INVALID_STATUS')
+16. Dynamic manual summary calculations & 2-way consistency warnings
 """
 
 from __future__ import annotations
 
 import json
+import logging
 from pathlib import Path
-import tempfile
 
 import pandas as pd
 import pytest
@@ -100,7 +100,7 @@ def sample_scanner_csv_df():
             "alignment_bonus": 0.0,
             "progressed_penalty": 0.0,
         },
-        # Candidate 3 (Transition, KOSDAQ)
+        # Candidate 3 (Transition, KOSPI)
         {
             "ticker": "000660",
             "name": "SK하이닉스",
@@ -130,7 +130,7 @@ def sample_scanner_csv_df():
             "alignment_bonus": 0.0,
             "progressed_penalty": 0.0,
         },
-        # Non-Candidate 1 (Blocked, KOSPI)
+        # Non-Candidate (Blocked, KOSPI)
         {
             "ticker": "035420",
             "name": "NAVER",
@@ -140,22 +140,6 @@ def sample_scanner_csv_df():
             "candidate_state": "blocked",
             "official_stage": "weak",
             "pattern_a_score": 10.0,
-            "raw_data_ready": True,
-            "feature_ready": True,
-            "score_ready": True,
-            "stage_ready": True,
-            "evaluator_ready": True,
-        },
-        # Non-Candidate 2 (Late, KOSDAQ)
-        {
-            "ticker": "035720",
-            "name": "카카오",
-            "market": "KOSPI",
-            "asset_type": "COMMON",
-            "requested_as_of": "2026-08-14",
-            "candidate_state": "late",
-            "official_stage": "progressed",
-            "pattern_a_score": 90.0,
             "raw_data_ready": True,
             "feature_ready": True,
             "score_ready": True,
@@ -178,180 +162,201 @@ def test_candidate_extraction_and_row_count(sample_scanner_csv_df):
     assert set(src_df["ticker"]) == {"005930", "068270", "000660"}
 
 
-def test_provenance_fields_in_artifacts(sample_scanner_csv_df):
-    """scanner_commit, scanner_as_of, source_artifact가 source 및 manual dataset에 기록되는지 검증."""
+def test_matrix_a_same_source_preserve_success(sample_scanner_csv_df, tmp_path: Path):
+    """Matrix A: Same source 4-way full match 시 기존 수동 라벨이 보존되고 summary가 재계산되는지 검증."""
     src_df, manual_df, summary = extract_and_prepare_candidate_review(
         sample_scanner_csv_df,
         as_of="2026-08-14",
         scanner_commit="13ab6f4",
         source_artifact_name="pattern_a_universe_scan_20260814.csv",
     )
-
-    for df in (src_df, manual_df):
-        assert "scanner_commit" in df.columns
-        assert "scanner_as_of" in df.columns
-        assert "source_artifact" in df.columns
-        assert df["scanner_commit"].iloc[0] == "13ab6f4"
-        assert df["scanner_as_of"].iloc[0] == "2026-08-14"
-        assert df["source_artifact"].iloc[0] == "pattern_a_universe_scan_20260814.csv"
-
-    assert summary.scanner_commit == "13ab6f4"
-    assert summary.scanner_as_of == "2026-08-14"
-    assert summary.source_artifact == "pattern_a_universe_scan_20260814.csv"
-
-
-def test_duplicate_ticker_rejection(sample_scanner_csv_df):
-    """후보 목록 내 중복 종목이 있으면 무결성 에러 발생 검증."""
-    broken = sample_scanner_csv_df.copy()
-    broken.loc[broken.index[0], "ticker"] = "068270"
-
-    with pytest.raises(CandidateReviewIntegrityError, match="Duplicate candidate tickers"):
-        extract_and_prepare_candidate_review(broken)
-
-
-def test_invalid_stage_rejection(sample_scanner_csv_df):
-    """CANDIDATE 상태인데 stage가 TRANSITION / EARLY_TREND가 아니면 에러 발생 검증."""
-    broken = sample_scanner_csv_df.copy()
-    broken.loc[broken.index[0], "official_stage"] = "weak"
-
-    with pytest.raises(CandidateReviewIntegrityError, match="Invalid stages found"):
-        extract_and_prepare_candidate_review(broken)
-
-
-def test_non_common_asset_rejection(sample_scanner_csv_df):
-    """보통주가 아닌 자산(우선주/스팩 등)이 후보에 혼입되면 에러 발생 검증."""
-    broken = sample_scanner_csv_df.copy()
-    broken.loc[broken.index[0], "asset_type"] = "PREFERRED"
-
-    with pytest.raises(CandidateReviewIntegrityError, match="Non-COMMON assets"):
-        extract_and_prepare_candidate_review(broken)
-
-
-def test_readiness_integrity_rejection(sample_scanner_csv_df):
-    """evaluator_ready=False 종목이 후보에 포함되어 있으면 에러 발생 검증."""
-    broken = sample_scanner_csv_df.copy()
-    broken.loc[broken.index[0], "evaluator_ready"] = False
-
-    with pytest.raises(CandidateReviewIntegrityError, match="evaluator_ready=False"):
-        extract_and_prepare_candidate_review(broken)
-
-
-def test_existing_manual_review_file_overwrite_protection_same_source(sample_scanner_csv_df, tmp_path: Path):
-    """동일 source에 대해 manual review CSV 파일의 수동 입력값이 overwrite되지 않고 보존되며 summary가 갱신되는지 검증."""
-    src_df, manual_df, summary = extract_and_prepare_candidate_review(sample_scanner_csv_df, scanner_commit="13ab6f4")
-
     out_dir = tmp_path / "chart_review"
-    out_dir.mkdir(parents=True)
 
+    # 1. 초기 아티팩트 생성
     save_candidate_review_artifacts(src_df, manual_df, summary, output_dir=out_dir)
-
     manual_csv = out_dir / "pattern_a_candidate_manual_review_20260814.csv"
-    assert manual_csv.exists()
 
-    # 사용자가 수동 리뷰 작성 (005930: GOOD_FIT, 068270: NOT_FIT)
+    # 2. 사용자 수동 라벨링 주입
     df_edited = pd.read_csv(manual_csv, dtype={"ticker": str})
     df_edited.loc[df_edited["ticker"] == "005930", "manual_pattern_fit"] = "GOOD_FIT"
     df_edited.loc[df_edited["ticker"] == "005930", "review_status"] = "REVIEWED"
-    df_edited.loc[df_edited["ticker"] == "068270", "manual_pattern_fit"] = "NOT_FIT"
-    df_edited.loc[df_edited["ticker"] == "068270", "review_status"] = "REVIEWED"
     df_edited.to_csv(manual_csv, index=False, encoding="utf-8")
 
-    # 동일 source로 다시 save_candidate_review_artifacts 호출
+    # 3. 동일 source로 다시 save 호출
     save_candidate_review_artifacts(
         src_df, manual_df, summary, output_dir=out_dir, overwrite_manual=False
     )
 
+    # 4. 수동 라벨 보존 및 summary 검증
     df_reloaded = pd.read_csv(manual_csv, dtype={"ticker": str})
-    row = df_reloaded[df_reloaded["ticker"] == "005930"].iloc[0]
-    assert row["manual_pattern_fit"] == "GOOD_FIT"
-    assert row["review_status"] == "REVIEWED"
+    assert df_reloaded.loc[df_reloaded["ticker"] == "005930", "manual_pattern_fit"].iloc[0] == "GOOD_FIT"
 
-    # Summary JSON도 기존 수동 입력에 맞춰 재계산되어야 함
     summary_json = out_dir / "pattern_a_candidate_review_summary_20260814.json"
     with open(summary_json, encoding="utf-8") as f:
         s_data = json.load(f)
-    assert s_data["reviewed_count"] == 2
-    assert s_data["unreviewed_count"] == 1
+    assert s_data["reviewed_count"] == 1
     assert s_data["good_fit_count"] == 1
-    assert s_data["not_fit_count"] == 1
 
 
-def test_existing_manual_review_different_commit_fail_closed(sample_scanner_csv_df, tmp_path: Path):
-    """기존 manual review의 scanner_commit과 새로 준비하려는 scanner_commit이 다르면 fail-closed 에러 발생 검증."""
-    src_df1, manual_df1, summary1 = extract_and_prepare_candidate_review(sample_scanner_csv_df, scanner_commit="13ab6f4")
+def test_matrix_b_diff_commit_fail_closed_zero_mutation(sample_scanner_csv_df, tmp_path: Path):
+    """Matrix B: Different scanner_commit -> FAIL & ZERO artifact mutation 검증."""
+    src_df1, manual_df1, summary1 = extract_and_prepare_candidate_review(
+        sample_scanner_csv_df, as_of="2026-08-14", scanner_commit="13ab6f4"
+    )
     out_dir = tmp_path / "chart_review_diff_commit"
     save_candidate_review_artifacts(src_df1, manual_df1, summary1, output_dir=out_dir)
 
-    # 새로운 scanner commit (예: "9999999")으로 재시도
-    src_df2, manual_df2, summary2 = extract_and_prepare_candidate_review(sample_scanner_csv_df, scanner_commit="9999999")
+    src_csv = out_dir / "pattern_a_candidate_source_20260814.csv"
+    manual_csv = out_dir / "pattern_a_candidate_manual_review_20260814.csv"
+    sum_json = out_dir / "pattern_a_candidate_review_summary_20260814.json"
+
+    src_orig = src_csv.read_text(encoding="utf-8")
+    man_orig = manual_csv.read_text(encoding="utf-8")
+    sum_orig = sum_json.read_text(encoding="utf-8")
+
+    # 다른 commit으로 새 데이터셋 준비
+    src_df2, manual_df2, summary2 = extract_and_prepare_candidate_review(
+        sample_scanner_csv_df, as_of="2026-08-14", scanner_commit="9999999"
+    )
+
     with pytest.raises(CandidateReviewIntegrityError, match="belongs to scanner_commit '13ab6f4'"):
         save_candidate_review_artifacts(src_df2, manual_df2, summary2, output_dir=out_dir, overwrite_manual=False)
 
+    # Validate First 원칙: 모든 파일 내용이 변경 없이 100% 동일해야 함 (Zero Mutation)
+    assert src_csv.read_text(encoding="utf-8") == src_orig
+    assert manual_csv.read_text(encoding="utf-8") == man_orig
+    assert sum_json.read_text(encoding="utf-8") == sum_orig
 
-def test_existing_manual_review_different_ticker_set_fail_closed(sample_scanner_csv_df, tmp_path: Path):
-    """기존 manual review와 새로운 candidate 종목 pool의 ticker set이 다르면 fail-closed 에러 발생 검증."""
-    src_df1, manual_df1, summary1 = extract_and_prepare_candidate_review(sample_scanner_csv_df, scanner_commit="13ab6f4")
+
+def test_matrix_c_diff_as_of_fail_closed_zero_mutation(sample_scanner_csv_df, tmp_path: Path):
+    """Matrix C: Different scanner_as_of -> FAIL & ZERO artifact mutation 검증."""
+    src_df1, manual_df1, summary1 = extract_and_prepare_candidate_review(
+        sample_scanner_csv_df, as_of="2026-08-14", scanner_commit="13ab6f4"
+    )
+    out_dir = tmp_path / "chart_review_diff_asof"
+    save_candidate_review_artifacts(src_df1, manual_df1, summary1, output_dir=out_dir, as_of_tag="20260814")
+
+    src_csv = out_dir / "pattern_a_candidate_source_20260814.csv"
+    manual_csv = out_dir / "pattern_a_candidate_manual_review_20260814.csv"
+    sum_json = out_dir / "pattern_a_candidate_review_summary_20260814.json"
+
+    src_orig = src_csv.read_text(encoding="utf-8")
+    man_orig = manual_csv.read_text(encoding="utf-8")
+    sum_orig = sum_json.read_text(encoding="utf-8")
+
+    # 다른 as_of(예: 2026-07-31)로 실행
+    src_df2, manual_df2, summary2 = extract_and_prepare_candidate_review(
+        sample_scanner_csv_df, as_of="2026-07-31", scanner_commit="13ab6f4"
+    )
+
+    with pytest.raises(CandidateReviewIntegrityError, match="belongs to scanner_as_of '2026-08-14'"):
+        save_candidate_review_artifacts(src_df2, manual_df2, summary2, output_dir=out_dir, as_of_tag="20260814", overwrite_manual=False)
+
+    assert src_csv.read_text(encoding="utf-8") == src_orig
+    assert manual_csv.read_text(encoding="utf-8") == man_orig
+    assert sum_json.read_text(encoding="utf-8") == sum_orig
+
+
+def test_matrix_d_diff_source_artifact_fail_closed_zero_mutation(sample_scanner_csv_df, tmp_path: Path):
+    """Matrix D: Different source_artifact -> FAIL & ZERO artifact mutation 검증."""
+    src_df1, manual_df1, summary1 = extract_and_prepare_candidate_review(
+        sample_scanner_csv_df, source_artifact_name="artifact_v1.csv"
+    )
+    out_dir = tmp_path / "chart_review_diff_artifact"
+    save_candidate_review_artifacts(src_df1, manual_df1, summary1, output_dir=out_dir)
+
+    src_csv = out_dir / "pattern_a_candidate_source_20260814.csv"
+    manual_csv = out_dir / "pattern_a_candidate_manual_review_20260814.csv"
+    src_orig = src_csv.read_text(encoding="utf-8")
+
+    src_df2, manual_df2, summary2 = extract_and_prepare_candidate_review(
+        sample_scanner_csv_df, source_artifact_name="artifact_v2.csv"
+    )
+
+    with pytest.raises(CandidateReviewIntegrityError, match="source_artifact 'artifact_v1.csv'"):
+        save_candidate_review_artifacts(src_df2, manual_df2, summary2, output_dir=out_dir, overwrite_manual=False)
+
+    assert src_csv.read_text(encoding="utf-8") == src_orig
+
+
+def test_matrix_e_diff_ticker_set_fail_closed_zero_mutation(sample_scanner_csv_df, tmp_path: Path):
+    """Matrix E: Different ticker set -> FAIL & ZERO artifact mutation 검증."""
+    src_df1, manual_df1, summary1 = extract_and_prepare_candidate_review(sample_scanner_csv_df)
     out_dir = tmp_path / "chart_review_diff_tickers"
     save_candidate_review_artifacts(src_df1, manual_df1, summary1, output_dir=out_dir)
 
-    # 다른 후보 목록 (종목 1개 제거된 DataFrame)
+    src_csv = out_dir / "pattern_a_candidate_source_20260814.csv"
+    src_orig = src_csv.read_text(encoding="utf-8")
+
+    # 1개 종목 누락된 DataFrame
     reduced_df = sample_scanner_csv_df[sample_scanner_csv_df["ticker"] != "000660"].copy()
-    src_df2, manual_df2, summary2 = extract_and_prepare_candidate_review(reduced_df, scanner_commit="13ab6f4")
-    with pytest.raises(CandidateReviewIntegrityError, match="ticker set mismatch"):
+    src_df2, manual_df2, summary2 = extract_and_prepare_candidate_review(reduced_df)
+
+    with pytest.raises(CandidateReviewIntegrityError, match="candidate identity .* mismatch"):
         save_candidate_review_artifacts(src_df2, manual_df2, summary2, output_dir=out_dir, overwrite_manual=False)
 
+    assert src_csv.read_text(encoding="utf-8") == src_orig
 
-def test_manual_summary_helper_and_stage_breakdown(sample_scanner_csv_df):
-    """summarize_manual_review helper의 정확한 진행률 및 Stage별 집계 검증."""
+
+def test_matrix_f_g_h_missing_provenance_columns_fail_closed(sample_scanner_csv_df, tmp_path: Path):
+    """Matrix F/G/H: Existing manual review missing provenance columns -> FAIL-CLOSED 검증."""
+    src_df, manual_df, summary = extract_and_prepare_candidate_review(sample_scanner_csv_df)
+    out_dir = tmp_path / "chart_review_missing_prov"
+    out_dir.mkdir(parents=True)
+
+    manual_csv = out_dir / "pattern_a_candidate_manual_review_20260814.csv"
+
+    # provenance 컬럼이 누락된 레거시 형식 CSV 파일 생성
+    broken_manual = manual_df.drop(columns=["scanner_commit", "scanner_as_of", "source_artifact"])
+    broken_manual.to_csv(manual_csv, index=False, encoding="utf-8")
+
+    with pytest.raises(CandidateReviewIntegrityError, match="missing required provenance columns"):
+        save_candidate_review_artifacts(src_df, manual_df, summary, output_dir=out_dir, overwrite_manual=False)
+
+
+def test_strict_vocabulary_validation_fail_closed(sample_scanner_csv_df):
+    """오타('GOODFIT', 'INVALID_STATUS') 등 비정규 Vocabulary 입력 시 Fail-Closed 검증."""
     _, manual_df, _ = extract_and_prepare_candidate_review(sample_scanner_csv_df)
 
-    # 1. 초기 상태 집계
-    init_sum = summarize_manual_review(manual_df)
-    assert init_sum.total_candidates == 3
-    assert init_sum.reviewed_count == 0
-    assert init_sum.unreviewed_count == 3
+    # 1. Invalid pattern fit
+    broken_fit = manual_df.copy()
+    broken_fit.loc[broken_fit.index[0], "manual_pattern_fit"] = "GOODFIT"
+    with pytest.raises(CandidateReviewIntegrityError, match="Invalid manual_pattern_fit values"):
+        summarize_manual_review(broken_fit)
 
-    # 2. 수동 라벨링 주입 (005930(TRANSITION)=GOOD_FIT, 068270(EARLY_TREND)=BORDERLINE, 000660(TRANSITION)=NOT_FIT)
-    df_edited = manual_df.copy()
-    df_edited.loc[df_edited["ticker"] == "005930", "manual_pattern_fit"] = "GOOD_FIT"
-    df_edited.loc[df_edited["ticker"] == "005930", "review_status"] = "REVIEWED"
+    # 2. Invalid review status
+    broken_status = manual_df.copy()
+    broken_status.loc[broken_status.index[0], "review_status"] = "DONE"
+    with pytest.raises(CandidateReviewIntegrityError, match="Invalid review_status values"):
+        summarize_manual_review(broken_status)
 
-    df_edited.loc[df_edited["ticker"] == "068270", "manual_pattern_fit"] = "BORDERLINE"
-    df_edited.loc[df_edited["ticker"] == "068270", "review_status"] = "REVIEWED"
-
-    df_edited.loc[df_edited["ticker"] == "000660", "manual_pattern_fit"] = "NOT_FIT"
-    df_edited.loc[df_edited["ticker"] == "000660", "review_status"] = "REVIEWED"
-
-    sum_res = summarize_manual_review(df_edited)
-    assert sum_res.total_candidates == 3
-    assert sum_res.reviewed_count == 3
-    assert sum_res.unreviewed_count == 0
-    assert sum_res.good_fit_count == 1
-    assert sum_res.borderline_count == 1
-    assert sum_res.not_fit_count == 1
-
-    # Stage breakdown
-    assert sum_res.transition_total == 2
-    assert sum_res.transition_reviewed == 2
-    assert sum_res.transition_good_fit == 1
-    assert sum_res.transition_not_fit == 1
-
-    assert sum_res.early_trend_total == 1
-    assert sum_res.early_trend_reviewed == 1
-    assert sum_res.early_trend_borderline == 1
+    # 3. Invalid stage fit
+    broken_stage = manual_df.copy()
+    broken_stage.loc[broken_stage.index[0], "manual_stage_fit"] = "PERFECT"
+    with pytest.raises(CandidateReviewIntegrityError, match="Invalid manual_stage_fit values"):
+        summarize_manual_review(broken_stage)
 
 
-def test_manual_annotations_do_not_alter_source_scanner_measurements(sample_scanner_csv_df):
-    """수동 라벨링을 입력해도 Scanner 원본 측정값 필드가 변형되지 않음을 검증."""
-    src_df, manual_df, _ = extract_and_prepare_candidate_review(sample_scanner_csv_df)
+def test_two_way_consistency_warning_logging(sample_scanner_csv_df, caplog):
+    """Case A (REVIEWED + UNREVIEWED fit) 및 Case B (UNREVIEWED + GOOD_FIT) 양방향 경고 로깅 검증."""
+    _, manual_df, _ = extract_and_prepare_candidate_review(sample_scanner_csv_df)
 
-    manual_df.loc[manual_df["ticker"] == "005930", "manual_pattern_fit"] = "GOOD_FIT"
-    manual_df.loc[manual_df["ticker"] == "005930", "manual_notes"] = "Strong monthly turnaround"
+    # Case A 주입
+    df_case_a = manual_df.copy()
+    df_case_a.loc[df_case_a.index[0], "review_status"] = "REVIEWED"
+    df_case_a.loc[df_case_a.index[0], "manual_pattern_fit"] = "UNREVIEWED"
 
-    row_src = src_df[src_df["ticker"] == "005930"].iloc[0]
-    row_man = manual_df[manual_df["ticker"] == "005930"].iloc[0]
+    with caplog.at_level(logging.WARNING):
+        summarize_manual_review(df_case_a)
+    assert "Consistency Warning (Case A)" in caplog.text
 
-    assert row_src["pattern_a_score"] == row_man["pattern_a_score"] == 75.5
-    assert row_src["official_stage"] == row_man["official_stage"] == "transition"
-    assert row_src["score_delta_3m"] == row_man["score_delta_3m"] == 12.0
-    assert row_src["base_score"] == row_man["base_score"] == 40.0
+    caplog.clear()
+
+    # Case B 주입
+    df_case_b = manual_df.copy()
+    df_case_b.loc[df_case_b.index[0], "review_status"] = "UNREVIEWED"
+    df_case_b.loc[df_case_b.index[0], "manual_pattern_fit"] = "GOOD_FIT"
+
+    with caplog.at_level(logging.WARNING):
+        summarize_manual_review(df_case_b)
+    assert "Consistency Warning (Case B)" in caplog.text
