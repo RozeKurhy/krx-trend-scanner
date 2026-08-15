@@ -49,7 +49,7 @@
 | Data Quality & Universe Preparation v0.1 (`0ce8012`) | DONE | Fail-Closed 종목명 조회, 36m 계약, 품질 감사 |
 | Pattern A Score Momentum v0.1 (`707c594`) | DONE | Calendar 1M/3M/6M Raw & Component Delta 측정 계층 |
 | Official Common Stock Cache Population (`62fa327`) | DONE | KRX 공식 보통주 2,528개 캐시 구축 (Coverage 98.34%, 0 Violation) |
-| Full Universe Scanner Integration | NEXT | 전 종목 일괄 스캔 및 Score × Stage × Momentum 통합 분석 |
+| Full Universe Scanner Integration | NEXT | 전 종목 일괄 스캔 및 Score × Stage × Candidate State × Momentum 통합 출력 |
 
 **Pattern B~F**: 미착수(NOT STARTED)  
 **전체 시장 Scanner**: 준비 중(NEXT - Scanner Integration 착수)  
@@ -148,12 +148,13 @@ KOSPI / KOSDAQ 전체 보통주 유니버스의 일봉 데이터를 KRX로부터
 
 ## Phase 8. Full Universe Scanner Integration — NEXT
 
-전체 유니버스를 대상으로 Pattern A Score, Stage, Score Momentum을 일괄 산출하고 다차원으로 분석.
+전체 유니버스를 대상으로 Pattern A Score, Stage, Candidate State, Score Momentum을 일괄 산출하여 다차원 매트릭스로 통합.
 
 핵심 작업:
-* Universe 병렬/배치 평가 파이프라인 구축
-* 다차원 결과 매트릭스 (Score × Stage × Momentum 1M/3M/6M)
-* 상위 후보군 필터링 및 리포팅
+* Universe 배치 평가 파이프라인 구축
+* 종목별 Score × Stage × Candidate State × Momentum (1M/3M/6M) × Readiness 통합 출력
+* 전체 유니버스 결과 매트릭스 생성 및 분포 관찰 (Distribution Inspection)
+* (주의: Ranking, Cutoff 필터링, Unified Score 산출은 포함하지 않음)
 
 ---
 

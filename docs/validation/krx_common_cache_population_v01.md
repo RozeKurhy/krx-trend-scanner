@@ -22,7 +22,7 @@
 * **Official Universe Intersection**: **2,487개 (89.97%)**
 * **Official COMMON Cache Present**: **2,486개 (98.34%)**
 * **Official COMMON Missing**: **42개 (1.66%)**
-* **Orphan Cache Count**: **2개** (`002270`, `010620`)
+* **Orphan Cache Count**: **2개** (`002270` KG피앤씨, `010620` 현대미포조선) (비공식 유니버스 캐시 100% 무손상 보존)
 
 ### 2.2 Execution Counts (2,528개 대상)
 * **Run Target Count**: **2,528개**
@@ -32,27 +32,24 @@
 * **Failed (Isolated)**: **42개**
 * **Identity 검증**: $978 + 230 + 1,278 + 42 = 2,528$ (100% 일치)
 
-### 2.3 Failed Ticker Provenance (42건)
-* **Failure 원인**: KRX/PyKRX 원천 데이터상 특정 일자에 `Low > High` 또는 `Open/Close` 가격 불일치 결함이 발견되어, Data Integrity Policy 및 Atomic Write 보호 정책에 따라 오염 방지를 위해 저장을 차단하고 FAILED 격리함.
-* **대표 종목**:
-  * `019010` (베뉴지): 2024-07-18 OHLC 불일치
-  * `021650` (한국큐빅): 2025-07-15 OHLC 불일치
-  * `028300` (HLB): 2021-09-09 외 3일 OHLC 불일치
-  * `030350` (드래곤플라이): 2021-08-23 외 4일 OHLC 불일치
-  * `086900` (메디톡스): 2021-10-08 OHLC 불일치
-  * `119610` (인터로조): 2023-05-10 OHLC 불일치
-  * `900140` (엘브이엠씨홀딩스): 2021-12-01 외 2일 OHLC 불일치 등 42건.
+### 2.3 Failed Ticker Provenance (42건 전체 authoritative 검증)
+* **Failure 원인**: 42건 모두 PyKRX/KRX 원천 일봉 데이터상 특정 일자에 `Low > High` 또는 `Open/Close` 가격 불일치 결함(`MarketDataError`)이 발견되어, Data Integrity Policy 및 Atomic Write 보호 정책에 따라 캐시 오염을 방지하기 위해 저장을 차단하고 FAILED 격리함.
+* **KOSPI 보통주 (10개)**:
+  * `000100` (유한양행), `001060` (JW중외제약), `001440` (대한전선), `002720` (국제약품), `005420` (코스모화학), `010780` (아이에스동서), `101140` (인바이오젠), `119650` (KC코트렐), `128940` (한미약품), `900140` (엘브이엠씨홀딩스)
+* **KOSDAQ 보통주 (32개)**:
+  * `019010` (베뉴지), `021650` (한국큐빅), `028300` (HLB), `030350` (드래곤플라이), `032750` (삼진), `049950` (미래컴퍼니), `050760` (에스폴리텍), `054180` (메디콕스), `056090` (시지메드텍), `069140` (누리플랜), `072950` (빛샘전자), `078890` (가온그룹), `086900` (메디톡스), `088800` (에이스테크), `089600` (KT나스미디어), `094860` (네오리진), `111710` (남화산업), `119610` (인터로조), `128540` (에코캡), `131090` (시큐브), `131400` (이브이첨단소재), `142210` (유니트론텍), `175250` (아이큐어), `179530` (애드바이오텍), `263020` (디케이앤디), `279600` (미디어젠), `284620` (카이노스메드), `317770` (엑스페릭스), `336570` (원텍), `347860` (알체라), `352770` (셀레스트라), `355150` (코스텍시스)
+* **검증 결과**: 42개 실패 종목 모두 100% `AssetType.COMMON`이며, Artifact CSV(`population_20260814.csv`)와의 종목명/메타데이터 불일치 0건.
 
 ---
 
-## 3. Data Quality & Readiness 감사 실측
+## 3. Data Quality & Readiness 실측 감사
 
 ### 3.1 Structural Integrity
 * **Future Date Contamination**: **0건**
 * **Duplicate Date Corruption**: **0건**
 * **Unsorted Date Corruption**: **0건**
 * **Missing Required Columns**: **0건**
-* **Invalid OHLC in Cache**: **0건** (Atomic Write 검증으로 원천 차단)
+* **Invalid OHLC Violations in Cache**: **0건** (Atomic Write 검증으로 원천 차단)
 * **Atomic Temp Residue**: **0건**
 * **Quality Audit Exceptions**: **0건**
 
@@ -61,10 +58,10 @@
 * **Stale (2~5일 지연)**: **7개 (0.28%)**
 * **Very Stale (6일+ 지연)**: **109개 (4.38%)** (장기 거래정지 종목 등 정상 사유)
 
-### 3.3 History Readiness Distribution
+### 3.3 History Readiness (Official COMMON 2,486개 기준)
 * **36M History Ready (Minimum)**: **2,230개 (89.70%)**
 * **42M History Ready (6M Momentum Contract)**: **2,172개 (87.37%)**
-* **48M History Ready (Preferred Target)**: **2,112개 (84.96%)**
+* **48M History Ready (Preferred Buffer Target)**: **2,112개 (84.96%)**
 * **< 36M Short History**: **256개 (10.30%)** (신규 상장주 정상 사유)
 
 ### 3.4 Pattern A Score Momentum 실측 (Official COMMON 2,486개 대상)
@@ -72,7 +69,7 @@
 * **1M Momentum Ready**: **2,213개 / 2,486 (89.02%)**
 * **3M Momentum Ready**: **2,193개 / 2,486 (88.21%)**
 * **6M Momentum Ready**: **2,165개 / 2,486 (87.09%)**
-* **Momentum Unavailable 원인**:
+* **Momentum Unavailable 원인 분석**:
   * `CURRENT_SCORE_UNAVAILABLE` / `INSUFFICIENT_HISTORY_CURRENT`: 263개 (신규상장 및 36m 미만)
   * `INSUFFICIENT_HISTORY_1M`: 8개 (37m 미만)
   * `INSUFFICIENT_HISTORY_3M`: 28개 (39m 미만)
@@ -80,31 +77,84 @@
   * `NO_COMPLETED_MONTHLY_BARS`: 2개 (상장 1개월 미만 초신규 상장주)
   * **계산 오류 / 예외**: **0건 (100% 정상 산출)**
 
-### 3.5 Layer Readiness (Universe Quality Audit 기준)
-* **Raw Data Ready**: **2,487개**
-* **Feature Ready**: **2,222개**
-* **Score Ready**: **2,222개**
-* **Stage Ready**: **2,213개**
-* **Evaluator Ready**: **2,213개**
+### 3.5 Layer Readiness Scope별 상세 집계
+* **Official Universe Quality Audit Scope (전체 2,763개 대상)**:
+  * Raw Data Ready: **2,487개**
+  * Feature Ready: **2,222개**
+  * Score Ready: **2,222개**
+  * Stage Ready: **2,213개**
+  * Evaluator Ready: **2,213개**
+* **Official COMMON Scope (전체 2,528개 보통주 대상)**:
+  * Cached: **2,486개 (98.34%)**
+  * Raw Data Ready: **2,486개 (98.34%)**
+  * Feature Ready: **2,221개 (87.86%)**
+  * Score Ready: **2,221개 (87.86%)**
+  * Stage Ready: **2,212개 (87.50%)**
+  * Evaluator Ready: **2,212개 (87.50%)**
+* **Cached COMMON Scope (캐시 보유 2,486개 보통주 대상)**:
+  * Raw Data Ready: **2,486개 (100.00%)**
+  * Feature Ready: **2,221개 (89.34%)**
+  * Score Ready: **2,221개 (89.34%)**
+  * Stage Ready: **2,212개 (88.98%)**
+  * Evaluator Ready: **2,212개 (88.98%)**
 
 ---
 
-## 4. 단위 및 통합 테스트 회귀 결과
+## 4. 알려진 한계 (Known Limitations)
+
+### 4.1 External Provider Dependency
+* PyKRX / KRX backend 상태에 따라 일시적 오류, timeout, rate limiting 또는 빈 DataFrame 응답이 발생할 수 있다.
+* 파이프라인은 retry & exponential backoff와 failure isolation을 통해 이를 격리하며, 실패 종목의 error provenance를 정확히 기록한다.
+
+### 4.2 Trading Suspension & Repeated Fetch
+* 장기 거래정지 종목은 정상적인 데이터임에도 최종 거래일(`cache_last_date`)이 `reference_market_date`에 도달하지 못할 수 있다.
+* Population의 엄격한 Skip 조건(`cache_last_date == reference_market_date`)을 만족하지 못하므로, 재실행 시마다 overlap 구간 fetch가 재시도될 수 있다. 이는 정상 동작이며 임의로 Universe에서 제외하지 않는다.
+
+### 4.3 Short History / New Listing
+* 신규 상장주는 정상적으로 캐시가 수집(`CREATED`)되더라도 36개월 미만이면 Score/Stage가 `insufficient_data`로 평가되고, 42개월 미만이면 6M Momentum이 `ready=False`로 반환된다. 이는 데이터 결함이나 fetch 실패가 아닌 정상적인 short history이다.
+
+### 4.4 Adjusted Price Caveat
+* 수정주가(`adjusted=True`) 정책을 일관되게 사용하며, 대규모 무상증자/액면분할 등 corporate action 시 provider의 과거 가격 조정 방식에 영향을 받을 수 있다.
+
+### 4.5 Freshness Semantics Difference (Population Fresh vs Audit Fresh)
+* **Population Fresh (`SKIPPED_FRESH`)**:
+  * **Strict Operational Condition**: `cache_last_date == reference_market_date` AND `completed_months >= 42`.
+  * 네트워크 호출을 생략해도 되는지 판단하는 엄격한 운영 조건이다.
+* **Audit Fresh (`FreshnessStatus.FRESH`)**:
+  * **Quality Classification**: `reference_market_date` 대비 영업일 지연 `staleness_trading_days <= 1`.
+  * 유니버스 품질 감사 시 1거래일 이내 데이터를 최신으로 분류하는 통계적 등급이다.
+* 두 개념은 사용 목적이 상이하므로 동일한 의미로 혼용하지 않는다.
+
+### 4.6 Fail Closed OHLC Cases (42건)
+* 이번 Full Population에서 42개 종목이 FAILED로 격리된 것은 캐시 손상(Corruption)이 아니다.
+* 원천 데이터의 OHLC 가격 모순(`Low > High` 등)을 validator가 사전에 감지하고 `ParquetCache.save`의 원자적 쓰기 단계에서 차단한 **Fail-Closed 보호의 결과**이다.
+* 따라서 **"Accepted Cache의 Structural Corruption = 0"**과 **"Population Failed = 42"**는 동시에 완벽하게 성립한다.
+
+---
+
+## 5. 단위 및 통합 테스트 회귀 결과
 
 * **Cache Population Tests**: **21 passed (100% Green)**
 * **Full Test Suite**: **298 passed, 6 skipped, 1 deselected, 0 failed (100% Green)**
 
 ---
 
-## 5. 최종 판정 (Final Judgment)
+## 6. 최종 판정 (Final Judgment)
 
-* **Official Common Stock Cache Population v0.1**: **`COMPLETED & VERIFIED`**
+* **Official Common Stock Cache Population v0.1**: **`COMPLETED & FROZEN`**
 * **Pipeline Implementation**: **`APPROVED`**
 * **Atomic Cache Write**: **`VERIFIED (Residue 0)`**
 * **Official COMMON Population Coverage**: **`98.34% (2,486 / 2,528)`**
-* **Failure Provenance**: **`DOCUMENTED (42건 PyKRX OHLC 결함 차단)`**
-* **Structural Integrity**: **`100% PASSED (0 Violations)`**
-* **History & Momentum Readiness**: **`VERIFIED (87.09% ~ 89.34%)`**
+* **Accepted Cache Structural Integrity**: **`100% PASSED (0 Violations)`**
+* **Contract Critical Readiness**:
+  * Current Score Ready: **89.34% (2,221 / 2,486)**
+  * Momentum 1M Ready: **89.02% (2,213 / 2,486)**
+  * Momentum 3M Ready: **88.21% (2,193 / 2,486)**
+  * Momentum 6M Ready: **87.09% (2,165 / 2,486)**
+* **History Readiness**:
+  * 36M History Ready: **89.70% (2,230 / 2,486)**
+  * 42M History Ready: **87.37% (2,172 / 2,486)**
+  * 48M Preferred Buffer: **84.96% (2,112 / 2,486)**
 * **Post Universe Quality Audit**: **`PASSED`**
 * **Final Cache Population Judgment**: **`CACHE POPULATION READY`**
 * **Phase 7 Status**: **`DONE`**
