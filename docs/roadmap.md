@@ -29,484 +29,212 @@
 
 ## Current Status
 
-**Pattern A**
+**Pattern A Core Engine**
 
-| 단계 | 상태 |
-|---|---|
-| Feature Validation | DONE |
-| Historical Snapshot Validation | DONE |
-| Holdout Validation | DONE |
-| Negative Control | DONE |
-| Outcome Audit | DONE |
-| Base / Expansion Validation | DONE |
-| Feature Set Freeze v0.1 | DONE |
-| Score Design v0.1 (freeze `6e7cc95`) | DONE |
-| Frozen Score External Case Validation (OOS Case Validation v0.1) | DONE |
-| v0.2 diagnostic dataset 정리(OOS v0.1 29건 고정) | DONE |
-| Score Design v0.2 (implementation freeze `fffce85`) | DONE |
-| Pattern A v0.2 OOS2 Validation | DONE |
-| OOS2 Hard Negative Failure Audit | DONE |
-| Pattern A Stage Label Truth Set Freeze (46건) | DONE |
-| Pattern A Stage Semantic (BASE/WEAK 재정의, current-episode lifecycle) | DONE |
-| Pattern A Episode / Cycle Reset Semantic | DONE |
-| Pattern A Stage Classifier v0.1 | NEXT |
+| 단계 | 상태 | 상세/커밋 |
+|---|---|---|
+| Feature Validation | DONE | 17개 기본 Feature 검증 완료 |
+| Historical Snapshot Validation | DONE | Lookahead 없는 과거 시점 재현 |
+| Holdout Validation | DONE | OOS Case 29건 고정 |
+| Negative Control | DONE | False turn & Non-pattern 종목 검증 |
+| Outcome Audit | DONE | 사후 성과 독립 감사 |
+| Base / Expansion Validation | DONE | 베이스 및 확장 구조 검증 |
+| Feature Set Freeze v0.1 | DONE | Feature 계약 확정 |
+| Score Design v0.1 (freeze `6e7cc95`) | DONE | 1세대 스코어 설계 |
+| Score Design v0.2 (implementation freeze `fffce85`) | DONE | Core/Support 조화평균, 페널티 구조 |
+| Pattern A v0.2 OOS2 Validation | DONE | 38건 OOS2 검증 완료 |
+| Pattern A Stage Truth Set Freeze (46건) | DONE | Manual Stage 라벨링 확정 |
+| Pattern A Stage Classifier v0.1 (`43ee01c`) | DONE | Rule-based Lifecycle 분류기 (OOS 35건 100% 통과) |
+| Pattern A Evaluator Integration v0.1 (`51fc202`) | DONE | Single-stock 종단간 통합 API 및 Candidate State |
+| Data Quality & Universe Preparation v0.1 (`0ce8012`) | DONE | Fail-Closed 종목명 조회, 36m 계약, 품질 감사 |
+| Pattern A Score Momentum v0.1 (`707c594`) | DONE | Calendar 1M/3M/6M Raw & Component Delta 측정 계층 |
+| Official Common Stock Cache Population | NEXT | KRX 공식 보통주 유니버스 일봉 캐시 수집 |
+| Full Universe Scanner Integration | PLANNED | 전 종목 일괄 스캔 및 순위/모멘텀 분석 |
 
-**Pattern B~F**: 미착수(NOT STARTED)
-**전체 시장 Scanner**: 미착수(NOT STARTED)
-**Market Leader Score**: 미착수(NOT STARTED)
+**Pattern B~F**: 미착수(NOT STARTED)  
+**전체 시장 Scanner**: 준비 중(NEXT)  
+**Market Leader Score**: 미착수(NOT STARTED)  
 
-## Phase 1. Pattern A Score v0.2 — DONE
+---
 
-목표: Pattern A Score의 구조적 문제를 해결하고 최종 v0.2 Score를
-freeze한다.
+## Phase 1. Pattern A Score v0.2 — DONE (`fffce85`)
+
+목표: Pattern A Score의 구조적 문제를 해결하고 최종 v0.2 Score를 freeze한다.
 
 핵심 작업:
+* Core / Supporting interaction 재설계 (ma24_slope 중심 조화평균 결합)
+* weekly_ma12_slope와 ma24_slope_acceleration의 보조 확인 구조화
+* alignment bonus 및 Already Progressed penalty 적용
+* 0~100 유계 클리핑 및 해석 가능한 세부 점수 분해
 
-* Core / Supporting interaction 재설계
-  * ma24_slope가 Core 역할을 유지하도록 구조화
-  * weekly_ma12_slope와 ma24_slope_acceleration이 Core 없이 Transition
-    Score를 과도하게 끌어올리지 못하게 개선
-* alignment bonus 재검토
-* Pattern A / Pattern B boundary용 장기 하락 구조 Feature 최소 후보 검증
-* Already Progressed penalty는 기본 유지
-* fast mover 사례는 diagnostic으로 관찰
-* v0.2 development dataset으로 기존 29개 OOS Case 사용
-
-완료 조건: **Pattern A Score v0.2 implementation freeze** — 커밋
-`fffce85`로 완료됐다.
-
-중요: OOS2는 이 단계에서 절대 보지 않았다(실제로 보지 않았음).
+---
 
 ## Phase 2. Pattern A v0.2 OOS2 Validation — DONE
 
-v0.2를 완전히 freeze한 뒤, 기존 exploration / holdout / negative
-control / OOS Case v0.1 diagnostic과 독립적인 새로운 종목/날짜
-38건(OOS2)에 적용해 검증했다.
-
-검증 대상: positive pre breakout / clean early trend / trend
-progressed / false turn / Pattern A·Pattern B boundary / fast mover /
-insufficient history.
+v0.2를 완전히 freeze한 뒤, 독립적인 새로운 종목/날짜 38건(OOS2)에 적용해 검증했다.
 
 핵심 결과:
-
-* Frozen Pattern A Score v0.2를 새로운 OOS2 snapshot에 적용 완료
-* Selection Manifest를 Score 계산 전에 freeze(look-ahead 없이 raw
-  가격 구조만으로 선정)
-* OOS2 전 과정에서 Score 수정 없음
+* Frozen Pattern A Score v0.2 적용 및 OOS2 전 과정에서 Score 무수정 원칙 준수
 * Weak Core + Strong Support 억제 개선 확인
-* Pattern A / Pattern B boundary 개선 확인
-* Strong Core Failure는 현재 Feature Set으로는 unresolved limitation
-  (v0.3에서 재검토 여지)
-* core zero collapse를 v0.3 improvement evidence로 기록
-* Base avg_price_change_12m negative clamp를 v0.3 improvement
-  evidence로 기록
-* hard_negative_false_turn 4건 개별 component 분해(counterfactual
-  분석) 완료 — 새로운 failure mechanism이 아니라 기존 v0.3 evidence의
-  세분화로 확인
-
-OOS2 Validation은 **Completed**.
-
-이 단계에서는 Score를 수정하지 않았다.
-
-**최종 상태(Final Freeze라고 표현하지 않는다)**:
-
-| 항목 | 상태 |
-|---|---|
-| Pattern A Score v0.2 | Frozen baseline |
-| OOS2 Validation | Completed |
-| v0.3 Development | Required |
-
-v0.2 production code는 더 이상 튜닝하지 않지만, v0.3 improvement
-evidence(core zero collapse / strong core persistence / Base negative
-clamp)가 이미 존재하므로 이 설계가 최종 버전이라는 의미의 "Final
-Freeze" 표현은 쓰지 않는다.
-
-## Phase 3. Pattern A Stage Classifier — IN PROGRESS
-
-Score와 별도로 Stage classifier를 재설계한다. 기존 자동 Stage
-heuristic(`PatternAStage`)은 자동 분류 threshold가 미구현 상태였고,
-OOS2의 Manual Stage Audit에서 신뢰할 수 없다는 게 확인됐다
-(pre_breakout 1/5, early_trend 3/5 agreement).
-
-목표 Stage: `BASE` / `TRANSITION` / `EARLY_TREND` / `PROGRESSED` /
-`WEAK`(`pattern_a_feature_set.py`의 `PatternAStage` enum 재사용).
+* Hard Negative False Turn 4건 개별 component 분해 완료
+* v0.3 improvement evidence 기록
 
-**Stage semantic**: Stage는 Score threshold에서 파생되는 값이 아니다.
-
-* Score: Pattern A 후보로서 얼마나 매력적인가.
-* Stage: 현재 Pattern A episode의 lifecycle에서 어디에 있는가.
-
-Stage progression: `WEAK`/`BASE` → `TRANSITION` → `EARLY_TREND` →
-`PROGRESSED`. 단 같은 episode에서 `PROGRESSED` → `EARLY_TREND`로 단순
-회귀하지 않는다.
-
-**Pattern A episode / cycle reset**: Stage는 종목 전체 역사에서
-영구적인 단일 lifecycle이 아니라 현재 Pattern A episode의 lifecycle이다.
-
-```text
-PROGRESSED -> 장기 구조 붕괴 -> 기존 episode 종료
-새로운 장기 안정화 -> 새로운 Pattern A episode -> BASE 또는 TRANSITION부터 다시 시작 가능
-```
-
-cycle reset의 실제 numerical threshold(몇 % 하락/몇 개월/slope 얼마)는
-아직 구현하지 않았다 — Stage Classifier v0.1 설계에서 다룬다.
+---
 
-기준은 달력 시간이 아니라 가격 구조다 — "3개월 지났기 때문에 early" 같은
-규칙을 쓰지 않는다. fast mover는 몇 달 만에도 PROGRESSED가 될 수 있다.
+## Phase 3. Pattern A Stage Classifier v0.1 — DONE (`43ee01c`)
 
-**완료된 groundwork**:
+Score와 완전히 독립적인 주가 사이클 상의 lifecycle 위치 분류기.
 
-* Manual Stage Truth Set 46건 freeze(BASE 10 / TRANSITION 10 /
-  EARLY_TREND 8 / PROGRESSED 13 / WEAK 5)
-* Stage와 Score 의미 분리(단방향 의존 — Stage는 Score를 참조하지 않음)
-* Stage를 current Pattern A episode lifecycle로 정의
-* BASE / WEAK semantic 확정(숫자 gate가 아니라 질적 lifecycle 판단)
-* Pattern A episode 개념 확정
-* cycle reset semantic 확정(numerical threshold는 미구현)
-* provenance validation 완료(각 truth 항목이 실제 원본 dataset에서
-  나왔는지 코드로 검증)
-* 46 snapshot reconstruction validation 완료(look-ahead 없이 재현
-  가능함을 확인)
+목표 Stage:
+* `WEAK`: 장기 하락 또는 베이스 미형성 국면
+* `BASE`: 장기 횡보 및 지지선 구축 국면
+* `TRANSITION`: 단기/중기 이평선 정렬 및 턴어라운드 시도 국면
+* `EARLY_TREND`: 장기 베이스 돌파 및 초기 추세 확장 국면
+* `PROGRESSED`: 장기 추세 과열 및 이격 과다 국면
 
-**Stage Truth Set 상태**: 승인된 상태(46건 — BASE 10 / TRANSITION 10 /
-EARLY_TREND 8 / PROGRESSED 13 / WEAK 5). 앞으로 classifier가 이 truth
-set과 충돌할 경우, truth set을 classifier에 맞추는 것이 아니라
-classifier를 분석한다. 단 새로운 명백한 labeling evidence가 생기기
-전에는 truth set을 다시 튜닝하지 않는다.
+핵심 결과:
+* Manual Stage Truth Set 46건 및 OOS 35건 fixture 100% 통과 (Green)
+* Stage는 Score를 참조하지 않고 오직 주가/이평선 구조적 위치만 평가
 
-**NEXT: Pattern A Stage Classifier v0.1**
+---
 
-목표:
+## Phase 4. Pattern A Evaluator Integration v0.1 — DONE (`51fc202`)
 
-* Score와 독립적인 rule based Stage classifier 구현
-* `HistoricalSnapshot` 또는 `StageLifecycleContext` 기반(단일
-  `FeatureRow` 인자로 고정하지 않음)
-* 현재 episode의 historical path 사용 가능(과거 이력 참조는 look-ahead
-  아님)
-* future data 사용 금지
-* episode reset 감지 필요
-* Stage reason code 제공
-* manual truth set 46건 validation
+종목코드, 종목명, 일봉 데이터, 기준일(`as_of`)을 입력받아 Pattern A 분석 결과를 일관되게 반환하는 Public API.
 
-**validation 방향**: exact match / adjacent mismatch / severe
-mismatch / stage confusion matrix. 특히 확인할 오류:
+핵심 구조:
+* Public API: `evaluate_pattern_a(ticker, name, daily, as_of)`
+* 통합 결과: `PatternAEvaluationResult` (Score, Stage, Candidate State, Feature Snapshot, Flags 등)
+* 해석 상태(Candidate State): `CANDIDATE`, `WATCH`, `LATE`, `BLOCKED`, `INSUFFICIENT_DATA`
 
-* BASE가 너무 빨리 TRANSITION이 되는 문제
-* EARLY_TREND가 TRANSITION에 오래 머무는 문제
-* PROGRESSED가 EARLY_TREND로 내려오는 문제
-* active decline이 BASE 또는 EARLY_TREND로 올라오는 문제
-* Pattern A episode reset 실패
+---
 
-**notes**: 010620(2024-06-30)/042660(2025-01-31)는 truth set에서 제외된
-adjacent boundary challenge case — 향후 validation에서 별도 참고용으로
-쓸 수 있다. 011200 HMM(2024-10-31)은 상대적으로 얇은 근거의 WEAK
-사례라 Classifier v0.1 validation에서 주의 깊게 관찰한다.
+## Phase 5. Data Quality & Universe Preparation v0.1 — DONE (`0ce8012`)
 
-Manual Stage Truth Set을 기준으로 자동 classifier를 별도 검증한다.
-Score threshold와 Stage threshold를 동시에 튜닝하지 않는다.
+전체 시장 스캐너 실행 전 데이터 무결성을 보장하기 위한 감사 계층.
 
-## Phase 4. Pattern A Evaluator Integration — PLANNED
+핵심 결과:
+* Name Lookup Fail-Closed 정책 (조회 실패 시 ticker fallback 대신 `MarketDataError` 발생)
+* 36 Completed Monthly Bars 계약 일치 (`_drop_incomplete_current_month` 적용)
+* UNSORTED_DATE 감지 시 `raw_data_ready = False` 처리
+* QualityAuditor를 통한 캐시 무결성 검증
 
-현재 `FeatureRow -> score_pattern_a()` 중심인 구조를 다음 경로로
-연결한다:
+---
 
-```text
-daily OHLCV -> weekly/monthly resampling -> FeatureRow
-            -> Pattern A Score -> Stage -> Result
-```
+## Phase 6. Pattern A Score Momentum v0.1 — DONE (`707c594`)
 
-목표: 종목 하나와 날짜를 입력하면 Pattern A 분석 결과 하나를 반환할 수
-있는 완전한 API.
+Frozen Pattern A Score v0.2를 완료된 월봉(Completed Monthly) 시간축으로 반복 평가하여 Score 변화량을 산출하는 순수 측정 계층(Pure Measurement Layer).
 
-결과 예: `ticker`, `name`, `pattern_a_score`, `base_score`,
-`transition_score`, `progressed_penalty`, `stage`, `flags`,
-`feature_snapshot`, `insufficient_data`.
+핵심 설계:
+* Public API: `compute_pattern_a_score_momentum(ticker, name, daily, as_of)`
+* Exact Calendar Horizons: 정확한 1M($T-1$), 3M($T-3$), 6M($T-6$) Calendar Month 말일 시점 비교 (No Silent Backfill)
+* Raw Score Delta & Component Delta 분해 (진단용 분해 관측값 제공)
+* 히스토리 요구조건 및 Partial Readiness: Current(36m), 1M(37m), 3M(39m), 6M(42m)
+* Error Provenance 분리: `INSUFFICIENT_HISTORY_*`, `MISSING_MONTHLY_OBSERVATION_*`, `OBSERVATION_ERROR_*`
 
-## Phase 5. Market Data Quality / Corporate Action Handling — PLANNED
+---
 
-전체 시장 Scanner 전에 데이터 품질 정책을 정리한다.
+## Phase 7. Official Common Stock Cache Population — NEXT
 
-현재 확인된 문제:
+KOSPI / KOSDAQ 전체 보통주 유니버스의 일봉 데이터를 KRX로부터 안정적으로 수집/캐싱.
 
-* 일부 종목 OHLC validation 실패
-* 액면분할
-* 인적분할
-* 재상장
-* 장기 거래정지
-* 과거 adjusted price 불연속
-* 36개월 range 왜곡 가능성
+핵심 작업:
+* KOSPI / KOSDAQ 보통주 티커 목록 공식 추출 (우선주, ETF, ETN, 스팩, 리츠 제외)
+* PyKRX 기반 증분 일봉 데이터 수집 및 로컬 Parquet 캐시 구축
+* Data Quality 감사 실행 및 정합성 검증
 
-필요한 작업:
+---
 
-* Corporate Action 처리 정책
-* 분할 전후 가격 연결 정책
-* 거래정지 구간 정책
-* adjusted OHLC validation 정책
-* 경제적으로 불연속인 장기 데이터 처리 방법
-* invalid ticker / snapshot 처리 정책
+## Phase 8. Full Universe Scanner Integration — PLANNED
 
-목표: 전체 시장을 돌렸을 때 데이터 오류 때문에 의미 있는 종목이 대량
-누락되거나 가짜 Pattern A가 생성되지 않도록 한다.
+전체 유니버스를 대상으로 Pattern A Score, Stage, Score Momentum을 일괄 산출하고 다차원으로 분석.
 
-## Phase 6. Score Momentum — PLANNED
+핵심 작업:
+* Universe 병렬/배치 평가 파이프라인 구축
+* 다차원 결과 매트릭스 (Score × Stage × Momentum 1M/3M/6M)
+* 상위 후보군 필터링 및 리포팅
 
-Pattern A Score의 변화 속도를 측정한다.
+---
 
-핵심 개념: `score_momentum_4w = current_pattern_a_score - pattern_a_score_4_weeks_ago`
+## Phase 9. Real Candidate Chart Review — PLANNED
 
-추가 후보: `score_momentum_8w`, base_score 변화, transition_score 변화.
+Scanner 상위 후보를 사람이 직접 검토 (월봉 -> 주봉 -> 일봉).
 
-목표: 절대 Score가 이미 높은 종목보다 "점수가 빠르게 좋아지고 있는
-종목"을 찾는다. 이 프로젝트의 "이미 오른 종목이 아니라 추세가 만들어지는
-종목"이라는 철학과 직접 연결되는 신호다.
+목적:
+* Score가 높은데 실제 차트상 이상한 종목, Corporate Action 왜곡, 하락 추세 반등, 과열 종목 발견
+* False Positive 케이스 수집 및 v0.3 개선 증거 축적
 
-## Phase 7. KOSPI / KOSDAQ Universe Scanner v0.1 — PLANNED
+---
 
-처음으로 전체 Universe를 실제로 스캔한다.
+## Phase 10. Liquidity / Trading Value Filter — PLANNED
 
-초기 단계에서는 "70점 이상 매수 후보" 같은 Hard Threshold를 만들지
-않는다. 먼저 전체 Score distribution을 본다.
+실전 Scanner에서 거래 빈약 종목을 걸러내기 위한 별도 축 (20일/60일 평균 거래대금 등).
 
-종목별 저장 항목: `ticker`, `name`, `pattern_a_score`, `base_score`,
-`transition_score`, `balanced_core_score`, `progressed_penalty`,
-`score_momentum`, `stage`, `flags`, 주요 raw feature.
+---
 
-목표: 실제 수천 종목 Universe에서 Pattern A가 어떤 후보를 만들어내는지
-관찰한다.
+## Phase 11. Relative Strength Infrastructure — PLANNED
 
-## Phase 8. Real Candidate Chart Review — PLANNED
+KOSPI, KOSDAQ 지수 및 업종 대비 상대강도(RS) 산출 인프라 구축 (3M, 6M, 12M RS).
 
-Scanner 상위 후보를 사람이 직접 검토한다.
+---
 
-기본 차트 순서: 월봉 -> 주봉 -> 일봉. 월봉/주봉은 대세 구조 검증, 일봉은
-단기 추세와 진입 timing 확인용이다.
+## Phase 12. Flow Confirmation — PLANNED
 
-초기에는 상위 20~50개 정도를 직접 검토한다.
+외국인 / 기관 순매수 수급 확인 축.
 
-목적: Score가 높은데 실제 차트상 이상한 종목, Corporate Action 왜곡,
-하락 추세 반등, 이미 너무 진행된 종목, 유동성 부족 종목 등을 발견하는 것.
+---
 
-이 단계에서 나온 실패 사례는 Pattern A v0.3 후보로 기록할 수 있지만
-즉시 Score를 튜닝하지 않는다.
+## Phase 13 ~ 17. Pattern B ~ F — PLANNED
 
-## Phase 9. Liquidity / Trading Value Filter — PLANNED
+* **Pattern B**: 장기 하락 추세 종료 및 Stage 2 전환형
+* **Pattern C**: 신고가 직전 고점 압축형
+* **Pattern D**: 상대강도 선행형
+* **Pattern E**: 장기 변동성 수축형 (VCP)
+* **Pattern F**: 실적 턴어라운드 + 차트 선행형
 
-실전 Scanner에서 잡주와 거래 빈약 종목을 걸러내기 위한 별도 축.
+---
 
-raw volume보다 trading_value를 우선한다.
+## Phase 18. Pattern Score Matrix & Market Leader Score — PLANNED
 
-후보: 20일 평균 거래대금, 60일 평균 거래대금, 돌파 구간 거래대금 증가,
-거래대금 percentile, 시장 전체 대비 거래대금 rank.
+독립적인 Pattern A~F 점수와 RS, 수급, 실적, 모멘텀을 종합한 시장 주도주 종합 점수.
 
-초기에는 Pattern A Score에 섞지 않고 별도 eligibility / confirmation
-신호로 사용한다.
-
-## Phase 10. Relative Strength Infrastructure — PLANNED
-
-Pattern D뿐 아니라 전체 Scanner에서 재사용할 공통 RS Feature를 만든다.
-
-비교 대상: KOSPI, KOSDAQ, 업종, 시장 전체 Universe.
-
-기간 후보: 3개월, 6개월, 12개월.
-
-추가 중요 Feature: RS slope, RS acceleration, RS percentile, RS new
-high, price breakout 이전 RS 개선.
-
-목표: 시장보다 먼저 강해지는 종목을 찾는다.
-
-## Phase 11. Flow Confirmation — PLANNED
-
-외국인 / 기관 수급 축.
-
-후보: 외국인 순매수, 기관 순매수, 최근 5일/20일/60일 누적, 시가총액
-대비 순매수 비율, 거래대금 대비 순매수 비율, 가격 상승 + 기관/외국인
-동시 유입.
-
-초기에는 Pattern Score와 독립적으로 검증한다.
-
-## Phase 12. Pattern B — PLANNED
-
-**Pattern B: Long Downtrend Ending -> Stage 2 Transition**
-
-장기 하락이 끝나고 새 상승 추세가 시작되는 유형.
-
-Pattern A와의 차이:
-
-* Pattern A: 장기 Base / 정체 후 상승 전환
-* Pattern B: 장기 하락 추세 종료 후 상승 전환
-
-Pattern A v0.2에서 검토한 downtrend structure Feature
-(`long_term_high_slope_36m`, `prior_leg_drift_36m` — 검증됨, 단조
-threshold로는 미채택)를 Pattern B에서 적극 재사용할 수 있다.
-
-## Phase 13. Pattern C — PLANNED
-
-**Pattern C: High / New High Compression -> Reacceleration**
-
-이미 강한 종목이 고점 부근에서 무너지지 않고 압축된 뒤 다시 상승하는
-구조.
-
-Pattern A에서는 높은 range_position, 큰 MA expansion, 큰 range가
-penalty가 될 수 있지만, Pattern C에서는 강한 주도주의 정상적인 특성이
-될 수 있다.
-
-따라서 Pattern별 Feature 의미가 다르다는 것을 명시한다.
-
-## Phase 14. Pattern D — PLANNED
-
-**Pattern D: Relative Strength Leads Price**
-
-가격 돌파 전에 시장 / 업종 대비 상대강도가 먼저 좋아지는 유형.
-
-Phase 10에서 만든 RS Infrastructure를 재사용한다.
-
-핵심 질문: 가격은 아직 박스 안인데 RS는 이미 신고가 또는 상승 전환
-중인가?
-
-## Phase 15. Pattern E — PLANNED
-
-**Pattern E: Volatility Contraction -> Expansion**
-
-VCP와 유사한 유형.
-
-여기서는 Pattern A에서 약했던 Feature들이 다시 주요 후보가 될 수 있다.
-예: ATR, BB Width, range compression, volume contraction, trading
-value contraction, breakout expansion.
-
-중요: Pattern A에서 Drop 또는 Diagnostic이었던 Feature라고 해서
-프로젝트 전체에서 쓸모없는 Feature는 아니다. Pattern별 검증을
-독립적으로 한다.
-
-## Phase 16. Pattern F — PLANNED
-
-**Pattern F: Earnings Turnaround + Chart Leads Fundamentals**
-
-OpenDART 기반 Fundamental Data Layer를 추가한다.
-
-후보: 매출 성장, 영업이익 성장, 순이익 성장, YoY, QoQ, 적자 축소,
-흑자 전환, 영업이익률 개선.
-
-목표: 실적 개선이 공식 숫자로 완전히 확인되기 전에 차트가 먼저
-개선되는 종목을 찾는다.
-
-## Phase 17. Pattern Score Matrix — PLANNED
-
-각 종목을 A~F 독립 Score로 표현한다.
-
-```text
-Pattern A 82
-Pattern B 15
-Pattern C 41
-Pattern D 76
-Pattern E 64
-Pattern F 70
-```
-
-중요: A~F는 서로 대체 관계가 아니다. 한 종목이 A+D+F 또는 C+D+E처럼
-여러 Pattern을 동시에 만족할 수 있다. 오히려 여러 독립 Pattern이 동시에
-강한 경우 시장 주도주 후보로 의미가 커질 수 있다.
-
-## Phase 18. Market Leader Score — PLANNED
-
-A~F 독립 검증이 끝난 뒤 최종 종합 Score를 설계한다.
-
-후보 구성: Pattern Scores, Relative Strength, Liquidity / Trading
-Value, Foreign / Institutional Flow, Fundamentals, Score Momentum.
-
-중요: Pattern A~F 단순 평균으로 시작하지 않는다. 각 신호의 역할과
-중복성을 검토하고 독립 evidence가 겹칠수록 신뢰도가 높아지는 구조를
-설계한다.
+---
 
 ## Phase 19. Walk Forward / Paper Validation — PLANNED
 
-실제 운영 시점에서 매주 또는 매일 당시 Score, 당시 Feature, 당시 선정
-종목을 저장한다. 그 이후 실제 결과를 추적한다.
+과거 시점 시뮬레이션 및 실시간 전진 추적 검증.
 
-중요: 나중에 과거 차트를 보고 "여기가 좋은 진입점이었다"라고 고르는
-retrospective validation과 구분한다.
-
-이 단계부터 쌓이는 데이터가 장기적으로 가장 중요한 validation
-dataset이 된다.
+---
 
 ## Phase 20. Production Scanner — PLANNED
 
-최종 운영 형태.
+최종 운영 형태의 웹/CLI 대시보드 및 알림 시스템.
 
-예시 출력: `ticker`, `name`, Pattern A~F Score, Market Leader Score,
-Score Momentum, Relative Strength, Trading Value, Foreign Flow,
-Institution Flow, Fundamental Trend, `stage`, `flags`, Candidate
-Reasons.
-
-최종 사용 흐름:
-
-```text
-Quant Scanner -> 후보 압축 -> 월봉 검토 -> 주봉 검토 -> 일봉 진입 timing 검토
-```
+---
 
 ## Near Term Milestones
 
 1. Pattern A Score Design v0.2 — DONE
 2. Pattern A v0.2 OOS2 Validation — DONE
-3. Pattern A Stage Truth Set / Semantic / Episode / Cycle Reset — DONE
-4. Pattern A Stage Classifier v0.1 — NEXT
-5. Pattern A Evaluator Integration
-6. Data Quality / Corporate Action
-7. Score Momentum
-8. Full Universe Scanner
-9. Manual Chart Review
+3. Pattern A Stage Classifier v0.1 — DONE (`43ee01c`)
+4. Pattern A Evaluator Integration v0.1 — DONE (`51fc202`)
+5. Data Quality / Universe Preparation v0.1 — DONE (`0ce8012`)
+6. Pattern A Score Momentum v0.1 — DONE (`707c594`)
+7. Official Common Stock Cache Population — NEXT
+8. Full Universe Scanner Integration — PLANNED
+9. Real Candidate Chart Review — PLANNED
 
-여기까지 완료되면: **Pattern A 기반 실사용 가능한 대세 상승 초입
-Scanner v1**로 본다.
-
-## Mid Term Milestones
-
-* Liquidity
-* Relative Strength
-* Flow
-* Pattern B
-* Pattern C
-* Pattern D
-* Pattern E
-* Pattern F
-
-## Long Term Milestones
-
-* Pattern Score Matrix
-* Market Leader Score
-* Walk Forward Validation
-* Production Scanner
+---
 
 ## Development Principles
 
-**Principle 1**
-Pattern별 Feature를 먼저 독립 검증한다.
-
-**Principle 2**
-한 Pattern에서 실패한 Feature를 다른 Pattern에서도 자동 폐기하지 않는다.
-
-**Principle 3**
-미래 수익률을 이용해 threshold를 최적화하지 않는다.
-
-**Principle 4**
-OOS 데이터를 본 순간 그 데이터는 다음 버전의 development data가 된다.
-
-**Principle 5**
-Score와 Stage를 분리한다.
-
-**Principle 6**
-가능하면 Hard Filter보다 해석 가능한 soft scoring을 우선한다.
-
-**Principle 7**
-전체 Score가 높은 이유를 사람이 설명할 수 있어야 한다.
-
-**Principle 8**
-월봉 / 주봉이 장기 추세 판단의 기본이고 일봉은 단기 추세와 진입
-timing 확인에 사용한다.
-
-**Principle 9**
-실제 전체 시장 Scanner를 돌린 뒤 나오는 예상하지 못한 false positive를
-중요한 검증 데이터로 취급한다.
-
-**Principle 10**
-Pattern A~F가 충분히 검증되기 전에는 Market Leader Score를 성급하게
-만들지 않는다.
+* **Principle 1**: Pattern별 Feature를 먼저 독립 검증한다.
+* **Principle 2**: 한 Pattern에서 실패한 Feature를 다른 Pattern에서도 자동 폐기하지 않는다.
+* **Principle 3**: 미래 수익률을 이용해 threshold를 최적화하지 않는다.
+* **Principle 4**: OOS 데이터를 본 순간 그 데이터는 다음 버전의 development data가 된다.
+* **Principle 5**: Score, Stage, Score Momentum을 독립된 축으로 분리한다.
+* **Principle 6**: 가능하면 Hard Filter보다 해석 가능한 soft scoring을 우선한다.
+* **Principle 7**: 전체 Score가 높은 이유를 사람이 설명할 수 있어야 한다.
+* **Principle 8**: 월봉 / 주봉이 장기 추세 판단의 기본이고 일봉은 단기 추세와 진입 timing 확인에 사용한다.
+* **Principle 9**: 실제 전체 시장 Scanner를 돌린 뒤 나오는 예상하지 못한 false positive를 중요한 검증 데이터로 취급한다.
+* **Principle 10**: Pattern A~F가 충분히 검증되기 전에는 Market Leader Score를 성급하게 만들지 않는다.
