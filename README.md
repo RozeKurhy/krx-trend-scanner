@@ -63,6 +63,9 @@ krx-trend-scanner/
 │       ├── scanner/                # 전체 유니버스 스캔 및 다차원 통합
 │       │   └── full_universe_scanner.py # Pattern A Full Universe Scanner v0.1
 │       │
+│       ├── review/                 # 후보 종목 추출 및 수동 차트 검토 데이터셋
+│       │   └── candidate_review.py # Candidate Review Dataset & Workflow
+│       │
 │       ├── universe/               # 유니버스 준비도 및 데이터 품질 감사
 │       │   └── quality_auditor.py  # Universe Data Quality Auditor
 │       │
@@ -70,7 +73,7 @@ krx-trend-scanner/
 │           ├── historical_snapshot.py
 │           └── feature_report.py
 │
-├── tests/                          # 308개 유닛 및 통합 테스트 (100% Green)
+├── tests/                          # 319개 유닛 및 통합 테스트 (100% Green)
 └── docs/                           # 상세 설계 및 검증 보고서
     ├── roadmap.md                  # 전체 개발 로드맵
     ├── data_layer.md               # 데이터 레이어 설계 문서
@@ -81,7 +84,8 @@ krx-trend-scanner/
         ├── data_quality_universe_v01.md
         ├── pattern_a_score_momentum_v01.md
         ├── krx_common_cache_population_v01.md
-        └── pattern_a_full_universe_scanner_v01.md
+        ├── pattern_a_full_universe_scanner_v01.md
+        └── pattern_a_real_candidate_chart_review_v01.md
 ```
 
 ---
@@ -144,7 +148,8 @@ print(f"6M Score Delta: {momentum_res.horizon_6m.score_delta:+.2f}")
 * [x] **Phase 6**: Pattern A Score Momentum v0.1 Completed
 * [x] **Phase 7**: Official Common Stock Cache Population Completed (Coverage 98.34%)
 * [x] **Phase 8**: Full Universe Scanner Integration Completed (2,528 Stocks)
-* [ ] **Phase 9**: Real Candidate Chart Review (NEXT)
+* [x] **Phase 9A**: Candidate Review Dataset Preparation Completed (180 Candidates)
+* [ ] **Phase 9B**: Human Chart Review (IN PROGRESS - Manual Review Pending)
 * [ ] **Phase 10~17**: Liquidity Filter, RS, Flow, Pattern B~F
 * [ ] **Phase 18~20**: Market Leader Score & Production Scanner
 

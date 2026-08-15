@@ -50,7 +50,7 @@
 | Pattern A Score Momentum v0.1 (`707c594`) | DONE | Calendar 1M/3M/6M Raw & Component Delta 측정 계층 |
 | Official Common Stock Cache Population | DONE | Full Population & Audit `8983e65`, final docs `7ff45fe` |
 | Full Universe Scanner Integration | DONE | Official COMMON 2,528개 스캔 및 매트릭스 통합 완료 |
-| Real Candidate Chart Review | NEXT | Scanner 후보 사람 직접 차트 검토 (월->주->일) |
+| Real Candidate Chart Review (Phase 9A/9B) | IN PROGRESS | Phase 9A (Dataset Preparation) DONE, Phase 9B (Human Review) PENDING |
 
 **Pattern B~F**: 미착수(NOT STARTED)  
 **전체 시장 Scanner**: 완료(DONE - Phase 8 Integration 완료)  
@@ -163,19 +163,23 @@ Official KRX KOSPI / KOSDAQ `AssetType.COMMON` universe를 대상으로 Pattern 
 
 ---
 
-## Phase 9. Real Candidate Chart Review — NEXT
+## Phase 9. Real Candidate Chart Review — IN PROGRESS
 
 Scanner 상위 후보를 사람이 직접 검토 (월봉 -> 주봉 -> 일봉).
 
-목적:
-* Score가 높은데 실제 차트상 이상한 종목, Corporate Action 왜곡, 하락 추세 반등, 과열 종목 발견
-* False Positive 케이스 수집 및 v0.3 개선 증거 축적
+구성 및 진행 상태:
+* **Phase 9A. Candidate Review Dataset Preparation — DONE**:
+  * 180개 공인 CANDIDATE 종목 (TRANSITION 168개, EARLY_TREND 12개) 추출 및 무결성 검증 완료
+  * Review Dataset 아티팩트(`pattern_a_candidate_source_20260814.csv`, `pattern_a_candidate_manual_review_20260814.csv`, `summary.json`) 생성 및 Overwrite Protection 적용
+  * 인간 차트 검토 가이드라인 및 체크리스트 문서화 (`docs/validation/pattern_a_real_candidate_chart_review_v01.md`)
+* **Phase 9B. Human Chart Review — HUMAN REVIEW PENDING**:
+  * 사용자가 실제 차트(월봉 ➔ 주봉 ➔ 일봉)를 보며 `manual_pattern_fit`, `manual_stage_fit`, `manual_notes` 수동 라벨링 수행.
 
 ---
 
-## Phase 10. Liquidity / Trading Value Filter — PLANNED
+## Phase 10. Liquidity / Trading Value Filter — HOLD
 
-실전 Scanner에서 거래 빈약 종목을 걸러내기 위한 별도 축 (20일/60일 평균 거래대금 등).
+실전 Scanner에서 거래 빈약 종목을 걸러내기 위한 별도 축 (20일/60일 평균 거래대금 등). Phase 9 Human Review 완료 후 착수.
 
 ---
 
@@ -228,8 +232,8 @@ KOSPI, KOSDAQ 지수 및 업종 대비 상대강도(RS) 산출 인프라 구축 
 5. Data Quality / Universe Preparation v0.1 — DONE (`0ce8012`)
 6. Pattern A Score Momentum v0.1 — DONE (`707c594`)
 7. Official Common Stock Cache Population — DONE (`8983e65`, `7ff45fe`)
-8. Full Universe Scanner Integration — DONE
-9. Real Candidate Chart Review — NEXT
+8. Full Universe Scanner Integration — DONE (`13ab6f4`)
+9. Real Candidate Chart Review (Phase 9A Dataset Prep) — DONE / Phase 9B (Human Review) PENDING
 
 ---
 
