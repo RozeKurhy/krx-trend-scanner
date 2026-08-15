@@ -48,8 +48,8 @@
 | Pattern A Evaluator Integration v0.1 (`51fc202`) | DONE | Single-stock 종단간 통합 API 및 Candidate State |
 | Data Quality & Universe Preparation v0.1 (`0ce8012`) | DONE | Fail-Closed 종목명 조회, 36m 계약, 품질 감사 |
 | Pattern A Score Momentum v0.1 (`707c594`) | DONE | Calendar 1M/3M/6M Raw & Component Delta 측정 계층 |
-| Official Common Stock Cache Population (`62fa327`) | DONE | KRX 공식 보통주 2,528개 캐시 구축 (Coverage 98.34%, 0 Violation) |
-| Full Universe Scanner Integration | NEXT | 전 종목 일괄 스캔 및 Score × Stage × Candidate State × Momentum 통합 출력 |
+| Official Common Stock Cache Population | DONE | Full Population & Audit `8983e65`, final docs `7ff45fe` |
+| Full Universe Scanner Integration | NEXT | Official COMMON 대상 Score × Stage × Candidate State × Momentum 통합 |
 
 **Pattern B~F**: 미착수(NOT STARTED)  
 **전체 시장 Scanner**: 준비 중(NEXT - Scanner Integration 착수)  
@@ -134,27 +134,35 @@ Frozen Pattern A Score v0.2를 완료된 월봉(Completed Monthly) 시간축으�
 
 ---
 
-## Phase 7. Official Common Stock Cache Population — DONE (`62fa327`)
+## Phase 7. Official Common Stock Cache Population — DONE
 
-KOSPI / KOSDAQ 전체 보통주 유니버스의 일봉 데이터를 KRX로부터 안정적으로 수집/캐싱 완료.
+KOSPI / KOSDAQ 보통주 2,528개 대상 원자적 캐시(Atomic Write) 구축 및 데이터 무결성 검증 완료.
+
+핵심 증거:
+* Full Population & Final Audit: `8983e65`
+* Final Documentation & Provenance Cleanup: `7ff45fe`
 
 핵심 성과:
-* KOSPI / KOSDAQ 보통주 2,528개 대상 원자적 캐시(Atomic Write) 파이프라인 구축
 * Official COMMON Coverage 98.34% (2,486 / 2,528) 달성
-* 구조적 오염 0건 (Future/Duplicate/Unsorted/Schema Violations 0)
-* History & Momentum 1M/3M/6M Readiness 87.09% ~ 89.34% 확보
+* 구조적 오염 0건 (Future/Duplicate/Unsorted/Schema Violations 0, Temp Residue 0)
+* Contract Critical Readiness 87.09% ~ 89.34% 확보 (6M Momentum 2,165개 계산 가능)
 
 ---
 
 ## Phase 8. Full Universe Scanner Integration — NEXT
 
-전체 유니버스를 대상으로 Pattern A Score, Stage, Candidate State, Score Momentum을 일괄 산출하여 다차원 매트릭스로 통합.
+Official KRX KOSPI / KOSDAQ `AssetType.COMMON` universe를 대상으로 Pattern A Score, Official Stage, Candidate State, Score Momentum, Readiness 및 Quality Flags를 종목별 단일 row로 통합.
 
-핵심 작업:
-* Universe 배치 평가 파이프라인 구축
-* 종목별 Score × Stage × Candidate State × Momentum (1M/3M/6M) × Readiness 통합 출력
-* 전체 유니버스 결과 매트릭스 생성 및 분포 관찰 (Distribution Inspection)
-* (주의: Ranking, Cutoff 필터링, Unified Score 산출은 포함하지 않음)
+핵심 설계 및 유니버스 계약:
+* **평가 대상 (Evaluation Scope)**: Official KRX KOSPI / KOSDAQ 보통주 (`AssetType.COMMON`) (현재 2026-08-14 snapshot 기준 2,528개)
+* **제외 자산 (Excluded Assets)**: PREFERRED, SPAC, REIT, ETF, ETN, UNKNOWN, KONEX는 Scanner 계산 대상에서 엄격히 배제.
+* **Fail-Closed 처리**: COMMON 종목 중 캐시 누락 또는 36M/42M 히스토리 부족 종목은 universe에서 삭제하지 않고 `INSUFFICIENT_DATA` 및 품질 플래그를 통해 row 단위로 fail closed 유지.
+* **핵심 작업 (Integration Only)**:
+  * Universe 배치 평가 파이프라인 구축
+  * 종목별 Score × Stage × Candidate State × Momentum (1M/3M/6M) × Readiness 통합 출력
+  * 전체 유니버스 결과 매트릭스 생성 및 분포 관찰 (Distribution Inspection)
+* **주의 및 제외 정책**:
+  * Ranking, Top N, Cutoff 필터링, Unified/Weighted Score 산출, BUY/SELL 해석은 포함하지 않음 (분포 분석 후 별도 후속 단계에서 다룸).
 
 ---
 
@@ -222,7 +230,7 @@ KOSPI, KOSDAQ 지수 및 업종 대비 상대강도(RS) 산출 인프라 구축 
 4. Pattern A Evaluator Integration v0.1 — DONE (`51fc202`)
 5. Data Quality / Universe Preparation v0.1 — DONE (`0ce8012`)
 6. Pattern A Score Momentum v0.1 — DONE (`707c594`)
-7. Official Common Stock Cache Population — DONE (`62fa327`)
+7. Official Common Stock Cache Population — DONE (`8983e65`, `7ff45fe`)
 8. Full Universe Scanner Integration — NEXT
 9. Real Candidate Chart Review — PLANNED
 
