@@ -15,6 +15,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+import pandas as pd
 
 from trend_scanner.data.cache import ParquetCache
 from trend_scanner.patterns.pattern_a_score import score_pattern_a
@@ -355,9 +356,12 @@ _KNOWN_CASES = [
 
 def _cache_has_all_known_case_tickers() -> bool:
     cache = ParquetCache(base_dir=_CACHE_DIR)
-    for ticker, _, _, _, _ in _KNOWN_CASES:
+    for ticker, _, date_str, _, _ in _KNOWN_CASES:
         daily = cache.load(ticker)
         if daily is None or daily.empty:
+            return False
+        req_start = pd.Timestamp(date_str) - pd.DateOffset(months=36)
+        if daily.index.min() > req_start:
             return False
     return True
 

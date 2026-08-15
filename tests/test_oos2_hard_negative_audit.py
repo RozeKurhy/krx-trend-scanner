@@ -15,6 +15,7 @@ import sys
 from pathlib import Path
 
 import pytest
+import pandas as pd
 
 from trend_scanner.data.cache import ParquetCache
 from trend_scanner.validation.oos_v02_manifest import OOS_V02_VALIDATION_SNAPSHOTS
@@ -35,6 +36,9 @@ def _cache_has_all_manifest_tickers() -> bool:
     for snap in OOS_V02_VALIDATION_SNAPSHOTS:
         daily = cache.load(snap.ticker)
         if daily is None or daily.empty:
+            return False
+        req_start = pd.Timestamp(snap.snapshot_date) - pd.DateOffset(months=36)
+        if daily.index.min() > req_start:
             return False
     return True
 
