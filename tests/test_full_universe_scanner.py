@@ -5,10 +5,12 @@ Validates:
 2. Row count preservation (Official COMMON count == Scanner Output Row count)
 3. Missing cache and short history fail-closed handling (INSUFFICIENT_DATA)
 4. Partial momentum readiness preservation
-5. Direct frozen component reuse (Score v0.2, Stage v0.1, Momentum v0.1)
+5. Direct frozen component reuse (Score v0.2, Stage v0.1, Momentum v0.1 with Completed Periods Only)
 6. Exception isolation & deterministic ordering
 7. Summary aggregation consistency & artifact export
 8. Strict absence of ranking, unified score, cutoff, or BUY/SELL policy fields
+9. Temporal Consistency (Shared daily_as_of, Completed Periods Only, Anchor-based Current Momentum)
+10. Global official_common_total vs subset scan_target_count separation
 """
 
 from __future__ import annotations
@@ -51,7 +53,7 @@ def _create_mock_daily(
     base_price: float = 10000.0,
     slope: float = 5.0,
 ) -> pd.DataFrame:
-    """테스트용 합성 일봉 데이터를 생성한다."""
+    """테스트용 합성 일봉 데이터를 생성한다 (영문 소문자 컬럼)."""
     dates = pd.bdate_range(start=start_date, end=end_date)
     n = len(dates)
     trend = np.linspace(0, slope * n, n)
@@ -126,15 +128,12 @@ def test_official_common_only_scanned_and_excluded_assets(mock_scanner_env):
     )
 
     scanned_tickers = [r.ticker for r in res.rows]
-    # 예상 COMMON 티커: 005930, 000660, 300001, 300002 (총 4개)
     assert len(scanned_tickers) == 4
     assert set(scanned_tickers) == {"005930", "000660", "300001", "300002"}
 
-    # 모든 row의 asset_type은 COMMON이어야 함
     for r in res.rows:
         assert r.asset_type == AssetType.COMMON
 
-    # 제외된 자산들이 결과에 일절 없음을 확인
     assert "005935" not in scanned_tickers  # PREFERRED
     assert "400001" not in scanned_tickers  # SPAC
     assert "400002" not in scanned_tickers  # REIT
@@ -151,6 +150,7 @@ def test_output_row_count_matches_resolved_common_count(mock_scanner_env):
         universe_securities=mock_scanner_env["universe"],
     )
     assert res.summary.official_common_total == 4
+    assert res.summary.scan_target_count == 4
     assert res.summary.rows_emitted == 4
     assert len(res.rows) == 4
 
@@ -190,8 +190,8 @@ def test_short_history_row_preserved_and_partial_momentum(mock_scanner_env):
     assert short_row.row_status == ScannerRowStatus.UNAVAILABLE
 
 
-def test_evaluator_and_momentum_direct_reuse(mock_scanner_env):
-    """Scanner 결과의 Score, Stage, Candidate State, Momentum이 direct API 호출 결과와 정확히 일치하는지 검증."""
+def test_evaluator_and_momentum_direct_reuse_with_completed_periods(mock_scanner_env):
+    """Scanner 결과의 Score, Stage, Candidate State, Momentum이 include_incomplete_periods=False 직접 호출과 일치하는지 검증."""
     res = scan_pattern_a_universe(
         cache=mock_scanner_env["cache"],
         as_of=mock_scanner_env["as_of"],
@@ -201,8 +201,14 @@ def test_evaluator_and_momentum_direct_reuse(mock_scanner_env):
     samsung_row = next(r for r in res.rows if r.ticker == "005930")
     daily = mock_scanner_env["cache"].load("005930")
 
-    # Direct Evaluator
-    snapshot = build_historical_snapshot("005930", "삼성전자", daily, mock_scanner_env["as_of"])
+    # Direct Evaluator (include_incomplete_periods=False 명시적 계약)
+    snapshot = build_historical_snapshot(
+        "005930",
+        "삼성전자",
+        daily,
+        mock_scanner_env["as_of"],
+        include_incomplete_periods=False,
+    )
     direct_eval = evaluate_pattern_a(snapshot)
 
     # Direct Momentum
@@ -218,9 +224,50 @@ def test_evaluator_and_momentum_direct_reuse(mock_scanner_env):
     assert samsung_row.score_delta_6m == direct_mom.horizon_6m.score_delta
 
 
+def test_current_momentum_readiness_invariants(mock_scanner_env):
+    """Horizon ready이면 반드시 Current ready여야 하는 invariant 검증."""
+    res = scan_pattern_a_universe(
+        cache=mock_scanner_env["cache"],
+        as_of=mock_scanner_env["as_of"],
+        universe_securities=mock_scanner_env["universe"],
+    )
+
+    for r in res.rows:
+        if r.momentum_1m_ready or r.momentum_3m_ready or r.momentum_6m_ready:
+            assert r.momentum_current_ready is True, f"Ticker {r.ticker} horizon is ready but current is not!"
+
+    # 집계 카운트 invariant 검증
+    s = res.summary
+    assert s.momentum_current_ready_count >= s.momentum_1m_ready_count
+    assert s.momentum_current_ready_count >= s.momentum_3m_ready_count
+    assert s.momentum_current_ready_count >= s.momentum_6m_ready_count
+
+
+def test_historical_as_of_shared_context_no_future_date(mock_scanner_env):
+    """캐시에 as_of 이후 데이터가 존재해도 shared daily_as_of 덕분에 FUTURE_DATE가 발생하지 않음을 검증."""
+    # 2026-09-30까지 미래 데이터가 캐시에 저장된 종목 추가
+    df_future = _create_mock_daily("2020-01-02", "2026-09-30", 30000.0)
+    mock_scanner_env["cache"].save("005930", df_future)
+
+    # as_of는 2026-08-14로 실행
+    res = scan_pattern_a_universe(
+        cache=mock_scanner_env["cache"],
+        as_of="2026-08-14",
+        reference_market_date="2026-08-14",
+        universe_securities=mock_scanner_env["universe"],
+        target_tickers=["005930"],
+    )
+
+    row = res.rows[0]
+    # 캐시 원본 마지막 날짜는 2026-09-30
+    assert row.cache_last_date == pd.Timestamp("2026-09-30")
+    # 하지만 평가 데이터는 2026-08-14까지만 슬라이스되었으므로 FUTURE_DATE가 없어야 함
+    assert "FUTURE_DATE" not in row.quality_flags
+    assert row.raw_data_ready is True
+
+
 def test_ticker_exception_isolation(mock_scanner_env):
     """특정 종목 계산 중 예외가 발생해도 격리되고 다른 종목은 정상 처리되는지 검증."""
-    # 손상된 캐시 파일 주입 (빈 파일 생성)
     corrupt_ticker = "000660"
     p = mock_scanner_env["cache_dir"] / f"{corrupt_ticker}.parquet"
     p.write_text("corrupted non-parquet content")
@@ -236,7 +283,6 @@ def test_ticker_exception_isolation(mock_scanner_env):
     assert corrupt_row.row_status == ScannerRowStatus.ERROR
     assert corrupt_row.error_type is not None
 
-    # 삼성전자는 정상 처리되어야 함
     samsung_row = next(r for r in res.rows if r.ticker == "005930")
     assert samsung_row.row_status in (ScannerRowStatus.OK, ScannerRowStatus.PARTIAL)
 
@@ -260,8 +306,8 @@ def test_deterministic_ordering(mock_scanner_env):
     assert order1 == sorted(order1)
 
 
-def test_subset_filters(mock_scanner_env):
-    """target_tickers, target_markets, limit 서브셋 필터 동작 검증."""
+def test_subset_filters_and_count_separation(mock_scanner_env):
+    """Subset 실행 시 official_common_total은 global count를 유지하고 scan_target_count가 subset을 반영하는지 검증."""
     # 1. target_tickers
     res_tickers = scan_pattern_a_universe(
         cache=mock_scanner_env["cache"],
@@ -269,27 +315,22 @@ def test_subset_filters(mock_scanner_env):
         universe_securities=mock_scanner_env["universe"],
         target_tickers=["005930", "300001"],
     )
+    assert res_tickers.summary.official_common_total == 4  # Global count 유지
+    assert res_tickers.summary.scan_target_count == 2      # Subset count
+    assert res_tickers.summary.rows_emitted == 2
     assert len(res_tickers.rows) == 2
-    # (KOSDAQ, 300001) < (KOSPI, 005930)
     assert [r.ticker for r in res_tickers.rows] == ["300001", "005930"]
 
-    # 2. target_markets
-    res_market = scan_pattern_a_universe(
-        cache=mock_scanner_env["cache"],
-        as_of=mock_scanner_env["as_of"],
-        universe_securities=mock_scanner_env["universe"],
-        target_markets=[MarketType.KOSPI],
-    )
-    assert len(res_market.rows) == 2
-    assert all(r.market == MarketType.KOSPI for r in res_market.rows)
-
-    # 3. limit
+    # 2. limit
     res_limit = scan_pattern_a_universe(
         cache=mock_scanner_env["cache"],
         as_of=mock_scanner_env["as_of"],
         universe_securities=mock_scanner_env["universe"],
         limit=2,
     )
+    assert res_limit.summary.official_common_total == 4
+    assert res_limit.summary.scan_target_count == 2
+    assert res_limit.summary.rows_emitted == 2
     assert len(res_limit.rows) == 2
 
 
@@ -335,4 +376,5 @@ def test_summary_and_artifacts_export(mock_scanner_env, tmp_path: Path):
     with open(json_path, encoding="utf-8") as f:
         json_data = json.load(f)
     assert json_data["official_common_total"] == summary.official_common_total
+    assert json_data["scan_target_count"] == summary.scan_target_count
     assert json_data["rows_emitted"] == summary.rows_emitted

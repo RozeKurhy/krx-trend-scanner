@@ -109,14 +109,22 @@ uv run pytest
 ```python
 from trend_scanner.data.cache import ParquetCache
 from trend_scanner.patterns import evaluate_pattern_a, compute_pattern_a_score_momentum
+from trend_scanner.validation.historical_snapshot import build_historical_snapshot
 
 cache = ParquetCache()
 daily = cache.load("000660")
 
-# 1. 단일 시점 종합 평가 (Score + Stage + Candidate State)
-eval_res = evaluate_pattern_a("000660", "SK하이닉스", daily, as_of="2023-11-30")
+# 1. 단일 시점 종합 평가 (Score + Stage + Candidate State, Completed Periods Only)
+snapshot = build_historical_snapshot(
+    ticker="000660",
+    name="SK하이닉스",
+    daily=daily,
+    snapshot_date="2023-11-30",
+    include_incomplete_periods=False,
+)
+eval_res = evaluate_pattern_a(snapshot)
 print(f"Score: {eval_res.score:.2f}")
-print(f"Stage: {eval_res.stage.value}")
+print(f"Stage: {eval_res.lifecycle_stage.value}")
 print(f"Candidate State: {eval_res.candidate_state.value}")
 
 # 2. 시간축 Score Momentum 측정 (1M, 3M, 6M Raw & Component Delta)

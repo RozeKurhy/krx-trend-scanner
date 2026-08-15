@@ -246,6 +246,7 @@ class PatternAUniverseScanSummary:
     requested_as_of: str
     reference_market_date: str
     official_common_total: int
+    scan_target_count: int
     rows_emitted: int
 
     # Counts
@@ -279,6 +280,7 @@ class PatternAUniverseScanSummary:
             "requested_as_of": self.requested_as_of,
             "reference_market_date": self.reference_market_date,
             "official_common_total": self.official_common_total,
+            "scan_target_count": self.scan_target_count,
             "rows_emitted": self.rows_emitted,
             "cache_present_count": self.cache_present_count,
             "cache_missing_count": self.cache_missing_count,
@@ -403,6 +405,14 @@ def scan_pattern_a_universe(
                 except ValueError:
                     pass
 
+    # 2. Authoritative Universe 로딩 및 COMMON 종목 추출
+    if universe_securities is None:
+        raw_univ = load_krx_equity_universe(as_of=ref_market_date)
+    else:
+        raw_univ = universe_securities
+
+    # 2.1 전체 Global Official COMMON 종목 목록 (official_common_total 계산용)
+    all_common_targets: list[tuple[str, str, MarketType]] = []
     for item in raw_univ:
         if isinstance(item, UniverseSecurity):
             t = item.ticker
@@ -417,52 +427,68 @@ def scan_pattern_a_universe(
             except ValueError:
                 m = MarketType.UNKNOWN
 
-        # 시장 필터 (KOSPI / KOSDAQ만 허용)
-        if m not in (MarketType.KOSPI, MarketType.KOSDAQ):
-            continue
+        if m in (MarketType.KOSPI, MarketType.KOSDAQ):
+            if classify_asset_type(t, n) == AssetType.COMMON:
+                all_common_targets.append((t, n, m))
 
-        # 자산 분류 (AssetType.COMMON만 허용)
-        asset_type = classify_asset_type(t, n)
-        if asset_type != AssetType.COMMON:
-            continue
+    all_common_targets.sort(key=lambda x: (x[2].value, x[0]))
+    official_common_total = len(all_common_targets)
 
-        # Ticker / Market subset filter
+    # 2.2 Subset Filter 적용 (target_tickers, target_markets, limit)
+    target_ticker_set = set(target_tickers) if target_tickers is not None else None
+    target_market_set: set[MarketType] | None = None
+    if target_markets is not None:
+        target_market_set = set()
+        for m in target_markets:
+            if isinstance(m, MarketType):
+                target_market_set.add(m)
+            else:
+                try:
+                    target_market_set.add(MarketType(str(m).upper()))
+                except ValueError:
+                    pass
+
+    scan_targets: list[tuple[str, str, MarketType]] = []
+    for t, n, m in all_common_targets:
         if target_ticker_set is not None and t not in target_ticker_set:
             continue
         if target_market_set is not None and m not in target_market_set:
             continue
-
-        common_targets.append((t, n, m))
-
-    # Deterministic 정렬 (market -> ticker)
-    common_targets.sort(key=lambda x: (x[2].value, x[0]))
+        scan_targets.append((t, n, m))
 
     if limit is not None and limit > 0:
-        common_targets = common_targets[:limit]
+        scan_targets = scan_targets[:limit]
 
-    official_common_total = len(common_targets)
+    scan_target_count = len(scan_targets)
 
-    # 3. Ticker별 순차 평가 (One Cache Load per Ticker, Exception Isolated)
+    # 3. Ticker별 순차 평가 (One Cache Load -> One daily_as_of Slice -> Shared Context)
     rows: list[PatternAUniverseScanRow] = []
 
-    for ticker, name, market in common_targets:
+    for ticker, name, market in scan_targets:
         try:
-            # 3.1 1회 단일 캐시 로드
-            daily = parquet_cache.load(ticker)
+            # 3.1 1회 단일 캐시 로드 및 물리적 캐시 메타데이터
+            raw_daily = parquet_cache.load(ticker)
+            has_raw_cache = raw_daily is not None and not raw_daily.empty
+            cache_first_raw = raw_daily.index.min() if has_raw_cache else None
+            cache_last_raw = raw_daily.index.max() if has_raw_cache else None
+            raw_rows_count = len(raw_daily) if has_raw_cache else 0
 
-            # 3.2 Data Quality & Freshness 감사
+            # 3.2 Single Temporal Context 생성 (Lookahead 배제 & FUTURE_DATE 방지)
+            if has_raw_cache and raw_daily is not None:
+                daily_as_of = raw_daily.loc[raw_daily.index <= req_as_of]
+            else:
+                daily_as_of = pd.DataFrame()
+
+            # 3.3 Data Quality & Freshness 감사 (daily_as_of 컨텍스트 사용)
             quality_record = audit_ticker_quality(
                 ticker=ticker,
                 name=name,
                 market=market,
-                daily=daily,
+                daily=daily_as_of if not daily_as_of.empty else None,
                 reference_market_date=ref_market_date,
             )
 
             cache_present = quality_record.cache_present
-            cache_first = quality_record.first_date
-            cache_last = quality_record.last_date
-            daily_rows = quality_record.rows
             completed_months = quality_record.history_months
             freshness = quality_record.freshness_status
             staleness_days = quality_record.staleness_trading_days
@@ -475,8 +501,8 @@ def scan_pattern_a_universe(
             stage_ready = quality_record.stage_ready
             evaluator_ready = quality_record.evaluator_ready
 
-            # 3.3 Missing Cache Fail-Closed 처리
-            if not cache_present or daily is None or daily.empty:
+            # 3.4 Missing Cache Fail-Closed 처리
+            if not cache_present or daily_as_of.empty:
                 row = PatternAUniverseScanRow(
                     ticker=ticker,
                     name=name,
@@ -484,10 +510,10 @@ def scan_pattern_a_universe(
                     asset_type=AssetType.COMMON,
                     requested_as_of=req_as_of,
                     effective_as_of=None,
-                    cache_present=False,
-                    cache_first_date=None,
-                    cache_last_date=None,
-                    daily_rows=0,
+                    cache_present=has_raw_cache,
+                    cache_first_date=cache_first_raw,
+                    cache_last_date=cache_last_raw,
+                    daily_rows=raw_rows_count,
                     completed_month_count=0,
                     freshness_status=FreshnessStatus.UNKNOWN,
                     staleness_trading_days=-1,
@@ -517,13 +543,13 @@ def scan_pattern_a_universe(
                 rows.append(row)
                 continue
 
-            # 3.4 Historical Snapshot & Evaluator 실행
+            # 3.5 Historical Snapshot & Evaluator 실행 (Completed Periods Only)
             snapshot = build_historical_snapshot(
                 ticker=ticker,
                 name=name,
-                daily=daily,
+                daily=daily_as_of,
                 snapshot_date=req_as_of,
-                include_incomplete_periods=True,
+                include_incomplete_periods=False,
             )
 
             eval_res: PatternAEvaluationResult = evaluate_pattern_a(snapshot)
@@ -543,18 +569,25 @@ def scan_pattern_a_universe(
             sub_align = eval_res.score_result.alignment_bonus
             sub_prog = eval_res.score_result.progressed_penalty
 
-            # 3.5 Score Momentum 실행
+            # 3.6 Score Momentum 실행 및 Current Observation 기반 Readiness 산출
             momentum_res: PatternAScoreMomentumResult = compute_pattern_a_score_momentum(
                 ticker=ticker,
                 name=name,
-                daily=daily,
+                daily=daily_as_of,
                 as_of=req_as_of,
             )
 
-            mom_curr_ready = 0 in momentum_res.available_horizons or (
-                len(momentum_res.observations) > 0
-                and momentum_res.observations[0].score is not None
+            current_obs = next(
+                (
+                    obs
+                    for obs in momentum_res.observations
+                    if momentum_res.momentum_anchor is not None
+                    and obs.anchor_date == momentum_res.momentum_anchor
+                ),
+                None,
             )
+            mom_curr_ready = current_obs is not None and current_obs.score is not None
+
             mom_1m_ready = momentum_res.horizon_1m.ready
             mom_3m_ready = momentum_res.horizon_3m.ready
             mom_6m_ready = momentum_res.horizon_6m.ready
@@ -574,7 +607,7 @@ def scan_pattern_a_universe(
             trans_d_3m = momentum_res.horizon_3m.transition_score_delta
             trans_d_6m = momentum_res.horizon_6m.transition_score_delta
 
-            # 3.6 Row Status 결정
+            # 3.7 Row Status 결정
             if pattern_score is not None and official_stage is not None:
                 if mom_1m_ready and mom_3m_ready and mom_6m_ready:
                     row_status = ScannerRowStatus.OK
@@ -590,10 +623,10 @@ def scan_pattern_a_universe(
                 asset_type=AssetType.COMMON,
                 requested_as_of=req_as_of,
                 effective_as_of=snapshot.effective_as_of,
-                cache_present=True,
-                cache_first_date=cache_first,
-                cache_last_date=cache_last,
-                daily_rows=daily_rows,
+                cache_present=has_raw_cache,
+                cache_first_date=cache_first_raw,
+                cache_last_date=cache_last_raw,
+                daily_rows=raw_rows_count,
                 completed_month_count=completed_months,
                 freshness_status=freshness,
                 staleness_trading_days=staleness_days,
@@ -725,6 +758,7 @@ def scan_pattern_a_universe(
         requested_as_of=req_as_of.strftime("%Y-%m-%d"),
         reference_market_date=ref_market_date,
         official_common_total=official_common_total,
+        scan_target_count=scan_target_count,
         rows_emitted=len(rows),
         cache_present_count=cache_present_cnt,
         cache_missing_count=cache_missing_cnt,
