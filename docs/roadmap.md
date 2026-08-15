@@ -48,11 +48,11 @@
 | Pattern A Evaluator Integration v0.1 (`51fc202`) | DONE | Single-stock 종단간 통합 API 및 Candidate State |
 | Data Quality & Universe Preparation v0.1 (`0ce8012`) | DONE | Fail-Closed 종목명 조회, 36m 계약, 품질 감사 |
 | Pattern A Score Momentum v0.1 (`707c594`) | DONE | Calendar 1M/3M/6M Raw & Component Delta 측정 계층 |
-| Official Common Stock Cache Population | NEXT | KRX 공식 보통주 유니버스 일봉 캐시 수집 |
+| Official Common Stock Cache Population | IN PROGRESS | KRX 공식 보통주 유니버스 일봉 캐시 수집 (Pipeline 완료, Full Population 진행 중) |
 | Full Universe Scanner Integration | PLANNED | 전 종목 일괄 스캔 및 순위/모멘텀 분석 |
 
 **Pattern B~F**: 미착수(NOT STARTED)  
-**전체 시장 Scanner**: 준비 중(NEXT)  
+**전체 시장 Scanner**: 준비 중(HOLD - Full Population 완료 대기)  
 **Market Leader Score**: 미착수(NOT STARTED)  
 
 ---
@@ -134,7 +134,7 @@ Frozen Pattern A Score v0.2를 완료된 월봉(Completed Monthly) 시간축으�
 
 ---
 
-## Phase 7. Official Common Stock Cache Population — NEXT
+## Phase 7. Official Common Stock Cache Population — IN PROGRESS
 
 KOSPI / KOSDAQ 전체 보통주 유니버스의 일봉 데이터를 KRX로부터 안정적으로 수집/캐싱.
 
@@ -145,7 +145,7 @@ KOSPI / KOSDAQ 전체 보통주 유니버스의 일봉 데이터를 KRX로부터
 
 ---
 
-## Phase 8. Full Universe Scanner Integration — PLANNED
+## Phase 8. Full Universe Scanner Integration — PLANNED (HOLD)
 
 전체 유니버스를 대상으로 Pattern A Score, Stage, Score Momentum을 일괄 산출하고 다차원으로 분석.
 
@@ -220,8 +220,8 @@ KOSPI, KOSDAQ 지수 및 업종 대비 상대강도(RS) 산출 인프라 구축 
 4. Pattern A Evaluator Integration v0.1 — DONE (`51fc202`)
 5. Data Quality / Universe Preparation v0.1 — DONE (`0ce8012`)
 6. Pattern A Score Momentum v0.1 — DONE (`707c594`)
-7. Official Common Stock Cache Population — NEXT
-8. Full Universe Scanner Integration — PLANNED
+7. Official Common Stock Cache Population — IN PROGRESS
+8. Full Universe Scanner Integration — PLANNED (HOLD)
 9. Real Candidate Chart Review — PLANNED
 
 ---

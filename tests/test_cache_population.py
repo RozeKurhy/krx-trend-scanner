@@ -480,3 +480,37 @@ def test_subset_target_coverage_vs_global_coverage(tmp_path: Path):
     assert summary.created_count == 2
     assert summary.target_coverage_pct_after == 100.0          # 2 / 2
     assert summary.official_common_coverage_pct_after == 50.0  # 2 / 4
+
+
+def test_legacy_property_aliases_and_global_missing(tmp_path: Path):
+    """21. Legacy property alias들이 올바르게 위임되고 cache_missing_before가 Global COMMON scope인지 검증."""
+    cache = ParquetCache(base_dir=tmp_path)
+    dates = pd.date_range("2021-08-14", "2026-08-14", freq="B")
+    cache.save("005930", _make_mock_daily(dates))
+    cache.save("999999", _make_mock_daily(dates))  # orphan
+
+    univ = [
+        UniverseSecurity(ticker="005930", name="삼성전자", market=MarketType.KOSPI),
+        UniverseSecurity(ticker="000660", name="SK하이닉스", market=MarketType.KOSPI),
+        UniverseSecurity(ticker="035420", name="NAVER", market=MarketType.KOSPI),
+    ]
+    provider = FakeProvider()
+
+    # subset: SK하이닉스 1개만 실행
+    summary = populate_common_stock_cache(
+        cache=cache,
+        provider=provider,
+        reference_market_date="2026-08-14",
+        universe_securities=univ,
+        tickers=["000660"],
+    )
+
+    # Legacy Properties 검증
+    # 1. cache_present_before == official_common_cache_present_before (1: 005930)
+    assert summary.cache_present_before == summary.official_common_cache_present_before == 1
+    # 2. cache_missing_before == Global COMMON missing (3 total - 1 present = 2)
+    assert summary.cache_missing_before == summary.official_common_total - summary.official_common_cache_present_before == 2
+    # 3. cache_present_after == official_common_cache_present_after (2: 005930 + 000660)
+    assert summary.cache_present_after == summary.official_common_cache_present_after == 2
+    # 4. orphan_cache_count == orphan_cache_count_after (1: 999999)
+    assert summary.orphan_cache_count == summary.orphan_cache_count_after == 1

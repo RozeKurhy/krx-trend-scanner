@@ -1,4 +1,4 @@
-# KRX Official Common Stock Cache Population v0.1 설계 및 검증 보고서 (Followup)
+# KRX Official Common Stock Cache Population v0.1 설계 및 검증 보고서
 
 ## 1. 개요 및 목적
 
@@ -60,7 +60,7 @@
 ## 4. Coverage & Provenance 공식 정의
 
 * **Official COMMON Population Coverage %**:
-  $$\text{COMMON Coverage} = \frac{\text{Official COMMON Cache Present}}{\text{Official COMMON Total}} \times 100\%$$
+  $$\text{COMMON Coverage} = \frac{\text{Official COMMON Cache Present}}{\text{Official COMMON Total (2,528)}} \times 100\%$$
   (분모는 전체 Universe 2,763이 아닌 **Official COMMON 2,528개**)
 * **Run Target Coverage %**:
   $$\text{Target Coverage} = \frac{\text{Run Target Success Count}}{\text{Run Population Target Count}} \times 100\%$$
@@ -68,47 +68,74 @@
 
 ---
 
-## 5. 단위 및 통합 테스트 검증
+## 5. 알려진 한계 (Known Limitations)
+
+### 5.1 External Provider Dependency
+* PyKRX / KRX backend 상태에 따라 일시적 오류, timeout, rate limiting 또는 빈 DataFrame 응답이 발생할 수 있다.
+* 파이프라인은 retry & exponential backoff와 failure isolation을 통해 이를 격리하며, 실패 종목의 error provenance를 정확히 기록한다.
+
+### 5.2 Trading Suspension & Repeated Fetch
+* 장기 거래정지 종목은 정상적인 데이터임에도 최종 거래일(`cache_last_date`)이 `reference_market_date`에 도달하지 못할 수 있다.
+* Population의 엄격한 Skip 조건(`cache_last_date == reference_market_date`)을 만족하지 못하므로, 재실행 시마다 overlap 구간 fetch가 재시도될 수 있다. 이는 정상 동작이며 임의로 Universe에서 제외하지 않는다.
+
+### 5.3 Short History / New Listing
+* 신규 상장주는 정상적으로 캐시가 수집(`CREATED`)되더라도 42 completed monthly bars 미만일 경우 6M Momentum이 `ready=False`로 반환된다. 이는 데이터 결함이나 fetch 실패가 아닌 정상적인 short history이다.
+
+### 5.4 Adjusted Price Caveat
+* 수정주가(`adjusted=True`) 정책을 일관되게 사용하며, 대규모 무상증자/액면분할 등 corporate action 시 provider의 과거 가격 조정 방식에 영향을 받을 수 있다.
+
+### 5.5 Freshness Semantics Difference (Population Fresh vs Audit Fresh)
+* **Population Fresh (`SKIPPED_FRESH`)**:
+  * **Strict Operational Condition**: `cache_last_date == reference_market_date` AND `completed_months >= 42`.
+  * 네트워크 호출을 생략해도 되는지 판단하는 엄격한 운영 조건이다.
+* **Audit Fresh (`FreshnessStatus.FRESH`)**:
+  * **Quality Classification**: `reference_market_date` 대비 영업일 지연 `staleness_trading_days <= 1`.
+  * 유니버스 품질 감사 시 1거래일 이내 데이터를 최신으로 분류하는 통계적 등급이다.
+* 두 개념은 사용 목적이 상이하므로 동일한 의미로 혼용하지 않는다.
+
+---
+
+## 6. 단위 및 통합 테스트 검증
 
 20개 단위 테스트를 통해 모든 핵심 기능 및 엣지 케이스 검증 완료:
-1. `test_missing_cache_create`
-2. `test_existing_cache_incremental_update`
-3. `test_fresh_cache_skip`
-4. `test_idempotency`
-5. `test_provider_failure_isolation`
-6. `test_empty_response`
-7. `test_invalid_schema`
-8. `test_future_date`
-9. `test_duplicate_merge`
-10. `test_sorted_output`
-11. `test_resume`
-12. `test_short_history_new_listing`
-13. `test_orphan_cache_preservation`
-14. `test_dry_run`
-15. `test_atomic_write_success`
-16. `test_atomic_write_failure_preserves_existing_cache`
-17. `test_temp_cleanup_on_failure`
-18. `test_common_coverage_denominator`
-19. `test_local_official_common_provenance_scope`
-20. `test_subset_target_coverage_vs_global_coverage`
+1. `test_missing_cache_create`: 신규 캐시 생성 및 정렬/유니크 검증
+2. `test_existing_cache_incremental_update`: 기존 캐시 증분 갱신 검증
+3. `test_fresh_cache_skip`: 최신 캐시 스킵 및 API 호출 생략 검증
+4. `test_idempotency`: 멱등성 검증 (중복 실행 시 불필요한 변경 없음)
+5. `test_provider_failure_isolation`: 예외 격리 검증 (다른 종목 정상 진행)
+6. `test_empty_response`: 빈 응답 시 FAILED 및 기존 캐시 보존 검증
+7. `test_invalid_schema`: 스키마 결함 시 쓰기 금지 검증
+8. `test_future_date`: 미래 날짜 오염 차단 검증
+9. `test_duplicate_merge`: 중복 날짜 병합 및 신규 데이터 우선 검증
+10. `test_sorted_output`: 일봉 오름차순 정렬 보장 검증
+11. `test_resume`: 중단 후 재실행 시 완료 종목 스킵 및 실패 종목 재시도 검증
+12. `test_short_history_new_listing`: 신규 상장주 단기 히스토리 처리 검증
+13. `test_orphan_cache_preservation`: 고아 캐시 파일 보존 검증
+14. `test_dry_run`: Dry-run 계획 수립 검증
+15. `test_atomic_write_success`: 원자적 쓰기 정상 동작 검증
+16. `test_atomic_write_failure_preserves_existing_cache`: 쓰기 실패 시 기존 캐시 100% 보존 검증
+17. `test_temp_cleanup_on_failure`: 실패 시 임시 파일 삭제 검증
+18. `test_common_coverage_denominator`: COMMON coverage 분모(2,528) 검증
+19. `test_local_official_common_provenance_scope`: 메트릭 스코프 분리 검증
+20. `test_subset_target_coverage_vs_global_coverage`: Subset 실행 시 target vs global coverage 분리 검증
 
 * **Unit Tests**: **20 passed (100% Green)**
 * **Full Test Suite**: **293 passed, 10 skipped, 1 deselected, 0 failed (100% Green)**
 
 ---
 
-## 6. Current Status & Next Step
+## 7. Current Status & Next Step
 
-### 6.1 확정 상태
+### 7.1 확정 상태
 ```text
 Pattern A Score v0.2: FROZEN
 Pattern A Stage Classifier v0.1: FROZEN (43ee01c)
 Pattern A Evaluator Integration v0.1: COMPLETED (51fc202)
 Data Quality & Universe Preparation v0.1: COMPLETED (0ce8012)
 Pattern A Score Momentum v0.1: FROZEN MEASUREMENT CONTRACT (707c594)
-Official Common Stock Cache Population Pipeline: COMPLETED & VERIFIED (293 tests passed)
+Official Common Stock Cache Population Pipeline: COMPLETED & VERIFIED (82fd10b)
 Atomic Cache Write: VERIFIED
 COMMON Population Coverage Scope: VERIFIED
 Full 2,528 Universe Population: IN PROGRESS (Background)
-Scanner Integration: PENDING FULL AUDIT
+Scanner Integration: HOLD (Pending Full Population & Final Audit)
 ```

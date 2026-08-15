@@ -124,21 +124,40 @@ class CachePopulationSummary:
     failed_records: tuple[CachePopulationRecord, ...] = ()
     exceptions: tuple[str, ...] = ()
 
-    # Backward compatibility properties
+    # =========================================================================
+    # Backward Compatibility Properties (Legacy)
+    #
+    # [주의 및 사용 지침]:
+    # 1. 아래 프로퍼티들은 이전 버전과의 호환성을 위해서만 유지되며 삭제하지 않는다.
+    # 2. Scanner 및 신규 코드는 아래 레거시 프로퍼티 대신 명시적인 스코프 필드
+    #    (official_common_cache_present_before, target_coverage_pct_after,
+    #     official_common_coverage_pct_after 등)를 직접 사용해야 한다.
+    # 3. cache_missing_before는 Global Official COMMON 기준 결측 수이며,
+    #    subset/run target 결측 수가 아님에 유의해야 한다.
+    # =========================================================================
+
     @property
     def cache_present_before(self) -> int:
+        """[Legacy Alias] official_common_cache_present_before의 별칭."""
         return self.official_common_cache_present_before
 
     @property
     def cache_missing_before(self) -> int:
+        """[Legacy Alias] 실행 전 Global Official COMMON 결측 종목 수.
+
+        (official_common_total - official_common_cache_present_before)
+        ※ 주의: --limit/--tickers subset 실행 시에도 run target 결측 수가 아닌 Global Official COMMON 결측 수를 반환한다.
+        """
         return self.official_common_total - self.official_common_cache_present_before
 
     @property
     def cache_present_after(self) -> int:
+        """[Legacy Alias] official_common_cache_present_after의 별칭."""
         return self.official_common_cache_present_after
 
     @property
     def orphan_cache_count(self) -> int:
+        """[Legacy Alias] orphan_cache_count_after의 별칭."""
         return self.orphan_cache_count_after
 
 
