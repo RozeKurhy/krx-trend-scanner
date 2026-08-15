@@ -138,7 +138,7 @@ def test_invalid_cached_data_raises_on_stable_cache_hit(tmp_path):
     invalid_cached.loc[invalid_cached.index[0], "open"] = -1.0  # 음수 가격, 이미 저장된 상태
 
     # 검증 없이 직접 캐시에 심어서 "깨진 Parquet"를 재현한다.
-    cache.save("005930", invalid_cached)
+    invalid_cached.to_parquet(tmp_path / "005930.parquet")
 
     provider = FakeProvider(lambda ticker, start, end: pd.DataFrame())
     repo = MarketDataRepository(provider, cache)

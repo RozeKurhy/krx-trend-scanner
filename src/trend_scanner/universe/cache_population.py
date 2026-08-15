@@ -7,9 +7,10 @@
 1. Authoritative Target: official KRX 마스터의 KOSPI/KOSDAQ AssetType.COMMON만 수집 대상.
 2. Incremental Update: 최신 캐시는 SKIP하고, stale 캐시만 overlap 증분 fetch.
 3. Safe Merge: duplicate 제거, date index 정렬, 신규 row 우선 적용.
-4. Failure Isolation: 개별 종목 실패 시 전체 중단 없이 failure provenance 기록 후 계속 진행.
-5. Idempotent & Resumable: 동일 시점 재실행 시 중복 변경 없이 이어서 처리.
-6. Minimum History Target: 6M Momentum contract인 42 completed months 이상(권장 48개월) 확보.
+4. Atomic Write: temp 파일 쓰기 -> read-back validation -> atomic rename으로 기존 캐시 손상 원천 방지.
+5. Failure Isolation: 개별 종목 실패 시 전체 중단 없이 failure provenance 기록 후 계속 진행.
+6. Idempotent & Resumable: 동일 시점 재실행 시 중복 변경 없이 이어서 처리.
+7. Provenance Separation: Local Cache Total / Official Universe Intersection / COMMON Target Coverage 명확 분리.
 """
 
 from __future__ import annotations
@@ -36,7 +37,6 @@ from trend_scanner.validation.historical_snapshot import _drop_incomplete_curren
 
 logger = logging.getLogger(__name__)
 
-# 기본 권장 히스토리 확보 기간 (5년 = 약 60개월, 최소 48 completed months 여유 확보)
 DEFAULT_BACKFILL_YEARS: int = 5
 DEFAULT_MAX_RETRIES: int = 3
 DEFAULT_RETRY_BACKOFF: float = 0.5
@@ -90,17 +90,29 @@ class CachePopulationSummary:
     official_common_total: int
     population_target_count: int
 
-    cache_present_before: int
-    cache_missing_before: int
+    # Before Provenance
+    local_cache_file_count_before: int
+    official_universe_cache_present_before: int
+    official_common_cache_present_before: int
+    orphan_cache_count_before: int
     fresh_before: int
     stale_before: int
 
+    # Execution Counts
     created_count: int
     updated_count: int
     skipped_fresh_count: int
     failed_count: int
 
-    cache_present_after: int
+    # After Provenance
+    local_cache_file_count_after: int
+    official_universe_cache_present_after: int
+    official_common_cache_present_after: int
+    official_common_cache_missing_after: int
+    official_common_coverage_pct_after: float
+    target_coverage_pct_after: float
+    orphan_cache_count_after: int
+
     fresh_after: int
     stale_after: int
 
@@ -108,11 +120,26 @@ class CachePopulationSummary:
     history_42m_ready_after: int      # 42 completed months (6M momentum)
     history_48m_ready_after: int      # 48 completed months (preferred target)
 
-    orphan_cache_count: int
-
     records: tuple[CachePopulationRecord, ...] = ()
     failed_records: tuple[CachePopulationRecord, ...] = ()
     exceptions: tuple[str, ...] = ()
+
+    # Backward compatibility properties
+    @property
+    def cache_present_before(self) -> int:
+        return self.official_common_cache_present_before
+
+    @property
+    def cache_missing_before(self) -> int:
+        return self.official_common_total - self.official_common_cache_present_before
+
+    @property
+    def cache_present_after(self) -> int:
+        return self.official_common_cache_present_after
+
+    @property
+    def orphan_cache_count(self) -> int:
+        return self.orphan_cache_count_after
 
 
 def _count_completed_months(daily: pd.DataFrame, reference_date: str | pd.Timestamp) -> int:
@@ -141,7 +168,7 @@ def populate_single_ticker(
 ) -> CachePopulationRecord:
     """단일 종목에 대해 캐시 상태를 확인하고 필요한 일봉 데이터를 증분 수집/갱신한다.
 
-    Fail-Closed & Exception Isolation:
+    Fail-Closed & Exception Isolation & Atomic Safety:
     - 오류 발생 시 기존 캐시를 보존하고 FAILED 상태와 에러 provenance를 반환한다.
     """
     clean_ticker = str(security.ticker).strip().zfill(6)
@@ -184,7 +211,6 @@ def populate_single_ticker(
         cache_existed_before = False
 
     # 3. 최신 상태 여부 (Freshness & Sufficient History) 확인 -> SKIPPED_FRESH
-    # 캐시 마지막 날짜가 reference date와 같고, 42개월 이상 완성 월봉이 이미 있다면 fetch 생략 가능
     is_fresh = False
     if cached is not None and cache_last_before is not None:
         if cache_last_before == ref_str and cached_months_before >= 42:
@@ -212,11 +238,9 @@ def populate_single_ticker(
     target_start_str = target_start_ts.strftime("%Y-%m-%d")
 
     if cached is None or cached.empty or cached_months_before < 42:
-        # 캐시가 없거나 과거 히스토리가 부족한 경우: 전체 구간 fetch
         fetch_start_str = target_start_str
         fetch_end_str = ref_str
     else:
-        # 캐시가 있고 과거 히스토리가 충분한 경우: 마지막 날짜부터 overlap 증분 fetch
         overlap_ts = cached.index.max() - pd.Timedelta(days=overlap_days)
         fetch_start_str = max(overlap_ts, target_start_ts).strftime("%Y-%m-%d")
         fetch_end_str = ref_str
@@ -303,20 +327,18 @@ def populate_single_ticker(
             completed_month_count_after=cached_months_before,
         )
 
-    # 7. Merge & Safe Atomic Save
+    # 7. Merge & Atomic Save
     try:
         if cached is None or cached.empty:
             merged = fetched_df
         else:
             combined = pd.concat([cached, fetched_df])
-            # duplicate date 제거 (신규 fetched 데이터 우선)
             merged = combined[~combined.index.duplicated(keep="last")]
 
-        # Date index 정렬 보장
         merged = merged.sort_index()
         validate_ohlcv(merged)
 
-        # Cache 파일 저장 (ParquetCache)
+        # Atomic Parquet Save (ParquetCache.save)
         cache.save(clean_ticker, merged)
 
         after_first = merged.index.min().strftime("%Y-%m-%d")
@@ -402,13 +424,14 @@ def populate_common_stock_cache(
         universe_securities = load_krx_equity_universe(as_of=ref_date_str)
 
     official_universe_total = len(universe_securities)
+    official_ticker_set = {s.ticker for s in universe_securities}
+    all_official_commons = [s for s in universe_securities if classify_asset_type(s.ticker, s.name) == AssetType.COMMON]
+    official_common_total = len(all_official_commons)
+    official_common_ticker_set = {s.ticker for s in all_official_commons}
 
-    # 3. COMMON 주식 및 필터 적용
+    # 3. Execution Targets 결정 (Filter 적용)
     common_targets: list[UniverseSecurity] = []
-    for s in universe_securities:
-        atype = classify_asset_type(s.ticker, s.name)
-        if atype != AssetType.COMMON:
-            continue
+    for s in all_official_commons:
         if market is not None and s.market != market:
             continue
         if tickers is not None:
@@ -417,40 +440,29 @@ def populate_common_stock_cache(
                 continue
         common_targets.append(s)
 
-    official_common_total = len([s for s in universe_securities if classify_asset_type(s.ticker, s.name) == AssetType.COMMON])
-
     if limit is not None and limit > 0:
         common_targets = common_targets[:limit]
 
     population_target_count = len(common_targets)
 
-    # 4. Before 상태 측정
-    local_cached_tickers = set(cache.list_cached_tickers()) if hasattr(cache, "list_cached_tickers") else set()
-    official_ticker_set = {s.ticker for s in universe_securities}
-    orphan_cache_count = len([t for t in local_cached_tickers if t not in official_ticker_set])
+    # 4. Before Provenance 측정
+    cached_tickers_before = set(cache.list_cached_tickers())
+    local_cache_file_count_before = len(cached_tickers_before)
+    official_universe_cache_present_before = len(cached_tickers_before.intersection(official_ticker_set))
+    official_common_cache_present_before = len(cached_tickers_before.intersection(official_common_ticker_set))
+    orphan_cache_count_before = len(cached_tickers_before - official_ticker_set)
 
-    cache_present_before = 0
-    cache_missing_before = 0
     fresh_before = 0
     stale_before = 0
-
-    for s in common_targets:
-        if s.ticker in local_cached_tickers:
-            cache_present_before += 1
-            # freshness 검사
-            try:
-                c_df = cache.load(s.ticker)
-                if c_df is not None and not c_df.empty:
-                    if c_df.index.max().strftime("%Y-%m-%d") == ref_date_str:
-                        fresh_before += 1
-                    else:
-                        stale_before += 1
-                else:
-                    stale_before += 1
-            except Exception:
+    for t in cached_tickers_before.intersection(official_common_ticker_set):
+        try:
+            c_df = cache.load(t)
+            if c_df is not None and not c_df.empty and c_df.index.max().strftime("%Y-%m-%d") == ref_date_str:
+                fresh_before += 1
+            else:
                 stale_before += 1
-        else:
-            cache_missing_before += 1
+        except Exception:
+            stale_before += 1
 
     # 5. Population Loop 실행
     records: list[CachePopulationRecord] = []
@@ -490,58 +502,74 @@ def populate_common_stock_cache(
         if delay_seconds > 0 and not dry_run and record.status in (CachePopulationStatus.CREATED, CachePopulationStatus.UPDATED):
             time.sleep(delay_seconds)
 
-    # 6. After 상태 측정
-    cache_present_after = 0
+    # 6. After Provenance 측정
+    cached_tickers_after = set(cache.list_cached_tickers())
+    local_cache_file_count_after = len(cached_tickers_after)
+    official_universe_cache_present_after = len(cached_tickers_after.intersection(official_ticker_set))
+    official_common_cache_present_after = len(cached_tickers_after.intersection(official_common_ticker_set))
+    official_common_cache_missing_after = official_common_total - official_common_cache_present_after
+    official_common_coverage_pct_after = (
+        (official_common_cache_present_after / official_common_total * 100.0) if official_common_total > 0 else 0.0
+    )
+    orphan_cache_count_after = len(cached_tickers_after - official_ticker_set)
+
+    run_target_success = created_cnt + updated_cnt + skipped_fresh_cnt
+    target_coverage_pct_after = (
+        (run_target_success / population_target_count * 100.0) if population_target_count > 0 else 0.0
+    )
+
     fresh_after = 0
     stale_after = 0
     min_history_ready_after = 0
     history_42m_ready_after = 0
     history_48m_ready_after = 0
 
-    for rec in records:
-        if rec.status in (CachePopulationStatus.CREATED, CachePopulationStatus.UPDATED, CachePopulationStatus.SKIPPED_FRESH):
-            cache_present_after += 1
-            if rec.cache_last_date_after == ref_date_str:
-                fresh_after += 1
-            else:
-                stale_after += 1
+    for t in cached_tickers_after.intersection(official_common_ticker_set):
+        try:
+            df = cache.load(t)
+            if df is not None and not df.empty:
+                if df.index.max().strftime("%Y-%m-%d") == ref_date_str:
+                    fresh_after += 1
+                else:
+                    stale_after += 1
 
-            if rec.completed_month_count_after >= 36:
-                min_history_ready_after += 1
-            if rec.completed_month_count_after >= 42:
-                history_42m_ready_after += 1
-            if rec.completed_month_count_after >= 48:
-                history_48m_ready_after += 1
-        elif rec.cache_existed_before:
-            cache_present_after += 1
+                months = _count_completed_months(df, ref_date_str)
+                if months >= 36:
+                    min_history_ready_after += 1
+                if months >= 42:
+                    history_42m_ready_after += 1
+                if months >= 48:
+                    history_48m_ready_after += 1
+        except Exception:
             stale_after += 1
-            if rec.completed_month_count_after >= 36:
-                min_history_ready_after += 1
-            if rec.completed_month_count_after >= 42:
-                history_42m_ready_after += 1
-            if rec.completed_month_count_after >= 48:
-                history_48m_ready_after += 1
 
     return CachePopulationSummary(
         reference_market_date=ref_date_str,
         official_universe_total=official_universe_total,
         official_common_total=official_common_total,
         population_target_count=population_target_count,
-        cache_present_before=cache_present_before,
-        cache_missing_before=cache_missing_before,
+        local_cache_file_count_before=local_cache_file_count_before,
+        official_universe_cache_present_before=official_universe_cache_present_before,
+        official_common_cache_present_before=official_common_cache_present_before,
+        orphan_cache_count_before=orphan_cache_count_before,
         fresh_before=fresh_before,
         stale_before=stale_before,
         created_count=created_cnt,
         updated_count=updated_cnt,
         skipped_fresh_count=skipped_fresh_cnt,
         failed_count=failed_cnt,
-        cache_present_after=cache_present_after,
+        local_cache_file_count_after=local_cache_file_count_after,
+        official_universe_cache_present_after=official_universe_cache_present_after,
+        official_common_cache_present_after=official_common_cache_present_after,
+        official_common_cache_missing_after=official_common_cache_missing_after,
+        official_common_coverage_pct_after=official_common_coverage_pct_after,
+        target_coverage_pct_after=target_coverage_pct_after,
+        orphan_cache_count_after=orphan_cache_count_after,
         fresh_after=fresh_after,
         stale_after=stale_after,
         minimum_history_ready_after=min_history_ready_after,
         history_42m_ready_after=history_42m_ready_after,
         history_48m_ready_after=history_48m_ready_after,
-        orphan_cache_count=orphan_cache_count,
         records=tuple(records),
         failed_records=tuple(failed_records),
         exceptions=tuple(exceptions_list),

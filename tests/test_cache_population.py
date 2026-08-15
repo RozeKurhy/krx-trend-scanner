@@ -1,6 +1,6 @@
 """KRX Official Common Stock Cache Population Service Tests.
 
-14개 필수 테스트 검증:
+포괄적 테스트 스위트 (20개 테스트):
 1. test_missing_cache_create
 2. test_existing_cache_incremental_update
 3. test_fresh_cache_skip
@@ -15,11 +15,18 @@
 12. test_short_history_new_listing
 13. test_orphan_cache_preservation
 14. test_dry_run
+15. test_atomic_write_success (신규)
+16. test_atomic_write_failure_preserves_existing_cache (신규)
+17. test_temp_cleanup_on_failure (신규)
+18. test_common_coverage_denominator (신규)
+19. test_local_official_common_provenance_scope (신규)
+20. test_subset_target_coverage_vs_global_coverage (신규)
 """
 
 from __future__ import annotations
 
 from pathlib import Path
+from unittest.mock import patch
 
 import pandas as pd
 import pytest
@@ -79,7 +86,6 @@ class FakeProvider(MarketDataProvider):
 def test_missing_cache_create(tmp_path: Path):
     """1. 캐시가 없을 때 valid data fetch 시 CREATED 생성 및 unique/sorted 검증."""
     cache = ParquetCache(base_dir=tmp_path)
-    # 5년치 일봉 데이터 준비
     dates = pd.date_range("2021-08-14", "2026-08-14", freq="B")
     provider = FakeProvider({"005930": _make_mock_daily(dates)})
 
@@ -215,8 +221,7 @@ def test_invalid_schema(tmp_path: Path):
 def test_future_date(tmp_path: Path):
     """8. reference_date보다 미래 row 포함 시 validation failure 및 write 금지."""
     cache = ParquetCache(base_dir=tmp_path)
-    dates = pd.date_range("2021-01-01", "2026-08-20", freq="B")  # reference(2026-08-14) 이후 미래 포함
-    # ignore_range=True로 설정하여 provider가 미래 날짜까지 그대로 반환하도록 모의
+    dates = pd.date_range("2021-01-01", "2026-08-20", freq="B")
     provider = FakeProvider({"005930": _make_mock_daily(dates)}, ignore_range=True)
 
     sec = UniverseSecurity(ticker="005930", name="삼성전자", market=MarketType.KOSPI)
@@ -235,7 +240,7 @@ def test_duplicate_merge(tmp_path: Path):
     cache.save("005930", old_df)
 
     new_dates = pd.date_range("2026-08-05", "2026-08-14", freq="B")
-    new_df = _make_mock_daily(new_dates, start_val=20000.0)  # 8월 5~10일 값이 변경됨
+    new_df = _make_mock_daily(new_dates, start_val=20000.0)
     provider = FakeProvider({"005930": new_df})
 
     sec = UniverseSecurity(ticker="005930", name="삼성전자", market=MarketType.KOSPI)
@@ -252,7 +257,7 @@ def test_sorted_output(tmp_path: Path):
     cache = ParquetCache(base_dir=tmp_path)
     dates = pd.date_range("2021-01-01", "2026-08-14", freq="B")
     df = _make_mock_daily(dates)
-    unsorted_df = df.sample(frac=1.0, random_state=42)  # shuffle
+    unsorted_df = df.sample(frac=1.0, random_state=42)
 
     provider = FakeProvider({"005930": unsorted_df})
 
@@ -282,15 +287,15 @@ def test_resume(tmp_path: Path):
 
     provider2 = FakeProvider()
     s2 = populate_common_stock_cache(cache, provider2, "2026-08-14", universe_securities=univ)
-    assert s2.skipped_fresh_count == 1  # 삼성전자는 skip
-    assert s2.created_count == 1        # SK하이닉스는 생성
+    assert s2.skipped_fresh_count == 1
+    assert s2.created_count == 1
     assert s2.failed_count == 0
 
 
 def test_short_history_new_listing(tmp_path: Path):
     """12. 42개월 미만 신규 상장주여도 population success 및 6M momentum history 미충족 정상 처리."""
     cache = ParquetCache(base_dir=tmp_path)
-    short_dates = pd.date_range("2025-01-01", "2026-08-14", freq="B")  # 약 19개월
+    short_dates = pd.date_range("2025-01-01", "2026-08-14", freq="B")
     provider = FakeProvider({"123456": _make_mock_daily(short_dates)})
 
     sec = UniverseSecurity(ticker="123456", name="신규상장기업", market=MarketType.KOSPI)
@@ -310,7 +315,7 @@ def test_orphan_cache_preservation(tmp_path: Path):
     provider = FakeProvider()
 
     summary = populate_common_stock_cache(cache, provider, "2026-08-14", universe_securities=univ)
-    assert summary.orphan_cache_count == 1
+    assert summary.orphan_cache_count_after == 1
     assert cache.load("999999") is not None
 
 
@@ -330,3 +335,148 @@ def test_dry_run(tmp_path: Path):
     assert cache.load("005930") is None
     assert cache.load("000660") is None
     assert provider.call_count.get("005930", 0) == 0
+
+
+def test_atomic_write_success(tmp_path: Path):
+    """15. 정상 저장 시 임시 파일 삭제 및 final parquet atomic replace 검증."""
+    cache = ParquetCache(base_dir=tmp_path)
+    dates = pd.date_range("2021-08-14", "2026-08-14", freq="B")
+    df = _make_mock_daily(dates)
+
+    cache.save("005930", df)
+
+    # 1. final parquet 정상 존재
+    final_path = tmp_path / "005930.parquet"
+    assert final_path.exists()
+
+    # 2. 임시 파일(.tmp) 잔재 없음 확인
+    tmp_files = list(tmp_path.glob("*.tmp*"))
+    assert len(tmp_files) == 0
+
+    # 3. read back 검증
+    loaded = cache.load("005930")
+    assert loaded is not None
+    assert len(loaded) == len(df)
+
+
+def test_atomic_write_failure_preserves_existing_cache(tmp_path: Path):
+    """16. 저장 중 read-back 검증 실패 시 기존 final cache 100% 보존 검증."""
+    cache = ParquetCache(base_dir=tmp_path)
+    old_dates = pd.date_range("2021-08-14", "2026-08-01", freq="B")
+    old_df = _make_mock_daily(old_dates, start_val=10000.0)
+    cache.save("005930", old_df)
+
+    # 손상된 DataFrame 저장 시도 (컬럼 누락)
+    broken_df = pd.DataFrame({"close": [99999.0]}, index=pd.date_range("2026-08-14", "2026-08-14"))
+
+    with pytest.raises(Exception):
+        cache.save("005930", broken_df)
+
+    # 기존 final parquet이 손상되지 않고 유지되었는지 확인
+    loaded = cache.load("005930")
+    assert loaded is not None
+    assert len(loaded) == len(old_dates)
+    assert loaded.loc[old_dates[0], "open"] == 10000.0
+
+
+def test_temp_cleanup_on_failure(tmp_path: Path):
+    """17. 예외 발생 시 .tmp 임시 파일 잔재가 깔끔하게 정리되는지 검증."""
+    cache = ParquetCache(base_dir=tmp_path)
+    broken_df = pd.DataFrame({"dummy": [1]}, index=pd.date_range("2026-08-14", "2026-08-14"))
+
+    with pytest.raises(Exception):
+        cache.save("005930", broken_df)
+
+    # 임시 파일이 남아있지 않아야 함
+    all_files = list(tmp_path.iterdir())
+    assert len(all_files) == 0
+
+
+def test_common_coverage_denominator(tmp_path: Path):
+    """18. COMMON coverage 계산 분모가 official COMMON total인지 검증."""
+    cache = ParquetCache(base_dir=tmp_path)
+    dates = pd.date_range("2021-08-14", "2026-08-14", freq="B")
+    provider = FakeProvider({"005930": _make_mock_daily(dates)})
+
+    # 전체 universe 3개 중 COMMON은 2개, PREFERRED 1개
+    univ = [
+        UniverseSecurity(ticker="005930", name="삼성전자", market=MarketType.KOSPI),
+        UniverseSecurity(ticker="005935", name="삼성전자우", market=MarketType.KOSPI),
+        UniverseSecurity(ticker="000660", name="SK하이닉스", market=MarketType.KOSPI),
+    ]
+
+    summary = populate_common_stock_cache(
+        cache=cache,
+        provider=provider,
+        reference_market_date="2026-08-14",
+        universe_securities=univ,
+        tickers=["005930"],  # 삼성전자 1개만 실행
+    )
+
+    assert summary.official_universe_total == 3
+    assert summary.official_common_total == 2
+    assert summary.population_target_count == 1
+    assert summary.official_common_cache_present_after == 1
+    # Global COMMON coverage는 1 / 2 = 50.0% (전체 universe 분모인 1/3=33.3%가 아님)
+    assert summary.official_common_coverage_pct_after == 50.0
+    # Run Target Coverage는 1 / 1 = 100.0%
+    assert summary.target_coverage_pct_after == 100.0
+
+
+def test_local_official_common_provenance_scope(tmp_path: Path):
+    """19. Local Cache Total / Official Universe Intersection / Official COMMON Present / Orphan 분리 검증."""
+    cache = ParquetCache(base_dir=tmp_path)
+    dates = pd.date_range("2021-08-14", "2026-08-14", freq="B")
+    # 1) COMMON 캐시
+    cache.save("005930", _make_mock_daily(dates))
+    # 2) PREFERRED 캐시
+    cache.save("005935", _make_mock_daily(dates))
+    # 3) ORPHAN 캐시 (상장폐지/공식 목록 밖)
+    cache.save("999999", _make_mock_daily(dates))
+
+    univ = [
+        UniverseSecurity(ticker="005930", name="삼성전자", market=MarketType.KOSPI),
+        UniverseSecurity(ticker="005935", name="삼성전자우", market=MarketType.KOSPI),
+        UniverseSecurity(ticker="000660", name="SK하이닉스", market=MarketType.KOSPI),
+    ]
+    provider = FakeProvider()
+
+    summary = populate_common_stock_cache(
+        cache=cache,
+        provider=provider,
+        reference_market_date="2026-08-14",
+        universe_securities=univ,
+        dry_run=True,
+    )
+
+    assert summary.local_cache_file_count_before == 3
+    assert summary.official_universe_cache_present_before == 2  # 005930, 005935
+    assert summary.official_common_cache_present_before == 1    # 005930
+    assert summary.orphan_cache_count_before == 1               # 999999
+
+
+def test_subset_target_coverage_vs_global_coverage(tmp_path: Path):
+    """20. subset 실행 시 Run Target Coverage와 Global COMMON Coverage 구분 검증."""
+    cache = ParquetCache(base_dir=tmp_path)
+    provider = FakeProvider()
+
+    univ = [
+        UniverseSecurity(ticker="005930", name="삼성전자", market=MarketType.KOSPI),
+        UniverseSecurity(ticker="000660", name="SK하이닉스", market=MarketType.KOSPI),
+        UniverseSecurity(ticker="035420", name="NAVER", market=MarketType.KOSPI),
+        UniverseSecurity(ticker="035900", name="JYP Ent.", market=MarketType.KOSDAQ),
+    ]
+
+    summary = populate_common_stock_cache(
+        cache=cache,
+        provider=provider,
+        reference_market_date="2026-08-14",
+        universe_securities=univ,
+        limit=2,  # 4개 중 2개만 실행
+    )
+
+    assert summary.official_common_total == 4
+    assert summary.population_target_count == 2
+    assert summary.created_count == 2
+    assert summary.target_coverage_pct_after == 100.0          # 2 / 2
+    assert summary.official_common_coverage_pct_after == 50.0  # 2 / 4

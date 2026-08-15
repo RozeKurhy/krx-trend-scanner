@@ -2,7 +2,7 @@
 """KRX Official Common Stock Cache Population CLI.
 
 Usage:
-    uv run python scripts/populate_krx_common_cache.py [--dry-run] [--limit N] [--tickers 005930,000660] [--market KOSPI] [--delay 0.1]
+    uv run python scripts/populate_krx_common_cache.py [--dry-run] [--limit N] [--tickers 005930,000660] [--market KOSPI] [--delay 0.05] [--no-audit]
 """
 
 from __future__ import annotations
@@ -90,7 +90,7 @@ def main() -> int:
     parser.add_argument("--tickers", type=str, default=None, help="콤마로 구분된 특정 종목코드 목록 (예: 005930,000660)")
     parser.add_argument("--market", type=str, choices=["KOSPI", "KOSDAQ"], default=None, help="시장 필터")
     parser.add_argument("--delay", type=float, default=0.05, help="종목 간 요청 딜레이(초)")
-    parser.add_argument("--audit", action="store_true", default=True, help="완료 후 Universe Quality Audit 실행")
+    parser.add_argument("--no-audit", action="store_true", help="완료 후 Universe Quality Audit 실행 건너뛰기")
     parser.add_argument("--output", type=str, default=None, help="결과 CSV 저장 경로")
 
     args = parser.parse_args()
@@ -147,20 +147,43 @@ def main() -> int:
     elapsed = datetime.now() - start_time
     print("-" * 80)
     print("Population Execution Summary:")
-    print(f"  Target Count:         {summary.population_target_count:,}")
-    print(f"  Created (New):        {summary.created_count:,}")
-    print(f"  Updated (Existing):   {summary.updated_count:,}")
-    print(f"  Skipped (Fresh):      {summary.skipped_fresh_count:,}")
-    print(f"  Failed:               {summary.failed_count:,}")
-    print(f"  Cache Present After:  {summary.cache_present_after:,}")
-    print(f"  Fresh After:          {summary.fresh_after:,}")
-    print(f"  Stale After:          {summary.stale_after:,}")
-    print(f"  42M History Ready:    {summary.history_42m_ready_after:,}")
-    print(f"  48M History Ready:    {summary.history_48m_ready_after:,}")
-    print(f"  Elapsed Time:         {elapsed}")
+    print(f"  Official Universe Total:             {summary.official_universe_total:,}")
+    print(f"  Official COMMON Total:               {summary.official_common_total:,}")
+    print(f"  Run Target Count:                    {summary.population_target_count:,}")
+    print()
+    print("  [Before Provenance]")
+    print(f"    Local Cache Files Before:          {summary.local_cache_file_count_before:,}")
+    print(f"    Official Universe Intersection:    {summary.official_universe_cache_present_before:,}")
+    print(f"    Official COMMON Present Before:    {summary.official_common_cache_present_before:,}")
+    print(f"    Orphan Cache Before:               {summary.orphan_cache_count_before:,}")
+    print(f"    Fresh COMMON Before:               {summary.fresh_before:,}")
+    print(f"    Stale COMMON Before:               {summary.stale_before:,}")
+    print()
+    print("  [Execution Counts]")
+    print(f"    Created (New):                     {summary.created_count:,}")
+    print(f"    Updated (Existing):                {summary.updated_count:,}")
+    print(f"    Skipped (Fresh):                   {summary.skipped_fresh_count:,}")
+    print(f"    Failed:                            {summary.failed_count:,}")
+    print()
+    print("  [After Provenance & Coverage]")
+    print(f"    Local Cache Files After:           {summary.local_cache_file_count_after:,}")
+    print(f"    Official Universe Intersection:    {summary.official_universe_cache_present_after:,}")
+    print(f"    Official COMMON Present After:     {summary.official_common_cache_present_after:,}")
+    print(f"    Official COMMON Missing After:     {summary.official_common_cache_missing_after:,}")
+    print(f"    Official COMMON Coverage %:        {summary.official_common_coverage_pct_after:.2f}% ({summary.official_common_cache_present_after}/{summary.official_common_total})")
+    print(f"    Run Target Coverage %:             {summary.target_coverage_pct_after:.2f}%")
+    print(f"    Orphan Cache After:                {summary.orphan_cache_count_after:,}")
+    print()
+    print("  [Quality & Readiness]")
+    print(f"    Fresh COMMON After:                {summary.fresh_after:,}")
+    print(f"    Stale COMMON After:                {summary.stale_after:,}")
+    print(f"    36M History Ready (Min):           {summary.minimum_history_ready_after:,}")
+    print(f"    42M History Ready (6M Momentum):   {summary.history_42m_ready_after:,}")
+    print(f"    48M History Ready (Preferred):     {summary.history_48m_ready_after:,}")
+    print(f"    Elapsed Time:                      {elapsed}")
 
     if summary.failed_records:
-        print("\nFailed Tickers:")
+        print(f"\nFailed Tickers ({len(summary.failed_records)}건):")
         for fr in summary.failed_records[:20]:
             print(f"  - {fr.ticker} {fr.name}: {fr.error_type} - {fr.error_message}")
         if len(summary.failed_records) > 20:
@@ -172,7 +195,7 @@ def main() -> int:
     print(f"\nSaved CSV Report to: {out_path}")
 
     # Post Quality Audit
-    if args.audit and not args.dry_run:
+    if not args.no_audit and not args.dry_run:
         print("\n" + "=" * 80)
         print("Running Post-Population Universe Quality Audit...")
         print("=" * 80)
@@ -181,20 +204,21 @@ def main() -> int:
             cache_dir=cache.base_dir,
             reference_market_date=ref_date,
         )
-        print(f"Official Total:       {audit_res.official_universe_count:,}")
-        print(f"Common Total:         {audit_res.common_stock_count:,}")
-        print(f"Cache Coverage:       {audit_res.cache_coverage_pct:.2f}% ({audit_res.cache_present_count}/{audit_res.official_universe_count})")
-        print(f"Fresh:                {audit_res.fresh_count:,}")
-        print(f"Stale:                {audit_res.stale_count:,}")
-        print(f"Very Stale:           {audit_res.very_stale_count:,}")
-        print(f"Evaluator Ready:      {audit_res.evaluator_ready_count:,}")
-        print(f"Score Ready:          {audit_res.score_ready_count:,}")
-        print(f"Stage Ready:          {audit_res.stage_ready_count:,}")
-        print(f"Raw Data Ready:       {audit_res.raw_data_ready_count:,}")
-        print(f"Future Violations:    {audit_res.future_date_count}")
-        print(f"Duplicate Violations: {audit_res.duplicate_date_count}")
-        print(f"Unsorted Violations:  {audit_res.unsorted_date_count}")
-        print(f"Quality Exceptions:   {audit_res.exception_count}")
+        print(f"Official Universe Total: {audit_res.official_universe_count:,}")
+        print(f"Official Common Total:   {audit_res.common_stock_count:,}")
+        print(f"Universe Cache Coverage: {audit_res.cache_coverage_pct:.2f}% ({audit_res.cache_present_count}/{audit_res.official_universe_count})")
+        print(f"Fresh Count:             {audit_res.fresh_count:,}")
+        print(f"Stale Count:             {audit_res.stale_count:,}")
+        print(f"Very Stale Count:        {audit_res.very_stale_count:,}")
+        print(f"Raw Data Ready:          {audit_res.raw_data_ready_count:,}")
+        print(f"Feature Ready:           {audit_res.feature_ready_count:,}")
+        print(f"Score Ready:             {audit_res.score_ready_count:,}")
+        print(f"Stage Ready:             {audit_res.stage_ready_count:,}")
+        print(f"Evaluator Ready:         {audit_res.evaluator_ready_count:,}")
+        print(f"Future Violations:       {audit_res.future_date_count}")
+        print(f"Duplicate Violations:    {audit_res.duplicate_date_count}")
+        print(f"Unsorted Violations:     {audit_res.unsorted_date_count}")
+        print(f"Quality Exceptions:      {audit_res.exception_count}")
 
     return 0
 
