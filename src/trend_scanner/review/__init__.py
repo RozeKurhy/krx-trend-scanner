@@ -5,6 +5,7 @@ from trend_scanner.review.candidate_review import (
     CandidateReviewSummary,
     extract_and_prepare_candidate_review,
     save_candidate_review_artifacts,
+    summarize_manual_review,
 )
 
 __all__ = [
@@ -12,4 +13,5 @@ __all__ = [
     "CandidateReviewSummary",
     "extract_and_prepare_candidate_review",
     "save_candidate_review_artifacts",
+    "summarize_manual_review",
 ]

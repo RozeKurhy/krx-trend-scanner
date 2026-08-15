@@ -2,15 +2,24 @@
 """CLI Script to prepare Pattern A Candidate Chart Review Datasets.
 
 Usage:
+    # 1. 초기 Review Dataset 생성
     uv run python scripts/prepare_pattern_a_candidate_review.py \
         --scanner-csv artifacts/scanner/pattern_a_universe_scan_20260814.csv \
         --output-dir artifacts/chart_review \
-        --as-of 2026-08-14
+        --as-of 2026-08-14 \
+        --scanner-commit 13ab6f4
+
+    # 2. 수동 리뷰 작성 후 Summary JSON 갱신
+    uv run python scripts/prepare_pattern_a_candidate_review.py \
+        --output-dir artifacts/chart_review \
+        --as-of 2026-08-14 \
+        --update-summary-only
 """
 
 from __future__ import annotations
 
 import argparse
+import json
 import logging
 from pathlib import Path
 import sys
@@ -21,6 +30,7 @@ from trend_scanner.review.candidate_review import (
     CandidateReviewIntegrityError,
     extract_and_prepare_candidate_review,
     save_candidate_review_artifacts,
+    summarize_manual_review,
 )
 
 logging.basicConfig(
@@ -53,54 +63,95 @@ def parse_args() -> argparse.Namespace:
         help="As-of date string (YYYY-MM-DD)",
     )
     parser.add_argument(
+        "--scanner-commit",
+        type=str,
+        default="13ab6f4",
+        help="Commit hash of source scanner execution",
+    )
+    parser.add_argument(
         "--overwrite-manual",
         action="store_true",
         default=False,
         help="Force overwrite existing manual review CSV (default: False)",
+    )
+    parser.add_argument(
+        "--update-summary-only",
+        action="store_true",
+        default=False,
+        help="Recalculate summary JSON from existing manual review CSV without reading scanner CSV",
     )
     return parser.parse_args()
 
 
 def main() -> None:
     args = parse_args()
-    scanner_path = Path(args.scanner_csv)
+    as_of_tag = args.as_of.replace("-", "")
+    out_dir = Path(args.output_dir)
 
+    # 1. Summary JSON 갱신 전용 모드
+    if args.update_summary_only:
+        manual_csv = out_dir / f"pattern_a_candidate_manual_review_{as_of_tag}.csv"
+        summary_json = out_dir / f"pattern_a_candidate_review_summary_{as_of_tag}.json"
+        if not manual_csv.exists():
+            logger.error("Manual review CSV not found at: %s", manual_csv)
+            sys.exit(1)
+
+        manual_df = pd.read_csv(manual_csv, dtype={"ticker": str})
+        summary = summarize_manual_review(
+            manual_df,
+            scanner_commit=args.scanner_commit,
+            scanner_as_of=args.as_of,
+        )
+        with open(summary_json, "w", encoding="utf-8") as f:
+            json.dump(summary.to_dict(), f, indent=2, ensure_ascii=False)
+
+        logger.info("Updated candidate review summary JSON: %s", summary_json)
+        logger.info("  Reviewed:   %d / %d", summary.reviewed_count, summary.total_candidates)
+        logger.info("  GOOD_FIT:   %d", summary.good_fit_count)
+        logger.info("  BORDERLINE: %d", summary.borderline_count)
+        logger.info("  NOT_FIT:    %d", summary.not_fit_count)
+        return
+
+    # 2. 전체 Review Dataset 추출 및 준비 모드
+    scanner_path = Path(args.scanner_csv)
     if not scanner_path.exists():
         logger.error("Scanner CSV artifact not found at: %s", scanner_path)
         sys.exit(1)
 
     logger.info("==================================================")
     logger.info("Starting Pattern A Candidate Chart Review Dataset Preparation")
-    logger.info("  Scanner CSV: %s", scanner_path)
-    logger.info("  Output Dir:  %s", args.output_dir)
-    logger.info("  As-Of:       %s", args.as_of)
+    logger.info("  Scanner CSV:    %s", scanner_path)
+    logger.info("  Output Dir:     %s", args.output_dir)
+    logger.info("  As-Of:          %s", args.as_of)
+    logger.info("  Scanner Commit: %s", args.scanner_commit)
     logger.info("==================================================")
 
-    # 1. Scanner 결과 로드 (문자열 ticker 보존)
     scanner_df = pd.read_csv(scanner_path, dtype={"ticker": str})
     logger.info("Loaded scanner matrix: %d rows", len(scanner_df))
 
-    # 2. Candidate 추출 및 검증
     try:
-        as_of_tag = args.as_of.replace("-", "")
         source_df, manual_df, summary = extract_and_prepare_candidate_review(
             scanner_df=scanner_df,
             as_of=args.as_of,
+            scanner_commit=args.scanner_commit,
             source_artifact_name=scanner_path.name,
         )
     except CandidateReviewIntegrityError as exc:
         logger.error("Integrity check failed: %s", exc)
         sys.exit(1)
 
-    # 3. 아티팩트 저장
-    source_csv, manual_csv, summary_json = save_candidate_review_artifacts(
-        source_df=source_df,
-        manual_review_df=manual_df,
-        summary=summary,
-        output_dir=args.output_dir,
-        as_of_tag=as_of_tag,
-        overwrite_manual=args.overwrite_manual,
-    )
+    try:
+        source_csv, manual_csv, summary_json = save_candidate_review_artifacts(
+            source_df=source_df,
+            manual_review_df=manual_df,
+            summary=summary,
+            output_dir=args.output_dir,
+            as_of_tag=as_of_tag,
+            overwrite_manual=args.overwrite_manual,
+        )
+    except CandidateReviewIntegrityError as exc:
+        logger.error("Source Lock / Overwrite check failed: %s", exc)
+        sys.exit(1)
 
     logger.info("==================================================")
     logger.info("Pattern A Candidate Chart Review Datasets Ready!")

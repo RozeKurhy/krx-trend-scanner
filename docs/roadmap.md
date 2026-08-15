@@ -50,7 +50,7 @@
 | Pattern A Score Momentum v0.1 (`707c594`) | DONE | Calendar 1M/3M/6M Raw & Component Delta 측정 계층 |
 | Official Common Stock Cache Population | DONE | Full Population & Audit `8983e65`, final docs `7ff45fe` |
 | Full Universe Scanner Integration | DONE | Official COMMON 2,528개 스캔 및 매트릭스 통합 완료 |
-| Real Candidate Chart Review (Phase 9A/9B) | IN PROGRESS | Phase 9A (Dataset Preparation) DONE, Phase 9B (Human Review) PENDING |
+| Real Candidate Chart Review (Phase 9A/9B) | IN PROGRESS | Phase 9A (Dataset Prep) DONE, Phase 9B (Human Review) GO |
 
 **Pattern B~F**: 미착수(NOT STARTED)  
 **전체 시장 Scanner**: 완료(DONE - Phase 8 Integration 완료)  
@@ -157,7 +157,7 @@ Official KRX KOSPI / KOSDAQ `AssetType.COMMON` universe를 대상으로 Pattern 
 핵심 성과 및 계약:
 * **평가 대상 (Evaluation Scope)**: Official KRX KOSPI / KOSDAQ 보통주 (`AssetType.COMMON`) 2,528개 전수 스캔 완료 (Row Emitted 2,528개 100% 일치)
 * **제외 자산 (Excluded Assets)**: PREFERRED, SPAC, REIT, ETF, ETN, UNKNOWN, KONEX 엄격 배제
-* **Fail-Closed 보존**: 캐시 누락(42개) 및 36m 미만 단기 상장주(267개) row 유지 및 `INSUFFICIENT_DATA` 처리
+* **Fail-Closed 보존**: Cache Missing 42개 + Score/Stage Unavailable 265개 + Stage-only Unavailable 9개 = 총 UNAVAILABLE 316개 row 유지 및 `INSUFFICIENT_DATA` 처리
 * **예외 격리**: Scanner Calculation Errors 0건 달성
 * **매트릭스 아티팩트 생성**: `artifacts/scanner/pattern_a_universe_scan_20260814.csv` 및 `summary.json`
 
@@ -165,14 +165,14 @@ Official KRX KOSPI / KOSDAQ `AssetType.COMMON` universe를 대상으로 Pattern 
 
 ## Phase 9. Real Candidate Chart Review — IN PROGRESS
 
-Scanner 상위 후보를 사람이 직접 검토 (월봉 -> 주봉 -> 일봉).
+Scanner CANDIDATE 종목(180개)을 사람이 직접 검토 (월봉 -> 주봉 -> 일봉).
 
 구성 및 진행 상태:
 * **Phase 9A. Candidate Review Dataset Preparation — DONE**:
   * 180개 공인 CANDIDATE 종목 (TRANSITION 168개, EARLY_TREND 12개) 추출 및 무결성 검증 완료
-  * Review Dataset 아티팩트(`pattern_a_candidate_source_20260814.csv`, `pattern_a_candidate_manual_review_20260814.csv`, `summary.json`) 생성 및 Overwrite Protection 적용
+  * Review Dataset 아티팩트(`pattern_a_candidate_source_20260814.csv`, `pattern_a_candidate_manual_review_20260814.csv`, `summary.json`) 생성 및 Overwrite Protection / Source Lock 적용
   * 인간 차트 검토 가이드라인 및 체크리스트 문서화 (`docs/validation/pattern_a_real_candidate_chart_review_v01.md`)
-* **Phase 9B. Human Chart Review — HUMAN REVIEW PENDING**:
+* **Phase 9B. Human Chart Review — GO**:
   * 사용자가 실제 차트(월봉 ➔ 주봉 ➔ 일봉)를 보며 `manual_pattern_fit`, `manual_stage_fit`, `manual_notes` 수동 라벨링 수행.
 
 ---
@@ -233,7 +233,7 @@ KOSPI, KOSDAQ 지수 및 업종 대비 상대강도(RS) 산출 인프라 구축 
 6. Pattern A Score Momentum v0.1 — DONE (`707c594`)
 7. Official Common Stock Cache Population — DONE (`8983e65`, `7ff45fe`)
 8. Full Universe Scanner Integration — DONE (`13ab6f4`)
-9. Real Candidate Chart Review (Phase 9A Dataset Prep) — DONE / Phase 9B (Human Review) PENDING
+9. Real Candidate Chart Review (Phase 9A Dataset Prep) — DONE / Phase 9B (Human Review) GO
 
 ---
 

@@ -111,14 +111,14 @@ Scanner 결과에서 `score_ready=True`이나 `stage_ready=False` (`evaluator_re
 
 ## 6. 단위 및 전체 회귀 테스트 결과
 
-* **Candidate Review Unit Tests (`tests/test_candidate_review.py`)**: **9 passed (100% Green)**
-* **Full Test Suite**: **319 passed, 6 skipped, 1 deselected, 0 failed (100% Green)**
+* **Candidate Review Unit Tests (`tests/test_candidate_review.py`)**: **11 passed (100% Green)**
+* **Full Test Suite**: **321 passed, 6 skipped, 1 deselected, 0 failed (100% Green)**
 
 ---
 
 ## 7. Phase 9 진행 상태 및 로드맵
 
 * **Phase 8 (Full Universe Scanner Integration)**: **`DONE`**
-* **Phase 9A (Candidate Review Dataset Preparation)**: **`READY / COMPLETED`**
-* **Phase 9B (Human Chart Review)**: **`HUMAN REVIEW PENDING`**
-* **Phase 10 (Liquidity Filter)**: **`HOLD (사람의 차트 검토 완료 후 진행)`**
+* **Phase 9A (Candidate Review Dataset Preparation)**: **`COMPLETED & FROZEN`**
+* **Phase 9B (Human Chart Review)**: **`GO (사용자 수동 차트 검토 즉시 착수 가능)`**
+* **Phase 10 (Liquidity Filter)**: **`HOLD (Phase 9B 완료 후 착수)`**
