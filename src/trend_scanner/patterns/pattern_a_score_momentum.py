@@ -240,22 +240,32 @@ def compute_pattern_a_score_momentum(
         if expected_anchor not in available_monthly_set:
             if expected_anchor < first_available_month_ts:
                 # 전체 데이터 시작 시점 이전 ➔ 실제 히스토리 부족
+                insufficient_code = (
+                    "INSUFFICIENT_HISTORY_CURRENT"
+                    if offset == 0
+                    else f"INSUFFICIENT_HISTORY_{offset}M"
+                )
                 obs = PatternAScoreObservation(
                     anchor_date=expected_anchor,
                     effective_as_of=None,
                     monthly_as_of=None,
                     score_result=None,
-                    reason_codes=(f"INSUFFICIENT_HISTORY_{offset}M",),
+                    reason_codes=(insufficient_code,),
                 )
                 offset_to_status[offset] = "INSUFFICIENT_HISTORY"
             else:
                 # 데이터 기간 내에 해당 월만 누락 ➔ 중간 월봉 결측
+                missing_code = (
+                    "MISSING_MONTHLY_OBSERVATION_CURRENT"
+                    if offset == 0
+                    else f"MISSING_MONTHLY_OBSERVATION_{offset}M"
+                )
                 obs = PatternAScoreObservation(
                     anchor_date=expected_anchor,
                     effective_as_of=None,
                     monthly_as_of=None,
                     score_result=None,
-                    reason_codes=(f"MISSING_MONTHLY_OBSERVATION_{offset}M",),
+                    reason_codes=(missing_code,),
                 )
                 offset_to_status[offset] = "MISSING_MONTH"
 
@@ -280,21 +290,31 @@ def compute_pattern_a_score_momentum(
                     or (snapshot.monthly is not None and len(snapshot.monthly) < 36)
                 )
                 if is_insufficient:
+                    insufficient_code = (
+                        "INSUFFICIENT_HISTORY_CURRENT"
+                        if offset == 0
+                        else f"INSUFFICIENT_HISTORY_{offset}M"
+                    )
                     obs = PatternAScoreObservation(
                         anchor_date=expected_anchor,
                         effective_as_of=snapshot.effective_as_of,
                         monthly_as_of=snapshot.monthly_as_of,
                         score_result=score_res,
-                        reason_codes=(f"INSUFFICIENT_HISTORY_{offset}M",),
+                        reason_codes=(insufficient_code,),
                     )
                     offset_to_status[offset] = "INSUFFICIENT_HISTORY"
                 else:
+                    unavail_code = (
+                        "SCORE_CALCULATION_UNAVAILABLE_CURRENT"
+                        if offset == 0
+                        else "SCORE_CALCULATION_UNAVAILABLE"
+                    )
                     obs = PatternAScoreObservation(
                         anchor_date=expected_anchor,
                         effective_as_of=snapshot.effective_as_of,
                         monthly_as_of=snapshot.monthly_as_of,
                         score_result=score_res,
-                        reason_codes=("SCORE_CALCULATION_UNAVAILABLE",),
+                        reason_codes=(unavail_code,),
                     )
                     offset_to_status[offset] = "ERROR"
             else:
@@ -309,12 +329,13 @@ def compute_pattern_a_score_momentum(
         except Exception as exc:
             error_type = type(exc).__name__
             error_msg = str(exc)
+            err_code = "OBSERVATION_ERROR_CURRENT" if offset == 0 else "OBSERVATION_ERROR"
             obs = PatternAScoreObservation(
                 anchor_date=expected_anchor,
                 effective_as_of=None,
                 monthly_as_of=None,
                 score_result=None,
-                reason_codes=("OBSERVATION_ERROR",),
+                reason_codes=(err_code,),
                 error_type=error_type,
                 error_message=error_msg,
             )

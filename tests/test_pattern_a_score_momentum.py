@@ -364,3 +364,23 @@ def test_score_stage_legacy_isolation():
     assert not hasattr(result.horizon_1m, "stage")
     assert not hasattr(result.horizon_1m, "stage_delta")
     assert not hasattr(result, "stage")
+
+
+def test_current_observation_insufficient_history_naming():
+    """Current observation(offset=0)이 히스토리 부족일 때 INSUFFICIENT_HISTORY_0M이 아니라 INSUFFICIENT_HISTORY_CURRENT로 명명됨을 검증."""
+    # 35 completed months (36개월 미만 데이터)
+    daily = _create_mock_daily(months=35, start_date="2020-01-01")
+    as_of = daily.index.max().strftime("%Y-%m-%d")
+
+    res = compute_pattern_a_score_momentum("005930", "삼성전자", daily, as_of)
+
+    # Current observation 확인
+    current_obs = res.observations[-1]
+    assert current_obs.score is None
+    assert "INSUFFICIENT_HISTORY_0M" not in current_obs.reason_codes
+    assert "INSUFFICIENT_HISTORY_CURRENT" in current_obs.reason_codes
+
+    # Horizon reason codes 계약 유지 확인
+    assert res.horizon_1m.ready is False
+    assert "CURRENT_SCORE_UNAVAILABLE" in res.horizon_1m.reason_codes
+    assert "INSUFFICIENT_HISTORY_CURRENT" in res.horizon_1m.reason_codes

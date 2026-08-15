@@ -37,16 +37,23 @@ $$\Delta_{6M} = \text{Score}_T - \text{Score}_{T-6\_calendar\_months}$$
 
 * Percent change 대신 **단순 차분(Simple Difference)**을 사용한다 (Score가 0~100 유계 척도이므로 0 근처에서 왜곡 방지).
 
-### 3.2 Component Delta Decomposition
+### 3.2 Component Delta Decomposition & Caveat
 Score 변화의 구체적인 동인을 파악하기 위해 기존 Frozen `PatternAResult`의 구성요소별 차분을 함께 제공한다:
 * `base_score_delta`: 베이스 안정성 변화
 * `transition_score_delta`: 전환 시그널 변화
 * `core_score_delta`: 핵심 점수 변화
 * `support_score_delta`: 보조 점수 변화
 * `confirmation_bonus_delta`: 확인 보너스 변화
+* `balanced_core_score_delta`: 균형 핵심 점수 변화
 * `alignment_bonus_delta`: 정렬 보너스 변화 (이산적 변화 가능)
 * `progressed_penalty_delta`: 진행 과열 페널티 변화 (이산적 변화 가능)
 * `progressed_evidence_count_delta`: 과열 증거 개수 변화
+
+> [!CAUTION]
+> **Component Delta 단순 합 불일치 주의 (Diagnostic Decomposition Caveat)**:
+> Component Delta는 Score 변화의 방향과 원인을 진단하기 위한 진단용 분해 관측값(Diagnostic Decomposition)이다.
+> Pattern A Score v0.2는 조화평균(Harmonic Mean), 이산적 가산 보너스/페널티(Alignment Bonus, Progressed Penalty), 0~100 유계 클리핑(Bounded Clipping)을 포함하는 비선형 결합 구조를 가지므로, **각 Component Delta의 단순 합이 최종 Pattern A Score Delta와 항상 일치하지 않는다.**
+> 따라서 Component Delta의 합으로 최종 Score Delta를 재구성하거나 회계적 항등식(Accounting Identity)으로 해석해서는 안 된다.
 
 ---
 
@@ -59,10 +66,24 @@ Score 변화의 구체적인 동인을 파악하기 위해 기존 Frozen `Patter
 | **3M Momentum** | **39 completed monthly bars** | $T$ 및 $T-3M$ 필요 |
 | **6M Momentum** | **42 completed monthly bars** | $T$ 및 $T-6M$ 필요 |
 
-### 4.1 Reason Code Contract
-* **히스토리 부족 (Insufficient History)**: `INSUFFICIENT_HISTORY_1M`, `INSUFFICIENT_HISTORY_3M`, `INSUFFICIENT_HISTORY_6M`
-* **중간 월봉 결측 (Missing Month)**: `MISSING_MONTHLY_OBSERVATION_1M`, `MISSING_MONTHLY_OBSERVATION_3M`, `MISSING_MONTHLY_OBSERVATION_6M`
-* **계산 예외 (Calculation Error)**: `OBSERVATION_ERROR_1M`, `OBSERVATION_ERROR_3M`, `OBSERVATION_ERROR_CURRENT`
+### 4.1 Reason Code Contract 최종 목록
+
+* **Insufficient History (히스토리 부족)**:
+  * `INSUFFICIENT_HISTORY_CURRENT`
+  * `INSUFFICIENT_HISTORY_1M`
+  * `INSUFFICIENT_HISTORY_3M`
+  * `INSUFFICIENT_HISTORY_6M`
+* **Missing Monthly Observation (중간 월봉 결측)**:
+  * `MISSING_MONTHLY_OBSERVATION_1M`
+  * `MISSING_MONTHLY_OBSERVATION_3M`
+  * `MISSING_MONTHLY_OBSERVATION_6M`
+* **Observation Error (계산 예외 / 에러)**:
+  * `OBSERVATION_ERROR_CURRENT`
+  * `OBSERVATION_ERROR_1M`
+  * `OBSERVATION_ERROR_3M`
+  * `OBSERVATION_ERROR_6M`
+* **Current Horizon Wrapper**:
+  * `CURRENT_SCORE_UNAVAILABLE`
 
 ---
 
@@ -115,7 +136,7 @@ Pattern A Score v0.2: FROZEN
 Pattern A Stage Classifier v0.1: FROZEN (43ee01c)
 Pattern A Evaluator Integration v0.1: COMPLETED (51fc202)
 Data Quality & Universe Preparation v0.1: COMPLETED (0ce8012)
-Pattern A Score Momentum v0.1: COMPLETED (FROZEN MEASUREMENT CONTRACT)
-Unit & Integration Tests: 272 passed (100% Green)
+Pattern A Score Momentum v0.1: FROZEN MEASUREMENT CONTRACT (CLEANUP COMPLETED)
+Unit & Integration Tests: 273 passed (100% Green)
 Next: Official Common Stock Cache Population -> Full Universe Scanner Integration
 ```
