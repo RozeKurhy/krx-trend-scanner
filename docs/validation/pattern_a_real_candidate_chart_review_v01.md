@@ -111,8 +111,8 @@ Scanner 결과에서 `score_ready=True`이나 `stage_ready=False` (`evaluator_re
 
 ## 6. 단위 및 전체 회귀 테스트 결과
 
-* **Candidate Review Unit Tests (`tests/test_candidate_review.py`)**: **9 passed (100% Green)**
-* **Full Test Suite**: **319 passed, 6 skipped, 1 deselected, 0 failed (100% Green)**
+* **Candidate Review Unit Tests (`tests/test_candidate_review.py`)**: **12 passed (100% Green)**
+* **Full Test Suite**: **322 passed, 6 skipped, 1 deselected, 0 failed (100% Green)**
 
 ---
 

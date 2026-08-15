@@ -7,8 +7,10 @@ and dynamic workflow summary recalculation.
 
 Guarantees:
 - VALIDATE FIRST, WRITE SECOND (Zero artifact mutation on validation failure)
-- 4-Way Full Source Lock: scanner_commit, scanner_as_of, source_artifact, (ticker, official_stage)
-- Strict Manual Vocabulary Validation (Fail-Closed)
+- 1 Ticker = 1 Manual Review Row (Strict Duplicate & Row Count Lock)
+- Full-Row Provenance Uniformity & NaN Fail-Closed (scanner_commit, scanner_as_of, source_artifact)
+- 4-Way Strict Candidate Identity Lock: (ticker, official_stage) pair
+- Strict Manual Vocabulary & Non-Null Validation (Fail-Closed)
 - 2-Way Consistency Warning Logging
 """
 
@@ -119,36 +121,96 @@ class CandidateReviewIntegrityError(Exception):
 
 
 def _validate_manual_vocabulary(df: pd.DataFrame) -> None:
-    """Manual review 컬럼들의 값이 허용된 vocabulary 내에 있는지 엄격히 검증한다 (Fail-Closed)."""
+    """Manual review 컬럼들의 값이 허용된 vocabulary 내에 있는지 엄격히 검증한다 (Fail-Closed).
+
+    Null, 빈 문자열, whitespace-only 등도 모두 Invalid로 처리한다.
+    """
     if "review_status" in df.columns:
-        statuses = df["review_status"].dropna().astype(str).str.strip().str.upper()
-        invalid_status = df[~statuses.isin(ALLOWED_REVIEW_STATUS)]
-        if not invalid_status.empty:
+        raw_status = df["review_status"]
+        if raw_status.isna().any():
+            raise CandidateReviewIntegrityError("review_status column contains NaN or Null values")
+        normalized_status = raw_status.fillna("").astype(str).str.strip().str.upper()
+        invalid_mask = ~normalized_status.isin(ALLOWED_REVIEW_STATUS) | (normalized_status == "")
+        if invalid_mask.any():
+            invalid_rows = df[invalid_mask]
             raise CandidateReviewIntegrityError(
                 f"Invalid review_status values found in manual review: "
-                f"{invalid_status[['ticker', 'review_status']].to_dict('records')}. "
+                f"{invalid_rows[['ticker', 'review_status']].to_dict('records')}. "
                 f"Allowed values: {sorted(ALLOWED_REVIEW_STATUS)}"
             )
 
     if "manual_pattern_fit" in df.columns:
-        fits = df["manual_pattern_fit"].dropna().astype(str).str.strip().str.upper()
-        invalid_fit = df[~fits.isin(ALLOWED_MANUAL_PATTERN_FIT)]
-        if not invalid_fit.empty:
+        raw_fit = df["manual_pattern_fit"]
+        if raw_fit.isna().any():
+            raise CandidateReviewIntegrityError("manual_pattern_fit column contains NaN or Null values")
+        normalized_fit = raw_fit.fillna("").astype(str).str.strip().str.upper()
+        invalid_mask = ~normalized_fit.isin(ALLOWED_MANUAL_PATTERN_FIT) | (normalized_fit == "")
+        if invalid_mask.any():
+            invalid_rows = df[invalid_mask]
             raise CandidateReviewIntegrityError(
                 f"Invalid manual_pattern_fit values found in manual review: "
-                f"{invalid_fit[['ticker', 'manual_pattern_fit']].to_dict('records')}. "
+                f"{invalid_rows[['ticker', 'manual_pattern_fit']].to_dict('records')}. "
                 f"Allowed values: {sorted(ALLOWED_MANUAL_PATTERN_FIT)}"
             )
 
     if "manual_stage_fit" in df.columns:
-        stage_fits = df["manual_stage_fit"].dropna().astype(str).str.strip().str.upper()
-        invalid_stage_fit = df[~stage_fits.isin(ALLOWED_MANUAL_STAGE_FIT)]
-        if not invalid_stage_fit.empty:
+        raw_stage_fit = df["manual_stage_fit"]
+        if raw_stage_fit.isna().any():
+            raise CandidateReviewIntegrityError("manual_stage_fit column contains NaN or Null values")
+        normalized_stage_fit = raw_stage_fit.fillna("").astype(str).str.strip().str.upper()
+        invalid_mask = ~normalized_stage_fit.isin(ALLOWED_MANUAL_STAGE_FIT) | (normalized_stage_fit == "")
+        if invalid_mask.any():
+            invalid_rows = df[invalid_mask]
             raise CandidateReviewIntegrityError(
                 f"Invalid manual_stage_fit values found in manual review: "
-                f"{invalid_stage_fit[['ticker', 'manual_stage_fit']].to_dict('records')}. "
+                f"{invalid_rows[['ticker', 'manual_stage_fit']].to_dict('records')}. "
                 f"Allowed values: {sorted(ALLOWED_MANUAL_STAGE_FIT)}"
             )
+
+
+def _validate_provenance_uniformity(
+    df: pd.DataFrame,
+    expected_commit: str | None = None,
+    expected_as_of: str | None = None,
+    expected_artifact: str | None = None,
+) -> tuple[str, str, str]:
+    """DataFrame 전체 행에 대해 provenance 컬럼의 균일성 및 무결성을 검증한다.
+
+    Returns:
+        tuple[scanner_commit, scanner_as_of, source_artifact]
+    """
+    for col in ("scanner_commit", "scanner_as_of", "source_artifact"):
+        if col not in df.columns:
+            raise CandidateReviewIntegrityError(f"Missing required provenance column: '{col}'")
+        if df[col].isna().any():
+            raise CandidateReviewIntegrityError(f"Provenance column '{col}' contains NaN/Null values")
+        clean_series = df[col].astype(str).str.strip()
+        if (clean_series == "").any():
+            raise CandidateReviewIntegrityError(f"Provenance column '{col}' contains empty string values")
+        unique_vals = clean_series.unique()
+        if len(unique_vals) != 1:
+            raise CandidateReviewIntegrityError(
+                f"Mixed provenance values in column '{col}': found multiple distinct values {list(unique_vals)}"
+            )
+
+    commit_val = str(df["scanner_commit"].iloc[0]).strip()
+    as_of_val = str(df["scanner_as_of"].iloc[0]).strip()
+    artifact_val = str(df["source_artifact"].iloc[0]).strip()
+
+    if expected_commit is not None and commit_val != expected_commit:
+        raise CandidateReviewIntegrityError(
+            f"Provenance mismatch in 'scanner_commit': found '{commit_val}', expected '{expected_commit}'"
+        )
+    if expected_as_of is not None and as_of_val != expected_as_of:
+        raise CandidateReviewIntegrityError(
+            f"Provenance mismatch in 'scanner_as_of': found '{as_of_val}', expected '{expected_as_of}'"
+        )
+    if expected_artifact is not None and artifact_val != expected_artifact:
+        raise CandidateReviewIntegrityError(
+            f"Provenance mismatch in 'source_artifact': found '{artifact_val}', expected '{expected_artifact}'"
+        )
+
+    return commit_val, as_of_val, artifact_val
 
 
 def extract_and_prepare_candidate_review(
@@ -167,7 +229,7 @@ def extract_and_prepare_candidate_review(
     candidates = scanner_df[cand_mask].copy()
 
     # 2. Strict Integrity Checks
-    # 2.1 중복 종목 차단
+    # 2.1 중복 종목 차단 (1 ticker = 1 row)
     dup_tickers = candidates[candidates["ticker"].duplicated()]["ticker"].tolist()
     if dup_tickers:
         raise CandidateReviewIntegrityError(f"Duplicate candidate tickers found: {dup_tickers}")
@@ -276,26 +338,38 @@ def summarize_manual_review(
     """사용자가 수동으로 작성한 Manual Review DataFrame의 진행 현황을 집계한다.
 
     Strict Validation:
-        - 필수 Provenance 컬럼 부재 시 Fail-Closed
-        - Manual Vocabulary 오류 시 Fail-Closed
+        - 1 ticker = 1 row (중복 종목 발견 시 Fail-Closed)
+        - 필수 Provenance 컬럼 검증 및 Full-Row Uniformity 검증 (Fail-Closed)
+        - Manual Vocabulary 오류 및 Null/빈문자열 시 Fail-Closed
         - 2-Way Consistency Mismatch 시 Warning 로깅
     """
     total_cand = len(manual_review_df)
 
-    # 1. 필수 Provenance 컬럼 검증
+    # 1. 1 ticker = 1 row 중복 검증
+    if "ticker" not in manual_review_df.columns:
+        raise CandidateReviewIntegrityError("Manual review dataset is missing 'ticker' column")
+    dup_tickers = manual_review_df[manual_review_df["ticker"].duplicated()]["ticker"].tolist()
+    if dup_tickers:
+        raise CandidateReviewIntegrityError(
+            f"Duplicate ticker rows found in manual review dataset: {dup_tickers[:5]}"
+        )
+
+    # 2. 필수 Provenance 컬럼 및 Full-Row Uniformity 검증
     missing_prov = REQUIRED_PROVENANCE_COLUMNS - set(manual_review_df.columns)
     if missing_prov:
         raise CandidateReviewIntegrityError(
             f"Manual review dataset is missing required provenance columns: {sorted(missing_prov)}"
         )
 
-    # 2. Vocabulary Validation (Fail-Closed)
-    _validate_manual_vocabulary(manual_review_df)
+    commit, as_of, source_art = _validate_provenance_uniformity(
+        manual_review_df,
+        expected_commit=scanner_commit,
+        expected_as_of=scanner_as_of,
+        expected_artifact=source_artifact,
+    )
 
-    # 3. Provenance 추출
-    commit = str(scanner_commit or manual_review_df["scanner_commit"].iloc[0])
-    as_of = str(scanner_as_of or manual_review_df["scanner_as_of"].iloc[0])
-    source_art = str(source_artifact or manual_review_df["source_artifact"].iloc[0])
+    # 3. Vocabulary Validation (Fail-Closed)
+    _validate_manual_vocabulary(manual_review_df)
 
     # 4. Normalized Series
     status_series = manual_review_df["review_status"].astype(str).str.strip().str.upper()
@@ -388,7 +462,7 @@ def save_candidate_review_artifacts(
 
     Strict Atomicity & Lock Contract:
         [VALIDATE FIRST, WRITE SECOND]
-        - 어떤 파일도 디스크에 쓰기 전에 모든 Provenance, Lock, Vocabulary 검증을 완료한다.
+        - 어떤 파일도 디스크에 쓰기 전에 모든 Provenance, Lock, Row Count, Duplicate, Vocabulary 검증을 완료한다.
         - 검증 실패 시 어떤 파일도 변경되지 않는다 (Zero Mutation).
     """
     out_path = Path(output_dir)
@@ -407,43 +481,49 @@ def save_candidate_review_artifacts(
     if manual_csv.exists() and not overwrite_manual:
         existing_manual = pd.read_csv(manual_csv, dtype={"ticker": str})
 
-        # 1.1 필수 Provenance 컬럼 존재 검증
+        # 1.1 중복 ticker row 검증 (1 ticker = 1 row)
+        dup_tickers = existing_manual[existing_manual["ticker"].duplicated()]["ticker"].tolist()
+        if dup_tickers:
+            raise CandidateReviewIntegrityError(
+                f"Duplicate ticker rows found in existing manual review at {manual_csv}: {dup_tickers[:5]}"
+            )
+
+        # 1.2 Row count 검증
+        if len(existing_manual) != len(manual_review_df):
+            raise CandidateReviewIntegrityError(
+                f"Row count mismatch in existing manual review at {manual_csv}: "
+                f"found {len(existing_manual)} rows, expected {len(manual_review_df)} rows"
+            )
+
+        # 1.3 필수 Provenance 컬럼 및 Full-Row Uniformity 검증
         missing_prov = REQUIRED_PROVENANCE_COLUMNS - set(existing_manual.columns)
         if missing_prov:
             raise CandidateReviewIntegrityError(
                 f"Existing manual review at {manual_csv} is missing required provenance columns: {sorted(missing_prov)}"
             )
 
-        # 1.2 Manual Vocabulary 검증
+        _validate_provenance_uniformity(
+            existing_manual,
+            expected_commit=summary.scanner_commit,
+            expected_as_of=summary.scanner_as_of,
+            expected_artifact=summary.source_artifact,
+        )
+
+        # 1.4 Manual Vocabulary 검증
         _validate_manual_vocabulary(existing_manual)
 
-        # 1.3 Strict Provenance Lock 검증 (scanner_commit, scanner_as_of, source_artifact)
-        existing_commit = str(existing_manual["scanner_commit"].iloc[0])
-        if existing_commit != summary.scanner_commit:
+        # 1.5 Ticker set strict 검증
+        existing_tickers = set(existing_manual["ticker"].astype(str))
+        current_tickers = set(manual_review_df["ticker"].astype(str))
+        if existing_tickers != current_tickers:
+            diff_missing = current_tickers - existing_tickers
+            diff_extra = existing_tickers - current_tickers
             raise CandidateReviewIntegrityError(
-                f"Existing manual review at {manual_csv} belongs to scanner_commit '{existing_commit}', "
-                f"which does not match new source commit '{summary.scanner_commit}'. "
-                f"Refusing to overwrite human annotations across different scanner generations. "
-                f"Use a new output directory or specify --overwrite-manual to discard."
+                f"Existing manual review ticker set mismatch! "
+                f"Missing in existing: {list(diff_missing)[:5]}, Extra in existing: {list(diff_extra)[:5]}"
             )
 
-        existing_as_of = str(existing_manual["scanner_as_of"].iloc[0])
-        if existing_as_of != summary.scanner_as_of:
-            raise CandidateReviewIntegrityError(
-                f"Existing manual review at {manual_csv} belongs to scanner_as_of '{existing_as_of}', "
-                f"which does not match new source as_of '{summary.scanner_as_of}'. "
-                f"Refusing to mix different temporal evaluation dates. Use a new output directory."
-            )
-
-        existing_artifact = str(existing_manual["source_artifact"].iloc[0])
-        if existing_artifact != summary.source_artifact:
-            raise CandidateReviewIntegrityError(
-                f"Existing manual review at {manual_csv} was generated from source_artifact '{existing_artifact}', "
-                f"which does not match new source artifact '{summary.source_artifact}'. "
-                f"Refusing to mix different source artifact origins. Use a new output directory."
-            )
-
-        # 1.4 Candidate Identity Lock 검증 (ticker + official_stage pair)
+        # 1.6 Candidate Identity Lock 검증 (ticker + official_stage pair)
         existing_identities = set(zip(existing_manual["ticker"].astype(str), existing_manual["official_stage"].astype(str)))
         current_identities = set(zip(manual_review_df["ticker"].astype(str), manual_review_df["official_stage"].astype(str)))
         if existing_identities != current_identities:

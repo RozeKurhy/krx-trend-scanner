@@ -73,7 +73,7 @@ krx-trend-scanner/
 │           ├── historical_snapshot.py
 │           └── feature_report.py
 │
-├── tests/                          # 319개 유닛 및 통합 테스트 (100% Green)
+├── tests/                          # 322개 유닛 및 통합 테스트 (100% Green)
 └── docs/                           # 상세 설계 및 검증 보고서
     ├── roadmap.md                  # 전체 개발 로드맵
     ├── data_layer.md               # 데이터 레이어 설계 문서
