@@ -35,3 +35,9 @@ class ParquetCache:
         if df is None or df.empty:
             return None
         return df.index.max()
+
+    def list_cached_tickers(self) -> list[str]:
+        """캐시 디렉토리에 존재하는 모든 종목코드(.parquet 파일 stem) 목록을 반환한다."""
+        if not self.base_dir.exists():
+            return []
+        return sorted([p.stem for p in self.base_dir.glob("*.parquet") if p.is_file()])
