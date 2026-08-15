@@ -49,10 +49,11 @@
 | Data Quality & Universe Preparation v0.1 (`0ce8012`) | DONE | Fail-Closed 종목명 조회, 36m 계약, 품질 감사 |
 | Pattern A Score Momentum v0.1 (`707c594`) | DONE | Calendar 1M/3M/6M Raw & Component Delta 측정 계층 |
 | Official Common Stock Cache Population | DONE | Full Population & Audit `8983e65`, final docs `7ff45fe` |
-| Full Universe Scanner Integration | NEXT | Official COMMON 대상 Score × Stage × Candidate State × Momentum 통합 |
+| Full Universe Scanner Integration | DONE | Official COMMON 2,528개 스캔 및 매트릭스 통합 완료 |
+| Real Candidate Chart Review | NEXT | Scanner 후보 사람 직접 차트 검토 (월->주->일) |
 
 **Pattern B~F**: 미착수(NOT STARTED)  
-**전체 시장 Scanner**: 준비 중(NEXT - Scanner Integration 착수)  
+**전체 시장 Scanner**: 완료(DONE - Phase 8 Integration 완료)  
 **Market Leader Score**: 미착수(NOT STARTED)  
 
 ---
@@ -149,24 +150,20 @@ KOSPI / KOSDAQ 보통주 2,528개 대상 원자적 캐시(Atomic Write) 구축 �
 
 ---
 
-## Phase 8. Full Universe Scanner Integration — NEXT
+## Phase 8. Full Universe Scanner Integration — DONE
 
 Official KRX KOSPI / KOSDAQ `AssetType.COMMON` universe를 대상으로 Pattern A Score, Official Stage, Candidate State, Score Momentum, Readiness 및 Quality Flags를 종목별 단일 row로 통합.
 
-핵심 설계 및 유니버스 계약:
-* **평가 대상 (Evaluation Scope)**: Official KRX KOSPI / KOSDAQ 보통주 (`AssetType.COMMON`) (현재 2026-08-14 snapshot 기준 2,528개)
-* **제외 자산 (Excluded Assets)**: PREFERRED, SPAC, REIT, ETF, ETN, UNKNOWN, KONEX는 Scanner 계산 대상에서 엄격히 배제.
-* **Fail-Closed 처리**: COMMON 종목 중 캐시 누락 또는 36M/42M 히스토리 부족 종목은 universe에서 삭제하지 않고 `INSUFFICIENT_DATA` 및 품질 플래그를 통해 row 단위로 fail closed 유지.
-* **핵심 작업 (Integration Only)**:
-  * Universe 배치 평가 파이프라인 구축
-  * 종목별 Score × Stage × Candidate State × Momentum (1M/3M/6M) × Readiness 통합 출력
-  * 전체 유니버스 결과 매트릭스 생성 및 분포 관찰 (Distribution Inspection)
-* **주의 및 제외 정책**:
-  * Ranking, Top N, Cutoff 필터링, Unified/Weighted Score 산출, BUY/SELL 해석은 포함하지 않음 (분포 분석 후 별도 후속 단계에서 다룸).
+핵심 성과 및 계약:
+* **평가 대상 (Evaluation Scope)**: Official KRX KOSPI / KOSDAQ 보통주 (`AssetType.COMMON`) 2,528개 전수 스캔 완료 (Row Emitted 2,528개 100% 일치)
+* **제외 자산 (Excluded Assets)**: PREFERRED, SPAC, REIT, ETF, ETN, UNKNOWN, KONEX 엄격 배제
+* **Fail-Closed 보존**: 캐시 누락(42개) 및 36m 미만 단기 상장주(267개) row 유지 및 `INSUFFICIENT_DATA` 처리
+* **예외 격리**: Scanner Calculation Errors 0건 달성
+* **매트릭스 아티팩트 생성**: `artifacts/scanner/pattern_a_universe_scan_20260814.csv` 및 `summary.json`
 
 ---
 
-## Phase 9. Real Candidate Chart Review — PLANNED
+## Phase 9. Real Candidate Chart Review — NEXT
 
 Scanner 상위 후보를 사람이 직접 검토 (월봉 -> 주봉 -> 일봉).
 
@@ -231,8 +228,8 @@ KOSPI, KOSDAQ 지수 및 업종 대비 상대강도(RS) 산출 인프라 구축 
 5. Data Quality / Universe Preparation v0.1 — DONE (`0ce8012`)
 6. Pattern A Score Momentum v0.1 — DONE (`707c594`)
 7. Official Common Stock Cache Population — DONE (`8983e65`, `7ff45fe`)
-8. Full Universe Scanner Integration — NEXT
-9. Real Candidate Chart Review — PLANNED
+8. Full Universe Scanner Integration — DONE
+9. Real Candidate Chart Review — NEXT
 
 ---
 

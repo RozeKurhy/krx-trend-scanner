@@ -60,6 +60,9 @@ krx-trend-scanner/
 │       │   ├── pattern_a_evaluator.py      # 종단간 단일 종목 Evaluator v0.1
 │       │   └── pattern_a_score_momentum.py # Calendar Score Momentum v0.1
 │       │
+│       ├── scanner/                # 전체 유니버스 스캔 및 다차원 통합
+│       │   └── full_universe_scanner.py # Pattern A Full Universe Scanner v0.1
+│       │
 │       ├── universe/               # 유니버스 준비도 및 데이터 품질 감사
 │       │   └── quality_auditor.py  # Universe Data Quality Auditor
 │       │
@@ -67,7 +70,7 @@ krx-trend-scanner/
 │           ├── historical_snapshot.py
 │           └── feature_report.py
 │
-├── tests/                          # 273개 유닛 및 통합 테스트 (100% Green)
+├── tests/                          # 308개 유닛 및 통합 테스트 (100% Green)
 └── docs/                           # 상세 설계 및 검증 보고서
     ├── roadmap.md                  # 전체 개발 로드맵
     ├── data_layer.md               # 데이터 레이어 설계 문서
@@ -76,7 +79,9 @@ krx-trend-scanner/
         ├── pattern_a_stage_classifier_v01.md
         ├── pattern_a_evaluator_v01.md
         ├── data_quality_universe_v01.md
-        └── pattern_a_score_momentum_v01.md
+        ├── pattern_a_score_momentum_v01.md
+        ├── krx_common_cache_population_v01.md
+        └── pattern_a_full_universe_scanner_v01.md
 ```
 
 ---
@@ -110,9 +115,9 @@ daily = cache.load("000660")
 
 # 1. 단일 시점 종합 평가 (Score + Stage + Candidate State)
 eval_res = evaluate_pattern_a("000660", "SK하이닉스", daily, as_of="2023-11-30")
-print(f"Score: {eval_res.score.pattern_a_score:.2f}")
-print(f"Stage: {eval_res.stage.stage.name}")
-print(f"Candidate State: {eval_res.candidate_state.name}")
+print(f"Score: {eval_res.score:.2f}")
+print(f"Stage: {eval_res.stage.value}")
+print(f"Candidate State: {eval_res.candidate_state.value}")
 
 # 2. 시간축 Score Momentum 측정 (1M, 3M, 6M Raw & Component Delta)
 momentum_res = compute_pattern_a_score_momentum("000660", "SK하이닉스", daily, as_of="2023-11-30")
@@ -130,8 +135,8 @@ print(f"6M Score Delta: {momentum_res.horizon_6m.score_delta:+.2f}")
 * [x] **Phase 5**: Data Quality & Universe Preparation v0.1 Completed
 * [x] **Phase 6**: Pattern A Score Momentum v0.1 Completed
 * [x] **Phase 7**: Official Common Stock Cache Population Completed (Coverage 98.34%)
-* [ ] **Phase 8**: Full Universe Scanner Integration (NEXT)
-* [ ] **Phase 9**: Real Candidate Chart Review
+* [x] **Phase 8**: Full Universe Scanner Integration Completed (2,528 Stocks)
+* [ ] **Phase 9**: Real Candidate Chart Review (NEXT)
 * [ ] **Phase 10~17**: Liquidity Filter, RS, Flow, Pattern B~F
 * [ ] **Phase 18~20**: Market Leader Score & Production Scanner
 
