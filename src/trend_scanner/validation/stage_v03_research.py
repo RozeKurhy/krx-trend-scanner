@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Literal
 
 import pandas as pd
 
@@ -27,13 +27,16 @@ class HypothesisDefinition:
     hypothesis_id: str
     description: str
     condition_code: str
-    demote_rule: Callable[[pd.Series | Any], bool]  # Returns True if demoted from TRANSITION to BASE
+    demote_rule: Callable[[Any], bool]  # Returns True if demoted from TRANSITION to BASE
+    input_scope: Literal["FEATURE", "LIFECYCLE_DIAGNOSTIC"] = "FEATURE"
 
 
-def _get_feature_val(row_or_feat: Any, attr: str, default: Any = None) -> Any:
-    if isinstance(row_or_feat, pd.Series):
-        return row_or_feat.get(attr, default)
-    return getattr(row_or_feat, attr, default)
+def _get_val(target: Any, attr: str, default: Any = None) -> Any:
+    if isinstance(target, pd.Series):
+        return target.get(attr, default)
+    if isinstance(target, dict):
+        return target.get(attr, default)
+    return getattr(target, attr, default)
 
 
 # Hypothesis condition definitions (Explicit Demotion Rules from TRANSITION to BASE)
@@ -42,48 +45,55 @@ HYPOTHESES: list[HypothesisDefinition] = [
         hypothesis_id="HYP_A",
         description="Cap excessive rebound velocity (weekly_ma12_slope <= 0.10 required for TRANSITION)",
         condition_code="weekly_ma12_slope > 0.10 -> demote to BASE",
-        demote_rule=lambda f: float(_get_feature_val(f, "weekly_ma12_slope", 0.0)) > 0.10,
+        demote_rule=lambda f: float(_get_val(f, "weekly_ma12_slope", 0.0)) > 0.10,
+        input_scope="FEATURE",
     ),
     HypothesisDefinition(
         hypothesis_id="HYP_B",
         description="Weak core trend with strong weekly rebound (ma24_slope <= 0.010 AND weekly_ma12_slope >= 0.10)",
         condition_code="ma24_slope <= 0.010 and weekly_ma12_slope >= 0.10 -> demote to BASE",
-        demote_rule=lambda f: float(_get_feature_val(f, "ma24_slope", 0.0)) <= 0.010 and float(_get_feature_val(f, "weekly_ma12_slope", 0.0)) >= 0.10,
+        demote_rule=lambda f: float(_get_val(f, "ma24_slope", 0.0)) <= 0.010 and float(_get_val(f, "weekly_ma12_slope", 0.0)) >= 0.10,
+        input_scope="FEATURE",
     ),
     HypothesisDefinition(
         hypothesis_id="HYP_C",
         description="High range position near overhead resistance (range_position > 0.50 AND distance_to_resistance < 0.25)",
         condition_code="range_position > 0.50 and distance_to_resistance < 0.25 -> demote to BASE",
-        demote_rule=lambda f: float(_get_feature_val(f, "range_position", 0.0)) > 0.50 and float(_get_feature_val(f, "distance_to_resistance", 1.0)) < 0.25,
+        demote_rule=lambda f: float(_get_val(f, "range_position", 0.0)) > 0.50 and float(_get_val(f, "distance_to_resistance", 1.0)) < 0.25,
+        input_scope="FEATURE",
     ),
     HypothesisDefinition(
         hypothesis_id="HYP_D",
         description="Non-bullish MA alignment demotion (ma_order_bullish is False)",
         condition_code="not ma_order_bullish -> demote to BASE",
-        demote_rule=lambda f: not bool(_get_feature_val(f, "ma_order_bullish", False)),
+        demote_rule=lambda f: not bool(_get_val(f, "ma_order_bullish", False)),
+        input_scope="FEATURE",
     ),
     HypothesisDefinition(
         hypothesis_id="HYP_E",
         description="Strict MA spread convergence (ma_spread <= 0.10 required for TRANSITION)",
         condition_code="ma_spread > 0.10 -> demote to BASE",
-        demote_rule=lambda f: float(_get_feature_val(f, "ma_spread", 0.0)) > 0.10,
+        demote_rule=lambda f: float(_get_val(f, "ma_spread", 0.0)) > 0.10,
+        input_scope="FEATURE",
     ),
     HypothesisDefinition(
         hypothesis_id="HYP_F",
         description="Cap 12m momentum expansion (avg_price_change_12m <= 0.20 required for TRANSITION)",
         condition_code="avg_price_change_12m > 0.20 -> demote to BASE",
-        demote_rule=lambda f: float(_get_feature_val(f, "avg_price_change_12m", 0.0)) > 0.20,
+        demote_rule=lambda f: float(_get_val(f, "avg_price_change_12m", 0.0)) > 0.20,
+        input_scope="FEATURE",
     ),
     HypothesisDefinition(
         hypothesis_id="HYP_G",
         description="Sequential lifecycle episode termination tracking",
         condition_code="current_episode_terminated is True -> demote to BASE",
-        demote_rule=lambda f: bool(_get_feature_val(f, "current_episode_terminated", False)),
+        demote_rule=lambda d: bool(_get_val(d, "current_episode_terminated", False)),
+        input_scope="LIFECYCLE_DIAGNOSTIC",
     ),
 ]
 
 
-# Global memory cache for benchmark evaluations to ensure sub-second re-evaluations
+# Global memory cache for benchmark evaluations
 _BENCHMARK_CACHE: list[dict[str, Any]] | None = None
 
 
@@ -106,6 +116,7 @@ def _load_benchmark_evaluations(repo_root: Path) -> list[dict[str, Any]]:
             "truth": spec.audited_stage,
             "v01_stage": v01_res.stage,
             "features": snap.features,
+            "diagnostics": cand_eval.diagnostics,
             "cand_stage": cand_eval.candidate_stage,
         })
 
@@ -119,6 +130,7 @@ def _load_benchmark_evaluations(repo_root: Path) -> list[dict[str, Any]]:
             "truth": spec.manual_stage,
             "v01_stage": v01_res.stage,
             "features": snap.features,
+            "diagnostics": cand_eval.diagnostics,
             "cand_stage": cand_eval.candidate_stage,
         })
 
@@ -126,11 +138,11 @@ def _load_benchmark_evaluations(repo_root: Path) -> list[dict[str, Any]]:
     return items
 
 
-def evaluate_benchmark_with_demotion_rule(
+def evaluate_benchmark_with_hypothesis(
     repo_root: Path,
-    demote_rule: Callable[[Any], bool],
+    hyp: HypothesisDefinition | None,
 ) -> dict[str, Any]:
-    """Evaluate Calibration46 and OOS35 under a specific hypothesis demotion rule with instant cached evaluation."""
+    """Evaluate Calibration46 and OOS35 under a specific hypothesis with proper input_scope routing."""
     items = _load_benchmark_evaluations(repo_root)
 
     calib_exact = 0; calib_adj = 0; calib_sev = 0; calib_exact_reg = 0
@@ -140,10 +152,13 @@ def evaluate_benchmark_with_demotion_rule(
         truth = item["truth"]
         v01_stage = item["v01_stage"]
         features = item["features"]
+        diagnostics = item["diagnostics"]
         cand_stage = item["cand_stage"]
 
-        if cand_stage == PatternAStage.TRANSITION and demote_rule(features):
-            cand_stage = PatternAStage.BASE
+        if cand_stage == PatternAStage.TRANSITION and hyp is not None:
+            inp = diagnostics if hyp.input_scope == "LIFECYCLE_DIAGNOSTIC" else features
+            if hyp.demote_rule(inp):
+                cand_stage = PatternAStage.BASE
 
         v01_match = classify_stage_match(truth, v01_stage)
         cand_match = classify_stage_match(truth, cand_stage)
@@ -188,7 +203,7 @@ def generate_research_artifacts(repo_root: Path) -> dict[str, Any]:
     row_026910 = df_prem[df_prem["ticker"] == "026910"].iloc[0]
 
     # Baseline benchmark metrics
-    baseline_bench = evaluate_benchmark_with_demotion_rule(repo_root, lambda f: False)
+    baseline_bench = evaluate_benchmark_with_hypothesis(repo_root, None)
     base_calib_exact = baseline_bench["calib_exact"]
     base_calib_sev = baseline_bench["calib_sev"]
     base_oos_exact = baseline_bench["oos_exact"]
@@ -221,17 +236,17 @@ def generate_research_artifacts(repo_root: Path) -> dict[str, Any]:
 
         # Count premature removed (that were transition in v0.2 and now demoted)
         prem_demoted = sum(1 for _, r in df_prem.iterrows() if r["candidate_stage"] == "transition" and hyp.demote_rule(r))
-        prem_total_removed = 3 + prem_demoted  # 3 already base + newly demoted
+        prem_total_removed = 3 + prem_demoted
 
         # Count transition match lost (that were transition in v0.2 and now demoted)
         tm_lost = sum(1 for _, r in df_tm.iterrows() if r["candidate_stage"] == "transition" and hyp.demote_rule(r))
 
         # Count recycled removed
         rec_demoted = sum(1 for _, r in df_rec.iterrows() if r["candidate_stage"] == "transition" and hyp.demote_rule(r))
-        rec_total_removed = 2 + rec_demoted  # 2 already base (대동기어, 예림당) + newly demoted
+        rec_total_removed = 2 + rec_demoted
 
-        # Benchmark evaluation under this hypothesis
-        hyp_bench = evaluate_benchmark_with_demotion_rule(repo_root, hyp.demote_rule)
+        # Benchmark evaluation under this hypothesis with correct input scope
+        hyp_bench = evaluate_benchmark_with_hypothesis(repo_root, hyp)
         calib_ex_delta = hyp_bench["calib_exact"] - base_calib_exact
         calib_sev_delta = hyp_bench["calib_sev"] - base_calib_sev
         oos_ex_delta = hyp_bench["oos_exact"] - base_oos_exact
@@ -301,7 +316,7 @@ def generate_research_artifacts(repo_root: Path) -> dict[str, Any]:
     # Fully deterministic canonical research_summary.json
     summary_payload = {
         "research_iteration": "Pattern A Stage v0.3 Research Candidate",
-        "base_checkpoint_sha": "a614007ddc5a1d7df4279c4fab5debeae4ef11c8",
+        "base_checkpoint_sha": "3c4ba2e4697b5354e6b2bb2d31c16563ea675d6b",
         "provenance": {
             "snapshot_date": "2026-08-14",
             "sample_sizes": {
@@ -355,7 +370,28 @@ def generate_research_artifacts(repo_root: Path) -> dict[str, Any]:
     }
 
 
+def render_feature_table_ascii(df: pd.DataFrame, title: str) -> str:
+    """Render an ASCII table from a dataframe matching committed source CSV values."""
+    lines = [
+        f"+--------+--------------+------------+--------------+--------------+-----------+----------+------------------+",
+        f"| Ticker | Name         | ma24_slope | weekly_slope | avg_chg_12m  | range_pos | dist_res | ma_order_bullish |",
+        f"+--------+--------------+------------+--------------+--------------+-----------+----------+------------------+",
+    ]
+    for _, r in df.iterrows():
+        t = str(r["ticker"]).zfill(6)
+        name = str(r["name"])[:12]
+        m24 = f"{float(r['ma24_slope']):.4f}"
+        w_sl = f"{float(r['weekly_ma12_slope']):.4f}"
+        avg_chg = f"{float(r['avg_price_change_12m']):.4f}"
+        r_pos = f"{float(r['range_position']):.4f}"
+        d_res = f"{float(r['distance_to_resistance']):.4f}"
+        bull = str(bool(r["ma_order_bullish"]))
+        lines.append(f"| {t:<6} | {name:<12} | {m24:>10} | {w_sl:>12} | {avg_chg:>12} | {r_pos:>9} | {d_res:>8} | {bull:<16} |")
+    lines.append(f"+--------+--------------+------------+--------------+--------------+-----------+----------+------------------+")
+    return "\n".join(lines)
+
+
 if __name__ == "__main__":
     repo_root = Path(__file__).resolve().parent.parent.parent.parent
     res = generate_research_artifacts(repo_root)
-    print("Stage v0.3 Research Evidence regenerated successfully.")
+    print("Stage v0.3 Research Evidence regenerated successfully with HYP_G lifecycle diagnostic scope.")

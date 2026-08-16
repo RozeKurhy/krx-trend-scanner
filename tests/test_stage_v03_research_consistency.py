@@ -10,7 +10,7 @@ import pandas as pd
 from trend_scanner.data.cache import ParquetCache
 from trend_scanner.validation.stage_v03_research import (
     HYPOTHESES,
-    evaluate_benchmark_with_demotion_rule,
+    evaluate_benchmark_with_hypothesis,
     generate_research_artifacts,
 )
 
@@ -97,24 +97,51 @@ def test_hypothesis_audit_count_exact_equality():
 
 
 @pytest.mark.skipif(not _HAS_CACHE, reason="Cache unavailable")
-def test_benchmark_impact_exact_equality():
-    """Verify that benchmark_impact.csv numbers match live evaluation from evaluate_benchmark_with_demotion_rule."""
+def test_benchmark_impact_all_8_fields_exact_equality():
+    """Verify that benchmark_impact.csv numbers match live evaluation for all 8 evaluation fields across Baseline + HYP_A~G."""
     out_dir = _REPO_ROOT / "artifacts" / "stage_v03_research"
     df_bench = pd.read_csv(out_dir / "benchmark_impact.csv")
 
-    # Check baseline row
+    # 1. Baseline row (8 fields)
     base_row = df_bench[df_bench["condition_id"] == "BASELINE_V02"].iloc[0]
-    live_base = evaluate_benchmark_with_demotion_rule(_REPO_ROOT, lambda f: False)
+    live_base = evaluate_benchmark_with_hypothesis(_REPO_ROOT, None)
     assert base_row["calib_exact"] == live_base["calib_exact"]
+    assert base_row["calib_adj"] == live_base["calib_adj"]
     assert base_row["calib_sev"] == live_base["calib_sev"]
+    assert base_row["calib_exact_reg"] == live_base["calib_exact_reg"]
     assert base_row["oos_exact"] == live_base["oos_exact"]
+    assert base_row["oos_adj"] == live_base["oos_adj"]
     assert base_row["oos_sev"] == live_base["oos_sev"]
+    assert base_row["oos_exact_reg"] == live_base["oos_exact_reg"]
 
-    # Check each hypothesis row
+    # 2. Hypothesis rows HYP_A ~ HYP_G (8 fields each)
     for hyp in HYPOTHESES:
         bench_row = df_bench[df_bench["condition_id"] == hyp.hypothesis_id].iloc[0]
-        live_hyp = evaluate_benchmark_with_demotion_rule(_REPO_ROOT, hyp.demote_rule)
+        live_hyp = evaluate_benchmark_with_hypothesis(_REPO_ROOT, hyp)
         assert bench_row["calib_exact"] == live_hyp["calib_exact"]
+        assert bench_row["calib_adj"] == live_hyp["calib_adj"]
         assert bench_row["calib_sev"] == live_hyp["calib_sev"]
+        assert bench_row["calib_exact_reg"] == live_hyp["calib_exact_reg"]
         assert bench_row["oos_exact"] == live_hyp["oos_exact"]
+        assert bench_row["oos_adj"] == live_hyp["oos_adj"]
         assert bench_row["oos_sev"] == live_hyp["oos_sev"]
+        assert bench_row["oos_exact_reg"] == live_hyp["oos_exact_reg"]
+
+
+def test_hyp_g_lifecycle_diagnostic_input_scope():
+    """Verify HYP_G explicitly uses input_scope LIFECYCLE_DIAGNOSTIC."""
+    hyp_g = next(h for h in HYPOTHESES if h.hypothesis_id == "HYP_G")
+    assert hyp_g.input_scope == "LIFECYCLE_DIAGNOSTIC"
+    assert hyp_g.demote_rule({"current_episode_terminated": True}) is True
+    assert hyp_g.demote_rule({"current_episode_terminated": False}) is False
+    assert hyp_g.demote_rule({}) is False
+
+
+def test_report_source_csv_equality():
+    """Verify that source CSVs match expected known ticker values exactly (e.g. 003100 선광 ma24_slope=0.0146)."""
+    out_dir = _REPO_ROOT / "artifacts" / "stage_v03_research"
+    tm_df = pd.read_csv(out_dir / "transition_match13_features.csv", dtype={"ticker": str})
+    sun_gwang = tm_df[tm_df["ticker"] == "003100"].iloc[0]
+    assert round(float(sun_gwang["ma24_slope"]), 4) == 0.0146
+    assert round(float(sun_gwang["weekly_ma12_slope"]), 4) == -0.0741
+
