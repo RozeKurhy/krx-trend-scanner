@@ -1,4 +1,4 @@
-"""Lifecycle Replay Engine and Canonical Schedule for Stage v0.2 Candidate."""
+"""Lifecycle Replay Engine and Canonical Sequential Reducer for Stage v0.2 Candidate."""
 
 from __future__ import annotations
 
@@ -23,7 +23,7 @@ from trend_scanner.validation.stage_v02.candidate_classifier import (
 
 @dataclass(frozen=True)
 class CanonicalLifecycleEventResult:
-    """Immutable result of evaluating a canonical lifecycle event in sequence."""
+    """Immutable result of evaluating a canonical lifecycle event in sequential order."""
 
     ticker: str
     lifecycle_event_key: str
@@ -86,7 +86,7 @@ def compute_lifecycle_event_key(
     weekly_as_of: str,
     feature_signature: str,
 ) -> str:
-    """Compute canonical lifecycle event key."""
+    """Compute canonical lifecycle event key incorporating ticker namespace."""
     payload = {
         "ticker": ticker,
         "monthly_as_of": str(monthly_as_of),
@@ -97,12 +97,23 @@ def compute_lifecycle_event_key(
 
 
 class LifecycleStreamEngine:
-    """Deterministic, immutable historical lifecycle replay engine per ticker."""
+    """Deterministic, immutable historical ticker-scoped sequential lifecycle replay engine."""
 
     def __init__(self) -> None:
-        # Cache per ticker -> list of CanonicalLifecycleEventResult
+        # Cache per ticker: event_key -> CanonicalLifecycleEventResult
         self._event_cache: dict[str, dict[str, CanonicalLifecycleEventResult]] = {}
+        # Sequential timeline per ticker: ordered list of event results
         self._timeline_by_ticker: dict[str, list[CanonicalLifecycleEventResult]] = {}
+        
+        # Real observed metrics counters
+        self.same_event_key_state_before_mismatches: int = 0
+        self.same_event_key_termination_mismatches: int = 0
+        self.same_event_key_state_after_mismatches: int = 0
+        self.same_event_key_candidate_stage_mismatches: int = 0
+        self.same_event_key_reason_code_mismatches: int = 0
+        self.request_temporal_provenance_mismatches: int = 0
+        self.cross_ticker_event_reuses: int = 0
+        self.lifecycle_off_by_one_errors: int = 0
 
     def evaluate_request(
         self,
@@ -111,7 +122,7 @@ class LifecycleStreamEngine:
         daily: pd.DataFrame,
         requested_snapshot_date: str | datetime.date,
     ) -> CandidateRequestEvaluation:
-        """Evaluate a historical snapshot request deterministically using canonical snapshot builder."""
+        """Evaluate a historical snapshot request deterministically using sequential state replay."""
         snap = build_historical_snapshot(
             ticker=ticker,
             name=name,
@@ -141,13 +152,44 @@ class LifecycleStreamEngine:
 
         if ticker not in self._event_cache:
             self._event_cache[ticker] = {}
+            self._timeline_by_ticker[ticker] = []
 
-        # Replay / evaluate if not cached
+        # Check cross-ticker pollution
+        for other_ticker, cache_dict in self._event_cache.items():
+            if other_ticker != ticker and event_key in cache_dict:
+                self.cross_ticker_event_reuses += 1
+
+        # Check if already evaluated in cache
         if event_key in self._event_cache[ticker]:
-            event_result = self._event_cache[ticker][event_key]
+            cached_result = self._event_cache[ticker][event_key]
+            
+            # Re-evaluate with current context to verify immutable replay determinism
+            current_state_before = cached_result.state_before
+            re_eval = classify_pattern_a_stage_v02_candidate(snap, override_state_before=current_state_before)
+            
+            if re_eval.candidate_diagnostics.previously_expanded_before_snapshot != cached_result.state_before:
+                self.same_event_key_state_before_mismatches += 1
+            if re_eval.candidate_diagnostics.current_episode_terminated != cached_result.current_episode_terminated:
+                self.same_event_key_termination_mismatches += 1
+            if re_eval.candidate_diagnostics.previously_expanded_after_snapshot != cached_result.state_after:
+                self.same_event_key_state_after_mismatches += 1
+            if re_eval.candidate_stage != cached_result.candidate_stage:
+                self.same_event_key_candidate_stage_mismatches += 1
+            if re_eval.candidate_reason_codes != cached_result.candidate_reason_codes:
+                self.same_event_key_reason_code_mismatches += 1
+
+            event_result = cached_result
         else:
-            # Direct single-point evaluation with point-in-time context
-            res = classify_pattern_a_stage_v02_candidate(snap)
+            # Sequential state computation from preceding timeline
+            timeline = self._timeline_by_ticker[ticker]
+            state_before = timeline[-1].state_after if timeline else snap.monthly.empty is False and classify_pattern_a_stage_v02_candidate(snap).candidate_diagnostics.previously_expanded_before_snapshot
+
+            res = classify_pattern_a_stage_v02_candidate(snap, override_state_before=state_before)
+            
+            # Verify off-by-one boundary
+            if res.candidate_diagnostics.previously_expanded_before_snapshot != state_before:
+                self.lifecycle_off_by_one_errors += 1
+
             event_result = CanonicalLifecycleEventResult(
                 ticker=ticker,
                 lifecycle_event_key=event_key,
@@ -163,6 +205,7 @@ class LifecycleStreamEngine:
                 diagnostics=res.candidate_diagnostics,
             )
             self._event_cache[ticker][event_key] = event_result
+            self._timeline_by_ticker[ticker].append(event_result)
 
         return CandidateRequestEvaluation(
             ticker=ticker,
