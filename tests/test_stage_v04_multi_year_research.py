@@ -74,19 +74,31 @@ def test_deterministic_regeneration():
 
 
 def test_artifact_row_counts_and_provenance():
-    """Verify all 8 artifact CSVs/JSONs exist and have correct schemas."""
+    """Verify all artifact CSVs/JSONs exist and have correct schemas."""
     out_dir = _REPO_ROOT / "artifacts" / "stage_v04_multi_year_research"
     tm_df = pd.read_csv(out_dir / "transition_match13_multi_year_features.csv", dtype={"ticker": str})
     prem_df = pd.read_csv(out_dir / "premature13_multi_year_features.csv", dtype={"ticker": str})
     rec_df = pd.read_csv(out_dir / "recycled3_multi_year_features.csv", dtype={"ticker": str})
     early_df = pd.read_csv(out_dir / "early_match4_multi_year_features.csv", dtype={"ticker": str})
+    calib_df = pd.read_csv(out_dir / "calibration46_multi_year_features.csv", dtype={"ticker": str})
+    oos_df = pd.read_csv(out_dir / "oos35_multi_year_features.csv", dtype={"ticker": str})
 
     assert len(tm_df) == 13
     assert len(prem_df) == 13
     assert len(rec_df) == 3
     assert len(early_df) == 4
+    assert len(calib_df) == 46
+    assert len(oos_df) == 35
     assert (out_dir / "focus_026910_multi_year_profile.json").exists()
     assert (out_dir / "focus_038390_multi_year_profile.json").exists()
+
+
+def test_human_cohort_roster_exactness():
+    """Verify Early MATCH 4 roster strictly matches ground truth."""
+    out_dir = _REPO_ROOT / "artifacts" / "stage_v04_multi_year_research"
+    early_df = pd.read_csv(out_dir / "early_match4_multi_year_features.csv", dtype={"ticker": str})
+    expected_early = {"001540", "001450", "005430", "161890"}
+    assert set(early_df["ticker"]) == expected_early
 
 
 @pytest.mark.skipif(not _HAS_CACHE, reason="Cache unavailable")

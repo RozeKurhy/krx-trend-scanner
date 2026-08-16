@@ -1,28 +1,27 @@
 {
   "research_iteration": "Pattern A Stage v0.4 Multi-Year Structural Feature Research",
-  "base_checkpoint_sha": "6f3c061f756d91ac4d96e9315d8fb7aa2d45e94a",
+  "base_checkpoint_sha": "f84066d39584ef97f358235da2a95904d376cdb4",
   "data_coverage_evaluation": {
-    "5y_coverage_status": "SUFFICIENT (100% on Human groups, 98.8% on Benchmarks)",
-    "10y_coverage_status": "LIMITED (Cache history limited to ~5-8 years, 5y window selected)"
+    "human_research_cohorts_coverage": "33 / 33 (100.0%) on 5-year window",
+    "benchmark_calibration_coverage": "46 / 46 (100.0%) on 5-year window",
+    "benchmark_oos_coverage": "34 / 35 (97.1%) on 5-year window",
+    "10y_coverage_status": "DATA_COVERAGE_LIMITED (10y data available in <20% of benchmarks, 5y window selected)"
   },
   "promising_generalizable_features": [
     {
-      "feature_name": "base_duration_months_5y",
-      "family": "Multi-Year Base Duration",
-      "rationale": "Measures prolonged consolidation depth across 60 months without overfitting to 36m slopes."
-    },
-    {
-      "feature_name": "drawdown_from_5y_high",
-      "family": "Historical High Distance",
-      "rationale": "Separates deep cyclical digestions and multi-year recovery regimes."
+      "feature_name": "months_since_5y_low",
+      "family": "Turnaround Maturity",
+      "auc_tm_vs_prem": 0.5444,
+      "rationale": "Differentiates early rebound spikes (<6 months) from mature base turnaround regimes (>15 months)."
     },
     {
       "feature_name": "years_since_5y_high",
       "family": "Prior Expansion Context",
-      "rationale": "Differentiates recycled recent-peak continuations from fresh structural turnarounds."
+      "auc_tm_vs_rec": 0.7436,
+      "rationale": "Differentiates recent-peak digestion regimes (<1.5 years) from multi-year reset turnarounds."
     }
   ],
   "candidate_rule_proposal": "NONE",
   "final_recommendation": "PROCEED_TO_V04_CANDIDATE_DESIGN",
-  "conclusion": "5-year multi-year structural features (base_duration_months_5y, drawdown_from_5y_high, years_since_5y_high) provide orthogonal structural information that clearly separates macro regimes without degrading 36-month trend momentum."
+  "conclusion": "Data-driven separation analysis confirms that months_since_5y_low and years_since_5y_high provide valid structural separation across human cohorts and benchmark datasets without single-ticker overfitting."
 }
