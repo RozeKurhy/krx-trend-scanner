@@ -199,3 +199,35 @@ def test_missing_or_empty_flow_fails_closed():
     empty_df = pd.DataFrame(columns=["date", "ticker", "foreign_net_buy_value"])
     res_empty = compute_foreign_flow_features(ticker, as_of, flow_df=empty_df)
     assert res_empty.data_status == FlowDataStatus.DATA_UNAVAILABLE
+
+
+def test_provider_missing_column_negative_test(monkeypatch):
+    """Verify provider raises MarketDataError when required columns are missing in KRX response."""
+    fake_df = pd.DataFrame({
+        "매수거래대금": [1000.0],
+        "매도거래대금": [500.0],
+    }, index=["005930"])
+
+    from pykrx import stock
+    monkeypatch.setattr(stock, "get_market_net_purchases_of_equities_by_ticker", lambda *args, **kwargs: fake_df)
+
+    provider = ForeignFlowDataProvider()
+    with pytest.raises(MarketDataError, match="missing required columns"):
+        provider.fetch_date_batch("2026-08-14")
+
+
+def test_provider_numeric_coercion_negative_test(monkeypatch):
+    """Verify provider raises MarketDataError when numeric coercion fails in KRX response."""
+    fake_df = pd.DataFrame({
+        "매수거래대금": ["INVALID_NUM"],
+        "매도거래대금": [500.0],
+        "순매수거래대금": [500.0],
+    }, index=["005930"])
+
+    from pykrx import stock
+    monkeypatch.setattr(stock, "get_market_net_purchases_of_equities_by_ticker", lambda *args, **kwargs: fake_df)
+
+    provider = ForeignFlowDataProvider()
+    with pytest.raises(MarketDataError, match="Numeric coercion failure"):
+        provider.fetch_date_batch("2026-08-14")
+

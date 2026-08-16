@@ -164,6 +164,7 @@ Point-In-Time Flow Confirmation Infrastructure를 성공적으로 구축하고 �
 - Flow READY: {summary['investable_flow_ready_count']} ({summary['investable_flow_ready_pct']}%)
 - Flow PARTIAL: {summary['investable_flow_partial_count']} ({summary['investable_flow_partial_pct']}%)
 - Flow DATA_UNAVAILABLE: {summary['investable_flow_unavail_count']} ({summary['investable_flow_unavail_pct']}%)
+  (계약: DATA_UNAVAILABLE row의 flow 숫자는 production confirmation / ranking에 절대 사용 금지)
 
 [20D Foreign Net Buy Direction Breakdown]
 - Net Buy Positive (> 0): {summary['net_buy_20d_pos_count']} ({summary['net_buy_20d_pos_pct']}%)
@@ -216,6 +217,8 @@ def run_foreign_flow_infrastructure_validation(
     output_dir: Path | None = None,
     doc_path: Path | None = None,
     write_artifacts: bool = True,
+    integration_oracle_path: Path | None = None,
+    candidate_oracle_path: Path | None = None,
 ) -> dict[str, Any]:
     """Execute Phase 11 Foreign Flow Confirmation Infrastructure Validation."""
     cache_dir = repo_root / "data" / "raw" / "stocks"
@@ -255,51 +258,69 @@ def run_foreign_flow_infrastructure_validation(
     liq_cnt = int((df_candidates["investability_status"] == InvestabilityStatus.FILTERED_LIQUIDITY.value).sum())
     unavail_cnt = int((df_candidates["investability_status"] == InvestabilityStatus.DATA_UNAVAILABLE.value).sum())
 
-    # 4. Phase 10 Frozen Baseline Exact Parity Check
-    oracle_csv = repo_root / "artifacts/pattern_a_final_closure/pattern_a_final_closure_candidates_20260814.csv"
-    inv_summary_json = repo_root / "artifacts/investability/investability_audit_summary_20260814.json"
+    # 4. Phase 10 Frozen Baseline Exact Parity Check (Phase 10C Canonical Oracle)
+    integration_oracle_csv = integration_oracle_path or (
+        repo_root / "artifacts/investability/pattern_a_investability_integration_20260814.csv"
+    )
+    candidate_oracle_csv = candidate_oracle_path or (
+        repo_root / "artifacts/investability/pattern_a_investability_candidates_20260814.csv"
+    )
 
+    oracle_available = False
     cand_ticker_mismatches = 0
     stage_mismatches = 0
     score_mismatches = 0
     cand_state_mismatches = 0
     investability_mismatches = 0
 
-    if oracle_csv.exists():
-        df_oracle = pd.read_csv(oracle_csv)
-        df_oracle["ticker"] = df_oracle["ticker"].astype(str).str.zfill(6)
+    if integration_oracle_csv.exists() and candidate_oracle_csv.exists():
+        oracle_available = True
+        df_int_oracle = pd.read_csv(integration_oracle_csv)
+        df_cand_oracle = pd.read_csv(candidate_oracle_csv)
+
+        df_int_oracle["ticker"] = df_int_oracle["ticker"].astype(str).str.zfill(6)
+        df_cand_oracle["ticker"] = df_cand_oracle["ticker"].astype(str).str.zfill(6)
         df_candidates["ticker_z"] = df_candidates["ticker"].astype(str).str.zfill(6)
 
         cand_set_actual = set(df_candidates["ticker_z"])
-        cand_set_oracle = set(df_oracle["ticker"])
+        cand_set_oracle = set(df_int_oracle["ticker"])
         cand_ticker_mismatches = len(cand_set_actual.symmetric_difference(cand_set_oracle))
 
-        oracle_map = df_oracle.set_index("ticker")
+        int_oracle_map = df_int_oracle.set_index("ticker")
+        cand_oracle_map = df_cand_oracle.set_index("ticker")
         actual_map = df_candidates.set_index("ticker_z")
 
         for t in cand_set_actual.intersection(cand_set_oracle):
-            o_row = oracle_map.loc[t]
             a_row = actual_map.loc[t]
-            if str(a_row["official_stage"]) != str(o_row["official_stage"]):
+            i_row = int_oracle_map.loc[t]
+
+            # Stage parity
+            if str(a_row["official_stage"]) != str(i_row["official_stage"]):
                 stage_mismatches += 1
-            if a_row["pattern_a_score"] is not None and o_row["pattern_a_score"] is not None:
-                if abs(float(a_row["pattern_a_score"]) - float(o_row["pattern_a_score"])) > 1e-4:
-                    score_mismatches += 1
-            elif a_row["pattern_a_score"] != o_row["pattern_a_score"]:
-                score_mismatches += 1
-            if str(a_row["candidate_state"]) != str(o_row["candidate_state"]):
+
+            # Candidate state parity
+            if str(a_row["candidate_state"]) != str(i_row["candidate_state"]):
                 cand_state_mismatches += 1
 
-    if inv_summary_json.exists():
-        inv_data = json.loads(inv_summary_json.read_text(encoding="utf-8"))
-        if inv_data.get("investable_count") != tot_inv:
-            investability_mismatches += 1
-        if inv_data.get("filtered_market_cap_count") != mcap_cnt:
-            investability_mismatches += 1
-        if inv_data.get("filtered_liquidity_count") != liq_cnt:
-            investability_mismatches += 1
-        if inv_data.get("data_unavailable_count") != unavail_cnt:
-            investability_mismatches += 1
+            # Investability status ticker-level parity
+            if str(a_row["investability_status"]) != str(i_row["investability_status"]):
+                investability_mismatches += 1
+
+            # Score parity (from cand_oracle_map)
+            if t in cand_oracle_map.index:
+                c_row = cand_oracle_map.loc[t]
+                if a_row["pattern_a_score"] is not None and c_row["pattern_a_score"] is not None:
+                    if abs(float(a_row["pattern_a_score"]) - float(c_row["pattern_a_score"])) > 1e-4:
+                        score_mismatches += 1
+                elif a_row["pattern_a_score"] != c_row["pattern_a_score"]:
+                    score_mismatches += 1
+    else:
+        oracle_available = False
+        cand_ticker_mismatches = EXPECTED_RAW_CANDIDATES
+        stage_mismatches = EXPECTED_RAW_CANDIDATES
+        score_mismatches = EXPECTED_RAW_CANDIDATES
+        cand_state_mismatches = EXPECTED_RAW_CANDIDATES
+        investability_mismatches = EXPECTED_RAW_CANDIDATES
 
     # 5. Investable Flow Distribution & Readiness
     inv_ready_cnt = int((df_investable["foreign_flow_data_status"] == FlowDataStatus.READY.value).sum())
@@ -328,50 +349,96 @@ def run_foreign_flow_infrastructure_validation(
     intensity_20d_mismatches = 0
     intensity_60d_mismatches = 0
 
+    def _compare_signed_flow(act_val: Any, exp_val: float | None) -> bool:
+        """Null semantics & tolerance comparison for signed flow (KRW)."""
+        if (act_val is None or pd.isna(act_val)) and (exp_val is None or pd.isna(exp_val)):
+            return True
+        if (act_val is None or pd.isna(act_val)) or (exp_val is None or pd.isna(exp_val)):
+            return False
+        return abs(float(act_val) - float(exp_val)) <= 1.0
+
+    def _compare_intensity(act_val: Any, exp_val: float | None) -> bool:
+        """Null semantics & tolerance comparison for normalized intensity."""
+        if (act_val is None or pd.isna(act_val)) and (exp_val is None or pd.isna(exp_val)):
+            return True
+        if (act_val is None or pd.isna(act_val)) or (exp_val is None or pd.isna(exp_val)):
+            return False
+        return abs(float(act_val) - float(exp_val)) <= 1e-4
+
     for _, inv_row in df_investable.iterrows():
         t_code = inv_row["ticker"]
         t_flow_sub = df_flow[df_flow["ticker"] == t_code].sort_values(by="date")
 
-        # 5D Signed Flow Check
-        if len(t_flow_sub) >= 5:
-            exp_5d = float(t_flow_sub["foreign_net_buy_value"].iloc[-5:].sum())
-            act_5d = inv_row.get("foreign_net_buy_value_5d")
-            if act_5d is None or abs(exp_5d - float(act_5d)) > 1.0:
-                signed_flow_5d_mismatches += 1
+        # 1) Signed Flow Check
+        exp_5d = float(t_flow_sub["foreign_net_buy_value"].iloc[-5:].sum()) if len(t_flow_sub) >= 5 else None
+        act_5d = inv_row.get("foreign_net_buy_value_5d")
+        if not _compare_signed_flow(act_5d, exp_5d):
+            signed_flow_5d_mismatches += 1
 
-        # 20D Signed Flow Check
-        if len(t_flow_sub) >= 20:
-            exp_20d = float(t_flow_sub["foreign_net_buy_value"].iloc[-20:].sum())
-            act_20d = inv_row.get("foreign_net_buy_value_20d")
-            if act_20d is None or abs(exp_20d - float(act_20d)) > 1.0:
-                signed_flow_20d_mismatches += 1
+        exp_20d = float(t_flow_sub["foreign_net_buy_value"].iloc[-20:].sum()) if len(t_flow_sub) >= 20 else None
+        act_20d = inv_row.get("foreign_net_buy_value_20d")
+        if not _compare_signed_flow(act_20d, exp_20d):
+            signed_flow_20d_mismatches += 1
 
-        # 60D Signed Flow Check
-        if len(t_flow_sub) >= 60:
-            exp_60d = float(t_flow_sub["foreign_net_buy_value"].iloc[-60:].sum())
-            act_60d = inv_row.get("foreign_net_buy_value_60d")
-            if act_60d is None or abs(exp_60d - float(act_60d)) > 1.0:
-                signed_flow_60d_mismatches += 1
+        exp_60d = float(t_flow_sub["foreign_net_buy_value"].iloc[-60:].sum()) if len(t_flow_sub) >= 60 else None
+        act_60d = inv_row.get("foreign_net_buy_value_60d")
+        if not _compare_signed_flow(act_60d, exp_60d):
+            signed_flow_60d_mismatches += 1
 
-        # Intensity Parity Check via Price Cache
+        # 2) Intensity Parity Check via Price Cache (5D, 20D, 60D All Recomputed)
         daily_stock = parquet_cache.load(t_code)
-        if daily_stock is not None and not daily_stock.empty:
-            daily_as_of = daily_stock[daily_stock.index <= pd.Timestamp(CANONICAL_AS_OF)]
-            if "trading_value" in daily_as_of.columns and len(daily_as_of) >= 20 and len(t_flow_sub) >= 20:
-                # Merge on date for exact window
-                t_flow_recent20 = t_flow_sub.iloc[-20:].copy()
-                t_flow_recent20["date_str"] = t_flow_recent20["date"].astype(str)
-                daily_as_of_recent = daily_as_of.copy()
-                daily_as_of_recent["date_str"] = daily_as_of_recent.index.strftime("%Y-%m-%d")
-                merged20 = pd.merge(t_flow_recent20, daily_as_of_recent, on="date_str")
+        exp_int_5d = None
+        exp_int_20d = None
+        exp_int_60d = None
+
+        if daily_stock is not None and not daily_stock.empty and "trading_value" in daily_stock.columns:
+            daily_as_of = daily_stock[daily_stock.index <= pd.Timestamp(CANONICAL_AS_OF)].copy()
+            daily_as_of["date_str"] = daily_as_of.index.strftime("%Y-%m-%d")
+
+            # 5D Intensity
+            if len(t_flow_sub) >= 5:
+                t_flow_5 = t_flow_sub.iloc[-5:].copy()
+                t_flow_5["date_str"] = t_flow_5["date"].astype(str)
+                merged5 = pd.merge(t_flow_5, daily_as_of, on="date_str")
+                if len(merged5) == 5:
+                    tv_sum5 = float(merged5["trading_value"].sum())
+                    nb_sum5 = float(merged5["foreign_net_buy_value"].sum())
+                    if tv_sum5 > 0:
+                        exp_int_5d = nb_sum5 / tv_sum5
+
+            # 20D Intensity
+            if len(t_flow_sub) >= 20:
+                t_flow_20 = t_flow_sub.iloc[-20:].copy()
+                t_flow_20["date_str"] = t_flow_20["date"].astype(str)
+                merged20 = pd.merge(t_flow_20, daily_as_of, on="date_str")
                 if len(merged20) == 20:
                     tv_sum20 = float(merged20["trading_value"].sum())
                     nb_sum20 = float(merged20["foreign_net_buy_value"].sum())
                     if tv_sum20 > 0:
-                        exp_int20 = nb_sum20 / tv_sum20
-                        act_int20 = inv_row.get("foreign_flow_intensity_20d")
-                        if act_int20 is None or abs(exp_int20 - float(act_int20)) > 1e-4:
-                            intensity_20d_mismatches += 1
+                        exp_int_20d = nb_sum20 / tv_sum20
+
+            # 60D Intensity
+            if len(t_flow_sub) >= 60:
+                t_flow_60 = t_flow_sub.iloc[-60:].copy()
+                t_flow_60["date_str"] = t_flow_60["date"].astype(str)
+                merged60 = pd.merge(t_flow_60, daily_as_of, on="date_str")
+                if len(merged60) == 60:
+                    tv_sum60 = float(merged60["trading_value"].sum())
+                    nb_sum60 = float(merged60["foreign_net_buy_value"].sum())
+                    if tv_sum60 > 0:
+                        exp_int_60d = nb_sum60 / tv_sum60
+
+        act_int_5d = inv_row.get("foreign_flow_intensity_5d")
+        if not _compare_intensity(act_int_5d, exp_int_5d):
+            intensity_5d_mismatches += 1
+
+        act_int_20d = inv_row.get("foreign_flow_intensity_20d")
+        if not _compare_intensity(act_int_20d, exp_int_20d):
+            intensity_20d_mismatches += 1
+
+        act_int_60d = inv_row.get("foreign_flow_intensity_60d")
+        if not _compare_intensity(act_int_60d, exp_int_60d):
+            intensity_60d_mismatches += 1
 
     # Distributions
     dist_payload = {
@@ -462,7 +529,8 @@ def run_foreign_flow_infrastructure_validation(
     # 8. 10 Dynamic Hard Gates Evaluation
     # Gate 1: Phase 10 Frozen Identity & Exact Parity PASS
     g1 = (
-        len(df_scan) == EXPECTED_UNIVERSE_COUNT
+        oracle_available
+        and len(df_scan) == EXPECTED_UNIVERSE_COUNT
         and tot_cand == EXPECTED_RAW_CANDIDATES
         and trans_cnt == EXPECTED_TRANSITION_COUNT
         and early_cnt == EXPECTED_EARLY_COUNT
@@ -553,7 +621,12 @@ def run_foreign_flow_infrastructure_validation(
     g8 = required_cols.issubset(set(df_scan.columns))
 
     # Gate 9: Raw180 / Investable103 Preservation PASS
-    g9 = bool(tot_cand == 180 and tot_inv == 103 and cand_ticker_mismatches == 0)
+    g9 = bool(
+        oracle_available
+        and tot_cand == EXPECTED_RAW_CANDIDATES
+        and tot_inv == EXPECTED_INVESTABLE_COUNT
+        and cand_ticker_mismatches == 0
+    )
 
     # Gate 10: Full Test Suite PASS
     py_exit, py_fail, py_block = _read_pytest_report(repo_root)

@@ -20,6 +20,24 @@ _ARTIFACTS_DIR = _REPO_ROOT / "artifacts/flow"
 
 
 @pytest.fixture(scope="module")
+def base_scan_result():
+    """Run full universe scan once for module and reuse in negative tests."""
+    from trend_scanner.data.cache import ParquetCache
+    from trend_scanner.scanner.full_universe_scanner import scan_pattern_a_universe
+
+    cache_dir = _REPO_ROOT / "data" / "raw" / "stocks"
+    parquet_cache = ParquetCache(base_dir=cache_dir)
+    source_parquet = _REPO_ROOT / "artifacts/flow/source/foreign_flow_daily_20260814.parquet"
+    df_flow = pd.read_parquet(source_parquet) if source_parquet.exists() else pd.DataFrame()
+    return scan_pattern_a_universe(
+        cache=parquet_cache,
+        as_of=CANONICAL_AS_OF,
+        flow_df=df_flow,
+        enrich_flow_for_candidates=True,
+    )
+
+
+@pytest.fixture(scope="module")
 def flow_validation_summary() -> dict:
     """Run validation suite once for all test assertions."""
     summary_file = _ARTIFACTS_DIR / "pattern_a_foreign_flow_summary_20260814.json"
@@ -116,26 +134,148 @@ def test_early_10_foreign_flow_table(flow_validation_summary: dict):
         assert r["foreign_net_buy_value_20d"] is not None
 
 
-def test_source_meta_hash_mismatch_negative_case():
-    """Negative test: verify hash mismatch detection fails source identity gate."""
-    fake_meta = {
-        "parquet_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
-        "row_count": 999,
-        "ticker_count": 999,
-        "date_min": "2026-01-01",
-        "date_max": "2026-08-14",
-        "requested_as_of": "2026-08-14",
-    }
-    actual_sha = "807952218c5e1d2e82408991eaef08b785fc415a59e9f9b99f854e46f03ff918"
-    assert actual_sha != fake_meta["parquet_sha256"]
+def test_oracle_missing_fail_closed_negative_test(base_scan_result, monkeypatch, tmp_path: Path):
+    """Gate 1 & 9 Negative Test: Verify missing Phase 10 canonical oracle fails closed."""
+    import copy
+    import trend_scanner.validation.pattern_a_foreign_flow_infrastructure as val_mod
+
+    monkeypatch.setattr(val_mod, "scan_pattern_a_universe", lambda *args, **kwargs: copy.deepcopy(base_scan_result))
+
+    missing_oracle = tmp_path / "non_existent_oracle.csv"
+    res = val_mod.run_foreign_flow_infrastructure_validation(
+        repo_root=_REPO_ROOT,
+        output_dir=tmp_path / "out",
+        doc_path=tmp_path / "doc.md",
+        write_artifacts=False,
+        integration_oracle_path=missing_oracle,
+        candidate_oracle_path=missing_oracle,
+    )
+    assert res["hard_gates"]["gate_01_phase10_frozen_identity_parity_pass"] is False
+    assert res["hard_gates"]["gate_09_raw180_investable103_preservation_pass"] is False
+    assert res["phase_11_status"] == "HOLD_FLOW_INFRA"
 
 
-def test_candidate_ticker_swap_detection_negative_case():
-    """Negative test: verify candidate ticker swap is caught by exact set equality."""
-    actual_set = {"005930", "000660"}
-    swapped_oracle = {"005930", "035420"}  # 000660 swapped with 035420
-    mismatches = len(actual_set.symmetric_difference(swapped_oracle))
-    assert mismatches == 2
+def test_candidate_ticker_swap_negative_test(base_scan_result, monkeypatch, tmp_path: Path):
+    """Gate 1 & 9 Negative Test: Verify swapped ticker in oracle triggers validator mismatch."""
+    import copy
+    import trend_scanner.validation.pattern_a_foreign_flow_infrastructure as val_mod
+
+    monkeypatch.setattr(val_mod, "scan_pattern_a_universe", lambda *args, **kwargs: copy.deepcopy(base_scan_result))
+
+    canonical_oracle = _REPO_ROOT / "artifacts/investability/pattern_a_investability_integration_20260814.csv"
+    df = pd.read_csv(canonical_oracle)
+    # Swap first ticker to a fake ticker
+    df.loc[0, "ticker"] = "999999"
+    swapped_oracle = tmp_path / "swapped_oracle.csv"
+    df.to_csv(swapped_oracle, index=False)
+
+    res = val_mod.run_foreign_flow_infrastructure_validation(
+        repo_root=_REPO_ROOT,
+        output_dir=tmp_path / "out",
+        doc_path=tmp_path / "doc.md",
+        write_artifacts=False,
+        integration_oracle_path=swapped_oracle,
+    )
+    assert res["candidate_ticker_mismatches"] > 0
+    assert res["hard_gates"]["gate_01_phase10_frozen_identity_parity_pass"] is False
+    assert res["hard_gates"]["gate_09_raw180_investable103_preservation_pass"] is False
+    assert res["phase_11_status"] == "HOLD_FLOW_INFRA"
+
+
+def test_investability_status_mutation_negative_test(base_scan_result, monkeypatch, tmp_path: Path):
+    """Gate 1 Negative Test: Verify mutated investability status in oracle triggers mismatch."""
+    import copy
+    import trend_scanner.validation.pattern_a_foreign_flow_infrastructure as val_mod
+
+    monkeypatch.setattr(val_mod, "scan_pattern_a_universe", lambda *args, **kwargs: copy.deepcopy(base_scan_result))
+
+    canonical_oracle = _REPO_ROOT / "artifacts/investability/pattern_a_investability_integration_20260814.csv"
+    df = pd.read_csv(canonical_oracle)
+    # Mutate investability_status of the first row (INVESTABLE -> FILTERED_MARKET_CAP)
+    df.loc[0, "investability_status"] = "FILTERED_MARKET_CAP"
+    mutated_oracle = tmp_path / "mutated_oracle.csv"
+    df.to_csv(mutated_oracle, index=False)
+
+    res = val_mod.run_foreign_flow_infrastructure_validation(
+        repo_root=_REPO_ROOT,
+        output_dir=tmp_path / "out",
+        doc_path=tmp_path / "doc.md",
+        write_artifacts=False,
+        integration_oracle_path=mutated_oracle,
+    )
+    assert res["investability_mismatches"] >= 1
+    assert res["hard_gates"]["gate_01_phase10_frozen_identity_parity_pass"] is False
+    assert res["phase_11_status"] == "HOLD_FLOW_INFRA"
+
+
+def test_intensity_5d_mutation_negative_test(base_scan_result, monkeypatch, tmp_path: Path):
+    """Gate 6 Negative Test: Verify mutated 5D intensity in scan results fails Gate 6."""
+    from trend_scanner.scanner.full_universe_scanner import PatternAUniverseScanResult
+    import trend_scanner.validation.pattern_a_foreign_flow_infrastructure as val_mod
+
+    mutated_rows = list(base_scan_result.rows)
+    mutated = False
+    for idx, r in enumerate(mutated_rows):
+        if r.ticker == "001540":
+            mutated_rows[idx] = type(r)(
+                **{**r.__dict__, "foreign_flow_intensity_5d": 999.0}
+            )
+            mutated = True
+            break
+    assert mutated, "Target investable candidate 001540 not found in scan rows"
+
+    mutated_scan = PatternAUniverseScanResult(
+        requested_as_of=base_scan_result.requested_as_of,
+        summary=base_scan_result.summary,
+        rows=tuple(mutated_rows),
+    )
+
+    monkeypatch.setattr(val_mod, "scan_pattern_a_universe", lambda *args, **kwargs: mutated_scan)
+
+    res = val_mod.run_foreign_flow_infrastructure_validation(
+        repo_root=_REPO_ROOT,
+        output_dir=tmp_path / "out",
+        doc_path=tmp_path / "doc.md",
+        write_artifacts=False,
+    )
+    assert res["intensity_5d_mismatches"] >= 1
+    assert res["hard_gates"]["gate_06_normalized_flow_arithmetic_parity_pass"] is False
+    assert res["phase_11_status"] == "HOLD_FLOW_INFRA"
+
+
+def test_intensity_60d_mutation_negative_test(base_scan_result, monkeypatch, tmp_path: Path):
+    """Gate 6 Negative Test: Verify mutated 60D intensity in scan results fails Gate 6."""
+    from trend_scanner.scanner.full_universe_scanner import PatternAUniverseScanResult
+    import trend_scanner.validation.pattern_a_foreign_flow_infrastructure as val_mod
+
+    mutated_rows = list(base_scan_result.rows)
+    mutated = False
+    for idx, r in enumerate(mutated_rows):
+        if r.ticker == "001540":
+            mutated_rows[idx] = type(r)(
+                **{**r.__dict__, "foreign_flow_intensity_60d": 999.0}
+            )
+            mutated = True
+            break
+    assert mutated, "Target investable candidate 001540 not found in scan rows"
+
+    mutated_scan = PatternAUniverseScanResult(
+        requested_as_of=base_scan_result.requested_as_of,
+        summary=base_scan_result.summary,
+        rows=tuple(mutated_rows),
+    )
+
+    monkeypatch.setattr(val_mod, "scan_pattern_a_universe", lambda *args, **kwargs: mutated_scan)
+
+    res = val_mod.run_foreign_flow_infrastructure_validation(
+        repo_root=_REPO_ROOT,
+        output_dir=tmp_path / "out",
+        doc_path=tmp_path / "doc.md",
+        write_artifacts=False,
+    )
+    assert res["intensity_60d_mismatches"] >= 1
+    assert res["hard_gates"]["gate_06_normalized_flow_arithmetic_parity_pass"] is False
+    assert res["phase_11_status"] == "HOLD_FLOW_INFRA"
 
 
 def test_live_validation_runner(tmp_path: Path):
@@ -163,3 +303,4 @@ def test_hard_gates_all_pass(flow_validation_summary: dict):
     for g_name, g_pass in gates.items():
         assert g_pass is True, f"Gate {g_name} failed!"
     assert flow_validation_summary["phase_11_status"] == "FLOW_INFRA_READY"
+

@@ -21,7 +21,7 @@ class FlowDataStatus(str, Enum):
 
     READY = "READY"                      # 20D window 정상 산출 및 provenance 유효
     PARTIAL = "PARTIAL"                  # 5D는 산출 가능하나 20D observation 부족
-    DATA_UNAVAILABLE = "DATA_UNAVAILABLE"  # 수급 데이터 부재 또는 신뢰 불가
+    DATA_UNAVAILABLE = "DATA_UNAVAILABLE"  # 수급 데이터 부재 또는 신뢰 불가 (계약: DATA_UNAVAILABLE row의 flow 숫자는 production confirmation / ranking에 절대 사용 금지)
     NOT_EVALUATED = "NOT_EVALUATED"        # 스캐너에서 미평가된 종목 상태
 
 

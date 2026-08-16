@@ -44,6 +44,7 @@ Point-In-Time Flow Confirmation Infrastructure를 성공적으로 구축하고 �
 - Flow READY: 103 (100.0%)
 - Flow PARTIAL: 0 (0.0%)
 - Flow DATA_UNAVAILABLE: 0 (0.0%)
+  (계약: DATA_UNAVAILABLE row의 flow 숫자는 production confirmation / ranking에 절대 사용 금지)
 
 [20D Foreign Net Buy Direction Breakdown]
 - Net Buy Positive (> 0): 70 (67.96%)
