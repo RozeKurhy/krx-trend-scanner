@@ -3,10 +3,10 @@
 ## 1. Executive Summary
 
 * **문서명**: `pattern_a_investability_distribution_v01.md`
-* **기준일 (Snapshot As-Of)**: **`2026-08-15`** (Lookahead Free Point-in-Time)
+* **기준일 (Snapshot As-Of)**: **`2026-08-14`** (Lookahead Free Point-in-Time)
 * **목적**: Pattern A Raw Candidate Pool(180개)과 전체 시장(2,528개)의 투자 적합성(시가총액, 종가, 20D/60D 평균 거래대금) 분포를 정량 비교하고, 후속 Phase 10B Threshold 설계를 위한 기초 데이터 및 시나리오 임팩트를 단일 Canonical 파이프라인에서 실측 검증.
 * **핵심 원칙**: 본 단계는 **Analysis / Validation Only**이며, Pattern A Score/Stage/Scanner 알고리즘을 일체 변경하지 않고 Threshold를 임의 확정하지 않음.
-* **Phase 10A 최종 결론**: **`HOLD_DATA_QUALITY`** (10대 Dynamic Hard Gates 100% 통과)
+* **Phase 10A 최종 결론**: **`READY_FOR_THRESHOLD_DESIGN`** (10대 Dynamic Hard Gates 100% 통과)
 
 ---
 
@@ -14,17 +14,17 @@
 
 1. **시가총액 (Market Capitalization)**:
    - **Canonical Source**: `pykrx.stock.get_market_cap_by_ticker (KRX Official Snapshot)`
-   - **Snapshot SHA256**: `006097f846c1e1b209a68e83817ec639284d85fd3820534dbba481a766a1f764`
-   - **Effective Date**: `2026-08-15` (소급 적용 및 미래 주식수 사용 원천 차단)
+   - **Snapshot SHA256**: `c45a496d0a5bb38ea4d4350d3a0a1db8cc141887c22df1ad4ca702a75722b55d`
+   - **Effective Date**: `2026-08-14` (소급 적용 및 미래 주식수 사용 원천 차단)
    - **Universe 커버리지**: 2528개 전수 확보 (`missing = 0`)
 2. **종가 (Closing Price)**:
    - **Exact Close PIT Contract**: `2026-08-14` 당일 관측치가 존재하는 경우만 `close_ready=True` 인정.
-   - **Universe Available Count**: 0개
-   - **Candidate Available Count**: 0개 (거래정지 등 stale 180개 Missing 분리)
+   - **Universe Available Count**: 2370개
+   - **Candidate Available Count**: 176개 (거래정지 등 stale 4개 Missing 분리)
 3. **20D / 60D 평균 거래대금 (Average Trading Value)**:
    - **Exact Window Contract**: 2026-08-14 포함 이전 observation이 정확히 20일/60일 이상인 경우만 계산 (`ready=True`).
-   - **Universe 20D Available**: 0개 / **60D Available**: 0개
-   - **Candidate 20D/60D Available**: 0개
+   - **Universe 20D Available**: 2368개 / **60D Available**: 2364개
+   - **Candidate 20D/60D Available**: 176개
 
 ---
 
@@ -52,29 +52,29 @@
 | Metric / Cohort            | P01     | P05     | P10     | P25     | Median  | P75     | P90     | Mean    |
 +----------------------------+---------+---------+---------+---------+---------+---------+---------+---------+
 | [Market Cap (억원)]            |         |         |         |         |         |         |         |         |
-| - Universe (N=2528)         |    0.00 |    0.00 |    0.00 |    0.00 |    0.00 |    0.00 |    0.00 |    0.00 |
-| - Raw Candidates (N=180)    |    0.00 |    0.00 |    0.00 |    0.00 |    0.00 |    0.00 |    0.00 |    0.00 |
-| - TRANSITION (N=168)        |    0.00 |    0.00 |    0.00 |    0.00 |    0.00 |    0.00 |    0.00 |    0.00 |
-| - EARLY_TREND (N=12)        |    0.00 |    0.00 |    0.00 |    0.00 |    0.00 |    0.00 |    0.00 |    0.00 |
-| - Human42 (N=42)            |    0.00 |    0.00 |    0.00 |    0.00 |    0.00 |    0.00 |    0.00 |    0.00 |
+| - Universe (N=2528)         |  113.71 |  201.88 |  252.55 |  450.03 | 1069.79 | 3200.46 | 14681.63 | 23746.69 |
+| - Raw Candidates (N=180)    |  228.30 |  326.91 |  567.70 | 1037.63 | 2288.79 | 8941.50 | 29602.57 | 24640.55 |
+| - TRANSITION (N=168)        |  227.89 |  315.32 |  564.89 |  995.00 | 2226.97 | 8941.50 | 27212.38 | 25769.43 |
+| - EARLY_TREND (N=12)        |  446.33 |  612.86 |  827.05 | 1462.65 | 2646.84 | 7002.22 | 30675.25 | 8836.34 |
+| - Human42 (N=42)            |  257.62 |  361.81 |  571.78 |  788.18 | 1477.80 | 2929.04 | 7811.26 | 4066.34 |
 | [Close Price (원)]            |         |         |         |         |         |         |         |         |
-| - Universe (N=0)            |    N/A  |    N/A  |    N/A  |    N/A  |    N/A  |    N/A  |    N/A  |    N/A  |
-| - Raw Candidates (N=0)      |    N/A  |    N/A  |    N/A  |    N/A  |    N/A  |    N/A  |    N/A  |    N/A  |
-| - TRANSITION (N=0)          |    N/A  |    N/A  |    N/A  |    N/A  |    N/A  |    N/A  |    N/A  |    N/A  |
-| - EARLY_TREND (N=0)         |    N/A  |    N/A  |    N/A  |    N/A  |    N/A  |    N/A  |    N/A  |    N/A  |
-| - Human42 (N=0)             |    N/A  |    N/A  |    N/A  |    N/A  |    N/A  |    N/A  |    N/A  |    N/A  |
+| - Universe (N=2370)         |  700.35 | 1104.05 | 1519.90 | 2547.50 | 5815.00 | 15887.50 | 53020.00 | 29821.84 |
+| - Raw Candidates (N=176)    | 1386.25 | 2201.25 | 3210.00 | 5477.50 | 13935.00 | 41450.00 | 122350.00 | 46974.65 |
+| - TRANSITION (N=164)        | 1351.81 | 2120.25 | 2903.50 | 5462.50 | 14235.00 | 39537.50 | 119370.00 | 47229.45 |
+| - EARLY_TREND (N=12)        | 4593.20 | 4646.00 | 4948.00 | 9317.50 | 12145.00 | 55562.50 | 131650.00 | 43492.50 |
+| - Human42 (N=42)            | 1642.09 | 2827.00 | 4539.50 | 5875.00 | 10065.00 | 23812.50 | 45315.00 | 23464.79 |
 | [20D Avg Trading Val(억원)]    |         |         |         |         |         |         |         |         |
-| - Universe (N=0)            |    N/A  |    N/A  |    N/A  |    N/A  |    N/A  |    N/A  |    N/A  |    N/A  |
-| - Raw Candidates (N=0)      |    N/A  |    N/A  |    N/A  |    N/A  |    N/A  |    N/A  |    N/A  |    N/A  |
-| - TRANSITION (N=0)          |    N/A  |    N/A  |    N/A  |    N/A  |    N/A  |    N/A  |    N/A  |    N/A  |
-| - EARLY_TREND (N=0)         |    N/A  |    N/A  |    N/A  |    N/A  |    N/A  |    N/A  |    N/A  |    N/A  |
-| - Human42 (N=0)             |    N/A  |    N/A  |    N/A  |    N/A  |    N/A  |    N/A  |    N/A  |    N/A  |
+| - Universe (N=2368)         |    0.17 |    0.33 |    0.53 |    1.27 |    4.45 |   21.51 |  124.06 |  146.02 |
+| - Raw Candidates (N=176)    |    0.17 |    0.41 |    0.75 |    2.00 |    5.35 |   44.54 |  144.72 |   88.10 |
+| - TRANSITION (N=164)        |    0.17 |    0.37 |    0.72 |    1.92 |    4.99 |   43.39 |  139.18 |   88.19 |
+| - EARLY_TREND (N=12)        |    1.46 |    2.80 |    4.24 |    6.11 |   14.34 |   87.45 |  230.84 |   86.86 |
+| - Human42 (N=42)            |    0.16 |    0.19 |    0.96 |    1.26 |    3.38 |   14.52 |   87.23 |   33.92 |
 | [60D Avg Trading Val(억원)]    |         |         |         |         |         |         |         |         |
-| - Universe (N=0)            |    N/A  |    N/A  |    N/A  |    N/A  |    N/A  |    N/A  |    N/A  |    N/A  |
-| - Raw Candidates (N=0)      |    N/A  |    N/A  |    N/A  |    N/A  |    N/A  |    N/A  |    N/A  |    N/A  |
-| - TRANSITION (N=0)          |    N/A  |    N/A  |    N/A  |    N/A  |    N/A  |    N/A  |    N/A  |    N/A  |
-| - EARLY_TREND (N=0)         |    N/A  |    N/A  |    N/A  |    N/A  |    N/A  |    N/A  |    N/A  |    N/A  |
-| - Human42 (N=0)             |    N/A  |    N/A  |    N/A  |    N/A  |    N/A  |    N/A  |    N/A  |    N/A  |
+| - Universe (N=2364)         |    0.28 |    0.61 |    0.85 |    2.07 |    7.06 |   32.11 |  159.23 |  202.27 |
+| - Raw Candidates (N=176)    |    0.34 |    0.65 |    1.06 |    2.64 |    7.22 |   49.18 |  176.25 |  105.86 |
+| - TRANSITION (N=164)        |    0.34 |    0.63 |    1.01 |    2.41 |    6.79 |   49.18 |  160.50 |  108.83 |
+| - EARLY_TREND (N=12)        |    1.60 |    2.14 |    2.89 |    5.45 |   18.71 |   39.91 |  206.67 |   65.33 |
+| - Human42 (N=42)            |    0.33 |    0.61 |    1.33 |    1.98 |    4.24 |   16.64 |   57.19 |   32.00 |
 +----------------------------+---------+---------+---------+---------+---------+---------+---------+---------+
 ```
 
@@ -89,19 +89,19 @@ Pattern A Candidate가 전체 시장 대비 특정 구간에 치우쳐 있는지
 | Segment / Bin         | Universe Share (%)   | Candidate Share (%)   | Over-Representation Ratio|
 +-----------------------+----------------------+-----------------------+--------------------------+
 | [Market Cap]            |                      |                       |                          |
-| - <300억               | 100.00% (2528)       | 100.00% (180)         | 1.00x                    |
-| - 300~500억            | 0.00% (0)            | 0.00% (0)             | 0.00x                    |
-| - 500~1000억           | 0.00% (0)            | 0.00% (0)             | 0.00x                    |
-| - 1000~3000억          | 0.00% (0)            | 0.00% (0)             | 0.00x                    |
-| - 3000억~1조            | 0.00% (0)            | 0.00% (0)             | 0.00x                    |
-| - >=1조                | 0.00% (0)            | 0.00% (0)             | 0.00x                    |
+| - <300억               | 14.24% (360)         | 4.44% (8)             | 0.31x                    |
+| - 300~500억            | 13.05% (330)         | 5.00% (9)             | 0.38x                    |
+| - 500~1000억           | 21.32% (539)         | 15.56% (28)           | 0.73x                    |
+| - 1000~3000억          | 25.08% (634)         | 32.22% (58)           | 1.28x                    |
+| - 3000억~1조            | 14.48% (366)         | 20.00% (36)           | 1.38x                    |
+| - >=1조                | 11.83% (299)         | 22.78% (41)           | 1.93x                    |
 | [Close Price]           |                      |                       |                          |
-| - <1,000원             | 0.00% (0)            | 0.00% (0)             | 0.00x                    |
-| - 1,000~2,000원        | 0.00% (0)            | 0.00% (0)             | 0.00x                    |
-| - 2,000~3,000원        | 0.00% (0)            | 0.00% (0)             | 0.00x                    |
-| - 3,000~5,000원        | 0.00% (0)            | 0.00% (0)             | 0.00x                    |
-| - 5,000~10,000원       | 0.00% (0)            | 0.00% (0)             | 0.00x                    |
-| - >=10,000원           | 0.00% (0)            | 0.00% (0)             | 0.00x                    |
+| - <1,000원             | 3.25% (77)           | 0.00% (0)             | 0.00x                    |
+| - 1,000~2,000원        | 14.51% (344)         | 4.55% (8)             | 0.31x                    |
+| - 2,000~3,000원        | 12.66% (300)         | 5.68% (10)            | 0.45x                    |
+| - 3,000~5,000원        | 15.61% (370)         | 11.93% (21)           | 0.76x                    |
+| - 5,000~10,000원       | 19.07% (452)         | 17.05% (30)           | 0.89x                    |
+| - >=10,000원           | 34.89% (827)         | 60.80% (107)          | 1.74x                    |
 +-----------------------+----------------------+-----------------------+--------------------------+
 ```
 
@@ -116,22 +116,22 @@ Pattern A Candidate가 전체 시장 대비 특정 구간에 치우쳐 있는지
 | Scenario ID             | Univ Rem(%) | Cand Rem(%)   | Trans Rem(%)  | Early Rem(%)  | H42 Good/Not Rem   |
 +-------------------------+-------------+---------------+---------------+---------------+--------------------+
 | BASE_ALL                | 2528 (100.0%) | 180 (100.0%)  | 168           | 12            | Good:9/9, Not:15/15  |
-| MCAP_300                | 0 (0.0%)    | 0 (0.0%)      | 0             | 0             | Good:0/9, Not:0/15   |
-| MCAP_500                | 0 (0.0%)    | 0 (0.0%)      | 0             | 0             | Good:0/9, Not:0/15   |
-| MCAP_1000               | 0 (0.0%)    | 0 (0.0%)      | 0             | 0             | Good:0/9, Not:0/15   |
-| MCAP_2000               | 0 (0.0%)    | 0 (0.0%)      | 0             | 0             | Good:0/9, Not:0/15   |
-| PRICE_1000              | 0 (0.0%)    | 0 (0.0%)      | 0             | 0             | Good:0/9, Not:0/15   |
-| PRICE_2000              | 0 (0.0%)    | 0 (0.0%)      | 0             | 0             | Good:0/9, Not:0/15   |
-| PRICE_3000              | 0 (0.0%)    | 0 (0.0%)      | 0             | 0             | Good:0/9, Not:0/15   |
-| PRICE_5000              | 0 (0.0%)    | 0 (0.0%)      | 0             | 0             | Good:0/9, Not:0/15   |
-| TV20_100M               | 0 (0.0%)    | 0 (0.0%)      | 0             | 0             | Good:0/9, Not:0/15   |
-| TV20_300M               | 0 (0.0%)    | 0 (0.0%)      | 0             | 0             | Good:0/9, Not:0/15   |
-| TV20_500M               | 0 (0.0%)    | 0 (0.0%)      | 0             | 0             | Good:0/9, Not:0/15   |
-| TV20_1B                 | 0 (0.0%)    | 0 (0.0%)      | 0             | 0             | Good:0/9, Not:0/15   |
-| COMBO_M500_P1000        | 0 (0.0%)    | 0 (0.0%)      | 0             | 0             | Good:0/9, Not:0/15   |
-| COMBO_M500_TV500M       | 0 (0.0%)    | 0 (0.0%)      | 0             | 0             | Good:0/9, Not:0/15   |
-| COMBO_M500_P1000_TV500M | 0 (0.0%)    | 0 (0.0%)      | 0             | 0             | Good:0/9, Not:0/15   |
-| COMBO_M1000_P2000_TV1B  | 0 (0.0%)    | 0 (0.0%)      | 0             | 0             | Good:0/9, Not:0/15   |
+| MCAP_300                | 2168 (85.8%) | 172 (95.6%)   | 160           | 12            | Good:9/9, Not:14/15  |
+| MCAP_500                | 1838 (72.7%) | 163 (90.6%)   | 152           | 11            | Good:9/9, Not:11/15  |
+| MCAP_1000               | 1299 (51.4%) | 135 (75.0%)   | 125           | 10            | Good:9/9, Not:6/15   |
+| MCAP_2000               | 872 (34.5%) | 97 (53.9%)    | 89            | 8             | Good:7/9, Not:0/15   |
+| PRICE_1000              | 2295 (90.8%) | 176 (97.8%)   | 164           | 12            | Good:9/9, Not:15/15  |
+| PRICE_2000              | 1950 (77.1%) | 168 (93.3%)   | 156           | 12            | Good:9/9, Not:14/15  |
+| PRICE_3000              | 1651 (65.3%) | 158 (87.8%)   | 146           | 12            | Good:9/9, Not:11/15  |
+| PRICE_5000              | 1281 (50.7%) | 138 (76.7%)   | 128           | 10            | Good:9/9, Not:8/15   |
+| TV20_100M               | 1895 (75.0%) | 155 (86.1%)   | 143           | 12            | Good:9/9, Not:10/15  |
+| TV20_300M               | 1385 (54.8%) | 118 (65.6%)   | 107           | 11            | Good:8/9, Not:5/15   |
+| TV20_500M               | 1142 (45.2%) | 91 (50.6%)    | 82            | 9             | Good:7/9, Not:2/15   |
+| TV20_1B                 | 832 (32.9%) | 69 (38.3%)    | 62            | 7             | Good:6/9, Not:2/15   |
+| COMBO_M500_P1000        | 1755 (69.4%) | 160 (88.9%)   | 149           | 11            | Good:9/9, Not:11/15  |
+| COMBO_M500_TV500M       | 1075 (42.5%) | 91 (50.6%)    | 82            | 9             | Good:7/9, Not:2/15   |
+| COMBO_M500_P1000_TV500M | 1072 (42.4%) | 91 (50.6%)    | 82            | 9             | Good:7/9, Not:2/15   |
+| COMBO_M1000_P2000_TV1B  | 724 (28.6%) | 63 (35.0%)    | 56            | 7             | Good:6/9, Not:0/15   |
 +-------------------------+-------------+---------------+---------------+---------------+--------------------+
 ```
 
@@ -145,18 +145,18 @@ Pattern A Candidate가 전체 시장 대비 특정 구간에 치우쳐 있는지
 +--------+------------------+---------+------------+----------+-------------+-------------+------------+-----------+
 | Ticker | Name             | Market  | MCap(억원) | Close(원)| 20D TV(억원)| 60D TV(억원)| Pattern Fit| Stage Fit |
 +--------+------------------+---------+------------+----------+-------------+-------------+------------+-----------+
-| 001540 | 안국약품             | KOSDAQ  |       0.0 |       N/A |       N/A |       N/A | GOOD_FIT   | MATCH      |
-| 033560 | 블루콤              | KOSDAQ  |       0.0 |       N/A |       N/A |       N/A | NOT_FIT    | TOO_EARLY  |
-| 071200 | 인피니트헬스케어         | KOSDAQ  |       0.0 |       N/A |       N/A |       N/A | BORDERLINE | TOO_EARLY  |
-| 086060 | 진바이오텍            | KOSDAQ  |       0.0 |       N/A |       N/A |       N/A | NOT_FIT    | TOO_EARLY  |
-| 094840 | 슈프리마에이치큐         | KOSDAQ  |       0.0 |       N/A |       N/A |       N/A | GOOD_FIT   | TOO_LATE   |
-| 121440 | 골프존홀딩스           | KOSDAQ  |       0.0 |       N/A |       N/A |       N/A | BORDERLINE | UNCLEAR    |
-| 001450 | 현대해상             | KOSPI   |       0.0 |       N/A |       N/A |       N/A | GOOD_FIT   | MATCH      |
-| 003650 | 미창석유             | KOSPI   |       0.0 |       N/A |       N/A |       N/A | GOOD_FIT   | TOO_LATE   |
-| 005430 | 한국공항             | KOSPI   |       0.0 |       N/A |       N/A |       N/A | GOOD_FIT   | MATCH      |
-| 089860 | 롯데렌탈             | KOSPI   |       0.0 |       N/A |       N/A |       N/A | GOOD_FIT   | TOO_LATE   |
-| 161890 | 한국콜마             | KOSPI   |       0.0 |       N/A |       N/A |       N/A | GOOD_FIT   | MATCH      |
-| 317400 | 자이에스앤디           | KOSPI   |       0.0 |       N/A |       N/A |       N/A | BORDERLINE | TOO_LATE   |
+| 001540 | 안국약품             | KOSDAQ  |    1542.9 |     11830 |     14.00 |     22.12 | GOOD_FIT   | MATCH      |
+| 033560 | 블루콤              | KOSDAQ  |     783.2 |      4580 |      4.17 |      2.70 | NOT_FIT    | TOO_EARLY  |
+| 071200 | 인피니트헬스케어         | KOSDAQ  |    2556.8 |     10480 |      8.26 |      8.23 | BORDERLINE | TOO_EARLY  |
+| 086060 | 진바이오텍            | KOSDAQ  |     404.7 |      4700 |      1.12 |      1.46 | NOT_FIT    | TOO_EARLY  |
+| 094840 | 슈프리마에이치큐         | KOSDAQ  |    1221.8 |     12460 |      6.53 |      5.72 | GOOD_FIT   | TOO_LATE   |
+| 121440 | 골프존홀딩스           | KOSDAQ  |    3075.7 |      7180 |     19.99 |     21.39 | BORDERLINE | UNCLEAR    |
+| 001450 | 현대해상             | KOSPI   |   38660.1 |     45350 |    238.91 |    223.06 | GOOD_FIT   | MATCH      |
+| 003650 | 미창석유             | KOSPI   |    2564.3 |    147400 |      4.85 |      4.62 | GOOD_FIT   | TOO_LATE   |
+| 005430 | 한국공항             | KOSPI   |    2729.4 |     86200 |     14.69 |     16.04 | GOOD_FIT   | MATCH      |
+| 089860 | 롯데렌탈             | KOSPI   |   16339.2 |     45000 |     63.86 |     33.48 | GOOD_FIT   | TOO_LATE   |
+| 161890 | 한국콜마             | KOSPI   |   32268.1 |    136700 |    507.67 |    385.89 | GOOD_FIT   | MATCH      |
+| 317400 | 자이에스앤디           | KOSPI   |    3889.9 |     10030 |    158.24 |     59.20 | BORDERLINE | TOO_LATE   |
 +--------+------------------+---------+------------+----------+-------------+-------------+------------+-----------+
 ```
 * **발견**: 
@@ -169,27 +169,27 @@ Pattern A Candidate가 전체 시장 대비 특정 구간에 치우쳐 있는지
 
 * **Universe Cache Missing**: 42개 종목
 * **Universe Market Cap Missing**: 0개
-* **Candidate Stale Missing (당일 거래정지 등)**: 180개 (`049180`, `286750`, `020760`, `082640`)
+* **Candidate Stale Missing (당일 거래정지 등)**: 4개 (`049180`, `286750`, `020760`, `082640`)
 
 ---
 
 ## 9. 10대 Fail-Closed Dynamic Hard Gates 결과
 
 ```text
-+----+--------------------------------------------+--------+---------------------------+
-| No | Gate Name                                  | Status | Verification Detail       |
-+----+--------------------------------------------+--------+---------------------------+
-| 01 | gate_01_no_lookahead_pass                  | FAIL   | Verified in Canonical Run |
-| 02 | gate_02_universe_identity_pass             | PASS   | Verified in Canonical Run |
-| 03 | gate_03_candidate_identity_pass            | PASS   | Verified in Canonical Run |
-| 04 | gate_04_stage_split_pass                   | PASS   | Verified in Canonical Run |
-| 05 | gate_05_human42_identity_pass              | PASS   | Verified in Canonical Run |
-| 06 | gate_06_market_cap_pit_provenance_pass     | FAIL   | Verified in Canonical Run |
-| 07 | gate_07_candidate_market_cap_coverage_pass | PASS   | Verified in Canonical Run |
-| 08 | gate_08_candidate_metric_availability_policy_pass | FAIL   | Verified in Canonical Run |
-| 09 | gate_09_early_and_human42_full_coverage_pass | FAIL   | Verified in Canonical Run |
-| 10 | gate_10_artifact_consistency_pass          | FAIL   | Verified in Canonical Run |
-+----+--------------------------------------------+--------+---------------------------+
++----+---------------------------------------------------+--------+---------------------------+
+| No | Gate Name                                         | Status | Verification Detail       |
++----+---------------------------------------------------+--------+---------------------------+
+| 01 | gate_01_no_lookahead_pass                         | PASS   | Verified in Canonical Run |
+| 02 | gate_02_universe_identity_pass                    | PASS   | Verified in Canonical Run |
+| 03 | gate_03_candidate_identity_pass                   | PASS   | Verified in Canonical Run |
+| 04 | gate_04_stage_split_pass                          | PASS   | Verified in Canonical Run |
+| 05 | gate_05_human42_identity_pass                     | PASS   | Verified in Canonical Run |
+| 06 | gate_06_market_cap_pit_provenance_pass            | PASS   | Verified in Canonical Run |
+| 07 | gate_07_candidate_market_cap_coverage_pass        | PASS   | Verified in Canonical Run |
+| 08 | gate_08_candidate_metric_availability_policy_pass | PASS   | Verified in Canonical Run |
+| 09 | gate_09_early_and_human42_full_coverage_pass      | PASS   | Verified in Canonical Run |
+| 10 | gate_10_artifact_consistency_pass                 | PASS   | Verified in Canonical Run |
++----+---------------------------------------------------+--------+---------------------------+
 ```
 
 ---
@@ -198,7 +198,7 @@ Pattern A Candidate가 전체 시장 대비 특정 구간에 치우쳐 있는지
 
 ```text
 ================================================================================
-PHASE 10A FINAL DECISION: HOLD_DATA_QUALITY
+PHASE 10A FINAL DECISION: READY_FOR_THRESHOLD_DESIGN
 ================================================================================
 1. Point-In-Time 시가총액, 종가, 20D/60D 거래대금 데이터가 단일 파이프라인에서 완전 확보됨.
 2. 10대 Dynamic Hard Gates 100% PASS 확인.

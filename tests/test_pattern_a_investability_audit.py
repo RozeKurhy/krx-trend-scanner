@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 import pytest
@@ -11,6 +12,7 @@ from trend_scanner.validation.pattern_a_investability_audit import (
     run_investability_audit,
     load_canonical_mcap_snapshot,
     calculate_distribution_stats,
+    CANONICAL_AS_OF,
     CANONICAL_MCAP_SHA256,
 )
 
@@ -21,7 +23,7 @@ _ARTIFACTS_DIR = _REPO_ROOT / "artifacts/investability"
 @pytest.fixture(scope="module")
 def canonical_audit_result() -> dict:
     """Execute canonical investability audit pipeline."""
-    return run_investability_audit(_REPO_ROOT, as_of="2026-08-14")
+    return run_investability_audit(_REPO_ROOT, as_of=CANONICAL_AS_OF)
 
 
 def test_gate1_no_lookahead_and_dates(canonical_audit_result: dict):
@@ -89,14 +91,38 @@ def test_gate9_early_and_human42_full_coverage(canonical_audit_result: dict):
     assert canonical_audit_result["hard_gates"]["gate_09_early_and_human42_full_coverage_pass"] is True
 
 
-def test_gate10_artifact_and_doc_consistency(canonical_audit_result: dict):
-    """Gate 10: Verify artifact consistency across summary, universe, candidates, scenarios, doc."""
+def test_gate10_disk_artifact_consistency(canonical_audit_result: dict):
+    """Gate 10: Verify disk artifact consistency across summary, universe, candidates, scenarios, doc."""
     assert canonical_audit_result["hard_gates"]["gate_10_artifact_consistency_pass"] is True
     
-    # Read generated doc and verify key numbers are present
-    doc_path = _REPO_ROOT / "docs/validation/pattern_a_investability_distribution_v01.md"
-    assert doc_path.exists()
-    doc_text = doc_path.read_text(encoding="utf-8")
+    # Read actual disk files and verify values
+    df_cand_disk = pd.read_csv(_ARTIFACTS_DIR / "pattern_a_investability_candidates_20260814.csv", dtype={"ticker": str})
+    df_sc_disk = pd.read_csv(_ARTIFACTS_DIR / "pattern_a_investability_scenarios_20260814.csv")
+    dist_disk = json.loads((_ARTIFACTS_DIR / "pattern_a_investability_distribution_20260814.json").read_text(encoding="utf-8"))
+    doc_text = (_REPO_ROOT / "docs/validation/pattern_a_investability_distribution_v01.md").read_text(encoding="utf-8")
+
+    assert len(df_cand_disk) == 180
+    assert (df_cand_disk["as_of"] == "2026-08-14").all()
+
+    # Percentile checks from disk
+    assert dist_disk["candidates_raw"]["market_cap_eok"]["p01"] == 228.30
+    assert dist_disk["candidates_raw"]["market_cap_eok"]["p25"] == 1037.63
+    assert dist_disk["candidates_raw"]["market_cap_eok"]["median"] == 2288.79
+
+    # Scenario checks from disk
+    m1000 = df_sc_disk[df_sc_disk["scenario_id"] == "MCAP_1000"].iloc[0]
+    assert m1000["universe_remaining"] == 1299
+    assert m1000["candidate_remaining"] == 135
+    assert m1000["early_remaining"] == 10
+
+    tv500 = df_sc_disk[df_sc_disk["scenario_id"] == "TV20_500M"].iloc[0]
+    assert tv500["universe_remaining"] == 1142
+    assert tv500["candidate_remaining"] == 91
+    assert tv500["candidate_unavailable"] == 4
+    assert tv500["candidate_threshold_failed"] == 85
+    assert tv500["early_remaining"] == 9
+
+    # Markdown doc content check
     assert "2288.79" in doc_text
     assert "404.7" in doc_text
     assert "READY_FOR_THRESHOLD_DESIGN" in doc_text
@@ -113,15 +139,34 @@ def test_canonical_metrics_086060():
     assert jin["avg_trading_value_60d_eok"] == 1.46
 
 
-def test_fail_closed_negative_cases():
-    """Verify that failing any gate results in HOLD_DATA_QUALITY."""
+def test_fail_closed_negative_cases_in_isolated_tmp(tmp_path: Path):
+    """Verify that failing any gate results in HOLD_DATA_QUALITY in an ISOLATED tmp directory."""
+    # Capture pre-test hash of official summary
+    summary_path = _ARTIFACTS_DIR / "pattern_a_investability_summary_20260814.json"
+    pre_hash = hashlib.sha256(summary_path.read_bytes()).hexdigest()
+
+    tmp_out = tmp_path / "artifacts"
+    tmp_doc = tmp_path / "doc.md"
+
     # Test 1: Empty distribution stats
     empty_stats = calculate_distribution_stats(pd.Series([], dtype=float))
     assert empty_stats["count"] == 0
     assert empty_stats["available_count"] == 0
     assert empty_stats["min"] is None
 
-    # Test 2: Invalid as_of triggers Gate 1 failure
-    res_bad_date = run_investability_audit(_REPO_ROOT, as_of="2026-08-15")
+    # Test 2: Invalid as_of triggers Gate 1 failure and HOLD decision in isolated tmp
+    res_bad_date = run_investability_audit(
+        _REPO_ROOT,
+        as_of="2026-08-15",
+        output_dir=tmp_out,
+        doc_path=tmp_doc,
+        write_artifacts=True,
+    )
     assert res_bad_date["hard_gates"]["gate_01_no_lookahead_pass"] is False
     assert res_bad_date["phase_10a_decision"] == "HOLD_DATA_QUALITY"
+    assert tmp_doc.exists()
+    assert "HOLD_DATA_QUALITY" in tmp_doc.read_text(encoding="utf-8")
+
+    # Verify that official artifact was NOT overwritten or contaminated
+    post_hash = hashlib.sha256(summary_path.read_bytes()).hexdigest()
+    assert pre_hash == post_hash, "Official artifact must NOT be contaminated by negative test!"

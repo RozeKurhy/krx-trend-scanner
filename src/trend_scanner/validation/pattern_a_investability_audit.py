@@ -8,7 +8,8 @@ across Market Capitalization, Closing Price, and 20D/60D Average Trading Value.
 1. Analysis and validation only. No modification to Pattern A Score, Stage, or Scanner rules.
 2. Point-In-Time Contract: all data strictly as of 2026-08-14 without lookahead.
 3. Single Canonical Run: all artifacts, summaries, and validation tables derived from single pipeline.
-4. Fail-Closed Gates: 10 dynamic hard gates determine READY_FOR_THRESHOLD_DESIGN vs HOLD_DATA_QUALITY.
+4. Artifact Isolation: canonical 2026-08-14 artifacts protected against test contamination.
+5. Fail-Closed Gates: 10 dynamic hard gates determine READY_FOR_THRESHOLD_DESIGN vs HOLD_DATA_QUALITY.
 """
 
 from __future__ import annotations
@@ -27,6 +28,7 @@ from trend_scanner.data.cache import ParquetCache
 
 load_dotenv()
 
+CANONICAL_AS_OF = "2026-08-14"
 CANONICAL_MCAP_SHA256 = "c45a496d0a5bb38ea4d4350d3a0a1db8cc141887c22df1ad4ca702a75722b55d"
 EXPECTED_UNIVERSE_COUNT = 2528
 EXPECTED_CANDIDATE_COUNT = 180
@@ -84,11 +86,12 @@ def calculate_distribution_stats(series: pd.Series) -> dict[str, Any]:
 def load_canonical_mcap_snapshot(
     repo_root: Path,
     as_of: str = "2026-08-14",
+    source_dir: Path | None = None,
 ) -> tuple[pd.DataFrame, str]:
-    """Load or fetch canonical Point-In-Time market cap snapshot."""
-    source_dir = repo_root / "artifacts/investability/source"
-    source_dir.mkdir(parents=True, exist_ok=True)
-    source_file = source_dir / f"krx_market_cap_{as_of.replace('-', '')}.csv"
+    """Load or fetch Point-In-Time market cap snapshot."""
+    src_dir = source_dir or (repo_root / "artifacts/investability/source")
+    src_dir.mkdir(parents=True, exist_ok=True)
+    source_file = src_dir / f"krx_market_cap_{as_of.replace('-', '')}.csv"
 
     if source_file.exists():
         df = pd.read_csv(source_file, dtype={"ticker": str})
@@ -125,6 +128,20 @@ def render_markdown_doc(summary: dict[str, Any]) -> str:
     gates = summary["hard_gates"]
     prov = summary["data_provenance"]
     or_data = summary["over_representation"]
+
+    # Decision banner logic (no contradictory text)
+    if summary["phase_10a_decision"] == "READY_FOR_THRESHOLD_DESIGN":
+        decision_header = "(10대 Dynamic Hard Gates 100% 통과)"
+        decision_footer = """1. Point-In-Time 시가총액, 종가, 20D/60D 거래대금 데이터가 단일 파이프라인에서 완전 확보됨.
+2. 10대 Dynamic Hard Gates 100% PASS 확인.
+3. Candidate Pool의 약 48%가 비투자성/저유동성 필터에 의해 안전하게 분리 가능함을 실측.
+4. 다음 단계: Phase 10B. Investability Threshold Design & Validation 착수."""
+    else:
+        failed_gates = [k for k, v in gates.items() if not v]
+        decision_header = f"(Gate Failures: {len(failed_gates)}/10, {', '.join(failed_gates)})"
+        decision_footer = f"""1. Data Quality Gate Failure Detected ({len(failed_gates)} gates failed).
+2. Failed Gates: {', '.join(failed_gates)}
+3. Phase 10B 진행 보류 (HOLD_DATA_QUALITY)."""
 
     # Table for distributions
     dist_rows = []
@@ -199,7 +216,7 @@ def render_markdown_doc(summary: dict[str, Any]) -> str:
     gate_rows = []
     for i, (g_name, g_status) in enumerate(gates.items(), start=1):
         st = "PASS" if g_status else "FAIL"
-        gate_rows.append(f"| {i:02d} | {g_name:42s} | {st:6s} | Verified in Canonical Run |")
+        gate_rows.append(f"| {i:02d} | {g_name:49s} | {st:6s} | Verified in Canonical Run |")
     gate_table_str = "\n".join(gate_rows)
 
     return f"""# Phase 10A. Investability Distribution Comparative Audit
@@ -210,7 +227,7 @@ def render_markdown_doc(summary: dict[str, Any]) -> str:
 * **기준일 (Snapshot As-Of)**: **`{summary['as_of']}`** (Lookahead Free Point-in-Time)
 * **목적**: Pattern A Raw Candidate Pool(180개)과 전체 시장(2,528개)의 투자 적합성(시가총액, 종가, 20D/60D 평균 거래대금) 분포를 정량 비교하고, 후속 Phase 10B Threshold 설계를 위한 기초 데이터 및 시나리오 임팩트를 단일 Canonical 파이프라인에서 실측 검증.
 * **핵심 원칙**: 본 단계는 **Analysis / Validation Only**이며, Pattern A Score/Stage/Scanner 알고리즘을 일체 변경하지 않고 Threshold를 임의 확정하지 않음.
-* **Phase 10A 최종 결론**: **`{summary['phase_10a_decision']}`** (10대 Dynamic Hard Gates 100% 통과)
+* **Phase 10A 최종 결론**: **`{summary['phase_10a_decision']}`** {decision_header}
 
 ---
 
@@ -317,11 +334,11 @@ Pattern A Candidate가 전체 시장 대비 특정 구간에 치우쳐 있는지
 ## 9. 10대 Fail-Closed Dynamic Hard Gates 결과
 
 ```text
-+----+--------------------------------------------+--------+---------------------------+
-| No | Gate Name                                  | Status | Verification Detail       |
-+----+--------------------------------------------+--------+---------------------------+
++----+---------------------------------------------------+--------+---------------------------+
+| No | Gate Name                                         | Status | Verification Detail       |
++----+---------------------------------------------------+--------+---------------------------+
 {gate_table_str}
-+----+--------------------------------------------+--------+---------------------------+
++----+---------------------------------------------------+--------+---------------------------+
 ```
 
 ---
@@ -332,10 +349,7 @@ Pattern A Candidate가 전체 시장 대비 특정 구간에 치우쳐 있는지
 ================================================================================
 PHASE 10A FINAL DECISION: {summary['phase_10a_decision']}
 ================================================================================
-1. Point-In-Time 시가총액, 종가, 20D/60D 거래대금 데이터가 단일 파이프라인에서 완전 확보됨.
-2. 10대 Dynamic Hard Gates 100% PASS 확인.
-3. Candidate Pool의 약 48%가 비투자성/저유동성 필터에 의해 안전하게 분리 가능함을 실측.
-4. 다음 단계: Phase 10B. Investability Threshold Design & Validation 착수.
+{decision_footer}
 ================================================================================
 ```
 """
@@ -344,12 +358,19 @@ PHASE 10A FINAL DECISION: {summary['phase_10a_decision']}
 def run_investability_audit(
     repo_root: Path,
     as_of: str = "2026-08-14",
+    output_dir: Path | None = None,
+    doc_path: Path | None = None,
+    write_artifacts: bool = True,
 ) -> dict[str, Any]:
     """Execute Phase 10A Investability Distribution Comparative Audit Single Canonical Pipeline."""
     cache_dir = repo_root / "data/raw/stocks"
     cache = ParquetCache(base_dir=cache_dir)
-    out_dir = repo_root / "artifacts/investability"
-    out_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Destination Directory Management & Contamination Guard
+    is_canonical_run = (as_of == CANONICAL_AS_OF and output_dir is None)
+    out_dir = output_dir or (repo_root / "artifacts/investability")
+    if write_artifacts:
+        out_dir.mkdir(parents=True, exist_ok=True)
 
     # 1. Load Universe and Candidate Base Data
     univ_csv = repo_root / "artifacts/scanner/pattern_a_universe_scan_20260814.csv"
@@ -362,7 +383,8 @@ def run_investability_audit(
     df_cand_raw["ticker"] = df_cand_raw["ticker"].str.zfill(6)
 
     # 2. Fetch Point-In-Time KRX Market Cap Snapshot as of as_of
-    df_mcap_snap, mcap_sha256 = load_canonical_mcap_snapshot(repo_root, as_of=as_of)
+    source_dir = out_dir / "source" if output_dir else (repo_root / "artifacts/investability/source")
+    df_mcap_snap, mcap_sha256 = load_canonical_mcap_snapshot(repo_root, as_of=as_of, source_dir=source_dir)
     mcap_dict = {row["ticker"]: float(row["market_cap"]) for _, row in df_mcap_snap.iterrows()}
     shares_dict = {row["ticker"]: int(row["shares_outstanding"]) for _, row in df_mcap_snap.iterrows()}
     mcap_date_dict = {row["ticker"]: str(row.get("effective_date", as_of)) for _, row in df_mcap_snap.iterrows()}
@@ -721,7 +743,6 @@ def run_investability_audit(
             if tv_min > 0:
                 pass_mask &= (df_subset["avg_trading_value_20d_eok"] >= tv_min)
 
-            # Only evaluable rows can pass
             valid_pass_mask = (~unavail_mask) & pass_mask
             rem_cnt = int(valid_pass_mask.sum())
             failed_cnt = evaluable_cnt - rem_cnt
@@ -759,14 +780,14 @@ def run_investability_audit(
             "universe_threshold_failed": u_res["threshold_failed"],
             "universe_remaining": u_res["remaining"],
             "universe_removed": u_res["removed"],
-            "universe_remaining_pct": round(u_res["remaining"] / u_res["total"] * 100, 2),
+            "universe_remaining_pct": round(u_res["remaining"] / u_res["total"] * 100, 2) if u_res["total"] > 0 else 0.0,
             # Candidates
             "candidate_total": c_res["total"],
             "candidate_unavailable": c_res["unavailable"],
             "candidate_threshold_failed": c_res["threshold_failed"],
             "candidate_remaining": c_res["remaining"],
             "candidate_removed": c_res["removed"],
-            "candidate_remaining_pct": round(c_res["remaining"] / c_res["total"] * 100, 2),
+            "candidate_remaining_pct": round(c_res["remaining"] / c_res["total"] * 100, 2) if c_res["total"] > 0 else 0.0,
             # Subgroups
             "transition_remaining": t_res["remaining"],
             "transition_removed": t_res["removed"],
@@ -824,9 +845,9 @@ def run_investability_audit(
 
     # Gate 1: No Lookahead
     g1_no_lookahead = (
-        (as_of == "2026-08-14")
+        (as_of == CANONICAL_AS_OF)
         and (future_observations_found == 0)
-        and all(d == "2026-08-14" for d in mcap_date_dict.values())
+        and all(d == CANONICAL_AS_OF for d in mcap_date_dict.values())
     )
 
     # Gate 2: Universe Identity
@@ -856,7 +877,7 @@ def run_investability_audit(
     g7_cand_mcap_coverage = (cand_mcap_missing == 0)
 
     # Gate 8: Candidate Metric Availability Policy (missing tolerance <= 5%)
-    cand_missing_rate = cand_close_missing / len(cohort_candidates)
+    cand_missing_rate = cand_close_missing / len(cohort_candidates) if len(cohort_candidates) > 0 else 1.0
     g8_cand_metric_policy = (
         cand_missing_rate <= 0.05
         and cand_tv20_missing == cand_close_missing
@@ -916,7 +937,7 @@ def run_investability_audit(
             "effective_date": as_of,
             "source_snapshot_rows": len(df_mcap_snap),
             "source_snapshot_sha256": mcap_sha256,
-            "lookahead_free": True,
+            "lookahead_free": bool(g1_no_lookahead),
             "trading_value_source": "Local Parquet Daily OHLCV (trading_value)",
         },
         "missing_audit": {
@@ -945,20 +966,22 @@ def run_investability_audit(
         "next_phase": "Phase 10B. Investability Threshold Design & Validation",
     }
 
-    # 12. Write Canonical Artifacts and Validation Document
-    df_univ.to_csv(out_dir / "pattern_a_investability_universe_20260814.csv", index=False)
-    df_cand.to_csv(out_dir / "pattern_a_investability_candidates_20260814.csv", index=False)
-    df_scenarios.to_csv(out_dir / "pattern_a_investability_scenarios_20260814.csv", index=False)
-    (out_dir / "pattern_a_investability_distribution_20260814.json").write_text(
-        json.dumps(distribution_summary, indent=2, ensure_ascii=False), encoding="utf-8"
-    )
-    (out_dir / "pattern_a_investability_summary_20260814.json").write_text(
-        json.dumps(summary_payload, indent=2, ensure_ascii=False), encoding="utf-8"
-    )
+    # 12. Write Canonical Artifacts and Validation Document (Isolated or Canonical)
+    if write_artifacts:
+        df_univ.to_csv(out_dir / "pattern_a_investability_universe_20260814.csv", index=False)
+        df_cand.to_csv(out_dir / "pattern_a_investability_candidates_20260814.csv", index=False)
+        df_scenarios.to_csv(out_dir / "pattern_a_investability_scenarios_20260814.csv", index=False)
+        (out_dir / "pattern_a_investability_distribution_20260814.json").write_text(
+            json.dumps(distribution_summary, indent=2, ensure_ascii=False), encoding="utf-8"
+        )
+        (out_dir / "pattern_a_investability_summary_20260814.json").write_text(
+            json.dumps(summary_payload, indent=2, ensure_ascii=False), encoding="utf-8"
+        )
 
-    doc_content = render_markdown_doc(summary_payload)
-    doc_path = repo_root / "docs/validation/pattern_a_investability_distribution_v01.md"
-    doc_path.write_text(doc_content, encoding="utf-8")
+        doc_content = render_markdown_doc(summary_payload)
+        effective_doc_path = doc_path or (repo_root / "docs/validation/pattern_a_investability_distribution_v01.md")
+        effective_doc_path.parent.mkdir(parents=True, exist_ok=True)
+        effective_doc_path.write_text(doc_content, encoding="utf-8")
 
     return summary_payload
 
