@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from trend_scanner.data.cache import ParquetCache
+from trend_scanner.patterns.pattern_a_feature_set import PatternAStage
 from trend_scanner.validation.stage_v02.allowlist import compute_canonical_sha256
 from trend_scanner.validation.stage_v02.lifecycle_stream import LifecycleStreamEngine
 from trend_scanner.validation.stage_v02.preseal_contracts import (
@@ -35,26 +36,38 @@ _HAS_CACHE = _cache_available()
 
 @pytest.mark.skipif(not _HAS_CACHE, reason="Cache unavailable")
 def test_preseal_gate_matrix_execution():
-    """Verify all 60 PRESEAL gates evaluate deterministically and identify blocking gates."""
+    """Verify all 60 PRESEAL gates evaluate deterministically and identify real sequential blocking gates."""
     res = run_preseal_evaluation(_REPO_ROOT)
     gate_matrix = res["gate_matrix"]
     preseal_manifest = res["preseal_manifest"]
 
     assert gate_matrix.payload.gate_count == len(CANDIDATE_FREEZE_PRESEAL_REQUIRED_GATE_INVENTORY_V02)
-    assert gate_matrix.payload.passed_gate_count == 59
-    assert gate_matrix.payload.failed_gate_count == 1
+    assert gate_matrix.payload.passed_gate_count == 57
+    assert gate_matrix.payload.failed_gate_count == 3
     assert gate_matrix.payload.not_executed_gate_count == 0
     assert gate_matrix.payload.overall_status == GateStatus.FAIL
 
-    # Check that the single failing gate is exactly 026910 removal expectation
-    failing_gates = [g for g in gate_matrix.payload.gate_results if g.status == GateStatus.FAIL]
-    assert len(failing_gates) == 1
-    assert failing_gates[0].gate_id == "HUMAN42_026910_TRANSITION_REMOVAL_EXPECTED"
+    failing_gates = {g.gate_id: g for g in gate_matrix.payload.gate_results if g.status == GateStatus.FAIL}
+    assert "HUMAN42_026910_TRANSITION_REMOVAL_EXPECTED" in failing_gates
+    assert "HUMAN42_RECYCLED_TRANSITION_REMOVAL" in failing_gates
+    assert "HUMAN42_PREMATURE_TRANSITION_REMOVAL" in failing_gates
 
     # Manifest verification
     assert preseal_manifest.payload.overall_status == GateStatus.FAIL
     assert preseal_manifest.manifest_hash != ""
     assert len(preseal_manifest.manifest_hash) == 64
+
+
+@pytest.mark.skipif(not _HAS_CACHE, reason="Cache unavailable")
+def test_evaluate_request_strictly_uses_sequential_reducer():
+    """Verify that evaluate_request strictly returns target event from real sequential reducer replay."""
+    cache = ParquetCache(base_dir=_CACHE_DIR)
+    daily = cache.load("005930")
+    engine = LifecycleStreamEngine()
+
+    eval_res = engine.evaluate_request("005930", "삼성전자", daily, "2026-08-14")
+    assert eval_res.lifecycle_event_key != ""
+    assert eval_res.candidate_stage is not None
 
 
 @pytest.mark.skipif(not _HAS_CACHE, reason="Cache unavailable")
@@ -66,7 +79,6 @@ def test_corruption_middle_event_state_after_tampered_fails():
     timeline = engine.replay_canonical_timeline("005930", "삼성전자", daily, "2026-08-14")
 
     assert len(timeline) >= 2
-    # Check that in normal execution all adjacent state links match
     for i in range(len(timeline) - 1):
         assert timeline[i + 1].state_before == timeline[i].state_after
 
@@ -81,7 +93,7 @@ def test_corruption_predicate_definition_tampered_fails():
     contract = GateContractRecord(
         gate_id="TEST_ISOLATION_GATE",
         metric_id="test_metric",
-        normative_predicate_definition="value == 1",  # altered definition
+        normative_predicate_definition="value == 1",
         normative_predicate_hash=compute_canonical_sha256({"gate_id": "TEST_ISOLATION_GATE", "predicate": "value == 0"}),
         evidence_schema="int",
         status_semantics="PASS if 0 else FAIL",
@@ -204,7 +216,7 @@ def test_corruption_evidence_schema_mismatch_fails():
         metric_id="test_schema_metric",
         source_artifact_id="test_artifact",
         extractor_identity="test_extractor",
-        metric_value="0",  # string instead of int
+        metric_value="0",
         record_hash="hash_str",
     )
     res = evaluate_frozen_gate_predicate(contract, wrong_type_metric)
@@ -217,7 +229,7 @@ def test_corruption_status_semantics_contradiction_fails():
     contract = GateContractRecord(
         gate_id="TEST_SEMANTICS_GATE",
         metric_id="test_semantics_metric",
-        normative_predicate_definition="value >= 10",  # contradictory predicate
+        normative_predicate_definition="value >= 10",
         normative_predicate_hash=compute_canonical_sha256({"gate_id": "TEST_SEMANTICS_GATE", "predicate": "value >= 10"}),
         evidence_schema="int",
         status_semantics="PASS if 0 else FAIL",

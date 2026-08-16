@@ -101,8 +101,9 @@ class LifecycleStreamEngine:
     
     Guarantees:
     1. next_event.state_before == previous_event.state_after (strict sequential state linking).
-    2. Chronological sequential reduction from canonical initial state.
-    3. 100% request-order independence.
+    2. Every historical event uses real build_historical_snapshot (0 synthetic approximations).
+    3. evaluate_request strictly returns target event from chronological sequential replay.
+    4. 100% request-order independence.
     """
 
     def __init__(self) -> None:
@@ -126,7 +127,7 @@ class LifecycleStreamEngine:
         daily: pd.DataFrame,
         target_date: str | datetime.date,
     ) -> list[CanonicalLifecycleEventResult]:
-        """Replay true sequential reducer over canonical monthly schedule up to target_date."""
+        """Replay true sequential reducer over real historical snapshots up to target_date."""
         if daily is None or daily.empty:
             return []
 
@@ -148,92 +149,49 @@ class LifecycleStreamEngine:
         if ticker not in self._event_cache:
             self._event_cache[ticker] = {}
 
-        # Evaluate target snapshot first to get exact terminal result
-        target_res = classify_pattern_a_stage_v02_candidate(target_snap)
-        context = target_res.context
-
-        # Build chronological timeline representation from monthly series
+        # Schedule dates from monthly index
         monthly_dates = [d.date() for d in monthly.index]
 
         for i, sub_date in enumerate(monthly_dates):
-            m_as_of = str(sub_date)
-            w_as_of = m_as_of if i < len(monthly_dates) - 1 else (str(target_snap.features.as_of) if hasattr(target_snap.features, "as_of") else str(target_snap.effective_as_of))
-            feat_sig = compute_feature_signature(target_snap.features) if i == len(monthly_dates) - 1 else compute_canonical_sha256({"sub_date": m_as_of})
+            # For the last event, use target_snap directly for exactness
+            if i == len(monthly_dates) - 1:
+                snap = target_snap
+            else:
+                snap = build_historical_snapshot(
+                    ticker=ticker,
+                    name=name,
+                    daily=daily,
+                    snapshot_date=sub_date,
+                    include_incomplete_periods=False,
+                )
+
+            m_as_of = str(snap.monthly.index[-1].date()) if (snap.monthly is not None and not snap.monthly.empty) else "NONE"
+            w_as_of = str(snap.features.as_of) if hasattr(snap.features, "as_of") else str(snap.effective_as_of)
+            feat_sig = compute_feature_signature(snap.features)
             event_key = compute_lifecycle_event_key(ticker, m_as_of, w_as_of, feat_sig)
 
-            # At target snapshot (last item), state_before is strictly derived from context
-            if i == len(monthly_dates) - 1:
-                state_before = current_state_before
-                res = classify_pattern_a_stage_v02_candidate(target_snap, override_state_before=state_before)
-                event_result = CanonicalLifecycleEventResult(
-                    ticker=ticker,
-                    lifecycle_event_key=event_key,
-                    candidate_relevant_feature_signature=feat_sig,
-                    monthly_as_of=m_as_of,
-                    weekly_as_of=w_as_of,
-                    state_before=res.candidate_diagnostics.previously_expanded_before_snapshot,
-                    current_strict_expansion=res.candidate_diagnostics.current_strict_expansion,
-                    current_episode_terminated=res.candidate_diagnostics.current_episode_terminated,
-                    state_after=res.candidate_diagnostics.previously_expanded_after_snapshot,
-                    candidate_stage=res.candidate_stage,
-                    candidate_reason_codes=res.candidate_reason_codes,
-                    diagnostics=res.candidate_diagnostics,
-                )
-            else:
-                # Intermediate month
-                state_before = current_state_before
-                # Strict expansion check at this intermediate month
-                close = monthly["close"].iloc[i]
-                recent_12 = monthly["close"].iloc[max(0, i - 11) : i + 1].mean() if i >= 11 else close
-                prior_12 = monthly["close"].iloc[max(0, i - 23) : i - 11].mean() if i >= 23 else recent_12
-                avg_chg = (recent_12 - prior_12) / prior_12 if prior_12 > 0 else 0.0
-                
-                strict_exp = bool(avg_chg >= 0.30)
-                term = bool(state_before and avg_chg < 0.20)
+            # Evaluate with true previous state_after
+            state_before = current_state_before
+            res = classify_pattern_a_stage_v02_candidate(snap, override_state_before=state_before)
 
-                state_after = False if term else (True if strict_exp else state_before)
-
-                diag = CandidateDiagnostics(
-                    insufficient_data=False,
-                    positive_signal_from_missing=False,
-                    active_decline=False,
-                    core_turning_positive=True,
-                    weekly_turning_positive=True,
-                    standard_expansion=strict_exp,
-                    mature_post_breakout=False,
-                    progression_eligible=strict_exp,
-                    breakout_like_structure=False,
-                    ma_order_bullish=True,
-                    ma_order_bearish=False,
-                    spread_ratio_confirmation=True,
-                    core_led=True,
-                    weekly_led=True,
-                    transition_eligibility=True,
-                    previously_expanded_before_snapshot=state_before,
-                    current_strict_expansion=strict_exp,
-                    current_episode_terminated=term,
-                    previously_expanded_after_snapshot=state_after,
-                    precedence_path="sequential_replay",
-                    veto_applied=None,
-                )
-
-                event_result = CanonicalLifecycleEventResult(
-                    ticker=ticker,
-                    lifecycle_event_key=event_key,
-                    candidate_relevant_feature_signature=feat_sig,
-                    monthly_as_of=m_as_of,
-                    weekly_as_of=w_as_of,
-                    state_before=state_before,
-                    current_strict_expansion=strict_exp,
-                    current_episode_terminated=term,
-                    state_after=state_after,
-                    candidate_stage=PatternAStage.TRANSITION,
-                    candidate_reason_codes=("sequential_replay",),
-                    diagnostics=diag,
-                )
-
-            if event_result.state_before != current_state_before:
+            # Invariant verification
+            if res.candidate_diagnostics.previously_expanded_before_snapshot != current_state_before:
                 self.sequential_state_link_mismatch_count += 1
+
+            event_result = CanonicalLifecycleEventResult(
+                ticker=ticker,
+                lifecycle_event_key=event_key,
+                candidate_relevant_feature_signature=feat_sig,
+                monthly_as_of=m_as_of,
+                weekly_as_of=w_as_of,
+                state_before=res.candidate_diagnostics.previously_expanded_before_snapshot,
+                current_strict_expansion=res.candidate_diagnostics.current_strict_expansion,
+                current_episode_terminated=res.candidate_diagnostics.current_episode_terminated,
+                state_after=res.candidate_diagnostics.previously_expanded_after_snapshot,
+                candidate_stage=res.candidate_stage,
+                candidate_reason_codes=res.candidate_reason_codes,
+                diagnostics=res.candidate_diagnostics,
+            )
 
             timeline.append(event_result)
             self._event_cache[ticker][event_key] = event_result
@@ -249,7 +207,7 @@ class LifecycleStreamEngine:
         daily: pd.DataFrame,
         requested_snapshot_date: str | datetime.date,
     ) -> CandidateRequestEvaluation:
-        """Evaluate a historical snapshot request deterministically using chronological sequential replay."""
+        """Evaluate a historical snapshot request strictly by retrieving the target event from canonical sequential replay."""
         snap = build_historical_snapshot(
             ticker=ticker,
             name=name,
@@ -282,27 +240,26 @@ class LifecycleStreamEngine:
             if other_ticker != ticker and event_key in cache_dict:
                 self.cross_ticker_event_reuses += 1
 
-        # Evaluate candidate directly or with canonical context
-        res = classify_pattern_a_stage_v02_candidate(snap)
+        # Replay canonical chronological timeline
+        timeline = self.replay_canonical_timeline(ticker, name, daily, requested_snapshot_date)
 
-        event_result = CanonicalLifecycleEventResult(
-            ticker=ticker,
-            lifecycle_event_key=event_key,
-            candidate_relevant_feature_signature=feat_sig,
-            monthly_as_of=monthly_as_of,
-            weekly_as_of=weekly_as_of,
-            state_before=res.candidate_diagnostics.previously_expanded_before_snapshot,
-            current_strict_expansion=res.candidate_diagnostics.current_strict_expansion,
-            current_episode_terminated=res.candidate_diagnostics.current_episode_terminated,
-            state_after=res.candidate_diagnostics.previously_expanded_after_snapshot,
-            candidate_stage=res.candidate_stage,
-            candidate_reason_codes=res.candidate_reason_codes,
-            diagnostics=res.candidate_diagnostics,
-        )
+        if not timeline:
+            res = classify_pattern_a_stage_v02_candidate(snap)
+            return CandidateRequestEvaluation(
+                ticker=ticker,
+                requested_snapshot_date=str(requested_snapshot_date),
+                effective_as_of=effective_as_of,
+                monthly_as_of=monthly_as_of,
+                weekly_as_of=weekly_as_of,
+                temporal_signature=temp_sig,
+                lifecycle_event_key=event_key,
+                candidate_stage=res.candidate_stage,
+                candidate_reason_codes=res.candidate_reason_codes,
+                diagnostics=res.candidate_diagnostics,
+            )
 
-        if ticker not in self._event_cache:
-            self._event_cache[ticker] = {}
-        self._event_cache[ticker][event_key] = event_result
+        # Strictly return target event from sequential reducer timeline
+        event_result = timeline[-1]
 
         return CandidateRequestEvaluation(
             ticker=ticker,

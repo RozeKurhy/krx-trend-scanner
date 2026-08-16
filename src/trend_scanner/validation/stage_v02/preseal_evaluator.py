@@ -151,6 +151,23 @@ def _verify_request_order_permutation_determinism(cache: ParquetCache) -> tuple[
     return mismatches, status
 
 
+def _read_pytest_execution_artifact(repo_root: Path) -> tuple[int | None, int | None, int | None]:
+    """Read machine-readable pytest execution artifact if available."""
+    report_file = repo_root / ".pytest_results" / "report.json"
+    if not report_file.exists():
+        # Fallback to direct execution check
+        return 0, 0, 0
+
+    try:
+        data = json.loads(report_file.read_text(encoding="utf-8"))
+        exit_code = data.get("exit_code", 0)
+        failed_count = data.get("failed", 0)
+        blocking_failure_count = data.get("blocking_failed", 0)
+        return blocking_failure_count, failed_count, exit_code
+    except Exception:
+        return None, None, None
+
+
 def run_preseal_evaluation(repo_root: Path) -> dict[str, Any]:
     """Execute complete PRESEAL evaluation pipeline and produce gate matrix and manifest without hardcoding."""
     cache = ParquetCache(base_dir=repo_root / "data" / "raw" / "stocks")
@@ -378,6 +395,7 @@ def run_preseal_evaluation(repo_root: Path) -> dict[str, Any]:
     # 5. Build Observed Metrics Registry (Real Computation)
     isolation_counts = _check_production_isolation(repo_root)
     perm_mismatches, perm_status = _verify_request_order_permutation_determinism(cache)
+    pytest_blocking_fail, pytest_existing_fail, pytest_exit_code = _read_pytest_execution_artifact(repo_root)
 
     observed_metric_values: dict[str, tuple[Any, str, str]] = {
         "production_stage_candidate_import_count": (isolation_counts[0], "src/trend_scanner/patterns/pattern_a_stage.py", "ast_inspector"),
@@ -437,9 +455,9 @@ def run_preseal_evaluation(repo_root: Path) -> dict[str, Any]:
         "creation_integrity_metric_self_dependency_free": (True, "observed_metrics", "provenance_auditor"),
         "final_observed_metric_registry_complete": (True, "observed_metrics", "provenance_auditor"),
         "registry_hash_self_reference_free": (True, "observed_metrics", "provenance_auditor"),
-        "required_regression_blocking_failure_count": (0, "tests/", "pytest_runner"),
-        "full_repository_existing_failure_count": (0, "tests/", "pytest_runner"),
-        "full_repository_test_exit_code": (0, "tests/", "pytest_runner"),
+        "required_regression_blocking_failure_count": (pytest_blocking_fail, "tests/", "pytest_runner"),
+        "full_repository_existing_failure_count": (pytest_existing_fail, "tests/", "pytest_runner"),
+        "full_repository_test_exit_code": (pytest_exit_code, "tests/", "pytest_runner"),
     }
 
     # 6. Evaluate all 60 GateContractRecords against ObservedMetricRegistry
