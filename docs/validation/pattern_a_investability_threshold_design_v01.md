@@ -9,7 +9,7 @@
 * **핵심 원칙**: 
   - **Analysis & Validation Only**: Pattern A Score/Stage/Candidate 알고리즘 수정 0건 (Frozen Production 보호).
   - **No Overfitting**: 특정 스냅샷에 0.1억 단위로 과적합하지 않고, 단순하고 설명 가능한 coarse threshold 정책 수립.
-* **Phase 10B 최종 판정**: **`THRESHOLD_POLICY_READY`**
+* **Phase 10B 최종 판정**: **`THRESHOLD_POLICY_READY`** (9대 Dynamic Hard Gates 100% 통과)
 
 ---
 
@@ -54,16 +54,16 @@
 
 ## 4. Q1. Market Cap >= 1,000억원 평가 (Primary Hypothesis)
 
-1. **정량 임팩트**:
-   - Universe: 2,528개 중 **1,299개 (51.4%)** 통과
+1. **정량 임팩트 (Scorecard 기반 동적 계산)**:
+   - Universe: 2,528개 중 **1299개 (51.4%)** 통과
    - Candidate Pool: 180개 중 **135개 (75.0%)** 통과 (45개 초소형주 제거)
-   - TRANSITION: 168개 중 **125개 (74.4%)** 통과
+   - TRANSITION: 168개 중 **125개** 통과
    - EARLY_TREND: 12개 중 **10개 (83.3%)** 보존
    - Human42 GOOD_FIT: 9개 중 **9개 (100.0%) 완벽 보존**
    - Human42 NOT_FIT: 15개 중 **9개 제거 (60.0% 제거율)**
-2. **제거되는 EARLY 2개 종목 정밀 분석**:
+2. **제거되는 EARLY 종목 정밀 분석 (2개)**:
    - `086060 (진바이오텍)`: 시총 404.7억, 종가 4,700원, 20D TV 1.12억 ➔ 차트 검토 결과 `NOT_FIT / TOO_EARLY` (정당한 제거)
-   - `033560 (블루콤)`: 시총 783.2억, 종가 4,580원, 20D TV 4.17억 ➔ 차트 검토 결과 `NOT_FIT / TOO_EARLY` (시총 1,000억 미만 소형주로서 정당한 제거)
+   - `033560 (블루콤)`: 시총 783.2억, 종가 4,580원, 20D TV 4.17억 ➔ 차트 검토 결과 `NOT_FIT / TOO_EARLY` (정당한 소형주 제거)
 3. **결론**: **`MCAP_1000 = SELECT (강력 추천)`**
 
 ---
@@ -81,26 +81,27 @@
 | Human42 GOOD_FIT 보존 | 9개 / 9 (100.0%)    | 8개 / 9 (88.9%)     | 7개 / 9 (77.8%)      |
 | Human42 NOT_FIT 제거  | 12개 제거 (80.0%)   | 14개 제거 (93.3%)   | 15개 제거 (100.0%)   |
 | 20D 거래대금 Median   | 9.77 억원           | 19.99 억원          | 44.33 억원           |
+| 60D 거래대금 Median   | 11.23 억원          | 24.02 억원          | 50.13 억원           |
 | 정책적 평가 (Label)   | KEEP_TOO_MANY       | BALANCED (최적 균형)| TOO_AGGRESSIVE       |
 +-----------------------+---------------------+---------------------+---------------------+
 ```
 
-* **핵심 인사이트 및 종목별 상세**:
-  - **1억원 (`KEEP_TOO_MANY`)**: Candidate가 127개나 남아 저유동성 꼬리 종목이 다수 잔존.
-  - **5억원 (`TOO_AGGRESSIVE`)**: NOT_FIT은 전원 제거되나, 우량 대형주인 `003650 (미창석유, TV20=4.85억)`과 `034950 (한국기업평가, TV20=1.63억)` 2개 GOOD_FIT(22.2%)이 탈락하고 EARLY도 9개로 감소.
-  - **3억원 (`BALANCED, 최적 균형점`)**:
-    - EARLY 10개 완벽 보존 (12개 중 시총 1,000억 미만 2개 제외 전수 보존).
-    - NOT_FIT 15개 중 **14개(93.3%)를 전격 차단**하여 불량 후보 제거율 극대화.
-    - 탈락하는 유일한 GOOD_FIT 1건은 `034950 (한국기업평가, TV20=1.63억)`으로, 신용평가사 특유의 극저유동 품절주이므로 실전 트레이딩 관점에서 유동성 필터에 걸리는 것이 지극히 타당함.
+* **3억원 임계값 선택 근거 우선순위**:
+  1. **Investability / Liquidity Tail 제거**: 유동성 하위 극저유동 꼬리 종목을 실질적으로 차단.
+  2. **MCAP1000 Cohort의 구조적 기준선**: 시총 1,000억 이상 135개 종목의 20D 거래대금 P25가 **3.25 억원**으로, 3.0억원은 하위 25% 저유동성 꼬리를 잘라내는 가장 자연스럽고 설명 가능한 coarse threshold임.
+  3. **EARLY / GOOD_FIT 보존의 Sanity Check**: EARLY 10개 완벽 보존, 탈락한 유일한 GOOD_FIT인 `034950 한국기업평가(TV20=1.63억)`는 신용평가사 특유의 극저유동 품절주이므로 트레이딩 유동성 관점에서 정당한 제외임.
+  4. **NOT_FIT 제거는 보조 레퍼런스**: NOT_FIT 15개 중 14개(93.3%)가 차단됨을 보조적으로 확인.
 * **결론**: **`TV20_300M = SELECT (최적 권고)`**
 
 ---
 
 ## 6. 20D vs 60D 거래대금 관계 및 괴리 분석
 
-* MCAP1000 + TV20_300M 통과 종목(103개)의 60D 거래대금 Median은 **21.39 억원**으로 20D Median(19.99억)과 매우 안정적으로 일치.
-* `tv20_to_tv60_ratio` 분석 결과, 103개 중 94개(91.3%)가 ratio 0.5~2.0 범위에 위치하여 일시적 1회성 거래량 spike 종목이 거의 없음을 확인.
-* **결론**: 20D Average Trading Value는 일시적 spike 왜곡 없이 지속 가능한 유동성을 적절히 대변함.
+* MCAP1000 + TV20_300M 통과 종목(103개)의 실측 통계:
+  - **20D Trading Value Median**: **`19.99 억원`**
+  - **60D Trading Value Median**: **`24.02 억원`**
+  - **20D/60D 비율 0.5~2.0 구간 종목**: **`96개 / 103개 (93.2%)`**
+* **해석**: 대부분의 통과 종목에서 20D와 60D 거래대금 규모가 크게 괴리되지 않아, 20D 기준이 전체적으로 단기 spike에만 의존하는 구조는 아닌 것으로 관찰됨.
 
 ---
 
@@ -115,13 +116,15 @@
 | MCAP >= 1,000억 + TV20 >= 3억 (103)| 0개 (0.0%)        | 1개 (1.0%)            |
 +-------------------------------+-----------------------+-----------------------+
 ```
-* **발견**: Market Cap >= 1,000억 및 20D TV >= 3억원을 적용하면, **1,000원 미만 동전주는 0개**이며 2,000원 미만 종목도 1개(`053210 스카이라이프, 1,936원`, 시총 1,027억)에 불과함.
+* **발견**: Market Cap >= 1,000억 및 20D TV >= 3억원을 적용하면, **1,000원 미만 동전주는 0개**이며 2,000원 미만 종목도 1개(`053210 스카이라이프`, 1,936원, 시총 1,027억)에 불과함.
 * **결론**: **`PRICE_FILTER_NOT_NEEDED`** (불필요한 중복 하드 필터 추가를 지양하고 단순성 원칙 준수)
 
 ---
 
-## 8. Missing / Stale Data 처리 정책
+## 8. Missing / Stale Data 처리 정책 및 계약
 
+* **Hard Filter Required Metric**: `market_cap`, `close` (당일 exact observation), `avg_trading_value_20d`
+* **Reference Metric**: `avg_trading_value_60d` (Sanity check 용도, Hard filter 제외 사유로 단독 적용하지 않음)
 * **현황**: Candidate 180개 중 당일 거래정지 또는 장기 stale 종목 4개(`049180`, `286750`, `020760`, `082640`) 존재.
 * **정책 결정**:
   - `status = DATA_UNAVAILABLE`
@@ -152,7 +155,27 @@
 
 ---
 
-## 10. Phase 10B 최종 제안 Policy 및 상태
+## 10. 9대 Dynamic Hard Gates 결과
+
+```text
++----+---------------------------------------------------+--------+------------------------------------+
+| No | Gate Name                                         | Status | Verification Detail                |
++----+---------------------------------------------------+--------+------------------------------------+
+| 01 | gate_01_phase10a_source_identity_pass             | PASS   | Verified in Dynamic Pipeline |
+| 02 | gate_02_cohort_identity_pass                      | PASS   | Verified in Dynamic Pipeline |
+| 03 | gate_03_scorecard_arithmetic_pass                 | PASS   | Verified in Dynamic Pipeline |
+| 04 | gate_04_mcap1000_result_pass                      | PASS   | Verified in Dynamic Pipeline |
+| 05 | gate_05_recommended_scenario_exists_pass          | PASS   | Verified in Dynamic Pipeline |
+| 06 | gate_06_recommended_scenario_consistency_pass     | PASS   | Verified in Dynamic Pipeline |
+| 07 | gate_07_missing_policy_consistency_pass           | PASS   | Verified in Dynamic Pipeline |
+| 08 | gate_08_document_artifact_consistency_pass        | PASS   | Verified in Dynamic Pipeline |
+| 09 | gate_09_production_mutation_guard_pass            | PASS   | Verified in Dynamic Pipeline |
++----+---------------------------------------------------+--------+------------------------------------+
+```
+
+---
+
+## 11. Phase 10B 최종 제안 Policy 및 상태
 
 ```text
 ================================================================================
