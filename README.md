@@ -79,7 +79,7 @@ krx-trend-scanner/
 │           ├── stage_v04_multi_year_research.py
 │           └── pattern_a_final_closure.py
 │
-├── tests/                          # 361개 유닛 및 통합 테스트 (100% Green)
+├── tests/                          # 361 passed / 0 failed (6 skipped, 1 deselected)
 └── docs/                           # 상세 설계 및 검증 보고서
     ├── roadmap.md                  # 전체 개발 로드맵
     ├── data_layer.md               # 데이터 레이어 설계 문서

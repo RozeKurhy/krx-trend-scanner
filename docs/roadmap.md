@@ -54,7 +54,7 @@
 | Stage v0.2 Candidate Research | HOLD | PRESEAL 미달 및 026910 미해결로 프로덕션 미채택 (`d975f66`) |
 | Stage v0.3 Existing Feature Research | CLOSED | 가설 A~G 벤치마크 훼손 확인 (`NO_GENERALIZABLE_RULE_FOUND`, `6f3c061`) |
 | Stage v0.4 Multi-Year Feature Research | CLOSED | 5년 구조 피처 9종 분리 한계 확인 (`NO_USEFUL_MULTI_YEAR_FEATURE_FOUND`, `5be5b42`) |
-| Pattern A Final Production Closure | DONE | 10대 Hard Gate 전수 통과 및 공식 영구 동결 (`05d03e1`) |
+| Pattern A Final Production Closure | DONE | Final Closure PASS, KEEP_CURRENT_PRODUCTION 확정 (`05d03e1`) |
 | Pattern A Stage Research Lifecycle | CLOSED | 알고리즘 연구 종료 (`KEEP_CURRENT_PRODUCTION`) |
 
 **Pattern B~F**: 미착수(PLANNED)  
@@ -180,12 +180,13 @@ Scanner CANDIDATE 종목을 사람이 직접 검토(월봉 ➔ 주봉 ➔ 일봉
 * **Phase 9B. Human Chart Review & Evidence — DONE**:
   * **Human42 Evidence**: EARLY_TREND 12건 전수 + Exploratory TRANSITION 30건 표본에 대한 상세 수동 차트 검토 수행
   * EARLY_TREND 적합률 83.3% (Good Fit 7, Borderline 3, Not Fit 2)
-  * TRANSITION의 Premature, Recycled, Too Early/Late 오탐 유형 및 8대 Known Limitation 규명
+  * Human42가 직접 확인한 구조적 Failure Pattern: Premature(바닥권 극초기 반등), Recycled(과거 시세 분출 후 조정), Too Early / Too Late 등
+  * 최종 8대 Known Limitation은 Human42 + 후속 Stage v0.2 / v0.3 / v0.4 연구를 종합하여 확정
 * **후속 Stage 연구 및 Final Production Closure — DONE**:
   * Stage v0.2 Candidate (`d975f66`): PRESEAL 미달로 프로덕션 기각 (`HOLD`)
   * Stage v0.3 Existing Feature Research (`6f3c061`): 일반화 규칙 부재 확인 (`CLOSED`)
   * Stage v0.4 Multi-Year Feature Research (`5be5b42`): 5년 구조 피처 한계 확인 (`CLOSED`)
-  * Pattern A Final Production Closure (`05d03e1`): **`KEEP_CURRENT_PRODUCTION`** 공식 확정 및 Stage Research 영구 종료
+  * Pattern A Final Production Closure (`05d03e1`): **`KEEP_CURRENT_PRODUCTION`** 공식 확정 및 Stage Research 종료
 
 ---
 
@@ -279,4 +280,4 @@ CLI / Web 대시보드, 관심종목 워크플로우, 실시간 알림 등 최�
 * **Principle 10**: Pattern A~F가 충분히 검증되기 전에는 Market Leader Score를 성급하게 만들지 않는다.
 * **Principle 11**: Pattern detection과 Investability filtering은 철저히 분리한다 (시총, 주가, 거래대금은 Pattern A Score/Stage에 섞지 않음).
 * **Principle 12**: Flow 및 Relative Strength는 독립 Confirmation Axis로 시작하며 초기에는 절대적 Hard Filter로 사용하지 않는다.
-* **Principle 13**: 한두 종목의 오분류를 고치기 위해 Frozen Pattern rule을 임의로 다시 열지 않으며, Pattern A는 Final Closure 이후 영구 동결(Frozen Algorithm)으로 취급한다.
+* **Principle 13**: Pattern A는 Final Closure 이후 기본적으로 Frozen Algorithm으로 취급한다. 개별 ticker 오분류나 임의 threshold 조정 아이디어만으로는 재오픈하지 않으며, 오직 (1) 충분한 신규 independent validation cohort 확보, (2) 실전 운용에서 반복적인 systematic production failure 확인, (3) 시장 구조 변화로 frozen production semantic의 유효성이 명백히 훼손된 경우에만 제한적으로 재오픈을 검토한다.
