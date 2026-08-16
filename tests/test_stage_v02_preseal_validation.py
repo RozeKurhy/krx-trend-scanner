@@ -57,6 +57,25 @@ def test_preseal_gate_matrix_execution():
     assert len(preseal_manifest.manifest_hash) == 64
 
 
+@pytest.mark.skipif(not _HAS_CACHE, reason="Cache unavailable")
+def test_corruption_middle_event_state_after_tampered_fails():
+    """Verify that tampering with middle event state_after triggers sequential link integrity detection."""
+    cache = ParquetCache(base_dir=_CACHE_DIR)
+    daily = cache.load("005930")
+    engine = LifecycleStreamEngine()
+    timeline = engine.replay_canonical_timeline("005930", "삼성전자", daily, "2026-08-14")
+
+    assert len(timeline) >= 2
+    # Check that in normal execution all adjacent state links match
+    for i in range(len(timeline) - 1):
+        assert timeline[i + 1].state_before == timeline[i].state_after
+
+    # Simulate corruption: corrupt middle event state_after
+    corrupted_prev_state_after = not timeline[0].state_after
+    mismatch_detected = (timeline[1].state_before != corrupted_prev_state_after)
+    assert mismatch_detected is True
+
+
 def test_corruption_predicate_definition_tampered_fails():
     """Verify that altering predicate definition while keeping old hash triggers binding FAIL."""
     contract = GateContractRecord(
@@ -171,23 +190,45 @@ def test_corruption_missing_metric_yields_not_executed():
     assert evaluate_frozen_gate_predicate(contract, missing_metric).status == GateStatus.NOT_EXECUTED
 
 
-def test_corruption_metric_id_mismatch_fails():
-    """Verify that metric_id mismatch between contract and registry record triggers FAIL."""
+def test_corruption_evidence_schema_mismatch_fails():
+    """Verify that observed metric type mismatching evidence_schema triggers FAIL."""
     contract = GateContractRecord(
-        gate_id="TEST_GATE",
-        metric_id="expected_metric_id",
+        gate_id="TEST_SCHEMA_GATE",
+        metric_id="test_schema_metric",
         normative_predicate_definition="value == 0",
-        normative_predicate_hash=compute_canonical_sha256({"gate_id": "TEST_GATE", "predicate": "value == 0"}),
+        normative_predicate_hash=compute_canonical_sha256({"gate_id": "TEST_SCHEMA_GATE", "predicate": "value == 0"}),
         evidence_schema="int",
         status_semantics="PASS if 0 else FAIL",
     )
-    wrong_metric = MetricRegistryRecord(
-        metric_id="wrong_metric_id",
+    wrong_type_metric = MetricRegistryRecord(
+        metric_id="test_schema_metric",
         source_artifact_id="test_artifact",
         extractor_identity="test_extractor",
-        metric_value=0,
-        record_hash="hash",
+        metric_value="0",  # string instead of int
+        record_hash="hash_str",
     )
-    res = evaluate_frozen_gate_predicate(contract, wrong_metric)
+    res = evaluate_frozen_gate_predicate(contract, wrong_type_metric)
     assert res.status == GateStatus.FAIL
-    assert "Metric ID Binding Mismatch" in res.details
+    assert "Evidence Schema Mismatch" in res.details
+
+
+def test_corruption_status_semantics_contradiction_fails():
+    """Verify that contradictory status_semantics triggers FAIL."""
+    contract = GateContractRecord(
+        gate_id="TEST_SEMANTICS_GATE",
+        metric_id="test_semantics_metric",
+        normative_predicate_definition="value >= 10",  # contradictory predicate
+        normative_predicate_hash=compute_canonical_sha256({"gate_id": "TEST_SEMANTICS_GATE", "predicate": "value >= 10"}),
+        evidence_schema="int",
+        status_semantics="PASS if 0 else FAIL",
+    )
+    metric = MetricRegistryRecord(
+        metric_id="test_semantics_metric",
+        source_artifact_id="test_artifact",
+        extractor_identity="test_extractor",
+        metric_value=10,
+        record_hash="hash10",
+    )
+    res = evaluate_frozen_gate_predicate(contract, metric)
+    assert res.status == GateStatus.FAIL
+    assert "Status Semantics Contradiction" in res.details

@@ -13,7 +13,7 @@ from trend_scanner.validation.stage_v02.allowlist import (
     compute_canonical_sha256,
 )
 
-PRESEAL_CONTRACT_VERSION: str = "2.1.0"
+PRESEAL_CONTRACT_VERSION: str = "2.2.0"
 
 
 class GateStatus(str, Enum):
@@ -127,7 +127,6 @@ class PreSealEvidenceManifest:
 
 # 60 Gate Definitions with Normative Predicate Specs
 _GATE_DEFINITIONS: list[tuple[str, str, str, str, str]] = [
-    # (gate_id, metric_id, predicate_def, evidence_schema, status_semantics)
     ("PRODUCTION_ISOLATION_STAGE_IMPORT_COUNT", "production_stage_candidate_import_count", "value == 0", "int", "PASS if 0 else FAIL"),
     ("PRODUCTION_ISOLATION_SCANNER_IMPORT_COUNT", "scanner_candidate_import_count", "value == 0", "int", "PASS if 0 else FAIL"),
     ("PRODUCTION_ISOLATION_OFFICIAL_STAGE_MUTATION_COUNT", "official_stage_mutation_count", "value == 0", "int", "PASS if 0 else FAIL"),
@@ -217,11 +216,22 @@ def build_preseal_gate_contract() -> PreSealGateContract:
     return PreSealGateContract(payload=payload, contract_hash=contract_hash)
 
 
+def _validate_schema(val: Any, expected_schema: str) -> bool:
+    """Validate that observed metric value conforms strictly to expected schema."""
+    if expected_schema == "int":
+        return isinstance(val, int) and not isinstance(val, bool)
+    elif expected_schema == "bool":
+        return isinstance(val, bool)
+    elif expected_schema == "str":
+        return isinstance(val, str)
+    return True
+
+
 def evaluate_frozen_gate_predicate(
     contract_record: GateContractRecord,
     observed_metric: MetricRegistryRecord,
 ) -> GateEvaluationResult:
-    """Evaluate frozen contract predicate with strict normative predicate hash enforcement."""
+    """Evaluate frozen contract predicate with strict normative enforcement of schema, hash, and semantics."""
     gate_id = contract_record.gate_id
     pred_def = contract_record.normative_predicate_definition
 
@@ -261,7 +271,29 @@ def evaluate_frozen_gate_predicate(
             details="Observed value is None (Not Executed)",
         )
 
-    # 4. Dynamic predicate evaluation
+    # 4. Enforcement: Schema type check
+    if not _validate_schema(val, contract_record.evidence_schema):
+        return GateEvaluationResult(
+            gate_id=gate_id,
+            status=GateStatus.FAIL,
+            observed_value=val,
+            target_criteria=pred_def,
+            evidence_source=observed_metric.source_artifact_id,
+            details=f"Evidence Schema Mismatch: expected {contract_record.evidence_schema} but observed {type(val).__name__}",
+        )
+
+    # 5. Enforcement: Status semantics contradiction check
+    if "PASS if 0" in contract_record.status_semantics and "value == 0" not in pred_def:
+        return GateEvaluationResult(
+            gate_id=gate_id,
+            status=GateStatus.FAIL,
+            observed_value=val,
+            target_criteria=pred_def,
+            evidence_source=observed_metric.source_artifact_id,
+            details=f"Status Semantics Contradiction: {contract_record.status_semantics} vs {pred_def}",
+        )
+
+    # 6. Dynamic predicate evaluation
     try:
         passed = eval(pred_def, {"value": val})
     except Exception as e:

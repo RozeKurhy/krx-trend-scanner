@@ -538,6 +538,7 @@ def run_preseal_evaluation(repo_root: Path) -> dict[str, Any]:
             "total_timeline_checked": total_timeline_checked,
             "permutation_mismatches": perm_mismatches,
             "permutation_status": perm_status,
+            "sequential_state_link_mismatches": lifecycle_engine.sequential_state_link_mismatch_count,
         },
         "calib_diff": calib_diff_records,
         "oos_diff": oos_diff_records,

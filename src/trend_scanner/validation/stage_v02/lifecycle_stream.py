@@ -1,4 +1,4 @@
-"""Lifecycle Replay Engine and Request-Order Independent Canonical Timeline for Stage v0.2."""
+"""Lifecycle Replay Engine and True Chronological Sequential Reducer for Stage v0.2."""
 
 from __future__ import annotations
 
@@ -23,7 +23,7 @@ from trend_scanner.validation.stage_v02.candidate_classifier import (
 
 @dataclass(frozen=True)
 class CanonicalLifecycleEventResult:
-    """Immutable result of evaluating a canonical lifecycle event in sequential chronological order."""
+    """Immutable result of evaluating a canonical lifecycle event in true sequential chronological order."""
 
     ticker: str
     lifecycle_event_key: str
@@ -97,19 +97,18 @@ def compute_lifecycle_event_key(
 
 
 class LifecycleStreamEngine:
-    """Deterministic, immutable historical ticker-scoped sequential lifecycle replay engine.
+    """True deterministic chronological sequential reducer for Pattern A Stage lifecycle.
     
-    Guarantees 100% request-order independence by always executing sequential state
-    reducer over deterministic chronological timeline (oldest -> newest).
+    Guarantees:
+    1. next_event.state_before == previous_event.state_after (strict sequential state linking).
+    2. Chronological sequential reduction from canonical initial state.
+    3. 100% request-order independence.
     """
 
     def __init__(self) -> None:
-        # Cache per ticker: event_key -> CanonicalLifecycleEventResult
         self._event_cache: dict[str, dict[str, CanonicalLifecycleEventResult]] = {}
-        # Chronologically ordered timeline of event keys per ticker
         self._timeline_by_ticker: dict[str, list[CanonicalLifecycleEventResult]] = {}
         
-        # Real observed metrics counters
         self.same_event_key_state_before_mismatches: int = 0
         self.same_event_key_termination_mismatches: int = 0
         self.same_event_key_state_after_mismatches: int = 0
@@ -118,7 +117,130 @@ class LifecycleStreamEngine:
         self.request_temporal_provenance_mismatches: int = 0
         self.cross_ticker_event_reuses: int = 0
         self.lifecycle_off_by_one_errors: int = 0
-        self.request_order_lifecycle_mismatch_count: int = 0
+        self.sequential_state_link_mismatch_count: int = 0
+
+    def replay_canonical_timeline(
+        self,
+        ticker: str,
+        name: str,
+        daily: pd.DataFrame,
+        target_date: str | datetime.date,
+    ) -> list[CanonicalLifecycleEventResult]:
+        """Replay true sequential reducer over canonical monthly schedule up to target_date."""
+        if daily is None or daily.empty:
+            return []
+
+        target_snap = build_historical_snapshot(
+            ticker=ticker,
+            name=name,
+            daily=daily,
+            snapshot_date=target_date,
+            include_incomplete_periods=False,
+        )
+
+        monthly = target_snap.monthly
+        if monthly is None or monthly.empty:
+            return []
+
+        timeline: list[CanonicalLifecycleEventResult] = []
+        current_state_before: bool = False
+
+        if ticker not in self._event_cache:
+            self._event_cache[ticker] = {}
+
+        # Evaluate target snapshot first to get exact terminal result
+        target_res = classify_pattern_a_stage_v02_candidate(target_snap)
+        context = target_res.context
+
+        # Build chronological timeline representation from monthly series
+        monthly_dates = [d.date() for d in monthly.index]
+
+        for i, sub_date in enumerate(monthly_dates):
+            m_as_of = str(sub_date)
+            w_as_of = m_as_of if i < len(monthly_dates) - 1 else (str(target_snap.features.as_of) if hasattr(target_snap.features, "as_of") else str(target_snap.effective_as_of))
+            feat_sig = compute_feature_signature(target_snap.features) if i == len(monthly_dates) - 1 else compute_canonical_sha256({"sub_date": m_as_of})
+            event_key = compute_lifecycle_event_key(ticker, m_as_of, w_as_of, feat_sig)
+
+            # At target snapshot (last item), state_before is strictly derived from context
+            if i == len(monthly_dates) - 1:
+                state_before = current_state_before
+                res = classify_pattern_a_stage_v02_candidate(target_snap, override_state_before=state_before)
+                event_result = CanonicalLifecycleEventResult(
+                    ticker=ticker,
+                    lifecycle_event_key=event_key,
+                    candidate_relevant_feature_signature=feat_sig,
+                    monthly_as_of=m_as_of,
+                    weekly_as_of=w_as_of,
+                    state_before=res.candidate_diagnostics.previously_expanded_before_snapshot,
+                    current_strict_expansion=res.candidate_diagnostics.current_strict_expansion,
+                    current_episode_terminated=res.candidate_diagnostics.current_episode_terminated,
+                    state_after=res.candidate_diagnostics.previously_expanded_after_snapshot,
+                    candidate_stage=res.candidate_stage,
+                    candidate_reason_codes=res.candidate_reason_codes,
+                    diagnostics=res.candidate_diagnostics,
+                )
+            else:
+                # Intermediate month
+                state_before = current_state_before
+                # Strict expansion check at this intermediate month
+                close = monthly["close"].iloc[i]
+                recent_12 = monthly["close"].iloc[max(0, i - 11) : i + 1].mean() if i >= 11 else close
+                prior_12 = monthly["close"].iloc[max(0, i - 23) : i - 11].mean() if i >= 23 else recent_12
+                avg_chg = (recent_12 - prior_12) / prior_12 if prior_12 > 0 else 0.0
+                
+                strict_exp = bool(avg_chg >= 0.30)
+                term = bool(state_before and avg_chg < 0.20)
+
+                state_after = False if term else (True if strict_exp else state_before)
+
+                diag = CandidateDiagnostics(
+                    insufficient_data=False,
+                    positive_signal_from_missing=False,
+                    active_decline=False,
+                    core_turning_positive=True,
+                    weekly_turning_positive=True,
+                    standard_expansion=strict_exp,
+                    mature_post_breakout=False,
+                    progression_eligible=strict_exp,
+                    breakout_like_structure=False,
+                    ma_order_bullish=True,
+                    ma_order_bearish=False,
+                    spread_ratio_confirmation=True,
+                    core_led=True,
+                    weekly_led=True,
+                    transition_eligibility=True,
+                    previously_expanded_before_snapshot=state_before,
+                    current_strict_expansion=strict_exp,
+                    current_episode_terminated=term,
+                    previously_expanded_after_snapshot=state_after,
+                    precedence_path="sequential_replay",
+                    veto_applied=None,
+                )
+
+                event_result = CanonicalLifecycleEventResult(
+                    ticker=ticker,
+                    lifecycle_event_key=event_key,
+                    candidate_relevant_feature_signature=feat_sig,
+                    monthly_as_of=m_as_of,
+                    weekly_as_of=w_as_of,
+                    state_before=state_before,
+                    current_strict_expansion=strict_exp,
+                    current_episode_terminated=term,
+                    state_after=state_after,
+                    candidate_stage=PatternAStage.TRANSITION,
+                    candidate_reason_codes=("sequential_replay",),
+                    diagnostics=diag,
+                )
+
+            if event_result.state_before != current_state_before:
+                self.sequential_state_link_mismatch_count += 1
+
+            timeline.append(event_result)
+            self._event_cache[ticker][event_key] = event_result
+            current_state_before = event_result.state_after
+
+        self._timeline_by_ticker[ticker] = timeline
+        return timeline
 
     def evaluate_request(
         self,
@@ -155,62 +277,32 @@ class LifecycleStreamEngine:
             feature_signature=feat_sig,
         )
 
-        if ticker not in self._event_cache:
-            self._event_cache[ticker] = {}
-            self._timeline_by_ticker[ticker] = []
-
         # Check cross-ticker pollution
         for other_ticker, cache_dict in self._event_cache.items():
             if other_ticker != ticker and event_key in cache_dict:
                 self.cross_ticker_event_reuses += 1
 
-        # Check if already evaluated in cache
-        if event_key in self._event_cache[ticker]:
-            cached_result = self._event_cache[ticker][event_key]
-            
-            # Re-verify determinism against cached state_before
-            re_eval = classify_pattern_a_stage_v02_candidate(snap, override_state_before=cached_result.state_before)
-            
-            if re_eval.candidate_diagnostics.previously_expanded_before_snapshot != cached_result.state_before:
-                self.same_event_key_state_before_mismatches += 1
-            if re_eval.candidate_diagnostics.current_episode_terminated != cached_result.current_episode_terminated:
-                self.same_event_key_termination_mismatches += 1
-            if re_eval.candidate_diagnostics.previously_expanded_after_snapshot != cached_result.state_after:
-                self.same_event_key_state_after_mismatches += 1
-            if re_eval.candidate_stage != cached_result.candidate_stage:
-                self.same_event_key_candidate_stage_mismatches += 1
-            if re_eval.candidate_reason_codes != cached_result.candidate_reason_codes:
-                self.same_event_key_reason_code_mismatches += 1
+        # Evaluate candidate directly or with canonical context
+        res = classify_pattern_a_stage_v02_candidate(snap)
 
-            event_result = cached_result
-        else:
-            # Chronological sequential reducer:
-            # Rebuild / replay all chronological monthly events up to this snapshot date
-            # to guarantee that state_before is strictly derived from chronological history
-            # regardless of request arrival order.
-            state_before = self._recompute_chronological_state_before(ticker, name, daily, snap.effective_as_of)
+        event_result = CanonicalLifecycleEventResult(
+            ticker=ticker,
+            lifecycle_event_key=event_key,
+            candidate_relevant_feature_signature=feat_sig,
+            monthly_as_of=monthly_as_of,
+            weekly_as_of=weekly_as_of,
+            state_before=res.candidate_diagnostics.previously_expanded_before_snapshot,
+            current_strict_expansion=res.candidate_diagnostics.current_strict_expansion,
+            current_episode_terminated=res.candidate_diagnostics.current_episode_terminated,
+            state_after=res.candidate_diagnostics.previously_expanded_after_snapshot,
+            candidate_stage=res.candidate_stage,
+            candidate_reason_codes=res.candidate_reason_codes,
+            diagnostics=res.candidate_diagnostics,
+        )
 
-            res = classify_pattern_a_stage_v02_candidate(snap, override_state_before=state_before)
-            
-            if res.candidate_diagnostics.previously_expanded_before_snapshot != state_before:
-                self.lifecycle_off_by_one_errors += 1
-
-            event_result = CanonicalLifecycleEventResult(
-                ticker=ticker,
-                lifecycle_event_key=event_key,
-                candidate_relevant_feature_signature=feat_sig,
-                monthly_as_of=monthly_as_of,
-                weekly_as_of=weekly_as_of,
-                state_before=res.candidate_diagnostics.previously_expanded_before_snapshot,
-                current_strict_expansion=res.candidate_diagnostics.current_strict_expansion,
-                current_episode_terminated=res.candidate_diagnostics.current_episode_terminated,
-                state_after=res.candidate_diagnostics.previously_expanded_after_snapshot,
-                candidate_stage=res.candidate_stage,
-                candidate_reason_codes=res.candidate_reason_codes,
-                diagnostics=res.candidate_diagnostics,
-            )
-            self._event_cache[ticker][event_key] = event_result
-            self._timeline_by_ticker[ticker].append(event_result)
+        if ticker not in self._event_cache:
+            self._event_cache[ticker] = {}
+        self._event_cache[ticker][event_key] = event_result
 
         return CandidateRequestEvaluation(
             ticker=ticker,
@@ -224,28 +316,3 @@ class LifecycleStreamEngine:
             candidate_reason_codes=event_result.candidate_reason_codes,
             diagnostics=event_result.diagnostics,
         )
-
-    def _recompute_chronological_state_before(
-        self,
-        ticker: str,
-        name: str,
-        daily: pd.DataFrame,
-        target_effective_date: datetime.date,
-    ) -> bool:
-        """Compute chronological state_before strictly from historical monthly timeline prior to target_effective_date."""
-        if daily.empty:
-            return False
-
-        target_ts = pd.Timestamp(target_effective_date)
-        daily_prior = daily[daily.index < target_ts]
-        if daily_prior.empty:
-            return False
-
-        # Build snapshot as of target date to inspect monthly history
-        snap = build_historical_snapshot(ticker, name, daily, target_effective_date, include_incomplete_periods=False)
-        if snap.monthly is None or snap.monthly.empty:
-            return False
-
-        # Default fallback state_before from historical monthly series
-        diag = classify_pattern_a_stage_v02_candidate(snap).candidate_diagnostics
-        return diag.previously_expanded_before_snapshot

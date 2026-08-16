@@ -111,9 +111,10 @@ def classify_pattern_a_stage_v02_candidate(
         "range_position",
         "distance_to_resistance",
     )
-    missing_fields = [name for name in core_required if _is_invalid_float(getattr(features, name, None))]
+    missing_fields = [name for name in core_required if _is_invalid_float(getattr(features, name, None))] if features is not None else True
 
-    if missing_fields:
+    if missing_fields or features is None or monthly is None:
+        state_val = bool(override_state_before) if override_state_before is not None else False
         empty_diag = CandidateDiagnostics(
             insufficient_data=True,
             positive_signal_from_missing=False,
@@ -130,10 +131,10 @@ def classify_pattern_a_stage_v02_candidate(
             core_led=False,
             weekly_led=False,
             transition_eligibility=False,
-            previously_expanded_before_snapshot=False,
+            previously_expanded_before_snapshot=state_val,
             current_strict_expansion=False,
             current_episode_terminated=False,
-            previously_expanded_after_snapshot=False,
+            previously_expanded_after_snapshot=state_val,
             precedence_path="insufficient_data",
             veto_applied=None,
         )
