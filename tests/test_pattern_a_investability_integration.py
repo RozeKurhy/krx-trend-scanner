@@ -153,6 +153,69 @@ def test_historical_lookahead_negative_case():
         assert row.investability_status == InvestabilityStatus.DATA_UNAVAILABLE
 
 
+def test_ticker_set_exact_equality(integration_summary: dict):
+    """Gate 5: Verify candidate ticker set exactly matches Phase 10B canonical oracle ticker set."""
+    assert integration_summary["ticker_set_mismatch_count"] == 0
+    assert len(integration_summary["missing_tickers"]) == 0
+    assert len(integration_summary["extra_tickers"]) == 0
+    assert integration_summary["stage_mismatch_count"] == 0
+    assert integration_summary["candidate_state_mismatch_count"] == 0
+    assert integration_summary["score_mismatch_count"] == 0
+    assert integration_summary["market_cap_mismatch_count"] == 0
+    assert integration_summary["tv20_mismatch_count"] == 0
+    assert integration_summary["status_mismatch_count"] == 0
+
+
+def test_gate8_fail_closed_on_missing_report(tmp_path: Path):
+    """Gate 8 Negative Test: Verify _read_pytest_report fails closed when report.json is missing."""
+    from trend_scanner.validation.pattern_a_investability_integration import _read_pytest_report
+    exit_code, failed, blocking_failed = _read_pytest_report(tmp_path)
+    assert exit_code == -1
+    assert failed == -1
+    assert blocking_failed == -1
+
+
+def test_gate8_fail_closed_on_corrupted_or_missing_keys(tmp_path: Path):
+    """Gate 8 Negative Test: Verify _read_pytest_report fails closed when report.json is corrupted or lacks required keys."""
+    from trend_scanner.validation.pattern_a_investability_integration import _read_pytest_report
+    res_dir = tmp_path / ".pytest_results"
+    res_dir.mkdir(parents=True)
+    report_file = res_dir / "report.json"
+
+    # Case 1: Corrupted JSON
+    report_file.write_text("NOT_A_JSON", encoding="utf-8")
+    assert _read_pytest_report(tmp_path) == (-1, -1, -1)
+
+    # Case 2: Missing 'failed' or 'passed' key
+    report_file.write_text(json.dumps({"exit_code": 0}), encoding="utf-8")
+    assert _read_pytest_report(tmp_path) == (-1, -1, -1)
+
+
+def test_numeric_parity_null_asymmetry_detection():
+    """Negative Test: Verify _compare_numeric_parity strictly detects null asymmetry and tolerance violations."""
+    from trend_scanner.validation.pattern_a_investability_integration import _compare_numeric_parity
+
+    # Case 1: Both null -> MATCH
+    is_match, err = _compare_numeric_parity(None, None)
+    assert is_match is True and err is None
+
+    # Case 2: Production null, Oracle non-null -> MISMATCH (Null asymmetry)
+    is_match, err = _compare_numeric_parity(None, 1500.0)
+    assert is_match is False and "NULL_ASYMMETRY" in str(err)
+
+    # Case 3: Production non-null, Oracle null -> MISMATCH (Null asymmetry)
+    is_match, err = _compare_numeric_parity(1500.0, None)
+    assert is_match is False and "NULL_ASYMMETRY" in str(err)
+
+    # Case 4: Both non-null within tolerance -> MATCH
+    is_match, err = _compare_numeric_parity(100.001, 100.002, tolerance=0.01)
+    assert is_match is True and err is None
+
+    # Case 5: Both non-null exceeding tolerance -> MISMATCH
+    is_match, err = _compare_numeric_parity(100.0, 105.0, tolerance=0.05)
+    assert is_match is False and "TOLERANCE_EXCEEDED" in str(err)
+
+
 def test_integration_hard_gates_all_pass(integration_summary: dict):
     """Gate 8 & Final: Verify all 8 dynamic integration gates PASS and status is INTEGRATION_READY."""
     gates = integration_summary["hard_gates"]
@@ -160,3 +223,4 @@ def test_integration_hard_gates_all_pass(integration_summary: dict):
     for g_name, g_pass in gates.items():
         assert g_pass is True, f"Gate {g_name} failed!"
     assert integration_summary["phase_10c_status"] == "INTEGRATION_READY"
+

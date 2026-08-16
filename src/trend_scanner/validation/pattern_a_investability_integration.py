@@ -44,18 +44,54 @@ EXPECTED_UNAVAILABLE_TICKERS = {"049180", "286750", "020760", "082640"}
 
 
 def _read_pytest_report(repo_root: Path) -> tuple[int, int, int]:
-    """Read machine-readable pytest report artifact."""
+    """Read machine-readable pytest report artifact with strict fail-closed semantics.
+
+    Returns (-1, -1, -1) on missing report, corrupted JSON, or missing required keys.
+    """
     report_file = repo_root / ".pytest_results" / "report.json"
     if not report_file.exists():
-        return 0, 0, 0
+        return -1, -1, -1
     try:
         data = json.loads(report_file.read_text(encoding="utf-8"))
-        exit_code = data.get("exit_code", 0)
-        failed = data.get("failed", 0)
-        blocking_failed = data.get("blocking_failed", 0)
+        if not isinstance(data, dict):
+            return -1, -1, -1
+        # Require essential keys to be present explicitly
+        required_keys = ("exit_code", "failed", "blocking_failed", "passed")
+        for k in required_keys:
+            if k not in data:
+                return -1, -1, -1
+        exit_code = int(data["exit_code"])
+        failed = int(data["failed"])
+        blocking_failed = int(data["blocking_failed"])
         return exit_code, failed, blocking_failed
     except Exception:
         return -1, -1, -1
+
+
+def _compare_numeric_parity(
+    prod_val: float | None,
+    oracle_val: Any,
+    tolerance: float = 1e-4,
+) -> tuple[bool, str | None]:
+    """Compare numeric value between production and oracle with strict null semantics.
+
+    Contracts:
+    - prod is null and oracle is null => True, None (MATCH)
+    - prod is null != oracle is null => False, "NULL_ASYMMETRY" (MISMATCH)
+    - prod is non-null and oracle is non-null => abs(prod - oracle) <= tolerance
+    """
+    prod_is_null = prod_val is None or (isinstance(prod_val, float) and pd.isna(prod_val))
+    oracle_is_null = oracle_val is None or pd.isna(oracle_val)
+
+    if prod_is_null and oracle_is_null:
+        return True, None
+    if prod_is_null != oracle_is_null:
+        return False, f"NULL_ASYMMETRY (prod={prod_val}, oracle={oracle_val})"
+
+    diff = abs(float(prod_val) - float(oracle_val))
+    if diff > tolerance:
+        return False, f"TOLERANCE_EXCEEDED (diff={diff:.6f} > {tolerance})"
+    return True, None
 
 
 def render_integration_markdown_doc(summary: dict[str, Any]) -> str:
@@ -227,14 +263,27 @@ def run_investability_integration_validation(
     )
     df_scan = scan_result.to_dataframe()
 
-    # 3. Filter Candidates
+    # 3. Filter Candidates & Ticker Set Exact Equality Check
     df_candidates = df_scan[df_scan["candidate_state"] == PatternACandidateState.CANDIDATE.value].copy()
     candidate_tickers = set(df_candidates["ticker"])
+    oracle_tickers = set(df_oracle["ticker"])
     tot_cand = len(df_candidates)
+
+    missing_tickers = sorted(list(oracle_tickers - candidate_tickers))
+    extra_tickers = sorted(list(candidate_tickers - oracle_tickers))
+    ticker_set_match = (len(missing_tickers) == 0 and len(extra_tickers) == 0)
 
     # 4. Compare with Canonical Oracle on Candidate Pool (Full Ticker-Level Parity)
     mismatches = []
     comparison_rows = []
+
+    stage_mismatch_cnt = 0
+    candidate_state_mismatch_cnt = 0
+    score_mismatch_cnt = 0
+    mcap_mismatch_cnt = 0
+    tv20_mismatch_cnt = 0
+    status_mismatch_cnt = 0
+
     for _, row in df_candidates.iterrows():
         t = row["ticker"]
         prod_status = row["investability_status"]
@@ -260,6 +309,7 @@ def run_investability_integration_validation(
         # 4.1 Status parity
         is_status_match = (prod_status == oracle_status)
         if not is_status_match:
+            status_mismatch_cnt += 1
             mismatches.append({
                 "ticker": t,
                 "type": "STATUS_MISMATCH",
@@ -269,6 +319,7 @@ def run_investability_integration_validation(
 
         # 4.2 Stage parity
         if prod_stage != oracle_stage:
+            stage_mismatch_cnt += 1
             mismatches.append({
                 "ticker": t,
                 "type": "STAGE_MISMATCH",
@@ -278,6 +329,7 @@ def run_investability_integration_validation(
 
         # 4.3 Candidate state parity
         if prod_cand_state != oracle_cand_state:
+            candidate_state_mismatch_cnt += 1
             mismatches.append({
                 "ticker": t,
                 "type": "CANDIDATE_STATE_MISMATCH",
@@ -285,35 +337,38 @@ def run_investability_integration_validation(
                 "oracle": oracle_cand_state,
             })
 
-        # 4.4 Score parity (float tolerance 1e-4)
-        if prod_score is not None and pd.notna(oracle_score):
-            if abs(float(prod_score) - float(oracle_score)) > 1e-4:
-                mismatches.append({
-                    "ticker": t,
-                    "type": "SCORE_MISMATCH",
-                    "production": prod_score,
-                    "oracle": oracle_score,
-                })
+        # 4.4 Score parity (strict null semantics + tolerance 1e-4)
+        score_match, score_err = _compare_numeric_parity(prod_score, oracle_score, tolerance=1e-4)
+        if not score_match:
+            score_mismatch_cnt += 1
+            mismatches.append({
+                "ticker": t,
+                "type": f"SCORE_MISMATCH_{score_err}",
+                "production": prod_score,
+                "oracle": oracle_score,
+            })
 
-        # 4.5 Market cap parity (tolerance 0.05 eok or both null)
-        if prod_mcap_eok is not None and pd.notna(oracle_mcap_eok):
-            if abs(float(prod_mcap_eok) - float(oracle_mcap_eok)) > 0.05:
-                mismatches.append({
-                    "ticker": t,
-                    "type": "MCAP_MISMATCH",
-                    "production": prod_mcap_eok,
-                    "oracle": oracle_mcap_eok,
-                })
+        # 4.5 Market cap parity (strict null semantics + tolerance 0.05 eok)
+        mcap_match, mcap_err = _compare_numeric_parity(prod_mcap_eok, oracle_mcap_eok, tolerance=0.05)
+        if not mcap_match:
+            mcap_mismatch_cnt += 1
+            mismatches.append({
+                "ticker": t,
+                "type": f"MCAP_MISMATCH_{mcap_err}",
+                "production": prod_mcap_eok,
+                "oracle": oracle_mcap_eok,
+            })
 
-        # 4.6 TV20 parity (tolerance 0.05 eok or both null)
-        if prod_tv20_eok is not None and pd.notna(oracle_tv20_eok):
-            if abs(float(prod_tv20_eok) - float(oracle_tv20_eok)) > 0.05:
-                mismatches.append({
-                    "ticker": t,
-                    "type": "TV20_MISMATCH",
-                    "production": prod_tv20_eok,
-                    "oracle": oracle_tv20_eok,
-                })
+        # 4.6 TV20 parity (strict null semantics + tolerance 0.05 eok)
+        tv20_match, tv20_err = _compare_numeric_parity(prod_tv20_eok, oracle_tv20_eok, tolerance=0.05)
+        if not tv20_match:
+            tv20_mismatch_cnt += 1
+            mismatches.append({
+                "ticker": t,
+                "type": f"TV20_MISMATCH_{tv20_err}",
+                "production": prod_tv20_eok,
+                "oracle": oracle_tv20_eok,
+            })
 
         comparison_rows.append({
             "ticker": t,
@@ -396,9 +451,10 @@ def run_investability_integration_validation(
 
     g4 = bool(no_future_mcap and no_future_close and no_future_tv20 and exact_mcap_asof)
 
-    # Gate 5: Full Ticker-Level Parity & Pattern A Preservation (0 mismatches)
+    # Gate 5: Full Ticker-Level Parity & Pattern A Preservation (0 mismatches + ticker set equality)
     g5 = (
         len(mismatches) == 0
+        and ticker_set_match
         and tot_cand == EXPECTED_RAW_CANDIDATES
         and inv_cnt == EXPECTED_INVESTABLE_COUNT
         and mcap_cnt == EXPECTED_FILTERED_MARKET_CAP_COUNT
@@ -419,7 +475,7 @@ def run_investability_integration_validation(
     }
     g7 = required_cols.issubset(set(df_scan.columns))
 
-    # Gate 8: Dynamic Production Test Suite Pass from Report Artifact
+    # Gate 8: Dynamic Production Test Suite Pass from Report Artifact (Strict Fail Closed)
     py_exit, py_fail, py_block = _read_pytest_report(repo_root)
     g8 = (py_exit == 0 and py_fail == 0 and py_block == 0)
 
@@ -449,6 +505,15 @@ def run_investability_integration_validation(
         "regression_cases": reg_cases,
         "parity_mismatches_count": len(mismatches),
         "parity_mismatches": mismatches,
+        "ticker_set_mismatch_count": len(missing_tickers) + len(extra_tickers),
+        "missing_tickers": missing_tickers,
+        "extra_tickers": extra_tickers,
+        "stage_mismatch_count": stage_mismatch_cnt,
+        "candidate_state_mismatch_count": candidate_state_mismatch_cnt,
+        "score_mismatch_count": score_mismatch_cnt,
+        "market_cap_mismatch_count": mcap_mismatch_cnt,
+        "tv20_mismatch_count": tv20_mismatch_cnt,
+        "status_mismatch_count": status_mismatch_cnt,
         "hard_gates": gates,
         "phase_10c_status": status,
         "next_milestone": "Phase 10 DONE -> Phase 11. Flow Confirmation Infrastructure",
