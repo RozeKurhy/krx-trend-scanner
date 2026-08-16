@@ -1,8 +1,8 @@
 hypothesis_id,condition,disposition,026910_affected,premature_removed_count,transition_match_lost_count,recycled_removed_count,calibration_exact_delta,calibration_severe_delta,oos_exact_delta,oos_severe_delta,reason
-HYP_A,weekly_ma12_slope > 0.10 -> demote to BASE,REGRESSION_CAUSING,True,4,0,2,0,0,-1,0,026910(weekly_slope=0.201)은 제거되나 정상 Transition인 017890 한국알콜(0.112) 및 벤치마크 급등 초입 종목이 동반 탈락함
-HYP_B,ma24_slope <= 0.010 and weekly_ma12_slope >= 0.10 -> demote to BASE,REGRESSION_CAUSING,False,3,0,2,0,0,-1,0,026910의 ma24_slope는 +0.0717로 초강세이므로 해당 조건에 매칭되지 않아 026910 분리 불가
-HYP_C,range_position > 0.50 and distance_to_resistance < 0.25 -> demote to BASE,REGRESSION_CAUSING,False,6,4,2,-3,0,0,4,"026910(range_pos=0.571, dist_res=0.338)은 dist_res가 0.338로 조건 미충족(미분리)되며, 정상 Transition 3종목이 탈락함"
-HYP_D,not ma_order_bullish -> demote to BASE,REGRESSION_CAUSING,False,7,2,3,-5,0,-2,4,"026910은 이미 완전 정배열(ma6 > ma12 > ma24 = True)이므로 미분리되며, 정상 Transition 2종목(푸드웰, 네이처셀)이 탈락함"
-HYP_E,ma_spread > 0.10 -> demote to BASE,REGRESSION_CAUSING,True,7,11,2,-1,0,-2,3,"026910(ma_spread=0.133)은 제거되나 정상 Transition 8종목(한국알콜, 대림제지, 원풍 등)이 함께 탈락하여 벤치마크 붕괴"
-HYP_F,avg_price_change_12m > 0.20 -> demote to BASE,REGRESSION_CAUSING,True,6,8,2,0,0,0,1,"026910(avg_chg=0.274)은 제거되나 정상 Transition 6종목(대림제지, 한국알콜, 에이스침대, 화천기공 등)이 대거 탈락함"
-HYP_G,current_episode_terminated is True -> demote to BASE,INSUFFICIENT_EVIDENCE,False,3,0,2,0,0,0,0,대동기어(008830)와 예림당(036000) 2개는 sequential reducer로 완벽히 BASE 분리 완료. 026910 및 레드캡투어(038390)는 36m 창 외 5년+ 장기구조 필요
+HYP_A,weekly_ma12_slope > 0.10 -> demote to BASE,REGRESSION_CAUSING,True,4,0,2,0,0,-1,0,"026910_affected=True, premature_removed=4/13, transition_match_lost=0/13, calib_delta=+0/+0, oos_delta=-1/+0"
+HYP_B,ma24_slope <= 0.010 and weekly_ma12_slope >= 0.10 -> demote to BASE,REGRESSION_CAUSING,False,3,0,2,0,0,-1,0,"026910_affected=False, premature_removed=3/13, transition_match_lost=0/13, calib_delta=+0/+0, oos_delta=-1/+0"
+HYP_C,range_position > 0.50 and distance_to_resistance < 0.25 -> demote to BASE,REGRESSION_CAUSING,False,6,4,2,-3,0,0,4,"026910_affected=False, premature_removed=6/13, transition_match_lost=4/13, calib_delta=-3/+0, oos_delta=+0/+4"
+HYP_D,not ma_order_bullish -> demote to BASE,REGRESSION_CAUSING,False,7,2,3,-5,0,-2,4,"026910_affected=False, premature_removed=7/13, transition_match_lost=2/13, calib_delta=-5/+0, oos_delta=-2/+4"
+HYP_E,ma_spread > 0.10 -> demote to BASE,REGRESSION_CAUSING,True,7,11,2,-1,0,-2,3,"026910_affected=True, premature_removed=7/13, transition_match_lost=11/13, calib_delta=-1/+0, oos_delta=-2/+3"
+HYP_F,avg_price_change_12m > 0.20 -> demote to BASE,REGRESSION_CAUSING,True,6,8,2,0,0,0,1,"026910_affected=True, premature_removed=6/13, transition_match_lost=8/13, calib_delta=+0/+0, oos_delta=+0/+1"
+HYP_G,current_episode_terminated is True -> demote to BASE,INSUFFICIENT_EVIDENCE,False,3,0,2,0,0,0,0,"026910_affected=False, premature_removed=3/13, transition_match_lost=0/13, calib_delta=+0/+0, oos_delta=+0/+0"

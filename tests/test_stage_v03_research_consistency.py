@@ -10,6 +10,7 @@ import pandas as pd
 from trend_scanner.data.cache import ParquetCache
 from trend_scanner.validation.stage_v03_research import (
     HYPOTHESES,
+    evaluate_benchmark_with_demotion_rule,
     generate_research_artifacts,
 )
 
@@ -28,12 +29,18 @@ _HAS_CACHE = _cache_available()
 
 @pytest.mark.skipif(not _HAS_CACHE, reason="Cache unavailable")
 def test_research_artifact_deterministic_regeneration():
-    """Verify that stage_v03_research generator produces consistent artifacts deterministically."""
-    res = generate_research_artifacts(_REPO_ROOT)
-    assert len(res["df_audit"]) == len(HYPOTHESES)
-    assert len(res["df_bench"]) == len(HYPOTHESES) + 1
-    assert res["summary"]["generalizable_rule_found"] is False
-    assert res["summary"]["final_recommendation"] == "NO_GENERALIZABLE_RULE_FOUND"
+    """Verify that stage_v03_research generator produces byte-for-byte / identical payload deterministically across multiple runs."""
+    res1 = generate_research_artifacts(_REPO_ROOT)
+    res2 = generate_research_artifacts(_REPO_ROOT)
+
+    # 1. Compare DataFrames
+    pd.testing.assert_frame_equal(res1["df_audit"], res2["df_audit"])
+    pd.testing.assert_frame_equal(res1["df_bench"], res2["df_bench"])
+
+    # 2. Compare JSON summaries
+    assert res1["summary"] == res2["summary"]
+    assert res1["summary"]["generalizable_rule_found"] is False
+    assert res1["summary"]["final_recommendation"] == "NO_GENERALIZABLE_RULE_FOUND"
 
 
 def test_research_feature_artifacts_row_counts_and_structure():
@@ -64,14 +71,50 @@ def test_026910_audit_semantics_correctness():
     assert "Within the 36-month feature window" in focus_case["research_hypothesis"]
 
 
-def test_hypothesis_audit_table_counts_match():
-    """Verify hypothesis audit table rows correspond exactly to defined hypotheses."""
+def test_hypothesis_audit_count_exact_equality():
+    """Verify that hypothesis_separation_audit.csv numbers match exact source feature evaluations."""
     out_dir = _REPO_ROOT / "artifacts" / "stage_v03_research"
+    df_tm = pd.read_csv(out_dir / "transition_match13_features.csv", dtype={"ticker": str})
+    df_prem = pd.read_csv(out_dir / "premature13_features.csv", dtype={"ticker": str})
+    df_rec = pd.read_csv(out_dir / "recycled3_features.csv", dtype={"ticker": str})
     df_audit = pd.read_csv(out_dir / "hypothesis_separation_audit.csv")
 
-    assert len(df_audit) == 7
-    expected_ids = ["HYP_A", "HYP_B", "HYP_C", "HYP_D", "HYP_E", "HYP_F", "HYP_G"]
-    assert list(df_audit["hypothesis_id"]) == expected_ids
+    row_026910 = df_prem[df_prem["ticker"] == "026910"].iloc[0]
 
-    # Check that no hypothesis is falsely labeled GENERALIZABLE
-    assert "GENERALIZABLE" not in df_audit["disposition"].values
+    for hyp in HYPOTHESES:
+        audit_row = df_audit[df_audit["hypothesis_id"] == hyp.hypothesis_id].iloc[0]
+
+        # Calculate directly
+        exp_026910_aff = bool(hyp.demote_rule(row_026910))
+        exp_prem_demoted = sum(1 for _, r in df_prem.iterrows() if r["candidate_stage"] == "transition" and hyp.demote_rule(r))
+        exp_tm_lost = sum(1 for _, r in df_tm.iterrows() if r["candidate_stage"] == "transition" and hyp.demote_rule(r))
+        exp_rec_demoted = sum(1 for _, r in df_rec.iterrows() if r["candidate_stage"] == "transition" and hyp.demote_rule(r))
+
+        assert audit_row["026910_affected"] == exp_026910_aff
+        assert audit_row["premature_removed_count"] == 3 + exp_prem_demoted
+        assert audit_row["transition_match_lost_count"] == exp_tm_lost
+        assert audit_row["recycled_removed_count"] == 2 + exp_rec_demoted
+
+
+@pytest.mark.skipif(not _HAS_CACHE, reason="Cache unavailable")
+def test_benchmark_impact_exact_equality():
+    """Verify that benchmark_impact.csv numbers match live evaluation from evaluate_benchmark_with_demotion_rule."""
+    out_dir = _REPO_ROOT / "artifacts" / "stage_v03_research"
+    df_bench = pd.read_csv(out_dir / "benchmark_impact.csv")
+
+    # Check baseline row
+    base_row = df_bench[df_bench["condition_id"] == "BASELINE_V02"].iloc[0]
+    live_base = evaluate_benchmark_with_demotion_rule(_REPO_ROOT, lambda f: False)
+    assert base_row["calib_exact"] == live_base["calib_exact"]
+    assert base_row["calib_sev"] == live_base["calib_sev"]
+    assert base_row["oos_exact"] == live_base["oos_exact"]
+    assert base_row["oos_sev"] == live_base["oos_sev"]
+
+    # Check each hypothesis row
+    for hyp in HYPOTHESES:
+        bench_row = df_bench[df_bench["condition_id"] == hyp.hypothesis_id].iloc[0]
+        live_hyp = evaluate_benchmark_with_demotion_rule(_REPO_ROOT, hyp.demote_rule)
+        assert bench_row["calib_exact"] == live_hyp["calib_exact"]
+        assert bench_row["calib_sev"] == live_hyp["calib_sev"]
+        assert bench_row["oos_exact"] == live_hyp["oos_exact"]
+        assert bench_row["oos_sev"] == live_hyp["oos_sev"]

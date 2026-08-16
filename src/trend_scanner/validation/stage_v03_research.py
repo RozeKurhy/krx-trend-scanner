@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable
 
@@ -16,10 +15,6 @@ from trend_scanner.patterns.pattern_a_stage import classify_pattern_a_stage
 from trend_scanner.validation.historical_snapshot import build_historical_snapshot
 from trend_scanner.validation.pattern_a_stage_manifest import PATTERN_A_STAGE_LABELS
 from trend_scanner.validation.pattern_a_stage_oos_v01_manifest import PATTERN_A_STAGE_OOS_V01_LABELS
-from trend_scanner.validation.stage_v02.candidate_classifier import (
-    CandidateStageResult,
-    classify_pattern_a_stage_v02_candidate,
-)
 from trend_scanner.validation.stage_v02.comparator import (
     StageMatchClass,
     classify_stage_match,
@@ -33,7 +28,6 @@ class HypothesisDefinition:
     description: str
     condition_code: str
     demote_rule: Callable[[pd.Series | Any], bool]  # Returns True if demoted from TRANSITION to BASE
-    rationale: str
 
 
 def _get_feature_val(row_or_feat: Any, attr: str, default: Any = None) -> Any:
@@ -49,102 +43,125 @@ HYPOTHESES: list[HypothesisDefinition] = [
         description="Cap excessive rebound velocity (weekly_ma12_slope <= 0.10 required for TRANSITION)",
         condition_code="weekly_ma12_slope > 0.10 -> demote to BASE",
         demote_rule=lambda f: float(_get_feature_val(f, "weekly_ma12_slope", 0.0)) > 0.10,
-        rationale="026910(weekly_slope=0.201)은 제거되나 정상 Transition인 017890 한국알콜(0.112) 및 벤치마크 급등 초입 종목이 동반 탈락함",
     ),
     HypothesisDefinition(
         hypothesis_id="HYP_B",
         description="Weak core trend with strong weekly rebound (ma24_slope <= 0.010 AND weekly_ma12_slope >= 0.10)",
         condition_code="ma24_slope <= 0.010 and weekly_ma12_slope >= 0.10 -> demote to BASE",
         demote_rule=lambda f: float(_get_feature_val(f, "ma24_slope", 0.0)) <= 0.010 and float(_get_feature_val(f, "weekly_ma12_slope", 0.0)) >= 0.10,
-        rationale="026910의 ma24_slope는 +0.0717로 초강세이므로 해당 조건에 매칭되지 않아 026910 분리 불가",
     ),
     HypothesisDefinition(
         hypothesis_id="HYP_C",
         description="High range position near overhead resistance (range_position > 0.50 AND distance_to_resistance < 0.25)",
         condition_code="range_position > 0.50 and distance_to_resistance < 0.25 -> demote to BASE",
         demote_rule=lambda f: float(_get_feature_val(f, "range_position", 0.0)) > 0.50 and float(_get_feature_val(f, "distance_to_resistance", 1.0)) < 0.25,
-        rationale="026910(range_pos=0.571, dist_res=0.338)은 dist_res가 0.338로 조건 미충족(미분리)되며, 정상 Transition 3종목이 탈락함",
     ),
     HypothesisDefinition(
         hypothesis_id="HYP_D",
         description="Non-bullish MA alignment demotion (ma_order_bullish is False)",
         condition_code="not ma_order_bullish -> demote to BASE",
         demote_rule=lambda f: not bool(_get_feature_val(f, "ma_order_bullish", False)),
-        rationale="026910은 이미 완전 정배열(ma6 > ma12 > ma24 = True)이므로 미분리되며, 정상 Transition 2종목(푸드웰, 네이처셀)이 탈락함",
     ),
     HypothesisDefinition(
         hypothesis_id="HYP_E",
         description="Strict MA spread convergence (ma_spread <= 0.10 required for TRANSITION)",
         condition_code="ma_spread > 0.10 -> demote to BASE",
         demote_rule=lambda f: float(_get_feature_val(f, "ma_spread", 0.0)) > 0.10,
-        rationale="026910(ma_spread=0.133)은 제거되나 정상 Transition 8종목(한국알콜, 대림제지, 원풍 등)이 함께 탈락하여 벤치마크 붕괴",
     ),
     HypothesisDefinition(
         hypothesis_id="HYP_F",
         description="Cap 12m momentum expansion (avg_price_change_12m <= 0.20 required for TRANSITION)",
         condition_code="avg_price_change_12m > 0.20 -> demote to BASE",
         demote_rule=lambda f: float(_get_feature_val(f, "avg_price_change_12m", 0.0)) > 0.20,
-        rationale="026910(avg_chg=0.274)은 제거되나 정상 Transition 6종목(대림제지, 한국알콜, 에이스침대, 화천기공 등)이 대거 탈락함",
     ),
     HypothesisDefinition(
         hypothesis_id="HYP_G",
         description="Sequential lifecycle episode termination tracking",
         condition_code="current_episode_terminated is True -> demote to BASE",
         demote_rule=lambda f: bool(_get_feature_val(f, "current_episode_terminated", False)),
-        rationale="대동기어(008830)와 예림당(036000) 2개는 sequential reducer로 완벽히 BASE 분리 완료. 026910 및 레드캡투어(038390)는 36m 창 외 5년+ 장기구조 필요",
     ),
 ]
+
+
+# Global memory cache for benchmark evaluations to ensure sub-second re-evaluations
+_BENCHMARK_CACHE: list[dict[str, Any]] | None = None
+
+
+def _load_benchmark_evaluations(repo_root: Path) -> list[dict[str, Any]]:
+    global _BENCHMARK_CACHE
+    if _BENCHMARK_CACHE is not None:
+        return _BENCHMARK_CACHE
+
+    cache = ParquetCache(base_dir=repo_root / "data" / "raw" / "stocks")
+    engine = LifecycleStreamEngine()
+    items = []
+
+    for spec in PATTERN_A_STAGE_LABELS:
+        daily = cache.load(spec.ticker)
+        snap = build_historical_snapshot(spec.ticker, spec.name, daily, spec.snapshot_date, include_incomplete_periods=False)
+        v01_res = classify_pattern_a_stage(snap)
+        cand_eval = engine.evaluate_request(spec.ticker, spec.name, daily, spec.snapshot_date)
+        items.append({
+            "suite": "calib",
+            "truth": spec.audited_stage,
+            "v01_stage": v01_res.stage,
+            "features": snap.features,
+            "cand_stage": cand_eval.candidate_stage,
+        })
+
+    for spec in PATTERN_A_STAGE_OOS_V01_LABELS:
+        daily = cache.load(spec.ticker)
+        snap = build_historical_snapshot(spec.ticker, spec.name, daily, spec.snapshot_date, include_incomplete_periods=False)
+        v01_res = classify_pattern_a_stage(snap)
+        cand_eval = engine.evaluate_request(spec.ticker, spec.name, daily, spec.snapshot_date)
+        items.append({
+            "suite": "oos",
+            "truth": spec.manual_stage,
+            "v01_stage": v01_res.stage,
+            "features": snap.features,
+            "cand_stage": cand_eval.candidate_stage,
+        })
+
+    _BENCHMARK_CACHE = items
+    return items
 
 
 def evaluate_benchmark_with_demotion_rule(
     repo_root: Path,
     demote_rule: Callable[[Any], bool],
 ) -> dict[str, Any]:
-    """Evaluate Calibration46 and OOS35 under a specific hypothesis demotion rule."""
-    cache = ParquetCache(base_dir=repo_root / "data" / "raw" / "stocks")
-    engine = LifecycleStreamEngine()
+    """Evaluate Calibration46 and OOS35 under a specific hypothesis demotion rule with instant cached evaluation."""
+    items = _load_benchmark_evaluations(repo_root)
 
     calib_exact = 0; calib_adj = 0; calib_sev = 0; calib_exact_reg = 0
-    for spec in PATTERN_A_STAGE_LABELS:
-        daily = cache.load(spec.ticker)
-        snap = build_historical_snapshot(spec.ticker, spec.name, daily, spec.snapshot_date, include_incomplete_periods=False)
-        v01_res = classify_pattern_a_stage(snap)
-        cand_eval = engine.evaluate_request(spec.ticker, spec.name, daily, spec.snapshot_date)
-
-        cand_stage = cand_eval.candidate_stage
-        if cand_stage == PatternAStage.TRANSITION and demote_rule(snap.features):
-            cand_stage = PatternAStage.BASE
-
-        v01_match = classify_stage_match(spec.audited_stage, v01_res.stage)
-        cand_match = classify_stage_match(spec.audited_stage, cand_stage)
-
-        if cand_match == StageMatchClass.EXACT: calib_exact += 1
-        elif cand_match == StageMatchClass.ADJACENT: calib_adj += 1
-        elif cand_match == StageMatchClass.SEVERE: calib_sev += 1
-
-        if v01_match == StageMatchClass.EXACT and cand_match != StageMatchClass.EXACT:
-            calib_exact_reg += 1
-
     oos_exact = 0; oos_adj = 0; oos_sev = 0; oos_exact_reg = 0
-    for spec in PATTERN_A_STAGE_OOS_V01_LABELS:
-        daily = cache.load(spec.ticker)
-        snap = build_historical_snapshot(spec.ticker, spec.name, daily, spec.snapshot_date, include_incomplete_periods=False)
-        v01_res = classify_pattern_a_stage(snap)
-        cand_eval = engine.evaluate_request(spec.ticker, spec.name, daily, spec.snapshot_date)
 
-        cand_stage = cand_eval.candidate_stage
-        if cand_stage == PatternAStage.TRANSITION and demote_rule(snap.features):
+    for item in items:
+        truth = item["truth"]
+        v01_stage = item["v01_stage"]
+        features = item["features"]
+        cand_stage = item["cand_stage"]
+
+        if cand_stage == PatternAStage.TRANSITION and demote_rule(features):
             cand_stage = PatternAStage.BASE
 
-        v01_match = classify_stage_match(spec.manual_stage, v01_res.stage)
-        cand_match = classify_stage_match(spec.manual_stage, cand_stage)
+        v01_match = classify_stage_match(truth, v01_stage)
+        cand_match = classify_stage_match(truth, cand_stage)
 
-        if cand_match == StageMatchClass.EXACT: oos_exact += 1
-        elif cand_match == StageMatchClass.ADJACENT: oos_adj += 1
-        elif cand_match == StageMatchClass.SEVERE: oos_sev += 1
+        if item["suite"] == "calib":
+            if cand_match == StageMatchClass.EXACT: calib_exact += 1
+            elif cand_match == StageMatchClass.ADJACENT: calib_adj += 1
+            elif cand_match == StageMatchClass.SEVERE: calib_sev += 1
 
-        if v01_match == StageMatchClass.EXACT and cand_match != StageMatchClass.EXACT:
-            oos_exact_reg += 1
+            if v01_match == StageMatchClass.EXACT and cand_match != StageMatchClass.EXACT:
+                calib_exact_reg += 1
+        else:
+            if cand_match == StageMatchClass.EXACT: oos_exact += 1
+            elif cand_match == StageMatchClass.ADJACENT: oos_adj += 1
+            elif cand_match == StageMatchClass.SEVERE: oos_sev += 1
+
+            if v01_match == StageMatchClass.EXACT and cand_match != StageMatchClass.EXACT:
+                oos_exact_reg += 1
 
     return {
         "calib_exact": calib_exact, "calib_adj": calib_adj, "calib_sev": calib_sev, "calib_exact_reg": calib_exact_reg,
@@ -168,7 +185,6 @@ def generate_research_artifacts(repo_root: Path) -> dict[str, Any]:
     df_prem = pd.read_csv(prem_file, dtype={"ticker": str})
     df_rec = pd.read_csv(rec_file, dtype={"ticker": str})
 
-    # Find 026910 row
     row_026910 = df_prem[df_prem["ticker"] == "026910"].iloc[0]
 
     # Baseline benchmark metrics
@@ -233,6 +249,14 @@ def generate_research_artifacts(repo_root: Path) -> dict[str, Any]:
         else:
             disp = "INSUFFICIENT_EVIDENCE"
 
+        reason_str = (
+            f"026910_affected={is_026910_aff}, "
+            f"premature_removed={prem_total_removed}/13, "
+            f"transition_match_lost={tm_lost}/13, "
+            f"calib_delta={calib_ex_delta:+d}/{calib_sev_delta:+d}, "
+            f"oos_delta={oos_ex_delta:+d}/{oos_sev_delta:+d}"
+        )
+
         audit_records.append({
             "hypothesis_id": hyp.hypothesis_id,
             "condition": hyp.condition_code,
@@ -245,7 +269,7 @@ def generate_research_artifacts(repo_root: Path) -> dict[str, Any]:
             "calibration_severe_delta": calib_sev_delta,
             "oos_exact_delta": oos_ex_delta,
             "oos_severe_delta": oos_sev_delta,
-            "reason": hyp.rationale,
+            "reason": reason_str,
         })
 
         bench_records.append({
@@ -264,7 +288,7 @@ def generate_research_artifacts(repo_root: Path) -> dict[str, Any]:
             "recycled_removed": rec_total_removed,
             "premature_removed": prem_total_removed,
             "026910_stage": "base" if is_026910_aff else "transition",
-            "overall_feasibility": f"{disp}: tm_lost={tm_lost}, calib_delta={calib_ex_delta}/{calib_sev_delta}",
+            "overall_feasibility": f"{disp}: tm_lost={tm_lost}, calib_delta={calib_ex_delta}/{calib_sev_delta}, oos_delta={oos_ex_delta}/{oos_sev_delta}",
         })
 
     # Save CSV artifacts
@@ -274,11 +298,10 @@ def generate_research_artifacts(repo_root: Path) -> dict[str, Any]:
     df_bench = pd.DataFrame(bench_records)
     df_bench.to_csv(out_dir / "benchmark_impact.csv", index=False, encoding="utf-8")
 
-    # Corrected research_summary.json
+    # Fully deterministic canonical research_summary.json
     summary_payload = {
         "research_iteration": "Pattern A Stage v0.3 Research Candidate",
-        "base_checkpoint_sha": "58d8af8f61d2f34715b6a037d4e99d380dfaa6f9",
-        "timestamp": datetime.now().isoformat(),
+        "base_checkpoint_sha": "a614007ddc5a1d7df4279c4fab5debeae4ef11c8",
         "provenance": {
             "snapshot_date": "2026-08-14",
             "sample_sizes": {
