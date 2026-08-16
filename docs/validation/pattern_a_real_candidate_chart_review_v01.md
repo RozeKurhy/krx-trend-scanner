@@ -120,7 +120,7 @@ Scanner 결과에서 `score_ready=True`이나 `stage_ready=False` (`evaluator_re
 
 * **Phase 8 (Full Universe Scanner Integration)**: **`DONE`**
 * **Phase 9A (Candidate Review Dataset Preparation)**: **`COMPLETED & FROZEN`**
-* **Phase 9B (Human Chart Review)**: **`IN PROGRESS (EARLY_TREND 12/12 완료, TRANSITION 0/168 대기)`**
+* **Phase 9B (Human Chart Review)**: **`IN PROGRESS (EARLY_TREND 12/12 완료, TRANSITION 30/168 샘플 완료, 총 42/180 검토 완료)`**
 * **Phase 10 (Liquidity Filter)**: **`HOLD (Phase 9B 완료 후 착수)`**
 
 ---
@@ -176,4 +176,62 @@ Scanner 결과에서 `score_ready=True`이나 `stage_ready=False` (`evaluator_re
 * **설계적 결론**:
   * 단순히 단일 임계값(Threshold)을 위나 아래로 이동시키는 1차원적 조정으로는 `EARLY_TREND` 타이밍을 최적화할 수 없음.
   * **인간 검토자의 `EARLY_TREND` 기준**: "충분히 성숙한 장기 베이스 종료 ➔ 주봉 구조 정배열 개선 ➔ 대세 상승이 '막 시작'되었으나 '아직 과도하게 진행되지 않은' 신선한 초입 구간!"
+
+---
+
+## 9. Phase 9B: TRANSITION 30개 샘플 수동 차트 검토 결과 및 5대 핵심 발견점
+
+### 9.1 검토 샘플 구성
+* **샘플 수**: 총 30개 (KOSDAQ 25개 + 시장 편향 완화를 위한 KOSPI 5개)
+* **인간 검토자의 TRANSITION 판정 기준**:
+  * TRANSITION은 완성된 Pattern A일 필요가 없으며, **`BORDERLINE + MATCH`가 정상적이고 건강한 기대 결과**임.
+  * 진정한 TRANSITION 조건: "충분히 성숙한 월봉 베이스 + 주봉 저점 상승(Higher Low) + 주봉 이평선 개선 + 장기 저항선으로의 방향성 접근 또는 매물 소화".
+
+### 9.2 정량적 집계 결과
+
+```text
++-----------------------+-------+------------+
+| Manual Pattern Fit    | Count | Ratio (%)  |
++-----------------------+-------+------------+
+| GOOD_FIT              | 2     | 6.7%       |
+| BORDERLINE            | 15    | 50.0%      |
+| NOT_FIT               | 13    | 43.3%      |
++-----------------------+-------+------------+
+
++-----------------------+-------+------------+
+| Manual Stage Fit      | Count | Ratio (%)  |
++-----------------------+-------+------------+
+| MATCH                 | 13    | 43.3%      |
+| TOO_EARLY             | 13    | 43.3%      |
+| TOO_LATE              | 4     | 13.3%      |
+| UNCLEAR               | 0     | 0.0%       |
++-----------------------+-------+------------+
+
++-----------------------+-------+------------+
+| Pattern / Stage Combo | Count | Ratio (%)  |
++-----------------------+-------+------------+
+| BORDERLINE / MATCH    | 12    | 40.0%      |
+| GOOD_FIT / MATCH      | 1     | 3.3%       |
+| BORDERLINE / TOO_EARLY| 3     | 10.0%      |
+| NOT_FIT / TOO_EARLY   | 10    | 33.3%      |
+| NOT_FIT / TOO_LATE    | 3     | 10.0%      |
+| GOOD_FIT / TOO_LATE   | 1     | 3.3%       |
++-----------------------+-------+------------+
+```
+
+### 9.3 TRANSITION 5대 핵심 발견점 (Main Findings)
+
+1. **`BORDERLINE + MATCH` (40.0%)의 정상성과 건강성**:
+   * TRANSITION은 구조상 '미완성' 단계이므로 완성된 돌파나 완전 정배열이 없어도 되며, `BORDERLINE + MATCH`가 가장 자연스러운 상태임.
+2. **최대 오차 원인: 조기 전환 (Premature Transition - 43.3%)**:
+   * 장기 횡보 기간이 길거나, 저가권에 위치하거나, 저항선에 단순히 근접했다는 이유만으로 스캐너가 TRANSITION으로 잡았으나, **실제로는 주봉 저점 상승도 없고 이평선 개선도 없어 `BASE`에 머물러야 하는 종목들** (예: 매일홀딩스, 푸른저축은행, 진로발효, KCC건설, 광진실업, 오스템, 케이엘넷, 디지아이, 유수홀딩스, 금호전기).
+   * *핵심 교훈: 단순히 저항선에 닿았다고 해서 TRANSITION이 되는 것이 아님.*
+3. **과거 시세 재활용 가짜 양성 (Old Transition Recycle False Positive - 10.0%)**:
+   * 과거에 이미 한 번 시세를 냈거나 돌파를 시도했다가 꺾여서 **주봉 저점 상승 구조가 깨지고 이평선이 역배열로 악화되었는데, 스캐너가 이를 새로운 TRANSITION으로 오인**하는 현상 (예: 대동기어, 예림당, 레드캡투어).
+4. **스테이지 지연 (Stage Lag - 3.3%)**:
+   * 한국기업평가처럼 이미 신고가 돌파 후 눌림목 지지 테스트 중인 우수한 종목이 TRANSITION에 머물러 있는 현상 (➔ 실제로는 EARLY_TREND에 가까움).
+5. **모범 레퍼런스 케이스 (Gold Standard Cases)**:
+   * **`000370` 한화손해보험**, **`017650` 대림제지**, **`017890` 한국알콜**, **`036190` 금화피에스시**, **`000050` 경방**, **`000850` 화천기공**.
+   * *공통 특징: 성숙한 월봉 베이스 + 주봉 저점 상승 + 주봉 이평선 정배열 전환 + 장기 저항선 접근/소화 + 과도한 진행 없음.*
+
 
