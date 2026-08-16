@@ -45,6 +45,11 @@ from trend_scanner.patterns.pattern_a_score_momentum import (
     PatternAScoreMomentumResult,
     compute_pattern_a_score_momentum,
 )
+from trend_scanner.filters.investability import (
+    InvestabilityEvaluationResult,
+    InvestabilityStatus,
+    evaluate_investability,
+)
 from trend_scanner.universe.asset_classifier import classify_asset_type
 from trend_scanner.universe.krx_universe import (
     get_latest_market_trading_date,
@@ -58,6 +63,7 @@ from trend_scanner.universe.models import (
 )
 from trend_scanner.universe.quality_auditor import audit_ticker_quality
 from trend_scanner.validation.historical_snapshot import build_historical_snapshot
+from trend_scanner.validation.pattern_a_investability_audit import load_canonical_mcap_snapshot
 
 logger = logging.getLogger(__name__)
 
@@ -144,7 +150,18 @@ class PatternAUniverseScanRow:
     transition_score_delta_3m: float | None = None
     transition_score_delta_6m: float | None = None
 
-    # 6. Row Execution Status & Error Provenance
+    # 6. Investability & Liquidity Layer (Phase 10C Downstream)
+    market_cap: float | None = None
+    market_cap_eok: float | None = None
+    avg_trading_value_20d: float | None = None
+    avg_trading_value_20d_eok: float | None = None
+    avg_trading_value_60d: float | None = None
+    avg_trading_value_60d_eok: float | None = None
+    investability_status: InvestabilityStatus = InvestabilityStatus.DATA_UNAVAILABLE
+    investability_reason: str = "REQUIRED_METRIC_UNAVAILABLE"
+    investability_ready: bool = False
+
+    # 7. Row Execution Status & Error Provenance
     row_status: ScannerRowStatus = ScannerRowStatus.UNAVAILABLE
     error_type: str | None = None
     error_message: str | None = None
@@ -201,6 +218,15 @@ class PatternAUniverseScanRow:
             "transition_score_delta_1m": self.transition_score_delta_1m,
             "transition_score_delta_3m": self.transition_score_delta_3m,
             "transition_score_delta_6m": self.transition_score_delta_6m,
+            "market_cap": self.market_cap,
+            "market_cap_eok": self.market_cap_eok,
+            "avg_trading_value_20d": self.avg_trading_value_20d,
+            "avg_trading_value_20d_eok": self.avg_trading_value_20d_eok,
+            "avg_trading_value_60d": self.avg_trading_value_60d,
+            "avg_trading_value_60d_eok": self.avg_trading_value_60d_eok,
+            "investability_status": self.investability_status.value,
+            "investability_reason": self.investability_reason,
+            "investability_ready": self.investability_ready,
             "row_status": self.row_status.value,
             "quality_flags": ";".join(self.quality_flags),
             "quality_reason_codes": ";".join(self.quality_reason_codes),
@@ -267,6 +293,13 @@ class PatternAUniverseScanSummary:
     stage_distribution: dict[str, int]
     candidate_state_distribution: dict[str, int]
     row_status_distribution: dict[str, int]
+    investability_distribution: dict[str, int]
+
+    # Counts
+    investability_investable_count: int
+    investability_filtered_market_cap_count: int
+    investability_filtered_liquidity_count: int
+    investability_data_unavailable_count: int
 
     # Numeric Distributions
     score_distribution: dict[str, Any]
@@ -297,6 +330,11 @@ class PatternAUniverseScanSummary:
             "stage_distribution": self.stage_distribution,
             "candidate_state_distribution": self.candidate_state_distribution,
             "row_status_distribution": self.row_status_distribution,
+            "investability_distribution": self.investability_distribution,
+            "investability_investable_count": self.investability_investable_count,
+            "investability_filtered_market_cap_count": self.investability_filtered_market_cap_count,
+            "investability_filtered_liquidity_count": self.investability_filtered_liquidity_count,
+            "investability_data_unavailable_count": self.investability_data_unavailable_count,
             "score_distribution": self.score_distribution,
             "momentum_1m_distribution": self.momentum_1m_distribution,
             "momentum_3m_distribution": self.momentum_3m_distribution,
@@ -315,6 +353,14 @@ class PatternAUniverseScanResult:
     def to_dataframe(self) -> pd.DataFrame:
         """스캔 결과를 pandas DataFrame으로 변환."""
         return pd.DataFrame([r.to_dict() for r in self.rows])
+
+    def get_investable_candidates(self) -> list[PatternAUniverseScanRow]:
+        """Pattern A Candidate 중 Investability Filter를 통과한 종목 추출 (Optional Filtered View)."""
+        return [
+            r for r in self.rows
+            if r.candidate_state == PatternACandidateState.CANDIDATE
+            and r.investability_status == InvestabilityStatus.INVESTABLE
+        ]
 
     def to_csv(self, filepath: str | Path) -> Path:
         """스캔 결과를 CSV 파일로 저장."""
@@ -461,6 +507,19 @@ def scan_pattern_a_universe(
 
     scan_target_count = len(scan_targets)
 
+    # 3.0 Market Cap PIT Snapshot 로드 (1회 로드)
+    repo_root = Path(__file__).resolve().parent.parent.parent.parent
+    try:
+        df_mcap_snap, _ = load_canonical_mcap_snapshot(repo_root=repo_root, as_of=ref_market_date)
+        mcap_dict = {
+            str(row["ticker"]).strip().zfill(6): float(row["market_cap"])
+            for _, row in df_mcap_snap.iterrows()
+            if pd.notna(row.get("market_cap"))
+        }
+    except Exception as exc:
+        logger.warning("Failed to load canonical market cap snapshot for %s: %s", ref_market_date, exc)
+        mcap_dict = {}
+
     # 3. Ticker별 순차 평가 (One Cache Load -> One daily_as_of Slice -> Shared Context)
     rows: list[PatternAUniverseScanRow] = []
 
@@ -501,6 +560,15 @@ def scan_pattern_a_universe(
             stage_ready = quality_record.stage_ready
             evaluator_ready = quality_record.evaluator_ready
 
+            # 3.3.1 Downstream Investability Evaluation
+            mcap_val = mcap_dict.get(ticker)
+            inv_eval: InvestabilityEvaluationResult = evaluate_investability(
+                ticker=ticker,
+                as_of=req_as_of,
+                daily=daily_as_of if (has_raw_cache and not daily_as_of.empty) else None,
+                market_cap=mcap_val,
+            )
+
             # 3.4 Missing Cache Fail-Closed 처리
             if not cache_present or daily_as_of.empty:
                 row = PatternAUniverseScanRow(
@@ -538,6 +606,15 @@ def scan_pattern_a_universe(
                     momentum_reason_codes_1m=("CACHE_MISSING",),
                     momentum_reason_codes_3m=("CACHE_MISSING",),
                     momentum_reason_codes_6m=("CACHE_MISSING",),
+                    market_cap=inv_eval.market_cap,
+                    market_cap_eok=inv_eval.market_cap_eok,
+                    avg_trading_value_20d=inv_eval.avg_trading_value_20d,
+                    avg_trading_value_20d_eok=inv_eval.avg_trading_value_20d_eok,
+                    avg_trading_value_60d=inv_eval.avg_trading_value_60d,
+                    avg_trading_value_60d_eok=inv_eval.avg_trading_value_60d_eok,
+                    investability_status=inv_eval.status,
+                    investability_reason=inv_eval.reason,
+                    investability_ready=inv_eval.data_ready,
                     row_status=ScannerRowStatus.UNAVAILABLE,
                 )
                 rows.append(row)
@@ -665,6 +742,15 @@ def scan_pattern_a_universe(
                 transition_score_delta_1m=trans_d_1m,
                 transition_score_delta_3m=trans_d_3m,
                 transition_score_delta_6m=trans_d_6m,
+                market_cap=inv_eval.market_cap,
+                market_cap_eok=inv_eval.market_cap_eok,
+                avg_trading_value_20d=inv_eval.avg_trading_value_20d,
+                avg_trading_value_20d_eok=inv_eval.avg_trading_value_20d_eok,
+                avg_trading_value_60d=inv_eval.avg_trading_value_60d,
+                avg_trading_value_60d_eok=inv_eval.avg_trading_value_60d_eok,
+                investability_status=inv_eval.status,
+                investability_reason=inv_eval.reason,
+                investability_ready=inv_eval.data_ready,
                 row_status=row_status,
             )
             rows.append(row)
@@ -706,6 +792,15 @@ def scan_pattern_a_universe(
                 momentum_reason_codes_1m=(f"ERROR_{type(exc).__name__}",),
                 momentum_reason_codes_3m=(f"ERROR_{type(exc).__name__}",),
                 momentum_reason_codes_6m=(f"ERROR_{type(exc).__name__}",),
+                market_cap=None,
+                market_cap_eok=None,
+                avg_trading_value_20d=None,
+                avg_trading_value_20d_eok=None,
+                avg_trading_value_60d=None,
+                avg_trading_value_60d_eok=None,
+                investability_status=InvestabilityStatus.DATA_UNAVAILABLE,
+                investability_reason="SCANNER_EXCEPTION",
+                investability_ready=False,
                 row_status=ScannerRowStatus.ERROR,
                 error_type=type(exc).__name__,
                 error_message=str(exc),
@@ -742,6 +837,16 @@ def scan_pattern_a_universe(
         for status in ScannerRowStatus
     }
 
+    inv_dist: dict[str, int] = {
+        inv_status.value: sum(1 for r in rows if r.investability_status == inv_status)
+        for inv_status in InvestabilityStatus
+    }
+
+    inv_investable_cnt = inv_dist.get(InvestabilityStatus.INVESTABLE.value, 0)
+    inv_mcap_cnt = inv_dist.get(InvestabilityStatus.FILTERED_MARKET_CAP.value, 0)
+    inv_liq_cnt = inv_dist.get(InvestabilityStatus.FILTERED_LIQUIDITY.value, 0)
+    inv_unavail_cnt = inv_dist.get(InvestabilityStatus.DATA_UNAVAILABLE.value, 0)
+
     valid_scores = [r.pattern_a_score for r in rows if r.pattern_a_score is not None]
     score_dist = _calc_stats(valid_scores)
 
@@ -775,6 +880,11 @@ def scan_pattern_a_universe(
         stage_distribution=stage_dist,
         candidate_state_distribution=cand_dist,
         row_status_distribution=status_dist,
+        investability_distribution=inv_dist,
+        investability_investable_count=inv_investable_cnt,
+        investability_filtered_market_cap_count=inv_mcap_cnt,
+        investability_filtered_liquidity_count=inv_liq_cnt,
+        investability_data_unavailable_count=inv_unavail_cnt,
         score_distribution=score_dist,
         momentum_1m_distribution=mom_1m_dist,
         momentum_3m_distribution=mom_3m_dist,

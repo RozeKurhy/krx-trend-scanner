@@ -1,0 +1,89 @@
+{
+  "audit_version": "phase10c_investability_integration_v0.1",
+  "as_of": "2026-08-14",
+  "base_checkpoint": "b10ef554daf99b70ce9789467d70715253ef3365",
+  "universe_count": 2528,
+  "candidate_count": 180,
+  "transition_count": 168,
+  "early_count": 12,
+  "investability_breakdown": {
+    "investable_count": 103,
+    "investable_pct": 57.22,
+    "filtered_market_cap_count": 42,
+    "filtered_market_cap_pct": 23.33,
+    "filtered_liquidity_count": 31,
+    "filtered_liquidity_pct": 17.22,
+    "data_unavailable_count": 4,
+    "data_unavailable_pct": 2.22
+  },
+  "regression_cases": [
+    {
+      "ticker": "086060",
+      "name": "진바이오텍",
+      "official_stage": "early_trend",
+      "candidate_state": "candidate",
+      "market_cap_eok": 404.7,
+      "avg_trading_value_20d_eok": 1.12,
+      "investability_status": "FILTERED_MARKET_CAP"
+    },
+    {
+      "ticker": "033560",
+      "name": "블루콤",
+      "official_stage": "early_trend",
+      "candidate_state": "candidate",
+      "market_cap_eok": 783.18,
+      "avg_trading_value_20d_eok": 4.17,
+      "investability_status": "FILTERED_MARKET_CAP"
+    },
+    {
+      "ticker": "003800",
+      "name": "에이스침대",
+      "official_stage": "transition",
+      "candidate_state": "candidate",
+      "market_cap_eok": 3698.51,
+      "avg_trading_value_20d_eok": 1.03,
+      "investability_status": "FILTERED_LIQUIDITY"
+    },
+    {
+      "ticker": "001540",
+      "name": "안국약품",
+      "official_stage": "early_trend",
+      "candidate_state": "candidate",
+      "market_cap_eok": 1542.92,
+      "avg_trading_value_20d_eok": 14.0,
+      "investability_status": "INVESTABLE"
+    },
+    {
+      "ticker": "003650",
+      "name": "미창석유",
+      "official_stage": "early_trend",
+      "candidate_state": "candidate",
+      "market_cap_eok": 2564.28,
+      "avg_trading_value_20d_eok": 4.85,
+      "investability_status": "INVESTABLE"
+    },
+    {
+      "ticker": "034950",
+      "name": "한국기업평가",
+      "official_stage": "transition",
+      "candidate_state": "candidate",
+      "market_cap_eok": 4672.19,
+      "avg_trading_value_20d_eok": 1.63,
+      "investability_status": "FILTERED_LIQUIDITY"
+    }
+  ],
+  "parity_mismatches_count": 0,
+  "parity_mismatches": [],
+  "hard_gates": {
+    "gate_01_frozen_pattern_a_identity_pass": true,
+    "gate_02_raw_candidate_preservation_pass": true,
+    "gate_03_threshold_contract_pass": true,
+    "gate_04_pit_no_lookahead_pass": true,
+    "gate_05_ticker_level_phase10b_parity_pass": true,
+    "gate_06_missing_data_fail_closed_pass": true,
+    "gate_07_output_schema_backward_compatibility_pass": true,
+    "gate_08_production_test_suite_pass": true
+  },
+  "phase_10c_status": "INTEGRATION_READY",
+  "next_milestone": "Phase 10 DONE -> Phase 11. Flow Confirmation Infrastructure"
+}

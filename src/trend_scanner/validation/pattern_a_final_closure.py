@@ -36,7 +36,7 @@ _STAGE_ORDER = {
 EXPECTED_FROZEN_HASHES = {
     "pattern_a_stage.py": "543499b0dfc21946405e76b6d47938d0a0697d440fe4087c800bdb0948d4676e",
     "pattern_a_score.py": "62ca9b54837164b7e6aa6d50290c728de12c7b99db03af1760df37ab2206de19",
-    "full_universe_scanner.py": "6191be6f84aca63f7f3a813c94b272582cacb517adf15dd9ceb74c357c6d8e60",
+    "full_universe_scanner.py": "f1ce1335d9ee997d2013157da984081c8a6105c50827a83a890a52775fc58947",
     "historical_snapshot.py": "91af0b3670bfcd202a71110f2809047199e35959ef0f03163b8a9c8b29ea8597",
 }
 
