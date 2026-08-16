@@ -7,6 +7,7 @@ import pandas as pd
 import pytest
 
 from trend_scanner.data.errors import MarketDataError
+from trend_scanner.data.foreign_flow_provider import ForeignFlowDataProvider
 from trend_scanner.flow.foreign_flow import (
     FlowDataStatus,
     ForeignFlowFeatureResult,
@@ -64,9 +65,8 @@ def test_signed_flow_arithmetic():
 def test_window_boundary_contracts():
     """Gate 4: Verify boundary availability for 5D, 20D, 60D windows."""
     ticker = "005930"
-    as_of = "2026-08-14"
 
-    # Case 1: Exactly 5 observations
+    # Case 1: Exactly 5 observations (latest matches as_of)
     dates_5 = [f"2026-08-{i:02d}" for i in range(1, 6)]
     net_buys_5 = [10.0] * 5
     flow_df_5 = _make_dummy_flow_df(ticker, dates_5, net_buys_5)
@@ -76,7 +76,7 @@ def test_window_boundary_contracts():
     assert res_5.foreign_net_buy_value_20d is None
     assert res_5.foreign_net_buy_value_60d is None
 
-    # Case 2: Exactly 20 observations
+    # Case 2: Exactly 20 observations (latest matches as_of)
     dates_20 = [f"2026-07-{i:02d}" for i in range(1, 21)]
     net_buys_20 = [10.0] * 20
     flow_df_20 = _make_dummy_flow_df(ticker, dates_20, net_buys_20)
@@ -86,7 +86,7 @@ def test_window_boundary_contracts():
     assert res_20.foreign_net_buy_value_20d == 200.0
     assert res_20.foreign_net_buy_value_60d is None
 
-    # Case 3: Exactly 60 observations
+    # Case 3: Exactly 60 observations (latest matches as_of)
     dates_60 = pd.date_range("2026-05-01", periods=60, freq="B").strftime("%Y-%m-%d").tolist()
     net_buys_60 = [10.0] * 60
     flow_df_60 = _make_dummy_flow_df(ticker, dates_60, net_buys_60)
@@ -97,13 +97,30 @@ def test_window_boundary_contracts():
     assert res_60.foreign_net_buy_value_60d == 600.0
 
 
+def test_stale_latest_observation_fail_closed():
+    """Gate 7: Verify 60 observations with stale latest date (< as_of) fails closed to DATA_UNAVAILABLE."""
+    ticker = "005930"
+    as_of = "2026-08-14"
+
+    # 60 observations ending on 2026-08-12 (2 days stale relative to 2026-08-14)
+    dates_stale = pd.date_range("2026-05-01", periods=60, freq="B").strftime("%Y-%m-%d").tolist()
+    # Force last date to be 2026-08-12
+    dates_stale[-1] = "2026-08-12"
+    net_buys = [100.0] * len(dates_stale)
+    flow_df = _make_dummy_flow_df(ticker, dates_stale, net_buys)
+
+    res = compute_foreign_flow_features(ticker, as_of, flow_df)
+    assert res.data_status == FlowDataStatus.DATA_UNAVAILABLE
+
+
 def test_future_observation_exclusion_negative_test():
     """Gate 3: Verify strict PIT filtering excludes future observations."""
     ticker = "005930"
     as_of = "2026-08-14"
 
     # Base valid observations up to 2026-08-14
-    dates_valid = [f"2026-07-{i:02d}" for i in range(1, 21)]  # 20 observations
+    dates_valid = pd.date_range("2026-07-15", periods=20, freq="B").strftime("%Y-%m-%d").tolist()
+    dates_valid[-1] = "2026-08-14"
     net_buys_valid = [100.0] * 20
 
     # Add massive future buy on 2026-08-17
@@ -114,10 +131,11 @@ def test_future_observation_exclusion_negative_test():
     res = compute_foreign_flow_features(ticker, as_of, flow_df)
 
     # 2026-08-17 observation must be completely ignored
-    assert res.foreign_flow_last_observation_date <= as_of
+    assert res.foreign_flow_last_observation_date == as_of
     assert res.foreign_net_buy_value_1d == 100.0
     assert res.foreign_net_buy_value_20d == 2000.0
     assert res.foreign_flow_observation_count == 20
+    assert res.data_status == FlowDataStatus.READY
 
 
 def test_duplicate_row_rejection():
@@ -125,7 +143,7 @@ def test_duplicate_row_rejection():
     ticker = "005930"
     as_of = "2026-08-14"
 
-    dates = ["2026-08-10", "2026-08-11", "2026-08-11", "2026-08-12", "2026-08-13"]
+    dates = ["2026-08-10", "2026-08-11", "2026-08-11", "2026-08-12", "2026-08-14"]
     net_buys = [100.0, 200.0, 300.0, 400.0, 500.0]
     flow_df = _make_dummy_flow_df(ticker, dates, net_buys)
 
@@ -138,7 +156,8 @@ def test_trading_value_normalization():
     ticker = "005930"
     as_of = "2026-08-14"
 
-    dates = [f"2026-07-{i:02d}" for i in range(1, 21)]  # 20 observations
+    dates = pd.date_range("2026-07-15", periods=20, freq="B").strftime("%Y-%m-%d").tolist()
+    dates[-1] = as_of
     net_buys = [10.0] * 20                               # Sum 20D = 200.0, Sum 5D = 50.0
     trading_values = [100.0] * 20                        # Sum 20D = 2000.0, Sum 5D = 500.0
 
@@ -155,7 +174,8 @@ def test_trading_value_missing_returns_none_not_zero():
     ticker = "005930"
     as_of = "2026-08-14"
 
-    dates = [f"2026-07-{i:02d}" for i in range(1, 21)]
+    dates = pd.date_range("2026-07-15", periods=20, freq="B").strftime("%Y-%m-%d").tolist()
+    dates[-1] = as_of
     net_buys = [10.0] * 20
     flow_df = _make_dummy_flow_df(ticker, dates, net_buys)
 

@@ -59,12 +59,25 @@ class ForeignFlowDataProvider:
         if raw_df.empty:
             return pd.DataFrame(columns=list(_STANDARD_FLOW_COLUMNS))
 
+        # Required columns validation (Fail Closed without default fallback)
+        required_cols = {"매수거래대금", "매도거래대금", "순매수거래대금"}
+        if not required_cols.issubset(set(raw_df.columns)):
+            missing = sorted(list(required_cols - set(raw_df.columns)))
+            raise MarketDataError(
+                f"KRX foreign flow response missing required columns {missing} on {formatted_date}"
+            )
+
         rows = []
         for ticker, row in raw_df.iterrows():
             ticker_str = str(ticker).zfill(6)
-            buy_val = float(row.get("매수거래대금", 0.0))
-            sell_val = float(row.get("매도거래대금", 0.0))
-            net_buy_val = float(row.get("순매수거래대금", buy_val - sell_val))
+            try:
+                buy_val = float(row["매수거래대금"])
+                sell_val = float(row["매도거래대금"])
+                net_buy_val = float(row["순매수거래대금"])
+            except (ValueError, TypeError) as exc:
+                raise MarketDataError(
+                    f"Numeric coercion failure for ticker {ticker_str} on {formatted_date}: {exc}"
+                ) from exc
 
             rows.append({
                 "date": formatted_date,

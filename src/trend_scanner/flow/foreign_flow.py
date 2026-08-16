@@ -188,8 +188,11 @@ def compute_foreign_flow_features(
     else:
         df_t["trading_value"] = np.nan
 
-    # 6. Data Readiness Determination
-    if obs_count < 5:
+    # 6. Data Readiness Determination (Stale Flow Fail Closed)
+    # Exact as_of freshness is mandatory for production flow readiness.
+    if last_obs_date != formatted_asof:
+        data_status = FlowDataStatus.DATA_UNAVAILABLE
+    elif obs_count < 5:
         data_status = FlowDataStatus.DATA_UNAVAILABLE
     elif obs_count < 20:
         data_status = FlowDataStatus.PARTIAL
