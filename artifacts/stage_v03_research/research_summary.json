@@ -1,0 +1,53 @@
+{
+  "research_iteration": "Pattern A Stage v0.3 Research Candidate",
+  "base_checkpoint_sha": "d975f66d893f078cc8ffca30edbf52f09a452a13",
+  "timestamp": "2026-08-16T13:59:50.905294",
+  "provenance": {
+    "snapshot_date": "2026-08-14",
+    "sample_sizes": {
+      "transition_match": 13,
+      "premature_transition": 13,
+      "recycled_transition": 3,
+      "calibration_benchmark": 46,
+      "oos_benchmark": 35,
+      "phase8_candidates": 180
+    },
+    "feature_space": "36-month HistoricalSnapshot (OHLCV, Moving Averages, Slopes, Resistance)"
+  },
+  "focus_case_026910_profile": {
+    "ticker": "026910",
+    "name": "광진실업",
+    "official_stage_v01": "transition",
+    "candidate_stage_v02": "transition",
+    "human_audit_label": "TOO_EARLY (Target: BASE)",
+    "metrics_36m": {
+      "ma24_slope": 0.071717,
+      "weekly_ma12_slope": 0.201108,
+      "avg_price_change_12m": 0.273571,
+      "range_position": 0.570735,
+      "distance_to_resistance": 0.338235,
+      "ma_spread": 0.133148,
+      "ma_order_bullish": true,
+      "core_led": true,
+      "weekly_led": true,
+      "previously_expanded_before_snapshot": false
+    },
+    "structural_analysis": "Within the 36-month window, 026910 exhibits strong bullish moving average alignment and upward slopes exceeding normal Transition averages. The human TOO_EARLY classification stems from multi-year (10-20 year) macro base structure that cannot be resolved in a 36-month feature window."
+  },
+  "hypotheses_evaluated": [
+    "HYP_A",
+    "HYP_B",
+    "HYP_C",
+    "HYP_D",
+    "HYP_E",
+    "HYP_F",
+    "HYP_G"
+  ],
+  "generalizable_rule_found": false,
+  "final_recommendation": "NO_GENERALIZABLE_RULE_FOUND",
+  "future_research_directions": [
+    "Multi-year resistance structure (5-10 year major resistance levels)",
+    "Historical high distance (10-year all-time high proximity/ratio)",
+    "Multi-year base duration (prolonged bottom range duration)"
+  ]
+}

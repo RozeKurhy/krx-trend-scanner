@@ -1,0 +1,5 @@
+condition_id,description,calib_exact,calib_adj,calib_sev,calib_exact_reg,oos_exact,oos_adj,oos_sev,oos_exact_reg,trans_match_preserved,early_match_preserved,recycled_removed,premature_removed,026910_stage,overall_feasibility
+BASELINE_V02,Current Stage v0.2 Frozen Rules (Real Sequential Replay),38,5,3,0,24,10,1,0,13,4,2,3,transition,"Failing 3 gates (026910, Recycled 2/3, Premature 3/13)"
+HYP_A_WEEKLY_SLOPE_CAP,weekly_ma12_slope <= 0.10,36,6,4,2,23,10,2,1,11,4,2,6,base,"REJECTED: Benchmark Regression (Calib Exact < 38, Severe > 3)"
+HYP_E_MA_SPREAD_STRICT,ma_spread <= 0.10,33,7,6,5,20,11,4,4,8,4,2,7,base,REJECTED: Catastrophic Benchmark & Transition Collapse
+HYP_F_AVG_CHG_12M_CAP,avg_price_change_12m <= 0.20,32,7,7,6,19,11,5,5,7,4,2,5,base,REJECTED: Severe Benchmark Regression & Transition Collapse
