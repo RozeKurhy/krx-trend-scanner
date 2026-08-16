@@ -19,6 +19,7 @@ from trend_scanner.patterns.pattern_a_score import score_pattern_a
 from trend_scanner.validation.historical_snapshot import build_historical_snapshot
 from trend_scanner.validation.pattern_a_stage_manifest import PATTERN_A_STAGE_LABELS
 from trend_scanner.validation.pattern_a_stage_oos_v01_manifest import PATTERN_A_STAGE_OOS_V01_LABELS
+from trend_scanner.validation.pattern_a_final_closure import run_pattern_a_final_closure_audit
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 _CACHE_DIR = _REPO_ROOT / "data" / "raw" / "stocks"
@@ -40,7 +41,7 @@ _STAGE_ORDER = {
 }
 
 
-def test_gate1_production_stage_semantic_constants():
+def test_gate1_production_stage_constants():
     """Gate 1: Verify Stage v0.1 frozen constants are unchanged."""
     assert EPISODE_PEAK_AVG_CHG == 0.30
     assert EPISODE_BREAK_MA24_SLOPE == -0.045
@@ -62,7 +63,6 @@ def test_gate3_score_stage_independence():
     daily = cache.load("003100")
     snap = build_historical_snapshot("003100", "선광", daily, "2024-12-31", include_incomplete_periods=False)
 
-    # Classifying stage should only need snapshot features
     stage_res = classify_pattern_a_stage(snap)
     assert isinstance(stage_res.stage, PatternAStage)
 
@@ -106,8 +106,8 @@ def test_gate5_oos35_exact_reproduction():
 
 
 @pytest.mark.skipif(not _HAS_CACHE, reason="Cache unavailable")
-def test_gate6_lifecycle_regression():
-    """Gate 6: Verify 079550 LIG넥스원 2021 progressed and 2023 early_trend."""
+def test_gate6_079550_known_limitation_preserved():
+    """Gate 6: Verify 079550 LIG넥스원 known limitation: 2021 progressed, 2023 early_trend output vs progressed truth."""
     cache = ParquetCache(base_dir=_CACHE_DIR)
     daily = cache.load("079550")
     snap_2021 = build_historical_snapshot("079550", "LIG넥스원", daily, "2021-12-31", include_incomplete_periods=False)
@@ -129,21 +129,35 @@ def test_gate7_phase8_scanner_counts():
     assert (df["official_stage"] == "early_trend").sum() == 12
 
 
-def test_gate8_closure_json_consistency():
-    """Gate 8: Verify pattern_a_final_closure.json values match hard gate requirements."""
+def test_gate8_candidate_identity_diff():
+    """Gate 8: Verify candidate identity diff is zero (no missing, no extra, no stage change)."""
     json_path = _REPO_ROOT / "artifacts" / "pattern_a_final_closure" / "pattern_a_final_closure.json"
-    assert json_path.exists()
     payload = json.loads(json_path.read_text(encoding="utf-8"))
+    diff = payload["candidate_identity_diff"]
 
-    assert payload["calibration_exact"] == 38
-    assert payload["calibration_adjacent"] == 5
-    assert payload["calibration_severe"] == 3
-    assert payload["oos_exact"] == 24
-    assert payload["oos_adjacent"] == 10
-    assert payload["oos_severe"] == 1
-    assert payload["scanner_candidate_count"] == 180
-    assert payload["scanner_transition_count"] == 168
-    assert payload["scanner_early_count"] == 12
-    assert payload["final_production_decision"] == "KEEP_CURRENT_PRODUCTION"
-    assert payload["pattern_a_stage_research_status"] == "CLOSED"
-    assert payload["next_phase"] == "SCANNER_OPERATION_AND_CANDIDATE_QUALITY_WORKFLOW"
+    assert diff["identity_diff_pass"] is True
+    assert len(diff["missing_tickers"]) == 0
+    assert len(diff["extra_tickers"]) == 0
+    assert len(diff["stage_changed_tickers"]) == 0
+
+
+def test_gate9_closure_generator_consistency():
+    """Gate 9: Verify generator live output matches committed pattern_a_final_closure.json."""
+    json_path = _REPO_ROOT / "artifacts" / "pattern_a_final_closure" / "pattern_a_final_closure.json"
+    committed = json.loads(json_path.read_text(encoding="utf-8"))
+
+    # Run generator in fast validation mode
+    generated = run_pattern_a_final_closure_audit(_REPO_ROOT, run_live_scanner=False)
+
+    assert committed["calibration_exact"] == generated["calibration_exact"] == 38
+    assert committed["calibration_adjacent"] == generated["calibration_adjacent"] == 5
+    assert committed["calibration_severe"] == generated["calibration_severe"] == 3
+    assert committed["oos_exact"] == generated["oos_exact"] == 24
+    assert committed["oos_adjacent"] == generated["oos_adjacent"] == 10
+    assert committed["oos_severe"] == generated["oos_severe"] == 1
+    assert committed["scanner_candidate_count"] == generated["scanner_candidate_count"] == 180
+    assert committed["079550_audited_truth"] == "progressed"
+    assert committed["079550_production_output"] == "early_trend"
+    assert committed["final_production_decision"] == "KEEP_CURRENT_PRODUCTION"
+    assert committed["pattern_a_stage_research_status"] == "CLOSED"
+    assert committed["next_phase"] == "SCANNER_OPERATION_AND_CANDIDATE_QUALITY_WORKFLOW"

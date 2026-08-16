@@ -1,16 +1,16 @@
-# Pattern A Final Production Validation & Closure
+# Pattern A Final Production Validation & Official Closure
 
 ## 1. Executive Summary
 
 * **문서명**: `pattern_a_final_production_closure.md`
-* **Closure Checkpoint Commit**: `5be5b4255a8045a626fa22a002a6012521e918ae`
+* **Closure Checkpoint Commit**: `6b266fb5a8faa43c6daa7f1bef56315b03855f8e`
 * **Pattern A Score Production Version**: **`v0.2 (Production 유지)`**
 * **Pattern A Stage Production Version**: **`v0.1 (Production 유지)`**
 * **Pattern A Scanner Production Path**: **`Phase8 Frozen Path (Production 유지)`**
 * **Stage v0.2 Candidate**: **`REJECT FOR PRODUCTION / HOLD AS RESEARCH HISTORY`**
 * **Stage v0.3 Existing Feature Research**: **`공식 종료 (CLOSED, NO_GENERALIZABLE_RULE_FOUND)`**
 * **Stage v0.4 Multi-Year Structural Feature Research**: **`공식 종료 (CLOSED, NO_USEFUL_MULTI_YEAR_FEATURE_FOUND)`**
-* **Pattern A Stage Research Lifecycle**: **`공식 종료 (CLOSED)`**
+* **Pattern A Stage Research Lifecycle**: **`영구 종료 (CLOSED)`**
 * **Next Project Phase**: **`SCANNER_OPERATION_AND_CANDIDATE_QUALITY_WORKFLOW`**
 
 ---
@@ -19,7 +19,7 @@
 
 1. **Stage v0.1 Frozen Commit**: `43ee01ca086c5d33bbf195bed67e161f5a315bf5`
 2. **Scanner Phase8 Frozen Commit**: `13ab6f416a0de77e89c7e0412467eb393e07c6dc`
-3. **Production Source Integrity**: 현재 HEAD의 모든 프로덕션 로직(`pattern_a_stage.py`, `pattern_a_score.py`, `pattern_a_scanner.py`)은 Frozen Commit과 100% 동일하며 임의 변형(Mutation)이 0건입니다.
+3. **Production Source Integrity**: 현재 HEAD의 모든 프로덕션 로직(`pattern_a_stage.py`, `pattern_a_score.py`, `full_universe_scanner.py`, `historical_snapshot.py`)은 Frozen Commit과 100% 동일하며 임의 변형(Mutation)이 0건입니다.
 
 ---
 
@@ -59,22 +59,30 @@
 
 ---
 
-## 6. Lifecycle Regression Audit
+## 6. Lifecycle Regression & 079550 Known Limitation Audit
 
-* **079550 LIG넥스원 2021-12-31**: `PROGRESSED` (2021 대규모 시세 분출 반영)
-* **079550 LIG넥스원 2023-12-31**: `EARLY_TREND` (2022-2023 기간 조정 후 새 에피소드 정상 전이)
-* **동일 에피소드 비역행(Non-regression) 및 요청 순서 독립성**: 기존 12개 lifecycle regression 테스트 전수 통과.
+* **079550 LIG넥스원 (2021-12-31)**:
+  - `Production Classifier Output`: **`PROGRESSED`**
+  - `Audited Ground Truth`: **`PROGRESSED`**
+* **079550 LIG넥스원 (2023-12-31)**:
+  - `Production Classifier Output`: **`EARLY_TREND`**
+  - `Audited Ground Truth`: **`PROGRESSED`**
+  - **Known Limitation 해석**: 이는 신규 에피소드가 정상 시작된 것이 아니라, **Frozen v0.1 설계 문서에 이미 기록된 알려진 인접 오분류(Known Adjacent Mismatch)**입니다. Production 동작 재현성은 완벽히 PASS(`frozen_stage_behavior_reproduction_pass = true`)하며, 새로운 회귀(Regression)가 아님을 확증하였습니다.
 
 ---
 
-## 7. Phase8 Scanner Reproduction
+## 7. Phase8 Live Scanner Reproduction & Candidate Identity Diff
 
-2026-08-14 단일 컷오프(`include_incomplete_periods=False`) 기준 실측 재현 결과:
-* **전체 종목 Universe**: **2,528개**
+2026-08-14 단일 컷오프(`include_incomplete_periods=False`) 기준 실측 라이브 실행 결과:
+* **전체 보통주 Universe**: **2,528개**
 * **Pattern A 통과 Candidates**: **180개**
   - `TRANSITION`: **168개 (93.3%)**
   - `EARLY_TREND`: **12개 (6.7%)**
-* **Frozen CSV 일치율**: `artifacts/chart_review/pattern_a_candidate_manual_review_20260814.csv`와 180개 전 종목 identity 100% 일치.
+* **Candidate Identity 1:1 Diff**:
+  - `Missing Tickers`: **`[] (0건)`**
+  - `Extra Tickers`: **`[] (0건)`**
+  - `Stage Changed Tickers`: **`[] (0건)`**
+  - `Identity Diff Pass`: **`TRUE`**
 
 ---
 
@@ -100,7 +108,7 @@
 | 02 | 026910(광진실업)과 같은 단기 급반등 사례가 36m 모멘텀으로 인해 TRANSITION으로 분류될 수 있음.            |
 | 03 | 038390(레드캡투어)과 같은 과거 대규모 시세 분출 후 조정 국면의 Recycled 사례가 완전히 배제되지 않음.     |
 | 04 | EARLY_TREND 단계는 빠른 시세 분출이나 성숙한 돌파 후 종목에서 일부 TOO_LATE 판정이 발생할 수 있음.      |
-| 05 | Stage는 기계적 라이프사이클 휴리스틱이며, 인간 차트의 모든 미세 구조를 100% 표현하는 분류기가 아님.     |
+| 05 | 079550(LIG넥스원 2023-12)과 같이 긴 기간 조정 후 재반등 시 PROGRESSED 대신 EARLY_TREND로 인접 오분류됨.  |
 | 06 | 36개월 Existing Feature 연구(Stage v0.3)에서 정상군을 훼손하지 않는 일반화 규칙을 발견하지 못함.         |
 | 07 | 5년 다년 구조 Feature 연구(Stage v0.4)에서도 독립적으로 분리 가능한 유의미한 단일 피처를 발견하지 못함. |
 | 08 | Known Limitation을 억지로 제거하기 위한 추가 임계값 튜닝은 정상군 및 벤치마크에 심각한 훼손을 유발함.    |
