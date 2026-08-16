@@ -9,18 +9,20 @@
 ## 🌟 주요 특징 및 핵심 철학
 
 * **다차원 독립 측정 분리 (Orthogonal Architecture)**:
-  * **Score** (현재 시점의 매력도, 0~100점): 장기 베이스 안정성과 전환 시그널의 조화평균 결합
-  * **Stage** (현재 라이프사이클 국면): `WEAK` ➔ `BASE` ➔ `TRANSITION` ➔ `EARLY_TREND` ➔ `PROGRESSED`
-  * **Score Momentum** (시간에 따른 Score 변화량): 정확한 Calendar 1M, 3M, 6M 시점 간의 Raw Delta 및 Component Delta
-  * **Candidate State** (해석 상태): `CANDIDATE`, `WATCH`, `LATE`, `BLOCKED`, `INSUFFICIENT_DATA`
+  * **Score v0.2 (Frozen Production)**: 장기 베이스 안정성과 전환 시그널의 조화평균 결합 (0~100점)
+  * **Stage Classifier v0.1 (Frozen Production)**: `WEAK` ➔ `BASE` ➔ `TRANSITION` ➔ `EARLY_TREND` ➔ `PROGRESSED`
+  * **Score Momentum v0.1**: 정확한 Calendar 1M, 3M, 6M 시점 간의 Raw Delta 및 Component Delta 측정
+  * **Candidate State**: `CANDIDATE`, `WATCH`, `LATE`, `BLOCKED`, `INSUFFICIENT_DATA`
 * **Lookahead 원천 차단 (Time-Travel Free)**:
   * 모든 스냅샷 및 피처는 `snapshot_date` 이전의 확정된 데이터만을 사용하여 과거 시점을 완벽하게 재현합니다.
 * **Fail-Closed 데이터 품질 관리**:
   * 엄격한 OHLCV 검증, 36 Completed Months 계약, 불완전 월봉 오인 차단, 종목명 매핑 무결성 보장.
+* **Investability Filtering 계층 분리**:
+  * 시가총액, 주가 수준, 거래대금, 유동성 등 투자 적합성 필터는 Pattern A 알고리즘 자체에 섞지 않고 독립된 후속 필터링 계층으로 분리하여 운영합니다.
 
 ---
 
-## 📐 패턴 기반 스크리닝 (Pattern A)
+## 📐 패턴 기반 스크리닝 (Pattern A: Frozen Production)
 
 ### Pattern A: 장기 베이스 수렴 및 초기 추세 전환형
 
@@ -30,6 +32,7 @@
 * **Transition Score**: 24개월 이평선 기울기(`ma24_slope`), 주봉 12주 이평선 기울기(`weekly_ma12_slope`), 24개월 이평선 가속도(`ma24_slope_acceleration`)
 * **Core & Support 결합**: 핵심 지표(`ma24_slope`) 중심의 조화평균(Harmonic Mean) 결합으로 단기 왜곡 억제
 * **Bonuses & Penalties**: Alignment Bonus 및 장기 이격 과열에 대한 Progressed Penalty 적용
+* **공식 상태**: **`Score v0.2 KEEP`**, **`Stage v0.1 KEEP`**, **`Pattern A Stage Research CLOSED`** ([Final Closure Checkpoint: `05d03e1`](docs/validation/pattern_a_final_production_closure.md))
 
 ---
 
@@ -69,15 +72,18 @@ krx-trend-scanner/
 │       ├── universe/               # 유니버스 준비도 및 데이터 품질 감사
 │       │   └── quality_auditor.py  # Universe Data Quality Auditor
 │       │
-│       └── validation/             # 스냅샷 생성 및 피처 리포트
+│       └── validation/             # 스냅샷 생성, 피처 리포트 및 최종 클로저
 │           ├── historical_snapshot.py
-│           └── feature_report.py
+│           ├── feature_report.py
+│           ├── stage_v03_research.py
+│           ├── stage_v04_multi_year_research.py
+│           └── pattern_a_final_closure.py
 │
-├── tests/                          # 322개 유닛 및 통합 테스트 (100% Green)
+├── tests/                          # 361개 유닛 및 통합 테스트 (100% Green)
 └── docs/                           # 상세 설계 및 검증 보고서
     ├── roadmap.md                  # 전체 개발 로드맵
     ├── data_layer.md               # 데이터 레이어 설계 문서
-    └── validation/                 # 각 컴포넌트별 검증 보고서
+    └── validation/                 # 각 컴포넌트별 검증 및 클로저 보고서
         ├── pattern_a_score_v02.md
         ├── pattern_a_stage_classifier_v01.md
         ├── pattern_a_evaluator_v01.md
@@ -85,7 +91,10 @@ krx-trend-scanner/
         ├── pattern_a_score_momentum_v01.md
         ├── krx_common_cache_population_v01.md
         ├── pattern_a_full_universe_scanner_v01.md
-        └── pattern_a_real_candidate_chart_review_v01.md
+        ├── pattern_a_real_candidate_chart_review_v01.md
+        ├── stage_v03_existing_feature_research.md
+        ├── stage_v04_multi_year_research.md
+        └── pattern_a_final_production_closure.md
 ```
 
 ---
@@ -149,8 +158,14 @@ print(f"6M Score Delta: {momentum_res.horizon_6m.score_delta:+.2f}")
 * [x] **Phase 7**: Official Common Stock Cache Population Completed (Coverage 98.34%)
 * [x] **Phase 8**: Full Universe Scanner Integration Completed (2,528 Stocks)
 * [x] **Phase 9A**: Candidate Review Dataset Preparation Completed (180 Candidates)
-* [ ] **Phase 9B**: Human Chart Review (IN PROGRESS - Manual Review Pending)
-* [ ] **Phase 10~17**: Liquidity Filter, RS, Flow, Pattern B~F
-* [ ] **Phase 18~20**: Market Leader Score & Production Scanner
+* [x] **Phase 9B**: Human Chart Review & Structural Audit Completed (Human42 Evidence)
+* [x] **Pattern A Final Production Closure**: Official Closure Completed (`05d03e1`, Score v0.2 / Stage v0.1 KEEP, Stage Research CLOSED)
+* [ ] **Phase 10**: **`NEXT`** Investability & Tradability Filter (Market Cap, Price, Trading Value)
+* [ ] **Phase 11**: **`PLANNED`** Flow Confirmation Infrastructure (Foreign / Institution Accumulation)
+* [ ] **Phase 12**: **`PLANNED`** Relative Strength Infrastructure (Index & Sector RS)
+* [ ] **Phase 13~17**: **`PLANNED`** Pattern B ~ F (Stage 2 Transition, High Base, RS Leading, VCP, Turnaround)
+* [ ] **Phase 18**: **`PLANNED`** Pattern Score Matrix & Market Leader Score
+* [ ] **Phase 19**: **`PLANNED`** Walk Forward / Paper Validation
+* [ ] **Phase 20**: **`PLANNED`** Production Scanner & Operational Dashboard
 
 자세한 로드맵은 [docs/roadmap.md](docs/roadmap.md)를 참고하세요.
