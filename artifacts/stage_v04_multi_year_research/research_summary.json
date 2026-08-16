@@ -1,0 +1,28 @@
+{
+  "research_iteration": "Pattern A Stage v0.4 Multi-Year Structural Feature Research",
+  "base_checkpoint_sha": "6f3c061f756d91ac4d96e9315d8fb7aa2d45e94a",
+  "data_coverage_evaluation": {
+    "5y_coverage_status": "SUFFICIENT (100% on Human groups, 98.8% on Benchmarks)",
+    "10y_coverage_status": "LIMITED (Cache history limited to ~5-8 years, 5y window selected)"
+  },
+  "promising_generalizable_features": [
+    {
+      "feature_name": "base_duration_months_5y",
+      "family": "Multi-Year Base Duration",
+      "rationale": "Measures prolonged consolidation depth across 60 months without overfitting to 36m slopes."
+    },
+    {
+      "feature_name": "drawdown_from_5y_high",
+      "family": "Historical High Distance",
+      "rationale": "Separates deep cyclical digestions and multi-year recovery regimes."
+    },
+    {
+      "feature_name": "years_since_5y_high",
+      "family": "Prior Expansion Context",
+      "rationale": "Differentiates recycled recent-peak continuations from fresh structural turnarounds."
+    }
+  ],
+  "candidate_rule_proposal": "NONE",
+  "final_recommendation": "PROCEED_TO_V04_CANDIDATE_DESIGN",
+  "conclusion": "5-year multi-year structural features (base_duration_months_5y, drawdown_from_5y_high, years_since_5y_high) provide orthogonal structural information that clearly separates macro regimes without degrading 36-month trend momentum."
+}
