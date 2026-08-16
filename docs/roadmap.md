@@ -56,10 +56,12 @@
 | Stage v0.4 Multi-Year Feature Research | CLOSED | 5년 구조 피처 9종 분리 한계 확인 (`NO_USEFUL_MULTI_YEAR_FEATURE_FOUND`, `5be5b42`) |
 | Pattern A Final Production Closure | DONE | Final Closure PASS, KEEP_CURRENT_PRODUCTION 확정 (`05d03e1`) |
 | Pattern A Stage Research Lifecycle | CLOSED | 알고리즘 연구 종료 (`KEEP_CURRENT_PRODUCTION`) |
+| Phase 10 Investability & Tradability Filter | DONE | 시총 >= 1,000억, 20D 유동성 >= 3억 downstream filter 통합 (Investable 103개, `75afa32`) |
+| Phase 11 Flow Confirmation Infrastructure | DONE | Foreign Flow 독립 confirmation axis 및 10대 hard gates 통과 (FLOW_INFRA_READY, `71237c0`) |
 
 **Pattern B~F**: 미착수(PLANNED)  
 **전체 시장 Scanner**: 완료(DONE - Phase 8 Integration 및 Phase 9B Review 완료)  
-**현재 진행 단계**: **`Phase 10 Investability & Tradability Filter (NEXT)`**  
+**현재 진행 단계**: **`Phase 12 Relative Strength Infrastructure (NEXT)`**  
 **Market Leader Score**: 미착수(PLANNED - Phase 18)  
 
 ---
@@ -190,29 +192,31 @@ Scanner CANDIDATE 종목을 사람이 직접 검토(월봉 ➔ 주봉 ➔ 일봉
 
 ---
 
-## Phase 10. Investability & Tradability Filter — NEXT
+## Phase 10. Investability & Tradability Filter — DONE (`75afa32`)
 
 목적: Pattern A Candidate 중 실제로 사람이 검토하거나 실전 투자 대상으로 고려할 가치가 낮은 비투자성 / 극저유동성 종목을 사전에 분리한다.
 
-핵심 설계 및 철학:
-* **독립 필터링 계층**: 시가총액, 주가 수준, 거래대금, 유동성 기준은 Pattern A Score/Stage 알고리즘 자체에 섞지 않고 Scanner 후속 계층에서 분리 처리.
-* **데이터 기반 Threshold 결정**: 특정 임계값을 사전 하드코딩하지 않고, 현재 180개 Candidate 코호트의 실측 분포(시가총액, 종가, 20D/60D 평균 거래대금 등)를 조사한 후 별도 검증을 통해 결정.
-* **향후 확장**: 거래정지, 관리종목 등 실전 투자 부적합 조건 연계.
+핵심 성과 및 계약:
+* **독립 필터링 계층**: 시가총액(Market Cap >= 1,000억원) 및 20D 평균 거래대금(TV20 >= 3억원) 기준의 downstream filter 통합.
+* **100% Frozen Pattern A 보존**: 180개 Raw Candidate (TRANSITION 168, EARLY_TREND 12) 전수 보존.
+* **Investability 분류 결과**: Investable 103개, Filtered Market Cap 42개, Filtered Liquidity 31개, Data Unavailable 4개.
 
 ---
 
-## Phase 11. Flow Confirmation Infrastructure — PLANNED
+## Phase 11. Flow Confirmation Infrastructure — DONE (`71237c0`)
 
-목적: 외국인 및 기관 순매수 수급 확인을 위한 독립 인프라 구축.
+목적: 외국인 수급 데이터를 Pattern A 및 Investability와 독립된 confirmation axis로 구축.
 
-핵심 방향:
-* **우선순위**: 외국인 수급 ➔ 기관 수급 ➔ 외인/기관 양매수
-* **주요 측정 지표**: Foreign Net Buy 5D / 20D / 60D, Accumulation Trend, Net Buy / Trading Value Ratio
-* **원칙**: 초기에는 절대적 Hard Filter가 아닌 독립 Confirmation Axis로 운영 (외인 미유입 초기 후보군 배제 방지).
+핵심 성과 및 계약:
+* **독립 Confirmation Axis**: Foreign Investor Flow를 하드 필터나 스코어 합산이 아닌 독립 확인 피처 계층으로 구축 완료. (Foreign Flow threshold, ranking, BUY/SELL, Candidate filtering 미도입)
+* **지원 피처**: Point-In-Time 1D / 5D / 20D / 60D foreign net buy (signed KRW), 5D / 20D / 60D normalized flow intensity (거래대금 대비 강도), positive flow day 수 및 비율.
+* **데이터 무결성 & Fail-Closed**: exact `as_of` freshness, strict PIT 계약, source identity 검증, stale / missing / future data fail-closed.
+* **Canonical 보존**: Official COMMON 2,528개, Raw Candidate 180개, Investable 103개 (Flow READY 103개, 100.0%) 전수 보존.
+* **최종 Checkpoint**: `71237c0ec185b5cdc677c149b2d3e941f41d1b52` (Status: `FLOW_INFRA_READY`, 10대 Dynamic Hard Gates 전수 통과).
 
 ---
 
-## Phase 12. Relative Strength Infrastructure — PLANNED
+## Phase 12. Relative Strength Infrastructure — NEXT
 
 목적: KOSPI, KOSDAQ 지수 및 업종 대비 상대강도(RS) 산출 인프라 구축.
 
@@ -262,7 +266,9 @@ CLI / Web 대시보드, 관심종목 워크플로우, 실시간 알림 등 최�
 8. Full Universe Scanner Integration — DONE (`13ab6f4`)
 9. Real Candidate Chart Review (Phase 9A Dataset Prep & 9B Human42 Review) — DONE
 10. Pattern A Final Production Closure (`05d03e1`) — DONE
-11. Phase 10 Investability & Tradability Filter — NEXT
+11. Phase 10 Investability & Tradability Filter — DONE
+12. Phase 11 Flow Confirmation Infrastructure (`71237c0`) — DONE
+13. Phase 12 Relative Strength Infrastructure — NEXT
 
 ---
 

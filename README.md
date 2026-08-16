@@ -79,7 +79,7 @@ krx-trend-scanner/
 │           ├── stage_v04_multi_year_research.py
 │           └── pattern_a_final_closure.py
 │
-├── tests/                          # 361 passed / 0 failed (6 skipped, 1 deselected)
+├── tests/                          # 430 passed / 0 failed (6 skipped, 1 deselected)
 └── docs/                           # 상세 설계 및 검증 보고서
     ├── roadmap.md                  # 전체 개발 로드맵
     ├── data_layer.md               # 데이터 레이어 설계 문서
@@ -160,9 +160,9 @@ print(f"6M Score Delta: {momentum_res.horizon_6m.score_delta:+.2f}")
 * [x] **Phase 9A**: Candidate Review Dataset Preparation Completed (180 Candidates)
 * [x] **Phase 9B**: Human Chart Review & Structural Audit Completed (Human42 Evidence)
 * [x] **Pattern A Final Production Closure**: Official Closure Completed (`05d03e1`, Score v0.2 / Stage v0.1 KEEP, Stage Research CLOSED)
-* [ ] **Phase 10**: **`NEXT`** Investability & Tradability Filter (Market Cap, Price, Trading Value)
-* [ ] **Phase 11**: **`PLANNED`** Flow Confirmation Infrastructure (Foreign / Institution Accumulation)
-* [ ] **Phase 12**: **`PLANNED`** Relative Strength Infrastructure (Index & Sector RS)
+* [x] **Phase 10**: **`DONE`** Investability & Tradability Filter Completed (Market Cap >= 1,000억, 20D Liquidity >= 3억)
+* [x] **Phase 11**: **`DONE`** Flow Confirmation Infrastructure Completed (`71237c0`, Point-In-Time Foreign Flow Features & 10 Dynamic Hard Gates)
+* [ ] **Phase 12**: **`NEXT`** Relative Strength Infrastructure (Index & Sector RS)
 * [ ] **Phase 13~17**: **`PLANNED`** Pattern B ~ F (Stage 2 Transition, High Base, RS Leading, VCP, Turnaround)
 * [ ] **Phase 18**: **`PLANNED`** Pattern Score Matrix & Market Leader Score
 * [ ] **Phase 19**: **`PLANNED`** Walk Forward / Paper Validation
