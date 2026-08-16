@@ -1,27 +1,14 @@
 {
   "research_iteration": "Pattern A Stage v0.4 Multi-Year Structural Feature Research",
-  "base_checkpoint_sha": "f84066d39584ef97f358235da2a95904d376cdb4",
+  "base_checkpoint_sha": "4d99f1ab7b2cee8b44986a3f1da10f1ae60a7946",
   "data_coverage_evaluation": {
     "human_research_cohorts_coverage": "33 / 33 (100.0%) on 5-year window",
     "benchmark_calibration_coverage": "46 / 46 (100.0%) on 5-year window",
     "benchmark_oos_coverage": "34 / 35 (97.1%) on 5-year window",
     "10y_coverage_status": "DATA_COVERAGE_LIMITED (10y data available in <20% of benchmarks, 5y window selected)"
   },
-  "promising_generalizable_features": [
-    {
-      "feature_name": "months_since_5y_low",
-      "family": "Turnaround Maturity",
-      "auc_tm_vs_prem": 0.5444,
-      "rationale": "Differentiates early rebound spikes (<6 months) from mature base turnaround regimes (>15 months)."
-    },
-    {
-      "feature_name": "years_since_5y_high",
-      "family": "Prior Expansion Context",
-      "auc_tm_vs_rec": 0.7436,
-      "rationale": "Differentiates recent-peak digestion regimes (<1.5 years) from multi-year reset turnarounds."
-    }
-  ],
+  "promising_generalizable_features": [],
   "candidate_rule_proposal": "NONE",
-  "final_recommendation": "PROCEED_TO_V04_CANDIDATE_DESIGN",
-  "conclusion": "Data-driven separation analysis confirms that months_since_5y_low and years_since_5y_high provide valid structural separation across human cohorts and benchmark datasets without single-ticker overfitting."
+  "final_recommendation": "NO_USEFUL_MULTI_YEAR_FEATURE_FOUND",
+  "conclusion": "검토한 5년 다년 구조 Feature 9종에서 성공 조건을 만족하는 GENERALIZABLE feature를 발견하지 못했다."
 }

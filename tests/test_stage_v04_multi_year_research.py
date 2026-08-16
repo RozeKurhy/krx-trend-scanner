@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 import pytest
 import pandas as pd
@@ -10,6 +11,7 @@ from trend_scanner.data.cache import ParquetCache
 from trend_scanner.validation.stage_v04_multi_year_research import (
     extract_multi_year_features,
     run_stage_v04_multi_year_research,
+    render_multi_year_table_ascii,
 )
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -82,6 +84,8 @@ def test_artifact_row_counts_and_provenance():
     early_df = pd.read_csv(out_dir / "early_match4_multi_year_features.csv", dtype={"ticker": str})
     calib_df = pd.read_csv(out_dir / "calibration46_multi_year_features.csv", dtype={"ticker": str})
     oos_df = pd.read_csv(out_dir / "oos35_multi_year_features.csv", dtype={"ticker": str})
+    calib_dist = pd.read_csv(out_dir / "calibration46_stage_distribution.csv")
+    oos_dist = pd.read_csv(out_dir / "oos35_stage_distribution.csv")
 
     assert len(tm_df) == 13
     assert len(prem_df) == 13
@@ -89,6 +93,8 @@ def test_artifact_row_counts_and_provenance():
     assert len(early_df) == 4
     assert len(calib_df) == 46
     assert len(oos_df) == 35
+    assert len(calib_dist) > 0
+    assert len(oos_dist) > 0
     assert (out_dir / "focus_026910_multi_year_profile.json").exists()
     assert (out_dir / "focus_038390_multi_year_profile.json").exists()
 
@@ -101,6 +107,29 @@ def test_human_cohort_roster_exactness():
     assert set(early_df["ticker"]) == expected_early
 
 
+def test_research_summary_separation_linkage_and_zero_promising():
+    """Verify research_summary.json strictly derives from df_sep with 0 promising features."""
+    out_dir = _REPO_ROOT / "artifacts" / "stage_v04_multi_year_research"
+    df_sep = pd.read_csv(out_dir / "feature_separation_summary.csv")
+    summary = json.loads((out_dir / "research_summary.json").read_text(encoding="utf-8"))
+
+    promising_count = (df_sep["disposition"] == "PROMISING_GENERALIZABLE").sum()
+    assert promising_count == 0
+    assert len(summary["promising_generalizable_features"]) == 0
+    assert summary["final_recommendation"] == "NO_USEFUL_MULTI_YEAR_FEATURE_FOUND"
+    assert summary["candidate_rule_proposal"] == "NONE"
+
+
+def test_report_source_csv_renderer_linkage():
+    """Verify renderer output matches committed source CSVs exactly."""
+    out_dir = _REPO_ROOT / "artifacts" / "stage_v04_multi_year_research"
+    tm_df = pd.read_csv(out_dir / "transition_match13_multi_year_features.csv", dtype={"ticker": str})
+    ascii_table = render_multi_year_table_ascii(tm_df)
+    assert "003100" in ascii_table
+    assert "선광" in ascii_table
+    assert f"{float(tm_df.iloc[0]['distance_to_resistance_5y']):.4f}" in ascii_table
+
+
 @pytest.mark.skipif(not _HAS_CACHE, reason="Cache unavailable")
 def test_026910_snapshot_future_data_exclusion():
     """Verify 026910 point-in-time calculation strictly excludes post-snapshot data."""
@@ -108,7 +137,6 @@ def test_026910_snapshot_future_data_exclusion():
     daily = cache.load("026910")
     feat = extract_multi_year_features("026910", "광진실업", daily, "2026-08-14")
 
-    # In 2026-08-14 snapshot, 026910 5y low was recent (months_since_5y_low <= 6)
     assert feat.months_since_5y_low <= 6
     assert feat.years_since_5y_high > 4.0
 
