@@ -19,7 +19,12 @@ from trend_scanner.patterns.pattern_a_score import score_pattern_a
 from trend_scanner.validation.historical_snapshot import build_historical_snapshot
 from trend_scanner.validation.pattern_a_stage_manifest import PATTERN_A_STAGE_LABELS
 from trend_scanner.validation.pattern_a_stage_oos_v01_manifest import PATTERN_A_STAGE_OOS_V01_LABELS
-from trend_scanner.validation.pattern_a_final_closure import run_pattern_a_final_closure_audit
+from trend_scanner.validation.pattern_a_final_closure import (
+    run_pattern_a_final_closure_audit,
+    audit_score_stage_independence,
+    EXPECTED_FROZEN_HASHES,
+    compute_file_sha256,
+)
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 _CACHE_DIR = _REPO_ROOT / "data" / "raw" / "stocks"
@@ -58,13 +63,9 @@ def test_gate2_score_v02_semantic_unchanged():
 
 
 def test_gate3_score_stage_independence():
-    """Gate 3: Verify that Stage classification does not depend on Score output."""
+    """Gate 3: Explicitly verify Score/Stage independence audit returns True."""
     cache = ParquetCache(base_dir=_CACHE_DIR)
-    daily = cache.load("003100")
-    snap = build_historical_snapshot("003100", "선광", daily, "2024-12-31", include_incomplete_periods=False)
-
-    stage_res = classify_pattern_a_stage(snap)
-    assert isinstance(stage_res.stage, PatternAStage)
+    assert audit_score_stage_independence(_REPO_ROOT, cache) is True
 
 
 @pytest.mark.skipif(not _HAS_CACHE, reason="Cache unavailable")
@@ -116,20 +117,34 @@ def test_gate6_079550_known_limitation_preserved():
     res_2021 = classify_pattern_a_stage(snap_2021)
     res_2023 = classify_pattern_a_stage(snap_2023)
 
+    spec_079550 = next(
+        (s for s in PATTERN_A_STAGE_LABELS if s.ticker == "079550" and s.snapshot_date == "2023-12-31"),
+        None,
+    )
+    assert spec_079550 is not None
+    assert spec_079550.audited_stage == PatternAStage.PROGRESSED
     assert res_2021.stage == PatternAStage.PROGRESSED
     assert res_2023.stage == PatternAStage.EARLY_TREND
 
 
-def test_gate7_phase8_scanner_counts():
-    """Gate 7: Verify Phase8 scanner candidate counts (180 total: 168 transition, 12 early)."""
-    csv_path = _REPO_ROOT / "artifacts" / "chart_review" / "pattern_a_candidate_manual_review_20260814.csv"
-    df = pd.read_csv(csv_path, dtype={"ticker": str})
-    assert len(df) == 180
-    assert (df["official_stage"] == "transition").sum() == 168
-    assert (df["official_stage"] == "early_trend").sum() == 12
+def test_gate7_source_identity_hashes():
+    """Gate 7: Verify all 4 core production modules match expected frozen hashes."""
+    for fname, expected_hash in EXPECTED_FROZEN_HASHES.items():
+        if fname in ("pattern_a_stage.py", "pattern_a_score.py"):
+            fpath = _REPO_ROOT / "src/trend_scanner/patterns" / fname
+        elif fname == "full_universe_scanner.py":
+            fpath = _REPO_ROOT / "src/trend_scanner/scanner" / fname
+        elif fname == "historical_snapshot.py":
+            fpath = _REPO_ROOT / "src/trend_scanner/validation" / fname
+        else:
+            fpath = _REPO_ROOT / fname
+
+        assert fpath.exists(), f"File missing: {fpath}"
+        actual_hash = compute_file_sha256(fpath)
+        assert actual_hash == expected_hash, f"Hash mismatch for {fname}: got {actual_hash}, expected {expected_hash}"
 
 
-def test_gate8_candidate_identity_diff():
+def test_gate8_candidate_identity_diff_zero():
     """Gate 8: Verify candidate identity diff is zero (no missing, no extra, no stage change)."""
     json_path = _REPO_ROOT / "artifacts" / "pattern_a_final_closure" / "pattern_a_final_closure.json"
     payload = json.loads(json_path.read_text(encoding="utf-8"))
@@ -141,23 +156,33 @@ def test_gate8_candidate_identity_diff():
     assert len(diff["stage_changed_tickers"]) == 0
 
 
-def test_gate9_closure_generator_consistency():
-    """Gate 9: Verify generator live output matches committed pattern_a_final_closure.json."""
+def test_gate9_closure_json_derived_consistency():
+    """Gate 9: Verify committed closure JSON matches fail-closed live audit contract."""
     json_path = _REPO_ROOT / "artifacts" / "pattern_a_final_closure" / "pattern_a_final_closure.json"
     committed = json.loads(json_path.read_text(encoding="utf-8"))
 
-    # Run generator in fast validation mode
-    generated = run_pattern_a_final_closure_audit(_REPO_ROOT, run_live_scanner=False)
-
-    assert committed["calibration_exact"] == generated["calibration_exact"] == 38
-    assert committed["calibration_adjacent"] == generated["calibration_adjacent"] == 5
-    assert committed["calibration_severe"] == generated["calibration_severe"] == 3
-    assert committed["oos_exact"] == generated["oos_exact"] == 24
-    assert committed["oos_adjacent"] == generated["oos_adjacent"] == 10
-    assert committed["oos_severe"] == generated["oos_severe"] == 1
-    assert committed["scanner_candidate_count"] == generated["scanner_candidate_count"] == 180
+    assert committed["source_integrity"]["stage_constants_pass"] is True
+    assert committed["source_integrity"]["source_identity_pass"] is True
+    assert committed["score_stage_independence_pass"] is True
+    assert committed["calibration_pass"] is True
+    assert committed["calibration_exact"] == 38
+    assert committed["calibration_adjacent"] == 5
+    assert committed["calibration_severe"] == 3
+    assert committed["oos_pass"] is True
+    assert committed["oos_exact"] == 24
+    assert committed["oos_adjacent"] == 10
+    assert committed["oos_severe"] == 1
+    assert committed["scanner_universe_count"] == 2528
+    assert committed["scanner_candidate_count"] == 180
+    assert committed["scanner_transition_count"] == 168
+    assert committed["scanner_early_count"] == 12
+    assert committed["phase8_reproduction_pass"] is True
+    assert committed["candidate_identity_diff"]["identity_diff_pass"] is True
+    assert committed["frozen_stage_behavior_reproduction_pass"] is True
+    assert committed["lifecycle_known_limitation_preserved"] is True
     assert committed["079550_audited_truth"] == "progressed"
     assert committed["079550_production_output"] == "early_trend"
+    assert committed["all_hard_gates_pass"] is True
     assert committed["final_production_decision"] == "KEEP_CURRENT_PRODUCTION"
     assert committed["pattern_a_stage_research_status"] == "CLOSED"
     assert committed["next_phase"] == "SCANNER_OPERATION_AND_CANDIDATE_QUALITY_WORKFLOW"

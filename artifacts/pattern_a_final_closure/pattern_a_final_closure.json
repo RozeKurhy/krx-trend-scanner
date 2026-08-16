@@ -1,42 +1,62 @@
 {
   "closure_version": "v0.1_final_production_closure",
   "closure_date": "2026-08-16",
-  "source_checkpoint": "6b266fb5a8faa43c6daa7f1bef56315b03855f8e",
+  "source_checkpoint": "b4478449465f46511d23df62f2928130f9ac364d",
   "stage_production_version": "v0.1",
   "stage_frozen_commit": "43ee01ca086c5d33bbf195bed67e161f5a315bf5",
   "score_production_version": "v0.2",
   "scanner_frozen_commit": "13ab6f416a0de77e89c7e0412467eb393e07c6dc",
   "source_integrity": {
     "stage_constants_pass": true,
-    "source_hashes": {
-      "pattern_a_stage.py": "543499b0dfc21946405e76b6d47938d0a0697d440fe4087c800bdb0948d4676e",
-      "pattern_a_score.py": "62ca9b54837164b7e6aa6d50290c728de12c7b99db03af1760df37ab2206de19",
-      "full_universe_scanner.py": "6191be6f84aca63f7f3a813c94b272582cacb517adf15dd9ceb74c357c6d8e60",
-      "historical_snapshot.py": "91af0b3670bfcd202a71110f2809047199e35959ef0f03163b8a9c8b29ea8597"
+    "source_identity_pass": true,
+    "source_audit": {
+      "pattern_a_stage.py": {
+        "expected_frozen_hash": "543499b0dfc21946405e76b6d47938d0a0697d440fe4087c800bdb0948d4676e",
+        "actual_head_hash": "543499b0dfc21946405e76b6d47938d0a0697d440fe4087c800bdb0948d4676e",
+        "match": true
+      },
+      "pattern_a_score.py": {
+        "expected_frozen_hash": "62ca9b54837164b7e6aa6d50290c728de12c7b99db03af1760df37ab2206de19",
+        "actual_head_hash": "62ca9b54837164b7e6aa6d50290c728de12c7b99db03af1760df37ab2206de19",
+        "match": true
+      },
+      "full_universe_scanner.py": {
+        "expected_frozen_hash": "6191be6f84aca63f7f3a813c94b272582cacb517adf15dd9ceb74c357c6d8e60",
+        "actual_head_hash": "6191be6f84aca63f7f3a813c94b272582cacb517adf15dd9ceb74c357c6d8e60",
+        "match": true
+      },
+      "historical_snapshot.py": {
+        "expected_frozen_hash": "91af0b3670bfcd202a71110f2809047199e35959ef0f03163b8a9c8b29ea8597",
+        "actual_head_hash": "91af0b3670bfcd202a71110f2809047199e35959ef0f03163b8a9c8b29ea8597",
+        "match": true
+      }
     }
   },
+  "score_stage_independence_pass": true,
   "calibration_exact": 38,
   "calibration_adjacent": 5,
   "calibration_severe": 3,
+  "calibration_pass": true,
   "oos_exact": 24,
   "oos_adjacent": 10,
   "oos_severe": 1,
+  "oos_pass": true,
   "scanner_universe_count": 2528,
   "scanner_candidate_count": 180,
   "scanner_transition_count": 168,
   "scanner_early_count": 12,
+  "phase8_reproduction_pass": true,
   "candidate_identity_diff": {
     "missing_tickers": [],
     "extra_tickers": [],
     "stage_changed_tickers": [],
     "identity_diff_pass": true
   },
-  "score_stage_independence": "PASS",
   "frozen_stage_behavior_reproduction_pass": true,
   "lifecycle_known_limitation_preserved": true,
   "079550_audited_truth": "progressed",
   "079550_production_output": "early_trend",
-  "phase8_reproduction_pass": true,
+  "all_hard_gates_pass": true,
   "known_limitation_count": 8,
   "stage_v02_status": "HOLD / NOT PRODUCTION",
   "stage_v03_status": "CLOSED",
