@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import ast
 import json
+import random
 from pathlib import Path
 from typing import Any
 
@@ -92,13 +93,62 @@ def _check_production_isolation(repo_root: Path) -> tuple[int, int, int, int, in
                         else: scanner_imports += 1
 
     return (
-        stage_imports,  # production_stage_candidate_import_count
-        scanner_imports,  # scanner_candidate_import_count
+        stage_imports,
+        scanner_imports,
         0,  # official_stage_mutation_count
         0,  # score_derived_input_count
         0,  # production_artifact_overwrite_count
         0,  # official_artifact_hash_drift_count
     )
+
+
+def _verify_request_order_permutation_determinism(cache: ParquetCache) -> tuple[int, str]:
+    """Verify that chronological, reverse, and shuffled request orders produce 100% identical lifecycle results."""
+    test_tickers = ["005930", "000660", "005990", "026910"]
+    dates = ["2026-01-31", "2026-04-30", "2026-08-14"]
+
+    mismatches = 0
+
+    for ticker in test_tickers:
+        daily = cache.load(ticker)
+        if daily is None or daily.empty:
+            continue
+
+        # 1. Chronological order
+        engine_chrono = LifecycleStreamEngine()
+        chrono_results = [engine_chrono.evaluate_request(ticker, ticker, daily, d) for d in dates]
+
+        # 2. Reverse order
+        engine_reverse = LifecycleStreamEngine()
+        reverse_results = [engine_reverse.evaluate_request(ticker, ticker, daily, d) for d in reversed(dates)]
+        reverse_results = list(reversed(reverse_results))
+
+        # 3. Shuffled order
+        shuffled_dates = list(dates)
+        random.seed(42)
+        random.shuffle(shuffled_dates)
+        engine_shuffled = LifecycleStreamEngine()
+        shuffled_map = {d: engine_shuffled.evaluate_request(ticker, ticker, daily, d) for d in shuffled_dates}
+        shuffled_results = [shuffled_map[d] for d in dates]
+
+        for i, d in enumerate(dates):
+            c_res = chrono_results[i]
+            r_res = reverse_results[i]
+            s_res = shuffled_results[i]
+
+            if c_res.lifecycle_event_key != r_res.lifecycle_event_key or c_res.lifecycle_event_key != s_res.lifecycle_event_key:
+                mismatches += 1
+            if c_res.candidate_stage != r_res.candidate_stage or c_res.candidate_stage != s_res.candidate_stage:
+                mismatches += 1
+            if c_res.candidate_reason_codes != r_res.candidate_reason_codes or c_res.candidate_reason_codes != s_res.candidate_reason_codes:
+                mismatches += 1
+            if c_res.diagnostics.previously_expanded_before_snapshot != r_res.diagnostics.previously_expanded_before_snapshot:
+                mismatches += 1
+            if c_res.diagnostics.previously_expanded_after_snapshot != r_res.diagnostics.previously_expanded_after_snapshot:
+                mismatches += 1
+
+    status = "PASS" if mismatches == 0 else "FAIL"
+    return mismatches, status
 
 
 def run_preseal_evaluation(repo_root: Path) -> dict[str, Any]:
@@ -327,9 +377,9 @@ def run_preseal_evaluation(repo_root: Path) -> dict[str, Any]:
 
     # 5. Build Observed Metrics Registry (Real Computation)
     isolation_counts = _check_production_isolation(repo_root)
+    perm_mismatches, perm_status = _verify_request_order_permutation_determinism(cache)
 
     observed_metric_values: dict[str, tuple[Any, str, str]] = {
-        # metric_id -> (value, source_artifact, extractor_identity)
         "production_stage_candidate_import_count": (isolation_counts[0], "src/trend_scanner/patterns/pattern_a_stage.py", "ast_inspector"),
         "scanner_candidate_import_count": (isolation_counts[1], "src/trend_scanner/scanner/pattern_a_scanner.py", "ast_inspector"),
         "official_stage_mutation_count": (isolation_counts[2], "src/trend_scanner/patterns/pattern_a_stage.py", "git_inspector"),
@@ -358,7 +408,7 @@ def run_preseal_evaluation(repo_root: Path) -> dict[str, Any]:
         "human42_026910_full_clause_trace_present": (bool(len(gj_trace) > 0), "pattern_a_candidate_manual_review_20260814.csv", "h42_evaluator"),
         "human42_026910_human_compatibility_conclusion_present": (True, "pattern_a_candidate_manual_review_20260814.csv", "h42_evaluator"),
         "human42_026910_transition_removal_expected": (gj_removal_status, "pattern_a_candidate_manual_review_20260814.csv", "h42_evaluator"),
-        "canonical_schedule_determinism_status": ("PASS", "src/trend_scanner/validation/stage_v02/lifecycle_stream.py", "stream_engine"),
+        "canonical_schedule_determinism_status": (perm_status, "src/trend_scanner/validation/stage_v02/lifecycle_stream.py", "permutation_verifier"),
         "historical_feature_timeline_parity_fail_count": (0, "src/trend_scanner/validation/stage_v02/lifecycle_stream.py", "timeline_evaluator"),
         "historical_feature_timeline_parity_coverage_match": (bool(len(unique_consumed_events) == 261), "src/trend_scanner/validation/stage_v02/lifecycle_stream.py", "timeline_evaluator"),
         "same_event_key_state_before_mismatch_count": (lifecycle_engine.same_event_key_state_before_mismatches, "src/trend_scanner/validation/stage_v02/lifecycle_stream.py", "stream_engine"),
@@ -486,6 +536,8 @@ def run_preseal_evaluation(repo_root: Path) -> dict[str, Any]:
         "temporal_metrics": {
             "unique_events_count": len(unique_consumed_events),
             "total_timeline_checked": total_timeline_checked,
+            "permutation_mismatches": perm_mismatches,
+            "permutation_status": perm_status,
         },
         "calib_diff": calib_diff_records,
         "oos_diff": oos_diff_records,

@@ -1,4 +1,4 @@
-"""PRESEAL Contracts, Gate Records, and Semantic Binding for Stage v0.2."""
+"""PRESEAL Contracts, Gate Records, and Semantic Enforcement for Stage v0.2."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from trend_scanner.validation.stage_v02.allowlist import (
     compute_canonical_sha256,
 )
 
-PRESEAL_CONTRACT_VERSION: str = "2.0.0"
+PRESEAL_CONTRACT_VERSION: str = "2.1.0"
 
 
 class GateStatus(str, Enum):
@@ -221,11 +221,36 @@ def evaluate_frozen_gate_predicate(
     contract_record: GateContractRecord,
     observed_metric: MetricRegistryRecord,
 ) -> GateEvaluationResult:
-    """Evaluate frozen contract predicate against real observed metric value without hardcoding."""
-    val = observed_metric.metric_value
+    """Evaluate frozen contract predicate with strict normative predicate hash enforcement."""
     gate_id = contract_record.gate_id
     pred_def = contract_record.normative_predicate_definition
 
+    # 1. Enforcement: Recompute and verify predicate hash integrity
+    expected_pred_hash = compute_canonical_sha256({"gate_id": gate_id, "predicate": pred_def})
+    if expected_pred_hash != contract_record.normative_predicate_hash:
+        return GateEvaluationResult(
+            gate_id=gate_id,
+            status=GateStatus.FAIL,
+            observed_value=observed_metric.metric_value,
+            target_criteria=pred_def,
+            evidence_source=observed_metric.source_artifact_id,
+            details=f"Predicate Hash Binding Violation: expected {expected_pred_hash} != {contract_record.normative_predicate_hash}",
+        )
+
+    # 2. Enforcement: Verify metric_id binding
+    if observed_metric.metric_id != contract_record.metric_id:
+        return GateEvaluationResult(
+            gate_id=gate_id,
+            status=GateStatus.FAIL,
+            observed_value=observed_metric.metric_value,
+            target_criteria=pred_def,
+            evidence_source=observed_metric.source_artifact_id,
+            details=f"Metric ID Binding Mismatch: expected {contract_record.metric_id} != {observed_metric.metric_id}",
+        )
+
+    val = observed_metric.metric_value
+
+    # 3. Missing / None metric value -> NOT_EXECUTED
     if val is None:
         return GateEvaluationResult(
             gate_id=gate_id,
@@ -233,10 +258,10 @@ def evaluate_frozen_gate_predicate(
             observed_value=None,
             target_criteria=pred_def,
             evidence_source=observed_metric.source_artifact_id,
-            details="Observed value is None",
+            details="Observed value is None (Not Executed)",
         )
 
-    # Dynamic predicate evaluation
+    # 4. Dynamic predicate evaluation
     try:
         passed = eval(pred_def, {"value": val})
     except Exception as e:

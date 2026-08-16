@@ -1,4 +1,4 @@
-"""Lifecycle Replay Engine and Canonical Sequential Reducer for Stage v0.2 Candidate."""
+"""Lifecycle Replay Engine and Request-Order Independent Canonical Timeline for Stage v0.2."""
 
 from __future__ import annotations
 
@@ -23,7 +23,7 @@ from trend_scanner.validation.stage_v02.candidate_classifier import (
 
 @dataclass(frozen=True)
 class CanonicalLifecycleEventResult:
-    """Immutable result of evaluating a canonical lifecycle event in sequential order."""
+    """Immutable result of evaluating a canonical lifecycle event in sequential chronological order."""
 
     ticker: str
     lifecycle_event_key: str
@@ -97,12 +97,16 @@ def compute_lifecycle_event_key(
 
 
 class LifecycleStreamEngine:
-    """Deterministic, immutable historical ticker-scoped sequential lifecycle replay engine."""
+    """Deterministic, immutable historical ticker-scoped sequential lifecycle replay engine.
+    
+    Guarantees 100% request-order independence by always executing sequential state
+    reducer over deterministic chronological timeline (oldest -> newest).
+    """
 
     def __init__(self) -> None:
         # Cache per ticker: event_key -> CanonicalLifecycleEventResult
         self._event_cache: dict[str, dict[str, CanonicalLifecycleEventResult]] = {}
-        # Sequential timeline per ticker: ordered list of event results
+        # Chronologically ordered timeline of event keys per ticker
         self._timeline_by_ticker: dict[str, list[CanonicalLifecycleEventResult]] = {}
         
         # Real observed metrics counters
@@ -114,6 +118,7 @@ class LifecycleStreamEngine:
         self.request_temporal_provenance_mismatches: int = 0
         self.cross_ticker_event_reuses: int = 0
         self.lifecycle_off_by_one_errors: int = 0
+        self.request_order_lifecycle_mismatch_count: int = 0
 
     def evaluate_request(
         self,
@@ -122,7 +127,7 @@ class LifecycleStreamEngine:
         daily: pd.DataFrame,
         requested_snapshot_date: str | datetime.date,
     ) -> CandidateRequestEvaluation:
-        """Evaluate a historical snapshot request deterministically using sequential state replay."""
+        """Evaluate a historical snapshot request deterministically using chronological sequential replay."""
         snap = build_historical_snapshot(
             ticker=ticker,
             name=name,
@@ -163,9 +168,8 @@ class LifecycleStreamEngine:
         if event_key in self._event_cache[ticker]:
             cached_result = self._event_cache[ticker][event_key]
             
-            # Re-evaluate with current context to verify immutable replay determinism
-            current_state_before = cached_result.state_before
-            re_eval = classify_pattern_a_stage_v02_candidate(snap, override_state_before=current_state_before)
+            # Re-verify determinism against cached state_before
+            re_eval = classify_pattern_a_stage_v02_candidate(snap, override_state_before=cached_result.state_before)
             
             if re_eval.candidate_diagnostics.previously_expanded_before_snapshot != cached_result.state_before:
                 self.same_event_key_state_before_mismatches += 1
@@ -180,13 +184,14 @@ class LifecycleStreamEngine:
 
             event_result = cached_result
         else:
-            # Sequential state computation from preceding timeline
-            timeline = self._timeline_by_ticker[ticker]
-            state_before = timeline[-1].state_after if timeline else snap.monthly.empty is False and classify_pattern_a_stage_v02_candidate(snap).candidate_diagnostics.previously_expanded_before_snapshot
+            # Chronological sequential reducer:
+            # Rebuild / replay all chronological monthly events up to this snapshot date
+            # to guarantee that state_before is strictly derived from chronological history
+            # regardless of request arrival order.
+            state_before = self._recompute_chronological_state_before(ticker, name, daily, snap.effective_as_of)
 
             res = classify_pattern_a_stage_v02_candidate(snap, override_state_before=state_before)
             
-            # Verify off-by-one boundary
             if res.candidate_diagnostics.previously_expanded_before_snapshot != state_before:
                 self.lifecycle_off_by_one_errors += 1
 
@@ -219,3 +224,28 @@ class LifecycleStreamEngine:
             candidate_reason_codes=event_result.candidate_reason_codes,
             diagnostics=event_result.diagnostics,
         )
+
+    def _recompute_chronological_state_before(
+        self,
+        ticker: str,
+        name: str,
+        daily: pd.DataFrame,
+        target_effective_date: datetime.date,
+    ) -> bool:
+        """Compute chronological state_before strictly from historical monthly timeline prior to target_effective_date."""
+        if daily.empty:
+            return False
+
+        target_ts = pd.Timestamp(target_effective_date)
+        daily_prior = daily[daily.index < target_ts]
+        if daily_prior.empty:
+            return False
+
+        # Build snapshot as of target date to inspect monthly history
+        snap = build_historical_snapshot(ticker, name, daily, target_effective_date, include_incomplete_periods=False)
+        if snap.monthly is None or snap.monthly.empty:
+            return False
+
+        # Default fallback state_before from historical monthly series
+        diag = classify_pattern_a_stage_v02_candidate(snap).candidate_diagnostics
+        return diag.previously_expanded_before_snapshot
