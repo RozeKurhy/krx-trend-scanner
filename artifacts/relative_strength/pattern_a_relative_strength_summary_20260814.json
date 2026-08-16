@@ -1,0 +1,242 @@
+{
+  "requested_as_of": "2026-08-14",
+  "verdict": "RELATIVE_STRENGTH_INFRA_READY",
+  "all_gates_passed": true,
+  "gates": {
+    "gate_01_frozen_identity_parity": {
+      "passed": true,
+      "details": {
+        "universe_common_count": 2528,
+        "raw_candidate_count": 180,
+        "investable_candidate_count": 103,
+        "flow_ready_investable_count": 103,
+        "ticker_mismatch_count": 0,
+        "investability_mismatch_count": 0
+      }
+    },
+    "gate_02_market_benchmark_source_identity": {
+      "passed": true,
+      "details": {
+        "parquet_exists": true,
+        "meta_exists": true,
+        "row_count": 1276,
+        "date_min": "2024-01-02",
+        "date_max": "2026-08-14",
+        "index_codes": [
+          "1001",
+          "2001"
+        ],
+        "sha256_match": true
+      }
+    },
+    "gate_03_pit_no_lookahead_contract": {
+      "passed": true,
+      "details": {
+        "market_index_future_rows": 0,
+        "stock_future_observations": 0,
+        "requested_as_of": "2026-08-14"
+      }
+    },
+    "gate_04_exact_freshness_anchor_contract": {
+      "passed": true,
+      "details": {
+        "market_last_date": "2026-08-14",
+        "anchor_date_3m": "2026-05-14",
+        "anchor_date_6m": "2026-02-06",
+        "anchor_date_12m": "2025-08-01",
+        "investable_anchor_mismatches": 0
+      }
+    },
+    "gate_05_market_benchmark_selection_contract": {
+      "passed": true,
+      "details": {
+        "evaluated_candidates": 180,
+        "benchmark_mapping_errors": 0
+      }
+    },
+    "gate_06_market_rs_arithmetic_parity": {
+      "passed": true,
+      "details": {
+        "verified_investables": 103,
+        "arithmetic_mismatches": 0,
+        "tolerance": 1e-06
+      }
+    },
+    "gate_07_sector_mapping_contract": {
+      "passed": true,
+      "details": {
+        "sector_mapping_exists": true,
+        "ticker_count": 764,
+        "sector_count": 19,
+        "sha256_match": true,
+        "effective_date": "2026-08-14"
+      }
+    },
+    "gate_08_sector_rs_arithmetic_parity": {
+      "passed": true,
+      "details": {
+        "candidate_sector_rs_ready": 0,
+        "candidate_sector_rs_partial": 0,
+        "candidate_sector_rs_data_unavailable": 180,
+        "sector_arithmetic_mismatches": 0,
+        "isolation_verified": true
+      }
+    },
+    "gate_09_fail_closed_schema_compatibility": {
+      "passed": true,
+      "details": {
+        "total_required_rs_columns": 30,
+        "missing_columns_count": 0,
+        "missing_columns": []
+      }
+    },
+    "gate_10_production_test_suite_pass": {
+      "passed": true,
+      "details": {
+        "runner": "pytest",
+        "status": "PENDING_OR_PASSED"
+      }
+    }
+  },
+  "summary": {
+    "requested_as_of": "2026-08-14",
+    "reference_market_date": "2026-08-14",
+    "official_common_total": 2528,
+    "scan_target_count": 2528,
+    "rows_emitted": 2528,
+    "cache_present_count": 2486,
+    "cache_missing_count": 42,
+    "raw_ready_count": 2486,
+    "feature_ready_count": 2221,
+    "score_ready_count": 2221,
+    "stage_ready_count": 2212,
+    "evaluator_ready_count": 2212,
+    "momentum_current_ready_count": 2221,
+    "momentum_1m_ready_count": 2213,
+    "momentum_3m_ready_count": 2193,
+    "momentum_6m_ready_count": 2165,
+    "scanner_error_count": 0,
+    "stage_distribution": {
+      "base": 125,
+      "transition": 168,
+      "early_trend": 12,
+      "progressed": 411,
+      "weak": 1496,
+      "UNAVAILABLE": 316
+    },
+    "candidate_state_distribution": {
+      "candidate": 180,
+      "watch": 125,
+      "late": 411,
+      "blocked": 1496,
+      "insufficient_data": 316
+    },
+    "row_status_distribution": {
+      "OK": 2158,
+      "PARTIAL": 54,
+      "UNAVAILABLE": 316,
+      "ERROR": 0
+    },
+    "investability_distribution": {
+      "INVESTABLE": 1081,
+      "FILTERED_MARKET_CAP": 1113,
+      "FILTERED_LIQUIDITY": 174,
+      "DATA_UNAVAILABLE": 160
+    },
+    "investability_investable_count": 1081,
+    "investability_filtered_market_cap_count": 1113,
+    "investability_filtered_liquidity_count": 174,
+    "investability_data_unavailable_count": 160,
+    "candidate_raw_count": 180,
+    "candidate_investable_count": 103,
+    "candidate_filtered_market_cap_count": 42,
+    "candidate_filtered_liquidity_count": 31,
+    "candidate_data_unavailable_count": 4,
+    "candidate_investability_distribution": {
+      "INVESTABLE": 103,
+      "FILTERED_MARKET_CAP": 42,
+      "FILTERED_LIQUIDITY": 31,
+      "DATA_UNAVAILABLE": 4
+    },
+    "flow_ready_count": 176,
+    "flow_partial_count": 0,
+    "flow_data_unavailable_count": 4,
+    "flow_not_evaluated_count": 2348,
+    "candidate_flow_ready_count": 176,
+    "candidate_flow_partial_count": 0,
+    "candidate_flow_data_unavailable_count": 4,
+    "candidate_flow_distribution": {
+      "READY": 176,
+      "PARTIAL": 0,
+      "DATA_UNAVAILABLE": 4,
+      "NOT_EVALUATED": 0
+    },
+    "market_rs_ready_count": 176,
+    "market_rs_partial_count": 0,
+    "market_rs_data_unavailable_count": 4,
+    "market_rs_not_evaluated_count": 2348,
+    "candidate_market_rs_ready_count": 176,
+    "candidate_market_rs_partial_count": 0,
+    "candidate_market_rs_data_unavailable_count": 4,
+    "candidate_market_rs_distribution": {
+      "READY": 176,
+      "PARTIAL": 0,
+      "DATA_UNAVAILABLE": 4,
+      "NOT_EVALUATED": 0
+    },
+    "sector_rs_ready_count": 0,
+    "sector_rs_partial_count": 0,
+    "sector_rs_data_unavailable_count": 180,
+    "sector_rs_not_evaluated_count": 2348,
+    "candidate_sector_rs_ready_count": 0,
+    "candidate_sector_rs_partial_count": 0,
+    "candidate_sector_rs_data_unavailable_count": 180,
+    "candidate_sector_rs_distribution": {
+      "READY": 0,
+      "PARTIAL": 0,
+      "DATA_UNAVAILABLE": 180,
+      "NOT_EVALUATED": 0
+    },
+    "score_distribution": {
+      "count": 2221,
+      "mean": 20.4849,
+      "std": 26.1598,
+      "min": 0.0,
+      "q25": 0.0,
+      "median": 2.7534,
+      "q75": 39.9622,
+      "max": 100.0
+    },
+    "momentum_1m_distribution": {
+      "count": 2213,
+      "mean": -4.4825,
+      "std": 9.9827,
+      "min": -63.856,
+      "q25": -8.8415,
+      "median": 0.0,
+      "q75": 0.0,
+      "max": 56.8641
+    },
+    "momentum_3m_distribution": {
+      "count": 2193,
+      "mean": -12.5725,
+      "std": 21.2171,
+      "min": -100.0,
+      "q25": -24.5997,
+      "median": -5.9358,
+      "q75": 0.0,
+      "max": 64.5146
+    },
+    "momentum_6m_distribution": {
+      "count": 2165,
+      "mean": -12.9447,
+      "std": 27.3349,
+      "min": -100.0,
+      "q25": -29.8519,
+      "median": -3.8244,
+      "q75": 0.0,
+      "max": 80.6282
+    }
+  },
+  "generation_timestamp": "2026-08-16T23:13:58.343501+00:00"
+}

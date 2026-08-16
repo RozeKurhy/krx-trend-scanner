@@ -55,6 +55,11 @@ from trend_scanner.flow.foreign_flow import (
     ForeignFlowFeatureResult,
     compute_foreign_flow_features,
 )
+from trend_scanner.relative_strength.relative_strength import (
+    RelativeStrengthDataStatus,
+    RelativeStrengthFeatureResult,
+    compute_relative_strength_features,
+)
 from trend_scanner.universe.asset_classifier import classify_asset_type
 from trend_scanner.universe.krx_universe import (
     get_latest_market_trading_date,
@@ -191,7 +196,40 @@ class PatternAUniverseScanRow:
     foreign_net_buy_avg_20d: float | None = None
     foreign_net_buy_avg_60d: float | None = None
 
-    # 8. Row Execution Status & Error Provenance
+    # 8. Relative Strength Layer (Phase 12 Relative Strength Infrastructure)
+    market_rs_data_status: str = "NOT_EVALUATED"
+    market_benchmark_name: str | None = None
+    market_benchmark_code: str | None = None
+    market_benchmark_last_observation_date: str | None = None
+    stock_return_3m: float | None = None
+    stock_return_6m: float | None = None
+    stock_return_12m: float | None = None
+    market_return_3m: float | None = None
+    market_return_6m: float | None = None
+    market_return_12m: float | None = None
+    market_rs_3m: float | None = None
+    market_rs_6m: float | None = None
+    market_rs_12m: float | None = None
+    market_anchor_date_3m: str | None = None
+    market_anchor_date_6m: str | None = None
+    market_anchor_date_12m: str | None = None
+
+    sector_rs_data_status: str = "NOT_EVALUATED"
+    sector_name: str | None = None
+    sector_code: str | None = None
+    sector_benchmark_code: str | None = None
+    sector_benchmark_last_observation_date: str | None = None
+    sector_return_3m: float | None = None
+    sector_return_6m: float | None = None
+    sector_return_12m: float | None = None
+    sector_rs_3m: float | None = None
+    sector_rs_6m: float | None = None
+    sector_rs_12m: float | None = None
+    sector_anchor_date_3m: str | None = None
+    sector_anchor_date_6m: str | None = None
+    sector_anchor_date_12m: str | None = None
+
+    # 9. Row Execution Status & Error Provenance
     row_status: ScannerRowStatus = ScannerRowStatus.UNAVAILABLE
     error_type: str | None = None
     error_message: str | None = None
@@ -280,6 +318,36 @@ class PatternAUniverseScanRow:
             "foreign_net_buy_avg_5d": self.foreign_net_buy_avg_5d,
             "foreign_net_buy_avg_20d": self.foreign_net_buy_avg_20d,
             "foreign_net_buy_avg_60d": self.foreign_net_buy_avg_60d,
+            "market_rs_data_status": self.market_rs_data_status,
+            "market_benchmark_name": self.market_benchmark_name,
+            "market_benchmark_code": self.market_benchmark_code,
+            "market_benchmark_last_observation_date": self.market_benchmark_last_observation_date,
+            "stock_return_3m": self.stock_return_3m,
+            "stock_return_6m": self.stock_return_6m,
+            "stock_return_12m": self.stock_return_12m,
+            "market_return_3m": self.market_return_3m,
+            "market_return_6m": self.market_return_6m,
+            "market_return_12m": self.market_return_12m,
+            "market_rs_3m": self.market_rs_3m,
+            "market_rs_6m": self.market_rs_6m,
+            "market_rs_12m": self.market_rs_12m,
+            "market_anchor_date_3m": self.market_anchor_date_3m,
+            "market_anchor_date_6m": self.market_anchor_date_6m,
+            "market_anchor_date_12m": self.market_anchor_date_12m,
+            "sector_rs_data_status": self.sector_rs_data_status,
+            "sector_name": self.sector_name,
+            "sector_code": self.sector_code,
+            "sector_benchmark_code": self.sector_benchmark_code,
+            "sector_benchmark_last_observation_date": self.sector_benchmark_last_observation_date,
+            "sector_return_3m": self.sector_return_3m,
+            "sector_return_6m": self.sector_return_6m,
+            "sector_return_12m": self.sector_return_12m,
+            "sector_rs_3m": self.sector_rs_3m,
+            "sector_rs_6m": self.sector_rs_6m,
+            "sector_rs_12m": self.sector_rs_12m,
+            "sector_anchor_date_3m": self.sector_anchor_date_3m,
+            "sector_anchor_date_6m": self.sector_anchor_date_6m,
+            "sector_anchor_date_12m": self.sector_anchor_date_12m,
             "row_status": self.row_status.value,
             "quality_flags": ";".join(self.quality_flags),
             "quality_reason_codes": ";".join(self.quality_reason_codes),
@@ -378,6 +446,25 @@ class PatternAUniverseScanSummary:
     candidate_flow_data_unavailable_count: int = 0
     candidate_flow_distribution: dict[str, int] = field(default_factory=dict)
 
+    # Relative Strength Confirmation Counts (Phase 12 Specification)
+    market_rs_ready_count: int = 0
+    market_rs_partial_count: int = 0
+    market_rs_data_unavailable_count: int = 0
+    market_rs_not_evaluated_count: int = 0
+    candidate_market_rs_ready_count: int = 0
+    candidate_market_rs_partial_count: int = 0
+    candidate_market_rs_data_unavailable_count: int = 0
+    candidate_market_rs_distribution: dict[str, int] = field(default_factory=dict)
+
+    sector_rs_ready_count: int = 0
+    sector_rs_partial_count: int = 0
+    sector_rs_data_unavailable_count: int = 0
+    sector_rs_not_evaluated_count: int = 0
+    candidate_sector_rs_ready_count: int = 0
+    candidate_sector_rs_partial_count: int = 0
+    candidate_sector_rs_data_unavailable_count: int = 0
+    candidate_sector_rs_distribution: dict[str, int] = field(default_factory=dict)
+
     def to_dict(self) -> dict[str, Any]:
         """Summary 딕셔너리 직렬화."""
         return {
@@ -420,6 +507,22 @@ class PatternAUniverseScanSummary:
             "candidate_flow_partial_count": self.candidate_flow_partial_count,
             "candidate_flow_data_unavailable_count": self.candidate_flow_data_unavailable_count,
             "candidate_flow_distribution": self.candidate_flow_distribution,
+            "market_rs_ready_count": self.market_rs_ready_count,
+            "market_rs_partial_count": self.market_rs_partial_count,
+            "market_rs_data_unavailable_count": self.market_rs_data_unavailable_count,
+            "market_rs_not_evaluated_count": self.market_rs_not_evaluated_count,
+            "candidate_market_rs_ready_count": self.candidate_market_rs_ready_count,
+            "candidate_market_rs_partial_count": self.candidate_market_rs_partial_count,
+            "candidate_market_rs_data_unavailable_count": self.candidate_market_rs_data_unavailable_count,
+            "candidate_market_rs_distribution": self.candidate_market_rs_distribution,
+            "sector_rs_ready_count": self.sector_rs_ready_count,
+            "sector_rs_partial_count": self.sector_rs_partial_count,
+            "sector_rs_data_unavailable_count": self.sector_rs_data_unavailable_count,
+            "sector_rs_not_evaluated_count": self.sector_rs_not_evaluated_count,
+            "candidate_sector_rs_ready_count": self.candidate_sector_rs_ready_count,
+            "candidate_sector_rs_partial_count": self.candidate_sector_rs_partial_count,
+            "candidate_sector_rs_data_unavailable_count": self.candidate_sector_rs_data_unavailable_count,
+            "candidate_sector_rs_distribution": self.candidate_sector_rs_distribution,
             "score_distribution": self.score_distribution,
             "momentum_1m_distribution": self.momentum_1m_distribution,
             "momentum_3m_distribution": self.momentum_3m_distribution,
@@ -487,6 +590,13 @@ def scan_pattern_a_universe(
     flow_df: pd.DataFrame | None = None,
     flow_data_path: Path | str | None = None,
     enrich_flow_for_candidates: bool = True,
+    market_index_df: pd.DataFrame | None = None,
+    market_index_path: Path | str | None = None,
+    sector_index_df: pd.DataFrame | None = None,
+    sector_index_path: Path | str | None = None,
+    sector_mapping: dict[str, tuple[str, str]] | None = None,
+    sector_mapping_path: Path | str | None = None,
+    enrich_rs_for_candidates: bool = True,
 ) -> PatternAUniverseScanResult:
     """Official KRX COMMON Universe를 대상으로 Pattern A 스캔을 수행한다.
 
@@ -501,6 +611,13 @@ def scan_pattern_a_universe(
         flow_df: 외부에서 제공된 외국인 수급 DataFrame
         flow_data_path: 외국인 수급 데이터 파일 경로 (Parquet / CSV)
         enrich_flow_for_candidates: Candidate 종목 대상 Flow 피처 산출 여부
+        market_index_df: 외부에서 제공된 대표 시장 지수 DataFrame
+        market_index_path: 대표 시장 지수 데이터 파일 경로 (Parquet / CSV)
+        sector_index_df: 외부에서 제공된 업종 지수 DataFrame
+        sector_index_path: 업종 지수 데이터 파일 경로 (Parquet / CSV)
+        sector_mapping: 종목별 업종 매핑 딕셔너리
+        sector_mapping_path: 종목별 업종 매핑 파일 경로 (CSV)
+        enrich_rs_for_candidates: Candidate 종목 대상 상대강도(RS) 피처 산출 여부
 
     Returns:
         PatternAUniverseScanResult: 통합 결과 객체
@@ -522,8 +639,42 @@ def scan_pattern_a_universe(
     )
 
     # 2. Authoritative Universe 로딩 및 COMMON 종목 필터링
+    repo_root = Path(__file__).resolve().parent.parent.parent.parent
     if universe_securities is None:
-        raw_univ = load_krx_equity_universe(as_of=ref_market_date)
+        req_clean = req_as_of.strftime("%Y%m%d")
+        ref_clean = ref_market_date.replace("-", "")
+        canonical_univ_csv = repo_root / "artifacts/investability" / f"pattern_a_investability_universe_{req_clean}.csv"
+        if not canonical_univ_csv.exists():
+            canonical_univ_csv = repo_root / "artifacts/investability" / f"pattern_a_investability_universe_{ref_clean}.csv"
+
+        canonical_scan_csv = repo_root / "artifacts/scanner" / f"pattern_a_universe_scan_{req_clean}.csv"
+        if not canonical_scan_csv.exists():
+            canonical_scan_csv = repo_root / "artifacts/scanner" / f"pattern_a_universe_scan_{ref_clean}.csv"
+
+        if canonical_univ_csv.exists():
+            df_univ = pd.read_csv(canonical_univ_csv)
+            raw_univ = [
+                UniverseSecurity(
+                    ticker=str(row["ticker"]).zfill(6),
+                    name=str(row["name"]),
+                    market=MarketType(str(row["market"]).upper()),
+                    metadata_source="OFFICIAL_KRX",
+                )
+                for _, row in df_univ.iterrows()
+            ]
+        elif canonical_scan_csv.exists():
+            df_univ = pd.read_csv(canonical_scan_csv)
+            raw_univ = [
+                UniverseSecurity(
+                    ticker=str(row["ticker"]).zfill(6),
+                    name=str(row["name"]),
+                    market=MarketType(str(row["market"]).upper()),
+                    metadata_source="OFFICIAL_KRX",
+                )
+                for _, row in df_univ.iterrows()
+            ]
+        else:
+            raw_univ = load_krx_equity_universe(as_of=ref_market_date)
     else:
         raw_univ = universe_securities
 
@@ -541,12 +692,6 @@ def scan_pattern_a_universe(
                     target_market_set.add(MarketType(str(m).upper()))
                 except ValueError:
                     pass
-
-    # 2. Authoritative Universe 로딩 및 COMMON 종목 추출
-    if universe_securities is None:
-        raw_univ = load_krx_equity_universe(as_of=ref_market_date)
-    else:
-        raw_univ = universe_securities
 
     # 2.1 전체 Global Official COMMON 종목 목록 (official_common_total 계산용)
     all_common_targets: list[tuple[str, str, MarketType]] = []
@@ -616,14 +761,71 @@ def scan_pattern_a_universe(
 
     # 3.0.1 Foreign Flow Data Cache 로드 (Phase 11)
     flow_df_loaded = flow_df
-    if flow_df_loaded is None and flow_data_path is not None:
-        p = Path(flow_data_path)
-        if p.exists():
-            flow_df_loaded = pd.read_parquet(p) if p.suffix == ".parquet" else pd.read_csv(p)
-    elif flow_df_loaded is None:
-        def_p = repo_root / "artifacts/flow/source" / f"foreign_flow_daily_{req_as_of.strftime('%Y%m%d')}.parquet"
-        if def_p.exists():
-            flow_df_loaded = pd.read_parquet(def_p)
+    try:
+        if flow_df_loaded is None and flow_data_path is not None:
+            p = Path(flow_data_path)
+            if p.exists():
+                flow_df_loaded = pd.read_parquet(p) if p.suffix == ".parquet" else pd.read_csv(p)
+        elif flow_df_loaded is None:
+            def_p = repo_root / "artifacts/flow/source" / f"foreign_flow_daily_{req_as_of.strftime('%Y%m%d')}.parquet"
+            if def_p.exists():
+                flow_df_loaded = pd.read_parquet(def_p)
+    except Exception as exc:
+        logger.warning("Failed loading foreign flow source (%s): %s", flow_data_path, exc)
+        flow_df_loaded = None
+
+    # 3.0.2 Relative Strength Data Cache 로드 (Phase 12)
+    market_index_df_loaded = market_index_df
+    try:
+        if market_index_df_loaded is None and market_index_path is not None:
+            p = Path(market_index_path)
+            if p.exists():
+                market_index_df_loaded = pd.read_parquet(p) if p.suffix == ".parquet" else pd.read_csv(p)
+        elif market_index_df_loaded is None:
+            def_p = repo_root / "artifacts/relative_strength/source" / f"market_index_daily_{req_as_of.strftime('%Y%m%d')}.parquet"
+            if def_p.exists():
+                market_index_df_loaded = pd.read_parquet(def_p)
+    except Exception as exc:
+        logger.warning("Failed loading market index source (%s): %s", market_index_path, exc)
+        market_index_df_loaded = None
+
+    sector_index_df_loaded = sector_index_df
+    try:
+        if sector_index_df_loaded is None and sector_index_path is not None:
+            p = Path(sector_index_path)
+            if p.exists():
+                sector_index_df_loaded = pd.read_parquet(p) if p.suffix == ".parquet" else pd.read_csv(p)
+        elif sector_index_df_loaded is None:
+            def_p = repo_root / "artifacts/relative_strength/source" / f"sector_index_daily_{req_as_of.strftime('%Y%m%d')}.parquet"
+            if def_p.exists():
+                sector_index_df_loaded = pd.read_parquet(def_p)
+    except Exception as exc:
+        logger.warning("Failed loading sector index source (%s): %s", sector_index_path, exc)
+        sector_index_df_loaded = None
+
+    sector_map_loaded = sector_mapping
+    try:
+        if sector_map_loaded is None and sector_mapping_path is not None:
+            p = Path(sector_mapping_path)
+            if p.exists():
+                df_sm = pd.read_csv(p)
+                df_sm["ticker"] = df_sm["ticker"].astype(str).str.zfill(6)
+                sector_map_loaded = {
+                    row["ticker"]: (str(row["sector_code"]), str(row["sector_name"]))
+                    for _, row in df_sm.iterrows()
+                }
+        elif sector_map_loaded is None:
+            def_p = repo_root / "artifacts/relative_strength/source" / f"sector_mapping_{req_as_of.strftime('%Y%m%d')}.csv"
+            if def_p.exists():
+                df_sm = pd.read_csv(def_p)
+                df_sm["ticker"] = df_sm["ticker"].astype(str).str.zfill(6)
+                sector_map_loaded = {
+                    row["ticker"]: (str(row["sector_code"]), str(row["sector_name"]))
+                    for _, row in df_sm.iterrows()
+                }
+    except Exception as exc:
+        logger.warning("Failed loading sector mapping source (%s): %s", sector_mapping_path, exc)
+        sector_map_loaded = None
 
     # 3. Ticker별 순차 평가 (One Cache Load -> One daily_as_of Slice -> Shared Context)
     rows: list[PatternAUniverseScanRow] = []
@@ -831,6 +1033,58 @@ def scan_pattern_a_universe(
                     foreign_net_buy_avg_60d=None,
                 )
 
+            # 3.6.2 Downstream Relative Strength Confirmation Feature (Phase 12)
+            if (
+                cand_state == PatternACandidateState.CANDIDATE
+                and enrich_rs_for_candidates
+                and market_index_df_loaded is not None
+                and not market_index_df_loaded.empty
+            ):
+                rs_res: RelativeStrengthFeatureResult = compute_relative_strength_features(
+                    ticker=ticker,
+                    as_of=req_as_of_str,
+                    stock_df=daily_as_of if (has_raw_cache and not daily_as_of.empty) else None,
+                    market_index_df=market_index_df_loaded,
+                    market=market,
+                    sector_index_df=sector_index_df_loaded,
+                    sector_mapping=sector_map_loaded,
+                )
+            else:
+                rs_res = RelativeStrengthFeatureResult(
+                    ticker=ticker,
+                    as_of=req_as_of_str,
+                    market_rs_data_status=RelativeStrengthDataStatus.NOT_EVALUATED,
+                    market_benchmark_name=None,
+                    market_benchmark_code=None,
+                    market_benchmark_last_observation_date=None,
+                    stock_return_3m=None,
+                    stock_return_6m=None,
+                    stock_return_12m=None,
+                    market_return_3m=None,
+                    market_return_6m=None,
+                    market_return_12m=None,
+                    market_rs_3m=None,
+                    market_rs_6m=None,
+                    market_rs_12m=None,
+                    market_anchor_date_3m=None,
+                    market_anchor_date_6m=None,
+                    market_anchor_date_12m=None,
+                    sector_rs_data_status=RelativeStrengthDataStatus.NOT_EVALUATED,
+                    sector_name=None,
+                    sector_code=None,
+                    sector_benchmark_code=None,
+                    sector_benchmark_last_observation_date=None,
+                    sector_return_3m=None,
+                    sector_return_6m=None,
+                    sector_return_12m=None,
+                    sector_rs_3m=None,
+                    sector_rs_6m=None,
+                    sector_rs_12m=None,
+                    sector_anchor_date_3m=None,
+                    sector_anchor_date_6m=None,
+                    sector_anchor_date_12m=None,
+                )
+
             # 3.7 Row Status 결정
             if pattern_score is not None and official_stage is not None:
                 if mom_1m_ready and mom_3m_ready and mom_6m_ready:
@@ -921,6 +1175,36 @@ def scan_pattern_a_universe(
                 foreign_net_buy_avg_5d=flow_res.foreign_net_buy_avg_5d,
                 foreign_net_buy_avg_20d=flow_res.foreign_net_buy_avg_20d,
                 foreign_net_buy_avg_60d=flow_res.foreign_net_buy_avg_60d,
+                market_rs_data_status=rs_res.market_rs_data_status.value,
+                market_benchmark_name=rs_res.market_benchmark_name,
+                market_benchmark_code=rs_res.market_benchmark_code,
+                market_benchmark_last_observation_date=rs_res.market_benchmark_last_observation_date,
+                stock_return_3m=rs_res.stock_return_3m,
+                stock_return_6m=rs_res.stock_return_6m,
+                stock_return_12m=rs_res.stock_return_12m,
+                market_return_3m=rs_res.market_return_3m,
+                market_return_6m=rs_res.market_return_6m,
+                market_return_12m=rs_res.market_return_12m,
+                market_rs_3m=rs_res.market_rs_3m,
+                market_rs_6m=rs_res.market_rs_6m,
+                market_rs_12m=rs_res.market_rs_12m,
+                market_anchor_date_3m=rs_res.market_anchor_date_3m,
+                market_anchor_date_6m=rs_res.market_anchor_date_6m,
+                market_anchor_date_12m=rs_res.market_anchor_date_12m,
+                sector_rs_data_status=rs_res.sector_rs_data_status.value,
+                sector_name=rs_res.sector_name,
+                sector_code=rs_res.sector_code,
+                sector_benchmark_code=rs_res.sector_benchmark_code,
+                sector_benchmark_last_observation_date=rs_res.sector_benchmark_last_observation_date,
+                sector_return_3m=rs_res.sector_return_3m,
+                sector_return_6m=rs_res.sector_return_6m,
+                sector_return_12m=rs_res.sector_return_12m,
+                sector_rs_3m=rs_res.sector_rs_3m,
+                sector_rs_6m=rs_res.sector_rs_6m,
+                sector_rs_12m=rs_res.sector_rs_12m,
+                sector_anchor_date_3m=rs_res.sector_anchor_date_3m,
+                sector_anchor_date_6m=rs_res.sector_anchor_date_6m,
+                sector_anchor_date_12m=rs_res.sector_anchor_date_12m,
                 row_status=row_status,
             )
             rows.append(row)
@@ -1059,6 +1343,33 @@ def scan_pattern_a_universe(
     cand_flow_partial_cnt = cand_flow_dist.get(FlowDataStatus.PARTIAL.value, 0)
     cand_flow_unavail_cnt = cand_flow_dist.get(FlowDataStatus.DATA_UNAVAILABLE.value, 0)
 
+    # Relative Strength Distribution & Counts (Phase 12 Specification)
+    mkt_rs_ready_cnt = sum(1 for r in rows if r.market_rs_data_status == RelativeStrengthDataStatus.READY.value)
+    mkt_rs_partial_cnt = sum(1 for r in rows if r.market_rs_data_status == RelativeStrengthDataStatus.PARTIAL.value)
+    mkt_rs_unavail_cnt = sum(1 for r in rows if r.market_rs_data_status == RelativeStrengthDataStatus.DATA_UNAVAILABLE.value)
+    mkt_rs_not_eval_cnt = sum(1 for r in rows if r.market_rs_data_status == RelativeStrengthDataStatus.NOT_EVALUATED.value)
+
+    cand_mkt_rs_dist: dict[str, int] = {
+        status.value: sum(1 for r in candidate_rows if r.market_rs_data_status == status.value)
+        for status in RelativeStrengthDataStatus
+    }
+    cand_mkt_rs_ready_cnt = cand_mkt_rs_dist.get(RelativeStrengthDataStatus.READY.value, 0)
+    cand_mkt_rs_partial_cnt = cand_mkt_rs_dist.get(RelativeStrengthDataStatus.PARTIAL.value, 0)
+    cand_mkt_rs_unavail_cnt = cand_mkt_rs_dist.get(RelativeStrengthDataStatus.DATA_UNAVAILABLE.value, 0)
+
+    sec_rs_ready_cnt = sum(1 for r in rows if r.sector_rs_data_status == RelativeStrengthDataStatus.READY.value)
+    sec_rs_partial_cnt = sum(1 for r in rows if r.sector_rs_data_status == RelativeStrengthDataStatus.PARTIAL.value)
+    sec_rs_unavail_cnt = sum(1 for r in rows if r.sector_rs_data_status == RelativeStrengthDataStatus.DATA_UNAVAILABLE.value)
+    sec_rs_not_eval_cnt = sum(1 for r in rows if r.sector_rs_data_status == RelativeStrengthDataStatus.NOT_EVALUATED.value)
+
+    cand_sec_rs_dist: dict[str, int] = {
+        status.value: sum(1 for r in candidate_rows if r.sector_rs_data_status == status.value)
+        for status in RelativeStrengthDataStatus
+    }
+    cand_sec_rs_ready_cnt = cand_sec_rs_dist.get(RelativeStrengthDataStatus.READY.value, 0)
+    cand_sec_rs_partial_cnt = cand_sec_rs_dist.get(RelativeStrengthDataStatus.PARTIAL.value, 0)
+    cand_sec_rs_unavail_cnt = cand_sec_rs_dist.get(RelativeStrengthDataStatus.DATA_UNAVAILABLE.value, 0)
+
     summary = PatternAUniverseScanSummary(
         requested_as_of=req_as_of.strftime("%Y-%m-%d"),
         reference_market_date=ref_market_date,
@@ -1099,6 +1410,22 @@ def scan_pattern_a_universe(
         candidate_flow_partial_count=cand_flow_partial_cnt,
         candidate_flow_data_unavailable_count=cand_flow_unavail_cnt,
         candidate_flow_distribution=cand_flow_dist,
+        market_rs_ready_count=mkt_rs_ready_cnt,
+        market_rs_partial_count=mkt_rs_partial_cnt,
+        market_rs_data_unavailable_count=mkt_rs_unavail_cnt,
+        market_rs_not_evaluated_count=mkt_rs_not_eval_cnt,
+        candidate_market_rs_ready_count=cand_mkt_rs_ready_cnt,
+        candidate_market_rs_partial_count=cand_mkt_rs_partial_cnt,
+        candidate_market_rs_data_unavailable_count=cand_mkt_rs_unavail_cnt,
+        candidate_market_rs_distribution=cand_mkt_rs_dist,
+        sector_rs_ready_count=sec_rs_ready_cnt,
+        sector_rs_partial_count=sec_rs_partial_cnt,
+        sector_rs_data_unavailable_count=sec_rs_unavail_cnt,
+        sector_rs_not_evaluated_count=sec_rs_not_eval_cnt,
+        candidate_sector_rs_ready_count=cand_sec_rs_ready_cnt,
+        candidate_sector_rs_partial_count=cand_sec_rs_partial_cnt,
+        candidate_sector_rs_data_unavailable_count=cand_sec_rs_unavail_cnt,
+        candidate_sector_rs_distribution=cand_sec_rs_dist,
         score_distribution=score_dist,
         momentum_1m_distribution=mom_1m_dist,
         momentum_3m_distribution=mom_3m_dist,
