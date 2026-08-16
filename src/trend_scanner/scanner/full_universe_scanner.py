@@ -24,7 +24,7 @@ Readiness 및 Data Quality Flags를 종목별 단일 Row로 통합하는 Orchest
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 import json
 import logging
@@ -160,6 +160,9 @@ class PatternAUniverseScanRow:
     investability_status: InvestabilityStatus = InvestabilityStatus.DATA_UNAVAILABLE
     investability_reason: str = "REQUIRED_METRIC_UNAVAILABLE"
     investability_ready: bool = False
+    market_cap_effective_date: str | None = None
+    close_effective_date: str | None = None
+    tv20_last_observation_date: str | None = None
 
     # 7. Row Execution Status & Error Provenance
     row_status: ScannerRowStatus = ScannerRowStatus.UNAVAILABLE
@@ -227,6 +230,9 @@ class PatternAUniverseScanRow:
             "investability_status": self.investability_status.value,
             "investability_reason": self.investability_reason,
             "investability_ready": self.investability_ready,
+            "market_cap_effective_date": self.market_cap_effective_date,
+            "close_effective_date": self.close_effective_date,
+            "tv20_last_observation_date": self.tv20_last_observation_date,
             "row_status": self.row_status.value,
             "quality_flags": ";".join(self.quality_flags),
             "quality_reason_codes": ";".join(self.quality_reason_codes),
@@ -295,7 +301,7 @@ class PatternAUniverseScanSummary:
     row_status_distribution: dict[str, int]
     investability_distribution: dict[str, int]
 
-    # Counts
+    # Universe Investability Counts
     investability_investable_count: int
     investability_filtered_market_cap_count: int
     investability_filtered_liquidity_count: int
@@ -306,6 +312,14 @@ class PatternAUniverseScanSummary:
     momentum_1m_distribution: dict[str, Any]
     momentum_3m_distribution: dict[str, Any]
     momentum_6m_distribution: dict[str, Any]
+
+    # Candidate Downstream Filter Counts (Phase 10C Specification)
+    candidate_raw_count: int = 0
+    candidate_investable_count: int = 0
+    candidate_filtered_market_cap_count: int = 0
+    candidate_filtered_liquidity_count: int = 0
+    candidate_data_unavailable_count: int = 0
+    candidate_investability_distribution: dict[str, int] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         """Summary 딕셔너리 직렬화."""
@@ -335,6 +349,12 @@ class PatternAUniverseScanSummary:
             "investability_filtered_market_cap_count": self.investability_filtered_market_cap_count,
             "investability_filtered_liquidity_count": self.investability_filtered_liquidity_count,
             "investability_data_unavailable_count": self.investability_data_unavailable_count,
+            "candidate_raw_count": self.candidate_raw_count,
+            "candidate_investable_count": self.candidate_investable_count,
+            "candidate_filtered_market_cap_count": self.candidate_filtered_market_cap_count,
+            "candidate_filtered_liquidity_count": self.candidate_filtered_liquidity_count,
+            "candidate_data_unavailable_count": self.candidate_data_unavailable_count,
+            "candidate_investability_distribution": self.candidate_investability_distribution,
             "score_distribution": self.score_distribution,
             "momentum_1m_distribution": self.momentum_1m_distribution,
             "momentum_3m_distribution": self.momentum_3m_distribution,
@@ -507,18 +527,21 @@ def scan_pattern_a_universe(
 
     scan_target_count = len(scan_targets)
 
-    # 3.0 Market Cap PIT Snapshot 로드 (1회 로드)
+    # 3.0 Market Cap PIT Snapshot 로드 (반드시 requested as_of 기준)
     repo_root = Path(__file__).resolve().parent.parent.parent.parent
+    req_as_of_str = req_as_of.strftime("%Y-%m-%d")
     try:
-        df_mcap_snap, _ = load_canonical_mcap_snapshot(repo_root=repo_root, as_of=ref_market_date)
+        df_mcap_snap, _ = load_canonical_mcap_snapshot(repo_root=repo_root, as_of=req_as_of_str)
         mcap_dict = {
             str(row["ticker"]).strip().zfill(6): float(row["market_cap"])
             for _, row in df_mcap_snap.iterrows()
             if pd.notna(row.get("market_cap"))
         }
+        mcap_effective_date = req_as_of_str
     except Exception as exc:
-        logger.warning("Failed to load canonical market cap snapshot for %s: %s", ref_market_date, exc)
+        logger.warning("Failed to load canonical market cap snapshot for %s: %s", req_as_of_str, exc)
         mcap_dict = {}
+        mcap_effective_date = None
 
     # 3. Ticker별 순차 평가 (One Cache Load -> One daily_as_of Slice -> Shared Context)
     rows: list[PatternAUniverseScanRow] = []
@@ -548,11 +571,11 @@ def scan_pattern_a_universe(
             )
 
             cache_present = quality_record.cache_present
-            completed_months = quality_record.history_months
             freshness = quality_record.freshness_status
             staleness_days = quality_record.staleness_trading_days
             q_flags = quality_record.quality_flags
             q_reasons = quality_record.exclusion_reasons
+            completed_months = quality_record.history_months
 
             raw_ready = quality_record.raw_data_ready
             feature_ready = quality_record.feature_ready
@@ -560,13 +583,14 @@ def scan_pattern_a_universe(
             stage_ready = quality_record.stage_ready
             evaluator_ready = quality_record.evaluator_ready
 
-            # 3.3.1 Downstream Investability Evaluation
+            # 3.3.1 Downstream Investability Evaluation (PIT requested as_of)
             mcap_val = mcap_dict.get(ticker)
             inv_eval: InvestabilityEvaluationResult = evaluate_investability(
                 ticker=ticker,
                 as_of=req_as_of,
                 daily=daily_as_of if (has_raw_cache and not daily_as_of.empty) else None,
                 market_cap=mcap_val,
+                market_cap_effective_date=mcap_effective_date if mcap_val is not None else None,
             )
 
             # 3.4 Missing Cache Fail-Closed 처리
@@ -583,8 +607,8 @@ def scan_pattern_a_universe(
                     cache_last_date=cache_last_raw,
                     daily_rows=raw_rows_count,
                     completed_month_count=0,
-                    freshness_status=FreshnessStatus.UNKNOWN,
-                    staleness_trading_days=-1,
+                    freshness_status=freshness,
+                    staleness_trading_days=staleness_days,
                     quality_flags=q_flags,
                     quality_reason_codes=q_reasons,
                     raw_data_ready=False,
@@ -615,13 +639,16 @@ def scan_pattern_a_universe(
                     investability_status=inv_eval.status,
                     investability_reason=inv_eval.reason,
                     investability_ready=inv_eval.data_ready,
+                    market_cap_effective_date=inv_eval.market_cap_effective_date,
+                    close_effective_date=inv_eval.close_effective_date,
+                    tv20_last_observation_date=inv_eval.tv20_last_observation_date,
                     row_status=ScannerRowStatus.UNAVAILABLE,
                 )
                 rows.append(row)
                 continue
 
-            # 3.5 Historical Snapshot & Evaluator 실행 (Completed Periods Only)
-            snapshot = build_historical_snapshot(
+            # 3.5 Single Snapshot 구축 (HistoricalSnapshot 생성 및 Frozen Component 직결)
+            snapshot: HistoricalSnapshot = build_historical_snapshot(
                 ticker=ticker,
                 name=name,
                 daily=daily_as_of,
@@ -636,7 +663,6 @@ def scan_pattern_a_universe(
             cand_state = eval_res.candidate_state
             eval_reasons = eval_res.evaluator_reason_codes
 
-            # 진단용 서브스코어 추출
             sub_base = eval_res.score_result.base_score
             sub_trans = eval_res.score_result.transition_score
             sub_core = eval_res.score_result.core_score
@@ -751,6 +777,9 @@ def scan_pattern_a_universe(
                 investability_status=inv_eval.status,
                 investability_reason=inv_eval.reason,
                 investability_ready=inv_eval.data_ready,
+                market_cap_effective_date=inv_eval.market_cap_effective_date,
+                close_effective_date=inv_eval.close_effective_date,
+                tv20_last_observation_date=inv_eval.tv20_last_observation_date,
                 row_status=row_status,
             )
             rows.append(row)
@@ -801,6 +830,9 @@ def scan_pattern_a_universe(
                 investability_status=InvestabilityStatus.DATA_UNAVAILABLE,
                 investability_reason="SCANNER_EXCEPTION",
                 investability_ready=False,
+                market_cap_effective_date=None,
+                close_effective_date=None,
+                tv20_last_observation_date=None,
                 row_status=ScannerRowStatus.ERROR,
                 error_type=type(exc).__name__,
                 error_message=str(exc),
@@ -837,6 +869,7 @@ def scan_pattern_a_universe(
         for status in ScannerRowStatus
     }
 
+    # Universe Investability Distribution
     inv_dist: dict[str, int] = {
         inv_status.value: sum(1 for r in rows if r.investability_status == inv_status)
         for inv_status in InvestabilityStatus
@@ -846,6 +879,18 @@ def scan_pattern_a_universe(
     inv_mcap_cnt = inv_dist.get(InvestabilityStatus.FILTERED_MARKET_CAP.value, 0)
     inv_liq_cnt = inv_dist.get(InvestabilityStatus.FILTERED_LIQUIDITY.value, 0)
     inv_unavail_cnt = inv_dist.get(InvestabilityStatus.DATA_UNAVAILABLE.value, 0)
+
+    # Candidate Downstream Filter Breakdown (Phase 10C Specification)
+    candidate_rows = [r for r in rows if r.candidate_state == PatternACandidateState.CANDIDATE]
+    cand_raw_cnt = len(candidate_rows)
+    cand_inv_dist: dict[str, int] = {
+        inv_status.value: sum(1 for r in candidate_rows if r.investability_status == inv_status)
+        for inv_status in InvestabilityStatus
+    }
+    cand_investable_cnt = cand_inv_dist.get(InvestabilityStatus.INVESTABLE.value, 0)
+    cand_mcap_cnt = cand_inv_dist.get(InvestabilityStatus.FILTERED_MARKET_CAP.value, 0)
+    cand_liq_cnt = cand_inv_dist.get(InvestabilityStatus.FILTERED_LIQUIDITY.value, 0)
+    cand_unavail_cnt = cand_inv_dist.get(InvestabilityStatus.DATA_UNAVAILABLE.value, 0)
 
     valid_scores = [r.pattern_a_score for r in rows if r.pattern_a_score is not None]
     score_dist = _calc_stats(valid_scores)
@@ -885,6 +930,12 @@ def scan_pattern_a_universe(
         investability_filtered_market_cap_count=inv_mcap_cnt,
         investability_filtered_liquidity_count=inv_liq_cnt,
         investability_data_unavailable_count=inv_unavail_cnt,
+        candidate_raw_count=cand_raw_cnt,
+        candidate_investable_count=cand_investable_cnt,
+        candidate_filtered_market_cap_count=cand_mcap_cnt,
+        candidate_filtered_liquidity_count=cand_liq_cnt,
+        candidate_data_unavailable_count=cand_unavail_cnt,
+        candidate_investability_distribution=cand_inv_dist,
         score_distribution=score_dist,
         momentum_1m_distribution=mom_1m_dist,
         momentum_3m_distribution=mom_3m_dist,

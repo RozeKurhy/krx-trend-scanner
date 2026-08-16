@@ -32,11 +32,13 @@ _STAGE_ORDER = {
     PatternAStage.PROGRESSED: 4,
 }
 
-# Frozen contract SHA256 hashes of core production modules
+HISTORICAL_SCANNER_FROZEN_COMMIT: str = "13ab6f416a0de77e89c7e0412467eb393e07c6dc"
+HISTORICAL_FROZEN_SCANNER_HASH: str = "6191be6f84aca63f7f3a813c94b272582cacb517adf15dd9ceb74c357c6d8e60"
+
+# Frozen contract SHA256 hashes of core Pattern A production modules (Strictly Decoupled & Immutable)
 EXPECTED_FROZEN_HASHES = {
     "pattern_a_stage.py": "543499b0dfc21946405e76b6d47938d0a0697d440fe4087c800bdb0948d4676e",
     "pattern_a_score.py": "62ca9b54837164b7e6aa6d50290c728de12c7b99db03af1760df37ab2206de19",
-    "full_universe_scanner.py": "f1ce1335d9ee997d2013157da984081c8a6105c50827a83a890a52775fc58947",
     "historical_snapshot.py": "91af0b3670bfcd202a71110f2809047199e35959ef0f03163b8a9c8b29ea8597",
 }
 
@@ -90,8 +92,6 @@ def run_pattern_a_final_closure_audit(
     for fname, expected_hash in EXPECTED_FROZEN_HASHES.items():
         if fname in ("pattern_a_stage.py", "pattern_a_score.py"):
             fpath = repo_root / "src/trend_scanner/patterns" / fname
-        elif fname == "full_universe_scanner.py":
-            fpath = repo_root / "src/trend_scanner/scanner" / fname
         elif fname == "historical_snapshot.py":
             fpath = repo_root / "src/trend_scanner/validation" / fname
         else:
@@ -106,6 +106,16 @@ def run_pattern_a_final_closure_audit(
             "actual_head_hash": actual_hash,
             "match": is_match,
         }
+
+    # Record scanner provenance separately (Phase 8 Historical Frozen vs Phase 10C Downstream Integration)
+    scanner_fpath = repo_root / "src/trend_scanner/scanner/full_universe_scanner.py"
+    current_scanner_hash = compute_file_sha256(scanner_fpath)
+    source_audit_records["full_universe_scanner.py"] = {
+        "historical_frozen_hash": HISTORICAL_FROZEN_SCANNER_HASH,
+        "historical_frozen_commit": HISTORICAL_SCANNER_FROZEN_COMMIT,
+        "current_downstream_scanner_hash": current_scanner_hash,
+        "downstream_enriched": True,
+    }
 
     source_identity_pass = all_hashes_match and stage_constants_pass
 

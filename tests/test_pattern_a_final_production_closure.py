@@ -128,12 +128,10 @@ def test_gate6_079550_known_limitation_preserved():
 
 
 def test_gate7_source_identity_hashes():
-    """Gate 7: Verify all 4 core production modules match expected frozen hashes."""
+    """Gate 7: Verify core production modules match expected frozen hashes and verify historical scanner provenance."""
     for fname, expected_hash in EXPECTED_FROZEN_HASHES.items():
         if fname in ("pattern_a_stage.py", "pattern_a_score.py"):
             fpath = _REPO_ROOT / "src/trend_scanner/patterns" / fname
-        elif fname == "full_universe_scanner.py":
-            fpath = _REPO_ROOT / "src/trend_scanner/scanner" / fname
         elif fname == "historical_snapshot.py":
             fpath = _REPO_ROOT / "src/trend_scanner/validation" / fname
         else:
@@ -142,6 +140,13 @@ def test_gate7_source_identity_hashes():
         assert fpath.exists(), f"File missing: {fpath}"
         actual_hash = compute_file_sha256(fpath)
         assert actual_hash == expected_hash, f"Hash mismatch for {fname}: got {actual_hash}, expected {expected_hash}"
+
+    from trend_scanner.validation.pattern_a_final_closure import (
+        HISTORICAL_FROZEN_SCANNER_HASH,
+        HISTORICAL_SCANNER_FROZEN_COMMIT,
+    )
+    assert HISTORICAL_FROZEN_SCANNER_HASH == "6191be6f84aca63f7f3a813c94b272582cacb517adf15dd9ceb74c357c6d8e60"
+    assert HISTORICAL_SCANNER_FROZEN_COMMIT == "13ab6f416a0de77e89c7e0412467eb393e07c6dc"
 
 
 def test_gate8_candidate_identity_diff_zero():

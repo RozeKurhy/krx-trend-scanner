@@ -7,9 +7,11 @@ from pathlib import Path
 import pytest
 import pandas as pd
 
+from trend_scanner.data.cache import ParquetCache
 from trend_scanner.filters.investability import InvestabilityStatus
 from trend_scanner.patterns.pattern_a_evaluator import PatternACandidateState
 from trend_scanner.patterns.pattern_a_feature_set import PatternAStage
+from trend_scanner.scanner.full_universe_scanner import scan_pattern_a_universe
 from trend_scanner.validation.pattern_a_investability_integration import (
     run_investability_integration_validation,
     CANONICAL_AS_OF,
@@ -17,6 +19,9 @@ from trend_scanner.validation.pattern_a_investability_integration import (
     EXPECTED_TRANSITION_COUNT,
     EXPECTED_EARLY_COUNT,
     EXPECTED_INVESTABLE_COUNT,
+    EXPECTED_FILTERED_MARKET_CAP_COUNT,
+    EXPECTED_FILTERED_LIQUIDITY_COUNT,
+    EXPECTED_DATA_UNAVAILABLE_COUNT,
     EXPECTED_UNAVAILABLE_TICKERS,
 )
 
@@ -53,9 +58,9 @@ def test_investability_status_breakdown(integration_summary: dict):
     """Verify exact breakdown of 180 raw candidates across investability statuses."""
     bd = integration_summary["investability_breakdown"]
     assert bd["investable_count"] == EXPECTED_INVESTABLE_COUNT  # 103
-    assert bd["filtered_market_cap_count"] == 42
-    assert bd["filtered_liquidity_count"] == 31
-    assert bd["data_unavailable_count"] == 4
+    assert bd["filtered_market_cap_count"] == EXPECTED_FILTERED_MARKET_CAP_COUNT  # 42
+    assert bd["filtered_liquidity_count"] == EXPECTED_FILTERED_LIQUIDITY_COUNT  # 31
+    assert bd["data_unavailable_count"] == EXPECTED_DATA_UNAVAILABLE_COUNT  # 4
     total = bd["investable_count"] + bd["filtered_market_cap_count"] + bd["filtered_liquidity_count"] + bd["data_unavailable_count"]
     assert total == EXPECTED_RAW_CANDIDATES
 
@@ -93,6 +98,59 @@ def test_missing_fail_closed_tickers():
         row = df[df["ticker"] == t]
         assert not row.empty
         assert row.iloc[0]["investability_status"] == InvestabilityStatus.DATA_UNAVAILABLE.value
+
+
+def test_provenance_contract_on_candidates():
+    """Gate 4: Verify PIT provenance timestamps <= requested_as_of on all candidate rows."""
+    comp_csv = _ARTIFACTS_DIR / "pattern_a_investability_integration_20260814.csv"
+    df = pd.read_csv(comp_csv, dtype={"ticker": str})
+
+    for _, r in df.iterrows():
+        if pd.notna(r.get("market_cap_effective_date")):
+            assert r["market_cap_effective_date"] <= CANONICAL_AS_OF
+        if pd.notna(r.get("close_effective_date")):
+            assert r["close_effective_date"] <= CANONICAL_AS_OF
+        if pd.notna(r.get("tv20_last_observation_date")):
+            assert r["tv20_last_observation_date"] <= CANONICAL_AS_OF
+
+
+def test_scanner_candidate_summary_breakdown():
+    """Verify scanner summary explicitly provides candidate downstream counts summing to 180."""
+    cache = ParquetCache(base_dir=_REPO_ROOT / "data/raw/stocks")
+    scan_res = scan_pattern_a_universe(cache=cache, as_of=CANONICAL_AS_OF, limit=None)
+    summary = scan_res.summary
+
+    assert summary.candidate_raw_count == 180
+    assert summary.candidate_investable_count == 103
+    assert summary.candidate_filtered_market_cap_count == 42
+    assert summary.candidate_filtered_liquidity_count == 31
+    assert summary.candidate_data_unavailable_count == 4
+    assert summary.candidate_raw_count == (
+        summary.candidate_investable_count
+        + summary.candidate_filtered_market_cap_count
+        + summary.candidate_filtered_liquidity_count
+        + summary.candidate_data_unavailable_count
+    )
+
+
+def test_historical_lookahead_negative_case():
+    """Verify that scanning historical as_of (2025-01-31) with future reference date (2026-08-14) uses PIT source and prevents future market cap leakage."""
+    cache = ParquetCache(base_dir=_REPO_ROOT / "data/raw/stocks")
+    # Scan single ticker with as_of = 2025-01-31 and reference_market_date = 2026-08-14 (B > A)
+    scan_res = scan_pattern_a_universe(
+        cache=cache,
+        as_of="2025-01-31",
+        reference_market_date="2026-08-14",
+        target_tickers=["005930"],
+    )
+    assert len(scan_res.rows) == 1
+    row = scan_res.rows[0]
+    # Market cap snapshot for 2025-01-31 does not exist in canonical snapshot dir (only 20260814 exists)
+    # -> Must safely fall back to None / DATA_UNAVAILABLE, NEVER load 2026-08-14 snapshot!
+    assert row.market_cap is None or row.market_cap_effective_date == "2025-01-31"
+    assert row.market_cap_effective_date != "2026-08-14"
+    if row.market_cap is None:
+        assert row.investability_status == InvestabilityStatus.DATA_UNAVAILABLE
 
 
 def test_integration_hard_gates_all_pass(integration_summary: dict):

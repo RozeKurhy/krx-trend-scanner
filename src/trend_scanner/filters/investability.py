@@ -70,6 +70,9 @@ class InvestabilityEvaluationResult:
     trading_value_20d_ready: bool
     trading_value_60d_ready: bool
     data_ready: bool
+    market_cap_effective_date: str | None = None
+    close_effective_date: str | None = None
+    tv20_last_observation_date: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """Convert evaluation result to dictionary."""
@@ -90,6 +93,9 @@ class InvestabilityEvaluationResult:
             "trading_value_20d_ready": self.trading_value_20d_ready,
             "trading_value_60d_ready": self.trading_value_60d_ready,
             "investability_data_ready": self.data_ready,
+            "market_cap_effective_date": self.market_cap_effective_date,
+            "close_effective_date": self.close_effective_date,
+            "tv20_last_observation_date": self.tv20_last_observation_date,
         }
 
 
@@ -98,6 +104,7 @@ def evaluate_investability(
     as_of: str | pd.Timestamp,
     daily: pd.DataFrame | None,
     market_cap: float | None = None,
+    market_cap_effective_date: str | None = None,
     min_market_cap_krw: float = MIN_MARKET_CAP_KRW,
     min_avg_trading_value_20d_krw: float = MIN_AVG_TRADING_VALUE_20D_KRW,
 ) -> InvestabilityEvaluationResult:
@@ -144,6 +151,9 @@ def evaluate_investability(
             trading_value_20d_ready=False,
             trading_value_60d_ready=False,
             data_ready=False,
+            market_cap_effective_date=market_cap_effective_date,
+            close_effective_date=None,
+            tv20_last_observation_date=None,
         )
 
     daily_asof = daily.loc[daily.index <= as_of_ts]
@@ -166,11 +176,15 @@ def evaluate_investability(
             trading_value_20d_ready=False,
             trading_value_60d_ready=False,
             data_ready=False,
+            market_cap_effective_date=market_cap_effective_date,
+            close_effective_date=None,
+            tv20_last_observation_date=None,
         )
 
     # Exact Close observation
     close_val = float(daily_asof.loc[as_of_ts, "close"])
     close_ready = not np.isnan(close_val)
+    close_effective_date_str = as_of_ts.strftime("%Y-%m-%d")
 
     # Trading Value calculations
     tv_series = daily_asof["trading_value"].dropna() if "trading_value" in daily_asof.columns else pd.Series(dtype=float)
@@ -182,10 +196,12 @@ def evaluate_investability(
         avg_tv_20 = float(tv_20_slice.mean())
         avg_tv_20_eok = round(avg_tv_20 / 1e8, 2)
         tv_20_ready = True
+        tv20_last_date_str = tv_20_slice.index[-1].strftime("%Y-%m-%d")
     else:
         avg_tv_20 = None
         avg_tv_20_eok = None
         tv_20_ready = False
+        tv20_last_date_str = None
 
     # 60D Window contract (Reference/Sanity)
     if tv_len >= 60:
@@ -231,4 +247,7 @@ def evaluate_investability(
         trading_value_20d_ready=tv_20_ready,
         trading_value_60d_ready=tv_60_ready,
         data_ready=data_ready,
+        market_cap_effective_date=market_cap_effective_date,
+        close_effective_date=close_effective_date_str,
+        tv20_last_observation_date=tv20_last_date_str,
     )

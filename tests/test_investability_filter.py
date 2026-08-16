@@ -170,18 +170,35 @@ def test_insufficient_tv20_history():
     assert res.data_ready is False
 
 
-def test_tv60_missing_only_does_not_fail(sample_daily_data: pd.DataFrame):
-    """Verify stock with 20-59 days of history is NOT fail closed if TV60 is missing."""
-    # Provide 30 days of data (enough for TV20, but TV60 is missing)
-    daily = sample_daily_data.iloc[-30:].copy()
+def test_tv60_missing_tolerance(sample_daily_data: pd.DataFrame):
+    """Verify that TV60 missing does NOT cause DATA_UNAVAILABLE if TV20 is available."""
+    # 25 days of data (>=20 so TV20 ready, <60 so TV60 None)
+    daily_25d = sample_daily_data.iloc[-25:].copy()
     res = evaluate_investability(
         ticker="000009",
         as_of="2026-08-14",
-        daily=daily,
+        daily=daily_25d,
         market_cap=200_000_000_000.0,
     )
+    assert res.status == InvestabilityStatus.INVESTABLE
     assert res.trading_value_20d_ready is True
     assert res.trading_value_60d_ready is False
-    assert res.data_ready is True
-    assert res.status == InvestabilityStatus.INVESTABLE
     assert res.avg_trading_value_60d is None
+    assert res.data_ready is True
+
+
+def test_provenance_fields_populated(sample_daily_data: pd.DataFrame):
+    """Verify provenance fields are correctly populated and <= requested_as_of."""
+    res = evaluate_investability(
+        ticker="005930",
+        as_of="2026-08-14",
+        daily=sample_daily_data,
+        market_cap=500_000_000_000.0,
+        market_cap_effective_date="2026-08-14",
+    )
+    assert res.market_cap_effective_date == "2026-08-14"
+    assert res.close_effective_date == "2026-08-14"
+    assert res.tv20_last_observation_date == "2026-08-14"
+    assert res.to_dict()["market_cap_effective_date"] == "2026-08-14"
+    assert res.to_dict()["close_effective_date"] == "2026-08-14"
+    assert res.to_dict()["tv20_last_observation_date"] == "2026-08-14"

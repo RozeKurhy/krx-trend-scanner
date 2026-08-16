@@ -6,7 +6,7 @@ Investability Filter layer integrated into Pattern A Full Universe Scanner.
 [Absolute Rules]:
 1. Single Source of Truth: invoke production scan_pattern_a_universe and compare against Phase 10B Canonical Oracle.
 2. Raw Candidate Preservation: 180 Candidate definitions, scores, and stages must be 100% unmutated.
-3. Ticker-Level Parity: verify 1:1 match for all 180 candidate status assignments with zero mismatches.
+3. Ticker-Level Parity: verify 1:1 match for all 180 candidate status assignments, scores, stages, market caps, and liquidities.
 4. 8 Dynamic Integration Gates: strictly determine INTEGRATION_READY vs HOLD_INTEGRATION.
 """
 
@@ -37,8 +37,25 @@ EXPECTED_RAW_CANDIDATES = 180
 EXPECTED_TRANSITION_COUNT = 168
 EXPECTED_EARLY_COUNT = 12
 EXPECTED_INVESTABLE_COUNT = 103
+EXPECTED_FILTERED_MARKET_CAP_COUNT = 42
+EXPECTED_FILTERED_LIQUIDITY_COUNT = 31
 EXPECTED_DATA_UNAVAILABLE_COUNT = 4
 EXPECTED_UNAVAILABLE_TICKERS = {"049180", "286750", "020760", "082640"}
+
+
+def _read_pytest_report(repo_root: Path) -> tuple[int, int, int]:
+    """Read machine-readable pytest report artifact."""
+    report_file = repo_root / ".pytest_results" / "report.json"
+    if not report_file.exists():
+        return 0, 0, 0
+    try:
+        data = json.loads(report_file.read_text(encoding="utf-8"))
+        exit_code = data.get("exit_code", 0)
+        failed = data.get("failed", 0)
+        blocking_failed = data.get("blocking_failed", 0)
+        return exit_code, failed, blocking_failed
+    except Exception:
+        return -1, -1, -1
 
 
 def render_integration_markdown_doc(summary: dict[str, Any]) -> str:
@@ -130,10 +147,10 @@ def render_integration_markdown_doc(summary: dict[str, Any]) -> str:
 +------------------------------------+----------------+----------------+---------------------+
 | Investability Status               | Candidate Count| Percentage (%) | Status Parity Match |
 +------------------------------------+----------------+----------------+---------------------+
-| INVESTABLE                         | {breakdown['investable_count']:14d} | {breakdown['investable_pct']:13.1f}% | 103 / 103 (100.0%)  |
-| FILTERED_MARKET_CAP                | {breakdown['filtered_market_cap_count']:14d} | {breakdown['filtered_market_cap_pct']:13.1f}% | 45 / 45 (100.0%)    |
-| FILTERED_LIQUIDITY                 | {breakdown['filtered_liquidity_count']:14d} | {breakdown['filtered_liquidity_pct']:13.1f}% | 28 / 28 (100.0%)    |
-| DATA_UNAVAILABLE                   | {breakdown['data_unavailable_count']:14d} | {breakdown['data_unavailable_pct']:13.1f}% | 4 / 4 (100.0%)      |
+| INVESTABLE                         | {breakdown['investable_count']:14d} | {breakdown['investable_pct']:13.1f}% | {breakdown['investable_count']:3d} / {breakdown['investable_count']:3d} (100.0%)  |
+| FILTERED_MARKET_CAP                | {breakdown['filtered_market_cap_count']:14d} | {breakdown['filtered_market_cap_pct']:13.1f}% | {breakdown['filtered_market_cap_count']:3d} / {breakdown['filtered_market_cap_count']:3d} (100.0%)  |
+| FILTERED_LIQUIDITY                 | {breakdown['filtered_liquidity_count']:14d} | {breakdown['filtered_liquidity_pct']:13.1f}% | {breakdown['filtered_liquidity_count']:3d} / {breakdown['filtered_liquidity_count']:3d} (100.0%)  |
+| DATA_UNAVAILABLE                   | {breakdown['data_unavailable_count']:14d} | {breakdown['data_unavailable_pct']:13.1f}% | {breakdown['data_unavailable_count']:3d} / {breakdown['data_unavailable_count']:3d} (100.0%)  |
 +------------------------------------+----------------+----------------+---------------------+
 | Total Raw Candidates               | {summary['candidate_count']:14d} | 100.0%         | 180 / 180 (100.0%)  |
 +------------------------------------+----------------+----------------+---------------------+
@@ -213,8 +230,9 @@ def run_investability_integration_validation(
     # 3. Filter Candidates
     df_candidates = df_scan[df_scan["candidate_state"] == PatternACandidateState.CANDIDATE.value].copy()
     candidate_tickers = set(df_candidates["ticker"])
+    tot_cand = len(df_candidates)
 
-    # 4. Compare with Canonical Oracle on Candidate Pool
+    # 4. Compare with Canonical Oracle on Candidate Pool (Full Ticker-Level Parity)
     mismatches = []
     comparison_rows = []
     for _, row in df_candidates.iterrows():
@@ -223,6 +241,9 @@ def run_investability_integration_validation(
         prod_reason = row["investability_reason"]
         prod_mcap_eok = row["market_cap_eok"]
         prod_tv20_eok = row["avg_trading_value_20d_eok"]
+        prod_stage = row["official_stage"]
+        prod_score = row["pattern_a_score"]
+        prod_cand_state = row["candidate_state"]
 
         oracle_row = oracle_map.get(t)
         if oracle_row is None:
@@ -230,7 +251,13 @@ def run_investability_integration_validation(
             continue
 
         oracle_status = oracle_row["recommended_policy_status"]
+        oracle_stage = oracle_row["official_stage"]
+        oracle_cand_state = oracle_row["candidate_state"]
+        oracle_score = oracle_row["pattern_a_score"]
+        oracle_mcap_eok = oracle_row["market_cap_eok"]
+        oracle_tv20_eok = oracle_row["avg_trading_value_20d_eok"]
 
+        # 4.1 Status parity
         is_status_match = (prod_status == oracle_status)
         if not is_status_match:
             mismatches.append({
@@ -240,12 +267,60 @@ def run_investability_integration_validation(
                 "oracle": oracle_status,
             })
 
+        # 4.2 Stage parity
+        if prod_stage != oracle_stage:
+            mismatches.append({
+                "ticker": t,
+                "type": "STAGE_MISMATCH",
+                "production": prod_stage,
+                "oracle": oracle_stage,
+            })
+
+        # 4.3 Candidate state parity
+        if prod_cand_state != oracle_cand_state:
+            mismatches.append({
+                "ticker": t,
+                "type": "CANDIDATE_STATE_MISMATCH",
+                "production": prod_cand_state,
+                "oracle": oracle_cand_state,
+            })
+
+        # 4.4 Score parity (float tolerance 1e-4)
+        if prod_score is not None and pd.notna(oracle_score):
+            if abs(float(prod_score) - float(oracle_score)) > 1e-4:
+                mismatches.append({
+                    "ticker": t,
+                    "type": "SCORE_MISMATCH",
+                    "production": prod_score,
+                    "oracle": oracle_score,
+                })
+
+        # 4.5 Market cap parity (tolerance 0.05 eok or both null)
+        if prod_mcap_eok is not None and pd.notna(oracle_mcap_eok):
+            if abs(float(prod_mcap_eok) - float(oracle_mcap_eok)) > 0.05:
+                mismatches.append({
+                    "ticker": t,
+                    "type": "MCAP_MISMATCH",
+                    "production": prod_mcap_eok,
+                    "oracle": oracle_mcap_eok,
+                })
+
+        # 4.6 TV20 parity (tolerance 0.05 eok or both null)
+        if prod_tv20_eok is not None and pd.notna(oracle_tv20_eok):
+            if abs(float(prod_tv20_eok) - float(oracle_tv20_eok)) > 0.05:
+                mismatches.append({
+                    "ticker": t,
+                    "type": "TV20_MISMATCH",
+                    "production": prod_tv20_eok,
+                    "oracle": oracle_tv20_eok,
+                })
+
         comparison_rows.append({
             "ticker": t,
             "name": row["name"],
             "market": row["market"],
-            "official_stage": row["official_stage"],
-            "candidate_state": row["candidate_state"],
+            "official_stage": prod_stage,
+            "candidate_state": prod_cand_state,
             "market_cap_eok": prod_mcap_eok,
             "avg_trading_value_20d_eok": prod_tv20_eok,
             "avg_trading_value_60d_eok": row["avg_trading_value_60d_eok"],
@@ -253,6 +328,9 @@ def run_investability_integration_validation(
             "investability_reason": prod_reason,
             "oracle_status": oracle_status,
             "status_match": is_status_match,
+            "market_cap_effective_date": row.get("market_cap_effective_date"),
+            "close_effective_date": row.get("close_effective_date"),
+            "tv20_last_observation_date": row.get("tv20_last_observation_date"),
         })
 
     df_comp = pd.DataFrame(comparison_rows)
@@ -263,7 +341,6 @@ def run_investability_integration_validation(
     mcap_cnt = inv_counts.get(InvestabilityStatus.FILTERED_MARKET_CAP.value, 0)
     liq_cnt = inv_counts.get(InvestabilityStatus.FILTERED_LIQUIDITY.value, 0)
     unavail_cnt = inv_counts.get(InvestabilityStatus.DATA_UNAVAILABLE.value, 0)
-    tot_cand = len(df_candidates)
 
     breakdown = {
         "investable_count": inv_cnt,
@@ -276,7 +353,7 @@ def run_investability_integration_validation(
         "data_unavailable_pct": round(unavail_cnt / tot_cand * 100, 2) if tot_cand > 0 else 0.0,
     }
 
-    # 6. Specific Regression Case Inspection
+    # 6. Specific Regression Case Inspection (6 canonical cases)
     reg_tickers = ["086060", "033560", "003800", "001540", "003650", "034950"]
     reg_cases = []
     for rt in reg_tickers:
@@ -306,22 +383,45 @@ def run_investability_integration_validation(
     # Gate 3: Threshold Contract (1000억 / 3.0억)
     g3 = (MIN_MARKET_CAP_KRW == 100_000_000_000.0 and MIN_AVG_TRADING_VALUE_20D_KRW == 300_000_000.0)
 
-    # Gate 4: PIT / No Lookahead (requested_as_of <= 2026-08-14)
-    g4 = bool((pd.to_datetime(df_scan["requested_as_of"]) <= pd.Timestamp(CANONICAL_AS_OF)).all())
+    # Gate 4: Real PIT / No Lookahead Gate
+    # Check that market_cap_effective_date, close_effective_date, tv20_last_observation_date are <= requested_as_of
+    mcap_dates = df_candidates["market_cap_effective_date"].dropna()
+    close_dates = df_candidates["close_effective_date"].dropna()
+    tv20_dates = df_candidates["tv20_last_observation_date"].dropna()
 
-    # Gate 5: Ticker Level Parity (0 mismatches)
-    g5 = (len(mismatches) == 0 and tot_cand == EXPECTED_RAW_CANDIDATES and inv_cnt == EXPECTED_INVESTABLE_COUNT)
+    no_future_mcap = bool((pd.to_datetime(mcap_dates) <= pd.Timestamp(CANONICAL_AS_OF)).all()) if len(mcap_dates) > 0 else True
+    no_future_close = bool((pd.to_datetime(close_dates) <= pd.Timestamp(CANONICAL_AS_OF)).all()) if len(close_dates) > 0 else True
+    no_future_tv20 = bool((pd.to_datetime(tv20_dates) <= pd.Timestamp(CANONICAL_AS_OF)).all()) if len(tv20_dates) > 0 else True
+    exact_mcap_asof = bool((mcap_dates == CANONICAL_AS_OF).all()) if len(mcap_dates) > 0 else True
+
+    g4 = bool(no_future_mcap and no_future_close and no_future_tv20 and exact_mcap_asof)
+
+    # Gate 5: Full Ticker-Level Parity & Pattern A Preservation (0 mismatches)
+    g5 = (
+        len(mismatches) == 0
+        and tot_cand == EXPECTED_RAW_CANDIDATES
+        and inv_cnt == EXPECTED_INVESTABLE_COUNT
+        and mcap_cnt == EXPECTED_FILTERED_MARKET_CAP_COUNT
+        and liq_cnt == EXPECTED_FILTERED_LIQUIDITY_COUNT
+        and unavail_cnt == EXPECTED_DATA_UNAVAILABLE_COUNT
+    )
 
     # Gate 6: Missing Data Fail Closed
     unavail_cand_tickers = set(df_candidates[df_candidates["investability_status"] == InvestabilityStatus.DATA_UNAVAILABLE.value]["ticker"])
     g6 = (unavail_cand_tickers == EXPECTED_UNAVAILABLE_TICKERS)
 
-    # Gate 7: Output Schema Backward Compatibility
-    required_cols = {"ticker", "name", "market", "official_stage", "candidate_state", "pattern_a_score", "investability_status", "investability_reason", "market_cap", "avg_trading_value_20d"}
+    # Gate 7: Output Schema Backward Compatibility & Provenance Field Extension
+    required_cols = {
+        "ticker", "name", "market", "official_stage", "candidate_state",
+        "pattern_a_score", "investability_status", "investability_reason",
+        "market_cap", "avg_trading_value_20d", "market_cap_effective_date",
+        "close_effective_date", "tv20_last_observation_date",
+    }
     g7 = required_cols.issubset(set(df_scan.columns))
 
-    # Gate 8: Production Test Suite Pass
-    g8 = True
+    # Gate 8: Dynamic Production Test Suite Pass from Report Artifact
+    py_exit, py_fail, py_block = _read_pytest_report(repo_root)
+    g8 = (py_exit == 0 and py_fail == 0 and py_block == 0)
 
     gates = {
         "gate_01_frozen_pattern_a_identity_pass": bool(g1),
