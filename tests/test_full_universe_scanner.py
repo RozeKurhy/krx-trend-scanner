@@ -335,7 +335,7 @@ def test_subset_filters_and_count_separation(mock_scanner_env):
 
 
 def test_no_ranking_or_decision_fields_exist(mock_scanner_env):
-    """결과 딕셔너리에 rank, cutoff, composite score, buy/sell 필드가 존재하지 않음을 검증."""
+    """결과 딕셔너리에 rank, cutoff, composite score, buy/sell decision 필드가 존재하지 않음을 검증."""
     res = scan_pattern_a_universe(
         cache=mock_scanner_env["cache"],
         as_of=mock_scanner_env["as_of"],
@@ -345,10 +345,14 @@ def test_no_ranking_or_decision_fields_exist(mock_scanner_env):
     df = res.to_dataframe()
     cols = set(df.columns)
 
-    forbidden_substrings = ["rank", "cutoff", "unified", "composite", "buy", "sell", "top_n"]
+    forbidden_patterns = [
+        "rank", "cutoff", "unified", "composite", "top_n",
+        "buy_signal", "sell_signal", "buy_decision", "sell_decision",
+        "recommendation", "action",
+    ]
     for col in cols:
-        for sub in forbidden_substrings:
-            assert sub not in col.lower(), f"Forbidden field '{col}' found in scanner output!"
+        for pattern in forbidden_patterns:
+            assert pattern not in col.lower(), f"Forbidden field '{col}' found in scanner output!"
 
 
 def test_summary_and_artifacts_export(mock_scanner_env, tmp_path: Path):

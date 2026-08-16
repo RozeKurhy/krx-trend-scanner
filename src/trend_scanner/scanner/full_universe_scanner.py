@@ -50,6 +50,11 @@ from trend_scanner.filters.investability import (
     InvestabilityStatus,
     evaluate_investability,
 )
+from trend_scanner.flow.foreign_flow import (
+    FlowDataStatus,
+    ForeignFlowFeatureResult,
+    compute_foreign_flow_features,
+)
 from trend_scanner.universe.asset_classifier import classify_asset_type
 from trend_scanner.universe.krx_universe import (
     get_latest_market_trading_date,
@@ -164,7 +169,29 @@ class PatternAUniverseScanRow:
     close_effective_date: str | None = None
     tv20_last_observation_date: str | None = None
 
-    # 7. Row Execution Status & Error Provenance
+    # 7. Foreign Flow Layer (Phase 11 Flow Confirmation Infrastructure)
+    foreign_flow_data_status: str = "NOT_EVALUATED"
+    foreign_flow_last_observation_date: str | None = None
+    foreign_flow_first_observation_date: str | None = None
+    foreign_flow_observation_count: int = 0
+    foreign_net_buy_value_1d: float | None = None
+    foreign_net_buy_value_5d: float | None = None
+    foreign_net_buy_value_20d: float | None = None
+    foreign_net_buy_value_60d: float | None = None
+    foreign_flow_intensity_5d: float | None = None
+    foreign_flow_intensity_20d: float | None = None
+    foreign_flow_intensity_60d: float | None = None
+    foreign_positive_days_5d: int | None = None
+    foreign_positive_days_20d: int | None = None
+    foreign_positive_days_60d: int | None = None
+    foreign_positive_day_ratio_5d: float | None = None
+    foreign_positive_day_ratio_20d: float | None = None
+    foreign_positive_day_ratio_60d: float | None = None
+    foreign_net_buy_avg_5d: float | None = None
+    foreign_net_buy_avg_20d: float | None = None
+    foreign_net_buy_avg_60d: float | None = None
+
+    # 8. Row Execution Status & Error Provenance
     row_status: ScannerRowStatus = ScannerRowStatus.UNAVAILABLE
     error_type: str | None = None
     error_message: str | None = None
@@ -233,6 +260,26 @@ class PatternAUniverseScanRow:
             "market_cap_effective_date": self.market_cap_effective_date,
             "close_effective_date": self.close_effective_date,
             "tv20_last_observation_date": self.tv20_last_observation_date,
+            "foreign_flow_data_status": self.foreign_flow_data_status,
+            "foreign_flow_last_observation_date": self.foreign_flow_last_observation_date,
+            "foreign_flow_first_observation_date": self.foreign_flow_first_observation_date,
+            "foreign_flow_observation_count": self.foreign_flow_observation_count,
+            "foreign_net_buy_value_1d": self.foreign_net_buy_value_1d,
+            "foreign_net_buy_value_5d": self.foreign_net_buy_value_5d,
+            "foreign_net_buy_value_20d": self.foreign_net_buy_value_20d,
+            "foreign_net_buy_value_60d": self.foreign_net_buy_value_60d,
+            "foreign_flow_intensity_5d": self.foreign_flow_intensity_5d,
+            "foreign_flow_intensity_20d": self.foreign_flow_intensity_20d,
+            "foreign_flow_intensity_60d": self.foreign_flow_intensity_60d,
+            "foreign_positive_days_5d": self.foreign_positive_days_5d,
+            "foreign_positive_days_20d": self.foreign_positive_days_20d,
+            "foreign_positive_days_60d": self.foreign_positive_days_60d,
+            "foreign_positive_day_ratio_5d": self.foreign_positive_day_ratio_5d,
+            "foreign_positive_day_ratio_20d": self.foreign_positive_day_ratio_20d,
+            "foreign_positive_day_ratio_60d": self.foreign_positive_day_ratio_60d,
+            "foreign_net_buy_avg_5d": self.foreign_net_buy_avg_5d,
+            "foreign_net_buy_avg_20d": self.foreign_net_buy_avg_20d,
+            "foreign_net_buy_avg_60d": self.foreign_net_buy_avg_60d,
             "row_status": self.row_status.value,
             "quality_flags": ";".join(self.quality_flags),
             "quality_reason_codes": ";".join(self.quality_reason_codes),
@@ -321,6 +368,16 @@ class PatternAUniverseScanSummary:
     candidate_data_unavailable_count: int = 0
     candidate_investability_distribution: dict[str, int] = field(default_factory=dict)
 
+    # Foreign Flow Confirmation Counts (Phase 11 Specification)
+    flow_ready_count: int = 0
+    flow_partial_count: int = 0
+    flow_data_unavailable_count: int = 0
+    flow_not_evaluated_count: int = 0
+    candidate_flow_ready_count: int = 0
+    candidate_flow_partial_count: int = 0
+    candidate_flow_data_unavailable_count: int = 0
+    candidate_flow_distribution: dict[str, int] = field(default_factory=dict)
+
     def to_dict(self) -> dict[str, Any]:
         """Summary 딕셔너리 직렬화."""
         return {
@@ -355,6 +412,14 @@ class PatternAUniverseScanSummary:
             "candidate_filtered_liquidity_count": self.candidate_filtered_liquidity_count,
             "candidate_data_unavailable_count": self.candidate_data_unavailable_count,
             "candidate_investability_distribution": self.candidate_investability_distribution,
+            "flow_ready_count": self.flow_ready_count,
+            "flow_partial_count": self.flow_partial_count,
+            "flow_data_unavailable_count": self.flow_data_unavailable_count,
+            "flow_not_evaluated_count": self.flow_not_evaluated_count,
+            "candidate_flow_ready_count": self.candidate_flow_ready_count,
+            "candidate_flow_partial_count": self.candidate_flow_partial_count,
+            "candidate_flow_data_unavailable_count": self.candidate_flow_data_unavailable_count,
+            "candidate_flow_distribution": self.candidate_flow_distribution,
             "score_distribution": self.score_distribution,
             "momentum_1m_distribution": self.momentum_1m_distribution,
             "momentum_3m_distribution": self.momentum_3m_distribution,
@@ -419,6 +484,9 @@ def scan_pattern_a_universe(
     target_tickers: list[str] | set[str] | None = None,
     target_markets: list[MarketType | str] | set[MarketType | str] | None = None,
     limit: int | None = None,
+    flow_df: pd.DataFrame | None = None,
+    flow_data_path: Path | str | None = None,
+    enrich_flow_for_candidates: bool = True,
 ) -> PatternAUniverseScanResult:
     """Official KRX COMMON Universe를 대상으로 Pattern A 스캔을 수행한다.
 
@@ -430,6 +498,9 @@ def scan_pattern_a_universe(
         target_tickers: 특정 종목만 스캔할 경우 필터 (Smoke / Subset 테스트용)
         target_markets: 특정 시장만 스캔할 경우 필터 (KOSPI, KOSDAQ)
         limit: 최대 처리 종목 수 (Subset 개발용)
+        flow_df: 외부에서 제공된 외국인 수급 DataFrame
+        flow_data_path: 외국인 수급 데이터 파일 경로 (Parquet / CSV)
+        enrich_flow_for_candidates: Candidate 종목 대상 Flow 피처 산출 여부
 
     Returns:
         PatternAUniverseScanResult: 통합 결과 객체
@@ -542,6 +613,17 @@ def scan_pattern_a_universe(
         logger.warning("Failed to load canonical market cap snapshot for %s: %s", req_as_of_str, exc)
         mcap_dict = {}
         mcap_effective_date = None
+
+    # 3.0.1 Foreign Flow Data Cache 로드 (Phase 11)
+    flow_df_loaded = flow_df
+    if flow_df_loaded is None and flow_data_path is not None:
+        p = Path(flow_data_path)
+        if p.exists():
+            flow_df_loaded = pd.read_parquet(p) if p.suffix == ".parquet" else pd.read_csv(p)
+    elif flow_df_loaded is None:
+        def_p = repo_root / "artifacts/flow/source" / f"foreign_flow_daily_{req_as_of.strftime('%Y%m%d')}.parquet"
+        if def_p.exists():
+            flow_df_loaded = pd.read_parquet(def_p)
 
     # 3. Ticker별 순차 평가 (One Cache Load -> One daily_as_of Slice -> Shared Context)
     rows: list[PatternAUniverseScanRow] = []
@@ -710,6 +792,45 @@ def scan_pattern_a_universe(
             trans_d_3m = momentum_res.horizon_3m.transition_score_delta
             trans_d_6m = momentum_res.horizon_6m.transition_score_delta
 
+            # 3.6.1 Downstream Foreign Flow Confirmation Feature (Phase 11)
+            if (
+                cand_state == PatternACandidateState.CANDIDATE
+                and enrich_flow_for_candidates
+                and flow_df_loaded is not None
+                and not flow_df_loaded.empty
+            ):
+                flow_res: ForeignFlowFeatureResult = compute_foreign_flow_features(
+                    ticker=ticker,
+                    as_of=req_as_of_str,
+                    flow_df=flow_df_loaded,
+                    price_df=daily_as_of if (has_raw_cache and not daily_as_of.empty) else None,
+                )
+            else:
+                flow_res = ForeignFlowFeatureResult(
+                    ticker=ticker,
+                    as_of=req_as_of_str,
+                    data_status=FlowDataStatus.NOT_EVALUATED,
+                    foreign_flow_last_observation_date=None,
+                    foreign_flow_first_observation_date=None,
+                    foreign_flow_observation_count=0,
+                    foreign_net_buy_value_1d=None,
+                    foreign_net_buy_value_5d=None,
+                    foreign_net_buy_value_20d=None,
+                    foreign_net_buy_value_60d=None,
+                    foreign_flow_intensity_5d=None,
+                    foreign_flow_intensity_20d=None,
+                    foreign_flow_intensity_60d=None,
+                    foreign_positive_days_5d=None,
+                    foreign_positive_days_20d=None,
+                    foreign_positive_days_60d=None,
+                    foreign_positive_day_ratio_5d=None,
+                    foreign_positive_day_ratio_20d=None,
+                    foreign_positive_day_ratio_60d=None,
+                    foreign_net_buy_avg_5d=None,
+                    foreign_net_buy_avg_20d=None,
+                    foreign_net_buy_avg_60d=None,
+                )
+
             # 3.7 Row Status 결정
             if pattern_score is not None and official_stage is not None:
                 if mom_1m_ready and mom_3m_ready and mom_6m_ready:
@@ -780,6 +901,26 @@ def scan_pattern_a_universe(
                 market_cap_effective_date=inv_eval.market_cap_effective_date,
                 close_effective_date=inv_eval.close_effective_date,
                 tv20_last_observation_date=inv_eval.tv20_last_observation_date,
+                foreign_flow_data_status=flow_res.data_status.value,
+                foreign_flow_last_observation_date=flow_res.foreign_flow_last_observation_date,
+                foreign_flow_first_observation_date=flow_res.foreign_flow_first_observation_date,
+                foreign_flow_observation_count=flow_res.foreign_flow_observation_count,
+                foreign_net_buy_value_1d=flow_res.foreign_net_buy_value_1d,
+                foreign_net_buy_value_5d=flow_res.foreign_net_buy_value_5d,
+                foreign_net_buy_value_20d=flow_res.foreign_net_buy_value_20d,
+                foreign_net_buy_value_60d=flow_res.foreign_net_buy_value_60d,
+                foreign_flow_intensity_5d=flow_res.foreign_flow_intensity_5d,
+                foreign_flow_intensity_20d=flow_res.foreign_flow_intensity_20d,
+                foreign_flow_intensity_60d=flow_res.foreign_flow_intensity_60d,
+                foreign_positive_days_5d=flow_res.foreign_positive_days_5d,
+                foreign_positive_days_20d=flow_res.foreign_positive_days_20d,
+                foreign_positive_days_60d=flow_res.foreign_positive_days_60d,
+                foreign_positive_day_ratio_5d=flow_res.foreign_positive_day_ratio_5d,
+                foreign_positive_day_ratio_20d=flow_res.foreign_positive_day_ratio_20d,
+                foreign_positive_day_ratio_60d=flow_res.foreign_positive_day_ratio_60d,
+                foreign_net_buy_avg_5d=flow_res.foreign_net_buy_avg_5d,
+                foreign_net_buy_avg_20d=flow_res.foreign_net_buy_avg_20d,
+                foreign_net_buy_avg_60d=flow_res.foreign_net_buy_avg_60d,
                 row_status=row_status,
             )
             rows.append(row)
@@ -904,6 +1045,20 @@ def scan_pattern_a_universe(
     valid_6m = [r.score_delta_6m for r in rows if r.score_delta_6m is not None]
     mom_6m_dist = _calc_stats(valid_6m)
 
+    # Foreign Flow Distribution & Counts (Phase 11 Specification)
+    flow_ready_cnt = sum(1 for r in rows if r.foreign_flow_data_status == FlowDataStatus.READY.value)
+    flow_partial_cnt = sum(1 for r in rows if r.foreign_flow_data_status == FlowDataStatus.PARTIAL.value)
+    flow_unavail_cnt = sum(1 for r in rows if r.foreign_flow_data_status == FlowDataStatus.DATA_UNAVAILABLE.value)
+    flow_not_eval_cnt = sum(1 for r in rows if r.foreign_flow_data_status == FlowDataStatus.NOT_EVALUATED.value)
+
+    cand_flow_dist: dict[str, int] = {
+        status.value: sum(1 for r in candidate_rows if r.foreign_flow_data_status == status.value)
+        for status in FlowDataStatus
+    }
+    cand_flow_ready_cnt = cand_flow_dist.get(FlowDataStatus.READY.value, 0)
+    cand_flow_partial_cnt = cand_flow_dist.get(FlowDataStatus.PARTIAL.value, 0)
+    cand_flow_unavail_cnt = cand_flow_dist.get(FlowDataStatus.DATA_UNAVAILABLE.value, 0)
+
     summary = PatternAUniverseScanSummary(
         requested_as_of=req_as_of.strftime("%Y-%m-%d"),
         reference_market_date=ref_market_date,
@@ -936,6 +1091,14 @@ def scan_pattern_a_universe(
         candidate_filtered_liquidity_count=cand_liq_cnt,
         candidate_data_unavailable_count=cand_unavail_cnt,
         candidate_investability_distribution=cand_inv_dist,
+        flow_ready_count=flow_ready_cnt,
+        flow_partial_count=flow_partial_cnt,
+        flow_data_unavailable_count=flow_unavail_cnt,
+        flow_not_evaluated_count=flow_not_eval_cnt,
+        candidate_flow_ready_count=cand_flow_ready_cnt,
+        candidate_flow_partial_count=cand_flow_partial_cnt,
+        candidate_flow_data_unavailable_count=cand_flow_unavail_cnt,
+        candidate_flow_distribution=cand_flow_dist,
         score_distribution=score_dist,
         momentum_1m_distribution=mom_1m_dist,
         momentum_3m_distribution=mom_3m_dist,
