@@ -1,7 +1,7 @@
 {
   "research_iteration": "Pattern A Stage v0.3 Research Candidate",
-  "base_checkpoint_sha": "d975f66d893f078cc8ffca30edbf52f09a452a13",
-  "timestamp": "2026-08-16T13:59:50.905294",
+  "base_checkpoint_sha": "58d8af8f61d2f34715b6a037d4e99d380dfaa6f9",
+  "timestamp": "2026-08-16T14:32:11.493411",
   "provenance": {
     "snapshot_date": "2026-08-14",
     "sample_sizes": {
@@ -9,40 +9,34 @@
       "premature_transition": 13,
       "recycled_transition": 3,
       "calibration_benchmark": 46,
-      "oos_benchmark": 35,
-      "phase8_candidates": 180
+      "oos_benchmark": 35
     },
-    "feature_space": "36-month HistoricalSnapshot (OHLCV, Moving Averages, Slopes, Resistance)"
+    "feature_space": "36-month HistoricalSnapshot (OHLCV, Moving Averages, Slopes, Resistance)",
+    "generator_module": "src/trend_scanner/validation/stage_v03_research.py"
   },
-  "focus_case_026910_profile": {
+  "focus_case_026910_audit": {
     "ticker": "026910",
     "name": "광진실업",
     "official_stage_v01": "transition",
     "candidate_stage_v02": "transition",
-    "human_audit_label": "TOO_EARLY (Target: BASE)",
+    "manual_stage_fit": "TOO_EARLY",
+    "audited_target_stage": null,
+    "gate_expectation": "candidate_stage != TRANSITION",
     "metrics_36m": {
-      "ma24_slope": 0.071717,
-      "weekly_ma12_slope": 0.201108,
-      "avg_price_change_12m": 0.273571,
-      "range_position": 0.570735,
-      "distance_to_resistance": 0.338235,
-      "ma_spread": 0.133148,
+      "ma24_slope": 0.0717171717171716,
+      "weekly_ma12_slope": 0.2011082138200781,
+      "avg_price_change_12m": 0.2735714285714284,
+      "range_position": 0.5707353490108249,
+      "distance_to_resistance": 0.3382352941176471,
+      "ma_spread": 0.1331481481481481,
       "ma_order_bullish": true,
       "core_led": true,
       "weekly_led": true,
       "previously_expanded_before_snapshot": false
     },
-    "structural_analysis": "Within the 36-month window, 026910 exhibits strong bullish moving average alignment and upward slopes exceeding normal Transition averages. The human TOO_EARLY classification stems from multi-year (10-20 year) macro base structure that cannot be resolved in a 36-month feature window."
+    "research_hypothesis": "Within the 36-month feature window, 026910 exhibits bullish MA alignment and slopes exceeding normal Transition averages. The human TOO_EARLY classification is hypothesized to stem from multi-year (5-10+ year) macro base structure that cannot be resolved in a 36-month feature window."
   },
-  "hypotheses_evaluated": [
-    "HYP_A",
-    "HYP_B",
-    "HYP_C",
-    "HYP_D",
-    "HYP_E",
-    "HYP_F",
-    "HYP_G"
-  ],
+  "conclusion": "검토한 Existing Feature 및 Hypothesis A~G 범위에서 성공 조건을 만족하는 GENERALIZABLE rule을 발견하지 못했다.",
   "generalizable_rule_found": false,
   "final_recommendation": "NO_GENERALIZABLE_RULE_FOUND",
   "future_research_directions": [

@@ -1,8 +1,8 @@
 hypothesis_id,condition,disposition,026910_affected,premature_removed_count,transition_match_lost_count,recycled_removed_count,calibration_exact_delta,calibration_severe_delta,oos_exact_delta,oos_severe_delta,reason
-HYP_A,weekly_ma12_slope <= 0.10 (cap rebound velocity),REGRESSION_CAUSING,True,3,2,0,-2,1,-1,1,"026910(weekly_slope=0.201)은 제거되나 정상 Transition(한국알콜 0.112, 대림제지 0.043) 및 벤치마크 급등 초입 종목이 동반 탈락함"
-HYP_B,ma24_slope <= 0.010 AND weekly_ma12_slope >= 0.10 (weak core + strong rebound),INSUFFICIENT_EVIDENCE,False,0,0,0,0,0,0,0,026910의 ma24_slope는 +0.0717로 초강세이므로 해당 조건에 전혀 매칭되지 않아 026910 분리 불가
-HYP_C,range_position <= 0.50 OR distance_to_resistance >= 0.25 (avoid near-resistance rebound),BENCHMARK_OVERFIT,False,1,4,0,-4,2,-3,1,"026910(range_pos=0.571, dist_res=0.338)은 dist_res가 0.338로 여유있어 미분리되며, 정상 Transition 4종목이 탈락하여 벤치마크 파괴"
-HYP_D,ma_order_bullish is False (require non-bullish MA order for demotion),INSUFFICIENT_EVIDENCE,False,0,0,0,0,0,0,0,026910은 이미 완전 정배열(ma6 > ma12 > ma24 = True) 상태이므로 MA ordering 단독으로는 분리 불가
-HYP_E,ma_spread <= 0.10 (strict spread convergence),INSUFFICIENT_EVIDENCE,True,4,5,0,-5,3,-4,2,"026910(ma_spread=0.133)과 정상 Transition 평균(0.129)이 유사하여 정상 Transition 5개(원풍, 한국알콜, 대림제지 등)가 함께 탈락"
-HYP_F,avg_price_change_12m <= 0.20 (cap 12m momentum),REGRESSION_CAUSING,True,2,6,0,-6,4,-5,2,026910(avg_chg=0.274)을 잡기 위해 0.20으로 제한 시 정상 Transition의 대다수가 탈락하고 Severe mismatch 폭증
-HYP_G,sequential_lifecycle_episode_termination (strict prior expansion & break tracking),TICKER_SPECIFIC,False,0,0,2,0,0,0,0,대동기어(008830)와 예림당(036000) 2개는 sequential reducer로 완벽히 BASE 분리 완료. 026910 및 레드캡투어(038390)는 36m 창 외 5년+ 장기구조 필요
+HYP_A,weekly_ma12_slope > 0.10 -> demote to BASE,REGRESSION_CAUSING,True,4,0,2,0,0,-1,0,026910(weekly_slope=0.201)은 제거되나 정상 Transition인 017890 한국알콜(0.112) 및 벤치마크 급등 초입 종목이 동반 탈락함
+HYP_B,ma24_slope <= 0.010 and weekly_ma12_slope >= 0.10 -> demote to BASE,REGRESSION_CAUSING,False,3,0,2,0,0,-1,0,026910의 ma24_slope는 +0.0717로 초강세이므로 해당 조건에 매칭되지 않아 026910 분리 불가
+HYP_C,range_position > 0.50 and distance_to_resistance < 0.25 -> demote to BASE,REGRESSION_CAUSING,False,6,4,2,-3,0,0,4,"026910(range_pos=0.571, dist_res=0.338)은 dist_res가 0.338로 조건 미충족(미분리)되며, 정상 Transition 3종목이 탈락함"
+HYP_D,not ma_order_bullish -> demote to BASE,REGRESSION_CAUSING,False,7,2,3,-5,0,-2,4,"026910은 이미 완전 정배열(ma6 > ma12 > ma24 = True)이므로 미분리되며, 정상 Transition 2종목(푸드웰, 네이처셀)이 탈락함"
+HYP_E,ma_spread > 0.10 -> demote to BASE,REGRESSION_CAUSING,True,7,11,2,-1,0,-2,3,"026910(ma_spread=0.133)은 제거되나 정상 Transition 8종목(한국알콜, 대림제지, 원풍 등)이 함께 탈락하여 벤치마크 붕괴"
+HYP_F,avg_price_change_12m > 0.20 -> demote to BASE,REGRESSION_CAUSING,True,6,8,2,0,0,0,1,"026910(avg_chg=0.274)은 제거되나 정상 Transition 6종목(대림제지, 한국알콜, 에이스침대, 화천기공 등)이 대거 탈락함"
+HYP_G,current_episode_terminated is True -> demote to BASE,INSUFFICIENT_EVIDENCE,False,3,0,2,0,0,0,0,대동기어(008830)와 예림당(036000) 2개는 sequential reducer로 완벽히 BASE 분리 완료. 026910 및 레드캡투어(038390)는 36m 창 외 5년+ 장기구조 필요
