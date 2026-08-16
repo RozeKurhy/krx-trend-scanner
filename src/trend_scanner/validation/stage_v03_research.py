@@ -39,6 +39,21 @@ def _get_val(target: Any, attr: str, default: Any = None) -> Any:
     return getattr(target, attr, default)
 
 
+def _get_required_val(target: Any, attr: str) -> Any:
+    """Fail-closed getter that strictly requires field presence."""
+    if isinstance(target, pd.Series):
+        if attr not in target.index:
+            raise KeyError(f"Missing required field: '{attr}'")
+        return target[attr]
+    if isinstance(target, dict):
+        if attr not in target:
+            raise KeyError(f"Missing required field: '{attr}'")
+        return target[attr]
+    if not hasattr(target, attr):
+        raise AttributeError(f"Missing required attribute: '{attr}'")
+    return getattr(target, attr)
+
+
 # Hypothesis condition definitions (Explicit Demotion Rules from TRANSITION to BASE)
 HYPOTHESES: list[HypothesisDefinition] = [
     HypothesisDefinition(
@@ -87,7 +102,7 @@ HYPOTHESES: list[HypothesisDefinition] = [
         hypothesis_id="HYP_G",
         description="Sequential lifecycle episode termination tracking",
         condition_code="current_episode_terminated is True -> demote to BASE",
-        demote_rule=lambda d: bool(_get_val(d, "current_episode_terminated", False)),
+        demote_rule=lambda d: bool(_get_required_val(d, "current_episode_terminated")),
         input_scope="LIFECYCLE_DIAGNOSTIC",
     ),
 ]
@@ -142,7 +157,7 @@ def evaluate_benchmark_with_hypothesis(
     repo_root: Path,
     hyp: HypothesisDefinition | None,
 ) -> dict[str, Any]:
-    """Evaluate Calibration46 and OOS35 under a specific hypothesis with proper input_scope routing."""
+    """Evaluate Calibration46 and OOS35 under a specific hypothesis with fail-closed input_scope routing."""
     items = _load_benchmark_evaluations(repo_root)
 
     calib_exact = 0; calib_adj = 0; calib_sev = 0; calib_exact_reg = 0
@@ -316,7 +331,7 @@ def generate_research_artifacts(repo_root: Path) -> dict[str, Any]:
     # Fully deterministic canonical research_summary.json
     summary_payload = {
         "research_iteration": "Pattern A Stage v0.3 Research Candidate",
-        "base_checkpoint_sha": "3c4ba2e4697b5354e6b2bb2d31c16563ea675d6b",
+        "base_checkpoint_sha": "4847ae7c5a4735df8e2265b89e2b9be3718d75d4",
         "provenance": {
             "snapshot_date": "2026-08-14",
             "sample_sizes": {
@@ -394,4 +409,4 @@ def render_feature_table_ascii(df: pd.DataFrame, title: str) -> str:
 if __name__ == "__main__":
     repo_root = Path(__file__).resolve().parent.parent.parent.parent
     res = generate_research_artifacts(repo_root)
-    print("Stage v0.3 Research Evidence regenerated successfully with HYP_G lifecycle diagnostic scope.")
+    print("Stage v0.3 Research Evidence regenerated successfully with fail-closed HYP_G scope.")

@@ -128,20 +128,24 @@ def test_benchmark_impact_all_8_fields_exact_equality():
         assert bench_row["oos_exact_reg"] == live_hyp["oos_exact_reg"]
 
 
-def test_hyp_g_lifecycle_diagnostic_input_scope():
-    """Verify HYP_G explicitly uses input_scope LIFECYCLE_DIAGNOSTIC."""
+def test_hyp_g_lifecycle_diagnostic_fail_closed():
+    """Verify HYP_G uses input_scope LIFECYCLE_DIAGNOSTIC and strictly fails-closed on missing fields."""
     hyp_g = next(h for h in HYPOTHESES if h.hypothesis_id == "HYP_G")
     assert hyp_g.input_scope == "LIFECYCLE_DIAGNOSTIC"
+
+    # Valid values
     assert hyp_g.demote_rule({"current_episode_terminated": True}) is True
     assert hyp_g.demote_rule({"current_episode_terminated": False}) is False
-    assert hyp_g.demote_rule({}) is False
+
+    # Missing field MUST raise KeyError / AttributeError (Fail-Closed)
+    with pytest.raises((KeyError, AttributeError, ValueError)):
+        hyp_g.demote_rule({})
 
 
-def test_report_source_csv_equality():
-    """Verify that source CSVs match expected known ticker values exactly (e.g. 003100 선광 ma24_slope=0.0146)."""
+def test_report_source_csv_renderer_linkage():
+    """Smoke test ensuring committed CSVs match renderer known ground truth (e.g. 003100 선광 ma24_slope=0.0146)."""
     out_dir = _REPO_ROOT / "artifacts" / "stage_v03_research"
     tm_df = pd.read_csv(out_dir / "transition_match13_features.csv", dtype={"ticker": str})
     sun_gwang = tm_df[tm_df["ticker"] == "003100"].iloc[0]
     assert round(float(sun_gwang["ma24_slope"]), 4) == 0.0146
     assert round(float(sun_gwang["weekly_ma12_slope"]), 4) == -0.0741
-
