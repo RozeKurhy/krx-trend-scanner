@@ -30,6 +30,8 @@ from trend_scanner.data.cache import ParquetCache
 from trend_scanner.validation.pattern_a_fast_ground_truth import (
     CACHE_MISSING,
     DATA_UNAVAILABLE,
+    MONTHLY_HISTORY_MIN_BARS,
+    MONTHLY_HISTORY_OK,
     NOT_APPLICABLE,
     NOT_EVALUATED,
     UNLABELED,
@@ -39,6 +41,7 @@ from trend_scanner.validation.pattern_a_fast_ground_truth import (
     first_stage_dates_after,
     load_raw_daily,
     make_sample_id,
+    monthly_history_status,
     resolve_completed_weekly_reference,
     weekly_return_screen,
 )
@@ -68,16 +71,42 @@ COHORT_B_DATES = [
     "2022-06-24", "2022-12-30", "2023-06-30", "2024-06-28",
     "2025-06-27",
 ]
-COHORT_B_TICKER_STRIDE = 8  # 2528 / 8 ≈ 316 tickers screened
+COHORT_B_TICKER_STRIDE = 1  # 전수 screen. 36개월 이력 게이트 도입 후 실측 결과
+# 2016~2023 quarter-end에서 36개월 이력을 가진 티커가 전체 캐시 중 44~66개뿐인
+# 근본적인 로컬 데이터 커버리지 한계가 확인됨(대부분 티커의 캐시 시작일이
+# 최근 3년 내). stride로 표집하면 이 소수 후보군을 더 줄이므로 전수 screen으로
+# 바꿔 존재하는 후보를 최대한 살린다 — quota를 억지로 맞추기 위한 것이 아니라
+# 이미 있는 후보 풀을 stride로 인위적으로 줄이지 않기 위함(§8 "quota 최적화는
+# 하지 말 것"과 구분됨).
 
 cache = ParquetCache()
 _daily_cache: dict[str, pd.DataFrame | None] = {}
+excluded_candidates: list[dict] = []
 
 
 def get_daily(ticker: str) -> pd.DataFrame | None:
     if ticker not in _daily_cache:
         _daily_cache[ticker] = load_raw_daily(ticker, cache)
     return _daily_cache[ticker]
+
+
+def record_exclusion(
+    ticker: str, candidate_date: pd.Timestamp | str | None, reason: str, cohort: str | None = None
+) -> None:
+    """Selection Manifest 재현성(§7)을 위해 후보가 최종 dataset에서 빠진
+    이유를 machine-readable로 남긴다. 로그(logger)에만 의존하지 않는다."""
+    excluded_candidates.append(
+        {
+            "ticker": ticker,
+            "candidate_reference_date": (
+                candidate_date.strftime("%Y-%m-%d")
+                if isinstance(candidate_date, pd.Timestamp)
+                else candidate_date
+            ),
+            "reason": reason,
+            "cohort": cohort,
+        }
+    )
 
 
 def build_row(
@@ -91,7 +120,21 @@ def build_row(
 ) -> dict | None:
     snap = compute_reference_snapshot(ticker, name, daily, reference_date)
     if snap.data_status != "OK":
+        record_exclusion(ticker, reference_date, DATA_UNAVAILABLE, source_cohort)
         logger.warning("  skip %s @ %s: %s", ticker, reference_date.date(), snap.data_status)
+        return None
+
+    # Monthly Review Data Sufficiency Gate: reference_date 시점 completed
+    # monthly bars가 MONTHLY_HISTORY_MIN_BARS 미만이면 사람이 월봉에서
+    # 장기 흐름을 판단할 수 없으므로 fail-closed 처리한다. Pattern A Fast
+    # Feature/Threshold가 아니라 Human Review Data Quality 기준일 뿐이다.
+    mh_status = monthly_history_status(snap.completed_monthly_bars)
+    if mh_status != MONTHLY_HISTORY_OK:
+        record_exclusion(ticker, reference_date, mh_status, source_cohort)
+        logger.info(
+            "  skip %s @ %s: %s (%s completed monthly bars < %d)",
+            ticker, reference_date.date(), mh_status, snap.completed_monthly_bars, MONTHLY_HISTORY_MIN_BARS,
+        )
         return None
 
     t_first, e_first = first_stage_dates_after(ticker, name, daily, reference_date, horizon_weeks=104)
@@ -122,6 +165,9 @@ def build_row(
         ),
         "lead_weeks_to_pattern_a_transition": NOT_EVALUATED,
         "lead_weeks_to_pattern_a_early_trend": NOT_EVALUATED,
+        "completed_monthly_bars_at_reference": snap.completed_monthly_bars,
+        "monthly_history_status": mh_status,
+        "human_review_eligible": True,  # 이 함수까지 도달했다는 것 자체가 gate 통과를 의미
         "pit_data_start": str(daily.index.min().date()),
         "pit_data_end": reference_date.strftime("%Y-%m-%d"),
         "outcome_review_end": min(
@@ -148,6 +194,7 @@ def select_cohort_a(scanner_df: pd.DataFrame) -> list[dict]:
         ticker, name, market = cand["ticker"], cand["name"], cand["market"]
         daily = get_daily(ticker)
         if daily is None:
+            record_exclusion(ticker, None, CACHE_MISSING, "PATTERN_A_HISTORICAL_CONTEXT")
             continue
 
         # entry_boundary(현재 episode가 TRANSITION/EARLY_TREND로 진입한 첫
@@ -161,6 +208,12 @@ def select_cohort_a(scanner_df: pd.DataFrame) -> list[dict]:
         )
         if found is None:
             skipped_no_base += 1
+            record_exclusion(
+                ticker,
+                entry_boundary.strftime("%Y-%m-%d") if entry_boundary is not None else None,
+                "NO_PRE_EPISODE_BASE",
+                "PATTERN_A_HISTORICAL_CONTEXT",
+            )
             logger.info(
                 "  %s: no BASE >= %dw before entry_boundary=%s, skip",
                 ticker, COHORT_A_MIN_LEAD_WEEKS, entry_boundary.date() if entry_boundary is not None else None,
@@ -191,6 +244,7 @@ def select_cohort_b(scanner_df: pd.DataFrame) -> list[dict]:
         ticker, name, market = cand["ticker"], cand["name"], cand["market"]
         daily = get_daily(ticker)
         if daily is None:
+            record_exclusion(ticker, None, CACHE_MISSING, "INDEPENDENT_NEGATIVE_AMBIGUOUS")
             continue
         for date_str in COHORT_B_DATES:
             ref = resolve_completed_weekly_reference(ticker, name, daily, date_str)
@@ -214,6 +268,7 @@ def select_cohort_b(scanner_df: pd.DataFrame) -> list[dict]:
             if picked >= target:
                 break
             if ticker_episode_count.get(ticker, 0) >= MAX_EPISODES_PER_TICKER:
+                record_exclusion(ticker, ref, "MAX_EPISODES_PER_TICKER", bucket)
                 continue
             daily = get_daily(ticker)
             row = build_row(ticker, name, market, ref, "INDEPENDENT_NEGATIVE_AMBIGUOUS", bucket, daily)
@@ -248,6 +303,7 @@ def dedupe_near_duplicates(rows: list[dict], min_gap_weeks: int = 8) -> list[dic
         for r in group:
             d = pd.Timestamp(r["reference_date"])
             if last_date is not None and (d - last_date).days < min_gap_weeks * 7:
+                record_exclusion(ticker, r["reference_date"], "NEAR_DUPLICATE", r["source_cohort"])
                 continue
             kept.append(r)
             last_date = d
@@ -277,6 +333,7 @@ def main() -> None:
         "pattern_a_score_at_reference",
         "pattern_a_transition_first_after_reference", "pattern_a_early_trend_first_after_reference",
         "lead_weeks_to_pattern_a_transition", "lead_weeks_to_pattern_a_early_trend",
+        "completed_monthly_bars_at_reference", "monthly_history_status", "human_review_eligible",
         "pit_data_start", "pit_data_end", "outcome_review_end",
         "data_status", "quality_flags",
     ]
@@ -340,8 +397,21 @@ def main() -> None:
             "max_episodes_per_ticker": MAX_EPISODES_PER_TICKER,
             "min_gap_weeks_same_ticker": 8,
         },
+        "monthly_review_data_sufficiency_gate": {
+            "description": (
+                "reference_date 시점 completed monthly bars가 min_bars 미만이면 "
+                "MONTHLY_HISTORY_INSUFFICIENT로 fail-closed 처리하고 dataset에서 제외한다. "
+                "Pattern A Fast Feature/Threshold가 아니라 '월봉에서 장기 흐름을 사람이 "
+                "실제로 판단할 수 있는가'를 보장하는 Human Review Data Quality 기준이다 "
+                "(monthly_history_status, src/trend_scanner/validation/"
+                "pattern_a_fast_ground_truth.py)."
+            ),
+            "min_bars": MONTHLY_HISTORY_MIN_BARS,
+        },
         "included_samples": len(all_rows),
-        "excluded_reasons": "생략된 candidate는 DATA_UNAVAILABLE 또는 BASE 미발견(backward 104주 이내)으로 로그에만 기록, dataset에는 포함하지 않음",
+        "included_sample_ids": sample_ids,
+        "excluded_candidates": excluded_candidates,
+        "excluded_candidates_count": len(excluded_candidates),
     }
     manifest_path = OUTPUT_DIR / "selection_manifest.json"
     manifest_path.write_text(json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8")
@@ -357,12 +427,19 @@ def main() -> None:
     reserved_path = OUTPUT_DIR / "reserved_calibration_samples.json"
     reserved_path.write_text(json.dumps(reserved, indent=2, ensure_ascii=False), encoding="utf-8")
 
+    monthly_bars = source_df["completed_monthly_bars_at_reference"]
+    gate_failures = sum(1 for e in excluded_candidates if e["reason"] == "MONTHLY_HISTORY_INSUFFICIENT")
+
     logger.info("==================================================")
     logger.info("Total samples: %d (Cohort A: %d, Cohort B: %d)", len(all_rows), len(rows_a), len(rows_b))
     logger.info("Unique tickers: %d", len({r["ticker"] for r in all_rows}))
     logger.info("Market: %s", pd.DataFrame(all_rows)["market"].value_counts().to_dict())
     logger.info("Source reason distribution: %s", pd.DataFrame(all_rows)["source_reason"].value_counts().to_dict())
     logger.info("Reference date range: %s ~ %s", min(r["reference_date"] for r in all_rows), max(r["reference_date"] for r in all_rows))
+    logger.info("Reference year distribution: %s", pd.to_datetime(source_df["reference_date"]).dt.year.value_counts().sort_index().to_dict())
+    logger.info("Completed monthly bars min/median/max: %d / %.1f / %d", monthly_bars.min(), monthly_bars.median(), monthly_bars.max())
+    logger.info("Monthly history gate (%dM) failures during selection: %d", MONTHLY_HISTORY_MIN_BARS, gate_failures)
+    logger.info("Excluded candidates total: %d", len(excluded_candidates))
     logger.info("Source CSV: %s (%d rows)", source_path, len(source_df))
     logger.info("Human Review Worksheet: %s (%d rows)", review_path, len(review_df))
     logger.info("Manifest: %s", manifest_path)

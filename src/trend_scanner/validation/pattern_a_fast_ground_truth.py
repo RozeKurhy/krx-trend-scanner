@@ -33,6 +33,23 @@ NOT_APPLICABLE = "NOT_APPLICABLE"
 DATA_UNAVAILABLE = "DATA_UNAVAILABLE"
 CACHE_MISSING = "CACHE_MISSING"
 
+# Monthly Review Data Sufficiency Gate (13C-1 correction). 36은 Pattern A
+# Fast Feature/Threshold가 아니라 "월봉에서 장기 흐름을 사람이 실제로
+# 판단할 수 있는가"를 보장하는 Human Review Data Quality 기준일 뿐이다.
+# Pattern A Fast Monthly Regime 공식으로 사용하지 않는다.
+MONTHLY_HISTORY_MIN_BARS = 36
+MONTHLY_HISTORY_OK = "OK"
+MONTHLY_HISTORY_INSUFFICIENT = "MONTHLY_HISTORY_INSUFFICIENT"
+
+
+def monthly_history_status(completed_monthly_bars: int | None) -> str:
+    """completed_monthly_bars가 MONTHLY_HISTORY_MIN_BARS 이상이면 OK, 아니면
+    MONTHLY_HISTORY_INSUFFICIENT. None(데이터 자체를 못 구한 경우)도
+    INSUFFICIENT로 fail-closed 처리한다."""
+    if completed_monthly_bars is not None and completed_monthly_bars >= MONTHLY_HISTORY_MIN_BARS:
+        return MONTHLY_HISTORY_OK
+    return MONTHLY_HISTORY_INSUFFICIENT
+
 
 def load_raw_daily(ticker: str, cache: ParquetCache | None = None) -> pd.DataFrame | None:
     """캐시 전용 daily OHLCV 로드. 캐시에 없으면 네트워크로 채우지 않고 None을 반환한다."""
@@ -50,6 +67,7 @@ class ReferenceSnapshot:
     pattern_a_stage: str | None
     pattern_a_candidate_state: str | None
     pattern_a_score: float | None
+    completed_monthly_bars: int | None = None
 
 
 def resolve_completed_weekly_reference(
@@ -92,6 +110,7 @@ def compute_reference_snapshot(
             result.candidate_state.value if result.candidate_state else None
         ),
         pattern_a_score=result.score,
+        completed_monthly_bars=len(snapshot.monthly),
     )
 
 

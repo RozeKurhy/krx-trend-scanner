@@ -5,9 +5,10 @@
 ================================================================================
 Phase: 13C-1 — Ground Truth Dataset Preparation
 Status: **READY_FOR_HUMAN_REVIEW** (13C-1 완료, Human Annotation은 13C-2로 대기)
-Base: `e8cf7e6ee9585e8cc512e6cbe488eaa000497518` (Cohort A 선정 로직은
-advisor 2회 검토에서 연달아 결함이 발견되어 같은 Phase 13C-1 작업 중 두
-차례 수정됨 — §4 참고)
+Base: `6ab0c01f9269abbfb650ba1ced70636bcb5546f2` (Cohort A 선정 로직은
+advisor 2회 검토에서 연달아 결함이 발견되어 수정됐고(§4), 그 뒤 Monthly
+Review Data Sufficiency Gate가 추가되며 Cohort B 후보 상당수가 다시
+제외/재선정됨 — §6, §14 참고)
 Data cutoff (as_of): 2026-08-14
 Network requests: 0 (전부 로컬 `data/raw/stocks/*.parquet` 캐시)
 
@@ -37,20 +38,25 @@ Phase 13A에서 Pattern A Fast의 목적을, Phase 13B에서 Weekly Lifecycle St
 3. Dataset Scope
 --------------------------------------------------------------------------------
 * 총 샘플: **60건** (목표 60 달성)
-* 고유 티커: **56개**
-* 시장: KOSPI 33 / KOSDAQ 27
-* reference_date 연도 분포: 2018(1) / 2020(1) / 2022(9) / 2023(10) /
-  2024(10) / 2025(25) / 2026(4)
+* 고유 티커: **58개**
+* 시장: KOSPI 39 / KOSDAQ 21
+* reference_date 연도 분포: 2018(2) / 2019(1) / 2020(2) / 2021(1) /
+  2022(2) / 2023(1) / 2024(1) / 2025(46) / 2026(4)
+* Completed monthly bars at reference: 최소 42 / 중앙값 46 / 최대 133
+  (전부 Monthly Review Data Sufficiency Gate ≥36 통과, §6·§14 참고)
 * 티커당 최대 episode: 2 (§48 준수, 실제 최대 2)
 
-**정직한 한계**: 2025년 비중(25/60 ≈ 42%)이 상대적으로 높다. Cohort A(현재
-CANDIDATE 티커의 과거 BASE 시점 역추적)가 구조상 최근 2년에 몰리기 때문이다
-(2026-08-14 시점 CANDIDATE는 대부분 최근에 전환했다). 2018/2020은 1건씩으로
-얇다. 다만 Cohort B가 2018~2025 quarter-end grid로 별도 확보되어 있어
-강세장/약세장/횡보장 국면 자체는 최소 1건 이상씩 포함된다(§50 참고). §47의
-"정확히 60을 억지로 채우지 않는다"는 총량 기준이고, 연도 분포까지 완벽히
-고르게 만드는 것은 이번 13C-1 범위 밖으로 판단했다 — 필요하면 13C-2 리뷰
-과정에서 사용자가 특정 연도 보강을 요청할 수 있다.
+**정직한 한계(연도 분포가 이번 correction으로 더 나빠짐)**: 2025년 비중이
+46/60 ≈ 77%로, Monthly History Gate 도입 이전(42%)보다 오히려 심해졌다.
+원인을 실측한 결과, quota 최적화 문제가 아니라 **로컬 캐시의 근본적인
+이력 커버리지 한계**였다: 2016~2023년 quarter-end 시점에 36개월 이상
+이력을 가진 티커가 전체 캐시 2,486개 중 44~66개뿐이었다(대부분 티커의
+`cache_first_date`가 최근 3년 이내). Cohort B 티커 screening을 stride
+8(약 316개)에서 전수(2,486개)로 넓혀도 이 병목은 거의 해소되지 않았다
+(연도 종류는 6개→9개로 늘었지만 2025 비중은 그대로). §8의 지시대로 이
+결과를 quota로 맞추려 하지 않고 있는 그대로 기록한다. 필요하면 13C-2
+리뷰 이후 로컬 캐시 자체의 장기 이력 백필(별도 Phase) 여부를 사용자가
+판단할 수 있다.
 
 --------------------------------------------------------------------------------
 4. Selection Strategy
@@ -95,11 +101,15 @@ forward로 최소 4주(confirm_pre_episode_weeks) 연속 TRANSITION/EARLY_TREND
 `find_base_reference_before_entry`에 이 배경과 함께 기록해 두었다.
 
 **Cohort B — Independent Negative / Ambiguous** (45건):
-`cache_present` 티커를 stride 8로 표집(약 316개) 후 quarter-end 날짜 그리드
-13개(2016~2025, 강세/약세/횡보 국면 분산)에서 단순 가격 기반 sampling 지표
+`cache_present` 티커 **전수**(2,486개 — 최초에는 stride 8 표집(약 316개)
+이었으나, Monthly History Gate 도입 후 초기 quarter-end 날짜의 생존
+후보가 극소수임이 확인되어 존재하는 후보를 stride로 더 줄이지 않도록
+전수 screen으로 전환함, §3 참고) × quarter-end 날짜 그리드 13개(2016~2025,
+강세/약세/횡보 국면 분산)에서 단순 가격 기반 sampling 지표
 (`weekly_return_screen`)를 계산하고, 고정 규칙(`classify_source_reason`,
 `src/trend_scanner/validation/pattern_a_fast_ground_truth.py`)으로 버킷팅한
-뒤 버킷별 상위 N개를 선택했다:
+뒤, Monthly History Gate(§6)를 통과하는 후보 중 버킷별 상위 N개를
+선택했다:
 
 | source_reason | 목표 | 선택 |
 |---|---|---|
@@ -156,6 +166,19 @@ classify_source_reason 규칙(고정, 변경 시 이 함수의 docstring도 함�
 * `pattern_a_transition_first_after_reference` /
   `pattern_a_early_trend_first_after_reference`는 Pattern A 자체의 사후
   벤치마크 조회 결과이며, reference 시점 Stage 판단에는 전혀 쓰이지 않는다.
+* **Monthly Review Data Sufficiency Gate**: 모든 샘플은 `reference_date`
+  시점 completed monthly bars가 `MONTHLY_HISTORY_MIN_BARS = 36` 이상이어야
+  한다(`monthly_history_status`, `src/trend_scanner/validation/
+  pattern_a_fast_ground_truth.py`). 이 36은 Pattern A Fast Feature나
+  Threshold가 아니라 "월봉에서 장기 흐름을 사람이 실제로 판단할 수
+  있는가"를 보장하는 Human Review Data Quality 기준일 뿐이며, Pattern A
+  Fast Monthly Regime 공식으로 쓰지 않는다. 미달 후보는
+  `MONTHLY_HISTORY_INSUFFICIENT`로 fail-closed 처리되어 dataset에서
+  제외되고 다음 후보로 top-up된다(§14 참고). 흥미롭게도 이 게이트가
+  정확히, 이전 버전에서 `pattern_a_stage_at_reference`가 비어 있던 29/60
+  행과 100% 일치했다 — Pattern A Score/Stage 자체도 내부적으로 36개월
+  완료 월봉을 요구하기 때문(Phase 5 데이터 계약)이며, 이번 게이트는 그
+  결측을 사전에 명시적으로 걸러내는 역할도 겸한다.
 
 --------------------------------------------------------------------------------
 7. Source Cohorts
@@ -181,6 +204,9 @@ Source dataset: `artifacts/pattern_a_fast/ground_truth/pattern_a_fast_ground_tru
 | human_label / human_confidence / human_notes | **UNLABELED** / 빈값 (13C-2 Human 필드) |
 | pattern_a_stage_at_reference 등 pattern_a_* | Pattern A Benchmark Context (frozen evaluator, 이번 단계에 채움) |
 | lead_weeks_to_pattern_a_* | **NOT_EVALUATED** (trigger_event_observed=YES일 때만 13C-2에서 계산, §30) |
+| completed_monthly_bars_at_reference | reference_date 시점 completed monthly bars 수 (Human Review Data Quality evidence, Fast Feature 아님) |
+| monthly_history_status | `OK` (전 샘플, ≥36 게이트 통과) — Human Review Data Quality metadata |
+| human_review_eligible | `True` (전 샘플 — 게이트 미통과 후보는 애초에 dataset에서 제외됨) |
 | pit_data_start / pit_data_end / outcome_review_end | PIT/Outcome 경계 |
 | data_status / quality_flags | 품질 상태 |
 
@@ -230,12 +256,14 @@ Truth가 아니라 **Benchmark**로만 쓰인다 — Pattern A가 나중에 EARL
 됐다고 자동으로 GOOD_TRIGGER를 부여하지 않으며, Pattern A가 Candidate가
 아니라고 자동으로 FALSE_TRIGGER를 부여하지도 않는다.
 
-일부 샘플(29/60)은 `pattern_a_stage_at_reference`가 비어 있다 — 해당
-historical 시점에 Pattern A Score/Stage 계산에 필요한 최소 이력(예:
-36개월 완료 월봉)이 부족했기 때문이며(Pattern A 자체의 데이터 요구조건,
-§121 Phase 5 참고), 결측을 임의로 채우지 않고 그대로 비워 두었다. Fast
-Ground Truth 샘플 자체(source_reason, PIT 차트)는 이 결측과 무관하게
-유효하다.
+`pattern_a_stage_at_reference`는 60건 전부 채워져 있다(결측 0). 이전
+버전에서는 29/60이 비어 있었는데 — 해당 historical 시점에 Pattern A
+Score/Stage 계산에 필요한 최소 이력(36개월 완료 월봉, Pattern A 자체의
+데이터 요구조건, Phase 5 데이터 계약 참고)이 부족했기 때문이다. 이번
+correction에서 도입한 Monthly Review Data Sufficiency Gate(§6)가 동일한
+36개월 기준으로 그 결측 케이스를 사전에 걸러내면서, 결과적으로 결측이
+전부 사라졌다(의도적으로 결측을 메운 것이 아니라, 애초에 결측이 나올
+샘플 자체를 dataset에서 제외했다는 뜻).
 
 **`pattern_a_transition_first_after_reference`/`_early_trend_first_...`
 읽는 법 — "최초 접촉"이지 "안정적으로 정착한 시점"이 아니다.** 이 두
@@ -276,10 +304,13 @@ Backfill과 동일한 위반이 된다, §31).
 --------------------------------------------------------------------------------
 14. Data Quality
 --------------------------------------------------------------------------------
-* 60건 전부 `data_status == OK`.
-* Cache miss/데이터 부족으로 제외된 후보는 dataset에 포함하지 않고 로그로만
-  남겼다(재현하려면 `scripts/prepare_pattern_a_fast_ground_truth.py`를
-  다시 실행하면 동일 로그를 볼 수 있다).
+* 60건 전부 `data_status == OK`이고 `monthly_history_status == OK`(≥36
+  completed monthly bars).
+* 이번 correction에서 제외된 후보 총 206건 — `MONTHLY_HISTORY_INSUFFICIENT`
+  203건, `NO_PRE_EPISODE_BASE` 2건, `MAX_EPISODES_PER_TICKER` 1건. 로그
+  뿐 아니라 `selection_manifest.json`의 `excluded_candidates`에
+  ticker/candidate_reference_date/reason/cohort로 machine-readable하게
+  전부 기록했다(§7 재현성 요구사항, §15 참고).
 * Network request 0 — `ParquetCache`만 사용, `MarketDataRepository`/
   `PyKrxDataProvider`는 쓰지 않았다(네트워크 fallback 경로를 원천적으로
   배제).
@@ -289,8 +320,12 @@ Backfill과 동일한 위반이 된다, §31).
 --------------------------------------------------------------------------------
 `artifacts/pattern_a_fast/ground_truth/selection_manifest.json` — base
 commit, as_of, source datasets, cohort별 selection strategy(위 §4의 표와
-동일 내용을 기계가 읽을 수 있는 형태로), included/excluded 사유, network
-requests=0을 기록.
+동일 내용을 기계가 읽을 수 있는 형태로), Monthly History Gate 기준(§6),
+**포함된 sample_id 전체 목록(`included_sample_ids`)**, **제외된 후보
+전체 목록(`excluded_candidates` — ticker, candidate_reference_date,
+reason, cohort)**, network requests=0을 기록. 이전 버전은 제외 사유를
+generic 문자열 하나로만 남겼는데, 이번 correction에서 위와 같이
+machine-readable 목록으로 보강했다(§7).
 
 `artifacts/pattern_a_fast/ground_truth/reserved_calibration_samples.json`
 — 이번 60건의 `ticker`+`reference_date` 전체 목록. Phase 13I OOS Validation
@@ -313,6 +348,7 @@ requests=0을 기록.
 | 10 | Sample selection manifest reproducible | PASS (`selection_manifest.json`) |
 | 11 | Positive only sampling avoided | PASS (6개 non-positive 버킷 포함) |
 | 12 | Source dataset and Human Worksheet separated | PASS (두 개 CSV로 분리) |
+| 13 | Monthly Review Data Sufficiency Gate (≥36 completed monthly bars) | PASS (최소 42, 전 샘플 통과) |
 
 ALL PASS — HOLD 아님.
 

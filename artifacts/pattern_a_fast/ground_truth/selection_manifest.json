@@ -16,7 +16,7 @@
     },
     "cohort_b": {
       "name": "INDEPENDENT_NEGATIVE_AMBIGUOUS",
-      "description": "cache_present 티커를 stride 8로 표집한 뒤 quarter-end 날짜 그리드 ['2016-06-30', '2017-06-30', '2018-06-29', '2018-12-28', '2019-06-28', '2020-03-27', '2020-09-25', '2021-06-25', '2022-06-24', '2022-12-30', '2023-06-30', '2024-06-28', '2025-06-27'] 각각에서 weekly_return_screen 지표를 계산하고 classify_source_reason (src/trend_scanner/validation/pattern_a_fast_ground_truth.py)의 고정 규칙으로 버킷팅. 버킷당 |trailing_return|+|forward_return| 기준 상위 N개 선택.",
+      "description": "cache_present 티커를 stride 1로 표집한 뒤 quarter-end 날짜 그리드 ['2016-06-30', '2017-06-30', '2018-06-29', '2018-12-28', '2019-06-28', '2020-03-27', '2020-09-25', '2021-06-25', '2022-06-24', '2022-12-30', '2023-06-30', '2024-06-28', '2025-06-27'] 각각에서 weekly_return_screen 지표를 계산하고 classify_source_reason (src/trend_scanner/validation/pattern_a_fast_ground_truth.py)의 고정 규칙으로 버킷팅. 버킷당 |trailing_return|+|forward_return| 기준 상위 N개 선택.",
       "targets": {
         "FAILED_BREAKOUT": 10,
         "LONG_DOWNTREND_BOUNCE": 5,
@@ -30,6 +30,1310 @@
     "max_episodes_per_ticker": 2,
     "min_gap_weeks_same_ticker": 8
   },
+  "monthly_review_data_sufficiency_gate": {
+    "description": "reference_date 시점 completed monthly bars가 min_bars 미만이면 MONTHLY_HISTORY_INSUFFICIENT로 fail-closed 처리하고 dataset에서 제외한다. Pattern A Fast Feature/Threshold가 아니라 '월봉에서 장기 흐름을 사람이 실제로 판단할 수 있는가'를 보장하는 Human Review Data Quality 기준이다 (monthly_history_status, src/trend_scanner/validation/pattern_a_fast_ground_truth.py).",
+    "min_bars": 36
+  },
   "included_samples": 60,
-  "excluded_reasons": "생략된 candidate는 DATA_UNAVAILABLE 또는 BASE 미발견(backward 104주 이내)으로 로그에만 기록, dataset에는 포함하지 않음"
+  "included_sample_ids": [
+    "000050_20251024",
+    "000150_20210625",
+    "000320_20250627",
+    "000370_20250509",
+    "000400_20250627",
+    "000700_20260109",
+    "000850_20250919",
+    "000880_20200327",
+    "000950_20250627",
+    "001040_20190628",
+    "001120_20200327",
+    "001210_20250314",
+    "001260_20250926",
+    "001270_20250627",
+    "001450_20260116",
+    "001540_20260213",
+    "001720_20250627",
+    "001800_20250321",
+    "001820_20250627",
+    "002170_20250321",
+    "002210_20250627",
+    "002460_20250509",
+    "003100_20250822",
+    "003120_20260327",
+    "003230_20240628",
+    "003230_20250627",
+    "003480_20250207",
+    "003490_20250905",
+    "003570_20250627",
+    "003670_20250627",
+    "005160_20250627",
+    "006360_20220624",
+    "009240_20180629",
+    "009240_20221223",
+    "009830_20180629",
+    "011280_20250627",
+    "034020_20250627",
+    "040910_20250627",
+    "043100_20250627",
+    "043200_20250627",
+    "049800_20250627",
+    "068270_20230630",
+    "072770_20250627",
+    "083660_20250627",
+    "097230_20250627",
+    "109740_20250627",
+    "115450_20250627",
+    "121850_20250627",
+    "124500_20250627",
+    "126340_20250627",
+    "131760_20250627",
+    "133820_20250627",
+    "137950_20250627",
+    "170920_20250627",
+    "187660_20250627",
+    "200230_20250627",
+    "223310_20250627",
+    "304840_20250627",
+    "377030_20250627",
+    "377300_20250627"
+  ],
+  "excluded_candidates": [
+    {
+      "ticker": "001940",
+      "candidate_reference_date": "2025-05-09",
+      "reason": "NO_PRE_EPISODE_BASE",
+      "cohort": "PATTERN_A_HISTORICAL_CONTEXT"
+    },
+    {
+      "ticker": "003300",
+      "candidate_reference_date": "2024-08-02",
+      "reason": "NO_PRE_EPISODE_BASE",
+      "cohort": "PATTERN_A_HISTORICAL_CONTEXT"
+    },
+    {
+      "ticker": "290690",
+      "candidate_reference_date": "2023-06-30",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "257720",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "050090",
+      "candidate_reference_date": "2023-06-30",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "012320",
+      "candidate_reference_date": "2022-12-23",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "419530",
+      "candidate_reference_date": "2025-06-27",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "018500",
+      "candidate_reference_date": "2023-06-30",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "317240",
+      "candidate_reference_date": "2023-06-30",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "003960",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "900250",
+      "candidate_reference_date": "2023-06-30",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "015590",
+      "candidate_reference_date": "2023-06-30",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "005860",
+      "candidate_reference_date": "2022-06-24",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "073640",
+      "candidate_reference_date": "2023-06-30",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "014990",
+      "candidate_reference_date": "2022-12-23",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "304360",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "417860",
+      "candidate_reference_date": "2025-06-27",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "065370",
+      "candidate_reference_date": "2022-12-23",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "001820",
+      "candidate_reference_date": "2022-12-23",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "003060",
+      "candidate_reference_date": "2022-12-23",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "007120",
+      "candidate_reference_date": "2022-12-23",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "005320",
+      "candidate_reference_date": "2022-12-23",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "002410",
+      "candidate_reference_date": "2023-06-30",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "002990",
+      "candidate_reference_date": "2022-12-23",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "000990",
+      "candidate_reference_date": "2022-12-23",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "004490",
+      "candidate_reference_date": "2022-12-23",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "009310",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "008930",
+      "candidate_reference_date": "2022-12-23",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "004270",
+      "candidate_reference_date": "2022-12-23",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "002870",
+      "candidate_reference_date": "2022-12-23",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "003310",
+      "candidate_reference_date": "2023-06-30",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "002410",
+      "candidate_reference_date": "2022-12-23",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "002880",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "001570",
+      "candidate_reference_date": "2023-06-30",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "003350",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "004360",
+      "candidate_reference_date": "2022-12-23",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "001570",
+      "candidate_reference_date": "2022-12-23",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "006220",
+      "candidate_reference_date": "2023-06-30",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "003100",
+      "candidate_reference_date": "2023-06-30",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "258830",
+      "candidate_reference_date": "2023-06-30",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "080580",
+      "candidate_reference_date": "2023-06-30",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "408900",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "009440",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "117730",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "110020",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "005110",
+      "candidate_reference_date": "2023-06-30",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "322780",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "223310",
+      "candidate_reference_date": "2023-06-30",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "270520",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "425040",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "227950",
+      "candidate_reference_date": "2023-06-30",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "276040",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "383930",
+      "candidate_reference_date": "2025-06-27",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "101670",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "950220",
+      "candidate_reference_date": "2023-06-30",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "377480",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "299030",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "424980",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "084990",
+      "candidate_reference_date": "2023-06-30",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "228670",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "251630",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "000040",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "377460",
+      "candidate_reference_date": "2023-06-30",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "241790",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "007390",
+      "candidate_reference_date": "2023-06-30",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "107600",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "361610",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "420770",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "393890",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "195870",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "137080",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "142760",
+      "candidate_reference_date": "2023-06-30",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "417840",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "263050",
+      "candidate_reference_date": "2023-06-30",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "007460",
+      "candidate_reference_date": "2022-12-23",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "097780",
+      "candidate_reference_date": "2022-12-23",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "136410",
+      "candidate_reference_date": "2023-06-30",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "402030",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "123420",
+      "candidate_reference_date": "2023-06-30",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "090470",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "101490",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "217820",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "139670",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "282880",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "307750",
+      "candidate_reference_date": "2022-12-23",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "129890",
+      "candidate_reference_date": "2022-12-23",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "317830",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "010660",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "101000",
+      "candidate_reference_date": "2022-12-23",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "195990",
+      "candidate_reference_date": "2022-12-23",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "083640",
+      "candidate_reference_date": "2023-06-30",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "288980",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "198940",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "009620",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "014680",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "123840",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "006110",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "101730",
+      "candidate_reference_date": "2023-06-30",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "245620",
+      "candidate_reference_date": "2023-06-30",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "371950",
+      "candidate_reference_date": "2023-06-30",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "291230",
+      "candidate_reference_date": "2023-06-30",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "236810",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "363280",
+      "candidate_reference_date": "2023-06-30",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "340930",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "412350",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "104200",
+      "candidate_reference_date": "2023-06-30",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "216050",
+      "candidate_reference_date": "2023-06-30",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "134580",
+      "candidate_reference_date": "2023-06-30",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "105330",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "389140",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "377030",
+      "candidate_reference_date": "2023-06-30",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "089230",
+      "candidate_reference_date": "2023-06-30",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "348030",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "091970",
+      "candidate_reference_date": "2023-06-30",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "251270",
+      "candidate_reference_date": "2023-06-30",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "000950",
+      "candidate_reference_date": "2023-06-30",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "262840",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "009240",
+      "candidate_reference_date": "2022-06-24",
+      "reason": "MAX_EPISODES_PER_TICKER",
+      "cohort": "NEGATIVE_CONTROL"
+    },
+    {
+      "ticker": "196490",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "289220",
+      "candidate_reference_date": "2023-06-30",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "189330",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "290670",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "293490",
+      "candidate_reference_date": "2023-06-30",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "002900",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "100130",
+      "candidate_reference_date": "2023-06-30",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "241840",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "177350",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "321820",
+      "candidate_reference_date": "2023-06-30",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "009810",
+      "candidate_reference_date": "2023-06-30",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "285800",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "005320",
+      "candidate_reference_date": "2023-06-30",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "391710",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "262260",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "328380",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "092600",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "134580",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "095910",
+      "candidate_reference_date": "2023-06-30",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "104540",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "239340",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "159010",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "308170",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "096690",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "365340",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "382840",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "217500",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "271830",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "206650",
+      "candidate_reference_date": "2022-12-23",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "084440",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "360070",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "091580",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "418420",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "258830",
+      "candidate_reference_date": "2022-12-23",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "376980",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "276730",
+      "candidate_reference_date": "2023-06-30",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "142760",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "424760",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "151860",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "299660",
+      "candidate_reference_date": "2022-12-23",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "291810",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "321550",
+      "candidate_reference_date": "2023-06-30",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "119830",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "317240",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "089230",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "354320",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "278280",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "208640",
+      "candidate_reference_date": "2023-06-30",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "012340",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "256840",
+      "candidate_reference_date": "2022-12-23",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "123010",
+      "candidate_reference_date": "2023-06-30",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "215600",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "133820",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "082800",
+      "candidate_reference_date": "2023-06-30",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "193250",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "377300",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "099220",
+      "candidate_reference_date": "2023-06-30",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "362320",
+      "candidate_reference_date": "2023-06-30",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "417970",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "089140",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "003580",
+      "candidate_reference_date": "2023-06-30",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "314140",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "170790",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "303530",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "222040",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "053620",
+      "candidate_reference_date": "2023-06-30",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "070300",
+      "candidate_reference_date": "2023-06-30",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "003800",
+      "candidate_reference_date": "2022-12-23",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "214320",
+      "candidate_reference_date": "2023-06-30",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "149950",
+      "candidate_reference_date": "2023-06-30",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "136490",
+      "candidate_reference_date": "2023-06-30",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "102260",
+      "candidate_reference_date": "2022-12-23",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "002360",
+      "candidate_reference_date": "2022-12-23",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "004150",
+      "candidate_reference_date": "2023-06-30",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "236200",
+      "candidate_reference_date": "2023-06-30",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "129260",
+      "candidate_reference_date": "2023-06-30",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "037560",
+      "candidate_reference_date": "2023-06-30",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "101670",
+      "candidate_reference_date": "2022-06-24",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "108860",
+      "candidate_reference_date": "2022-12-23",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "004910",
+      "candidate_reference_date": "2022-06-24",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "005010",
+      "candidate_reference_date": "2022-06-17",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "180400",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "002710",
+      "candidate_reference_date": "2022-12-23",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "000520",
+      "candidate_reference_date": "2024-06-28",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "107640",
+      "candidate_reference_date": "2022-06-24",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "115500",
+      "candidate_reference_date": "2022-12-23",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "179900",
+      "candidate_reference_date": "2022-06-24",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    },
+    {
+      "ticker": "114190",
+      "candidate_reference_date": "2022-12-23",
+      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
+      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+    }
+  ],
+  "excluded_candidates_count": 206
 }

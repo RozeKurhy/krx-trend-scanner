@@ -14,14 +14,19 @@ import pytest
 
 from trend_scanner.data.cache import ParquetCache
 from trend_scanner.data.resampler import to_weekly
+from trend_scanner.validation.historical_snapshot import build_historical_snapshot
 from trend_scanner.validation.pattern_a_fast_ground_truth import (
     DATA_UNAVAILABLE,
+    MONTHLY_HISTORY_INSUFFICIENT,
+    MONTHLY_HISTORY_MIN_BARS,
+    MONTHLY_HISTORY_OK,
     build_chart_slices,
     classify_source_reason,
     compute_reference_snapshot,
     find_base_reference_before_entry,
     load_raw_daily,
     make_sample_id,
+    monthly_history_status,
     resolve_completed_weekly_reference,
 )
 
@@ -187,3 +192,46 @@ def test_find_base_reference_before_entry_reference_is_not_inside_episode():
         compute_reference_snapshot(_REAL_TICKER, _REAL_NAME, daily, d).pattern_a_stage for d in forward
     ]
     assert all(s not in ("transition", "early_trend") for s in forward_stages), forward_stages
+
+
+# --- Monthly Review Data Sufficiency Gate (13C-1 correction) -------------
+
+
+def test_monthly_history_gate_fails_closed_below_min_bars(daily):
+    ref = resolve_completed_weekly_reference("000000", "테스트종목", daily, "2020-01-10")
+    snap = compute_reference_snapshot("000000", "테스트종목", daily, ref)
+    assert snap.completed_monthly_bars is not None
+    assert snap.completed_monthly_bars < MONTHLY_HISTORY_MIN_BARS
+    assert monthly_history_status(snap.completed_monthly_bars) == MONTHLY_HISTORY_INSUFFICIENT
+
+
+def test_monthly_history_gate_ok_at_or_above_min_bars(daily):
+    ref = resolve_completed_weekly_reference("000000", "테스트종목", daily, "2023-06-16")
+    snap = compute_reference_snapshot("000000", "테스트종목", daily, ref)
+    assert snap.completed_monthly_bars is not None
+    assert snap.completed_monthly_bars >= MONTHLY_HISTORY_MIN_BARS
+    assert monthly_history_status(snap.completed_monthly_bars) == MONTHLY_HISTORY_OK
+
+
+def test_monthly_history_gate_excludes_incomplete_current_month(daily):
+    # 2023-06-16은 6월 중순이므로 6월 자체는 아직 완료된 monthly bar가 아니다.
+    ref_mid_month = pd.Timestamp("2023-06-16")
+    snapshot = build_historical_snapshot(
+        "000000", "테스트종목", daily, ref_mid_month, include_incomplete_periods=False
+    )
+    assert not snapshot.monthly.empty
+    assert snapshot.monthly.index.max() < ref_mid_month.replace(day=1)
+
+
+def test_monthly_history_gate_excludes_future_bars(daily):
+    early_ref = resolve_completed_weekly_reference("000000", "테스트종목", daily, "2021-01-08")
+    later_ref = resolve_completed_weekly_reference("000000", "테스트종목", daily, "2023-06-16")
+    early_snap = compute_reference_snapshot("000000", "테스트종목", daily, early_ref)
+    later_snap = compute_reference_snapshot("000000", "테스트종목", daily, later_ref)
+    # early_ref 시점에서 계산한 월봉 개수는 later_ref 이후의 월봉을 포함하지
+    # 않으므로 later_ref 시점 개수보다 항상 적어야 한다(미래 데이터 미포함).
+    assert early_snap.completed_monthly_bars < later_snap.completed_monthly_bars
+    early_full = build_historical_snapshot(
+        "000000", "테스트종목", daily, early_ref, include_incomplete_periods=False
+    )
+    assert early_full.monthly.index.max() <= early_ref

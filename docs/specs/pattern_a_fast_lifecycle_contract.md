@@ -4,16 +4,17 @@
 0. 문서 상태
 ================================================================================
 Phase: 13B — Pattern A Fast Weekly Lifecycle Contract
-Status: **PROPOSED FOR FREEZE / PENDING REVIEW** (사용자 리뷰 승인 전.
-Stage 의미 Freeze를 제안하는 초안이며 Classifier Rule Freeze는 아님)
+Status: **CLOSED / Weekly Lifecycle Semantics v0.1 Frozen** (사용자 리뷰
+승인 완료. Classifier Rules: NOT FROZEN — Feature / Threshold / Score:
+NOT FROZEN)
 Base: `dd0dec386d1382f9176ec8a876b17fd4bcdeb51e`
 선행 문서: [docs/specs/pattern_a_fast_definition.md](pattern_a_fast_definition.md) (Phase 13A, CLOSED)
 
 이 문서는 WATCH / SETUP / TRIGGER / TREND / EXTENDED 5개 Weekly
 Lifecycle Stage의 의미와 전이 원칙을 고정하는 계약이다. Feature 공식,
-숫자 Threshold, Classifier 구현은 포함하지 않는다. Stage 이름 5개는
-이번 correction에서 변경하지 않는다 — proposed contract로 그대로
-유지하며, 사용자 승인 후 공식 Freeze로 전환한다.
+숫자 Threshold, Classifier 구현은 포함하지 않으며 이 셋은 여전히
+NOT FROZEN이다. Stage 이름 5개와 의미는 사용자 승인을 거쳐 공식
+Freeze되었다.
 
 --------------------------------------------------------------------------------
 1. Purpose (목적)
