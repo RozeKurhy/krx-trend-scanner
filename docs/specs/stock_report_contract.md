@@ -196,6 +196,7 @@ Stock Report Contract v0.1은 KRX 상장 개별 종목에 대해 외부 네트�
       "type": "object",
       "properties": {
         "as_of": { "type": "string", "format": "date" },
+        "close": { "type": ["number", "null"], "description": "Exact common market month-end close price" },
         "score": { "type": ["number", "null"] },
         "stage": { "type": "string" },
         "candidate_state": { "type": "string" },

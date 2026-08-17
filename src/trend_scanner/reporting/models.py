@@ -73,6 +73,7 @@ class MonthlyObservation:
     stage: str
     candidate_state: str
     data_available: bool
+    close: float | None = None
     reason: str | None = None
 
 
@@ -106,6 +107,8 @@ class MonthlyHistorySection:
     stage_transitions: list[StageTransition]
     recent_12m_history: list[MonthlyObservation]
     full_monthly_history: list[MonthlyObservation]
+    first_pattern_a_available_as_of: str | None = None
+    pattern_a_available_observation_count: int = 0
 
 
 @dataclass
@@ -154,7 +157,7 @@ class ProvenanceSection:
     stage_contract: str
     investability_contract: str
     foreign_flow_contract: str
-    network_requests: int = 0
+    network_requests: int
 
 
 @dataclass
@@ -175,16 +178,5 @@ class StockReport:
     provenance: ProvenanceSection
 
     def to_dict(self) -> dict[str, Any]:
-        """Convert to clean JSON-serializable dictionary."""
-        def _serialize(obj: Any) -> Any:
-            if isinstance(obj, Enum):
-                return obj.value
-            if isinstance(obj, (list, tuple)):
-                return [_serialize(item) for item in obj]
-            if isinstance(obj, dict):
-                return {k: _serialize(v) for k, v in obj.items()}
-            if hasattr(obj, "__dataclass_fields__"):
-                return {k: _serialize(getattr(obj, k)) for k in obj.__dataclass_fields__}
-            return obj
-
-        return _serialize(self)
+        """Convert report to JSON-serializable dictionary."""
+        return asdict(self)

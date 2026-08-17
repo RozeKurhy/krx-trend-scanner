@@ -308,11 +308,12 @@ def render_markdown_report(report: StockReport) -> str:
     md.append("")
     md.append("## 2. 최근 12개월 월별 추이 (Recent 12M Trajectory)")
     md.append("")
-    md.append("| 기준일 | Pattern A Score | Stage | Candidate State | Data Available |")
-    md.append("|---|---:|---|---|---|")
+    md.append("| 기준일 | 종가 | Pattern A Score | Stage | Candidate State | Data Available |")
+    md.append("|---|---:|---:|---|---|---|")
     for obs in hist.recent_12m_history:
+        cl_str = f"{int(round(obs.close)):,}" if obs.close is not None else "N/A"
         sc_str = f"{obs.score:.2f}" if obs.score is not None else "N/A"
-        md.append(f"| {obs.as_of} | {sc_str} | {obs.stage} | {obs.candidate_state} | {str(obs.data_available)} |")
+        md.append(f"| {obs.as_of} | {cl_str} | {sc_str} | {obs.stage} | {obs.candidate_state} | {str(obs.data_available)} |")
     md.append("")
     if hist.score_trend.current_score is not None:
         st = hist.score_trend
@@ -375,14 +376,16 @@ def render_markdown_report(report: StockReport) -> str:
     md.append("## 6. 전체 월별 이력 (Full Monthly History)")
     md.append(f"- **전체 관측 시작월**: `{hist.history_start_as_of}`")
     md.append(f"- **전체 관측 종료월**: `{hist.history_end_as_of}`")
-    md.append(f"- **총 월별 관측 개수**: `{hist.observation_count}개월`")
+    md.append(f"- **최초 Pattern A 산출월**: `{hist.first_pattern_a_available_as_of}`")
+    md.append(f"- **총 월별 관측 개수**: `{hist.observation_count}개월` (Pattern A 산출 가능: `{hist.pattern_a_available_observation_count}개월`)")
     md.append("")
-    md.append("| 기준일 | Pattern A Score | Stage | Candidate State | Data Available | Reason |")
-    md.append("|---|---:|---|---|---|---|")
+    md.append("| 기준일 | 종가 | Pattern A Score | Stage | Candidate State | Data Available | Reason |")
+    md.append("|---|---:|---:|---|---|---|---|")
     for obs in hist.full_monthly_history:
+        cl_str = f"{int(round(obs.close)):,}" if obs.close is not None else "N/A"
         sc_str = f"{obs.score:.2f}" if obs.score is not None else "N/A"
         r_str = str(obs.reason) if obs.reason is not None else "-"
-        md.append(f"| {obs.as_of} | {sc_str} | {obs.stage} | {obs.candidate_state} | {str(obs.data_available)} | {r_str} |")
+        md.append(f"| {obs.as_of} | {cl_str} | {sc_str} | {obs.stage} | {obs.candidate_state} | {str(obs.data_available)} | {r_str} |")
     md.append("")
     md.append("---")
     md.append("")
@@ -543,6 +546,7 @@ def generate_stock_report(
                     full_monthly_history.append(
                         MonthlyObservation(
                             as_of=me_str,
+                            close=None,
                             score=None,
                             stage="UNAVAILABLE",
                             candidate_state="insufficient_data",
@@ -551,6 +555,8 @@ def generate_stock_report(
                         )
                     )
                     continue
+
+                exact_close = float(daily_slice.loc[me_date, "close"]) if "close" in daily_slice.columns and not pd.isna(daily_slice.loc[me_date, "close"]) else None
 
                 d_sub = daily_slice.loc[daily_slice.index <= me_date]
                 try:
@@ -577,6 +583,7 @@ def generate_stock_report(
                 full_monthly_history.append(
                     MonthlyObservation(
                         as_of=me_str,
+                        close=exact_close,
                         score=s_val,
                         stage=st_val,
                         candidate_state=c_val,
@@ -634,6 +641,10 @@ def generate_stock_report(
         change_12m=change_12m,
     )
 
+    pattern_a_available_obs = [obs for obs in full_monthly_history if obs.score is not None]
+    first_pattern_a_avail_as_of = pattern_a_available_obs[0].as_of if pattern_a_available_obs else None
+    pattern_a_available_count = len(pattern_a_available_obs)
+
     monthly_section = MonthlyHistorySection(
         history_start_as_of=full_monthly_history[0].as_of if full_monthly_history else None,
         history_end_as_of=full_monthly_history[-1].as_of if full_monthly_history else None,
@@ -643,6 +654,8 @@ def generate_stock_report(
         stage_transitions=stage_transitions,
         recent_12m_history=recent_12m_history,
         full_monthly_history=full_monthly_history,
+        first_pattern_a_available_as_of=first_pattern_a_avail_as_of,
+        pattern_a_available_observation_count=pattern_a_available_count,
     )
 
     # 7. Foreign Flow Section (Phase 11)
@@ -729,12 +742,20 @@ def generate_stock_report(
         ratio_20d_to_60d=r_20_60,
     )
 
-    # 9. Header & Summary (Consistent Report Status)
-    # READY: Core score ready AND Investability calculated (not DATA_UNAVAILABLE) AND Flow ready AND Trading Value ready
-    # PARTIAL: Core score ready, but one of Investability/Flow/TV is unavailable/partial
-    # DATA_UNAVAILABLE: Core score unavailable
+    # 9. Header & Summary (Consistent Exact Report Status Semantics)
+    # READY:
+    #   Pattern A core Score/Stage READY
+    #   AND Market Calendar READY (quality_status != "MARKET_CALENDAR_UNAVAILABLE")
+    #   AND Investability status != "DATA_UNAVAILABLE" (FILTERED is allowed)
+    #   AND Foreign Flow status == READY
+    #   AND Trading Value state != TRADING_VALUE_UNAVAILABLE
+    # PARTIAL:
+    #   Pattern A core is READY, but at least one of (Market Calendar unavailable, Investability DATA_UNAVAILABLE, Flow unavailable, TV unavailable)
+    # DATA_UNAVAILABLE:
+    #   Pattern A core is UNAVAILABLE
     if (
         cur_score is not None
+        and quality_status != "MARKET_CALENDAR_UNAVAILABLE"
         and inv_eval.status.value != "DATA_UNAVAILABLE"
         and flow_feat.data_status == FlowDataStatus.READY
         and tv_state != TradingValueState.TRADING_VALUE_UNAVAILABLE
