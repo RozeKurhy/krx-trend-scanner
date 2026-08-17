@@ -15,6 +15,14 @@ Gate 도입(§6) → Cohort B 날짜 집중(35/45가 한 주) 발견 후 quarter
 전부 사라짐(§3) → 이번 correction에서 Cohort B를 RECENT_SYSTEMATIC /
 HISTORICAL_COVERAGE 두 stratum으로 분리해 과거 market regime 표본을
 다시 확보)
+
+> **13C-2 PIT annotation IN PROGRESS / checkpoint commit**: 이 문서가
+> 기술하는 13C-1 dataset 구성(60건 sample_id/reference_date/source_cohort
+> /Pattern A Benchmark Context/manifest/reserved set/charts)은 그대로
+> FROZEN이며 이번 checkpoint에서 전혀 수정되지 않았다. 40개 sample의
+> PIT(Outcome 보기 전) Human Annotation 진행 상황은
+> [pattern_a_fast_human_pit_annotation_checkpoint_v01.md](pattern_a_fast_human_pit_annotation_checkpoint_v01.md)
+> 참고.
 Data cutoff (as_of): 2026-08-14
 Network requests: 0 (전부 로컬 `data/raw/stocks/*.parquet` 캐시)
 
