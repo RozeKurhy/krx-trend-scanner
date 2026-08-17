@@ -8,6 +8,12 @@ Status: **PIT CHECKPOINT / OUTCOME REVIEW PENDING**
 Base commit: `d121cdf76f72f5b457652fb3f07c04a14e743d52` (Phase 13C-1 최종
 봉인 시점)
 Data cutoff (as_of): 2026-08-14
+
+> **PIT checkpoint remains frozen.** Outcome Annotation was subsequently
+> completed in
+> [pattern_a_fast_human_outcome_annotation_v01.md](pattern_a_fast_human_outcome_annotation_v01.md)
+> — 이 문서가 기술하는 40개 PIT 판단(§2~§8) 값은 그 이후로도 전혀
+> 수정되지 않았다(field-level identical 검증 완료).
 Network requests: 0
 
 --------------------------------------------------------------------------------

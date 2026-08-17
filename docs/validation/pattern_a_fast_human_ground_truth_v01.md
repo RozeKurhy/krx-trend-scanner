@@ -22,7 +22,10 @@ HISTORICAL_COVERAGE 두 stratum으로 분리해 과거 market regime 표본을
 > FROZEN이며 이번 checkpoint에서 전혀 수정되지 않았다. 40개 sample의
 > PIT(Outcome 보기 전) Human Annotation 진행 상황은
 > [pattern_a_fast_human_pit_annotation_checkpoint_v01.md](pattern_a_fast_human_pit_annotation_checkpoint_v01.md)
-> 참고.
+> 참고. 그 40개에 대한 Human Outcome Label(`human_label`)까지 완료된
+> 최신 상태는
+> [pattern_a_fast_human_outcome_annotation_v01.md](pattern_a_fast_human_outcome_annotation_v01.md)
+> 참고(advisor 리뷰 대기 중, 아직 Phase 13C-2 CLOSED 아님).
 Data cutoff (as_of): 2026-08-14
 Network requests: 0 (전부 로컬 `data/raw/stocks/*.parquet` 캐시)
 
