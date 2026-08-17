@@ -5,9 +5,9 @@
 ================================================================================
 Phase: 13C-1 — Ground Truth Dataset Preparation
 Status: **READY_FOR_HUMAN_REVIEW** (13C-1 완료, Human Annotation은 13C-2로 대기)
-Base: `e8cf7e6ee9585e8cc512e6cbe488eaa000497518` (Cohort A 선정 로직은 advisor
-review에서 lead time이 구조적으로 ~1주로 눌리는 결함이 발견되어 같은
-Phase 13C-1 작업 중 수정 — §4 참고)
+Base: `e8cf7e6ee9585e8cc512e6cbe488eaa000497518` (Cohort A 선정 로직은
+advisor 2회 검토에서 연달아 결함이 발견되어 같은 Phase 13C-1 작업 중 두
+차례 수정됨 — §4 참고)
 Data cutoff (as_of): 2026-08-14
 Network requests: 0 (전부 로컬 `data/raw/stocks/*.parquet` 캐시)
 
@@ -67,16 +67,31 @@ BASE였던 완료 주봉을 `reference_date`로 사용했다
 (`find_base_reference_before_entry`). entry_boundary 시점 stage가
 `early_trend`면 `PATTERN_A_PRE_EARLY`, 아니면 `PATTERN_A_PRE_TRANSITION`.
 12주 버퍼를 만족하는 BASE가 없는 티커는 skip하고 다음 후보로 top-up했다
-(180개 중 16번째 시도 `003300` 1건만 skip, 15개 목표 그대로 달성).
+(180개 중 2건 skip, 15개 목표 그대로 달성).
 
-**왜 12주 버퍼가 필요했는가(회귀 기록)**: 최초 구현은 "cutoff에서 가장
-가까운 BASE"를 그대로 `reference_date`로 썼는데, 이는 구조상 entry_boundary
-바로 한 주 전이 되어(다음 주 바로 TRANSITION 시작) 관측 가능한 lead time이
-거의 항상 1주로 눌렸다 — Cohort A가 원래 보여주려는 "Fast가 Pattern A보다
-몇 주 먼저 보이는가"(13A §26 개념 예시)를 이 cohort 자체가 보여줄 수 없는
-상태였다. 같은 원인으로 `013700`/`031510` 같은 최근 티커는 outcome 리뷰
-창(52주 목표)이 1~2주로 잘려 사람이 Outcome 차트로 `human_label`을 매길
-수조차 없었다. 12주 버퍼 도입 후 outcome 리뷰 창 최솟값은 16주로 늘었다.
+**왜 이렇게 만들었는가(2회의 회귀 기록)**: 최초 구현은 "cutoff에서 가장
+가까운 BASE"를 그대로 `reference_date`로 썼는데, 이는 구조상
+entry_boundary 바로 한 주 전이 되어(다음 주 바로 TRANSITION 시작) 관측
+가능한 lead time이 거의 항상 1주로 눌렸다 — Cohort A가 원래 보여주려는
+"Fast가 Pattern A보다 몇 주 먼저 보이는가"(13A §26 개념 예시)를 이 cohort
+자체가 보여줄 수 없는 상태였다. 같은 원인으로 `013700`/`031510` 같은 최근
+티커는 outcome 리뷰 창(52주 목표)이 1~2주로 잘려 사람이 Outcome 차트로
+`human_label`을 매길 수조차 없었다.
+
+1차 수정(12주 버퍼 도입)만으로는 부족했다 — entry_boundary를 찾는
+backward walk가 TRANSITION/EARLY_TREND가 아닌 주가 **단 1주**만 나와도
+episode가 끝났다고 판단해 멈췄기 때문에, 실제로는 몇 달째 이어지던
+episode를 "최근의 짧은 재진입"으로 오인해 entry_boundary 자체를 실제보다
+훨씬 최근으로 잘못 잡는 사례가 다수였다(advisor 2차 검토에서 발견:
+15건 중 7건이 `pattern_a_transition_first_after_reference`가 정확히 1주
+후였음 — reference가 이미 진행 중인 TRANSITION 구간 내부의 1주짜리 BASE
+dip이었다는 뜻). 2차 수정으로 backward walk는 비-TRANSITION/EARLY_TREND
+주가 **4주 연속**(gap_tolerance_weeks) 나올 때까지 산발적 1~3주 dip을
+무시하고 entry_boundary를 계속 확장하도록 바꿨고, 찾은 BASE 후보도
+forward로 최소 4주(confirm_pre_episode_weeks) 연속 TRANSITION/EARLY_TREND
+가 아님을 확인한 뒤에만 채택하도록 했다. 수정 후
+`pattern_a_transition_first_after_reference` 기준 lead는 5~18주(중앙값
+7주)로 안정됐고, outcome 리뷰 창 최솟값은 20주로 늘었다.
 `find_base_reference_before_entry`에 이 배경과 함께 기록해 두었다.
 
 **Cohort B — Independent Negative / Ambiguous** (45건):
@@ -229,10 +244,13 @@ Ground Truth 샘플 자체(source_reason, PIT 차트)는 이 결측과 무관하
 비단조(non-monotonic)이므로, 짧게 TRANSITION을 스쳤다가 다시 BASE로
 돌아간 뒤 한참 후에야 진짜로 정착하는 경우가 실제로 있다 — 예:
 `001210`(금호전기)은 `reference_date=2025-03-14`, entry_boundary(Cohort A
-선정에 쓴, 2026-08-14까지 유지된 "현재" episode의 시작점)는
-`2026-07-24`(71주 뒤)인데, `pattern_a_transition_first_after_reference`
-는 `2025-05-02`(7주 뒤)로 훨씬 이르다 — 그 사이에 짧은 TRANSITION 되돌림이
-있었다는 뜻이다. 따라서 이 컬럼만으로 "Pattern A 대비 Fast 리드타임"을
+선정에 쓴, 2026-08-14까지 gap-tolerant하게 이어진 "현재" episode의
+시작점)는 `2026-07-03`(약 68주 뒤)인데, `pattern_a_transition_first_
+after_reference`는 `2025-05-02`(7주 뒤)로 훨씬 이르다 — 그 사이에 짧은
+TRANSITION 되돌림이 있었다는 뜻이다(entry_boundary는 4주 연속 이탈에서만
+episode 종료로 판단하므로, 그보다 짧은 되돌림은 episode에 포함되지만
+`first_stage_dates_after`의 "최초 접촉" 정의로는 그 되돌림 자체가
+먼저 잡힌다). 따라서 이 컬럼만으로 "Pattern A 대비 Fast 리드타임"을
 계산하면 실제보다 과소평가될 수 있다 — 13C-2/13H에서 실제 PIT/Outcome
 차트를 보고 판단해야 하며, 이 컬럼은 참고용 benchmark 조회 결과일 뿐이다.
 

@@ -141,6 +141,8 @@ def find_base_reference_before_entry(
     cutoff: str | pd.Timestamp,
     min_lead_weeks: int = 12,
     max_lookback_weeks: int = 104,
+    gap_tolerance_weeks: int = 4,
+    confirm_pre_episode_weeks: int = 4,
 ) -> tuple[pd.Timestamp | None, pd.Timestamp | None, str | None]:
     """Cohort A 선정용: cutoff 시점 현재 episode(TRANSITION/EARLY_TREND)의
     진입 경계(entry_boundary)를 찾고, 그보다 최소 min_lead_weeks 이전에
@@ -150,7 +152,24 @@ def find_base_reference_before_entry(
     주가 되어 관측 가능한 lead time이 구조적으로 min_lead_weeks 미만으로
     눌린다(13A §26이 말하는 "Fast가 Pattern A보다 몇 주 먼저 보이는가"를
     이 cohort가 보여줄 수 없게 됨) — 그래서 entry_boundary - min_lead_weeks
-    지점부터 backward로 BASE를 찾는다. 못 찾으면 (None, None, None).
+    지점부터 backward로 BASE를 찾는다.
+
+    **gap-tolerant entry_boundary**: cutoff부터 backward로 걸을 때 단
+    1주짜리 BASE/WEAK 되돌림만으로 episode가 끝났다고 보면, "실제 episode
+    시작"보다 훨씬 최근을 entry_boundary로 잘못 잡는다(회귀 발견 사례:
+    000050/000850/001260/001800/002460 등 다수가 이 버그로 lead time이
+    구조적으로 1주에 눌려 있었음 — Phase 13C-1 correction 2차). 그래서
+    TRANSITION/EARLY_TREND가 아닌 주가 `gap_tolerance_weeks`회 연속으로
+    나타나야만 episode가 끝났다고 보고, 그 전의 산발적 1~3주 dip은
+    무시하며 계속 backward로 entry_boundary를 확장한다.
+
+    **forward-confirmed reference**: 찾은 BASE 후보가 진짜로 episode
+    "이전"인지, 아니면 그 자체가 TRANSITION 사이의 짧은 dip인지 구분하기
+    위해, 후보 다음 `confirm_pre_episode_weeks`주 연속이 TRANSITION/
+    EARLY_TREND가 아님을 확인한 뒤에만 채택한다.
+
+    못 찾으면 reference_date는 None(entry_boundary/entry_stage는 찾았으면
+    채워서 반환 — 로그/skip 사유 확인용).
 
     반환: (reference_date | None, entry_boundary | None, entry_stage | None)
     entry_stage는 entry_boundary 시점의 Pattern A stage("transition" 또는
@@ -158,34 +177,49 @@ def find_base_reference_before_entry(
     PATTERN_A_PRE_EARLY source_reason을 고르는 데 쓴다.
     """
     cutoff = pd.Timestamp(cutoff)
-    all_weekly = [d for d in to_weekly(daily).index if d <= cutoff and d <= daily.index.max()]
-    all_weekly.sort(reverse=True)  # cutoff에 가까운 순
+    all_weekly_asc = sorted(d for d in to_weekly(daily).index if d <= cutoff and d <= daily.index.max())
+    stage_cache: dict[pd.Timestamp, str | None] = {}
 
-    # 1) entry_boundary: cutoff부터 backward로 TRANSITION/EARLY_TREND가
-    #    유지되는 마지막(=가장 과거) 완료 주봉.
+    def stage_at(d: pd.Timestamp) -> str | None:
+        if d not in stage_cache:
+            snap = compute_reference_snapshot(ticker, name, daily, d)
+            stage_cache[d] = snap.pattern_a_stage if snap.data_status == "OK" else None
+        return stage_cache[d]
+
+    # 1) entry_boundary: cutoff부터 backward, gap_tolerance_weeks 연속
+    #    비-TRANSITION/EARLY_TREND가 나올 때까지는 계속 확장.
     entry_boundary: pd.Timestamp | None = None
     entry_stage: str | None = None
-    for d in all_weekly:
-        snap = compute_reference_snapshot(ticker, name, daily, d)
-        if snap.data_status != "OK" or snap.pattern_a_stage not in ("transition", "early_trend"):
-            break
-        entry_boundary = d
-        entry_stage = snap.pattern_a_stage
+    gap = 0
+    for d in reversed(all_weekly_asc):
+        stage = stage_at(d)
+        if stage in ("transition", "early_trend"):
+            entry_boundary = d
+            entry_stage = stage
+            gap = 0
+        else:
+            gap += 1
+            if gap >= gap_tolerance_weeks:
+                break
 
     if entry_boundary is None:
         return None, None, None
 
     # 2) entry_boundary - min_lead_weeks 부터 backward로 최대
-    #    max_lookback_weeks까지 BASE를 찾는다.
+    #    max_lookback_weeks까지, forward-confirmed BASE를 찾는다.
     search_start = entry_boundary - pd.Timedelta(weeks=min_lead_weeks)
     search_floor = entry_boundary - pd.Timedelta(weeks=max_lookback_weeks)
-    search_candidates = sorted(
-        (d for d in all_weekly if search_floor <= d <= search_start), reverse=True
-    )
+    search_candidates = sorted((d for d in all_weekly_asc if search_floor <= d <= search_start), reverse=True)
+
     for d in search_candidates:
-        snap = compute_reference_snapshot(ticker, name, daily, d)
-        if snap.data_status == "OK" and snap.pattern_a_stage == "base":
-            return snap.reference_date, entry_boundary, entry_stage
+        if stage_at(d) != "base":
+            continue
+        forward_dates = [x for x in all_weekly_asc if x > d][:confirm_pre_episode_weeks]
+        if len(forward_dates) < confirm_pre_episode_weeks:
+            continue
+        if any(stage_at(x) in ("transition", "early_trend") for x in forward_dates):
+            continue
+        return d, entry_boundary, entry_stage
 
     return None, entry_boundary, entry_stage
 

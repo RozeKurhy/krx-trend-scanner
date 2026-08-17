@@ -13,6 +13,7 @@ import pandas as pd
 import pytest
 
 from trend_scanner.data.cache import ParquetCache
+from trend_scanner.data.resampler import to_weekly
 from trend_scanner.validation.pattern_a_fast_ground_truth import (
     DATA_UNAVAILABLE,
     build_chart_slices,
@@ -163,3 +164,26 @@ def test_find_base_reference_before_entry_enforces_min_lead_weeks():
     assert (entry_boundary - ref).days // 7 >= 12
     snap = compute_reference_snapshot(_REAL_TICKER, _REAL_NAME, daily, ref)
     assert snap.pattern_a_stage == "base"
+
+
+@pytest.mark.skipif(not _HAS_REAL_CACHE, reason=_SKIP_REASON)
+def test_find_base_reference_before_entry_reference_is_not_inside_episode():
+    """2차 회귀 방지: reference가 TRANSITION 사이의 1주짜리 dip이 아니라
+    진짜로 episode "이전"인지 forward로 4주 이상 확인한다. 이 확인이
+    없으면 gap-tolerant entry_boundary 탐색만으로는 reference 자체가
+    이미 진행 중인 episode 내부의 되돌림 주간일 수 있다(1차 correction의
+    실제 회귀 사례: 000050/001800/002460 등에서 reference 다음 주가 바로
+    transition으로 이어졌었음).
+    """
+    daily = load_raw_daily(_REAL_TICKER, ParquetCache())
+    ref, _, _ = find_base_reference_before_entry(
+        _REAL_TICKER, _REAL_NAME, daily, "2026-08-14", min_lead_weeks=12, max_lookback_weeks=104
+    )
+    assert ref is not None
+    weekly_index = to_weekly(daily).index
+    forward = sorted(d for d in weekly_index if d > ref)[:4]
+    assert len(forward) == 4
+    forward_stages = [
+        compute_reference_snapshot(_REAL_TICKER, _REAL_NAME, daily, d).pattern_a_stage for d in forward
+    ]
+    assert all(s not in ("transition", "early_trend") for s in forward_stages), forward_stages
