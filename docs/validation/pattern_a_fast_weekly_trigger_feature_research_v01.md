@@ -335,15 +335,18 @@ TRIGGER/TOO_LATE는 각 n=1이므로 Production 근거가 아니다(§28).
 13. Correlation / Redundancy
 --------------------------------------------------------------------------------
 
-|spearman| >= 0.85 쌍 40건(`weekly_trigger_feature_correlation_v01.csv`).
+|spearman| >= 0.85 쌍 42건(`weekly_trigger_feature_correlation_v01.csv`).
 대표: `close_vs_wma200_pct`/`high_vs_wma200_pct`=0.992,
 `post_breakout_min_close_vs_level_pct_26w`/`post_breakout_min_low_vs_
 level_pct_26w`=0.986, `weeks_since_26w_close_breakout`/`higher_low_after_
 breakout_count`=0.980, `close_vs_wma200_pct`/`wma200_slope_1w`=0.956,
-`close_vs_wma52_pct`/`wma52_slope_1w`=0.936, `distance_to_prior_26w_high_
-pct`/`distance_to_prior_52w_high_pct`=0.941, `range_position_26w`/
-`range_position_52w`=0.863. 0.85는 research redundancy 표시 기준일 뿐
-production threshold가 아니다(§14).
+`weekly_low_slope_13w`/`weekly_return_13w`=0.946(§17에서 다룬 것처럼
+`weekly_low_slope_13w`가 사실상 momentum의 재표현임을 보여주는 쌍),
+`distance_to_prior_26w_high_pct`/`distance_to_prior_52w_high_pct`=0.941,
+`close_vs_wma52_pct`/`wma52_slope_1w`=0.936, `weekly_low_slope_8w`/
+`weekly_return_8w`=0.924, `wma12_slope_1w`/`weekly_low_slope_8w`=0.908,
+`range_position_26w`/`range_position_52w`=0.863. 0.85는 research
+redundancy 표시 기준일 뿐 production threshold가 아니다(§14).
 
 HIGH 후보 8개(§17) 상호간에는 |spearman|>=0.85 쌍이 하나도 없음을 별도
 확인했다 — 서로 다른 latent concept을 대표하도록 선정했다는 근거다.
