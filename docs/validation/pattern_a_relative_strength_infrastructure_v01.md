@@ -14,7 +14,7 @@
 | Gate 03 | `gate_03_pit_no_lookahead_contract` | ✅ PASS | market_index_future_rows=0, stock_future_observations=0, requested_as_of=2026-08-14 |
 | Gate 04 | `gate_04_exact_freshness_anchor_contract` | ✅ PASS | market_last_date=2026-08-14, anchor_date_3m=2026-05-14, anchor_date_6m=2026-02-06 |
 | Gate 05 | `gate_05_market_benchmark_selection_contract` | ✅ PASS | evaluated_candidates=180, benchmark_mapping_errors=0 |
-| Gate 06 | `gate_06_market_rs_arithmetic_parity` | ✅ PASS | verified_investables=103, market_rs_3m_mismatches=0, market_rs_6m_mismatches=0 |
+| Gate 06 | `gate_06_market_rs_arithmetic_parity` | ❌ FAIL | verified_investables=103, market_rs_3m_mismatches=0, market_rs_6m_mismatches=0 |
 | Gate 07 | `gate_07_sector_mapping_contract` | ❌ FAIL | sector_mapping={...}, sector_index={...} |
 | Gate 08 | `gate_08_sector_rs_arithmetic_parity` | ❌ FAIL | candidate_sector_rs_ready=0, candidate_sector_rs_partial=0, candidate_sector_rs_data_unavailable=180 |
 | Gate 09 | `gate_09_fail_closed_schema_compatibility` | ✅ PASS | total_required_rs_columns=30, missing_columns_count=0, missing_columns=[] |
@@ -35,7 +35,7 @@
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | 3M (63D) | 103 | +0.2544 | 0.3446 | -0.2397 | +0.1672 | +1.6782 | 85/103 (82.5%) |
 | 6M (126D) | 103 | +0.0051 | 0.5646 | -0.4666 | -0.1838 | +4.1775 | 32/103 (31.1%) |
-| 12M (252D) | 103 | -0.3283 | 0.3376 | -0.6686 | -0.4839 | +1.1064 | 17/103 (16.5%) |
+| 12M (252D) | 103 | -0.3288 | 0.3366 | -0.6686 | -0.4839 | +1.1064 | 17/103 (16.5%) |
 
 ## 4. 결론 및 향후 조치
 

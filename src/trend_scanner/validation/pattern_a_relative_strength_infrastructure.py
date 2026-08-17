@@ -193,6 +193,18 @@ def run_relative_strength_validation(
         cand_state_mismatches = 0
         investability_mismatches = 0
 
+        # Enforce symmetric exact ticker set equality for all 3 oracles (Candidate, Integration, Flow)
+        cand_scan_tickers = set(cand_scan["ticker"])
+        oracle_cand_tickers = set(df_oracle_cand["ticker"])
+        cand_diff = len(cand_scan_tickers ^ oracle_cand_tickers)
+        if cand_diff > 0:
+            cand_ticker_mismatches += cand_diff
+
+        oracle_inv_tickers = set(df_oracle_inv["ticker"])
+        inv_diff = len(cand_scan_tickers ^ oracle_inv_tickers)
+        if inv_diff > 0:
+            investability_mismatches += inv_diff
+
         # Build ticker lookup for oracle candidates
         oracle_cand_map = {row["ticker"]: row for _, row in df_oracle_cand.iterrows()}
         oracle_inv_map = {row["ticker"]: row for _, row in df_oracle_inv.iterrows()}
@@ -200,7 +212,6 @@ def run_relative_strength_validation(
         for _, r in cand_scan.iterrows():
             t = r["ticker"]
             if t not in oracle_cand_map:
-                cand_ticker_mismatches += 1
                 continue
             o_row = oracle_cand_map[t]
             if str(r["official_stage"]).lower() != str(o_row.get("official_stage", "")).lower():

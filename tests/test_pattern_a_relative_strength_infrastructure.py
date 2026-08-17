@@ -294,28 +294,52 @@ def test_gate4_negative_stale_market_date(tmp_path: Path, repo_root: Path):
     assert result["gates"]["gate_04_exact_freshness_anchor_contract"]["passed"] is False
 
 
-def test_gate6_negative_market_rs_3m_mutation():
-    """5. Gate 6 Negative: Arithmetic mutation in 3M market RS triggers mismatch."""
-    p_end, p_anc = 70000.0, 50000.0
-    b_end, b_anc = 2700.0, 2500.0
-    s_ret = (p_end / p_anc) - 1.0
-    b_ret = (b_end / b_anc) - 1.0
-    canonical_rs_3m = ((1.0 + s_ret) / (1.0 + b_ret)) - 1.0
+def test_gate6_negative_market_rs_3m_mutation(repo_root: Path, monkeypatch: pytest.MonkeyPatch):
+    """5. Gate 6 Negative: Mutating 3M market RS in scanner output triggers Gate 6 FAIL."""
+    import dataclasses
+    from trend_scanner.validation import pattern_a_relative_strength_infrastructure as val_mod
+    original_scan = val_mod.scan_pattern_a_universe
 
-    mutated_rs_3m = canonical_rs_3m + 0.05
-    assert abs(mutated_rs_3m - canonical_rs_3m) > 1e-6
+    def mocked_scan(*args, **kwargs):
+        res = original_scan(*args, **kwargs)
+        if res.rows:
+            rows_list = list(res.rows)
+            for idx, r in enumerate(rows_list):
+                if r.candidate_state.value == "candidate" and r.investability_status.value == "INVESTABLE":
+                    mutated_row = dataclasses.replace(r, market_rs_3m=(r.market_rs_3m or 0.0) + 0.05)
+                    rows_list[idx] = mutated_row
+                    break
+            res = dataclasses.replace(res, rows=tuple(rows_list))
+        return res
+
+    monkeypatch.setattr(val_mod, "scan_pattern_a_universe", mocked_scan)
+    result = run_relative_strength_validation(as_of="2026-08-14", repo_root=repo_root)
+    assert result["gates"]["gate_06_market_rs_arithmetic_parity"]["passed"] is False
+    assert result["gates"]["gate_06_market_rs_arithmetic_parity"]["details"]["market_rs_3m_mismatches"] > 0
 
 
-def test_gate6_negative_market_rs_12m_mutation():
-    """6. Gate 6 Negative: Arithmetic mutation in 12M market RS triggers mismatch."""
-    p_end, p_anc = 70000.0, 80000.0
-    b_end, b_anc = 2700.0, 2600.0
-    s_ret = (p_end / p_anc) - 1.0
-    b_ret = (b_end / b_anc) - 1.0
-    canonical_rs_12m = ((1.0 + s_ret) / (1.0 + b_ret)) - 1.0
+def test_gate6_negative_market_rs_12m_mutation(repo_root: Path, monkeypatch: pytest.MonkeyPatch):
+    """6. Gate 6 Negative: Mutating 12M market RS in scanner output triggers Gate 6 FAIL."""
+    import dataclasses
+    from trend_scanner.validation import pattern_a_relative_strength_infrastructure as val_mod
+    original_scan = val_mod.scan_pattern_a_universe
 
-    mutated_rs_12m = canonical_rs_12m - 0.05
-    assert abs(mutated_rs_12m - canonical_rs_12m) > 1e-6
+    def mocked_scan(*args, **kwargs):
+        res = original_scan(*args, **kwargs)
+        if res.rows:
+            rows_list = list(res.rows)
+            for idx, r in enumerate(rows_list):
+                if r.candidate_state.value == "candidate" and r.investability_status.value == "INVESTABLE":
+                    mutated_row = dataclasses.replace(r, market_rs_12m=(r.market_rs_12m or 0.0) - 0.05)
+                    rows_list[idx] = mutated_row
+                    break
+            res = dataclasses.replace(res, rows=tuple(rows_list))
+        return res
+
+    monkeypatch.setattr(val_mod, "scan_pattern_a_universe", mocked_scan)
+    result = run_relative_strength_validation(as_of="2026-08-14", repo_root=repo_root)
+    assert result["gates"]["gate_06_market_rs_arithmetic_parity"]["passed"] is False
+    assert result["gates"]["gate_06_market_rs_arithmetic_parity"]["details"]["market_rs_12m_mismatches"] > 0
 
 
 def test_gate7_negative_empty_sector_source(repo_root: Path):
@@ -384,6 +408,69 @@ def test_gate8_negative_zero_sector_ready(repo_root: Path):
     result = run_relative_strength_validation(as_of="2026-08-14", repo_root=repo_root)
     assert result["gates"]["gate_08_sector_rs_arithmetic_parity"]["passed"] is False
     assert result["gates"]["gate_08_sector_rs_arithmetic_parity"]["details"]["candidate_sector_rs_ready"] == 0
+
+
+def test_gate1_negative_candidate_extra_ticker(tmp_path: Path, repo_root: Path):
+    """Gate 1 Negative: Candidate oracle with extra ticker triggers Gate 1 FAIL."""
+    dest_inv = tmp_path / "artifacts/investability"
+    dest_inv.mkdir(parents=True, exist_ok=True)
+    shutil.copy(repo_root / "artifacts/investability/pattern_a_investability_universe_20260814.csv", dest_inv / "pattern_a_investability_universe_20260814.csv")
+    df_cand = pd.read_csv(repo_root / "artifacts/investability/pattern_a_investability_candidates_20260814.csv")
+    # Add extra ticker
+    extra_row = df_cand.iloc[0:1].copy()
+    extra_row["ticker"] = "999999"
+    df_cand_extra = pd.concat([df_cand, extra_row], ignore_index=True)
+    df_cand_extra.to_csv(dest_inv / "pattern_a_investability_candidates_20260814.csv", index=False)
+    shutil.copy(repo_root / "artifacts/investability/pattern_a_investability_integration_20260814.csv", dest_inv / "pattern_a_investability_integration_20260814.csv")
+
+    (tmp_path / "data/raw").mkdir(parents=True, exist_ok=True)
+    os.symlink(repo_root / "data/raw/stocks", tmp_path / "data/raw/stocks")
+    shutil.copytree(repo_root / "artifacts/relative_strength", tmp_path / "artifacts/relative_strength")
+    shutil.copytree(repo_root / "artifacts/flow", tmp_path / "artifacts/flow")
+
+    result = run_relative_strength_validation(as_of="2026-08-14", repo_root=tmp_path)
+    assert result["gates"]["gate_01_frozen_identity_parity"]["passed"] is False
+
+
+def test_gate1_negative_candidate_missing_ticker(tmp_path: Path, repo_root: Path):
+    """Gate 1 Negative: Candidate oracle with missing ticker triggers Gate 1 FAIL."""
+    dest_inv = tmp_path / "artifacts/investability"
+    dest_inv.mkdir(parents=True, exist_ok=True)
+    shutil.copy(repo_root / "artifacts/investability/pattern_a_investability_universe_20260814.csv", dest_inv / "pattern_a_investability_universe_20260814.csv")
+    df_cand = pd.read_csv(repo_root / "artifacts/investability/pattern_a_investability_candidates_20260814.csv")
+    # Drop one ticker
+    df_cand.iloc[1:].to_csv(dest_inv / "pattern_a_investability_candidates_20260814.csv", index=False)
+    shutil.copy(repo_root / "artifacts/investability/pattern_a_investability_integration_20260814.csv", dest_inv / "pattern_a_investability_integration_20260814.csv")
+
+    (tmp_path / "data/raw").mkdir(parents=True, exist_ok=True)
+    os.symlink(repo_root / "data/raw/stocks", tmp_path / "data/raw/stocks")
+    shutil.copytree(repo_root / "artifacts/relative_strength", tmp_path / "artifacts/relative_strength")
+    shutil.copytree(repo_root / "artifacts/flow", tmp_path / "artifacts/flow")
+
+    result = run_relative_strength_validation(as_of="2026-08-14", repo_root=tmp_path)
+    assert result["gates"]["gate_01_frozen_identity_parity"]["passed"] is False
+
+
+def test_missing_effective_date_column_rejected(tmp_path: Path, repo_root: Path):
+    """Negative: Sector mapping CSV without effective_date column fails closed."""
+    cache = ParquetCache(base_dir=repo_root / "data/raw/stocks")
+    csv_path = tmp_path / "no_eff_date_mapping.csv"
+    csv_path.write_text("ticker,market,sector_code,sector_name\n005930,KOSPI,1005,음식료품\n", encoding="utf-8")
+
+    scan_res = scan_pattern_a_universe(
+        cache=cache,
+        as_of="2026-08-14",
+        reference_market_date="2026-08-14",
+        target_tickers=["005930"],
+        sector_mapping_path=csv_path,
+    )
+    assert len(scan_res.rows) == 1
+    assert scan_res.rows[0].sector_name is None
+    assert scan_res.rows[0].sector_code is None
+    assert scan_res.rows[0].sector_rs_data_status in (
+        RelativeStrengthDataStatus.DATA_UNAVAILABLE.value,
+        RelativeStrengthDataStatus.NOT_EVALUATED.value,
+    )
 
 
 def test_gate9_negative_stale_benchmark_with_valid_stock_df(repo_root: Path):
