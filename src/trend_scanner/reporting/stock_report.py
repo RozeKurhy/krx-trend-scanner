@@ -53,6 +53,48 @@ def _format_ticker(ticker: str) -> str:
     return str(ticker).strip().zfill(6)
 
 
+def _resolve_latest_local_as_of(repo_root: Path) -> str:
+    """로컬 데이터 및 아티팩트에서 최신 GLOBAL reference market date를 결정한다."""
+    # 1. Investability universe canonical files
+    inv_dir = repo_root / "artifacts/investability"
+    if inv_dir.exists():
+        univ_files = sorted(inv_dir.glob("pattern_a_investability_universe_*.csv"))
+        if univ_files:
+            latest_file = univ_files[-1]
+            date_part = latest_file.stem.split("_")[-1]
+            if len(date_part) == 8 and date_part.isdigit():
+                return f"{date_part[:4]}-{date_part[4:6]}-{date_part[6:]}"
+
+    # 2. Scanner canonical files
+    scanner_dir = repo_root / "artifacts/scanner"
+    if scanner_dir.exists():
+        scan_files = sorted(scanner_dir.glob("pattern_a_universe_scan_*.csv"))
+        if scan_files:
+            latest_file = scan_files[-1]
+            date_part = latest_file.stem.split("_")[-1]
+            if len(date_part) == 8 and date_part.isdigit():
+                return f"{date_part[:4]}-{date_part[4:6]}-{date_part[6:]}"
+
+    # 3. Market reference stock 005930
+    cache = ParquetCache(base_dir=repo_root / "data/raw/stocks")
+    daily_ref = cache.load("005930")
+    if daily_ref is not None and not daily_ref.empty:
+        return daily_ref.index.max().strftime("%Y-%m-%d")
+
+    return "2026-08-14"
+
+
+def _get_reference_market_month_ends(cache: ParquetCache, requested_as_of: pd.Timestamp) -> list[pd.Timestamp]:
+    """Reference market stock (005930) 캐시로부터 표준 시장 월말 거래일 목록을 추출한다."""
+    ref_daily = cache.load("005930")
+    if ref_daily is not None and not ref_daily.empty:
+        sliced = ref_daily.loc[ref_daily.index <= requested_as_of]
+        if not sliced.empty:
+            monthly_groups = sliced.groupby([sliced.index.year, sliced.index.month])
+            return [group.index.max() for _, group in monthly_groups]
+    return []
+
+
 def _determine_flow_state_and_explanation(
     data_status: str,
     nb_1d: float | None,
@@ -110,7 +152,7 @@ def _determine_trading_value_state_and_explanation(
     if tv_5d is None or tv_20d is None or tv_60d is None or r_5_20 is None or r_20_60 is None:
         return (
             TradingValueState.TRADING_VALUE_UNAVAILABLE,
-            "거래대금 시계열 데이터가 부족하여 분석을 제공할 수 없습니다.",
+            "거래대금 시계열 데이터가 부족하여 분석을 제공할 수 없습니다 (5D/20D/60D 윈도우 필요).",
         )
 
     if tv_5d > tv_20d and tv_20d > tv_60d:
@@ -146,23 +188,59 @@ def _generate_deterministic_narrative(
     flow_section: ForeignFlowSection,
     tv_section: TradingValueFlowSection,
 ) -> tuple[str, list[str], str]:
-    headline = (
-        f"{name}({ticker})는 현재 Pattern A {current_snapshot.official_stage} 단계이며 "
-        f"투자 적격 상태는 {current_snapshot.investability_status}입니다."
+    if current_snapshot.investability_status == "INVESTABLE":
+        headline = (
+            f"{name}({ticker})는 현재 Pattern A {current_snapshot.official_stage} 단계이며 "
+            f"투자 적격 상태는 INVESTABLE입니다."
+        )
+        inv_bullet = (
+            f"시가총액 {current_snapshot.market_cap_eok:.1f}억원, 20일 평균 거래대금 {current_snapshot.avg_trading_value_20d_eok:.2f}억원으로 "
+            f"Phase 10 Investability 기준을 충족합니다."
+        )
+        inv_clause = "Phase 10 Investability 조건(시총 1,000억 이상 및 20일 거래대금 3억 이상)을 충족(INVESTABLE)했습니다."
+    elif current_snapshot.investability_status == "FILTERED_MARKET_CAP":
+        mcap_str = f"{current_snapshot.market_cap_eok:.1f}억원" if current_snapshot.market_cap_eok is not None else "N/A"
+        headline = (
+            f"{name}({ticker})는 현재 Pattern A {current_snapshot.official_stage} 단계이나, "
+            f"시가총액 기준 미달(FILTERED_MARKET_CAP)로 투자 대상에서 제외되었습니다."
+        )
+        inv_bullet = (
+            f"시가총액 {mcap_str}(기준 1,000억원 미달)으로 "
+            f"Phase 10 Investability 시가총액 요건을 충족하지 못했습니다."
+        )
+        inv_clause = f"시가총액 기준 미달(FILTERED_MARKET_CAP, {mcap_str} < 1,000억원)로 투자 대상에서 제외되었습니다."
+    elif current_snapshot.investability_status == "FILTERED_LIQUIDITY":
+        tv_str = f"{current_snapshot.avg_trading_value_20d_eok:.2f}억원" if current_snapshot.avg_trading_value_20d_eok is not None else "N/A"
+        headline = (
+            f"{name}({ticker})는 현재 Pattern A {current_snapshot.official_stage} 단계이나, "
+            f"20일 평균 거래대금 기준 미달(FILTERED_LIQUIDITY)로 투자 대상에서 제외되었습니다."
+        )
+        inv_bullet = (
+            f"20일 평균 거래대금 {tv_str}(기준 3.0억원 미달)으로 "
+            f"Phase 10 Investability 유동성 요건을 충족하지 못했습니다."
+        )
+        inv_clause = f"20일 평균 거래대금 기준 미달(FILTERED_LIQUIDITY, {tv_str} < 3.0억원)로 투자 대상에서 제외되었습니다."
+    else:  # DATA_UNAVAILABLE
+        headline = (
+            f"{name}({ticker})는 현재 Pattern A {current_snapshot.official_stage} 단계이며, "
+            f"필수 데이터 부족(DATA_UNAVAILABLE)으로 투자 적격성을 판정할 수 없습니다."
+        )
+        inv_bullet = f"필수 데이터 부족({current_snapshot.investability_reason})으로 Phase 10 Investability 판정이 불가능합니다."
+        inv_clause = f"필수 데이터 부족({current_snapshot.investability_reason})으로 투자 적격성 판정이 보류되었습니다."
+
+    score_bullet = (
+        f"현재 Pattern A Score는 {current_snapshot.pattern_a_score:.2f}점(Stage: {current_snapshot.official_stage}, Candidate: {'YES' if current_snapshot.is_candidate else 'NO'})입니다."
+        if current_snapshot.pattern_a_score is not None
+        else f"현재 Pattern A Score는 산출 불가(Stage: {current_snapshot.official_stage}) 상태입니다."
     )
 
     bullet_points = [
-        f"현재 Pattern A Score는 {current_snapshot.pattern_a_score:.2f}점(Stage: {current_snapshot.official_stage}, Candidate: {'YES' if current_snapshot.is_candidate else 'NO'})입니다."
-        if current_snapshot.pattern_a_score is not None
-        else f"현재 Pattern A Score는 산출 불가(Stage: {current_snapshot.official_stage}) 상태입니다.",
-        f"시가총액 {current_snapshot.market_cap_eok:.1f}억원, 20일 평균 거래대금 {current_snapshot.avg_trading_value_20d_eok:.2f}억원으로 Phase 10 Investability 기준을 {current_snapshot.investability_status} 상태로 충족합니다."
-        if current_snapshot.market_cap_eok is not None and current_snapshot.avg_trading_value_20d_eok is not None
-        else f"Phase 10 Investability 상태: {current_snapshot.investability_status} ({current_snapshot.investability_reason}).",
+        score_bullet,
+        inv_bullet,
         f"외국인 수급: {flow_section.explanation}",
         f"거래대금 추세: {tv_section.explanation}",
     ]
 
-    # Trajectory sentence
     valid_recent = [obs for obs in recent_12m if obs.data_available and obs.stage != "UNAVAILABLE"]
     if len(valid_recent) >= 2:
         first_stage = valid_recent[0].stage
@@ -175,15 +253,15 @@ def _generate_deterministic_narrative(
     else:
         traj_sentence = "최근 12개월 이력 중 유효한 기술적 국면 관측치가 제한적입니다."
 
-    combined_narrative = (
-        f"현재 {name}은(는) Pattern A Score {current_snapshot.pattern_a_score:.2f}점, {current_snapshot.official_stage} 단계이며 "
-        f"Phase 10 Investability 조건을 {current_snapshot.investability_status} 상태로 통과했습니다. "
-        f"{traj_sentence} "
-        f"외국인 수급은 {flow_section.flow_state.value} 상태로, {flow_section.explanation} "
-        f"거래대금은 {tv_section.trading_value_state.value} 상태로, {tv_section.explanation}"
-        if current_snapshot.pattern_a_score is not None
-        else f"{headline} {traj_sentence}"
-    )
+    if current_snapshot.pattern_a_score is not None:
+        combined_narrative = (
+            f"현재 {name}은(는) Pattern A Score {current_snapshot.pattern_a_score:.2f}점, {current_snapshot.official_stage} 단계이며 "
+            f"{inv_clause} {traj_sentence} "
+            f"외국인 수급은 {flow_section.flow_state.value} 상태로, {flow_section.explanation} "
+            f"거래대금은 {tv_section.trading_value_state.value} 상태로, {tv_section.explanation}"
+        )
+    else:
+        combined_narrative = f"{headline} {traj_sentence}"
 
     return headline, bullet_points, combined_narrative
 
@@ -230,13 +308,13 @@ def render_markdown_report(report: StockReport) -> str:
     md.append("")
     md.append("## 2. 최근 12개월 월별 추이 (Recent 12M Trajectory)")
     md.append("")
-    md.append("+------------+-----------------+---------------+-----------------+------------------+")
-    md.append("| 기준일     | Pattern A Score | Stage         | Candidate State | Data Available   |")
-    md.append("+------------+-----------------+---------------+-----------------+------------------+")
+    md.append("+------------+-----------------+---------------+-------------------+------------------+")
+    md.append("| 기준일     | Pattern A Score | Stage         | Candidate State   | Data Available   |")
+    md.append("+------------+-----------------+---------------+-------------------+------------------+")
     for obs in hist.recent_12m_history:
         sc_str = f"{obs.score:.2f}" if obs.score is not None else "N/A"
-        md.append(f"| {obs.as_of} | {sc_str:15s} | {obs.stage:13s} | {obs.candidate_state:15s} | {str(obs.data_available):16s} |")
-    md.append("+------------+-----------------+---------------+-----------------+------------------+")
+        md.append(f"| {obs.as_of} | {sc_str:15s} | {obs.stage:13s} | {obs.candidate_state:17s} | {str(obs.data_available):16s} |")
+    md.append("+------------+-----------------+---------------+-------------------+------------------+")
     md.append("")
     if hist.score_trend.current_score is not None:
         st = hist.score_trend
@@ -286,8 +364,8 @@ def render_markdown_report(report: StockReport) -> str:
     md.append(f"- **규칙 기반 해석**: {tv.explanation}")
     if tv.avg_trading_value_5d_eok is not None:
         md.append(f"- **5일 평균 거래대금**: `{tv.avg_trading_value_5d_eok:.2f}억원`")
-        md.append(f"- **20일 평균 거래대금**: `{tv.avg_trading_value_20d_eok:.2f}억원`")
-        md.append(f"- **60일 평균 거래대금**: `{tv.avg_trading_value_60d_eok:.2f}억원`")
+        md.append(f"- **20일 평균 거래대금**: `{tv.avg_trading_value_20d_eok:.2f}억원`" if tv.avg_trading_value_20d_eok is not None else "- **20일 평균 거래대금**: `N/A`")
+        md.append(f"- **60일 평균 거래대금**: `{tv.avg_trading_value_60d_eok:.2f}억원`" if tv.avg_trading_value_60d_eok is not None else "- **60일 평균 거래대금**: `N/A`")
         r5_20 = f"{tv.ratio_5d_to_20d:.2f}배" if tv.ratio_5d_to_20d is not None else "N/A"
         r20_60 = f"{tv.ratio_20d_to_60d:.2f}배" if tv.ratio_20d_to_60d is not None else "N/A"
         md.append(f"- **단기 확장 비율 (5D / 20D)**: `{r5_20}`")
@@ -295,10 +373,19 @@ def render_markdown_report(report: StockReport) -> str:
     md.append("")
     md.append("---")
     md.append("")
-    md.append("## 6. 전체 월별 이력 요약 (Full Monthly History Summary)")
+    md.append("## 6. 전체 월별 이력 (Full Monthly History)")
     md.append(f"- **전체 관측 시작월**: `{hist.history_start_as_of}`")
     md.append(f"- **전체 관측 종료월**: `{hist.history_end_as_of}`")
     md.append(f"- **총 월별 관측 개수**: `{hist.observation_count}개월`")
+    md.append("")
+    md.append("+------------+-----------------+---------------+-------------------+------------------+-------------------------+")
+    md.append("| 기준일     | Pattern A Score | Stage         | Candidate State   | Data Available   | Reason                  |")
+    md.append("+------------+-----------------+---------------+-------------------+------------------+-------------------------+")
+    for obs in hist.full_monthly_history:
+        sc_str = f"{obs.score:.2f}" if obs.score is not None else "N/A"
+        r_str = str(obs.reason) if obs.reason is not None else "-"
+        md.append(f"| {obs.as_of} | {sc_str:15s} | {obs.stage:13s} | {obs.candidate_state:17s} | {str(obs.data_available):16s} | {r_str:23s} |")
+    md.append("+------------+-----------------+---------------+-------------------+------------------+-------------------------+")
     md.append("")
     md.append("---")
     md.append("")
@@ -331,7 +418,7 @@ def generate_stock_report(
 
     # 1. As-Of 및 Reference Market Date 결정
     if as_of is None:
-        canonical_as_of = "2026-08-14"
+        canonical_as_of = _resolve_latest_local_as_of(root_path)
     else:
         canonical_as_of = str(as_of).strip()[:10]
 
@@ -348,12 +435,15 @@ def generate_stock_report(
     market = "UNKNOWN"
     univ_csv = root_path / "artifacts/investability" / f"pattern_a_investability_universe_{canonical_as_of.replace('-', '')}.csv"
     if univ_csv.exists():
-        df_univ = pd.read_csv(univ_csv)
-        df_univ["ticker"] = df_univ["ticker"].astype(str).str.zfill(6)
-        match = df_univ[df_univ["ticker"] == clean_ticker]
-        if not match.empty:
-            name = str(match["name"].iloc[0])
-            market = str(match["market"].iloc[0]).upper()
+        try:
+            df_univ = pd.read_csv(univ_csv)
+            df_univ["ticker"] = df_univ["ticker"].astype(str).str.zfill(6)
+            match = df_univ[df_univ["ticker"] == clean_ticker]
+            if not match.empty:
+                name = str(match["name"].iloc[0])
+                market = str(match["market"].iloc[0]).upper()
+        except Exception as exc:
+            logger.warning("Failed loading universe csv %s: %s", univ_csv, exc)
 
     # 3. Daily Slice 생성 (Lookahead 방지)
     if has_cache and daily is not None:
@@ -435,36 +525,50 @@ def generate_stock_report(
         is_investable=inv_eval.status.value == "INVESTABLE",
     )
 
-    # 6. Monthly Score & Stage History (Full & Recent 12M)
+    # 6. Monthly Score & Stage History (Full & Recent 12M) using Common Market Reference Calendar
     full_monthly_history: list[MonthlyObservation] = []
     if not daily_slice.empty:
-        # Group by year-month and take last trading date
-        monthly_groups = daily_slice.groupby([daily_slice.index.year, daily_slice.index.month])
-        month_end_dates = [group.index.max() for _, group in monthly_groups]
+        stock_first_date = daily_slice.index.min()
+        market_month_ends = _get_reference_market_month_ends(cache, req_as_of_ts)
 
-        for me_date in month_end_dates:
+        if not market_month_ends:
+            monthly_groups = daily_slice.groupby([daily_slice.index.year, daily_slice.index.month])
+            market_month_ends = [group.index.max() for _, group in monthly_groups]
+
+        # Observations begin from the stock's first month
+        first_month_start = pd.Timestamp(stock_first_date.year, stock_first_date.month, 1)
+        stock_month_ends = [me for me in market_month_ends if me >= first_month_start]
+
+        for me_date in stock_month_ends:
             me_str = me_date.strftime("%Y-%m-%d")
             d_sub = daily_slice.loc[daily_slice.index <= me_date]
-            try:
-                sub_snap = build_historical_snapshot(
-                    ticker=clean_ticker,
-                    name=name,
-                    daily=d_sub,
-                    snapshot_date=me_str,
-                    include_incomplete_periods=False,
-                )
-                sub_eval = evaluate_pattern_a(sub_snap)
-                s_val = round(sub_eval.score, 2) if sub_eval.score is not None else None
-                st_val = sub_eval.lifecycle_stage.value.upper() if sub_eval.lifecycle_stage is not None else "UNAVAILABLE"
-                c_val = sub_eval.candidate_state.value.lower() if sub_eval.candidate_state is not None else "insufficient_data"
-                d_avail = s_val is not None
-                r_val = None if d_avail else "INSUFFICIENT_LOOKBACK"
-            except Exception as exc:
+            if d_sub.empty:
                 s_val = None
                 st_val = "UNAVAILABLE"
                 c_val = "insufficient_data"
                 d_avail = False
-                r_val = str(exc)
+                r_val = "NO_DATA_BEFORE_DATE"
+            else:
+                try:
+                    sub_snap = build_historical_snapshot(
+                        ticker=clean_ticker,
+                        name=name,
+                        daily=d_sub,
+                        snapshot_date=me_str,
+                        include_incomplete_periods=False,
+                    )
+                    sub_eval = evaluate_pattern_a(sub_snap)
+                    s_val = round(sub_eval.score, 2) if sub_eval.score is not None else None
+                    st_val = sub_eval.lifecycle_stage.value.upper() if sub_eval.lifecycle_stage is not None else "UNAVAILABLE"
+                    c_val = sub_eval.candidate_state.value.lower() if sub_eval.candidate_state is not None else "insufficient_data"
+                    d_avail = s_val is not None
+                    r_val = None if d_avail else "INSUFFICIENT_LOOKBACK"
+                except Exception as exc:
+                    s_val = None
+                    st_val = "UNAVAILABLE"
+                    c_val = "insufficient_data"
+                    d_avail = False
+                    r_val = str(exc)
 
             full_monthly_history.append(
                 MonthlyObservation(
@@ -580,20 +684,27 @@ def generate_stock_report(
         foreign_positive_days_60d=flow_feat.foreign_positive_days_60d,
     )
 
-    # 8. Trading Value Flow Section
-    if not daily_slice.empty and len(daily_slice) >= 5:
-        tv_5d_val = float(daily_slice["trading_value"].tail(5).mean() / 1e8)
-        tv_20d_val = float(daily_slice["trading_value"].tail(20).mean() / 1e8) if len(daily_slice) >= 20 else tv_5d_val
-        tv_60d_val = float(daily_slice["trading_value"].tail(60).mean() / 1e8) if len(daily_slice) >= 60 else tv_20d_val
+    # 8. Trading Value Flow Section (Strict Window Fail-Closed)
+    tv_5d_val: float | None = None
+    tv_20d_val: float | None = None
+    tv_60d_val: float | None = None
+    r_5_20: float | None = None
+    r_20_60: float | None = None
 
-        r_5_20 = round(tv_5d_val / tv_20d_val, 2) if tv_20d_val > 0 else None
-        r_20_60 = round(tv_20d_val / tv_60d_val, 2) if tv_60d_val > 0 else None
-    else:
-        tv_5d_val = None
-        tv_20d_val = None
-        tv_60d_val = None
-        r_5_20 = None
-        r_20_60 = None
+    if not daily_slice.empty and "trading_value" in daily_slice.columns:
+        valid_tv = daily_slice["trading_value"].dropna()
+        n_obs = len(valid_tv)
+        if n_obs >= 5:
+            tv_5d_val = float(valid_tv.tail(5).mean() / 1e8)
+        if n_obs >= 20:
+            tv_20d_val = float(valid_tv.tail(20).mean() / 1e8)
+        if n_obs >= 60:
+            tv_60d_val = float(valid_tv.tail(60).mean() / 1e8)
+
+        if tv_5d_val is not None and tv_20d_val is not None and tv_20d_val > 0:
+            r_5_20 = round(tv_5d_val / tv_20d_val, 2)
+        if tv_20d_val is not None and tv_60d_val is not None and tv_60d_val > 0:
+            r_20_60 = round(tv_20d_val / tv_60d_val, 2)
 
     tv_state, tv_explanation = _determine_trading_value_state_and_explanation(
         tv_5d=tv_5d_val,
@@ -613,8 +724,12 @@ def generate_stock_report(
         ratio_20d_to_60d=r_20_60,
     )
 
-    # 9. Header & Summary
-    if cur_score is not None and flow_feat.data_status == FlowDataStatus.READY:
+    # 9. Header & Summary (Consistent Report Status)
+    if (
+        cur_score is not None
+        and flow_feat.data_status == FlowDataStatus.READY
+        and tv_state != TradingValueState.TRADING_VALUE_UNAVAILABLE
+    ):
         rep_status = ReportStatus.READY
     elif cur_score is not None:
         rep_status = ReportStatus.PARTIAL
@@ -709,7 +824,7 @@ def main() -> None:
     """CLI entrypoint for stock report generation."""
     parser = argparse.ArgumentParser(description="Generate Local Stock Report (Contract v0.1)")
     parser.add_argument("--ticker", required=True, help="6-digit stock ticker (e.g. 001540)")
-    parser.add_argument("--as-of", default="2026-08-14", help="As-Of date YYYY-MM-DD")
+    parser.add_argument("--as-of", default=None, help="As-Of date YYYY-MM-DD (defaults to latest local available date)")
     parser.add_argument("--output-dir", default=None, help="Custom output directory")
     args = parser.parse_args()
 

@@ -87,7 +87,7 @@ Stock Report Contract v0.1은 KRX 상장 개별 종목에 대해 외부 네트�
       "properties": {
         "pattern_a_score": { "type": ["number", "null"] },
         "official_stage": { "type": "string", "enum": ["WEAK", "BASE", "TRANSITION", "EARLY_TREND", "PROGRESSED", "UNAVAILABLE"] },
-        "candidate_state": { "type": "string", "enum": ["candidate", "watch", "excluded", "insufficient_data"] },
+        "candidate_state": { "type": "string", "enum": ["candidate", "watch", "late", "blocked", "insufficient_data"] },
         "is_candidate": { "type": "boolean" },
         "market_cap_eok": { "type": ["number", "null"] },
         "avg_trading_value_20d_eok": { "type": ["number", "null"] },

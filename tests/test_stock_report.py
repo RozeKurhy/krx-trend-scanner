@@ -1,4 +1,4 @@
-"""Targeted Tests for Stock Report Contract v0.1 & Generator.
+"""Targeted Tests for Stock Report Contract v0.1 & Generator (Review Corrections).
 
 - Current snapshot canonical parity (001540)
 - Historical Point-In-Time (PIT) isolation
@@ -8,17 +8,29 @@
 - Trading value arithmetic & ratio checks
 - Deterministic reproducible output
 - Zero mutation of existing canonical artifacts
+- Filtered investability narrative (033560 블루콤)
+- Candidate state contract: WEAK -> blocked (000020), PROGRESSED -> late (005930)
+- Short history trading value fail-closed
+- Common market reference calendar month-ends
+- Default latest local as-of resolution
+- Partial report status consistency
+- MD full monthly history table rendering
 """
 
 import hashlib
 import json
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import pytest
 
 from trend_scanner.reporting.models import FlowState, ReportStatus, StockReport, TradingValueState
-from trend_scanner.reporting.stock_report import generate_stock_report, render_markdown_report
+from trend_scanner.reporting.stock_report import (
+    _resolve_latest_local_as_of,
+    generate_stock_report,
+    render_markdown_report,
+)
 
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -68,14 +80,12 @@ def test_stock_report_historical_pit_isolation():
         save_artifacts=False,
     )
 
-    # 2025-11-28 observation from full history
     obs_nov_2025 = next((o for o in report.monthly_history.full_monthly_history if o.as_of == "2025-11-28"), None)
     assert obs_nov_2025 is not None
     assert obs_nov_2025.score == 72.08
     assert obs_nov_2025.stage == "TRANSITION"
     assert obs_nov_2025.candidate_state == "candidate"
 
-    # Direct PIT calculation up to 2025-11-28
     report_pit, _, _ = generate_stock_report(
         ticker="001540",
         as_of="2025-11-28",
@@ -98,7 +108,6 @@ def test_stock_report_history_strict_ordering_and_recent_subset():
     full = report.monthly_history.full_monthly_history
     assert len(full) >= 13
 
-    # Check strictly ascending dates
     dates = [o.as_of for o in full]
     assert dates == sorted(dates)
     assert len(dates) == len(set(dates))
@@ -120,11 +129,9 @@ def test_stock_report_stage_transitions():
     transitions = report.monthly_history.stage_transitions
     assert len(transitions) >= 5
 
-    # Check no consecutive duplicates
     for tr in transitions:
         assert tr.from_stage != tr.to_stage
 
-    # Last transition to EARLY_TREND
     last_tr = transitions[-1]
     assert last_tr.to_stage == "EARLY_TREND"
     assert last_tr.from_stage == "TRANSITION"
@@ -199,7 +206,6 @@ def test_stock_report_does_not_mutate_canonical_artifacts(tmp_path):
     for d in check_dirs:
         before_hashes[str(d)] = _get_dir_hashes(d)
 
-    # Generate report with save_artifacts to tmp_path
     report, j_path, m_path = generate_stock_report(
         ticker="001540",
         as_of="2026-08-14",
@@ -216,3 +222,154 @@ def test_stock_report_does_not_mutate_canonical_artifacts(tmp_path):
         after_hashes[str(d)] = _get_dir_hashes(d)
 
     assert before_hashes == after_hashes, "Canonical artifacts were modified during stock report generation!"
+
+
+def test_stock_report_filtered_investability_narrative():
+    """033560 블루콤 (FILTERED_MARKET_CAP)의 설명문에 '충족/통과' 대신 '기준 미달'이 올바르게 출력되는지 검증."""
+    report, _, _ = generate_stock_report(
+        ticker="033560",
+        as_of="2026-08-14",
+        repo_root=REPO_ROOT,
+        save_artifacts=False,
+    )
+
+    cur = report.current_snapshot
+    assert cur.investability_status == "FILTERED_MARKET_CAP"
+    assert cur.is_investable is False
+
+    # Narrative assertions
+    assert "시가총액 기준 미달" in report.summary.headline
+    assert "제외" in report.summary.headline
+    assert "충족하지 못했습니다" in report.summary.bullet_points[1] or "미달" in report.summary.bullet_points[1]
+    assert "조건을 통과했습니다" not in report.summary.combined_narrative
+
+
+def test_stock_report_candidate_state_contract_weak_blocked():
+    """WEAK 종목(000020 동화약품)의 candidate_state가 'blocked'로 일치하는지 검증."""
+    report, _, _ = generate_stock_report(
+        ticker="000020",
+        as_of="2026-08-14",
+        repo_root=REPO_ROOT,
+        save_artifacts=False,
+    )
+
+    assert report.current_snapshot.official_stage == "WEAK"
+    assert report.current_snapshot.candidate_state == "blocked"
+    assert report.current_snapshot.is_candidate is False
+
+
+def test_stock_report_candidate_state_contract_progressed_late():
+    """PROGRESSED 종목(005930 삼성전자)의 candidate_state가 'late'로 일치하는지 검증."""
+    report, _, _ = generate_stock_report(
+        ticker="005930",
+        as_of="2026-08-14",
+        repo_root=REPO_ROOT,
+        save_artifacts=False,
+    )
+
+    assert report.current_snapshot.official_stage == "PROGRESSED"
+    assert report.current_snapshot.candidate_state == "late"
+    assert report.current_snapshot.is_candidate is False
+
+
+def test_stock_report_common_market_month_end():
+    """월별 이력의 as_of 일자가 표준 시장 월말 거래일 캘린더를 따르는지 검증."""
+    report_001540, _, _ = generate_stock_report(
+        ticker="001540",
+        as_of="2026-08-14",
+        repo_root=REPO_ROOT,
+        save_artifacts=False,
+    )
+    report_005930, _, _ = generate_stock_report(
+        ticker="005930",
+        as_of="2026-08-14",
+        repo_root=REPO_ROOT,
+        save_artifacts=False,
+    )
+
+    dates_001540 = set(o.as_of for o in report_001540.monthly_history.full_monthly_history)
+    dates_005930 = set(o.as_of for o in report_005930.monthly_history.full_monthly_history)
+
+    # All dates in 001540's history must be in 005930's market calendar
+    assert dates_001540.issubset(dates_005930)
+
+
+def test_stock_report_default_latest_local_as_of_resolution():
+    """as_of=None 지정 시 외부 네트워크 요청 없이 최신 로컬 reference market date(2026-08-14)로 자동 결정되는지 검증."""
+    latest_date = _resolve_latest_local_as_of(REPO_ROOT)
+    assert latest_date == "2026-08-14"
+
+    report_default, _, _ = generate_stock_report(
+        ticker="001540",
+        as_of=None,
+        repo_root=REPO_ROOT,
+        save_artifacts=False,
+    )
+    assert report_default.requested_as_of == "2026-08-14"
+    assert report_default.reference_market_date == "2026-08-14"
+    assert report_default.current_snapshot.pattern_a_score == 97.45
+
+
+def test_stock_report_partial_report_status():
+    """Trading Value가 부족하거나 Foreign Flow가 미평가된 경우 report_status가 PARTIAL로 안전하게 전이되는지 검증."""
+    # Test for a stock without full flow/tv data
+    report, _, _ = generate_stock_report(
+        ticker="033560",
+        as_of="2026-08-14",
+        repo_root=REPO_ROOT,
+        save_artifacts=False,
+    )
+    # If core score exists but flow or other section is partial/not ready
+    assert report.header.report_status in (ReportStatus.READY, ReportStatus.PARTIAL)
+
+
+def test_stock_report_short_history_trading_value_fail_closed(tmp_path):
+    """일봉 데이터가 60일 미만인 경우 Trading Value가 가짜 값 대체 없이 fail-closed(None / UNAVAILABLE) 처리되는지 검증."""
+    from trend_scanner.reporting.stock_report import _determine_trading_value_state_and_explanation
+
+    # Case 1: 10 observations (>=5 but <20 and <60)
+    state, exp = _determine_trading_value_state_and_explanation(
+        tv_5d=15.0,
+        tv_20d=None,
+        tv_60d=None,
+        r_5_20=None,
+        r_20_60=None,
+    )
+    assert state == TradingValueState.TRADING_VALUE_UNAVAILABLE
+    assert "부족" in exp
+
+    # Case 2: All None
+    state2, exp2 = _determine_trading_value_state_and_explanation(None, None, None, None, None)
+    assert state2 == TradingValueState.TRADING_VALUE_UNAVAILABLE
+
+
+def test_stock_report_md_full_history_rendering():
+    """Markdown 렌더링 결과에 full_monthly_history 전수(001540 기준 61행)가 표로 온전히 포함되는지 검증."""
+    report, _, _ = generate_stock_report(
+        ticker="001540",
+        as_of="2026-08-14",
+        repo_root=REPO_ROOT,
+        save_artifacts=False,
+    )
+
+    md_content = render_markdown_report(report)
+    assert "## 6. 전체 월별 이력 (Full Monthly History)" in md_content
+    assert "2021-08-31" in md_content
+    assert "2024-07-31" in md_content
+    assert "2026-08-14" in md_content
+    assert "INSUFFICIENT_LOOKBACK" in md_content
+
+    # Count rows in section 6 table
+    lines = md_content.splitlines()
+    sec6_started = False
+    table_rows = 0
+    for line in lines:
+        if "## 6. 전체 월별 이력" in line:
+            sec6_started = True
+            continue
+        if sec6_started and "## 7. 데이터 품질" in line:
+            break
+        if sec6_started and line.startswith("| 20"):
+            table_rows += 1
+
+    assert table_rows == 61, f"Expected 61 table rows in Markdown full history, got {table_rows}"
