@@ -29,9 +29,14 @@ def repo_root() -> Path:
     return Path(__file__).resolve().parent.parent
 
 
-def test_relative_strength_infrastructure_execution(repo_root: Path):
-    """Verify evaluation of all 10 Dynamic Hard Gates on Phase 12 artifacts."""
-    result = run_relative_strength_validation(as_of="2026-08-14", repo_root=repo_root)
+def test_relative_strength_infrastructure_execution(repo_root: Path, tmp_path: Path):
+    """Verify evaluation of all 10 Dynamic Hard Gates on Phase 12 artifacts (Isolated Output)."""
+    result = run_relative_strength_validation(
+        as_of="2026-08-14",
+        repo_root=repo_root,
+        output_dir=tmp_path / "artifacts/relative_strength",
+        doc_output_path=tmp_path / "docs/validation/report.md",
+    )
 
     gates = result["gates"]
     assert gates["gate_01_frozen_identity_parity"]["passed"] is True
@@ -294,8 +299,8 @@ def test_gate4_negative_stale_market_date(tmp_path: Path, repo_root: Path):
     assert result["gates"]["gate_04_exact_freshness_anchor_contract"]["passed"] is False
 
 
-def test_gate6_negative_market_rs_3m_mutation(repo_root: Path, monkeypatch: pytest.MonkeyPatch):
-    """5. Gate 6 Negative: Mutating 3M market RS in scanner output triggers Gate 6 FAIL."""
+def test_gate6_negative_market_rs_3m_mutation(repo_root: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    """5. Gate 6 Negative: Mutating 3M market RS in scanner output triggers Gate 6 FAIL (Output Isolated)."""
     import dataclasses
     from trend_scanner.validation import pattern_a_relative_strength_infrastructure as val_mod
     original_scan = val_mod.scan_pattern_a_universe
@@ -313,13 +318,18 @@ def test_gate6_negative_market_rs_3m_mutation(repo_root: Path, monkeypatch: pyte
         return res
 
     monkeypatch.setattr(val_mod, "scan_pattern_a_universe", mocked_scan)
-    result = run_relative_strength_validation(as_of="2026-08-14", repo_root=repo_root)
+    result = run_relative_strength_validation(
+        as_of="2026-08-14",
+        repo_root=repo_root,
+        output_dir=tmp_path / "artifacts/relative_strength",
+        doc_output_path=tmp_path / "docs/validation/report.md",
+    )
     assert result["gates"]["gate_06_market_rs_arithmetic_parity"]["passed"] is False
     assert result["gates"]["gate_06_market_rs_arithmetic_parity"]["details"]["market_rs_3m_mismatches"] > 0
 
 
-def test_gate6_negative_market_rs_12m_mutation(repo_root: Path, monkeypatch: pytest.MonkeyPatch):
-    """6. Gate 6 Negative: Mutating 12M market RS in scanner output triggers Gate 6 FAIL."""
+def test_gate6_negative_market_rs_12m_mutation(repo_root: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    """6. Gate 6 Negative: Mutating 12M market RS in scanner output triggers Gate 6 FAIL (Output Isolated)."""
     import dataclasses
     from trend_scanner.validation import pattern_a_relative_strength_infrastructure as val_mod
     original_scan = val_mod.scan_pattern_a_universe
@@ -337,14 +347,24 @@ def test_gate6_negative_market_rs_12m_mutation(repo_root: Path, monkeypatch: pyt
         return res
 
     monkeypatch.setattr(val_mod, "scan_pattern_a_universe", mocked_scan)
-    result = run_relative_strength_validation(as_of="2026-08-14", repo_root=repo_root)
+    result = run_relative_strength_validation(
+        as_of="2026-08-14",
+        repo_root=repo_root,
+        output_dir=tmp_path / "artifacts/relative_strength",
+        doc_output_path=tmp_path / "docs/validation/report.md",
+    )
     assert result["gates"]["gate_06_market_rs_arithmetic_parity"]["passed"] is False
     assert result["gates"]["gate_06_market_rs_arithmetic_parity"]["details"]["market_rs_12m_mismatches"] > 0
 
 
-def test_gate7_negative_empty_sector_source(repo_root: Path):
-    """7. Gate 7 Negative: Empty sector source (0 rows) triggers Gate 7 FAIL."""
-    result = run_relative_strength_validation(as_of="2026-08-14", repo_root=repo_root)
+def test_gate7_negative_empty_sector_source(repo_root: Path, tmp_path: Path):
+    """7. Gate 7 Negative: Empty sector source (0 rows) triggers Gate 7 FAIL (Output Isolated)."""
+    result = run_relative_strength_validation(
+        as_of="2026-08-14",
+        repo_root=repo_root,
+        output_dir=tmp_path / "artifacts/relative_strength",
+        doc_output_path=tmp_path / "docs/validation/report.md",
+    )
     assert result["gates"]["gate_07_sector_mapping_contract"]["passed"] is False
     assert result["gates"]["gate_07_sector_mapping_contract"]["details"]["sector_index"]["row_count"] == 0
 
@@ -380,7 +400,7 @@ def test_gate7_negative_sector_mapping_hash_mismatch(tmp_path: Path, repo_root: 
 
 
 def test_gate8_negative_sector_rs_3m_mutation():
-    """8. Gate 8 Negative: Arithmetic mutation in 3M sector RS triggers mismatch."""
+    """8. Gate 8 Negative (Synthetic Arithmetic Check): Arithmetic mutation in 3M sector RS triggers mismatch."""
     p_end, p_anc = 50000.0, 40000.0
     sec_end, sec_anc = 1200.0, 1000.0
     s_ret = (p_end / p_anc) - 1.0
@@ -392,7 +412,7 @@ def test_gate8_negative_sector_rs_3m_mutation():
 
 
 def test_gate8_negative_sector_rs_12m_mutation():
-    """9. Gate 8 Negative: Arithmetic mutation in 12M sector RS triggers mismatch."""
+    """9. Gate 8 Negative (Synthetic Arithmetic Check): Arithmetic mutation in 12M sector RS triggers mismatch."""
     p_end, p_anc = 50000.0, 60000.0
     sec_end, sec_anc = 1200.0, 1100.0
     s_ret = (p_end / p_anc) - 1.0
@@ -403,11 +423,39 @@ def test_gate8_negative_sector_rs_12m_mutation():
     assert abs(mutated_rs_12m - canonical_rs_12m) > 1e-6
 
 
-def test_gate8_negative_zero_sector_ready(repo_root: Path):
-    """10. Gate 8 Negative: When Sector READY candidates == 0, Gate 8 strictly FAILS."""
-    result = run_relative_strength_validation(as_of="2026-08-14", repo_root=repo_root)
+def test_gate8_negative_zero_sector_ready(repo_root: Path, tmp_path: Path):
+    """10. Gate 8 Negative: When Sector READY candidates == 0, Gate 8 strictly FAILS (Output Isolated)."""
+    result = run_relative_strength_validation(
+        as_of="2026-08-14",
+        repo_root=repo_root,
+        output_dir=tmp_path / "artifacts/relative_strength",
+        doc_output_path=tmp_path / "docs/validation/report.md",
+    )
     assert result["gates"]["gate_08_sector_rs_arithmetic_parity"]["passed"] is False
     assert result["gates"]["gate_08_sector_rs_arithmetic_parity"]["details"]["candidate_sector_rs_ready"] == 0
+
+
+def test_mutation_tests_do_not_contaminate_canonical_artifacts(repo_root: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    """Regression Test: Verify that running mutation validation does not modify official canonical artifacts."""
+    csv_file = repo_root / "artifacts/relative_strength/pattern_a_relative_strength_features_20260814.csv"
+    json_file = repo_root / "artifacts/relative_strength/pattern_a_relative_strength_summary_20260814.json"
+
+    def get_hash(p: Path) -> str:
+        return hashlib.sha256(p.read_bytes()).hexdigest() if p.exists() else ""
+
+    csv_hash_before = get_hash(csv_file)
+    json_hash_before = get_hash(json_file)
+
+    # Run isolated 3M mutation test
+    test_gate6_negative_market_rs_3m_mutation(repo_root=repo_root, tmp_path=tmp_path / "mut3m", monkeypatch=monkeypatch)
+    # Run isolated 12M mutation test
+    test_gate6_negative_market_rs_12m_mutation(repo_root=repo_root, tmp_path=tmp_path / "mut12m", monkeypatch=monkeypatch)
+
+    csv_hash_after = get_hash(csv_file)
+    json_hash_after = get_hash(json_file)
+
+    assert csv_hash_after == csv_hash_before, "Official canonical CSV was corrupted by mutation test!"
+    assert json_hash_after == json_hash_before, "Official canonical JSON was corrupted by mutation test!"
 
 
 def test_gate1_negative_candidate_extra_ticker(tmp_path: Path, repo_root: Path):
