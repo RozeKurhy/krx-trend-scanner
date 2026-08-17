@@ -226,7 +226,7 @@ Scanner CANDIDATE 종목을 사람이 직접 검토(월봉 ➔ 주봉 ➔ 일봉
 
 ---
 
-## Phase 13. Pattern A Fast — PLANNED
+## Phase 13. Pattern A Fast — IN PROGRESS
 
 설명: Monthly Regime + Weekly Trigger + Daily Timing
 
@@ -255,8 +255,8 @@ False Trigger 측정 / 주봉 중심 전환 구조 정의 / 일봉 timing layer 
 최대화 / 무조건적인 매수 신호 생성 / Backtest 수익률에 맞춘 과최적화
 
 Sub-stage:
-* 13A. Pattern A Fast Definition
-* 13B. Stage / Lifecycle Contract
+* 13A. Pattern A Fast Definition — CLOSED (`docs/specs/pattern_a_fast_definition.md`)
+* 13B. Stage / Lifecycle Contract — Contract authored / pending review (`docs/specs/pattern_a_fast_lifecycle_contract.md`)
 * 13C. Human Ground Truth Dataset
 * 13D. Monthly Regime Research
 * 13E. Weekly Trigger Feature Research
@@ -268,8 +268,8 @@ Sub-stage:
 
 Phase 12 Relative Strength Infrastructure와 Phase 13 Pattern A Fast는 독립 연구
 트랙이며 상호 production dependency가 없으므로 병행 진행 가능하다(Phase 12
-결과를 Pattern A Fast Core의 필수 dependency로 만들지 않는다). 13A Pattern A
-Fast Definition 작업을 시작한다(`docs/specs/pattern_a_fast_definition.md`).
+결과를 Pattern A Fast Core의 필수 dependency로 만들지 않는다). 13A Definition
+은 CLOSED, 13B Weekly Lifecycle Contract는 작성 완료 후 리뷰 대기 중이다.
 
 ---
 

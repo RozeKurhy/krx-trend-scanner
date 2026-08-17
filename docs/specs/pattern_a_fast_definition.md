@@ -297,10 +297,19 @@ vocabulary:
   볼 수 없는 사례.
 * `TOO_LATE` — 주봉 전환이 이미 충분히 진행된 뒤 뒤늦게 포착되어 Fast
   전략으로서 선행 가치가 낮은 사례.
-* `EXTENDED` — 이미 초기 진입 구간을 상당 부분 지나가 신규 진입 관점의
-  Risk/Reward가 악화된 사례.
+* `TOO_EXTENDED` — 이미 초기 진입 구간을 상당 부분 지나가 신규 진입
+  관점의 Risk/Reward가 악화된 사례.
 * `NO_SETUP` (필요 시 추가) — 관찰 시점 기준 SETUP에 해당하는 구조
   변화조차 나타나지 않은 사례.
+
+**Naming 변경 기록 (Phase 13B 검토)**: Ground Truth Label의 `EXTENDED`는
+Weekly Lifecycle Stage의 `EXTENDED`(§17 Provisional Lifecycle)와 이름이
+겹쳐 dataset에서 PIT 구조 상태와 사후 리뷰 라벨을 혼동할 위험이 있었다.
+이유: 두 개념은 시점(PIT 당시 구조 vs 사후 사람이 매긴 리뷰 결과)이
+다르므로 이름으로 구분되어야 한다. `old name`: `EXTENDED` (Ground Truth
+Label) → `new name`: `TOO_EXTENDED`. `semantic impact`: 의미 변경 없음,
+표기만 `TOO_EARLY`/`TOO_LATE`와 동일한 `TOO_*` 명명 규칙으로 통일. Weekly
+Lifecycle Stage 쪽 `EXTENDED` 이름은 그대로 유지한다.
 
 각 label의 구체 threshold는 여기서 작성하지 않는다.
 
