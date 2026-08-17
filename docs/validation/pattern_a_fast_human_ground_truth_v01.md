@@ -4,14 +4,17 @@
 0. 문서 상태
 ================================================================================
 Phase: 13C-1 — Ground Truth Dataset Preparation
-Status: **READY_FOR_HUMAN_REVIEW** (13C-1 완료, Human Annotation은 13C-2로 대기)
-Base: `507b5675d480abdf9c8fc7d21355ba661afa94b7` (Cohort A 선정 로직은
-advisor 2회 검토에서 연달아 결함이 발견되어 수정됐고(§4), 그 뒤 Monthly
-Review Data Sufficiency Gate가 추가되며 Cohort B 후보 상당수가 다시
-제외/재선정됐다(§6, §14). 이번 correction에서는 그 게이트 도입 직후
-Cohort B가 사실상 한 주(2025-06-27)에 몰리는 문제가 advisor 리뷰로
-발견되어, quarter-end 날짜 그리드를 2024-09~2026-03 구간으로 넓혀
-재선정했다 — §3, §4 참고)
+Status: **READY_FOR_HUMAN_REVIEW / 13C-1 Preparation FINAL** (13C-1 준비
+단계 자체를 이번 correction으로 최종 봉인, w.md "[Phase 13C-1 Final
+Sampling Balance Correction]" §목표 — Human Annotation은 여전히 별도
+13C-2로 대기)
+Base: `5d8af8245fedd5591595d91d06e3b333938e0ff7` (지난 세 라운드 요약:
+Cohort A 선정 로직 결함 2회 수정(§4) → Monthly Review Data Sufficiency
+Gate 도입(§6) → Cohort B 날짜 집중(35/45가 한 주) 발견 후 quarter-end
+그리드를 2024-09~2026-03으로 확장했으나 그 결과 2016~2023년 표본이
+전부 사라짐(§3) → 이번 correction에서 Cohort B를 RECENT_SYSTEMATIC /
+HISTORICAL_COVERAGE 두 stratum으로 분리해 과거 market regime 표본을
+다시 확보)
 Data cutoff (as_of): 2026-08-14
 Network requests: 0 (전부 로컬 `data/raw/stocks/*.parquet` 캐시)
 
@@ -41,48 +44,58 @@ Phase 13A에서 Pattern A Fast의 목적을, Phase 13B에서 Weekly Lifecycle St
 3. Dataset Scope
 --------------------------------------------------------------------------------
 * 총 샘플: **60건** (목표 60 달성)
-* 고유 티커: **57개**
-* 시장: KOSPI 33 / KOSDAQ 27
-* reference_date 범위: 2024-09-27 ~ 2026-03-27
-* reference_date 연도 분포: 2024(8) / 2025(30) / 2026(22)
-* Completed monthly bars at reference: 최소 37 / 중앙값 49.5 / 최대 142
+* 고유 티커: **55개**
+* 시장: KOSPI 39 / KOSDAQ 21
+* reference_date 범위: 2018-06-29 ~ 2026-03-27
+* reference_date 연도 분포: 2018(3) / 2020(3) / 2022(3) / 2023(3) /
+  2024(5) / 2025(27) / 2026(16) — **7개 연도**에 걸쳐 존재(직전 버전은
+  2024-09~2026-03 단 1.5년뿐이었음)
+* Cohort 구성: `PATTERN_A_HISTORICAL_CONTEXT` 15 / `RECENT_SYSTEMATIC` 33 /
+  `HISTORICAL_COVERAGE` 12 (§4)
+* Completed monthly bars at reference: 최소 37 / 중앙값 52.0 / 최대 142
   (전부 Monthly Review Data Sufficiency Gate ≥36 통과, §6·§14 참고)
+* Max single reference_date: 13/60(21.7%, `2026-03-27`) — 22개 서로
+  다른 reference_date에 분산(직전 버전 45건 중 최대 18건이 한 날짜에
+  몰렸던 것에서 자연스럽게 개선, §5 참고)
 * 티커당 최대 episode: 2 (§48 준수, 실제 최대 2)
 
-**정직한 한계(2회 연속 correction의 최종 결과)**: 직전 버전은 "연도
-분포가 6개→9개로 늘었지만 2025에 46/60(77%)이 몰림"으로 기록했었다.
-그런데 advisor 리뷰로 그 서술 자체가 부정확했음이 드러났다 —
-연도 단위로 보면 분산돼 보였지만 실제로는 Cohort B 45건 중 35건이
-**같은 한 주(2025-06-27)** 에 몰려 있었다(9개 날짜 중 1개가 대부분을
-차지). 즉 FAILED_BREAKOUT/NEGATIVE_CONTROL 같은 "실패 사례" 버킷들이
-서로 다른 시점의 독립적인 사례가 아니라 사실상 하나의 시장 구간에 대한
-labeling이었다는 뜻이다. 원인은 여전히 로컬 캐시의 이력 커버리지
-한계다 — 2024-09-27 이전 quarter-end는 36개월 게이트를 통과하는 티커가
-전체 2,486개 중 약 3~66개뿐이지만, 2024-09-27부터는 800개 이상으로
-급증해 유지된다(실측: 표본 400개 기준 2024-06-28 3/175 → 2024-09-27
-133/176). 이 사실을 반영해 quarter-end 날짜 그리드를 2024-09~2026-03
-구간(6개 날짜 추가, §4)으로 넓혀 재선정한 결과가 지금 버전이다 — 이는
-이미 사용한 stride 8→전수 완화와 같은 성격의 "존재하는 데이터로
-sampling frame을 넓히는" 조치이며, 버킷별 목표 개수(quota)는 전혀
-바꾸지 않았다(§8 "quota 최적화는 하지 말 것"과 구분).
+**이번 correction의 배경(w.md "[Phase 13C-1 Final Sampling Balance
+Correction]")**: 직전 버전은 Cohort B 날짜 집중(35/45가 2025-06-27 한
+주) 문제를 quarter-end 그리드를 2024-09~2026-03으로 넓혀 완화했지만,
+그 부작용으로 top-N by |score| 선정 방식이 2016~2023년 후보를 전부
+순위에서 밀어내 **dataset 전체 시간 범위가 2024-09~2026-03(약
+1.5년)으로 좁아졌다.** 이번 correction은 Cohort B를 두 stratum으로
+분리해 이 문제를 해결했다:
+- **RECENT_SYSTEMATIC**(33건): 기존 top-N by |score| 방식 그대로,
+  quarter-end 그리드를 2024-09~2026-03(7개 날짜)로 한정.
+- **HISTORICAL_COVERAGE**(12건): 2024-09 이전 실제 market regime을
+  포함하기 위한 별도 stratum. Outcome extreme score top-N이 아니라
+  sample_id의 stable hash로 결정론적으로 선택해, forward return 크기가
+  선정 확률을 좌우하지 않도록 했다(§4).
 
-이 조치로 Cohort B의 최대 날짜 집중도는 35/45(78%, 1개 날짜)에서
-18/45(40%, 1개 날짜, 7개 날짜에 분산)로 개선됐다. 그 대신, top-N by
-|score| 선정 방식(§4) 특성상 2024-09-27 이전 날짜의 후보들은 표본이
-큰 최근 날짜의 극단값 후보들에 순위에서 완전히 밀려, **이번 버전에는
-2016~2023년 reference_date가 하나도 남지 않았다.** 직전 버전에 있던
-2016~2023년 샘플 10건은 사실 44~66개뿐인 얇은 후보 풀에서 나온
-극단값이었을 뿐 — 그 시기의 시장 국면을 대표하는 표본이 아니라
-생존편향(survivorship-biased)에 가까운 우연의 산물이었다. 따라서
-이번 dataset의 시간 범위는 **2024-09~2026-03(약 1.5년)으로 제한된다.**
-이는 "같은 주에 실패 사례가 몰려 label 자체가 오염되는" 문제(validity
-결함)를 "더 이른 시기의 시장 국면을 다루지 못하는" 문제(scope 제한)로
-바꾼 것이며, 후자가 더 다루기 쉬운 제약이라 판단해 이 방향을
-선택했다 — 고정된 top-N 규칙을 유지하는 한 두 문제를 동시에 해결할
-방법은 없다(연도별/날짜별 sub-quota를 넣는 것은 §8이 금지하는 quota
-최적화가 되므로 시도하지 않았다). 2016~2023년 국면까지 포함하려면
-로컬 캐시 자체의 장기 이력 백필(별도 Phase)이 필요하며, 이는 13C-2
-리뷰 이후 사용자가 판단할 사안이다.
+**정직한 한계**: 2018/2020/2022/2023 각 3건씩 뽑았지만, 실측 eligible
+pool(36개월 게이트 + `weekly_return_screen` 통과 + 유효 `source_reason`
+분류를 모두 만족하는 후보 수)은 2018-06-29 48개, 2020-09-25 56개,
+2022-12-30 66개, 2023-06-30 66개로 **여전히 얇다**(로컬 캐시의 근본적인
+이력 커버리지 한계 — 대부분 티커의 캐시 시작일이 최근 3년 내라는 사실은
+이전 correction들에서 이미 확인됨). w.md §3 "얇은 historical pool
+자체가 exclusion 이유는 아니다"라는 지시에 따라 이 얇음 자체를 후보를
+늘리기 위한 조작 없이 그대로 받아들이고 여기 기록한다 — 이 dataset은
+prevalence 추정용이 아니므로 얇은 pool도 sample 다양성 확보라는
+목적에는 문제가 없다. Historical stratum의 버킷 분포도 강제로 맞추지
+않았다(대부분 `AMBIGUOUS_STRUCTURE`로 쏠리는 게 실제 얇은 pool의
+자연스러운 특성 — §4 참고). 더 넓은 연도 커버리지(예: 2016~2017)나
+버킷 균형을 원한다면 로컬 캐시 자체의 장기 이력 백필(별도 Phase)이
+필요하며, 이는 13C-2 리뷰 이후 사용자가 판단할 사안이다.
+
+**정직한 한계 추가(시장 쏠림)**: `HISTORICAL_COVERAGE` 12건은
+**100% KOSPI**다(예: LG화학/GS/한화에어로스페이스/HMM/LS/LG이노텍 —
+실제 선택된 티커 이름 자체가 이미 장기 상장 대형주 위주임을 보여준다).
+36개월 게이트가 "그 historical 시점에 이미 오래 상장돼 있던 종목"만
+통과시키는 구조이므로 자연스러운 결과이며, 의도적으로 KOSPI를 우대한
+게 아니다. 그 결과 dataset 전체 시장 비율도 이전 버전 KOSPI 33/KOSDAQ
+27에서 이번 버전 **KOSPI 39/KOSDAQ 21**로 이동했다 — 이 역시 강제로
+맞추지 않고 있는 그대로 기록한다.
 
 --------------------------------------------------------------------------------
 4. Selection Strategy
@@ -126,35 +139,73 @@ forward로 최소 4주(confirm_pre_episode_weeks) 연속 TRANSITION/EARLY_TREND
 7주)로 안정됐고, outcome 리뷰 창 최솟값은 20주로 늘었다.
 `find_base_reference_before_entry`에 이 배경과 함께 기록해 두었다.
 
-**Cohort B — Independent Negative / Ambiguous** (45건):
-`cache_present` 티커 **전수**(2,486개 — 최초에는 stride 8 표집(약 316개)
-이었으나, Monthly History Gate 도입 후 초기 quarter-end 날짜의 생존
-후보가 극소수임이 확인되어 존재하는 후보를 stride로 더 줄이지 않도록
-전수 screen으로 전환함, §3 참고) × quarter-end 날짜 그리드 **19개**
-(`2016-06-30` ~ `2026-03-27`; 이번 correction에서 `2024-09-27`,
-`2024-12-27`, `2025-03-28`, `2025-09-26`, `2025-12-26`, `2026-03-27` 6개를
-추가 — 36개월 게이트 통과 티커가 풍부한(표본 기준 800개 이상) 구간에
-날짜를 더 넣어 생존 후보가 한 주에 몰리지 않도록 분산시킴, §3 참고)에서
-단순 가격 기반 sampling 지표(`weekly_return_screen`)를 계산하고, 고정
-규칙(`classify_source_reason`,
-`src/trend_scanner/validation/pattern_a_fast_ground_truth.py`)으로 버킷팅한
-뒤, Monthly History Gate(§6)를 통과하는 후보 중 버킷별
-**|trailing_return|+|forward_return| 점수 상위 N개**를 선택했다. 이
+**Cohort B는 두 개의 독립적인 sampling stratum으로 구성된다**(이번
+correction, w.md §1·§2). 둘 다 같은 고정 규칙(`classify_source_reason`)
+으로 버킷팅하지만 날짜 범위와 선택 방식이 다르다.
+
+**Cohort B-1 — RECENT_SYSTEMATIC** (33건, source_cohort=`RECENT_SYSTEMATIC`):
+`cache_present` 티커 전수(2,486개, `COHORT_B_TICKER_STRIDE=1`) ×
+quarter-end 날짜 그리드 **7개**(`2024-09-27`, `2024-12-27`,
+`2025-03-28`, `2025-06-27`, `2025-09-26`, `2025-12-26`, `2026-03-27` —
+Recent Regime Pool, 이전 correction에서 확정된 "36개월 게이트 통과
+티커가 풍부한" 구간)에서 `weekly_return_screen` 지표를 계산하고 버킷별
+**|trailing_return|+|forward_return| 점수 상위 N개**를 선택했다. 이전
+버전(45건, 버킷 목표 10/5/8/8/6/8)에서 아래처럼 각 버킷을 비례
+축소(45→33)해 Historical Coverage stratum에 자리를 내줬다 — 정확한
+숫자를 최적화한 게 아니라 총량을 유지하면서 "일부만 historical로
+교체"하기 위한 단순 비례 축소다(w.md §1·§4):
+
+| source_reason | 이전 목표(45건 버전) | 이번 목표 | 선택 |
+|---|---|---|---|
+| FAILED_BREAKOUT | 10 | 7 | 7 |
+| LONG_DOWNTREND_BOUNCE | 5 | 4 | 4 |
+| STRONG_UPTREND_ALREADY_EXTENDED | 8 | 6 | 6 |
+| NEGATIVE_CONTROL | 8 | 6 | 6 |
+| RANGE_BOUND | 6 | 4 | 4 |
+| AMBIGUOUS_STRUCTURE | 8 | 6 | 6 |
+
 top-N 방식은 순위에서 밀린 후보를 개별적으로 기록하지 않으므로(밀린
 후보 수가 수천 건에 달해 전부 나열하는 것이 비현실적), 재현성을 위해
-`selection_manifest.json`의 `selection_strategy.cohort_b.
-selection_stats_per_bucket`에 버킷별 `candidate_pool_size`(평가된 전체
-후보 수), `picked`, `score_cutoff_min`/`score_cutoff_max`(실제 선택된
-샘플들의 점수 범위)를 추가로 기록했다(§7 재현성 요구사항):
+`selection_manifest.json`의 `selection_strategy.cohort_b_recent_
+systematic.selection_stats_per_bucket`에 버킷별 `candidate_pool_size`
+(FAILED_BREAKOUT 1,665 / LONG_DOWNTREND_BOUNCE 429 / STRONG_UPTREND_
+ALREADY_EXTENDED 1,123 / NEGATIVE_CONTROL 1,542 / RANGE_BOUND 1,087 /
+AMBIGUOUS_STRUCTURE 10,803), `picked`, `score_cutoff_min`/
+`score_cutoff_max`를 기록했다(§7 재현성 요구사항).
 
-| source_reason | 목표 | 선택 |
-|---|---|---|
-| FAILED_BREAKOUT | 10 | 10 |
-| LONG_DOWNTREND_BOUNCE | 5 | 5 |
-| STRONG_UPTREND_ALREADY_EXTENDED | 8 | 8 |
-| NEGATIVE_CONTROL | 8 | 8 |
-| RANGE_BOUND | 6 | 6 |
-| AMBIGUOUS_STRUCTURE | 8 | 8 |
+**Cohort B-2 — HISTORICAL_COVERAGE** (12건, source_cohort=
+`HISTORICAL_COVERAGE`): 2024-09 이전 실제 market regime 사례를 포함하기
+위한 stratum. Outcome extreme score top-N을 쓰지 않는다 — 그러면
+"선정 확률이 forward return 크기에 좌우된다"는, 직전 correction에서
+발견된 문제(§3)와 똑같은 종류의 편향이 다시 생기기 때문이다(w.md §3).
+대신 quarter-end 날짜 4개(`2018-06-29`, `2020-09-25`, `2022-12-30`,
+`2023-06-30` — 2016~2023 구간에서 실측으로 eligible pool이 존재함을
+확인한 지점, w.md가 예시로 든 2018/2020/2022/2023과 일치) 각각에서:
+1. `cache_present` 티커 전수를 screen해 **36개월 게이트를 먼저
+   적용**하고(§6), `weekly_return_screen` + `classify_source_reason`
+   유효 버킷까지 만족하는 `eligible pool`을 만든다.
+2. `sample_id`의 stable hash(`sha256`)로 정렬해 날짜당 상위 3개를
+   선택한다(`_stable_hash_key`,
+   `scripts/prepare_pattern_a_fast_ground_truth.py`) — 이 정렬은
+   가격/수익률과 완전히 무관하며, 같은 입력이면 항상 같은 순서를
+   낸다(targeted test로 커버, §10).
+
+eligible pool 크기는 날짜별로 48 / 56 / 66 / 66으로 얇다 — 이 얇음
+자체는 제외 사유가 아니라 정직하게 기록해야 할 사실이다(w.md §3, §3
+Dataset Scope 참고). `selection_manifest.json`의
+`selection_strategy.cohort_b_historical_coverage.
+selection_stats_per_date`에 날짜별 `eligible_pool_size`/`picked`/
+`selection_method`를 기록했다.
+
+> **구현 메모(이 stratum을 만들며 발견한 버그)**: 최초 구현은 36개월
+> 게이트 없이 `weekly_return_screen`만으로 eligible pool을 계산했다 —
+> `weekly_return_screen`은 lookback/lookahead 12주(~6개월)만 요구하므로
+> 캐시가 최근에 시작된 티커도 대부분 통과해, `2022-12-30`의 "eligible
+> pool"이 2,148개로 부풀려졌다(진짜 36개월-게이트 통과 pool은 66개
+> 뿐). 최종 선택된 3개 샘플 자체는 `build_row`가 어차피 게이트를
+> 다시 적용하므로 안전했지만, 보고되는 pool 크기가 부정확했다 —
+> 그래서 eligibility 계산 순서에 36개월 게이트를 앞당겨 넣었다. 위
+> 수치는 수정 후 값이다.
 
 classify_source_reason 규칙(고정, 변경 시 이 함수의 docstring도 함께
 갱신):
@@ -176,9 +227,10 @@ classify_source_reason 규칙(고정, 변경 시 이 함수의 docstring도 함�
 5. Bias Control
 --------------------------------------------------------------------------------
 * Positive-only sampling 금지 원칙 준수: GOOD 후보(Cohort A, 15) 외에
-  FAILED_BREAKOUT(10) / LONG_DOWNTREND_BOUNCE(5) / STRONG_UPTREND_ALREADY_
-  EXTENDED(8) / NEGATIVE_CONTROL(8) / RANGE_BOUND(6) / AMBIGUOUS_STRUCTURE(8)
-  까지 6개 non-positive 버킷 45건 포함.
+  RECENT_SYSTEMATIC(33) + HISTORICAL_COVERAGE(12) = 45건이 FAILED_BREAKOUT
+  / LONG_DOWNTREND_BOUNCE / STRONG_UPTREND_ALREADY_EXTENDED /
+  NEGATIVE_CONTROL / RANGE_BOUND / AMBIGUOUS_STRUCTURE 6개 non-positive
+  버킷에 분산되어 포함됨(§4).
 * 사후 outcome(가격 metrics)을 sampling에 사용한 것은 명시적으로 허용된
   범위이며, `source_cohort`/`source_reason` 컬럼으로 항상 그 사실을 드러낸다
   (§19 Outcome enriched research set임을 숨기지 않는다).
@@ -188,10 +240,20 @@ classify_source_reason 규칙(고정, 변경 시 이 함수의 docstring도 함�
 --------------------------------------------------------------------------------
 6. PIT Rules
 --------------------------------------------------------------------------------
-* `reference_date`는 항상 완료된 W-FRI 주봉 라벨이다(`resolve_completed_
-  weekly_reference`가 `build_historical_snapshot(..., include_incomplete_
-  periods=False)`의 `weekly_as_of`를 그대로 반환 — 가장 가까운 날짜로
-  silent substitution하지 않는다, §35).
+* **Selection target date vs 실제 reference_date 구분(w.md §9)**:
+  `RECENT_COHORT_B_DATES`/`HISTORICAL_COVERAGE_DATES`에 적힌 quarter-end
+  문자열(예: `2022-12-30`)은 어디까지나 **selection target date** —
+  후보를 뽑을 때 쓰는 임의의 날짜일 뿐, 완료 주봉 라벨이 아닐 수도
+  있다. `resolve_completed_weekly_reference`가 이를 실제
+  `reference_date`(항상 완료된 W-FRI 주봉 라벨)로 변환하며, 방향은
+  **항상 과거뿐이다** — target date 이하에서 가장 가까운 완료 주봉만
+  찾고, 미래 주로 이동하거나 없는 데이터를 미래 값으로 backfill하는
+  일은 없다(없으면 None). 그래서 target date `2022-12-30`(금요일)이
+  실제로는 `2022-12-23`으로 resolve된 샘플이 있다(`build_historical_
+  snapshot(..., include_incomplete_periods=False)`의 `weekly_as_of`를
+  그대로 반환 — 가장 가까운 날짜로 silent substitution하지 않는다,
+  §35). dataset에는 selection target date가 아니라 이 실제
+  resolve된 `reference_date`만 저장된다.
 * Chart PIT slice(`build_chart_slices`)는 monthly/weekly/daily 각각
   `index.max() <= reference_date`를 **assert로 machine-check**한다(§26,
   targeted test `test_build_chart_slices_no_future_leakage` /
@@ -218,9 +280,11 @@ classify_source_reason 규칙(고정, 변경 시 이 함수의 docstring도 함�
 --------------------------------------------------------------------------------
 7. Source Cohorts
 --------------------------------------------------------------------------------
-§4 참고. 요약: A=Pattern A 실제 후보의 과거 BASE 지점(15), B=독립
-Negative/Ambiguous cohort(45). 두 cohort 모두 `source_cohort` 컬럼으로
-dataset에 명시된다.
+§4 참고. 요약: `PATTERN_A_HISTORICAL_CONTEXT`=Pattern A 실제 후보의 과거
+BASE 지점(15), `RECENT_SYSTEMATIC`=2024-09~2026-03 systematic
+negative/ambiguous cohort(33), `HISTORICAL_COVERAGE`=2024-09 이전
+market regime을 위한 deterministic-hash 선택 cohort(12). 세 cohort 모두
+`source_cohort` 컬럼으로 dataset에 명시된다.
 
 --------------------------------------------------------------------------------
 8. Schema
@@ -292,25 +356,21 @@ Truth가 아니라 **Benchmark**로만 쓰인다 — Pattern A가 나중에 EARL
 아니라고 자동으로 FALSE_TRIGGER를 부여하지도 않는다.
 
 `pattern_a_stage_at_reference`는 60건 중 **59건**이 채워져 있다(결측
-1건, `079970_20240927`). 이전(60건) 버전에서는 이 결측이 정확히
-Monthly History Gate(§6)로 걸러지는 29건과 100% 일치해 "게이트를
-통과하면 결측 0"이라고 적었으나, 이번 correction으로 그 서술이
-틀렸음이 드러났다 — 두 요구조건이 실제로는 서로 다르기 때문이다.
-`079970_20240927`은 completed monthly bars가 37개로 게이트(≥36)를
-통과하지만, Pattern A Stage Classifier는 **주봉 파생 feature
-(`weekly_ma12_slope`) 계산에 필요한 warm-up이 부족해** `stage=None`,
-`candidate_state=INSUFFICIENT_DATA`를 반환한다(직접 재현 확인:
-`evaluate_pattern_a(...).stage_result.reason_codes ==
-('insufficient_data',)`, `weekly_ma12_slope == nan`). 즉 Monthly
-Review Data Sufficiency Gate(월봉 36개)와 Pattern A 자체의 내부 데이터
-요구조건(월봉 + 주봉 feature warm-up)은 겹치지만 동일하지 않다 — 이전
-버전에서 100% 일치했던 것은 우연히 그 60건 표본 구성에서만 그랬을
-뿐, 구조적으로 보장된 것이 아니었다. 이 결측 자체는 dataset의 결함이
-아니다 — Pattern A는 Benchmark로만 쓰이므로(§11 서두), `INSUFFICIENT_
-DATA`도 그 시점 frozen Pattern A가 실제로 내리는 정직한 판단이며,
-이를 억지로 채우거나 게이트를 더 추가해 강제로 없애지 않는다(§8
-"quota 최적화는 하지 말 것"과 같은 취지 — 특정 컬럼의 결측 0을 목표로
-후처리하지 않는다).
+1건, `012170_20250328`, completed monthly bars 43개로 게이트는
+통과). 원인은 이전 correction에서 확인된 것과 동일한 종류다 — Pattern A
+Stage Classifier가 **주봉 파생 feature(`weekly_ma12_slope`) 계산에
+필요한 warm-up이 부족**하면 `stage=None`, `candidate_state=
+INSUFFICIENT_DATA`를 반환한다(재현 확인: `evaluate_pattern_a(...).
+stage_result.reason_codes == ('insufficient_data',)`,
+`weekly_ma12_slope == nan`). Monthly Review Data Sufficiency Gate(월봉
+36개, §6)와 Pattern A 자체의 내부 데이터 요구조건(월봉 + 주봉 feature
+warm-up)은 겹치지만 동일하지 않으므로, 표본 구성이 바뀔 때마다 이런
+결측이 0~1건 정도 나타날 수 있다 — 구조적으로 보장된 결측 0이
+아니라는 뜻이다. 이 결측 자체는 dataset의 결함이 아니다 — Pattern A는
+Benchmark로만 쓰이므로(§11 서두), `INSUFFICIENT_DATA`도 그 시점
+frozen Pattern A가 실제로 내리는 정직한 판단이며, 이를 억지로 채우거나
+게이트를 더 추가해 강제로 없애지 않는다(§8 "quota 최적화는 하지 말
+것"과 같은 취지 — 특정 컬럼의 결측 0을 목표로 후처리하지 않는다).
 
 **`pattern_a_transition_first_after_reference`/`_early_trend_first_...`
 읽는 법 — "최초 접촉"이지 "안정적으로 정착한 시점"이 아니다.** 이 두
@@ -353,17 +413,22 @@ Backfill과 동일한 위반이 된다, §31).
 --------------------------------------------------------------------------------
 * 60건 전부 `data_status == OK`이고 `monthly_history_status == OK`(≥36
   completed monthly bars).
-* `build_row` 단계에서 개별적으로 skip/기록된 후보 총 18건 —
-  `MONTHLY_HISTORY_INSUFFICIENT` 16건, `NO_PRE_EPISODE_BASE`(Cohort A,
-  12주 버퍼를 만족하는 BASE 없음) 2건. `selection_manifest.json`의
-  `excluded_candidates`에 ticker/candidate_reference_date/reason/cohort로
-  machine-readable하게 전부 기록했다(§7 재현성 요구사항, §15 참고).
-* 이 18건과 별개로, Cohort B는 버킷당 상위 N개만 뽑는 top-N 방식이라
-  순위에서 밀린 후보는 `excluded_candidates`에 개별 기록되지 않는다(수가
-  수천 건이라 비현실적) — 예: `FAILED_BREAKOUT` 버킷은 2,483개 후보 중
-  10개만 선택됐다. 이 top-N 재현성은 `selection_stats_per_bucket`(§4,
-  §15)의 `candidate_pool_size`/`score_cutoff_min`/`score_cutoff_max`로
-  보강했다.
+* `build_row` 단계에서 개별적으로 skip/기록된 후보 총 **3건** —
+  `NO_PRE_EPISODE_BASE`(Cohort A, 12주 버퍼를 만족하는 BASE 없음) 2건,
+  `MAX_EPISODES_PER_TICKER` 1건. `MONTHLY_HISTORY_INSUFFICIENT`로 인한
+  build_row 단계 skip은 이번엔 0건이다 — HISTORICAL_COVERAGE stratum이
+  eligibility 계산 시점에 이미 36개월 게이트를 먼저 적용하도록 고쳤기
+  때문(§4 구현 메모). `selection_manifest.json`의 `excluded_candidates`에
+  ticker/candidate_reference_date/reason/cohort로 machine-readable하게
+  전부 기록했다(§7 재현성 요구사항, §15 참고).
+* 이 3건과 별개로, `RECENT_SYSTEMATIC`은 버킷당 상위 N개만 뽑는 top-N
+  방식이라 순위에서 밀린 후보는 `excluded_candidates`에 개별 기록되지
+  않는다(수가 수천 건이라 비현실적) — 예: `AMBIGUOUS_STRUCTURE` 버킷은
+  10,803개 후보 중 6개만 선택됐다. 이 top-N 재현성은
+  `selection_stats_per_bucket`(§4, §15)의 `candidate_pool_size`/
+  `score_cutoff_min`/`score_cutoff_max`로 보강했다. `HISTORICAL_COVERAGE`
+  는 top-N이 아니라 stable hash 선택이므로 대신 `eligible_pool_size`를
+  `selection_stats_per_date`(§4, §15)에 기록했다.
 * Network request 0 — `ParquetCache`만 사용, `MarketDataRepository`/
   `PyKrxDataProvider`는 쓰지 않았다(네트워크 fallback 경로를 원천적으로
   배제).
@@ -373,15 +438,21 @@ Backfill과 동일한 위반이 된다, §31).
 --------------------------------------------------------------------------------
 `artifacts/pattern_a_fast/ground_truth/selection_manifest.json` — base
 commit, as_of, source datasets, cohort별 selection strategy(위 §4의 표와
-동일 내용을 기계가 읽을 수 있는 형태로), Monthly History Gate 기준(§6),
-**포함된 sample_id 전체 목록(`included_sample_ids`)**, **build_row
-단계에서 개별 skip된 후보 목록(`excluded_candidates` — ticker,
-candidate_reference_date, reason, cohort)**, **Cohort B 버킷별 top-N
-선정 통계(`selection_strategy.cohort_b.selection_stats_per_bucket` —
-candidate_pool_size, picked, score_cutoff_min/max, §4·§14 참고)**,
-network requests=0을 기록. 이전 버전은 제외 사유를 generic 문자열
-하나로만 남겼는데, correction을 거치며 위와 같이 machine-readable
-목록 + top-N 통계로 보강했다(§7).
+동일 내용을 기계가 읽을 수 있는 형태로 `selection_strategy.cohort_a` /
+`cohort_b_recent_systematic` / `cohort_b_historical_coverage` 세 블록),
+Monthly History Gate 기준(§6), **포함된 sample_id 전체 목록
+(`included_sample_ids`)**, **build_row 단계에서 개별 skip된 후보 목록
+(`excluded_candidates` — ticker, candidate_reference_date, reason,
+cohort)**, **RECENT_SYSTEMATIC 버킷별 top-N 선정 통계
+(`selection_strategy.cohort_b_recent_systematic.
+selection_stats_per_bucket` — candidate_pool_size, picked,
+score_cutoff_min/max, §4·§14 참고)**, **HISTORICAL_COVERAGE 날짜별
+선정 통계(`selection_strategy.cohort_b_historical_coverage.
+selection_stats_per_date` — eligible_pool_size, picked,
+selection_method, §4·§14 참고)**, network requests=0을 기록. 이전
+버전은 제외 사유를 generic 문자열 하나로만 남겼는데, correction을
+거치며 위와 같이 machine-readable 목록 + 두 stratum별 선정 통계로
+보강했다(§7).
 
 `artifacts/pattern_a_fast/ground_truth/reserved_calibration_samples.json`
 — 이번 60건의 `ticker`+`reference_date` 전체 목록. Phase 13I OOS Validation
@@ -405,6 +476,9 @@ network requests=0을 기록. 이전 버전은 제외 사유를 generic 문자�
 | 11 | Positive only sampling avoided | PASS (6개 non-positive 버킷 포함) |
 | 12 | Source dataset and Human Worksheet separated | PASS (두 개 CSV로 분리) |
 | 13 | Monthly Review Data Sufficiency Gate (≥36 completed monthly bars) | PASS (최소 37, 전 샘플 통과) |
+| 14 | Orphan/Missing charts = 0 (idempotent 재생성, §8) | PASS (240 files, orphan 0, missing 0, machine-check) |
+| 15 | Historical selection은 forward return 크기와 무관 (§3·§10) | PASS (stable hash, targeted test로 커버) |
+| 16 | 60건이 최소 2~3개 연도 이상에 분산 (§2) | PASS (7개 연도: 2018/2020/2022/2023/2024/2025/2026) |
 
 ALL PASS — HOLD 아님.
 

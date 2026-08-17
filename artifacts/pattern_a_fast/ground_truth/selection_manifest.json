@@ -1,6 +1,6 @@
 {
   "phase": "13C-1",
-  "base_commit": "507b5675d480abdf9c8fc7d21355ba661afa94b7",
+  "base_commit": "5d8af8245fedd5591595d91d06e3b333938e0ff7",
   "as_of": "2026-08-14",
   "data_cutoff": "2026-08-14",
   "network_requests": 0,
@@ -14,60 +14,92 @@
       "target": 15,
       "selected": 15
     },
-    "cohort_b": {
-      "name": "INDEPENDENT_NEGATIVE_AMBIGUOUS",
-      "description": "cache_present 티커를 stride 1로 표집한 뒤 quarter-end 날짜 그리드 ['2016-06-30', '2017-06-30', '2018-06-29', '2018-12-28', '2019-06-28', '2020-03-27', '2020-09-25', '2021-06-25', '2022-06-24', '2022-12-30', '2023-06-30', '2024-06-28', '2024-09-27', '2024-12-27', '2025-03-28', '2025-06-27', '2025-09-26', '2025-12-26', '2026-03-27'] 각각에서 weekly_return_screen 지표를 계산하고 classify_source_reason (src/trend_scanner/validation/pattern_a_fast_ground_truth.py)의 고정 규칙으로 버킷팅. 버킷당 |trailing_return|+|forward_return| 기준 상위 N개 선택.",
+    "cohort_b_recent_systematic": {
+      "name": "RECENT_SYSTEMATIC",
+      "description": "cache_present 티커를 stride 1로 표집한 뒤 quarter-end 날짜 그리드 ['2024-09-27', '2024-12-27', '2025-03-28', '2025-06-27', '2025-09-26', '2025-12-26', '2026-03-27'] 각각에서 weekly_return_screen 지표를 계산하고 classify_source_reason (src/trend_scanner/validation/pattern_a_fast_ground_truth.py)의 고정 규칙으로 버킷팅. 버킷당 |trailing_return|+|forward_return| 기준 상위 N개 선택 (Recent Regime Pool — 2024-09~2026-03만 대상).",
       "targets": {
-        "FAILED_BREAKOUT": 10,
-        "LONG_DOWNTREND_BOUNCE": 5,
-        "STRONG_UPTREND_ALREADY_EXTENDED": 8,
-        "NEGATIVE_CONTROL": 8,
-        "RANGE_BOUND": 6,
-        "AMBIGUOUS_STRUCTURE": 8
+        "FAILED_BREAKOUT": 7,
+        "LONG_DOWNTREND_BOUNCE": 4,
+        "STRONG_UPTREND_ALREADY_EXTENDED": 6,
+        "NEGATIVE_CONTROL": 6,
+        "RANGE_BOUND": 4,
+        "AMBIGUOUS_STRUCTURE": 6
       },
-      "selected": 45,
+      "selected": 33,
       "selection_stats_per_bucket": {
         "FAILED_BREAKOUT": {
-          "candidate_pool_size": 2483,
-          "target": 10,
-          "picked": 10,
-          "score_cutoff_min": 4.246557298175823,
+          "candidate_pool_size": 1665,
+          "target": 7,
+          "picked": 7,
+          "score_cutoff_min": 5.0791774611398965,
           "score_cutoff_max": 8.560565706463517
         },
         "LONG_DOWNTREND_BOUNCE": {
-          "candidate_pool_size": 759,
-          "target": 5,
-          "picked": 5,
+          "candidate_pool_size": 429,
+          "target": 4,
+          "picked": 4,
           "score_cutoff_min": 0.5217139926478551,
-          "score_cutoff_max": 0.7489427883800484
+          "score_cutoff_max": 1.76005369527929
         },
         "STRONG_UPTREND_ALREADY_EXTENDED": {
-          "candidate_pool_size": 1406,
-          "target": 8,
-          "picked": 8,
-          "score_cutoff_min": 1.6250285219717535,
-          "score_cutoff_max": 4.843422068103325
-        },
-        "NEGATIVE_CONTROL": {
-          "candidate_pool_size": 2351,
-          "target": 8,
-          "picked": 8,
-          "score_cutoff_min": 0.7882501915214357,
-          "score_cutoff_max": 1.1559287498763233
-        },
-        "RANGE_BOUND": {
-          "candidate_pool_size": 1592,
+          "candidate_pool_size": 1123,
           "target": 6,
           "picked": 6,
-          "score_cutoff_min": 0.13644192586370962,
+          "score_cutoff_min": 3.9572476120897258,
+          "score_cutoff_max": 11.266073327872661
+        },
+        "NEGATIVE_CONTROL": {
+          "candidate_pool_size": 1542,
+          "target": 6,
+          "picked": 6,
+          "score_cutoff_min": 0.8150087260034904,
+          "score_cutoff_max": 0.9523781482770107
+        },
+        "RANGE_BOUND": {
+          "candidate_pool_size": 1087,
+          "target": 4,
+          "picked": 4,
+          "score_cutoff_min": 0.13820158211225309,
           "score_cutoff_max": 0.145060913391166
         },
         "AMBIGUOUS_STRUCTURE": {
-          "candidate_pool_size": 17327,
-          "target": 8,
-          "picked": 8,
-          "score_cutoff_min": 2.013609929316692,
+          "candidate_pool_size": 10803,
+          "target": 6,
+          "picked": 6,
+          "score_cutoff_min": 3.1295944399533857,
           "score_cutoff_max": 6.996618291033313
+        }
+      }
+    },
+    "cohort_b_historical_coverage": {
+      "name": "HISTORICAL_COVERAGE",
+      "description": "2024-09 이전 quarter-end 날짜 ['2018-06-29', '2020-09-25', '2022-12-30', '2023-06-30'] 각각에서 cache_present 티커 전수를 screen해 36개월 게이트 + classify_source_reason 유효 버킷을 만족하는 eligible pool을 만든 뒤, sample_id의 stable hash(sha256) 순서로 날짜당 상위 3개를 선택. Outcome extreme score top-N을 쓰지 않으므로 선정 확률이 forward return 크기에 좌우되지 않는다(w.md §3). Pool이 얇은 것 자체는 exclusion 사유가 아니며 eligible_pool_size를 그대로 기록한다(w.md §3).",
+      "target_per_date": 3,
+      "selected": 12,
+      "selection_stats_per_date": {
+        "2018-06-29": {
+          "eligible_pool_size": 48,
+          "target_per_date": 3,
+          "picked": 3,
+          "selection_method": "deterministic_stable_hash(sample_id)"
+        },
+        "2020-09-25": {
+          "eligible_pool_size": 56,
+          "target_per_date": 3,
+          "picked": 3,
+          "selection_method": "deterministic_stable_hash(sample_id)"
+        },
+        "2022-12-30": {
+          "eligible_pool_size": 66,
+          "target_per_date": 3,
+          "picked": 3,
+          "selection_method": "deterministic_stable_hash(sample_id)"
+        },
+        "2023-06-30": {
+          "eligible_pool_size": 66,
+          "target_per_date": 3,
+          "picked": 3,
+          "selection_method": "deterministic_stable_hash(sample_id)"
         }
       }
     },
@@ -82,14 +114,11 @@
   "included_sample_ids": [
     "000050_20251024",
     "000250_20251226",
-    "000250_20260327",
     "000370_20250509",
-    "000500_20260327",
     "000650_20250926",
     "000650_20251226",
-    "000660_20260327",
     "000700_20260109",
-    "000720_20251226",
+    "000810_20180629",
     "000850_20250919",
     "001210_20250314",
     "001260_20250926",
@@ -97,49 +126,52 @@
     "001540_20260213",
     "001570_20240927",
     "001800_20250321",
-    "001820_20260327",
     "002070_20260327",
     "002170_20250321",
     "002460_20250509",
-    "002630_20241227",
     "003060_20260327",
     "003100_20250822",
     "003120_20260327",
     "003480_20250207",
     "003490_20250905",
-    "006800_20251226",
-    "006910_20251226",
+    "006260_20200925",
+    "006260_20221223",
     "008490_20250328",
+    "009150_20260327",
     "009470_20250627",
     "009730_20260327",
     "009830_20250328",
-    "011080_20260327",
+    "011070_20200925",
+    "011200_20221223",
+    "011210_20180629",
     "011330_20260327",
-    "011700_20250328",
-    "025560_20260327",
-    "026910_20260327",
+    "012170_20250328",
+    "012450_20230630",
     "032580_20260327",
+    "032820_20251226",
     "032820_20260327",
-    "033640_20250328",
+    "034220_20200925",
     "036170_20251226",
     "036170_20260327",
-    "042940_20250328",
+    "042700_20221223",
     "043220_20241227",
-    "043370_20250926",
+    "043260_20251226",
     "046970_20260327",
     "048430_20240927",
     "049470_20250926",
     "049800_20250627",
-    "051780_20240927",
-    "052770_20250926",
+    "051910_20230630",
     "054220_20240927",
     "058860_20260327",
+    "065170_20251226",
     "065170_20260327",
-    "079970_20240927",
-    "084670_20251226",
-    "123330_20240927",
-    "124560_20250926",
-    "221800_20260327"
+    "065500_20241227",
+    "068240_20250926",
+    "068270_20180629",
+    "069540_20260327",
+    "076610_20251226",
+    "078930_20230630",
+    "084670_20251226"
   ],
   "excluded_candidates": [
     {
@@ -155,101 +187,11 @@
       "cohort": "PATTERN_A_HISTORICAL_CONTEXT"
     },
     {
-      "ticker": "013890",
-      "candidate_reference_date": "2024-06-28",
-      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
-      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
-    },
-    {
-      "ticker": "015710",
-      "candidate_reference_date": "2022-12-23",
-      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
-      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
-    },
-    {
-      "ticker": "016880",
-      "candidate_reference_date": "2022-12-23",
-      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
-      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
-    },
-    {
-      "ticker": "001820",
-      "candidate_reference_date": "2022-12-23",
-      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
-      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
-    },
-    {
-      "ticker": "006740",
-      "candidate_reference_date": "2023-06-30",
-      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
-      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
-    },
-    {
-      "ticker": "001570",
-      "candidate_reference_date": "2023-06-30",
-      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
-      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
-    },
-    {
-      "ticker": "016710",
-      "candidate_reference_date": "2023-06-30",
-      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
-      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
-    },
-    {
-      "ticker": "003100",
-      "candidate_reference_date": "2023-06-30",
-      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
-      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
-    },
-    {
-      "ticker": "016790",
-      "candidate_reference_date": "2023-06-30",
-      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
-      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
-    },
-    {
-      "ticker": "009440",
-      "candidate_reference_date": "2024-06-28",
-      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
-      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
-    },
-    {
-      "ticker": "053620",
-      "candidate_reference_date": "2023-06-30",
-      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
-      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
-    },
-    {
-      "ticker": "070300",
-      "candidate_reference_date": "2023-06-30",
-      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
-      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
-    },
-    {
-      "ticker": "003800",
-      "candidate_reference_date": "2022-12-23",
-      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
-      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
-    },
-    {
-      "ticker": "214320",
-      "candidate_reference_date": "2023-06-30",
-      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
-      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
-    },
-    {
-      "ticker": "030960",
-      "candidate_reference_date": "2022-06-24",
-      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
-      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
-    },
-    {
-      "ticker": "024850",
-      "candidate_reference_date": "2022-12-23",
-      "reason": "MONTHLY_HISTORY_INSUFFICIENT",
-      "cohort": "INDEPENDENT_NEGATIVE_AMBIGUOUS"
+      "ticker": "065170",
+      "candidate_reference_date": "2024-12-06",
+      "reason": "MAX_EPISODES_PER_TICKER",
+      "cohort": "AMBIGUOUS_STRUCTURE"
     }
   ],
-  "excluded_candidates_count": 18
+  "excluded_candidates_count": 3
 }

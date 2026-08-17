@@ -73,10 +73,17 @@ class ReferenceSnapshot:
 def resolve_completed_weekly_reference(
     ticker: str, name: str, daily: pd.DataFrame, target_date: str | pd.Timestamp
 ) -> pd.Timestamp | None:
-    """target_date 이하에서 완료된(W-FRI) 주봉 기준일을 반환한다. 없으면 None.
+    """``target_date``(selection target — 후보를 뽑을 때 쓰는 quarter-end 등
+    임의 날짜 문자열, 완료 주봉 라벨이 아닐 수도 있음)를 실제
+    ``reference_date``(dataset에 저장되는, 항상 완료된 W-FRI 주봉 라벨)로
+    변환한다.
 
-    §35 Exact Reference Date: 가장 가까운 전일/다음날로 silent substitution하지
-    않는다 — ``build_historical_snapshot``의 completed-weekly 판정을 그대로
+    방향은 **항상 과거뿐이다** — ``target_date`` 이하에서 가장 가까운 완료
+    주봉만 찾는다. ``target_date``보다 미래의 주로 이동(forward-looking
+    substitution)하거나, 데이터가 없다고 미래 값으로 backfill하는 일은
+    없다: 그런 경우엔 그냥 None을 반환한다(§35 Exact Reference Date —
+    가장 가까운 전일/다음날로 silent substitution하지 않는다).
+    ``build_historical_snapshot``의 completed-weekly 판정을 그대로
     재사용해, 반환값은 항상 실제 완료 주봉 라벨이거나 None이다.
     """
     snapshot = build_historical_snapshot(

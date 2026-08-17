@@ -46,6 +46,27 @@ logger = logging.getLogger("generate_pattern_a_fast_ground_truth_charts")
 
 SOURCE_CSV = Path("artifacts/pattern_a_fast/ground_truth/pattern_a_fast_ground_truth_source_v01.csv")
 CHART_DIR = Path("artifacts/pattern_a_fast/ground_truth/charts")
+CHART_SUFFIXES = ("_monthly_pit.png", "_weekly_pit.png", "_daily_pit.png", "_weekly_outcome.png")
+
+
+def expected_chart_filenames(sample_ids: list[str]) -> set[str]:
+    """source CSV의 sample_id 목록으로부터 있어야 할 PNG 파일명 전체 집합을 계산한다.
+    idempotent 재생성/orphan cleanup(§8)의 기준이 되는 순수 함수."""
+    return {f"{sid}{suf}" for sid in sample_ids for suf in CHART_SUFFIXES}
+
+
+def remove_orphan_charts(chart_dir: Path, expected: set[str]) -> list[str]:
+    """expected set에 없는 기존 PNG를 삭제하고, 삭제한 파일명 목록을 반환한다.
+    sample 구성이 바뀌어도(예: 58->57 tickers) charts/에 이전 sample의 PNG가
+    남아있지 않도록 한다(§8 idempotent 요구사항)."""
+    if not chart_dir.exists():
+        return []
+    removed = []
+    for p in chart_dir.glob("*.png"):
+        if p.name not in expected:
+            p.unlink()
+            removed.append(p.name)
+    return removed
 
 
 def _plot_price_volume(df: pd.DataFrame, title: str, ref_line: pd.Timestamp | None, out_path: Path) -> None:
@@ -74,6 +95,11 @@ def main() -> None:
     df = pd.read_csv(SOURCE_CSV, dtype={"ticker": str})
     CHART_DIR.mkdir(parents=True, exist_ok=True)
     cache = ParquetCache()
+
+    expected = expected_chart_filenames(df.loc[df["data_status"] == "OK", "sample_id"].tolist())
+    removed_orphans = remove_orphan_charts(CHART_DIR, expected)
+    if removed_orphans:
+        logger.info("  removed %d orphan chart(s) not in current sample set", len(removed_orphans))
 
     generated = 0
     skipped = 0
@@ -120,10 +146,19 @@ def main() -> None:
         )
         generated += 1
 
-    total_bytes = sum(p.stat().st_size for p in CHART_DIR.glob("*.png"))
+    actual = {p.name for p in CHART_DIR.glob("*.png")}
+    orphans = actual - expected
+    missing = expected - actual
+    total_bytes = sum((CHART_DIR / name).stat().st_size for name in actual)
+
     logger.info("==================================================")
     logger.info("Charts generated for %d samples (skipped %d)", generated, skipped)
-    logger.info("Chart files: %d, total size: %.2f MB", len(list(CHART_DIR.glob("*.png"))), total_bytes / 1e6)
+    logger.info("Chart files: %d, total size: %.2f MB", len(actual), total_bytes / 1e6)
+    logger.info("Orphan charts: %d, Missing charts: %d", len(orphans), len(missing))
+    if orphans:
+        logger.warning("  orphan files: %s", sorted(orphans))
+    if missing:
+        logger.warning("  missing files: %s", sorted(missing))
     logger.info("Chart dir: %s", CHART_DIR)
     logger.info("==================================================")
 
