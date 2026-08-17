@@ -72,7 +72,7 @@ class IndexPriceDataProvider:
 
         self._cached_market_df: pd.DataFrame | None = None
         self._cached_sector_df: pd.DataFrame | None = None
-        self._cached_sector_map: dict[str, tuple[str, str]] | None = None
+        self._cached_sector_mapping_raw_df: pd.DataFrame | None = None
 
     def fetch_index_series(
         self,
@@ -338,19 +338,29 @@ class IndexPriceDataProvider:
             df = df[df["date"] <= formatted_asof].copy()
         return df
 
-    def load_sector_mapping(self, as_of: str | None = None) -> dict[str, tuple[str, str]]:
-        """Ticker -> (sector_code, sector_name) 딕셔너리를 반환한다."""
-        if self._cached_sector_map is None:
+    def load_sector_mapping(self, as_of: str | None = None) -> dict[str, tuple[str, str, str]]:
+        """Ticker -> (sector_code, sector_name, effective_date) 딕셔너리를 반환한다.
+
+        Raw DataFrame을 캐시하고 매 호출마다 effective_date <= requested_as_of를 재적용하여
+        Cross-as_of 캐시 누출을 원천 방지한다.
+        """
+        if self._cached_sector_mapping_raw_df is None:
             if self.sector_mapping_cache_file is None or not self.sector_mapping_cache_file.exists():
                 return {}
             df = pd.read_csv(self.sector_mapping_cache_file)
             df["ticker"] = df["ticker"].astype(str).str.zfill(6)
-            if as_of:
-                clean_asof = as_of.replace("-", "")
-                formatted_asof = f"{clean_asof[:4]}-{clean_asof[4:6]}-{clean_asof[6:8]}"
-                df = df[df["effective_date"] <= formatted_asof]
-            self._cached_sector_map = {
-                row["ticker"]: (str(row["sector_code"]), str(row["sector_name"]))
-                for _, row in df.iterrows()
-            }
-        return self._cached_sector_map
+            self._cached_sector_mapping_raw_df = df
+
+        df = self._cached_sector_mapping_raw_df
+        if "effective_date" not in df.columns:
+            return {}
+
+        if as_of:
+            clean_asof = as_of.replace("-", "")
+            formatted_asof = f"{clean_asof[:4]}-{clean_asof[4:6]}-{clean_asof[6:8]}"
+            df = df[df["effective_date"].astype(str) <= formatted_asof]
+
+        return {
+            row["ticker"]: (str(row["sector_code"]), str(row["sector_name"]), str(row["effective_date"]))
+            for _, row in df.iterrows()
+        }

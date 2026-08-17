@@ -804,12 +804,11 @@ def scan_pattern_a_universe(
         if sector_mapping is not None:
             valid_map = {}
             for k, v in sector_mapping.items():
-                if len(v) >= 3:
+                if isinstance(v, (tuple, list)) and len(v) >= 3:
                     sc, sn, eff = v[0], v[1], str(v[2]).strip()
                     if eff <= req_as_of_str:
-                        valid_map[str(k).zfill(6)] = (str(sc), str(sn))
-                else:
-                    valid_map[str(k).zfill(6)] = (str(v[0]), str(v[1]))
+                        valid_map[str(k).zfill(6)] = (str(sc), str(sn), eff)
+                # Provenance-less 2-tuples are strictly rejected in production evaluation
             sector_map_loaded = valid_map if valid_map else None
         elif sector_mapping_path is not None:
             p = Path(sector_mapping_path)
@@ -821,14 +820,10 @@ def scan_pattern_a_universe(
                     df_sm_pit = df_sm[df_sm["effective_date"].astype(str) <= req_as_of_str]
                     if not df_sm_pit.empty:
                         sector_map_loaded = {
-                            row["ticker"]: (str(row["sector_code"]), str(row["sector_name"]))
+                            row["ticker"]: (str(row["sector_code"]), str(row["sector_name"]), str(row["effective_date"]))
                             for _, row in df_sm_pit.iterrows()
                         }
-                else:
-                    sector_map_loaded = {
-                        row["ticker"]: (str(row["sector_code"]), str(row["sector_name"]))
-                        for _, row in df_sm.iterrows()
-                    }
+                # Missing effective_date column results in sector_map_loaded = None (Fail-Closed)
         else:
             def_p = repo_root / "artifacts/relative_strength/source" / f"sector_mapping_{req_as_of.strftime('%Y%m%d')}.csv"
             if def_p.exists():
@@ -838,14 +833,9 @@ def scan_pattern_a_universe(
                     df_sm_pit = df_sm[df_sm["effective_date"].astype(str) <= req_as_of_str]
                     if not df_sm_pit.empty:
                         sector_map_loaded = {
-                            row["ticker"]: (str(row["sector_code"]), str(row["sector_name"]))
+                            row["ticker"]: (str(row["sector_code"]), str(row["sector_name"]), str(row["effective_date"]))
                             for _, row in df_sm_pit.iterrows()
                         }
-                else:
-                    sector_map_loaded = {
-                        row["ticker"]: (str(row["sector_code"]), str(row["sector_name"]))
-                        for _, row in df_sm.iterrows()
-                    }
     except Exception as exc:
         logger.warning("Failed loading sector mapping source (%s): %s", sector_mapping_path, exc)
         sector_map_loaded = None

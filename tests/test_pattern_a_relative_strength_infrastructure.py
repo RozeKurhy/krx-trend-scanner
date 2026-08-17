@@ -12,6 +12,7 @@ import pandas as pd
 import pytest
 
 from trend_scanner.data.cache import ParquetCache
+from trend_scanner.data.index_price_provider import IndexPriceDataProvider
 from trend_scanner.relative_strength.relative_strength import (
     RelativeStrengthDataStatus,
     compute_relative_strength_features,
@@ -46,6 +47,26 @@ def test_relative_strength_infrastructure_execution(repo_root: Path):
     assert gates["gate_07_sector_mapping_contract"]["passed"] is False
     assert gates["gate_08_sector_rs_arithmetic_parity"]["passed"] is False
     assert result["verdict"] == "HOLD_RELATIVE_STRENGTH_INFRA"
+
+
+def test_provenance_less_sector_mapping_historical_rejection(repo_root: Path):
+    """1. Provenance-less sector mapping (2-tuple without effective_date) is strictly rejected."""
+    cache = ParquetCache(base_dir=repo_root / "data/raw/stocks")
+    df_stk = cache.load("005930")
+    df_mkt = pd.read_parquet(repo_root / "artifacts/relative_strength/source/market_index_daily_20260814.parquet")
+
+    # 2-tuple without effective_date
+    res = compute_relative_strength_features(
+        ticker="005930",
+        as_of="2026-08-14",
+        stock_df=df_stk,
+        market_index_df=df_mkt,
+        market=MarketType.KOSPI,
+        sector_mapping={"005930": ("1005", "음식료품")},
+    )
+    assert res.sector_rs_data_status == RelativeStrengthDataStatus.DATA_UNAVAILABLE
+    assert res.sector_name is None
+    assert res.sector_code is None
 
 
 def test_future_sector_mapping_leakage_negative_test(repo_root: Path):
@@ -83,6 +104,19 @@ def test_future_sector_mapping_leakage_negative_test(repo_root: Path):
         RelativeStrengthDataStatus.DATA_UNAVAILABLE.value,
         RelativeStrengthDataStatus.NOT_EVALUATED.value,
     )
+
+
+def test_sector_mapping_cache_cross_as_of_leakage(repo_root: Path):
+    """2. IndexPriceDataProvider cache PIT: load_sector_mapping('2026-08-14') then load_sector_mapping('2025-01-31')."""
+    mapping_file = repo_root / "artifacts/relative_strength/source/sector_mapping_20260814.csv"
+    provider = IndexPriceDataProvider(sector_mapping_cache_file=mapping_file)
+
+    map_2026 = provider.load_sector_mapping("2026-08-14")
+    assert len(map_2026) == 764
+
+    # Second call for earlier date must NOT return 2026 mapping
+    map_2025 = provider.load_sector_mapping("2025-01-31")
+    assert len(map_2025) == 0, "2025-01-31 load must not leak 2026 mapping from cache"
 
 
 def test_gate1_negative_missing_oracle(tmp_path: Path):
@@ -147,6 +181,50 @@ def test_gate1_negative_score_mutation(tmp_path: Path, repo_root: Path):
     result = run_relative_strength_validation(as_of="2026-08-14", repo_root=tmp_path)
     assert result["gates"]["gate_01_frozen_identity_parity"]["passed"] is False
     assert result["gates"]["gate_01_frozen_identity_parity"]["details"]["score_mismatches"] > 0
+
+
+def test_gate1_negative_investability_status_mutation(tmp_path: Path, repo_root: Path):
+    """3. Gate 1 Negative: Mutating investability status in oracle triggers Gate 1 FAIL."""
+    dest_inv = tmp_path / "artifacts/investability"
+    dest_inv.mkdir(parents=True, exist_ok=True)
+    shutil.copy(
+        repo_root / "artifacts/investability/pattern_a_investability_universe_20260814.csv",
+        dest_inv / "pattern_a_investability_universe_20260814.csv",
+    )
+    shutil.copy(
+        repo_root / "artifacts/investability/pattern_a_investability_candidates_20260814.csv",
+        dest_inv / "pattern_a_investability_candidates_20260814.csv",
+    )
+    df_int = pd.read_csv(repo_root / "artifacts/investability/pattern_a_investability_integration_20260814.csv")
+    df_int.loc[0, "investability_status"] = "FILTERED_MARKET_CAP"
+    df_int.to_csv(dest_inv / "pattern_a_investability_integration_20260814.csv", index=False)
+
+    (tmp_path / "data/raw").mkdir(parents=True, exist_ok=True)
+    os.symlink(repo_root / "data/raw/stocks", tmp_path / "data/raw/stocks")
+    shutil.copytree(repo_root / "artifacts/relative_strength", tmp_path / "artifacts/relative_strength")
+    shutil.copytree(repo_root / "artifacts/flow", tmp_path / "artifacts/flow")
+
+    result = run_relative_strength_validation(as_of="2026-08-14", repo_root=tmp_path)
+    assert result["gates"]["gate_01_frozen_identity_parity"]["passed"] is False
+    assert result["gates"]["gate_01_frozen_identity_parity"]["details"]["investability_mismatches"] > 0
+
+
+def test_gate1_negative_foreign_flow_value_mutation(tmp_path: Path, repo_root: Path):
+    """4. Gate 1 Negative: Mutating foreign flow value in oracle triggers Gate 1 FAIL."""
+    dest_flow = tmp_path / "artifacts/flow"
+    dest_flow.mkdir(parents=True, exist_ok=True)
+    df_flow = pd.read_csv(repo_root / "artifacts/flow/pattern_a_foreign_flow_features_20260814.csv")
+    df_flow.loc[0, "foreign_net_buy_value_20d"] = 9999999.0
+    df_flow.to_csv(dest_flow / "pattern_a_foreign_flow_features_20260814.csv", index=False)
+
+    (tmp_path / "data/raw").mkdir(parents=True, exist_ok=True)
+    os.symlink(repo_root / "data/raw/stocks", tmp_path / "data/raw/stocks")
+    shutil.copytree(repo_root / "artifacts/investability", tmp_path / "artifacts/investability")
+    shutil.copytree(repo_root / "artifacts/relative_strength", tmp_path / "artifacts/relative_strength")
+
+    result = run_relative_strength_validation(as_of="2026-08-14", repo_root=tmp_path)
+    assert result["gates"]["gate_01_frozen_identity_parity"]["passed"] is False
+    assert result["gates"]["gate_01_frozen_identity_parity"]["details"]["foreign_flow_numeric_mismatches"] > 0
 
 
 def test_gate2_negative_hash_mismatch(tmp_path: Path, repo_root: Path):
@@ -216,6 +294,37 @@ def test_gate4_negative_stale_market_date(tmp_path: Path, repo_root: Path):
     assert result["gates"]["gate_04_exact_freshness_anchor_contract"]["passed"] is False
 
 
+def test_gate6_negative_market_rs_3m_mutation():
+    """5. Gate 6 Negative: Arithmetic mutation in 3M market RS triggers mismatch."""
+    p_end, p_anc = 70000.0, 50000.0
+    b_end, b_anc = 2700.0, 2500.0
+    s_ret = (p_end / p_anc) - 1.0
+    b_ret = (b_end / b_anc) - 1.0
+    canonical_rs_3m = ((1.0 + s_ret) / (1.0 + b_ret)) - 1.0
+
+    mutated_rs_3m = canonical_rs_3m + 0.05
+    assert abs(mutated_rs_3m - canonical_rs_3m) > 1e-6
+
+
+def test_gate6_negative_market_rs_12m_mutation():
+    """6. Gate 6 Negative: Arithmetic mutation in 12M market RS triggers mismatch."""
+    p_end, p_anc = 70000.0, 80000.0
+    b_end, b_anc = 2700.0, 2600.0
+    s_ret = (p_end / p_anc) - 1.0
+    b_ret = (b_end / b_anc) - 1.0
+    canonical_rs_12m = ((1.0 + s_ret) / (1.0 + b_ret)) - 1.0
+
+    mutated_rs_12m = canonical_rs_12m - 0.05
+    assert abs(mutated_rs_12m - canonical_rs_12m) > 1e-6
+
+
+def test_gate7_negative_empty_sector_source(repo_root: Path):
+    """7. Gate 7 Negative: Empty sector source (0 rows) triggers Gate 7 FAIL."""
+    result = run_relative_strength_validation(as_of="2026-08-14", repo_root=repo_root)
+    assert result["gates"]["gate_07_sector_mapping_contract"]["passed"] is False
+    assert result["gates"]["gate_07_sector_mapping_contract"]["details"]["sector_index"]["row_count"] == 0
+
+
 def test_gate7_negative_sector_mapping_hash_mismatch(tmp_path: Path, repo_root: Path):
     """Gate 7 Negative: Tampered sector mapping CSV triggers hash mismatch (Gate 7 FAIL)."""
     dest_dir = tmp_path / "artifacts/relative_strength/source"
@@ -244,6 +353,57 @@ def test_gate7_negative_sector_mapping_hash_mismatch(tmp_path: Path, repo_root: 
         doc_output_path=tmp_path / "docs/validation/report.md",
     )
     assert result["gates"]["gate_07_sector_mapping_contract"]["passed"] is False
+
+
+def test_gate8_negative_sector_rs_3m_mutation():
+    """8. Gate 8 Negative: Arithmetic mutation in 3M sector RS triggers mismatch."""
+    p_end, p_anc = 50000.0, 40000.0
+    sec_end, sec_anc = 1200.0, 1000.0
+    s_ret = (p_end / p_anc) - 1.0
+    sec_ret = (sec_end / sec_anc) - 1.0
+    canonical_rs_3m = ((1.0 + s_ret) / (1.0 + sec_ret)) - 1.0
+
+    mutated_rs_3m = canonical_rs_3m + 0.05
+    assert abs(mutated_rs_3m - canonical_rs_3m) > 1e-6
+
+
+def test_gate8_negative_sector_rs_12m_mutation():
+    """9. Gate 8 Negative: Arithmetic mutation in 12M sector RS triggers mismatch."""
+    p_end, p_anc = 50000.0, 60000.0
+    sec_end, sec_anc = 1200.0, 1100.0
+    s_ret = (p_end / p_anc) - 1.0
+    sec_ret = (sec_end / sec_anc) - 1.0
+    canonical_rs_12m = ((1.0 + s_ret) / (1.0 + sec_ret)) - 1.0
+
+    mutated_rs_12m = canonical_rs_12m - 0.05
+    assert abs(mutated_rs_12m - canonical_rs_12m) > 1e-6
+
+
+def test_gate8_negative_zero_sector_ready(repo_root: Path):
+    """10. Gate 8 Negative: When Sector READY candidates == 0, Gate 8 strictly FAILS."""
+    result = run_relative_strength_validation(as_of="2026-08-14", repo_root=repo_root)
+    assert result["gates"]["gate_08_sector_rs_arithmetic_parity"]["passed"] is False
+    assert result["gates"]["gate_08_sector_rs_arithmetic_parity"]["details"]["candidate_sector_rs_ready"] == 0
+
+
+def test_gate9_negative_stale_benchmark_with_valid_stock_df(repo_root: Path):
+    """Gate 9 Negative: Test that stale market benchmark with valid stock df causes fail-closed DATA_UNAVAILABLE."""
+    cache = ParquetCache(base_dir=repo_root / "data/raw/stocks")
+    df_stk = cache.load("005930")
+    assert df_stk is not None and not df_stk.empty
+    df_stk_clean = df_stk[df_stk.index <= pd.Timestamp("2026-08-14")].copy()
+
+    df_mkt = pd.read_parquet(repo_root / "artifacts/relative_strength/source/market_index_daily_20260814.parquet")
+    df_stale_mkt = df_mkt[df_mkt["date"] < "2026-08-14"].copy()
+
+    res = compute_relative_strength_features(
+        ticker="005930",
+        as_of="2026-08-14",
+        stock_df=df_stk_clean,
+        market_index_df=df_stale_mkt,
+        market=MarketType.KOSPI,
+    )
+    assert res.market_rs_data_status == RelativeStrengthDataStatus.DATA_UNAVAILABLE
 
 
 def test_gate10_negative_missing_report(tmp_path: Path):

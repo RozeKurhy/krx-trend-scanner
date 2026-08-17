@@ -221,19 +221,17 @@ def compute_relative_strength_features(
         target_mkt_code = None
         target_mkt_name = None
 
-    # Resolve Sector Mapping Info if available (with PIT provenance check)
+    # Resolve Sector Mapping Info if available (Strict PIT provenance: requires effective_date)
     s_code = None
     s_name = None
     if sector_mapping and ticker_z in sector_mapping:
         val = sector_mapping[ticker_z]
-        if isinstance(val, (tuple, list)):
-            if len(val) >= 3:
-                sc, sn, eff_dt = val[0], val[1], str(val[2]).strip()
-                # Strict PIT check: reject if mapping effective date is in the future relative to as_of
-                if eff_dt <= formatted_asof:
-                    s_code, s_name = str(sc), str(sn)
-            elif len(val) >= 2:
-                s_code, s_name = str(val[0]), str(val[1])
+        if isinstance(val, (tuple, list)) and len(val) >= 3:
+            sc, sn, eff_dt = val[0], val[1], str(val[2]).strip()
+            # Strict PIT check: reject if mapping effective date is in the future relative to as_of
+            if eff_dt <= formatted_asof:
+                s_code, s_name = str(sc), str(sn)
+        # Provenance-less 2-tuples are strictly rejected (s_code and s_name remain None -> DATA_UNAVAILABLE)
 
     if stock_df is None or stock_df.empty or market_index_df is None or market_index_df.empty:
         return _unavailable_rs_result(

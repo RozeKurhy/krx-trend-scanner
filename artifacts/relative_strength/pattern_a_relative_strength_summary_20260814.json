@@ -87,6 +87,9 @@
           "candidate_coverage": "91 / 180",
           "investable_coverage": "66 / 103",
           "sha256_match": true,
+          "ticker_count_match": true,
+          "sector_count_match": true,
+          "effective_date_match": true,
           "effective_date": "2026-08-14",
           "has_duplicates": false,
           "has_future_effective_date": false
@@ -97,8 +100,14 @@
           "row_count": 0,
           "code_count": 0,
           "index_codes": [],
+          "date_min": "",
           "date_max": "",
-          "sha256_match": true
+          "sha256_match": true,
+          "row_count_match": true,
+          "date_min_match": true,
+          "date_max_match": true,
+          "index_codes_match": true,
+          "requested_as_of_match": true
         }
       }
     },
@@ -121,19 +130,20 @@
         "missing_columns_count": 0,
         "missing_columns": [],
         "missing_market_fail_closed_pass": true,
-        "stale_market_fail_closed_pass": true
+        "stale_market_fail_closed_pass": true,
+        "provenance_less_sector_fail_closed_pass": true
       }
     },
     "gate_10_production_test_suite_pass": {
       "passed": true,
       "details": {
         "exit_code": 0,
-        "passed": 449,
+        "passed": 460,
         "failed": 0,
         "blocking_failed": 0,
         "skipped": 6,
         "deselected": 1,
-        "timestamp": "2026-08-17T09:33:00+09:00"
+        "timestamp": "2026-08-17T11:02:46+09:00"
       }
     }
   },
@@ -277,5 +287,5 @@
       "max": 80.6282
     }
   },
-  "generation_timestamp": "2026-08-17T00:36:10.877387+00:00"
+  "generation_timestamp": "2026-08-17T02:05:53.038411+00:00"
 }

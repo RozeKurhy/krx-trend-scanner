@@ -222,6 +222,11 @@ def run_relative_strength_validation(
         if flow_oracle_file.exists():
             df_flow_oracle = pd.read_csv(flow_oracle_file)
             df_flow_oracle["ticker"] = df_flow_oracle["ticker"].astype(str).str.zfill(6)
+            flow_tickers = set(df_flow_oracle["ticker"])
+            flow_set_diff = len(set(cand_scan["ticker"]) ^ flow_tickers)
+            if flow_set_diff > 0:
+                flow_status_mismatches += flow_set_diff
+
             flow_oracle_map = {row["ticker"]: row for _, row in df_flow_oracle.iterrows()}
             for _, r in cand_scan.iterrows():
                 t = r["ticker"]
@@ -241,6 +246,10 @@ def run_relative_strength_validation(
                             flow_numeric_mismatches += 1
                         elif abs(float(v_act) - float(v_exp)) > 1e-6:
                             flow_numeric_mismatches += 1
+                else:
+                    flow_status_mismatches += 1
+        else:
+            flow_status_mismatches += 1
 
         # Check Flow READY parity on Investables
         flow_ready_scan = inv_scan[inv_scan["foreign_flow_data_status"] == "READY"]
@@ -534,8 +543,13 @@ def run_relative_strength_validation(
             inv_cov = len(inv_tickers & map_tickers)
 
             has_dup = df_sec_map.duplicated(subset=["ticker"]).any()
-            eff_dt = str(df_sec_map["effective_date"].iloc[0]) if not df_sec_map.empty else ""
+            eff_dt = str(df_sec_map["effective_date"].iloc[0]) if not df_sec_map.empty and "effective_date" in df_sec_map.columns else ""
             future_eff = any(str(x) > formatted_asof for x in df_sec_map["effective_date"]) if "effective_date" in df_sec_map.columns else False
+
+            sha_match = actual_sm_sha == meta_sm.get("csv_sha256")
+            ticker_count_match = mapping_total == meta_sm.get("ticker_count")
+            sector_count_match = unique_sectors == meta_sm.get("sector_count")
+            eff_date_match = eff_dt == meta_sm.get("effective_date")
 
             g7_details["sector_mapping"] = {
                 "csv_exists": True,
@@ -546,13 +560,19 @@ def run_relative_strength_validation(
                 "unique_sector_codes": unique_sectors,
                 "candidate_coverage": f"{cand_cov} / {len(cand_tickers)}",
                 "investable_coverage": f"{inv_cov} / {len(inv_tickers)}",
-                "sha256_match": actual_sm_sha == meta_sm.get("csv_sha256"),
+                "sha256_match": sha_match,
+                "ticker_count_match": ticker_count_match,
+                "sector_count_match": sector_count_match,
+                "effective_date_match": eff_date_match,
                 "effective_date": eff_dt,
                 "has_duplicates": bool(has_dup),
                 "has_future_effective_date": bool(future_eff),
             }
             sm_valid = (
-                g7_details["sector_mapping"]["sha256_match"]
+                sha_match
+                and ticker_count_match
+                and sector_count_match
+                and eff_date_match
                 and mapping_total > 0
                 and not has_dup
                 and not future_eff
@@ -573,7 +593,15 @@ def run_relative_strength_validation(
             actual_si_sha = compute_file_sha256(sector_index_parquet)
             si_row_cnt = len(df_sec_idx)
             si_codes = sorted(df_sec_idx["index_code"].unique().tolist()) if not df_sec_idx.empty else []
+            si_d_min = str(df_sec_idx["date"].min()) if not df_sec_idx.empty else ""
             si_d_max = str(df_sec_idx["date"].max()) if not df_sec_idx.empty else ""
+
+            si_sha_match = actual_si_sha == meta_si.get("parquet_sha256")
+            si_row_match = si_row_cnt == meta_si.get("row_count")
+            si_dmin_match = si_d_min == meta_si.get("date_min")
+            si_dmax_match = si_d_max == meta_si.get("date_max")
+            si_codes_match = si_codes == sorted(meta_si.get("index_codes", []))
+            si_asof_match = meta_si.get("requested_as_of") == formatted_asof
 
             g7_details["sector_index"] = {
                 "parquet_exists": True,
@@ -581,11 +609,22 @@ def run_relative_strength_validation(
                 "row_count": si_row_cnt,
                 "code_count": len(si_codes),
                 "index_codes": si_codes,
+                "date_min": si_d_min,
                 "date_max": si_d_max,
-                "sha256_match": actual_si_sha == meta_si.get("parquet_sha256"),
+                "sha256_match": si_sha_match,
+                "row_count_match": si_row_match,
+                "date_min_match": si_dmin_match,
+                "date_max_match": si_dmax_match,
+                "index_codes_match": si_codes_match,
+                "requested_as_of_match": si_asof_match,
             }
             si_valid = (
-                g7_details["sector_index"]["sha256_match"]
+                si_sha_match
+                and si_row_match
+                and si_dmin_match
+                and si_dmax_match
+                and si_codes_match
+                and si_asof_match
                 and si_row_cnt > 0
                 and len(si_codes) > 0
                 and si_d_max == formatted_asof
@@ -608,13 +647,71 @@ def run_relative_strength_validation(
     g8_details: dict[str, Any] = {}
     if scan_res is not None:
         cand_rows = [r for r in scan_res.rows if r.candidate_state.value == "candidate"]
-        sec_ready_count = sum(1 for r in cand_rows if r.sector_rs_data_status == "READY")
+        ready_sec_rows = [r for r in cand_rows if r.sector_rs_data_status == "READY"]
+        sec_ready_count = len(ready_sec_rows)
         sec_partial_count = sum(1 for r in cand_rows if r.sector_rs_data_status == "PARTIAL")
         sec_unavail_count = sum(1 for r in cand_rows if r.sector_rs_data_status == "DATA_UNAVAILABLE")
 
         sec_rs_3m_mismatches = 0
         sec_rs_6m_mismatches = 0
         sec_rs_12m_mismatches = 0
+
+        if sec_ready_count > 0 and sector_index_parquet.exists():
+            df_sec_idx = pd.read_parquet(sector_index_parquet)
+            sec_dict = {
+                code: df_sec_idx[df_sec_idx["index_code"] == code].sort_values(by="date").reset_index(drop=True)
+                for code in df_sec_idx["index_code"].unique()
+            }
+            for r in ready_sec_rows:
+                stock_parquet = cache_dir / f"{r.ticker}.parquet"
+                if not stock_parquet.exists() or r.sector_benchmark_code not in sec_dict:
+                    sec_rs_3m_mismatches += 1
+                    sec_rs_6m_mismatches += 1
+                    sec_rs_12m_mismatches += 1
+                    continue
+                df_stk = pd.read_parquet(stock_parquet)
+                df_stk["date_str"] = df_stk.index.strftime("%Y-%m-%d")
+                price_map = dict(zip(df_stk["date_str"], df_stk["close"]))
+
+                df_s = sec_dict[r.sector_benchmark_code]
+                p_end = price_map.get(formatted_asof)
+                s_end = df_s["close"].iloc[-1]
+
+                # 3M
+                s_anc_3m = df_s.iloc[-1 - HORIZON_SESSIONS_3M]["close"]
+                p_anc_3m = price_map.get(str(df_s.iloc[-1 - HORIZON_SESSIONS_3M]["date"]))
+                exp_stk_3m = (p_end / p_anc_3m) - 1.0 if (p_anc_3m and p_anc_3m > 0 and p_end) else None
+                exp_sec_3m = (s_end / s_anc_3m) - 1.0 if (s_anc_3m and s_anc_3m > 0 and s_end) else None
+                if exp_stk_3m is not None and exp_sec_3m is not None:
+                    exp_rs_3m = ((1.0 + exp_stk_3m) / (1.0 + exp_sec_3m)) - 1.0
+                    if r.sector_rs_3m is None or abs(r.sector_rs_3m - exp_rs_3m) > 1e-6:
+                        sec_rs_3m_mismatches += 1
+                else:
+                    sec_rs_3m_mismatches += 1
+
+                # 6M
+                s_anc_6m = df_s.iloc[-1 - HORIZON_SESSIONS_6M]["close"]
+                p_anc_6m = price_map.get(str(df_s.iloc[-1 - HORIZON_SESSIONS_6M]["date"]))
+                exp_stk_6m = (p_end / p_anc_6m) - 1.0 if (p_anc_6m and p_anc_6m > 0 and p_end) else None
+                exp_sec_6m = (s_end / s_anc_6m) - 1.0 if (s_anc_6m and s_anc_6m > 0 and s_end) else None
+                if exp_stk_6m is not None and exp_sec_6m is not None:
+                    exp_rs_6m = ((1.0 + exp_stk_6m) / (1.0 + exp_sec_6m)) - 1.0
+                    if r.sector_rs_6m is None or abs(r.sector_rs_6m - exp_rs_6m) > 1e-6:
+                        sec_rs_6m_mismatches += 1
+                else:
+                    sec_rs_6m_mismatches += 1
+
+                # 12M
+                s_anc_12m = df_s.iloc[-1 - HORIZON_SESSIONS_12M]["close"]
+                p_anc_12m = price_map.get(str(df_s.iloc[-1 - HORIZON_SESSIONS_12M]["date"]))
+                exp_stk_12m = (p_end / p_anc_12m) - 1.0 if (p_anc_12m and p_anc_12m > 0 and p_end) else None
+                exp_sec_12m = (s_end / s_anc_12m) - 1.0 if (s_anc_12m and s_anc_12m > 0 and s_end) else None
+                if exp_stk_12m is not None and exp_sec_12m is not None:
+                    exp_rs_12m = ((1.0 + exp_stk_12m) / (1.0 + exp_sec_12m)) - 1.0
+                    if r.sector_rs_12m is None or abs(r.sector_rs_12m - exp_rs_12m) > 1e-6:
+                        sec_rs_12m_mismatches += 1
+                else:
+                    sec_rs_12m_mismatches += 1
 
         g8_details = {
             "candidate_sector_rs_ready": sec_ready_count,
@@ -625,7 +722,7 @@ def run_relative_strength_validation(
             "sector_rs_12m_mismatches": sec_rs_12m_mismatches,
             "isolation_verified": True,
         }
-        # Gate 8 requires actual READY candidates and 0 arithmetic mismatches
+        # Gate 8 requires actual READY candidates > 0 and 0 arithmetic mismatches
         gate8_passed = (
             sec_ready_count > 0
             and sec_rs_3m_mismatches == 0
@@ -657,18 +754,32 @@ def run_relative_strength_validation(
     ]
     missing_cols = [c for c in required_cols if c not in df_scan.columns] if not df_scan.empty else required_cols
 
-    # Synthetic Fail-Closed Checks
-    neg_missing_market = compute_relative_strength_features("005930", formatted_asof, None, None, MarketType.KOSPI)
+    # Synthetic Fail-Closed Checks with valid stock data
+    df_stk_test = cache.load("005930")
+    if df_stk_test is not None:
+        df_stk_test_clean = df_stk_test[df_stk_test.index <= pd.Timestamp(formatted_asof)].copy()
+    else:
+        df_stk_test_clean = None
+
+    neg_missing_market = compute_relative_strength_features("005930", formatted_asof, df_stk_test_clean, None, MarketType.KOSPI)
     neg_missing_market_pass = (neg_missing_market.market_rs_data_status == RelativeStrengthDataStatus.DATA_UNAVAILABLE)
 
     neg_stale_market_pass = False
-    if gate2_passed:
+    neg_prov_less_pass = False
+    if gate2_passed and df_stk_test_clean is not None:
         df_mkt_raw = pd.read_parquet(market_index_parquet)
-        df_stale_mkt = df_mkt_raw[df_mkt_raw["date"] < formatted_asof]
-        res_stale = compute_relative_strength_features("005930", formatted_asof, None, df_stale_mkt, MarketType.KOSPI)
+        df_stale_mkt = df_mkt_raw[df_mkt_raw["date"] < formatted_asof].copy()
+        res_stale = compute_relative_strength_features("005930", formatted_asof, df_stk_test_clean, df_stale_mkt, MarketType.KOSPI)
         neg_stale_market_pass = (res_stale.market_rs_data_status == RelativeStrengthDataStatus.DATA_UNAVAILABLE)
+
+        res_prov_less = compute_relative_strength_features(
+            "005930", formatted_asof, df_stk_test_clean, df_mkt_raw, MarketType.KOSPI,
+            sector_mapping={"005930": ("1005", "음식료품")}  # 2-tuple provenance-less
+        )
+        neg_prov_less_pass = (res_prov_less.sector_rs_data_status == RelativeStrengthDataStatus.DATA_UNAVAILABLE)
     else:
         neg_stale_market_pass = True
+        neg_prov_less_pass = True
 
     g9_details = {
         "total_required_rs_columns": len(required_cols),
@@ -676,8 +787,14 @@ def run_relative_strength_validation(
         "missing_columns": missing_cols,
         "missing_market_fail_closed_pass": neg_missing_market_pass,
         "stale_market_fail_closed_pass": neg_stale_market_pass,
+        "provenance_less_sector_fail_closed_pass": neg_prov_less_pass,
     }
-    gate9_passed = (len(missing_cols) == 0 and neg_missing_market_pass and neg_stale_market_pass)
+    gate9_passed = (
+        len(missing_cols) == 0
+        and neg_missing_market_pass
+        and neg_stale_market_pass
+        and neg_prov_less_pass
+    )
 
     gates["gate_09_fail_closed_schema_compatibility"] = {
         "passed": gate9_passed,

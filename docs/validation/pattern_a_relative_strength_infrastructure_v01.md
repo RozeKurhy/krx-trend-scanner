@@ -18,7 +18,7 @@
 | Gate 07 | `gate_07_sector_mapping_contract` | ❌ FAIL | sector_mapping={...}, sector_index={...} |
 | Gate 08 | `gate_08_sector_rs_arithmetic_parity` | ❌ FAIL | candidate_sector_rs_ready=0, candidate_sector_rs_partial=0, candidate_sector_rs_data_unavailable=180 |
 | Gate 09 | `gate_09_fail_closed_schema_compatibility` | ✅ PASS | total_required_rs_columns=30, missing_columns_count=0, missing_columns=[] |
-| Gate 10 | `gate_10_production_test_suite_pass` | ✅ PASS | exit_code=0, passed=449, failed=0 |
+| Gate 10 | `gate_10_production_test_suite_pass` | ✅ PASS | exit_code=0, passed=460, failed=0 |
 
 ## 2. Universe 및 Candidate 계층 구조 요약
 
