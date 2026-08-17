@@ -4,13 +4,16 @@
 0. 문서 상태
 ================================================================================
 Phase: 13B — Pattern A Fast Weekly Lifecycle Contract
-Status: Stage 의미 Freeze (Classifier Rule Freeze 아님)
-Base: `9b722f799ba8055d2c8646acf5c2431076908c9b`
+Status: **PROPOSED FOR FREEZE / PENDING REVIEW** (사용자 리뷰 승인 전.
+Stage 의미 Freeze를 제안하는 초안이며 Classifier Rule Freeze는 아님)
+Base: `dd0dec386d1382f9176ec8a876b17fd4bcdeb51e`
 선행 문서: [docs/specs/pattern_a_fast_definition.md](pattern_a_fast_definition.md) (Phase 13A, CLOSED)
 
 이 문서는 WATCH / SETUP / TRIGGER / TREND / EXTENDED 5개 Weekly
 Lifecycle Stage의 의미와 전이 원칙을 고정하는 계약이다. Feature 공식,
-숫자 Threshold, Classifier 구현은 포함하지 않는다.
+숫자 Threshold, Classifier 구현은 포함하지 않는다. Stage 이름 5개는
+이번 correction에서 변경하지 않는다 — proposed contract로 그대로
+유지하며, 사용자 승인 후 공식 Freeze로 전환한다.
 
 --------------------------------------------------------------------------------
 1. Purpose (목적)
@@ -173,15 +176,25 @@ Trigger Event로 중복 기록하지 않는다.
 --------------------------------------------------------------------------------
 9. TREND
 --------------------------------------------------------------------------------
-핵심 질문: "Trigger 이후 주봉 상승 구조가 실제로 지속되고 있는가?"
+핵심 질문: "현재 PIT weekly structure가 TRIGGER 수준의 초기 전환
+구간을 넘어, 상승 구조가 지속/발전하는 lifecycle 위치에 있는가?"
 
-인간 언어 정의: 초기 Trigger 구간을 지나 주봉 가격 구조가 상승
-방향으로 지속/발전하고 있다는 증거가 나타난 상태.
+인간 언어 정의: 주봉 가격 구조가 초기 전환 구간(TRIGGER가 표현하는
+수준)을 넘어 상승 방향으로 지속/발전하고 있다는 증거가 나타난 상태.
 
-TREND는 초기 Trigger보다 진행된 상태이지만, Fast 관점에서 반드시
-늦었다는 뜻은 아니다. Pattern A에서는 같은 시점에 `BASE` /
-`TRANSITION` / `EARLY_TREND` 등 다양한 상태가 가능하며, 두 Pattern의
-Stage 일치는 요구하지 않는다.
+중요: TREND는 과거 snapshot에서 실제 `TRIGGER` Stage가 관측되었을
+것을 필수 조건으로 요구하지 않는다. Stage(t-1)는 Stage(t)의 mandatory
+input이 아니라는 §4의 원칙(Stage는 이전 Stage에 의해 강제되지
+않는다)을 TREND에도 동일하게 적용한다. 따라서 `SETUP → TREND`나
+`WATCH → TREND`처럼 TRIGGER Stage를 건너뛰고 TREND로 direct jump한
+episode도 정상이다(§12 Direct Jump 참고). 이 경우 Trigger Event는
+관측되지 않은 것으로 취급하며, 존재하지 않는 과거 TRIGGER Stage를
+추정하거나 backfill하지 않는다(상세 규칙은 §21 참고).
+
+TREND는 초기 Trigger 수준보다 진행된 lifecycle 위치이지만, Fast
+관점에서 반드시 늦었다는 뜻은 아니다. Pattern A에서는 같은 시점에
+`BASE` / `TRANSITION` / `EARLY_TREND` 등 다양한 상태가 가능하며, 두
+Pattern의 Stage 일치는 요구하지 않는다.
 
 --------------------------------------------------------------------------------
 10. EXTENDED
@@ -226,11 +239,18 @@ Error로 간주하지 않는다는 것이다.
 
 **Direct Jump 허용**: Stage는 이전 Stage에 의해 강제되지 않으므로
 direct jump도 원칙적으로 가능하다. 예: `WATCH → TRIGGER` / `SETUP →
-TREND` / `TREND → WATCH` 같은 이동이 실제 PIT 구조에 의해 정당화될
-수 있다. 다만 이러한 direct jump가 빈번하게 발생하면 Stage semantics
-또는 classifier가 너무 거칠다는 evidence가 될 수 있으며, 향후
-validation에서 별도 감사한다. 13B에서 direct jump 자체를 금지하지
-않는다.
+TREND` / `WATCH → TREND` / `TREND → WATCH` 같은 이동이 실제 PIT
+구조에 의해 정당화될 수 있다. 다만 이러한 direct jump가 빈번하게
+발생하면 Stage semantics 또는 classifier가 너무 거칠다는 evidence가
+될 수 있으며, 향후 validation에서 별도 감사한다. 13B에서 direct
+jump 자체를 금지하지 않는다.
+
+**Direct Jump와 Trigger Event는 별개 계약이다**: `SETUP → TRIGGER →
+TREND`처럼 `TRIGGER` Stage를 실제로 거친 경우에만 Trigger Event가
+존재한다. `SETUP → TREND`처럼 `TRIGGER` Stage 없이 TREND로 direct
+jump한 episode는 historical TRIGGER Stage가 관측되지 않았으므로
+synthetic/inferred Trigger Event Date를 만들지 않는다. 상세 규칙과
+Lead Time 처리는 §21 참고.
 
 --------------------------------------------------------------------------------
 13. PIT / Completed Weekly Rule
@@ -379,6 +399,23 @@ Pattern A가 해당 Stage에 도달하지 않은 종목은 Fast 실패로 자동
 처리하지 않는다 — Lead Time은 `NOT_APPLICABLE` 또는 별도 상태로
 처리한다. 실제 schema는 13H에서 확정한다.
 
+**Skipped Trigger (관측되지 않은 Trigger Event)**: TRIGGER Stage를
+건너뛰어 TREND 이상으로 direct jump한 episode는 Trigger Event를
+임의 생성하지 않는다. 이 상태를 개념적으로 `trigger_event =
+NOT_OBSERVED`(또는 의미가 동일한 명칭)로 명시한다. 정확한 production
+schema enum은 아직 Freeze하지 않아도 되며, Freeze하는 핵심 semantic은
+다음 한 가지뿐이다: **관측되지 않은 Trigger Event Date를 추정하거나
+backfill하지 않는다.**
+
+**Lead Time 처리 (Trigger Event 미관측 시)**: Pattern A 대비 Lead
+Time은 실제 관측된 Trigger Event Date가 있을 때만 계산한다. explicit
+Trigger Event가 없는 direct jump episode는 Lead Time을
+`NOT_EVALUATED` / `NOT_APPLICABLE` 계열 상태로 처리한다(정확한 schema
+이름은 13H에서 확정). 다음은 금지한다:
+* TREND 첫 날짜를 Trigger Date로 silently 사용
+* SETUP과 TREND 사이 임의 날짜를 Trigger Date로 추정
+* 미래 데이터를 보고 Trigger Date를 역추론
+
 **13C Annotation Schema Concept**: 13C Human Ground Truth Dataset에서는
 최소 다음 두 종류를 분리해서 기록할 수 있도록 schema concept만
 제안한다(아직 실제 dataset은 만들지 않는다):
@@ -413,6 +450,13 @@ Weekly: `TRIGGER`, Daily: `WAIT`
 
 **Example 7 — De-extension**
 `EXTENDED → TREND` (건강한 조정 후 de-extension 사례)
+
+**Example 8 — Direct Jump to TREND (Skipped Trigger)**
+Week 1: `SETUP` / Week 2: `TREND`
+Weekly Stage: `TREND` / Observed Trigger Event: `NO` / Trigger Event
+Date: 없음 / Lead Time from Trigger: `NOT_EVALUATED`
+이 direct jump 자체는 Stage 오류가 아니며, 향후 실제 발생 빈도를
+validation에서 감사한다.
 
 --------------------------------------------------------------------------------
 23. Non Goals
