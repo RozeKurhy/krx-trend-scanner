@@ -256,9 +256,9 @@ False Trigger 측정 / 주봉 중심 전환 구조 정의 / 일봉 timing layer 
 
 Sub-stage:
 * 13A. Pattern A Fast Definition — CLOSED (`docs/specs/pattern_a_fast_definition.md`)
-* 13B. Stage / Lifecycle Contract — Contract authored / pending review (`docs/specs/pattern_a_fast_lifecycle_contract.md`)
-* 13C. Human Ground Truth Dataset
-* 13D. Monthly Regime Research
+* 13B. Stage / Lifecycle Contract — CLOSED (`docs/specs/pattern_a_fast_lifecycle_contract.md`)
+* 13C. Human Ground Truth Dataset — IN PROGRESS: Dataset Prepared / Human Review Pending (`docs/validation/pattern_a_fast_human_ground_truth_v01.md`)
+* 13D. Monthly Regime Research — PLANNED
 * 13E. Weekly Trigger Feature Research
 * 13F. Daily Timing Research
 * 13G. Score & Stage Production Contract
@@ -268,8 +268,9 @@ Sub-stage:
 
 Phase 12 Relative Strength Infrastructure와 Phase 13 Pattern A Fast는 독립 연구
 트랙이며 상호 production dependency가 없으므로 병행 진행 가능하다(Phase 12
-결과를 Pattern A Fast Core의 필수 dependency로 만들지 않는다). 13A Definition
-은 CLOSED, 13B Weekly Lifecycle Contract는 작성 완료 후 리뷰 대기 중이다.
+결과를 Pattern A Fast Core의 필수 dependency로 만들지 않는다). 13A/13B는
+CLOSED, 13C는 Ground Truth Dataset 60건 준비 완료 후 Human Chart Annotation
+대기 중이다. Human Label이 없으면 13C를 CLOSED 처리하지 않는다.
 
 ---
 

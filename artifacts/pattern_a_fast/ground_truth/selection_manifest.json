@@ -1,0 +1,35 @@
+{
+  "phase": "13C-1",
+  "base_commit": "e8cf7e6ee9585e8cc512e6cbe488eaa000497518",
+  "as_of": "2026-08-14",
+  "data_cutoff": "2026-08-14",
+  "network_requests": 0,
+  "source_datasets": [
+    "artifacts/scanner/pattern_a_universe_scan_20260814.csv"
+  ],
+  "selection_strategy": {
+    "cohort_a": {
+      "name": "PATTERN_A_HISTORICAL_CONTEXT",
+      "description": "artifacts/scanner/pattern_a_universe_scan_20260814.csv 의 실제 candidate_state=='candidate'(TRANSITION/EARLY_TREND) 티커에서 결정론적 stride 표집 후, 2026-08-14부터 최대 104주 backward로 frozen Pattern A evaluator를 반복 호출해 실제 BASE였던 마지막 완료 주봉을 reference_date로 사용.",
+      "target": 15,
+      "selected": 15
+    },
+    "cohort_b": {
+      "name": "INDEPENDENT_NEGATIVE_AMBIGUOUS",
+      "description": "cache_present 티커를 stride 8로 표집한 뒤 quarter-end 날짜 그리드 ['2016-06-30', '2017-06-30', '2018-06-29', '2018-12-28', '2019-06-28', '2020-03-27', '2020-09-25', '2021-06-25', '2022-06-24', '2022-12-30', '2023-06-30', '2024-06-28', '2025-06-27'] 각각에서 weekly_return_screen 지표를 계산하고 classify_source_reason (src/trend_scanner/validation/pattern_a_fast_ground_truth.py)의 고정 규칙으로 버킷팅. 버킷당 |trailing_return|+|forward_return| 기준 상위 N개 선택.",
+      "targets": {
+        "FAILED_BREAKOUT": 10,
+        "LONG_DOWNTREND_BOUNCE": 5,
+        "STRONG_UPTREND_ALREADY_EXTENDED": 8,
+        "NEGATIVE_CONTROL": 8,
+        "RANGE_BOUND": 6,
+        "AMBIGUOUS_STRUCTURE": 8
+      },
+      "selected": 45
+    },
+    "max_episodes_per_ticker": 2,
+    "min_gap_weeks_same_ticker": 8
+  },
+  "included_samples": 60,
+  "excluded_reasons": "생략된 candidate는 DATA_UNAVAILABLE 또는 BASE 미발견(backward 104주 이내)으로 로그에만 기록, dataset에는 포함하지 않음"
+}
