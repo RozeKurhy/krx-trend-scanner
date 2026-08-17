@@ -19,7 +19,7 @@
 가격 구조 -> 장기 추세 -> 투자 적합성 필터 -> 수급 확인 -> 상대강도 -> 펀더멘털
 ```
 
-순으로 증거를 쌓고, 각 Pattern A~F는 먼저 독립적으로 검증한 뒤
+순으로 증거를 쌓고, Pattern A, Pattern A Fast, Pattern B~F는 먼저 독립적으로 검증한 뒤
 마지막 단계에서 Market Leader Score로 통합한다.
 
 ## Status 표기 규칙
@@ -266,7 +266,10 @@ Sub-stage:
 * 13I. Out-of-Sample Validation
 * 13J. Production Scanner Integration & Closure
 
-Phase 12가 별도 리뷰에서 CLOSED 된 이후 13A부터 새로운 연구를 시작한다.
+Phase 12 Relative Strength Infrastructure와 Phase 13 Pattern A Fast는 독립 연구
+트랙이며 상호 production dependency가 없으므로 병행 진행 가능하다(Phase 12
+결과를 Pattern A Fast Core의 필수 dependency로 만들지 않는다). 13A Pattern A
+Fast Definition 작업을 시작한다(`docs/specs/pattern_a_fast_definition.md`).
 
 ---
 
@@ -327,7 +330,7 @@ CLI / Web 대시보드, 관심종목 워크플로우, 실시간 알림 등 최�
 * **Principle 7**: 전체 Score가 높은 이유를 사람이 설명할 수 있어야 한다.
 * **Principle 8**: 월봉 / 주봉이 장기 추세 판단의 기본이고 일봉은 단기 추세와 진입 timing 확인에 사용한다.
 * **Principle 9**: 실제 전체 시장 Scanner를 돌린 뒤 나오는 예상하지 못한 false positive를 중요한 검증 데이터로 취급한다.
-* **Principle 10**: Pattern A~F가 충분히 검증되기 전에는 Market Leader Score를 성급하게 만들지 않는다.
+* **Principle 10**: Pattern A, Pattern A Fast, Pattern B~F가 충분히 검증되기 전에는 Market Leader Score를 성급하게 만들지 않는다.
 * **Principle 11**: Pattern detection과 Investability filtering은 철저히 분리한다 (시총, 주가, 거래대금은 Pattern A Score/Stage에 섞지 않음).
 * **Principle 12**: Flow 및 Relative Strength는 독립 Confirmation Axis로 시작하며 초기에는 절대적 Hard Filter로 사용하지 않는다.
 * **Principle 13**: Pattern A는 Final Closure 이후 기본적으로 Frozen Algorithm으로 취급한다. 개별 ticker 오분류나 임의 threshold 조정 아이디어만으로는 재오픈하지 않으며, 오직 (1) 충분한 신규 independent validation cohort 확보, (2) 실전 운용에서 반복적인 systematic production failure 확인, (3) 시장 구조 변화로 frozen production semantic의 유효성이 명백히 훼손된 경우에만 제한적으로 재오픈을 검토한다.
