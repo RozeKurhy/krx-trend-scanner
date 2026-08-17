@@ -25,7 +25,7 @@ completed monthly/weekly 정책(v0.1 한계): 진행 중인 봉인지 판단할 
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 import pandas as pd
@@ -48,6 +48,10 @@ class HistoricalSnapshot:
     # 로직을 복제하지 않고 이 필드를 그대로 쓰기 위해 추가했다(v0.2 설계
     # 재리뷰 후속). Score/FeatureRow 계산에는 쓰이지 않는다.
     monthly: pd.DataFrame
+    # monthly와 동일한 이유(Phase 13E Weekly Feature Research)로 추가한
+    # look-ahead 방지 적용된 주봉 원본 프레임. default를 둬서 기존
+    # keyword-construction 호출부(예: 합성 테스트)를 깨지 않는다.
+    weekly: pd.DataFrame = field(default_factory=lambda: pd.DataFrame(columns=["open", "high", "low", "close", "volume"]))
 
 
 def _drop_incomplete_current_month(monthly: pd.DataFrame, requested: pd.Timestamp) -> pd.DataFrame:
@@ -107,6 +111,7 @@ def build_historical_snapshot(
         weekly_as_of=_last_or_none(weekly),
         features=features,
         monthly=monthly,
+        weekly=weekly,
     )
 
 
