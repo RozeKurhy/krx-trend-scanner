@@ -163,9 +163,10 @@ print(f"6M Score Delta: {momentum_res.horizon_6m.score_delta:+.2f}")
 * [x] **Phase 10**: **`DONE`** Investability & Tradability Filter Completed (Market Cap >= 1,000억, 20D Liquidity >= 3억)
 * [x] **Phase 11**: **`DONE`** Flow Confirmation Infrastructure Completed (`71237c0`, Point-In-Time Foreign Flow Features & 10 Dynamic Hard Gates)
 * [ ] **Phase 12**: **`NEXT`** Relative Strength Infrastructure (Index & Sector RS)
-* [ ] **Phase 13~17**: **`PLANNED`** Pattern B ~ F (Stage 2 Transition, High Base, RS Leading, VCP, Turnaround)
-* [ ] **Phase 18**: **`PLANNED`** Pattern Score Matrix & Market Leader Score
-* [ ] **Phase 19**: **`PLANNED`** Walk Forward / Paper Validation
-* [ ] **Phase 20**: **`PLANNED`** Production Scanner & Operational Dashboard
+* [ ] **Phase 13**: **`PLANNED`** Pattern A Fast (Monthly Regime + Weekly Trigger + Daily Timing, Pattern A와 독립된 파생 전략)
+* [ ] **Phase 14~18**: **`PLANNED`** Pattern B ~ F (Stage 2 Transition, High Base, RS Leading, VCP, Turnaround)
+* [ ] **Phase 19**: **`PLANNED`** Pattern Score Matrix & Market Leader Score
+* [ ] **Phase 20**: **`PLANNED`** Walk Forward / Paper Validation
+* [ ] **Phase 21**: **`PLANNED`** Production Scanner & Operational Dashboard
 
 자세한 로드맵은 [docs/roadmap.md](docs/roadmap.md)를 참고하세요.

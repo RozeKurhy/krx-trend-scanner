@@ -59,10 +59,10 @@
 | Phase 10 Investability & Tradability Filter | DONE | 시총 >= 1,000억, 20D 유동성 >= 3억 downstream filter 통합 (Investable 103개, `75afa32`) |
 | Phase 11 Flow Confirmation Infrastructure | DONE | Foreign Flow 독립 confirmation axis 및 10대 hard gates 통과 (FLOW_INFRA_READY, `71237c0`) |
 
-**Pattern B~F**: 미착수(PLANNED)  
+**Pattern A Fast, Pattern B~F**: 미착수(PLANNED)  
 **전체 시장 Scanner**: 완료(DONE - Phase 8 Integration 및 Phase 9B Review 완료)  
 **현재 진행 단계**: **`Phase 12 Relative Strength Infrastructure (NEXT)`**  
-**Market Leader Score**: 미착수(PLANNED - Phase 18)  
+**Market Leader Score**: 미착수(PLANNED - Phase 19)  
 
 ---
 
@@ -226,29 +226,73 @@ Scanner CANDIDATE 종목을 사람이 직접 검토(월봉 ➔ 주봉 ➔ 일봉
 
 ---
 
-## Phase 13 ~ 17. Pattern B ~ F — PLANNED
+## Phase 13. Pattern A Fast — PLANNED
 
-* **Phase 13. Pattern B**: 장기 하락 추세 종료 및 Stage 2 전환형
-* **Phase 14. Pattern C**: 신고가 직전 고점 압축형
-* **Phase 15. Pattern D**: 상대강도 선행형
-* **Phase 16. Pattern E**: 장기 변동성 수축형 (VCP)
-* **Phase 17. Pattern F**: 실적 턴어라운드 + 차트 선행형
+설명: Monthly Regime + Weekly Trigger + Daily Timing
+
+목적: 기존 Pattern A(월봉/주봉 기반, 대세 상승 초입을 보수적으로 탐지)의
+v2/개선판/후속 버전이 아니라, 시간축과 투자 스타일이 다른 **독립 파생
+전략**이다. 별도 Stage / Score / Candidate / Validation을 가지며 연구
+과정에서 기존 Pattern A Score/Stage semantics를 수정하지 않는다.
+
+핵심 연구 질문:
+* Pattern A가 결국 탐지할 유효한 상승 구조를, Pattern A Fast가 몇 주
+  또는 몇 달 더 빠르게 탐지할 수 있는가?
+* 그 빠른 탐지의 대가로 False Trigger가 얼마나 증가하는가?
+
+시간축 철학 (Monthly Regime → Weekly Trigger → Daily Timing):
+* **Monthly**: 장기 시장 위치와 큰 흐름을 확인하는 환경 필터. 실제
+  Trigger를 월봉이 결정하지 않는다.
+* **Weekly**: Pattern A Fast의 핵심 판단 시간축. Setup / Trigger / Trend
+  progression을 주봉에서 판단한다.
+* **Daily**: 진입 타이밍 보조. 장기 구조나 Pattern 자체를 일봉이
+  결정하지 않는다.
+
+목표: Pattern A보다 빠른 상승 전환 탐지 / Pattern A 대비 선행 기간 측정 /
+False Trigger 측정 / 주봉 중심 전환 구조 정의 / 일봉 timing layer 정의
+
+비목표: Pattern A 대체 / Pattern A Score·Stage 수정 / 단기 매매 수익률
+최대화 / 무조건적인 매수 신호 생성 / Backtest 수익률에 맞춘 과최적화
+
+Sub-stage:
+* 13A. Pattern A Fast Definition
+* 13B. Stage / Lifecycle Contract
+* 13C. Human Ground Truth Dataset
+* 13D. Monthly Regime Research
+* 13E. Weekly Trigger Feature Research
+* 13F. Daily Timing Research
+* 13G. Score & Stage Production Contract
+* 13H. Pattern A vs Pattern A Fast Lead Time / Failure Analysis
+* 13I. Out-of-Sample Validation
+* 13J. Production Scanner Integration & Closure
+
+Phase 12가 별도 리뷰에서 CLOSED 된 이후 13A부터 새로운 연구를 시작한다.
 
 ---
 
-## Phase 18. Pattern Score Matrix & Market Leader Score — PLANNED
+## Phase 14 ~ 18. Pattern B ~ F — PLANNED
 
-독립적인 Pattern A~F 점수와 Investability 결과, RS, 수급(Flow), 모멘텀, 실적 증거를 종합한 시장 주도주 종합 점수 체계 구축.
+* **Phase 14. Pattern B**: 장기 하락 추세 종료 및 Stage 2 전환형
+* **Phase 15. Pattern C**: 신고가 직전 고점 압축형
+* **Phase 16. Pattern D**: 상대강도 선행형
+* **Phase 17. Pattern E**: 장기 변동성 수축형 (VCP)
+* **Phase 18. Pattern F**: 실적 턴어라운드 + 차트 선행형
 
 ---
 
-## Phase 19. Walk Forward / Paper Validation — PLANNED
+## Phase 19. Pattern Score Matrix & Market Leader Score — PLANNED
+
+독립적인 Pattern A, Pattern A Fast, Pattern B~F 점수와 Investability 결과, RS, 수급(Flow), 모멘텀, 실적 증거를 종합한 시장 주도주 종합 점수 체계 구축.
+
+---
+
+## Phase 20. Walk Forward / Paper Validation — PLANNED
 
 과거 시점 시뮬레이션 및 실시간 전진 추적 검증.
 
 ---
 
-## Phase 20. Production Scanner & Operational Dashboard — PLANNED
+## Phase 21. Production Scanner & Operational Dashboard — PLANNED
 
 CLI / Web 대시보드, 관심종목 워크플로우, 실시간 알림 등 최종 운영 시스템 구축.
 
