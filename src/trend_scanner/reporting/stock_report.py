@@ -1,7 +1,7 @@
 """Stock Report Generator Engine (Contract v0.1).
 
 로컬 Parquet 일봉 캐시와 정본 아티팩트만을 활용하여 단일 종목의 종합 분석 리포트를 생성하고
-JSON 및 Markdown 형식으로 출력한다.
+JSON 및 GitHub Flavored Markdown 형식으로 출력한다.
 """
 
 from __future__ import annotations
@@ -55,7 +55,13 @@ def _format_ticker(ticker: str) -> str:
 
 def _resolve_latest_local_as_of(repo_root: Path) -> str:
     """로컬 데이터 및 아티팩트에서 최신 GLOBAL reference market date를 결정한다."""
-    # 1. Investability universe canonical files
+    # 1. Primary Authority: Market reference stock 005930 cache
+    cache = ParquetCache(base_dir=repo_root / "data/raw/stocks")
+    daily_ref = cache.load("005930")
+    if daily_ref is not None and not daily_ref.empty:
+        return daily_ref.index.max().strftime("%Y-%m-%d")
+
+    # 2. Secondary: Investability universe canonical files
     inv_dir = repo_root / "artifacts/investability"
     if inv_dir.exists():
         univ_files = sorted(inv_dir.glob("pattern_a_investability_universe_*.csv"))
@@ -65,7 +71,7 @@ def _resolve_latest_local_as_of(repo_root: Path) -> str:
             if len(date_part) == 8 and date_part.isdigit():
                 return f"{date_part[:4]}-{date_part[4:6]}-{date_part[6:]}"
 
-    # 2. Scanner canonical files
+    # 3. Secondary: Scanner canonical files
     scanner_dir = repo_root / "artifacts/scanner"
     if scanner_dir.exists():
         scan_files = sorted(scanner_dir.glob("pattern_a_universe_scan_*.csv"))
@@ -75,13 +81,7 @@ def _resolve_latest_local_as_of(repo_root: Path) -> str:
             if len(date_part) == 8 and date_part.isdigit():
                 return f"{date_part[:4]}-{date_part[4:6]}-{date_part[6:]}"
 
-    # 3. Market reference stock 005930
-    cache = ParquetCache(base_dir=repo_root / "data/raw/stocks")
-    daily_ref = cache.load("005930")
-    if daily_ref is not None and not daily_ref.empty:
-        return daily_ref.index.max().strftime("%Y-%m-%d")
-
-    return "2026-08-14"
+    raise RuntimeError("Unable to resolve latest local reference market date: no local market reference data found.")
 
 
 def _get_reference_market_month_ends(cache: ParquetCache, requested_as_of: pd.Timestamp) -> list[pd.Timestamp]:
@@ -267,7 +267,7 @@ def _generate_deterministic_narrative(
 
 
 def render_markdown_report(report: StockReport) -> str:
-    """StockReport JSON 객체를 사람이 읽기 쉬운 Markdown 보고서로 렌더링한다."""
+    """StockReport JSON 객체를 사람이 읽기 쉬운 GitHub Flavored Markdown 보고서로 렌더링한다."""
     cur = report.current_snapshot
     hist = report.monthly_history
     flow = report.foreign_flow
@@ -308,13 +308,11 @@ def render_markdown_report(report: StockReport) -> str:
     md.append("")
     md.append("## 2. 최근 12개월 월별 추이 (Recent 12M Trajectory)")
     md.append("")
-    md.append("+------------+-----------------+---------------+-------------------+------------------+")
-    md.append("| 기준일     | Pattern A Score | Stage         | Candidate State   | Data Available   |")
-    md.append("+------------+-----------------+---------------+-------------------+------------------+")
+    md.append("| 기준일 | Pattern A Score | Stage | Candidate State | Data Available |")
+    md.append("|---|---:|---|---|---|")
     for obs in hist.recent_12m_history:
         sc_str = f"{obs.score:.2f}" if obs.score is not None else "N/A"
-        md.append(f"| {obs.as_of} | {sc_str:15s} | {obs.stage:13s} | {obs.candidate_state:17s} | {str(obs.data_available):16s} |")
-    md.append("+------------+-----------------+---------------+-------------------+------------------+")
+        md.append(f"| {obs.as_of} | {sc_str} | {obs.stage} | {obs.candidate_state} | {str(obs.data_available)} |")
     md.append("")
     if hist.score_trend.current_score is not None:
         st = hist.score_trend
@@ -348,14 +346,15 @@ def render_markdown_report(report: StockReport) -> str:
         i5 = f"{flow.foreign_flow_intensity_5d * 100:+.2f}%" if flow.foreign_flow_intensity_5d is not None else "N/A"
         i20 = f"{flow.foreign_flow_intensity_20d * 100:+.2f}%" if flow.foreign_flow_intensity_20d is not None else "N/A"
         i60 = f"{flow.foreign_flow_intensity_60d * 100:+.2f}%" if flow.foreign_flow_intensity_60d is not None else "N/A"
-        md.append("+----------+-------------------+--------------------+------------------------+")
-        md.append("| 구간     | 순매수 금액(억)   | 거래대금 대비 강도 | 양수 거래일(일수)      |")
-        md.append("+----------+-------------------+--------------------+------------------------+")
-        md.append(f"| 1D       | {nb1:17s} | -                  | -                      |")
-        md.append(f"| 5D       | {nb5:17s} | {i5:18s} | {str(flow.foreign_positive_days_5d)}일 / 5일               |")
-        md.append(f"| 20D      | {nb20:17s} | {i20:18s} | {str(flow.foreign_positive_days_20d)}일 / 20일             |")
-        md.append(f"| 60D      | {nb60:17s} | {i60:18s} | {str(flow.foreign_positive_days_60d)}일 / 60일             |")
-        md.append("+----------+-------------------+--------------------+------------------------+")
+        p5 = f"{flow.foreign_positive_days_5d} / 5" if flow.foreign_positive_days_5d is not None else "N/A"
+        p20 = f"{flow.foreign_positive_days_20d} / 20" if flow.foreign_positive_days_20d is not None else "N/A"
+        p60 = f"{flow.foreign_positive_days_60d} / 60" if flow.foreign_positive_days_60d is not None else "N/A"
+        md.append("| 구간 | 순매수 금액 | 거래대금 대비 강도 | 양수 거래일 |")
+        md.append("|---|---:|---:|---:|")
+        md.append(f"| 1D | {nb1} | N/A | N/A |")
+        md.append(f"| 5D | {nb5} | {i5} | {p5} |")
+        md.append(f"| 20D | {nb20} | {i20} | {p20} |")
+        md.append(f"| 60D | {nb60} | {i60} | {p60} |")
     md.append("")
     md.append("---")
     md.append("")
@@ -378,14 +377,12 @@ def render_markdown_report(report: StockReport) -> str:
     md.append(f"- **전체 관측 종료월**: `{hist.history_end_as_of}`")
     md.append(f"- **총 월별 관측 개수**: `{hist.observation_count}개월`")
     md.append("")
-    md.append("+------------+-----------------+---------------+-------------------+------------------+-------------------------+")
-    md.append("| 기준일     | Pattern A Score | Stage         | Candidate State   | Data Available   | Reason                  |")
-    md.append("+------------+-----------------+---------------+-------------------+------------------+-------------------------+")
+    md.append("| 기준일 | Pattern A Score | Stage | Candidate State | Data Available | Reason |")
+    md.append("|---|---:|---|---|---|---|")
     for obs in hist.full_monthly_history:
         sc_str = f"{obs.score:.2f}" if obs.score is not None else "N/A"
         r_str = str(obs.reason) if obs.reason is not None else "-"
-        md.append(f"| {obs.as_of} | {sc_str:15s} | {obs.stage:13s} | {obs.candidate_state:17s} | {str(obs.data_available):16s} | {r_str:23s} |")
-    md.append("+------------+-----------------+---------------+-------------------+------------------+-------------------------+")
+        md.append(f"| {obs.as_of} | {sc_str} | {obs.stage} | {obs.candidate_state} | {str(obs.data_available)} | {r_str} |")
     md.append("")
     md.append("---")
     md.append("")
@@ -416,7 +413,7 @@ def generate_stock_report(
     root_path = Path(repo_root) if repo_root else Path(__file__).resolve().parent.parent.parent.parent
     clean_ticker = _format_ticker(ticker)
 
-    # 1. As-Of 및 Reference Market Date 결정
+    # 1. As-Of 및 Reference Market Date 결정 (No hardcoded date fallback)
     if as_of is None:
         canonical_as_of = _resolve_latest_local_as_of(root_path)
     else:
@@ -525,30 +522,37 @@ def generate_stock_report(
         is_investable=inv_eval.status.value == "INVESTABLE",
     )
 
-    # 6. Monthly Score & Stage History (Full & Recent 12M) using Common Market Reference Calendar
+    # 6. Monthly Score & Stage History (Full & Recent 12M) using Common Market Reference Calendar & Exact Daily Check
     full_monthly_history: list[MonthlyObservation] = []
     if not daily_slice.empty:
         stock_first_date = daily_slice.index.min()
         market_month_ends = _get_reference_market_month_ends(cache, req_as_of_ts)
 
         if not market_month_ends:
-            monthly_groups = daily_slice.groupby([daily_slice.index.year, daily_slice.index.month])
-            market_month_ends = [group.index.max() for _, group in monthly_groups]
+            # Common market calendar unavailable -> Fail closed (No fallback to target stock's own calendar)
+            quality_status = "MARKET_CALENDAR_UNAVAILABLE"
+        else:
+            first_month_start = pd.Timestamp(stock_first_date.year, stock_first_date.month, 1)
+            stock_month_ends = [me for me in market_month_ends if me >= first_month_start]
 
-        # Observations begin from the stock's first month
-        first_month_start = pd.Timestamp(stock_first_date.year, stock_first_date.month, 1)
-        stock_month_ends = [me for me in market_month_ends if me >= first_month_start]
+            for me_date in stock_month_ends:
+                me_str = me_date.strftime("%Y-%m-%d")
 
-        for me_date in stock_month_ends:
-            me_str = me_date.strftime("%Y-%m-%d")
-            d_sub = daily_slice.loc[daily_slice.index <= me_date]
-            if d_sub.empty:
-                s_val = None
-                st_val = "UNAVAILABLE"
-                c_val = "insufficient_data"
-                d_avail = False
-                r_val = "NO_DATA_BEFORE_DATE"
-            else:
+                # Exact daily observation check: stock MUST have traded on that exact market trading date
+                if me_date not in daily_slice.index:
+                    full_monthly_history.append(
+                        MonthlyObservation(
+                            as_of=me_str,
+                            score=None,
+                            stage="UNAVAILABLE",
+                            candidate_state="insufficient_data",
+                            data_available=False,
+                            reason="NO_EXACT_MARKET_MONTH_END_OBSERVATION",
+                        )
+                    )
+                    continue
+
+                d_sub = daily_slice.loc[daily_slice.index <= me_date]
                 try:
                     sub_snap = build_historical_snapshot(
                         ticker=clean_ticker,
@@ -570,33 +574,34 @@ def generate_stock_report(
                     d_avail = False
                     r_val = str(exc)
 
-            full_monthly_history.append(
-                MonthlyObservation(
-                    as_of=me_str,
-                    score=s_val,
-                    stage=st_val,
-                    candidate_state=c_val,
-                    data_available=d_avail,
-                    reason=r_val,
+                full_monthly_history.append(
+                    MonthlyObservation(
+                        as_of=me_str,
+                        score=s_val,
+                        stage=st_val,
+                        candidate_state=c_val,
+                        data_available=d_avail,
+                        reason=r_val,
+                    )
                 )
-            )
 
     # Sort strictly ascending
     full_monthly_history.sort(key=lambda x: x.as_of)
     recent_12m_history = full_monthly_history[-13:] if len(full_monthly_history) >= 13 else list(full_monthly_history)
 
-    # Stage Transitions
+    # Stage Transitions (Protected from interim UNAVAILABLE observation noise)
     stage_transitions: list[StageTransition] = []
-    prev_stage = None
+    last_valid_stage: str | None = None
     for obs in full_monthly_history:
         st = obs.stage
-        if prev_stage is None:
-            if st != "UNAVAILABLE":
-                stage_transitions.append(StageTransition(as_of=obs.as_of, from_stage="UNAVAILABLE", to_stage=st))
-            prev_stage = st
-        elif st != prev_stage:
-            stage_transitions.append(StageTransition(as_of=obs.as_of, from_stage=prev_stage, to_stage=st))
-            prev_stage = st
+        if st == "UNAVAILABLE":
+            continue
+        if last_valid_stage is None:
+            stage_transitions.append(StageTransition(as_of=obs.as_of, from_stage="UNAVAILABLE", to_stage=st))
+            last_valid_stage = st
+        elif st != last_valid_stage:
+            stage_transitions.append(StageTransition(as_of=obs.as_of, from_stage=last_valid_stage, to_stage=st))
+            last_valid_stage = st
 
     # Score Trend Deltas (from recent observations)
     score_1m = None
@@ -725,8 +730,12 @@ def generate_stock_report(
     )
 
     # 9. Header & Summary (Consistent Report Status)
+    # READY: Core score ready AND Investability calculated (not DATA_UNAVAILABLE) AND Flow ready AND Trading Value ready
+    # PARTIAL: Core score ready, but one of Investability/Flow/TV is unavailable/partial
+    # DATA_UNAVAILABLE: Core score unavailable
     if (
         cur_score is not None
+        and inv_eval.status.value != "DATA_UNAVAILABLE"
         and flow_feat.data_status == FlowDataStatus.READY
         and tv_state != TradingValueState.TRADING_VALUE_UNAVAILABLE
     ):

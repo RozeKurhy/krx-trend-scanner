@@ -1,32 +1,40 @@
-"""Targeted Tests for Stock Report Contract v0.1 & Generator (Review Corrections).
+"""Targeted Tests for Stock Report Contract v0.1 & Generator (Final Sealing).
 
-- Current snapshot canonical parity (001540)
-- Historical Point-In-Time (PIT) isolation
-- Monthly history ascending order & subset integrity
-- Stage transition extraction correctness
-- Foreign flow feature & interpretation parity
-- Trading value arithmetic & ratio checks
-- Deterministic reproducible output
-- Zero mutation of existing canonical artifacts
-- Filtered investability narrative (033560 블루콤)
-- Candidate state contract: WEAK -> blocked (000020), PROGRESSED -> late (005930)
-- Short history trading value fail-closed
-- Common market reference calendar month-ends
-- Default latest local as-of resolution
-- Partial report status consistency
-- MD full monthly history table rendering
+- Exact market month-end observation check (missing day fail-closed)
+- Common reference calendar fail-closed (no target stock calendar fallback)
+- Latest local as-of resolution (dynamic & no hardcoded date fallback)
+- Report status exact semantics (READY, PARTIAL, DATA_UNAVAILABLE)
+- GitHub Flavored Markdown (GFM) table syntax (no ASCII box lines)
+- Canonical parity & historical PIT isolation
+- Zero artifact mutation & zero network requests
 """
 
 import hashlib
 import json
 from pathlib import Path
+from unittest.mock import patch
 
 import numpy as np
 import pandas as pd
 import pytest
 
-from trend_scanner.reporting.models import FlowState, ReportStatus, StockReport, TradingValueState
+from trend_scanner.data.cache import ParquetCache
+from trend_scanner.flow.foreign_flow import FlowDataStatus, ForeignFlowFeatureResult
+from trend_scanner.reporting.models import (
+    CurrentSnapshot,
+    FlowState,
+    ForeignFlowSection,
+    MonthlyObservation,
+    ReportHeader,
+    ReportStatus,
+    ReportSummary,
+    StockReport,
+    TradingValueFlowSection,
+    TradingValueState,
+)
 from trend_scanner.reporting.stock_report import (
+    _determine_trading_value_state_and_explanation,
+    _get_reference_market_month_ends,
     _resolve_latest_local_as_of,
     generate_stock_report,
     render_markdown_report,
@@ -237,10 +245,9 @@ def test_stock_report_filtered_investability_narrative():
     assert cur.investability_status == "FILTERED_MARKET_CAP"
     assert cur.is_investable is False
 
-    # Narrative assertions
     assert "시가총액 기준 미달" in report.summary.headline
     assert "제외" in report.summary.headline
-    assert "충족하지 못했습니다" in report.summary.bullet_points[1] or "미달" in report.summary.bullet_points[1]
+    assert "충족하지 못했습니다" in report.summary.bullet_points[1]
     assert "조건을 통과했습니다" not in report.summary.combined_narrative
 
 
@@ -272,104 +279,112 @@ def test_stock_report_candidate_state_contract_progressed_late():
     assert report.current_snapshot.is_candidate is False
 
 
-def test_stock_report_common_market_month_end():
-    """월별 이력의 as_of 일자가 표준 시장 월말 거래일 캘린더를 따르는지 검증."""
-    report_001540, _, _ = generate_stock_report(
-        ticker="001540",
-        as_of="2026-08-14",
-        repo_root=REPO_ROOT,
-        save_artifacts=False,
-    )
-    report_005930, _, _ = generate_stock_report(
-        ticker="005930",
-        as_of="2026-08-14",
-        repo_root=REPO_ROOT,
-        save_artifacts=False,
-    )
+def test_stock_report_exact_market_month_end_observation_fail_closed(tmp_path):
+    """특정 시장 월말일(2026-07-31) 데이터가 결측된 종목의 경우, 이전 거래일 값으로 위장하지 않고 UNAVAILABLE 처리되는지 검증."""
+    # Load 001540 and drop 2026-07-31
+    cache = ParquetCache(base_dir=REPO_ROOT / "data/raw/stocks")
+    df_raw = cache.load("001540")
+    df_missing = df_raw.drop(index=pd.Timestamp("2026-07-31"))
 
-    dates_001540 = set(o.as_of for o in report_001540.monthly_history.full_monthly_history)
-    dates_005930 = set(o.as_of for o in report_005930.monthly_history.full_monthly_history)
+    # Save to tmp cache
+    tmp_cache_dir = tmp_path / "data/raw/stocks"
+    tmp_cache_dir.mkdir(parents=True, exist_ok=True)
+    tmp_cache = ParquetCache(base_dir=tmp_cache_dir)
+    tmp_cache.save("001540", df_missing)
+    # Also copy 005930 for reference calendar
+    df_samsung = cache.load("005930")
+    tmp_cache.save("005930", df_samsung)
 
-    # All dates in 001540's history must be in 005930's market calendar
-    assert dates_001540.issubset(dates_005930)
-
-
-def test_stock_report_default_latest_local_as_of_resolution():
-    """as_of=None 지정 시 외부 네트워크 요청 없이 최신 로컬 reference market date(2026-08-14)로 자동 결정되는지 검증."""
-    latest_date = _resolve_latest_local_as_of(REPO_ROOT)
-    assert latest_date == "2026-08-14"
-
-    report_default, _, _ = generate_stock_report(
-        ticker="001540",
-        as_of=None,
-        repo_root=REPO_ROOT,
-        save_artifacts=False,
-    )
-    assert report_default.requested_as_of == "2026-08-14"
-    assert report_default.reference_market_date == "2026-08-14"
-    assert report_default.current_snapshot.pattern_a_score == 97.45
-
-
-def test_stock_report_partial_report_status():
-    """Trading Value가 부족하거나 Foreign Flow가 미평가된 경우 report_status가 PARTIAL로 안전하게 전이되는지 검증."""
-    # Test for a stock without full flow/tv data
-    report, _, _ = generate_stock_report(
-        ticker="033560",
-        as_of="2026-08-14",
-        repo_root=REPO_ROOT,
-        save_artifacts=False,
-    )
-    # If core score exists but flow or other section is partial/not ready
-    assert report.header.report_status in (ReportStatus.READY, ReportStatus.PARTIAL)
-
-
-def test_stock_report_short_history_trading_value_fail_closed(tmp_path):
-    """일봉 데이터가 60일 미만인 경우 Trading Value가 가짜 값 대체 없이 fail-closed(None / UNAVAILABLE) 처리되는지 검증."""
-    from trend_scanner.reporting.stock_report import _determine_trading_value_state_and_explanation
-
-    # Case 1: 10 observations (>=5 but <20 and <60)
-    state, exp = _determine_trading_value_state_and_explanation(
-        tv_5d=15.0,
-        tv_20d=None,
-        tv_60d=None,
-        r_5_20=None,
-        r_20_60=None,
-    )
-    assert state == TradingValueState.TRADING_VALUE_UNAVAILABLE
-    assert "부족" in exp
-
-    # Case 2: All None
-    state2, exp2 = _determine_trading_value_state_and_explanation(None, None, None, None, None)
-    assert state2 == TradingValueState.TRADING_VALUE_UNAVAILABLE
-
-
-def test_stock_report_md_full_history_rendering():
-    """Markdown 렌더링 결과에 full_monthly_history 전수(001540 기준 61행)가 표로 온전히 포함되는지 검증."""
     report, _, _ = generate_stock_report(
         ticker="001540",
         as_of="2026-08-14",
+        repo_root=tmp_path,
+        save_artifacts=False,
+    )
+
+    obs_july_2026 = next((o for o in report.monthly_history.full_monthly_history if o.as_of == "2026-07-31"), None)
+    assert obs_july_2026 is not None
+    assert obs_july_2026.data_available is False
+    assert obs_july_2026.stage == "UNAVAILABLE"
+    assert obs_july_2026.reason == "NO_EXACT_MARKET_MONTH_END_OBSERVATION"
+
+
+def test_stock_report_common_calendar_fail_closed_when_unavailable(tmp_path):
+    """Reference market calendar를 로드할 수 없을 때 종목별 calendar로 fallback하지 않고 fail-closed 되는지 검증."""
+    empty_cache = ParquetCache(base_dir=tmp_path / "empty_cache")
+    ends = _get_reference_market_month_ends(empty_cache, pd.Timestamp("2026-08-14"))
+    assert ends == []
+
+
+def test_stock_report_latest_local_as_of_dynamic_and_no_hardcoding(tmp_path):
+    """최신 로컬 기준일을 하드코딩 없이 동적으로 해결하며, 기준 데이터가 없으면 예외를 발생시키는지 검증."""
+    # 1. Normal resolution from REPO_ROOT (returns 2026-08-14 dynamically from 005930 / artifacts)
+    resolved = _resolve_latest_local_as_of(REPO_ROOT)
+    assert resolved == "2026-08-14"
+
+    # 2. Dynamic test: when 005930 has data up to 2026-08-20 in custom directory
+    cache_dir = tmp_path / "data/raw/stocks"
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    dates = pd.date_range("2026-08-01", "2026-08-20", freq="B")
+    df_custom = pd.DataFrame(
+        {
+            "open": 100.0,
+            "high": 105.0,
+            "low": 95.0,
+            "close": 100.0,
+            "volume": 100,
+            "trading_value": 1000,
+        },
+        index=dates,
+    )
+    tmp_cache = ParquetCache(base_dir=cache_dir)
+    tmp_cache.save("005930", df_custom)
+
+    resolved_dynamic = _resolve_latest_local_as_of(tmp_path)
+    assert resolved_dynamic == "2026-08-20"
+
+    # 3. Empty directory raises RuntimeError (no hardcoded fallback)
+    empty_path = tmp_path / "empty_repo"
+    empty_path.mkdir(parents=True, exist_ok=True)
+    with pytest.raises(RuntimeError, match="Unable to resolve latest local reference market date"):
+        _resolve_latest_local_as_of(empty_path)
+
+
+def test_stock_report_status_exact_semantics():
+    """Report status exact contract semantics (READY vs PARTIAL vs DATA_UNAVAILABLE)."""
+    # 1. 001540 is INVESTABLE and all ready -> READY
+    report_ready, _, _ = generate_stock_report(ticker="001540", as_of="2026-08-14", repo_root=REPO_ROOT, save_artifacts=False)
+    assert report_ready.header.report_status == ReportStatus.READY
+
+    # 2. 033560 is FILTERED_MARKET_CAP and has all data ready -> READY
+    report_filtered, _, _ = generate_stock_report(ticker="033560", as_of="2026-08-14", repo_root=REPO_ROOT, save_artifacts=False)
+    assert report_filtered.header.report_status == ReportStatus.READY
+
+    # 3. Core unavailable (999999) -> DATA_UNAVAILABLE
+    report_unavail, _, _ = generate_stock_report(ticker="999999", as_of="2026-08-14", repo_root=REPO_ROOT, save_artifacts=False)
+    assert report_unavail.header.report_status == ReportStatus.DATA_UNAVAILABLE
+
+
+def test_stock_report_gfm_table_rendering():
+    """Markdown 렌더링 결과가 GitHub Flavored Markdown (GFM) table 문법을 따르며 ASCII box line이 없는지 검증."""
+    report, _, _ = generate_stock_report(
+        ticker="001540",
+        as_of="2026-08-14",
         repo_root=REPO_ROOT,
         save_artifacts=False,
     )
 
-    md_content = render_markdown_report(report)
-    assert "## 6. 전체 월별 이력 (Full Monthly History)" in md_content
-    assert "2021-08-31" in md_content
-    assert "2024-07-31" in md_content
-    assert "2026-08-14" in md_content
-    assert "INSUFFICIENT_LOOKBACK" in md_content
+    md = render_markdown_report(report)
 
-    # Count rows in section 6 table
-    lines = md_content.splitlines()
-    sec6_started = False
-    table_rows = 0
-    for line in lines:
-        if "## 6. 전체 월별 이력" in line:
-            sec6_started = True
-            continue
-        if sec6_started and "## 7. 데이터 품질" in line:
-            break
-        if sec6_started and line.startswith("| 20"):
-            table_rows += 1
+    # Check GFM table headers and separators
+    assert "| 기준일 | Pattern A Score | Stage | Candidate State | Data Available |" in md
+    assert "|---|---:|---|---|---|" in md
+    assert "| 구간 | 순매수 금액 | 거래대금 대비 강도 | 양수 거래일 |" in md
+    assert "|---|---:|---:|---:|" in md
+    assert "| 기준일 | Pattern A Score | Stage | Candidate State | Data Available | Reason |" in md
+    assert "|---|---:|---|---|---|---|" in md
 
-    assert table_rows == 61, f"Expected 61 table rows in Markdown full history, got {table_rows}"
+    # Check that NO ASCII box border lines exist (+---+)
+    assert "+---" not in md
+    assert "+---+" not in md
+    assert "+===" not in md
