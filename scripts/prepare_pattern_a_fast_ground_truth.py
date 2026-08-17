@@ -49,7 +49,7 @@ from trend_scanner.validation.pattern_a_fast_ground_truth import (
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("prepare_pattern_a_fast_ground_truth")
 
-BASE_COMMIT = "e8cf7e6ee9585e8cc512e6cbe488eaa000497518"
+BASE_COMMIT = "507b5675d480abdf9c8fc7d21355ba661afa94b7"
 AS_OF = "2026-08-14"
 DATA_CUTOFF = pd.Timestamp("2026-08-14")
 SCANNER_CSV = Path("artifacts/scanner/pattern_a_universe_scan_20260814.csv")
@@ -69,7 +69,8 @@ COHORT_B_DATES = [
     "2016-06-30", "2017-06-30", "2018-06-29", "2018-12-28",
     "2019-06-28", "2020-03-27", "2020-09-25", "2021-06-25",
     "2022-06-24", "2022-12-30", "2023-06-30", "2024-06-28",
-    "2025-06-27",
+    "2024-09-27", "2024-12-27", "2025-03-28", "2025-06-27",
+    "2025-09-26", "2025-12-26", "2026-03-27",
 ]
 COHORT_B_TICKER_STRIDE = 1  # 전수 screen. 36개월 이력 게이트 도입 후 실측 결과
 # 2016~2023 quarter-end에서 36개월 이력을 가진 티커가 전체 캐시 중 44~66개뿐인
@@ -78,10 +79,22 @@ COHORT_B_TICKER_STRIDE = 1  # 전수 screen. 36개월 이력 게이트 도입 �
 # 바꿔 존재하는 후보를 최대한 살린다 — quota를 억지로 맞추기 위한 것이 아니라
 # 이미 있는 후보 풀을 stride로 인위적으로 줄이지 않기 위함(§8 "quota 최적화는
 # 하지 말 것"과 구분됨).
+#
+# [correction] 36개월 게이트 도입 직후 실측 결과 2024-09-27 이전 quarter-end는
+# eligible 티커가 400개 표본 중 3/175(약 1.7%)에 불과했지만, 2024-09-27부터는
+# 표본 대비 약 70~80%(전체 환산 시 800개 이상)로 급증해 유지됨이 확인됨.
+# 이 때문에 게이트 통과 후보가 사실상 2025-06-27 한 주에만 집중되어(Cohort B
+# 45개 중 35개), FAILED_BREAKOUT/NEGATIVE_CONTROL 등 실패 사례 버킷들이
+# "독립적인 여러 시점"이 아니라 "같은 한 시점"에 묶이는 문제가 발생함
+# (advisor 리뷰로 발견). 이를 고치기 위해 이미 데이터가 풍부하게 존재하는
+# 2024-09 ~ 2026-03 구간에 quarter-end 날짜를 추가로 넣어 후보 풀이 여러
+# 주간에 걸쳐 분산되도록 함 — 고정된 bucket target 개수/규칙은 그대로이므로
+# quota 최적화가 아니라 stride 완화와 같은 성격의 sampling frame 확장임.
 
 cache = ParquetCache()
 _daily_cache: dict[str, pd.DataFrame | None] = {}
 excluded_candidates: list[dict] = []
+cohort_b_selection_stats: dict[str, dict] = {}
 
 
 def get_daily(ticker: str) -> pd.DataFrame | None:
@@ -264,6 +277,7 @@ def select_cohort_b(scanner_df: pd.DataFrame) -> list[dict]:
     for bucket, target in COHORT_B_TARGETS.items():
         candidates = sorted(bucketed[bucket], key=lambda x: -x[0])
         picked = 0
+        picked_scores: list[float] = []
         for score, ticker, name, market, ref in candidates:
             if picked >= target:
                 break
@@ -277,8 +291,19 @@ def select_cohort_b(scanner_df: pd.DataFrame) -> list[dict]:
             rows.append(row)
             ticker_episode_count[ticker] = ticker_episode_count.get(ticker, 0) + 1
             picked += 1
+            picked_scores.append(score)
             logger.info("  + [%s] %s %s @ %s", bucket, ticker, name, ref.date())
         logger.info("  bucket %s: picked %d / target %d", bucket, picked, target)
+        # 재현성(§7): top-N by |score| 선정은 후보 풀 크기와 cutoff score를
+        # 알아야 manifest만으로 재현 가능하다(순위에서 밀린 후보는
+        # excluded_candidates에 개별 기록되지 않으므로 이 요약이 필요).
+        cohort_b_selection_stats[bucket] = {
+            "candidate_pool_size": len(candidates),
+            "target": target,
+            "picked": picked,
+            "score_cutoff_min": min(picked_scores) if picked_scores else None,
+            "score_cutoff_max": max(picked_scores) if picked_scores else None,
+        }
     return rows
 
 
@@ -393,6 +418,7 @@ def main() -> None:
                 ),
                 "targets": COHORT_B_TARGETS,
                 "selected": len(rows_b),
+                "selection_stats_per_bucket": cohort_b_selection_stats,
             },
             "max_episodes_per_ticker": MAX_EPISODES_PER_TICKER,
             "min_gap_weeks_same_ticker": 8,
