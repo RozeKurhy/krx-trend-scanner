@@ -100,24 +100,29 @@ def load_canonical_mcap_snapshot(
         return df, sha256
 
     # Fetch from pykrx if not cached
-    as_of_clean = as_of.replace("-", "")
-    df_raw = stock.get_market_cap_by_ticker(as_of_clean)
-    df_raw.index.name = "ticker"
-    df_reset = df_raw.reset_index()
-    df_reset["ticker"] = df_reset["ticker"].astype(str).str.zfill(6)
-    df_reset["effective_date"] = as_of
+    try:
+        as_of_clean = as_of.replace("-", "")
+        df_raw = stock.get_market_cap_by_ticker(as_of_clean)
+        if df_raw is None or df_raw.empty or "종가" not in df_raw.columns:
+            return pd.DataFrame(), ""
+        df_raw.index.name = "ticker"
+        df_reset = df_raw.reset_index()
+        df_reset["ticker"] = df_reset["ticker"].astype(str).str.zfill(6)
+        df_reset["effective_date"] = as_of
 
-    df_canon = df_reset.rename(columns={
-        "종가": "close",
-        "시가총액": "market_cap",
-        "거래량": "volume",
-        "거래대금": "trading_value",
-        "상장주식수": "shares_outstanding",
-    })
+        df_canon = df_reset.rename(columns={
+            "종가": "close",
+            "시가총액": "market_cap",
+            "거래량": "volume",
+            "거래대금": "trading_value",
+            "상장주식수": "shares_outstanding",
+        })
 
-    df_canon.to_csv(source_file, index=False)
-    sha256 = hashlib.sha256(source_file.read_bytes()).hexdigest()
-    return df_canon, sha256
+        df_canon.to_csv(source_file, index=False)
+        sha256 = hashlib.sha256(source_file.read_bytes()).hexdigest()
+        return df_canon, sha256
+    except Exception:
+        return pd.DataFrame(), ""
 
 
 def render_markdown_doc(summary: dict[str, Any]) -> str:

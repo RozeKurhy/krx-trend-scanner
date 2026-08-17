@@ -759,20 +759,16 @@ def scan_pattern_a_universe(
         mcap_dict = {}
         mcap_effective_date = None
 
-    # 3.0.1 Foreign Flow Data Cache 로드 (Phase 11)
+    # 3.0.1 Foreign Flow Data Cache 로드 (Phase 11 Exact Parity)
     flow_df_loaded = flow_df
-    try:
-        if flow_df_loaded is None and flow_data_path is not None:
-            p = Path(flow_data_path)
-            if p.exists():
-                flow_df_loaded = pd.read_parquet(p) if p.suffix == ".parquet" else pd.read_csv(p)
-        elif flow_df_loaded is None:
-            def_p = repo_root / "artifacts/flow/source" / f"foreign_flow_daily_{req_as_of.strftime('%Y%m%d')}.parquet"
-            if def_p.exists():
-                flow_df_loaded = pd.read_parquet(def_p)
-    except Exception as exc:
-        logger.warning("Failed loading foreign flow source (%s): %s", flow_data_path, exc)
-        flow_df_loaded = None
+    if flow_df_loaded is None and flow_data_path is not None:
+        p = Path(flow_data_path)
+        if p.exists():
+            flow_df_loaded = pd.read_parquet(p) if p.suffix == ".parquet" else pd.read_csv(p)
+    elif flow_df_loaded is None:
+        def_p = repo_root / "artifacts/flow/source" / f"foreign_flow_daily_{req_as_of.strftime('%Y%m%d')}.parquet"
+        if def_p.exists():
+            flow_df_loaded = pd.read_parquet(def_p)
 
     # 3.0.2 Relative Strength Data Cache 로드 (Phase 12)
     market_index_df_loaded = market_index_df
@@ -803,26 +799,53 @@ def scan_pattern_a_universe(
         logger.warning("Failed loading sector index source (%s): %s", sector_index_path, exc)
         sector_index_df_loaded = None
 
-    sector_map_loaded = sector_mapping
+    sector_map_loaded: dict[str, tuple[str, str]] | None = None
     try:
-        if sector_map_loaded is None and sector_mapping_path is not None:
+        if sector_mapping is not None:
+            valid_map = {}
+            for k, v in sector_mapping.items():
+                if len(v) >= 3:
+                    sc, sn, eff = v[0], v[1], str(v[2]).strip()
+                    if eff <= req_as_of_str:
+                        valid_map[str(k).zfill(6)] = (str(sc), str(sn))
+                else:
+                    valid_map[str(k).zfill(6)] = (str(v[0]), str(v[1]))
+            sector_map_loaded = valid_map if valid_map else None
+        elif sector_mapping_path is not None:
             p = Path(sector_mapping_path)
             if p.exists():
                 df_sm = pd.read_csv(p)
                 df_sm["ticker"] = df_sm["ticker"].astype(str).str.zfill(6)
-                sector_map_loaded = {
-                    row["ticker"]: (str(row["sector_code"]), str(row["sector_name"]))
-                    for _, row in df_sm.iterrows()
-                }
-        elif sector_map_loaded is None:
+                if "effective_date" in df_sm.columns:
+                    # Strict PIT enforcement: only use mappings with effective_date <= requested_as_of
+                    df_sm_pit = df_sm[df_sm["effective_date"].astype(str) <= req_as_of_str]
+                    if not df_sm_pit.empty:
+                        sector_map_loaded = {
+                            row["ticker"]: (str(row["sector_code"]), str(row["sector_name"]))
+                            for _, row in df_sm_pit.iterrows()
+                        }
+                else:
+                    sector_map_loaded = {
+                        row["ticker"]: (str(row["sector_code"]), str(row["sector_name"]))
+                        for _, row in df_sm.iterrows()
+                    }
+        else:
             def_p = repo_root / "artifacts/relative_strength/source" / f"sector_mapping_{req_as_of.strftime('%Y%m%d')}.csv"
             if def_p.exists():
                 df_sm = pd.read_csv(def_p)
                 df_sm["ticker"] = df_sm["ticker"].astype(str).str.zfill(6)
-                sector_map_loaded = {
-                    row["ticker"]: (str(row["sector_code"]), str(row["sector_name"]))
-                    for _, row in df_sm.iterrows()
-                }
+                if "effective_date" in df_sm.columns:
+                    df_sm_pit = df_sm[df_sm["effective_date"].astype(str) <= req_as_of_str]
+                    if not df_sm_pit.empty:
+                        sector_map_loaded = {
+                            row["ticker"]: (str(row["sector_code"]), str(row["sector_name"]))
+                            for _, row in df_sm_pit.iterrows()
+                        }
+                else:
+                    sector_map_loaded = {
+                        row["ticker"]: (str(row["sector_code"]), str(row["sector_name"]))
+                        for _, row in df_sm.iterrows()
+                    }
     except Exception as exc:
         logger.warning("Failed loading sector mapping source (%s): %s", sector_mapping_path, exc)
         sector_map_loaded = None

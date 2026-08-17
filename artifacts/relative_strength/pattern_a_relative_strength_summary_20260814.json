@@ -1,7 +1,7 @@
 {
   "requested_as_of": "2026-08-14",
-  "verdict": "RELATIVE_STRENGTH_INFRA_READY",
-  "all_gates_passed": true,
+  "verdict": "HOLD_RELATIVE_STRENGTH_INFRA",
+  "all_gates_passed": false,
   "gates": {
     "gate_01_frozen_identity_parity": {
       "passed": true,
@@ -10,8 +10,13 @@
         "raw_candidate_count": 180,
         "investable_candidate_count": 103,
         "flow_ready_investable_count": 103,
-        "ticker_mismatch_count": 0,
-        "investability_mismatch_count": 0
+        "candidate_ticker_mismatches": 0,
+        "stage_mismatches": 0,
+        "score_mismatches": 0,
+        "candidate_state_mismatches": 0,
+        "investability_mismatches": 0,
+        "foreign_flow_status_mismatches": 0,
+        "foreign_flow_numeric_mismatches": 0
       }
     },
     "gate_02_market_benchmark_source_identity": {
@@ -26,7 +31,12 @@
           "1001",
           "2001"
         ],
-        "sha256_match": true
+        "sha256_match": true,
+        "meta_row_count_match": true,
+        "meta_date_min_match": true,
+        "meta_date_max_match": true,
+        "meta_index_codes_match": true,
+        "meta_requested_as_of_match": true
       }
     },
     "gate_03_pit_no_lookahead_contract": {
@@ -58,27 +68,49 @@
       "passed": true,
       "details": {
         "verified_investables": 103,
-        "arithmetic_mismatches": 0,
+        "market_rs_3m_mismatches": 0,
+        "market_rs_6m_mismatches": 0,
+        "market_rs_12m_mismatches": 0,
         "tolerance": 1e-06
       }
     },
     "gate_07_sector_mapping_contract": {
-      "passed": true,
+      "passed": false,
       "details": {
-        "sector_mapping_exists": true,
-        "ticker_count": 764,
-        "sector_count": 19,
-        "sha256_match": true,
-        "effective_date": "2026-08-14"
+        "sector_mapping": {
+          "csv_exists": true,
+          "meta_exists": true,
+          "mapping_total_tickers": 764,
+          "mapping_kospi_tickers": 764,
+          "mapping_kosdaq_tickers": 0,
+          "unique_sector_codes": 19,
+          "candidate_coverage": "91 / 180",
+          "investable_coverage": "66 / 103",
+          "sha256_match": true,
+          "effective_date": "2026-08-14",
+          "has_duplicates": false,
+          "has_future_effective_date": false
+        },
+        "sector_index": {
+          "parquet_exists": true,
+          "meta_exists": true,
+          "row_count": 0,
+          "code_count": 0,
+          "index_codes": [],
+          "date_max": "",
+          "sha256_match": true
+        }
       }
     },
     "gate_08_sector_rs_arithmetic_parity": {
-      "passed": true,
+      "passed": false,
       "details": {
         "candidate_sector_rs_ready": 0,
         "candidate_sector_rs_partial": 0,
         "candidate_sector_rs_data_unavailable": 180,
-        "sector_arithmetic_mismatches": 0,
+        "sector_rs_3m_mismatches": 0,
+        "sector_rs_6m_mismatches": 0,
+        "sector_rs_12m_mismatches": 0,
         "isolation_verified": true
       }
     },
@@ -87,14 +119,21 @@
       "details": {
         "total_required_rs_columns": 30,
         "missing_columns_count": 0,
-        "missing_columns": []
+        "missing_columns": [],
+        "missing_market_fail_closed_pass": true,
+        "stale_market_fail_closed_pass": true
       }
     },
     "gate_10_production_test_suite_pass": {
       "passed": true,
       "details": {
-        "runner": "pytest",
-        "status": "PENDING_OR_PASSED"
+        "exit_code": 0,
+        "passed": 449,
+        "failed": 0,
+        "blocking_failed": 0,
+        "skipped": 6,
+        "deselected": 1,
+        "timestamp": "2026-08-17T09:33:00+09:00"
       }
     }
   },
@@ -238,5 +277,5 @@
       "max": 80.6282
     }
   },
-  "generation_timestamp": "2026-08-16T23:13:58.343501+00:00"
+  "generation_timestamp": "2026-08-17T00:36:10.877387+00:00"
 }
