@@ -204,11 +204,26 @@ def test_research_module_has_no_phase12_dependency():
     assert not any("relative_strength" in ln or "phase12" in ln.lower() for ln in import_lines)
 
 
-@pytest.mark.skipif(not _HAS_REAL_CACHE, reason=_SKIP_REASON)
+_MATRIX_CSV = Path(__file__).resolve().parents[1] / "artifacts/pattern_a_fast/research/monthly_regime_feature_matrix_v01.csv"
+
+
+@pytest.mark.skipif(not _MATRIX_CSV.exists(), reason="research script를 먼저 실행해야 함")
 def test_feature_matrix_has_exactly_40_unique_labeled_samples():
-    """실제 frozen 13C worksheet 기준 Human Calibration 샘플이 정확히
-    40개, sample_id 중복 없음을 확인한다(w.md §20 item 2, 3).
-    나머지 20개(UNLABELED)는 load_labeled_samples()의 필터 조건 자체로
+    """커밋된 feature matrix output 자체를 직접 읽어 정확히 40행,
+    sample_id 중복 없음, human_label에 UNLABELED가 없음을 확인한다
+    (w.md §20 item 2, 3 — load_labeled_samples()가 아니라 실제 산출물을
+    검증해야 §27 Dataset Gate를 의미 있게 커버한다)."""
+    matrix = pd.read_csv(_MATRIX_CSV, dtype=str)
+    assert len(matrix) == 40
+    assert matrix["sample_id"].nunique() == 40
+    assert (matrix["human_label"] != "UNLABELED").all()
+    assert (matrix["weekly_stage_at_reference"] != "UNLABELED").all()
+
+
+@pytest.mark.skipif(not _HAS_REAL_CACHE, reason=_SKIP_REASON)
+def test_load_labeled_samples_filters_to_40_from_frozen_worksheet():
+    """load_labeled_samples()가 frozen worksheet 60행 중 정확히 40개만
+    선택하는지 확인한다. 나머지 20개(UNLABELED)는 필터 조건 자체로
     구조적으로 제외된다."""
     import sys
 

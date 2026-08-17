@@ -114,7 +114,12 @@ bars_at_reference >= 37`(13C-1 Monthly Review Data Sufficiency Gate)
 + human_label별 count/median/IQR + Research Group별 median/IQR + 주요
 pair comparison(§12 요구사항 3종 전부: median 차이 `median_diff_*`,
 pooled-IQR로 표준화한 effect size `standardized_effect_*`, 순위 기반
-분리력 `cliffs_delta_*`, n 포함)은
+분리력 `cliffs_delta_*`, n 포함)은. **주의**: `standardized_effect_*`의
+분모는 두 그룹을 합친 전체 표본의 IQR이다 — 두 그룹이 완벽히 분리될수록
+합친 분포는 bimodal이 되어 IQR 자체가 커지므로, 이 지표는 분리가 가장
+좋을 때 오히려 작게 나올 수 있다(분모 문제이지 분리력 모순이 아님).
+`cliffs_delta_*`가 이번 문서의 1차 랭킹 근거이고 `standardized_effect_*`
+는 보조 참고용인 이유다.
 `artifacts/pattern_a_fast/research/monthly_regime_feature_summary_v01.csv`
 에 전부 기록했다(37행 × 다수 컬럼 — 마크다운 표로 인라인하기엔
 비현실적이라 CSV로만 제공, 이 문서는 랭킹/비교/사례만 요약).
