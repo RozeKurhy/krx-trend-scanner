@@ -10,7 +10,7 @@
   "selection_strategy": {
     "cohort_a": {
       "name": "PATTERN_A_HISTORICAL_CONTEXT",
-      "description": "artifacts/scanner/pattern_a_universe_scan_20260814.csv 의 실제 candidate_state=='candidate'(TRANSITION/EARLY_TREND) 티커에서 결정론적 stride 표집 후, 2026-08-14부터 최대 104주 backward로 frozen Pattern A evaluator를 반복 호출해 실제 BASE였던 마지막 완료 주봉을 reference_date로 사용.",
+      "description": "artifacts/scanner/pattern_a_universe_scan_20260814.csv 의 실제 candidate_state=='candidate'(TRANSITION/EARLY_TREND) 티커를 ticker 순서로 순회하며, frozen Pattern A evaluator로 2026-08-14부터 backward 탐색해 현재 episode의 entry_boundary(TRANSITION/EARLY_TREND 최초 진입 완료 주봉)를 찾고, 그보다 최소 12주(=Cohort B lookahead 창과 동일, reviewability 필터일 뿐 Fast Trigger threshold 아님) 이전 최대 104주 이내에서 실제 BASE였던 완료 주봉을 reference_date로 사용. entry_boundary 시점 stage가 early_trend면 PATTERN_A_PRE_EARLY, 아니면 PATTERN_A_PRE_TRANSITION. 12주 버퍼를 만족하는 BASE가 없으면 skip하고 다음 후보로 top-up (find_base_reference_before_entry, src/trend_scanner/validation/pattern_a_fast_ground_truth.py).",
       "target": 15,
       "selected": 15
     },

@@ -12,11 +12,14 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from trend_scanner.data.cache import ParquetCache
 from trend_scanner.validation.pattern_a_fast_ground_truth import (
     DATA_UNAVAILABLE,
     build_chart_slices,
     classify_source_reason,
     compute_reference_snapshot,
+    find_base_reference_before_entry,
+    load_raw_daily,
     make_sample_id,
     resolve_completed_weekly_reference,
 )
@@ -139,3 +142,24 @@ def test_make_sample_id_is_deterministic_and_unique_per_date():
     c = make_sample_id("005930", pd.Timestamp("2020-01-10"))
     assert a == b == "005930_20200103"
     assert a != c
+
+
+_REAL_TICKER, _REAL_NAME = "003100", "선광"
+_HAS_REAL_CACHE = load_raw_daily(_REAL_TICKER, ParquetCache()) is not None
+_SKIP_REASON = "실제 KRX 캐시(data/raw/stocks)가 없어 skip합니다."
+
+
+@pytest.mark.skipif(not _HAS_REAL_CACHE, reason=_SKIP_REASON)
+def test_find_base_reference_before_entry_enforces_min_lead_weeks():
+    daily = load_raw_daily(_REAL_TICKER, ParquetCache())
+    ref, entry_boundary, entry_stage = find_base_reference_before_entry(
+        _REAL_TICKER, _REAL_NAME, daily, "2026-08-14", min_lead_weeks=12, max_lookback_weeks=104
+    )
+    assert ref is not None
+    assert entry_boundary is not None
+    assert entry_stage in ("transition", "early_trend")
+    # 회귀 방지: "entry 바로 직전 BASE"로 되돌아가면 이 여유(gap)가 거의 0이
+    # 된다 — 최소 min_lead_weeks만큼 떨어져 있어야 한다.
+    assert (entry_boundary - ref).days // 7 >= 12
+    snap = compute_reference_snapshot(_REAL_TICKER, _REAL_NAME, daily, ref)
+    assert snap.pattern_a_stage == "base"

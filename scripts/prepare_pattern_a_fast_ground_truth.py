@@ -35,6 +35,7 @@ from trend_scanner.validation.pattern_a_fast_ground_truth import (
     UNLABELED,
     classify_source_reason,
     compute_reference_snapshot,
+    find_base_reference_before_entry,
     first_stage_dates_after,
     load_raw_daily,
     make_sample_id,
@@ -131,16 +132,17 @@ def build_row(
     }
 
 
+COHORT_A_MIN_LEAD_WEEKS = 12  # Cohort B lookahead horizon과 동일 — 관찰 가능한 최소 리뷰 창 확보용 필터, Fast Trigger threshold 아님
+
+
 def select_cohort_a(scanner_df: pd.DataFrame) -> list[dict]:
     logger.info("== Cohort A: Pattern A Historical Context ==")
     candidates = scanner_df[scanner_df["candidate_state"] == "candidate"].copy()
     candidates = candidates.sort_values("ticker").reset_index(drop=True)
-    # 결정론적 층화 표집: 절반은 앞쪽, 절반은 뒤쪽 인덱스에서 골고루 (KOSPI/KOSDAQ 혼합)
-    stride = max(1, len(candidates) // (COHORT_A_TARGET * 3))
-    picks = candidates.iloc[::stride]
 
     rows: list[dict] = []
-    for _, cand in picks.iterrows():
+    skipped_no_base = 0
+    for _, cand in candidates.iterrows():
         if len(rows) >= COHORT_A_TARGET:
             break
         ticker, name, market = cand["ticker"], cand["name"], cand["market"]
@@ -148,31 +150,33 @@ def select_cohort_a(scanner_df: pd.DataFrame) -> list[dict]:
         if daily is None:
             continue
 
-        # 2026-08-14부터 최대 104주 backward로 "현재 episode가 BASE였던 마지막
-        # 완료 주봉"을 찾는다. 실제 캐시 데이터에 대해 frozen evaluator를
-        # 반복 호출하는 것이며, 값을 추정/보정하지 않는다.
-        weekly_dates = sorted(
-            (d for d in pd.date_range(end=DATA_CUTOFF, periods=104, freq="W-FRI") if d <= daily.index.max()),
-            reverse=True,
+        # entry_boundary(현재 episode가 TRANSITION/EARLY_TREND로 진입한 첫
+        # 완료 주봉)를 찾고, 그보다 최소 COHORT_A_MIN_LEAD_WEEKS 이전에 실제
+        # BASE였던 완료 주봉을 reference_date로 쓴다 — "entry 바로 직전 BASE"
+        # 를 쓰면 관측 가능한 lead time이 구조적으로 12주 미만으로 눌리고
+        # Outcome 리뷰 창도 너무 짧아지므로(둘 다 같은 원인), 12주 버퍼를
+        # 강제한다.
+        found, entry_boundary, entry_stage = find_base_reference_before_entry(
+            ticker, name, daily, DATA_CUTOFF, min_lead_weeks=COHORT_A_MIN_LEAD_WEEKS, max_lookback_weeks=104
         )
-        found = None
-        for d in weekly_dates:
-            snap = compute_reference_snapshot(ticker, name, daily, d)
-            if snap.data_status != "OK":
-                continue
-            if snap.pattern_a_stage == "base":
-                found = snap.reference_date
-                break
         if found is None:
-            logger.info("  %s: no BASE point found within 104w backward, skip", ticker)
+            skipped_no_base += 1
+            logger.info(
+                "  %s: no BASE >= %dw before entry_boundary=%s, skip",
+                ticker, COHORT_A_MIN_LEAD_WEEKS, entry_boundary.date() if entry_boundary is not None else None,
+            )
             continue
 
-        row = build_row(
-            ticker, name, market, found, "PATTERN_A_HISTORICAL_CONTEXT", "PATTERN_A_PRE_TRANSITION", daily
-        )
+        source_reason = "PATTERN_A_PRE_EARLY" if entry_stage == "early_trend" else "PATTERN_A_PRE_TRANSITION"
+        row = build_row(ticker, name, market, found, "PATTERN_A_HISTORICAL_CONTEXT", source_reason, daily)
         if row:
+            lead_weeks = (entry_boundary - found).days // 7
             rows.append(row)
-            logger.info("  + %s %s @ %s (BASE before real transition)", ticker, name, found.date())
+            logger.info(
+                "  + %s %s @ %s (BASE, entry_boundary=%s, lead=%dw, %s)",
+                ticker, name, found.date(), entry_boundary.date(), lead_weeks, source_reason,
+            )
+    logger.info("  Cohort A: picked %d / target %d (skipped_no_base=%d)", len(rows), COHORT_A_TARGET, skipped_no_base)
     return rows
 
 
@@ -303,10 +307,16 @@ def main() -> None:
                 "name": "PATTERN_A_HISTORICAL_CONTEXT",
                 "description": (
                     "artifacts/scanner/pattern_a_universe_scan_20260814.csv 의 실제 "
-                    "candidate_state=='candidate'(TRANSITION/EARLY_TREND) 티커에서 "
-                    "결정론적 stride 표집 후, 2026-08-14부터 최대 104주 backward로 "
-                    "frozen Pattern A evaluator를 반복 호출해 실제 BASE였던 마지막 "
-                    "완료 주봉을 reference_date로 사용."
+                    "candidate_state=='candidate'(TRANSITION/EARLY_TREND) 티커를 ticker "
+                    "순서로 순회하며, frozen Pattern A evaluator로 2026-08-14부터 backward "
+                    "탐색해 현재 episode의 entry_boundary(TRANSITION/EARLY_TREND 최초 진입 "
+                    "완료 주봉)를 찾고, 그보다 최소 12주(=Cohort B lookahead 창과 동일, "
+                    "reviewability 필터일 뿐 Fast Trigger threshold 아님) 이전 최대 104주 "
+                    "이내에서 실제 BASE였던 완료 주봉을 reference_date로 사용. entry_boundary "
+                    "시점 stage가 early_trend면 PATTERN_A_PRE_EARLY, 아니면 "
+                    "PATTERN_A_PRE_TRANSITION. 12주 버퍼를 만족하는 BASE가 없으면 skip하고 "
+                    "다음 후보로 top-up (find_base_reference_before_entry, "
+                    "src/trend_scanner/validation/pattern_a_fast_ground_truth.py)."
                 ),
                 "target": COHORT_A_TARGET,
                 "selected": len(rows_a),

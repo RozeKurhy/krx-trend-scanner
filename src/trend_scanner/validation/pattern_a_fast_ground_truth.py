@@ -134,6 +134,62 @@ def first_stage_dates_after(
     return transition_first, early_trend_first
 
 
+def find_base_reference_before_entry(
+    ticker: str,
+    name: str,
+    daily: pd.DataFrame,
+    cutoff: str | pd.Timestamp,
+    min_lead_weeks: int = 12,
+    max_lookback_weeks: int = 104,
+) -> tuple[pd.Timestamp | None, pd.Timestamp | None, str | None]:
+    """Cohort A 선정용: cutoff 시점 현재 episode(TRANSITION/EARLY_TREND)의
+    진입 경계(entry_boundary)를 찾고, 그보다 최소 min_lead_weeks 이전에
+    실제로 BASE였던 완료 주봉을 reference_date로 반환한다.
+
+    단순히 "cutoff에서 가장 가까운 BASE"를 쓰면 entry_boundary 바로 직전
+    주가 되어 관측 가능한 lead time이 구조적으로 min_lead_weeks 미만으로
+    눌린다(13A §26이 말하는 "Fast가 Pattern A보다 몇 주 먼저 보이는가"를
+    이 cohort가 보여줄 수 없게 됨) — 그래서 entry_boundary - min_lead_weeks
+    지점부터 backward로 BASE를 찾는다. 못 찾으면 (None, None, None).
+
+    반환: (reference_date | None, entry_boundary | None, entry_stage | None)
+    entry_stage는 entry_boundary 시점의 Pattern A stage("transition" 또는
+    "early_trend") — 호출부가 PATTERN_A_PRE_TRANSITION vs
+    PATTERN_A_PRE_EARLY source_reason을 고르는 데 쓴다.
+    """
+    cutoff = pd.Timestamp(cutoff)
+    all_weekly = [d for d in to_weekly(daily).index if d <= cutoff and d <= daily.index.max()]
+    all_weekly.sort(reverse=True)  # cutoff에 가까운 순
+
+    # 1) entry_boundary: cutoff부터 backward로 TRANSITION/EARLY_TREND가
+    #    유지되는 마지막(=가장 과거) 완료 주봉.
+    entry_boundary: pd.Timestamp | None = None
+    entry_stage: str | None = None
+    for d in all_weekly:
+        snap = compute_reference_snapshot(ticker, name, daily, d)
+        if snap.data_status != "OK" or snap.pattern_a_stage not in ("transition", "early_trend"):
+            break
+        entry_boundary = d
+        entry_stage = snap.pattern_a_stage
+
+    if entry_boundary is None:
+        return None, None, None
+
+    # 2) entry_boundary - min_lead_weeks 부터 backward로 최대
+    #    max_lookback_weeks까지 BASE를 찾는다.
+    search_start = entry_boundary - pd.Timedelta(weeks=min_lead_weeks)
+    search_floor = entry_boundary - pd.Timedelta(weeks=max_lookback_weeks)
+    search_candidates = sorted(
+        (d for d in all_weekly if search_floor <= d <= search_start), reverse=True
+    )
+    for d in search_candidates:
+        snap = compute_reference_snapshot(ticker, name, daily, d)
+        if snap.data_status == "OK" and snap.pattern_a_stage == "base":
+            return snap.reference_date, entry_boundary, entry_stage
+
+    return None, entry_boundary, entry_stage
+
+
 def weekly_return_screen(
     daily: pd.DataFrame,
     reference_date: pd.Timestamp,

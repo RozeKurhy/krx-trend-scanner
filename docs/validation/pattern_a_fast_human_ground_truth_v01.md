@@ -5,7 +5,9 @@
 ================================================================================
 Phase: 13C-1 — Ground Truth Dataset Preparation
 Status: **READY_FOR_HUMAN_REVIEW** (13C-1 완료, Human Annotation은 13C-2로 대기)
-Base: `e8cf7e6ee9585e8cc512e6cbe488eaa000497518`
+Base: `e8cf7e6ee9585e8cc512e6cbe488eaa000497518` (Cohort A 선정 로직은 advisor
+review에서 lead time이 구조적으로 ~1주로 눌리는 결함이 발견되어 같은
+Phase 13C-1 작업 중 수정 — §4 참고)
 Data cutoff (as_of): 2026-08-14
 Network requests: 0 (전부 로컬 `data/raw/stocks/*.parquet` 캐시)
 
@@ -35,13 +37,13 @@ Phase 13A에서 Pattern A Fast의 목적을, Phase 13B에서 Weekly Lifecycle St
 3. Dataset Scope
 --------------------------------------------------------------------------------
 * 총 샘플: **60건** (목표 60 달성)
-* 고유 티커: **57개**
-* 시장: KOSPI 32 / KOSDAQ 28
+* 고유 티커: **56개**
+* 시장: KOSPI 33 / KOSDAQ 27
 * reference_date 연도 분포: 2018(1) / 2020(1) / 2022(9) / 2023(10) /
-  2024(10) / 2025(24) / 2026(5)
+  2024(10) / 2025(25) / 2026(4)
 * 티커당 최대 episode: 2 (§48 준수, 실제 최대 2)
 
-**정직한 한계**: 2025년 비중(24/60 ≈ 40%)이 상대적으로 높다. Cohort A(현재
+**정직한 한계**: 2025년 비중(25/60 ≈ 42%)이 상대적으로 높다. Cohort A(현재
 CANDIDATE 티커의 과거 BASE 시점 역추적)가 구조상 최근 2년에 몰리기 때문이다
 (2026-08-14 시점 CANDIDATE는 대부분 최근에 전환했다). 2018/2020은 1건씩으로
 얇다. 다만 Cohort B가 2018~2025 quarter-end grid로 별도 확보되어 있어
@@ -53,14 +55,29 @@ CANDIDATE 티커의 과거 BASE 시점 역추적)가 구조상 최근 2년에 �
 --------------------------------------------------------------------------------
 4. Selection Strategy
 --------------------------------------------------------------------------------
-**Cohort A — Pattern A Historical Context** (15건, source_reason
-`PATTERN_A_PRE_TRANSITION`):
+**Cohort A — Pattern A Historical Context** (15건: `PATTERN_A_PRE_TRANSITION`
+14 + `PATTERN_A_PRE_EARLY` 1):
 `artifacts/scanner/pattern_a_universe_scan_20260814.csv`의 실제
-`candidate_state == 'candidate'`(현재 TRANSITION/EARLY_TREND) 티커 180개
-에서 결정론적 stride 표집 후, 2026-08-14부터 최대 104주 backward로 frozen
-Pattern A evaluator(`evaluate_pattern_a` + `build_historical_snapshot`)를
-반복 호출해 **실제로 BASE였던 마지막 완료 주봉**을 reference_date로 사용했다.
-값을 추정하지 않고 캐시 데이터에 evaluator를 그대로 반복 적용한 결과다.
+`candidate_state == 'candidate'`(현재 TRANSITION/EARLY_TREND) 티커 180개를
+ticker 순서로 순회하며, frozen Pattern A evaluator(`evaluate_pattern_a` +
+`build_historical_snapshot`)로 2026-08-14부터 backward 탐색해 **현재
+episode의 entry_boundary**(TRANSITION/EARLY_TREND로 최초 진입한 완료
+주봉)를 먼저 찾고, 그보다 **최소 12주 이전, 최대 104주 이내**에서 실제
+BASE였던 완료 주봉을 `reference_date`로 사용했다
+(`find_base_reference_before_entry`). entry_boundary 시점 stage가
+`early_trend`면 `PATTERN_A_PRE_EARLY`, 아니면 `PATTERN_A_PRE_TRANSITION`.
+12주 버퍼를 만족하는 BASE가 없는 티커는 skip하고 다음 후보로 top-up했다
+(180개 중 16번째 시도 `003300` 1건만 skip, 15개 목표 그대로 달성).
+
+**왜 12주 버퍼가 필요했는가(회귀 기록)**: 최초 구현은 "cutoff에서 가장
+가까운 BASE"를 그대로 `reference_date`로 썼는데, 이는 구조상 entry_boundary
+바로 한 주 전이 되어(다음 주 바로 TRANSITION 시작) 관측 가능한 lead time이
+거의 항상 1주로 눌렸다 — Cohort A가 원래 보여주려는 "Fast가 Pattern A보다
+몇 주 먼저 보이는가"(13A §26 개념 예시)를 이 cohort 자체가 보여줄 수 없는
+상태였다. 같은 원인으로 `013700`/`031510` 같은 최근 티커는 outcome 리뷰
+창(52주 목표)이 1~2주로 잘려 사람이 Outcome 차트로 `human_label`을 매길
+수조차 없었다. 12주 버퍼 도입 후 outcome 리뷰 창 최솟값은 16주로 늘었다.
+`find_base_reference_before_entry`에 이 배경과 함께 기록해 두었다.
 
 **Cohort B — Independent Negative / Ambiguous** (45건):
 `cache_present` 티커를 stride 8로 표집(약 316개) 후 quarter-end 날짜 그리드
@@ -204,6 +221,20 @@ historical 시점에 Pattern A Score/Stage 계산에 필요한 최소 이력(예
 §121 Phase 5 참고), 결측을 임의로 채우지 않고 그대로 비워 두었다. Fast
 Ground Truth 샘플 자체(source_reason, PIT 차트)는 이 결측과 무관하게
 유효하다.
+
+**`pattern_a_transition_first_after_reference`/`_early_trend_first_...`
+읽는 법 — "최초 접촉"이지 "안정적으로 정착한 시점"이 아니다.** 이 두
+컬럼은 `first_stage_dates_after`가 reference_date 이후 처음으로 Pattern A
+가 해당 Stage에 "닿은" 완료 주봉을 반환한 값이다. Pattern A Stage도
+비단조(non-monotonic)이므로, 짧게 TRANSITION을 스쳤다가 다시 BASE로
+돌아간 뒤 한참 후에야 진짜로 정착하는 경우가 실제로 있다 — 예:
+`001210`(금호전기)은 `reference_date=2025-03-14`, entry_boundary(Cohort A
+선정에 쓴, 2026-08-14까지 유지된 "현재" episode의 시작점)는
+`2026-07-24`(71주 뒤)인데, `pattern_a_transition_first_after_reference`
+는 `2025-05-02`(7주 뒤)로 훨씬 이르다 — 그 사이에 짧은 TRANSITION 되돌림이
+있었다는 뜻이다. 따라서 이 컬럼만으로 "Pattern A 대비 Fast 리드타임"을
+계산하면 실제보다 과소평가될 수 있다 — 13C-2/13H에서 실제 PIT/Outcome
+차트를 보고 판단해야 하며, 이 컬럼은 참고용 benchmark 조회 결과일 뿐이다.
 
 --------------------------------------------------------------------------------
 12. Trigger Event Handling
