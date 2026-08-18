@@ -1,0 +1,129 @@
+{
+  "version": "PATTERN_A_FAST_INVESTABLE_OOS_B_PIT_AUDIT_V01",
+  "phase": "13J-1",
+  "base_sha": "0f460fa0132956296b3e6b003053a05acf019538",
+  "status": "HISTORICAL_INVESTABILITY_PIT_BLOCKED",
+  "historical_investability_pit_status": "BLOCKED",
+  "calendar_quarter_reference_candidates": [
+    "2020-03-27",
+    "2020-06-26",
+    "2020-09-25",
+    "2020-12-25",
+    "2021-03-26",
+    "2021-06-25",
+    "2021-09-24",
+    "2021-12-31",
+    "2022-03-25",
+    "2022-06-24",
+    "2022-09-30",
+    "2022-12-30",
+    "2023-03-31",
+    "2023-06-30",
+    "2023-09-22",
+    "2023-12-29",
+    "2024-03-29",
+    "2024-06-28",
+    "2024-09-27",
+    "2024-12-27",
+    "2025-03-28",
+    "2025-06-27"
+  ],
+  "calendar_quarter_reference_candidate_count": 22,
+  "exact_completed_week_grid_status": "NOT_DERIVABLE_FOR_FULL_PERIOD_FROM_LOCAL_CACHE",
+  "required_inputs": {
+    "market_cap_at_reference": "MISSING_FOR_ALL_REFERENCE_GRID_DATES",
+    "shares_outstanding_at_reference": "MISSING_FOR_ALL_REFERENCE_GRID_DATES",
+    "avg_trading_value_20d_at_reference": "AVAILABLE_FROM_LOCAL_RAW_OHLCV_WHERE_DAILY_HISTORY_EXISTS",
+    "ticker_market_identity_at_reference": "NOT_FROZEN_AS_HISTORICAL_REFERENCE_DATASET"
+  },
+  "local_market_cap_sources": [
+    {
+      "file_path": "artifacts/investability/source/krx_market_cap_20250131.csv",
+      "sha256": "32e88ac6ec85da881b48ebea70aae4098e8bb3130fc3223d5594c7eaa682eb83",
+      "effective_date": "2025-01-31",
+      "columns": [
+        "ticker",
+        "close",
+        "market_cap",
+        "volume",
+        "trading_value",
+        "shares_outstanding",
+        "effective_date"
+      ]
+    },
+    {
+      "file_path": "artifacts/investability/source/krx_market_cap_20260814.csv",
+      "sha256": "c45a496d0a5bb38ea4d4350d3a0a1db8cc141887c22df1ad4ca702a75722b55d",
+      "effective_date": "2026-08-14",
+      "columns": [
+        "ticker",
+        "close",
+        "market_cap",
+        "volume",
+        "trading_value",
+        "shares_outstanding",
+        "effective_date"
+      ]
+    }
+  ],
+  "available_market_cap_effective_dates": [
+    "2025-01-31",
+    "2026-08-14"
+  ],
+  "missing_market_cap_calendar_candidates": [
+    "2020-03-27",
+    "2020-06-26",
+    "2020-09-25",
+    "2020-12-25",
+    "2021-03-26",
+    "2021-06-25",
+    "2021-09-24",
+    "2021-12-31",
+    "2022-03-25",
+    "2022-06-24",
+    "2022-09-30",
+    "2022-12-30",
+    "2023-03-31",
+    "2023-06-30",
+    "2023-09-22",
+    "2023-12-29",
+    "2024-03-29",
+    "2024-06-28",
+    "2024-09-27",
+    "2024-12-27",
+    "2025-03-28",
+    "2025-06-27"
+  ],
+  "raw_ohlcv_cache": {
+    "sample_file": "data/raw/stocks/000020.parquet",
+    "columns": [
+      "open",
+      "high",
+      "low",
+      "close",
+      "volume",
+      "trading_value"
+    ],
+    "min_date": "2021-08-17",
+    "max_date": "2026-08-14",
+    "contains_market_cap": false,
+    "contains_shares_outstanding": false
+  },
+  "prohibited_substitutions_not_used": [
+    "current_market_cap",
+    "current_listing_status",
+    "future_shares_outstanding",
+    "close_times_future_shares_outstanding",
+    "proxy_market_cap"
+  ],
+  "additional_data_required": [
+    "KRX historical market-cap snapshot for every common reference-grid date",
+    "reference-date shares outstanding or a canonical historical market-cap field",
+    "reference-date ticker and market identity history"
+  ],
+  "sample_generated_count": 0,
+  "human_stage_review_started": false,
+  "human_outcome_review_started": false,
+  "oos_evaluation_executed": false,
+  "network_market_request_count": 0
+}
