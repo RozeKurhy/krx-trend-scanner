@@ -67,21 +67,21 @@ def test_frozen_krx_inputs_phase10_contract_and_protected_inputs_are_unchanged()
     assert subprocess.run(["git", "diff", "--quiet", BASE, "--", *protected], cwd=ROOT, check=False).returncode == 0
 
 
-def test_sample_human_review_and_protocol_freezes_are_byte_exact_and_pre_label():
+def test_sample_and_protocol_freezes_are_byte_exact_while_the_human_template_seal_is_preserved():
     seal, manifest, review, _ = _seal(), *_frames()
     assert _sha256(MANIFEST) == FROZEN_SELECTION_SHA256 == seal["selection_manifest_sha256"]
-    assert _sha256(REVIEW) == FROZEN_HUMAN_REVIEW_SHA256 == seal["human_review_sha256"]
+    # The preregistration seal preserves the original blank PASS A template. Phase
+    # 13J-2 writes authorized Human fields and seals that new CSV separately.
+    assert seal["human_review_sha256"] == FROZEN_HUMAN_REVIEW_SHA256
     assert _sha256(PROTOCOL) == FROZEN_EVALUATION_PROTOCOL_SHA256 == seal["evaluation_protocol_sha256"]
     assert len(manifest) == manifest.ticker.nunique() == 36
     assert manifest.sample_id.tolist() == [f"INV_OOS_B_{number:03d}" for number in range(1, 37)]
     assert manifest.selection_hash.nunique() == 36
     assert review.review_order.astype(int).tolist() == list(range(1, 37))
     assert review.sample_id.nunique() == 36
-    assert review.human_stage.eq("UNLABELED").all() and review.human_stage_confidence.eq("UNLABELED").all()
-    assert review.human_trigger_event_observed.eq("UNLABELED").all() and review.human_trigger_event_date.eq("").all()
-    assert review.stage_review_status.eq("PENDING").all()
     assert review.human_outcome_label.eq("UNLABELED").all() and review.human_outcome_confidence.eq("UNLABELED").all()
     assert review.outcome_review_status.eq("PENDING").all()
+    assert review.human_trigger_event_date.eq("").all()
     assert seal["human_review_started"] is False
     assert seal["human_stage_labels_present"] is False and seal["human_outcome_labels_present"] is False
     assert seal["oos_evaluation_executed"] is False and seal["retuning_performed"] is False
