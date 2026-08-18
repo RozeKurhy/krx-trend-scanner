@@ -134,6 +134,172 @@ def test_no_breakout_event_yields_nan_not_zero():
 
 
 # --------------------------------------------------------------------------
+# Phase 13E Correction §6: Recent 26w Breakout Horizon regression tests
+# --------------------------------------------------------------------------
+
+
+def test_horizon_case_a_breakout_deep_inside_horizon_detected():
+    """§6 item A: search horizon(26주) 안쪽 깊숙한 지점(offset=20)의
+    breakout도 정상 detection된다."""
+    closes = [85.0] * 26 + [101.0] + [90.0] * 20
+    highs = [90.0] * 26
+    highs[0] = 100.0
+    highs += [101.0] + [90.0] * 20
+    weekly = _weekly_frame(closes, highs=highs)
+    feats = compute_weekly_trigger_features(weekly)
+    assert feats["weeks_since_26w_close_breakout"] == 20.0
+
+
+def test_horizon_case_b_only_stale_breakout_yields_nan():
+    """§6 item B: 존재하는 breakout이 search horizon(26주)보다 오래된
+    것뿐이면 weeks_since_26w_close_breakout과 그에 의존하는 모든 feature가
+    NaN이어야 한다 — Phase 13E Correction의 핵심 버그(원래는 152주 전
+    breakout까지 끌어왔음)를 재현/검증."""
+    closes = [85.0] * 26 + [101.0] + [90.0] * 30  # breakout at offset=30 (>25)
+    highs = [90.0] * 26
+    highs[0] = 100.0
+    highs += [101.0] + [90.0] * 30
+    weekly = _weekly_frame(closes, highs=highs)
+    feats = compute_weekly_trigger_features(weekly)
+    assert np.isnan(feats["weeks_since_26w_close_breakout"])
+    assert np.isnan(feats["post_breakout_min_close_vs_level_pct_26w"])
+    assert np.isnan(feats["post_breakout_close_hold_ratio_26w"])
+    assert np.isnan(feats["close_back_below_breakout_level"])
+    assert np.isnan(feats["higher_low_after_breakout_count"])
+
+
+def test_horizon_case_c_offset_25_allowed_offset_26_not_observed():
+    """§6 item C: boundary test. offset=25(search horizon 마지막)는
+    detection되고, offset=26은 NOT_OBSERVED(NaN)여야 한다."""
+    import trend_scanner.research.pattern_a_fast_weekly_features as mod
+
+    closes_25 = pd.Series([85.0] * 26 + [101.0] + [90.0] * 25)
+    highs_25 = pd.Series([90.0] * 26 + [101.0] + [90.0] * 25)
+    highs_25.iloc[0] = 100.0
+    event_25 = mod._find_breakout_event(closes_25, highs_25, 26, 26)
+    assert event_25 is not None
+    assert event_25[0] == 26  # positional index of the breakout week
+    assert (len(closes_25) - 1) - event_25[0] == 25  # offset == 25
+
+    closes_26 = pd.Series([85.0] * 26 + [101.0] + [90.0] * 26)
+    highs_26 = pd.Series([90.0] * 26 + [101.0] + [90.0] * 26)
+    highs_26.iloc[0] = 100.0
+    event_26 = mod._find_breakout_event(closes_26, highs_26, 26, 26)
+    assert event_26 is None
+
+
+def test_horizon_case_d_stale_event_not_selected_when_absent_recently():
+    """§6 item D: stale breakout이 실제로 존재해도(index0의 high=100,
+    close[26]=101이 진짜 breakout이지만 offset=30으로 horizon 밖) 최근
+    26주 안에는 breakout이 없으므로 그 stale event를 선택하지 않고
+    None을 반환해야 한다(_find_breakout_event를 직접 호출해 저수준
+    검증)."""
+    import trend_scanner.research.pattern_a_fast_weekly_features as mod
+
+    closes = pd.Series([85.0] * 26 + [101.0] + [90.0] * 30)
+    highs = pd.Series([90.0] * 26 + [101.0] + [90.0] * 30)
+    highs.iloc[0] = 100.0
+    event = mod._find_breakout_event(closes, highs, 26, 26)
+    assert event is None
+
+
+def test_horizon_case_e_most_recent_of_multiple_events_selected():
+    """§6 item E: 최근 26주 안에 breakout event가 여러 개 있으면 가장
+    최근 event를 사용해야 한다(오래된 첫 breakout의 level이 아니라)."""
+    closes = (
+        [85.0] * 26  # index0-25: 배경
+        + [105.0]  # index26: breakout1(level=100), offset=8 from reference(34)
+        + [90.0] * 2  # index27-28
+        + [110.0]  # index29: breakout2(level=105, prior_high@29 includes index26=105), offset=5
+        + [90.0] * 4  # index30-33
+        + [95.0]  # index34: reference
+    )
+    highs = (
+        [90.0] * 26
+        + [105.0]
+        + [90.0] * 2
+        + [110.0]
+        + [90.0] * 4
+        + [95.0]
+    )
+    highs[0] = 100.0
+    weekly = _weekly_frame(closes, highs=highs)
+    feats = compute_weekly_trigger_features(weekly)
+    assert feats["weeks_since_26w_close_breakout"] == 5.0  # breakout2, not breakout1(offset=8)
+    assert feats["post_breakout_min_close_vs_level_pct_26w"] == pytest.approx(90.0 / 105.0 - 1.0)
+
+
+# --------------------------------------------------------------------------
+# Phase 13E Correction §6 items F/G: Effective Sample N regression tests
+# --------------------------------------------------------------------------
+
+
+def _synthetic_matrix_for_summary() -> pd.DataFrame:
+    """build_summary()의 effective-n 로직만 검증하기 위한 최소 synthetic
+    matrix(실제 KRX 캐시 불필요) — 40행이 아니라 9행이지만 human_label/
+    weekly_stage_at_reference 컬럼과 feature 결측 패턴만 있으면 충분."""
+    return pd.DataFrame(
+        {
+            "human_label": [
+                "GOOD_TRIGGER", "GOOD_TRIGGER", "GOOD_TRIGGER",
+                "NO_SETUP", "NO_SETUP", "NO_SETUP",
+                "TOO_EARLY", "TOO_EARLY", "TOO_EARLY",
+            ],
+            "weekly_stage_at_reference": [
+                "SETUP", "SETUP", "TRIGGER",
+                "WATCH", "WATCH", "WATCH",
+                "WATCH", "WATCH", "SETUP",
+            ],
+            "feature_x": [1.0, np.nan, 3.0, 4.0, 5.0, np.nan, 7.0, 8.0, 9.0],
+        }
+    )
+
+
+def test_effective_n_sum_matches_feature_count():
+    """§6 item F: 각 analysis feature에 대해 sum(human_label별 effective
+    n) == feature count(non-NaN 개수)여야 한다."""
+    import sys
+
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+    import research_pattern_a_fast_weekly_trigger as script
+
+    matrix = _synthetic_matrix_for_summary()
+    original_analysis_features = script.ANALYSIS_FEATURES
+    script.ANALYSIS_FEATURES = ["feature_x"]
+    try:
+        summary = script.build_summary(matrix)
+    finally:
+        script.ANALYSIS_FEATURES = original_analysis_features
+
+    row = summary.iloc[0]
+    label_n_sum = sum(row[f"{label}_n"] for label in ("GOOD_TRIGGER", "NO_SETUP", "TOO_EARLY"))
+    assert label_n_sum == row["count"] == 7  # 9 rows - 2 NaN
+
+
+def test_setup_good_watch_early_none_n_matches_non_missing_count():
+    """§6 item G: n_SETUP_GOOD / n_WATCH_EARLY_NONE이 실제 non-missing
+    개수와 일치해야 한다(원래는 NaN 포함 raw count였음)."""
+    import sys
+
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+    import research_pattern_a_fast_weekly_trigger as script
+
+    matrix = _synthetic_matrix_for_summary()
+    original_analysis_features = script.ANALYSIS_FEATURES
+    script.ANALYSIS_FEATURES = ["feature_x"]
+    try:
+        summary = script.build_summary(matrix)
+    finally:
+        script.ANALYSIS_FEATURES = original_analysis_features
+
+    row = summary.iloc[0]
+    # SETUP & GOOD_TRIGGER rows: index 0(1.0), 1(NaN) -> non-missing=1
+    assert row["n_SETUP_GOOD"] == 1
+    # WATCH & (TOO_EARLY|NO_SETUP) rows: index 3(4.0),4(5.0),5(NaN),6(7.0),7(8.0) -> non-missing=4
+    assert row["n_WATCH_EARLY_NONE"] == 4
+
+
+# --------------------------------------------------------------------------
 # §23 최소 확인 20개
 # --------------------------------------------------------------------------
 
@@ -244,12 +410,13 @@ def test_current_week_excluded_from_prior_high_family():
 
 def test_breakout_features_use_only_past_data():
     """item 8: breakout feature가 과거 data만 사용함 — CASE A/B/C/D로
-    이미 커버되지만, prior_high 계산 함수 자체가 close/high 두 시리즈만
-    받고 미래 인자를 받지 않음을 시그니처로도 재확인."""
+    이미 커버되지만, prior_high 계산 함수 자체가 close/high/k/search_horizon
+    네 인자만 받고 미래 인자를 받지 않음을 시그니처로도 재확인(Phase 13E
+    Correction §1로 search_horizon 파라미터가 추가됨)."""
     import trend_scanner.research.pattern_a_fast_weekly_features as mod
 
     params = inspect.signature(mod._find_breakout_event).parameters
-    assert list(params) == ["close", "high", "k"]
+    assert list(params) == ["close", "high", "k", "search_horizon"]
 
 
 def test_breakout_support_feature_uses_only_post_event_to_reference_window():
@@ -310,6 +477,25 @@ def test_matrix_has_exactly_40_unique_labeled_samples():
     assert matrix["sample_id"].nunique() == 40
     assert (matrix["human_label"] != "UNLABELED").all()
     assert (matrix["weekly_stage_at_reference"] != "UNLABELED").all()
+
+
+_SUMMARY_CSV = Path(__file__).resolve().parents[1] / "artifacts/pattern_a_fast/research/weekly_trigger_feature_summary_v01.csv"
+
+
+@pytest.mark.skipif(not _SUMMARY_CSV.exists(), reason="research script를 먼저 실행해야 함")
+def test_summary_csv_effective_n_sum_matches_count_for_every_feature():
+    """Phase 13E Correction §6 item F를 커밋된 산출물 자체로 재검증한다
+    (synthetic matrix 테스트만으로는 실제 build_summary 호출 결과를
+    보증하지 못한다는 advisor 지적 반영) — 48개 feature 전부에 대해
+    sum(human_label별 effective n) == count(전체 non-NaN 개수)."""
+    summary = pd.read_csv(_SUMMARY_CSV)
+    label_cols = [
+        c for c in summary.columns
+        if c.endswith("_n") and not c.startswith(("STAGE_", "GROUP_")) and c not in ("n_SETUP_GOOD", "n_WATCH_EARLY_NONE")
+    ]
+    assert len(label_cols) == 7  # GOOD_TRIGGER/BORDERLINE_TRIGGER/FALSE_TRIGGER/TOO_EARLY/TOO_LATE/TOO_EXTENDED/NO_SETUP
+    label_n_sum = summary[label_cols].sum(axis=1)
+    assert (label_n_sum == summary["count"]).all()
 
 
 def test_feature_computation_is_deterministic(daily):

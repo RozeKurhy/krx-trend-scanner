@@ -206,40 +206,45 @@ FEATURE_SPECS: tuple[FeatureSpec, ...] = (
     # --- 7.5 Breakout Age (PIT-critical backward scan, 26주 대표 window) ---
     FeatureSpec(
         "weeks_since_26w_close_breakout", "7.5_breakout_age",
-        "reference 기준 backward scan: 각 과거 week i에서 그 시점 직전 26주"
-        " high(= max(high[i-26:i]), i 미포함)를 다시 계산하고 close[i] >"
-        " prior_high[i]인 가장 최근 event까지의 주 수. offset=0이면 reference"
-        " 주 자체가 breakout.",
-        27, "weekly", True, "직전 26주 내 event 없음 -> NaN(NOT_OBSERVED)",
-        "가장 최근 26주 고점 돌파가 몇 주 전이었는지",
-        "GOOD_TRIGGER는 이 값이 작은가(최근 돌파), TOO_LATE는 큰가(오래된 돌파)",
+        "reference 기준 backward scan, offset 0..25(최근 26개 completed"
+        " weekly observation)로 제한: 각 candidate week i(offset=0..25)에서"
+        " 그 시점 직전 26주 high(= max(high[i-26:i]), i 미포함)를 다시"
+        " 계산하고 close[i] > prior_high[i]인 가장 최근 event까지의 주 수."
+        " offset=0이면 reference 주 자체가 breakout. offset>=26의 event는"
+        " 검색 대상이 아니다(Phase 13E Correction §1 — 원래는 search"
+        " horizon 제한이 없어 최대 152주 전 stale event까지 끌어오는 버그가"
+        " 있었다).",
+        27, "weekly", True, "최근 26주 search horizon 내 event 없음 -> NaN(NOT_OBSERVED)",
+        "가장 최근 26주(offset 0..25) 이내의 고점 돌파가 몇 주 전이었는지",
+        "GOOD_TRIGGER는 이 값이 작은가(최근 돌파), TOO_LATE는 큰가(horizon 내에서 오래된 돌파)",
     ),
     # --- 7.6 Breakout Hold / Support (breakout_level은 event 시점에 frozen) ---
     FeatureSpec(
         "post_breakout_min_close_vs_level_pct_26w", "7.6_breakout_hold_support",
-        "event week 다음 주부터 reference까지 종가 중 최저값 / breakout_level - 1"
-        "(event=reference면 관찰 구간 없음 -> NaN)",
+        "event(§7.5의 26주 search horizon 내 event) 다음 주부터 reference까지"
+        " 종가 중 최저값 / breakout_level - 1(event=reference면 관찰 구간"
+        " 없음 -> NaN, horizon 밖 event는 애초에 event로 취급 안 됨)",
         27, "weekly", True, "event 없음 또는 관찰 구간 0 -> NaN",
         "돌파 이후 종가가 breakout level을 얼마나 지켰는지(최악 시점 기준)",
         "FALSE_TRIGGER는 이 값이 음수로 크게 내려가는가",
     ),
     FeatureSpec(
         "post_breakout_min_low_vs_level_pct_26w", "7.6_breakout_hold_support",
-        "event week 다음 주부터 reference까지 저가 중 최저값 / breakout_level - 1",
+        "event(§7.5) 다음 주부터 reference까지 저가 중 최저값 / breakout_level - 1",
         27, "weekly", True, "event 없음 또는 관찰 구간 0 -> NaN",
         "돌파 이후 저가 기준으로도 breakout level을 지켰는지(종가보다 보수적)",
         "장중 이탈은 있었지만 종가는 지킨 sample 구분 가능한가",
     ),
     FeatureSpec(
         "post_breakout_close_hold_ratio_26w", "7.6_breakout_hold_support",
-        "event week 다음 주부터 reference까지 (종가 > breakout_level)인 주의 비율(0~1)",
+        "event(§7.5) 다음 주부터 reference까지 (종가 > breakout_level)인 주의 비율(0~1)",
         27, "weekly", True, "event 없음 또는 관찰 구간 0 -> NaN",
         "돌파 이후 지지에 성공한 주의 비율",
         "13D §12와 동일하게 Cliff's Delta 1차 근거로 사용",
     ),
     FeatureSpec(
         "weeks_closed_above_breakout_level_26w", "7.6_breakout_hold_support",
-        "event week 다음 주부터 reference까지 (종가 > breakout_level)인 주의 개수(정수)",
+        "event(§7.5) 다음 주부터 reference까지 (종가 > breakout_level)인 주의 개수(정수)",
         27, "weekly", True, "event 없음 또는 관찰 구간 0 -> NaN",
         "돌파 이후 지지 마감 주 수(절대 개수, post window 길이가 sample마다 달라 비율과 별도 참고)",
         "post_breakout_close_hold_ratio_26w와 함께 관찰 구간 길이 효과 분리",
@@ -448,10 +453,20 @@ def _tail_or_none(series: pd.Series, k: int) -> pd.Series | None:
     return series.iloc[-k:]
 
 
-def _find_breakout_event(close: pd.Series, high: pd.Series, k: int) -> tuple[int, float] | None:
-    """reference 주(마지막 행)부터 backward로 스캔해, 각 과거 week i에서 그
-    시점 기준 직전 k주 high(= high.iloc[i-k:i].max(), i 미포함)를 다시 계산하고
-    close.iloc[i] > prior_high_at_i인 가장 최근 event를 찾는다.
+def _find_breakout_event(
+    close: pd.Series, high: pd.Series, k: int, search_horizon: int
+) -> tuple[int, float] | None:
+    """reference 주(마지막 행)부터 backward로 최대 ``search_horizon``개
+    candidate week만 스캔해(offset 0..search_horizon-1), 각 과거 week i에서
+    그 시점 기준 직전 k주 high(= high.iloc[i-k:i].max(), i 미포함)를 다시
+    계산하고 close.iloc[i] > prior_high_at_i인 가장 최근 event를 찾는다.
+
+    Phase 13E Correction(§1): "weeks_since_26w_close_breakout"이라는
+    이름 자체가 최근 26주 이내의 breakout만을 의미해야 한다 — 원래
+    구현은 search_horizon 제한이 없어 전체 이력을 뒤졌고, 그 결과 max
+    offset=152 같은 stale event가 breakout_level로 쓰이는 버그가 있었다
+    (advisor review로 발견). search_horizon 밖의 event는 존재해도 무시
+    하고 None을 반환한다(NOT_OBSERVED와 동일하게 처리).
 
     reference 주 자체(offset=0)도 breakout 후보에 포함한다 — "방금 돌파"도
     유효한 event다. 반환값은 (event의 positional index, 그 시점의 breakout_level)
@@ -462,7 +477,7 @@ def _find_breakout_event(close: pd.Series, high: pd.Series, k: int) -> tuple[int
     n = len(close)
     if n < k + 1:
         return None
-    for offset in range(0, n - k):
+    for offset in range(0, min(n - k, search_horizon)):
         i = n - 1 - offset
         if i < k:
             break
@@ -549,7 +564,7 @@ def compute_weekly_trigger_features(weekly: pd.DataFrame) -> dict[str, float]:
     if not np.isnan(ph52):
         out["distance_to_prior_52w_high_pct"] = float(close.iloc[-1] / ph52 - 1.0)
 
-    event = _find_breakout_event(close, high, 26)
+    event = _find_breakout_event(close, high, 26, 26)
     if event is not None:
         i_event, breakout_level = event
         offset = float((n - 1) - i_event)

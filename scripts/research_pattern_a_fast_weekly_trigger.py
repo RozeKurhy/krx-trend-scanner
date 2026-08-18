@@ -192,17 +192,17 @@ def build_summary(matrix: pd.DataFrame) -> pd.DataFrame:
         }
         for label, group in matrix.groupby("human_label"):
             g = group[feature].dropna()
-            row[f"{label}_n"] = int(len(group[feature]))
+            row[f"{label}_n"] = int(len(g))
             row[f"{label}_median"] = g.median() if len(g) else np.nan
             row[f"{label}_iqr"] = (g.quantile(0.75) - g.quantile(0.25)) if len(g) else np.nan
         for stage, group in matrix.groupby("weekly_stage_at_reference"):
             g = group[feature].dropna()
-            row[f"STAGE_{stage}_n"] = int(len(group[feature]))
+            row[f"STAGE_{stage}_n"] = int(len(g))
             row[f"STAGE_{stage}_median"] = g.median() if len(g) else np.nan
             row[f"STAGE_{stage}_iqr"] = (g.quantile(0.75) - g.quantile(0.25)) if len(g) else np.nan
         for group_name, labels in RESEARCH_GROUPS.items():
             g = matrix.loc[matrix["human_label"].isin(labels), feature].dropna()
-            row[f"GROUP_{group_name}_n"] = int(matrix["human_label"].isin(labels).sum())
+            row[f"GROUP_{group_name}_n"] = int(len(g))
             row[f"GROUP_{group_name}_median"] = g.median() if len(g) else np.nan
             row[f"GROUP_{group_name}_iqr"] = (g.quantile(0.75) - g.quantile(0.25)) if len(g) else np.nan
         for label_a, label_b in LABEL_PAIR_COMPARISONS:
@@ -219,8 +219,8 @@ def build_summary(matrix: pd.DataFrame) -> pd.DataFrame:
             feature,
         ].tolist()
         row.update(_pair_stats(matrix, feature, setup_good, watch_early_none, "SETUP_GOOD_vs_WATCH_EARLY_NONE"))
-        row["n_SETUP_GOOD"] = len(setup_good)
-        row["n_WATCH_EARLY_NONE"] = len(watch_early_none)
+        row["n_SETUP_GOOD"] = sum(1 for v in setup_good if not np.isnan(v))
+        row["n_WATCH_EARLY_NONE"] = sum(1 for v in watch_early_none if not np.isnan(v))
 
         positive = matrix.loc[matrix["human_label"].isin(RESEARCH_GROUPS["POSITIVE_STRUCTURE"]), feature].tolist()
         early_none = matrix.loc[matrix["human_label"].isin(RESEARCH_GROUPS["EARLY_OR_NONE"]), feature].tolist()
