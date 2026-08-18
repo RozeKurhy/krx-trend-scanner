@@ -1,0 +1,59 @@
+{
+  "base_sha": "2da3fc36744b27ec13edae3f690df72c796906e5",
+  "fast_contract_sha": "2da3fc36744b27ec13edae3f690df72c796906e5",
+  "pattern_a_frozen_sha": "05d03e16501adbca889488294aaaaa0bd84005de",
+  "human_calibration_sha": "2e5a87f8214fe91d6cd2dbfa2bdc03cc2453d696",
+  "analysis_window": "reference minus 104 weeks through frozen outcome_review_end",
+  "unique_tickers": 37,
+  "reference_samples": 40,
+  "timeline_rows": 5229,
+  "fast_trigger_events": 131,
+  "paired_events": 131,
+  "pattern_a_already_active": 70,
+  "same_week": 13,
+  "fast_earlier_pattern_a_later": 33,
+  "no_pattern_a_catchup": 15,
+  "left_censored": 2,
+  "direct_jump_without_trigger": 118,
+  "lead_weeks_summary": {
+    "n": 33,
+    "median": 9.0,
+    "iqr": 25.0,
+    "min": 1.0,
+    "max": 82.0
+  },
+  "catchup_horizons": {
+    "4": 16,
+    "8": 16,
+    "13": 20,
+    "26": 24,
+    "52": 30
+  },
+  "human_label_summary": {
+    "BORDERLINE_TRIGGER": 6,
+    "FALSE_TRIGGER": 4,
+    "GOOD_TRIGGER": 9,
+    "NO_SETUP": 9,
+    "TOO_EARLY": 8,
+    "TOO_EXTENDED": 3,
+    "TOO_LATE": 1
+  },
+  "failure_type_counts": {
+    "DATA_UNAVAILABLE": 1,
+    "FAST_DIRECT_JUMP_NO_TRIGGER": 20,
+    "FAST_FALSE_TRIGGER_CONTEXT": 2,
+    "FAST_HIGH_SCORE_BAD_OUTCOME": 3,
+    "FAST_LOW_SCORE_GOOD_OUTCOME": 1,
+    "FAST_TOO_EARLY_CONTEXT": 5,
+    "FAST_TOO_LATE_CONTEXT": 3,
+    "NO_CLEAR_FAILURE": 6,
+    "PATTERN_A_ALREADY_ACTIVE": 3,
+    "PATTERN_A_NO_CATCHUP": 12
+  },
+  "limitations": [
+    "In-sample 40 human calibration records only",
+    "No threshold/weight/stage retuning",
+    "Observed events exclude left-censored and direct-jump synthetic dates"
+  ],
+  "production_frozen": false
+}

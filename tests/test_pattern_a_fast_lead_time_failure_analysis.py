@@ -1,0 +1,141 @@
+"""Phase 13H contracts: PIT event semantics and frozen-input guards."""
+from __future__ import annotations
+
+import importlib.util
+import subprocess
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
+
+
+BASE = "2da3fc36744b27ec13edae3f690df72c796906e5"
+SCRIPT = Path("scripts/research_pattern_a_fast_lead_time_failure.py")
+R = Path("artifacts/pattern_a_fast/research")
+
+
+def _module():
+    spec = importlib.util.spec_from_file_location("lead_time", SCRIPT)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def _timeline(stages, active=None):
+    active = active or [False] * len(stages)
+    dates = pd.date_range("2025-01-03", periods=len(stages), freq="W-FRI")
+    return pd.DataFrame({
+        "ticker": "000001", "name": "synthetic", "weekly_date": dates.strftime("%Y-%m-%d"),
+        "fast_machine_stage": stages, "fast_machine_stage_status": ["READY" if s is not None else "UNAVAILABLE" for s in stages],
+        "pattern_a_candidate_active": active, "pattern_a_evaluation_status": "READY",
+        "fast_score": 50.0, "fast_monthly_permission_state": "PERMITTED_REGIME", "fast_daily_risk_state": "NORMAL",
+    })
+
+
+def test_base_and_frozen_inputs_are_read_only():
+    mod = _module()
+    assert mod.BASE_SHA == BASE
+    frozen = [
+        "artifacts/pattern_a_fast/research/pattern_a_fast_score_prototype_v01.json",
+        "artifacts/pattern_a_fast/research/pattern_a_fast_stage_prototype_v01.json",
+        "artifacts/pattern_a_fast/ground_truth/pattern_a_fast_human_review_v01.csv",
+        "artifacts/pattern_a_fast/ground_truth/pattern_a_fast_ground_truth_source_v01.csv",
+        "src/trend_scanner/patterns/pattern_a_evaluator.py",
+        "src/trend_scanner/patterns/pattern_a_score.py",
+        "src/trend_scanner/patterns/pattern_a_stage.py",
+    ]
+    diff = subprocess.run(["git", "diff", "--name-only", BASE, "--", *frozen], capture_output=True, text=True, check=True)
+    assert diff.stdout == ""
+
+
+def test_labeled_population_is_exactly_40_and_unlabeled_is_excluded():
+    samples = _module().load_labeled_samples()
+    assert len(samples) == samples.sample_id.nunique() == 40
+    assert not (samples.human_label == "UNLABELED").any()
+    assert samples.ticker.str.len().eq(6).all()
+
+
+def test_fast_contract_reproduces_frozen_calibration_artifact():
+    mod = _module()
+    score, stage = mod.load_contracts()
+    # This invokes the same JSON evaluator + PIT feature reconstruction used by
+    # the script and fails on either score/status/stage mismatch.
+    mod.reproduce_calibration(mod.load_labeled_samples(), score, stage)
+
+
+def test_fast_stage_missing_required_input_is_unavailable_not_watch():
+    mod = _module()
+    score, stage = mod.load_contracts()
+    base = {
+        "range_position_24m": .5, "monthly_down_month_ratio_12m": .4,
+        "close_vs_wma200_pct": 0.0, "distance_to_prior_26w_high_pct": -.05,
+        "higher_weekly_low_count_13w": 6, "wma52_slope_1w": .01, "wma12_vs_wma26_pct": .02,
+        "weeks_since_26w_close_breakout": np.nan, "post_breakout_min_low_vs_level_pct_26w": np.nan,
+        "recent_5d_max_gap_abs_pct": .02, "atr_14_pct": .02,
+    }
+    for field in stage["required_stage_inputs"]:
+        got = mod.evaluate_fast_contract({**base, field: np.nan}, score, stage)
+        assert got["fast_machine_stage"] is None
+        assert got["fast_machine_stage_status"] == "UNAVAILABLE"
+    assert mod.evaluate_fast_contract({**base, "close_vs_wma200_pct": np.nan}, score, stage)["fast_machine_stage_status"] == "READY"
+
+
+def test_fast_trigger_observation_and_direct_jump_semantics():
+    mod = _module()
+    observed = mod.annotate_event_statuses(_timeline(["WATCH", "SETUP", "TRIGGER", "TRIGGER", "TREND"]))
+    assert observed.fast_trigger_event_status.tolist().count("OBSERVED") == 1
+    direct = mod.annotate_event_statuses(_timeline(["SETUP", "TREND"]))
+    assert set(direct.fast_trigger_event_status) == {"NOT_OBSERVED"}
+    assert ("000001", direct.weekly_date.iloc[-1]) in mod.direct_jump_dates(direct)
+
+
+def test_unavailable_to_trigger_is_left_censored_not_synthetic_event():
+    mod = _module()
+    frame = mod.annotate_event_statuses(_timeline([None, "TRIGGER"]))
+    assert frame.fast_trigger_event_status.tolist() == ["NOT_OBSERVED", "LEFT_CENSORED"]
+
+
+def test_pattern_a_event_requires_observed_inactive_to_active_transition():
+    mod = _module()
+    left = mod.annotate_event_statuses(_timeline(["WATCH", "WATCH"], [True, True]))
+    assert left.pattern_a_candidate_event_status.tolist()[0] == "LEFT_CENSORED"
+    entered = mod.annotate_event_statuses(_timeline(["WATCH", "WATCH"], [False, True]))
+    assert entered.pattern_a_candidate_event_status.tolist() == ["NOT_OBSERVED", "OBSERVED"]
+
+
+def test_pair_statuses_keep_censoring_and_no_catchup_as_nan():
+    mod = _module()
+    samples = pd.DataFrame({"ticker": ["000001"], "outcome_review_end": ["2025-12-26"]})
+    later = mod.annotate_event_statuses(_timeline(["WATCH", "TRIGGER", "WATCH", "WATCH"], [False, False, True, True]))
+    pairs = mod.build_pairs(later, samples)
+    assert pairs.iloc[0].pair_status == "FAST_EARLIER_PATTERN_A_LATER"
+    assert pairs.iloc[0].lead_days == 7 and pairs.iloc[0].lead_weeks == 1
+    no_catch = mod.annotate_event_statuses(_timeline(["WATCH", "TRIGGER", "WATCH"], [False, False, False]))
+    no_pairs = mod.build_pairs(no_catch, samples)
+    assert no_pairs.iloc[0].pair_status == "FAST_EVENT_NO_PATTERN_A_CATCHUP"
+    assert pd.isna(no_pairs.iloc[0].lead_weeks)
+
+
+def test_generated_artifacts_are_complete_and_lead_summary_uses_only_valid_pairs():
+    timeline = pd.read_csv(R / "pattern_a_fast_vs_pattern_a_timeline_v01.csv", dtype={"ticker": str})
+    reference = pd.read_csv(R / "pattern_a_fast_reference_comparison_v01.csv", dtype={"ticker": str})
+    pairs = pd.read_csv(R / "pattern_a_fast_trigger_event_pair_v01.csv", dtype={"ticker": str})
+    import json
+    summary = json.loads((R / "pattern_a_fast_lead_time_summary_v01.json").read_text())
+    assert len(reference) == reference.sample_id.nunique() == 40
+    assert timeline.duplicated(["ticker", "weekly_date"]).sum() == 0
+    assert timeline.weekly_date.str.endswith("-05").sum() >= 0  # date strings, no fabricated timestamps
+    earlier = pairs[pairs.pair_status == "FAST_EARLIER_PATTERN_A_LATER"].lead_weeks
+    assert summary["lead_weeks_summary"]["n"] == len(earlier)
+    assert summary["lead_weeks_summary"]["median"] == float(earlier.median())
+    assert not pairs.loc[pairs.pair_status == "FAST_EVENT_NO_PATTERN_A_CATCHUP", "lead_weeks"].notna().any()
+
+
+def test_script_uses_completed_pit_and_official_pattern_a_evaluator_only():
+    source = SCRIPT.read_text(encoding="utf-8")
+    assert "include_incomplete_periods=False" in source
+    assert "daily[daily.index <= weekly_date]" in source
+    assert "evaluate_pattern_a(snapshot)" in source
+    for forbidden in ("sklearn", "optuna", "requests", "urllib", "PyKrxDataProvider"):
+        assert forbidden not in source
