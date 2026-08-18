@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import importlib.util
+import io
 import json
 import subprocess
 from pathlib import Path
@@ -120,10 +121,21 @@ def test_self_contained_stage_contract_matches_function_and_outputs_unchanged():
         "TREND": dict(close_vs_wma200_pct=0,distance_to_prior_26w_high_pct=-.05,higher_weekly_low_count_13w=6,wma52_slope_1w=.01,wma12_vs_wma26_pct=0,weeks_since_26w_close_breakout=float("nan")),
         "EXTENDED": dict(close_vs_wma200_pct=.51,distance_to_prior_26w_high_pct=-.05,higher_weekly_low_count_13w=6,wma52_slope_1w=.02,wma12_vs_wma26_pct=0,weeks_since_26w_close_breakout=float("nan")),
     }
-    assert {name: mod.stage(pd.Series(values)) for name, values in cases.items()} == {name: name for name in cases}
-    stable = ["pattern_a_fast_calibration_score_prototype_v01.csv","pattern_a_fast_stage_prototype_evaluation_v01.csv","pattern_a_fast_score_prototype_diagnostics_v01.csv"]
-    diff = subprocess.run(["git","diff","--name-only","612bfb8e9a409344093602cd61f8f9a3ab00c66d","--",*[str(R / item) for item in stable]],check=True,capture_output=True,text=True)
-    assert diff.stdout == ""
+    assert {name: mod.stage(pd.Series(values))[0] for name, values in cases.items()} == {name: name for name in cases}
+    assert {mod.stage(pd.Series(values))[1] for values in cases.values()} == {"READY"}
+    base = "82405ee735b66ea9085d47a4130061cf57bc5b08"
+    old_calibration = pd.read_csv(io.BytesIO(subprocess.check_output(["git", "show", f"{base}:{R / 'pattern_a_fast_calibration_score_prototype_v01.csv'}"])), dtype={"ticker": str})
+    calibration = _calibration()
+    for column in ("machine_stage_proto", "pattern_a_fast_score_proto", "score_status"):
+        assert calibration[column].equals(old_calibration[column])
+    assert calibration.machine_stage_status.eq("READY").all()
+
+    old_evaluation = pd.read_csv(io.BytesIO(subprocess.check_output(["git", "show", f"{base}:{R / 'pattern_a_fast_stage_prototype_evaluation_v01.csv'}"])))
+    evaluation = pd.read_csv(R / "pattern_a_fast_stage_prototype_evaluation_v01.csv")
+    assert evaluation[["human_stage", "machine_stage_proto", "count"]].equals(old_evaluation)
+    assert evaluation.stage_evaluation_status.eq("READY").all()
+    diagnostics = subprocess.run(["git", "diff", "--name-only", base, "--", str(R / "pattern_a_fast_score_prototype_diagnostics_v01.csv")], check=True, capture_output=True, text=True)
+    assert diagnostics.stdout == ""
 
 
 def _json_zone(value, zones, output):
@@ -157,3 +169,21 @@ def test_unexpected_direct_missing_fails_closed_but_known_exceptions_do_not():
     assert pd.isna(mod.aggregate(70, float("nan"), float("nan"), 10))
     assert mod.weekly(pd.Series({**base, "close_vs_wma200_pct": float("nan")}))[1] == "PARTIAL"
     assert mod.conditional(pd.Series({"post_breakout_min_low_vs_level_pct_26w": float("nan")}))[0] == "EVENT_NOT_OBSERVED"
+
+
+def test_stage_availability_never_falls_back_to_watch():
+    mod = _module()
+    base = dict(close_vs_wma200_pct=0,distance_to_prior_26w_high_pct=-.05,higher_weekly_low_count_13w=6,wma52_slope_1w=.01,wma12_vs_wma26_pct=.02,weeks_since_26w_close_breakout=float("nan"))
+    for field in ("distance_to_prior_26w_high_pct", "higher_weekly_low_count_13w", "wma52_slope_1w", "wma12_vs_wma26_pct"):
+        lifecycle, status = mod.stage(pd.Series({**base, field: float("nan")}))
+        assert lifecycle is None and status == "UNAVAILABLE"
+    assert mod.stage(pd.Series({**base, "close_vs_wma200_pct": float("nan")})) == ("TREND", "READY")
+    assert mod.stage(pd.Series(base)) == ("TREND", "READY")
+    contract = json.loads((R / "pattern_a_fast_stage_prototype_v01.json").read_text())
+    assert contract["required_stage_inputs"] == ["distance_to_prior_26w_high_pct", "higher_weekly_low_count_13w", "wma52_slope_1w", "wma12_vs_wma26_pct"]
+    assert contract["expected_optional_stage_inputs"] == ["close_vs_wma200_pct"]
+    assert contract["conditional_stage_markers"] == ["weeks_since_26w_close_breakout"]
+    assert contract["unavailable_policy"] == {"normal_lifecycle_stage_assignment": False, "watch_fallback": False}
+    validation = Path("docs/validation/pattern_a_fast_score_stage_contract_prototype_v01.md").read_text(encoding="utf-8")
+    assert "Phase 13B Lifecycle Contract §16" in validation
+    assert "UNAVAILABLE은 여섯 번째 lifecycle stage가 아니며 WATCH로 fallback하지 않는다." in validation

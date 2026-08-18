@@ -136,6 +136,15 @@ Stage output은 WATCH, SETUP, TRIGGER, TREND, EXTENDED다. 입력은 Weekly
 retained feature만 사용한다. Monthly, Daily, score, human label, human stage,
 previous stage를 읽지 않는다.
 
+Phase 13B Lifecycle Contract §16의 availability invariant를 따른다. prior-high
+distance, weekly higher-low count, WMA52 slope, WMA12/WMA26 alignment 중 하나가
+없으면 `machine_stage_status=UNAVAILABLE`, `machine_stage_proto=NaN`이다.
+UNAVAILABLE은 여섯 번째 lifecycle stage가 아니며 WATCH로 fallback하지 않는다.
+WMA200만 없는 경우는 optional UNKNOWN으로 READY 평가를 계속하고, breakout-age
+marker가 없는 경우는 EVENT_NOT_OBSERVED라 TRIGGER만 성립하지 않을 뿐이다.
+Stage evaluation은 READY 행만 confusion count로 group하고
+`stage_evaluation_status=READY`를 별도 기록한다.
+
 EXTENDED는 주봉 MA distance/alignment가 이미 상당히 진행된 snapshot,
 TRIGGER는 최근 machine breakout marker와 ready weekly structure,
 TREND/SETUP/WATCH는 현재 weekly structure의 진행도로만 구분한다.

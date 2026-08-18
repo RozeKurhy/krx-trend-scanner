@@ -20,6 +20,18 @@
     "SETUP",
     "WATCH"
   ],
+  "required_stage_inputs": [
+    "distance_to_prior_26w_high_pct",
+    "higher_weekly_low_count_13w",
+    "wma52_slope_1w",
+    "wma12_vs_wma26_pct"
+  ],
+  "expected_optional_stage_inputs": [
+    "close_vs_wma200_pct"
+  ],
+  "conditional_stage_markers": [
+    "weeks_since_26w_close_breakout"
+  ],
   "weekly_feature_inputs": [
     "close_vs_wma200_pct",
     "distance_to_prior_26w_high_pct",
@@ -119,7 +131,15 @@
       }
     ]
   },
-  "watch_rule_candidate": "fallback when no higher-priority rule matches",
+  "watch_rule_candidate": "fallback when required inputs are READY and no higher-priority rule matches",
+  "evaluation_status_semantics": {
+    "READY": "all required stage inputs available",
+    "UNAVAILABLE": "one or more required structural inputs unavailable"
+  },
+  "unavailable_policy": {
+    "normal_lifecycle_stage_assignment": false,
+    "watch_fallback": false
+  },
   "snapshot_independence": true,
   "human_trigger_event_policy": "not used as input and never backfilled",
   "missing_behavior": "WMA200 UNKNOWN is not automatic WATCH"

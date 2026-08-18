@@ -99,25 +99,28 @@ def score_contract() -> dict:
 
 def stage_contract() -> dict:
     return {"version":"v0.1","production_frozen":False,"weekly_only":True,"score_input":False,"monthly_input":False,"daily_input":False,"previous_stage_input":False,
-        "stage_semantics":["WATCH","SETUP","TRIGGER","TREND","EXTENDED"],"evaluation_order":["EXTENDED","TRIGGER","TREND","SETUP","WATCH"],
+        "stage_semantics":["WATCH","SETUP","TRIGGER","TREND","EXTENDED"],"evaluation_order":["EXTENDED","TRIGGER","TREND","SETUP","WATCH"],"required_stage_inputs":["distance_to_prior_26w_high_pct","higher_weekly_low_count_13w","wma52_slope_1w","wma12_vs_wma26_pct"],"expected_optional_stage_inputs":["close_vs_wma200_pct"],"conditional_stage_markers":["weeks_since_26w_close_breakout"],
         "weekly_feature_inputs":["close_vs_wma200_pct","distance_to_prior_26w_high_pct","higher_weekly_low_count_13w","wma52_slope_1w","wma12_vs_wma26_pct"],"stage_only_semantic_markers":["weeks_since_26w_close_breakout"],
         "extended_rule_candidate":{"close_vs_wma200_pct":{"operator":">","value":.50},"any_of":[{"wma52_slope_1w":{"operator":">","value":.01}},{"wma12_vs_wma26_pct":{"operator":">","value":.10}}]},
         "ready_structure_candidate":{"distance_to_prior_26w_high_pct":{"operator":">=","value":-.10},"higher_weekly_low_count_13w":{"operator":">=","value":5},"close_vs_wma200_pct":"UNKNOWN_OR_>=_-0.10"},
         "trigger_rule_candidate":{"requires":"ready_structure_candidate","weeks_since_26w_close_breakout":{"observed":True,"operator":"<=","value":12}},
         "trend_rule_candidate":{"distance_to_prior_26w_high_pct":{"operator":">=","value":-.10},"higher_weekly_low_count_13w":{"operator":">=","value":6},"any_of":[{"wma52_slope_1w":{"operator":">","value":0}},{"wma12_vs_wma26_pct":{"operator":">","value":0}}]},
-        "setup_rule_candidate":{"higher_weekly_low_count_13w":{"operator":">=","value":5},"any_of":[{"distance_to_prior_26w_high_pct":{"operator":">=","value":-.25}},{"wma52_slope_1w":{"operator":">","value":0}},{"wma12_vs_wma26_pct":{"operator":">","value":0}}]},"watch_rule_candidate":"fallback when no higher-priority rule matches","snapshot_independence":True,"human_trigger_event_policy":"not used as input and never backfilled","missing_behavior":"WMA200 UNKNOWN is not automatic WATCH"}
+        "setup_rule_candidate":{"higher_weekly_low_count_13w":{"operator":">=","value":5},"any_of":[{"distance_to_prior_26w_high_pct":{"operator":">=","value":-.25}},{"wma52_slope_1w":{"operator":">","value":0}},{"wma12_vs_wma26_pct":{"operator":">","value":0}}]},"watch_rule_candidate":"fallback when required inputs are READY and no higher-priority rule matches","evaluation_status_semantics":{"READY":"all required stage inputs available","UNAVAILABLE":"one or more required structural inputs unavailable"},"unavailable_policy":{"normal_lifecycle_stage_assignment":False,"watch_fallback":False},"snapshot_independence":True,"human_trigger_event_policy":"not used as input and never backfilled","missing_behavior":"WMA200 UNKNOWN is not automatic WATCH"}
 
 
-def stage(row: pd.Series) -> str:
+def stage(row: pd.Series) -> tuple[str | None, str]:
     """Weekly-only current-snapshot lifecycle; never reads score or human fields."""
+    required = ("distance_to_prior_26w_high_pct", "higher_weekly_low_count_13w", "wma52_slope_1w", "wma12_vs_wma26_pct")
+    if any(pd.isna(row[name]) for name in required):
+        return None, "UNAVAILABLE"
     wma, distance, lows = row.close_vs_wma200_pct, row.distance_to_prior_26w_high_pct, row.higher_weekly_low_count_13w
     slope, align, age = row.wma52_slope_1w, row.wma12_vs_wma26_pct, row.weeks_since_26w_close_breakout
-    if wma > 0.50 and (slope > 0.01 or align > 0.10): return "EXTENDED"
+    if wma > 0.50 and (slope > 0.01 or align > 0.10): return "EXTENDED", "READY"
     ready = distance >= -0.10 and lows >= 5 and (pd.isna(wma) or wma >= -0.10)
-    if ready and not pd.isna(age) and age <= 12: return "TRIGGER"
-    if distance >= -0.10 and lows >= 6 and (slope > 0 or align > 0): return "TREND"
-    if lows >= 5 and (distance >= -0.25 or slope > 0 or align > 0): return "SETUP"
-    return "WATCH"
+    if ready and not pd.isna(age) and age <= 12: return "TRIGGER", "READY"
+    if distance >= -0.10 and lows >= 6 and (slope > 0 or align > 0): return "TREND", "READY"
+    if lows >= 5 and (distance >= -0.25 or slope > 0 or align > 0): return "SETUP", "READY"
+    return "WATCH", "READY"
 
 
 def candidates() -> pd.DataFrame:
@@ -148,10 +151,11 @@ def main() -> None:
     for _, row in data.iterrows():
         mstate, mscore = monthly(row); wscore, wstatus = weekly(row); cstatus, cscore = conditional(row); rstate, risk = daily_risk(row)
         status = "UNAVAILABLE" if pd.isna(mscore) or wstatus == "UNAVAILABLE" or pd.isna(risk) else wstatus
-        output.append({**row[["sample_id","ticker","name","reference_date","weekly_stage_at_reference","human_label"]].to_dict(),"monthly_permission_state_proto":mstate,"monthly_permission_score_proto":mscore,"weekly_core_score_proto":wscore,"conditional_breakout_status":cstatus,"conditional_breakout_quality_proto":cscore,"daily_timing_risk_state_proto":rstate,"daily_timing_risk_proto":risk,"pattern_a_fast_score_proto":aggregate(mscore,wscore,cscore,risk),"score_status":status,"machine_stage_proto":stage(row),"diagnostic_mismatch_reason":"DESCRIPTIVE_ONLY"})
+        machine_stage, machine_stage_status = stage(row)
+        output.append({**row[["sample_id","ticker","name","reference_date","weekly_stage_at_reference","human_label"]].to_dict(),"monthly_permission_state_proto":mstate,"monthly_permission_score_proto":mscore,"weekly_core_score_proto":wscore,"conditional_breakout_status":cstatus,"conditional_breakout_quality_proto":cscore,"daily_timing_risk_state_proto":rstate,"daily_timing_risk_proto":risk,"pattern_a_fast_score_proto":aggregate(mscore,wscore,cscore,risk),"score_status":status,"machine_stage_status":machine_stage_status,"machine_stage_proto":machine_stage,"diagnostic_mismatch_reason":"DESCRIPTIVE_ONLY"})
     calibration=pd.DataFrame(output); calibration.to_csv(OUT["calibration"],index=False)
     candidates().to_csv(OUT["thresholds"],index=False)
-    evaluation=calibration.groupby(["weekly_stage_at_reference","machine_stage_proto"]).size().reset_index(name="count").rename(columns={"weekly_stage_at_reference":"human_stage"}); evaluation.to_csv(OUT["evaluation"],index=False)
+    evaluation=calibration.loc[calibration.machine_stage_status == "READY"].groupby(["weekly_stage_at_reference","machine_stage_proto"]).size().reset_index(name="count").rename(columns={"weekly_stage_at_reference":"human_stage"}); evaluation["stage_evaluation_status"]="READY"; evaluation.to_csv(OUT["evaluation"],index=False)
     diag=[]
     for left,right in [("GOOD_TRIGGER","NO_SETUP"),("GOOD_TRIGGER","TOO_EARLY"),("GOOD_TRIGGER","FALSE_TRIGGER"),("GOOD_TRIGGER","TOO_EXTENDED")]:
         a,b=calibration.query("human_label == @left").pattern_a_fast_score_proto,calibration.query("human_label == @right").pattern_a_fast_score_proto
