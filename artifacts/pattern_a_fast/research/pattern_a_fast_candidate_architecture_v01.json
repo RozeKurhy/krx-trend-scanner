@@ -1,0 +1,183 @@
+{
+  "version": "v0.1",
+  "base_commit": "505c412f504dbb1a5a475e2562a0a1749eaa6508",
+  "human_calibration_sha": "2e5a87f8214fe91d6cd2dbfa2bdc03cc2453d696",
+  "monthly_research_sha": "6917b1341553b58fa42390ba1507fc9b80551fee",
+  "weekly_research_sha": "415583ab97835d6d98c945476de45aafdd6371b7",
+  "daily_research_sha": "505c412f504dbb1a5a475e2562a0a1749eaa6508",
+  "architecture_status": "CANDIDATE_ARCHITECTURE_COMPLETE_ADVISOR_REVIEW_PENDING",
+  "monthly_permission_features": [
+    {
+      "feature_name": "range_position_24m",
+      "candidate_role": "MONTHLY_PERMISSION",
+      "selection_status": "PRIMARY",
+      "next_phase_usage": "GATE_OR_ZONE_CANDIDATE"
+    },
+    {
+      "feature_name": "drawdown_from_12m_high",
+      "candidate_role": "MONTHLY_PERMISSION",
+      "selection_status": "SECONDARY",
+      "next_phase_usage": "SCORE_CANDIDATE"
+    },
+    {
+      "feature_name": "ma_alignment_score",
+      "candidate_role": "MONTHLY_PERMISSION",
+      "selection_status": "SECONDARY",
+      "next_phase_usage": "SCORE_CANDIDATE"
+    },
+    {
+      "feature_name": "monthly_down_month_ratio_12m",
+      "candidate_role": "MONTHLY_PERMISSION",
+      "selection_status": "PRIMARY",
+      "next_phase_usage": "GATE_CANDIDATE"
+    },
+    {
+      "feature_name": "higher_monthly_low_count_12m",
+      "candidate_role": "MONTHLY_PERMISSION",
+      "selection_status": "SECONDARY",
+      "next_phase_usage": "SCORE_CANDIDATE"
+    }
+  ],
+  "weekly_core_features": [
+    {
+      "feature_name": "close_vs_wma200_pct",
+      "candidate_role": "WEEKLY_CORE",
+      "selection_status": "PRIMARY",
+      "next_phase_usage": "GATE_CANDIDATE"
+    },
+    {
+      "feature_name": "distance_to_prior_26w_high_pct",
+      "candidate_role": "WEEKLY_CORE",
+      "selection_status": "PRIMARY",
+      "next_phase_usage": "SCORE_CANDIDATE"
+    },
+    {
+      "feature_name": "higher_weekly_low_count_13w",
+      "candidate_role": "WEEKLY_CORE",
+      "selection_status": "PRIMARY",
+      "next_phase_usage": "SCORE_CANDIDATE"
+    },
+    {
+      "feature_name": "wma52_slope_1w",
+      "candidate_role": "WEEKLY_CORE",
+      "selection_status": "SECONDARY",
+      "next_phase_usage": "SCORE_CANDIDATE"
+    },
+    {
+      "feature_name": "wma12_vs_wma26_pct",
+      "candidate_role": "WEEKLY_CORE",
+      "selection_status": "SECONDARY",
+      "next_phase_usage": "SCORE_CANDIDATE"
+    }
+  ],
+  "conditional_weekly_features": [
+    {
+      "feature_name": "post_breakout_min_low_vs_level_pct_26w",
+      "candidate_role": "CONDITIONAL_STRUCTURE",
+      "selection_status": "CONDITIONAL",
+      "next_phase_usage": "CONDITIONAL_SCORE_CANDIDATE"
+    }
+  ],
+  "daily_timing_features": [
+    {
+      "feature_name": "recent_5d_max_gap_abs_pct",
+      "candidate_role": "DAILY_TIMING_RISK",
+      "selection_status": "PRIMARY",
+      "next_phase_usage": "RISK_MODIFIER_CANDIDATE"
+    },
+    {
+      "feature_name": "atr_14_pct",
+      "candidate_role": "DAILY_TIMING_RISK",
+      "selection_status": "SECONDARY",
+      "next_phase_usage": "RISK_MODIFIER_CANDIDATE"
+    }
+  ],
+  "diagnostic_features": [
+    {
+      "feature_name": "recent_3m_return",
+      "candidate_role": "DIAGNOSTIC",
+      "selection_status": "DIAGNOSTIC",
+      "next_phase_usage": "DIAGNOSTIC_ONLY"
+    },
+    {
+      "feature_name": "rolling_low_4w_change",
+      "candidate_role": "DIAGNOSTIC",
+      "selection_status": "DIAGNOSTIC",
+      "next_phase_usage": "DIAGNOSTIC_ONLY"
+    },
+    {
+      "feature_name": "close_vs_dma200_pct",
+      "candidate_role": "DIAGNOSTIC",
+      "selection_status": "DIAGNOSTIC",
+      "next_phase_usage": "DIAGNOSTIC_ONLY"
+    },
+    {
+      "feature_name": "dma20_vs_dma60_pct",
+      "candidate_role": "DIAGNOSTIC",
+      "selection_status": "DIAGNOSTIC",
+      "next_phase_usage": "DIAGNOSTIC_ONLY"
+    },
+    {
+      "feature_name": "gap_from_prev_close_pct",
+      "candidate_role": "DIAGNOSTIC",
+      "selection_status": "DIAGNOSTIC",
+      "next_phase_usage": "DIAGNOSTIC_ONLY"
+    },
+    {
+      "feature_name": "lower_wick_pct",
+      "candidate_role": "DIAGNOSTIC",
+      "selection_status": "DIAGNOSTIC",
+      "next_phase_usage": "DIAGNOSTIC_ONLY"
+    }
+  ],
+  "hold_features": [
+    {
+      "feature_name": "higher_daily_low_count_10d",
+      "candidate_role": "HOLD_RESEARCH",
+      "selection_status": "HOLD",
+      "next_phase_usage": "NO_PRODUCTION_ROLE_YET"
+    }
+  ],
+  "dropped_features": [
+    {
+      "feature_name": "close_vs_ma24_pct",
+      "candidate_role": "DROP_REDUNDANT",
+      "selection_status": "DROP",
+      "next_phase_usage": "NO_PRODUCTION_ROLE_YET"
+    }
+  ],
+  "redundancy_decisions": [
+    {
+      "pair": [
+        "range_position_24m",
+        "close_vs_ma24_pct"
+      ],
+      "decision": "retain range position; drop close-vs-MA duplicate"
+    },
+    {
+      "pair": [
+        "wma52_slope_1w",
+        "close_vs_dma200_pct"
+      ],
+      "decision": "weekly owns trend; daily MA is diagnostic shadow"
+    },
+    {
+      "pair": [
+        "recent_5d_max_gap_abs_pct",
+        "atr_14_pct"
+      ],
+      "decision": "max-gap primary risk; ATR secondary breadth"
+    }
+  ],
+  "missing_semantics": {
+    "post_breakout_min_low_vs_level_pct_26w": "EVENT_NOT_OBSERVED is not BAD and is not imputed",
+    "close_vs_wma200_pct": "INSUFFICIENT_HISTORY is not BAD and is not imputed"
+  },
+  "non_decisions": [
+    "No numeric cutoff is selected.",
+    "No feature weighting or formula is selected.",
+    "No automated stage inference or trade signal is selected.",
+    "Human trigger events are unchanged."
+  ],
+  "next_phase": "13G-2 threshold / score / stage contract prototype remains separate and is not started here."
+}
