@@ -1,0 +1,81 @@
+{
+  "version": "PATTERN_A_FAST_INVESTABLE_OOS_B_EVALUATION_PROTOCOL_V01",
+  "phase": "13J-4_PREREGISTERED",
+  "claim_boundary": "retrospective historical OOS with preregistered blind human review",
+  "fast_contract": "HIERARCHICAL_V01",
+  "fast_contract_sha": "2da3fc36744b27ec13edae3f690df72c796906e5",
+  "pattern_a_frozen_sha": "05d03e16501adbca889488294aaaaa0bd84005de",
+  "human_stage_taxonomy": [
+    "WATCH",
+    "SETUP",
+    "TRIGGER",
+    "TREND",
+    "EXTENDED"
+  ],
+  "human_stage_confidence": [
+    "LOW",
+    "MEDIUM",
+    "HIGH"
+  ],
+  "human_outcome_taxonomy": [
+    "GOOD_TRIGGER",
+    "BORDERLINE_TRIGGER",
+    "FALSE_TRIGGER",
+    "TOO_EARLY",
+    "TOO_LATE",
+    "TOO_EXTENDED",
+    "NO_SETUP"
+  ],
+  "primary_score_comparison": {
+    "positive_labels": [
+      "GOOD_TRIGGER",
+      "BORDERLINE_TRIGGER"
+    ],
+    "negative_labels": [
+      "TOO_EARLY",
+      "NO_SETUP"
+    ],
+    "minimum_n_per_group": 5,
+    "direction_fail_if_positive_median_lte_negative": true,
+    "cliffs_delta_hard_threshold": null
+  },
+  "secondary_score_comparisons": [
+    [
+      "GOOD_TRIGGER",
+      "NO_SETUP"
+    ],
+    [
+      "GOOD_TRIGGER",
+      "FALSE_TRIGGER"
+    ],
+    [
+      "GOOD_TRIGGER",
+      "TOO_EARLY"
+    ],
+    [
+      "GOOD_TRIGGER",
+      "TOO_EXTENDED"
+    ]
+  ],
+  "stage_order": [
+    "WATCH",
+    "SETUP",
+    "TRIGGER",
+    "TREND",
+    "EXTENDED"
+  ],
+  "stage_exact_match_hard_threshold": null,
+  "lead_precedence": [
+    "DATA_UNAVAILABLE",
+    "SAME_WEEK",
+    "PATTERN_A_ALREADY_ACTIVE",
+    "PATTERN_A_PRIOR_ACTIVITY_BEFORE_FAST_EVENT",
+    "FAST_EARLIER_PATTERN_A_LATER",
+    "FAST_EVENT_NO_PATTERN_A_CATCHUP"
+  ],
+  "lead_minimum_clean_n": 3,
+  "stage_ready_coverage_minimum": 0.8,
+  "score_unavailable_rate_maximum": 0.2,
+  "no_sample_replacement_after_freeze": true,
+  "network_market_request_count": 0
+}

@@ -96,20 +96,13 @@ def test_active_normalized_snapshots_preserve_canonical_metrics_and_existing_cro
     assert len(pd.read_csv(HISTORY / "krx_historical_market_cap_crosscheck_anomalies_v01.csv")) == 0
 
 
-def test_no_substitution_interpolation_or_oos_work_and_protected_inputs_are_unchanged():
+def test_no_substitution_or_interpolation_and_phase10_inputs_are_unchanged():
     audit = _audit()
     assert audit["current_market_cap_substitution_used"] is False
     assert audit["future_shares_substitution_used"] is False
     assert audit["market_cap_interpolation_used"] is False
     assert audit["third_party_market_data_used"] is False
     assert audit["sample_generated_count"] == 0 and audit["oos_evaluation_executed"] is False
-    forbidden = [
-        "pattern_a_fast_investable_oos_selection_manifest_v01.csv", "pattern_a_fast_investable_oos_human_review_v01.csv",
-        "pattern_a_fast_investable_oos_blind_asset_manifest_v01.csv", "pattern_a_fast_investable_oos_evaluation_protocol_v01.json",
-        "pattern_a_fast_investable_oos_preregistration_seal_v01.json", "charts/stage_blind", "charts/outcome_blind",
-    ]
-    investable_oos = ROOT / "artifacts/pattern_a_fast/investable_oos"
-    assert not any((investable_oos / item).exists() for item in forbidden)
     protected = [
         "artifacts/investability/source/krx_market_cap_20250131.csv", "artifacts/investability/source/krx_market_cap_20260814.csv",
         "artifacts/pattern_a_fast/oos", "artifacts/pattern_a_fast/human_anchors", "artifacts/pattern_a_fast/ground_truth",

@@ -1,52 +1,98 @@
 pattern_a_fast_investable_oos_preregistration_v01.md
 ==================================================
-Phase 13J-1 Investable OOS-B Historical PIT Feasibility Block
+Phase 13J-1 Investable OOS-B Preregistration + Blind Package
 ==================================================
 
 1. Purpose
-Phase 13J는 RESERVED_OOS_A의 재시험이 아니다. reference-time investable universe 안에서 frozen HIERARCHICAL_V01의 Fast relevance를 독립 표본으로 blind human review 하기 위한 단계다. 이 문서는 샘플링 이전 first hard gate의 결과를 기록한다.
+----------
+Phase 13J-1은 reference-time에 투자 가능했던 KRX universe에서 frozen HIERARCHICAL_V01 Fast relevance만 사용해 새로운 OOS-B blind human review sample을 동결한다. 이 단계는 Human label 입력, OOS evaluation, score/lead validation, Fast/Pattern A tuning을 수행하지 않는다.
 
-2. Why 13J is Needed
-RESERVED_OOS_A contained zero Human POSITIVE_STRUCTURE samples and therefore could not evaluate the preregistered score direction.
+2. Why OOS-B
+-------------
+RESERVED_OOS_A의 frozen evaluation은 Human POSITIVE_STRUCTURE(GOOD_TRIGGER + BORDERLINE_TRIGGER)가 0건이라 primary score-direction test가 INCONCLUSIVE였다. OOS-B는 좋은 미래 결과를 찾기 위한 표본이 아니라, 새 blind ground truth에서 Fast semantics를 재평가하기 위한 independent historical sample이다.
 
-Investable OOS-B is a new independently frozen sample designed from reference-time investable and Fast-relevant strata without using any future outcome information.
+3. Previous OOS-A Limitation
+----------------------------
+OOS-A의 zero Human POSITIVE_STRUCTURE limitation은 유지해 기록한다. anchor나 미래 outcome으로 positive sample을 보충하지 않았다.
 
-The four Human Positive Anchors are excluded from both sampling and evaluation metrics.
+4. Historical PIT Source
+------------------------
+Phase 13J-0 frozen KRX-only active source 22건을 사용했다. audit SHA-256은 `984a022e37305d4fe3e86051f10e8ac28a6104953b9efbe4717b605a2b184358`이고 status는 `HISTORICAL_MARKET_CAP_PIT_READY`다. reference grid/provenance SHA-256은 각각 `181f86abc4a84b1bd770a0864ed2e6946337c949364e7166a2c24e8bc8b0cc3f`, `bc9bf3361d21120b0fae1e1e7f26e2ec812009d3864627d6a284a4bfa6fa3764`다. SUPERSEDED_NON_REFERENCE_SOURCE는 사용하지 않았다.
 
-3. Historical Investability PIT Audit
-Status: HISTORICAL_INVESTABILITY_PIT_BLOCKED.
+5. Phase10 Investability Semantics
+----------------------------------
+KOSPI + KOSDAQ historical market만 사용했다. market_cap >= 100,000,000,000 KRW AND reference 이하 최근 valid 20 trading-day avg_trading_value >= 300,000,000 KRW를 적용했다. close-price hard filter는 NONE이며, 20개 미만 observation은 REFERENCE_DATA_INSUFFICIENT로 제외했다. current/future market cap, shares, listing state, interpolation은 사용하지 않았다.
 
-Phase10 definition requires market_cap_at_reference >= 100,000,000,000 KRW and avg_trading_value_20d_at_reference >= 300,000,000 KRW. Local raw cache has daily OHLCV and trading_value, so a 20-trading-day value can be calculated where daily history exists. It has neither historical market_cap nor shares_outstanding.
+6. Completed Weekly Reference Contract
+--------------------------------------
+각 22-row grid의 `completed_weekly_reference_date == effective_date`를 확인하고 같은 날짜 KRX snapshot의 ticker, market, canonical market_cap을 join했다. Fast input daily/monthly/weekly도 모두 reference date 이하로 잘랐다.
 
-The only local market-cap snapshots are 2025-01-31 and 2026-08-14. Neither is a common 2020 Q1 through 2025 Q2 reference-grid date, and they cannot be substituted for historical reference dates. Current market cap, future shares outstanding, current listing state, and close multiplied by future shares were not used.
+7. Prior Dataset Firewall
+-------------------------
+Phase13C-1 원본 60 row에서 ticker set을 코드로 추출해 ticker 전체를 제외했다. final overlap은 0이다.
 
-4. Reference Date Grid
-The 22 calendar-quarter W-FRI candidates are 2020-03-27, 2020-06-26, 2020-09-25, 2020-12-25, 2021-03-26, 2021-06-25, 2021-09-24, 2021-12-31, 2022-03-25, 2022-06-24, 2022-09-30, 2022-12-30, 2023-03-31, 2023-06-30, 2023-09-22, 2023-12-29, 2024-03-29, 2024-06-28, 2024-09-27, 2024-12-27, 2025-03-28, 2025-06-27. The exact label must be the last completed weekly point accepted by build_historical_snapshot, including any holiday fallback.
+8. Human Positive Anchor Firewall
+---------------------------------
+frozen human-positive anchor CSV에서 ticker set을 코드로 읽어 ticker 전체를 제외했다. final anchor overlap은 0이며 anchor similarity/nearest-neighbor는 사용하지 않았다.
 
-The full exact grid cannot be derived locally because the inspected raw daily cache begins at 2021-08-17. All 22 calendar candidates also lack a matching local canonical historical market-cap snapshot. This is a second strict-PIT block, not a reason to infer dates or values.
+9. Sampling Strata
+------------------
+ADVANCED_CANDIDATE(TRIGGER/TREND) 10, SETUP_CANDIDATE 10, WATCH_HIGH_SCORE 8, EXTENDED_CONTROL 4, WATCH_LOW_SCORE_CONTROL 4를 목표로 했다. WATCH percentile은 same-date investable WATCH + score READY/PARTIAL population에서만 계산했다.
 
-5. Prior Dataset Exclusion, Sampling Strata, and Diversity Constraints
-Not executed. No substitute investability proxy, outcome-based selection, hash selection, or quota fill was attempted. Therefore there is no OOS-B sample manifest and no selected ticker to compare with the prior 60-sample dataset or the four positive anchors.
+10. Deterministic Selection
+---------------------------
+Seed는 `PATTERN_A_FAST_INVESTABLE_OOS_B_V01`이다. SHA256(seed|stratum|ticker|completed_weekly_reference_date) ascending을 사용하고 ticker별 최소 hash 하나만 유지했다. WATCH score tie는 score ascending 뒤 ticker ascending ordinal rank로 결정해 same-date percentile을 고정했다. Python built-in hash()는 사용하지 않았다.
 
-6. Blindness Rules and Human Review Protocol
-Not started. No human review sheet, stage chart, outcome chart, machine output exposure, human stage, human outcome, or trigger event was created.
+11. Diversity Constraints
+-------------------------
+final sample은 ticker 36개 unique, reference quarter 15개, reference date별 최대 3개, KOSPI/KOSDAQ 18/18개다. market max floor(2/3*N)=24를 만족한다. historical PIT sector source가 없으므로 sector constraint는 만들지 않았다.
 
-7. Evaluation Preregistration
-Not created because no sample can be frozen legally. Frozen HIERARCHICAL_V01, frozen Pattern A, Phase10 thresholds, RESERVED_OOS_A, Phase 13I-2 results, and docs/roadmap.md remain unchanged.
+12. Blindness Contract
+----------------------
+machine-facing manifest는 human reviewer에게 제공하지 않는다. human review CSV에는 stage, score, stratum, percentile, selection hash, Pattern A, future model output column이 없다. PASS A는 stage_blind chart 108개만, PASS B는 stage freeze 뒤 outcome_blind chart 36개만 노출한다.
 
-8. Positive Anchor Firewall and No Outcome-Based Sampling
-No anchor similarity, human label, future return, forward runup/drawdown, future high/low, or other future-dependent field was used. No OOS evaluation was run.
+13. Human Stage Taxonomy
+------------------------
+WATCH, SETUP, TRIGGER, TREND, EXTENDED; confidence LOW/MEDIUM/HIGH; trigger YES/NO를 frozen taxonomy로 사용한다. sheet 초기값은 모두 UNLABELED/PENDING이다.
 
-9. Required Additional Data
-Before Phase 13J-1 can continue, the repository must contain a frozen local dataset with, for every common reference-grid date: (1) historical KRX market cap or reference-date shares outstanding, (2) reference-date ticker and market identity, and (3) provenance sufficient to prove the snapshot was available as of that reference date. The missing data must not be fetched during this phase.
+14. Human Outcome Taxonomy
+--------------------------
+GOOD_TRIGGER, BORDERLINE_TRIGGER, FALSE_TRIGGER, TOO_EARLY, TOO_LATE, TOO_EXTENDED, NO_SETUP의 정확히 7 labels다. DATA_UNAVAILABLE은 label이 아니라 후속 adjudication status다.
 
-10. Limitations
-This is not a retrospective historical OOS evaluation because sample selection did not start. A fully prospective claim is not applicable. Historical market-cap PIT feasibility is the blocking dependency.
+15. Evaluation Preregistration
+------------------------------
+evaluation protocol은 human label 전 생성·hash seal했다. claim boundary는 "retrospective historical OOS with preregistered blind human review"다. fully prospective/live/production-proven claim은 하지 않는다.
 
-11. Final Decision
-Sample generated: 0. OOS evaluation run: false. Network market request count: 0.
+16. Score Protocol
+-----------------
+primary POSITIVE_STRUCTURE(GOOD_TRIGGER+BORDERLINE_TRIGGER) vs EARLY_OR_NONE(TOO_EARLY+NO_SETUP)는 group별 n>=5가 필요하다. 충분한 n에서 positive median <= negative median이면 direction fail, 아니면 pass다. Cliff's delta는 보고만 하고 hard threshold는 없다. secondary GOOD_TRIGGER comparisons는 descriptive다.
 
-Final status: HISTORICAL_INVESTABILITY_PIT_BLOCKED.
+17. Stage Protocol
+------------------
+Human-vs-machine confusion matrix, exact/over-call/under-call을 후속 평가에서 보고한다. exact match hard threshold는 없다.
 
-12. Next Step
-STOP. Do not create an arbitrary market-cap proxy or begin Phase 13J-2. Resume Phase 13J-1 only after the required frozen historical inputs are supplied locally.
+18. Lead Protocol
+-----------------
+Precedence는 DATA_UNAVAILABLE → SAME_WEEK → PATTERN_A_ALREADY_ACTIVE → PATTERN_A_PRIOR_ACTIVITY_BEFORE_FAST_EVENT → FAST_EARLIER_PATTERN_A_LATER → FAST_EVENT_NO_PATTERN_A_CATCHUP다. clean lead는 FAST_EARLIER_PATTERN_A_LATER만 사용하고 n>=3, median lead weeks > 0이 direction pass 조건이다.
+
+19. Availability Gates
+----------------------
+frozen sample 기준 Stage READY coverage <80%면 failure, Fast Score UNAVAILABLE rate >20%면 failure다. PARTIAL은 unavailable이 아니다. outcome future data 부족은 sampling replacement 근거가 아니다.
+
+20. No-Retuning Rule
+--------------------
+freeze 뒤 sample 교체/추가/제거, quota substitution, score/stage/feature/weight/threshold 변경은 금지한다. 이번 실행에서 human labels, OOS evaluation, retuning은 모두 false다.
+
+21. Claim Boundary
+------------------
+이 패키지는 retrospective historical OOS with preregistered blind human review다. live validation과 paper validation은 Phase20 이후 별도 scope다.
+
+22. Final Sample Distribution
+-----------------------------
+Target/actual = 36/36. strata actual = ADVANCED 10, SETUP 10, WATCH_HIGH 8, EXTENDED 4, WATCH_LOW 4. hard minimum 6/6/5/3/3을 전부 충족한다. deterministic post-firewall eligible pool은 1,609 rows다. stage blind chart 108개와 outcome blind chart 36개가 asset manifest SHA-256으로 봉인됐다.
+
+23. Final Status
+----------------
+`READY_FOR_BLIND_HUMAN_INVESTABLE_OOS_LABELING`
+
+Human Stage/Outcome을 입력하지 않는다. OOS evaluation도 실행하지 않는다. Network market request count는 0이다. 다음 행동은 advisor review 후 blind human PASS A stage labeling이며, 이 commit에서 Phase13J-2 이상으로 진행하지 않는다.
