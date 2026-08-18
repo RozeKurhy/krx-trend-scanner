@@ -75,6 +75,30 @@ def aggregate(monthly_score: float, weekly_score: float, breakout: float, risk: 
     return round(float(np.clip(base + refinement - 0.15 * risk, 0, 100)), 2)
 
 
+def score_contract() -> dict:
+    """Serialize the exact executable mapping; this is not a new variant."""
+    return {"version":"v0.1","base_commit":BASE,"architecture_sha":BASE,"prototype_status":"RESEARCH_PROTOTYPE_ADVISOR_REVIEW_PENDING","production_frozen":False,
+        "implemented_prototypes":["HIERARCHICAL_V01"],"aggregate_formula_candidates":["HIERARCHICAL_V01"],"selected_research_prototype":"HIERARCHICAL_V01",
+        "deferred_concepts":["WEEKLY_DOMINANT_SOFT_V01 was considered conceptually but was not implemented or evaluated."],
+        "monthly_permission_mapping":{"range_position_24m":{"zones":[{"upper_bound":.25,"score":35},{"upper_bound":.85,"score":85},{"lower_bound":.85,"score":40}]},"monthly_down_month_ratio_12m":{"zones":[{"upper_bound":.40,"score":85},{"upper_bound":.60,"score":60},{"lower_bound":.60,"score":35}]},"component_formula":{"weights":{"range_position_24m":.70,"monthly_down_month_ratio_12m":.30},"expression":"0.70 * range_position_score + 0.30 * downside_ratio_score"}},
+        "weekly_core_mapping":{"close_vs_wma200_pct":{"zones":[{"upper_bound":-.10,"score":30},{"upper_bound":-.02,"score":60},{"lower_bound":-.02,"score":85}],"weight":.30},"distance_to_prior_26w_high_pct":{"zones":[{"upper_bound":-.25,"score":30},{"upper_bound":-.10,"score":60},{"upper_bound":.30,"score":85},{"lower_bound":.30,"score":60}],"weight":.35},"higher_weekly_low_count_13w":{"zones":[{"upper_bound":3,"score":30},{"upper_bound":5,"score":60},{"lower_bound":5,"score":85}],"weight":.20},"wma52_slope_1w":{"zones":[{"upper_bound":0,"score":35},{"lower_bound":0,"score":70}],"weight":.10},"wma12_vs_wma26_pct":{"zones":[{"upper_bound":0,"score":40},{"lower_bound":0,"score":70}],"weight":.05},"missing":"WMA200 UNKNOWN removes its contribution; available weights are renormalized"},
+        "conditional_breakout_mapping":{"post_breakout_min_low_vs_level_pct_26w":{"zones":[{"upper_bound":-.10,"score":25},{"upper_bound":0,"score":55},{"lower_bound":0,"score":80}]},"EVENT_NOT_OBSERVED":{"status":"NOT_APPLICABLE","refinement":0}},
+        "daily_risk_mapping":{"recent_5d_max_gap_abs_pct":{"zones":[{"upper_bound":.03,"risk":10},{"upper_bound":.07,"risk":45},{"lower_bound":.07,"risk":80}]},"atr_14_pct":{"zones":[{"upper_bound":.03,"risk":10},{"upper_bound":.07,"risk":45},{"lower_bound":.07,"risk":80}]},"formula":"min(100, max_gap_risk + 0.25 * atr_risk)"},
+        "aggregate_formula":{"prototype_id":"HIERARCHICAL_V01","base":"0.70 * weekly_core_score + 0.30 * monthly_permission_score","conditional_refinement":"0.10 * (conditional_breakout_quality - 50) when event observed else 0","final":"clip(base + conditional_refinement - 0.15 * daily_timing_risk, 0, 100)"},
+        "score_status_semantics":{"READY":"all expected direct inputs available","PARTIAL":"WMA200 UNKNOWN; weekly weights renormalized","UNAVAILABLE":"unexpected Monthly primary missing"},"non_decisions":["No optimization","No production score","No trade signal"]}
+
+
+def stage_contract() -> dict:
+    return {"version":"v0.1","production_frozen":False,"weekly_only":True,"score_input":False,"monthly_input":False,"daily_input":False,"previous_stage_input":False,
+        "stage_semantics":["WATCH","SETUP","TRIGGER","TREND","EXTENDED"],"evaluation_order":["EXTENDED","TRIGGER","TREND","SETUP","WATCH"],
+        "weekly_feature_inputs":["close_vs_wma200_pct","distance_to_prior_26w_high_pct","higher_weekly_low_count_13w","wma52_slope_1w","wma12_vs_wma26_pct"],"stage_only_semantic_markers":["weeks_since_26w_close_breakout"],
+        "extended_rule_candidate":{"close_vs_wma200_pct":{"operator":">","value":.50},"any_of":[{"wma52_slope_1w":{"operator":">","value":.01}},{"wma12_vs_wma26_pct":{"operator":">","value":.10}}]},
+        "ready_structure_candidate":{"distance_to_prior_26w_high_pct":{"operator":">=","value":-.10},"higher_weekly_low_count_13w":{"operator":">=","value":5},"close_vs_wma200_pct":"UNKNOWN_OR_>=_-0.10"},
+        "trigger_rule_candidate":{"requires":"ready_structure_candidate","weeks_since_26w_close_breakout":{"observed":True,"operator":"<=","value":12}},
+        "trend_rule_candidate":{"distance_to_prior_26w_high_pct":{"operator":">=","value":-.10},"higher_weekly_low_count_13w":{"operator":">=","value":6},"any_of":[{"wma52_slope_1w":{"operator":">","value":0}},{"wma12_vs_wma26_pct":{"operator":">","value":0}}]},
+        "setup_rule_candidate":{"higher_weekly_low_count_13w":{"operator":">=","value":5},"any_of":[{"distance_to_prior_26w_high_pct":{"operator":">=","value":-.25}},{"wma52_slope_1w":{"operator":">","value":0}},{"wma12_vs_wma26_pct":{"operator":">","value":0}}]},"watch_rule_candidate":"fallback when no higher-priority rule matches","snapshot_independence":True,"human_trigger_event_policy":"not used as input and never backfilled","missing_behavior":"WMA200 UNKNOWN is not automatic WATCH"}
+
+
 def stage(row: pd.Series) -> str:
     """Weekly-only current-snapshot lifecycle; never reads score or human fields."""
     wma, distance, lows = row.close_vs_wma200_pct, row.distance_to_prior_26w_high_pct, row.higher_weekly_low_count_13w
@@ -123,9 +147,7 @@ def main() -> None:
         a,b=calibration.query("human_label == @left").pattern_a_fast_score_proto,calibration.query("human_label == @right").pattern_a_fast_score_proto
         diag.append(dict(prototype_id="HIERARCHICAL_V01",comparison=f"{left}_vs_{right}",n_left=len(a),n_right=len(b),median_left=a.median(),median_right=b.median(),median_diff=a.median()-b.median(),cliffs_delta=cliffs(a,b)))
     pd.DataFrame(diag).to_csv(OUT["diagnostics"],index=False)
-    score_contract={"version":"v0.1","base_commit":BASE,"architecture_sha":BASE,"prototype_status":"RESEARCH_PROTOTYPE_ADVISOR_REVIEW_PENDING","production_frozen":False,"component_definitions":{"monthly":"permission zones","weekly":"weekly-dominant renormalized core","conditional":"observed-event refinement only","daily":"risk penalty only"},"aggregate_formula_candidates":["HIERARCHICAL_V01","WEEKLY_DOMINANT_SOFT_V01"],"selected_research_prototype":"HIERARCHICAL_V01","missing_behavior":{"wma200":"UNKNOWN; renormalize available weekly inputs","breakout":"EVENT_NOT_OBSERVED; no penalty","unexpected_primary":"UNAVAILABLE"},"non_decisions":["No optimization","No production score","No trade signal"]}
-    stage_contract={"version":"v0.1","production_frozen":False,"stage_semantics":["WATCH","SETUP","TRIGGER","TREND","EXTENDED"],"weekly_feature_inputs":["close_vs_wma200_pct","distance_to_prior_26w_high_pct","higher_weekly_low_count_13w","wma52_slope_1w","wma12_vs_wma26_pct"],"stage_only_semantic_markers":["weeks_since_26w_close_breakout"],"snapshot_independence":True,"human_trigger_event_policy":"not used as input and never backfilled","missing_behavior":"WMA200 UNKNOWN is not automatic WATCH"}
-    OUT["score"].write_text(json.dumps(score_contract,ensure_ascii=False,indent=2)+"\n"); OUT["stage"].write_text(json.dumps(stage_contract,ensure_ascii=False,indent=2)+"\n")
+    OUT["score"].write_text(json.dumps(score_contract(),ensure_ascii=False,indent=2)+"\n"); OUT["stage"].write_text(json.dumps(stage_contract(),ensure_ascii=False,indent=2)+"\n")
     print(f"wrote {len(calibration)} calibration rows; stage={calibration.machine_stage_proto.value_counts().to_dict()}")
 
 if __name__ == "__main__": main()

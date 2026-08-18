@@ -90,3 +90,37 @@ def test_frozen_files_and_prohibited_dependencies_remain_untouched():
     source = SCRIPT.read_text(encoding="utf-8")
     for forbidden in ("load_raw_daily","ParquetCache","sklearn","requests","urllib","optuna"):
         assert forbidden not in source
+
+
+def test_self_contained_score_contract_reproduces_executable_mapping():
+    mod, contract = _module(), json.loads((R / "pattern_a_fast_score_prototype_v01.json").read_text())
+    assert contract["implemented_prototypes"] == ["HIERARCHICAL_V01"]
+    assert contract["aggregate_formula_candidates"] == ["HIERARCHICAL_V01"]
+    assert "WEEKLY_DOMINANT_SOFT_V01" not in contract["implemented_prototypes"]
+    assert len(pd.read_csv(R / "pattern_a_fast_threshold_candidates_v01.csv")) == 20
+    assert set(contract["monthly_permission_mapping"]) == {"range_position_24m", "monthly_down_month_ratio_12m", "component_formula"}
+    assert contract["monthly_permission_mapping"]["range_position_24m"]["zones"] == [{"upper_bound": .25, "score": 35}, {"upper_bound": .85, "score": 85}, {"lower_bound": .85, "score": 40}]
+    assert contract["weekly_core_mapping"]["distance_to_prior_26w_high_pct"]["weight"] == .35
+    assert contract["daily_risk_mapping"]["atr_14_pct"]["zones"][-1]["risk"] == 80
+    row = pd.Series(dict(range_position_24m=.5,monthly_down_month_ratio_12m=.4,close_vs_wma200_pct=.0,distance_to_prior_26w_high_pct=-.05,higher_weekly_low_count_13w=6,wma52_slope_1w=.01,wma12_vs_wma26_pct=.02,post_breakout_min_low_vs_level_pct_26w=.01,recent_5d_max_gap_abs_pct=.02,atr_14_pct=.02))
+    mstate, monthly = mod.monthly(row); weekly, status = mod.weekly(row); _, breakout = mod.conditional(row); _, risk = mod.daily_risk(row)
+    assert mstate == "PERMITTED_REGIME" and status == "READY"
+    assert monthly == 85 and weekly == 82.75 and breakout == 80 and risk == 12.5
+    assert mod.aggregate(monthly, weekly, breakout, risk) == 84.55
+
+
+def test_self_contained_stage_contract_matches_function_and_outputs_unchanged():
+    mod, contract = _module(), json.loads((R / "pattern_a_fast_stage_prototype_v01.json").read_text())
+    assert contract["evaluation_order"] == ["EXTENDED","TRIGGER","TREND","SETUP","WATCH"]
+    assert all(contract[key] is False for key in ("score_input","monthly_input","daily_input","previous_stage_input"))
+    cases = {
+        "WATCH": dict(close_vs_wma200_pct=-.4,distance_to_prior_26w_high_pct=-.5,higher_weekly_low_count_13w=2,wma52_slope_1w=-.01,wma12_vs_wma26_pct=-.01,weeks_since_26w_close_breakout=float("nan")),
+        "SETUP": dict(close_vs_wma200_pct=-.1,distance_to_prior_26w_high_pct=-.2,higher_weekly_low_count_13w=5,wma52_slope_1w=0,wma12_vs_wma26_pct=.01,weeks_since_26w_close_breakout=float("nan")),
+        "TRIGGER": dict(close_vs_wma200_pct=0,distance_to_prior_26w_high_pct=-.05,higher_weekly_low_count_13w=5,wma52_slope_1w=0,wma12_vs_wma26_pct=0,weeks_since_26w_close_breakout=12),
+        "TREND": dict(close_vs_wma200_pct=0,distance_to_prior_26w_high_pct=-.05,higher_weekly_low_count_13w=6,wma52_slope_1w=.01,wma12_vs_wma26_pct=0,weeks_since_26w_close_breakout=float("nan")),
+        "EXTENDED": dict(close_vs_wma200_pct=.51,distance_to_prior_26w_high_pct=-.05,higher_weekly_low_count_13w=6,wma52_slope_1w=.02,wma12_vs_wma26_pct=0,weeks_since_26w_close_breakout=float("nan")),
+    }
+    assert {name: mod.stage(pd.Series(values)) for name, values in cases.items()} == {name: name for name in cases}
+    stable = ["pattern_a_fast_calibration_score_prototype_v01.csv","pattern_a_fast_stage_prototype_evaluation_v01.csv","pattern_a_fast_score_prototype_diagnostics_v01.csv"]
+    diff = subprocess.run(["git","diff","--name-only","612bfb8e9a409344093602cd61f8f9a3ab00c66d","--",*[str(R / item) for item in stable]],check=True,capture_output=True,text=True)
+    assert diff.stdout == ""

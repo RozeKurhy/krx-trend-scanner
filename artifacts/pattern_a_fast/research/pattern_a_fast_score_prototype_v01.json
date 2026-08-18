@@ -4,21 +4,208 @@
   "architecture_sha": "4fc5f9d11c23cd96703c5b066d5f60200fb41703",
   "prototype_status": "RESEARCH_PROTOTYPE_ADVISOR_REVIEW_PENDING",
   "production_frozen": false,
-  "component_definitions": {
-    "monthly": "permission zones",
-    "weekly": "weekly-dominant renormalized core",
-    "conditional": "observed-event refinement only",
-    "daily": "risk penalty only"
-  },
+  "implemented_prototypes": [
+    "HIERARCHICAL_V01"
+  ],
   "aggregate_formula_candidates": [
-    "HIERARCHICAL_V01",
-    "WEEKLY_DOMINANT_SOFT_V01"
+    "HIERARCHICAL_V01"
   ],
   "selected_research_prototype": "HIERARCHICAL_V01",
-  "missing_behavior": {
-    "wma200": "UNKNOWN; renormalize available weekly inputs",
-    "breakout": "EVENT_NOT_OBSERVED; no penalty",
-    "unexpected_primary": "UNAVAILABLE"
+  "deferred_concepts": [
+    "WEEKLY_DOMINANT_SOFT_V01 was considered conceptually but was not implemented or evaluated."
+  ],
+  "monthly_permission_mapping": {
+    "range_position_24m": {
+      "zones": [
+        {
+          "upper_bound": 0.25,
+          "score": 35
+        },
+        {
+          "upper_bound": 0.85,
+          "score": 85
+        },
+        {
+          "lower_bound": 0.85,
+          "score": 40
+        }
+      ]
+    },
+    "monthly_down_month_ratio_12m": {
+      "zones": [
+        {
+          "upper_bound": 0.4,
+          "score": 85
+        },
+        {
+          "upper_bound": 0.6,
+          "score": 60
+        },
+        {
+          "lower_bound": 0.6,
+          "score": 35
+        }
+      ]
+    },
+    "component_formula": {
+      "weights": {
+        "range_position_24m": 0.7,
+        "monthly_down_month_ratio_12m": 0.3
+      },
+      "expression": "0.70 * range_position_score + 0.30 * downside_ratio_score"
+    }
+  },
+  "weekly_core_mapping": {
+    "close_vs_wma200_pct": {
+      "zones": [
+        {
+          "upper_bound": -0.1,
+          "score": 30
+        },
+        {
+          "upper_bound": -0.02,
+          "score": 60
+        },
+        {
+          "lower_bound": -0.02,
+          "score": 85
+        }
+      ],
+      "weight": 0.3
+    },
+    "distance_to_prior_26w_high_pct": {
+      "zones": [
+        {
+          "upper_bound": -0.25,
+          "score": 30
+        },
+        {
+          "upper_bound": -0.1,
+          "score": 60
+        },
+        {
+          "upper_bound": 0.3,
+          "score": 85
+        },
+        {
+          "lower_bound": 0.3,
+          "score": 60
+        }
+      ],
+      "weight": 0.35
+    },
+    "higher_weekly_low_count_13w": {
+      "zones": [
+        {
+          "upper_bound": 3,
+          "score": 30
+        },
+        {
+          "upper_bound": 5,
+          "score": 60
+        },
+        {
+          "lower_bound": 5,
+          "score": 85
+        }
+      ],
+      "weight": 0.2
+    },
+    "wma52_slope_1w": {
+      "zones": [
+        {
+          "upper_bound": 0,
+          "score": 35
+        },
+        {
+          "lower_bound": 0,
+          "score": 70
+        }
+      ],
+      "weight": 0.1
+    },
+    "wma12_vs_wma26_pct": {
+      "zones": [
+        {
+          "upper_bound": 0,
+          "score": 40
+        },
+        {
+          "lower_bound": 0,
+          "score": 70
+        }
+      ],
+      "weight": 0.05
+    },
+    "missing": "WMA200 UNKNOWN removes its contribution; available weights are renormalized"
+  },
+  "conditional_breakout_mapping": {
+    "post_breakout_min_low_vs_level_pct_26w": {
+      "zones": [
+        {
+          "upper_bound": -0.1,
+          "score": 25
+        },
+        {
+          "upper_bound": 0,
+          "score": 55
+        },
+        {
+          "lower_bound": 0,
+          "score": 80
+        }
+      ]
+    },
+    "EVENT_NOT_OBSERVED": {
+      "status": "NOT_APPLICABLE",
+      "refinement": 0
+    }
+  },
+  "daily_risk_mapping": {
+    "recent_5d_max_gap_abs_pct": {
+      "zones": [
+        {
+          "upper_bound": 0.03,
+          "risk": 10
+        },
+        {
+          "upper_bound": 0.07,
+          "risk": 45
+        },
+        {
+          "lower_bound": 0.07,
+          "risk": 80
+        }
+      ]
+    },
+    "atr_14_pct": {
+      "zones": [
+        {
+          "upper_bound": 0.03,
+          "risk": 10
+        },
+        {
+          "upper_bound": 0.07,
+          "risk": 45
+        },
+        {
+          "lower_bound": 0.07,
+          "risk": 80
+        }
+      ]
+    },
+    "formula": "min(100, max_gap_risk + 0.25 * atr_risk)"
+  },
+  "aggregate_formula": {
+    "prototype_id": "HIERARCHICAL_V01",
+    "base": "0.70 * weekly_core_score + 0.30 * monthly_permission_score",
+    "conditional_refinement": "0.10 * (conditional_breakout_quality - 50) when event observed else 0",
+    "final": "clip(base + conditional_refinement - 0.15 * daily_timing_risk, 0, 100)"
+  },
+  "score_status_semantics": {
+    "READY": "all expected direct inputs available",
+    "PARTIAL": "WMA200 UNKNOWN; weekly weights renormalized",
+    "UNAVAILABLE": "unexpected Monthly primary missing"
   },
   "non_decisions": [
     "No optimization",

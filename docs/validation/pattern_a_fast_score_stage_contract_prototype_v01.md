@@ -106,8 +106,9 @@ risk가 높아질수록 final opportunity score가 좋아질 수 없고 Weekly s
 HIERARCHICAL_V01을 RECOMMENDED_FOR_13H 후보로 선택했다.
 
 Weekly core를 중심으로 Monthly permission을 더하고, observed conditional
-breakout만 작은 refinement로 반영한 뒤 Daily risk를 감산한다. 두 번째
-WEEKLY_DOMINANT_SOFT_V01은 계약 artifact에 비교 후보로만 기록했다.
+breakout만 작은 refinement로 반영한 뒤 Daily risk를 감산한다.
+WEEKLY_DOMINANT_SOFT_V01은 개념으로만 검토했고 구현·calibration·diagnostics를
+만들지 않았다.
 선택은 in-sample 성능 최적화가 아니라 timeframe responsibility에 근거한다.
 
 ==================================================
@@ -193,10 +194,11 @@ failure analysis로 남긴다.
 18. Prototype Comparison
 ==================================================
 
-Aggregate prototype variant는 2개로 bounded했다. HIERARCHICAL_V01은 Monthly
-permission → Weekly dominant core → Daily risk adjustment → conditional
-refinement 순서를 보존해 선택했다. weight는 SEMANTIC_ARCHITECTURE provenance
-후보이지 production weight가 아니다.
+실행 가능한 aggregate prototype은 HIERARCHICAL_V01 하나뿐이다. 두 번째
+soft-score concept는 불필요한 in-sample variant 증식을 막기 위해 의도적으로
+구현하지 않았다. HIERARCHICAL_V01은 Monthly permission → Weekly dominant
+core → Daily risk adjustment → conditional refinement 순서를 보존한다.
+weight는 SEMANTIC_ARCHITECTURE provenance 후보이지 production weight가 아니다.
 
 ==================================================
 19. Recommended Candidate for 13H

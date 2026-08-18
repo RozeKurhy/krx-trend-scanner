@@ -1,12 +1,24 @@
 {
   "version": "v0.1",
   "production_frozen": false,
+  "weekly_only": true,
+  "score_input": false,
+  "monthly_input": false,
+  "daily_input": false,
+  "previous_stage_input": false,
   "stage_semantics": [
     "WATCH",
     "SETUP",
     "TRIGGER",
     "TREND",
     "EXTENDED"
+  ],
+  "evaluation_order": [
+    "EXTENDED",
+    "TRIGGER",
+    "TREND",
+    "SETUP",
+    "WATCH"
   ],
   "weekly_feature_inputs": [
     "close_vs_wma200_pct",
@@ -18,6 +30,96 @@
   "stage_only_semantic_markers": [
     "weeks_since_26w_close_breakout"
   ],
+  "extended_rule_candidate": {
+    "close_vs_wma200_pct": {
+      "operator": ">",
+      "value": 0.5
+    },
+    "any_of": [
+      {
+        "wma52_slope_1w": {
+          "operator": ">",
+          "value": 0.01
+        }
+      },
+      {
+        "wma12_vs_wma26_pct": {
+          "operator": ">",
+          "value": 0.1
+        }
+      }
+    ]
+  },
+  "ready_structure_candidate": {
+    "distance_to_prior_26w_high_pct": {
+      "operator": ">=",
+      "value": -0.1
+    },
+    "higher_weekly_low_count_13w": {
+      "operator": ">=",
+      "value": 5
+    },
+    "close_vs_wma200_pct": "UNKNOWN_OR_>=_-0.10"
+  },
+  "trigger_rule_candidate": {
+    "requires": "ready_structure_candidate",
+    "weeks_since_26w_close_breakout": {
+      "observed": true,
+      "operator": "<=",
+      "value": 12
+    }
+  },
+  "trend_rule_candidate": {
+    "distance_to_prior_26w_high_pct": {
+      "operator": ">=",
+      "value": -0.1
+    },
+    "higher_weekly_low_count_13w": {
+      "operator": ">=",
+      "value": 6
+    },
+    "any_of": [
+      {
+        "wma52_slope_1w": {
+          "operator": ">",
+          "value": 0
+        }
+      },
+      {
+        "wma12_vs_wma26_pct": {
+          "operator": ">",
+          "value": 0
+        }
+      }
+    ]
+  },
+  "setup_rule_candidate": {
+    "higher_weekly_low_count_13w": {
+      "operator": ">=",
+      "value": 5
+    },
+    "any_of": [
+      {
+        "distance_to_prior_26w_high_pct": {
+          "operator": ">=",
+          "value": -0.25
+        }
+      },
+      {
+        "wma52_slope_1w": {
+          "operator": ">",
+          "value": 0
+        }
+      },
+      {
+        "wma12_vs_wma26_pct": {
+          "operator": ">",
+          "value": 0
+        }
+      }
+    ]
+  },
+  "watch_rule_candidate": "fallback when no higher-priority rule matches",
   "snapshot_independence": true,
   "human_trigger_event_policy": "not used as input and never backfilled",
   "missing_behavior": "WMA200 UNKNOWN is not automatic WATCH"
