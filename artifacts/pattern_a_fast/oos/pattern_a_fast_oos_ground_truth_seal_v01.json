@@ -1,0 +1,54 @@
+{
+  "version": "pattern_a_fast_oos_ground_truth_seal_v01",
+  "base_sha": "3dbdffcb3277a4bb40fa969f3827075514f13f1e",
+  "oos_set": "RESERVED_OOS_A",
+  "sample_count": 20,
+  "stage_review_complete_count": 20,
+  "outcome_labeled_count": 19,
+  "outcome_unavailable_count": 1,
+  "outcome_unavailable_sample_ids": [
+    "OOS_A_012"
+  ],
+  "outcome_unavailable_reason": {
+    "OOS_A_012": "TRADING_SUSPENSION_OUTCOME_UNAVAILABLE"
+  },
+  "stage_distribution": {
+    "WATCH": 12,
+    "SETUP": 1,
+    "TRIGGER": 0,
+    "TREND": 1,
+    "EXTENDED": 6
+  },
+  "outcome_distribution": {
+    "GOOD_TRIGGER": 0,
+    "BORDERLINE_TRIGGER": 0,
+    "FALSE_TRIGGER": 3,
+    "TOO_EARLY": 5,
+    "TOO_LATE": 1,
+    "TOO_EXTENDED": 7,
+    "NO_SETUP": 3
+  },
+  "observed_trigger_event_count": 1,
+  "observed_trigger_events": [
+    {
+      "oos_sample_id": "OOS_A_010",
+      "human_trigger_event_date": "2025-11-24",
+      "date_normalization": "NOT_APPLIED_PRESERVED_AS_HUMAN_OBSERVATION"
+    }
+  ],
+  "stage_review_recorded_before_outcome_review": true,
+  "human_review_csv_sha256": "71f151e1b79fb3f66930421e8ce890a2c1cce41076ae7b2a0a8ed73badfa46ec",
+  "sample_manifest_sha256": "4f0fa3bf4763fbc7c8efda7324535e92df2325db5616d598c21615e6e8d10b82",
+  "blind_asset_manifest_sha256": "18891c43f751bb8923b478a53ee5dbc0adf76040874b0e5a1c716d2d4457921e",
+  "evaluation_protocol_sha256": "a0f5d5d93a1adb726d3b5ae75613c7339c0e4ae28adb04626bcdce0c7ad1b3f6",
+  "stage_blind_assets_unchanged": true,
+  "outcome_blind_assets_unchanged": true,
+  "evaluation_protocol_unchanged": true,
+  "evaluation_executed": false,
+  "model_outputs_exposed_during_human_review": false,
+  "fast_contract_changed": false,
+  "pattern_a_contract_changed": false,
+  "positive_anchor_count": 4,
+  "positive_anchors_in_oos_metrics": false,
+  "seal_status": "READY_FOR_ADVISOR_GROUND_TRUTH_SEAL_REVIEW"
+}

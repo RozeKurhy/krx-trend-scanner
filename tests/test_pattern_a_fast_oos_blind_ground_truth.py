@@ -90,26 +90,27 @@ def test_manifest_constants_and_deterministic_seeded_order():
     assert manifest.oos_sample_id.tolist() == [f"OOS_A_{i:03d}" for i in range(1, 21)]
 
 
-def test_blank_review_sheet_has_no_model_output_columns_or_labels():
+def test_human_review_sheet_has_no_model_output_columns_after_label_freeze():
     _, _, manifest, review = _frames()
     forbidden = ("fast_", "pattern_a_", "score", "machine_stage", "candidate", "lead", "failure", "pair_status", "sampling_cohort", "structure_bucket")
     assert [column for column in review.columns if any(token in column for token in forbidden) and column != "source_sample_id"] == []
     assert len(review) == 20
     assert set(review.oos_sample_id) == set(manifest.oos_sample_id)
-    assert review.weekly_stage_at_reference.eq("UNLABELED").all()
-    assert review.weekly_stage_confidence.eq("UNLABELED").all()
-    assert review.human_trigger_event_observed.eq("UNLABELED").all()
-    assert review.human_label.eq("UNLABELED").all()
-    assert review.human_outcome_confidence.eq("UNLABELED").all()
-    assert review.human_trigger_event_date.eq("").all()
-    assert review.review_note.eq("").all()
-    assert review.stage_review_status.eq("PENDING").all()
-    assert review.outcome_review_status.eq("PENDING").all()
+    assert review.weekly_stage_at_reference.isin(["WATCH", "SETUP", "TRIGGER", "TREND", "EXTENDED"]).all()
+    assert review.stage_review_status.eq("COMPLETE").all()
+    assert review.human_label.isin([
+        "GOOD_TRIGGER", "BORDERLINE_TRIGGER", "FALSE_TRIGGER", "TOO_EARLY", "TOO_LATE",
+        "TOO_EXTENDED", "NO_SETUP", "UNLABELED",
+    ]).all()
 
 
 def test_template_hash_is_frozen_in_manifest_and_audit():
     _, _, manifest, _ = _frames()
-    digest = hashlib.sha256(REVIEW.read_bytes()).hexdigest()
+    initial_template = subprocess.run(
+        ["git", "show", f"{CONTRACT_SEAL_BASE}:artifacts/pattern_a_fast/oos/pattern_a_fast_oos_human_review_v01.csv"],
+        cwd=ROOT, check=True, capture_output=True,
+    ).stdout
+    digest = hashlib.sha256(initial_template).hexdigest()
     audit = json.loads(AUDIT.read_text())
     assert manifest.template_sha256.nunique() == 1
     assert manifest.template_sha256.iloc[0] == digest == audit["human_review_template_sha256"]
@@ -214,10 +215,9 @@ def test_pairing_precedence_matches_frozen_13h_conservative_order():
     assert positions == sorted(positions)
 
 
-def test_contract_seal_preserves_all_human_facing_oos_bytes_from_base():
+def test_contract_seal_preserves_all_original_blind_assets_from_base():
     protected = [
         "artifacts/pattern_a_fast/oos/pattern_a_fast_oos_sample_manifest_v01.csv",
-        "artifacts/pattern_a_fast/oos/pattern_a_fast_oos_human_review_v01.csv",
         "artifacts/pattern_a_fast/oos/pattern_a_fast_oos_blind_asset_manifest_v01.csv",
         "artifacts/pattern_a_fast/oos/charts/stage_blind",
         "artifacts/pattern_a_fast/oos/charts/outcome_blind",
