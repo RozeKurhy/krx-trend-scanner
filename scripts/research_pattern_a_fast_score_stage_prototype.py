@@ -43,6 +43,9 @@ def monthly(row: pd.Series) -> tuple[str, float]:
 
 
 def weekly(row: pd.Series) -> tuple[float, str]:
+    required = ("distance_to_prior_26w_high_pct", "higher_weekly_low_count_13w", "wma52_slope_1w", "wma12_vs_wma26_pct")
+    if any(pd.isna(row[name]) for name in required):
+        return np.nan, "UNAVAILABLE"
     values: list[tuple[float, float]] = []
     wma = row.close_vs_wma200_pct
     if not pd.isna(wma): values.append((zone(wma, [(-0.10, 30), (-0.02, 60)], 85), 0.30))
@@ -63,6 +66,8 @@ def conditional(row: pd.Series) -> tuple[str, float]:
 
 
 def daily_risk(row: pd.Series) -> tuple[str, float]:
+    if pd.isna(row.recent_5d_max_gap_abs_pct) or pd.isna(row.atr_14_pct):
+        return "UNAVAILABLE", np.nan
     gap = zone(row.recent_5d_max_gap_abs_pct, [(0.03, 10), (0.07, 45)], 80)
     atr = zone(row.atr_14_pct, [(0.03, 10), (0.07, 45)], 80)
     risk = min(100.0, gap + 0.25 * atr)  # max-gap main, ATR capped confirmation
@@ -70,6 +75,8 @@ def daily_risk(row: pd.Series) -> tuple[str, float]:
 
 
 def aggregate(monthly_score: float, weekly_score: float, breakout: float, risk: float) -> float:
+    if any(pd.isna(value) for value in (monthly_score, weekly_score, risk)):
+        return np.nan
     base = 0.70 * weekly_score + 0.30 * monthly_score
     refinement = 0.10 * (breakout - 50) if not pd.isna(breakout) else 0.0
     return round(float(np.clip(base + refinement - 0.15 * risk, 0, 100)), 2)
@@ -85,7 +92,9 @@ def score_contract() -> dict:
         "conditional_breakout_mapping":{"post_breakout_min_low_vs_level_pct_26w":{"zones":[{"upper_bound":-.10,"score":25},{"upper_bound":0,"score":55},{"lower_bound":0,"score":80}]},"EVENT_NOT_OBSERVED":{"status":"NOT_APPLICABLE","refinement":0}},
         "daily_risk_mapping":{"recent_5d_max_gap_abs_pct":{"zones":[{"upper_bound":.03,"risk":10},{"upper_bound":.07,"risk":45},{"lower_bound":.07,"risk":80}]},"atr_14_pct":{"zones":[{"upper_bound":.03,"risk":10},{"upper_bound":.07,"risk":45},{"lower_bound":.07,"risk":80}]},"formula":"min(100, max_gap_risk + 0.25 * atr_risk)"},
         "aggregate_formula":{"prototype_id":"HIERARCHICAL_V01","base":"0.70 * weekly_core_score + 0.30 * monthly_permission_score","conditional_refinement":"0.10 * (conditional_breakout_quality - 50) when event observed else 0","final":"clip(base + conditional_refinement - 0.15 * daily_timing_risk, 0, 100)"},
-        "score_status_semantics":{"READY":"all expected direct inputs available","PARTIAL":"WMA200 UNKNOWN; weekly weights renormalized","UNAVAILABLE":"unexpected Monthly primary missing"},"non_decisions":["No optimization","No production score","No trade signal"]}
+        "required_direct_inputs":["range_position_24m","monthly_down_month_ratio_12m","distance_to_prior_26w_high_pct","higher_weekly_low_count_13w","wma52_slope_1w","wma12_vs_wma26_pct","recent_5d_max_gap_abs_pct","atr_14_pct"],"expected_optional_inputs":["close_vs_wma200_pct"],"conditional_inputs":["post_breakout_min_low_vs_level_pct_26w"],
+        "zone_evaluation":{"ordered":True,"upper_bound_operator":"<=","evaluation":"first matching upper_bound wins","fallback":"value strictly greater than final upper_bound uses fallback/final zone"},
+        "score_status_semantics":{"READY":"all non-conditional direct inputs available","PARTIAL":"only WMA200 is unavailable because of INSUFFICIENT_HISTORY; remaining Weekly inputs renormalized","UNAVAILABLE":"any other required direct score input is unexpectedly missing","EVENT_NOT_OBSERVED":"conditional NOT_APPLICABLE; does not affect score_status"},"non_decisions":["No optimization","No production score","No trade signal"]}
 
 
 def stage_contract() -> dict:
@@ -138,7 +147,8 @@ def main() -> None:
     output=[]
     for _, row in data.iterrows():
         mstate, mscore = monthly(row); wscore, wstatus = weekly(row); cstatus, cscore = conditional(row); rstate, risk = daily_risk(row)
-        output.append({**row[["sample_id","ticker","name","reference_date","weekly_stage_at_reference","human_label"]].to_dict(),"monthly_permission_state_proto":mstate,"monthly_permission_score_proto":mscore,"weekly_core_score_proto":wscore,"conditional_breakout_status":cstatus,"conditional_breakout_quality_proto":cscore,"daily_timing_risk_state_proto":rstate,"daily_timing_risk_proto":risk,"pattern_a_fast_score_proto":aggregate(mscore,wscore,cscore,risk),"score_status":"UNAVAILABLE" if pd.isna(mscore) else wstatus,"machine_stage_proto":stage(row),"diagnostic_mismatch_reason":"DESCRIPTIVE_ONLY"})
+        status = "UNAVAILABLE" if pd.isna(mscore) or wstatus == "UNAVAILABLE" or pd.isna(risk) else wstatus
+        output.append({**row[["sample_id","ticker","name","reference_date","weekly_stage_at_reference","human_label"]].to_dict(),"monthly_permission_state_proto":mstate,"monthly_permission_score_proto":mscore,"weekly_core_score_proto":wscore,"conditional_breakout_status":cstatus,"conditional_breakout_quality_proto":cscore,"daily_timing_risk_state_proto":rstate,"daily_timing_risk_proto":risk,"pattern_a_fast_score_proto":aggregate(mscore,wscore,cscore,risk),"score_status":status,"machine_stage_proto":stage(row),"diagnostic_mismatch_reason":"DESCRIPTIVE_ONLY"})
     calibration=pd.DataFrame(output); calibration.to_csv(OUT["calibration"],index=False)
     candidates().to_csv(OUT["thresholds"],index=False)
     evaluation=calibration.groupby(["weekly_stage_at_reference","machine_stage_proto"]).size().reset_index(name="count").rename(columns={"weekly_stage_at_reference":"human_stage"}); evaluation.to_csv(OUT["evaluation"],index=False)

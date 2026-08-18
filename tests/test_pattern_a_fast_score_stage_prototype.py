@@ -124,3 +124,36 @@ def test_self_contained_stage_contract_matches_function_and_outputs_unchanged():
     stable = ["pattern_a_fast_calibration_score_prototype_v01.csv","pattern_a_fast_stage_prototype_evaluation_v01.csv","pattern_a_fast_score_prototype_diagnostics_v01.csv"]
     diff = subprocess.run(["git","diff","--name-only","612bfb8e9a409344093602cd61f8f9a3ab00c66d","--",*[str(R / item) for item in stable]],check=True,capture_output=True,text=True)
     assert diff.stdout == ""
+
+
+def _json_zone(value, zones, output):
+    for item in zones:
+        if "upper_bound" in item and value <= item["upper_bound"]:
+            return item[output]
+    return zones[-1][output]
+
+
+def test_json_only_zone_evaluator_has_exact_boundary_semantics():
+    contract = json.loads((R / "pattern_a_fast_score_prototype_v01.json").read_text())
+    assert contract["zone_evaluation"] == {"ordered": True, "upper_bound_operator": "<=", "evaluation": "first matching upper_bound wins", "fallback": "value strictly greater than final upper_bound uses fallback/final zone"}
+    monthly = contract["monthly_permission_mapping"]["range_position_24m"]["zones"]
+    weekly = contract["weekly_core_mapping"]["close_vs_wma200_pct"]["zones"]
+    daily = contract["daily_risk_mapping"]["recent_5d_max_gap_abs_pct"]["zones"]
+    assert [_json_zone(v, monthly, "score") for v in (.25, .85, .86)] == [35, 85, 40]
+    assert [_json_zone(v, weekly, "score") for v in (-.10, -.02, -.01)] == [30, 60, 85]
+    assert [_json_zone(v, daily, "risk") for v in (.03, .07, .08)] == [10, 45, 80]
+
+
+def test_unexpected_direct_missing_fails_closed_but_known_exceptions_do_not():
+    mod = _module()
+    base = dict(close_vs_wma200_pct=0,distance_to_prior_26w_high_pct=-.05,higher_weekly_low_count_13w=6,wma52_slope_1w=.01,wma12_vs_wma26_pct=.02,recent_5d_max_gap_abs_pct=.02,atr_14_pct=.02)
+    for field in ("distance_to_prior_26w_high_pct", "higher_weekly_low_count_13w", "wma52_slope_1w", "wma12_vs_wma26_pct"):
+        row = pd.Series({**base, field: float("nan")})
+        score, status = mod.weekly(row)
+        assert pd.isna(score) and status == "UNAVAILABLE"
+    for field in ("recent_5d_max_gap_abs_pct", "atr_14_pct"):
+        state, risk = mod.daily_risk(pd.Series({**base, field: float("nan")}))
+        assert state == "UNAVAILABLE" and pd.isna(risk)
+    assert pd.isna(mod.aggregate(70, float("nan"), float("nan"), 10))
+    assert mod.weekly(pd.Series({**base, "close_vs_wma200_pct": float("nan")}))[1] == "PARTIAL"
+    assert mod.conditional(pd.Series({"post_breakout_min_low_vs_level_pct_26w": float("nan")}))[0] == "EVENT_NOT_OBSERVED"

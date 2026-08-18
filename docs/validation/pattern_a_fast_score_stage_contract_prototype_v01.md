@@ -115,10 +115,18 @@ WEEKLY_DOMINANT_SOFT_V01은 개념으로만 검토했고 구현·calibration·di
 10. Score Missing Semantics
 ==================================================
 
-- WMA200 unavailable: UNKNOWN, available Weekly input renormalize, PARTIAL
-- breakout event not observed: conditional absent, no penalty
-- unexpected Monthly primary missing: UNAVAILABLE
-- NaN을 silent zero로 채우지 않음
+- close_vs_wma200_pct unavailable: INSUFFICIENT_HISTORY로만 허용한다.
+  이 경우 available Weekly input을 renormalize하고 score_status=PARTIAL이다.
+- post_breakout_min_low_vs_level_pct_26w unavailable: EVENT_NOT_OBSERVED다.
+  conditional component는 NOT_APPLICABLE, refinement=0이며 score_status에 영향이 없다.
+- 그 밖의 direct input(range position, downside ratio, prior-high distance,
+  weekly higher-low, 두 Weekly secondary, max-gap, ATR) 중 하나라도 NaN이면
+  UNEXPECTED_INPUT_MISSING으로 score_status=UNAVAILABLE, final score=NaN이다.
+- NaN을 silent zero, silent renormalization, numeric risk로 변환하지 않는다.
+
+JSON 공통 zone contract는 ordered upper-bound mapping이다. equality는 `<=`로
+처리하고, 마지막 upper bound보다 큰 값만 fallback/final zone으로 보낸다.
+따라서 0.25, 0.85, -0.10, -0.02, 0.03, 0.07도 script와 같은 zone에 속한다.
 
 ==================================================
 11. Weekly Stage Prototype
