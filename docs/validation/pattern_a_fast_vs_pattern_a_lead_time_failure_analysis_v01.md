@@ -4,7 +4,7 @@ pattern_a_fast_vs_pattern_a_lead_time_failure_analysis_v01.md
 0. Status / Base SHA
 ==================================================
 
-Phase 13H / RESEARCH COMPLETE / ADVISOR REVIEW PENDING
+Phase 13H Event Pairing Correction / RESEARCH COMPLETE / ADVISOR REVIEW PENDING
 
 Base SHA: 2da3fc36744b27ec13edae3f690df72c796906e5
 Fast contract: HIERARCHICAL_V01 (13G-2, read-only)
@@ -53,12 +53,16 @@ no actual Friday market close are excluded instead of being substituted with a
 Thursday value. No network fetch is performed.
 
 ==================================================
-5. Pattern A Benchmark Definition
+5. Pattern A Benchmark Definition / Availability Seal
 ==================================================
 
 The primary benchmark is official PatternACandidateState.CANDIDATE returned by
 the frozen production evaluator. TRANSITION/EARLY_TREND stage names are
 secondary diagnostics only; no new candidate rule was inferred from stage.
+
+Pattern A availability is always checked before candidate activity. An
+UNAVAILABLE evaluation remains candidate_active=NaN and is classified as
+DATA_UNAVAILABLE; it is never coerced through bool() or interpreted as active.
 
 ==================================================
 6. Fast Trigger Event Definition / 7. Censoring
@@ -102,26 +106,34 @@ Observed unique Fast Trigger events: 131
 LEFT_CENSORED Fast trigger rows: 2
 Direct jump without observed trigger: 118
 
-+----------------------------------------+---+
-| Pair status                            | n |
-+----------------------------------------+---+
-| PATTERN_A_ALREADY_ACTIVE               |70 |
-| SAME_WEEK                              |13 |
-| FAST_EARLIER_PATTERN_A_LATER           |33 |
-| FAST_EVENT_NO_PATTERN_A_CATCHUP        |15 |
-+----------------------------------------+---+
++-------------------------------------------------+---+
+| Pair status                                     | n |
++-------------------------------------------------+---+
+| DATA_UNAVAILABLE                                |25 |
+| PATTERN_A_ALREADY_ACTIVE                        |45 |
+| PATTERN_A_PRIOR_ACTIVITY_BEFORE_FAST_EVENT      |28 |
+| SAME_WEEK                                       |13 |
+| FAST_EARLIER_PATTERN_A_LATER                    |16 |
+| FAST_EVENT_NO_PATTERN_A_CATCHUP                 | 4 |
++-------------------------------------------------+---+
 
-Only FAST_EARLIER_PATTERN_A_LATER is the primary lead population. Its n=33,
-median=9.0 weeks, IQR=25.0 weeks, min=1.0, max=82.0. Pattern A already active,
-same week, no catch-up, left-censored, and direct-jump cases are excluded from
-this statistic. Therefore Fast is MIXED rather than universally earlier.
+All 131 observed Fast Trigger events reconcile to exactly one pair status.
+Conservative precedence is: Pattern A unavailable, same-week observed event,
+current active, any earlier READY+active history (including LEFT_CENSORED),
+future event, then no catch-up.
+
+Only FAST_EARLIER_PATTERN_A_LATER is the primary lead population. Its corrected
+n=16, median=10.5 weeks, IQR=31.75 weeks, min=1.0, max=76.0. Every one has
+Pattern A READY, inactive at the Fast event, no prior active timeline row, and
+a later observed Pattern A candidate event. Therefore Fast is MIXED rather
+than universally earlier.
 
 ==================================================
 11. Pattern A Catch Up Horizons
 ==================================================
 
-Among the 33 valid Fast-earlier pairs, Pattern A caught up within 4w: 16,
-8w: 16, 13w: 20, 26w: 24, and 52w: 30. The remaining no-catch-up events remain
+Among the 16 corrected valid Fast-earlier pairs, Pattern A caught up within 4w:
+7, 8w: 7, 13w: 9, 26w: 11, and 52w: 14. The remaining no-catch-up events remain
 NaN/right-censored; they are never converted to 52 weeks.
 
 ==================================================
@@ -191,26 +203,32 @@ change request.
 19. Fast Advantages / 20. Weaknesses
 ==================================================
 
-Advantage: 33 observed event pairs show Fast before a later Pattern A official
-candidate, with a 9w median lead in that restricted population.
+Advantage: 16 conservatively eligible observed event pairs show Fast before a
+later Pattern A official candidate, with a 10.5w median lead in that restricted
+population.
 
-Weakness: 70 events already had Pattern A active, 15 never had Pattern A
-catch-up, 118 direct-jump diagnostics have no observable Fast trigger, and
-constructive states occur in both TOO_EARLY and FALSE_TRIGGER contexts.
+Weakness: 45 events already had Pattern A active, 28 had prior Pattern A
+activity before the Fast event, 25 had Pattern A unavailable at the Fast event,
+4 never had Pattern A catch-up, 118 direct-jump diagnostics have no observable
+Fast trigger, and constructive states occur in both TOO_EARLY and
+FALSE_TRIGGER contexts.
 
 ==================================================
 21. Pattern A Earlier / 22. Never Caught Up
 ==================================================
 
-Pattern A was already active at 70 Fast event dates; no Fast-earlier claim is
-made for them. Fifteen Fast events have no Pattern A candidate event before
-their frozen analysis end; these are divergence/failure cases with NaN lead,
-not evidence of lead beyond 52 weeks.
+Pattern A was already active at 45 Fast event dates; no Fast-earlier claim is
+made for them. A further 28 events had prior active Pattern A history and are
+conservatively excluded without episode inference. Twenty-five events have
+Pattern A unavailable at the Fast event. Four Fast events have no Pattern A
+candidate event before their frozen analysis end; these are divergence/failure
+cases with NaN lead, not evidence of lead beyond 52 weeks.
 
 ==================================================
 23. Known Limitations / 24. In-Sample Declaration
 ==================================================
 
+012170_20250328 is a reference DATA_UNAVAILABLE case, not Pattern-A-only.
 This uses the same 40 Human calibration samples used in 13D-13G. Multiple raw
 TRIGGER entries can exist per ticker because episode-reset semantics are not
 production-frozen. This report is in-sample hypothesis and failure evidence

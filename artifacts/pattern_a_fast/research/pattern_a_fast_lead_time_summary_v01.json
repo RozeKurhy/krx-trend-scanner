@@ -9,25 +9,40 @@
   "timeline_rows": 5229,
   "fast_trigger_events": 131,
   "paired_events": 131,
-  "pattern_a_already_active": 70,
+  "pair_status_counts": {
+    "DATA_UNAVAILABLE": 25,
+    "FAST_EARLIER_PATTERN_A_LATER": 16,
+    "FAST_EVENT_NO_PATTERN_A_CATCHUP": 4,
+    "PATTERN_A_ALREADY_ACTIVE": 45,
+    "PATTERN_A_PRIOR_ACTIVITY_BEFORE_FAST_EVENT": 28,
+    "SAME_WEEK": 13
+  },
+  "pattern_a_already_active": 45,
   "same_week": 13,
-  "fast_earlier_pattern_a_later": 33,
-  "no_pattern_a_catchup": 15,
+  "pattern_a_prior_activity_before_fast_event": 28,
+  "pattern_a_data_unavailable_at_fast_event": 25,
+  "fast_earlier_pattern_a_later": 16,
+  "no_pattern_a_catchup": 4,
+  "pair_status_reconciliation": {
+    "observed_fast_trigger_events": 131,
+    "classified_pairs": 131,
+    "pass": true
+  },
   "left_censored": 2,
   "direct_jump_without_trigger": 118,
   "lead_weeks_summary": {
-    "n": 33,
-    "median": 9.0,
-    "iqr": 25.0,
+    "n": 16,
+    "median": 10.5,
+    "iqr": 31.75,
     "min": 1.0,
-    "max": 82.0
+    "max": 76.0
   },
   "catchup_horizons": {
-    "4": 16,
-    "8": 16,
-    "13": 20,
-    "26": 24,
-    "52": 30
+    "4": 7,
+    "8": 7,
+    "13": 9,
+    "26": 11,
+    "52": 14
   },
   "human_label_summary": {
     "BORDERLINE_TRIGGER": 6,

@@ -22,13 +22,14 @@ def _module():
     return module
 
 
-def _timeline(stages, active=None):
+def _timeline(stages, active=None, pattern_status=None):
     active = active or [False] * len(stages)
+    pattern_status = pattern_status or ["READY"] * len(stages)
     dates = pd.date_range("2025-01-03", periods=len(stages), freq="W-FRI")
     return pd.DataFrame({
         "ticker": "000001", "name": "synthetic", "weekly_date": dates.strftime("%Y-%m-%d"),
         "fast_machine_stage": stages, "fast_machine_stage_status": ["READY" if s is not None else "UNAVAILABLE" for s in stages],
-        "pattern_a_candidate_active": active, "pattern_a_evaluation_status": "READY",
+        "pattern_a_candidate_active": active, "pattern_a_evaluation_status": pattern_status,
         "fast_score": 50.0, "fast_monthly_permission_state": "PERMITTED_REGIME", "fast_daily_risk_state": "NORMAL",
     })
 
@@ -104,13 +105,39 @@ def test_pattern_a_event_requires_observed_inactive_to_active_transition():
     assert entered.pattern_a_candidate_event_status.tolist() == ["NOT_OBSERVED", "OBSERVED"]
 
 
-def test_pair_statuses_keep_censoring_and_no_catchup_as_nan():
+def test_conservative_pair_precedence_and_no_catchup_semantics():
     mod = _module()
     samples = pd.DataFrame({"ticker": ["000001"], "outcome_review_end": ["2025-12-26"]})
+
+    # A: inactive at Fast, no earlier activity, later official event.
     later = mod.annotate_event_statuses(_timeline(["WATCH", "TRIGGER", "WATCH", "WATCH"], [False, False, True, True]))
     pairs = mod.build_pairs(later, samples)
     assert pairs.iloc[0].pair_status == "FAST_EARLIER_PATTERN_A_LATER"
     assert pairs.iloc[0].lead_days == 7 and pairs.iloc[0].lead_weeks == 1
+
+    # B: current activity takes precedence over future event.
+    active_now = mod.annotate_event_statuses(_timeline(["WATCH", "TRIGGER", "WATCH"], [True, True, True]))
+    assert mod.build_pairs(active_now, samples).iloc[0].pair_status == "PATTERN_A_ALREADY_ACTIVE"
+
+    # C: earlier observed activity excludes a currently inactive Fast event.
+    prior_observed = mod.annotate_event_statuses(_timeline(["WATCH", "WATCH", "TRIGGER", "WATCH", "WATCH"], [False, True, False, False, True]))
+    prior_pair = mod.build_pairs(prior_observed, samples).iloc[0]
+    assert prior_pair.pair_status == "PATTERN_A_PRIOR_ACTIVITY_BEFORE_FAST_EVENT"
+    assert prior_pair.pattern_a_was_active_before_fast_event == "YES"
+    assert prior_pair.pattern_a_prior_candidate_event_date == "2025-01-10"
+
+    # D: left-censored active history is also prior activity.
+    prior_left_censored = mod.annotate_event_statuses(_timeline(["WATCH", "WATCH", "TRIGGER", "WATCH", "WATCH"], [True, False, False, False, True]))
+    left_pair = mod.build_pairs(prior_left_censored, samples).iloc[0]
+    assert left_pair.pair_status == "PATTERN_A_PRIOR_ACTIVITY_BEFORE_FAST_EVENT"
+    assert left_pair.pattern_a_prior_active_date == "2025-01-03"
+
+    # E: unavailable is checked before candidate activity and never coerced.
+    unavailable = mod.annotate_event_statuses(_timeline(["WATCH", "TRIGGER", "WATCH"], [False, np.nan, False], ["READY", "UNAVAILABLE", "READY"]))
+    unavailable_pair = mod.build_pairs(unavailable, samples).iloc[0]
+    assert unavailable_pair.pair_status == "DATA_UNAVAILABLE"
+    assert pd.isna(unavailable_pair.pattern_a_active_at_fast_event)
+
     no_catch = mod.annotate_event_statuses(_timeline(["WATCH", "TRIGGER", "WATCH"], [False, False, False]))
     no_pairs = mod.build_pairs(no_catch, samples)
     assert no_pairs.iloc[0].pair_status == "FAST_EVENT_NO_PATTERN_A_CATCHUP"
@@ -125,11 +152,18 @@ def test_generated_artifacts_are_complete_and_lead_summary_uses_only_valid_pairs
     summary = json.loads((R / "pattern_a_fast_lead_time_summary_v01.json").read_text())
     assert len(reference) == reference.sample_id.nunique() == 40
     assert timeline.duplicated(["ticker", "weekly_date"]).sum() == 0
-    assert timeline.weekly_date.str.endswith("-05").sum() >= 0  # date strings, no fabricated timestamps
+    assert pd.to_datetime(timeline.weekly_date).dt.dayofweek.eq(4).all()
+    assert reference.loc[reference.sample_id == "012170_20250328", "reference_comparison_status"].item() == "DATA_UNAVAILABLE"
     earlier = pairs[pairs.pair_status == "FAST_EARLIER_PATTERN_A_LATER"].lead_weeks
     assert summary["lead_weeks_summary"]["n"] == len(earlier)
     assert summary["lead_weeks_summary"]["median"] == float(earlier.median())
     assert not pairs.loc[pairs.pair_status == "FAST_EVENT_NO_PATTERN_A_CATCHUP", "lead_weeks"].notna().any()
+    assert len(pairs) == summary["fast_trigger_events"] == sum(summary["pair_status_counts"].values())
+    fast_earlier = pairs[pairs.pair_status == "FAST_EARLIER_PATTERN_A_LATER"]
+    assert fast_earlier.pattern_a_status_at_fast_event.eq("READY").all()
+    assert fast_earlier.pattern_a_active_at_fast_event.eq(False).all()
+    assert fast_earlier.pattern_a_was_active_before_fast_event.eq("NO").all()
+    assert fast_earlier.pattern_a_next_candidate_event_date.notna().all()
 
 
 def test_script_uses_completed_pit_and_official_pattern_a_evaluator_only():
@@ -137,5 +171,6 @@ def test_script_uses_completed_pit_and_official_pattern_a_evaluator_only():
     assert "include_incomplete_periods=False" in source
     assert "daily[daily.index <= weekly_date]" in source
     assert "evaluate_pattern_a(snapshot)" in source
+    assert "bool(" not in source
     for forbidden in ("sklearn", "optuna", "requests", "urllib", "PyKrxDataProvider"):
         assert forbidden not in source

@@ -54,6 +54,15 @@ def _number(value: object) -> float:
     return float(value) if value is not None and not pd.isna(value) else np.nan
 
 
+def _semantic_true(value: object) -> bool:
+    """Return True only for an explicit boolean True, never for missing data."""
+    return value is True or (isinstance(value, np.bool_) and value == np.bool_(True))
+
+
+def _pattern_a_ready_and_active(row: pd.Series) -> bool:
+    return row.pattern_a_evaluation_status == "READY" and _semantic_true(row.pattern_a_candidate_active)
+
+
 def load_labeled_samples() -> pd.DataFrame:
     review = pd.read_csv(REVIEW, dtype=str, keep_default_na=False)
     source = pd.read_csv(SOURCE, dtype=str, keep_default_na=False)
@@ -280,14 +289,14 @@ def annotate_event_statuses(timeline: pd.DataFrame) -> pd.DataFrame:
             else:
                 previous_fast_ready = None
 
-            active = row.pattern_a_candidate_active
             valid = row.pattern_a_evaluation_status == "READY"
-            if valid and bool(active):
+            active = _pattern_a_ready_and_active(row)
+            if active:
                 if previous_pattern_valid is None:
                     out.at[index, "pattern_a_candidate_event_status"] = "LEFT_CENSORED"
                 elif previous_pattern_valid is False:
                     out.at[index, "pattern_a_candidate_event_status"] = "OBSERVED"
-            previous_pattern_valid = bool(active) if valid else None
+            previous_pattern_valid = active if valid else None
     return out
 
 
@@ -312,13 +321,23 @@ def build_pairs(timeline: pd.DataFrame, samples: pd.DataFrame) -> pd.DataFrame:
         candidate_events = group[group.pattern_a_candidate_event_status == "OBSERVED"]
         for sequence, (_, event) in enumerate(observed.iterrows(), start=1):
             event_date = pd.Timestamp(event.weekly_date)
+            pattern_ready = event.pattern_a_evaluation_status == "READY"
             same = candidate_events[candidate_events.weekly_date == event.weekly_date]
+            prior_activity = group[
+                (pd.to_datetime(group.weekly_date) < event_date)
+                & group.pattern_a_evaluation_status.eq("READY")
+                & group.pattern_a_candidate_active.map(_semantic_true)
+            ]
             prior = candidate_events[pd.to_datetime(candidate_events.weekly_date) < event_date]
             future = candidate_events[pd.to_datetime(candidate_events.weekly_date) > event_date]
-            if not same.empty:
+            if not pattern_ready:
+                pair_status, next_date = "DATA_UNAVAILABLE", None
+            elif not same.empty:
                 pair_status, next_date = "SAME_WEEK", event.weekly_date
-            elif bool(event.pattern_a_candidate_active):
+            elif _semantic_true(event.pattern_a_candidate_active):
                 pair_status, next_date = "PATTERN_A_ALREADY_ACTIVE", None
+            elif not prior_activity.empty:
+                pair_status, next_date = "PATTERN_A_PRIOR_ACTIVITY_BEFORE_FAST_EVENT", None
             elif not future.empty:
                 pair_status, next_date = "FAST_EARLIER_PATTERN_A_LATER", future.iloc[0].weekly_date
             else:
@@ -330,11 +349,14 @@ def build_pairs(timeline: pd.DataFrame, samples: pd.DataFrame) -> pd.DataFrame:
                 "fast_trigger_event_status": "OBSERVED", "fast_score_at_event": event.fast_score,
                 "fast_monthly_state_at_event": event.fast_monthly_permission_state,
                 "fast_daily_risk_at_event": event.fast_daily_risk_state,
-                "pattern_a_active_at_fast_event": bool(event.pattern_a_candidate_active),
+                "pattern_a_status_at_fast_event": event.pattern_a_evaluation_status,
+                "pattern_a_active_at_fast_event": event.pattern_a_candidate_active if pattern_ready else np.nan,
+                "pattern_a_was_active_before_fast_event": "YES" if not prior_activity.empty else "NO" if pattern_ready else np.nan,
+                "pattern_a_prior_active_date": prior_activity.iloc[-1].weekly_date if not prior_activity.empty else None,
                 "pattern_a_prior_candidate_event_date": prior.iloc[-1].weekly_date if not prior.empty else None,
                 "pattern_a_next_candidate_event_date": next_date, "pair_status": pair_status,
                 "lead_days": lead_days, "lead_weeks": lead_days / 7 if not pd.isna(lead_days) else np.nan,
-                "analysis_end": _date(max_end[ticker]), "censor_status": "NOT_CENSORED" if pair_status != "FAST_EVENT_NO_PATTERN_A_CATCHUP" else "RIGHT_CENSORED",
+                "analysis_end": _date(max_end[ticker]), "censor_status": "DATA_UNAVAILABLE" if pair_status == "DATA_UNAVAILABLE" else "RIGHT_CENSORED" if pair_status == "FAST_EVENT_NO_PATTERN_A_CATCHUP" else "NOT_CENSORED",
             })
     return pd.DataFrame(rows)
 
@@ -348,23 +370,21 @@ def build_reference(timeline: pd.DataFrame, samples: pd.DataFrame) -> pd.DataFra
             raise AssertionError(f"missing/nonunique reference timeline row: {sample.sample_id}")
         point = current.iloc[0]
         later = group[(group.weekly_date > sample.reference_date) & (group.pattern_a_candidate_event_status == "OBSERVED") & (group.weekly_date <= sample.outcome_review_end)]
-        active, constructive = bool(point.pattern_a_candidate_active), point.fast_machine_stage in CONSTRUCTIVE
+        pattern_ready = point.pattern_a_evaluation_status == "READY"
+        active, constructive = _pattern_a_ready_and_active(point), point.fast_machine_stage in CONSTRUCTIVE
         next_date = later.iloc[0].weekly_date if not later.empty else None
-        if point.fast_machine_stage_status != "READY" or point.pattern_a_evaluation_status != "READY":
+        if point.fast_machine_stage_status != "READY" or not pattern_ready:
             status, weeks = "DATA_UNAVAILABLE", np.nan
         elif active:
             status, weeks = "PATTERN_A_ALREADY_ACTIVE", 0.0
         elif not next_date:
             status, weeks = "PATTERN_A_NOT_OBSERVED_WITHIN_WINDOW", np.nan
-        elif constructive:
-            status, weeks = "FAST_CONSTRUCTIVE_PATTERN_A_INACTIVE", (pd.Timestamp(next_date) - pd.Timestamp(sample.reference_date)).days / 7
-        elif point.fast_machine_stage == "EXTENDED":
-            status, weeks = "NEITHER_ACTIVE_AT_REFERENCE", (pd.Timestamp(next_date) - pd.Timestamp(sample.reference_date)).days / 7
         else:
-            status, weeks = "NEITHER_ACTIVE_AT_REFERENCE", (pd.Timestamp(next_date) - pd.Timestamp(sample.reference_date)).days / 7
-        comparison = ("BOTH_ACTIVE_AT_REFERENCE" if active and constructive else
+            status, weeks = "PATTERN_A_LATER_CATCHUP", (pd.Timestamp(next_date) - pd.Timestamp(sample.reference_date)).days / 7
+        comparison = ("DATA_UNAVAILABLE" if status == "DATA_UNAVAILABLE" else
+                      "BOTH_ACTIVE_AT_REFERENCE" if active and constructive else
                       "PATTERN_A_ONLY_AT_REFERENCE" if active else
-                      "FAST_CONSTRUCTIVE_PATTERN_A_INACTIVE" if constructive else status)
+                      "FAST_CONSTRUCTIVE_PATTERN_A_INACTIVE" if constructive else "NEITHER_ACTIVE_AT_REFERENCE")
         rows.append({
             "sample_id": sample.sample_id, "ticker": sample.ticker, "name": sample["name"], "reference_date": sample.reference_date,
             "human_stage": sample.weekly_stage_at_reference, "human_label": sample.human_label,
@@ -390,7 +410,7 @@ def build_failure(reference: pd.DataFrame, timeline: pd.DataFrame, pairs: pd.Dat
         if row.human_label in {"TOO_LATE", "TOO_EXTENDED"} and (row.fast_stage in {"TREND", "EXTENDED"} or row.daily_risk_state in {"ELEVATED", "EXTREME"}): flags.append("FAST_TOO_LATE_CONTEXT")
         if row.fast_score >= q3 and row.human_label in {"FALSE_TRIGGER", "NO_SETUP", "TOO_EARLY", "TOO_EXTENDED"}: flags.append("FAST_HIGH_SCORE_BAD_OUTCOME")
         if row.fast_score <= q1 and row.human_label in {"GOOD_TRIGGER", "BORDERLINE_TRIGGER"}: flags.append("FAST_LOW_SCORE_GOOD_OUTCOME")
-        if row.pattern_a_candidate_active is True: flags.append("PATTERN_A_ALREADY_ACTIVE")
+        if row.pattern_a_status == "READY" and _semantic_true(row.pattern_a_candidate_active): flags.append("PATTERN_A_ALREADY_ACTIVE")
         if row.reference_catchup_status == "PATTERN_A_NOT_OBSERVED_WITHIN_WINDOW": flags.append("PATTERN_A_NO_CATCHUP")
         if row.fast_stage_status != "READY" or row.pattern_a_status != "READY": flags.append("DATA_UNAVAILABLE")
         context = timeline[(timeline.ticker == row.ticker) & (timeline.weekly_date >= row.reference_date)]
@@ -423,14 +443,20 @@ def summary_dict(samples: pd.DataFrame, timeline: pd.DataFrame, pairs: pd.DataFr
     horizons = {str(h): int((earlier <= h).sum()) for h in (4, 8, 13, 26, 52)}
     fast_status = timeline.fast_trigger_event_status
     direct_count = len(direct_jump_dates(timeline))
+    observed_count = int((fast_status == "OBSERVED").sum())
+    pair_counts = pairs.pair_status.value_counts().sort_index().to_dict()
+    assert len(pairs) == observed_count == sum(pair_counts.values())
     return {
         "base_sha": BASE_SHA, "fast_contract_sha": BASE_SHA, "pattern_a_frozen_sha": PATTERN_A_FROZEN_SHA,
         "human_calibration_sha": HUMAN_CALIBRATION_SHA,
         "analysis_window": "reference minus 104 weeks through frozen outcome_review_end",
         "unique_tickers": int(samples.ticker.nunique()), "reference_samples": int(len(samples)), "timeline_rows": int(len(timeline)),
-        "fast_trigger_events": int((fast_status == "OBSERVED").sum()), "paired_events": int(len(pairs)),
+        "fast_trigger_events": observed_count, "paired_events": int(len(pairs)), "pair_status_counts": pair_counts,
         "pattern_a_already_active": int((pairs.pair_status == "PATTERN_A_ALREADY_ACTIVE").sum()), "same_week": int((pairs.pair_status == "SAME_WEEK").sum()),
+        "pattern_a_prior_activity_before_fast_event": int((pairs.pair_status == "PATTERN_A_PRIOR_ACTIVITY_BEFORE_FAST_EVENT").sum()),
+        "pattern_a_data_unavailable_at_fast_event": int((pairs.pair_status == "DATA_UNAVAILABLE").sum()),
         "fast_earlier_pattern_a_later": int(len(earlier)), "no_pattern_a_catchup": int((pairs.pair_status == "FAST_EVENT_NO_PATTERN_A_CATCHUP").sum()),
+        "pair_status_reconciliation": {"observed_fast_trigger_events": observed_count, "classified_pairs": int(sum(pair_counts.values())), "pass": True},
         "left_censored": int((fast_status == "LEFT_CENSORED").sum()), "direct_jump_without_trigger": direct_count,
         "lead_weeks_summary": {"n": int(len(earlier)), "median": _number(earlier.median()), "iqr": _number(earlier.quantile(.75) - earlier.quantile(.25)), "min": _number(earlier.min()), "max": _number(earlier.max())},
         "catchup_horizons": horizons, "human_label_summary": samples.human_label.value_counts().sort_index().to_dict(),
