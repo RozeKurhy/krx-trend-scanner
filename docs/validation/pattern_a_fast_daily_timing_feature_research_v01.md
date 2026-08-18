@@ -682,6 +682,13 @@ HIGH Priority Candidates는 Production Feature 확정이 아니다(§21).
     시가가 전일 종가와 완전히 동일하게 형성된 경우가 드물지 않다는
     뜻이며, 이는 feature 자체의 결함이라기보다 종목별 유동성/호가
     단위 차이를 반영할 수 있다(별도 조사 없이는 원인 미확정).
+11. `lower_wick_pct`(HIGH #6)를 포함한 candle-location family 4개 전부
+    reference-day 종가(가격대, 305원~434,000원 범위)와의 spearman
+    상관을 확인했다: `lower_wick_pct` -0.128, `upper_wick_pct` 0.204,
+    `daily_body_pct` 0.114, `close_location_in_daily_range` -0.139 —
+    전부 |corr|<0.25로 저가주/고가주 호가단위 차이에 의한 왜곡은
+    아니다. `lower_wick_pct`의 HIGH 채택은 §7.10 gap 계열과 마찬가지로
+    가격대 착시가 아님을 확인한 근거를 갖는다.
 
 ==================================================
 20. No Daily Ground Truth Declaration

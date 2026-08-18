@@ -128,7 +128,10 @@ def test_case_d_horizon_boundary_offset20_not_observed():
     daily = _daily_frame(closes, highs=highs)
     feats = compute_daily_timing_features(daily)
     assert np.isnan(feats["days_since_20d_close_breakout"])
+    assert np.isnan(feats["post_breakout_min_close_vs_level_pct_20d"])
+    assert np.isnan(feats["post_breakout_min_low_vs_level_pct_20d"])
     assert np.isnan(feats["post_breakout_close_hold_ratio_20d"])
+    assert np.isnan(feats["days_closed_above_breakout_level_20d"])
     assert np.isnan(feats["close_back_below_breakout_level_20d"])
 
 
@@ -209,7 +212,10 @@ def test_no_breakout_event_yields_nan_not_zero():
     daily = _daily_frame(closes)
     feats = compute_daily_timing_features(daily)
     assert np.isnan(feats["days_since_20d_close_breakout"])
+    assert np.isnan(feats["post_breakout_min_close_vs_level_pct_20d"])
+    assert np.isnan(feats["post_breakout_min_low_vs_level_pct_20d"])
     assert np.isnan(feats["post_breakout_close_hold_ratio_20d"])
+    assert np.isnan(feats["days_closed_above_breakout_level_20d"])
     assert np.isnan(feats["close_back_below_breakout_level_20d"])
 
 
