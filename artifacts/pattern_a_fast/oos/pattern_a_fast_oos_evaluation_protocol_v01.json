@@ -1,0 +1,71 @@
+{
+  "version": "pattern_a_fast_oos_evaluation_protocol_v01",
+  "base_sha": "ddc7480bb24119ca3e8caca6d7b7f451f8eb097a",
+  "oos_set": "RESERVED_OOS_A",
+  "oos_sample_count": 20,
+  "calibration_excluded_count": 40,
+  "fast_contract": "HIERARCHICAL_V01",
+  "fast_contract_sha": "2da3fc36744b27ec13edae3f690df72c796906e5",
+  "pattern_a_frozen_sha": "05d03e16501adbca889488294aaaaa0bd84005de",
+  "human_label_taxonomy": [
+    "GOOD_TRIGGER",
+    "BORDERLINE_TRIGGER",
+    "TOO_EARLY",
+    "TOO_LATE",
+    "TOO_EXTENDED",
+    "FALSE_TRIGGER",
+    "NO_SETUP"
+  ],
+  "human_stage_taxonomy": [
+    "WATCH",
+    "SETUP",
+    "TRIGGER",
+    "TREND",
+    "EXTENDED"
+  ],
+  "evaluation_metrics": {
+    "score": [
+      "median",
+      "iqr",
+      "label_group_median_difference",
+      "cliffs_delta"
+    ],
+    "stage": [
+      "confusion_matrix",
+      "stage_distribution",
+      "exact_match_descriptive"
+    ],
+    "event": [
+      "clean_primary_lead_weeks_median",
+      "clean_primary_lead_weeks_iqr"
+    ]
+  },
+  "pairing_semantics": [
+    "DATA_UNAVAILABLE",
+    "PATTERN_A_ALREADY_ACTIVE",
+    "PATTERN_A_PRIOR_ACTIVITY_BEFORE_FAST_EVENT",
+    "SAME_WEEK",
+    "FAST_EARLIER_PATTERN_A_LATER",
+    "FAST_EVENT_NO_PATTERN_A_CATCHUP"
+  ],
+  "availability_semantics": {
+    "pattern_a_checked_first": true,
+    "fast_stage_ready_coverage_below": 0.8,
+    "fast_stage_ready_failure": "OOS_DATA_COVERAGE_FAIL",
+    "fast_score_unavailable_above": 0.2,
+    "fast_score_failure": "OOS_DATA_COVERAGE_FAIL",
+    "partial_availability_reported_separately": true
+  },
+  "decision_rules": {
+    "score_direction": "When both groups have n >= 3, positive-label median must exceed TOO_EARLY median; otherwise OOS_SCORE_DIRECTION_FAIL.",
+    "score_effect": "No hard Cliff's delta threshold is preregistered.",
+    "lead_direction": "When clean primary n >= 3, median lead weeks must be > 0; otherwise OOS_LEAD_DIRECTION_FAIL.",
+    "no_retuning_after_labels": true
+  },
+  "inconclusive_rules": {
+    "clean_primary_lead_n_below": 3,
+    "status": "OOS_LEAD_INCONCLUSIVE"
+  },
+  "production_frozen": false,
+  "evaluation_executed_in_13i_1": false
+}
