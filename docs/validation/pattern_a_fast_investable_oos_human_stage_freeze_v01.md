@@ -12,7 +12,7 @@ Base commit: `34df893fccb4c25d4dc346a359617cbe2a034974`
 
 2. Scope
 --------
-사용자가 PASS A stage-blind chart만으로 직접 확정한 36개 Human Weekly Lifecycle Stage를 authoritative Human review CSV에 반영했다. 이 작업은 사용자의 label을 입력·봉인한 단계이며 개발 AI가 stage를 재판정하거나 재해석하지 않았다.
+사용자가 확정한 36개 Human Weekly Lifecycle Stage를 authoritative Human review CSV에 반영했다. 이 작업은 사용자의 label을 입력·봉인한 단계이며 개발 AI가 stage를 재판정하거나 재해석하지 않았다.
 
 selection membership, review_order, sample identity, reference date, outcome review end, stage/outcome chart, blind asset manifest, evaluation protocol, Fast/Pattern A contract, Phase10 및 historical KRX/PIT 입력은 변경하지 않았다. sampling, candidate collection, machine scoring/stage 계산, chart regeneration도 실행하지 않았다.
 
@@ -46,9 +46,13 @@ Trigger Event는 과거 resistance breakout 일반을 뜻하지 않으며, Human
 
 5. Blindness Boundary
 ---------------------
-Outcome chart를 열람하지 않았고 Outcome field를 입력하지 않았다. `human_outcome_label` 및 `human_outcome_confidence`는 36건 전부 UNLABELED, `outcome_review_status`는 36건 전부 PENDING이다.
+Human reviewer는 대부분의 표본에서 평소 사용하는 익숙한 외부 주봉 차트 인터페이스로 각 frozen reference date 당시의 PIT weekly structure를 확인했다. historical/delisted ticker 등 그 인터페이스에서 확인할 수 없는 예외에만 repository stage-blind asset을 fallback으로 사용했다. 따라서 repository stage-blind chart만 사용했다는 주장은 하지 않는다.
 
-Machine stage/score, sampling stratum, selection percentile, Pattern A/Fast future lifecycle, future price/return, OOS evaluation/lead-time result는 Human label 결정에 사용하지 않았다. machine output 또는 future data는 Human review artifact에 기록하지 않았다.
+Repository outcome chart를 열람하지 않았고 Outcome field를 입력하지 않았다. `human_outcome_label` 및 `human_outcome_confidence`는 36건 전부 UNLABELED, `outcome_review_status`는 36건 전부 PENDING이다.
+
+Machine stage/score, sampling stratum, selection percentile, Pattern A/Fast future lifecycle, OOS evaluation/lead-time result는 Human 판단에 노출하지 않았다. repository outcome asset, machine output, evaluation result 및 Human outcome label은 PASS A 동안 repository-controlled exposure boundary 밖에 유지됐다.
+
+`future_data_used = false`은 외부 chart UI의 화면 상태를 repository code가 기술적으로 증명했다는 뜻이 아니다. Human reviewer가 stated reference-date PIT procedure로 판단했고 future outcome을 판단 근거로 사용하지 않았다는 review-process declaration이다. 외부 UI 자체는 repository hash verification 범위 밖이다. 이 exposure 기록 정정은 sample replacement 또는 re-label의 근거가 아니다.
 
 6. Immutable Freeze Seal
 -------------------------
@@ -58,6 +62,8 @@ Machine stage/score, sampling stratum, selection percentile, Pattern A/Fast futu
 - selection manifest, blind asset manifest, evaluation protocol SHA-256
 - canonical review_order|sample_id mapping SHA-256
 - stage/confidence/trigger/status distribution과 PASS B not-started flags
+
+PASS A freeze helper는 authoritative Phase 13J-1 selection manifest와 blind asset manifest를 직접 join하여 `review_order`, `sample_id`, `ticker`, `name`, `historical_market`, `reference_date`, `outcome_review_end`의 36-row frozen identity를 검증한다. market 또는 outcome end를 현재 데이터로 재계산하거나 외부 조회하지 않는다.
 
 7. Next Gate
 ------------

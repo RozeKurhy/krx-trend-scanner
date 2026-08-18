@@ -83,6 +83,33 @@ def mapping_sha256(review: pd.DataFrame) -> str:
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
+def frozen_identity() -> pd.DataFrame:
+    """Return the Phase 13J-1 sealed review identity without recomputation."""
+    manifest = pd.read_csv(MANIFEST, dtype={"ticker": str}, keep_default_na=False)
+    assets = pd.read_csv(ASSETS, dtype={"ticker": str}, keep_default_na=False)
+    review_order = assets[["review_order", "sample_id"]].drop_duplicates()
+    if len(review_order) != 36 or review_order.sample_id.nunique() != 36:
+        raise RuntimeError("INVESTABLE_OOS_REVIEW_IDENTITY_FREEZE_INTEGRITY_FAIL")
+    fields = ["sample_id", "ticker", "name", "historical_market", "completed_weekly_reference_date", "outcome_review_end"]
+    frozen = review_order.merge(manifest[fields], on="sample_id", how="inner", validate="one_to_one")
+    if len(frozen) != 36:
+        raise RuntimeError("INVESTABLE_OOS_REVIEW_IDENTITY_FREEZE_INTEGRITY_FAIL")
+    frozen = frozen.rename(columns={"completed_weekly_reference_date": "reference_date"})
+    frozen["review_order"] = frozen.review_order.astype(int)
+    frozen["ticker"] = frozen.ticker.astype(str).str.zfill(6)
+    return frozen.sort_values("review_order", kind="mergesort").reset_index(drop=True)
+
+
+def assert_frozen_identity(review: pd.DataFrame) -> None:
+    fields = ["review_order", "sample_id", "ticker", "name", "historical_market", "reference_date", "outcome_review_end"]
+    actual = review[fields].copy()
+    actual["review_order"] = actual.review_order.astype(int)
+    actual["ticker"] = actual.ticker.astype(str).str.zfill(6)
+    actual = actual.sort_values("review_order", kind="mergesort").reset_index(drop=True)
+    if not actual.equals(frozen_identity()[fields]):
+        raise RuntimeError("INVESTABLE_OOS_REVIEW_IDENTITY_FREEZE_INTEGRITY_FAIL")
+
+
 def assert_frozen_inputs(review: pd.DataFrame) -> None:
     if sha256(MANIFEST) != FROZEN_SELECTION_SHA256:
         raise RuntimeError("INVESTABLE_OOS_SAMPLE_FREEZE_INTEGRITY_FAIL")
@@ -92,6 +119,7 @@ def assert_frozen_inputs(review: pd.DataFrame) -> None:
         raise RuntimeError("INVESTABLE_OOS_REVIEW_ORDER_FREEZE_INTEGRITY_FAIL")
     if mapping_sha256(review) != FROZEN_MAPPING_SHA256:
         raise RuntimeError("INVESTABLE_OOS_REVIEW_ORDER_FREEZE_INTEGRITY_FAIL")
+    assert_frozen_identity(review)
     pre_label = ["human_stage", "human_stage_confidence", "human_trigger_event_observed", "stage_review_status"]
     if not all(review[column].eq("UNLABELED" if column != "stage_review_status" else "PENDING").all() for column in pre_label):
         raise RuntimeError("HUMAN_STAGE_PASS_A_ALREADY_STARTED")

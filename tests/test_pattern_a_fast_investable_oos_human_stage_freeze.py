@@ -91,6 +91,25 @@ def test_authoritative_stage_labels_and_identity_mapping_are_exact():
     assert review.stage_review_status.eq("COMPLETE").all()
     assert review.human_stage.value_counts().to_dict() == {"WATCH": 16, "SETUP": 14, "TREND": 3, "EXTENDED": 3}
     assert review.human_stage_confidence.value_counts().to_dict() == {"HIGH": 25, "MEDIUM": 9, "LOW": 2}
+    manifest = pd.read_csv(MANIFEST, dtype={"ticker": str}, keep_default_na=False)
+    assets = pd.read_csv(ASSETS, dtype={"ticker": str}, keep_default_na=False)
+    review_order = assets[["review_order", "sample_id"]].drop_duplicates()
+    frozen = review_order.merge(
+        manifest[["sample_id", "ticker", "name", "historical_market", "completed_weekly_reference_date", "outcome_review_end"]],
+        on="sample_id",
+        validate="one_to_one",
+    ).rename(columns={"completed_weekly_reference_date": "reference_date"})
+    identity_fields = ["review_order", "sample_id", "ticker", "name", "historical_market", "reference_date", "outcome_review_end"]
+    actual_identity = review[identity_fields].copy()
+    actual_identity["review_order"] = actual_identity.review_order.astype(int)
+    actual_identity["ticker"] = actual_identity.ticker.str.zfill(6)
+    frozen_identity = frozen[identity_fields].copy()
+    frozen_identity["review_order"] = frozen_identity.review_order.astype(int)
+    frozen_identity["ticker"] = frozen_identity.ticker.str.zfill(6)
+    pd.testing.assert_frame_equal(
+        actual_identity.sort_values("review_order").reset_index(drop=True),
+        frozen_identity.sort_values("review_order").reset_index(drop=True),
+    )
 
 
 def test_trigger_and_all_outcome_fields_remain_at_pass_a_only_values():
@@ -138,3 +157,4 @@ def test_charts_assets_machine_code_and_outcome_evaluation_remain_untouched():
     assert seal["sample_mutation"] is False and seal["network_market_request_count"] == 0
     source = SCRIPT.read_text(encoding="utf-8")
     assert not any(token in source for token in ("requests", "urllib", "yfinance", "pykrx", "OUTCOME_DIR", "to_weekly"))
+    assert "def assert_frozen_identity" in source and "historical_market" in source and "outcome_review_end" in source
