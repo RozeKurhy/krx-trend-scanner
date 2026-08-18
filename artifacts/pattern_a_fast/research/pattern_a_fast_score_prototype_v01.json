@@ -1,0 +1,28 @@
+{
+  "version": "v0.1",
+  "base_commit": "4fc5f9d11c23cd96703c5b066d5f60200fb41703",
+  "architecture_sha": "4fc5f9d11c23cd96703c5b066d5f60200fb41703",
+  "prototype_status": "RESEARCH_PROTOTYPE_ADVISOR_REVIEW_PENDING",
+  "production_frozen": false,
+  "component_definitions": {
+    "monthly": "permission zones",
+    "weekly": "weekly-dominant renormalized core",
+    "conditional": "observed-event refinement only",
+    "daily": "risk penalty only"
+  },
+  "aggregate_formula_candidates": [
+    "HIERARCHICAL_V01",
+    "WEEKLY_DOMINANT_SOFT_V01"
+  ],
+  "selected_research_prototype": "HIERARCHICAL_V01",
+  "missing_behavior": {
+    "wma200": "UNKNOWN; renormalize available weekly inputs",
+    "breakout": "EVENT_NOT_OBSERVED; no penalty",
+    "unexpected_primary": "UNAVAILABLE"
+  },
+  "non_decisions": [
+    "No optimization",
+    "No production score",
+    "No trade signal"
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "version": "v0.1",
+  "production_frozen": false,
+  "stage_semantics": [
+    "WATCH",
+    "SETUP",
+    "TRIGGER",
+    "TREND",
+    "EXTENDED"
+  ],
+  "weekly_feature_inputs": [
+    "close_vs_wma200_pct",
+    "distance_to_prior_26w_high_pct",
+    "higher_weekly_low_count_13w",
+    "wma52_slope_1w",
+    "wma12_vs_wma26_pct"
+  ],
+  "stage_only_semantic_markers": [
+    "weeks_since_26w_close_breakout"
+  ],
+  "snapshot_independence": true,
+  "human_trigger_event_policy": "not used as input and never backfilled",
+  "missing_behavior": "WMA200 UNKNOWN is not automatic WATCH"
+}
