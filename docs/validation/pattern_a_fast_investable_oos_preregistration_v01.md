@@ -96,3 +96,11 @@ Target/actual = 36/36. strata actual = ADVANCED 10, SETUP 10, WATCH_HIGH 8, EXTE
 `READY_FOR_BLIND_HUMAN_INVESTABLE_OOS_LABELING`
 
 Human Stage/Outcome을 입력하지 않는다. OOS evaluation도 실행하지 않는다. Network market request count는 0이다. 다음 행동은 advisor review 후 blind human PASS A stage labeling이며, 이 commit에서 Phase13J-2 이상으로 진행하지 않는다.
+
+24. 13J-1 Blind Review Order ↔ Chart Asset Mapping Correction
+--------------------------------------------------------------
+Advisor review는 blind chart numbering이 selection order를 사용한 반면 Human review sheet는 separately frozen `REVIEW_ORDER_SEED` order를 사용한 mapping mismatch를 확인했다. Human review는 시작하지 않았으므로 Human label contamination은 없다.
+
+36-sample membership, selection hash, sampling stratum, machine output, reference date, Human review order, evaluation protocol은 변경하지 않았다. correction generator는 frozen selection manifest와 frozen Human review CSV를 byte-hash 검증 후 읽기만 하며, Human review의 `review_order ↔ sample_id` 1:1 mapping을 stage/outcome chart filename, chart title, blind asset manifest의 유일한 numbering source로 사용한다.
+
+Blind assets만 clean regeneration했고, asset manifest에는 `review_order`를 추가했다. preregistration seal에는 `review_asset_mapping_status = EXACT`와 canonical `review_order|sample_id` mapping SHA-256을 기록한다. PASS A는 advisor correction review가 끝날 때까지 시작하지 않는다.

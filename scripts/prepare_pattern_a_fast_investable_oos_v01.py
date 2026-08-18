@@ -83,6 +83,9 @@ HARD_MINIMUMS = {
     "WATCH_LOW_SCORE_CONTROL": 3,
 }
 STAGE_ORDER = ["WATCH", "SETUP", "TRIGGER", "TREND", "EXTENDED"]
+FROZEN_SELECTION_SHA256 = "6fb59b9ffce5d8076a18faa00327c62e4edc5cff6ef93bcaf5095c50532ef825"
+FROZEN_HUMAN_REVIEW_SHA256 = "25d5f524517c7eabe6ab232e5ba97964ff00aae06f59a4362ba49cb5f78c99d1"
+FROZEN_EVALUATION_PROTOCOL_SHA256 = "ffd271881d2b6ce9aa536431b7747395bf29dc3244df6316b241d60a1bdf138d"
 
 
 def sha256(path: Path) -> str:
@@ -299,6 +302,14 @@ def outcome_end(ticker: str, reference_date: str) -> str:
     return _iso(completed[52])
 
 
+def stage_chart_title(review_order: int, row: pd.Series, reference: pd.Timestamp) -> str:
+    return f"OOS-B Review {review_order:03d} | {row['ticker']} {row['name']} | as of {reference.date()}"
+
+
+def outcome_chart_title(review_order: int, row: pd.Series) -> str:
+    return f"OOS-B Outcome Review {review_order:03d} | {row['ticker']} {row['name']}"
+
+
 def plot(frame: pd.DataFrame, path: Path, title: str, reference: pd.Timestamp | None) -> None:
     fig, (price, volume) = plt.subplots(2, 1, figsize=(8, 5), sharex=True, gridspec_kw={"height_ratios": [3, 1]})
     price.plot(frame.index, frame.close, color="#2c6fbb", linewidth=1.1)
@@ -309,28 +320,67 @@ def plot(frame: pd.DataFrame, path: Path, title: str, reference: pd.Timestamp | 
     price.set_title(title, fontsize=9)
     price.set_ylabel("close")
     volume.set_ylabel("volume")
-    fig.autofmt_xdate(); fig.tight_layout(); fig.savefig(path, dpi=110); plt.close(fig)
+    fig.autofmt_xdate(); fig.tight_layout(); fig.savefig(path, dpi=110, metadata={"Title": title}); plt.close(fig)
 
 
-def generate_assets(samples: pd.DataFrame) -> pd.DataFrame:
+def frozen_package() -> tuple[pd.DataFrame, pd.DataFrame, dict[str, Any]]:
+    """Load the already sealed samples; a mapping correction must never resample them."""
+    expected = {
+        MANIFEST: FROZEN_SELECTION_SHA256,
+        REVIEW: FROZEN_HUMAN_REVIEW_SHA256,
+        PROTOCOL: FROZEN_EVALUATION_PROTOCOL_SHA256,
+    }
+    for path, expected_hash in expected.items():
+        if sha256(path) != expected_hash:
+            if path == MANIFEST:
+                raise RuntimeError("INVESTABLE_OOS_SAMPLE_FREEZE_INTEGRITY_FAIL")
+            raise RuntimeError("INVESTABLE_OOS_REVIEW_ORDER_FREEZE_INTEGRITY_FAIL")
+    samples = pd.read_csv(MANIFEST, dtype={"ticker": str}, keep_default_na=False)
+    review = pd.read_csv(REVIEW, dtype={"ticker": str}, keep_default_na=False)
+    if len(samples) != 36 or samples.sample_id.nunique() != 36:
+        raise RuntimeError("INVESTABLE_OOS_SAMPLE_FREEZE_INTEGRITY_FAIL")
+    if len(review) != 36 or review.sample_id.nunique() != 36 or review.review_order.astype(int).tolist() != list(range(1, 37)):
+        raise RuntimeError("INVESTABLE_OOS_REVIEW_ORDER_FREEZE_INTEGRITY_FAIL")
+    return samples, review, json.loads(SEAL.read_text(encoding="utf-8"))
+
+
+def ordered_review_samples(samples: pd.DataFrame, review: pd.DataFrame) -> pd.DataFrame:
+    """The sealed Human review mapping is the sole numbering source for every asset."""
+    review_mapping = review[["review_order", "sample_id"]].copy()
+    review_mapping["review_order"] = review_mapping.review_order.astype(int)
+    mapped = samples.merge(review_mapping, on="sample_id", how="inner", validate="one_to_one")
+    if len(mapped) != len(samples) or mapped.review_order.nunique() != len(samples):
+        raise RuntimeError("INVESTABLE_OOS_BLIND_ASSET_MAPPING_FAIL")
+    return mapped.sort_values("review_order", kind="mergesort").reset_index(drop=True)
+
+
+def review_order_sample_mapping_sha256(review: pd.DataFrame) -> str:
+    ordered = review[["review_order", "sample_id"]].copy()
+    ordered["review_order"] = ordered.review_order.astype(int)
+    payload = "\n".join(f"{row.review_order}|{row.sample_id}" for row in ordered.sort_values("review_order").itertuples(index=False))
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def generate_assets(samples: pd.DataFrame, review: pd.DataFrame) -> pd.DataFrame:
     for directory in (STAGE_DIR, OUTCOME_DIR):
         if directory.exists():
             shutil.rmtree(directory)
         directory.mkdir(parents=True)
     rows = []
-    for review_order, row in enumerate(samples.to_dict(orient="records"), start=1):
+    for _, row in ordered_review_samples(samples, review).iterrows():
+        review_order = int(row["review_order"])
         daily = pd.read_parquet(DAILY_DIR / f"{row['ticker']}.parquet").sort_index()
         reference, end = pd.Timestamp(row["completed_weekly_reference_date"]), pd.Timestamp(row["outcome_review_end"])
         stage_frames = {"MONTHLY_STAGE_BLIND": to_monthly(daily[daily.index <= reference]), "WEEKLY_STAGE_BLIND": to_weekly(daily[daily.index <= reference]), "DAILY_STAGE_BLIND": daily[daily.index <= reference]}
         for asset_type, frame in stage_frames.items():
             frame = frame[frame.index <= reference]
             path = STAGE_DIR / f"{review_order:03d}_{row['sample_id']}_{asset_type.split('_')[0].lower()}.png"
-            plot(frame, path, f"OOS-B Review {review_order:03d} | {row['ticker']} {row['name']} | as of {reference.date()}", reference if asset_type == "DAILY_STAGE_BLIND" else None)
-            rows.append({"sample_id": row["sample_id"], "asset_type": asset_type, "file_path": path.relative_to(ROOT).as_posix(), "sha256": sha256(path), "data_start": _iso(frame.index.min()), "data_end": _iso(frame.index.max()), "reference_date": _iso(reference), "human_exposure_phase": "PASS_A"})
+            plot(frame, path, stage_chart_title(review_order, row, reference), reference if asset_type == "DAILY_STAGE_BLIND" else None)
+            rows.append({"review_order": review_order, "sample_id": row["sample_id"], "asset_type": asset_type, "file_path": path.relative_to(ROOT).as_posix(), "sha256": sha256(path), "data_start": _iso(frame.index.min()), "data_end": _iso(frame.index.max()), "reference_date": _iso(reference), "human_exposure_phase": "PASS_A"})
         outcome = daily[(daily.index >= reference) & (daily.index <= end)]
         path = OUTCOME_DIR / f"{review_order:03d}_{row['sample_id']}_outcome.png"
-        plot(outcome, path, f"OOS-B Outcome {review_order:03d} | {row['ticker']} {row['name']}", reference)
-        rows.append({"sample_id": row["sample_id"], "asset_type": "OUTCOME_BLIND", "file_path": path.relative_to(ROOT).as_posix(), "sha256": sha256(path), "data_start": _iso(outcome.index.min()), "data_end": _iso(outcome.index.max()), "reference_date": _iso(reference), "human_exposure_phase": "PASS_B_AFTER_STAGE_FREEZE"})
+        plot(outcome, path, outcome_chart_title(review_order, row), reference)
+        rows.append({"review_order": review_order, "sample_id": row["sample_id"], "asset_type": "OUTCOME_BLIND", "file_path": path.relative_to(ROOT).as_posix(), "sha256": sha256(path), "data_start": _iso(outcome.index.min()), "data_end": _iso(outcome.index.max()), "reference_date": _iso(reference), "human_exposure_phase": "PASS_B_AFTER_STAGE_FREEZE"})
     return pd.DataFrame(rows)
 
 
@@ -348,26 +398,40 @@ def protocol() -> dict[str, Any]:
     return {"version": "PATTERN_A_FAST_INVESTABLE_OOS_B_EVALUATION_PROTOCOL_V01", "phase": "13J-4_PREREGISTERED", "claim_boundary": "retrospective historical OOS with preregistered blind human review", "fast_contract": "HIERARCHICAL_V01", "fast_contract_sha": FAST_FROZEN_SHA, "pattern_a_frozen_sha": PATTERN_A_FROZEN_SHA, "human_stage_taxonomy": STAGE_ORDER, "human_stage_confidence": ["LOW", "MEDIUM", "HIGH"], "human_outcome_taxonomy": ["GOOD_TRIGGER", "BORDERLINE_TRIGGER", "FALSE_TRIGGER", "TOO_EARLY", "TOO_LATE", "TOO_EXTENDED", "NO_SETUP"], "primary_score_comparison": {"positive_labels": ["GOOD_TRIGGER", "BORDERLINE_TRIGGER"], "negative_labels": ["TOO_EARLY", "NO_SETUP"], "minimum_n_per_group": 5, "direction_fail_if_positive_median_lte_negative": True, "cliffs_delta_hard_threshold": None}, "secondary_score_comparisons": [["GOOD_TRIGGER", label] for label in ["NO_SETUP", "FALSE_TRIGGER", "TOO_EARLY", "TOO_EXTENDED"]], "stage_order": STAGE_ORDER, "stage_exact_match_hard_threshold": None, "lead_precedence": ["DATA_UNAVAILABLE", "SAME_WEEK", "PATTERN_A_ALREADY_ACTIVE", "PATTERN_A_PRIOR_ACTIVITY_BEFORE_FAST_EVENT", "FAST_EARLIER_PATTERN_A_LATER", "FAST_EVENT_NO_PATTERN_A_CATCHUP"], "lead_minimum_clean_n": 3, "stage_ready_coverage_minimum": 0.80, "score_unavailable_rate_maximum": 0.20, "no_sample_replacement_after_freeze": True, "network_market_request_count": 0}
 
 
-def write_outputs(samples: pd.DataFrame, assets: pd.DataFrame, counts: list[dict[str, Any]], context: dict) -> None:
-    OOS.mkdir(parents=True, exist_ok=True)
-    manifest_columns = ["sample_id", "ticker", "name", "historical_market", "calendar_candidate_date", "completed_weekly_reference_date", "outcome_review_end", "market_cap_at_reference", "avg_trading_value_20d_at_reference", "investability_status", "machine_stage", "machine_stage_status", "fast_score", "fast_score_status", "watch_score_percentile", "sampling_stratum", "selection_hash", "selection_seed", "reference_quarter", "prior_60_ticker_overlap", "human_positive_anchor_overlap", "reference_source_file", "reference_source_sha256", "effective_as_of", "monthly_as_of", "weekly_as_of", "human_review_exposed"]
-    samples[manifest_columns].to_csv(MANIFEST, index=False)
-    review_sheet(samples).to_csv(REVIEW, index=False)
+def write_correction_outputs(samples: pd.DataFrame, review: pd.DataFrame, assets: pd.DataFrame, prior_seal: dict[str, Any]) -> None:
+    """Only regenerated blind assets and their seal may change in this correction."""
+    if sha256(MANIFEST) != FROZEN_SELECTION_SHA256:
+        raise RuntimeError("INVESTABLE_OOS_SAMPLE_FREEZE_INTEGRITY_FAIL")
+    if sha256(REVIEW) != FROZEN_HUMAN_REVIEW_SHA256 or sha256(PROTOCOL) != FROZEN_EVALUATION_PROTOCOL_SHA256:
+        raise RuntimeError("INVESTABLE_OOS_REVIEW_ORDER_FREEZE_INTEGRITY_FAIL")
+    expected_mapping = review[["review_order", "sample_id"]].copy().sort_values("review_order", kind="mergesort").reset_index(drop=True)
+    expected_mapping["review_order"] = expected_mapping.review_order.astype(int)
+    asset_mapping = assets[["review_order", "sample_id"]].drop_duplicates().sort_values("review_order", kind="mergesort").reset_index(drop=True)
+    asset_mapping["review_order"] = asset_mapping.review_order.astype(int)
+    if not expected_mapping.equals(asset_mapping) or not (assets.groupby("review_order").size() == 4).all() or not (assets.groupby("sample_id").size() == 4).all():
+        raise RuntimeError("INVESTABLE_OOS_BLIND_ASSET_MAPPING_FAIL")
     assets.to_csv(ASSETS, index=False)
-    PROTOCOL.write_text(json.dumps(protocol(), ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    audit = context["audit"]
-    stratum_counts = {key: int((samples.sampling_stratum == key).sum()) for key in STRATA}
-    seal = {"version": "PATTERN_A_FAST_INVESTABLE_OOS_B_PREREGISTRATION_SEAL_V01", "phase": "13J-1", "base_sha": BASE_SHA, "fast_frozen_sha": FAST_FROZEN_SHA, "pattern_a_frozen_sha": PATTERN_A_FROZEN_SHA, "historical_market_cap_audit_sha256": sha256(HISTORICAL_AUDIT), "reference_grid_sha256": sha256(GRID), "provenance_sha256": sha256(PROVENANCE), "phase10_market_cap_threshold": MIN_MARKET_CAP_KRW, "phase10_avg_trading_value_20d_threshold": MIN_AVG_TRADING_VALUE_20D_KRW, "phase10_close_filter": "NONE", "reference_date_semantics": audit["reference_date_semantics"], "reference_candidate_count": 22, "sample_target": 36, "sample_actual": len(samples), "stratum_target_counts": STRATA, "stratum_actual_counts": stratum_counts, "unique_ticker_count": int(samples.ticker.nunique()), "distinct_reference_quarter_count": int(samples.reference_quarter.nunique()), "market_counts": {key: int(value) for key, value in samples.historical_market.value_counts().items()}, "max_samples_per_reference_date": int(samples.completed_weekly_reference_date.value_counts().max()), "prior_60_overlap_count": 0, "human_anchor_overlap_count": 0, "selection_seed": SELECTION_SEED, "review_order_seed": REVIEW_ORDER_SEED, "selection_manifest_file": MANIFEST.relative_to(ROOT).as_posix(), "selection_manifest_sha256": sha256(MANIFEST), "human_review_file": REVIEW.relative_to(ROOT).as_posix(), "human_review_sha256": sha256(REVIEW), "blind_asset_manifest_file": ASSETS.relative_to(ROOT).as_posix(), "blind_asset_manifest_sha256": sha256(ASSETS), "evaluation_protocol_file": PROTOCOL.relative_to(ROOT).as_posix(), "evaluation_protocol_sha256": sha256(PROTOCOL), "stage_blind_chart_count": int((assets.human_exposure_phase == "PASS_A").sum()), "outcome_blind_chart_count": int((assets.human_exposure_phase == "PASS_B_AFTER_STAGE_FREEZE").sum()), "human_machine_outputs_exposed": False, "human_review_started": False, "human_stage_labels_present": False, "human_outcome_labels_present": False, "oos_evaluation_executed": False, "retuning_performed": False, "network_market_request_count": 0, "per_reference_investable_counts": counts, "status": "READY_FOR_BLIND_HUMAN_INVESTABLE_OOS_LABELING"}
+    seal = prior_seal.copy()
+    seal.update({
+        "selection_manifest_sha256": sha256(MANIFEST),
+        "human_review_sha256": sha256(REVIEW),
+        "evaluation_protocol_sha256": sha256(PROTOCOL),
+        "blind_asset_manifest_sha256": sha256(ASSETS),
+        "stage_blind_chart_count": int((assets.human_exposure_phase == "PASS_A").sum()),
+        "outcome_blind_chart_count": int((assets.human_exposure_phase == "PASS_B_AFTER_STAGE_FREEZE").sum()),
+        "review_asset_mapping_status": "EXACT",
+        "review_order_sample_mapping_sha256": review_order_sample_mapping_sha256(review),
+        "correction": "13J-1 blind review order to chart asset mapping alignment",
+        "status": "READY_FOR_BLIND_HUMAN_INVESTABLE_OOS_LABELING",
+    })
     SEAL.write_text(json.dumps(seal, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
 def main() -> None:
-    candidates, counts, context = collect_candidates()
-    pool = assign_strata(candidates)
-    samples = select_samples(pool)
-    assets = generate_assets(samples)
-    write_outputs(samples, assets, counts, context)
-    print(f"READY_FOR_BLIND_HUMAN_INVESTABLE_OOS_LABELING: samples={len(samples)}, eligible_pool={len(pool)}")
+    samples, review, prior_seal = frozen_package()
+    assets = generate_assets(samples, review)
+    write_correction_outputs(samples, review, assets, prior_seal)
+    print(f"READY_FOR_BLIND_HUMAN_INVESTABLE_OOS_LABELING: samples={len(samples)}, review_asset_mapping=EXACT")
 
 
 if __name__ == "__main__":
