@@ -233,9 +233,18 @@ def test_contract_seal_base_is_recorded_in_protocol():
     assert protocol["contract_seal_base_sha"] == CONTRACT_SEAL_BASE
 
 
-def test_no_oos_result_artifact_exists():
-    forbidden = ["score", "stage_result", "candidate", "pair", "lead_time", "evaluation_result"]
-    assert not [path for path in OOS.rglob("*") if path.is_file() and any(token in path.name for token in forbidden)]
+def test_oos_result_artifacts_are_limited_to_the_frozen_13i_2_evaluation_set():
+    allowed = {
+        "pattern_a_fast_oos_machine_snapshot_v01.csv",
+        "pattern_a_fast_oos_stage_confusion_v01.csv",
+        "pattern_a_fast_oos_score_evaluation_v01.json",
+        "pattern_a_fast_oos_trigger_events_v01.csv",
+        "pattern_a_fast_oos_event_pairing_v01.csv",
+        "pattern_a_fast_oos_lead_time_v01.csv",
+        "pattern_a_fast_oos_evaluation_summary_v01.json",
+    }
+    results = OOS / "results"
+    assert {path.name for path in results.iterdir() if path.is_file()} == allowed
 
 
 def test_generator_is_cache_only_and_has_no_evaluator_dependency():

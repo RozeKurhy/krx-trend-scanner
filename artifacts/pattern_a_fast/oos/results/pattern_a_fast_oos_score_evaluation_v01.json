@@ -1,0 +1,68 @@
+{
+  "primary_comparison_name": "POSITIVE_STRUCTURE_vs_EARLY_OR_NONE",
+  "positive_labels": [
+    "GOOD_TRIGGER",
+    "BORDERLINE_TRIGGER"
+  ],
+  "negative_labels": [
+    "TOO_EARLY",
+    "NO_SETUP"
+  ],
+  "n_positive": 0,
+  "n_early_or_none": 8,
+  "positive": {
+    "human_group_n": 0,
+    "score_available_n": 0,
+    "median": null
+  },
+  "early_or_none": {
+    "human_group_n": 8,
+    "score_available_n": 8,
+    "median": 47.1
+  },
+  "minimum_n_per_group": 3,
+  "median_positive": null,
+  "median_early_or_none": 47.1,
+  "median_difference": null,
+  "cliffs_delta": null,
+  "primary_status": "INCONCLUSIVE",
+  "primary_reason": "INSUFFICIENT_POSITIVE_STRUCTURE_SAMPLE_SIZE",
+  "secondary_comparisons": [
+    {
+      "comparison": "GOOD_TRIGGER_vs_NO_SETUP",
+      "human_group_n": {
+        "GOOD_TRIGGER": 0,
+        "NO_SETUP": 3
+      },
+      "status": "INCONCLUSIVE",
+      "reason": "INSUFFICIENT_SAMPLE_SIZE"
+    },
+    {
+      "comparison": "GOOD_TRIGGER_vs_FALSE_TRIGGER",
+      "human_group_n": {
+        "GOOD_TRIGGER": 0,
+        "FALSE_TRIGGER": 3
+      },
+      "status": "INCONCLUSIVE",
+      "reason": "INSUFFICIENT_SAMPLE_SIZE"
+    },
+    {
+      "comparison": "GOOD_TRIGGER_vs_TOO_EARLY",
+      "human_group_n": {
+        "GOOD_TRIGGER": 0,
+        "TOO_EARLY": 5
+      },
+      "status": "INCONCLUSIVE",
+      "reason": "INSUFFICIENT_SAMPLE_SIZE"
+    },
+    {
+      "comparison": "GOOD_TRIGGER_vs_TOO_EXTENDED",
+      "human_group_n": {
+        "GOOD_TRIGGER": 0,
+        "TOO_EXTENDED": 7
+      },
+      "status": "INCONCLUSIVE",
+      "reason": "INSUFFICIENT_SAMPLE_SIZE"
+    }
+  ]
+}
