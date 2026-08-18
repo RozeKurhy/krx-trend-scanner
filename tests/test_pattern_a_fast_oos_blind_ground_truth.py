@@ -13,6 +13,7 @@ import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[1]
 BASE = "ddc7480bb24119ca3e8caca6d7b7f451f8eb097a"
+CONTRACT_SEAL_BASE = "311c235706bd07a67bfd3c658403f7d31da603c1"
 OOS = ROOT / "artifacts/pattern_a_fast/oos"
 SOURCE = ROOT / "artifacts/pattern_a_fast/ground_truth/pattern_a_fast_ground_truth_source_v01.csv"
 CALIBRATION = ROOT / "artifacts/pattern_a_fast/ground_truth/pattern_a_fast_human_review_v01.csv"
@@ -166,6 +167,70 @@ def test_preregistered_protocol_is_complete_and_unevaluated():
     assert protocol["evaluation_executed_in_13i_1"] is False
     assert protocol["decision_rules"]["no_retuning_after_labels"] is True
     assert protocol["inconclusive_rules"]["status"] == "OOS_LEAD_INCONCLUSIVE"
+
+
+def test_primary_score_comparison_and_hard_gate_are_exactly_sealed():
+    protocol = json.loads(PROTOCOL.read_text())
+    primary = protocol["primary_score_comparison"]
+    assert primary == {
+        "name": "POSITIVE_STRUCTURE_vs_EARLY_OR_NONE",
+        "positive_group": "POSITIVE_STRUCTURE",
+        "positive_labels": ["GOOD_TRIGGER", "BORDERLINE_TRIGGER"],
+        "negative_group": "EARLY_OR_NONE",
+        "negative_labels": ["TOO_EARLY", "NO_SETUP"],
+        "metrics": [
+            "n_positive", "n_early_or_none", "median_positive", "median_early_or_none",
+            "median_difference", "cliffs_delta",
+        ],
+    }
+    assert protocol["secondary_score_comparisons"] == [
+        ["GOOD_TRIGGER", "NO_SETUP"],
+        ["GOOD_TRIGGER", "FALSE_TRIGGER"],
+        ["GOOD_TRIGGER", "TOO_EARLY"],
+        ["GOOD_TRIGGER", "TOO_EXTENDED"],
+    ]
+    gate = protocol["decision_rules"]["score_direction"]
+    assert gate["failure_status"] == "OOS_SCORE_DIRECTION_FAIL"
+    assert gate["inconclusive_status"] == "INCONCLUSIVE"
+    assert gate["minimum_n_per_group"] == 3
+    assert "POSITIVE_STRUCTURE vs EARLY_OR_NONE" in gate["rule"]
+    assert "median(POSITIVE_STRUCTURE) <= median(EARLY_OR_NONE)" in gate["rule"]
+
+
+def test_pairing_precedence_matches_frozen_13h_conservative_order():
+    protocol = json.loads(PROTOCOL.read_text())
+    expected = [
+        "DATA_UNAVAILABLE",
+        "SAME_WEEK",
+        "PATTERN_A_ALREADY_ACTIVE",
+        "PATTERN_A_PRIOR_ACTIVITY_BEFORE_FAST_EVENT",
+        "FAST_EARLIER_PATTERN_A_LATER",
+        "FAST_EVENT_NO_PATTERN_A_CATCHUP",
+    ]
+    assert protocol["pairing_semantics"] == expected
+    assert _module().PAIRING_PRECEDENCE == expected
+    source = (ROOT / "scripts/research_pattern_a_fast_lead_time_failure.py").read_text(encoding="utf-8")
+    positions = [source.index(f'pair_status, next_date = "{status}"') for status in expected]
+    assert positions == sorted(positions)
+
+
+def test_contract_seal_preserves_all_human_facing_oos_bytes_from_base():
+    protected = [
+        "artifacts/pattern_a_fast/oos/pattern_a_fast_oos_sample_manifest_v01.csv",
+        "artifacts/pattern_a_fast/oos/pattern_a_fast_oos_human_review_v01.csv",
+        "artifacts/pattern_a_fast/oos/pattern_a_fast_oos_blind_asset_manifest_v01.csv",
+        "artifacts/pattern_a_fast/oos/charts/stage_blind",
+        "artifacts/pattern_a_fast/oos/charts/outcome_blind",
+    ]
+    result = subprocess.run(
+        ["git", "diff", "--quiet", CONTRACT_SEAL_BASE, "--", *protected], cwd=ROOT, check=False
+    )
+    assert result.returncode == 0
+
+
+def test_contract_seal_base_is_recorded_in_protocol():
+    protocol = json.loads(PROTOCOL.read_text())
+    assert protocol["contract_seal_base_sha"] == CONTRACT_SEAL_BASE
 
 
 def test_no_oos_result_artifact_exists():

@@ -1,6 +1,7 @@
 {
   "version": "pattern_a_fast_oos_evaluation_protocol_v01",
   "base_sha": "ddc7480bb24119ca3e8caca6d7b7f451f8eb097a",
+  "contract_seal_base_sha": "311c235706bd07a67bfd3c658403f7d31da603c1",
   "oos_set": "RESERVED_OOS_A",
   "oos_sample_count": 20,
   "calibration_excluded_count": 40,
@@ -23,13 +24,53 @@
     "TREND",
     "EXTENDED"
   ],
-  "evaluation_metrics": {
-    "score": [
-      "median",
-      "iqr",
-      "label_group_median_difference",
-      "cliffs_delta"
+  "primary_score_comparison": {
+    "name": "POSITIVE_STRUCTURE_vs_EARLY_OR_NONE",
+    "positive_group": "POSITIVE_STRUCTURE",
+    "positive_labels": [
+      "GOOD_TRIGGER",
+      "BORDERLINE_TRIGGER"
     ],
+    "negative_group": "EARLY_OR_NONE",
+    "negative_labels": [
+      "TOO_EARLY",
+      "NO_SETUP"
+    ],
+    "metrics": [
+      "n_positive",
+      "n_early_or_none",
+      "median_positive",
+      "median_early_or_none",
+      "median_difference",
+      "cliffs_delta"
+    ]
+  },
+  "secondary_score_comparisons": [
+    ["GOOD_TRIGGER", "NO_SETUP"],
+    ["GOOD_TRIGGER", "FALSE_TRIGGER"],
+    ["GOOD_TRIGGER", "TOO_EARLY"],
+    ["GOOD_TRIGGER", "TOO_EXTENDED"]
+  ],
+  "evaluation_metrics": {
+    "score": {
+      "primary": {
+        "comparison": "POSITIVE_STRUCTURE_vs_EARLY_OR_NONE",
+        "metrics": [
+          "n_positive",
+          "n_early_or_none",
+          "median_positive",
+          "median_early_or_none",
+          "median_difference",
+          "cliffs_delta"
+        ]
+      },
+      "secondary_descriptive": [
+        "GOOD_TRIGGER_vs_NO_SETUP",
+        "GOOD_TRIGGER_vs_FALSE_TRIGGER",
+        "GOOD_TRIGGER_vs_TOO_EARLY",
+        "GOOD_TRIGGER_vs_TOO_EXTENDED"
+      ]
+    },
     "stage": [
       "confusion_matrix",
       "stage_distribution",
@@ -42,9 +83,9 @@
   },
   "pairing_semantics": [
     "DATA_UNAVAILABLE",
+    "SAME_WEEK",
     "PATTERN_A_ALREADY_ACTIVE",
     "PATTERN_A_PRIOR_ACTIVITY_BEFORE_FAST_EVENT",
-    "SAME_WEEK",
     "FAST_EARLIER_PATTERN_A_LATER",
     "FAST_EVENT_NO_PATTERN_A_CATCHUP"
   ],
@@ -57,7 +98,12 @@
     "partial_availability_reported_separately": true
   },
   "decision_rules": {
-    "score_direction": "When both groups have n >= 3, positive-label median must exceed TOO_EARLY median; otherwise OOS_SCORE_DIRECTION_FAIL.",
+    "score_direction": {
+      "rule": "POSITIVE_STRUCTURE vs EARLY_OR_NONE: if n(POSITIVE_STRUCTURE) >= 3 and n(EARLY_OR_NONE) >= 3 and median(POSITIVE_STRUCTURE) <= median(EARLY_OR_NONE), then OOS_SCORE_DIRECTION_FAIL.",
+      "failure_status": "OOS_SCORE_DIRECTION_FAIL",
+      "inconclusive_status": "INCONCLUSIVE",
+      "minimum_n_per_group": 3
+    },
     "score_effect": "No hard Cliff's delta threshold is preregistered.",
     "lead_direction": "When clean primary n >= 3, median lead weeks must be > 0; otherwise OOS_LEAD_DIRECTION_FAIL.",
     "no_retuning_after_labels": true

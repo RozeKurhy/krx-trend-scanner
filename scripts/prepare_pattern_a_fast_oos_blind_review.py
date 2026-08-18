@@ -26,11 +26,35 @@ from trend_scanner.data.cache import ParquetCache  # noqa: E402
 from trend_scanner.data.resampler import to_monthly, to_weekly  # noqa: E402
 
 BASE_SHA = "ddc7480bb24119ca3e8caca6d7b7f451f8eb097a"
+CONTRACT_SEAL_BASE_SHA = "311c235706bd07a67bfd3c658403f7d31da603c1"
 FAST_CONTRACT_SHA = "2da3fc36744b27ec13edae3f690df72c796906e5"
 PATTERN_A_FROZEN_SHA = "05d03e16501adbca889488294aaaaa0bd84005de"
 ORDER_SEED = "PATTERN_A_FAST_13I_OOS_A_V01"
 OOS_SET = "RESERVED_OOS_A"
 SAMPLE_SOURCE = "RESERVED_13C_UNLABELED_HOLDOUT"
+PAIRING_PRECEDENCE = [
+    "DATA_UNAVAILABLE",
+    "SAME_WEEK",
+    "PATTERN_A_ALREADY_ACTIVE",
+    "PATTERN_A_PRIOR_ACTIVITY_BEFORE_FAST_EVENT",
+    "FAST_EARLIER_PATTERN_A_LATER",
+    "FAST_EVENT_NO_PATTERN_A_CATCHUP",
+]
+PRIMARY_SCORE_COMPARISON = {
+    "name": "POSITIVE_STRUCTURE_vs_EARLY_OR_NONE",
+    "positive_group": "POSITIVE_STRUCTURE",
+    "positive_labels": ["GOOD_TRIGGER", "BORDERLINE_TRIGGER"],
+    "negative_group": "EARLY_OR_NONE",
+    "negative_labels": ["TOO_EARLY", "NO_SETUP"],
+    "metrics": [
+        "n_positive",
+        "n_early_or_none",
+        "median_positive",
+        "median_early_or_none",
+        "median_difference",
+        "cliffs_delta",
+    ],
+}
 
 SOURCE_CSV = Path("artifacts/pattern_a_fast/ground_truth/pattern_a_fast_ground_truth_source_v01.csv")
 CALIBRATION_CSV = Path("artifacts/pattern_a_fast/ground_truth/pattern_a_fast_human_review_v01.csv")
@@ -241,6 +265,7 @@ def build_protocol() -> dict[str, object]:
     return {
         "version": "pattern_a_fast_oos_evaluation_protocol_v01",
         "base_sha": BASE_SHA,
+        "contract_seal_base_sha": CONTRACT_SEAL_BASE_SHA,
         "oos_set": OOS_SET,
         "oos_sample_count": 20,
         "calibration_excluded_count": 40,
@@ -249,15 +274,27 @@ def build_protocol() -> dict[str, object]:
         "pattern_a_frozen_sha": PATTERN_A_FROZEN_SHA,
         "human_label_taxonomy": ["GOOD_TRIGGER", "BORDERLINE_TRIGGER", "TOO_EARLY", "TOO_LATE", "TOO_EXTENDED", "FALSE_TRIGGER", "NO_SETUP"],
         "human_stage_taxonomy": ["WATCH", "SETUP", "TRIGGER", "TREND", "EXTENDED"],
+        "primary_score_comparison": PRIMARY_SCORE_COMPARISON,
+        "secondary_score_comparisons": [
+            ["GOOD_TRIGGER", "NO_SETUP"],
+            ["GOOD_TRIGGER", "FALSE_TRIGGER"],
+            ["GOOD_TRIGGER", "TOO_EARLY"],
+            ["GOOD_TRIGGER", "TOO_EXTENDED"],
+        ],
         "evaluation_metrics": {
-            "score": ["median", "iqr", "label_group_median_difference", "cliffs_delta"],
+            "score": {
+                "primary": PRIMARY_SCORE_COMPARISON,
+                "secondary_descriptive": [
+                    "GOOD_TRIGGER_vs_NO_SETUP",
+                    "GOOD_TRIGGER_vs_FALSE_TRIGGER",
+                    "GOOD_TRIGGER_vs_TOO_EARLY",
+                    "GOOD_TRIGGER_vs_TOO_EXTENDED",
+                ],
+            },
             "stage": ["confusion_matrix", "stage_distribution", "exact_match_descriptive"],
             "event": ["clean_primary_lead_weeks_median", "clean_primary_lead_weeks_iqr"],
         },
-        "pairing_semantics": [
-            "DATA_UNAVAILABLE", "PATTERN_A_ALREADY_ACTIVE", "PATTERN_A_PRIOR_ACTIVITY_BEFORE_FAST_EVENT",
-            "SAME_WEEK", "FAST_EARLIER_PATTERN_A_LATER", "FAST_EVENT_NO_PATTERN_A_CATCHUP",
-        ],
+        "pairing_semantics": PAIRING_PRECEDENCE,
         "availability_semantics": {
             "pattern_a_checked_first": True,
             "fast_stage_ready_coverage_below": 0.8,
@@ -267,7 +304,12 @@ def build_protocol() -> dict[str, object]:
             "partial_availability_reported_separately": True,
         },
         "decision_rules": {
-            "score_direction": "When both groups have n >= 3, positive-label median must exceed TOO_EARLY median; otherwise OOS_SCORE_DIRECTION_FAIL.",
+            "score_direction": {
+                "rule": "POSITIVE_STRUCTURE vs EARLY_OR_NONE: if n(POSITIVE_STRUCTURE) >= 3 and n(EARLY_OR_NONE) >= 3 and median(POSITIVE_STRUCTURE) <= median(EARLY_OR_NONE), then OOS_SCORE_DIRECTION_FAIL.",
+                "failure_status": "OOS_SCORE_DIRECTION_FAIL",
+                "inconclusive_status": "INCONCLUSIVE",
+                "minimum_n_per_group": 3,
+            },
             "score_effect": "No hard Cliff's delta threshold is preregistered.",
             "lead_direction": "When clean primary n >= 3, median lead weeks must be > 0; otherwise OOS_LEAD_DIRECTION_FAIL.",
             "no_retuning_after_labels": True,
@@ -330,7 +372,8 @@ Phase 13I-1 Reserved OOS Evaluation Preregistration
 =================================================
 
 상태: READY_FOR_BLIND_HUMAN_OOS_LABELING
-Base SHA: {BASE_SHA}
+OOS package base SHA: {BASE_SHA}
+Contract seal base SHA: {CONTRACT_SEAL_BASE_SHA}
 OOS set: {OOS_SET}, 20건. 기존 사람이 주봉 단계와 결과 라벨을 모두 작성한 40건은 calibration으로 제외했다.
 
 1. 모집단 동결
@@ -340,9 +383,11 @@ OOS set: {OOS_SET}, 20건. 기존 사람이 주봉 단계와 결과 라벨을 �
 PASS A에서 월/주/일 차트를 reference_date까지만 열어 단계·신뢰도·trigger 관찰값을 기록하고 저장한다. PASS B에서만 frozen outcome_review_end까지의 결과 차트를 열어 결과 라벨·신뢰도·메모를 기록한다. PASS B 이후 PASS A 기록을 수정하지 않는다. 사람용 자료에는 모델 점수·단계·후보·pairing·표본 분류를 노출하지 않는다.
 
 3. 13I-2 사전등록 평가
-Fast contract는 HIERARCHICAL_V01 ({FAST_CONTRACT_SHA}), Pattern A production closure는 {PATTERN_A_FROZEN_SHA}로 고정한다. 결과 라벨별 점수 median/IQR, positive-vs-TOO_EARLY median 차이와 Cliff's delta, 단계 confusion matrix·분포·정확 일치(기술통계), clean primary pairing의 lead weeks median/IQR를 계산한다. pairing precedence는 DATA_UNAVAILABLE → PATTERN_A_ALREADY_ACTIVE → PATTERN_A_PRIOR_ACTIVITY_BEFORE_FAST_EVENT → SAME_WEEK → FAST_EARLIER_PATTERN_A_LATER → FAST_EVENT_NO_PATTERN_A_CATCHUP 순서다.
+Fast contract는 HIERARCHICAL_V01 ({FAST_CONTRACT_SHA}), Pattern A production closure는 {PATTERN_A_FROZEN_SHA}로 고정한다. Primary score comparison은 POSITIVE_STRUCTURE(GOOD_TRIGGER + BORDERLINE_TRIGGER) vs EARLY_OR_NONE(TOO_EARLY + NO_SETUP)다. Primary metrics는 n_positive, n_early_or_none, median_positive, median_early_or_none, median_difference, cliffs_delta다. Secondary descriptive comparisons는 GOOD_TRIGGER vs NO_SETUP, FALSE_TRIGGER, TOO_EARLY, TOO_EXTENDED이며 primary gate를 대체하지 않는다. sample 수가 부족한 primary/secondary 비교는 INCONCLUSIVE로 기록한다.
 
-가용성은 Pattern A를 먼저 확인한다. Fast stage-ready coverage < 0.80 또는 Fast score unavailable > 0.20이면 OOS_DATA_COVERAGE_FAIL이며 부분 가용성은 별도 보고한다. 두 비교군 모두 n >= 3일 때 positive median이 TOO_EARLY median 이하이면 OOS_SCORE_DIRECTION_FAIL이다. clean primary n >= 3이면 median lead weeks는 0보다 커야 하며 아니면 OOS_LEAD_DIRECTION_FAIL이다. clean primary n < 3이면 OOS_LEAD_INCONCLUSIVE이다. 라벨 동결 후 재튜닝·임계값 변경·샘플 교체는 금지한다.
+pairing precedence는 13H frozen conservative semantics와 동일하게 DATA_UNAVAILABLE → SAME_WEEK → PATTERN_A_ALREADY_ACTIVE → PATTERN_A_PRIOR_ACTIVITY_BEFORE_FAST_EVENT → FAST_EARLIER_PATTERN_A_LATER → FAST_EVENT_NO_PATTERN_A_CATCHUP 순서다. 같은 completed week에 Fast trigger event와 Pattern A official candidate event가 observed되면 SAME_WEEK이며, 해당 주에 active라는 이유로 PATTERN_A_ALREADY_ACTIVE를 먼저 적용하지 않는다.
+
+가용성은 Pattern A를 먼저 확인한다. Fast stage-ready coverage < 0.80 또는 Fast score unavailable > 0.20이면 OOS_DATA_COVERAGE_FAIL이며 부분 가용성은 별도 보고한다. n(POSITIVE_STRUCTURE) >= 3 및 n(EARLY_OR_NONE) >= 3일 때 median(POSITIVE_STRUCTURE) <= median(EARLY_OR_NONE)이면 OOS_SCORE_DIRECTION_FAIL이다. 둘 중 하나라도 표본이 부족하면 이 hard directional conclusion은 INCONCLUSIVE다. clean primary n >= 3이면 median lead weeks는 0보다 커야 하며 아니면 OOS_LEAD_DIRECTION_FAIL이다. clean primary n < 3이면 OOS_LEAD_INCONCLUSIVE이다. 라벨 동결 후 재튜닝·임계값 변경·샘플 교체는 금지한다.
 
 4. 경계
 13I-1에서는 OOS에 대한 Fast 또는 Pattern A 실행, 점수/단계/후보 산출, 비교 평가를 하지 않았다. production_frozen은 false이며 다음 단계는 사람 라벨 동결 뒤의 13I-2 평가다.
