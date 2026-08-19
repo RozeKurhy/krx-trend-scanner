@@ -31,4 +31,4 @@ markers = [
     "integration: 실제 외부 API(PyKRX)를 호출한다. 기본 실행에서 제외되며 `-m integration`으로만 실행한다.",
     "slow: 장시간 소요되는 연구 통합 테스트. 대형주 40 전체 재실행 및 전수 PIT 가로채기 검증.",
 ]
-addopts = "-m 'not integration'"
+addopts = "-m 'not integration and not slow'"
