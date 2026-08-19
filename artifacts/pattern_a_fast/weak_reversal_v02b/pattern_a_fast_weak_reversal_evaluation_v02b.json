@@ -1,0 +1,571 @@
+{
+  "evaluation_title": "FAST + Pattern A WEAK Early Reversal Validation v0.2B Evaluation",
+  "research_classification": "RETROSPECTIVE_FAST_WEAK_EARLY_REVERSAL_VALIDATION",
+  "preregistration_authority_commit": "aea7db2e5a3f9d768f08c43c15d3f8983b653712",
+  "preregistration_status": "PREREGISTERED_BEFORE_EVALUATION",
+  "production_status": "PRODUCTION_HOLD",
+  "production_impact": "NONE",
+  "data_cutoff": "2026-08-14",
+  "simulation_execution_seconds": 199.36,
+  "population_summary": {
+    "total_common_universe_count": 2528,
+    "phase10_investable_universe_count": 1081,
+    "cache_present_count": 1081,
+    "cache_missing_count": 0,
+    "evaluation_eligible_count": 1079,
+    "evaluation_eligible_rate": 99.81,
+    "excluded_count": 2,
+    "exclusion_breakdown": {
+      "INSUFFICIENT_HISTORY": 2
+    },
+    "warning_ticker_count": 0
+  },
+  "signal_diagnostic": {
+    "fast_v01_signal_qualifying_count": 799,
+    "fast_executable_first_entry_count": 799,
+    "non_executable_signal_count": 0,
+    "non_executable_reasons": {},
+    "fast_weak_count": 108,
+    "fast_transition_count": 157,
+    "other_stages_count": 534
+  },
+  "fast_weak_summary": {
+    "cohort_name": "FAST_WEAK",
+    "total_count": 108,
+    "horizons": {
+      "4w": {
+        "sample_count": 108,
+        "censored_count": 0,
+        "completed_count": 108,
+        "return_stats": {
+          "count": 108,
+          "mean": 6.6,
+          "median": -1.08,
+          "p25": -9.75,
+          "p75": 18.18,
+          "std": 27.49,
+          "min": -33.85,
+          "max": 186.17,
+          "positive_rate": 48.1
+        },
+        "mfe_stats": {
+          "count": 108,
+          "mean": 26.37,
+          "median": 14.02,
+          "p25": 6.72,
+          "p75": 28.55,
+          "std": 44.58,
+          "min": 0.23,
+          "max": 414.99,
+          "positive_rate": 100.0
+        },
+        "mae_stats": {
+          "count": 108,
+          "mean": -11.02,
+          "median": -9.0,
+          "p25": -16.5,
+          "p75": -4.3,
+          "std": 8.41,
+          "min": -35.18,
+          "max": 0.0,
+          "positive_rate": 0.0
+        }
+      },
+      "8w": {
+        "sample_count": 108,
+        "censored_count": 0,
+        "completed_count": 108,
+        "return_stats": {
+          "count": 108,
+          "mean": 7.86,
+          "median": 4.77,
+          "p25": -13.58,
+          "p75": 19.52,
+          "std": 30.8,
+          "min": -45.92,
+          "max": 165.65,
+          "positive_rate": 55.6
+        },
+        "mfe_stats": {
+          "count": 108,
+          "mean": 35.74,
+          "median": 20.4,
+          "p25": 8.86,
+          "p75": 46.99,
+          "std": 48.3,
+          "min": 0.23,
+          "max": 414.99,
+          "positive_rate": 100.0
+        },
+        "mae_stats": {
+          "count": 108,
+          "mean": -14.69,
+          "median": -13.51,
+          "p25": -20.73,
+          "p75": -6.17,
+          "std": 10.76,
+          "min": -53.45,
+          "max": 0.0,
+          "positive_rate": 0.0
+        }
+      },
+      "12w": {
+        "sample_count": 108,
+        "censored_count": 0,
+        "completed_count": 108,
+        "return_stats": {
+          "count": 108,
+          "mean": 12.71,
+          "median": 4.79,
+          "p25": -10.27,
+          "p75": 29.64,
+          "std": 41.91,
+          "min": -62.04,
+          "max": 186.41,
+          "positive_rate": 53.7
+        },
+        "mfe_stats": {
+          "count": 108,
+          "mean": 44.36,
+          "median": 24.64,
+          "p25": 11.82,
+          "p75": 66.5,
+          "std": 54.17,
+          "min": 0.23,
+          "max": 414.99,
+          "positive_rate": 100.0
+        },
+        "mae_stats": {
+          "count": 108,
+          "mean": -17.66,
+          "median": -14.81,
+          "p25": -23.98,
+          "p75": -6.91,
+          "std": 14.03,
+          "min": -63.57,
+          "max": 0.0,
+          "positive_rate": 0.0
+        }
+      },
+      "26w": {
+        "sample_count": 108,
+        "censored_count": 18,
+        "completed_count": 90,
+        "return_stats": {
+          "count": 90,
+          "mean": 38.54,
+          "median": 20.31,
+          "p25": 0.3,
+          "p75": 50.26,
+          "std": 69.37,
+          "min": -35.43,
+          "max": 382.76,
+          "positive_rate": 75.6
+        },
+        "mfe_stats": {
+          "count": 90,
+          "mean": 85.34,
+          "median": 57.16,
+          "p25": 27.25,
+          "p75": 97.57,
+          "std": 99.82,
+          "min": 0.23,
+          "max": 645.1,
+          "positive_rate": 100.0
+        },
+        "mae_stats": {
+          "count": 90,
+          "mean": -16.61,
+          "median": -14.81,
+          "p25": -22.36,
+          "p75": -8.73,
+          "std": 10.9,
+          "min": -47.03,
+          "max": -0.29,
+          "positive_rate": 0.0
+        }
+      }
+    },
+    "tail_26w_analysis": {
+      "completed_26w_count": 90,
+      "winner_return_ge_20_count": 46,
+      "winner_return_ge_20_rate": 51.1,
+      "winner_return_ge_50_count": 23,
+      "winner_return_ge_50_rate": 25.6,
+      "winner_return_ge_100_count": 9,
+      "winner_return_ge_100_rate": 10.0,
+      "winner_mfe_ge_30_count": 64,
+      "winner_mfe_ge_30_rate": 71.1,
+      "winner_mfe_ge_50_count": 51,
+      "winner_mfe_ge_50_rate": 56.7,
+      "winner_mfe_ge_100_count": 22,
+      "winner_mfe_ge_100_rate": 24.4,
+      "failure_return_negative_count": 22,
+      "failure_return_negative_rate": 24.4,
+      "failure_return_le_neg_20_count": 4,
+      "failure_return_le_neg_20_rate": 4.4,
+      "failure_return_le_neg_30_count": 2,
+      "failure_return_le_neg_30_rate": 2.2,
+      "failure_mae_le_neg_20_count": 28,
+      "failure_mae_le_neg_20_rate": 31.1,
+      "failure_mae_le_neg_30_count": 10,
+      "failure_mae_le_neg_30_rate": 11.1
+    }
+  },
+  "fast_transition_summary": {
+    "cohort_name": "FAST_TRANSITION",
+    "total_count": 157,
+    "horizons": {
+      "4w": {
+        "sample_count": 157,
+        "censored_count": 1,
+        "completed_count": 156,
+        "return_stats": {
+          "count": 156,
+          "mean": 2.75,
+          "median": -1.67,
+          "p25": -10.48,
+          "p75": 10.03,
+          "std": 25.98,
+          "min": -31.94,
+          "max": 159.6,
+          "positive_rate": 46.2
+        },
+        "mfe_stats": {
+          "count": 156,
+          "mean": 20.41,
+          "median": 11.3,
+          "p25": 5.09,
+          "p75": 23.24,
+          "std": 35.16,
+          "min": 0.0,
+          "max": 298.45,
+          "positive_rate": 99.4
+        },
+        "mae_stats": {
+          "count": 156,
+          "mean": -11.54,
+          "median": -10.34,
+          "p25": -16.16,
+          "p75": -4.63,
+          "std": 8.54,
+          "min": -37.97,
+          "max": 0.0,
+          "positive_rate": 0.0
+        }
+      },
+      "8w": {
+        "sample_count": 157,
+        "censored_count": 2,
+        "completed_count": 155,
+        "return_stats": {
+          "count": 155,
+          "mean": 0.7,
+          "median": -3.46,
+          "p25": -12.93,
+          "p75": 7.5,
+          "std": 27.83,
+          "min": -44.07,
+          "max": 181.82,
+          "positive_rate": 41.3
+        },
+        "mfe_stats": {
+          "count": 155,
+          "mean": 28.37,
+          "median": 15.29,
+          "p25": 7.97,
+          "p75": 29.81,
+          "std": 46.65,
+          "min": 0.0,
+          "max": 306.19,
+          "positive_rate": 99.4
+        },
+        "mae_stats": {
+          "count": 155,
+          "mean": -15.13,
+          "median": -14.05,
+          "p25": -20.66,
+          "p75": -7.42,
+          "std": 10.1,
+          "min": -48.45,
+          "max": -0.32,
+          "positive_rate": 0.0
+        }
+      },
+      "12w": {
+        "sample_count": 157,
+        "censored_count": 2,
+        "completed_count": 155,
+        "return_stats": {
+          "count": 155,
+          "mean": 2.37,
+          "median": -2.97,
+          "p25": -17.41,
+          "p75": 12.43,
+          "std": 32.94,
+          "min": -46.28,
+          "max": 194.95,
+          "positive_rate": 38.7
+        },
+        "mfe_stats": {
+          "count": 155,
+          "mean": 32.87,
+          "median": 17.71,
+          "p25": 8.72,
+          "p75": 34.61,
+          "std": 49.39,
+          "min": 0.0,
+          "max": 306.19,
+          "positive_rate": 99.4
+        },
+        "mae_stats": {
+          "count": 155,
+          "mean": -17.95,
+          "median": -16.21,
+          "p25": -25.03,
+          "p75": -9.21,
+          "std": 11.59,
+          "min": -60.45,
+          "max": -0.32,
+          "positive_rate": 0.0
+        }
+      },
+      "26w": {
+        "sample_count": 157,
+        "censored_count": 30,
+        "completed_count": 127,
+        "return_stats": {
+          "count": 127,
+          "mean": 17.81,
+          "median": 1.07,
+          "p25": -15.73,
+          "p75": 23.45,
+          "std": 61.32,
+          "min": -55.41,
+          "max": 370.85,
+          "positive_rate": 52.8
+        },
+        "mfe_stats": {
+          "count": 127,
+          "mean": 56.71,
+          "median": 30.52,
+          "p25": 13.18,
+          "p75": 61.65,
+          "std": 75.19,
+          "min": 0.77,
+          "max": 430.72,
+          "positive_rate": 100.0
+        },
+        "mae_stats": {
+          "count": 127,
+          "mean": -21.2,
+          "median": -20.16,
+          "p25": -28.55,
+          "p75": -12.0,
+          "std": 12.3,
+          "min": -60.02,
+          "max": -0.32,
+          "positive_rate": 0.0
+        }
+      }
+    },
+    "tail_26w_analysis": {
+      "completed_26w_count": 127,
+      "winner_return_ge_20_count": 39,
+      "winner_return_ge_20_rate": 30.7,
+      "winner_return_ge_50_count": 20,
+      "winner_return_ge_50_rate": 15.7,
+      "winner_return_ge_100_count": 12,
+      "winner_return_ge_100_rate": 9.4,
+      "winner_mfe_ge_30_count": 67,
+      "winner_mfe_ge_30_rate": 52.8,
+      "winner_mfe_ge_50_count": 38,
+      "winner_mfe_ge_50_rate": 29.9,
+      "winner_mfe_ge_100_count": 19,
+      "winner_mfe_ge_100_rate": 15.0,
+      "failure_return_negative_count": 60,
+      "failure_return_negative_rate": 47.2,
+      "failure_return_le_neg_20_count": 21,
+      "failure_return_le_neg_20_rate": 16.5,
+      "failure_return_le_neg_30_count": 9,
+      "failure_return_le_neg_30_rate": 7.1,
+      "failure_mae_le_neg_20_count": 66,
+      "failure_mae_le_neg_20_rate": 52.0,
+      "failure_mae_le_neg_30_count": 30,
+      "failure_mae_le_neg_30_rate": 23.6
+    }
+  },
+  "primary_differences": {
+    "4w": {
+      "weak_return_median": -1.08,
+      "transition_return_median": -1.67,
+      "median_return_difference": 0.59,
+      "weak_mfe_median": 14.02,
+      "transition_mfe_median": 11.3,
+      "median_mfe_difference": 2.72,
+      "weak_mae_median": -9.0,
+      "transition_mae_median": -10.34,
+      "median_mae_difference": 1.34,
+      "weak_positive_rate": 48.1,
+      "transition_positive_rate": 46.2,
+      "positive_rate_difference": 1.9
+    },
+    "8w": {
+      "weak_return_median": 4.77,
+      "transition_return_median": -3.46,
+      "median_return_difference": 8.23,
+      "weak_mfe_median": 20.4,
+      "transition_mfe_median": 15.29,
+      "median_mfe_difference": 5.11,
+      "weak_mae_median": -13.51,
+      "transition_mae_median": -14.05,
+      "median_mae_difference": 0.54,
+      "weak_positive_rate": 55.6,
+      "transition_positive_rate": 41.3,
+      "positive_rate_difference": 14.3
+    },
+    "12w": {
+      "weak_return_median": 4.79,
+      "transition_return_median": -2.97,
+      "median_return_difference": 7.76,
+      "weak_mfe_median": 24.64,
+      "transition_mfe_median": 17.71,
+      "median_mfe_difference": 6.93,
+      "weak_mae_median": -14.81,
+      "transition_mae_median": -16.21,
+      "median_mae_difference": 1.4,
+      "weak_positive_rate": 53.7,
+      "transition_positive_rate": 38.7,
+      "positive_rate_difference": 15.0
+    },
+    "26w": {
+      "weak_return_median": 20.31,
+      "transition_return_median": 1.07,
+      "median_return_difference": 19.24,
+      "weak_mfe_median": 57.16,
+      "transition_mfe_median": 30.52,
+      "median_mfe_difference": 26.64,
+      "weak_mae_median": -14.81,
+      "transition_mae_median": -20.16,
+      "median_mae_difference": 5.35,
+      "weak_positive_rate": 75.6,
+      "transition_positive_rate": 52.8,
+      "positive_rate_difference": 22.8
+    }
+  },
+  "secondary_lifecycle_followthrough": {
+    "fast_weak_total_count": 108,
+    "ever_transition_count": 95,
+    "ever_transition_rate": 88.0,
+    "days_to_transition_stats": {
+      "count": 95,
+      "mean": 95.75,
+      "median": 46.0,
+      "p25": 21.0,
+      "p75": 105.0,
+      "std": 164.38,
+      "min": 2.0,
+      "max": 1339.0,
+      "positive_rate": 100.0
+    },
+    "ever_early_trend_count": 58,
+    "ever_early_trend_rate": 53.7,
+    "days_to_early_trend_stats": {
+      "count": 58,
+      "mean": 209.29,
+      "median": 128.5,
+      "p25": 62.25,
+      "p75": 195.0,
+      "std": 349.26,
+      "min": 10.0,
+      "max": 2463.0,
+      "positive_rate": 100.0
+    },
+    "ever_progressed_count": 82,
+    "ever_progressed_rate": 75.9,
+    "days_to_progressed_stats": {
+      "count": 82,
+      "mean": 261.26,
+      "median": 180.5,
+      "p25": 134.5,
+      "p75": 278.25,
+      "std": 365.84,
+      "min": 51.0,
+      "max": 2585.0,
+      "positive_rate": 100.0
+    }
+  },
+  "risk_grade_diagnostic": {
+    "NORMAL": {
+      "weak_count": 56,
+      "transition_count": 102,
+      "weak_26w_return_median": 23.25,
+      "transition_26w_return_median": 2.81,
+      "weak_26w_mfe_median": 54.36,
+      "transition_26w_mfe_median": 29.7
+    },
+    "ELEVATED": {
+      "weak_count": 52,
+      "transition_count": 55,
+      "weak_26w_return_median": 16.99,
+      "transition_26w_return_median": -1.64,
+      "weak_26w_mfe_median": 58.48,
+      "transition_26w_mfe_median": 33.81
+    }
+  },
+  "era_diagnostic": {
+    "2016-2020": {
+      "weak_count": 3,
+      "transition_count": 4,
+      "weak_26w_return_median": -0.82,
+      "transition_26w_return_median": 18.96,
+      "weak_26w_mfe_median": 3.54,
+      "transition_26w_mfe_median": 23.63
+    },
+    "2021-2023": {
+      "weak_count": 1,
+      "transition_count": 4,
+      "weak_26w_return_median": -15.92,
+      "transition_26w_return_median": 0.32,
+      "weak_26w_mfe_median": 24.79,
+      "transition_26w_mfe_median": 27.61
+    },
+    "2024-2026": {
+      "weak_count": 104,
+      "transition_count": 149,
+      "weak_26w_return_median": 20.89,
+      "transition_26w_return_median": 0.71,
+      "weak_26w_mfe_median": 58.66,
+      "transition_26w_mfe_median": 30.58
+    }
+  },
+  "market_diagnostic": {
+    "KOSPI": {
+      "weak_count": 45,
+      "transition_count": 77,
+      "weak_26w_return_median": 27.29,
+      "transition_26w_return_median": 1.07,
+      "weak_26w_mfe_median": 51.71,
+      "transition_26w_mfe_median": 25.36
+    },
+    "KOSDAQ": {
+      "weak_count": 63,
+      "transition_count": 80,
+      "weak_26w_return_median": 18.03,
+      "transition_26w_return_median": 1.07,
+      "weak_26w_mfe_median": 58.7,
+      "transition_26w_mfe_median": 36.99
+    }
+  },
+  "conclusion": {
+    "status": "FAST_WEAK_EARLY_REVERSAL_SUPPORTED",
+    "production_status": "PRODUCTION_HOLD",
+    "key_observations": [
+      "전체 1,081개 투자적격 종목 중 FAST v0.1 최초 신호에서 FAST_WEAK은 108개, FAST_TRANSITION은 157개 발생함.",
+      "26W 전방 성과에서 FAST_WEAK은 수익률 중앙값 20.31%로 FAST_TRANSITION(1.07%) 대비 +19.24%p 높았으며, 26W MFE 중앙값 역시 57.16% vs 30.52%로 +26.64%p 우세하게 관찰됨.",
+      "단기 4W에서는 양 집단이 유사했으나(-1.08% vs -1.67%), 8W(+4.77% vs -3.46%) 및 12W(+4.79% vs -2.97%)부터 중기 전방 수익률 차이가 점진적으로 확대되는 궤적이 확인됨.",
+      "FAST_WEAK 진입 종목 중 사후 Pattern A TRANSITION 도달 비율은 88.0% (중앙값 46.0일), EARLY_TREND 도달 비율은 53.7% (중앙값 128.5일)로 관찰되어, FAST가 장기 구조 개선보다 상당 기간 선행하는 조기 반전 포착 가설을 지지함.",
+      "26W Winner Tail 분석에서 FAST_WEAK의 50% 이상 상승 달성률(MFE >= 50%)은 56.7%로 FAST_TRANSITION(29.9%) 대비 높았으며, 26W MAE <= -30% 극단 하락률은 11.1% vs 23.6%로 실패 테일이 비대칭적으로 악화되지 않음."
+    ]
+  }
+}
