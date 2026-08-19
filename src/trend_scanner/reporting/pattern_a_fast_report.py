@@ -4,11 +4,12 @@ Pattern A는 월 단위가 핵심 시간축이고, Pattern A FAST(HIERARCHICAL_V
 핵심 시간축이다. 이 모듈은 두 History를 하나의 표로 합치지 않고, FAST 전용 주별
 history를 별도로 생성한다.
 
-FAST scoring / stage 로직은 여기서 재계산하지 않는다. Phase 13H에서 frozen된
-``scripts.research_pattern_a_fast_lead_time_failure.evaluate_timeline_point``
-(HIERARCHICAL_V01 계약 해석 + frozen Pattern A 평가)를 그대로 재사용하며, 이 모듈은
-완료된 주봉(weekly bar)에 대해 그 evaluator를 반복 호출하는 report adapter 역할만
-한다. Pattern A Score / Stage / Candidate State / Investability / Production
+FAST scoring / stage 로직은 여기서 재계산하지 않는다.
+``trend_scanner.patterns.pattern_a_fast_evaluator.evaluate_pattern_a_fast``
+(HIERARCHICAL_V01 frozen JSON contract 해석 + frozen Pattern A 평가, Phase 13H
+frozen script와 semantic parity 검증됨)를 그대로 재사용하며, 이 모듈은 완료된
+주봉(weekly bar)에 대해 그 evaluator를 반복 호출하는 report adapter 역할만 한다.
+Pattern A Score / Stage / Candidate State / Investability / Production
 Ranking / Flow에는 어떤 영향도 주지 않는다.
 """
 
@@ -21,6 +22,7 @@ from pathlib import Path
 import pandas as pd
 
 from trend_scanner.data.resampler import to_weekly
+from trend_scanner.patterns.pattern_a_fast_evaluator import evaluate_pattern_a_fast
 from trend_scanner.reporting.models import (
     PatternAFastCurrentSignal,
     PatternAFastSection,
@@ -125,11 +127,6 @@ def build_pattern_a_fast_section(
         return _empty_section()
     score, stage = contracts
 
-    try:  # ``python scripts/...`` 직접 실행과 test 실행 양쪽 모두 지원.
-        from scripts.research_pattern_a_fast_lead_time_failure import evaluate_timeline_point
-    except ModuleNotFoundError:  # pragma: no cover - direct script execution path
-        from research_pattern_a_fast_lead_time_failure import evaluate_timeline_point
-
     daily_sorted = daily_slice.sort_index()
     lookback_start = as_of - WEEKLY_HISTORY_LOOKBACK
     weekly_labels = [label for label in to_weekly(daily_sorted).index if lookback_start <= label <= as_of]
@@ -141,10 +138,10 @@ def build_pattern_a_fast_section(
         # 일치해야만 완료된 주봉으로 인정한다 (미완료 현재 주는 제외).
         if week_daily.empty or week_daily.index.max().normalize() != week_label.normalize():
             continue
-        # 완료된 주봉만 evaluator에 전달하므로 evaluate_timeline_point의 유일한 raise
+        # 완료된 주봉만 evaluator에 전달하므로 evaluate_pattern_a_fast의 유일한 raise
         # 경로(미완료 weekly date)는 여기서 발생하지 않는다. 그 외 예외는 데이터
         # 부족이 아닌 programming error이므로 여기서 숨기지 않고 그대로 전파한다.
-        point = evaluate_timeline_point(ticker, name, daily_sorted, week_label, score, stage)
+        point = evaluate_pattern_a_fast(ticker, name, daily_sorted, week_label, score, stage)
         observations.append(_to_observation(week_label, point))
 
     if not observations:

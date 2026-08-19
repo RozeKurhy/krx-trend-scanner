@@ -50,7 +50,8 @@ Stock Report Contract v0.1은 KRX 상장 개별 종목에 대해 외부 네트�
     "foreign_flow",
     "trading_value_flow",
     "data_quality",
-    "provenance"
+    "provenance",
+    "pattern_a_fast"
   ],
   "properties": {
     "report_version": { "type": "string", "enum": ["0.1"] },
@@ -189,6 +190,22 @@ Stock Report Contract v0.1은 KRX 상장 개별 종목에 대해 외부 네트�
         "foreign_flow_contract": { "type": "string" },
         "network_requests": { "type": "integer", "enum": [0] }
       }
+    },
+
+    "pattern_a_fast": {
+      "type": "object",
+      "description": "Pattern A FAST(HIERARCHICAL_V01) — Experimental / Early Signal. Additive field, v0.1부터 항상 존재(데이터 부족 시에도 empty section으로 존재).",
+      "properties": {
+        "status": { "type": "string", "enum": ["EXPERIMENTAL"] },
+        "label": { "type": "string", "enum": ["Experimental / Early Signal"] },
+        "contract": { "type": "string", "enum": ["HIERARCHICAL_V01"] },
+        "lifecycle_status": { "type": "string", "enum": ["PHASE_13_RESEARCH_CLOSED / HIERARCHICAL_V01_PRODUCTION_HOLD"] },
+        "current": { "$ref": "#/definitions/PatternAFastObservation" },
+        "weekly_history": { "type": "array", "items": { "$ref": "#/definitions/PatternAFastObservation" } },
+        "history_start_as_of": { "type": ["string", "null"] },
+        "history_end_as_of": { "type": ["string", "null"] },
+        "observation_count": { "type": "integer" }
+      }
     }
   },
   "definitions": {
@@ -202,6 +219,21 @@ Stock Report Contract v0.1은 KRX 상장 개별 종목에 대해 외부 네트�
         "candidate_state": { "type": "string" },
         "data_available": { "type": "boolean" },
         "reason": { "type": ["string", "null"] }
+      }
+    },
+    "PatternAFastObservation": {
+      "type": "object",
+      "description": "`current`는 week_ending 대신 as_of 키를 사용한다는 점을 제외하면 weekly_history[] 원소와 동일 구조.",
+      "properties": {
+        "as_of": { "type": ["string", "null"], "description": "current 전용 키 (weekly_history[] 원소는 week_ending 사용)" },
+        "week_ending": { "type": "string", "description": "weekly_history[] 전용 키 (완료된 주봉 기준일)" },
+        "fast_score": { "type": ["number", "null"], "description": "UNAVAILABLE일 때 0이 아니라 null" },
+        "score_availability": { "type": "string", "enum": ["READY", "PARTIAL", "UNAVAILABLE"] },
+        "fast_stage": { "type": ["string", "null"], "enum": ["WATCH", "SETUP", "TRIGGER", "TREND", "EXTENDED", null] },
+        "stage_availability": { "type": "string", "enum": ["READY", "UNAVAILABLE"] },
+        "monthly_regime": { "type": ["string", "null"], "enum": ["EARLY_REGIME", "PERMITTED_REGIME", "LATE_OR_EXTENDED_REGIME", "UNAVAILABLE", null] },
+        "daily_risk": { "type": ["string", "null"], "enum": ["NORMAL", "ELEVATED", "EXTREME", "UNAVAILABLE", null] },
+        "interpretation": { "type": "string" }
       }
     }
   }
@@ -237,6 +269,24 @@ Stock Report Contract v0.1은 KRX 상장 개별 종목에 대해 외부 네트�
 - **TRADING_VALUE_UNAVAILABLE**: 데이터 결측 시
   - "거래대금 시계열 데이터가 부족하여 분석을 제공할 수 없습니다."
 
+### 4.3. Pattern A FAST (HIERARCHICAL_V01) — 정책 및 시간축
+**상태**: `Experimental / Early Signal`. **Production 상태**: `PHASE_13_RESEARCH_CLOSED / HIERARCHICAL_V01_PRODUCTION_HOLD` (Production Ranking 미편입, 정식 GO 아님).
+
+**사용 정책** — Pattern A FAST는 다음에 사용하지 않는다:
+- Official Candidate 판단 (`current_snapshot.candidate_state`에 영향 없음)
+- Production Ranking / Scanner Candidate Population
+- Pattern A Score에 합산 (`combined_score`, `leader_score` 등 통합 score를 만들지 않음)
+- Pattern A Stage 변경
+- Pattern A Candidate State 변경
+
+**시간축 정책** — Pattern A와 Pattern A FAST는 독립적인 모델이며 각 모델의 핵심 시간축을 그대로 반영한다:
+- **Pattern A**: Monthly model → `monthly_history`에 Monthly Score/Stage History.
+- **Pattern A FAST**: Weekly core model → `pattern_a_fast.weekly_history`에 Weekly Score/Stage History.
+- 두 History는 하나의 동일 timeline 표로 합치지 않는다. `pattern_a_fast.current`(Current Summary 용도)에서만 두 모델의 현재 상태를 함께 보여줄 수 있으며, 이때도 Score를 합산하거나 상대 우열을 계산하지 않는다.
+- FAST 철학: `Monthly grants permission` → `Weekly pulls trigger` → `Daily times entry`. Daily는 별도 daily history 없이 `weekly_history[]` 각 row의 `daily_risk` 보조 필드로만 노출한다.
+- Weekly History는 완료된 주봉(completed weekly bar)만 포함하며, 미완료 현재 주는 제외한다(Point-In-Time, no-lookahead 원칙 §2.3과 동일).
+- `fast_score`가 unavailable이면 `null`이며 `0`으로 치환하지 않는다. `score_availability`와 `stage_availability`는 서로 독립적으로 관리한다(둘 중 하나만 UNAVAILABLE일 수 있음).
+
 --------------------------------------------------------------------------------
 5. Markdown Rendering Structure
 --------------------------------------------------------------------------------
@@ -251,30 +301,42 @@ Markdown 종목 리포트는 JSON contract의 속성만을 사용하여 렌더�
 - **Pattern A Score**: 97.45 (Stage: `EARLY_TREND`, Candidate: `YES`)
 - **Investability**: `INVESTABLE` (시총: 1,542.92억, 20D 평균 거래대금: 14.00억)
 
-## 2. Recent 12M Score & Stage Trajectory
+## 2. Pattern A FAST 현재 신호 (`Experimental / Early Signal`)
+- **Contract**: `HIERARCHICAL_V01` (`PHASE_13_RESEARCH_CLOSED / HIERARCHICAL_V01_PRODUCTION_HOLD`)
+- **FAST Score / Stage**: 78.49 / `TRIGGER` (Monthly Regime: `PERMITTED_REGIME`, Daily Risk: `NORMAL`)
+- Pattern A와 Score를 합산하거나 상대 우열을 계산하지 않는다는 안내 문구 포함
+
+## 3. Pattern A Monthly History — Recent 12M Score & Stage Trajectory
 | 기준일 (As-Of) | Pattern A Score | Stage | Candidate State |
 | :--- | :--- | :--- | :--- |
 | 2025-08-29 | 60.01 | BASE | watch |
 ...
 
-## 3. Stage Transition Events
+## 4. Pattern A 국면 전환 이력 (Stage Transition Events)
 - 2026-07-31: `TRANSITION` -> `EARLY_TREND`
 ...
 
-## 4. Foreign Investor Flow (Phase 11)
+## 5. Pattern A FAST Weekly History (`Experimental / Early Signal`)
+| 기준 주 (Week Ending) | FAST Score | Score Availability | FAST Stage | Stage Availability | Monthly Regime | Daily Risk |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| 2026-08-14 | 78.49 | READY | TRIGGER | READY | PERMITTED_REGIME | NORMAL |
+...
+(Pattern A Monthly History와 동일 timeline 표로 합치지 않는다. FAST Score `N/A`는 UNAVAILABLE을 의미하며 `0`이 아니다.)
+
+## 6. Foreign Investor Flow (Phase 11)
 - **수급 상태**: `FLOW_ACCUMULATION`
 - **해석**: 최근 5일, 20일, 60일 모두 외국인 누적 순매수가 플러스를 유지하며...
 - **세부 수치**: 1D(+0.37억), 5D(+6.86억), 20D(+11.26억), 60D(+16.86억)
 
-## 5. Trading Value Trend
+## 7. Trading Value Trend
 - **거래대금 상태**: `TRADING_VALUE_EXPANDING`
 - **해석**: 최근 거래대금이 지속 확대되는 흐름입니다...
 - **세부 수치**: 5D 평균(20.64억), 20D 평균(14.00억), 60D 평균(22.12억)
 
-## 6. Full Monthly History
+## 8. Pattern A Full Monthly History
 ...
 
-## 7. Data Quality & Provenance
+## 9. Data Quality & Provenance
 - Local Parquet Cache: Present (1,222 rows)
 - Source Contracts: Score v0.2, Stage v0.1, Phase 10 Investability, Phase 11 Flow
 - Network Requests: 0

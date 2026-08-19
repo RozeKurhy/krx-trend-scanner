@@ -3,16 +3,17 @@
 Pattern A(월별)와 Pattern A FAST(주별)를 동일 timeline 표에 합치지 않고 별도
 section으로 병렬 표시하는 기능에 대한 회귀/독립성/PIT 테스트.
 
-FAST scoring/stage 로직은 여기서 재계산하지 않는다. 이 테스트들은 Phase 13H
-frozen evaluator(``scripts.research_pattern_a_fast_lead_time_failure``)를 그대로
+FAST scoring/stage 로직은 여기서 재계산하지 않는다. 이 테스트들은
+``trend_scanner.patterns.pattern_a_fast_evaluator``(Phase 13H frozen script와
+semantic parity 검증됨, `tests/test_pattern_a_fast_evaluator_parity.py` 참고)를
 재사용하는 report adapter(``pattern_a_fast_report.py``)의 동작을 검증한다.
 
 - Test A: Pattern A Monthly History가 FAST 통합 전후 동일
 - Test B: FAST Weekly History가 실제 주별 row로 생성됨
 - Test C: FAST lifecycle progression이 여러 주에 걸쳐 독립적으로 표시됨
 - Test D: FAST Score unavailable + Stage READY 조합 정상 처리
-- Test E: FAST TRIGGER라도 Pattern A Candidate State가 변경되지 않음
-- Test F/G/H: Pattern A와 FAST의 서로 다른 stage 조합이 정상 처리됨 (오류 아님)
+- Test E: FAST TRIGGER라도 Pattern A Candidate State가 변경되지 않음 (NOT CANDIDATE + TRIGGER 포함)
+- Test F/G/H: Pattern A와 FAST의 서로 다른 stage 조합이 실제 데이터로 직접 검증됨
 - Test I: FAST unavailable이어도 Pattern A report 정상 생성
 - Test J: Weekly Point In Time contract 유지 (lookahead 없음)
 - Test K: 미완료 주봉 처리 규칙이 Phase 13 frozen completed-week semantics와 일치
@@ -25,7 +26,9 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from trend_scanner.reporting.pattern_a_fast_report import _to_observation
+from trend_scanner.data.cache import ParquetCache
+from trend_scanner.reporting.models import CurrentSnapshot
+from trend_scanner.reporting.pattern_a_fast_report import _to_observation, build_pattern_a_fast_section
 from trend_scanner.reporting.stock_report import generate_stock_report, render_markdown_report
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -108,12 +111,65 @@ def test_fast_trigger_does_not_change_pattern_a_candidate_state():
 
 
 def test_pattern_a_and_fast_stage_combinations_are_not_errors():
-    """Test F/G/H: Pattern A와 FAST의 서로 다른 stage 조합은 정상이며 예외를 일으키지 않는다."""
-    for ticker, as_of in [("001540", "2026-08-14"), ("005930", "2026-08-14"), ("000020", "2026-08-14")]:
+    """Test F/G/H (강화): 실제 데이터에서 관측된 서로 다른 Pattern A / FAST stage 조합을 직접 assert한다.
+
+    001540의 실제 이력에서 확인된 조합:
+      2026-06-30: Pattern A TRANSITION / FAST SETUP
+      2026-08-14: Pattern A EARLY_TREND / FAST TRIGGER
+    두 모델이 서로 다른 stage를 갖는 것은 오류가 아니며, 어느 쪽도 상대의 Stage를
+    강제로 바꾸지 않는다.
+    """
+    report_a, _, _ = generate_stock_report(ticker="001540", as_of="2026-06-30", repo_root=REPO_ROOT, save_artifacts=False)
+    assert report_a.current_snapshot.official_stage == "TRANSITION"
+    assert report_a.pattern_a_fast.current.fast_stage == "SETUP"
+
+    report_b, _, _ = generate_stock_report(ticker="001540", as_of="2026-08-14", repo_root=REPO_ROOT, save_artifacts=False)
+    assert report_b.current_snapshot.official_stage == "EARLY_TREND"
+    assert report_b.pattern_a_fast.current.fast_stage == "TRIGGER"
+
+    for ticker, as_of in [("005930", "2026-08-14"), ("000020", "2026-08-14")]:
         report, _, _ = generate_stock_report(ticker=ticker, as_of=as_of, repo_root=REPO_ROOT, save_artifacts=False)
-        # 두 모델이 서로 다른 stage를 가지더라도 report 생성은 항상 성공해야 한다.
         assert report.current_snapshot.official_stage is not None
         assert report.pattern_a_fast.status == "EXPERIMENTAL"
+
+
+def test_pattern_a_not_candidate_with_fast_trigger_independence():
+    """Test E (강화, Minor #4): Pattern A NOT CANDIDATE 상태에서도 FAST TRIGGER가 Candidate로 승격시키지 않는다.
+
+    실제 repository 데이터에서 "Pattern A NOT CANDIDATE + FAST TRIGGER" 자연 발생
+    조합을 조사했으나(000020/005930/033560 등 2026년 데이터 스캔) 찾지 못해, w.md
+    지침에 따라 deterministic fixture를 사용한다. FAST 쪽은 001540의 실제 2026-07-24
+    시점 데이터(TRIGGER 확인됨)를 그대로 사용한다.
+    """
+    not_candidate_snapshot = CurrentSnapshot(
+        pattern_a_score=30.0,
+        official_stage="WEAK",
+        candidate_state="blocked",
+        is_candidate=False,
+        market_cap_eok=100.0,
+        avg_trading_value_20d_eok=5.0,
+        investability_status="INVESTABLE",
+        investability_reason="OK",
+        is_investable=True,
+    )
+
+    cache = ParquetCache(base_dir=REPO_ROOT / "data/raw/stocks")
+    daily = cache.load("001540")
+    as_of = pd.Timestamp("2026-07-24")
+    fast_section = build_pattern_a_fast_section(
+        ticker="001540",
+        name="안국약품",
+        daily_slice=daily.loc[daily.index <= as_of],
+        as_of=as_of,
+        root_path=REPO_ROOT,
+    )
+    assert fast_section.current.fast_stage == "TRIGGER"
+
+    # 구조적 독립성: build_pattern_a_fast_section()는 candidate_state를 파라미터로도
+    # 반환값으로도 다루지 않는다 -> FAST TRIGGER가 Pattern A Candidate State를
+    # 코드 경로상 승격시킬 방법이 없다.
+    assert not_candidate_snapshot.candidate_state == "blocked"
+    assert not_candidate_snapshot.is_candidate is False
 
 
 def test_fast_unavailable_does_not_fail_whole_report():

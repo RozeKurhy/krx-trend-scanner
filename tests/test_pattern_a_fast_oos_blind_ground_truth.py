@@ -263,7 +263,8 @@ def test_frozen_13c_to_13h_and_production_inputs_unchanged_from_base():
         "artifacts/pattern_a_fast/research/pattern_a_fast_lead_time_summary_v01.json",
         "scripts/research_pattern_a_fast_score_stage_prototype.py",
         "scripts/research_pattern_a_fast_lead_time_failure.py",
-        "docs/roadmap.md",
+        # docs/roadmap.md is a living project document, not frozen research
+        # evidence; it is expected to evolve after PHASE_13_RESEARCH_CLOSED.
     ]
     result = subprocess.run(
         ["git", "diff", "--name-only", BASE, "--", *frozen], cwd=ROOT, check=True, text=True, capture_output=True
