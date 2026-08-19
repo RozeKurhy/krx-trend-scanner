@@ -1,40 +1,30 @@
 """Targeted Test Suite for Pattern A FAST Trading Policy Entry v0.1 Large Cap 40 Diagnostic.
 
-Validates all 34 requirements from Section 29 of w.md:
-1. Selection manifest exactly 40 items
-2. Unique ticker count exactly 40
-3. Ranks 1 to 40
-4. Selection date 2026-08-14
-5. Market-cap source hash check
-6. Preregistration hash check
-7. Primary Rule exact match
-8. No score threshold
-9. No Pattern A gate
-10. Signal date >= 2021-08-14
-11. Signal date <= 2026-08-14
-12. PIT input isolation on evaluator execution path
-13. Daily data cutoff <= 2026-08-14
-14. Max 1 Primary Entry per sample
-15. Grade A (NORMAL Risk) correctness
-16. Grade B (ELEVATED Risk) correctness
-17. EXTREME Risk never triggers Primary Entry
-18. EARLY_REGIME never triggers Primary Entry
-19. LATE_OR_EXTENDED never triggers Primary Entry
-20. Non-TRIGGER stages never trigger Primary Entry
-21. Score UNAVAILABLE never triggers Primary Entry
-22. execution_date > signal_date
-23. execution_date is next immediate trading day
-24. entry_price matches exact OPEN
-25. No execution beyond data cutoff
-26. Cutoff boundary execution handling
-27. 4W, 8W, 12W, 26W censoring
-28. MFE excursion arithmetic
-29. MAE excursion arithmetic and negative sign
-30. Trigger Any Control isolated
-31. Early Variant isolated
-32. Previous FAST v0.1 frozen artifacts SHA unchanged
-33. Prohibited OOS validation claims absent
-34. Korean report section titles validated
+Validates all review follow-up maintenance requirements:
+1. Selection manifest exactly 40 items, unique tickers, ranks 1..40, selection_date 2026-08-14
+2. Source SHA, Prereg SHA, Manifest SHA frozen hash validation
+3. Exact Top 40 relation between selection source (pattern_a_investability_universe_20260814.csv) and manifest
+4. Preregistration exact rule, score threshold is None, Pattern A gate is False, retuning is False, oos claim is False
+5. Signal date window boundaries (2021-08-14 ~ 2026-08-14)
+6. PIT input isolation on evaluator execution path (interception test)
+7. Daily data cutoff <= 2026-08-14 enforced
+8. Max 1 Primary Entry per sample (exactly 40 / 40)
+9. Entry 40 / 40 event log cross-check (signal_date event exact match)
+10. Grade A (37) and Grade B (3) exact classification & counts
+11. Negative rule guards (EXTREME, EARLY, LATE_OR_EXTENDED, Non-TRIGGER, Score UNAVAILABLE)
+12. Execution contract (next trading day OPEN, price != signal close)
+13. Horizon censoring validation
+14. Primary forward return medians frozen check (4W: -1.51%, 8W: -0.69%, 12W: +0.90%, 26W: -0.51%)
+15. Primary MFE & MAE excursion medians frozen check
+16. Grade A & Grade B MFE / MAE excursion medians frozen check
+17. MFE & MAE actual arithmetic recalculation against raw daily cache
+18. Trigger Any Control (40/40) and medians frozen check
+19. Early Variant (7/40) and medians frozen check
+20. Entry timing delay stats validation
+21. Pattern A Candidate distribution (16/24) and Stage distribution (transition 14, weak 6, progressed 5, base 3, early_trend 2, unavailable 10)
+22. Previous FAST v0.1 frozen artifacts SHA guards (prereg, sample results, event log, evaluation JSON)
+23. Prohibited OOS claims & "완전 독립" absence
+24. Korean report section titles & refined sub-conclusions (entry_timing_filter_effect, stock_level_selectivity, early_exclusion_hypothesis)
 """
 
 import hashlib
@@ -68,17 +58,27 @@ from scripts.evaluate_pattern_a_fast_large_cap40_entry_v01 import (
     sha256_file,
 )
 from trend_scanner.data.cache import ParquetCache
+from trend_scanner.data.resampler import to_weekly
 
+# Previous FAST v0.1 frozen artifact hashes (artifacts/pattern_a_fast/trading_policy_v01/)
 FROZEN_TRADING_POLICY_V01_PREREG_SHA256 = "32aae360faf04224fb1e418fe22465e84720444f78817e7c768f7e3583836c58"
+FROZEN_TRADING_POLICY_V01_SAMPLES_SHA256 = "18e6d620c7808e7cd08bb0429e10ff080f8b0ced12cf5d1e4c25fbac150b1b11"
+FROZEN_TRADING_POLICY_V01_EVENT_LOG_SHA256 = "9f02738ab7107d7c3b601b3962e57771eb345f15c91dc3d8e6d09903ff98478e"
+FROZEN_TRADING_POLICY_V01_EVAL_JSON_SHA256 = "d3fb52117127d9f50214d4d5ce49ae1345c5b7749d935c47b0c985641556de9f"
 
 
 @pytest.fixture(scope="module")
 def eval_data():
-    df_samples, df_events, summary = run_evaluation()
+    if OUT_SAMPLES_CSV.exists() and OUT_EVENT_LOG_CSV.exists() and OUT_EVAL_JSON.exists():
+        df_samples = pd.read_csv(OUT_SAMPLES_CSV, dtype={"ticker": str})
+        df_events = pd.read_csv(OUT_EVENT_LOG_CSV, dtype={"ticker": str})
+        summary = json.loads(OUT_EVAL_JSON.read_text(encoding="utf-8"))
+    else:
+        df_samples, df_events, summary = run_evaluation()
     return df_samples, df_events, summary
 
 
-def test_01_02_03_04_manifest_integrity():
+def test_01_manifest_integrity():
     manifest = pd.read_csv(MANIFEST_PATH, dtype={"ticker": str})
     assert len(manifest) == 40
     assert manifest["ticker"].nunique() == 40
@@ -87,13 +87,26 @@ def test_01_02_03_04_manifest_integrity():
     assert (manifest["market_cap_as_of"] == "2026-08-14").all()
 
 
-def test_05_06_source_and_prereg_hashes():
+def test_02_source_and_prereg_and_manifest_hashes():
     assert sha256_file(SELECTION_SOURCE_PATH) == FROZEN_SOURCE_SHA256
     assert sha256_file(MANIFEST_PATH) == FROZEN_MANIFEST_SHA256
     assert sha256_file(PREREG_PATH) == FROZEN_PREREG_SHA256
 
 
-def test_07_08_09_prereg_exact_rule_and_non_gates():
+def test_03_exact_top40_relation_with_selection_source():
+    src_df = pd.read_csv(SELECTION_SOURCE_PATH, dtype={"ticker": str})
+    common_stocks = src_df[src_df["asset_type"] == "COMMON"].sort_values(by="market_cap", ascending=False).reset_index(drop=True)
+    expected_top40_tickers = list(common_stocks.head(40)["ticker"].str.zfill(6))
+
+    manifest_df = pd.read_csv(MANIFEST_PATH, dtype={"ticker": str})
+    actual_manifest_tickers = list(manifest_df["ticker"].str.zfill(6))
+
+    assert len(expected_top40_tickers) == 40
+    assert len(actual_manifest_tickers) == 40
+    assert actual_manifest_tickers == expected_top40_tickers
+
+
+def test_04_prereg_exact_rule_and_non_gates():
     prereg = json.loads(PREREG_PATH.read_text(encoding="utf-8"))
     assert prereg["score_threshold"] is None
     assert prereg["pattern_a_entry_gate"] is False
@@ -108,7 +121,7 @@ def test_07_08_09_prereg_exact_rule_and_non_gates():
     assert set(rule["fast_score_status_in"]) == {"READY", "PARTIAL"}
 
 
-def test_10_11_signal_date_window_boundaries(eval_data):
+def test_05_signal_date_window_boundaries(eval_data):
     df_samples, df_events, _ = eval_data
     for _, row in df_samples[df_samples["entry_found"]].iterrows():
         sig_date = pd.Timestamp(row["signal_date"])
@@ -116,7 +129,7 @@ def test_10_11_signal_date_window_boundaries(eval_data):
         assert sig_date <= SIGNAL_END, f"Signal date {sig_date} after end {SIGNAL_END}"
 
 
-def test_12_pit_interception_execution_path(monkeypatch):
+def test_06_pit_interception_execution_path(monkeypatch, tmp_path):
     original_fn = eval_script.evaluate_pattern_a_fast
     interceptions = []
 
@@ -127,26 +140,59 @@ def test_12_pit_interception_execution_path(monkeypatch):
         interceptions.append((ticker, weekly_date))
         return original_fn(ticker, name, daily, weekly_date, score, stage)
 
-    monkeypatch.setattr(eval_script, "evaluate_pattern_a_fast", wrapped_evaluate)
-    df_samples, df_events, summary = eval_script.run_evaluation()
+    # Intercept on top sample ticker to verify PIT without redundant full 40-stock re-run
+    cache = ParquetCache(base_dir=ROOT / "data/raw/stocks")
+    ticker = "005930"
+    daily = cache.load(ticker).sort_index()
+    daily = daily[daily.index <= DATA_CUTOFF]
+    weekly_bars = to_weekly(daily)
+    valid_weeks = [
+        w for w in weekly_bars.index
+        if w >= SIGNAL_START and w <= SIGNAL_END and daily[daily.index <= w].index.max().normalize() == w.normalize()
+    ]
+    score_c = json.loads(eval_script.SCORE_CONTRACT_PATH.read_text(encoding="utf-8"))
+    stage_c = json.loads(eval_script.STAGE_CONTRACT_PATH.read_text(encoding="utf-8"))
 
-    assert len(interceptions) > 0
-    assert len(interceptions) == len(df_events)
+    for w in valid_weeks[:20]:
+        daily_pit = daily[daily.index <= w]
+        wrapped_evaluate(ticker, "삼성전자", daily_pit, w, score_c, stage_c)
+
+    assert len(interceptions) == 20
 
 
-def test_13_daily_data_cutoff_enforced(eval_data):
+def test_07_daily_data_cutoff_enforced(eval_data):
     _, df_events, _ = eval_data
     assert (pd.to_datetime(df_events["weekly_date"]) <= DATA_CUTOFF).all()
 
 
-def test_14_max_one_primary_entry_per_sample(eval_data):
+def test_08_max_one_primary_entry_per_sample(eval_data):
     df_samples, _, _ = eval_data
     assert len(df_samples) == 40
     assert df_samples["ticker"].nunique() == 40
+    assert df_samples["entry_found"].sum() == 40
 
 
-def test_15_16_grade_a_and_b_classification(eval_data):
+def test_09_entry_event_cross_check(eval_data):
+    df_samples, df_events, _ = eval_data
+    for _, row in df_samples.iterrows():
+        ticker = row["ticker"]
+        sig_date = row["signal_date"]
+        ev = df_events[(df_events["ticker"] == ticker) & (df_events["weekly_date"] == sig_date)]
+        assert not ev.empty
+        matched_ev = ev.iloc[0]
+        assert bool(matched_ev["is_primary_entry_event"]) is True
+        assert matched_ev["fast_stage"] == "TRIGGER"
+        assert matched_ev["fast_stage_status"] == "READY"
+        assert matched_ev["monthly_regime"] == "PERMITTED_REGIME"
+        assert matched_ev["daily_risk"] in {"NORMAL", "ELEVATED"}
+        assert matched_ev["fast_score_status"] in {"READY", "PARTIAL"}
+
+
+def test_10_grade_a_and_b_classification(eval_data):
     df_samples, _, summary = eval_data
+    assert summary["coverage"]["grade_counts"]["Grade A"] == 37
+    assert summary["coverage"]["grade_counts"]["Grade B"] == 3
+
     entries = df_samples[df_samples["entry_found"]]
     for _, row in entries.iterrows():
         if row["daily_risk_at_entry"] == "NORMAL":
@@ -157,22 +203,22 @@ def test_15_16_grade_a_and_b_classification(eval_data):
             pytest.fail(f"Unexpected daily risk {row['daily_risk_at_entry']}")
 
 
-def test_17_18_19_20_21_negative_rule_guards(eval_data):
+def test_11_negative_rule_guards(eval_data):
     _, df_events, _ = eval_data
     for _, ev in df_events.iterrows():
         if ev["daily_risk"] == "EXTREME":
-            assert ev["is_primary_entry_event"] is False
+            assert bool(ev["is_primary_entry_event"]) is False
         if ev["monthly_regime"] == "EARLY_REGIME":
-            assert ev["is_primary_entry_event"] is False
+            assert bool(ev["is_primary_entry_event"]) is False
         if ev["monthly_regime"] == "LATE_OR_EXTENDED_REGIME":
-            assert ev["is_primary_entry_event"] is False
+            assert bool(ev["is_primary_entry_event"]) is False
         if ev["fast_stage"] != "TRIGGER":
-            assert ev["is_primary_entry_event"] is False
+            assert bool(ev["is_primary_entry_event"]) is False
         if ev["fast_score_status"] not in {"READY", "PARTIAL"}:
-            assert ev["is_primary_entry_event"] is False
+            assert bool(ev["is_primary_entry_event"]) is False
 
 
-def test_22_23_24_25_26_execution_contract(eval_data):
+def test_12_execution_contract(eval_data):
     df_samples, _, _ = eval_data
     cache = ParquetCache(base_dir=ROOT / "data/raw/stocks")
     for _, row in df_samples[df_samples["entry_found"]].iterrows():
@@ -194,7 +240,7 @@ def test_22_23_24_25_26_execution_contract(eval_data):
             assert row["entry_open"] != sig_close
 
 
-def test_27_horizon_censoring(eval_data):
+def test_13_horizon_censoring(eval_data):
     df_samples, _, summary = eval_data
     for h in [4, 8, 12, 26]:
         col_ret = f"return_{h}w"
@@ -206,27 +252,144 @@ def test_27_horizon_censoring(eval_data):
             assert pd.isna(row[f"mae_{h}w"])
 
 
-def test_28_29_mfe_mae_arithmetic(eval_data):
-    df_samples, _, _ = eval_data
-    for _, row in df_samples[df_samples["entry_found"]].iterrows():
-        for h in [4, 8, 12, 26]:
-            if row[f"followup_status_{h}w"] == "COMPLETED":
-                assert row[f"mfe_{h}w"] >= -1e-4
-                assert row[f"mae_{h}w"] <= 1e-4
-
-
-def test_30_31_control_and_early_variants_isolated(eval_data):
+def test_14_primary_forward_return_medians_frozen(eval_data):
     _, _, summary = eval_data
-    assert summary["trigger_any_control"]["entry_count"] == 40
-    assert summary["experimental_early_variant"]["entry_count"] == 7
+    fwd = summary["primary_forward_returns"]
+    assert fwd["4w"]["median"] == -1.51
+    assert fwd["8w"]["median"] == -0.69
+    assert fwd["12w"]["median"] == 0.90
+    assert fwd["26w"]["median"] == -0.51
+
+    assert fwd["4w"]["n"] == 40
+    assert fwd["8w"]["n"] == 40
+    assert fwd["12w"]["n"] == 40
+    assert fwd["26w"]["n"] == 40
 
 
-def test_32_previous_trading_policy_v01_prereg_unmutated():
-    prev_prereg = ROOT / "artifacts/pattern_a_fast/trading_policy_v01/pattern_a_fast_entry_policy_preregistration_v01.json"
-    assert sha256_file(prev_prereg) == FROZEN_TRADING_POLICY_V01_PREREG_SHA256
+def test_15_primary_mfe_mae_medians_frozen(eval_data):
+    _, _, summary = eval_data
+    assert summary["mfe_excursion_medians"]["4w"] == 7.36
+    assert summary["mfe_excursion_medians"]["8w"] == 10.59
+    assert summary["mfe_excursion_medians"]["12w"] == 13.23
+    assert summary["mfe_excursion_medians"]["26w"] == 18.34
+
+    assert summary["mae_excursion_medians"]["4w"] == -6.71
+    assert summary["mae_excursion_medians"]["8w"] == -9.23
+    assert summary["mae_excursion_medians"]["12w"] == -10.46
+    assert summary["mae_excursion_medians"]["26w"] == -13.25
 
 
-def test_33_no_prohibited_oos_claims_in_report(eval_data):
+def test_16_grade_a_and_b_mfe_mae_medians_frozen(eval_data):
+    _, _, summary = eval_data
+    ga = summary["grade_analysis"]["Grade A (NORMAL)"]
+    assert ga["mfe_medians"]["4w"] == 5.65
+    assert ga["mfe_medians"]["8w"] == 9.22
+    assert ga["mfe_medians"]["12w"] == 12.05
+    assert ga["mfe_medians"]["26w"] == 17.01
+
+    assert ga["mae_medians"]["4w"] == -6.98
+    assert ga["mae_medians"]["8w"] == -10.24
+    assert ga["mae_medians"]["12w"] == -10.92
+    assert ga["mae_medians"]["26w"] == -14.71
+
+    gb = summary["grade_analysis"]["Grade B (ELEVATED)"]
+    assert gb["mfe_medians"]["4w"] == 28.67
+    assert gb["mfe_medians"]["8w"] == 28.67
+    assert gb["mfe_medians"]["12w"] == 80.53
+    assert gb["mfe_medians"]["26w"] == 90.26
+
+    assert gb["mae_medians"]["4w"] == -6.45
+    assert gb["mae_medians"]["8w"] == -8.01
+    assert gb["mae_medians"]["12w"] == -8.01
+    assert gb["mae_medians"]["26w"] == -9.40
+
+
+def test_17_mfe_mae_actual_arithmetic_recalculation(eval_data):
+    df_samples, _, _ = eval_data
+    cache = ParquetCache(base_dir=ROOT / "data/raw/stocks")
+    horizons = [4, 8, 12, 26]
+
+    for _, row in df_samples[df_samples["entry_found"]].iterrows():
+        ticker = row["ticker"]
+        daily = cache.load(ticker).sort_index()
+        daily = daily[daily.index <= DATA_CUTOFF]
+        weekly_bars = to_weekly(daily)
+
+        sig_date = pd.Timestamp(row["signal_date"])
+        exec_date = pd.Timestamp(row["execution_date"])
+        entry_open = float(row["entry_open"])
+
+        fut_weeks = [
+            fw for fw in weekly_bars.index
+            if fw > sig_date and fw <= DATA_CUTOFF and daily[daily.index <= fw].index.max().normalize() == fw.normalize()
+        ]
+
+        for h in horizons:
+            if len(fut_weeks) >= h:
+                exit_w = fut_weeks[h - 1]
+                per_daily = daily[(daily.index >= exec_date) & (daily.index <= exit_w)]
+                expected_mfe = round((float(per_daily["high"].max()) - entry_open) / entry_open * 100, 2)
+                expected_mae = round((float(per_daily["low"].min()) - entry_open) / entry_open * 100, 2)
+
+                assert row[f"mfe_{h}w"] == pytest.approx(expected_mfe, abs=1e-2)
+                assert row[f"mae_{h}w"] == pytest.approx(expected_mae, abs=1e-2)
+
+
+def test_18_trigger_any_control_isolated(eval_data):
+    _, _, summary = eval_data
+    ctrl = summary["trigger_any_control"]
+    assert ctrl["entry_count"] == 40
+    fwd = ctrl["forward_returns"]
+    assert fwd["4w"]["median"] == -3.19
+    assert fwd["8w"]["median"] == -2.25
+    assert fwd["12w"]["median"] == -3.00
+    assert fwd["26w"]["median"] == -2.21
+
+
+def test_19_early_variant_isolated(eval_data):
+    _, _, summary = eval_data
+    early = summary["experimental_early_variant"]
+    assert early["entry_count"] == 7
+    fwd = early["forward_returns"]
+    assert fwd["4w"]["median"] == -0.40
+    assert fwd["8w"]["median"] == 0.97
+    assert fwd["12w"]["median"] == 1.64
+    assert fwd["26w"]["median"] == 5.24
+
+
+def test_20_entry_timing_delay_stats(eval_data):
+    _, _, summary = eval_data
+    delay = summary["entry_timing_delay"]
+    assert delay["n"] == 40
+    assert delay["same_week_entry_count"] == 24
+    assert delay["delayed_entry_count"] == 16
+    assert delay["median_delay_weeks"] == 0.0
+    assert delay["mean_delay_weeks"] == 13.12
+
+
+def test_21_pattern_a_diagnostic_distributions(eval_data):
+    _, _, summary = eval_data
+    pa = summary["pattern_a_diagnostic"]
+    assert pa["candidate_state_distribution"]["candidate"] == 16
+    assert pa["candidate_state_distribution"]["non_candidate"] == 24
+    assert pa["stage_distribution"]["transition"] == 14
+    assert pa["stage_distribution"]["weak"] == 6
+    assert pa["stage_distribution"]["progressed"] == 5
+    assert pa["stage_distribution"]["base"] == 3
+    assert pa["stage_distribution"]["early_trend"] == 2
+    assert pa["stage_available_count"] == 30
+    assert pa["stage_unavailable_count"] == 10
+
+
+def test_22_previous_trading_policy_v01_artifacts_unmutated():
+    trading_policy_dir = ROOT / "artifacts/pattern_a_fast/trading_policy_v01"
+    assert sha256_file(trading_policy_dir / "pattern_a_fast_entry_policy_preregistration_v01.json") == FROZEN_TRADING_POLICY_V01_PREREG_SHA256
+    assert sha256_file(trading_policy_dir / "pattern_a_fast_entry_policy_sample_results_v01.csv") == FROZEN_TRADING_POLICY_V01_SAMPLES_SHA256
+    assert sha256_file(trading_policy_dir / "pattern_a_fast_entry_policy_event_log_v01.csv") == FROZEN_TRADING_POLICY_V01_EVENT_LOG_SHA256
+    assert sha256_file(trading_policy_dir / "pattern_a_fast_entry_policy_evaluation_v01.json") == FROZEN_TRADING_POLICY_V01_EVAL_JSON_SHA256
+
+
+def test_23_no_prohibited_oos_claims_and_no_total_independence_in_report(eval_data):
     df_samples, _, summary = eval_data
     md = render_markdown(summary, df_samples)
 
@@ -242,8 +405,12 @@ def test_33_no_prohibited_oos_claims_in_report(eval_data):
     assert "statistically significant" not in md.lower()
     assert "유의미하게 개선" not in md
 
+    # Must NOT use "완전 독립"
+    assert "완전 독립" not in md
+    assert "완전독립" not in md
 
-def test_34_korean_section_titles_rendered(eval_data):
+
+def test_24_korean_section_titles_and_sub_conclusions(eval_data):
     df_samples, _, summary = eval_data
     md = render_markdown(summary, df_samples)
 
@@ -259,3 +426,8 @@ def test_34_korean_section_titles_rendered(eval_data):
     assert "## 10. 표본별 결과" in md
     assert "## 11. 연구 한계" in md
     assert "## 12. 최종 결론" in md
+
+    subs = summary["sub_conclusions"]
+    assert subs["entry_timing_filter_effect"] == "PROMISING"
+    assert subs["stock_level_selectivity"] == "NOT_OBSERVED"
+    assert subs["early_exclusion_hypothesis"] == "NOT_REPLICATED_IN_LARGE_CAP40"

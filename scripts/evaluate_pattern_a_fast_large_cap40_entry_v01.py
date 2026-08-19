@@ -423,17 +423,45 @@ def run_evaluation() -> tuple[pd.DataFrame, pd.DataFrame, dict]:
         "mae_medians": {f"{h}w": round(float(df_any[f"mae_{h}w"].median()), 2) if f"mae_{h}w" in df_any and not df_any[f"mae_{h}w"].dropna().empty else None for h in horizons},
     }
 
-    # Pattern A Diagnostic Breakdown
-    pa_cand_dist = {str(k): int(v) for k, v in entry_samples["pattern_a_candidate_state_at_entry"].value_counts().items()}
-    pa_stage_dist = {str(k): int(v) for k, v in entry_samples["pattern_a_stage_at_entry"].value_counts().items()}
+    # Timing delay diagnostic (Control vs Primary entry week difference)
+    timing_delays = []
+    for _, row in df_samples.iterrows():
+        ticker = row["ticker"]
+        ctrl_ev = df_events[(df_events["ticker"] == ticker) & (df_events["is_any_control_event"])]
+        if not ctrl_ev.empty and pd.notna(row["signal_date"]):
+            ctrl_d = pd.Timestamp(ctrl_ev.iloc[0]["weekly_date"])
+            prim_d = pd.Timestamp(row["signal_date"])
+            diff_w = round((prim_d - ctrl_d).days / 7, 1)
+            timing_delays.append(diff_w)
 
-    # Conclusion (MIXED overall due to large cap return profile, with PROMISING filter discrimination)
+    delay_series = pd.Series(timing_delays) if timing_delays else pd.Series(dtype=float)
+    timing_delay_stats = {
+        "n": int(len(delay_series)),
+        "median_delay_weeks": round(float(delay_series.median()), 1) if not delay_series.empty else None,
+        "mean_delay_weeks": round(float(delay_series.mean()), 2) if not delay_series.empty else None,
+        "min_delay_weeks": round(float(delay_series.min()), 1) if not delay_series.empty else None,
+        "max_delay_weeks": round(float(delay_series.max()), 1) if not delay_series.empty else None,
+        "same_week_entry_count": int((delay_series == 0).sum()) if not delay_series.empty else 0,
+        "delayed_entry_count": int((delay_series > 0).sum()) if not delay_series.empty else 0,
+    }
+
+    # Pattern A Diagnostic Breakdown (explicit available vs unavailable)
+    pa_cand_dist = {str(k): int(v) for k, v in entry_samples["pattern_a_candidate_state_at_entry"].value_counts().items()}
+    pa_stage_series = entry_samples["pattern_a_stage_at_entry"].dropna()
+    pa_stage_dist = {str(k): int(v) for k, v in pa_stage_series.value_counts().items()}
+    pa_stage_unavail_count = int(entry_samples["pattern_a_stage_at_entry"].isna().sum())
+
+    # Conclusion & sub-conclusions
     conclusion = "MIXED"
     conclusion_rationale = (
-        f"KRX 시총 상위 40개 대형주 대상 사후 진단 평가 결과, 5개년 관찰 기간(2021~2026) 동안 40개 전 종목(100.0%)에서 "
-        f"FAST Primary Entry 신호가 발생함. 무제한 Trigger Any Control 대비 전 호라이즌(4W: -1.51% vs -3.19%, 8W: -0.69% vs -2.25%, "
-        f"12W: +0.90% vs -3.00%, 26W: -0.51% vs -2.21%)에서 더 나은 기술적 성과 특성을 보였으나, 대형주 집단 특성상 "
-        f"전체 중위수 수익률이 음수/혼조세를 기록함. 따라서 진입 필터 선별력은 유망하나 수익률 프로파일은 혼조세(MIXED)로 평가됨."
+        "2026년 8월 14일 기준 시가총액 상위 40개 대형주를 대상으로 FAST Entry Policy v0.1을 사후 진단한 결과, "
+        "5년 관찰 구간에서 40개 전 종목에서 Primary Entry가 발생하였다. 따라서 이번 실험에서는 종목 단위 선별 효과는 "
+        "관찰되지 않았으며, FAST Primary 조건은 종목 선택보다는 진입 시점 필터로 해석하는 것이 적절하다. "
+        "Primary Entry는 Trigger Any Control보다 4주, 8주, 12주, 26주 모두 더 높은 중위 수익률을 기록했으나, "
+        "Primary 자체의 절대 중위 수익률은 혼조세였다. 또한 Early Variant는 n=7의 작은 표본이지만 모든 Horizon에서 "
+        "Primary보다 높은 중위 수익률을 기록하여, EARLY_REGIME 제외의 우위가 이번 Large Cap 40에서는 재현되지 않았다. "
+        "따라서 이번 결과는 Production 승격이나 정책 수정 근거가 아니라, FAST Entry Timing 및 Monthly Regime 역할을 "
+        "추가 연구하기 위한 사후 진단 참고자료로 보존한다."
     )
 
     summary_json = {
@@ -464,9 +492,12 @@ def run_evaluation() -> tuple[pd.DataFrame, pd.DataFrame, dict]:
         "grade_analysis": grade_analysis,
         "trigger_any_control": any_control_summary,
         "experimental_early_variant": early_variant_summary,
+        "entry_timing_delay": timing_delay_stats,
         "pattern_a_diagnostic": {
             "candidate_state_distribution": pa_cand_dist,
             "stage_distribution": pa_stage_dist,
+            "stage_available_count": int(len(pa_stage_series)),
+            "stage_unavailable_count": pa_stage_unavail_count,
         },
         "integrity": {
             "pit_evaluated": True,
@@ -478,11 +509,12 @@ def run_evaluation() -> tuple[pd.DataFrame, pd.DataFrame, dict]:
         },
         "final_research_conclusion": conclusion,
         "sub_conclusions": {
-            "entry_filter_discrimination": "PROMISING",
+            "entry_timing_filter_effect": "PROMISING",
+            "stock_level_selectivity": "NOT_OBSERVED",
             "forward_return_profile": "MIXED",
             "grade_a_result": "MIXED",
             "grade_b_result": "INSUFFICIENT_SAMPLE_SIZE",
-            "early_variant_comparison": "COMPLETED",
+            "early_exclusion_hypothesis": "NOT_REPLICATED_IN_LARGE_CAP40",
             "overall_research_status": "MIXED_DIAGNOSTIC_REFERENCE",
         },
         "conclusion_rationale": conclusion_rationale,
@@ -499,6 +531,8 @@ def render_markdown(summary: dict, df_samples: pd.DataFrame) -> str:
     ctrl_fwd = summary["trigger_any_control"]["forward_returns"]
     early_fwd = summary["experimental_early_variant"]["forward_returns"]
     grade_data = summary["grade_analysis"]
+    delay_data = summary.get("entry_timing_delay", {})
+    pa_diag = summary["pattern_a_diagnostic"]
 
     lines = [
         "# Pattern A FAST Trading Policy Entry v0.1 시가총액 상위 40개 대형주 사후 진단 평가 보고서",
@@ -570,6 +604,11 @@ def render_markdown(summary: dict, df_samples: pd.DataFrame) -> str:
             f"| **{h}주 ({h}W)** | **{mfe[f'{h}w']:+.2f}%** | **{mae[f'{h}w']:+.2f}%** |"
         )
 
+    ga_mfe = grade_data["Grade A (NORMAL)"]["mfe_medians"]
+    ga_mae = grade_data["Grade A (NORMAL)"]["mae_medians"]
+    gb_mfe = grade_data["Grade B (ELEVATED)"]["mfe_medians"]
+    gb_mae = grade_data["Grade B (ELEVATED)"]["mae_medians"]
+
     lines.extend([
         "",
         "---",
@@ -577,14 +616,15 @@ def render_markdown(summary: dict, df_samples: pd.DataFrame) -> str:
         "## 6. 등급별 결과",
         "",
         f"- **Grade A (NORMAL Risk, n={grade_data['Grade A (NORMAL)']['entry_count']})**:",
-        f"  - 4주 중위수: `{grade_data['Grade A (NORMAL)']['forward_returns']['4w']['median']:+.2f}%` (승률 {grade_data['Grade A (NORMAL)']['forward_returns']['4w']['positive_rate']:.1f}%)",
-        f"  - 8주 중위수: `{grade_data['Grade A (NORMAL)']['forward_returns']['8w']['median']:+.2f}%` (승률 {grade_data['Grade A (NORMAL)']['forward_returns']['8w']['positive_rate']:.1f}%)",
-        f"  - 12주 중위수: `{grade_data['Grade A (NORMAL)']['forward_returns']['12w']['median']:+.2f}%` (승률 {grade_data['Grade A (NORMAL)']['forward_returns']['12w']['positive_rate']:.1f}%)",
-        f"  - 26주 중위수: `{grade_data['Grade A (NORMAL)']['forward_returns']['26w']['median']:+.2f}%` (승률 {grade_data['Grade A (NORMAL)']['forward_returns']['26w']['positive_rate']:.1f}%)",
-        f"- **Grade B (ELEVATED Risk, n={grade_data['Grade B (ELEVATED)']['entry_count']})**: *(주의: 표본 수 n={grade_data['Grade B (ELEVATED)']['entry_count']}개로 표본 부족)*",
-        f"  - 4주 중위수: `{grade_data['Grade B (ELEVATED)']['forward_returns']['4w']['median']:+.2f}%` (승률 {grade_data['Grade B (ELEVATED)']['forward_returns']['4w']['positive_rate']:.1f}%)",
-        f"  - 12주 중위수: `{grade_data['Grade B (ELEVATED)']['forward_returns']['12w']['median']:+.2f}%` (승률 {grade_data['Grade B (ELEVATED)']['forward_returns']['12w']['positive_rate']:.1f}%)",
-        f"  - 26주 중위수: `{grade_data['Grade B (ELEVATED)']['forward_returns']['26w']['median']:+.2f}%` (승률 {grade_data['Grade B (ELEVATED)']['forward_returns']['26w']['positive_rate']:.1f}%)",
+        f"  - 4주: 중위수 `{grade_data['Grade A (NORMAL)']['forward_returns']['4w']['median']:+.2f}%` (승률 {grade_data['Grade A (NORMAL)']['forward_returns']['4w']['positive_rate']:.1f}%) | MFE `{ga_mfe['4w']:+.2f}%` | MAE `{ga_mae['4w']:+.2f}%`",
+        f"  - 8주: 중위수 `{grade_data['Grade A (NORMAL)']['forward_returns']['8w']['median']:+.2f}%` (승률 {grade_data['Grade A (NORMAL)']['forward_returns']['8w']['positive_rate']:.1f}%) | MFE `{ga_mfe['8w']:+.2f}%` | MAE `{ga_mae['8w']:+.2f}%`",
+        f"  - 12주: 중위수 `{grade_data['Grade A (NORMAL)']['forward_returns']['12w']['median']:+.2f}%` (승률 {grade_data['Grade A (NORMAL)']['forward_returns']['12w']['positive_rate']:.1f}%) | MFE `{ga_mfe['12w']:+.2f}%` | MAE `{ga_mae['12w']:+.2f}%`",
+        f"  - 26주: 중위수 `{grade_data['Grade A (NORMAL)']['forward_returns']['26w']['median']:+.2f}%` (승률 {grade_data['Grade A (NORMAL)']['forward_returns']['26w']['positive_rate']:.1f}%) | MFE `{ga_mfe['26w']:+.2f}%` | MAE `{ga_mae['26w']:+.2f}%`",
+        f"- **Grade B (ELEVATED Risk, n={grade_data['Grade B (ELEVATED)']['entry_count']})**: *(주의: 표본 수 n={grade_data['Grade B (ELEVATED)']['entry_count']}개로 표본 부족 / INSUFFICIENT_SAMPLE_SIZE)*",
+        f"  - 4주: 중위수 `{grade_data['Grade B (ELEVATED)']['forward_returns']['4w']['median']:+.2f}%` (승률 {grade_data['Grade B (ELEVATED)']['forward_returns']['4w']['positive_rate']:.1f}%) | MFE `{gb_mfe['4w']:+.2f}%` | MAE `{gb_mae['4w']:+.2f}%`",
+        f"  - 8주: 중위수 `{grade_data['Grade B (ELEVATED)']['forward_returns']['8w']['median']:+.2f}%` (승률 {grade_data['Grade B (ELEVATED)']['forward_returns']['8w']['positive_rate']:.1f}%) | MFE `{gb_mfe['8w']:+.2f}%` | MAE `{gb_mae['8w']:+.2f}%`",
+        f"  - 12주: 중위수 `{grade_data['Grade B (ELEVATED)']['forward_returns']['12w']['median']:+.2f}%` (승률 {grade_data['Grade B (ELEVATED)']['forward_returns']['12w']['positive_rate']:.1f}%) | MFE `{gb_mfe['12w']:+.2f}%` | MAE `{gb_mae['12w']:+.2f}%`",
+        f"  - 26주: 중위수 `{grade_data['Grade B (ELEVATED)']['forward_returns']['26w']['median']:+.2f}%` (승률 {grade_data['Grade B (ELEVATED)']['forward_returns']['26w']['positive_rate']:.1f}%) | MFE `{gb_mfe['26w']:+.2f}%` | MAE `{gb_mae['26w']:+.2f}%`",
         "",
         "---",
         "",
@@ -595,7 +635,8 @@ def render_markdown(summary: dict, df_samples: pd.DataFrame) -> str:
         f"| **기본 진입 규칙 (Primary Entry)** | **{fwd['4w']['median']:+.2f}%** | **{fwd['8w']['median']:+.2f}%** | **{fwd['12w']['median']:+.2f}%** | **{fwd['26w']['median']:+.2f}%** |",
         f"| **비교군 (Trigger Any Control)** | **{ctrl_fwd['4w']['median']:+.2f}%** | **{ctrl_fwd['8w']['median']:+.2f}%** | **{ctrl_fwd['12w']['median']:+.2f}%** | **{ctrl_fwd['26w']['median']:+.2f}%** |",
         "",
-        "> **기술적 비교 관찰**: PERMITTED_REGIME 및 비EXTREME 일간 리스크 필터를 적용한 Primary Entry는 무제한 Trigger Any Control 대비 전 호라이즌(4W: -1.51% vs -3.19%, 12W: +0.90% vs -3.00%)에서 더 나은 기술적 성과 특성이 관찰됨.",
+        f"- **진입 시점 지연 진단 (Entry Timing Delay)**: 동일 주 진입 `{delay_data.get('same_week_entry_count', 0)}개`, 지연 진입 `{delay_data.get('delayed_entry_count', 0)}개` (평균 지연 `{delay_data.get('mean_delay_weeks', 0.0)}주`, 중위수 `{delay_data.get('median_delay_weeks', 0.0)}주`)",
+        "> **기술적 비교 관찰**: Primary Entry 조건을 모두 적용한 진입 시점은 Trigger Any Control보다 전 관측 기간에서 더 높은 중위 수익률을 기록했다. 단, 이 차이를 PERMITTED_REGIME 또는 Daily Risk 개별 조건의 단독 효과로 분해해 해석할 수는 없다.",
         "",
         "---",
         "",
@@ -603,11 +644,13 @@ def render_markdown(summary: dict, df_samples: pd.DataFrame) -> str:
         f"- **진입 표본 수**: `n={summary['experimental_early_variant']['entry_count']}개`",
         f"- 4주 중위수: `{early_fwd['4w']['median']:+.2f}%` | 8주 중위수: `{early_fwd['8w']['median']:+.2f}%` | 12주 중위수: `{early_fwd['12w']['median']:+.2f}%` | 26주 중위수: `{early_fwd['26w']['median']:+.2f}%`",
         "",
+        "> **비교 관찰**: 기존 Frozen OOS B에서는 Early Variant가 약세를 보였으나, 이번 Large Cap 40 사후 진단에서는 Early Variant(n=7)가 Primary보다 전 Horizon에서 높은 중위 수익률을 기록했다. 따라서 EARLY 제외의 우위는 이번 대형주 진단에서는 재현되지 않았다.",
+        "",
         "---",
         "",
         "## 9. Pattern A 진단",
-        "- **Pattern A Candidate 여부**: " + ", ".join([f"`{k}`: {v}개" for k, v in summary["pattern_a_diagnostic"]["candidate_state_distribution"].items()]),
-        "- **Pattern A 국면(Stage) 분포**: " + ", ".join([f"`{k}`: {v}개" for k, v in summary["pattern_a_diagnostic"]["stage_distribution"].items()]),
+        "- **Pattern A Candidate 여부**: " + ", ".join([f"`{k}`: {v}개" for k, v in pa_diag["candidate_state_distribution"].items()]),
+        "- **Pattern A 국면(Stage) 분포**: " + ", ".join([f"`{k}`: {v}개" for k, v in pa_diag["stage_distribution"].items()]) + f" (판정 유효 {pa_diag['stage_available_count']}개, 과거 12M 데이터 부족/UNAVAILABLE {pa_diag['stage_unavailable_count']}개)",
         "",
         "---",
         "",
@@ -646,10 +689,12 @@ def render_markdown(summary: dict, df_samples: pd.DataFrame) -> str:
         "## 12. 최종 결론",
         f"> **결론: `{summary['final_research_conclusion']}` (대형주 사후 진단 참고자료)**",
         ">",
-        f"> - **진입 필터 선별력**: `{summary['sub_conclusions']['entry_filter_discrimination']}`",
+        f"> - **진입 시점 필터 효과**: `{summary['sub_conclusions']['entry_timing_filter_effect']}`",
+        f"> - **종목 단위 선별 효과**: `{summary['sub_conclusions']['stock_level_selectivity']}`",
         f"> - **수익률 프로파일**: `{summary['sub_conclusions']['forward_return_profile']}`",
         f"> - **Grade A 결과**: `{summary['sub_conclusions']['grade_a_result']}`",
         f"> - **Grade B 결과**: `{summary['sub_conclusions']['grade_b_result']}`",
+        f"> - **EARLY 제외 가설**: `{summary['sub_conclusions']['early_exclusion_hypothesis']}`",
         f"> - **전체 연구 상태**: `{summary['sub_conclusions']['overall_research_status']}`",
         ">",
         f"> {summary['conclusion_rationale']}",

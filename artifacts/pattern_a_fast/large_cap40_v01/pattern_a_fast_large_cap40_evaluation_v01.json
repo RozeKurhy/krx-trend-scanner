@@ -301,6 +301,15 @@
       "26w": -7.79
     }
   },
+  "entry_timing_delay": {
+    "n": 40,
+    "median_delay_weeks": 0.0,
+    "mean_delay_weeks": 13.12,
+    "min_delay_weeks": 0.0,
+    "max_delay_weeks": 181.0,
+    "same_week_entry_count": 24,
+    "delayed_entry_count": 16
+  },
   "pattern_a_diagnostic": {
     "candidate_state_distribution": {
       "non_candidate": 24,
@@ -312,7 +321,9 @@
       "progressed": 5,
       "base": 3,
       "early_trend": 2
-    }
+    },
+    "stage_available_count": 30,
+    "stage_unavailable_count": 10
   },
   "integrity": {
     "pit_evaluated": true,
@@ -324,12 +335,13 @@
   },
   "final_research_conclusion": "MIXED",
   "sub_conclusions": {
-    "entry_filter_discrimination": "PROMISING",
+    "entry_timing_filter_effect": "PROMISING",
+    "stock_level_selectivity": "NOT_OBSERVED",
     "forward_return_profile": "MIXED",
     "grade_a_result": "MIXED",
     "grade_b_result": "INSUFFICIENT_SAMPLE_SIZE",
-    "early_variant_comparison": "COMPLETED",
+    "early_exclusion_hypothesis": "NOT_REPLICATED_IN_LARGE_CAP40",
     "overall_research_status": "MIXED_DIAGNOSTIC_REFERENCE"
   },
-  "conclusion_rationale": "KRX 시총 상위 40개 대형주 대상 사후 진단 평가 결과, 5개년 관찰 기간(2021~2026) 동안 40개 전 종목(100.0%)에서 FAST Primary Entry 신호가 발생함. 무제한 Trigger Any Control 대비 전 호라이즌(4W: -1.51% vs -3.19%, 8W: -0.69% vs -2.25%, 12W: +0.90% vs -3.00%, 26W: -0.51% vs -2.21%)에서 더 나은 기술적 성과 특성을 보였으나, 대형주 집단 특성상 전체 중위수 수익률이 음수/혼조세를 기록함. 따라서 진입 필터 선별력은 유망하나 수익률 프로파일은 혼조세(MIXED)로 평가됨."
+  "conclusion_rationale": "2026년 8월 14일 기준 시가총액 상위 40개 대형주를 대상으로 FAST Entry Policy v0.1을 사후 진단한 결과, 5년 관찰 구간에서 40개 전 종목에서 Primary Entry가 발생하였다. 따라서 이번 실험에서는 종목 단위 선별 효과는 관찰되지 않았으며, FAST Primary 조건은 종목 선택보다는 진입 시점 필터로 해석하는 것이 적절하다. Primary Entry는 Trigger Any Control보다 4주, 8주, 12주, 26주 모두 더 높은 중위 수익률을 기록했으나, Primary 자체의 절대 중위 수익률은 혼조세였다. 또한 Early Variant는 n=7의 작은 표본이지만 모든 Horizon에서 Primary보다 높은 중위 수익률을 기록하여, EARLY_REGIME 제외의 우위가 이번 Large Cap 40에서는 재현되지 않았다. 따라서 이번 결과는 Production 승격이나 정책 수정 근거가 아니라, FAST Entry Timing 및 Monthly Regime 역할을 추가 연구하기 위한 사후 진단 참고자료로 보존한다."
 }
