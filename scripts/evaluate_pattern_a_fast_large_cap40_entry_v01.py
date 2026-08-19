@@ -650,7 +650,7 @@ def render_markdown(summary: dict, df_samples: pd.DataFrame) -> str:
         "",
         "## 9. Pattern A 진단",
         "- **Pattern A Candidate 여부**: " + ", ".join([f"`{k}`: {v}개" for k, v in pa_diag["candidate_state_distribution"].items()]),
-        "- **Pattern A 국면(Stage) 분포**: " + ", ".join([f"`{k}`: {v}개" for k, v in pa_diag["stage_distribution"].items()]) + f" (판정 유효 {pa_diag['stage_available_count']}개, 과거 12M 데이터 부족/UNAVAILABLE {pa_diag['stage_unavailable_count']}개)",
+        "- **Pattern A 국면(Stage) 분포**: " + ", ".join([f"`{k}`: {v}개" for k, v in pa_diag["stage_distribution"].items()]) + f" (판정 유효 {pa_diag['stage_available_count']}개, UNAVAILABLE {pa_diag['stage_unavailable_count']}개)",
         "",
         "---",
         "",

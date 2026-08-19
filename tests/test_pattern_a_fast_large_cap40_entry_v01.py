@@ -97,13 +97,17 @@ def test_03_exact_top40_relation_with_selection_source():
     src_df = pd.read_csv(SELECTION_SOURCE_PATH, dtype={"ticker": str})
     common_stocks = src_df[src_df["asset_type"] == "COMMON"].sort_values(by="market_cap", ascending=False).reset_index(drop=True)
     expected_top40_tickers = list(common_stocks.head(40)["ticker"].str.zfill(6))
+    expected_top40_mcaps = list(common_stocks.head(40)["market_cap"].astype(float))
 
     manifest_df = pd.read_csv(MANIFEST_PATH, dtype={"ticker": str})
     actual_manifest_tickers = list(manifest_df["ticker"].str.zfill(6))
+    actual_manifest_mcaps = list(manifest_df["market_cap"].astype(float))
 
     assert len(expected_top40_tickers) == 40
     assert len(actual_manifest_tickers) == 40
     assert actual_manifest_tickers == expected_top40_tickers
+    assert actual_manifest_mcaps == pytest.approx(expected_top40_mcaps, rel=1e-5)
+    assert (manifest_df["market_cap_as_of"] == "2026-08-14").all()
 
 
 def test_04_prereg_exact_rule_and_non_gates():
@@ -129,7 +133,12 @@ def test_05_signal_date_window_boundaries(eval_data):
         assert sig_date <= SIGNAL_END, f"Signal date {sig_date} after end {SIGNAL_END}"
 
 
-def test_06_pit_interception_execution_path(monkeypatch, tmp_path):
+def test_06_fast_pit_smoke_sample(monkeypatch):
+    """Representative PIT smoke check on sample ticker in FAST suite.
+    
+    Full 40-stock PIT integration validation across all 5-year weekly bars
+    is maintained in test_pattern_a_fast_large_cap40_entry_v01_slow.py.
+    """
     original_fn = eval_script.evaluate_pattern_a_fast
     interceptions = []
 

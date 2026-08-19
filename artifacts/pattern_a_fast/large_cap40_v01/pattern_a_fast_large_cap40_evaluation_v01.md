@@ -100,7 +100,7 @@
 
 ## 9. Pattern A 진단
 - **Pattern A Candidate 여부**: `non_candidate`: 24개, `candidate`: 16개
-- **Pattern A 국면(Stage) 분포**: `transition`: 14개, `weak`: 6개, `progressed`: 5개, `base`: 3개, `early_trend`: 2개 (판정 유효 30개, 과거 12M 데이터 부족/UNAVAILABLE 10개)
+- **Pattern A 국면(Stage) 분포**: `transition`: 14개, `weak`: 6개, `progressed`: 5개, `base`: 3개, `early_trend`: 2개 (판정 유효 30개, UNAVAILABLE 10개)
 
 ---
 
