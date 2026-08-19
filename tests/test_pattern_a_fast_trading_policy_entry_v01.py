@@ -1,6 +1,6 @@
 """Targeted Test Suite for Pattern A FAST Trading Policy Entry v0.1 Maintenance.
 
-Validates all 16 maintenance requirements from Section 12 of w.md:
+Validates all maintenance requirements from Section 8 of w.md:
 1. Preregistration SHA256 guard
 2. Preregistration exact rule & schema guard
 3. Sample count 36 guard
@@ -16,7 +16,7 @@ Validates all 16 maintenance requirements from Section 12 of w.md:
 13. Early Variant invariance
 14. Markdown renderer dynamically matches summary values (e.g. -0.24%)
 15. Markdown contains no 'statistically significant' / 'significantly' claims
-16. Existing FAST evaluator parity & read-only contracts unmutated
+16. 기존 frozen 연구 입력값(Manifest/Human Review/Preregistration) 무결성 및 불변 검증
 """
 
 import hashlib
@@ -196,14 +196,28 @@ def test_14_15_markdown_rendering_dynamic_and_no_exaggeration(eval_data):
     assert "통계적으로 개선" not in md
     assert "통계적 유의미" not in md
 
-    # Verify Korean section headers
-    assert "기본 진입 규칙 및 체결 계약" in md
-    assert "진입 발생률 및 커버리지 현황" in md
-    assert "신호 이후 기간별 수익률 및 최대 순행 / 역행 폭" in md
-    assert "최종 연구 결론" in md
+    # Verify pure Korean section headers
+    assert "## 1. 기본 진입 규칙 및 체결 계약" in md
+    assert "## 2. 진입 발생률 및 통계" in md
+    assert "## 3. 신호 이후 기간별 수익률 및 최대 순행 / 역행 폭" in md
+    assert "## 4. 인간 판정 결과별 성과 비교" in md
+    assert "## 5. 실험 조건 및 비교군 결과" in md
+    assert "## 6. 표본별 세부 결과" in md
+    assert "## 7. 최종 연구 결론" in md
+
+    # Verify unnecessary English parentheticals are removed
+    assert "(Evaluation Population)" not in md
+    assert "(Base Commit)" not in md
+    assert "(Coverage & Entry Statistics)" not in md
+    assert "(Forward Returns & Excursions)" not in md
+    assert "(Human Outcome Stratification)" not in md
+    assert "(Variant & Control Comparison)" not in md
+    assert "(Sample-by-Sample Results)" not in md
+    assert "(Final Research Conclusion)" not in md
 
 
 def test_16_existing_contracts_and_manifests_unmutated():
+    """기존 frozen 연구 입력값(Manifest/Human Review/Preregistration) 무결성 및 불변 검증."""
     assert sha256_file(MANIFEST_PATH) == FROZEN_MANIFEST_SHA256
     assert sha256_file(HUMAN_PATH) == FROZEN_HUMAN_SHA256
     assert sha256_file(PREREG_PATH) == FROZEN_PREREG_SHA256

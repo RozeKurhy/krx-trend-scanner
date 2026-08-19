@@ -1,23 +1,23 @@
 # Pattern A FAST Trading Policy Entry v0.1 평가 보고서
 
-- **평가 대상 모집단 (Evaluation Population)**: `Frozen Investable OOS B (총 36개 표본)`
-- **기준 커밋 (Base Commit)**: `70de72418b26c2caaafdb4317d46e2668981932c`
-- **사전등록 커밋 (Preregistration Commit A)**: `a5e5ba897ffcd609d49435b03102a27305a42432`
-- **사전등록 프로토콜 해시 (Preregistration SHA256)**: `32aae360faf04224fb1e418fe22465e84720444f78817e7c768f7e3583836c58`
-- **선택 매니페스트 해시 (Selection Manifest SHA256)**: `6fb59b9ffce5d8076a18faa00327c62e4edc5cff6ef93bcaf5095c50532ef825`
+- **평가 대상 모집단**: `Frozen Investable OOS B (총 36개 표본)`
+- **기준 커밋**: `70de72418b26c2caaafdb4317d46e2668981932c`
+- **사전등록 커밋**: `a5e5ba897ffcd609d49435b03102a27305a42432`
+- **사전등록 프로토콜 해시**: `32aae360faf04224fb1e418fe22465e84720444f78817e7c768f7e3583836c58`
+- **선택 매니페스트 해시**: `6fb59b9ffce5d8076a18faa00327c62e4edc5cff6ef93bcaf5095c50532ef825`
 - **외부 네트워크 요청**: `0회 (로컬 Parquet 캐시 전용, Zero Network Requests)`
-- **최종 연구 결론 (Final Research Conclusion)**: **`PROMISING` (후속 검증 가치 있음)**
+- **최종 연구 결론**: **`PROMISING` (후속 검증 가치 있음)**
 
 ---
 
-## 1. 기본 진입 규칙 및 체결 계약 (Primary Entry Rule & Execution)
+## 1. 기본 진입 규칙 및 체결 계약
 - **진입 조건**: `FAST Stage == TRIGGER` AND `Stage Status == READY` AND `Monthly Regime == PERMITTED_REGIME` AND `Daily Risk IN {'NORMAL', 'ELEVATED'}` AND `Score Status IN {'READY', 'PARTIAL'}`
 - **체결 가격**: `next_trading_day_open` (신호 완성 주간 직후 첫 거래일 시가 체결)
-- **비게이트 정책 (Non-Gate Policy)**: FAST 점수 임계값(Score threshold) 및 Pattern A 점수/국면 조건 배제 (선행 신호 보존)
+- **비게이트 정책**: FAST 점수 임계값(Score threshold) 및 Pattern A 점수/국면 조건 배제 (선행 신호 보존)
 
 ---
 
-## 2. 진입 발생률 및 커버리지 현황 (Coverage & Entry Statistics)
+## 2. 진입 발생률 및 통계
 - **총 분석 대상**: `36개 표본`
 - **Primary Entry 발생**: `13개` (`36.1%`)
 - **진입 미발생 (NO_ENTRY)**: `23개` (`63.9%`)
@@ -32,9 +32,9 @@
 
 ---
 
-## 3. 신호 이후 기간별 수익률 및 최대 순행 / 역행 폭 (Forward Returns & Excursions)
+## 3. 신호 이후 기간별 수익률 및 최대 순행 / 역행 폭
 
-| 관측 기간 (Horizon) | 유효 표본수 (n) | 중위 수익률 (Median) | 평균 수익률 (Mean) | 승률 (Positive Rate) | 최대 순행폭 중위수 (MFE) | 최대 역행폭 중위수 (MAE) |
+| 관측 기간 | 유효 표본수 (n) | 중위 수익률 (Median) | 평균 수익률 (Mean) | 승률 (Positive Rate) | 최대 순행 폭 중위수 (MFE) | 최대 역행 폭 중위수 (MAE) |
 |---|---:|---:|---:|---:|---:|---:|
 | **4주 (4W)** | 12 | **+6.44%** | +4.79% | 58.3% | +9.81% | -8.34% |
 | **8주 (8W)** | 11 | **+0.28%** | +10.01% | 54.5% | +15.46% | -8.72% |
@@ -43,7 +43,7 @@
 
 ---
 
-## 4. 인간 판정 결과별 성과 비교 (Human Outcome Stratification)
+## 4. 인간 판정 결과별 성과 비교
 
 | 그룹 구분 | 표본 수 | 진입 수 | 진입률 | 4주 중위 수익률 | 12주 중위 수익률 |
 |---|---:|---:|---:|---:|---:|
@@ -61,7 +61,7 @@
 
 ---
 
-## 5. 실험 조건 및 비교군 결과 (Variant & Control Comparison)
+## 5. 실험 조건 및 비교군 결과
 
 - **기본 진입 규칙 (PERMITTED + 비EXTREME 리스크)**: 진입 n=13, 4주 중위수=**+6.44%**, 12주 중위수=**+0.20%**
 - **비교군 (Trigger Any Control, 필터 미적용)**: 진입 n=19, 4주 중위수=**-0.24%**, 12주 중위수=**-0.66%**
@@ -71,7 +71,7 @@
 
 ---
 
-## 6. 표본별 세부 결과 (Sample-by-Sample Results)
+## 6. 표본별 세부 결과
 
 | 표본 ID | 종목코드 | 종목명 | 인간 라벨 | 진입 여부 | 진입 등급 | 신호 발생일 | 체결일 | 체결 시가 | 4주 수익률 | 12주 수익률 | 미진입 사유 / 비고 |
 |---|:---:|---|---|:---:|:---:|:---:|:---:|---:|---:|---:|---|
@@ -114,12 +114,12 @@
 
 ---
 
-## 7. 최종 연구 결론 (Final Research Conclusion)
+## 7. 최종 연구 결론
 > **결론: `PROMISING` (후속 검증 가치 있음)**
 >
-> - **진입 필터 선별력 (Entry Filter Discrimination)**: `PROMISING`
-> - **수익률 프로파일 (Forward Return Profile)**: `MIXED`
-> - **전체 연구 상태 (Overall Research Status)**: `PROMISING FOR FURTHER VALIDATION`
+> - **진입 필터 선별력**: `PROMISING`
+> - **수익률 프로파일**: `MIXED`
+> - **전체 연구 상태**: `PROMISING FOR FURTHER VALIDATION`
 >
 > Primary Entry Rule(TRIGGER + PERMITTED_REGIME + 비EXTREME 리스크)은 기술적 비교상 4W(+6.44%), 8W(+0.28%), 12W(+0.20%), 26W(+12.08%) 전 호라이즌에서 플러스 중위수 총수익률을 기록하였으며, FALSE_TRIGGER(80% 차단) 및 NO_SETUP(100% 차단) 등 부적합 샘플을 차단하고 긍정적 인간 라벨(GOOD+BORDERLINE)의 75.0%(9/12)를 포착함. 무제한 Control(4W 중위수: -0.24%) 대비 더 나은 기술적 성과 특성이 관찰되어 후속 prospective / walk-forward 연구 가설로 검증할 가치가 있음. 다만 본 평가는 과거 표본 사후 분석이며 통계적 유의성 검정이나 전략 검증 완료를 의미하지 않음.
 
