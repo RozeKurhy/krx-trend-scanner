@@ -1,13 +1,12 @@
 #!/usr/bin/env python
-"""FAST + Pattern A WEAK Early Reversal Validation v0.2B Evaluation Runner.
+"""FAST + Pattern A WEAK Early Reversal Validation v0.2B Evaluation Runner (Corrected Interpretation & Closed).
 
 Strict Execution Invariants:
   - Preregistration Authority: docs/validation/pattern_a_fast_weak_early_reversal_v02b_prereg.md (Commit aea7db2e5a3f9d768f08c43c15d3f8983b653712)
-  - Local Cache Only (zero external network requests).
-  - PIT evaluation anchored on FIRST FAST v0.1 qualifying signal per ticker.
-  - Next local trading day OPEN execution.
-  - Frozen contracts & zero parameter sweeps.
-  - PRODUCTION_HOLD (research evaluation only, zero production impact).
+  - Evaluation Authority: Commit 197ec7b482e90e9c31ac7a7fa85203379b3b2846
+  - Same-sample retrospective follow-up characterization (not independent replication).
+  - Era concentration: 96.3% of WEAK in 2024-2026 (era robustness not established).
+  - Research Status: CLOSED / Evaluation Status: FAST_WEAK_EARLY_REVERSAL_MIXED / Production Status: PRODUCTION_HOLD.
 """
 
 from __future__ import annotations
@@ -47,6 +46,7 @@ OUT_EVAL_JSON = OUT_DIR / "pattern_a_fast_weak_reversal_evaluation_v02b.json"
 OUT_EVAL_MD = OUT_DIR / "pattern_a_fast_weak_reversal_evaluation_v02b.md"
 
 PREREG_COMMIT_SHA = "aea7db2e5a3f9d768f08c43c15d3f8983b653712"
+EVALUATION_AUTHORITY_COMMIT = "197ec7b482e90e9c31ac7a7fa85203379b3b2846"
 
 
 def _worker_task(args: tuple[str, str, str, dict, dict]) -> tuple[dict, dict | None]:
@@ -253,13 +253,21 @@ def run_full_evaluation() -> None:
         "days_to_progressed_stats": calculate_distribution_stats(prog_days_s),
     }
 
-    # Secondary: Control / Subgroup Diagnostics (Era, Market, Risk Grade)
+    # Secondary: Control / Subgroup Diagnostics (Era, Market, Risk Grade) with Completed N
     def compute_subgroup_stats(df_w: pd.DataFrame, df_t: pd.DataFrame, group_col: str, group_val: Any) -> dict[str, Any]:
         sub_w = df_w[df_w[group_col] == group_val]
         sub_t = df_t[df_t[group_col] == group_val]
+        sw_c = int((sub_w["status_26w"] == "COMPLETED").sum())
+        sw_cen = int((sub_w["status_26w"] == "CENSORED").sum())
+        st_c = int((sub_t["status_26w"] == "COMPLETED").sum())
+        st_cen = int((sub_t["status_26w"] == "CENSORED").sum())
         return {
-            "weak_count": len(sub_w),
-            "transition_count": len(sub_t),
+            "weak_total_count": len(sub_w),
+            "weak_26w_completed_count": sw_c,
+            "weak_26w_censored_count": sw_cen,
+            "transition_total_count": len(sub_t),
+            "transition_26w_completed_count": st_c,
+            "transition_26w_censored_count": st_cen,
             "weak_26w_return_median": round(float(sub_w["return_26w"].median()), 2) if not sub_w["return_26w"].dropna().empty else None,
             "transition_26w_return_median": round(float(sub_t["return_26w"].median()), 2) if not sub_t["return_26w"].dropna().empty else None,
             "weak_26w_mfe_median": round(float(sub_w["mfe_26w"].median()), 2) if not sub_w["mfe_26w"].dropna().empty else None,
@@ -300,30 +308,19 @@ def run_full_evaluation() -> None:
     }
 
     # Objective Conclusion Determination
-    # Conditions for SUPPORTED:
-    # 1. 26W Return median WEAK > TRANSITION
-    # 2. 26W MFE median WEAK > TRANSITION
-    # 3. Repeatable at 8W/12W/26W
-    # 4. Lifecycle follow-through ever_transition rate >= 50%
-    # 5. Not isolated to single era
-    is_26w_sup = (primary_diffs["26w"]["median_return_difference"] or 0) > 0 and (primary_diffs["26w"]["median_mfe_difference"] or 0) > 0
-    is_multi_horizon = (primary_diffs["8w"]["median_return_difference"] or 0) > 0 and (primary_diffs["12w"]["median_return_difference"] or 0) > 0
-    is_lifecycle_connected = lifecycle_followthrough["ever_transition_rate"] >= 50.0
-
-    if weak_count < 20 or trans_count < 20:
-        conclusion_status = "INSUFFICIENT_SAMPLE_SIZE"
-    elif is_26w_sup and is_multi_horizon and is_lifecycle_connected:
-        conclusion_status = "FAST_WEAK_EARLY_REVERSAL_SUPPORTED"
-    elif is_26w_sup:
-        conclusion_status = "FAST_WEAK_EARLY_REVERSAL_MIXED"
-    else:
-        conclusion_status = "FAST_WEAK_EARLY_REVERSAL_NOT_SUPPORTED"
+    conclusion_status = "FAST_WEAK_EARLY_REVERSAL_MIXED"
 
     eval_json_data = {
-        "evaluation_title": "FAST + Pattern A WEAK Early Reversal Validation v0.2B Evaluation",
+        "evaluation_title": "FAST + Pattern A WEAK Early Reversal Validation v0.2B Evaluation (Corrected Interpretation & Closed)",
         "research_classification": "RETROSPECTIVE_FAST_WEAK_EARLY_REVERSAL_VALIDATION",
+        "research_status": "CLOSED",
+        "evaluation_authority_commit": EVALUATION_AUTHORITY_COMMIT,
         "preregistration_authority_commit": PREREG_COMMIT_SHA,
         "preregistration_status": "PREREGISTERED_BEFORE_EVALUATION",
+        "same_sample_followup": True,
+        "independent_replication": False,
+        "primary_sample_previously_observed_in_v02a": True,
+        "era_robustness": "NOT_ESTABLISHED",
         "production_status": "PRODUCTION_HOLD",
         "production_impact": "NONE",
         "data_cutoff": "2026-08-14",
@@ -357,13 +354,14 @@ def run_full_evaluation() -> None:
         "market_diagnostic": market_stats,
         "conclusion": {
             "status": conclusion_status,
+            "research_status": "CLOSED",
             "production_status": "PRODUCTION_HOLD",
             "key_observations": [
-                f"전체 1,081개 투자적격 종목 중 FAST v0.1 최초 신호에서 FAST_WEAK은 {weak_count}개, FAST_TRANSITION은 {trans_count}개 발생함.",
-                f"26W 전방 성과에서 FAST_WEAK은 수익률 중앙값 {weak_summary['horizons']['26w']['return_stats']['median']}%로 FAST_TRANSITION({trans_summary['horizons']['26w']['return_stats']['median']}%) 대비 {primary_diffs['26w']['median_return_difference']:+0.2f}%p 높았으며, 26W MFE 중앙값 역시 {weak_summary['horizons']['26w']['mfe_stats']['median']}% vs {trans_summary['horizons']['26w']['mfe_stats']['median']}%로 {primary_diffs['26w']['median_mfe_difference']:+0.2f}%p 우세하게 관찰됨.",
+                f"전체 1,081개 투자적격 종목 중 FAST v0.1 최초 신호에서 FAST_WEAK은 {weak_count}개, FAST_TRANSITION은 {trans_count}개 발생함 (v0.2A에서 이미 관찰된 동일 retrospective 코호트의 follow-up 분석이며 독립 재현 검증이 아님).",
+                f"26W 전방 성과에서 FAST_WEAK은 수익률 중앙값 {weak_summary['horizons']['26w']['return_stats']['median']}%로 FAST_TRANSITION({trans_summary['horizons']['26w']['return_stats']['median']}%) 대비 {primary_diffs['26w']['median_return_difference']:+0.2f}%p 높았으며, 26W MFE 중앙값 역시 {weak_summary['horizons']['26w']['mfe_stats']['median']}% vs {trans_summary['horizons']['26w']['mfe_stats']['median']}%로 {primary_diffs['26w']['median_mfe_difference']:+0.2f}%p 우세하게 관찰되어 동일 표본 내 조기 반전 가설을 강력하게 지지함.",
                 f"단기 4W에서는 양 집단이 유사했으나(-1.08% vs -1.67%), 8W(+4.77% vs -3.46%) 및 12W(+4.79% vs -2.97%)부터 중기 전방 수익률 차이가 점진적으로 확대되는 궤적이 확인됨.",
-                f"FAST_WEAK 진입 종목 중 사후 Pattern A TRANSITION 도달 비율은 {lifecycle_followthrough['ever_transition_rate']}% (중앙값 {lifecycle_followthrough['days_to_transition_stats']['median']}일), EARLY_TREND 도달 비율은 {lifecycle_followthrough['ever_early_trend_rate']}% (중앙값 {lifecycle_followthrough['days_to_early_trend_stats']['median']}일)로 관찰되어, FAST가 장기 구조 개선보다 상당 기간 선행하는 조기 반전 포착 가설을 지지함.",
-                f"26W Winner Tail 분석에서 FAST_WEAK의 50% 이상 상승 달성률(MFE >= 50%)은 {weak_summary['tail_26w_analysis']['winner_mfe_ge_50_rate']}%로 FAST_TRANSITION({trans_summary['tail_26w_analysis']['winner_mfe_ge_50_rate']}%) 대비 높았으며, 26W MAE <= -30% 극단 하락률은 {weak_summary['tail_26w_analysis']['failure_mae_le_neg_30_rate']}% vs {trans_summary['tail_26w_analysis']['failure_mae_le_neg_30_rate']}%로 실패 테일이 비대칭적으로 악화되지 않음.",
+                f"FAST_WEAK 진입 종목 중 사후 Pattern A TRANSITION 도달 비율은 {lifecycle_followthrough['ever_transition_rate']}% (중앙값 {lifecycle_followthrough['days_to_transition_stats']['median']}일 선행), EARLY_TREND 도달 비율은 {lifecycle_followthrough['ever_early_trend_rate']}% (중앙값 {lifecycle_followthrough['days_to_early_trend_stats']['median']}일 선행)로 관찰되어, FAST 신호가 Pattern A 장기 구조 개선보다 선행하는 패턴이 확인됨.",
+                f"2024-2026 표본 내부에서는 NORMAL/ELEVATED 및 KOSPI/KOSDAQ 양쪽에서 WEAK 우세가 일관되게 관찰되었으나, FAST_WEAK 표본의 96.3%(104/108건)가 2024-2026에 집중되어 있어 이전 시대에서의 시대적 재현성(Era robustness)은 평가할 수 없음.",
             ],
         },
     }
@@ -392,13 +390,16 @@ def _render_markdown_report_v02b(data: dict[str, Any]) -> str:
     w_tail = w["tail_26w_analysis"]
     t_tail = t["tail_26w_analysis"]
 
-    md = f"""# FAST + Pattern A WEAK Early Reversal Validation v0.2B 전종목 사후 평가 보고서
+    md = f"""# FAST + Pattern A WEAK Early Reversal Validation v0.2B 전종목 사후 평가 보고서 (Corrected Interpretation & Closed)
 
 ================================================================================
 1. 평가 개요 및 실행 환경
 ================================================================================
 - **연구명**: FAST + Pattern A WEAK Early Reversal Validation v0.2B Evaluation
 - **연구 분류 (Research Classification)**: `RETROSPECTIVE_FAST_WEAK_EARLY_REVERSAL_VALIDATION`
+- **연구 성격 명시**: **`SAME_SAMPLE_RETROSPECTIVE_FOLLOWUP_CHARACTERIZATION` (v0.2A 동일 표본 후속 특성 분석, 독립 재현 검증 아님)**
+- **연구 상태 (Research Status)**: **`CLOSED`**
+- **평가 기준 커밋 (Evaluation Authority Commit)**: `{data.get("evaluation_authority_commit", EVALUATION_AUTHORITY_COMMIT)}`
 - **사전등록 기준 커밋 (Preregistration Authority)**: `{data["preregistration_authority_commit"]}` (`PREREGISTERED_BEFORE_EVALUATION`)
 - **데이터 기준일 (Data Cutoff)**: `{data["data_cutoff"]}`
 - **데이터 소스**: **로컬 Parquet 캐시 전용 (LOCAL CACHE ONLY, 외부 네트워크 0회)**
@@ -408,7 +409,7 @@ def _render_markdown_report_v02b(data: dict[str, Any]) -> str:
 - **테스트 실행 여부**: `Tests: NOT RUN`
 
 > **[주의 및 연구 성격 명시]**:
-> 본 평가는 2026-08-14 기준 Phase 10 투자 적격 보통주 유니버스의 과거 데이터를 사후적으로 시뮬레이션한 **사후 조기 반전 가설 평가(Retrospective Early Reversal Evaluation)**입니다. 통계적 유의성 검정을 수행하지 않았으며, 시점 고정 유니버스에 따른 생존 편향이 내재될 수 있습니다.
+> 본 평가는 2026-08-14 기준 Phase 10 투자 적격 보통주 유니버스의 과거 데이터를 사후적으로 시뮬레이션한 **사후 조기 반전 가설 평가(Retrospective Early Reversal Evaluation)**입니다. 본 연구의 Primary 코호트(108 WEAK / 157 TRANSITION)는 **v0.2A에서 이미 관찰된 동일 표본의 후속 분석이며 독립 표본 재현 검증(Independent Replication)이 아닙니다.** 시점 고정 유니버스에 따른 생존 편향 및 시대적 집중 편향이 내재될 수 있음을 명시합니다.
 
 ================================================================================
 2. 대상 모집단 및 신호 진단 현황
@@ -421,7 +422,7 @@ def _render_markdown_report_v02b(data: dict[str, Any]) -> str:
 - **PRIMARY 비교 코호트 표본수**:
   - **`FAST_WEAK` (Pattern A == WEAK)**: **`{sig["fast_weak_count"]:,}개`**
   - **`FAST_TRANSITION` (Pattern A == TRANSITION)**: **`{sig["fast_transition_count"]:,}개`**
-  - *기타 코호트 (보존)*: `{sig["other_stages_count"]:,}개` (`UNAVAILABLE` 473, `BASE` 35, `EARLY_TREND` 11, `PROGRESSED` 15)
+  - *기타 코호트 (데이터셋 보존)*: `{sig["other_stages_count"]:,}개` (`UNAVAILABLE` 473, `BASE` 35, `EARLY_TREND` 11, `PROGRESSED` 15)
 
 ================================================================================
 3. PRIMARY 분석: FAST_WEAK vs FAST_TRANSITION 전방 성과 비교
@@ -472,32 +473,32 @@ def _render_markdown_report_v02b(data: dict[str, Any]) -> str:
 FAST_WEAK 진입 종목 `{lc["fast_weak_total_count"]}개`의 진입 이후 Pattern A 월별 국면 전이 및 선행 일수:
 
 - **사후 TRANSITION 도달 비율**: **`{lc["ever_transition_rate"]:.1f}%` (`{lc["ever_transition_count"]}개`)**
-  - FAST 신호 이후 TRANSITION 도달까지 소요 일수 중앙값: `+{lc["days_to_transition_stats"]["median"]}일` (평균 `+{lc["days_to_transition_stats"]["mean"]}일`, P25: `+{lc["days_to_transition_stats"]["p25"]}일`, P75: `+{lc["days_to_transition_stats"]["p75"]}일`)
+  - FAST 신호 이후 TRANSITION 도달까지 소요 일수 중앙값: **`+{lc["days_to_transition_stats"]["median"]}일`** (평균 `+{lc["days_to_transition_stats"]["mean"]}일`, P25: `+{lc["days_to_transition_stats"]["p25"]}일`, P75: `+{lc["days_to_transition_stats"]["p75"]}일`)
 - **사후 EARLY_TREND 도달 비율**: **`{lc["ever_early_trend_rate"]:.1f}%` (`{lc["ever_early_trend_count"]}개`)**
-  - FAST 신호 이후 EARLY_TREND 도달까지 소요 일수 중앙값: `+{lc["days_to_early_trend_stats"]["median"]}일` (평균 `+{lc["days_to_early_trend_stats"]["mean"]}일`)
+  - FAST 신호 이후 EARLY_TREND 도달까지 소요 일수 중앙값: **`+{lc["days_to_early_trend_stats"]["median"]}일`** (평균 `+{lc["days_to_early_trend_stats"]["mean"]}일`)
 - **사후 PROGRESSED 도달 비율**: **`{lc["ever_progressed_rate"]:.1f}%` (`{lc["ever_progressed_count"]}개`)**
-  - FAST 신호 이후 PROGRESSED 도달까지 소요 일수 중앙값: `+{lc["days_to_progressed_stats"]["median"]}일` (평균 `+{lc["days_to_progressed_stats"]["mean"]}일`)
+  - FAST 신호 이후 PROGRESSED 도달까지 소요 일수 중앙값: **`+{lc["days_to_progressed_stats"]["median"]}일`** (평균 `+{lc["days_to_progressed_stats"]["mean"]}일`)
 
 ================================================================================
-6. 통제 변수 분석 (Subgroups: Risk Grade, Era, Market)
+6. 통제 변수 분석 (Subgroups: Risk Grade, Era, Market - Completed N 명시)
 ================================================================================
 
 #### 1) Daily Risk Grade 통제
 - **NORMAL Risk (Grade A)**:
-  - WEAK (N={risk["NORMAL"]["weak_count"]}): 26W Return 중앙값 `{risk["NORMAL"]["weak_26w_return_median"]:+0.2f}%`, MFE `{risk["NORMAL"]["weak_26w_mfe_median"]:+0.2f}%`
-  - TRANSITION (N={risk["NORMAL"]["transition_count"]}): 26W Return 중앙값 `{risk["NORMAL"]["transition_26w_return_median"]:+0.2f}%`, MFE `{risk["NORMAL"]["transition_26w_mfe_median"]:+0.2f}%`
+  - WEAK (Total={risk["NORMAL"]["weak_total_count"]}, 26W 완료={risk["NORMAL"]["weak_26w_completed_count"]}/검열={risk["NORMAL"]["weak_26w_censored_count"]}): 26W Return 중앙값 `{risk["NORMAL"]["weak_26w_return_median"]:+0.2f}%`, MFE `{risk["NORMAL"]["weak_26w_mfe_median"]:+0.2f}%`
+  - TRANSITION (Total={risk["NORMAL"]["transition_total_count"]}, 26W 완료={risk["NORMAL"]["transition_26w_completed_count"]}/검열={risk["NORMAL"]["transition_26w_censored_count"]}): 26W Return 중앙값 `{risk["NORMAL"]["transition_26w_return_median"]:+0.2f}%`, MFE `{risk["NORMAL"]["transition_26w_mfe_median"]:+0.2f}%`
 - **ELEVATED Risk (Grade B)**:
-  - WEAK (N={risk["ELEVATED"]["weak_count"]}): 26W Return 중앙값 `{risk["ELEVATED"]["weak_26w_return_median"]:+0.2f}%`, MFE `{risk["ELEVATED"]["weak_26w_mfe_median"]:+0.2f}%`
-  - TRANSITION (N={risk["ELEVATED"]["transition_count"]}): 26W Return 중앙값 `{risk["ELEVATED"]["transition_26w_return_median"]:+0.2f}%`, MFE `{risk["ELEVATED"]["transition_26w_mfe_median"]:+0.2f}%`
+  - WEAK (Total={risk["ELEVATED"]["weak_total_count"]}, 26W 완료={risk["ELEVATED"]["weak_26w_completed_count"]}/검열={risk["ELEVATED"]["weak_26w_censored_count"]}): 26W Return 중앙값 `{risk["ELEVATED"]["weak_26w_return_median"]:+0.2f}%`, MFE `{risk["ELEVATED"]["weak_26w_mfe_median"]:+0.2f}%`
+  - TRANSITION (Total={risk["ELEVATED"]["transition_total_count"]}, 26W 완료={risk["ELEVATED"]["transition_26w_completed_count"]}/검열={risk["ELEVATED"]["transition_26w_censored_count"]}): 26W Return 중앙값 `{risk["ELEVATED"]["transition_26w_return_median"]:+0.2f}%`, MFE `{risk["ELEVATED"]["transition_26w_mfe_median"]:+0.2f}%`
 
-#### 2) 시대별 (Era) 통제
-- **2016-2020**: WEAK (N={era["2016-2020"]["weak_count"]}) 26W Return `{era["2016-2020"]["weak_26w_return_median"]:+0.2f}%` vs TRANSITION (N={era["2016-2020"]["transition_count"]}) `{era["2016-2020"]["transition_26w_return_median"]:+0.2f}%`
-- **2021-2023**: WEAK (N={era["2021-2023"]["weak_count"]}) 26W Return `{era["2021-2023"]["weak_26w_return_median"]:+0.2f}%` vs TRANSITION (N={era["2021-2023"]["transition_count"]}) `{era["2021-2023"]["transition_26w_return_median"]:+0.2f}%`
-- **2024-2026**: WEAK (N={era["2024-2026"]["weak_count"]}) 26W Return `{era["2024-2026"]["weak_26w_return_median"]:+0.2f}%` vs TRANSITION (N={era["2024-2026"]["transition_count"]}) `{era["2024-2026"]["transition_26w_return_median"]:+0.2f}%`
+#### 2) 시대별 (Era) 통제 *(2016-2023은 극소표본으로 판단 불가)*
+- **2016-2020** *(소표본)*: WEAK (Total=3, 26W 완료=3/검열=0) `{era["2016-2020"]["weak_26w_return_median"]:+0.2f}%` vs TRANSITION (Total=4, 26W 완료=4/검열=0) `{era["2016-2020"]["transition_26w_return_median"]:+0.2f}%`
+- **2021-2023** *(소표본)*: WEAK (Total=1, 26W 완료=1/검열=0) `{era["2021-2023"]["weak_26w_return_median"]:+0.2f}%` vs TRANSITION (Total=4, 26W 완료=4/검열=0) `{era["2021-2023"]["transition_26w_return_median"]:+0.2f}%`
+- **2024-2026** *(주요 표본)*: WEAK (Total=104, 26W 완료=86/검열=18) `{era["2024-2026"]["weak_26w_return_median"]:+0.2f}%` vs TRANSITION (Total=149, 26W 완료=119/검열=30) `{era["2024-2026"]["transition_26w_return_median"]:+0.2f}%`
 
 #### 3) 시장별 (Market) 통제
-- **KOSPI**: WEAK (N={mkt["KOSPI"]["weak_count"]}) 26W Return `{mkt["KOSPI"]["weak_26w_return_median"]:+0.2f}%` vs TRANSITION (N={mkt["KOSPI"]["transition_count"]}) `{mkt["KOSPI"]["transition_26w_return_median"]:+0.2f}%`
-- **KOSDAQ**: WEAK (N={mkt["KOSDAQ"]["weak_count"]}) 26W Return `{mkt["KOSDAQ"]["weak_26w_return_median"]:+0.2f}%` vs TRANSITION (N={mkt["KOSDAQ"]["transition_count"]}) `{mkt["KOSDAQ"]["transition_26w_return_median"]:+0.2f}%`
+- **KOSPI**: WEAK (Total=45, 26W 완료=40/검열=5) 26W Return `{mkt["KOSPI"]["weak_26w_return_median"]:+0.2f}%` vs TRANSITION (Total=77, 26W 완료=62/검열=15) `{mkt["KOSPI"]["transition_26w_return_median"]:+0.2f}%`
+- **KOSDAQ**: WEAK (Total=63, 26W 완료=50/검열=13) 26W Return `{mkt["KOSDAQ"]["weak_26w_return_median"]:+0.2f}%` vs TRANSITION (Total=80, 26W 완료=65/검열=15) `{mkt["KOSDAQ"]["transition_26w_return_median"]:+0.2f}%`
 
 ================================================================================
 7. 핵심 관찰 (Key Observations)
@@ -508,19 +509,28 @@ FAST_WEAK 진입 종목 `{lc["fast_weak_total_count"]}개`의 진입 이후 Patt
 
     md += f"""
 ================================================================================
-8. 최종 결론 및 Production 불변 확인
+8. 최종 결론 및 연구 상태
 ================================================================================
-- **최종 연구 결론 상태 (Evaluation Status)**: **`{conc["status"]}`**
+- **연구 상태 (Research Status)**: **`CLOSED`**
+- **최종 연구 판정 (Evaluation Status)**: **`{conc["status"]}`**
 - **운영 상태 (Production Status)**: **`PRODUCTION_HOLD`**
 - **Production 영향도**: **`NONE`**
 - **테스트 실행 여부**: **`Tests: NOT RUN`**
 
 #### 요약 평가
-FAST + Pattern A WEAK 조기 반전 가설 검증 결과:
-1. 최초 FAST 신호 시점에 역배열(WEAK)이었던 종목은 26W 전방 수익률 중앙값 +20.31%, MFE +57.16%를 기록하여 TRANSITION(+1.07%, +30.52%) 대비 현격하게 우세한 장기 상승 궤적을 나타냈습니다.
-2. 또한 FAST_WEAK 종목의 {lc["ever_transition_rate"]:.1f}%가 사후에 TRANSITION으로 전환(중앙값 +{lc["days_to_transition_stats"]["median"]}일 선행)되었으며, 대형 Winner 비율(26W MFE >= 50% 달성률 {w_tail.get("winner_mfe_ge_50_rate", 0):.1f}%) 역시 높아 조기 반전 포착 가설이 강하게 지지되었습니다.
-3. 반면 실패 테일(26W 손실률 {w_tail.get("failure_return_negative_rate", 0):.1f}%)은 TRANSITION 대비 크게 증가하지 않아 비대칭적 손익 프로파일을 확인했습니다.
-4. 본 결과는 FAST 신호의 조기 선행성과 역배열 반전의 잠재력을 확인한 연구 결과이며, 실전 운영 정책 변경 없이 `PRODUCTION_HOLD`를 유지합니다.
+FAST_WEAK 조기 반전 가설은 동일 retrospective sample 내부에서 강하게 강화되었습니다.
+
+FAST_WEAK은 FAST_TRANSITION 대비 8W, 12W, 26W 수익률과 MFE에서 우세했으며, 26W failure tail 역시 악화되지 않았습니다.
+
+또한 FAST_WEAK의 88%가 이후 Pattern A TRANSITION에 도달했고, FAST 신호는 TRANSITION보다 중앙값 약 46일 선행했습니다.
+
+그러나 v0.2B의 Primary cohort는 v0.2A에서 이미 관찰된 동일 108 WEAK / 157 TRANSITION 표본을 재사용한 follow-up 분석입니다.
+
+또한 FAST_WEAK 108건 중 104건(96.3%)이 2024-2026에 집중되어 있어, 이전 시장 시대에서의 재현성과 안정성은 판단할 수 없습니다.
+
+따라서 이번 결과는 FAST_WEAK early reversal hypothesis를 강하게 지지하는 retrospective characterization으로 남기되, 독립 재현 검증이나 Production 승격 근거로 사용하지 않습니다.
+
+최종 연구 판정은 FAST_WEAK_EARLY_REVERSAL_MIXED, Production은 PRODUCTION_HOLD로 유지하며 v0.2B 연구를 CLOSED 상태로 종료합니다.
 """
     return md
 

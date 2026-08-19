@@ -1,10 +1,13 @@
-# FAST + Pattern A WEAK Early Reversal Validation v0.2B 전종목 사후 평가 보고서
+# FAST + Pattern A WEAK Early Reversal Validation v0.2B 전종목 사후 평가 보고서 (Corrected Interpretation & Closed)
 
 ================================================================================
 1. 평가 개요 및 실행 환경
 ================================================================================
 - **연구명**: FAST + Pattern A WEAK Early Reversal Validation v0.2B Evaluation
 - **연구 분류 (Research Classification)**: `RETROSPECTIVE_FAST_WEAK_EARLY_REVERSAL_VALIDATION`
+- **연구 성격 명시**: **`SAME_SAMPLE_RETROSPECTIVE_FOLLOWUP_CHARACTERIZATION` (v0.2A 동일 표본 후속 특성 분석, 독립 재현 검증 아님)**
+- **연구 상태 (Research Status)**: **`CLOSED`**
+- **평가 기준 커밋 (Evaluation Authority Commit)**: `197ec7b482e90e9c31ac7a7fa85203379b3b2846`
 - **사전등록 기준 커밋 (Preregistration Authority)**: `aea7db2e5a3f9d768f08c43c15d3f8983b653712` (`PREREGISTERED_BEFORE_EVALUATION`)
 - **데이터 기준일 (Data Cutoff)**: `2026-08-14`
 - **데이터 소스**: **로컬 Parquet 캐시 전용 (LOCAL CACHE ONLY, 외부 네트워크 0회)**
@@ -14,7 +17,7 @@
 - **테스트 실행 여부**: `Tests: NOT RUN`
 
 > **[주의 및 연구 성격 명시]**:
-> 본 평가는 2026-08-14 기준 Phase 10 투자 적격 보통주 유니버스의 과거 데이터를 사후적으로 시뮬레이션한 **사후 조기 반전 가설 평가(Retrospective Early Reversal Evaluation)**입니다. 통계적 유의성 검정을 수행하지 않았으며, 시점 고정 유니버스에 따른 생존 편향이 내재될 수 있습니다.
+> 본 평가는 2026-08-14 기준 Phase 10 투자 적격 보통주 유니버스의 과거 데이터를 사후적으로 시뮬레이션한 **사후 조기 반전 가설 평가(Retrospective Early Reversal Evaluation)**입니다. 본 연구의 Primary 코호트(108 WEAK / 157 TRANSITION)는 **v0.2A에서 이미 관찰된 동일 표본의 후속 분석이며 독립 표본 재현 검증(Independent Replication)이 아닙니다.** 시점 고정 유니버스에 따른 생존 편향 및 시대적 집중 편향이 내재될 수 있음을 명시합니다.
 
 ================================================================================
 2. 대상 모집단 및 신호 진단 현황
@@ -27,7 +30,7 @@
 - **PRIMARY 비교 코호트 표본수**:
   - **`FAST_WEAK` (Pattern A == WEAK)**: **`108개`**
   - **`FAST_TRANSITION` (Pattern A == TRANSITION)**: **`157개`**
-  - *기타 코호트 (보존)*: `534개` (`UNAVAILABLE` 473, `BASE` 35, `EARLY_TREND` 11, `PROGRESSED` 15)
+  - *기타 코호트 (데이터셋 보존)*: `534개` (`UNAVAILABLE` 473, `BASE` 35, `EARLY_TREND` 11, `PROGRESSED` 15)
 
 ================================================================================
 3. PRIMARY 분석: FAST_WEAK vs FAST_TRANSITION 전방 성과 비교
@@ -78,53 +81,62 @@
 FAST_WEAK 진입 종목 `108개`의 진입 이후 Pattern A 월별 국면 전이 및 선행 일수:
 
 - **사후 TRANSITION 도달 비율**: **`88.0%` (`95개`)**
-  - FAST 신호 이후 TRANSITION 도달까지 소요 일수 중앙값: `+46.0일` (평균 `+95.75일`, P25: `+21.0일`, P75: `+105.0일`)
+  - FAST 신호 이후 TRANSITION 도달까지 소요 일수 중앙값: **`+46.0일`** (평균 `+95.75일`, P25: `+21.0일`, P75: `+105.0일`)
 - **사후 EARLY_TREND 도달 비율**: **`53.7%` (`58개`)**
-  - FAST 신호 이후 EARLY_TREND 도달까지 소요 일수 중앙값: `+128.5일` (평균 `+209.29일`)
+  - FAST 신호 이후 EARLY_TREND 도달까지 소요 일수 중앙값: **`+128.5일`** (평균 `+209.29일`)
 - **사후 PROGRESSED 도달 비율**: **`75.9%` (`82개`)**
-  - FAST 신호 이후 PROGRESSED 도달까지 소요 일수 중앙값: `+180.5일` (평균 `+261.26일`)
+  - FAST 신호 이후 PROGRESSED 도달까지 소요 일수 중앙값: **`+180.5일`** (평균 `+261.26일`)
 
 ================================================================================
-6. 통제 변수 분석 (Subgroups: Risk Grade, Era, Market)
+6. 통제 변수 분석 (Subgroups: Risk Grade, Era, Market - Completed N 명시)
 ================================================================================
 
 #### 1) Daily Risk Grade 통제
 - **NORMAL Risk (Grade A)**:
-  - WEAK (N=56): 26W Return 중앙값 `+23.25%`, MFE `+54.36%`
-  - TRANSITION (N=102): 26W Return 중앙값 `+2.81%`, MFE `+29.70%`
+  - WEAK (Total=56, 26W 완료=47/검열=9): 26W Return 중앙값 `+23.25%`, MFE `+54.36%`
+  - TRANSITION (Total=102, 26W 완료=82/검열=20): 26W Return 중앙값 `+2.81%`, MFE `+29.70%`
 - **ELEVATED Risk (Grade B)**:
-  - WEAK (N=52): 26W Return 중앙값 `+16.99%`, MFE `+58.48%`
-  - TRANSITION (N=55): 26W Return 중앙값 `-1.64%`, MFE `+33.81%`
+  - WEAK (Total=52, 26W 완료=43/검열=9): 26W Return 중앙값 `+16.99%`, MFE `+58.48%`
+  - TRANSITION (Total=55, 26W 완료=45/검열=10): 26W Return 중앙값 `-1.64%`, MFE `+33.81%`
 
-#### 2) 시대별 (Era) 통제
-- **2016-2020**: WEAK (N=3) 26W Return `-0.82%` vs TRANSITION (N=4) `+18.96%`
-- **2021-2023**: WEAK (N=1) 26W Return `-15.92%` vs TRANSITION (N=4) `+0.32%`
-- **2024-2026**: WEAK (N=104) 26W Return `+20.89%` vs TRANSITION (N=149) `+0.71%`
+#### 2) 시대별 (Era) 통제 *(2016-2023은 극소표본으로 판단 불가)*
+- **2016-2020** *(소표본)*: WEAK (Total=3, 26W 완료=3/검열=0) `-0.82%` vs TRANSITION (Total=4, 26W 완료=4/검열=0) `+18.96%`
+- **2021-2023** *(소표본)*: WEAK (Total=1, 26W 완료=1/검열=0) `-15.92%` vs TRANSITION (Total=4, 26W 완료=4/검열=0) `+0.32%`
+- **2024-2026** *(주요 표본)*: WEAK (Total=104, 26W 완료=86/검열=18) `+20.89%` vs TRANSITION (Total=149, 26W 완료=119/검열=30) `+0.71%`
 
 #### 3) 시장별 (Market) 통제
-- **KOSPI**: WEAK (N=45) 26W Return `+27.29%` vs TRANSITION (N=77) `+1.07%`
-- **KOSDAQ**: WEAK (N=63) 26W Return `+18.03%` vs TRANSITION (N=80) `+1.07%`
+- **KOSPI**: WEAK (Total=45, 26W 완료=40/검열=5) 26W Return `+27.29%` vs TRANSITION (Total=77, 26W 완료=62/검열=15) `+1.07%`
+- **KOSDAQ**: WEAK (Total=63, 26W 완료=50/검열=13) 26W Return `+18.03%` vs TRANSITION (Total=80, 26W 완료=65/검열=15) `+1.07%`
 
 ================================================================================
 7. 핵심 관찰 (Key Observations)
 ================================================================================
-1. 전체 1,081개 투자적격 종목 중 FAST v0.1 최초 신호에서 FAST_WEAK은 108개, FAST_TRANSITION은 157개 발생함.
-2. 26W 전방 성과에서 FAST_WEAK은 수익률 중앙값 20.31%로 FAST_TRANSITION(1.07%) 대비 +19.24%p 높았으며, 26W MFE 중앙값 역시 57.16% vs 30.52%로 +26.64%p 우세하게 관찰됨.
+1. 전체 1,081개 투자적격 종목 중 FAST v0.1 최초 신호에서 FAST_WEAK은 108개, FAST_TRANSITION은 157개 발생함 (v0.2A에서 이미 관찰된 동일 retrospective 코호트의 follow-up 분석이며 독립 재현 검증이 아님).
+2. 26W 전방 성과에서 FAST_WEAK은 수익률 중앙값 20.31%로 FAST_TRANSITION(1.07%) 대비 +19.24%p 높았으며, 26W MFE 중앙값 역시 57.16% vs 30.52%로 +26.64%p 우세하게 관찰되어 동일 표본 내 조기 반전 가설을 강력하게 지지함.
 3. 단기 4W에서는 양 집단이 유사했으나(-1.08% vs -1.67%), 8W(+4.77% vs -3.46%) 및 12W(+4.79% vs -2.97%)부터 중기 전방 수익률 차이가 점진적으로 확대되는 궤적이 확인됨.
-4. FAST_WEAK 진입 종목 중 사후 Pattern A TRANSITION 도달 비율은 88.0% (중앙값 46.0일), EARLY_TREND 도달 비율은 53.7% (중앙값 128.5일)로 관찰되어, FAST가 장기 구조 개선보다 상당 기간 선행하는 조기 반전 포착 가설을 지지함.
-5. 26W Winner Tail 분석에서 FAST_WEAK의 50% 이상 상승 달성률(MFE >= 50%)은 56.7%로 FAST_TRANSITION(29.9%) 대비 높았으며, 26W MAE <= -30% 극단 하락률은 11.1% vs 23.6%로 실패 테일이 비대칭적으로 악화되지 않음.
+4. FAST_WEAK 진입 종목 중 사후 Pattern A TRANSITION 도달 비율은 88.0% (중앙값 46.0일 선행), EARLY_TREND 도달 비율은 53.7% (중앙값 128.5일 선행)로 관찰되어, FAST 신호가 Pattern A 장기 구조 개선보다 선행하는 패턴이 확인됨.
+5. 2024-2026 표본 내부에서는 NORMAL/ELEVATED 및 KOSPI/KOSDAQ 양쪽에서 WEAK 우세가 일관되게 관찰되었으나, FAST_WEAK 표본의 96.3%(104/108건)가 2024-2026에 집중되어 있어 이전 시대에서의 시대적 재현성(Era robustness)은 평가할 수 없음.
 
 ================================================================================
-8. 최종 결론 및 Production 불변 확인
+8. 최종 결론 및 연구 상태
 ================================================================================
-- **최종 연구 결론 상태 (Evaluation Status)**: **`FAST_WEAK_EARLY_REVERSAL_SUPPORTED`**
+- **연구 상태 (Research Status)**: **`CLOSED`**
+- **최종 연구 판정 (Evaluation Status)**: **`FAST_WEAK_EARLY_REVERSAL_MIXED`**
 - **운영 상태 (Production Status)**: **`PRODUCTION_HOLD`**
 - **Production 영향도**: **`NONE`**
 - **테스트 실행 여부**: **`Tests: NOT RUN`**
 
 #### 요약 평가
-FAST + Pattern A WEAK 조기 반전 가설 검증 결과:
-1. 최초 FAST 신호 시점에 역배열(WEAK)이었던 종목은 26W 전방 수익률 중앙값 +20.31%, MFE +57.16%를 기록하여 TRANSITION(+1.07%, +30.52%) 대비 현격하게 우세한 장기 상승 궤적을 나타냈습니다.
-2. 또한 FAST_WEAK 종목의 88.0%가 사후에 TRANSITION으로 전환(중앙값 +46.0일 선행)되었으며, 대형 Winner 비율(26W MFE >= 50% 달성률 56.7%) 역시 높아 조기 반전 포착 가설이 강하게 지지되었습니다.
-3. 반면 실패 테일(26W 손실률 24.4%)은 TRANSITION 대비 크게 증가하지 않아 비대칭적 손익 프로파일을 확인했습니다.
-4. 본 결과는 FAST 신호의 조기 선행성과 역배열 반전의 잠재력을 확인한 연구 결과이며, 실전 운영 정책 변경 없이 `PRODUCTION_HOLD`를 유지합니다.
+FAST_WEAK 조기 반전 가설은 동일 retrospective sample 내부에서 강하게 강화되었습니다.
+
+FAST_WEAK은 FAST_TRANSITION 대비 8W, 12W, 26W 수익률과 MFE에서 우세했으며, 26W failure tail 역시 악화되지 않았습니다.
+
+또한 FAST_WEAK의 88%가 이후 Pattern A TRANSITION에 도달했고, FAST 신호는 TRANSITION보다 중앙값 약 46일 선행했습니다.
+
+그러나 v0.2B의 Primary cohort는 v0.2A에서 이미 관찰된 동일 108 WEAK / 157 TRANSITION 표본을 재사용한 follow-up 분석입니다.
+
+또한 FAST_WEAK 108건 중 104건(96.3%)이 2024-2026에 집중되어 있어, 이전 시장 시대에서의 재현성과 안정성은 판단할 수 없습니다.
+
+따라서 이번 결과는 FAST_WEAK early reversal hypothesis를 강하게 지지하는 retrospective characterization으로 남기되, 독립 재현 검증이나 Production 승격 근거로 사용하지 않습니다.
+
+최종 연구 판정은 FAST_WEAK_EARLY_REVERSAL_MIXED, Production은 PRODUCTION_HOLD로 유지하며 v0.2B 연구를 CLOSED 상태로 종료합니다.

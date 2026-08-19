@@ -1,5 +1,5 @@
 {
-  "evaluation_title": "FAST + Pattern A WEAK Early Reversal Validation v0.2B Evaluation",
+  "evaluation_title": "FAST + Pattern A WEAK Early Reversal Validation v0.2B Evaluation (Corrected Interpretation & Closed)",
   "research_classification": "RETROSPECTIVE_FAST_WEAK_EARLY_REVERSAL_VALIDATION",
   "preregistration_authority_commit": "aea7db2e5a3f9d768f08c43c15d3f8983b653712",
   "preregistration_status": "PREREGISTERED_BEFORE_EVALUATION",
@@ -497,16 +497,24 @@
   },
   "risk_grade_diagnostic": {
     "NORMAL": {
-      "weak_count": 56,
-      "transition_count": 102,
+      "weak_total_count": 56,
+      "weak_26w_completed_count": 47,
+      "weak_26w_censored_count": 9,
+      "transition_total_count": 102,
+      "transition_26w_completed_count": 82,
+      "transition_26w_censored_count": 20,
       "weak_26w_return_median": 23.25,
       "transition_26w_return_median": 2.81,
       "weak_26w_mfe_median": 54.36,
       "transition_26w_mfe_median": 29.7
     },
     "ELEVATED": {
-      "weak_count": 52,
-      "transition_count": 55,
+      "weak_total_count": 52,
+      "weak_26w_completed_count": 43,
+      "weak_26w_censored_count": 9,
+      "transition_total_count": 55,
+      "transition_26w_completed_count": 45,
+      "transition_26w_censored_count": 10,
       "weak_26w_return_median": 16.99,
       "transition_26w_return_median": -1.64,
       "weak_26w_mfe_median": 58.48,
@@ -515,24 +523,36 @@
   },
   "era_diagnostic": {
     "2016-2020": {
-      "weak_count": 3,
-      "transition_count": 4,
+      "weak_total_count": 3,
+      "weak_26w_completed_count": 3,
+      "weak_26w_censored_count": 0,
+      "transition_total_count": 4,
+      "transition_26w_completed_count": 4,
+      "transition_26w_censored_count": 0,
       "weak_26w_return_median": -0.82,
       "transition_26w_return_median": 18.96,
       "weak_26w_mfe_median": 3.54,
       "transition_26w_mfe_median": 23.63
     },
     "2021-2023": {
-      "weak_count": 1,
-      "transition_count": 4,
+      "weak_total_count": 1,
+      "weak_26w_completed_count": 1,
+      "weak_26w_censored_count": 0,
+      "transition_total_count": 4,
+      "transition_26w_completed_count": 4,
+      "transition_26w_censored_count": 0,
       "weak_26w_return_median": -15.92,
       "transition_26w_return_median": 0.32,
       "weak_26w_mfe_median": 24.79,
       "transition_26w_mfe_median": 27.61
     },
     "2024-2026": {
-      "weak_count": 104,
-      "transition_count": 149,
+      "weak_total_count": 104,
+      "weak_26w_completed_count": 86,
+      "weak_26w_censored_count": 18,
+      "transition_total_count": 149,
+      "transition_26w_completed_count": 119,
+      "transition_26w_censored_count": 30,
       "weak_26w_return_median": 20.89,
       "transition_26w_return_median": 0.71,
       "weak_26w_mfe_median": 58.66,
@@ -541,16 +561,24 @@
   },
   "market_diagnostic": {
     "KOSPI": {
-      "weak_count": 45,
-      "transition_count": 77,
+      "weak_total_count": 45,
+      "weak_26w_completed_count": 40,
+      "weak_26w_censored_count": 5,
+      "transition_total_count": 77,
+      "transition_26w_completed_count": 62,
+      "transition_26w_censored_count": 15,
       "weak_26w_return_median": 27.29,
       "transition_26w_return_median": 1.07,
       "weak_26w_mfe_median": 51.71,
       "transition_26w_mfe_median": 25.36
     },
     "KOSDAQ": {
-      "weak_count": 63,
-      "transition_count": 80,
+      "weak_total_count": 63,
+      "weak_26w_completed_count": 50,
+      "weak_26w_censored_count": 13,
+      "transition_total_count": 80,
+      "transition_26w_completed_count": 65,
+      "transition_26w_censored_count": 15,
       "weak_26w_return_median": 18.03,
       "transition_26w_return_median": 1.07,
       "weak_26w_mfe_median": 58.7,
@@ -558,14 +586,21 @@
     }
   },
   "conclusion": {
-    "status": "FAST_WEAK_EARLY_REVERSAL_SUPPORTED",
+    "status": "FAST_WEAK_EARLY_REVERSAL_MIXED",
     "production_status": "PRODUCTION_HOLD",
     "key_observations": [
-      "전체 1,081개 투자적격 종목 중 FAST v0.1 최초 신호에서 FAST_WEAK은 108개, FAST_TRANSITION은 157개 발생함.",
-      "26W 전방 성과에서 FAST_WEAK은 수익률 중앙값 20.31%로 FAST_TRANSITION(1.07%) 대비 +19.24%p 높았으며, 26W MFE 중앙값 역시 57.16% vs 30.52%로 +26.64%p 우세하게 관찰됨.",
+      "전체 1,081개 투자적격 종목 중 FAST v0.1 최초 신호에서 FAST_WEAK은 108개, FAST_TRANSITION은 157개 발생함 (v0.2A에서 이미 관찰된 동일 retrospective 코호트의 follow-up 분석이며 독립 재현 검증이 아님).",
+      "26W 전방 성과에서 FAST_WEAK은 수익률 중앙값 20.31%로 FAST_TRANSITION(1.07%) 대비 +19.24%p 높았으며, 26W MFE 중앙값 역시 57.16% vs 30.52%로 +26.64%p 우세하게 관찰되어 동일 표본 내 조기 반전 가설을 강력하게 지지함.",
       "단기 4W에서는 양 집단이 유사했으나(-1.08% vs -1.67%), 8W(+4.77% vs -3.46%) 및 12W(+4.79% vs -2.97%)부터 중기 전방 수익률 차이가 점진적으로 확대되는 궤적이 확인됨.",
-      "FAST_WEAK 진입 종목 중 사후 Pattern A TRANSITION 도달 비율은 88.0% (중앙값 46.0일), EARLY_TREND 도달 비율은 53.7% (중앙값 128.5일)로 관찰되어, FAST가 장기 구조 개선보다 상당 기간 선행하는 조기 반전 포착 가설을 지지함.",
-      "26W Winner Tail 분석에서 FAST_WEAK의 50% 이상 상승 달성률(MFE >= 50%)은 56.7%로 FAST_TRANSITION(29.9%) 대비 높았으며, 26W MAE <= -30% 극단 하락률은 11.1% vs 23.6%로 실패 테일이 비대칭적으로 악화되지 않음."
-    ]
-  }
+      "FAST_WEAK 진입 종목 중 사후 Pattern A TRANSITION 도달 비율은 88.0% (중앙값 46.0일 선행), EARLY_TREND 도달 비율은 53.7% (중앙값 128.5일 선행)로 관찰되어, FAST 신호가 Pattern A 장기 구조 개선보다 선행하는 패턴이 확인됨.",
+      "2024-2026 표본 내부에서는 NORMAL/ELEVATED 및 KOSPI/KOSDAQ 양쪽에서 WEAK 우세가 일관되게 관찰되었으나, FAST_WEAK 표본의 96.3%(104/108건)가 2024-2026에 집중되어 있어 이전 시대에서의 시대적 재현성(Era robustness)은 평가할 수 없음."
+    ],
+    "research_status": "CLOSED"
+  },
+  "research_status": "CLOSED",
+  "evaluation_authority_commit": "197ec7b482e90e9c31ac7a7fa85203379b3b2846",
+  "same_sample_followup": true,
+  "independent_replication": false,
+  "primary_sample_previously_observed_in_v02a": true,
+  "era_robustness": "NOT_ESTABLISHED"
 }
