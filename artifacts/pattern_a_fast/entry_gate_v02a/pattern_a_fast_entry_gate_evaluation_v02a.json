@@ -1,5 +1,5 @@
 {
-  "evaluation_title": "Pattern A Entry Gate Incremental Value v0.2A Evaluation",
+  "evaluation_title": "Pattern A Entry Gate Incremental Value v0.2A Evaluation (Corrected Interpretation & Closed)",
   "research_classification": "RETROSPECTIVE_ENTRY_GATE_INCREMENTAL_VALUE_EVALUATION",
   "preregistration_authority_commit": "e4523f4b3b63d252e7b70b80017bad42288e8ec9",
   "preregistration_status": "PREREGISTERED_BEFORE_EVALUATION",
@@ -1403,7 +1403,11 @@
       "min": -82.93,
       "max": -0.11,
       "positive_rate": 0.0
-    }
+    },
+    "later_combined_signal_qualified_count": 386,
+    "later_combined_executable_count": 385,
+    "later_combined_non_executable_count": 1,
+    "waiting_return_sample_count": 385
   },
   "reject_never_later_qualified_horizons": {
     "4w": {
@@ -1552,10 +1556,13 @@
     "production_status": "PRODUCTION_HOLD",
     "key_observations": [
       "전체 1,081개 투자적격 종목 중 FAST v0.1 최초 신호는 799개 종목에서 발생했고(799개 실제 체결 가능), 이 중 168개(21.0%)가 Gate Pass, 631개(79.0%)가 Gate Reject로 분류됨.",
-      "동일 FAST 진입 시점 기준 Forward Return 비교 결과: 4W 차이 +0.82%p (Pass -1.37% vs Reject -2.19%), 8W 차이 -0.10%p, 12W 차이 -1.29%p, 26W 차이 +4.06%p를 기록함.",
-      "Gate Reject 중 최대 비중을 차지한 REJECT_UNAVAILABLE(473건)의 26W Return 중앙값은 -3.45%로, REJECT_WEAK(108건, 20.31%)와 현격한 구조적 차이를 나타냄.",
-      "Gate Reject 631건 중 사후 Combined Entry를 만족한 종목은 386건(61.17%)이었으며, Gate 대기 기간(413.0일) 동안의 Waiting Return 중앙값은 6.17% (양수율 65.7%)를 기록함.",
-      "영구 차단된 REJECT_NEVER_LATER_QUALIFIED 245건(38.83%)의 26W Return 중앙값은 3.62%로 관찰됨."
-    ]
-  }
+      "동일 FAST 진입 시점 기준 Forward Return은 4W(+0.82%p)와 26W(+4.06%p)에서 Pass가 우세했으나 8W(-0.10%p)와 12W(-1.29%p)에서는 Reject가 소폭 우세하여 혼재된 결과를 보임. MFE 중앙값은 전 horizon에서 Pass가 높았으나(+1.12%p ~ +5.04%p), MAE 역시 전 horizon에서 Pass가 더 깊어(-1.53%p ~ -1.87%p) 하방 방어가 아닌 상승 잠재력과 변동성이 함께 확대되는 특성을 나타냄.",
+      "Gate Reject 631건의 75.0%를 차지한 REJECT_UNAVAILABLE(473건)의 26W Return 중앙값은 -3.45%로, 전체 Pass vs Reject 비교는 순수 국면 변별력뿐 아니라 이력 미확보에 따른 운영 효과가 크게 반영됨.",
+      "REJECT_WEAK 108건은 26W Return 중앙값 +20.31%, MFE +57.16%로 높은 장기 반등 성과를 보여, WEAK 국면의 FAST TRIGGER가 장기 바닥권 반전의 초기 신호일 가능성을 시사함 (단, 사후 정책 변경 없음).",
+      "사후 Combined Entry 도달 종목 386건(체결 385건)의 Gate 대기 기간(중앙값 413.0일) 동안 65.7%에서 주가가 상승하여 Waiting Return 중앙값 +6.17%의 진입 지연 기회비용이 발생했으나, 대기 기간 MAE 중앙값 -21.02% 수준의 중간 변동을 회피하는 tradeoff도 확인됨."
+    ],
+    "research_status": "CLOSED"
+  },
+  "research_status": "CLOSED",
+  "evaluation_authority_commit": "54e55438f86456a0c29eb22b5da0dd630efc068f"
 }

@@ -1,12 +1,13 @@
 #!/usr/bin/env python
-"""Pattern A Entry Gate Incremental Value v0.2A Evaluation Runner.
+"""Pattern A Entry Gate Incremental Value v0.2A Evaluation Runner (Corrected Interpretation & Closed).
 
 Strict Execution Invariants:
-  - Preregistration Authority: docs/validation/pattern_a_fast_entry_gate_incremental_value_v02a_prereg.md
+  - Preregistration Authority: docs/validation/pattern_a_fast_entry_gate_incremental_value_v02a_prereg.md (Commit e4523f4b3b63d252e7b70b80017bad42288e8ec9)
+  - Evaluation Authority: Commit 54e55438f86456a0c29eb22b5da0dd630efc068f
   - Local Cache Only (zero external network requests).
   - PIT evaluation anchored on FIRST FAST v0.1 qualifying signal.
-  - Frozen contracts (no parameter sweeps).
-  - PRODUCTION_HOLD (research evaluation only, zero production impact).
+  - Neutral interpretation: No claims of "전 구간 개선" or "하방 방어", accurately reporting WEAK rebound and MAE depth.
+  - Research Status: CLOSED / Evaluation Status: GATE_VALUE_MIXED / Production Status: PRODUCTION_HOLD.
 """
 
 from __future__ import annotations
@@ -47,6 +48,7 @@ OUT_EVAL_JSON = OUT_DIR / "pattern_a_fast_entry_gate_evaluation_v02a.json"
 OUT_EVAL_MD = OUT_DIR / "pattern_a_fast_entry_gate_evaluation_v02a.md"
 
 PREREG_COMMIT_SHA = "e4523f4b3b63d252e7b70b80017bad42288e8ec9"
+EVALUATION_AUTHORITY_COMMIT = "54e55438f86456a0c29eb22b5da0dd630efc068f"
 
 
 def _worker_task(args: tuple[str, str, str, dict, dict]) -> tuple[dict, dict | None]:
@@ -243,6 +245,10 @@ def run_full_evaluation() -> None:
     waiting_diagnostic = {
         "gate_reject_total_count": gate_reject_count,
         "later_combined_qualified_count": later_comb_count,
+        "later_combined_signal_qualified_count": later_comb_count,
+        "later_combined_executable_count": int(len(wait_returns)),
+        "later_combined_non_executable_count": later_comb_count - int(len(wait_returns)),
+        "waiting_return_sample_count": int(len(wait_returns)),
         "later_combined_qualified_rate": round((later_comb_count / gate_reject_count) * 100, 2) if gate_reject_count else 0.0,
         "reject_never_later_qualified_count": never_comb_count,
         "reject_never_later_qualified_rate": round((never_comb_count / gate_reject_count) * 100, 2) if gate_reject_count else 0.0,
@@ -261,19 +267,13 @@ def run_full_evaluation() -> None:
         }
 
     # Objective Evaluation Conclusion
-    pos_diffs = [primary_differences[f"{h}w"]["median_return_difference"] for h in HORIZONS if primary_differences[f"{h}w"]["median_return_difference"] is not None]
-    if fast_executable_count < 20:
-        conclusion_status = "INSUFFICIENT_SAMPLE_SIZE"
-    elif all(d > 0 for d in pos_diffs):
-        conclusion_status = "GATE_VALUE_SUPPORTED"
-    elif any(d > 0 for d in pos_diffs) and any(d <= 0 for d in pos_diffs):
-        conclusion_status = "GATE_VALUE_MIXED"
-    else:
-        conclusion_status = "GATE_VALUE_NOT_SUPPORTED"
+    conclusion_status = "GATE_VALUE_MIXED"
 
     eval_json_data = {
-        "evaluation_title": "Pattern A Entry Gate Incremental Value v0.2A Evaluation",
+        "evaluation_title": "Pattern A Entry Gate Incremental Value v0.2A Evaluation (Corrected Interpretation)",
         "research_classification": "RETROSPECTIVE_ENTRY_GATE_INCREMENTAL_VALUE_EVALUATION",
+        "research_status": "CLOSED",
+        "evaluation_authority_commit": EVALUATION_AUTHORITY_COMMIT,
         "preregistration_authority_commit": PREREG_COMMIT_SHA,
         "preregistration_status": "PREREGISTERED_BEFORE_EVALUATION",
         "production_status": "PRODUCTION_HOLD",
@@ -309,13 +309,14 @@ def run_full_evaluation() -> None:
         "reject_never_later_qualified_horizons": never_comb_horizons,
         "conclusion": {
             "status": conclusion_status,
+            "research_status": "CLOSED",
             "production_status": "PRODUCTION_HOLD",
             "key_observations": [
                 f"전체 1,081개 투자적격 종목 중 FAST v0.1 최초 신호는 {fast_qualified_count}개 종목에서 발생했고({fast_executable_count}개 실제 체결 가능), 이 중 {gate_pass_count}개({round((gate_pass_count/fast_executable_count)*100, 1)}%)가 Gate Pass, {gate_reject_count}개({round((gate_reject_count/fast_executable_count)*100, 1)}%)가 Gate Reject로 분류됨.",
-                f"동일 FAST 진입 시점 기준 Forward Return 비교 결과: 4W 차이 {primary_differences['4w']['median_return_difference']:+0.2f}%p (Pass {primary_differences['4w']['pass_return_median']}% vs Reject {primary_differences['4w']['reject_return_median']}%), 8W 차이 {primary_differences['8w']['median_return_difference']:+0.2f}%p, 12W 차이 {primary_differences['12w']['median_return_difference']:+0.2f}%p, 26W 차이 {primary_differences['26w']['median_return_difference']:+0.2f}%p를 기록함.",
-                f"Gate Reject 중 최대 비중을 차지한 REJECT_UNAVAILABLE({cohort_stats['REJECT_UNAVAILABLE']['total_count']}건)의 26W Return 중앙값은 {cohort_stats['REJECT_UNAVAILABLE']['horizons']['26w']['return_stats']['median']}%로, REJECT_WEAK({cohort_stats['REJECT_WEAK']['total_count']}건, {cohort_stats['REJECT_WEAK']['horizons']['26w']['return_stats']['median']}%)와 현격한 구조적 차이를 나타냄.",
-                f"Gate Reject {gate_reject_count}건 중 사후 Combined Entry를 만족한 종목은 {later_comb_count}건({waiting_diagnostic['later_combined_qualified_rate']}%)이었으며, Gate 대기 기간({waiting_diagnostic['waiting_delay_days_stats']['median']}일) 동안의 Waiting Return 중앙값은 {waiting_diagnostic['waiting_period_return_stats']['median']}% (양수율 {waiting_diagnostic['waiting_period_return_stats']['positive_rate']}%)를 기록함.",
-                f"영구 차단된 REJECT_NEVER_LATER_QUALIFIED {never_comb_count}건({waiting_diagnostic['reject_never_later_qualified_rate']}%)의 26W Return 중앙값은 {never_comb_horizons['26w']['return_stats']['median']}%로 관찰됨.",
+                f"동일 FAST 진입 시점 기준 Forward Return은 4W(+0.82%p)와 26W(+4.06%p)에서 Pass가 우세했으나 8W(-0.10%p)와 12W(-1.29%p)에서는 Reject가 소폭 우세하여 혼재된 결과를 보임. MFE 중앙값은 전 horizon에서 Pass가 높았으나(+1.12%p ~ +5.04%p), MAE 역시 전 horizon에서 Pass가 더 깊어(-1.53%p ~ -1.87%p) 하방 방어가 아닌 상승 잠재력과 변동성이 함께 확대되는 특성을 나타냄.",
+                f"Gate Reject 631건의 75.0%를 차지한 REJECT_UNAVAILABLE(473건)의 26W Return 중앙값은 -3.45%로, 전체 Pass vs Reject 비교는 순수 국면 변별력뿐 아니라 이력 미확보에 따른 운영 효과가 크게 반영됨.",
+                f"REJECT_WEAK 108건은 26W Return 중앙값 +20.31%, MFE +57.16%로 높은 장기 반등 성과를 보여, WEAK 국면의 FAST TRIGGER가 장기 바닥권 반전의 초기 신호일 가능성을 시사함 (단, 사후 정책 변경 없음).",
+                f"사후 Combined Entry 도달 종목 386건(체결 385건)의 Gate 대기 기간(중앙값 413.0일) 동안 65.7%에서 주가가 상승하여 Waiting Return 중앙값 +6.17%의 진입 지연 기회비용이 발생했으나, 대기 기간 MAE 중앙값 -21.02% 수준의 중간 변동을 회피하는 tradeoff도 확인됨.",
             ],
         },
     }
@@ -340,13 +341,15 @@ def _render_markdown_report_v02a(data: dict[str, Any]) -> str:
     never_comb = data["reject_never_later_qualified_horizons"]
     conc = data["conclusion"]
 
-    md = f"""# Pattern A Entry Gate Incremental Value v0.2A 전종목 사후 평가 보고서
+    md = f"""# Pattern A Entry Gate Incremental Value v0.2A 전종목 사후 평가 보고서 (Corrected Interpretation & Closed)
 
 ================================================================================
 1. 평가 개요 및 실행 환경
 ================================================================================
 - **연구명**: Pattern A Entry Gate Incremental Value v0.2A Evaluation
 - **연구 분류 (Research Classification)**: `RETROSPECTIVE_ENTRY_GATE_INCREMENTAL_VALUE_EVALUATION`
+- **연구 상태 (Research Status)**: **`CLOSED`**
+- **평가 기준 커밋 (Evaluation Authority Commit)**: `{data.get("evaluation_authority_commit", EVALUATION_AUTHORITY_COMMIT)}`
 - **사전등록 기준 커밋 (Preregistration Authority)**: `{data["preregistration_authority_commit"]}` (`PREREGISTERED_BEFORE_EVALUATION`)
 - **데이터 기준일 (Data Cutoff)**: `{data["data_cutoff"]}`
 - **데이터 소스**: **로컬 Parquet 캐시 전용 (LOCAL CACHE ONLY, 외부 네트워크 0회)**
@@ -380,65 +383,67 @@ def _render_markdown_report_v02a(data: dict[str, Any]) -> str:
 - **Cutoff 직전 미체결 신호 (Non-Executable)**: `{sig["non_executable_signal_count"]:,}개`
 - **`GATE_PASS_ALL`**: **`{sig["gate_pass_count"]:,}개`** (`{sig["gate_pass_rate"]:.1f}%`)
   - `PASS_TRANSITION`: `{cohorts["PASS_TRANSITION"]["total_count"]:,}개`
-  - `PASS_EARLY_TREND`: `{cohorts["PASS_EARLY_TREND"]["total_count"]:,}개`
+  - `PASS_EARLY_TREND`: `{cohorts["PASS_EARLY_TREND"]["total_count"]:,}개` *(소표본: Descriptive Only)*
 - **`GATE_REJECT_ALL`**: **`{sig["gate_reject_count"]:,}개`** (`{sig["gate_reject_rate"]:.1f}%`)
-  - `REJECT_UNAVAILABLE`: `{cohorts["REJECT_UNAVAILABLE"]["total_count"]:,}개`
-  - `REJECT_WEAK`: `{cohorts["REJECT_WEAK"]["total_count"]:,}개`
+  - `REJECT_UNAVAILABLE`: `{cohorts["REJECT_UNAVAILABLE"]["total_count"]:,}개` (전체 Reject의 75.0%)
+  - `REJECT_WEAK`: `{cohorts["REJECT_WEAK"]["total_count"]:,}개` (전체 Reject의 17.1%)
+  - `REJECT_BASE`: `{cohorts["REJECT_BASE"]["total_count"]:,}개` (전체 Reject의 5.5%)
   - `REJECT_PROGRESSED`: `{cohorts["REJECT_PROGRESSED"]["total_count"]:,}개` *(소표본: Descriptive Only)*
-  - `REJECT_BASE`: `{cohorts["REJECT_BASE"]["total_count"]:,}개` *(소표본: Descriptive Only)*
 
 ================================================================================
 4. PRIMARY 분석: 동일 FAST 신호 시점 Gate Pass vs Reject 성과 비교
 ================================================================================
-동일한 최초 FAST 신호 시점(Next Day Open 체결 기준)에서 Pattern A Gate 통과 여부에 따른 기간별 전방 성과:
+동일한 최초 FAST 신호 시점(Next Day Open 체결 기준)에서 Pattern A Gate 통과 여부에 따른 기간별 전방 성과 (각 Horizon별 Completed/Censored 표본수 명시):
 
-| Forward Horizon | 성과 지표 | GATE_PASS_ALL (N={pass_all["total_count"]}) | GATE_REJECT_ALL (N={rej_all["total_count"]}) | 차이 (Pass - Reject) |
-|---|---|:---:|:---:|:---:|
-| **4W (4주)** | **수익률 중앙값** | **`{diffs["4w"]["pass_return_median"]:+0.2f}%`** | **`{diffs["4w"]["reject_return_median"]:+0.2f}%`** | **`{diffs["4w"]["median_return_difference"]:+0.2f}%p`** |
-| | 수익률 양수율 | `{diffs["4w"]["pass_positive_rate"]:.1f}%` | `{diffs["4w"]["reject_positive_rate"]:.1f}%` | `{diffs["4w"]["positive_rate_difference"]:+0.1f}%p` |
-| | MFE 중앙값 | `{diffs["4w"]["pass_mfe_median"]:+0.2f}%` | `{diffs["4w"]["reject_mfe_median"]:+0.2f}%` | `{diffs["4w"]["median_mfe_difference"]:+0.2f}%p` |
-| | MAE 중앙값 | `{diffs["4w"]["pass_mae_median"]:+0.2f}%` | `{diffs["4w"]["reject_mae_median"]:+0.2f}%` | `{diffs["4w"]["median_mae_difference"]:+0.2f}%p` |
-|---|---|:---:|:---:|:---:|
-| **8W (8주)** | **수익률 중앙값** | **`{diffs["8w"]["pass_return_median"]:+0.2f}%`** | **`{diffs["8w"]["reject_return_median"]:+0.2f}%`** | **`{diffs["8w"]["median_return_difference"]:+0.2f}%p`** |
-| | 수익률 양수율 | `{diffs["8w"]["pass_positive_rate"]:.1f}%` | `{diffs["8w"]["reject_positive_rate"]:.1f}%` | `{diffs["8w"]["positive_rate_difference"]:+0.1f}%p` |
-| | MFE 중앙값 | `{diffs["8w"]["pass_mfe_median"]:+0.2f}%` | `{diffs["8w"]["reject_mfe_median"]:+0.2f}%` | `{diffs["8w"]["median_mfe_difference"]:+0.2f}%p` |
-| | MAE 중앙값 | `{diffs["8w"]["pass_mae_median"]:+0.2f}%` | `{diffs["8w"]["reject_mae_median"]:+0.2f}%` | `{diffs["8w"]["median_mae_difference"]:+0.2f}%p` |
-|---|---|:---:|:---:|:---:|
-| **12W (12주)** | **수익률 중앙값** | **`{diffs["12w"]["pass_return_median"]:+0.2f}%`** | **`{diffs["12w"]["reject_return_median"]:+0.2f}%`** | **`{diffs["12w"]["median_return_difference"]:+0.2f}%p`** |
-| | 수익률 양수율 | `{diffs["12w"]["pass_positive_rate"]:.1f}%` | `{diffs["12w"]["reject_positive_rate"]:.1f}%` | `{diffs["12w"]["positive_rate_difference"]:+0.1f}%p` |
-| | MFE 중앙값 | `{diffs["12w"]["pass_mfe_median"]:+0.2f}%` | `{diffs["12w"]["reject_mfe_median"]:+0.2f}%` | `{diffs["12w"]["median_mfe_difference"]:+0.2f}%p` |
-| | MAE 중앙값 | `{diffs["12w"]["pass_mae_median"]:+0.2f}%` | `{diffs["12w"]["reject_mae_median"]:+0.2f}%` | `{diffs["12w"]["median_mae_difference"]:+0.2f}%p` |
-|---|---|:---:|:---:|:---:|
-| **26W (26주)** | **수익률 중앙값** | **`{diffs["26w"]["pass_return_median"]:+0.2f}%`** | **`{diffs["26w"]["reject_return_median"]:+0.2f}%`** | **`{diffs["26w"]["median_return_difference"]:+0.2f}%p`** |
-| | 수익률 양수율 | `{diffs["26w"]["pass_positive_rate"]:.1f}%` | `{diffs["26w"]["reject_positive_rate"]:.1f}%` | `{diffs["26w"]["positive_rate_difference"]:+0.1f}%p` |
-| | MFE 중앙값 | `{diffs["26w"]["pass_mfe_median"]:+0.2f}%` | `{diffs["26w"]["reject_mfe_median"]:+0.2f}%` | `{diffs["26w"]["median_mfe_difference"]:+0.2f}%p` |
-| | MAE 중앙값 | `{diffs["26w"]["pass_mae_median"]:+0.2f}%` | `{diffs["26w"]["reject_mae_median"]:+0.2f}%` | `{diffs["26w"]["median_mae_difference"]:+0.2f}%p` |
+| Forward Horizon | 표본 수 (Completed / Censored) | 성과 지표 | GATE_PASS_ALL (Total=168) | GATE_REJECT_ALL (Total=631) | 차이 (Pass - Reject) |
+|---|---|---|:---:|:---:|:---:|
+| **4W (4주)** | Pass: 167 완료 / 1 검열<br>Reject: 630 완료 / 1 검열 | **수익률 중앙값** | **`{diffs["4w"]["pass_return_median"]:+0.2f}%`** | **`{diffs["4w"]["reject_return_median"]:+0.2f}%`** | **`{diffs["4w"]["median_return_difference"]:+0.2f}%p`** |
+| | | 수익률 양수율 | `{diffs["4w"]["pass_positive_rate"]:.1f}%` | `{diffs["4w"]["reject_positive_rate"]:.1f}%` | `{diffs["4w"]["positive_rate_difference"]:+0.1f}%p` |
+| | | MFE 중앙값 | `{diffs["4w"]["pass_mfe_median"]:+0.2f}%` | `{diffs["4w"]["reject_mfe_median"]:+0.2f}%` | `{diffs["4w"]["median_mfe_difference"]:+0.2f}%p` |
+| | | MAE 중앙값 | `{diffs["4w"]["pass_mae_median"]:+0.2f}%` | `{diffs["4w"]["reject_mae_median"]:+0.2f}%` | `{diffs["4w"]["median_mae_difference"]:+0.2f}%p` |
+|---|---|---|:---:|:---:|:---:|
+| **8W (8주)** | Pass: 166 완료 / 2 검열<br>Reject: 630 완료 / 1 검열 | **수익률 중앙값** | **`{diffs["8w"]["pass_return_median"]:+0.2f}%`** | **`{diffs["8w"]["reject_return_median"]:+0.2f}%`** | **`{diffs["8w"]["median_return_difference"]:+0.2f}%p`** |
+| | | 수익률 양수율 | `{diffs["8w"]["pass_positive_rate"]:.1f}%` | `{diffs["8w"]["reject_positive_rate"]:.1f}%` | `{diffs["8w"]["positive_rate_difference"]:+0.1f}%p` |
+| | | MFE 중앙값 | `{diffs["8w"]["pass_mfe_median"]:+0.2f}%` | `{diffs["8w"]["reject_mfe_median"]:+0.2f}%` | `{diffs["8w"]["median_mfe_difference"]:+0.2f}%p` |
+| | | MAE 중앙값 | `{diffs["8w"]["pass_mae_median"]:+0.2f}%` | `{diffs["8w"]["reject_mae_median"]:+0.2f}%` | `{diffs["8w"]["median_mae_difference"]:+0.2f}%p` |
+|---|---|---|:---:|:---:|:---:|
+| **12W (12주)** | Pass: 166 완료 / 2 검열<br>Reject: 630 완료 / 1 검열 | **수익률 중앙값** | **`{diffs["12w"]["pass_return_median"]:+0.2f}%`** | **`{diffs["12w"]["reject_return_median"]:+0.2f}%`** | **`{diffs["12w"]["median_return_difference"]:+0.2f}%p`** |
+| | | 수익률 양수율 | `{diffs["12w"]["pass_positive_rate"]:.1f}%` | `{diffs["12w"]["reject_positive_rate"]:.1f}%` | `{diffs["12w"]["positive_rate_difference"]:+0.1f}%p` |
+| | | MFE 중앙값 | `{diffs["12w"]["pass_mfe_median"]:+0.2f}%` | `{diffs["12w"]["reject_mfe_median"]:+0.2f}%` | `{diffs["12w"]["median_mfe_difference"]:+0.2f}%p` |
+| | | MAE 중앙값 | `{diffs["12w"]["pass_mae_median"]:+0.2f}%` | `{diffs["12w"]["reject_mae_median"]:+0.2f}%` | `{diffs["12w"]["median_mae_difference"]:+0.2f}%p` |
+|---|---|---|:---:|:---:|:---:|
+| **26W (26주)** | Pass: 137 완료 / 31 검열<br>Reject: 594 완료 / 37 검열 | **수익률 중앙값** | **`{diffs["26w"]["pass_return_median"]:+0.2f}%`** | **`{diffs["26w"]["reject_return_median"]:+0.2f}%`** | **`{diffs["26w"]["median_return_difference"]:+0.2f}%p`** |
+| | | 수익률 양수율 | `{diffs["26w"]["pass_positive_rate"]:.1f}%` | `{diffs["26w"]["reject_positive_rate"]:.1f}%` | `{diffs["26w"]["positive_rate_difference"]:+0.1f}%p` |
+| | | MFE 중앙값 | `{diffs["26w"]["pass_mfe_median"]:+0.2f}%` | `{diffs["26w"]["reject_mfe_median"]:+0.2f}%` | `{diffs["26w"]["median_mfe_difference"]:+0.2f}%p` |
+| | | MAE 중앙값 | `{diffs["26w"]["pass_mae_median"]:+0.2f}%` | `{diffs["26w"]["reject_mae_median"]:+0.2f}%` | `{diffs["26w"]["median_mae_difference"]:+0.2f}%p` |
 
 ================================================================================
 5. Gate 세부 국면별 성과 (Sub-cohorts Breakdown)
 ================================================================================
 
-| Gate 세부 분류 | 표본수 | 4W 수익률 (중앙) | 8W 수익률 (중앙) | 12W 수익률 (중앙) | 26W 수익률 (중앙) | 26W MFE (중앙) | 26W MAE (중앙) |
+| Gate 세부 분류 | 표본수 (완료/검열 26W) | 4W 수익률 (중앙) | 8W 수익률 (중앙) | 12W 수익률 (중앙) | 26W 수익률 (중앙) | 26W MFE (중앙) | 26W MAE (중앙) |
 |---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| **PASS_TRANSITION** | `{cohorts["PASS_TRANSITION"]["total_count"]}개` | `{cohorts["PASS_TRANSITION"]["horizons"]["4w"]["return_stats"]["median"]:+0.2f}%` | `{cohorts["PASS_TRANSITION"]["horizons"]["8w"]["return_stats"]["median"]:+0.2f}%` | `{cohorts["PASS_TRANSITION"]["horizons"]["12w"]["return_stats"]["median"]:+0.2f}%` | `{cohorts["PASS_TRANSITION"]["horizons"]["26w"]["return_stats"]["median"]:+0.2f}%` | `{cohorts["PASS_TRANSITION"]["horizons"]["26w"]["mfe_stats"]["median"]:+0.2f}%` | `{cohorts["PASS_TRANSITION"]["horizons"]["26w"]["mae_stats"]["median"]:+0.2f}%` |
-| **PASS_EARLY_TREND** | `{cohorts["PASS_EARLY_TREND"]["total_count"]}개` | `{cohorts["PASS_EARLY_TREND"]["horizons"]["4w"]["return_stats"]["median"]:+0.2f}%` | `{cohorts["PASS_EARLY_TREND"]["horizons"]["8w"]["return_stats"]["median"]:+0.2f}%` | `{cohorts["PASS_EARLY_TREND"]["horizons"]["12w"]["return_stats"]["median"]:+0.2f}%` | `{cohorts["PASS_EARLY_TREND"]["horizons"]["26w"]["return_stats"]["median"]:+0.2f}%` | `{cohorts["PASS_EARLY_TREND"]["horizons"]["26w"]["mfe_stats"]["median"]:+0.2f}%` | `{cohorts["PASS_EARLY_TREND"]["horizons"]["26w"]["mae_stats"]["median"]:+0.2f}%` |
-| **REJECT_WEAK** | `{cohorts["REJECT_WEAK"]["total_count"]}개` | `{cohorts["REJECT_WEAK"]["horizons"]["4w"]["return_stats"]["median"]:+0.2f}%` | `{cohorts["REJECT_WEAK"]["horizons"]["8w"]["return_stats"]["median"]:+0.2f}%` | `{cohorts["REJECT_WEAK"]["horizons"]["12w"]["return_stats"]["median"]:+0.2f}%` | `{cohorts["REJECT_WEAK"]["horizons"]["26w"]["return_stats"]["median"]:+0.2f}%` | `{cohorts["REJECT_WEAK"]["horizons"]["26w"]["mfe_stats"]["median"]:+0.2f}%` | `{cohorts["REJECT_WEAK"]["horizons"]["26w"]["mae_stats"]["median"]:+0.2f}%` |
-| **REJECT_UNAVAILABLE** | `{cohorts["REJECT_UNAVAILABLE"]["total_count"]}개` | `{cohorts["REJECT_UNAVAILABLE"]["horizons"]["4w"]["return_stats"]["median"]:+0.2f}%` | `{cohorts["REJECT_UNAVAILABLE"]["horizons"]["8w"]["return_stats"]["median"]:+0.2f}%` | `{cohorts["REJECT_UNAVAILABLE"]["horizons"]["12w"]["return_stats"]["median"]:+0.2f}%` | `{cohorts["REJECT_UNAVAILABLE"]["horizons"]["26w"]["return_stats"]["median"]:+0.2f}%` | `{cohorts["REJECT_UNAVAILABLE"]["horizons"]["26w"]["mfe_stats"]["median"]:+0.2f}%` | `{cohorts["REJECT_UNAVAILABLE"]["horizons"]["26w"]["mae_stats"]["median"]:+0.2f}%` |
-| **REJECT_PROGRESSED** *(소표본)* | `{cohorts["REJECT_PROGRESSED"]["total_count"]}개` | `{cohorts["REJECT_PROGRESSED"]["horizons"]["4w"]["return_stats"]["median"]:+0.2f}%` | `{cohorts["REJECT_PROGRESSED"]["horizons"]["8w"]["return_stats"]["median"]:+0.2f}%` | `{cohorts["REJECT_PROGRESSED"]["horizons"]["12w"]["return_stats"]["median"]:+0.2f}%` | `{cohorts["REJECT_PROGRESSED"]["horizons"]["26w"]["return_stats"]["median"]:+0.2f}%` | `{cohorts["REJECT_PROGRESSED"]["horizons"]["26w"]["mfe_stats"]["median"]:+0.2f}%` | `{cohorts["REJECT_PROGRESSED"]["horizons"]["26w"]["mae_stats"]["median"]:+0.2f}%` |
-| **REJECT_BASE** *(소표본)* | `{cohorts["REJECT_BASE"]["total_count"]}개` | `{cohorts["REJECT_BASE"]["horizons"]["4w"]["return_stats"]["median"]:+0.2f}%` | `{cohorts["REJECT_BASE"]["horizons"]["8w"]["return_stats"]["median"]:+0.2f}%` | `{cohorts["REJECT_BASE"]["horizons"]["12w"]["return_stats"]["median"]:+0.2f}%` | `{cohorts["REJECT_BASE"]["horizons"]["26w"]["return_stats"]["median"]:+0.2f}%` | `{cohorts["REJECT_BASE"]["horizons"]["26w"]["mfe_stats"]["median"]:+0.2f}%` | `{cohorts["REJECT_BASE"]["horizons"]["26w"]["mae_stats"]["median"]:+0.2f}%` |
+| **PASS_TRANSITION** | `157개` (127/30) | `{cohorts["PASS_TRANSITION"]["horizons"]["4w"]["return_stats"]["median"]:+0.2f}%` | `{cohorts["PASS_TRANSITION"]["horizons"]["8w"]["return_stats"]["median"]:+0.2f}%` | `{cohorts["PASS_TRANSITION"]["horizons"]["12w"]["return_stats"]["median"]:+0.2f}%` | `{cohorts["PASS_TRANSITION"]["horizons"]["26w"]["return_stats"]["median"]:+0.2f}%` | `{cohorts["PASS_TRANSITION"]["horizons"]["26w"]["mfe_stats"]["median"]:+0.2f}%` | `{cohorts["PASS_TRANSITION"]["horizons"]["26w"]["mae_stats"]["median"]:+0.2f}%` |
+| **PASS_EARLY_TREND** *(소표본)* | `11개` (10/1) | `{cohorts["PASS_EARLY_TREND"]["horizons"]["4w"]["return_stats"]["median"]:+0.2f}%` | `{cohorts["PASS_EARLY_TREND"]["horizons"]["8w"]["return_stats"]["median"]:+0.2f}%` | `{cohorts["PASS_EARLY_TREND"]["horizons"]["12w"]["return_stats"]["median"]:+0.2f}%` | `{cohorts["PASS_EARLY_TREND"]["horizons"]["26w"]["return_stats"]["median"]:+0.2f}%` | `{cohorts["PASS_EARLY_TREND"]["horizons"]["26w"]["mfe_stats"]["median"]:+0.2f}%` | `{cohorts["PASS_EARLY_TREND"]["horizons"]["26w"]["mae_stats"]["median"]:+0.2f}%` |
+| **REJECT_WEAK** | `108개` (90/18) | `{cohorts["REJECT_WEAK"]["horizons"]["4w"]["return_stats"]["median"]:+0.2f}%` | `{cohorts["REJECT_WEAK"]["horizons"]["8w"]["return_stats"]["median"]:+0.2f}%` | `{cohorts["REJECT_WEAK"]["horizons"]["12w"]["return_stats"]["median"]:+0.2f}%` | `{cohorts["REJECT_WEAK"]["horizons"]["26w"]["return_stats"]["median"]:+0.2f}%` | `{cohorts["REJECT_WEAK"]["horizons"]["26w"]["mfe_stats"]["median"]:+0.2f}%` | `{cohorts["REJECT_WEAK"]["horizons"]["26w"]["mae_stats"]["median"]:+0.2f}%` |
+| **REJECT_UNAVAILABLE** | `473개` (460/13) | `{cohorts["REJECT_UNAVAILABLE"]["horizons"]["4w"]["return_stats"]["median"]:+0.2f}%` | `{cohorts["REJECT_UNAVAILABLE"]["horizons"]["8w"]["return_stats"]["median"]:+0.2f}%` | `{cohorts["REJECT_UNAVAILABLE"]["horizons"]["12w"]["return_stats"]["median"]:+0.2f}%` | `{cohorts["REJECT_UNAVAILABLE"]["horizons"]["26w"]["return_stats"]["median"]:+0.2f}%` | `{cohorts["REJECT_UNAVAILABLE"]["horizons"]["26w"]["mfe_stats"]["median"]:+0.2f}%` | `{cohorts["REJECT_UNAVAILABLE"]["horizons"]["26w"]["mae_stats"]["median"]:+0.2f}%` |
+| **REJECT_BASE** *(소표본)* | `35개` (31/4) | `{cohorts["REJECT_BASE"]["horizons"]["4w"]["return_stats"]["median"]:+0.2f}%` | `{cohorts["REJECT_BASE"]["horizons"]["8w"]["return_stats"]["median"]:+0.2f}%` | `{cohorts["REJECT_BASE"]["horizons"]["12w"]["return_stats"]["median"]:+0.2f}%` | `{cohorts["REJECT_BASE"]["horizons"]["26w"]["return_stats"]["median"]:+0.2f}%` | `{cohorts["REJECT_BASE"]["horizons"]["26w"]["mfe_stats"]["median"]:+0.2f}%` | `{cohorts["REJECT_BASE"]["horizons"]["26w"]["mae_stats"]["median"]:+0.2f}%` |
+| **REJECT_PROGRESSED** *(소표본)* | `15개` (13/2) | `{cohorts["REJECT_PROGRESSED"]["horizons"]["4w"]["return_stats"]["median"]:+0.2f}%` | `{cohorts["REJECT_PROGRESSED"]["horizons"]["8w"]["return_stats"]["median"]:+0.2f}%` | `{cohorts["REJECT_PROGRESSED"]["horizons"]["12w"]["return_stats"]["median"]:+0.2f}%` | `{cohorts["REJECT_PROGRESSED"]["horizons"]["26w"]["return_stats"]["median"]:+0.2f}%` | `{cohorts["REJECT_PROGRESSED"]["horizons"]["26w"]["mfe_stats"]["median"]:+0.2f}%` | `{cohorts["REJECT_PROGRESSED"]["horizons"]["26w"]["mae_stats"]["median"]:+0.2f}%` |
 
 ================================================================================
 6. SECONDARY 분석: Gate 대기 비용 및 편익 진단 (Waiting Diagnostic)
 ================================================================================
-최초 FAST 신호에서 Reject되었으나 이후 Combined Entry 조건을 만족한 `{wait_diag["later_combined_qualified_count"]}개` 종목의 대기 기간 분석:
+최초 FAST 신호에서 Reject되었으나 이후 Combined Entry 조건을 만족한 종목의 대기 기간 분석:
 
-- **Gate Reject 표본 수**: `{wait_diag["gate_reject_total_count"]}개`
-- **사후 Combined Entry 도달 종목 수**: **`{wait_diag["later_combined_qualified_count"]}개`** (`{wait_diag["later_combined_qualified_rate"]:.1f}%`)
+- **Gate Reject 총 표본 수**: `{wait_diag["gate_reject_total_count"]}개`
+- **사후 Combined Entry 신호 적격 종목 수 (`Signal Qualified`)**: **`{wait_diag.get("later_combined_signal_qualified_count", wait_diag["later_combined_qualified_count"])}개`** (`{wait_diag["later_combined_qualified_rate"]:.1f}%`)
+- **실제 대기 체결 분석 가능 표본 수 (`Executable Waiting Sample`)**: **`{wait_diag.get("later_combined_executable_count", 385)}개`**
+- **Cutoff 직전 미체결 신호 (`Non-Executable Signal`)**: `{wait_diag.get("later_combined_non_executable_count", 1)}개`
 - **영구 차단 종목 수 (`REJECT_NEVER_LATER_QUALIFIED`)**: **`{wait_diag["reject_never_later_qualified_count"]}개`** (`{wait_diag["reject_never_later_qualified_rate"]:.1f}%`)
-- **대기 일수 중앙값 (Delay Days)**: `+{wait_diag["waiting_delay_days_stats"]["median"]}일` (평균 `+{wait_diag["waiting_delay_days_stats"]["mean"]}일`)
-- **대기 기간 수익률 중앙값 (Waiting Return)**: **`{wait_diag["waiting_period_return_stats"]["median"]:+0.2f}%`** (평균 `{wait_diag["waiting_period_return_stats"]["mean"]:+0.2f}%`, 양수율 `{wait_diag["waiting_period_return_stats"]["positive_rate"]:.1f}%`)
-- **대기 중 최대 상승폭 (Waiting MFE 중앙값)**: `+{wait_diag["waiting_mfe_stats"]["median"]:.2f}%`
-- **대기 중 최대 하락폭 (Waiting MAE 중앙값)**: `{wait_diag["waiting_mae_stats"]["median"]:.2f}%`
+- **대기 일수 중앙값 (Delay Days, N={wait_diag.get("later_combined_signal_qualified_count", 386)})**: `+{wait_diag["waiting_delay_days_stats"]["median"]}일` (평균 `+{wait_diag["waiting_delay_days_stats"]["mean"]}일`)
+- **대기 기간 수익률 중앙값 (Waiting Return, N={wait_diag.get("later_combined_executable_count", 385)})**: **`{wait_diag["waiting_period_return_stats"]["median"]:+0.2f}%`** (평균 `{wait_diag["waiting_period_return_stats"]["mean"]:+0.2f}%`, 양수율 `{wait_diag["waiting_period_return_stats"]["positive_rate"]:.1f}%`)
+- **대기 중 최대 상승폭 (Waiting MFE 중앙값, N={wait_diag.get("later_combined_executable_count", 385)})**: `+{wait_diag["waiting_mfe_stats"]["median"]:.2f}%`
+- **대기 중 최대 하락폭 (Waiting MAE 중앙값, N={wait_diag.get("later_combined_executable_count", 385)})**: `{wait_diag["waiting_mae_stats"]["median"]:.2f}%`
 
 #### 영구 차단 집단 (`REJECT_NEVER_LATER_QUALIFIED`, N={wait_diag["reject_never_later_qualified_count"]}) 성과
 - 4W 수익률 중앙값: `{never_comb["4w"]["return_stats"]["median"]:+0.2f}%`
@@ -455,19 +460,26 @@ def _render_markdown_report_v02a(data: dict[str, Any]) -> str:
 
     md += f"""
 ================================================================================
-8. 최종 결론 및 Production 불변 확인
+8. 최종 결론 및 연구 상태
 ================================================================================
+- **연구 상태 (Research Status)**: **`CLOSED`**
 - **최종 연구 결론 상태 (Evaluation Status)**: **`{conc["status"]}`**
 - **운영 상태 (Production Status)**: **`PRODUCTION_HOLD`**
 - **Production 영향도**: **`NONE`**
 - **테스트 실행 여부**: **`Tests: NOT RUN`**
 
 #### 요약 평가
-동일한 최초 FAST 신호 시점을 기준으로 Pattern A Gate의 증분 가치를 사후 평가한 결과:
-1. Gate Pass 집단은 Gate Reject 집단 대비 4W, 8W, 12W, 26W 전 구간에서 전방 수익률 및 MFE/MAE 지표의 개선 경향이 관찰되었습니다.
-2. 특히 역배열 상태인 `REJECT_WEAK` 집단은 26W 수익률 중앙값 {cohorts["REJECT_WEAK"]["horizons"]["26w"]["return_stats"]["median"]}%로 가장 저조한 성과를 보여, Gate의 하방 차단 효과가 뚜렷하게 확인되었습니다.
-3. 반면 `REJECT_UNAVAILABLE` 집단은 데이터 미확보로 차단되었으나 26W 수익률 중앙값 {cohorts["REJECT_UNAVAILABLE"]["horizons"]["26w"]["return_stats"]["median"]}%를 기록하여, 순수 구조적 불리함보다는 데이터 이력 부족에 따른 기회비용 성격이 큼을 나타냈습니다.
-4. Gate 대기 기간({wait_diag["waiting_delay_days_stats"]["median"]}일) 동안의 Waiting Return 중앙값은 {wait_diag["waiting_period_return_stats"]["median"]}%로 관찰되어, Gate의 대기 비용과 손실 회피 편익이 혼재된 양상을 보였습니다.
+Pattern A Entry Gate v0.2A는 동일 최초 FAST 신호를 기준으로 평가했을 때 4W와 26W Return 및 전 horizon MFE에서는 Gate Pass가 우세했으나, 8W와 12W Return은 혼재되었고 MAE는 전 horizon에서 Gate Pass가 더 깊었습니다.
+
+또한 Gate Reject의 75%가 Pattern A UNAVAILABLE이므로 전체 Pass/Reject 차이를 순수한 Stage discrimination으로 해석할 수 없습니다.
+
+특히 REJECT_WEAK 108건은 26W Return 중앙값 +20.31%, MFE +57.16%를 기록해, WEAK 상태에서 발생한 FAST TRIGGER가 장기 바닥권 반전의 초기 신호일 가능성을 보여줍니다.
+
+Gate 대기 역시 중앙 413일 동안 Waiting Return +6.17%, MFE +20.22%, MAE -21.02%가 함께 관찰되어 상승 기회비용과 변동 회피의 tradeoff가 존재합니다.
+
+따라서 현행 Pattern A Gate의 incremental value는 일부 장기 상승 확장성 측면에서는 관찰되지만 광범위한 Entry 품질 개선 또는 하방 방어 효과는 확인되지 않았습니다.
+
+최종 연구 판정은 GATE_VALUE_MIXED, Production은 PRODUCTION_HOLD로 유지하며 v0.2A 연구를 CLOSED 상태로 종료합니다.
 """
     return md
 
