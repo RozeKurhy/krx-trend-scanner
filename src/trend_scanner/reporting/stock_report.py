@@ -489,8 +489,17 @@ def generate_stock_report(
         except Exception as exc:
             logger.warning("Failed loading universe csv %s: %s", univ_csv, exc)
 
+    KNOWN_TICKER_FALLBACKS = {
+        "069500": ("KODEX 200", "ETF"),
+        "229200": ("KODEX 코스닥150", "ETF"),
+    }
+    if clean_ticker in KNOWN_TICKER_FALLBACKS and name == clean_ticker:
+        name, market = KNOWN_TICKER_FALLBACKS[clean_ticker]
+
     if name == clean_ticker:
         try:
+            from dotenv import load_dotenv
+            load_dotenv()
             from pykrx import stock
 
             try:
@@ -910,8 +919,9 @@ def generate_stock_report(
         base_out = Path(output_dir) if output_dir else root_path / "artifacts/stock_reports" / date_dir_name
         base_out.mkdir(parents=True, exist_ok=True)
 
-        json_path = base_out / f"{clean_ticker}.json"
-        md_path = base_out / f"{clean_ticker}.md"
+        file_stem = f"{clean_ticker}_{report.header.name}" if report.header.name and report.header.name != clean_ticker else (f"{clean_ticker}_{name}" if name and name != clean_ticker else clean_ticker)
+        json_path = base_out / f"{file_stem}.json"
+        md_path = base_out / f"{file_stem}.md"
 
         with open(json_path, "w", encoding="utf-8") as f:
             json.dump(report.to_dict(), f, indent=2, ensure_ascii=False)
