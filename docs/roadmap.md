@@ -59,9 +59,10 @@
 | Phase 10 Investability & Tradability Filter | DONE | 시총 >= 1,000억, 20D 유동성 >= 3억 downstream filter 통합 (Investable 103개, `75afa32`) |
 | Phase 11 Flow Confirmation Infrastructure | DONE | Foreign Flow 독립 confirmation axis 및 10대 hard gates 통과 (FLOW_INFRA_READY, `71237c0`) |
 
-**Pattern A Fast, Pattern B~F**: 미착수(PLANNED)  
+**Pattern A Fast**: **`RESEARCH_CLOSED / PRODUCTION_HOLD`** — Experimental / Early Signal 사용 가능(공식 Candidate·Ranking 미편입). 상세: [pattern_a_fast_phase_13_final_synthesis_v01.md](validation/pattern_a_fast_phase_13_final_synthesis_v01.md)  
+**Pattern B~F**: 미착수(PLANNED)  
 **전체 시장 Scanner**: 완료(DONE - Phase 8 Integration 및 Phase 9B Review 완료)  
-**현재 진행 단계**: **`Phase 12 Relative Strength Infrastructure (NEXT)`**  
+**현재 작업 순서**: `README/Roadmap Sync (현재)` → `Stock Report Pattern A + Pattern A Fast 병렬 표시 (다음)` → `Phase 12 Relative Strength Infrastructure` → `Phase 14 Pattern B`  
 **Market Leader Score**: 미착수(PLANNED - Phase 19)  
 
 ---
@@ -192,7 +193,7 @@ Scanner CANDIDATE 종목을 사람이 직접 검토(월봉 ➔ 주봉 ➔ 일봉
 
 ---
 
-## Phase 10. Investability & Tradability Filter — DONE (`75afa32`)
+## Phase 10. Investability & Tradability Filter — DONE / CLOSED (`75afa32`)
 
 목적: Pattern A Candidate 중 실제로 사람이 검토하거나 실전 투자 대상으로 고려할 가치가 낮은 비투자성 / 극저유동성 종목을 사전에 분리한다.
 
@@ -203,7 +204,7 @@ Scanner CANDIDATE 종목을 사람이 직접 검토(월봉 ➔ 주봉 ➔ 일봉
 
 ---
 
-## Phase 11. Flow Confirmation Infrastructure — DONE (`71237c0`)
+## Phase 11. Flow Confirmation Infrastructure — DONE / CLOSED (`71237c0`)
 
 목적: 외국인 수급 데이터를 Pattern A 및 Investability와 독립된 confirmation axis로 구축.
 
@@ -216,9 +217,15 @@ Scanner CANDIDATE 종목을 사람이 직접 검토(월봉 ➔ 주봉 ➔ 일봉
 
 ---
 
-## Phase 12. Relative Strength Infrastructure — NEXT
+## Phase 12. Relative Strength Infrastructure — PLANNED (Resume Ready)
 
 목적: KOSPI, KOSDAQ 지수 및 업종 대비 상대강도(RS) 산출 인프라 구축.
+
+과거 KRX IP block으로 Operational HOLD 상태였으나 현재 block 문제가 해소되어
+재개 가능하다. 단 즉시 착수하는 다음 작업은 아니다 — README/Roadmap Sync와
+Stock Report Pattern A + Pattern A Fast 병렬 표시를 먼저 완료한 뒤 착수한다.
+Phase 13 Pattern A Fast가 먼저 수행된 것은 실행 순서 변경일 뿐 Phase 12와의
+production dependency 변경은 아니다(두 트랙은 서로 독립적으로 수행 가능).
 
 핵심 방향:
 * KOSPI / KOSDAQ / 섹터 대비 RS (3M, 6M, 12M Horizon)
@@ -226,14 +233,14 @@ Scanner CANDIDATE 종목을 사람이 직접 검토(월봉 ➔ 주봉 ➔ 일봉
 
 ---
 
-## Phase 13. Pattern A Fast — IN PROGRESS
+## Phase 13. Pattern A Fast — RESEARCH_CLOSED / PRODUCTION_HOLD
 
 설명: Monthly Regime + Weekly Trigger + Daily Timing
 
 목적: 기존 Pattern A(월봉/주봉 기반, 대세 상승 초입을 보수적으로 탐지)의
 v2/개선판/후속 버전이 아니라, 시간축과 투자 스타일이 다른 **독립 파생
 전략**이다. 별도 Stage / Score / Candidate / Validation을 가지며 연구
-과정에서 기존 Pattern A Score/Stage semantics를 수정하지 않는다.
+과정에서 기존 Pattern A Score/Stage semantics를 수정하지 않았다.
 
 핵심 연구 질문:
 * Pattern A가 결국 탐지할 유효한 상승 구조를, Pattern A Fast가 몇 주
@@ -241,11 +248,11 @@ v2/개선판/후속 버전이 아니라, 시간축과 투자 스타일이 다른
 * 그 빠른 탐지의 대가로 False Trigger가 얼마나 증가하는가?
 
 시간축 철학 (Monthly Regime → Weekly Trigger → Daily Timing):
-* **Monthly**: 장기 시장 위치와 큰 흐름을 확인하는 환경 필터. 실제
+* **Monthly**: 장기 시장 위치와 큰 흐름을 확인하는 환경 필터(permission). 실제
   Trigger를 월봉이 결정하지 않는다.
-* **Weekly**: Pattern A Fast의 핵심 판단 시간축. Setup / Trigger / Trend
+* **Weekly**: Pattern A Fast의 핵심 판단 시간축(trigger). Setup / Trigger / Trend
   progression을 주봉에서 판단한다.
-* **Daily**: 진입 타이밍 보조. 장기 구조나 Pattern 자체를 일봉이
+* **Daily**: 진입 타이밍 보조(timing). 장기 구조나 Pattern 자체를 일봉이
   결정하지 않는다.
 
 목표: Pattern A보다 빠른 상승 전환 탐지 / Pattern A 대비 선행 기간 측정 /
@@ -254,23 +261,66 @@ False Trigger 측정 / 주봉 중심 전환 구조 정의 / 일봉 timing layer 
 비목표: Pattern A 대체 / Pattern A Score·Stage 수정 / 단기 매매 수익률
 최대화 / 무조건적인 매수 신호 생성 / Backtest 수익률에 맞춘 과최적화
 
-Sub-stage:
+Sub-stage (전체 CLOSED):
 * 13A. Pattern A Fast Definition — CLOSED (`docs/specs/pattern_a_fast_definition.md`)
 * 13B. Stage / Lifecycle Contract — CLOSED (`docs/specs/pattern_a_fast_lifecycle_contract.md`)
-* 13C. Human Ground Truth Dataset — IN PROGRESS: Dataset Prepared / Human Review Pending (`docs/validation/pattern_a_fast_human_ground_truth_v01.md`)
-* 13D. Monthly Regime Research — PLANNED
-* 13E. Weekly Trigger Feature Research
-* 13F. Daily Timing Research
-* 13G. Score & Stage Production Contract
-* 13H. Pattern A vs Pattern A Fast Lead Time / Failure Analysis
-* 13I. Out-of-Sample Validation
-* 13J. Production Scanner Integration & Closure
+* 13C. Human Ground Truth Dataset(13C-1 준비 / 13C-2 40-sample Calibration) — CLOSED / FROZEN
+* 13D. Monthly Regime Feature Research — CLOSED (HIGH 후보 7개)
+* 13E. Weekly Trigger Feature Research — CLOSED (HIGH 후보 7개)
+* 13F. Daily Timing Feature Research — CLOSED (HIGH 후보 7개)
+* 13G-1. Feature Selection / Role Assignment — CLOSED (Monthly/Weekly/Daily HIGH 21개 역할 정리)
+* 13G. Score & Stage Production Contract(`HIERARCHICAL_V01`) — CLOSED
+* 13H. Pattern A vs Pattern A Fast Lead Time / Failure Analysis — CLOSED (event pairing semantics 동결)
+* 13I. Reserved OOS-A Evaluation — CLOSED (Human POSITIVE_STRUCTURE=0으로 primary score test `INCONCLUSIVE`)
+* 13J-1~4. Investable OOS-B Freeze / Blind Human Review(PASS A/B) / Evaluation / Closure — CLOSED
+
+최종 결과 (Investable OOS-B, frozen n=36 sample):
+* Primary Score Separation: `PASS` — POSITIVE_STRUCTURE(GOOD_TRIGGER+BORDERLINE_TRIGGER)
+  score median=73.82 vs EARLY_OR_NONE(TOO_EARLY+NO_SETUP) score median=51.935,
+  difference=+21.885
+* Pattern A 대비 Clean Lead Time: `INCONCLUSIVE` — n=2(median 8.5주, range 1~16주),
+  프로토콜 최소 기준 n>=3 미달
+* Hard Failure: 0건
+* 최종 결정: **`HIERARCHICAL_V01_PRODUCTION_HOLD`** — Production 승격, threshold
+  retuning, label 재수정 없음. FAST는 폐기된 모델이 아니라 `Experimental /
+  Early Signal`로 사용 가능한 상태.
+
+Frozen contract:
+* Fast contract: `HIERARCHICAL_V01` / `2da3fc36744b27ec13edae3f690df72c796906e5`
+* Frozen Pattern A(비교 기준): `05d03e16501adbca889488294aaaaa0bd84005de`
+* Phase 13 최종 closure commit: `935f9be7c0e790b7b4efedc04ea4149a90ad78a8`
+
+상세 결과 및 향후 작업 제약: [pattern_a_fast_phase_13_final_synthesis_v01.md](validation/pattern_a_fast_phase_13_final_synthesis_v01.md)
+— 향후 작업은 새로 독립적으로 frozen한 검증 population 또는 prospective
+monitoring을 사용해야 하며, 이미 닫힌 Phase 13 evidence set은 재수정하지
+않는다.
+
+### Pattern A FAST 사용 정책
+
+| | Pattern A | Pattern A Fast |
+|---|---|---|
+| 상태 | Official Production Signal | Experimental / Early Signal |
+| Candidate 판단 | 사용 | 미사용 |
+| 공식 Production Ranking | 사용 | 미사용 |
+| Stage / Score | 공식 제공, Frozen | 독립 제공(Pattern A Stage/Score를 대체하지 않음) |
+
+Pattern A와 Pattern A Fast는 서로 독립 모델이다 — Pattern A Fast는 Pattern A의
+하위 stage나 확장판이 아니며, Pattern A Fast Score/Stage는 Pattern A
+Score/Stage와 독립적으로 산출된다. Stock Report 등에서는 두 신호를 병렬
+표시할 수 있다:
+
+* `Pattern A: Not Active` + `Pattern A FAST: SETUP / Score 81`
+  → Pattern A confirmation 이전에 초기 구조를 FAST가 탐지.
+* `Pattern A: TRANSITION / Score 72` + `Pattern A FAST: TREND / Score 78`
+  → 공식 Pattern A는 전환 단계이며 FAST는 초기 추세 구조가 더 진행된 것으로 판단.
+
+FAST를 "더 정확한 모델", "상위 모델", "차세대 production 모델"처럼 표현하지
+않는다 — 현재 evidence가 이를 뒷받침하지 않는다. 향후 prospective / shadow
+monitoring을 통해 실전 lead evidence를 추가 축적한다.
 
 Phase 12 Relative Strength Infrastructure와 Phase 13 Pattern A Fast는 독립 연구
-트랙이며 상호 production dependency가 없으므로 병행 진행 가능하다(Phase 12
-결과를 Pattern A Fast Core의 필수 dependency로 만들지 않는다). 13A/13B는
-CLOSED, 13C는 Ground Truth Dataset 60건 준비 완료 후 Human Chart Annotation
-대기 중이다. Human Label이 없으면 13C를 CLOSED 처리하지 않는다.
+트랙이며 상호 production dependency가 없다 — Phase 13이 먼저 완료된 것은
+실행 순서 변경일 뿐 dependency 변경은 아니다.
 
 ---
 
@@ -316,7 +366,10 @@ CLI / Web 대시보드, 관심종목 워크플로우, 실시간 알림 등 최�
 10. Pattern A Final Production Closure (`05d03e1`) — DONE
 11. Phase 10 Investability & Tradability Filter — DONE
 12. Phase 11 Flow Confirmation Infrastructure (`71237c0`) — DONE
-13. Phase 12 Relative Strength Infrastructure — NEXT
+13. Phase 13 Pattern A Fast Research (`935f9be`) — DONE (`RESEARCH_CLOSED / PRODUCTION_HOLD`)
+14. README / Roadmap Sync — CURRENT
+15. Stock Report Pattern A + Pattern A Fast 병렬 표시 — NEXT
+16. Phase 12 Relative Strength Infrastructure — PLANNED (Resume Ready)
 
 ---
 
