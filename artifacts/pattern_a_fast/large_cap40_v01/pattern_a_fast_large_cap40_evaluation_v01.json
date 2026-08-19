@@ -1,0 +1,335 @@
+{
+  "version": "v0.1",
+  "status": "EVALUATED_RETROSPECTIVE_DIAGNOSTIC",
+  "research_classification": "LARGE_CAP_40_RETROSPECTIVE_DIAGNOSTIC",
+  "base_commit": "950bee6d6e2d44653e026b8faec76168b035b206",
+  "preregistration_commit": "ccc666f52ab470b9b9425dc561f6e993846011b6",
+  "preregistration_sha256": "7aebb36a97b7a035c6a7943aca61fc38891b859d5a91870d49c138d6f10fba0b",
+  "selection_manifest_sha256": "8ebe94768c8fd3ea9ca0ff2a9ea4351f4d5004d372458d2d3b813a0bb7afaab5",
+  "selection_source_sha256": "1aca764fc56d3416b9f10ce418a0deaca5174cb8c32997acfd2df1000987e4c8",
+  "population": "KRX_MARKET_CAP_TOP40_ASOF_2026_08_14",
+  "total_sample_count": 40,
+  "data_cutoff": "2026-08-14",
+  "signal_observation_window": "2021-08-14 ~ 2026-08-14",
+  "coverage": {
+    "entry_count": 40,
+    "no_entry_count": 0,
+    "entry_rate": 100.0,
+    "grade_counts": {
+      "Grade A": 37,
+      "Grade B": 3
+    },
+    "no_entry_reasons": {},
+    "entry_year_distribution": {
+      "2021": 3,
+      "2022": 10,
+      "2023": 12,
+      "2024": 10,
+      "2025": 4,
+      "2026": 1
+    }
+  },
+  "primary_forward_returns": {
+    "4w": {
+      "n": 40,
+      "median": -1.51,
+      "mean": 2.21,
+      "std": 13.65,
+      "min": -15.0,
+      "max": 52.59,
+      "positive_rate": 40.0
+    },
+    "8w": {
+      "n": 40,
+      "median": -0.69,
+      "mean": 5.2,
+      "std": 23.3,
+      "min": -29.46,
+      "max": 84.37,
+      "positive_rate": 47.5
+    },
+    "12w": {
+      "n": 40,
+      "median": 0.9,
+      "mean": 11.42,
+      "std": 35.51,
+      "min": -34.14,
+      "max": 136.26,
+      "positive_rate": 52.5
+    },
+    "26w": {
+      "n": 40,
+      "median": -0.51,
+      "mean": 12.67,
+      "std": 46.79,
+      "min": -28.33,
+      "max": 229.09,
+      "positive_rate": 47.5
+    }
+  },
+  "mfe_excursion_medians": {
+    "4w": 7.36,
+    "8w": 10.59,
+    "12w": 13.23,
+    "26w": 18.34
+  },
+  "mae_excursion_medians": {
+    "4w": -6.71,
+    "8w": -9.23,
+    "12w": -10.46,
+    "26w": -13.25
+  },
+  "censored_counts": {
+    "4w": 0,
+    "8w": 0,
+    "12w": 0,
+    "26w": 0
+  },
+  "grade_analysis": {
+    "Grade A (NORMAL)": {
+      "entry_count": 37,
+      "forward_returns": {
+        "4w": {
+          "n": 37,
+          "median": -1.58,
+          "mean": 1.02,
+          "std": 12.86,
+          "min": -15.0,
+          "max": 52.59,
+          "positive_rate": 37.8
+        },
+        "8w": {
+          "n": 37,
+          "median": -0.98,
+          "mean": 4.87,
+          "std": 23.98,
+          "min": -29.46,
+          "max": 84.37,
+          "positive_rate": 45.9
+        },
+        "12w": {
+          "n": 37,
+          "median": 0.82,
+          "mean": 8.17,
+          "std": 32.87,
+          "min": -34.14,
+          "max": 136.26,
+          "positive_rate": 51.4
+        },
+        "26w": {
+          "n": 37,
+          "median": -1.34,
+          "mean": 12.51,
+          "std": 48.5,
+          "min": -28.33,
+          "max": 229.09,
+          "positive_rate": 43.2
+        }
+      },
+      "mfe_medians": {
+        "4w": 5.65,
+        "8w": 9.22,
+        "12w": 12.05,
+        "26w": 17.01
+      },
+      "mae_medians": {
+        "4w": -6.98,
+        "8w": -10.24,
+        "12w": -10.92,
+        "26w": -14.71
+      },
+      "sample_size_status": "SUFFICIENT"
+    },
+    "Grade B (ELEVATED)": {
+      "entry_count": 3,
+      "forward_returns": {
+        "4w": {
+          "n": 3,
+          "median": 22.63,
+          "mean": 16.93,
+          "std": 17.51,
+          "min": -2.72,
+          "max": 30.89,
+          "positive_rate": 66.7
+        },
+        "8w": {
+          "n": 3,
+          "median": 6.71,
+          "mean": 9.2,
+          "std": 14.34,
+          "min": -3.74,
+          "max": 24.62,
+          "positive_rate": 66.7
+        },
+        "12w": {
+          "n": 3,
+          "median": 68.68,
+          "mean": 51.46,
+          "std": 50.34,
+          "min": -5.23,
+          "max": 90.93,
+          "positive_rate": 66.7
+        },
+        "26w": {
+          "n": 3,
+          "median": 7.34,
+          "mean": 14.64,
+          "std": 18.6,
+          "min": 0.8,
+          "max": 35.79,
+          "positive_rate": 100.0
+        }
+      },
+      "mfe_medians": {
+        "4w": 28.67,
+        "8w": 28.67,
+        "12w": 80.53,
+        "26w": 90.26
+      },
+      "mae_medians": {
+        "4w": -6.45,
+        "8w": -8.01,
+        "12w": -8.01,
+        "26w": -9.4
+      },
+      "sample_size_status": "INSUFFICIENT_SAMPLE_SIZE"
+    }
+  },
+  "trigger_any_control": {
+    "entry_count": 40,
+    "forward_returns": {
+      "4w": {
+        "n": 40,
+        "median": -3.19,
+        "mean": -0.43,
+        "std": 10.29,
+        "min": -15.0,
+        "max": 38.0,
+        "positive_rate": 40.0
+      },
+      "8w": {
+        "n": 40,
+        "median": -2.25,
+        "mean": 0.89,
+        "std": 20.39,
+        "min": -29.46,
+        "max": 84.37,
+        "positive_rate": 40.0
+      },
+      "12w": {
+        "n": 40,
+        "median": -3.0,
+        "mean": 5.33,
+        "std": 27.25,
+        "min": -34.14,
+        "max": 90.41,
+        "positive_rate": 42.5
+      },
+      "26w": {
+        "n": 40,
+        "median": -2.21,
+        "mean": 13.28,
+        "std": 55.2,
+        "min": -28.95,
+        "max": 229.09,
+        "positive_rate": 37.5
+      }
+    },
+    "mfe_medians": {
+      "4w": 4.96,
+      "8w": 7.62,
+      "12w": 7.62,
+      "26w": 13.56
+    },
+    "mae_medians": {
+      "4w": -8.74,
+      "8w": -11.39,
+      "12w": -12.29,
+      "26w": -17.2
+    }
+  },
+  "experimental_early_variant": {
+    "entry_count": 7,
+    "forward_returns": {
+      "4w": {
+        "n": 7,
+        "median": -0.4,
+        "mean": -0.52,
+        "std": 5.13,
+        "min": -7.52,
+        "max": 5.18,
+        "positive_rate": 42.9
+      },
+      "8w": {
+        "n": 7,
+        "median": 0.97,
+        "mean": 0.75,
+        "std": 9.72,
+        "min": -16.79,
+        "max": 15.34,
+        "positive_rate": 57.1
+      },
+      "12w": {
+        "n": 7,
+        "median": 1.64,
+        "mean": 5.84,
+        "std": 12.57,
+        "min": -7.77,
+        "max": 29.43,
+        "positive_rate": 71.4
+      },
+      "26w": {
+        "n": 7,
+        "median": 5.24,
+        "mean": 4.72,
+        "std": 18.27,
+        "min": -19.5,
+        "max": 35.43,
+        "positive_rate": 57.1
+      }
+    },
+    "mfe_medians": {
+      "4w": 6.71,
+      "8w": 7.77,
+      "12w": 7.77,
+      "26w": 20.36
+    },
+    "mae_medians": {
+      "4w": -6.01,
+      "8w": -7.21,
+      "12w": -7.21,
+      "26w": -7.79
+    }
+  },
+  "pattern_a_diagnostic": {
+    "candidate_state_distribution": {
+      "non_candidate": 24,
+      "candidate": 16
+    },
+    "stage_distribution": {
+      "transition": 14,
+      "weak": 6,
+      "progressed": 5,
+      "base": 3,
+      "early_trend": 2
+    }
+  },
+  "integrity": {
+    "pit_evaluated": true,
+    "execution_price_rule": "next_trading_day_open",
+    "data_cutoff_enforced": true,
+    "retuning_allowed": false,
+    "network_requests": 0,
+    "pattern_a_frozen_semantics_unchanged": true
+  },
+  "final_research_conclusion": "MIXED",
+  "sub_conclusions": {
+    "entry_filter_discrimination": "PROMISING",
+    "forward_return_profile": "MIXED",
+    "grade_a_result": "MIXED",
+    "grade_b_result": "INSUFFICIENT_SAMPLE_SIZE",
+    "early_variant_comparison": "COMPLETED",
+    "overall_research_status": "MIXED_DIAGNOSTIC_REFERENCE"
+  },
+  "conclusion_rationale": "KRX 시총 상위 40개 대형주 대상 사후 진단 평가 결과, 5개년 관찰 기간(2021~2026) 동안 40개 전 종목(100.0%)에서 FAST Primary Entry 신호가 발생함. 무제한 Trigger Any Control 대비 전 호라이즌(4W: -1.51% vs -3.19%, 8W: -0.69% vs -2.25%, 12W: +0.90% vs -3.00%, 26W: -0.51% vs -2.21%)에서 더 나은 기술적 성과 특성을 보였으나, 대형주 집단 특성상 전체 중위수 수익률이 음수/혼조세를 기록함. 따라서 진입 필터 선별력은 유망하나 수익률 프로파일은 혼조세(MIXED)로 평가됨."
+}
