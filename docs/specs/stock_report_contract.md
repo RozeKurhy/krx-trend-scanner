@@ -3,7 +3,7 @@
 ================================================================================
 1. 개요 및 목적 (Overview & Purpose)
 ================================================================================
-Stock Report Contract v0.1은 KRX 상장 개별 종목에 대해 외부 네트워크 요청 없이(Zero Network Request), 로컬 시세 및 정본 아티팩트만을 조회하여 해당 종목의 **현재 기술적 국면(Pattern A Score & Stage)**, **투자 유동성 조건(Phase 10 Investability)**, **과거 월별 점수/국면 변화 추이(Historical Monthly Flow)**, **외국인 수급 확증(Phase 11 Foreign Flow)**, **거래대금 추세(Trading Value Trend)**를 하나의 통일된 데이터 구조(JSON) 및 사람이 읽을 수 있는 문서(Markdown)로 제공하기 위한 공통 인터페이스 규약이다.
+Stock Report Contract v0.1은 KRX 상장 개별 종목에 대해 외부 네트워크 요청 없이(Zero Network Request), 로컬 시세 및 정본 아티팩트만을 조회하여 해당 종목의 **현재 기술적 국면(Pattern A Score & Stage)**, **투자 유동성 조건(Phase 10 Investability)**, **과거 월별 점수/국면 변화 추이(Historical Monthly Flow)**, **외국인 수급 확증(Phase 11 Foreign Flow)**, **거래대금 추세(Trading Value Trend)**, **Pattern A FAST 주별 조기 신호(Experimental / Early Signal, HIERARCHICAL_V01)**를 하나의 통일된 데이터 구조(JSON) 및 사람이 읽을 수 있는 문서(Markdown)로 제공하기 위한 공통 인터페이스 규약이다.
 
 본 규약은 향후 다음 시스템의 단일 진실 공급원(Single Source of Truth)으로 사용된다:
 1. **Local CLI**: 개발 및 운영 환경에서의 즉시 종목 리포트 추출
@@ -50,8 +50,7 @@ Stock Report Contract v0.1은 KRX 상장 개별 종목에 대해 외부 네트�
     "foreign_flow",
     "trading_value_flow",
     "data_quality",
-    "provenance",
-    "pattern_a_fast"
+    "provenance"
   ],
   "properties": {
     "report_version": { "type": "string", "enum": ["0.1"] },
@@ -194,7 +193,7 @@ Stock Report Contract v0.1은 KRX 상장 개별 종목에 대해 외부 네트�
 
     "pattern_a_fast": {
       "type": "object",
-      "description": "Pattern A FAST(HIERARCHICAL_V01) — Experimental / Early Signal. Additive field, v0.1부터 항상 존재(데이터 부족 시에도 empty section으로 존재).",
+      "description": "Pattern A FAST(HIERARCHICAL_V01) — Experimental / Early Signal. commit 3c91ed7 이후 생성되는 리포트에는 항상 존재(데이터 부족 시에도 empty section으로 존재). 그 이전에 생성/저장된 report JSON(예: artifacts/stock_reports/20260814/*.json)에는 이 필드가 없을 수 있으므로 top-level required에는 포함하지 않는다 — 이 필드의 부재 자체가 additive-change 계약을 위반하지 않는다.",
       "properties": {
         "status": { "type": "string", "enum": ["EXPERIMENTAL"] },
         "label": { "type": "string", "enum": ["Experimental / Early Signal"] },

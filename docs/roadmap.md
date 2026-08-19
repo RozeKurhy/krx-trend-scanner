@@ -88,7 +88,7 @@ CLOSED고 Production 승격 여부는 별도"임을 한 토큰으로 강조하�
 **Pattern A Fast**: **`RESEARCH_CLOSED / PRODUCTION_HOLD`** — Experimental / Early Signal 사용 가능(공식 Candidate·Ranking 미편입). 상세: [pattern_a_fast_phase_13_final_synthesis_v01.md](validation/pattern_a_fast_phase_13_final_synthesis_v01.md)  
 **Pattern B~F**: 미착수(PLANNED)  
 **전체 시장 Scanner**: 완료(DONE - Phase 8 Integration 및 Phase 9B Review 완료)  
-**현재 작업 순서**: `README/Roadmap Sync = DONE (5e7c748)` → `Stock Report Pattern A Monthly + Pattern A FAST Weekly = DONE` → `Phase 12 Relative Strength Infrastructure = NEXT / RESUME_READY` → `Phase 14 Pattern B = PLANNED`  
+**현재 작업 순서**: `README/Roadmap Sync = DONE (5e7c748)` → `Stock Report Pattern A Monthly + Pattern A FAST Weekly = CLOSED (4a20358)` → `Phase 12 Relative Strength Infrastructure = NEXT / RESUME_READY` → `Phase 14 Pattern B = PLANNED`  
 **Market Leader Score**: 미착수(PLANNED - Phase 19)  
 
 ---
@@ -409,7 +409,7 @@ CLI / Web 대시보드, 관심종목 워크플로우, 실시간 알림 등 최�
 12. Phase 11 Flow Confirmation Infrastructure (`71237c0`) — DONE
 13. Phase 13 Pattern A Fast Research (`935f9be`) — DONE (`RESEARCH_CLOSED / PRODUCTION_HOLD`)
 14. README / Roadmap Sync (`5e7c748`) — DONE
-15. Stock Report Pattern A Monthly + Pattern A FAST Weekly 병렬 표시 — DONE
+15. Stock Report Pattern A Monthly + Pattern A FAST Weekly 병렬 표시 (`4a20358`) — CLOSED
 16. Phase 12 Relative Strength Infrastructure — NEXT / RESUME_READY
 17. Phase 14 Pattern B — PLANNED
 

@@ -9,6 +9,8 @@ frozen script 자체는 이 테스트에서도 수정하지 않는다.
 """
 
 import json
+import subprocess
+import sys
 from pathlib import Path
 
 import pandas as pd
@@ -115,3 +117,23 @@ def test_pattern_a_fast_report_does_not_import_scripts_package():
 
     source = Path(module.__file__).read_text(encoding="utf-8")
     assert not _has_scripts_import(source)
+
+
+def test_runtime_modules_import_cleanly_without_repo_root_on_syspath():
+    """Acceptance #1/#2 (실측): repo root가 sys.path에 없는 상태(=scripts/ 패키지 자체가
+    import 불가능한 배포 환경과 동일 조건)에서 두 runtime 모듈이 문제없이 import되는지
+    subprocess로 직접 검증한다. 소스 텍스트 grep이 아니라 실제 import 성공 여부를 증명한다.
+    """
+    result = subprocess.run(
+        [
+            sys.executable, "-c",
+            "import trend_scanner.reporting.pattern_a_fast_report, "
+            "trend_scanner.patterns.pattern_a_fast_evaluator; print('ok')",
+        ],
+        cwd="/tmp",
+        env={"PYTHONPATH": str(REPO_ROOT / "src")},
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "ok"
