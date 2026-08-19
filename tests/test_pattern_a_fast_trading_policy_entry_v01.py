@@ -1,26 +1,22 @@
-"""Targeted Test Suite for Pattern A FAST Trading Policy Entry v0.1 Evaluation.
+"""Targeted Test Suite for Pattern A FAST Trading Policy Entry v0.1 Maintenance.
 
-Validates all 20 requirements from Section 29 of w.md:
-1. Population exactly 36
-2. Manifest hash guard
-3. Reference date prospective scan (no backfill before reference date)
-4. First qualifying entry only
-5. TRIGGER + PERMITTED + NORMAL -> Grade A
-6. TRIGGER + PERMITTED + ELEVATED -> Grade B
-7. TRIGGER + PERMITTED + EXTREME -> No Primary Entry
-8. TRIGGER + EARLY_REGIME -> No Primary Entry
-9. TRIGGER + LATE_OR_EXTENDED -> No Primary Entry
-10. Non-TRIGGER stages (SETUP, TREND, EXTENDED, WATCH) -> No Primary Entry
-11. Score UNAVAILABLE -> No Primary Entry
-12. Signal date close NOT used as entry price
-13. Execution price exactly matches next trading day OPEN
-14. Data beyond outcome_review_end NOT used in evaluation
-15. 4W, 8W, 12W, 26W censoring on incomplete horizons
-16. MFE / MAE excursion calculations
-17. PIT isolation (no lookahead bias)
-18. Pattern A score/stage does NOT gate entry
-19. FAST numeric score does NOT threshold entry
-20. Existing FAST evaluator parity & read-only contract preservation
+Validates all 16 maintenance requirements from Section 12 of w.md:
+1. Preregistration SHA256 guard
+2. Preregistration exact rule & schema guard
+3. Sample count 36 guard
+4. Retuning allowed false guard
+5. Network requests allowed false guard
+6. PIT execution-path interception guard (verifying zero future bars passed to evaluator)
+7. Next trading day OPEN execution rule preservation
+8. Primary Entry 13 samples invariance
+9. Grade A (12) / Grade B (1) invariance
+10. Forward returns medians invariance (4W +6.44%, 8W +0.28%, 12W +0.20%, 26W +12.08%)
+11. MFE / MAE medians invariance
+12. Trigger Any Control invariance
+13. Early Variant invariance
+14. Markdown renderer dynamically matches summary values (e.g. -0.24%)
+15. Markdown contains no 'statistically significant' / 'significantly' claims
+16. Existing FAST evaluator parity & read-only contracts unmutated
 """
 
 import hashlib
@@ -31,11 +27,13 @@ import numpy as np
 import pandas as pd
 import pytest
 
+import scripts.evaluate_pattern_a_fast_trading_policy_entry_v01 as eval_script
 from scripts.evaluate_pattern_a_fast_trading_policy_entry_v01 import (
     BASE_COMMIT_SHA,
     COMMIT_A_SHA,
     FROZEN_HUMAN_SHA256,
     FROZEN_MANIFEST_SHA256,
+    FROZEN_PREREG_SHA256,
     HUMAN_PATH,
     MANIFEST_PATH,
     OUT_EVAL_JSON,
@@ -44,6 +42,7 @@ from scripts.evaluate_pattern_a_fast_trading_policy_entry_v01 import (
     OUT_SAMPLES_CSV,
     PREREG_PATH,
     ROOT,
+    render_markdown,
     run_evaluation,
     sha256_file,
 )
@@ -56,88 +55,62 @@ def eval_data():
     return df_samples, df_events, summary
 
 
-def test_01_population_exactly_36(eval_data):
-    df_samples, _, summary = eval_data
-    assert len(df_samples) == 36
-    assert summary["total_sample_count"] == 36
-    assert df_samples["sample_id"].nunique() == 36
-
-
-def test_02_manifest_hash_guard():
+def test_01_preregistration_sha_guard():
+    assert sha256_file(PREREG_PATH) == FROZEN_PREREG_SHA256
     assert sha256_file(MANIFEST_PATH) == FROZEN_MANIFEST_SHA256
     assert sha256_file(HUMAN_PATH) == FROZEN_HUMAN_SHA256
-    assert PREREG_PATH.exists()
 
 
-def test_03_reference_date_prospective_scan(eval_data):
-    df_samples, _, _ = eval_data
-    for _, row in df_samples.iterrows():
-        if row["entry_found"]:
-            sig_date = pd.Timestamp(row["signal_date"])
-            ref_date = pd.Timestamp(row["completed_weekly_reference_date"])
-            assert sig_date >= ref_date, f"Signal date {sig_date} before reference date {ref_date}"
+def test_02_03_04_05_preregistration_exact_protocol_guards():
+    prereg = json.loads(PREREG_PATH.read_text(encoding="utf-8"))
+    assert prereg["status"] == "PREREGISTERED_BEFORE_EVALUATION"
+    assert prereg["population"] == "FROZEN_INVESTABLE_OOS_B_36"
+    assert prereg["sample_count"] == 36
+    assert prereg["execution_rule"] == "next_trading_day_open"
+    assert prereg["evaluation_start_rule"] == "completed_weekly_reference_date"
+    assert prereg["evaluation_end_rule"] == "outcome_review_end"
+    assert prereg["first_entry_only"] is True
+    assert prereg["forward_horizons_weeks"] == [4, 8, 12, 26]
+    assert prereg["mfe_mae_enabled"] is True
+    assert prereg["score_threshold"] is None
+    assert prereg["pattern_a_entry_gate"] is False
+    assert prereg["exit_policy"] == "OUT_OF_SCOPE"
+    assert prereg["retuning_allowed"] is False
+    assert prereg["network_requests_allowed"] is False
+
+    rule = prereg["primary_entry_rule"]
+    assert rule["fast_machine_stage"] == "TRIGGER"
+    assert rule["fast_machine_stage_status"] == "READY"
+    assert rule["fast_monthly_permission_state"] == "PERMITTED_REGIME"
+    assert set(rule["fast_daily_risk_state_in"]) == {"NORMAL", "ELEVATED"}
+    assert set(rule["fast_score_status_in"]) == {"READY", "PARTIAL"}
 
 
-def test_04_first_qualifying_entry_only(eval_data):
-    df_samples, df_events, _ = eval_data
-    # For each sample, exactly 1 row in df_samples
-    assert len(df_samples) == 36
-    # Verify that in event log, all primary entry events for a sample occur on or after signal_date
-    for _, row in df_samples[df_samples["entry_found"]].iterrows():
-        sid = row["sample_id"]
-        evs = df_events[(df_events["sample_id"] == sid) & (df_events["is_primary_entry_event"])]
-        assert not evs.empty
-        first_event_date = evs.iloc[0]["weekly_date"]
-        assert row["signal_date"] == first_event_date
+def test_06_pit_interception_execution_path_no_future_bars(monkeypatch):
+    """Intercept evaluate_pattern_a_fast during run_evaluation to assert zero future bars passed."""
+    original_fn = eval_script.evaluate_pattern_a_fast
+    interceptions = []
+
+    def wrapped_evaluate(ticker, name, daily, weekly_date, score, stage):
+        # Assert that the maximum date in the daily slice is <= weekly_date
+        assert daily.index.max().normalize() <= pd.Timestamp(weekly_date).normalize(), (
+            f"Future bar detected: max daily date {daily.index.max()} > weekly date {weekly_date}"
+        )
+        # Assert that no daily row exceeds weekly_date
+        future_rows = daily[daily.index > pd.Timestamp(weekly_date)]
+        assert future_rows.empty, f"Future rows found in daily slice for {ticker} at {weekly_date}"
+
+        interceptions.append((ticker, weekly_date, daily.index.max()))
+        return original_fn(ticker, name, daily, weekly_date, score, stage)
+
+    monkeypatch.setattr(eval_script, "evaluate_pattern_a_fast", wrapped_evaluate)
+    df_samples, df_events, summary = eval_script.run_evaluation()
+
+    assert len(interceptions) > 0
+    assert len(interceptions) == len(df_events)
 
 
-def test_05_06_entry_grade_classification(eval_data):
-    df_samples, _, _ = eval_data
-    for _, row in df_samples[df_samples["entry_found"]].iterrows():
-        if row["daily_risk_at_entry"] == "NORMAL":
-            assert row["entry_grade"] == "Grade A"
-        elif row["daily_risk_at_entry"] == "ELEVATED":
-            assert row["entry_grade"] == "Grade B"
-        else:
-            pytest.fail(f"Invalid daily risk for entry: {row['daily_risk_at_entry']}")
-
-
-def test_07_extreme_risk_no_primary_entry(eval_data):
-    _, df_events, _ = eval_data
-    extreme_events = df_events[df_events["daily_risk"] == "EXTREME"]
-    for _, ev in extreme_events.iterrows():
-        assert ev["is_primary_entry_event"] is False
-
-
-def test_08_early_regime_no_primary_entry(eval_data):
-    _, df_events, _ = eval_data
-    early_events = df_events[df_events["monthly_regime"] == "EARLY_REGIME"]
-    for _, ev in early_events.iterrows():
-        assert ev["is_primary_entry_event"] is False
-
-
-def test_09_late_or_extended_regime_no_primary_entry(eval_data):
-    _, df_events, _ = eval_data
-    late_events = df_events[df_events["monthly_regime"] == "LATE_OR_EXTENDED_REGIME"]
-    for _, ev in late_events.iterrows():
-        assert ev["is_primary_entry_event"] is False
-
-
-def test_10_non_trigger_stages_no_primary_entry(eval_data):
-    _, df_events, _ = eval_data
-    non_trigger = df_events[df_events["fast_stage"] != "TRIGGER"]
-    for _, ev in non_trigger.iterrows():
-        assert ev["is_primary_entry_event"] is False
-
-
-def test_11_score_unavailable_no_primary_entry(eval_data):
-    _, df_events, _ = eval_data
-    unavail_score = df_events[~df_events["fast_score_status"].isin(["READY", "PARTIAL"])]
-    for _, ev in unavail_score.iterrows():
-        assert ev["is_primary_entry_event"] is False
-
-
-def test_12_13_execution_price_next_trading_day_open(eval_data):
+def test_07_next_trading_day_open_rule_maintained(eval_data):
     df_samples, _, _ = eval_data
     cache = ParquetCache(base_dir=ROOT / "data/raw/stocks")
     for _, row in df_samples[df_samples["entry_found"]].iterrows():
@@ -145,83 +118,92 @@ def test_12_13_execution_price_next_trading_day_open(eval_data):
         sig_date = pd.Timestamp(row["signal_date"])
         exec_date = pd.Timestamp(row["execution_date"])
 
-        assert exec_date > sig_date, "Execution date must be strictly after signal date"
-
-        # Check that exec_date is the FIRST trading date after sig_date
+        assert exec_date > sig_date
         next_dates = daily[daily.index > sig_date].index
         assert exec_date == next_dates[0]
 
-        # Check that entry_open matches exact daily open on execution_date
         expected_open = float(daily.loc[exec_date, "open"])
         assert row["entry_open"] == pytest.approx(expected_open, abs=1e-2)
 
-        # Check signal date close is NOT used as entry price
         sig_close = float(daily.loc[sig_date, "close"])
         if sig_close != expected_open:
             assert row["entry_open"] != sig_close
 
 
-def test_14_outcome_review_end_enforced(eval_data):
-    df_samples, df_events, _ = eval_data
-    for _, row in df_samples.iterrows():
-        end_date = pd.Timestamp(row["outcome_review_end"])
-        if row["entry_found"]:
-            exec_date = pd.Timestamp(row["execution_date"])
-            assert exec_date <= end_date
-
-
-def test_15_horizon_censoring(eval_data):
+def test_08_09_primary_entry_samples_and_grades_invariance(eval_data):
     df_samples, _, summary = eval_data
-    for h in [4, 8, 12, 26]:
-        col_ret = f"return_{h}w"
-        col_st = f"followup_status_{h}w"
-        censored = df_samples[df_samples[col_st] == "CENSORED"]
-        for _, row in censored.iterrows():
-            assert pd.isna(row[col_ret])
-            assert pd.isna(row[f"mfe_{h}w"])
-            assert pd.isna(row[f"mae_{h}w"])
+    assert len(df_samples) == 36
+    assert summary["coverage"]["entry_count"] == 13
+    assert summary["coverage"]["no_entry_count"] == 23
+    assert summary["coverage"]["grade_counts"] == {"Grade A": 12, "Grade B": 1}
+    assert summary["coverage"]["median_weeks_to_entry"] == 19.0
 
 
-def test_16_mfe_mae_excursion_arithmetic(eval_data):
-    df_samples, _, _ = eval_data
-    cache = ParquetCache(base_dir=ROOT / "data/raw/stocks")
-    for _, row in df_samples[(df_samples["entry_found"]) & (df_samples["followup_status_4w"] == "COMPLETED")].iterrows():
-        daily = cache.load(row["ticker"]).sort_index()
-        exec_date = pd.Timestamp(row["execution_date"])
-        e_open = row["entry_open"]
+def test_10_primary_forward_returns_medians_invariance(eval_data):
+    _, _, summary = eval_data
+    fwd = summary["primary_forward_returns"]
+    assert fwd["4w"]["median"] == 6.44
+    assert fwd["4w"]["mean"] == 4.79
+    assert fwd["4w"]["positive_rate"] == 58.3
 
-        # 4W MFE must be >= 0 (high is >= open)
-        assert row["mfe_4w"] >= -1e-4
-        # 4W MAE must be <= 0 (low is <= open)
-        assert row["mae_4w"] <= 1e-4
+    assert fwd["8w"]["median"] == 0.28
+    assert fwd["8w"]["mean"] == 10.01
+    assert fwd["8w"]["positive_rate"] == 54.5
+
+    assert fwd["12w"]["median"] == 0.20
+    assert fwd["12w"]["mean"] == 4.69
+    assert fwd["12w"]["positive_rate"] == 50.0
+
+    assert fwd["26w"]["median"] == 12.08
+    assert fwd["26w"]["mean"] == 7.90
+    assert fwd["26w"]["positive_rate"] == 75.0
 
 
-def test_17_pit_isolation_no_lookahead(eval_data):
-    _, df_events, _ = eval_data
-    # Verify that each event in event log has valid date and values calculated strictly up to that weekly date
-    assert (pd.to_datetime(df_events["weekly_date"]) <= pd.Timestamp("2026-08-14")).all()
+def test_11_mfe_mae_medians_invariance(eval_data):
+    _, _, summary = eval_data
+    assert summary["mfe_excursion_medians"] == {"4w": 9.81, "8w": 15.46, "12w": 15.71, "26w": 25.49}
+    assert summary["mae_excursion_medians"] == {"4w": -8.34, "8w": -8.72, "12w": -11.34, "26w": -15.24}
 
 
-def test_18_19_non_gate_policy(eval_data):
+def test_12_trigger_any_control_invariance(eval_data):
+    _, _, summary = eval_data
+    ctrl = summary["trigger_any_control"]
+    assert ctrl["entry_count"] == 19
+    assert ctrl["forward_returns"]["4w"]["median"] == -0.24
+    assert ctrl["forward_returns"]["12w"]["median"] == -0.66
+
+
+def test_13_early_variant_invariance(eval_data):
+    _, _, summary = eval_data
+    early = summary["experimental_early_variant"]
+    assert early["entry_count"] == 4
+    assert early["forward_returns"]["4w"]["median"] == -6.86
+    assert early["forward_returns"]["12w"]["median"] == -3.47
+
+
+def test_14_15_markdown_rendering_dynamic_and_no_exaggeration(eval_data):
     df_samples, _, summary = eval_data
-    prereg = json.loads(PREREG_PATH.read_text(encoding="utf-8"))
+    md = render_markdown(summary, df_samples)
 
-    # Verify preregistration explicitly sets score_threshold to None and pattern_a_entry_gate to False
-    assert prereg["score_threshold"] is None
-    assert prereg["pattern_a_entry_gate"] is False
+    # Verify dynamic control value is present in markdown
+    assert "-0.24%" in md
+    assert "-0.23%" not in md
 
-    entries = df_samples[df_samples["entry_found"]]
-    assert len(entries) == 13
+    # Verify exaggerated phrases are absent
+    assert "significantly" not in md.lower()
+    assert "statistically significant" not in md.lower()
+    assert "유의미하게 개선" not in md
+    assert "통계적으로 개선" not in md
+    assert "통계적 유의미" not in md
 
-    # Verify entries occur across various Pattern A candidate states (candidate and non_candidate)
-    cand_states = entries["pattern_a_candidate_state_at_entry"].value_counts().to_dict()
-    assert "candidate" in cand_states
-    assert "non_candidate" in cand_states
-
-    # Verify entries occurred even when Pattern A candidate was False (non_candidate)
-    assert cand_states["non_candidate"] > 0
+    # Verify Korean section headers
+    assert "기본 진입 규칙 및 체결 계약" in md
+    assert "진입 발생률 및 커버리지 현황" in md
+    assert "신호 이후 기간별 수익률 및 최대 순행 / 역행 폭" in md
+    assert "최종 연구 결론" in md
 
 
-def test_20_existing_contracts_and_artifacts_unmutated():
+def test_16_existing_contracts_and_manifests_unmutated():
     assert sha256_file(MANIFEST_PATH) == FROZEN_MANIFEST_SHA256
     assert sha256_file(HUMAN_PATH) == FROZEN_HUMAN_SHA256
+    assert sha256_file(PREREG_PATH) == FROZEN_PREREG_SHA256

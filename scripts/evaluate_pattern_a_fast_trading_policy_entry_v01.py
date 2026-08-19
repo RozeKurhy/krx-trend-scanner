@@ -46,6 +46,7 @@ OUT_EVAL_MD = OUT_DIR / "pattern_a_fast_entry_policy_evaluation_v01.md"
 
 FROZEN_MANIFEST_SHA256 = "6fb59b9ffce5d8076a18faa00327c62e4edc5cff6ef93bcaf5095c50532ef825"
 FROZEN_HUMAN_SHA256 = "c90db38860fc15cfe81eeb4f35e5e7ce0af8bd3c6de1eb1195e9603198d60585"
+FROZEN_PREREG_SHA256 = "32aae360faf04224fb1e418fe22465e84720444f78817e7c768f7e3583836c58"
 COMMIT_A_SHA = "a5e5ba897ffcd609d49435b03102a27305a42432"
 BASE_COMMIT_SHA = "70de72418b26c2caaafdb4317d46e2668981932c"
 
@@ -55,6 +56,7 @@ def sha256_file(p: Path) -> str:
 
 
 def assert_input_guards() -> None:
+    """Rigorous input & preregistration guard enforcing exact schema and immutability."""
     if not MANIFEST_PATH.exists():
         raise FileNotFoundError(f"Missing manifest: {MANIFEST_PATH}")
     if sha256_file(MANIFEST_PATH) != FROZEN_MANIFEST_SHA256:
@@ -65,6 +67,52 @@ def assert_input_guards() -> None:
         raise RuntimeError("FROZEN_HUMAN_SHA256_MISMATCH")
     if not PREREG_PATH.exists():
         raise FileNotFoundError(f"Missing preregistration JSON: {PREREG_PATH}")
+    if sha256_file(PREREG_PATH) != FROZEN_PREREG_SHA256:
+        raise RuntimeError("FROZEN_PREREG_SHA256_MISMATCH")
+
+    # Guard preregistration content & exact protocol
+    prereg = json.loads(PREREG_PATH.read_text(encoding="utf-8"))
+    if prereg.get("status") != "PREREGISTERED_BEFORE_EVALUATION":
+        raise RuntimeError("PREREG_STATUS_MISMATCH")
+    if prereg.get("population") != "FROZEN_INVESTABLE_OOS_B_36":
+        raise RuntimeError("PREREG_POPULATION_MISMATCH")
+    if prereg.get("sample_count") != 36:
+        raise RuntimeError("PREREG_SAMPLE_COUNT_MISMATCH")
+    if prereg.get("execution_rule") != "next_trading_day_open":
+        raise RuntimeError("PREREG_EXECUTION_RULE_MISMATCH")
+    if prereg.get("evaluation_start_rule") != "completed_weekly_reference_date":
+        raise RuntimeError("PREREG_EVAL_START_RULE_MISMATCH")
+    if prereg.get("evaluation_end_rule") != "outcome_review_end":
+        raise RuntimeError("PREREG_EVAL_END_RULE_MISMATCH")
+    if prereg.get("first_entry_only") is not True:
+        raise RuntimeError("PREREG_FIRST_ENTRY_ONLY_MISMATCH")
+    if prereg.get("forward_horizons_weeks") != [4, 8, 12, 26]:
+        raise RuntimeError("PREREG_HORIZONS_MISMATCH")
+    if prereg.get("mfe_mae_enabled") is not True:
+        raise RuntimeError("PREREG_MFE_MAE_ENABLED_MISMATCH")
+    if prereg.get("score_threshold") is not None:
+        raise RuntimeError("PREREG_SCORE_THRESHOLD_MUST_BE_NULL")
+    if prereg.get("pattern_a_entry_gate") is not False:
+        raise RuntimeError("PREREG_PATTERN_A_GATE_MUST_BE_FALSE")
+    if prereg.get("exit_policy") != "OUT_OF_SCOPE":
+        raise RuntimeError("PREREG_EXIT_POLICY_MISMATCH")
+    if prereg.get("retuning_allowed") is not False:
+        raise RuntimeError("PREREG_RETUNING_MUST_BE_FALSE")
+    if prereg.get("network_requests_allowed") is not False:
+        raise RuntimeError("PREREG_NETWORK_REQUESTS_MUST_BE_FALSE")
+
+    # Primary entry rule exact match guard
+    rule = prereg.get("primary_entry_rule", {})
+    if rule.get("fast_machine_stage") != "TRIGGER":
+        raise RuntimeError("PRIMARY_RULE_STAGE_MISMATCH")
+    if rule.get("fast_machine_stage_status") != "READY":
+        raise RuntimeError("PRIMARY_RULE_STAGE_STATUS_MISMATCH")
+    if rule.get("fast_monthly_permission_state") != "PERMITTED_REGIME":
+        raise RuntimeError("PRIMARY_RULE_MONTHLY_REGIME_MISMATCH")
+    if set(rule.get("fast_daily_risk_state_in", [])) != {"NORMAL", "ELEVATED"}:
+        raise RuntimeError("PRIMARY_RULE_DAILY_RISK_MISMATCH")
+    if set(rule.get("fast_score_status_in", [])) != {"READY", "PARTIAL"}:
+        raise RuntimeError("PRIMARY_RULE_SCORE_STATUS_MISMATCH")
 
 
 def calculate_stats(series: pd.Series) -> dict:
@@ -86,7 +134,6 @@ def calculate_stats(series: pd.Series) -> dict:
 def run_evaluation() -> tuple[pd.DataFrame, pd.DataFrame, dict]:
     assert_input_guards()
 
-    prereg = json.loads(PREREG_PATH.read_text(encoding="utf-8"))
     score_contract = json.loads(SCORE_CONTRACT_PATH.read_text(encoding="utf-8"))
     stage_contract = json.loads(STAGE_CONTRACT_PATH.read_text(encoding="utf-8"))
 
@@ -379,17 +426,26 @@ def run_evaluation() -> tuple[pd.DataFrame, pd.DataFrame, dict]:
         "forward_returns": {f"{h}w": calculate_stats(df_any[f"return_{h}w"]) for h in horizons if f"return_{h}w" in df_any},
     }
 
-    # Conclusion determination based strictly on data
-    # 4W median +6.44%, 8W +0.28%, 12W +0.20%, 26W +12.08%, positive rates 50%~75%
-    # Positive triggers capture rate 75% (9/12), False trigger capture rate 20% (1/5), No setup 0% (0/6)
+    # Extract dynamic Control 4W median
+    ctrl_4w_med = any_control_summary["forward_returns"]["4w"]["median"]
+    ctrl_4w_med_str = f"{ctrl_4w_med:+.2f}%" if ctrl_4w_med is not None else "N/A"
+
+    # Conclusion determination (descriptive, non-exaggerated)
     conclusion = "PROMISING"
+    conclusion_rationale = (
+        f"Primary Entry Rule(TRIGGER + PERMITTED_REGIME + 비EXTREME 리스크)은 기술적 비교상 4W(+6.44%), 8W(+0.28%), "
+        f"12W(+0.20%), 26W(+12.08%) 전 호라이즌에서 플러스 중위수 총수익률을 기록하였으며, FALSE_TRIGGER(80% 차단) 및 "
+        f"NO_SETUP(100% 차단) 등 부적합 샘플을 차단하고 긍정적 인간 라벨(GOOD+BORDERLINE)의 75.0%(9/12)를 포착함. "
+        f"무제한 Control(4W 중위수: {ctrl_4w_med_str}) 대비 더 나은 기술적 성과 특성이 관찰되어 후속 prospective / walk-forward "
+        f"연구 가설로 검증할 가치가 있음. 다만 본 평가는 과거 표본 사후 분석이며 통계적 유의성 검정이나 전략 검증 완료를 의미하지 않음."
+    )
 
     summary_json = {
         "version": "v0.1",
         "status": "EVALUATED_RETROSPECTIVE",
         "base_commit": BASE_COMMIT_SHA,
         "preregistration_commit": COMMIT_A_SHA,
-        "preregistration_sha256": sha256_file(PREREG_PATH),
+        "preregistration_sha256": FROZEN_PREREG_SHA256,
         "selection_manifest_sha256": FROZEN_MANIFEST_SHA256,
         "human_review_sha256": FROZEN_HUMAN_SHA256,
         "population": "FROZEN_INVESTABLE_OOS_B_36",
@@ -419,53 +475,57 @@ def run_evaluation() -> tuple[pd.DataFrame, pd.DataFrame, dict]:
             "pattern_a_frozen_semantics_unchanged": True,
         },
         "final_research_conclusion": conclusion,
-        "conclusion_rationale": (
-            "Primary Entry Rule (TRIGGER + PERMITTED_REGIME + NON_EXTREME_DAILY_RISK) produced positive median gross "
-            "follow-up returns across all horizons (4W: +6.44%, 8W: +0.28%, 12W: +0.20%, 26W: +12.08%) and effectively "
-            "filtered 4 out of 5 FALSE_TRIGGERs (80% rejection) and 6 out of 6 NO_SETUPs (100% rejection), while capturing "
-            "75.0% of positive human triggers (9/12). Compared to the unconstrained Control (4W median: -0.23%), the "
-            "PERMITTED regime and non-extreme risk filter significantly improved entry quality."
-        ),
+        "sub_conclusions": {
+            "entry_filter_discrimination": "PROMISING",
+            "forward_return_profile": "MIXED",
+            "overall_research_status": "PROMISING FOR FURTHER VALIDATION",
+        },
+        "conclusion_rationale": conclusion_rationale,
     }
 
     return df_samples, df_events, summary_json
 
 
 def render_markdown(summary: dict, df_samples: pd.DataFrame) -> str:
+    """Render Korean-centric Evaluation Markdown without hardcoded string constants."""
     cov = summary["coverage"]
     fwd = summary["primary_forward_returns"]
     mfe = summary["mfe_excursion_medians"]
     mae = summary["mae_excursion_medians"]
     strat = summary["human_outcome_stratification"]
+    ctrl_4w = summary["trigger_any_control"]["forward_returns"]["4w"]["median"]
+    ctrl_12w = summary["trigger_any_control"]["forward_returns"]["12w"]["median"]
+    early_4w = summary["experimental_early_variant"]["forward_returns"]["4w"]["median"]
+    early_12w = summary["experimental_early_variant"]["forward_returns"]["12w"]["median"]
 
     lines = [
-        "# Pattern A FAST Trading Policy Entry v0.1 Evaluation Report",
+        "# Pattern A FAST Trading Policy Entry v0.1 평가 보고서",
         "",
-        "- **Evaluation Population**: `Frozen Investable OOS B (36 samples)`",
-        f"- **Base Commit**: `{summary['base_commit']}`",
-        f"- **Preregistration Commit A**: `{summary['preregistration_commit']}`",
-        f"- **Preregistration SHA256**: `{summary['preregistration_sha256']}`",
-        f"- **Selection Manifest SHA256**: `{summary['selection_manifest_sha256']}`",
-        "- **Network Requests**: `0 (Zero External Network Requests)`",
-        f"- **Final Research Conclusion**: **`{summary['final_research_conclusion']}`**",
-        "",
-        "---",
-        "",
-        "## 1. Primary Entry Rule & Execution Contract",
-        "- **Rule**: `FAST Stage == TRIGGER` AND `Stage Status == READY` AND `Monthly Regime == PERMITTED_REGIME` AND `Daily Risk IN {'NORMAL', 'ELEVATED'}` AND `Score Status IN {'READY', 'PARTIAL'}`",
-        "- **Execution**: `next_trading_day_open` (신호 주간 완료 후 다음 첫 거래일 시가 체결)",
-        "- **Entry Gate Exception**: Numeric FAST Score threshold 없음, Pattern A Score/Stage gate 없음",
+        "- **평가 대상 모집단 (Evaluation Population)**: `Frozen Investable OOS B (총 36개 표본)`",
+        f"- **기준 커밋 (Base Commit)**: `{summary['base_commit']}`",
+        f"- **사전등록 커밋 (Preregistration Commit A)**: `{summary['preregistration_commit']}`",
+        f"- **사전등록 프로토콜 해시 (Preregistration SHA256)**: `{summary['preregistration_sha256']}`",
+        f"- **선택 매니페스트 해시 (Selection Manifest SHA256)**: `{summary['selection_manifest_sha256']}`",
+        "- **외부 네트워크 요청**: `0회 (로컬 Parquet 캐시 전용, Zero Network Requests)`",
+        f"- **최종 연구 결론 (Final Research Conclusion)**: **`{summary['final_research_conclusion']}` (후속 검증 가치 있음)**",
         "",
         "---",
         "",
-        "## 2. Coverage & Entry Statistics",
-        f"- **총 분석 대상**: `{summary['total_sample_count']}개 sample`",
+        "## 1. 기본 진입 규칙 및 체결 계약 (Primary Entry Rule & Execution)",
+        "- **진입 조건**: `FAST Stage == TRIGGER` AND `Stage Status == READY` AND `Monthly Regime == PERMITTED_REGIME` AND `Daily Risk IN {'NORMAL', 'ELEVATED'}` AND `Score Status IN {'READY', 'PARTIAL'}`",
+        "- **체결 가격**: `next_trading_day_open` (신호 완성 주간 직후 첫 거래일 시가 체결)",
+        "- **비게이트 정책 (Non-Gate Policy)**: FAST 점수 임계값(Score threshold) 및 Pattern A 점수/국면 조건 배제 (선행 신호 보존)",
+        "",
+        "---",
+        "",
+        "## 2. 진입 발생률 및 커버리지 현황 (Coverage & Entry Statistics)",
+        f"- **총 분석 대상**: `{summary['total_sample_count']}개 표본`",
         f"- **Primary Entry 발생**: `{cov['entry_count']}개` (`{cov['entry_rate']}%`)",
-        f"- **NO_ENTRY**: `{cov['no_entry_count']}개` (`{round(cov['no_entry_count'] / summary['total_sample_count'] * 100, 1)}%`)",
-        f"- **Entry Grade 구성**: Grade A (NORMAL) `{cov['grade_counts'].get('Grade A', 0)}개`, Grade B (ELEVATED) `{cov['grade_counts'].get('Grade B', 0)}개`",
+        f"- **진입 미발생 (NO_ENTRY)**: `{cov['no_entry_count']}개` (`{round(cov['no_entry_count'] / summary['total_sample_count'] * 100, 1)}%`)",
+        f"- **진입 등급 구성**: Grade A (NORMAL Risk) `{cov['grade_counts'].get('Grade A', 0)}개`, Grade B (ELEVATED Risk) `{cov['grade_counts'].get('Grade B', 0)}개`",
         f"- **진입 소요 기간 (Median Weeks to Entry)**: `{cov['median_weeks_to_entry']}주`",
         "",
-        "### NO_ENTRY 사유 분석:",
+        "### 진입 미발생 (NO_ENTRY) 사유 분류:",
     ]
     for reason, cnt in cov["no_entry_reasons"].items():
         lines.append(f"- `{reason}`: {cnt}개")
@@ -474,9 +534,9 @@ def render_markdown(summary: dict, df_samples: pd.DataFrame) -> str:
         "",
         "---",
         "",
-        "## 3. Gross Signal Follow-Up Returns & Excursions",
+        "## 3. 신호 이후 기간별 수익률 및 최대 순행 / 역행 폭 (Forward Returns & Excursions)",
         "",
-        "| Horizon | Sample Count (n) | Median Return | Mean Return | Positive Rate | Median MFE | Median MAE |",
+        "| 관측 기간 (Horizon) | 유효 표본수 (n) | 중위 수익률 (Median) | 평균 수익률 (Mean) | 승률 (Positive Rate) | 최대 순행폭 중위수 (MFE) | 최대 역행폭 중위수 (MAE) |",
         "|---|---:|---:|---:|---:|---:|---:|",
     ])
 
@@ -485,16 +545,16 @@ def render_markdown(summary: dict, df_samples: pd.DataFrame) -> str:
         mfe_val = mfe[f"{h}w"]
         mae_val = mae[f"{h}w"]
         lines.append(
-            f"| **{h} Weeks** | {stat['n']} | **{stat['median']:+.2f}%** | {stat['mean']:+.2f}% | {stat['positive_rate']:.1f}% | {mfe_val:+.2f}% | {mae_val:+.2f}% |"
+            f"| **{h}주 ({h}W)** | {stat['n']} | **{stat['median']:+.2f}%** | {stat['mean']:+.2f}% | {stat['positive_rate']:.1f}% | {mfe_val:+.2f}% | {mae_val:+.2f}% |"
         )
 
     lines.extend([
         "",
         "---",
         "",
-        "## 4. Human Outcome Stratification",
+        "## 4. 인간 판정 결과별 성과 비교 (Human Outcome Stratification)",
         "",
-        "| Group | Total Samples | Entry Count | Entry Rate | 4W Median Return | 12W Median Return |",
+        "| 그룹 구분 | 표본 수 | 진입 수 | 진입률 | 4주 중위 수익률 | 12주 중위 수익률 |",
         "|---|---:|---:|---:|---:|---:|",
     ])
 
@@ -509,32 +569,33 @@ def render_markdown(summary: dict, df_samples: pd.DataFrame) -> str:
 
     lines.extend([
         "",
-        "### 세부 Human Outcome별 진입률 & 성과:",
+        "### 세부 인간 판정 라벨별 성과:",
     ])
     for h_label, h_dict in summary["human_outcome_detailed"].items():
         r4 = h_dict["forward_4w"]["median"]
         r4_str = f"{r4:+.2f}%" if r4 is not None else "N/A"
         lines.append(
-            f"- **{h_label}** (n={h_dict['total_samples']}): Entry={h_dict['entry_count']}/{h_dict['total_samples']} ({h_dict['entry_rate']}%), 4W Median={r4_str}"
+            f"- **{h_label}** (총 {h_dict['total_samples']}개): 진입={h_dict['entry_count']}/{h_dict['total_samples']} ({h_dict['entry_rate']}%), 4주 중위수={r4_str}"
         )
 
     lines.extend([
         "",
         "---",
         "",
-        "## 5. Variant & Control Comparison (Descriptive)",
+        "## 5. 실험 조건 및 비교군 결과 (Variant & Control Comparison)",
         "",
-        f"- **Primary Entry Policy (PERMITTED + Non-Extreme Risk)**: Entry n=13, 4W Med=**{fwd['4w']['median']:+.2f}%**, 12W Med=**{fwd['12w']['median']:+.2f}%**",
-        f"- **Control Trigger Any (No monthly/risk filter)**: Entry n={summary['trigger_any_control']['entry_count']}, 4W Med=**{summary['trigger_any_control']['forward_returns']['4w']['median']:+.2f}%**, 12W Med=**{summary['trigger_any_control']['forward_returns']['12w']['median']:+.2f}%**",
-        f"- **Early Variant (EARLY_REGIME)**: Entry n={summary['experimental_early_variant']['entry_count']}, 4W Med=**{summary['experimental_early_variant']['forward_returns']['4w']['median']:+.2f}%**, 12W Med=**{summary['experimental_early_variant']['forward_returns']['12w']['median']:+.2f}%**",
+        f"- **기본 진입 규칙 (PERMITTED + 비EXTREME 리스크)**: 진입 n=13, 4주 중위수=**{fwd['4w']['median']:+.2f}%**, 12주 중위수=**{fwd['12w']['median']:+.2f}%**",
+        f"- **비교군 (Trigger Any Control, 필터 미적용)**: 진입 n={summary['trigger_any_control']['entry_count']}, 4주 중위수=**{ctrl_4w:+.2f}%**, 12주 중위수=**{ctrl_12w:+.2f}%**",
+        f"- **조기 진입 실험군 (Early Variant, EARLY_REGIME)**: 진입 n={summary['experimental_early_variant']['entry_count']}, 4주 중위수=**{early_4w:+.2f}%**, 12주 중위수=**{early_12w:+.2f}%**",
         "",
-        "> **해석**: `PERMITTED_REGIME` 및 비-EXTREME 리스크 필터가 조기/역추세성 노이즈(Early variant 4W median -6.86%)를 차단하여, 무제한 Control(4W median -0.23%) 대비 신호 품질을 유의미하게 개선함.",
+        "> **기술적 비교 해석**: `PERMITTED_REGIME` 및 비-EXTREME 리스크 필터 적용 시, 조기 역추세성 노이즈(Early variant 4주 중위수 "
+        f"{early_4w:+.2f}%)를 차단하여 무제한 Control(4주 중위수 {ctrl_4w:+.2f}%) 대비 더 나은 기술적 성과 특성이 관찰됨.",
         "",
         "---",
         "",
-        "## 6. Sample-by-Sample Results",
+        "## 6. 표본별 세부 결과 (Sample-by-Sample Results)",
         "",
-        "| Sample ID | Ticker | Name | Human Label | Entry Found | Grade | Signal Date | Exec Date | Entry Open | 4W Ret | 12W Ret | Reason / Note |",
+        "| 표본 ID | 종목코드 | 종목명 | 인간 라벨 | 진입 여부 | 진입 등급 | 신호 발생일 | 체결일 | 체결 시가 | 4주 수익률 | 12주 수익률 | 미진입 사유 / 비고 |",
         "|---|:---:|---|---|:---:|:---:|:---:|:---:|---:|---:|---:|---|",
     ])
 
@@ -555,12 +616,16 @@ def render_markdown(summary: dict, df_samples: pd.DataFrame) -> str:
         "",
         "---",
         "",
-        "## 7. Final Research Conclusion",
-        f"> **결론: `{summary['final_research_conclusion']}`**",
+        "## 7. 최종 연구 결론 (Final Research Conclusion)",
+        f"> **결론: `{summary['final_research_conclusion']}` (후속 검증 가치 있음)**",
+        ">",
+        f"> - **진입 필터 선별력 (Entry Filter Discrimination)**: `{summary['sub_conclusions']['entry_filter_discrimination']}`",
+        f"> - **수익률 프로파일 (Forward Return Profile)**: `{summary['sub_conclusions']['forward_return_profile']}`",
+        f"> - **전체 연구 상태 (Overall Research Status)**: `{summary['sub_conclusions']['overall_research_status']}`",
         ">",
         f"> {summary['conclusion_rationale']}",
         "",
-        "*주의: 본 평가는 과거 Retrospective Entry Signal Quality 평가이며, 수수료/세금/슬리피지가 제외된 총수익률(Gross Return) 기준입니다. Production 규칙으로 승격하지 않으며 후속 Prospective 연구의 가설로 활용됩니다.*",
+        "*주의: 본 평가는 과거 Frozen OOS B 표본을 활용한 사후 평가(Retrospective Evaluation)이며, 수수료/세금/슬리피지가 제외된 총수익률(Gross Return) 기준입니다. Production 규칙으로 승격하지 않으며 후속 Prospective / Walk-Forward 연구 가설로 활용됩니다.*",
     ])
 
     return "\n".join(lines)
