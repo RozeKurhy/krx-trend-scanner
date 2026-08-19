@@ -1,0 +1,51 @@
+{
+  "version": "PATTERN_A_FAST_INVESTABLE_OOS_B_HUMAN_GROUND_TRUTH_V01",
+  "phase": "13J-3",
+  "base_commit": "f6b6448c280706e1e2d17d19809f369ac3feea95",
+  "human_review_file": "artifacts/pattern_a_fast/investable_oos/pattern_a_fast_investable_oos_human_review_v01.csv",
+  "pre_pass_b_human_review_sha256": "2a1c3cf172664f168e6e1c115bf242aabd5e342da8e73e44b0832690680fd5f4",
+  "post_pass_b_human_review_sha256": "c90db38860fc15cfe81eeb4f35e5e7ce0af8bd3c6de1eb1195e9603198d60585",
+  "pass_a_freeze_seal_file": "artifacts/pattern_a_fast/investable_oos/pattern_a_fast_investable_oos_human_stage_pass_a_freeze_v01.json",
+  "pass_a_freeze_seal_sha256": "4c908daa5ab803ccbf20f355027391aaa3f2d63c31e3f60ac60df6e34b9201ea",
+  "selection_manifest_sha256": "6fb59b9ffce5d8076a18faa00327c62e4edc5cff6ef93bcaf5095c50532ef825",
+  "blind_asset_manifest_sha256": "9d8b03bf597c4520c279d2fdfe02c59df22669e27135adc1b9efa56b611b5ebe",
+  "evaluation_protocol_sha256": "ffd271881d2b6ce9aa536431b7747395bf29dc3244df6316b241d60a1bdf138d",
+  "review_order_sample_mapping_sha256": "6d861d3b86f9c1e0fa4e7e48c1d59c385c3e089c05608fd45151536ab5c6b40b",
+  "sample_count": 36,
+  "stage_complete_count": 36,
+  "stage_distribution": {
+    "WATCH": 16,
+    "SETUP": 14,
+    "TRIGGER": 0,
+    "TREND": 3,
+    "EXTENDED": 3
+  },
+  "trigger_yes_count": 0,
+  "trigger_no_count": 36,
+  "trigger_date_populated_count": 0,
+  "outcome_complete_count": 36,
+  "outcome_pending_count": 0,
+  "outcome_distribution": {
+    "GOOD_TRIGGER": 5,
+    "BORDERLINE_TRIGGER": 7,
+    "FALSE_TRIGGER": 5,
+    "TOO_EARLY": 8,
+    "TOO_LATE": 2,
+    "TOO_EXTENDED": 3,
+    "NO_SETUP": 6
+  },
+  "outcome_confidence_distribution": {
+    "LOW": 0,
+    "MEDIUM": 7,
+    "HIGH": 29
+  },
+  "pass_a_stage_mutation": false,
+  "sample_mutation": false,
+  "resampling_performed": false,
+  "machine_outputs_exposed_to_human": false,
+  "oos_evaluation_executed": false,
+  "retuning_performed": false,
+  "network_market_request_count": 0,
+  "outcome_window_exposed_to_human": true,
+  "status": "HUMAN_OUTCOME_PASS_B_GROUND_TRUTH_FROZEN"
+}

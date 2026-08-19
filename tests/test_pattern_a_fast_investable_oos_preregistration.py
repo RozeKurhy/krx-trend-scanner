@@ -79,8 +79,8 @@ def test_sample_and_protocol_freezes_are_byte_exact_while_the_human_template_sea
     assert manifest.selection_hash.nunique() == 36
     assert review.review_order.astype(int).tolist() == list(range(1, 37))
     assert review.sample_id.nunique() == 36
-    assert review.human_outcome_label.eq("UNLABELED").all() and review.human_outcome_confidence.eq("UNLABELED").all()
-    assert review.outcome_review_status.eq("PENDING").all()
+    # The preregistration seal preserves the original blank PASS B template.
+    # Phase 13J-3 seals authorized outcome fields in a separate GT checkpoint.
     assert review.human_trigger_event_date.eq("").all()
     assert seal["human_review_started"] is False
     assert seal["human_stage_labels_present"] is False and seal["human_outcome_labels_present"] is False

@@ -112,13 +112,10 @@ def test_authoritative_stage_labels_and_identity_mapping_are_exact():
     )
 
 
-def test_trigger_and_all_outcome_fields_remain_at_pass_a_only_values():
+def test_trigger_and_pass_a_fields_remain_frozen_after_later_outcome_annotation():
     review = _review()
     assert review.human_trigger_event_observed.eq("NO").all()
     assert review.human_trigger_event_date.eq("").all()
-    assert review.human_outcome_label.eq("UNLABELED").all()
-    assert review.human_outcome_confidence.eq("UNLABELED").all()
-    assert review.outcome_review_status.eq("PENDING").all()
 
 
 def test_pass_a_seal_binds_human_review_and_all_frozen_inputs():
@@ -126,7 +123,8 @@ def test_pass_a_seal_binds_human_review_and_all_frozen_inputs():
     payload = "\n".join(f"{int(row.review_order)}|{row.sample_id}" for row in review[["review_order", "sample_id"]].itertuples(index=False))
     assert seal["status"] == "HUMAN_STAGE_PASS_A_FROZEN"
     assert seal["sample_count"] == seal["review_mapping_count"] == 36
-    assert seal["human_review_csv_sha256"] == _sha256(REVIEW)
+    # This seal is the immutable PASS A checkpoint, not the later PASS B CSV.
+    assert seal["human_review_csv_sha256"] == "2a1c3cf172664f168e6e1c115bf242aabd5e342da8e73e44b0832690680fd5f4"
     assert seal["selection_manifest_sha256"] == FROZEN_SELECTION_SHA256 == _sha256(MANIFEST)
     assert seal["blind_asset_manifest_sha256"] == FROZEN_ASSET_SHA256 == _sha256(ASSETS)
     assert seal["evaluation_protocol_sha256"] == FROZEN_PROTOCOL_SHA256 == _sha256(PROTOCOL)
