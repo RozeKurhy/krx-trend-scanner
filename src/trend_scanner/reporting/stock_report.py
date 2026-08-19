@@ -489,6 +489,24 @@ def generate_stock_report(
         except Exception as exc:
             logger.warning("Failed loading universe csv %s: %s", univ_csv, exc)
 
+    if name == clean_ticker:
+        try:
+            from pykrx import stock
+
+            try:
+                etf_name = stock.get_etf_ticker_name(clean_ticker)
+                if etf_name:
+                    name = str(etf_name)
+                    market = "ETF"
+            except Exception:
+                pass
+            if name == clean_ticker:
+                mkt_name = stock.get_market_ticker_name(clean_ticker)
+                if mkt_name:
+                    name = str(mkt_name)
+        except Exception:
+            pass
+
     # 3. Daily Slice 생성 (Lookahead 방지)
     if has_cache and daily is not None:
         daily_slice = daily.loc[daily.index <= req_as_of_ts].copy()
