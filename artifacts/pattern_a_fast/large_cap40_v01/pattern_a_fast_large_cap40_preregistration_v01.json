@@ -1,0 +1,52 @@
+{
+  "version": "v0.1",
+  "status": "PREREGISTERED_BEFORE_EVALUATION",
+  "research_classification": "LARGE_CAP_40_RETROSPECTIVE_DIAGNOSTIC",
+  "population": "KRX_MARKET_CAP_TOP40_ASOF_2026_08_14",
+  "selection_date": "2026-08-14",
+  "selection_count": 40,
+  "selection_manifest_path": "artifacts/pattern_a_fast/large_cap40_v01/pattern_a_fast_large_cap40_selection_manifest_v01.csv",
+  "selection_manifest_sha256": "8ebe94768c8fd3ea9ca0ff2a9ea4351f4d5004d372458d2d3b813a0bb7afaab5",
+  "selection_source": "artifacts/investability/pattern_a_investability_universe_20260814.csv",
+  "selection_source_sha256": "1aca764fc56d3416b9f10ce418a0deaca5174cb8c32997acfd2df1000987e4c8",
+  "data_cutoff": "2026-08-14",
+  "signal_observation_start": "2021-08-14",
+  "signal_observation_end": "2026-08-14",
+  "first_entry_only": true,
+  "execution_rule": "next_trading_day_open",
+  "forward_horizons_weeks": [
+    4,
+    8,
+    12,
+    26
+  ],
+  "mfe_mae_enabled": true,
+  "trigger_any_control_enabled": true,
+  "early_variant_enabled": true,
+  "score_threshold": null,
+  "pattern_a_entry_gate": false,
+  "retuning_allowed": false,
+  "network_requests_allowed": false,
+  "oos_claim_allowed": false,
+  "primary_entry_rule": {
+    "fast_machine_stage": "TRIGGER",
+    "fast_machine_stage_status": "READY",
+    "fast_monthly_permission_state": "PERMITTED_REGIME",
+    "fast_daily_risk_state_in": [
+      "NORMAL",
+      "ELEVATED"
+    ],
+    "fast_score_status_in": [
+      "READY",
+      "PARTIAL"
+    ]
+  },
+  "entry_grade_rules": {
+    "Grade A": {
+      "fast_daily_risk_state": "NORMAL"
+    },
+    "Grade B": {
+      "fast_daily_risk_state": "ELEVATED"
+    }
+  }
+}
