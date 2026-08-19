@@ -152,7 +152,9 @@ def test_charts_assets_machine_code_and_outcome_evaluation_remain_untouched():
         "src/trend_scanner/patterns/pattern_a_feature_set.py",
         "src/trend_scanner/patterns/pattern_a_score.py",
         "src/trend_scanner/patterns/pattern_a_stage.py",
-        "scripts/prepare_pattern_a_fast_investable_oos_v01.py", "scripts/evaluate_pattern_a_fast_oos_v01.py", "docs/roadmap.md",
+        "scripts/prepare_pattern_a_fast_investable_oos_v01.py", "scripts/evaluate_pattern_a_fast_oos_v01.py",
+        # docs/roadmap.md is a living project document, not frozen research
+        # evidence; it is expected to evolve after PHASE_13_RESEARCH_CLOSED.
     ]
     assert subprocess.run(["git", "diff", "--quiet", BASE, "--", *protected], cwd=ROOT, check=False).returncode == 0
     seal = _seal()

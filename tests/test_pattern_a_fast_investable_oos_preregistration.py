@@ -62,7 +62,9 @@ def test_frozen_krx_inputs_phase10_contract_and_protected_inputs_are_unchanged()
         "artifacts/investability/history", "artifacts/investability/source", "artifacts/pattern_a_fast/oos",
         "artifacts/pattern_a_fast/human_anchors", "artifacts/pattern_a_fast/ground_truth", "artifacts/pattern_a_fast/research",
         "scripts/evaluate_pattern_a_fast_oos_v01.py", "scripts/research_pattern_a_fast_lead_time_failure.py",
-        "scripts/research_pattern_a_fast_score_stage_prototype.py", "docs/roadmap.md",
+        "scripts/research_pattern_a_fast_score_stage_prototype.py",
+        # docs/roadmap.md is a living project document, not frozen research
+        # evidence; it is expected to evolve after PHASE_13_RESEARCH_CLOSED.
     ]
     assert subprocess.run(["git", "diff", "--quiet", BASE, "--", *protected], cwd=ROOT, check=False).returncode == 0
 
