@@ -24,8 +24,34 @@
 
 ## Status 표기 규칙
 
-각 Phase는 다음 status 중 하나를 쓴다: `DONE` / `IN PROGRESS` / `NEXT` /
-`PLANNED` / `BLOCKED`.
+각 Phase의 상태는 세 개의 독립적인 축으로 구성된다. "연구는 끝났지만
+Production 승격은 아직"처럼 하나의 축만으로는 실제 상태를 다 표현하지
+못하는 경우가 있으므로, 필요한 축만 골라 조합해서 표기한다.
+
+**Phase lifecycle**(연구/구현 진행 상태): `PLANNED` / `IN_PROGRESS` /
+`CLOSED` / `BLOCKED`
+
+**Operational qualifier**(실행 우선순위/재개 상태, 필요한 Phase만):
+`NEXT` / `RESUME_READY` / `FROZEN`
+
+**Production / Usage qualifier**(실전 사용 가능 여부, Production 관련
+Phase만): `PRODUCTION` / `PRODUCTION_HOLD` / `EXPERIMENTAL`
+
+예:
+
+* Pattern A: `Lifecycle = CLOSED`, `Production = PRODUCTION`, `Qualifier = FROZEN`
+* Pattern A FAST: `Lifecycle = CLOSED`, `Production = PRODUCTION_HOLD`, `Usage = EXPERIMENTAL`
+* Phase 12: `Lifecycle = PLANNED`, `Qualifier = RESUME_READY`
+
+문서 전반에서 초기 Pattern A 트랙(Phase 1~11)이 사용해온 `DONE`은 이
+문서 내에서 `CLOSED`와 동일한 의미(Phase lifecycle 완료)로 취급한다 —
+과거 커밋 이력과의 연속성을 위해 기존 `DONE` 표기는 그대로 유지하되,
+Phase 13 이후 신규 섹션은 `CLOSED`를 우선 사용한다. `IN PROGRESS`는
+`IN_PROGRESS`와 동일하게 취급한다. Phase 13의 `RESEARCH_CLOSED`는
+`Lifecycle = CLOSED`의 Phase-13 전용 합성 표기다 — "연구(13A~13J-4)만
+CLOSED고 Production 승격 여부는 별도"임을 한 토큰으로 강조하기 위해
+`CLOSED` 대신 유지하며, `Production = PRODUCTION_HOLD`와 항상 함께
+쓴다.
 
 ## Current Status
 
@@ -56,13 +82,13 @@
 | Stage v0.4 Multi-Year Feature Research | CLOSED | 5년 구조 피처 9종 분리 한계 확인 (`NO_USEFUL_MULTI_YEAR_FEATURE_FOUND`, `5be5b42`) |
 | Pattern A Final Production Closure | DONE | Final Closure PASS, KEEP_CURRENT_PRODUCTION 확정 (`05d03e1`) |
 | Pattern A Stage Research Lifecycle | CLOSED | 알고리즘 연구 종료 (`KEEP_CURRENT_PRODUCTION`) |
-| Phase 10 Investability & Tradability Filter | DONE | 시총 >= 1,000억, 20D 유동성 >= 3억 downstream filter 통합 (Investable 103개, `75afa32`) |
-| Phase 11 Flow Confirmation Infrastructure | DONE | Foreign Flow 독립 confirmation axis 및 10대 hard gates 통과 (FLOW_INFRA_READY, `71237c0`) |
+| Phase 10 Investability & Tradability Filter | CLOSED | 시총 >= 1,000억, 20D 유동성 >= 3억 downstream filter 통합 (Investable 103개, `75afa32`) |
+| Phase 11 Flow Confirmation Infrastructure | CLOSED | Foreign Flow 독립 confirmation axis 및 10대 hard gates 통과 (FLOW_INFRA_READY, `71237c0`) |
 
 **Pattern A Fast**: **`RESEARCH_CLOSED / PRODUCTION_HOLD`** — Experimental / Early Signal 사용 가능(공식 Candidate·Ranking 미편입). 상세: [pattern_a_fast_phase_13_final_synthesis_v01.md](validation/pattern_a_fast_phase_13_final_synthesis_v01.md)  
 **Pattern B~F**: 미착수(PLANNED)  
 **전체 시장 Scanner**: 완료(DONE - Phase 8 Integration 및 Phase 9B Review 완료)  
-**현재 작업 순서**: `README/Roadmap Sync (현재)` → `Stock Report Pattern A + Pattern A Fast 병렬 표시 (다음)` → `Phase 12 Relative Strength Infrastructure` → `Phase 14 Pattern B`  
+**현재 작업 순서**: `README/Roadmap Sync = DONE (5e7c748)` → `Stock Report Pattern A + Pattern A Fast 병렬 표시 = NEXT` → `Phase 12 Relative Strength Infrastructure = PLANNED / RESUME_READY` → `Phase 14 Pattern B = PLANNED`  
 **Market Leader Score**: 미착수(PLANNED - Phase 19)  
 
 ---
@@ -208,16 +234,31 @@ Scanner CANDIDATE 종목을 사람이 직접 검토(월봉 ➔ 주봉 ➔ 일봉
 
 목적: 외국인 수급 데이터를 Pattern A 및 Investability와 독립된 confirmation axis로 구축.
 
+현재 feature(외국인 수급 한정 — 기관 순매수는 코드/데이터 파이프라인에
+존재하지 않으며 아직 구현되지 않았다):
+* Foreign Net Buy: `1D` / `5D` / `20D` / `60D` (signed KRW)
+* `5D` / `20D` / `60D` normalized Flow Intensity(거래대금 대비 강도)
+* Positive flow day 수 및 비율
+
+현재 정책:
+* Pattern A Score에 합산하지 않는다.
+* Production Ranking에 사용하지 않는다.
+* Hard Filter에 사용하지 않는다.
+* Candidate 판단에 사용하지 않는다.
+* 현재는 정보성 / confirmation feature다.
+
 핵심 성과 및 계약:
 * **독립 Confirmation Axis**: Foreign Investor Flow를 하드 필터나 스코어 합산이 아닌 독립 확인 피처 계층으로 구축 완료. (Foreign Flow threshold, ranking, BUY/SELL, Candidate filtering 미도입)
-* **지원 피처**: Point-In-Time 1D / 5D / 20D / 60D foreign net buy (signed KRW), 5D / 20D / 60D normalized flow intensity (거래대금 대비 강도), positive flow day 수 및 비율.
 * **데이터 무결성 & Fail-Closed**: exact `as_of` freshness, strict PIT 계약, source identity 검증, stale / missing / future data fail-closed.
 * **Canonical 보존**: Official COMMON 2,528개, Raw Candidate 180개, Investable 103개 (Flow READY 103개, 100.0%) 전수 보존.
 * **최종 Checkpoint**: `71237c0ec185b5cdc677c149b2d3e941f41d1b52` (Status: `FLOW_INFRA_READY`, 10대 Dynamic Hard Gates 전수 통과).
 
+향후 확장 가능성(roadmap 수준 아이디어일 뿐, 이번 작업 범위 아님): 기관
+순매수, OBV 등 거래량 기반 flow 보조 지표 추가.
+
 ---
 
-## Phase 12. Relative Strength Infrastructure — PLANNED (Resume Ready)
+## Phase 12. Relative Strength Infrastructure — PLANNED / RESUME_READY
 
 목적: KOSPI, KOSDAQ 지수 및 업종 대비 상대강도(RS) 산출 인프라 구축.
 
@@ -367,9 +408,10 @@ CLI / Web 대시보드, 관심종목 워크플로우, 실시간 알림 등 최�
 11. Phase 10 Investability & Tradability Filter — DONE
 12. Phase 11 Flow Confirmation Infrastructure (`71237c0`) — DONE
 13. Phase 13 Pattern A Fast Research (`935f9be`) — DONE (`RESEARCH_CLOSED / PRODUCTION_HOLD`)
-14. README / Roadmap Sync — CURRENT
+14. README / Roadmap Sync (`5e7c748`) — DONE
 15. Stock Report Pattern A + Pattern A Fast 병렬 표시 — NEXT
-16. Phase 12 Relative Strength Infrastructure — PLANNED (Resume Ready)
+16. Phase 12 Relative Strength Infrastructure — PLANNED / RESUME_READY
+17. Phase 14 Pattern B — PLANNED
 
 ---
 

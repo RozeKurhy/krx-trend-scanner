@@ -182,7 +182,7 @@ print(f"6M Score Delta: {momentum_res.horizon_6m.score_delta:+.2f}")
 
 ## 🗺️ 개발 로드맵 요약
 
-**현재 작업 순서**: `README/Roadmap Sync (진행 중)` → `Stock Report Pattern A + Pattern A FAST 병렬 표시 (다음)` → `Phase 12 Relative Strength` → `Phase 14 Pattern B`
+**현재 작업 순서**: `README/Roadmap Sync = DONE` → `Stock Report Pattern A + Pattern A FAST 병렬 표시 = NEXT` → `Phase 12 Relative Strength = PLANNED / RESUME_READY` → `Phase 14 Pattern B = PLANNED`
 
 * [x] **Phase 1~2**: Pattern A Feature Set & Score v0.2 Frozen
 * [x] **Phase 3**: Pattern A Stage Classifier v0.1 Frozen
@@ -195,8 +195,8 @@ print(f"6M Score Delta: {momentum_res.horizon_6m.score_delta:+.2f}")
 * [x] **Phase 9B**: Human Chart Review & Structural Audit Completed (Human42 Evidence)
 * [x] **Pattern A Final Production Closure**: Official Closure Completed (`05d03e1`, Score v0.2 / Stage v0.1 KEEP, Stage Research CLOSED)
 * [x] **Phase 10**: **`CLOSED`** Investability & Tradability Filter Completed (Market Cap >= 1,000억, 20D Liquidity >= 3억, 종가 hard filter 없음)
-* [x] **Phase 11**: **`CLOSED`** Flow Confirmation Infrastructure Completed (`71237c0`, Point-In-Time 외국인/기관 순매수 1D/5D/20D/60D + Flow intensity, 별도 Score/Rank/Hard Filter 미연결 — 정보성 feature)
-* [ ] **Phase 12**: **`PLANNED (Resume Ready)`** Relative Strength Infrastructure (Index & Sector RS) — KRX IP Block 해소, Stock Report 통합 이후 착수
+* [x] **Phase 11**: **`CLOSED`** Flow Confirmation Infrastructure Completed (`71237c0`, Point-In-Time 외국인 순매수 1D/5D/20D/60D + Flow intensity, 별도 Score/Rank/Hard Filter 미연결 — 정보성 feature, 기관 순매수는 미구현)
+* [ ] **Phase 12**: **`PLANNED / RESUME_READY`** Relative Strength Infrastructure (Index & Sector RS) — KRX IP Block 해소, Stock Report 통합 이후 착수
 * [x] **Phase 13**: **`RESEARCH_CLOSED / PRODUCTION_HOLD`** Pattern A Fast (Monthly Regime + Weekly Trigger + Daily Timing, Pattern A와 독립된 파생 전략) — Score Separation `PASS`, Lead Time `INCONCLUSIVE`, Experimental/Early Signal 사용 가능
 * [ ] **Phase 14~18**: **`PLANNED`** Pattern B ~ F (Stage 2 Transition, High Base, RS Leading, VCP, Turnaround)
 * [ ] **Phase 19**: **`PLANNED`** Pattern Score Matrix & Market Leader Score
