@@ -492,6 +492,21 @@ def generate_stock_report(
     KNOWN_TICKER_FALLBACKS = {
         "069500": ("KODEX 200", "ETF"),
         "229200": ("KODEX 코스닥150", "ETF"),
+        "091160": ("KODEX 반도체", "ETF"),
+        "305720": ("KODEX 2차전지산업", "ETF"),
+        "091180": ("KODEX 자동차", "ETF"),
+        "0115D0": ("KODEX 조선TOP10", "ETF"),
+        "244580": ("KODEX 바이오", "ETF"),
+        "102960": ("KODEX 기계장비", "ETF"),
+        "117680": ("KODEX 철강", "ETF"),
+        "117460": ("KODEX 에너지화학", "ETF"),
+        "117700": ("KODEX 건설", "ETF"),
+        "140710": ("KODEX 운송", "ETF"),
+        "091170": ("KODEX 은행", "ETF"),
+        "102970": ("KODEX 증권", "ETF"),
+        "140700": ("KODEX 보험", "ETF"),
+        "266410": ("KODEX 필수소비재", "ETF"),
+        "300950": ("KODEX 게임산업", "ETF"),
     }
     if clean_ticker in KNOWN_TICKER_FALLBACKS and name == clean_ticker:
         name, market = KNOWN_TICKER_FALLBACKS[clean_ticker]
