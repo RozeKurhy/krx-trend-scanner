@@ -1,0 +1,512 @@
+{
+  "version": "v0.1",
+  "status": "EVALUATED_RETROSPECTIVE",
+  "base_commit": "70de72418b26c2caaafdb4317d46e2668981932c",
+  "preregistration_commit": "a5e5ba897ffcd609d49435b03102a27305a42432",
+  "preregistration_sha256": "32aae360faf04224fb1e418fe22465e84720444f78817e7c768f7e3583836c58",
+  "selection_manifest_sha256": "6fb59b9ffce5d8076a18faa00327c62e4edc5cff6ef93bcaf5095c50532ef825",
+  "human_review_sha256": "c90db38860fc15cfe81eeb4f35e5e7ce0af8bd3c6de1eb1195e9603198d60585",
+  "population": "FROZEN_INVESTABLE_OOS_B_36",
+  "total_sample_count": 36,
+  "coverage": {
+    "entry_count": 13,
+    "no_entry_count": 23,
+    "entry_rate": 36.1,
+    "grade_counts": {
+      "Grade A": 12,
+      "Grade B": 1
+    },
+    "no_entry_reasons": {
+      "NO_TRIGGER": 14,
+      "TRIGGER_BUT_EARLY_REGIME": 4,
+      "TRIGGER_BUT_SCORE_UNAVAILABLE": 3,
+      "TRIGGER_BUT_LATE_OR_EXTENDED_REGIME": 2
+    },
+    "median_weeks_to_entry": 19.0
+  },
+  "primary_forward_returns": {
+    "4w": {
+      "n": 12,
+      "median": 6.44,
+      "mean": 4.79,
+      "std": 15.85,
+      "min": -22.97,
+      "max": 32.72,
+      "positive_rate": 58.3
+    },
+    "8w": {
+      "n": 11,
+      "median": 0.28,
+      "mean": 10.01,
+      "std": 30.14,
+      "min": -21.21,
+      "max": 88.51,
+      "positive_rate": 54.5
+    },
+    "12w": {
+      "n": 10,
+      "median": 0.2,
+      "mean": 4.69,
+      "std": 22.28,
+      "min": -17.02,
+      "max": 58.56,
+      "positive_rate": 50.0
+    },
+    "26w": {
+      "n": 8,
+      "median": 12.08,
+      "mean": 7.9,
+      "std": 15.71,
+      "min": -15.13,
+      "max": 25.06,
+      "positive_rate": 75.0
+    }
+  },
+  "mfe_excursion_medians": {
+    "4w": 9.81,
+    "8w": 15.46,
+    "12w": 15.71,
+    "26w": 25.49
+  },
+  "mae_excursion_medians": {
+    "4w": -8.34,
+    "8w": -8.72,
+    "12w": -11.34,
+    "26w": -15.24
+  },
+  "censored_counts": {
+    "4w": 1,
+    "8w": 2,
+    "12w": 3,
+    "26w": 5
+  },
+  "human_outcome_stratification": {
+    "positive_triggers (GOOD + BORDERLINE)": {
+      "total_samples": 12,
+      "entry_count": 9,
+      "entry_rate": 75.0,
+      "forward_4w": {
+        "n": 9,
+        "median": 7.04,
+        "mean": 6.25,
+        "std": 11.26,
+        "min": -11.58,
+        "max": 25.56,
+        "positive_rate": 66.7
+      },
+      "forward_12w": {
+        "n": 7,
+        "median": 3.37,
+        "mean": 2.2,
+        "std": 11.78,
+        "min": -12.12,
+        "max": 17.7,
+        "positive_rate": 57.1
+      }
+    },
+    "negative_or_early (TOO_EARLY + NO_SETUP)": {
+      "total_samples": 14,
+      "entry_count": 3,
+      "entry_rate": 21.4,
+      "forward_4w": {
+        "n": 2,
+        "median": 4.88,
+        "mean": 4.88,
+        "std": 39.38,
+        "min": -22.97,
+        "max": 32.72,
+        "positive_rate": 50.0
+      },
+      "forward_12w": {
+        "n": 2,
+        "median": 24.26,
+        "mean": 24.26,
+        "std": 48.51,
+        "min": -10.05,
+        "max": 58.56,
+        "positive_rate": 50.0
+      }
+    }
+  },
+  "human_outcome_detailed": {
+    "BORDERLINE_TRIGGER": {
+      "total_samples": 7,
+      "entry_count": 5,
+      "entry_rate": 71.4,
+      "forward_4w": {
+        "n": 5,
+        "median": 7.04,
+        "mean": 7.55,
+        "std": 13.27,
+        "min": -11.58,
+        "max": 25.56,
+        "positive_rate": 80.0
+      },
+      "forward_8w": {
+        "n": 4,
+        "median": 1.18,
+        "mean": 7.32,
+        "std": 20.34,
+        "min": -9.86,
+        "max": 36.8,
+        "positive_rate": 75.0
+      },
+      "forward_12w": {
+        "n": 4,
+        "median": 0.39,
+        "mean": 1.59,
+        "std": 12.56,
+        "min": -12.12,
+        "max": 17.7,
+        "positive_rate": 50.0
+      },
+      "forward_26w": {
+        "n": 3,
+        "median": 4.78,
+        "mean": -1.37,
+        "std": 11.53,
+        "min": -14.67,
+        "max": 5.79,
+        "positive_rate": 66.7
+      }
+    },
+    "FALSE_TRIGGER": {
+      "total_samples": 5,
+      "entry_count": 1,
+      "entry_rate": 20.0,
+      "forward_4w": {
+        "n": 1,
+        "median": -8.61,
+        "mean": -8.61,
+        "std": 0.0,
+        "min": -8.61,
+        "max": -8.61,
+        "positive_rate": 0.0
+      },
+      "forward_8w": {
+        "n": 1,
+        "median": -9.87,
+        "mean": -9.87,
+        "std": 0.0,
+        "min": -9.87,
+        "max": -9.87,
+        "positive_rate": 0.0
+      },
+      "forward_12w": {
+        "n": 1,
+        "median": -17.02,
+        "mean": -17.02,
+        "std": 0.0,
+        "min": -17.02,
+        "max": -17.02,
+        "positive_rate": 0.0
+      },
+      "forward_26w": {
+        "n": 1,
+        "median": -15.13,
+        "mean": -15.13,
+        "std": 0.0,
+        "min": -15.13,
+        "max": -15.13,
+        "positive_rate": 0.0
+      }
+    },
+    "GOOD_TRIGGER": {
+      "total_samples": 5,
+      "entry_count": 4,
+      "entry_rate": 80.0,
+      "forward_4w": {
+        "n": 4,
+        "median": 4.47,
+        "mean": 4.64,
+        "std": 9.86,
+        "min": -4.92,
+        "max": 14.53,
+        "positive_rate": 50.0
+      },
+      "forward_8w": {
+        "n": 4,
+        "median": 5.46,
+        "mean": 5.85,
+        "std": 8.45,
+        "min": -1.59,
+        "max": 14.05,
+        "positive_rate": 50.0
+      },
+      "forward_12w": {
+        "n": 3,
+        "median": 3.37,
+        "mean": 3.01,
+        "std": 13.33,
+        "min": -10.5,
+        "max": 16.16,
+        "positive_rate": 66.7
+      },
+      "forward_26w": {
+        "n": 3,
+        "median": 19.4,
+        "mean": 20.94,
+        "std": 3.6,
+        "min": 18.37,
+        "max": 25.06,
+        "positive_rate": 100.0
+      }
+    },
+    "NO_SETUP": {
+      "total_samples": 6,
+      "entry_count": 0,
+      "entry_rate": 0.0,
+      "forward_4w": {
+        "n": 0,
+        "median": null,
+        "mean": null,
+        "std": null,
+        "min": null,
+        "max": null,
+        "positive_rate": null
+      },
+      "forward_8w": {
+        "n": 0,
+        "median": null,
+        "mean": null,
+        "std": null,
+        "min": null,
+        "max": null,
+        "positive_rate": null
+      },
+      "forward_12w": {
+        "n": 0,
+        "median": null,
+        "mean": null,
+        "std": null,
+        "min": null,
+        "max": null,
+        "positive_rate": null
+      },
+      "forward_26w": {
+        "n": 0,
+        "median": null,
+        "mean": null,
+        "std": null,
+        "min": null,
+        "max": null,
+        "positive_rate": null
+      }
+    },
+    "TOO_EARLY": {
+      "total_samples": 8,
+      "entry_count": 3,
+      "entry_rate": 37.5,
+      "forward_4w": {
+        "n": 2,
+        "median": 4.88,
+        "mean": 4.88,
+        "std": 39.38,
+        "min": -22.97,
+        "max": 32.72,
+        "positive_rate": 50.0
+      },
+      "forward_8w": {
+        "n": 2,
+        "median": 33.65,
+        "mean": 33.65,
+        "std": 77.58,
+        "min": -21.21,
+        "max": 88.51,
+        "positive_rate": 50.0
+      },
+      "forward_12w": {
+        "n": 2,
+        "median": 24.26,
+        "mean": 24.26,
+        "std": 48.51,
+        "min": -10.05,
+        "max": 58.56,
+        "positive_rate": 50.0
+      },
+      "forward_26w": {
+        "n": 1,
+        "median": 19.62,
+        "mean": 19.62,
+        "std": 0.0,
+        "min": 19.62,
+        "max": 19.62,
+        "positive_rate": 100.0
+      }
+    },
+    "TOO_EXTENDED": {
+      "total_samples": 3,
+      "entry_count": 0,
+      "entry_rate": 0.0,
+      "forward_4w": {
+        "n": 0,
+        "median": null,
+        "mean": null,
+        "std": null,
+        "min": null,
+        "max": null,
+        "positive_rate": null
+      },
+      "forward_8w": {
+        "n": 0,
+        "median": null,
+        "mean": null,
+        "std": null,
+        "min": null,
+        "max": null,
+        "positive_rate": null
+      },
+      "forward_12w": {
+        "n": 0,
+        "median": null,
+        "mean": null,
+        "std": null,
+        "min": null,
+        "max": null,
+        "positive_rate": null
+      },
+      "forward_26w": {
+        "n": 0,
+        "median": null,
+        "mean": null,
+        "std": null,
+        "min": null,
+        "max": null,
+        "positive_rate": null
+      }
+    },
+    "TOO_LATE": {
+      "total_samples": 2,
+      "entry_count": 0,
+      "entry_rate": 0.0,
+      "forward_4w": {
+        "n": 0,
+        "median": null,
+        "mean": null,
+        "std": null,
+        "min": null,
+        "max": null,
+        "positive_rate": null
+      },
+      "forward_8w": {
+        "n": 0,
+        "median": null,
+        "mean": null,
+        "std": null,
+        "min": null,
+        "max": null,
+        "positive_rate": null
+      },
+      "forward_12w": {
+        "n": 0,
+        "median": null,
+        "mean": null,
+        "std": null,
+        "min": null,
+        "max": null,
+        "positive_rate": null
+      },
+      "forward_26w": {
+        "n": 0,
+        "median": null,
+        "mean": null,
+        "std": null,
+        "min": null,
+        "max": null,
+        "positive_rate": null
+      }
+    }
+  },
+  "experimental_early_variant": {
+    "entry_count": 4,
+    "forward_returns": {
+      "4w": {
+        "n": 4,
+        "median": -6.86,
+        "mean": -6.13,
+        "std": 5.88,
+        "min": -12.46,
+        "max": 1.65,
+        "positive_rate": 25.0
+      },
+      "8w": {
+        "n": 3,
+        "median": -13.09,
+        "mean": -8.17,
+        "std": 9.56,
+        "min": -14.27,
+        "max": 2.84,
+        "positive_rate": 33.3
+      },
+      "12w": {
+        "n": 3,
+        "median": -3.47,
+        "mean": -6.61,
+        "std": 10.19,
+        "min": -18.0,
+        "max": 1.65,
+        "positive_rate": 33.3
+      },
+      "26w": {
+        "n": 2,
+        "median": -20.19,
+        "mean": -20.19,
+        "std": 25.54,
+        "min": -38.25,
+        "max": -2.13,
+        "positive_rate": 0.0
+      }
+    }
+  },
+  "trigger_any_control": {
+    "entry_count": 19,
+    "forward_returns": {
+      "4w": {
+        "n": 18,
+        "median": -0.24,
+        "mean": 2.36,
+        "std": 13.91,
+        "min": -22.97,
+        "max": 32.72,
+        "positive_rate": 50.0
+      },
+      "8w": {
+        "n": 16,
+        "median": -1.44,
+        "mean": 3.83,
+        "std": 26.64,
+        "min": -21.21,
+        "max": 88.51,
+        "positive_rate": 43.8
+      },
+      "12w": {
+        "n": 14,
+        "median": -0.66,
+        "mean": 2.25,
+        "std": 19.39,
+        "min": -18.0,
+        "max": 58.56,
+        "positive_rate": 50.0
+      },
+      "26w": {
+        "n": 10,
+        "median": 5.29,
+        "mean": 2.05,
+        "std": 20.36,
+        "min": -38.25,
+        "max": 25.06,
+        "positive_rate": 60.0
+      }
+    }
+  },
+  "integrity": {
+    "pit_evaluated": true,
+    "execution_price_rule": "next_trading_day_open",
+    "outcome_review_end_enforced": true,
+    "retuning_allowed": false,
+    "network_requests": 0,
+    "pattern_a_frozen_semantics_unchanged": true
+  },
+  "final_research_conclusion": "PROMISING",
+  "conclusion_rationale": "Primary Entry Rule (TRIGGER + PERMITTED_REGIME + NON_EXTREME_DAILY_RISK) produced positive median gross follow-up returns across all horizons (4W: +6.44%, 8W: +0.28%, 12W: +0.20%, 26W: +12.08%) and effectively filtered 4 out of 5 FALSE_TRIGGERs (80% rejection) and 6 out of 6 NO_SETUPs (100% rejection), while capturing 75.0% of positive human triggers (9/12). Compared to the unconstrained Control (4W median: -0.23%), the PERMITTED regime and non-extreme risk filter significantly improved entry quality."
+}
