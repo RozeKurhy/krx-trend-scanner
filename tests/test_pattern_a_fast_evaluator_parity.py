@@ -9,6 +9,7 @@ frozen script 자체는 이 테스트에서도 수정하지 않는다.
 """
 
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -131,7 +132,7 @@ def test_runtime_modules_import_cleanly_without_repo_root_on_syspath():
             "trend_scanner.patterns.pattern_a_fast_evaluator; print('ok')",
         ],
         cwd="/tmp",
-        env={"PYTHONPATH": str(REPO_ROOT / "src")},
+        env={**os.environ, "PYTHONPATH": str(REPO_ROOT / "src")},
         capture_output=True,
         text=True,
     )
