@@ -44,6 +44,7 @@ from trend_scanner.reporting.models import (
     TradingValueFlowSection,
     TradingValueState,
 )
+from trend_scanner.reporting.pattern_a_fast_report import build_pattern_a_fast_section
 from trend_scanner.validation.historical_snapshot import build_historical_snapshot
 
 logger = logging.getLogger(__name__)
@@ -274,6 +275,7 @@ def render_markdown_report(report: StockReport) -> str:
     tv = report.trading_value_flow
     dq = report.data_quality
     prov = report.provenance
+    fast = report.pattern_a_fast
 
     md = []
     md.append(f"# [{report.name} ({report.ticker})] 종목 리포트 v{report.report_version}")
@@ -306,7 +308,25 @@ def render_markdown_report(report: StockReport) -> str:
     md.append("")
     md.append("---")
     md.append("")
-    md.append("## 2. 최근 12개월 월별 추이 (Recent 12M Trajectory)")
+    md.append(f"## 2. Pattern A FAST 현재 신호 (`{fast.label}`)")
+    md.append(f"- **Contract**: `{fast.contract}` (`{fast.lifecycle_status}`)")
+    if fast.current.fast_score is not None or fast.current.fast_stage is not None:
+        md.append(f"- **기준 주 (As-Of)**: `{fast.current.as_of}`")
+        md.append(f"- **FAST Score**: `{fast.current.fast_score:.2f}`" if fast.current.fast_score is not None else "- **FAST Score**: `N/A`")
+        md.append(f"- **Score Availability**: `{fast.current.score_availability}`")
+        md.append(f"- **FAST Stage**: `{fast.current.fast_stage}`" if fast.current.fast_stage is not None else "- **FAST Stage**: `N/A`")
+        md.append(f"- **Stage Availability**: `{fast.current.stage_availability}`")
+        md.append(f"- **Monthly Regime**: `{fast.current.monthly_regime}`")
+        md.append(f"- **Daily Risk**: `{fast.current.daily_risk}`")
+        md.append(f"- **해석**: {fast.current.interpretation}")
+    else:
+        md.append("- 완료된 주봉 데이터 부족으로 Pattern A FAST 현재 신호를 산출할 수 없습니다 (UNAVAILABLE).")
+    md.append("")
+    md.append("> Pattern A FAST는 Pattern A와 독립적인 실험적(Experimental) 조기 신호이며, Pattern A Score/Stage/Candidate/Production Ranking에 영향을 주지 않습니다. 두 모델의 Score를 합산하거나 상대 우열을 계산하지 않습니다.")
+    md.append("")
+    md.append("---")
+    md.append("")
+    md.append("## 3. Pattern A Monthly History — 최근 12개월 월별 추이 (Recent 12M Trajectory)")
     md.append("")
     md.append("| 기준일 | 종가 | Pattern A Score | Stage | Candidate State | Data Available |")
     md.append("|---|---:|---:|---|---|---|")
@@ -325,7 +345,7 @@ def render_markdown_report(report: StockReport) -> str:
         md.append("")
     md.append("---")
     md.append("")
-    md.append("## 3. 국면 전환 이력 (Stage Transition History)")
+    md.append("## 4. Pattern A 국면 전환 이력 (Stage Transition History)")
     if hist.stage_transitions:
         for tr in hist.stage_transitions:
             md.append(f"- **{tr.as_of}**: `{tr.from_stage}` -> `{tr.to_stage}`")
@@ -334,7 +354,30 @@ def render_markdown_report(report: StockReport) -> str:
     md.append("")
     md.append("---")
     md.append("")
-    md.append("## 4. 외국인 수급 확증 (Foreign Flow Analysis - Phase 11)")
+    md.append(f"## 5. Pattern A FAST Weekly History (`{fast.label}`)")
+    md.append(f"- **Contract**: `{fast.contract}` (`{fast.lifecycle_status}`)")
+    md.append(f"- **History 시작 주**: `{fast.history_start_as_of}`")
+    md.append(f"- **History 종료 주**: `{fast.history_end_as_of}`")
+    md.append(f"- **총 주별 관측 개수**: `{fast.observation_count}주`")
+    md.append("")
+    if fast.weekly_history:
+        md.append("| 기준 주 (Week Ending) | FAST Score | Score Availability | FAST Stage | Stage Availability | Monthly Regime | Daily Risk |")
+        md.append("|---|---:|---|---|---|---|---|")
+        for obs in fast.weekly_history:
+            sc_str = f"{obs.fast_score:.2f}" if obs.fast_score is not None else "N/A"
+            st_str = obs.fast_stage if obs.fast_stage is not None else "N/A"
+            md.append(
+                f"| {obs.week_ending} | {sc_str} | {obs.score_availability} | {st_str} | "
+                f"{obs.stage_availability} | {obs.monthly_regime} | {obs.daily_risk} |"
+            )
+    else:
+        md.append("- 완료된 주봉 데이터가 부족하여 Pattern A FAST Weekly History를 산출할 수 없습니다.")
+    md.append("")
+    md.append("> Pattern A와 동일 timeline 표로 합치지 않습니다. Pattern A는 월 단위, Pattern A FAST는 주 단위가 각 모델의 핵심 시간축입니다. FAST Score가 `N/A`(UNAVAILABLE)인 경우 `0`이 아니라 데이터 부족을 의미합니다.")
+    md.append("")
+    md.append("---")
+    md.append("")
+    md.append("## 6. 외국인 수급 확증 (Foreign Flow Analysis - Phase 11)")
     md.append(f"- **수급 데이터 상태**: `{flow.data_status}`")
     md.append(f"- **수급 국면 판정**: `{flow.flow_state.value}`")
     md.append(f"- **규칙 기반 해석**: {flow.explanation}")
@@ -359,7 +402,7 @@ def render_markdown_report(report: StockReport) -> str:
     md.append("")
     md.append("---")
     md.append("")
-    md.append("## 5. 거래대금 추세 분석 (Trading Value Flow)")
+    md.append("## 7. 거래대금 추세 분석 (Trading Value Flow)")
     md.append(f"- **거래대금 상태**: `{tv.trading_value_state.value}`")
     md.append(f"- **규칙 기반 해석**: {tv.explanation}")
     if tv.avg_trading_value_5d_eok is not None:
@@ -373,7 +416,7 @@ def render_markdown_report(report: StockReport) -> str:
     md.append("")
     md.append("---")
     md.append("")
-    md.append("## 6. 전체 월별 이력 (Full Monthly History)")
+    md.append("## 8. Pattern A 전체 월별 이력 (Full Monthly History)")
     md.append(f"- **전체 관측 시작월**: `{hist.history_start_as_of}`")
     md.append(f"- **전체 관측 종료월**: `{hist.history_end_as_of}`")
     md.append(f"- **최초 Pattern A 산출월**: `{hist.first_pattern_a_available_as_of}`")
@@ -389,7 +432,7 @@ def render_markdown_report(report: StockReport) -> str:
     md.append("")
     md.append("---")
     md.append("")
-    md.append("## 7. 데이터 품질 및 신원 (Data Quality & Provenance)")
+    md.append("## 9. 데이터 품질 및 신원 (Data Quality & Provenance)")
     md.append(f"- **로컬 일봉 캐시**: `{'정상 로드 (' + str(dq.daily_rows_count) + '행)' if dq.cache_present else '부재 (MISSING)'}`")
     md.append(f"- **데이터 기간**: `{dq.cache_first_date}` ~ `{dq.cache_last_date}`")
     md.append(f"- **완성 월봉 수**: `{dq.completed_month_count}개월`")
@@ -742,6 +785,16 @@ def generate_stock_report(
         ratio_20d_to_60d=r_20_60,
     )
 
+    # 8b. Pattern A FAST Weekly History (Experimental / Early Signal, additive, Phase 13)
+    #     Pattern A Monthly History와 동일 timeline 표에 합치지 않는다. 별도 section.
+    pattern_a_fast_section = build_pattern_a_fast_section(
+        ticker=clean_ticker,
+        name=name,
+        daily_slice=daily_slice,
+        as_of=req_as_of_ts,
+        root_path=root_path,
+    )
+
     # 9. Header & Summary (Consistent Exact Report Status Semantics)
     # READY:
     #   Pattern A core Score/Stage READY
@@ -827,6 +880,7 @@ def generate_stock_report(
         trading_value_flow=trading_value_section,
         data_quality=data_quality,
         provenance=provenance,
+        pattern_a_fast=pattern_a_fast_section,
     )
 
     # 10. Save Artifacts if requested

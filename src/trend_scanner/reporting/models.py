@@ -161,6 +161,49 @@ class ProvenanceSection:
 
 
 @dataclass
+class PatternAFastWeeklyObservation:
+    """Pattern A FAST(HIERARCHICAL_V01) 주별 관측치. Experimental / Early Signal."""
+
+    week_ending: str
+    fast_score: float | None
+    score_availability: str
+    fast_stage: str | None
+    stage_availability: str
+    monthly_regime: str | None
+    daily_risk: str | None
+    interpretation: str
+
+
+@dataclass
+class PatternAFastCurrentSignal:
+    """Pattern A FAST 현재 시점 요약. Pattern A와 합산/비교 우열을 계산하지 않는다."""
+
+    as_of: str | None
+    fast_score: float | None
+    score_availability: str
+    fast_stage: str | None
+    stage_availability: str
+    monthly_regime: str | None
+    daily_risk: str | None
+    interpretation: str
+
+
+@dataclass
+class PatternAFastSection:
+    """Pattern A FAST(HIERARCHICAL_V01) 주별 History section. Additive, Experimental."""
+
+    status: str
+    label: str
+    contract: str
+    lifecycle_status: str
+    current: PatternAFastCurrentSignal
+    weekly_history: list[PatternAFastWeeklyObservation]
+    history_start_as_of: str | None
+    history_end_as_of: str | None
+    observation_count: int
+
+
+@dataclass
 class StockReport:
     report_version: str
     ticker: str
@@ -176,6 +219,7 @@ class StockReport:
     trading_value_flow: TradingValueFlowSection
     data_quality: DataQualitySection
     provenance: ProvenanceSection
+    pattern_a_fast: PatternAFastSection
 
     def to_dict(self) -> dict[str, Any]:
         """Convert report to JSON-serializable dictionary."""
