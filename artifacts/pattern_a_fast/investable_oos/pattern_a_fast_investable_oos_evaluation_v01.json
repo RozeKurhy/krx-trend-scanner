@@ -1,0 +1,228 @@
+{
+  "version": "PATTERN_A_FAST_INVESTABLE_OOS_B_EVALUATION_V01",
+  "phase": "13J-4",
+  "base_sha": "753f7601078aad46e3f3329887e3a9c60203bea7",
+  "network_market_request_count": 0,
+  "retuning_performed": false,
+  "production_frozen": false,
+  "frozen_inputs": {
+    "human_review_sha256": "c90db38860fc15cfe81eeb4f35e5e7ce0af8bd3c6de1eb1195e9603198d60585",
+    "ground_truth_seal_sha256": "c626759b046e4a1bc223685c41c3e9744e5fb989c28dbccdf91f8f3794852689",
+    "pass_a_seal_sha256": "4c908daa5ab803ccbf20f355027391aaa3f2d63c31e3f60ac60df6e34b9201ea",
+    "selection_manifest_sha256": "6fb59b9ffce5d8076a18faa00327c62e4edc5cff6ef93bcaf5095c50532ef825",
+    "blind_asset_manifest_sha256": "9d8b03bf597c4520c279d2fdfe02c59df22669e27135adc1b9efa56b611b5ebe",
+    "evaluation_protocol_sha256": "ffd271881d2b6ce9aa536431b7747395bf29dc3244df6316b241d60a1bdf138d",
+    "review_order_sample_mapping_sha256": "6d861d3b86f9c1e0fa4e7e48c1d59c385c3e089c05608fd45151536ab5c6b40b"
+  },
+  "fast_contract": "HIERARCHICAL_V01",
+  "fast_contract_sha": "2da3fc36744b27ec13edae3f690df72c796906e5",
+  "pattern_a_frozen_sha": "05d03e16501adbca889488294aaaaa0bd84005de",
+  "sample_count": 36,
+  "human_outcome_distribution": {
+    "GOOD_TRIGGER": 5,
+    "BORDERLINE_TRIGGER": 7,
+    "FALSE_TRIGGER": 5,
+    "TOO_EARLY": 8,
+    "TOO_LATE": 2,
+    "TOO_EXTENDED": 3,
+    "NO_SETUP": 6
+  },
+  "availability": {
+    "stage_ready_count": 36,
+    "stage_ready_rate": 1.0,
+    "score_unavailable_count": 7,
+    "score_unavailable_rate": 0.19444444444444445,
+    "status": "PASS"
+  },
+  "stage_comparison": {
+    "human_distribution": {
+      "WATCH": 16,
+      "SETUP": 14,
+      "TRIGGER": 0,
+      "TREND": 3,
+      "EXTENDED": 3
+    },
+    "machine_distribution": {
+      "WATCH": 12,
+      "SETUP": 10,
+      "TRIGGER": 5,
+      "TREND": 5,
+      "EXTENDED": 4
+    },
+    "exact_match_count": 14,
+    "exact_match_rate": 0.3888888888888889,
+    "over_call_count": 15,
+    "under_call_count": 7
+  },
+  "primary_score_comparison": {
+    "positive_labels": [
+      "GOOD_TRIGGER",
+      "BORDERLINE_TRIGGER"
+    ],
+    "negative_labels": [
+      "TOO_EARLY",
+      "NO_SETUP"
+    ],
+    "minimum_n_per_group": 5,
+    "positive": {
+      "n": 9,
+      "median": 73.82,
+      "mean": 65.9022222222222,
+      "q1": 61.06,
+      "q3": 77.99,
+      "iqr": 16.929999999999993,
+      "min": 33.31,
+      "max": 80.07
+    },
+    "early_or_none": {
+      "n": 12,
+      "median": 51.935,
+      "mean": 47.85666666666666,
+      "q1": 43.222500000000004,
+      "q3": 53.167500000000004,
+      "iqr": 9.945,
+      "min": 29.31,
+      "max": 57.38
+    },
+    "median_difference": 21.88499999999999,
+    "status": "PASS",
+    "reason": "PREREGISTERED_DIRECTION_GATE"
+  },
+  "descriptive_score_by_outcome": {
+    "GOOD_TRIGGER": {
+      "n": 4,
+      "median": 75.82,
+      "mean": 73.10749999999999,
+      "q1": 70.905,
+      "q3": 78.0225,
+      "iqr": 7.117499999999993,
+      "min": 62.16,
+      "max": 78.63
+    },
+    "BORDERLINE_TRIGGER": {
+      "n": 5,
+      "median": 61.06,
+      "mean": 60.138,
+      "q1": 48.26,
+      "q3": 77.99,
+      "iqr": 29.729999999999997,
+      "min": 33.31,
+      "max": 80.07
+    },
+    "FALSE_TRIGGER": {
+      "n": 3,
+      "median": 58.81,
+      "mean": 60.04,
+      "q1": 58.685,
+      "q3": 60.78,
+      "iqr": 2.094999999999999,
+      "min": 58.56,
+      "max": 62.75
+    },
+    "TOO_EARLY": {
+      "n": 7,
+      "median": 50.81,
+      "mean": 46.91428571428571,
+      "q1": 40.56,
+      "q3": 54.89,
+      "iqr": 14.329999999999998,
+      "min": 29.31,
+      "max": 57.38
+    },
+    "TOO_LATE": {
+      "n": 2,
+      "median": 72.24,
+      "mean": 72.24,
+      "q1": 72.06,
+      "q3": 72.41999999999999,
+      "iqr": 0.3599999999999852,
+      "min": 71.88,
+      "max": 72.6
+    },
+    "TOO_EXTENDED": {
+      "n": 3,
+      "median": 70.79,
+      "mean": 66.99,
+      "q1": 64.305,
+      "q3": 71.575,
+      "iqr": 7.269999999999996,
+      "min": 57.82,
+      "max": 72.36
+    },
+    "NO_SETUP": {
+      "n": 5,
+      "median": 52.12,
+      "mean": 49.176,
+      "q1": 51.75,
+      "q3": 53.06,
+      "iqr": 1.3100000000000023,
+      "min": 35.46,
+      "max": 53.49
+    }
+  },
+  "too_early_analysis": {
+    "human_n": 8,
+    "monthly_state_distribution": {
+      "PERMITTED_REGIME": 4,
+      "EARLY_REGIME": 3,
+      "UNAVAILABLE": 1
+    },
+    "daily_risk_distribution": {
+      "NORMAL": 7,
+      "EXTREME": 1
+    },
+    "weekly_component_status_distribution": {
+      "PARTIAL": 6,
+      "READY": 1,
+      "UNAVAILABLE": 1
+    }
+  },
+  "good_vs_borderline": {
+    "GOOD_TRIGGER": {
+      "n": 4,
+      "median": 75.82,
+      "mean": 73.10749999999999,
+      "q1": 70.905,
+      "q3": 78.0225,
+      "iqr": 7.117499999999993,
+      "min": 62.16,
+      "max": 78.63
+    },
+    "BORDERLINE_TRIGGER": {
+      "n": 5,
+      "median": 61.06,
+      "mean": 60.138,
+      "q1": 48.26,
+      "q3": 77.99,
+      "iqr": 29.729999999999997,
+      "min": 33.31,
+      "max": 80.07
+    }
+  },
+  "event_pairing": {
+    "fast_trigger_event_count": 41,
+    "pair_status_distribution": {
+      "DATA_UNAVAILABLE": 18,
+      "SAME_WEEK": 0,
+      "PATTERN_A_ALREADY_ACTIVE": 13,
+      "PATTERN_A_PRIOR_ACTIVITY_BEFORE_FAST_EVENT": 4,
+      "FAST_EARLIER_PATTERN_A_LATER": 2,
+      "FAST_EVENT_NO_PATTERN_A_CATCHUP": 4
+    },
+    "clean_lead": {
+      "n": 2,
+      "median": 8.5,
+      "mean": 8.5,
+      "q1": 4.75,
+      "q3": 12.25,
+      "iqr": 7.5,
+      "min": 1.0,
+      "max": 16.0,
+      "status": "INCONCLUSIVE"
+    }
+  },
+  "hard_failures": [],
+  "hard_failure_count": 0,
+  "historical_coverage_limitation": "Local cache is approximately 20 trading years; early 2020 through 2021-H1 history can be insufficient. The frozen 36-sample OOS-B population was not replaced.",
+  "overall_oos_b_status": "INCONCLUSIVE"
+}
