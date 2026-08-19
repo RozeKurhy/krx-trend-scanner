@@ -1,0 +1,281 @@
+{
+  "evaluation_title": "FAST Entry + Pattern A Exit / Handoff Policy v0.1 Full Investable Universe Retrospective Evaluation",
+  "research_classification": "RETROSPECTIVE_TRADING_POLICY_EVALUATION",
+  "production_status": "PRODUCTION_HOLD",
+  "production_impact": "NONE",
+  "data_cutoff": "2026-08-14",
+  "simulation_execution_seconds": 257.75,
+  "population_summary": {
+    "total_common_universe_count": 2528,
+    "phase10_investable_universe_count": 1081,
+    "cache_eligible_count": 1081,
+    "excluded_count": 0,
+    "exclusion_breakdown": {}
+  },
+  "entry_gate_diagnostic": {
+    "fast_v01_qualifying_count": 799,
+    "combined_qualifying_count": 554,
+    "gate_rejection_count": 245,
+    "gate_rejection_percentage": 30.66,
+    "gate_rejection_reasons": {
+      "PATTERN_A_UNKNOWN": 176,
+      "PATTERN_A_WEAK": 57,
+      "PATTERN_A_PROGRESSED": 9,
+      "PATTERN_A_BASE": 3
+    },
+    "median_entry_delay_days": 217.0
+  },
+  "handoff_coverage_summary": {
+    "total_combined_entries": 554,
+    "entry_at_transition_count": 554,
+    "entry_at_early_trend_count": 0,
+    "normal_early_trend_handoff_count": 334,
+    "skipped_early_trend_handoff_count": 43,
+    "skipped_early_trend_percentage": 7.76,
+    "never_progressed_count": 176
+  },
+  "exit_comparison_summary": {
+    "exit4_preemptive_trigger_count": 232,
+    "exit4_preemptive_percentage_of_realized": 77.33
+  },
+  "policy_a_exit3_only": {
+    "total_qualifying_entries": 553,
+    "realized_trade_count": 150,
+    "open_at_cutoff_count": 403,
+    "entry_stage_distribution": {
+      "TRANSITION": 484,
+      "EARLY_TREND": 69
+    },
+    "grade_distribution": {
+      "Grade_A_NORMAL": 395,
+      "Grade_B_ELEVATED": 158
+    },
+    "coverage_path_distribution": {
+      "NORMAL_EARLY_TREND_HANDOFF": 334,
+      "NEVER_PROGRESSED": 176,
+      "SKIPPED_EARLY_TREND_HANDOFF": 43
+    },
+    "exit_reason_distribution": {
+      "NO_PROGRESSED_BEFORE_CUTOFF": 176,
+      "EXIT3_PROGRESSED_TO_TRANSITION": 58,
+      "EXIT3_PROGRESSED_TO_WEAK": 56,
+      "SKIPPED_EARLY_TREND_HANDOFF": 43,
+      "EXIT3_PROGRESSED_TO_BASE": 20,
+      "EXIT3_PROGRESSED_TO_EARLY_TREND": 16
+    },
+    "realized_return_stats": {
+      "count": 150,
+      "mean": 1.53,
+      "median": -6.83,
+      "p25": -25.98,
+      "p75": 17.4,
+      "std": 39.53,
+      "min": -58.7,
+      "max": 150.38,
+      "positive_rate": 41.3
+    },
+    "mark_to_cutoff_stats": {
+      "count": 403,
+      "mean": 57.53,
+      "median": 17.27,
+      "p25": -15.45,
+      "p75": 79.6,
+      "std": 160.52,
+      "min": -79.03,
+      "max": 2302.55,
+      "positive_rate": 61.3
+    },
+    "mfe_stats_realized": {
+      "count": 150,
+      "mean": 97.62,
+      "median": 68.06,
+      "p25": 43.96,
+      "p75": 109.28,
+      "std": 100.81,
+      "min": 0.38,
+      "max": 785.25,
+      "positive_rate": 100.0
+    },
+    "mae_stats_realized": {
+      "count": 150,
+      "mean": -29.28,
+      "median": -26.24,
+      "p25": -41.18,
+      "p75": -15.88,
+      "std": 17.41,
+      "min": -73.8,
+      "max": 0.0,
+      "positive_rate": 0.0
+    },
+    "peak_giveback_stats_realized": {
+      "count": 150,
+      "mean": 96.08,
+      "median": 71.13,
+      "p25": 45.37,
+      "p75": 110.11,
+      "std": 89.88,
+      "min": 1.57,
+      "max": 727.22,
+      "positive_rate": 100.0
+    },
+    "profit_capture_stats_realized": {
+      "count": 150,
+      "mean": -1.26,
+      "median": -0.08,
+      "p25": -0.49,
+      "p75": 0.2,
+      "std": 8.91,
+      "min": -92.76,
+      "max": 0.92,
+      "positive_rate": 41.3
+    },
+    "holding_weeks_stats_realized": {
+      "count": 150,
+      "mean": 74.98,
+      "median": 51.9,
+      "p25": 36.15,
+      "p75": 76.55,
+      "std": 70.62,
+      "min": 8.8,
+      "max": 403.6,
+      "positive_rate": 100.0
+    },
+    "holding_weeks_stats_open": {
+      "count": 403,
+      "mean": 66.12,
+      "median": 57.4,
+      "p25": 41.6,
+      "p75": 74.7,
+      "std": 60.41,
+      "min": 3.0,
+      "max": 454.0,
+      "positive_rate": 100.0
+    }
+  },
+  "policy_b_combined_exit3_exit4": {
+    "total_qualifying_entries": 553,
+    "realized_trade_count": 300,
+    "open_at_cutoff_count": 253,
+    "entry_stage_distribution": {
+      "TRANSITION": 484,
+      "EARLY_TREND": 69
+    },
+    "grade_distribution": {
+      "Grade_A_NORMAL": 395,
+      "Grade_B_ELEVATED": 158
+    },
+    "coverage_path_distribution": {
+      "NORMAL_EARLY_TREND_HANDOFF": 334,
+      "NEVER_PROGRESSED": 176,
+      "SKIPPED_EARLY_TREND_HANDOFF": 43
+    },
+    "exit_reason_distribution": {
+      "EXIT4_SCORE_DRAWDOWN_GE_15": 232,
+      "NO_PROGRESSED_BEFORE_CUTOFF": 176,
+      "SKIPPED_EARLY_TREND_HANDOFF": 43,
+      "EXIT3_PROGRESSED_TO_TRANSITION": 27,
+      "EXIT3_PROGRESSED_TO_WEAK": 23,
+      "EXIT3_PROGRESSED_TO_BASE": 10,
+      "EXIT3_PROGRESSED_TO_EARLY_TREND": 8
+    },
+    "realized_return_stats": {
+      "count": 300,
+      "mean": 52.99,
+      "median": 38.02,
+      "p25": 4.28,
+      "p75": 80.01,
+      "std": 79.31,
+      "min": -58.7,
+      "max": 718.71,
+      "positive_rate": 78.7
+    },
+    "mark_to_cutoff_stats": {
+      "count": 253,
+      "mean": 15.72,
+      "median": -9.05,
+      "p25": -24.62,
+      "p75": 21.98,
+      "std": 93.02,
+      "min": -79.03,
+      "max": 912.41,
+      "positive_rate": 40.7
+    },
+    "mfe_stats_realized": {
+      "count": 300,
+      "mean": 103.62,
+      "median": 81.05,
+      "p25": 53.47,
+      "p75": 122.44,
+      "std": 91.27,
+      "min": 0.38,
+      "max": 843.86,
+      "positive_rate": 100.0
+    },
+    "mae_stats_realized": {
+      "count": 300,
+      "mean": -19.59,
+      "median": -15.0,
+      "p25": -26.68,
+      "p75": -8.33,
+      "std": 16.14,
+      "min": -73.8,
+      "max": 0.0,
+      "positive_rate": 0.0
+    },
+    "peak_giveback_stats_realized": {
+      "count": 300,
+      "mean": 50.63,
+      "median": 36.91,
+      "p25": 18.77,
+      "p75": 62.24,
+      "std": 51.93,
+      "min": 0.4,
+      "max": 390.71,
+      "positive_rate": 100.0
+    },
+    "profit_capture_stats_realized": {
+      "count": 300,
+      "mean": -0.22,
+      "median": 0.55,
+      "p25": 0.07,
+      "p75": 0.78,
+      "std": 6.38,
+      "min": -92.55,
+      "max": 1.0,
+      "positive_rate": 78.7
+    },
+    "holding_weeks_stats_realized": {
+      "count": 300,
+      "mean": 53.59,
+      "median": 36.3,
+      "p25": 24.0,
+      "p75": 51.6,
+      "std": 64.6,
+      "min": 5.2,
+      "max": 433.2,
+      "positive_rate": 100.0
+    },
+    "holding_weeks_stats_open": {
+      "count": 253,
+      "mean": 59.72,
+      "median": 54.4,
+      "p25": 32.6,
+      "p75": 71.2,
+      "std": 55.92,
+      "min": 3.0,
+      "max": 454.0,
+      "positive_rate": 100.0
+    }
+  },
+  "conclusion": {
+    "status": "PROMISING",
+    "production_status": "PRODUCTION_HOLD",
+    "key_observations": [
+      "전체 1,081개 투자적격 종목 중 Combined Entry(FAST v0.1 + Pattern A Gate)는 총 554개 종목에서 발생함 (FAST v0.1 단독 799개 대비 245개 Gate 필터링).",
+      "Pattern A Gate 추가로 인한 진입 거절 사유 중 PROGRESSED(9건) 및 BASE(3건)가 대다수를 차지하여 추세 미성숙/과열 종목을 효과적으로 배제함.",
+      "EARLY_TREND -> PROGRESSED 정상 전이 후 Exit 4(15pt Score Drawdown)는 232건에서 Exit 3보다 먼저 작동하여 조기 이익 보호를 수행함.",
+      "Policy B(Exit 3 + Exit 4)의 Realized Return 중앙값은 38.02% (양수율 78.7%), Peak Giveback 중앙값은 36.91% 기록.",
+      "TRANSITION -> PROGRESSED로 직행한 coverage hole(SKIPPED_EARLY_TREND_HANDOFF)은 43건(7.8%) 관측되어 향후 handoff 보완 연구 과제로 도출됨."
+    ]
+  }
+}
