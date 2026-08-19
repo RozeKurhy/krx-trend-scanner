@@ -1,4 +1,4 @@
-"""FAST Entry + Pattern A Exit / Handoff Policy v0.1 Evaluation Module (Corrected).
+"""FAST Entry + Pattern A Exit / Handoff Policy v0.1 Evaluation Module (Corrected v2).
 
 Evaluates:
   Entry:
@@ -10,15 +10,18 @@ Evaluates:
     - Policy B (Exit 3 + Exit 4): After DIRECT EARLY_TREND -> PROGRESSED, hold through PROGRESSED.
       Exit on FIRST(Exit 3, Exit 4: PROGRESSED_SCORE_HWM - current_score >= 15.0).
     - Coverage Hole: Direct TRANSITION -> PROGRESSED without EARLY_TREND (SKIPPED_EARLY_TREND_HANDOFF).
+    - Indirect / Non-direct Progressed: PROGRESSED_WITHOUT_DIRECT_HANDOFF.
+    - Never Progressed: NEVER_PROGRESSED.
 
 Correctness Fixes:
-  1. Direct transition EARLY_TREND -> PROGRESSED (previous_valid_stage == EARLY_TREND).
-  2. Same-cohort paired comparison between Policy A and Policy B (Terminal Return & Terminal Peak Giveback).
-  3. Exit 4 triggered cohort counterfactual evaluation.
-  4. MFE / MAE price extraction strictly before exit execution day (excluding exit day intraday price).
-  5. Exact eligibility / exclusion tracking without swallowed exceptions.
-  6. Independent recording of pattern_a_stage_at_entry vs coverage_path.
-  7. Clear distinction between combined_signal_qualified vs combined_executable_entry.
+  1. Exact SKIPPED_EARLY_TREND_HANDOFF: prev_valid_stage == TRANSITION and current == PROGRESSED and not had_early_trend.
+  2. NEVER_PROGRESSED: strictly where PROGRESSED was never observed throughout post-entry snapshots.
+  3. PROGRESSED_WITHOUT_DIRECT_HANDOFF: where PROGRESSED was observed but neither normal direct nor skipped direct.
+  4. Invariant: NORMAL + SKIPPED + PROGRESSED_WITHOUT_DIRECT + NEVER_PROGRESSED == combined_executable_entry_count.
+  5. Same-cohort paired comparison between Policy A and Policy B (Terminal Return & Terminal Peak Giveback).
+  6. Exit 4 triggered cohort counterfactual evaluation with zero stale text.
+  7. MFE / MAE price extraction strictly before exit execution day (excluding exit day intraday price).
+  8. Full exception logging with first_exception_type and first_exception_message provenance.
 """
 
 from __future__ import annotations
@@ -307,14 +310,18 @@ def simulate_ticker_combined_policy(
             monthly_snapshots.append({"date": m, "stage": st, "score": sc})
         except Exception as e:
             warning_count += 1
+            if first_ex_type is None:
+                first_ex_type = type(e).__name__
+                first_ex_msg = str(e)
             monthly_snapshots.append({"date": m, "stage": "UNAVAILABLE", "score": None})
 
-    # Major Fix 1: Direct transition tracking (prev_stage == EARLY_TREND -> current == PROGRESSED)
+    # Major Fix 1 & 2: Exact Handoff & Lifecycle Classification
     first_early_trend_d: pd.Timestamp | None = combined_first_w if pa_stage_at_entry == "EARLY_TREND" else None
     direct_handoff_observed = False
     early_trend_to_prog_d: pd.Timestamp | None = None
     first_prog_score: float | None = None
     skipped_handoff = False
+    progressed_observed = False
 
     prev_valid_stage = pa_stage_at_entry
     had_early_trend = (pa_stage_at_entry == "EARLY_TREND")
@@ -333,20 +340,29 @@ def simulate_ticker_combined_policy(
                 first_early_trend_d = m
 
         if st == "PROGRESSED":
+            progressed_observed = True
             if prev_valid_stage == "EARLY_TREND" and not direct_handoff_observed:
                 direct_handoff_observed = True
                 early_trend_to_prog_d = m
                 first_prog_score = sc
-            elif not had_early_trend and not direct_handoff_observed and not skipped_handoff:
-                # Direct transition from TRANSITION to PROGRESSED without ever seeing EARLY_TREND
+            elif (
+                prev_valid_stage == "TRANSITION"
+                and not had_early_trend
+                and not direct_handoff_observed
+                and not skipped_handoff
+            ):
+                # Exact SKIPPED_EARLY_TREND_HANDOFF: direct transition from TRANSITION to PROGRESSED
                 skipped_handoff = True
 
         prev_valid_stage = st
 
+    # Mutually exclusive and exhaustive 4-way coverage path
     if direct_handoff_observed and early_trend_to_prog_d is not None:
         coverage_path = "NORMAL_EARLY_TREND_HANDOFF"
     elif skipped_handoff:
         coverage_path = "SKIPPED_EARLY_TREND_HANDOFF"
+    elif progressed_observed:
+        coverage_path = "PROGRESSED_WITHOUT_DIRECT_HANDOFF"
     else:
         coverage_path = "NEVER_PROGRESSED"
 
@@ -464,9 +480,13 @@ def _simulate_exit_for_policy_corrected(
                     exit_reason = f"EXIT3_PROGRESSED_TO_{st}"
                     in_progressed_zone = False
                     break
+        if exit_sig_d is None:
+            exit_reason = "NO_EXIT_BEFORE_CUTOFF"
     else:
         if coverage_path == "SKIPPED_EARLY_TREND_HANDOFF":
             exit_reason = "SKIPPED_EARLY_TREND_HANDOFF"
+        elif coverage_path == "PROGRESSED_WITHOUT_DIRECT_HANDOFF":
+            exit_reason = "PROGRESSED_WITHOUT_DIRECT_HANDOFF"
         else:
             exit_reason = "NO_PROGRESSED_BEFORE_CUTOFF"
 
@@ -488,7 +508,7 @@ def _simulate_exit_for_policy_corrected(
             trade_status = "OPEN_AT_CUTOFF"
 
     if trade_status == "REALIZED" and exit_exec_d is not None and exit_open is not None:
-        # Major Fix 3: Daily slice strictly before exit execution day + exit_open
+        # Daily slice strictly before exit execution day + exit_open
         holding_daily = daily[(daily.index >= entry_exec_d) & (daily.index < exit_exec_d)]
         holding_days = len(daily[(daily.index >= entry_exec_d) & (daily.index <= exit_exec_d)])
         holding_weeks = round(holding_days / 5.0, 1)

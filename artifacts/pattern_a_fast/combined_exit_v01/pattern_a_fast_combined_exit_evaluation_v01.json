@@ -1,21 +1,24 @@
 {
-  "evaluation_title": "FAST Entry + Pattern A Exit / Handoff Policy v0.1 Full Investable Universe Retrospective Evaluation (Corrected)",
+  "evaluation_title": "FAST Entry + Pattern A Exit / Handoff Policy v0.1 Full Investable Universe Retrospective Evaluation (Corrected v2)",
   "research_classification": "RETROSPECTIVE_TRADING_POLICY_EVALUATION",
   "evaluation_state": "CORRECTED_EVALUATION_COMPLETE",
-  "original_evaluation_commit": "28e3e303687fc64d8156ebc5e153c2143bc5e400",
-  "original_result_status": "SUPERSEDED_BY_CORRECTED_EVALUATION",
+  "superseded_commits": [
+    "28e3e303687fc64d8156ebc5e153c2143bc5e400",
+    "99fcab5826279da7e252ac5e8ebe11aeffe33143"
+  ],
   "preregistration_authority_commit": "42336365d0ce278b28d4790f63d48c375aea7b65",
   "preregistration_status": "PREREGISTERED_BEFORE_EVALUATION",
   "production_status": "PRODUCTION_HOLD",
   "production_impact": "NONE",
   "data_cutoff": "2026-08-14",
-  "simulation_execution_seconds": 251.85,
+  "simulation_execution_seconds": 250.96,
   "population_summary": {
     "total_common_universe_count": 2528,
     "phase10_investable_universe_count": 1081,
     "cache_present_count": 1081,
     "cache_missing_count": 0,
     "evaluation_eligible_count": 1079,
+    "evaluation_eligible_rate": 99.81,
     "excluded_count": 2,
     "exclusion_breakdown": {
       "INSUFFICIENT_HISTORY": 2
@@ -54,10 +57,14 @@
     "entry_at_early_trend_count": 69,
     "normal_early_trend_handoff_count": 270,
     "normal_early_trend_handoff_rate": 48.82,
-    "skipped_early_trend_handoff_count": 35,
-    "skipped_early_trend_handoff_rate": 6.33,
-    "never_progressed_count": 248,
-    "never_progressed_rate": 44.85
+    "skipped_early_trend_handoff_count": 32,
+    "skipped_early_trend_handoff_rate": 5.79,
+    "progressed_without_direct_handoff_count": 75,
+    "progressed_without_direct_handoff_rate": 13.56,
+    "never_progressed_count": 176,
+    "never_progressed_rate": 31.83,
+    "coverage_sum_check": 553,
+    "coverage_sum_matches_executable_total": true
   },
   "paired_policy_comparison": {
     "paired_executable_entry_count": 553,
@@ -112,10 +119,12 @@
     "realized_trade_count": 113,
     "open_at_cutoff_count": 440,
     "exit_reason_distribution": {
-      "NO_PROGRESSED_BEFORE_CUTOFF": 248,
+      "NO_PROGRESSED_BEFORE_CUTOFF": 176,
+      "NO_EXIT_BEFORE_CUTOFF": 157,
+      "PROGRESSED_WITHOUT_DIRECT_HANDOFF": 75,
       "EXIT3_PROGRESSED_TO_WEAK": 47,
       "EXIT3_PROGRESSED_TO_TRANSITION": 40,
-      "SKIPPED_EARLY_TREND_HANDOFF": 35,
+      "SKIPPED_EARLY_TREND_HANDOFF": 32,
       "EXIT3_PROGRESSED_TO_EARLY_TREND": 14,
       "EXIT3_PROGRESSED_TO_BASE": 12
     },
@@ -246,9 +255,11 @@
     "realized_trade_count": 243,
     "open_at_cutoff_count": 310,
     "exit_reason_distribution": {
-      "NO_PROGRESSED_BEFORE_CUTOFF": 248,
       "EXIT4_SCORE_DRAWDOWN_GE_15": 202,
-      "SKIPPED_EARLY_TREND_HANDOFF": 35,
+      "NO_PROGRESSED_BEFORE_CUTOFF": 176,
+      "PROGRESSED_WITHOUT_DIRECT_HANDOFF": 75,
+      "SKIPPED_EARLY_TREND_HANDOFF": 32,
+      "NO_EXIT_BEFORE_CUTOFF": 27,
       "EXIT3_PROGRESSED_TO_WEAK": 19,
       "EXIT3_PROGRESSED_TO_TRANSITION": 11,
       "EXIT3_PROGRESSED_TO_EARLY_TREND": 6,
@@ -380,11 +391,11 @@
     "status": "MIXED",
     "production_status": "PRODUCTION_HOLD",
     "key_observations": [
-      "전체 1,081개 투자적격 종목 중 FAST v0.1 신호는 799개 종목에서 발생했고, Pattern A Gate 적용 시 Combined 진입 신호는 554개(553개 실제 체결)로 축소됨 (Gate 제거율 30.7%).",
+      "전체 1,081개 투자적격 종목 중 FAST v0.1 신호는 799개 종목에서 발생했고, Pattern A Gate 적용 시 Combined 진입 신호는 554개(553개 실제 체결)로 선별됨 (Gate 제거율 30.7%).",
       "Gate 거절 신호의 대다수는 PATTERN_A_UNAVAILABLE(176건) 및 PATTERN_A_WEAK(57건)였음.",
-      "동일한 553개 체결 포지션 전체에 대한 1:1 Paired Terminal Return 비교 결과, Policy B의 Terminal Return 중앙값은 15.05%로 Policy A(6.65%) 대비 Paired Delta 중앙값 +0.0%p (우세율 19.89%)를 기록함.",
-      "Exit 4(15pt Drawdown)가 실제로 선제 발동한 202건의 Counterfactual 비교에서, Policy B 실현 수익률 중앙값은 60.06%로 동일 거래의 Policy A 사후 결과(47.53%) 대비 Paired Delta 중앙값 +7.43%p (우세율 54.46%)를 나타냄.",
-      "직접 전이 규칙 적용 결과, EARLY_TREND -> PROGRESSED 정상 Handoff는 270건(48.8%), TRANSITION에서 직행한 Coverage Hole은 35건(6.3%)으로 정밀 분류됨."
+      "동일한 553개 체결 포지션 전체에 대한 1:1 Paired Terminal Outcome 비교 결과, Policy B의 Terminal Return 분포 중앙값은 15.05%로 Policy A(6.65%) 대비 높았으며, 개별 거래별 Paired Return Delta 중앙값은 0.0%p (우세율 19.89%)를 기록함.",
+      "Exit 4(15pt Drawdown)가 선제 발동한 202건의 동일 거래 Counterfactual 비교에서, Policy B의 실현수익률 중앙값은 60.06%로 동일 거래 Policy A 사후 결과(47.53%) 대비 Paired Delta 중앙값 +7.43%p (우세율 54.46%)를 나타냄.",
+      "Handoff 4분류(합계 553건) 집계 결과: 정상 Handoff 270건(48.8%), TRANSITION 직행 Hole 32건(5.8%), 간접 도달 75건(13.6%), 미도달 176건(31.8%)으로 정밀 구분됨."
     ]
   }
 }

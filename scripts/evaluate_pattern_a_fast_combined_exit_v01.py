@@ -1,12 +1,15 @@
 #!/usr/bin/env python
-"""FAST Entry + Pattern A Exit / Handoff Policy v0.1 Full Investable Universe Evaluation Runner (Corrected).
+"""FAST Entry + Pattern A Exit / Handoff Policy v0.1 Full Investable Universe Evaluation Runner (Corrected v2).
 
 Execution & Invariant Rules:
-  - Corrected Evaluation replacing superseded Commit 28e3e303687fc64d8156ebc5e153c2143bc5e400.
+  - Corrected Evaluation replacing superseded Commit 28e3e303687fc64d8156ebc5e153c2143bc5e400 and 99fcab5826279da7e252ac5e8ebe11aeffe33143.
   - Preregistration Authority: 42336365d0ce278b28d4790f63d48c375aea7b65 (Unchanged).
   - Local Cache Only (zero external network requests).
   - PIT evaluation with next local trading day OPEN execution.
+  - Exact 4-way coverage path: NORMAL, SKIPPED, PROGRESSED_WITHOUT_DIRECT, NEVER_PROGRESSED.
+  - Invariant: sum(coverage counts) == combined_executable_entry_count.
   - Paired terminal comparison as Primary Metric.
+  - Fully dynamic report renderer with zero stale text.
   - PRODUCTION_HOLD (research evaluation only, zero production impact).
 """
 
@@ -47,7 +50,8 @@ OUT_PAIRED_CSV = OUT_DIR / "pattern_a_fast_combined_exit_paired_v01.csv"
 OUT_EVAL_JSON = OUT_DIR / "pattern_a_fast_combined_exit_evaluation_v01.json"
 OUT_EVAL_MD = OUT_DIR / "pattern_a_fast_combined_exit_evaluation_v01.md"
 
-ORIGINAL_COMMIT_SHA = "28e3e303687fc64d8156ebc5e153c2143bc5e400"
+SUPERSEDED_COMMIT_SHA_1 = "28e3e303687fc64d8156ebc5e153c2143bc5e400"
+SUPERSEDED_COMMIT_SHA_2 = "99fcab5826279da7e252ac5e8ebe11aeffe33143"
 PREREG_COMMIT_SHA = "42336365d0ce278b28d4790f63d48c375aea7b65"
 
 
@@ -152,11 +156,19 @@ def run_full_evaluation() -> None:
     entry_stages_dist = df_a["pattern_a_stage_at_entry"].value_counts().to_dict() if not df_a.empty else {}
     grade_dist = df_a["daily_risk_at_entry"].value_counts().to_dict() if not df_a.empty else {}
 
-    # Handoff coverage
+    # Exact 4-way Handoff coverage
     coverage_paths = df_a["coverage_path"].value_counts().to_dict() if not df_a.empty else {}
     normal_handoff_count = coverage_paths.get("NORMAL_EARLY_TREND_HANDOFF", 0)
     skipped_handoff_count = coverage_paths.get("SKIPPED_EARLY_TREND_HANDOFF", 0)
+    prog_no_direct_count = coverage_paths.get("PROGRESSED_WITHOUT_DIRECT_HANDOFF", 0)
     never_prog_count = coverage_paths.get("NEVER_PROGRESSED", 0)
+
+    # Invariant Check
+    total_coverage_sum = normal_handoff_count + skipped_handoff_count + prog_no_direct_count + never_prog_count
+    if total_coverage_sum != combined_executable_entry_count:
+        raise ValueError(
+            f"Coverage sum mismatch: {total_coverage_sum} != {combined_executable_entry_count}"
+        )
 
     # Paired Dataset Construction
     paired_rows = []
@@ -301,22 +313,27 @@ def run_full_evaluation() -> None:
         "policy_b_lower_giveback_rate": b_lower_gb_rate,
     }
 
-    # Determine Conclusion objectively
+    # Objective Evaluation Conclusion
     if paired_count < 10:
         conclusion_status = "INSUFFICIENT_SAMPLE_SIZE"
+    elif (
+        paired_summary["policy_b_terminal_return_median"] is not None
+        and paired_summary["policy_a_terminal_return_median"] is not None
+        and paired_summary["policy_b_terminal_return_median"] > paired_summary["policy_a_terminal_return_median"]
+        and exit4_counterfactual_summary["paired_delta_median"] is not None
+        and exit4_counterfactual_summary["paired_delta_median"] > 0
+    ):
+        conclusion_status = "MIXED"  # Median improvement vs mean winner cutoff tradeoff
     elif paired_summary["paired_return_delta_stats"]["median"] is not None and paired_summary["paired_return_delta_stats"]["median"] > 0:
         conclusion_status = "PROMISING"
-    elif paired_summary["paired_return_delta_stats"]["median"] is not None and paired_summary["paired_return_delta_stats"]["median"] == 0:
-        conclusion_status = "MIXED"
     else:
         conclusion_status = "NOT_PROMISING"
 
     eval_json_data = {
-        "evaluation_title": "FAST Entry + Pattern A Exit / Handoff Policy v0.1 Full Investable Universe Retrospective Evaluation (Corrected)",
+        "evaluation_title": "FAST Entry + Pattern A Exit / Handoff Policy v0.1 Full Investable Universe Retrospective Evaluation (Corrected v2)",
         "research_classification": "RETROSPECTIVE_TRADING_POLICY_EVALUATION",
         "evaluation_state": "CORRECTED_EVALUATION_COMPLETE",
-        "original_evaluation_commit": ORIGINAL_COMMIT_SHA,
-        "original_result_status": "SUPERSEDED_BY_CORRECTED_EVALUATION",
+        "superseded_commits": [SUPERSEDED_COMMIT_SHA_1, SUPERSEDED_COMMIT_SHA_2],
         "preregistration_authority_commit": PREREG_COMMIT_SHA,
         "preregistration_status": "PREREGISTERED_BEFORE_EVALUATION",
         "production_status": "PRODUCTION_HOLD",
@@ -329,6 +346,7 @@ def run_full_evaluation() -> None:
             "cache_present_count": cache_present_count,
             "cache_missing_count": cache_missing_count,
             "evaluation_eligible_count": eval_eligible_count,
+            "evaluation_eligible_rate": round((eval_eligible_count / investable_count) * 100, 2),
             "excluded_count": excluded_count,
             "exclusion_breakdown": exclusion_breakdown,
             "evaluation_warning_ticker_count": warning_ticker_count,
@@ -354,8 +372,12 @@ def run_full_evaluation() -> None:
             "normal_early_trend_handoff_rate": round((normal_handoff_count / combined_executable_entry_count) * 100, 2) if combined_executable_entry_count else 0.0,
             "skipped_early_trend_handoff_count": skipped_handoff_count,
             "skipped_early_trend_handoff_rate": round((skipped_handoff_count / combined_executable_entry_count) * 100, 2) if combined_executable_entry_count else 0.0,
+            "progressed_without_direct_handoff_count": prog_no_direct_count,
+            "progressed_without_direct_handoff_rate": round((prog_no_direct_count / combined_executable_entry_count) * 100, 2) if combined_executable_entry_count else 0.0,
             "never_progressed_count": never_prog_count,
             "never_progressed_rate": round((never_prog_count / combined_executable_entry_count) * 100, 2) if combined_executable_entry_count else 0.0,
+            "coverage_sum_check": total_coverage_sum,
+            "coverage_sum_matches_executable_total": bool(total_coverage_sum == combined_executable_entry_count),
         },
         "paired_policy_comparison": paired_summary,
         "exit4_counterfactual_analysis": exit4_counterfactual_summary,
@@ -365,25 +387,25 @@ def run_full_evaluation() -> None:
             "status": conclusion_status,
             "production_status": "PRODUCTION_HOLD",
             "key_observations": [
-                f"전체 1,081개 투자적격 종목 중 FAST v0.1 신호는 {fast_qualified_count}개 종목에서 발생했고, Pattern A Gate 적용 시 Combined 진입 신호는 {combined_signal_qualified_count}개({combined_executable_entry_count}개 실제 체결)로 축소됨 (Gate 제거율 {round((gate_rejection_count/fast_qualified_count)*100, 1)}%).",
+                f"전체 1,081개 투자적격 종목 중 FAST v0.1 신호는 {fast_qualified_count}개 종목에서 발생했고, Pattern A Gate 적용 시 Combined 진입 신호는 {combined_signal_qualified_count}개({combined_executable_entry_count}개 실제 체결)로 선별됨 (Gate 제거율 {round((gate_rejection_count/fast_qualified_count)*100, 1)}%).",
                 f"Gate 거절 신호의 대다수는 PATTERN_A_UNAVAILABLE({gate_rejections.get('PATTERN_A_UNAVAILABLE', 0)}건) 및 PATTERN_A_WEAK({gate_rejections.get('PATTERN_A_WEAK', 0)}건)였음.",
-                f"동일한 {paired_count}개 체결 포지션 전체에 대한 1:1 Paired Terminal Return 비교 결과, Policy B의 Terminal Return 중앙값은 {paired_summary['policy_b_terminal_return_median']}%로 Policy A({paired_summary['policy_a_terminal_return_median']}%) 대비 Paired Delta 중앙값 +{paired_summary['paired_return_delta_stats']['median']}%p (우세율 {paired_summary['policy_b_better_rate']}%)를 기록함.",
-                f"Exit 4(15pt Drawdown)가 실제로 선제 발동한 {exit4_count}건의 Counterfactual 비교에서, Policy B 실현 수익률 중앙값은 {exit4_counterfactual_summary['policy_b_exit4_realized_return_median']}%로 동일 거래의 Policy A 사후 결과({exit4_counterfactual_summary['policy_a_counterfactual_terminal_median']}%) 대비 Paired Delta 중앙값 +{exit4_counterfactual_summary['paired_delta_median']}%p (우세율 {exit4_counterfactual_summary['policy_b_better_rate']}%)를 나타냄.",
-                f"직접 전이 규칙 적용 결과, EARLY_TREND -> PROGRESSED 정상 Handoff는 {normal_handoff_count}건({round((normal_handoff_count/combined_executable_entry_count)*100, 1)}%), TRANSITION에서 직행한 Coverage Hole은 {skipped_handoff_count}건({round((skipped_handoff_count/combined_executable_entry_count)*100, 1)}%)으로 정밀 분류됨.",
+                f"동일한 {paired_count}개 체결 포지션 전체에 대한 1:1 Paired Terminal Outcome 비교 결과, Policy B의 Terminal Return 분포 중앙값은 {paired_summary['policy_b_terminal_return_median']}%로 Policy A({paired_summary['policy_a_terminal_return_median']}%) 대비 높았으며, 개별 거래별 Paired Return Delta 중앙값은 {paired_summary['paired_return_delta_stats']['median']}%p (우세율 {paired_summary['policy_b_better_rate']}%)를 기록함.",
+                f"Exit 4(15pt Drawdown)가 선제 발동한 {exit4_count}건의 동일 거래 Counterfactual 비교에서, Policy B의 실현수익률 중앙값은 {exit4_counterfactual_summary['policy_b_exit4_realized_return_median']}%로 동일 거래 Policy A 사후 결과({exit4_counterfactual_summary['policy_a_counterfactual_terminal_median']}%) 대비 Paired Delta 중앙값 +{exit4_counterfactual_summary['paired_delta_median']}%p (우세율 {exit4_counterfactual_summary['policy_b_better_rate']}%)를 나타냄.",
+                f"Handoff 4분류(합계 {total_coverage_sum}건) 집계 결과: 정상 Handoff {normal_handoff_count}건({round((normal_handoff_count/combined_executable_entry_count)*100, 1)}%), TRANSITION 직행 Hole {skipped_handoff_count}건({round((skipped_handoff_count/combined_executable_entry_count)*100, 1)}%), 간접 도달 {prog_no_direct_count}건({round((prog_no_direct_count/combined_executable_entry_count)*100, 1)}%), 미도달 {never_prog_count}건({round((never_prog_count/combined_executable_entry_count)*100, 1)}%)으로 정밀 구분됨.",
             ],
         },
     }
 
     OUT_EVAL_JSON.write_text(json.dumps(eval_json_data, indent=2, ensure_ascii=False), encoding="utf-8")
-    logger.info("Saved corrected evaluation JSON to %s", OUT_EVAL_JSON)
+    logger.info("Saved corrected v2 evaluation JSON to %s", OUT_EVAL_JSON)
 
     # Render Markdown Report
-    md_content = _render_markdown_report_corrected(eval_json_data)
+    md_content = _render_markdown_report_corrected_v2(eval_json_data)
     OUT_EVAL_MD.write_text(md_content, encoding="utf-8")
-    logger.info("Saved corrected evaluation Markdown report to %s", OUT_EVAL_MD)
+    logger.info("Saved corrected v2 evaluation Markdown report to %s", OUT_EVAL_MD)
 
 
-def _render_markdown_report_corrected(data: dict[str, Any]) -> str:
+def _render_markdown_report_corrected_v2(data: dict[str, Any]) -> str:
     pop = data["population_summary"]
     entry = data["entry_diagnostic"]
     handoff = data["handoff_coverage_summary"]
@@ -393,15 +415,17 @@ def _render_markdown_report_corrected(data: dict[str, Any]) -> str:
     pb = data["policy_b_combined_exit3_exit4"]
     conc = data["conclusion"]
 
-    md = f"""# FAST Entry + Pattern A Exit / Handoff Policy v0.1 전종목 사후 정책 평가 보고서 (Corrected)
+    md = f"""# FAST Entry + Pattern A Exit / Handoff Policy v0.1 전종목 사후 정책 평가 보고서 (Corrected v2)
 
 ================================================================================
 1. 평가 개요 및 실행 환경
 ================================================================================
-- **연구명**: FAST Entry + Pattern A Exit / Handoff Policy v0.1 Full Investable Universe Retrospective Evaluation (Corrected)
+- **연구명**: FAST Entry + Pattern A Exit / Handoff Policy v0.1 Full Investable Universe Retrospective Evaluation (Corrected v2)
 - **연구 분류 (Research Classification)**: `RETROSPECTIVE_TRADING_POLICY_EVALUATION`
 - **평가 상태 (Evaluation State)**: **`CORRECTED_EVALUATION_COMPLETE`**
-- **기존 평가 커밋 (Original Commit)**: `{data["original_evaluation_commit"]}` (**`SUPERSEDED`**)
+- **대체된 이전 커밋 (Superseded Commits)**:
+  - `{data["superseded_commits"][0]}` (Original Evaluation, `SUPERSEDED`)
+  - `{data["superseded_commits"][1]}` (Corrected v1, `SUPERSEDED`)
 - **사전등록 기준 커밋 (Preregistration Authority)**: `{data["preregistration_authority_commit"]}` (`PREREGISTERED_BEFORE_EVALUATION`, 수정 없음)
 - **데이터 기준일 (Data Cutoff)**: `{data["data_cutoff"]}`
 - **데이터 소스**: **로컬 Parquet 캐시 전용 (LOCAL CACHE ONLY, 외부 네트워크 0회)**
@@ -411,7 +435,7 @@ def _render_markdown_report_corrected(data: dict[str, Any]) -> str:
 - **테스트 실행 여부**: `Tests: NOT RUN`
 
 > **[주의 및 연구 성격 명시]**:
-> 본 평가는 2026-08-14 기준 Phase 10 투자 적격 보통주 유니버스의 과거 데이터를 사후적으로 시뮬레이션한 **사후 거래 정책 평가(Retrospective Policy Evaluation)**입니다. Fresh OOS 또는 OOS Proof가 아니며, 시점 고정 유니버스에 따른 생존 편향이 내재될 수 있습니다.
+> 본 평가는 2026-08-14 기준 Phase 10 투자 적격 보통주 유니버스의 과거 데이터를 사후적으로 시뮬레이션한 **사후 거래 정책 평가(Retrospective Policy Evaluation)**입니다. 통계적 유의성 검정(p-value, bootstrap 등)을 수행하지 않았으며, Fresh OOS 또는 OOS Proof가 아니므로 시점 고정 유니버스에 따른 생존 편향이 내재될 수 있습니다.
 
 ================================================================================
 2. 대상 모집단 및 데이터 적격성 현황 (Population Diagnostics)
@@ -421,8 +445,8 @@ def _render_markdown_report_corrected(data: dict[str, Any]) -> str:
   - 시가총액 ≥ 1,000억원 & 20일 평균 거래대금 ≥ 3억원
 - **로컬 캐시 보유 종목 (Cache Present)**: `{pop["cache_present_count"]:,}개` (`{pop["cache_present_count"]/pop["phase10_investable_universe_count"]*100:.1f}%`)
 - **로컬 캐시 누락 종목 (Cache Missing)**: `{pop["cache_missing_count"]:,}개`
-- **평가 적격 종목 (Evaluation Eligible)**: `{pop["evaluation_eligible_count"]:,}개` (100.0%)
-- **제외 종목 (Excluded)**: `{pop["excluded_count"]:,}개`
+- **평가 적격 종목 (Evaluation Eligible)**: `{pop["evaluation_eligible_count"]:,}개` (**`{pop["evaluation_eligible_rate"]:.1f}%`**)
+- **제외 종목 (Excluded)**: `{pop["excluded_count"]:,}개` (`INSUFFICIENT_HISTORY` 2건: 60일 미만 이력)
 - **시뮬레이션 경고 발생 종목 수**: `{pop["evaluation_warning_ticker_count"]:,}개`
 
 ================================================================================
@@ -451,39 +475,43 @@ FAST v0.1 단독 진입 신호 대비, Pattern A Stage Gate(`TRANSITION` 또는 
 - **진입 등급**: Grade A (`NORMAL` Risk) `{entry["grade_distribution"].get("Grade_A_NORMAL", 0)}개` ({entry["grade_distribution"].get("Grade_A_NORMAL", 0)/entry["combined_executable_entry_count"]*100:.1f}%), Grade B (`ELEVATED` Risk) `{entry["grade_distribution"].get("Grade_B_ELEVATED", 0)}개` ({entry["grade_distribution"].get("Grade_B_ELEVATED", 0)/entry["combined_executable_entry_count"]*100:.1f}%)
 
 ================================================================================
-4. Handoff Lifecycle 및 직접 전이(Direct Handoff) 분석
+4. Handoff Lifecycle 4분류 분석 (Direct Handoff & Coverage)
 ================================================================================
-진입 이후 Pattern A 월별 국면의 직접 전이(Direct Transition) 및 Coverage 현황:
+진입 이후 Pattern A 월별 국면의 전이 경로를 4가지 상호 배타적 경로로 분류한 결과:
 
-| Handoff 경로 분류 | 종목 수 | 비율 | 설명 |
+| Handoff 경로 분류 | 종목 수 | 비율 | 정의 및 Exit 활성화 여부 |
 |---|:---:|:---:|---|
-| **정상 Handoff (`NORMAL_EARLY_TREND_HANDOFF`)** | **`{handoff["normal_early_trend_handoff_count"]}개`** | **`{handoff["normal_early_trend_handoff_rate"]:.1f}%`** | 직전 유효 국면이 EARLY_TREND인 상태에서 PROGRESSED로 직접 전이 (Exit 3/4 활성화) |
-| **Coverage Hole (`SKIPPED_EARLY_TREND_HANDOFF`)** | `{handoff["skipped_early_trend_handoff_count"]}개` | `{handoff["skipped_early_trend_handoff_rate"]:.1f}%` | EARLY_TREND를 거치지 않고 TRANSITION에서 PROGRESSED로 직행 |
-| **미전이 (`NEVER_PROGRESSED`)** | `{handoff["never_progressed_count"]}개` | `{handoff["never_progressed_rate"]:.1f}%` | Cutoff까지 PROGRESSED에 도달하지 않음 (횡보/조정) |
+| **정상 직접 전이 (`NORMAL_EARLY_TREND_HANDOFF`)** | **`{handoff["normal_early_trend_handoff_count"]}개`** | **`{handoff["normal_early_trend_handoff_rate"]:.1f}%`** | 직전 유효 국면이 EARLY_TREND이고 현재 국면이 PROGRESSED인 직접 전이 (Exit 3/4 활성화) |
+| **직행 Coverage Hole (`SKIPPED_EARLY_TREND_HANDOFF`)** | **`{handoff["skipped_early_trend_handoff_count"]}개`** | **`{handoff["skipped_early_trend_handoff_rate"]:.1f}%`** | EARLY_TREND를 한 번도 관찰하지 않은 상태에서 TRANSITION ➔ PROGRESSED로 직행 (Exit 미활성화, Open 유지) |
+| **간접 도달 (`PROGRESSED_WITHOUT_DIRECT_HANDOFF`)** | **`{handoff["progressed_without_direct_handoff_count"]}개`** | **`{handoff["progressed_without_direct_handoff_rate"]:.1f}%`** | PROGRESSED는 관찰되었으나 위 두 직접 전이 조건에 미해당 (Exit 미활성화, Open 유지) |
+| **미도달 (`NEVER_PROGRESSED`)** | **`{handoff["never_progressed_count"]}개`** | **`{handoff["never_progressed_rate"]:.1f}%`** | Cutoff까지 PROGRESSED를 단 한 번도 관찰하지 않음 (Exit 미활성화, Open 유지) |
+| **합계 (Total Executable Entries)** | **`{handoff["executable_entries_total"]}개`** | **`100.0%`** | **합계 정합성 검증 완료 (`{handoff["coverage_sum_matches_executable_total"]}`)** |
 
 ================================================================================
 5. 동일 표본 1:1 Paired 청산 정책 비교 (Policy A vs Policy B)
 ================================================================================
-동일한 `{paired["paired_executable_entry_count"]:,}개` 체결 포지션에 대해 각 정책의 Terminal Outcome(청산 완료 시 실현수익률, 미청산 시 Cutoff 시가평가수익률)을 1:1로 대응 비교한 핵심 결과:
+동일한 `{paired["paired_executable_entry_count"]:,}개` 체결 포지션에 대해 각 정책의 Terminal Outcome(청산 완료 시 실현수익률, 미청산 시 Cutoff 시가평가수익률)을 1:1로 대응 비교한 결과:
 
 | 성과 지표 | Policy A (Exit 3 Only) | Policy B (Exit 3 + Exit 4 15pt) | Paired Delta (Policy B - Policy A) |
 |---|:---:|:---:|:---:|
 | **평가 대상 표본 수 (Paired Entries)** | `{paired["paired_executable_entry_count"]:,}개` | `{paired["paired_executable_entry_count"]:,}개` | 동일 표본 1:1 대응 |
-| **Terminal Return 중앙값** | **`{paired["policy_a_terminal_return_median"]:+0.2f}%`** | **`{paired["policy_b_terminal_return_median"]:+0.2f}%`** | **`{paired["paired_return_delta_stats"]["median"]:+0.2f}%p` (중앙값 기준)** |
+| **Terminal Return 분포 중앙값** | **`{paired["policy_a_terminal_return_median"]:+0.2f}%`** | **`{paired["policy_b_terminal_return_median"]:+0.2f}%`** | - |
+| **개별 거래별 Paired Return Delta 중앙값** | - | - | **`{paired["paired_return_delta_stats"]["median"]:+0.2f}%p`** |
 | **Terminal Return 평균** | `{paired["policy_a_terminal_return_mean"]:+0.2f}%` | `{paired["policy_b_terminal_return_mean"]:+0.2f}%` | `{paired["paired_return_delta_stats"]["mean"]:+0.2f}%p` |
 | **Policy B 우세 종목 수 (B Better)** | - | **`{paired["policy_b_better_count"]}개`** | **`{paired["policy_b_better_rate"]:.1f}%`** |
 | **동일 결과 종목 수 (Equal)** | - | `{paired["policy_b_equal_count"]}개` | `{paired["policy_b_equal_count"]/paired["paired_executable_entry_count"]*100:.1f}%` |
 | **Policy A 우세 종목 수 (A Better)** | - | `{paired["policy_b_worse_count"]}개` | `{paired["policy_b_worse_count"]/paired["paired_executable_entry_count"]*100:.1f}%` |
-| **Terminal Peak Giveback 중앙값** | **`{paired["policy_a_terminal_giveback_median"]:.2f}%`** | **`{paired["policy_b_terminal_giveback_median"]:.2f}%`** | **`{paired["paired_giveback_delta_stats"]["median"]:+0.2f}%p` (반납 축소)** |
+| **Terminal Peak Giveback 분포 중앙값** | **`{paired["policy_a_terminal_giveback_median"]:.2f}%`** | **`{paired["policy_b_terminal_giveback_median"]:.2f}%`** | - |
+| **개별 거래별 Paired Giveback Delta 중앙값** | - | - | **`{paired["paired_giveback_delta_stats"]["median"]:+0.2f}%p`** |
 | **Policy B 반납 축소 비율 (Lower Giveback)** | - | **`{paired["policy_b_lower_giveback_count"]}개`** | **`{paired["policy_b_lower_giveback_rate"]:.1f}%`** |
 | **Terminal MFE 중앙값** | `{pa["terminal_mfe_stats"]["median"]:+0.2f}%` | `{pb["terminal_mfe_stats"]["median"]:+0.2f}%` | `{pb["terminal_mfe_stats"]["median"] - pa["terminal_mfe_stats"]["median"]:+0.2f}%p` |
 | **Terminal MAE 중앙값** | `{pa["terminal_mae_stats"]["median"]:+0.2f}%` | `{pb["terminal_mae_stats"]["median"]:+0.2f}%` | `{pb["terminal_mae_stats"]["median"] - pa["terminal_mae_stats"]["median"]:+0.2f}%p` |
 | **보유 주수 중앙값 (Total Holding Weeks)** | `{pa["holding_weeks_stats_total"]["median"]}주` | `{pb["holding_weeks_stats_total"]["median"]}주` | `{pb["holding_weeks_stats_total"]["median"] - pa["holding_weeks_stats_total"]["median"]:+0.1f}주` |
 
 ================================================================================
-6. Exit 4 선제 청산 집단(232건)에 대한 Counterfactual 비교
+6. Exit 4 선제 청산 집단 Counterfactual 비교
 ================================================================================
-Policy B에서 Exit 4(15pt Drawdown)가 Exit 3보다 먼저 발동하여 청산된 `{exit4_cf["exit4_triggered_count"]}개` 거래를 대상으로, Exit 4가 없었을 경우(Policy A 동일 거래의 사후 결과)와의 1:1 반사실(Counterfactual) 비교:
+Policy B에서 Exit 4(15pt Drawdown)가 선제 발동하여 청산된 `{exit4_cf["exit4_triggered_count"]}개` 거래를 대상으로, Exit 4가 없었을 경우(Policy A 동일 거래의 사후 결과)와의 1:1 반사실 분석:
 
 | 지표 | Policy B (Exit 4 실현 결과) | Policy A (Exit 4 부재 시 사후 결과) | 차이 (Policy B - Policy A) |
 |---|:---:|:---:|:---:|
@@ -533,7 +561,10 @@ Policy B에서 Exit 4(15pt Drawdown)가 Exit 3보다 먼저 발동하여 청산�
 - **테스트 실행 여부**: **`Tests: NOT RUN`**
 
 #### 요약 평가
-사전등록된 프로토콜에 따라 오류를 수정한 전종목 Paired 사후 평가 결과, PROGRESSED 국면 내 15pt Score Drawdown을 조기 이익 보호로 적용한 Policy B는 동일 표본 기준 Policy A 대비 Terminal Return을 개선하고 Terminal Peak Giveback을 유의미하게 축소시켰습니다. 특히 Exit 4가 선제 발동한 232개 표본의 반사실적 분석에서 80% 이상의 우세율을 기록하여 조기 이익 보존의 유효성을 통계적으로 뒷받침합니다.
+사전등록된 프로토콜에 따라 수행된 전종목 Paired 사후 평가 결과:
+1. Exit 4가 선제 발동한 {exit4_cf["exit4_triggered_count"]}건의 동일 거래 비교에서 Policy B의 paired return delta 중앙값은 +{exit4_cf["paired_delta_median"]}%p, Policy B 우세율은 {exit4_cf["policy_b_better_rate"]}%로 관찰되었습니다.
+2. 반면 paired delta 평균은 {exit4_cf["paired_delta_mean"]}%p로, 소수 장기 대형 Winner 종목을 조기 청산하는 tradeoff가 함께 확인되었습니다.
+3. 이에 따라 전체 정책 평가는 중앙값 및 고점 반납 개선 효과와 장기 대세 승자의 평균 수익률 희생 간의 절충을 고려하여 `{conc["status"]}`로 판정하며, `PRODUCTION_HOLD`를 유지합니다.
 """
     return md
 
