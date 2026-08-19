@@ -1,0 +1,1561 @@
+{
+  "evaluation_title": "Pattern A Entry Gate Incremental Value v0.2A Evaluation",
+  "research_classification": "RETROSPECTIVE_ENTRY_GATE_INCREMENTAL_VALUE_EVALUATION",
+  "preregistration_authority_commit": "e4523f4b3b63d252e7b70b80017bad42288e8ec9",
+  "preregistration_status": "PREREGISTERED_BEFORE_EVALUATION",
+  "production_status": "PRODUCTION_HOLD",
+  "production_impact": "NONE",
+  "data_cutoff": "2026-08-14",
+  "simulation_execution_seconds": 323.59,
+  "population_summary": {
+    "total_common_universe_count": 2528,
+    "phase10_investable_universe_count": 1081,
+    "cache_present_count": 1081,
+    "cache_missing_count": 0,
+    "evaluation_eligible_count": 1079,
+    "evaluation_eligible_rate": 99.81,
+    "excluded_count": 2,
+    "exclusion_breakdown": {
+      "INSUFFICIENT_HISTORY": 2
+    },
+    "warning_ticker_count": 0
+  },
+  "signal_diagnostic": {
+    "fast_v01_signal_qualifying_count": 799,
+    "fast_executable_first_entry_count": 799,
+    "non_executable_signal_count": 0,
+    "non_executable_reasons": {},
+    "gate_pass_count": 168,
+    "gate_pass_rate": 21.03,
+    "gate_reject_count": 631,
+    "gate_reject_rate": 78.97
+  },
+  "cohort_breakdown": {
+    "PASS_TRANSITION": {
+      "total_count": 157,
+      "descriptive_only": false,
+      "horizons": {
+        "4w": {
+          "sample_count": 157,
+          "censored_count": 1,
+          "completed_count": 156,
+          "return_stats": {
+            "count": 156,
+            "mean": 2.75,
+            "median": -1.67,
+            "p25": -10.48,
+            "p75": 10.03,
+            "std": 25.98,
+            "min": -31.94,
+            "max": 159.6,
+            "positive_rate": 46.2
+          },
+          "mfe_stats": {
+            "count": 156,
+            "mean": 20.41,
+            "median": 11.3,
+            "p25": 5.09,
+            "p75": 23.24,
+            "std": 35.16,
+            "min": 0.0,
+            "max": 298.45,
+            "positive_rate": 99.4
+          },
+          "mae_stats": {
+            "count": 156,
+            "mean": -11.54,
+            "median": -10.34,
+            "p25": -16.16,
+            "p75": -4.63,
+            "std": 8.54,
+            "min": -37.97,
+            "max": 0.0,
+            "positive_rate": 0.0
+          }
+        },
+        "8w": {
+          "sample_count": 157,
+          "censored_count": 2,
+          "completed_count": 155,
+          "return_stats": {
+            "count": 155,
+            "mean": 0.7,
+            "median": -3.46,
+            "p25": -12.93,
+            "p75": 7.5,
+            "std": 27.83,
+            "min": -44.07,
+            "max": 181.82,
+            "positive_rate": 41.3
+          },
+          "mfe_stats": {
+            "count": 155,
+            "mean": 28.37,
+            "median": 15.29,
+            "p25": 7.97,
+            "p75": 29.81,
+            "std": 46.65,
+            "min": 0.0,
+            "max": 306.19,
+            "positive_rate": 99.4
+          },
+          "mae_stats": {
+            "count": 155,
+            "mean": -15.13,
+            "median": -14.05,
+            "p25": -20.66,
+            "p75": -7.42,
+            "std": 10.1,
+            "min": -48.45,
+            "max": -0.32,
+            "positive_rate": 0.0
+          }
+        },
+        "12w": {
+          "sample_count": 157,
+          "censored_count": 2,
+          "completed_count": 155,
+          "return_stats": {
+            "count": 155,
+            "mean": 2.37,
+            "median": -2.97,
+            "p25": -17.41,
+            "p75": 12.43,
+            "std": 32.94,
+            "min": -46.28,
+            "max": 194.95,
+            "positive_rate": 38.7
+          },
+          "mfe_stats": {
+            "count": 155,
+            "mean": 32.87,
+            "median": 17.71,
+            "p25": 8.72,
+            "p75": 34.61,
+            "std": 49.39,
+            "min": 0.0,
+            "max": 306.19,
+            "positive_rate": 99.4
+          },
+          "mae_stats": {
+            "count": 155,
+            "mean": -17.95,
+            "median": -16.21,
+            "p25": -25.03,
+            "p75": -9.21,
+            "std": 11.59,
+            "min": -60.45,
+            "max": -0.32,
+            "positive_rate": 0.0
+          }
+        },
+        "26w": {
+          "sample_count": 157,
+          "censored_count": 30,
+          "completed_count": 127,
+          "return_stats": {
+            "count": 127,
+            "mean": 17.81,
+            "median": 1.07,
+            "p25": -15.73,
+            "p75": 23.45,
+            "std": 61.32,
+            "min": -55.41,
+            "max": 370.85,
+            "positive_rate": 52.8
+          },
+          "mfe_stats": {
+            "count": 127,
+            "mean": 56.71,
+            "median": 30.52,
+            "p25": 13.18,
+            "p75": 61.65,
+            "std": 75.19,
+            "min": 0.77,
+            "max": 430.72,
+            "positive_rate": 100.0
+          },
+          "mae_stats": {
+            "count": 127,
+            "mean": -21.2,
+            "median": -20.16,
+            "p25": -28.55,
+            "p75": -12.0,
+            "std": 12.3,
+            "min": -60.02,
+            "max": -0.32,
+            "positive_rate": 0.0
+          }
+        }
+      }
+    },
+    "PASS_EARLY_TREND": {
+      "total_count": 11,
+      "descriptive_only": true,
+      "horizons": {
+        "4w": {
+          "sample_count": 11,
+          "censored_count": 0,
+          "completed_count": 11,
+          "return_stats": {
+            "count": 11,
+            "mean": 3.11,
+            "median": 1.51,
+            "p25": -8.07,
+            "p75": 3.64,
+            "std": 28.01,
+            "min": -31.34,
+            "max": 80.04,
+            "positive_rate": 54.5
+          },
+          "mfe_stats": {
+            "count": 11,
+            "mean": 19.0,
+            "median": 10.22,
+            "p25": 3.56,
+            "p75": 21.21,
+            "std": 24.85,
+            "min": 0.37,
+            "max": 82.68,
+            "positive_rate": 100.0
+          },
+          "mae_stats": {
+            "count": 11,
+            "mean": -10.62,
+            "median": -7.43,
+            "p25": -13.5,
+            "p75": -4.29,
+            "std": 9.93,
+            "min": -32.71,
+            "max": -0.66,
+            "positive_rate": 0.0
+          }
+        },
+        "8w": {
+          "sample_count": 11,
+          "censored_count": 0,
+          "completed_count": 11,
+          "return_stats": {
+            "count": 11,
+            "mean": 4.14,
+            "median": -1.11,
+            "p25": -6.98,
+            "p75": 16.0,
+            "std": 24.45,
+            "min": -38.01,
+            "max": 43.57,
+            "positive_rate": 45.5
+          },
+          "mfe_stats": {
+            "count": 11,
+            "mean": 25.2,
+            "median": 19.78,
+            "p25": 5.28,
+            "p75": 37.66,
+            "std": 26.24,
+            "min": 0.37,
+            "max": 88.16,
+            "positive_rate": 100.0
+          },
+          "mae_stats": {
+            "count": 11,
+            "mean": -12.12,
+            "median": -8.9,
+            "p25": -14.93,
+            "p75": -4.29,
+            "std": 11.87,
+            "min": -39.7,
+            "max": -0.66,
+            "positive_rate": 0.0
+          }
+        },
+        "12w": {
+          "sample_count": 11,
+          "censored_count": 0,
+          "completed_count": 11,
+          "return_stats": {
+            "count": 11,
+            "mean": 14.25,
+            "median": 7.58,
+            "p25": 0.62,
+            "p75": 17.51,
+            "std": 32.14,
+            "min": -34.46,
+            "max": 90.3,
+            "positive_rate": 72.7
+          },
+          "mfe_stats": {
+            "count": 11,
+            "mean": 34.04,
+            "median": 19.78,
+            "p25": 8.82,
+            "p75": 44.53,
+            "std": 38.56,
+            "min": 0.37,
+            "max": 119.24,
+            "positive_rate": 100.0
+          },
+          "mae_stats": {
+            "count": 11,
+            "mean": -12.77,
+            "median": -8.9,
+            "p25": -14.93,
+            "p75": -4.29,
+            "std": 13.63,
+            "min": -46.94,
+            "max": -0.66,
+            "positive_rate": 0.0
+          }
+        },
+        "26w": {
+          "sample_count": 11,
+          "censored_count": 1,
+          "completed_count": 10,
+          "return_stats": {
+            "count": 10,
+            "mean": 40.49,
+            "median": 28.86,
+            "p25": 7.45,
+            "p75": 58.37,
+            "std": 57.88,
+            "min": -47.25,
+            "max": 141.32,
+            "positive_rate": 80.0
+          },
+          "mfe_stats": {
+            "count": 10,
+            "mean": 67.04,
+            "median": 61.05,
+            "p25": 24.37,
+            "p75": 87.28,
+            "std": 52.97,
+            "min": 0.37,
+            "max": 160.06,
+            "positive_rate": 100.0
+          },
+          "mae_stats": {
+            "count": 10,
+            "mean": -12.98,
+            "median": -9.03,
+            "p25": -11.3,
+            "p75": -5.59,
+            "std": 14.3,
+            "min": -48.44,
+            "max": -0.66,
+            "positive_rate": 0.0
+          }
+        }
+      }
+    },
+    "REJECT_WEAK": {
+      "total_count": 108,
+      "descriptive_only": false,
+      "horizons": {
+        "4w": {
+          "sample_count": 108,
+          "censored_count": 0,
+          "completed_count": 108,
+          "return_stats": {
+            "count": 108,
+            "mean": 6.6,
+            "median": -1.08,
+            "p25": -9.75,
+            "p75": 18.18,
+            "std": 27.49,
+            "min": -33.85,
+            "max": 186.17,
+            "positive_rate": 48.1
+          },
+          "mfe_stats": {
+            "count": 108,
+            "mean": 26.37,
+            "median": 14.02,
+            "p25": 6.72,
+            "p75": 28.55,
+            "std": 44.58,
+            "min": 0.23,
+            "max": 414.99,
+            "positive_rate": 100.0
+          },
+          "mae_stats": {
+            "count": 108,
+            "mean": -11.02,
+            "median": -9.0,
+            "p25": -16.5,
+            "p75": -4.3,
+            "std": 8.41,
+            "min": -35.18,
+            "max": 0.0,
+            "positive_rate": 0.0
+          }
+        },
+        "8w": {
+          "sample_count": 108,
+          "censored_count": 0,
+          "completed_count": 108,
+          "return_stats": {
+            "count": 108,
+            "mean": 7.86,
+            "median": 4.77,
+            "p25": -13.58,
+            "p75": 19.52,
+            "std": 30.8,
+            "min": -45.92,
+            "max": 165.65,
+            "positive_rate": 55.6
+          },
+          "mfe_stats": {
+            "count": 108,
+            "mean": 35.74,
+            "median": 20.4,
+            "p25": 8.86,
+            "p75": 46.99,
+            "std": 48.3,
+            "min": 0.23,
+            "max": 414.99,
+            "positive_rate": 100.0
+          },
+          "mae_stats": {
+            "count": 108,
+            "mean": -14.69,
+            "median": -13.51,
+            "p25": -20.73,
+            "p75": -6.17,
+            "std": 10.76,
+            "min": -53.45,
+            "max": 0.0,
+            "positive_rate": 0.0
+          }
+        },
+        "12w": {
+          "sample_count": 108,
+          "censored_count": 0,
+          "completed_count": 108,
+          "return_stats": {
+            "count": 108,
+            "mean": 12.71,
+            "median": 4.79,
+            "p25": -10.27,
+            "p75": 29.64,
+            "std": 41.91,
+            "min": -62.04,
+            "max": 186.41,
+            "positive_rate": 53.7
+          },
+          "mfe_stats": {
+            "count": 108,
+            "mean": 44.36,
+            "median": 24.64,
+            "p25": 11.82,
+            "p75": 66.5,
+            "std": 54.17,
+            "min": 0.23,
+            "max": 414.99,
+            "positive_rate": 100.0
+          },
+          "mae_stats": {
+            "count": 108,
+            "mean": -17.66,
+            "median": -14.81,
+            "p25": -23.98,
+            "p75": -6.91,
+            "std": 14.03,
+            "min": -63.57,
+            "max": 0.0,
+            "positive_rate": 0.0
+          }
+        },
+        "26w": {
+          "sample_count": 108,
+          "censored_count": 18,
+          "completed_count": 90,
+          "return_stats": {
+            "count": 90,
+            "mean": 38.54,
+            "median": 20.31,
+            "p25": 0.3,
+            "p75": 50.26,
+            "std": 69.37,
+            "min": -35.43,
+            "max": 382.76,
+            "positive_rate": 75.6
+          },
+          "mfe_stats": {
+            "count": 90,
+            "mean": 85.34,
+            "median": 57.16,
+            "p25": 27.25,
+            "p75": 97.57,
+            "std": 99.82,
+            "min": 0.23,
+            "max": 645.1,
+            "positive_rate": 100.0
+          },
+          "mae_stats": {
+            "count": 90,
+            "mean": -16.61,
+            "median": -14.81,
+            "p25": -22.36,
+            "p75": -8.73,
+            "std": 10.9,
+            "min": -47.03,
+            "max": -0.29,
+            "positive_rate": 0.0
+          }
+        }
+      }
+    },
+    "REJECT_BASE": {
+      "total_count": 35,
+      "descriptive_only": false,
+      "horizons": {
+        "4w": {
+          "sample_count": 35,
+          "censored_count": 1,
+          "completed_count": 34,
+          "return_stats": {
+            "count": 34,
+            "mean": 3.79,
+            "median": 1.32,
+            "p25": -4.48,
+            "p75": 5.64,
+            "std": 16.8,
+            "min": -17.5,
+            "max": 83.22,
+            "positive_rate": 61.8
+          },
+          "mfe_stats": {
+            "count": 34,
+            "mean": 12.92,
+            "median": 6.4,
+            "p25": 4.13,
+            "p75": 16.6,
+            "std": 16.39,
+            "min": 1.06,
+            "max": 90.21,
+            "positive_rate": 100.0
+          },
+          "mae_stats": {
+            "count": 34,
+            "mean": -7.26,
+            "median": -5.61,
+            "p25": -9.44,
+            "p75": -2.38,
+            "std": 6.43,
+            "min": -22.67,
+            "max": -0.11,
+            "positive_rate": 0.0
+          }
+        },
+        "8w": {
+          "sample_count": 35,
+          "censored_count": 1,
+          "completed_count": 34,
+          "return_stats": {
+            "count": 34,
+            "mean": 6.45,
+            "median": -0.08,
+            "p25": -3.52,
+            "p75": 12.56,
+            "std": 21.66,
+            "min": -28.11,
+            "max": 68.15,
+            "positive_rate": 50.0
+          },
+          "mfe_stats": {
+            "count": 34,
+            "mean": 20.9,
+            "median": 13.4,
+            "p25": 6.24,
+            "p75": 26.29,
+            "std": 23.13,
+            "min": 1.06,
+            "max": 109.79,
+            "positive_rate": 100.0
+          },
+          "mae_stats": {
+            "count": 34,
+            "mean": -9.62,
+            "median": -6.21,
+            "p25": -15.06,
+            "p75": -3.05,
+            "std": 8.77,
+            "min": -35.18,
+            "max": -0.6,
+            "positive_rate": 0.0
+          }
+        },
+        "12w": {
+          "sample_count": 35,
+          "censored_count": 1,
+          "completed_count": 34,
+          "return_stats": {
+            "count": 34,
+            "mean": 10.96,
+            "median": 3.99,
+            "p25": -6.46,
+            "p75": 15.01,
+            "std": 31.45,
+            "min": -22.03,
+            "max": 122.73,
+            "positive_rate": 61.8
+          },
+          "mfe_stats": {
+            "count": 34,
+            "mean": 29.07,
+            "median": 16.43,
+            "p25": 8.02,
+            "p75": 31.22,
+            "std": 36.21,
+            "min": 1.06,
+            "max": 138.94,
+            "positive_rate": 100.0
+          },
+          "mae_stats": {
+            "count": 34,
+            "mean": -11.0,
+            "median": -7.03,
+            "p25": -15.63,
+            "p75": -4.59,
+            "std": 9.32,
+            "min": -35.18,
+            "max": -0.6,
+            "positive_rate": 0.0
+          }
+        },
+        "26w": {
+          "sample_count": 35,
+          "censored_count": 4,
+          "completed_count": 31,
+          "return_stats": {
+            "count": 31,
+            "mean": 23.28,
+            "median": 3.15,
+            "p25": -10.45,
+            "p75": 13.04,
+            "std": 81.48,
+            "min": -26.02,
+            "max": 421.16,
+            "positive_rate": 58.1
+          },
+          "mfe_stats": {
+            "count": 31,
+            "mean": 52.07,
+            "median": 23.58,
+            "p25": 13.73,
+            "p75": 50.14,
+            "std": 94.39,
+            "min": 1.54,
+            "max": 523.94,
+            "positive_rate": 100.0
+          },
+          "mae_stats": {
+            "count": 31,
+            "mean": -15.22,
+            "median": -13.93,
+            "p25": -19.67,
+            "p75": -6.27,
+            "std": 10.89,
+            "min": -38.73,
+            "max": -1.29,
+            "positive_rate": 0.0
+          }
+        }
+      }
+    },
+    "REJECT_PROGRESSED": {
+      "total_count": 15,
+      "descriptive_only": true,
+      "horizons": {
+        "4w": {
+          "sample_count": 15,
+          "censored_count": 0,
+          "completed_count": 15,
+          "return_stats": {
+            "count": 15,
+            "mean": -2.87,
+            "median": -3.99,
+            "p25": -10.82,
+            "p75": 0.55,
+            "std": 15.24,
+            "min": -25.89,
+            "max": 35.38,
+            "positive_rate": 26.7
+          },
+          "mfe_stats": {
+            "count": 15,
+            "mean": 12.79,
+            "median": 8.44,
+            "p25": 3.46,
+            "p75": 13.75,
+            "std": 14.57,
+            "min": 0.11,
+            "max": 54.03,
+            "positive_rate": 100.0
+          },
+          "mae_stats": {
+            "count": 15,
+            "mean": -14.48,
+            "median": -12.53,
+            "p25": -19.02,
+            "p75": -10.54,
+            "std": 8.7,
+            "min": -32.79,
+            "max": 0.0,
+            "positive_rate": 0.0
+          }
+        },
+        "8w": {
+          "sample_count": 15,
+          "censored_count": 0,
+          "completed_count": 15,
+          "return_stats": {
+            "count": 15,
+            "mean": -5.12,
+            "median": -9.01,
+            "p25": -20.32,
+            "p75": 7.86,
+            "std": 19.44,
+            "min": -33.38,
+            "max": 33.5,
+            "positive_rate": 46.7
+          },
+          "mfe_stats": {
+            "count": 15,
+            "mean": 16.43,
+            "median": 12.06,
+            "p25": 5.22,
+            "p75": 20.61,
+            "std": 16.18,
+            "min": 0.11,
+            "max": 54.03,
+            "positive_rate": 100.0
+          },
+          "mae_stats": {
+            "count": 15,
+            "mean": -17.73,
+            "median": -15.65,
+            "p25": -23.62,
+            "p75": -10.54,
+            "std": 11.97,
+            "min": -44.21,
+            "max": 0.0,
+            "positive_rate": 0.0
+          }
+        },
+        "12w": {
+          "sample_count": 15,
+          "censored_count": 0,
+          "completed_count": 15,
+          "return_stats": {
+            "count": 15,
+            "mean": -6.62,
+            "median": -16.49,
+            "p25": -22.09,
+            "p75": 8.13,
+            "std": 21.79,
+            "min": -40.73,
+            "max": 30.43,
+            "positive_rate": 40.0
+          },
+          "mfe_stats": {
+            "count": 15,
+            "mean": 20.05,
+            "median": 13.1,
+            "p25": 7.52,
+            "p75": 24.91,
+            "std": 19.14,
+            "min": 0.11,
+            "max": 58.57,
+            "positive_rate": 100.0
+          },
+          "mae_stats": {
+            "count": 15,
+            "mean": -22.22,
+            "median": -24.44,
+            "p25": -30.91,
+            "p75": -13.8,
+            "std": 13.14,
+            "min": -51.11,
+            "max": 0.0,
+            "positive_rate": 0.0
+          }
+        },
+        "26w": {
+          "sample_count": 15,
+          "censored_count": 2,
+          "completed_count": 13,
+          "return_stats": {
+            "count": 13,
+            "mean": -0.72,
+            "median": -8.11,
+            "p25": -16.71,
+            "p75": 11.72,
+            "std": 48.07,
+            "min": -55.22,
+            "max": 139.39,
+            "positive_rate": 38.5
+          },
+          "mfe_stats": {
+            "count": 13,
+            "mean": 30.14,
+            "median": 23.0,
+            "p25": 12.06,
+            "p75": 29.07,
+            "std": 36.8,
+            "min": 0.86,
+            "max": 142.97,
+            "positive_rate": 100.0
+          },
+          "mae_stats": {
+            "count": 13,
+            "mean": -29.26,
+            "median": -29.82,
+            "p25": -36.38,
+            "p75": -18.32,
+            "std": 15.16,
+            "min": -55.87,
+            "max": -6.09,
+            "positive_rate": 0.0
+          }
+        }
+      }
+    },
+    "REJECT_UNAVAILABLE": {
+      "total_count": 473,
+      "descriptive_only": false,
+      "horizons": {
+        "4w": {
+          "sample_count": 473,
+          "censored_count": 0,
+          "completed_count": 473,
+          "return_stats": {
+            "count": 473,
+            "mean": 0.13,
+            "median": -2.86,
+            "p25": -9.79,
+            "p75": 6.8,
+            "std": 16.77,
+            "min": -33.72,
+            "max": 115.22,
+            "positive_rate": 41.0
+          },
+          "mfe_stats": {
+            "count": 473,
+            "mean": 14.43,
+            "median": 7.9,
+            "p25": 3.13,
+            "p75": 18.17,
+            "std": 18.19,
+            "min": 0.0,
+            "max": 144.42,
+            "positive_rate": 98.3
+          },
+          "mae_stats": {
+            "count": 473,
+            "mean": -10.6,
+            "median": -8.69,
+            "p25": -14.8,
+            "p75": -4.8,
+            "std": 7.64,
+            "min": -37.61,
+            "max": 0.0,
+            "positive_rate": 0.0
+          }
+        },
+        "8w": {
+          "sample_count": 473,
+          "censored_count": 0,
+          "completed_count": 473,
+          "return_stats": {
+            "count": 473,
+            "mean": 1.47,
+            "median": -3.45,
+            "p25": -13.23,
+            "p75": 10.22,
+            "std": 25.44,
+            "min": -49.58,
+            "max": 174.67,
+            "positive_rate": 40.8
+          },
+          "mfe_stats": {
+            "count": 473,
+            "mean": 21.94,
+            "median": 12.05,
+            "p25": 4.3,
+            "p75": 27.84,
+            "std": 30.04,
+            "min": 0.0,
+            "max": 326.28,
+            "positive_rate": 98.7
+          },
+          "mae_stats": {
+            "count": 473,
+            "mean": -14.19,
+            "median": -12.21,
+            "p25": -20.13,
+            "p75": -6.15,
+            "std": 9.95,
+            "min": -51.72,
+            "max": 0.0,
+            "positive_rate": 0.0
+          }
+        },
+        "12w": {
+          "sample_count": 473,
+          "censored_count": 0,
+          "completed_count": 473,
+          "return_stats": {
+            "count": 473,
+            "mean": 2.81,
+            "median": -2.1,
+            "p25": -14.03,
+            "p75": 12.42,
+            "std": 31.3,
+            "min": -61.71,
+            "max": 329.85,
+            "positive_rate": 44.8
+          },
+          "mfe_stats": {
+            "count": 473,
+            "mean": 26.87,
+            "median": 15.6,
+            "p25": 5.32,
+            "p75": 34.93,
+            "std": 35.1,
+            "min": 0.0,
+            "max": 369.08,
+            "positive_rate": 99.6
+          },
+          "mae_stats": {
+            "count": 473,
+            "mean": -16.61,
+            "median": -14.04,
+            "p25": -23.47,
+            "p75": -7.51,
+            "std": 11.77,
+            "min": -67.78,
+            "max": 0.0,
+            "positive_rate": 0.0
+          }
+        },
+        "26w": {
+          "sample_count": 473,
+          "censored_count": 13,
+          "completed_count": 460,
+          "return_stats": {
+            "count": 460,
+            "mean": 3.35,
+            "median": -3.45,
+            "p25": -22.06,
+            "p75": 14.77,
+            "std": 41.44,
+            "min": -64.59,
+            "max": 355.2,
+            "positive_rate": 43.7
+          },
+          "mfe_stats": {
+            "count": 460,
+            "mean": 39.03,
+            "median": 22.78,
+            "p25": 8.7,
+            "p75": 47.54,
+            "std": 50.99,
+            "min": 0.0,
+            "max": 388.16,
+            "positive_rate": 99.6
+          },
+          "mae_stats": {
+            "count": 460,
+            "mean": -21.83,
+            "median": -18.04,
+            "p25": -32.84,
+            "p75": -9.86,
+            "std": 14.73,
+            "min": -66.57,
+            "max": -0.47,
+            "positive_rate": 0.0
+          }
+        }
+      }
+    }
+  },
+  "gate_pass_all_summary": {
+    "group_name": "GATE_PASS_ALL",
+    "total_count": 168,
+    "horizons": {
+      "4w": {
+        "sample_count": 168,
+        "censored_count": 1,
+        "completed_count": 167,
+        "return_stats": {
+          "count": 167,
+          "mean": 2.77,
+          "median": -1.37,
+          "p25": -10.57,
+          "p75": 9.5,
+          "std": 26.03,
+          "min": -31.94,
+          "max": 159.6,
+          "positive_rate": 46.7
+        },
+        "mfe_stats": {
+          "count": 167,
+          "mean": 20.32,
+          "median": 11.13,
+          "p25": 5.05,
+          "p75": 23.06,
+          "std": 34.52,
+          "min": 0.0,
+          "max": 298.45,
+          "positive_rate": 99.4
+        },
+        "mae_stats": {
+          "count": 167,
+          "mean": -11.48,
+          "median": -10.14,
+          "p25": -16.17,
+          "p75": -4.63,
+          "std": 8.61,
+          "min": -37.97,
+          "max": 0.0,
+          "positive_rate": 0.0
+        }
+      },
+      "8w": {
+        "sample_count": 168,
+        "censored_count": 2,
+        "completed_count": 166,
+        "return_stats": {
+          "count": 166,
+          "mean": 0.93,
+          "median": -2.83,
+          "p25": -12.91,
+          "p75": 7.8,
+          "std": 27.56,
+          "min": -44.07,
+          "max": 181.82,
+          "positive_rate": 41.6
+        },
+        "mfe_stats": {
+          "count": 166,
+          "mean": 28.16,
+          "median": 15.4,
+          "p25": 7.58,
+          "p75": 30.03,
+          "std": 45.54,
+          "min": 0.0,
+          "max": 306.19,
+          "positive_rate": 99.4
+        },
+        "mae_stats": {
+          "count": 166,
+          "mean": -14.93,
+          "median": -13.66,
+          "p25": -20.6,
+          "p75": -7.21,
+          "std": 10.22,
+          "min": -48.45,
+          "max": -0.32,
+          "positive_rate": 0.0
+        }
+      },
+      "12w": {
+        "sample_count": 168,
+        "censored_count": 2,
+        "completed_count": 166,
+        "return_stats": {
+          "count": 166,
+          "mean": 3.16,
+          "median": -2.5,
+          "p25": -16.74,
+          "p75": 13.22,
+          "std": 32.92,
+          "min": -46.28,
+          "max": 194.95,
+          "positive_rate": 41.0
+        },
+        "mfe_stats": {
+          "count": 166,
+          "mean": 32.95,
+          "median": 17.88,
+          "p25": 8.7,
+          "p75": 34.66,
+          "std": 48.65,
+          "min": 0.0,
+          "max": 306.19,
+          "positive_rate": 99.4
+        },
+        "mae_stats": {
+          "count": 166,
+          "mean": -17.61,
+          "median": -15.8,
+          "p25": -24.89,
+          "p75": -8.65,
+          "std": 11.76,
+          "min": -60.45,
+          "max": -0.32,
+          "positive_rate": 0.0
+        }
+      },
+      "26w": {
+        "sample_count": 168,
+        "censored_count": 31,
+        "completed_count": 137,
+        "return_stats": {
+          "count": 137,
+          "mean": 19.46,
+          "median": 3.51,
+          "p25": -14.61,
+          "p75": 26.62,
+          "std": 61.15,
+          "min": -55.41,
+          "max": 370.85,
+          "positive_rate": 54.7
+        },
+        "mfe_stats": {
+          "count": 137,
+          "mean": 57.47,
+          "median": 31.02,
+          "p25": 14.39,
+          "p75": 66.67,
+          "std": 73.69,
+          "min": 0.37,
+          "max": 430.72,
+          "positive_rate": 100.0
+        },
+        "mae_stats": {
+          "count": 137,
+          "mean": -20.6,
+          "median": -19.48,
+          "p25": -28.08,
+          "p75": -10.5,
+          "std": 12.58,
+          "min": -60.02,
+          "max": -0.32,
+          "positive_rate": 0.0
+        }
+      }
+    }
+  },
+  "gate_reject_all_summary": {
+    "group_name": "GATE_REJECT_ALL",
+    "total_count": 631,
+    "horizons": {
+      "4w": {
+        "sample_count": 631,
+        "censored_count": 1,
+        "completed_count": 630,
+        "return_stats": {
+          "count": 630,
+          "mean": 1.37,
+          "median": -2.19,
+          "p25": -9.68,
+          "p75": 7.51,
+          "std": 19.13,
+          "min": -33.85,
+          "max": 186.17,
+          "positive_rate": 43.0
+        },
+        "mfe_stats": {
+          "count": 630,
+          "mean": 16.36,
+          "median": 8.75,
+          "p25": 3.4,
+          "p75": 19.61,
+          "std": 25.02,
+          "min": 0.0,
+          "max": 414.99,
+          "positive_rate": 98.7
+        },
+        "mae_stats": {
+          "count": 630,
+          "mean": -10.59,
+          "median": -8.58,
+          "p25": -14.85,
+          "p75": -4.71,
+          "std": 7.79,
+          "min": -37.61,
+          "max": 0.0,
+          "positive_rate": 0.0
+        }
+      },
+      "8w": {
+        "sample_count": 631,
+        "censored_count": 1,
+        "completed_count": 630,
+        "return_stats": {
+          "count": 630,
+          "mean": 2.68,
+          "median": -2.73,
+          "p25": -13.21,
+          "p75": 11.38,
+          "std": 26.23,
+          "min": -49.58,
+          "max": 174.67,
+          "positive_rate": 44.0
+        },
+        "mfe_stats": {
+          "count": 630,
+          "mean": 24.12,
+          "median": 13.13,
+          "p25": 4.9,
+          "p75": 30.52,
+          "std": 33.72,
+          "min": 0.0,
+          "max": 414.99,
+          "positive_rate": 99.0
+        },
+        "mae_stats": {
+          "count": 630,
+          "mean": -14.11,
+          "median": -12.13,
+          "p25": -20.21,
+          "p75": -6.02,
+          "std": 10.13,
+          "min": -53.45,
+          "max": 0.0,
+          "positive_rate": 0.0
+        }
+      },
+      "12w": {
+        "sample_count": 631,
+        "censored_count": 1,
+        "completed_count": 630,
+        "return_stats": {
+          "count": 630,
+          "mean": 4.72,
+          "median": -1.21,
+          "p25": -13.86,
+          "p75": 14.59,
+          "std": 33.4,
+          "min": -62.04,
+          "max": 329.85,
+          "positive_rate": 47.1
+        },
+        "mfe_stats": {
+          "count": 630,
+          "mean": 29.82,
+          "median": 16.76,
+          "p25": 6.17,
+          "p75": 37.95,
+          "std": 39.31,
+          "min": 0.0,
+          "max": 414.99,
+          "positive_rate": 99.7
+        },
+        "mae_stats": {
+          "count": 630,
+          "mean": -16.62,
+          "median": -14.0,
+          "p25": -23.59,
+          "p75": -7.13,
+          "std": 12.19,
+          "min": -67.78,
+          "max": 0.0,
+          "positive_rate": 0.0
+        }
+      },
+      "26w": {
+        "sample_count": 631,
+        "censored_count": 37,
+        "completed_count": 594,
+        "return_stats": {
+          "count": 594,
+          "mean": 9.64,
+          "median": -0.55,
+          "p25": -16.85,
+          "p75": 20.58,
+          "std": 51.03,
+          "min": -64.59,
+          "max": 421.16,
+          "positive_rate": 49.2
+        },
+        "mfe_stats": {
+          "count": 594,
+          "mean": 46.53,
+          "median": 25.98,
+          "p25": 10.38,
+          "p75": 55.4,
+          "std": 65.31,
+          "min": 0.0,
+          "max": 645.1,
+          "positive_rate": 99.7
+        },
+        "mae_stats": {
+          "count": 594,
+          "mean": -20.85,
+          "median": -17.61,
+          "p25": -30.04,
+          "p75": -9.39,
+          "std": 14.25,
+          "min": -66.57,
+          "max": -0.29,
+          "positive_rate": 0.0
+        }
+      }
+    }
+  },
+  "primary_gate_incremental_value_differences": {
+    "4w": {
+      "pass_return_median": -1.37,
+      "reject_return_median": -2.19,
+      "median_return_difference": 0.82,
+      "pass_mfe_median": 11.13,
+      "reject_mfe_median": 8.75,
+      "median_mfe_difference": 2.38,
+      "pass_mae_median": -10.14,
+      "reject_mae_median": -8.58,
+      "median_mae_difference": -1.56,
+      "pass_positive_rate": 46.7,
+      "reject_positive_rate": 43.0,
+      "positive_rate_difference": 3.7
+    },
+    "8w": {
+      "pass_return_median": -2.83,
+      "reject_return_median": -2.73,
+      "median_return_difference": -0.1,
+      "pass_mfe_median": 15.4,
+      "reject_mfe_median": 13.13,
+      "median_mfe_difference": 2.27,
+      "pass_mae_median": -13.66,
+      "reject_mae_median": -12.13,
+      "median_mae_difference": -1.53,
+      "pass_positive_rate": 41.6,
+      "reject_positive_rate": 44.0,
+      "positive_rate_difference": -2.4
+    },
+    "12w": {
+      "pass_return_median": -2.5,
+      "reject_return_median": -1.21,
+      "median_return_difference": -1.29,
+      "pass_mfe_median": 17.88,
+      "reject_mfe_median": 16.76,
+      "median_mfe_difference": 1.12,
+      "pass_mae_median": -15.8,
+      "reject_mae_median": -14.0,
+      "median_mae_difference": -1.8,
+      "pass_positive_rate": 41.0,
+      "reject_positive_rate": 47.1,
+      "positive_rate_difference": -6.1
+    },
+    "26w": {
+      "pass_return_median": 3.51,
+      "reject_return_median": -0.55,
+      "median_return_difference": 4.06,
+      "pass_mfe_median": 31.02,
+      "reject_mfe_median": 25.98,
+      "median_mfe_difference": 5.04,
+      "pass_mae_median": -19.48,
+      "reject_mae_median": -17.61,
+      "median_mae_difference": -1.87,
+      "pass_positive_rate": 54.7,
+      "reject_positive_rate": 49.2,
+      "positive_rate_difference": 5.5
+    }
+  },
+  "secondary_waiting_cost_diagnostic": {
+    "gate_reject_total_count": 631,
+    "later_combined_qualified_count": 386,
+    "later_combined_qualified_rate": 61.17,
+    "reject_never_later_qualified_count": 245,
+    "reject_never_later_qualified_rate": 38.83,
+    "waiting_delay_days_stats": {
+      "count": 386,
+      "mean": 415.88,
+      "median": 413.0,
+      "p25": 176.75,
+      "p75": 602.0,
+      "std": 294.28,
+      "min": 7.0,
+      "max": 1876.0,
+      "positive_rate": 100.0
+    },
+    "waiting_period_return_stats": {
+      "count": 385,
+      "mean": 14.16,
+      "median": 6.17,
+      "p25": -4.68,
+      "p75": 21.44,
+      "std": 43.62,
+      "min": -43.89,
+      "max": 442.89,
+      "positive_rate": 65.7
+    },
+    "waiting_mfe_stats": {
+      "count": 385,
+      "mean": 35.76,
+      "median": 20.22,
+      "p25": 8.33,
+      "p75": 40.37,
+      "std": 74.57,
+      "min": 0.0,
+      "max": 946.06,
+      "positive_rate": 99.7
+    },
+    "waiting_mae_stats": {
+      "count": 385,
+      "mean": -24.88,
+      "median": -21.02,
+      "p25": -40.4,
+      "p75": -8.42,
+      "std": 18.36,
+      "min": -82.93,
+      "max": -0.11,
+      "positive_rate": 0.0
+    }
+  },
+  "reject_never_later_qualified_horizons": {
+    "4w": {
+      "return_stats": {
+        "count": 244,
+        "mean": 5.68,
+        "median": -1.35,
+        "p25": -10.64,
+        "p75": 16.99,
+        "std": 25.8,
+        "min": -33.85,
+        "max": 186.17,
+        "positive_rate": 47.1
+      },
+      "mfe_stats": {
+        "count": 244,
+        "mean": 25.13,
+        "median": 14.43,
+        "p25": 5.38,
+        "p75": 34.81,
+        "std": 35.58,
+        "min": 0.0,
+        "max": 414.99,
+        "positive_rate": 99.6
+      },
+      "mae_stats": {
+        "count": 244,
+        "mean": -12.22,
+        "median": -9.84,
+        "p25": -18.08,
+        "p75": -5.19,
+        "std": 9.02,
+        "min": -37.61,
+        "max": 0.0,
+        "positive_rate": 0.0
+      }
+    },
+    "8w": {
+      "return_stats": {
+        "count": 244,
+        "mean": 8.05,
+        "median": 0.74,
+        "p25": -14.95,
+        "p75": 22.15,
+        "std": 34.28,
+        "min": -49.58,
+        "max": 174.67,
+        "positive_rate": 50.4
+      },
+      "mfe_stats": {
+        "count": 244,
+        "mean": 37.37,
+        "median": 21.48,
+        "p25": 8.41,
+        "p75": 50.65,
+        "std": 46.68,
+        "min": 0.0,
+        "max": 414.99,
+        "positive_rate": 99.6
+      },
+      "mae_stats": {
+        "count": 244,
+        "mean": -15.62,
+        "median": -13.77,
+        "p25": -22.91,
+        "p75": -6.28,
+        "std": 11.44,
+        "min": -53.45,
+        "max": 0.0,
+        "positive_rate": 0.0
+      }
+    },
+    "12w": {
+      "return_stats": {
+        "count": 244,
+        "mean": 10.47,
+        "median": 2.16,
+        "p25": -17.03,
+        "p75": 28.79,
+        "std": 43.35,
+        "min": -62.04,
+        "max": 329.85,
+        "positive_rate": 52.9
+      },
+      "mfe_stats": {
+        "count": 244,
+        "mean": 44.89,
+        "median": 28.49,
+        "p25": 11.19,
+        "p75": 64.89,
+        "std": 51.44,
+        "min": 0.0,
+        "max": 414.99,
+        "positive_rate": 99.6
+      },
+      "mae_stats": {
+        "count": 244,
+        "mean": -18.58,
+        "median": -15.89,
+        "p25": -26.88,
+        "p75": -7.24,
+        "std": 14.09,
+        "min": -67.78,
+        "max": 0.0,
+        "positive_rate": 0.0
+      }
+    },
+    "26w": {
+      "return_stats": {
+        "count": 213,
+        "mean": 16.92,
+        "median": 3.62,
+        "p25": -18.5,
+        "p75": 38.43,
+        "std": 57.15,
+        "min": -64.59,
+        "max": 377.84,
+        "positive_rate": 54.9
+      },
+      "mfe_stats": {
+        "count": 213,
+        "mean": 68.02,
+        "median": 44.85,
+        "p25": 16.38,
+        "p75": 90.26,
+        "std": 79.13,
+        "min": 0.0,
+        "max": 645.1,
+        "positive_rate": 99.5
+      },
+      "mae_stats": {
+        "count": 213,
+        "mean": -22.47,
+        "median": -18.59,
+        "p25": -34.06,
+        "p75": -8.89,
+        "std": 15.83,
+        "min": -66.57,
+        "max": -0.47,
+        "positive_rate": 0.0
+      }
+    }
+  },
+  "conclusion": {
+    "status": "GATE_VALUE_MIXED",
+    "production_status": "PRODUCTION_HOLD",
+    "key_observations": [
+      "전체 1,081개 투자적격 종목 중 FAST v0.1 최초 신호는 799개 종목에서 발생했고(799개 실제 체결 가능), 이 중 168개(21.0%)가 Gate Pass, 631개(79.0%)가 Gate Reject로 분류됨.",
+      "동일 FAST 진입 시점 기준 Forward Return 비교 결과: 4W 차이 +0.82%p (Pass -1.37% vs Reject -2.19%), 8W 차이 -0.10%p, 12W 차이 -1.29%p, 26W 차이 +4.06%p를 기록함.",
+      "Gate Reject 중 최대 비중을 차지한 REJECT_UNAVAILABLE(473건)의 26W Return 중앙값은 -3.45%로, REJECT_WEAK(108건, 20.31%)와 현격한 구조적 차이를 나타냄.",
+      "Gate Reject 631건 중 사후 Combined Entry를 만족한 종목은 386건(61.17%)이었으며, Gate 대기 기간(413.0일) 동안의 Waiting Return 중앙값은 6.17% (양수율 65.7%)를 기록함.",
+      "영구 차단된 REJECT_NEVER_LATER_QUALIFIED 245건(38.83%)의 26W Return 중앙값은 3.62%로 관찰됨."
+    ]
+  }
+}
