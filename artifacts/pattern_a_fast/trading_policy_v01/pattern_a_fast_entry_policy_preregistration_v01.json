@@ -1,0 +1,50 @@
+{
+  "version": "v0.1",
+  "status": "PREREGISTERED_BEFORE_EVALUATION",
+  "population": "FROZEN_INVESTABLE_OOS_B_36",
+  "selection_manifest_path": "artifacts/pattern_a_fast/investable_oos/pattern_a_fast_investable_oos_selection_manifest_v01.csv",
+  "selection_manifest_sha256": "6fb59b9ffce5d8076a18faa00327c62e4edc5cff6ef93bcaf5095c50532ef825",
+  "sample_count": 36,
+  "base_commit": "70de72418b26c2caaafdb4317d46e2668981932c",
+  "primary_entry_rule": {
+    "fast_machine_stage": "TRIGGER",
+    "fast_machine_stage_status": "READY",
+    "fast_monthly_permission_state": "PERMITTED_REGIME",
+    "fast_daily_risk_state_in": [
+      "NORMAL",
+      "ELEVATED"
+    ],
+    "fast_score_status_in": [
+      "READY",
+      "PARTIAL"
+    ]
+  },
+  "entry_grade_rules": {
+    "Grade A": {
+      "stage": "TRIGGER",
+      "monthly_regime": "PERMITTED_REGIME",
+      "daily_risk": "NORMAL"
+    },
+    "Grade B": {
+      "stage": "TRIGGER",
+      "monthly_regime": "PERMITTED_REGIME",
+      "daily_risk": "ELEVATED"
+    }
+  },
+  "execution_rule": "next_trading_day_open",
+  "evaluation_start_rule": "completed_weekly_reference_date",
+  "evaluation_end_rule": "outcome_review_end",
+  "first_entry_only": true,
+  "forward_horizons_weeks": [
+    4,
+    8,
+    12,
+    26
+  ],
+  "mfe_mae_enabled": true,
+  "score_threshold": null,
+  "pattern_a_entry_gate": false,
+  "exit_policy": "OUT_OF_SCOPE",
+  "retuning_allowed": false,
+  "network_requests_allowed": false
+}
