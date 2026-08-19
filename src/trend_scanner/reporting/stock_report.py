@@ -361,13 +361,14 @@ def render_markdown_report(report: StockReport) -> str:
     md.append(f"- **총 주별 관측 개수**: `{fast.observation_count}주`")
     md.append("")
     if fast.weekly_history:
-        md.append("| 기준 주 (Week Ending) | FAST Score | Score Availability | FAST Stage | Stage Availability | Monthly Regime | Daily Risk |")
-        md.append("|---|---:|---|---|---|---|---|")
+        md.append("| 기준 주 (Week Ending) | 종가 | FAST Score | Score Availability | FAST Stage | Stage Availability | Monthly Regime | Daily Risk |")
+        md.append("|---|---:|---:|---|---|---|---|---|")
         for obs in fast.weekly_history:
+            cl_str = f"{int(round(obs.close)):,}" if obs.close is not None else "N/A"
             sc_str = f"{obs.fast_score:.2f}" if obs.fast_score is not None else "N/A"
             st_str = obs.fast_stage if obs.fast_stage is not None else "N/A"
             md.append(
-                f"| {obs.week_ending} | {sc_str} | {obs.score_availability} | {st_str} | "
+                f"| {obs.week_ending} | {cl_str} | {sc_str} | {obs.score_availability} | {st_str} | "
                 f"{obs.stage_availability} | {obs.monthly_regime} | {obs.daily_risk} |"
             )
     else:

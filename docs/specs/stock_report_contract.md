@@ -222,10 +222,11 @@ Stock Report Contract v0.1은 KRX 상장 개별 종목에 대해 외부 네트�
     },
     "PatternAFastObservation": {
       "type": "object",
-      "description": "`current`는 week_ending 대신 as_of 키를 사용한다는 점을 제외하면 weekly_history[] 원소와 동일 구조.",
+      "description": "Current와 Weekly History는 공통 FAST signal field를 공유하지만, week_ending과 close는 Weekly History 전용이며 as_of는 Current 전용이다.",
       "properties": {
         "as_of": { "type": ["string", "null"], "description": "current 전용 키 (weekly_history[] 원소는 week_ending 사용)" },
         "week_ending": { "type": "string", "description": "weekly_history[] 전용 키 (완료된 주봉 기준일)" },
+        "close": { "type": ["number", "null"], "description": "weekly_history[] 전용 키. Exact daily close at week_ending (해당 week_ending 날짜의 실제 일봉 종가, 주간 평균/최신가/월말가 아님). current에는 존재하지 않음. UNAVAILABLE일 때 0이 아니라 null." },
         "fast_score": { "type": ["number", "null"], "description": "UNAVAILABLE일 때 0이 아니라 null" },
         "score_availability": { "type": "string", "enum": ["READY", "PARTIAL", "UNAVAILABLE"] },
         "fast_stage": { "type": ["string", "null"], "enum": ["WATCH", "SETUP", "TRIGGER", "TREND", "EXTENDED", null] },
@@ -316,11 +317,11 @@ Markdown 종목 리포트는 JSON contract의 속성만을 사용하여 렌더�
 ...
 
 ## 5. Pattern A FAST Weekly History (`Experimental / Early Signal`)
-| 기준 주 (Week Ending) | FAST Score | Score Availability | FAST Stage | Stage Availability | Monthly Regime | Daily Risk |
-| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| 2026-08-14 | 78.49 | READY | TRIGGER | READY | PERMITTED_REGIME | NORMAL |
+| 기준 주 (Week Ending) | 종가 | FAST Score | Score Availability | FAST Stage | Stage Availability | Monthly Regime | Daily Risk |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| 2026-08-14 | 120,100 | 56.50 | PARTIAL | SETUP | READY | PERMITTED_REGIME | ELEVATED |
 ...
-(Pattern A Monthly History와 동일 timeline 표로 합치지 않는다. FAST Score `N/A`는 UNAVAILABLE을 의미하며 `0`이 아니다.)
+(Pattern A Monthly History와 동일 timeline 표로 합치지 않는다. 종가는 해당 week_ending의 실제 일봉 종가이며, `N/A`는 데이터 unavailable을 의미하며 `0`이 아니다. FAST Score `N/A`도 동일하게 UNAVAILABLE을 의미한다.)
 
 ## 6. Foreign Investor Flow (Phase 11)
 - **수급 상태**: `FLOW_ACCUMULATION`

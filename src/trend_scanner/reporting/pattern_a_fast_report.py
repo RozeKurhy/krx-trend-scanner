@@ -90,11 +90,12 @@ def _interpretation(fast_stage: str | None) -> str:
     return _INTERPRETATION_BY_STAGE.get(fast_stage, _INTERPRETATION_UNAVAILABLE)
 
 
-def _to_observation(week_label: pd.Timestamp, point: dict) -> PatternAFastWeeklyObservation:
+def _to_observation(week_label: pd.Timestamp, close: float | None, point: dict) -> PatternAFastWeeklyObservation:
     fast_score = point["fast_score"]
     fast_stage = point["fast_machine_stage"]
     return PatternAFastWeeklyObservation(
         week_ending=week_label.strftime("%Y-%m-%d"),
+        close=close,
         fast_score=None if fast_score is None or pd.isna(fast_score) else float(fast_score),
         score_availability=point["fast_score_status"],
         fast_stage=fast_stage,
@@ -142,7 +143,12 @@ def build_pattern_a_fast_section(
         # 경로(미완료 weekly date)는 여기서 발생하지 않는다. 그 외 예외는 데이터
         # 부족이 아닌 programming error이므로 여기서 숨기지 않고 그대로 전파한다.
         point = evaluate_pattern_a_fast(ticker, name, daily_sorted, week_label, score, stage)
-        observations.append(_to_observation(week_label, point))
+        # 가격은 FAST evaluator의 output이 아니라 report observation metadata다.
+        # week_daily의 마지막 행이 곧 completed-week 판정에 쓰인 그 거래일이므로
+        # 그 행의 close를 그대로 사용한다(월말/평균/최신가 대체 금지, fail-closed).
+        raw_close = week_daily.iloc[-1].get("close")
+        close = None if raw_close is None or pd.isna(raw_close) else float(raw_close)
+        observations.append(_to_observation(week_label, close, point))
 
     if not observations:
         return _empty_section()

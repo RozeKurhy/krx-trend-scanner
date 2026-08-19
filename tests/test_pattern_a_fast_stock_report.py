@@ -90,8 +90,9 @@ def test_fast_score_unavailable_with_stage_ready_is_handled_independently():
         "fast_machine_stage": "TRIGGER",
         "fast_machine_stage_status": "READY",
     }
-    obs = _to_observation(pd.Timestamp("2026-07-31"), point)
+    obs = _to_observation(pd.Timestamp("2026-07-31"), 47000.0, point)
 
+    assert obs.close == 47000.0
     assert obs.fast_score is None
     assert obs.score_availability == "UNAVAILABLE"
     assert obs.fast_stage == "TRIGGER"

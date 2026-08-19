@@ -165,6 +165,7 @@ class PatternAFastWeeklyObservation:
     """Pattern A FAST(HIERARCHICAL_V01) 주별 관측치. Experimental / Early Signal."""
 
     week_ending: str
+    close: float | None
     fast_score: float | None
     score_availability: str
     fast_stage: str | None
