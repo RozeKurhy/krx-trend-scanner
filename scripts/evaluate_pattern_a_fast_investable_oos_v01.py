@@ -47,6 +47,7 @@ FROZEN_ASSET_SHA = "9d8b03bf597c4520c279d2fdfe02c59df22669e27135adc1b9efa56b611b
 FROZEN_PROTOCOL_SHA = "ffd271881d2b6ce9aa536431b7747395bf29dc3244df6316b241d60a1bdf138d"
 FROZEN_PASS_A_SHA = "4c908daa5ab803ccbf20f355027391aaa3f2d63c31e3f60ac60df6e34b9201ea"
 FROZEN_REVIEW_SHA = "c90db38860fc15cfe81eeb4f35e5e7ce0af8bd3c6de1eb1195e9603198d60585"
+FROZEN_GROUND_TRUTH_SEAL_SHA = "c626759b046e4a1bc223685c41c3e9744e5fb989c28dbccdf91f8f3794852689"
 FROZEN_MAPPING_SHA = "6d861d3b86f9c1e0fa4e7e48c1d59c385c3e089c05608fd45151536ab5c6b40b"
 STAGES = ["WATCH", "SETUP", "TRIGGER", "TREND", "EXTENDED"]
 ORDER = {stage: number for number, stage in enumerate(STAGES)}
@@ -76,13 +77,20 @@ def score_stats(values: pd.Series) -> dict:
             "min": number(usable.min()), "max": number(usable.max())}
 
 
-def load_inputs() -> tuple[pd.DataFrame, dict, dict, dict]:
-    """Fail closed before computing any machine value or writing any output."""
+def assert_frozen_input_hashes() -> None:
+    """Verify every byte-frozen input before model evaluation or output write."""
     expected_hashes = {REVIEW: FROZEN_REVIEW_SHA, MANIFEST: FROZEN_SELECTION_SHA, ASSETS: FROZEN_ASSET_SHA,
                        PROTOCOL: FROZEN_PROTOCOL_SHA, PASS_A_SEAL: FROZEN_PASS_A_SHA}
     for path, expected in expected_hashes.items():
         if sha256(path) != expected:
             raise RuntimeError(f"FROZEN_INPUT_HASH_MISMATCH: {path.name}")
+    if sha256(GROUND_TRUTH_SEAL) != FROZEN_GROUND_TRUTH_SEAL_SHA:
+        raise RuntimeError("GROUND_TRUTH_SEAL_HASH_MISMATCH")
+
+
+def load_inputs() -> tuple[pd.DataFrame, dict, dict, dict]:
+    """Fail closed before computing any machine value or writing any output."""
+    assert_frozen_input_hashes()
     review = pd.read_csv(REVIEW, dtype={"ticker": str}, keep_default_na=False)
     manifest = pd.read_csv(MANIFEST, dtype={"ticker": str}, keep_default_na=False)
     assets = pd.read_csv(ASSETS, dtype={"ticker": str}, keep_default_na=False)

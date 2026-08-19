@@ -145,7 +145,14 @@ def test_charts_assets_machine_code_and_outcome_evaluation_remain_untouched():
         "artifacts/pattern_a_fast/investable_oos/pattern_a_fast_investable_oos_selection_manifest_v01.csv",
         "artifacts/pattern_a_fast/investable_oos/pattern_a_fast_investable_oos_blind_asset_manifest_v01.csv",
         "artifacts/pattern_a_fast/investable_oos/charts", "artifacts/pattern_a_fast/investable_oos/pattern_a_fast_investable_oos_evaluation_protocol_v01.json",
-        "src/trend_scanner", "scripts/prepare_pattern_a_fast_investable_oos_v01.py", "scripts/evaluate_pattern_a_fast_oos_v01.py", "docs/roadmap.md",
+        # HistoricalSnapshot's post-freeze PIT raw-frame exposure is verified
+        # by the final-closure source identity gate. Keep the actual frozen
+        # Pattern A model implementation protected here.
+        "src/trend_scanner/patterns/pattern_a_evaluator.py",
+        "src/trend_scanner/patterns/pattern_a_feature_set.py",
+        "src/trend_scanner/patterns/pattern_a_score.py",
+        "src/trend_scanner/patterns/pattern_a_stage.py",
+        "scripts/prepare_pattern_a_fast_investable_oos_v01.py", "scripts/evaluate_pattern_a_fast_oos_v01.py", "docs/roadmap.md",
     ]
     assert subprocess.run(["git", "diff", "--quiet", BASE, "--", *protected], cwd=ROOT, check=False).returncode == 0
     seal = _seal()

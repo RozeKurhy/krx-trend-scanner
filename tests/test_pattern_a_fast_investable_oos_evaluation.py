@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import hashlib
+import importlib
 import json
 from pathlib import Path
 
 import pandas as pd
+import pytest
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -16,6 +18,19 @@ SEAL = OOS / "pattern_a_fast_investable_oos_human_ground_truth_v01.json"
 SUMMARY = OOS / "pattern_a_fast_investable_oos_evaluation_v01.json"
 SAMPLES = OOS / "pattern_a_fast_investable_oos_evaluation_samples_v01.csv"
 PAIRS = OOS / "pattern_a_fast_investable_oos_evaluation_event_pairs_v01.csv"
+FROZEN_INPUT_HASHES = {
+    REVIEW: "c90db38860fc15cfe81eeb4f35e5e7ce0af8bd3c6de1eb1195e9603198d60585",
+    OOS / "pattern_a_fast_investable_oos_human_stage_pass_a_freeze_v01.json": "4c908daa5ab803ccbf20f355027391aaa3f2d63c31e3f60ac60df6e34b9201ea",
+    OOS / "pattern_a_fast_investable_oos_human_ground_truth_v01.json": "c626759b046e4a1bc223685c41c3e9744e5fb989c28dbccdf91f8f3794852689",
+    OOS / "pattern_a_fast_investable_oos_selection_manifest_v01.csv": "6fb59b9ffce5d8076a18faa00327c62e4edc5cff6ef93bcaf5095c50532ef825",
+    OOS / "pattern_a_fast_investable_oos_blind_asset_manifest_v01.csv": "9d8b03bf597c4520c279d2fdfe02c59df22669e27135adc1b9efa56b611b5ebe",
+    OOS / "pattern_a_fast_investable_oos_evaluation_protocol_v01.json": "ffd271881d2b6ce9aa536431b7747395bf29dc3244df6316b241d60a1bdf138d",
+}
+FROZEN_EVALUATION_HASHES = {
+    SUMMARY: "33b3e9f69fa6d1c5bd972a7a15859c94b2d737abecc076bb5b575889ffdfac50",
+    SAMPLES: "b3359d442dd6f7338b3eee5848ce2b20e2c9ce9f4c1d281790042c7204bdbe38",
+    PAIRS: "acfe8f368d2377019c637f4f251477e94d0952fa207bd991cc405ec4fc009b62",
+}
 
 
 def sha256(path: Path) -> str:
@@ -24,11 +39,27 @@ def sha256(path: Path) -> str:
 
 def test_ground_truth_remains_exactly_sealed_before_evaluation():
     seal = json.loads(SEAL.read_text(encoding="utf-8"))
-    assert sha256(REVIEW) == "c90db38860fc15cfe81eeb4f35e5e7ce0af8bd3c6de1eb1195e9603198d60585"
+    for path, expected in FROZEN_INPUT_HASHES.items():
+        assert sha256(path) == expected
     assert seal["post_pass_b_human_review_sha256"] == sha256(REVIEW)
     assert seal["pass_a_stage_mutation"] is False
     assert seal["sample_mutation"] is False
     assert seal["oos_evaluation_executed"] is False
+
+
+def test_evaluator_hard_gates_ground_truth_seal_file_hash_without_mutating_inputs(monkeypatch, tmp_path: Path):
+    evaluator = importlib.import_module("scripts.evaluate_pattern_a_fast_investable_oos_v01")
+    assert evaluator.FROZEN_GROUND_TRUTH_SEAL_SHA == FROZEN_INPUT_HASHES[SEAL]
+    forged = tmp_path / "ground_truth_seal.json"
+    forged.write_text(SEAL.read_text(encoding="utf-8") + "\n", encoding="utf-8")
+    monkeypatch.setattr(evaluator, "GROUND_TRUTH_SEAL", forged)
+    with pytest.raises(RuntimeError, match="GROUND_TRUTH_SEAL_HASH_MISMATCH"):
+        evaluator.assert_frozen_input_hashes()
+
+
+def test_frozen_evaluation_artifacts_are_byte_exact():
+    for path, expected in FROZEN_EVALUATION_HASHES.items():
+        assert sha256(path) == expected
 
 
 def test_evaluation_reproduces_frozen_population_and_primary_direction_gate():

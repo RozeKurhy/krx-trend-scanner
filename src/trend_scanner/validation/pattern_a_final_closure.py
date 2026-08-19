@@ -39,7 +39,10 @@ HISTORICAL_FROZEN_SCANNER_HASH: str = "6191be6f84aca63f7f3a813c94b272582cacb517a
 EXPECTED_FROZEN_HASHES = {
     "pattern_a_stage.py": "543499b0dfc21946405e76b6d47938d0a0697d440fe4087c800bdb0948d4676e",
     "pattern_a_score.py": "62ca9b54837164b7e6aa6d50290c728de12c7b99db03af1760df37ab2206de19",
-    "historical_snapshot.py": "91af0b3670bfcd202a71110f2809047199e35959ef0f03163b8a9c8b29ea8597",
+    # Phase 13 added only PIT-truncated raw monthly/weekly frame exposure for
+    # research. FeatureRow construction and Pattern A score/stage semantics
+    # remain the frozen production behavior.
+    "historical_snapshot.py": "c37cce88f35105e32cdd7bc1ebf00cb4e757e4592e335a31be0b4522ded7e19e",
 }
 
 
