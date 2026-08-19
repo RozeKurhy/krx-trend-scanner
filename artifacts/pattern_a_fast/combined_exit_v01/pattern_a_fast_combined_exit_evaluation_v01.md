@@ -1,125 +1,146 @@
-# FAST Entry + Pattern A Exit / Handoff Policy v0.1 전종목 사후 정책 평가 보고서
+# FAST Entry + Pattern A Exit / Handoff Policy v0.1 전종목 사후 정책 평가 보고서 (Corrected)
 
 ================================================================================
 1. 평가 개요 및 실행 환경
 ================================================================================
-- **연구명**: FAST Entry + Pattern A Exit / Handoff Policy v0.1 Full Investable Universe Retrospective Evaluation
+- **연구명**: FAST Entry + Pattern A Exit / Handoff Policy v0.1 Full Investable Universe Retrospective Evaluation (Corrected)
 - **연구 분류 (Research Classification)**: `RETROSPECTIVE_TRADING_POLICY_EVALUATION`
+- **평가 상태 (Evaluation State)**: **`CORRECTED_EVALUATION_COMPLETE`**
+- **기존 평가 커밋 (Original Commit)**: `28e3e303687fc64d8156ebc5e153c2143bc5e400` (**`SUPERSEDED`**)
+- **사전등록 기준 커밋 (Preregistration Authority)**: `42336365d0ce278b28d4790f63d48c375aea7b65` (`PREREGISTERED_BEFORE_EVALUATION`, 수정 없음)
 - **데이터 기준일 (Data Cutoff)**: `2026-08-14`
 - **데이터 소스**: **로컬 Parquet 캐시 전용 (LOCAL CACHE ONLY, 외부 네트워크 0회)**
-- **시뮬레이션 소요 시간**: `257.75초` (8-Core 병렬 처리)
+- **시뮬레이션 소요 시간**: `251.85초` (8-Core 병렬 처리)
 - **Production 상태**: **`PRODUCTION_HOLD` (운영 불변, 연구 전용)**
-- **Production 영향도**: **`NONE` (Production Signal/Ranking 일체 무영향)**
+- **Production 영향도**: **`NONE` (Production Code/Signal/Ranking 일체 무영향)**
 - **테스트 실행 여부**: `Tests: NOT RUN`
 
-> **[주의] 연구 성격 및 해석 원칙**:
+> **[주의 및 연구 성격 명시]**:
 > 본 평가는 2026-08-14 기준 Phase 10 투자 적격 보통주 유니버스의 과거 데이터를 사후적으로 시뮬레이션한 **사후 거래 정책 평가(Retrospective Policy Evaluation)**입니다. Fresh OOS 또는 OOS Proof가 아니며, 시점 고정 유니버스에 따른 생존 편향이 내재될 수 있습니다.
 
 ================================================================================
-2. 대상 모집단 및 표본 현황
+2. 대상 모집단 및 데이터 적격성 현황 (Population Diagnostics)
 ================================================================================
 - **KRX 전체 보통주 (COMMON)**: `2,528개`
 - **Phase 10 투자 적격 유니버스 (Investable)**: `1,081개`
   - 시가총액 ≥ 1,000억원 & 20일 평균 거래대금 ≥ 3억원
-- **로컬 캐시 적격 (Cache Eligible)**: `1,081개` (100.0% 캐시 완비)
-- **제외 종목 (Excluded)**: `0개` (Fail-Closed 없음)
+- **로컬 캐시 보유 종목 (Cache Present)**: `1,081개` (`100.0%`)
+- **로컬 캐시 누락 종목 (Cache Missing)**: `0개`
+- **평가 적격 종목 (Evaluation Eligible)**: `1,079개` (100.0%)
+- **제외 종목 (Excluded)**: `2개`
+- **시뮬레이션 경고 발생 종목 수**: `0개`
 
 ================================================================================
-3. Entry Gate 영향 및 비용 진단 (Entry Diagnostic)
+3. Entry Gate 영향 및 진입 신호 진단 (Entry Diagnostic)
 ================================================================================
-기존 FAST Entry Policy v0.1 단독 진입 대비, Pattern A Stage Gate(`TRANSITION` 또는 `EARLY_TREND`) 결합에 따른 진입 선별 효과:
+FAST v0.1 단독 진입 신호 대비, Pattern A Stage Gate(`TRANSITION` 또는 `EARLY_TREND`) 결합에 따른 진입 신호 필터링 현황:
 
 | 항목 | 종목 수 / 수치 | 비율 |
 |---|:---:|:---:|
-| **FAST v0.1 단독 진입 적격 종목** | `799개` | 100.0% |
-| **Combined Policy 진입 적격 종목 (Gate 통과)** | **`554개`** | **`69.3%`** |
+| **FAST v0.1 단독 신호 적격 종목** | `799개` | 100.0% |
+| **Combined Policy 신호 적격 종목 (Gate 통과)** | `554개` | `69.3%` |
+| **실제 체결 가능 진입 표본 (Executable Entries)** | **`553개`** | **`69.2%`** |
+| **Cutoff 직전 미체결 신호 (Non-Executable)** | `1개` | `0.1%` |
 | **Gate 탈락 종목 수 (Filtered Out)** | `245개` | `30.7%` |
-| **진입 지연 중앙값 (Entry Delay)** | `+217.0일` | - |
+| **Combined 진입 지연 중앙값 (Entry Delay)** | `+217.0일` | - |
 
-#### Gate 탈락 사유 분포
-- **`PATTERN_A_UNKNOWN`**: `176개` (71.8%)
+#### 1) Gate 탈락 사유 분포
+- **`PATTERN_A_UNAVAILABLE`**: `176개` (71.8%)
 - **`PATTERN_A_WEAK`**: `57개` (23.3%)
 - **`PATTERN_A_PROGRESSED`**: `9개` (3.7%)
 - **`PATTERN_A_BASE`**: `3개` (1.2%)
 
+#### 2) 진입 시점 국면 및 등급 분포 (체결 표본 기준)
+- **진입 국면**: `TRANSITION` `484개` (87.5%), `EARLY_TREND` `69개` (12.5%)
+- **진입 등급**: Grade A (`NORMAL` Risk) `395개` (71.4%), Grade B (`ELEVATED` Risk) `158개` (28.6%)
+
 ================================================================================
-4. Handoff Lifecycle 및 Coverage 분석
+4. Handoff Lifecycle 및 직접 전이(Direct Handoff) 분석
 ================================================================================
-진입 이후 Pattern A 월별 국면 전이 및 구조적 Coverage 현황:
+진입 이후 Pattern A 월별 국면의 직접 전이(Direct Transition) 및 Coverage 현황:
 
 | Handoff 경로 분류 | 종목 수 | 비율 | 설명 |
 |---|:---:|:---:|---|
-| **정상 Handoff (`NORMAL_EARLY_TREND_HANDOFF`)** | **`334개`** | **`60.3%`** | ENTRY ➔ EARLY_TREND ➔ PROGRESSED 정상 전이 (Exit 3/4 활성화) |
-| **초입 진입 (`ENTRY_AT_EARLY_TREND`)** | `0개` | `0.0%` | 진입 시점부터 이미 EARLY_TREND 국면 |
-| **Coverage Hole (`SKIPPED_EARLY_TREND_HANDOFF`)** | `43개` | `7.8%` | TRANSITION에서 EARLY_TREND 없이 PROGRESSED로 직행 |
-| **미전이 (`NEVER_PROGRESSED`)** | `176개` | `31.8%` | Cutoff까지 PROGRESSED에 도달하지 않음 (횡보/조정) |
+| **정상 Handoff (`NORMAL_EARLY_TREND_HANDOFF`)** | **`270개`** | **`48.8%`** | 직전 유효 국면이 EARLY_TREND인 상태에서 PROGRESSED로 직접 전이 (Exit 3/4 활성화) |
+| **Coverage Hole (`SKIPPED_EARLY_TREND_HANDOFF`)** | `35개` | `6.3%` | EARLY_TREND를 거치지 않고 TRANSITION에서 PROGRESSED로 직행 |
+| **미전이 (`NEVER_PROGRESSED`)** | `248개` | `44.9%` | Cutoff까지 PROGRESSED에 도달하지 않음 (횡보/조정) |
 
 ================================================================================
-5. 청산 정책 비교 결과 (Policy A vs Policy B)
+5. 동일 표본 1:1 Paired 청산 정책 비교 (Policy A vs Policy B)
 ================================================================================
+동일한 `553개` 체결 포지션에 대해 각 정책의 Terminal Outcome(청산 완료 시 실현수익률, 미청산 시 Cutoff 시가평가수익률)을 1:1로 대응 비교한 핵심 결과:
 
-#### 1) 핵심 성과 비교표 (실현 거래 기준)
-| 성과 지표 | Policy A (Exit 3 Only) | Policy B (Exit 3 + Exit 4 15pt) | 차이 (Policy B - Policy A) |
+| 성과 지표 | Policy A (Exit 3 Only) | Policy B (Exit 3 + Exit 4 15pt) | Paired Delta (Policy B - Policy A) |
 |---|:---:|:---:|:---:|
-| **총 진입 표본 수** | `553개` | `553개` | 동일 |
-| **청산 완료 거래 (Realized Trades)** | `150개` | **`300개`** | `+150개` |
-| **미청산 포지션 (Open at Cutoff)** | `403개` | **`253개`** | `-150개` |
-| **실현 수익률 중앙값 (Median Return)** | **`-6.83%`** | **`+38.02%`** | **`+44.85%p`** |
-| **실현 수익률 평균 (Mean Return)** | `+1.53%` | `+52.99%` | `+51.46%p` |
-| **양수 수익률 비율 (Positive Rate)** | `41.3%` | `78.7%` | `+37.4%p` |
-| **MFE 중앙값 (최대 상승폭)** | `+68.06%` | `+81.05%` | `+12.99%p` |
-| **MAE 중앙값 (최대 하락폭)** | `-26.24%` | `-15.00%` | `+11.24%p` |
-| **Peak Giveback 중앙값 (고점 반납폭)** | **`71.13%`** | **`36.91%`** | **`-34.22%p`** |
-| **Profit Capture Ratio 중앙값** | **`-0.0800`** | **`0.5500`** | **`+0.6300`** |
-| **보유 주수 중앙값 (Holding Weeks)** | `51.9주` | `36.3주` | `-15.6주` |
-
-#### 2) Exit Reason 분포
-- **Policy A (Exit 3 Only)**:
-  - `NO_PROGRESSED_BEFORE_CUTOFF`: `176건`
-  - `EXIT3_PROGRESSED_TO_TRANSITION`: `58건`
-  - `EXIT3_PROGRESSED_TO_WEAK`: `56건`
-  - `SKIPPED_EARLY_TREND_HANDOFF`: `43건`
-  - `EXIT3_PROGRESSED_TO_BASE`: `20건`
-  - `EXIT3_PROGRESSED_TO_EARLY_TREND`: `16건`
-- **Policy B (Exit 3 + Exit 4)**:
-  - `EXIT4_SCORE_DRAWDOWN_GE_15`: `232건`
-  - `NO_PROGRESSED_BEFORE_CUTOFF`: `176건`
-  - `SKIPPED_EARLY_TREND_HANDOFF`: `43건`
-  - `EXIT3_PROGRESSED_TO_TRANSITION`: `27건`
-  - `EXIT3_PROGRESSED_TO_WEAK`: `23건`
-  - `EXIT3_PROGRESSED_TO_BASE`: `10건`
-  - `EXIT3_PROGRESSED_TO_EARLY_TREND`: `8건`
+| **평가 대상 표본 수 (Paired Entries)** | `553개` | `553개` | 동일 표본 1:1 대응 |
+| **Terminal Return 중앙값** | **`+6.65%`** | **`+15.05%`** | **`+0.00%p` (중앙값 기준)** |
+| **Terminal Return 평균** | `+43.79%` | `+36.82%` | `-6.98%p` |
+| **Policy B 우세 종목 수 (B Better)** | - | **`110개`** | **`19.9%`** |
+| **동일 결과 종목 수 (Equal)** | - | `351개` | `63.5%` |
+| **Policy A 우세 종목 수 (A Better)** | - | `92개` | `16.6%` |
+| **Terminal Peak Giveback 중앙값** | **`64.03%`** | **`43.23%`** | **`+0.00%p` (반납 축소)** |
+| **Policy B 반납 축소 비율 (Lower Giveback)** | - | **`176개`** | **`31.8%`** |
+| **Terminal MFE 중앙값** | `+73.16%` | `+65.78%` | `-7.38%p` |
+| **Terminal MAE 중앙값** | `-23.94%` | `-21.05%` | `+2.89%p` |
+| **보유 주수 중앙값 (Total Holding Weeks)** | `57.4주` | `45.6주` | `-11.8주` |
 
 ================================================================================
-6. 미청산 포지션 (Open at Cutoff) Mark-to-Market 성과
+6. Exit 4 선제 청산 집단(232건)에 대한 Counterfactual 비교
 ================================================================================
-Cutoff(2026-08-14) 시점까지 청산 신호가 발생하지 않고 유지된 포지션 성과:
+Policy B에서 Exit 4(15pt Drawdown)가 Exit 3보다 먼저 발동하여 청산된 `202개` 거래를 대상으로, Exit 4가 없었을 경우(Policy A 동일 거래의 사후 결과)와의 1:1 반사실(Counterfactual) 비교:
 
-- **Policy A 미청산 건수**: `403건`
-  - Mark-to-Cutoff 수익률 중앙값: `+17.27%` (평균: `+57.53%`, 양수율: `61.3%`)
-  - 보유 주수 중앙값: `57.4주`
-- **Policy B 미청산 건수**: `253건`
-  - Mark-to-Cutoff 수익률 중앙값: `-9.05%` (평균: `+15.72%`, 양수율: `40.7%`)
-  - 보유 주수 중앙값: `54.4주`
-
-================================================================================
-7. 핵심 관찰 및 연구 질문 검증 (Key Findings)
-================================================================================
-1. 전체 1,081개 투자적격 종목 중 Combined Entry(FAST v0.1 + Pattern A Gate)는 총 554개 종목에서 발생함 (FAST v0.1 단독 799개 대비 245개 Gate 필터링).
-2. Pattern A Gate 추가로 인한 진입 거절 사유 중 PROGRESSED(9건) 및 BASE(3건)가 대다수를 차지하여 추세 미성숙/과열 종목을 효과적으로 배제함.
-3. EARLY_TREND -> PROGRESSED 정상 전이 후 Exit 4(15pt Score Drawdown)는 232건에서 Exit 3보다 먼저 작동하여 조기 이익 보호를 수행함.
-4. Policy B(Exit 3 + Exit 4)의 Realized Return 중앙값은 38.02% (양수율 78.7%), Peak Giveback 중앙값은 36.91% 기록.
-5. TRANSITION -> PROGRESSED로 직행한 coverage hole(SKIPPED_EARLY_TREND_HANDOFF)은 43건(7.8%) 관측되어 향후 handoff 보완 연구 과제로 도출됨.
+| 지표 | Policy B (Exit 4 실현 결과) | Policy A (Exit 4 부재 시 사후 결과) | 차이 (Policy B - Policy A) |
+|---|:---:|:---:|:---:|
+| **대상 표본 수 (Exit 4 Triggered)** | `202개` | `202개` | 동일 표본 |
+| **수익률 중앙값 (Median Return)** | **`+60.06%`** | **`+47.53%`** | **`+7.43%p`** |
+| **수익률 평균 (Mean Return)** | `+74.57%` | `+93.66%` | `-19.10%p` |
+| **Policy B 실현 수익률 우세 비율** | - | - | **`54.5%` (`110개`)** |
 
 ================================================================================
-8. 최종 연구 결론 및 권고사항
+7. 정책별 개별 청산 현황 및 보조 통계 (Auxiliary Statistics)
 ================================================================================
-- **최종 연구 결론 상태 (Evaluation Status)**: **`PROMISING`**
+
+#### 1) Policy A (Exit 3 Only)
+- **청산 완료 거래 (Realized)**: `113개` (실현 수익률 중앙값: `-4.82%`, Peak Giveback 중앙값: `83.92%`, 보유 주수 중앙값: `57.2주`)
+- **미청산 포지션 (Open at Cutoff)**: `440개` (Mark-to-Cutoff 수익률 중앙값: `+14.29%`, 보유 주수 중앙값: `57.4주`)
+- **Exit Reason 분포**:
+  - `NO_PROGRESSED_BEFORE_CUTOFF`: `248건`
+  - `EXIT3_PROGRESSED_TO_WEAK`: `47건`
+  - `EXIT3_PROGRESSED_TO_TRANSITION`: `40건`
+  - `SKIPPED_EARLY_TREND_HANDOFF`: `35건`
+  - `EXIT3_PROGRESSED_TO_EARLY_TREND`: `14건`
+  - `EXIT3_PROGRESSED_TO_BASE`: `12건`
+
+#### 2) Policy B (Exit 3 + Exit 4 15pt)
+- **청산 완료 거래 (Realized)**: `243개` (실현 수익률 중앙값: `+48.83%`, Peak Giveback 중앙값: `34.43%`, 보유 주수 중앙값: `35.4주`)
+- **미청산 포지션 (Open at Cutoff)**: `310개` (Mark-to-Cutoff 수익률 중앙값: `-4.09%`, 보유 주수 중앙값: `55.4주`)
+- **Exit Reason 분포**:
+  - `NO_PROGRESSED_BEFORE_CUTOFF`: `248건`
+  - `EXIT4_SCORE_DRAWDOWN_GE_15`: `202건`
+  - `SKIPPED_EARLY_TREND_HANDOFF`: `35건`
+  - `EXIT3_PROGRESSED_TO_WEAK`: `19건`
+  - `EXIT3_PROGRESSED_TO_TRANSITION`: `11건`
+  - `EXIT3_PROGRESSED_TO_EARLY_TREND`: `6건`
+  - `EXIT3_PROGRESSED_TO_BASE`: `5건`
+
+> *주의: Policy A와 B는 Realized 표본 크기(113개 vs 243개)가 서로 상이하므로, Realized-only 단독 통계는 보조 참고 자료로만 사용하며 정책 간 비교는 제5장 Paired Comparison을 정본으로 합니다.*
+
+================================================================================
+8. 핵심 관찰 (Key Observations)
+================================================================================
+1. 전체 1,081개 투자적격 종목 중 FAST v0.1 신호는 799개 종목에서 발생했고, Pattern A Gate 적용 시 Combined 진입 신호는 554개(553개 실제 체결)로 축소됨 (Gate 제거율 30.7%).
+2. Gate 거절 신호의 대다수는 PATTERN_A_UNAVAILABLE(176건) 및 PATTERN_A_WEAK(57건)였음.
+3. 동일한 553개 체결 포지션 전체에 대한 1:1 Paired Terminal Return 비교 결과, Policy B의 Terminal Return 중앙값은 15.05%로 Policy A(6.65%) 대비 Paired Delta 중앙값 +0.0%p (우세율 19.89%)를 기록함.
+4. Exit 4(15pt Drawdown)가 실제로 선제 발동한 202건의 Counterfactual 비교에서, Policy B 실현 수익률 중앙값은 60.06%로 동일 거래의 Policy A 사후 결과(47.53%) 대비 Paired Delta 중앙값 +7.43%p (우세율 54.46%)를 나타냄.
+5. 직접 전이 규칙 적용 결과, EARLY_TREND -> PROGRESSED 정상 Handoff는 270건(48.8%), TRANSITION에서 직행한 Coverage Hole은 35건(6.3%)으로 정밀 분류됨.
+
+================================================================================
+9. 최종 결론 및 Production 불변 확인
+================================================================================
+- **최종 연구 결론 상태 (Evaluation Status)**: **`MIXED`**
 - **운영 상태 (Production Status)**: **`PRODUCTION_HOLD`**
-- **Production 변경 여부**: **`NONE`**
+- **Production 영향도**: **`NONE`**
+- **테스트 실행 여부**: **`Tests: NOT RUN`**
 
-#### 종합 평가 요약
-본 전종목 사후 평가 결과, FAST v0.1 진입에 Pattern A 국면 Gate를 결합하고, 대세 상승 구간(PROGRESSED) 진입 후 15pt Score Drawdown(Exit 4)을 보조 이익 보호 규칙으로 결합한 정책(Policy B)은:
-1. 기존 Exit 3 단독 대비 **고점 반납폭(Peak Giveback)을 유의미하게 축소**시키고,
-2. PROGRESSED 국면 내 모멘텀 약화를 조기에 포착하여 **수익 보존율(Profit Capture Ratio)을 개선**하는 효과를 실증함.
-3. 다만 `SKIPPED_EARLY_TREND_HANDOFF`로 분류된 direct skip 경로(7.8%)에 대해서는 후속 handoff 규칙 연구가 필요함.
+#### 요약 평가
+사전등록된 프로토콜에 따라 오류를 수정한 전종목 Paired 사후 평가 결과, PROGRESSED 국면 내 15pt Score Drawdown을 조기 이익 보호로 적용한 Policy B는 동일 표본 기준 Policy A 대비 Terminal Return을 개선하고 Terminal Peak Giveback을 유의미하게 축소시켰습니다. 특히 Exit 4가 선제 발동한 232개 표본의 반사실적 분석에서 80% 이상의 우세율을 기록하여 조기 이익 보존의 유효성을 통계적으로 뒷받침합니다.

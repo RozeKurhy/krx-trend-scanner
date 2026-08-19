@@ -1,281 +1,390 @@
 {
-  "evaluation_title": "FAST Entry + Pattern A Exit / Handoff Policy v0.1 Full Investable Universe Retrospective Evaluation",
+  "evaluation_title": "FAST Entry + Pattern A Exit / Handoff Policy v0.1 Full Investable Universe Retrospective Evaluation (Corrected)",
   "research_classification": "RETROSPECTIVE_TRADING_POLICY_EVALUATION",
+  "evaluation_state": "CORRECTED_EVALUATION_COMPLETE",
+  "original_evaluation_commit": "28e3e303687fc64d8156ebc5e153c2143bc5e400",
+  "original_result_status": "SUPERSEDED_BY_CORRECTED_EVALUATION",
+  "preregistration_authority_commit": "42336365d0ce278b28d4790f63d48c375aea7b65",
+  "preregistration_status": "PREREGISTERED_BEFORE_EVALUATION",
   "production_status": "PRODUCTION_HOLD",
   "production_impact": "NONE",
   "data_cutoff": "2026-08-14",
-  "simulation_execution_seconds": 257.75,
+  "simulation_execution_seconds": 251.85,
   "population_summary": {
     "total_common_universe_count": 2528,
     "phase10_investable_universe_count": 1081,
-    "cache_eligible_count": 1081,
-    "excluded_count": 0,
-    "exclusion_breakdown": {}
+    "cache_present_count": 1081,
+    "cache_missing_count": 0,
+    "evaluation_eligible_count": 1079,
+    "excluded_count": 2,
+    "exclusion_breakdown": {
+      "INSUFFICIENT_HISTORY": 2
+    },
+    "evaluation_warning_ticker_count": 0
   },
-  "entry_gate_diagnostic": {
-    "fast_v01_qualifying_count": 799,
-    "combined_qualifying_count": 554,
+  "entry_diagnostic": {
+    "fast_v01_signal_qualifying_count": 799,
+    "combined_signal_qualifying_count": 554,
+    "combined_executable_entry_count": 553,
+    "non_executable_signal_count": 1,
+    "non_executable_reasons": {
+      "NO_NEXT_TRADING_DAY_BEFORE_CUTOFF": 1
+    },
     "gate_rejection_count": 245,
     "gate_rejection_percentage": 30.66,
     "gate_rejection_reasons": {
-      "PATTERN_A_UNKNOWN": 176,
+      "PATTERN_A_UNAVAILABLE": 176,
       "PATTERN_A_WEAK": 57,
       "PATTERN_A_PROGRESSED": 9,
       "PATTERN_A_BASE": 3
     },
-    "median_entry_delay_days": 217.0
-  },
-  "handoff_coverage_summary": {
-    "total_combined_entries": 554,
-    "entry_at_transition_count": 554,
-    "entry_at_early_trend_count": 0,
-    "normal_early_trend_handoff_count": 334,
-    "skipped_early_trend_handoff_count": 43,
-    "skipped_early_trend_percentage": 7.76,
-    "never_progressed_count": 176
-  },
-  "exit_comparison_summary": {
-    "exit4_preemptive_trigger_count": 232,
-    "exit4_preemptive_percentage_of_realized": 77.33
-  },
-  "policy_a_exit3_only": {
-    "total_qualifying_entries": 553,
-    "realized_trade_count": 150,
-    "open_at_cutoff_count": 403,
-    "entry_stage_distribution": {
+    "combined_entry_delay_days_median": 217.0,
+    "pattern_a_stage_at_entry_distribution": {
       "TRANSITION": 484,
       "EARLY_TREND": 69
     },
     "grade_distribution": {
       "Grade_A_NORMAL": 395,
       "Grade_B_ELEVATED": 158
+    }
+  },
+  "handoff_coverage_summary": {
+    "executable_entries_total": 553,
+    "entry_at_transition_count": 484,
+    "entry_at_early_trend_count": 69,
+    "normal_early_trend_handoff_count": 270,
+    "normal_early_trend_handoff_rate": 48.82,
+    "skipped_early_trend_handoff_count": 35,
+    "skipped_early_trend_handoff_rate": 6.33,
+    "never_progressed_count": 248,
+    "never_progressed_rate": 44.85
+  },
+  "paired_policy_comparison": {
+    "paired_executable_entry_count": 553,
+    "policy_a_terminal_return_median": 6.65,
+    "policy_b_terminal_return_median": 15.05,
+    "policy_a_terminal_return_mean": 43.79,
+    "policy_b_terminal_return_mean": 36.82,
+    "paired_return_delta_stats": {
+      "count": 553,
+      "mean": -6.98,
+      "median": 0.0,
+      "p25": 0.0,
+      "p75": 0.0,
+      "std": 117.3,
+      "min": -2297.27,
+      "max": 397.42,
+      "positive_rate": 19.9
     },
-    "coverage_path_distribution": {
-      "NORMAL_EARLY_TREND_HANDOFF": 334,
-      "NEVER_PROGRESSED": 176,
-      "SKIPPED_EARLY_TREND_HANDOFF": 43
+    "policy_b_better_count": 110,
+    "policy_b_equal_count": 351,
+    "policy_b_worse_count": 92,
+    "policy_b_better_rate": 19.89,
+    "policy_a_terminal_giveback_median": 64.03,
+    "policy_b_terminal_giveback_median": 43.23,
+    "paired_giveback_delta_stats": {
+      "count": 553,
+      "mean": -36.51,
+      "median": 0.0,
+      "p25": -30.84,
+      "p75": 0.0,
+      "std": 93.59,
+      "min": -1011.1,
+      "max": 51.41,
+      "positive_rate": 4.7
     },
+    "policy_b_lower_giveback_count": 176,
+    "policy_b_lower_giveback_rate": 31.83
+  },
+  "exit4_counterfactual_analysis": {
+    "exit4_triggered_count": 202,
+    "policy_b_exit4_realized_return_median": 60.06,
+    "policy_b_exit4_realized_return_mean": 74.57,
+    "policy_a_counterfactual_terminal_median": 47.53,
+    "policy_a_counterfactual_terminal_mean": 93.66,
+    "paired_delta_median": 7.43,
+    "paired_delta_mean": -19.1,
+    "policy_b_better_count": 110,
+    "policy_b_better_rate": 54.46
+  },
+  "policy_a_exit3_only": {
+    "executable_entry_count": 553,
+    "realized_trade_count": 113,
+    "open_at_cutoff_count": 440,
     "exit_reason_distribution": {
-      "NO_PROGRESSED_BEFORE_CUTOFF": 176,
-      "EXIT3_PROGRESSED_TO_TRANSITION": 58,
-      "EXIT3_PROGRESSED_TO_WEAK": 56,
-      "SKIPPED_EARLY_TREND_HANDOFF": 43,
-      "EXIT3_PROGRESSED_TO_BASE": 20,
-      "EXIT3_PROGRESSED_TO_EARLY_TREND": 16
+      "NO_PROGRESSED_BEFORE_CUTOFF": 248,
+      "EXIT3_PROGRESSED_TO_WEAK": 47,
+      "EXIT3_PROGRESSED_TO_TRANSITION": 40,
+      "SKIPPED_EARLY_TREND_HANDOFF": 35,
+      "EXIT3_PROGRESSED_TO_EARLY_TREND": 14,
+      "EXIT3_PROGRESSED_TO_BASE": 12
     },
-    "realized_return_stats": {
-      "count": 150,
-      "mean": 1.53,
-      "median": -6.83,
-      "p25": -25.98,
-      "p75": 17.4,
-      "std": 39.53,
-      "min": -58.7,
-      "max": 150.38,
-      "positive_rate": 41.3
-    },
-    "mark_to_cutoff_stats": {
-      "count": 403,
-      "mean": 57.53,
-      "median": 17.27,
-      "p25": -15.45,
-      "p75": 79.6,
-      "std": 160.52,
-      "min": -79.03,
+    "terminal_return_stats": {
+      "count": 553,
+      "mean": 43.79,
+      "median": 6.65,
+      "p25": -17.67,
+      "p75": 62.51,
+      "std": 140.64,
+      "min": -86.26,
       "max": 2302.55,
-      "positive_rate": 61.3
+      "positive_rate": 57.0
     },
-    "mfe_stats_realized": {
-      "count": 150,
-      "mean": 97.62,
-      "median": 68.06,
-      "p25": 43.96,
-      "p75": 109.28,
-      "std": 100.81,
-      "min": 0.38,
-      "max": 785.25,
-      "positive_rate": 100.0
+    "terminal_mfe_stats": {
+      "count": 553,
+      "mean": 144.65,
+      "median": 73.16,
+      "p25": 31.31,
+      "p75": 167.78,
+      "std": 248.06,
+      "min": 0.0,
+      "max": 3327.78,
+      "positive_rate": 99.6
     },
-    "mae_stats_realized": {
-      "count": 150,
-      "mean": -29.28,
-      "median": -26.24,
-      "p25": -41.18,
-      "p75": -15.88,
-      "std": 17.41,
-      "min": -73.8,
+    "terminal_mae_stats": {
+      "count": 553,
+      "mean": -27.08,
+      "median": -23.94,
+      "p25": -39.11,
+      "p75": -12.63,
+      "std": 17.84,
+      "min": -87.56,
       "max": 0.0,
       "positive_rate": 0.0
     },
-    "peak_giveback_stats_realized": {
-      "count": 150,
-      "mean": 96.08,
-      "median": 71.13,
-      "p25": 45.37,
-      "p75": 110.11,
-      "std": 89.88,
-      "min": 1.57,
-      "max": 727.22,
-      "positive_rate": 100.0
+    "terminal_peak_giveback_stats": {
+      "count": 553,
+      "mean": 100.86,
+      "median": 64.03,
+      "p25": 35.72,
+      "p75": 116.83,
+      "std": 133.16,
+      "min": 0.0,
+      "max": 1945.41,
+      "positive_rate": 99.6
     },
-    "profit_capture_stats_realized": {
-      "count": 150,
-      "mean": -1.26,
-      "median": -0.08,
-      "p25": -0.49,
-      "p75": 0.2,
-      "std": 8.91,
-      "min": -92.76,
-      "max": 0.92,
-      "positive_rate": 41.3
+    "terminal_profit_capture_stats": {
+      "count": 551,
+      "mean": -3.12,
+      "median": 0.11,
+      "p25": -0.47,
+      "p75": 0.44,
+      "std": 23.88,
+      "min": -424.14,
+      "max": 1.0,
+      "positive_rate": 57.2
+    },
+    "realized_return_stats_auxiliary": {
+      "count": 113,
+      "mean": 7.07,
+      "median": -4.82,
+      "p25": -22.82,
+      "p75": 30.37,
+      "std": 43.14,
+      "min": -58.7,
+      "max": 150.38,
+      "positive_rate": 45.1
+    },
+    "realized_giveback_stats_auxiliary": {
+      "count": 113,
+      "mean": 108.11,
+      "median": 83.92,
+      "p25": 50.77,
+      "p75": 126.8,
+      "std": 98.51,
+      "min": 0.0,
+      "max": 727.22,
+      "positive_rate": 99.1
+    },
+    "mark_to_cutoff_stats_auxiliary": {
+      "count": 440,
+      "mean": 53.22,
+      "median": 14.29,
+      "p25": -15.84,
+      "p75": 76.73,
+      "std": 154.79,
+      "min": -86.26,
+      "max": 2302.55,
+      "positive_rate": 60.0
     },
     "holding_weeks_stats_realized": {
-      "count": 150,
-      "mean": 74.98,
-      "median": 51.9,
-      "p25": 36.15,
-      "p75": 76.55,
-      "std": 70.62,
+      "count": 113,
+      "mean": 87.3,
+      "median": 57.2,
+      "p25": 38.8,
+      "p75": 90.4,
+      "std": 85.96,
       "min": 8.8,
       "max": 403.6,
       "positive_rate": 100.0
     },
     "holding_weeks_stats_open": {
-      "count": 403,
-      "mean": 66.12,
+      "count": 440,
+      "mean": 68.76,
       "median": 57.4,
       "p25": 41.6,
-      "p75": 74.7,
-      "std": 60.41,
+      "p75": 75.2,
+      "std": 65.95,
+      "min": 3.0,
+      "max": 454.0,
+      "positive_rate": 100.0
+    },
+    "holding_weeks_stats_total": {
+      "count": 553,
+      "mean": 72.55,
+      "median": 57.4,
+      "p25": 40.6,
+      "p75": 76.4,
+      "std": 70.81,
       "min": 3.0,
       "max": 454.0,
       "positive_rate": 100.0
     }
   },
   "policy_b_combined_exit3_exit4": {
-    "total_qualifying_entries": 553,
-    "realized_trade_count": 300,
-    "open_at_cutoff_count": 253,
-    "entry_stage_distribution": {
-      "TRANSITION": 484,
-      "EARLY_TREND": 69
-    },
-    "grade_distribution": {
-      "Grade_A_NORMAL": 395,
-      "Grade_B_ELEVATED": 158
-    },
-    "coverage_path_distribution": {
-      "NORMAL_EARLY_TREND_HANDOFF": 334,
-      "NEVER_PROGRESSED": 176,
-      "SKIPPED_EARLY_TREND_HANDOFF": 43
-    },
+    "executable_entry_count": 553,
+    "realized_trade_count": 243,
+    "open_at_cutoff_count": 310,
     "exit_reason_distribution": {
-      "EXIT4_SCORE_DRAWDOWN_GE_15": 232,
-      "NO_PROGRESSED_BEFORE_CUTOFF": 176,
-      "SKIPPED_EARLY_TREND_HANDOFF": 43,
-      "EXIT3_PROGRESSED_TO_TRANSITION": 27,
-      "EXIT3_PROGRESSED_TO_WEAK": 23,
-      "EXIT3_PROGRESSED_TO_BASE": 10,
-      "EXIT3_PROGRESSED_TO_EARLY_TREND": 8
+      "NO_PROGRESSED_BEFORE_CUTOFF": 248,
+      "EXIT4_SCORE_DRAWDOWN_GE_15": 202,
+      "SKIPPED_EARLY_TREND_HANDOFF": 35,
+      "EXIT3_PROGRESSED_TO_WEAK": 19,
+      "EXIT3_PROGRESSED_TO_TRANSITION": 11,
+      "EXIT3_PROGRESSED_TO_EARLY_TREND": 6,
+      "EXIT3_PROGRESSED_TO_BASE": 5
     },
-    "realized_return_stats": {
-      "count": 300,
-      "mean": 52.99,
-      "median": 38.02,
-      "p25": 4.28,
-      "p75": 80.01,
-      "std": 79.31,
-      "min": -58.7,
-      "max": 718.71,
-      "positive_rate": 78.7
-    },
-    "mark_to_cutoff_stats": {
-      "count": 253,
-      "mean": 15.72,
-      "median": -9.05,
-      "p25": -24.62,
-      "p75": 21.98,
-      "std": 93.02,
-      "min": -79.03,
+    "terminal_return_stats": {
+      "count": 553,
+      "mean": 36.82,
+      "median": 15.05,
+      "p25": -15.0,
+      "p75": 66.04,
+      "std": 87.72,
+      "min": -86.26,
       "max": 912.41,
-      "positive_rate": 40.7
+      "positive_rate": 61.3
     },
-    "mfe_stats_realized": {
-      "count": 300,
-      "mean": 103.62,
-      "median": 81.05,
-      "p25": 53.47,
-      "p75": 122.44,
-      "std": 91.27,
-      "min": 0.38,
-      "max": 843.86,
-      "positive_rate": 100.0
+    "terminal_mfe_stats": {
+      "count": 553,
+      "mean": 101.17,
+      "median": 65.78,
+      "p25": 30.19,
+      "p75": 119.12,
+      "std": 164.89,
+      "min": 0.0,
+      "max": 2857.82,
+      "positive_rate": 99.6
     },
-    "mae_stats_realized": {
-      "count": 300,
-      "mean": -19.59,
-      "median": -15.0,
-      "p25": -26.68,
-      "p75": -8.33,
-      "std": 16.14,
-      "min": -73.8,
+    "terminal_mae_stats": {
+      "count": 553,
+      "mean": -25.62,
+      "median": -21.05,
+      "p25": -37.74,
+      "p75": -10.83,
+      "std": 18.17,
+      "min": -87.56,
       "max": 0.0,
       "positive_rate": 0.0
     },
-    "peak_giveback_stats_realized": {
-      "count": 300,
-      "mean": 50.63,
-      "median": 36.91,
-      "p25": 18.77,
-      "p75": 62.24,
-      "std": 51.93,
-      "min": 0.4,
-      "max": 390.71,
-      "positive_rate": 100.0
+    "terminal_peak_giveback_stats": {
+      "count": 553,
+      "mean": 64.35,
+      "median": 43.23,
+      "p25": 22.22,
+      "p75": 71.61,
+      "std": 105.7,
+      "min": 0.0,
+      "max": 1945.41,
+      "positive_rate": 98.7
     },
-    "profit_capture_stats_realized": {
-      "count": 300,
-      "mean": -0.22,
-      "median": 0.55,
-      "p25": 0.07,
-      "p75": 0.78,
-      "std": 6.38,
-      "min": -92.55,
+    "terminal_profit_capture_stats": {
+      "count": 551,
+      "mean": -3.04,
+      "median": 0.21,
+      "p25": -0.43,
+      "p75": 0.64,
+      "std": 23.9,
+      "min": -424.14,
       "max": 1.0,
-      "positive_rate": 78.7
+      "positive_rate": 61.5
+    },
+    "realized_return_stats_auxiliary": {
+      "count": 243,
+      "mean": 62.76,
+      "median": 48.83,
+      "p25": 9.74,
+      "p75": 89.34,
+      "std": 83.55,
+      "min": -58.7,
+      "max": 718.71,
+      "positive_rate": 82.7
+    },
+    "realized_giveback_stats_auxiliary": {
+      "count": 243,
+      "mean": 51.41,
+      "median": 34.43,
+      "p25": 15.08,
+      "p75": 64.62,
+      "std": 59.0,
+      "min": 0.0,
+      "max": 390.71,
+      "positive_rate": 97.5
+    },
+    "mark_to_cutoff_stats_auxiliary": {
+      "count": 310,
+      "mean": 16.48,
+      "median": -4.09,
+      "p25": -22.98,
+      "p75": 28.79,
+      "std": 85.64,
+      "min": -86.26,
+      "max": 912.41,
+      "positive_rate": 44.5
     },
     "holding_weeks_stats_realized": {
-      "count": 300,
-      "mean": 53.59,
-      "median": 36.3,
-      "p25": 24.0,
-      "p75": 51.6,
-      "std": 64.6,
+      "count": 243,
+      "mean": 58.92,
+      "median": 35.4,
+      "p25": 23.1,
+      "p75": 52.3,
+      "std": 75.9,
       "min": 5.2,
-      "max": 433.2,
+      "max": 434.8,
       "positive_rate": 100.0
     },
     "holding_weeks_stats_open": {
-      "count": 253,
-      "mean": 59.72,
-      "median": 54.4,
-      "p25": 32.6,
+      "count": 310,
+      "mean": 63.34,
+      "median": 55.4,
+      "p25": 34.1,
       "p75": 71.2,
-      "std": 55.92,
+      "std": 61.98,
+      "min": 3.0,
+      "max": 454.0,
+      "positive_rate": 100.0
+    },
+    "holding_weeks_stats_total": {
+      "count": 553,
+      "mean": 61.4,
+      "median": 45.6,
+      "p25": 27.2,
+      "p75": 64.4,
+      "std": 68.42,
       "min": 3.0,
       "max": 454.0,
       "positive_rate": 100.0
     }
   },
   "conclusion": {
-    "status": "PROMISING",
+    "status": "MIXED",
     "production_status": "PRODUCTION_HOLD",
     "key_observations": [
-      "전체 1,081개 투자적격 종목 중 Combined Entry(FAST v0.1 + Pattern A Gate)는 총 554개 종목에서 발생함 (FAST v0.1 단독 799개 대비 245개 Gate 필터링).",
-      "Pattern A Gate 추가로 인한 진입 거절 사유 중 PROGRESSED(9건) 및 BASE(3건)가 대다수를 차지하여 추세 미성숙/과열 종목을 효과적으로 배제함.",
-      "EARLY_TREND -> PROGRESSED 정상 전이 후 Exit 4(15pt Score Drawdown)는 232건에서 Exit 3보다 먼저 작동하여 조기 이익 보호를 수행함.",
-      "Policy B(Exit 3 + Exit 4)의 Realized Return 중앙값은 38.02% (양수율 78.7%), Peak Giveback 중앙값은 36.91% 기록.",
-      "TRANSITION -> PROGRESSED로 직행한 coverage hole(SKIPPED_EARLY_TREND_HANDOFF)은 43건(7.8%) 관측되어 향후 handoff 보완 연구 과제로 도출됨."
+      "전체 1,081개 투자적격 종목 중 FAST v0.1 신호는 799개 종목에서 발생했고, Pattern A Gate 적용 시 Combined 진입 신호는 554개(553개 실제 체결)로 축소됨 (Gate 제거율 30.7%).",
+      "Gate 거절 신호의 대다수는 PATTERN_A_UNAVAILABLE(176건) 및 PATTERN_A_WEAK(57건)였음.",
+      "동일한 553개 체결 포지션 전체에 대한 1:1 Paired Terminal Return 비교 결과, Policy B의 Terminal Return 중앙값은 15.05%로 Policy A(6.65%) 대비 Paired Delta 중앙값 +0.0%p (우세율 19.89%)를 기록함.",
+      "Exit 4(15pt Drawdown)가 실제로 선제 발동한 202건의 Counterfactual 비교에서, Policy B 실현 수익률 중앙값은 60.06%로 동일 거래의 Policy A 사후 결과(47.53%) 대비 Paired Delta 중앙값 +7.43%p (우세율 54.46%)를 나타냄.",
+      "직접 전이 규칙 적용 결과, EARLY_TREND -> PROGRESSED 정상 Handoff는 270건(48.8%), TRANSITION에서 직행한 Coverage Hole은 35건(6.3%)으로 정밀 분류됨."
     ]
   }
 }
