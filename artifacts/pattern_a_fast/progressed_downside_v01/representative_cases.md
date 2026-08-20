@@ -1,4 +1,4 @@
-# A FAST Core V02 PROGRESSED Representative Cases Timeline & Anatomy
+# A FAST Core V02 PROGRESSED Representative Cases Timeline & Anatomy (Corrected)
 
 ================================================================================
 1. Representative Losing Cases (4건)
@@ -7,12 +7,12 @@
 ## [011170_02] 롯데케미칼 (011170) - Terminal Return: **-77.72%**
 - **Entry Execution**: `2020-11-16` (Open: `256,700`원)
 - **First PROGRESSED**: `2021-05-31` (Effective: `2021-05-31`, Ref Close: `265,749`원)
-- **Lifecycle**: `SKIPPED_EARLY_TREND_HANDOFF` | **Exit Type**: `NO_EXIT_BEFORE_CUTOFF` (Signal: `nan`, Exec: `nan`)
+- **Held Window End**: `2026-08-14` | **Exit Type**: `NO_EXIT_BEFORE_CUTOFF` (Signal: `nan`, Exec: `nan`)
 - **Post-PROGRESSED High / Trough**: Peak `268,607`원 (2021-06-03) / Trough `53,400`원 (2025-02-12)
-- **Max Drawdown from Price HWM**: **`-80.12%`** (2025-02-12) | Intraday: `-80.85%`
-- **Score Evolution**: Init `67.61` -> HWM `70.18` -> Max Drawdown `70.18pt`
+- **Max Drawdown from Price HWM (Held Window)**: **`-80.12%`** (2025-02-12) | Intraday: `-80.85%`
+- **Score Evolution (While Held)**: Init `67.61` -> HWM `70.18` -> Max Drawdown `70.18pt`
 
-**[Monthly Timeline Path]**
+**[Monthly Timeline Path (Bounded by Exit Signal)]**
 
 | Snapshot Month | Stage | Score | Score HWM | Score DD | Monthly Close |
 |:---:|:---:|:---:|:---:|:---:|:---:|
@@ -89,12 +89,12 @@
 ## [000670_02] 영풍 (000670) - Terminal Return: **-45.64%**
 - **Entry Execution**: `2026-02-02` (Open: `59,700`원)
 - **First PROGRESSED**: `2026-02-28` (Effective: `2026-02-27`, Ref Close: `64,600`원)
-- **Lifecycle**: `NORMAL_EARLY_TREND_HANDOFF` | **Exit Type**: `EXIT3_PROGRESSED_TO_WEAK` (Signal: `2026-07-31`, Exec: `2026-08-03`)
+- **Held Window End**: `2026-07-31` | **Exit Type**: `EXIT3_PROGRESSED_TO_WEAK` (Signal: `2026-07-31`, Exec: `2026-08-03`)
 - **Post-PROGRESSED High / Trough**: Peak `70,000`원 (2026-05-06) / Trough `32,100`원 (2026-07-29)
-- **Max Drawdown from Price HWM**: **`-54.14%`** (2026-07-29) | Intraday: `-56.34%`
-- **Score Evolution**: Init `69.46` -> HWM `70.33` -> Max Drawdown `12.32pt`
+- **Max Drawdown from Price HWM (Held Window)**: **`-54.14%`** (2026-07-29) | Intraday: `-56.34%`
+- **Score Evolution (While Held)**: Init `69.46` -> HWM `70.33` -> Max Drawdown `12.32pt`
 
-**[Monthly Timeline Path]**
+**[Monthly Timeline Path (Bounded by Exit Signal)]**
 
 | Snapshot Month | Stage | Score | Score HWM | Score DD | Monthly Close |
 |:---:|:---:|:---:|:---:|:---:|:---:|
@@ -109,12 +109,12 @@
 ## [200670_03] 휴메딕스 (200670) - Terminal Return: **-36.51%**
 - **Entry Execution**: `2025-05-26` (Open: `54,100`원)
 - **First PROGRESSED**: `2025-08-31` (Effective: `2025-08-29`, Ref Close: `54,300`원)
-- **Lifecycle**: `NORMAL_EARLY_TREND_HANDOFF` | **Exit Type**: `EXIT3_PROGRESSED_TO_WEAK` (Signal: `2026-03-31`, Exec: `2026-04-01`)
+- **Held Window End**: `2026-03-31` | **Exit Type**: `EXIT3_PROGRESSED_TO_WEAK` (Signal: `2026-03-31`, Exec: `2026-04-01`)
 - **Post-PROGRESSED High / Trough**: Peak `69,300`원 (2025-09-16) / Trough `33,550`원 (2026-03-31)
-- **Max Drawdown from Price HWM**: **`-51.59%`** (2026-03-31) | Intraday: `-54.01%`
-- **Score Evolution**: Init `38.24` -> HWM `47.45` -> Max Drawdown `23.01pt`
+- **Max Drawdown from Price HWM (Held Window)**: **`-51.59%`** (2026-03-31) | Intraday: `-54.01%`
+- **Score Evolution (While Held)**: Init `38.24` -> HWM `47.45` -> Max Drawdown `14.28pt`
 
-**[Monthly Timeline Path]**
+**[Monthly Timeline Path (Bounded by Exit Signal)]**
 
 | Snapshot Month | Stage | Score | Score HWM | Score DD | Monthly Close |
 |:---:|:---:|:---:|:---:|:---:|:---:|
@@ -129,45 +129,21 @@
 | `2026-01-31` | `PROGRESSED` | 45.42 | 45.42 | 0.0 | 43,750원 |
 | `2026-02-28` | `PROGRESSED` | 47.45 | 47.45 | 0.0 | 42,550원 |
 | `2026-03-31` | `WEAK` | 38.52 | 47.45 | 8.93 | 33,550원 |
-| `2026-04-30` | `WEAK` | 37.33 | 47.45 | 10.12 | 35,350원 |
-| `2026-05-31` | `WEAK` | 39.3 | 47.45 | 8.15 | 27,450원 |
-| `2026-06-30` | `WEAK` | 35.85 | 47.45 | 11.6 | 26,650원 |
-| `2026-07-31` | `WEAK` | 24.44 | 47.45 | 23.01 | 24,000원 |
 
 ## [298380_02] 에이비엘바이오 (298380) - Terminal Return: **-31.34%**
 - **Entry Execution**: `2024-10-14` (Open: `40,050`원)
 - **First PROGRESSED**: `2024-10-31` (Effective: `2024-10-31`, Ref Close: `37,500`원)
-- **Lifecycle**: `NORMAL_EARLY_TREND_HANDOFF` | **Exit Type**: `EXIT4_SCORE_DRAWDOWN_GE_15` (Signal: `2024-11-30`, Exec: `2024-12-02`)
+- **Held Window End**: `2024-11-30` | **Exit Type**: `EXIT4_SCORE_DRAWDOWN_GE_15` (Signal: `2024-11-30`, Exec: `2024-12-02`)
 - **Post-PROGRESSED High / Trough**: Peak `40,300`원 (2024-11-11) / Trough `26,600`원 (2024-11-26)
-- **Max Drawdown from Price HWM**: **`-34.0%`** (2024-11-26) | Intraday: `-36.08%`
-- **Score Evolution**: Init `83.24` -> HWM `83.24` -> Max Drawdown `83.24pt`
+- **Max Drawdown from Price HWM (Held Window)**: **`-34.0%`** (2024-11-26) | Intraday: `-36.08%`
+- **Score Evolution (While Held)**: Init `83.24` -> HWM `83.24` -> Max Drawdown `23.36pt`
 
-**[Monthly Timeline Path]**
+**[Monthly Timeline Path (Bounded by Exit Signal)]**
 
 | Snapshot Month | Stage | Score | Score HWM | Score DD | Monthly Close |
 |:---:|:---:|:---:|:---:|:---:|:---:|
 | `2024-10-31` | `PROGRESSED` | 83.24 | 83.24 | 0.0 | 37,500원 |
 | `2024-11-30` | `PROGRESSED` | 59.88 | 83.24 | 23.36 | 27,200원 |
-| `2024-12-31` | `PROGRESSED` | 58.09 | 83.24 | 25.15 | 29,900원 |
-| `2025-01-31` | `PROGRESSED` | 57.19 | 83.24 | 26.05 | 36,350원 |
-| `2025-02-28` | `PROGRESSED` | 49.99 | 83.24 | 33.25 | 40,350원 |
-| `2025-03-31` | `PROGRESSED` | 48.99 | 83.24 | 34.25 | 34,450원 |
-| `2025-04-30` | `PROGRESSED` | 9.04 | 83.24 | 74.2 | 65,200원 |
-| `2025-05-31` | `PROGRESSED` | 0.0 | 83.24 | 83.24 | 80,600원 |
-| `2025-06-30` | `PROGRESSED` | 0.0 | 83.24 | 83.24 | 67,200원 |
-| `2025-07-31` | `PROGRESSED` | 0.0 | 83.24 | 83.24 | 73,900원 |
-| `2025-08-31` | `PROGRESSED` | 0.0 | 83.24 | 83.24 | 91,600원 |
-| `2025-09-30` | `PROGRESSED` | 0.0 | 83.24 | 83.24 | 92,400원 |
-| `2025-10-31` | `PROGRESSED` | 0.0 | 83.24 | 83.24 | 99,700원 |
-| `2025-11-30` | `PROGRESSED` | 0.0 | 83.24 | 83.24 | 188,000원 |
-| `2025-12-31` | `PROGRESSED` | 0.0 | 83.24 | 83.24 | 200,000원 |
-| `2026-01-31` | `PROGRESSED` | 0.0 | 83.24 | 83.24 | 197,700원 |
-| `2026-02-28` | `PROGRESSED` | 0.0 | 83.24 | 83.24 | 194,000원 |
-| `2026-03-31` | `PROGRESSED` | 0.0 | 83.24 | 83.24 | 165,900원 |
-| `2026-04-30` | `PROGRESSED` | 0.0 | 83.24 | 83.24 | 134,800원 |
-| `2026-05-31` | `PROGRESSED` | 0.0 | 83.24 | 83.24 | 111,900원 |
-| `2026-06-30` | `PROGRESSED` | 0.0 | 83.24 | 83.24 | 99,500원 |
-| `2026-07-31` | `PROGRESSED` | 0.0 | 83.24 | 83.24 | 66,800원 |
 
 ================================================================================
 2. Representative Winning Cases (상위 4건 Deterministic Selection)
@@ -176,9 +152,8 @@
 ## [043260_01] 성호전자 (043260) - Terminal Return: **+912.41%**
 - **Entry Execution**: `2025-11-03` (Open: `2,015`원)
 - **First PROGRESSED**: `2026-01-31` (Effective: `2026-01-30`, Ref Close: `17,390`원)
-- **Lifecycle**: `NORMAL_EARLY_TREND_HANDOFF` | **Exit Type**: `NO_EXIT_BEFORE_CUTOFF` (Signal: `nan`, Exec: `nan`)
-- **Max Drawdown from Price HWM**: **`-77.73%`** (2026-07-30) | Intraday: `-80.22%`
-- **Score Evolution**: Init `0.0` -> HWM `0.0` -> Max Drawdown `0.0pt`
+- **Held Window End**: `2026-08-14` | **Exit Type**: `NO_EXIT_BEFORE_CUTOFF`
+- **Max Drawdown from Price HWM (Held Window)**: **`-77.73%`** (2026-07-30) | Intraday: `-80.22%`
 
 **[Monthly Timeline Path]**
 
@@ -198,9 +173,8 @@
 ## [047040_02] 대우건설 (047040) - Terminal Return: **+586.27%**
 - **Entry Execution**: `2026-01-26` (Open: `5,100`원)
 - **First PROGRESSED**: `2026-03-31` (Effective: `2026-03-31`, Ref Close: `15,550`원)
-- **Lifecycle**: `NORMAL_EARLY_TREND_HANDOFF` | **Exit Type**: `EXIT4_SCORE_DRAWDOWN_GE_15` (Signal: `2026-04-30`, Exec: `2026-05-04`)
-- **Max Drawdown from Price HWM**: **`-15.39%`** (2026-04-02) | Intraday: `-24.41%`
-- **Score Evolution**: Init `18.06` -> HWM `18.06` -> Max Drawdown `18.06pt`
+- **Held Window End**: `2026-04-30` | **Exit Type**: `EXIT4_SCORE_DRAWDOWN_GE_15`
+- **Max Drawdown from Price HWM (Held Window)**: **`-15.39%`** (2026-04-02) | Intraday: `-19.95%`
 
 **[Monthly Timeline Path]**
 
@@ -210,16 +184,12 @@
 | `2026-02-28` | `EARLY_TREND` | 56.08 | nan | nan | 10,140원 |
 | `2026-03-31` | `PROGRESSED` | 18.06 | 18.06 | 0.0 | 15,550원 |
 | `2026-04-30` | `PROGRESSED` | 0.0 | 18.06 | 18.06 | 35,000원 |
-| `2026-05-31` | `PROGRESSED` | 0.0 | 18.06 | 18.06 | 26,200원 |
-| `2026-06-30` | `PROGRESSED` | 0.0 | 18.06 | 18.06 | 18,840원 |
-| `2026-07-31` | `PROGRESSED` | 0.0 | 18.06 | 18.06 | 12,780원 |
 
 ## [131290_01] 티에스이 (131290) - Terminal Return: **+391.49%**
 - **Entry Execution**: `2025-10-13` (Open: `52,900`원)
 - **First PROGRESSED**: `2026-04-30` (Effective: `2026-04-30`, Ref Close: `168,800`원)
-- **Lifecycle**: `NORMAL_EARLY_TREND_HANDOFF` | **Exit Type**: `NO_EXIT_BEFORE_CUTOFF` (Signal: `nan`, Exec: `nan`)
-- **Max Drawdown from Price HWM**: **`-49.53%`** (2026-07-30) | Intraday: `-51.16%`
-- **Score Evolution**: Init `4.46` -> HWM `4.46` -> Max Drawdown `4.46pt`
+- **Held Window End**: `2026-08-14` | **Exit Type**: `NO_EXIT_BEFORE_CUTOFF`
+- **Max Drawdown from Price HWM (Held Window)**: **`-49.53%`** (2026-07-30) | Intraday: `-51.16%`
 
 **[Monthly Timeline Path]**
 
@@ -239,9 +209,8 @@
 ## [058610_02] 에스피지 (058610) - Terminal Return: **+375.44%**
 - **Entry Execution**: `2025-10-27` (Open: `31,550`원)
 - **First PROGRESSED**: `2025-12-31` (Effective: `2025-12-30`, Ref Close: `81,300`원)
-- **Lifecycle**: `NORMAL_EARLY_TREND_HANDOFF` | **Exit Type**: `EXIT4_SCORE_DRAWDOWN_GE_15` (Signal: `2026-01-31`, Exec: `2026-02-02`)
-- **Max Drawdown from Price HWM**: **`-9.07%`** (2026-01-06) | Intraday: `-22.19%`
-- **Score Evolution**: Init `28.26` -> HWM `28.26` -> Max Drawdown `28.26pt`
+- **Held Window End**: `2026-01-31` | **Exit Type**: `EXIT4_SCORE_DRAWDOWN_GE_15`
+- **Max Drawdown from Price HWM (Held Window)**: **`-9.07%`** (2026-01-06) | Intraday: `-22.19%`
 
 **[Monthly Timeline Path]**
 
@@ -251,9 +220,17 @@
 | `2025-11-30` | `EARLY_TREND` | 69.02 | nan | nan | 63,000원 |
 | `2025-12-31` | `PROGRESSED` | 28.26 | 28.26 | 0.0 | 81,300원 |
 | `2026-01-31` | `PROGRESSED` | 0.0 | 28.26 | 28.26 | 153,700원 |
-| `2026-02-28` | `PROGRESSED` | 0.0 | 28.26 | 28.26 | 144,600원 |
-| `2026-03-31` | `PROGRESSED` | 0.0 | 28.26 | 28.26 | 104,600원 |
-| `2026-04-30` | `PROGRESSED` | 0.0 | 28.26 | 28.26 | 127,600원 |
-| `2026-05-31` | `PROGRESSED` | 0.0 | 28.26 | 28.26 | 116,600원 |
-| `2026-06-30` | `PROGRESSED` | 0.0 | 28.26 | 28.26 | 80,300원 |
-| `2026-07-31` | `PROGRESSED` | 0.0 | 28.26 | 28.26 | 94,600원 |
+
+================================================================================
+3. Representative Winner Extreme Drawdown Cases (Right-Tail Overlap 분석 2건)
+================================================================================
+
+## [043260_01] 성호전자 (043260) - Terminal Return: **+912.41%** | Max HWM Drawdown: **`-77.73%`**
+- **Entry Execution**: `2025-11-03` | **First PROGRESSED**: `2026-01-31`
+- **Held Window End**: `2026-08-14` | **Exit Type**: `NO_EXIT_BEFORE_CUTOFF`
+- **Analysis**: 최종적으로 +912.41%의 대형 수익으로 마감했으나, 보유 기간 중 고점 대비 `-77.73%`의 깊은 조정을 겪음. 이는 너무 타이트한 Trailing Stop 적용 시 대형 승자가 조기 청산될 수 있는 Right-Tail Destruction 위험을 보여줌.
+
+## [007810_01] 코리아써키트 (007810) - Terminal Return: **+234.75%** | Max HWM Drawdown: **`-72.87%`**
+- **Entry Execution**: `2025-10-13` | **First PROGRESSED**: `2026-01-31`
+- **Held Window End**: `2026-08-14` | **Exit Type**: `NO_EXIT_BEFORE_CUTOFF`
+- **Analysis**: 최종적으로 +234.75%의 대형 수익으로 마감했으나, 보유 기간 중 고점 대비 `-72.87%`의 깊은 조정을 겪음. 이는 너무 타이트한 Trailing Stop 적용 시 대형 승자가 조기 청산될 수 있는 Right-Tail Destruction 위험을 보여줌.
