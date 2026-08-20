@@ -671,3 +671,41 @@ def test_normal_common_in_managed_section_remains_common_if_no_spac_history():
     meta = resolve_instrument_metadata(sample_ticker, as_of=VERIFIED_DATE, repo_root=REPO_ROOT)
     assert meta.asset_type == "COMMON"
     assert meta.is_trusted_for_production is True
+
+
+# --- Fix Round 09 Major 1: Remove Silent Snapshot Fallback & Enforce Provenance ---
+
+def test_metadata_builder_does_not_silently_fallback_to_existing_snapshot(monkeypatch):
+    """인증 세션이 실패하면 당일 source snapshot 파일이 존재하더라도 조용히 fallback하지 않고
+    반드시 RuntimeError를 발생시키는지 검증 (w.md §2.7)."""
+    import scripts.build_krx_instrument_metadata as builder_module
+    import pytest
+
+    # Ensure a source snapshot exists for testing
+    snapshot_path = REPO_ROOT / f"data/reference/source/krx_instrument_metadata_source_snapshot_{VERIFIED_DATE}.json"
+    assert snapshot_path.exists(), "테스트 전제: source snapshot 파일이 존재해야 함"
+
+    # Mock build_krx_session to return None (unauthenticated session)
+    monkeypatch.setattr(builder_module, "build_krx_session", lambda: None)
+
+    with pytest.raises(RuntimeError, match="KRX 인증 세션 생성 실패"):
+        builder_module.fetch_live_formal_universe()
+
+
+# --- Fix Round 09 Minor 1: Manifest Semantic Accuracy ---
+
+def test_manifest_historical_rewrite_and_market_normalization_semantics():
+    """manifest가 AssetType 소급 수정 없음과 Market 정규화 수행 사실을 정확히 구분하여
+    기록하고 있는지 검증 (w.md §3.2, §3.4)."""
+    manifest_path = REPO_ROOT / "data/reference/krx_instrument_metadata_manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+
+    assert manifest.get("asset_type_history_rewrite") == "NOT_PERFORMED", (
+        "manifest에 asset_type_history_rewrite=NOT_PERFORMED가 명시되어야 함"
+    )
+    assert manifest.get("historical_market_normalization") == "PERFORMED", (
+        "manifest에 historical_market_normalization=PERFORMED가 명시되어야 함"
+    )
+    assert manifest.get("historical_market_normalized_row_count") == 696, (
+        f"historical_market_normalized_row_count가 696이어야 함, got {manifest.get('historical_market_normalized_row_count')}"
+    )

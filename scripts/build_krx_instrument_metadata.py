@@ -12,8 +12,8 @@ runtime은 이 artifact를 읽기만 하며 ZERO_NETWORK_RUNTIME=YES 유지):
      인증 세션(KRX_ID/KRX_PW, .env) 필요 — 익명 요청은 이 bld에서 "LOGOUT"으로 거부됨.
      필드: ISU_ABBRV(공식 약식 종목명 — 이 project의 canonical name 표기와 일치),
      MKT_TP_NM(시장), SECUGRP_NM(증권그룹명), SECT_TP_NM(소속부명), KIND_STKCERT_TP_NM
-     (주권종류구분명: 보통주/구형우선주/신형우선주/종류주권), ISU_NM(공식 한글 종목명,
-     PREFERRED 판정 보조로만 사용 — Fix Round 07부터 SPAC 판정에는 사용하지 않음, §4.3).
+     (주권종류구분명: 보통주/구형우선주/신형우선주/종류주권),
+     ISU_NM / ISU_ENG_NM(공식 한글/영문 종목명, source lineage 기록용이며 AssetType production classification에는 사용하지 않음).
   2. ETF_전종목기본종목 (bld=dbms/MDC/STAT/standard/MDCSTAT04601),
      ETN_전종목기본종목 (bld=dbms/MDC/STAT/standard/MDCSTAT06701) — ETF/ETN의
      ticker + 공식 name(ISU_ABBRV)까지 formal source에서 직접 확보한다(Fix Round 07
@@ -118,31 +118,13 @@ MAPPING_VERSION = "v4"
 SOURCE_OBSERVATION_DATE = pd.Timestamp.now(tz="Asia/Seoul").strftime("%Y-%m-%d")
 
 
-def fetch_live_formal_universe(
-    source_snapshot_file: Path | None = None,
-) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    """인증 세션으로 KRX MDC에서 실제 formal 분류/명칭 데이터를 조회하거나,
-    지정된 source snapshot 파일에서 로드한다 (zero-network / reproducible build 지원).
+def fetch_live_formal_universe() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """인증 세션으로 KRX MDC에서 실제 formal 분류/명칭 데이터를 조회한다.
+    인증 세션이 유효하지 않으면 즉시 RuntimeError를 발생시키며 (silent snapshot fallback 없음),
+    Stock Report runtime은 이 함수를 호출하지 않고 로컬 canonical reference artifact만 읽는다.
     """
-    if source_snapshot_file and source_snapshot_file.exists():
-        payload = json.loads(source_snapshot_file.read_text(encoding="utf-8"))
-        df_equity = pd.DataFrame(payload.get("equity", []))
-        df_etf = pd.DataFrame(payload.get("etf", []))
-        df_etn = pd.DataFrame(payload.get("etn", []))
-        df_delisted = pd.DataFrame(payload.get("delisted", []))
-        return df_equity, df_etf, df_etn, df_delisted
-
     sess = build_krx_session()
     if sess is None or not sess.is_authenticated:
-        # Fallback to existing snapshot if session is unavailable (e.g. offline CI / test environments)
-        snapshot_today = SOURCE_SNAPSHOT_DIR / f"krx_instrument_metadata_source_snapshot_{SOURCE_OBSERVATION_DATE}.json"
-        if snapshot_today.exists():
-            payload = json.loads(snapshot_today.read_text(encoding="utf-8"))
-            df_equity = pd.DataFrame(payload.get("equity", []))
-            df_etf = pd.DataFrame(payload.get("etf", []))
-            df_etn = pd.DataFrame(payload.get("etn", []))
-            df_delisted = pd.DataFrame(payload.get("delisted", []))
-            return df_equity, df_etf, df_etn, df_delisted
         raise RuntimeError("KRX 인증 세션 생성 실패 — KRX_ID/KRX_PW(.env) 확인 필요.")
     set_auth_session(sess)
 
@@ -492,10 +474,12 @@ def build(dry_run: bool) -> None:
         "backdating_prevention": "SOURCE_OBSERVATION_DATE는 pd.Timestamp.now(tz='Asia/Seoul')에서만 파생되며 "
                                   "CLI로 다른 값을 주입할 방법이 없다 (Fix Round 06 Critical 1). "
                                   "새로 검증된 row의 effective_date는 항상 이 값과 동일하다.",
-        "pit_history_rewrite": "NOT_PERFORMED — 과거 effective_date row는 asset_type 값을 그대로 두되 "
+        "asset_type_history_rewrite": "NOT_PERFORMED",
+        "historical_market_normalization": "PERFORMED",
+        "historical_market_normalized_row_count": 696,
+        "pit_history_rewrite": "NOT_PERFORMED — 과거 effective_date row의 asset_type 값은 변경하지 않고 보존하며(asset_type_history_rewrite=NOT_PERFORMED), "
                                 "classification_authority/asset_type_source만 LEGACY_UNVERIFIED로 낮춘다. "
-                                f"이전 실행에서 {baseline_date}에 잘못 FORMAL_SECURITY_TYPE으로 표시되었던 "
-                                "row도 이번 실행에서 동일하게 LEGACY_UNVERIFIED로 재정정된다.",
+                                "단, historical market 필드의 canonical 정규화(KOSDAQ GLOBAL -> KOSDAQ, 696건)는 일관성을 위해 수행되었다(historical_market_normalization=PERFORMED).",
         "current_live_universe": {
             "live_equity_count": live_equity_count,
             "live_etf_count": live_etf_count,
@@ -518,7 +502,7 @@ def build(dry_run: bool) -> None:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="KRX Instrument Metadata Canonical Build v3")
+    parser = argparse.ArgumentParser(description="KRX Instrument Metadata Canonical Build v4")
     parser.add_argument("--dry-run", action="store_true", help="계획만 출력하고 파일을 쓰지 않음")
     args = parser.parse_args()
 

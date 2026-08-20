@@ -1,6 +1,6 @@
 {
   "artifact_version": "4",
-  "generated_at": "2026-08-20T23:23:55.182035+00:00",
+  "generated_at": "2026-08-20T23:37:35.699345+00:00",
   "effective_date": "2026-08-21",
   "upstream_authority": "KRX Market Data Center (data.krx.co.kr), authenticated session",
   "upstream_source_name": "전종목기본정보 (bld=dbms/MDC/STAT/standard/MDCSTAT01901); ETF_전종목기본종목 (bld=dbms/MDC/STAT/standard/MDCSTAT04601); ETN_전종목기본종목 (bld=dbms/MDC/STAT/standard/MDCSTAT06701); 상폐종목검색 (delisted reference only)",
@@ -39,7 +39,10 @@
   "historical_rows_marked_legacy_unverified": 72786,
   "zero_network_runtime": true,
   "backdating_prevention": "SOURCE_OBSERVATION_DATE는 pd.Timestamp.now(tz='Asia/Seoul')에서만 파생되며 CLI로 다른 값을 주입할 방법이 없다 (Fix Round 06 Critical 1). 새로 검증된 row의 effective_date는 항상 이 값과 동일하다.",
-  "pit_history_rewrite": "NOT_PERFORMED — 과거 effective_date row는 asset_type 값을 그대로 두되 classification_authority/asset_type_source만 LEGACY_UNVERIFIED로 낮춘다. 이전 실행에서 2026-08-21에 잘못 FORMAL_SECURITY_TYPE으로 표시되었던 row도 이번 실행에서 동일하게 LEGACY_UNVERIFIED로 재정정된다.",
+  "asset_type_history_rewrite": "NOT_PERFORMED",
+  "historical_market_normalization": "PERFORMED",
+  "historical_market_normalized_row_count": 696,
+  "pit_history_rewrite": "NOT_PERFORMED — 과거 effective_date row의 asset_type 값은 변경하지 않고 보존하며(asset_type_history_rewrite=NOT_PERFORMED), classification_authority/asset_type_source만 LEGACY_UNVERIFIED로 낮춘다. 단, historical market 필드의 canonical 정규화(KOSDAQ GLOBAL -> KOSDAQ, 696건)는 일관성을 위해 수행되었다(historical_market_normalization=PERFORMED).",
   "current_live_universe": {
     "live_equity_count": 2873,
     "live_etf_count": 1161,

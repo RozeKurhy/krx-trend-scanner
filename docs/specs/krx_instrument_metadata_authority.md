@@ -234,12 +234,11 @@ Critical 1, 유지). `--dry-run`으로 파일을 쓰지 않고 변경 미리보�
 manifest에서 동적으로 읽는다(하드코딩 날짜를 쓰지 않는다).
 
 
-## 9. Historical Row 정책 (PIT History Rewrite 금지)
+## 9. Historical Row 정책 (PIT History Rewrite 금지 및 Market Canonicalization)
 
-**SOURCE_OBSERVATION_DATE가 아닌 모든 row는 이번 build가 값(asset_type, name,
-market 등)을 전혀 건드리지 않는다.** 오늘 시점 조회 결과로 과거 snapshot을
-소급 덮어쓰는 것(history rewrite)은 절대 금지되어 있으므로, historical row는
-기존 값을 그대로 유지한다.
+**과거 effective_date row의 AssetType 값은 소급 재작성(history rewrite)하지 않고 그대로 보존한다 (`asset_type_history_rewrite = "NOT_PERFORMED"`).**
+오늘 시점 조회 결과로 과거 snapshot의 asset_type을 소급 덮어쓰는 것은 절대 금지되어 있으며, historical row는 기존 asset_type 값을 유지한다.
+단, 시장 구분의 canonical 정규화(`KOSDAQ GLOBAL` -> `KOSDAQ`, 696건)는 프로젝트 일관성을 위해 수행되었다 (`historical_market_normalization = "PERFORMED"`, `historical_market_normalized_row_count = 696`).
 
 다만 provenance는 정직하게 낮춘다: SOURCE_OBSERVATION_DATE가 아닌 모든 row의
 `classification_authority`/`asset_type_source`를 `"LEGACY_UNVERIFIED"`로
@@ -369,9 +368,10 @@ verified_snapshot_baseline_date, verified_row_count,
 asset_type_distribution_verified_rows, unknown_count_verified_rows,
 unmapped_formal_category_count_verified_rows,
 insufficient_formal_identity_count_verified_rows(신규),
-insufficient_formal_identity_tickers(신규),
 changed_tickers_vs_baseline_committed_value, historical_rows_marked_legacy_unverified,
-zero_network_runtime, backdating_prevention, pit_history_rewrite,
+zero_network_runtime, backdating_prevention,
+asset_type_history_rewrite, historical_market_normalization,
+historical_market_normalized_row_count, pit_history_rewrite,
 current_live_universe(신규 — live_equity_count, live_etf_count, live_etn_count,
 live_supported_unique_tickers, current_canonical_rows, baseline_ticker_count,
 new_listing_count, new_listing_tickers, removed_from_live_count,
