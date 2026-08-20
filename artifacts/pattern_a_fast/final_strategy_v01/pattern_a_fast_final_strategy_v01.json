@@ -7,7 +7,8 @@
   "research_source": "SAME_SAMPLE_RETROSPECTIVE_FINALIZATION",
   "architecture_authority_commit": "89df82a938dba1961c2342064db2dc0061a5f2ca",
   "preregistration_authority_commit": "a5c29e7e97cb7e6830c3dcd25d824e5779f2312f",
-  "evaluation_evidence_commit": "52acf0555036794e112c0aeb0c73213ddeff4b86",
+  "evaluation_evidence_commit": "88d54d85bdee1f2121bec9b27a250cbc1cb9f98f",
+  "evaluation_basis": "CORRECTED_PIT_BASELINE",
   "selection_authority": "FINAL_STRATEGY_CONTRACT",
   "contract_authority": "THIS_FINAL_STRATEGY_CONTRACT_REVISION",
   "fresh_oos_status": "READY_FOR_PREREGISTRATION",
@@ -106,19 +107,20 @@
     }
   },
   "known_tradeoffs": {
-    "loss_guard_trigger_rate_pct": 53.16,
-    "positive_rate_pct": 39.6,
-    "median_terminal_return_pct": -14.15,
-    "counterfactual_e1_terminal_return_ge_20_count": 97,
-    "counterfactual_e1_terminal_return_ge_50_count": 64,
-    "counterfactual_e1_terminal_return_ge_100_count": 31,
+    "sample_trade_count": 551,
+    "loss_guard_trigger_rate_pct": 53.36,
+    "positive_rate_pct": 39.93,
+    "mean_terminal_return_pct": 18.48,
+    "median_terminal_return_pct": -13.60,
+    "counterfactual_e1_terminal_return_ge_20_count": 95,
+    "counterfactual_e1_terminal_return_ge_50_count": 63,
+    "counterfactual_e1_terminal_return_ge_100_count": 32,
     "stopped_trades_counterfactual_mfe": {
-      "mean_pct": 79.08,
-      "median_pct": 37.71
+      "mean_pct": 79.60,
+      "median_pct": 37.79
     },
-    "catastrophic_loss_30_reduction_pct": 84.7,
-    "catastrophic_loss_20_reduction_pct": 68.9,
-    "worst_return_improvement_pct_points": 31.83,
+    "worst_terminal_return_pct": -49.40,
+    "worst_mae_pct": -59.27,
     "execution_gap_risk": "Loss Guard triggers at daily close -15% but executes at next local open, so realized loss may exceed -15%."
   },
   "freeze_invariants": [

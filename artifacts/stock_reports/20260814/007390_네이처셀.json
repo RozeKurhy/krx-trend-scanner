@@ -39,17 +39,17 @@
   },
   "monthly_history": {
     "history_start_as_of": "2021-08-31",
-    "history_end_as_of": "2026-08-14",
-    "observation_count": 61,
+    "history_end_as_of": "2026-07-31",
+    "observation_count": 60,
     "recent_12m_observation_count": 13,
     "score_trend": {
       "current_score": 76.61,
-      "score_1m_ago": 76.61,
-      "score_3m_ago": 28.76,
+      "score_1m_ago": 61.42,
+      "score_3m_ago": 28.75,
       "score_6m_ago": 0.0,
       "score_12m_ago": 0.0,
-      "change_1m": 0.0,
-      "change_3m": 47.85,
+      "change_1m": 15.19,
+      "change_3m": 47.86,
       "change_6m": 76.61,
       "change_12m": 76.61
     },
@@ -60,12 +60,12 @@
         "to_stage": "WEAK"
       },
       {
-        "as_of": "2024-12-30",
+        "as_of": "2024-11-29",
         "from_stage": "WEAK",
         "to_stage": "EARLY_TREND"
       },
       {
-        "as_of": "2025-01-31",
+        "as_of": "2024-12-30",
         "from_stage": "EARLY_TREND",
         "to_stage": "PROGRESSED"
       },
@@ -76,6 +76,15 @@
       }
     ],
     "recent_12m_history": [
+      {
+        "as_of": "2025-07-31",
+        "score": 0.0,
+        "stage": "PROGRESSED",
+        "candidate_state": "late",
+        "data_available": true,
+        "close": 37800.0,
+        "reason": null
+      },
       {
         "as_of": "2025-08-29",
         "score": 0.0,
@@ -159,7 +168,7 @@
       },
       {
         "as_of": "2026-05-29",
-        "score": 28.76,
+        "score": 39.97,
         "stage": "PROGRESSED",
         "candidate_state": "late",
         "data_available": true,
@@ -182,15 +191,6 @@
         "candidate_state": "candidate",
         "data_available": true,
         "close": 22000.0,
-        "reason": null
-      },
-      {
-        "as_of": "2026-08-14",
-        "score": 76.61,
-        "stage": "TRANSITION",
-        "candidate_state": "candidate",
-        "data_available": true,
-        "close": 23400.0,
         "reason": null
       }
     ],
@@ -548,18 +548,18 @@
       },
       {
         "as_of": "2024-11-29",
-        "score": 0.96,
-        "stage": "WEAK",
-        "candidate_state": "blocked",
+        "score": 78.73,
+        "stage": "EARLY_TREND",
+        "candidate_state": "candidate",
         "data_available": true,
         "close": 22900.0,
         "reason": null
       },
       {
         "as_of": "2024-12-30",
-        "score": 78.73,
-        "stage": "EARLY_TREND",
-        "candidate_state": "candidate",
+        "score": 61.34,
+        "stage": "PROGRESSED",
+        "candidate_state": "late",
         "data_available": true,
         "close": 21500.0,
         "reason": null
@@ -710,7 +710,7 @@
       },
       {
         "as_of": "2026-05-29",
-        "score": 28.76,
+        "score": 39.97,
         "stage": "PROGRESSED",
         "candidate_state": "late",
         "data_available": true,
@@ -734,19 +734,10 @@
         "data_available": true,
         "close": 22000.0,
         "reason": null
-      },
-      {
-        "as_of": "2026-08-14",
-        "score": 76.61,
-        "stage": "TRANSITION",
-        "candidate_state": "candidate",
-        "data_available": true,
-        "close": 23400.0,
-        "reason": null
       }
     ],
     "first_pattern_a_available_as_of": "2024-07-31",
-    "pattern_a_available_observation_count": 26
+    "pattern_a_available_observation_count": 25
   },
   "foreign_flow": {
     "data_status": "READY",
@@ -819,11 +810,11 @@
       {
         "week_ending": "2025-08-29",
         "close": 21050.0,
-        "fast_score": 52.56,
+        "fast_score": 62.01,
         "score_availability": "READY",
         "fast_stage": "SETUP",
         "stage_availability": "READY",
-        "monthly_regime": "LATE_OR_EXTENDED_REGIME",
+        "monthly_regime": "PERMITTED_REGIME",
         "daily_risk": "NORMAL",
         "interpretation": "주봉 기준 상승 전환 가능성을 보여주는 초기 구조가 형성되고 있으나 아직 Trigger 단계는 아닙니다."
       },
@@ -951,7 +942,7 @@
       {
         "week_ending": "2025-11-28",
         "close": 22200.0,
-        "fast_score": 56.2,
+        "fast_score": 53.95,
         "score_availability": "READY",
         "fast_stage": "WATCH",
         "stage_availability": "READY",
@@ -1050,7 +1041,7 @@
       {
         "week_ending": "2026-01-30",
         "close": 25250.0,
-        "fast_score": 58.76,
+        "fast_score": 61.01,
         "score_availability": "READY",
         "fast_stage": "SETUP",
         "stage_availability": "READY",

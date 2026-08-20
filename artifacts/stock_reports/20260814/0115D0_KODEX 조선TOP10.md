@@ -52,7 +52,6 @@ KODEX 조선TOP10(0115D0)는 현재 Pattern A UNAVAILABLE 단계이며, 필수 �
 | 2026-05-29 | 10,325 | N/A | UNAVAILABLE | insufficient_data | False |
 | 2026-06-30 | 8,725 | N/A | UNAVAILABLE | insufficient_data | False |
 | 2026-07-31 | 7,835 | N/A | UNAVAILABLE | insufficient_data | False |
-| 2026-08-14 | 8,410 | N/A | UNAVAILABLE | insufficient_data | False |
 
 ---
 
@@ -135,9 +134,9 @@ KODEX 조선TOP10(0115D0)는 현재 Pattern A UNAVAILABLE 단계이며, 필수 �
 
 ## 8. Pattern A 전체 월별 이력 (Full Monthly History)
 - **전체 관측 시작월**: `2025-10-31`
-- **전체 관측 종료월**: `2026-08-14`
+- **전체 관측 종료월**: `2026-07-31`
 - **최초 Pattern A 산출월**: `None`
-- **총 월별 관측 개수**: `11개월` (Pattern A 산출 가능: `0개월`)
+- **총 월별 관측 개수**: `10개월` (Pattern A 산출 가능: `0개월`)
 
 | 기준일 | 종가 | Pattern A Score | Stage | Candidate State | Data Available | Reason |
 |---|---:|---:|---|---|---|---|
@@ -151,7 +150,6 @@ KODEX 조선TOP10(0115D0)는 현재 Pattern A UNAVAILABLE 단계이며, 필수 �
 | 2026-05-29 | 10,325 | N/A | UNAVAILABLE | insufficient_data | False | INSUFFICIENT_LOOKBACK |
 | 2026-06-30 | 8,725 | N/A | UNAVAILABLE | insufficient_data | False | INSUFFICIENT_LOOKBACK |
 | 2026-07-31 | 7,835 | N/A | UNAVAILABLE | insufficient_data | False | INSUFFICIENT_LOOKBACK |
-| 2026-08-14 | 8,410 | N/A | UNAVAILABLE | insufficient_data | False | INSUFFICIENT_LOOKBACK |
 
 ---
 

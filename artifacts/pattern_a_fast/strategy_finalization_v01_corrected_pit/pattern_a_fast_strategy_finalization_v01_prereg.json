@@ -1,0 +1,103 @@
+{
+  "research_title": "Pattern A FAST Strategy Finalization / Candidate Selection v0.1",
+  "research_classification": "RETROSPECTIVE_STRATEGY_FINALIZATION_CANDIDATE_SELECTION",
+  "validation_type": "SAME_SAMPLE_RETROSPECTIVE_FINALIZATION",
+  "architecture_authority_commit": "89df82a938dba1961c2342064db2dc0061a5f2ca",
+  "data_cutoff": "2026-08-14",
+  "is_fresh_oos": false,
+  "production_status": "PRODUCTION_HOLD",
+  "production_impact": "NONE",
+  "investment_mandate": {
+    "primary_objective": "LARGE_LOSS_MINIMIZATION",
+    "secondary_objective": "PRESERVE_SUFFICIENT_UPSIDE",
+    "philosophy": "Invest only in structurally confirmed trend beginnings. Intentionally forego bottom bounces and uncertain structures to prevent catastrophic drawdowns."
+  },
+  "entry_policy": {
+    "allowed_pattern_a_stages": [
+      "TRANSITION",
+      "EARLY_TREND"
+    ],
+    "excluded_pattern_a_stages": [
+      "WEAK",
+      "BASE",
+      "UNAVAILABLE",
+      "PROGRESSED"
+    ],
+    "fast_machine_stage": "TRIGGER",
+    "fast_machine_status": "READY",
+    "monthly_permission_state": "PERMITTED_REGIME",
+    "daily_risk_allowed_states": [
+      "NORMAL",
+      "ELEVATED"
+    ],
+    "fast_score_allowed_statuses": [
+      "READY",
+      "PARTIAL"
+    ],
+    "numeric_score_threshold": null,
+    "entry_selection": "FIRST_QUALIFYING_ENTRY_PER_TICKER",
+    "execution_timing": "NEXT_LOCAL_TRADING_DAY_OPEN"
+  },
+  "candidate_space": {
+    "step_1_hold_candidates": {
+      "HOLD_A": {
+        "candidate_id": "HOLD_A",
+        "name": "NO_PRE_PROGRESSED_PROTECTION",
+        "description": "Unconditional hold until PROGRESSED or cutoff without time or price stop."
+      },
+      "HOLD_B": {
+        "candidate_id": "HOLD_B",
+        "name": "PRE_PROGRESSED_CATASTROPHIC_LOSS_GUARD",
+        "description": "Signal loss protection exit if completed daily close <= -15% from entry price before PROGRESSED, execute next local open.",
+        "trigger_condition": "daily_close / entry_open - 1 <= -0.15",
+        "active_window": "PRE_PROGRESSED_ONLY",
+        "execution_timing": "NEXT_LOCAL_TRADING_DAY_OPEN"
+      }
+    },
+    "step_2_exit_candidates": {
+      "E0": {
+        "candidate_id": "E0",
+        "name": "EXIT3_ONLY",
+        "description": "Exit 3 structural backstop only upon PROGRESSED departure to valid stage. No Exit 4 or Coverage Activation."
+      },
+      "E1": {
+        "candidate_id": "E1",
+        "name": "EXIT3_PLUS_NORMAL_EXIT4",
+        "description": "Exit 3 + Normal Exit 4 (15.0pt drawdown) on direct EARLY_TREND to PROGRESSED handoff. Coverage Hole open at cutoff."
+      },
+      "E2": {
+        "candidate_id": "E2",
+        "name": "EXIT3_PLUS_EXIT4_PLUS_COVERAGE",
+        "description": "Exit 3 + Normal Exit 4 + Coverage Activated Exit 4 on first observed PROGRESSED monthly snapshot."
+      }
+    }
+  },
+  "evaluation_priorities": {
+    "hold_selection": [
+      "return_le_neg_30_rate",
+      "return_le_neg_20_rate",
+      "deep_mae_tail",
+      "adverse_excursion_p75_p90",
+      "peak_giveback",
+      "terminal_return",
+      "winner_truncation_rate"
+    ],
+    "exit_selection": [
+      "return_le_neg_30_rate",
+      "return_le_neg_20_rate",
+      "mae",
+      "peak_giveback",
+      "profit_capture_ratio",
+      "terminal_return",
+      "right_tail_preservation"
+    ]
+  },
+  "invariants": [
+    "Strictly local cache data up to 2026-08-14 (zero fresh data queries).",
+    "Zero threshold sweeps (HOLD_B is strictly -15%, Exit 4 is strictly 15.0pt).",
+    "No post-hoc re-inclusion of WEAK, BASE, UNAVAILABLE, or PROGRESSED entries.",
+    "Deterministic 2-step decision without combinatorial overfitting.",
+    "Selection of a single final strategy candidate (PATTERN_A_FAST_FINAL_STRATEGY_V01).",
+    "Production remains on PRODUCTION_HOLD."
+  ]
+}
