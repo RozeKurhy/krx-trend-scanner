@@ -260,9 +260,11 @@ def simulate_ticker_strategy_finalization(
         coverage_path = "NEVER_PROGRESSED"
 
     # Pre-PROGRESSED Loss Guard Check (HOLD_B)
-    # The pre-progressed window is from entry_exec_date up to first_progressed_d (or cutoff if never progressed)
-    pre_prog_cutoff = first_progressed_d if first_progressed_d is not None else cutoff_date
-    pre_prog_daily = daily[(daily.index >= entry_exec_date) & (daily.index <= pre_prog_cutoff)]
+    # Strictly active while date < first_progressed_d (or <= cutoff if never progressed)
+    if first_progressed_d is not None:
+        pre_prog_daily = daily[(daily.index >= entry_exec_date) & (daily.index < first_progressed_d)]
+    else:
+        pre_prog_daily = daily[(daily.index >= entry_exec_date) & (daily.index <= cutoff_date)]
 
     loss_guard_triggered = False
     loss_guard_sig_d: pd.Timestamp | None = None

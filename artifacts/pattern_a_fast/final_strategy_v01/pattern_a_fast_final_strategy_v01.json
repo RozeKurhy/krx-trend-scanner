@@ -1,0 +1,123 @@
+{
+  "strategy_name": "PATTERN_A_FAST_FINAL_STRATEGY_V01",
+  "strategy_version": "v0.1",
+  "strategy_status": "FINAL_STRATEGY_FROZEN",
+  "research_classification": "STRATEGY_FINALIZATION_FROZEN_CONTRACT",
+  "research_source": "SAME_SAMPLE_RETROSPECTIVE_FINALIZATION",
+  "architecture_authority_commit": "89df82a938dba1961c2342064db2dc0061a5f2ca",
+  "selection_authority_commit": "52acf0555036794e112c0aeb0c73213ddeff4b86",
+  "fresh_oos_status": "READY_FOR_PREREGISTRATION",
+  "production_status": "PRODUCTION_HOLD",
+  "production_candidate": false,
+  "production_impact": "NONE",
+  "investment_mandate": {
+    "primary_objective": "LARGE_LOSS_MINIMIZATION",
+    "secondary_objective": "PRESERVE_SUFFICIENT_UPSIDE",
+    "loss_magnitude_over_frequency": true,
+    "philosophy": "Invest only in structurally confirmed trend beginnings (TRANSITION, EARLY_TREND). Intentionally forego bottom bounces and uncertain structures to strictly prevent catastrophic drawdowns."
+  },
+  "entry_contract": {
+    "allowed_pattern_a_stages": [
+      "TRANSITION",
+      "EARLY_TREND"
+    ],
+    "excluded_pattern_a_stages": [
+      "WEAK",
+      "BASE",
+      "UNAVAILABLE",
+      "PROGRESSED"
+    ],
+    "fast_machine_stage": "TRIGGER",
+    "fast_machine_status": "READY",
+    "monthly_permission_state": "PERMITTED_REGIME",
+    "daily_risk_allowed_states": [
+      "NORMAL",
+      "ELEVATED"
+    ],
+    "fast_score_allowed_statuses": [
+      "READY",
+      "PARTIAL"
+    ],
+    "numeric_score_threshold": null,
+    "entry_selection": "FIRST_QUALIFYING_ENTRY_PER_TICKER",
+    "execution_timing": "NEXT_LOCAL_TRADING_DAY_OPEN"
+  },
+  "hold_and_loss_guard_contract": {
+    "policy_id": "HOLD_B_PRE_PROGRESSED_LOSS_GUARD_SELECTED",
+    "trigger_condition": "daily_close / entry_open - 1.0 <= -0.15",
+    "price_reference": "ENTRY_EXECUTION_OPEN",
+    "signal_price": "COMPLETED_DAILY_CLOSE",
+    "active_window": "AFTER_ENTRY_EXECUTION AND BEFORE_FIRST_PROGRESSED_SNAPSHOT",
+    "loss_guard_active_condition": "CURRENT_DATE_LT_FIRST_PROGRESSED_SNAPSHOT_DATE",
+    "on_first_progressed_snapshot": "LOSS_GUARD_BECOMES_INACTIVE",
+    "execution_timing": "NEXT_LOCAL_TRADING_DAY_OPEN",
+    "exit_identifier": "LOSS_GUARD_CLOSE_LE_NEG_15",
+    "time_stop": "NONE",
+    "price_stop_in_progressed": "NONE",
+    "fast_reversal_stop": "NONE",
+    "stage_exit_before_progressed": "NONE"
+  },
+  "exit_contract": {
+    "policy_id": "E2_EXIT3_PLUS_EXIT4_PLUS_COVERAGE_SELECTED",
+    "normal_lifecycle": {
+      "activation_condition": "POST_ENTRY_DIRECT_EARLY_TREND_TO_PROGRESSED",
+      "activation_scope": "NORMAL_EARLY_TREND_HANDOFF_ONLY",
+      "exit4_trigger": "PROGRESSED_HWM_MINUS_CURRENT_SCORE_GE_15PT",
+      "exit4_active_stage": "PROGRESSED_ONLY",
+      "frozen_drawdown_threshold_pt": 15.0,
+      "exit4_hwm_initialization": "ARM_SNAPSHOT_PATTERN_A_SCORE",
+      "exit4_hwm_update": "MAX_PREVIOUS_HWM_CURRENT_PATTERN_A_SCORE",
+      "exit3_trigger": "PROGRESSED_TO_OTHER_VALID_STRUCTURAL_STAGE",
+      "exit3_target_stages": [
+        "WEAK",
+        "BASE",
+        "TRANSITION",
+        "EARLY_TREND"
+      ],
+      "terminal_precedence": "EARLIEST_EXECUTABLE_SIGNAL",
+      "execution_timing": "NEXT_LOCAL_TRADING_DAY_OPEN"
+    },
+    "coverage_hole": {
+      "coverage_activation_condition": "FIRST_OBSERVED_PROGRESSED_SNAPSHOT",
+      "coverage_activation_scope": [
+        "SKIPPED_EARLY_TREND_HANDOFF",
+        "PROGRESSED_WITHOUT_DIRECT_HANDOFF"
+      ],
+      "coverage_hwm_initialization": "FIRST_OBSERVED_PROGRESSED_PATTERN_A_SCORE",
+      "coverage_hwm_update": "MAX_PREVIOUS_HWM_CURRENT_PATTERN_A_SCORE",
+      "coverage_exit4_trigger": "PROGRESSED_HWM_MINUS_CURRENT_SCORE_GE_15PT",
+      "coverage_exit4_active_stage": "PROGRESSED_ONLY",
+      "frozen_drawdown_threshold_pt": 15.0,
+      "coverage_exit3_expansion": "NONE",
+      "on_progressed_departure_without_exit4": "OPEN_AT_CUTOFF",
+      "terminal_precedence": "EXIT4_ONLY_FOR_COVERAGE_EXTENSION",
+      "execution_timing": "NEXT_LOCAL_TRADING_DAY_OPEN"
+    },
+    "never_progressed": {
+      "terminal_status": "OPEN_AT_CUTOFF",
+      "forced_close": false,
+      "valuation": "MARK_TO_CUTOFF"
+    }
+  },
+  "known_tradeoffs": {
+    "loss_guard_trigger_rate_pct": 53.35,
+    "positive_rate_pct": 39.4,
+    "median_terminal_return_pct": -14.15,
+    "counterfactual_50_plus_winner_truncation_count": 65,
+    "counterfactual_100_plus_winner_truncation_count": 32,
+    "catastrophic_loss_30_reduction_pct": 84.7,
+    "catastrophic_loss_20_reduction_pct": 68.9,
+    "worst_return_improvement_pct_points": 31.83,
+    "execution_gap_risk": "Loss Guard triggers at daily close -15% but executes at next local open, so realized loss may exceed -15%."
+  },
+  "freeze_invariants": [
+    "Entry is strictly limited to TRANSITION and EARLY_TREND on FAST v0.1 signals.",
+    "Pre-PROGRESSED Loss Guard triggers strictly on daily close <= -15% before first PROGRESSED snapshot.",
+    "First PROGRESSED snapshot date deactivates Loss Guard and transitions authority to PROGRESSED exits.",
+    "Exit 4 drawdown threshold of 15.0pt is strictly frozen across normal and coverage paths.",
+    "All execution occurs at NEXT_LOCAL_TRADING_DAY_OPEN.",
+    "Unliquidated positions remain OPEN_AT_CUTOFF with mark-to-cutoff valuation.",
+    "Zero post-hoc formula generation or retrospective parameter sweeping.",
+    "Production remains strictly on PRODUCTION_HOLD."
+  ]
+}

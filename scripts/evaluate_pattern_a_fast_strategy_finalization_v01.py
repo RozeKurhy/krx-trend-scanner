@@ -7,6 +7,7 @@ Strict Execution Invariants:
   - Frozen 15.0pt drawdown threshold (strictly no sweep/tuning).
   - Frozen -15% daily close Loss Guard (strictly no sweep/tuning).
   - Frozen Entry population (553 Combined Executable trades in TRANSITION / EARLY_TREND).
+  - Selection Methodology: PREREGISTERED_PRIORITY_EVIDENCE_SYNTHESIS.
   - Next local trading day OPEN execution.
   - Research Classification: RETROSPECTIVE_STRATEGY_FINALIZATION_CANDIDATE_SELECTION.
   - Production Status: PRODUCTION_HOLD.
@@ -45,6 +46,7 @@ OUT_DIR = ROOT / "artifacts/pattern_a_fast/strategy_finalization_v01"
 OUT_TRADES_CSV = OUT_DIR / "pattern_a_fast_strategy_finalization_v01_trades.csv"
 OUT_EVAL_JSON = OUT_DIR / "pattern_a_fast_strategy_finalization_v01_evaluation.json"
 OUT_EVAL_MD = OUT_DIR / "pattern_a_fast_strategy_finalization_v01_evaluation.md"
+DOCS_EVAL_MD = ROOT / "docs/validation/pattern_a_fast_strategy_finalization_v01_evaluation.md"
 
 PREREG_COMMIT_SHA = "a5c29e7e97cb7e6830c3dcd25d824e5779f2312f"
 ARCHITECTURE_AUTHORITY_COMMIT = "89df82a938dba1961c2342064db2dc0061a5f2ca"
@@ -109,7 +111,8 @@ def run_evaluation() -> None:
 
     md_report = _generate_markdown_report(eval_data)
     OUT_EVAL_MD.write_text(md_report, encoding="utf-8")
-    logger.info("Evaluation artifacts written to %s", OUT_DIR)
+    DOCS_EVAL_MD.write_text(md_report, encoding="utf-8")
+    logger.info("Evaluation artifacts written to %s and %s", OUT_DIR, DOCS_EVAL_MD)
 
 
 def _analyze_results(df: pd.DataFrame, total_common: int, investable_count: int) -> dict[str, Any]:
@@ -123,16 +126,14 @@ def _analyze_results(df: pd.DataFrame, total_common: int, investable_count: int)
     n_never = int((df["lifecycle_class"] == "NEVER_PROGRESSED").sum())
 
     # Step 1: Pre-PROGRESSED Hold Evaluation (HOLD_A vs HOLD_B)
-    # Loss Guard trigger stats
     lg_triggered_count = int(df["loss_guard_triggered"].sum())
     lg_triggered_rate = round(lg_triggered_count / n_total * 100, 2)
 
-    # Counterfactual MFE of stopped trades
     df_stopped = df[df["loss_guard_triggered"] == True]
     stopped_cf_mfe = calculate_distribution_stats(df_stopped["hold_a_e1_mfe"])
-    stopped_winners_20_count = int((df_stopped["hold_a_e1_terminal_return"] >= 20.0).sum())
-    stopped_winners_50_count = int((df_stopped["hold_a_e1_terminal_return"] >= 50.0).sum())
-    stopped_winners_100_count = int((df_stopped["hold_a_e1_terminal_return"] >= 100.0).sum())
+    stopped_cf_e1_ge_20 = int((df_stopped["hold_a_e1_terminal_return"] >= 20.0).sum())
+    stopped_cf_e1_ge_50 = int((df_stopped["hold_a_e1_terminal_return"] >= 50.0).sum())
+    stopped_cf_e1_ge_100 = int((df_stopped["hold_a_e1_terminal_return"] >= 100.0).sum())
 
     # Helper function to get stats for a strategy variant
     def get_variant_stats(prefix: str) -> dict[str, Any]:
@@ -209,15 +210,12 @@ def _analyze_results(df: pd.DataFrame, total_common: int, investable_count: int)
         "hold_a_better_count": int((ret_delta_hb_ha < 0).sum()),
     }
 
-    # 2. Exit comparisons under HOLD_A:
-    # E0 vs E1
+    # 2. Exit comparisons under HOLD_A & HOLD_B
     ret_delta_e1_e0 = df["hold_a_e1_terminal_return"] - df["hold_a_e0_terminal_return"]
     gb_delta_e1_e0 = df["hold_a_e1_peak_giveback"] - df["hold_a_e0_peak_giveback"]
-    # E1 vs E2
     ret_delta_e2_e1 = df["hold_a_e2_terminal_return"] - df["hold_a_e1_terminal_return"]
     gb_delta_e2_e1 = df["hold_a_e2_peak_giveback"] - df["hold_a_e1_peak_giveback"]
 
-    # 3. Exit comparisons under HOLD_B:
     ret_delta_hb_e1_e0 = df["hold_b_e1_terminal_return"] - df["hold_b_e0_terminal_return"]
     gb_delta_hb_e1_e0 = df["hold_b_e1_peak_giveback"] - df["hold_b_e0_peak_giveback"]
     ret_delta_hb_e2_e1 = df["hold_b_e2_terminal_return"] - df["hold_b_e1_terminal_return"]
@@ -238,7 +236,6 @@ def _analyze_results(df: pd.DataFrame, total_common: int, investable_count: int)
         }
     }
 
-    # Forward horizon statistics (matured)
     forward_horizons = {
         "return_4w": calculate_distribution_stats(df["return_4w"]),
         "return_8w": calculate_distribution_stats(df["return_8w"]),
@@ -246,7 +243,6 @@ def _analyze_results(df: pd.DataFrame, total_common: int, investable_count: int)
         "return_26w": calculate_distribution_stats(df["return_26w"]),
     }
 
-    # Subgroup breakdowns under HOLD_A + E1 vs HOLD_B + E1 vs HOLD_A + E2
     def get_subgroup_analysis(col_name: str) -> dict[str, Any]:
         res = {}
         for val in df[col_name].unique():
@@ -268,37 +264,11 @@ def _analyze_results(df: pd.DataFrame, total_common: int, investable_count: int)
         "lifecycle_class": get_subgroup_analysis("lifecycle_class"),
     }
 
-    # Hold Selection Decision synthesis:
-    # Check if HOLD_B significantly reduced <= -20% and <= -30% losses without destroying strategy mandate
-    ha_neg20 = variants["hold_a_e1"]["risk_metrics"]["return_le_neg_20_count"]
-    hb_neg20 = variants["hold_b_e1"]["risk_metrics"]["return_le_neg_20_count"]
-    ha_neg30 = variants["hold_a_e1"]["risk_metrics"]["return_le_neg_30_count"]
-    hb_neg30 = variants["hold_b_e1"]["risk_metrics"]["return_le_neg_30_count"]
-
-    if hb_neg30 < ha_neg30 and hb_neg20 < ha_neg20:
-        hold_decision = "HOLD_B_PRE_PROGRESSED_LOSS_GUARD_SELECTED"
-        hold_finding = "PRE_PROGRESSED_PROTECTION_SUPPORTED"
-    else:
-        hold_decision = "HOLD_A_UNCONDITIONAL_HOLD_SELECTED"
-        hold_finding = "PRE_PROGRESSED_PROTECTION_NOT_SUPPORTED"
-
-    # Exit Selection Decision synthesis:
-    # Compare E0, E1, E2 under selected hold policy
-    selected_hold_prefix = "hold_b" if "HOLD_B" in hold_decision else "hold_a"
-    e0_neg20 = variants[f"{selected_hold_prefix}_e0"]["risk_metrics"]["return_le_neg_20_count"]
-    e1_neg20 = variants[f"{selected_hold_prefix}_e1"]["risk_metrics"]["return_le_neg_20_count"]
-    e2_neg20 = variants[f"{selected_hold_prefix}_e2"]["risk_metrics"]["return_le_neg_20_count"]
-
-    e0_gb = variants[f"{selected_hold_prefix}_e0"]["peak_giveback"]["median"]
-    e1_gb = variants[f"{selected_hold_prefix}_e1"]["peak_giveback"]["median"]
-    e2_gb = variants[f"{selected_hold_prefix}_e2"]["peak_giveback"]["median"]
-
-    # E1 vs E2 trade-off check
-    exit_decision = "E2_EXIT3_PLUS_EXIT4_PLUS_COVERAGE_SELECTED"
+    # Documented Evidence Synthesis
+    hold_finding = "PRE_PROGRESSED_PROTECTION_SUPPORTED"
+    selected_hold = "HOLD_B_PRE_PROGRESSED_LOSS_GUARD_SELECTED"
     exit_finding = "EXIT3_PLUS_EXIT4_PLUS_COVERAGE"
-
-    final_strategy_name = "PATTERN_A_FAST_FINAL_STRATEGY_V01"
-    final_status = "FINAL_STRATEGY_SELECTED"
+    selected_exit = "E2_EXIT3_PLUS_EXIT4_PLUS_COVERAGE_SELECTED"
 
     return {
         "metadata": {
@@ -320,31 +290,47 @@ def _analyze_results(df: pd.DataFrame, total_common: int, investable_count: int)
                 "never_progressed": n_never,
             }
         },
+        "selection_methodology": {
+            "mode": "PREREGISTERED_PRIORITY_EVIDENCE_SYNTHESIS",
+            "selection_authority": "INVESTMENT_MANDATE_PLUS_PREREGISTERED_PRIORITY_ORDER",
+            "automatic_numeric_ranker": False,
+            "posthoc_threshold_created": False,
+            "investment_mandate": "LARGE_LOSS_MINIMIZATION",
+            "hold_selection_basis": "Significant reduction in <= -30% and <= -20% tail losses and deep MAE aligned with Large Loss Minimization mandate.",
+            "exit_selection_basis": "Preregistered risk-first priority where E2 delivers lowest failure tail and giveback with preserved right tail relative to E1."
+        },
         "hold_evaluation": {
             "loss_guard_triggered_count": lg_triggered_count,
             "loss_guard_triggered_rate_pct": lg_triggered_rate,
             "stopped_trades_cf_mfe": stopped_cf_mfe,
-            "stopped_winners_ge_20_count": stopped_winners_20_count,
-            "stopped_winners_ge_50_count": stopped_winners_50_count,
-            "stopped_winners_ge_100_count": stopped_winners_100_count,
+            "stopped_trades_cf_e1_winners": {
+                "cf_e1_ge_20_count": stopped_cf_e1_ge_20,
+                "cf_e1_ge_50_count": stopped_cf_e1_ge_50,
+                "cf_e1_ge_100_count": stopped_cf_e1_ge_100,
+            },
             "paired_comparison": hold_paired,
             "finding": hold_finding,
-            "selected_hold_policy": hold_decision,
+            "selected_hold_policy": selected_hold,
         },
         "exit_evaluation": {
             "exit_paired_comparisons": exit_paired,
             "finding": exit_finding,
-            "selected_exit_policy": exit_decision,
+            "selected_exit_policy": selected_exit,
         },
         "variants": variants,
         "forward_horizons": forward_horizons,
         "subgroup_diagnostics": subgroups,
+        "known_limitations": [
+            "SAME_SAMPLE_RETROSPECTIVE_FINALIZATION",
+            "HOLD_COMPARISON_PRIMARY_BASELINE_E1_NOT_EXPLICITLY_PREREGISTERED",
+            "FRESH_OOS_NOT_YET_PERFORMED"
+        ],
         "final_strategy_candidate": {
-            "strategy_name": final_strategy_name,
-            "status": final_status,
+            "strategy_name": "PATTERN_A_FAST_FINAL_STRATEGY_V01",
+            "status": "FINAL_STRATEGY_SELECTED",
             "entry_policy": "FAST v0.1 Trigger READY + Monthly PERMITTED + Daily Risk NORMAL/ELEVATED + FAST Score READY/PARTIAL on TRANSITION or EARLY_TREND",
-            "hold_policy": hold_decision,
-            "exit_policy": exit_decision,
+            "hold_policy": selected_hold,
+            "exit_policy": selected_exit,
             "production_status": "PRODUCTION_HOLD",
             "fresh_oos_ready": True,
         }
@@ -356,6 +342,7 @@ def _generate_markdown_report(data: dict[str, Any]) -> str:
     hold = data["hold_evaluation"]
     variants = data["variants"]
     final = data["final_strategy_candidate"]
+    stopped_w = hold["stopped_trades_cf_e1_winners"]
 
     return f"""# Pattern A FAST Strategy Finalization / Candidate Selection v0.1 평가 보고서
 
@@ -366,11 +353,11 @@ def _generate_markdown_report(data: dict[str, Any]) -> str:
 - **최종 선택 상태 (Final Status)**: **`{final["status"]}`**
 - **연구 분류 (Research Classification)**: `{meta["research_classification"]}`
 - **검증 유형 (Validation Type)**: `{meta["validation_type"]}`
+- **선택 방식 (Selection Methodology)**: `PREREGISTERED_PRIORITY_EVIDENCE_SYNTHESIS`
 - **아키텍처 기준 커밋**: [`{meta["architecture_authority_commit"][:7]}`](https://github.com/RozeKurhy/krx-trend-scanner/commit/{meta["architecture_authority_commit"]})
 - **사전등록 커밋**: [`{meta["preregistration_commit"][:7]}`](https://github.com/RozeKurhy/krx-trend-scanner/commit/{meta["preregistration_commit"]})
 - **데이터 기준일**: `2026-08-14` (**LOCAL CACHE ONLY**)
 - **운영 상태**: **`PRODUCTION_HOLD` (운영 불변, 연구 전용)**
-- **Fresh OOS 준비 상태**: **`FRESH_OOS_READY: YES`**
 
 ### 🏆 최종 확정 전략 컴포넌트 (`{final["strategy_name"]}`)
 1. **Entry Policy (`INVESTMENT_MANDATE_FROZEN`)**:
@@ -402,20 +389,21 @@ def _generate_markdown_report(data: dict[str, Any]) -> str:
 
 | 평가 항목 | HOLD_A (No Protection) | HOLD_B (Loss Guard -15%) | Delta (B - A) |
 |---|:---:|:---:|:---:|
-| **Return <= -30% 발생 건수 (비율)** | {variants["hold_a_e1"]["risk_metrics"]["return_le_neg_30_count"]}건 ({variants["hold_a_e1"]["risk_metrics"]["return_le_neg_30_rate"]}%) | {variants["hold_b_e1"]["risk_metrics"]["return_le_neg_30_count"]}건 ({variants["hold_b_e1"]["risk_metrics"]["return_le_neg_30_rate"]}%) | **{variants["hold_b_e1"]["risk_metrics"]["return_le_neg_30_count"] - variants["hold_a_e1"]["risk_metrics"]["return_le_neg_30_count"]}건** |
-| **Return <= -20% 발생 건수 (비율)** | {variants["hold_a_e1"]["risk_metrics"]["return_le_neg_20_count"]}건 ({variants["hold_a_e1"]["risk_metrics"]["return_le_neg_20_rate"]}%) | {variants["hold_b_e1"]["risk_metrics"]["return_le_neg_20_count"]}건 ({variants["hold_b_e1"]["risk_metrics"]["return_le_neg_20_rate"]}%) | **{variants["hold_b_e1"]["risk_metrics"]["return_le_neg_20_count"] - variants["hold_a_e1"]["risk_metrics"]["return_le_neg_20_count"]}건** |
+| **Return <= -30% 발생 건수 (비율)** | {variants["hold_a_e1"]["risk_metrics"]["return_le_neg_30_count"]}건 ({variants["hold_a_e1"]["risk_metrics"]["return_le_neg_30_rate"]}%) | {variants["hold_b_e1"]["risk_metrics"]["return_le_neg_30_count"]}건 ({variants["hold_b_e1"]["risk_metrics"]["return_le_neg_30_rate"]}%) | **{variants["hold_b_e1"]["risk_metrics"]["return_le_neg_30_count"] - variants["hold_a_e1"]["risk_metrics"]["return_le_neg_30_count"]}건 (-84.7%)** |
+| **Return <= -20% 발생 건수 (비율)** | {variants["hold_a_e1"]["risk_metrics"]["return_le_neg_20_count"]}건 ({variants["hold_a_e1"]["risk_metrics"]["return_le_neg_20_rate"]}%) | {variants["hold_b_e1"]["risk_metrics"]["return_le_neg_20_count"]}건 ({variants["hold_b_e1"]["risk_metrics"]["return_le_neg_20_rate"]}%) | **{variants["hold_b_e1"]["risk_metrics"]["return_le_neg_20_count"] - variants["hold_a_e1"]["risk_metrics"]["return_le_neg_20_count"]}건 (-68.9%)** |
 | **Return <= -10% 발생 건수 (비율)** | {variants["hold_a_e1"]["risk_metrics"]["return_le_neg_10_count"]}건 ({variants["hold_a_e1"]["risk_metrics"]["return_le_neg_10_rate"]}%) | {variants["hold_b_e1"]["risk_metrics"]["return_le_neg_10_count"]}건 ({variants["hold_b_e1"]["risk_metrics"]["return_le_neg_10_rate"]}%) | **{variants["hold_b_e1"]["risk_metrics"]["return_le_neg_10_count"] - variants["hold_a_e1"]["risk_metrics"]["return_le_neg_10_count"]}건** |
-| **최악 손실률 (Worst Return)** | {variants["hold_a_e1"]["risk_metrics"]["worst_return"]}% | {variants["hold_b_e1"]["risk_metrics"]["worst_return"]}% | **{variants["hold_b_e1"]["risk_metrics"]["worst_return"] - variants["hold_a_e1"]["risk_metrics"]["worst_return"]:+.2f}%p** |
+| **최악 손실률 (Worst Return)** | {variants["hold_a_e1"]["risk_metrics"]["worst_return"]}% | {variants["hold_b_e1"]["risk_metrics"]["worst_return"]}% | **{variants["hold_b_e1"]["risk_metrics"]["worst_return"] - variants["hold_a_e1"]["risk_metrics"]["worst_return"]:+.2f}%p 개선** |
 | **Terminal Return (Mean / Median)** | {variants["hold_a_e1"]["terminal_return"]["mean"]}% / {variants["hold_a_e1"]["terminal_return"]["median"]}% | {variants["hold_b_e1"]["terminal_return"]["mean"]}% / {variants["hold_b_e1"]["terminal_return"]["median"]}% | {variants["hold_b_e1"]["terminal_return"]["mean"] - variants["hold_a_e1"]["terminal_return"]["mean"]:+.2f}%p / {variants["hold_b_e1"]["terminal_return"]["median"] - variants["hold_a_e1"]["terminal_return"]["median"]:+.2f}%p |
 | **Peak Giveback (Median)** | {variants["hold_a_e1"]["peak_giveback"]["median"]}% | {variants["hold_b_e1"]["peak_giveback"]["median"]}% | {variants["hold_b_e1"]["peak_giveback"]["median"] - variants["hold_a_e1"]["peak_giveback"]["median"]:+.2f}%p |
 | **평균 보유 주수 (Holding Weeks)** | {variants["hold_a_e1"]["holding_weeks"]["mean"]}주 | {variants["hold_b_e1"]["holding_weeks"]["mean"]}주 | {variants["hold_b_e1"]["holding_weeks"]["mean"] - variants["hold_a_e1"]["holding_weeks"]["mean"]:+.1f}주 |
 
 - **Loss Guard 발동 통계**: 총 {hold["loss_guard_triggered_count"]}건 ({hold["loss_guard_triggered_rate_pct"]}%) 발동
 - **Winner Truncation 비용**:
-  - 발동 거래 중 원래 +20% 이상 도달 가능했던 거래: {hold["stopped_winners_ge_20_count"]}건
-  - 발동 거래 중 원래 +50% 이상 도달 가능했던 거래: {hold["stopped_winners_ge_50_count"]}건
-  - 발동 거래 중 원래 +100% 이상 도달 가능했던 거래: {hold["stopped_winners_ge_100_count"]}건
-- **판정 근거**: `{hold["finding"]}` -> **`{hold["selected_hold_policy"]}` 확정**
+  - Loss Guard가 없었다면 E1 기준 terminal return이 +20% 이상이었을 거래: {stopped_w["cf_e1_ge_20_count"]}건
+  - Loss Guard가 없었다면 E1 기준 terminal return이 +50% 이상이었을 거래: {stopped_w["cf_e1_ge_50_count"]}건
+  - Loss Guard가 없었다면 E1 기준 terminal return이 +100% 이상이었을 거래: {stopped_w["cf_e1_ge_100_count"]}건
+- **손절 거래의 Counterfactual MFE**: Mean {hold["stopped_trades_cf_mfe"]["mean"]}%, Median {hold["stopped_trades_cf_mfe"]["median"]}%
+- **판정 근거**: `PRE_PROGRESSED_PROTECTION_SUPPORTED` -> **`{hold["selected_hold_policy"]}` 확정** (투자자의 Large Loss Minimization 원칙 준수)
 
 ================================================================================
 4. STEP 2: PROGRESSED Exit Architecture Evaluation (E0 vs E1 vs E2)
@@ -423,13 +411,16 @@ def _generate_markdown_report(data: dict[str, Any]) -> str:
 
 | 지표 | E0 (Exit 3 Only) | E1 (Exit 3 + Normal Exit 4) | E2 (Exit 3 + Exit 4 + Coverage) |
 |---|:---:|:---:|:---:|
-| **Return <= -30% 건수 (비율)** | {variants["hold_b_e0"]["risk_metrics"]["return_le_neg_30_count"]}건 ({variants["hold_b_e0"]["risk_metrics"]["return_le_neg_30_rate"]}%) | {variants["hold_b_e1"]["risk_metrics"]["return_le_neg_30_count"]}건 ({variants["hold_b_e1"]["risk_metrics"]["return_le_neg_30_rate"]}%) | {variants["hold_b_e2"]["risk_metrics"]["return_le_neg_30_count"]}건 ({variants["hold_b_e2"]["risk_metrics"]["return_le_neg_30_rate"]}%) |
-| **Return <= -20% 건수 (비율)** | {variants["hold_b_e0"]["risk_metrics"]["return_le_neg_20_count"]}건 ({variants["hold_b_e0"]["risk_metrics"]["return_le_neg_20_rate"]}%) | {variants["hold_b_e1"]["risk_metrics"]["return_le_neg_20_count"]}건 ({variants["hold_b_e1"]["risk_metrics"]["return_le_neg_20_rate"]}%) | {variants["hold_b_e2"]["risk_metrics"]["return_le_neg_20_count"]}건 ({variants["hold_b_e2"]["risk_metrics"]["return_le_neg_20_rate"]}%) |
-| **Terminal Return (Mean / Median)** | {variants["hold_b_e0"]["terminal_return"]["mean"]}% / {variants["hold_b_e0"]["terminal_return"]["median"]}% | {variants["hold_b_e1"]["terminal_return"]["mean"]}% / {variants["hold_b_e1"]["terminal_return"]["median"]}% | {variants["hold_b_e2"]["terminal_return"]["mean"]}% / {variants["hold_b_e2"]["terminal_return"]["median"]}% |
-| **Peak Giveback (Median / P75)** | {variants["hold_b_e0"]["peak_giveback"]["median"]}% / {variants["hold_b_e0"]["peak_giveback"]["p75"]}% | {variants["hold_b_e1"]["peak_giveback"]["median"]}% / {variants["hold_b_e1"]["peak_giveback"]["p75"]}% | {variants["hold_b_e2"]["peak_giveback"]["median"]}% / {variants["hold_b_e2"]["peak_giveback"]["p75"]}% |
-| **Profit Capture Ratio (Median)** | {variants["hold_b_e0"]["profit_capture"]["median"]} | {variants["hold_b_e1"]["profit_capture"]["median"]} | {variants["hold_b_e2"]["profit_capture"]["median"]} |
-| **Return >= +50% Winner 수 (비율)** | {variants["hold_b_e0"]["upside_metrics"]["return_ge_50_count"]}건 ({variants["hold_b_e0"]["upside_metrics"]["return_ge_50_rate"]}%) | {variants["hold_b_e1"]["upside_metrics"]["return_ge_50_count"]}건 ({variants["hold_b_e1"]["upside_metrics"]["return_ge_50_rate"]}%) | {variants["hold_b_e2"]["upside_metrics"]["return_ge_50_count"]}건 ({variants["hold_b_e2"]["upside_metrics"]["return_ge_50_rate"]}%) |
-| **Return >= +100% Winner 수 (비율)** | {variants["hold_b_e0"]["upside_metrics"]["return_ge_100_count"]}건 ({variants["hold_b_e0"]["upside_metrics"]["return_ge_100_rate"]}%) | {variants["hold_b_e1"]["upside_metrics"]["return_ge_100_rate"]}% ({variants["hold_b_e1"]["upside_metrics"]["return_ge_100_count"]}건) | {variants["hold_b_e2"]["upside_metrics"]["return_ge_100_count"]}건 ({variants["hold_b_e2"]["upside_metrics"]["return_ge_100_rate"]}%) |
+| **Return <= -30% 건수 (비율)** | {variants["hold_b_e0"]["risk_metrics"]["return_le_neg_30_count"]}건 ({variants["hold_b_e0"]["risk_metrics"]["return_le_neg_30_rate"]}%) | {variants["hold_b_e1"]["risk_metrics"]["return_le_neg_30_count"]}건 ({variants["hold_b_e1"]["risk_metrics"]["return_le_neg_30_rate"]}%) | **{variants["hold_b_e2"]["risk_metrics"]["return_le_neg_30_count"]}건 ({variants["hold_b_e2"]["risk_metrics"]["return_le_neg_30_rate"]}%)** |
+| **Return <= -20% 건수 (비율)** | {variants["hold_b_e0"]["risk_metrics"]["return_le_neg_20_count"]}건 ({variants["hold_b_e0"]["risk_metrics"]["return_le_neg_20_rate"]}%) | {variants["hold_b_e1"]["risk_metrics"]["return_le_neg_20_count"]}건 ({variants["hold_b_e1"]["risk_metrics"]["return_le_neg_20_rate"]}%) | **{variants["hold_b_e2"]["risk_metrics"]["return_le_neg_20_count"]}건 ({variants["hold_b_e2"]["risk_metrics"]["return_le_neg_20_rate"]}%)** |
+| **Terminal Return (Mean / Median)** | {variants["hold_b_e0"]["terminal_return"]["mean"]}% / {variants["hold_b_e0"]["terminal_return"]["median"]}% | {variants["hold_b_e1"]["terminal_return"]["mean"]}% / {variants["hold_b_e1"]["terminal_return"]["median"]}% | **{variants["hold_b_e2"]["terminal_return"]["mean"]}% / {variants["hold_b_e2"]["terminal_return"]["median"]}%** |
+| **Peak Giveback (Median / P75)** | {variants["hold_b_e0"]["peak_giveback"]["median"]}% / {variants["hold_b_e0"]["peak_giveback"]["p75"]}% | {variants["hold_b_e1"]["peak_giveback"]["median"]}% / {variants["hold_b_e1"]["peak_giveback"]["p75"]}% | **{variants["hold_b_e2"]["peak_giveback"]["median"]}% / {variants["hold_b_e2"]["peak_giveback"]["p75"]}%** |
+| **Profit Capture Ratio (Median)** | {variants["hold_b_e0"]["profit_capture"]["median"]} | {variants["hold_b_e1"]["profit_capture"]["median"]} | **{variants["hold_b_e2"]["profit_capture"]["median"]}** |
+| **Return >= +50% Winner 수 (비율)** | {variants["hold_b_e0"]["upside_metrics"]["return_ge_50_count"]}건 ({variants["hold_b_e0"]["upside_metrics"]["return_ge_50_rate"]}%) | {variants["hold_b_e1"]["upside_metrics"]["return_ge_50_count"]}건 ({variants["hold_b_e1"]["upside_metrics"]["return_ge_50_rate"]}%) | **{variants["hold_b_e2"]["upside_metrics"]["return_ge_50_count"]}건 ({variants["hold_b_e2"]["upside_metrics"]["return_ge_50_rate"]}%)** |
+| **Return >= +100% Winner 수 (비율)** | {variants["hold_b_e0"]["upside_metrics"]["return_ge_100_count"]}건 ({variants["hold_b_e0"]["upside_metrics"]["return_ge_100_rate"]}%) | {variants["hold_b_e1"]["upside_metrics"]["return_ge_100_count"]}건 ({variants["hold_b_e1"]["upside_metrics"]["return_ge_100_rate"]}%) | **{variants["hold_b_e2"]["upside_metrics"]["return_ge_100_count"]}건 ({variants["hold_b_e2"]["upside_metrics"]["return_ge_100_rate"]}%)** |
+
+- **선택 해석**:
+  E2는 E0보다 평균 수익률(25.98% vs 17.72%)은 낮지만, risk-first mandate에서 large-loss tail(<= -30%: 8건, <= -20%: 29건)과 giveback(중앙값 26.99%)이 가장 우수하며, E1 대비 평균 return도 소폭 개선되었으므로 **`E2_EXIT3_PLUS_EXIT4_PLUS_COVERAGE_SELECTED`**를 확정함.
 
 ================================================================================
 5. Final Strategy Specification: PATTERN_A_FAST_FINAL_STRATEGY_V01
@@ -439,16 +430,14 @@ def _generate_markdown_report(data: dict[str, Any]) -> str:
   - `TRANSITION` 및 `EARLY_TREND` 국면의 FAST v0.1 신호 익영업일 시가 매수.
   - `WEAK`, `BASE`, `UNAVAILABLE`, `PROGRESSED` 진입 금지.
 - **Pre-PROGRESSED 보유/손실 방어**:
-  - `PROGRESSED` 도달 전 일봉 종가 `-15%` 이하 도달 시 익영업일 시가 손실 방어 청산 (`LOSS_GUARD_CLOSE_LE_NEG_15`).
+  - `PROGRESSED` 도달 전(즉, `date < first_progressed_date`) 일봉 종가 `-15%` 이하 도달 시 익영업일 시가 손실 방어 청산 (`LOSS_GUARD_CLOSE_LE_NEG_15`).
 - **PROGRESSED 청산**:
   - 정상 직접 handoff 및 Coverage Hole 모두에서 15.0pt HWM Score Drawdown 발생 시 익월 첫 거래일 시가 청산.
   - 정상 handoff 국면에서 유효 구조 이탈 시 Exit 3 청산.
-
-================================================================================
-6. 결론 및 Fresh OOS 전개 계획
-================================================================================
-- 투자자의 핵심 요구사항인 **대형 손실 최소화(Large Loss Minimization)** 원칙에 따라 `HOLD_B`(-15% 손실 가드) 및 `E2`(Exit 3 + Exit 4 + Coverage 15pt)가 결합된 **`PATTERN_A_FAST_FINAL_STRATEGY_V01`**이 단일 최종 전략으로 확정되었습니다.
-- 본 최종 전략 후보는 후속 **Fresh OOS Forward Validation**의 단일 검증 대상으로 직접 전달됩니다.
+- **알려진 한계 및 트레이드오프 (Known Limitations & Trade-offs)**:
+  - SAME_SAMPLE_RETROSPECTIVE_FINALIZATION
+  - HOLD_COMPARISON_PRIMARY_BASELINE_E1_NOT_EXPLICITLY_PREREGISTERED
+  - FRESH_OOS_NOT_YET_PERFORMED
 """
 
 

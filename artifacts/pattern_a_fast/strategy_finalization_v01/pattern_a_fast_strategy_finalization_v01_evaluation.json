@@ -33,9 +33,6 @@
       "max": 1143.24,
       "positive_rate": 99.3
     },
-    "stopped_winners_ge_20_count": 98,
-    "stopped_winners_ge_50_count": 65,
-    "stopped_winners_ge_100_count": 32,
     "paired_comparison": {
       "return_delta": {
         "count": 553,
@@ -90,7 +87,12 @@
       "hold_a_better_count": 180
     },
     "finding": "PRE_PROGRESSED_PROTECTION_SUPPORTED",
-    "selected_hold_policy": "HOLD_B_PRE_PROGRESSED_LOSS_GUARD_SELECTED"
+    "selected_hold_policy": "HOLD_B_PRE_PROGRESSED_LOSS_GUARD_SELECTED",
+    "stopped_trades_cf_e1_winners": {
+      "cf_e1_ge_20_count": 98,
+      "cf_e1_ge_50_count": 65,
+      "cf_e1_ge_100_count": 32
+    }
   },
   "exit_evaluation": {
     "exit_paired_comparisons": {
@@ -1357,5 +1359,19 @@
     "exit_policy": "E2_EXIT3_PLUS_EXIT4_PLUS_COVERAGE_SELECTED",
     "production_status": "PRODUCTION_HOLD",
     "fresh_oos_ready": true
-  }
+  },
+  "selection_methodology": {
+    "mode": "PREREGISTERED_PRIORITY_EVIDENCE_SYNTHESIS",
+    "selection_authority": "INVESTMENT_MANDATE_PLUS_PREREGISTERED_PRIORITY_ORDER",
+    "automatic_numeric_ranker": false,
+    "posthoc_threshold_created": false,
+    "investment_mandate": "LARGE_LOSS_MINIMIZATION",
+    "hold_selection_basis": "Significant reduction in <= -30% and <= -20% tail losses and deep MAE aligned with Large Loss Minimization mandate.",
+    "exit_selection_basis": "Preregistered risk-first priority where E2 delivers lowest failure tail and giveback with preserved right tail relative to E1."
+  },
+  "known_limitations": [
+    "SAME_SAMPLE_RETROSPECTIVE_FINALIZATION",
+    "HOLD_COMPARISON_PRIMARY_BASELINE_E1_NOT_EXPLICITLY_PREREGISTERED",
+    "FRESH_OOS_NOT_YET_PERFORMED"
+  ]
 }
