@@ -45,6 +45,7 @@ from trend_scanner.reporting.models import (
     TradingValueState,
 )
 from trend_scanner.reporting.pattern_a_fast_report import build_pattern_a_fast_section
+from trend_scanner.data.market_calendar import get_reference_market_month_ends as _get_ref_market_month_ends
 from trend_scanner.validation.historical_snapshot import build_historical_snapshot
 
 logger = logging.getLogger(__name__)
@@ -85,12 +86,9 @@ def _resolve_latest_local_as_of(repo_root: Path) -> str:
     raise RuntimeError("Unable to resolve latest local reference market date: no local market reference data found.")
 
 
-from trend_scanner.data.market_calendar import get_reference_market_month_ends as _get_ref_market_month_ends
-
-
-def _get_reference_market_month_ends(cache: ParquetCache, requested_as_of: pd.Timestamp) -> list[pd.Timestamp]:
-    """Reference market stock (005930) 캐시로부터 표준 시장 월말 거래일 목록을 추출한다."""
-    return _get_ref_market_month_ends(cache=cache, requested_as_of=requested_as_of)
+def _get_reference_market_month_ends(cache: ParquetCache | None, requested_as_of: pd.Timestamp) -> list[pd.Timestamp]:
+    """Canonical KRX Market Calendar Authority로부터 표준 시장 월말 거래일 목록을 추출한다."""
+    return _get_ref_market_month_ends(requested_as_of=requested_as_of)
 
 
 def _determine_flow_state_and_explanation(

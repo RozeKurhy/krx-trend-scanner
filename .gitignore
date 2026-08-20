@@ -10,7 +10,8 @@ build/
 .DS_Store
 
 # Parquet 캐시 (data/raw/stocks/*.parquet) 등 로컬 데이터 산출물
-/data/
+/data/*
+!/data/reference/
 /artifacts/*
 !/artifacts/scanner/
 !/artifacts/chart_review/
