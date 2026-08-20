@@ -1,27 +1,18 @@
 # Pattern A FAST Strategy Finalization / Candidate Selection v0.1 평가 보고서
 
 ================================================================================
-1. Executive Summary & Selection Decision
+1. Executive Summary & Evidence Reference
 ================================================================================
-- **전략 후보명**: `PATTERN_A_FAST_FINAL_STRATEGY_V01`
-- **최종 선택 상태 (Final Status)**: **`FINAL_STRATEGY_SELECTED`**
+- **전략 참조명**: `PATTERN_A_FAST_FINAL_STRATEGY_V01`
+- **선택 권한 (Selection Authority)**: `FINAL_STRATEGY_CONTRACT` (`docs/validation/pattern_a_fast_final_strategy_v01.md`)
 - **연구 분류 (Research Classification)**: `RETROSPECTIVE_STRATEGY_FINALIZATION_CANDIDATE_SELECTION`
 - **검증 유형 (Validation Type)**: `SAME_SAMPLE_RETROSPECTIVE_FINALIZATION`
-- **선택 방식 (Selection Methodology)**: `PREREGISTERED_PRIORITY_EVIDENCE_SYNTHESIS`
+- **선택 방법론 (Selection Methodology)**: `PREREGISTERED_PRIORITY_EVIDENCE_SYNTHESIS`
 - **아키텍처 기준 커밋**: [`89df82a`](https://github.com/RozeKurhy/krx-trend-scanner/commit/89df82a938dba1961c2342064db2dc0061a5f2ca)
 - **사전등록 커밋**: [`a5c29e7`](https://github.com/RozeKurhy/krx-trend-scanner/commit/a5c29e7e97cb7e6830c3dcd25d824e5779f2312f)
 - **데이터 기준일**: `2026-08-14` (**LOCAL CACHE ONLY**)
 - **운영 상태**: **`PRODUCTION_HOLD` (운영 불변, 연구 전용)**
-
-### 🏆 최종 확정 전략 컴포넌트 (`PATTERN_A_FAST_FINAL_STRATEGY_V01`)
-1. **Entry Policy (`INVESTMENT_MANDATE_FROZEN`)**:
-   - 허용 국면: **`TRANSITION`**, **`EARLY_TREND`** (WEAK, BASE, UNAVAILABLE, PROGRESSED 진입 제외)
-   - FAST Core: Weekly Machine `TRIGGER` + `READY` / Monthly `PERMITTED` / Daily Risk `NORMAL`/`ELEVATED` / FAST Score `READY`/`PARTIAL`
-   - 체결: 익영업일 시가 (**`NEXT_LOCAL_TRADING_DAY_OPEN`**)
-2. **Pre-PROGRESSED Hold Policy (`EMPIRICAL_SELECTION`)**:
-   - **`HOLD_B_PRE_PROGRESSED_LOSS_GUARD_SELECTED`**
-3. **PROGRESSED Exit Architecture (`EMPIRICAL_SELECTION`)**:
-   - **`E2_EXIT3_PLUS_EXIT4_PLUS_COVERAGE_SELECTED`**
+- **Fresh OOS 상태**: **`READY_FOR_PREREGISTRATION`**
 
 ================================================================================
 2. Primary Sample & Population Breakdown
@@ -38,7 +29,7 @@
   - `NEVER_PROGRESSED`: 176건
 
 ================================================================================
-3. STEP 1: Pre-PROGRESSED Hold Evaluation (HOLD_A vs HOLD_B)
+3. STEP 1: Pre-PROGRESSED Hold Evaluation Evidence (HOLD_A vs HOLD_B)
 ================================================================================
 
 | 평가 항목 | HOLD_A (No Protection) | HOLD_B (Loss Guard -15%) | Delta (B - A) |
@@ -57,10 +48,14 @@
   - Loss Guard가 없었다면 E1 기준 terminal return이 +50% 이상이었을 거래: 65건
   - Loss Guard가 없었다면 E1 기준 terminal return이 +100% 이상이었을 거래: 32건
 - **손절 거래의 Counterfactual MFE**: Mean 79.30%, Median 38.03%
-- **판정 근거**: `PRE_PROGRESSED_PROTECTION_SUPPORTED` -> **`HOLD_B_PRE_PROGRESSED_LOSS_GUARD_SELECTED` 확정** (투자자의 Large Loss Minimization 원칙 준수)
+- **Boundary Diagnostic**:
+  - `loss_guard_signal_date == first_progressed_date`: 0건
+  - `loss_guard_signal_date > first_progressed_date`: 0건
+  - 평가 집계 영향: `NONE` (Evaluator Rerun 미실행, `date < first_progressed_date` 동결)
+- **증거 종합**: `PRE_PROGRESSED_PROTECTION_SUPPORTED`
 
 ================================================================================
-4. STEP 2: PROGRESSED Exit Architecture Evaluation (E0 vs E1 vs E2)
+4. STEP 2: PROGRESSED Exit Architecture Evaluation Evidence (E0 vs E1 vs E2)
 ================================================================================
 
 | 지표 | E0 (Exit 3 Only) | E1 (Exit 3 + Normal Exit 4) | E2 (Exit 3 + Exit 4 + Coverage) |
@@ -73,22 +68,12 @@
 | **Return >= +50% Winner 수 (비율)** | 106건 (19.17%) | 114건 (20.61%) | **116건 (20.98%)** |
 | **Return >= +100% Winner 수 (비율)** | 51건 (9.22%) | 41건 (7.41%) | **41건 (7.41%)** |
 
-- **선택 해석**:
-  E2는 E0보다 평균 수익률(25.98% vs 17.72%)은 낮지만, risk-first mandate에서 large-loss tail(<= -30%: 8건, <= -20%: 29건)과 giveback(중앙값 26.99%)이 가장 우수하며, E1 대비 평균 return도 소폭 개선되었으므로 **`E2_EXIT3_PLUS_EXIT4_PLUS_COVERAGE_SELECTED`**를 확정함.
+- **증거 종합**:
+  E2는 E0보다 평균 수익률(25.98% vs 17.72%)은 낮지만, risk-first mandate에서 large-loss tail(<= -30%: 8건, <= -20%: 29건)과 giveback(중앙값 26.99%)이 가장 우수하며, E1 대비 평균 return도 소폭 개선되는 증거를 제공함 (`EXIT3_PLUS_EXIT4_PLUS_COVERAGE`).
 
 ================================================================================
-5. Final Strategy Specification: PATTERN_A_FAST_FINAL_STRATEGY_V01
+5. Known Limitations
 ================================================================================
-- **전략 명칭**: `PATTERN_A_FAST_FINAL_STRATEGY_V01`
-- **진입 규칙**:
-  - `TRANSITION` 및 `EARLY_TREND` 국면의 FAST v0.1 신호 익영업일 시가 매수.
-  - `WEAK`, `BASE`, `UNAVAILABLE`, `PROGRESSED` 진입 금지.
-- **Pre-PROGRESSED 보유/손실 방어**:
-  - `PROGRESSED` 도달 전(즉, `date < first_progressed_date`) 일봉 종가 `-15%` 이하 도달 시 익영업일 시가 손실 방어 청산 (`LOSS_GUARD_CLOSE_LE_NEG_15`).
-- **PROGRESSED 청산**:
-  - 정상 직접 handoff 및 Coverage Hole 모두에서 15.0pt HWM Score Drawdown 발생 시 익월 첫 거래일 시가 청산.
-  - 정상 handoff 국면에서 유효 구조 이탈 시 Exit 3 청산.
-- **알려진 한계 및 트레이드오프 (Known Limitations & Trade-offs)**:
-  - SAME_SAMPLE_RETROSPECTIVE_FINALIZATION
-  - HOLD_COMPARISON_PRIMARY_BASELINE_E1_NOT_EXPLICITLY_PREREGISTERED
-  - FRESH_OOS_NOT_YET_PERFORMED
+- `SAME_SAMPLE_RETROSPECTIVE_FINALIZATION`
+- `HOLD_COMPARISON_PRIMARY_BASELINE_E1_NOT_EXPLICITLY_PREREGISTERED`
+- `FRESH_OOS_NOT_YET_PERFORMED`

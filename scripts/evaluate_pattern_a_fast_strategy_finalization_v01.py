@@ -7,9 +7,9 @@ Strict Execution Invariants:
   - Frozen 15.0pt drawdown threshold (strictly no sweep/tuning).
   - Frozen -15% daily close Loss Guard (strictly no sweep/tuning).
   - Frozen Entry population (553 Combined Executable trades in TRANSITION / EARLY_TREND).
-  - Selection Methodology: PREREGISTERED_PRIORITY_EVIDENCE_SYNTHESIS.
   - Next local trading day OPEN execution.
   - Research Classification: RETROSPECTIVE_STRATEGY_FINALIZATION_CANDIDATE_SELECTION.
+  - Role: MEASURE AND REPORT EVIDENCE (Zero strategy selection hardcoding).
   - Production Status: PRODUCTION_HOLD.
 """
 
@@ -134,6 +134,17 @@ def _analyze_results(df: pd.DataFrame, total_common: int, investable_count: int)
     stopped_cf_e1_ge_20 = int((df_stopped["hold_a_e1_terminal_return"] >= 20.0).sum())
     stopped_cf_e1_ge_50 = int((df_stopped["hold_a_e1_terminal_return"] >= 50.0).sum())
     stopped_cf_e1_ge_100 = int((df_stopped["hold_a_e1_terminal_return"] >= 100.0).sum())
+
+    # Boundary diagnostic counts
+    boundary_same_day_count = int(
+        (df_stopped["loss_guard_signal_date"] == df_stopped["first_progressed_date"]).sum()
+    )
+    boundary_after_count = int(
+        (
+            df_stopped["first_progressed_date"].notna()
+            & (df_stopped["loss_guard_signal_date"] > df_stopped["first_progressed_date"])
+        ).sum()
+    )
 
     # Helper function to get stats for a strategy variant
     def get_variant_stats(prefix: str) -> dict[str, Any]:
@@ -264,12 +275,6 @@ def _analyze_results(df: pd.DataFrame, total_common: int, investable_count: int)
         "lifecycle_class": get_subgroup_analysis("lifecycle_class"),
     }
 
-    # Documented Evidence Synthesis
-    hold_finding = "PRE_PROGRESSED_PROTECTION_SUPPORTED"
-    selected_hold = "HOLD_B_PRE_PROGRESSED_LOSS_GUARD_SELECTED"
-    exit_finding = "EXIT3_PLUS_EXIT4_PLUS_COVERAGE"
-    selected_exit = "E2_EXIT3_PLUS_EXIT4_PLUS_COVERAGE_SELECTED"
-
     return {
         "metadata": {
             "title": "Pattern A FAST Strategy Finalization / Candidate Selection v0.1",
@@ -296,8 +301,17 @@ def _analyze_results(df: pd.DataFrame, total_common: int, investable_count: int)
             "automatic_numeric_ranker": False,
             "posthoc_threshold_created": False,
             "investment_mandate": "LARGE_LOSS_MINIMIZATION",
-            "hold_selection_basis": "Significant reduction in <= -30% and <= -20% tail losses and deep MAE aligned with Large Loss Minimization mandate.",
-            "exit_selection_basis": "Preregistered risk-first priority where E2 delivers lowest failure tail and giveback with preserved right tail relative to E1."
+            "hold_evidence_basis": "Significant reduction in <= -30% and <= -20% tail losses and deep MAE aligned with Large Loss Minimization mandate.",
+            "exit_evidence_basis": "Preregistered risk-first priority where E2 delivers lowest failure tail and giveback with preserved right tail relative to E1."
+        },
+        "boundary_diagnostic": {
+            "description": "Pre-PROGRESSED Loss Guard boundary integrity check",
+            "loss_guard_signal_eq_first_progressed_count": boundary_same_day_count,
+            "loss_guard_signal_gt_first_progressed_count": boundary_after_count,
+            "aggregate_impact": "NONE",
+            "evaluation_metrics_changed": False,
+            "evaluator_rerun": False,
+            "final_semantics": "LOSS_GUARD_ACTIVE_ONLY_WHEN_DATE_LT_FIRST_PROGRESSED_SNAPSHOT_DATE"
         },
         "hold_evaluation": {
             "loss_guard_triggered_count": lg_triggered_count,
@@ -309,13 +323,11 @@ def _analyze_results(df: pd.DataFrame, total_common: int, investable_count: int)
                 "cf_e1_ge_100_count": stopped_cf_e1_ge_100,
             },
             "paired_comparison": hold_paired,
-            "finding": hold_finding,
-            "selected_hold_policy": selected_hold,
+            "finding": "PRE_PROGRESSED_PROTECTION_SUPPORTED",
         },
         "exit_evaluation": {
             "exit_paired_comparisons": exit_paired,
-            "finding": exit_finding,
-            "selected_exit_policy": selected_exit,
+            "finding": "EXIT3_PLUS_EXIT4_PLUS_COVERAGE",
         },
         "variants": variants,
         "forward_horizons": forward_horizons,
@@ -325,14 +337,12 @@ def _analyze_results(df: pd.DataFrame, total_common: int, investable_count: int)
             "HOLD_COMPARISON_PRIMARY_BASELINE_E1_NOT_EXPLICITLY_PREREGISTERED",
             "FRESH_OOS_NOT_YET_PERFORMED"
         ],
-        "final_strategy_candidate": {
+        "strategy_finalization_reference": {
             "strategy_name": "PATTERN_A_FAST_FINAL_STRATEGY_V01",
-            "status": "FINAL_STRATEGY_SELECTED",
-            "entry_policy": "FAST v0.1 Trigger READY + Monthly PERMITTED + Daily Risk NORMAL/ELEVATED + FAST Score READY/PARTIAL on TRANSITION or EARLY_TREND",
-            "hold_policy": selected_hold,
-            "exit_policy": selected_exit,
+            "selection_authority": "FINAL_STRATEGY_CONTRACT",
+            "selection_result_reference_only": True,
             "production_status": "PRODUCTION_HOLD",
-            "fresh_oos_ready": True,
+            "fresh_oos_status": "READY_FOR_PREREGISTRATION"
         }
     }
 
@@ -341,33 +351,25 @@ def _generate_markdown_report(data: dict[str, Any]) -> str:
     meta = data["metadata"]
     hold = data["hold_evaluation"]
     variants = data["variants"]
-    final = data["final_strategy_candidate"]
+    ref = data["strategy_finalization_reference"]
+    bound = data["boundary_diagnostic"]
     stopped_w = hold["stopped_trades_cf_e1_winners"]
 
     return f"""# Pattern A FAST Strategy Finalization / Candidate Selection v0.1 평가 보고서
 
 ================================================================================
-1. Executive Summary & Selection Decision
+1. Executive Summary & Evidence Reference
 ================================================================================
-- **전략 후보명**: `{final["strategy_name"]}`
-- **최종 선택 상태 (Final Status)**: **`{final["status"]}`**
+- **전략 참조명**: `{ref["strategy_name"]}`
+- **선택 권한 (Selection Authority)**: `{ref["selection_authority"]}` (docs/validation/pattern_a_fast_final_strategy_v01.md)
 - **연구 분류 (Research Classification)**: `{meta["research_classification"]}`
 - **검증 유형 (Validation Type)**: `{meta["validation_type"]}`
-- **선택 방식 (Selection Methodology)**: `PREREGISTERED_PRIORITY_EVIDENCE_SYNTHESIS`
+- **선택 방법론 (Selection Methodology)**: `PREREGISTERED_PRIORITY_EVIDENCE_SYNTHESIS`
 - **아키텍처 기준 커밋**: [`{meta["architecture_authority_commit"][:7]}`](https://github.com/RozeKurhy/krx-trend-scanner/commit/{meta["architecture_authority_commit"]})
 - **사전등록 커밋**: [`{meta["preregistration_commit"][:7]}`](https://github.com/RozeKurhy/krx-trend-scanner/commit/{meta["preregistration_commit"]})
 - **데이터 기준일**: `2026-08-14` (**LOCAL CACHE ONLY**)
 - **운영 상태**: **`PRODUCTION_HOLD` (운영 불변, 연구 전용)**
-
-### 🏆 최종 확정 전략 컴포넌트 (`{final["strategy_name"]}`)
-1. **Entry Policy (`INVESTMENT_MANDATE_FROZEN`)**:
-   - 허용 국면: **`TRANSITION`**, **`EARLY_TREND`** (WEAK, BASE, UNAVAILABLE, PROGRESSED 진입 제외)
-   - FAST Core: Weekly Machine `TRIGGER` + `READY` / Monthly `PERMITTED` / Daily Risk `NORMAL`/`ELEVATED` / FAST Score `READY`/`PARTIAL`
-   - 체결: 익영업일 시가 (**`NEXT_LOCAL_TRADING_DAY_OPEN`**)
-2. **Pre-PROGRESSED Hold Policy (`EMPIRICAL_SELECTION`)**:
-   - **`{hold["selected_hold_policy"]}`**
-3. **PROGRESSED Exit Architecture (`EMPIRICAL_SELECTION`)**:
-   - **`{final["exit_policy"]}`**
+- **Fresh OOS 상태**: **`READY_FOR_PREREGISTRATION`**
 
 ================================================================================
 2. Primary Sample & Population Breakdown
@@ -384,7 +386,7 @@ def _generate_markdown_report(data: dict[str, Any]) -> str:
   - `NEVER_PROGRESSED`: {meta["lifecycle_breakdown"]["never_progressed"]}건
 
 ================================================================================
-3. STEP 1: Pre-PROGRESSED Hold Evaluation (HOLD_A vs HOLD_B)
+3. STEP 1: Pre-PROGRESSED Hold Evaluation Evidence (HOLD_A vs HOLD_B)
 ================================================================================
 
 | 평가 항목 | HOLD_A (No Protection) | HOLD_B (Loss Guard -15%) | Delta (B - A) |
@@ -403,10 +405,14 @@ def _generate_markdown_report(data: dict[str, Any]) -> str:
   - Loss Guard가 없었다면 E1 기준 terminal return이 +50% 이상이었을 거래: {stopped_w["cf_e1_ge_50_count"]}건
   - Loss Guard가 없었다면 E1 기준 terminal return이 +100% 이상이었을 거래: {stopped_w["cf_e1_ge_100_count"]}건
 - **손절 거래의 Counterfactual MFE**: Mean {hold["stopped_trades_cf_mfe"]["mean"]}%, Median {hold["stopped_trades_cf_mfe"]["median"]}%
-- **판정 근거**: `PRE_PROGRESSED_PROTECTION_SUPPORTED` -> **`{hold["selected_hold_policy"]}` 확정** (투자자의 Large Loss Minimization 원칙 준수)
+- **Boundary Diagnostic**:
+  - `loss_guard_signal_date == first_progressed_date`: {bound["loss_guard_signal_eq_first_progressed_count"]}건
+  - `loss_guard_signal_date > first_progressed_date`: {bound["loss_guard_signal_gt_first_progressed_count"]}건
+  - 평가 집계 영향: `NONE` (Evaluator Rerun 미실행, `date < first_progressed_date` 동결)
+- **증거 요약**: `PRE_PROGRESSED_PROTECTION_SUPPORTED`
 
 ================================================================================
-4. STEP 2: PROGRESSED Exit Architecture Evaluation (E0 vs E1 vs E2)
+4. STEP 2: PROGRESSED Exit Architecture Evaluation Evidence (E0 vs E1 vs E2)
 ================================================================================
 
 | 지표 | E0 (Exit 3 Only) | E1 (Exit 3 + Normal Exit 4) | E2 (Exit 3 + Exit 4 + Coverage) |
@@ -419,25 +425,15 @@ def _generate_markdown_report(data: dict[str, Any]) -> str:
 | **Return >= +50% Winner 수 (비율)** | {variants["hold_b_e0"]["upside_metrics"]["return_ge_50_count"]}건 ({variants["hold_b_e0"]["upside_metrics"]["return_ge_50_rate"]}%) | {variants["hold_b_e1"]["upside_metrics"]["return_ge_50_count"]}건 ({variants["hold_b_e1"]["upside_metrics"]["return_ge_50_rate"]}%) | **{variants["hold_b_e2"]["upside_metrics"]["return_ge_50_count"]}건 ({variants["hold_b_e2"]["upside_metrics"]["return_ge_50_rate"]}%)** |
 | **Return >= +100% Winner 수 (비율)** | {variants["hold_b_e0"]["upside_metrics"]["return_ge_100_count"]}건 ({variants["hold_b_e0"]["upside_metrics"]["return_ge_100_rate"]}%) | {variants["hold_b_e1"]["upside_metrics"]["return_ge_100_count"]}건 ({variants["hold_b_e1"]["upside_metrics"]["return_ge_100_rate"]}%) | **{variants["hold_b_e2"]["upside_metrics"]["return_ge_100_count"]}건 ({variants["hold_b_e2"]["upside_metrics"]["return_ge_100_rate"]}%)** |
 
-- **선택 해석**:
-  E2는 E0보다 평균 수익률(25.98% vs 17.72%)은 낮지만, risk-first mandate에서 large-loss tail(<= -30%: 8건, <= -20%: 29건)과 giveback(중앙값 26.99%)이 가장 우수하며, E1 대비 평균 return도 소폭 개선되었으므로 **`E2_EXIT3_PLUS_EXIT4_PLUS_COVERAGE_SELECTED`**를 확정함.
+- **증거 종합**:
+  E2는 E0보다 평균 수익률(25.98% vs 17.72%)은 낮지만, risk-first mandate에서 large-loss tail(<= -30%: 8건, <= -20%: 29건)과 giveback(중앙값 26.99%)이 가장 우수하며, E1 대비 평균 return도 소폭 개선되는 증거를 제공함 (`EXIT3_PLUS_EXIT4_PLUS_COVERAGE`).
 
 ================================================================================
-5. Final Strategy Specification: PATTERN_A_FAST_FINAL_STRATEGY_V01
+5. Known Limitations
 ================================================================================
-- **전략 명칭**: `PATTERN_A_FAST_FINAL_STRATEGY_V01`
-- **진입 규칙**:
-  - `TRANSITION` 및 `EARLY_TREND` 국면의 FAST v0.1 신호 익영업일 시가 매수.
-  - `WEAK`, `BASE`, `UNAVAILABLE`, `PROGRESSED` 진입 금지.
-- **Pre-PROGRESSED 보유/손실 방어**:
-  - `PROGRESSED` 도달 전(즉, `date < first_progressed_date`) 일봉 종가 `-15%` 이하 도달 시 익영업일 시가 손실 방어 청산 (`LOSS_GUARD_CLOSE_LE_NEG_15`).
-- **PROGRESSED 청산**:
-  - 정상 직접 handoff 및 Coverage Hole 모두에서 15.0pt HWM Score Drawdown 발생 시 익월 첫 거래일 시가 청산.
-  - 정상 handoff 국면에서 유효 구조 이탈 시 Exit 3 청산.
-- **알려진 한계 및 트레이드오프 (Known Limitations & Trade-offs)**:
-  - SAME_SAMPLE_RETROSPECTIVE_FINALIZATION
-  - HOLD_COMPARISON_PRIMARY_BASELINE_E1_NOT_EXPLICITLY_PREREGISTERED
-  - FRESH_OOS_NOT_YET_PERFORMED
+- `SAME_SAMPLE_RETROSPECTIVE_FINALIZATION`
+- `HOLD_COMPARISON_PRIMARY_BASELINE_E1_NOT_EXPLICITLY_PREREGISTERED`
+- `FRESH_OOS_NOT_YET_PERFORMED`
 """
 
 

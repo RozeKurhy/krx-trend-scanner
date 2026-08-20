@@ -5,6 +5,7 @@
 ================================================================================
 - **전략 명칭**: `PATTERN_A_FAST_FINAL_STRATEGY_V01`
 - **전략 상태 (Strategy Status)**: **`FINAL_STRATEGY_FROZEN`**
+- **연구 분류 (Research Classification)**: `STRATEGY_FINALIZATION_FROZEN_CONTRACT`
 - **연구 출처 (Research Source)**: `SAME_SAMPLE_RETROSPECTIVE_FINALIZATION`
 - **아키텍처 기준 커밋**: [`89df82a`](https://github.com/RozeKurhy/krx-trend-scanner/commit/89df82a938dba1961c2342064db2dc0061a5f2ca)
 - **전략 확정 커밋 (Selection Authority)**: [`52acf05`](https://github.com/RozeKurhy/krx-trend-scanner/commit/52acf0555036794e112c0aeb0c73213ddeff4b86)
@@ -81,8 +82,10 @@
 ================================================================================
 1. **대형 손실 방어 vs 승률/기대수익 절단 비용**:
    - Pre-PROGRESSED Loss Guard는 <= -30% 극단 손실을 84.7%, <= -20% 손실을 68.9% 제거하여 파산 위험을 획기적으로 낮춘다.
-   - 반면 약 53.4%의 높은 손절 발동률로 인해 승률(39.4%)과 중앙값 수익률(-14.15%)이 감소하며, 원래 +50% 이상 상승할 수 있었던 65건의 대형 승자가 조기 마감되는 명확한 기회비용이 존재한다.
-2. **익일 시가 체결 갭 위험 (Execution Gap Risk)**:
+   - 반면 약 53.4%의 높은 손절 발동률로 인해 승률(39.4%)과 중앙값 수익률(-14.15%)이 감소하며, Loss Guard가 없었다면 E1 기준 terminal return이 +50% 이상이었을 65건의 대형 승자(및 +100% 이상 32건)가 조기 마감되는 명확한 기회비용이 존재한다.
+2. **손절 거래의 Counterfactual MFE 특성**:
+   - 손절된 295건 거래의 잠재 최대 상승률(Counterfactual MFE)은 평균 79.30%, 중앙값 38.03%로 나타남.
+3. **익일 시가 체결 갭 위험 (Execution Gap Risk)**:
    - 손실 가드는 일봉 종가 -15% 도달 시 발생하여 익영업일 시가에 체결되므로, 갭 하락 시 실제 실현 손실이 -15%를 초과할 수 있다 (표본 내 최악 손실률 -49.4%, 최악 MAE -64.86%).
-3. **표본 내 확정 및 독립 검증 필요성**:
-   - 본 전략은 동일 과거 표본(2026-08-14 이전)에서 확정된 후보이므로, 일반화 성능 검증을 위한 **Fresh OOS Forward Validation**이 필수적이다.
+4. **표본 내 확정 및 독립 검증 필요성**:
+   - 본 전략은 동일 과거 표본(2026-08-14 이전)에서 확정된 후보이므로, 일반화 성능 검증을 위한 **Fresh OOS Forward Validation** 사전등록 및 검증이 필수적이다.
