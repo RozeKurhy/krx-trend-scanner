@@ -14,7 +14,8 @@
     "effective_as_of": "2026-08-14",
     "cache_present": true,
     "cache_last_date": "2026-08-14",
-    "report_status": "READY"
+    "report_status": "READY",
+    "asset_type": "COMMON"
   },
   "summary": {
     "headline": "HD현대(267250)는 현재 Pattern A PROGRESSED 단계이며 투자 적격 상태는 INVESTABLE입니다.",
@@ -26,7 +27,7 @@
       "거래대금 추세: 최근 거래대금이 지속 감소(둔화)하는 흐름입니다. 5일 평균 거래대금(306.62억원)이 20일 평균(338.13억원) 및 60일 평균(411.00억원)을 밑돌고 있습니다."
     ],
     "combined_narrative": "현재 HD현대은(는) Pattern A Score 0.00점, PROGRESSED 단계이며 Phase 10 Investability 조건(시총 1,000억 이상 및 20일 거래대금 3억 이상)을 충족(INVESTABLE)했습니다. 최근 12개월 동안 PROGRESSED(48.19점)에서 PROGRESSED(0.00점)로 국면 이동이 관찰되었습니다. 외국인 수급은 FLOW_MIXED 상태로, 외국인 수급이 기간별로 엇갈리는 혼조세 흐름입니다 (5일 순매수 강도: -11.03%). 거래대금은 TRADING_VALUE_WEAKENING 상태로, 최근 거래대금이 지속 감소(둔화)하는 흐름입니다. 5일 평균 거래대금(306.62억원)이 20일 평균(338.13억원) 및 60일 평균(411.00억원)을 밑돌고 있습니다.",
-    "strategy_headline": "현재 패스트 코어 V2 신규 진입 조건을 충족하지 않습니다."
+    "strategy_headline": "패스트 코어 V2 관망(WAIT) 상태입니다. 진입 미충족 조건: PATTERN_A_STAGE_NOT_ELIGIBLE, FAST_NOT_TRIGGER_READY."
   },
   "current_snapshot": {
     "pattern_a_score": 0.0,
@@ -1367,7 +1368,7 @@
       "no_open_position": true,
       "all_conditions_met": false,
       "pattern_a_stage": "PROGRESSED",
-      "fast_stage": "SETUP",
+      "fast_stage": "SETUP READY",
       "fast_stage_status": "READY",
       "monthly_regime": "PERMITTED_REGIME",
       "daily_risk": "NORMAL",
@@ -1408,7 +1409,7 @@
         "lifecycle_class": "NORMAL_EARLY_TREND_HANDOFF"
       }
     ],
-    "interpretation": "현재 패스트 코어 V2 신규 진입 조건을 충족하지 않습니다.",
+    "interpretation": "패스트 코어 V2 관망(WAIT) 상태입니다. 진입 미충족 조건: PATTERN_A_STAGE_NOT_ELIGIBLE, FAST_NOT_TRIGGER_READY.",
     "provenance": {
       "strategy_contract": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
       "strategy_contract_path": "docs/validation/pattern_a_fast_final_strategy_v02.md",
@@ -1418,5 +1419,6 @@
       "evidence_closure_authority_commit": "36273d97ae6d4f5b1dbc72cca186bc6009b5fa51",
       "network_requests": 0
     }
-  }
+  },
+  "asset_type": "COMMON"
 }

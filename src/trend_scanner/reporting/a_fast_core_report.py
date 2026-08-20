@@ -4,6 +4,8 @@ Purpose:
   - Transforms Frozen Strategy Contract (PATTERN_A_FAST_FINAL_STRATEGY_V02) state into
     Stock Report v0.2 data structures (AFastCoreSection).
   - Strictly preserves point-in-time constraints (requested_as_of) with zero lookahead.
+  - Distinguishes DATA_UNAVAILABLE (condition evaluation impossible) from WAIT (conditions evaluated but not met).
+  - Uses canonical instrument metadata rather than heuristic name parsing.
   - Generates deterministic narrative templates without LLM hallucination.
   - Zero Network Requests (local execution only).
 """
@@ -18,6 +20,7 @@ import numpy as np
 import pandas as pd
 
 from trend_scanner.data.resampler import to_monthly, to_weekly
+from trend_scanner.filters.investability import InvestabilityEvaluationResult, InvestabilityStatus
 from trend_scanner.patterns.pattern_a_evaluator import evaluate_pattern_a
 from trend_scanner.patterns.pattern_a_fast_evaluator import evaluate_pattern_a_fast
 from trend_scanner.reporting.models import (
@@ -29,7 +32,7 @@ from trend_scanner.reporting.models import (
     AFastCoreSection,
     AFastCoreTradeHistoryItem,
 )
-from trend_scanner.universe.asset_classifier import AssetType, classify_asset_type
+from trend_scanner.universe.models import AssetType
 from trend_scanner.validation.historical_snapshot import build_historical_snapshot
 from trend_scanner.validation.pattern_a_fast_core_v02_reentry import simulate_ticker_core_v02_reentry
 
@@ -42,20 +45,55 @@ def build_a_fast_core_section(
     market: str,
     daily: pd.DataFrame | None,
     requested_as_of: pd.Timestamp,
-    is_investable: bool,
-    is_common_stock: bool | None,
     score_contract: dict,
     stage_contract: dict,
+    asset_type: str = "COMMON",
+    investability_status: str | InvestabilityStatus = InvestabilityStatus.INVESTABLE,
+    investability_reason: str = "",
+    investability_result: InvestabilityEvaluationResult | None = None,
+    is_common_stock: bool | None = None,
 ) -> AFastCoreSection:
     """단일 종목에 대해 requested_as_of 시점의 A FAST Core V2 전략 상태 섹션을 생성한다."""
     as_of_str = requested_as_of.strftime("%Y-%m-%d")
 
-    # 1. Check Common Stock Asset Classification
-    if is_common_stock is None:
-        asset_t = classify_asset_type(ticker, name)
-        is_common_stock = (asset_t == AssetType.COMMON)
+    # Normalize investability status
+    if isinstance(investability_status, InvestabilityStatus):
+        inv_status_str = investability_status.value
+    else:
+        inv_status_str = str(investability_status).upper()
 
-    # 2. Check Data Availability
+    # 1. Determine Common Stock Eligibility from Formal Asset Type
+    if is_common_stock is None:
+        is_common_stock = (asset_type == AssetType.COMMON.value)
+
+    # 2. Check Instrument Asset Type & Applicability
+    if asset_type == AssetType.UNKNOWN.value and not is_common_stock:
+        return AFastCoreSection(
+            as_of=as_of_str,
+            applicability="DATA_UNAVAILABLE",
+            strategy_state="DATA_UNAVAILABLE",
+            canonical_position="DATA_UNAVAILABLE",
+            action="NONE",
+            action_reason="INSUFFICIENT_METADATA",
+            execution_timing=None,
+            interpretation="종목 메타데이터가 준비되지 않아 패스트 코어 V2 전략 적용 가능 여부를 판정할 수 없습니다.",
+            provenance=AFastCoreProvenance(),
+        )
+
+    if not is_common_stock:
+        return AFastCoreSection(
+            as_of=as_of_str,
+            applicability="NOT_APPLICABLE",
+            strategy_state="NOT_APPLICABLE",
+            canonical_position="NOT_APPLICABLE",
+            action="NONE",
+            action_reason="NON_COMMON_STOCK",
+            execution_timing=None,
+            interpretation="보통주가 아닌 종목(ETF/ETN/우선주/스팩/리츠 등)으로 패스트 코어 V2 전략 적용 대상이 아닙니다.",
+            provenance=AFastCoreProvenance(),
+        )
+
+    # 3. Check Price Series Data Availability
     if daily is None or daily.empty or len(daily) < 60:
         return AFastCoreSection(
             as_of=as_of_str,
@@ -66,20 +104,6 @@ def build_a_fast_core_section(
             action_reason="INSUFFICIENT_DATA",
             execution_timing=None,
             interpretation="필수 시계열 데이터가 부족하여 패스트 코어 V2 전략 상태를 판정할 수 없습니다.",
-            provenance=AFastCoreProvenance(),
-        )
-
-    # 3. Check Instrument Applicability
-    if not is_common_stock:
-        return AFastCoreSection(
-            as_of=as_of_str,
-            applicability="NOT_APPLICABLE",
-            strategy_state="NOT_APPLICABLE",
-            canonical_position="NOT_APPLICABLE",
-            action="NONE",
-            action_reason="NON_COMMON_STOCK",
-            execution_timing=None,
-            interpretation="보통주가 아닌 종목(ETF/ETN/우선주 등)으로 패스트 코어 V2 전략 적용 대상이 아닙니다.",
             provenance=AFastCoreProvenance(),
         )
 
@@ -98,16 +122,44 @@ def build_a_fast_core_section(
             provenance=AFastCoreProvenance(),
         )
 
-    # 5. Simulate Frozen V2 Re-entry Trajectory up to requested_as_of
-    trades = simulate_ticker_core_v02_reentry(
-        ticker=ticker,
-        name=name,
-        market=market,
-        daily=daily_as_of,
-        score_contract=score_contract,
-        stage_contract=stage_contract,
-        cutoff_date=requested_as_of,
-    )
+    # 5. Check Score / Stage Contracts Availability
+    if not score_contract or not stage_contract:
+        return AFastCoreSection(
+            as_of=as_of_str,
+            applicability="DATA_UNAVAILABLE",
+            strategy_state="DATA_UNAVAILABLE",
+            canonical_position="DATA_UNAVAILABLE",
+            action="NONE",
+            action_reason="CONTRACTS_UNAVAILABLE",
+            execution_timing=None,
+            interpretation="패스트 코어 평가에 필요한 필수 계약 파일이 누락되어 상태를 판정할 수 없습니다.",
+            provenance=AFastCoreProvenance(),
+        )
+
+    # 6. Simulate Frozen V2 Re-entry Trajectory up to requested_as_of
+    try:
+        trades = simulate_ticker_core_v02_reentry(
+            ticker=ticker,
+            name=name,
+            market=market,
+            daily=daily_as_of,
+            score_contract=score_contract,
+            stage_contract=stage_contract,
+            cutoff_date=requested_as_of,
+        )
+    except Exception as exc:
+        logger.error("Simulation error for %s on %s: %s", ticker, as_of_str, exc)
+        return AFastCoreSection(
+            as_of=as_of_str,
+            applicability="DATA_UNAVAILABLE",
+            strategy_state="DATA_UNAVAILABLE",
+            canonical_position="DATA_UNAVAILABLE",
+            action="NONE",
+            action_reason="EVALUATOR_EXECUTION_FAILED",
+            execution_timing=None,
+            interpretation=f"패스트 코어 시뮬레이션 실행 중 오류가 발생하여 상태를 판정할 수 없습니다: {exc}",
+            provenance=AFastCoreProvenance(),
+        )
 
     # Build Trade History Items
     trade_history_items: list[AFastCoreTradeHistoryItem] = []
@@ -132,7 +184,7 @@ def build_a_fast_core_section(
             )
         )
 
-    # 6. Check Active Position on requested_as_of
+    # 7. Check Active Position on requested_as_of
     is_position_open = False
     active_trade = None
     if trades:
@@ -149,7 +201,7 @@ def build_a_fast_core_section(
 
     current_close = float(daily_as_of.iloc[-1]["close"])
 
-    # 7. Evaluate Section States
+    # 8. Evaluate States based on Position
     if is_position_open and active_trade is not None:
         canonical_pos = "OPEN"
         entry_open = active_trade.entry_open
@@ -284,7 +336,7 @@ def build_a_fast_core_section(
 
         entry_conditions = AFastCoreEntryConditions(
             instrument_eligible=is_common_stock,
-            investability_pass=is_investable,
+            investability_pass=(inv_status_str == "INVESTABLE"),
             pattern_a_stage_eligible=False,
             fast_trigger_ready=False,
             monthly_regime_permitted=False,
@@ -315,7 +367,37 @@ def build_a_fast_core_section(
             next_entry_sequence=next_seq,
         )
 
-        # Evaluate entry conditions on the latest completed week on or before requested_as_of
+        # 9. Investability DATA_UNAVAILABLE handling for FLAT positions
+        if inv_status_str == "DATA_UNAVAILABLE":
+            return AFastCoreSection(
+                as_of=as_of_str,
+                applicability="APPLICABLE",
+                strategy_state="DATA_UNAVAILABLE",
+                canonical_position="DATA_UNAVAILABLE",
+                action="NONE",
+                action_reason="INVESTABILITY_DATA_UNAVAILABLE",
+                execution_timing=None,
+                entry_conditions=AFastCoreEntryConditions(
+                    instrument_eligible=is_common_stock,
+                    investability_pass=False,
+                    pattern_a_stage_eligible=False,
+                    fast_trigger_ready=False,
+                    monthly_regime_permitted=False,
+                    daily_risk_allowed=False,
+                    fast_score_status_allowed=False,
+                    no_open_position=True,
+                    all_conditions_met=False,
+                    failed_conditions=["INVESTABILITY_DATA_UNAVAILABLE"],
+                ),
+                current_trade=None,
+                protection_state=None,
+                reentry_state=reentry_state,
+                trade_history=trade_history_items,
+                interpretation="투자 유동성 및 시가총액 데이터 결측으로 패스트 코어 V2 신규 진입 적격성을 판정할 수 없습니다.",
+                provenance=AFastCoreProvenance(),
+            )
+
+        # 10. Evaluate entry conditions on the latest completed week on or before requested_as_of
         weekly_bars = to_weekly(daily_as_of)
         valid_weeks = [
             w for w in weekly_bars.index
@@ -328,10 +410,41 @@ def build_a_fast_core_section(
                 fast_res = evaluate_pattern_a_fast(
                     ticker, name, daily_as_of[daily_as_of.index <= latest_w], latest_w, score_contract, stage_contract
                 )
-            except Exception:
-                fast_res = {}
+            except Exception as exc:
+                logger.error("evaluate_pattern_a_fast failed for %s on %s: %s", ticker, latest_w, exc)
+                return AFastCoreSection(
+                    as_of=as_of_str,
+                    applicability="APPLICABLE",
+                    strategy_state="DATA_UNAVAILABLE",
+                    canonical_position="DATA_UNAVAILABLE",
+                    action="NONE",
+                    action_reason="FAST_EVALUATOR_UNAVAILABLE",
+                    execution_timing=None,
+                    entry_conditions=None,
+                    current_trade=None,
+                    protection_state=None,
+                    reentry_state=reentry_state,
+                    trade_history=trade_history_items,
+                    interpretation=f"패스트 코어 FAST Evaluator 평가 중 오류가 발생했습니다: {exc}",
+                    provenance=AFastCoreProvenance(),
+                )
         else:
-            fast_res = {}
+            return AFastCoreSection(
+                as_of=as_of_str,
+                applicability="APPLICABLE",
+                strategy_state="DATA_UNAVAILABLE",
+                canonical_position="DATA_UNAVAILABLE",
+                action="NONE",
+                action_reason="NO_COMPLETED_WEEKS",
+                execution_timing=None,
+                entry_conditions=None,
+                current_trade=None,
+                protection_state=None,
+                reentry_state=reentry_state,
+                trade_history=trade_history_items,
+                interpretation="완료된 주봉(completed weekly bar)이 없어 FAST 평가를 진행할 수 없습니다.",
+                provenance=AFastCoreProvenance(),
+            )
 
         raw_pa_stage = fast_res.get("pattern_a_stage")
         pa_stage = str(raw_pa_stage).upper() if (raw_pa_stage and not pd.isna(raw_pa_stage)) else "UNAVAILABLE"
@@ -351,14 +464,14 @@ def build_a_fast_core_section(
         sc_stat_ok = (sc_stat in {"READY", "PARTIAL"})
 
         inst_ok = is_common_stock
-        inv_ok = is_investable
+        inv_ok = (inv_status_str == "INVESTABLE")
         no_pos_ok = True
 
         failed_conds: list[str] = []
         if not inst_ok:
             failed_conds.append("NON_COMMON_STOCK")
         if not inv_ok:
-            failed_conds.append("NOT_INVESTABLE")
+            failed_conds.append(f"NOT_INVESTABLE ({inv_status_str})")
         if not pa_ok:
             failed_conds.append("PATTERN_A_STAGE_NOT_ELIGIBLE")
         if not fast_trig_ok:
@@ -384,13 +497,13 @@ def build_a_fast_core_section(
             fast_score_status_allowed=sc_stat_ok,
             no_open_position=no_pos_ok,
             all_conditions_met=all_met,
+            failed_conditions=failed_conds,
             pattern_a_stage=pa_stage,
-            fast_stage=fast_st,
+            fast_stage=f"{fast_st} {fast_stat}" if fast_st else None,
             fast_stage_status=fast_stat,
             monthly_regime=m_reg,
             daily_risk=d_risk,
             fast_score_status=sc_stat,
-            failed_conditions=failed_conds,
         )
 
         if all_met:
@@ -398,13 +511,17 @@ def build_a_fast_core_section(
             action = "ENTER_NEXT_OPEN"
             action_reason = "ALL_ENTRY_CONDITIONS_MET"
             execution_timing = "NEXT_LOCAL_TRADING_DAY_OPEN"
-            interp = "패스트 코어 V2 신규 진입 조건이 충족되었습니다. 전략 체결 기준은 다음 로컬 거래일 시가입니다."
+            interp = f"패스트 코어 V2 전략의 모든 8대 진입 조건이 충족되었습니다. 다음 로컬 거래일 시가에 진입합니다 (Trade #{next_seq})."
         else:
             strategy_state = "WAIT"
             action = "WAIT"
-            action_reason = "ENTRY_CONDITIONS_NOT_MET" if inv_ok else "NOT_INVESTABLE"
             execution_timing = None
-            interp = "현재 패스트 코어 V2 신규 진입 조건을 충족하지 않습니다."
+            if not inv_ok:
+                action_reason = f"INVESTABILITY_FILTERED_{inv_status_str}"
+                interp = f"패스트 코어 V2 관망(WAIT) 상태입니다. 투자 유동성/시가총액 기준 미달({inv_status_str})로 진입 조건이 충족되지 않았습니다."
+            else:
+                action_reason = "ENTRY_CONDITIONS_NOT_MET"
+                interp = f"패스트 코어 V2 관망(WAIT) 상태입니다. 진입 미충족 조건: {', '.join(failed_conds)}."
 
     return AFastCoreSection(
         strategy_id="PATTERN_A_FAST_FINAL_STRATEGY_V02",

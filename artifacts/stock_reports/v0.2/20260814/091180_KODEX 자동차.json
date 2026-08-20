@@ -2,19 +2,20 @@
   "report_version": "0.2",
   "ticker": "091180",
   "name": "KODEX 자동차",
-  "market": "ETF",
+  "market": "KOSPI",
   "requested_as_of": "2026-08-14",
   "reference_market_date": "2026-08-14",
   "header": {
     "ticker": "091180",
     "name": "KODEX 자동차",
-    "market": "ETF",
+    "market": "KOSPI",
     "requested_as_of": "2026-08-14",
     "reference_market_date": "2026-08-14",
     "effective_as_of": "2026-08-14",
     "cache_present": true,
     "cache_last_date": "2026-08-14",
-    "report_status": "PARTIAL"
+    "report_status": "PARTIAL",
+    "asset_type": "ETF"
   },
   "summary": {
     "headline": "KODEX 자동차(091180)는 현재 Pattern A PROGRESSED 단계이며, 필수 데이터 부족(DATA_UNAVAILABLE)으로 투자 적격성을 판정할 수 없습니다.",
@@ -26,7 +27,7 @@
       "거래대금 추세: 최근 거래대금이 지속 감소(둔화)하는 흐름입니다. 5일 평균 거래대금(68.62억원)이 20일 평균(111.22억원) 및 60일 평균(330.70억원)을 밑돌고 있습니다."
     ],
     "combined_narrative": "현재 KODEX 자동차은(는) Pattern A Score 44.95점, PROGRESSED 단계이며 필수 데이터 부족(REQUIRED_METRIC_UNAVAILABLE)으로 투자 적격성 판정이 보류되었습니다. 최근 12개월 동안 TRANSITION(62.73점)에서 PROGRESSED(44.95점)로 국면 이동이 관찰되었습니다. 외국인 수급은 FLOW_UNAVAILABLE 상태로, 외국인 수급 데이터가 준비되지 않아 수급 분석을 제공할 수 없습니다. 거래대금은 TRADING_VALUE_WEAKENING 상태로, 최근 거래대금이 지속 감소(둔화)하는 흐름입니다. 5일 평균 거래대금(68.62억원)이 20일 평균(111.22억원) 및 60일 평균(330.70억원)을 밑돌고 있습니다.",
-    "strategy_headline": "보통주가 아닌 종목(ETF/ETN/우선주 등)으로 패스트 코어 V2 전략 적용 대상이 아닙니다."
+    "strategy_headline": "보통주가 아닌 종목(ETF/ETN/우선주/스팩/리츠 등)으로 패스트 코어 V2 전략 적용 대상이 아닙니다."
   },
   "current_snapshot": {
     "pattern_a_score": 44.95,
@@ -2315,7 +2316,7 @@
     "protection_state": null,
     "reentry_state": null,
     "trade_history": [],
-    "interpretation": "보통주가 아닌 종목(ETF/ETN/우선주 등)으로 패스트 코어 V2 전략 적용 대상이 아닙니다.",
+    "interpretation": "보통주가 아닌 종목(ETF/ETN/우선주/스팩/리츠 등)으로 패스트 코어 V2 전략 적용 대상이 아닙니다.",
     "provenance": {
       "strategy_contract": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
       "strategy_contract_path": "docs/validation/pattern_a_fast_final_strategy_v02.md",
@@ -2325,5 +2326,6 @@
       "evidence_closure_authority_commit": "36273d97ae6d4f5b1dbc72cca186bc6009b5fa51",
       "network_requests": 0
     }
-  }
+  },
+  "asset_type": "ETF"
 }

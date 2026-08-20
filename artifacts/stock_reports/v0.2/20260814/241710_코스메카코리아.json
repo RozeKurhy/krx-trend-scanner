@@ -14,7 +14,8 @@
     "effective_as_of": "2026-08-14",
     "cache_present": true,
     "cache_last_date": "2026-08-14",
-    "report_status": "READY"
+    "report_status": "READY",
+    "asset_type": "COMMON"
   },
   "summary": {
     "headline": "코스메카코리아(241710)는 현재 Pattern A TRANSITION 단계이며 투자 적격 상태는 INVESTABLE입니다.",
@@ -26,7 +27,7 @@
       "거래대금 추세: 최근 거래대금이 지속 확대되는 흐름입니다. 5일 평균 거래대금(545.60억원)은 20일 평균의 약 2.78배이며 60일 평균(109.92억원)을 상회하고 있습니다."
     ],
     "combined_narrative": "현재 코스메카코리아은(는) Pattern A Score 50.73점, TRANSITION 단계이며 Phase 10 Investability 조건(시총 1,000억 이상 및 20일 거래대금 3억 이상)을 충족(INVESTABLE)했습니다. 최근 12개월 동안 PROGRESSED(32.66점)에서 BASE(50.73점)로 국면 이동이 관찰되었습니다. 외국인 수급은 FLOW_ACCUMULATION 상태로, 최근 5일, 20일, 60일 모두 외국인 누적 순매수가 플러스를 유지하며 중단기 전 구간에서 순매수 우위(매집) 기조입니다 (5일 순매수 강도: +10.98%). 거래대금은 TRADING_VALUE_EXPANDING 상태로, 최근 거래대금이 지속 확대되는 흐름입니다. 5일 평균 거래대금(545.60억원)은 20일 평균의 약 2.78배이며 60일 평균(109.92억원)을 상회하고 있습니다.",
-    "strategy_headline": "현재 패스트 코어 V2 신규 진입 조건을 충족하지 않습니다."
+    "strategy_headline": "패스트 코어 V2 관망(WAIT) 상태입니다. 진입 미충족 조건: FAST_NOT_TRIGGER_READY, DAILY_RISK_EXTREME."
   },
   "current_snapshot": {
     "pattern_a_score": 50.73,
@@ -1387,7 +1388,7 @@
       "no_open_position": true,
       "all_conditions_met": false,
       "pattern_a_stage": "TRANSITION",
-      "fast_stage": "EXTENDED",
+      "fast_stage": "EXTENDED READY",
       "fast_stage_status": "READY",
       "monthly_regime": "PERMITTED_REGIME",
       "daily_risk": "EXTREME",
@@ -1428,7 +1429,7 @@
         "lifecycle_class": "NEVER_PROGRESSED"
       }
     ],
-    "interpretation": "현재 패스트 코어 V2 신규 진입 조건을 충족하지 않습니다.",
+    "interpretation": "패스트 코어 V2 관망(WAIT) 상태입니다. 진입 미충족 조건: FAST_NOT_TRIGGER_READY, DAILY_RISK_EXTREME.",
     "provenance": {
       "strategy_contract": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
       "strategy_contract_path": "docs/validation/pattern_a_fast_final_strategy_v02.md",
@@ -1438,5 +1439,6 @@
       "evidence_closure_authority_commit": "36273d97ae6d4f5b1dbc72cca186bc6009b5fa51",
       "network_requests": 0
     }
-  }
+  },
+  "asset_type": "COMMON"
 }

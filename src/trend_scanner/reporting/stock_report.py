@@ -48,6 +48,7 @@ from trend_scanner.reporting.models import (
 from trend_scanner.reporting.pattern_a_fast_report import build_pattern_a_fast_section
 from trend_scanner.data.market_calendar import get_reference_market_month_ends as _get_ref_market_month_ends
 from trend_scanner.universe.asset_classifier import AssetType, classify_asset_type
+from trend_scanner.universe.instrument_metadata import resolve_instrument_metadata
 from trend_scanner.validation.historical_snapshot import build_historical_snapshot
 
 logger = logging.getLogger(__name__)
@@ -275,7 +276,8 @@ def render_markdown_report(report: StockReport) -> str:
     md = []
     md.append(f"# [{report.name} ({report.ticker})] 종목 리포트 v{report.report_version}")
     md.append("")
-    md.append(f"- **시장 구분**: `{report.market}`")
+    md.append(f"- **시장 구분 (Listing Market)**: `{report.market}`")
+    md.append(f"- **자산 유형 (Asset Type)**: `{report.asset_type}`")
     md.append(f"- **분석 기준일 (Requested As-Of)**: `{report.requested_as_of}`")
     md.append(f"- **신선도 기준일 (Reference Market Date)**: `{report.reference_market_date}`")
     md.append(f"- **리포트 상태**: `{report.header.report_status.value}`")
@@ -323,7 +325,7 @@ def render_markdown_report(report: StockReport) -> str:
         md.append("### 진입 조건 체크리스트 (Entry Conditions Checklist)")
         md.append("| 진입 검증 항목 | 현재 관측값 | 충족 여부 |")
         md.append("|---|---|:---:|")
-        md.append(f"| 보통주 적격성 (Instrument Eligible) | `{report.market}` | `{'PASS' if ec.instrument_eligible else 'FAIL'}` |")
+        md.append(f"| 보통주 적격성 (Instrument Eligible) | `{report.asset_type}` | `{'PASS' if ec.instrument_eligible else 'FAIL'}` |")
         md.append(f"| 유동성 적격성 (Phase 10 Investability) | `{cur.investability_status}` | `{'PASS' if ec.investability_pass else 'FAIL'}` |")
         md.append(f"| 국면 적격성 (TRANSITION / EARLY_TREND) | `{ec.pattern_a_stage}` | `{'PASS' if ec.pattern_a_stage_eligible else 'FAIL'}` |")
         md.append(f"| FAST 주별 트리거 (TRIGGER & READY) | `{ec.fast_stage} ({ec.fast_stage_status})` | `{'PASS' if ec.fast_trigger_ready else 'FAIL'}` |")
@@ -561,46 +563,16 @@ def generate_stock_report(
     req_as_of_ts = pd.Timestamp(canonical_as_of)
     ref_market_date = canonical_as_of
 
-    # 2. 로컬 Universe 및 종목 메타데이터 로드
+    # 2. 로컬 Universe 및 종목 메타데이터 로드 (Formal Authority, Zero-Network)
     cache = ParquetCache(base_dir=root_path / "data/raw/stocks")
     daily = cache.load(clean_ticker)
     has_cache = daily is not None and not daily.empty
 
-    name = clean_ticker
-    market = "UNKNOWN"
-    univ_csv = root_path / "artifacts/investability" / f"pattern_a_investability_universe_{canonical_as_of.replace('-', '')}.csv"
-    if univ_csv.exists():
-        try:
-            df_univ = pd.read_csv(univ_csv)
-            df_univ["ticker"] = df_univ["ticker"].astype(str).str.zfill(6)
-            match = df_univ[df_univ["ticker"] == clean_ticker]
-            if not match.empty:
-                name = str(match["name"].iloc[0])
-                market = str(match["market"].iloc[0]).upper()
-        except Exception as exc:
-            logger.warning("Failed loading universe csv %s: %s", univ_csv, exc)
-
-    KNOWN_TICKER_FALLBACKS = {
-        "069500": ("KODEX 200", "ETF"),
-        "229200": ("KODEX 코스닥150", "ETF"),
-        "091160": ("KODEX 반도체", "ETF"),
-        "305720": ("KODEX 2차전지산업", "ETF"),
-        "091180": ("KODEX 자동차", "ETF"),
-        "0115D0": ("KODEX 조선TOP10", "ETF"),
-        "244580": ("KODEX 바이오", "ETF"),
-        "102960": ("KODEX 기계장비", "ETF"),
-        "117680": ("KODEX 철강", "ETF"),
-        "117460": ("KODEX 에너지화학", "ETF"),
-        "117700": ("KODEX 건설", "ETF"),
-        "140710": ("KODEX 운송", "ETF"),
-        "091170": ("KODEX 은행", "ETF"),
-        "102970": ("KODEX 증권", "ETF"),
-        "140700": ("KODEX 보험", "ETF"),
-        "266410": ("KODEX 필수소비재", "ETF"),
-        "300950": ("KODEX 게임산업", "ETF"),
-    }
-    if clean_ticker in KNOWN_TICKER_FALLBACKS and name == clean_ticker:
-        name, market = KNOWN_TICKER_FALLBACKS[clean_ticker]
+    inst_meta = resolve_instrument_metadata(ticker=clean_ticker, as_of=canonical_as_of, repo_root=root_path)
+    name = inst_meta.name
+    market = inst_meta.market
+    asset_type = inst_meta.asset_type
+    is_common = inst_meta.is_common_stock
 
     # 3. Daily Slice 생성 (Lookahead 방지)
     if has_cache and daily is not None:
@@ -614,7 +586,7 @@ def generate_stock_report(
         cache_last_str = None
         daily_rows_count = 0
 
-    # 4. Investability & Market Cap Snapshot 로드
+    # 4. Investability & Market Cap Snapshot 로드 (Strict PIT: No Future Artifacts)
     mcap_val = None
     mcap_eff_date = None
     dt_clean = canonical_as_of.replace("-", "")
@@ -632,15 +604,14 @@ def generate_stock_report(
         except Exception as exc:
             logger.warning("Failed reading local market cap file %s: %s", mcap_csv, exc)
 
-    # 4b. Historical normalized PIT market cap snapshots
+    # 4b. Historical normalized PIT market cap snapshots (STRICT PIT: only files <= requested_as_of)
     if mcap_val is None:
         norm_dir = root_path / "artifacts/investability/history/normalized"
         if norm_dir.exists():
             norm_files = sorted(norm_dir.glob("krx_market_cap_*.csv"))
             past_files = [f for f in norm_files if f.stem.split("_")[-1] <= dt_clean]
-            candidate_files = past_files if past_files else norm_files
-            if candidate_files:
-                best_f = candidate_files[-1]
+            if past_files:
+                best_f = past_files[-1]
                 try:
                     df_mcap_snap = pd.read_csv(best_f, dtype={"ticker": str})
                     df_mcap_snap["ticker"] = df_mcap_snap["ticker"].astype(str).str.zfill(6)
@@ -652,17 +623,20 @@ def generate_stock_report(
                 except Exception as exc:
                     logger.warning("Failed reading normalized market cap file %s: %s", best_f, exc)
 
-    # 4c. Universe file fallback
+    # 4c. Universe file fallback (STRICT PIT: only universe files <= requested_as_of)
     if mcap_val is None:
         univ_files = sorted((root_path / "artifacts/investability").glob("pattern_a_investability_universe_*.csv"))
-        if univ_files:
+        past_univ_files = [f for f in univ_files if f.stem.split("_")[-1] <= dt_clean]
+        if past_univ_files:
+            best_u = past_univ_files[-1]
             try:
-                df_u = pd.read_csv(univ_files[-1], dtype={"ticker": str})
+                df_u = pd.read_csv(best_u, dtype={"ticker": str})
                 df_u["ticker"] = df_u["ticker"].astype(str).str.zfill(6)
                 match_mcap = df_u[df_u["ticker"] == clean_ticker]
                 if not match_mcap.empty and "market_cap" in match_mcap.columns and not pd.isna(match_mcap["market_cap"].iloc[0]):
                     mcap_val = float(match_mcap["market_cap"].iloc[0])
-                    mcap_eff_date = canonical_as_of
+                    eff_u = best_u.stem.split("_")[-1]
+                    mcap_eff_date = f"{eff_u[:4]}-{eff_u[4:6]}-{eff_u[6:]}" if len(eff_u) == 8 else canonical_as_of
             except Exception:
                 pass
 
@@ -944,19 +918,19 @@ def generate_stock_report(
     score_contract = json.loads(score_contract_path.read_text(encoding="utf-8")) if score_contract_path.exists() else {}
     stage_contract = json.loads(stage_contract_path.read_text(encoding="utf-8")) if stage_contract_path.exists() else {}
 
-    asset_type = classify_asset_type(clean_ticker, name)
-    is_common = (asset_type == AssetType.COMMON)
-
     a_fast_core_section = build_a_fast_core_section(
         ticker=clean_ticker,
         name=name,
         market=market,
         daily=daily,
         requested_as_of=req_as_of_ts,
-        is_investable=current_snapshot.is_investable,
-        is_common_stock=is_common,
         score_contract=score_contract,
         stage_contract=stage_contract,
+        asset_type=asset_type,
+        investability_status=inv_eval.status,
+        investability_reason=inv_eval.reason,
+        investability_result=inv_eval,
+        is_common_stock=is_common,
     )
 
     # 9. Header & Summary
@@ -983,6 +957,7 @@ def generate_stock_report(
         cache_present=has_cache,
         cache_last_date=cache_last_str,
         report_status=rep_status,
+        asset_type=asset_type,
     )
 
     headline, bullet_points, narrative = _generate_deterministic_narrative(
@@ -1058,6 +1033,7 @@ def generate_stock_report(
         trading_value_flow=trading_value_section,
         data_quality=data_quality,
         provenance=provenance,
+        asset_type=asset_type,
     )
 
     # 10. Save Artifacts if requested (Default v0.2 output dir)

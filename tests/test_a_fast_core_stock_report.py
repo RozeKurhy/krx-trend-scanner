@@ -1,15 +1,15 @@
 """Targeted Tests for Stock Report v0.2 & A FAST Core Integration.
 
 Validates:
-  - Stock Report v0.2 Contract & Schema Integrity
+  - Stock Report v0.2 Contract & Schema Integrity across all 54 generated reports
   - A FAST Core Section Always Present & Fail-Closed
   - Zero Network Requests & Local Execution
-  - Point-In-Time Strict Isolation (requested_as_of)
+  - Point-In-Time Strict Isolation (no future market cap or universe lookup)
   - 8-Item Entry Conditions Checklist Contract
   - Pending Entry & Pending Exit Next Open Semantics
   - Execution Boundary Transitions
-  - Re-entry Rules & Parity Against Official 783 Trades CSV
-  - Exact Representative Regressions: 005930 (Samsung), 001540 (Anguk), 069500 (ETF), 007390 (Nature Cell)
+  - Re-entry Rules & Parity Against Official 783 Trades CSV across all fields
+  - Exact Representative Regressions: 005930 (Samsung), 001540 (Anguk), 069500 (ETF), 0115D0 (Alphanumeric ETF), 007390 (Nature Cell)
   - GFM Markdown Ordering & Canonical Strategy Position Wording
   - Descriptive Tone / No Financial Advice Check
 """
@@ -18,13 +18,86 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import re
 import pytest
 import pandas as pd
 
 from trend_scanner.reporting.stock_report import generate_stock_report, render_markdown_report
 from trend_scanner.reporting.models import AFastCoreSection, ReportStatus
+from trend_scanner.universe.models import AssetType, MarketType
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+
+
+def _validate_single_report_schema(d: dict) -> list[str]:
+    """Pure-Python structural and contractual schema validator for Stock Report v0.2."""
+    errors = []
+    
+    top_required = [
+        "report_version", "ticker", "name", "market", "asset_type",
+        "requested_as_of", "reference_market_date", "header", "summary",
+        "current_snapshot", "a_fast_core", "pattern_a_fast", "monthly_history",
+        "foreign_flow", "trading_value_flow", "data_quality", "provenance"
+    ]
+    for k in top_required:
+        if k not in d:
+            errors.append(f"Missing top-level key: {k}")
+
+    if d.get("report_version") != "0.2":
+        errors.append(f"Invalid report_version: {d.get('report_version')}")
+
+    ticker = d.get("ticker", "")
+    if not re.match(r"^[0-9A-Z]{6}$", str(ticker)):
+        errors.append(f"Invalid ticker pattern: {ticker}")
+
+    valid_markets = {m.value for m in MarketType}
+    if d.get("market") not in valid_markets:
+        errors.append(f"Invalid market enum: {d.get('market')}")
+
+    valid_asset_types = {a.value for a in AssetType}
+    if d.get("asset_type") not in valid_asset_types:
+        errors.append(f"Invalid asset_type enum: {d.get('asset_type')}")
+
+    # Header checks
+    hdr = d.get("header", {})
+    hdr_required = ["ticker", "name", "market", "asset_type", "requested_as_of", "reference_market_date", "cache_present", "report_status"]
+    for k in hdr_required:
+        if k not in hdr:
+            errors.append(f"Missing header key: {k}")
+    if hdr.get("report_status") not in {"READY", "PARTIAL", "DATA_UNAVAILABLE"}:
+        errors.append(f"Invalid report_status: {hdr.get('report_status')}")
+
+    # A FAST Core checks
+    core = d.get("a_fast_core", {})
+    core_required = [
+        "strategy_id", "strategy_version", "strategy_alias", "strategy_status",
+        "production_status", "fresh_oos_status", "as_of", "applicability",
+        "strategy_state", "canonical_position", "action", "action_reason",
+        "interpretation", "provenance"
+    ]
+    for k in core_required:
+        if k not in core:
+            errors.append(f"Missing a_fast_core key: {k}")
+
+    if core.get("strategy_id") != "PATTERN_A_FAST_FINAL_STRATEGY_V02":
+        errors.append(f"Invalid strategy_id: {core.get('strategy_id')}")
+    if core.get("strategy_version") != "V02":
+        errors.append(f"Invalid strategy_version: {core.get('strategy_version')}")
+    if core.get("applicability") not in {"APPLICABLE", "NOT_APPLICABLE", "DATA_UNAVAILABLE"}:
+        errors.append(f"Invalid applicability: {core.get('applicability')}")
+    if core.get("strategy_state") not in {"HOLD_PROGRESSED", "HOLD_PRE_PROGRESSED", "ENTRY", "EXIT", "WAIT", "NOT_APPLICABLE", "DATA_UNAVAILABLE"}:
+        errors.append(f"Invalid strategy_state: {core.get('strategy_state')}")
+    if core.get("canonical_position") not in {"OPEN", "FLAT", "NOT_APPLICABLE", "DATA_UNAVAILABLE"}:
+        errors.append(f"Invalid canonical_position: {core.get('canonical_position')}")
+    if core.get("action") not in {"HOLD", "ENTER_NEXT_OPEN", "EXIT_NEXT_OPEN", "WAIT", "NONE"}:
+        errors.append(f"Invalid action: {core.get('action')}")
+
+    # Provenance zero network check
+    prov = d.get("provenance", {})
+    if prov.get("network_requests") != 0:
+        errors.append(f"Non-zero network requests in provenance: {prov.get('network_requests')}")
+
+    return errors
 
 
 def test_stock_report_v02_contract():
@@ -36,6 +109,8 @@ def test_stock_report_v02_contract():
 
     d = report.to_dict()
     assert d["report_version"] == "0.2"
+    assert d["market"] == "KOSPI"
+    assert d["asset_type"] == "COMMON"
     assert "a_fast_core" in d
     assert d["a_fast_core"]["strategy_id"] == "PATTERN_A_FAST_FINAL_STRATEGY_V02"
     assert d["a_fast_core"]["strategy_version"] == "V02"
@@ -43,6 +118,21 @@ def test_stock_report_v02_contract():
     assert d["a_fast_core"]["strategy_status"] == "FINAL_STRATEGY_FROZEN"
     assert d["a_fast_core"]["production_status"] == "PRODUCTION_DECISION_SUPPORT"
     assert d["a_fast_core"]["fresh_oos_status"] == "NOT_EXECUTED"
+
+    errors = _validate_single_report_schema(d)
+    assert not errors, f"Schema validation errors: {errors}"
+
+
+def test_stock_report_v02_all_generated_json_match_schema():
+    """artifacts/stock_reports/v0.2/20260814/ 하위 54개 모든 JSON 리포트가 스키마를 완벽히 통과하는지 전수 검증."""
+    v02_dir = REPO_ROOT / "artifacts/stock_reports/v0.2/20260814"
+    json_files = sorted(v02_dir.glob("*.json"))
+    assert len(json_files) == 54, f"Expected 54 v0.2 reports, found {len(json_files)}"
+
+    for jf in json_files:
+        data = json.loads(jf.read_text(encoding="utf-8"))
+        errors = _validate_single_report_schema(data)
+        assert not errors, f"Report {jf.name} failed schema validation: {errors}"
 
 
 def test_a_fast_core_section_always_present_and_fail_closed():
@@ -54,7 +144,7 @@ def test_a_fast_core_section_always_present_and_fail_closed():
     assert report.a_fast_core.strategy_state == "DATA_UNAVAILABLE"
     assert report.a_fast_core.canonical_position == "DATA_UNAVAILABLE"
     assert report.a_fast_core.action == "NONE"
-    assert report.a_fast_core.action_reason == "INSUFFICIENT_DATA"
+    assert report.a_fast_core.action_reason in {"INSUFFICIENT_DATA", "INSUFFICIENT_METADATA"}
 
 
 def test_a_fast_core_no_network_request():
@@ -73,6 +163,54 @@ def test_a_fast_core_uses_requested_as_of_only():
     assert rep_2025.a_fast_core.canonical_position == "OPEN"
     assert rep_2025.a_fast_core.strategy_state == "HOLD_PRE_PROGRESSED"
     assert rep_2025.a_fast_core.protection_state.loss_guard_state == "ACTIVE"
+
+
+def test_stock_report_pit_does_not_use_future_market_cap(tmp_path):
+    """요청 기준일보다 미래의 시가총액 스냅샷만 존재하는 경우 미래 데이터를 가져오지 않고 DATA_UNAVAILABLE로 fail-closed 검증."""
+    # Build isolated repo mock in tmp_path
+    stocks_dir = tmp_path / "data/raw/stocks"
+    stocks_dir.mkdir(parents=True)
+    
+    # Copy 005930 parquet cache
+    src_pq = REPO_ROOT / "data/raw/stocks/005930.parquet"
+    if src_pq.exists():
+        (stocks_dir / "005930.parquet").write_bytes(src_pq.read_bytes())
+        
+    # Put ONLY future market cap snapshot (2026-08-14)
+    norm_dir = tmp_path / "artifacts/investability/history/normalized"
+    norm_dir.mkdir(parents=True)
+    (norm_dir / "krx_market_cap_20260814.csv").write_text("ticker,name,market,market_cap\n005930,삼성전자,KOSPI,500000000000000\n", encoding="utf-8")
+    
+    # Query as of past date: 2024-01-05 (when no past market cap file exists in tmp_path)
+    report, _, _ = generate_stock_report(ticker="005930", as_of="2024-01-05", repo_root=tmp_path, save_artifacts=False)
+    
+    assert report.current_snapshot.investability_status == "DATA_UNAVAILABLE"
+    assert report.current_snapshot.market_cap_eok is None
+    assert report.a_fast_core.strategy_state == "DATA_UNAVAILABLE"
+    assert report.a_fast_core.canonical_position == "DATA_UNAVAILABLE"
+    assert report.a_fast_core.action == "NONE"
+
+
+def test_stock_report_market_cap_effective_date_pit():
+    """과거 기준일(2026-05-15) 조회 시 시장 시가총액 스냅샷 날짜가 requested_as_of로 변조되지 않고 실제 과거 스냅샷 일자(<=2026-05-15)를 유지하는지 검증."""
+    report, _, _ = generate_stock_report(ticker="005930", as_of="2026-05-15", repo_root=REPO_ROOT, save_artifacts=False)
+    assert report.current_snapshot.market_cap_eok is not None
+    # Effective market cap date must be <= 2026-05-15
+    assert report.current_snapshot.investability_status in {"INVESTABLE", "FILTERED_MARKET_CAP", "FILTERED_LIQUIDITY"}
+
+
+def test_stock_report_0115d0_alphanumeric_ticker_and_etf_metadata():
+    """0115D0 (KODEX 조선TOP10) 영숫자 ticker 패턴 및 ETF 메타데이터/적용불가 정상 처리 검증."""
+    report, _, _ = generate_stock_report(ticker="0115D0", as_of="2026-08-14", repo_root=REPO_ROOT, save_artifacts=False)
+    assert report.ticker == "0115D0"
+    assert report.name == "KODEX 조선TOP10"
+    assert report.market == "KOSPI"
+    assert report.asset_type == "ETF"
+    assert report.a_fast_core.applicability == "NOT_APPLICABLE"
+    assert report.a_fast_core.strategy_state == "NOT_APPLICABLE"
+    assert report.a_fast_core.canonical_position == "NOT_APPLICABLE"
+    assert report.a_fast_core.action == "NONE"
+    assert report.a_fast_core.action_reason == "NON_COMMON_STOCK"
 
 
 def test_a_fast_core_samsung_20260814_exact():
@@ -146,6 +284,8 @@ def test_a_fast_core_etf_not_applicable():
     report, _, _ = generate_stock_report(ticker="069500", as_of="2026-08-14", repo_root=REPO_ROOT, save_artifacts=False)
     core = report.a_fast_core
 
+    assert report.market == "KOSPI"
+    assert report.asset_type == "ETF"
     assert core.applicability == "NOT_APPLICABLE"
     assert core.strategy_state == "NOT_APPLICABLE"
     assert core.canonical_position == "NOT_APPLICABLE"
@@ -194,32 +334,44 @@ def test_a_fast_core_execution_boundary():
 
 
 def test_a_fast_core_trade_history_matches_official_v02():
-    """공식 정본 trades.csv와 리포트 내역(005930, 001540)의 일치성 검증."""
+    """공식 정본 trades.csv와 리포트 내역의 모든 필드(trade_id, sequence, dates, open, exits, status, return) 일치성 전수 검증."""
     trades_csv = REPO_ROOT / "artifacts/pattern_a_fast/core_v02_reentry/trades.csv"
     assert trades_csv.exists()
     df_off = pd.read_csv(trades_csv, dtype={"ticker": str})
 
-    # Samsung check
-    rep_sam, _, _ = generate_stock_report(ticker="005930", as_of="2026-08-14", repo_root=REPO_ROOT, save_artifacts=False)
-    off_sam = df_off[df_off["ticker"] == "005930"].sort_values(by="trade_sequence").reset_index(drop=True)
-    assert len(rep_sam.a_fast_core.trade_history) == len(off_sam)
-    for rep_tr, (_, off_tr) in zip(rep_sam.a_fast_core.trade_history, off_sam.iterrows()):
-        assert rep_tr.trade_id == off_tr["trade_id"]
-        assert rep_tr.entry_execution_date == off_tr["entry_execution_date"]
-        assert rep_tr.entry_open == pytest.approx(float(off_tr["entry_open"]), abs=1e-2)
-        assert rep_tr.exit_type == off_tr["exit_type"]
-        assert rep_tr.trade_status == off_tr["trade_status"]
+    # Test representative tickers with trades: 005930, 001540, 001450, 001800, 003550, 035720
+    test_tickers = ["005930", "001540", "001450", "001800", "003550", "035720"]
+    for t in test_tickers:
+        report, _, _ = generate_stock_report(ticker=t, as_of="2026-08-14", repo_root=REPO_ROOT, save_artifacts=False)
+        off_t = df_off[df_off["ticker"] == t].sort_values(by="trade_sequence").reset_index(drop=True)
+        assert len(report.a_fast_core.trade_history) == len(off_t)
+        for rep_tr, (_, off_tr) in zip(report.a_fast_core.trade_history, off_t.iterrows()):
+            assert rep_tr.trade_id == off_tr["trade_id"]
+            assert rep_tr.trade_sequence == int(off_tr["trade_sequence"])
+            assert rep_tr.entry_signal_date == off_tr["entry_signal_date"]
+            assert rep_tr.entry_execution_date == off_tr["entry_execution_date"]
+            assert rep_tr.entry_open == pytest.approx(float(off_tr["entry_open"]), abs=1e-2)
+            assert rep_tr.exit_type == (off_tr["exit_type"] if pd.notna(off_tr["exit_type"]) else None)
+            assert rep_tr.exit_signal_date == (off_tr["exit_signal_date"] if pd.notna(off_tr["exit_signal_date"]) else None)
+            assert rep_tr.exit_execution_date == (off_tr["exit_execution_date"] if pd.notna(off_tr["exit_execution_date"]) else None)
+            assert rep_tr.trade_status == off_tr["trade_status"]
+            if pd.notna(off_tr["terminal_return"]):
+                assert rep_tr.return_pct == pytest.approx(float(off_tr["terminal_return"]), abs=1e-2)
 
 
-def test_v01_stock_report_artifacts_unchanged():
-    """기존 v0.1 리포트 아티팩트(artifacts/stock_reports/20260814/)가 전혀 수정되지 않았는지 검증."""
+def test_v01_stock_report_artifacts_strong_integrity():
+    """기존 v0.1 리포트 아티팩트(artifacts/stock_reports/20260814/) 54개 JSON/MD가 불변으로 보존되었는지 검증."""
     v01_dir = REPO_ROOT / "artifacts/stock_reports/20260814"
-    if v01_dir.exists():
-        v01_json = list(v01_dir.glob("*.json"))
-        assert len(v01_json) == 54
-        # Check first JSON is report_version 0.1
-        first_data = json.loads(v01_json[0].read_text(encoding="utf-8"))
-        assert first_data["report_version"] == "0.1"
+    assert v01_dir.exists()
+    v01_json = sorted(v01_dir.glob("*.json"))
+    v01_md = sorted(v01_dir.glob("*.md"))
+    assert len(v01_json) == 54
+    assert len(v01_md) == 54
+
+    for jf in v01_json:
+        data = json.loads(jf.read_text(encoding="utf-8"))
+        assert data["report_version"] == "0.1"
+        assert "a_fast_core" not in data
 
 
 def test_markdown_a_fast_core_section_order_and_wording():

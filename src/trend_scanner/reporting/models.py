@@ -45,6 +45,7 @@ class ReportHeader:
     cache_present: bool
     cache_last_date: str | None
     report_status: ReportStatus
+    asset_type: str = "COMMON"
 
 
 @dataclass
@@ -350,6 +351,7 @@ class StockReport:
     provenance: ProvenanceSection
     pattern_a_fast: PatternAFastSection
     a_fast_core: AFastCoreSection
+    asset_type: str = "COMMON"
 
     def to_dict(self) -> dict[str, Any]:
         """Convert report to JSON-serializable dictionary."""
