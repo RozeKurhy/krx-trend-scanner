@@ -134,7 +134,8 @@ v0.2의 핵심 승격 사항:
         "action",
         "action_reason",
         "interpretation",
-        "provenance"
+        "provenance",
+        "metadata_provenance_mode"
       ],
       "properties": {
         "strategy_id": { "type": "string", "enum": ["PATTERN_A_FAST_FINAL_STRATEGY_V02"] },
@@ -185,3 +186,39 @@ v0.2의 핵심 승격 사항:
 9. **8. 거래대금 추세 분석 (Trading Value Flow)**
 10. **9. Pattern A 전체 월별 이력 (Full Monthly History)**
 11. **10. 데이터 품질 및 신원 (Data Quality & Provenance)**
+
+
+================================================================================
+5. production_status vs metadata_provenance_mode (Fix Round 07 Minor 1)
+================================================================================
+`a_fast_core`에는 의미가 다른 두 개의 상태 필드가 함께 존재한다. 이 둘을 혼동하면
+안 된다.
+
+**`production_status`** = 전략 자체의 배포/maturity 상태. `PATTERN_A_FAST_FINAL_STRATEGY_V02`
+전략이 개발/백테스트 단계가 아니라 실제 production decision-support 용도로 확정
+승격됐다는 사실을 나타낸다. 현재 값은 항상 `"PRODUCTION_DECISION_SUPPORT"`이며,
+개별 리포트 인스턴스가 아니라 전략 자체의 속성이다.
+
+**`metadata_provenance_mode`** = 이 개별 report instance가 사용한 종목 메타데이터의
+신뢰 authority. 세 가지 값:
+
+- **`CURRENT_VERIFIED`** — requested_as_of 시점의 종목 메타데이터가 KRX formal
+  source로 실제 검증됨(`classification_authority == asset_type_source ==
+  "FORMAL_SECURITY_TYPE"`). 이 report instance는 current production
+  decision-support metadata authority를 갖는다.
+- **`HISTORICAL_LEGACY_RESEARCH`** — requested_as_of 시점 metadata 자체는 formal
+  검증되지 않았지만(`LEGACY_UNVERIFIED`), 과거 시점을 명시적으로 조회하는
+  retrospective 질의로 인정되어 전략 상태를 계산했다. **retrospective research
+  only; not production decision support for that historical report instance.**
+- **`DATA_UNAVAILABLE`** — 메타데이터가 없거나(UNKNOWN), formal 검증도 legacy
+  frozen PIT snapshot도 아닌 다른 종류의 provenance(LEGACY_HEURISTIC/
+  NAME_BASED_HEURISTIC 등)이거나, asset_type 자체가 UNKNOWN이라 신뢰 근거가
+  불충분하다.
+
+**중요**: `production_status = "PRODUCTION_DECISION_SUPPORT"`이면서 동시에
+`metadata_provenance_mode = "HISTORICAL_LEGACY_RESEARCH"`인 report instance가
+정상적으로 존재할 수 있다 — 이 경우 **해당 historical report instance는 production
+투자 판단 근거가 아니다.** `production_status`는 전략이 성숙했다는 것만 말할 뿐,
+개별 리포트가 지금 당장의 매매 판단에 쓸 수 있는지는 `metadata_provenance_mode`가
+결정한다. `production_status` 하나만 보고 개별 report instance를 "지금 사용해도
+되는 current production signal"로 해석해서는 안 된다.

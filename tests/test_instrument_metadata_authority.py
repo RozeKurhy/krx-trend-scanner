@@ -158,7 +158,10 @@ def test_instrument_metadata_unmapped_formal_category_fails_closed():
 
 
 def test_instrument_metadata_no_heuristic_promotion():
-    """13개 구 SPAC ticker가 이름 heuristic이 아니라 formal 필드로 SPAC 확인됐는지 검증."""
+    """13개 구 SPAC ticker가 종목명 substring이 아니라 SECT_TP_NM formal 필드만으로
+    SPAC 확인됐는지 검증 (Fix Round 07 Major 3: current production SPAC 판정에서
+    ISU_NM/ISU_ENG_NM substring 사용 금지 — formal API 필드에서 나온 문자열이어도
+    이름 substring matching이면 heuristic이다)."""
     from trend_scanner.universe.instrument_metadata import resolve_instrument_metadata
 
     spac_tickers = [
@@ -172,8 +175,8 @@ def test_instrument_metadata_no_heuristic_promotion():
         assert meta.classification_authority == "FORMAL_SECURITY_TYPE"
         row = df[(df.ticker == ticker) & (df.effective_date == VERIFIED_DATE)].iloc[0]
         source = row["source_security_type"]
-        assert ("SPAC" in source) or ("Special Purpose Acquisition" in source) or ("기업인수목적" in source), \
-            f"{ticker}: SPAC 판정 근거가 formal source_security_type 필드에 없음"
+        assert "SECT_TP_NM=SPAC" in source, \
+            f"{ticker}: SPAC 판정 근거가 SECT_TP_NM formal 필드에 없음"
 
 
 def test_instrument_metadata_known_common_regressions():
@@ -239,6 +242,89 @@ def test_instrument_metadata_historical_rows_are_legacy_unverified():
     assert (historical["asset_type_source"] == "LEGACY_UNVERIFIED").all()
 
 
+# --- Fix Round 07 Major 1: Historical Research eligibility의 survivorship bias 제거 ----
+
+def test_historical_research_does_not_depend_on_future_verified_snapshot(tmp_path):
+    """동일 품질의 LEGACY_UNVERIFIED historical row는, 이 ticker에 대해 이후 시점에
+    FORMAL_SECURITY_TYPE row가 존재하든(A) 존재하지 않든(B) 동일하게
+    HISTORICAL_LEGACY_RESEARCH 자격을 얻는지 검증 (survivorship bias 제거)."""
+    from trend_scanner.universe.instrument_metadata import InstrumentMetadataResolver
+
+    InstrumentMetadataResolver.clear_cache()
+    ref_dir = tmp_path / "data/reference"
+    ref_dir.mkdir(parents=True)
+
+    historical_row = {
+        "ticker": "111111", "name": "TEST_A", "market": "KOSPI", "asset_type": "COMMON",
+        "metadata_source": "TEST", "effective_date": "2020-01-01",
+        "classification_authority": "LEGACY_UNVERIFIED", "asset_type_source": "LEGACY_UNVERIFIED",
+    }
+    future_formal_row = dict(historical_row, ticker="111111", effective_date="2026-08-21",
+                              classification_authority="FORMAL_SECURITY_TYPE", asset_type_source="FORMAL_SECURITY_TYPE")
+
+    # A: future FORMAL row exists
+    pd.DataFrame([historical_row, future_formal_row]).to_parquet(ref_dir / "krx_instrument_metadata.parquet", index=False)
+    meta_a = InstrumentMetadataResolver.resolve("111111", as_of="2020-01-01", repo_root=tmp_path)
+    InstrumentMetadataResolver.clear_cache()
+
+    # B: no future FORMAL row at all (e.g. delisted before ever re-verified)
+    pd.DataFrame([dict(historical_row, ticker="222222")]).to_parquet(ref_dir / "krx_instrument_metadata.parquet", index=False)
+    meta_b = InstrumentMetadataResolver.resolve("222222", as_of="2020-01-01", repo_root=tmp_path)
+    InstrumentMetadataResolver.clear_cache()
+
+    assert meta_a.is_eligible_for_historical_legacy_research is True
+    assert meta_b.is_eligible_for_historical_legacy_research is True
+    assert meta_a.is_eligible_for_historical_legacy_research == meta_b.is_eligible_for_historical_legacy_research
+
+
+def test_delisted_historical_ticker_can_use_legacy_research_mode():
+    """380440(엔에이치스팩19호, delisted)의 historical as_of 조회가 future verified
+    snapshot 부재 때문에 막히지 않고 HISTORICAL_LEGACY_RESEARCH로 인정되는지 검증."""
+    from trend_scanner.universe.instrument_metadata import resolve_instrument_metadata
+
+    df = pd.read_csv(CSV_PATH, dtype={"ticker": str}, low_memory=False)
+    last_row_date = df[df.ticker == "380440"]["effective_date"].max()
+
+    meta = resolve_instrument_metadata("380440", as_of=last_row_date, repo_root=REPO_ROOT)
+    assert meta.is_identified is True
+    assert meta.asset_type == "SPAC"
+    assert meta.classification_authority == "LEGACY_UNVERIFIED"
+    assert meta.is_trusted_for_production is False
+    assert meta.is_eligible_for_historical_legacy_research is True
+
+
+def test_future_formal_snapshot_does_not_change_historical_mode_result(tmp_path):
+    """future formal row를 추가하기 전/후로 동일 historical as_of 조회 결과가
+    (eligibility, asset_type, effective_date 모두) 완전히 동일한지 검증."""
+    from trend_scanner.universe.instrument_metadata import InstrumentMetadataResolver
+
+    InstrumentMetadataResolver.clear_cache()
+    ref_dir = tmp_path / "data/reference"
+    ref_dir.mkdir(parents=True)
+
+    base_row = {
+        "ticker": "333333", "name": "TEST_C", "market": "KOSPI", "asset_type": "COMMON",
+        "metadata_source": "TEST", "effective_date": "2020-01-01",
+        "classification_authority": "LEGACY_UNVERIFIED", "asset_type_source": "LEGACY_UNVERIFIED",
+    }
+
+    pd.DataFrame([base_row]).to_parquet(ref_dir / "krx_instrument_metadata.parquet", index=False)
+    before = InstrumentMetadataResolver.resolve("333333", as_of="2020-01-01", repo_root=tmp_path)
+    InstrumentMetadataResolver.clear_cache()
+
+    future_row = dict(base_row, effective_date="2026-08-21",
+                       classification_authority="FORMAL_SECURITY_TYPE", asset_type_source="FORMAL_SECURITY_TYPE")
+    pd.DataFrame([base_row, future_row]).to_parquet(ref_dir / "krx_instrument_metadata.parquet", index=False)
+    after = InstrumentMetadataResolver.resolve("333333", as_of="2020-01-01", repo_root=tmp_path)
+    InstrumentMetadataResolver.clear_cache()
+
+    assert before.is_eligible_for_historical_legacy_research is True
+    assert after.is_eligible_for_historical_legacy_research is True
+    assert before.asset_type == after.asset_type
+    assert before.effective_date == after.effective_date
+    assert before.classification_authority == after.classification_authority
+
+
 # --- Fix Round 06 Critical 1: PIT backdating 구조적 차단 -------------------------------
 
 def test_live_metadata_snapshot_cannot_be_backdated():
@@ -276,20 +362,26 @@ def test_verified_metadata_effective_date_matches_source_observation_date():
 def test_manifest_does_not_claim_historical_verification_from_live_source():
     """이전 실행에서 formal-verified라고 잘못 주장됐던 baseline_date row가 이번 build에서
     LEGACY_UNVERIFIED로 재정정됐는지 검증 (Fix Round 06 Critical 1 — Fix Round 05의
-    실제 corruption 사례에 대한 회귀 방지)."""
+    실제 corruption 사례에 대한 회귀 방지).
+
+    baseline_date는 verified_snapshot_effective_date보다 미래일 수 없다(<=) — 같은 날
+    재실행(idempotent rebuild)하는 경우 baseline_date == effective_date가 될 수 있으므로
+    엄격한 미만(<)이 아니라 이하(<=)로 검증한다(Fix Round 07: baseline_date는 이 build가
+    데이터를 건드리기 이전, 즉 직전 build 실행의 verified snapshot을 가리킨다)."""
     manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
-    assert manifest["verified_snapshot_baseline_date"] < manifest["verified_snapshot_effective_date"]
+    assert manifest["verified_snapshot_baseline_date"] <= manifest["verified_snapshot_effective_date"]
 
     df = pd.read_csv(CSV_PATH, dtype={"ticker": str}, low_memory=False)
     baseline_rows = df[df["effective_date"] == manifest["verified_snapshot_baseline_date"]]
     assert not baseline_rows.empty
-    assert (baseline_rows["classification_authority"] == "LEGACY_UNVERIFIED").all(), (
-        "baseline_date(과거 build가 backdate했던 날짜) row는 현재 build에서 재검증된 적이 "
-        "없으므로 FORMAL_SECURITY_TYPE으로 남아있으면 안 된다"
-    )
+    if manifest["verified_snapshot_baseline_date"] != manifest["verified_snapshot_effective_date"]:
+        assert (baseline_rows["classification_authority"] == "LEGACY_UNVERIFIED").all(), (
+            "baseline_date(과거 build가 backdate했던 날짜) row는 현재 build에서 재검증된 적이 "
+            "없으므로 FORMAL_SECURITY_TYPE으로 남아있으면 안 된다"
+        )
 
 
-# --- Fix Round 06 Critical 2: section-independent SPAC identity ------------------------
+# --- Fix Round 07 Major 3: SPAC current 판정에서 이름 substring 완전 제거 --------------
 
 _MANAGED_SECTION_SPACS = {
     "465320": "교보15호기업인수목적",
@@ -299,55 +391,101 @@ _MANAGED_SECTION_SPACS = {
 
 
 def test_465320_not_misclassified_as_common():
-    """465320(교보15호스팩)이 관리종목(소속부없음) 전환 이후에도 COMMON이 아닌 SPAC으로 유지되는지 검증."""
+    """465320(교보15호스팩)이 관리종목(소속부없음) 전환 이후 formal name-independent SPAC
+    identity source를 확보하지 못해 UNKNOWN으로 fail closed되는지 검증 — COMMON도 SPAC도
+    아니어야 한다(Fix Round 07 Major 3, w.md §4.10: "둘 중 어느 쪽이든 COMMON은 금지")."""
     from trend_scanner.universe.instrument_metadata import resolve_instrument_metadata
 
     meta = resolve_instrument_metadata("465320", as_of=VERIFIED_DATE, repo_root=REPO_ROOT)
-    assert meta.asset_type == "SPAC"
-    assert meta.is_trusted_for_production is True
+    assert meta.asset_type == "UNKNOWN"
+    assert meta.asset_type != "COMMON"
+    assert meta.is_trusted_for_production is False
     assert meta.is_common_stock_for_production is False
 
 
 def test_471050_not_misclassified_as_common():
-    """471050(대신밸런스제17호스팩)이 관리종목(소속부없음) 전환 이후에도 COMMON이 아닌 SPAC으로 유지되는지 검증."""
+    """471050(대신밸런스제17호스팩)이 관리종목(소속부없음) 전환 이후 formal name-independent
+    SPAC identity source를 확보하지 못해 UNKNOWN으로 fail closed되는지 검증."""
     from trend_scanner.universe.instrument_metadata import resolve_instrument_metadata
 
     meta = resolve_instrument_metadata("471050", as_of=VERIFIED_DATE, repo_root=REPO_ROOT)
-    assert meta.asset_type == "SPAC"
-    assert meta.is_trusted_for_production is True
+    assert meta.asset_type == "UNKNOWN"
+    assert meta.asset_type != "COMMON"
+    assert meta.is_trusted_for_production is False
     assert meta.is_common_stock_for_production is False
 
 
-def test_spac_remains_spac_when_section_changes():
-    """SECT_TP_NM이 SPAC 문자열을 잃은 3개 실측 사례(465320/471050/472220) 모두 SPAC으로 유지되는지 검증."""
+def test_managed_section_spac_without_identity_evidence_fails_closed():
+    """SECT_TP_NM이 SPAC 문자열을 잃은 3개 실측 사례(465320/471050/472220) 모두, formal
+    name-independent identity source가 없으므로 UNKNOWN + INSUFFICIENT_FORMAL_IDENTITY로
+    fail closed되는지 검증 (w.md §4.10 test_managed_section_spac_without_identity_evidence_fails_closed)."""
     from trend_scanner.universe.instrument_metadata import resolve_instrument_metadata
 
     for ticker, name_hint in _MANAGED_SECTION_SPACS.items():
         meta = resolve_instrument_metadata(ticker, as_of=VERIFIED_DATE, repo_root=REPO_ROOT)
-        assert meta.asset_type == "SPAC", f"{ticker}({name_hint}) expected SPAC, got {meta.asset_type}"
+        assert meta.asset_type == "UNKNOWN", f"{ticker}({name_hint}) expected UNKNOWN, got {meta.asset_type}"
+        assert meta.asset_type_source == "INSUFFICIENT_FORMAL_IDENTITY"
         assert meta.classification_authority == "FORMAL_SECURITY_TYPE"
+        assert meta.is_trusted_for_production is False
 
 
-def test_spac_identity_is_not_derived_from_current_section_only():
-    """3개 관리종목 전환 SPAC의 source_security_type에 SECT_TP_NM=SPAC 문자열이 없는데도
-    ISU_ENG_NM/ISU_NM 필드 근거로 SPAC 판정됐는지 검증 — section 상태와 무관한 identity (Fix Round 06 Critical 2)."""
+def test_current_asset_type_does_not_use_isu_name_substrings():
+    """current production 판정 결과가 ISU_NM의 "기업인수목적" substring에 의존하지 않는지
+    검증 — 3개 관리종목 전환 SPAC은 ISU_NM에 "기업인수목적"이 포함되지만 이제 SPAC으로
+    승격되지 않는다 (Fix Round 07 Major 3)."""
     df = pd.read_csv(CSV_PATH, dtype={"ticker": str}, low_memory=False)
     for ticker in _MANAGED_SECTION_SPACS:
-        row = df[(df.ticker == ticker) & (df.effective_date == VERIFIED_DATE)]
-        assert not row.empty, f"{ticker}: verified row missing"
-        source = row.iloc[0]["source_security_type"]
-        assert "SECT_TP_NM=SPAC" not in source, (
-            f"{ticker}: 이 테스트는 SECT_TP_NM이 더 이상 SPAC을 나타내지 않는 사례를 검증하는 것이므로 "
-            "source_security_type에 SECT_TP_NM=SPAC이 있으면 전제가 깨진다"
+        row = df[(df.ticker == ticker) & (df.effective_date == VERIFIED_DATE)].iloc[0]
+        assert "ISU_NM=" in row["source_security_type"] and "기업인수목적" in row["source_security_type"], (
+            f"{ticker}: 이 테스트는 ISU_NM에 '기업인수목적'이 포함된 케이스를 전제한다"
         )
-        assert ("Special Purpose Acquisition" in source) or ("기업인수목적" in source), (
-            f"{ticker}: SPAC 판정 근거가 ISU_ENG_NM/ISU_NM 공식 필드에 없음"
+        assert row["asset_type"] != "SPAC", (
+            f"{ticker}: asset_type이 SPAC이면 ISU_NM substring이 여전히 판정에 쓰이고 있다는 신호"
         )
+
+
+def test_current_asset_type_does_not_use_english_name_substrings():
+    """current production 판정 결과가 ISU_ENG_NM의 "Special Purpose Acquisition" substring에
+    의존하지 않는지 검증 (Fix Round 07 Major 3)."""
+    df = pd.read_csv(CSV_PATH, dtype={"ticker": str}, low_memory=False)
+    for ticker in _MANAGED_SECTION_SPACS:
+        row = df[(df.ticker == ticker) & (df.effective_date == VERIFIED_DATE)].iloc[0]
+        assert "ISU_ENG_NM=" in row["source_security_type"] and "Special Purpose Acquisition" in row["source_security_type"], (
+            f"{ticker}: 이 테스트는 ISU_ENG_NM에 'Special Purpose Acquisition'이 포함된 케이스를 전제한다"
+        )
+        assert row["asset_type"] != "SPAC", (
+            f"{ticker}: asset_type이 SPAC이면 ISU_ENG_NM substring이 여전히 판정에 쓰이고 있다는 신호"
+        )
+
+
+def test_spac_formal_identity_source_is_name_independent():
+    """13개 alphanumeric SPAC과 3개 관리종목 전환 SPAC을 나누는 유일한 formal 근거가
+    SECT_TP_NM(section 상태)이지 종목명이 아닌지 검증. 13개는 SECT_TP_NM에 SPAC이
+    포함되어 SPAC으로 유지되고, 3개는 SECT_TP_NM에 SPAC이 없어(종목명은 둘 다 SPAC을
+    암시함에도) UNKNOWN으로 갈린다 — 이것이 이름이 아니라 formal field가 판정 기준임을
+    보여준다 (Fix Round 07 Major 3)."""
+    from trend_scanner.universe.instrument_metadata import resolve_instrument_metadata
+
+    df = pd.read_csv(CSV_PATH, dtype={"ticker": str}, low_memory=False)
+    alphanumeric_spacs = [
+        "0099W0", "0105P0", "0093G0", "0130H0", "0054V0", "0096B0", "0096D0",
+        "0044K0", "0071M0", "0097F0", "0091W0", "0115H0", "0041J0",
+    ]
+    for ticker in alphanumeric_spacs:
+        row = df[(df.ticker == ticker) & (df.effective_date == VERIFIED_DATE)].iloc[0]
+        assert "SECT_TP_NM=SPAC" in row["source_security_type"]
+        assert row["asset_type"] == "SPAC"
+
+    for ticker in _MANAGED_SECTION_SPACS:
+        row = df[(df.ticker == ticker) & (df.effective_date == VERIFIED_DATE)].iloc[0]
+        assert "SECT_TP_NM=SPAC" not in row["source_security_type"]
+        assert row["asset_type"] == "UNKNOWN"
 
 
 def test_formal_spac_authority_precedes_common_share_type_mapping():
-    """관리종목 전환 SPAC들이 KIND_STKCERT_TP_NM=보통주임에도(=COMMON으로 오분류될 수 있는 조건)
-    SPAC identity가 우선 적용되어 실제로는 SPAC으로 판정됐는지 검증 (Fix Round 06 Critical 2, 우선순위)."""
+    """관리종목 전환 SPAC들이 KIND_STKCERT_TP_NM=보통주임에도(=COMMON으로 오분류될 수 있는
+    조건) SPAC 이력 인지(§4.7 ambiguity 감지)가 우선 적용되어 COMMON이 아닌 UNKNOWN으로
+    fail closed됐는지 검증 (Fix Round 07 Major 3, 우선순위 재정의)."""
     df = pd.read_csv(CSV_PATH, dtype={"ticker": str}, low_memory=False)
     for ticker in _MANAGED_SECTION_SPACS:
         row = df[(df.ticker == ticker) & (df.effective_date == VERIFIED_DATE)].iloc[0]
@@ -355,4 +493,5 @@ def test_formal_spac_authority_precedes_common_share_type_mapping():
             f"{ticker}: 이 테스트는 '보통주로 오분류될 수 있었던' 케이스를 전제하므로 "
             "KIND_STKCERT_TP_NM=보통주가 source에 있어야 한다"
         )
-        assert row["asset_type"] == "SPAC"
+        assert row["asset_type"] != "COMMON"
+        assert row["asset_type"] == "UNKNOWN"

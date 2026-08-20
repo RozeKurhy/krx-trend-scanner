@@ -105,6 +105,28 @@ def _validate_single_report_schema(d: dict) -> list[str]:
     return errors
 
 
+def test_human_contract_requires_metadata_provenance_mode():
+    """human contract(docs/specs/stock_report_contract.md)와 machine schema
+    (docs/specs/stock_report_v02_schema.json)가 a_fast_core.required에 동일하게
+    metadata_provenance_mode를 포함하는지 검증 (Fix Round 07 Minor 1)."""
+    schema = json.loads((REPO_ROOT / "docs/specs/stock_report_v02_schema.json").read_text(encoding="utf-8"))
+    assert "metadata_provenance_mode" in schema["properties"]["a_fast_core"]["required"], (
+        "machine schema의 a_fast_core.required에 metadata_provenance_mode가 없음"
+    )
+
+    contract_text = (REPO_ROOT / "docs/specs/stock_report_contract.md").read_text(encoding="utf-8")
+    # a_fast_core 블록의 "required" 배열 안에서 metadata_provenance_mode를 찾는다
+    # (properties 안에 필드 정의만 있는 것으로는 부족 — required 배열 원소여야 한다).
+    a_fast_core_start = contract_text.index('"a_fast_core": {')
+    required_start = contract_text.index('"required"', a_fast_core_start)
+    required_end = contract_text.index(']', required_start)
+    required_block = contract_text[required_start:required_end]
+    assert "metadata_provenance_mode" in required_block, (
+        "human contract(stock_report_contract.md)의 a_fast_core required 배열에 "
+        "metadata_provenance_mode가 없음 — machine schema와 shape가 일치하지 않는다"
+    )
+
+
 def test_stock_report_v02_contract():
     """Stock Report v0.2 최상위 contract 및 a_fast_core 필드 존재 검증."""
     report, _, _ = generate_stock_report(ticker="005930", as_of="2026-08-14", repo_root=REPO_ROOT, save_artifacts=False)
@@ -190,13 +212,15 @@ def test_a_fast_core_uses_requested_as_of_only():
     assert rep_2025.a_fast_core.protection_state.loss_guard_state == "ACTIVE"
 
 
-def test_a_fast_core_metadata_never_verified_is_data_unavailable(monkeypatch):
-    """이후 시점에도 한 번도 formal 재검증된 적이 없는 metadata는 HISTORICAL_LEGACY_RESEARCH로
-    승격되지 않고 DATA_UNAVAILABLE로 fail closed 유지되는지 검증 (Fix Round 06 Major 1, §4.5 경계).
+def test_a_fast_core_legacy_heuristic_metadata_is_data_unavailable(monkeypatch):
+    """LEGACY_HEURISTIC/NAME_BASED_HEURISTIC provenance는 HISTORICAL_LEGACY_RESEARCH로
+    승격되지 않고 DATA_UNAVAILABLE로 fail closed 유지되는지 검증 (Fix Round 07 Major 1, §2.5).
 
-    §4.5는 '오늘' 시점 production 판단에 legacy metadata를 trusted로 쓰는 것을 금지한다.
-    이후 재검증 snapshot이 전혀 없는 시점(has_later_verified_snapshot=False)은 '과거'가
-    아니라 아직 검증되지 않은 사실상의 현재이므로, 이 조건에서는 여전히 DATA_UNAVAILABLE이어야 한다.
+    Fix Round 07부터 HISTORICAL_LEGACY_RESEARCH eligibility는 selected row의
+    classification_authority/asset_type_source가 정확히 "LEGACY_UNVERIFIED"인
+    경우만 인정한다 — canonical frozen PIT snapshot이 아니라 별도 종류의
+    heuristic 추정치(LEGACY_HEURISTIC/NAME_BASED_HEURISTIC)는 그보다 신뢰도가
+    낮으므로 historical research로도 승격되지 않는다.
     """
     import trend_scanner.reporting.stock_report as stock_report_module
     from trend_scanner.universe.instrument_metadata import InstrumentMetadata
@@ -206,12 +230,11 @@ def test_a_fast_core_metadata_never_verified_is_data_unavailable(monkeypatch):
         name="삼성전자",
         market="KOSPI",
         asset_type="COMMON",
-        metadata_source="TEST_MOCK_NEVER_VERIFIED",
+        metadata_source="LEGACY_QUALITY_DIAGNOSTIC",
         effective_date="2025-11-28",
         is_identified=True,
-        classification_authority="LEGACY_UNVERIFIED",
-        asset_type_source="LEGACY_UNVERIFIED",
-        has_later_verified_snapshot=False,
+        classification_authority="LEGACY_HEURISTIC",
+        asset_type_source="NAME_BASED_HEURISTIC",
     )
     assert fake_meta.is_trusted_for_production is False
     assert fake_meta.is_eligible_for_historical_legacy_research is False

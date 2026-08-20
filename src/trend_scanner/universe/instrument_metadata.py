@@ -37,7 +37,6 @@ class InstrumentMetadata:
     is_identified: bool = True
     classification_authority: str | None = None
     asset_type_source: str | None = None
-    has_later_verified_snapshot: bool = False
 
     @property
     def is_common_stock(self) -> bool:
@@ -65,21 +64,30 @@ class InstrumentMetadata:
     @property
     def is_eligible_for_historical_legacy_research(self) -> bool:
         """requested_as_of 시점이 production 신뢰 대상은 아니지만 retrospective
-        연구용으로는 취급 가능한지 (Fix Round 06 Major 1: HISTORICAL_LEGACY_RESEARCH).
+        연구용으로는 취급 가능한지 (Fix Round 06 Major 1, Fix Round 07 Major 1로 재정의).
 
-        이 시점 자체는 formal 검증되지 않았더라도(LEGACY_UNVERIFIED), 이 ticker에
-        대해 requested_as_of *이후* 시점에 실제로 formal 재검증된 snapshot이
-        존재한다면(has_later_verified_snapshot) 이 쿼리는 명백히 과거를 묻는
-        retrospective 질의다. 반대로 이후에 한 번도 재검증된 적이 없다면 이는
-        '과거'가 아니라 아직 검증되지 않은 사실상의 현재이므로 historical
-        legacy research로 승격시키지 않고 DATA_UNAVAILABLE로 fail closed 유지한다
-        (w.md §4.5: 오늘 시점 production 판단에 legacy metadata를 trusted로
-        쓰는 것을 막기 위한 경계).
+        Fix Round 06은 이 판단에 "이 ticker가 requested_as_of *이후*에 실제로
+        formal 재검증된 적이 있는가"(has_later_verified_snapshot)를 근거로
+        사용했다. 이는 survivorship bias다 — 미래까지 살아남아 다시 검증된
+        ticker만 retrospective 분석이 가능해지고, 상장폐지되어 다시 검증될
+        기회가 없었던 ticker(예: 380440)는 동일한 품질의 historical metadata를
+        가지고도 부당하게 배제된다. 또한 이 판단 자체가 미래 시점의 정보를
+        과거 시점 조회의 eligibility 결정에 사용하는 것이라 Strict PIT 정신에도
+        어긋난다.
+
+        Fix Round 07부터 이 판단은 오직 **선택된(selected) PIT row 자체의 값**만
+        본다 — 미래의 다른 row는 전혀 조회하지 않는다: classification_authority와
+        asset_type_source가 둘 다 정확히 "LEGACY_UNVERIFIED"이고(다른 종류의
+        untrusted provenance, 예: LEGACY_HEURISTIC/NAME_BASED_HEURISTIC은 여기
+        해당하지 않는다 — 그런 row는 애초에 formal frozen PIT snapshot이 아니라
+        신뢰도가 다른 heuristic 추정치이므로 승격 금지), asset_type이 UNKNOWN이
+        아니면 historical retrospective 연구 대상으로 인정한다.
         """
         return (
             self.is_identified
-            and not self.is_trusted_for_production
-            and self.has_later_verified_snapshot
+            and self.classification_authority == "LEGACY_UNVERIFIED"
+            and self.asset_type_source == "LEGACY_UNVERIFIED"
+            and self.asset_type != AssetType.UNKNOWN.value
         )
 
 
@@ -167,22 +175,10 @@ class InstrumentMetadataResolver:
                 else:
                     past_matches = matches
 
-                # Fix Round 06 Major 1: requested_as_of 이후 시점에 실제로 formal
-                # 재검증된 snapshot이 이 ticker에 존재하는지 — HISTORICAL_LEGACY_RESEARCH
-                # vs DATA_UNAVAILABLE을 가르는 근거.
-                has_later_verified_snapshot = False
-                if (
-                    as_of_str is not None
-                    and "effective_date" in matches.columns
-                    and "classification_authority" in matches.columns
-                ):
-                    future_formal = matches[
-                        matches["effective_date"].notna()
-                        & (matches["effective_date"].astype(str).str[:10] > as_of_str)
-                        & (matches["classification_authority"].astype(str) == "FORMAL_SECURITY_TYPE")
-                    ]
-                    has_later_verified_snapshot = not future_formal.empty
-
+                # Fix Round 07 Major 1: HISTORICAL_LEGACY_RESEARCH eligibility는 selected
+                # row 자체의 provenance만으로 결정한다 (is_eligible_for_historical_legacy_research
+                # 참고) — requested_as_of 이후의 다른 row를 조회하는 future lookup은 여기서도,
+                # 다른 어디에서도 수행하지 않는다 (survivorship bias 제거, Strict PIT 유지).
                 if not past_matches.empty:
                     # Select latest snapshot not after requested_as_of
                     row = past_matches.sort_values(by="effective_date", ascending=True).iloc[-1]
@@ -210,7 +206,6 @@ class InstrumentMetadataResolver:
                         is_identified=True,
                         classification_authority=auth,
                         asset_type_source=asset_source,
-                        has_later_verified_snapshot=has_later_verified_snapshot,
                     )
 
         # Fail closed: metadata unavailable or all available metadata is in the future
