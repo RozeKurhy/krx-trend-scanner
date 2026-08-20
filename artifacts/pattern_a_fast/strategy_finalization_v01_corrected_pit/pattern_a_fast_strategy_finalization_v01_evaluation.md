@@ -6,10 +6,14 @@
 - **전략 참조명**: `PATTERN_A_FAST_FINAL_STRATEGY_V01`
 - **선택 권한 (Selection Authority)**: `FINAL_STRATEGY_CONTRACT` (docs/validation/pattern_a_fast_final_strategy_v01.md)
 - **연구 분류 (Research Classification)**: `RETROSPECTIVE_STRATEGY_FINALIZATION_CANDIDATE_SELECTION`
+- **재평가 분류 (Reevaluation Classification)**: `CORRECTED_PIT_STRATEGY_FINALIZATION_REEVALUATION`
+- **평가 기준 (Evaluation Basis)**: `CORRECTED_PIT_BASELINE`
 - **검증 유형 (Validation Type)**: `SAME_SAMPLE_RETROSPECTIVE_FINALIZATION`
 - **선택 방법론 (Selection Methodology)**: `PREREGISTERED_PRIORITY_EVIDENCE_SYNTHESIS`
 - **아키텍처 기준 커밋**: [`89df82a`](https://github.com/RozeKurhy/krx-trend-scanner/commit/89df82a938dba1961c2342064db2dc0061a5f2ca)
 - **사전등록 커밋**: [`a5c29e7`](https://github.com/RozeKurhy/krx-trend-scanner/commit/a5c29e7e97cb7e6830c3dcd25d824e5779f2312f)
+- **캘린더 권한 커밋**: [`88d54d8`](https://github.com/RozeKurhy/krx-trend-scanner/commit/88d54d85bdee1f2121bec9b27a250cbc1cb9f98f)
+- **평가 증거 커밋**: [`f73e0c2`](https://github.com/RozeKurhy/krx-trend-scanner/commit/f73e0c23b10cc3e3f8215693ef5095b2c0f6716d)
 - **데이터 기준일**: `2026-08-14` (**LOCAL CACHE ONLY**)
 - **운영 상태**: **`PRODUCTION_HOLD` (운영 불변, 연구 전용)**
 - **Fresh OOS 상태**: **`READY_FOR_PREREGISTRATION`**

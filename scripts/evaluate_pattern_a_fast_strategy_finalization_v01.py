@@ -51,6 +51,8 @@ DOCS_EVAL_MD = ROOT / "docs/validation/pattern_a_fast_strategy_finalization_v01_
 
 PREREG_COMMIT_SHA = "a5c29e7e97cb7e6830c3dcd25d824e5779f2312f"
 ARCHITECTURE_AUTHORITY_COMMIT = "89df82a938dba1961c2342064db2dc0061a5f2ca"
+CALENDAR_AUTHORITY_COMMIT = "88d54d85bdee1f2121bec9b27a250cbc1cb9f98f"
+CORRECTED_EVALUATION_COMMIT = "f73e0c23b10cc3e3f8215693ef5095b2c0f6716d"
 
 
 def _worker_task(args: tuple[str, str, str, dict, dict]) -> dict | None:
@@ -290,9 +292,15 @@ def _analyze_results(df: pd.DataFrame, total_common: int, investable_count: int)
         "metadata": {
             "title": "Pattern A FAST Strategy Finalization / Candidate Selection v0.1",
             "research_classification": "RETROSPECTIVE_STRATEGY_FINALIZATION_CANDIDATE_SELECTION",
+            "reevaluation_classification": "CORRECTED_PIT_STRATEGY_FINALIZATION_REEVALUATION",
+            "evaluation_basis": "CORRECTED_PIT_BASELINE",
             "validation_type": "SAME_SAMPLE_RETROSPECTIVE_FINALIZATION",
             "architecture_authority_commit": ARCHITECTURE_AUTHORITY_COMMIT,
             "preregistration_commit": PREREG_COMMIT_SHA,
+            "calendar_authority_commit": CALENDAR_AUTHORITY_COMMIT,
+            "corrected_evaluation_commit": CORRECTED_EVALUATION_COMMIT,
+            "pit_correction_reason": "COMPLETED_MONTHLY_PIT_BOUNDARY_CORRECTION",
+            "strategy_rules_changed": False,
             "data_cutoff": "2026-08-14",
             "total_common_universe": total_common,
             "phase10_investable_universe": investable_count,
@@ -381,10 +389,14 @@ def _generate_markdown_report(data: dict[str, Any]) -> str:
 - **전략 참조명**: `{ref["strategy_name"]}`
 - **선택 권한 (Selection Authority)**: `{ref["selection_authority"]}` (docs/validation/pattern_a_fast_final_strategy_v01.md)
 - **연구 분류 (Research Classification)**: `{meta["research_classification"]}`
+- **재평가 분류 (Reevaluation Classification)**: `{meta.get("reevaluation_classification", "CORRECTED_PIT_STRATEGY_FINALIZATION_REEVALUATION")}`
+- **평가 기준 (Evaluation Basis)**: `{meta.get("evaluation_basis", "CORRECTED_PIT_BASELINE")}`
 - **검증 유형 (Validation Type)**: `{meta["validation_type"]}`
 - **선택 방법론 (Selection Methodology)**: `PREREGISTERED_PRIORITY_EVIDENCE_SYNTHESIS`
 - **아키텍처 기준 커밋**: [`{meta["architecture_authority_commit"][:7]}`](https://github.com/RozeKurhy/krx-trend-scanner/commit/{meta["architecture_authority_commit"]})
 - **사전등록 커밋**: [`{meta["preregistration_commit"][:7]}`](https://github.com/RozeKurhy/krx-trend-scanner/commit/{meta["preregistration_commit"]})
+- **캘린더 권한 커밋**: [`{meta.get("calendar_authority_commit", CALENDAR_AUTHORITY_COMMIT)[:7]}`](https://github.com/RozeKurhy/krx-trend-scanner/commit/{meta.get("calendar_authority_commit", CALENDAR_AUTHORITY_COMMIT)})
+- **평가 증거 커밋**: [`{meta.get("corrected_evaluation_commit", CORRECTED_EVALUATION_COMMIT)[:7]}`](https://github.com/RozeKurhy/krx-trend-scanner/commit/{meta.get("corrected_evaluation_commit", CORRECTED_EVALUATION_COMMIT)})
 - **데이터 기준일**: `2026-08-14` (**LOCAL CACHE ONLY**)
 - **운영 상태**: **`PRODUCTION_HOLD` (운영 불변, 연구 전용)**
 - **Fresh OOS 상태**: **`READY_FOR_PREREGISTRATION`**

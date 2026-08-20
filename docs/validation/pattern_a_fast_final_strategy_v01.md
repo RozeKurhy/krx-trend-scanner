@@ -8,15 +8,15 @@
 - **연구 상태 (Research Status)**: **`STRATEGY_FINALIZATION_CLOSED`**
 - **연구 분류 (Research Classification)**: `STRATEGY_FINALIZATION_FROZEN_CONTRACT`
 - **연구 출처 (Research Source)**: `SAME_SAMPLE_RETROSPECTIVE_FINALIZATION`
+- **평가 기준 (Evaluation Basis)**: **`CORRECTED_PIT_BASELINE`**
 - **아키텍처 기준 커밋 (Architecture Authority)**: [`89df82a`](https://github.com/RozeKurhy/krx-trend-scanner/commit/89df82a938dba1961c2342064db2dc0061a5f2ca)
 - **사전등록 커밋 (Preregistration Authority)**: [`a5c29e7`](https://github.com/RozeKurhy/krx-trend-scanner/commit/a5c29e7e97cb7e6830c3dcd25d824e5779f2312f)
-- **평가 증거 커밋 (Evaluation Evidence)**: [`52acf05`](https://github.com/RozeKurhy/krx-trend-scanner/commit/52acf0555036794e112c0aeb0c73213ddeff4b86)
+- **캘린더 권한 커밋 (Calendar Authority)**: [`88d54d8`](https://github.com/RozeKurhy/krx-trend-scanner/commit/88d54d85bdee1f2121bec9b27a250cbc1cb9f98f)
+- **평가 증거 커밋 (Evaluation Evidence)**: [`f73e0c2`](https://github.com/RozeKurhy/krx-trend-scanner/commit/f73e0c23b10cc3e3f8215693ef5095b2c0f6716d)
 - **최종 선택 권한 (Selection Authority)**: **`FINAL_STRATEGY_CONTRACT`** (`docs/validation/pattern_a_fast_final_strategy_v01.md` + `artifacts/pattern_a_fast/final_strategy_v01/pattern_a_fast_final_strategy_v01.json`)
 - **계약 권한 (Contract Authority)**: **`THIS_FINAL_STRATEGY_CONTRACT_REVISION`**
 - **Fresh OOS 상태**: **`READY_FOR_PREREGISTRATION`** (Fresh OOS 실행 여부: `NO`)
 - **운영 상태 (Production Status)**: **`PRODUCTION_HOLD` (운영 불변, 연구 전용)**
-- **Production Candidate 여부**: **`NO` (Fresh OOS 검증 완료 전 운영 배포 불가)**
-- **테스트 정책**: `Tests: NOT RUN`
 
 #### 💡 투자자 최상위 원칙 (Investment Mandate & Philosophy)
 - **최우선 목적 (Primary Objective)**: **`LARGE_LOSS_MINIMIZATION` (대형 손실 최소화)**
