@@ -721,6 +721,22 @@ def test_stock_report_138040_is_applicable_common_stock():
     assert report.a_fast_core.action == "WAIT"
 
 
+def test_stock_report_380440_historical_legacy_research_not_applicable():
+    """380440(엔에이치스팩19호, delisted) historical 리포트가 w.md §8 명시값대로
+    metadata_provenance_mode=HISTORICAL_LEGACY_RESEARCH이면서
+    applicability/strategy_state/canonical_position=NOT_APPLICABLE, action=NONE인지 검증."""
+    df = pd.read_csv(REPO_ROOT / "data/reference/krx_instrument_metadata.csv", dtype={"ticker": str}, low_memory=False)
+    last_row_date = df[df.ticker == "380440"]["effective_date"].max()
+
+    report, _, _ = generate_stock_report(ticker="380440", as_of=last_row_date, repo_root=REPO_ROOT, save_artifacts=False)
+    assert report.asset_type == "SPAC"
+    assert report.a_fast_core.metadata_provenance_mode == "HISTORICAL_LEGACY_RESEARCH"
+    assert report.a_fast_core.applicability == "NOT_APPLICABLE"
+    assert report.a_fast_core.strategy_state == "NOT_APPLICABLE"
+    assert report.a_fast_core.canonical_position == "NOT_APPLICABLE"
+    assert report.a_fast_core.action == "NONE"
+
+
 def test_stock_report_market_cap_effective_date_pit():
     """과거 기준일(2026-05-15) 조회 시 시장 시가총액 스냅샷 날짜가 requested_as_of보다 미래가 아님(effective_date <= requested_as_of) 및 실제 일자/출처 검증."""
     # 1. Past historical date query: 2026-05-15
