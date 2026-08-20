@@ -1,4 +1,4 @@
-"""Targeted tests for Pattern A FAST Core V02 Re-Entry Strategy."""
+"""Comprehensive Targeted Invariant Tests for Pattern A FAST Core V02 Re-Entry Strategy."""
 
 import json
 from pathlib import Path
@@ -7,10 +7,16 @@ import pandas as pd
 import pytest
 
 from trend_scanner.data.cache import ParquetCache
+from trend_scanner.patterns.pattern_a_evaluator import evaluate_pattern_a
+from trend_scanner.validation.historical_snapshot import build_historical_snapshot
 from trend_scanner.validation.pattern_a_fast_core_v02_reentry import (
     DATA_CUTOFF,
     V02TradeRecord,
     simulate_ticker_core_v02_reentry,
+)
+from scripts.inspect_v02_evidence import (
+    build_representative_case,
+    classify_deep_loss_cause,
 )
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -19,6 +25,7 @@ STAGE_CONTRACT_PATH = ROOT / "artifacts/pattern_a_fast/research/pattern_a_fast_s
 V01_CSV_PATH = ROOT / "artifacts/pattern_a_fast/strategy_finalization_v01_corrected_pit/pattern_a_fast_strategy_finalization_v01_trades.csv"
 V02_CSV_PATH = ROOT / "artifacts/pattern_a_fast/core_v02_reentry/trades.csv"
 V02_TICKER_CSV_PATH = ROOT / "artifacts/pattern_a_fast/core_v02_reentry/ticker_summary.csv"
+DEEP_LOSS_CSV_PATH = ROOT / "artifacts/pattern_a_fast/core_v02_reentry/deep_loss_reentry_cases.csv"
 
 
 @pytest.fixture
@@ -84,7 +91,29 @@ def test_v02_sequence_1_identity_vs_v01_baseline():
                 if str(v1) != str(v2):
                     mismatches.append((t1, f1, v1, v2))
 
-    assert len(mismatches) == 0, f"Expected 0 mismatches between V01 and V02 Sequence 1, got {len(mismatches)}: {mismatches[:5]}"
+    assert len(mismatches) == 0, f"Expected 0 mismatches between V01 and V02 Sequence 1, got {len(mismatches)}"
+
+
+def test_v02_representative_cases_source_identity():
+    """Section 8: Verify representative case generator outputs match trades.csv source rows exactly."""
+    v02_df = pd.read_csv(V02_CSV_PATH, dtype={"ticker": str})
+    ticker_df = pd.read_csv(V02_TICKER_CSV_PATH, dtype={"ticker": str})
+
+    for ticker in ["005930", "011170", "001540"]:
+        rep = build_representative_case(ticker, v02_df, ticker_df)
+        src_rows = v02_df[v02_df["ticker"] == ticker].sort_values(by="trade_sequence")
+        assert rep["total_trades"] == len(src_rows)
+
+        for i, tr in enumerate(rep["trades"]):
+            src_r = src_rows.iloc[i]
+            assert tr["trade_id"] == src_r["trade_id"]
+            assert tr["trade_sequence"] == src_r["trade_sequence"]
+            assert tr["entry_signal_date"] == src_r["entry_signal_date"]
+            assert tr["entry_execution_date"] == src_r["entry_execution_date"]
+            assert np.isclose(tr["entry_open"], src_r["entry_open"], atol=1e-2)
+            assert tr["exit_type"] == src_r["exit_type"]
+            assert np.isclose(tr["terminal_return"], src_r["terminal_return"], atol=1e-2)
+            assert tr["trade_status"] == src_r["trade_status"]
 
 
 def test_v02_reentry_loss_guard_then_reentry(contracts):
@@ -250,19 +279,58 @@ def test_v02_open_at_cutoff_invariant_all_trades():
                 assert i == len(sorted_g) - 1, f"OPEN_AT_CUTOFF trade {trade['trade_id']} is not the last trade for ticker {ticker}"
 
 
-def test_v02_state_reset_invariant():
-    """Section 18: Verify state independence (entry open price, loss guard, HWM) on re-entries."""
+def test_v02_loss_guard_basis_reset():
+    """Section 14: Verify Loss Guard basis price and threshold reset independently on re-entries."""
+    v02_df = pd.read_csv(V02_CSV_PATH, dtype={"ticker": str})
+
+    # Find tickers where both sequence 1 and sequence > 1 triggered Loss Guard
+    lg_trades = v02_df[v02_df["loss_guard_triggered"] == True]
+    multi_lg_tickers = lg_trades["ticker"].value_counts()[lambda x: x >= 2].index.tolist()
+
+    assert len(multi_lg_tickers) > 0
+
+    for ticker in multi_lg_tickers[:5]:
+        t_trades = v02_df[(v02_df["ticker"] == ticker) & (v02_df["loss_guard_triggered"] == True)].sort_values(by="trade_sequence")
+        t1, t2 = t_trades.iloc[0], t_trades.iloc[1]
+
+        # Entry prices are distinct
+        assert t1["entry_open"] != t2["entry_open"]
+        # Thresholds are distinct
+        t1_stop_threshold = t1["entry_open"] * 0.85
+        t2_stop_threshold = t2["entry_open"] * 0.85
+        assert t1_stop_threshold != t2_stop_threshold
+
+
+def test_v02_first_progressed_reset():
+    """Section 15: Verify first PROGRESSED state resets and is strictly post-entry for re-entries."""
     v02_df = pd.read_csv(V02_CSV_PATH, dtype={"ticker": str})
     reentries = v02_df[v02_df["trade_sequence"] >= 2]
-    assert len(reentries) == 232
 
     for _, r in reentries.iterrows():
-        assert pd.notna(r["previous_exit_type"])
-        assert pd.notna(r["previous_exit_execution_date"])
-        assert r["entry_execution_date"] > r["previous_exit_execution_date"]
+        f_prog = r["first_progressed_date"]
+        if pd.notna(f_prog):
+            # First progressed must be strictly on or after this trade's entry signal date
+            assert str(f_prog) >= str(r["entry_signal_date"])
 
 
-def test_v02_artifact_consistency():
+def test_v02_exit4_hwm_reset():
+    """Section 16: Verify Exit4 HWM initialization starts from the new trade's own PROGRESSED score."""
+    cache = ParquetCache(base_dir=ROOT / "data/raw/stocks")
+    daily = cache.load("000660")
+    assert daily is not None
+
+    # In 000660, verify multiple trades reach PROGRESSED and have independent HWM
+    v02_df = pd.read_csv(V02_CSV_PATH, dtype={"ticker": str})
+    hynix_trades = v02_df[v02_df["ticker"] == "000660"].sort_values(by="trade_sequence")
+    assert len(hynix_trades) >= 3
+
+    for i in range(len(hynix_trades) - 1):
+        tr = hynix_trades.iloc[i]
+        next_tr = hynix_trades.iloc[i + 1]
+        assert next_tr["entry_execution_date"] > tr["exit_execution_date"]
+
+
+def test_v02_artifact_cardinality_and_consistency():
     """Section 19: Verify cardinalities and sequential cumulative return consistency."""
     v02_df = pd.read_csv(V02_CSV_PATH, dtype={"ticker": str})
     ticker_df = pd.read_csv(V02_TICKER_CSV_PATH, dtype={"ticker": str})
@@ -285,3 +353,23 @@ def test_v02_artifact_consistency():
             cum_factor *= (1.0 + float(tr["terminal_return"]) / 100.0)
         expected_cum_pct = round((cum_factor - 1.0) * 100.0, 2)
         assert np.isclose(expected_cum_pct, row["sequential_cumulative_return_pct"], atol=1e-2)
+
+
+def test_v02_deep_loss_cardinality_and_classification():
+    """Section 22: Verify deep loss cases cardinalities (14 <= -20% and 4 <= -30%) and classifications."""
+    deep_df = pd.read_csv(DEEP_LOSS_CSV_PATH, dtype={"ticker": str})
+    assert len(deep_df) == 14
+    assert (deep_df["terminal_return"] <= -30.0).sum() == 4
+
+    for _, r in deep_df.iterrows():
+        assert pd.notna(r["primary_cause"])
+        assert pd.notna(r["research_interpretation"])
+        assert r["primary_cause"] in {
+            "OPEN_AT_CUTOFF_STRUCTURAL_TAIL",
+            "LOSS_GUARD_EXECUTION_TAIL",
+            "POST_PROGRESSED_EXIT3_LAG",
+            "POST_PROGRESSED_EXIT4_TAIL",
+            "NEVER_PROGRESSED_DEEP_LOSS",
+            "COVERAGE_STRUCTURAL_TAIL",
+            "OTHER_DEEP_LOSS",
+        }

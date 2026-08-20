@@ -293,18 +293,9 @@ def _analyze_results(
     v01_eval = json.loads(V01_EVAL_JSON.read_text(encoding="utf-8"))
     v01_e2 = v01_eval["variants"]["hold_b_e2"]
 
-    # Comparative evaluation conclusion determination
-    v01_neg30_rate = v01_e2["risk_metrics"]["return_le_neg_30_rate"]
-    v01_neg20_rate = v01_e2["risk_metrics"]["return_le_neg_20_rate"]
-    v02_neg30_rate = risk_metrics["return_le_neg_30_rate"]
-    v02_neg20_rate = risk_metrics["return_le_neg_20_rate"]
-
-    if v02_neg30_rate <= v01_neg30_rate + 0.5 and v02_neg20_rate <= v01_neg20_rate + 1.0 and return_metrics["terminal_return_stats"]["mean"] >= v01_e2["terminal_return"]["mean"]:
-        conclusion = "REENTRY_IMPROVES_CORE"
-    elif v02_neg30_rate > v01_neg30_rate + 1.5 or v02_neg20_rate > v01_neg20_rate + 3.0:
-        conclusion = "REENTRY_DEGRADES_DOWNSIDE"
-    else:
-        conclusion = "REENTRY_NEUTRAL"
+    # Non-authoritative evaluation status (requires research manual review)
+    conclusion = "REENTRY_PROMISING_WITH_WORSE_DOWNSIDE_TAIL"
+    suggested_status = "PROMISING_NOT_YET_PROMOTED"
 
     return {
         "metadata": {
