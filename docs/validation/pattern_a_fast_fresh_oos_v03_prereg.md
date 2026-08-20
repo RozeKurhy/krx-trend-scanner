@@ -1,5 +1,10 @@
 # Pattern A FAST Architecture v0.3 Fresh OOS Forward Validation 사전등록서
 
+> [!WARNING]
+> **STATUS: SUPERSEDED_HISTORICAL_PREREGISTRATION**
+> This document is a historical preregistration and DOES NOT represent the current A FAST Core V02 strategy contract (`PATTERN_A_FAST_FINAL_STRATEGY_V02`).
+> DO NOT USE FOR V02 FORWARD VALIDATION.
+
 ================================================================================
 1. 연구 목적 및 연구 질문
 ================================================================================
