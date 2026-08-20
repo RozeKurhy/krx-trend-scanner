@@ -7,6 +7,7 @@ import pandas as pd
 import pytest
 
 from trend_scanner.data.cache import ParquetCache
+from trend_scanner.data.resampler import to_monthly
 from trend_scanner.patterns.pattern_a_evaluator import evaluate_pattern_a
 from trend_scanner.validation.historical_snapshot import build_historical_snapshot
 from trend_scanner.validation.pattern_a_fast_core_v02_reentry import (
@@ -279,55 +280,116 @@ def test_v02_open_at_cutoff_invariant_all_trades():
                 assert i == len(sorted_g) - 1, f"OPEN_AT_CUTOFF trade {trade['trade_id']} is not the last trade for ticker {ticker}"
 
 
-def test_v02_loss_guard_basis_reset():
-    """Section 14: Verify Loss Guard basis price and threshold reset independently on re-entries."""
+def test_v02_loss_guard_basis_reset_exact():
+    """Sections 8-10, 23: Verify exact Loss Guard recomputation from new trade's entry_open basis on DL (000210_02)."""
     v02_df = pd.read_csv(V02_CSV_PATH, dtype={"ticker": str})
+    t2 = v02_df[v02_df["trade_id"] == "000210_02"].iloc[0]
 
-    # Find tickers where both sequence 1 and sequence > 1 triggered Loss Guard
-    lg_trades = v02_df[v02_df["loss_guard_triggered"] == True]
-    multi_lg_tickers = lg_trades["ticker"].value_counts()[lambda x: x >= 2].index.tolist()
-
-    assert len(multi_lg_tickers) > 0
-
-    for ticker in multi_lg_tickers[:5]:
-        t_trades = v02_df[(v02_df["ticker"] == ticker) & (v02_df["loss_guard_triggered"] == True)].sort_values(by="trade_sequence")
-        t1, t2 = t_trades.iloc[0], t_trades.iloc[1]
-
-        # Entry prices are distinct
-        assert t1["entry_open"] != t2["entry_open"]
-        # Thresholds are distinct
-        t1_stop_threshold = t1["entry_open"] * 0.85
-        t2_stop_threshold = t2["entry_open"] * 0.85
-        assert t1_stop_threshold != t2_stop_threshold
-
-
-def test_v02_first_progressed_reset():
-    """Section 15: Verify first PROGRESSED state resets and is strictly post-entry for re-entries."""
-    v02_df = pd.read_csv(V02_CSV_PATH, dtype={"ticker": str})
-    reentries = v02_df[v02_df["trade_sequence"] >= 2]
-
-    for _, r in reentries.iterrows():
-        f_prog = r["first_progressed_date"]
-        if pd.notna(f_prog):
-            # First progressed must be strictly on or after this trade's entry signal date
-            assert str(f_prog) >= str(r["entry_signal_date"])
-
-
-def test_v02_exit4_hwm_reset():
-    """Section 16: Verify Exit4 HWM initialization starts from the new trade's own PROGRESSED score."""
     cache = ParquetCache(base_dir=ROOT / "data/raw/stocks")
-    daily = cache.load("000660")
-    assert daily is not None
+    daily = cache.load("000210").sort_index()
 
-    # In 000660, verify multiple trades reach PROGRESSED and have independent HWM
+    entry_open = float(t2["entry_open"])
+    e_exec = pd.Timestamp(t2["entry_execution_date"])
+    f_eff = pd.Timestamp(t2["first_progressed_effective_trading_date"]) if pd.notna(t2["first_progressed_effective_trading_date"]) else DATA_CUTOFF
+    pre_prog = daily[(daily.index >= e_exec) & (daily.index < f_eff)]
+
+    recomp_sig_d = None
+    recomp_exec_d = None
+    recomp_exec_price = None
+
+    for d, row in pre_prog.iterrows():
+        c = float(row["close"])
+        if (c / entry_open - 1.0) <= -0.15:
+            recomp_sig_d = d
+            fut = daily[(daily.index > d) & (daily.index <= DATA_CUTOFF)]
+            if not fut.empty:
+                recomp_exec_d = fut.index[0]
+                recomp_exec_price = float(fut.iloc[0]["open"])
+            break
+
+    assert recomp_sig_d is not None
+    assert recomp_sig_d.strftime("%Y-%m-%d") == t2["loss_guard_signal_date"]
+    assert recomp_exec_d.strftime("%Y-%m-%d") == t2["loss_guard_execution_date"]
+    assert np.isclose(recomp_exec_price, t2["loss_guard_execution_price"], atol=1e-2)
+
+
+def test_v02_first_progressed_reset_exact():
+    """Sections 11-13, 23: Verify exact monthly PROGRESSED recomputation for re-entry trade on SK Hynix (000660_04)."""
     v02_df = pd.read_csv(V02_CSV_PATH, dtype={"ticker": str})
-    hynix_trades = v02_df[v02_df["ticker"] == "000660"].sort_values(by="trade_sequence")
-    assert len(hynix_trades) >= 3
+    t4 = v02_df[v02_df["trade_id"] == "000660_04"].iloc[0]
 
-    for i in range(len(hynix_trades) - 1):
-        tr = hynix_trades.iloc[i]
-        next_tr = hynix_trades.iloc[i + 1]
-        assert next_tr["entry_execution_date"] > tr["exit_execution_date"]
+    cache = ParquetCache(base_dir=ROOT / "data/raw/stocks")
+    daily = cache.load("000660").sort_index()
+    monthly_bars = to_monthly(daily)
+    m_dates = [m for m in monthly_bars.index if m >= pd.Timestamp(t4["entry_signal_date"]) and m <= DATA_CUTOFF]
+
+    recomp_f_prog = None
+    recomp_f_eff = None
+
+    for m in m_dates:
+        snap = build_historical_snapshot("000660", "SK하이닉스", daily[daily.index <= m], m, include_incomplete_periods=False)
+        eval_res = evaluate_pattern_a(snap)
+        st = eval_res.stage.value.upper() if eval_res.stage else "UNAVAILABLE"
+        if st == "PROGRESSED":
+            recomp_f_prog = m
+            m_daily = daily[daily.index <= m]
+            if not m_daily.empty:
+                recomp_f_eff = m_daily.index.max()
+            break
+
+    assert recomp_f_prog is not None
+    assert recomp_f_prog.strftime("%Y-%m-%d") == t4["first_progressed_date"]
+    assert recomp_f_eff.strftime("%Y-%m-%d") == t4["first_progressed_effective_trading_date"]
+
+
+def test_v02_exit4_hwm_reset_exact():
+    """Sections 14-16, 23: Verify exact Exit4 HWM recomputation initialized from new trade PROGRESSED score on Doosan (000150_03)."""
+    v02_df = pd.read_csv(V02_CSV_PATH, dtype={"ticker": str})
+    t3 = v02_df[v02_df["trade_id"] == "000150_03"].iloc[0]
+
+    cache = ParquetCache(base_dir=ROOT / "data/raw/stocks")
+    daily = cache.load("000150").sort_index()
+    monthly_bars = to_monthly(daily)
+    m_dates = [m for m in monthly_bars.index if m >= pd.Timestamp(t3["entry_signal_date"]) and m <= DATA_CUTOFF]
+
+    monthly_snaps = []
+    for m in m_dates:
+        snap = build_historical_snapshot("000150", "두산", daily[daily.index <= m], m, include_incomplete_periods=False)
+        eval_res = evaluate_pattern_a(snap)
+        st = eval_res.stage.value.upper() if eval_res.stage else "UNAVAILABLE"
+        sc = float(round(eval_res.score, 2)) if eval_res.score is not None else None
+        monthly_snaps.append({"date": m, "stage": st, "score": sc})
+
+    f_prog = pd.Timestamp(t3["first_progressed_date"])
+    f_score = None
+    for s in monthly_snaps:
+        if s["date"] == f_prog and s["stage"] == "PROGRESSED":
+            f_score = s["score"]
+            break
+
+    assert f_score is not None
+    assert np.isclose(f_score, 67.52, atol=1e-2)
+
+    hwm = f_score
+    recomp_exit_sig = None
+    for s in monthly_snaps:
+        m = s["date"]
+        st = s["stage"]
+        sc = s["score"]
+        if m <= f_prog:
+            continue
+        if st == "PROGRESSED":
+            if sc is not None:
+                hwm = max(hwm, sc)
+                if hwm - sc >= 15.0:
+                    recomp_exit_sig = m
+                    break
+        elif st in {"WEAK", "BASE", "TRANSITION", "EARLY_TREND"}:
+            recomp_exit_sig = m
+            break
+
+    assert recomp_exit_sig is not None
+    assert recomp_exit_sig.strftime("%Y-%m-%d") == t3["exit_signal_date"]
 
 
 def test_v02_artifact_cardinality_and_consistency():
@@ -356,20 +418,24 @@ def test_v02_artifact_cardinality_and_consistency():
 
 
 def test_v02_deep_loss_cardinality_and_classification():
-    """Section 22: Verify deep loss cases cardinalities (14 <= -20% and 4 <= -30%) and classifications."""
+    """Sections 4-6, 22, 24: Verify deep loss cases cardinalities (14 <= -20% and 4 <= -30%) and classification hygiene."""
     deep_df = pd.read_csv(DEEP_LOSS_CSV_PATH, dtype={"ticker": str})
     assert len(deep_df) == 14
     assert (deep_df["terminal_return"] <= -30.0).sum() == 4
+
+    forbidden_terms = ["gap caused", "갭하락으로 인해", "slippage caused", "GAP LOSS"]
 
     for _, r in deep_df.iterrows():
         assert pd.notna(r["primary_cause"])
         assert pd.notna(r["research_interpretation"])
         assert r["primary_cause"] in {
             "OPEN_AT_CUTOFF_STRUCTURAL_TAIL",
-            "LOSS_GUARD_EXECUTION_TAIL",
+            "LOSS_GUARD_REALIZED_DEEP_LOSS",
             "POST_PROGRESSED_EXIT3_LAG",
             "POST_PROGRESSED_EXIT4_TAIL",
             "NEVER_PROGRESSED_DEEP_LOSS",
             "COVERAGE_STRUCTURAL_TAIL",
             "OTHER_DEEP_LOSS",
         }
+        for term in forbidden_terms:
+            assert term not in r["research_interpretation"], f"Forbidden speculative term '{term}' found in interpretation"

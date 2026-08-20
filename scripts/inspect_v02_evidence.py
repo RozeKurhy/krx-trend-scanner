@@ -93,10 +93,10 @@ def classify_deep_loss_cause(row: pd.Series) -> dict[str, Any]:
         if lifecycle in {"SKIPPED_EARLY_TREND_HANDOFF", "PROGRESSED_WITHOUT_DIRECT_HANDOFF"}:
             secondary_flags.append("COVERAGE_STRUCTURAL_TAIL")
             interpretation += " (Coverage 경로 상 Exit 3 미적용 및 점수 하락 급락 미발생으로 인한 미청산)"
-    # 2. LOSS_GUARD_EXECUTION_TAIL
+    # 2. LOSS_GUARD_REALIZED_DEEP_LOSS
     elif lg_trig and exit_type == "LOSS_GUARD_CLOSE_LE_NEG_15" and ret <= -20.0:
-        primary_cause = "LOSS_GUARD_EXECUTION_TAIL"
-        interpretation = "진입 후 PROGRESSED 도달 전 -15% 손실가드 발동 시 익일 시가 갭하락으로 인해 -20%를 초과한 실행 슬리피지 테일"
+        primary_cause = "LOSS_GUARD_REALIZED_DEEP_LOSS"
+        interpretation = "Loss Guard가 발동했으나 다음 거래일 시가 실행 기준 최종 손실이 -20% 이하로 확대된 거래. 확대 원인이 signal-day close 자체의 급락인지 overnight gap인지 현재 saved trade artifact만으로는 확정할 수 없음."
     # 3. POST_PROGRESSED_EXIT3_LAG
     elif has_prog and exit_type.startswith("EXIT3_") and ret <= -20.0:
         primary_cause = "POST_PROGRESSED_EXIT3_LAG"
@@ -306,9 +306,6 @@ def _generate_comparison_markdown_doc(v02_df: pd.DataFrame, ticker_df: pd.DataFr
     ret = eval_json["return_metrics"]
     up = eval_json["upside_metrics"]
     gb = eval_json["giveback_metrics"]
-    cohort = eval_json["cohort_diagnostics"]
-    reentry = eval_json["reentry_diagnostics"]
-    seq = eval_json["trade_sequence_distribution"]
     v01 = eval_json["comparator_v01"]
     v01_r = v01["v01_e2_risk_metrics"]
     v01_t = v01["v01_e2_terminal_return"]
@@ -347,9 +344,9 @@ def _generate_comparison_markdown_doc(v02_df: pd.DataFrame, ticker_df: pd.DataFr
 | **Loss Guard 발동 비율** | 53.36% | **{risk["loss_guard_rate"]}%** | **{risk["loss_guard_rate"] - 53.36:+.2f}%p** |
 | **평균 수익률 (Mean Return)** | {v01_t["mean"]}% | **{ret["terminal_return_stats"]["mean"]}%** | **{ret["terminal_return_stats"]["mean"] - v01_t["mean"]:+.2f}%p** |
 | **중앙값 수익률 (Median Return)** | {v01_t["median"]}% | **{ret["terminal_return_stats"]["median"]}%** | **{ret["terminal_return_stats"]["median"] - v01_t["median"]:+.2f}%p** |
-| **승률 (Positive Rate)** | 39.93% (220건) | **{ret["positive_rate"]}% ({ret["positive_count"]}건)** | **+{ret["positive_count"] - 220}건 (+{ret["positive_rate"] - 39.93:+.2f}%p)** |
-| **Terminal Return >= +20% 승자** | {v01_u.get("return_ge_20_count", 167)}건 ({v01_u.get("return_ge_20_rate", 30.31)}%) | **{up["return_ge_20_count"]}건 ({up["return_ge_20_rate"]}%)** | **+{up["return_ge_20_count"] - 167}건 (+{up["return_ge_20_rate"] - 30.31:+.2f}%p)** |
-| **Terminal Return >= +50% 대형 승자** | {v01_u["return_ge_50_count"]}건 ({v01_u["return_ge_50_rate"]}%) | **{up["return_ge_50_count"]}건 ({up["return_ge_50_rate"]}%)** | **+{up["return_ge_50_count"] - v01_u["return_ge_50_count"]}건 (+{up["return_ge_50_rate"] - v01_u["return_ge_50_rate"]:+.2f}%p)** |
+| **승률 (Positive Rate)** | 39.93% (220건) | **{ret["positive_rate"]}% ({ret["positive_count"]}건)** | **+{ret["positive_count"] - 220}건 ({ret["positive_rate"] - 39.93:+.2f}%p)** |
+| **Terminal Return >= +20% 승자** | {v01_u.get("return_ge_20_count", 167)}건 ({v01_u.get("return_ge_20_rate", 30.31)}%) | **{up["return_ge_20_count"]}건 ({up["return_ge_20_rate"]}%)** | **+{up["return_ge_20_count"] - 167}건 ({up["return_ge_20_rate"] - 30.31:+.2f}%p)** |
+| **Terminal Return >= +50% 대형 승자** | {v01_u["return_ge_50_count"]}건 ({v01_u["return_ge_50_rate"]}%) | **{up["return_ge_50_count"]}건 ({up["return_ge_50_rate"]}%)** | **+{up["return_ge_50_count"] - v01_u["return_ge_50_count"]}건 ({up["return_ge_50_rate"] - v01_u["return_ge_50_rate"]:+.2f}%p)** |
 | **Terminal Return >= +100% 초대형 승자** | {v01_u["return_ge_100_count"]}건 ({v01_u["return_ge_100_rate"]}%) | **{up["return_ge_100_count"]}건 ({up["return_ge_100_rate"]}%)** | **+{up["return_ge_100_count"] - v01_u["return_ge_100_count"]}건 ({up["return_ge_100_rate"] - v01_u["return_ge_100_rate"]:+.2f}%p)** |
 | **Peak Giveback 중앙값** | {v01_g["median"]}% | **{gb["giveback_stats"]["median"]}%** | **{gb["giveback_stats"]["median"] - v01_g["median"]:+.2f}%p** |
 | **종목 생애주기 평균 누적 수익률** | 18.48% | **{eval_json["sequential_ticker_cumulative_return"]["mean"]}%** | **{eval_json["sequential_ticker_cumulative_return"]["mean"] - 18.48:+.2f}%p 대폭 상승** |
