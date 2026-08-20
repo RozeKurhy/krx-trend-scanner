@@ -576,7 +576,8 @@ def generate_stock_report(
     name = inst_meta.name
     market = inst_meta.market
     asset_type = inst_meta.asset_type
-    is_common = inst_meta.is_common_stock
+    is_common = inst_meta.is_common_stock_for_production
+    metadata_trusted = inst_meta.is_trusted_for_production
 
     # 3. Daily Slice 생성 (Lookahead 방지)
     if has_cache and daily is not None:
@@ -941,6 +942,7 @@ def generate_stock_report(
         investability_reason=inv_eval.reason,
         investability_result=inv_eval,
         is_common_stock=is_common,
+        metadata_trusted=metadata_trusted,
     )
 
     # 9. Header & Summary

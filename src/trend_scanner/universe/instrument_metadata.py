@@ -42,6 +42,25 @@ class InstrumentMetadata:
     def is_common_stock(self) -> bool:
         return self.is_identified and self.asset_type == AssetType.COMMON.value
 
+    @property
+    def is_trusted_for_production(self) -> bool:
+        """Production A FAST Core applicability에 asset_type을 신뢰해도 되는지.
+
+        row가 존재하고 asset_type이 COMMON이더라도 provenance가 FORMAL_SECURITY_TYPE이
+        아니면(UNKNOWN 또는 LEGACY_HEURISTIC) production에서는 신뢰하지 않는다
+        (Fix Round 04 Critical 1: formal source를 증명하지 못하면 fail closed).
+        """
+        return (
+            self.is_identified
+            and self.classification_authority == "FORMAL_SECURITY_TYPE"
+            and self.asset_type_source == "FORMAL_SECURITY_TYPE"
+            and self.asset_type != AssetType.UNKNOWN.value
+        )
+
+    @property
+    def is_common_stock_for_production(self) -> bool:
+        return self.is_trusted_for_production and self.asset_type == AssetType.COMMON.value
+
 
 class InstrumentMetadataResolver:
     """Memoized local instrument metadata resolver with Strict PIT guarantee."""

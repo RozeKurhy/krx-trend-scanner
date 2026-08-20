@@ -52,6 +52,7 @@ def build_a_fast_core_section(
     investability_reason: str = "",
     investability_result: InvestabilityEvaluationResult | None = None,
     is_common_stock: bool | None = None,
+    metadata_trusted: bool | None = None,
 ) -> AFastCoreSection:
     """단일 종목에 대해 requested_as_of 시점의 A FAST Core V2 전략 상태 섹션을 생성한다."""
     as_of_str = requested_as_of.strftime("%Y-%m-%d")
@@ -65,8 +66,29 @@ def build_a_fast_core_section(
     # 1. Determine Common Stock Eligibility from Formal Asset Type
     if is_common_stock is None:
         is_common_stock = (asset_type == AssetType.COMMON.value)
+    # metadata_trusted를 명시하지 않는 호출자(레거시/직접 테스트 호출)는 기존 동작을
+    # 유지하기 위해 trusted로 간주한다. Production 경로(stock_report.py)는 반드시
+    # inst_meta.is_trusted_for_production을 명시적으로 전달한다.
+    if metadata_trusted is None:
+        metadata_trusted = True
 
-    # 2. Check Instrument Asset Type & Applicability
+    # 2. Trusted Formal Metadata Gate (Fix Round 04 Critical 1)
+    # asset_type이 COMMON으로 저장되어 있더라도 provenance가 FORMAL_SECURITY_TYPE이
+    # 아니면(UNKNOWN 또는 LEGACY_HEURISTIC) production applicability에 사용하지 않는다.
+    if not metadata_trusted:
+        return AFastCoreSection(
+            as_of=as_of_str,
+            applicability="DATA_UNAVAILABLE",
+            strategy_state="DATA_UNAVAILABLE",
+            canonical_position="DATA_UNAVAILABLE",
+            action="NONE",
+            action_reason="INSUFFICIENT_METADATA",
+            execution_timing=None,
+            interpretation="종목 자산 유형에 대한 신뢰 가능한 정본(formal) 메타데이터가 없어 패스트 코어 V2 전략 적용 가능 여부를 판정할 수 없습니다.",
+            provenance=AFastCoreProvenance(),
+        )
+
+    # 3. Check Instrument Asset Type & Applicability
     if asset_type == AssetType.UNKNOWN.value and not is_common_stock:
         return AFastCoreSection(
             as_of=as_of_str,

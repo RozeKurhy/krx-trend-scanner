@@ -368,6 +368,72 @@ def test_stock_report_v02_schema_rejects_invalid_entry_condition_type():
     assert len(errors2) > 0, "Schema must reject non-zero network_requests"
 
 
+def test_stock_report_v02_schema_rejects_missing_a_fast_core_canonical_fields():
+    """스키마 네거티브 검증: a_fast_core canonical field(trade_history)가 통째로 빠지면 거부하는지 검증 (Fix Round 04 Major 1)."""
+    from jsonschema import Draft7Validator
+    import copy
+
+    schema_file = REPO_ROOT / "docs/specs/stock_report_v02_schema.json"
+    schema = json.loads(schema_file.read_text(encoding="utf-8"))
+    validator = Draft7Validator(schema)
+
+    sample_json = REPO_ROOT / "artifacts/stock_reports/v0.2/20260814/005930_삼성전자.json"
+    valid_data = json.loads(sample_json.read_text(encoding="utf-8"))
+
+    bad_data = copy.deepcopy(valid_data)
+    del bad_data["a_fast_core"]["trade_history"]
+    errors = list(validator.iter_errors(bad_data))
+    assert len(errors) > 0, "Schema must reject a_fast_core missing the trade_history key entirely"
+
+
+def test_stock_report_v02_schema_rejects_incomplete_entry_conditions():
+    """스키마 네거티브 검증: entry_conditions가 빈 object({})이면 필수 하위 필드 누락으로 거부하는지 검증."""
+    from jsonschema import Draft7Validator
+    import copy
+
+    schema_file = REPO_ROOT / "docs/specs/stock_report_v02_schema.json"
+    schema = json.loads(schema_file.read_text(encoding="utf-8"))
+    validator = Draft7Validator(schema)
+
+    sample_json = REPO_ROOT / "artifacts/stock_reports/v0.2/20260814/005930_삼성전자.json"
+    valid_data = json.loads(sample_json.read_text(encoding="utf-8"))
+
+    bad_data = copy.deepcopy(valid_data)
+    bad_data["a_fast_core"]["entry_conditions"] = {}
+    errors = list(validator.iter_errors(bad_data))
+    assert len(errors) > 0, "Schema must reject entry_conditions = {} (missing required sub-fields)"
+
+    # reentry_state.enabled 개별 필드 누락도 거부되는지 함께 확인
+    bad_data2 = copy.deepcopy(valid_data)
+    if bad_data2["a_fast_core"]["reentry_state"]:
+        del bad_data2["a_fast_core"]["reentry_state"]["enabled"]
+        errors2 = list(validator.iter_errors(bad_data2))
+        assert len(errors2) > 0, "Schema must reject reentry_state missing required 'enabled' field"
+
+
+def test_stock_report_v02_schema_requires_market_cap_provenance():
+    """스키마 네거티브 검증: current_snapshot에서 market_cap_effective_date / market_cap_source 키가 빠지면 거부하는지 검증 (Fix Round 04 Minor 1)."""
+    from jsonschema import Draft7Validator
+    import copy
+
+    schema_file = REPO_ROOT / "docs/specs/stock_report_v02_schema.json"
+    schema = json.loads(schema_file.read_text(encoding="utf-8"))
+    validator = Draft7Validator(schema)
+
+    sample_json = REPO_ROOT / "artifacts/stock_reports/v0.2/20260814/005930_삼성전자.json"
+    valid_data = json.loads(sample_json.read_text(encoding="utf-8"))
+
+    bad_data = copy.deepcopy(valid_data)
+    del bad_data["current_snapshot"]["market_cap_effective_date"]
+    errors = list(validator.iter_errors(bad_data))
+    assert len(errors) > 0, "Schema must reject current_snapshot missing market_cap_effective_date key"
+
+    bad_data2 = copy.deepcopy(valid_data)
+    del bad_data2["current_snapshot"]["market_cap_source"]
+    errors2 = list(validator.iter_errors(bad_data2))
+    assert len(errors2) > 0, "Schema must reject current_snapshot missing market_cap_source key"
+
+
 def test_production_metadata_does_not_depend_on_name_heuristic():
     """Production 메타데이터가 이름 문자열 휴리스틱이 아닌 정본 정식 메타데이터(FORMAL_SECURITY_TYPE)에 기반하는지 검증."""
     from trend_scanner.universe.instrument_metadata import resolve_instrument_metadata
@@ -414,6 +480,96 @@ def test_formal_metadata_provenance_is_not_fabricated(tmp_path):
     assert meta_missing.asset_type_source == "UNKNOWN"
 
     InstrumentMetadataResolver.clear_cache()
+
+
+def test_untrusted_common_metadata_fails_closed_for_production(monkeypatch):
+    """asset_type=COMMON이지만 provenance가 UNKNOWN이면 Production A FAST Core가 fail closed되는지 검증 (Fix Round 04 Critical 1)."""
+    from trend_scanner.universe.instrument_metadata import InstrumentMetadata
+    import trend_scanner.reporting.stock_report as stock_report_module
+
+    fake_meta = InstrumentMetadata(
+        ticker="005930",
+        name="삼성전자",
+        market="KOSPI",
+        asset_type="COMMON",
+        metadata_source="TEST_MOCK_UNTRUSTED",
+        effective_date="2026-08-14",
+        is_identified=True,
+        classification_authority="UNKNOWN",
+        asset_type_source="UNKNOWN",
+    )
+    # row 자체는 존재(is_identified=True)하고 asset_type=COMMON이지만 provenance는 UNKNOWN.
+    assert fake_meta.is_common_stock is True  # 구 기준(is_common_stock)으로는 여전히 True
+    assert fake_meta.is_trusted_for_production is False
+    assert fake_meta.is_common_stock_for_production is False
+
+    monkeypatch.setattr(stock_report_module, "resolve_instrument_metadata", lambda ticker, as_of, repo_root: fake_meta)
+
+    report, _, _ = generate_stock_report(ticker="005930", as_of="2026-08-14", repo_root=REPO_ROOT, save_artifacts=False)
+    afc = report.a_fast_core
+    assert afc.applicability == "DATA_UNAVAILABLE"
+    assert afc.strategy_state == "DATA_UNAVAILABLE"
+    assert afc.canonical_position == "DATA_UNAVAILABLE"
+    assert afc.action == "NONE"
+    assert afc.action_reason == "INSUFFICIENT_METADATA"
+
+
+def test_legacy_heuristic_common_metadata_is_not_production_authority(monkeypatch):
+    """asset_type=COMMON, provenance=LEGACY_HEURISTIC이면 Production authority로 인정되지 않고 DATA_UNAVAILABLE인지 검증."""
+    from trend_scanner.universe.instrument_metadata import InstrumentMetadata
+    import trend_scanner.reporting.stock_report as stock_report_module
+
+    fake_meta = InstrumentMetadata(
+        ticker="005930",
+        name="삼성전자",
+        market="KOSPI",
+        asset_type="COMMON",
+        metadata_source="LEGACY_QUALITY_DIAGNOSTIC",
+        effective_date="2026-08-14",
+        is_identified=True,
+        classification_authority="LEGACY_HEURISTIC",
+        asset_type_source="NAME_BASED_HEURISTIC",
+    )
+    assert fake_meta.is_trusted_for_production is False
+
+    monkeypatch.setattr(stock_report_module, "resolve_instrument_metadata", lambda ticker, as_of, repo_root: fake_meta)
+
+    report, _, _ = generate_stock_report(ticker="005930", as_of="2026-08-14", repo_root=REPO_ROOT, save_artifacts=False)
+    afc = report.a_fast_core
+    assert afc.applicability == "DATA_UNAVAILABLE"
+    assert afc.strategy_state == "DATA_UNAVAILABLE"
+    assert afc.canonical_position == "DATA_UNAVAILABLE"
+    assert afc.action == "NONE"
+    assert afc.action_reason == "INSUFFICIENT_METADATA"
+
+
+def test_trusted_formal_common_metadata_remains_applicable(monkeypatch):
+    """asset_type=COMMON, provenance=FORMAL_SECURITY_TYPE이면 정상적으로 APPLICABLE 경로가 유지되는지 검증 (negative test들의 대조군)."""
+    from trend_scanner.universe.instrument_metadata import InstrumentMetadata
+    import trend_scanner.reporting.stock_report as stock_report_module
+
+    fake_meta = InstrumentMetadata(
+        ticker="005930",
+        name="삼성전자",
+        market="KOSPI",
+        asset_type="COMMON",
+        metadata_source="KRX_LOCAL_FROZEN_MASTER",
+        effective_date="2026-08-14",
+        is_identified=True,
+        classification_authority="FORMAL_SECURITY_TYPE",
+        asset_type_source="FORMAL_SECURITY_TYPE",
+    )
+    assert fake_meta.is_trusted_for_production is True
+    assert fake_meta.is_common_stock_for_production is True
+
+    monkeypatch.setattr(stock_report_module, "resolve_instrument_metadata", lambda ticker, as_of, repo_root: fake_meta)
+
+    report, _, _ = generate_stock_report(ticker="005930", as_of="2026-08-14", repo_root=REPO_ROOT, save_artifacts=False)
+    afc = report.a_fast_core
+    assert afc.applicability == "APPLICABLE"
+    assert afc.canonical_position == "OPEN"
+    assert afc.strategy_state == "HOLD_PROGRESSED"
+    assert afc.action == "HOLD"
 
 
 def test_instrument_metadata_369370_spac_to_common_pit_transition():

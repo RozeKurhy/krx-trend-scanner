@@ -60,7 +60,7 @@
     
     "current_snapshot": {
       "type": "object",
-      "required": ["official_stage", "candidate_state", "is_candidate", "investability_status", "investability_reason", "is_investable"],
+      "required": ["official_stage", "candidate_state", "is_candidate", "investability_status", "investability_reason", "is_investable", "market_cap_effective_date", "market_cap_source"],
       "properties": {
         "pattern_a_score": { "type": ["number", "null"] },
         "official_stage": { "type": "string" },
@@ -91,6 +91,12 @@
         "canonical_position",
         "action",
         "action_reason",
+        "execution_timing",
+        "entry_conditions",
+        "current_trade",
+        "protection_state",
+        "reentry_state",
+        "trade_history",
         "interpretation",
         "provenance"
       ],
@@ -111,6 +117,24 @@
         "interpretation": { "type": "string" },
         "entry_conditions": {
           "type": ["object", "null"],
+          "required": [
+            "instrument_eligible",
+            "investability_pass",
+            "pattern_a_stage_eligible",
+            "fast_trigger_ready",
+            "monthly_regime_permitted",
+            "daily_risk_allowed",
+            "fast_score_status_allowed",
+            "no_open_position",
+            "all_conditions_met",
+            "failed_conditions",
+            "pattern_a_stage",
+            "fast_stage",
+            "fast_stage_status",
+            "monthly_regime",
+            "daily_risk",
+            "fast_score_status"
+          ],
           "properties": {
             "instrument_eligible": { "type": "boolean" },
             "investability_pass": { "type": "boolean" },
@@ -132,6 +156,24 @@
         },
         "current_trade": {
           "type": ["object", "null"],
+          "required": [
+            "trade_id",
+            "trade_sequence",
+            "entry_signal_date",
+            "entry_execution_date",
+            "entry_open",
+            "entry_pattern_a_stage",
+            "previous_exit_type",
+            "previous_exit_execution_date",
+            "first_progressed_date",
+            "first_progressed_effective_trading_date",
+            "lifecycle_class",
+            "current_close",
+            "current_return_pct",
+            "trade_status",
+            "pending_exit_type",
+            "pending_exit_signal_date"
+          ],
           "properties": {
             "trade_id": { "type": "string" },
             "trade_sequence": { "type": "integer" },
@@ -153,6 +195,19 @@
         },
         "protection_state": {
           "type": ["object", "null"],
+          "required": [
+            "phase",
+            "loss_guard_state",
+            "loss_guard_threshold_pct",
+            "first_progressed_date",
+            "first_progressed_effective_trading_date",
+            "lifecycle_class",
+            "exit3_state",
+            "exit4_state",
+            "progressed_hwm_score",
+            "current_pattern_a_score",
+            "score_drawdown_from_hwm_pt"
+          ],
           "properties": {
             "phase": { "type": "string" },
             "loss_guard_state": { "type": "string" },
@@ -169,6 +224,17 @@
         },
         "reentry_state": {
           "type": ["object", "null"],
+          "required": [
+            "enabled",
+            "cooldown",
+            "maximum_reentries",
+            "pyramiding",
+            "overlapping_position",
+            "same_open_exit_and_reentry",
+            "completed_trade_count",
+            "current_trade_sequence",
+            "next_entry_sequence"
+          ],
           "properties": {
             "enabled": { "type": "boolean" },
             "cooldown": { "type": "string" },
@@ -193,8 +259,13 @@
               "entry_open",
               "entry_pattern_a_stage",
               "exit_type",
+              "exit_signal_date",
+              "exit_execution_date",
+              "exit_price",
               "trade_status",
-              "return_pct"
+              "return_pct",
+              "previous_exit_type",
+              "lifecycle_class"
             ],
             "properties": {
               "trade_id": { "type": "string" },
