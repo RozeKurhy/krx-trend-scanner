@@ -1,13 +1,12 @@
 #!/usr/bin/env python
-"""FAST + Pattern A UNAVAILABLE Decomposition Validation v0.2C Evaluation Runner.
+"""FAST + Pattern A UNAVAILABLE Decomposition Validation v0.2C Evaluation Runner (Corrected Interpretation & Closed).
 
 Strict Execution Invariants:
   - Preregistration Authority: docs/validation/pattern_a_fast_unavailable_decomposition_v02c_prereg.md (Commit bbdab7cc47144fb831e32e31069e5cd7ba60f917)
-  - Local Cache Only (zero external network requests).
-  - PIT evaluation anchored on FIRST FAST v0.1 qualifying signal per ticker.
-  - Next local trading day OPEN execution.
+  - Evaluation Authority: Commit f0b2f7bf6a73e5f101cd82c153f46a756807b4fa
   - Same-sample retrospective characterization (not independent replication).
-  - PRODUCTION_HOLD (research evaluation only, zero production impact).
+  - Semantic Finding: UNAVAILABLE_IS_INFORMATION_INSUFFICIENCY (STRONGLY_SUPPORTED, 99.2% < 36m history).
+  - Evaluation Status: FAST_UNAVAILABLE_MIXED / Production Status: PRODUCTION_HOLD / Research Status: CLOSED.
 """
 
 from __future__ import annotations
@@ -47,6 +46,7 @@ OUT_EVAL_JSON = OUT_DIR / "pattern_a_fast_unavailable_evaluation_v02c.json"
 OUT_EVAL_MD = OUT_DIR / "pattern_a_fast_unavailable_evaluation_v02c.md"
 
 PREREG_COMMIT_SHA = "bbdab7cc47144fb831e32e31069e5cd7ba60f917"
+EVALUATION_AUTHORITY_COMMIT = "f0b2f7bf6a73e5f101cd82c153f46a756807b4fa"
 
 
 def _worker_task(args: tuple[str, str, str, dict, dict]) -> tuple[dict, dict | None]:
@@ -391,24 +391,22 @@ def run_full_evaluation() -> None:
         "FAST_TRANSITION": calculate_distribution_stats(df_trans["fast_score"]),
     }
 
-    # Objective Conclusion Determination
-    # UNAVAILABLE is predominantly INSUFFICIENT_PATTERN_A_HISTORY (100% or vast majority)
-    # Forward outcomes show Return 26W -3.45%, MFE 22.78%, MAE -18.04% (mixed, but clearly information-driven, not structural bearish)
+    # Objective Conclusion Determination (Closure Status)
+    conclusion_status = "FAST_UNAVAILABLE_MIXED"
     history_insuff_rate = (reason_counts.get("INSUFFICIENT_PATTERN_A_HISTORY", 0) / unav_count) * 100 if unav_count else 0.0
-    if history_insuff_rate >= 80.0:
-        conclusion_status = "FAST_UNAVAILABLE_NOT_STRUCTURAL_REJECT"
-    else:
-        conclusion_status = "FAST_UNAVAILABLE_MIXED"
 
     eval_json_data = {
-        "evaluation_title": "FAST + Pattern A UNAVAILABLE Decomposition Validation v0.2C Evaluation",
+        "evaluation_title": "FAST + Pattern A UNAVAILABLE Decomposition Validation v0.2C Evaluation (Corrected Interpretation & Closed)",
         "research_classification": "RETROSPECTIVE_FAST_UNAVAILABLE_DECOMPOSITION_VALIDATION",
         "research_status": "CLOSED",
+        "evaluation_authority_commit": EVALUATION_AUTHORITY_COMMIT,
         "preregistration_authority_commit": PREREG_COMMIT_SHA,
         "preregistration_status": "PREREGISTERED_BEFORE_EVALUATION",
         "same_sample_followup": True,
         "independent_replication": False,
         "primary_sample_previously_observed_in_v02a": True,
+        "semantic_finding": "UNAVAILABLE_IS_INFORMATION_INSUFFICIENCY",
+        "semantic_finding_status": "STRONGLY_SUPPORTED",
         "production_status": "PRODUCTION_HOLD",
         "production_impact": "NONE",
         "data_cutoff": "2026-08-14",
@@ -462,14 +460,16 @@ def run_full_evaluation() -> None:
         "fast_score_diagnostic": fast_score_stats,
         "conclusion": {
             "status": conclusion_status,
+            "semantic_finding": "UNAVAILABLE_IS_INFORMATION_INSUFFICIENCY",
+            "semantic_finding_status": "STRONGLY_SUPPORTED",
             "research_status": "CLOSED",
             "production_status": "PRODUCTION_HOLD",
             "key_observations": [
-                f"전체 1,081개 투자적격 종목 중 FAST 최초 신호 시점 Pattern A == UNAVAILABLE인 종목은 총 {unav_count}개로, 전체 신호(799건)의 59.2%, 전체 Reject(631건)의 75.0%를 차지함.",
-                f"원인 분해 결과, UNAVAILABLE 473건의 {history_insuff_rate:.1f}%({reason_counts.get('INSUFFICIENT_PATTERN_A_HISTORY', 0)}건)가 Pattern A 계산에 요구되는 최소 36개월 월봉 이력 미달(INSUFFICIENT_PATTERN_A_HISTORY)에 기인하며, 피처 결측이나 평가 오류에 의한 실패는 극히 드물거나 없음.",
-                f"FAST_UNAVAILABLE의 전방 26W 성과는 수익률 중앙값 {unav_summary['horizons']['26w']['return_stats']['median']}%, MFE {unav_summary['horizons']['26w']['mfe_stats']['median']}%, MAE {unav_summary['horizons']['26w']['mae_stats']['median']}%로 FAST_TRANSITION(+1.07%, +30.52%) 대비 소폭 낮았으나, 극단 실패율(26W 손실률 {unav_summary['tail_26w_analysis'].get('failure_return_negative_rate', 0)}%, MAE <= -30% 비율 {unav_summary['tail_26w_analysis'].get('failure_mae_le_neg_30_rate', 0)}%)은 TRANSITION과 유사한 수준을 유지함.",
-                f"사후 Pattern A 유효 국면 도달 분석 결과, UNAVAILABLE 종목의 {first_valid_rates.get('TRANSITION', 0.0)}%({first_valid_counts.get('TRANSITION', 0)}건)가 첫 유효 국면으로 TRANSITION에, {first_valid_rates.get('EARLY_TREND', 0.0)}%({first_valid_counts.get('EARLY_TREND', 0)}건)가 EARLY_TREND에 직접 진입하였으며, FAST 신호는 첫 유효 국면 산출보다 중앙값 {overall_lead_stats['median']}일 선행함.",
-                f"따라서 현행 Gate의 UNAVAILABLE Reject는 구조적 약세 종목(Structural Bearish Reject)을 차단한 것이 아니라, Pattern A의 장기 이력 요구 조건으로 인해 발생한 정보 미비(Information Insufficiency) 신호였음을 확인하였으며, 본 연구를 {conclusion_status} 및 PRODUCTION_HOLD 상태로 CLOSED함.",
+                f"전체 1,081개 투자적격 종목 중 FAST_UNAVAILABLE 473건 중 469건({history_insuff_rate:.1f}%)은 Pattern A 장기 이력 부족(INSUFFICIENT_PATTERN_A_HISTORY)에 기인하여, UNAVAILABLE은 구조적 약세 lifecycle Stage가 아니라 대부분 정보 부족(Information Insufficiency) 상태임이 강력하게 지지됨.",
+                f"FAST_UNAVAILABLE 26W Return 중앙값은 {unav_summary['horizons']['26w']['return_stats']['median']}%, MFE {unav_summary['horizons']['26w']['mfe_stats']['median']}%로 FAST_TRANSITION(+1.07%, +30.52%) 및 FAST_WEAK(+20.31%, +57.16%)보다 전방 성과가 약하게 나타남.",
+                f"26W Failure Tail에서도 음수 수익률 비율 {unav_summary['tail_26w_analysis']['failure_return_negative_rate']}%, 수익률 <= -20% 비율 {unav_summary['tail_26w_analysis']['failure_return_le_neg_20_rate']}%, MAE <= -30% 비율 {unav_summary['tail_26w_analysis']['failure_mae_le_neg_30_rate']}%로 TRANSITION 대비 불리한 지표가 확인되어 UNAVAILABLE을 저위험 코호트로 해석할 수 없음.",
+                f"UNAVAILABLE 해소 후 첫 valid Stage는 PROGRESSED {first_valid_rates.get('PROGRESSED', 0.0)}%, TRANSITION {first_valid_rates.get('TRANSITION', 0.0)}%, EARLY_TREND {first_valid_rates.get('EARLY_TREND', 0.0)}%였으며, FAST 신호는 첫 유효 Stage보다 중앙값 {overall_lead_stats['median']}일 선행하여 Pattern A availability 자체에 상당한 정보 지연이 존재함을 시사함.",
+                f"FAST_UNAVAILABLE 성과는 Era/Market/Risk별 편차가 컸으며, 특히 2024-2026(-10.36%), KOSDAQ(-10.53%), ELEVATED Risk(-19.02%)에서 큰 부진이 관찰되어 전체 UNAVAILABLE을 단일 Entry 허용 정책으로 전환할 근거가 부족함.",
             ],
         },
     }
@@ -505,7 +505,7 @@ def _render_markdown_report_v02c(data: dict[str, Any]) -> str:
     t_tail = t_sum["tail_26w_analysis"]
     w_tail = w_sum["tail_26w_analysis"]
 
-    md = f"""# FAST + Pattern A UNAVAILABLE Decomposition Validation v0.2C 전종목 사후 평가 보고서 (Closed)
+    md = f"""# FAST + Pattern A UNAVAILABLE Decomposition Validation v0.2C 전종목 사후 평가 보고서 (Corrected & Closed)
 
 ================================================================================
 1. 평가 개요 및 실행 환경
@@ -514,6 +514,7 @@ def _render_markdown_report_v02c(data: dict[str, Any]) -> str:
 - **연구 분류 (Research Classification)**: `RETROSPECTIVE_FAST_UNAVAILABLE_DECOMPOSITION_VALIDATION`
 - **연구 성격 명시**: **`SAME_SAMPLE_RETROSPECTIVE_FOLLOWUP_CHARACTERIZATION` (v0.2A 동일 표본 후속 특성 분석, 독립 재현 검증 아님)**
 - **연구 상태 (Research Status)**: **`CLOSED`**
+- **평가 기준 커밋 (Evaluation Authority Commit)**: `{data.get("evaluation_authority_commit", EVALUATION_AUTHORITY_COMMIT)}`
 - **사전등록 기준 커밋 (Preregistration Authority)**: `{data["preregistration_authority_commit"]}` (`PREREGISTERED_BEFORE_EVALUATION`)
 - **데이터 기준일 (Data Cutoff)**: `{data["data_cutoff"]}`
 - **데이터 소스**: **로컬 Parquet 캐시 전용 (LOCAL CACHE ONLY, 외부 네트워크 0회)**
@@ -533,7 +534,7 @@ def _render_markdown_report_v02c(data: dict[str, Any]) -> str:
 - **평가 적격 종목 (Evaluation Eligible)**: `{pop["evaluation_eligible_count"]:,}개` (**`{pop["evaluation_eligible_rate"]:.1f}%`**)
 - **FAST v0.1 최초 신호 발생 종목**: `{sig["fast_v01_signal_qualifying_count"]:,}개` (체결 표본: `{sig["fast_executable_first_entry_count"]:,}개`)
 - **연구 대상 코호트 표본수**:
-  - **`FAST_UNAVAILABLE` (Pattern A == UNAVAILABLE)**: **`{sig["fast_unavailable_count"]:,}개`** (전체 신호의 59.2%, 전체 Reject의 75.0%)
+  - **`FAST_UNAVAILABLE` (핵심 분석 대상)**: **`{sig["fast_unavailable_count"]:,}개`** (전체 신호의 59.2%, 전체 Reject의 75.0%)
   - **`FAST_WEAK` (Reference)**: **`{sig["fast_weak_count"]:,}개`**
   - **`FAST_TRANSITION` (Reference)**: **`{sig["fast_transition_count"]:,}개`**
   - *기타 코호트*: `{sig["other_stages_count"]:,}개` (`BASE` 35, `EARLY_TREND` 11, `PROGRESSED` 15)
@@ -669,17 +670,24 @@ UNAVAILABLE {sig["fast_unavailable_count"]}개 종목이 사후 completed monthl
 9. 최종 결론 및 연구 상태
 ================================================================================
 - **연구 상태 (Research Status)**: **`CLOSED`**
-- **최종 연구 판정 (Evaluation Status)**: **`{conc["status"]}`**
+- **최종 연구 판정 (Evaluation Status)**: **`FAST_UNAVAILABLE_MIXED`**
+- **핵심 의미 발견 (Semantic Finding)**: **`UNAVAILABLE_IS_INFORMATION_INSUFFICIENCY` (`STRONGLY_SUPPORTED`)**
 - **운영 상태 (Production Status)**: **`PRODUCTION_HOLD`**
 - **Production 영향도**: **`NONE`**
 - **테스트 실행 여부**: **`Tests: NOT RUN`**
 
 #### 요약 평가
 FAST + Pattern A UNAVAILABLE 원인 분해 및 사후 전이 평가 결과:
-1. UNAVAILABLE 473건의 절대다수(100% 또는 이에 준하는 비율)는 Pattern A 계산에 필요한 최소 36개월 월봉 이력 미비(INSUFFICIENT_PATTERN_A_HISTORY)에 기인하며, 계산 오류나 규칙 결측이 아니었습니다.
-2. 성과 측면에서 FAST_UNAVAILABLE은 26W Return 중앙값 -3.45%, MFE +22.78%로 TRANSITION 대비 다소 낮았으나, 손실 테일 및 극단 하락률(MAE <= -30% 비율 14.8% vs TRANSITION 23.6%)은 오히려 안정적으로 유지되었습니다.
-3. 사후 이력이 누적되면서 유효 국면을 얻었을 때 상당수 종목이 TRANSITION/EARLY_TREND로 직접 진입하여 FAST 신호의 조기 선행성을 보여주었습니다.
-4. 따라서 현행 Gate의 UNAVAILABLE Reject는 구조적 약세 차단이 아닌 데이터 미비에 따른 운영적 배제(Information Insufficiency)였음을 명확히 규명하였으며, 실전 운영 정책 변경 없이 `PRODUCTION_HOLD` 상태로 v0.2C 연구를 CLOSED 종료합니다.
+
+1. UNAVAILABLE 473건 중 469건(99.2%)은 Pattern A 계산에 필요한 장기 월봉 이력이 부족하여 발생했습니다. 따라서 UNAVAILABLE은 WEAK과 같은 구조적 약세 lifecycle Stage가 아니며, 대부분 정보 부족(Information Insufficiency) 상태라는 점은 강하게 지지되었습니다.
+2. 그러나 FAST_UNAVAILABLE의 전방 성과는 FAST_TRANSITION 및 FAST_WEAK 대비 전반적으로 약했고, 26W 음수 수익률(56.3%) 및 큰 손실 tail(Return <= -20% 27.0%, MAE <= -30% 27.6%)도 일부 악화되었습니다.
+3. 또한 KOSDAQ(-10.53%), ELEVATED Risk(-19.02%), 2024-2026(-10.36%) subgroup에서 상대적으로 큰 부진이 관찰되어 FAST_UNAVAILABLE을 하나의 균질한 저위험 cohort로 볼 수 없습니다.
+4. 반면 Pattern A가 최초로 유효 Stage를 반환하기까지 중앙값 약 201일이 소요되었고, 첫 유효 Stage가 PROGRESSED인 비율도 33.4%로 높아 Pattern A availability 자체에는 상당한 정보 지연 비용이 존재했습니다.
+
+따라서 v0.2C의 최종 결론은:
+- UNAVAILABLE은 Structural Bearish Stage가 아니다 (`UNAVAILABLE_IS_INFORMATION_INSUFFICIENCY` - `STRONGLY_SUPPORTED`).
+- 하지만 전방 성과와 하방 손실 테일의 취약성으로 인해 UNAVAILABLE을 단순히 Entry 허용 대상으로 승격할 근거도 없다.
+- 최종 연구 판정은 FAST_UNAVAILABLE_MIXED, Production은 PRODUCTION_HOLD로 유지하며 v0.2C 연구를 CLOSED 상태로 종료합니다.
 """
     return md
 
