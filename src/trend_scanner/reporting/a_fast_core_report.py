@@ -52,9 +52,16 @@ def build_a_fast_core_section(
     investability_reason: str = "",
     investability_result: InvestabilityEvaluationResult | None = None,
     is_common_stock: bool | None = None,
-    metadata_trusted: bool | None = None,
+    *,
+    metadata_trusted: bool,
 ) -> AFastCoreSection:
-    """단일 종목에 대해 requested_as_of 시점의 A FAST Core V2 전략 상태 섹션을 생성한다."""
+    """단일 종목에 대해 requested_as_of 시점의 A FAST Core V2 전략 상태 섹션을 생성한다.
+
+    metadata_trusted는 기본값이 없는 필수 keyword-only argument다 (Fix Round 05
+    Major 2). Trust 판단 없이 이 함수를 호출하는 것 자체를 막아, 새 호출자가
+    실수로 이 인자를 빠뜨려도 자동으로 trusted가 되어 gate를 우회하는 상황을
+    원천 차단한다 (omission = TypeError, fail open이 아니라 호출 자체가 불가능).
+    """
     as_of_str = requested_as_of.strftime("%Y-%m-%d")
 
     # Normalize investability status
@@ -66,11 +73,6 @@ def build_a_fast_core_section(
     # 1. Determine Common Stock Eligibility from Formal Asset Type
     if is_common_stock is None:
         is_common_stock = (asset_type == AssetType.COMMON.value)
-    # metadata_trusted를 명시하지 않는 호출자(레거시/직접 테스트 호출)는 기존 동작을
-    # 유지하기 위해 trusted로 간주한다. Production 경로(stock_report.py)는 반드시
-    # inst_meta.is_trusted_for_production을 명시적으로 전달한다.
-    if metadata_trusted is None:
-        metadata_trusted = True
 
     # 2. Trusted Formal Metadata Gate (Fix Round 04 Critical 1)
     # asset_type이 COMMON으로 저장되어 있더라도 provenance가 FORMAL_SECURITY_TYPE이

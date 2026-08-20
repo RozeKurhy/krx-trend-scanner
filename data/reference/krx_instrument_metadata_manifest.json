@@ -1,0 +1,338 @@
+{
+  "artifact_version": "2",
+  "generated_at": "2026-08-20T20:44:20.834417+00:00",
+  "effective_date": "2026-08-14",
+  "upstream_authority": "KRX Market Data Center (data.krx.co.kr), authenticated session",
+  "upstream_source_name": "전종목기본정보 (bld=dbms/MDC/STAT/standard/MDCSTAT01901); pykrx get_etf_ticker_list / get_etn_ticker_list; 상폐종목검색 (delisted reference only)",
+  "upstream_source_location": "https://data.krx.co.kr/comm/bldAttendant/getJsonData.cmd",
+  "retrieval_method": "authenticated HTTPS POST (KRX_ID/KRX_PW via .env), build-time only, not used at Stock Report runtime",
+  "source_snapshot_date": "2026-08-20",
+  "source_checksum_sha256": "08188c894fc8ef34efa6e50f11be8e82742d58c5bde79b48f17bef4f824fd8b1",
+  "builder_script": "scripts/build_krx_instrument_metadata.py",
+  "mapping_version": "v1",
+  "row_count": 72786,
+  "ticker_count": 3296,
+  "verified_snapshot_effective_date": "2026-08-14",
+  "verified_row_count": 2780,
+  "asset_type_distribution_verified_rows": {
+    "COMMON": 2558,
+    "SPAC": 68,
+    "PREFERRED": 113,
+    "UNKNOWN": 1,
+    "REIT": 23,
+    "ETF": 17
+  },
+  "unknown_count_verified_rows": 1,
+  "unmapped_formal_category_count_verified_rows": 0,
+  "changed_tickers_vs_prior_committed_value": [
+    {
+      "ticker": "0001A0",
+      "name": "덕양에너젠",
+      "old_asset_type": "UNKNOWN",
+      "new_asset_type": "COMMON"
+    },
+    {
+      "ticker": "0004V0",
+      "name": "엔비알모션",
+      "old_asset_type": "UNKNOWN",
+      "new_asset_type": "COMMON"
+    },
+    {
+      "ticker": "0007C0",
+      "name": "아크릴",
+      "old_asset_type": "UNKNOWN",
+      "new_asset_type": "COMMON"
+    },
+    {
+      "ticker": "0007J0",
+      "name": "인벤테라",
+      "old_asset_type": "UNKNOWN",
+      "new_asset_type": "COMMON"
+    },
+    {
+      "ticker": "0008Z0",
+      "name": "에스엔시스",
+      "old_asset_type": "UNKNOWN",
+      "new_asset_type": "COMMON"
+    },
+    {
+      "ticker": "0009K0",
+      "name": "에임드바이오",
+      "old_asset_type": "UNKNOWN",
+      "new_asset_type": "COMMON"
+    },
+    {
+      "ticker": "0010F0",
+      "name": "보원케미칼",
+      "old_asset_type": "UNKNOWN",
+      "new_asset_type": "COMMON"
+    },
+    {
+      "ticker": "0010V0",
+      "name": "제이피아이헬스케어",
+      "old_asset_type": "UNKNOWN",
+      "new_asset_type": "COMMON"
+    },
+    {
+      "ticker": "0011A0",
+      "name": "액스비스",
+      "old_asset_type": "UNKNOWN",
+      "new_asset_type": "COMMON"
+    },
+    {
+      "ticker": "0011T0",
+      "name": "채비",
+      "old_asset_type": "UNKNOWN",
+      "new_asset_type": "COMMON"
+    },
+    {
+      "ticker": "0013V0",
+      "name": "삼진식품",
+      "old_asset_type": "UNKNOWN",
+      "new_asset_type": "COMMON"
+    },
+    {
+      "ticker": "0015G0",
+      "name": "그린광학",
+      "old_asset_type": "UNKNOWN",
+      "new_asset_type": "COMMON"
+    },
+    {
+      "ticker": "0015N0",
+      "name": "아로마티카",
+      "old_asset_type": "UNKNOWN",
+      "new_asset_type": "COMMON"
+    },
+    {
+      "ticker": "0015S0",
+      "name": "페스카로",
+      "old_asset_type": "UNKNOWN",
+      "new_asset_type": "COMMON"
+    },
+    {
+      "ticker": "0017J0",
+      "name": "세미티에스",
+      "old_asset_type": "UNKNOWN",
+      "new_asset_type": "COMMON"
+    },
+    {
+      "ticker": "0039P0",
+      "name": "매드업",
+      "old_asset_type": "UNKNOWN",
+      "new_asset_type": "COMMON"
+    },
+    {
+      "ticker": "0041J0",
+      "name": "엘에스스팩1호",
+      "old_asset_type": "UNKNOWN",
+      "new_asset_type": "SPAC"
+    },
+    {
+      "ticker": "0044K0",
+      "name": "삼성스팩10호",
+      "old_asset_type": "UNKNOWN",
+      "new_asset_type": "SPAC"
+    },
+    {
+      "ticker": "0054V0",
+      "name": "엔에이치스팩32호",
+      "old_asset_type": "UNKNOWN",
+      "new_asset_type": "SPAC"
+    },
+    {
+      "ticker": "0071M0",
+      "name": "삼성스팩11호",
+      "old_asset_type": "UNKNOWN",
+      "new_asset_type": "SPAC"
+    },
+    {
+      "ticker": "0082N0",
+      "name": "카나프테라퓨틱스",
+      "old_asset_type": "UNKNOWN",
+      "new_asset_type": "COMMON"
+    },
+    {
+      "ticker": "0088M0",
+      "name": "메쥬",
+      "old_asset_type": "UNKNOWN",
+      "new_asset_type": "COMMON"
+    },
+    {
+      "ticker": "0091W0",
+      "name": "신영스팩11호",
+      "old_asset_type": "UNKNOWN",
+      "new_asset_type": "SPAC"
+    },
+    {
+      "ticker": "0093G0",
+      "name": "미래에셋비전스팩8호",
+      "old_asset_type": "UNKNOWN",
+      "new_asset_type": "SPAC"
+    },
+    {
+      "ticker": "0096B0",
+      "name": "삼성스팩12호",
+      "old_asset_type": "UNKNOWN",
+      "new_asset_type": "SPAC"
+    },
+    {
+      "ticker": "0096D0",
+      "name": "미래에셋비전스팩9호",
+      "old_asset_type": "UNKNOWN",
+      "new_asset_type": "SPAC"
+    },
+    {
+      "ticker": "0097F0",
+      "name": "미래에셋비전스팩10호",
+      "old_asset_type": "UNKNOWN",
+      "new_asset_type": "SPAC"
+    },
+    {
+      "ticker": "0099W0",
+      "name": "미래에셋비전스팩11호",
+      "old_asset_type": "UNKNOWN",
+      "new_asset_type": "SPAC"
+    },
+    {
+      "ticker": "0105P0",
+      "name": "유진스팩12호",
+      "old_asset_type": "UNKNOWN",
+      "new_asset_type": "SPAC"
+    },
+    {
+      "ticker": "0115H0",
+      "name": "삼성스팩13호",
+      "old_asset_type": "UNKNOWN",
+      "new_asset_type": "SPAC"
+    },
+    {
+      "ticker": "0117P0",
+      "name": "피스피스스튜디오",
+      "old_asset_type": "UNKNOWN",
+      "new_asset_type": "COMMON"
+    },
+    {
+      "ticker": "0130H0",
+      "name": "엔에이치스팩33호",
+      "old_asset_type": "UNKNOWN",
+      "new_asset_type": "SPAC"
+    },
+    {
+      "ticker": "0156T0",
+      "name": "에이치엘지노믹스",
+      "old_asset_type": "UNKNOWN",
+      "new_asset_type": "COMMON"
+    },
+    {
+      "ticker": "0218L0",
+      "name": "네오뷰",
+      "old_asset_type": "UNKNOWN",
+      "new_asset_type": "COMMON"
+    },
+    {
+      "ticker": "159910",
+      "name": "에코글로우",
+      "old_asset_type": "PREFERRED",
+      "new_asset_type": "COMMON"
+    },
+    {
+      "ticker": "294090",
+      "name": "이오플로우",
+      "old_asset_type": "PREFERRED",
+      "new_asset_type": "COMMON"
+    },
+    {
+      "ticker": "299900",
+      "name": "위지윅스튜디오",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "458650",
+      "name": "성우",
+      "old_asset_type": "PREFERRED",
+      "new_asset_type": "COMMON"
+    },
+    {
+      "ticker": "465320",
+      "name": "교보15호스팩",
+      "old_asset_type": "SPAC",
+      "new_asset_type": "COMMON"
+    },
+    {
+      "ticker": "468760",
+      "name": "유진스팩10호",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "SPAC"
+    },
+    {
+      "ticker": "471050",
+      "name": "대신밸런스제17호스팩",
+      "old_asset_type": "SPAC",
+      "new_asset_type": "COMMON"
+    },
+    {
+      "ticker": "477380",
+      "name": "미래에셋비전스팩4호",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "SPAC"
+    },
+    {
+      "ticker": "477470",
+      "name": "미래에셋비전스팩5호",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "SPAC"
+    },
+    {
+      "ticker": "477760",
+      "name": "DB금융스팩12호",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "SPAC"
+    },
+    {
+      "ticker": "478110",
+      "name": "이베스트스팩6호",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "SPAC"
+    },
+    {
+      "ticker": "478440",
+      "name": "미래에셋비전스팩6호",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "SPAC"
+    },
+    {
+      "ticker": "481890",
+      "name": "엔에이치스팩31호",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "SPAC"
+    },
+    {
+      "ticker": "482680",
+      "name": "미래에셋비전스팩7호",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "SPAC"
+    },
+    {
+      "ticker": "488060",
+      "name": "유진스팩11호",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "SPAC"
+    },
+    {
+      "ticker": "0120G0",
+      "name": "삼양바이오팜",
+      "old_asset_type": "UNKNOWN",
+      "new_asset_type": "COMMON"
+    },
+    {
+      "ticker": "0126Z0",
+      "name": "삼성에피스홀딩스",
+      "old_asset_type": "UNKNOWN",
+      "new_asset_type": "COMMON"
+    }
+  ],
+  "historical_rows_marked_legacy_unverified": 70006,
+  "zero_network_runtime": true,
+  "pit_history_rewrite": "NOT_PERFORMED — historical effective_date rows keep their prior asset_type value unchanged; only classification_authority/asset_type_source were downgraded to LEGACY_UNVERIFIED because their formal provenance cannot be re-verified from a live snapshot taken at build time."
+}

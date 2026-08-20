@@ -166,15 +166,63 @@ def test_a_fast_core_no_network_request():
     assert report.a_fast_core.provenance.network_requests == 0
 
 
-def test_a_fast_core_uses_requested_as_of_only():
-    """과거 시점(2025-11-28)에 대해 미래 데이터가 유입되지 않는 strict PIT 검증."""
-    rep_2025, _, _ = generate_stock_report(ticker="005930", as_of="2025-11-28", repo_root=REPO_ROOT, save_artifacts=False)
+def _generate_report_forcing_trusted_metadata(ticker, as_of, monkeypatch):
+    """historical as_of PIT/execution-boundary 전략 상태 검증용 helper.
+
+    Fix Round 05(§2.13)부터 2026-08-14보다 과거인 effective_date row는
+    classification_authority=LEGACY_UNVERIFIED로 production trust에서 제외된다
+    (실제 upstream 재검증 불가 — history rewrite 금지). 그 결과 historical as_of
+    조회는 이제 항상 A FAST Core = DATA_UNAVAILABLE이 되어, 이 gate와 무관하게
+    존재해 온 strict-PIT/실행 경계 전략 로직 자체는 더 이상 이 경로로 검증할 수
+    없다. 그 커버리지를 유지하기 위해, 이 시점의 실제 metadata(이름/시장/asset_type)는
+    그대로 두고 provenance만 FORMAL_SECURITY_TYPE으로 override해서 trust gate를
+    우회한다 — 전략 상태 계산 자체는 실제 가격/계약 데이터 그대로다.
+    """
+    import trend_scanner.reporting.stock_report as stock_report_module
+    from trend_scanner.universe.instrument_metadata import resolve_instrument_metadata, InstrumentMetadata
+
+    real_meta = resolve_instrument_metadata(ticker, as_of=as_of, repo_root=REPO_ROOT)
+    forced_meta = InstrumentMetadata(
+        ticker=real_meta.ticker,
+        name=real_meta.name,
+        market=real_meta.market,
+        asset_type=real_meta.asset_type,
+        metadata_source=real_meta.metadata_source,
+        effective_date=real_meta.effective_date,
+        is_identified=real_meta.is_identified,
+        classification_authority="FORMAL_SECURITY_TYPE",
+        asset_type_source="FORMAL_SECURITY_TYPE",
+    )
+    monkeypatch.setattr(stock_report_module, "resolve_instrument_metadata",
+                         lambda ticker, as_of, repo_root: forced_meta)
+    return generate_stock_report(ticker=ticker, as_of=as_of, repo_root=REPO_ROOT, save_artifacts=False)
+
+
+def test_a_fast_core_uses_requested_as_of_only(monkeypatch):
+    """과거 시점(2025-11-28)에 대해 미래 데이터가 유입되지 않는 strict PIT 검증.
+
+    2025-11-28은 Fix Round 05 기준 verified snapshot(2026-08-14)보다 과거이므로,
+    production 경로에서는 metadata가 LEGACY_UNVERIFIED로 이제 DATA_UNAVAILABLE이
+    된다(아래에서 별도 확인). PIT/전략 상태 계산 로직 자체의 정확성은 metadata
+    trust를 강제로 override해서 검증한다.
+    """
+    rep_2025, _, _ = _generate_report_forcing_trusted_metadata("005930", "2025-11-28", monkeypatch)
     assert rep_2025.requested_as_of == "2025-11-28"
     assert rep_2025.a_fast_core.as_of == "2025-11-28"
     # In Nov 2025, Samsung sequence 4 was still PRE_PROGRESSED (first progressed was 2026-02-28)
     assert rep_2025.a_fast_core.canonical_position == "OPEN"
     assert rep_2025.a_fast_core.strategy_state == "HOLD_PRE_PROGRESSED"
     assert rep_2025.a_fast_core.protection_state.loss_guard_state == "ACTIVE"
+
+
+def test_a_fast_core_historical_as_of_is_data_unavailable_without_metadata_override():
+    """Fix Round 05 §2.13: verified snapshot(2026-08-14) 이전 historical as_of는 실제 production 경로에서 DATA_UNAVAILABLE인지 검증 (override 없이)."""
+    rep_2025, _, _ = generate_stock_report(ticker="005930", as_of="2025-11-28", repo_root=REPO_ROOT, save_artifacts=False)
+    assert rep_2025.a_fast_core.applicability == "DATA_UNAVAILABLE"
+    assert rep_2025.a_fast_core.strategy_state == "DATA_UNAVAILABLE"
+    assert rep_2025.a_fast_core.canonical_position == "DATA_UNAVAILABLE"
+    assert rep_2025.a_fast_core.action == "NONE"
+    assert rep_2025.a_fast_core.action_reason == "INSUFFICIENT_METADATA"
 
 
 def test_stock_report_pit_does_not_use_future_market_cap(tmp_path):
@@ -572,6 +620,29 @@ def test_trusted_formal_common_metadata_remains_applicable(monkeypatch):
     assert afc.action == "HOLD"
 
 
+def test_a_fast_core_builder_requires_metadata_trust():
+    """build_a_fast_core_section()는 metadata_trusted를 반드시 명시해야 하며, 생략하면 TypeError (Fix Round 05 Major 2)."""
+    from trend_scanner.reporting.a_fast_core_report import build_a_fast_core_section
+    from trend_scanner.data.cache import ParquetCache
+
+    cache = ParquetCache(base_dir=REPO_ROOT / "data/raw/stocks")
+    daily = cache.load("005930")
+
+    with pytest.raises(TypeError):
+        build_a_fast_core_section(
+            ticker="005930",
+            name="삼성전자",
+            market="KOSPI",
+            daily=daily,
+            requested_as_of=pd.Timestamp("2026-08-14"),
+            score_contract={"x": 1},
+            stage_contract={"x": 1},
+            asset_type="COMMON",
+            is_common_stock=True,
+            # metadata_trusted 의도적으로 생략
+        )
+
+
 def test_instrument_metadata_369370_spac_to_common_pit_transition():
     """369370 종목의 합병 전(SPAC) -> 합병 후(COMMON) PIT 시점별 전환 정확성 검증."""
     from trend_scanner.universe.instrument_metadata import resolve_instrument_metadata
@@ -751,9 +822,14 @@ def test_a_fast_core_wait_failed_conditions():
     assert len(core.entry_conditions.failed_conditions) > 0
 
 
-def test_a_fast_core_pending_entry_next_open():
-    """신규 진입 신호 발생 시점(2026-05-15, 안국약품 seq 2)의 ENTER_NEXT_OPEN 동작 검증."""
-    report, _, _ = generate_stock_report(ticker="001540", as_of="2026-05-15", repo_root=REPO_ROOT, save_artifacts=False)
+def test_a_fast_core_pending_entry_next_open(monkeypatch):
+    """신규 진입 신호 발생 시점(2026-05-15, 안국약품 seq 2)의 ENTER_NEXT_OPEN 동작 검증.
+
+    2026-05-15는 verified snapshot(2026-08-14)보다 과거라 실제 production 경로는
+    이제 DATA_UNAVAILABLE이 된다(Fix Round 05 §2.13). ENTRY 전략 로직 자체의
+    정확성은 metadata trust를 강제로 override해서 검증한다.
+    """
+    report, _, _ = _generate_report_forcing_trusted_metadata("001540", "2026-05-15", monkeypatch)
     core = report.a_fast_core
 
     assert core.canonical_position == "FLAT"
@@ -764,14 +840,18 @@ def test_a_fast_core_pending_entry_next_open():
     assert core.entry_conditions.all_conditions_met is True
 
 
-def test_a_fast_core_execution_boundary():
-    """신호일(2026-05-15, FLAT + ENTER_NEXT_OPEN) -> 체결일(2026-05-18, OPEN + HOLD) 전환 경계 검증."""
-    rep_sig, _, _ = generate_stock_report(ticker="001540", as_of="2026-05-15", repo_root=REPO_ROOT, save_artifacts=False)
+def test_a_fast_core_execution_boundary(monkeypatch):
+    """신호일(2026-05-15, FLAT + ENTER_NEXT_OPEN) -> 체결일(2026-05-18, OPEN + HOLD) 전환 경계 검증.
+
+    두 날짜 모두 verified snapshot(2026-08-14)보다 과거라 metadata trust를 강제로
+    override해서 실행 경계 로직 자체를 검증한다 (Fix Round 05 §2.13).
+    """
+    rep_sig, _, _ = _generate_report_forcing_trusted_metadata("001540", "2026-05-15", monkeypatch)
     assert rep_sig.a_fast_core.canonical_position == "FLAT"
     assert rep_sig.a_fast_core.strategy_state == "ENTRY"
     assert rep_sig.a_fast_core.action == "ENTER_NEXT_OPEN"
 
-    rep_exec, _, _ = generate_stock_report(ticker="001540", as_of="2026-05-18", repo_root=REPO_ROOT, save_artifacts=False)
+    rep_exec, _, _ = _generate_report_forcing_trusted_metadata("001540", "2026-05-18", monkeypatch)
     assert rep_exec.a_fast_core.canonical_position == "OPEN"
     assert rep_exec.a_fast_core.strategy_state == "HOLD_PRE_PROGRESSED"
     assert rep_exec.a_fast_core.action == "HOLD"
