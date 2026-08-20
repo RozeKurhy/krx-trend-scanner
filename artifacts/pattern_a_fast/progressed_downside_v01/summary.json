@@ -1,0 +1,164 @@
+{
+  "metadata": {
+    "strategy_name": "PATTERN_A_FAST_CORE_V02_REENTRY",
+    "research_classification": "PATTERN_A_FAST_V02_PROGRESSED_DOWNSIDE_DIAGNOSTIC_V01",
+    "research_type": "RETROSPECTIVE_PROGRESSED_DOWNSIDE_ANATOMY",
+    "total_official_v02_trades": 783,
+    "progressed_reached_trades": 542,
+    "progressed_unique_tickers": 373,
+    "survived_active_holding_trades": 328,
+    "pre_progressed_loss_guard_trades": 214,
+    "data_cutoff": "2026-08-14",
+    "production_status": "PRODUCTION_HOLD",
+    "fresh_oos_executed": false
+  },
+  "lifecycle_distribution": {
+    "NORMAL_EARLY_TREND_HANDOFF": 403,
+    "PROGRESSED_WITHOUT_DIRECT_HANDOFF": 98,
+    "SKIPPED_EARLY_TREND_HANDOFF": 41
+  },
+  "exit_distribution_survived": {
+    "EXIT4_SCORE_DRAWDOWN_GE_15": 243,
+    "NO_EXIT_BEFORE_CUTOFF": 51,
+    "EXIT3_PROGRESSED_TO_WEAK": 15,
+    "EXIT3_PROGRESSED_TO_TRANSITION": 11,
+    "EXIT3_PROGRESSED_TO_EARLY_TREND": 6,
+    "EXIT3_PROGRESSED_TO_BASE": 2
+  },
+  "loss_metrics_survived": {
+    "return_le_neg_20_count": 18,
+    "return_le_neg_20_rate": 5.49,
+    "return_le_neg_30_count": 10,
+    "return_le_neg_30_rate": 3.05,
+    "return_le_neg_40_count": 3,
+    "return_le_neg_40_rate": 0.91,
+    "worst_terminal_return": -77.72,
+    "worst_mae": -79.82,
+    "post_mae_stats": {
+      "count": 328,
+      "mean": 20.5,
+      "median": 11.79,
+      "p25": -7.61,
+      "p50": 11.79,
+      "p75": 41.3,
+      "p90": 68.3,
+      "p95": 92.05,
+      "min": -79.82,
+      "max": 485.11,
+      "std": 48.0
+    }
+  },
+  "drawdown_distributions": {
+    "all_survived_close_drawdown": {
+      "count": 328,
+      "mean": -25.14,
+      "median": -19.84,
+      "p25": -31.86,
+      "p50": -19.84,
+      "p75": -12.46,
+      "p90": -8.32,
+      "p95": -6.73,
+      "min": -81.12,
+      "max": -1.67,
+      "std": 17.53
+    },
+    "all_survived_intraday_drawdown": {
+      "count": 328,
+      "mean": -29.22,
+      "median": -24.16,
+      "p25": -35.96,
+      "p50": -24.16,
+      "p75": -17.62,
+      "p90": -12.76,
+      "p95": -11.13,
+      "min": -83.04,
+      "max": -5.42,
+      "std": 17.17
+    },
+    "winners_ge_20_close_drawdown": {
+      "count": 232,
+      "mean": -22.0,
+      "median": -17.45,
+      "p25": -26.44,
+      "p50": -17.45,
+      "p75": -10.96,
+      "p90": -7.45,
+      "p95": -5.93,
+      "min": -77.73,
+      "max": -1.67,
+      "std": 16.15
+    },
+    "winners_ge_50_close_drawdown": {
+      "count": 164,
+      "mean": -21.73,
+      "median": -17.02,
+      "p25": -25.92,
+      "p50": -17.02,
+      "p75": -10.51,
+      "p90": -7.54,
+      "p95": -6.31,
+      "min": -77.73,
+      "max": -4.48,
+      "std": 16.3
+    },
+    "winners_ge_100_close_drawdown": {
+      "count": 61,
+      "mean": -25.02,
+      "median": -17.81,
+      "p25": -32.48,
+      "p50": -17.81,
+      "p75": -9.46,
+      "p90": -6.27,
+      "p95": -5.7,
+      "min": -77.73,
+      "max": -4.48,
+      "std": 19.95
+    },
+    "losers_le_neg_20_close_drawdown": {
+      "count": 18,
+      "mean": -45.67,
+      "median": -44.62,
+      "p25": -53.86,
+      "p50": -44.62,
+      "p75": -34.44,
+      "p90": -24.68,
+      "p95": -21.06,
+      "min": -80.12,
+      "max": -17.11,
+      "std": 18.03
+    },
+    "losers_le_neg_30_close_drawdown": {
+      "count": 10,
+      "mean": -57.09,
+      "median": -53.58,
+      "p25": -67.19,
+      "p50": -53.58,
+      "p75": -47.47,
+      "p90": -44.15,
+      "p95": -39.08,
+      "min": -80.12,
+      "max": -34.0,
+      "std": 14.59
+    }
+  },
+  "exit_mechanism_diagnostics": {
+    "exit3_count": 34,
+    "exit3_terminal_return_mean": 11.4,
+    "exit3_terminal_return_median": 7.54,
+    "exit3_le_neg_20_count": 10,
+    "exit3_le_neg_30_count": 5,
+    "exit4_count": 243,
+    "exit4_terminal_return_mean": 63.96,
+    "exit4_terminal_return_median": 55.65,
+    "exit4_le_neg_20_count": 4,
+    "exit4_le_neg_30_count": 2,
+    "coverage_count": 76,
+    "coverage_open_at_cutoff_count": 26
+  },
+  "profit_giveback_cases": {
+    "mfe_ge_20_terminal_le_0_count": 25,
+    "mfe_ge_50_terminal_le_20_count": 24
+  },
+  "diagnostic_conclusion": "PROGRESSED_DOWNSIDE_SEPARATION_OBSERVED",
+  "price_based_protection_worth_phase2": "YES"
+}
