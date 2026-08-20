@@ -155,6 +155,7 @@ v0.2의 핵심 승격 사항:
         "current_trade": { "type": ["object", "null"] },
         "protection_state": { "type": ["object", "null"] },
         "reentry_state": { "type": ["object", "null"] },
+        "metadata_provenance_mode": { "type": "string", "enum": ["CURRENT_VERIFIED", "HISTORICAL_LEGACY_RESEARCH", "DATA_UNAVAILABLE"] },
         "trade_history": { "type": "array" },
         "provenance": { "type": "object" }
       }

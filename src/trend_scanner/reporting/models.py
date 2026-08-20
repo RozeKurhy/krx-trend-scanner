@@ -333,6 +333,7 @@ class AFastCoreSection:
     trade_history: list[AFastCoreTradeHistoryItem] = field(default_factory=list)
     interpretation: str = ""
     provenance: AFastCoreProvenance = field(default_factory=AFastCoreProvenance)
+    metadata_provenance_mode: str = "CURRENT_VERIFIED"
 
 
 @dataclass

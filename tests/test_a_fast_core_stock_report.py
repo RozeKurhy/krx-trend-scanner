@@ -28,6 +28,9 @@ from trend_scanner.universe.models import AssetType, MarketType
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
+_manifest = json.loads((REPO_ROOT / "data/reference/krx_instrument_metadata_manifest.json").read_text(encoding="utf-8"))
+VERIFIED_DATE = _manifest["verified_snapshot_effective_date"]
+
 
 def _validate_single_report_schema(d: dict) -> list[str]:
     """Pure-Python structural and contractual schema validator for Stock Report v0.2."""
@@ -73,7 +76,7 @@ def _validate_single_report_schema(d: dict) -> list[str]:
         "strategy_id", "strategy_version", "strategy_alias", "strategy_status",
         "production_status", "fresh_oos_status", "as_of", "applicability",
         "strategy_state", "canonical_position", "action", "action_reason",
-        "interpretation", "provenance"
+        "interpretation", "provenance", "metadata_provenance_mode"
     ]
     for k in core_required:
         if k not in core:
@@ -85,6 +88,8 @@ def _validate_single_report_schema(d: dict) -> list[str]:
         errors.append(f"Invalid strategy_version: {core.get('strategy_version')}")
     if core.get("applicability") not in {"APPLICABLE", "NOT_APPLICABLE", "DATA_UNAVAILABLE"}:
         errors.append(f"Invalid applicability: {core.get('applicability')}")
+    if core.get("metadata_provenance_mode") not in {"CURRENT_VERIFIED", "HISTORICAL_LEGACY_RESEARCH", "DATA_UNAVAILABLE"}:
+        errors.append(f"Invalid metadata_provenance_mode: {core.get('metadata_provenance_mode')}")
     if core.get("strategy_state") not in {"HOLD_PROGRESSED", "HOLD_PRE_PROGRESSED", "ENTRY", "EXIT", "WAIT", "NOT_APPLICABLE", "DATA_UNAVAILABLE"}:
         errors.append(f"Invalid strategy_state: {core.get('strategy_state')}")
     if core.get("canonical_position") not in {"OPEN", "FLAT", "NOT_APPLICABLE", "DATA_UNAVAILABLE"}:
@@ -166,63 +171,62 @@ def test_a_fast_core_no_network_request():
     assert report.a_fast_core.provenance.network_requests == 0
 
 
-def _generate_report_forcing_trusted_metadata(ticker, as_of, monkeypatch):
-    """historical as_of PIT/execution-boundary 전략 상태 검증용 helper.
-
-    Fix Round 05(§2.13)부터 2026-08-14보다 과거인 effective_date row는
-    classification_authority=LEGACY_UNVERIFIED로 production trust에서 제외된다
-    (실제 upstream 재검증 불가 — history rewrite 금지). 그 결과 historical as_of
-    조회는 이제 항상 A FAST Core = DATA_UNAVAILABLE이 되어, 이 gate와 무관하게
-    존재해 온 strict-PIT/실행 경계 전략 로직 자체는 더 이상 이 경로로 검증할 수
-    없다. 그 커버리지를 유지하기 위해, 이 시점의 실제 metadata(이름/시장/asset_type)는
-    그대로 두고 provenance만 FORMAL_SECURITY_TYPE으로 override해서 trust gate를
-    우회한다 — 전략 상태 계산 자체는 실제 가격/계약 데이터 그대로다.
-    """
-    import trend_scanner.reporting.stock_report as stock_report_module
-    from trend_scanner.universe.instrument_metadata import resolve_instrument_metadata, InstrumentMetadata
-
-    real_meta = resolve_instrument_metadata(ticker, as_of=as_of, repo_root=REPO_ROOT)
-    forced_meta = InstrumentMetadata(
-        ticker=real_meta.ticker,
-        name=real_meta.name,
-        market=real_meta.market,
-        asset_type=real_meta.asset_type,
-        metadata_source=real_meta.metadata_source,
-        effective_date=real_meta.effective_date,
-        is_identified=real_meta.is_identified,
-        classification_authority="FORMAL_SECURITY_TYPE",
-        asset_type_source="FORMAL_SECURITY_TYPE",
-    )
-    monkeypatch.setattr(stock_report_module, "resolve_instrument_metadata",
-                         lambda ticker, as_of, repo_root: forced_meta)
-    return generate_stock_report(ticker=ticker, as_of=as_of, repo_root=REPO_ROOT, save_artifacts=False)
-
-
-def test_a_fast_core_uses_requested_as_of_only(monkeypatch):
+def test_a_fast_core_uses_requested_as_of_only():
     """과거 시점(2025-11-28)에 대해 미래 데이터가 유입되지 않는 strict PIT 검증.
 
-    2025-11-28은 Fix Round 05 기준 verified snapshot(2026-08-14)보다 과거이므로,
-    production 경로에서는 metadata가 LEGACY_UNVERIFIED로 이제 DATA_UNAVAILABLE이
-    된다(아래에서 별도 확인). PIT/전략 상태 계산 로직 자체의 정확성은 metadata
-    trust를 강제로 override해서 검증한다.
+    Fix Round 06 Major 1: 2025-11-28은 verified snapshot(VERIFIED_DATE)보다
+    과거이므로 이 시점 metadata 자체는 formal 재검증되지 않았지만(LEGACY_UNVERIFIED),
+    이 ticker가 그 이후(VERIFIED_DATE)에 실제로 formal 재검증됐으므로 이 쿼리는
+    명백히 retrospective(과거 조회)임이 확인되어 HISTORICAL_LEGACY_RESEARCH 모드로
+    실제 production 경로(generate_stock_report)를 override 없이 그대로 통과한다.
     """
-    rep_2025, _, _ = _generate_report_forcing_trusted_metadata("005930", "2025-11-28", monkeypatch)
+    rep_2025, _, _ = generate_stock_report(ticker="005930", as_of="2025-11-28", repo_root=REPO_ROOT, save_artifacts=False)
     assert rep_2025.requested_as_of == "2025-11-28"
     assert rep_2025.a_fast_core.as_of == "2025-11-28"
+    assert rep_2025.a_fast_core.metadata_provenance_mode == "HISTORICAL_LEGACY_RESEARCH"
     # In Nov 2025, Samsung sequence 4 was still PRE_PROGRESSED (first progressed was 2026-02-28)
     assert rep_2025.a_fast_core.canonical_position == "OPEN"
     assert rep_2025.a_fast_core.strategy_state == "HOLD_PRE_PROGRESSED"
     assert rep_2025.a_fast_core.protection_state.loss_guard_state == "ACTIVE"
 
 
-def test_a_fast_core_historical_as_of_is_data_unavailable_without_metadata_override():
-    """Fix Round 05 §2.13: verified snapshot(2026-08-14) 이전 historical as_of는 실제 production 경로에서 DATA_UNAVAILABLE인지 검증 (override 없이)."""
-    rep_2025, _, _ = generate_stock_report(ticker="005930", as_of="2025-11-28", repo_root=REPO_ROOT, save_artifacts=False)
-    assert rep_2025.a_fast_core.applicability == "DATA_UNAVAILABLE"
-    assert rep_2025.a_fast_core.strategy_state == "DATA_UNAVAILABLE"
-    assert rep_2025.a_fast_core.canonical_position == "DATA_UNAVAILABLE"
-    assert rep_2025.a_fast_core.action == "NONE"
-    assert rep_2025.a_fast_core.action_reason == "INSUFFICIENT_METADATA"
+def test_a_fast_core_metadata_never_verified_is_data_unavailable(monkeypatch):
+    """이후 시점에도 한 번도 formal 재검증된 적이 없는 metadata는 HISTORICAL_LEGACY_RESEARCH로
+    승격되지 않고 DATA_UNAVAILABLE로 fail closed 유지되는지 검증 (Fix Round 06 Major 1, §4.5 경계).
+
+    §4.5는 '오늘' 시점 production 판단에 legacy metadata를 trusted로 쓰는 것을 금지한다.
+    이후 재검증 snapshot이 전혀 없는 시점(has_later_verified_snapshot=False)은 '과거'가
+    아니라 아직 검증되지 않은 사실상의 현재이므로, 이 조건에서는 여전히 DATA_UNAVAILABLE이어야 한다.
+    """
+    import trend_scanner.reporting.stock_report as stock_report_module
+    from trend_scanner.universe.instrument_metadata import InstrumentMetadata
+
+    fake_meta = InstrumentMetadata(
+        ticker="005930",
+        name="삼성전자",
+        market="KOSPI",
+        asset_type="COMMON",
+        metadata_source="TEST_MOCK_NEVER_VERIFIED",
+        effective_date="2025-11-28",
+        is_identified=True,
+        classification_authority="LEGACY_UNVERIFIED",
+        asset_type_source="LEGACY_UNVERIFIED",
+        has_later_verified_snapshot=False,
+    )
+    assert fake_meta.is_trusted_for_production is False
+    assert fake_meta.is_eligible_for_historical_legacy_research is False
+
+    monkeypatch.setattr(stock_report_module, "resolve_instrument_metadata",
+                         lambda ticker, as_of, repo_root: fake_meta)
+
+    report, _, _ = generate_stock_report(ticker="005930", as_of="2025-11-28", repo_root=REPO_ROOT, save_artifacts=False)
+    afc = report.a_fast_core
+    assert afc.metadata_provenance_mode == "DATA_UNAVAILABLE"
+    assert afc.applicability == "DATA_UNAVAILABLE"
+    assert afc.strategy_state == "DATA_UNAVAILABLE"
+    assert afc.canonical_position == "DATA_UNAVAILABLE"
+    assert afc.action == "NONE"
+    assert afc.action_reason == "INSUFFICIENT_METADATA"
 
 
 def test_stock_report_pit_does_not_use_future_market_cap(tmp_path):
@@ -486,7 +490,7 @@ def test_production_metadata_does_not_depend_on_name_heuristic():
     """Production 메타데이터가 이름 문자열 휴리스틱이 아닌 정본 정식 메타데이터(FORMAL_SECURITY_TYPE)에 기반하는지 검증."""
     from trend_scanner.universe.instrument_metadata import resolve_instrument_metadata
     
-    meta = resolve_instrument_metadata("138040", as_of="2026-08-14", repo_root=REPO_ROOT)
+    meta = resolve_instrument_metadata("138040", as_of=VERIFIED_DATE, repo_root=REPO_ROOT)
     assert meta.ticker == "138040"
     assert meta.name == "메리츠금융지주"
     assert meta.market == "KOSPI"
@@ -555,6 +559,7 @@ def test_untrusted_common_metadata_fails_closed_for_production(monkeypatch):
 
     report, _, _ = generate_stock_report(ticker="005930", as_of="2026-08-14", repo_root=REPO_ROOT, save_artifacts=False)
     afc = report.a_fast_core
+    assert afc.metadata_provenance_mode == "DATA_UNAVAILABLE"
     assert afc.applicability == "DATA_UNAVAILABLE"
     assert afc.strategy_state == "DATA_UNAVAILABLE"
     assert afc.canonical_position == "DATA_UNAVAILABLE"
@@ -584,6 +589,7 @@ def test_legacy_heuristic_common_metadata_is_not_production_authority(monkeypatc
 
     report, _, _ = generate_stock_report(ticker="005930", as_of="2026-08-14", repo_root=REPO_ROOT, save_artifacts=False)
     afc = report.a_fast_core
+    assert afc.metadata_provenance_mode == "DATA_UNAVAILABLE"
     assert afc.applicability == "DATA_UNAVAILABLE"
     assert afc.strategy_state == "DATA_UNAVAILABLE"
     assert afc.canonical_position == "DATA_UNAVAILABLE"
@@ -614,6 +620,7 @@ def test_trusted_formal_common_metadata_remains_applicable(monkeypatch):
 
     report, _, _ = generate_stock_report(ticker="005930", as_of="2026-08-14", repo_root=REPO_ROOT, save_artifacts=False)
     afc = report.a_fast_core
+    assert afc.metadata_provenance_mode == "CURRENT_VERIFIED"
     assert afc.applicability == "APPLICABLE"
     assert afc.canonical_position == "OPEN"
     assert afc.strategy_state == "HOLD_PROGRESSED"
@@ -621,7 +628,7 @@ def test_trusted_formal_common_metadata_remains_applicable(monkeypatch):
 
 
 def test_a_fast_core_builder_requires_metadata_trust():
-    """build_a_fast_core_section()는 metadata_trusted를 반드시 명시해야 하며, 생략하면 TypeError (Fix Round 05 Major 2)."""
+    """build_a_fast_core_section()는 metadata_provenance_mode를 반드시 명시해야 하며, 생략하면 TypeError (Fix Round 05 Major 2, Fix Round 06 Major 1)."""
     from trend_scanner.reporting.a_fast_core_report import build_a_fast_core_section
     from trend_scanner.data.cache import ParquetCache
 
@@ -639,7 +646,7 @@ def test_a_fast_core_builder_requires_metadata_trust():
             stage_contract={"x": 1},
             asset_type="COMMON",
             is_common_stock=True,
-            # metadata_trusted 의도적으로 생략
+            # metadata_provenance_mode 의도적으로 생략
         )
 
 
@@ -668,7 +675,7 @@ def test_instrument_metadata_138040_meritz_is_common():
     """138040 메리츠금융지주가 REIT가 아닌 보통주(COMMON, KOSPI)로 정식 분류되는지 검증."""
     from trend_scanner.universe.instrument_metadata import resolve_instrument_metadata
     
-    meta = resolve_instrument_metadata("138040", as_of="2026-08-14", repo_root=REPO_ROOT)
+    meta = resolve_instrument_metadata("138040", as_of=VERIFIED_DATE, repo_root=REPO_ROOT)
     assert meta.ticker == "138040"
     assert meta.name == "메리츠금융지주"
     assert meta.market == "KOSPI"
@@ -733,6 +740,7 @@ def test_a_fast_core_samsung_20260814_exact():
     report, _, _ = generate_stock_report(ticker="005930", as_of="2026-08-14", repo_root=REPO_ROOT, save_artifacts=False)
     core = report.a_fast_core
 
+    assert core.metadata_provenance_mode == "HISTORICAL_LEGACY_RESEARCH"
     assert core.applicability == "APPLICABLE"
     assert core.canonical_position == "OPEN"
     assert core.strategy_state == "HOLD_PROGRESSED"
@@ -765,6 +773,7 @@ def test_a_fast_core_anguk_20260814_exact():
     report, _, _ = generate_stock_report(ticker="001540", as_of="2026-08-14", repo_root=REPO_ROOT, save_artifacts=False)
     core = report.a_fast_core
 
+    assert core.metadata_provenance_mode == "HISTORICAL_LEGACY_RESEARCH"
     assert core.applicability == "APPLICABLE"
     assert core.canonical_position == "OPEN"
     assert core.strategy_state == "HOLD_PRE_PROGRESSED"
@@ -822,16 +831,17 @@ def test_a_fast_core_wait_failed_conditions():
     assert len(core.entry_conditions.failed_conditions) > 0
 
 
-def test_a_fast_core_pending_entry_next_open(monkeypatch):
+def test_a_fast_core_pending_entry_next_open():
     """신규 진입 신호 발생 시점(2026-05-15, 안국약품 seq 2)의 ENTER_NEXT_OPEN 동작 검증.
 
-    2026-05-15는 verified snapshot(2026-08-14)보다 과거라 실제 production 경로는
-    이제 DATA_UNAVAILABLE이 된다(Fix Round 05 §2.13). ENTRY 전략 로직 자체의
-    정확성은 metadata trust를 강제로 override해서 검증한다.
+    Fix Round 06 Major 1: 2026-05-15는 verified snapshot(VERIFIED_DATE)보다 과거지만
+    이후 실제로 재검증됐으므로 HISTORICAL_LEGACY_RESEARCH 모드로 실제 production
+    경로를 override 없이 그대로 통과한다.
     """
-    report, _, _ = _generate_report_forcing_trusted_metadata("001540", "2026-05-15", monkeypatch)
+    report, _, _ = generate_stock_report(ticker="001540", as_of="2026-05-15", repo_root=REPO_ROOT, save_artifacts=False)
     core = report.a_fast_core
 
+    assert core.metadata_provenance_mode == "HISTORICAL_LEGACY_RESEARCH"
     assert core.canonical_position == "FLAT"
     assert core.strategy_state == "ENTRY"
     assert core.action == "ENTER_NEXT_OPEN"
@@ -840,18 +850,21 @@ def test_a_fast_core_pending_entry_next_open(monkeypatch):
     assert core.entry_conditions.all_conditions_met is True
 
 
-def test_a_fast_core_execution_boundary(monkeypatch):
+def test_a_fast_core_execution_boundary():
     """신호일(2026-05-15, FLAT + ENTER_NEXT_OPEN) -> 체결일(2026-05-18, OPEN + HOLD) 전환 경계 검증.
 
-    두 날짜 모두 verified snapshot(2026-08-14)보다 과거라 metadata trust를 강제로
-    override해서 실행 경계 로직 자체를 검증한다 (Fix Round 05 §2.13).
+    Fix Round 06 Major 1: 두 날짜 모두 verified snapshot(VERIFIED_DATE)보다 과거지만
+    이후 재검증됐으므로 HISTORICAL_LEGACY_RESEARCH 모드로 실제 production 경로를
+    override 없이 그대로 통과한다.
     """
-    rep_sig, _, _ = _generate_report_forcing_trusted_metadata("001540", "2026-05-15", monkeypatch)
+    rep_sig, _, _ = generate_stock_report(ticker="001540", as_of="2026-05-15", repo_root=REPO_ROOT, save_artifacts=False)
+    assert rep_sig.a_fast_core.metadata_provenance_mode == "HISTORICAL_LEGACY_RESEARCH"
     assert rep_sig.a_fast_core.canonical_position == "FLAT"
     assert rep_sig.a_fast_core.strategy_state == "ENTRY"
     assert rep_sig.a_fast_core.action == "ENTER_NEXT_OPEN"
 
-    rep_exec, _, _ = _generate_report_forcing_trusted_metadata("001540", "2026-05-18", monkeypatch)
+    rep_exec, _, _ = generate_stock_report(ticker="001540", as_of="2026-05-18", repo_root=REPO_ROOT, save_artifacts=False)
+    assert rep_exec.a_fast_core.metadata_provenance_mode == "HISTORICAL_LEGACY_RESEARCH"
     assert rep_exec.a_fast_core.canonical_position == "OPEN"
     assert rep_exec.a_fast_core.strategy_state == "HOLD_PRE_PROGRESSED"
     assert rep_exec.a_fast_core.action == "HOLD"

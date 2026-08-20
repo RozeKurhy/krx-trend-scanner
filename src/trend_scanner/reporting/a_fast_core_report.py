@@ -39,7 +39,67 @@ from trend_scanner.validation.pattern_a_fast_core_v02_reentry import simulate_ti
 logger = logging.getLogger(__name__)
 
 
+_VALID_METADATA_PROVENANCE_MODES = ("CURRENT_VERIFIED", "HISTORICAL_LEGACY_RESEARCH", "DATA_UNAVAILABLE")
+
+
 def build_a_fast_core_section(
+    ticker: str,
+    name: str,
+    market: str,
+    daily: pd.DataFrame | None,
+    requested_as_of: pd.Timestamp,
+    score_contract: dict,
+    stage_contract: dict,
+    asset_type: str = "COMMON",
+    investability_status: str | InvestabilityStatus = InvestabilityStatus.INVESTABLE,
+    investability_reason: str = "",
+    investability_result: InvestabilityEvaluationResult | None = None,
+    is_common_stock: bool | None = None,
+    *,
+    metadata_provenance_mode: str,
+) -> AFastCoreSection:
+    """단일 종목에 대해 requested_as_of 시점의 A FAST Core V2 전략 상태 섹션을 생성한다.
+
+    metadata_provenance_mode는 기본값이 없는 필수 keyword-only argument다 (Fix Round 05
+    Major 2, Fix Round 06 Major 1). Trust 판단 없이 이 함수를 호출하는 것 자체를 막아,
+    새 호출자가 실수로 이 인자를 빠뜨려도 자동으로 trusted가 되어 gate를 우회하는
+    상황을 원천 차단한다 (omission = TypeError, fail open이 아니라 호출 자체가 불가능).
+
+    세 가지 값 중 하나:
+      - CURRENT_VERIFIED: requested_as_of 시점 metadata가 formal 소스로 실제 검증됨
+        (production 판단에 신뢰 가능).
+      - HISTORICAL_LEGACY_RESEARCH: requested_as_of 시점 자체는 formal 검증되지
+        않았지만(LEGACY_UNVERIFIED), 그 이후 시점에 실제로 formal 재검증된 snapshot이
+        존재해 이 쿼리가 명백히 retrospective(과거 조회)임이 확인됨 — 전략 계산은
+        정상 수행하되 production 신뢰가 아님을 명시적으로 구분해 표시한다(§4.5는
+        "오늘" 판단에 legacy metadata를 trusted로 쓰는 것만 금지하며, 과거 조회를
+        retrospective로 계산하는 것 자체를 금지하지 않는다).
+      - DATA_UNAVAILABLE: metadata를 신뢰할 근거가 전혀 없음(이후 재검증 snapshot도
+        없음) — 전략 계산을 수행하지 않고 즉시 fail closed.
+    """
+    if metadata_provenance_mode not in _VALID_METADATA_PROVENANCE_MODES:
+        raise ValueError(f"Unknown metadata_provenance_mode: {metadata_provenance_mode!r}")
+
+    section = _build_a_fast_core_section_impl(
+        ticker=ticker,
+        name=name,
+        market=market,
+        daily=daily,
+        requested_as_of=requested_as_of,
+        score_contract=score_contract,
+        stage_contract=stage_contract,
+        asset_type=asset_type,
+        investability_status=investability_status,
+        investability_reason=investability_reason,
+        investability_result=investability_result,
+        is_common_stock=is_common_stock,
+        metadata_trusted=(metadata_provenance_mode != "DATA_UNAVAILABLE"),
+    )
+    section.metadata_provenance_mode = metadata_provenance_mode
+    return section
+
+
+def _build_a_fast_core_section_impl(
     ticker: str,
     name: str,
     market: str,
@@ -55,13 +115,6 @@ def build_a_fast_core_section(
     *,
     metadata_trusted: bool,
 ) -> AFastCoreSection:
-    """단일 종목에 대해 requested_as_of 시점의 A FAST Core V2 전략 상태 섹션을 생성한다.
-
-    metadata_trusted는 기본값이 없는 필수 keyword-only argument다 (Fix Round 05
-    Major 2). Trust 판단 없이 이 함수를 호출하는 것 자체를 막아, 새 호출자가
-    실수로 이 인자를 빠뜨려도 자동으로 trusted가 되어 gate를 우회하는 상황을
-    원천 차단한다 (omission = TypeError, fail open이 아니라 호출 자체가 불가능).
-    """
     as_of_str = requested_as_of.strftime("%Y-%m-%d")
 
     # Normalize investability status

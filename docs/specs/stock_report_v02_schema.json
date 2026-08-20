@@ -98,9 +98,11 @@
         "reentry_state",
         "trade_history",
         "interpretation",
-        "provenance"
+        "provenance",
+        "metadata_provenance_mode"
       ],
       "properties": {
+        "metadata_provenance_mode": { "type": "string", "enum": ["CURRENT_VERIFIED", "HISTORICAL_LEGACY_RESEARCH", "DATA_UNAVAILABLE"] },
         "strategy_id": { "type": "string", "enum": ["PATTERN_A_FAST_FINAL_STRATEGY_V02"] },
         "strategy_version": { "type": "string", "enum": ["V02"] },
         "strategy_alias": { "type": "string" },

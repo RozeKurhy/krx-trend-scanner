@@ -317,6 +317,11 @@ def render_markdown_report(report: StockReport) -> str:
     # Section 2. 패스트 코어 V2 전략 상태 (A FAST Core V2 Strategy State)
     seq_str = f"{core.current_trade.trade_sequence}번째 거래" if (core.current_trade and core.canonical_position == "OPEN") else ("N/A (FLAT)" if core.canonical_position == "FLAT" else "N/A")
     md.append("## 2. 패스트 코어 V2 전략 상태 (A FAST Core V2 Strategy State)")
+    if core.metadata_provenance_mode == "HISTORICAL_LEGACY_RESEARCH":
+        md.append("> ⚠️ **UNVERIFIED_HISTORICAL_METADATA** — 이 시점의 종목 메타데이터는 formal 재검증되지 않았습니다(`LEGACY_UNVERIFIED`). 아래 전략 상태는 retrospective 연구용이며 production 투자 판단 근거가 아닙니다.")
+    elif core.metadata_provenance_mode == "DATA_UNAVAILABLE":
+        md.append("> ⚠️ **DATA_UNAVAILABLE** — 신뢰 가능한 메타데이터가 없어 전략 상태를 판정할 수 없습니다.")
+    md.append(f"- **메타데이터 신뢰 모드 (Metadata Provenance Mode)**: `{core.metadata_provenance_mode}`")
     md.append(f"- **전략 상태 (Strategy State)**: `{core.strategy_state}`")
     md.append(f"- **패스트 코어 전략 포지션 (Canonical Strategy Position)**: `{core.canonical_position}`")
     md.append(f"- **현재 전략 행동 (Current Action)**: `{core.action}`")
@@ -577,7 +582,16 @@ def generate_stock_report(
     market = inst_meta.market
     asset_type = inst_meta.asset_type
     is_common = inst_meta.is_common_stock_for_production
-    metadata_trusted = inst_meta.is_trusted_for_production
+    if inst_meta.is_trusted_for_production:
+        metadata_provenance_mode = "CURRENT_VERIFIED"
+    elif inst_meta.is_eligible_for_historical_legacy_research:
+        metadata_provenance_mode = "HISTORICAL_LEGACY_RESEARCH"
+        # HISTORICAL_LEGACY_RESEARCH: 이 시점 자체는 formal 검증되지 않았지만
+        # retrospective 계산은 수행한다 (Fix Round 06 Major 1) — asset_type 값은
+        # 그대로(legacy) 유효하므로 COMMON이면 계산 대상으로 인정한다.
+        is_common = inst_meta.asset_type == AssetType.COMMON.value and inst_meta.is_identified
+    else:
+        metadata_provenance_mode = "DATA_UNAVAILABLE"
 
     # 3. Daily Slice 생성 (Lookahead 방지)
     if has_cache and daily is not None:
@@ -942,7 +956,7 @@ def generate_stock_report(
         investability_reason=inv_eval.reason,
         investability_result=inv_eval,
         is_common_stock=is_common,
-        metadata_trusted=metadata_trusted,
+        metadata_provenance_mode=metadata_provenance_mode,
     )
 
     # 9. Header & Summary

@@ -37,6 +37,7 @@ class InstrumentMetadata:
     is_identified: bool = True
     classification_authority: str | None = None
     asset_type_source: str | None = None
+    has_later_verified_snapshot: bool = False
 
     @property
     def is_common_stock(self) -> bool:
@@ -60,6 +61,26 @@ class InstrumentMetadata:
     @property
     def is_common_stock_for_production(self) -> bool:
         return self.is_trusted_for_production and self.asset_type == AssetType.COMMON.value
+
+    @property
+    def is_eligible_for_historical_legacy_research(self) -> bool:
+        """requested_as_of 시점이 production 신뢰 대상은 아니지만 retrospective
+        연구용으로는 취급 가능한지 (Fix Round 06 Major 1: HISTORICAL_LEGACY_RESEARCH).
+
+        이 시점 자체는 formal 검증되지 않았더라도(LEGACY_UNVERIFIED), 이 ticker에
+        대해 requested_as_of *이후* 시점에 실제로 formal 재검증된 snapshot이
+        존재한다면(has_later_verified_snapshot) 이 쿼리는 명백히 과거를 묻는
+        retrospective 질의다. 반대로 이후에 한 번도 재검증된 적이 없다면 이는
+        '과거'가 아니라 아직 검증되지 않은 사실상의 현재이므로 historical
+        legacy research로 승격시키지 않고 DATA_UNAVAILABLE로 fail closed 유지한다
+        (w.md §4.5: 오늘 시점 production 판단에 legacy metadata를 trusted로
+        쓰는 것을 막기 위한 경계).
+        """
+        return (
+            self.is_identified
+            and not self.is_trusted_for_production
+            and self.has_later_verified_snapshot
+        )
 
 
 class InstrumentMetadataResolver:
@@ -146,6 +167,22 @@ class InstrumentMetadataResolver:
                 else:
                     past_matches = matches
 
+                # Fix Round 06 Major 1: requested_as_of 이후 시점에 실제로 formal
+                # 재검증된 snapshot이 이 ticker에 존재하는지 — HISTORICAL_LEGACY_RESEARCH
+                # vs DATA_UNAVAILABLE을 가르는 근거.
+                has_later_verified_snapshot = False
+                if (
+                    as_of_str is not None
+                    and "effective_date" in matches.columns
+                    and "classification_authority" in matches.columns
+                ):
+                    future_formal = matches[
+                        matches["effective_date"].notna()
+                        & (matches["effective_date"].astype(str).str[:10] > as_of_str)
+                        & (matches["classification_authority"].astype(str) == "FORMAL_SECURITY_TYPE")
+                    ]
+                    has_later_verified_snapshot = not future_formal.empty
+
                 if not past_matches.empty:
                     # Select latest snapshot not after requested_as_of
                     row = past_matches.sort_values(by="effective_date", ascending=True).iloc[-1]
@@ -173,6 +210,7 @@ class InstrumentMetadataResolver:
                         is_identified=True,
                         classification_authority=auth,
                         asset_type_source=asset_source,
+                        has_later_verified_snapshot=has_later_verified_snapshot,
                     )
 
         # Fail closed: metadata unavailable or all available metadata is in the future
