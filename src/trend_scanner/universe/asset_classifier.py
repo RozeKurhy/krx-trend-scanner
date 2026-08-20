@@ -1,6 +1,12 @@
-"""Pattern A Asset Type Classifier.
+"""Pattern A Asset Type Classifier (Diagnostic & Test Support).
 
-종목 코드 및 종목명을 분석하여 자산 유형(보통주, 우선주, SPAC, REIT, ETF, ETN 등)을 분류한다.
+자산 유형(보통주, 우선주, SPAC, REIT, ETF, ETN 등)을 진단/테스트/레거시 폴백 목적으로 판별한다.
+
+주의 (IMPORTANT):
+이 모듈의 `classify_asset_type`은 휴리스틱 기반 진단 유틸리티(`LEGACY_DIAGNOSTIC`, `QUALITY_WARNING`, `TEST_SUPPORT`)이며,
+Production Runtime의 Asset Type Authority가 아닙니다.
+Production Stock Report 및 전략 적격성 판정은 반드시 `trend_scanner.universe.instrument_metadata`의
+정본 PIT 메타데이터(`InstrumentMetadataResolver`)를 사용해야 합니다.
 """
 
 from __future__ import annotations
@@ -39,7 +45,7 @@ _PREFERRED_NAME_PATTERN = re.compile(
 
 
 def classify_asset_type(ticker: str, name: str) -> AssetType:
-    """종목 코드와 종목명을 기반으로 AssetType을 판별한다.
+    """종목 코드와 종목명을 기반으로 AssetType을 휴리스틱으로 판별한다 (진단/테스트 전용).
 
     1. ETN / ETF 판별
     2. SPAC 판별
@@ -70,26 +76,17 @@ def classify_asset_type(ticker: str, name: str) -> AssetType:
     if "스팩" in clean_name or "SPAC" in upper_name:
         return AssetType.SPAC
 
-    # 4. REIT 판별 ('메리츠', '블리츠' 등 일반 상호명 오분류 방지)
-    is_reit_keyword = (
-        clean_name.endswith("리츠")
-        or clean_name.endswith("리츠1호")
-        or "부동산투자회사" in clean_name
-        or "REIT" in upper_name
-        or ("리츠" in clean_name and not ("메리츠" in clean_name or "블리츠" in clean_name))
-    )
-    if is_reit_keyword and not ("메리츠" in clean_name or "블리츠" in clean_name):
+    # 4. REIT 판별
+    if clean_name.endswith("리츠") or clean_name.endswith("리츠1호") or "부동산투자회사" in clean_name or "REIT" in upper_name:
         return AssetType.REIT
 
     # 5. 우선주 판별
-    # 종목명 끝에 명시적인 우선주 접미사가 붙어 있거나, 종목코드 끝자리가 특수 접미(5, 7, 8, 9, K, L 등)이면서 이름에 '우'가 포함된 경우
     if _PREFERRED_NAME_PATTERN.search(clean_name):
         return AssetType.PREFERRED
     if len(clean_ticker) == 6 and clean_ticker[-1] in ("5", "7", "8", "9", "K", "L") and "우" in clean_name:
         return AssetType.PREFERRED
 
     # 6. 보통주 판별
-    # 한국 거래소의 일반 보통주는 6자리 숫자로 구성되며 특수 상품 키워드가 없음
     if len(clean_ticker) == 6 and clean_ticker.isdigit():
         return AssetType.COMMON
 

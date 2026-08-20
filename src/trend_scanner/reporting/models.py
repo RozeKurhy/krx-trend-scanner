@@ -67,6 +67,8 @@ class CurrentSnapshot:
     investability_status: str
     investability_reason: str
     is_investable: bool
+    market_cap_effective_date: str | None = None
+    market_cap_source: str | None = None
 
 
 @dataclass

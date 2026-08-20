@@ -102,6 +102,7 @@ v0.2의 핵심 승격 사항:
     
     "current_snapshot": {
       "type": "object",
+      "required": ["official_stage", "candidate_state", "is_candidate", "investability_status", "investability_reason", "is_investable"],
       "properties": {
         "pattern_a_score": { "type": ["number", "null"] },
         "official_stage": { "type": "string", "enum": ["WEAK", "BASE", "TRANSITION", "EARLY_TREND", "PROGRESSED", "UNAVAILABLE"] },
@@ -111,7 +112,9 @@ v0.2의 핵심 승격 사항:
         "avg_trading_value_20d_eok": { "type": ["number", "null"] },
         "investability_status": { "type": "string", "enum": ["INVESTABLE", "FILTERED_MARKET_CAP", "FILTERED_LIQUIDITY", "DATA_UNAVAILABLE"] },
         "investability_reason": { "type": "string" },
-        "is_investable": { "type": "boolean" }
+        "is_investable": { "type": "boolean" },
+        "market_cap_effective_date": { "type": ["string", "null"] },
+        "market_cap_source": { "type": ["string", "null"] }
       }
     },
     
@@ -147,12 +150,12 @@ v0.2의 핵심 승격 사항:
         "action": { "type": "string", "enum": ["ENTER_NEXT_OPEN", "HOLD", "EXIT_NEXT_OPEN", "WAIT", "NONE"] },
         "action_reason": { "type": "string" },
         "execution_timing": { "type": ["string", "null"] },
+        "interpretation": { "type": "string" },
         "entry_conditions": { "type": ["object", "null"] },
         "current_trade": { "type": ["object", "null"] },
         "protection_state": { "type": ["object", "null"] },
         "reentry_state": { "type": ["object", "null"] },
         "trade_history": { "type": "array" },
-        "interpretation": { "type": "string" },
         "provenance": { "type": "object" }
       }
     },

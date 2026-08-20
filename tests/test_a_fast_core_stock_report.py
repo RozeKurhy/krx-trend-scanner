@@ -317,6 +317,126 @@ def test_instrument_metadata_selects_latest_snapshot_not_after_as_of(tmp_path):
     InstrumentMetadataResolver.clear_cache()
 
 
+def test_stock_report_v02_schema_rejects_invalid_trade_history_type():
+    """스키마 네거티브 검증: 잘못된 trade_history 타입(문자열 등)을 Draft 7 스키마가 거부하는지 검증."""
+    from jsonschema import Draft7Validator
+    import copy
+
+    schema_file = REPO_ROOT / "docs/specs/stock_report_v02_schema.json"
+    schema = json.loads(schema_file.read_text(encoding="utf-8"))
+    validator = Draft7Validator(schema)
+
+    sample_json = REPO_ROOT / "artifacts/stock_reports/v0.2/20260814/005930_삼성전자.json"
+    valid_data = json.loads(sample_json.read_text(encoding="utf-8"))
+
+    # 1. Mutate trade_history to string
+    bad_data = copy.deepcopy(valid_data)
+    bad_data["a_fast_core"]["trade_history"] = "INVALID_STRING"
+    errors = list(validator.iter_errors(bad_data))
+    assert len(errors) > 0, "Schema must reject non-array trade_history"
+
+    # 2. Mutate trade_history item with missing required fields
+    bad_data2 = copy.deepcopy(valid_data)
+    bad_data2["a_fast_core"]["trade_history"] = [{"trade_id": "005930_01"}]
+    errors2 = list(validator.iter_errors(bad_data2))
+    assert len(errors2) > 0, "Schema must reject trade_history item with missing required fields"
+
+
+def test_stock_report_v02_schema_rejects_invalid_entry_condition_type():
+    """스키마 네거티브 검증: 잘못된 entry_conditions 타입이나 non-zero network_requests를 거부하는지 검증."""
+    from jsonschema import Draft7Validator
+    import copy
+
+    schema_file = REPO_ROOT / "docs/specs/stock_report_v02_schema.json"
+    schema = json.loads(schema_file.read_text(encoding="utf-8"))
+    validator = Draft7Validator(schema)
+
+    sample_json = REPO_ROOT / "artifacts/stock_reports/v0.2/20260814/005930_삼성전자.json"
+    valid_data = json.loads(sample_json.read_text(encoding="utf-8"))
+
+    # 1. Mutate boolean field to string
+    bad_data = copy.deepcopy(valid_data)
+    if bad_data["a_fast_core"]["entry_conditions"]:
+        bad_data["a_fast_core"]["entry_conditions"]["instrument_eligible"] = "true"  # String instead of bool
+        errors = list(validator.iter_errors(bad_data))
+        assert len(errors) > 0, "Schema must reject non-boolean instrument_eligible"
+
+    # 2. Mutate network_requests to non-zero
+    bad_data2 = copy.deepcopy(valid_data)
+    bad_data2["a_fast_core"]["provenance"]["network_requests"] = 1
+    errors2 = list(validator.iter_errors(bad_data2))
+    assert len(errors2) > 0, "Schema must reject non-zero network_requests"
+
+
+def test_production_metadata_does_not_depend_on_name_heuristic():
+    """Production 메타데이터가 이름 문자열 휴리스틱이 아닌 정본 정식 메타데이터(FORMAL_SECURITY_TYPE)에 기반하는지 검증."""
+    from trend_scanner.universe.instrument_metadata import resolve_instrument_metadata
+    
+    meta = resolve_instrument_metadata("138040", as_of="2026-08-14", repo_root=REPO_ROOT)
+    assert meta.ticker == "138040"
+    assert meta.name == "메리츠금융지주"
+    assert meta.market == "KOSPI"
+    assert meta.asset_type == "COMMON"
+    assert meta.is_common_stock is True
+    assert meta.classification_authority == "FORMAL_SECURITY_TYPE"
+    assert meta.asset_type_source == "FORMAL_SECURITY_TYPE"
+
+
+def test_formal_metadata_provenance_is_not_fabricated(tmp_path):
+    """원본 provenance가 결측된 경우 FORMAL_SECURITY_TYPE으로 허위 승격되지 않고 UNKNOWN 또는 LEGACY_HEURISTIC으로 기록되는지 검증."""
+    from trend_scanner.universe.instrument_metadata import InstrumentMetadataResolver
+
+    InstrumentMetadataResolver.clear_cache()
+    ref_dir = tmp_path / "data/reference"
+    ref_dir.mkdir(parents=True)
+
+    # Write dataframe without classification_authority / asset_type_source columns
+    df_no_prov = pd.DataFrame([{
+        "ticker": "005930",
+        "name": "삼성전자",
+        "market": "KOSPI",
+        "asset_type": "COMMON",
+        "metadata_source": "TEST_MOCK_WITHOUT_PROV",
+        "effective_date": "2026-08-14",
+    }])
+    df_no_prov.to_parquet(ref_dir / "krx_instrument_metadata.parquet", index=False)
+
+    meta = InstrumentMetadataResolver.resolve("005930", as_of="2026-08-14", repo_root=tmp_path)
+    assert meta.is_identified is True
+    # Must NOT be fabricated to FORMAL_SECURITY_TYPE
+    assert meta.classification_authority == "UNKNOWN"
+    assert meta.asset_type_source == "UNKNOWN"
+
+    # Test completely missing ticker
+    meta_missing = InstrumentMetadataResolver.resolve("999999", as_of="2026-08-14", repo_root=tmp_path)
+    assert meta_missing.is_identified is False
+    assert meta_missing.classification_authority == "UNKNOWN"
+    assert meta_missing.asset_type_source == "UNKNOWN"
+
+    InstrumentMetadataResolver.clear_cache()
+
+
+def test_instrument_metadata_369370_spac_to_common_pit_transition():
+    """369370 종목의 합병 전(SPAC) -> 합병 후(COMMON) PIT 시점별 전환 정확성 검증."""
+    from trend_scanner.universe.instrument_metadata import resolve_instrument_metadata
+
+    # 1. Pre-merger SPAC period (2021-06-25)
+    meta_spac = resolve_instrument_metadata("369370", as_of="2021-06-25", repo_root=REPO_ROOT)
+    assert meta_spac.ticker == "369370"
+    assert meta_spac.is_identified is True
+    assert meta_spac.asset_type == "SPAC"
+    assert meta_spac.is_common_stock is False
+    assert "스팩" in meta_spac.name
+
+    # 2. Post-merger COMMON stock period (2022-06-24)
+    meta_common = resolve_instrument_metadata("369370", as_of="2022-06-24", repo_root=REPO_ROOT)
+    assert meta_common.ticker == "369370"
+    assert meta_common.is_identified is True
+    assert meta_common.asset_type == "COMMON"
+    assert meta_common.is_common_stock is True
+    assert "블리츠웨이" in meta_common.name
+
+
 def test_instrument_metadata_138040_meritz_is_common():
     """138040 메리츠금융지주가 REIT가 아닌 보통주(COMMON, KOSPI)로 정식 분류되는지 검증."""
     from trend_scanner.universe.instrument_metadata import resolve_instrument_metadata
@@ -327,6 +447,8 @@ def test_instrument_metadata_138040_meritz_is_common():
     assert meta.market == "KOSPI"
     assert meta.asset_type == "COMMON"
     assert meta.is_common_stock is True
+    assert meta.classification_authority == "FORMAL_SECURITY_TYPE"
+    assert meta.asset_type_source == "FORMAL_SECURITY_TYPE"
 
 
 def test_stock_report_138040_is_applicable_common_stock():
@@ -343,11 +465,26 @@ def test_stock_report_138040_is_applicable_common_stock():
 
 
 def test_stock_report_market_cap_effective_date_pit():
-    """과거 기준일(2026-05-15) 조회 시 시장 시가총액 스냅샷 날짜가 requested_as_of보다 미래가 아님(effective_date <= requested_as_of)을 직접 검증."""
+    """과거 기준일(2026-05-15) 조회 시 시장 시가총액 스냅샷 날짜가 requested_as_of보다 미래가 아님(effective_date <= requested_as_of) 및 실제 일자/출처 검증."""
+    # 1. Past historical date query: 2026-05-15
     report, _, _ = generate_stock_report(ticker="005930", as_of="2026-05-15", repo_root=REPO_ROOT, save_artifacts=False)
     assert report.requested_as_of == "2026-05-15"
     assert report.current_snapshot.market_cap_eok is not None
     assert report.current_snapshot.investability_status in {"INVESTABLE", "FILTERED_MARKET_CAP", "FILTERED_LIQUIDITY"}
+    assert report.current_snapshot.market_cap_effective_date is not None
+    assert report.current_snapshot.market_cap_effective_date <= report.requested_as_of
+    assert report.current_snapshot.market_cap_effective_date == "2025-06-27"
+    assert report.current_snapshot.market_cap_source == "KRX_HISTORICAL_MARKET_CAP_NORMALIZED"
+
+    # 2. Current baseline date query: 2026-08-14
+    report_cur, _, _ = generate_stock_report(ticker="005930", as_of="2026-08-14", repo_root=REPO_ROOT, save_artifacts=False)
+    assert report_cur.requested_as_of == "2026-08-14"
+    assert report_cur.current_snapshot.market_cap_effective_date == "2026-08-14"
+    assert report_cur.current_snapshot.market_cap_source in {
+        "KRX_SOURCE_MARKET_CAP",
+        "KRX_HISTORICAL_MARKET_CAP_NORMALIZED",
+        "KRX_INVESTABILITY_UNIVERSE_SNAPSHOT",
+    }
 
 
 def test_stock_report_0115d0_alphanumeric_ticker_and_etf_metadata():

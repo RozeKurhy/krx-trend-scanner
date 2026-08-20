@@ -82,6 +82,12 @@ class InstrumentMetadataResolver:
         if df is None and quality_csv.exists():
             try:
                 df = pd.read_csv(quality_csv, dtype={"ticker": str})
+                if "classification_authority" not in df.columns:
+                    df["classification_authority"] = "LEGACY_HEURISTIC"
+                if "asset_type_source" not in df.columns:
+                    df["asset_type_source"] = "NAME_BASED_HEURISTIC"
+                if "metadata_source" not in df.columns:
+                    df["metadata_source"] = "LEGACY_QUALITY_DIAGNOSTIC"
             except Exception as exc:
                 logger.warning("Failed reading %s: %s", quality_csv, exc)
 
@@ -94,7 +100,7 @@ class InstrumentMetadataResolver:
             cls._cached_repo_root = root
             return df
 
-        return pd.DataFrame(columns=["ticker", "name", "market", "asset_type", "metadata_source", "effective_date"])
+        return pd.DataFrame(columns=["ticker", "name", "market", "asset_type", "metadata_source", "effective_date", "classification_authority", "asset_type_source"])
 
     @classmethod
     def resolve(
@@ -129,8 +135,8 @@ class InstrumentMetadataResolver:
                     asset_type = str(row["asset_type"]).strip().upper() if "asset_type" in row and not pd.isna(row["asset_type"]) else "UNKNOWN"
                     source = str(row["metadata_source"]).strip() if "metadata_source" in row and not pd.isna(row["metadata_source"]) else "LOCAL_AUTHORITY"
                     eff_date = str(row["effective_date"]).strip() if "effective_date" in row and not pd.isna(row["effective_date"]) else as_of_str
-                    auth = str(row["classification_authority"]).strip() if "classification_authority" in row and not pd.isna(row["classification_authority"]) else "FORMAL_SECURITY_TYPE"
-                    asset_source = str(row["asset_type_source"]).strip() if "asset_type_source" in row and not pd.isna(row["asset_type_source"]) else "FORMAL_SECURITY_TYPE"
+                    auth = str(row["classification_authority"]).strip() if ("classification_authority" in row and not pd.isna(row["classification_authority"])) else "UNKNOWN"
+                    asset_source = str(row["asset_type_source"]).strip() if ("asset_type_source" in row and not pd.isna(row["asset_type_source"])) else "UNKNOWN"
 
                     # Normalization
                     if market not in [m.value for m in MarketType]:
@@ -159,8 +165,8 @@ class InstrumentMetadataResolver:
             metadata_source="METADATA_UNAVAILABLE",
             effective_date=None,
             is_identified=False,
-            classification_authority=None,
-            asset_type_source=None,
+            classification_authority="UNKNOWN",
+            asset_type_source="UNKNOWN",
         )
 
 

@@ -70,7 +70,9 @@
         "avg_trading_value_20d_eok": { "type": ["number", "null"] },
         "investability_status": { "type": "string" },
         "investability_reason": { "type": "string" },
-        "is_investable": { "type": "boolean" }
+        "is_investable": { "type": "boolean" },
+        "market_cap_effective_date": { "type": ["string", "null"] },
+        "market_cap_source": { "type": ["string", "null"] }
       }
     },
     
@@ -106,7 +108,133 @@
         "action": { "type": "string", "enum": ["HOLD", "ENTER_NEXT_OPEN", "EXIT_NEXT_OPEN", "WAIT", "NONE"] },
         "action_reason": { "type": "string" },
         "execution_timing": { "type": ["string", "null"] },
-        "interpretation": { "type": "string" }
+        "interpretation": { "type": "string" },
+        "entry_conditions": {
+          "type": ["object", "null"],
+          "properties": {
+            "instrument_eligible": { "type": "boolean" },
+            "investability_pass": { "type": "boolean" },
+            "pattern_a_stage_eligible": { "type": "boolean" },
+            "fast_trigger_ready": { "type": "boolean" },
+            "monthly_regime_permitted": { "type": "boolean" },
+            "daily_risk_allowed": { "type": "boolean" },
+            "fast_score_status_allowed": { "type": "boolean" },
+            "no_open_position": { "type": "boolean" },
+            "all_conditions_met": { "type": "boolean" },
+            "failed_conditions": { "type": "array", "items": { "type": "string" } },
+            "pattern_a_stage": { "type": ["string", "null"] },
+            "fast_stage": { "type": ["string", "null"] },
+            "fast_stage_status": { "type": ["string", "null"] },
+            "monthly_regime": { "type": ["string", "null"] },
+            "daily_risk": { "type": ["string", "null"] },
+            "fast_score_status": { "type": ["string", "null"] }
+          }
+        },
+        "current_trade": {
+          "type": ["object", "null"],
+          "properties": {
+            "trade_id": { "type": "string" },
+            "trade_sequence": { "type": "integer" },
+            "entry_signal_date": { "type": "string" },
+            "entry_execution_date": { "type": "string" },
+            "entry_open": { "type": "number" },
+            "entry_pattern_a_stage": { "type": "string" },
+            "previous_exit_type": { "type": ["string", "null"] },
+            "previous_exit_execution_date": { "type": ["string", "null"] },
+            "first_progressed_date": { "type": ["string", "null"] },
+            "first_progressed_effective_trading_date": { "type": ["string", "null"] },
+            "lifecycle_class": { "type": "string" },
+            "current_close": { "type": "number" },
+            "current_return_pct": { "type": "number" },
+            "trade_status": { "type": "string" },
+            "pending_exit_type": { "type": ["string", "null"] },
+            "pending_exit_signal_date": { "type": ["string", "null"] }
+          }
+        },
+        "protection_state": {
+          "type": ["object", "null"],
+          "properties": {
+            "phase": { "type": "string" },
+            "loss_guard_state": { "type": "string" },
+            "loss_guard_threshold_pct": { "type": ["number", "null"] },
+            "first_progressed_date": { "type": ["string", "null"] },
+            "first_progressed_effective_trading_date": { "type": ["string", "null"] },
+            "lifecycle_class": { "type": ["string", "null"] },
+            "exit3_state": { "type": "string" },
+            "exit4_state": { "type": "string" },
+            "progressed_hwm_score": { "type": ["number", "null"] },
+            "current_pattern_a_score": { "type": ["number", "null"] },
+            "score_drawdown_from_hwm_pt": { "type": ["number", "null"] }
+          }
+        },
+        "reentry_state": {
+          "type": ["object", "null"],
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "cooldown": { "type": "string" },
+            "maximum_reentries": { "type": "string" },
+            "pyramiding": { "type": "boolean" },
+            "overlapping_position": { "type": "boolean" },
+            "same_open_exit_and_reentry": { "type": "boolean" },
+            "completed_trade_count": { "type": "integer" },
+            "current_trade_sequence": { "type": ["integer", "null"] },
+            "next_entry_sequence": { "type": "integer" }
+          }
+        },
+        "trade_history": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "trade_id",
+              "trade_sequence",
+              "entry_signal_date",
+              "entry_execution_date",
+              "entry_open",
+              "entry_pattern_a_stage",
+              "exit_type",
+              "trade_status",
+              "return_pct"
+            ],
+            "properties": {
+              "trade_id": { "type": "string" },
+              "trade_sequence": { "type": "integer" },
+              "entry_signal_date": { "type": "string" },
+              "entry_execution_date": { "type": "string" },
+              "entry_open": { "type": "number" },
+              "entry_pattern_a_stage": { "type": "string" },
+              "exit_type": { "type": ["string", "null"] },
+              "exit_signal_date": { "type": ["string", "null"] },
+              "exit_execution_date": { "type": ["string", "null"] },
+              "exit_price": { "type": ["number", "null"] },
+              "trade_status": { "type": "string" },
+              "return_pct": { "type": "number" },
+              "previous_exit_type": { "type": ["string", "null"] },
+              "lifecycle_class": { "type": ["string", "null"] }
+            }
+          }
+        },
+        "provenance": {
+          "type": "object",
+          "required": [
+            "strategy_contract",
+            "strategy_contract_path",
+            "architecture_authority_commit",
+            "calendar_authority_commit",
+            "trade_generation_authority_commit",
+            "evidence_closure_authority_commit",
+            "network_requests"
+          ],
+          "properties": {
+            "strategy_contract": { "type": "string" },
+            "strategy_contract_path": { "type": "string" },
+            "architecture_authority_commit": { "type": "string" },
+            "calendar_authority_commit": { "type": "string" },
+            "trade_generation_authority_commit": { "type": "string" },
+            "evidence_closure_authority_commit": { "type": "string" },
+            "network_requests": { "type": "integer", "enum": [0] }
+          }
+        }
       }
     },
     

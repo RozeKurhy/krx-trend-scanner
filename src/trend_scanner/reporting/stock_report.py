@@ -47,7 +47,7 @@ from trend_scanner.reporting.models import (
 )
 from trend_scanner.reporting.pattern_a_fast_report import build_pattern_a_fast_section
 from trend_scanner.data.market_calendar import get_reference_market_month_ends as _get_ref_market_month_ends
-from trend_scanner.universe.asset_classifier import AssetType, classify_asset_type
+from trend_scanner.universe.asset_classifier import AssetType
 from trend_scanner.universe.instrument_metadata import resolve_instrument_metadata
 from trend_scanner.validation.historical_snapshot import build_historical_snapshot
 
@@ -302,7 +302,11 @@ def render_markdown_report(report: StockReport) -> str:
     md.append(f"- **Pattern A Score**: `{cur.pattern_a_score:.2f}`" if cur.pattern_a_score is not None else "- **Pattern A Score**: `N/A`")
     md.append(f"- **공식 국면 (Official Stage)**: `{cur.official_stage}`")
     md.append(f"- **Candidate 판정**: `{'YES (CANDIDATE)' if cur.is_candidate else 'NO (' + cur.candidate_state + ')'}`")
-    md.append(f"- **시가총액**: `{cur.market_cap_eok:.2f}억원`" if cur.market_cap_eok is not None else "- **시가총액**: `N/A`")
+    if cur.market_cap_eok is not None:
+        eff_date_str = f" (기준일: `{cur.market_cap_effective_date}`)" if cur.market_cap_effective_date else ""
+        md.append(f"- **시가총액**: `{cur.market_cap_eok:.2f}억원`{eff_date_str}")
+    else:
+        md.append("- **시가총액**: `N/A`")
     md.append(f"- **20일 평균 거래대금**: `{cur.avg_trading_value_20d_eok:.2f}억원`" if cur.avg_trading_value_20d_eok is not None else "- **20일 평균 거래대금**: `N/A`")
     md.append(f"- **Investability 상태**: `{cur.investability_status}` (사유: `{cur.investability_reason}`)")
     md.append(f"- **최종 투자 가능 여부 (Is Investable)**: `{'YES' if cur.is_investable else 'NO'}`")
@@ -589,6 +593,7 @@ def generate_stock_report(
     # 4. Investability & Market Cap Snapshot 로드 (Strict PIT: No Future Artifacts)
     mcap_val = None
     mcap_eff_date = None
+    mcap_source = None
     dt_clean = canonical_as_of.replace("-", "")
 
     # 4a. Exact date match in source
@@ -601,6 +606,7 @@ def generate_stock_report(
             if not match_mcap.empty:
                 mcap_val = float(match_mcap["market_cap"].iloc[0])
                 mcap_eff_date = str(match_mcap["effective_date"].iloc[0]) if "effective_date" in match_mcap.columns else canonical_as_of
+                mcap_source = "KRX_SOURCE_MARKET_CAP"
         except Exception as exc:
             logger.warning("Failed reading local market cap file %s: %s", mcap_csv, exc)
 
@@ -620,6 +626,7 @@ def generate_stock_report(
                         mcap_val = float(match_mcap["market_cap"].iloc[0])
                         eff_part = best_f.stem.split("_")[-1]
                         mcap_eff_date = f"{eff_part[:4]}-{eff_part[4:6]}-{eff_part[6:]}" if len(eff_part) == 8 else canonical_as_of
+                        mcap_source = "KRX_HISTORICAL_MARKET_CAP_NORMALIZED"
                 except Exception as exc:
                     logger.warning("Failed reading normalized market cap file %s: %s", best_f, exc)
 
@@ -637,6 +644,7 @@ def generate_stock_report(
                     mcap_val = float(match_mcap["market_cap"].iloc[0])
                     eff_u = best_u.stem.split("_")[-1]
                     mcap_eff_date = f"{eff_u[:4]}-{eff_u[4:6]}-{eff_u[6:]}" if len(eff_u) == 8 else canonical_as_of
+                    mcap_source = "KRX_INVESTABILITY_UNIVERSE_SNAPSHOT"
             except Exception:
                 pass
 
@@ -691,6 +699,8 @@ def generate_stock_report(
         investability_status=inv_eval.status.value,
         investability_reason=inv_eval.reason,
         is_investable=inv_eval.status.value == "INVESTABLE",
+        market_cap_effective_date=mcap_eff_date,
+        market_cap_source=mcap_source,
     )
 
     # 6. Monthly Score & Stage History (Full & Recent 12M)
