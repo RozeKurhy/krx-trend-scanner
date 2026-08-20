@@ -12,6 +12,7 @@
 - **운영 상태 (Production Status)**: **`PRODUCTION_HOLD` (운영 불변, 연구 전용)**
 - **Fresh OOS 상태 (Fresh OOS Status)**: **`NOT_STARTED`** (`fresh_oos_boundary_status: TO_BE_PREREGISTERED_BEFORE_EXECUTION`)
 - **Production Candidate 여부**: **`NO` (독립 검증 전 운영 반영 불가)**
+- **JSON / MD Contract Parity**: Machine-readable JSON contract는 본 문서의 Primary / Experimental Exit activation 및 trigger semantics를 동일하게 표현하며, JSON 단독으로도 동일 정책 구현이 가능함.
 - **테스트 정책**: `Tests: NOT RUN`
 
 #### 💡 핵심 다중 시계열 원칙 (Core Multi-Timeframe Philosophy)
@@ -33,7 +34,7 @@ Daily times entry.
   - `Pattern A Score != Pattern A Stage` (점수와 상태는 독립적인 평가 차원)
   - `Pattern A Score != FAST Score` (장기 베이스 매력도 vs 단기 타이밍 품질)
   - `Pattern A Stage != FAST Stage` (월봉 거시 생애주기 vs 주봉 진입 상태머신)
-  - `Entry-time Pattern A Stage != Post-entry Lifecycle Class` (진입 시점의 Stage와 진입 후 전개 경로는 독립된 차원)
+  - `Entry-time Pattern A Stage != Post-entry Lifecycle Class` (진입 시점 Stage와 진입 후 전개 경로는 독립 2차원 컨텍스트)
 
 ================================================================================
 2. Evidence Authority Commits (연구 기준 커밋)
@@ -49,7 +50,7 @@ Daily times entry.
 7. **v0.2D Coverage Hole Activation Closure**: [`9c4bbad`](https://github.com/RozeKurhy/krx-trend-scanner/commit/9c4bbad0d1248abeb904deccfc8cefd4f94e4a88) (`COVERAGE_ACTIVATION_MIXED`, `COVERAGE_ACTIVATION_PROMISING`)
 
 ================================================================================
-3. Strategy Component Status Matrix (컴포넌트 상태 매트릭스)
+3. Strategy Component Status Matrix (컴포넌트 상태 매트릭스 - 총 11개)
 ================================================================================
 
 | 컴포넌트명 | 기반 연구 및 근거 | 상태 (Status) | 역할 (Role) | Fresh OOS 처리 방식 |
@@ -105,28 +106,38 @@ Daily times entry.
 Fresh OOS에서는 공식 Primary 정책과 실험적 비교군을 명확히 분리하여 병렬 추적한다:
 
 #### 1) OFFICIAL PRIMARY POLICY: `PRIMARY_V03` (공식 기준 정책)
-- **정상 전이 경로 (`NORMAL_EARLY_TREND_HANDOFF`)**:
-  - 진입 후 `EARLY_TREND → PROGRESSED` 직접 handoff가 관측된 경우에만 Exit 3과 Exit 4가 활성화됨.
-  - **Exit 4 (Profit Protection)**: `PROGRESSED` 진입 이후 최고점 Pattern A 점수(`PROGRESSED_HWM`) 대비 현재 점수가 **15.0pt 이상 하락(`PROGRESSED_HWM - Current Score >= 15.0`)** 시 익월 첫 로컬 거래일 시가 청산.
-  - **Exit 3 (Structural Backstop)**: `PROGRESSED` 국면에서 다른 유효 구조적 Stage(`WEAK`, `BASE`, `TRANSITION`, `EARLY_TREND`)로 이탈 시 익월 첫 로컬 거래일 시가 청산.
-  - **Terminal Exit**: `min(Exit 3, Exit 4)` 적용 (가장 빠른 신호 우선 체결).
-- **Coverage Hole 경로 (`SKIPPED` / `PROGRESSED_WITHOUT_DIRECT`)**:
-  - `PRIMARY_V03`에서는 Coverage Activated Exit 4를 적용하지 않으며, 기존 baseline semantics(미청산 `OPEN_AT_CUTOFF`)를 유지함.
+- **활성화 조건 (`activation_condition`)**: `POST_ENTRY_DIRECT_EARLY_TREND_TO_PROGRESSED` (진입 후 completed monthly 스냅샷에서 `EARLY_TREND → PROGRESSED` 직접 handoff 관측 시 활성화)
+- **적용 대상 (`activation_scope`)**: `NORMAL_EARLY_TREND_HANDOFF_ONLY`
+- **Exit 4 (Profit Protection)**:
+  - 활성화 시점 Pattern A 점수로 `PROGRESSED_HWM` 초기화 (`ARM_SNAPSHOT_PATTERN_A_SCORE`).
+  - PROGRESSED 유지 중 `HWM = max(HWM, current score)` 갱신.
+  - `PROGRESSED_HWM - Current Score >= 15.0pt` (frozen) 시 신호 발생, 익월 첫 로컬 거래일 시가 청산.
+  - 적용 대상 국면: `PROGRESSED_ONLY`.
+- **Exit 3 (Structural Backstop)**:
+  - 직접 handoff 활성화 필수 (`exit3_requires_primary_activation: true`).
+  - `PROGRESSED`에서 다른 유효 구조적 Stage(`WEAK`, `BASE`, `TRANSITION`, `EARLY_TREND`)로 이탈 시 익월 첫 로컬 거래일 시가 청산.
+  - Coverage Hole 확장 없음 (`exit3_coverage_expansion: NONE`).
+- **Terminal Precedence**: `EARLIEST_EXECUTABLE_SIGNAL` (가장 빠른 신호 우선 체결, 동일일 발생 시 기존 evaluator semantics 준용).
+- **Coverage Hole 처리 (`coverage_hole_policy`)**:
+  - `SKIPPED_EARLY_TREND_HANDOFF`, `PROGRESSED_WITHOUT_DIRECT_HANDOFF`에서는 `coverage_activation: false`, `exit4_armed: false`, `exit3_expansion: NONE`, `terminal_status: OPEN_AT_CUTOFF`.
 
 #### 2) EXPERIMENTAL COMPARATOR: `PRIMARY_V03_WITH_COVERAGE_EXPERIMENT` (실험적 비교군)
-- `PRIMARY_V03`와 Entry, Hold, Normal Exit semantics가 100% 동일함.
-- **유일한 차이점**: Coverage Hole (`SKIPPED_EARLY_TREND_HANDOFF`, `PROGRESSED_WITHOUT_DIRECT_HANDOFF`) 거래에서 최초 관측된 completed monthly `PROGRESSED` 스냅샷부터 frozen 15.0pt Exit 4 protection을 활성화함.
-- **불변 원칙**: Fresh OOS 실행 후 결과에 따라 Primary 정책을 사후 교체하는 행위를 금지하며, 공식 평가 권위는 항상 `PRIMARY_V03`에 귀속됨.
+- **기본 정책 (`base_policy`)**: `PRIMARY_V03`와 Entry, Hold, Normal Exit semantics 100% 동일.
+- **Coverage 활성화 조건 (`coverage_activation_condition`)**: `FIRST_OBSERVED_PROGRESSED_SNAPSHOT`
+- **Coverage 적용 범위 (`coverage_activation_scope`)**: `SKIPPED_EARLY_TREND_HANDOFF`, `PROGRESSED_WITHOUT_DIRECT_HANDOFF`
+- **Coverage Exit 4 HWM 및 Trigger**: 최초 관측된 PROGRESSED 점수로 초기화 후 15.0pt 하락 시 익월 첫 로컬 거래일 시가 청산.
+- **Coverage Exit 3 확장**: `NONE` (Exit 3는 Coverage Hole에서 확장하지 않음, PROGRESSED 이탈 시 미청산 `OPEN_AT_CUTOFF` 유지).
+- **불변 원칙**: Fresh OOS 실행 후 결과에 따라 Primary 정책을 사후 교체하는 행위를 일체 금지하며, 공식 평가 권위는 항상 `PRIMARY_V03`에 귀속됨.
 
 ================================================================================
 5. Known Trade-offs & Risk Characteristics
 ================================================================================
 1. **Right Tail Truncation vs Peak Giveback Defense**:
-   - Exit 4(15.0pt 보호) 및 Coverage Activation은 Peak Giveback을 크게 줄이고 손실 거래를 축소하는 탁월한 방어력을 제공한다.
-   - 그러나 기존 대형 승자(Return ≥ +50%) 중 약 47.1%, 초대형 승자(Return ≥ +100%) 중 약 60.0%에서 조기 청산으로 인한 수익 감소(Right Tail Truncation)가 발생한다.
-   - Fresh OOS 검증 시 **Individual Winner Truncation**과 **Aggregate Winner Preservation**을 동시에 측정해야 한다.
+   - Exit 4(15.0pt 보호) 및 Coverage Activation은 retrospective sample에서 Peak Giveback 및 Failure Protection 개선이 관찰됨.
+   - 그러나 기존 대형 승자(Return ≥ +50%) 중 약 47.1%, 초대형 승자(Return ≥ +100%) 중 약 60.0%에서 조기 청산으로 인한 수익 감소(Right Tail Truncation)가 발생함.
+   - Fresh OOS 검증 시 **Individual Winner Truncation**과 **Aggregate Winner Preservation**을 동시에 측정해야 함.
 2. **Subgroup Heterogeneity**:
-   - `SKIPPED_EARLY_TREND_HANDOFF`는 Giveback 방어와 Return 개선이 강력한 반면, `PROGRESSED_WITHOUT_DIRECT_HANDOFF`는 효과가 일부 거래에 집중된다.
+   - `SKIPPED_EARLY_TREND_HANDOFF`는 Giveback 방어와 Return 개선이 강력한 반면, `PROGRESSED_WITHOUT_DIRECT_HANDOFF`는 효과가 일부 거래에 집중됨.
 
 ================================================================================
 6. Fresh OOS Protocol & Metrics Contract

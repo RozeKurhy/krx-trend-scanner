@@ -11,7 +11,7 @@
   "fresh_oos_boundary_status": "TO_BE_PREREGISTERED_BEFORE_EXECUTION",
   "shadow_status": "NOT_STARTED",
   "is_production_candidate": false,
-  "freeze_timestamp": "2026-08-20T10:14:00+09:00",
+  "freeze_timestamp": "2026-08-20T10:20:00+09:00",
   "core_principles": [
     "Monthly grants permission.",
     "Weekly pulls the trigger.",
@@ -80,24 +80,56 @@
     "primary_policy": {
       "policy_id": "PRIMARY_V03",
       "role": "OFFICIAL_FRESH_OOS_PRIMARY",
-      "coverage_activation": false,
-      "exit3_status": "FROZEN_CORE_BACKSTOP",
+      "activation_condition": "POST_ENTRY_DIRECT_EARLY_TREND_TO_PROGRESSED",
+      "activation_scope": "NORMAL_EARLY_TREND_HANDOFF_ONLY",
       "exit4_status": "PROMISING",
+      "exit4_arm_timing": "DIRECT_EARLY_TREND_TO_PROGRESSED_SNAPSHOT",
+      "exit4_hwm_initialization": "ARM_SNAPSHOT_PATTERN_A_SCORE",
+      "exit4_hwm_update": "MAX_PREVIOUS_HWM_CURRENT_PATTERN_A_SCORE",
+      "exit4_trigger": "PROGRESSED_HWM_MINUS_CURRENT_SCORE_GE_15PT",
+      "exit4_active_stage": "PROGRESSED_ONLY",
       "frozen_drawdown_threshold_pt": 15.0,
-      "coverage_hole_semantics": "BASELINE_NO_COVERAGE_ACTIVATION_OPEN_AT_CUTOFF",
+      "exit3_status": "FROZEN_CORE_BACKSTOP",
+      "exit3_requires_primary_activation": true,
+      "exit3_trigger": "PROGRESSED_TO_OTHER_VALID_STRUCTURAL_STAGE",
+      "exit3_target_stages": [
+        "WEAK",
+        "BASE",
+        "TRANSITION",
+        "EARLY_TREND"
+      ],
+      "exit3_coverage_expansion": "NONE",
+      "terminal_precedence": "EARLIEST_EXECUTABLE_SIGNAL",
+      "same_signal_date_resolution": "USE_EXISTING_FROZEN_EVALUATOR_SEMANTICS",
+      "pre_activation_terminal_exit": "NONE",
+      "coverage_activation": false,
+      "coverage_hole_policy": {
+        "coverage_activation": false,
+        "exit4_armed": false,
+        "exit3_expansion": "NONE",
+        "terminal_status": "OPEN_AT_CUTOFF"
+      },
       "execution_timing": "NEXT_LOCAL_TRADING_DAY_OPEN"
     },
     "experimental_coverage_comparator": {
       "policy_id": "PRIMARY_V03_WITH_COVERAGE_EXPERIMENT",
       "role": "EXPERIMENTAL_COMPARATOR",
       "status": "PROMISING_EXPERIMENTAL",
+      "base_policy": "PRIMARY_V03",
       "coverage_activation": true,
-      "target_cohorts": [
+      "coverage_activation_condition": "FIRST_OBSERVED_PROGRESSED_SNAPSHOT",
+      "coverage_activation_scope": [
         "SKIPPED_EARLY_TREND_HANDOFF",
         "PROGRESSED_WITHOUT_DIRECT_HANDOFF"
       ],
-      "arm_timing": "FIRST_OBSERVED_PROGRESSED_SNAPSHOT",
+      "coverage_hwm_initialization": "FIRST_OBSERVED_PROGRESSED_PATTERN_A_SCORE",
+      "coverage_hwm_update": "MAX_PREVIOUS_HWM_CURRENT_PATTERN_A_SCORE",
+      "coverage_exit4_trigger": "PROGRESSED_HWM_MINUS_CURRENT_SCORE_GE_15PT",
+      "coverage_exit4_active_stage": "PROGRESSED_ONLY",
       "frozen_drawdown_threshold_pt": 15.0,
+      "coverage_exit3_expansion": "NONE",
+      "on_progressed_departure_without_exit4": "OPEN_AT_CUTOFF",
+      "terminal_precedence": "EXIT4_ONLY_FOR_COVERAGE_EXTENSION",
       "execution_timing": "NEXT_LOCAL_TRADING_DAY_OPEN"
     }
   },
