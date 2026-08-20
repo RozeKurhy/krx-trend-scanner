@@ -1,0 +1,238 @@
+{
+  "architecture_version": "v0.3",
+  "strategy_name": "PATTERN_A_FAST_ARCHITECTURE_V03",
+  "research_classification": "STRATEGY_ARCHITECTURE_FREEZE",
+  "research_status": "ARCHITECTURE_FROZEN",
+  "production_status": "PRODUCTION_HOLD",
+  "production_impact": "NONE",
+  "fresh_oos_status": "NOT_STARTED",
+  "shadow_status": "NOT_STARTED",
+  "is_production_candidate": false,
+  "freeze_timestamp": "2026-08-20T10:09:00+09:00",
+  "core_principles": [
+    "Monthly grants permission.",
+    "Weekly pulls the trigger.",
+    "Daily times entry."
+  ],
+  "authority_commits": {
+    "pattern_a_production_closure": "05d03e16501adbca889488294aaaaa0bd84005de",
+    "fast_phase13_closure": "935f9be7c0e790b7b4efedc04ea4149a90ad78a8",
+    "combined_v01_closure": "3a207d2806df31be9cc0de52be9b2ddb47b097eb",
+    "v02a_entry_gate_closure": "0e95666ec75a23ea62edf680382a138e5813391c",
+    "v02b_weak_closure": "99f7a9879390784a9a94e5f82e5bdf9cf2b8e33f",
+    "v02c_unavailable_closure": "91b7e4beb0b52d5f718533490620b7fa01457a8b",
+    "v02d_coverage_hole_closure": "9c4bbad0d1248abeb904deccfc8cefd4f94e4a88"
+  },
+  "entry_architecture": {
+    "status": "FROZEN_CORE",
+    "engine": "FAST_V01",
+    "weekly_machine_stage": "TRIGGER",
+    "weekly_machine_status": "READY",
+    "monthly_permission_state": "PERMITTED_REGIME",
+    "daily_risk_allowed_states": [
+      "NORMAL",
+      "ELEVATED"
+    ],
+    "fast_score_allowed_statuses": [
+      "READY",
+      "PARTIAL"
+    ],
+    "numeric_score_threshold": null,
+    "execution_timing": "NEXT_LOCAL_TRADING_DAY_OPEN"
+  },
+  "pattern_a_macro_context": {
+    "status": "NOT_ESTABLISHED_AS_HARD_GATE",
+    "role": "LIFECYCLE_CONTEXT",
+    "observation_cohorts": [
+      "WEAK",
+      "BASE",
+      "TRANSITION",
+      "EARLY_TREND",
+      "PROGRESSED",
+      "UNAVAILABLE"
+    ]
+  },
+  "hold_architecture": {
+    "status": "FROZEN_CORE",
+    "core_rule": "TRANSITION_TO_EARLY_TREND_TO_PROGRESSED_LIFECYCLE_HOLD",
+    "progressed_semantics": "LATE_FOR_FRESH_ENTRY_NOT_EXIT_SIGNAL"
+  },
+  "exit_architecture": {
+    "exit1_early_to_any": {
+      "status": "REJECTED",
+      "role": "DISCARDED"
+    },
+    "exit2_score_deterioration": {
+      "status": "INFORMATIONAL",
+      "role": "RISK_FLAG_ONLY_NOT_TERMINAL_EXIT"
+    },
+    "exit3_progressed_departure": {
+      "status": "FROZEN_CORE_BACKSTOP",
+      "role": "SLOW_STRUCTURAL_BACKSTOP",
+      "trigger_condition": "PROGRESSED_TO_OTHER_VALID_STRUCTURAL_STAGE",
+      "execution_timing": "NEXT_LOCAL_TRADING_DAY_OPEN"
+    },
+    "exit4_score_drawdown": {
+      "status": "PROMISING",
+      "role": "PROFIT_PROTECTION",
+      "trigger_condition": "PROGRESSED_HWM_MINUS_CURRENT_SCORE_GE_15PT",
+      "frozen_drawdown_threshold_pt": 15.0,
+      "execution_timing": "NEXT_LOCAL_TRADING_DAY_OPEN"
+    },
+    "coverage_hole_activation": {
+      "status": "PROMISING_EXPERIMENTAL",
+      "role": "EXPERIMENTAL_COVERAGE_EXTENSION",
+      "target_cohorts": [
+        "SKIPPED_EARLY_TREND_HANDOFF",
+        "PROGRESSED_WITHOUT_DIRECT_HANDOFF"
+      ],
+      "arm_timing": "FIRST_OBSERVED_PROGRESSED_SNAPSHOT",
+      "frozen_drawdown_threshold_pt": 15.0,
+      "execution_timing": "NEXT_LOCAL_TRADING_DAY_OPEN"
+    }
+  },
+  "component_status_matrix": [
+    {
+      "component": "FAST Entry Timing v0.1",
+      "evidence_authority": "Phase 13 / Combined v0.1",
+      "status": "FROZEN_CORE",
+      "role": "Primary Entry Timing",
+      "fresh_oos_treatment": "Primary Entry Signal"
+    },
+    {
+      "component": "Pattern A Stage Hard Gate",
+      "evidence_authority": "v0.2A (GATE_VALUE_MIXED)",
+      "status": "NOT_ESTABLISHED",
+      "role": "Observation Context",
+      "fresh_oos_treatment": "Context Observation Cohort"
+    },
+    {
+      "component": "FAST + WEAK Variant",
+      "evidence_authority": "v0.2B (MIXED)",
+      "status": "PROMISING",
+      "role": "Early Reversal Context",
+      "fresh_oos_treatment": "Context Observation Cohort"
+    },
+    {
+      "component": "FAST + UNAVAILABLE Variant",
+      "evidence_authority": "v0.2C (MIXED / INSUFFICIENCY)",
+      "status": "INFORMATIONAL",
+      "role": "Information Insufficiency",
+      "fresh_oos_treatment": "Context Observation Cohort"
+    },
+    {
+      "component": "EARLY_TREND -> PROGRESSED Hold",
+      "evidence_authority": "Combined v0.1",
+      "status": "FROZEN_CORE",
+      "role": "Lifecycle Continuation Hold",
+      "fresh_oos_treatment": "Hold until exit signal"
+    },
+    {
+      "component": "Exit 1 (EARLY -> ANY STAGE)",
+      "evidence_authority": "Combined v0.1 (REJECTED)",
+      "status": "REJECTED",
+      "role": "Premature Exit",
+      "fresh_oos_treatment": "Discarded"
+    },
+    {
+      "component": "Exit 2 (Score Deterioration)",
+      "evidence_authority": "Combined v0.1 (REJECTED)",
+      "status": "INFORMATIONAL",
+      "role": "Risk Flag Diagnostic",
+      "fresh_oos_treatment": "Non-terminal Diagnostic"
+    },
+    {
+      "component": "Exit 3 (PROGRESSED -> OTHER)",
+      "evidence_authority": "Combined v0.1",
+      "status": "FROZEN_CORE_BACKSTOP",
+      "role": "Slow Structural Backstop",
+      "fresh_oos_treatment": "Terminal Exit Candidate"
+    },
+    {
+      "component": "Exit 4 (Score HWM - 15pt)",
+      "evidence_authority": "Combined v0.1 / v0.2D",
+      "status": "PROMISING",
+      "role": "Profit Protection",
+      "fresh_oos_treatment": "Terminal Exit Candidate"
+    },
+    {
+      "component": "Coverage Hole Activation",
+      "evidence_authority": "v0.2D (PROMISING / MIXED)",
+      "status": "PROMISING_EXPERIMENTAL",
+      "role": "Coverage Hole Extension",
+      "fresh_oos_treatment": "Experimental Component"
+    }
+  ],
+  "known_tradeoffs": {
+    "right_tail_truncation": {
+      "winner_50_plus_truncation_rate_pct": 47.1,
+      "winner_100_plus_truncation_rate_pct": 60.0,
+      "benefit": "PEAK_GIVEBACK_REDUCTION_AND_FAILURE_PROTECTION"
+    },
+    "subgroup_heterogeneity": {
+      "skipped_early_trend_handoff": "STRONG_RETURN_AND_GIVEBACK_IMPROVEMENT",
+      "progressed_without_direct_handoff": "CONCENTRATED_PARTIAL_IMPROVEMENT"
+    }
+  },
+  "fresh_oos_metrics_contract": {
+    "entry_and_execution": [
+      "entry_count_n",
+      "execution_delay_days",
+      "non_executable_reason_count"
+    ],
+    "forward_returns": [
+      "return_4w",
+      "return_8w",
+      "return_12w",
+      "return_26w",
+      "terminal_return"
+    ],
+    "path_metrics": [
+      "mfe",
+      "mae",
+      "peak_giveback",
+      "profit_capture_ratio"
+    ],
+    "exit_metrics": [
+      "exit3_count",
+      "exit4_count",
+      "open_at_cutoff_count",
+      "holding_weeks"
+    ],
+    "tail_metrics": {
+      "right_tail": [
+        "return_ge_20_count",
+        "return_ge_50_count",
+        "return_ge_100_count",
+        "winner_truncation_rate_pct"
+      ],
+      "failure_tail": [
+        "return_negative_count",
+        "return_le_neg_20_count",
+        "return_le_neg_30_count"
+      ]
+    },
+    "coverage_activation_metrics": [
+      "armed_count",
+      "triggered_count",
+      "executed_count"
+    ],
+    "subgroup_dimensions": [
+      "pattern_a_stage",
+      "daily_risk_state",
+      "market",
+      "lifecycle_cohort"
+    ]
+  },
+  "freeze_invariants": [
+    "FAST v0.1 trigger semantics and machine rules are strictly frozen.",
+    "FAST monthly permission state (PERMITTED_REGIME) is strictly frozen.",
+    "FAST daily risk state (NORMAL, ELEVATED) is strictly frozen.",
+    "FAST score status (READY, PARTIAL) is strictly frozen.",
+    "Pattern A score and stage calculation contracts are strictly frozen.",
+    "Exit 4 drawdown threshold of 15.0pt is strictly frozen (zero sweeps/tuning).",
+    "PIT monthly snapshots and next local trading day open execution are strictly frozen.",
+    "No post-hoc success cutoffs or cherry-picked target numbers.",
+    "Production pipeline remains strictly on PRODUCTION_HOLD."
+  ]
+}
