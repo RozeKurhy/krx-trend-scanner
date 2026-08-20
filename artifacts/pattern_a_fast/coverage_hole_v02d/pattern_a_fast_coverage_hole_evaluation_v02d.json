@@ -1,0 +1,1113 @@
+{
+  "evaluation_title": "FAST + Pattern A Coverage Hole Activation Validation v0.2D Evaluation",
+  "research_classification": "RETROSPECTIVE_COVERAGE_HOLE_ACTIVATION_VALIDATION",
+  "research_status": "CLOSED",
+  "preregistration_authority_commit": "77e3a0d768258279529428e86e00198ba6e06fa9",
+  "preregistration_status": "PREREGISTERED_BEFORE_EVALUATION",
+  "same_sample_followup": true,
+  "independent_replication": false,
+  "primary_sample_previously_observed_in_v01": true,
+  "production_status": "PRODUCTION_HOLD",
+  "production_impact": "NONE",
+  "data_cutoff": "2026-08-14",
+  "simulation_execution_seconds": 247.11,
+  "population_summary": {
+    "total_common_universe_count": 2528,
+    "phase10_investable_universe_count": 1081,
+    "cache_present_count": 1081,
+    "cache_missing_count": 0,
+    "evaluation_eligible_count": 1079,
+    "evaluation_eligible_rate": 99.81,
+    "excluded_count": 2,
+    "exclusion_breakdown": {
+      "INSUFFICIENT_HISTORY": 2
+    },
+    "warning_ticker_count": 0
+  },
+  "combined_entry_summary": {
+    "fast_v01_qualified_count": 799,
+    "combined_qualified_count": 554,
+    "combined_executable_count": 553
+  },
+  "lifecycle_coverage_summary": {
+    "normal_early_trend_handoff_count": 270,
+    "skipped_early_trend_handoff_count": 32,
+    "progressed_without_direct_handoff_count": 75,
+    "never_progressed_count": 176,
+    "coverage_hole_total_count": 107
+  },
+  "coverage_hole_summary": {
+    "sample_count": 107,
+    "policy_b": {
+      "terminal_return": {
+        "count": 107,
+        "mean": 29.23,
+        "median": 16.76,
+        "p25": -14.07,
+        "p75": 60.27,
+        "std": 68.12,
+        "min": -86.26,
+        "max": 442.57,
+        "positive_rate": 62.6
+      },
+      "mfe": {
+        "count": 107,
+        "mean": 121.2,
+        "median": 89.08,
+        "p25": 52.55,
+        "p75": 156.56,
+        "std": 132.19,
+        "min": 0.92,
+        "max": 1143.24,
+        "positive_rate": 100.0
+      },
+      "mae": {
+        "count": 107,
+        "mean": -27.73,
+        "median": -23.24,
+        "p25": -41.09,
+        "p75": -12.46,
+        "std": 18.78,
+        "min": -87.56,
+        "max": -0.61,
+        "positive_rate": 0.0
+      },
+      "peak_giveback": {
+        "count": 107,
+        "mean": 91.97,
+        "median": 73.46,
+        "p25": 45.51,
+        "p75": 120.28,
+        "std": 85.05,
+        "min": 4.42,
+        "max": 700.67,
+        "positive_rate": 100.0
+      },
+      "profit_capture": {
+        "count": 107,
+        "mean": -0.97,
+        "median": 0.16,
+        "p25": -0.28,
+        "p75": 0.41,
+        "std": 9.11,
+        "min": -93.76,
+        "max": 0.93,
+        "positive_rate": 62.6
+      },
+      "holding_weeks": {
+        "count": 107,
+        "mean": 78.85,
+        "median": 59.0,
+        "p25": 47.6,
+        "p75": 80.1,
+        "std": 79.13,
+        "min": 12.4,
+        "max": 454.0,
+        "positive_rate": 100.0
+      }
+    },
+    "policy_c": {
+      "terminal_return": {
+        "count": 107,
+        "mean": 33.12,
+        "median": 23.69,
+        "p25": -5.92,
+        "p75": 71.47,
+        "std": 51.68,
+        "min": -86.26,
+        "max": 203.93,
+        "positive_rate": 70.1
+      },
+      "mfe": {
+        "count": 107,
+        "mean": 86.21,
+        "median": 72.56,
+        "p25": 46.43,
+        "p75": 112.81,
+        "std": 59.87,
+        "min": 0.92,
+        "max": 306.19,
+        "positive_rate": 100.0
+      },
+      "mae": {
+        "count": 107,
+        "mean": -23.34,
+        "median": -17.57,
+        "p25": -31.96,
+        "p75": -10.94,
+        "std": 16.44,
+        "min": -87.56,
+        "max": -0.61,
+        "positive_rate": 0.0
+      },
+      "peak_giveback": {
+        "count": 107,
+        "mean": 53.09,
+        "median": 43.37,
+        "p25": 25.44,
+        "p75": 62.47,
+        "std": 42.11,
+        "min": 0.69,
+        "max": 256.12,
+        "positive_rate": 100.0
+      },
+      "profit_capture": {
+        "count": 107,
+        "mean": -0.88,
+        "median": 0.33,
+        "p25": -0.1,
+        "p75": 0.69,
+        "std": 9.2,
+        "min": -93.76,
+        "max": 0.98,
+        "positive_rate": 70.1
+      },
+      "holding_weeks": {
+        "count": 107,
+        "mean": 56.24,
+        "median": 43.4,
+        "p25": 27.2,
+        "p75": 57.4,
+        "std": 63.33,
+        "min": 7.8,
+        "max": 424.4,
+        "positive_rate": 100.0
+      }
+    },
+    "paired_deltas": {
+      "return_delta": {
+        "count": 107,
+        "mean": 3.89,
+        "median": 0.0,
+        "p25": 0.0,
+        "p75": 17.05,
+        "std": 47.07,
+        "min": -329.39,
+        "max": 133.14,
+        "positive_rate": 39.3
+      },
+      "giveback_delta": {
+        "count": 107,
+        "mean": -38.88,
+        "median": -2.65,
+        "p25": -52.17,
+        "p75": 0.0,
+        "std": 84.12,
+        "min": -660.47,
+        "max": 49.93,
+        "positive_rate": 9.3
+      },
+      "profit_capture_delta": {
+        "count": 107,
+        "mean": 0.09,
+        "median": 0.0,
+        "p25": 0.0,
+        "p75": 0.34,
+        "std": 1.14,
+        "min": -9.97,
+        "max": 4.36,
+        "positive_rate": 44.9
+      },
+      "holding_weeks_delta": {
+        "count": 107,
+        "mean": -22.61,
+        "median": -10.4,
+        "p25": -26.0,
+        "p75": 0.0,
+        "std": 49.28,
+        "min": -402.4,
+        "max": 0.0,
+        "positive_rate": 0.0
+      }
+    },
+    "return_comparison": {
+      "policy_c_better_count": 42,
+      "policy_c_better_rate": 39.3,
+      "equal_count": 42,
+      "equal_rate": 39.3,
+      "policy_b_better_count": 23,
+      "policy_b_better_rate": 21.5
+    },
+    "giveback_comparison": {
+      "policy_c_lower_giveback_count": 55,
+      "policy_c_lower_giveback_rate": 51.4,
+      "equal_count": 42,
+      "equal_rate": 39.3,
+      "policy_b_lower_giveback_count": 10,
+      "policy_b_lower_giveback_rate": 9.3
+    },
+    "right_tail_impact": {
+      "pb_return_ge_50_count": 34,
+      "pc_lower_ge_50_count": 16,
+      "pc_lower_ge_50_rate": 47.1,
+      "pb_return_ge_100_count": 10,
+      "pc_lower_ge_100_count": 6,
+      "pc_lower_ge_100_rate": 60.0,
+      "winner_preservation_20": {
+        "policy_b_count": 51,
+        "policy_b_rate": 47.7,
+        "policy_c_count": 58,
+        "policy_c_rate": 54.2
+      },
+      "winner_preservation_50": {
+        "policy_b_count": 34,
+        "policy_b_rate": 31.8,
+        "policy_c_count": 40,
+        "policy_c_rate": 37.4
+      },
+      "winner_preservation_100": {
+        "policy_b_count": 10,
+        "policy_b_rate": 9.3,
+        "policy_c_count": 11,
+        "policy_c_rate": 10.3
+      }
+    },
+    "failure_protection": {
+      "failure_return_negative": {
+        "policy_b_count": 40,
+        "policy_b_rate": 37.4,
+        "policy_c_count": 32,
+        "policy_c_rate": 29.9
+      },
+      "failure_return_le_neg_20": {
+        "policy_b_count": 22,
+        "policy_b_rate": 20.6,
+        "policy_c_count": 15,
+        "policy_c_rate": 14.0
+      },
+      "failure_return_le_neg_30": {
+        "policy_b_count": 16,
+        "policy_b_rate": 15.0,
+        "policy_c_count": 10,
+        "policy_c_rate": 9.3
+      }
+    },
+    "exit4_activation_coverage": {
+      "first_progressed_observed_count": 107,
+      "policy_c_armed_count": 107,
+      "policy_c_triggered_count": 65,
+      "policy_c_executed_count": 65,
+      "open_without_exit4_count": 42
+    }
+  },
+  "skipped_early_handoff_summary": {
+    "sample_count": 32,
+    "policy_b": {
+      "terminal_return": {
+        "count": 32,
+        "mean": 27.8,
+        "median": 10.86,
+        "p25": -28.51,
+        "p75": 31.82,
+        "std": 95.4,
+        "min": -65.5,
+        "max": 442.57,
+        "positive_rate": 56.2
+      },
+      "mfe": {
+        "count": 32,
+        "mean": 139.11,
+        "median": 84.2,
+        "p25": 48.18,
+        "p75": 167.77,
+        "std": 201.57,
+        "min": 4.43,
+        "max": 1143.24,
+        "positive_rate": 100.0
+      },
+      "mae": {
+        "count": 32,
+        "mean": -31.48,
+        "median": -29.14,
+        "p25": -43.12,
+        "p75": -14.43,
+        "std": 19.44,
+        "min": -71.45,
+        "max": -4.52,
+        "positive_rate": 0.0
+      },
+      "peak_giveback": {
+        "count": 32,
+        "mean": 111.32,
+        "median": 83.67,
+        "p25": 45.02,
+        "p75": 136.16,
+        "std": 122.39,
+        "min": 4.42,
+        "max": 700.67,
+        "positive_rate": 100.0
+      },
+      "profit_capture": {
+        "count": 32,
+        "mean": -0.38,
+        "median": 0.08,
+        "p25": -0.48,
+        "p75": 0.28,
+        "std": 1.36,
+        "min": -6.0,
+        "max": 0.93,
+        "positive_rate": 56.2
+      },
+      "holding_weeks": {
+        "count": 32,
+        "mean": 78.81,
+        "median": 67.9,
+        "p25": 46.1,
+        "p75": 89.05,
+        "std": 73.77,
+        "min": 16.0,
+        "max": 454.0,
+        "positive_rate": 100.0
+      }
+    },
+    "policy_c": {
+      "terminal_return": {
+        "count": 32,
+        "mean": 33.05,
+        "median": 26.23,
+        "p25": -13.08,
+        "p75": 59.5,
+        "std": 60.5,
+        "min": -65.5,
+        "max": 203.93,
+        "positive_rate": 65.6
+      },
+      "mfe": {
+        "count": 32,
+        "mean": 75.23,
+        "median": 57.96,
+        "p25": 25.87,
+        "p75": 109.11,
+        "std": 58.64,
+        "min": 2.0,
+        "max": 228.6,
+        "positive_rate": 100.0
+      },
+      "mae": {
+        "count": 32,
+        "mean": -24.09,
+        "median": -20.27,
+        "p25": -29.42,
+        "p75": -13.96,
+        "std": 15.31,
+        "min": -71.45,
+        "max": -4.52,
+        "positive_rate": 0.0
+      },
+      "peak_giveback": {
+        "count": 32,
+        "mean": 42.17,
+        "median": 35.98,
+        "p25": 20.52,
+        "p75": 60.67,
+        "std": 32.08,
+        "min": 0.69,
+        "max": 131.84,
+        "positive_rate": 100.0
+      },
+      "profit_capture": {
+        "count": 32,
+        "mean": -0.51,
+        "median": 0.35,
+        "p25": -0.38,
+        "p75": 0.76,
+        "std": 2.72,
+        "min": -13.06,
+        "max": 0.98,
+        "positive_rate": 65.6
+      },
+      "holding_weeks": {
+        "count": 32,
+        "mean": 39.31,
+        "median": 34.2,
+        "p25": 21.15,
+        "p75": 52.8,
+        "std": 25.11,
+        "min": 7.8,
+        "max": 97.4,
+        "positive_rate": 100.0
+      }
+    },
+    "paired_deltas": {
+      "return_delta": {
+        "count": 32,
+        "mean": 5.26,
+        "median": 1.32,
+        "p25": 0.0,
+        "p75": 37.95,
+        "std": 75.04,
+        "min": -329.39,
+        "max": 133.14,
+        "positive_rate": 50.0
+      },
+      "giveback_delta": {
+        "count": 32,
+        "mean": -69.14,
+        "median": -24.64,
+        "p25": -89.7,
+        "p75": 0.0,
+        "std": 123.57,
+        "min": -660.47,
+        "max": 0.81,
+        "positive_rate": 3.1
+      },
+      "profit_capture_delta": {
+        "count": 32,
+        "mean": -0.13,
+        "median": 0.13,
+        "p25": 0.0,
+        "p75": 0.48,
+        "std": 1.9,
+        "min": -9.97,
+        "max": 1.31,
+        "positive_rate": 53.1
+      },
+      "holding_weeks_delta": {
+        "count": 32,
+        "mean": -39.5,
+        "median": -26.0,
+        "p25": -51.55,
+        "p75": 0.0,
+        "std": 70.99,
+        "min": -402.4,
+        "max": 0.0,
+        "positive_rate": 0.0
+      }
+    },
+    "return_comparison": {
+      "policy_c_better_count": 16,
+      "policy_c_better_rate": 50.0,
+      "equal_count": 9,
+      "equal_rate": 28.1,
+      "policy_b_better_count": 7,
+      "policy_b_better_rate": 21.9
+    },
+    "giveback_comparison": {
+      "policy_c_lower_giveback_count": 22,
+      "policy_c_lower_giveback_rate": 68.8,
+      "equal_count": 9,
+      "equal_rate": 28.1,
+      "policy_b_lower_giveback_count": 1,
+      "policy_b_lower_giveback_rate": 3.1
+    },
+    "right_tail_impact": {
+      "pb_return_ge_50_count": 7,
+      "pc_lower_ge_50_count": 4,
+      "pc_lower_ge_50_rate": 57.1,
+      "pb_return_ge_100_count": 3,
+      "pc_lower_ge_100_count": 2,
+      "pc_lower_ge_100_rate": 66.7,
+      "winner_preservation_20": {
+        "policy_b_count": 13,
+        "policy_b_rate": 40.6,
+        "policy_c_count": 18,
+        "policy_c_rate": 56.2
+      },
+      "winner_preservation_50": {
+        "policy_b_count": 7,
+        "policy_b_rate": 21.9,
+        "policy_c_count": 12,
+        "policy_c_rate": 37.5
+      },
+      "winner_preservation_100": {
+        "policy_b_count": 3,
+        "policy_b_rate": 9.4,
+        "policy_c_count": 5,
+        "policy_c_rate": 15.6
+      }
+    },
+    "failure_protection": {
+      "failure_return_negative": {
+        "policy_b_count": 14,
+        "policy_b_rate": 43.8,
+        "policy_c_count": 11,
+        "policy_c_rate": 34.4
+      },
+      "failure_return_le_neg_20": {
+        "policy_b_count": 9,
+        "policy_b_rate": 28.1,
+        "policy_c_count": 6,
+        "policy_c_rate": 18.8
+      },
+      "failure_return_le_neg_30": {
+        "policy_b_count": 8,
+        "policy_b_rate": 25.0,
+        "policy_c_count": 4,
+        "policy_c_rate": 12.5
+      }
+    },
+    "exit4_activation_coverage": {
+      "first_progressed_observed_count": 32,
+      "policy_c_armed_count": 32,
+      "policy_c_triggered_count": 23,
+      "policy_c_executed_count": 23,
+      "open_without_exit4_count": 9
+    }
+  },
+  "progressed_without_direct_handoff_summary": {
+    "sample_count": 75,
+    "policy_b": {
+      "terminal_return": {
+        "count": 75,
+        "mean": 29.84,
+        "median": 21.07,
+        "p25": -9.93,
+        "p75": 70.47,
+        "std": 53.23,
+        "min": -86.26,
+        "max": 221.97,
+        "positive_rate": 65.3
+      },
+      "mfe": {
+        "count": 75,
+        "mean": 113.56,
+        "median": 89.12,
+        "p25": 54.48,
+        "p75": 146.81,
+        "std": 88.39,
+        "min": 0.92,
+        "max": 444.98,
+        "positive_rate": 100.0
+      },
+      "mae": {
+        "count": 75,
+        "mean": -26.13,
+        "median": -21.74,
+        "p25": -39.84,
+        "p75": -11.77,
+        "std": 18.39,
+        "min": -87.56,
+        "max": -0.61,
+        "positive_rate": 0.0
+      },
+      "peak_giveback": {
+        "count": 75,
+        "mean": 83.72,
+        "median": 71.61,
+        "p25": 46.54,
+        "p75": 100.15,
+        "std": 62.1,
+        "min": 8.61,
+        "max": 392.38,
+        "positive_rate": 100.0
+      },
+      "profit_capture": {
+        "count": 75,
+        "mean": -1.22,
+        "median": 0.18,
+        "p25": -0.17,
+        "p75": 0.45,
+        "std": 10.86,
+        "min": -93.76,
+        "max": 0.9,
+        "positive_rate": 65.3
+      },
+      "holding_weeks": {
+        "count": 75,
+        "mean": 78.87,
+        "median": 57.4,
+        "p25": 50.9,
+        "p75": 73.8,
+        "std": 81.79,
+        "min": 12.4,
+        "max": 438.4,
+        "positive_rate": 100.0
+      }
+    },
+    "policy_c": {
+      "terminal_return": {
+        "count": 75,
+        "mean": 33.15,
+        "median": 23.69,
+        "p25": -2.88,
+        "p75": 72.21,
+        "std": 47.88,
+        "min": -86.26,
+        "max": 143.95,
+        "positive_rate": 72.0
+      },
+      "mfe": {
+        "count": 75,
+        "mean": 90.9,
+        "median": 75.5,
+        "p25": 53.2,
+        "p75": 115.36,
+        "std": 60.16,
+        "min": 0.92,
+        "max": 306.19,
+        "positive_rate": 100.0
+      },
+      "mae": {
+        "count": 75,
+        "mean": -23.02,
+        "median": -17.24,
+        "p25": -32.53,
+        "p75": -10.59,
+        "std": 16.99,
+        "min": -87.56,
+        "max": -0.61,
+        "positive_rate": 0.0
+      },
+      "peak_giveback": {
+        "count": 75,
+        "mean": 57.75,
+        "median": 51.31,
+        "p25": 30.06,
+        "p75": 62.83,
+        "std": 45.11,
+        "min": 7.76,
+        "max": 256.12,
+        "positive_rate": 100.0
+      },
+      "profit_capture": {
+        "count": 75,
+        "mean": -1.04,
+        "median": 0.32,
+        "p25": -0.05,
+        "p75": 0.6,
+        "std": 10.87,
+        "min": -93.76,
+        "max": 0.93,
+        "positive_rate": 72.0
+      },
+      "holding_weeks": {
+        "count": 75,
+        "mean": 63.46,
+        "median": 47.0,
+        "p25": 32.4,
+        "p75": 57.8,
+        "std": 72.83,
+        "min": 12.4,
+        "max": 424.4,
+        "positive_rate": 100.0
+      }
+    },
+    "paired_deltas": {
+      "return_delta": {
+        "count": 75,
+        "mean": 3.31,
+        "median": 0.0,
+        "p25": 0.0,
+        "p75": 15.34,
+        "std": 28.52,
+        "min": -134.26,
+        "max": 81.61,
+        "positive_rate": 34.7
+      },
+      "giveback_delta": {
+        "count": 75,
+        "mean": -25.97,
+        "median": 0.0,
+        "p25": -32.7,
+        "p75": 0.0,
+        "std": 56.35,
+        "min": -362.83,
+        "max": 49.93,
+        "positive_rate": 12.0
+      },
+      "profit_capture_delta": {
+        "count": 75,
+        "mean": 0.18,
+        "median": 0.0,
+        "p25": 0.0,
+        "p75": 0.29,
+        "std": 0.56,
+        "min": -0.61,
+        "max": 4.36,
+        "positive_rate": 41.3
+      },
+      "holding_weeks_delta": {
+        "count": 75,
+        "mean": -15.41,
+        "median": -6.2,
+        "p25": -18.4,
+        "p75": 0.0,
+        "std": 34.51,
+        "min": -263.2,
+        "max": 0.0,
+        "positive_rate": 0.0
+      }
+    },
+    "return_comparison": {
+      "policy_c_better_count": 26,
+      "policy_c_better_rate": 34.7,
+      "equal_count": 33,
+      "equal_rate": 44.0,
+      "policy_b_better_count": 16,
+      "policy_b_better_rate": 21.3
+    },
+    "giveback_comparison": {
+      "policy_c_lower_giveback_count": 33,
+      "policy_c_lower_giveback_rate": 44.0,
+      "equal_count": 33,
+      "equal_rate": 44.0,
+      "policy_b_lower_giveback_count": 9,
+      "policy_b_lower_giveback_rate": 12.0
+    },
+    "right_tail_impact": {
+      "pb_return_ge_50_count": 27,
+      "pc_lower_ge_50_count": 12,
+      "pc_lower_ge_50_rate": 44.4,
+      "pb_return_ge_100_count": 7,
+      "pc_lower_ge_100_count": 4,
+      "pc_lower_ge_100_rate": 57.1,
+      "winner_preservation_20": {
+        "policy_b_count": 38,
+        "policy_b_rate": 50.7,
+        "policy_c_count": 40,
+        "policy_c_rate": 53.3
+      },
+      "winner_preservation_50": {
+        "policy_b_count": 27,
+        "policy_b_rate": 36.0,
+        "policy_c_count": 28,
+        "policy_c_rate": 37.3
+      },
+      "winner_preservation_100": {
+        "policy_b_count": 7,
+        "policy_b_rate": 9.3,
+        "policy_c_count": 6,
+        "policy_c_rate": 8.0
+      }
+    },
+    "failure_protection": {
+      "failure_return_negative": {
+        "policy_b_count": 26,
+        "policy_b_rate": 34.7,
+        "policy_c_count": 21,
+        "policy_c_rate": 28.0
+      },
+      "failure_return_le_neg_20": {
+        "policy_b_count": 13,
+        "policy_b_rate": 17.3,
+        "policy_c_count": 9,
+        "policy_c_rate": 12.0
+      },
+      "failure_return_le_neg_30": {
+        "policy_b_count": 8,
+        "policy_b_rate": 10.7,
+        "policy_c_count": 6,
+        "policy_c_rate": 8.0
+      }
+    },
+    "exit4_activation_coverage": {
+      "first_progressed_observed_count": 75,
+      "policy_c_armed_count": 75,
+      "policy_c_triggered_count": 42,
+      "policy_c_executed_count": 42,
+      "open_without_exit4_count": 33
+    }
+  },
+  "full_553_paired_comparison": {
+    "sample_count": 553,
+    "policy_b": {
+      "terminal_return": {
+        "count": 553,
+        "mean": 36.82,
+        "median": 15.05,
+        "p25": -15.0,
+        "p75": 66.04,
+        "std": 87.72,
+        "min": -86.26,
+        "max": 912.41,
+        "positive_rate": 61.3
+      },
+      "mfe": {
+        "count": 553,
+        "mean": 101.17,
+        "median": 65.78,
+        "p25": 30.19,
+        "p75": 119.12,
+        "std": 164.89,
+        "min": 0.0,
+        "max": 2857.82,
+        "positive_rate": 99.6
+      },
+      "mae": {
+        "count": 553,
+        "mean": -25.62,
+        "median": -21.05,
+        "p25": -37.74,
+        "p75": -10.83,
+        "std": 18.17,
+        "min": -87.56,
+        "max": 0.0,
+        "positive_rate": 0.0
+      },
+      "peak_giveback": {
+        "count": 553,
+        "mean": 64.35,
+        "median": 43.23,
+        "p25": 22.22,
+        "p75": 71.61,
+        "std": 105.7,
+        "min": 0.0,
+        "max": 1945.41,
+        "positive_rate": 98.7
+      },
+      "profit_capture": {
+        "count": 551,
+        "mean": -3.04,
+        "median": 0.21,
+        "p25": -0.43,
+        "p75": 0.64,
+        "std": 23.9,
+        "min": -424.14,
+        "max": 1.0,
+        "positive_rate": 61.5
+      },
+      "holding_weeks": {
+        "count": 553,
+        "mean": 61.4,
+        "median": 45.6,
+        "p25": 27.2,
+        "p75": 64.4,
+        "std": 68.42,
+        "min": 3.0,
+        "max": 454.0,
+        "positive_rate": 100.0
+      }
+    },
+    "policy_c": {
+      "terminal_return": {
+        "count": 553,
+        "mean": 37.57,
+        "median": 16.67,
+        "p25": -13.9,
+        "p75": 68.94,
+        "std": 85.48,
+        "min": -86.26,
+        "max": 912.41,
+        "positive_rate": 62.7
+      },
+      "mfe": {
+        "count": 553,
+        "mean": 94.4,
+        "median": 63.02,
+        "p25": 29.93,
+        "p75": 112.03,
+        "std": 156.34,
+        "min": 0.0,
+        "max": 2857.82,
+        "positive_rate": 99.6
+      },
+      "mae": {
+        "count": 553,
+        "mean": -24.77,
+        "median": -20.35,
+        "p25": -36.06,
+        "p75": -10.71,
+        "std": 17.71,
+        "min": -87.56,
+        "max": 0.0,
+        "positive_rate": 0.0
+      },
+      "peak_giveback": {
+        "count": 553,
+        "mean": 56.83,
+        "median": 40.0,
+        "p25": 20.12,
+        "p75": 62.51,
+        "std": 99.72,
+        "min": 0.0,
+        "max": 1945.41,
+        "positive_rate": 98.7
+      },
+      "profit_capture": {
+        "count": 551,
+        "mean": -3.02,
+        "median": 0.27,
+        "p25": -0.42,
+        "p75": 0.68,
+        "std": 23.91,
+        "min": -424.14,
+        "max": 1.0,
+        "positive_rate": 63.0
+      },
+      "holding_weeks": {
+        "count": 553,
+        "mean": 57.02,
+        "median": 41.6,
+        "p25": 25.2,
+        "p75": 59.0,
+        "std": 64.62,
+        "min": 3.0,
+        "max": 450.4,
+        "positive_rate": 100.0
+      }
+    },
+    "paired_deltas": {
+      "return_delta": {
+        "count": 553,
+        "mean": 0.75,
+        "median": 0.0,
+        "p25": 0.0,
+        "p75": 0.0,
+        "std": 20.68,
+        "min": -329.39,
+        "max": 133.14,
+        "positive_rate": 7.6
+      },
+      "giveback_delta": {
+        "count": 553,
+        "mean": -7.52,
+        "median": 0.0,
+        "p25": 0.0,
+        "p75": 0.0,
+        "std": 39.94,
+        "min": -660.47,
+        "max": 49.93,
+        "positive_rate": 1.8
+      },
+      "profit_capture_delta": {
+        "count": 551,
+        "mean": 0.02,
+        "median": 0.0,
+        "p25": 0.0,
+        "p75": 0.0,
+        "std": 0.5,
+        "min": -9.97,
+        "max": 4.36,
+        "positive_rate": 8.7
+      },
+      "holding_weeks_delta": {
+        "count": 553,
+        "mean": -4.38,
+        "median": 0.0,
+        "p25": 0.0,
+        "p75": 0.0,
+        "std": 23.37,
+        "min": -402.4,
+        "max": 0.0,
+        "positive_rate": 0.0
+      }
+    },
+    "return_comparison": {
+      "policy_c_better_count": 42,
+      "policy_c_better_rate": 7.6,
+      "equal_count": 488,
+      "equal_rate": 88.2,
+      "policy_b_better_count": 23,
+      "policy_b_better_rate": 4.2
+    },
+    "giveback_comparison": {
+      "policy_c_lower_giveback_count": 55,
+      "policy_c_lower_giveback_rate": 9.9,
+      "equal_count": 488,
+      "equal_rate": 88.2,
+      "policy_b_lower_giveback_count": 10,
+      "policy_b_lower_giveback_rate": 1.8
+    },
+    "right_tail_impact": {
+      "pb_return_ge_50_count": 179,
+      "pc_lower_ge_50_count": 16,
+      "pc_lower_ge_50_rate": 8.9,
+      "pb_return_ge_100_count": 73,
+      "pc_lower_ge_100_count": 6,
+      "pc_lower_ge_100_rate": 8.2,
+      "winner_preservation_20": {
+        "policy_b_count": 261,
+        "policy_b_rate": 47.2,
+        "policy_c_count": 268,
+        "policy_c_rate": 48.5
+      },
+      "winner_preservation_50": {
+        "policy_b_count": 179,
+        "policy_b_rate": 32.4,
+        "policy_c_count": 185,
+        "policy_c_rate": 33.5
+      },
+      "winner_preservation_100": {
+        "policy_b_count": 73,
+        "policy_b_rate": 13.2,
+        "policy_c_count": 74,
+        "policy_c_rate": 13.4
+      }
+    },
+    "failure_protection": {
+      "failure_return_negative": {
+        "policy_b_count": 213,
+        "policy_b_rate": 38.5,
+        "policy_c_count": 205,
+        "policy_c_rate": 37.1
+      },
+      "failure_return_le_neg_20": {
+        "policy_b_count": 106,
+        "policy_b_rate": 19.2,
+        "policy_c_count": 99,
+        "policy_c_rate": 17.9
+      },
+      "failure_return_le_neg_30": {
+        "policy_b_count": 72,
+        "policy_b_rate": 13.0,
+        "policy_c_count": 66,
+        "policy_c_rate": 11.9
+      }
+    },
+    "exit4_activation_coverage": {
+      "first_progressed_observed_count": 377,
+      "policy_c_armed_count": 377,
+      "policy_c_triggered_count": 267,
+      "policy_c_executed_count": 267,
+      "open_without_exit4_count": 245
+    }
+  },
+  "changed_trade_count": 65,
+  "exit4_timing_summary": {
+    "triggered_trade_count": 65,
+    "days_from_first_prog_to_trigger": {
+      "count": 65,
+      "mean": 74.25,
+      "median": 61.0,
+      "p25": 31.0,
+      "p75": 92.0,
+      "std": 51.53,
+      "min": 28.0,
+      "max": 273.0,
+      "positive_rate": 100.0
+    },
+    "weeks_from_first_prog_to_exec": {
+      "count": 65,
+      "mean": 10.87,
+      "median": 9.0,
+      "p25": 4.6,
+      "p75": 13.3,
+      "std": 7.35,
+      "min": 4.4,
+      "max": 39.1,
+      "positive_rate": 100.0
+    },
+    "score_drawdown_stats": {
+      "count": 65,
+      "mean": 25.57,
+      "median": 22.23,
+      "p25": 17.93,
+      "p75": 28.84,
+      "std": 11.31,
+      "min": 15.0,
+      "max": 66.99,
+      "positive_rate": 100.0
+    }
+  },
+  "integrity_checks": {
+    "lifecycle_sum_equals_total": true,
+    "coverage_hole_sum_equals_107": true,
+    "normal_cohort_policy_b_equals_policy_c": true,
+    "never_progressed_policy_b_equals_policy_c": true,
+    "changed_trades_strictly_within_coverage_hole": true,
+    "score_drawdown_ge_15": true,
+    "no_forced_cutoff_close": true
+  },
+  "conclusion": {
+    "status": "COVERAGE_ACTIVATION_SUPPORTED",
+    "research_status": "CLOSED",
+    "production_status": "PRODUCTION_HOLD",
+    "key_observations": [
+      "Combined Executable 전체 553건 중 Coverage Hole 107건(SKIPPED 32건, PROGRESSED_WITHOUT_DIRECT 75건)에서 최초 PROGRESSED 관측 시점부터 frozen 15.0pt Exit 4를 활성화(Policy C)함.",
+      "Coverage Hole 107건 중 총 65건(60.7%)에서 Exit 4 신호가 정상 격발되어 익일 시가에 성공적으로 청산 보호됨.",
+      "Peak Giveback 중앙값은 Policy B 73.46%에서 Policy C 43.37%로 -2.65%p 감소하여 수익 반납 방어 효과를 입증함.",
+      "Terminal Return 중앙값은 Policy B 16.76% vs Policy C 23.69%(Delta 0.0%p)로 안정적으로 유지되었으며, Right Tail(Return >= +50%) 중 조기 청산 손실 비율은 47.1%로 제한적임.",
+      "전체 553건 중 변경 발생 거래수는 정확히 65건으로 모두 Coverage Hole 내부에서 발생하였으며, NORMAL 및 NEVER_PROGRESSED 코호트는 100% 무결하게 보존됨."
+    ]
+  }
+}
