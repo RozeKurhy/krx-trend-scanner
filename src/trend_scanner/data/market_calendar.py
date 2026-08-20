@@ -109,7 +109,7 @@ class MarketCalendarAuthority:
         cls,
         parquet_path: Path | str = DEFAULT_CALENDAR_PATH,
     ) -> MarketCalendarAuthority:
-        """Parquet 파일로부터 Canonical Market Calendar Authority를 로드하고 Invariant를 검증한다."""
+        """Parquet 파일로부터 Canonical Market Calendar Authority를 로드하고 엄격한 Invariant를 검증한다."""
         p = Path(parquet_path)
         if not p.exists():
             raise MarketCalendarUnavailableError(
@@ -132,39 +132,93 @@ class MarketCalendarAuthority:
                 raise MarketCalendarUnavailableError(
                     f"Failed to read calendar metadata JSON at {json_meta_path}: {exc}"
                 ) from exc
+        else:
+            raise MarketCalendarUnavailableError(f"Missing calendar metadata JSON at {json_meta_path}")
 
         # Extract completed_month_ends from parquet column or metadata
         completed_dates: list[pd.Timestamp] | None = None
         if "is_completed_month_end" in df.columns:
-            completed_dates = list(df.loc[df["is_completed_month_end"] == True, "trading_date"])
+            completed_dates = [pd.Timestamp(d).normalize() for d in df.loc[df["is_completed_month_end"] == True, "trading_date"]]
         elif "completed_month_ends" in meta:
-            completed_dates = [pd.Timestamp(d) for d in meta["completed_month_ends"]]
+            completed_dates = [pd.Timestamp(d).normalize() for d in meta["completed_month_ends"]]
 
         trading_dates = pd.DatetimeIndex(df["trading_date"]).normalize()
+        trading_dates_set = set(trading_dates)
 
-        # Invariant Validations
-        if not meta:
-            raise MarketCalendarUnavailableError(f"Missing calendar metadata JSON at {json_meta_path}")
-
+        # Invariant 1: min_date <= max_observed_trading_date
         min_d = trading_dates.min()
         max_d = trading_dates.max()
         if min_d > max_d:
             raise MarketCalendarUnavailableError(f"Calendar min_date {min_d} > max_date {max_d}")
 
-        if completed_dates is not None and len(completed_dates) > 0:
-            last_cme = completed_dates[-1]
-            if last_cme > max_d:
+        if completed_dates is None or len(completed_dates) == 0:
+            raise MarketCalendarUnavailableError("Calendar completed_month_ends cannot be empty.")
+
+        # Invariant 2: last_completed_month_end <= max_observed_trading_date
+        last_cme = completed_dates[-1]
+        if last_cme > max_d:
+            raise MarketCalendarUnavailableError(
+                f"last_completed_month_end {last_cme.strftime('%Y-%m-%d')} > max_observed_trading_date {max_d.strftime('%Y-%m-%d')}"
+            )
+
+        # Invariant 3: last_completed_month_end is in trading_dates
+        if last_cme not in trading_dates_set:
+            raise MarketCalendarUnavailableError(
+                f"last_completed_month_end {last_cme.strftime('%Y-%m-%d')} is not in trading_dates"
+            )
+
+        # Invariant 4: completed_month_ends is strictly ascending with no duplicates
+        for i in range(len(completed_dates) - 1):
+            if completed_dates[i] >= completed_dates[i + 1]:
+                raise MarketCalendarUnavailableError("completed_month_ends is not strictly ascending")
+
+        # Invariant 5: Each completed_month_end MUST be the EXACT maximum trading date of that year/month
+        # Group trading dates by (year, month) to verify exact match
+        df_temp = pd.DataFrame({"dt": trading_dates}, index=trading_dates)
+        monthly_groups = df_temp.groupby([df_temp.index.year, df_temp.index.month])
+        for d in completed_dates:
+            if d not in trading_dates_set:
+                raise MarketCalendarUnavailableError(f"completed_month_end {d.strftime('%Y-%m-%d')} is not in trading_dates")
+            ym = (d.year, d.month)
+            if ym not in monthly_groups.groups:
+                raise MarketCalendarUnavailableError(f"Year-month {ym} not in trading_dates.")
+            max_in_month = monthly_groups.get_group(ym).index.max().normalize()
+            if d != max_in_month:
                 raise MarketCalendarUnavailableError(
-                    f"last_completed_month_end {last_cme} > max_observed_trading_date {max_d}"
+                    f"completed_month_end {d.strftime('%Y-%m-%d')} does not match the actual observed "
+                    f"month-end trading date {max_in_month.strftime('%Y-%m-%d')} of that month."
                 )
-            if last_cme not in set(trading_dates):
+
+        # Invariant 6: Metadata Cross-Validation
+        if "last_completed_market_month" in meta:
+            expected_ym_str = f"{last_cme.year:04d}-{last_cme.month:02d}"
+            if meta["last_completed_market_month"] != expected_ym_str:
                 raise MarketCalendarUnavailableError(
-                    f"last_completed_month_end {last_cme} is not in trading_dates"
+                    f"Metadata last_completed_market_month ({meta['last_completed_market_month']}) "
+                    f"does not match last completed date ({expected_ym_str})"
                 )
-            # Check strictly ascending
-            for i in range(len(completed_dates) - 1):
-                if completed_dates[i] >= completed_dates[i + 1]:
-                    raise MarketCalendarUnavailableError("completed_month_ends is not strictly ascending")
+
+        if "last_completed_market_month_end_date" in meta:
+            expected_cme_str = last_cme.strftime("%Y-%m-%d")
+            if meta["last_completed_market_month_end_date"] != expected_cme_str:
+                raise MarketCalendarUnavailableError(
+                    f"Metadata last_completed_market_month_end_date ({meta['last_completed_market_month_end_date']}) "
+                    f"does not match last completed date ({expected_cme_str})"
+                )
+
+        if "completed_month_ends_count" in meta:
+            if int(meta["completed_month_ends_count"]) != len(completed_dates):
+                raise MarketCalendarUnavailableError(
+                    f"Metadata completed_month_ends_count ({meta['completed_month_ends_count']}) "
+                    f"!= actual count ({len(completed_dates)})"
+                )
+
+        if "is_completed_month_end" in df.columns:
+            parquet_cme_count = int((df["is_completed_month_end"] == True).sum())
+            if parquet_cme_count != len(completed_dates):
+                raise MarketCalendarUnavailableError(
+                    f"Parquet is_completed_month_end count ({parquet_cme_count}) != actual count ({len(completed_dates)})"
+                )
 
         return cls(
             trading_dates=trading_dates,
