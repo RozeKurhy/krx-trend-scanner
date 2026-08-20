@@ -1,4 +1,4 @@
-"""Targeted Contract & Documentation Invariant Tests for Pattern A FAST Final Strategy V02."""
+"""Targeted Contract & Documentation Invariant Tests for Pattern A FAST Final Strategy V02 (Final Fix)."""
 
 import json
 from pathlib import Path
@@ -15,7 +15,7 @@ V03_PREREG_PATH = ROOT / "docs/validation/pattern_a_fast_fresh_oos_v03_prereg.md
 
 
 def test_v01_frozen_baseline_preserved():
-    """Section 2, 10: Verify V01 document and json are intact as historical frozen baseline."""
+    """Section 2: Verify V01 document and json are intact as historical frozen baseline."""
     assert V01_DOC_PATH.exists()
     assert V01_JSON_PATH.exists()
 
@@ -30,7 +30,7 @@ def test_v01_frozen_baseline_preserved():
 
 
 def test_v02_strategy_contract_completeness():
-    """Section 3, 11, 26: Verify V02 strategy document and JSON completeness."""
+    """Section 3, 11: Verify V02 strategy document and JSON completeness."""
     assert V02_DOC_PATH.exists()
     assert V02_JSON_PATH.exists()
 
@@ -73,30 +73,73 @@ def test_v02_reentry_contract_invariants():
     assert reentry["exit4_hwm_reset"] is True
 
 
-def test_v02_entry_and_exit_contract_match_v01():
-    """Section 6-9: Verify V02 preserves V01's entry, loss guard, exit, and coverage rules exactly."""
+def test_v02_reentry_only_full_contract_equality():
+    """Section 13-16: Verify REENTRY_ONLY invariant via full dictionary contract equality."""
     v01_json = json.loads(V01_JSON_PATH.read_text(encoding="utf-8"))
     v02_json = json.loads(V02_JSON_PATH.read_text(encoding="utf-8"))
 
-    # Entry components
-    assert v02_json["entry_contract"]["allowed_pattern_a_stages"] == v01_json["entry_contract"]["allowed_pattern_a_stages"]
-    assert v02_json["entry_contract"]["excluded_pattern_a_stages"] == v01_json["entry_contract"]["excluded_pattern_a_stages"]
-    assert v02_json["entry_contract"]["fast_machine_stage"] == v01_json["entry_contract"]["fast_machine_stage"]
-    assert v02_json["entry_contract"]["monthly_permission_state"] == v01_json["entry_contract"]["monthly_permission_state"]
-    assert v02_json["entry_contract"]["daily_risk_allowed_states"] == v01_json["entry_contract"]["daily_risk_allowed_states"]
-    assert v02_json["entry_contract"]["fast_score_allowed_statuses"] == v01_json["entry_contract"]["fast_score_allowed_statuses"]
+    # Entry Contract: 100% equal except entry_selection
+    v01_entry_core = {k: v for k, v in v01_json["entry_contract"].items() if k != "entry_selection"}
+    v02_entry_core = {k: v for k, v in v02_json["entry_contract"].items() if k != "entry_selection"}
+    assert v01_entry_core == v02_entry_core
 
-    # Hold and Loss Guard
-    assert v02_json["hold_and_loss_guard_contract"]["trigger_condition"] == v01_json["hold_and_loss_guard_contract"]["trigger_condition"]
-    assert v02_json["hold_and_loss_guard_contract"]["active_window"] == v01_json["hold_and_loss_guard_contract"]["active_window"]
+    assert v01_json["entry_contract"]["entry_selection"] == "FIRST_QUALIFYING_ENTRY_PER_TICKER"
+    assert v02_json["entry_contract"]["entry_selection"] == "MULTIPLE_INDEPENDENT_ENTRIES_PER_TICKER"
 
-    # Exit
-    assert v02_json["exit_contract"]["normal_lifecycle"]["frozen_drawdown_threshold_pt"] == v01_json["exit_contract"]["normal_lifecycle"]["frozen_drawdown_threshold_pt"]
-    assert v02_json["exit_contract"]["coverage_hole"]["coverage_exit4_trigger"] == v01_json["exit_contract"]["coverage_hole"]["coverage_exit4_trigger"]
+    # Hold and Loss Guard Contract: Full equality
+    assert v01_json["hold_and_loss_guard_contract"] == v02_json["hold_and_loss_guard_contract"]
+
+    # Exit Contract: Full equality (Normal Exit3/Exit4, Coverage Exit4, Never Progressed)
+    assert v01_json["exit_contract"] == v02_json["exit_contract"]
+
+
+def test_v02_final_evidence_authority():
+    """Section 3, 4, 18: Verify final evidence authority commit and provenance separation."""
+    v02_json = json.loads(V02_JSON_PATH.read_text(encoding="utf-8"))
+
+    expected_closure_sha = "36273d97ae6d4f5b1dbc72cca186bc6009b5fa51"
+    expected_trade_gen_sha = "b9ba613be973906915e5081a0e5828dd6e1350d6"
+
+    assert v02_json["evaluation_evidence_commit"] == expected_closure_sha
+    assert v02_json["reentry_evidence_closure_commit"] == expected_closure_sha
+    assert v02_json["reentry_trade_generation_commit"] == expected_trade_gen_sha
+
+    v02_doc = V02_DOC_PATH.read_text(encoding="utf-8")
+    assert "36273d9" in v02_doc
+    assert "cdfeaed" not in v02_doc
+
+
+def test_v02_risk_semantics_separate_gap_and_structural_tail():
+    """Section 6-8, 19: Verify Loss Guard gap risk is decoupled from post-PROGRESSED structural tail."""
+    v02_json = json.loads(V02_JSON_PATH.read_text(encoding="utf-8"))
+    tradeoffs = v02_json["known_tradeoffs"]
+
+    # -77.72 must not be inside loss_guard_execution_risk
+    assert "-77.72" not in tradeoffs["loss_guard_execution_risk"]
+
+    # deep_downside_tail must exist and capture 011170_02 structural tail
+    assert "deep_downside_tail" in tradeoffs
+    tail = tradeoffs["deep_downside_tail"]
+    assert tail["worst_terminal_return_pct"] == -77.72
+    assert tail["trade_id"] == "011170_02"
+    assert tail["classification"] == "OPEN_AT_CUTOFF_STRUCTURAL_TAIL"
+    assert "coverage" in tail["context"].lower() or "structural tail" in tail["classification"].lower()
+
+
+def test_strategy_docs_do_not_contain_local_file_urls():
+    """Section 11, 12, 20: Verify strategy documentation files contain zero local filesystem URLs or paths."""
+    forbidden_tokens = ["file:///", "/Users/", "Users/june", "Documents/projects"]
+
+    docs_to_check = [V02_DOC_PATH, VERSIONS_INDEX_PATH, V03_PREREG_PATH]
+    for doc_path in docs_to_check:
+        assert doc_path.exists()
+        content = doc_path.read_text(encoding="utf-8")
+        for token in forbidden_tokens:
+            assert token not in content, f"Found forbidden local path token '{token}' in {doc_path.name}"
 
 
 def test_v03_prereg_superseded_banner():
-    """Section 21, 22: Verify V03 Fresh OOS prereg document has superseded banner."""
+    """Section 21: Verify V03 Fresh OOS prereg document has superseded banner."""
     assert V03_PREREG_PATH.exists()
     v03_doc = V03_PREREG_PATH.read_text(encoding="utf-8")
     assert "SUPERSEDED_HISTORICAL_PREREGISTRATION" in v03_doc

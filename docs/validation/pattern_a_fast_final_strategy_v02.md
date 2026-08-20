@@ -13,7 +13,8 @@
 - **V01 대비 변경점 (Delta from V01)**: **`REENTRY_ONLY`** (동일 종목 독립 재진입 허용 단 하나만 변경)
 - **아키텍처 기준 커밋 (Architecture Authority)**: [`89df82a`](https://github.com/RozeKurhy/krx-trend-scanner/commit/89df82a938dba1961c2342064db2dc0061a5f2ca)
 - **캘린더 권한 커밋 (Calendar Authority)**: [`88d54d8`](https://github.com/RozeKurhy/krx-trend-scanner/commit/88d54d85bdee1f2121bec9b27a250cbc1cb9f98f)
-- **평가 증거 커밋 (Evaluation Evidence)**: [`cdfeaed`](https://github.com/RozeKurhy/krx-trend-scanner/commit/cdfeaed579f880c437d1a95d4227dd3051843008)
+- **평가 증거 커밋 (Evaluation Evidence Authority)**: [`36273d9`](https://github.com/RozeKurhy/krx-trend-scanner/commit/36273d97ae6d4f5b1dbc72cca186bc6009b5fa51)
+- **거래 생성 커밋 (Reentry Trade Generation Authority)**: [`b9ba613`](https://github.com/RozeKurhy/krx-trend-scanner/commit/b9ba613be973906915e5081a0e5828dd6e1350d6)
 - **Fresh OOS 실행 여부**: **`NO`** (본 증거는 동일 과거 표본 retrospective 확정임)
 - **운영 상태 (Production Status)**: **`PRODUCTION_HOLD` (운영 불변, 연구 전용)**
 
@@ -119,8 +120,10 @@
 #### 1) 알려진 위험 (Known Trade-offs)
 1. **재진입 시 테일 손실 증가**:
    - 재진입 허용 시 추가적인 대형 상승 기회를 회수할 수 있으나, Return <= -20% 손실(39건, 4.98%) 및 Return <= -30% 극단 손실(10건, 1.28%)의 절대 건수가 소폭 증가함.
-2. **PROGRESSED 진입 후 비대칭 보호 구조**:
-   - PROGRESSED 도달 후 일봉 손실가드가 해제되고 월봉 국면/점수 청산만 남게 되어, 가격 급락 시 월말 스냅샷까지 청산이 지연되는 특성이 존재함.
+2. **A. Loss Guard Execution Risk (손실가드 체결 지연 위험)**:
+   - 일봉 완료 종가(Completed Close) 기준으로 -15% 도달 시 트리거되어 익영업일 시가(Next Local Open)에 체결되므로, 당일 급락 폭 및 익일 시가 갭에 따라 실제 실현 손실이 -15%를 초과할 수 있음.
+3. **B. Post-PROGRESSED Structural Tail Risk (추세 진입 후 구조적 테일 위험)**:
+   - PROGRESSED 도달 후 일봉 손실가드가 해제되고 월봉 국면/점수 청산(Exit 3/4)만 남게 되므로, 급격한 가격 하락 시 청산이 지연되거나 Coverage 경로에서 Exit 4 조건을 충족하지 못해 Cutoff까지 미청산 손실(`OPEN_AT_CUTOFF`)로 남는 구조적 테일이 발생할 수 있음 (예: 롯데케미칼 `011170_02`, Terminal Return `-77.72%`).
 
 #### 2) 보류된 후속 연구 (Deferred Research: PROGRESSED Downside Protection)
 - **연구 사실**: PROGRESSED 실제 보유 328건에 대한 진단(`Phase 1`)에서 대형 손실자(중앙값 -44.62%)와 대형 승자(중앙값 -16.65%) 간에 가격 HWM Drawdown의 기술적 분리가 관측됨.

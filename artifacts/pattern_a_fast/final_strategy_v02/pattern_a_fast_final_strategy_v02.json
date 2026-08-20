@@ -11,7 +11,9 @@
   "delta_from_v01": "REENTRY_ONLY",
   "architecture_authority_commit": "89df82a938dba1961c2342064db2dc0061a5f2ca",
   "calendar_authority_commit": "88d54d85bdee1f2121bec9b27a250cbc1cb9f98f",
-  "evaluation_evidence_commit": "cdfeaed579f880c437d1a95d4227dd3051843008",
+  "evaluation_evidence_commit": "36273d97ae6d4f5b1dbc72cca186bc6009b5fa51",
+  "reentry_trade_generation_commit": "b9ba613be973906915e5081a0e5828dd6e1350d6",
+  "reentry_evidence_closure_commit": "36273d97ae6d4f5b1dbc72cca186bc6009b5fa51",
   "evaluation_basis": "CORRECTED_PIT_BASELINE",
   "selection_authority": "FINAL_STRATEGY_CONTRACT",
   "contract_authority": "THIS_FINAL_STRATEGY_CONTRACT_REVISION",
@@ -156,8 +158,19 @@
   },
   "known_tradeoffs": {
     "reentry_downside_increase": "Allowing re-entry moderately increases the absolute count of deep downside tail trades (<= -20%: 39 vs 25, <= -30%: 10 vs 6).",
-    "execution_gap_risk": "Loss Guard triggers at daily close -15% but executes at next local open, so realized loss may exceed -15% (worst return -77.72% in coverage structural tail).",
-    "asymmetric_post_progressed_protection": "Loss Guard deactivates upon PROGRESSED, leaving only monthly Exit3/Exit4/Coverage, which may lag during sharp intra-month price breakdown."
+    "loss_guard_execution_risk": "Loss Guard triggers when a completed daily close reaches <= -15% relative to entry open and executes at the next local trading day open. Therefore realized loss may exceed the -15% signal threshold.",
+    "asymmetric_post_progressed_protection": "Loss Guard deactivates upon PROGRESSED, leaving only monthly Exit3/Exit4/Coverage, which may lag during sharp intra-month price breakdown.",
+    "deep_downside_tail": {
+      "worst_terminal_return_pct": -77.72,
+      "trade_id": "011170_02",
+      "ticker": "011170",
+      "name": "롯데케미칼",
+      "lifecycle_class": "SKIPPED_EARLY_TREND_HANDOFF",
+      "exit_type": "NO_EXIT_BEFORE_CUTOFF",
+      "trade_status": "OPEN_AT_CUTOFF",
+      "classification": "OPEN_AT_CUTOFF_STRUCTURAL_TAIL",
+      "context": "PROGRESSED coverage structural tail remaining unliquidated at cutoff without triggering Exit4"
+    }
   },
   "deferred_research": {
     "research_topic": "PROGRESSED_DOWNSIDE_PROTECTION_RESEARCH",
