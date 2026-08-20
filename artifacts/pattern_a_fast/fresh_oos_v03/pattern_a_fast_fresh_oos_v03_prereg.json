@@ -1,0 +1,199 @@
+{
+  "research_title": "Pattern A FAST Architecture v0.3 Fresh OOS Forward Validation",
+  "research_classification": "FRESH_OOS_FORWARD_VALIDATION_PREREGISTRATION",
+  "architecture_authority_commit": "89df82a938dba1961c2342064db2dc0061a5f2ca",
+  "preregistration_commit": "SELF_COMMIT_PENDING",
+  "fresh_oos_status": "PREREGISTERED_NOT_STARTED",
+  "production_status": "PRODUCTION_HOLD",
+  "production_impact": "NONE",
+  "independent_time_validation": true,
+  "independent_rule_discovery": false,
+  "retrospective_tuning": false,
+  "enrollment_start_rule": "FIRST_KRX_TRADING_DAY_AFTER_PREREGISTRATION_COMMIT",
+  "enrollment_window_calendar_weeks": 26,
+  "maximum_forward_horizon_weeks": 26,
+  "final_evaluation_rule": "WAIT_UNTIL_LAST_ENROLLED_TRADE_REACHES_26W_MATURITY",
+  "universe_contract": {
+    "market": [
+      "KOSPI",
+      "KOSDAQ"
+    ],
+    "instrument_type": "COMMON_STOCKS",
+    "market_cap_min_krw": 100000000000,
+    "avg_trading_value_20d_min_krw": 300000000,
+    "price_filter": null,
+    "pit_investability": true
+  },
+  "entry_selection": "FIRST_QUALIFYING_ENTRY_PER_TICKER_WITHIN_ENROLLMENT_WINDOW",
+  "official_primary_policy_id": "PRIMARY_V03",
+  "experimental_policy_id": "PRIMARY_V03_WITH_COVERAGE_EXPERIMENT",
+  "entry_contract_reference": {
+    "fast_machine_stage": "TRIGGER",
+    "fast_machine_status": "READY",
+    "monthly_permission_state": "PERMITTED_REGIME",
+    "daily_risk_allowed_states": [
+      "NORMAL",
+      "ELEVATED"
+    ],
+    "fast_score_allowed_statuses": [
+      "READY",
+      "PARTIAL"
+    ],
+    "numeric_score_threshold": null,
+    "pattern_a_hard_gate": null,
+    "execution_timing": "NEXT_LOCAL_TRADING_DAY_OPEN"
+  },
+  "hold_contract_reference": {
+    "pre_progressed_hold": true,
+    "pre_progressed_terminal_exit": "NONE",
+    "time_stop": "NONE",
+    "price_stop": "NONE",
+    "fast_reversal_exit": "NONE",
+    "never_progressed_terminal_status": "OPEN_AT_CUTOFF",
+    "never_progressed_forced_close": false,
+    "never_progressed_valuation": "MARK_TO_CUTOFF",
+    "progressed_semantics": "LATE_FOR_FRESH_ENTRY_NOT_EXIT_SIGNAL",
+    "normal_lifecycle_rule": "HOLD_THROUGH_EARLY_TREND_TO_PROGRESSED"
+  },
+  "exit_contract_reference": {
+    "primary_policy": {
+      "policy_id": "PRIMARY_V03",
+      "role": "OFFICIAL_FRESH_OOS_PRIMARY",
+      "activation_condition": "POST_ENTRY_DIRECT_EARLY_TREND_TO_PROGRESSED",
+      "activation_scope": "NORMAL_EARLY_TREND_HANDOFF_ONLY",
+      "exit4_trigger": "PROGRESSED_HWM_MINUS_CURRENT_SCORE_GE_15PT",
+      "exit4_active_stage": "PROGRESSED_ONLY",
+      "frozen_drawdown_threshold_pt": 15.0,
+      "exit3_trigger": "PROGRESSED_TO_OTHER_VALID_STRUCTURAL_STAGE",
+      "exit3_target_stages": [
+        "WEAK",
+        "BASE",
+        "TRANSITION",
+        "EARLY_TREND"
+      ],
+      "exit3_coverage_expansion": "NONE",
+      "terminal_precedence": "EARLIEST_EXECUTABLE_SIGNAL",
+      "coverage_activation": false,
+      "coverage_hole_terminal_status": "OPEN_AT_CUTOFF",
+      "execution_timing": "NEXT_LOCAL_TRADING_DAY_OPEN"
+    },
+    "experimental_coverage_comparator": {
+      "policy_id": "PRIMARY_V03_WITH_COVERAGE_EXPERIMENT",
+      "role": "EXPERIMENTAL_COMPARATOR",
+      "status": "PROMISING_EXPERIMENTAL",
+      "coverage_activation": true,
+      "coverage_activation_condition": "FIRST_OBSERVED_PROGRESSED_SNAPSHOT",
+      "coverage_activation_scope": [
+        "SKIPPED_EARLY_TREND_HANDOFF",
+        "PROGRESSED_WITHOUT_DIRECT_HANDOFF"
+      ],
+      "coverage_exit4_trigger": "PROGRESSED_HWM_MINUS_CURRENT_SCORE_GE_15PT",
+      "frozen_drawdown_threshold_pt": 15.0,
+      "coverage_exit3_expansion": "NONE",
+      "on_progressed_departure_without_exit4": "OPEN_AT_CUTOFF",
+      "terminal_precedence": "EXIT4_ONLY_FOR_COVERAGE_EXTENSION",
+      "execution_timing": "NEXT_LOCAL_TRADING_DAY_OPEN"
+    }
+  },
+  "observation_cohorts": {
+    "pattern_a_entry_stage": [
+      "WEAK",
+      "BASE",
+      "TRANSITION",
+      "EARLY_TREND",
+      "PROGRESSED",
+      "UNAVAILABLE"
+    ],
+    "daily_risk_state": [
+      "NORMAL",
+      "ELEVATED"
+    ],
+    "market": [
+      "KOSPI",
+      "KOSDAQ"
+    ],
+    "lifecycle_cohort": [
+      "NORMAL_EARLY_TREND_HANDOFF",
+      "SKIPPED_EARLY_TREND_HANDOFF",
+      "PROGRESSED_WITHOUT_DIRECT_HANDOFF",
+      "NEVER_PROGRESSED"
+    ]
+  },
+  "metrics_contract": {
+    "entry_and_execution": [
+      "entry_count_n",
+      "executable_entry_count_n",
+      "non_executable_count_n",
+      "execution_delay_days"
+    ],
+    "forward_returns": [
+      "return_4w",
+      "return_8w",
+      "return_12w",
+      "return_26w",
+      "terminal_return"
+    ],
+    "path_metrics": [
+      "mfe",
+      "mae",
+      "peak_giveback",
+      "profit_capture_ratio",
+      "holding_weeks"
+    ],
+    "exit_metrics": [
+      "exit3_count",
+      "exit4_count",
+      "open_at_cutoff_count",
+      "never_progressed_count"
+    ],
+    "tail_metrics": {
+      "right_tail": [
+        "return_ge_20_count",
+        "return_ge_50_count",
+        "return_ge_100_count",
+        "winner_truncation_rate_pct"
+      ],
+      "failure_tail": [
+        "return_negative_count",
+        "return_le_neg_20_count",
+        "return_le_neg_30_count"
+      ]
+    },
+    "coverage_activation_metrics": [
+      "armed_count",
+      "triggered_count",
+      "executed_count"
+    ],
+    "paired_comparison_metrics": [
+      "paired_return_delta",
+      "paired_giveback_delta",
+      "paired_profit_capture_delta",
+      "paired_holding_weeks_delta",
+      "experimental_better_count",
+      "equal_count",
+      "primary_better_count"
+    ]
+  },
+  "censoring_rules": "UNMATURED_HORIZONS_FLAGGED_AS_CENSORED_NOT_MATURED_NEVER_ZERO",
+  "interim_rules": {
+    "status": "FRESH_OOS_IN_PROGRESS",
+    "monitoring_only": true,
+    "allow_policy_changes": false,
+    "allow_early_supported_claim": false
+  },
+  "final_interpretation_states": [
+    "FRESH_OOS_DIRECTIONALLY_SUPPORTED",
+    "FRESH_OOS_MIXED",
+    "FRESH_OOS_NOT_REPLICATED",
+    "INSUFFICIENT_FRESH_OOS_SAMPLE"
+  ],
+  "no_tuning_rules": [
+    "No data peeking before preregistration commit.",
+    "No signal searching or candidate count lookups prior to execution.",
+    "Strictly frozen 15.0pt Exit 4 drawdown threshold (zero sweeps/tuning).",
+    "Strictly frozen FAST machine rules and monthly permission states.",
+    "Strictly frozen PIT next local trading day open execution.",
+    "No post-hoc numerical hurdle or success cutoff creation.",
+    "Production remains strictly on PRODUCTION_HOLD."
+  ]
+}
