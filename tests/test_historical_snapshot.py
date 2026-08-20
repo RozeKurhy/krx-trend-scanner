@@ -141,7 +141,10 @@ def test_completed_vs_live_monthly_around_mid_month_snapshot():
     snapshot_date = daily.index[-1]
 
     monthly_full = to_monthly(daily)
-    cal = MarketCalendarAuthority.from_dates(pd.date_range("2020-01-01", "2024-05-31", freq="B"))
+    cal = MarketCalendarAuthority.from_dates(
+        pd.date_range("2020-01-01", "2024-05-31", freq="B"),
+        last_completed_month="2024-04",
+    )
 
     snap_live = build_historical_snapshot(
         "TEST", "테스트", daily, snapshot_date, include_incomplete_periods=True, market_calendar=cal
@@ -161,7 +164,10 @@ def test_completed_mode_drops_incomplete_weekly_bar():
     snapshot_date = daily.index[-1]  # 2024-05-15(수), 그 주 금요일(5/17)은 아직 안 옴
 
     weekly_full = to_weekly(daily)
-    cal = MarketCalendarAuthority.from_dates(pd.date_range("2020-01-01", "2024-05-31", freq="B"))
+    cal = MarketCalendarAuthority.from_dates(
+        pd.date_range("2020-01-01", "2024-05-31", freq="B"),
+        last_completed_month="2024-04",
+    )
 
     snap_completed = build_historical_snapshot(
         "TEST", "테스트", daily, snapshot_date, include_incomplete_periods=False, market_calendar=cal
@@ -177,7 +183,10 @@ def test_live_mode_keeps_incomplete_weekly_bar():
     snapshot_date = daily.index[-1]
 
     weekly_full = to_weekly(daily)
-    cal = MarketCalendarAuthority.from_dates(pd.date_range("2020-01-01", "2024-05-31", freq="B"))
+    cal = MarketCalendarAuthority.from_dates(
+        pd.date_range("2020-01-01", "2024-05-31", freq="B"),
+        last_completed_month="2024-04",
+    )
 
     snap_live = build_historical_snapshot(
         "TEST", "테스트", daily, snapshot_date, include_incomplete_periods=True, market_calendar=cal
@@ -192,7 +201,10 @@ def test_monthly_as_of_and_weekly_as_of_reflect_completed_trim():
     snapshot_date = daily.index[-1]
     monthly_full = to_monthly(daily)
     weekly_full = to_weekly(daily)
-    cal = MarketCalendarAuthority.from_dates(pd.date_range("2020-01-01", "2024-05-31", freq="B"))
+    cal = MarketCalendarAuthority.from_dates(
+        pd.date_range("2020-01-01", "2024-05-31", freq="B"),
+        last_completed_month="2024-04",
+    )
 
     snap_completed = build_historical_snapshot(
         "TEST", "테스트", daily, snapshot_date, include_incomplete_periods=False, market_calendar=cal
@@ -251,35 +263,98 @@ def test_to_csv_row_includes_snapshot_metadata_and_feature_fields():
 
 
 # ==============================================================================
-# Mandatory Architectural Regression Tests (Items 10, 11, 12, 15)
+# Terminal Partial Month & Architectural Regression Tests (w.md Sections 10-13)
 # ==============================================================================
 
-def test_synthetic_individual_stock_trading_halt_regression():
-    """Section 10: 개별 종목 거래정지 시 시장 월말 판정 왜곡 방지 검증.
+def test_synthetic_terminal_partial_month_regression():
+    """Section 10: Terminal Partial Month 오판 방지 회귀 테스트.
     
-    KRX 시장 거래일: 2018-04-27, 2018-04-30
-    개별 종목 거래일: 2018-04-27만 존재 (4/30 거래정지)
+    Synthetic Calendar: 2026-07-31 및 2026-08-03 ~ 2026-08-14
+    max_observed_trading_date = 2026-08-14
+    last_completed_market_month = 2026-07
     
     기대:
-    - 2018-04-27 시점: 시장 4월 월봉은 아직 미완성(incomplete -> 제외).
-    - 2018-04-30 시점: 시장 4월 월봉이 완성됨(completed -> 포함).
-    즉, 개별 종목의 index.max()(2018-04-27)를 시장 월말로 오판하지 않음을 검증.
+    - is_completed_month('2026-07-31') == True
+    - is_completed_month('2026-08-14') == False
+    - get_actual_month_end(2026, 7) == Timestamp('2026-07-31')
+    - get_actual_month_end(2026, 8) is None
     """
-    market_dates = pd.to_datetime(["2018-04-25", "2018-04-26", "2018-04-27", "2018-04-30"])
-    cal = MarketCalendarAuthority.from_dates(market_dates, source_name="SYNTHETIC_KRX_MARKET")
+    dates = pd.date_range("2026-07-01", "2026-07-31", freq="B").union(
+        pd.date_range("2026-08-01", "2026-08-14", freq="B")
+    )
+    cal = MarketCalendarAuthority.from_dates(
+        dates=dates,
+        last_completed_month="2026-07",
+        source_name="SYNTHETIC_PARTIAL_AUGUST",
+    )
 
-    # 개별 종목 데이터는 4/27까지만 존재 (4/30 거래정지)
-    daily_idx = pd.to_datetime(["2018-04-25", "2018-04-26", "2018-04-27"])
-    daily_halted = pd.DataFrame(
-        {
-            "open": [100.0, 101.0, 102.0],
-            "high": [105.0, 105.0, 105.0],
-            "low": [95.0, 95.0, 95.0],
-            "close": [100.0, 101.0, 102.0],
-            "volume": [1000.0, 1000.0, 1000.0],
-            "trading_value": [1.0e8, 1.0e8, 1.0e8],
-        },
-        index=daily_idx,
+    assert cal.is_completed_month("2026-07-31") is True
+    assert cal.is_completed_month("2026-08-14") is False
+    assert cal.get_actual_month_end(2026, 7) == pd.Timestamp("2026-07-31")
+    assert cal.get_actual_month_end(2026, 8) is None
+
+
+def test_synthetic_full_terminal_month_regression():
+    """Section 11: Full Month Terminal 회귀 테스트.
+    
+    마지막 월이 완전히 종료된 시점에 생성된 경우(last_completed = 2026-07),
+    2026-07-31은 정상적으로 completed로 인정되어야 함.
+    """
+    dates = pd.date_range("2026-07-01", "2026-07-31", freq="B")
+    cal = MarketCalendarAuthority.from_dates(
+        dates=dates,
+        last_completed_month="2026-07",
+        source_name="SYNTHETIC_FULL_JULY",
+    )
+
+    assert cal.is_completed_month("2026-07-31") is True
+    assert cal.get_actual_month_end(2026, 7) == pd.Timestamp("2026-07-31")
+
+
+def test_partial_month_snapshot_regression():
+    """Section 12: Partial Month Snapshot 시 미완성 월봉 배제 검증.
+    
+    2026-08-14 snapshot 시 8월 partial monthly bar가 배제되고
+    monthly_as_of는 2026-07-31이어야 한다.
+    """
+    daily = _daily_frame(600, start="2024-01-01", freq="B")
+    # 마지막 날짜를 2026-08-14로 설정
+    daily.index = pd.date_range(end="2026-08-14", periods=len(daily), freq="B")
+    snapshot_date = pd.Timestamp("2026-08-14")
+
+    snap = build_historical_snapshot(
+        "TEST", "테스트", daily, snapshot_date, include_incomplete_periods=False
+    )
+
+    assert snap.monthly_as_of == pd.Timestamp("2026-07-31")
+    assert pd.Timestamp("2026-08-31") not in snap.monthly.index
+
+
+def test_canonical_actual_20260814_regression():
+    """Section 13: 실제 Canonical Calendar의 2026-08-14 Cutoff 검증.
+    
+    - max_observed_trading_date: 2026-08-14
+    - 2026-08-14 completed: False
+    - 2026-07-31 completed: True
+    - get_actual_month_end(2026, 8) is None
+    - get_actual_month_end(2026, 7) == 2026-07-31
+    """
+    cal = get_canonical_market_calendar()
+
+    assert cal.max_observed_trading_date == pd.Timestamp("2026-08-14")
+    assert cal.is_completed_month("2026-08-14") is False
+    assert cal.is_completed_month("2026-07-31") is True
+    assert cal.get_actual_month_end(2026, 8) is None
+    assert cal.get_actual_month_end(2026, 7) == pd.Timestamp("2026-07-31")
+
+
+def test_synthetic_individual_stock_trading_halt_regression():
+    """Section 10: 개별 종목 거래정지 시 시장 월말 판정 왜곡 방지 검증."""
+    market_dates = pd.to_datetime(["2018-04-25", "2018-04-26", "2018-04-27", "2018-04-30"])
+    cal = MarketCalendarAuthority.from_dates(
+        market_dates,
+        last_completed_month="2018-04",
+        source_name="SYNTHETIC_KRX_MARKET",
     )
 
     # 4/27 시점: 시장 월말(4/30) 이전이므로 4월 월봉은 미완성으로 판정되어야 함
@@ -290,15 +365,17 @@ def test_synthetic_individual_stock_trading_halt_regression():
 
 
 def test_calendar_source_cache_isolation_regression():
-    """Section 11: 서로 다른 Calendar Source 간 캐시 오염 방지(Cache Isolation) 검증.
-    
-    Synthetic Calendar A: 8월 말 = 2025-08-29
-    Synthetic Calendar B: 8월 말 = 2025-08-28
-    
-    A 호출 후 B 호출, B 호출 후 A 호출 시 서로의 캐시를 침범하지 않아야 한다.
-    """
-    cal_a = MarketCalendarAuthority.from_dates(["2025-08-27", "2025-08-28", "2025-08-29"], source_name="CAL_A")
-    cal_b = MarketCalendarAuthority.from_dates(["2025-08-27", "2025-08-28"], source_name="CAL_B")
+    """Section 11: 서로 다른 Calendar Source 간 캐시 오염 방지(Cache Isolation) 검증."""
+    cal_a = MarketCalendarAuthority.from_dates(
+        ["2025-08-27", "2025-08-28", "2025-08-29"],
+        last_completed_month="2025-08",
+        source_name="CAL_A",
+    )
+    cal_b = MarketCalendarAuthority.from_dates(
+        ["2025-08-27", "2025-08-28"],
+        last_completed_month="2025-08",
+        source_name="CAL_B",
+    )
 
     # A에서는 8/28이 월말 미도달(False), 8/29가 월말(True)
     assert cal_a.is_completed_month("2025-08-28") is False
@@ -323,11 +400,7 @@ def test_authority_missing_fail_closed_regression(tmp_path):
 
 
 def test_historical_samsung_2018_trading_halt_month_end_accuracy():
-    """Section 15: 2018년 삼성전자(005930) 액면분할 거래정지(4/30) 시 실제 KRX 시장 월말 판정 정확성 검증.
-    
-    - 005930의 2018년 4월 마지막 거래일은 2018-04-27 (4/30 정지).
-    - Canonical KRX Calendar Authority의 2018년 4월 실제 시장 마지막 거래일은 2018-04-30이어야 한다.
-    """
+    """Section 15: 2018년 삼성전자(005930) 액면분할 거래정지(4/30) 시 실제 KRX 시장 월말 판정 정확성 검증."""
     cal = get_canonical_market_calendar()
     actual_apr_me = cal.get_actual_month_end(2018, 4)
 
