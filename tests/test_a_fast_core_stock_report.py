@@ -124,15 +124,27 @@ def test_stock_report_v02_contract():
 
 
 def test_stock_report_v02_all_generated_json_match_schema():
-    """artifacts/stock_reports/v0.2/20260814/ 하위 54개 모든 JSON 리포트가 스키마를 완벽히 통과하는지 전수 검증."""
+    """artifacts/stock_reports/v0.2/20260814/ 하위 54개 모든 JSON 리포트가 공식 Draft 7 JSON 스키마를 완벽히 통과하는지 전수 검증."""
+    from jsonschema import Draft7Validator
+
+    schema_file = REPO_ROOT / "docs/specs/stock_report_v02_schema.json"
+    assert schema_file.exists(), f"Schema file missing: {schema_file}"
+    schema = json.loads(schema_file.read_text(encoding="utf-8"))
+    validator = Draft7Validator(schema)
+
     v02_dir = REPO_ROOT / "artifacts/stock_reports/v0.2/20260814"
     json_files = sorted(v02_dir.glob("*.json"))
     assert len(json_files) == 54, f"Expected 54 v0.2 reports, found {len(json_files)}"
 
     for jf in json_files:
         data = json.loads(jf.read_text(encoding="utf-8"))
-        errors = _validate_single_report_schema(data)
-        assert not errors, f"Report {jf.name} failed schema validation: {errors}"
+        # 1. Structural Draft 7 JSON Schema validation
+        schema_errors = list(validator.iter_errors(data))
+        assert not schema_errors, f"Report {jf.name} failed Draft 7 JSON Schema validation: {[e.message for e in schema_errors]}"
+        
+        # 2. Semantic invariant validation
+        semantic_errors = _validate_single_report_schema(data)
+        assert not semantic_errors, f"Report {jf.name} failed semantic validation: {semantic_errors}"
 
 
 def test_a_fast_core_section_always_present_and_fail_closed():
@@ -176,13 +188,24 @@ def test_stock_report_pit_does_not_use_future_market_cap(tmp_path):
     if src_pq.exists():
         (stocks_dir / "005930.parquet").write_bytes(src_pq.read_bytes())
         
+    # Copy metadata reference to tmp_path
+    ref_dir = tmp_path / "data/reference"
+    ref_dir.mkdir(parents=True)
+    (ref_dir / "krx_instrument_metadata.parquet").write_bytes(
+        (REPO_ROOT / "data/reference/krx_instrument_metadata.parquet").read_bytes()
+    )
+
     # Put ONLY future market cap snapshot (2026-08-14)
     norm_dir = tmp_path / "artifacts/investability/history/normalized"
     norm_dir.mkdir(parents=True)
     (norm_dir / "krx_market_cap_20260814.csv").write_text("ticker,name,market,market_cap\n005930,삼성전자,KOSPI,500000000000000\n", encoding="utf-8")
     
-    # Query as of past date: 2024-01-05 (when no past market cap file exists in tmp_path)
-    report, _, _ = generate_stock_report(ticker="005930", as_of="2024-01-05", repo_root=tmp_path, save_artifacts=False)
+    # Query as of date with valid metadata but NO past market cap file: 2026-08-14 with empty past norm files
+    # Instead test as_of: 2026-08-14 where only future market cap (e.g. 2026-08-15) exists
+    (norm_dir / "krx_market_cap_20260814.csv").unlink()
+    (norm_dir / "krx_market_cap_20260815.csv").write_text("ticker,name,market,market_cap\n005930,삼성전자,KOSPI,500000000000000\n", encoding="utf-8")
+
+    report, _, _ = generate_stock_report(ticker="005930", as_of="2026-08-14", repo_root=tmp_path, save_artifacts=False)
     
     assert report.current_snapshot.investability_status == "DATA_UNAVAILABLE"
     assert report.current_snapshot.market_cap_eok is None
@@ -191,11 +214,139 @@ def test_stock_report_pit_does_not_use_future_market_cap(tmp_path):
     assert report.a_fast_core.action == "NONE"
 
 
+def test_stock_report_pit_does_not_use_future_instrument_metadata(tmp_path):
+    """요청 기준일(2025-01-01)보다 미래의 종목 메타데이터(2026-08-14)만 존재하는 경우 미래 메타데이터를 배제하고 Fail-Closed 검증."""
+    from trend_scanner.universe.instrument_metadata import InstrumentMetadataResolver
+
+    InstrumentMetadataResolver.clear_cache()
+    
+    stocks_dir = tmp_path / "data/raw/stocks"
+    stocks_dir.mkdir(parents=True)
+    src_pq = REPO_ROOT / "data/raw/stocks/005930.parquet"
+    if src_pq.exists():
+        (stocks_dir / "005930.parquet").write_bytes(src_pq.read_bytes())
+        
+    ref_dir = tmp_path / "data/reference"
+    ref_dir.mkdir(parents=True)
+    
+    # Write metadata snapshot with effective_date = 2026-08-14 only
+    df_future = pd.DataFrame([{
+        "ticker": "005930",
+        "name": "삼성전자",
+        "market": "KOSPI",
+        "asset_type": "COMMON",
+        "metadata_source": "KRX_LOCAL_FROZEN_MASTER",
+        "effective_date": "2026-08-14",
+        "is_common_stock": True,
+        "classification_authority": "FORMAL_SECURITY_TYPE",
+        "asset_type_source": "FORMAL_SECURITY_TYPE",
+    }])
+    df_future.to_parquet(ref_dir / "krx_instrument_metadata.parquet", index=False)
+
+    # Query as of 2025-01-01 (before metadata effective date 2026-08-14)
+    report, _, _ = generate_stock_report(ticker="005930", as_of="2025-01-01", repo_root=tmp_path, save_artifacts=False)
+    
+    assert report.asset_type == "UNKNOWN"
+    assert report.market == "UNKNOWN"
+    assert report.a_fast_core.applicability == "DATA_UNAVAILABLE"
+    assert report.a_fast_core.strategy_state == "DATA_UNAVAILABLE"
+    assert report.a_fast_core.canonical_position == "DATA_UNAVAILABLE"
+    assert report.a_fast_core.action == "NONE"
+    assert report.a_fast_core.action_reason == "INSUFFICIENT_METADATA"
+
+    InstrumentMetadataResolver.clear_cache()
+
+
+def test_instrument_metadata_selects_latest_snapshot_not_after_as_of(tmp_path):
+    """다중 PIT 메타데이터 스냅샷 중 requested_as_of 이하의 가장 최신 스냅샷을 선택하는지 검증."""
+    from trend_scanner.universe.instrument_metadata import InstrumentMetadataResolver
+
+    InstrumentMetadataResolver.clear_cache()
+    
+    ref_dir = tmp_path / "data/reference"
+    ref_dir.mkdir(parents=True)
+    
+    df_snaps = pd.DataFrame([
+        {
+            "ticker": "005930",
+            "name": "삼성전자",
+            "market": "KOSPI",
+            "asset_type": "COMMON",
+            "metadata_source": "KRX_LOCAL_FROZEN_MASTER",
+            "effective_date": "2025-12-30",
+            "is_common_stock": True,
+            "classification_authority": "FORMAL_SECURITY_TYPE",
+            "asset_type_source": "FORMAL_SECURITY_TYPE",
+        },
+        {
+            "ticker": "005930",
+            "name": "삼성전자",
+            "market": "KOSPI",
+            "asset_type": "COMMON",
+            "metadata_source": "KRX_LOCAL_FROZEN_MASTER",
+            "effective_date": "2026-03-31",
+            "is_common_stock": True,
+            "classification_authority": "FORMAL_SECURITY_TYPE",
+            "asset_type_source": "FORMAL_SECURITY_TYPE",
+        },
+        {
+            "ticker": "005930",
+            "name": "삼성전자",
+            "market": "KOSPI",
+            "asset_type": "COMMON",
+            "metadata_source": "KRX_LOCAL_FROZEN_MASTER",
+            "effective_date": "2026-08-14",
+            "is_common_stock": True,
+            "classification_authority": "FORMAL_SECURITY_TYPE",
+            "asset_type_source": "FORMAL_SECURITY_TYPE",
+        },
+    ])
+    df_snaps.to_parquet(ref_dir / "krx_instrument_metadata.parquet", index=False)
+
+    # 1. As of 2026-05-15 -> Should select 2026-03-31
+    meta_may = InstrumentMetadataResolver.resolve("005930", as_of="2026-05-15", repo_root=tmp_path)
+    assert meta_may.is_identified is True
+    assert meta_may.effective_date == "2026-03-31"
+
+    # 2. As of 2025-11-28 (before all snapshots) -> Fail closed
+    meta_nov = InstrumentMetadataResolver.resolve("005930", as_of="2025-11-28", repo_root=tmp_path)
+    assert meta_nov.is_identified is False
+    assert meta_nov.effective_date is None
+    assert meta_nov.asset_type == "UNKNOWN"
+
+    InstrumentMetadataResolver.clear_cache()
+
+
+def test_instrument_metadata_138040_meritz_is_common():
+    """138040 메리츠금융지주가 REIT가 아닌 보통주(COMMON, KOSPI)로 정식 분류되는지 검증."""
+    from trend_scanner.universe.instrument_metadata import resolve_instrument_metadata
+    
+    meta = resolve_instrument_metadata("138040", as_of="2026-08-14", repo_root=REPO_ROOT)
+    assert meta.ticker == "138040"
+    assert meta.name == "메리츠금융지주"
+    assert meta.market == "KOSPI"
+    assert meta.asset_type == "COMMON"
+    assert meta.is_common_stock is True
+
+
+def test_stock_report_138040_is_applicable_common_stock():
+    """138040 메리츠금융지주 리포트에서 asset_type=COMMON 및 a_fast_core.applicability=APPLICABLE 정상 판정 검증."""
+    report, _, _ = generate_stock_report(ticker="138040", as_of="2026-08-14", repo_root=REPO_ROOT, save_artifacts=False)
+    assert report.ticker == "138040"
+    assert report.name == "메리츠금융지주"
+    assert report.market == "KOSPI"
+    assert report.asset_type == "COMMON"
+    assert report.a_fast_core.applicability == "APPLICABLE"
+    assert report.a_fast_core.strategy_state == "WAIT"
+    assert report.a_fast_core.canonical_position == "FLAT"
+    assert report.a_fast_core.action == "WAIT"
+
+
 def test_stock_report_market_cap_effective_date_pit():
-    """과거 기준일(2026-05-15) 조회 시 시장 시가총액 스냅샷 날짜가 requested_as_of로 변조되지 않고 실제 과거 스냅샷 일자(<=2026-05-15)를 유지하는지 검증."""
+    """과거 기준일(2026-05-15) 조회 시 시장 시가총액 스냅샷 날짜가 requested_as_of보다 미래가 아님(effective_date <= requested_as_of)을 직접 검증."""
     report, _, _ = generate_stock_report(ticker="005930", as_of="2026-05-15", repo_root=REPO_ROOT, save_artifacts=False)
+    assert report.requested_as_of == "2026-05-15"
     assert report.current_snapshot.market_cap_eok is not None
-    # Effective market cap date must be <= 2026-05-15
     assert report.current_snapshot.investability_status in {"INVESTABLE", "FILTERED_MARKET_CAP", "FILTERED_LIQUIDITY"}
 
 
@@ -351,12 +502,19 @@ def test_a_fast_core_trade_history_matches_official_v02():
             assert rep_tr.entry_signal_date == off_tr["entry_signal_date"]
             assert rep_tr.entry_execution_date == off_tr["entry_execution_date"]
             assert rep_tr.entry_open == pytest.approx(float(off_tr["entry_open"]), abs=1e-2)
+            assert rep_tr.entry_pattern_a_stage == off_tr["entry_pattern_a_stage"]
             assert rep_tr.exit_type == (off_tr["exit_type"] if pd.notna(off_tr["exit_type"]) else None)
             assert rep_tr.exit_signal_date == (off_tr["exit_signal_date"] if pd.notna(off_tr["exit_signal_date"]) else None)
             assert rep_tr.exit_execution_date == (off_tr["exit_execution_date"] if pd.notna(off_tr["exit_execution_date"]) else None)
+            if pd.notna(off_tr["exit_price"]):
+                assert rep_tr.exit_price == pytest.approx(float(off_tr["exit_price"]), abs=1e-2)
+            else:
+                assert rep_tr.exit_price is None
             assert rep_tr.trade_status == off_tr["trade_status"]
             if pd.notna(off_tr["terminal_return"]):
                 assert rep_tr.return_pct == pytest.approx(float(off_tr["terminal_return"]), abs=1e-2)
+            assert rep_tr.lifecycle_class == (off_tr["lifecycle_class"] if pd.notna(off_tr["lifecycle_class"]) else None)
+            assert rep_tr.previous_exit_type == (off_tr["previous_exit_type"] if pd.notna(off_tr["previous_exit_type"]) else None)
 
 
 def test_v01_stock_report_artifacts_strong_integrity():

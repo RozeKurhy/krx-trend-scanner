@@ -35,6 +35,8 @@ class InstrumentMetadata:
     metadata_source: str
     effective_date: str | None = None
     is_identified: bool = True
+    classification_authority: str | None = None
+    asset_type_source: str | None = None
 
     @property
     def is_common_stock(self) -> bool:
@@ -42,10 +44,16 @@ class InstrumentMetadata:
 
 
 class InstrumentMetadataResolver:
-    """Memoized local instrument metadata resolver."""
+    """Memoized local instrument metadata resolver with Strict PIT guarantee."""
 
     _cached_df: ClassVar[pd.DataFrame | None] = None
     _cached_repo_root: ClassVar[Path | None] = None
+
+    @classmethod
+    def clear_cache(cls) -> None:
+        """Clear memoized master dataframe (useful for testing fixture isolation)."""
+        cls._cached_df = None
+        cls._cached_repo_root = None
 
     @classmethod
     def load_master_dataframe(cls, repo_root: Path | None = None) -> pd.DataFrame:
@@ -80,6 +88,8 @@ class InstrumentMetadataResolver:
         if df is not None:
             df = df.copy()
             df["ticker"] = df["ticker"].astype(str).str.strip().str.zfill(6)
+            if "effective_date" not in df.columns:
+                df["effective_date"] = None
             cls._cached_df = df
             cls._cached_repo_root = root
             return df
@@ -93,44 +103,64 @@ class InstrumentMetadataResolver:
         as_of: str | None = None,
         repo_root: Path | None = None,
     ) -> InstrumentMetadata:
+        """Resolve instrument metadata ensuring Strict PIT (effective_date <= requested_as_of)."""
         clean_ticker = str(ticker).strip().zfill(6)
+        as_of_str = str(as_of).strip()[:10] if as_of else None
         df_master = cls.load_master_dataframe(repo_root)
 
         if not df_master.empty:
-            match = df_master[df_master["ticker"] == clean_ticker]
-            if not match.empty:
-                row = match.iloc[0]
-                name = str(row["name"]).strip() if "name" in row and not pd.isna(row["name"]) else clean_ticker
-                market = str(row["market"]).strip().upper() if "market" in row and not pd.isna(row["market"]) else "UNKNOWN"
-                asset_type = str(row["asset_type"]).strip().upper() if "asset_type" in row and not pd.isna(row["asset_type"]) else "UNKNOWN"
-                source = str(row["metadata_source"]).strip() if "metadata_source" in row and not pd.isna(row["metadata_source"]) else "LOCAL_AUTHORITY"
-                eff_date = str(row["effective_date"]).strip() if "effective_date" in row and not pd.isna(row["effective_date"]) else as_of
+            matches = df_master[df_master["ticker"] == clean_ticker]
+            if not matches.empty:
+                # Enforce Strict PIT on metadata effective date:
+                # Reject future metadata if requested_as_of is specified.
+                if as_of_str is not None and "effective_date" in matches.columns:
+                    past_matches = matches[
+                        matches["effective_date"].notna()
+                        & (matches["effective_date"].astype(str).str[:10] <= as_of_str)
+                    ]
+                else:
+                    past_matches = matches
 
-                # Normalization
-                if market not in [m.value for m in MarketType]:
-                    market = MarketType.UNKNOWN.value
-                if asset_type not in [a.value for a in AssetType]:
-                    asset_type = AssetType.UNKNOWN.value
+                if not past_matches.empty:
+                    # Select latest snapshot not after requested_as_of
+                    row = past_matches.sort_values(by="effective_date", ascending=True).iloc[-1]
+                    name = str(row["name"]).strip() if "name" in row and not pd.isna(row["name"]) else clean_ticker
+                    market = str(row["market"]).strip().upper() if "market" in row and not pd.isna(row["market"]) else "UNKNOWN"
+                    asset_type = str(row["asset_type"]).strip().upper() if "asset_type" in row and not pd.isna(row["asset_type"]) else "UNKNOWN"
+                    source = str(row["metadata_source"]).strip() if "metadata_source" in row and not pd.isna(row["metadata_source"]) else "LOCAL_AUTHORITY"
+                    eff_date = str(row["effective_date"]).strip() if "effective_date" in row and not pd.isna(row["effective_date"]) else as_of_str
+                    auth = str(row["classification_authority"]).strip() if "classification_authority" in row and not pd.isna(row["classification_authority"]) else "FORMAL_SECURITY_TYPE"
+                    asset_source = str(row["asset_type_source"]).strip() if "asset_type_source" in row and not pd.isna(row["asset_type_source"]) else "FORMAL_SECURITY_TYPE"
 
-                return InstrumentMetadata(
-                    ticker=clean_ticker,
-                    name=name,
-                    market=market,
-                    asset_type=asset_type,
-                    metadata_source=source,
-                    effective_date=eff_date,
-                    is_identified=True,
-                )
+                    # Normalization
+                    if market not in [m.value for m in MarketType]:
+                        market = MarketType.UNKNOWN.value
+                    if asset_type not in [a.value for a in AssetType]:
+                        asset_type = AssetType.UNKNOWN.value
 
-        # Fail closed: metadata unavailable
+                    return InstrumentMetadata(
+                        ticker=clean_ticker,
+                        name=name,
+                        market=market,
+                        asset_type=asset_type,
+                        metadata_source=source,
+                        effective_date=eff_date,
+                        is_identified=True,
+                        classification_authority=auth,
+                        asset_type_source=asset_source,
+                    )
+
+        # Fail closed: metadata unavailable or all available metadata is in the future
         return InstrumentMetadata(
             ticker=clean_ticker,
             name=clean_ticker,
             market=MarketType.UNKNOWN.value,
             asset_type=AssetType.UNKNOWN.value,
             metadata_source="METADATA_UNAVAILABLE",
-            effective_date=as_of,
+            effective_date=None,
             is_identified=False,
+            classification_authority=None,
+            asset_type_source=None,
         )
 
 

@@ -70,8 +70,15 @@ def classify_asset_type(ticker: str, name: str) -> AssetType:
     if "스팩" in clean_name or "SPAC" in upper_name:
         return AssetType.SPAC
 
-    # 4. REIT 판별
-    if "리츠" in clean_name or "REIT" in upper_name or "부동산투자회사" in clean_name:
+    # 4. REIT 판별 ('메리츠', '블리츠' 등 일반 상호명 오분류 방지)
+    is_reit_keyword = (
+        clean_name.endswith("리츠")
+        or clean_name.endswith("리츠1호")
+        or "부동산투자회사" in clean_name
+        or "REIT" in upper_name
+        or ("리츠" in clean_name and not ("메리츠" in clean_name or "블리츠" in clean_name))
+    )
+    if is_reit_keyword and not ("메리츠" in clean_name or "블리츠" in clean_name):
         return AssetType.REIT
 
     # 5. 우선주 판별

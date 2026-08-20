@@ -126,14 +126,14 @@
     
     "monthly_history": {
       "type": "object",
-      "required": ["history_start_as_of", "history_end_as_of", "observation_count", "recent_12m_observation_count", "full_monthly_history", "recent_12m_monthly_history", "first_pattern_a_available_as_of", "pattern_a_available_observation_count", "stage_transitions", "score_trend"],
+      "required": ["history_start_as_of", "history_end_as_of", "observation_count", "recent_12m_observation_count", "full_monthly_history", "recent_12m_history", "first_pattern_a_available_as_of", "pattern_a_available_observation_count", "stage_transitions", "score_trend"],
       "properties": {
         "history_start_as_of": { "type": ["string", "null"] },
         "history_end_as_of": { "type": ["string", "null"] },
         "observation_count": { "type": "integer" },
         "recent_12m_observation_count": { "type": "integer" },
         "full_monthly_history": { "type": "array" },
-        "recent_12m_monthly_history": { "type": "array" },
+        "recent_12m_history": { "type": "array" },
         "first_pattern_a_available_as_of": { "type": ["string", "null"] },
         "pattern_a_available_observation_count": { "type": "integer" }
       }
