@@ -85,15 +85,12 @@ def _resolve_latest_local_as_of(repo_root: Path) -> str:
     raise RuntimeError("Unable to resolve latest local reference market date: no local market reference data found.")
 
 
+from trend_scanner.data.market_calendar import get_reference_market_month_ends as _get_ref_market_month_ends
+
+
 def _get_reference_market_month_ends(cache: ParquetCache, requested_as_of: pd.Timestamp) -> list[pd.Timestamp]:
     """Reference market stock (005930) 캐시로부터 표준 시장 월말 거래일 목록을 추출한다."""
-    ref_daily = cache.load("005930")
-    if ref_daily is not None and not ref_daily.empty:
-        sliced = ref_daily.loc[ref_daily.index <= requested_as_of]
-        if not sliced.empty:
-            monthly_groups = sliced.groupby([sliced.index.year, sliced.index.month])
-            return [group.index.max() for _, group in monthly_groups]
-    return []
+    return _get_ref_market_month_ends(cache=cache, requested_as_of=requested_as_of)
 
 
 def _determine_flow_state_and_explanation(

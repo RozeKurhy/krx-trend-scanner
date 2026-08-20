@@ -1,16 +1,28 @@
+import json
 import math
 from dataclasses import fields
+from pathlib import Path
 
 import pandas as pd
 import pytest
 
+from trend_scanner.data.cache import ParquetCache
+from trend_scanner.data.market_calendar import (
+    get_actual_market_month_end,
+    get_reference_market_month_ends,
+    is_completed_market_month,
+)
 from trend_scanner.data.resampler import to_monthly, to_weekly
+from trend_scanner.patterns.pattern_a_evaluator import evaluate_pattern_a
+from trend_scanner.patterns.pattern_a_fast_evaluator import evaluate_pattern_a_fast
 from trend_scanner.validation.feature_report import FeatureRow
 from trend_scanner.validation.historical_snapshot import (
     HistoricalSnapshot,
     build_historical_snapshot,
     to_csv_row,
 )
+
+ROOT = Path(__file__).resolve().parent.parent
 
 
 def _daily_frame(n: int, start: str = "2015-01-01", freq: str = "D") -> pd.DataFrame:
@@ -201,8 +213,6 @@ def test_monthly_as_of_and_weekly_as_of_none_when_no_data():
 
 
 def test_monthly_field_matches_features_and_excludes_post_snapshot_data():
-    """v0.2 설계 재리뷰 후속: HistoricalSnapshot.monthly는 FeatureRow 계산에
-    쓰인 것과 같은(look-ahead 방지 적용된) 프레임이어야 한다."""
     daily = _daily_frame(1500)
     snapshot_date = daily.index[900]
 
@@ -231,3 +241,105 @@ def test_to_csv_row_includes_snapshot_metadata_and_feature_fields():
     assert row["weekly_as_of"] == snapshot.weekly_as_of
     assert row["ticker"] == "068270"
     assert row["close"] == pytest.approx(snapshot.features.close)
+
+
+# ==============================================================================
+# Mandatory Boundary Regression Tests (Cases A - F)
+# ==============================================================================
+
+def test_regression_case_a_actual_market_month_end_earlier_than_calendar_end():
+    """Case A: 2025-08-29(금)은 8월 마지막 거래일이나 달력 말일(8/31 일)보다 빠름.
+    8월 완성 월봉이 정상 포함되어야 한다 (monthly_as_of == 2025-08-31).
+    """
+    cache = ParquetCache(base_dir=ROOT / "data/raw/stocks")
+    daily = cache.load("035720")
+    assert daily is not None
+
+    snap = build_historical_snapshot("035720", "카카오", daily, "2025-08-29", include_incomplete_periods=False)
+    assert snap.monthly_as_of == pd.Timestamp("2025-08-31")
+
+    eval_res = evaluate_pattern_a(snap)
+    assert eval_res.lifecycle_stage is not None
+    assert eval_res.lifecycle_stage.value.upper() == "EARLY_TREND"
+    assert eval_res.score == pytest.approx(99.09, abs=0.5)
+
+
+def test_regression_case_b_month_middle_excludes_current_month():
+    """Case B: 2025-09-12(금)은 9월 진행 중이므로 9월 bar는 제외되고 8월 bar까지만 포함되어야 한다."""
+    cache = ParquetCache(base_dir=ROOT / "data/raw/stocks")
+    daily = cache.load("035720")
+    assert daily is not None
+
+    snap = build_historical_snapshot("035720", "카카오", daily, "2025-09-12", include_incomplete_periods=False)
+    assert snap.monthly_as_of == pd.Timestamp("2025-08-31")
+    assert snap.weekly_as_of == pd.Timestamp("2025-09-12")
+
+    eval_res = evaluate_pattern_a(snap)
+    assert eval_res.lifecycle_stage is not None
+    assert eval_res.lifecycle_stage.value.upper() == "EARLY_TREND"
+
+
+def test_regression_case_c_calendar_month_end_equals_actual_market_end():
+    """Case C: 2025-09-30(화)은 달력 말일과 시장 말일이 동일하여 9월 bar가 정상 포함된다."""
+    cache = ParquetCache(base_dir=ROOT / "data/raw/stocks")
+    daily = cache.load("035720")
+    assert daily is not None
+
+    snap = build_historical_snapshot("035720", "카카오", daily, "2025-09-30", include_incomplete_periods=False)
+    assert snap.monthly_as_of == pd.Timestamp("2025-09-30")
+
+    eval_res = evaluate_pattern_a(snap)
+    assert eval_res.lifecycle_stage is not None
+    assert eval_res.lifecycle_stage.value.upper() == "TRANSITION"
+    assert eval_res.score == pytest.approx(98.38, abs=0.5)
+
+
+def test_regression_case_d_year_end_early_closure():
+    """Case D: 2025-12-30(화)은 납세/휴장으로 인한 연말 시장 마감일(달력 말일은 12/31)이나 12월 bar가 정상 포함된다."""
+    cache = ParquetCache(base_dir=ROOT / "data/raw/stocks")
+    daily = cache.load("035720")
+    assert daily is not None
+
+    snap = build_historical_snapshot("035720", "카카오", daily, "2025-12-30", include_incomplete_periods=False)
+    assert snap.monthly_as_of == pd.Timestamp("2025-12-31")
+
+    eval_res = evaluate_pattern_a(snap)
+    assert eval_res.lifecycle_stage is not None
+    assert eval_res.lifecycle_stage.value.upper() == "PROGRESSED"
+
+
+def test_regression_case_e_future_row_append_pit_invariant():
+    """Case E: snapshot 일자 이후의 미래 일봉 데이터를 추가해도 과거 snapshot 결과가 변하지 않는다."""
+    cache = ParquetCache(base_dir=ROOT / "data/raw/stocks")
+    daily_full = cache.load("035720")
+    assert daily_full is not None
+
+    snap_date = "2025-08-29"
+    daily_past_only = daily_full[daily_full.index <= pd.Timestamp(snap_date)]
+
+    snap_from_past = build_historical_snapshot("035720", "카카오", daily_past_only, snap_date, include_incomplete_periods=False)
+    snap_from_future = build_historical_snapshot("035720", "카카오", daily_full, snap_date, include_incomplete_periods=False)
+
+    assert snap_from_past.monthly_as_of == snap_from_future.monthly_as_of
+    assert snap_from_past.weekly_as_of == snap_from_future.weekly_as_of
+    _assert_features_equal(snap_from_past.features, snap_from_future.features)
+
+
+def test_regression_case_f_fast_evaluator_parity():
+    """Case F: historical snapshot correction 이후에도 FAST frozen contract 산식 자체는 불변이다."""
+    cache = ParquetCache(base_dir=ROOT / "data/raw/stocks")
+    daily = cache.load("035720")
+    assert daily is not None
+
+    score_contract = json.loads((ROOT / "artifacts/pattern_a_fast/research/pattern_a_fast_score_prototype_v01.json").read_text(encoding="utf-8"))
+    stage_contract = json.loads((ROOT / "artifacts/pattern_a_fast/research/pattern_a_fast_stage_prototype_v01.json").read_text(encoding="utf-8"))
+
+    w = pd.Timestamp("2025-09-12")
+    res = evaluate_pattern_a_fast("035720", "카카오", daily[daily.index <= w], w, score_contract, stage_contract)
+
+    assert res["fast_machine_stage"] == "TRIGGER"
+    assert res["fast_machine_stage_status"] == "READY"
+    assert res["fast_monthly_permission_state"] == "PERMITTED_REGIME"
+    assert res["fast_daily_risk_state"] == "NORMAL"
+    assert res["pattern_a_stage"] == "early_trend"
+    assert res["fast_score"] == pytest.approx(74.99, abs=0.1)

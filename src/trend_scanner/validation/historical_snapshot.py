@@ -12,12 +12,11 @@ build_feature_row()를 그대로 호출해서 현재 시점 계산과 과거 시
 그대로 쓴다(별도의 "가장 가까운 거래일 조회" 로직이 필요 없다 — index <=
 필터 자체가 이미 그 결과를 만든다).
 
-completed monthly/weekly 정책(v0.1 한계): 진행 중인 봉인지 판단할 실제
-거래소 캘린더를 새로 도입하지 않는다. validator/resampler는 건드리지
-않고, 이 계층(Historical Snapshot)에서만 마지막 봉을 잘라낸다.
-
-- monthly: calendar month 기준. snapshot_date가 그 달의 calendar month
-  마지막 날보다 이르면 마지막 월봉을 "진행 중"으로 보고 제거한다.
+completed monthly/weekly 정책:
+- monthly: 실제 KRX 기준 시장 월말 거래일(trend_scanner.data.market_calendar
+  참조) 기준. snapshot_date가 그 달의 실제 KRX 마지막 거래일 이전이면 마지막
+  월봉을 "진행 중"으로 보고 제거한다. 실제 마지막 거래일과 같거나 이후이면
+  완성된 월봉으로 유지한다.
 - weekly: `weekly.index[-1] > effective_as_of`이면(W-FRI resample 특성상
   snapshot_date가 월~목이면 그 주 금요일 label의 미완성 주봉이 생길 수
   있다) 마지막 주봉을 제거한다.
@@ -30,6 +29,7 @@ from typing import Any
 
 import pandas as pd
 
+from trend_scanner.data.market_calendar import is_completed_market_month
 from trend_scanner.data.resampler import to_monthly, to_weekly
 from trend_scanner.validation.feature_report import FeatureRow, build_feature_row
 from trend_scanner.validation.feature_report import to_csv_row as _feature_row_to_csv_row
@@ -55,14 +55,13 @@ class HistoricalSnapshot:
 
 
 def _drop_incomplete_current_month(monthly: pd.DataFrame, requested: pd.Timestamp) -> pd.DataFrame:
-    """calendar month 기준으로 진행 중인 마지막 월봉을 제거한다(v0.1 한계, 위 docstring 참고)."""
+    """실제 KRX 시장 월말 거래일(market_calendar) 기준으로 진행 중인 마지막 월봉을 제거한다."""
     if monthly.empty:
         return monthly
 
     last_label = monthly.index[-1]
-    month_end = requested + pd.offsets.MonthEnd(0)
     same_month = (last_label.year == requested.year) and (last_label.month == requested.month)
-    if same_month and requested < month_end:
+    if same_month and not is_completed_market_month(requested):
         return monthly.iloc[:-1]
     return monthly
 
