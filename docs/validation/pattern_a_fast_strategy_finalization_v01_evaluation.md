@@ -4,7 +4,7 @@
 1. Executive Summary & Evidence Reference
 ================================================================================
 - **전략 참조명**: `PATTERN_A_FAST_FINAL_STRATEGY_V01`
-- **선택 권한 (Selection Authority)**: `FINAL_STRATEGY_CONTRACT` (`docs/validation/pattern_a_fast_final_strategy_v01.md`)
+- **선택 권한 (Selection Authority)**: `FINAL_STRATEGY_CONTRACT` (docs/validation/pattern_a_fast_final_strategy_v01.md)
 - **연구 분류 (Research Classification)**: `RETROSPECTIVE_STRATEGY_FINALIZATION_CANDIDATE_SELECTION`
 - **검증 유형 (Validation Type)**: `SAME_SAMPLE_RETROSPECTIVE_FINALIZATION`
 - **선택 방법론 (Selection Methodology)**: `PREREGISTERED_PRIORITY_EVIDENCE_SYNTHESIS`
@@ -17,8 +17,8 @@
 ================================================================================
 2. Primary Sample & Population Breakdown
 ================================================================================
-- **전체 보통주 모집단**: 2,528개
-- **Phase 10 투자 적격 유니버스**: 1,081개
+- **전체 보통주 모집단**: 2528개
+- **Phase 10 투자 적격 유니버스**: 1081개
 - **Primary 적격 진입 표본**: 총 **553건**
   - `TRANSITION`: **484건** (87.5%)
   - `EARLY_TREND`: **69건** (12.5%)
@@ -36,22 +36,23 @@
 |---|:---:|:---:|:---:|
 | **Return <= -30% 발생 건수 (비율)** | 72건 (13.02%) | 11건 (1.99%) | **-61건 (-84.7%)** |
 | **Return <= -20% 발생 건수 (비율)** | 106건 (19.17%) | 33건 (5.97%) | **-73건 (-68.9%)** |
-| **Return <= -10% 발생 건수 (비율)** | 163건 (29.48%) | 313건 (56.6%) | **150건** |
+| **Return <= -10% 발생 건수 (비율)** | 163건 (29.48%) | 312건 (56.42%) | **149건** |
 | **최악 손실률 (Worst Return)** | -86.26% | -54.43% | **+31.83%p 개선** |
-| **Terminal Return (Mean / Median)** | 36.82% / 15.05% | 17.3% / -14.33% | -19.52%p / -29.38%p |
+| **Terminal Return (Mean / Median)** | 36.82% / 15.05% | 17.57% / -14.27% | -19.25%p / -29.32%p |
 | **Peak Giveback (Median)** | 43.23% | 28.49% | -14.74%p |
-| **평균 보유 주수 (Holding Weeks)** | 61.4주 | 29.6주 | -31.8주 |
+| **평균 보유 주수 (Holding Weeks)** | 61.4주 | 29.98주 | -31.4주 |
 
-- **Loss Guard 발동 통계**: 총 295건 (53.35%) 발동
+- **Loss Guard 발동 통계**: 총 294건 (53.16%) 발동
 - **Winner Truncation 비용**:
-  - Loss Guard가 없었다면 E1 기준 terminal return이 +20% 이상이었을 거래: 98건
-  - Loss Guard가 없었다면 E1 기준 terminal return이 +50% 이상이었을 거래: 65건
-  - Loss Guard가 없었다면 E1 기준 terminal return이 +100% 이상이었을 거래: 32건
-- **손절 거래의 Counterfactual MFE**: Mean 79.30%, Median 38.03%
+  - Loss Guard가 없었다면 E1 기준 terminal return이 +20% 이상이었을 거래: 97건
+  - Loss Guard가 없었다면 E1 기준 terminal return이 +50% 이상이었을 거래: 64건
+  - Loss Guard가 없었다면 E1 기준 terminal return이 +100% 이상이었을 거래: 31건
+- **손절 거래의 Counterfactual MFE**: Mean 79.08%, Median 37.71%
 - **Boundary Diagnostic**:
-  - `loss_guard_signal_date == first_progressed_date`: 0건
-  - `loss_guard_signal_date > first_progressed_date`: 0건
-  - 평가 집계 영향: `NONE` (Evaluator Rerun 미실행, `date < first_progressed_date` 동결)
+  - **MonthEnd Calendar Label Check**: same-day: 0건, after: 0건
+  - **Effective Trading Date Check**: same-day: 0건, after: 0건
+  - **Classification Changed**: 1건 (['032830'])
+  - **평가 집계 반영**: Bug correction run 1회 완료 (`date < first_progressed_effective_trading_date` 동결)
 - **증거 종합**: `PRE_PROGRESSED_PROTECTION_SUPPORTED`
 
 ================================================================================
@@ -62,14 +63,14 @@
 |---|:---:|:---:|:---:|
 | **Return <= -30% 건수 (비율)** | 14건 (2.53%) | 11건 (1.99%) | **8건 (1.45%)** |
 | **Return <= -20% 건수 (비율)** | 43건 (7.78%) | 33건 (5.97%) | **29건 (5.24%)** |
-| **Terminal Return (Mean / Median)** | 25.98% / -14.58% | 17.3% / -14.33% | **17.72% / -14.15%** |
-| **Peak Giveback (Median / P75)** | 36.07% / 75.53% | 28.49% / 48.61% | **26.99% / 45.16%** |
-| **Profit Capture Ratio (Median)** | -0.53 | -0.5 | **-0.5** |
-| **Return >= +50% Winner 수 (비율)** | 106건 (19.17%) | 114건 (20.61%) | **116건 (20.98%)** |
-| **Return >= +100% Winner 수 (비율)** | 51건 (9.22%) | 41건 (7.41%) | **41건 (7.41%)** |
+| **Terminal Return (Mean / Median)** | 26.5% / -14.57% | 17.57% / -14.27% | **17.99% / -14.15%** |
+| **Peak Giveback (Median / P75)** | 36.22% / 75.99% | 28.49% / 48.61% | **26.99% / 45.16%** |
+| **Profit Capture Ratio (Median)** | -0.52 | -0.5 | **-0.5** |
+| **Return >= +50% Winner 수 (비율)** | 107건 (19.35%) | 115건 (20.8%) | **117건 (21.16%)** |
+| **Return >= +100% Winner 수 (비율)** | 52건 (9.4%) | 42건 (7.59%) | **42건 (7.59%)** |
 
 - **증거 종합**:
-  E2는 E0보다 평균 수익률(25.98% vs 17.72%)은 낮지만, risk-first mandate에서 large-loss tail(<= -30%: 8건, <= -20%: 29건)과 giveback(중앙값 26.99%)이 가장 우수하며, E1 대비 평균 return도 소폭 개선되는 증거를 제공함 (`EXIT3_PLUS_EXIT4_PLUS_COVERAGE`).
+  E2는 E0보다 평균 수익률(26.24% vs 17.99%)은 낮지만, risk-first mandate에서 large-loss tail(<= -30%: 8건, <= -20%: 29건)과 giveback(중앙값 26.99%)이 가장 우수하며, E1 대비 평균 return도 소폭 개선되는 증거를 제공함 (`EXIT3_PLUS_EXIT4_PLUS_COVERAGE`).
 
 ================================================================================
 5. Known Limitations

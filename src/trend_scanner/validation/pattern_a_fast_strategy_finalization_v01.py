@@ -49,6 +49,7 @@ class FinalizationTradeRecord:
     lifecycle_class: str
     first_early_trend_date: str | None
     first_progressed_date: str | None
+    first_progressed_effective_trading_date: str | None
     direct_early_to_progressed_handoff: bool
 
     # Hold B diagnostic
@@ -260,9 +261,13 @@ def simulate_ticker_strategy_finalization(
         coverage_path = "NEVER_PROGRESSED"
 
     # Pre-PROGRESSED Loss Guard Check (HOLD_B)
-    # Strictly active while date < first_progressed_d (or <= cutoff if never progressed)
+    # Strictly active while date < first_progressed_effective_trading_date (or <= cutoff if never progressed)
+    first_prog_eff_trading_d: pd.Timestamp | None = None
     if first_progressed_d is not None:
-        pre_prog_daily = daily[(daily.index >= entry_exec_date) & (daily.index < first_progressed_d)]
+        month_daily = daily[daily.index <= first_progressed_d]
+        if not month_daily.empty:
+            first_prog_eff_trading_d = month_daily.index.max()
+        pre_prog_daily = daily[(daily.index >= entry_exec_date) & (daily.index < first_prog_eff_trading_d)]
     else:
         pre_prog_daily = daily[(daily.index >= entry_exec_date) & (daily.index <= cutoff_date)]
 
@@ -428,6 +433,7 @@ def simulate_ticker_strategy_finalization(
         lifecycle_class=coverage_path,
         first_early_trend_date=first_early_trend_d.strftime("%Y-%m-%d") if first_early_trend_d else None,
         first_progressed_date=first_progressed_d.strftime("%Y-%m-%d") if first_progressed_d else None,
+        first_progressed_effective_trading_date=first_prog_eff_trading_d.strftime("%Y-%m-%d") if first_prog_eff_trading_d else None,
         direct_early_to_progressed_handoff=direct_handoff_observed,
         loss_guard_triggered=loss_guard_triggered,
         loss_guard_signal_date=loss_guard_sig_d.strftime("%Y-%m-%d") if loss_guard_sig_d else None,

@@ -18,49 +18,81 @@
       "never_progressed": 176
     }
   },
+  "selection_methodology": {
+    "mode": "PREREGISTERED_PRIORITY_EVIDENCE_SYNTHESIS",
+    "selection_authority": "INVESTMENT_MANDATE_PLUS_PREREGISTERED_PRIORITY_ORDER",
+    "automatic_numeric_ranker": false,
+    "posthoc_threshold_created": false,
+    "investment_mandate": "LARGE_LOSS_MINIMIZATION",
+    "hold_evidence_basis": "Significant reduction in <= -30% and <= -20% tail losses and deep MAE aligned with Large Loss Minimization mandate.",
+    "exit_evidence_basis": "Preregistered risk-first priority where E2 delivers lowest failure tail and giveback with preserved right tail relative to E1."
+  },
+  "boundary_diagnostic": {
+    "calendar_label_check": {
+      "same_day_count": 0,
+      "after_count": 0
+    },
+    "effective_trading_date_check": {
+      "same_day_count": 0,
+      "after_count": 0,
+      "classification_changed_count": 1,
+      "affected_tickers": [
+        "032830"
+      ]
+    },
+    "boundary_basis": "ACTUAL_LAST_LOCAL_TRADING_DAY_OF_COMPLETED_MONTHLY_SNAPSHOT",
+    "aggregate_impact": "CHANGED",
+    "evaluator_rerun": true,
+    "final_semantics": "LOSS_GUARD_ACTIVE_ONLY_BEFORE_FIRST_PROGRESSED_EFFECTIVE_TRADING_DATE"
+  },
   "hold_evaluation": {
-    "loss_guard_triggered_count": 295,
-    "loss_guard_triggered_rate_pct": 53.35,
+    "loss_guard_triggered_count": 294,
+    "loss_guard_triggered_rate_pct": 53.16,
     "stopped_trades_cf_mfe": {
-      "count": 295,
-      "mean": 79.3,
-      "median": 38.03,
-      "p25": 15.63,
-      "p75": 86.47,
-      "p90": 172.0,
-      "std": 123.93,
+      "count": 294,
+      "mean": 79.08,
+      "median": 37.71,
+      "p25": 15.62,
+      "p75": 86.39,
+      "p90": 172.06,
+      "std": 124.08,
       "min": 0.0,
       "max": 1143.24,
       "positive_rate": 99.3
     },
+    "stopped_trades_cf_e1_winners": {
+      "cf_e1_ge_20_count": 97,
+      "cf_e1_ge_50_count": 64,
+      "cf_e1_ge_100_count": 31
+    },
     "paired_comparison": {
       "return_delta": {
         "count": 553,
-        "mean": -19.51,
+        "mean": -19.24,
         "median": 0.0,
-        "p25": -10.53,
+        "p25": -10.42,
         "p75": 0.0,
         "p90": 14.49,
-        "std": 65.78,
+        "std": 65.55,
         "min": -734.27,
         "max": 71.27,
         "positive_rate": 20.8
       },
       "giveback_delta": {
         "count": 553,
-        "mean": -14.96,
+        "mean": -14.98,
         "median": 0.0,
         "p25": -15.75,
         "p75": 0.0,
-        "p90": 7.06,
-        "std": 51.32,
+        "p90": 7.03,
+        "std": 51.31,
         "min": -665.74,
         "max": 109.74,
-        "positive_rate": 17.0
+        "positive_rate": 16.8
       },
       "mae_delta": {
         "count": 553,
-        "mean": 10.0,
+        "mean": 9.98,
         "median": 0.0,
         "p25": 0.0,
         "p75": 17.18,
@@ -68,30 +100,25 @@
         "std": 14.49,
         "min": 0.0,
         "max": 71.2,
-        "positive_rate": 49.5
+        "positive_rate": 49.4
       },
       "holding_weeks_delta": {
         "count": 553,
-        "mean": -31.8,
+        "mean": -31.42,
         "median": -7.6,
-        "p25": -39.2,
+        "p25": -39.0,
         "p75": 0.0,
         "p90": 0.0,
-        "std": 63.83,
+        "std": 63.4,
         "min": -418.6,
         "max": 0.0,
         "positive_rate": 0.0
       },
       "hold_b_better_count": 115,
-      "equal_count": 258,
-      "hold_a_better_count": 180
+      "equal_count": 259,
+      "hold_a_better_count": 179
     },
-    "finding": "PRE_PROGRESSED_PROTECTION_SUPPORTED",
-    "stopped_trades_cf_e1_winners": {
-      "cf_e1_ge_20_count": 98,
-      "cf_e1_ge_50_count": 65,
-      "cf_e1_ge_100_count": 32
-    }
+    "finding": "PRE_PROGRESSED_PROTECTION_SUPPORTED"
   },
   "exit_evaluation": {
     "exit_paired_comparisons": {
@@ -148,24 +175,24 @@
       "hold_b": {
         "e1_minus_e0_return_delta": {
           "count": 553,
-          "mean": -8.68,
+          "mean": -8.93,
           "median": 0.0,
           "p25": 0.0,
           "p75": 0.0,
           "p90": 8.12,
-          "std": 110.77,
+          "std": 110.91,
           "min": -2297.27,
           "max": 146.46,
           "positive_rate": 11.8
         },
         "e1_minus_e0_giveback_delta": {
           "count": 553,
-          "mean": -22.86,
+          "mean": -23.32,
           "median": 0.0,
           "p25": 0.0,
           "p75": 0.0,
           "p90": 0.0,
-          "std": 76.88,
+          "std": 77.48,
           "min": -1011.1,
           "max": 51.41,
           "positive_rate": 3.1
@@ -540,81 +567,81 @@
     "hold_b_e0": {
       "terminal_return": {
         "count": 553,
-        "mean": 25.98,
-        "median": -14.58,
+        "mean": 26.5,
+        "median": -14.57,
         "p25": -16.5,
-        "p75": 27.91,
-        "p90": 92.34,
-        "std": 132.39,
+        "p75": 28.09,
+        "p90": 94.57,
+        "std": 132.79,
         "min": -54.43,
         "max": 2302.55,
-        "positive_rate": 36.5
+        "positive_rate": 36.7
       },
       "mfe": {
         "count": 553,
-        "mean": 98.23,
-        "median": 30.57,
+        "mean": 99.19,
+        "median": 30.58,
         "p25": 7.92,
-        "p75": 100.78,
-        "p90": 248.31,
-        "std": 232.52,
+        "p75": 101.28,
+        "p90": 250.43,
+        "std": 233.23,
         "min": 0.0,
         "max": 3327.78,
         "positive_rate": 99.6
       },
       "mae": {
         "count": 553,
-        "mean": -16.74,
+        "mean": -16.77,
         "median": -16.5,
         "p25": -18.57,
         "p75": -12.63,
         "p90": -6.74,
-        "std": 9.12,
+        "std": 9.14,
         "min": -68.7,
         "max": 0.0,
         "positive_rate": 0.0
       },
       "peak_giveback": {
         "count": 553,
-        "mean": 72.25,
-        "median": 36.07,
+        "mean": 72.68,
+        "median": 36.22,
         "p25": 21.96,
-        "p75": 75.53,
-        "p90": 166.8,
-        "std": 120.57,
+        "p75": 75.99,
+        "p90": 169.88,
+        "std": 120.84,
         "min": 1.53,
         "max": 1945.41,
         "positive_rate": 100.0
       },
       "profit_capture": {
         "count": 551,
-        "mean": -3.37,
-        "median": -0.53,
+        "mean": -3.36,
+        "median": -0.52,
         "p25": -1.94,
         "p75": 0.26,
         "p90": 0.57,
         "std": 15.86,
         "min": -240.57,
         "max": 0.99,
-        "positive_rate": 36.7
+        "positive_rate": 36.8
       },
       "holding_weeks": {
         "count": 553,
-        "mean": 36.77,
+        "mean": 37.2,
         "median": 27.4,
         "p25": 6.2,
         "p75": 57.4,
-        "p90": 76.56,
-        "std": 42.75,
+        "p90": 77.24,
+        "std": 43.93,
         "min": 0.6,
         "max": 454.0,
         "positive_rate": 100.0
       },
       "risk_metrics": {
-        "return_negative_count": 351,
-        "return_negative_rate": 63.47,
-        "return_le_neg_10_count": 331,
-        "return_le_neg_10_rate": 59.86,
+        "return_negative_count": 350,
+        "return_negative_rate": 63.29,
+        "return_le_neg_10_count": 330,
+        "return_le_neg_10_rate": 59.67,
         "return_le_neg_20_count": 43,
         "return_le_neg_20_rate": 7.78,
         "return_le_neg_30_count": 14,
@@ -626,23 +653,23 @@
       "mae_tail_metrics": {
         "mae_le_neg_10_count": 446,
         "mae_le_neg_10_rate": 80.65,
-        "mae_le_neg_20_count": 103,
-        "mae_le_neg_20_rate": 18.63,
-        "mae_le_neg_30_count": 33,
-        "mae_le_neg_30_rate": 5.97,
+        "mae_le_neg_20_count": 104,
+        "mae_le_neg_20_rate": 18.81,
+        "mae_le_neg_30_count": 34,
+        "mae_le_neg_30_rate": 6.15,
         "worst_mae": -68.7
       },
       "upside_metrics": {
-        "return_ge_20_count": 153,
-        "return_ge_20_rate": 27.67,
-        "return_ge_50_count": 106,
-        "return_ge_50_rate": 19.17,
-        "return_ge_100_count": 51,
-        "return_ge_100_rate": 9.22
+        "return_ge_20_count": 154,
+        "return_ge_20_rate": 27.85,
+        "return_ge_50_count": 107,
+        "return_ge_50_rate": 19.35,
+        "return_ge_100_count": 52,
+        "return_ge_100_rate": 9.4
       },
       "exit_type_counts": {
-        "LOSS_GUARD_CLOSE_LE_NEG_15": 295,
-        "NO_EXIT_BEFORE_CUTOFF": 103,
+        "LOSS_GUARD_CLOSE_LE_NEG_15": 294,
+        "NO_EXIT_BEFORE_CUTOFF": 104,
         "NO_PROGRESSED_DIRECT_HANDOFF": 92,
         "EXIT3_PROGRESSED_TO_WEAK": 27,
         "EXIT3_PROGRESSED_TO_TRANSITION": 23,
@@ -653,48 +680,48 @@
     "hold_b_e1": {
       "terminal_return": {
         "count": 553,
-        "mean": 17.3,
-        "median": -14.33,
-        "p25": -16.32,
-        "p75": 33.79,
-        "p90": 83.0,
-        "std": 68.38,
+        "mean": 17.57,
+        "median": -14.27,
+        "p25": -16.31,
+        "p75": 33.87,
+        "p90": 83.55,
+        "std": 68.54,
         "min": -54.43,
         "max": 912.41,
-        "positive_rate": 39.1
+        "positive_rate": 39.2
       },
       "mfe": {
         "count": 553,
-        "mean": 66.69,
-        "median": 30.06,
+        "mean": 66.94,
+        "median": 30.15,
         "p25": 7.85,
-        "p75": 79.82,
+        "p75": 80.96,
         "p90": 151.49,
-        "std": 147.74,
+        "std": 147.76,
         "min": 0.0,
         "max": 2857.82,
         "positive_rate": 99.6
       },
       "mae": {
         "count": 553,
-        "mean": -15.61,
+        "mean": -15.64,
         "median": -16.26,
-        "p25": -18.0,
+        "p25": -18.01,
         "p75": -10.83,
         "p90": -5.55,
-        "std": 8.74,
+        "std": 8.77,
         "min": -68.7,
         "max": 0.0,
         "positive_rate": 0.0
       },
       "peak_giveback": {
         "count": 553,
-        "mean": 49.39,
+        "mean": 49.37,
         "median": 28.49,
-        "p25": 19.56,
+        "p25": 19.54,
         "p75": 48.61,
         "p90": 88.55,
-        "std": 96.91,
+        "std": 96.92,
         "min": 0.0,
         "max": 1945.41,
         "positive_rate": 99.6
@@ -709,25 +736,25 @@
         "std": 15.88,
         "min": -240.57,
         "max": 1.0,
-        "positive_rate": 39.2
+        "positive_rate": 39.4
       },
       "holding_weeks": {
         "count": 553,
-        "mean": 29.6,
+        "mean": 29.98,
         "median": 19.6,
         "p25": 6.0,
-        "p75": 43.6,
-        "p90": 60.88,
-        "std": 37.92,
+        "p75": 43.8,
+        "p90": 61.8,
+        "std": 39.04,
         "min": 0.6,
         "max": 454.0,
         "positive_rate": 100.0
       },
       "risk_metrics": {
-        "return_negative_count": 337,
-        "return_negative_rate": 60.94,
-        "return_le_neg_10_count": 313,
-        "return_le_neg_10_rate": 56.6,
+        "return_negative_count": 336,
+        "return_negative_rate": 60.76,
+        "return_le_neg_10_count": 312,
+        "return_le_neg_10_rate": 56.42,
         "return_le_neg_20_count": 33,
         "return_le_neg_20_rate": 5.97,
         "return_le_neg_30_count": 11,
@@ -739,23 +766,23 @@
       "mae_tail_metrics": {
         "mae_le_neg_10_count": 428,
         "mae_le_neg_10_rate": 77.4,
-        "mae_le_neg_20_count": 78,
-        "mae_le_neg_20_rate": 14.1,
-        "mae_le_neg_30_count": 23,
-        "mae_le_neg_30_rate": 4.16,
+        "mae_le_neg_20_count": 79,
+        "mae_le_neg_20_rate": 14.29,
+        "mae_le_neg_30_count": 24,
+        "mae_le_neg_30_rate": 4.34,
         "worst_mae": -68.7
       },
       "upside_metrics": {
-        "return_ge_20_count": 163,
-        "return_ge_20_rate": 29.48,
-        "return_ge_50_count": 114,
-        "return_ge_50_rate": 20.61,
-        "return_ge_100_count": 41,
-        "return_ge_100_rate": 7.41
+        "return_ge_20_count": 164,
+        "return_ge_20_rate": 29.66,
+        "return_ge_50_count": 115,
+        "return_ge_50_rate": 20.8,
+        "return_ge_100_count": 42,
+        "return_ge_100_rate": 7.59
       },
       "exit_type_counts": {
-        "LOSS_GUARD_CLOSE_LE_NEG_15": 295,
-        "EXIT4_SCORE_DRAWDOWN_GE_15": 125,
+        "LOSS_GUARD_CLOSE_LE_NEG_15": 294,
+        "EXIT4_SCORE_DRAWDOWN_GE_15": 126,
         "NO_PROGRESSED_DIRECT_HANDOFF": 92,
         "NO_EXIT_BEFORE_CUTOFF": 17,
         "EXIT3_PROGRESSED_TO_WEAK": 11,
@@ -767,45 +794,45 @@
     "hold_b_e2": {
       "terminal_return": {
         "count": 553,
-        "mean": 17.72,
+        "mean": 17.99,
         "median": -14.15,
-        "p25": -16.28,
-        "p75": 34.98,
-        "p90": 85.3,
-        "std": 67.97,
+        "p25": -16.27,
+        "p75": 35.06,
+        "p90": 85.75,
+        "std": 68.13,
         "min": -49.4,
         "max": 912.41,
-        "positive_rate": 39.4
+        "positive_rate": 39.6
       },
       "mfe": {
         "count": 553,
-        "mean": 62.8,
-        "median": 28.47,
+        "mean": 63.05,
+        "median": 28.6,
         "p25": 7.85,
-        "p75": 76.94,
-        "p90": 129.26,
-        "std": 145.05,
+        "p75": 77.36,
+        "p90": 130.3,
+        "std": 145.08,
         "min": 0.0,
         "max": 2857.82,
         "positive_rate": 99.6
       },
       "mae": {
         "count": 553,
-        "mean": -15.12,
+        "mean": -15.15,
         "median": -16.18,
-        "p25": -17.87,
+        "p25": -17.9,
         "p75": -10.71,
         "p90": -5.55,
-        "std": 7.85,
+        "std": 7.88,
         "min": -64.86,
         "max": 0.0,
         "positive_rate": 0.0
       },
       "peak_giveback": {
         "count": 553,
-        "mean": 45.08,
+        "mean": 45.06,
         "median": 26.99,
-        "p25": 19.25,
+        "p25": 19.2,
         "p75": 45.16,
         "p90": 71.48,
         "std": 95.19,
@@ -818,30 +845,30 @@
         "mean": -3.3,
         "median": -0.5,
         "p25": -1.96,
-        "p75": 0.44,
+        "p75": 0.45,
         "p90": 0.81,
         "std": 15.88,
         "min": -240.57,
         "max": 1.0,
-        "positive_rate": 39.6
+        "positive_rate": 39.7
       },
       "holding_weeks": {
         "count": 553,
-        "mean": 26.85,
+        "mean": 27.23,
         "median": 19.0,
         "p25": 6.0,
         "p75": 40.4,
-        "p90": 56.72,
-        "std": 31.99,
+        "p90": 56.8,
+        "std": 33.34,
         "min": 0.6,
         "max": 450.4,
         "positive_rate": 100.0
       },
       "risk_metrics": {
-        "return_negative_count": 335,
-        "return_negative_rate": 60.58,
-        "return_le_neg_10_count": 310,
-        "return_le_neg_10_rate": 56.06,
+        "return_negative_count": 334,
+        "return_negative_rate": 60.4,
+        "return_le_neg_10_count": 309,
+        "return_le_neg_10_rate": 55.88,
         "return_le_neg_20_count": 29,
         "return_le_neg_20_rate": 5.24,
         "return_le_neg_30_count": 8,
@@ -853,23 +880,23 @@
       "mae_tail_metrics": {
         "mae_le_neg_10_count": 426,
         "mae_le_neg_10_rate": 77.03,
-        "mae_le_neg_20_count": 69,
-        "mae_le_neg_20_rate": 12.48,
-        "mae_le_neg_30_count": 16,
-        "mae_le_neg_30_rate": 2.89,
+        "mae_le_neg_20_count": 70,
+        "mae_le_neg_20_rate": 12.66,
+        "mae_le_neg_30_count": 17,
+        "mae_le_neg_30_rate": 3.07,
         "worst_mae": -64.86
       },
       "upside_metrics": {
-        "return_ge_20_count": 166,
-        "return_ge_20_rate": 30.02,
-        "return_ge_50_count": 116,
-        "return_ge_50_rate": 20.98,
-        "return_ge_100_count": 41,
-        "return_ge_100_rate": 7.41
+        "return_ge_20_count": 167,
+        "return_ge_20_rate": 30.2,
+        "return_ge_50_count": 117,
+        "return_ge_50_rate": 21.16,
+        "return_ge_100_count": 42,
+        "return_ge_100_rate": 7.59
       },
       "exit_type_counts": {
-        "LOSS_GUARD_CLOSE_LE_NEG_15": 295,
-        "EXIT4_SCORE_DRAWDOWN_GE_15": 166,
+        "LOSS_GUARD_CLOSE_LE_NEG_15": 294,
+        "EXIT4_SCORE_DRAWDOWN_GE_15": 167,
         "NO_EXIT_BEFORE_CUTOFF": 35,
         "NO_PROGRESSED_BEFORE_CUTOFF": 33,
         "EXIT3_PROGRESSED_TO_WEAK": 11,
@@ -947,15 +974,15 @@
         },
         "hold_b_e1_return": {
           "count": 484,
-          "mean": 17.02,
-          "median": -14.45,
-          "p25": -16.38,
-          "p75": 31.37,
-          "p90": 81.58,
-          "std": 71.13,
+          "mean": 17.33,
+          "median": -14.4,
+          "p25": -16.35,
+          "p75": 32.16,
+          "p90": 82.13,
+          "std": 71.31,
           "min": -54.43,
           "max": 912.41,
-          "positive_rate": 37.6
+          "positive_rate": 37.8
         },
         "hold_a_e2_return": {
           "count": 484,
@@ -1031,15 +1058,15 @@
         },
         "hold_b_e1_return": {
           "count": 395,
-          "mean": 17.24,
-          "median": -13.12,
+          "mean": 17.61,
+          "median": -12.93,
           "p25": -15.93,
-          "p75": 38.61,
-          "p90": 80.52,
-          "std": 54.11,
+          "p75": 39.79,
+          "p90": 81.65,
+          "std": 54.39,
           "min": -54.43,
           "max": 391.49,
-          "positive_rate": 43.0
+          "positive_rate": 43.3
         },
         "hold_a_e2_return": {
           "count": 395,
@@ -1115,15 +1142,15 @@
         },
         "hold_b_e1_return": {
           "count": 302,
-          "mean": 9.95,
-          "median": -14.62,
-          "p25": -16.23,
-          "p75": 22.22,
-          "p90": 74.43,
-          "std": 47.16,
+          "mean": 10.44,
+          "median": -14.59,
+          "p25": -16.2,
+          "p75": 23.52,
+          "p90": 74.94,
+          "std": 47.65,
           "min": -54.43,
           "max": 328.24,
-          "positive_rate": 36.4
+          "positive_rate": 36.8
         },
         "hold_a_e2_return": {
           "count": 302,
@@ -1281,15 +1308,15 @@
         },
         "hold_b_e1_return": {
           "count": 270,
-          "mean": 36.64,
-          "median": 7.38,
-          "p25": -15.29,
-          "p75": 68.36,
-          "p90": 110.97,
-          "std": 87.53,
+          "mean": 37.19,
+          "median": 7.77,
+          "p25": -15.22,
+          "p75": 71.36,
+          "p90": 111.29,
+          "std": 87.66,
           "min": -49.4,
           "max": 912.41,
-          "positive_rate": 53.7
+          "positive_rate": 54.1
         },
         "hold_a_e2_return": {
           "count": 270,
@@ -1349,29 +1376,11 @@
       }
     }
   },
-  "selection_methodology": {
-    "mode": "PREREGISTERED_PRIORITY_EVIDENCE_SYNTHESIS",
-    "selection_authority": "INVESTMENT_MANDATE_PLUS_PREREGISTERED_PRIORITY_ORDER",
-    "automatic_numeric_ranker": false,
-    "posthoc_threshold_created": false,
-    "investment_mandate": "LARGE_LOSS_MINIMIZATION",
-    "hold_evidence_basis": "Significant reduction in <= -30% and <= -20% tail losses and deep MAE aligned with Large Loss Minimization mandate.",
-    "exit_evidence_basis": "Preregistered risk-first priority where E2 delivers lowest failure tail and giveback with preserved right tail relative to E1."
-  },
   "known_limitations": [
     "SAME_SAMPLE_RETROSPECTIVE_FINALIZATION",
     "HOLD_COMPARISON_PRIMARY_BASELINE_E1_NOT_EXPLICITLY_PREREGISTERED",
     "FRESH_OOS_NOT_YET_PERFORMED"
   ],
-  "boundary_diagnostic": {
-    "description": "Pre-PROGRESSED Loss Guard boundary integrity check",
-    "loss_guard_signal_eq_first_progressed_count": 0,
-    "loss_guard_signal_gt_first_progressed_count": 0,
-    "aggregate_impact": "NONE",
-    "evaluation_metrics_changed": false,
-    "evaluator_rerun": false,
-    "final_semantics": "LOSS_GUARD_ACTIVE_ONLY_WHEN_DATE_LT_FIRST_PROGRESSED_SNAPSHOT_DATE"
-  },
   "strategy_finalization_reference": {
     "strategy_name": "PATTERN_A_FAST_FINAL_STRATEGY_V01",
     "selection_authority": "FINAL_STRATEGY_CONTRACT",

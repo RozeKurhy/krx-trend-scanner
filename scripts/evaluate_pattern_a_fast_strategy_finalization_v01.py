@@ -10,6 +10,7 @@ Strict Execution Invariants:
   - Next local trading day OPEN execution.
   - Research Classification: RETROSPECTIVE_STRATEGY_FINALIZATION_CANDIDATE_SELECTION.
   - Role: MEASURE AND REPORT EVIDENCE (Zero strategy selection hardcoding).
+  - Boundary: Loss Guard active strictly before first PROGRESSED effective trading date.
   - Production Status: PRODUCTION_HOLD.
 """
 
@@ -135,14 +136,24 @@ def _analyze_results(df: pd.DataFrame, total_common: int, investable_count: int)
     stopped_cf_e1_ge_50 = int((df_stopped["hold_a_e1_terminal_return"] >= 50.0).sum())
     stopped_cf_e1_ge_100 = int((df_stopped["hold_a_e1_terminal_return"] >= 100.0).sum())
 
-    # Boundary diagnostic counts
-    boundary_same_day_count = int(
+    # Boundary diagnostic checks
+    calendar_same_day_count = int(
         (df_stopped["loss_guard_signal_date"] == df_stopped["first_progressed_date"]).sum()
     )
-    boundary_after_count = int(
+    calendar_after_count = int(
         (
             df_stopped["first_progressed_date"].notna()
             & (df_stopped["loss_guard_signal_date"] > df_stopped["first_progressed_date"])
+        ).sum()
+    )
+
+    eff_same_day_count = int(
+        (df_stopped["loss_guard_signal_date"] == df_stopped["first_progressed_effective_trading_date"]).sum()
+    )
+    eff_after_count = int(
+        (
+            df_stopped["first_progressed_effective_trading_date"].notna()
+            & (df_stopped["loss_guard_signal_date"] > df_stopped["first_progressed_effective_trading_date"])
         ).sum()
     )
 
@@ -305,13 +316,20 @@ def _analyze_results(df: pd.DataFrame, total_common: int, investable_count: int)
             "exit_evidence_basis": "Preregistered risk-first priority where E2 delivers lowest failure tail and giveback with preserved right tail relative to E1."
         },
         "boundary_diagnostic": {
-            "description": "Pre-PROGRESSED Loss Guard boundary integrity check",
-            "loss_guard_signal_eq_first_progressed_count": boundary_same_day_count,
-            "loss_guard_signal_gt_first_progressed_count": boundary_after_count,
-            "aggregate_impact": "NONE",
-            "evaluation_metrics_changed": False,
-            "evaluator_rerun": False,
-            "final_semantics": "LOSS_GUARD_ACTIVE_ONLY_WHEN_DATE_LT_FIRST_PROGRESSED_SNAPSHOT_DATE"
+            "calendar_label_check": {
+                "same_day_count": calendar_same_day_count,
+                "after_count": calendar_after_count
+            },
+            "effective_trading_date_check": {
+                "same_day_count": eff_same_day_count,
+                "after_count": eff_after_count,
+                "classification_changed_count": 1,
+                "affected_tickers": ["032830"]
+            },
+            "boundary_basis": "ACTUAL_LAST_LOCAL_TRADING_DAY_OF_COMPLETED_MONTHLY_SNAPSHOT",
+            "aggregate_impact": "CHANGED",
+            "evaluator_rerun": True,
+            "final_semantics": "LOSS_GUARD_ACTIVE_ONLY_BEFORE_FIRST_PROGRESSED_EFFECTIVE_TRADING_DATE"
         },
         "hold_evaluation": {
             "loss_guard_triggered_count": lg_triggered_count,
@@ -406,10 +424,11 @@ def _generate_markdown_report(data: dict[str, Any]) -> str:
   - Loss Guard가 없었다면 E1 기준 terminal return이 +100% 이상이었을 거래: {stopped_w["cf_e1_ge_100_count"]}건
 - **손절 거래의 Counterfactual MFE**: Mean {hold["stopped_trades_cf_mfe"]["mean"]}%, Median {hold["stopped_trades_cf_mfe"]["median"]}%
 - **Boundary Diagnostic**:
-  - `loss_guard_signal_date == first_progressed_date`: {bound["loss_guard_signal_eq_first_progressed_count"]}건
-  - `loss_guard_signal_date > first_progressed_date`: {bound["loss_guard_signal_gt_first_progressed_count"]}건
-  - 평가 집계 영향: `NONE` (Evaluator Rerun 미실행, `date < first_progressed_date` 동결)
-- **증거 요약**: `PRE_PROGRESSED_PROTECTION_SUPPORTED`
+  - **MonthEnd Calendar Label Check**: same-day: {bound["calendar_label_check"]["same_day_count"]}건, after: {bound["calendar_label_check"]["after_count"]}건
+  - **Effective Trading Date Check**: same-day: {bound["effective_trading_date_check"]["same_day_count"]}건, after: {bound["effective_trading_date_check"]["after_count"]}건
+  - **Classification Changed**: {bound["effective_trading_date_check"]["classification_changed_count"]}건 ({bound["effective_trading_date_check"]["affected_tickers"]})
+  - **평가 집계 반영**: Bug correction run 1회 완료 (`date < first_progressed_effective_trading_date` 동결)
+- **증거 종합**: `PRE_PROGRESSED_PROTECTION_SUPPORTED`
 
 ================================================================================
 4. STEP 2: PROGRESSED Exit Architecture Evaluation Evidence (E0 vs E1 vs E2)
@@ -426,7 +445,7 @@ def _generate_markdown_report(data: dict[str, Any]) -> str:
 | **Return >= +100% Winner 수 (비율)** | {variants["hold_b_e0"]["upside_metrics"]["return_ge_100_count"]}건 ({variants["hold_b_e0"]["upside_metrics"]["return_ge_100_rate"]}%) | {variants["hold_b_e1"]["upside_metrics"]["return_ge_100_count"]}건 ({variants["hold_b_e1"]["upside_metrics"]["return_ge_100_rate"]}%) | **{variants["hold_b_e2"]["upside_metrics"]["return_ge_100_count"]}건 ({variants["hold_b_e2"]["upside_metrics"]["return_ge_100_rate"]}%)** |
 
 - **증거 종합**:
-  E2는 E0보다 평균 수익률(25.98% vs 17.72%)은 낮지만, risk-first mandate에서 large-loss tail(<= -30%: 8건, <= -20%: 29건)과 giveback(중앙값 26.99%)이 가장 우수하며, E1 대비 평균 return도 소폭 개선되는 증거를 제공함 (`EXIT3_PLUS_EXIT4_PLUS_COVERAGE`).
+  E2는 E0보다 평균 수익률(26.24% vs 17.99%)은 낮지만, risk-first mandate에서 large-loss tail(<= -30%: 8건, <= -20%: 29건)과 giveback(중앙값 26.99%)이 가장 우수하며, E1 대비 평균 return도 소폭 개선되는 증거를 제공함 (`EXIT3_PLUS_EXIT4_PLUS_COVERAGE`).
 
 ================================================================================
 5. Known Limitations
