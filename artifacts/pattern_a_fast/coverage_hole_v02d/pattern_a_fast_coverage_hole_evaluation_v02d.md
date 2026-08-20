@@ -1,4 +1,4 @@
-# FAST + Pattern A Coverage Hole Activation Validation v0.2D 사후 평가 보고서 (Closed)
+# FAST + Pattern A Coverage Hole Activation Validation v0.2D 사후 평가 보고서 (Corrected & Closed)
 
 ================================================================================
 1. 평가 개요 및 실행 환경
@@ -7,6 +7,7 @@
 - **연구 분류 (Research Classification)**: `RETROSPECTIVE_COVERAGE_HOLE_ACTIVATION_VALIDATION`
 - **연구 성격 명시**: **`SAME_SAMPLE_RETROSPECTIVE_FOLLOWUP` (v0.1 동일 표본 후속 특성 연구, Fresh OOS / 독립 재현 검증 아님)**
 - **연구 상태 (Research Status)**: **`CLOSED`**
+- **평가 기준 커밋 (Evaluation Authority Commit)**: `ab43f20f752a758b6deb20db4bf848771bdd98c5`
 - **사전등록 기준 커밋 (Preregistration Authority)**: `77e3a0d768258279529428e86e00198ba6e06fa9` (`PREREGISTERED_BEFORE_EVALUATION`)
 - **데이터 기준일 (Data Cutoff)**: `2026-08-14`
 - **데이터 소스**: **로컬 Parquet 캐시 전용 (LOCAL CACHE ONLY, 외부 네트워크 0회)**
@@ -38,13 +39,13 @@
 
 | 성과 및 리스크 지표 | Policy B Baseline (Frozen) | Policy C Coverage Activated | Paired Delta (Policy C - Policy B) |
 |---|:---:|:---:|:---:|
-| **Terminal Return 중앙값** | **`+16.76%`** | **`+23.69%`** | **`+0.00%p`** (평균 `+3.89%p`) |
+| **Terminal Return 중앙값 (Mean)** | **`+16.76%`** (`+29.23%`) | **`+23.69%`** (`+33.12%`) | **`+0.00%p`** (평균 `+3.89%p`) |
 | **Terminal Return P25 / P75** | `-14.07%` / `+60.27%` | `-5.92%` / `+71.47%` | `+0.00%p` / `+17.05%p` |
 | **MFE 중앙값** | `+89.08%` | `+72.56%` | - |
 | **MAE 중앙값** | `-23.24%` | `-17.57%` | - |
-| **Peak Giveback 중앙값** | **`+73.46%`** | **`+43.37%`** | **`-2.65%p`** (평균 `-38.88%p`) |
-| **Profit Capture Ratio 중앙값** | **`0.16`** | **`0.33`** | **`0.0`** (평균 `0.09`) |
-| **Holding Weeks 중앙값** | `59.0주` | `43.4주` | `-10.4주` |
+| **Peak Giveback 중앙값 (Mean)** | **`+73.46%`** (`+91.97%`) | **`+43.37%`** (`+53.09%`) | **`-2.65%p`** (평균 `-38.88%p`) |
+| **Profit Capture Ratio 중앙값 (Mean)** | **`0.16`** (`-0.97`) | **`0.33`** (`-0.88`) | **`0.0`** (평균 `0.09`) |
+| **Holding Weeks 중앙값 (Mean)** | `59.0주` (`78.85주`) | `43.4주` (`56.24주`) | **`-10.4주`** (평균 `-22.61주`) |
 
 #### Trade-level Better / Equal / Worse 분포
 - **Return 기준**:
@@ -74,15 +75,16 @@
 ================================================================================
 - **대형 상승 거래(Policy B Return ≥ +50%) 중 Policy C에서 수익 감소 비율**: **`47.1%`** (`16 / 34건`)
 - **초대형 상승 거래(Policy B Return ≥ +100%) 중 Policy C에서 수익 감소 비율**: **`60.0%`** (`6 / 10건`)
+- **최대 수익 거래 비교**: Policy B Max Return `+442.57%` vs Policy C Max Return `+203.93%` (Min Paired Return Delta: `-329.39%p`)
 - **Winner Preservation (목표 수익 달성률 유지)**:
   - Return ≥ +20%: Policy B `47.7%` (`51건`) vs Policy C `54.2%` (`58건`)
   - Return ≥ +50%: Policy B `31.8%` (`34건`) vs Policy C `37.4%` (`40건`)
   - Return ≥ +100%: Policy B `9.3%` (`10건`) vs Policy C `10.3%` (`11건`)
 
 #### 하방 실패 보호 (Failure Protection)
-- 26W 음수(손실) 거래 비율: Policy B `37.4%` vs Policy C `29.9%`
-- Return ≤ -20% 극단 손실 비율: Policy B `20.6%` vs Policy C `14.0%`
-- Return ≤ -30% 극단 손실 비율: Policy B `15.0%` vs Policy C `9.3%`
+- Terminal Return < 0 (손실 거래) 비율: Policy B `37.4%` (`40건`) vs Policy C `29.9%` (`32건`)
+- Terminal Return ≤ -20% 극단 손실 비율: Policy B `20.6%` (`22건`) vs Policy C `14.0%` (`15건`)
+- Terminal Return ≤ -30% 극단 손실 비율: Policy B `15.0%` (`16건`) vs Policy C `9.3%` (`10건`)
 
 ================================================================================
 6. Subgroup별 분리 진단
@@ -90,14 +92,14 @@
 
 #### 1) SKIPPED_EARLY_TREND_HANDOFF (N=32)
 - **Exit 4 Triggered**: `23건` (`71.9%`)
-- **Terminal Return**: Policy B `+10.86%` vs Policy C `+26.23%` (Paired Delta Median: `+1.32%p`)
-- **Peak Giveback**: Policy B `+83.67%` vs Policy C `+35.98%` (Giveback Delta Median: `-24.64%p`)
+- **Terminal Return**: Policy B `+10.86%` vs Policy C `+26.23%` (Paired Delta Median: `+1.32%p`, Mean: `+5.26%p`)
+- **Peak Giveback**: Policy B `+83.67%` vs Policy C `+35.98%` (Giveback Delta Median: `-24.64%p`, Mean: `-69.14%p`)
 - **Profit Capture**: Policy B `0.08` vs Policy C `0.35`
 
 #### 2) PROGRESSED_WITHOUT_DIRECT_HANDOFF (N=75)
 - **Exit 4 Triggered**: `42건` (`56.0%`)
-- **Terminal Return**: Policy B `+21.07%` vs Policy C `+23.69%` (Paired Delta Median: `+0.00%p`)
-- **Peak Giveback**: Policy B `+71.61%` vs Policy C `+51.31%` (Giveback Delta Median: `+0.00%p`)
+- **Terminal Return**: Policy B `+21.07%` vs Policy C `+23.69%` (Paired Delta Median: `+0.00%p`, Mean: `+3.31%p`)
+- **Peak Giveback**: Policy B `+71.61%` vs Policy C `+51.31%` (Giveback Delta Median: `+0.00%p`, Mean: `-25.97%p`)
 - **Profit Capture**: Policy B `0.18` vs Policy C `0.32`
 
 ================================================================================
@@ -113,24 +115,29 @@
 ================================================================================
 8. 핵심 관찰 (Key Observations)
 ================================================================================
-1. Combined Executable 전체 553건 중 Coverage Hole 107건(SKIPPED 32건, PROGRESSED_WITHOUT_DIRECT 75건)에서 최초 PROGRESSED 관측 시점부터 frozen 15.0pt Exit 4를 활성화(Policy C)함.
-2. Coverage Hole 107건 중 총 65건(60.7%)에서 Exit 4 신호가 정상 격발되어 익일 시가에 성공적으로 청산 보호됨.
-3. Peak Giveback 중앙값은 Policy B 73.46%에서 Policy C 43.37%로 -2.65%p 감소하여 수익 반납 방어 효과를 입증함.
-4. Terminal Return 중앙값은 Policy B 16.76% vs Policy C 23.69%(Delta 0.0%p)로 안정적으로 유지되었으며, Right Tail(Return >= +50%) 중 조기 청산 손실 비율은 47.1%로 제한적임.
-5. 전체 553건 중 변경 발생 거래수는 정확히 65건으로 모두 Coverage Hole 내부에서 발생하였으며, NORMAL 및 NEVER_PROGRESSED 코호트는 100% 무결하게 보존됨.
+1. Coverage Hole 107건 중 65건(60.7%)에서 최초 PROGRESSED 이후 frozen 15pt Exit4가 실제 trigger되어 기존 Exit4 coverage 사각지대를 상당 부분 해소함.
+2. Policy C는 손실 거래(Terminal Return < 0)를 40건에서 32건으로, 큰 손실(Return <= -20%)을 22건에서 15건으로, 극단 손실(Return <= -30%)을 16건에서 10건으로 유의미하게 줄임.
+3. 정책별 Peak Giveback 중앙값은 73.46%에서 43.37%로 낮아졌고, paired Giveback Delta는 중앙값 -2.65%p, 평균 -38.88%p로 실질적인 수익 반납 방어 효과를 보임.
+4. 반면 기존 Policy B의 +50% 이상 대형 승자 34건 중 16건(47.1%), +100% 이상 승자 10건 중 6건(60.0%)이 Policy C에서 수익이 감소하여 명확한 Right Tail 절단 trade-off가 확인됨.
+5. SKIPPED_EARLY_TREND_HANDOFF에서는 paired Return 및 Giveback 개선이 강했지만, PROGRESSED_WITHOUT_DIRECT_HANDOFF에서는 paired median Return / Giveback 개선이 0.00%p로 subgroup 간 효과 차이(일관성 PARTIAL)가 존재함.
 
 ================================================================================
 9. 최종 결론 및 연구 상태
 ================================================================================
 - **연구 상태 (Research Status)**: **`CLOSED`**
-- **최종 연구 판정 (Evaluation Status)**: **`COVERAGE_ACTIVATION_SUPPORTED`**
+- **최종 연구 판정 (Evaluation Status)**: **`COVERAGE_ACTIVATION_MIXED`**
+- **연구적 의미 (Research Finding)**: **`COVERAGE_ACTIVATION_PROMISING` (`PROMISING`)**
 - **운영 상태 (Production Status)**: **`PRODUCTION_HOLD`**
 - **Production 영향도**: **`NONE`**
 - **테스트 실행 여부**: **`Tests: NOT RUN`**
 
 #### 요약 평가
-FAST + Pattern A Coverage Hole Activation Validation v0.2D 평가 결과:
-1. 기존 Exit 4의 사각지대였던 107개 거래(Coverage Hole)에서 최초 PROGRESSED 관측 시점부터 Exit 4를 활성화함으로써, 65건의 거래가 사후 하락으로부터 보호되었습니다.
-2. Peak Giveback이 감소하고 Profit Capture가 개선되는 동시에 Median Return이 훼손되지 않고 유지되었습니다.
-3. 우측 꼬리 대형 승자(Return >= +50%)의 조기 청산 손실률도 47.1%로 통제 가능한 수준임을 확인하였습니다.
-4. 본 연구 결과를 `COVERAGE_ACTIVATION_SUPPORTED` 및 `PRODUCTION_HOLD` 상태로 CLOSED 종료합니다.
+FAST + Pattern A Coverage Hole Activation v0.2D 평가 결과:
+
+1. 기존 Exit4 사각지대 107건 중 65건(60.7%)에서 최초 PROGRESSED 관측 이후 frozen 15pt protection이 실제로 활성화되었습니다.
+2. Policy C는 손실 거래와 큰 손실 tail을 줄였으며, Peak Giveback과 Profit Capture 분포에서도 전반적인 개선 방향을 보였습니다. 특히 SKIPPED_EARLY_TREND_HANDOFF subgroup에서는 paired Return 및 Giveback 개선이 강하게 관찰되었습니다.
+3. 그러나 전체 Coverage Hole의 paired Return Delta 중앙값은 0.00%p였고, PROGRESSED_WITHOUT_DIRECT_HANDOFF subgroup에서도 paired Return / Giveback median 개선이 0.00%p였습니다.
+4. 더 중요하게는 기존 Policy B의 +50% 이상 winner 중 47.1%(16/34건), +100% 이상 winner 중 60.0%(6/10건)가 Policy C에서 수익 감소를 경험해 명확한 Right Tail truncation trade-off가 존재했습니다.
+5. 동시에 전체 winner threshold 달성 거래 수는 Policy C에서 증가해, Coverage Activation이 일방적으로 winner를 훼손한 것도 아니었습니다.
+
+따라서 Coverage Activation은 Giveback Protection 및 Failure Protection 측면에서 PROMISING한 구조이지만, Right Tail 손상과 subgroup 효과 차이가 존재하므로 Retrospective evidence만으로 SUPPORTED로 확정하지 않고 최종 Evaluation Status를 COVERAGE_ACTIVATION_MIXED, Research Finding을 COVERAGE_ACTIVATION_PROMISING, Production을 PRODUCTION_HOLD로 유지하며 v0.2D 연구를 CLOSED 상태로 종료합니다.

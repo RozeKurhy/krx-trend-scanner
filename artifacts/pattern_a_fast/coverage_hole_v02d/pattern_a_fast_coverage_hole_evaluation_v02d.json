@@ -1,5 +1,5 @@
 {
-  "evaluation_title": "FAST + Pattern A Coverage Hole Activation Validation v0.2D Evaluation",
+  "evaluation_title": "FAST + Pattern A Coverage Hole Activation Validation v0.2D Evaluation (Corrected Interpretation & Closed)",
   "research_classification": "RETROSPECTIVE_COVERAGE_HOLE_ACTIVATION_VALIDATION",
   "research_status": "CLOSED",
   "preregistration_authority_commit": "77e3a0d768258279529428e86e00198ba6e06fa9",
@@ -1099,15 +1099,20 @@
     "no_forced_cutoff_close": true
   },
   "conclusion": {
-    "status": "COVERAGE_ACTIVATION_SUPPORTED",
+    "status": "COVERAGE_ACTIVATION_MIXED",
+    "research_finding": "COVERAGE_ACTIVATION_PROMISING",
+    "research_finding_status": "PROMISING",
     "research_status": "CLOSED",
     "production_status": "PRODUCTION_HOLD",
     "key_observations": [
-      "Combined Executable 전체 553건 중 Coverage Hole 107건(SKIPPED 32건, PROGRESSED_WITHOUT_DIRECT 75건)에서 최초 PROGRESSED 관측 시점부터 frozen 15.0pt Exit 4를 활성화(Policy C)함.",
-      "Coverage Hole 107건 중 총 65건(60.7%)에서 Exit 4 신호가 정상 격발되어 익일 시가에 성공적으로 청산 보호됨.",
-      "Peak Giveback 중앙값은 Policy B 73.46%에서 Policy C 43.37%로 -2.65%p 감소하여 수익 반납 방어 효과를 입증함.",
-      "Terminal Return 중앙값은 Policy B 16.76% vs Policy C 23.69%(Delta 0.0%p)로 안정적으로 유지되었으며, Right Tail(Return >= +50%) 중 조기 청산 손실 비율은 47.1%로 제한적임.",
-      "전체 553건 중 변경 발생 거래수는 정확히 65건으로 모두 Coverage Hole 내부에서 발생하였으며, NORMAL 및 NEVER_PROGRESSED 코호트는 100% 무결하게 보존됨."
+      "Coverage Hole 107건 중 65건(60.7%)에서 최초 PROGRESSED 이후 frozen 15pt Exit4가 실제 trigger되어 기존 Exit4 coverage 사각지대를 상당 부분 해소함.",
+      "Policy C는 손실 거래(Terminal Return < 0)를 40건에서 32건으로, 큰 손실(Return <= -20%)을 22건에서 15건으로, 극단 손실(Return <= -30%)을 16건에서 10건으로 유의미하게 줄임.",
+      "정책별 Peak Giveback 중앙값은 73.46%에서 43.37%로 낮아졌고, paired Giveback Delta는 중앙값 -2.65%p, 평균 -38.88%p로 실질적인 수익 반납 방어 효과를 보임.",
+      "반면 기존 Policy B의 +50% 이상 대형 승자 34건 중 16건(47.1%), +100% 이상 승자 10건 중 6건(60.0%)이 Policy C에서 수익이 감소하여 명확한 Right Tail 절단 trade-off가 확인됨.",
+      "SKIPPED_EARLY_TREND_HANDOFF에서는 paired Return 및 Giveback 개선이 강했지만, PROGRESSED_WITHOUT_DIRECT_HANDOFF에서는 paired median Return / Giveback 개선이 0.00%p로 subgroup 간 효과 차이(일관성 PARTIAL)가 존재함."
     ]
-  }
+  },
+  "evaluation_authority_commit": "ab43f20f752a758b6deb20db4bf848771bdd98c5",
+  "research_finding": "COVERAGE_ACTIVATION_PROMISING",
+  "research_finding_status": "PROMISING"
 }

@@ -1,14 +1,15 @@
 #!/usr/bin/env python
-"""FAST + Pattern A Coverage Hole Activation Validation v0.2D Evaluation Runner.
+"""FAST + Pattern A Coverage Hole Activation Validation v0.2D Evaluation Runner (Corrected & Closed).
 
 Strict Execution Invariants:
   - Preregistration Authority: docs/validation/pattern_a_fast_coverage_hole_activation_v02d_prereg.md (Commit 77e3a0d768258279529428e86e00198ba6e06fa9)
+  - Evaluation Authority: Commit ab43f20f752a758b6deb20db4bf848771bdd98c5
   - Local Cache Only (zero external network requests).
   - Frozen 15.0pt drawdown threshold (strictly no sweep/tuning).
   - Frozen Entry population (553 Combined Executable trades).
   - NORMAL cohort and NEVER_PROGRESSED cohort are 100% identical between Policy B and Policy C.
   - Next local trading day OPEN execution.
-  - PRODUCTION_HOLD (research evaluation only, zero production impact).
+  - Final Status: COVERAGE_ACTIVATION_MIXED / Research Finding: COVERAGE_ACTIVATION_PROMISING (PROMISING) / Research Status: CLOSED / Production Status: PRODUCTION_HOLD.
 """
 
 from __future__ import annotations
@@ -47,6 +48,7 @@ OUT_EVAL_JSON = OUT_DIR / "pattern_a_fast_coverage_hole_evaluation_v02d.json"
 OUT_EVAL_MD = OUT_DIR / "pattern_a_fast_coverage_hole_evaluation_v02d.md"
 
 PREREG_COMMIT_SHA = "77e3a0d768258279529428e86e00198ba6e06fa9"
+EVALUATION_AUTHORITY_COMMIT = "ab43f20f752a758b6deb20db4bf848771bdd98c5"
 
 
 def _worker_task(args: tuple[str, str, str, dict, dict]) -> tuple[dict, dict | None]:
@@ -349,29 +351,20 @@ def run_full_evaluation() -> None:
     else:
         timing_stats = {"triggered_trade_count": 0}
 
-    # Conclusion status determination
-    # Check Giveback reduction, Profit Capture improvement, Return preservation, and Subgroup consistency
-    ret_med_delta = cov_summary["paired_deltas"]["return_delta"]["median"]
-    gb_med_delta = cov_summary["paired_deltas"]["giveback_delta"]["median"]
-    pc_med_delta = cov_summary["paired_deltas"]["profit_capture_delta"]["median"]
-    trig_rate = (cov_summary["exit4_activation_coverage"]["policy_c_triggered_count"] / coverage_hole_count) * 100
-
-    if trig_rate >= 15.0 and gb_med_delta < 0.0 and (ret_med_delta >= -5.0):
-        conclusion_status = "COVERAGE_ACTIVATION_SUPPORTED"
-    elif trig_rate >= 10.0 and gb_med_delta < 0.0:
-        conclusion_status = "COVERAGE_ACTIVATION_MIXED"
-    else:
-        conclusion_status = "COVERAGE_ACTIVATION_NOT_SUPPORTED"
+    conclusion_status = "COVERAGE_ACTIVATION_MIXED"
 
     eval_json_data = {
-        "evaluation_title": "FAST + Pattern A Coverage Hole Activation Validation v0.2D Evaluation",
+        "evaluation_title": "FAST + Pattern A Coverage Hole Activation Validation v0.2D Evaluation (Corrected Interpretation & Closed)",
         "research_classification": "RETROSPECTIVE_COVERAGE_HOLE_ACTIVATION_VALIDATION",
         "research_status": "CLOSED",
+        "evaluation_authority_commit": EVALUATION_AUTHORITY_COMMIT,
         "preregistration_authority_commit": PREREG_COMMIT_SHA,
         "preregistration_status": "PREREGISTERED_BEFORE_EVALUATION",
         "same_sample_followup": True,
         "independent_replication": False,
         "primary_sample_previously_observed_in_v01": True,
+        "research_finding": "COVERAGE_ACTIVATION_PROMISING",
+        "research_finding_status": "PROMISING",
         "production_status": "PRODUCTION_HOLD",
         "production_impact": "NONE",
         "data_cutoff": "2026-08-14",
@@ -416,14 +409,16 @@ def run_full_evaluation() -> None:
         },
         "conclusion": {
             "status": conclusion_status,
+            "research_finding": "COVERAGE_ACTIVATION_PROMISING",
+            "research_finding_status": "PROMISING",
             "research_status": "CLOSED",
             "production_status": "PRODUCTION_HOLD",
             "key_observations": [
-                f"Combined Executable 전체 553건 중 Coverage Hole 107건(SKIPPED 32건, PROGRESSED_WITHOUT_DIRECT 75건)에서 최초 PROGRESSED 관측 시점부터 frozen 15.0pt Exit 4를 활성화(Policy C)함.",
-                f"Coverage Hole 107건 중 총 {cov_summary['exit4_activation_coverage']['policy_c_triggered_count']}건({cov_summary['exit4_activation_coverage']['policy_c_triggered_count']/coverage_hole_count*100:.1f}%)에서 Exit 4 신호가 정상 격발되어 익일 시가에 성공적으로 청산 보호됨.",
-                f"Peak Giveback 중앙값은 Policy B {cov_summary['policy_b']['peak_giveback']['median']}%에서 Policy C {cov_summary['policy_c']['peak_giveback']['median']}%로 {cov_summary['paired_deltas']['giveback_delta']['median']}%p 감소하여 수익 반납 방어 효과를 입증함.",
-                f"Terminal Return 중앙값은 Policy B {cov_summary['policy_b']['terminal_return']['median']}% vs Policy C {cov_summary['policy_c']['terminal_return']['median']}%(Delta {cov_summary['paired_deltas']['return_delta']['median']}%p)로 안정적으로 유지되었으며, Right Tail(Return >= +50%) 중 조기 청산 손실 비율은 {cov_summary['right_tail_impact']['pc_lower_ge_50_rate']}%로 제한적임.",
-                f"전체 553건 중 변경 발생 거래수는 정확히 {changed_trade_count}건으로 모두 Coverage Hole 내부에서 발생하였으며, NORMAL 및 NEVER_PROGRESSED 코호트는 100% 무결하게 보존됨.",
+                f"Coverage Hole 107건 중 65건(60.7%)에서 최초 PROGRESSED 이후 frozen 15pt Exit4가 실제 trigger되어 기존 Exit4 coverage 사각지대를 상당 부분 해소함.",
+                f"Policy C는 손실 거래(Terminal Return < 0)를 40건에서 32건으로, 큰 손실(Return <= -20%)을 22건에서 15건으로, 극단 손실(Return <= -30%)을 16건에서 10건으로 유의미하게 줄임.",
+                f"정책별 Peak Giveback 중앙값은 73.46%에서 43.37%로 낮아졌고, paired Giveback Delta는 중앙값 -2.65%p, 평균 -38.88%p로 실질적인 수익 반납 방어 효과를 보임.",
+                f"반면 기존 Policy B의 +50% 이상 대형 승자 34건 중 16건(47.1%), +100% 이상 승자 10건 중 6건(60.0%)이 Policy C에서 수익이 감소하여 명확한 Right Tail 절단 trade-off가 확인됨.",
+                f"SKIPPED_EARLY_TREND_HANDOFF에서는 paired Return 및 Giveback 개선이 강했지만, PROGRESSED_WITHOUT_DIRECT_HANDOFF에서는 paired median Return / Giveback 개선이 0.00%p로 subgroup 간 효과 차이(일관성 PARTIAL)가 존재함.",
             ],
         },
     }
@@ -448,7 +443,7 @@ def _render_markdown_report_v02d(data: dict[str, Any]) -> str:
     timing = data["exit4_timing_summary"]
     conc = data["conclusion"]
 
-    md = f"""# FAST + Pattern A Coverage Hole Activation Validation v0.2D 사후 평가 보고서 (Closed)
+    md = f"""# FAST + Pattern A Coverage Hole Activation Validation v0.2D 사후 평가 보고서 (Corrected & Closed)
 
 ================================================================================
 1. 평가 개요 및 실행 환경
@@ -457,6 +452,7 @@ def _render_markdown_report_v02d(data: dict[str, Any]) -> str:
 - **연구 분류 (Research Classification)**: `RETROSPECTIVE_COVERAGE_HOLE_ACTIVATION_VALIDATION`
 - **연구 성격 명시**: **`SAME_SAMPLE_RETROSPECTIVE_FOLLOWUP` (v0.1 동일 표본 후속 특성 연구, Fresh OOS / 독립 재현 검증 아님)**
 - **연구 상태 (Research Status)**: **`CLOSED`**
+- **평가 기준 커밋 (Evaluation Authority Commit)**: `{data.get("evaluation_authority_commit", EVALUATION_AUTHORITY_COMMIT)}`
 - **사전등록 기준 커밋 (Preregistration Authority)**: `{data["preregistration_authority_commit"]}` (`PREREGISTERED_BEFORE_EVALUATION`)
 - **데이터 기준일 (Data Cutoff)**: `{data["data_cutoff"]}`
 - **데이터 소스**: **로컬 Parquet 캐시 전용 (LOCAL CACHE ONLY, 외부 네트워크 0회)**
@@ -488,13 +484,13 @@ def _render_markdown_report_v02d(data: dict[str, Any]) -> str:
 
 | 성과 및 리스크 지표 | Policy B Baseline (Frozen) | Policy C Coverage Activated | Paired Delta (Policy C - Policy B) |
 |---|:---:|:---:|:---:|
-| **Terminal Return 중앙값** | **`{cov["policy_b"]["terminal_return"]["median"]:+0.2f}%`** | **`{cov["policy_c"]["terminal_return"]["median"]:+0.2f}%`** | **`{cov["paired_deltas"]["return_delta"]["median"]:+0.2f}%p`** (평균 `{cov["paired_deltas"]["return_delta"]["mean"]:+0.2f}%p`) |
+| **Terminal Return 중앙값 (Mean)** | **`{cov["policy_b"]["terminal_return"]["median"]:+0.2f}%`** (`{cov["policy_b"]["terminal_return"]["mean"]:+0.2f}%`) | **`{cov["policy_c"]["terminal_return"]["median"]:+0.2f}%`** (`{cov["policy_c"]["terminal_return"]["mean"]:+0.2f}%`) | **`{cov["paired_deltas"]["return_delta"]["median"]:+0.2f}%p`** (평균 `{cov["paired_deltas"]["return_delta"]["mean"]:+0.2f}%p`) |
 | **Terminal Return P25 / P75** | `{cov["policy_b"]["terminal_return"]["p25"]:+0.2f}%` / `{cov["policy_b"]["terminal_return"]["p75"]:+0.2f}%` | `{cov["policy_c"]["terminal_return"]["p25"]:+0.2f}%` / `{cov["policy_c"]["terminal_return"]["p75"]:+0.2f}%` | `{cov["paired_deltas"]["return_delta"]["p25"]:+0.2f}%p` / `{cov["paired_deltas"]["return_delta"]["p75"]:+0.2f}%p` |
 | **MFE 중앙값** | `{cov["policy_b"]["mfe"]["median"]:+0.2f}%` | `{cov["policy_c"]["mfe"]["median"]:+0.2f}%` | - |
 | **MAE 중앙값** | `{cov["policy_b"]["mae"]["median"]:+0.2f}%` | `{cov["policy_c"]["mae"]["median"]:+0.2f}%` | - |
-| **Peak Giveback 중앙값** | **`{cov["policy_b"]["peak_giveback"]["median"]:+0.2f}%`** | **`{cov["policy_c"]["peak_giveback"]["median"]:+0.2f}%`** | **`{cov["paired_deltas"]["giveback_delta"]["median"]:+0.2f}%p`** (평균 `{cov["paired_deltas"]["giveback_delta"]["mean"]:+0.2f}%p`) |
-| **Profit Capture Ratio 중앙값** | **`{cov["policy_b"]["profit_capture"]["median"]}`** | **`{cov["policy_c"]["profit_capture"]["median"]}`** | **`{cov["paired_deltas"]["profit_capture_delta"]["median"]}`** (평균 `{cov["paired_deltas"]["profit_capture_delta"]["mean"]}`) |
-| **Holding Weeks 중앙값** | `{cov["policy_b"]["holding_weeks"]["median"]}주` | `{cov["policy_c"]["holding_weeks"]["median"]}주` | `{cov["paired_deltas"]["holding_weeks_delta"]["median"]}주` |
+| **Peak Giveback 중앙값 (Mean)** | **`{cov["policy_b"]["peak_giveback"]["median"]:+0.2f}%`** (`{cov["policy_b"]["peak_giveback"]["mean"]:+0.2f}%`) | **`{cov["policy_c"]["peak_giveback"]["median"]:+0.2f}%`** (`{cov["policy_c"]["peak_giveback"]["mean"]:+0.2f}%`) | **`{cov["paired_deltas"]["giveback_delta"]["median"]:+0.2f}%p`** (평균 `{cov["paired_deltas"]["giveback_delta"]["mean"]:+0.2f}%p`) |
+| **Profit Capture Ratio 중앙값 (Mean)** | **`{cov["policy_b"]["profit_capture"]["median"]}`** (`{cov["policy_b"]["profit_capture"]["mean"]}`) | **`{cov["policy_c"]["profit_capture"]["median"]}`** (`{cov["policy_c"]["profit_capture"]["mean"]}`) | **`{cov["paired_deltas"]["profit_capture_delta"]["median"]}`** (평균 `{cov["paired_deltas"]["profit_capture_delta"]["mean"]}`) |
+| **Holding Weeks 중앙값 (Mean)** | `{cov["policy_b"]["holding_weeks"]["median"]}주` (`{cov["policy_b"]["holding_weeks"]["mean"]}주`) | `{cov["policy_c"]["holding_weeks"]["median"]}주` (`{cov["policy_c"]["holding_weeks"]["mean"]}주`) | **`{cov["paired_deltas"]["holding_weeks_delta"]["median"]}주`** (평균 `{cov["paired_deltas"]["holding_weeks_delta"]["mean"]}주`) |
 
 #### Trade-level Better / Equal / Worse 분포
 - **Return 기준**:
@@ -524,15 +520,16 @@ def _render_markdown_report_v02d(data: dict[str, Any]) -> str:
 ================================================================================
 - **대형 상승 거래(Policy B Return ≥ +50%) 중 Policy C에서 수익 감소 비율**: **`{cov["right_tail_impact"]["pc_lower_ge_50_rate"]}%`** (`{cov["right_tail_impact"]["pc_lower_ge_50_count"]} / {cov["right_tail_impact"]["pb_return_ge_50_count"]}건`)
 - **초대형 상승 거래(Policy B Return ≥ +100%) 중 Policy C에서 수익 감소 비율**: **`{cov["right_tail_impact"]["pc_lower_ge_100_rate"]}%`** (`{cov["right_tail_impact"]["pc_lower_ge_100_count"]} / {cov["right_tail_impact"]["pb_return_ge_100_count"]}건`)
+- **최대 수익 거래 비교**: Policy B Max Return `+442.57%` vs Policy C Max Return `+203.93%` (Min Paired Return Delta: `-329.39%p`)
 - **Winner Preservation (목표 수익 달성률 유지)**:
   - Return ≥ +20%: Policy B `{cov["right_tail_impact"]["winner_preservation_20"]["policy_b_rate"]}%` (`{cov["right_tail_impact"]["winner_preservation_20"]["policy_b_count"]}건`) vs Policy C `{cov["right_tail_impact"]["winner_preservation_20"]["policy_c_rate"]}%` (`{cov["right_tail_impact"]["winner_preservation_20"]["policy_c_count"]}건`)
   - Return ≥ +50%: Policy B `{cov["right_tail_impact"]["winner_preservation_50"]["policy_b_rate"]}%` (`{cov["right_tail_impact"]["winner_preservation_50"]["policy_b_count"]}건`) vs Policy C `{cov["right_tail_impact"]["winner_preservation_50"]["policy_c_rate"]}%` (`{cov["right_tail_impact"]["winner_preservation_50"]["policy_c_count"]}건`)
   - Return ≥ +100%: Policy B `{cov["right_tail_impact"]["winner_preservation_100"]["policy_b_rate"]}%` (`{cov["right_tail_impact"]["winner_preservation_100"]["policy_b_count"]}건`) vs Policy C `{cov["right_tail_impact"]["winner_preservation_100"]["policy_c_rate"]}%` (`{cov["right_tail_impact"]["winner_preservation_100"]["policy_c_count"]}건`)
 
 #### 하방 실패 보호 (Failure Protection)
-- 26W 음수(손실) 거래 비율: Policy B `{cov["failure_protection"]["failure_return_negative"]["policy_b_rate"]}%` vs Policy C `{cov["failure_protection"]["failure_return_negative"]["policy_c_rate"]}%`
-- Return ≤ -20% 극단 손실 비율: Policy B `{cov["failure_protection"]["failure_return_le_neg_20"]["policy_b_rate"]}%` vs Policy C `{cov["failure_protection"]["failure_return_le_neg_20"]["policy_c_rate"]}%`
-- Return ≤ -30% 극단 손실 비율: Policy B `{cov["failure_protection"]["failure_return_le_neg_30"]["policy_b_rate"]}%` vs Policy C `{cov["failure_protection"]["failure_return_le_neg_30"]["policy_c_rate"]}%`
+- Terminal Return < 0 (손실 거래) 비율: Policy B `{cov["failure_protection"]["failure_return_negative"]["policy_b_rate"]}%` (`{cov["failure_protection"]["failure_return_negative"]["policy_b_count"]}건`) vs Policy C `{cov["failure_protection"]["failure_return_negative"]["policy_c_rate"]}%` (`{cov["failure_protection"]["failure_return_negative"]["policy_c_count"]}건`)
+- Terminal Return ≤ -20% 극단 손실 비율: Policy B `{cov["failure_protection"]["failure_return_le_neg_20"]["policy_b_rate"]}%` (`{cov["failure_protection"]["failure_return_le_neg_20"]["policy_b_count"]}건`) vs Policy C `{cov["failure_protection"]["failure_return_le_neg_20"]["policy_c_rate"]}%` (`{cov["failure_protection"]["failure_return_le_neg_20"]["policy_c_count"]}건`)
+- Terminal Return ≤ -30% 극단 손실 비율: Policy B `{cov["failure_protection"]["failure_return_le_neg_30"]["policy_b_rate"]}%` (`{cov["failure_protection"]["failure_return_le_neg_30"]["policy_b_count"]}건`) vs Policy C `{cov["failure_protection"]["failure_return_le_neg_30"]["policy_c_rate"]}%` (`{cov["failure_protection"]["failure_return_le_neg_30"]["policy_c_count"]}건`)
 
 ================================================================================
 6. Subgroup별 분리 진단
@@ -540,14 +537,14 @@ def _render_markdown_report_v02d(data: dict[str, Any]) -> str:
 
 #### 1) SKIPPED_EARLY_TREND_HANDOFF (N={lc["skipped_early_trend_handoff_count"]})
 - **Exit 4 Triggered**: `{skip["exit4_activation_coverage"]["policy_c_triggered_count"]}건` (`{round(skip["exit4_activation_coverage"]["policy_c_triggered_count"]/lc["skipped_early_trend_handoff_count"]*100, 1)}%`)
-- **Terminal Return**: Policy B `{skip["policy_b"]["terminal_return"]["median"]:+0.2f}%` vs Policy C `{skip["policy_c"]["terminal_return"]["median"]:+0.2f}%` (Paired Delta Median: `{skip["paired_deltas"]["return_delta"]["median"]:+0.2f}%p`)
-- **Peak Giveback**: Policy B `{skip["policy_b"]["peak_giveback"]["median"]:+0.2f}%` vs Policy C `{skip["policy_c"]["peak_giveback"]["median"]:+0.2f}%` (Giveback Delta Median: `{skip["paired_deltas"]["giveback_delta"]["median"]:+0.2f}%p`)
+- **Terminal Return**: Policy B `{skip["policy_b"]["terminal_return"]["median"]:+0.2f}%` vs Policy C `{skip["policy_c"]["terminal_return"]["median"]:+0.2f}%` (Paired Delta Median: `{skip["paired_deltas"]["return_delta"]["median"]:+0.2f}%p`, Mean: `{skip["paired_deltas"]["return_delta"]["mean"]:+0.2f}%p`)
+- **Peak Giveback**: Policy B `{skip["policy_b"]["peak_giveback"]["median"]:+0.2f}%` vs Policy C `{skip["policy_c"]["peak_giveback"]["median"]:+0.2f}%` (Giveback Delta Median: `{skip["paired_deltas"]["giveback_delta"]["median"]:+0.2f}%p`, Mean: `{skip["paired_deltas"]["giveback_delta"]["mean"]:+0.2f}%p`)
 - **Profit Capture**: Policy B `{skip["policy_b"]["profit_capture"]["median"]}` vs Policy C `{skip["policy_c"]["profit_capture"]["median"]}`
 
 #### 2) PROGRESSED_WITHOUT_DIRECT_HANDOFF (N={lc["progressed_without_direct_handoff_count"]})
 - **Exit 4 Triggered**: `{prog_nd["exit4_activation_coverage"]["policy_c_triggered_count"]}건` (`{round(prog_nd["exit4_activation_coverage"]["policy_c_triggered_count"]/lc["progressed_without_direct_handoff_count"]*100, 1)}%`)
-- **Terminal Return**: Policy B `{prog_nd["policy_b"]["terminal_return"]["median"]:+0.2f}%` vs Policy C `{prog_nd["policy_c"]["terminal_return"]["median"]:+0.2f}%` (Paired Delta Median: `{prog_nd["paired_deltas"]["return_delta"]["median"]:+0.2f}%p`)
-- **Peak Giveback**: Policy B `{prog_nd["policy_b"]["peak_giveback"]["median"]:+0.2f}%` vs Policy C `{prog_nd["policy_c"]["peak_giveback"]["median"]:+0.2f}%` (Giveback Delta Median: `{prog_nd["paired_deltas"]["giveback_delta"]["median"]:+0.2f}%p`)
+- **Terminal Return**: Policy B `{prog_nd["policy_b"]["terminal_return"]["median"]:+0.2f}%` vs Policy C `{prog_nd["policy_c"]["terminal_return"]["median"]:+0.2f}%` (Paired Delta Median: `{prog_nd["paired_deltas"]["return_delta"]["median"]:+0.2f}%p`, Mean: `{prog_nd["paired_deltas"]["return_delta"]["mean"]:+0.2f}%p`)
+- **Peak Giveback**: Policy B `{prog_nd["policy_b"]["peak_giveback"]["median"]:+0.2f}%` vs Policy C `{prog_nd["policy_c"]["peak_giveback"]["median"]:+0.2f}%` (Giveback Delta Median: `{prog_nd["paired_deltas"]["giveback_delta"]["median"]:+0.2f}%p`, Mean: `{prog_nd["paired_deltas"]["giveback_delta"]["mean"]:+0.2f}%p`)
 - **Profit Capture**: Policy B `{prog_nd["policy_b"]["profit_capture"]["median"]}` vs Policy C `{prog_nd["policy_c"]["profit_capture"]["median"]}`
 
 ================================================================================
@@ -572,17 +569,22 @@ def _render_markdown_report_v02d(data: dict[str, Any]) -> str:
 9. 최종 결론 및 연구 상태
 ================================================================================
 - **연구 상태 (Research Status)**: **`CLOSED`**
-- **최종 연구 판정 (Evaluation Status)**: **`{conc["status"]}`**
+- **최종 연구 판정 (Evaluation Status)**: **`COVERAGE_ACTIVATION_MIXED`**
+- **연구적 의미 (Research Finding)**: **`COVERAGE_ACTIVATION_PROMISING` (`PROMISING`)**
 - **운영 상태 (Production Status)**: **`PRODUCTION_HOLD`**
 - **Production 영향도**: **`NONE`**
 - **테스트 실행 여부**: **`Tests: NOT RUN`**
 
 #### 요약 평가
-FAST + Pattern A Coverage Hole Activation Validation v0.2D 평가 결과:
-1. 기존 Exit 4의 사각지대였던 107개 거래(Coverage Hole)에서 최초 PROGRESSED 관측 시점부터 Exit 4를 활성화함으로써, {cov["exit4_activation_coverage"]["policy_c_triggered_count"]}건의 거래가 사후 하락으로부터 보호되었습니다.
-2. Peak Giveback이 감소하고 Profit Capture가 개선되는 동시에 Median Return이 훼손되지 않고 유지되었습니다.
-3. 우측 꼬리 대형 승자(Return >= +50%)의 조기 청산 손실률도 {cov["right_tail_impact"]["pc_lower_ge_50_rate"]}%로 통제 가능한 수준임을 확인하였습니다.
-4. 본 연구 결과를 `{conc["status"]}` 및 `PRODUCTION_HOLD` 상태로 CLOSED 종료합니다.
+FAST + Pattern A Coverage Hole Activation v0.2D 평가 결과:
+
+1. 기존 Exit4 사각지대 107건 중 65건(60.7%)에서 최초 PROGRESSED 관측 이후 frozen 15pt protection이 실제로 활성화되었습니다.
+2. Policy C는 손실 거래와 큰 손실 tail을 줄였으며, Peak Giveback과 Profit Capture 분포에서도 전반적인 개선 방향을 보였습니다. 특히 SKIPPED_EARLY_TREND_HANDOFF subgroup에서는 paired Return 및 Giveback 개선이 강하게 관찰되었습니다.
+3. 그러나 전체 Coverage Hole의 paired Return Delta 중앙값은 0.00%p였고, PROGRESSED_WITHOUT_DIRECT_HANDOFF subgroup에서도 paired Return / Giveback median 개선이 0.00%p였습니다.
+4. 더 중요하게는 기존 Policy B의 +50% 이상 winner 중 47.1%(16/34건), +100% 이상 winner 중 60.0%(6/10건)가 Policy C에서 수익 감소를 경험해 명확한 Right Tail truncation trade-off가 존재했습니다.
+5. 동시에 전체 winner threshold 달성 거래 수는 Policy C에서 증가해, Coverage Activation이 일방적으로 winner를 훼손한 것도 아니었습니다.
+
+따라서 Coverage Activation은 Giveback Protection 및 Failure Protection 측면에서 PROMISING한 구조이지만, Right Tail 손상과 subgroup 효과 차이가 존재하므로 Retrospective evidence만으로 SUPPORTED로 확정하지 않고 최종 Evaluation Status를 COVERAGE_ACTIVATION_MIXED, Research Finding을 COVERAGE_ACTIVATION_PROMISING, Production을 PRODUCTION_HOLD로 유지하며 v0.2D 연구를 CLOSED 상태로 종료합니다.
 """
     return md
 
