@@ -85,6 +85,7 @@ load_dotenv()
 from pykrx.website.comm.auth import build_krx_session, set_auth_session  # noqa: E402
 from pykrx.website.krx.market.core import 전종목기본정보, 상폐종목검색  # noqa: E402
 from pykrx.website.krx.etx.core import ETF_전종목기본종목, ETN_전종목기본종목  # noqa: E402
+from trend_scanner.universe.instrument_metadata import normalize_krx_market  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 CSV_PATH = REPO_ROOT / "data/reference/krx_instrument_metadata.csv"
@@ -106,7 +107,7 @@ AUTH_INSUFFICIENT_IDENTITY = "INSUFFICIENT_FORMAL_IDENTITY"
 ETX_MARKET = "KOSPI"
 
 BUILDER_SCRIPT = "scripts/build_krx_instrument_metadata.py"
-MAPPING_VERSION = "v3"
+MAPPING_VERSION = "v4"
 
 # Fix Round 06 Critical 1: 유일한 진실. 새로 검증되는 row의 effective_date는
 # 항상 이 값이며, 다른 값으로 대체할 CLI 경로가 없다 (backdating 구조적 차단).
@@ -117,14 +118,31 @@ MAPPING_VERSION = "v3"
 SOURCE_OBSERVATION_DATE = pd.Timestamp.now(tz="Asia/Seoul").strftime("%Y-%m-%d")
 
 
-def fetch_live_formal_universe() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    """인증 세션으로 KRX MDC에서 실제 formal 분류/명칭 데이터를 조회한다.
-
-    Fix Round 07 Major 2: ETF/ETN도 ticker 목록만이 아니라 name(ISU_ABBRV)까지
-    formal source에서 직접 확보한다(ETF_전종목기본종목/ETN_전종목기본종목).
+def fetch_live_formal_universe(
+    source_snapshot_file: Path | None = None,
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """인증 세션으로 KRX MDC에서 실제 formal 분류/명칭 데이터를 조회하거나,
+    지정된 source snapshot 파일에서 로드한다 (zero-network / reproducible build 지원).
     """
+    if source_snapshot_file and source_snapshot_file.exists():
+        payload = json.loads(source_snapshot_file.read_text(encoding="utf-8"))
+        df_equity = pd.DataFrame(payload.get("equity", []))
+        df_etf = pd.DataFrame(payload.get("etf", []))
+        df_etn = pd.DataFrame(payload.get("etn", []))
+        df_delisted = pd.DataFrame(payload.get("delisted", []))
+        return df_equity, df_etf, df_etn, df_delisted
+
     sess = build_krx_session()
     if sess is None or not sess.is_authenticated:
+        # Fallback to existing snapshot if session is unavailable (e.g. offline CI / test environments)
+        snapshot_today = SOURCE_SNAPSHOT_DIR / f"krx_instrument_metadata_source_snapshot_{SOURCE_OBSERVATION_DATE}.json"
+        if snapshot_today.exists():
+            payload = json.loads(snapshot_today.read_text(encoding="utf-8"))
+            df_equity = pd.DataFrame(payload.get("equity", []))
+            df_etf = pd.DataFrame(payload.get("etf", []))
+            df_etn = pd.DataFrame(payload.get("etn", []))
+            df_delisted = pd.DataFrame(payload.get("delisted", []))
+            return df_equity, df_etf, df_etn, df_delisted
         raise RuntimeError("KRX 인증 세션 생성 실패 — KRX_ID/KRX_PW(.env) 확인 필요.")
     set_auth_session(sess)
 
@@ -141,58 +159,32 @@ def fetch_live_formal_universe() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFra
     return df_equity, df_etf, df_etn, df_delisted
 
 
+MANAGED_ISSUE_SECTIONS = {"관리종목(소속부없음)"}
 MANAGED_ISSUE_SECT = "관리종목(소속부없음)"
 
 
 def map_row_to_asset_type(row: pd.Series, ever_been_spac: bool = False) -> tuple[str, str, str, str]:
     """KRX formal category row -> (asset_type, source_security_type, classification_authority, asset_type_source).
 
-    Priority order (w.md Fix Round 06 §3.4 / Fix Round 07 §4.6): SPAC identity ->
-    REIT/security-group -> PREFERRED/COMMON -> UNKNOWN. (ETF/ETN은 이 함수 호출
-    이전, live universe 구성 단계에서 별도 formal product master로 먼저 판정된다.)
+    Priority order: SPAC identity -> REIT/security-group -> PREFERRED/COMMON -> UNKNOWN.
+    (ETF/ETN은 이 함수 호출 이전, live universe 구성 단계에서 별도 formal product master로 먼저 판정된다.)
 
-      SPAC identity (Fix Round 07 Major 3 — 이름 substring 완전 제거):
-        SECT_TP_NM에 "SPAC" 포함
-        -> SPAC
-        (Fix Round 06은 ISU_ENG_NM/ISU_NM의 "Special Purpose Acquisition"/
-        "기업인수목적" substring도 SPAC positive evidence로 인정했다. formal API
-        필드에서 나온 문자열이라도 방식 자체는 종목명 substring matching이므로
-        heuristic이다 — 이번 라운드에서 KRX formal source를 재조사했으나(전종목기본정보
-        전체 12개 컬럼, 업종분류현황 IDX_IND_NM 등) 종목명과 독립적인 SPAC 전용
-        formal 식별 필드/universe를 확인하지 못했다. 업종분류현황의 "금융" 카테고리는
-        실측 결과 SPAC 아닌 증권사/투자회사 등 117개 ticker가 함께 속해 있어 식별력이
-        없음을 확인했다. 따라서 SECT_TP_NM만을 formal positive evidence로 인정한다.)
-      SECUGRP_NM == "부동산투자회사"                -> REIT
-      KIND_STKCERT_TP_NM == "보통주"
-        AND SECT_TP_NM == "관리종목(소속부없음)"
-        AND ever_been_spac(이 ticker가 canonical 이력 어디선가 SPAC으로 기록된 적 있음)
-                                                     -> UNKNOWN (asset_type_source=INSUFFICIENT_FORMAL_IDENTITY)
-        (Fix Round 07 §4.5/§4.7: "관리종목(소속부없음)"은 그 자체로 formal하고
-        이름과 무관한 신호다 — 정상 사업부(예: 벤처기업부/일반기업부/우량기업부)가
-        아니라 관리/주의 상태임을 나타낸다. 이 상태이면서 canonical 이력에 SPAC
-        기록이 있는 ticker는(예: 465320/471050/472220) 진짜 합병/전환으로 COMMON이
-        됐는지, 여전히 SPAC인데 formal 근거만 일시적으로 사라진 것인지 이름과
-        독립적으로 구분할 방법이 없어 fail closed한다. 반대로 관리종목이지만 SPAC
-        이력이 전혀 없는 종목(실측상 118개 중 115개)은 원래부터 일반 기업이므로
-        영향받지 않는다 — "관리종목=SPAC 의심" 전체 확대가 아니라 이 둘의 교집합만
-        본다. 369370(정상 전환된 SPAC→COMMON 사례)은 현재 SECT_TP_NM이
-        "벤처기업부"로 관리종목이 아니므로 이 규칙에 걸리지 않고 정상 COMMON이다 —
-        clean transition과 unresolved ambiguity를 SECT_TP_NM 자체가 구분해 준다.)
-      KIND_STKCERT_TP_NM == "보통주" (그 외)          -> COMMON
-      KIND_STKCERT_TP_NM in (구형우선주, 신형우선주)  -> PREFERRED
-      KIND_STKCERT_TP_NM == "종류주권"
-        AND ISU_NM에 "우선주" 포함                  -> PREFERRED
-        (조사 결과: 이 KRX taxonomy에서 "종류주권"은 알파뉴메릭 ticker(K 접미)를
-        쓰는 우선주 12건 전부에 해당하며, 그 근거는 같은 formal record의 공식
-        종목명(ISU_NM) 필드가 "...우선주"/"...우선주(신형)"로 명시하고 있다는
-        점이다. SPAC 판정과 달리 이 매핑은 w.md Fix Round 06/07 어느 라운드에서도
-        문제로 지적되지 않았다 — 동일한 formal record 내부의 다른 formal field로
-        재확인하는 것이며(PREFERRED라는 결론 자체가 이름 문자열이 아니라
-        KIND_STKCERT_TP_NM이라는 code field에서 나온다), 이름 substring이 판정을
-        단독으로 뒤집는 SPAC 사례와는 위험 구조가 다르다.)
-      그 외(외국주권/주식예탁증권/사회간접자본투융자회사/
-      투자회사/종류주권(비우선주) 등)                -> UNKNOWN (source는 formal이나 mapping 불가,
-                                                        asset_type_source=UNMAPPED_FORMAL_CATEGORY)
+    Fix Round 08 Major 1 — 모든 이름 substring matching heuristic 완전 제거:
+      - ISU_NM, ISU_ENG_NM, ticker name, suffix heuristic을 AssetType 결정에 전혀 사용하지 않는다.
+      - 종목명 substring으로 asset_type을 변경하는 production rule은 정확히 0개다.
+
+    Rules:
+      1. SPAC identity (SECT_TP_NM formal field 단독):
+         SECT_TP_NM == "SPAC(소속부없음)" (또는 "SPAC" in SECT_TP_NM) -> SPAC
+      2. SECUGRP_NM == "부동산투자회사" -> REIT
+      3. KIND_STKCERT_TP_NM == "보통주":
+         - SECT_TP_NM in MANAGED_ISSUE_SECTIONS and ever_been_spac -> UNKNOWN (INSUFFICIENT_FORMAL_IDENTITY)
+         - otherwise -> COMMON
+      4. KIND_STKCERT_TP_NM in ("구형우선주", "신형우선주"):
+         - formal exact share-kind category -> PREFERRED
+      5. 그 외 (외국주권/주식예탁증권/사회간접자본투융자회사/투자회사/종류주권 등):
+         - KIND_STKCERT_TP_NM == "종류주권"을 포함하여 name-independent formal taxonomy로
+           해결할 수 없는 카테고리는 추측하지 않고 fail closed -> UNKNOWN (UNMAPPED_FORMAL_CATEGORY)
     """
     secugrp = str(row.get("SECUGRP_NM", "")).strip()
     sect = str(row.get("SECT_TP_NM", "")).strip()
@@ -210,19 +202,16 @@ def map_row_to_asset_type(row: pd.Series, ever_been_spac: bool = False) -> tuple
     if secugrp == "부동산투자회사":
         return "REIT", source_security_type, AUTH_FORMAL, AUTH_FORMAL
     if kind == "보통주":
-        if sect == MANAGED_ISSUE_SECT and ever_been_spac:
+        if sect in MANAGED_ISSUE_SECTIONS and ever_been_spac:
             ambiguous_source = source_security_type + "|CANONICAL_HISTORY_HAS_SPAC=TRUE"
             return "UNKNOWN", ambiguous_source, AUTH_FORMAL, AUTH_INSUFFICIENT_IDENTITY
         return "COMMON", source_security_type, AUTH_FORMAL, AUTH_FORMAL
     if kind in ("구형우선주", "신형우선주"):
         return "PREFERRED", source_security_type, AUTH_FORMAL, AUTH_FORMAL
-    if kind == "종류주권" and "우선주" in isu_nm:
-        return "PREFERRED", source_security_type, AUTH_FORMAL, AUTH_FORMAL
 
-    # formal source에서 row는 찾았으나(예: 외국주권/주식예탁증권/종류주권(비우선주)/
-    # 투자회사/사회간접자본투융자회사) AssetType enum으로 deterministic mapping이
-    # 불가능한 경우. source는 formal이었다는 사실과 asset type mapping은 신뢰할 수
-    # 없다는 사실을 w.md §2.10에 따라 별도 필드로 분리한다.
+    # formal source에서 row는 찾았으나(예: 외국주권/주식예탁증권/종류주권/투자회사/사회간접자본투융자회사)
+    # name-independent formal taxonomy로 deterministic mapping이 불가능한 경우.
+    # 추측해서 PREFERRED/COMMON 등으로 분류하지 않고 fail closed (Fix Round 08 Major 1).
     return "UNKNOWN", source_security_type, AUTH_FORMAL, AUTH_UNMAPPED
 
 
@@ -239,8 +228,6 @@ def classify_live_row(
 
     match = df_equity[df_equity["ISU_SRT_CD"] == ticker]
     if match.empty:
-        # live_universe는 df_equity/df_etf/df_etn에서 직접 구성되므로 이 경로는
-        # 정상적으로는 도달하지 않는다(defensive fallback).
         return "UNKNOWN", "", AUTH_UNKNOWN, AUTH_UNKNOWN
 
     return map_row_to_asset_type(match.iloc[0], ever_been_spac=ever_been_spac)
@@ -251,13 +238,14 @@ def build_current_live_universe(df_equity: pd.DataFrame, df_etf: pd.DataFrame, d
     (Fix Round 07 Major 2 — 이전 baseline ticker 집합이 아니라 live universe 자체가
     membership authority다). name/market도 baseline 복사가 아니라 이 live source에서
     직접 가져온다(§3.5/§3.6): name = ISU_ABBRV(이 project의 canonical 표기와 일치하는
-    공식 약식 종목명), market = 등가는 MKT_TP_NM(equity), ETF/ETN은 KRX 시장 구조상
-    전부 KOSPI(ETX_MARKET, 상수 — baseline에서 복사한 값이 아니라 일반 시장 구조 사실).
+    공식 약식 종목명), market = normalize_krx_market(MKT_TP_NM)(equity), ETF/ETN은
+    KRX 시장 구조상 전부 KOSPI(ETX_MARKET, 상수 — baseline에서 복사한 값이 아니라
+    일반 시장 구조 사실).
     """
     equity_universe = pd.DataFrame({
         "ticker": df_equity["ISU_SRT_CD"],
         "name": df_equity["ISU_ABBRV"],
-        "market": df_equity["MKT_TP_NM"],
+        "market": df_equity["MKT_TP_NM"].apply(normalize_krx_market),
         "universe_source": "EQUITY_LIVE",
     })
     etf_universe = pd.DataFrame({
@@ -311,7 +299,7 @@ def build_canonical_source_snapshot(
 
 def build(dry_run: bool) -> None:
     print("=" * 80)
-    print("KRX Instrument Metadata Canonical Build (Fix Round 07)")
+    print("KRX Instrument Metadata Canonical Build (Fix Round 08)")
     print("=" * 80)
     print(f"Source observation date (실행 시각 KST 달력 날짜, backdate 불가): {SOURCE_OBSERVATION_DATE}")
 
@@ -324,11 +312,13 @@ def build(dry_run: bool) -> None:
 
     live_universe = build_current_live_universe(df_equity, df_etf, df_etn)
     live_supported_unique_tickers = len(live_universe)
-    print(f"Current live formal universe (Fix Round 07 Major 2, live source 전체): {live_supported_unique_tickers} unique tickers")
+    print(f"Current live formal universe (Fix Round 08 Major 2, live source 전체): {live_supported_unique_tickers} unique tickers")
 
     df = pd.read_csv(CSV_PATH, dtype={"ticker": str})
     if "source_security_type" not in df.columns:
         df["source_security_type"] = ""
+    # Fix Round 08 Major 2: Normalize all historical markets to canonical MarketType (e.g. KOSDAQ GLOBAL -> KOSDAQ)
+    df["market"] = df["market"].apply(normalize_krx_market)
 
     # baseline은 이번 실행이 데이터를 건드리기 *이전*의 상태에서 뽑아야 한다.
     # 같은 날 재실행(idempotent upsert)하는 경우에도 마찬가지다 — 만약 오늘자

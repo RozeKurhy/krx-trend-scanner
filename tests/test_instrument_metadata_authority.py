@@ -495,3 +495,179 @@ def test_formal_spac_authority_precedes_common_share_type_mapping():
         )
         assert row["asset_type"] != "COMMON"
         assert row["asset_type"] == "UNKNOWN"
+
+
+# --- Fix Round 08 Major 1: Remove all name substring logic from production AssetType authority ---
+
+def test_name_only_change_does_not_change_production_asset_type():
+    """동일한 formal classification fields를 가진 두 row에서 ISU_NM만 변경되었을 때
+    AssetType 결과가 변경되지 않는지 검증 (w.md §1.4)."""
+    from scripts.build_krx_instrument_metadata import map_row_to_asset_type
+
+    # Case 1: 종류주권 (Row A contains "우선주", Row B does not)
+    row_a = pd.Series({
+        "SECUGRP_NM": "주권",
+        "SECT_TP_NM": "",
+        "KIND_STKCERT_TP_NM": "종류주권",
+        "ISU_NM": "삼성물산1우선주(신형)",
+        "ISU_ENG_NM": "SAMSUNG C&T CORPORATION(1PB)",
+    })
+    row_b = pd.Series({
+        "SECUGRP_NM": "주권",
+        "SECT_TP_NM": "",
+        "KIND_STKCERT_TP_NM": "종류주권",
+        "ISU_NM": "일반회사주권",
+        "ISU_ENG_NM": "NORMAL COMPANY",
+    })
+
+    type_a, _, auth_a, src_a = map_row_to_asset_type(row_a)
+    type_b, _, auth_b, src_b = map_row_to_asset_type(row_b)
+
+    assert type_a == type_b == "UNKNOWN", "종류주권은 이름과 무관하게 UNKNOWN으로 동일해야 한다"
+    assert auth_a == auth_b == "FORMAL_SECURITY_TYPE"
+    assert src_a == src_b == "UNMAPPED_FORMAL_CATEGORY"
+
+    # Case 2: 보통주 (Row C contains "우선주", Row D does not)
+    row_c = pd.Series({
+        "SECUGRP_NM": "주권",
+        "SECT_TP_NM": "우량기업부",
+        "KIND_STKCERT_TP_NM": "보통주",
+        "ISU_NM": "가짜우선주이름보통주",
+        "ISU_ENG_NM": "FAKE PREFERRED NAME COMMON",
+    })
+    row_d = pd.Series({
+        "SECUGRP_NM": "주권",
+        "SECT_TP_NM": "우량기업부",
+        "KIND_STKCERT_TP_NM": "보통주",
+        "ISU_NM": "진짜보통주",
+        "ISU_ENG_NM": "REAL COMMON",
+    })
+
+    type_c, _, auth_c, _ = map_row_to_asset_type(row_c)
+    type_d, _, auth_d, _ = map_row_to_asset_type(row_d)
+
+    assert type_c == type_d == "COMMON", "보통주는 이름에 '우선주'가 포함되어도 formal code에 따라 COMMON이어야 한다"
+    assert auth_c == auth_d == "FORMAL_SECURITY_TYPE"
+
+
+def test_preferred_classification_does_not_use_name_substrings():
+    """12개 종류주권 ticker가 이름에 '우선주'가 포함되어 있어도 formal taxonomy 부족으로
+    UNKNOWN + UNMAPPED_FORMAL_CATEGORY로 fail closed되는지 검증 (Fix Round 08 Major 1)."""
+    from trend_scanner.universe.instrument_metadata import resolve_instrument_metadata
+
+    jongryu_tickers = [
+        "00781K", "00806K", "02826K", "03473K", "03481K", "18064K",
+        "28513K", "35320K", "36328K", "37550K", "38380K", "45226K",
+    ]
+    df = pd.read_csv(CSV_PATH, dtype={"ticker": str}, low_memory=False)
+    for ticker in jongryu_tickers:
+        meta = resolve_instrument_metadata(ticker, as_of=VERIFIED_DATE, repo_root=REPO_ROOT)
+        assert meta.asset_type == "UNKNOWN", f"{ticker} expected UNKNOWN, got {meta.asset_type}"
+        assert meta.asset_type_source == "UNMAPPED_FORMAL_CATEGORY"
+        assert meta.is_trusted_for_production is False
+        assert meta.is_common_stock_for_production is False
+
+        row = df[(df.ticker == ticker) & (df.effective_date == VERIFIED_DATE)].iloc[0]
+        assert "KIND_STKCERT_TP_NM=종류주권" in row["source_security_type"]
+
+
+def test_known_preferred_regressions_formal_share_kind():
+    """구형우선주(001465, 001045) 및 신형우선주(00104K)가 formal code에 따라
+    PREFERRED로 판정되고 production trusted되는지 검증."""
+    from trend_scanner.universe.instrument_metadata import resolve_instrument_metadata
+
+    preferred_test_cases = {
+        "001465": "구형우선주",  # BYC우
+        "001045": "구형우선주",  # CJ우
+        "00104K": "신형우선주",  # CJ4우(전환)
+    }
+    df = pd.read_csv(CSV_PATH, dtype={"ticker": str}, low_memory=False)
+    for ticker, expected_kind in preferred_test_cases.items():
+        meta = resolve_instrument_metadata(ticker, as_of=VERIFIED_DATE, repo_root=REPO_ROOT)
+        assert meta.asset_type == "PREFERRED", f"{ticker} expected PREFERRED, got {meta.asset_type}"
+        assert meta.classification_authority == "FORMAL_SECURITY_TYPE"
+        assert meta.asset_type_source == "FORMAL_SECURITY_TYPE"
+        assert meta.is_trusted_for_production is True
+        assert meta.is_common_stock_for_production is False
+
+        row = df[(df.ticker == ticker) & (df.effective_date == VERIFIED_DATE)].iloc[0]
+        assert f"KIND_STKCERT_TP_NM={expected_kind}" in row["source_security_type"]
+
+
+# --- Fix Round 08 Major 2: Centralized Market Normalization (KOSDAQ GLOBAL -> KOSDAQ) ---
+
+def test_krx_market_normalization_kosdaq_global_to_kosdaq():
+    """normalize_krx_market()가 KOSDAQ GLOBAL을 KOSDAQ으로 정확히 정규화하는지 검증 (w.md §2.4)."""
+    from trend_scanner.universe.instrument_metadata import normalize_krx_market
+
+    assert normalize_krx_market("KOSPI") == "KOSPI"
+    assert normalize_krx_market("KOSDAQ") == "KOSDAQ"
+    assert normalize_krx_market("KOSDAQ GLOBAL") == "KOSDAQ"
+    assert normalize_krx_market("kosdaq global") == "KOSDAQ"
+    assert normalize_krx_market("KONEX") == "KONEX"
+    assert normalize_krx_market("UNKNOWN") == "UNKNOWN"
+    assert normalize_krx_market("INVALID_MARKET") == "UNKNOWN"
+    assert normalize_krx_market(None) == "UNKNOWN"
+    assert normalize_krx_market("") == "UNKNOWN"
+
+
+def test_known_krx_market_values_to_unknown_count_is_zero():
+    """canonical artifact 전체에서 알려진 KRX 시장(KOSPI, KOSDAQ, KOSDAQ GLOBAL, KONEX)이
+    UNKNOWN으로 오분류된 row 수가 0인지 검증 (w.md §2.4)."""
+    df = pd.read_csv(CSV_PATH, dtype={"ticker": str}, low_memory=False)
+    valid_markets = {"KOSPI", "KOSDAQ", "KONEX"}
+    assert set(df["market"].unique()).issubset(valid_markets), (
+        f"canonical CSV에 유효하지 않은 시장 구분이 포함되어 있음: {set(df['market'].unique()) - valid_markets}"
+    )
+    assert (df["market"] == "UNKNOWN").sum() == 0, "알려진 KRX 시장이 UNKNOWN으로 매핑된 row가 존재함"
+    assert (df["market"] == "KOSDAQ GLOBAL").sum() == 0, "KOSDAQ GLOBAL이 KOSDAQ으로 정규화되지 않고 남아있음"
+
+
+def test_kosdaq_global_tickers_resolve_as_canonical_kosdaq():
+    """KOSDAQ GLOBAL에 속한 대표 종목(196170 알테오젠, 241710 코스메카코리아, 009520 포스코엠텍)이
+    MarketType.KOSDAQ으로 정확히 resolve되는지 검증."""
+    from trend_scanner.universe.instrument_metadata import resolve_instrument_metadata
+
+    kg_sample_tickers = ["196170", "241710", "009520"]
+    for ticker in kg_sample_tickers:
+        meta = resolve_instrument_metadata(ticker, as_of=VERIFIED_DATE, repo_root=REPO_ROOT)
+        assert meta.market == "KOSDAQ", f"{ticker} expected market KOSDAQ, got {meta.market}"
+
+
+# --- Fix Round 08 Minor 1: Harden Former SPAC Managed Issue Taxonomy ---
+
+def test_managed_issue_taxonomy_is_contractually_exact():
+    """KRX formal taxonomy에서 관리종목 category가 오직 '관리종목(소속부없음)' 하나만
+    존재하는지 검증 (w.md §3.1)."""
+    from scripts.build_krx_instrument_metadata import MANAGED_ISSUE_SECTIONS
+
+    assert MANAGED_ISSUE_SECTIONS == {"관리종목(소속부없음)"}
+
+    # source snapshot 내 모든 SECT_TP_NM 중 관리 관련 category는 이 값뿐이어야 함
+    snapshot_path = REPO_ROOT / f"data/reference/source/krx_instrument_metadata_source_snapshot_{VERIFIED_DATE}.json"
+    if snapshot_path.exists():
+        snap = json.loads(snapshot_path.read_text(encoding="utf-8"))
+        for row in snap.get("equity", []):
+            sect = row.get("SECT_TP_NM", "")
+            if "관리" in sect:
+                assert sect in MANAGED_ISSUE_SECTIONS, f"예상치 못한 관리종목 taxonomy 값 발견: {sect}"
+
+
+def test_normal_common_in_managed_section_remains_common_if_no_spac_history():
+    """과거 SPAC 이력이 전혀 없는 일반 기업이 관리종목(소속부없음)에 지정된 경우,
+    COMMON으로 정상 분류되는지 검증 (w.md §3.2)."""
+    from trend_scanner.universe.instrument_metadata import resolve_instrument_metadata
+
+    # 관리종목에 속한 일반 보통주 종목
+    df = pd.read_csv(CSV_PATH, dtype={"ticker": str}, low_memory=False)
+    managed_commons = df[
+        (df.effective_date == VERIFIED_DATE)
+        & (df.source_security_type.str.contains("SECT_TP_NM=관리종목(소속부없음)", regex=False, na=False))
+        & (df.source_security_type.str.contains("KIND_STKCERT_TP_NM=보통주", regex=False, na=False))
+        & (df.asset_type == "COMMON")
+    ]
+    assert len(managed_commons) > 0, "SPAC 이력 없는 관리종목 보통주가 최소 1개 이상 존재해야 한다"
+    sample_ticker = managed_commons.iloc[0]["ticker"]
+    meta = resolve_instrument_metadata(sample_ticker, as_of=VERIFIED_DATE, repo_root=REPO_ROOT)
+    assert meta.asset_type == "COMMON"
+    assert meta.is_trusted_for_production is True

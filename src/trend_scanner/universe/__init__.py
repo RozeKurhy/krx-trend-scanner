@@ -8,6 +8,12 @@ from trend_scanner.universe.cache_population import (
     populate_common_stock_cache,
     populate_single_ticker,
 )
+from trend_scanner.universe.instrument_metadata import (
+    InstrumentMetadata,
+    InstrumentMetadataResolver,
+    normalize_krx_market,
+    resolve_instrument_metadata,
+)
 from trend_scanner.universe.krx_universe import (
     get_latest_market_trading_date,
     load_krx_equity_universe,
@@ -33,6 +39,8 @@ __all__ = [
     "CachePopulationStatus",
     "CachePopulationSummary",
     "FreshnessStatus",
+    "InstrumentMetadata",
+    "InstrumentMetadataResolver",
     "MarketType",
     "QualityStatus",
     "TickerQualityRecord",
@@ -41,8 +49,10 @@ __all__ = [
     "classify_asset_type",
     "get_latest_market_trading_date",
     "load_krx_equity_universe",
+    "normalize_krx_market",
     "populate_common_stock_cache",
     "populate_single_ticker",
+    "resolve_instrument_metadata",
     "MIN_HISTORY_MONTHS",
     "audit_ticker_quality",
     "audit_universe_quality",

@@ -24,6 +24,28 @@ from trend_scanner.universe.models import AssetType, MarketType
 logger = logging.getLogger(__name__)
 
 
+def normalize_krx_market(raw_market: str | None) -> str:
+    """Normalize raw KRX market string to canonical project MarketType string.
+
+    Mapping rules (Fix Round 08 Major 2):
+      - 'KOSPI' -> 'KOSPI'
+      - 'KOSDAQ' -> 'KOSDAQ'
+      - 'KOSDAQ GLOBAL' -> 'KOSDAQ'  (KOSDAQ market segment)
+      - 'KONEX' -> 'KONEX'
+      - otherwise / unknown -> 'UNKNOWN'
+    """
+    if raw_market is None:
+        return MarketType.UNKNOWN.value
+    clean = str(raw_market).strip().upper()
+    if clean == MarketType.KOSPI.value:
+        return MarketType.KOSPI.value
+    if clean in (MarketType.KOSDAQ.value, "KOSDAQ GLOBAL"):
+        return MarketType.KOSDAQ.value
+    if clean == MarketType.KONEX.value:
+        return MarketType.KONEX.value
+    return MarketType.UNKNOWN.value
+
+
 @dataclass(frozen=True)
 class InstrumentMetadata:
     """Formal instrument identification and classification record."""
@@ -183,7 +205,8 @@ class InstrumentMetadataResolver:
                     # Select latest snapshot not after requested_as_of
                     row = past_matches.sort_values(by="effective_date", ascending=True).iloc[-1]
                     name = str(row["name"]).strip() if "name" in row and not pd.isna(row["name"]) else clean_ticker
-                    market = str(row["market"]).strip().upper() if "market" in row and not pd.isna(row["market"]) else "UNKNOWN"
+                    raw_market = row.get("market") if "market" in row and not pd.isna(row["market"]) else None
+                    market = normalize_krx_market(raw_market)
                     asset_type = str(row["asset_type"]).strip().upper() if "asset_type" in row and not pd.isna(row["asset_type"]) else "UNKNOWN"
                     source = str(row["metadata_source"]).strip() if "metadata_source" in row and not pd.isna(row["metadata_source"]) else "LOCAL_AUTHORITY"
                     eff_date = str(row["effective_date"]).strip() if "effective_date" in row and not pd.isna(row["effective_date"]) else as_of_str
@@ -191,8 +214,6 @@ class InstrumentMetadataResolver:
                     asset_source = str(row["asset_type_source"]).strip() if ("asset_type_source" in row and not pd.isna(row["asset_type_source"])) else "UNKNOWN"
 
                     # Normalization
-                    if market not in [m.value for m in MarketType]:
-                        market = MarketType.UNKNOWN.value
                     if asset_type not in [a.value for a in AssetType]:
                         asset_type = AssetType.UNKNOWN.value
 

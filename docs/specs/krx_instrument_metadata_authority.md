@@ -116,30 +116,28 @@ ETF_전종목기본종목 / ETN_전종목기본종목:
 — 단 Verified rows(§8)에 한해서만 채워지며, 과거 legacy row는 빈 값이다 (§9).
 
 
-## 6. Source Category → AssetType Deterministic Mapping (Fix Round 07 갱신)
+## 6. Source Category → AssetType Deterministic Mapping (Fix Round 08 갱신)
 
 `scripts/build_krx_instrument_metadata.py`의 `map_row_to_asset_type()` 실제 로직,
-우선순위 순서(w.md §3.4/§4.6):
+우선순위 순서(w.md Fix Round 08 §1/§2/§3):
 
 ```
 [ETF/ETN — live product master membership, map_row_to_asset_type() 호출 이전]
 ticker ∈ live ETF universe  → ETF
 ticker ∈ live ETN universe  → ETN
 
-[SPAC identity — SECT_TP_NM 단독, 이름 substring 완전 배제 (Fix Round 07 Major 3)]
+[SPAC identity — SECT_TP_NM 단독, 이름 substring 완전 배제]
 SECT_TP_NM에 "SPAC" 포함                              → SPAC
 
 SECUGRP_NM == "부동산투자회사"                        → REIT
 KIND_STKCERT_TP_NM == "보통주"
-  AND SECT_TP_NM == "관리종목(소속부없음)"
+  AND SECT_TP_NM in {"관리종목(소속부없음)"}
   AND 이 ticker가 canonical 이력 어딘가에 SPAC으로 기록된 적 있음
                                                        → UNKNOWN (asset_type_source=INSUFFICIENT_FORMAL_IDENTITY)
 KIND_STKCERT_TP_NM == "보통주" (그 외)                → COMMON
 KIND_STKCERT_TP_NM in ("구형우선주", "신형우선주")     → PREFERRED
-KIND_STKCERT_TP_NM == "종류주권" AND ISU_NM에 "우선주" 포함
-                                                       → PREFERRED
 그 외 (외국주권 / 주식예탁증권 / 사회간접자본투융자회사 /
-투자회사 / 종류주권(비우선주))                          → UNKNOWN
+투자회사 / 종류주권 등)                                → UNKNOWN
                                                           (classification_authority=FORMAL_SECURITY_TYPE,
                                                            asset_type_source=UNMAPPED_FORMAL_CATEGORY)
 
@@ -148,90 +146,65 @@ formal source에서 ticker 자체를 못 찾음                → UNKNOWN
                                                            asset_type_source=UNKNOWN)
 ```
 
-### 6.1 왜 Fix Round 06의 ISU_ENG_NM/ISU_NM 기반 SPAC 판정을 되돌렸는가 (Fix Round 07 Major 3)
+### 6.1 Production AssetType에서 이름 Substring Matching 완전 제거 (Fix Round 08 Major 1)
 
-Fix Round 06은 `SECT_TP_NM`이 SPAC을 나타내지 않아도 `ISU_ENG_NM`에 "Special
-Purpose Acquisition"이나 `ISU_NM`에 "기업인수목적"이 포함되면 SPAC으로 판정했다.
-이 필드들은 formal API 응답에서 나오지만, 판정 **방식** 자체는 종목명 문자열
-검색이었다 — 즉 formal source 출처라는 사실이 "이름 substring matching이
-아니다"를 보장하지 않는다.
+Fix Round 07에서 SPAC에 대해 종목명 substring matching을 제거한 것에 이어, Fix Round 08에서는
+`종류주권` 판정(`if kind == "종류주권" and "우선주" in isu_nm:`)을 포함한 **모든 종목명 substring matching
+휴리스틱을 production authority에서 완전히 제거했다 (`NAME_HEURISTIC_USED_FOR_PRODUCTION_ASSET_TYPE = NO`).**
 
-이번 라운드에서 KRX formal source를 다시 조사했다(w.md §4.3):
-- 전종목기본정보의 전체 12개 컬럼(ISU_CD, ISU_SRT_CD, ISU_NM, ISU_ABBRV,
-  ISU_ENG_NM, LIST_DD, MKT_TP_NM, SECUGRP_NM, SECT_TP_NM, KIND_STKCERT_TP_NM,
-  PARVAL, LIST_SHRS) — 종목명과 독립적인 SPAC 전용 필드 없음.
-- 업종분류현황(`bld=MDCSTAT03901`, IDX_IND_NM) — SPAC들이 "금융" 카테고리에
-  속하지만, 실측 결과 이 카테고리는 SPAC 아닌 증권사/투자회사/지주회사 등
-  117개 ticker(LS증권, DSC인베스트먼트, APS 등)와 공유되어 식별력이 없음을
-  직접 확인했다.
-- pykrx 패키지 전체에 SPAC 전용 endpoint/wrapper 없음(소스 grep으로 확인).
+- `KIND_STKCERT_TP_NM in ("구형우선주", "신형우선주")` (101건): KRX 공식 주권종류구분 코드 자체가
+  우선주를 명시하므로 이름과 무관하게 `PREFERRED`로 정식 분류된다.
+- `KIND_STKCERT_TP_NM == "종류주권"` (12건, e.g. 02826K 삼성물산우B, 03473K SK우 등):
+  KRX 전종목기본정보에서 종목명(ISU_NM)과 독립적인 우선주 전용 formal code가 제공되지 않는다.
+  이름에 "우선주"가 들어있다는 이유로 추측하거나 휴리스틱을 쓰지 않고, 규정에 따라
+  `UNKNOWN` + `UNMAPPED_FORMAL_CATEGORY` (`is_trusted_for_production=False`)로 fail closed한다.
 
-종목명과 독립적인 formal SPAC identity source를 확보하지 못했으므로, w.md §4.7의
-지시대로 **추측으로 SPAC이나 COMMON을 확정하지 않는다.** `SECT_TP_NM`이 명시적으로
-SPAC을 나타내는 경우만 positive evidence로 인정하고, 그렇지 않으면서 이
-ticker의 canonical 이력에 SPAC 기록이 있다면(§6.2) UNKNOWN + fail closed로
-처리한다.
+### 6.2 KRX Market Normalization: KOSDAQ GLOBAL → KOSDAQ (Fix Round 08 Major 2)
 
-### 6.2 465320/471050/472220 — UNKNOWN Fail Closed (Fix Round 06→07 재정정)
+KRX raw 응답의 `MKT_TP_NM` 중 `"KOSDAQ GLOBAL"`은 독립된 시장이 아니라 코스닥 시장 내부의
+세그먼트(우량기업 세그먼트)이다. 프로젝트 canonical `MarketType` enum은 `KOSPI`, `KOSDAQ`, `KONEX`, `UNKNOWN`으로
+정의되어 있으므로, centralized canonical 함수 `normalize_krx_market()`를 통해 정규화한다:
 
-세 종목 모두 `KIND_STKCERT_TP_NM=보통주`, `SECT_TP_NM=관리종목(소속부없음)`
-상태다:
+- `KOSPI` → `KOSPI`
+- `KOSDAQ` → `KOSDAQ`
+- `KOSDAQ GLOBAL` → `KOSDAQ`
+- `KONEX` → `KONEX`
+- 그 외 / None → `UNKNOWN`
 
-| ticker | 종목명 | SECT_TP_NM | canonical 이력에 SPAC 기록 있음 |
-|---|---|---|---|
-| 465320 | 교보15호기업인수목적 | 관리종목(소속부없음) | Yes (2023-12-22 ~ 2025-06-27 SPAC) |
-| 471050 | 대신밸런스제17호기업인수목적 | 관리종목(소속부없음) | Yes |
-| 472220 | 신영해피투모로우제10호기업인수목적 | 관리종목(소속부없음) | Yes |
+이 정규화는 `InstrumentMetadataResolver.resolve()`와 `scripts/build_krx_instrument_metadata.py` 모두에
+적용되며, canonical CSV/parquet의 과거 및 현재 전체 77,193개 row에서 `KOSDAQ GLOBAL`이 0건으로 정규화되었다.
 
-"관리종목(소속부없음)"은 그 자체로 formal하고 이름과 무관한 신호다 — 정상
-사업부(우량기업부/일반기업부/벤처기업부 등)가 아니라 관리/주의 상태임을
-나타낸다. 이 상태이면서 canonical 이력에 SPAC 기록이 있는 ticker는 실제
-합병/전환으로 COMMON이 됐는지, 여전히 SPAC인데 formal 근거만 일시적으로
-사라졌는지 이름과 독립적으로 구분할 방법이 없어 fail closed한다.
+### 6.3 Former SPAC + 관리종목 Taxonomy 일치 (Fix Round 08 Minor 1)
 
-**369370과의 대조가 핵심이다**: 369370(과거 SPAC → 블리츠웨이엔터테인먼트로
-합병)은 실측 확인 결과 현재 `SECT_TP_NM="벤처기업부"`(정상 사업부, 관리종목
-아님)다. 즉 정상적으로 전환이 완료된 종목은 관리종목 상태에서 벗어나
-있으므로 이 규칙(§6 "관리종목 AND 과거 SPAC 기록" 조건)에 걸리지 않고 그대로
-COMMON으로 유지된다 — "관리종목=SPAC 의심 전체"로 확대하지 않고, 관리종목이면서
-동시에 SPAC 이력이 있는 교집합만 본다(실측상 관리종목+보통주 118개 중 3개만
-해당, 나머지 115개는 SPAC 이력이 전혀 없는 일반 기업으로 영향받지 않음).
-
-**"canonical 이력에 SPAC 기록이 있는가"는 immediate baseline이 아니라 전체
-이력을 본다.** baseline(직전 build 결과) 하나만 비교하면, 한 번 UNKNOWN으로
-fail closed된 ticker가 같은 날 재실행(idempotent rebuild)될 때 그 UNKNOWN
-자체가 새 기준이 되어 다음 실행에서 COMMON으로 잘못 승격되는 non-deterministic
-회귀가 실제로 발생함을 확인했다(§7 deterministic output 위반). SPAC 기록은
-과거 row 값을 절대 재작성하지 않으므로(§9), 전체 이력에서 "이 ticker가 SPAC
-으로 기록된 적 있는가"를 보는 방식은 재실행 횟수/순서와 무관하게 항상 안정적이다.
-
-`KIND_STKCERT_TP_NM == "종류주권"` 12건의 PREFERRED 판정은 이 라운드의 대상이
-아니다: 전수 확인 결과 전부 `ISU_NM`이 "...우선주"/"...우선주(신형)" 형태이며,
-판정 키 자체가 `KIND_STKCERT_TP_NM`이라는 code field이지 이름이 판정을 단독으로
-뒤집는 구조가 아니다(w.md 어느 라운드에서도 문제로 지적되지 않음).
+KRX formal taxonomy 전수 검증 결과, 관리 관련 `SECT_TP_NM` 값은 오직 `"관리종목(소속부없음)"` 하나뿐이다
+(`MANAGED_ISSUE_SECTIONS = {"관리종목(소속부없음)"}`).
+- 과거 SPAC 이력이 있으면서 현재 `SECT_TP_NM="관리종목(소속부없음)"`인 종목(465320, 471050, 472220)은
+  합병/전환 여부의 formal 근거 부족으로 `UNKNOWN` (`INSUFFICIENT_FORMAL_IDENTITY`) fail closed된다.
+- SPAC 이력이 없는 일반 보통주 관리종목은 정상적으로 `COMMON` (`FORMAL_SECURITY_TYPE`)을 유지한다.
+- 정상적으로 합병 전환된 369370(현재 SECT_TP_NM="벤처기업부")은 관리종목이 아니므로 깨끗한 COMMON 전환이 유지된다.
 
 
 ## 7. Builder Script
 
 ```
 BUILDER_SCRIPT   = scripts/build_krx_instrument_metadata.py
-MAPPING_VERSION  = v3
+MAPPING_VERSION  = v4
 ```
 
-역할 (Fix Round 07 Major 2 — live universe 전체에서 생성):
+역할 (Fix Round 07/08 — live universe 전체에서 생성, 이름 휴리스틱 0건):
 
 ```
 FETCH LIVE FORMAL SOURCES (equity + ETF + ETN)
         ↓
-BUILD CURRENT LIVE SUPPORTED UNIVERSE (live 전체의 union, dedup)
+BUILD CURRENT LIVE SUPPORTED UNIVERSE (live 전체의 union, dedup, market 정규화)
         ↓
-CLASSIFY EACH LIVE INSTRUMENT (name/market도 live source에서 직접, baseline 복사 없음)
+CLASSIFY EACH LIVE INSTRUMENT (code field 단독 판정, 이름 substring 완전 배제)
         ↓
 CREATE NEW CURRENT SNAPSHOT (effective_date = SOURCE_OBSERVATION_DATE)
         ↓
 COMPARE AGAINST PRIOR BASELINE (신규상장/상장폐지/asset_type 변경 diff만)
         ↓
-APPEND CURRENT SNAPSHOT, PRESERVE ALL HISTORICAL ROWS
+APPEND CURRENT SNAPSHOT, PRESERVE ALL HISTORICAL ROWS (market 정규화)
         ↓
 WRITE CSV + PARQUET + RAW SOURCE SNAPSHOT + MANIFEST
 ```
