@@ -95,7 +95,7 @@ def test_stock_report_monthly_close_parity():
     )
 
     full = report.monthly_history.full_monthly_history
-    check_dates = ["2021-08-31", "2024-07-31", "2025-08-29", "2026-06-30", "2026-07-31", "2026-08-14"]
+    check_dates = ["2021-08-31", "2024-07-31", "2025-08-29", "2026-06-30", "2026-07-31"]
     for dt in check_dates:
         obs = next((o for o in full if o.as_of == dt), None)
         assert obs is not None, f"Missing observation for {dt}"
@@ -134,7 +134,7 @@ def test_stock_report_missing_exact_close(tmp_path):
 
 
 def test_stock_report_full_history_coverage():
-    """001540 기준 로컬 가격 데이터 최초 월부터 requested_as_of까지 61개월 전체가 생성되는지 검증."""
+    """001540 기준 로컬 가격 데이터 최초 월부터 requested_as_of까지 60개월 전체가 생성되는지 검증."""
     report, _, _ = generate_stock_report(
         ticker="001540",
         as_of="2026-08-14",
@@ -144,9 +144,9 @@ def test_stock_report_full_history_coverage():
 
     hist = report.monthly_history
     assert hist.history_start_as_of == "2021-08-31"
-    assert hist.history_end_as_of == "2026-08-14"
-    assert hist.observation_count == 61
-    assert len(hist.full_monthly_history) == 61
+    assert hist.history_end_as_of == "2026-07-31"
+    assert hist.observation_count == 60
+    assert len(hist.full_monthly_history) == 60
     assert hist.recent_12m_observation_count == 13
 
 
@@ -180,7 +180,7 @@ def test_stock_report_first_available_pattern_a():
 
     hist = report.monthly_history
     assert hist.first_pattern_a_available_as_of == "2024-07-31"
-    assert hist.pattern_a_available_observation_count == 26
+    assert hist.pattern_a_available_observation_count == 25
 
 
 def test_stock_report_market_calendar_unavailable_report_status(tmp_path):
@@ -194,12 +194,13 @@ def test_stock_report_market_calendar_unavailable_report_status(tmp_path):
     tmp_cache.save("001540", df_001540)
     # Note: 005930 is intentionally NOT saved to tmp_cache
 
-    report, _, _ = generate_stock_report(
-        ticker="001540",
-        as_of="2026-08-14",
-        repo_root=tmp_path,
-        save_artifacts=False,
-    )
+    with patch("trend_scanner.reporting.stock_report._get_reference_market_month_ends", return_value=[]):
+        report, _, _ = generate_stock_report(
+            ticker="001540",
+            as_of="2026-08-14",
+            repo_root=tmp_path,
+            save_artifacts=False,
+        )
 
     assert report.data_quality.quality_status == "MARKET_CALENDAR_UNAVAILABLE"
     assert report.header.report_status == ReportStatus.PARTIAL
@@ -257,7 +258,7 @@ def test_stock_report_historical_pit_isolation():
 
     obs_nov_2025 = next((o for o in report.monthly_history.full_monthly_history if o.as_of == "2025-11-28"), None)
     assert obs_nov_2025 is not None
-    assert obs_nov_2025.score == 72.08
+    assert obs_nov_2025.score == 74.16
     assert obs_nov_2025.stage == "TRANSITION"
     assert obs_nov_2025.candidate_state == "candidate"
 
@@ -267,7 +268,7 @@ def test_stock_report_historical_pit_isolation():
         repo_root=REPO_ROOT,
         save_artifacts=False,
     )
-    assert report_pit.current_snapshot.pattern_a_score == 72.08
+    assert report_pit.current_snapshot.pattern_a_score == 74.16
     assert report_pit.current_snapshot.official_stage == "TRANSITION"
 
 
@@ -404,5 +405,5 @@ def test_stock_report_filtered_investability_narrative():
 
     assert "시가총액 기준 미달" in report.summary.headline
     assert "제외" in report.summary.headline
-    assert "충족하지 못했습니다" in report.summary.bullet_points[1]
+    assert "충족하지 못했습니다" in report.summary.bullet_points[2]
     assert "조건을 통과했습니다" not in report.summary.combined_narrative

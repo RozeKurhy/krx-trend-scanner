@@ -1,7 +1,7 @@
-"""Stock Report Generator Engine (Contract v0.1).
+"""Stock Report Generator Engine (Contract v0.2).
 
 로컬 Parquet 일봉 캐시와 정본 아티팩트만을 활용하여 단일 종목의 종합 분석 리포트를 생성하고
-JSON 및 GitHub Flavored Markdown 형식으로 출력한다.
+A FAST Core V2 전략 상태를 포함한 JSON 및 GitHub Flavored Markdown 형식으로 출력한다.
 """
 
 from __future__ import annotations
@@ -27,6 +27,7 @@ from trend_scanner.patterns.pattern_a_evaluator import (
     evaluate_pattern_a,
 )
 from trend_scanner.patterns.pattern_a_feature_set import PatternAStage
+from trend_scanner.reporting.a_fast_core_report import build_a_fast_core_section
 from trend_scanner.reporting.models import (
     CurrentSnapshot,
     DataQualitySection,
@@ -46,6 +47,7 @@ from trend_scanner.reporting.models import (
 )
 from trend_scanner.reporting.pattern_a_fast_report import build_pattern_a_fast_section
 from trend_scanner.data.market_calendar import get_reference_market_month_ends as _get_ref_market_month_ends
+from trend_scanner.universe.asset_classifier import AssetType, classify_asset_type
 from trend_scanner.validation.historical_snapshot import build_historical_snapshot
 
 logger = logging.getLogger(__name__)
@@ -57,13 +59,11 @@ def _format_ticker(ticker: str) -> str:
 
 def _resolve_latest_local_as_of(repo_root: Path) -> str:
     """로컬 데이터 및 아티팩트에서 최신 GLOBAL reference market date를 결정한다."""
-    # 1. Primary Authority: Market reference stock 005930 cache
     cache = ParquetCache(base_dir=repo_root / "data/raw/stocks")
     daily_ref = cache.load("005930")
     if daily_ref is not None and not daily_ref.empty:
         return daily_ref.index.max().strftime("%Y-%m-%d")
 
-    # 2. Secondary: Investability universe canonical files
     inv_dir = repo_root / "artifacts/investability"
     if inv_dir.exists():
         univ_files = sorted(inv_dir.glob("pattern_a_investability_universe_*.csv"))
@@ -73,7 +73,6 @@ def _resolve_latest_local_as_of(repo_root: Path) -> str:
             if len(date_part) == 8 and date_part.isdigit():
                 return f"{date_part[:4]}-{date_part[4:6]}-{date_part[6:]}"
 
-    # 3. Secondary: Scanner canonical files
     scanner_dir = repo_root / "artifacts/scanner"
     if scanner_dir.exists():
         scan_files = sorted(scanner_dir.glob("pattern_a_universe_scan_*.csv"))
@@ -263,8 +262,9 @@ def _generate_deterministic_narrative(
 
 
 def render_markdown_report(report: StockReport) -> str:
-    """StockReport JSON 객체를 사람이 읽기 쉬운 GitHub Flavored Markdown 보고서로 렌더링한다."""
+    """StockReport JSON 객체를 사람이 읽기 쉬운 GitHub Flavored Markdown 보고서(v0.2)로 렌더링한다."""
     cur = report.current_snapshot
+    core = report.a_fast_core
     hist = report.monthly_history
     flow = report.foreign_flow
     tv = report.trading_value_flow
@@ -282,6 +282,8 @@ def render_markdown_report(report: StockReport) -> str:
     md.append("")
     md.append("---")
     md.append("")
+
+    # Section 0. 핵심 요약 (Executive Summary)
     md.append("## 0. 핵심 요약 (Executive Summary)")
     md.append(f"> **{report.summary.headline}**")
     md.append(">")
@@ -292,6 +294,8 @@ def render_markdown_report(report: StockReport) -> str:
     md.append("")
     md.append("---")
     md.append("")
+
+    # Section 1. 현재 기술적 국면 & 투자 적격성 스냅샷 (Current Snapshot)
     md.append("## 1. 현재 기술적 국면 & 투자 적격성 스냅샷 (Current Snapshot)")
     md.append(f"- **Pattern A Score**: `{cur.pattern_a_score:.2f}`" if cur.pattern_a_score is not None else "- **Pattern A Score**: `N/A`")
     md.append(f"- **공식 국면 (Official Stage)**: `{cur.official_stage}`")
@@ -303,7 +307,86 @@ def render_markdown_report(report: StockReport) -> str:
     md.append("")
     md.append("---")
     md.append("")
-    md.append(f"## 2. Pattern A FAST 현재 신호 (`{fast.label}`)")
+
+    # Section 2. 패스트 코어 V2 전략 상태 (A FAST Core V2 Strategy State)
+    seq_str = f"{core.current_trade.trade_sequence}번째 거래" if (core.current_trade and core.canonical_position == "OPEN") else ("N/A (FLAT)" if core.canonical_position == "FLAT" else "N/A")
+    md.append("## 2. 패스트 코어 V2 전략 상태 (A FAST Core V2 Strategy State)")
+    md.append(f"- **전략 상태 (Strategy State)**: `{core.strategy_state}`")
+    md.append(f"- **패스트 코어 전략 포지션 (Canonical Strategy Position)**: `{core.canonical_position}`")
+    md.append(f"- **현재 전략 행동 (Current Action)**: `{core.action}`")
+    md.append(f"- **현재 전략 거래 순번**: `{seq_str}`")
+    md.append(f"- **전략 해석**: {core.interpretation}")
+    md.append("")
+
+    if core.entry_conditions:
+        ec = core.entry_conditions
+        md.append("### 진입 조건 체크리스트 (Entry Conditions Checklist)")
+        md.append("| 진입 검증 항목 | 현재 관측값 | 충족 여부 |")
+        md.append("|---|---|:---:|")
+        md.append(f"| 보통주 적격성 (Instrument Eligible) | `{report.market}` | `{'PASS' if ec.instrument_eligible else 'FAIL'}` |")
+        md.append(f"| 유동성 적격성 (Phase 10 Investability) | `{cur.investability_status}` | `{'PASS' if ec.investability_pass else 'FAIL'}` |")
+        md.append(f"| 국면 적격성 (TRANSITION / EARLY_TREND) | `{ec.pattern_a_stage}` | `{'PASS' if ec.pattern_a_stage_eligible else 'FAIL'}` |")
+        md.append(f"| FAST 주별 트리거 (TRIGGER & READY) | `{ec.fast_stage} ({ec.fast_stage_status})` | `{'PASS' if ec.fast_trigger_ready else 'FAIL'}` |")
+        md.append(f"| 월간 거시 국면 (PERMITTED_REGIME) | `{ec.monthly_regime}` | `{'PASS' if ec.monthly_regime_permitted else 'FAIL'}` |")
+        md.append(f"| 일봉 리스크 상태 (NORMAL / ELEVATED) | `{ec.daily_risk}` | `{'PASS' if ec.daily_risk_allowed else 'FAIL'}` |")
+        md.append(f"| FAST Score 적격성 (READY / PARTIAL) | `{ec.fast_score_status}` | `{'PASS' if ec.fast_score_status_allowed else 'FAIL'}` |")
+        md.append(f"| 미보유 상태 (No Open Position) | `{core.canonical_position}` | `{'PASS' if ec.no_open_position else 'FAIL'}` |")
+        md.append("")
+        md.append(f"- **전체 신규 진입 조건 판정**: **`{'PASS' if ec.all_conditions_met else 'FAIL'}`**")
+        if ec.failed_conditions:
+            md.append(f"- **미충족 항목 사유**: `{', '.join(ec.failed_conditions)}`")
+        md.append("")
+
+    if core.canonical_position == "OPEN" and core.current_trade:
+        ct = core.current_trade
+        prot = core.protection_state
+        md.append("### 현재 전략 포지션 상세 (Current Position Details)")
+        md.append(f"- **Trade ID / Sequence**: `{ct.trade_id}` (`{ct.trade_sequence}번째 진입`)")
+        md.append(f"- **진입 신호일 / 체결일**: `{ct.entry_signal_date}` / `{ct.entry_execution_date}`")
+        md.append(f"- **진입 시가 / 현재 종가**: `{ct.entry_open:,.0f}원` / `{ct.current_close:,.0f}원`")
+        md.append(f"- **현재 실시간 수익률**: **`{ct.current_return_pct:+.2f}%`**")
+        md.append(f"- **생애주기 분류**: `{ct.lifecycle_class}`")
+        if ct.pending_exit_type:
+            md.append(f"- **청산 신호 발생**: `{ct.pending_exit_type}` (신호일: `{ct.pending_exit_signal_date}` -> 익일 시가 청산 예정)")
+        md.append("")
+
+        if prot:
+            md.append("### 전략 보호 및 청산 상태 (Protection & Exit State)")
+            md.append(f"- **보호 국면 (Protection Phase)**: `{prot.phase}`")
+            md.append(f"- **Pre-PROGRESSED Loss Guard**: `{prot.loss_guard_state}`" + (f" (기준: `{prot.loss_guard_threshold_pct}%` 이하 종가)" if prot.loss_guard_threshold_pct else ""))
+            md.append(f"- **추세 청산 Exit 3 (Stage Transition)**: `{prot.exit3_state}`")
+            md.append(f"- **추세 청산 Exit 4 (Score HWM -15pt)**: `{prot.exit4_state}`")
+            if prot.progressed_hwm_score is not None:
+                md.append(f"- **PROGRESSED Score HWM**: `{prot.progressed_hwm_score:.2f}점` (현재: `{prot.current_pattern_a_score:.2f}점`, 낙폭: `{prot.score_drawdown_from_hwm_pt:.2f}pt`)")
+            md.append("")
+
+    if core.reentry_state:
+        re = core.reentry_state
+        md.append("### 재진입 운영 상태 (Re-Entry Operations)")
+        md.append(f"- **재진입 허용 여부**: `{'ENABLED' if re.enabled else 'DISABLED'}` (쿨다운: `{re.cooldown}`, 횟수 제한: `{re.maximum_reentries}`)")
+        md.append(f"- **완료된 전략 거래 수**: `{re.completed_trade_count}회` | **다음 진입 순번**: `{re.next_entry_sequence}번째`")
+        md.append("")
+
+    if core.trade_history:
+        md.append("### 패스트 코어 V2 전략 이력 (Canonical Strategy History)")
+        md.append("| 순번 | Trade ID | 진입 체결일 | 진입 시가 | 청산 유형 | 청산 체결일 | 청산 가격 | 실현 수익률 | 거래 상태 |")
+        md.append("|:---:|:---:|:---:|---:|---|:---:|---:|---:|:---:|")
+        for th in core.trade_history:
+            e_price_str = f"{th.exit_price:,.0f}원" if th.exit_price is not None else "-"
+            x_date_str = th.exit_execution_date if th.exit_execution_date is not None else "-"
+            md.append(
+                f"| {th.trade_sequence} | `{th.trade_id}` | `{th.entry_execution_date}` | {th.entry_open:,.0f}원 | "
+                f"`{th.exit_type}` | `{x_date_str}` | {e_price_str} | **{th.return_pct:+.2f}%** | `{th.trade_status}` |"
+            )
+        md.append("")
+        md.append("> 과거 전략 경로는 패스트 코어 규칙을 과거 데이터에 적용한 회고적 기록이며 미래 수익을 의미하지 않습니다.")
+        md.append("")
+
+    md.append("---")
+    md.append("")
+
+    # Section 3. Pattern A FAST 현재 신호
+    md.append(f"## 3. Pattern A FAST 현재 신호 (`{fast.label}`)")
     md.append(f"- **Contract**: `{fast.contract}` (`{fast.lifecycle_status}`)")
     if fast.current.fast_score is not None or fast.current.fast_stage is not None:
         md.append(f"- **기준 주 (As-Of)**: `{fast.current.as_of}`")
@@ -321,7 +404,9 @@ def render_markdown_report(report: StockReport) -> str:
     md.append("")
     md.append("---")
     md.append("")
-    md.append("## 3. Pattern A Monthly History — 최근 12개월 월별 추이 (Recent 12M Trajectory)")
+
+    # Section 4. Pattern A Monthly History 최근 12개월
+    md.append("## 4. Pattern A Monthly History — 최근 12개월 월별 추이 (Recent 12M Trajectory)")
     md.append("")
     md.append("| 기준일 | 종가 | Pattern A Score | Stage | Candidate State | Data Available |")
     md.append("|---|---:|---:|---|---|---|")
@@ -340,7 +425,9 @@ def render_markdown_report(report: StockReport) -> str:
         md.append("")
     md.append("---")
     md.append("")
-    md.append("## 4. Pattern A 국면 전환 이력 (Stage Transition History)")
+
+    # Section 5. Pattern A 국면 전환 이력
+    md.append("## 5. Pattern A 국면 전환 이력 (Stage Transition History)")
     if hist.stage_transitions:
         for tr in hist.stage_transitions:
             md.append(f"- **{tr.as_of}**: `{tr.from_stage}` -> `{tr.to_stage}`")
@@ -349,7 +436,9 @@ def render_markdown_report(report: StockReport) -> str:
     md.append("")
     md.append("---")
     md.append("")
-    md.append(f"## 5. Pattern A FAST Weekly History (`{fast.label}`)")
+
+    # Section 6. Pattern A FAST Weekly History
+    md.append(f"## 6. Pattern A FAST Weekly History (`{fast.label}`)")
     md.append(f"- **Contract**: `{fast.contract}` (`{fast.lifecycle_status}`)")
     md.append(f"- **History 시작 주**: `{fast.history_start_as_of}`")
     md.append(f"- **History 종료 주**: `{fast.history_end_as_of}`")
@@ -373,7 +462,9 @@ def render_markdown_report(report: StockReport) -> str:
     md.append("")
     md.append("---")
     md.append("")
-    md.append("## 6. 외국인 수급 확증 (Foreign Flow Analysis - Phase 11)")
+
+    # Section 7. 외국인 수급 확증
+    md.append("## 7. 외국인 수급 확증 (Foreign Flow Analysis - Phase 11)")
     md.append(f"- **수급 데이터 상태**: `{flow.data_status}`")
     md.append(f"- **수급 국면 판정**: `{flow.flow_state.value}`")
     md.append(f"- **규칙 기반 해석**: {flow.explanation}")
@@ -398,7 +489,9 @@ def render_markdown_report(report: StockReport) -> str:
     md.append("")
     md.append("---")
     md.append("")
-    md.append("## 7. 거래대금 추세 분석 (Trading Value Flow)")
+
+    # Section 8. 거래대금 추세 분석
+    md.append("## 8. 거래대금 추세 분석 (Trading Value Flow)")
     md.append(f"- **거래대금 상태**: `{tv.trading_value_state.value}`")
     md.append(f"- **규칙 기반 해석**: {tv.explanation}")
     if tv.avg_trading_value_5d_eok is not None:
@@ -412,7 +505,9 @@ def render_markdown_report(report: StockReport) -> str:
     md.append("")
     md.append("---")
     md.append("")
-    md.append("## 8. Pattern A 전체 월별 이력 (Full Monthly History)")
+
+    # Section 9. Pattern A 전체 월별 이력
+    md.append("## 9. Pattern A 전체 월별 이력 (Full Monthly History)")
     md.append(f"- **전체 관측 시작월**: `{hist.history_start_as_of}`")
     md.append(f"- **전체 관측 종료월**: `{hist.history_end_as_of}`")
     md.append(f"- **최초 Pattern A 산출월**: `{hist.first_pattern_a_available_as_of}`")
@@ -428,12 +523,14 @@ def render_markdown_report(report: StockReport) -> str:
     md.append("")
     md.append("---")
     md.append("")
-    md.append("## 9. 데이터 품질 및 신원 (Data Quality & Provenance)")
+
+    # Section 10. 데이터 품질 및 신원
+    md.append("## 10. 데이터 품질 및 신원 (Data Quality & Provenance)")
     md.append(f"- **로컬 일봉 캐시**: `{'정상 로드 (' + str(dq.daily_rows_count) + '행)' if dq.cache_present else '부재 (MISSING)'}`")
     md.append(f"- **데이터 기간**: `{dq.cache_first_date}` ~ `{dq.cache_last_date}`")
     md.append(f"- **완성 월봉 수**: `{dq.completed_month_count}개월`")
     md.append(f"- **데이터 품질 상태**: `{dq.quality_status}`")
-    md.append(f"- **적용 계약**: Score(`{prov.score_contract}`), Stage(`{prov.stage_contract}`), Investability(`{prov.investability_contract}`), Flow(`{prov.foreign_flow_contract}`)")
+    md.append(f"- **적용 계약**: Score(`{prov.score_contract}`), Stage(`{prov.stage_contract}`), Strategy(`{core.provenance.strategy_contract}`), Investability(`{prov.investability_contract}`), Flow(`{prov.foreign_flow_contract}`)")
     md.append(f"- **외부 네트워크 요청**: `{prov.network_requests}회` (Zero Network Request)")
     md.append("")
     md.append("---")
@@ -451,11 +548,11 @@ def generate_stock_report(
     save_artifacts: bool = True,
     output_dir: Path | str | None = None,
 ) -> tuple[StockReport, Path | None, Path | None]:
-    """단일 종목의 Stock Report v0.1을 생성하고 선택적으로 JSON/MD 아티팩트를 저장한다."""
+    """단일 종목의 Stock Report v0.2를 생성하고 선택적으로 JSON/MD 아티팩트를 저장한다."""
     root_path = Path(repo_root) if repo_root else Path(__file__).resolve().parent.parent.parent.parent
     clean_ticker = _format_ticker(ticker)
 
-    # 1. As-Of 및 Reference Market Date 결정 (No hardcoded date fallback)
+    # 1. As-Of 및 Reference Market Date 결정
     if as_of is None:
         canonical_as_of = _resolve_latest_local_as_of(root_path)
     else:
@@ -469,7 +566,6 @@ def generate_stock_report(
     daily = cache.load(clean_ticker)
     has_cache = daily is not None and not daily.empty
 
-    # Universe meta search
     name = clean_ticker
     market = "UNKNOWN"
     univ_csv = root_path / "artifacts/investability" / f"pattern_a_investability_universe_{canonical_as_of.replace('-', '')}.csv"
@@ -506,26 +602,6 @@ def generate_stock_report(
     if clean_ticker in KNOWN_TICKER_FALLBACKS and name == clean_ticker:
         name, market = KNOWN_TICKER_FALLBACKS[clean_ticker]
 
-    if name == clean_ticker:
-        try:
-            from dotenv import load_dotenv
-            load_dotenv()
-            from pykrx import stock
-
-            try:
-                etf_name = stock.get_etf_ticker_name(clean_ticker)
-                if etf_name:
-                    name = str(etf_name)
-                    market = "ETF"
-            except Exception:
-                pass
-            if name == clean_ticker:
-                mkt_name = stock.get_market_ticker_name(clean_ticker)
-                if mkt_name:
-                    name = str(mkt_name)
-        except Exception:
-            pass
-
     # 3. Daily Slice 생성 (Lookahead 방지)
     if has_cache and daily is not None:
         daily_slice = daily.loc[daily.index <= req_as_of_ts].copy()
@@ -541,7 +617,10 @@ def generate_stock_report(
     # 4. Investability & Market Cap Snapshot 로드
     mcap_val = None
     mcap_eff_date = None
-    mcap_csv = root_path / "artifacts/investability/source" / f"krx_market_cap_{canonical_as_of.replace('-', '')}.csv"
+    dt_clean = canonical_as_of.replace("-", "")
+
+    # 4a. Exact date match in source
+    mcap_csv = root_path / "artifacts/investability/source" / f"krx_market_cap_{dt_clean}.csv"
     if mcap_csv.exists():
         try:
             df_mcap_snap = pd.read_csv(mcap_csv, dtype={"ticker": str})
@@ -552,6 +631,40 @@ def generate_stock_report(
                 mcap_eff_date = str(match_mcap["effective_date"].iloc[0]) if "effective_date" in match_mcap.columns else canonical_as_of
         except Exception as exc:
             logger.warning("Failed reading local market cap file %s: %s", mcap_csv, exc)
+
+    # 4b. Historical normalized PIT market cap snapshots
+    if mcap_val is None:
+        norm_dir = root_path / "artifacts/investability/history/normalized"
+        if norm_dir.exists():
+            norm_files = sorted(norm_dir.glob("krx_market_cap_*.csv"))
+            past_files = [f for f in norm_files if f.stem.split("_")[-1] <= dt_clean]
+            candidate_files = past_files if past_files else norm_files
+            if candidate_files:
+                best_f = candidate_files[-1]
+                try:
+                    df_mcap_snap = pd.read_csv(best_f, dtype={"ticker": str})
+                    df_mcap_snap["ticker"] = df_mcap_snap["ticker"].astype(str).str.zfill(6)
+                    match_mcap = df_mcap_snap[df_mcap_snap["ticker"] == clean_ticker]
+                    if not match_mcap.empty:
+                        mcap_val = float(match_mcap["market_cap"].iloc[0])
+                        eff_part = best_f.stem.split("_")[-1]
+                        mcap_eff_date = f"{eff_part[:4]}-{eff_part[4:6]}-{eff_part[6:]}" if len(eff_part) == 8 else canonical_as_of
+                except Exception as exc:
+                    logger.warning("Failed reading normalized market cap file %s: %s", best_f, exc)
+
+    # 4c. Universe file fallback
+    if mcap_val is None:
+        univ_files = sorted((root_path / "artifacts/investability").glob("pattern_a_investability_universe_*.csv"))
+        if univ_files:
+            try:
+                df_u = pd.read_csv(univ_files[-1], dtype={"ticker": str})
+                df_u["ticker"] = df_u["ticker"].astype(str).str.zfill(6)
+                match_mcap = df_u[df_u["ticker"] == clean_ticker]
+                if not match_mcap.empty and "market_cap" in match_mcap.columns and not pd.isna(match_mcap["market_cap"].iloc[0]):
+                    mcap_val = float(match_mcap["market_cap"].iloc[0])
+                    mcap_eff_date = canonical_as_of
+            except Exception:
+                pass
 
     inv_eval = evaluate_investability(
         ticker=clean_ticker,
@@ -606,14 +719,13 @@ def generate_stock_report(
         is_investable=inv_eval.status.value == "INVESTABLE",
     )
 
-    # 6. Monthly Score & Stage History (Full & Recent 12M) using Common Market Reference Calendar & Exact Daily Check
+    # 6. Monthly Score & Stage History (Full & Recent 12M)
     full_monthly_history: list[MonthlyObservation] = []
     if not daily_slice.empty:
         stock_first_date = daily_slice.index.min()
         market_month_ends = _get_reference_market_month_ends(cache, req_as_of_ts)
 
         if not market_month_ends:
-            # Common market calendar unavailable -> Fail closed (No fallback to target stock's own calendar)
             quality_status = "MARKET_CALENDAR_UNAVAILABLE"
         else:
             first_month_start = pd.Timestamp(stock_first_date.year, stock_first_date.month, 1)
@@ -621,8 +733,6 @@ def generate_stock_report(
 
             for me_date in stock_month_ends:
                 me_str = me_date.strftime("%Y-%m-%d")
-
-                # Exact daily observation check: stock MUST have traded on that exact market trading date
                 if me_date not in daily_slice.index:
                     full_monthly_history.append(
                         MonthlyObservation(
@@ -638,7 +748,6 @@ def generate_stock_report(
                     continue
 
                 exact_close = float(daily_slice.loc[me_date, "close"]) if "close" in daily_slice.columns and not pd.isna(daily_slice.loc[me_date, "close"]) else None
-
                 d_sub = daily_slice.loc[daily_slice.index <= me_date]
                 try:
                     sub_snap = build_historical_snapshot(
@@ -673,11 +782,9 @@ def generate_stock_report(
                     )
                 )
 
-    # Sort strictly ascending
     full_monthly_history.sort(key=lambda x: x.as_of)
     recent_12m_history = full_monthly_history[-13:] if len(full_monthly_history) >= 13 else list(full_monthly_history)
 
-    # Stage Transitions (Protected from interim UNAVAILABLE observation noise)
     stage_transitions: list[StageTransition] = []
     last_valid_stage: str | None = None
     for obs in full_monthly_history:
@@ -691,7 +798,6 @@ def generate_stock_report(
             stage_transitions.append(StageTransition(as_of=obs.as_of, from_stage=last_valid_stage, to_stage=st))
             last_valid_stage = st
 
-    # Score Trend Deltas (from recent observations)
     score_1m = None
     score_3m = None
     score_6m = None
@@ -783,7 +889,7 @@ def generate_stock_report(
         foreign_positive_days_60d=flow_feat.foreign_positive_days_60d,
     )
 
-    # 8. Trading Value Flow Section (Strict Window Fail-Closed)
+    # 8. Trading Value Flow Section
     tv_5d_val: float | None = None
     tv_20d_val: float | None = None
     tv_60d_val: float | None = None
@@ -823,8 +929,7 @@ def generate_stock_report(
         ratio_20d_to_60d=r_20_60,
     )
 
-    # 8b. Pattern A FAST Weekly History (Experimental / Early Signal, additive, Phase 13)
-    #     Pattern A Monthly History와 동일 timeline 표에 합치지 않는다. 별도 section.
+    # 8b. Pattern A FAST Weekly History (Phase 13)
     pattern_a_fast_section = build_pattern_a_fast_section(
         ticker=clean_ticker,
         name=name,
@@ -833,17 +938,28 @@ def generate_stock_report(
         root_path=root_path,
     )
 
-    # 9. Header & Summary (Consistent Exact Report Status Semantics)
-    # READY:
-    #   Pattern A core Score/Stage READY
-    #   AND Market Calendar READY (quality_status != "MARKET_CALENDAR_UNAVAILABLE")
-    #   AND Investability status != "DATA_UNAVAILABLE" (FILTERED is allowed)
-    #   AND Foreign Flow status == READY
-    #   AND Trading Value state != TRADING_VALUE_UNAVAILABLE
-    # PARTIAL:
-    #   Pattern A core is READY, but at least one of (Market Calendar unavailable, Investability DATA_UNAVAILABLE, Flow unavailable, TV unavailable)
-    # DATA_UNAVAILABLE:
-    #   Pattern A core is UNAVAILABLE
+    # 8c. A FAST Core V2 Strategy Section (v0.2 Core Innovation)
+    score_contract_path = root_path / "artifacts/pattern_a_fast/research/pattern_a_fast_score_prototype_v01.json"
+    stage_contract_path = root_path / "artifacts/pattern_a_fast/research/pattern_a_fast_stage_prototype_v01.json"
+    score_contract = json.loads(score_contract_path.read_text(encoding="utf-8")) if score_contract_path.exists() else {}
+    stage_contract = json.loads(stage_contract_path.read_text(encoding="utf-8")) if stage_contract_path.exists() else {}
+
+    asset_type = classify_asset_type(clean_ticker, name)
+    is_common = (asset_type == AssetType.COMMON)
+
+    a_fast_core_section = build_a_fast_core_section(
+        ticker=clean_ticker,
+        name=name,
+        market=market,
+        daily=daily,
+        requested_as_of=req_as_of_ts,
+        is_investable=current_snapshot.is_investable,
+        is_common_stock=is_common,
+        score_contract=score_contract,
+        stage_contract=stage_contract,
+    )
+
+    # 9. Header & Summary
     if (
         cur_score is not None
         and quality_status != "MARKET_CALENDAR_UNAVAILABLE"
@@ -878,8 +994,30 @@ def generate_stock_report(
         tv_section=trading_value_section,
     )
 
+    # Prepend Strategy Bullet Point in Executive Summary
+    st_state = a_fast_core_section.strategy_state
+    if st_state == "HOLD_PROGRESSED":
+        seq_num = a_fast_core_section.current_trade.trade_sequence if a_fast_core_section.current_trade else ""
+        strat_bullet = f"패스트 코어 V2: HOLD_PROGRESSED · 현재 {seq_num}번째 전략 포지션 보유 중"
+    elif st_state == "HOLD_PRE_PROGRESSED":
+        seq_num = a_fast_core_section.current_trade.trade_sequence if a_fast_core_section.current_trade else ""
+        strat_bullet = f"패스트 코어 V2: HOLD_PRE_PROGRESSED · 현재 {seq_num}번째 전략 포지션 보유 중 (Loss Guard 활성)"
+    elif st_state == "ENTRY":
+        strat_bullet = "패스트 코어 V2: 신규 진입 조건 충족 · 다음 거래일 시가 진입 신호"
+    elif st_state == "EXIT":
+        strat_bullet = f"패스트 코어 V2: 청산 신호 발생({a_fast_core_section.action_reason}) · 다음 거래일 시가 청산"
+    elif st_state == "WAIT":
+        strat_bullet = "패스트 코어 V2: 관망 · 현재 신규 진입 조건 미충족"
+    elif st_state == "NOT_APPLICABLE":
+        strat_bullet = "패스트 코어 V2: 전략 적용 대상 아님"
+    else:
+        strat_bullet = "패스트 코어 V2: 데이터 부족으로 판정 불가"
+
+    bullet_points.insert(0, strat_bullet)
+
     summary = ReportSummary(
         headline=headline,
+        strategy_headline=a_fast_core_section.interpretation,
         bullet_points=bullet_points,
         combined_narrative=narrative,
     )
@@ -904,7 +1042,7 @@ def generate_stock_report(
     )
 
     report = StockReport(
-        report_version="0.1",
+        report_version="0.2",
         ticker=clean_ticker,
         name=name,
         market=market,
@@ -913,20 +1051,21 @@ def generate_stock_report(
         header=header,
         summary=summary,
         current_snapshot=current_snapshot,
+        a_fast_core=a_fast_core_section,
+        pattern_a_fast=pattern_a_fast_section,
         monthly_history=monthly_section,
         foreign_flow=foreign_flow_section,
         trading_value_flow=trading_value_section,
         data_quality=data_quality,
         provenance=provenance,
-        pattern_a_fast=pattern_a_fast_section,
     )
 
-    # 10. Save Artifacts if requested
+    # 10. Save Artifacts if requested (Default v0.2 output dir)
     json_path: Path | None = None
     md_path: Path | None = None
     if save_artifacts:
         date_dir_name = canonical_as_of.replace("-", "")
-        base_out = Path(output_dir) if output_dir else root_path / "artifacts/stock_reports" / date_dir_name
+        base_out = Path(output_dir) if output_dir else root_path / "artifacts/stock_reports/v0.2" / date_dir_name
         base_out.mkdir(parents=True, exist_ok=True)
 
         file_stem = f"{clean_ticker}_{report.header.name}" if report.header.name and report.header.name != clean_ticker else (f"{clean_ticker}_{name}" if name and name != clean_ticker else clean_ticker)
@@ -944,22 +1083,22 @@ def generate_stock_report(
 
 
 def main() -> None:
-    """CLI entrypoint for stock report generation."""
-    parser = argparse.ArgumentParser(description="Generate Local Stock Report (Contract v0.1)")
+    """CLI entrypoint for stock report generation (v0.2)."""
+    parser = argparse.ArgumentParser(description="Generate Local Stock Report (Contract v0.2)")
     parser.add_argument("--ticker", required=True, help="6-digit stock ticker (e.g. 001540)")
     parser.add_argument("--as-of", default=None, help="As-Of date YYYY-MM-DD (defaults to latest local available date)")
     parser.add_argument("--output-dir", default=None, help="Custom output directory")
     args = parser.parse_args()
 
-    report, j_path, m_path = generate_stock_report(
+    report, jp, mp = generate_stock_report(
         ticker=args.ticker,
         as_of=args.as_of,
         output_dir=args.output_dir,
     )
 
-    print(f"Successfully generated stock report for {report.name} ({report.ticker})!")
-    print(f"JSON Report: {j_path}")
-    print(f"Markdown Report: {m_path}")
+    print(f"Successfully generated stock report v{report.report_version} for {report.name} ({report.ticker})!")
+    print(f"JSON Report: {jp}")
+    print(f"Markdown Report: {mp}")
     print("-" * 50)
     print(report.summary.combined_narrative)
 

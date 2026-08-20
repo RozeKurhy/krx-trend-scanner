@@ -16,7 +16,7 @@
 - **평가 증거 커밋 (Evaluation Evidence Authority)**: [`36273d9`](https://github.com/RozeKurhy/krx-trend-scanner/commit/36273d97ae6d4f5b1dbc72cca186bc6009b5fa51)
 - **거래 생성 커밋 (Reentry Trade Generation Authority)**: [`b9ba613`](https://github.com/RozeKurhy/krx-trend-scanner/commit/b9ba613be973906915e5081a0e5828dd6e1350d6)
 - **Fresh OOS 실행 여부**: **`NO`** (본 증거는 동일 과거 표본 retrospective 확정임)
-- **운영 상태 (Production Status)**: **`PRODUCTION_HOLD` (운영 불변, 연구 전용)**
+- **운영 상태 (Production Status)**: **`PRODUCTION_DECISION_SUPPORT` (종목 리포트 v0.2 의사결정 지원 운영 노출)**
 
 #### 💡 투자자 최상위 원칙 (Investment Mandate & Philosophy)
 - **최우선 목적 (Primary Objective)**: **`LARGE_LOSS_MINIMIZATION` (대형 손실 최소화)**

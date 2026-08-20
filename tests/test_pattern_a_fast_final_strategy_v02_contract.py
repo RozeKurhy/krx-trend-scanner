@@ -50,7 +50,7 @@ def test_v02_strategy_contract_completeness():
     assert v02_json["research_status"] == "STRATEGY_FINALIZATION_CLOSED"
     assert v02_json["supersedes_for_current_use"] == "PATTERN_A_FAST_FINAL_STRATEGY_V01"
     assert v02_json["delta_from_v01"] == "REENTRY_ONLY"
-    assert v02_json["production_status"] == "PRODUCTION_HOLD"
+    assert v02_json["production_status"] == "PRODUCTION_DECISION_SUPPORT"
 
 
 def test_v02_reentry_contract_invariants():

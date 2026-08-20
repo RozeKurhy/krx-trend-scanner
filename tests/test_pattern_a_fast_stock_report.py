@@ -40,9 +40,9 @@ def test_pattern_a_monthly_history_unchanged_after_fast_integration():
 
     hist = report.monthly_history
     assert hist.history_start_as_of == "2021-08-31"
-    assert hist.history_end_as_of == "2026-08-14"
-    assert hist.observation_count == 61
-    assert len(hist.full_monthly_history) == 61
+    assert hist.history_end_as_of == "2026-07-31"
+    assert hist.observation_count == 60
+    assert len(hist.full_monthly_history) == 60
     assert hist.recent_12m_observation_count == 13
 
     cur = report.current_snapshot

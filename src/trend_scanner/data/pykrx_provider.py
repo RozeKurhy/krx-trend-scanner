@@ -44,10 +44,6 @@ from __future__ import annotations
 import pandas as pd
 from dotenv import load_dotenv
 
-load_dotenv()  # .env가 있으면 KRX_ID/KRX_PW를 pykrx import 전에 환경 변수로 등록한다.
-
-from pykrx import stock  # noqa: E402 (dotenv 로드가 pykrx import보다 먼저여야 한다)
-
 from trend_scanner.data.errors import MarketDataError
 
 _STANDARD_COLUMNS = ("open", "high", "low", "close", "volume", "trading_value")
@@ -111,6 +107,9 @@ class PyKrxDataProvider:
 
     def _call_pykrx(self, ticker: str, start: str, end: str, adjusted: bool) -> pd.DataFrame:
         try:
+            load_dotenv()
+            from pykrx import stock
+
             return stock.get_market_ohlcv_by_date(start, end, ticker, adjusted=adjusted)
         except Exception as exc:
             raise MarketDataError(

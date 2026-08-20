@@ -1,6 +1,7 @@
-"""Stock Report Data Models (Contract v0.1).
+"""Stock Report Data Models (Contract v0.2).
 
 종목 리포트의 JSON 직렬화 및 구조 정의 데이터 클래스를 제공한다.
+v0.2에서는 A FAST Core V2 전략 상태(a_fast_core) 섹션이 최상위 필드로 추가된다.
 """
 
 from __future__ import annotations
@@ -51,6 +52,7 @@ class ReportSummary:
     headline: str
     bullet_points: list[str]
     combined_narrative: str
+    strategy_headline: str | None = None
 
 
 @dataclass
@@ -204,6 +206,132 @@ class PatternAFastSection:
     observation_count: int
 
 
+# ==============================================================================
+# A FAST Core V2 Strategy Section Data Models (Stock Report v0.2)
+# ==============================================================================
+
+
+@dataclass
+class AFastCoreEntryConditions:
+    instrument_eligible: bool
+    investability_pass: bool
+    pattern_a_stage_eligible: bool
+    fast_trigger_ready: bool
+    monthly_regime_permitted: bool
+    daily_risk_allowed: bool
+    fast_score_status_allowed: bool
+    no_open_position: bool
+    all_conditions_met: bool
+    pattern_a_stage: str | None = None
+    fast_stage: str | None = None
+    fast_stage_status: str | None = None
+    monthly_regime: str | None = None
+    daily_risk: str | None = None
+    fast_score_status: str | None = None
+    failed_conditions: list[str] = field(default_factory=list)
+
+
+@dataclass
+class AFastCoreCurrentTrade:
+    trade_id: str
+    trade_sequence: int
+    entry_signal_date: str
+    entry_execution_date: str
+    entry_open: float
+    entry_pattern_a_stage: str
+    previous_exit_type: str | None
+    previous_exit_execution_date: str | None
+    first_progressed_date: str | None
+    first_progressed_effective_trading_date: str | None
+    lifecycle_class: str
+    current_close: float
+    current_return_pct: float
+    trade_status: str
+    pending_exit_type: str | None = None
+    pending_exit_signal_date: str | None = None
+
+
+@dataclass
+class AFastCoreProtectionState:
+    phase: str
+    loss_guard_state: str
+    loss_guard_threshold_pct: float | None
+    first_progressed_date: str | None
+    first_progressed_effective_trading_date: str | None
+    lifecycle_class: str | None
+    exit3_state: str
+    exit4_state: str
+    progressed_hwm_score: float | None
+    current_pattern_a_score: float | None
+    score_drawdown_from_hwm_pt: float | None
+
+
+@dataclass
+class AFastCoreReentryState:
+    enabled: bool = True
+    cooldown: str = "NONE"
+    maximum_reentries: str = "NONE"
+    pyramiding: bool = False
+    overlapping_position: bool = False
+    same_open_exit_and_reentry: bool = False
+    completed_trade_count: int = 0
+    current_trade_sequence: int | None = None
+    next_entry_sequence: int = 1
+
+
+@dataclass
+class AFastCoreTradeHistoryItem:
+    trade_id: str
+    trade_sequence: int
+    entry_signal_date: str
+    entry_execution_date: str
+    entry_open: float
+    entry_pattern_a_stage: str
+    exit_type: str
+    exit_signal_date: str | None
+    exit_execution_date: str | None
+    exit_price: float | None
+    trade_status: str
+    return_pct: float
+    previous_exit_type: str | None = None
+    lifecycle_class: str | None = None
+
+
+@dataclass
+class AFastCoreProvenance:
+    strategy_contract: str = "PATTERN_A_FAST_FINAL_STRATEGY_V02"
+    strategy_contract_path: str = "docs/validation/pattern_a_fast_final_strategy_v02.md"
+    architecture_authority_commit: str = "89df82a938dba1961c2342064db2dc0061a5f2ca"
+    calendar_authority_commit: str = "88d54d85bdee1f2121bec9b27a250cbc1cb9f98f"
+    trade_generation_authority_commit: str = "b9ba613be973906915e5081a0e5828dd6e1350d6"
+    evidence_closure_authority_commit: str = "36273d97ae6d4f5b1dbc72cca186bc6009b5fa51"
+    network_requests: int = 0
+
+
+@dataclass
+class AFastCoreSection:
+    strategy_id: str = "PATTERN_A_FAST_FINAL_STRATEGY_V02"
+    strategy_version: str = "V02"
+    strategy_alias: str = "A FAST Core"
+    strategy_status: str = "FINAL_STRATEGY_FROZEN"
+    production_status: str = "PRODUCTION_DECISION_SUPPORT"
+    fresh_oos_status: str = "NOT_EXECUTED"
+    as_of: str = ""
+    applicability: str = "APPLICABLE"
+    strategy_state: str = "WAIT"
+    canonical_position: str = "FLAT"
+    action: str = "WAIT"
+    action_reason: str = "ENTRY_CONDITIONS_NOT_MET"
+    execution_timing: str | None = None
+    entry_conditions: AFastCoreEntryConditions | None = None
+    current_trade: AFastCoreCurrentTrade | None = None
+    protection_state: AFastCoreProtectionState | None = None
+    reentry_state: AFastCoreReentryState | None = None
+    trade_history: list[AFastCoreTradeHistoryItem] = field(default_factory=list)
+    interpretation: str = ""
+    provenance: AFastCoreProvenance = field(default_factory=AFastCoreProvenance)
+
+
 @dataclass
 class StockReport:
     report_version: str
@@ -221,6 +349,7 @@ class StockReport:
     data_quality: DataQualitySection
     provenance: ProvenanceSection
     pattern_a_fast: PatternAFastSection
+    a_fast_core: AFastCoreSection
 
     def to_dict(self) -> dict[str, Any]:
         """Convert report to JSON-serializable dictionary."""

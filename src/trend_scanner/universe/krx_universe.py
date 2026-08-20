@@ -7,12 +7,6 @@ from __future__ import annotations
 
 import logging
 
-from dotenv import load_dotenv
-
-load_dotenv()
-
-from pykrx import stock
-
 from trend_scanner.data.errors import MarketDataError
 from trend_scanner.universe.models import MarketType, UniverseSecurity
 
@@ -22,6 +16,8 @@ logger = logging.getLogger(__name__)
 def get_latest_market_trading_date() -> str:
     """공식 KRX의 최신 영업일(YYYYMMDD 형식)을 확인하여 'YYYY-MM-DD'로 반환한다."""
     try:
+        from pykrx import stock
+
         raw_date = stock.get_nearest_business_day_in_a_week()
         if not raw_date or len(raw_date) != 8:
             raise MarketDataError(f"유효하지 않은 영업일 응답: {raw_date}")
@@ -31,21 +27,8 @@ def get_latest_market_trading_date() -> str:
 
 
 def load_krx_equity_universe(as_of: str | None = None) -> list[UniverseSecurity]:
-    """공인 KRX KOSPI 및 KOSDAQ 주식 유니버스 종목 목록을 조회한다.
-
-    [Fail-Closed 원칙]:
-    - 공식 종목명 조회가 실패(None 또는 빈 문자열)하는 경우 ticker 코드로 대체하지 않고
-      명시적으로 MarketDataError를 발생시킨다 (불완전 metadata의 fail-open 방지).
-
-    Args:
-        as_of: 조회 기준일 (YYYY-MM-DD 또는 YYYYMMDD, 생략 시 최신 영업일)
-
-    Returns:
-        list[UniverseSecurity]: KOSPI 및 KOSDAQ에 상장된 종목 마스터 목록 (KONEX 제외)
-
-    Raises:
-        MarketDataError: KRX API 조회 실패 시 발생 (캐시 파일로 조용히 fallback하지 않음)
-    """
+    """공인 KRX KOSPI 및 KOSDAQ 주식 유니버스 종목 목록을 조회한다."""
+    from pykrx import stock
     if as_of is None:
         target_date_formatted = get_latest_market_trading_date()
         target_date_api = target_date_formatted.replace("-", "")
