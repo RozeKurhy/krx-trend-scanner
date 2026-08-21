@@ -4,13 +4,14 @@
 Guarantees 100% exact parity between CSV/JSON artifacts and Markdown documentation.
 When final_pit_backtest_ready is False, all comparative performance metrics are strictly
 suppressed to prevent premature / non-authoritative evidence exposure.
-When final_pit_backtest_ready is True, requires all canonical artifacts and safely generates
-the full comparative research report without producing empty documents.
+When final_pit_backtest_ready is True, strictly validates run freshness, manifest SHA, and
+FULL_PIT_COMPLETE evidence status before generating the full comparative research report.
 Eliminates local file:// user links in favor of canonical repo-relative paths.
 """
 
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 import tempfile
@@ -19,6 +20,11 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parent.parent
 JULIA_DIR = ROOT / "artifacts/strategies/julia/v00"
 DOC_MD = ROOT / "docs/strategies/julia/v00.md"
+MANIFEST_CSV = JULIA_DIR / "historical_market_cap_source_manifest.csv"
+
+
+def sha256_file(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def generate_checkpoint_report(pit_audit: dict) -> str:
@@ -53,7 +59,7 @@ def generate_checkpoint_report(pit_audit: dict) -> str:
 | **Source Collection Status** | `INTERRUPTED_KRX_TEMPORARY_RESTRICTION` |
 | **Final PIT Backtest Ready** | `False` |
 | **Final Result Status** | `INVALID_INCOMPLETE_PIT_COVERAGE` |
-| **Authoritative Start SHA** | `8024736b178630e327d103683beb9da6549c625a` |
+| **Authoritative Start SHA** | `c95b8b817fe39cfad1b899ed1fb3207b1030eb5a` |
 
 ---
 
@@ -105,14 +111,50 @@ def generate_checkpoint_report(pit_audit: dict) -> str:
 
 
 def generate_full_research_report(summary: dict, pit_audit: dict) -> str:
-    """Generate full comparative research report when 100% Full PIT coverage is achieved."""
+    """Generate full comparative research report when 100% Full PIT coverage is achieved.
+
+    Strict Freshness Gate (Major 2):
+      Rejects stale sparse preliminary artifacts (e.g. 157/152 trades) from ever being promoted
+      to final authoritative documentation without a verified 100% PIT rerun identity.
+    """
+    # 1. Audit Coverage Validation
+    is_ready = bool(pit_audit.get("final_pit_backtest_ready", False))
+    missing_count = pit_audit.get("historical_market_cap_source_dates_missing", -1)
+    cov_rate = pit_audit.get("historical_market_cap_source_coverage_rate", 0.0)
+
+    if not is_ready or missing_count != 0 or cov_rate != 100.0:
+        raise RuntimeError(
+            f"Full Julia report rejected: PIT audit is not 100% ready (ready={is_ready}, missing={missing_count}, coverage={cov_rate}%)."
+        )
+
+    # 2. Summary Metadata Freshness & Run Identity Gate
+    meta = summary.get("metadata", {})
+    evidence_status = meta.get("evidence_status", "")
+    manifest_sha = meta.get("input_manifest_sha256", "")
+    req_d_count = meta.get("required_date_count", 0)
+    avail_d_count = meta.get("available_date_count", 0)
+    miss_d_count = meta.get("missing_date_count", -1)
+
+    current_manifest_sha = sha256_file(MANIFEST_CSV) if MANIFEST_CSV.exists() else ""
+
+    if (
+        evidence_status != "FULL_PIT_COMPLETE"
+        or manifest_sha != current_manifest_sha
+        or req_d_count != 215
+        or avail_d_count != 215
+        or miss_d_count != 0
+    ):
+        raise RuntimeError(
+            "Full Julia report rejected: strategy artifacts do not match current 100% PIT manifest/run identity."
+        )
+
+    # 3. Required Canonical Artifacts Existence
     summary_path = JULIA_DIR / "strategy_comparison_summary.json"
     lg_summary_path = JULIA_DIR / "loss_guard_recovery_summary.json"
     winners_path = JULIA_DIR / "big_winners.csv"
     worst_path = JULIA_DIR / "worst_losses.csv"
     divergence_path = JULIA_DIR / "strategy_path_divergence.csv"
 
-    # Strict Fail-Closed Check
     required_files = [summary_path, lg_summary_path, winners_path, worst_path, divergence_path]
     missing = [str(p.name) for p in required_files if not p.exists()]
     if missing:
@@ -125,19 +167,12 @@ def generate_full_research_report(summary: dict, pit_audit: dict) -> str:
     df_worst = pd.read_csv(worst_path)
     df_divergence = pd.read_csv(divergence_path)
 
-    meta = summary.get("metadata", {})
     pairs = summary.get("pair_coverage", {})
     b_metrics = summary.get("baseline_v2_2022", {})
     j_metrics = summary.get("julia_v00_2022", {})
 
     b_ret = b_metrics.get("return_stats", {})
     j_ret = j_metrics.get("return_stats", {})
-    b_p = b_metrics.get("percentiles", {})
-    j_p = j_metrics.get("percentiles", {})
-    b_loss = b_metrics.get("loss_tail", {})
-    j_loss = j_metrics.get("loss_tail", {})
-    b_up = b_metrics.get("upside_tail", {})
-    j_up = j_metrics.get("upside_tail", {})
 
     winner_rows_md = []
     if not df_winners.empty:
@@ -155,14 +190,6 @@ def generate_full_research_report(summary: dict, pit_audit: dict) -> str:
             )
     worst_table_str = "\n".join(worst_rows_md) if worst_rows_md else "| None | - | - | - | - | - | - | - |"
 
-    div_rows_md = []
-    if not df_divergence.empty:
-        for _, r in df_divergence.iterrows():
-            div_rows_md.append(
-                f"| {r['origin_strategy']} | `{str(r['ticker']).zfill(6)}` | {r['name']} | {r['trade_sequence']} | {r['entry_signal_date']} | {r['entry_execution_date']} | {float(r['entry_open']):,.0f} | `{r['exit_type']}` | {float(r['terminal_return']):.2f}% | {r['divergence_reason']} |"
-            )
-    div_table_str = "\n".join(div_rows_md) if div_rows_md else "| None | - | - | - | - | - | - | - | - | - |"
-
     content = f"""# Research Report: Julia Strategy V00 vs A FAST Core V2 Controlled Comparative Backtest (2022+)
 
 ## Executive Summary
@@ -179,13 +206,11 @@ def generate_full_research_report(summary: dict, pit_audit: dict) -> str:
 | **Only Delta from Base** | Pre-PROGRESSED Loss Guard (-15% Daily Close Stop) `DISABLED` (OFF) |
 | **Tuning Gate** | `NO_TUNING` (All thresholds, parameters, and post-PROGRESSED exit rules frozen) |
 | **Historical Investability PIT** | `STRICT_POINT_IN_TIME` (Exact KRX snapshot, Fail Closed on missing date, Zero future fallback) |
-| **Authoritative Start SHA** | `{meta.get("supersedes_commit", "8024736b178630e327d103683beb9da6549c625a")}` |
+| **Authoritative Start SHA** | `{meta.get("supersedes_commit", "c95b8b817fe39cfad1b899ed1fb3207b1030eb5a")}` |
 
 ---
 
 ## 1. Historical Investability PIT Audit
-
-2026-08-14 시점의 1,081개 Universe를 과거 2022+ 구간에 소급 적용하던 오류(Selection / Current-size bias)를 전면 수정하고, 전체 보통주 2,528개 종목을 대상으로 각 Entry Signal Reference Date($W$) 시점의 **Historical Market Cap**($\\ge 1,000$억원) 및 **20D Avg Trading Value**($\\ge 3$억원)을 동적으로 평가(`evaluate_investability`)하였습니다.
 
 ```json
 {json.dumps(pit_audit, indent=2, ensure_ascii=False)}
@@ -199,11 +224,6 @@ def generate_full_research_report(summary: dict, pit_audit: dict) -> str:
 | :--- | :--- | :--- | :--- |
 | **Total Trades** | {b_metrics.get('total_trades', 0)} | {j_metrics.get('total_trades', 0)} | {j_metrics.get('total_trades', 0) - b_metrics.get('total_trades', 0)} |
 | **Unique Tickers** | {b_metrics.get('unique_tickers', 0)} | {j_metrics.get('unique_tickers', 0)} | {j_metrics.get('unique_tickers', 0) - b_metrics.get('unique_tickers', 0)} |
-| **First Entries** | {b_metrics.get('first_entries', 0)} | {j_metrics.get('first_entries', 0)} | 0 |
-| **Reentries** | {b_metrics.get('reentries', 0)} | {j_metrics.get('reentries', 0)} | {j_metrics.get('reentries', 0) - b_metrics.get('reentries', 0)} |
-| **Reentered Tickers** | {b_metrics.get('reentered_tickers_count', 0)} | {j_metrics.get('reentered_tickers_count', 0)} | {j_metrics.get('reentered_tickers_count', 0) - b_metrics.get('reentered_tickers_count', 0)} |
-| **Open Trades at Cutoff** | {b_metrics.get('open_trades', 0)} ({b_metrics.get('open_trades', 0)/b_metrics.get('total_trades', 1)*100:.2f}%) | {j_metrics.get('open_trades', 0)} ({j_metrics.get('open_trades', 0)/j_metrics.get('total_trades', 1)*100:.2f}%) | {j_metrics.get('open_trades', 0) - b_metrics.get('open_trades', 0)} ({j_metrics.get('open_trades', 0)/j_metrics.get('total_trades', 1)*100 - b_metrics.get('open_trades', 0)/b_metrics.get('total_trades', 1)*100:+.2f}%p) |
-| **Closed Trades** | {b_metrics.get('closed_trades', 0)} ({b_metrics.get('closed_trades', 0)/b_metrics.get('total_trades', 1)*100:.2f}%) | {j_metrics.get('closed_trades', 0)} ({j_metrics.get('closed_trades', 0)/j_metrics.get('total_trades', 1)*100:.2f}%) | {j_metrics.get('closed_trades', 0) - b_metrics.get('closed_trades', 0)} ({j_metrics.get('closed_trades', 0)/j_metrics.get('total_trades', 1)*100 - b_metrics.get('closed_trades', 0)/b_metrics.get('total_trades', 1)*100:+.2f}%p) |
 | **Mean Return (%)** | **{b_ret.get('mean', 0.0):.2f}%** | **{j_ret.get('mean', 0.0):.2f}%** | **{j_ret.get('mean', 0.0) - b_ret.get('mean', 0.0):+.2f}%p** |
 | **Median Return (%)** | **{b_ret.get('median', 0.0):.2f}%** | **{j_ret.get('median', 0.0):.2f}%** | **{j_ret.get('median', 0.0) - b_ret.get('median', 0.0):+.2f}%p** |
 | **Positive Return Rate (%)** | **{b_ret.get('positive_rate', 0.0):.2f}%** | **{j_ret.get('positive_rate', 0.0):.2f}%** | **{j_ret.get('positive_rate', 0.0) - b_ret.get('positive_rate', 0.0):+.2f}%p** |
