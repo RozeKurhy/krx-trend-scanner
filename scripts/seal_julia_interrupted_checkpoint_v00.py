@@ -1,8 +1,8 @@
 #!/usr/bin/env python
-"""Seal 117/215 KRX Historical Market Cap Sources with Dynamic ACTIVE Authority Derivation.
+"""Seal 117/215 KRX Historical Market Cap Sources with Strict Canonical Authority Crosscheck.
 
-Derives source provenance dynamically from ACTIVE Phase 13J / Phase 10 canonical authorities
-(reference_status == ACTIVE_REFERENCE with full hash/date contract validation),
+Enforces strict bidirectional cross-check between Grid and ACTIVE_REFERENCE Provenance
+(exact source/normalized filename, SHA-256, and effective_date match),
 strictly hard-fails on sealed source corruption without downgrading to missing,
 and atomically replaces checkpoint artifacts.
 """
@@ -59,76 +59,111 @@ class CanonicalUIAuthorityEntry:
     reference_status: str
 
 
-def load_canonical_ui_authorities() -> dict[str, CanonicalUIAuthorityEntry]:
-    """Dynamically load active canonical UI authorities with full hash/date contracts."""
+def load_canonical_ui_authorities(
+    provenance_path: Path = PROVENANCE_CSV,
+    grid_path: Path = GRID_CSV,
+    p10_source_path: Path = P10_SOURCE_20250131,
+) -> dict[str, CanonicalUIAuthorityEntry]:
+    """Strictly cross-check Grid and ACTIVE Provenance to derive Canonical UI Authorities."""
     authorities: dict[str, CanonicalUIAuthorityEntry] = {}
 
-    if PROVENANCE_CSV.exists():
-        df_prov = pd.read_csv(PROVENANCE_CSV, dtype=str).fillna("")
-        # Major 3: Filter strictly on ACTIVE_REFERENCE only
-        df_active = df_prov[df_prov["reference_status"] == "ACTIVE_REFERENCE"]
-        for _, r in df_active.iterrows():
-            ref_d = str(r.get("completed_weekly_reference_date", "")).strip()
-            eff_d = str(r.get("effective_date", "")).strip()
-            src_f = str(r.get("source_file", "")).strip()
-            src_sha = str(r.get("sha256", "")).strip()
-            norm_f = str(r.get("normalized_file", "")).strip()
-            norm_sha = str(r.get("normalized_sha256", "")).strip()
+    if not provenance_path.exists() or not grid_path.exists():
+        raise SealedMarketCapCheckpointIntegrityError(
+            f"Missing required authority files: provenance={provenance_path.exists()}, grid={grid_path.exists()}"
+        )
 
-            if ref_d and src_f and src_sha:
-                authorities[ref_d] = CanonicalUIAuthorityEntry(
-                    completed_weekly_reference_date=ref_d,
-                    effective_date=eff_d,
-                    source_filename=Path(src_f).name,
-                    source_sha256=src_sha,
-                    normalized_filename=Path(norm_f).name if norm_f else Path(src_f).name,
-                    normalized_sha256=norm_sha if norm_sha else src_sha,
-                    reference_status="ACTIVE_REFERENCE",
-                )
+    df_prov = pd.read_csv(provenance_path, dtype=str).fillna("")
+    df_grid = pd.read_csv(grid_path, dtype=str).fillna("")
 
-    # Cross-check with GRID_CSV
-    if GRID_CSV.exists():
-        df_grid = pd.read_csv(GRID_CSV, dtype=str).fillna("")
-        for _, r in df_grid.iterrows():
-            ref_d = str(r.get("completed_weekly_reference_date", "")).strip()
-            src_f = str(r.get("source_file", "")).strip()
-            src_sha = str(r.get("sha256", "")).strip()
-            if ref_d not in authorities and ref_d and src_f and src_sha:
-                authorities[ref_d] = CanonicalUIAuthorityEntry(
-                    completed_weekly_reference_date=ref_d,
-                    effective_date=ref_d,
-                    source_filename=Path(src_f).name,
-                    source_sha256=src_sha,
-                    normalized_filename=Path(src_f).name,
-                    normalized_sha256=src_sha,
-                    reference_status="ACTIVE_REFERENCE",
-                )
+    # 1. Parse ACTIVE_REFERENCE rows only
+    df_active = df_prov[df_prov["reference_status"] == "ACTIVE_REFERENCE"]
+    prov_by_date: dict[str, dict[str, str]] = {}
+    for _, r in df_active.iterrows():
+        ref_d = str(r.get("completed_weekly_reference_date", "")).strip()
+        if ref_d:
+            prov_by_date[ref_d] = {
+                "effective_date": str(r.get("effective_date", "")).strip(),
+                "source_file": str(r.get("source_file", "")).strip(),
+                "source_sha256": str(r.get("sha256", "")).strip(),
+                "normalized_file": str(r.get("normalized_file", "")).strip(),
+                "normalized_sha256": str(r.get("normalized_sha256", "")).strip(),
+            }
 
-    # Phase 10 Production UI source authority (2025-01-31)
-    if P10_SOURCE_20250131.exists():
-        p10_sha = sha256_file(P10_SOURCE_20250131)
+    # 2. Cross-check against Grid rows
+    grid_by_date: dict[str, dict[str, str]] = {}
+    for _, r in df_grid.iterrows():
+        ref_d = str(r.get("completed_weekly_reference_date", "")).strip()
+        if ref_d:
+            grid_by_date[ref_d] = {
+                "source_file": str(r.get("source_file", "")).strip(),
+                "source_sha256": str(r.get("sha256", "")).strip(),
+            }
+
+    # Strict bidirectional match for Phase 13J entries
+    for ref_d, p_info in prov_by_date.items():
+        g_info = grid_by_date.get(ref_d)
+        if g_info is None:
+            raise SealedMarketCapCheckpointIntegrityError(
+                f"Canonical authority mismatch: {ref_d} is active in Provenance but missing in Grid."
+            )
+
+        p_src_name = Path(p_info["source_file"]).name
+        g_src_name = Path(g_info["source_file"]).name
+        if p_src_name != g_src_name:
+            raise SealedMarketCapCheckpointIntegrityError(
+                f"Source filename mismatch for {ref_d}: prov='{p_src_name}', grid='{g_src_name}'"
+            )
+
+        if p_info["source_sha256"] != g_info["source_sha256"]:
+            raise SealedMarketCapCheckpointIntegrityError(
+                f"Source SHA-256 mismatch for {ref_d}: prov='{p_info['source_sha256']}', grid='{g_info['source_sha256']}'"
+            )
+
+        norm_f = p_info["normalized_file"]
+        norm_name = Path(norm_f).name if norm_f else p_src_name
+        norm_sha = p_info["normalized_sha256"] if p_info["normalized_sha256"] else p_info["source_sha256"]
+
+        authorities[ref_d] = CanonicalUIAuthorityEntry(
+            completed_weekly_reference_date=ref_d,
+            effective_date=p_info["effective_date"] or ref_d,
+            source_filename=p_src_name,
+            source_sha256=p_info["source_sha256"],
+            normalized_filename=norm_name,
+            normalized_sha256=norm_sha,
+            reference_status="ACTIVE_REFERENCE",
+        )
+
+    # 3. Explicit Phase 10 Production Authority (2025-01-31)
+    if p10_source_path.exists():
+        p10_sha = sha256_file(p10_source_path)
         authorities["2025-01-31"] = CanonicalUIAuthorityEntry(
             completed_weekly_reference_date="2025-01-31",
             effective_date="2025-01-31",
-            source_filename=P10_SOURCE_20250131.name,
+            source_filename=p10_source_path.name,
             source_sha256=p10_sha,
-            normalized_filename=P10_SOURCE_20250131.name,
+            normalized_filename=p10_source_path.name,
             normalized_sha256=p10_sha,
             reference_status="ACTIVE_REFERENCE",
         )
 
-    logger.info("Loaded %d active canonical UI authority entries.", len(authorities))
+    logger.info("Loaded %d strictly cross-checked active canonical UI authorities.", len(authorities))
     return authorities
 
 
-def seal_checkpoint() -> None:
-    if not REQUIRED_DATES_CSV.exists():
-        raise FileNotFoundError(f"Missing required dates file: {REQUIRED_DATES_CSV}")
+def seal_checkpoint(
+    root: Path = ROOT,
+    required_dates_path: Path = REQUIRED_DATES_CSV,
+    manifest_path: Path = MANIFEST_CSV,
+    missing_dates_path: Path = MISSING_DATES_CSV,
+    pit_audit_path: Path = PIT_AUDIT_JSON,
+) -> None:
+    if not required_dates_path.exists():
+        raise FileNotFoundError(f"Missing required dates file: {required_dates_path}")
 
     # 1. Load Existing Manifest for Prior-Seal Revalidation & Corruption Guard
     old_manifest_by_date: dict[str, dict[str, Any]] = {}
-    if MANIFEST_CSV.exists():
-        df_old_man = pd.read_csv(MANIFEST_CSV, dtype=str).fillna("")
+    if manifest_path.exists():
+        df_old_man = pd.read_csv(manifest_path, dtype=str).fillna("")
         for _, r in df_old_man.iterrows():
             sig_d = str(r.get("signal_reference_date", "")).strip()
             if sig_d:
@@ -137,7 +172,7 @@ def seal_checkpoint() -> None:
 
     active_authorities = load_canonical_ui_authorities()
 
-    df_req = pd.read_csv(REQUIRED_DATES_CSV)
+    df_req = pd.read_csv(required_dates_path)
     required_dates = sorted(df_req["signal_reference_date"].unique().tolist())
     total_required = len(required_dates)
     logger.info("Verifying %d required signal reference dates against authority...", total_required)
@@ -169,17 +204,22 @@ def seal_checkpoint() -> None:
         "DERIVED_PROVIDER_RESPONSE_SNAPSHOT": 0,
     }
 
+    history_dir = root / "artifacts/patterns/pattern_a/validation/investability_history"
+    source_dir = history_dir / "source"
+    norm_dir = history_dir / "normalized"
+    p10_20250131 = root / "artifacts/patterns/pattern_a/production/investability/source/krx_market_cap_20250131.csv"
+
     for sig_d_str in required_dates:
         target_compact = sig_d_str.replace("-", "")
         norm_filename = f"krx_market_cap_{target_compact}.csv"
         raw_filename = f"krx_market_cap_{target_compact}.csv"
-        norm_path = NORMALIZED_DIR / norm_filename
-        raw_path = SOURCE_DIR / raw_filename
+        norm_path = norm_dir / norm_filename
+        raw_path = source_dir / raw_filename
 
         # Special handling for 2025-01-31 (Phase 10 production directory source)
-        if not norm_path.exists() and sig_d_str == "2025-01-31" and P10_SOURCE_20250131.exists():
-            norm_path = P10_SOURCE_20250131
-            raw_path = P10_SOURCE_20250131
+        if not norm_path.exists() and sig_d_str == "2025-01-31" and p10_20250131.exists():
+            norm_path = p10_20250131
+            raw_path = p10_20250131
 
         prev_record = old_manifest_by_date.get(sig_d_str)
         was_previously_available = (
@@ -246,18 +286,31 @@ def seal_checkpoint() -> None:
                     source_sha_seal_created_count += 1
                     normalized_sha_seal_created_count += 1
 
-                # 3. Dynamic ACTIVE Authority Derivation (Major 3)
+                # 3. Dynamic ACTIVE Authority Derivation (Major 2)
                 auth_entry = active_authorities.get(sig_d_str)
                 if auth_entry is not None:
-                    # Validate contract match
-                    if auth_entry.source_sha256 != actual_raw_sha:
+                    # Validate exact contract matches
+                    if raw_path.name != auth_entry.source_filename:
+                        raise SealedMarketCapCheckpointIntegrityError(
+                            f"Canonical source filename mismatch for {sig_d_str}: authority={auth_entry.source_filename}, actual={raw_path.name}"
+                        )
+                    if norm_path.name != auth_entry.normalized_filename:
+                        raise SealedMarketCapCheckpointIntegrityError(
+                            f"Canonical normalized filename mismatch for {sig_d_str}: authority={auth_entry.normalized_filename}, actual={norm_path.name}"
+                        )
+                    if actual_raw_sha != auth_entry.source_sha256:
                         raise SealedMarketCapCheckpointIntegrityError(
                             f"Canonical authority SHA mismatch for {sig_d_str}: authority={auth_entry.source_sha256}, actual={actual_raw_sha}"
                         )
-                    if auth_entry.normalized_sha256 != actual_norm_sha:
+                    if actual_norm_sha != auth_entry.normalized_sha256:
                         raise SealedMarketCapCheckpointIntegrityError(
                             f"Canonical normalized authority SHA mismatch for {sig_d_str}: authority={auth_entry.normalized_sha256}, actual={actual_norm_sha}"
                         )
+                    if eff_d != auth_entry.effective_date:
+                        raise SealedMarketCapCheckpointIntegrityError(
+                            f"Canonical effective date mismatch for {sig_d_str}: authority={auth_entry.effective_date}, actual={eff_d}"
+                        )
+
                     channel = "KRX_DATA_MARKETPLACE_UI_CSV"
                     role = "CANONICAL_RAW_UI_EXPORT"
                     src_status = "AVAILABLE_EXISTING"
@@ -282,8 +335,8 @@ def seal_checkpoint() -> None:
                     "requested_date": sig_d_str,
                     "effective_date": eff_d,
                     "date_resolution_status": "EXACT_COMPLETED_WEEK" if eff_d == sig_d_str else "PRIOR_COMPLETED_WEEK",
-                    "raw_source_file": str(raw_path.relative_to(ROOT)),
-                    "normalized_source_file": str(norm_path.relative_to(ROOT)),
+                    "raw_source_file": str(raw_path.relative_to(root)),
+                    "normalized_source_file": str(norm_path.relative_to(root)),
                     "raw_sha256": actual_raw_sha,
                     "normalized_sha256": actual_norm_sha,
                     "source_and_normalized_identical_content": bool(actual_raw_sha == actual_norm_sha),
@@ -294,7 +347,7 @@ def seal_checkpoint() -> None:
                     "integrity_status": "PASS",
                 })
             except Exception as e:
-                # Major 4: If previously available, HARD FAIL immediately
+                # If previously available, HARD FAIL immediately
                 if was_previously_available:
                     raise SealedMarketCapCheckpointIntegrityError(
                         f"Integrity check failed for previously sealed source {sig_d_str}: {e}"
@@ -380,26 +433,29 @@ def seal_checkpoint() -> None:
     df_manifest = pd.DataFrame(manifest_rows)
     df_missing = pd.DataFrame(missing_rows)
 
-    with tempfile.NamedTemporaryFile("w", dir=str(JULIA_V00_DIR), delete=False, encoding="utf-8", suffix=".csv") as tf_man:
+    manifest_parent = manifest_path.parent
+    manifest_parent.mkdir(parents=True, exist_ok=True)
+
+    with tempfile.NamedTemporaryFile("w", dir=str(manifest_parent), delete=False, encoding="utf-8", suffix=".csv") as tf_man:
         df_manifest.to_csv(tf_man.name, index=False)
         temp_man = Path(tf_man.name)
 
-    with tempfile.NamedTemporaryFile("w", dir=str(JULIA_V00_DIR), delete=False, encoding="utf-8", suffix=".csv") as tf_miss:
+    with tempfile.NamedTemporaryFile("w", dir=str(manifest_parent), delete=False, encoding="utf-8", suffix=".csv") as tf_miss:
         df_missing.to_csv(tf_miss.name, index=False)
         temp_miss = Path(tf_miss.name)
 
-    with tempfile.NamedTemporaryFile("w", dir=str(JULIA_V00_DIR), delete=False, encoding="utf-8", suffix=".json") as tf_audit:
+    with tempfile.NamedTemporaryFile("w", dir=str(manifest_parent), delete=False, encoding="utf-8", suffix=".json") as tf_audit:
         json.dump(pit_audit_checkpoint, tf_audit, indent=2, ensure_ascii=False)
         temp_audit = Path(tf_audit.name)
 
     # Atomic replace all
-    temp_man.replace(MANIFEST_CSV)
-    temp_miss.replace(MISSING_DATES_CSV)
-    temp_audit.replace(PIT_AUDIT_JSON)
+    temp_man.replace(manifest_path)
+    temp_miss.replace(missing_dates_path)
+    temp_audit.replace(pit_audit_path)
 
-    logger.info("Saved source manifest atomically to %s (%d rows)", MANIFEST_CSV, len(df_manifest))
-    logger.info("Saved missing dates manifest atomically to %s (%d rows)", MISSING_DATES_CSV, len(df_missing))
-    logger.info("Checkpoint PIT audit successfully saved atomically to %s", PIT_AUDIT_JSON)
+    logger.info("Saved source manifest atomically to %s (%d rows)", manifest_path, len(df_manifest))
+    logger.info("Saved missing dates manifest atomically to %s (%d rows)", missing_dates_path, len(df_missing))
+    logger.info("Checkpoint PIT audit successfully saved atomically to %s", pit_audit_path)
     logger.info("Summary: REQUIRED=%d, AVAILABLE=%d, MISSING=%d, COVERAGE=%.2f%%", total_required, available_count, missing_count, coverage_rate)
     logger.info("Channel breakdown: %s", channel_counts)
     logger.info("SHA stats: Created=%d, Revalidated=%d, Mismatch=%d", source_sha_seal_created_count, source_sha_revalidation_count, source_sha_mismatches)

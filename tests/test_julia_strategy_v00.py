@@ -3,16 +3,17 @@
 Validates:
   - 215 Required Reference Dates Determinism & Partition (117 Available + 98 Missing)
   - 2023-09-22 Canonical UI Authority Classification and Crosscheck
+  - Grid <-> Active Provenance Bidirectional Strict Crosscheck
   - Superseded Provenance Rows Excluded from Active Authority
   - Dual SHA (Source + Normalized) verification in Registry & Tampering Detection
-  - Sealed Source Corruption Hard Fail in Sealer
+  - Sealed Source Corruption Hard Fail in Sealer & Existing Artifact Preservation
   - Historical Market Cap & Liquidity PIT Thresholds (100B, 300M)
   - No lookahead on daily 20D average trading value calculation
   - Strategy First Entry Parity, Loss Guard Isolation, Exit3 Parity, Exit4 Parity (Non-vacuous)
   - Evaluation Window (2022-01-01 to 2026-08-14) and Lookback Invariants
   - Full Loss Guard Cohort Accounting Identity (N = M + (N - M))
   - Incomplete Report Governance (Performance metrics strictly suppressed when coverage < 100%)
-  - Full-Ready Report Freshness Gate (Stale sparse artifacts rejected, Fresh full-PIT accepted)
+  - Full-Ready Report Run Manifest Gate (All-artifact SHA verification, Stale/Mixed run rejection)
   - No local file:/// links in documentation
   - Canonical Historical V2 Protection (783 historical trades preserved)
 """
@@ -55,6 +56,7 @@ ROOT = Path(__file__).resolve().parent.parent
 JULIA_DIR = ROOT / "artifacts/strategies/julia/v00"
 SCORE_CONTRACT_PATH = ROOT / "artifacts/patterns/pattern_a_fast/production/contract_prototype/pattern_a_fast_score_prototype_v01.json"
 STAGE_CONTRACT_PATH = ROOT / "artifacts/patterns/pattern_a_fast/production/contract_prototype/pattern_a_fast_stage_prototype_v01.json"
+GRID_CSV = ROOT / "artifacts/patterns/pattern_a/validation/investability_history/krx_market_cap_reference_grid_v01.csv"
 PROVENANCE_CSV = ROOT / "artifacts/patterns/pattern_a/validation/investability_history/krx_historical_market_cap_provenance_v01.csv"
 MANIFEST_CSV = JULIA_DIR / "historical_market_cap_source_manifest.csv"
 
@@ -118,6 +120,25 @@ def test_2023_09_22_canonical_ui_authority_classification():
     assert r["integrity_status"] == "PASS"
 
 
+def test_grid_and_active_provenance_must_match():
+    """Verify strict bidirectional crosscheck between Grid and Active Provenance."""
+    assert GRID_CSV.exists()
+    assert PROVENANCE_CSV.exists()
+
+    df_grid = pd.read_csv(GRID_CSV)
+    df_prov = pd.read_csv(PROVENANCE_CSV)
+    df_active = df_prov[df_prov["reference_status"] == "ACTIVE_REFERENCE"]
+
+    grid_dates = set(df_grid["completed_weekly_reference_date"].unique())
+    active_dates = set(df_active["completed_weekly_reference_date"].unique())
+
+    # All grid completed weekly dates must be in active provenance
+    assert grid_dates == active_dates
+
+    authorities = load_canonical_ui_authorities()
+    assert len(authorities) == len(active_dates) + 1  # Active Phase13J (22) + Phase 10 2025-01-31 (1) = 23
+
+
 def test_superseded_provenance_not_active_authority():
     """Ensure superseded provenance rows (e.g. 2022-12-30) are excluded from active authority."""
     assert PROVENANCE_CSV.exists()
@@ -126,11 +147,12 @@ def test_superseded_provenance_not_active_authority():
     assert len(superseded_rows) > 0
 
     active_auth = load_canonical_ui_authorities()
+    active_source_shas = {auth.source_sha256 for auth in active_auth.values()}
+
     for _, r in superseded_rows.iterrows():
-        req_d = str(r["requested_date"])
-        # If requested date is superseded, it must not be active authority unless a valid active entry exists
-        if req_d in active_auth:
-            assert active_auth[req_d].reference_status == "ACTIVE_REFERENCE"
+        sup_sha = str(r.get("sha256", "")).strip()
+        # Superseded SHA must not leak into active authorities
+        assert sup_sha not in active_source_shas
 
 
 def test_incomplete_coverage_blocks_final_status():
@@ -204,6 +226,50 @@ def test_registry_fail_closed_on_missing_date():
     mcap_none, meta_none = reg.get_market_cap_at_reference("005930", "2024-07-19")
     assert mcap_none is None
     assert meta_none is None
+
+
+def test_sealer_existing_sealed_source_corruption_hard_fails():
+    """Sealer must hard fail on existing sealed available source corruption without downgrading to missing."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmp_root = Path(tmpdir)
+        tmp_julia_dir = tmp_root / "artifacts/strategies/julia/v00"
+        tmp_history_dir = tmp_root / "artifacts/patterns/pattern_a/validation/investability_history"
+        tmp_julia_dir.mkdir(parents=True, exist_ok=True)
+        (tmp_history_dir / "source").mkdir(parents=True, exist_ok=True)
+        (tmp_history_dir / "normalized").mkdir(parents=True, exist_ok=True)
+
+        # Copy required files
+        req_path = tmp_julia_dir / "historical_market_cap_required_dates.csv"
+        man_path = tmp_julia_dir / "historical_market_cap_source_manifest.csv"
+        miss_path = tmp_julia_dir / "historical_market_cap_missing_dates.csv"
+        audit_path = tmp_julia_dir / "historical_investability_pit_audit.json"
+
+        req_path.write_text((JULIA_DIR / "historical_market_cap_required_dates.csv").read_text(encoding="utf-8"), encoding="utf-8")
+        man_path.write_text((JULIA_DIR / "historical_market_cap_source_manifest.csv").read_text(encoding="utf-8"), encoding="utf-8")
+        miss_path.write_text((JULIA_DIR / "historical_market_cap_missing_dates.csv").read_text(encoding="utf-8"), encoding="utf-8")
+        audit_path.write_text((JULIA_DIR / "historical_investability_pit_audit.json").read_text(encoding="utf-8"), encoding="utf-8")
+
+        initial_man_sha = sha256_file(man_path)
+        initial_miss_sha = sha256_file(miss_path)
+        initial_audit_sha = sha256_file(audit_path)
+
+        # Corrupt a sealed normalized file (e.g. 2022-01-07)
+        norm_corrupted = tmp_history_dir / "normalized/krx_market_cap_20220107.csv"
+        norm_corrupted.write_text("corrupted,content\n1,2\n", encoding="utf-8")
+
+        with pytest.raises(SealedMarketCapCheckpointIntegrityError):
+            seal_checkpoint(
+                root=tmp_root,
+                required_dates_path=req_path,
+                manifest_path=man_path,
+                missing_dates_path=miss_path,
+                pit_audit_path=audit_path,
+            )
+
+        # Minor 1: Existing checkpoint artifacts must be 100% preserved (not overwritten)
+        assert sha256_file(man_path) == initial_man_sha
+        assert sha256_file(miss_path) == initial_miss_sha
+        assert sha256_file(audit_path) == initial_audit_sha
 
 
 # =============================================================================
@@ -429,7 +495,7 @@ def test_cohort_accounting_identity():
 
 
 # =============================================================================
-# 4. Incomplete Report & Full-Ready Freshness Governance Tests
+# 4. Incomplete Report & Full-Ready Run Manifest Freshness Tests
 # =============================================================================
 
 def test_incomplete_report_performance_suppressed():
@@ -454,8 +520,8 @@ def test_incomplete_report_performance_suppressed():
         assert "Full Loss Guard Cohort Accounting" not in doc_text
 
 
-def test_full_ready_rejects_stale_sparse_artifacts():
-    """When final_pit_backtest_ready is True, generator must reject stale sparse preliminary artifacts."""
+def test_full_ready_requires_run_manifest():
+    """When final_pit_backtest_ready is True, generator must reject if run manifest is missing."""
     summary_path = JULIA_DIR / "strategy_comparison_summary.json"
     assert summary_path.exists()
 
@@ -468,44 +534,143 @@ def test_full_ready_rejects_stale_sparse_artifacts():
         "historical_market_cap_source_coverage_rate": 100.0,
     }
 
-    # Stale summary lacks evidence_status == "FULL_PIT_COMPLETE" and manifest SHA
-    with pytest.raises(RuntimeError, match="Full Julia report rejected: strategy artifacts do not match"):
-        generate_full_research_report(stale_summary, fake_ready_audit)
+    with pytest.raises(RuntimeError, match="Full Julia report rejected: Missing run manifest authority"):
+        generate_full_research_report(stale_summary, fake_ready_audit, run_manifest_path=Path("/tmp/nonexistent_run_manifest.json"))
 
 
-def test_full_ready_accepts_fresh_full_pit_fixture():
-    """When fresh 100% FULL_PIT_COMPLETE metadata is provided, generator safely produces markdown."""
+def test_full_ready_rejects_mixed_run_artifacts():
+    """When summary metadata run_id does not match run manifest run_id, generator must reject."""
     summary_path = JULIA_DIR / "strategy_comparison_summary.json"
     assert summary_path.exists()
 
     base_summary = json.loads(summary_path.read_text(encoding="utf-8"))
     current_manifest_sha = sha256_file(MANIFEST_CSV)
 
-    fresh_summary = base_summary.copy()
-    fresh_summary["metadata"] = {
-        "evidence_status": "FULL_PIT_COMPLETE",
-        "run_id": "test_fresh_run_123",
-        "input_manifest_sha256": current_manifest_sha,
-        "required_date_count": 215,
-        "available_date_count": 215,
-        "missing_date_count": 0,
-        "coverage_rate": 100.0,
-        "evaluation_start": "2022-01-01",
-        "evaluation_end": "2026-08-14",
-    }
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmp_dir = Path(tmpdir)
+        run_manifest_path = tmp_dir / "full_pit_run_manifest.json"
 
-    fresh_ready_audit = {
-        "final_pit_backtest_ready": True,
-        "historical_market_cap_source_dates_required": 215,
-        "historical_market_cap_source_dates_available": 215,
-        "historical_market_cap_source_dates_missing": 0,
-        "historical_market_cap_source_coverage_rate": 100.0,
-    }
+        # Create valid run manifest with run_id A
+        run_manifest = {
+            "run_id": "RUN_A_12345",
+            "evidence_status": "FULL_PIT_COMPLETE",
+            "input_manifest_sha256": current_manifest_sha,
+            "required_date_count": 215,
+            "available_date_count": 215,
+            "missing_date_count": 0,
+            "coverage_rate": 100.0,
+            "evaluation_start": "2022-01-01",
+            "evaluation_end": "2026-08-14",
+            "artifacts": {
+                "strategy_comparison_summary.json": "fake_sha",
+                "loss_guard_recovery_summary.json": "fake_sha",
+                "big_winners.csv": "fake_sha",
+                "worst_losses.csv": "fake_sha",
+                "strategy_path_divergence.csv": "fake_sha",
+            },
+        }
+        run_manifest_path.write_text(json.dumps(run_manifest), encoding="utf-8")
 
-    report_text = generate_full_research_report(fresh_summary, fresh_ready_audit)
-    assert len(report_text) > 1000
-    assert "# Research Report: Julia Strategy V00 vs A FAST Core V2" in report_text
-    assert "Comparative Strategy Performance (2022+)" in report_text
+        # Summary has run_id B
+        mixed_summary = base_summary.copy()
+        mixed_summary["metadata"] = {
+            "evidence_status": "FULL_PIT_COMPLETE",
+            "run_id": "RUN_B_67890",
+            "input_manifest_sha256": current_manifest_sha,
+        }
+
+        fake_ready_audit = {
+            "final_pit_backtest_ready": True,
+            "historical_market_cap_source_dates_required": 215,
+            "historical_market_cap_source_dates_available": 215,
+            "historical_market_cap_source_dates_missing": 0,
+            "historical_market_cap_source_coverage_rate": 100.0,
+        }
+
+        with pytest.raises(RuntimeError, match="strategy_comparison_summary.json metadata run_id"):
+            generate_full_research_report(
+                mixed_summary,
+                fake_ready_audit,
+                julia_dir=tmp_dir,
+                manifest_path=MANIFEST_CSV,
+                run_manifest_path=run_manifest_path,
+            )
+
+
+def test_full_ready_accepts_complete_same_run_fixture():
+    """When all 5 artifacts exist and match run manifest SHA, report generates successfully."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmp_dir = Path(tmpdir)
+
+        # Copy and prepare all 5 artifacts
+        for name in [
+            "strategy_comparison_summary.json",
+            "loss_guard_recovery_summary.json",
+            "big_winners.csv",
+            "worst_losses.csv",
+            "strategy_path_divergence.csv",
+        ]:
+            src_p = JULIA_DIR / name
+            dst_p = tmp_dir / name
+            dst_p.write_text(src_p.read_text(encoding="utf-8"), encoding="utf-8")
+
+        # Calculate exact artifact SHAs
+        art_shas = {name: sha256_file(tmp_dir / name) for name in [
+            "strategy_comparison_summary.json",
+            "loss_guard_recovery_summary.json",
+            "big_winners.csv",
+            "worst_losses.csv",
+            "strategy_path_divergence.csv",
+        ]}
+
+        run_id = "VALID_FULL_PIT_RUN_001"
+        current_manifest_sha = sha256_file(MANIFEST_CSV)
+
+        run_manifest = {
+            "run_id": run_id,
+            "evidence_status": "FULL_PIT_COMPLETE",
+            "input_manifest_sha256": current_manifest_sha,
+            "required_date_count": 215,
+            "available_date_count": 215,
+            "missing_date_count": 0,
+            "coverage_rate": 100.0,
+            "evaluation_start": "2022-01-01",
+            "evaluation_end": "2026-08-14",
+            "artifacts": art_shas,
+        }
+        run_manifest_path = tmp_dir / "full_pit_run_manifest.json"
+        run_manifest_path.write_text(json.dumps(run_manifest), encoding="utf-8")
+
+        summary = json.loads((tmp_dir / "strategy_comparison_summary.json").read_text(encoding="utf-8"))
+        summary["metadata"] = {
+            "evidence_status": "FULL_PIT_COMPLETE",
+            "run_id": run_id,
+            "input_manifest_sha256": current_manifest_sha,
+        }
+        # Update summary on disk and re-hash in run manifest for exact parity
+        (tmp_dir / "strategy_comparison_summary.json").write_text(json.dumps(summary), encoding="utf-8")
+        run_manifest["artifacts"]["strategy_comparison_summary.json"] = sha256_file(tmp_dir / "strategy_comparison_summary.json")
+        run_manifest_path.write_text(json.dumps(run_manifest), encoding="utf-8")
+
+        fake_ready_audit = {
+            "final_pit_backtest_ready": True,
+            "historical_market_cap_source_dates_required": 215,
+            "historical_market_cap_source_dates_available": 215,
+            "historical_market_cap_source_dates_missing": 0,
+            "historical_market_cap_source_coverage_rate": 100.0,
+        }
+
+        report_text = generate_full_research_report(
+            summary,
+            fake_ready_audit,
+            julia_dir=tmp_dir,
+            manifest_path=MANIFEST_CSV,
+            run_manifest_path=run_manifest_path,
+        )
+
+        assert len(report_text) > 1000
+        assert "# Research Report: Julia Strategy V00 vs A FAST Core V2" in report_text
+        assert "Comparative Strategy Performance (2022+)" in report_text
 
 
 def test_no_local_file_uri_in_docs():

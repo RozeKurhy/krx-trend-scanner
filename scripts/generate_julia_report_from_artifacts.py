@@ -4,8 +4,8 @@
 Guarantees 100% exact parity between CSV/JSON artifacts and Markdown documentation.
 When final_pit_backtest_ready is False, all comparative performance metrics are strictly
 suppressed to prevent premature / non-authoritative evidence exposure.
-When final_pit_backtest_ready is True, strictly validates run freshness, manifest SHA, and
-FULL_PIT_COMPLETE evidence status before generating the full comparative research report.
+When final_pit_backtest_ready is True, strictly validates full_pit_run_manifest.json,
+matching all report-input artifact SHA-256 hashes and run identities before generating the report.
 Eliminates local file:// user links in favor of canonical repo-relative paths.
 """
 
@@ -21,6 +21,7 @@ ROOT = Path(__file__).resolve().parent.parent
 JULIA_DIR = ROOT / "artifacts/strategies/julia/v00"
 DOC_MD = ROOT / "docs/strategies/julia/v00.md"
 MANIFEST_CSV = JULIA_DIR / "historical_market_cap_source_manifest.csv"
+RUN_MANIFEST_JSON = JULIA_DIR / "full_pit_run_manifest.json"
 
 
 def sha256_file(path: Path) -> str:
@@ -59,7 +60,7 @@ def generate_checkpoint_report(pit_audit: dict) -> str:
 | **Source Collection Status** | `INTERRUPTED_KRX_TEMPORARY_RESTRICTION` |
 | **Final PIT Backtest Ready** | `False` |
 | **Final Result Status** | `INVALID_INCOMPLETE_PIT_COVERAGE` |
-| **Authoritative Start SHA** | `c95b8b817fe39cfad1b899ed1fb3207b1030eb5a` |
+| **Authoritative Start SHA** | `7e3d7bfe8ce5df21af916c2b28f130b8ef43bb7e` |
 
 ---
 
@@ -110,13 +111,27 @@ def generate_checkpoint_report(pit_audit: dict) -> str:
     return content
 
 
-def generate_full_research_report(summary: dict, pit_audit: dict) -> str:
+def generate_full_research_report(
+    summary: dict,
+    pit_audit: dict,
+    julia_dir: Path | None = None,
+    manifest_path: Path | None = None,
+    run_manifest_path: Path | None = None,
+) -> str:
     """Generate full comparative research report when 100% Full PIT coverage is achieved.
 
-    Strict Freshness Gate (Major 2):
-      Rejects stale sparse preliminary artifacts (e.g. 157/152 trades) from ever being promoted
-      to final authoritative documentation without a verified 100% PIT rerun identity.
+    Strict All-Artifact Run Identity Gate (Major 1):
+      Requires a valid full_pit_run_manifest.json where:
+        - evidence_status == FULL_PIT_COMPLETE
+        - input_manifest_sha256 == current source manifest SHA-256
+        - 100% coverage (215/215, missing=0)
+        - All 5 report-input artifacts (summary, LG summary, winners, worst, divergence) match exact SHA-256
+        - Summary metadata run_id matches run manifest run_id
     """
+    target_julia_dir = julia_dir or JULIA_DIR
+    target_manifest_path = manifest_path or (target_julia_dir / "historical_market_cap_source_manifest.csv")
+    target_run_manifest_path = run_manifest_path or (target_julia_dir / "full_pit_run_manifest.json")
+
     # 1. Audit Coverage Validation
     is_ready = bool(pit_audit.get("final_pit_backtest_ready", False))
     missing_count = pit_audit.get("historical_market_cap_source_dates_missing", -1)
@@ -127,47 +142,80 @@ def generate_full_research_report(summary: dict, pit_audit: dict) -> str:
             f"Full Julia report rejected: PIT audit is not 100% ready (ready={is_ready}, missing={missing_count}, coverage={cov_rate}%)."
         )
 
-    # 2. Summary Metadata Freshness & Run Identity Gate
-    meta = summary.get("metadata", {})
-    evidence_status = meta.get("evidence_status", "")
-    manifest_sha = meta.get("input_manifest_sha256", "")
-    req_d_count = meta.get("required_date_count", 0)
-    avail_d_count = meta.get("available_date_count", 0)
-    miss_d_count = meta.get("missing_date_count", -1)
+    # 2. Run Manifest Existence & Identity Gate
+    if not target_run_manifest_path.exists():
+        raise RuntimeError(
+            f"Full Julia report rejected: Missing run manifest authority: {target_run_manifest_path}"
+        )
 
-    current_manifest_sha = sha256_file(MANIFEST_CSV) if MANIFEST_CSV.exists() else ""
+    run_manifest = json.loads(target_run_manifest_path.read_text(encoding="utf-8"))
+    run_id = run_manifest.get("run_id", "")
+    evidence_status = run_manifest.get("evidence_status", "")
+    run_manifest_input_sha = run_manifest.get("input_manifest_sha256", "")
+    req_d_count = run_manifest.get("required_date_count", 0)
+    avail_d_count = run_manifest.get("available_date_count", 0)
+    miss_d_count = run_manifest.get("missing_date_count", -1)
+    cov_r = run_manifest.get("coverage_rate", 0.0)
+    eval_start = run_manifest.get("evaluation_start", "")
+    eval_end = run_manifest.get("evaluation_end", "")
+
+    current_manifest_sha = sha256_file(target_manifest_path) if target_manifest_path.exists() else ""
 
     if (
         evidence_status != "FULL_PIT_COMPLETE"
-        or manifest_sha != current_manifest_sha
+        or run_manifest_input_sha != current_manifest_sha
         or req_d_count != 215
         or avail_d_count != 215
         or miss_d_count != 0
+        or cov_r != 100.0
+        or eval_start != "2022-01-01"
+        or eval_end != "2026-08-14"
+        or not run_id
     ):
         raise RuntimeError(
-            "Full Julia report rejected: strategy artifacts do not match current 100% PIT manifest/run identity."
+            "Full Julia report rejected: full_pit_run_manifest.json failed contract validation or manifest SHA mismatch."
         )
 
-    # 3. Required Canonical Artifacts Existence
-    summary_path = JULIA_DIR / "strategy_comparison_summary.json"
-    lg_summary_path = JULIA_DIR / "loss_guard_recovery_summary.json"
-    winners_path = JULIA_DIR / "big_winners.csv"
-    worst_path = JULIA_DIR / "worst_losses.csv"
-    divergence_path = JULIA_DIR / "strategy_path_divergence.csv"
-
-    required_files = [summary_path, lg_summary_path, winners_path, worst_path, divergence_path]
-    missing = [str(p.name) for p in required_files if not p.exists()]
-    if missing:
+    # 3. Summary Metadata Run ID and Evidence Parity Gate
+    meta = summary.get("metadata", {})
+    if meta.get("evidence_status") != "FULL_PIT_COMPLETE" or meta.get("run_id") != run_id:
         raise RuntimeError(
-            f"Cannot generate Full Julia Research Report: Missing required canonical artifacts: {missing}"
+            f"Full Julia report rejected: strategy_comparison_summary.json metadata run_id '{meta.get('run_id')}' != run_manifest '{run_id}'"
         )
+
+    # 4. Validate All 5 Artifacts Existence & Exact SHA-256 Parity
+    artifacts_map = run_manifest.get("artifacts", {})
+    required_artifact_names = [
+        "strategy_comparison_summary.json",
+        "loss_guard_recovery_summary.json",
+        "big_winners.csv",
+        "worst_losses.csv",
+        "strategy_path_divergence.csv",
+    ]
+
+    for name in required_artifact_names:
+        expected_sha = artifacts_map.get(name)
+        if not expected_sha:
+            raise RuntimeError(f"Full Julia report rejected: run manifest is missing expected SHA for '{name}'")
+        art_path = target_julia_dir / name
+        if not art_path.exists():
+            raise RuntimeError(f"Full Julia report rejected: Missing required canonical artifact: {art_path}")
+        actual_sha = sha256_file(art_path)
+        if actual_sha != expected_sha:
+            raise RuntimeError(
+                f"Full Julia report rejected: Artifact SHA mismatch for '{name}': expected {expected_sha}, got {actual_sha}"
+            )
+
+    lg_summary_path = target_julia_dir / "loss_guard_recovery_summary.json"
+    winners_path = target_julia_dir / "big_winners.csv"
+    worst_path = target_julia_dir / "worst_losses.csv"
+    divergence_path = target_julia_dir / "strategy_path_divergence.csv"
 
     lg_summary = json.loads(lg_summary_path.read_text(encoding="utf-8"))
     df_winners = pd.read_csv(winners_path)
     df_worst = pd.read_csv(worst_path)
     df_divergence = pd.read_csv(divergence_path)
 
-    pairs = summary.get("pair_coverage", {})
     b_metrics = summary.get("baseline_v2_2022", {})
     j_metrics = summary.get("julia_v00_2022", {})
 
@@ -206,7 +254,7 @@ def generate_full_research_report(summary: dict, pit_audit: dict) -> str:
 | **Only Delta from Base** | Pre-PROGRESSED Loss Guard (-15% Daily Close Stop) `DISABLED` (OFF) |
 | **Tuning Gate** | `NO_TUNING` (All thresholds, parameters, and post-PROGRESSED exit rules frozen) |
 | **Historical Investability PIT** | `STRICT_POINT_IN_TIME` (Exact KRX snapshot, Fail Closed on missing date, Zero future fallback) |
-| **Authoritative Start SHA** | `{meta.get("supersedes_commit", "c95b8b817fe39cfad1b899ed1fb3207b1030eb5a")}` |
+| **Authoritative Start SHA** | `{meta.get("supersedes_commit", "7e3d7bfe8ce5df21af916c2b28f130b8ef43bb7e")}` |
 
 ---
 
@@ -260,7 +308,7 @@ $$\\text{{Baseline Loss Guard Total }} N = {lg_summary.get('baseline_loss_guard_
 
 1. **Production Status**: `NOT_APPROVED`
    - 기본 전략은 `PATTERN_A_FAST_FINAL_STRATEGY_V02`를 엄격히 유지합니다.
-2. **Project Next**: `PHASE12_RELATIVE_STRENGTH_RESUME`
+2. **Project Next**: `JULIA_V00_PROXY_MARKET_CAP_PIT_V01`
 """
     return content
 
