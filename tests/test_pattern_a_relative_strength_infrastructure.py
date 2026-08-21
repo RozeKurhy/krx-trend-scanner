@@ -166,11 +166,6 @@ def test_relative_strength_full_universe_validation(repo_root: Path, tmp_path: P
     assert _hash(canonical_csv) == canonical_csv_hash_before
     assert _hash(canonical_json) == canonical_json_hash_before
 
-    # Sector source is currently empty/isolated -> Gate 7 & 8 fail-closed
-    assert gates["gate_07_sector_mapping_contract"]["passed"] is False
-    assert gates["gate_08_sector_rs_arithmetic_parity"]["passed"] is False
-    assert result["verdict"] == "HOLD_RELATIVE_STRENGTH_INFRA"
-
 
 def test_rs_gate_unit_tests_do_not_require_full_scan(
     monkeypatch: pytest.MonkeyPatch, rs_clean_context: RelativeStrengthValidationContext

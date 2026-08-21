@@ -432,3 +432,141 @@ def test_summary_candidate_investability_breakdown_aggregation(mock_scanner_env)
         + summary.candidate_data_unavailable_count
         == summary.candidate_raw_count
     )
+
+
+@pytest.fixture
+def mock_scanner_investability_breakdown_env(tmp_path: Path):
+    """Investability candidate breakdown 4개 branch를 모두 실제 production
+    classification 경로로 exercise하기 위한 전용 synthetic 환경.
+
+    TEST_SUITE_PERFORMANCE_AUDIT_AND_REFACTOR_FIX_02 (Major 1): 기존
+    `mock_scanner_env`는 candidate 중 INVESTABLE만 실제로 non-zero였고
+    FILTERED_MARKET_CAP / FILTERED_LIQUIDITY / DATA_UNAVAILABLE 세 branch는
+    0 == 0 비교에 불과했다. 이 fixture는 canonical market cap snapshot
+    (artifacts/investability/source/krx_market_cap_20260814.csv)의 실제 값을
+    이용해 4개 branch를 모두 최소 1건씩 실제로 만들어낸다. 다른 scanner
+    test가 공유하는 `mock_scanner_env`에는 영향을 주지 않는다.
+
+    - 005930 (삼성전자, canonical 시가총액 약 1,604조원): INVESTABLE
+    - 014470 (canonical 시가총액 약 598.7억원, 1,000억원 미만): FILTERED_MARKET_CAP
+    - 000660 (SK하이닉스, canonical 시가총액 약 1,201조원이나 synthetic
+      trading_value를 0.5억원으로 낮춤): FILTERED_LIQUIDITY
+    - 701001 (canonical market cap snapshot에 존재하지 않는 가상 종목):
+      DATA_UNAVAILABLE
+
+    row status(investability_status)는 scan 이후 직접 mutate하지 않고,
+    scanner 입력(synthetic OHLCV + 실제 canonical market cap 값)만 조정해
+    production 코드가 스스로 해당 status를 생성하도록 구성했다.
+    """
+    cache_dir = tmp_path / "cache"
+    cache_dir.mkdir(parents=True)
+    cache = ParquetCache(base_dir=cache_dir)
+
+    df_investable = _create_mock_daily("2020-01-02", "2026-08-14", 50000.0)
+    cache.save("005930", df_investable)
+
+    df_filtered_market_cap = _create_mock_daily("2020-01-02", "2026-08-14", 15000.0)
+    cache.save("014470", df_filtered_market_cap)
+
+    df_filtered_liquidity = _create_mock_daily("2020-01-02", "2026-08-14", 80000.0)
+    df_filtered_liquidity["trading_value"] = 50_000_000.0
+    cache.save("000660", df_filtered_liquidity)
+
+    df_data_unavailable = _create_mock_daily("2020-01-02", "2026-08-14", 30000.0)
+    cache.save("701001", df_data_unavailable)
+
+    universe_securities = [
+        UniverseSecurity("005930", "삼성전자", MarketType.KOSPI),
+        UniverseSecurity("014470", "소형시총후보", MarketType.KOSDAQ),
+        UniverseSecurity("000660", "SK하이닉스", MarketType.KOSPI),
+        UniverseSecurity("701001", "캐노니컬미등재후보", MarketType.KOSDAQ),
+    ]
+
+    return {
+        "cache": cache,
+        "universe": universe_securities,
+        "as_of": "2026-08-14",
+        "ticker_investable": "005930",
+        "ticker_filtered_market_cap": "014470",
+        "ticker_filtered_liquidity": "000660",
+        "ticker_data_unavailable": "701001",
+    }
+
+
+def test_summary_candidate_investability_breakdown_all_branches(
+    mock_scanner_investability_breakdown_env,
+):
+    """Candidate investability breakdown의 4개 branch(INVESTABLE/FILTERED_MARKET_CAP/
+    FILTERED_LIQUIDITY/DATA_UNAVAILABLE)가 각각 실제 production scanner
+    classification 경로에서 non-zero로 생성되고, summary가 이를 올바르게
+    집계하는지 검증.
+
+    TEST_SUITE_PERFORMANCE_AUDIT_AND_REFACTOR_FIX_02 (Major 1):
+    `test_summary_candidate_investability_breakdown_aggregation`은 구조는
+    맞지만 기존 `mock_scanner_env`에서는 FILTERED_MARKET_CAP/FILTERED_LIQUIDITY/
+    DATA_UNAVAILABLE 세 branch가 실제로 0건이라 0 == 0 비교에 그쳤다.
+    이 test는 전용 fixture(`mock_scanner_investability_breakdown_env`)로 4개
+    branch를 모두 최소 1건씩 실제로 만들어 진짜 aggregation 검증을 완성한다.
+    """
+    env = mock_scanner_investability_breakdown_env
+    res = scan_pattern_a_universe(
+        cache=env["cache"],
+        as_of=env["as_of"],
+        universe_securities=env["universe"],
+    )
+    summary = res.summary
+
+    candidate_rows = [r for r in res.rows if r.candidate_state == PatternACandidateState.CANDIDATE]
+    assert len(candidate_rows) > 0, "synthetic universe에 CANDIDATE row가 없어 이 회귀 검증이 무의미함"
+
+    expected_investable = sum(
+        1 for r in candidate_rows if r.investability_status == InvestabilityStatus.INVESTABLE
+    )
+    expected_filtered_market_cap = sum(
+        1 for r in candidate_rows if r.investability_status == InvestabilityStatus.FILTERED_MARKET_CAP
+    )
+    expected_filtered_liquidity = sum(
+        1 for r in candidate_rows if r.investability_status == InvestabilityStatus.FILTERED_LIQUIDITY
+    )
+    expected_data_unavailable = sum(
+        1 for r in candidate_rows if r.investability_status == InvestabilityStatus.DATA_UNAVAILABLE
+    )
+
+    # 이번 Fix의 핵심 목표: 4개 branch가 모두 실제로 non-zero여야 한다.
+    assert expected_investable >= 1
+    assert expected_filtered_market_cap >= 1
+    assert expected_filtered_liquidity >= 1
+    assert expected_data_unavailable >= 1
+
+    assert summary.candidate_raw_count == len(candidate_rows)
+    assert summary.candidate_investable_count == expected_investable
+    assert summary.candidate_filtered_market_cap_count == expected_filtered_market_cap
+    assert summary.candidate_filtered_liquidity_count == expected_filtered_liquidity
+    assert summary.candidate_data_unavailable_count == expected_data_unavailable
+
+    assert (
+        summary.candidate_investable_count
+        + summary.candidate_filtered_market_cap_count
+        + summary.candidate_filtered_liquidity_count
+        + summary.candidate_data_unavailable_count
+        == summary.candidate_raw_count
+    )
+
+    # Classification path 자체도 대표 ticker 기준으로 최소 확인
+    rows_by_ticker = {r.ticker: r for r in res.rows}
+    assert (
+        rows_by_ticker[env["ticker_investable"]].investability_status
+        == InvestabilityStatus.INVESTABLE
+    )
+    assert (
+        rows_by_ticker[env["ticker_filtered_market_cap"]].investability_status
+        == InvestabilityStatus.FILTERED_MARKET_CAP
+    )
+    assert (
+        rows_by_ticker[env["ticker_filtered_liquidity"]].investability_status
+        == InvestabilityStatus.FILTERED_LIQUIDITY
+    )
+    assert (
+        rows_by_ticker[env["ticker_data_unavailable"]].investability_status
+        == InvestabilityStatus.DATA_UNAVAILABLE
+    )

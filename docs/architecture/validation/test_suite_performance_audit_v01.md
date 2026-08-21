@@ -245,6 +245,40 @@ breakdown을 올바르게 집계하는가"라는 원래의 scanner aggregation c
    되지 않도록 함). 2,528종목 Full Universe Scan은 이 test에서도 사용하지
    않는다(synthetic 4종목).
 
+**TEST_SUITE_PERFORMANCE_AUDIT_AND_REFACTOR_FIX_02 (Major 1) 추가 수정**: 위
+`test_summary_candidate_investability_breakdown_aggregation`은 구조 자체는
+맞았지만, 기존 `mock_scanner_env`(005930/000660만 CANDIDATE, 둘 다
+INVESTABLE)에서는 `candidate_filtered_market_cap_count`/
+`candidate_filtered_liquidity_count`/`candidate_data_unavailable_count` 세
+필드가 실제로 항상 0이라 해당 assertion들이 사실상 `0 == 0`만 검증하고
+있었다. 이를 전용 fixture `mock_scanner_investability_breakdown_env`로
+복구했다:
+
+- `005930`(canonical market cap snapshot 기준 시가총액 약 1,604조원, 충분한
+  synthetic 거래대금) → `INVESTABLE`
+- `014470`(canonical snapshot 기준 실제 시가총액 약 598.7억원 — 1,000억원
+  미만) → `FILTERED_MARKET_CAP`
+- `000660`(canonical snapshot 기준 시가총액 약 1,201조원이나, synthetic
+  daily의 `trading_value`를 0.5억원으로 낮춤 — 3억원 미만) →
+  `FILTERED_LIQUIDITY`
+- `701001`(canonical market cap snapshot에 존재하지 않는 가상 종목 코드,
+  단 Pattern A candidate 판정에 필요한 48개월+ 이력은 충분) →
+  `DATA_UNAVAILABLE`
+
+네 ticker 모두 scan 결과 row를 테스트 코드에서 직접 mutate하지 않고, scanner
+입력(synthetic OHLCV + 실제 canonical market cap 값)만 조정해 production
+classification 코드가 스스로 해당 status를 생성하도록 구성했다(실측 확인
+완료). 신규 test
+`test_summary_candidate_investability_breakdown_all_branches`가 4개 branch
+모두 `>= 1`임을 먼저 assert한 뒤 summary aggregation을 검증하고, 대표
+ticker별 `investability_status`도 직접 확인한다.
+
+`SCANNER_SUMMARY_AGGREGATION_COVERAGE = FULLY_RESTORED`
+
+기존 `test_summary_candidate_investability_breakdown_aggregation`(공유
+`mock_scanner_env` 기반)과 `test_canonical_candidate_summary_breakdown`은
+변경 없이 그대로 유지된다.
+
 ### 5.4 Stock Report 반복 생성 (P1)
 
 4개 파일에서 동일 (ticker, as_of, repo_root=REPO_ROOT, save_artifacts=False)
@@ -327,6 +361,11 @@ FIX_01 이후 실측 (RS_SLOW, public runner 직접 호출로 수정된 뒤 재�
   output artifact 4개 파일 존재 확인, canonical artifact(CSV/JSON) 해시
   실행 전후 불변 확인 — 모두 PASS.
 
+  FIX_02: 위 test 안에서 Gate 7/8 False + verdict 검증 assertion 3줄이
+  중복 작성되어 있던 것을 발견해 마지막 중복 블록만 제거했다(기능/semantics
+  변경 없음). RS logic/path를 건드리지 않는 순수 정리라 slow test는
+  재실행하지 않고 `--collect-only`로만 구문/import 확인했다.
+
 Foreign_Flow_NORMAL (-m "not slow and not integration", V01 실측 — FIX_01에서
   이 파일은 수정도, 재실행도 하지 않았다(w.md §19). base_scan_result 잔존
   Full Universe Scan 1회는 P2 Remaining Performance Debt로 분류(8번 참고))
@@ -348,6 +387,16 @@ FIX_01 이후: Investability + Full_Universe_Scanner 통합 재실행
   + Full_Universe_Scanner 13개 — 신규 `test_summary_candidate_investability_breakdown_aggregation`
   1개 추가로 12->13). 2,528종목 Full Universe Scan = 0회, synthetic small
   universe만 사용.
+
+FIX_02 이후: Investability + Full_Universe_Scanner 통합 재실행
+  (동일 command, 신규 전용 fixture `mock_scanner_investability_breakdown_env` +
+  신규 test `test_summary_candidate_investability_breakdown_all_branches`
+  추가 후)
+  27 passed, 4.72초 (Full_Universe_Scanner 13->14). 4개 candidate
+  investability branch(INVESTABLE/FILTERED_MARKET_CAP/FILTERED_LIQUIDITY/
+  DATA_UNAVAILABLE) 모두 실측 non-zero(각 1건)로 실제 production
+  classification 경로에서 생성됨을 확인 — `SCANNER_SUMMARY_AGGREGATION_COVERAGE
+  = FULLY_RESTORED`. 2,528종목 Full Universe Scan = 0회 유지.
 
 Stock_Report_NORMAL (4개 파일 통합 실행, -m "not slow and not integration")
   77 passed, 171.63초
