@@ -1,5 +1,10 @@
 #!/usr/bin/env python
-"""Seal 117/215 KRX Historical Market Cap Sources with Precise Provenance Reclassification."""
+"""Seal 117/215 KRX Historical Market Cap Sources with Dynamic Authority Derivation.
+
+Derives source provenance dynamically from existing Phase 13J / Phase 10 canonical authorities
+(eliminates all date hardcoding), separates SHA seal creation from prior-seal revalidation,
+and seals the interrupted checkpoint artifacts.
+"""
 
 from __future__ import annotations
 
@@ -21,34 +26,68 @@ SOURCE_DIR = HISTORY_DIR / "source"
 NORMALIZED_DIR = HISTORY_DIR / "normalized"
 JULIA_V00_DIR = ROOT / "artifacts/strategies/julia/v00"
 
+GRID_CSV = HISTORY_DIR / "krx_market_cap_reference_grid_v01.csv"
+PROVENANCE_CSV = HISTORY_DIR / "krx_historical_market_cap_provenance_v01.csv"
+P10_SOURCE_20250131 = ROOT / "artifacts/patterns/pattern_a/production/investability/source/krx_market_cap_20250131.csv"
+P10_SOURCE_20260814 = ROOT / "artifacts/patterns/pattern_a/production/investability/source/krx_market_cap_20260814.csv"
+
 REQUIRED_DATES_CSV = JULIA_V00_DIR / "historical_market_cap_required_dates.csv"
 MANIFEST_CSV = JULIA_V00_DIR / "historical_market_cap_source_manifest.csv"
 MISSING_DATES_CSV = JULIA_V00_DIR / "historical_market_cap_missing_dates.csv"
 PIT_AUDIT_JSON = JULIA_V00_DIR / "historical_investability_pit_audit.json"
-
-# Canonical UI export dates from Phase13J and Phase10
-CANONICAL_UI_DATES = {
-    "2020-03-27", "2020-06-26", "2020-09-25", "2020-12-18", "2020-12-24",
-    "2021-03-26", "2021-06-25", "2021-09-24", "2021-12-24", "2021-12-30",
-    "2022-03-25", "2022-06-24", "2022-09-30", "2022-12-23", "2022-12-29",
-    "2023-03-31", "2023-06-30", "2023-09-27", "2023-12-22", "2023-12-28",
-    "2024-03-29", "2024-06-28", "2024-09-27", "2024-12-27", "2025-03-28",
-    "2025-06-27", "2025-01-31", "2026-08-14"
-}
 
 
 def sha256_file(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def load_canonical_ui_authority_basenames() -> set[str]:
+    """Dynamically extract canonical UI export file basenames from Phase 13J & Phase 10 authorities."""
+    canonical_basenames = set()
+
+    if GRID_CSV.exists():
+        df_grid = pd.read_csv(GRID_CSV)
+        for _, r in df_grid.iterrows():
+            src = str(r.get("source_file", "")).strip()
+            if src:
+                canonical_basenames.add(Path(src).name)
+
+    if PROVENANCE_CSV.exists():
+        df_prov = pd.read_csv(PROVENANCE_CSV)
+        for _, r in df_prov.iterrows():
+            src = str(r.get("source_file", "")).strip()
+            if src:
+                canonical_basenames.add(Path(src).name)
+
+    if P10_SOURCE_20250131.exists():
+        canonical_basenames.add(P10_SOURCE_20250131.name)
+    if P10_SOURCE_20260814.exists():
+        canonical_basenames.add(P10_SOURCE_20260814.name)
+
+    logger.info("Dynamically derived %d canonical UI export basenames from existing authority.", len(canonical_basenames))
+    return canonical_basenames
+
+
 def seal_checkpoint() -> None:
     if not REQUIRED_DATES_CSV.exists():
         raise FileNotFoundError(f"Missing required dates file: {REQUIRED_DATES_CSV}")
 
+    # 1. Load Existing Manifest for Prior-Seal Revalidation
+    old_manifest_by_date: dict[str, dict[str, Any]] = {}
+    if MANIFEST_CSV.exists():
+        df_old_man = pd.read_csv(MANIFEST_CSV, dtype=str).fillna("")
+        for _, r in df_old_man.iterrows():
+            sig_d = str(r.get("signal_reference_date", "")).strip()
+            if sig_d:
+                old_manifest_by_date[sig_d] = dict(r)
+        logger.info("Loaded previous manifest with %d entries for SHA revalidation.", len(old_manifest_by_date))
+
+    canonical_ui_basenames = load_canonical_ui_authority_basenames()
+
     df_req = pd.read_csv(REQUIRED_DATES_CSV)
     required_dates = sorted(df_req["signal_reference_date"].unique().tolist())
     total_required = len(required_dates)
-    logger.info("Verifying %d required signal reference dates with strict provenance classification...", total_required)
+    logger.info("Verifying %d required signal reference dates against authority...", total_required)
 
     manifest_rows: list[dict[str, Any]] = []
     missing_rows: list[dict[str, Any]] = []
@@ -57,6 +96,10 @@ def seal_checkpoint() -> None:
     missing_count = 0
     broken_source_paths = 0
     broken_norm_paths = 0
+    source_sha_seal_created_count = 0
+    normalized_sha_seal_created_count = 0
+    source_sha_revalidation_count = 0
+    normalized_sha_revalidation_count = 0
     source_sha_mismatches = 0
     norm_sha_mismatches = 0
     effective_date_violations = 0
@@ -75,15 +118,15 @@ def seal_checkpoint() -> None:
 
     for sig_d_str in required_dates:
         target_compact = sig_d_str.replace("-", "")
-        norm_path = NORMALIZED_DIR / f"krx_market_cap_{target_compact}.csv"
-        raw_path = SOURCE_DIR / f"krx_market_cap_{target_compact}.csv"
+        norm_filename = f"krx_market_cap_{target_compact}.csv"
+        raw_filename = f"krx_market_cap_{target_compact}.csv"
+        norm_path = NORMALIZED_DIR / norm_filename
+        raw_path = SOURCE_DIR / raw_filename
 
-        # Special case for 2025-01-31 (Phase 10 source in production investability directory)
-        if not norm_path.exists() and sig_d_str == "2025-01-31":
-            p10_src = ROOT / "artifacts/patterns/pattern_a/production/investability/source/krx_market_cap_20250131.csv"
-            if p10_src.exists():
-                norm_path = p10_src
-                raw_path = p10_src
+        # Special handling for 2025-01-31 (Phase 10 production directory source)
+        if not norm_path.exists() and sig_d_str == "2025-01-31" and P10_SOURCE_20250131.exists():
+            norm_path = P10_SOURCE_20250131
+            raw_path = P10_SOURCE_20250131
 
         if norm_path.exists() and norm_path.stat().st_size > 1000:
             try:
@@ -109,11 +152,32 @@ def seal_checkpoint() -> None:
                     broken_source_paths += 1
                     raise ValueError(f"Missing source file: {raw_path}")
 
-                raw_sha = sha256_file(raw_path)
-                norm_sha = sha256_file(norm_path)
+                actual_raw_sha = sha256_file(raw_path)
+                actual_norm_sha = sha256_file(norm_path)
 
-                # Provenance classification
-                is_canonical_ui = sig_d_str in CANONICAL_UI_DATES
+                # Prior-Seal Revalidation vs Seal Creation
+                prev_record = old_manifest_by_date.get(sig_d_str)
+                if prev_record and prev_record.get("raw_sha256") and prev_record.get("normalized_sha256"):
+                    prev_raw_sha = prev_record["raw_sha256"]
+                    prev_norm_sha = prev_record["normalized_sha256"]
+
+                    if actual_raw_sha == prev_raw_sha:
+                        source_sha_revalidation_count += 1
+                    else:
+                        source_sha_mismatches += 1
+                        raise ValueError(f"Source SHA mismatch for {sig_d_str}: expected {prev_raw_sha}, got {actual_raw_sha}")
+
+                    if actual_norm_sha == prev_norm_sha:
+                        normalized_sha_revalidation_count += 1
+                    else:
+                        norm_sha_mismatches += 1
+                        raise ValueError(f"Normalized SHA mismatch for {sig_d_str}: expected {prev_norm_sha}, got {actual_norm_sha}")
+                else:
+                    source_sha_seal_created_count += 1
+                    normalized_sha_seal_created_count += 1
+
+                # 3. Dynamic Authority Derivation (No Date Hardcoding)
+                is_canonical_ui = (raw_filename in canonical_ui_basenames) or (norm_filename in canonical_ui_basenames)
                 if is_canonical_ui:
                     channel = "KRX_DATA_MARKETPLACE_UI_CSV"
                     role = "CANONICAL_RAW_UI_EXPORT"
@@ -141,9 +205,9 @@ def seal_checkpoint() -> None:
                     "date_resolution_status": "EXACT_COMPLETED_WEEK" if eff_d == sig_d_str else "PRIOR_COMPLETED_WEEK",
                     "raw_source_file": str(raw_path.relative_to(ROOT)),
                     "normalized_source_file": str(norm_path.relative_to(ROOT)),
-                    "raw_sha256": raw_sha,
-                    "normalized_sha256": norm_sha,
-                    "source_and_normalized_identical_content": bool(raw_sha == norm_sha),
+                    "raw_sha256": actual_raw_sha,
+                    "normalized_sha256": actual_norm_sha,
+                    "source_and_normalized_identical_content": bool(actual_raw_sha == actual_norm_sha),
                     "raw_row_count": len(df_norm),
                     "normalized_row_count": len(df_norm),
                     "source_status": src_status,
@@ -220,10 +284,10 @@ def seal_checkpoint() -> None:
         "broken_normalized_path_count": broken_norm_paths,
         "source_file_integrity_verified_count": available_count,
         "normalized_file_integrity_verified_count": available_count,
-        "source_sha_seal_created_count": available_count,
-        "normalized_sha_seal_created_count": available_count,
-        "source_sha_revalidation_count": available_count,
-        "normalized_sha_revalidation_count": available_count,
+        "source_sha_seal_created_count": source_sha_seal_created_count,
+        "normalized_sha_seal_created_count": normalized_sha_seal_created_count,
+        "source_sha_revalidation_count": source_sha_revalidation_count,
+        "normalized_sha_revalidation_count": normalized_sha_revalidation_count,
         "source_sha_mismatch_count": source_sha_mismatches,
         "normalized_sha_mismatch_count": norm_sha_mismatches,
         "effective_date_violation_count": effective_date_violations,
@@ -234,7 +298,7 @@ def seal_checkpoint() -> None:
         },
         "source_channel_counts": channel_counts,
         "source_role_counts": role_counts,
-        "operator_note": f"KRX Data Marketplace usage restriction encountered on 2026-08-22. {available_count} dates successfully sealed and provenance-reclassified. {missing_count} dates pending resumption via approved KRX Open API.",
+        "operator_note": f"KRX Data Marketplace usage restriction encountered on 2026-08-22. {available_count} dates successfully sealed and authority-derived. {missing_count} dates pending resumption via approved KRX Open API.",
     }
     with open(PIT_AUDIT_JSON, "w", encoding="utf-8") as f:
         json.dump(pit_audit_checkpoint, f, indent=2, ensure_ascii=False)
@@ -242,6 +306,7 @@ def seal_checkpoint() -> None:
     logger.info("Checkpoint PIT audit successfully saved to %s", PIT_AUDIT_JSON)
     logger.info("Summary: REQUIRED=%d, AVAILABLE=%d, MISSING=%d, COVERAGE=%.2f%%", total_required, available_count, missing_count, coverage_rate)
     logger.info("Channel breakdown: %s", channel_counts)
+    logger.info("SHA stats: Created=%d, Revalidated=%d, Mismatch=%d", source_sha_seal_created_count, source_sha_revalidation_count, source_sha_mismatches)
 
 
 if __name__ == "__main__":

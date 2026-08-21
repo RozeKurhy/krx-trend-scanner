@@ -9,7 +9,7 @@ Core Strategy Mandate:
   - Initial Position State: FLAT
   - Lookback: Full pre-2022 history used for signal and feature calculation (Lookback != Window)
   - Strict PIT Historical Investability: Point-in-time exact KRX snapshot, Fail Closed on missing dates.
-  - Manifest-Driven Strict Provenance: Canonical paths, provider/channel/role classification, SHA verification.
+  - Manifest-Driven Strict Provenance: Dual SHA (Source + Normalized) verification, no silent fallbacks.
 """
 
 from __future__ import annotations
@@ -75,11 +75,11 @@ class HistoricalMarketCapRegistry:
         snapshots: dict[str, dict[str, float]] = {}
         metadata: dict[str, dict[str, Any]] = {}
 
-        # 1. Prefer Manifest if available (Fix 02/03 authority)
+        # 1. Manifest Authority (Strict Fail-Closed, No Fallback if Manifest Exists)
         if manifest_path.exists():
             df_man = pd.read_csv(manifest_path, dtype=str).fillna("")
             for _, row in df_man.iterrows():
-                sig_d = str(row["signal_reference_date"]).strip()
+                sig_d = str(row.get("signal_reference_date", "")).strip()
                 avail_str = str(row.get("available", "")).strip().lower()
                 integ_status = str(row.get("integrity_status", "")).strip()
 
@@ -92,28 +92,45 @@ class HistoricalMarketCapRegistry:
                 role = str(row.get("source_role", "")).strip()
                 auth_status = str(row.get("authority_status", "")).strip()
                 eff_d = str(row.get("effective_date", "")).strip()
-                norm_rel = str(row.get("normalized_source_file", "")).strip()
                 raw_rel = str(row.get("raw_source_file", "")).strip()
-                manifest_norm_sha = str(row.get("normalized_sha256", "")).strip()
+                norm_rel = str(row.get("normalized_source_file", "")).strip()
                 manifest_raw_sha = str(row.get("raw_sha256", "")).strip()
+                manifest_norm_sha = str(row.get("normalized_sha256", "")).strip()
 
                 if enforce_integrity:
                     if provider != "KRX":
-                        raise HistoricalMarketCapIntegrityError(f"Invalid provider for {sig_d}: {provider}")
+                        raise HistoricalMarketCapIntegrityError(f"Invalid provider for {sig_d}: '{provider}'")
                     if channel not in VALID_CHANNELS:
-                        raise HistoricalMarketCapIntegrityError(f"Invalid channel for {sig_d}: {channel}")
+                        raise HistoricalMarketCapIntegrityError(f"Invalid channel for {sig_d}: '{channel}'")
+                    if not role:
+                        raise HistoricalMarketCapIntegrityError(f"Missing source_role for {sig_d}")
+                    if not auth_status:
+                        raise HistoricalMarketCapIntegrityError(f"Missing authority_status for {sig_d}")
                     if not eff_d or pd.Timestamp(eff_d) > pd.Timestamp(sig_d):
                         raise HistoricalMarketCapIntegrityError(f"Effective date {eff_d} > signal date {sig_d}")
+                    if not raw_rel:
+                        raise HistoricalMarketCapIntegrityError(f"Missing raw_source_file in manifest for {sig_d}")
                     if not norm_rel:
-                        raise HistoricalMarketCapIntegrityError(f"Missing normalized path in manifest for {sig_d}")
+                        raise HistoricalMarketCapIntegrityError(f"Missing normalized_source_file in manifest for {sig_d}")
+                    if not manifest_raw_sha:
+                        raise HistoricalMarketCapIntegrityError(f"Missing raw_sha256 in manifest for {sig_d}")
+                    if not manifest_norm_sha:
+                        raise HistoricalMarketCapIntegrityError(f"Missing normalized_sha256 in manifest for {sig_d}")
 
+                raw_p = root / raw_rel
                 norm_p = root / norm_rel
+
+                if not raw_p.exists():
+                    raise HistoricalMarketCapIntegrityError(f"Source file does not exist: {raw_p}")
                 if not norm_p.exists():
-                    if enforce_integrity:
-                        raise HistoricalMarketCapIntegrityError(f"Normalized source file does not exist: {norm_p}")
-                    continue
+                    raise HistoricalMarketCapIntegrityError(f"Normalized file does not exist: {norm_p}")
 
                 if enforce_integrity:
+                    actual_raw_sha = _sha256_file(raw_p)
+                    if actual_raw_sha != manifest_raw_sha:
+                        raise HistoricalMarketCapIntegrityError(
+                            f"Source SHA mismatch for {sig_d}: expected {manifest_raw_sha}, got {actual_raw_sha}"
+                        )
                     actual_norm_sha = _sha256_file(norm_p)
                     if actual_norm_sha != manifest_norm_sha:
                         raise HistoricalMarketCapIntegrityError(
@@ -122,9 +139,7 @@ class HistoricalMarketCapRegistry:
 
                 df = pd.read_csv(norm_p, dtype={"ticker": str})
                 if df.empty or "ticker" not in df.columns or "market_cap" not in df.columns:
-                    if enforce_integrity:
-                        raise HistoricalMarketCapIntegrityError(f"Corrupt normalized file: {norm_p}")
-                    continue
+                    raise HistoricalMarketCapIntegrityError(f"Corrupt normalized file: {norm_p}")
 
                 if enforce_integrity:
                     if df["ticker"].duplicated().any():
@@ -139,7 +154,7 @@ class HistoricalMarketCapRegistry:
                     "source_provider": provider,
                     "source_channel": channel,
                     "source_role": role,
-                    "source_file": raw_rel or norm_rel,
+                    "source_file": raw_rel,
                     "normalized_file": norm_rel,
                     "source_sha256": manifest_raw_sha,
                     "normalized_sha256": manifest_norm_sha,
@@ -151,8 +166,10 @@ class HistoricalMarketCapRegistry:
 
             if snapshots:
                 return cls(snapshots=snapshots, metadata=metadata)
+            else:
+                raise HistoricalMarketCapIntegrityError("Manifest contains zero available valid snapshots.")
 
-        # 2. Fallback to canonical 22 quarterly grid
+        # 2. Legacy Fallback ONLY if Manifest does not exist at all
         if grid_path.exists():
             grid = pd.read_csv(grid_path, dtype=str)
             for _, row in grid.iterrows():
