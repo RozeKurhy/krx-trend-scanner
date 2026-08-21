@@ -1,0 +1,163 @@
+{
+  "metadata": {
+    "task": "JULIA_STRATEGY_V00_2022_CONTROLLED_COMPARATIVE_BACKTEST",
+    "base_strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+    "experiment_strategy_id": "JULIA_STRATEGY_V00",
+    "classification": "EXPLORATORY_CANDIDATE",
+    "evidence_classification": "SAME_SAMPLE_RETROSPECTIVE",
+    "evaluation_start": "2022-01-01",
+    "evaluation_end": "2026-08-14",
+    "only_delta": "PRE_PROGRESSED_LOSS_GUARD_OFF",
+    "no_tuning": true,
+    "pre_2022_lookback_used": true,
+    "pre_2022_trades_included": false,
+    "initial_position_state": "FLAT",
+    "investable_universe_count": 1081,
+    "elapsed_seconds": 634.59
+  },
+  "baseline_v2_2022": {
+    "total_trades": 696,
+    "unique_tickers": 544,
+    "first_entries": 544,
+    "reentries": 152,
+    "reentered_tickers_count": 131,
+    "open_trades": 94,
+    "closed_trades": 602,
+    "return_stats": {
+      "count": 696,
+      "mean": 20.08,
+      "median": -13.08,
+      "p25": -16.09,
+      "p75": 42.3,
+      "p90": 87.55,
+      "std": 70.08,
+      "min": -49.4,
+      "max": 912.41,
+      "positive_rate": 40.66
+    },
+    "percentiles": {
+      "p10": -17.880000000000003,
+      "p25": -16.085,
+      "p50": -13.079999999999998,
+      "p75": 42.295,
+      "p90": 87.55,
+      "p95": 121.1975
+    },
+    "loss_tail": {
+      "le_neg_15_count": 282,
+      "le_neg_15_rate": 40.52,
+      "le_neg_20_count": 34,
+      "le_neg_20_rate": 4.89,
+      "le_neg_30_count": 9,
+      "le_neg_30_rate": 1.29,
+      "le_neg_40_count": 2,
+      "le_neg_40_rate": 0.29,
+      "le_neg_50_count": 0,
+      "le_neg_50_rate": 0.0
+    },
+    "upside_tail": {
+      "ge_20_count": 219,
+      "ge_20_rate": 31.47,
+      "ge_50_count": 157,
+      "ge_50_rate": 22.56,
+      "ge_100_count": 57,
+      "ge_100_rate": 8.19,
+      "ge_200_count": 12,
+      "ge_200_rate": 1.72
+    },
+    "exit_counts": {
+      "LOSS_GUARD_CLOSE_LE_NEG_15": 359,
+      "EXIT4_SCORE_DRAWDOWN_GE_15": 216,
+      "NO_EXIT_BEFORE_CUTOFF": 50,
+      "NO_PROGRESSED_BEFORE_CUTOFF": 44,
+      "EXIT3_PROGRESSED_TO_WEAK": 15,
+      "EXIT3_PROGRESSED_TO_TRANSITION": 7,
+      "EXIT3_PROGRESSED_TO_EARLY_TREND": 3,
+      "EXIT3_PROGRESSED_TO_BASE": 2
+    },
+    "ticker_cumulative": {
+      "unique_tickers": 544,
+      "positive_tickers_count": 269,
+      "positive_ticker_rate": 49.45,
+      "mean_cumulative_return": 24.57,
+      "median_cumulative_return": -2.27,
+      "p25": -16.57,
+      "p75": 52.22,
+      "p90": 94.17,
+      "min": -55.08,
+      "max": 912.41
+    }
+  },
+  "julia_v00_2022": {
+    "total_trades": 556,
+    "unique_tickers": 544,
+    "first_entries": 544,
+    "reentries": 12,
+    "reentered_tickers_count": 12,
+    "open_trades": 261,
+    "closed_trades": 295,
+    "return_stats": {
+      "count": 556,
+      "mean": 38.09,
+      "median": 16.53,
+      "p25": -14.07,
+      "p75": 71.57,
+      "p90": 114.23,
+      "std": 85.74,
+      "min": -79.03,
+      "max": 912.41,
+      "positive_rate": 62.23
+    },
+    "percentiles": {
+      "p10": -31.0,
+      "p25": -14.065000000000001,
+      "p50": 16.53,
+      "p75": 71.5675,
+      "p90": 114.235,
+      "p95": 166.68
+    },
+    "loss_tail": {
+      "le_neg_15_count": 135,
+      "le_neg_15_rate": 24.28,
+      "le_neg_20_count": 102,
+      "le_neg_20_rate": 18.35,
+      "le_neg_30_count": 60,
+      "le_neg_30_rate": 10.79,
+      "le_neg_40_count": 26,
+      "le_neg_40_rate": 4.68,
+      "le_neg_50_count": 11,
+      "le_neg_50_rate": 1.98
+    },
+    "upside_tail": {
+      "ge_20_count": 266,
+      "ge_20_rate": 47.84,
+      "ge_50_count": 191,
+      "ge_50_rate": 34.35,
+      "ge_100_count": 77,
+      "ge_100_rate": 13.85,
+      "ge_200_count": 17,
+      "ge_200_rate": 3.06
+    },
+    "exit_counts": {
+      "EXIT4_SCORE_DRAWDOWN_GE_15": 261,
+      "NO_PROGRESSED_BEFORE_CUTOFF": 189,
+      "NO_EXIT_BEFORE_CUTOFF": 72,
+      "EXIT3_PROGRESSED_TO_WEAK": 19,
+      "EXIT3_PROGRESSED_TO_TRANSITION": 7,
+      "EXIT3_PROGRESSED_TO_BASE": 5,
+      "EXIT3_PROGRESSED_TO_EARLY_TREND": 3
+    },
+    "ticker_cumulative": {
+      "unique_tickers": 544,
+      "positive_tickers_count": 342,
+      "positive_ticker_rate": 62.87,
+      "mean_cumulative_return": 38.98,
+      "median_cumulative_return": 17.57,
+      "p25": -14.02,
+      "p75": 72.36,
+      "p90": 119.57,
+      "min": -79.03,
+      "max": 912.41
+    }
+  }
+}
