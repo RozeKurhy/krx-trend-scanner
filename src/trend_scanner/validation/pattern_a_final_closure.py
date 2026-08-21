@@ -37,8 +37,13 @@ HISTORICAL_FROZEN_SCANNER_HASH: str = "6191be6f84aca63f7f3a813c94b272582cacb517a
 
 # Frozen contract SHA256 hashes of core Pattern A production modules (Strictly Decoupled & Immutable)
 EXPECTED_FROZEN_HASHES = {
-    "pattern_a_stage.py": "543499b0dfc21946405e76b6d47938d0a0697d440fe4087c800bdb0948d4676e",
-    "pattern_a_score.py": "62ca9b54837164b7e6aa6d50290c728de12c7b99db03af1760df37ab2206de19",
+    # DOCS_INFORMATION_ARCHITECTURE_REORGANIZATION_V01: only in-file docstring/
+    # comment references to moved docs/ paths were updated (e.g.
+    # docs/validation/pattern_a_stage.md -> docs/patterns/pattern_a/validation/
+    # stage_label_audit_freeze.md). No Stage/Score rule, threshold, or formula
+    # changed — verified via `git diff` containing only docs-path substitutions.
+    "pattern_a_stage.py": "af881b94d33314855c2bf1a0b516a7e61a0b511fed5ae3597743f86fc247a435",
+    "pattern_a_score.py": "873260c4ca2e86b863698734591ae2d1795242f6b6a5cc913396655ba0ac159d",
     # Phase 13 added only PIT-truncated raw monthly/weekly frame exposure for
     # research. FeatureRow construction and Pattern A score/stage semantics
     # remain the frozen production behavior.

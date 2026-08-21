@@ -1,6 +1,6 @@
 """Pattern A: 장기 베이스 수렴형.
 
-Feature Set Freeze v0.1과 Score Design v0.1(둘 다 docs/patterns/pattern_a.md
+Feature Set Freeze v0.1과 Score Design v0.1(둘 다 docs/patterns/pattern_a/archive/legacy_full_history.md
 참고)이 끝났다. Score 구조/가중치/soft threshold는
 `pattern_a_score.py`(`PatternAResult`, `score_pattern_a`)에 있다 — 이전에
 여기 있던 5영역 100점 배점(`PATTERN_A_WEIGHTS`, 구 `PatternAResult`)은
@@ -31,5 +31,5 @@ def evaluate_pattern_a(daily: pd.DataFrame) -> PatternAResult:
     raise NotImplementedError(
         "raw daily OHLCV로부터 FeatureRow를 조립하는 경로가 아직 없습니다. "
         "FeatureRow가 있다면 pattern_a_score.score_pattern_a()를 쓰세요. "
-        "docs/patterns/pattern_a.md 참고."
+        "docs/patterns/pattern_a/archive/legacy_full_history.md 참고."
     )

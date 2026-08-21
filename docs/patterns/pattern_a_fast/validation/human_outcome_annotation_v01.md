@@ -95,7 +95,7 @@ blank다 — 사용자가 "6월 12일이나 19일쯤이면 더 좋았겠지만 �
 low/지지 실패 등)을 기준으로 사용자가 직접 판단한 Human Ground Truth다.
 7개 라벨(GOOD_TRIGGER/BORDERLINE_TRIGGER/FALSE_TRIGGER/TOO_EARLY/
 TOO_LATE/TOO_EXTENDED/NO_SETUP)의 정의는
-`docs/specs/pattern_a_fast_definition.md`(Phase 13A, CLOSED)의 Ground
+`docs/patterns/pattern_a_fast/spec/definition_v01.md`(Phase 13A, CLOSED)의 Ground
 Truth Label Vocabulary를 그대로 따른다.
 
 --------------------------------------------------------------------------------

@@ -6,12 +6,12 @@ import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
 
-V01_DOC_PATH = ROOT / "docs/validation/pattern_a_fast_final_strategy_v01.md"
+V01_DOC_PATH = ROOT / "docs/patterns/pattern_a_fast/strategy/final_v01.md"
 V01_JSON_PATH = ROOT / "artifacts/pattern_a_fast/final_strategy_v01/pattern_a_fast_final_strategy_v01.json"
-V02_DOC_PATH = ROOT / "docs/validation/pattern_a_fast_final_strategy_v02.md"
+V02_DOC_PATH = ROOT / "docs/patterns/pattern_a_fast/strategy/final_v02.md"
 V02_JSON_PATH = ROOT / "artifacts/pattern_a_fast/final_strategy_v02/pattern_a_fast_final_strategy_v02.json"
-VERSIONS_INDEX_PATH = ROOT / "docs/validation/pattern_a_fast_strategy_versions.md"
-V03_PREREG_PATH = ROOT / "docs/validation/pattern_a_fast_fresh_oos_v03_prereg.md"
+VERSIONS_INDEX_PATH = ROOT / "docs/patterns/pattern_a_fast/strategy/versions.md"
+V03_PREREG_PATH = ROOT / "docs/patterns/pattern_a_fast/prereg/fresh_oos_v03.md"
 
 
 def test_v01_frozen_baseline_preserved():

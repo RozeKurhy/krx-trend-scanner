@@ -7,7 +7,7 @@
 실행 (repo 루트에서, `pip install -e ".[dev]"` 이후):
     python scripts/validate_features.py
 
-KRX_ID/KRX_PW가 필요하면 repo 루트의 .env에 채운다(docs/data_layer.md 참고).
+KRX_ID/KRX_PW가 필요하면 repo 루트의 .env에 채운다(docs/architecture/data_layer.md 참고).
 """
 
 from __future__ import annotations

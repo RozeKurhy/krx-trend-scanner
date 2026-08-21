@@ -4,7 +4,7 @@
 1. Executive Summary & Evidence Reference
 ================================================================================
 - **전략 참조명**: `PATTERN_A_FAST_FINAL_STRATEGY_V01`
-- **선택 권한 (Selection Authority)**: `FINAL_STRATEGY_CONTRACT` (docs/validation/pattern_a_fast_final_strategy_v01.md)
+- **선택 권한 (Selection Authority)**: `FINAL_STRATEGY_CONTRACT` (docs/patterns/pattern_a_fast/strategy/final_v01.md)
 - **연구 분류 (Research Classification)**: `RETROSPECTIVE_STRATEGY_FINALIZATION_CANDIDATE_SELECTION`
 - **재평가 분류 (Reevaluation Classification)**: `CORRECTED_PIT_STRATEGY_FINALIZATION_REEVALUATION`
 - **평가 기준 (Evaluation Basis)**: `CORRECTED_PIT_BASELINE`

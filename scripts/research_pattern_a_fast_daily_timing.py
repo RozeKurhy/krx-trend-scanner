@@ -18,7 +18,7 @@ without modifying them. Per w.md §10, it does NOT extend
 ``load_raw_daily()`` output directly (``daily[daily.index <= reference_date]``).
 It does NOT decide a Daily Entry rule, a numeric threshold, a classifier, a
 score, or an optimal entry date — see
-docs/validation/pattern_a_fast_daily_timing_feature_research_v01.md.
+docs/patterns/pattern_a_fast/research/daily_timing_features_v01.md.
 
 Usage:
     uv run python scripts/research_pattern_a_fast_daily_timing.py

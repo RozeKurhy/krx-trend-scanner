@@ -126,7 +126,7 @@ def load_canonical_mcap_snapshot(
 
 
 def render_markdown_doc(summary: dict[str, Any]) -> str:
-    """Generate docs/validation/pattern_a_investability_distribution_v01.md deterministically from summary."""
+    """Generate docs/patterns/pattern_a/validation/investability_distribution_v01.md deterministically from summary."""
     dist = summary["distributions"]
     sc_list = summary["scenario_matrix"]
     e12 = summary["early_12_details"]
@@ -984,7 +984,7 @@ def run_investability_audit(
         )
 
         doc_content = render_markdown_doc(summary_payload)
-        effective_doc_path = doc_path or (repo_root / "docs/validation/pattern_a_investability_distribution_v01.md")
+        effective_doc_path = doc_path or (repo_root / "docs/patterns/pattern_a/validation/investability_distribution_v01.md")
         effective_doc_path.parent.mkdir(parents=True, exist_ok=True)
         effective_doc_path.write_text(doc_content, encoding="utf-8")
 

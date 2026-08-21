@@ -2,7 +2,7 @@
 """FAST + Pattern A WEAK Early Reversal Validation v0.2B Evaluation Runner (Corrected Interpretation & Closed).
 
 Strict Execution Invariants:
-  - Preregistration Authority: docs/validation/pattern_a_fast_weak_early_reversal_v02b_prereg.md (Commit aea7db2e5a3f9d768f08c43c15d3f8983b653712)
+  - Preregistration Authority: docs/patterns/pattern_a_fast/prereg/weak_early_reversal_v02b.md (Commit aea7db2e5a3f9d768f08c43c15d3f8983b653712)
   - Evaluation Authority: Commit 197ec7b482e90e9c31ac7a7fa85203379b3b2846
   - Same-sample retrospective follow-up characterization (not independent replication).
   - Era concentration: 96.3% of WEAK in 2024-2026 (era robustness not established).

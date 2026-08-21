@@ -9,7 +9,7 @@
 
 여기서 다루지 않는 것: threshold 최적화나 confusion matrix 상세 통계 —
 그건 scripts/pattern_a_stage_validate.py와
-docs/validation/pattern_a_stage_classifier_v01.md에서 다룬다.
+docs/patterns/pattern_a/validation/stage_classifier_v01.md에서 다룬다.
 """
 
 from __future__ import annotations
@@ -348,7 +348,7 @@ def test_base_fallback_when_no_signal_fires():
 
 
 def test_base_does_not_require_weekly_positive_slope():
-    """BASE의 최종 정의(docs/validation/pattern_a_stage.md)는
+    """BASE의 최종 정의(docs/patterns/pattern_a/validation/stage_label_audit_freeze.md)는
     weekly_ma12_slope>0을 필수조건으로 두지 않는다 — weekly가 소폭
     음수여도 다른 신호가 전부 안 뜨면 BASE."""
     from trend_scanner.patterns.pattern_a_stage import classify_pattern_a_stage

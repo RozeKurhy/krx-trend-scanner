@@ -13,7 +13,7 @@ This script reuses the frozen 13C loading conventions (ParquetCache-only,
 build_historical_snapshot for completed-period PIT slicing) without
 modifying them. It does NOT decide a Monthly PASS/FAIL rule, a numeric
 threshold, or a production Feature Set — see
-docs/validation/pattern_a_fast_monthly_regime_feature_research_v01.md.
+docs/patterns/pattern_a_fast/research/monthly_regime_features_v01.md.
 
 Usage:
     uv run python scripts/research_pattern_a_fast_monthly_regime.py

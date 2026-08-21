@@ -2,7 +2,7 @@
 """Pattern A Entry Gate Incremental Value v0.2A Evaluation Runner (Corrected Interpretation & Closed).
 
 Strict Execution Invariants:
-  - Preregistration Authority: docs/validation/pattern_a_fast_entry_gate_incremental_value_v02a_prereg.md (Commit e4523f4b3b63d252e7b70b80017bad42288e8ec9)
+  - Preregistration Authority: docs/patterns/pattern_a_fast/prereg/entry_gate_incremental_value_v02a.md (Commit e4523f4b3b63d252e7b70b80017bad42288e8ec9)
   - Evaluation Authority: Commit 54e55438f86456a0c29eb22b5da0dd630efc068f
   - Local Cache Only (zero external network requests).
   - PIT evaluation anchored on FIRST FAST v0.1 qualifying signal.

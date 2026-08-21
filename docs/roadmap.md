@@ -85,7 +85,7 @@ CLOSED고 Production 승격 여부는 별도"임을 한 토큰으로 강조하�
 | Phase 10 Investability & Tradability Filter | CLOSED | 시총 >= 1,000억, 20D 유동성 >= 3억 downstream filter 통합 (Investable 103개, `75afa32`) |
 | Phase 11 Flow Confirmation Infrastructure | CLOSED | Foreign Flow 독립 confirmation axis 및 10대 hard gates 통과 (FLOW_INFRA_READY, `71237c0`) |
 
-**Pattern A Fast**: **`RESEARCH_CLOSED / PRODUCTION_HOLD`** — Experimental / Early Signal 사용 가능(공식 Candidate·Ranking 미편입). 상세: [pattern_a_fast_phase_13_final_synthesis_v01.md](validation/pattern_a_fast_phase_13_final_synthesis_v01.md)  
+**Pattern A Fast**: **`RESEARCH_CLOSED / PRODUCTION_HOLD`** — Experimental / Early Signal 사용 가능(공식 Candidate·Ranking 미편입). 상세: [pattern_a_fast_phase_13_final_synthesis_v01.md](patterns/pattern_a_fast/validation/phase_13_final_synthesis_v01.md)  
 **Pattern B~F**: 미착수(PLANNED)  
 **전체 시장 Scanner**: 완료(DONE - Phase 8 Integration 및 Phase 9B Review 완료)  
 **현재 작업 순서**: `README/Roadmap Sync = DONE (5e7c748)` → `Stock Report Pattern A Monthly + Pattern A FAST Weekly = CLOSED (4a20358)` → `Phase 12 Relative Strength Infrastructure = NEXT / RESUME_READY` → `Phase 14 Pattern B = PLANNED`  
@@ -303,8 +303,8 @@ False Trigger 측정 / 주봉 중심 전환 구조 정의 / 일봉 timing layer 
 최대화 / 무조건적인 매수 신호 생성 / Backtest 수익률에 맞춘 과최적화
 
 Sub-stage (전체 CLOSED):
-* 13A. Pattern A Fast Definition — CLOSED (`docs/specs/pattern_a_fast_definition.md`)
-* 13B. Stage / Lifecycle Contract — CLOSED (`docs/specs/pattern_a_fast_lifecycle_contract.md`)
+* 13A. Pattern A Fast Definition — CLOSED (`docs/patterns/pattern_a_fast/spec/definition_v01.md`)
+* 13B. Stage / Lifecycle Contract — CLOSED (`docs/patterns/pattern_a_fast/spec/lifecycle_contract.md`)
 * 13C. Human Ground Truth Dataset(13C-1 준비 / 13C-2 40-sample Calibration) — CLOSED / FROZEN
 * 13D. Monthly Regime Feature Research — CLOSED (HIGH 후보 7개)
 * 13E. Weekly Trigger Feature Research — CLOSED (HIGH 후보 7개)
@@ -331,7 +331,7 @@ Frozen contract:
 * Frozen Pattern A(비교 기준): `05d03e16501adbca889488294aaaaa0bd84005de`
 * Phase 13 최종 closure commit: `935f9be7c0e790b7b4efedc04ea4149a90ad78a8`
 
-상세 결과 및 향후 작업 제약: [pattern_a_fast_phase_13_final_synthesis_v01.md](validation/pattern_a_fast_phase_13_final_synthesis_v01.md)
+상세 결과 및 향후 작업 제약: [pattern_a_fast_phase_13_final_synthesis_v01.md](patterns/pattern_a_fast/validation/phase_13_final_synthesis_v01.md)
 — 향후 작업은 새로 독립적으로 frozen한 검증 population 또는 prospective
 monitoring을 사용해야 하며, 이미 닫힌 Phase 13 evidence set은 재수정하지
 않는다.

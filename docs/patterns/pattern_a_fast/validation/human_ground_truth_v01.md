@@ -21,10 +21,10 @@ HISTORICAL_COVERAGE 두 stratum으로 분리해 과거 market regime 표본을
 > /Pattern A Benchmark Context/manifest/reserved set/charts)은 그대로
 > FROZEN이며 이번 checkpoint에서 전혀 수정되지 않았다. 40개 sample의
 > PIT(Outcome 보기 전) Human Annotation 진행 상황은
-> [pattern_a_fast_human_pit_annotation_checkpoint_v01.md](pattern_a_fast_human_pit_annotation_checkpoint_v01.md)
+> [pattern_a_fast_human_pit_annotation_checkpoint_v01.md](human_pit_annotation_checkpoint_v01.md)
 > 참고. 그 40개에 대한 Human Outcome Label(`human_label`)까지 완료된
 > 최신 상태는
-> [pattern_a_fast_human_outcome_annotation_v01.md](pattern_a_fast_human_outcome_annotation_v01.md)
+> [pattern_a_fast_human_outcome_annotation_v01.md](human_outcome_annotation_v01.md)
 > 참고(advisor 리뷰 대기 중, 아직 Phase 13C-2 CLOSED 아님).
 Data cutoff (as_of): 2026-08-14
 Network requests: 0 (전부 로컬 `data/raw/stocks/*.parquet` 캐시)
@@ -46,8 +46,8 @@ Phase 13A에서 Pattern A Fast의 목적을, Phase 13B에서 Weekly Lifecycle St
 2. Authoritative Contracts
 --------------------------------------------------------------------------------
 다음 문서를 공식 계약으로 사용하며 이번 작업으로 수정하지 않는다:
-* [docs/specs/pattern_a_fast_definition.md](../specs/pattern_a_fast_definition.md) (Phase 13A, CLOSED)
-* [docs/specs/pattern_a_fast_lifecycle_contract.md](../specs/pattern_a_fast_lifecycle_contract.md) (Phase 13B) —
+* [docs/patterns/pattern_a_fast/spec/definition_v01.md](../spec/definition_v01.md) (Phase 13A, CLOSED)
+* [docs/patterns/pattern_a_fast/spec/lifecycle_contract.md](../spec/lifecycle_contract.md) (Phase 13B) —
   Weekly Lifecycle Stage 5개(`WATCH`/`SETUP`/`TRIGGER`/`TREND`/`EXTENDED`)의
   의미를 그대로 사용한다.
 
@@ -406,7 +406,7 @@ episode 종료로 판단하므로, 그보다 짧은 되돌림은 episode에 포�
 `trigger_event_observed`/`trigger_event_date`는 사람이 차트를 보고
 명시적으로 TRIGGER Stage 진입을 확인했을 때만 채우는 필드다(13C-2). 이번
 13C-1 준비 단계는 이 필드를 절대 채우지 않는다 — `UNLABELED`/빈 값으로
-둔다. `docs/specs/pattern_a_fast_lifecycle_contract.md` §21의 Skipped
+둔다. `docs/patterns/pattern_a_fast/spec/lifecycle_contract.md` §21의 Skipped
 Trigger(`NOT_OBSERVED`) 개념을 그대로 승계한다.
 
 --------------------------------------------------------------------------------

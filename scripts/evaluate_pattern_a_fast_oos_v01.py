@@ -36,7 +36,7 @@ ADJUDICATION = OOS / "pattern_a_fast_oos_outcome_adjudication_v01.csv"
 PROTOCOL = OOS / "pattern_a_fast_oos_evaluation_protocol_v01.json"
 SCORE_CONTRACT = Path("artifacts/pattern_a_fast/research/pattern_a_fast_score_prototype_v01.json")
 STAGE_CONTRACT = Path("artifacts/pattern_a_fast/research/pattern_a_fast_stage_prototype_v01.json")
-DOC = Path("docs/validation/pattern_a_fast_oos_evaluation_v01.md")
+DOC = Path("docs/patterns/pattern_a_fast/validation/oos_evaluation_v01.md")
 OUT = {
     "snapshot": RESULTS / "pattern_a_fast_oos_machine_snapshot_v01.csv",
     "confusion": RESULTS / "pattern_a_fast_oos_stage_confusion_v01.csv",

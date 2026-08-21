@@ -16,7 +16,7 @@ This script reuses the frozen 13C loading conventions (ParquetCache-only,
 build_historical_snapshot for completed-period PIT slicing) without
 modifying them. It does NOT decide a Weekly Trigger rule, a numeric
 threshold, a classifier, or a score — see
-docs/validation/pattern_a_fast_weekly_trigger_feature_research_v01.md.
+docs/patterns/pattern_a_fast/research/weekly_trigger_features_v01.md.
 
 Usage:
     uv run python scripts/research_pattern_a_fast_weekly_trigger.py

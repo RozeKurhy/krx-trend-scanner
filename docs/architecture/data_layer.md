@@ -4,7 +4,7 @@
 
 종목별 일봉 OHLCV를 PyKRX에서 가져와 표준 스키마로 정규화하고, 로컬 Parquet 캐시에
 저장·증분 업데이트하는 최소 구현입니다. Pattern A 점수 로직과는 무관합니다
-(Pattern A는 [docs/patterns/pattern_a.md](patterns/pattern_a.md) 참고).
+(Pattern A는 [docs/patterns/pattern_a/archive/legacy_full_history.md](../patterns/pattern_a/archive/legacy_full_history.md) 참고).
 
 ## 계층 구조
 

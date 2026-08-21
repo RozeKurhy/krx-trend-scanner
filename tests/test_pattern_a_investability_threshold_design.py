@@ -100,7 +100,7 @@ def test_gate7_missing_stale_policy(threshold_design_result: dict):
 def test_gate8_document_artifact_consistency(threshold_design_result: dict):
     """Gate 8: Verify document and artifact consistency."""
     assert threshold_design_result["hard_gates"]["gate_08_document_artifact_consistency_pass"] is True
-    doc_path = _REPO_ROOT / "docs/validation/pattern_a_investability_threshold_design_v01.md"
+    doc_path = _REPO_ROOT / "docs/patterns/pattern_a/validation/investability_threshold_design_v01.md"
     assert doc_path.exists()
     doc_text = doc_path.read_text(encoding="utf-8")
     assert "THRESHOLD_POLICY_READY" in doc_text

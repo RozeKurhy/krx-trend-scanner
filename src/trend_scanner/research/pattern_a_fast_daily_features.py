@@ -7,7 +7,7 @@ w.md §10 — this module does NOT extend
 new ``daily`` field; callers are expected to slice the raw
 ``load_raw_daily()`` output themselves). Nothing here is a Production Rule /
 Threshold / Score / Classifier — see
-docs/validation/pattern_a_fast_daily_timing_feature_research_v01.md for the
+docs/patterns/pattern_a_fast/research/daily_timing_features_v01.md for the
 research findings and the explicit "No Threshold Frozen" / "No Optimal Entry
 Date" declarations.
 

@@ -32,7 +32,7 @@ raw `FeatureRow` 값만 근거로 판정했다. `score_pattern_a()`/`base_score`
                                  HOLDOUT_SNAPSHOTS 중 label=early_trend, 3건
                                  (EARLY_TREND 표본 보강용)
 
-자세한 정의/방법론/boundary 처리는 docs/validation/pattern_a_stage.md
+자세한 정의/방법론/boundary 처리는 docs/patterns/pattern_a/validation/stage_label_audit_freeze.md
 참고.
 """
 

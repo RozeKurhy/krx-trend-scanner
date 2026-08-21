@@ -4,7 +4,7 @@ Purely descriptive, deterministic feature functions over a PIT-sliced
 completed-monthly OHLCV DataFrame (as produced by
 ``trend_scanner.validation.historical_snapshot.build_historical_snapshot``).
 Nothing here is a Production Rule / Threshold / Score / Classifier — see
-docs/validation/pattern_a_fast_monthly_regime_feature_research_v01.md for
+docs/patterns/pattern_a_fast/research/monthly_regime_features_v01.md for
 the research findings and the explicit "No Threshold Frozen" declaration.
 
 This module must never be imported by ``trend_scanner.patterns`` (production

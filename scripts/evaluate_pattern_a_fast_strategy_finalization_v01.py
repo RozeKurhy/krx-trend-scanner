@@ -2,7 +2,7 @@
 """Pattern A FAST Strategy Finalization / Candidate Selection v0.1 Evaluation Runner.
 
 Strict Execution Invariants:
-  - Preregistration Authority: docs/validation/pattern_a_fast_strategy_finalization_v01_prereg.md (Commit a5c29e7e97cb7e6830c3dcd25d824e5779f2312f)
+  - Preregistration Authority: docs/patterns/pattern_a_fast/prereg/strategy_finalization_v01.md (Commit a5c29e7e97cb7e6830c3dcd25d824e5779f2312f)
   - Local Cache Only up to 2026-08-14.
   - Frozen 15.0pt drawdown threshold (strictly no sweep/tuning).
   - Frozen -15% daily close Loss Guard (strictly no sweep/tuning).
@@ -47,7 +47,7 @@ OUT_DIR = ROOT / "artifacts/pattern_a_fast/strategy_finalization_v01"
 OUT_TRADES_CSV = OUT_DIR / "pattern_a_fast_strategy_finalization_v01_trades.csv"
 OUT_EVAL_JSON = OUT_DIR / "pattern_a_fast_strategy_finalization_v01_evaluation.json"
 OUT_EVAL_MD = OUT_DIR / "pattern_a_fast_strategy_finalization_v01_evaluation.md"
-DOCS_EVAL_MD = ROOT / "docs/validation/pattern_a_fast_strategy_finalization_v01_evaluation.md"
+DOCS_EVAL_MD = ROOT / "docs/patterns/pattern_a_fast/validation/strategy_finalization_v01_evaluation.md"
 
 PREREG_COMMIT_SHA = "a5c29e7e97cb7e6830c3dcd25d824e5779f2312f"
 ARCHITECTURE_AUTHORITY_COMMIT = "89df82a938dba1961c2342064db2dc0061a5f2ca"
@@ -387,7 +387,7 @@ def _generate_markdown_report(data: dict[str, Any]) -> str:
 1. Executive Summary & Evidence Reference
 ================================================================================
 - **전략 참조명**: `{ref["strategy_name"]}`
-- **선택 권한 (Selection Authority)**: `{ref["selection_authority"]}` (docs/validation/pattern_a_fast_final_strategy_v01.md)
+- **선택 권한 (Selection Authority)**: `{ref["selection_authority"]}` (docs/patterns/pattern_a_fast/strategy/final_v01.md)
 - **연구 분류 (Research Classification)**: `{meta["research_classification"]}`
 - **재평가 분류 (Reevaluation Classification)**: `{meta.get("reevaluation_classification", "CORRECTED_PIT_STRATEGY_FINALIZATION_REEVALUATION")}`
 - **평가 기준 (Evaluation Basis)**: `{meta.get("evaluation_basis", "CORRECTED_PIT_BASELINE")}`

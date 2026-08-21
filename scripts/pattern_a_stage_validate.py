@@ -38,7 +38,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 CACHE_DIR = REPO_ROOT / "data" / "raw" / "stocks"
 OUTPUT_CSV = REPO_ROOT / "data" / "processed" / "pattern_a_stage_v01_validation.csv"
 
-# WEAK가 완전히 서열적이지 않다는 점(docs/validation/pattern_a_stage.md)을
+# WEAK가 완전히 서열적이지 않다는 점(docs/patterns/pattern_a/validation/stage_label_audit_freeze.md)을
 # 감안해도, match 판정을 위해서는 하나의 순서를 정해야 한다. lifecycle
 # 진행 순서(BASE/WEAK -> TRANSITION -> EARLY_TREND -> PROGRESSED)를 그대로
 # 쓰되, WEAK는 BASE 바로 아래(0)에 둔다 — "둘 다 아직 확장 전"이라는 점만

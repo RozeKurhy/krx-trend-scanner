@@ -2,7 +2,7 @@
 
 ## 목적
 
-`docs/validation/pattern_a_stage.md`가 확정한 Stage 정의(BASE/TRANSITION/
+`docs/patterns/pattern_a/validation/stage_label_audit_freeze.md`가 확정한 Stage 정의(BASE/TRANSITION/
 EARLY_TREND/PROGRESSED/WEAK, "현재 Pattern A episode의 lifecycle 위치")와
 `pattern_a_stage_manifest.py`의 46건 manual truth set(calibration truth set)을
 근거로, Score와 독립적이고 rule-based로 설명 가능한 첫 production candidate
@@ -234,7 +234,7 @@ Stage별 support / exact:
 rate)이며, external OOS accuracy가 아니다. 외부 OOS 검증은 다음 별도
 마일스톤에서 진행한다.
 
-**match 판정 caveat**: `docs/validation/pattern_a_stage.md`가 명시하듯
+**match 판정 caveat**: `docs/patterns/pattern_a/validation/stage_label_audit_freeze.md`가 명시하듯
 WEAK는 완전히 서열적이지 않다(다른 stage와 별개 축의 "실패" 상태에
 가깝다). 그래도 ADJACENT/SEVERE 판정을 위해 하나의 순서
 (`WEAK=0, BASE=1, TRANSITION=2, EARLY_TREND=3, PROGRESSED=4`)를 정해서
@@ -364,7 +364,7 @@ Feature(weekly slope, range_position)에서 독립적으로 근거를 대므로
 * 이번 커밋에서 새로 만든/수정한 파일: `src/trend_scanner/patterns/
   pattern_a_stage.py`, `tests/test_pattern_a_stage.py`,
   `scripts/pattern_a_stage_validate.py`,
-  `docs/validation/pattern_a_stage_classifier_v01.md`(이 문서).
+  `docs/patterns/pattern_a/validation/stage_classifier_v01.md`(이 문서).
 
 ## Final judgement
 

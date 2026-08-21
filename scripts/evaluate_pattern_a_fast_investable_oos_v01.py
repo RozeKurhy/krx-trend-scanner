@@ -37,7 +37,7 @@ STAGE_CONTRACT = ROOT / "artifacts/pattern_a_fast/research/pattern_a_fast_stage_
 OUT_JSON = OOS / "pattern_a_fast_investable_oos_evaluation_v01.json"
 OUT_SAMPLES = OOS / "pattern_a_fast_investable_oos_evaluation_samples_v01.csv"
 OUT_PAIRS = OOS / "pattern_a_fast_investable_oos_evaluation_event_pairs_v01.csv"
-DOC = ROOT / "docs/validation/pattern_a_fast_investable_oos_evaluation_v01.md"
+DOC = ROOT / "docs/patterns/pattern_a_fast/validation/investable_oos_evaluation_v01.md"
 
 BASE_SHA = "753f7601078aad46e3f3329887e3a9c60203bea7"
 FAST_CONTRACT_SHA = "2da3fc36744b27ec13edae3f690df72c796906e5"

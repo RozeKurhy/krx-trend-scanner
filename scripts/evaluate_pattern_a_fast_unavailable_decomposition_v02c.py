@@ -2,7 +2,7 @@
 """FAST + Pattern A UNAVAILABLE Decomposition Validation v0.2C Evaluation Runner (Corrected Interpretation & Closed).
 
 Strict Execution Invariants:
-  - Preregistration Authority: docs/validation/pattern_a_fast_unavailable_decomposition_v02c_prereg.md (Commit bbdab7cc47144fb831e32e31069e5cd7ba60f917)
+  - Preregistration Authority: docs/patterns/pattern_a_fast/prereg/unavailable_decomposition_v02c.md (Commit bbdab7cc47144fb831e32e31069e5cd7ba60f917)
   - Evaluation Authority: Commit f0b2f7bf6a73e5f101cd82c153f46a756807b4fa
   - Same-sample retrospective characterization (not independent replication).
   - Semantic Finding: UNAVAILABLE_IS_INFORMATION_INSUFFICIENCY (STRONGLY_SUPPORTED, 99.2% < 36m history).

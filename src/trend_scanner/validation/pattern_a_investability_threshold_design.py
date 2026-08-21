@@ -92,7 +92,7 @@ def calculate_distribution_stats(series: pd.Series) -> dict[str, Any]:
 
 
 def render_markdown_doc(summary: dict[str, Any]) -> str:
-    """Generate docs/validation/pattern_a_investability_threshold_design_v01.md deterministically from summary."""
+    """Generate docs/patterns/pattern_a/validation/investability_threshold_design_v01.md deterministically from summary."""
     scorecard = summary["trade_off_scorecard"]
     e12_eval = summary["early_preservation_analysis"]
     gates = summary["hard_gates"]
@@ -795,7 +795,7 @@ def run_threshold_design_validation(
         )
 
         doc_content = render_markdown_doc(summary_payload)
-        effective_doc_path = doc_path or (repo_root / "docs/validation/pattern_a_investability_threshold_design_v01.md")
+        effective_doc_path = doc_path or (repo_root / "docs/patterns/pattern_a/validation/investability_threshold_design_v01.md")
         effective_doc_path.parent.mkdir(parents=True, exist_ok=True)
         effective_doc_path.write_text(doc_content, encoding="utf-8")
 

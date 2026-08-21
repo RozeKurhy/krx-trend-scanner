@@ -151,7 +151,7 @@ def test_source_provenance_matches_original_dataset():
 
 @pytest.mark.skipif(not _HAS_CACHE, reason=_SKIP_REASON)
 def test_base_stage_does_not_require_weekly_positive_or_mild_slope():
-    """semantic consistency 회귀: docs/validation/pattern_a_stage.md의
+    """semantic consistency 회귀: docs/patterns/pattern_a/validation/stage_label_audit_freeze.md의
     BASE 최종 정의는 weekly_ma12_slope>0/ma24_slope cutoff/range_position
     cutoff를 필수조건으로 두지 않는다고 명시한다. 이 매니페스트에는 이미
     weekly_ma12_slope<=0이거나 ma24_slope가 가파른(<=-0.045) BASE 사례가

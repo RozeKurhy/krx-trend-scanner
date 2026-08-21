@@ -98,7 +98,7 @@ def _calc_distribution_stats(series: pd.Series) -> dict[str, Any]:
 
 
 def render_flow_markdown_doc(summary: dict[str, Any]) -> str:
-    """Generate docs/validation/pattern_a_flow_confirmation_infrastructure_v01.md deterministically."""
+    """Generate docs/patterns/pattern_a/validation/flow_confirmation_infrastructure_v01.md deterministically."""
     gates = summary["hard_gates"]
     gate_table_rows = []
     for g_id, (g_name, g_pass) in enumerate(gates.items(), 1):
@@ -712,7 +712,7 @@ def run_foreign_flow_infrastructure_validation(
             json.dump(summary_payload, f, indent=2, ensure_ascii=False)
 
         # 4. Markdown Document
-        final_doc_path = doc_path or (repo_root / "docs/validation/pattern_a_flow_confirmation_infrastructure_v01.md")
+        final_doc_path = doc_path or (repo_root / "docs/patterns/pattern_a/validation/flow_confirmation_infrastructure_v01.md")
         final_doc_path.parent.mkdir(parents=True, exist_ok=True)
         rendered_md = render_flow_markdown_doc(summary_payload)
         final_doc_path.write_text(rendered_md, encoding="utf-8")

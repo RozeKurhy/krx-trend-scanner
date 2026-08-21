@@ -184,6 +184,6 @@ def test_stage_availability_never_falls_back_to_watch():
     assert contract["expected_optional_stage_inputs"] == ["close_vs_wma200_pct"]
     assert contract["conditional_stage_markers"] == ["weeks_since_26w_close_breakout"]
     assert contract["unavailable_policy"] == {"normal_lifecycle_stage_assignment": False, "watch_fallback": False}
-    validation = Path("docs/validation/pattern_a_fast_score_stage_contract_prototype_v01.md").read_text(encoding="utf-8")
+    validation = Path("docs/patterns/pattern_a_fast/research/score_stage_contract_prototype_v01.md").read_text(encoding="utf-8")
     assert "Phase 13B Lifecycle Contract §16" in validation
     assert "UNAVAILABLE은 여섯 번째 lifecycle stage가 아니며 WATCH로 fallback하지 않는다." in validation

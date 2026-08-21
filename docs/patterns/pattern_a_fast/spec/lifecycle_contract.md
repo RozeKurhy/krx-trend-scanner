@@ -8,7 +8,7 @@ Status: **CLOSED / Weekly Lifecycle Semantics v0.1 Frozen** (사용자 리뷰
 승인 완료. Classifier Rules: NOT FROZEN — Feature / Threshold / Score:
 NOT FROZEN)
 Base: `dd0dec386d1382f9176ec8a876b17fd4bcdeb51e`
-선행 문서: [docs/specs/pattern_a_fast_definition.md](pattern_a_fast_definition.md) (Phase 13A, CLOSED)
+선행 문서: [docs/patterns/pattern_a_fast/spec/definition_v01.md](definition_v01.md) (Phase 13A, CLOSED)
 
 이 문서는 WATCH / SETUP / TRIGGER / TREND / EXTENDED 5개 Weekly
 Lifecycle Stage의 의미와 전이 원칙을 고정하는 계약이다. Feature 공식,
@@ -36,7 +36,7 @@ Stage의 "의미"를 먼저 고정한다.
 --------------------------------------------------------------------------------
 2. Authority and Relationship to 13A
 --------------------------------------------------------------------------------
-기준 문서는 `docs/specs/pattern_a_fast_definition.md`이다. Phase 13B는
+기준 문서는 `docs/patterns/pattern_a_fast/spec/definition_v01.md`이다. Phase 13B는
 Phase 13A의 철학을 변경하지 않는다.
 
 고정 원칙 (13A 승계):
@@ -306,7 +306,7 @@ Ground Truth Label `EXTENDED`가 동일 이름으로 존재해 dataset에서
 `TOO_EXTENDED`로 변경한다(`TOO_EARLY`/`TOO_LATE`와 동일한 `TOO_*`
 명명 규칙 통일, 의미 변경 없음). Lifecycle Stage 쪽 `EXTENDED` 이름은
 그대로 유지한다. 상세 변경 기록은
-`docs/specs/pattern_a_fast_definition.md` §19 참고.
+`docs/patterns/pattern_a_fast/spec/definition_v01.md` §19 참고.
 
 **FALSE_TRIGGER는 Stage가 아니다.** FALSE_TRIGGER는 미래 outcome을
 본 뒤 붙이는 사후 Review Label이다. 현재 시점에서 `TRIGGER`였던

@@ -70,7 +70,7 @@ def test_provenance_consistency_across_artifacts():
         assert meta["early_trend_count"] == 74
 
     # 3. Final strategy Markdown
-    strat_md_path = ROOT / "docs/validation/pattern_a_fast_final_strategy_v01.md"
+    strat_md_path = ROOT / "docs/patterns/pattern_a_fast/strategy/final_v01.md"
     strat_md = strat_md_path.read_text(encoding="utf-8")
     assert "88d54d8" in strat_md
     assert "f73e0c2" in strat_md

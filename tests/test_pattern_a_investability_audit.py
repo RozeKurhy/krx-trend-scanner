@@ -99,7 +99,7 @@ def test_gate10_disk_artifact_consistency(canonical_audit_result: dict):
     df_cand_disk = pd.read_csv(_ARTIFACTS_DIR / "pattern_a_investability_candidates_20260814.csv", dtype={"ticker": str})
     df_sc_disk = pd.read_csv(_ARTIFACTS_DIR / "pattern_a_investability_scenarios_20260814.csv")
     dist_disk = json.loads((_ARTIFACTS_DIR / "pattern_a_investability_distribution_20260814.json").read_text(encoding="utf-8"))
-    doc_text = (_REPO_ROOT / "docs/validation/pattern_a_investability_distribution_v01.md").read_text(encoding="utf-8")
+    doc_text = (_REPO_ROOT / "docs/patterns/pattern_a/validation/investability_distribution_v01.md").read_text(encoding="utf-8")
 
     assert len(df_cand_disk) == 180
     assert (df_cand_disk["as_of"] == "2026-08-14").all()

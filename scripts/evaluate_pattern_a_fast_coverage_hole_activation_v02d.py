@@ -2,7 +2,7 @@
 """FAST + Pattern A Coverage Hole Activation Validation v0.2D Evaluation Runner (Corrected & Closed).
 
 Strict Execution Invariants:
-  - Preregistration Authority: docs/validation/pattern_a_fast_coverage_hole_activation_v02d_prereg.md (Commit 77e3a0d768258279529428e86e00198ba6e06fa9)
+  - Preregistration Authority: docs/patterns/pattern_a_fast/prereg/coverage_hole_activation_v02d.md (Commit 77e3a0d768258279529428e86e00198ba6e06fa9)
   - Evaluation Authority: Commit ab43f20f752a758b6deb20db4bf848771bdd98c5
   - Local Cache Only (zero external network requests).
   - Frozen 15.0pt drawdown threshold (strictly no sweep/tuning).

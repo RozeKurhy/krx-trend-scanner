@@ -1,6 +1,6 @@
 """Pattern A Stage Classifier v0.1.
 
-Score와 독립적으로, `docs/validation/pattern_a_stage.md`가 확정한 Stage
+Score와 독립적으로, `docs/patterns/pattern_a/validation/stage_label_audit_freeze.md`가 확정한 Stage
 정의와 `pattern_a_stage_manifest.py`의 46건 manual truth set을 근거로
 `PatternAStage`(base/transition/early_trend/progressed/weak)를 rule-based로
 판정한다.
@@ -19,7 +19,7 @@ truth set에 기록된 실제 Feature 값(각 row의 stage_reason에 인용된
 range_position/ma24_slope/weekly_ma12_slope/avg_price_change_12m/ma_spread
 값)을 손으로 대조해 잡았다 — ML fitting이 아니라 사람이 읽을 수 있는
 rule이다. 자세한 근거와 46건 validation 결과는
-`docs/validation/pattern_a_stage_classifier_v01.md` 참고.
+`docs/patterns/pattern_a/validation/stage_classifier_v01.md` 참고.
 
 **range_position 선택**: Stage/Breakout 판정에는 36개월 monthly
 `range_position`(FeatureRow, resistance.range_position(close, low_36m,
@@ -109,7 +109,7 @@ class StageEvidence:
 class StageLifecycleContext:
     """snapshot 이전 과거 구간에서 expansion proxy가 감지됐는지와,
     그 이후 장기 추세 붕괴로 episode가 종료(cycle reset)되었는지를 나타낸다.
-    Pattern A episode/cycle reset 개념(docs/validation/pattern_a_stage.md)을
+    Pattern A episode/cycle reset 개념(docs/patterns/pattern_a/validation/stage_label_audit_freeze.md)을
     판정용으로 옮긴 것 — Score에는 연결하지 않는다.
 
     - prior_expansion_detected: snapshot 이전에 strict historical expansion proxy

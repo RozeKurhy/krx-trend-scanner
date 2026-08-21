@@ -108,7 +108,7 @@ def run_relative_strength_validation(
     doc_path = (
         Path(doc_output_path)
         if doc_output_path
-        else root / "docs/validation/pattern_a_relative_strength_infrastructure_v01.md"
+        else root / "docs/patterns/pattern_a/validation/relative_strength_infrastructure_v01.md"
     )
     doc_path.parent.mkdir(parents=True, exist_ok=True)
 

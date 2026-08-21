@@ -32,7 +32,7 @@
 * **Transition Score**: 24개월 이평선 기울기(`ma24_slope`), 주봉 12주 이평선 기울기(`weekly_ma12_slope`), 24개월 이평선 가속도(`ma24_slope_acceleration`)
 * **Core & Support 결합**: 핵심 지표(`ma24_slope`) 중심의 조화평균(Harmonic Mean) 결합으로 단기 왜곡 억제
 * **Bonuses & Penalties**: Alignment Bonus 및 장기 이격 과열에 대한 Progressed Penalty 적용
-* **공식 상태**: **`FROZEN`**, **`KEEP_CURRENT_PRODUCTION`** — Score v0.2와 Stage lifecycle은 동결 상태이며 현재 종목 탐색·리포트에서 공식 production 신호로 사용한다. Frozen semantics는 변경·재해석하지 않는다. (**`Score v0.2 KEEP`**, **`Stage v0.1 KEEP`**, **`Pattern A Stage Research CLOSED`**, [Final Closure Checkpoint: `05d03e1`](docs/validation/pattern_a_final_production_closure.md))
+* **공식 상태**: **`FROZEN`**, **`KEEP_CURRENT_PRODUCTION`** — Score v0.2와 Stage lifecycle은 동결 상태이며 현재 종목 탐색·리포트에서 공식 production 신호로 사용한다. Frozen semantics는 변경·재해석하지 않는다. (**`Score v0.2 KEEP`**, **`Stage v0.1 KEEP`**, **`Pattern A Stage Research CLOSED`**, [Final Closure Checkpoint: `05d03e1`](docs/patterns/pattern_a/validation/final_production_closure.md))
 
 ---
 
@@ -49,7 +49,7 @@ Pattern A의 v2나 개선판이 아니라, 시간축과 투자 스타일이 다�
 * **독립성**: Pattern A Fast Score/Stage는 Pattern A Score/Stage와 완전히
   독립적으로 산출됩니다. Pattern A의 하위 stage나 확장판이 아닙니다.
 * **공식 상태**: **`Phase 13 Research CLOSED`**, **`HIERARCHICAL_V01
-  Production HOLD`** ([Final Synthesis](docs/validation/pattern_a_fast_phase_13_final_synthesis_v01.md))
+  Production HOLD`** ([Final Synthesis](docs/patterns/pattern_a_fast/validation/phase_13_final_synthesis_v01.md))
 
 검증 결과 요약 (Investable OOS-B, frozen n=36):
 * Primary Score Separation(`GOOD_TRIGGER+BORDERLINE_TRIGGER` median 73.82 vs

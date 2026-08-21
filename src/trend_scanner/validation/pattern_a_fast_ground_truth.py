@@ -2,9 +2,9 @@
 
 Research/validation-only. Reuses the frozen Pattern A production evaluator
 (``evaluate_pattern_a``, ``build_historical_snapshot``) strictly as read-only
-Benchmark / Context (see docs/specs/pattern_a_fast_definition.md §2). This
+Benchmark / Context (see docs/patterns/pattern_a_fast/spec/definition_v01.md §2). This
 module never computes or fills ``weekly_stage_at_reference`` (Pattern A Fast
-Weekly Lifecycle Stage, docs/specs/pattern_a_fast_lifecycle_contract.md) or
+Weekly Lifecycle Stage, docs/patterns/pattern_a_fast/spec/lifecycle_contract.md) or
 ``human_label`` — those are Human Annotation fields (Phase 13C-2) and are
 left ``UNLABELED`` by every function here.
 
