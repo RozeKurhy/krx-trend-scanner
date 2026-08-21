@@ -4,7 +4,7 @@
 (SKC형 Core/Supporting, LG/한국타이어형 alignment bonus)과 Pattern A/B
 경계 문제(넷마블)를 구조적으로 해결하는 v0.2 후보를 development set에서
 비교한다. 최종 후보를 자동으로 고르지 않는다 — 표만 만들고 선택은
-문서(docs/patterns/pattern_a/archive/legacy_full_history.md의 Score Design v0.2 절)에 사람이 기록한다.
+문서(docs/patterns/pattern_a/spec/production_authority.md의 Score Design v0.2 절)에 사람이 기록한다.
 
 **Pattern A 점수 코드(pattern_a_score.py) 자체는 이 스크립트에서 건드리지
 않는다.** Candidate B/C는 이 스크립트 안에서만 존재하는 로컬 함수다.

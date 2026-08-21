@@ -3,7 +3,7 @@
 Feature Validation -> Historical Snapshot -> Holdout -> Negative Control ->
 Outcome Audit -> Base/Expansion Validation까지 검증한 결과를 바탕으로,
 Pattern A가 실제로 사용할 Feature와 그 역할/축을 확정한다. 자세한 근거는
-docs/patterns/pattern_a/archive/legacy_full_history.md의 "Validation Evidence"/"Base / Expansion
+docs/patterns/pattern_a/spec/production_authority.md의 "Validation Evidence"/"Base / Expansion
 Validation" 표를 참고한다.
 
 이 모듈은 분류만 담는다. Score 계산, 가중치, threshold와는 아직 연결하지
@@ -76,7 +76,7 @@ TRANSITION_SUPPORTING_FEATURES: frozenset[str] = frozenset(
 # --- Axis 1: Long-Term Structure / Base Context ---
 
 # Base/Expansion Validation v0.1(scripts/base_expansion_validate.py,
-# docs/patterns/pattern_a/archive/legacy_full_history.md 참고)로 재검증됨. holdout pre_breakout/
+# docs/patterns/pattern_a/spec/production_authority.md 참고)로 재검증됨. holdout pre_breakout/
 # early_trend/trend_progressed 3단계 + confirmed_negative 4그룹 비교 결과:
 #
 # * range_36m: trend_progressed 최소값(1.2614)이 나머지 세 그룹의 최댓값

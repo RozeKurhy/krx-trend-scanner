@@ -3,7 +3,7 @@ Report row로 만든다.
 
 Pattern A 점수는 만들지 않는다. 기존 features/ 함수를 최대한 재사용하고, 여기서
 새로 계산하는 값(range_36m, compression_ratio 등)은 기존 Pattern A 스펙 문서
-(docs/patterns/pattern_a/archive/legacy_full_history.md)에 이미 정의된 산식을 그대로 옮긴 것일 뿐, 새로운
+(docs/patterns/pattern_a/spec/production_authority.md)에 이미 정의된 산식을 그대로 옮긴 것일 뿐, 새로운
 Feature 라이브러리 함수로 승격하지 않는다.
 
 계산과 출력을 분리한다: 이 모듈은 값을 계산만 하고 print/CSV 쓰기는 하지 않는다.

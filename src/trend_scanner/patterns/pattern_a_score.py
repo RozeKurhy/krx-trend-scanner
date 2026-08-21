@@ -1,6 +1,6 @@
 """Pattern A Score Design v0.2.
 
-Feature Set Freeze v0.1(pattern_a_feature_set.py, docs/patterns/pattern_a/archive/legacy_full_history.md)
+Feature Set Freeze v0.1(pattern_a_feature_set.py, docs/patterns/pattern_a/spec/production_authority.md)
 로 확정한 Feature Set을 이용해 Pattern A Score의 구조를 정의한다.
 
 핵심 철학(v0.1과 동일, 유지):
@@ -19,7 +19,7 @@ Feature Set Freeze v0.1(pattern_a_feature_set.py, docs/patterns/pattern_a/archiv
 v0.2에서 바뀐 것은 Transition Score와 alignment bonus를 만드는 방식뿐이다
 (OOS Case Validation v0.1에서 실제로 재현된 두 실패 메커니즘을 구조적으로
 고치기 위함 — 자세한 후보 비교/근거는 scripts/score_v02_candidate_compare.py와
-docs/patterns/pattern_a/archive/legacy_full_history.md의 "Score Design v0.2" 절 참고):
+docs/patterns/pattern_a/spec/production_authority.md의 "Score Design v0.2" 절 참고):
 
     core_score = ma24_slope를 곡선(MA24_SLOPE_POINTS)에 통과시킨 값. Core는
         여전히 ma24_slope 하나뿐이다(Feature Set Freeze 그대로).
@@ -47,7 +47,7 @@ double counting을 피하기 위해, 개별 Feature 하나가 아니라 "여러 
 
 threshold(soft piecewise breakpoint)는 전부 관찰된 분포를 참고한 "설명
 가능한 반올림 숫자"다. 미래 수익률 최적화, grid search, 그룹 분리도
-최대화로 고른 값이 아니다 — 자세한 근거는 docs/patterns/pattern_a/archive/legacy_full_history.md의
+최대화로 고른 값이 아니다 — 자세한 근거는 docs/patterns/pattern_a/spec/production_authority.md의
 "Score Design" 절 참고.
 
 이 모듈은 FeatureRow(또는 같은 속성을 가진 임의 객체)를 받아 순수하게
@@ -90,7 +90,7 @@ def _piecewise_linear(value: float, points: tuple[tuple[float, float], ...]) -> 
 #
 # "얼마나 압축됐는가"가 아니라 "아직 장기적으로 과도하게 확장되지 않았는가"를
 # 본다. 값이 작거나 중간이면 Base 적합도가 높고, 매우 크면 낮다(단조 감소).
-# breakpoint는 Base/Expansion Validation(docs/patterns/pattern_a/archive/legacy_full_history.md)에서
+# breakpoint는 Base/Expansion Validation(docs/patterns/pattern_a/spec/production_authority.md)에서
 # 관찰한 4그룹(holdout pre/early/progressed, confirmed_negative) 분포를
 # 참고한 반올림 숫자다 — 관측된 1.1767/1.2614 사이 빈틈을 그대로 쓰지 않고
 # 1.2라는 라운드 넘버를 썼다(이 값 하나가 단독으로 progressed를 가르지
@@ -109,7 +109,7 @@ AVG_PRICE_CHANGE_12M_POINTS: tuple[tuple[float, float], ...] = ((0.10, 100.0), (
 MA_SPREAD_POINTS: tuple[tuple[float, float], ...] = ((0.10, 100.0), (0.25, 50.0), (0.40, 0.0))
 
 # range_36m(High) > avg_price_change_12m(Medium) > ma_spread(Low-Medium)
-# 검증 근거 강도 순으로 비중을 뒀다(docs/patterns/pattern_a/archive/legacy_full_history.md 권장 범위:
+# 검증 근거 강도 순으로 비중을 뒀다(docs/patterns/pattern_a/spec/production_authority.md 권장 범위:
 # 50~60% / 25~35% / 10~20%).
 BASE_WEIGHTS: dict[str, float] = {
     "range_36m": 0.55,
@@ -175,7 +175,7 @@ SUPPORT_POINTS: dict[str, tuple[tuple[float, float], ...]] = {
 # 불가). Candidate A(v0.1 가중합)/B(Core gating multiplier)도 development
 # set에서 비교했지만, 이 confirmation 구조가 Feature 역할 정의와 가장
 # 일치하고 known failure(SKC/넷마블)를 가장 크게 줄여서 채택했다 — 비교
-# 표와 기각 이유는 docs/patterns/pattern_a/archive/legacy_full_history.md 참고.
+# 표와 기각 이유는 docs/patterns/pattern_a/spec/production_authority.md 참고.
 CONFIRMATION_MAX = 20.0
 
 # core_score(0~100) 기준 confirmation 인정 비율. 50 미만이면 0(Support가

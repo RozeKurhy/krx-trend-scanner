@@ -3,7 +3,7 @@
 이 29개 (ticker, snapshot_date)는 Score v0.1(commit 6e7cc95)을 얼려놓고
 raw monthly close만 보고 골랐다(Feature/Score 값은 선정에 쓰지 않았다 —
 `scripts/_oos_fetch_and_inspect.py`가 그 증거다). 자세한 방법론과 caveat은
-docs/patterns/pattern_a/archive/legacy_full_history.md의 "OOS Case Validation v0.1" 절 참고.
+docs/patterns/pattern_a/spec/production_authority.md의 "OOS Case Validation v0.1" 절 참고.
 
 **재리뷰 후속(경계 고정)**: 이 29건은 이미 결과를 본 상태이므로 앞으로
 Score v0.2를 설계/분석하는 데 재사용할 수는 있지만(development/diagnostic
@@ -162,7 +162,7 @@ class StageAudit:
     audit_note: str
 
 
-# Stage Label Rubric v0.1(docs/patterns/pattern_a/archive/legacy_full_history.md 참고)로 positive
+# Stage Label Rubric v0.1(docs/patterns/pattern_a/spec/production_authority.md 참고)로 positive
 # 15건을 감사한 결과. Score/Feature 값을 쓰지 않고 raw monthly close
 # 구조만으로 판단했다(rubric 자체는 weekly close도 허용하지만 이번
 # 감사에는 monthly만으로 충분했다). **원본 라벨(OOS_V01_DIAGNOSTIC_SNAPSHOTS의

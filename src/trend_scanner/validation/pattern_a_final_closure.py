@@ -43,7 +43,14 @@ EXPECTED_FROZEN_HASHES = {
     # stage_label_audit_freeze.md). No Stage/Score rule, threshold, or formula
     # changed — verified via `git diff` containing only docs-path substitutions.
     "pattern_a_stage.py": "af881b94d33314855c2bf1a0b516a7e61a0b511fed5ae3597743f86fc247a435",
-    "pattern_a_score.py": "873260c4ca2e86b863698734591ae2d1795242f6b6a5cc913396655ba0ac159d",
+    # DOCS_INFORMATION_ARCHITECTURE_REORGANIZATION_FIX_01: docstring/comment
+    # references to docs/patterns/pattern_a/archive/legacy_full_history.md
+    # were updated to docs/patterns/pattern_a/spec/production_authority.md
+    # (the archive/ location was a structural contradiction — this doc is
+    # the current Score/Stage authority, not a superseded historical
+    # document). No Stage/Score rule, threshold, or formula changed —
+    # verified via `git diff` containing only docs-path substitutions.
+    "pattern_a_score.py": "5b9d1ccc84901609f9fea4db66e9ef7ff783e7f528f63febcfb741bf36fdd8d4",
     # Phase 13 added only PIT-truncated raw monthly/weekly frame exposure for
     # research. FeatureRow construction and Pattern A score/stage semantics
     # remain the frozen production behavior.

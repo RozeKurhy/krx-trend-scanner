@@ -21,7 +21,7 @@ Score(Core+Confirmation)와 alignment bonus(core-conditional) 계산 방식
 현재(v0.2) 출력을 그대로 반영한다. Design A/B는 이 스크립트 안에서만
 독립적으로 재계산하는 v0.1 시절 기각안이라 v0.2 전환과 무관하게 그대로
 동작한다. v0.1 vs v0.2 비교는 scripts/score_v02_candidate_compare.py와
-docs/patterns/pattern_a/archive/legacy_full_history.md의 "Score Design v0.2" 절 참고.
+docs/patterns/pattern_a/spec/production_authority.md의 "Score Design v0.2" 절 참고.
 
 실행 (repo 루트에서, `pip install -e ".[dev]"` 이후):
     python scripts/score_design_validate.py

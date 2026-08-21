@@ -16,11 +16,12 @@ README.md
 
 이 문서는 authority가 아니라 navigation만 제공한다. 산식/결론은 아래 원본 문서를 참고한다.
 
-- **개발 전체 히스토리 (Score/Stage 산식, Validation Evidence, OOS Case Validation 등)**: [archive/legacy_full_history.md](archive/legacy_full_history.md)
+- **Pattern A Production Authority** (Score/Stage 정의 및 누적 Validation Evidence): [spec/production_authority.md](spec/production_authority.md)
 - **Final Production Closure**: [validation/final_production_closure.md](validation/final_production_closure.md)
 
 ## Research / History 위치
 
+- `spec/` — 현재 Pattern A Production Authority
 - `research/` — Pattern A 자체의 feature research(예: Stage v0.4 multi-year 구조 feature research)
 - `validation/` — evaluator 통합, stage classifier, investability, negative control, universe/data quality, chart review 등 검증 문서
-- `archive/` — 현재 authority가 아닌 과거 누적 개발 기록(`legacy_full_history.md`)
+- `archive/` — 향후 superseded되었지만 보존 가치가 있는 historical document
