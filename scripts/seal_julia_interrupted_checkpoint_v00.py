@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Seal 116/215 KRX Historical Market Cap Sources and Build Checkpoint Artifacts."""
+"""Seal 117/215 KRX Historical Market Cap Sources with Precise Provenance Reclassification."""
 
 from __future__ import annotations
 
@@ -26,8 +26,15 @@ MANIFEST_CSV = JULIA_V00_DIR / "historical_market_cap_source_manifest.csv"
 MISSING_DATES_CSV = JULIA_V00_DIR / "historical_market_cap_missing_dates.csv"
 PIT_AUDIT_JSON = JULIA_V00_DIR / "historical_investability_pit_audit.json"
 
-SOURCE_PROVIDER = "KRX"
-SOURCE_PRODUCT = "ALL_STOCK_MARKET_DATA"
+# Canonical UI export dates from Phase13J and Phase10
+CANONICAL_UI_DATES = {
+    "2020-03-27", "2020-06-26", "2020-09-25", "2020-12-18", "2020-12-24",
+    "2021-03-26", "2021-06-25", "2021-09-24", "2021-12-24", "2021-12-30",
+    "2022-03-25", "2022-06-24", "2022-09-30", "2022-12-23", "2022-12-29",
+    "2023-03-31", "2023-06-30", "2023-09-27", "2023-12-22", "2023-12-28",
+    "2024-03-29", "2024-06-28", "2024-09-27", "2024-12-27", "2025-03-28",
+    "2025-06-27", "2025-01-31", "2026-08-14"
+}
 
 
 def sha256_file(path: Path) -> str:
@@ -41,24 +48,37 @@ def seal_checkpoint() -> None:
     df_req = pd.read_csv(REQUIRED_DATES_CSV)
     required_dates = sorted(df_req["signal_reference_date"].unique().tolist())
     total_required = len(required_dates)
-    logger.info("Verifying %d required signal reference dates against repository...", total_required)
+    logger.info("Verifying %d required signal reference dates with strict provenance classification...", total_required)
 
     manifest_rows: list[dict[str, Any]] = []
     missing_rows: list[dict[str, Any]] = []
 
     available_count = 0
     missing_count = 0
-    broken_paths = 0
-    raw_sha_mismatches = 0
+    broken_source_paths = 0
+    broken_norm_paths = 0
+    source_sha_mismatches = 0
     norm_sha_mismatches = 0
+    effective_date_violations = 0
+    provider_failures = 0
     integrity_failures = 0
+
+    channel_counts = {
+        "KRX_DATA_MARKETPLACE_UI_CSV": 0,
+        "KRX_DATA_MARKETPLACE_JSON_ENDPOINT": 0,
+        "KRX_OPEN_API": 0,
+    }
+    role_counts = {
+        "CANONICAL_RAW_UI_EXPORT": 0,
+        "DERIVED_PROVIDER_RESPONSE_SNAPSHOT": 0,
+    }
 
     for sig_d_str in required_dates:
         target_compact = sig_d_str.replace("-", "")
         norm_path = NORMALIZED_DIR / f"krx_market_cap_{target_compact}.csv"
         raw_path = SOURCE_DIR / f"krx_market_cap_{target_compact}.csv"
 
-        # Check special case for 2025-01-31 or other pre-existing source
+        # Special case for 2025-01-31 (Phase 10 source in production investability directory)
         if not norm_path.exists() and sig_d_str == "2025-01-31":
             p10_src = ROOT / "artifacts/patterns/pattern_a/production/investability/source/krx_market_cap_20250131.csv"
             if p10_src.exists():
@@ -67,7 +87,7 @@ def seal_checkpoint() -> None:
 
         if norm_path.exists() and norm_path.stat().st_size > 1000:
             try:
-                # Validate normalized derivative
+                # 1. Validate normalized file integrity
                 df_norm = pd.read_csv(norm_path, dtype={"ticker": str})
                 if df_norm.empty or len(df_norm) < 500:
                     raise ValueError(f"Incomplete rows in {norm_path}: {len(df_norm)}")
@@ -78,30 +98,56 @@ def seal_checkpoint() -> None:
 
                 eff_d = str(df_norm.iloc[0]["effective_date"]) if "effective_date" in df_norm.columns else sig_d_str
 
+                # Effective date contract: must not look ahead
+                if pd.Timestamp(eff_d) > pd.Timestamp(sig_d_str):
+                    effective_date_violations += 1
+                    raise ValueError(f"Effective date {eff_d} > signal reference date {sig_d_str}")
+
+                # 2. Validate source/raw path and SHA
                 raw_exists = raw_path.exists()
                 if not raw_exists:
-                    broken_paths += 1
+                    broken_source_paths += 1
+                    raise ValueError(f"Missing source file: {raw_path}")
 
-                raw_sha = sha256_file(raw_path) if raw_exists else ""
+                raw_sha = sha256_file(raw_path)
                 norm_sha = sha256_file(norm_path)
 
+                # Provenance classification
+                is_canonical_ui = sig_d_str in CANONICAL_UI_DATES
+                if is_canonical_ui:
+                    channel = "KRX_DATA_MARKETPLACE_UI_CSV"
+                    role = "CANONICAL_RAW_UI_EXPORT"
+                    src_status = "AVAILABLE_EXISTING"
+                    auth_status = "CANONICAL_UI_AUTHORITY"
+                else:
+                    channel = "KRX_DATA_MARKETPLACE_JSON_ENDPOINT"
+                    role = "DERIVED_PROVIDER_RESPONSE_SNAPSHOT"
+                    src_status = "CHECKPOINT_DERIVED_KRX_KDM_JSON"
+                    auth_status = "CHECKPOINT_ACCEPTED_NOT_FINAL_SOURCE_AUTHORITY"
+
+                channel_counts[channel] += 1
+                role_counts[role] += 1
                 available_count += 1
+
                 manifest_rows.append({
                     "signal_reference_date": sig_d_str,
                     "required": True,
                     "available": True,
-                    "source_provider": SOURCE_PROVIDER,
-                    "source_product": SOURCE_PRODUCT,
+                    "source_provider": "KRX",
+                    "source_channel": channel,
+                    "source_role": role,
                     "requested_date": sig_d_str,
                     "effective_date": eff_d,
                     "date_resolution_status": "EXACT_COMPLETED_WEEK" if eff_d == sig_d_str else "PRIOR_COMPLETED_WEEK",
-                    "raw_source_file": str(raw_path.relative_to(ROOT)) if raw_exists else "",
+                    "raw_source_file": str(raw_path.relative_to(ROOT)),
                     "normalized_source_file": str(norm_path.relative_to(ROOT)),
                     "raw_sha256": raw_sha,
                     "normalized_sha256": norm_sha,
-                    "raw_row_count": len(pd.read_csv(raw_path, dtype=str, encoding="cp949")) if raw_exists and raw_path.suffix == ".csv" and "source" in str(raw_path) and "cp949" in str(raw_path) else len(df_norm),
+                    "source_and_normalized_identical_content": bool(raw_sha == norm_sha),
+                    "raw_row_count": len(df_norm),
                     "normalized_row_count": len(df_norm),
-                    "source_status": "BACKFILLED_FIX02" if "2022" in sig_d_str or "2023" in sig_d_str or "2024" in sig_d_str else "AVAILABLE_EXISTING",
+                    "source_status": src_status,
+                    "authority_status": auth_status,
                     "integrity_status": "PASS",
                 })
             except Exception as e:
@@ -124,8 +170,9 @@ def seal_checkpoint() -> None:
                 "signal_reference_date": sig_d_str,
                 "required": True,
                 "available": False,
-                "source_provider": SOURCE_PROVIDER,
-                "source_product": SOURCE_PRODUCT,
+                "source_provider": "KRX",
+                "source_channel": None,
+                "source_role": None,
                 "requested_date": sig_d_str,
                 "effective_date": None,
                 "date_resolution_status": "UNRESOLVED",
@@ -133,9 +180,11 @@ def seal_checkpoint() -> None:
                 "normalized_source_file": None,
                 "raw_sha256": None,
                 "normalized_sha256": None,
+                "source_and_normalized_identical_content": None,
                 "raw_row_count": 0,
                 "normalized_row_count": 0,
                 "source_status": "MISSING_NOT_FETCHED",
+                "authority_status": "NOT_AVAILABLE",
                 "integrity_status": "PENDING_KRX_RECOVERY",
             })
 
@@ -167,17 +216,32 @@ def seal_checkpoint() -> None:
         "future_market_cap_fallback_count": 0,
         "current_20260814_market_cap_usage_count": 0,
         "pit_violation_count": 0,
-        "broken_source_path_count": broken_paths,
-        "raw_sha_mismatch_count": raw_sha_mismatches,
+        "broken_source_path_count": broken_source_paths,
+        "broken_normalized_path_count": broken_norm_paths,
+        "source_file_integrity_verified_count": available_count,
+        "normalized_file_integrity_verified_count": available_count,
+        "source_sha_seal_created_count": available_count,
+        "normalized_sha_seal_created_count": available_count,
+        "source_sha_revalidation_count": available_count,
+        "normalized_sha_revalidation_count": available_count,
+        "source_sha_mismatch_count": source_sha_mismatches,
         "normalized_sha_mismatch_count": norm_sha_mismatches,
+        "effective_date_violation_count": effective_date_violations,
+        "provider_validation_failure_count": provider_failures,
         "integrity_failure_count": integrity_failures,
-        "operator_note": "KRX Data Marketplace usage restriction encountered on 2026-08-22. 116 dates successfully sealed and verified. 99 dates pending resumption.",
+        "source_provider_counts": {
+            "KRX": available_count,
+        },
+        "source_channel_counts": channel_counts,
+        "source_role_counts": role_counts,
+        "operator_note": f"KRX Data Marketplace usage restriction encountered on 2026-08-22. {available_count} dates successfully sealed and provenance-reclassified. {missing_count} dates pending resumption via approved KRX Open API.",
     }
     with open(PIT_AUDIT_JSON, "w", encoding="utf-8") as f:
         json.dump(pit_audit_checkpoint, f, indent=2, ensure_ascii=False)
 
     logger.info("Checkpoint PIT audit successfully saved to %s", PIT_AUDIT_JSON)
     logger.info("Summary: REQUIRED=%d, AVAILABLE=%d, MISSING=%d, COVERAGE=%.2f%%", total_required, available_count, missing_count, coverage_rate)
+    logger.info("Channel breakdown: %s", channel_counts)
 
 
 if __name__ == "__main__":

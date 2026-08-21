@@ -9,7 +9,7 @@ Core Strategy Mandate:
   - Initial Position State: FLAT
   - Lookback: Full pre-2022 history used for signal and feature calculation (Lookback != Window)
   - Strict PIT Historical Investability: Point-in-time exact KRX snapshot, Fail Closed on missing dates.
-  - Manifest-Driven Provenance: Uses canonical resolved paths and hash verification.
+  - Manifest-Driven Strict Provenance: Canonical paths, provider/channel/role classification, SHA verification.
 """
 
 from __future__ import annotations
@@ -46,42 +46,109 @@ logger = logging.getLogger(__name__)
 EVALUATION_START_DATE = pd.Timestamp("2022-01-01")
 EVALUATION_END_DATE = DATA_CUTOFF  # 2026-08-14
 
+VALID_CHANNELS = {
+    "KRX_DATA_MARKETPLACE_UI_CSV",
+    "KRX_DATA_MARKETPLACE_JSON_ENDPOINT",
+    "KRX_OPEN_API",
+}
+
+
+class HistoricalMarketCapIntegrityError(Exception):
+    """Raised when historical market cap manifest or source file fails integrity verification."""
+
+
+def _sha256_file(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
 
 @dataclass
 class HistoricalMarketCapRegistry:
     snapshots: dict[str, dict[str, float]]
-    metadata: dict[str, dict[str, str]]
+    metadata: dict[str, dict[str, Any]]
 
     @classmethod
-    def load_from_repository(cls, root: Path) -> HistoricalMarketCapRegistry:
+    def load_from_repository(cls, root: Path, enforce_integrity: bool = True) -> HistoricalMarketCapRegistry:
         manifest_path = root / "artifacts/strategies/julia/v00/historical_market_cap_source_manifest.csv"
         history_dir = root / "artifacts/patterns/pattern_a/validation/investability_history"
         grid_path = history_dir / "krx_market_cap_reference_grid_v01.csv"
 
         snapshots: dict[str, dict[str, float]] = {}
-        metadata: dict[str, dict[str, str]] = {}
+        metadata: dict[str, dict[str, Any]] = {}
 
-        # 1. Prefer Manifest if available (Fix 02 authority)
+        # 1. Prefer Manifest if available (Fix 02/03 authority)
         if manifest_path.exists():
             df_man = pd.read_csv(manifest_path, dtype=str).fillna("")
             for _, row in df_man.iterrows():
                 sig_d = str(row["signal_reference_date"]).strip()
-                avail = str(row.get("available", "")).lower() == "true" or str(row.get("integrity_status", "")) == "PASS"
-                if not avail:
+                avail_str = str(row.get("available", "")).strip().lower()
+                integ_status = str(row.get("integrity_status", "")).strip()
+
+                is_available = (avail_str == "true") and (integ_status == "PASS")
+                if not is_available:
                     continue
-                norm_rel = str(row["normalized_source_file"]).strip()
+
+                provider = str(row.get("source_provider", "")).strip()
+                channel = str(row.get("source_channel", "")).strip()
+                role = str(row.get("source_role", "")).strip()
+                auth_status = str(row.get("authority_status", "")).strip()
+                eff_d = str(row.get("effective_date", "")).strip()
+                norm_rel = str(row.get("normalized_source_file", "")).strip()
+                raw_rel = str(row.get("raw_source_file", "")).strip()
+                manifest_norm_sha = str(row.get("normalized_sha256", "")).strip()
+                manifest_raw_sha = str(row.get("raw_sha256", "")).strip()
+
+                if enforce_integrity:
+                    if provider != "KRX":
+                        raise HistoricalMarketCapIntegrityError(f"Invalid provider for {sig_d}: {provider}")
+                    if channel not in VALID_CHANNELS:
+                        raise HistoricalMarketCapIntegrityError(f"Invalid channel for {sig_d}: {channel}")
+                    if not eff_d or pd.Timestamp(eff_d) > pd.Timestamp(sig_d):
+                        raise HistoricalMarketCapIntegrityError(f"Effective date {eff_d} > signal date {sig_d}")
+                    if not norm_rel:
+                        raise HistoricalMarketCapIntegrityError(f"Missing normalized path in manifest for {sig_d}")
+
                 norm_p = root / norm_rel
-                if norm_p.exists() and norm_p.stat().st_size > 1000:
-                    df = pd.read_csv(norm_p, dtype={"ticker": str})
-                    df["ticker"] = df["ticker"].astype(str).str.zfill(6)
-                    mcaps = dict(zip(df["ticker"], df["market_cap"].astype(float)))
-                    snapshots[sig_d] = mcaps
-                    metadata[sig_d] = {
-                        "source_file": str(row["raw_source_file"]).strip() or norm_rel,
-                        "normalized_file": norm_rel,
-                        "sha256": str(row.get("normalized_sha256", "")),
-                        "provider": str(row.get("source_provider", "KRX")),
-                    }
+                if not norm_p.exists():
+                    if enforce_integrity:
+                        raise HistoricalMarketCapIntegrityError(f"Normalized source file does not exist: {norm_p}")
+                    continue
+
+                if enforce_integrity:
+                    actual_norm_sha = _sha256_file(norm_p)
+                    if actual_norm_sha != manifest_norm_sha:
+                        raise HistoricalMarketCapIntegrityError(
+                            f"Normalized SHA mismatch for {sig_d}: expected {manifest_norm_sha}, got {actual_norm_sha}"
+                        )
+
+                df = pd.read_csv(norm_p, dtype={"ticker": str})
+                if df.empty or "ticker" not in df.columns or "market_cap" not in df.columns:
+                    if enforce_integrity:
+                        raise HistoricalMarketCapIntegrityError(f"Corrupt normalized file: {norm_p}")
+                    continue
+
+                if enforce_integrity:
+                    if df["ticker"].duplicated().any():
+                        raise HistoricalMarketCapIntegrityError(f"Duplicate tickers in {norm_p}")
+                    if not (df["market_cap"].dropna().astype(float) > 0).all():
+                        raise HistoricalMarketCapIntegrityError(f"Non-positive market cap in {norm_p}")
+
+                df["ticker"] = df["ticker"].astype(str).str.zfill(6)
+                mcaps = dict(zip(df["ticker"], df["market_cap"].astype(float)))
+                snapshots[sig_d] = mcaps
+                metadata[sig_d] = {
+                    "source_provider": provider,
+                    "source_channel": channel,
+                    "source_role": role,
+                    "source_file": raw_rel or norm_rel,
+                    "normalized_file": norm_rel,
+                    "source_sha256": manifest_raw_sha,
+                    "normalized_sha256": manifest_norm_sha,
+                    "requested_date": str(row.get("requested_date", "")).strip(),
+                    "effective_date": eff_d,
+                    "signal_reference_date": sig_d,
+                    "authority_status": auth_status,
+                }
+
             if snapshots:
                 return cls(snapshots=snapshots, metadata=metadata)
 
@@ -99,15 +166,22 @@ class HistoricalMarketCapRegistry:
                     mcaps = dict(zip(df["ticker"], df["market_cap"].astype(float)))
                     snapshots[eff_d] = mcaps
                     metadata[eff_d] = {
+                        "source_provider": "KRX",
+                        "source_channel": "KRX_DATA_MARKETPLACE_UI_CSV",
+                        "source_role": "CANONICAL_RAW_UI_EXPORT",
                         "source_file": str(norm_file.relative_to(root)),
                         "normalized_file": str(norm_file.relative_to(root)),
-                        "sha256": str(row.get("sha256", "")),
-                        "provider": "KRX",
+                        "source_sha256": str(row.get("sha256", "")),
+                        "normalized_sha256": str(row.get("sha256", "")),
+                        "requested_date": eff_d,
+                        "effective_date": eff_d,
+                        "signal_reference_date": eff_d,
+                        "authority_status": "CANONICAL_UI_AUTHORITY",
                     }
 
         return cls(snapshots=snapshots, metadata=metadata)
 
-    def get_market_cap_at_reference(self, ticker: str, reference_date: str) -> tuple[float | None, dict[str, str] | None]:
+    def get_market_cap_at_reference(self, ticker: str, reference_date: str) -> tuple[float | None, dict[str, Any] | None]:
         if reference_date not in self.snapshots:
             return None, None
         mcap = self.snapshots[reference_date].get(ticker)
@@ -295,7 +369,7 @@ def simulate_ticker_strategy_2022(
         entry_exec_date: pd.Timestamp | None = None
         entry_open_price: float | None = None
         inv_eval_record: InvestabilityEvaluationResult | None = None
-        inv_source_meta: dict[str, str] | None = None
+        inv_source_meta: dict[str, Any] | None = None
 
         candidate_weeks = [w for w in valid_weeks if w >= cur_search_date]
         for w in candidate_weeks:
