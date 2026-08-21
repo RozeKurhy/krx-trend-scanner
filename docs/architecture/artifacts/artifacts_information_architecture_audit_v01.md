@@ -5,7 +5,9 @@ artifacts_information_architecture_audit_v01.md
 이 문서는 `artifacts/` 폴더 전체에 대한 AUDIT + DESIGN 문서다(STEP 1). 실제 `git mv`,
 rename, 삭제, regeneration은 수행하지 않았다. 근거는 `find`/`rg`/`git log`를 통한
 직접 조사이며, 판단이 불가능한 항목은 추측 대신 `UNKNOWN_REQUIRES_REVIEW`로
-남겼다.
+남기는 원칙으로 조사했다. STEP 1 FIX(Architect Review 반영)를 거친 현재,
+`UNKNOWN_REQUIRES_REVIEW`/`BLOCKED`로 남은 항목은 없다 — §4/§18 전 항목이
+확정 분류와 확정 이동 경로를 갖는다.
 
 작업 시작 HEAD: `e4b53d6e88b73ab9a5d7d79e49e507c40fa88661`
 
@@ -34,7 +36,9 @@ parquet 3), **12개 top-level 폴더**가 있다. 그중 `pattern_a_fast/`(584 �
 3. **`artifacts/pattern_a_fast/strategy_finalization_v01_corrected_pit/`는
    현재 base `strategy_finalization_v01/`와 byte-identical 중복**이고,
    `strategy_finalization_v01_legacy/`는 PIT 보정 이전(pre-fix) 값의 진짜
-   historical 백업이다(diff로 직접 확인).
+   historical 백업이다(diff로 직접 확인). Architect decision: canonical =
+   `strategy_finalization_v01/`, `corrected_pit/` = REMOVE_DUPLICATE(STEP 2
+   Phase E), `legacy/` = archive 유지(§19).
 4. **6개 A FAST v0.2 계열 연구 산출물**(`entry_gate_v02a`, `coverage_hole_v02d`,
    `unavailable_v02c`, `weak_reversal_v02b`, `combined_exit_v01`,
    `architecture_v03`)은 repo 전체에서 docs/tests/src/scripts 어디에서도
@@ -49,9 +53,16 @@ parquet 3), **12개 top-level 폴더**가 있다. 그중 `pattern_a_fast/`(584 �
    **path**는 어떤 hash에도 포함돼 있지 않다 — 즉 이동해도 hash 값은 그대로
    유효하지만, path를 하드코딩해 읽는 production/test 코드(§14/§15) 수만큼
    반드시 별도 path migration이 필요하다.
+7. **`ground_truth/charts/`(240개 PNG)는 기존 canonical per-file sha256
+   manifest가 없다는 finding은 유지하되, 이것이 이동 불가를 뜻하지는
+   않는다.** STEP 2 이동 시 pre/post migration checksum snapshot(240개
+   전체 relative path+size+sha256)으로 byte identity를 직접 증명하면
+   된다 — 분류는 BLOCKED가 아니라 HIGH(§15/§21).
 
-이번 STEP 1은 AUDIT + DESIGN만 수행했고 실제 이동/rename/삭제/재생성은
-0건이다.
+이번 STEP 1(FIX 포함)은 AUDIT + DESIGN만 수행했고 실제 이동/rename/삭제/
+재생성은 0건이다. Architect Review에서 지적된 Major 3건/Minor 1건을 모두
+반영했으며, `BLOCKED_MOVE_COUNT = 0`으로 확정해 STEP 2 실행 설계로
+승격한다.
 
 ===============================================================================
 ## 2. Current Artifact Topology
@@ -385,11 +396,16 @@ FIX_03에서 신설)이 현재 explicit hash authority다:
 그 외 seal/manifest(모두 content-hash 기반, path는 언급하지 않음):
 `investable_oos`의 4개 seal(pass_a_freeze, ground_truth, preregistration
 + 각 test 파일의 FROZEN_*_SHA256 상수), `oos`의 ground_truth_seal/
-blindness_audit, `ground_truth/charts/*`의 개별 asset sha256(수동으로 각
-asset row에 저장된 형태 — 단, 지금 확인 결과 `ground_truth/charts/`
-자체는 **파일별 개별 sha256이 아니라 폴더 커밋 시점의 스냅샷**으로만
-존재한다 — 240개 chart 각각의 sha256 manifest는 `investable_oos`/`oos`
-계열과 달리 발견되지 않았다. 이는 §21 BLOCKED 후보로 기록한다).
+blindness_audit. `ground_truth/`의 남은 2개 JSON(`selection_manifest.json`,
+`reserved_calibration_samples.json`)도 직접 확인했으나 hash 필드가 없다 —
+즉 `ground_truth/charts/`(240개 PNG)는 **기존 canonical per-file SHA256
+manifest가 없다**(이 finding 자체는 유지). 다만 기존 manifest 부재가 곧
+relocation 불가를 뜻하지는 않는다: STEP 2에서 이동 직전/직후 임시
+migration verification snapshot(relative path + size + sha256, 240개
+전부)을 생성해 pre/post byte identity를 직접 증명하면 된다 — 이 snapshot은
+verification 용도일 뿐 기존 ground-truth artifact에 새 manifest를
+삽입하는 것이 아니다. 따라서 이 항목은 BLOCKED가 아니라 **HIGH +
+migration checksum verification 필수**로 분류한다(§21).
 
 **CONTENT IDENTITY vs PATH AUTHORITY**: 모든 sha256/seal은 content만
 검증한다. path 자체를 authority contract의 일부로 사용하는 곳은 발견되지
@@ -413,14 +429,30 @@ docs IA 철학(상위 영역 → Pattern/Domain → 역할)을 artifact lifecycl
 2. 각 Pattern 아래 `production`(현재 authority가 직접 소비/생성),
    `validation`(closure/human-review/seal 체인), `research`(연구 산출물),
    `archive`(superseded)로 4분류.
-3. Investability/Foreign Flow/Relative Strength/Scanner는 Pattern A의
-   하위 confirmation axis이므로 `patterns/pattern_a/production/` 아래
-   각각 자기 이름의 폴더를 가진다(폴더 이름 자체가 이미 axis를 설명하므로
-   유지).
+3. Investability/Foreign Flow/Scanner는 Pattern A의 하위 confirmation
+   axis이자 현재 CLOSED production evidence이므로
+   `patterns/pattern_a/production/` 아래 각각 자기 이름의 폴더를 가진다
+   (폴더 이름 자체가 이미 axis를 설명하므로 유지). **Relative Strength는
+   여기 포함하지 않는다** — production code가 RS source/infrastructure를
+   참조한다는 사실만으로 artifact lifecycle이 production-ready가 되는
+   것은 아니다. 현재 Phase12 verdict는 `HOLD_RELATIVE_STRENGTH_INFRA`
+   (Gate 7 Sector Mapping Contract, Gate 8 Sector RS Arithmetic Parity
+   모두 unresolved, Final Closure 아님)이므로 PATH MUST EXPRESS
+   AUTHORITY/LIFECYCLE 원칙에 따라 `patterns/pattern_a/validation/`
+   아래 위치시킨다. Phase12 Final Closure 완료 후 별도 migration task로
+   `validation/relative_strength/` → `production/relative_strength/`
+   승격 가능(§9).
 4. Reporting(Stock Report)은 Pattern에 종속되지 않는 독립 계층 — docs와
    동일하게 `reporting/`로 분리.
-5. `chart_review/`, `analysis/`, `cache_population/`처럼 특정 Pattern에
-   종속되지 않거나 공용 infra 성격인 것은 `shared/`로 이동.
+5. `chart_review/`/`analysis/`/`cache_population/`는 겉보기엔 비슷해
+   보이지만 ownership이 서로 다르므로 하나로 묶지 않는다:
+   `chart_review/`는 `pattern_a_final_closure.py`/
+   `pattern_a_investability_audit.py`가 직접 읽는 Pattern A closure
+   chain evidence이므로 `patterns/pattern_a/validation/chart_review/`로;
+   `analysis/`는 Pattern A local stage filter 연구 산출물이므로
+   `patterns/pattern_a/research/analysis/`로; `cache_population/`만
+   특정 Pattern에 종속되지 않는 진짜 공용 infra이므로 `shared/`로
+   이동한다.
 6. `pattern_a_final_closure/`는 Pattern A의 `validation/closure/`로.
 
 ===============================================================================
@@ -435,15 +467,16 @@ artifacts/
 │   │   ├── production/
 │   │   │   ├── scanner/                     (← scanner/)
 │   │   │   ├── investability/               (← investability/ top-level 10 + source/)
-│   │   │   ├── flow/                        (← flow/)
-│   │   │   └── relative_strength/           (← relative_strength/, 현재 HOLD 상태 명시)
+│   │   │   └── flow/                        (← flow/)
 │   │   ├── validation/
 │   │   │   ├── closure/                     (← pattern_a_final_closure/)
-│   │   │   ├── chart_review/                (← chart_review/)
+│   │   │   ├── chart_review/                (← chart_review/, closure chain evidence)
 │   │   │   ├── investability_history/       (← investability/history/)
+│   │   │   ├── relative_strength/           (← relative_strength/, Phase12 HOLD_RELATIVE_STRENGTH_INFRA — Final Closure 전까지 validation)
 │   │   │   ├── stage_v03_research/          (← stage_v03_research/)
 │   │   │   └── stage_v04_multi_year_research/ (← stage_v04_multi_year_research/)
 │   │   └── research/
+│   │       ├── analysis/                    (← analysis/, Pattern A local stage filter 연구)
 │   │       └── investability_threshold_design/ (← investability/의 threshold_design·scenarios·scorecard·summary)
 │   │
 │   └── pattern_a_fast/
@@ -451,7 +484,7 @@ artifacts/
 │       │   ├── contract_prototype/          (← research/의 score/stage prototype 2개만 — production dependency 명시)
 │       │   ├── strategy_v01/                (← final_strategy_v01/, HISTORICAL_BASELINE 명시 유지)
 │       │   ├── strategy_v02/                (← final_strategy_v02/)
-│       │   └── strategy_finalization_v01/   (← strategy_finalization_v01/, corrected_pit 중복 제거 후 단일화 — §19)
+│       │   └── strategy_finalization_v01/   (← strategy_finalization_v01/ = canonical. corrected_pit는 byte-identical duplicate로 REMOVE_DUPLICATE — §19)
 │       ├── validation/
 │       │   ├── oos/                         (← oos/)
 │       │   ├── ground_truth/                (← ground_truth/)
@@ -474,26 +507,26 @@ artifacts/
 │       ├── 20260814/                        (← stock_reports/20260814/)
 │       └── archive/v0.1/20260814/           (← stock_reports/archive/v0.1/20260814/)
 │
-├── shared/
-│   ├── analysis/                            (← analysis/)
-│   └── cache_population/                    (← cache_population/)
-│
-└── strategies/                              (신규 top-level, 현재는 빈 placeholder)
-    └── (empty — Julia Strategy 등 Pattern에 종속되지 않는 독립 전략의
-        첫 artifact가 생기는 시점에 실제 생성한다. docs/strategies/와
-        동일한 명명 원칙을 그대로 따른다.)
+└── shared/
+    └── cache_population/                    (← cache_population/, 유일한 진짜 공용 infra)
+
+# strategies/ 는 이 트리의 노드가 아니다 — STEP 2에서 mkdir 대상이 아님.
+# Julia Strategy 등 Pattern에 종속되지 않는 독립 전략의 첫 artifact가
+# 생기는 시점에 별도 top-level로 실제 생성한다(docs/strategies/와 동일
+# 명명 원칙). 그 전까지는 존재하지 않는 디렉터리다.
 ```
 
 이 트리는 §10의 10개 질문에 답할 수 있다: Pattern A/Pattern A FAST
 current production evidence는 각 `production/`, A FAST Core V1 baseline은
 `pattern_a_fast/production/strategy_v01/`, validation evidence는 각
 `validation/`, research는 각 `research/`, Phase12 HOLD는
-`pattern_a/production/relative_strength/`(위치는 production 유지 —
-infra는 존재하고 계속 소비되므로), superseded는 각 `archive/`, Stock
-Report current output은 `reporting/stock_reports/20260814/`. 향후 Julia
-Strategy는 `strategies/<name>/`(docs와 동일 원칙으로 별도 top-level 신설
-제안), Pattern B는 `patterns/pattern_b/`로 동일 4분류를 복제하면 확장
-가능하다.
+`pattern_a/validation/relative_strength/`(PATH MUST EXPRESS
+AUTHORITY/LIFECYCLE 원칙 — Final Closure 전까지는 production이 아니라
+validation), superseded는 각 `archive/`, Stock Report current output은
+`reporting/stock_reports/20260814/`. 향후 Julia Strategy는
+`strategies/<name>/`(docs와 동일 원칙으로 별도 top-level 신설 제안,
+빈 디렉터리는 Git이 유지하지 않으므로 첫 artifact가 생길 때 실제 생성),
+Pattern B는 `patterns/pattern_b/`로 동일 4분류를 복제하면 확장 가능하다.
 
 ===============================================================================
 ## 18. Migration Table
@@ -506,10 +539,10 @@ Strategy는 `strategies/<name>/`(docs와 동일 원칙으로 별도 top-level �
 | `investability/source/` | SOURCE_INPUT | 예 | `patterns/pattern_a/production/investability/source/` | **HIGH** | src(full_universe_scanner.py 런타임), tests/helpers/frozen_integrity.py(hash 상수, path는 별도) | MOVE |
 | `investability/history/` | SOURCE_INPUT | 예 | `patterns/pattern_a/validation/investability_history/` | MEDIUM | tests 1 | MOVE |
 | `flow/` | CURRENT_PRODUCTION_EVIDENCE | 예 | `patterns/pattern_a/production/flow/` | HIGH | src 4, tests 1 | MOVE |
-| `relative_strength/` | CURRENT_VALIDATION | 예(HOLD) | `patterns/pattern_a/production/relative_strength/` | HIGH | src 3, tests 2 | MOVE |
+| `relative_strength/` | CURRENT_VALIDATION | 예(HOLD) | `patterns/pattern_a/validation/relative_strength/` | HIGH | src 3, tests 2 | MOVE(Phase12 Final Closure 후 별도 task로 production/ 승격 가능 — §9) |
 | `pattern_a_final_closure/` | CLOSURE_EVIDENCE | 예 | `patterns/pattern_a/validation/closure/` | MEDIUM | src(pattern_a_final_closure.py가 write) | MOVE |
 | `chart_review/` | CLOSURE_EVIDENCE | 예 | `patterns/pattern_a/validation/chart_review/` | **HIGH** | src 2(런타임 read), scripts 1 | MOVE |
-| `analysis/` | CURRENT_RESEARCH | 아니오 | `shared/analysis/` | LOW | docs 1 | MOVE |
+| `analysis/` | CURRENT_RESEARCH | 아니오 | `patterns/pattern_a/research/analysis/` | LOW | docs 1 | MOVE |
 | `cache_population/` | CURRENT_VALIDATION(infra) | 아니오 | `shared/cache_population/` | LOW | scripts 1 | MOVE |
 | `stage_v03_research/` | CURRENT_VALIDATION | 예 | `patterns/pattern_a/validation/stage_v03_research/` | MEDIUM | src 1, tests(deterministic regen) | MOVE |
 | `stage_v04_multi_year_research/` | CURRENT_VALIDATION | 예 | `patterns/pattern_a/validation/stage_v04_multi_year_research/` | MEDIUM | src 1, tests | MOVE |
@@ -522,7 +555,7 @@ Strategy는 `strategies/<name>/`(docs와 동일 원칙으로 별도 top-level �
 | `pattern_a_fast/final_strategy_v01/` | HISTORICAL_BASELINE | 예 | `patterns/pattern_a_fast/production/strategy_v01/` | HIGH | tests 2 | KEEP_AS_HISTORICAL_BASELINE (이동은 가능하나 삭제/archive 금지) |
 | `pattern_a_fast/final_strategy_v02/` | CURRENT_PRODUCTION_EVIDENCE | 예 | `patterns/pattern_a_fast/production/strategy_v02/` | HIGH | tests 1, docs(versions.md) | MOVE |
 | `pattern_a_fast/strategy_finalization_v01/` | CURRENT_PRODUCTION_EVIDENCE | 예 | `patterns/pattern_a_fast/production/strategy_finalization_v01/` | HIGH | tests(provenance) | MOVE |
-| `pattern_a_fast/strategy_finalization_v01_corrected_pit/` | TEMPORARY_OR_DUPLICATE_CANDIDATE | 아니오 | (없음) | MEDIUM | tests(provenance test가 두 경로 모두 required로 순회 — 하나만 남기면 test 갱신 필요) | **REVIEW_REQUIRED**(중복 제거 여부는 STEP 2에서 사용자 확인 후 결정 — 이번 STEP 1에서 삭제하지 않음) |
+| `pattern_a_fast/strategy_finalization_v01_corrected_pit/` | TEMPORARY_OR_DUPLICATE_CANDIDATE | 아니오 | (없음 — 삭제 대상) | MEDIUM | tests(provenance test가 두 경로 모두 required로 순회 — 제거 전 test를 canonical 1개 contract로 먼저 수정해야 함) | **REMOVE_DUPLICATE**(STEP 2 Phase E, §23 순서대로: identity 재확인 → test 수정 → green 확인 → 제거) |
 | `pattern_a_fast/strategy_finalization_v01_legacy/` | SUPERSEDED | 아니오 | `patterns/pattern_a_fast/archive/strategy_finalization_v01_legacy/` | LOW | 참조 0건 | ARCHIVE_CANDIDATE |
 | `pattern_a_fast/core_v02_reentry/` | CURRENT_PRODUCTION_EVIDENCE | 예 | `patterns/pattern_a_fast/research/core_v02_reentry/` | MEDIUM | docs 1, tests(trades.csv) | MOVE |
 | `pattern_a_fast/progressed_downside_v01/` | CURRENT_RESEARCH(deferred) | 예 | `patterns/pattern_a_fast/research/progressed_downside_v01/` | LOW | docs 1, tests 1 | MOVE |
@@ -553,15 +586,20 @@ Strategy는 `strategies/<name>/`(docs와 동일 원칙으로 별도 top-level �
 | `pattern_a_fast/fresh_oos_v03/` | 문서(`versions.md` §5)가 직접 `SUPERSEDED_HISTORICAL_PREREGISTRATION` 선언, 참조 0건 |
 | `pattern_a_fast/strategy_finalization_v01_legacy/` | PIT 보정 이전 값, diff로 pre-fix 상태와 byte-identical 확인, 참조 0건(historical 증빙 목적으로 archive 유지 — 완전 삭제 대상 아님) |
 
-`pattern_a_fast/strategy_finalization_v01_corrected_pit/`는 archive
-후보가 아니라 **REVIEW_REQUIRED**로 별도 분류했다 — base
-`strategy_finalization_v01/`과 byte-identical하지만
+**`pattern_a_fast/strategy_finalization_v01_corrected_pit/`는 archive
+후보가 아니다 — Architect decision: REMOVE_DUPLICATE.** base
+`strategy_finalization_v01/`과 byte-identical하며(diff로 확인), 이
+base가 canonical corrected V1 finalization이다.
+`strategy_finalization_v01_legacy/`가 PIT 보정 이전 진짜 historical
+값이므로, `corrected_pit/`는 git history가 이미 보존하는 중복 사본일
+뿐 별도 historical archive로 보존할 이유가 없다. 다만 바로 삭제하지
+않는다 — 현재
 `test_strategy_finalization_provenance.py::test_provenance_consistency_across_artifacts`가
-**두 경로 모두를 필수로 순회하며 각각 동일한 provenance metadata를
-assert**한다(하나가 없으면 실패 — fallback이 아니라 "두 사본이 계속
-일치하는가"를 검증하는 이중 확인 구조). 따라서 단순 삭제는 이 test를
-깨뜨리며, 어느 쪽을 canonical로 남기고 test를 어떻게 갱신할지는 STEP 2에서
-사용자 결정이 필요하다.
+두 경로를 모두 필수로 순회하며 동일 provenance metadata를 assert하므로,
+STEP 2 Phase E(§23) 순서(byte identity 재확인 → provenance parity
+재확인 → 왜 두 경로를 요구하는지 확인 → canonical 확정 → test를
+새 authority contract로 수정 → targeted test green → 그 후 제거)를
+그대로 따른다.
 
 ===============================================================================
 ## 20. Historical Baselines That Must NOT Be Archived
@@ -577,26 +615,32 @@ assert**한다(하나가 없으면 실패 — fallback이 아니라 "두 사본�
 ## 21. High-Risk / Blocked Moves
 ===============================================================================
 
-**HIGH:**
+**HIGH:** (§18 표 기준 HIGH = 13 rows; 아래는 대표 그룹으로 묶은 것이며
+이 목록의 항목 수와 13은 다른 숫자다 — 정확한 개별 row 집계는 §18/§24 참조)
 - `pattern_a_fast/research/`의 score/stage prototype 2개 — production
   runtime(2개 src 파일) + 다수 test + frozen_integrity.py 동시 의존. STEP 2
   1순위 검증 대상.
 - `investability/source/` — production runtime(full_universe_scanner.py)이
   `repo_root`로 매번 재계산 없이 로드.
 - `chart_review/` — Final Closure 코드가 하드코딩 경로로 직접 read.
-- `flow/`, `relative_strength/` — 다수 src 참조.
+- `flow/`, `relative_strength/` — 다수 src 참조(단, `relative_strength/`는
+  `validation/`로 이동 — 현재 HOLD 상태이므로 production 경로가 아님).
 - `pattern_a_fast/ground_truth/`, `investable_oos/` — explicit sha256 seal
   다수, 각 test의 path 상수 갱신 필요.
+- `pattern_a_fast/ground_truth/charts/`(240개) — 개별 asset별 canonical
+  sha256 manifest가 발견되지 않는다는 finding은 유지하되(§15), 이 사실이
+  곧 이동 불가를 뜻하지는 않는다. STEP 2 이동 시 반드시: 이동 전
+  PRE_MOVE_ASSET_COUNT=240 + 각 파일의 relative path/size/sha256을
+  임시 migration verification snapshot으로 계산 → `git mv` → 이동 후
+  POST_MOVE_ASSET_COUNT=240 / SHA256_MISMATCH_COUNT=0 /
+  MISSING_FILE_COUNT=0 / EXTRA_FILE_COUNT=0을 재계산해 증명. 이 snapshot은
+  production artifact를 수정하지 않는 검증 전용 산출물이다.
 - `stock_reports/20260814/` — 향후 Web Viewer 소비 가능성(§13).
 
-**BLOCKED:**
-- `pattern_a_fast/ground_truth/charts/`(240개) — 개별 asset별 sha256
-  manifest가 발견되지 않았다(§15). 이동 전 STEP 2에서 먼저 "이 240개 chart가
-  실제로 identity-protected인지"를 확인하는 별도 검증이 필요 —
-  provenance가 불명확한 상태에서 이동 위험도를 판단할 수 없다.
-- `pattern_a_fast/strategy_finalization_v01_corrected_pit/` vs
-  `strategy_finalization_v01/` 중 어느 쪽을 canonical로 유지할지 —
-  현재 두 test가 둘 다 참조하므로 사용자 확인 없이 임의 통합 불가.
+**BLOCKED_MOVE_COUNT = 0.** `strategy_finalization_v01_corrected_pit/`는
+"이동"이 아니라 §19의 Architect decision(REMOVE_DUPLICATE)에 따라
+STEP 2 Phase E(§23)에서 canonical 단일화 후 제거 대상이며, 새로 발견된
+blocker는 없다.
 
 ===============================================================================
 ## 22. Optional Future Filename Cleanup
@@ -619,38 +663,99 @@ DIRECTORY MOVE FIRST 원칙에 따라 STEP 2에서도 rename보다 이동을 우
 ## 23. STEP 2 Reorganization Plan
 ===============================================================================
 
-1. `artifacts/README.md`(Authority Index) 초안 작성 — Current Production
-   Evidence / Current Validation / Active Research / Reporting Outputs /
-   Historical Baselines / Archive / Naming-Lifecycle Rules 섹션.
-2. HIGH risk 그룹부터 순서대로: (a) `pattern_a_fast/research/` score+stage
-   prototype 2개 단독 이동 + `stock_report.py`/`pattern_a_fast_report.py`
-   경로 갱신 + 관련 test 전부 green 확인, (b) `investability/source/`,
-   (c) `chart_review/`, (d) `flow/`, `relative_strength/`, (e)
-   `ground_truth/`, `investable_oos/`, `oos/`(seal path 갱신).
-3. MEDIUM/LOW risk 그룹 일괄 이동(scanner, analysis, cache_population,
-   stage_v03/v04_research, 연구 계열).
-4. `strategy_finalization_v01_corrected_pit` 중복 처리 방식을 사용자에게
-   확인.
-5. Archive 후보 8개 그룹을 `patterns/pattern_a_fast/archive/`로 이동.
-6. `stock_reports/`는 가장 마지막에, 별도 세션으로 이동(Web Viewer 영향
-   재확인 후).
-7. 각 단계마다: `git mv` → path 참조 코드/테스트 갱신 → 대상 targeted test
-   실행 → sha256/seal 값 불변 확인 → 다음 단계 진행.
-8. 전체 완료 후 README/Roadmap refresh(이번 Task 범위 밖, w.md §26 순서
-   그대로 유지).
+**Phase A — Authority Index 준비**
+`artifacts/README.md` 작성 — Current Production Evidence / Current
+Validation / Active Research / Reporting Outputs / Historical Baselines /
+Archive / Naming-Lifecycle Rules 섹션.
+
+**Phase B — HIGH risk production path migration**
+Pattern A FAST contract prototype(score+stage 2개, `stock_report.py`/
+`pattern_a_fast_report.py` 경로 갱신 포함) → Investability
+source/current evidence → Chart Review → Foreign Flow → 기타
+runtime-dependent current artifact. 각 move마다: `git mv` → path 참조
+코드 갱신 → targeted test → content hash identity 검증.
+
+**Phase C — Relative Strength**
+`patterns/pattern_a/validation/relative_strength/`로 이동. Phase12 HOLD
+상태 그대로 유지, 계산/validation verdict 변경 없음.
+
+**Phase D — Ground Truth / OOS**
+`ground_truth/charts/`(240개)는 이동 전/후 임시 SHA256 snapshot
+comparison을 실행해 byte identity를 증명한다(PRE_MOVE_ASSET_COUNT=240,
+이동 후 POST_MOVE_ASSET_COUNT=240 / SHA256_MISMATCH_COUNT=0 /
+MISSING_FILE_COUNT=0 / EXTRA_FILE_COUNT=0 확인). BLOCKED 아님.
+
+**Phase E — strategy_finalization duplicate normalization**
+1) `strategy_finalization_v01/`와 `strategy_finalization_v01_corrected_pit/`
+byte identity 재확인 → 2) provenance metadata parity 재확인 → 3)
+`test_strategy_finalization_provenance.py`가 왜 두 경로를 모두 요구하는지
+재확인 → 4) canonical path를 `strategy_finalization_v01/` 하나로 확정 →
+5) 위 test를 새 authority contract(canonical 1개 + `archive/`의
+`strategy_finalization_v01_legacy/`)에 맞게 수정 → 6) targeted test
+green 확인 → 7) `strategy_finalization_v01_corrected_pit/` 제거(archive
+이동이 아니라 삭제 — git history가 이미 duplication history를 보존하므로
+동일 파일 집합을 별도 historical artifact로 보존할 필요 없음).
+
+**Phase F — MEDIUM/LOW risk 일괄 이동**
+scanner, analysis(→ `pattern_a/research/analysis/`), cache_population
+(→ `shared/`), stage_v03/v04_research, A FAST research 계열, archive
+후보 8개 그룹(entry_gate_v02a/coverage_hole_v02d/unavailable_v02c/
+weak_reversal_v02b/combined_exit_v01/architecture_v03/fresh_oos_v03/
+strategy_finalization_v01_legacy).
+
+**Phase G — Stock Reports**
+가장 마지막, 필요 시 별도 commit/task로 분리(Web Viewer 영향 재확인 후).
+
+**Phase H — Final integrity**
+repository 전역 stale artifact path 검색 → 관련 targeted test 실행 →
+artifact 파일 수 reconciliation(913 유지 확인, corrected_pit 제거분
+반영) → content hash 비교 → 의도치 않은 artifact content 변경 없음 확인.
+Full Suite는 이번에도 사용자가 직접 실행하는 정책을 유지한다.
+
+전체 완료 후 README/Roadmap refresh(이번 Task 범위 밖, w.md §26 순서
+그대로 유지) → Julia Strategy → Phase12 Relative Strength Resume.
 
 ===============================================================================
 ## 24. Final Verdict
 ===============================================================================
 
+**정확한 집계(§4 Artifact Inventory / §18 Migration Table을 single
+source of truth로 기계적 재계산, 범위/추정 표현 없음).**
+
+Classification counts — Primary Role 기준, 36 group 전수(§4):
+
+| Primary Role | Count |
+|---|---:|
+| CURRENT_PRODUCTION_EVIDENCE | 6 |
+| CURRENT_RESEARCH | 5 |
+| CURRENT_VALIDATION | 4 |
+| CLOSURE_EVIDENCE | 4 |
+| SUPERSEDED | 8 |
+| SOURCE_INPUT | 2 |
+| REPORT_OUTPUT | 2 |
+| GROUND_TRUTH | 2 |
+| CURRENT_PRODUCTION | 1 |
+| HISTORICAL_BASELINE | 1 |
+| TEMPORARY_OR_DUPLICATE_CANDIDATE | 1 |
+| **합계** | **36** |
+
+Migration risk counts — 36 group 전수(§18):
+
+| Risk | Count |
+|---|---:|
+| HIGH | 13 |
+| MEDIUM | 8 |
+| LOW | 15 |
+| BLOCKED | **0** |
+| **합계** | **36** |
+
 ARTIFACTS_INVENTORY_STATUS = COMPLETE
-AUTHORITY_CLASSIFICATION_STATUS = PARTIAL (2개 BLOCKED 항목 존재: ground_truth
-charts 개별 sha256 provenance 미확인, corrected_pit/base 중복 처리 여부
-미결정 — 그 외 전부 COMPLETE)
+AUTHORITY_CLASSIFICATION_STATUS = COMPLETE
 PATH_DEPENDENCY_AUDIT_STATUS = COMPLETE
 FROZEN_EVIDENCE_AUDIT_STATUS = COMPLETE
-PROPOSED_IA_STATUS = READY_FOR_REVIEW
-STEP_2_REORGANIZATION_STATUS = HOLD (ChatGPT Architect Review 대기)
+PROPOSED_IA_STATUS = READY_FOR_REORGANIZATION
+STEP_2_REORGANIZATION_STATUS = READY
+BLOCKED_MOVE_COUNT = 0
 PRODUCTION_SEMANTICS_CHANGED = NO
 ARTIFACT_CONTENT_CHANGED = NO
 ARTIFACT_PATH_CHANGED = NO
