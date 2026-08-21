@@ -8,6 +8,7 @@ KOSPI(1001), KOSDAQ(2001) 대표 시장 지수 및 업종 지수 대비 상대�
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 import json
 import logging
 from pathlib import Path
@@ -35,6 +36,39 @@ from trend_scanner.scanner.full_universe_scanner import (
 from trend_scanner.universe.models import MarketType, UniverseSecurity
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class RelativeStrengthValidationContext:
+    """`prepare_relative_strength_validation_context()`가 준비한, Gate 평가에
+    필요한 모든 입력(Full Universe Scan 결과 포함)을 담는 컨테이너.
+
+    `evaluate_relative_strength_gates()`는 이 context만 입력받아 Gate 1~10을
+    판정한다 — Full Universe Scanner를 다시 호출하지 않는다.
+    """
+
+    root: Path
+    formatted_asof: str
+    clean_asof: str
+    out_dir: Path
+    doc_path: Path
+    cache: ParquetCache
+    cache_dir: Path
+    oracle_available: bool
+    df_oracle_univ: pd.DataFrame
+    df_oracle_cand: pd.DataFrame
+    df_oracle_inv: pd.DataFrame
+    scan_res: PatternAUniverseScanResult | None
+    df_scan: pd.DataFrame
+    market_index_parquet: Path
+    market_index_meta: Path
+    sector_index_parquet: Path
+    sector_index_meta: Path
+    sector_mapping_csv: Path
+    sector_mapping_meta: Path
+    flow_oracle_file: Path
+    flow_oracle_available: bool
+    df_flow_oracle: pd.DataFrame
 
 
 def _read_pytest_report(repo_root: Path) -> tuple[int, int, int, int, int, int, str]:
@@ -92,13 +126,24 @@ def _calc_stats(values: list[float]) -> dict[str, Any]:
     }
 
 
-def run_relative_strength_validation(
+def prepare_relative_strength_validation_context(
     as_of: str = "2026-08-14",
     repo_root: Path | str | None = None,
     output_dir: Path | str | None = None,
     doc_output_path: Path | str | None = None,
-) -> dict[str, Any]:
-    """Phase 12 Relative Strength 인프라 검증을 수행하고 10대 Gate를 평가한다."""
+    target_tickers: list[str] | set[str] | None = None,
+    target_markets: list[MarketType | str] | set[MarketType | str] | None = None,
+    limit: int | None = None,
+) -> RelativeStrengthValidationContext:
+    """Oracle/Universe 로드 + Full Universe Scanner 실행까지, Gate 평가에 필요한
+    모든 expensive 입력을 1회 준비한다.
+
+    `target_tickers`/`target_markets`/`limit`은 `scan_pattern_a_universe()`로
+    그대로 전달되는 Subset Filter다(운영 경로에서는 전달하지 않아 기존 Full
+    Universe 동작을 그대로 유지한다). 테스트에서 소수 종목만 스캔해 Gate
+    평가 로직을 빠르게 검증할 때 사용한다 — Gate 판정 자체(어떤 mismatch를
+    fail로 보는지)는 Universe 크기와 무관하다.
+    """
     root = Path(repo_root) if repo_root else Path(__file__).resolve().parent.parent.parent.parent
     clean_asof = as_of.replace("-", "")
     formatted_asof = f"{clean_asof[:4]}-{clean_asof[4:6]}-{clean_asof[6:8]}"
@@ -154,6 +199,13 @@ def run_relative_strength_validation(
     sector_index_meta = root / f"artifacts/relative_strength/source/sector_index_daily_{clean_asof}_meta.json"
     sector_mapping_csv = root / f"artifacts/relative_strength/source/sector_mapping_{clean_asof}.csv"
     sector_mapping_meta = root / f"artifacts/relative_strength/source/sector_mapping_{clean_asof}_meta.json"
+    flow_oracle_file = root / f"artifacts/flow/pattern_a_foreign_flow_features_{clean_asof}.csv"
+    flow_oracle_available = flow_oracle_file.exists()
+    if flow_oracle_available:
+        df_flow_oracle = pd.read_csv(flow_oracle_file)
+        df_flow_oracle["ticker"] = df_flow_oracle["ticker"].astype(str).str.zfill(6)
+    else:
+        df_flow_oracle = pd.DataFrame()
 
     # 3. Full Universe Scanner 실행 (Oracle 부재 시 즉시 Fail-Closed)
     if not oracle_available or univ_securities is None:
@@ -164,6 +216,9 @@ def run_relative_strength_validation(
             cache=cache,
             as_of=formatted_asof,
             universe_securities=univ_securities,
+            target_tickers=target_tickers,
+            target_markets=target_markets,
+            limit=limit,
             enrich_flow_for_candidates=True,
             enrich_rs_for_candidates=True,
             market_index_path=market_index_parquet,
@@ -172,6 +227,54 @@ def run_relative_strength_validation(
         )
         df_scan = scan_res.to_dataframe()
         df_scan["ticker"] = df_scan["ticker"].astype(str).str.zfill(6)
+
+    return RelativeStrengthValidationContext(
+        root=root,
+        formatted_asof=formatted_asof,
+        clean_asof=clean_asof,
+        out_dir=out_dir,
+        doc_path=doc_path,
+        cache=cache,
+        cache_dir=cache_dir,
+        oracle_available=oracle_available,
+        df_oracle_univ=df_oracle_univ,
+        df_oracle_cand=df_oracle_cand,
+        df_oracle_inv=df_oracle_inv,
+        scan_res=scan_res,
+        df_scan=df_scan,
+        market_index_parquet=market_index_parquet,
+        market_index_meta=market_index_meta,
+        sector_index_parquet=sector_index_parquet,
+        sector_index_meta=sector_index_meta,
+        sector_mapping_csv=sector_mapping_csv,
+        sector_mapping_meta=sector_mapping_meta,
+        flow_oracle_file=flow_oracle_file,
+        flow_oracle_available=flow_oracle_available,
+        df_flow_oracle=df_flow_oracle,
+    )
+
+
+def evaluate_relative_strength_gates(context: RelativeStrengthValidationContext) -> dict[str, Any]:
+    """준비된 `context`만으로 Gate 1~10을 판정한다.
+
+    Full Universe Scanner를 호출하지 않는다 — `context.scan_res`/`context.df_scan`을
+    그대로 사용한다. 반환값은 `{"gates": ..., "verdict": ..., "all_gates_passed": ...}`.
+    """
+    root = context.root
+    formatted_asof = context.formatted_asof
+    cache = context.cache
+    cache_dir = context.cache_dir
+    oracle_available = context.oracle_available
+    df_oracle_cand = context.df_oracle_cand
+    df_oracle_inv = context.df_oracle_inv
+    scan_res = context.scan_res
+    df_scan = context.df_scan
+    market_index_parquet = context.market_index_parquet
+    market_index_meta = context.market_index_meta
+    sector_index_parquet = context.sector_index_parquet
+    sector_index_meta = context.sector_index_meta
+    sector_mapping_csv = context.sector_mapping_csv
+    sector_mapping_meta = context.sector_mapping_meta
 
     # 4. Gate Evaluations
     gates: dict[str, dict[str, Any]] = {}
@@ -227,12 +330,10 @@ def run_relative_strength_validation(
                     investability_mismatches += 1
 
         # Check Phase 11 Foreign Flow exact preservation against approved artifact
-        flow_oracle_file = root / f"artifacts/flow/pattern_a_foreign_flow_features_{clean_asof}.csv"
         flow_status_mismatches = 0
         flow_numeric_mismatches = 0
-        if flow_oracle_file.exists():
-            df_flow_oracle = pd.read_csv(flow_oracle_file)
-            df_flow_oracle["ticker"] = df_flow_oracle["ticker"].astype(str).str.zfill(6)
+        if context.flow_oracle_available:
+            df_flow_oracle = context.df_flow_oracle
             flow_tickers = set(df_flow_oracle["ticker"])
             flow_set_diff = len(set(cand_scan["ticker"]) ^ flow_tickers)
             if flow_set_diff > 0:
@@ -830,6 +931,40 @@ def run_relative_strength_validation(
 
     all_gates_passed = all(g["passed"] for g in gates.values())
     verdict = "RELATIVE_STRENGTH_INFRA_READY" if all_gates_passed else "HOLD_RELATIVE_STRENGTH_INFRA"
+
+    return {"gates": gates, "verdict": verdict, "all_gates_passed": all_gates_passed}
+
+
+def run_relative_strength_validation(
+    as_of: str = "2026-08-14",
+    repo_root: Path | str | None = None,
+    output_dir: Path | str | None = None,
+    doc_output_path: Path | str | None = None,
+) -> dict[str, Any]:
+    """Phase 12 Relative Strength 인프라 검증을 수행하고 10대 Gate를 평가한다.
+
+    Public behavior/output은 분리 이전과 동일하다 — 내부적으로
+    `prepare_relative_strength_validation_context()`(Oracle 로드 + Full Universe
+    Scan) + `evaluate_relative_strength_gates()`(Gate 1~10 판정)를 호출한 뒤,
+    산출물(CSV/JSON/MD)을 기록한다.
+    """
+    context = prepare_relative_strength_validation_context(
+        as_of=as_of,
+        repo_root=repo_root,
+        output_dir=output_dir,
+        doc_output_path=doc_output_path,
+    )
+    gate_result = evaluate_relative_strength_gates(context)
+    gates = gate_result["gates"]
+    verdict = gate_result["verdict"]
+    all_gates_passed = gate_result["all_gates_passed"]
+
+    formatted_asof = context.formatted_asof
+    clean_asof = context.clean_asof
+    out_dir = context.out_dir
+    doc_path = context.doc_path
+    scan_res = context.scan_res
+    df_scan = context.df_scan
 
     # 5. Output Artifacts Generation
     # 5.1 Canonical CSV Export

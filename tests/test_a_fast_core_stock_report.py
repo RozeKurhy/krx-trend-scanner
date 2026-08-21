@@ -32,6 +32,19 @@ _manifest = json.loads((REPO_ROOT / "data/reference/krx_instrument_metadata_mani
 VERIFIED_DATE = _manifest["verified_snapshot_effective_date"]
 
 
+@pytest.fixture(scope="module")
+def report_005930_20260814():
+    """TEST_SUITE_PERFORMANCE_AUDIT_AND_REFACTOR_V01 (P1): (ticker=005930,
+    as_of=2026-08-14, repo_root=REPO_ROOT, save_artifacts=False) read-only
+    조합을 여러 test가 반복 호출하던 것을 통합한다. `monkeypatch`로
+    `resolve_instrument_metadata` 등 내부 동작을 바꾸는 test는 이 fixture를
+    쓰지 않고 그대로 독립 호출을 유지한다(§15)."""
+    report, _, _ = generate_stock_report(
+        ticker="005930", as_of="2026-08-14", repo_root=REPO_ROOT, save_artifacts=False
+    )
+    return report
+
+
 def _validate_single_report_schema(d: dict) -> list[str]:
     """Pure-Python structural and contractual schema validator for Stock Report v0.2."""
     errors = []
@@ -127,9 +140,9 @@ def test_human_contract_requires_metadata_provenance_mode():
     )
 
 
-def test_stock_report_v02_contract():
+def test_stock_report_v02_contract(report_005930_20260814):
     """Stock Report v0.2 최상위 contract 및 a_fast_core 필드 존재 검증."""
-    report, _, _ = generate_stock_report(ticker="005930", as_of="2026-08-14", repo_root=REPO_ROOT, save_artifacts=False)
+    report = report_005930_20260814
     assert report.report_version == "0.2"
     assert hasattr(report, "a_fast_core")
     assert isinstance(report.a_fast_core, AFastCoreSection)
@@ -758,7 +771,7 @@ def test_stock_report_380440_historical_legacy_research_not_applicable():
     assert report.a_fast_core.action == "NONE"
 
 
-def test_stock_report_market_cap_effective_date_pit():
+def test_stock_report_market_cap_effective_date_pit(report_005930_20260814):
     """과거 기준일(2026-05-15) 조회 시 시장 시가총액 스냅샷 날짜가 requested_as_of보다 미래가 아님(effective_date <= requested_as_of) 및 실제 일자/출처 검증."""
     # 1. Past historical date query: 2026-05-15
     report, _, _ = generate_stock_report(ticker="005930", as_of="2026-05-15", repo_root=REPO_ROOT, save_artifacts=False)
@@ -771,7 +784,7 @@ def test_stock_report_market_cap_effective_date_pit():
     assert report.current_snapshot.market_cap_source == "KRX_HISTORICAL_MARKET_CAP_NORMALIZED"
 
     # 2. Current baseline date query: 2026-08-14
-    report_cur, _, _ = generate_stock_report(ticker="005930", as_of="2026-08-14", repo_root=REPO_ROOT, save_artifacts=False)
+    report_cur = report_005930_20260814
     assert report_cur.requested_as_of == "2026-08-14"
     assert report_cur.current_snapshot.market_cap_effective_date == "2026-08-14"
     assert report_cur.current_snapshot.market_cap_source in {
@@ -795,9 +808,9 @@ def test_stock_report_0115d0_alphanumeric_ticker_and_etf_metadata():
     assert report.a_fast_core.action_reason == "NON_COMMON_STOCK"
 
 
-def test_a_fast_core_samsung_20260814_exact():
+def test_a_fast_core_samsung_20260814_exact(report_005930_20260814):
     """005930 삼성전자 2026-08-14 exact canonical state regression."""
-    report, _, _ = generate_stock_report(ticker="005930", as_of="2026-08-14", repo_root=REPO_ROOT, save_artifacts=False)
+    report = report_005930_20260814
     core = report.a_fast_core
 
     assert core.metadata_provenance_mode == "HISTORICAL_LEGACY_RESEARCH"
@@ -979,10 +992,9 @@ def test_v01_stock_report_artifacts_strong_integrity():
         assert "a_fast_core" not in data
 
 
-def test_markdown_a_fast_core_section_order_and_wording():
+def test_markdown_a_fast_core_section_order_and_wording(report_005930_20260814):
     """Markdown 보고서에 Section 0부터 10까지 올바른 순서와 공식 포지션 명칭이 포함되는지 검증."""
-    report, _, _ = generate_stock_report(ticker="005930", as_of="2026-08-14", repo_root=REPO_ROOT, save_artifacts=False)
-    md = render_markdown_report(report)
+    md = render_markdown_report(report_005930_20260814)
 
     # Check Section headers
     assert "## 0. 핵심 요약 (Executive Summary)" in md
@@ -1003,10 +1015,9 @@ def test_markdown_a_fast_core_section_order_and_wording():
     assert "사용자 포지션" not in md
 
 
-def test_report_does_not_emit_buy_sell_advice():
+def test_report_does_not_emit_buy_sell_advice(report_005930_20260814):
     """리포트 본문에서 매수/매도 권유 및 비윤리적 금융 권유 문구가 없는지 검증."""
-    report, _, _ = generate_stock_report(ticker="005930", as_of="2026-08-14", repo_root=REPO_ROOT, save_artifacts=False)
-    md = render_markdown_report(report)
+    md = render_markdown_report(report_005930_20260814)
 
     # Remove disclaimer footer to test report content
     body = md.split("*주의 (Disclaimer):")[0] if "*주의 (Disclaimer):" in md else md

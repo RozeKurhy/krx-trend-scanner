@@ -34,9 +34,17 @@ from trend_scanner.reporting.stock_report import generate_stock_report, render_m
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 
-def test_pattern_a_monthly_history_unchanged_after_fast_integration():
-    """Test A: FAST 통합 후에도 001540 Pattern A Monthly History가 기존 정본 값과 동일하다."""
+@pytest.fixture(scope="module")
+def report_001540_20260814():
+    """TEST_SUITE_PERFORMANCE_AUDIT_AND_REFACTOR_V01 (P1): (001540, 2026-08-14)
+    read-only 조합을 반복 호출하던 8개 test가 이 module fixture 하나를 공유한다."""
     report, _, _ = generate_stock_report(ticker="001540", as_of="2026-08-14", repo_root=REPO_ROOT, save_artifacts=False)
+    return report
+
+
+def test_pattern_a_monthly_history_unchanged_after_fast_integration(report_001540_20260814):
+    """Test A: FAST 통합 후에도 001540 Pattern A Monthly History가 기존 정본 값과 동일하다."""
+    report = report_001540_20260814
 
     hist = report.monthly_history
     assert hist.history_start_as_of == "2021-08-31"
@@ -51,9 +59,9 @@ def test_pattern_a_monthly_history_unchanged_after_fast_integration():
     assert cur.candidate_state == "candidate"
 
 
-def test_fast_weekly_history_generated_with_real_rows():
+def test_fast_weekly_history_generated_with_real_rows(report_001540_20260814):
     """Test B: Pattern A FAST Weekly History가 실제 완료된 주별 row로 생성된다."""
-    report, _, _ = generate_stock_report(ticker="001540", as_of="2026-08-14", repo_root=REPO_ROOT, save_artifacts=False)
+    report = report_001540_20260814
 
     fast = report.pattern_a_fast
     assert fast.status == "EXPERIMENTAL"
@@ -67,9 +75,9 @@ def test_fast_weekly_history_generated_with_real_rows():
         assert obs.stage_availability in {"READY", "UNAVAILABLE"}
 
 
-def test_fast_lifecycle_progression_across_weeks():
+def test_fast_lifecycle_progression_across_weeks(report_001540_20260814):
     """Test C: FAST lifecycle이 여러 주에 걸쳐 시간 순서대로 독립적으로 진행된다."""
-    report, _, _ = generate_stock_report(ticker="001540", as_of="2026-08-14", repo_root=REPO_ROOT, save_artifacts=False)
+    report = report_001540_20260814
 
     by_week = {obs.week_ending: obs.fast_stage for obs in report.pattern_a_fast.weekly_history}
     assert by_week["2026-07-03"] == "SETUP"
@@ -100,9 +108,9 @@ def test_fast_score_unavailable_with_stage_ready_is_handled_independently():
     assert obs.fast_score != 0
 
 
-def test_fast_trigger_does_not_change_pattern_a_candidate_state():
+def test_fast_trigger_does_not_change_pattern_a_candidate_state(report_001540_20260814):
     """Test E: FAST가 TRIGGER여도 Pattern A Candidate State는 그대로 유지된다."""
-    report, _, _ = generate_stock_report(ticker="001540", as_of="2026-08-14", repo_root=REPO_ROOT, save_artifacts=False)
+    report = report_001540_20260814
 
     assert report.pattern_a_fast.current.fast_stage == "TRIGGER"
     # Pattern A current_snapshot은 FAST와 무관하게 기존 정본 값을 유지한다.
@@ -111,7 +119,7 @@ def test_fast_trigger_does_not_change_pattern_a_candidate_state():
     assert report.current_snapshot.is_candidate is True
 
 
-def test_pattern_a_and_fast_stage_combinations_are_not_errors():
+def test_pattern_a_and_fast_stage_combinations_are_not_errors(report_001540_20260814):
     """Test F/G/H (강화): 실제 데이터에서 관측된 서로 다른 Pattern A / FAST stage 조합을 직접 assert한다.
 
     001540의 실제 이력에서 확인된 조합:
@@ -124,7 +132,7 @@ def test_pattern_a_and_fast_stage_combinations_are_not_errors():
     assert report_a.current_snapshot.official_stage == "TRANSITION"
     assert report_a.pattern_a_fast.current.fast_stage == "SETUP"
 
-    report_b, _, _ = generate_stock_report(ticker="001540", as_of="2026-08-14", repo_root=REPO_ROOT, save_artifacts=False)
+    report_b = report_001540_20260814
     assert report_b.current_snapshot.official_stage == "EARLY_TREND"
     assert report_b.pattern_a_fast.current.fast_stage == "TRIGGER"
 
@@ -187,10 +195,10 @@ def test_fast_unavailable_does_not_fail_whole_report():
     assert "Pattern A FAST" in md
 
 
-def test_fast_weekly_history_point_in_time_no_lookahead():
+def test_fast_weekly_history_point_in_time_no_lookahead(report_001540_20260814):
     """Test J: 과거 주의 FAST 결과는 이후 시점 데이터 존재 여부와 무관하게 동일하다."""
     report_pit, _, _ = generate_stock_report(ticker="001540", as_of="2026-07-24", repo_root=REPO_ROOT, save_artifacts=False)
-    report_future, _, _ = generate_stock_report(ticker="001540", as_of="2026-08-14", repo_root=REPO_ROOT, save_artifacts=False)
+    report_future = report_001540_20260814
 
     obs_pit = report_pit.pattern_a_fast.weekly_history[-1]
     assert obs_pit.week_ending == "2026-07-24"
@@ -214,9 +222,9 @@ def test_fast_weekly_history_completed_week_contract():
     assert "2026-08-14" not in {obs.week_ending for obs in fast.weekly_history}
 
 
-def test_current_summary_matches_latest_weekly_history_row():
+def test_current_summary_matches_latest_weekly_history_row(report_001540_20260814):
     """Test L: Current Summary의 FAST 현재 신호가 Weekly History 최신 row와 의미적으로 일치한다."""
-    report, _, _ = generate_stock_report(ticker="001540", as_of="2026-08-14", repo_root=REPO_ROOT, save_artifacts=False)
+    report = report_001540_20260814
 
     fast = report.pattern_a_fast
     latest = fast.weekly_history[-1]
@@ -244,10 +252,9 @@ def test_fast_reuses_frozen_evaluator_matches_oos_ground_truth():
     assert obs.score_availability == "READY"
 
 
-def test_fast_section_json_schema_is_additive():
+def test_fast_section_json_schema_is_additive(report_001540_20260814):
     """FAST section 추가가 기존 JSON schema를 backward-compatible additive 방식으로 확장함을 확인."""
-    report, _, _ = generate_stock_report(ticker="001540", as_of="2026-08-14", repo_root=REPO_ROOT, save_artifacts=False)
-    d = report.to_dict()
+    d = report_001540_20260814.to_dict()
 
     assert "pattern_a_fast" in d
     existing_keys = {

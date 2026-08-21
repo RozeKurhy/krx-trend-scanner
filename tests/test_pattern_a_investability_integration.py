@@ -114,22 +114,27 @@ def test_provenance_contract_on_candidates():
             assert r["tv20_last_observation_date"] <= CANONICAL_AS_OF
 
 
-def test_scanner_candidate_summary_breakdown():
-    """Verify scanner summary explicitly provides candidate downstream counts summing to 180."""
-    cache = ParquetCache(base_dir=_REPO_ROOT / "data/raw/stocks")
-    scan_res = scan_pattern_a_universe(cache=cache, as_of=CANONICAL_AS_OF, limit=None)
-    summary = scan_res.summary
+def test_scanner_candidate_summary_breakdown(integration_summary: dict):
+    """Verify candidate downstream counts sum to 180.
 
-    assert summary.candidate_raw_count == 180
-    assert summary.candidate_investable_count == 103
-    assert summary.candidate_filtered_market_cap_count == 42
-    assert summary.candidate_filtered_liquidity_count == 31
-    assert summary.candidate_data_unavailable_count == 4
-    assert summary.candidate_raw_count == (
-        summary.candidate_investable_count
-        + summary.candidate_filtered_market_cap_count
-        + summary.candidate_filtered_liquidity_count
-        + summary.candidate_data_unavailable_count
+    TEST_SUITE_PERFORMANCE_AUDIT_AND_REFACTOR_V01 (P1): 이 invariant는
+    `integration_summary`(canonical, 이미 파일에서 읽거나 1회만 계산됨)에
+    이미 담겨 있으므로, 동일 값을 다시 확인하기 위해 2,528종목 Full Universe
+    Scan을 별도로 재실행하지 않는다.
+    """
+    bd = integration_summary["investability_breakdown"]
+    candidate_raw_count = integration_summary["candidate_count"]
+
+    assert candidate_raw_count == 180
+    assert bd["investable_count"] == 103
+    assert bd["filtered_market_cap_count"] == 42
+    assert bd["filtered_liquidity_count"] == 31
+    assert bd["data_unavailable_count"] == 4
+    assert candidate_raw_count == (
+        bd["investable_count"]
+        + bd["filtered_market_cap_count"]
+        + bd["filtered_liquidity_count"]
+        + bd["data_unavailable_count"]
     )
 
 

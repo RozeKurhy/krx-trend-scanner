@@ -47,6 +47,23 @@ from trend_scanner.reporting.stock_report import (
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 
+@pytest.fixture(scope="module")
+def report_001540_20260814() -> StockReport:
+    """TEST_SUITE_PERFORMANCE_AUDIT_AND_REFACTOR_V01 (P1): 이 파일에서
+    (ticker=001540, as_of=2026-08-14, repo_root=REPO_ROOT, save_artifacts=False)
+    조합으로 read-only assertion만 하는 test 9개가 각자 generate_stock_report()를
+    반복 호출하던 것을 이 module-scoped fixture 하나로 통합한다. Mutation이나
+    monkeypatch가 있는 test(예: 결정론 검증, tmp_path 격리 검증)는 이 fixture를
+    사용하지 않고 그대로 독립 호출을 유지한다."""
+    report, _, _ = generate_stock_report(
+        ticker="001540",
+        as_of="2026-08-14",
+        repo_root=REPO_ROOT,
+        save_artifacts=False,
+    )
+    return report
+
+
 def _get_dir_hashes(dir_path: Path) -> dict[str, str]:
     hashes = {}
     if not dir_path.exists():
@@ -57,14 +74,9 @@ def _get_dir_hashes(dir_path: Path) -> dict[str, str]:
     return hashes
 
 
-def test_stock_report_current_snapshot_canonical_parity():
+def test_stock_report_current_snapshot_canonical_parity(report_001540_20260814: StockReport):
     """001540 안국약품의 2026-08-14 기준 current snapshot이 정본 값과 일치하는지 검증."""
-    report, json_p, md_p = generate_stock_report(
-        ticker="001540",
-        as_of="2026-08-14",
-        repo_root=REPO_ROOT,
-        save_artifacts=False,
-    )
+    report = report_001540_20260814
 
     assert report.ticker == "001540"
     assert report.name == "안국약품"
@@ -82,17 +94,11 @@ def test_stock_report_current_snapshot_canonical_parity():
     assert cur.is_investable is True
 
 
-def test_stock_report_monthly_close_parity():
+def test_stock_report_monthly_close_parity(report_001540_20260814: StockReport):
     """001540의 각 MonthlyObservation.close가 로컬 일봉 exact date close와 일치하는지 검증."""
     cache = ParquetCache(base_dir=REPO_ROOT / "data/raw/stocks")
     df_raw = cache.load("001540")
-
-    report, _, _ = generate_stock_report(
-        ticker="001540",
-        as_of="2026-08-14",
-        repo_root=REPO_ROOT,
-        save_artifacts=False,
-    )
+    report = report_001540_20260814
 
     full = report.monthly_history.full_monthly_history
     check_dates = ["2021-08-31", "2024-07-31", "2025-08-29", "2026-06-30", "2026-07-31"]
@@ -133,14 +139,9 @@ def test_stock_report_missing_exact_close(tmp_path):
     assert obs_july.reason == "NO_EXACT_MARKET_MONTH_END_OBSERVATION"
 
 
-def test_stock_report_full_history_coverage():
+def test_stock_report_full_history_coverage(report_001540_20260814: StockReport):
     """001540 기준 로컬 가격 데이터 최초 월부터 requested_as_of까지 60개월 전체가 생성되는지 검증."""
-    report, _, _ = generate_stock_report(
-        ticker="001540",
-        as_of="2026-08-14",
-        repo_root=REPO_ROOT,
-        save_artifacts=False,
-    )
+    report = report_001540_20260814
 
     hist = report.monthly_history
     assert hist.history_start_as_of == "2021-08-31"
@@ -150,14 +151,9 @@ def test_stock_report_full_history_coverage():
     assert hist.recent_12m_observation_count == 13
 
 
-def test_stock_report_initial_insufficient_lookback():
+def test_stock_report_initial_insufficient_lookback(report_001540_20260814: StockReport):
     """초기 lookback 부족 구간에서 가격(close)은 존재하고 Pattern A Score/Stage는 UNAVAILABLE인지 검증."""
-    report, _, _ = generate_stock_report(
-        ticker="001540",
-        as_of="2026-08-14",
-        repo_root=REPO_ROOT,
-        save_artifacts=False,
-    )
+    report = report_001540_20260814
 
     obs_first = report.monthly_history.full_monthly_history[0]
     assert obs_first.as_of == "2021-08-31"
@@ -169,14 +165,9 @@ def test_stock_report_initial_insufficient_lookback():
     assert obs_first.reason == "INSUFFICIENT_LOOKBACK"
 
 
-def test_stock_report_first_available_pattern_a():
+def test_stock_report_first_available_pattern_a(report_001540_20260814: StockReport):
     """001540 기준 최초 Pattern A 산출월 및 산출 가능 개월 수 메타데이터 검증."""
-    report, _, _ = generate_stock_report(
-        ticker="001540",
-        as_of="2026-08-14",
-        repo_root=REPO_ROOT,
-        save_artifacts=False,
-    )
+    report = report_001540_20260814
 
     hist = report.monthly_history
     assert hist.first_pattern_a_available_as_of == "2024-07-31"
@@ -207,11 +198,10 @@ def test_stock_report_market_calendar_unavailable_report_status(tmp_path):
     assert report.monthly_history.full_monthly_history == []
 
 
-def test_stock_report_status_exact_contract_semantics():
+def test_stock_report_status_exact_contract_semantics(report_001540_20260814: StockReport):
     """Report status exact contract semantics (READY vs PARTIAL vs DATA_UNAVAILABLE)."""
     # 1. 001540 is INVESTABLE and all ready -> READY
-    report_ready, _, _ = generate_stock_report(ticker="001540", as_of="2026-08-14", repo_root=REPO_ROOT, save_artifacts=False)
-    assert report_ready.header.report_status == ReportStatus.READY
+    assert report_001540_20260814.header.report_status == ReportStatus.READY
 
     # 2. 033560 is FILTERED_MARKET_CAP and has all data ready -> READY
     report_filtered, _, _ = generate_stock_report(ticker="033560", as_of="2026-08-14", repo_root=REPO_ROOT, save_artifacts=False)
@@ -222,16 +212,9 @@ def test_stock_report_status_exact_contract_semantics():
     assert report_unavail.header.report_status == ReportStatus.DATA_UNAVAILABLE
 
 
-def test_stock_report_gfm_tables():
+def test_stock_report_gfm_tables(report_001540_20260814: StockReport):
     """Markdown 렌더링 결과가 GitHub Flavored Markdown (GFM) table 문법을 따르며 종가 컬럼을 포함하는지 검증."""
-    report, _, _ = generate_stock_report(
-        ticker="001540",
-        as_of="2026-08-14",
-        repo_root=REPO_ROOT,
-        save_artifacts=False,
-    )
-
-    md = render_markdown_report(report)
+    md = render_markdown_report(report_001540_20260814)
 
     # Check GFM table headers and separators with close column
     assert "| 기준일 | 종가 | Pattern A Score | Stage | Candidate State | Data Available |" in md
@@ -247,14 +230,9 @@ def test_stock_report_gfm_tables():
     assert "+===" not in md
 
 
-def test_stock_report_historical_pit_isolation():
+def test_stock_report_historical_pit_isolation(report_001540_20260814: StockReport):
     """과거 시점(2025-11-28)의 점수 산출 시 미래(2026년) 데이터가 영향을 주지 않는지 PIT 독립성 검증."""
-    report, _, _ = generate_stock_report(
-        ticker="001540",
-        as_of="2026-08-14",
-        repo_root=REPO_ROOT,
-        save_artifacts=False,
-    )
+    report = report_001540_20260814
 
     obs_nov_2025 = next((o for o in report.monthly_history.full_monthly_history if o.as_of == "2025-11-28"), None)
     assert obs_nov_2025 is not None
@@ -272,14 +250,9 @@ def test_stock_report_historical_pit_isolation():
     assert report_pit.current_snapshot.official_stage == "TRANSITION"
 
 
-def test_stock_report_stage_transitions():
+def test_stock_report_stage_transitions(report_001540_20260814: StockReport):
     """국면 전환 이벤트가 연속된 중복 없이 올바르게 추출되는지 검증."""
-    report, _, _ = generate_stock_report(
-        ticker="001540",
-        as_of="2026-08-14",
-        repo_root=REPO_ROOT,
-        save_artifacts=False,
-    )
+    report = report_001540_20260814
 
     transitions = report.monthly_history.stage_transitions
     assert len(transitions) >= 5
@@ -293,16 +266,9 @@ def test_stock_report_stage_transitions():
     assert last_tr.as_of == "2026-07-31"
 
 
-def test_stock_report_foreign_flow_parity():
+def test_stock_report_foreign_flow_parity(report_001540_20260814: StockReport):
     """Phase 11 외국인 수급 피처 및 상태 판정 검증."""
-    report, _, _ = generate_stock_report(
-        ticker="001540",
-        as_of="2026-08-14",
-        repo_root=REPO_ROOT,
-        save_artifacts=False,
-    )
-
-    flow = report.foreign_flow
+    flow = report_001540_20260814.foreign_flow
     assert flow.data_status == "READY"
     assert flow.flow_state == FlowState.FLOW_ACCUMULATION
     assert flow.foreign_net_buy_value_1d_krw == pytest.approx(37190115.0, abs=1.0)
@@ -312,16 +278,9 @@ def test_stock_report_foreign_flow_parity():
     assert flow.foreign_flow_intensity_5d == pytest.approx(0.0665, abs=1e-4)
 
 
-def test_stock_report_trading_value_arithmetic():
+def test_stock_report_trading_value_arithmetic(report_001540_20260814: StockReport):
     """거래대금 5D, 20D, 60D 평균 및 비율 연산 검증."""
-    report, _, _ = generate_stock_report(
-        ticker="001540",
-        as_of="2026-08-14",
-        repo_root=REPO_ROOT,
-        save_artifacts=False,
-    )
-
-    tv = report.trading_value_flow
+    tv = report_001540_20260814.trading_value_flow
     assert tv.trading_value_state == TradingValueState.TRADING_VALUE_MIXED
     assert tv.avg_trading_value_5d_eok == pytest.approx(20.64, abs=0.01)
     assert tv.avg_trading_value_20d_eok == pytest.approx(14.00, abs=0.01)

@@ -19,9 +19,17 @@ from trend_scanner.reporting.stock_report import generate_stock_report, render_m
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 
-def test_weekly_observation_has_close_field():
-    """close field가 FAST Weekly Observation에 존재하고, Current Signal에는 없다."""
+@pytest.fixture(scope="module")
+def report_420770_20260814():
+    """TEST_SUITE_PERFORMANCE_AUDIT_AND_REFACTOR_V01 (P1): (420770, 2026-08-14)
+    read-only 조합을 반복 호출하던 6개 test가 이 module fixture 하나를 공유한다."""
     report, _, _ = generate_stock_report(ticker="420770", as_of="2026-08-14", repo_root=REPO_ROOT, save_artifacts=False)
+    return report
+
+
+def test_weekly_observation_has_close_field(report_420770_20260814):
+    """close field가 FAST Weekly Observation에 존재하고, Current Signal에는 없다."""
+    report = report_420770_20260814
     fast = report.pattern_a_fast
 
     assert fast.weekly_history, "420770 FAST weekly history가 비어있음"
@@ -32,7 +40,7 @@ def test_weekly_observation_has_close_field():
     assert not hasattr(fast.current, "close")
 
 
-def test_420770_latest_week_close_matches_local_daily_close():
+def test_420770_latest_week_close_matches_local_daily_close(report_420770_20260814):
     """420770 / 2026-08-14 FAST weekly close == 120100 (해당 week_ending의 실제 로컬 일봉 종가와 동일).
 
     2026-08-14는 8월의 완성된 월봉이 아니므로(실제 KRX 시장 월말 거래일 기준
@@ -46,7 +54,7 @@ def test_420770_latest_week_close_matches_local_daily_close():
     cache = ParquetCache(base_dir=REPO_ROOT / "data/raw/stocks")
     daily = cache.load("420770")
 
-    report, _, _ = generate_stock_report(ticker="420770", as_of="2026-08-14", repo_root=REPO_ROOT, save_artifacts=False)
+    report = report_420770_20260814
 
     latest = report.pattern_a_fast.weekly_history[-1]
     assert latest.week_ending == "2026-08-14"
@@ -58,13 +66,12 @@ def test_420770_latest_week_close_matches_local_daily_close():
     assert "2026-08" not in [obs.as_of[:7] for obs in report.monthly_history.full_monthly_history]
 
 
-def test_420770_all_weekly_rows_close_matches_local_daily_cache():
+def test_420770_all_weekly_rows_close_matches_local_daily_cache(report_420770_20260814):
     """420770 FAST Weekly History의 모든 row에서 close가 해당 week_ending의 실제 로컬 일봉 close와 동일하다."""
     cache = ParquetCache(base_dir=REPO_ROOT / "data/raw/stocks")
     daily = cache.load("420770")
 
-    report, _, _ = generate_stock_report(ticker="420770", as_of="2026-08-14", repo_root=REPO_ROOT, save_artifacts=False)
-    fast = report.pattern_a_fast
+    fast = report_420770_20260814.pattern_a_fast
     assert len(fast.weekly_history) == 49
 
     checked = 0
@@ -75,10 +82,9 @@ def test_420770_all_weekly_rows_close_matches_local_daily_cache():
     assert checked == 49
 
 
-def test_close_addition_does_not_change_fast_score_stage_or_count():
+def test_close_addition_does_not_change_fast_score_stage_or_count(report_420770_20260814):
     """close 추가 전후 FAST Score / Stage / observation_count가 불변임을 확인 (회귀 방지)."""
-    report, _, _ = generate_stock_report(ticker="420770", as_of="2026-08-14", repo_root=REPO_ROOT, save_artifacts=False)
-    fast = report.pattern_a_fast
+    fast = report_420770_20260814.pattern_a_fast
 
     assert fast.observation_count == 49
     assert fast.history_start_as_of == "2025-08-22"
@@ -106,10 +112,9 @@ def test_weekly_close_point_in_time_no_lookahead():
     assert obs_pit.close == obs_from_future.close
 
 
-def test_weekly_close_json_field_present():
+def test_weekly_close_json_field_present(report_420770_20260814):
     """JSON: pattern_a_fast.weekly_history[].close 존재."""
-    report, _, _ = generate_stock_report(ticker="420770", as_of="2026-08-14", repo_root=REPO_ROOT, save_artifacts=False)
-    d = report.to_dict()
+    d = report_420770_20260814.to_dict()
 
     weekly = d["pattern_a_fast"]["weekly_history"]
     assert weekly
@@ -118,10 +123,9 @@ def test_weekly_close_json_field_present():
     assert weekly[-1]["close"] == pytest.approx(120100.0)
 
 
-def test_weekly_close_markdown_column_present():
+def test_weekly_close_markdown_column_present(report_420770_20260814):
     """Markdown: FAST Weekly History table에 종가 column이 존재하고 실제 값이 렌더링된다."""
-    report, _, _ = generate_stock_report(ticker="420770", as_of="2026-08-14", repo_root=REPO_ROOT, save_artifacts=False)
-    md = render_markdown_report(report)
+    md = render_markdown_report(report_420770_20260814)
 
     assert "| 기준 주 (Week Ending) | 종가 | FAST Score |" in md
     assert "| 2026-08-14 | 120,100 | 56.50 | PARTIAL | SETUP | READY | PERMITTED_REGIME | ELEVATED |" in md

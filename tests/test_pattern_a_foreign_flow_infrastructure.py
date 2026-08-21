@@ -278,8 +278,19 @@ def test_intensity_60d_mutation_negative_test(base_scan_result, monkeypatch, tmp
     assert res["phase_11_status"] == "HOLD_FLOW_INFRA"
 
 
+@pytest.mark.slow
 def test_live_validation_runner(tmp_path: Path):
-    """Gate 10+: Run live validation runner in isolated tmp directory without mutating canonical artifacts."""
+    """Gate 10+: Run live validation runner in isolated tmp directory without mutating canonical artifacts.
+
+    TEST_SUITE_PERFORMANCE_AUDIT_AND_REFACTOR_V01 (P0/§12): 이 test는
+    `run_foreign_flow_infrastructure_validation()`을 실제 repo_root로 호출해
+    2,528종목 Full Universe Scan을 다시 발생시킨다 — `base_scan_result`
+    module fixture(다른 5개 negative test가 재사용)와 완전히 별개의 추가 scan.
+    검증하는 Gate(1,2,5,6,7)는 이미 `flow_validation_summary`(canonical 요약,
+    파일에서 읽거나 1회만 계산) 기반 test들이 커버하므로, "실제 live validator
+    경로가 isolated tmp 출력에서도 canonical artifact를 건드리지 않는다"는
+    이 test 고유의 나머지 가치만 slow로 격리해 보존한다. 삭제가 아니다 —
+    `uv run pytest ... -m slow`로 실행 가능."""
     isolated_out = tmp_path / "flow_validation"
     isolated_doc = tmp_path / "pattern_a_flow_confirmation_infrastructure_v01.md"
     result = run_foreign_flow_infrastructure_validation(
