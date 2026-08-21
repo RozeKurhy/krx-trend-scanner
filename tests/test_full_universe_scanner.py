@@ -25,6 +25,7 @@ import pandas as pd
 import pytest
 
 from trend_scanner.data.cache import ParquetCache
+from trend_scanner.filters.investability import InvestabilityStatus
 from trend_scanner.patterns.pattern_a_evaluator import (
     PatternACandidateState,
     evaluate_pattern_a,
@@ -382,3 +383,52 @@ def test_summary_and_artifacts_export(mock_scanner_env, tmp_path: Path):
     assert json_data["official_common_total"] == summary.official_common_total
     assert json_data["scan_target_count"] == summary.scan_target_count
     assert json_data["rows_emitted"] == summary.rows_emitted
+
+
+def test_summary_candidate_investability_breakdown_aggregation(mock_scanner_env):
+    """Summary의 candidate investability breakdown이 실제 row 값을 올바르게 집계하는지 검증.
+
+    TEST_SUITE_PERFORMANCE_AUDIT_AND_REFACTOR_FIX_01 (Major 2): 2,528종목
+    Full Universe Scan을 다시 돌리지 않고, 이미 이 파일이 쓰는 synthetic
+    small universe(mock_scanner_env, 실제 production `scan_pattern_a_universe()`
+    코드 경로를 그대로 통과)로 "scanner summary가 row를 제대로 aggregate
+    하는가"라는 coverage를 복원한다. hardcoded 숫자끼리 비교하지 않도록,
+    expected count는 `res.rows`의 실제 candidate_state/investability_status
+    값으로부터 계산한다.
+    """
+    res = scan_pattern_a_universe(
+        cache=mock_scanner_env["cache"],
+        as_of=mock_scanner_env["as_of"],
+        universe_securities=mock_scanner_env["universe"],
+    )
+    summary = res.summary
+
+    candidate_rows = [r for r in res.rows if r.candidate_state == PatternACandidateState.CANDIDATE]
+    assert len(candidate_rows) > 0, "synthetic universe에 CANDIDATE row가 없어 이 회귀 검증이 무의미함"
+
+    expected_investable = sum(
+        1 for r in candidate_rows if r.investability_status == InvestabilityStatus.INVESTABLE
+    )
+    expected_filtered_market_cap = sum(
+        1 for r in candidate_rows if r.investability_status == InvestabilityStatus.FILTERED_MARKET_CAP
+    )
+    expected_filtered_liquidity = sum(
+        1 for r in candidate_rows if r.investability_status == InvestabilityStatus.FILTERED_LIQUIDITY
+    )
+    expected_data_unavailable = sum(
+        1 for r in candidate_rows if r.investability_status == InvestabilityStatus.DATA_UNAVAILABLE
+    )
+
+    assert summary.candidate_raw_count == len(candidate_rows)
+    assert summary.candidate_investable_count == expected_investable
+    assert summary.candidate_filtered_market_cap_count == expected_filtered_market_cap
+    assert summary.candidate_filtered_liquidity_count == expected_filtered_liquidity
+    assert summary.candidate_data_unavailable_count == expected_data_unavailable
+
+    assert (
+        summary.candidate_investable_count
+        + summary.candidate_filtered_market_cap_count
+        + summary.candidate_filtered_liquidity_count
+        + summary.candidate_data_unavailable_count
+        == summary.candidate_raw_count
+    )

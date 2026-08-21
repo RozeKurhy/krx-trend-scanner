@@ -18,7 +18,12 @@ TEST_SUITE_PERFORMANCE_AUDIT_AND_REFACTOR_V01: 이 파일의 negative(Gate) test
 
 Full Universe(2,528종목) 실제 검증 자체는 삭제되지 않았다 —
 `test_relative_strength_full_universe_validation`이 `@pytest.mark.slow`로
-격리되어 그대로 1회 실행된다(`uv run pytest ... -m slow`).
+격리되어 그대로 1회 실행된다(`uv run pytest ... -m slow`). 이 slow test는
+(TEST_SUITE_PERFORMANCE_AUDIT_AND_REFACTOR_FIX_01 Major 1) prepare/evaluate를
+직접 호출하지 않고 public runner `run_relative_strength_validation()`을
+직접 호출해, 오라클 로드 -> Full Universe Scan -> Gate 평가 -> 산출물
+기록까지 이어지는 전체 orchestration path를 실제 production 데이터로
+검증한다.
 """
 
 from __future__ import annotations
@@ -96,18 +101,46 @@ def rs_clean_context(rs_subset_context: RelativeStrengthValidationContext) -> Re
 
 @pytest.mark.slow
 def test_relative_strength_full_universe_validation(repo_root: Path, tmp_path: Path):
-    """Full Universe(2,528종목) 실제 scan + Gate 1~10 실제 평가 — 유일하게 보존된
-    slow full-universe 검증. Normal suite(`-m "not slow and not integration"`)에서는
-    실행되지 않는다. 실행: `uv run pytest ... -m slow`.
+    """Full Universe(2,528종목) 실제 scan + public runner 전체 orchestration path +
+    Gate 1~10 실제 평가 — 유일하게 보존된 slow full-universe 검증.
+
+    TEST_SUITE_PERFORMANCE_AUDIT_AND_REFACTOR_FIX_01 (Major 1): 이전에는
+    `prepare_relative_strength_validation_context()` + `evaluate_relative_strength_gates()`를
+    직접 호출해 Gate 평가 로직만 검증했다. 이것만으로는 public runner
+    `run_relative_strength_validation()` 자체(오라클 로드 -> 스캔 ->
+    평가 -> 산출물 기록까지 이어지는 전체 orchestration)가 실제 production
+    데이터로 한 번도 실행되지 않는 coverage 축소가 생겼다. 이 test는 그
+    public runner를 직접 호출해 전체 경로를 복구한다.
+
+    Normal suite(`-m "not slow and not integration"`)에서는 실행되지 않는다.
+    실행: `uv run pytest ... -m slow`.
     """
-    context = prepare_relative_strength_validation_context(
+    isolated_out_dir = tmp_path / "artifacts/relative_strength"
+    isolated_doc_path = tmp_path / "docs/validation/report.md"
+
+    canonical_csv = repo_root / "artifacts/relative_strength/pattern_a_relative_strength_features_20260814.csv"
+    canonical_json = repo_root / "artifacts/relative_strength/pattern_a_relative_strength_summary_20260814.json"
+
+    def _hash(p: Path) -> str:
+        return hashlib.sha256(p.read_bytes()).hexdigest() if p.exists() else ""
+
+    canonical_csv_hash_before = _hash(canonical_csv)
+    canonical_json_hash_before = _hash(canonical_json)
+
+    result = run_relative_strength_validation(
         as_of="2026-08-14",
         repo_root=repo_root,
-        output_dir=tmp_path / "artifacts/relative_strength",
-        doc_output_path=tmp_path / "docs/validation/report.md",
+        output_dir=isolated_out_dir,
+        doc_output_path=isolated_doc_path,
     )
-    result = evaluate_relative_strength_gates(context)
+
+    assert isinstance(result, dict)
+    assert "gates" in result
+    assert "verdict" in result
+
     gates = result["gates"]
+    assert len(gates) == 10
+
     assert gates["gate_01_frozen_identity_parity"]["passed"] is True
     assert gates["gate_02_market_benchmark_source_identity"]["passed"] is True
     assert gates["gate_03_pit_no_lookahead_contract"]["passed"] is True
@@ -116,6 +149,22 @@ def test_relative_strength_full_universe_validation(repo_root: Path, tmp_path: P
     assert gates["gate_06_market_rs_arithmetic_parity"]["passed"] is True
     assert gates["gate_09_fail_closed_schema_compatibility"]["passed"] is True
     assert gates["gate_10_production_test_suite_pass"]["passed"] is True
+
+    # Sector source is currently empty/isolated -> Gate 7 & 8 fail-closed
+    assert gates["gate_07_sector_mapping_contract"]["passed"] is False
+    assert gates["gate_08_sector_rs_arithmetic_parity"]["passed"] is False
+    assert result["verdict"] == "HOLD_RELATIVE_STRENGTH_INFRA"
+
+    # public runner가 실제로 기록하는 isolated output artifact 존재 확인
+    # (기존 run_relative_strength_validation()이 원래 생성하던 파일들 그대로)
+    assert (isolated_out_dir / "pattern_a_relative_strength_features_20260814.csv").exists()
+    assert (isolated_out_dir / "pattern_a_relative_strength_distribution_20260814.json").exists()
+    assert (isolated_out_dir / "pattern_a_relative_strength_summary_20260814.json").exists()
+    assert isolated_doc_path.exists()
+
+    # canonical artifact는 절대 건드리지 않는다 (tmp_path output만 사용됨)
+    assert _hash(canonical_csv) == canonical_csv_hash_before
+    assert _hash(canonical_json) == canonical_json_hash_before
 
     # Sector source is currently empty/isolated -> Gate 7 & 8 fail-closed
     assert gates["gate_07_sector_mapping_contract"]["passed"] is False

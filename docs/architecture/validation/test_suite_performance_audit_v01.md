@@ -80,14 +80,21 @@ P1_FOUND = 3
     동일 (ticker, as_of, repo_root, save_artifacts=False) 조합으로
     generate_stock_report()를 여러 read-only test가 반복 호출.
 
-P2_FOUND = 0 (명확한 이득이 확인된 항목은 P1로 승격해 이미 처리함. 이번
-  사이클에서 별도 P2 조치는 없음.)
+P2_FOUND = 1
+  - tests/test_pattern_a_foreign_flow_infrastructure.py: base_scan_result
+    (module-scoped fixture)가 normal suite에서 실제 2,528종목 Full Universe
+    Scan을 1회 수행해 약 178초 소요. 이미 5개 negative test가 재사용하는
+    올바른 "1번 계산 → 여러 test 검증" 패턴이라 삭제/축소 대상은 아니지만,
+    실행 시간 자체는 Remaining Performance Debt로 분류한다.
+    ACTION = DEFERRED_AFTER_FULL_SUITE_MEASUREMENT (사용자가 Normal Full
+    Suite를 실측한 뒤 우선순위 재검토).
 
 P3_REPORTED = 1
   - tests/test_full_universe_scanner.py: scan_pattern_a_universe를 여러 번
     호출하지만 synthetic 4-COMMON universe(mock_scanner_env)만 사용해 실행
     시간이 이미 4초 수준(실측)이다. 심각한 문제가 아니라는 §17 사전 판단이
-    실측으로 확인됨 — 수정하지 않음.
+    실측으로 확인됨 — 수정하지 않음. (warning volume 등 다른 P3 항목은
+    9번 Future recommendations 참고.)
 ```
 
 ## 5. 수정 내용
@@ -164,6 +171,23 @@ P3_REPORTED = 1
 등 frozen 대상 production 파일은 전혀 수정하지 않았다 — `EXPECTED_FROZEN_HASHES`
 갱신 없음 (`git diff --stat`에 `src/trend_scanner/patterns/` 관련 변경 없음).
 
+**TEST_SUITE_PERFORMANCE_AUDIT_AND_REFACTOR_FIX_01 (Major 1) 추가 수정**:
+`test_relative_strength_full_universe_validation`(slow)이 애초에는
+`prepare_relative_strength_validation_context()` + `evaluate_relative_strength_gates()`를
+직접 호출해 "Full Universe Scan + Gate 평가"만 검증하고, public runner
+`run_relative_strength_validation(...)`의 전체 orchestration(오라클 로드 ->
+스캔 -> 평가 -> CSV/JSON/MD 산출물 기록까지)은 실제 production 데이터로
+한 번도 실행되지 않는 coverage 축소가 있었다. 이 slow test를
+`run_relative_strength_validation(...)`을 직접 호출하도록 수정해 복구했다
+(`isolated_out_dir`/`isolated_doc_path`는 반드시 `tmp_path` 하위 — canonical
+artifact 절대 미사용). 기존 Gate assertion에 더해 다음도 확인한다: result가
+dict이고 `gates`/`verdict` 키 존재, `gates`가 정확히 10개, isolated output
+artifact(CSV/분포 JSON/요약 JSON/MD) 실제 생성, canonical CSV/JSON 파일
+해시가 실행 전후 불변. `prepare_relative_strength_validation_context()`와
+`evaluate_relative_strength_gates()` 구조 자체(negative test들이 계속
+`evaluate_relative_strength_gates()`만 호출하는 구조)는 그대로 유지했다 —
+RS_NORMAL_FULL_UNIVERSE_SCAN_CALLS = 0은 변하지 않는다.
+
 ### 5.2 Foreign Flow (P1)
 
 `tests/test_pattern_a_foreign_flow_infrastructure.py::test_live_validation_runner`에
@@ -185,7 +209,7 @@ Gate 1 비교 로직(180행 전체 oracle과의 set-비교)이 subset과 안전�
 호환되는지 별도 검증이 필요해 이번 사이클 범위 밖으로 남겼다(§7 Remaining
 Performance Debt 참고).
 
-### 5.3 Investability (P1)
+### 5.3 Investability (P1, FIX_01 Major 2)
 
 `tests/test_pattern_a_investability_integration.py::test_scanner_candidate_summary_breakdown`가
 `scan_pattern_a_universe(as_of=CANONICAL_AS_OF, limit=None)`로 2,528종목
@@ -197,6 +221,29 @@ Performance Debt 참고).
 filtered_liquidity_count:31, data_unavailable_count:4}`)하고, 이 fixture를
 재사용하도록 test를 다시 작성했다 — 별도 Full Universe Scan 없이 동일
 invariant를 검증한다.
+
+**후속 리뷰 지적(Major 2)**: 위 개선은 "canonical JSON에 이미 존재하는 값을
+다시 assert"하는 구조가 되어, "실제 scanner가 candidate/investability
+breakdown을 올바르게 집계하는가"라는 원래의 scanner aggregation coverage가
+사라졌다는 지적이 있었다. 이를 두 단계로 복구했다.
+
+1. `test_scanner_candidate_summary_breakdown`을
+   `test_canonical_candidate_summary_breakdown`으로 이름을 바꿔, 이 test가
+   canonical Phase 10 integration summary의 내용(180/103/42/31/4)을
+   검증하는 것이며 scanner 자체의 집계 검증이 아님을 명확히 했다(assertion
+   내용은 변경 없음).
+2. `tests/test_full_universe_scanner.py`에
+   `test_summary_candidate_investability_breakdown_aggregation`을 신규
+   추가했다. 이미 이 파일이 쓰는 `mock_scanner_env`(synthetic 4-COMMON
+   universe, 실제 production `scan_pattern_a_universe()` 코드 경로를 그대로
+   통과)로 스캔한 뒤, expected count를 **hardcoded 숫자가 아니라 `res.rows`의
+   실제 `candidate_state`/`investability_status` 값으로부터 계산**해서
+   `summary.candidate_raw_count`/`candidate_investable_count`/
+   `candidate_filtered_market_cap_count`/`candidate_filtered_liquidity_count`/
+   `candidate_data_unavailable_count`와 비교한다("summary가 rows를 제대로
+   aggregate하는가"를 검증 — summary hardcoded vs summary hardcoded 비교가
+   되지 않도록 함). 2,528종목 Full Universe Scan은 이 test에서도 사용하지
+   않는다(synthetic 4종목).
 
 ### 5.4 Stock Report 반복 생성 (P1)
 
@@ -248,32 +295,59 @@ tests/test_pattern_a_foreign_flow_infrastructure.py::test_live_validation_runner
 
 ```
 RS_NORMAL (test_pattern_a_relative_strength_infrastructure.py, -m "not slow and not integration")
-  26 passed, 1 deselected, 2.51초
+  26 passed, 1 deselected, 2.46~2.51초
   (TARGET <= 30초, HARD CEILING <= 60초 — 통과. 이전: 단일 테스트조차 120초 이상)
 
   AFTER_NORMAL_RS_FULL_UNIVERSE_SCAN_CALLS = 0 (2,528종목 전수 scan 없음)
-  AFTER_NORMAL_RS_SUBSET_SCAN_CALLS = 1 (module-scoped `rs_subset_context`
-    fixture가 `target_tickers`로 3종목만 스캔 — "scan_pattern_a_universe()를
-    아예 안 부른다"는 뜻이 아니라, 파일 전체에서 실제 scanner 호출이 1회로
-    줄었고 그 1회도 2,528종목이 아닌 3종목이라는 뜻이다)
+  AFTER_NORMAL_RS_SUBSET_SCAN_CALLS = 4 (정적 카운트 — 이전 완료 보고의
+    "= 1"은 부정확했음, FIX_01 Minor 2로 정정):
+    1) `rs_subset_context` module-scoped fixture — `target_tickers`로 3종목
+       스캔, 파일 전체에서 1회만 실행되고 여러 test가 결과를 공유
+    2) `test_future_sector_mapping_leakage_negative_test` — `target_tickers=["005930"]` 1종목 단독 스캔
+    3) `test_missing_effective_date_column_rejected` — `target_tickers=["005930"]` 1종목 단독 스캔
+    4) `test_mutation_tests_do_not_touch_canonical_artifacts` — 공유 fixture를
+       쓰지 않고 `prepare_relative_strength_validation_context(target_tickers=[...3종목])`을
+       직접 재호출(mutation 격리 목적)
+    이 4개 모두 2,528종목이 아닌 1~3종목 subset이며, Full Universe Scan은
+    0회로 유지된다.
   BEFORE_FULL_UNIVERSE_SCAN_CALLS_PER_RS_FILE = 13~15
     (§4 P0 대상 negative test 13개 각각 + 관련 회귀 test 호출 경로 포함,
     정적 감사 시점 counting)
 
 RS_SLOW (test_relative_strength_full_universe_validation, -m slow, 단독 실행)
-  1 passed, 175.26초
+  1 passed, 175.26초(FIX_01 이전 구조) — FIX_01 이후 public runner
+  `run_relative_strength_validation(...)` 직접 호출로 재실행한 결과는
+  아래 "FIX_01 이후 실측"에 기록.
   (실제 2,528종목 Full Universe Scan + Gate 1~10 전부 real 실행 — 삭제되지 않았음)
 
-Foreign_Flow_NORMAL (-m "not slow and not integration")
+FIX_01 이후 실측 (RS_SLOW, public runner 직접 호출로 수정된 뒤 재실행):
+  1 passed, 175.91초 — public runner `run_relative_strength_validation()`이
+  실제로 오라클 로드 -> Full Universe Scan -> Gate 1~10 평가 -> CSV/분포
+  JSON/요약 JSON/MD를 `tmp_path`에 기록하는 전체 경로를 실행. isolated
+  output artifact 4개 파일 존재 확인, canonical artifact(CSV/JSON) 해시
+  실행 전후 불변 확인 — 모두 PASS.
+
+Foreign_Flow_NORMAL (-m "not slow and not integration", V01 실측 — FIX_01에서
+  이 파일은 수정도, 재실행도 하지 않았다(w.md §19). base_scan_result 잔존
+  Full Universe Scan 1회는 P2 Remaining Performance Debt로 분류(8번 참고))
   12 passed, 1 deselected, 178.56초
   (이전 364.25초 — 51% 감소. base_scan_result의 1회 real full scan은 잔존, §5.2 근거)
 
-Foreign_Flow_SLOW (test_live_validation_runner, -m slow, 단독 실행)
+Foreign_Flow_SLOW (test_live_validation_runner, -m slow, 단독 실행, V01 실측)
   1 passed, 179.27초 (정상 PASS 확인)
 
 Investability_NORMAL (-m "not slow and not integration")
-  13 passed, 0.66초
+  13 passed, 0.66초 (V01 실측)
   (이전 test_scanner_candidate_summary_breakdown 단독으로 무제한 full scan 유발 — 사실상 즉시 실행 수준으로 개선)
+
+FIX_01 이후: Investability + Full_Universe_Scanner 통합 재실행
+  (uv run pytest tests/test_pattern_a_investability_integration.py
+  tests/test_full_universe_scanner.py -m "not slow and not integration" --durations=20)
+  26 passed, 4.51초 (Investability 13개 — `test_scanner_candidate_summary_breakdown`
+  이 `test_canonical_candidate_summary_breakdown`으로 개명됨, assertion 동일
+  + Full_Universe_Scanner 13개 — 신규 `test_summary_candidate_investability_breakdown_aggregation`
+  1개 추가로 12->13). 2,528종목 Full Universe Scan = 0회, synthetic small
+  universe만 사용.
 
 Stock_Report_NORMAL (4개 파일 통합 실행, -m "not slow and not integration")
   77 passed, 171.63초
@@ -293,8 +367,9 @@ Stock_Report_NORMAL (4개 파일 통합 실행, -m "not slow and not integration
     정확한 "페어를 하나의 명령으로 실행한" Before/After 재비교는 필요 시
     사용자 Full Suite 실행 시점에 확인 가능하다.
 
-Full_Universe_Scanner (test_full_universe_scanner.py, 참고용 재확인)
-  12 passed, 4.07초 (synthetic 4-COMMON universe, 원래도 문제 아니었음 — §4 P3)
+Full_Universe_Scanner (test_full_universe_scanner.py, 참고용 재확인, V01 실측)
+  12 passed, 4.07초 (synthetic 4-COMMON universe, 원래도 문제 아니었음 —
+  §4 P3). FIX_01에서 13개로 증가(위 "FIX_01 이후" 참고).
 ```
 
 ## 8. Remaining known expensive tests
