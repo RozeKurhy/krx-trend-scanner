@@ -240,11 +240,11 @@ def build_stage_distribution_summary(df: pd.DataFrame, stage_col: str, feature_c
 
 def run_stage_v04_multi_year_research(repo_root: Path) -> dict[str, Any]:
     """Extract features, build separation analysis, and output all v0.4 research artifacts."""
-    out_dir = repo_root / "artifacts" / "stage_v04_multi_year_research"
+    out_dir = repo_root / "artifacts" / "patterns" / "pattern_a" / "validation" / "stage_v04_multi_year_research"
     out_dir.mkdir(parents=True, exist_ok=True)
 
     cache = ParquetCache(base_dir=repo_root / "data" / "raw" / "stocks")
-    csv_42_path = repo_root / "artifacts" / "chart_review" / "pattern_a_candidate_manual_review_20260814.csv"
+    csv_42_path = repo_root / "artifacts" / "patterns" / "pattern_a" / "validation" / "chart_review" / "pattern_a_candidate_manual_review_20260814.csv"
     h42_df = pd.read_csv(csv_42_path, dtype={"ticker": str})
     h42_df["ticker"] = h42_df["ticker"].str.zfill(6)
     h42_reviewed = h42_df[h42_df["review_status"] == "REVIEWED"].copy()

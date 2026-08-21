@@ -25,8 +25,8 @@ generalization, or a production decision.
 ==================================================
 
 Fast JSON inputs:
-- artifacts/pattern_a_fast/research/pattern_a_fast_score_prototype_v01.json
-- artifacts/pattern_a_fast/research/pattern_a_fast_stage_prototype_v01.json
+- artifacts/patterns/pattern_a_fast/production/contract_prototype/pattern_a_fast_score_prototype_v01.json
+- artifacts/patterns/pattern_a_fast/production/contract_prototype/pattern_a_fast_stage_prototype_v01.json
 
 Pattern A official evaluator path:
 - src/trend_scanner/validation/historical_snapshot.py: build_historical_snapshot

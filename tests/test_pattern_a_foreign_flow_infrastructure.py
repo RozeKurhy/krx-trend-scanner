@@ -16,7 +16,7 @@ from trend_scanner.validation.pattern_a_foreign_flow_infrastructure import (
 )
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
-_ARTIFACTS_DIR = _REPO_ROOT / "artifacts/flow"
+_ARTIFACTS_DIR = _REPO_ROOT / "artifacts/patterns/pattern_a/production/flow"
 
 
 @pytest.fixture(scope="module")
@@ -27,7 +27,7 @@ def base_scan_result():
 
     cache_dir = _REPO_ROOT / "data" / "raw" / "stocks"
     parquet_cache = ParquetCache(base_dir=cache_dir)
-    source_parquet = _REPO_ROOT / "artifacts/flow/source/foreign_flow_daily_20260814.parquet"
+    source_parquet = _REPO_ROOT / "artifacts/patterns/pattern_a/production/flow/source/foreign_flow_daily_20260814.parquet"
     df_flow = pd.read_parquet(source_parquet) if source_parquet.exists() else pd.DataFrame()
     return scan_pattern_a_universe(
         cache=parquet_cache,
@@ -57,7 +57,7 @@ def test_foreign_flow_source_integrity(flow_validation_summary: dict):
     assert len(flow_validation_summary["source_sha256"]) == 64
     assert flow_validation_summary["source_row_count"] >= 150000
 
-    source_meta_file = _REPO_ROOT / "artifacts/flow/source/foreign_flow_daily_20260814_meta.json"
+    source_meta_file = _REPO_ROOT / "artifacts/patterns/pattern_a/production/flow/source/foreign_flow_daily_20260814_meta.json"
     assert source_meta_file.exists()
     meta = json.loads(source_meta_file.read_text(encoding="utf-8"))
     assert flow_validation_summary["source_sha256"] == meta["parquet_sha256"]
@@ -162,7 +162,7 @@ def test_candidate_ticker_swap_negative_test(base_scan_result, monkeypatch, tmp_
 
     monkeypatch.setattr(val_mod, "scan_pattern_a_universe", lambda *args, **kwargs: copy.deepcopy(base_scan_result))
 
-    canonical_oracle = _REPO_ROOT / "artifacts/investability/pattern_a_investability_integration_20260814.csv"
+    canonical_oracle = _REPO_ROOT / "artifacts/patterns/pattern_a/production/investability/pattern_a_investability_integration_20260814.csv"
     df = pd.read_csv(canonical_oracle)
     # Swap first ticker to a fake ticker
     df.loc[0, "ticker"] = "999999"
@@ -189,7 +189,7 @@ def test_investability_status_mutation_negative_test(base_scan_result, monkeypat
 
     monkeypatch.setattr(val_mod, "scan_pattern_a_universe", lambda *args, **kwargs: copy.deepcopy(base_scan_result))
 
-    canonical_oracle = _REPO_ROOT / "artifacts/investability/pattern_a_investability_integration_20260814.csv"
+    canonical_oracle = _REPO_ROOT / "artifacts/patterns/pattern_a/production/investability/pattern_a_investability_integration_20260814.csv"
     df = pd.read_csv(canonical_oracle)
     # Mutate investability_status of the first row (INVESTABLE -> FILTERED_MARKET_CAP)
     df.loc[0, "investability_status"] = "FILTERED_MARKET_CAP"

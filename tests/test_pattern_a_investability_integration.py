@@ -26,7 +26,7 @@ from trend_scanner.validation.pattern_a_investability_integration import (
 )
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
-_ARTIFACTS_DIR = _REPO_ROOT / "artifacts/investability"
+_ARTIFACTS_DIR = _REPO_ROOT / "artifacts/patterns/pattern_a/production/investability"
 
 
 @pytest.fixture(scope="module")

@@ -17,7 +17,7 @@ import pandas as pd
 
 
 ROOT = Path(__file__).resolve().parents[1]
-OOS = ROOT / "artifacts/pattern_a_fast/investable_oos"
+OOS = ROOT / "artifacts/patterns/pattern_a_fast/validation/investable_oos"
 REVIEW = OOS / "pattern_a_fast_investable_oos_human_review_v01.csv"
 MANIFEST = OOS / "pattern_a_fast_investable_oos_selection_manifest_v01.csv"
 ASSETS = OOS / "pattern_a_fast_investable_oos_blind_asset_manifest_v01.csv"

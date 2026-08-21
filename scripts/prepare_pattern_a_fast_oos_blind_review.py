@@ -56,9 +56,9 @@ PRIMARY_SCORE_COMPARISON = {
     ],
 }
 
-SOURCE_CSV = Path("artifacts/pattern_a_fast/ground_truth/pattern_a_fast_ground_truth_source_v01.csv")
-CALIBRATION_CSV = Path("artifacts/pattern_a_fast/ground_truth/pattern_a_fast_human_review_v01.csv")
-OOS_DIR = Path("artifacts/pattern_a_fast/oos")
+SOURCE_CSV = Path("artifacts/patterns/pattern_a_fast/validation/ground_truth/pattern_a_fast_ground_truth_source_v01.csv")
+CALIBRATION_CSV = Path("artifacts/patterns/pattern_a_fast/validation/ground_truth/pattern_a_fast_human_review_v01.csv")
+OOS_DIR = Path("artifacts/patterns/pattern_a_fast/validation/oos")
 MANIFEST_CSV = OOS_DIR / "pattern_a_fast_oos_sample_manifest_v01.csv"
 REVIEW_CSV = OOS_DIR / "pattern_a_fast_oos_human_review_v01.csv"
 ASSET_MANIFEST_CSV = OOS_DIR / "pattern_a_fast_oos_blind_asset_manifest_v01.csv"
@@ -323,12 +323,12 @@ def build_protocol() -> dict[str, object]:
 def write_human_guides(manifest: pd.DataFrame) -> None:
     stage_rows = "\n".join(
         f"| {r['review_order']:03d} | {r['oos_sample_id']} | {r['ticker']} | {r['name']} | {r['reference_date']} | "
-        f"`artifacts/pattern_a_fast/oos/charts/stage_blind/{r['review_order']:03d}_{r['oos_sample_id']}_monthly.png` / weekly / daily |"
+        f"`artifacts/patterns/pattern_a_fast/validation/oos/charts/stage_blind/{r['review_order']:03d}_{r['oos_sample_id']}_monthly.png` / weekly / daily |"
         for r in manifest.to_dict(orient="records")
     )
     outcome_rows = "\n".join(
         f"| {r['review_order']:03d} | {r['oos_sample_id']} | {r['ticker']} | {r['name']} | {r['reference_date']} | {r['outcome_review_end']} | "
-        f"`artifacts/pattern_a_fast/oos/charts/outcome_blind/{r['review_order']:03d}_{r['oos_sample_id']}_outcome.png` |"
+        f"`artifacts/patterns/pattern_a_fast/validation/oos/charts/outcome_blind/{r['review_order']:03d}_{r['oos_sample_id']}_outcome.png` |"
         for r in manifest.to_dict(orient="records")
     )
     (VALIDATION_DIR / "pattern_a_fast_oos_stage_blind_review_v01.md").write_text(
@@ -339,7 +339,7 @@ Phase 13I-1 Reserved OOS Stage Blind Review Guide
 
 PASS A에서는 reference_date 이후 chart를 열지 않는다. 먼저 weekly_stage_at_reference, weekly_stage_confidence, human_trigger_event_observed, human_trigger_event_date를 작성하고 저장. 그 뒤 PASS B.
 
-작성 대상: artifacts/pattern_a_fast/oos/pattern_a_fast_oos_human_review_v01.csv
+작성 대상: artifacts/patterns/pattern_a_fast/validation/oos/pattern_a_fast_oos_human_review_v01.csv
 허용 단계: WATCH, SETUP, TRIGGER, TREND, EXTENDED
 신뢰도: HIGH, MEDIUM, LOW. trigger_event_observed는 YES, NO, UNLABELED 중 하나로 기록한다.
 이 문서와 차트에는 자동 판단, 점수, 후보 여부 또는 다른 모델 산출물을 표시하지 않는다.

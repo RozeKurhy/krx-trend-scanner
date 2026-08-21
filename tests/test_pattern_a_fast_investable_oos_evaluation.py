@@ -12,7 +12,7 @@ import pytest
 
 
 ROOT = Path(__file__).resolve().parent.parent
-OOS = ROOT / "artifacts/pattern_a_fast/investable_oos"
+OOS = ROOT / "artifacts/patterns/pattern_a_fast/validation/investable_oos"
 REVIEW = OOS / "pattern_a_fast_investable_oos_human_review_v01.csv"
 SEAL = OOS / "pattern_a_fast_investable_oos_human_ground_truth_v01.json"
 SUMMARY = OOS / "pattern_a_fast_investable_oos_evaluation_v01.json"

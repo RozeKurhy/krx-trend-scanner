@@ -643,13 +643,13 @@ def scan_pattern_a_universe(
     if universe_securities is None:
         req_clean = req_as_of.strftime("%Y%m%d")
         ref_clean = ref_market_date.replace("-", "")
-        canonical_univ_csv = repo_root / "artifacts/investability" / f"pattern_a_investability_universe_{req_clean}.csv"
+        canonical_univ_csv = repo_root / "artifacts/patterns/pattern_a/production/investability" / f"pattern_a_investability_universe_{req_clean}.csv"
         if not canonical_univ_csv.exists():
-            canonical_univ_csv = repo_root / "artifacts/investability" / f"pattern_a_investability_universe_{ref_clean}.csv"
+            canonical_univ_csv = repo_root / "artifacts/patterns/pattern_a/production/investability" / f"pattern_a_investability_universe_{ref_clean}.csv"
 
-        canonical_scan_csv = repo_root / "artifacts/scanner" / f"pattern_a_universe_scan_{req_clean}.csv"
+        canonical_scan_csv = repo_root / "artifacts/patterns/pattern_a/production/scanner" / f"pattern_a_universe_scan_{req_clean}.csv"
         if not canonical_scan_csv.exists():
-            canonical_scan_csv = repo_root / "artifacts/scanner" / f"pattern_a_universe_scan_{ref_clean}.csv"
+            canonical_scan_csv = repo_root / "artifacts/patterns/pattern_a/production/scanner" / f"pattern_a_universe_scan_{ref_clean}.csv"
 
         if canonical_univ_csv.exists():
             df_univ = pd.read_csv(canonical_univ_csv)
@@ -766,7 +766,7 @@ def scan_pattern_a_universe(
         if p.exists():
             flow_df_loaded = pd.read_parquet(p) if p.suffix == ".parquet" else pd.read_csv(p)
     elif flow_df_loaded is None:
-        def_p = repo_root / "artifacts/flow/source" / f"foreign_flow_daily_{req_as_of.strftime('%Y%m%d')}.parquet"
+        def_p = repo_root / "artifacts/patterns/pattern_a/production/flow/source" / f"foreign_flow_daily_{req_as_of.strftime('%Y%m%d')}.parquet"
         if def_p.exists():
             flow_df_loaded = pd.read_parquet(def_p)
 
@@ -778,7 +778,7 @@ def scan_pattern_a_universe(
             if p.exists():
                 market_index_df_loaded = pd.read_parquet(p) if p.suffix == ".parquet" else pd.read_csv(p)
         elif market_index_df_loaded is None:
-            def_p = repo_root / "artifacts/relative_strength/source" / f"market_index_daily_{req_as_of.strftime('%Y%m%d')}.parquet"
+            def_p = repo_root / "artifacts/patterns/pattern_a/validation/relative_strength/source" / f"market_index_daily_{req_as_of.strftime('%Y%m%d')}.parquet"
             if def_p.exists():
                 market_index_df_loaded = pd.read_parquet(def_p)
     except Exception as exc:
@@ -792,7 +792,7 @@ def scan_pattern_a_universe(
             if p.exists():
                 sector_index_df_loaded = pd.read_parquet(p) if p.suffix == ".parquet" else pd.read_csv(p)
         elif sector_index_df_loaded is None:
-            def_p = repo_root / "artifacts/relative_strength/source" / f"sector_index_daily_{req_as_of.strftime('%Y%m%d')}.parquet"
+            def_p = repo_root / "artifacts/patterns/pattern_a/validation/relative_strength/source" / f"sector_index_daily_{req_as_of.strftime('%Y%m%d')}.parquet"
             if def_p.exists():
                 sector_index_df_loaded = pd.read_parquet(def_p)
     except Exception as exc:
@@ -825,7 +825,7 @@ def scan_pattern_a_universe(
                         }
                 # Missing effective_date column results in sector_map_loaded = None (Fail-Closed)
         else:
-            def_p = repo_root / "artifacts/relative_strength/source" / f"sector_mapping_{req_as_of.strftime('%Y%m%d')}.csv"
+            def_p = repo_root / "artifacts/patterns/pattern_a/validation/relative_strength/source" / f"sector_mapping_{req_as_of.strftime('%Y%m%d')}.csv"
             if def_p.exists():
                 df_sm = pd.read_csv(def_p)
                 df_sm["ticker"] = df_sm["ticker"].astype(str).str.zfill(6)

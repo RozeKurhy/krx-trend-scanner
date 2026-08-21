@@ -223,13 +223,13 @@ def run_foreign_flow_infrastructure_validation(
     """Execute Phase 11 Foreign Flow Confirmation Infrastructure Validation."""
     cache_dir = repo_root / "data" / "raw" / "stocks"
     parquet_cache = ParquetCache(base_dir=cache_dir)
-    out_dir = output_dir or (repo_root / "artifacts/flow")
+    out_dir = output_dir or (repo_root / "artifacts/patterns/pattern_a/production/flow")
     if write_artifacts:
         out_dir.mkdir(parents=True, exist_ok=True)
 
     # 1. Load Canonical Source Artifact & Checksum
-    source_parquet = repo_root / "artifacts/flow/source/foreign_flow_daily_20260814.parquet"
-    source_meta_file = repo_root / "artifacts/flow/source/foreign_flow_daily_20260814_meta.json"
+    source_parquet = repo_root / "artifacts/patterns/pattern_a/production/flow/source/foreign_flow_daily_20260814.parquet"
+    source_meta_file = repo_root / "artifacts/patterns/pattern_a/production/flow/source/foreign_flow_daily_20260814_meta.json"
 
     source_exists = source_parquet.exists() and source_meta_file.exists()
     source_sha256 = compute_file_sha256(source_parquet) if source_parquet.exists() else ""
@@ -260,10 +260,10 @@ def run_foreign_flow_infrastructure_validation(
 
     # 4. Phase 10 Frozen Baseline Exact Parity Check (Phase 10C Canonical Oracle)
     integration_oracle_csv = integration_oracle_path or (
-        repo_root / "artifacts/investability/pattern_a_investability_integration_20260814.csv"
+        repo_root / "artifacts/patterns/pattern_a/production/investability/pattern_a_investability_integration_20260814.csv"
     )
     candidate_oracle_csv = candidate_oracle_path or (
-        repo_root / "artifacts/investability/pattern_a_investability_candidates_20260814.csv"
+        repo_root / "artifacts/patterns/pattern_a/production/investability/pattern_a_investability_candidates_20260814.csv"
     )
 
     oracle_available = False

@@ -16,7 +16,7 @@ import pandas as pd
 
 
 BASE_COMMIT = "505c412f504dbb1a5a475e2562a0a1749eaa6508"
-RESEARCH_DIR = Path("artifacts/pattern_a_fast/research")
+RESEARCH_DIR = Path("artifacts/patterns/pattern_a_fast/research/feature_role")
 REGISTRY = RESEARCH_DIR / "pattern_a_fast_feature_role_registry_v01.csv"
 REDUNDANCY = RESEARCH_DIR / "pattern_a_fast_cross_timeframe_redundancy_v01.csv"
 SELECTED_MATRIX = RESEARCH_DIR / "pattern_a_fast_selected_feature_matrix_v01.csv"
@@ -154,16 +154,13 @@ def test_no_contract_fields_or_production_integration_are_introduced():
 
 
 def test_frozen_inputs_are_unchanged_since_base_commit():
-    frozen = [
-        "artifacts/pattern_a_fast/ground_truth/pattern_a_fast_human_review_v01.csv",
-        "artifacts/pattern_a_fast/research/monthly_regime_feature_matrix_v01.csv",
-        "artifacts/pattern_a_fast/research/weekly_trigger_feature_matrix_v01.csv",
-        "artifacts/pattern_a_fast/research/daily_timing_feature_matrix_v01.csv",
-    ]
-    result = subprocess.run(
-        ["git", "diff", "--name-only", BASE_COMMIT, "--", *frozen],
-        check=True,
-        capture_output=True,
-        text=True,
-    )
-    assert result.stdout == ""
+    expected_hashes = {
+        "artifacts/patterns/pattern_a_fast/validation/ground_truth/pattern_a_fast_human_review_v01.csv": "ea71bd1850aa52479d5c09a9d54a45b4f43493147a2bd98a8e93e6ae0d6fed4c",
+        "artifacts/patterns/pattern_a_fast/research/feature_role/monthly_regime_feature_matrix_v01.csv": "42c289bdb56bc3b716f62e3ceaf6cd8880b7f8326d8f67720b05b956b8cfd459",
+        "artifacts/patterns/pattern_a_fast/research/feature_role/weekly_trigger_feature_matrix_v01.csv": "460df314ad220317b4792b209f92fd16f768b625e2ec18d3309cf76de23a92fd",
+        "artifacts/patterns/pattern_a_fast/research/feature_role/daily_timing_feature_matrix_v01.csv": "21719a306448dd11948ba2bd7da662b07e050e0f9fbf2a39aefb16aa1f003c38",
+    }
+    import hashlib
+    for path_str, expected in expected_hashes.items():
+        actual = hashlib.sha256(Path(path_str).read_bytes()).hexdigest()
+        assert actual == expected, f"{path_str}: expected {expected}, got {actual}"

@@ -19,7 +19,7 @@ from trend_scanner.validation.pattern_a_final_closure import EXPECTED_FROZEN_HAS
 
 ROOT = Path(__file__).resolve().parents[1]
 BASE = "f6b6448c280706e1e2d17d19809f369ac3feea95"
-OOS = ROOT / "artifacts/pattern_a_fast/investable_oos"
+OOS = ROOT / "artifacts/patterns/pattern_a_fast/validation/investable_oos"
 REVIEW = OOS / "pattern_a_fast_investable_oos_human_review_v01.csv"
 MANIFEST = OOS / "pattern_a_fast_investable_oos_selection_manifest_v01.csv"
 ASSETS = OOS / "pattern_a_fast_investable_oos_blind_asset_manifest_v01.csv"
@@ -156,7 +156,8 @@ def test_charts_pass_a_seal_and_non_evaluation_boundaries_remain_unchanged():
     assert len(assets[assets.human_exposure_phase.eq("PASS_A")]) == 108
     assert len(assets[assets.human_exposure_phase.eq("PASS_B_AFTER_STAGE_FREEZE")]) == 36
     for asset in assets.itertuples(index=False):
-        assert _sha256(ROOT / asset.file_path) == asset.sha256
+        resolved_path = ROOT / asset.file_path.replace("artifacts/pattern_a_fast/", "artifacts/patterns/pattern_a_fast/validation/")
+        assert _sha256(resolved_path) == asset.sha256
     assert_file_sha256(ROOT / "src/trend_scanner/patterns/pattern_a_evaluator.py", PATTERN_A_EVALUATOR_SHA256)
     assert_file_sha256(ROOT / "src/trend_scanner/patterns/pattern_a_feature_set.py", PATTERN_A_FEATURE_SET_SHA256)
     assert_file_sha256(ROOT / "src/trend_scanner/patterns/pattern_a_score.py", EXPECTED_FROZEN_HASHES["pattern_a_score.py"])

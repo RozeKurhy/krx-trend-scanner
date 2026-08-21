@@ -151,7 +151,7 @@ def test_gate7_source_identity_hashes():
 
 def test_gate8_candidate_identity_diff_zero():
     """Gate 8: Verify candidate identity diff is zero (no missing, no extra, no stage change)."""
-    json_path = _REPO_ROOT / "artifacts" / "pattern_a_final_closure" / "pattern_a_final_closure.json"
+    json_path = _REPO_ROOT / "artifacts/patterns/pattern_a/validation/closure/pattern_a_final_closure.json"
     payload = json.loads(json_path.read_text(encoding="utf-8"))
     diff = payload["candidate_identity_diff"]
 
@@ -163,7 +163,7 @@ def test_gate8_candidate_identity_diff_zero():
 
 def test_gate9_closure_json_derived_consistency():
     """Gate 9: Verify committed closure JSON matches fail-closed live audit contract."""
-    json_path = _REPO_ROOT / "artifacts" / "pattern_a_final_closure" / "pattern_a_final_closure.json"
+    json_path = _REPO_ROOT / "artifacts/patterns/pattern_a/validation/closure/pattern_a_final_closure.json"
     committed = json.loads(json_path.read_text(encoding="utf-8"))
 
     assert committed["source_integrity"]["stage_constants_pass"] is True

@@ -44,8 +44,8 @@ from trend_scanner.validation.pattern_a_fast_ground_truth import (  # noqa: E402
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("generate_pattern_a_fast_ground_truth_charts")
 
-SOURCE_CSV = Path("artifacts/pattern_a_fast/ground_truth/pattern_a_fast_ground_truth_source_v01.csv")
-CHART_DIR = Path("artifacts/pattern_a_fast/ground_truth/charts")
+SOURCE_CSV = Path("artifacts/patterns/pattern_a_fast/validation/ground_truth/pattern_a_fast_ground_truth_source_v01.csv")
+CHART_DIR = Path("artifacts/patterns/pattern_a_fast/validation/ground_truth/charts")
 CHART_SUFFIXES = ("_monthly_pit.png", "_weekly_pit.png", "_daily_pit.png", "_weekly_outcome.png")
 
 

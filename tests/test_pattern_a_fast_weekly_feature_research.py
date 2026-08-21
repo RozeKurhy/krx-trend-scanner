@@ -465,7 +465,7 @@ def test_insufficient_history_fails_safe_to_nan():
     assert np.isnan(feats["range_position_52w"])
 
 
-_MATRIX_CSV = Path(__file__).resolve().parents[1] / "artifacts/pattern_a_fast/research/weekly_trigger_feature_matrix_v01.csv"
+_MATRIX_CSV = Path(__file__).resolve().parents[1] / "artifacts/patterns/pattern_a_fast/research/feature_role/weekly_trigger_feature_matrix_v01.csv"
 
 
 @pytest.mark.skipif(not _MATRIX_CSV.exists(), reason="research script를 먼저 실행해야 함")
@@ -479,7 +479,7 @@ def test_matrix_has_exactly_40_unique_labeled_samples():
     assert (matrix["weekly_stage_at_reference"] != "UNLABELED").all()
 
 
-_SUMMARY_CSV = Path(__file__).resolve().parents[1] / "artifacts/pattern_a_fast/research/weekly_trigger_feature_summary_v01.csv"
+_SUMMARY_CSV = Path(__file__).resolve().parents[1] / "artifacts/patterns/pattern_a_fast/research/feature_role/weekly_trigger_feature_summary_v01.csv"
 
 
 @pytest.mark.skipif(not _SUMMARY_CSV.exists(), reason="research script를 먼저 실행해야 함")

@@ -22,10 +22,10 @@ from tests.helpers.frozen_integrity import (
 
 ROOT = Path(__file__).resolve().parents[1]
 BASE = "cb2aba5d680c2f5e770ef9441e2e781d82a8cb2e"  # Phase 13J-0 freeze reference commit (역사적 참조용, 더 이상 git diff 대상 아님 -- FIX_03)
-HISTORY = ROOT / "artifacts/investability/history"
-# Not part of the artifacts/investability/history/ provenance-tracked set --
+HISTORY = ROOT / "artifacts/patterns/pattern_a/validation/investability_history"
+# Not part of the artifacts/patterns/pattern_a/validation/investability_history/ provenance-tracked set --
 # frozen separately below via explicit sha256 (see tests/helpers/frozen_integrity.py).
-SOURCE = ROOT / "artifacts/investability/source"
+SOURCE = ROOT / "artifacts/patterns/pattern_a/production/investability/source"
 # Unchanged since BASE; no separate hash authority for this specific artifact
 # file existed before FIX_03.
 PIT_AUDIT_JSON_SHA256 = "2f132be5f54fbb130526f74d2b690d2772000f048d7b2767c7185d5188642229"
@@ -73,6 +73,14 @@ def test_all_22_references_follow_the_frozen_completed_weekly_contract():
     assert (grid.date_resolution_status == "PRIOR_COMPLETED_WEEK").sum() == 4
 
 
+def _resolve_history_path(file_path: str) -> Path:
+    rel = file_path.replace(
+        "artifacts/investability/history/",
+        "artifacts/patterns/pattern_a/validation/investability_history/",
+    )
+    return ROOT / rel
+
+
 def test_active_and_superseded_sources_are_krx_only_hash_sealed_and_unambiguous():
     audit = _audit()
     provenance = pd.read_csv(PROVENANCE, dtype=str).fillna("")
@@ -88,8 +96,8 @@ def test_active_and_superseded_sources_are_krx_only_hash_sealed_and_unambiguous(
     assert set(provenance.retrieval_status) == {"SUCCESS"}
     assert not set(active.source_file) & set(superseded.source_file)
     for row in provenance.itertuples(index=False):
-        raw = ROOT / row.source_file
-        normalized = ROOT / row.normalized_file
+        raw = _resolve_history_path(row.source_file)
+        normalized = _resolve_history_path(row.normalized_file)
         assert hashlib.sha256(raw.read_bytes()).hexdigest() == row.sha256
         assert hashlib.sha256(normalized.read_bytes()).hexdigest() == row.normalized_sha256
 
@@ -99,7 +107,7 @@ def test_active_normalized_snapshots_preserve_canonical_metrics_and_existing_cro
     active = provenance[provenance.reference_status.eq("ACTIVE_REFERENCE")]
     expected_columns = ["ticker", "name", "raw_market", "market", "close", "volume", "trading_value", "market_cap", "shares_outstanding", "effective_date"]
     for row in active.itertuples(index=False):
-        frame = pd.read_csv(ROOT / row.normalized_file, dtype={"ticker": str})
+        frame = pd.read_csv(_resolve_history_path(row.normalized_file), dtype={"ticker": str})
         assert frame.columns.tolist() == expected_columns
         assert frame.ticker.str.len().eq(6).all() and frame.ticker.is_unique
         assert set(frame.market) <= {"KOSPI", "KOSDAQ", "KONEX", "OTHER"}
@@ -135,7 +143,7 @@ def test_no_substitution_or_interpolation_and_phase10_inputs_are_unchanged():
     assert_file_sha256(SOURCE / "krx_market_cap_20250131.csv", SOURCE_MARKET_CAP_20250131_SHA256)
     assert_file_sha256(SOURCE / "krx_market_cap_20260814.csv", SOURCE_MARKET_CAP_20260814_SHA256)
     assert_file_sha256(
-        ROOT / "artifacts/pattern_a_fast/investable_oos/pattern_a_fast_investable_oos_historical_investability_pit_audit_v01.json",
+        ROOT / "artifacts/patterns/pattern_a_fast/validation/investable_oos/pattern_a_fast_investable_oos_historical_investability_pit_audit_v01.json",
         PIT_AUDIT_JSON_SHA256,
     )
     assert_file_sha256(ROOT / "scripts/evaluate_pattern_a_fast_oos_v01.py", EVALUATE_PATTERN_A_FAST_OOS_V01_SHA256)

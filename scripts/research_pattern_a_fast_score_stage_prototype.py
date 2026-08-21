@@ -11,12 +11,12 @@ import pandas as pd
 
 
 BASE = "4fc5f9d11c23cd96703c5b066d5f60200fb41703"
-R = Path("artifacts/pattern_a_fast/research")
+R = Path("artifacts/patterns/pattern_a_fast/research/feature_role")
 REGISTRY, SELECTED, WEEKLY = (R / "pattern_a_fast_feature_role_registry_v01.csv", R / "pattern_a_fast_selected_feature_matrix_v01.csv", R / "weekly_trigger_feature_matrix_v01.csv")
 OUT = {
     "thresholds": R / "pattern_a_fast_threshold_candidates_v01.csv",
-    "score": R / "pattern_a_fast_score_prototype_v01.json",
-    "stage": R / "pattern_a_fast_stage_prototype_v01.json",
+    "score": Path("artifacts/patterns/pattern_a_fast/production/contract_prototype/pattern_a_fast_score_prototype_v01.json"),
+    "stage": Path("artifacts/patterns/pattern_a_fast/production/contract_prototype/pattern_a_fast_stage_prototype_v01.json"),
     "calibration": R / "pattern_a_fast_calibration_score_prototype_v01.csv",
     "evaluation": R / "pattern_a_fast_stage_prototype_evaluation_v01.csv",
     "diagnostics": R / "pattern_a_fast_score_prototype_diagnostics_v01.csv",

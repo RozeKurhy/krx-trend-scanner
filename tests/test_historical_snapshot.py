@@ -497,8 +497,8 @@ def test_regression_case_f_fast_evaluator_parity():
     daily = cache.load("035720")
     assert daily is not None
 
-    score_contract = json.loads((ROOT / "artifacts/pattern_a_fast/research/pattern_a_fast_score_prototype_v01.json").read_text(encoding="utf-8"))
-    stage_contract = json.loads((ROOT / "artifacts/pattern_a_fast/research/pattern_a_fast_stage_prototype_v01.json").read_text(encoding="utf-8"))
+    score_contract = json.loads((ROOT / "artifacts/patterns/pattern_a_fast/production/contract_prototype/pattern_a_fast_score_prototype_v01.json").read_text(encoding="utf-8"))
+    stage_contract = json.loads((ROOT / "artifacts/patterns/pattern_a_fast/production/contract_prototype/pattern_a_fast_stage_prototype_v01.json").read_text(encoding="utf-8"))
 
     w = pd.Timestamp("2025-09-12")
     res = evaluate_pattern_a_fast("035720", "카카오", daily[daily.index <= w], w, score_contract, stage_contract)

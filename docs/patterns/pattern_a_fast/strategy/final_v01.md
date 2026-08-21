@@ -13,7 +13,7 @@
 - **사전등록 커밋 (Preregistration Authority)**: [`a5c29e7`](https://github.com/RozeKurhy/krx-trend-scanner/commit/a5c29e7e97cb7e6830c3dcd25d824e5779f2312f)
 - **캘린더 권한 커밋 (Calendar Authority)**: [`88d54d8`](https://github.com/RozeKurhy/krx-trend-scanner/commit/88d54d85bdee1f2121bec9b27a250cbc1cb9f98f)
 - **평가 증거 커밋 (Evaluation Evidence)**: [`f73e0c2`](https://github.com/RozeKurhy/krx-trend-scanner/commit/f73e0c23b10cc3e3f8215693ef5095b2c0f6716d)
-- **최종 선택 권한 (Selection Authority)**: **`FINAL_STRATEGY_CONTRACT`** (`docs/patterns/pattern_a_fast/strategy/final_v01.md` + `artifacts/pattern_a_fast/final_strategy_v01/pattern_a_fast_final_strategy_v01.json`)
+- **최종 선택 권한 (Selection Authority)**: **`FINAL_STRATEGY_CONTRACT`** (`docs/patterns/pattern_a_fast/strategy/final_v01.md` + `artifacts/patterns/pattern_a_fast/production/strategy_v01/pattern_a_fast_final_strategy_v01.json`)
 - **계약 권한 (Contract Authority)**: **`THIS_FINAL_STRATEGY_CONTRACT_REVISION`**
 - **Fresh OOS 상태**: **`READY_FOR_PREREGISTRATION`** (Fresh OOS 실행 여부: `NO`)
 - **운영 상태 (Production Status)**: **`PRODUCTION_HOLD` (운영 불변, 연구 전용)**

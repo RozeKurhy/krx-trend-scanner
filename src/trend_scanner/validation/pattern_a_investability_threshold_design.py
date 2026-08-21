@@ -314,8 +314,8 @@ def run_threshold_design_validation(
     write_artifacts: bool = True,
 ) -> dict[str, Any]:
     """Execute Phase 10B Investability Threshold Design and Quantitative Trade-Off Validation."""
-    in_dir = repo_root / "artifacts/investability"
-    out_dir = output_dir or (repo_root / "artifacts/investability")
+    in_dir = repo_root / "artifacts/patterns/pattern_a/production/investability"
+    out_dir = output_dir or (repo_root / "artifacts/patterns/pattern_a/research/investability_threshold_design")
     if write_artifacts:
         out_dir.mkdir(parents=True, exist_ok=True)
 

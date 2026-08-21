@@ -471,7 +471,7 @@ def test_feature_names_are_stable_and_unique():
 # 커밋된 matrix/summary CSV 직접 검증 (research script 실행 후에만 동작)
 # --------------------------------------------------------------------------
 
-_MATRIX_CSV = Path(__file__).resolve().parents[1] / "artifacts/pattern_a_fast/research/daily_timing_feature_matrix_v01.csv"
+_MATRIX_CSV = Path(__file__).resolve().parents[1] / "artifacts/patterns/pattern_a_fast/research/feature_role/daily_timing_feature_matrix_v01.csv"
 
 
 @pytest.mark.skipif(not _MATRIX_CSV.exists(), reason="research script를 먼저 실행해야 함")
@@ -485,7 +485,7 @@ def test_matrix_has_exactly_40_unique_labeled_samples():
     assert (matrix["weekly_stage_at_reference"] != "UNLABELED").all()
 
 
-_SUMMARY_CSV = Path(__file__).resolve().parents[1] / "artifacts/pattern_a_fast/research/daily_timing_feature_summary_v01.csv"
+_SUMMARY_CSV = Path(__file__).resolve().parents[1] / "artifacts/patterns/pattern_a_fast/research/feature_role/daily_timing_feature_summary_v01.csv"
 
 
 @pytest.mark.skipif(not _SUMMARY_CSV.exists(), reason="research script를 먼저 실행해야 함")

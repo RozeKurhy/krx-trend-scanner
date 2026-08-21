@@ -53,7 +53,7 @@ Event는 수정하지 않았다.
 
 정식 source-of-truth는 다음 registry다.
 
-artifacts/pattern_a_fast/research/pattern_a_fast_feature_role_registry_v01.csv
+artifacts/patterns/pattern_a_fast/research/feature_role/pattern_a_fast_feature_role_registry_v01.csv
 
 | TF | FEATURE | ROLE | STATUS | WHY / LIMITATION |
 | --- | --- | --- | --- | --- |
@@ -103,7 +103,7 @@ event가 관측됐을 때만 의미가 있다. DIAGNOSTIC/HOLD/DROP은 직접 �
 ==================================================
 
 21개 HIGH 후보의 cross-timeframe Spearman 결과는
-artifacts/pattern_a_fast/research/pattern_a_fast_cross_timeframe_redundancy_v01.csv
+artifacts/patterns/pattern_a_fast/research/feature_role/pattern_a_fast_cross_timeframe_redundancy_v01.csv
 에 147개 pair로 남겼다.
 
 | pair | evidence | decision |

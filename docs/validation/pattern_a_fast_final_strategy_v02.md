@@ -9,7 +9,7 @@ COMPATIBILITY ONLY = this path (docs/validation/pattern_a_fast_final_strategy_v0
 
 This path is retained only for historical artifact provenance compatibility.
 All 54 CLOSED Stock Report v0.2 production artifacts under
-`artifacts/stock_reports/20260814/` record `strategy_contract_path` as this
+`artifacts/reporting/stock_reports/20260814/` record `strategy_contract_path` as this
 exact string (`docs/validation/pattern_a_fast_final_strategy_v02.md`) at
 generation time. Those artifacts are frozen and are never modified
 (`WHY_REQUIRED_FOR_ARTIFACT_MIGRATION`: DOCS_INFORMATION_ARCHITECTURE_REORGANIZATION_V01

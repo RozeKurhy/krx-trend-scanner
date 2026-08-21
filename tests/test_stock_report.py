@@ -311,9 +311,9 @@ def test_stock_report_deterministic_output():
 def test_stock_report_does_not_mutate_canonical_artifacts(tmp_path):
     """Stock Report 생성 전후 기존 canonical artifact 디렉토리의 파일 해시가 불변인지 검증."""
     check_dirs = [
-        REPO_ROOT / "artifacts/investability",
-        REPO_ROOT / "artifacts/flow",
-        REPO_ROOT / "artifacts/relative_strength",
+        REPO_ROOT / "artifacts/patterns/pattern_a/production/investability",
+        REPO_ROOT / "artifacts/patterns/pattern_a/production/flow",
+        REPO_ROOT / "artifacts/patterns/pattern_a/validation/relative_strength",
     ]
 
     before_hashes = {}
@@ -340,7 +340,7 @@ def test_stock_report_does_not_mutate_canonical_artifacts(tmp_path):
 
 def test_stock_report_default_output_path_is_canonical(tmp_path):
     """generate_stock_report()의 output_dir 미지정 시 기본 저장 경로가
-    artifacts/stock_reports/<YYYYMMDD>/ (버전 디렉터리 없는 canonical 구조)인지 검증.
+    artifacts/reporting/stock_reports/<YYYYMMDD>/ (버전 디렉터리 없는 canonical 구조)인지 검증.
     실제 production artifact를 건드리지 않기 위해 isolated repo_root(tmp_path)에
     필요한 read-only 입력 디렉터리만 symlink한 fake root를 사용한다."""
     fake_root = tmp_path / "fake_repo"
@@ -358,7 +358,7 @@ def test_stock_report_default_output_path_is_canonical(tmp_path):
     )
 
     assert json_path is not None and md_path is not None
-    assert json_path.parent == fake_root / "artifacts/stock_reports/20260814"
+    assert json_path.parent == fake_root / "artifacts/reporting/stock_reports/20260814"
     assert json_path.parent == md_path.parent
     assert "v0.2" not in str(json_path)
     assert json_path.exists()

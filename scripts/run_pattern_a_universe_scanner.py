@@ -42,8 +42,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--output-dir",
         type=str,
-        default="artifacts/scanner",
-        help="Path to artifacts output directory (default: artifacts/scanner)",
+        default="artifacts/patterns/pattern_a/production/scanner",
+        help="Path to artifacts output directory (default: artifacts/patterns/pattern_a/production/scanner)",
     )
     parser.add_argument(
         "--market",

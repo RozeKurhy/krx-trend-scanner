@@ -21,7 +21,7 @@ from trend_scanner.validation.pattern_a_investability_threshold_design import (
 )
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
-_ARTIFACTS_DIR = _REPO_ROOT / "artifacts/investability"
+_ARTIFACTS_DIR = _REPO_ROOT / "artifacts/patterns/pattern_a/production/investability"
 
 
 @pytest.fixture(scope="module")
@@ -118,7 +118,7 @@ def test_fail_closed_negative_cases_in_isolated_tmp(tmp_path: Path):
     """Verify fail-closed behavior when input source is missing or corrupt in isolated tmp_path."""
     tmp_repo = tmp_path / "fake_repo"
     tmp_repo.mkdir(parents=True, exist_ok=True)
-    tmp_art = tmp_repo / "artifacts/investability"
+    tmp_art = tmp_repo / "artifacts/patterns/pattern_a/production/investability"
     tmp_art.mkdir(parents=True, exist_ok=True)
 
     # Missing sources trigger fail-closed

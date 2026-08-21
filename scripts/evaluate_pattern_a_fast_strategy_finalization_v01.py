@@ -39,11 +39,11 @@ logger = logging.getLogger(__name__)
 
 ROOT = Path(__file__).resolve().parent.parent
 
-UNIVERSE_PATH = ROOT / "artifacts/investability/pattern_a_investability_universe_20260814.csv"
-SCORE_CONTRACT_PATH = ROOT / "artifacts/pattern_a_fast/research/pattern_a_fast_score_prototype_v01.json"
-STAGE_CONTRACT_PATH = ROOT / "artifacts/pattern_a_fast/research/pattern_a_fast_stage_prototype_v01.json"
+UNIVERSE_PATH = ROOT / "artifacts/patterns/pattern_a/production/investability/pattern_a_investability_universe_20260814.csv"
+SCORE_CONTRACT_PATH = ROOT / "artifacts/patterns/pattern_a_fast/production/contract_prototype/pattern_a_fast_score_prototype_v01.json"
+STAGE_CONTRACT_PATH = ROOT / "artifacts/patterns/pattern_a_fast/production/contract_prototype/pattern_a_fast_stage_prototype_v01.json"
 
-OUT_DIR = ROOT / "artifacts/pattern_a_fast/strategy_finalization_v01"
+OUT_DIR = ROOT / "artifacts/patterns/pattern_a_fast/production/strategy_finalization_v01"
 OUT_TRADES_CSV = OUT_DIR / "pattern_a_fast_strategy_finalization_v01_trades.csv"
 OUT_EVAL_JSON = OUT_DIR / "pattern_a_fast_strategy_finalization_v01_evaluation.json"
 OUT_EVAL_MD = OUT_DIR / "pattern_a_fast_strategy_finalization_v01_evaluation.md"

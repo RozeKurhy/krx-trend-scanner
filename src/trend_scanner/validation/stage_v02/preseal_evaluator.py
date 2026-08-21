@@ -177,8 +177,8 @@ def run_preseal_evaluation(repo_root: Path) -> dict[str, Any]:
     gate_contract = build_preseal_gate_contract()
 
     # 1. Validation Input Identity
-    csv_42_path = repo_root / "artifacts" / "chart_review" / "pattern_a_candidate_manual_review_20260814.csv"
-    csv_phase8_path = repo_root / "artifacts" / "chart_review" / "pattern_a_candidate_source_20260814.csv"
+    csv_42_path = repo_root / "artifacts" / "patterns" / "pattern_a" / "validation" / "chart_review" / "pattern_a_candidate_manual_review_20260814.csv"
+    csv_phase8_path = repo_root / "artifacts" / "patterns" / "pattern_a" / "validation" / "chart_review" / "pattern_a_candidate_source_20260814.csv"
 
     calib_str = json.dumps(canonicalize_for_hash([str(s.ticker) + str(s.snapshot_date) for s in PATTERN_A_STAGE_LABELS]))
     oos_str = json.dumps(canonicalize_for_hash([str(s.ticker) + str(s.snapshot_date) for s in PATTERN_A_STAGE_OOS_V01_LABELS]))

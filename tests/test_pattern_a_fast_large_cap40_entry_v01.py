@@ -60,7 +60,7 @@ from scripts.evaluate_pattern_a_fast_large_cap40_entry_v01 import (
 from trend_scanner.data.cache import ParquetCache
 from trend_scanner.data.resampler import to_weekly
 
-# Previous FAST v0.1 frozen artifact hashes (artifacts/pattern_a_fast/trading_policy_v01/)
+# Previous FAST v0.1 frozen artifact hashes (artifacts/patterns/pattern_a_fast/research/trading_policy_v01/)
 FROZEN_TRADING_POLICY_V01_PREREG_SHA256 = "32aae360faf04224fb1e418fe22465e84720444f78817e7c768f7e3583836c58"
 FROZEN_TRADING_POLICY_V01_SAMPLES_SHA256 = "18e6d620c7808e7cd08bb0429e10ff080f8b0ced12cf5d1e4c25fbac150b1b11"
 FROZEN_TRADING_POLICY_V01_EVENT_LOG_SHA256 = "9f02738ab7107d7c3b601b3962e57771eb345f15c91dc3d8e6d09903ff98478e"
@@ -391,7 +391,7 @@ def test_21_pattern_a_diagnostic_distributions(eval_data):
 
 
 def test_22_previous_trading_policy_v01_artifacts_unmutated():
-    trading_policy_dir = ROOT / "artifacts/pattern_a_fast/trading_policy_v01"
+    trading_policy_dir = ROOT / "artifacts/patterns/pattern_a_fast/research/trading_policy_v01"
     assert sha256_file(trading_policy_dir / "pattern_a_fast_entry_policy_preregistration_v01.json") == FROZEN_TRADING_POLICY_V01_PREREG_SHA256
     assert sha256_file(trading_policy_dir / "pattern_a_fast_entry_policy_sample_results_v01.csv") == FROZEN_TRADING_POLICY_V01_SAMPLES_SHA256
     assert sha256_file(trading_policy_dir / "pattern_a_fast_entry_policy_event_log_v01.csv") == FROZEN_TRADING_POLICY_V01_EVENT_LOG_SHA256

@@ -11,7 +11,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 logger = logging.getLogger(__name__)
 
 ROOT = Path(__file__).resolve().parent.parent
-REPORTS_DIR = ROOT / "artifacts/stock_reports/20260814"
+REPORTS_DIR = ROOT / "artifacts/reporting/stock_reports/20260814"
 
 
 def _regen_worker(ticker: str) -> tuple[str, str, str]:

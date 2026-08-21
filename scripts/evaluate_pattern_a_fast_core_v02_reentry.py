@@ -2,7 +2,7 @@
 """Pattern A FAST Core V02 Re-Entry Strategy Official Evaluation Runner.
 
 Strict Execution Invariants:
-  - V01 Baseline Comparator: artifacts/pattern_a_fast/strategy_finalization_v01_corrected_pit/ (551 trades, FROZEN)
+  - V01 Baseline Comparator: artifacts/patterns/pattern_a_fast/production/strategy_finalization_v01/ (551 trades, FROZEN)
   - Core Innovation: MULTIPLE_INDEPENDENT_ENTRIES_PER_TICKER (Re-entry allowed after position closes)
   - Calendar Authority: CANONICAL_DERIVED_KRX_CALENDAR (Commit 88d54d85bdee1f2121bec9b27a250cbc1cb9f98f)
   - Research Classification: SAME_SAMPLE_REENTRY_STRATEGY_COMPARISON
@@ -35,14 +35,14 @@ logger = logging.getLogger(__name__)
 
 ROOT = Path(__file__).resolve().parent.parent
 
-UNIVERSE_PATH = ROOT / "artifacts/investability/pattern_a_investability_universe_20260814.csv"
-SCORE_CONTRACT_PATH = ROOT / "artifacts/pattern_a_fast/research/pattern_a_fast_score_prototype_v01.json"
-STAGE_CONTRACT_PATH = ROOT / "artifacts/pattern_a_fast/research/pattern_a_fast_stage_prototype_v01.json"
+UNIVERSE_PATH = ROOT / "artifacts/patterns/pattern_a/production/investability/pattern_a_investability_universe_20260814.csv"
+SCORE_CONTRACT_PATH = ROOT / "artifacts/patterns/pattern_a_fast/production/contract_prototype/pattern_a_fast_score_prototype_v01.json"
+STAGE_CONTRACT_PATH = ROOT / "artifacts/patterns/pattern_a_fast/production/contract_prototype/pattern_a_fast_stage_prototype_v01.json"
 
-V01_TRADES_CSV = ROOT / "artifacts/pattern_a_fast/strategy_finalization_v01_corrected_pit/pattern_a_fast_strategy_finalization_v01_trades.csv"
-V01_EVAL_JSON = ROOT / "artifacts/pattern_a_fast/strategy_finalization_v01_corrected_pit/pattern_a_fast_strategy_finalization_v01_evaluation.json"
+V01_TRADES_CSV = ROOT / "artifacts/patterns/pattern_a_fast/production/strategy_finalization_v01/pattern_a_fast_strategy_finalization_v01_trades.csv"
+V01_EVAL_JSON = ROOT / "artifacts/patterns/pattern_a_fast/production/strategy_finalization_v01/pattern_a_fast_strategy_finalization_v01_evaluation.json"
 
-OUT_DIR = ROOT / "artifacts/pattern_a_fast/core_v02_reentry"
+OUT_DIR = ROOT / "artifacts/patterns/pattern_a_fast/production/core_v02_reentry"
 OUT_TRADES_CSV = OUT_DIR / "trades.csv"
 OUT_TICKER_SUMMARY_CSV = OUT_DIR / "ticker_summary.csv"
 OUT_EVAL_JSON = OUT_DIR / "evaluation.json"

@@ -91,11 +91,11 @@ All active sources are KRX canonical. 현재 시가총액 대체, 미래 shares 
 7. 변경 파일과 테스트
 ---------------------
 - `scripts/backfill_krx_historical_market_cap_v01.py`: frozen completed W-FRI를 기계 계산하고 correction raw CSV를 immutable source로 반영한다.
-- `artifacts/investability/history/source/krx_market_cap_20201218.csv`
-- `artifacts/investability/history/source/krx_market_cap_20211224.csv`
-- `artifacts/investability/history/source/krx_market_cap_20221223.csv`
-- `artifacts/investability/history/source/krx_market_cap_20231222.csv`
-- `artifacts/investability/history/normalized/krx_market_cap_20201218.csv` 등 4개 derived CSV
+- `artifacts/patterns/pattern_a/validation/investability_history/source/krx_market_cap_20201218.csv`
+- `artifacts/patterns/pattern_a/validation/investability_history/source/krx_market_cap_20211224.csv`
+- `artifacts/patterns/pattern_a/validation/investability_history/source/krx_market_cap_20221223.csv`
+- `artifacts/patterns/pattern_a/validation/investability_history/source/krx_market_cap_20231222.csv`
+- `artifacts/patterns/pattern_a/validation/investability_history/normalized/krx_market_cap_20201218.csv` 등 4개 derived CSV
 - `krx_market_cap_reference_grid_v01.csv`, `krx_historical_market_cap_provenance_v01.csv`, `krx_historical_market_cap_backfill_audit_v01.json`
 - `tests/test_krx_historical_market_cap_backfill.py`
 

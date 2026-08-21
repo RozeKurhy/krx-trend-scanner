@@ -23,9 +23,9 @@ from tests.helpers.frozen_integrity import (
 
 ROOT = Path(__file__).resolve().parents[1]
 BASE = "aae2db99beebcbfe518fd614e2ab650dc432e569"  # Phase 13J-1 freeze reference commit (역사적 참조용, 더 이상 git diff 대상 아님 -- FIX_03)
-OOS = ROOT / "artifacts/pattern_a_fast/investable_oos"
-HISTORY = ROOT / "artifacts/investability/history"
-SOURCE = ROOT / "artifacts/investability/source"
+OOS = ROOT / "artifacts/patterns/pattern_a_fast/validation/investable_oos"
+HISTORY = ROOT / "artifacts/patterns/pattern_a/validation/investability_history"
+SOURCE = ROOT / "artifacts/patterns/pattern_a/production/investability/source"
 MANIFEST = OOS / "pattern_a_fast_investable_oos_selection_manifest_v01.csv"
 REVIEW = OOS / "pattern_a_fast_investable_oos_human_review_v01.csv"
 ASSETS = OOS / "pattern_a_fast_investable_oos_blind_asset_manifest_v01.csv"
@@ -57,12 +57,12 @@ def _frames() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
 def test_frozen_krx_inputs_phase10_contract_and_protected_inputs_are_unchanged():
     """TEST_SUITE_PERFORMANCE_AUDIT_AND_REFACTOR_FIX_03: this used to
     `git diff --quiet BASE -- protected` over whole directories
-    (artifacts/investability/history, artifacts/investability/source,
+    (artifacts/patterns/pattern_a/validation/investability_history, artifacts/patterns/pattern_a/production/investability/source,
     artifacts/pattern_a_fast/{oos,human_anchors,ground_truth,research}), which
     treats any later legitimate addition under those paths as a frozen-
     evidence violation ("directory unchanged since BASE" instead of
     "preregistered exact frozen inputs unchanged", per design). The
-    provenance-tracked historical files under artifacts/investability/history/
+    provenance-tracked historical files under artifacts/patterns/pattern_a/validation/investability_history/
     are already row-level sha256 sealed in
     test_active_and_superseded_sources_are_krx_only_hash_sealed_and_unambiguous
     (test_krx_historical_market_cap_backfill.py); the ground_truth/research/oos/
@@ -135,7 +135,7 @@ def test_chart_filenames_titles_and_boundaries_follow_the_frozen_review_mapping_
     expected_stage_paths, expected_outcome_paths = set(), set()
     review_by_sample = review.set_index("sample_id")
     for row in assets.itertuples(index=False):
-        path = ROOT / row.file_path
+        path = ROOT / row.file_path.replace("artifacts/pattern_a_fast/", "artifacts/patterns/pattern_a_fast/validation/")
         assert path.is_file() and _sha256(path) == row.sha256
         prefix = f"{int(row.review_order):03d}_{row.sample_id}_"
         assert path.name.startswith(prefix)

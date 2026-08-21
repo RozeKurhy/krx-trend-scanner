@@ -25,15 +25,15 @@ from trend_scanner.validation.historical_snapshot import build_historical_snapsh
 
 
 ROOT = Path(__file__).resolve().parents[1]
-OOS = ROOT / "artifacts/pattern_a_fast/investable_oos"
+OOS = ROOT / "artifacts/patterns/pattern_a_fast/validation/investable_oos"
 REVIEW = OOS / "pattern_a_fast_investable_oos_human_review_v01.csv"
 MANIFEST = OOS / "pattern_a_fast_investable_oos_selection_manifest_v01.csv"
 ASSETS = OOS / "pattern_a_fast_investable_oos_blind_asset_manifest_v01.csv"
 PROTOCOL = OOS / "pattern_a_fast_investable_oos_evaluation_protocol_v01.json"
 PASS_A_SEAL = OOS / "pattern_a_fast_investable_oos_human_stage_pass_a_freeze_v01.json"
 GROUND_TRUTH_SEAL = OOS / "pattern_a_fast_investable_oos_human_ground_truth_v01.json"
-SCORE_CONTRACT = ROOT / "artifacts/pattern_a_fast/research/pattern_a_fast_score_prototype_v01.json"
-STAGE_CONTRACT = ROOT / "artifacts/pattern_a_fast/research/pattern_a_fast_stage_prototype_v01.json"
+SCORE_CONTRACT = ROOT / "artifacts/patterns/pattern_a_fast/production/contract_prototype/pattern_a_fast_score_prototype_v01.json"
+STAGE_CONTRACT = ROOT / "artifacts/patterns/pattern_a_fast/production/contract_prototype/pattern_a_fast_stage_prototype_v01.json"
 OUT_JSON = OOS / "pattern_a_fast_investable_oos_evaluation_v01.json"
 OUT_SAMPLES = OOS / "pattern_a_fast_investable_oos_evaluation_samples_v01.csv"
 OUT_PAIRS = OOS / "pattern_a_fast_investable_oos_evaluation_event_pairs_v01.csv"

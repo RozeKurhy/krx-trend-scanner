@@ -16,7 +16,7 @@ Stock Report Contract v0.1은 KRX 상장 개별 종목에 대해 외부 네트�
 --------------------------------------------------------------------------------
 1. **Zero Network Request & Pure Local Execution**:
    - 리포트 생성 과정에서 KRX, pykrx, Yahoo, Naver 등 외부 네트워크 요청을 일절 수행하지 않는다.
-   - 로컬 Parquet 일봉 캐시(`data/raw/stocks/{ticker}.parquet`)와 확정된 정본 아티팩트(`artifacts/investability`, `artifacts/flow`)만을 사용한다.
+   - 로컬 Parquet 일봉 캐시(`data/raw/stocks/{ticker}.parquet`)와 확정된 정본 아티팩트(`artifacts/patterns/pattern_a/production/investability`, `artifacts/patterns/pattern_a/production/flow`)만을 사용한다.
 2. **Frozen Production Contract 재사용 (No Logic Mutation)**:
    - Pattern A Score v0.2, Stage v0.1, Phase 10 Investability, Phase 11 Foreign Flow 공식을 그대로 재사용하며, 리포트 생성을 위해 프로덕션 계산식을 수정하지 않는다.
 3. **Point-In-Time (PIT) & Strict No-Lookahead**:

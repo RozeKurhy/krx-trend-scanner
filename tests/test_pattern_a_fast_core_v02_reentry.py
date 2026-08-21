@@ -21,12 +21,12 @@ from scripts.inspect_v02_evidence import (
 )
 
 ROOT = Path(__file__).resolve().parent.parent
-SCORE_CONTRACT_PATH = ROOT / "artifacts/pattern_a_fast/research/pattern_a_fast_score_prototype_v01.json"
-STAGE_CONTRACT_PATH = ROOT / "artifacts/pattern_a_fast/research/pattern_a_fast_stage_prototype_v01.json"
-V01_CSV_PATH = ROOT / "artifacts/pattern_a_fast/strategy_finalization_v01_corrected_pit/pattern_a_fast_strategy_finalization_v01_trades.csv"
-V02_CSV_PATH = ROOT / "artifacts/pattern_a_fast/core_v02_reentry/trades.csv"
-V02_TICKER_CSV_PATH = ROOT / "artifacts/pattern_a_fast/core_v02_reentry/ticker_summary.csv"
-DEEP_LOSS_CSV_PATH = ROOT / "artifacts/pattern_a_fast/core_v02_reentry/deep_loss_reentry_cases.csv"
+SCORE_CONTRACT_PATH = ROOT / "artifacts/patterns/pattern_a_fast/production/contract_prototype/pattern_a_fast_score_prototype_v01.json"
+STAGE_CONTRACT_PATH = ROOT / "artifacts/patterns/pattern_a_fast/production/contract_prototype/pattern_a_fast_stage_prototype_v01.json"
+V01_CSV_PATH = ROOT / "artifacts/patterns/pattern_a_fast/production/strategy_finalization_v01/pattern_a_fast_strategy_finalization_v01_trades.csv"
+V02_CSV_PATH = ROOT / "artifacts/patterns/pattern_a_fast/production/core_v02_reentry/trades.csv"
+V02_TICKER_CSV_PATH = ROOT / "artifacts/patterns/pattern_a_fast/production/core_v02_reentry/ticker_summary.csv"
+DEEP_LOSS_CSV_PATH = ROOT / "artifacts/patterns/pattern_a_fast/production/core_v02_reentry/deep_loss_reentry_cases.csv"
 
 
 @pytest.fixture

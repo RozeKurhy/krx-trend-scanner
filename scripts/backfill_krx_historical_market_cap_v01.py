@@ -135,7 +135,7 @@ def copy_immutable(source: Path, destination: Path, expected_sha: str) -> None:
 
 def existing_crosscheck(download: Path, root: Path) -> dict[str, Any]:
     fresh = load_ui_export(download, "20250131")
-    existing = pd.read_csv(root / "artifacts/investability/source/krx_market_cap_20250131.csv", dtype={"ticker": str})
+    existing = pd.read_csv(root / "artifacts/patterns/pattern_a/production/investability/source/krx_market_cap_20250131.csv", dtype={"ticker": str})
     existing.ticker = existing.ticker.astype("string").str.zfill(6)
     merged = fresh.merge(existing[["ticker", "close", "market_cap", "shares_outstanding"]], on="ticker", how="inner", suffixes=("_krx", "_existing"))
     result = {"ticker_overlap_count": len(merged), "fresh_row_count": len(fresh), "existing_row_count": len(existing)}
@@ -190,7 +190,7 @@ def main() -> None:
     parser.add_argument("--network-request-count", required=True, type=int)
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
-    history = root / "artifacts/investability/history"
+    history = root / "artifacts/patterns/pattern_a/validation/investability_history"
     raw_dir, normalized_dir = history / "source", history / "normalized"
     reference_file = history / "krx_market_cap_reference_grid_v01.csv"
     provenance_file = history / "krx_historical_market_cap_provenance_v01.csv"

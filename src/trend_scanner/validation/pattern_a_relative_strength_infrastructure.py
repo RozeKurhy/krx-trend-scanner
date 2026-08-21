@@ -148,7 +148,7 @@ def prepare_relative_strength_validation_context(
     clean_asof = as_of.replace("-", "")
     formatted_asof = f"{clean_asof[:4]}-{clean_asof[4:6]}-{clean_asof[6:8]}"
 
-    out_dir = Path(output_dir) if output_dir else root / "artifacts/relative_strength"
+    out_dir = Path(output_dir) if output_dir else root / "artifacts/patterns/pattern_a/validation/relative_strength"
     out_dir.mkdir(parents=True, exist_ok=True)
     doc_path = (
         Path(doc_output_path)
@@ -161,9 +161,9 @@ def prepare_relative_strength_validation_context(
     cache = ParquetCache(base_dir=cache_dir)
 
     # 1. Canonical Oracle / Universe Metadata 로드
-    canonical_universe_file = root / f"artifacts/investability/pattern_a_investability_universe_{clean_asof}.csv"
-    canonical_candidates_file = root / f"artifacts/investability/pattern_a_investability_candidates_{clean_asof}.csv"
-    canonical_investability_file = root / f"artifacts/investability/pattern_a_investability_integration_{clean_asof}.csv"
+    canonical_universe_file = root / f"artifacts/patterns/pattern_a/production/investability/pattern_a_investability_universe_{clean_asof}.csv"
+    canonical_candidates_file = root / f"artifacts/patterns/pattern_a/production/investability/pattern_a_investability_candidates_{clean_asof}.csv"
+    canonical_investability_file = root / f"artifacts/patterns/pattern_a/production/investability/pattern_a_investability_integration_{clean_asof}.csv"
 
     oracle_available = (
         canonical_universe_file.exists()
@@ -193,13 +193,13 @@ def prepare_relative_strength_validation_context(
         univ_securities = None
 
     # 2. Market Index & Sector Data Source Paths
-    market_index_parquet = root / f"artifacts/relative_strength/source/market_index_daily_{clean_asof}.parquet"
-    market_index_meta = root / f"artifacts/relative_strength/source/market_index_daily_{clean_asof}_meta.json"
-    sector_index_parquet = root / f"artifacts/relative_strength/source/sector_index_daily_{clean_asof}.parquet"
-    sector_index_meta = root / f"artifacts/relative_strength/source/sector_index_daily_{clean_asof}_meta.json"
-    sector_mapping_csv = root / f"artifacts/relative_strength/source/sector_mapping_{clean_asof}.csv"
-    sector_mapping_meta = root / f"artifacts/relative_strength/source/sector_mapping_{clean_asof}_meta.json"
-    flow_oracle_file = root / f"artifacts/flow/pattern_a_foreign_flow_features_{clean_asof}.csv"
+    market_index_parquet = root / f"artifacts/patterns/pattern_a/validation/relative_strength/source/market_index_daily_{clean_asof}.parquet"
+    market_index_meta = root / f"artifacts/patterns/pattern_a/validation/relative_strength/source/market_index_daily_{clean_asof}_meta.json"
+    sector_index_parquet = root / f"artifacts/patterns/pattern_a/validation/relative_strength/source/sector_index_daily_{clean_asof}.parquet"
+    sector_index_meta = root / f"artifacts/patterns/pattern_a/validation/relative_strength/source/sector_index_daily_{clean_asof}_meta.json"
+    sector_mapping_csv = root / f"artifacts/patterns/pattern_a/validation/relative_strength/source/sector_mapping_{clean_asof}.csv"
+    sector_mapping_meta = root / f"artifacts/patterns/pattern_a/validation/relative_strength/source/sector_mapping_{clean_asof}_meta.json"
+    flow_oracle_file = root / f"artifacts/patterns/pattern_a/production/flow/pattern_a_foreign_flow_features_{clean_asof}.csv"
     flow_oracle_available = flow_oracle_file.exists()
     if flow_oracle_available:
         df_flow_oracle = pd.read_csv(flow_oracle_file)

@@ -115,11 +115,11 @@ def test_relative_strength_full_universe_validation(repo_root: Path, tmp_path: P
     Normal suite(`-m "not slow and not integration"`)에서는 실행되지 않는다.
     실행: `uv run pytest ... -m slow`.
     """
-    isolated_out_dir = tmp_path / "artifacts/relative_strength"
+    isolated_out_dir = tmp_path / "artifacts/patterns/pattern_a/validation/relative_strength"
     isolated_doc_path = tmp_path / "docs/validation/report.md"
 
-    canonical_csv = repo_root / "artifacts/relative_strength/pattern_a_relative_strength_features_20260814.csv"
-    canonical_json = repo_root / "artifacts/relative_strength/pattern_a_relative_strength_summary_20260814.json"
+    canonical_csv = repo_root / "artifacts/patterns/pattern_a/validation/relative_strength/pattern_a_relative_strength_features_20260814.csv"
+    canonical_json = repo_root / "artifacts/patterns/pattern_a/validation/relative_strength/pattern_a_relative_strength_summary_20260814.json"
 
     def _hash(p: Path) -> str:
         return hashlib.sha256(p.read_bytes()).hexdigest() if p.exists() else ""
@@ -205,7 +205,7 @@ def test_provenance_less_sector_mapping_historical_rejection(repo_root: Path):
     """1. Provenance-less sector mapping (2-tuple without effective_date) is strictly rejected."""
     cache = ParquetCache(base_dir=repo_root / "data/raw/stocks")
     df_stk = cache.load("005930")
-    df_mkt = pd.read_parquet(repo_root / "artifacts/relative_strength/source/market_index_daily_20260814.parquet")
+    df_mkt = pd.read_parquet(repo_root / "artifacts/patterns/pattern_a/validation/relative_strength/source/market_index_daily_20260814.parquet")
 
     # 2-tuple without effective_date
     res = compute_relative_strength_features(
@@ -238,7 +238,7 @@ def test_future_sector_mapping_leakage_negative_test(repo_root: Path):
 
     # 2. Scanner-level PIT enforcement test
     cache = ParquetCache(base_dir=repo_root / "data/raw/stocks")
-    mapping_file = repo_root / "artifacts/relative_strength/source/sector_mapping_20260814.csv"
+    mapping_file = repo_root / "artifacts/patterns/pattern_a/validation/relative_strength/source/sector_mapping_20260814.csv"
 
     scan_res = scan_pattern_a_universe(
         cache=cache,
@@ -260,7 +260,7 @@ def test_future_sector_mapping_leakage_negative_test(repo_root: Path):
 
 def test_sector_mapping_cache_cross_as_of_leakage(repo_root: Path):
     """2. IndexPriceDataProvider cache PIT: load_sector_mapping('2026-08-14') then load_sector_mapping('2025-01-31')."""
-    mapping_file = repo_root / "artifacts/relative_strength/source/sector_mapping_20260814.csv"
+    mapping_file = repo_root / "artifacts/patterns/pattern_a/validation/relative_strength/source/sector_mapping_20260814.csv"
     provider = IndexPriceDataProvider(sector_mapping_cache_file=mapping_file)
 
     map_2026 = provider.load_sector_mapping("2026-08-14")
@@ -280,7 +280,7 @@ def test_gate1_negative_missing_oracle(tmp_path: Path):
     result = run_relative_strength_validation(
         as_of="2026-08-14",
         repo_root=tmp_path,
-        output_dir=tmp_path / "artifacts/relative_strength",
+        output_dir=tmp_path / "artifacts/patterns/pattern_a/validation/relative_strength",
         doc_output_path=tmp_path / "docs/validation/report.md",
     )
     assert result["verdict"] == "HOLD_RELATIVE_STRENGTH_INFRA"
@@ -493,8 +493,8 @@ def test_mutation_tests_do_not_touch_canonical_artifacts(repo_root: Path):
     """Regression Test: Gate negative test들이 evaluate_relative_strength_gates()만
     호출하는 한(파일 쓰기가 있는 run_relative_strength_validation()을 호출하지 않는
     한) 공식 canonical artifact는 절대 건드릴 수 없다는 것을 회귀 검증한다."""
-    csv_file = repo_root / "artifacts/relative_strength/pattern_a_relative_strength_features_20260814.csv"
-    json_file = repo_root / "artifacts/relative_strength/pattern_a_relative_strength_summary_20260814.json"
+    csv_file = repo_root / "artifacts/patterns/pattern_a/validation/relative_strength/pattern_a_relative_strength_features_20260814.csv"
+    json_file = repo_root / "artifacts/patterns/pattern_a/validation/relative_strength/pattern_a_relative_strength_summary_20260814.json"
 
     def get_hash(p: Path) -> str:
         return hashlib.sha256(p.read_bytes()).hexdigest() if p.exists() else ""
@@ -546,7 +546,7 @@ def test_gate9_negative_stale_benchmark_with_valid_stock_df(repo_root: Path):
     assert df_stk is not None and not df_stk.empty
     df_stk_clean = df_stk[df_stk.index <= pd.Timestamp("2026-08-14")].copy()
 
-    df_mkt = pd.read_parquet(repo_root / "artifacts/relative_strength/source/market_index_daily_20260814.parquet")
+    df_mkt = pd.read_parquet(repo_root / "artifacts/patterns/pattern_a/validation/relative_strength/source/market_index_daily_20260814.parquet")
     df_stale_mkt = df_mkt[df_mkt["date"] < "2026-08-14"].copy()
 
     res = compute_relative_strength_features(

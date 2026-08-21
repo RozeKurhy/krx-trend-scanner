@@ -33,13 +33,13 @@ logger = logging.getLogger(__name__)
 
 ROOT = Path(__file__).resolve().parent.parent
 
-LARGE_CAP_DIR = ROOT / "artifacts/pattern_a_fast/large_cap40_v01"
+LARGE_CAP_DIR = ROOT / "artifacts/patterns/pattern_a_fast/research/large_cap40_v01"
 MANIFEST_PATH = LARGE_CAP_DIR / "pattern_a_fast_large_cap40_selection_manifest_v01.csv"
 PREREG_PATH = LARGE_CAP_DIR / "pattern_a_fast_large_cap40_preregistration_v01.json"
-SELECTION_SOURCE_PATH = ROOT / "artifacts/investability/pattern_a_investability_universe_20260814.csv"
+SELECTION_SOURCE_PATH = ROOT / "artifacts/patterns/pattern_a/production/investability/pattern_a_investability_universe_20260814.csv"
 
-SCORE_CONTRACT_PATH = ROOT / "artifacts/pattern_a_fast/research/pattern_a_fast_score_prototype_v01.json"
-STAGE_CONTRACT_PATH = ROOT / "artifacts/pattern_a_fast/research/pattern_a_fast_stage_prototype_v01.json"
+SCORE_CONTRACT_PATH = ROOT / "artifacts/patterns/pattern_a_fast/production/contract_prototype/pattern_a_fast_score_prototype_v01.json"
+STAGE_CONTRACT_PATH = ROOT / "artifacts/patterns/pattern_a_fast/production/contract_prototype/pattern_a_fast_stage_prototype_v01.json"
 
 OUT_SAMPLES_CSV = LARGE_CAP_DIR / "pattern_a_fast_large_cap40_sample_results_v01.csv"
 OUT_EVENT_LOG_CSV = LARGE_CAP_DIR / "pattern_a_fast_large_cap40_weekly_event_log_v01.csv"

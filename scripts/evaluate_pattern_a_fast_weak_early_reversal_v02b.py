@@ -36,11 +36,11 @@ logger = logging.getLogger(__name__)
 
 ROOT = Path(__file__).resolve().parent.parent
 
-UNIVERSE_PATH = ROOT / "artifacts/investability/pattern_a_investability_universe_20260814.csv"
-SCORE_CONTRACT_PATH = ROOT / "artifacts/pattern_a_fast/research/pattern_a_fast_score_prototype_v01.json"
-STAGE_CONTRACT_PATH = ROOT / "artifacts/pattern_a_fast/research/pattern_a_fast_stage_prototype_v01.json"
+UNIVERSE_PATH = ROOT / "artifacts/patterns/pattern_a/production/investability/pattern_a_investability_universe_20260814.csv"
+SCORE_CONTRACT_PATH = ROOT / "artifacts/patterns/pattern_a_fast/production/contract_prototype/pattern_a_fast_score_prototype_v01.json"
+STAGE_CONTRACT_PATH = ROOT / "artifacts/patterns/pattern_a_fast/production/contract_prototype/pattern_a_fast_stage_prototype_v01.json"
 
-OUT_DIR = ROOT / "artifacts/pattern_a_fast/weak_reversal_v02b"
+OUT_DIR = ROOT / "artifacts/patterns/pattern_a_fast/archive/weak_reversal_v02b"
 OUT_SIGNALS_CSV = OUT_DIR / "pattern_a_fast_weak_reversal_signals_v02b.csv"
 OUT_EVAL_JSON = OUT_DIR / "pattern_a_fast_weak_reversal_evaluation_v02b.json"
 OUT_EVAL_MD = OUT_DIR / "pattern_a_fast_weak_reversal_evaluation_v02b.md"

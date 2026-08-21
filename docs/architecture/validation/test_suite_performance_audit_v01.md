@@ -122,7 +122,7 @@ P3_REPORTED = 1
 **정합성 검증(§38 Gate semantics parity)**: 분리 전/후 동일 실제 production
 데이터(2026-08-14, 2,528종목 실제 scan)로 `evaluate_relative_strength_gates()`를
 1회 실행해, 이미 frozen된
-`artifacts/relative_strength/pattern_a_relative_strength_summary_20260814.json`의
+`artifacts/patterns/pattern_a/validation/relative_strength/pattern_a_relative_strength_summary_20260814.json`의
 `gates` dict(10개 Gate의 `passed` + 모든 `details` 카운터)와 완전히 diff했다 —
 **TOTAL MISMATCHES: 0**. verdict도 `HOLD_RELATIVE_STRENGTH_INFRA`로 동일.
 
@@ -443,7 +443,7 @@ Pattern A Score/Stage는 새 hardcoded hash를 만들지 않고 기존
 `pattern_a_final_closure.py`의 `EXPECTED_FROZEN_HASHES`(current authoritative
 closure/hash guard)를 그대로 재사용한다. 디렉터리 전체를 OLD_BASE와 비교하던
 6개 항목(`artifacts/pattern_a_fast/{oos,human_anchors,ground_truth,research}`,
-`artifacts/investability/{history,source}`)은 제거했다 — 그 안의 실제 frozen
+`artifacts/patterns/pattern_a/production/investability/{history,source}`)은 제거했다 — 그 안의 실제 frozen
 evidence(seal/manifest/asset/protocol/prototype JSON/ground truth CSV/시가총액
 스냅샷)는 이미 각 test 파일에서 개별 sha256으로 더 정확하게 보호되고 있었고,
 디렉터리 전체 비교는 이후 정상적으로 추가되는 파일까지 위반으로 잡는 문제가

@@ -6,8 +6,8 @@ AND human_label != UNLABELED) from the frozen 13C Human Worksheet, computes
 PIT-safe monthly regime feature candidates (§6 of the Phase 13D w.md) for
 each, and produces:
 
-    artifacts/pattern_a_fast/research/monthly_regime_feature_matrix_v01.csv
-    artifacts/pattern_a_fast/research/monthly_regime_feature_summary_v01.csv
+    artifacts/patterns/pattern_a_fast/research/feature_role/monthly_regime_feature_matrix_v01.csv
+    artifacts/patterns/pattern_a_fast/research/feature_role/monthly_regime_feature_summary_v01.csv
 
 This script reuses the frozen 13C loading conventions (ParquetCache-only,
 build_historical_snapshot for completed-period PIT slicing) without
@@ -41,9 +41,9 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 logger = logging.getLogger("research_pattern_a_fast_monthly_regime")
 
 BASE_COMMIT = "2e5a87f8214fe91d6cd2dbfa2bdc03cc2453d696"
-WORKSHEET_CSV = Path("artifacts/pattern_a_fast/ground_truth/pattern_a_fast_human_review_v01.csv")
-SOURCE_CSV = Path("artifacts/pattern_a_fast/ground_truth/pattern_a_fast_ground_truth_source_v01.csv")
-OUTPUT_DIR = Path("artifacts/pattern_a_fast/research")
+WORKSHEET_CSV = Path("artifacts/patterns/pattern_a_fast/validation/ground_truth/pattern_a_fast_human_review_v01.csv")
+SOURCE_CSV = Path("artifacts/patterns/pattern_a_fast/validation/ground_truth/pattern_a_fast_ground_truth_source_v01.csv")
+OUTPUT_DIR = Path("artifacts/patterns/pattern_a_fast/research/feature_role")
 
 ANALYSIS_FEATURES = [n for n in FEATURE_NAMES if n not in DIAGNOSTIC_ONLY_FEATURES]
 

@@ -61,8 +61,8 @@ logger = logging.getLogger("prepare_pattern_a_fast_ground_truth")
 BASE_COMMIT = "5d8af8245fedd5591595d91d06e3b333938e0ff7"
 AS_OF = "2026-08-14"
 DATA_CUTOFF = pd.Timestamp("2026-08-14")
-SCANNER_CSV = Path("artifacts/scanner/pattern_a_universe_scan_20260814.csv")
-OUTPUT_DIR = Path("artifacts/pattern_a_fast/ground_truth")
+SCANNER_CSV = Path("artifacts/patterns/pattern_a/production/scanner/pattern_a_universe_scan_20260814.csv")
+OUTPUT_DIR = Path("artifacts/patterns/pattern_a_fast/validation/ground_truth")
 
 COHORT_A_TARGET = 15
 MAX_EPISODES_PER_TICKER = 2
@@ -514,7 +514,7 @@ def main() -> None:
             "cohort_a": {
                 "name": "PATTERN_A_HISTORICAL_CONTEXT",
                 "description": (
-                    "artifacts/scanner/pattern_a_universe_scan_20260814.csv 의 실제 "
+                    "artifacts/patterns/pattern_a/production/scanner/pattern_a_universe_scan_20260814.csv 의 실제 "
                     "candidate_state=='candidate'(TRANSITION/EARLY_TREND) 티커를 ticker "
                     "순서로 순회하며, frozen Pattern A evaluator로 2026-08-14부터 gap-tolerant "
                     "backward 탐색(비-TRANSITION/EARLY_TREND 주가 gap_tolerance_weeks=4 연속 "

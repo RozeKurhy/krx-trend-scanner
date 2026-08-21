@@ -131,8 +131,8 @@
 
 ## 7. 아티팩트 (Artifacts)
 
-* **Scan Matrix CSV**: `artifacts/scanner/pattern_a_universe_scan_20260814.csv` (2,528 rows)
-* **Scan Summary JSON**: `artifacts/scanner/pattern_a_universe_scan_20260814_summary.json`
+* **Scan Matrix CSV**: `artifacts/patterns/pattern_a/production/scanner/pattern_a_universe_scan_20260814.csv` (2,528 rows)
+* **Scan Summary JSON**: `artifacts/patterns/pattern_a/production/scanner/pattern_a_universe_scan_20260814_summary.json`
 
 ---
 

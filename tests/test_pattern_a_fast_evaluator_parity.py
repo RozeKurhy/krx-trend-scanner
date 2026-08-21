@@ -23,8 +23,8 @@ from trend_scanner.patterns.pattern_a_fast_evaluator import evaluate_pattern_a_f
 from scripts.research_pattern_a_fast_lead_time_failure import evaluate_timeline_point
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-SCORE_CONTRACT = REPO_ROOT / "artifacts/pattern_a_fast/research/pattern_a_fast_score_prototype_v01.json"
-STAGE_CONTRACT = REPO_ROOT / "artifacts/pattern_a_fast/research/pattern_a_fast_stage_prototype_v01.json"
+SCORE_CONTRACT = REPO_ROOT / "artifacts/patterns/pattern_a_fast/production/contract_prototype/pattern_a_fast_score_prototype_v01.json"
+STAGE_CONTRACT = REPO_ROOT / "artifacts/patterns/pattern_a_fast/production/contract_prototype/pattern_a_fast_stage_prototype_v01.json"
 
 
 @pytest.fixture(scope="module")

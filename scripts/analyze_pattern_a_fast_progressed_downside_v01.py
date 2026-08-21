@@ -43,8 +43,8 @@ logger = logging.getLogger(__name__)
 
 ROOT = Path(__file__).resolve().parent.parent
 
-V02_TRADES_CSV = ROOT / "artifacts/pattern_a_fast/core_v02_reentry/trades.csv"
-OUT_DIR = ROOT / "artifacts/pattern_a_fast/progressed_downside_v01"
+V02_TRADES_CSV = ROOT / "artifacts/patterns/pattern_a_fast/production/core_v02_reentry/trades.csv"
+OUT_DIR = ROOT / "artifacts/patterns/pattern_a_fast/research/progressed_downside_v01"
 DATA_CUTOFF = pd.Timestamp("2026-08-14")
 
 

@@ -29,7 +29,7 @@ rule — 이번 결과는 **RESEARCH EVIDENCE ONLY**다.
 --------------------------------------------------------------------------------
 2. 40 Human Calibration Summary
 --------------------------------------------------------------------------------
-`artifacts/pattern_a_fast/ground_truth/pattern_a_fast_human_review_v01.csv`
+`artifacts/patterns/pattern_a_fast/validation/ground_truth/pattern_a_fast_human_review_v01.csv`
 에서 `weekly_stage_at_reference != UNLABELED AND human_label !=
 UNLABELED`인 40건만 사용했다(Total Dataset 60 중 나머지 20건은 자동
 추론하지 않고 완전히 제외).
@@ -120,7 +120,7 @@ pooled-IQR로 표준화한 effect size `standardized_effect_*`, 순위 기반
 좋을 때 오히려 작게 나올 수 있다(분모 문제이지 분리력 모순이 아님).
 `cliffs_delta_*`가 이번 문서의 1차 랭킹 근거이고 `standardized_effect_*`
 는 보조 참고용인 이유다.
-`artifacts/pattern_a_fast/research/monthly_regime_feature_summary_v01.csv`
+`artifacts/patterns/pattern_a_fast/research/feature_role/monthly_regime_feature_summary_v01.csv`
 에 전부 기록했다(37행 × 다수 컬럼 — 마크다운 표로 인라인하기엔
 비현실적이라 CSV로만 제공, 이 문서는 랭킹/비교/사례만 요약).
 
@@ -153,7 +153,7 @@ TOO_EARLY(8)`, `SETUP→GOOD_TRIGGER(7) vs WATCH→TOO_EARLY/NO_SETUP(16)`
 7. Correlation / Redundancy Summary
 --------------------------------------------------------------------------------
 Spearman correlation, `abs(corr) >= 0.85` 전부
-`artifacts/pattern_a_fast/research/monthly_regime_feature_correlation_v01.csv`
+`artifacts/patterns/pattern_a_fast/research/feature_role/monthly_regime_feature_correlation_v01.csv`
 에 기록(41쌍). **0.85는 production threshold가 아니라 research
 redundancy 표시 기준일 뿐이다.**
 
@@ -404,9 +404,9 @@ in-sample calibration data다.** 향후 Phase 13I 또는 OOS Validation
 --------------------------------------------------------------------------------
 15. Artifacts
 --------------------------------------------------------------------------------
-* Feature matrix: `artifacts/pattern_a_fast/research/monthly_regime_feature_matrix_v01.csv` (40행 × 37 feature 컬럼 + identity/metadata 컬럼)
-* Feature summary: `artifacts/pattern_a_fast/research/monthly_regime_feature_summary_v01.csv` (37행, feature별 분포/label별/그룹별/pair 비교 통계)
-* Correlation findings: `artifacts/pattern_a_fast/research/monthly_regime_feature_correlation_v01.csv` (41쌍, `abs(spearman)>=0.85`)
+* Feature matrix: `artifacts/patterns/pattern_a_fast/research/feature_role/monthly_regime_feature_matrix_v01.csv` (40행 × 37 feature 컬럼 + identity/metadata 컬럼)
+* Feature summary: `artifacts/patterns/pattern_a_fast/research/feature_role/monthly_regime_feature_summary_v01.csv` (37행, feature별 분포/label별/그룹별/pair 비교 통계)
+* Correlation findings: `artifacts/patterns/pattern_a_fast/research/feature_role/monthly_regime_feature_correlation_v01.csv` (41쌍, `abs(spearman)>=0.85`)
 * Research script: `scripts/research_pattern_a_fast_monthly_regime.py`
 * Research helper: `src/trend_scanner/research/pattern_a_fast_monthly_features.py`
 * Targeted tests: `tests/test_pattern_a_fast_monthly_feature_research.py` (8개, 전부 PASS)

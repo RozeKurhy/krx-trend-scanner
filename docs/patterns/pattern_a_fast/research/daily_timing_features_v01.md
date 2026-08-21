@@ -73,7 +73,7 @@ Human Outcome Label과 어떤 관계를 보였는지만 기술한다.
 3. Human Calibration Set
 ==================================================
 
-사용: artifacts/pattern_a_fast/ground_truth/pattern_a_fast_human_review_v01.csv
+사용: artifacts/patterns/pattern_a_fast/validation/ground_truth/pattern_a_fast_human_review_v01.csv
 
 조건: weekly_stage_at_reference != UNLABELED AND human_label != UNLABELED
 
@@ -321,7 +321,7 @@ TOO_EXTENDED Delta -0.556로 나타났으나 부호가 가설과 반대(TOO_EXTE
 ==================================================
 
 전체 요약은 커밋된
-`artifacts/pattern_a_fast/research/daily_timing_feature_summary_v01.csv`
+`artifacts/patterns/pattern_a_fast/research/feature_role/daily_timing_feature_summary_v01.csv`
 (50개 feature × count/mean/median/std/min/max/p25/p75 + 7개 human_label별
 effective n/median/iqr + 5개 weekly_stage별 + 4개 Research Group별 + 4개
 pair comparison(Cliff's Delta/median diff/standardized effect) + SETUP_GOOD

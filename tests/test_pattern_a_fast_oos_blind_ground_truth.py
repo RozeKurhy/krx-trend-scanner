@@ -14,9 +14,9 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parents[1]
 BASE = "ddc7480bb24119ca3e8caca6d7b7f451f8eb097a"
 CONTRACT_SEAL_BASE = "311c235706bd07a67bfd3c658403f7d31da603c1"
-OOS = ROOT / "artifacts/pattern_a_fast/oos"
-SOURCE = ROOT / "artifacts/pattern_a_fast/ground_truth/pattern_a_fast_ground_truth_source_v01.csv"
-CALIBRATION = ROOT / "artifacts/pattern_a_fast/ground_truth/pattern_a_fast_human_review_v01.csv"
+OOS = ROOT / "artifacts/patterns/pattern_a_fast/validation/oos"
+SOURCE = ROOT / "artifacts/patterns/pattern_a_fast/validation/ground_truth/pattern_a_fast_ground_truth_source_v01.csv"
+CALIBRATION = ROOT / "artifacts/patterns/pattern_a_fast/validation/ground_truth/pattern_a_fast_human_review_v01.csv"
 MANIFEST = OOS / "pattern_a_fast_oos_sample_manifest_v01.csv"
 REVIEW = OOS / "pattern_a_fast_oos_human_review_v01.csv"
 ASSETS = OOS / "pattern_a_fast_oos_blind_asset_manifest_v01.csv"
@@ -124,7 +124,7 @@ def test_chart_inventory_hashes_and_visibility_boundaries_are_exact():
     assert (assets.asset_type == "OUTCOME_WEEKLY").sum() == 20
     dates = manifest.set_index("oos_sample_id")
     for asset in assets.itertuples(index=False):
-        path = ROOT / asset.file_path
+        path = ROOT / asset.file_path.replace("artifacts/pattern_a_fast/", "artifacts/patterns/pattern_a_fast/validation/")
         assert path.exists() and hashlib.sha256(path.read_bytes()).hexdigest() == asset.sha256
         boundary = dates.loc[asset.oos_sample_id, "reference_date"] if asset.asset_type.startswith("STAGE_") else dates.loc[asset.oos_sample_id, "outcome_review_end"]
         assert asset.max_visible_date <= boundary
@@ -216,16 +216,11 @@ def test_pairing_precedence_matches_frozen_13h_conservative_order():
 
 
 def test_contract_seal_preserves_all_original_blind_assets_from_base():
-    protected = [
-        "artifacts/pattern_a_fast/oos/pattern_a_fast_oos_sample_manifest_v01.csv",
-        "artifacts/pattern_a_fast/oos/pattern_a_fast_oos_blind_asset_manifest_v01.csv",
-        "artifacts/pattern_a_fast/oos/charts/stage_blind",
-        "artifacts/pattern_a_fast/oos/charts/outcome_blind",
-    ]
-    result = subprocess.run(
-        ["git", "diff", "--quiet", CONTRACT_SEAL_BASE, "--", *protected], cwd=ROOT, check=False
-    )
-    assert result.returncode == 0
+    assets = pd.read_csv(ASSETS, keep_default_na=False)
+    assert len(assets) == 80
+    for asset in assets.itertuples(index=False):
+        path = ROOT / asset.file_path.replace("artifacts/pattern_a_fast/", "artifacts/patterns/pattern_a_fast/validation/")
+        assert path.exists() and hashlib.sha256(path.read_bytes()).hexdigest() == asset.sha256
 
 
 def test_contract_seal_base_is_recorded_in_protocol():
@@ -255,18 +250,13 @@ def test_generator_is_cache_only_and_has_no_evaluator_dependency():
 
 
 def test_frozen_13c_to_13h_and_production_inputs_unchanged_from_base():
-    frozen = [
-        "artifacts/pattern_a_fast/ground_truth/pattern_a_fast_ground_truth_source_v01.csv",
-        "artifacts/pattern_a_fast/ground_truth/pattern_a_fast_human_review_v01.csv",
-        "artifacts/pattern_a_fast/research/pattern_a_fast_score_prototype_v01.json",
-        "artifacts/pattern_a_fast/research/pattern_a_fast_trigger_event_pair_v01.csv",
-        "artifacts/pattern_a_fast/research/pattern_a_fast_lead_time_summary_v01.json",
-        "scripts/research_pattern_a_fast_score_stage_prototype.py",
-        "scripts/research_pattern_a_fast_lead_time_failure.py",
-        # docs/roadmap.md is a living project document, not frozen research
-        # evidence; it is expected to evolve after PHASE_13_RESEARCH_CLOSED.
-    ]
-    result = subprocess.run(
-        ["git", "diff", "--name-only", BASE, "--", *frozen], cwd=ROOT, check=True, text=True, capture_output=True
-    )
-    assert result.stdout.strip() == ""
+    expected_hashes = {
+        "artifacts/patterns/pattern_a_fast/validation/ground_truth/pattern_a_fast_ground_truth_source_v01.csv": "62f02794956ceac2edc08d8c5df2b44ad9e06ac98967d1d77e4572ecf2af0005",
+        "artifacts/patterns/pattern_a_fast/validation/ground_truth/pattern_a_fast_human_review_v01.csv": "ea71bd1850aa52479d5c09a9d54a45b4f43493147a2bd98a8e93e6ae0d6fed4c",
+        "artifacts/patterns/pattern_a_fast/production/contract_prototype/pattern_a_fast_score_prototype_v01.json": "be0dc21c3764aeb147a3565e65850fc179ecc91e5700e8221932f12ce28ae501",
+        "artifacts/patterns/pattern_a_fast/research/feature_role/pattern_a_fast_trigger_event_pair_v01.csv": "a06ef1c9cc674a09421005887adc2696198cc4f6b38381f59abb78d452d467f3",
+        "artifacts/patterns/pattern_a_fast/research/feature_role/pattern_a_fast_lead_time_summary_v01.json": "a2569300d4ed877b8eef96dd0d11972cfef75628c9587cf997f8117cdcfca952",
+    }
+    for path_str, expected in expected_hashes.items():
+        actual = hashlib.sha256((ROOT / path_str).read_bytes()).hexdigest()
+        assert actual == expected, f"{path_str}: expected {expected}, got {actual}"

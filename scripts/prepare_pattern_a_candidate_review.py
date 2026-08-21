@@ -4,14 +4,14 @@
 Usage:
     # 1. 초기 Review Dataset 생성
     uv run python scripts/prepare_pattern_a_candidate_review.py \
-        --scanner-csv artifacts/scanner/pattern_a_universe_scan_20260814.csv \
-        --output-dir artifacts/chart_review \
+        --scanner-csv artifacts/patterns/pattern_a/production/scanner/pattern_a_universe_scan_20260814.csv \
+        --output-dir artifacts/patterns/pattern_a/validation/chart_review \
         --as-of 2026-08-14 \
         --scanner-commit 13ab6f4
 
     # 2. 수동 리뷰 작성 후 Summary JSON 갱신
     uv run python scripts/prepare_pattern_a_candidate_review.py \
-        --output-dir artifacts/chart_review \
+        --output-dir artifacts/patterns/pattern_a/validation/chart_review \
         --as-of 2026-08-14 \
         --update-summary-only
 """
@@ -47,13 +47,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--scanner-csv",
         type=str,
-        default="artifacts/scanner/pattern_a_universe_scan_20260814.csv",
+        default="artifacts/patterns/pattern_a/production/scanner/pattern_a_universe_scan_20260814.csv",
         help="Path to Pattern A universe scan CSV artifact",
     )
     parser.add_argument(
         "--output-dir",
         type=str,
-        default="artifacts/chart_review",
+        default="artifacts/patterns/pattern_a/validation/chart_review",
         help="Directory to save candidate review artifacts",
     )
     parser.add_argument(

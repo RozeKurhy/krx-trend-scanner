@@ -6,11 +6,11 @@ AND human_label != UNLABELED) from the frozen 13C Human Worksheet, computes
 PIT-safe daily timing feature candidates (§7 of the Phase 13F w.md) for
 each, and produces:
 
-    artifacts/pattern_a_fast/research/daily_timing_feature_matrix_v01.csv
-    artifacts/pattern_a_fast/research/daily_timing_feature_summary_v01.csv
-    artifacts/pattern_a_fast/research/daily_timing_feature_correlation_v01.csv
-    artifacts/pattern_a_fast/research/daily_timing_stage_summary_v01.csv
-    artifacts/pattern_a_fast/research/monthly_weekly_daily_research_join_v01.csv
+    artifacts/patterns/pattern_a_fast/research/feature_role/daily_timing_feature_matrix_v01.csv
+    artifacts/patterns/pattern_a_fast/research/feature_role/daily_timing_feature_summary_v01.csv
+    artifacts/patterns/pattern_a_fast/research/feature_role/daily_timing_feature_correlation_v01.csv
+    artifacts/patterns/pattern_a_fast/research/feature_role/daily_timing_stage_summary_v01.csv
+    artifacts/patterns/pattern_a_fast/research/feature_role/monthly_weekly_daily_research_join_v01.csv
 
 This script reuses the frozen 13C loading conventions (ParquetCache-only)
 without modifying them. Per w.md §10, it does NOT extend
@@ -45,11 +45,11 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 logger = logging.getLogger("research_pattern_a_fast_daily_timing")
 
 BASE_COMMIT = "415583ab97835d6d98c945476de45aafdd6371b7"
-WORKSHEET_CSV = Path("artifacts/pattern_a_fast/ground_truth/pattern_a_fast_human_review_v01.csv")
-SOURCE_CSV = Path("artifacts/pattern_a_fast/ground_truth/pattern_a_fast_ground_truth_source_v01.csv")
-MONTHLY_MATRIX_CSV = Path("artifacts/pattern_a_fast/research/monthly_regime_feature_matrix_v01.csv")
-WEEKLY_MATRIX_CSV = Path("artifacts/pattern_a_fast/research/weekly_trigger_feature_matrix_v01.csv")
-OUTPUT_DIR = Path("artifacts/pattern_a_fast/research")
+WORKSHEET_CSV = Path("artifacts/patterns/pattern_a_fast/validation/ground_truth/pattern_a_fast_human_review_v01.csv")
+SOURCE_CSV = Path("artifacts/patterns/pattern_a_fast/validation/ground_truth/pattern_a_fast_ground_truth_source_v01.csv")
+MONTHLY_MATRIX_CSV = Path("artifacts/patterns/pattern_a_fast/research/feature_role/monthly_regime_feature_matrix_v01.csv")
+WEEKLY_MATRIX_CSV = Path("artifacts/patterns/pattern_a_fast/research/feature_role/weekly_trigger_feature_matrix_v01.csv")
+OUTPUT_DIR = Path("artifacts/patterns/pattern_a_fast/research/feature_role")
 
 ANALYSIS_FEATURES = [n for n in FEATURE_NAMES if n not in DIAGNOSTIC_ONLY_FEATURES]
 

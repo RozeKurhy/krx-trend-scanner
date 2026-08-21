@@ -204,7 +204,7 @@ def test_research_module_has_no_phase12_dependency():
     assert not any("relative_strength" in ln or "phase12" in ln.lower() for ln in import_lines)
 
 
-_MATRIX_CSV = Path(__file__).resolve().parents[1] / "artifacts/pattern_a_fast/research/monthly_regime_feature_matrix_v01.csv"
+_MATRIX_CSV = Path(__file__).resolve().parents[1] / "artifacts/patterns/pattern_a_fast/research/feature_role/monthly_regime_feature_matrix_v01.csv"
 
 
 @pytest.mark.skipif(not _MATRIX_CSV.exists(), reason="research script를 먼저 실행해야 함")

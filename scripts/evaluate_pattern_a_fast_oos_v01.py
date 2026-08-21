@@ -27,15 +27,15 @@ from trend_scanner.validation.historical_snapshot import build_historical_snapsh
 BASE_SHA = "94bc7edf2ea959f27d847b5cd9f23cd0cf3521c1"
 FAST_CONTRACT_SHA = "2da3fc36744b27ec13edae3f690df72c796906e5"
 PATTERN_A_FROZEN_SHA = "05d03e16501adbca889488294aaaaa0bd84005de"
-OOS = Path("artifacts/pattern_a_fast/oos")
+OOS = Path("artifacts/patterns/pattern_a_fast/validation/oos")
 RESULTS = OOS / "results"
 REVIEW = OOS / "pattern_a_fast_oos_human_review_v01.csv"
 MANIFEST = OOS / "pattern_a_fast_oos_sample_manifest_v01.csv"
 SEAL = OOS / "pattern_a_fast_oos_ground_truth_seal_v01.json"
 ADJUDICATION = OOS / "pattern_a_fast_oos_outcome_adjudication_v01.csv"
 PROTOCOL = OOS / "pattern_a_fast_oos_evaluation_protocol_v01.json"
-SCORE_CONTRACT = Path("artifacts/pattern_a_fast/research/pattern_a_fast_score_prototype_v01.json")
-STAGE_CONTRACT = Path("artifacts/pattern_a_fast/research/pattern_a_fast_stage_prototype_v01.json")
+SCORE_CONTRACT = Path("artifacts/patterns/pattern_a_fast/production/contract_prototype/pattern_a_fast_score_prototype_v01.json")
+STAGE_CONTRACT = Path("artifacts/patterns/pattern_a_fast/production/contract_prototype/pattern_a_fast_stage_prototype_v01.json")
 DOC = Path("docs/patterns/pattern_a_fast/validation/oos_evaluation_v01.md")
 OUT = {
     "snapshot": RESULTS / "pattern_a_fast_oos_machine_snapshot_v01.csv",

@@ -13,8 +13,8 @@ from trend_scanner.validation.pattern_a_final_closure import EXPECTED_FROZEN_HAS
 
 BASE = "2da3fc36744b27ec13edae3f690df72c796906e5"
 SCRIPT = Path("scripts/research_pattern_a_fast_lead_time_failure.py")
-R = Path("artifacts/pattern_a_fast/research")
-GT = Path("artifacts/pattern_a_fast/ground_truth")
+R = Path("artifacts/patterns/pattern_a_fast/research/feature_role")
+GT = Path("artifacts/patterns/pattern_a_fast/validation/ground_truth")
 
 # Unchanged since BASE; no separate hash authority for these two research
 # artifacts existed before FIX_03.
@@ -58,8 +58,9 @@ def test_base_and_frozen_inputs_are_read_only():
     """
     mod = _module()
     assert mod.BASE_SHA == BASE
-    assert_file_sha256(R / "pattern_a_fast_score_prototype_v01.json", SCORE_PROTOTYPE_SHA256)
-    assert_file_sha256(R / "pattern_a_fast_stage_prototype_v01.json", STAGE_PROTOTYPE_SHA256)
+    contract_dir = Path("artifacts/patterns/pattern_a_fast/production/contract_prototype")
+    assert_file_sha256(contract_dir / "pattern_a_fast_score_prototype_v01.json", SCORE_PROTOTYPE_SHA256)
+    assert_file_sha256(contract_dir / "pattern_a_fast_stage_prototype_v01.json", STAGE_PROTOTYPE_SHA256)
     assert_file_sha256(GT / "pattern_a_fast_human_review_v01.csv", HUMAN_REVIEW_SOURCE_SHA256)
     assert_file_sha256(GT / "pattern_a_fast_ground_truth_source_v01.csv", GROUND_TRUTH_SOURCE_SHA256)
     assert_file_sha256(Path("src/trend_scanner/patterns/pattern_a_evaluator.py"), PATTERN_A_EVALUATOR_SHA256)

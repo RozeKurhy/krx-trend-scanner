@@ -96,7 +96,7 @@
 ================================================================================
 5. Retrospective Evidence Summary (V02 회고적 실증 지표 요약)
 ================================================================================
-*본 수치는 공식 확정 아티팩트(`artifacts/pattern_a_fast/core_v02_reentry/trades.csv`)에 근거합니다.*
+*본 수치는 공식 확정 아티팩트(`artifacts/patterns/pattern_a_fast/production/core_v02_reentry/trades.csv`)에 근거합니다.*
 
 - **총 거래 수 (`Total Trades`)**: **`783건`**
   - **1차 진입 (`First Entries`)**: **551건** (V01과 100% 동일)

@@ -44,16 +44,16 @@ plt.rcParams["axes.unicode_minus"] = False
 
 
 ROOT = Path(__file__).resolve().parents[1]
-OOS = ROOT / "artifacts/pattern_a_fast/investable_oos"
-HISTORY = ROOT / "artifacts/investability/history"
+OOS = ROOT / "artifacts/patterns/pattern_a_fast/validation/investable_oos"
+HISTORY = ROOT / "artifacts/patterns/pattern_a/validation/investability_history"
 GRID = HISTORY / "krx_market_cap_reference_grid_v01.csv"
 PROVENANCE = HISTORY / "krx_historical_market_cap_provenance_v01.csv"
 HISTORICAL_AUDIT = HISTORY / "krx_historical_market_cap_backfill_audit_v01.json"
 DAILY_DIR = ROOT / "data/raw/stocks"
-SCORE_CONTRACT = ROOT / "artifacts/pattern_a_fast/research/pattern_a_fast_score_prototype_v01.json"
-STAGE_CONTRACT = ROOT / "artifacts/pattern_a_fast/research/pattern_a_fast_stage_prototype_v01.json"
-PRIOR_SOURCE = ROOT / "artifacts/pattern_a_fast/ground_truth/pattern_a_fast_ground_truth_source_v01.csv"
-ANCHORS = ROOT / "artifacts/pattern_a_fast/human_anchors/pattern_a_fast_human_positive_anchor_v01.csv"
+SCORE_CONTRACT = ROOT / "artifacts/patterns/pattern_a_fast/production/contract_prototype/pattern_a_fast_score_prototype_v01.json"
+STAGE_CONTRACT = ROOT / "artifacts/patterns/pattern_a_fast/production/contract_prototype/pattern_a_fast_stage_prototype_v01.json"
+PRIOR_SOURCE = ROOT / "artifacts/patterns/pattern_a_fast/validation/ground_truth/pattern_a_fast_ground_truth_source_v01.csv"
+ANCHORS = ROOT / "artifacts/patterns/pattern_a_fast/validation/human_anchors/pattern_a_fast_human_positive_anchor_v01.csv"
 
 MANIFEST = OOS / "pattern_a_fast_investable_oos_selection_manifest_v01.csv"
 REVIEW = OOS / "pattern_a_fast_investable_oos_human_review_v01.csv"

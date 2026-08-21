@@ -190,7 +190,7 @@ def main() -> int:
             print(f"  ... 외 {len(summary.failed_records) - 20}건")
 
     # CSV 저장
-    out_path = Path(args.output) if args.output else Path(f"artifacts/cache_population/population_{ref_date.replace('-', '')}.csv")
+    out_path = Path(args.output) if args.output else Path(f"artifacts/shared/cache_population/population_{ref_date.replace('-', '')}.csv")
     _save_records_csv(summary.records, out_path)
     print(f"\nSaved CSV Report to: {out_path}")
 

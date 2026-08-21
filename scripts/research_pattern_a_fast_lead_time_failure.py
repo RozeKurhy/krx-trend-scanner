@@ -29,13 +29,14 @@ from trend_scanner.validation.pattern_a_fast_ground_truth import load_raw_daily
 BASE_SHA = "2da3fc36744b27ec13edae3f690df72c796906e5"
 PATTERN_A_FROZEN_SHA = "05d03e16501adbca889488294aaaaa0bd84005de"
 HUMAN_CALIBRATION_SHA = "2e5a87f8214fe91d6cd2dbfa2bdc03cc2453d696"
-ROOT = Path("artifacts/pattern_a_fast")
-RESEARCH = ROOT / "research"
-REVIEW = ROOT / "ground_truth" / "pattern_a_fast_human_review_v01.csv"
-SOURCE = ROOT / "ground_truth" / "pattern_a_fast_ground_truth_source_v01.csv"
+RESEARCH = Path("artifacts/patterns/pattern_a_fast/research/feature_role")
+GT = Path("artifacts/patterns/pattern_a_fast/validation/ground_truth")
+CONTRACT = Path("artifacts/patterns/pattern_a_fast/production/contract_prototype")
+REVIEW = GT / "pattern_a_fast_human_review_v01.csv"
+SOURCE = GT / "pattern_a_fast_ground_truth_source_v01.csv"
 CALIBRATION = RESEARCH / "pattern_a_fast_calibration_score_prototype_v01.csv"
-SCORE_CONTRACT = RESEARCH / "pattern_a_fast_score_prototype_v01.json"
-STAGE_CONTRACT = RESEARCH / "pattern_a_fast_stage_prototype_v01.json"
+SCORE_CONTRACT = CONTRACT / "pattern_a_fast_score_prototype_v01.json"
+STAGE_CONTRACT = CONTRACT / "pattern_a_fast_stage_prototype_v01.json"
 OUT = {
     "timeline": RESEARCH / "pattern_a_fast_vs_pattern_a_timeline_v01.csv",
     "pairs": RESEARCH / "pattern_a_fast_trigger_event_pair_v01.csv",

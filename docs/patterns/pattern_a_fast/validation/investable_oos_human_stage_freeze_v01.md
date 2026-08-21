@@ -56,7 +56,7 @@ Machine stage/score, sampling stratum, selection percentile, Pattern A/Fast futu
 
 6. Immutable Freeze Seal
 -------------------------
-`artifacts/pattern_a_fast/investable_oos/pattern_a_fast_investable_oos_human_stage_pass_a_freeze_v01.json`은 다음을 hash-bound로 기록한다.
+`artifacts/patterns/pattern_a_fast/validation/investable_oos/pattern_a_fast_investable_oos_human_stage_pass_a_freeze_v01.json`은 다음을 hash-bound로 기록한다.
 
 - PASS A 후 Human review CSV SHA-256 및 pre-PASS-A blank template SHA-256
 - selection manifest, blind asset manifest, evaluation protocol SHA-256

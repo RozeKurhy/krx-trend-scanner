@@ -239,12 +239,12 @@ def run_investability_integration_validation(
     """Execute Phase 10C Downstream Investability Integration Validation."""
     cache_dir = repo_root / "data" / "raw" / "stocks"
     parquet_cache = ParquetCache(base_dir=cache_dir)
-    out_dir = output_dir or (repo_root / "artifacts/investability")
+    out_dir = output_dir or (repo_root / "artifacts/patterns/pattern_a/production/investability")
     if write_artifacts:
         out_dir.mkdir(parents=True, exist_ok=True)
 
     # 1. Load Phase 10B Canonical Oracle
-    oracle_csv = repo_root / "artifacts/investability/pattern_a_investability_threshold_design_20260814.csv"
+    oracle_csv = repo_root / "artifacts/patterns/pattern_a/research/investability_threshold_design/pattern_a_investability_threshold_design_20260814.csv"
     if not oracle_csv.exists():
         return {
             "audit_version": "phase10c_investability_integration_v0.1",

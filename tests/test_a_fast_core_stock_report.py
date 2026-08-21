@@ -164,7 +164,7 @@ def test_stock_report_v02_contract(report_005930_20260814):
 
 
 def test_stock_report_v02_all_generated_json_match_schema():
-    """artifacts/stock_reports/20260814/ 하위 54개 모든 JSON 리포트가 공식 Draft 7 JSON 스키마를 완벽히 통과하는지 전수 검증."""
+    """artifacts/reporting/stock_reports/20260814/ 하위 54개 모든 JSON 리포트가 공식 Draft 7 JSON 스키마를 완벽히 통과하는지 전수 검증."""
     from jsonschema import Draft7Validator
 
     schema_file = REPO_ROOT / "docs/reporting/stock_report/schema_v02.json"
@@ -172,7 +172,7 @@ def test_stock_report_v02_all_generated_json_match_schema():
     schema = json.loads(schema_file.read_text(encoding="utf-8"))
     validator = Draft7Validator(schema)
 
-    production_report_dir = REPO_ROOT / "artifacts/stock_reports/20260814"
+    production_report_dir = REPO_ROOT / "artifacts/reporting/stock_reports/20260814"
     json_files = sorted(production_report_dir.glob("*.json"))
     assert len(json_files) == 54, f"Expected 54 v0.2 reports, found {len(json_files)}"
 
@@ -191,12 +191,12 @@ def test_stock_reports_canonical_structure_invariant():
     """Artifact Structure Cleanup 후 canonical 구조 invariant: v0.2 버전 디렉터리가 더 이상
     존재하지 않고, production(20260814/)과 legacy archive(archive/v0.1/20260814/)의 ticker
     set이 서로 일치하는지 검증."""
-    assert not (REPO_ROOT / "artifacts/stock_reports/v0.2").exists(), (
-        "artifacts/stock_reports/v0.2/ 는 migration 이후 존재하면 안 된다"
+    assert not (REPO_ROOT / "artifacts/reporting/stock_reports/v0.2").exists(), (
+        "artifacts/reporting/stock_reports/v0.2/ 는 migration 이후 존재하면 안 된다"
     )
 
-    production_dir = REPO_ROOT / "artifacts/stock_reports/20260814"
-    archive_dir = REPO_ROOT / "artifacts/stock_reports/archive/v0.1/20260814"
+    production_dir = REPO_ROOT / "artifacts/reporting/stock_reports/20260814"
+    archive_dir = REPO_ROOT / "artifacts/reporting/stock_reports/archive/v0.1/20260814"
 
     production_tickers = {f.stem for f in production_dir.glob("*.json")}
     archive_tickers = {f.stem for f in archive_dir.glob("*.json")}
@@ -305,7 +305,7 @@ def test_stock_report_pit_does_not_use_future_market_cap(tmp_path):
     )
 
     # Put ONLY future market cap snapshot (2026-08-14)
-    norm_dir = tmp_path / "artifacts/investability/history/normalized"
+    norm_dir = tmp_path / "artifacts/patterns/pattern_a/validation/investability_history/normalized"
     norm_dir.mkdir(parents=True)
     (norm_dir / "krx_market_cap_20260814.csv").write_text("ticker,name,market,market_cap\n005930,삼성전자,KOSPI,500000000000000\n", encoding="utf-8")
     
@@ -435,7 +435,7 @@ def test_stock_report_v02_schema_rejects_invalid_trade_history_type():
     schema = json.loads(schema_file.read_text(encoding="utf-8"))
     validator = Draft7Validator(schema)
 
-    sample_json = REPO_ROOT / "artifacts/stock_reports/20260814/005930_삼성전자.json"
+    sample_json = REPO_ROOT / "artifacts/reporting/stock_reports/20260814/005930_삼성전자.json"
     valid_data = json.loads(sample_json.read_text(encoding="utf-8"))
 
     # 1. Mutate trade_history to string
@@ -460,7 +460,7 @@ def test_stock_report_v02_schema_rejects_invalid_entry_condition_type():
     schema = json.loads(schema_file.read_text(encoding="utf-8"))
     validator = Draft7Validator(schema)
 
-    sample_json = REPO_ROOT / "artifacts/stock_reports/20260814/005930_삼성전자.json"
+    sample_json = REPO_ROOT / "artifacts/reporting/stock_reports/20260814/005930_삼성전자.json"
     valid_data = json.loads(sample_json.read_text(encoding="utf-8"))
 
     # 1. Mutate boolean field to string
@@ -486,7 +486,7 @@ def test_stock_report_v02_schema_rejects_missing_a_fast_core_canonical_fields():
     schema = json.loads(schema_file.read_text(encoding="utf-8"))
     validator = Draft7Validator(schema)
 
-    sample_json = REPO_ROOT / "artifacts/stock_reports/20260814/005930_삼성전자.json"
+    sample_json = REPO_ROOT / "artifacts/reporting/stock_reports/20260814/005930_삼성전자.json"
     valid_data = json.loads(sample_json.read_text(encoding="utf-8"))
 
     bad_data = copy.deepcopy(valid_data)
@@ -504,7 +504,7 @@ def test_stock_report_v02_schema_rejects_incomplete_entry_conditions():
     schema = json.loads(schema_file.read_text(encoding="utf-8"))
     validator = Draft7Validator(schema)
 
-    sample_json = REPO_ROOT / "artifacts/stock_reports/20260814/005930_삼성전자.json"
+    sample_json = REPO_ROOT / "artifacts/reporting/stock_reports/20260814/005930_삼성전자.json"
     valid_data = json.loads(sample_json.read_text(encoding="utf-8"))
 
     bad_data = copy.deepcopy(valid_data)
@@ -529,7 +529,7 @@ def test_stock_report_v02_schema_requires_market_cap_provenance():
     schema = json.loads(schema_file.read_text(encoding="utf-8"))
     validator = Draft7Validator(schema)
 
-    sample_json = REPO_ROOT / "artifacts/stock_reports/20260814/005930_삼성전자.json"
+    sample_json = REPO_ROOT / "artifacts/reporting/stock_reports/20260814/005930_삼성전자.json"
     valid_data = json.loads(sample_json.read_text(encoding="utf-8"))
 
     bad_data = copy.deepcopy(valid_data)
@@ -945,7 +945,7 @@ def test_a_fast_core_execution_boundary():
 
 def test_a_fast_core_trade_history_matches_official_v02():
     """공식 정본 trades.csv와 리포트 내역의 모든 필드(trade_id, sequence, dates, open, exits, status, return) 일치성 전수 검증."""
-    trades_csv = REPO_ROOT / "artifacts/pattern_a_fast/core_v02_reentry/trades.csv"
+    trades_csv = REPO_ROOT / "artifacts/patterns/pattern_a_fast/production/core_v02_reentry/trades.csv"
     assert trades_csv.exists()
     df_off = pd.read_csv(trades_csv, dtype={"ticker": str})
 
@@ -977,9 +977,9 @@ def test_a_fast_core_trade_history_matches_official_v02():
 
 
 def test_v01_stock_report_artifacts_strong_integrity():
-    """기존 v0.1 리포트 아티팩트(artifacts/stock_reports/archive/v0.1/20260814/, artifact structure
+    """기존 v0.1 리포트 아티팩트(artifacts/reporting/stock_reports/archive/v0.1/20260814/, artifact structure
     cleanup 이후 legacy archive 경로로 이동됨) 54개 JSON/MD가 불변으로 보존되었는지 검증."""
-    v01_dir = REPO_ROOT / "artifacts/stock_reports/archive/v0.1/20260814"
+    v01_dir = REPO_ROOT / "artifacts/reporting/stock_reports/archive/v0.1/20260814"
     assert v01_dir.exists()
     v01_json = sorted(v01_dir.glob("*.json"))
     v01_md = sorted(v01_dir.glob("*.md"))

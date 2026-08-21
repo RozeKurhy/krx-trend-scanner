@@ -30,19 +30,15 @@ from pathlib import Path
 PATTERN_A_EVALUATOR_SHA256 = "678bef9e9a786bf8c6321d7ad8f1f42c002a87c4bed3174843c9cadc92a0c0a7"
 PATTERN_A_FEATURE_SET_SHA256 = "be0d39325e94f9f436abb740202d2cf9b19f22772c208d2bd6a5164d0011eebd"
 
-# scripts/evaluate_pattern_a_fast_oos_v01.py: Docs IA reorganization (commit
-# beafd30) updated only the in-file `DOC = Path(...)` docstring-reference
-# constant to the new canonical docs path. No evaluation/strategy logic
-# changed (verified via `git diff`). Frozen at current HEAD content.
-EVALUATE_PATTERN_A_FAST_OOS_V01_SHA256 = "466632ba6fb4f4b0b5701e7f8b37fc0b3a297cd50b543d9f86ed2854ca0b068d"
+# Scripts: Artifacts IA reorganization updated in-file artifact paths to canonical IA locations.
+# Frozen at current HEAD content.
+EVALUATE_PATTERN_A_FAST_OOS_V01_SHA256 = "0bd8188846958d7619eb4451b00a1ac14fa68af0b40059bb0c489fbdd76edb65"
+RESEARCH_LEAD_TIME_FAILURE_SCRIPT_SHA256 = "becf44a04437885e468e08863cf6d8fdbe401309f44367b4fbaae1be40fd921a"
+RESEARCH_SCORE_STAGE_PROTOTYPE_SCRIPT_SHA256 = "618501296768d1c8aa0670d08dbf8b2ec61b514c1e800424eca53e3d6dcdcaae"
+PREPARE_INVESTABLE_OOS_SCRIPT_SHA256 = "039ffca48bb45373fb02cb989fb1c3d0a43f8808e988fba25e63bd88d832af8e"
 
-# Unchanged since their respective historical Phase 13 BASE commits.
-RESEARCH_LEAD_TIME_FAILURE_SCRIPT_SHA256 = "98a07bc46b7a2cf8b03f081de2ecbd3cd585b8703255fe65000df221bad21209"
-RESEARCH_SCORE_STAGE_PROTOTYPE_SCRIPT_SHA256 = "b56134b1242bbbce1fd78db63661afc173481104f5aa0b74d8b3bf4c6c34adfd"
-PREPARE_INVESTABLE_OOS_SCRIPT_SHA256 = "aa96ed3cd25a8618dd0e3271834ffcb166a598a64f1be192ac7d1db5b819f4b0"
-
-# Phase 10 canonical PIT market-cap snapshots (artifacts/investability/source/).
-# Not part of the artifacts/investability/history/ provenance-tracked set
+# Phase 10 canonical PIT market-cap snapshots (artifacts/patterns/pattern_a/production/investability/source/).
+# Not part of the artifacts/patterns/pattern_a/validation/investability_history/ provenance-tracked set
 # (which is already row-level sha256 sealed elsewhere) -- these two files had
 # no explicit hash guard anywhere before FIX_03.
 SOURCE_MARKET_CAP_20250131_SHA256 = "32e88ac6ec85da881b48ebea70aae4098e8bb3130fc3223d5594c7eaa682eb83"

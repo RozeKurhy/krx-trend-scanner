@@ -23,7 +23,7 @@ MONTHLY_RESEARCH_SHA = "6917b1341553b58fa42390ba1507fc9b80551fee"
 WEEKLY_RESEARCH_SHA = "415583ab97835d6d98c945476de45aafdd6371b7"
 DAILY_RESEARCH_SHA = BASE_COMMIT
 
-RESEARCH_DIR = Path("artifacts/pattern_a_fast/research")
+RESEARCH_DIR = Path("artifacts/patterns/pattern_a_fast/research/feature_role")
 MONTHLY_MATRIX = RESEARCH_DIR / "monthly_regime_feature_matrix_v01.csv"
 WEEKLY_MATRIX = RESEARCH_DIR / "weekly_trigger_feature_matrix_v01.csv"
 DAILY_MATRIX = RESEARCH_DIR / "daily_timing_feature_matrix_v01.csv"

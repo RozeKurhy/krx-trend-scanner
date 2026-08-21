@@ -39,12 +39,12 @@ logger = logging.getLogger(__name__)
 
 ROOT = Path(__file__).resolve().parent.parent
 
-UNIVERSE_PATH = ROOT / "artifacts/investability/pattern_a_investability_universe_20260814.csv"
-MCAP_PATH = ROOT / "artifacts/investability/source/krx_market_cap_20260814.csv"
-SCORE_CONTRACT_PATH = ROOT / "artifacts/pattern_a_fast/research/pattern_a_fast_score_prototype_v01.json"
-STAGE_CONTRACT_PATH = ROOT / "artifacts/pattern_a_fast/research/pattern_a_fast_stage_prototype_v01.json"
+UNIVERSE_PATH = ROOT / "artifacts/patterns/pattern_a/production/investability/pattern_a_investability_universe_20260814.csv"
+MCAP_PATH = ROOT / "artifacts/patterns/pattern_a/production/investability/source/krx_market_cap_20260814.csv"
+SCORE_CONTRACT_PATH = ROOT / "artifacts/patterns/pattern_a_fast/production/contract_prototype/pattern_a_fast_score_prototype_v01.json"
+STAGE_CONTRACT_PATH = ROOT / "artifacts/patterns/pattern_a_fast/production/contract_prototype/pattern_a_fast_stage_prototype_v01.json"
 
-OUT_DIR = ROOT / "artifacts/pattern_a_fast/combined_exit_v01"
+OUT_DIR = ROOT / "artifacts/patterns/pattern_a_fast/archive/combined_exit_v01"
 OUT_TRADES_CSV = OUT_DIR / "pattern_a_fast_combined_exit_trades_v01.csv"
 OUT_PAIRED_CSV = OUT_DIR / "pattern_a_fast_combined_exit_paired_v01.csv"
 OUT_EVAL_JSON = OUT_DIR / "pattern_a_fast_combined_exit_evaluation_v01.json"

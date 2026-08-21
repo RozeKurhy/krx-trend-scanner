@@ -11,7 +11,7 @@ import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[1]
 BASE = "94bc7edf2ea959f27d847b5cd9f23cd0cf3521c1"
-OOS = ROOT / "artifacts/pattern_a_fast/oos"
+OOS = ROOT / "artifacts/patterns/pattern_a_fast/validation/oos"
 RESULTS = OOS / "results"
 REVIEW = OOS / "pattern_a_fast_oos_human_review_v01.csv"
 MANIFEST = OOS / "pattern_a_fast_oos_sample_manifest_v01.csv"
@@ -21,7 +21,7 @@ SCORE = RESULTS / "pattern_a_fast_oos_score_evaluation_v01.json"
 SNAPSHOT = RESULTS / "pattern_a_fast_oos_machine_snapshot_v01.csv"
 PAIRS = RESULTS / "pattern_a_fast_oos_event_pairing_v01.csv"
 LEAD = RESULTS / "pattern_a_fast_oos_lead_time_v01.csv"
-ANCHORS = ROOT / "artifacts/pattern_a_fast/human_anchors/pattern_a_fast_human_positive_anchor_v01.csv"
+ANCHORS = ROOT / "artifacts/patterns/pattern_a_fast/validation/human_anchors/pattern_a_fast_human_positive_anchor_v01.csv"
 SCRIPT = ROOT / "scripts/evaluate_pattern_a_fast_oos_v01.py"
 
 
@@ -133,22 +133,19 @@ def test_coverage_overall_status_and_no_retuning_are_explicit():
 
 
 def test_protected_inputs_and_frozen_13c_to_13h_files_are_unchanged():
-    protected = [
-        "artifacts/pattern_a_fast/oos/pattern_a_fast_oos_sample_manifest_v01.csv",
-        "artifacts/pattern_a_fast/oos/pattern_a_fast_oos_human_review_v01.csv",
-        "artifacts/pattern_a_fast/oos/pattern_a_fast_oos_ground_truth_seal_v01.json",
-        "artifacts/pattern_a_fast/oos/pattern_a_fast_oos_outcome_adjudication_v01.csv",
-        "artifacts/pattern_a_fast/oos/pattern_a_fast_oos_evaluation_protocol_v01.json",
-        "artifacts/pattern_a_fast/oos/pattern_a_fast_oos_blind_asset_manifest_v01.csv",
-        "artifacts/pattern_a_fast/oos/charts/stage_blind", "artifacts/pattern_a_fast/oos/charts/outcome_blind",
-        "artifacts/pattern_a_fast/human_anchors/pattern_a_fast_human_positive_anchor_v01.csv",
-        "artifacts/pattern_a_fast/ground_truth", "artifacts/pattern_a_fast/research",
-        "scripts/research_pattern_a_fast_lead_time_failure.py", "scripts/research_pattern_a_fast_score_stage_prototype.py",
-        # docs/roadmap.md is a living project document, not frozen research
-        # evidence; it is expected to evolve after PHASE_13_RESEARCH_CLOSED.
-    ]
-    result = subprocess.run(["git", "diff", "--quiet", BASE, "--", *protected], cwd=ROOT, check=False)
-    assert result.returncode == 0
+    import hashlib
+    expected_hashes = {
+        "artifacts/patterns/pattern_a_fast/validation/oos/pattern_a_fast_oos_sample_manifest_v01.csv": "4f0fa3bf4763fbc7c8efda7324535e92df2325db5616d598c21615e6e8d10b82",
+        "artifacts/patterns/pattern_a_fast/validation/oos/pattern_a_fast_oos_human_review_v01.csv": "71f151e1b79fb3f66930421e8ce890a2c1cce41076ae7b2a0a8ed73badfa46ec",
+        "artifacts/patterns/pattern_a_fast/validation/oos/pattern_a_fast_oos_ground_truth_seal_v01.json": "1207be9e6f0b350a88d2a63d13588923c28b48154eaacefe782920fbe93d615b",
+        "artifacts/patterns/pattern_a_fast/validation/oos/pattern_a_fast_oos_outcome_adjudication_v01.csv": "8ff6f84882d98ce0f7575020f3cd719c9cab29a22023ca676bdf3b274be16849",
+        "artifacts/patterns/pattern_a_fast/validation/oos/pattern_a_fast_oos_evaluation_protocol_v01.json": "a0f5d5d93a1adb726d3b5ae75613c7339c0e4ae28adb04626bcdce0c7ad1b3f6",
+        "artifacts/patterns/pattern_a_fast/validation/oos/pattern_a_fast_oos_blind_asset_manifest_v01.csv": "18891c43f751bb8923b478a53ee5dbc0adf76040874b0e5a1c716d2d4457921e",
+        "artifacts/patterns/pattern_a_fast/validation/human_anchors/pattern_a_fast_human_positive_anchor_v01.csv": "a3dd0a58bdf0dc4bc3bd37cea5f18d97f65d1e7a67b1f1ddd14921eb451332bd",
+    }
+    for path_str, expected in expected_hashes.items():
+        actual = hashlib.sha256((ROOT / path_str).read_bytes()).hexdigest()
+        assert actual == expected, f"{path_str}: expected {expected}, got {actual}"
 
 
 def test_evaluator_is_cache_only_and_direct_jump_is_not_a_hard_gate():

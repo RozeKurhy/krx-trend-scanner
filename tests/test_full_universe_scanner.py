@@ -443,7 +443,7 @@ def mock_scanner_investability_breakdown_env(tmp_path: Path):
     `mock_scanner_env`는 candidate 중 INVESTABLE만 실제로 non-zero였고
     FILTERED_MARKET_CAP / FILTERED_LIQUIDITY / DATA_UNAVAILABLE 세 branch는
     0 == 0 비교에 불과했다. 이 fixture는 canonical market cap snapshot
-    (artifacts/investability/source/krx_market_cap_20260814.csv)의 실제 값을
+    (artifacts/patterns/pattern_a/production/investability/source/krx_market_cap_20260814.csv)의 실제 값을
     이용해 4개 branch를 모두 최소 1건씩 실제로 만들어낸다. 다른 scanner
     test가 공유하는 `mock_scanner_env`에는 영향을 주지 않는다.
 

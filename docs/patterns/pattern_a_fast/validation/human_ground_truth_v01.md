@@ -113,7 +113,7 @@ prevalence 추정용이 아니므로 얇은 pool도 sample 다양성 확보라�
 --------------------------------------------------------------------------------
 **Cohort A — Pattern A Historical Context** (15건: `PATTERN_A_PRE_TRANSITION`
 14 + `PATTERN_A_PRE_EARLY` 1):
-`artifacts/scanner/pattern_a_universe_scan_20260814.csv`의 실제
+`artifacts/patterns/pattern_a/production/scanner/pattern_a_universe_scan_20260814.csv`의 실제
 `candidate_state == 'candidate'`(현재 TRANSITION/EARLY_TREND) 티커 180개를
 ticker 순서로 순회하며, frozen Pattern A evaluator(`evaluate_pattern_a` +
 `build_historical_snapshot`)로 2026-08-14부터 backward 탐색해 **현재
@@ -300,7 +300,7 @@ market regime을 위한 deterministic-hash 선택 cohort(12). 세 cohort 모두
 --------------------------------------------------------------------------------
 8. Schema
 --------------------------------------------------------------------------------
-Source dataset: `artifacts/pattern_a_fast/ground_truth/pattern_a_fast_ground_truth_source_v01.csv`
+Source dataset: `artifacts/patterns/pattern_a_fast/validation/ground_truth/pattern_a_fast_ground_truth_source_v01.csv`
 
 | column | 설명 |
 |---|---|
@@ -321,7 +321,7 @@ Source dataset: `artifacts/pattern_a_fast/ground_truth/pattern_a_fast_ground_tru
 | data_status / quality_flags | 품질 상태 |
 
 Human Review Worksheet(사람이 직접 채우는 원본):
-`artifacts/pattern_a_fast/ground_truth/pattern_a_fast_human_review_v01.csv`
+`artifacts/patterns/pattern_a_fast/validation/ground_truth/pattern_a_fast_human_review_v01.csv`
 — `sample_id, ticker, name, reference_date, weekly_stage_at_reference,
 trigger_event_observed, trigger_event_date, human_label,
 human_confidence, human_notes`만 포함(§43/§44, machine metadata와 분리).
@@ -447,7 +447,7 @@ Backfill과 동일한 위반이 된다, §31).
 --------------------------------------------------------------------------------
 15. Sample Manifest
 --------------------------------------------------------------------------------
-`artifacts/pattern_a_fast/ground_truth/selection_manifest.json` — base
+`artifacts/patterns/pattern_a_fast/validation/ground_truth/selection_manifest.json` — base
 commit, as_of, source datasets, cohort별 selection strategy(위 §4의 표와
 동일 내용을 기계가 읽을 수 있는 형태로 `selection_strategy.cohort_a` /
 `cohort_b_recent_systematic` / `cohort_b_historical_coverage` 세 블록),
@@ -465,7 +465,7 @@ selection_method, §4·§14 참고)**, network requests=0을 기록. 이전
 거치며 위와 같이 machine-readable 목록 + 두 stratum별 선정 통계로
 보강했다(§7).
 
-`artifacts/pattern_a_fast/ground_truth/reserved_calibration_samples.json`
+`artifacts/patterns/pattern_a_fast/validation/ground_truth/reserved_calibration_samples.json`
 — 이번 60건의 `ticker`+`reference_date` 전체 목록. Phase 13I OOS Validation
 에서 동일 sample을 재사용하지 않기 위한 예약 목록(§51).
 

@@ -97,7 +97,7 @@ def run_pattern_a_final_closure_audit(
     """Execute live verification of all 10 closure gates and output pattern_a_final_closure.json."""
     cache_dir = repo_root / "data" / "raw" / "stocks"
     cache = ParquetCache(base_dir=cache_dir)
-    out_dir = repo_root / "artifacts" / "pattern_a_final_closure"
+    out_dir = repo_root / "artifacts" / "patterns" / "pattern_a" / "validation" / "closure"
     out_dir.mkdir(parents=True, exist_ok=True)
 
     # 1. Source Identity & Constant Audit
@@ -204,7 +204,7 @@ def run_pattern_a_final_closure_audit(
     )
 
     # 6. Phase8 Scanner Live Reproduction & Candidate Identity Diff
-    frozen_csv_path = repo_root / "artifacts/chart_review/pattern_a_candidate_manual_review_20260814.csv"
+    frozen_csv_path = repo_root / "artifacts/patterns/pattern_a/validation/chart_review/pattern_a_candidate_manual_review_20260814.csv"
     df_frozen = pd.read_csv(frozen_csv_path, dtype={"ticker": str})
     df_frozen["ticker"] = df_frozen["ticker"].str.zfill(6)
     frozen_cand_dict = dict(zip(df_frozen["ticker"], df_frozen["official_stage"]))

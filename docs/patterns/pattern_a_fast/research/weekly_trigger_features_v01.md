@@ -34,7 +34,7 @@ permission을 주고 Weekly가 trigger를 당긴다는 Pattern A Fast 철학을 
 2. Human Calibration Set
 --------------------------------------------------------------------------------
 
-`artifacts/pattern_a_fast/ground_truth/pattern_a_fast_human_review_v01.csv`에서
+`artifacts/patterns/pattern_a_fast/validation/ground_truth/pattern_a_fast_human_review_v01.csv`에서
 `weekly_stage_at_reference != UNLABELED AND human_label != UNLABELED`인 정확히
 40개(13C-2 CLOSED/FROZEN, 재사용 — 재라벨링 없음). 나머지 20개(UNLABELED)는
 `load_labeled_samples()`의 필터 자체가 구조적으로 제외한다(§20 item 13,
@@ -340,7 +340,7 @@ weekly_stage별(§12 아래) + 주요 pair comparison(§13 요구사항 3종 전
 `median_diff_*`, `standardized_effect_*`, `cliffs_delta_*` — 처음부터
 포함, 13D에서 advisor가 지적한 실수를 이번엔 1회차부터 반영) +
 POSITIVE_STRUCTURE vs EARLY_OR_NONE Research Group 비교까지 전부
-`artifacts/pattern_a_fast/research/weekly_trigger_feature_summary_v01.csv`
+`artifacts/patterns/pattern_a_fast/research/feature_role/weekly_trigger_feature_summary_v01.csv`
 (48행)에 기록했다. `standardized_effect_*`의 분모는 두 그룹을 합친 전체
 표본의 IQR이다(13D §5와 동일 caveat — 완벽 분리 시 오히려 작아질 수 있어
 Cliff's Delta가 1차 근거).
@@ -374,7 +374,7 @@ family에서 `GOOD_TRIGGER_n=6`(9명 중 6명만 유효)으로 표시된다.
 12. Weekly Stage Separation
 --------------------------------------------------------------------------------
 
-`artifacts/pattern_a_fast/research/weekly_trigger_stage_summary_v01.csv`에
+`artifacts/patterns/pattern_a_fast/research/feature_role/weekly_trigger_stage_summary_v01.csv`에
 PIT Weekly Stage별(WATCH/SETUP/TRIGGER/TREND/EXTENDED) n과 각 stage가
 어떤 human_label로 발전했는지의 분포를 기록했다:
 

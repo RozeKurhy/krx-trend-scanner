@@ -143,7 +143,7 @@
 - **Filtered Market Cap (<1,000억)**: **40종목**
 - **Filtered Liquidity (<3억)**: **31종목**
 - **Data Unavailable**: **4종목**
-- *참고: TRANSITION 168종목의 전수 레코드 및 속성은 `artifacts/analysis/local_candidate_stage_filter_20260814.csv` 에 영구 보존됨.*
+- *참고: TRANSITION 168종목의 전수 레코드 및 속성은 `artifacts/patterns/pattern_a/research/analysis/local_candidate_stage_filter_20260814.csv` 에 영구 보존됨.*
 
 --------------------------------------------------------------------------------
 9. Data Integrity & Verification Checklist

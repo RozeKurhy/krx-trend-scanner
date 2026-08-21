@@ -194,7 +194,7 @@ Official KRX KOSPI / KOSDAQ `AssetType.COMMON` universe를 대상으로 Pattern 
 * **제외 자산 (Excluded Assets)**: PREFERRED, SPAC, REIT, ETF, ETN, UNKNOWN, KONEX 엄격 배제
 * **Fail-Closed 보존**: Cache Missing 42개 + Score/Stage Unavailable 265개 + Stage-only Unavailable 9개 = 총 UNAVAILABLE 316개 row 유지 및 `INSUFFICIENT_DATA` 처리
 * **예외 격리**: Scanner Calculation Errors 0건 달성
-* **매트릭스 아티팩트 생성**: `artifacts/scanner/pattern_a_universe_scan_20260814.csv` 및 `summary.json`
+* **매트릭스 아티팩트 생성**: `artifacts/patterns/pattern_a/production/scanner/pattern_a_universe_scan_20260814.csv` 및 `summary.json`
 
 ---
 

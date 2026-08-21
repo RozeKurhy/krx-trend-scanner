@@ -89,7 +89,7 @@ def load_canonical_mcap_snapshot(
     source_dir: Path | None = None,
 ) -> tuple[pd.DataFrame, str]:
     """Load or fetch Point-In-Time market cap snapshot."""
-    src_dir = source_dir or (repo_root / "artifacts/investability/source")
+    src_dir = source_dir or (repo_root / "artifacts/patterns/pattern_a/production/investability/source")
     src_dir.mkdir(parents=True, exist_ok=True)
     source_file = src_dir / f"krx_market_cap_{as_of.replace('-', '')}.csv"
 
@@ -373,13 +373,13 @@ def run_investability_audit(
     
     # Destination Directory Management & Contamination Guard
     is_canonical_run = (as_of == CANONICAL_AS_OF and output_dir is None)
-    out_dir = output_dir or (repo_root / "artifacts/investability")
+    out_dir = output_dir or (repo_root / "artifacts/patterns/pattern_a/production/investability")
     if write_artifacts:
         out_dir.mkdir(parents=True, exist_ok=True)
 
     # 1. Load Universe and Candidate Base Data
-    univ_csv = repo_root / "artifacts/scanner/pattern_a_universe_scan_20260814.csv"
-    cand_csv = repo_root / "artifacts/chart_review/pattern_a_candidate_manual_review_20260814.csv"
+    univ_csv = repo_root / "artifacts/patterns/pattern_a/production/scanner/pattern_a_universe_scan_20260814.csv"
+    cand_csv = repo_root / "artifacts/patterns/pattern_a/validation/chart_review/pattern_a_candidate_manual_review_20260814.csv"
 
     df_univ_raw = pd.read_csv(univ_csv, dtype={"ticker": str})
     df_cand_raw = pd.read_csv(cand_csv, dtype={"ticker": str})
@@ -388,7 +388,7 @@ def run_investability_audit(
     df_cand_raw["ticker"] = df_cand_raw["ticker"].str.zfill(6)
 
     # 2. Fetch Point-In-Time KRX Market Cap Snapshot as of as_of
-    source_dir = out_dir / "source" if output_dir else (repo_root / "artifacts/investability/source")
+    source_dir = out_dir / "source" if output_dir else (repo_root / "artifacts/patterns/pattern_a/production/investability/source")
     df_mcap_snap, mcap_sha256 = load_canonical_mcap_snapshot(repo_root, as_of=as_of, source_dir=source_dir)
     mcap_dict = {row["ticker"]: float(row["market_cap"]) for _, row in df_mcap_snap.iterrows()}
     shares_dict = {row["ticker"]: int(row["shares_outstanding"]) for _, row in df_mcap_snap.iterrows()}

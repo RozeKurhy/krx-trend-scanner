@@ -45,7 +45,7 @@ def test_research_artifact_deterministic_regeneration():
 
 def test_research_feature_artifacts_row_counts_and_structure():
     """Verify that source-of-truth CSVs have correct counts and schemas."""
-    out_dir = _REPO_ROOT / "artifacts" / "stage_v03_research"
+    out_dir = _REPO_ROOT / "artifacts" / "patterns" / "pattern_a" / "validation" / "stage_v03_research"
     tm_df = pd.read_csv(out_dir / "transition_match13_features.csv", dtype={"ticker": str})
     prem_df = pd.read_csv(out_dir / "premature13_features.csv", dtype={"ticker": str})
     rec_df = pd.read_csv(out_dir / "recycled3_features.csv", dtype={"ticker": str})
@@ -60,7 +60,7 @@ def test_research_feature_artifacts_row_counts_and_structure():
 
 def test_026910_audit_semantics_correctness():
     """Verify 026910 audited semantics strictly adhere to guidelines (audited_target_stage is null)."""
-    out_dir = _REPO_ROOT / "artifacts" / "stage_v03_research"
+    out_dir = _REPO_ROOT / "artifacts" / "patterns" / "pattern_a" / "validation" / "stage_v03_research"
     summary = json.loads((out_dir / "research_summary.json").read_text(encoding="utf-8"))
 
     focus_case = summary["focus_case_026910_audit"]
@@ -73,7 +73,7 @@ def test_026910_audit_semantics_correctness():
 
 def test_hypothesis_audit_count_exact_equality():
     """Verify that hypothesis_separation_audit.csv numbers match exact source feature evaluations."""
-    out_dir = _REPO_ROOT / "artifacts" / "stage_v03_research"
+    out_dir = _REPO_ROOT / "artifacts" / "patterns" / "pattern_a" / "validation" / "stage_v03_research"
     df_tm = pd.read_csv(out_dir / "transition_match13_features.csv", dtype={"ticker": str})
     df_prem = pd.read_csv(out_dir / "premature13_features.csv", dtype={"ticker": str})
     df_rec = pd.read_csv(out_dir / "recycled3_features.csv", dtype={"ticker": str})
@@ -99,7 +99,7 @@ def test_hypothesis_audit_count_exact_equality():
 @pytest.mark.skipif(not _HAS_CACHE, reason="Cache unavailable")
 def test_benchmark_impact_all_8_fields_exact_equality():
     """Verify that benchmark_impact.csv numbers match live evaluation for all 8 evaluation fields across Baseline + HYP_A~G."""
-    out_dir = _REPO_ROOT / "artifacts" / "stage_v03_research"
+    out_dir = _REPO_ROOT / "artifacts" / "patterns" / "pattern_a" / "validation" / "stage_v03_research"
     df_bench = pd.read_csv(out_dir / "benchmark_impact.csv")
 
     # 1. Baseline row (8 fields)
@@ -144,7 +144,7 @@ def test_hyp_g_lifecycle_diagnostic_fail_closed():
 
 def test_report_source_csv_renderer_linkage():
     """Smoke test ensuring committed CSVs match renderer known ground truth (e.g. 003100 선광 ma24_slope=0.0146)."""
-    out_dir = _REPO_ROOT / "artifacts" / "stage_v03_research"
+    out_dir = _REPO_ROOT / "artifacts" / "patterns" / "pattern_a" / "validation" / "stage_v03_research"
     tm_df = pd.read_csv(out_dir / "transition_match13_features.csv", dtype={"ticker": str})
     sun_gwang = tm_df[tm_df["ticker"] == "003100"].iloc[0]
     assert round(float(sun_gwang["ma24_slope"]), 4) == 0.0146

@@ -454,7 +454,7 @@ def save_candidate_review_artifacts(
     source_df: pd.DataFrame,
     manual_review_df: pd.DataFrame,
     summary: CandidateReviewSummary,
-    output_dir: Path | str = "artifacts/chart_review",
+    output_dir: Path | str = "artifacts/patterns/pattern_a/validation/chart_review",
     as_of_tag: str = "20260814",
     overwrite_manual: bool = False,
 ) -> tuple[Path, Path, Path]:

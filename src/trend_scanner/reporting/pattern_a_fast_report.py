@@ -75,8 +75,8 @@ def _empty_section() -> PatternAFastSection:
 
 
 def _load_fast_contracts(root_path: Path) -> tuple[dict, dict] | None:
-    score_path = root_path / "artifacts/pattern_a_fast/research/pattern_a_fast_score_prototype_v01.json"
-    stage_path = root_path / "artifacts/pattern_a_fast/research/pattern_a_fast_stage_prototype_v01.json"
+    score_path = root_path / "artifacts/patterns/pattern_a_fast/production/contract_prototype/pattern_a_fast_score_prototype_v01.json"
+    stage_path = root_path / "artifacts/patterns/pattern_a_fast/production/contract_prototype/pattern_a_fast_stage_prototype_v01.json"
     if not score_path.exists() or not stage_path.exists():
         return None
     score = json.loads(score_path.read_text(encoding="utf-8"))

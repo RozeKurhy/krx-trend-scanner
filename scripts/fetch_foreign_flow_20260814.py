@@ -25,7 +25,7 @@ def main():
 
     print(f"Trading dates count: {len(trading_dates)} ({trading_dates[0]} ~ {trading_dates[-1]})")
 
-    out_dir = repo_root / "artifacts/flow/source"
+    out_dir = repo_root / "artifacts/patterns/pattern_a/production/flow/source"
     out_dir.mkdir(parents=True, exist_ok=True)
     parquet_out = out_dir / "foreign_flow_daily_20260814.parquet"
     csv_out = out_dir / "foreign_flow_daily_20260814.csv"

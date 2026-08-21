@@ -7,8 +7,8 @@ import pandas as pd
 import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
-V02_TRADES_CSV = ROOT / "artifacts/pattern_a_fast/core_v02_reentry/trades.csv"
-DIAG_DIR = ROOT / "artifacts/pattern_a_fast/progressed_downside_v01"
+V02_TRADES_CSV = ROOT / "artifacts/patterns/pattern_a_fast/production/core_v02_reentry/trades.csv"
+DIAG_DIR = ROOT / "artifacts/patterns/pattern_a_fast/research/progressed_downside_v01"
 
 
 @pytest.fixture

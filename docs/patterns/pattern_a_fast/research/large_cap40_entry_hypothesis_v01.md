@@ -16,8 +16,8 @@
 2. 대상 모집단 (Population Definition)
 ================================================================================
 - **모집단 정의**: 2026년 8월 14일 기준 KRX 정규 주식 유니버스(KOSPI / KOSDAQ 보통주) 시가총액 순위 1위~40위 종목 (총 40개 표본 전수)
-- **선택 소스 (Selection Source)**: `artifacts/investability/pattern_a_investability_universe_20260814.csv`
-- **선택 매니페스트 (Selection Manifest)**: `artifacts/pattern_a_fast/large_cap40_v01/pattern_a_fast_large_cap40_selection_manifest_v01.csv`
+- **선택 소스 (Selection Source)**: `artifacts/patterns/pattern_a/production/investability/pattern_a_investability_universe_20260814.csv`
+- **선택 매니페스트 (Selection Manifest)**: `artifacts/patterns/pattern_a_fast/research/large_cap40_v01/pattern_a_fast_large_cap40_selection_manifest_v01.csv`
 - **표본 수**: 정확히 40개 (고유 종목 40개, 순위 1~40)
 
 ================================================================================

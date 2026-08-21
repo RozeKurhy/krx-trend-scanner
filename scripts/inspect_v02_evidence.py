@@ -8,10 +8,10 @@ import pandas as pd
 
 ROOT = Path(__file__).resolve().parent.parent
 
-V01_CSV = ROOT / "artifacts/pattern_a_fast/strategy_finalization_v01_corrected_pit/pattern_a_fast_strategy_finalization_v01_trades.csv"
-V02_CSV = ROOT / "artifacts/pattern_a_fast/core_v02_reentry/trades.csv"
-V02_TICKER_CSV = ROOT / "artifacts/pattern_a_fast/core_v02_reentry/ticker_summary.csv"
-V02_DIR = ROOT / "artifacts/pattern_a_fast/core_v02_reentry"
+V01_CSV = ROOT / "artifacts/patterns/pattern_a_fast/production/strategy_finalization_v01/pattern_a_fast_strategy_finalization_v01_trades.csv"
+V02_CSV = ROOT / "artifacts/patterns/pattern_a_fast/production/core_v02_reentry/trades.csv"
+V02_TICKER_CSV = ROOT / "artifacts/patterns/pattern_a_fast/production/core_v02_reentry/ticker_summary.csv"
+V02_DIR = ROOT / "artifacts/patterns/pattern_a_fast/production/core_v02_reentry"
 
 
 def build_representative_case(ticker: str, v02_df: pd.DataFrame | None = None, ticker_df: pd.DataFrame | None = None) -> dict[str, Any]:

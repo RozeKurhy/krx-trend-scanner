@@ -201,7 +201,7 @@ def evaluate_benchmark_with_hypothesis(
 
 def generate_research_artifacts(repo_root: Path) -> dict[str, Any]:
     """Read source-of-truth CSVs and generate all research audit artifacts deterministically."""
-    out_dir = repo_root / "artifacts" / "stage_v03_research"
+    out_dir = repo_root / "artifacts" / "patterns" / "pattern_a" / "validation" / "stage_v03_research"
     out_dir.mkdir(parents=True, exist_ok=True)
 
     tm_file = out_dir / "transition_match13_features.csv"
@@ -209,7 +209,7 @@ def generate_research_artifacts(repo_root: Path) -> dict[str, Any]:
     rec_file = out_dir / "recycled3_features.csv"
 
     if not tm_file.exists() or not prem_file.exists() or not rec_file.exists():
-        raise FileNotFoundError("Source-of-truth feature CSVs missing in artifacts/stage_v03_research/")
+        raise FileNotFoundError("Source-of-truth feature CSVs missing in artifacts/patterns/pattern_a/validation/stage_v03_research/")
 
     df_tm = pd.read_csv(tm_file, dtype={"ticker": str})
     df_prem = pd.read_csv(prem_file, dtype={"ticker": str})

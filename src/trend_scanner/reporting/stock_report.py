@@ -65,7 +65,7 @@ def _resolve_latest_local_as_of(repo_root: Path) -> str:
     if daily_ref is not None and not daily_ref.empty:
         return daily_ref.index.max().strftime("%Y-%m-%d")
 
-    inv_dir = repo_root / "artifacts/investability"
+    inv_dir = repo_root / "artifacts/patterns/pattern_a/production/investability"
     if inv_dir.exists():
         univ_files = sorted(inv_dir.glob("pattern_a_investability_universe_*.csv"))
         if univ_files:
@@ -74,7 +74,7 @@ def _resolve_latest_local_as_of(repo_root: Path) -> str:
             if len(date_part) == 8 and date_part.isdigit():
                 return f"{date_part[:4]}-{date_part[4:6]}-{date_part[6:]}"
 
-    scanner_dir = repo_root / "artifacts/scanner"
+    scanner_dir = repo_root / "artifacts/patterns/pattern_a/production/scanner"
     if scanner_dir.exists():
         scan_files = sorted(scanner_dir.glob("pattern_a_universe_scan_*.csv"))
         if scan_files:
@@ -612,7 +612,7 @@ def generate_stock_report(
     dt_clean = canonical_as_of.replace("-", "")
 
     # 4a. Exact date match in source
-    mcap_csv = root_path / "artifacts/investability/source" / f"krx_market_cap_{dt_clean}.csv"
+    mcap_csv = root_path / "artifacts/patterns/pattern_a/production/investability/source" / f"krx_market_cap_{dt_clean}.csv"
     if mcap_csv.exists():
         try:
             df_mcap_snap = pd.read_csv(mcap_csv, dtype={"ticker": str})
@@ -627,7 +627,7 @@ def generate_stock_report(
 
     # 4b. Historical normalized PIT market cap snapshots (STRICT PIT: only files <= requested_as_of)
     if mcap_val is None:
-        norm_dir = root_path / "artifacts/investability/history/normalized"
+        norm_dir = root_path / "artifacts/patterns/pattern_a/validation/investability_history/normalized"
         if norm_dir.exists():
             norm_files = sorted(norm_dir.glob("krx_market_cap_*.csv"))
             past_files = [f for f in norm_files if f.stem.split("_")[-1] <= dt_clean]
@@ -647,7 +647,7 @@ def generate_stock_report(
 
     # 4c. Universe file fallback (STRICT PIT: only universe files <= requested_as_of)
     if mcap_val is None:
-        univ_files = sorted((root_path / "artifacts/investability").glob("pattern_a_investability_universe_*.csv"))
+        univ_files = sorted((root_path / "artifacts/patterns/pattern_a/production/investability").glob("pattern_a_investability_universe_*.csv"))
         past_univ_files = [f for f in univ_files if f.stem.split("_")[-1] <= dt_clean]
         if past_univ_files:
             best_u = past_univ_files[-1]
@@ -846,9 +846,9 @@ def generate_stock_report(
 
     # 7. Foreign Flow Section (Phase 11)
     flow_df_loaded = None
-    flow_file = root_path / "artifacts/flow/source" / f"foreign_flow_daily_{canonical_as_of.replace('-', '')}.parquet"
+    flow_file = root_path / "artifacts/patterns/pattern_a/production/flow/source" / f"foreign_flow_daily_{canonical_as_of.replace('-', '')}.parquet"
     if not flow_file.exists():
-        flow_file = root_path / "artifacts/flow/source" / f"foreign_flow_daily_{canonical_as_of.replace('-', '')}.csv"
+        flow_file = root_path / "artifacts/patterns/pattern_a/production/flow/source" / f"foreign_flow_daily_{canonical_as_of.replace('-', '')}.csv"
 
     if flow_file.exists():
         try:
@@ -938,8 +938,8 @@ def generate_stock_report(
     )
 
     # 8c. A FAST Core V2 Strategy Section (v0.2 Core Innovation)
-    score_contract_path = root_path / "artifacts/pattern_a_fast/research/pattern_a_fast_score_prototype_v01.json"
-    stage_contract_path = root_path / "artifacts/pattern_a_fast/research/pattern_a_fast_stage_prototype_v01.json"
+    score_contract_path = root_path / "artifacts/patterns/pattern_a_fast/production/contract_prototype/pattern_a_fast_score_prototype_v01.json"
+    stage_contract_path = root_path / "artifacts/patterns/pattern_a_fast/production/contract_prototype/pattern_a_fast_stage_prototype_v01.json"
     score_contract = json.loads(score_contract_path.read_text(encoding="utf-8")) if score_contract_path.exists() else {}
     stage_contract = json.loads(stage_contract_path.read_text(encoding="utf-8")) if stage_contract_path.exists() else {}
 
@@ -1069,7 +1069,7 @@ def generate_stock_report(
     md_path: Path | None = None
     if save_artifacts:
         date_dir_name = canonical_as_of.replace("-", "")
-        base_out = Path(output_dir) if output_dir else root_path / "artifacts/stock_reports" / date_dir_name
+        base_out = Path(output_dir) if output_dir else root_path / "artifacts/reporting/stock_reports" / date_dir_name
         base_out.mkdir(parents=True, exist_ok=True)
 
         file_stem = f"{clean_ticker}_{report.header.name}" if report.header.name and report.header.name != clean_ticker else (f"{clean_ticker}_{name}" if name and name != clean_ticker else clean_ticker)

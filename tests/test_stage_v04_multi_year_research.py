@@ -77,7 +77,7 @@ def test_deterministic_regeneration():
 
 def test_artifact_row_counts_and_provenance():
     """Verify all artifact CSVs/JSONs exist and have correct schemas."""
-    out_dir = _REPO_ROOT / "artifacts" / "stage_v04_multi_year_research"
+    out_dir = _REPO_ROOT / "artifacts" / "patterns" / "pattern_a" / "validation" / "stage_v04_multi_year_research"
     tm_df = pd.read_csv(out_dir / "transition_match13_multi_year_features.csv", dtype={"ticker": str})
     prem_df = pd.read_csv(out_dir / "premature13_multi_year_features.csv", dtype={"ticker": str})
     rec_df = pd.read_csv(out_dir / "recycled3_multi_year_features.csv", dtype={"ticker": str})
@@ -101,7 +101,7 @@ def test_artifact_row_counts_and_provenance():
 
 def test_human_cohort_roster_exactness():
     """Verify Early MATCH 4 roster strictly matches ground truth."""
-    out_dir = _REPO_ROOT / "artifacts" / "stage_v04_multi_year_research"
+    out_dir = _REPO_ROOT / "artifacts" / "patterns" / "pattern_a" / "validation" / "stage_v04_multi_year_research"
     early_df = pd.read_csv(out_dir / "early_match4_multi_year_features.csv", dtype={"ticker": str})
     expected_early = {"001540", "001450", "005430", "161890"}
     assert set(early_df["ticker"]) == expected_early
@@ -109,7 +109,7 @@ def test_human_cohort_roster_exactness():
 
 def test_research_summary_separation_linkage_and_zero_promising():
     """Verify research_summary.json strictly derives from df_sep with 0 promising features."""
-    out_dir = _REPO_ROOT / "artifacts" / "stage_v04_multi_year_research"
+    out_dir = _REPO_ROOT / "artifacts" / "patterns" / "pattern_a" / "validation" / "stage_v04_multi_year_research"
     df_sep = pd.read_csv(out_dir / "feature_separation_summary.csv")
     summary = json.loads((out_dir / "research_summary.json").read_text(encoding="utf-8"))
 
@@ -122,7 +122,7 @@ def test_research_summary_separation_linkage_and_zero_promising():
 
 def test_report_source_csv_renderer_linkage():
     """Verify renderer output matches committed source CSVs exactly."""
-    out_dir = _REPO_ROOT / "artifacts" / "stage_v04_multi_year_research"
+    out_dir = _REPO_ROOT / "artifacts" / "patterns" / "pattern_a" / "validation" / "stage_v04_multi_year_research"
     tm_df = pd.read_csv(out_dir / "transition_match13_multi_year_features.csv", dtype={"ticker": str})
     ascii_table = render_multi_year_table_ascii(tm_df)
     assert "003100" in ascii_table

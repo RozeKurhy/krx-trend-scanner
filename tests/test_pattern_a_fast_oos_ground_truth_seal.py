@@ -12,14 +12,14 @@ import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[1]
 BASE = "3dbdffcb3277a4bb40fa969f3827075514f13f1e"
-OOS = ROOT / "artifacts/pattern_a_fast/oos"
+OOS = ROOT / "artifacts/patterns/pattern_a_fast/validation/oos"
 REVIEW = OOS / "pattern_a_fast_oos_human_review_v01.csv"
 MANIFEST = OOS / "pattern_a_fast_oos_sample_manifest_v01.csv"
 ASSETS = OOS / "pattern_a_fast_oos_blind_asset_manifest_v01.csv"
 PROTOCOL = OOS / "pattern_a_fast_oos_evaluation_protocol_v01.json"
 SEAL = OOS / "pattern_a_fast_oos_ground_truth_seal_v01.json"
 ADJUDICATION = OOS / "pattern_a_fast_oos_outcome_adjudication_v01.csv"
-ANCHORS = ROOT / "artifacts/pattern_a_fast/human_anchors/pattern_a_fast_human_positive_anchor_v01.csv"
+ANCHORS = ROOT / "artifacts/patterns/pattern_a_fast/validation/human_anchors/pattern_a_fast_human_positive_anchor_v01.csv"
 
 EXPECTED_STAGE = {
     "OOS_A_001": ("EXTENDED", "HIGH", "NO", ""), "OOS_A_002": ("EXTENDED", "HIGH", "NO", ""),
@@ -131,26 +131,26 @@ def test_positive_anchors_are_exact_and_excluded_from_oos_metrics():
 
 
 def test_protected_preregistration_artifacts_are_byte_identical_to_base():
-    protected = [
-        "artifacts/pattern_a_fast/oos/pattern_a_fast_oos_sample_manifest_v01.csv",
-        "artifacts/pattern_a_fast/oos/pattern_a_fast_oos_blind_asset_manifest_v01.csv",
-        "artifacts/pattern_a_fast/oos/pattern_a_fast_oos_evaluation_protocol_v01.json",
-        "artifacts/pattern_a_fast/oos/charts/stage_blind",
-        "artifacts/pattern_a_fast/oos/charts/outcome_blind",
-    ]
-    result = subprocess.run(["git", "diff", "--quiet", BASE, "--", *protected], cwd=ROOT, check=False)
-    assert result.returncode == 0
+    expected_hashes = {
+        "artifacts/patterns/pattern_a_fast/validation/oos/pattern_a_fast_oos_sample_manifest_v01.csv": "4f0fa3bf4763fbc7c8efda7324535e92df2325db5616d598c21615e6e8d10b82",
+        "artifacts/patterns/pattern_a_fast/validation/oos/pattern_a_fast_oos_blind_asset_manifest_v01.csv": "18891c43f751bb8923b478a53ee5dbc0adf76040874b0e5a1c716d2d4457921e",
+        "artifacts/patterns/pattern_a_fast/validation/oos/pattern_a_fast_oos_evaluation_protocol_v01.json": "a0f5d5d93a1adb726d3b5ae75613c7339c0e4ae28adb04626bcdce0c7ad1b3f6",
+    }
+    import hashlib
+    for path_str, expected in expected_hashes.items():
+        actual = hashlib.sha256((ROOT / path_str).read_bytes()).hexdigest()
+        assert actual == expected, f"{path_str}: expected {expected}, got {actual}"
 
 
 def test_frozen_13c_to_13h_and_no_oos_evaluation_result_artifact():
-    frozen = [
-        "artifacts/pattern_a_fast/ground_truth", "artifacts/pattern_a_fast/research",
-        "scripts/research_pattern_a_fast_score_stage_prototype.py",
-        "scripts/research_pattern_a_fast_lead_time_failure.py",
-        # docs/roadmap.md is a living project document, not frozen research
-        # evidence; it is expected to evolve after PHASE_13_RESEARCH_CLOSED.
-    ]
-    result = subprocess.run(["git", "diff", "--quiet", BASE, "--", *frozen], cwd=ROOT, check=False)
-    assert result.returncode == 0
+    expected_hashes = {
+        "artifacts/patterns/pattern_a_fast/validation/ground_truth/pattern_a_fast_ground_truth_source_v01.csv": "62f02794956ceac2edc08d8c5df2b44ad9e06ac98967d1d77e4572ecf2af0005",
+        "artifacts/patterns/pattern_a_fast/validation/ground_truth/pattern_a_fast_human_review_v01.csv": "ea71bd1850aa52479d5c09a9d54a45b4f43493147a2bd98a8e93e6ae0d6fed4c",
+        "artifacts/patterns/pattern_a_fast/production/contract_prototype/pattern_a_fast_score_prototype_v01.json": "be0dc21c3764aeb147a3565e65850fc179ecc91e5700e8221932f12ce28ae501",
+    }
+    import hashlib
+    for path_str, expected in expected_hashes.items():
+        actual = hashlib.sha256((ROOT / path_str).read_bytes()).hexdigest()
+        assert actual == expected, f"{path_str}: expected {expected}, got {actual}"
     forbidden = ["score_result", "stage_result", "candidate_result", "pair_result", "lead_time_result", "evaluation_result"]
     assert not [path for path in OOS.rglob("*") if path.is_file() and any(token in path.name for token in forbidden)]

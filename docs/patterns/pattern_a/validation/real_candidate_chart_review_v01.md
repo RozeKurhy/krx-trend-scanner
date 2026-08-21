@@ -18,7 +18,7 @@
 ### 2.1 Scanner Source Metadata
 * **Source Commit**: `13ab6f4` (Full Universe Scanner Integration v0.1)
 * **Scanner As-Of**: `2026-08-14`
-* **Source Artifact**: `artifacts/scanner/pattern_a_universe_scan_20260814.csv` (2,528 rows)
+* **Source Artifact**: `artifacts/patterns/pattern_a/production/scanner/pattern_a_universe_scan_20260814.csv` (2,528 rows)
 
 ### 2.2 Candidate Extraction & Integrity Results
 * **Extraction Rule**: `candidate_state == 'candidate'` (Evaluator 공식 계약)
@@ -36,7 +36,7 @@
 ## 3. Review Artifacts & Data Architecture
 
 ```text
-artifacts/chart_review/
+artifacts/patterns/pattern_a/validation/chart_review/
 ├── pattern_a_candidate_source_20260814.csv         # Scanner 전체 49개 측정값 원본 (180 rows, Overwrite 허용)
 ├── pattern_a_candidate_manual_review_20260814.csv  # Compact 측정값 + Human Annotation 컬럼 (180 rows, Overwrite 금지)
 └── pattern_a_candidate_review_summary_20260814.json # 수동 검토 진행 현황 Summary

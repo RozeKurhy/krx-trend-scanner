@@ -8,7 +8,7 @@
 - **Research Classification**: `RESEARCH / EXPERIMENTAL / RETROSPECTIVE TRADING POLICY EVALUATION`
 - **Base Commit**: `70de72418b26c2caaafdb4317d46e2668981932c`
 - **Target Population**: `FROZEN_INVESTABLE_OOS_B_36`
-- **Selection Manifest**: `artifacts/pattern_a_fast/investable_oos/pattern_a_fast_investable_oos_selection_manifest_v01.csv`
+- **Selection Manifest**: `artifacts/patterns/pattern_a_fast/validation/investable_oos/pattern_a_fast_investable_oos_selection_manifest_v01.csv`
 - **Selection Manifest SHA256**: `6fb59b9ffce5d8076a18faa00327c62e4edc5cff6ef93bcaf5095c50532ef825`
 - **Sample Count**: `36`
 

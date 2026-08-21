@@ -30,15 +30,15 @@ logger = logging.getLogger(__name__)
 
 ROOT = Path(__file__).resolve().parent.parent
 
-OOS_DIR = ROOT / "artifacts/pattern_a_fast/investable_oos"
+OOS_DIR = ROOT / "artifacts/patterns/pattern_a_fast/validation/investable_oos"
 MANIFEST_PATH = OOS_DIR / "pattern_a_fast_investable_oos_selection_manifest_v01.csv"
 HUMAN_PATH = OOS_DIR / "pattern_a_fast_investable_oos_human_review_v01.csv"
-PREREG_PATH = ROOT / "artifacts/pattern_a_fast/trading_policy_v01/pattern_a_fast_entry_policy_preregistration_v01.json"
+PREREG_PATH = ROOT / "artifacts/patterns/pattern_a_fast/research/trading_policy_v01/pattern_a_fast_entry_policy_preregistration_v01.json"
 
-SCORE_CONTRACT_PATH = ROOT / "artifacts/pattern_a_fast/research/pattern_a_fast_score_prototype_v01.json"
-STAGE_CONTRACT_PATH = ROOT / "artifacts/pattern_a_fast/research/pattern_a_fast_stage_prototype_v01.json"
+SCORE_CONTRACT_PATH = ROOT / "artifacts/patterns/pattern_a_fast/production/contract_prototype/pattern_a_fast_score_prototype_v01.json"
+STAGE_CONTRACT_PATH = ROOT / "artifacts/patterns/pattern_a_fast/production/contract_prototype/pattern_a_fast_stage_prototype_v01.json"
 
-OUT_DIR = ROOT / "artifacts/pattern_a_fast/trading_policy_v01"
+OUT_DIR = ROOT / "artifacts/patterns/pattern_a_fast/research/trading_policy_v01"
 OUT_SAMPLES_CSV = OUT_DIR / "pattern_a_fast_entry_policy_sample_results_v01.csv"
 OUT_EVENT_LOG_CSV = OUT_DIR / "pattern_a_fast_entry_policy_event_log_v01.csv"
 OUT_EVAL_JSON = OUT_DIR / "pattern_a_fast_entry_policy_evaluation_v01.json"

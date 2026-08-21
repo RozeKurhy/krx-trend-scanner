@@ -29,8 +29,8 @@
 ================================================================================
 - **기준일자 (Data Cutoff)**: `2026-08-14` (2026-08-14 이후의 미래 데이터 사용 절대 금지)
 - **대상 모집단 (Population)**: 2026-08-14 기준 KRX KOSPI / KOSDAQ 보통주(COMMON) 중 Phase 10 투자 적격성(Investability) 기준을 충족하는 종목
-  - 시가총액 ≥ 1,000억원 (`artifacts/investability/source/krx_market_cap_20260814.csv`)
-  - 20일 평균 거래대금 ≥ 3억원 (`artifacts/investability/pattern_a_investability_universe_20260814.csv`)
+  - 시가총액 ≥ 1,000억원 (`artifacts/patterns/pattern_a/production/investability/source/krx_market_cap_20260814.csv`)
+  - 20일 평균 거래대금 ≥ 3억원 (`artifacts/patterns/pattern_a/production/investability/pattern_a_investability_universe_20260814.csv`)
 - **평가 기간**: 각 종목의 로컬 캐시 내에서 Pattern A와 FAST 두 evaluator가 모두 PIT 평가 가능한 최초 시점(Warmup 이후)부터 `2026-08-14`까지.
 
 ================================================================================

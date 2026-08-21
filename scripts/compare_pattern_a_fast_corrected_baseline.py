@@ -2,8 +2,8 @@
 """Deterministic CSV Comparison Utility for Pattern A FAST Strategy Finalization.
 
 Compares:
-  - Legacy Authority: artifacts/pattern_a_fast/strategy_finalization_v01_legacy/pattern_a_fast_strategy_finalization_v01_trades.csv (553 trades)
-  - Corrected Authority: artifacts/pattern_a_fast/strategy_finalization_v01_corrected_pit/pattern_a_fast_strategy_finalization_v01_trades.csv (551 trades)
+  - Legacy Authority: artifacts/patterns/pattern_a_fast/archive/strategy_finalization_v01_legacy/pattern_a_fast_strategy_finalization_v01_trades.csv (553 trades)
+  - Corrected Authority: artifacts/patterns/pattern_a_fast/production/strategy_finalization_v01/pattern_a_fast_strategy_finalization_v01_trades.csv (551 trades)
 
 Strict Invariants:
   - Zero strategy recalculation
@@ -21,8 +21,8 @@ import pandas as pd
 
 ROOT = Path(__file__).resolve().parent.parent
 
-LEGACY_CSV = ROOT / "artifacts/pattern_a_fast/strategy_finalization_v01_legacy/pattern_a_fast_strategy_finalization_v01_trades.csv"
-CORRECTED_CSV = ROOT / "artifacts/pattern_a_fast/strategy_finalization_v01_corrected_pit/pattern_a_fast_strategy_finalization_v01_trades.csv"
+LEGACY_CSV = ROOT / "artifacts/patterns/pattern_a_fast/archive/strategy_finalization_v01_legacy/pattern_a_fast_strategy_finalization_v01_trades.csv"
+CORRECTED_CSV = ROOT / "artifacts/patterns/pattern_a_fast/production/strategy_finalization_v01/pattern_a_fast_strategy_finalization_v01_trades.csv"
 
 
 def compare_baselines(
