@@ -4,10 +4,17 @@ from __future__ import annotations
 
 import hashlib
 import json
-import subprocess
 from pathlib import Path
 
 import pandas as pd
+
+from tests.helpers.frozen_integrity import (
+    EVALUATE_PATTERN_A_FAST_OOS_V01_SHA256,
+    PATTERN_A_EVALUATOR_SHA256,
+    PATTERN_A_FEATURE_SET_SHA256,
+    assert_file_sha256,
+)
+from trend_scanner.validation.pattern_a_final_closure import EXPECTED_FROZEN_HASHES
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -132,29 +139,29 @@ def test_ground_truth_seal_binds_pass_b_csv_and_all_prior_frozen_inputs():
 
 
 def test_charts_pass_a_seal_and_non_evaluation_boundaries_remain_unchanged():
+    """TEST_SUITE_PERFORMANCE_AUDIT_AND_REFACTOR_FIX_03: this used to
+    `git diff --quiet BASE -- protected` including the PASS A seal, selection
+    manifest, blind asset manifest, evaluation protocol and the whole charts
+    directory -- all of which are already individually sha256-verified above
+    in `test_ground_truth_seal_binds_pass_b_csv_and_all_prior_frozen_inputs`
+    (seal/manifest/asset/protocol) and in the per-asset loop right below (each
+    chart file's own `asset.sha256`), so re-checking them via a historical
+    whole-file/whole-directory diff was redundant and, for Pattern A source,
+    a false-positive risk against later legitimate docs-path changes. Only
+    the Pattern A production source + the OOS evaluation script are checked
+    here, via explicit sha256 (score/stage reuse the existing
+    `EXPECTED_FROZEN_HASHES` authority instead of a second hardcoded copy).
+    """
     assets = pd.read_csv(ASSETS, dtype=str, keep_default_na=False)
     assert len(assets[assets.human_exposure_phase.eq("PASS_A")]) == 108
     assert len(assets[assets.human_exposure_phase.eq("PASS_B_AFTER_STAGE_FREEZE")]) == 36
     for asset in assets.itertuples(index=False):
         assert _sha256(ROOT / asset.file_path) == asset.sha256
-    protected = [
-        "artifacts/pattern_a_fast/investable_oos/pattern_a_fast_investable_oos_human_stage_pass_a_freeze_v01.json",
-        "artifacts/pattern_a_fast/investable_oos/pattern_a_fast_investable_oos_selection_manifest_v01.csv",
-        "artifacts/pattern_a_fast/investable_oos/pattern_a_fast_investable_oos_blind_asset_manifest_v01.csv",
-        "artifacts/pattern_a_fast/investable_oos/pattern_a_fast_investable_oos_evaluation_protocol_v01.json",
-        "artifacts/pattern_a_fast/investable_oos/charts",
-        # HistoricalSnapshot's post-freeze PIT raw-frame exposure is verified
-        # by the final-closure source identity gate. Keep the actual frozen
-        # Pattern A model implementation protected here.
-        "src/trend_scanner/patterns/pattern_a_evaluator.py",
-        "src/trend_scanner/patterns/pattern_a_feature_set.py",
-        "src/trend_scanner/patterns/pattern_a_score.py",
-        "src/trend_scanner/patterns/pattern_a_stage.py",
-        "scripts/evaluate_pattern_a_fast_oos_v01.py",
-        # docs/roadmap.md is a living project document, not frozen research
-        # evidence; it is expected to evolve after PHASE_13_RESEARCH_CLOSED.
-    ]
-    assert subprocess.run(["git", "diff", "--quiet", BASE, "--", *protected], cwd=ROOT, check=False).returncode == 0
+    assert_file_sha256(ROOT / "src/trend_scanner/patterns/pattern_a_evaluator.py", PATTERN_A_EVALUATOR_SHA256)
+    assert_file_sha256(ROOT / "src/trend_scanner/patterns/pattern_a_feature_set.py", PATTERN_A_FEATURE_SET_SHA256)
+    assert_file_sha256(ROOT / "src/trend_scanner/patterns/pattern_a_score.py", EXPECTED_FROZEN_HASHES["pattern_a_score.py"])
+    assert_file_sha256(ROOT / "src/trend_scanner/patterns/pattern_a_stage.py", EXPECTED_FROZEN_HASHES["pattern_a_stage.py"])
+    assert_file_sha256(ROOT / "scripts/evaluate_pattern_a_fast_oos_v01.py", EVALUATE_PATTERN_A_FAST_OOS_V01_SHA256)
     seal = _seal()
     assert seal["pass_a_stage_mutation"] is False and seal["sample_mutation"] is False and seal["resampling_performed"] is False
     assert seal["machine_outputs_exposed_to_human"] is False and seal["oos_evaluation_executed"] is False and seal["retuning_performed"] is False

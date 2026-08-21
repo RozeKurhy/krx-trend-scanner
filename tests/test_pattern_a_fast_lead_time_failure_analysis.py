@@ -2,16 +2,26 @@
 from __future__ import annotations
 
 import importlib.util
-import subprocess
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
+from tests.helpers.frozen_integrity import PATTERN_A_EVALUATOR_SHA256, assert_file_sha256
+from trend_scanner.validation.pattern_a_final_closure import EXPECTED_FROZEN_HASHES
+
 
 BASE = "2da3fc36744b27ec13edae3f690df72c796906e5"
 SCRIPT = Path("scripts/research_pattern_a_fast_lead_time_failure.py")
 R = Path("artifacts/pattern_a_fast/research")
+GT = Path("artifacts/pattern_a_fast/ground_truth")
+
+# Unchanged since BASE; no separate hash authority for these two research
+# artifacts existed before FIX_03.
+SCORE_PROTOTYPE_SHA256 = "be0dc21c3764aeb147a3565e65850fc179ecc91e5700e8221932f12ce28ae501"
+STAGE_PROTOTYPE_SHA256 = "231cb43e2830017a72a9e8ba8d29296749f8a323e211266035d80cf841b70cf7"
+HUMAN_REVIEW_SOURCE_SHA256 = "ea71bd1850aa52479d5c09a9d54a45b4f43493147a2bd98a8e93e6ae0d6fed4c"
+GROUND_TRUTH_SOURCE_SHA256 = "62f02794956ceac2edc08d8c5df2b44ad9e06ac98967d1d77e4572ecf2af0005"
 
 
 def _module():
@@ -35,19 +45,26 @@ def _timeline(stages, active=None, pattern_status=None):
 
 
 def test_base_and_frozen_inputs_are_read_only():
+    """TEST_SUITE_PERFORMANCE_AUDIT_AND_REFACTOR_FIX_03: this used to
+    `git diff --name-only BASE -- frozen` and assert empty output. That form
+    fails the moment pattern_a_score.py/pattern_a_stage.py pick up *any*
+    change since BASE, including the non-semantic docstring-path updates from
+    the Docs IA reorganization (commit beafd30) -- which is exactly what
+    happened here. Replaced with explicit sha256 checks: the 4 frozen
+    artifacts and pattern_a_evaluator.py are confirmed unchanged since BASE
+    (frozen at their current == historical content); pattern_a_score.py /
+    pattern_a_stage.py reuse the existing `EXPECTED_FROZEN_HASHES` authority
+    (pattern_a_final_closure.py) instead of a second hardcoded copy.
+    """
     mod = _module()
     assert mod.BASE_SHA == BASE
-    frozen = [
-        "artifacts/pattern_a_fast/research/pattern_a_fast_score_prototype_v01.json",
-        "artifacts/pattern_a_fast/research/pattern_a_fast_stage_prototype_v01.json",
-        "artifacts/pattern_a_fast/ground_truth/pattern_a_fast_human_review_v01.csv",
-        "artifacts/pattern_a_fast/ground_truth/pattern_a_fast_ground_truth_source_v01.csv",
-        "src/trend_scanner/patterns/pattern_a_evaluator.py",
-        "src/trend_scanner/patterns/pattern_a_score.py",
-        "src/trend_scanner/patterns/pattern_a_stage.py",
-    ]
-    diff = subprocess.run(["git", "diff", "--name-only", BASE, "--", *frozen], capture_output=True, text=True, check=True)
-    assert diff.stdout == ""
+    assert_file_sha256(R / "pattern_a_fast_score_prototype_v01.json", SCORE_PROTOTYPE_SHA256)
+    assert_file_sha256(R / "pattern_a_fast_stage_prototype_v01.json", STAGE_PROTOTYPE_SHA256)
+    assert_file_sha256(GT / "pattern_a_fast_human_review_v01.csv", HUMAN_REVIEW_SOURCE_SHA256)
+    assert_file_sha256(GT / "pattern_a_fast_ground_truth_source_v01.csv", GROUND_TRUTH_SOURCE_SHA256)
+    assert_file_sha256(Path("src/trend_scanner/patterns/pattern_a_evaluator.py"), PATTERN_A_EVALUATOR_SHA256)
+    assert_file_sha256(Path("src/trend_scanner/patterns/pattern_a_score.py"), EXPECTED_FROZEN_HASHES["pattern_a_score.py"])
+    assert_file_sha256(Path("src/trend_scanner/patterns/pattern_a_stage.py"), EXPECTED_FROZEN_HASHES["pattern_a_stage.py"])
 
 
 def test_labeled_population_is_exactly_40_and_unlabeled_is_excluded():

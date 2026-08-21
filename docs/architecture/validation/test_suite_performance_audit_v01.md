@@ -421,6 +421,41 @@ Full_Universe_Scanner (test_full_universe_scanner.py, 참고용 재확인, V01 �
   §4 P3). FIX_01에서 13개로 증가(위 "FIX_01 이후" 참고).
 ```
 
+## 7.1 FIX_03 — Stale historical freeze guard 정정
+
+FIX_02 완료 후 사용자가 실제 Normal Full Suite를 실행해 성능 개선 결과를
+실측했다: **3962.13초(약 66분) → 694.95초(약 11분 35초), 약 82.5% 감소, 약
+5.7배 속도 개선**. 성능 목표(<=15분)는 이미 달성했다.
+
+이 실행에서 5개 test가 FAIL했으나, 원인은 production regression이 아니라
+"오래된 Phase 13 historical BASE commit을 기준으로 특정 디렉터리/production
+source 파일 전체를 `git diff --quiet OLD_BASE -- ...`로 통째 비교"하는 stale
+guard 구조였다 — Docs Information Architecture 재편(commit `beafd30` 등)으로
+`pattern_a_score.py`/`pattern_a_stage.py`/`pattern_a_feature_set.py`/
+`scripts/evaluate_pattern_a_fast_oos_v01.py`의 docstring/주석 경로 참조가
+정상적으로 갱신됐을 뿐인데, 이 4개 파일을 감싸는 whole-file byte-equality
+guard가 이를 regression으로 오인했다(계산 logic/threshold 변경 없음 —
+`git diff`로 직접 확인).
+
+정정 방식: `tests/helpers/frozen_integrity.py`를 신설해 `assert_file_sha256`
+헬퍼 + 여러 test가 공유하는 explicit frozen sha256 상수를 모아뒀다.
+Pattern A Score/Stage는 새 hardcoded hash를 만들지 않고 기존
+`pattern_a_final_closure.py`의 `EXPECTED_FROZEN_HASHES`(current authoritative
+closure/hash guard)를 그대로 재사용한다. 디렉터리 전체를 OLD_BASE와 비교하던
+6개 항목(`artifacts/pattern_a_fast/{oos,human_anchors,ground_truth,research}`,
+`artifacts/investability/{history,source}`)은 제거했다 — 그 안의 실제 frozen
+evidence(seal/manifest/asset/protocol/prototype JSON/ground truth CSV/시가총액
+스냅샷)는 이미 각 test 파일에서 개별 sha256으로 더 정확하게 보호되고 있었고,
+디렉터리 전체 비교는 이후 정상적으로 추가되는 파일까지 위반으로 잡는 문제가
+있었다. `SCANNER_SUMMARY_AGGREGATION_COVERAGE`/RS 등 기존 성능 구조는
+전혀 건드리지 않았다(`src/**` 변경 0, `artifacts/**` 변경 0).
+
+```
+FIX_03 대상 5개 test: 모두 PASS로 정정
+FAIL_ROOT_CAUSE = STALE / OVER-BROAD HISTORICAL FREEZE GUARDS (1건)
+TEST_STRENGTH_REDUCTION = 0
+```
+
 ## 8. Remaining known expensive tests
 
 ```

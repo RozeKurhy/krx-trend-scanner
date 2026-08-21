@@ -5,18 +5,27 @@ from __future__ import annotations
 import hashlib
 import json
 import re
-import subprocess
 from pathlib import Path
 
 import pandas as pd
 
 from scripts.prepare_pattern_a_fast_investable_oos_v01 import outcome_chart_title, stage_chart_title
 
+from tests.helpers.frozen_integrity import (
+    EVALUATE_PATTERN_A_FAST_OOS_V01_SHA256,
+    RESEARCH_LEAD_TIME_FAILURE_SCRIPT_SHA256,
+    RESEARCH_SCORE_STAGE_PROTOTYPE_SCRIPT_SHA256,
+    SOURCE_MARKET_CAP_20250131_SHA256,
+    SOURCE_MARKET_CAP_20260814_SHA256,
+    assert_file_sha256,
+)
+
 
 ROOT = Path(__file__).resolve().parents[1]
-BASE = "aae2db99beebcbfe518fd614e2ab650dc432e569"
+BASE = "aae2db99beebcbfe518fd614e2ab650dc432e569"  # Phase 13J-1 freeze reference commit (역사적 참조용, 더 이상 git diff 대상 아님 -- FIX_03)
 OOS = ROOT / "artifacts/pattern_a_fast/investable_oos"
 HISTORY = ROOT / "artifacts/investability/history"
+SOURCE = ROOT / "artifacts/investability/source"
 MANIFEST = OOS / "pattern_a_fast_investable_oos_selection_manifest_v01.csv"
 REVIEW = OOS / "pattern_a_fast_investable_oos_human_review_v01.csv"
 ASSETS = OOS / "pattern_a_fast_investable_oos_blind_asset_manifest_v01.csv"
@@ -46,6 +55,23 @@ def _frames() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
 
 
 def test_frozen_krx_inputs_phase10_contract_and_protected_inputs_are_unchanged():
+    """TEST_SUITE_PERFORMANCE_AUDIT_AND_REFACTOR_FIX_03: this used to
+    `git diff --quiet BASE -- protected` over whole directories
+    (artifacts/investability/history, artifacts/investability/source,
+    artifacts/pattern_a_fast/{oos,human_anchors,ground_truth,research}), which
+    treats any later legitimate addition under those paths as a frozen-
+    evidence violation ("directory unchanged since BASE" instead of
+    "preregistered exact frozen inputs unchanged", per design). The
+    provenance-tracked historical files under artifacts/investability/history/
+    are already row-level sha256 sealed in
+    test_active_and_superseded_sources_are_krx_only_hash_sealed_and_unambiguous
+    (test_krx_historical_market_cap_backfill.py); the ground_truth/research/oos/
+    human_anchors directories carry no additional frozen claim beyond what is
+    already sha256-sealed elsewhere (test_pattern_a_fast_lead_time_failure_analysis.py's
+    4-file frozen allowlist). What this test uniquely claims to protect -- the
+    two canonical PIT market-cap snapshots and the 3 scripts -- is now checked
+    by explicit sha256 instead.
+    """
     seal = _seal()
     grid = pd.read_csv(HISTORY / "krx_market_cap_reference_grid_v01.csv", dtype=str)
     audit = json.loads((HISTORY / "krx_historical_market_cap_backfill_audit_v01.json").read_text())
@@ -58,15 +84,11 @@ def test_frozen_krx_inputs_phase10_contract_and_protected_inputs_are_unchanged()
     assert seal["phase10_market_cap_threshold"] == 100_000_000_000.0
     assert seal["phase10_avg_trading_value_20d_threshold"] == 300_000_000.0
     assert seal["phase10_close_filter"] == "NONE"
-    protected = [
-        "artifacts/investability/history", "artifacts/investability/source", "artifacts/pattern_a_fast/oos",
-        "artifacts/pattern_a_fast/human_anchors", "artifacts/pattern_a_fast/ground_truth", "artifacts/pattern_a_fast/research",
-        "scripts/evaluate_pattern_a_fast_oos_v01.py", "scripts/research_pattern_a_fast_lead_time_failure.py",
-        "scripts/research_pattern_a_fast_score_stage_prototype.py",
-        # docs/roadmap.md is a living project document, not frozen research
-        # evidence; it is expected to evolve after PHASE_13_RESEARCH_CLOSED.
-    ]
-    assert subprocess.run(["git", "diff", "--quiet", BASE, "--", *protected], cwd=ROOT, check=False).returncode == 0
+    assert_file_sha256(SOURCE / "krx_market_cap_20250131.csv", SOURCE_MARKET_CAP_20250131_SHA256)
+    assert_file_sha256(SOURCE / "krx_market_cap_20260814.csv", SOURCE_MARKET_CAP_20260814_SHA256)
+    assert_file_sha256(ROOT / "scripts/evaluate_pattern_a_fast_oos_v01.py", EVALUATE_PATTERN_A_FAST_OOS_V01_SHA256)
+    assert_file_sha256(ROOT / "scripts/research_pattern_a_fast_lead_time_failure.py", RESEARCH_LEAD_TIME_FAILURE_SCRIPT_SHA256)
+    assert_file_sha256(ROOT / "scripts/research_pattern_a_fast_score_stage_prototype.py", RESEARCH_SCORE_STAGE_PROTOTYPE_SCRIPT_SHA256)
 
 
 def test_sample_and_protocol_freezes_are_byte_exact_while_the_human_template_seal_is_preserved():
