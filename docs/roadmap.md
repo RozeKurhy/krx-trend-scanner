@@ -42,7 +42,7 @@ Phase만): `PRODUCTION` / `PRODUCTION_HOLD` / `EXPERIMENTAL` / `PRODUCTION_DECIS
 * Pattern A: `Lifecycle = CLOSED`, `Production = PRODUCTION`, `Qualifier = FROZEN`
 * Pattern A FAST: `Lifecycle = CLOSED`, `Production = PRODUCTION_HOLD`, `Usage = EXPERIMENTAL`
 * A FAST Core V2: `Lifecycle = CLOSED`, `Production = PRODUCTION_DECISION_SUPPORT`, `Qualifier = FROZEN`
-* Phase 12: `Lifecycle = HOLD`, `Qualifier = HOLD_RELATIVE_STRENGTH_INFRA`
+* Phase 12: `Operational Status = HOLD_RELATIVE_STRENGTH_INFRA`
 
 문서 전반에서 초기 Pattern A 트랙(Phase 1~11)이 사용해온 `DONE`은 이
 문서 내에서 `CLOSED`와 동일한 의미(Phase lifecycle 완료)로 취급한다 —
@@ -71,7 +71,7 @@ CLOSED고 Production 승격 여부는 별도"임을 한 토큰으로 강조하�
 | | **Pattern A Final Production Closure** | **DONE / FROZEN** | **KEEP_CURRENT_PRODUCTION 확정 (`05d03e1`)** |
 | **Filters & Confirmation** | Phase 10 Investability Filter | CLOSED | 시총 $\ge \text{1,000억}$, 20D 유동성 $\ge \text{3억}$ (`75afa32`) |
 | | Phase 11 Foreign Flow Infrastructure | CLOSED | Foreign Flow 독립 confirmation axis (`71237c0`) |
-| | Phase 12 Relative Strength Infrastructure | **HOLD** | **`HOLD_RELATIVE_STRENGTH_INFRA`** (Market RS 구축 완료, Sector RS 부재로 HOLD) |
+| | Phase 12 Relative Strength Infrastructure | **HOLD_RELATIVE_STRENGTH_INFRA** | Market RS 구축 완료, Sector RS 부재로 HOLD |
 | **Pattern A FAST** | Phase 13 Signal Model Research | **RESEARCH_CLOSED / PRODUCTION_HOLD** | Score Separation `PASS`, Lead Time `INCONCLUSIVE` (`935f9be`) |
 | **A FAST Core Strategy** | A FAST Core Strategy V1 | CLOSED / FROZEN | 단일 진입 모델 (**`HISTORICAL_FROZEN_BASELINE`**) |
 | | **A FAST Core Strategy V2** | **CLOSED / FROZEN** | **Current Default Strategy (`PRODUCTION_DECISION_SUPPORT`)** |
@@ -80,8 +80,8 @@ CLOSED고 Production 승격 여부는 별도"임을 한 토큰으로 강조하�
 | **Engineering Infrastructure** | Documentation IA Reorganization | CLOSED | Domain-first / Pattern-second 구조 확립 (`docs/README.md`) |
 | | Artifacts IA Reorganization | CLOSED | Authority & Lifecycle 분리 완료 (`a81e3bb`) |
 | | Test Suite Performance Audit | CLOSED | 실행 시간 단축 (~66분 ➔ ~11분44초) |
-| **Project Management** | README & Roadmap Refresh | **CURRENT / CLOSING** | 최신 프로젝트 상태 및 로드맵 동기화 |
-| | **Julia Strategy V00 Backtest** | **NEXT / EXPLORATORY** | **A FAST Core V2 기반 Loss Guard OFF 비교 가설 검증** |
+| **Project Management** | README & Roadmap Refresh | **CLOSED** | Refresh 및 Semantics 정합성 완료 |
+| | **Julia Strategy V00 Backtest** | **NEXT / EXPLORATORY_CANDIDATE** | **A FAST Core V2 기반 Loss Guard OFF 비교 가설 검증** |
 | **Longer-term** | Phase 14~18. Pattern B ~ F | PLANNED | 장기 파이프라인 |
 | | Phase 19. Market Leader Score | PLANNED | 종합 스코어링 체계 |
 | | Phase 20~21. Operational Dashboard | PLANNED | 최종 운영 시스템 |
@@ -91,7 +91,7 @@ CLOSED고 Production 승격 여부는 별도"임을 한 토큰으로 강조하�
 ## 공식 작업 우선순위 (Current Work Order)
 
 ```text
-1. README & Roadmap Refresh = CURRENT / CLOSING
+1. README & Roadmap Refresh = CLOSED
        ↓
 2. Julia Strategy V00 Backtest = NEXT / EXPLORATORY_CANDIDATE
        ↓
@@ -311,10 +311,10 @@ Pattern A, Pattern A FAST, Investability 필터, 손절 및 청산 규칙을 결
 
 ### 전략 버전 체계
 * **A FAST Core V2 (`PATTERN_A_FAST_FINAL_STRATEGY_V02`) — Current Default Strategy**:
-  * **진입 (Entry)**: Investable + Pattern A FAST Setup/Trigger 조건 충족 시 익일 시가 진입.
-  * **손절 (Loss Guard)**: PROGRESSED 도달 전 $\mathbf{-15\%}$ 손실 도달 시 즉시 익일 시가 손절.
-  * **청산 (Exit3 / Exit4)**: PROGRESSED 도달 후 12주 이평선 이탈 또는 주봉 지지선 붕괴 시 청산.
-  * **재진입 (Reentry)**: 포지션 청산(FLAT) 후 새로운 진입 조건 충족 시 독립 재진입 허용 (V1 대비 유일한 차이점).
+  * **진입 (Entry)**: Pattern A가 TRANSITION 또는 EARLY_TREND이고, FAST가 TRIGGER/READY이며, Investability·Monthly Regime(PERMITTED_REGIME)·Daily Risk(NORMAL/ELEVATED)·FAST Score Status 조건이 모두 허용될 때 다음 로컬 거래일 시가 진입.
+  * **손절 (Loss Guard)**: Pre-PROGRESSED 구간에서 entry_open 대비 일봉 종가 -15% 이하 도달 시 다음 로컬 거래일 시가 청산 (최초 PROGRESSED effective date 도달 이후 비활성화).
+  * **청산 (Exit3 / Exit4)**: PROGRESSED에서 WEAK/BASE/TRANSITION/EARLY_TREND 등 다른 유효 Pattern A Stage로 이탈 시 Exit3 청산, PROGRESSED 이후 Score HWM 대비 현재 Score가 15pt 이상 하락 시 Exit4 청산 (특수 Coverage lifecycle에서는 Exit3 비활성 및 Exit4만 적용).
+  * **재진입 (Reentry)**: 포지션 청산(FLAT) 후 새로운 진입 조건 충족 시 동일 종목 독립 재진입 허용 (V1 대비 유일한 전략 변경점, No Cooldown / No Max Reentries, 피라미딩 및 중복 포지션 금지).
   * **공식 상태**: **`FINAL_STRATEGY_FROZEN / PRODUCTION_DECISION_SUPPORT`** ([V2 Contract](patterns/pattern_a_fast/strategy/final_v02.md), [Strategy Versions](patterns/pattern_a_fast/strategy/versions.md))
   * **회고적 검증 증거**: 783 trades / 551 tickers (Same Sample Retrospective, Fresh OOS 미실행).
   * **기준 커밋**: Architecture (`89df82a`), Calendar (`88d54d8`), Evidence (`36273d9`), Trade Gen (`b9ba613`)
@@ -330,13 +330,15 @@ Pattern A, Pattern A FAST, Investability 필터, 손절 및 청산 규칙을 결
 
 * **공식 상태**: **`CLOSED / PRODUCTION_DECISION_SUPPORT`** ([Stock Report v0.2 Contract](reporting/stock_report/contract_v02.md))
 * **특징**: 네트워크 요청 0건 (Local Parquet Cache + Canonical Artifacts 전용), JSON 및 Markdown 동시 출력.
-* **리포트 구성**:
-  1. Pattern A Score v0.2, Stage Classifier, Candidate State, Score Momentum
-  2. Phase 10 Investability 판정
+* **리포트 구성 (8대 축)**:
+  1. Pattern A 진단 (Score v0.2, Stage Classifier, Candidate State, Score Momentum)
+  2. Phase 10 Investability 판정 (시총 $\ge \text{1,000억}$, 20D 거래대금 $\ge \text{3억}$)
   3. A FAST Core V2 Canonical Strategy Position (`OPEN` / `FLAT`) 및 Action (`ENTER_NEXT_OPEN`, `HOLD`, `EXIT_NEXT_OPEN`, `WAIT`)
   4. Pattern A FAST Early Signal Stage & Fast Score
-  5. Phase 11 Foreign Flow 수급 지표 및 강도
-  6. 데이터 품질 및 PIT 무결성 감사
+  5. Pattern A 월별 히스토리 추이 (Monthly History / Score Trend / Stage Transitions)
+  6. Phase 11 Foreign Flow 수급 지표 및 Flow Intensity
+  7. 거래대금 추이 (Trading Value Trend, 5D/20D/60D 평균 및 단·중기 확장 상태)
+  8. 데이터 품질 및 PIT 무결성 감사 (Zero Network Requests)
 * **산출물**: `artifacts/reporting/stock_reports/<YYYYMMDD>/`
 
 ---
@@ -419,7 +421,7 @@ CLI / Web 대시보드, 관심종목 워크플로우, 실시간 알림 등 최�
 10. Post-Phase 13 A FAST Core Strategy V1/V2 Finalization — CLOSED
 11. Stock Report v0.2 Integration — CLOSED
 12. Documentation & Artifacts IA Reorganization — CLOSED (`a81e3bb`)
-13. README & Roadmap Refresh — **CURRENT / CLOSING**
+13. README & Roadmap Refresh — **CLOSED**
 14. Julia Strategy V00 Backtest — **NEXT / EXPLORATORY_CANDIDATE**
 15. Phase 12 Relative Strength Infrastructure Resume & Closure — THEN
 16. Web Report Viewer — THEN

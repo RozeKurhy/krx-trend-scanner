@@ -63,10 +63,10 @@
 Pattern A의 장기 베이스와 Pattern A FAST의 주봉 타이밍, Investability 필터, 손절 및 청산 규칙을 결합한 통합 매매 전략입니다.
 
 * **A FAST Core V2 (`PATTERN_A_FAST_FINAL_STRATEGY_V02`) — Current Default**:
-  * **진입 (Entry)**: Investable + Pattern A FAST Setup/Trigger 조건 충족 시 익일 시가 진입.
-  * **손절 (Loss Guard)**: PROGRESSED 도달 전 $\mathbf{-15\%}$ 손실 도달 시 즉시 익일 시가 손절.
-  * **청산 (Exit3 / Exit4)**: PROGRESSED 도달 후 12주 이평선 이탈 또는 주봉 지지선 붕괴 시 청산.
-  * **재진입 (Reentry)**: 포지션 청산(FLAT) 후 새로운 진입 조건 충족 시 독립 재진입 허용 (V1 대비 유일한 차이점).
+  * **진입 (Entry)**: Pattern A가 TRANSITION 또는 EARLY_TREND이고, FAST가 TRIGGER/READY이며, Investability·Monthly Regime·Daily Risk·FAST Score Status 조건이 모두 허용될 때 다음 로컬 거래일 시가 진입.
+  * **손절 (Loss Guard)**: Pre-PROGRESSED 구간에서 entry_open 대비 일봉 종가 -15% 이하 도달 시 다음 로컬 거래일 시가 청산 (최초 PROGRESSED effective date 도달 이후 비활성화).
+  * **청산 (Exit3 / Exit4)**: PROGRESSED에서 다른 유효 Pattern A Stage(WEAK/BASE/TRANSITION/EARLY_TREND)로 이탈 시 Exit3 청산, PROGRESSED 이후 Score HWM 대비 현재 Score가 15pt 이상 하락 시 Exit4 청산 (특수 Coverage lifecycle에서는 Exit3 비활성 및 Exit4만 적용).
+  * **재진입 (Reentry)**: 포지션 청산(FLAT) 후 새로운 진입 조건 충족 시 동일 종목 독립 재진입 허용 (V1 대비 유일한 전략 변경점, No Cooldown / No Max Reentries, 피라미딩 및 중복 포지션 금지).
   * **공식 상태**: **`FINAL_STRATEGY_FROZEN / PRODUCTION_DECISION_SUPPORT`** ([V2 Contract](docs/patterns/pattern_a_fast/strategy/final_v02.md))
 * **A FAST Core V1 (`PATTERN_A_FAST_FINAL_STRATEGY_V01`) — Historical Baseline**:
   * 재진입이 금지된 단일 진입 모델로, 영구 보존되는 과거 기준선 (**`HISTORICAL_FROZEN_BASELINE`**).
@@ -76,16 +76,18 @@ Pattern A의 장기 베이스와 Pattern A FAST의 주봉 타이밍, Investabili
 
 ## 📄 종목 분석 리포트 (Stock Report v0.2)
 
-단일 종목의 장기 패턴, 투자 적합성, 전략 상태, 수급 현황을 종합 진단하는 Markdown 및 JSON 리포트 생성기입니다.
+단일 종목의 장기 패턴, 투자 적합성, 전략 상태, 수급 현황, 히스토리 추이를 종합 진단하는 Markdown 및 JSON 리포트 생성기입니다.
 
 * **공식 상태**: **`CLOSED / PRODUCTION_DECISION_SUPPORT`** ([v0.2 Contract](docs/reporting/stock_report/contract_v02.md))
-* **핵심 항목**:
+* **핵심 항목 (8대 축)**:
   1. **Pattern A 진단**: Score v0.2, Stage Classifier, Candidate State, 1M/3M/6M Score Momentum
-  2. **Investability 평가**: 시가총액, 20D 거래대금 적합성 판정
+  2. **Investability 평가**: 시가총액($\ge \text{1,000억}$), 20D 거래대금($\ge \text{3억}$) 적합성 판정
   3. **A FAST Core V2 전략 상태**: Canonical Strategy Position (`OPEN` / `FLAT`) 및 Action (`ENTER_NEXT_OPEN`, `HOLD`, `EXIT_NEXT_OPEN`, `WAIT`)
   4. **Pattern A FAST 조기 신호**: Early Signal Stage & Fast Score
-  5. **수급 현황**: 외국인 기간별 순매수 및 Flow Intensity
-  6. **데이터 품질**: 결측치 및 PIT 무결성 감사
+  5. **월별 히스토리 추이 (Monthly History)**: 과거 월별 Pattern A Score Trend, Stage Transitions, Recent 12M History
+  6. **수급 현황 (Foreign Flow)**: 외국인 기간별(1D/5D/20D/60D) 순매수 및 Flow Intensity
+  7. **거래대금 추이 (Trading Value Trend)**: 5D/20D/60D 평균 거래대금 및 단·중기 확장 상태/비율
+  8. **데이터 품질 & Provenance**: 결측치 감사, Zero Network Requests, PIT 무결성 검증
 * **산출물 경로**: `artifacts/reporting/stock_reports/<YYYYMMDD>/`
 
 > **주의**: 리포트의 포지션 정보는 사용자의 실제 계좌 보유 내역이 아닌 **A FAST Core 전략의 공인 가상 포지션(Canonical Strategy Position)**입니다.
@@ -159,14 +161,17 @@ from pathlib import Path
 from trend_scanner.reporting.stock_report import generate_stock_report
 
 repo_root = Path(".")
-report = generate_stock_report(
+report, json_path, md_path = generate_stock_report(
     ticker="000660",
-    name="SK하이닉스",
     as_of="2026-08-14",
     repo_root=repo_root,
 )
-print(f"Pattern A Score: {report['pattern_a']['score']}")
-print(f"A FAST Core V2 Action: {report['fast_core_v2']['action']}")
+print(f"Pattern A Score: {report.current_snapshot.pattern_a_score}")
+print(f"Pattern A Stage: {report.current_snapshot.official_stage}")
+print(f"A FAST Core V2 State: {report.a_fast_core.strategy_state}")
+print(f"A FAST Core V2 Action: {report.a_fast_core.action}")
+print(f"JSON: {json_path}")
+print(f"Markdown: {md_path}")
 ```
 
 ---
@@ -174,7 +179,7 @@ print(f"A FAST Core V2 Action: {report['fast_core_v2']['action']}")
 ## 🗺️ 개발 로드맵 및 현재 작업 순서
 
 ```text
-[README/Roadmap Refresh] (CURRENT / CLOSING)
+[README/Roadmap Refresh] (CLOSED)
        ↓
 [Julia Strategy V00 Backtest] (NEXT / EXPLORATORY)
        ↓
@@ -194,7 +199,7 @@ print(f"A FAST Core V2 Action: {report['fast_core_v2']['action']}")
 5. **Post-Phase 13: A FAST Core Strategy V1/V2 Finalization** — **`CLOSED / DECISION_SUPPORT`**
 6. **Stock Report v0.2 Integration** — **`CLOSED / DECISION_SUPPORT`**
 7. **Engineering IA Reorganization (Docs & Artifacts)** — **`CLOSED`**
-8. **README & Roadmap Refresh** — **`CURRENT TASK`**
+8. **README & Roadmap Refresh** — **`CLOSED`**
 9. **Julia Strategy V00 Backtest** — **`NEXT / EXPLORATORY_CANDIDATE`** (A FAST Core V2에서 Loss Guard OFF 비교 가설 검증)
 10. **Phase 12: Relative Strength Infrastructure** — **`HOLD_RELATIVE_STRENGTH_INFRA`** (Julia 완료 후 재개)
 11. **Web Report Viewer** — **`PLANNED`** (Phase 12 Closure 이후 착수)
