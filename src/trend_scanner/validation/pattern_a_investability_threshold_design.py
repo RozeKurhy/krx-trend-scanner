@@ -36,13 +36,16 @@ EXPECTED_GOOD_FIT_COUNT = 9
 EXPECTED_BORDERLINE_COUNT = 18
 EXPECTED_NOT_FIT_COUNT = 15
 
-PHASE_10A_EXPECTED_HASHES = {
+PHASE_10A_PRODUCTION_EXPECTED_HASHES = {
     "pattern_a_investability_universe_20260814.csv": "1aca764fc56d3416b9f10ce418a0deaca5174cb8c32997acfd2df1000987e4c8",
     "pattern_a_investability_candidates_20260814.csv": "02b2c5255db6a63c71d9af0262bdb8f0b4bd93969e4bf987e47b92ec8e0d7dc3",
-    "pattern_a_investability_scenarios_20260814.csv": "15e2e02d87e085febb50b6629e704fd06402815df8e5aa157d148be414eb82eb",
     "pattern_a_investability_distribution_20260814.json": "495061598b96ca3fade85a7efe3dc5864324eb9ca177eb807e578562e903d2a9",
     "pattern_a_investability_summary_20260814.json": "d2d7535f34587980899bfc85fc4a68fe3c663f5f708fe75992a631fc8eb2bc92",
 }
+# Backward-compatibility alias
+PHASE_10A_EXPECTED_HASHES = PHASE_10A_PRODUCTION_EXPECTED_HASHES
+
+PHASE_10A_SCENARIO_EXPECTED_HASH = "15e2e02d87e085febb50b6629e704fd06402815df8e5aa157d148be414eb82eb"
 
 
 def calculate_distribution_stats(series: pd.Series) -> dict[str, Any]:
@@ -327,7 +330,7 @@ def run_threshold_design_validation(
     # Check Phase 10A Artifact Source Hash Invariance
     phase10a_hashes_match = True
     if not output_dir:  # only verify against canonical repo root
-        for fname, exp_hash in PHASE_10A_EXPECTED_HASHES.items():
+        for fname, exp_hash in PHASE_10A_PRODUCTION_EXPECTED_HASHES.items():
             fpath = in_dir / fname
             if not fpath.exists():
                 phase10a_hashes_match = False
@@ -336,6 +339,10 @@ def run_threshold_design_validation(
             if act_hash != exp_hash:
                 phase10a_hashes_match = False
                 break
+
+        scenario_fpath = repo_root / "artifacts/patterns/pattern_a/research/investability_threshold_design/pattern_a_investability_scenarios_20260814.csv"
+        if not scenario_fpath.exists() or hashlib.sha256(scenario_fpath.read_bytes()).hexdigest() != PHASE_10A_SCENARIO_EXPECTED_HASH:
+            phase10a_hashes_match = False
 
     if not cand_csv.exists() or not univ_csv.exists():
         # Fail-closed guard if source is missing

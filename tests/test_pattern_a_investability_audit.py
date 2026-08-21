@@ -18,6 +18,7 @@ from trend_scanner.validation.pattern_a_investability_audit import (
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 _ARTIFACTS_DIR = _REPO_ROOT / "artifacts/patterns/pattern_a/production/investability"
+_RESEARCH_ARTIFACTS_DIR = _REPO_ROOT / "artifacts/patterns/pattern_a/research/investability_threshold_design"
 
 
 @pytest.fixture(scope="module")
@@ -97,7 +98,7 @@ def test_gate10_disk_artifact_consistency(canonical_audit_result: dict):
     
     # Read actual disk files and verify values
     df_cand_disk = pd.read_csv(_ARTIFACTS_DIR / "pattern_a_investability_candidates_20260814.csv", dtype={"ticker": str})
-    df_sc_disk = pd.read_csv(_ARTIFACTS_DIR / "pattern_a_investability_scenarios_20260814.csv")
+    df_sc_disk = pd.read_csv(_RESEARCH_ARTIFACTS_DIR / "pattern_a_investability_scenarios_20260814.csv")
     dist_disk = json.loads((_ARTIFACTS_DIR / "pattern_a_investability_distribution_20260814.json").read_text(encoding="utf-8"))
     doc_text = (_REPO_ROOT / "docs/patterns/pattern_a/validation/investability_distribution_v01.md").read_text(encoding="utf-8")
 
@@ -170,3 +171,14 @@ def test_fail_closed_negative_cases_in_isolated_tmp(tmp_path: Path):
     # Verify that official artifact was NOT overwritten or contaminated
     post_hash = hashlib.sha256(summary_path.read_bytes()).hexdigest()
     assert pre_hash == post_hash, "Official artifact must NOT be contaminated by negative test!"
+
+
+def test_investability_scenarios_has_single_research_canonical_location():
+    """Verify scenarios CSV exists in Research only, with exact SHA-256 and no Production duplicate."""
+    research_csv = _RESEARCH_ARTIFACTS_DIR / "pattern_a_investability_scenarios_20260814.csv"
+    assert research_csv.exists(), "Canonical Research scenarios CSV must exist!"
+    act_hash = hashlib.sha256(research_csv.read_bytes()).hexdigest()
+    assert act_hash == "15e2e02d87e085febb50b6629e704fd06402815df8e5aa157d148be414eb82eb"
+
+    production_csv = _ARTIFACTS_DIR / "pattern_a_investability_scenarios_20260814.csv"
+    assert not production_csv.exists(), "Production duplicate scenarios CSV must NOT exist!"

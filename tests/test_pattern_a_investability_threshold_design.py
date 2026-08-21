@@ -13,6 +13,7 @@ from trend_scanner.validation.pattern_a_investability_threshold_design import (
     calculate_distribution_stats,
     PHASE_10A_CHECKPOINT_SHA,
     PHASE_10A_EXPECTED_HASHES,
+    PHASE_10A_SCENARIO_EXPECTED_HASH,
     CANONICAL_AS_OF,
     EXPECTED_UNIVERSE_COUNT,
     EXPECTED_CANDIDATE_COUNT,
@@ -22,6 +23,7 @@ from trend_scanner.validation.pattern_a_investability_threshold_design import (
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 _ARTIFACTS_DIR = _REPO_ROOT / "artifacts/patterns/pattern_a/production/investability"
+_RESEARCH_ARTIFACTS_DIR = _REPO_ROOT / "artifacts/patterns/pattern_a/research/investability_threshold_design"
 
 
 @pytest.fixture(scope="module")
@@ -34,9 +36,14 @@ def test_gate1_phase_10a_source_identity():
     """Gate 1: Verify Phase 10A canonical artifacts are strictly preserved and unmutated."""
     for fname, exp_hash in PHASE_10A_EXPECTED_HASHES.items():
         fpath = _ARTIFACTS_DIR / fname
-        assert fpath.exists(), f"Phase 10A artifact missing: {fname}"
+        assert fpath.exists(), f"Phase 10A production artifact missing: {fname}"
         actual_hash = hashlib.sha256(fpath.read_bytes()).hexdigest()
-        assert actual_hash == exp_hash, f"Phase 10A artifact {fname} was mutated!"
+        assert actual_hash == exp_hash, f"Phase 10A production artifact {fname} was mutated!"
+
+    scenario_fpath = _RESEARCH_ARTIFACTS_DIR / "pattern_a_investability_scenarios_20260814.csv"
+    assert scenario_fpath.exists(), "Phase 10A scenario artifact missing in Research!"
+    act_sc_hash = hashlib.sha256(scenario_fpath.read_bytes()).hexdigest()
+    assert act_sc_hash == PHASE_10A_SCENARIO_EXPECTED_HASH, "Phase 10A scenario artifact was mutated!"
 
 
 def test_gate2_cohort_identity(threshold_design_result: dict):

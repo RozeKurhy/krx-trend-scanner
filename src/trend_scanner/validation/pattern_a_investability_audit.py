@@ -975,7 +975,12 @@ def run_investability_audit(
     if write_artifacts:
         df_univ.to_csv(out_dir / "pattern_a_investability_universe_20260814.csv", index=False)
         df_cand.to_csv(out_dir / "pattern_a_investability_candidates_20260814.csv", index=False)
-        df_scenarios.to_csv(out_dir / "pattern_a_investability_scenarios_20260814.csv", index=False)
+        if is_canonical_run:
+            scenario_out_dir = repo_root / "artifacts/patterns/pattern_a/research/investability_threshold_design"
+            scenario_out_dir.mkdir(parents=True, exist_ok=True)
+            df_scenarios.to_csv(scenario_out_dir / "pattern_a_investability_scenarios_20260814.csv", index=False)
+        else:
+            df_scenarios.to_csv(out_dir / "pattern_a_investability_scenarios_20260814.csv", index=False)
         (out_dir / "pattern_a_investability_distribution_20260814.json").write_text(
             json.dumps(distribution_summary, indent=2, ensure_ascii=False), encoding="utf-8"
         )
