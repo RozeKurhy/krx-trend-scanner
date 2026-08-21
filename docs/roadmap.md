@@ -11,12 +11,12 @@
 최종 목표는:
 
 > 대세 상승이 만들어지기 시작하는 종목을 여러 독립적인 패턴과
-> 시장 신호를 이용해 조기에 탐지하는 것
+> 시장 신호를 이용해 조기에 탐지하고, 체계적인 매매 전략 및 리포트로 의사결정을 지원하는 것
 
 기본 철학:
 
 ```text
-가격 구조 -> 장기 추세 -> 투자 적합성 필터 -> 수급 확인 -> 상대강도 -> 펀더멘털
+가격 구조 -> 장기 추세 -> 투자 적합성 필터 -> 수급 확인 -> 상대강도 -> 전략 실행
 ```
 
 순으로 증거를 쌓고, Pattern A, Pattern A Fast, Pattern B~F는 먼저 독립적으로 검증한 뒤
@@ -35,13 +35,14 @@ Production 승격은 아직"처럼 하나의 축만으로는 실제 상태를 �
 `NEXT` / `RESUME_READY` / `FROZEN`
 
 **Production / Usage qualifier**(실전 사용 가능 여부, Production 관련
-Phase만): `PRODUCTION` / `PRODUCTION_HOLD` / `EXPERIMENTAL`
+Phase만): `PRODUCTION` / `PRODUCTION_HOLD` / `EXPERIMENTAL` / `PRODUCTION_DECISION_SUPPORT`
 
 예:
 
 * Pattern A: `Lifecycle = CLOSED`, `Production = PRODUCTION`, `Qualifier = FROZEN`
 * Pattern A FAST: `Lifecycle = CLOSED`, `Production = PRODUCTION_HOLD`, `Usage = EXPERIMENTAL`
-* Phase 12: `Lifecycle = PLANNED`, `Qualifier = RESUME_READY`
+* A FAST Core V2: `Lifecycle = CLOSED`, `Production = PRODUCTION_DECISION_SUPPORT`, `Qualifier = FROZEN`
+* Phase 12: `Lifecycle = HOLD`, `Qualifier = HOLD_RELATIVE_STRENGTH_INFRA`
 
 문서 전반에서 초기 Pattern A 트랙(Phase 1~11)이 사용해온 `DONE`은 이
 문서 내에서 `CLOSED`와 동일한 의미(Phase lifecycle 완료)로 취급한다 —
@@ -55,41 +56,53 @@ CLOSED고 Production 승격 여부는 별도"임을 한 토큰으로 강조하�
 
 ## Current Status
 
-**Pattern A Core Engine**: **`DONE / FROZEN`**
+| 구분 | 단계 / 마일스톤 | 상태 | 상세 / 기준 커밋 |
+|---|---|---|---|
+| **Pattern A Core Engine** | Feature & Snapshot Validation | DONE | 17개 피처 및 Time-Travel Free 검증 완료 |
+| | Score Design v0.2 | DONE | Core/Support 조화평균 결합 (`fffce85`) |
+| | Stage Classifier v0.1 | DONE | 5단계 Rule-based Lifecycle 분류기 (`43ee01c`) |
+| | Single Evaluator Integration v0.1 | DONE | Evaluator API 및 Candidate State (`51fc202`) |
+| | Data Quality & Universe Preparation | DONE | Fail-Closed 종목명 조회, 36m 계약 (`0ce8012`) |
+| | Pattern A Score Momentum v0.1 | DONE | Calendar 1M/3M/6M Delta 측정 계층 (`707c594`) |
+| | Official Common Stock Cache Population | DONE | 2,528개 보통주 캐시 구축 (Coverage 98.34%, `8983e65`) |
+| | Full Universe Scanner Integration | DONE | 2,528개 전종목 스캔 및 매트릭스 통합 (`13ab6f4`) |
+| | Real Candidate Review & Human42 | DONE | 180개 Candidate 추출 및 Human42 차트 리뷰 완료 |
+| | Stage Research (v0.2/v0.3/v0.4) | CLOSED | v0.2 HOLD(`d975f66`), v0.3 CLOSED(`6f3c061`), v0.4 CLOSED(`5be5b42`) |
+| | **Pattern A Final Production Closure** | **DONE / FROZEN** | **KEEP_CURRENT_PRODUCTION 확정 (`05d03e1`)** |
+| **Filters & Confirmation** | Phase 10 Investability Filter | CLOSED | 시총 $\ge \text{1,000억}$, 20D 유동성 $\ge \text{3억}$ (`75afa32`) |
+| | Phase 11 Foreign Flow Infrastructure | CLOSED | Foreign Flow 독립 confirmation axis (`71237c0`) |
+| | Phase 12 Relative Strength Infrastructure | **HOLD** | **`HOLD_RELATIVE_STRENGTH_INFRA`** (Market RS 구축 완료, Sector RS 부재로 HOLD) |
+| **Pattern A FAST** | Phase 13 Signal Model Research | **RESEARCH_CLOSED / PRODUCTION_HOLD** | Score Separation `PASS`, Lead Time `INCONCLUSIVE` (`935f9be`) |
+| **A FAST Core Strategy** | A FAST Core Strategy V1 | CLOSED / FROZEN | 단일 진입 모델 (**`HISTORICAL_FROZEN_BASELINE`**) |
+| | **A FAST Core Strategy V2** | **CLOSED / FROZEN** | **Current Default Strategy (`PRODUCTION_DECISION_SUPPORT`)** |
+| **Reporting & Viewer** | Stock Report v0.2 | CLOSED | Production Integration 완료 (`PRODUCTION_DECISION_SUPPORT`) |
+| | Web Report Viewer | PLANNED | Phase 12 Closure 이후 착수 |
+| **Engineering Infrastructure** | Documentation IA Reorganization | CLOSED | Domain-first / Pattern-second 구조 확립 (`docs/README.md`) |
+| | Artifacts IA Reorganization | CLOSED | Authority & Lifecycle 분리 완료 (`a81e3bb`) |
+| | Test Suite Performance Audit | CLOSED | 실행 시간 단축 (~66분 ➔ ~11분44초) |
+| **Project Management** | README & Roadmap Refresh | **CURRENT / CLOSING** | 최신 프로젝트 상태 및 로드맵 동기화 |
+| | **Julia Strategy V00 Backtest** | **NEXT / EXPLORATORY** | **A FAST Core V2 기반 Loss Guard OFF 비교 가설 검증** |
+| **Longer-term** | Phase 14~18. Pattern B ~ F | PLANNED | 장기 파이프라인 |
+| | Phase 19. Market Leader Score | PLANNED | 종합 스코어링 체계 |
+| | Phase 20~21. Operational Dashboard | PLANNED | 최종 운영 시스템 |
 
-| 단계 | 상태 | 상세/커밋 |
-|---|---|---|
-| Feature Validation | DONE | 17개 기본 Feature 검증 완료 |
-| Historical Snapshot Validation | DONE | Lookahead 없는 과거 시점 재현 |
-| Holdout Validation | DONE | OOS Case 29건 고정 |
-| Negative Control | DONE | False turn & Non-pattern 종목 검증 |
-| Outcome Audit | DONE | 사후 성과 독립 감사 |
-| Base / Expansion Validation | DONE | 베이스 및 확장 구조 검증 |
-| Feature Set Freeze v0.1 | DONE | Feature 계약 확정 |
-| Score Design v0.1 (freeze `6e7cc95`) | DONE | 1세대 스코어 설계 |
-| Score Design v0.2 (implementation freeze `fffce85`) | DONE | Core/Support 조화평균, 페널티 구조 |
-| Pattern A v0.2 OOS2 Validation | DONE | 38건 OOS2 검증 완료 |
-| Pattern A Stage Truth Set Freeze (46건) | DONE | Manual Stage 라벨링 확정 |
-| Pattern A Stage Classifier v0.1 (`43ee01c`) | DONE | Rule-based Lifecycle 분류기 (Calibration 38/5/3, OOS 24/10/1) |
-| Pattern A Evaluator Integration v0.1 (`51fc202`) | DONE | Single-stock 종단간 통합 API 및 Candidate State |
-| Data Quality & Universe Preparation v0.1 (`0ce8012`) | DONE | Fail-Closed 종목명 조회, 36m 계약, 품질 감사 |
-| Pattern A Score Momentum v0.1 (`707c594`) | DONE | Calendar 1M/3M/6M Raw & Component Delta 측정 계층 |
-| Official Common Stock Cache Population | DONE | Full Population & Audit `8983e65`, final docs `7ff45fe` |
-| Full Universe Scanner Integration | DONE | Official COMMON 2,528개 스캔 및 매트릭스 통합 완료 (`13ab6f4`) |
-| Real Candidate Chart Review (Phase 9A/9B) | DONE | Phase 9A (Dataset Prep) & Phase 9B (Human42 Review) 완료 |
-| Stage v0.2 Candidate Research | HOLD | PRESEAL 미달 및 026910 미해결로 프로덕션 미채택 (`d975f66`) |
-| Stage v0.3 Existing Feature Research | CLOSED | 가설 A~G 벤치마크 훼손 확인 (`NO_GENERALIZABLE_RULE_FOUND`, `6f3c061`) |
-| Stage v0.4 Multi-Year Feature Research | CLOSED | 5년 구조 피처 9종 분리 한계 확인 (`NO_USEFUL_MULTI_YEAR_FEATURE_FOUND`, `5be5b42`) |
-| Pattern A Final Production Closure | DONE | Final Closure PASS, KEEP_CURRENT_PRODUCTION 확정 (`05d03e1`) |
-| Pattern A Stage Research Lifecycle | CLOSED | 알고리즘 연구 종료 (`KEEP_CURRENT_PRODUCTION`) |
-| Phase 10 Investability & Tradability Filter | CLOSED | 시총 >= 1,000억, 20D 유동성 >= 3억 downstream filter 통합 (Investable 103개, `75afa32`) |
-| Phase 11 Flow Confirmation Infrastructure | CLOSED | Foreign Flow 독립 confirmation axis 및 10대 hard gates 통과 (FLOW_INFRA_READY, `71237c0`) |
+---
 
-**Pattern A Fast**: **`RESEARCH_CLOSED / PRODUCTION_HOLD`** — Experimental / Early Signal 사용 가능(공식 Candidate·Ranking 미편입). 상세: [pattern_a_fast_phase_13_final_synthesis_v01.md](patterns/pattern_a_fast/validation/phase_13_final_synthesis_v01.md)  
-**Pattern B~F**: 미착수(PLANNED)  
-**전체 시장 Scanner**: 완료(DONE - Phase 8 Integration 및 Phase 9B Review 완료)  
-**현재 작업 순서**: `README/Roadmap Sync = DONE (5e7c748)` → `Stock Report Pattern A Monthly + Pattern A FAST Weekly = CLOSED (4a20358)` → `Phase 12 Relative Strength Infrastructure = NEXT / RESUME_READY` → `Phase 14 Pattern B = PLANNED`  
-**Market Leader Score**: 미착수(PLANNED - Phase 19)  
+## 공식 작업 우선순위 (Current Work Order)
+
+```text
+1. README & Roadmap Refresh = CURRENT / CLOSING
+       ↓
+2. Julia Strategy V00 Backtest = NEXT / EXPLORATORY_CANDIDATE
+       ↓
+3. Phase 12 Relative Strength Resume = THEN
+       ↓
+4. Phase 12 Final Closure = THEN
+       ↓
+5. Web Report Viewer / Production Expansion = THEN
+       ↓
+6. Phase 14~18 Pattern B ~ F & Longer-term = LONGER-TERM
+```
 
 ---
 
@@ -174,12 +187,8 @@ Frozen Pattern A Score v0.2를 완료된 월봉(Completed Monthly) 시간축으�
 
 KOSPI / KOSDAQ 보통주 2,528개 대상 원자적 캐시(Atomic Write) 구축 및 데이터 무결성 검증 완료.
 
-핵심 증거:
-* Full Population & Final Audit: `8983e65`
-* Final Documentation & Provenance Cleanup: `7ff45fe`
-
 핵심 성과:
-* Official COMMON Coverage 98.34% (2,486 / 2,528) 달성
+* Official COMMON Coverage 98.34% (2,486 / 2,528) 달성 (`8983e65`, `7ff45fe`)
 * 구조적 오염 0건 (Future/Duplicate/Unsorted/Schema Violations 0, Temp Residue 0)
 * Contract Critical Readiness 87.09% ~ 89.34% 확보 (6M Momentum 2,165개 계산 가능)
 
@@ -190,27 +199,20 @@ KOSPI / KOSDAQ 보통주 2,528개 대상 원자적 캐시(Atomic Write) 구축 �
 Official KRX KOSPI / KOSDAQ `AssetType.COMMON` universe를 대상으로 Pattern A Score, Official Stage, Candidate State, Score Momentum, Readiness 및 Quality Flags를 종목별 단일 row로 통합.
 
 핵심 성과 및 계약:
-* **평가 대상 (Evaluation Scope)**: Official KRX KOSPI / KOSDAQ 보통주 (`AssetType.COMMON`) 2,528개 전수 스캔 완료 (Row Emitted 2,528개 100% 일치)
-* **제외 자산 (Excluded Assets)**: PREFERRED, SPAC, REIT, ETF, ETN, UNKNOWN, KONEX 엄격 배제
-* **Fail-Closed 보존**: Cache Missing 42개 + Score/Stage Unavailable 265개 + Stage-only Unavailable 9개 = 총 UNAVAILABLE 316개 row 유지 및 `INSUFFICIENT_DATA` 처리
-* **예외 격리**: Scanner Calculation Errors 0건 달성
-* **매트릭스 아티팩트 생성**: `artifacts/patterns/pattern_a/production/scanner/pattern_a_universe_scan_20260814.csv` 및 `summary.json`
+* **평가 대상**: Official KRX 보통주 2,528개 전수 스캔 완료 (Row Emitted 2,528개 100% 일치)
+* **제외 자산**: PREFERRED, SPAC, REIT, ETF, ETN, UNKNOWN, KONEX 엄격 배제
+* **Fail-Closed 보존**: UNAVAILABLE 316개 row 유지 및 `INSUFFICIENT_DATA` 처리
+* **산출물**: `artifacts/patterns/pattern_a/production/scanner/pattern_a_universe_scan_20260814.csv`
 
 ---
 
 ## Phase 9. Real Candidate Chart Review & Structural Audit — DONE
 
-Scanner CANDIDATE 종목을 사람이 직접 검토(월봉 ➔ 주봉 ➔ 일봉)하여 실제 품질과 구조적 한계를 확인하고, Stage 연구 사이클을 거쳐 최종 Production을 동결한 검증 단계.
+Scanner CANDIDATE 180종목을 수동 차트 검토하고 Stage 연구 사이클을 거쳐 최종 Production을 동결한 검증 단계.
 
 구성 및 핵심 성과:
-* **Phase 9A. Candidate Review Dataset Preparation — DONE**:
-  * 180개 공인 CANDIDATE 종목 (TRANSITION 168개, EARLY_TREND 12개) 추출 및 무결성 검증 완료
-  * Review Dataset 아티팩트(`pattern_a_candidate_source_20260814.csv`, `pattern_a_candidate_manual_review_20260814.csv`, `summary.json`) 생성 및 Overwrite Protection / Source Lock 적용
-* **Phase 9B. Human Chart Review & Evidence — DONE**:
-  * **Human42 Evidence**: EARLY_TREND 12건 전수 + Exploratory TRANSITION 30건 표본에 대한 상세 수동 차트 검토 수행
-  * EARLY_TREND 적합률 83.3% (Good Fit 7, Borderline 3, Not Fit 2)
-  * Human42가 직접 확인한 구조적 Failure Pattern: Premature(바닥권 극초기 반등), Recycled(과거 시세 분출 후 조정), Too Early / Too Late 등
-  * 최종 8대 Known Limitation은 Human42 + 후속 Stage v0.2 / v0.3 / v0.4 연구를 종합하여 확정
+* **Phase 9A. Candidate Review Dataset Preparation — DONE**: 180개 공인 CANDIDATE 추출 및 무결성 검증 완료.
+* **Phase 9B. Human Chart Review & Evidence — DONE**: EARLY_TREND 12건 전수 + TRANSITION 30건 표본 검토 (EARLY_TREND 적합률 83.3%).
 * **후속 Stage 연구 및 Final Production Closure — DONE**:
   * Stage v0.2 Candidate (`d975f66`): PRESEAL 미달로 프로덕션 기각 (`HOLD`)
   * Stage v0.3 Existing Feature Research (`6f3c061`): 일반화 규칙 부재 확인 (`CLOSED`)
@@ -221,12 +223,13 @@ Scanner CANDIDATE 종목을 사람이 직접 검토(월봉 ➔ 주봉 ➔ 일봉
 
 ## Phase 10. Investability & Tradability Filter — DONE / CLOSED (`75afa32`)
 
-목적: Pattern A Candidate 중 실제로 사람이 검토하거나 실전 투자 대상으로 고려할 가치가 낮은 비투자성 / 극저유동성 종목을 사전에 분리한다.
+목적: Pattern A Candidate 중 비투자성 / 극저유동성 종목을 사전에 분리하는 독립 downstream filter.
 
 핵심 성과 및 계약:
-* **독립 필터링 계층**: 시가총액(Market Cap >= 1,000억원) 및 20D 평균 거래대금(TV20 >= 3억원) 기준의 downstream filter 통합.
+* **독립 필터링 계층**: 시가총액($\ge \text{1,000억원}$) 및 20일 평균 거래대금($\ge \text{3억원}$) 기준의 downstream filter 통합.
 * **100% Frozen Pattern A 보존**: 180개 Raw Candidate (TRANSITION 168, EARLY_TREND 12) 전수 보존.
 * **Investability 분류 결과**: Investable 103개, Filtered Market Cap 42개, Filtered Liquidity 31개, Data Unavailable 4개.
+* **산출물**: `artifacts/patterns/pattern_a/production/investability/`
 
 ---
 
@@ -258,110 +261,119 @@ Scanner CANDIDATE 종목을 사람이 직접 검토(월봉 ➔ 주봉 ➔ 일봉
 
 ---
 
-## Phase 12. Relative Strength Infrastructure — PLANNED / RESUME_READY
+## Phase 12. Relative Strength Infrastructure — HOLD_RELATIVE_STRENGTH_INFRA
 
 목적: KOSPI, KOSDAQ 지수 및 업종 대비 상대강도(RS) 산출 인프라 구축.
 
-과거 KRX IP block으로 Operational HOLD 상태였으나 현재 block 문제가 해소되어
-재개 가능하다. 단 즉시 착수하는 다음 작업은 아니다 — README/Roadmap Sync와
-Stock Report Pattern A + Pattern A Fast 병렬 표시를 먼저 완료한 뒤 착수한다.
-Phase 13 Pattern A Fast가 먼저 수행된 것은 실행 순서 변경일 뿐 Phase 12와의
-production dependency 변경은 아니다(두 트랙은 서로 독립적으로 수행 가능).
+### 현재 상태 및 블로커
+* **공식 상태**: **`HOLD_RELATIVE_STRENGTH_INFRA`**
+* **구축 완료된 인프라**:
+  * Market benchmark RS 인프라 (`src/trend_scanner/relative_strength/`)
+  * KOSPI / KOSDAQ 시장 지수 대비 RS 계산 및 Full Universe Scanner 통합
+  * 검증 프레임워크 (`src/trend_scanner/validation/pattern_a_relative_strength_infrastructure.py`)
+* **현재 미완성 블로커**:
+  * **Gate 7 Failure**: KRX 공인 종목 $\rightarrow$ 업종 매핑 계약 미확정 및 PIT-compatible 업종 분류 소스 부재
+  * **Gate 8 Failure**: 공인 업종 소스 부재로 인한 Sector RS 산술 정합성(Arithmetic Parity) Fail-Closed
+* **재개 계획**: Julia Strategy V00 백테스트 완료 후 착수.
 
-핵심 방향:
-* KOSPI / KOSDAQ / 섹터 대비 RS (3M, 6M, 12M Horizon)
-* Pattern A Score에 단순 합산하지 않고 독립적인 시장 선도력 확인 축으로 검증.
+### 향후 재개 실행 흐름
+1. KRX 종목 $\rightarrow$ 업종 매핑 공인 소스(Authority) 확정
+2. Point-in-Time 적합성 및 데이터 무결성 확인
+3. Sector Benchmark 시계열 구축
+4. Stock vs Market RS 산출 검증
+5. Stock vs Sector RS 구현 및 Gate 7 통과
+6. Sector RS Arithmetic Parity 검증 및 Gate 8 통과
+7. Phase 12 Final Closure 완료 및 `production/relative_strength` 승격
 
 ---
 
 ## Phase 13. Pattern A Fast — RESEARCH_CLOSED / PRODUCTION_HOLD
 
-설명: Monthly Regime + Weekly Trigger + Daily Timing
+설명: Monthly Regime $\rightarrow$ Weekly Trigger $\rightarrow$ Daily Timing
 
 목적: 기존 Pattern A(월봉/주봉 기반, 대세 상승 초입을 보수적으로 탐지)의
 v2/개선판/후속 버전이 아니라, 시간축과 투자 스타일이 다른 **독립 파생
-전략**이다. 별도 Stage / Score / Candidate / Validation을 가지며 연구
+신호 모델**이다. 별도 Stage / Score / Candidate / Validation을 가지며 연구
 과정에서 기존 Pattern A Score/Stage semantics를 수정하지 않았다.
 
-핵심 연구 질문:
-* Pattern A가 결국 탐지할 유효한 상승 구조를, Pattern A Fast가 몇 주
-  또는 몇 달 더 빠르게 탐지할 수 있는가?
-* 그 빠른 탐지의 대가로 False Trigger가 얼마나 증가하는가?
-
-시간축 철학 (Monthly Regime → Weekly Trigger → Daily Timing):
-* **Monthly**: 장기 시장 위치와 큰 흐름을 확인하는 환경 필터(permission). 실제
-  Trigger를 월봉이 결정하지 않는다.
-* **Weekly**: Pattern A Fast의 핵심 판단 시간축(trigger). Setup / Trigger / Trend
-  progression을 주봉에서 판단한다.
-* **Daily**: 진입 타이밍 보조(timing). 장기 구조나 Pattern 자체를 일봉이
-  결정하지 않는다.
-
-목표: Pattern A보다 빠른 상승 전환 탐지 / Pattern A 대비 선행 기간 측정 /
-False Trigger 측정 / 주봉 중심 전환 구조 정의 / 일봉 timing layer 정의
-
-비목표: Pattern A 대체 / Pattern A Score·Stage 수정 / 단기 매매 수익률
-최대화 / 무조건적인 매수 신호 생성 / Backtest 수익률에 맞춘 과최적화
-
-Sub-stage (전체 CLOSED):
-* 13A. Pattern A Fast Definition — CLOSED (`docs/patterns/pattern_a_fast/spec/definition_v01.md`)
-* 13B. Stage / Lifecycle Contract — CLOSED (`docs/patterns/pattern_a_fast/spec/lifecycle_contract.md`)
-* 13C. Human Ground Truth Dataset(13C-1 준비 / 13C-2 40-sample Calibration) — CLOSED / FROZEN
-* 13D. Monthly Regime Feature Research — CLOSED (HIGH 후보 7개)
-* 13E. Weekly Trigger Feature Research — CLOSED (HIGH 후보 7개)
-* 13F. Daily Timing Feature Research — CLOSED (HIGH 후보 7개)
-* 13G-1. Feature Selection / Role Assignment — CLOSED (Monthly/Weekly/Daily HIGH 21개 역할 정리)
-* 13G. Score & Stage Production Contract(`HIERARCHICAL_V01`) — CLOSED
-* 13H. Pattern A vs Pattern A Fast Lead Time / Failure Analysis — CLOSED (event pairing semantics 동결)
-* 13I. Reserved OOS-A Evaluation — CLOSED (Human POSITIVE_STRUCTURE=0으로 primary score test `INCONCLUSIVE`)
-* 13J-1~4. Investable OOS-B Freeze / Blind Human Review(PASS A/B) / Evaluation / Closure — CLOSED
-
-최종 결과 (Investable OOS-B, frozen n=36 sample):
-* Primary Score Separation: `PASS` — POSITIVE_STRUCTURE(GOOD_TRIGGER+BORDERLINE_TRIGGER)
-  score median=73.82 vs EARLY_OR_NONE(TOO_EARLY+NO_SETUP) score median=51.935,
-  difference=+21.885
-* Pattern A 대비 Clean Lead Time: `INCONCLUSIVE` — n=2(median 8.5주, range 1~16주),
-  프로토콜 최소 기준 n>=3 미달
+핵심 연구 결과 (Investable OOS-B, frozen n=36 sample):
+* Primary Score Separation: `PASS` (diff +21.885, $p < 0.01$)
+* Pattern A 대비 Clean Lead Time: `INCONCLUSIVE` (n=2, median 8.5주, range 1~16주, 최소 기준 n $\ge$ 3 미달)
 * Hard Failure: 0건
-* 최종 결정: **`HIERARCHICAL_V01_PRODUCTION_HOLD`** — Production 승격, threshold
-  retuning, label 재수정 없음. FAST는 폐기된 모델이 아니라 `Experimental /
-  Early Signal`로 사용 가능한 상태.
+* 종합 결정: **`HIERARCHICAL_V01_PRODUCTION_HOLD / EXPERIMENTAL`** ([Phase 13 Synthesis](patterns/pattern_a_fast/validation/phase_13_final_synthesis_v01.md))
+* 사용 정책: 단독 Candidate 판단이나 Production Ranking에 사용하지 않으며, Stock Report 등에서 Pattern A의 조기 보조 신호로 병렬 표시.
 
-Frozen contract:
-* Fast contract: `HIERARCHICAL_V01` / `2da3fc36744b27ec13edae3f690df72c796906e5`
-* Frozen Pattern A(비교 기준): `05d03e16501adbca889488294aaaaa0bd84005de`
-* Phase 13 최종 closure commit: `935f9be7c0e790b7b4efedc04ea4149a90ad78a8`
+---
 
-상세 결과 및 향후 작업 제약: [pattern_a_fast_phase_13_final_synthesis_v01.md](patterns/pattern_a_fast/validation/phase_13_final_synthesis_v01.md)
-— 향후 작업은 새로 독립적으로 frozen한 검증 population 또는 prospective
-monitoring을 사용해야 하며, 이미 닫힌 Phase 13 evidence set은 재수정하지
-않는다.
+## Post-Phase 13. A FAST Core Strategy Finalization — CLOSED
 
-### Pattern A FAST 사용 정책
+Pattern A, Pattern A FAST, Investability 필터, 손절 및 청산 규칙을 결합한 실전 매매 정책 계층입니다.
 
-| | Pattern A | Pattern A Fast |
-|---|---|---|
-| 상태 | Official Production Signal | Experimental / Early Signal |
-| Candidate 판단 | 사용 | 미사용 |
-| 공식 Production Ranking | 사용 | 미사용 |
-| Stage / Score | 공식 제공, Frozen | 독립 제공(Pattern A Stage/Score를 대체하지 않음) |
+### 전략 버전 체계
+* **A FAST Core V2 (`PATTERN_A_FAST_FINAL_STRATEGY_V02`) — Current Default Strategy**:
+  * **진입 (Entry)**: Investable + Pattern A FAST Setup/Trigger 조건 충족 시 익일 시가 진입.
+  * **손절 (Loss Guard)**: PROGRESSED 도달 전 $\mathbf{-15\%}$ 손실 도달 시 즉시 익일 시가 손절.
+  * **청산 (Exit3 / Exit4)**: PROGRESSED 도달 후 12주 이평선 이탈 또는 주봉 지지선 붕괴 시 청산.
+  * **재진입 (Reentry)**: 포지션 청산(FLAT) 후 새로운 진입 조건 충족 시 독립 재진입 허용 (V1 대비 유일한 차이점).
+  * **공식 상태**: **`FINAL_STRATEGY_FROZEN / PRODUCTION_DECISION_SUPPORT`** ([V2 Contract](patterns/pattern_a_fast/strategy/final_v02.md), [Strategy Versions](patterns/pattern_a_fast/strategy/versions.md))
+  * **회고적 검증 증거**: 783 trades / 551 tickers (Same Sample Retrospective, Fresh OOS 미실행).
+  * **기준 커밋**: Architecture (`89df82a`), Calendar (`88d54d8`), Evidence (`36273d9`), Trade Gen (`b9ba613`)
+* **A FAST Core V1 (`PATTERN_A_FAST_FINAL_STRATEGY_V01`) — Historical Baseline**:
+  * 재진입이 금지된 단일 진입 기준 모델 (**`HISTORICAL_FROZEN_BASELINE`**, [V1 Contract](patterns/pattern_a_fast/strategy/final_v01.md)).
+* **운용 정책**: 본 전략은 리포트를 통한 **투자 의사결정 지원(Decision Support)** 목적으로 사용되며, 자동 주문 실행(Automated Trading)용으로 승인되지 않았습니다.
 
-Pattern A와 Pattern A Fast는 서로 독립 모델이다 — Pattern A Fast는 Pattern A의
-하위 stage나 확장판이 아니며, Pattern A Fast Score/Stage는 Pattern A
-Score/Stage와 독립적으로 산출된다. Stock Report 등에서는 두 신호를 병렬
-표시할 수 있다:
+---
 
-* `Pattern A: Not Active` + `Pattern A FAST: SETUP / Score 81`
-  → Pattern A confirmation 이전에 초기 구조를 FAST가 탐지.
-* `Pattern A: TRANSITION / Score 72` + `Pattern A FAST: TREND / Score 78`
-  → 공식 Pattern A는 전환 단계이며 FAST는 초기 추세 구조가 더 진행된 것으로 판단.
+## Stock Report v0.2 Integration — CLOSED
 
-FAST를 "더 정확한 모델", "상위 모델", "차세대 production 모델"처럼 표현하지
-않는다 — 현재 evidence가 이를 뒷받침하지 않는다. 향후 prospective / shadow
-monitoring을 통해 실전 lead evidence를 추가 축적한다.
+단일 종목 종합 진단 리포트 생성 엔진.
 
-Phase 12 Relative Strength Infrastructure와 Phase 13 Pattern A Fast는 독립 연구
-트랙이며 상호 production dependency가 없다 — Phase 13이 먼저 완료된 것은
-실행 순서 변경일 뿐 dependency 변경은 아니다.
+* **공식 상태**: **`CLOSED / PRODUCTION_DECISION_SUPPORT`** ([Stock Report v0.2 Contract](reporting/stock_report/contract_v02.md))
+* **특징**: 네트워크 요청 0건 (Local Parquet Cache + Canonical Artifacts 전용), JSON 및 Markdown 동시 출력.
+* **리포트 구성**:
+  1. Pattern A Score v0.2, Stage Classifier, Candidate State, Score Momentum
+  2. Phase 10 Investability 판정
+  3. A FAST Core V2 Canonical Strategy Position (`OPEN` / `FLAT`) 및 Action (`ENTER_NEXT_OPEN`, `HOLD`, `EXIT_NEXT_OPEN`, `WAIT`)
+  4. Pattern A FAST Early Signal Stage & Fast Score
+  5. Phase 11 Foreign Flow 수급 지표 및 강도
+  6. 데이터 품질 및 PIT 무결성 감사
+* **산출물**: `artifacts/reporting/stock_reports/<YYYYMMDD>/`
+
+---
+
+## Cross-Cutting Engineering Infrastructure Milestones — CLOSED
+
+1. **Documentation IA Reorganization — CLOSED**:
+   - Domain-first / Pattern-second 정보 구조 확립 (`docs/README.md`, `docs/patterns/`, `docs/reporting/`, `docs/strategies/`).
+2. **Artifacts IA Reorganization — CLOSED** (`a81e3bba5fdf9c49931b0531b6d74d5a8543b173`):
+   - Authority & Lifecycle 기반 단일 기준(Canonical) 아티팩트 트리 확립 (`artifacts/README.md`, `production/`, `validation/`, `research/`, `archive/`, `reporting/`, `shared/`).
+   - 910개 아티팩트 파일 전수 무결성 검증 완료 ($913 - 4 + 1 = 910$).
+3. **Test Suite Performance Audit — CLOSED**:
+   - 전체 테스트 스위트 병목 구간 최적화 완료 (~66분 ➔ ~11분44초).
+
+---
+
+## Next Experiment. Julia Strategy V00 — NEXT / EXPLORATORY_CANDIDATE
+
+목적: A FAST Core V2의 핵심 보호 규칙인 pre-PROGRESSED $-15\%$ Loss Guard가 회고적 수익률 분포와 대규모 손실 프로필에 미치는 영향을 독립적으로 비교 검증.
+
+### 검증 규격 (Strict No Tuning Contract)
+* **Base Strategy**: A FAST Core V2
+* **ONLY DELTA**:
+  $$\text{Pre-PROGRESSED Loss Guard: } \mathbf{ON (-15\%)} \longrightarrow \mathbf{OFF}$$
+* **동일 유지**: Entry, Exit3, Exit4, Coverage, PIT, Calendar, Execution, Reentry, Sample Scope.
+* **절대 금지**: 임계치 튜닝, 진입/청산 규칙 수정, 스코어 튜닝, 샘플 임의 선정.
+* **증거 분류**: `EXPLORATORY / SAME_SAMPLE_RETROSPECTIVE` (Production 미승인).
+* **현재 상태**: 백테스트 실행 전 단계 (산출물 및 문서는 작업 착수 시 생성).
+
+---
+
+## Web Report Viewer — PLANNED
+
+목적: Stock Report v0.2 산출물을 웹 브라우저에서 편리하게 조회/검색할 수 있는 뷰어 인터페이스 구축.
+
+* **실행 의존성**: Julia Strategy V00 $\rightarrow$ Phase 12 RS Resume $\rightarrow$ Phase 12 Final Closure $\rightarrow$ Web Report Viewer.
+* **설계 방향**: 실시간 대규모 연산 대신 사전에 생성된 정적/공식 아티팩트(Static/Canonical JSON)를 우선 소비하는 구조로 설계.
 
 ---
 
@@ -395,22 +407,22 @@ CLI / Web 대시보드, 관심종목 워크플로우, 실시간 알림 등 최�
 
 ## Near Term Milestones
 
-1. Pattern A Score Design v0.2 — DONE
-2. Pattern A v0.2 OOS2 Validation — DONE
-3. Pattern A Stage Classifier v0.1 — DONE (`43ee01c`)
-4. Pattern A Evaluator Integration v0.1 — DONE (`51fc202`)
-5. Data Quality / Universe Preparation v0.1 — DONE (`0ce8012`)
-6. Pattern A Score Momentum v0.1 — DONE (`707c594`)
-7. Official Common Stock Cache Population — DONE (`8983e65`, `7ff45fe`)
-8. Full Universe Scanner Integration — DONE (`13ab6f4`)
-9. Real Candidate Chart Review (Phase 9A Dataset Prep & 9B Human42 Review) — DONE
-10. Pattern A Final Production Closure (`05d03e1`) — DONE
-11. Phase 10 Investability & Tradability Filter — DONE
-12. Phase 11 Flow Confirmation Infrastructure (`71237c0`) — DONE
-13. Phase 13 Pattern A Fast Research (`935f9be`) — DONE (`RESEARCH_CLOSED / PRODUCTION_HOLD`)
-14. README / Roadmap Sync (`5e7c748`) — DONE
-15. Stock Report Pattern A Monthly + Pattern A FAST Weekly 병렬 표시 (`4a20358`) — CLOSED
-16. Phase 12 Relative Strength Infrastructure — NEXT / RESUME_READY
+1. Pattern A Score Design v0.2 — DONE (`fffce85`)
+2. Pattern A Stage Classifier v0.1 — DONE (`43ee01c`)
+3. Pattern A Evaluator Integration v0.1 — DONE (`51fc202`)
+4. Official Common Stock Cache Population — DONE (`8983e65`, `7ff45fe`)
+5. Full Universe Scanner Integration — DONE (`13ab6f4`)
+6. Pattern A Final Production Closure — DONE (`05d03e1`)
+7. Phase 10 Investability & Tradability Filter — DONE (`75afa32`)
+8. Phase 11 Flow Confirmation Infrastructure — DONE (`71237c0`)
+9. Phase 13 Pattern A Fast Research — DONE (`RESEARCH_CLOSED / PRODUCTION_HOLD`, `935f9be`)
+10. Post-Phase 13 A FAST Core Strategy V1/V2 Finalization — CLOSED
+11. Stock Report v0.2 Integration — CLOSED
+12. Documentation & Artifacts IA Reorganization — CLOSED (`a81e3bb`)
+13. README & Roadmap Refresh — **CURRENT / CLOSING**
+14. Julia Strategy V00 Backtest — **NEXT / EXPLORATORY_CANDIDATE**
+15. Phase 12 Relative Strength Infrastructure Resume & Closure — THEN
+16. Web Report Viewer — THEN
 17. Phase 14 Pattern B — PLANNED
 
 ---
