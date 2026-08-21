@@ -8,12 +8,14 @@ Core Strategy Mandate:
   - Evaluation Window: 2022-01-01 to 2026-08-14
   - Initial Position State: FLAT
   - Lookback: Full pre-2022 history used for signal and feature calculation (Lookback != Window)
-  - Strict PIT Historical Investability: Each Entry candidate evaluated with PIT market cap and PIT 20D trading value (No 2026 snapshot fallback / Fail Closed).
+  - Strict PIT Historical Investability: Point-in-time exact KRX snapshot, Fail Closed on missing dates.
+  - Manifest-Driven Provenance: Uses canonical resolved paths and hash verification.
 """
 
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
+import hashlib
 import json
 import logging
 from pathlib import Path
@@ -52,13 +54,38 @@ class HistoricalMarketCapRegistry:
 
     @classmethod
     def load_from_repository(cls, root: Path) -> HistoricalMarketCapRegistry:
+        manifest_path = root / "artifacts/strategies/julia/v00/historical_market_cap_source_manifest.csv"
         history_dir = root / "artifacts/patterns/pattern_a/validation/investability_history"
         grid_path = history_dir / "krx_market_cap_reference_grid_v01.csv"
-        provenance_path = history_dir / "krx_historical_market_cap_provenance_v01.csv"
 
         snapshots: dict[str, dict[str, float]] = {}
         metadata: dict[str, dict[str, str]] = {}
 
+        # 1. Prefer Manifest if available (Fix 02 authority)
+        if manifest_path.exists():
+            df_man = pd.read_csv(manifest_path, dtype=str).fillna("")
+            for _, row in df_man.iterrows():
+                sig_d = str(row["signal_reference_date"]).strip()
+                avail = str(row.get("available", "")).lower() == "true" or str(row.get("integrity_status", "")) == "PASS"
+                if not avail:
+                    continue
+                norm_rel = str(row["normalized_source_file"]).strip()
+                norm_p = root / norm_rel
+                if norm_p.exists() and norm_p.stat().st_size > 1000:
+                    df = pd.read_csv(norm_p, dtype={"ticker": str})
+                    df["ticker"] = df["ticker"].astype(str).str.zfill(6)
+                    mcaps = dict(zip(df["ticker"], df["market_cap"].astype(float)))
+                    snapshots[sig_d] = mcaps
+                    metadata[sig_d] = {
+                        "source_file": str(row["raw_source_file"]).strip() or norm_rel,
+                        "normalized_file": norm_rel,
+                        "sha256": str(row.get("normalized_sha256", "")),
+                        "provider": str(row.get("source_provider", "KRX")),
+                    }
+            if snapshots:
+                return cls(snapshots=snapshots, metadata=metadata)
+
+        # 2. Fallback to canonical 22 quarterly grid
         if grid_path.exists():
             grid = pd.read_csv(grid_path, dtype=str)
             for _, row in grid.iterrows():
@@ -72,37 +99,11 @@ class HistoricalMarketCapRegistry:
                     mcaps = dict(zip(df["ticker"], df["market_cap"].astype(float)))
                     snapshots[eff_d] = mcaps
                     metadata[eff_d] = {
-                        "source_file": src_file,
+                        "source_file": str(norm_file.relative_to(root)),
                         "normalized_file": str(norm_file.relative_to(root)),
                         "sha256": str(row.get("sha256", "")),
                         "provider": "KRX",
                     }
-
-        # Load Phase 10 snapshot (2025-01-31)
-        p10_src = root / "artifacts/patterns/pattern_a/production/investability/source/krx_market_cap_20250131.csv"
-        if p10_src.exists():
-            df_p10 = pd.read_csv(p10_src, dtype={"ticker": str})
-            df_p10["ticker"] = df_p10["ticker"].astype(str).str.zfill(6)
-            snapshots["2025-01-31"] = dict(zip(df_p10["ticker"], df_p10["market_cap"].astype(float)))
-            metadata["2025-01-31"] = {
-                "source_file": "artifacts/patterns/pattern_a/production/investability/source/krx_market_cap_20250131.csv",
-                "normalized_file": "artifacts/patterns/pattern_a/production/investability/source/krx_market_cap_20250131.csv",
-                "sha256": "4b5dc0e9196b02a2ec9ef99fa1a3962d3a33939634ff9d10e54452077e6f8278",
-                "provider": "KRX",
-            }
-
-        # Load Cutoff snapshot (2026-08-14) - Strictly for 2026-08-14 signal reference only
-        cutoff_src = root / "artifacts/patterns/pattern_a/production/investability/source/krx_market_cap_20260814.csv"
-        if cutoff_src.exists():
-            df_cut = pd.read_csv(cutoff_src, dtype={"ticker": str})
-            df_cut["ticker"] = df_cut["ticker"].astype(str).str.zfill(6)
-            snapshots["2026-08-14"] = dict(zip(df_cut["ticker"], df_cut["market_cap"].astype(float)))
-            metadata["2026-08-14"] = {
-                "source_file": "artifacts/patterns/pattern_a/production/investability/source/krx_market_cap_20260814.csv",
-                "normalized_file": "artifacts/patterns/pattern_a/production/investability/source/krx_market_cap_20260814.csv",
-                "sha256": "1517596adba5938472535d46924b58e72782e21b8f0ca4313f8c8faeeb19183d",
-                "provider": "KRX",
-            }
 
         return cls(snapshots=snapshots, metadata=metadata)
 
@@ -258,20 +259,7 @@ def simulate_ticker_strategy_2022(
     start_date: pd.Timestamp = EVALUATION_START_DATE,
     cutoff_date: pd.Timestamp = EVALUATION_END_DATE,
 ) -> list[StrategyTradeRecord]:
-    """Simulate a single ticker trade lifecycle starting from start_date (2022-01-01+).
-
-    Strict Invariants:
-      - Full pre-2022 history in daily is used for rolling technical features and snapshots.
-      - Initial position state at start_date is FLAT.
-      - Each potential entry signal undergoes strict Historical Investability PIT evaluation:
-          1. Exact historical market cap at signal reference date (Fail Closed if unavailable).
-          2. 20D average trading value computed strictly using daily on/before signal reference date.
-          3. Market cap >= 100B KRW and 20D Trading Value >= 300M KRW required for INVESTABLE.
-      - Only trades whose entry_execution_date >= start_date and pass Investability are emitted.
-      - If enable_loss_guard is True: Pre-PROGRESSED -15% Daily Close Stop is active.
-      - If enable_loss_guard is False: Pre-PROGRESSED Loss Guard is completely OFF.
-      - Exit 3, Exit 4, Coverage lifecycle, Reentry rules, PIT calendar are 100% identical.
-    """
+    """Simulate a single ticker trade lifecycle starting from start_date (2022-01-01+)."""
     if daily is None or daily.empty:
         return []
 
@@ -327,7 +315,6 @@ def simulate_ticker_strategy_2022(
                     if fut_daily.empty:
                         continue
                     candidate_exec_d = fut_daily.index[0]
-                    # Filter: Entry execution date must be on or after start_date (2022-01-01+)
                     if candidate_exec_d < start_date:
                         continue
 
@@ -338,7 +325,6 @@ def simulate_ticker_strategy_2022(
                     if market_cap_registry is not None:
                         mcap_val, src_meta = market_cap_registry.get_market_cap_at_reference(ticker, w_str)
 
-                    # PIT daily slice strictly on or before w
                     daily_as_of = daily[daily.index <= w]
                     inv_res = evaluate_investability(
                         ticker=ticker,
@@ -382,7 +368,6 @@ def simulate_ticker_strategy_2022(
         daily_risk = found_signal_res.get("fast_daily_risk_state", "UNKNOWN")
         monthly_regime = found_signal_res.get("fast_monthly_permission_state", "UNKNOWN")
 
-        # Monthly snapshots strictly for this trade lifecycle (from found_signal_w to cutoff_date)
         m_dates = [
             m for m in monthly_bars.index
             if m >= found_signal_w and m <= cutoff_date
@@ -596,7 +581,6 @@ def simulate_ticker_strategy_2022(
         prev_exit_type = final_exit_type
         if res_outcome["trade_status"] == "REALIZED" and res_outcome["exit_exec_d"] is not None:
             prev_exit_exec_date = res_outcome["exit_exec_d"].strftime("%Y-%m-%d")
-            # Next trade signal must complete on or after exit execution date
             cur_search_date = res_outcome["exit_exec_d"]
         else:
             cur_search_date = None
