@@ -1062,12 +1062,14 @@ def generate_stock_report(
         asset_type=asset_type,
     )
 
-    # 10. Save Artifacts if requested (Default v0.2 output dir)
+    # 10. Save Artifacts if requested (Default canonical output dir — production
+    # artifact path is not versioned by directory name; version lives in
+    # report_version/schema/contract/Git provenance instead)
     json_path: Path | None = None
     md_path: Path | None = None
     if save_artifacts:
         date_dir_name = canonical_as_of.replace("-", "")
-        base_out = Path(output_dir) if output_dir else root_path / "artifacts/stock_reports/v0.2" / date_dir_name
+        base_out = Path(output_dir) if output_dir else root_path / "artifacts/stock_reports" / date_dir_name
         base_out.mkdir(parents=True, exist_ok=True)
 
         file_stem = f"{clean_ticker}_{report.header.name}" if report.header.name and report.header.name != clean_ticker else (f"{clean_ticker}_{name}" if name and name != clean_ticker else clean_ticker)

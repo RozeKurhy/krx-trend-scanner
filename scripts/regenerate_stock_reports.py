@@ -16,7 +16,9 @@ REPORTS_DIR = ROOT / "artifacts/stock_reports/20260814"
 
 def _regen_worker(ticker: str) -> tuple[str, str, str]:
     try:
-        report, jp, mp = generate_stock_report(ticker=ticker, as_of="2026-08-14", save_artifacts=True)
+        report, jp, mp = generate_stock_report(
+            ticker=ticker, as_of="2026-08-14", save_artifacts=True, output_dir=REPORTS_DIR
+        )
         return (ticker, str(report.name), "OK")
     except Exception as exc:
         return (ticker, "ERROR", str(exc))

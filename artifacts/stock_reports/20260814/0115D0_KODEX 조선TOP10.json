@@ -1,30 +1,33 @@
 {
-  "report_version": "0.1",
+  "report_version": "0.2",
   "ticker": "0115D0",
   "name": "KODEX 조선TOP10",
-  "market": "ETF",
+  "market": "KOSPI",
   "requested_as_of": "2026-08-14",
   "reference_market_date": "2026-08-14",
   "header": {
     "ticker": "0115D0",
     "name": "KODEX 조선TOP10",
-    "market": "ETF",
+    "market": "KOSPI",
     "requested_as_of": "2026-08-14",
     "reference_market_date": "2026-08-14",
     "effective_as_of": "2026-08-14",
     "cache_present": true,
     "cache_last_date": "2026-08-14",
-    "report_status": "DATA_UNAVAILABLE"
+    "report_status": "DATA_UNAVAILABLE",
+    "asset_type": "ETF"
   },
   "summary": {
     "headline": "KODEX 조선TOP10(0115D0)는 현재 Pattern A UNAVAILABLE 단계이며, 필수 데이터 부족(DATA_UNAVAILABLE)으로 투자 적격성을 판정할 수 없습니다.",
     "bullet_points": [
+      "패스트 코어 V2: 전략 적용 대상 아님",
       "현재 Pattern A Score는 산출 불가(Stage: UNAVAILABLE) 상태입니다.",
       "필수 데이터 부족(REQUIRED_METRIC_UNAVAILABLE)으로 Phase 10 Investability 판정이 불가능합니다.",
       "외국인 수급: 외국인 수급 데이터가 준비되지 않아 수급 분석을 제공할 수 없습니다.",
       "거래대금 추세: 최근 거래대금이 지속 감소(둔화)하는 흐름입니다. 5일 평균 거래대금(117.19억원)이 20일 평균(215.05억원) 및 60일 평균(288.48억원)을 밑돌고 있습니다."
     ],
-    "combined_narrative": "KODEX 조선TOP10(0115D0)는 현재 Pattern A UNAVAILABLE 단계이며, 필수 데이터 부족(DATA_UNAVAILABLE)으로 투자 적격성을 판정할 수 없습니다. 최근 12개월 이력 중 유효한 기술적 국면 관측치가 제한적입니다."
+    "combined_narrative": "KODEX 조선TOP10(0115D0)는 현재 Pattern A UNAVAILABLE 단계이며, 필수 데이터 부족(DATA_UNAVAILABLE)으로 투자 적격성을 판정할 수 없습니다. 최근 12개월 이력 중 유효한 기술적 국면 관측치가 제한적입니다.",
+    "strategy_headline": "보통주가 아닌 종목(ETF/ETN/우선주/스팩/리츠 등)으로 패스트 코어 V2 전략 적용 대상이 아닙니다."
   },
   "current_snapshot": {
     "pattern_a_score": null,
@@ -35,7 +38,9 @@
     "avg_trading_value_20d_eok": 215.05,
     "investability_status": "DATA_UNAVAILABLE",
     "investability_reason": "REQUIRED_METRIC_UNAVAILABLE",
-    "is_investable": false
+    "is_investable": false,
+    "market_cap_effective_date": null,
+    "market_cap_source": null
   },
   "monthly_history": {
     "history_start_as_of": "2025-10-31",
@@ -742,5 +747,37 @@
     "history_start_as_of": "2025-10-31",
     "history_end_as_of": "2026-08-14",
     "observation_count": 40
-  }
+  },
+  "a_fast_core": {
+    "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+    "strategy_version": "V02",
+    "strategy_alias": "A FAST Core",
+    "strategy_status": "FINAL_STRATEGY_FROZEN",
+    "production_status": "PRODUCTION_DECISION_SUPPORT",
+    "fresh_oos_status": "NOT_EXECUTED",
+    "as_of": "2026-08-14",
+    "applicability": "NOT_APPLICABLE",
+    "strategy_state": "NOT_APPLICABLE",
+    "canonical_position": "NOT_APPLICABLE",
+    "action": "NONE",
+    "action_reason": "NON_COMMON_STOCK",
+    "execution_timing": null,
+    "entry_conditions": null,
+    "current_trade": null,
+    "protection_state": null,
+    "reentry_state": null,
+    "trade_history": [],
+    "interpretation": "보통주가 아닌 종목(ETF/ETN/우선주/스팩/리츠 등)으로 패스트 코어 V2 전략 적용 대상이 아닙니다.",
+    "provenance": {
+      "strategy_contract": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+      "strategy_contract_path": "docs/validation/pattern_a_fast_final_strategy_v02.md",
+      "architecture_authority_commit": "89df82a938dba1961c2342064db2dc0061a5f2ca",
+      "calendar_authority_commit": "88d54d85bdee1f2121bec9b27a250cbc1cb9f98f",
+      "trade_generation_authority_commit": "b9ba613be973906915e5081a0e5828dd6e1350d6",
+      "evidence_closure_authority_commit": "36273d97ae6d4f5b1dbc72cca186bc6009b5fa51",
+      "network_requests": 0
+    },
+    "metadata_provenance_mode": "HISTORICAL_LEGACY_RESEARCH"
+  },
+  "asset_type": "ETF"
 }

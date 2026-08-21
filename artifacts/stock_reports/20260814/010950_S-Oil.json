@@ -1,5 +1,5 @@
 {
-  "report_version": "0.1",
+  "report_version": "0.2",
   "ticker": "010950",
   "name": "S-Oil",
   "market": "KOSPI",
@@ -14,17 +14,20 @@
     "effective_as_of": "2026-08-14",
     "cache_present": true,
     "cache_last_date": "2026-08-14",
-    "report_status": "READY"
+    "report_status": "READY",
+    "asset_type": "COMMON"
   },
   "summary": {
     "headline": "S-Oil(010950)는 현재 Pattern A PROGRESSED 단계이며 투자 적격 상태는 INVESTABLE입니다.",
     "bullet_points": [
+      "패스트 코어 V2: 관망 · 현재 신규 진입 조건 미충족",
       "현재 Pattern A Score는 17.99점(Stage: PROGRESSED, Candidate: NO)입니다.",
       "시가총액 166172.2억원, 20일 평균 거래대금 558.50억원으로 Phase 10 Investability 기준을 충족합니다.",
       "외국인 수급: 외국인 수급이 기간별로 엇갈리는 혼조세 흐름입니다 (5일 순매수 강도: -2.64%).",
       "거래대금 추세: 최근 거래대금이 특정 방향성 없이 기간별로 혼조세를 나타내고 있습니다. (5일: 438.90억원, 20일: 558.50억원, 60일: 523.35억원)"
     ],
-    "combined_narrative": "현재 S-Oil은(는) Pattern A Score 17.99점, PROGRESSED 단계이며 Phase 10 Investability 조건(시총 1,000억 이상 및 20일 거래대금 3억 이상)을 충족(INVESTABLE)했습니다. 최근 12개월 동안 TRANSITION(41.37점)에서 PROGRESSED(17.99점)로 국면 이동이 관찰되었습니다. 외국인 수급은 FLOW_MIXED 상태로, 외국인 수급이 기간별로 엇갈리는 혼조세 흐름입니다 (5일 순매수 강도: -2.64%). 거래대금은 TRADING_VALUE_MIXED 상태로, 최근 거래대금이 특정 방향성 없이 기간별로 혼조세를 나타내고 있습니다. (5일: 438.90억원, 20일: 558.50억원, 60일: 523.35억원)"
+    "combined_narrative": "현재 S-Oil은(는) Pattern A Score 17.99점, PROGRESSED 단계이며 Phase 10 Investability 조건(시총 1,000억 이상 및 20일 거래대금 3억 이상)을 충족(INVESTABLE)했습니다. 최근 12개월 동안 TRANSITION(41.37점)에서 PROGRESSED(17.99점)로 국면 이동이 관찰되었습니다. 외국인 수급은 FLOW_MIXED 상태로, 외국인 수급이 기간별로 엇갈리는 혼조세 흐름입니다 (5일 순매수 강도: -2.64%). 거래대금은 TRADING_VALUE_MIXED 상태로, 최근 거래대금이 특정 방향성 없이 기간별로 혼조세를 나타내고 있습니다. (5일: 438.90억원, 20일: 558.50억원, 60일: 523.35억원)",
+    "strategy_headline": "패스트 코어 V2 관망(WAIT) 상태입니다. 진입 미충족 조건: PATTERN_A_STAGE_NOT_ELIGIBLE, FAST_NOT_TRIGGER_READY."
   },
   "current_snapshot": {
     "pattern_a_score": 17.99,
@@ -35,7 +38,9 @@
     "avg_trading_value_20d_eok": 558.5,
     "investability_status": "INVESTABLE",
     "investability_reason": "PASS_ALL_INVESTABILITY_FILTERS",
-    "is_investable": true
+    "is_investable": true,
+    "market_cap_effective_date": "2026-08-14",
+    "market_cap_source": "KRX_SOURCE_MARKET_CAP"
   },
   "monthly_history": {
     "history_start_as_of": "2014-05-30",
@@ -2237,5 +2242,132 @@
     "history_start_as_of": "2025-08-22",
     "history_end_as_of": "2026-08-14",
     "observation_count": 49
-  }
+  },
+  "a_fast_core": {
+    "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+    "strategy_version": "V02",
+    "strategy_alias": "A FAST Core",
+    "strategy_status": "FINAL_STRATEGY_FROZEN",
+    "production_status": "PRODUCTION_DECISION_SUPPORT",
+    "fresh_oos_status": "NOT_EXECUTED",
+    "as_of": "2026-08-14",
+    "applicability": "APPLICABLE",
+    "strategy_state": "WAIT",
+    "canonical_position": "FLAT",
+    "action": "WAIT",
+    "action_reason": "ENTRY_CONDITIONS_NOT_MET",
+    "execution_timing": null,
+    "entry_conditions": {
+      "instrument_eligible": true,
+      "investability_pass": true,
+      "pattern_a_stage_eligible": false,
+      "fast_trigger_ready": false,
+      "monthly_regime_permitted": true,
+      "daily_risk_allowed": true,
+      "fast_score_status_allowed": true,
+      "no_open_position": true,
+      "all_conditions_met": false,
+      "pattern_a_stage": "PROGRESSED",
+      "fast_stage": "EXTENDED READY",
+      "fast_stage_status": "READY",
+      "monthly_regime": "PERMITTED_REGIME",
+      "daily_risk": "ELEVATED",
+      "fast_score_status": "READY",
+      "failed_conditions": [
+        "PATTERN_A_STAGE_NOT_ELIGIBLE",
+        "FAST_NOT_TRIGGER_READY"
+      ]
+    },
+    "current_trade": null,
+    "protection_state": null,
+    "reentry_state": {
+      "enabled": true,
+      "cooldown": "NONE",
+      "maximum_reentries": "NONE",
+      "pyramiding": false,
+      "overlapping_position": false,
+      "same_open_exit_and_reentry": false,
+      "completed_trade_count": 4,
+      "current_trade_sequence": null,
+      "next_entry_sequence": 5
+    },
+    "trade_history": [
+      {
+        "trade_id": "010950_01",
+        "trade_sequence": 1,
+        "entry_signal_date": "2017-07-07",
+        "entry_execution_date": "2017-07-10",
+        "entry_open": 97300.0,
+        "entry_pattern_a_stage": "TRANSITION",
+        "exit_type": "EXIT3_PROGRESSED_TO_EARLY_TREND",
+        "exit_signal_date": "2018-08-31",
+        "exit_execution_date": "2018-09-03",
+        "exit_price": 119000.0,
+        "trade_status": "REALIZED",
+        "return_pct": 22.3,
+        "previous_exit_type": null,
+        "lifecycle_class": "NORMAL_EARLY_TREND_HANDOFF"
+      },
+      {
+        "trade_id": "010950_02",
+        "trade_sequence": 2,
+        "entry_signal_date": "2018-09-14",
+        "entry_execution_date": "2018-09-17",
+        "entry_open": 128500.0,
+        "entry_pattern_a_stage": "EARLY_TREND",
+        "exit_type": "LOSS_GUARD_CLOSE_LE_NEG_15",
+        "exit_signal_date": "2018-11-14",
+        "exit_execution_date": "2018-11-15",
+        "exit_price": 107500.0,
+        "trade_status": "REALIZED",
+        "return_pct": -16.34,
+        "previous_exit_type": "EXIT3_PROGRESSED_TO_EARLY_TREND",
+        "lifecycle_class": "NORMAL_EARLY_TREND_HANDOFF"
+      },
+      {
+        "trade_id": "010950_03",
+        "trade_sequence": 3,
+        "entry_signal_date": "2019-09-20",
+        "entry_execution_date": "2019-09-23",
+        "entry_open": 102000.0,
+        "entry_pattern_a_stage": "TRANSITION",
+        "exit_type": "LOSS_GUARD_CLOSE_LE_NEG_15",
+        "exit_signal_date": "2020-01-13",
+        "exit_execution_date": "2020-01-14",
+        "exit_price": 85700.0,
+        "trade_status": "REALIZED",
+        "return_pct": -15.98,
+        "previous_exit_type": "LOSS_GUARD_CLOSE_LE_NEG_15",
+        "lifecycle_class": "NORMAL_EARLY_TREND_HANDOFF"
+      },
+      {
+        "trade_id": "010950_04",
+        "trade_sequence": 4,
+        "entry_signal_date": "2021-03-05",
+        "entry_execution_date": "2021-03-08",
+        "entry_open": 90000.0,
+        "entry_pattern_a_stage": "TRANSITION",
+        "exit_type": "EXIT4_SCORE_DRAWDOWN_GE_15",
+        "exit_signal_date": "2026-04-30",
+        "exit_execution_date": "2026-05-04",
+        "exit_price": 132500.0,
+        "trade_status": "REALIZED",
+        "return_pct": 47.22,
+        "previous_exit_type": "LOSS_GUARD_CLOSE_LE_NEG_15",
+        "lifecycle_class": "NORMAL_EARLY_TREND_HANDOFF"
+      }
+    ],
+    "interpretation": "패스트 코어 V2 관망(WAIT) 상태입니다. 진입 미충족 조건: PATTERN_A_STAGE_NOT_ELIGIBLE, FAST_NOT_TRIGGER_READY.",
+    "provenance": {
+      "strategy_contract": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+      "strategy_contract_path": "docs/validation/pattern_a_fast_final_strategy_v02.md",
+      "architecture_authority_commit": "89df82a938dba1961c2342064db2dc0061a5f2ca",
+      "calendar_authority_commit": "88d54d85bdee1f2121bec9b27a250cbc1cb9f98f",
+      "trade_generation_authority_commit": "b9ba613be973906915e5081a0e5828dd6e1350d6",
+      "evidence_closure_authority_commit": "36273d97ae6d4f5b1dbc72cca186bc6009b5fa51",
+      "network_requests": 0
+    },
+    "metadata_provenance_mode": "HISTORICAL_LEGACY_RESEARCH"
+  },
+  "asset_type": "COMMON"
 }

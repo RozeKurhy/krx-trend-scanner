@@ -379,6 +379,33 @@ def test_stock_report_does_not_mutate_canonical_artifacts(tmp_path):
     assert before_hashes == after_hashes, "Canonical artifacts were modified during stock report generation!"
 
 
+def test_stock_report_default_output_path_is_canonical(tmp_path):
+    """generate_stock_report()의 output_dir 미지정 시 기본 저장 경로가
+    artifacts/stock_reports/<YYYYMMDD>/ (버전 디렉터리 없는 canonical 구조)인지 검증.
+    실제 production artifact를 건드리지 않기 위해 isolated repo_root(tmp_path)에
+    필요한 read-only 입력 디렉터리만 symlink한 fake root를 사용한다."""
+    fake_root = tmp_path / "fake_repo"
+    fake_root.mkdir()
+    (fake_root / "data").symlink_to(REPO_ROOT / "data")
+    (fake_root / "artifacts").mkdir()
+    for name in ("investability", "flow", "pattern_a_fast"):
+        (fake_root / "artifacts" / name).symlink_to(REPO_ROOT / "artifacts" / name)
+
+    report, json_path, md_path = generate_stock_report(
+        ticker="005930",
+        as_of="2026-08-14",
+        repo_root=fake_root,
+        save_artifacts=True,
+    )
+
+    assert json_path is not None and md_path is not None
+    assert json_path.parent == fake_root / "artifacts/stock_reports/20260814"
+    assert json_path.parent == md_path.parent
+    assert "v0.2" not in str(json_path)
+    assert json_path.exists()
+    assert md_path.exists()
+
+
 def test_stock_report_candidate_state_contract_weak_and_progressed():
     """Candidate state contract: 000020(WEAK) -> blocked, 005930(PROGRESSED) -> late."""
     rep_weak, _, _ = generate_stock_report(ticker="000020", as_of="2026-08-14", repo_root=REPO_ROOT, save_artifacts=False)
