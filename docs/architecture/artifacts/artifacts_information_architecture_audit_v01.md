@@ -185,12 +185,13 @@ docs·scripts 참조 여부 / proposed destination / move risk / 비고.
 ## 6. Pattern A Audit
 ===============================================================================
 
-Pattern A production evidence 6개 그룹으로 나뉜다: `scanner/`(canonical
-Full Universe Scan 결과), `investability/`+`investability/source/`+
-`investability/history/`(Phase10 evidence + KRX historical backfill),
-`flow/`(Phase11), `relative_strength/`(Phase12, HOLD), `pattern_a_final_closure/`
-(10-gate closure 감사 결과), `chart_review/`(인간 수동 차트 리뷰 — closure
-체인의 입력).
+Pattern A artifact set은 현재 다음과 같은 lifecycle 영역으로 명확히 구분된다:
+
+- **Production Evidence**: `scanner/`(canonical Full Universe Scan 결과), `investability/` top-level 10개 파일(Phase10 CLOSED 결과), `flow/`(Phase11 CLOSED 외국인 수급 결과)
+- **Production Runtime Source**: `investability/source/`(canonical PIT snapshot 2개, production scanner가 매번 직접 로드)
+- **Validation / Hold**: `relative_strength/`(Phase12 `HOLD_RELATIVE_STRENGTH_INFRA` — infra 및 validation evidence, Sector RS 미해결로 production 미승격), `investability/history/`(KRX 과거 시총 백필, row-level sha256 보호), `stage_v03_research/`, `stage_v04_multi_year_research/`(결정론적 재생성 검증 대상)
+- **Closure Evidence**: `pattern_a_final_closure/`(10-gate closure 감사 결과), `chart_review/`(인간 수동 차트 리뷰 — closure 체인의 입력이자 production dependency)
+- **Research**: `analysis/`(local stage filter 감사 연구), `investability/`의 threshold design 계열
 
 `pattern_a_final_closure/pattern_a_final_closure.json`은 이름에 "closure"가
 들어가지만 **archive 후보가 아니다** — `pattern_a_final_closure.py`가 매번
@@ -428,7 +429,10 @@ docs IA 철학(상위 영역 → Pattern/Domain → 역할)을 artifact lifecycl
 1. Pattern A와 Pattern A FAST를 최상위에서 분리(docs와 동일).
 2. 각 Pattern 아래 `production`(현재 authority가 직접 소비/생성),
    `validation`(closure/human-review/seal 체인), `research`(연구 산출물),
-   `archive`(superseded)로 4분류.
+   `archive`(superseded)로 4분류. Pattern A FAST의 경우 `production/`에
+   `contract_prototype/`, `strategy_v01/`, `strategy_v02/`,
+   `strategy_finalization_v01/`, `core_v02_reentry/`(V1→V2 REENTRY_ONLY delta 공식 evidence)를
+   포함한다.
 3. Investability/Foreign Flow/Scanner는 Pattern A의 하위 confirmation
    axis이자 현재 CLOSED production evidence이므로
    `patterns/pattern_a/production/` 아래 각각 자기 이름의 폴더를 가진다
@@ -484,7 +488,8 @@ artifacts/
 │       │   ├── contract_prototype/          (← research/의 score/stage prototype 2개만 — production dependency 명시)
 │       │   ├── strategy_v01/                (← final_strategy_v01/, HISTORICAL_BASELINE 명시 유지)
 │       │   ├── strategy_v02/                (← final_strategy_v02/)
-│       │   └── strategy_finalization_v01/   (← strategy_finalization_v01/ = canonical. corrected_pit는 byte-identical duplicate로 REMOVE_DUPLICATE — §19)
+│       │   ├── strategy_finalization_v01/   (← strategy_finalization_v01/ = canonical. corrected_pit는 byte-identical duplicate로 REMOVE_DUPLICATE — §19)
+│       │   └── core_v02_reentry/            (← core_v02_reentry/, V1→V2 REENTRY_ONLY delta evidence — CURRENT_PRODUCTION_EVIDENCE)
 │       ├── validation/
 │       │   ├── oos/                         (← oos/)
 │       │   ├── ground_truth/                (← ground_truth/)
@@ -492,7 +497,6 @@ artifacts/
 │       │   └── investable_oos/              (← investable_oos/)
 │       ├── research/
 │       │   ├── feature_role/                (← research/의 나머지 26개 연구 산출물)
-│       │   ├── core_v02_reentry/            (← core_v02_reentry/)
 │       │   ├── progressed_downside_v01/     (← progressed_downside_v01/)
 │       │   ├── large_cap40_v01/             (← large_cap40_v01/)
 │       │   └── trading_policy_v01/          (← trading_policy_v01/)
@@ -557,7 +561,7 @@ Pattern B는 `patterns/pattern_b/`로 동일 4분류를 복제하면 확장 가�
 | `pattern_a_fast/strategy_finalization_v01/` | CURRENT_PRODUCTION_EVIDENCE | 예 | `patterns/pattern_a_fast/production/strategy_finalization_v01/` | HIGH | tests(provenance) | MOVE |
 | `pattern_a_fast/strategy_finalization_v01_corrected_pit/` | TEMPORARY_OR_DUPLICATE_CANDIDATE | 아니오 | (없음 — 삭제 대상) | MEDIUM | tests(provenance test가 두 경로 모두 required로 순회 — 제거 전 test를 canonical 1개 contract로 먼저 수정해야 함) | **REMOVE_DUPLICATE**(STEP 2 Phase E, §23 순서대로: identity 재확인 → test 수정 → green 확인 → 제거) |
 | `pattern_a_fast/strategy_finalization_v01_legacy/` | SUPERSEDED | 아니오 | `patterns/pattern_a_fast/archive/strategy_finalization_v01_legacy/` | LOW | 참조 0건 | ARCHIVE_CANDIDATE |
-| `pattern_a_fast/core_v02_reentry/` | CURRENT_PRODUCTION_EVIDENCE | 예 | `patterns/pattern_a_fast/research/core_v02_reentry/` | MEDIUM | docs 1, tests(trades.csv) | MOVE |
+| `pattern_a_fast/core_v02_reentry/` | CURRENT_PRODUCTION_EVIDENCE | 예 | `patterns/pattern_a_fast/production/core_v02_reentry/` | MEDIUM | docs 1, tests(trades.csv) | MOVE |
 | `pattern_a_fast/progressed_downside_v01/` | CURRENT_RESEARCH(deferred) | 예 | `patterns/pattern_a_fast/research/progressed_downside_v01/` | LOW | docs 1, tests 1 | MOVE |
 | `pattern_a_fast/large_cap40_v01/` | CURRENT_RESEARCH | 예 | `patterns/pattern_a_fast/research/large_cap40_v01/` | LOW | docs 1, tests 1 | MOVE |
 | `pattern_a_fast/trading_policy_v01/` | CURRENT_RESEARCH | 예 | `patterns/pattern_a_fast/research/trading_policy_v01/` | LOW | docs 1, tests 1 | MOVE |
@@ -671,9 +675,10 @@ Archive / Naming-Lifecycle Rules 섹션.
 **Phase B — HIGH risk production path migration**
 Pattern A FAST contract prototype(score+stage 2개, `stock_report.py`/
 `pattern_a_fast_report.py` 경로 갱신 포함) → Investability
-source/current evidence → Chart Review → Foreign Flow → 기타
-runtime-dependent current artifact. 각 move마다: `git mv` → path 참조
-코드 갱신 → targeted test → content hash identity 검증.
+source/current evidence → Chart Review → Foreign Flow → Pattern A FAST
+production evidence(`strategy_v01/`, `strategy_v02/`, `strategy_finalization_v01/`,
+`core_v02_reentry/`) → 기타 runtime-dependent current artifact. 각 move마다:
+`git mv` → path 참조 코드 갱신 → targeted test → content hash identity 검증.
 
 **Phase C — Relative Strength**
 `patterns/pattern_a/validation/relative_strength/`로 이동. Phase12 HOLD
@@ -698,7 +703,8 @@ green 확인 → 7) `strategy_finalization_v01_corrected_pit/` 제거(archive
 
 **Phase F — MEDIUM/LOW risk 일괄 이동**
 scanner, analysis(→ `pattern_a/research/analysis/`), cache_population
-(→ `shared/`), stage_v03/v04_research, A FAST research 계열, archive
+(→ `shared/`), stage_v03/v04_research, A FAST research 계열(`feature_role/`,
+`progressed_downside_v01/`, `large_cap40_v01/`, `trading_policy_v01/`), archive
 후보 8개 그룹(entry_gate_v02a/coverage_hole_v02d/unavailable_v02c/
 weak_reversal_v02b/combined_exit_v01/architecture_v03/fresh_oos_v03/
 strategy_finalization_v01_legacy).
@@ -708,8 +714,14 @@ strategy_finalization_v01_legacy).
 
 **Phase H — Final integrity**
 repository 전역 stale artifact path 검색 → 관련 targeted test 실행 →
-artifact 파일 수 reconciliation(913 유지 확인, corrected_pit 제거분
-반영) → content hash 비교 → 의도치 않은 artifact content 변경 없음 확인.
+artifact 파일 수 reconciliation 공식 검증:
+- `PRE_EXISTING_ARTIFACT_FILES` = 913
+- `EXPECTED_DUPLICATE_REMOVAL` = 4 (`strategy_finalization_v01_corrected_pit/`)
+- `POST_EXISTING_ARTIFACT_FILES` = 909
+- `NEW_IA_METADATA_FILES` = 1 (`artifacts/README.md`)
+- `EXPECTED_FINAL_ARTIFACTS_TREE_FILE_COUNT` = 910
+  (`913 - 4 + 1 = 910`, 향후 추가 metadata 파일 생성 시 `913 - intentional duplicate removals + intentional new IA metadata files` reconciliation equation 적용)
+→ content hash 비교 → 의도치 않은 artifact content 변경 없음 확인.
 Full Suite는 이번에도 사용자가 직접 실행하는 정책을 유지한다.
 
 전체 완료 후 README/Roadmap refresh(이번 Task 범위 밖, w.md §26 순서
@@ -754,6 +766,7 @@ AUTHORITY_CLASSIFICATION_STATUS = COMPLETE
 PATH_DEPENDENCY_AUDIT_STATUS = COMPLETE
 FROZEN_EVIDENCE_AUDIT_STATUS = COMPLETE
 PROPOSED_IA_STATUS = READY_FOR_REORGANIZATION
+STEP_1_STATUS = FINAL_CLOSED
 STEP_2_REORGANIZATION_STATUS = READY
 BLOCKED_MOVE_COUNT = 0
 PRODUCTION_SEMANTICS_CHANGED = NO
