@@ -8,11 +8,13 @@ Core Strategy Mandate:
   - Evaluation Window: 2022-01-01 to 2026-08-14
   - Initial Position State: FLAT
   - Lookback: Full pre-2022 history used for signal and feature calculation (Lookback != Window)
+  - Strict PIT Historical Investability: Each Entry candidate evaluated with PIT market cap and PIT 20D trading value (No 2026 snapshot fallback / Fail Closed).
 """
 
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
+import json
 import logging
 from pathlib import Path
 from typing import Any
@@ -22,6 +24,13 @@ import pandas as pd
 
 from trend_scanner.data.cache import ParquetCache
 from trend_scanner.data.resampler import to_monthly, to_weekly
+from trend_scanner.filters.investability import (
+    MIN_AVG_TRADING_VALUE_20D_KRW,
+    MIN_MARKET_CAP_KRW,
+    InvestabilityEvaluationResult,
+    InvestabilityStatus,
+    evaluate_investability,
+)
 from trend_scanner.patterns.pattern_a_evaluator import evaluate_pattern_a
 from trend_scanner.patterns.pattern_a_fast_evaluator import evaluate_pattern_a_fast
 from trend_scanner.validation.historical_snapshot import build_historical_snapshot
@@ -34,6 +43,75 @@ logger = logging.getLogger(__name__)
 
 EVALUATION_START_DATE = pd.Timestamp("2022-01-01")
 EVALUATION_END_DATE = DATA_CUTOFF  # 2026-08-14
+
+
+@dataclass
+class HistoricalMarketCapRegistry:
+    snapshots: dict[str, dict[str, float]]
+    metadata: dict[str, dict[str, str]]
+
+    @classmethod
+    def load_from_repository(cls, root: Path) -> HistoricalMarketCapRegistry:
+        history_dir = root / "artifacts/patterns/pattern_a/validation/investability_history"
+        grid_path = history_dir / "krx_market_cap_reference_grid_v01.csv"
+        provenance_path = history_dir / "krx_historical_market_cap_provenance_v01.csv"
+
+        snapshots: dict[str, dict[str, float]] = {}
+        metadata: dict[str, dict[str, str]] = {}
+
+        if grid_path.exists():
+            grid = pd.read_csv(grid_path, dtype=str)
+            for _, row in grid.iterrows():
+                eff_d = str(row["completed_weekly_reference_date"]).strip()
+                src_file = str(row["source_file"]).strip()
+                src_name = Path(src_file).name
+                norm_file = history_dir / "normalized" / src_name
+                if norm_file.exists():
+                    df = pd.read_csv(norm_file, dtype={"ticker": str})
+                    df["ticker"] = df["ticker"].astype(str).str.zfill(6)
+                    mcaps = dict(zip(df["ticker"], df["market_cap"].astype(float)))
+                    snapshots[eff_d] = mcaps
+                    metadata[eff_d] = {
+                        "source_file": src_file,
+                        "normalized_file": str(norm_file.relative_to(root)),
+                        "sha256": str(row.get("sha256", "")),
+                        "provider": "KRX",
+                    }
+
+        # Load Phase 10 snapshot (2025-01-31)
+        p10_src = root / "artifacts/patterns/pattern_a/production/investability/source/krx_market_cap_20250131.csv"
+        if p10_src.exists():
+            df_p10 = pd.read_csv(p10_src, dtype={"ticker": str})
+            df_p10["ticker"] = df_p10["ticker"].astype(str).str.zfill(6)
+            snapshots["2025-01-31"] = dict(zip(df_p10["ticker"], df_p10["market_cap"].astype(float)))
+            metadata["2025-01-31"] = {
+                "source_file": "artifacts/patterns/pattern_a/production/investability/source/krx_market_cap_20250131.csv",
+                "normalized_file": "artifacts/patterns/pattern_a/production/investability/source/krx_market_cap_20250131.csv",
+                "sha256": "4b5dc0e9196b02a2ec9ef99fa1a3962d3a33939634ff9d10e54452077e6f8278",
+                "provider": "KRX",
+            }
+
+        # Load Cutoff snapshot (2026-08-14) - Strictly for 2026-08-14 signal reference only
+        cutoff_src = root / "artifacts/patterns/pattern_a/production/investability/source/krx_market_cap_20260814.csv"
+        if cutoff_src.exists():
+            df_cut = pd.read_csv(cutoff_src, dtype={"ticker": str})
+            df_cut["ticker"] = df_cut["ticker"].astype(str).str.zfill(6)
+            snapshots["2026-08-14"] = dict(zip(df_cut["ticker"], df_cut["market_cap"].astype(float)))
+            metadata["2026-08-14"] = {
+                "source_file": "artifacts/patterns/pattern_a/production/investability/source/krx_market_cap_20260814.csv",
+                "normalized_file": "artifacts/patterns/pattern_a/production/investability/source/krx_market_cap_20260814.csv",
+                "sha256": "1517596adba5938472535d46924b58e72782e21b8f0ca4313f8c8faeeb19183d",
+                "provider": "KRX",
+            }
+
+        return cls(snapshots=snapshots, metadata=metadata)
+
+    def get_market_cap_at_reference(self, ticker: str, reference_date: str) -> tuple[float | None, dict[str, str] | None]:
+        if reference_date not in self.snapshots:
+            return None, None
+        mcap = self.snapshots[reference_date].get(ticker)
+        meta = self.metadata.get(reference_date)
+        return mcap, meta
 
 
 @dataclass
@@ -57,6 +135,12 @@ class StrategyTradeRecord:
     daily_risk: str
     fast_score: float | None
     fast_score_state: str
+
+    # Historical Investability Provenance
+    investability_status: str
+    investability_market_cap: float | None
+    investability_avg_trading_value_20d: float | None
+    investability_market_cap_source_file: str | None
 
     previous_exit_type: str | None
     previous_exit_execution_date: str | None
@@ -170,6 +254,7 @@ def simulate_ticker_strategy_2022(
     score_contract: dict,
     stage_contract: dict,
     enable_loss_guard: bool,
+    market_cap_registry: HistoricalMarketCapRegistry | None = None,
     start_date: pd.Timestamp = EVALUATION_START_DATE,
     cutoff_date: pd.Timestamp = EVALUATION_END_DATE,
 ) -> list[StrategyTradeRecord]:
@@ -178,7 +263,11 @@ def simulate_ticker_strategy_2022(
     Strict Invariants:
       - Full pre-2022 history in daily is used for rolling technical features and snapshots.
       - Initial position state at start_date is FLAT.
-      - Only trades whose entry_execution_date >= start_date are emitted.
+      - Each potential entry signal undergoes strict Historical Investability PIT evaluation:
+          1. Exact historical market cap at signal reference date (Fail Closed if unavailable).
+          2. 20D average trading value computed strictly using daily on/before signal reference date.
+          3. Market cap >= 100B KRW and 20D Trading Value >= 300M KRW required for INVESTABLE.
+      - Only trades whose entry_execution_date >= start_date and pass Investability are emitted.
       - If enable_loss_guard is True: Pre-PROGRESSED -15% Daily Close Stop is active.
       - If enable_loss_guard is False: Pre-PROGRESSED Loss Guard is completely OFF.
       - Exit 3, Exit 4, Coverage lifecycle, Reentry rules, PIT calendar are 100% identical.
@@ -217,6 +306,8 @@ def simulate_ticker_strategy_2022(
         found_signal_res: dict | None = None
         entry_exec_date: pd.Timestamp | None = None
         entry_open_price: float | None = None
+        inv_eval_record: InvestabilityEvaluationResult | None = None
+        inv_source_meta: dict[str, str] | None = None
 
         candidate_weeks = [w for w in valid_weeks if w >= cur_search_date]
         for w in candidate_weeks:
@@ -240,15 +331,46 @@ def simulate_ticker_strategy_2022(
                     if candidate_exec_d < start_date:
                         continue
 
+                    # Strict Historical Investability PIT Gate
+                    w_str = w.strftime("%Y-%m-%d")
+                    mcap_val = None
+                    src_meta = None
+                    if market_cap_registry is not None:
+                        mcap_val, src_meta = market_cap_registry.get_market_cap_at_reference(ticker, w_str)
+
+                    # PIT daily slice strictly on or before w
+                    daily_as_of = daily[daily.index <= w]
+                    inv_res = evaluate_investability(
+                        ticker=ticker,
+                        as_of=w,
+                        daily=daily_as_of,
+                        market_cap=mcap_val,
+                        market_cap_effective_date=w_str if mcap_val is not None else None,
+                        min_market_cap_krw=MIN_MARKET_CAP_KRW,
+                        min_avg_trading_value_20d_krw=MIN_AVG_TRADING_VALUE_20D_KRW,
+                    )
+
+                    # Fail Closed: Must be strictly INVESTABLE
+                    if inv_res.status != InvestabilityStatus.INVESTABLE:
+                        continue
+
                     found_signal_w = w
                     found_signal_res = res
                     entry_exec_date = candidate_exec_d
                     entry_open_price = float(fut_daily.iloc[0]["open"])
+                    inv_eval_record = inv_res
+                    inv_source_meta = src_meta
                     break
             except Exception:
                 continue
 
-        if found_signal_w is None or found_signal_res is None or entry_exec_date is None or entry_open_price is None:
+        if (
+            found_signal_w is None
+            or found_signal_res is None
+            or entry_exec_date is None
+            or entry_open_price is None
+            or inv_eval_record is None
+        ):
             break
 
         trade_seq += 1
@@ -443,6 +565,10 @@ def simulate_ticker_strategy_2022(
             daily_risk=daily_risk,
             fast_score=round(fast_score, 2) if fast_score is not None else None,
             fast_score_state=fast_score_avail,
+            investability_status=inv_eval_record.status.value,
+            investability_market_cap=inv_eval_record.market_cap,
+            investability_avg_trading_value_20d=inv_eval_record.avg_trading_value_20d,
+            investability_market_cap_source_file=inv_source_meta.get("source_file") if inv_source_meta else None,
             previous_exit_type=prev_exit_type,
             previous_exit_execution_date=prev_exit_exec_date,
             loss_guard_triggered=loss_guard_triggered,

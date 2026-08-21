@@ -1,67 +1,70 @@
 {
-  "total_baseline_loss_guard_trades": 292,
-  "comparison_direction": {
-    "julia_better_count": 174,
-    "julia_better_rate": 59.59,
+  "baseline_loss_guard_total": 62,
+  "paired_loss_guard_count": 60,
+  "unpaired_loss_guard_count": 2,
+  "paired_coverage_rate": 96.77,
+  "paired_comparison_direction": {
+    "julia_better_count": 40,
+    "julia_better_rate": 66.67,
     "julia_equal_count": 0,
     "julia_equal_rate": 0.0,
-    "julia_worse_count": 118,
-    "julia_worse_rate": 40.41
+    "julia_worse_count": 20,
+    "julia_worse_rate": 33.33
   },
-  "recovery_distribution": {
-    "recovered_to_breakeven_or_better_count (>= 0%)": 119,
-    "recovered_to_breakeven_or_better_rate (%)": 40.75,
-    "recovered_to_plus_20_count (>= +20%)": 92,
-    "recovered_to_plus_20_rate (%)": 31.51,
-    "recovered_to_plus_50_count (>= +50%)": 68,
-    "recovered_to_plus_50_rate (%)": 23.29,
-    "recovered_to_plus_100_count (>= +100%)": 33,
-    "recovered_to_plus_100_rate (%)": 11.3
+  "paired_recovery_distribution": {
+    "recovered_to_breakeven_or_better_count (>= 0%)": 28,
+    "recovered_to_breakeven_or_better_rate (%)": 46.67,
+    "recovered_to_plus_20_count (>= +20%)": 19,
+    "recovered_to_plus_20_rate (%)": 31.67,
+    "recovered_to_plus_50_count (>= +50%)": 14,
+    "recovered_to_plus_50_rate (%)": 23.33,
+    "recovered_to_plus_100_count (>= +100%)": 9,
+    "recovered_to_plus_100_rate (%)": 15.0
   },
-  "deep_loss_deterioration": {
-    "still_loss_below_minus_20_count (<= -20%)": 92,
-    "still_loss_below_minus_20_rate (%)": 31.51,
-    "still_loss_below_minus_30_count (<= -30%)": 54,
-    "still_loss_below_minus_30_rate (%)": 18.49,
-    "still_loss_below_minus_40_count (<= -40%)": 25,
-    "still_loss_below_minus_40_rate (%)": 8.56,
-    "still_loss_below_minus_50_count (<= -50%)": 11,
-    "still_loss_below_minus_50_rate (%)": 3.77
+  "paired_deep_loss_distribution": {
+    "still_loss_below_minus_20_count (<= -20%)": 16,
+    "still_loss_below_minus_20_rate (%)": 26.67,
+    "still_loss_below_minus_30_count (<= -30%)": 9,
+    "still_loss_below_minus_30_rate (%)": 15.0,
+    "still_loss_below_minus_40_count (<= -40%)": 5,
+    "still_loss_below_minus_40_rate (%)": 8.33,
+    "still_loss_below_minus_50_count (<= -50%)": 2,
+    "still_loss_below_minus_50_rate (%)": 3.33
   },
-  "return_delta_stats": {
-    "count": 292,
-    "mean": 36.03,
-    "median": 4.79,
-    "p25": -10.1,
-    "p75": 57.34,
-    "p90": 126.6,
-    "std": 84.2,
-    "min": -63.3,
-    "max": 734.27,
-    "positive_rate": 59.59
+  "paired_return_delta_stats": {
+    "count": 60,
+    "mean": 42.37,
+    "median": 13.44,
+    "p25": -4.88,
+    "p75": 48.07,
+    "p90": 136.39,
+    "std": 84.45,
+    "min": -51.76,
+    "max": 407.54,
+    "positive_rate": 66.67
   },
-  "julia_outcome_return_stats": {
-    "count": 292,
-    "mean": 20.05,
-    "median": -10.32,
-    "p25": -26.34,
-    "p75": 41.26,
-    "p90": 109.02,
-    "std": 84.22,
-    "min": -79.03,
-    "max": 718.71,
-    "positive_rate": 40.75
+  "paired_julia_outcome_return_stats": {
+    "count": 60,
+    "mean": 26.26,
+    "median": -2.13,
+    "p25": -21.05,
+    "p75": 33.29,
+    "p90": 122.35,
+    "std": 84.62,
+    "min": -65.92,
+    "max": 391.8,
+    "positive_rate": 46.67
   },
-  "baseline_outcome_return_stats": {
-    "count": 292,
-    "mean": -15.98,
-    "median": -15.89,
-    "p25": -16.95,
-    "p75": -14.88,
-    "p90": -13.49,
-    "std": 2.25,
-    "min": -23.75,
-    "max": -8.98,
+  "paired_baseline_outcome_return_stats": {
+    "count": 60,
+    "mean": -16.11,
+    "median": -15.75,
+    "p25": -16.84,
+    "p75": -15.25,
+    "p90": -14.25,
+    "std": 1.86,
+    "min": -22.85,
+    "max": -11.91,
     "positive_rate": 0.0
   }
 }
