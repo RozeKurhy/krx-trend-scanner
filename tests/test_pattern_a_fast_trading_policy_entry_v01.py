@@ -131,20 +131,29 @@ def test_07_next_trading_day_open_rule_maintained(eval_data):
 
 
 def test_08_09_primary_entry_samples_and_grades_invariance(eval_data):
+    """13→14 entry_count 등 아래 기댓값 변경 근거: w.md Fix D §7-§9 원인 분석 결과
+    CALENDAR_AUTHORITY_CAUSALITY = CONFIRMED (r.md 참고). INV_OOS_B_029(002350)의
+    2025-05-30 signal week가 fix(pit) b5228b5/b9c837f(KRX 실제 시장 월말 거래일
+    기준 completed-month authority) 적용으로 monthly_regime이
+    EARLY_REGIME -> PERMITTED_REGIME으로 재분류되어 Early Variant에서
+    Primary Entry로 이동한 것이 유일한 원인이며, 다른 12개 기존 samples의
+    signal_date/execution_date/entry_grade는 완전히 동일하게 유지됨을 확인함."""
     df_samples, _, summary = eval_data
     assert len(df_samples) == 36
-    assert summary["coverage"]["entry_count"] == 13
-    assert summary["coverage"]["no_entry_count"] == 23
-    assert summary["coverage"]["grade_counts"] == {"Grade A": 12, "Grade B": 1}
-    assert summary["coverage"]["median_weeks_to_entry"] == 19.0
+    assert summary["coverage"]["entry_count"] == 14
+    assert summary["coverage"]["no_entry_count"] == 22
+    assert summary["coverage"]["grade_counts"] == {"Grade A": 13, "Grade B": 1}
+    assert summary["coverage"]["median_weeks_to_entry"] == 21.5
 
 
 def test_10_primary_forward_returns_medians_invariance(eval_data):
+    """4w만 INV_OOS_B_029 추가로 변경(위 test_08_09 docstring 참고). 8w/12w/26w는
+    029의 forward window가 그 horizon까지 도달하지 못해(CENSORED) 완전히 불변."""
     _, _, summary = eval_data
     fwd = summary["primary_forward_returns"]
-    assert fwd["4w"]["median"] == 6.44
-    assert fwd["4w"]["mean"] == 4.79
-    assert fwd["4w"]["positive_rate"] == 58.3
+    assert fwd["4w"]["median"] == 5.84
+    assert fwd["4w"]["mean"] == 3.97
+    assert fwd["4w"]["positive_rate"] == 53.8
 
     assert fwd["8w"]["median"] == 0.28
     assert fwd["8w"]["mean"] == 10.01
@@ -160,9 +169,12 @@ def test_10_primary_forward_returns_medians_invariance(eval_data):
 
 
 def test_11_mfe_mae_medians_invariance(eval_data):
+    """4w MFE/MAE만 INV_OOS_B_029 추가로 변경(위 test_08_09 docstring 참고).
+    MAE 4w(-8.34 -> -8.72)는 w.md에 명시되지 않았으나 동일한 원인(029 편입)으로
+    확인됨 — r.md에 범위 밖 발견사항으로 별도 기록."""
     _, _, summary = eval_data
-    assert summary["mfe_excursion_medians"] == {"4w": 9.81, "8w": 15.46, "12w": 15.71, "26w": 25.49}
-    assert summary["mae_excursion_medians"] == {"4w": -8.34, "8w": -8.72, "12w": -11.34, "26w": -15.24}
+    assert summary["mfe_excursion_medians"] == {"4w": 7.96, "8w": 15.46, "12w": 15.71, "26w": 25.49}
+    assert summary["mae_excursion_medians"] == {"4w": -8.72, "8w": -8.72, "12w": -11.34, "26w": -15.24}
 
 
 def test_12_trigger_any_control_invariance(eval_data):
@@ -174,10 +186,13 @@ def test_12_trigger_any_control_invariance(eval_data):
 
 
 def test_13_early_variant_invariance(eval_data):
+    """4->3 entry_count: INV_OOS_B_029가 Early Variant에서 Primary Entry로 이동
+    (위 test_08_09 docstring 참고). 남은 3개 samples(008/012/013)는 signal_date까지
+    완전히 동일. 12w median은 029가 그 horizon에서 이미 CENSORED였기 때문에 불변."""
     _, _, summary = eval_data
     early = summary["experimental_early_variant"]
-    assert early["entry_count"] == 4
-    assert early["forward_returns"]["4w"]["median"] == -6.86
+    assert early["entry_count"] == 3
+    assert early["forward_returns"]["4w"]["median"] == -7.90
     assert early["forward_returns"]["12w"]["median"] == -3.47
 
 

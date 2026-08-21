@@ -32,17 +32,30 @@ def test_weekly_observation_has_close_field():
     assert not hasattr(fast.current, "close")
 
 
-def test_420770_latest_week_close_matches_monthly_history():
-    """420770 / 2026-08-14 FAST weekly close == 120100 (Pattern A Monthly History와 동일 가격)."""
+def test_420770_latest_week_close_matches_local_daily_close():
+    """420770 / 2026-08-14 FAST weekly close == 120100 (해당 week_ending의 실제 로컬 일봉 종가와 동일).
+
+    2026-08-14는 8월의 완성된 월봉이 아니므로(실제 KRX 시장 월말 거래일 기준
+    completed-month authority, fix(pit) b5228b5/b9c837f) monthly_history의
+    마지막 완성 월봉은 여전히 7월(2026-07-31)이다. "FAST weekly close ==
+    latest completed monthly close"는 서로 다른 timeframe의 값이 우연히
+    같은 경우에만 성립하던 assertion이라 더 이상 항상 참이 아니므로, weekly
+    close 자체의 정합성(로컬 일봉 종가와 동일)과 monthly completed-period
+    semantics(7월이 마지막 완성 월봉)를 각각 올바른 의미로 나눠 검증한다.
+    """
+    cache = ParquetCache(base_dir=REPO_ROOT / "data/raw/stocks")
+    daily = cache.load("420770")
+
     report, _, _ = generate_stock_report(ticker="420770", as_of="2026-08-14", repo_root=REPO_ROOT, save_artifacts=False)
 
     latest = report.pattern_a_fast.weekly_history[-1]
     assert latest.week_ending == "2026-08-14"
     assert latest.close == pytest.approx(120100.0)
+    assert latest.close == pytest.approx(float(daily.loc["2026-08-14", "close"]))
 
     monthly_latest = report.monthly_history.full_monthly_history[-1]
-    assert monthly_latest.as_of == "2026-08-14"
-    assert latest.close == pytest.approx(monthly_latest.close)
+    assert monthly_latest.as_of == "2026-07-31"
+    assert "2026-08" not in [obs.as_of[:7] for obs in report.monthly_history.full_monthly_history]
 
 
 def test_420770_all_weekly_rows_close_matches_local_daily_cache():

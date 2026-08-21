@@ -42,7 +42,12 @@ EXPECTED_FROZEN_HASHES = {
     # Phase 13 added only PIT-truncated raw monthly/weekly frame exposure for
     # research. FeatureRow construction and Pattern A score/stage semantics
     # remain the frozen production behavior.
-    "historical_snapshot.py": "c37cce88f35105e32cdd7bc1ebf00cb4e757e4592e335a31be0b4522ded7e19e",
+    # fix(pit) b5228b5/b9c837f (KRX actual market month-end completed-period
+    # authority): _drop_incomplete_current_month만 calendar-month-end 근사에서
+    # 실제 KRX 거래소 캘린더(MarketCalendarAuthority) 기준으로 교체됨. 검증됨:
+    # Pattern A Stage/Score semantic 변경 없음, build_feature_row 미변경,
+    # PIT/no-lookahead 유지(fail-closed 강화만 추가).
+    "historical_snapshot.py": "793014cbf434acadafcc59b1ae9fc50b59980178c1aeba71bc39d6d9f8a3d250",
 }
 
 

@@ -1,10 +1,16 @@
 import pandas as pd
 import pytest
+import pykrx.stock as pykrx_stock
 
-from trend_scanner.data import pykrx_provider as pykrx_provider_module
 from trend_scanner.data.errors import MarketDataError
 from trend_scanner.data.pykrx_provider import PyKrxDataProvider
 from trend_scanner.data.validator import validate_ohlcv
+
+# production PyKrxDataProvider._call_pykrx()는 매 호출마다 `from pykrx import stock`를
+# 함수 내부에서 새로 import한다(module-level `stock` attribute 없음). 이 local import는
+# sys.modules['pykrx.stock']과 동일한 module object에 매번 다시 바인딩되므로, 그 실제
+# module object(pykrx.stock)의 attribute를 직접 monkeypatch하면 production import 경계를
+# 바꾸지 않고도 이 테스트들이 production이 실제로 호출하는 지점을 가로챌 수 있다.
 
 
 def _adjusted_korean_df() -> pd.DataFrame:
@@ -48,7 +54,7 @@ def test_load_daily_merges_adjusted_price_with_unadjusted_trading_value(monkeypa
         return _adjusted_korean_df() if adjusted else _unadjusted_korean_df()
 
     monkeypatch.setattr(
-        pykrx_provider_module.stock, "get_market_ohlcv_by_date", fake_get_market_ohlcv_by_date
+        pykrx_stock, "get_market_ohlcv_by_date", fake_get_market_ohlcv_by_date
     )
 
     provider = PyKrxDataProvider(adjusted=True)
@@ -77,7 +83,7 @@ def test_unadjusted_mode_calls_pykrx_only_once(monkeypatch):
         return _unadjusted_korean_df()
 
     monkeypatch.setattr(
-        pykrx_provider_module.stock, "get_market_ohlcv_by_date", fake_get_market_ohlcv_by_date
+        pykrx_stock, "get_market_ohlcv_by_date", fake_get_market_ohlcv_by_date
     )
 
     provider = PyKrxDataProvider(adjusted=False)
@@ -92,13 +98,13 @@ def test_load_daily_wraps_underlying_exception():
         raise RuntimeError("network down")
 
     provider = PyKrxDataProvider(adjusted=True)
-    original = pykrx_provider_module.stock.get_market_ohlcv_by_date
-    pykrx_provider_module.stock.get_market_ohlcv_by_date = raising_get_market_ohlcv_by_date
+    original = pykrx_stock.get_market_ohlcv_by_date
+    pykrx_stock.get_market_ohlcv_by_date = raising_get_market_ohlcv_by_date
     try:
         with pytest.raises(MarketDataError):
             provider.load_daily("005930", "2024-01-02", "2024-01-03")
     finally:
-        pykrx_provider_module.stock.get_market_ohlcv_by_date = original
+        pykrx_stock.get_market_ohlcv_by_date = original
 
 
 def test_load_daily_empty_response_returns_empty_standard_frame(monkeypatch):
@@ -106,7 +112,7 @@ def test_load_daily_empty_response_returns_empty_standard_frame(monkeypatch):
         return pd.DataFrame()
 
     monkeypatch.setattr(
-        pykrx_provider_module.stock, "get_market_ohlcv_by_date", fake_get_market_ohlcv_by_date
+        pykrx_stock, "get_market_ohlcv_by_date", fake_get_market_ohlcv_by_date
     )
 
     provider = PyKrxDataProvider(adjusted=True)
@@ -123,7 +129,7 @@ def test_missing_source_column_raises_market_data_error(monkeypatch):
         return broken if adjusted else _unadjusted_korean_df()
 
     monkeypatch.setattr(
-        pykrx_provider_module.stock, "get_market_ohlcv_by_date", fake_get_market_ohlcv_by_date
+        pykrx_stock, "get_market_ohlcv_by_date", fake_get_market_ohlcv_by_date
     )
 
     provider = PyKrxDataProvider(adjusted=True)
@@ -164,7 +170,7 @@ def test_phantom_holiday_rows_are_filtered_out(monkeypatch):
         return adjusted_df if adjusted else unadjusted_df
 
     monkeypatch.setattr(
-        pykrx_provider_module.stock, "get_market_ohlcv_by_date", fake_get_market_ohlcv_by_date
+        pykrx_stock, "get_market_ohlcv_by_date", fake_get_market_ohlcv_by_date
     )
 
     provider = PyKrxDataProvider(adjusted=True)
@@ -199,7 +205,7 @@ def test_row_with_only_partial_zero_columns_is_not_filtered(monkeypatch):
         return adjusted_df if adjusted else unadjusted_df
 
     monkeypatch.setattr(
-        pykrx_provider_module.stock, "get_market_ohlcv_by_date", fake_get_market_ohlcv_by_date
+        pykrx_stock, "get_market_ohlcv_by_date", fake_get_market_ohlcv_by_date
     )
 
     provider = PyKrxDataProvider(adjusted=True)
@@ -241,7 +247,7 @@ def test_high_one_won_below_close_is_corrected(monkeypatch):
         return adjusted_df if adjusted else unadjusted_df
 
     monkeypatch.setattr(
-        pykrx_provider_module.stock, "get_market_ohlcv_by_date", fake_get_market_ohlcv_by_date
+        pykrx_stock, "get_market_ohlcv_by_date", fake_get_market_ohlcv_by_date
     )
 
     provider = PyKrxDataProvider(adjusted=True)
@@ -259,7 +265,7 @@ def test_low_one_won_above_open_is_corrected(monkeypatch):
         return adjusted_df if adjusted else unadjusted_df
 
     monkeypatch.setattr(
-        pykrx_provider_module.stock, "get_market_ohlcv_by_date", fake_get_market_ohlcv_by_date
+        pykrx_stock, "get_market_ohlcv_by_date", fake_get_market_ohlcv_by_date
     )
 
     provider = PyKrxDataProvider(adjusted=True)
@@ -277,7 +283,7 @@ def test_two_won_violation_is_not_corrected_and_validator_rejects(monkeypatch):
         return adjusted_df if adjusted else unadjusted_df
 
     monkeypatch.setattr(
-        pykrx_provider_module.stock, "get_market_ohlcv_by_date", fake_get_market_ohlcv_by_date
+        pykrx_stock, "get_market_ohlcv_by_date", fake_get_market_ohlcv_by_date
     )
 
     provider = PyKrxDataProvider(adjusted=True)
@@ -308,7 +314,7 @@ def test_adjusted_false_one_won_violation_is_not_corrected(monkeypatch):
         return unadjusted_df
 
     monkeypatch.setattr(
-        pykrx_provider_module.stock, "get_market_ohlcv_by_date", fake_get_market_ohlcv_by_date
+        pykrx_stock, "get_market_ohlcv_by_date", fake_get_market_ohlcv_by_date
     )
 
     provider = PyKrxDataProvider(adjusted=False)
@@ -335,7 +341,7 @@ def test_dtype_conversion_failure_raises_market_data_error(monkeypatch, column, 
         return broken
 
     monkeypatch.setattr(
-        pykrx_provider_module.stock, "get_market_ohlcv_by_date", fake_get_market_ohlcv_by_date
+        pykrx_stock, "get_market_ohlcv_by_date", fake_get_market_ohlcv_by_date
     )
 
     provider = PyKrxDataProvider(adjusted=True)
