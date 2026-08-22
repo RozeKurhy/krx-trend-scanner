@@ -1,8 +1,8 @@
 #!/usr/bin/env python
-"""Seal 117/215 KRX Historical Market Cap Sources with Strict Canonical Authority Crosscheck.
+"""Seal 117/215 KRX Historical Market Cap Sources with True Bidirectional Authority Crosscheck.
 
-Enforces strict bidirectional cross-check between Grid and ACTIVE_REFERENCE Provenance
-(exact source/normalized filename, SHA-256, and effective_date match),
+Enforces strict bidirectional set equality and 3-way effective-date contract between Grid and
+ACTIVE_REFERENCE Provenance (exact source/normalized filename, SHA-256, and effective_date match),
 strictly hard-fails on sealed source corruption without downgrading to missing,
 and atomically replaces checkpoint artifacts.
 """
@@ -64,7 +64,7 @@ def load_canonical_ui_authorities(
     grid_path: Path = GRID_CSV,
     p10_source_path: Path = P10_SOURCE_20250131,
 ) -> dict[str, CanonicalUIAuthorityEntry]:
-    """Strictly cross-check Grid and ACTIVE Provenance to derive Canonical UI Authorities."""
+    """Strictly cross-check Grid and ACTIVE Provenance with true bidirectional set equality and effective-date contracts."""
     authorities: dict[str, CanonicalUIAuthorityEntry] = {}
 
     if not provenance_path.exists() or not grid_path.exists():
@@ -75,48 +75,96 @@ def load_canonical_ui_authorities(
     df_prov = pd.read_csv(provenance_path, dtype=str).fillna("")
     df_grid = pd.read_csv(grid_path, dtype=str).fillna("")
 
-    # 1. Parse ACTIVE_REFERENCE rows only
+    # 1. Validate required columns
+    req_prov_cols = {"reference_status", "completed_weekly_reference_date", "effective_date", "source_file", "sha256"}
+    if not req_prov_cols.issubset(df_prov.columns):
+        raise SealedMarketCapCheckpointIntegrityError(f"Provenance CSV missing required columns: {req_prov_cols - set(df_prov.columns)}")
+
+    req_grid_cols = {"completed_weekly_reference_date", "effective_date", "source_file", "sha256"}
+    if not req_grid_cols.issubset(df_grid.columns):
+        raise SealedMarketCapCheckpointIntegrityError(f"Grid CSV missing required columns: {req_grid_cols - set(df_grid.columns)}")
+
+    # 2. Check duplicate reference dates in Grid & ACTIVE Provenance
     df_active = df_prov[df_prov["reference_status"] == "ACTIVE_REFERENCE"]
+    active_ref_list = df_active["completed_weekly_reference_date"].str.strip().tolist()
+    if len(active_ref_list) != len(set(active_ref_list)):
+        raise SealedMarketCapCheckpointIntegrityError("Duplicate completed_weekly_reference_date found in ACTIVE Provenance.")
+
+    grid_ref_list = df_grid["completed_weekly_reference_date"].str.strip().tolist()
+    if len(grid_ref_list) != len(set(grid_ref_list)):
+        raise SealedMarketCapCheckpointIntegrityError("Duplicate completed_weekly_reference_date found in Grid CSV.")
+
+    # 3. Major 2: Enforce strict bidirectional set equality inside loader
+    active_prov_dates = set(active_ref_list)
+    grid_dates = set(grid_ref_list)
+
+    missing_in_prov = grid_dates - active_prov_dates
+    missing_in_grid = active_prov_dates - grid_dates
+    if missing_in_prov or missing_in_grid:
+        raise SealedMarketCapCheckpointIntegrityError(
+            f"Bidirectional set mismatch between Grid and ACTIVE Provenance: "
+            f"missing_in_provenance={sorted(list(missing_in_prov))}, missing_in_grid={sorted(list(missing_in_grid))}"
+        )
+
+    # 4. Parse & Strictly Cross-Check every date
     prov_by_date: dict[str, dict[str, str]] = {}
     for _, r in df_active.iterrows():
-        ref_d = str(r.get("completed_weekly_reference_date", "")).strip()
-        if ref_d:
-            prov_by_date[ref_d] = {
-                "effective_date": str(r.get("effective_date", "")).strip(),
-                "source_file": str(r.get("source_file", "")).strip(),
-                "source_sha256": str(r.get("sha256", "")).strip(),
-                "normalized_file": str(r.get("normalized_file", "")).strip(),
-                "normalized_sha256": str(r.get("normalized_sha256", "")).strip(),
-            }
+        ref_d = str(r["completed_weekly_reference_date"]).strip()
+        eff_d = str(r["effective_date"]).strip()
+        src_f = str(r["source_file"]).strip()
+        src_sha = str(r["sha256"]).strip()
+        norm_f = str(r.get("normalized_file", "")).strip()
+        norm_sha = str(r.get("normalized_sha256", "")).strip()
 
-    # 2. Cross-check against Grid rows
+        if not eff_d or not src_f or not src_sha:
+            raise SealedMarketCapCheckpointIntegrityError(f"Missing required authority field in ACTIVE Provenance for {ref_d}")
+
+        prov_by_date[ref_d] = {
+            "effective_date": eff_d,
+            "source_file": src_f,
+            "source_sha256": src_sha,
+            "normalized_file": norm_f,
+            "normalized_sha256": norm_sha,
+        }
+
     grid_by_date: dict[str, dict[str, str]] = {}
     for _, r in df_grid.iterrows():
-        ref_d = str(r.get("completed_weekly_reference_date", "")).strip()
-        if ref_d:
-            grid_by_date[ref_d] = {
-                "source_file": str(r.get("source_file", "")).strip(),
-                "source_sha256": str(r.get("sha256", "")).strip(),
-            }
+        ref_d = str(r["completed_weekly_reference_date"]).strip()
+        eff_d = str(r["effective_date"]).strip()
+        src_f = str(r["source_file"]).strip()
+        src_sha = str(r["sha256"]).strip()
 
-    # Strict bidirectional match for Phase 13J entries
-    for ref_d, p_info in prov_by_date.items():
-        g_info = grid_by_date.get(ref_d)
-        if g_info is None:
+        if not eff_d or not src_f or not src_sha:
+            raise SealedMarketCapCheckpointIntegrityError(f"Missing required authority field in Grid for {ref_d}")
+
+        grid_by_date[ref_d] = {
+            "effective_date": eff_d,
+            "source_file": src_f,
+            "source_sha256": src_sha,
+        }
+
+    for ref_d in sorted(list(grid_dates)):
+        p_info = prov_by_date[ref_d]
+        g_info = grid_by_date[ref_d]
+
+        # Effective date exact match
+        if p_info["effective_date"] != g_info["effective_date"]:
             raise SealedMarketCapCheckpointIntegrityError(
-                f"Canonical authority mismatch: {ref_d} is active in Provenance but missing in Grid."
+                f"Effective date mismatch for {ref_d}: provenance='{p_info['effective_date']}', grid='{g_info['effective_date']}'"
             )
 
+        # Source filename exact match
         p_src_name = Path(p_info["source_file"]).name
         g_src_name = Path(g_info["source_file"]).name
         if p_src_name != g_src_name:
             raise SealedMarketCapCheckpointIntegrityError(
-                f"Source filename mismatch for {ref_d}: prov='{p_src_name}', grid='{g_src_name}'"
+                f"Source filename mismatch for {ref_d}: provenance='{p_src_name}', grid='{g_src_name}'"
             )
 
+        # Source SHA-256 exact match
         if p_info["source_sha256"] != g_info["source_sha256"]:
             raise SealedMarketCapCheckpointIntegrityError(
-                f"Source SHA-256 mismatch for {ref_d}: prov='{p_info['source_sha256']}', grid='{g_info['source_sha256']}'"
+                f"Source SHA-256 mismatch for {ref_d}: provenance='{p_info['source_sha256']}', grid='{g_info['source_sha256']}'"
             )
 
         norm_f = p_info["normalized_file"]
@@ -125,7 +173,7 @@ def load_canonical_ui_authorities(
 
         authorities[ref_d] = CanonicalUIAuthorityEntry(
             completed_weekly_reference_date=ref_d,
-            effective_date=p_info["effective_date"] or ref_d,
+            effective_date=p_info["effective_date"],
             source_filename=p_src_name,
             source_sha256=p_info["source_sha256"],
             normalized_filename=norm_name,
@@ -133,7 +181,7 @@ def load_canonical_ui_authorities(
             reference_status="ACTIVE_REFERENCE",
         )
 
-    # 3. Explicit Phase 10 Production Authority (2025-01-31)
+    # 5. Explicit Phase 10 Production Authority (2025-01-31)
     if p10_source_path.exists():
         p10_sha = sha256_file(p10_source_path)
         authorities["2025-01-31"] = CanonicalUIAuthorityEntry(
@@ -308,7 +356,7 @@ def seal_checkpoint(
                         )
                     if eff_d != auth_entry.effective_date:
                         raise SealedMarketCapCheckpointIntegrityError(
-                            f"Canonical effective date mismatch for {sig_d_str}: authority={auth_entry.effective_date}, actual={eff_d}"
+                            f"Canonical 3-way effective date mismatch for {sig_d_str}: authority={auth_entry.effective_date}, actual={eff_d}"
                         )
 
                     channel = "KRX_DATA_MARKETPLACE_UI_CSV"

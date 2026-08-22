@@ -5,7 +5,8 @@ Guarantees 100% exact parity between CSV/JSON artifacts and Markdown documentati
 When final_pit_backtest_ready is False, all comparative performance metrics are strictly
 suppressed to prevent premature / non-authoritative evidence exposure.
 When final_pit_backtest_ready is True, strictly validates full_pit_run_manifest.json,
-matching all report-input artifact SHA-256 hashes and run identities before generating the report.
+matching all report-input artifact SHA-256 hashes, and uses ONLY the verified on-disk summary
+artifact as the single source of truth (caller payload cannot override verified disk artifact).
 Eliminates local file:// user links in favor of canonical repo-relative paths.
 """
 
@@ -60,7 +61,7 @@ def generate_checkpoint_report(pit_audit: dict) -> str:
 | **Source Collection Status** | `INTERRUPTED_KRX_TEMPORARY_RESTRICTION` |
 | **Final PIT Backtest Ready** | `False` |
 | **Final Result Status** | `INVALID_INCOMPLETE_PIT_COVERAGE` |
-| **Authoritative Start SHA** | `7e3d7bfe8ce5df21af916c2b28f130b8ef43bb7e` |
+| **Authoritative Start SHA** | `8411a750821adcdd557c274740472591a930cf7b` |
 
 ---
 
@@ -112,7 +113,7 @@ def generate_checkpoint_report(pit_audit: dict) -> str:
 
 
 def generate_full_research_report(
-    summary: dict,
+    summary: dict | None,
     pit_audit: dict,
     julia_dir: Path | None = None,
     manifest_path: Path | None = None,
@@ -120,13 +121,12 @@ def generate_full_research_report(
 ) -> str:
     """Generate full comparative research report when 100% Full PIT coverage is achieved.
 
-    Strict All-Artifact Run Identity Gate (Major 1):
-      Requires a valid full_pit_run_manifest.json where:
-        - evidence_status == FULL_PIT_COMPLETE
-        - input_manifest_sha256 == current source manifest SHA-256
-        - 100% coverage (215/215, missing=0)
-        - All 5 report-input artifacts (summary, LG summary, winners, worst, divergence) match exact SHA-256
-        - Summary metadata run_id matches run manifest run_id
+    Strict All-Artifact Run Identity & Verified On-Disk Summary Gate (Major 1):
+      1. Requires a valid full_pit_run_manifest.json where evidence_status == FULL_PIT_COMPLETE,
+         input_manifest_sha256 matches current source manifest SHA, and 100% PIT coverage.
+      2. Validates all 5 report-input artifact SHA-256 hashes against full_pit_run_manifest.json.
+      3. Uses ONLY the verified on-disk strategy_comparison_summary.json as the authoritative source
+         for performance metrics (caller summary payload is ignored/overridden).
     """
     target_julia_dir = julia_dir or JULIA_DIR
     target_manifest_path = manifest_path or (target_julia_dir / "historical_market_cap_source_manifest.csv")
@@ -176,14 +176,7 @@ def generate_full_research_report(
             "Full Julia report rejected: full_pit_run_manifest.json failed contract validation or manifest SHA mismatch."
         )
 
-    # 3. Summary Metadata Run ID and Evidence Parity Gate
-    meta = summary.get("metadata", {})
-    if meta.get("evidence_status") != "FULL_PIT_COMPLETE" or meta.get("run_id") != run_id:
-        raise RuntimeError(
-            f"Full Julia report rejected: strategy_comparison_summary.json metadata run_id '{meta.get('run_id')}' != run_manifest '{run_id}'"
-        )
-
-    # 4. Validate All 5 Artifacts Existence & Exact SHA-256 Parity
+    # 3. Validate All 5 Artifacts Existence & Exact SHA-256 Parity
     artifacts_map = run_manifest.get("artifacts", {})
     required_artifact_names = [
         "strategy_comparison_summary.json",
@@ -206,6 +199,20 @@ def generate_full_research_report(
                 f"Full Julia report rejected: Artifact SHA mismatch for '{name}': expected {expected_sha}, got {actual_sha}"
             )
 
+    # 4. Major 1: Load and Use ONLY Verified On-Disk Summary as the single authority
+    summary_path = target_julia_dir / "strategy_comparison_summary.json"
+    verified_summary = json.loads(summary_path.read_text(encoding="utf-8"))
+
+    meta = verified_summary.get("metadata", {})
+    if meta.get("evidence_status") != "FULL_PIT_COMPLETE" or meta.get("run_id") != run_id:
+        raise RuntimeError(
+            f"Full Julia report rejected: verified strategy_comparison_summary.json metadata run_id '{meta.get('run_id')}' != run_manifest '{run_id}'"
+        )
+    if meta.get("input_manifest_sha256") != current_manifest_sha:
+        raise RuntimeError(
+            f"Full Julia report rejected: verified summary input_manifest_sha256 != current_manifest_sha"
+        )
+
     lg_summary_path = target_julia_dir / "loss_guard_recovery_summary.json"
     winners_path = target_julia_dir / "big_winners.csv"
     worst_path = target_julia_dir / "worst_losses.csv"
@@ -216,8 +223,8 @@ def generate_full_research_report(
     df_worst = pd.read_csv(worst_path)
     df_divergence = pd.read_csv(divergence_path)
 
-    b_metrics = summary.get("baseline_v2_2022", {})
-    j_metrics = summary.get("julia_v00_2022", {})
+    b_metrics = verified_summary.get("baseline_v2_2022", {})
+    j_metrics = verified_summary.get("julia_v00_2022", {})
 
     b_ret = b_metrics.get("return_stats", {})
     j_ret = j_metrics.get("return_stats", {})
@@ -254,7 +261,7 @@ def generate_full_research_report(
 | **Only Delta from Base** | Pre-PROGRESSED Loss Guard (-15% Daily Close Stop) `DISABLED` (OFF) |
 | **Tuning Gate** | `NO_TUNING` (All thresholds, parameters, and post-PROGRESSED exit rules frozen) |
 | **Historical Investability PIT** | `STRICT_POINT_IN_TIME` (Exact KRX snapshot, Fail Closed on missing date, Zero future fallback) |
-| **Authoritative Start SHA** | `{meta.get("supersedes_commit", "7e3d7bfe8ce5df21af916c2b28f130b8ef43bb7e")}` |
+| **Authoritative Start SHA** | `{meta.get("supersedes_commit", "8411a750821adcdd557c274740472591a930cf7b")}` |
 
 ---
 

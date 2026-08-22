@@ -3,7 +3,8 @@
 Validates:
   - 215 Required Reference Dates Determinism & Partition (117 Available + 98 Missing)
   - 2023-09-22 Canonical UI Authority Classification and Crosscheck
-  - Grid <-> Active Provenance Bidirectional Strict Crosscheck
+  - True Bidirectional Grid <-> Active Provenance Set Equality & 3-Way Effective Date Contract
+  - Negative tests on Grid/Provenance date set mismatch, effective date mismatch, and duplicates
   - Superseded Provenance Rows Excluded from Active Authority
   - Dual SHA (Source + Normalized) verification in Registry & Tampering Detection
   - Sealed Source Corruption Hard Fail in Sealer & Existing Artifact Preservation
@@ -13,7 +14,7 @@ Validates:
   - Evaluation Window (2022-01-01 to 2026-08-14) and Lookback Invariants
   - Full Loss Guard Cohort Accounting Identity (N = M + (N - M))
   - Incomplete Report Governance (Performance metrics strictly suppressed when coverage < 100%)
-  - Full-Ready Report Run Manifest Gate (All-artifact SHA verification, Stale/Mixed run rejection)
+  - Full-Ready Report Run Manifest Gate & Verified On-Disk Summary Authority (Caller payload override blocked)
   - No local file:/// links in documentation
   - Canonical Historical V2 Protection (783 historical trades preserved)
 """
@@ -137,6 +138,88 @@ def test_grid_and_active_provenance_must_match():
 
     authorities = load_canonical_ui_authorities()
     assert len(authorities) == len(active_dates) + 1  # Active Phase13J (22) + Phase 10 2025-01-31 (1) = 23
+
+
+def test_grid_and_active_provenance_effective_date_mismatch_raises():
+    """SealedMarketCapCheckpointIntegrityError must be raised when Grid and Active Provenance effective_date disagree."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmp_dir = Path(tmpdir)
+        tmp_grid = tmp_dir / "grid.csv"
+        tmp_prov = tmp_dir / "prov.csv"
+
+        df_grid = pd.read_csv(GRID_CSV)
+        df_prov = pd.read_csv(PROVENANCE_CSV)
+
+        # Tamper effective date of first active row in provenance
+        first_active_idx = df_prov[df_prov["reference_status"] == "ACTIVE_REFERENCE"].index[0]
+        df_prov.loc[first_active_idx, "effective_date"] = "1999-12-31"
+
+        df_grid.to_csv(tmp_grid, index=False)
+        df_prov.to_csv(tmp_prov, index=False)
+
+        with pytest.raises(SealedMarketCapCheckpointIntegrityError, match="Effective date mismatch"):
+            load_canonical_ui_authorities(provenance_path=tmp_prov, grid_path=tmp_grid)
+
+
+def test_grid_only_reference_date_raises():
+    """SealedMarketCapCheckpointIntegrityError must be raised when a date is in Grid but not in ACTIVE Provenance."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmp_dir = Path(tmpdir)
+        tmp_grid = tmp_dir / "grid.csv"
+        tmp_prov = tmp_dir / "prov.csv"
+
+        df_grid = pd.read_csv(GRID_CSV)
+        df_prov = pd.read_csv(PROVENANCE_CSV)
+
+        # Drop first active row from provenance
+        first_active_idx = df_prov[df_prov["reference_status"] == "ACTIVE_REFERENCE"].index[0]
+        df_prov = df_prov.drop(first_active_idx)
+
+        df_grid.to_csv(tmp_grid, index=False)
+        df_prov.to_csv(tmp_prov, index=False)
+
+        with pytest.raises(SealedMarketCapCheckpointIntegrityError, match="Bidirectional set mismatch"):
+            load_canonical_ui_authorities(provenance_path=tmp_prov, grid_path=tmp_grid)
+
+
+def test_active_provenance_only_reference_date_raises():
+    """SealedMarketCapCheckpointIntegrityError must be raised when a date is in ACTIVE Provenance but not in Grid."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmp_dir = Path(tmpdir)
+        tmp_grid = tmp_dir / "grid.csv"
+        tmp_prov = tmp_dir / "prov.csv"
+
+        df_grid = pd.read_csv(GRID_CSV)
+        df_prov = pd.read_csv(PROVENANCE_CSV)
+
+        # Drop first row from grid
+        df_grid = df_grid.drop(0)
+
+        df_grid.to_csv(tmp_grid, index=False)
+        df_prov.to_csv(tmp_prov, index=False)
+
+        with pytest.raises(SealedMarketCapCheckpointIntegrityError, match="Bidirectional set mismatch"):
+            load_canonical_ui_authorities(provenance_path=tmp_prov, grid_path=tmp_grid)
+
+
+def test_duplicate_grid_reference_date_raises():
+    """Duplicate completed_weekly_reference_date in Grid must raise SealedMarketCapCheckpointIntegrityError."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmp_dir = Path(tmpdir)
+        tmp_grid = tmp_dir / "grid.csv"
+        tmp_prov = tmp_dir / "prov.csv"
+
+        df_grid = pd.read_csv(GRID_CSV)
+        df_prov = pd.read_csv(PROVENANCE_CSV)
+
+        # Duplicate the first row in grid
+        df_grid = pd.concat([df_grid, df_grid.iloc[[0]]], ignore_index=True)
+
+        df_grid.to_csv(tmp_grid, index=False)
+        df_prov.to_csv(tmp_prov, index=False)
+
+        with pytest.raises(SealedMarketCapCheckpointIntegrityError, match="Duplicate completed_weekly_reference_date found in Grid"):
+            load_canonical_ui_authorities(provenance_path=tmp_prov, grid_path=tmp_grid)
 
 
 def test_superseded_provenance_not_active_authority():
@@ -266,7 +349,7 @@ def test_sealer_existing_sealed_source_corruption_hard_fails():
                 pit_audit_path=audit_path,
             )
 
-        # Minor 1: Existing checkpoint artifacts must be 100% preserved (not overwritten)
+        # Existing checkpoint artifacts must be 100% preserved (not overwritten)
         assert sha256_file(man_path) == initial_man_sha
         assert sha256_file(miss_path) == initial_miss_sha
         assert sha256_file(audit_path) == initial_audit_sha
@@ -578,6 +661,16 @@ def test_full_ready_rejects_mixed_run_artifacts():
             "run_id": "RUN_B_67890",
             "input_manifest_sha256": current_manifest_sha,
         }
+        (tmp_dir / "strategy_comparison_summary.json").write_text(json.dumps(mixed_summary), encoding="utf-8")
+        run_manifest["artifacts"]["strategy_comparison_summary.json"] = sha256_file(tmp_dir / "strategy_comparison_summary.json")
+        run_manifest_path.write_text(json.dumps(run_manifest), encoding="utf-8")
+
+        # Create other dummy files matching run manifest
+        for name in ["loss_guard_recovery_summary.json", "big_winners.csv", "worst_losses.csv", "strategy_path_divergence.csv"]:
+            p = tmp_dir / name
+            p.write_text("dummy", encoding="utf-8")
+            run_manifest["artifacts"][name] = sha256_file(p)
+        run_manifest_path.write_text(json.dumps(run_manifest), encoding="utf-8")
 
         fake_ready_audit = {
             "final_pit_backtest_ready": True,
@@ -597,6 +690,91 @@ def test_full_ready_rejects_mixed_run_artifacts():
             )
 
 
+def test_full_report_uses_verified_disk_summary_not_caller_payload():
+    """Report metrics must be derived STRICTLY from verified on-disk summary, ignoring caller payload."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmp_dir = Path(tmpdir)
+
+        # Copy and prepare all 5 artifacts
+        for name in [
+            "strategy_comparison_summary.json",
+            "loss_guard_recovery_summary.json",
+            "big_winners.csv",
+            "worst_losses.csv",
+            "strategy_path_divergence.csv",
+        ]:
+            src_p = JULIA_DIR / name
+            dst_p = tmp_dir / name
+            dst_p.write_text(src_p.read_text(encoding="utf-8"), encoding="utf-8")
+
+        run_id = "VALID_FULL_PIT_RUN_001"
+        current_manifest_sha = sha256_file(MANIFEST_CSV)
+
+        # Setup verified on-disk summary with distinctive valid values
+        disk_summary = json.loads((tmp_dir / "strategy_comparison_summary.json").read_text(encoding="utf-8"))
+        disk_summary["metadata"] = {
+            "evidence_status": "FULL_PIT_COMPLETE",
+            "run_id": run_id,
+            "input_manifest_sha256": current_manifest_sha,
+        }
+        disk_summary["baseline_v2_2022"]["total_trades"] = 157
+        disk_summary["julia_v00_2022"]["total_trades"] = 152
+        (tmp_dir / "strategy_comparison_summary.json").write_text(json.dumps(disk_summary), encoding="utf-8")
+
+        # Calculate exact artifact SHAs
+        art_shas = {name: sha256_file(tmp_dir / name) for name in [
+            "strategy_comparison_summary.json",
+            "loss_guard_recovery_summary.json",
+            "big_winners.csv",
+            "worst_losses.csv",
+            "strategy_path_divergence.csv",
+        ]}
+
+        run_manifest = {
+            "run_id": run_id,
+            "evidence_status": "FULL_PIT_COMPLETE",
+            "input_manifest_sha256": current_manifest_sha,
+            "required_date_count": 215,
+            "available_date_count": 215,
+            "missing_date_count": 0,
+            "coverage_rate": 100.0,
+            "evaluation_start": "2022-01-01",
+            "evaluation_end": "2026-08-14",
+            "artifacts": art_shas,
+        }
+        run_manifest_path = tmp_dir / "full_pit_run_manifest.json"
+        run_manifest_path.write_text(json.dumps(run_manifest), encoding="utf-8")
+
+        fake_ready_audit = {
+            "final_pit_backtest_ready": True,
+            "historical_market_cap_source_dates_required": 215,
+            "historical_market_cap_source_dates_available": 215,
+            "historical_market_cap_source_dates_missing": 0,
+            "historical_market_cap_source_coverage_rate": 100.0,
+        }
+
+        # Caller provides mutated rogue payload
+        rogue_caller_summary = disk_summary.copy()
+        rogue_caller_summary["baseline_v2_2022"] = {"total_trades": 999999, "unique_tickers": 999999, "return_stats": {"mean": 999.0, "median": 999.0, "positive_rate": 99.0}}
+        rogue_caller_summary["julia_v00_2022"] = {"total_trades": 888888, "unique_tickers": 888888, "return_stats": {"mean": 888.0, "median": 888.0, "positive_rate": 88.0}}
+
+        report_text = generate_full_research_report(
+            rogue_caller_summary,
+            fake_ready_audit,
+            julia_dir=tmp_dir,
+            manifest_path=MANIFEST_CSV,
+            run_manifest_path=run_manifest_path,
+        )
+
+        # Verified on-disk values must appear
+        assert "157" in report_text
+        assert "152" in report_text
+
+        # Rogue caller payload values MUST NOT appear in report
+        assert "999999" not in report_text
+        assert "888888" not in report_text
+
+
 def test_full_ready_accepts_complete_same_run_fixture():
     """When all 5 artifacts exist and match run manifest SHA, report generates successfully."""
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -614,6 +792,17 @@ def test_full_ready_accepts_complete_same_run_fixture():
             dst_p = tmp_dir / name
             dst_p.write_text(src_p.read_text(encoding="utf-8"), encoding="utf-8")
 
+        run_id = "VALID_FULL_PIT_RUN_001"
+        current_manifest_sha = sha256_file(MANIFEST_CSV)
+
+        summary = json.loads((tmp_dir / "strategy_comparison_summary.json").read_text(encoding="utf-8"))
+        summary["metadata"] = {
+            "evidence_status": "FULL_PIT_COMPLETE",
+            "run_id": run_id,
+            "input_manifest_sha256": current_manifest_sha,
+        }
+        (tmp_dir / "strategy_comparison_summary.json").write_text(json.dumps(summary), encoding="utf-8")
+
         # Calculate exact artifact SHAs
         art_shas = {name: sha256_file(tmp_dir / name) for name in [
             "strategy_comparison_summary.json",
@@ -622,9 +811,6 @@ def test_full_ready_accepts_complete_same_run_fixture():
             "worst_losses.csv",
             "strategy_path_divergence.csv",
         ]}
-
-        run_id = "VALID_FULL_PIT_RUN_001"
-        current_manifest_sha = sha256_file(MANIFEST_CSV)
 
         run_manifest = {
             "run_id": run_id,
@@ -639,17 +825,6 @@ def test_full_ready_accepts_complete_same_run_fixture():
             "artifacts": art_shas,
         }
         run_manifest_path = tmp_dir / "full_pit_run_manifest.json"
-        run_manifest_path.write_text(json.dumps(run_manifest), encoding="utf-8")
-
-        summary = json.loads((tmp_dir / "strategy_comparison_summary.json").read_text(encoding="utf-8"))
-        summary["metadata"] = {
-            "evidence_status": "FULL_PIT_COMPLETE",
-            "run_id": run_id,
-            "input_manifest_sha256": current_manifest_sha,
-        }
-        # Update summary on disk and re-hash in run manifest for exact parity
-        (tmp_dir / "strategy_comparison_summary.json").write_text(json.dumps(summary), encoding="utf-8")
-        run_manifest["artifacts"]["strategy_comparison_summary.json"] = sha256_file(tmp_dir / "strategy_comparison_summary.json")
         run_manifest_path.write_text(json.dumps(run_manifest), encoding="utf-8")
 
         fake_ready_audit = {
