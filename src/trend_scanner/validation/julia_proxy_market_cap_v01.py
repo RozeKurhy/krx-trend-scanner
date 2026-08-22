@@ -153,7 +153,7 @@ class ProxyHistoricalMarketCapRegistry:
             return None
         source = "UNKNOWN"
         if meta:
-            source = meta.get("market_cap_source") or meta.get("proxy_source_type") or "UNKNOWN"
+            source = meta.get("market_cap_source") or meta.get("proxy_method") or meta.get("source_type") or meta.get("proxy_source_type") or "UNKNOWN"
         return {
             "market_cap": mcap,
             "market_cap_source": source,

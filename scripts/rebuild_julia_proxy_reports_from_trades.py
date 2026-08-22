@@ -541,8 +541,8 @@ def run_post_processing_rebuild() -> None:
         "production_default_strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
         "research_verdict": verdict,
         "evaluation_window": {
-            "evaluation_start": "2022-01-01",
-            "evaluation_end": "2026-08-14",
+            "start": "2022-01-01",
+            "end": "2026-08-14",
         },
         "official_reference_date_count": 117,
         "proxy_reference_date_count": 98,
@@ -610,6 +610,7 @@ def run_post_processing_rebuild() -> None:
         "authoritative_experiment_base_sha": EXPERIMENT_BASE_SHA,
         "proxy_full_run_commit": PROXY_FULL_RUN_COMMIT,
         "fix01_source_commit": FIX01_SOURCE_COMMIT,
+        "fix02_source_commit": "4e63055f147ec84122bfb23019ef027002998f3d",
         "evaluation_start": "2022-01-01",
         "evaluation_end": "2026-08-14",
         "official_reference_date_count": 117,

@@ -27,7 +27,7 @@
 | **Experiment Base SHA** | `030e9c6145d8dd8b584ea8ce6cc0097cbbf4e377` |
 | **Proxy Full Run Commit** | `6cdb5a6b00096d02c9cee4cc74f65ff8270056a1` |
 | **FIX01 Source Commit** | `afb967d211058bfce9ae053eebc2798b31b822e9` |
-| **Run ID** | `JULIA_V00_PROXY_PIT_20260822_064434` |
+| **Run ID** | `JULIA_V00_PROXY_PIT_20260822_065109` |
 
 ---
 
