@@ -1,17 +1,23 @@
 #!/usr/bin/env python
 """BACKTEST_PERFORMANCE_ENGINEERING_V01_PHASE4_1 -- n=20/50/100 benchmark.
 
-Compares "Phase 4 HEAD (18e4078)" behavior against "Phase 4.1 optimized"
-using a CURRENT-tree dual-path toggle (w.md Phase 4.1 Section 15), since
-re-running the actual 18e4078 commit against today's data hit an unrelated
+Compares a "phase4_head" APPROXIMATION against "Phase 4.1 optimized" using a
+CURRENT-tree dual-path toggle (w.md Phase 4.1 Section 15), since re-running
+the actual 18e4078 commit against today's data hit an unrelated
 proxy-validation schema drift (see r.md's Phase 4 report). Both paths run in
 the SAME process on the SAME data:
 
-  - "phase4_head": a PrecomputedTickerContext built once per ticker and
-    shared FastSnapshotCache/MonthlySnapshotCache across all 4 Baseline/
-    Julia x Primary/Sensitivity passes -- matching what 18e4078 ACTUALLY
-    did -- with ONLY enable_pre_window_pruning=False (the one behavior
-    that did not exist yet at 18e4078).
+  - "phase4_head": PHASE4_HEAD_APPROXIMATION / CURRENT_TREE_PHASE4_STYLE /
+    PRE_WINDOW_PRUNING_DISABLED (w.md Phase 4.3 Section 19 relabeling) -- a
+    PrecomputedTickerContext built once per ticker and shared
+    FastSnapshotCache/MonthlySnapshotCache across all 4 Baseline/Julia x
+    Primary/Sensitivity passes, with ONLY enable_pre_window_pruning=False.
+    This is NOT a literal reproduction of the historical 18e4078 commit:
+    the CURRENT tree's simulate_ticker_strategy_2022 already carries Phase
+    4.1's searchsorted/date-lookup optimizations, which did not exist at
+    18e4078, so this path measures a current-tree incremental
+    pruning/search-optimization comparison, not a Phase-4.1-vs-4.0
+    historical delta.
   - "phase4_1_optimized": the same context/cache structure, with
     enable_pre_window_pruning=True (default) -- the current d95e96b
     production optimized behavior.
@@ -103,16 +109,22 @@ class _ResampleCounter:
 
 
 def _run_phase4_head(tickers: list[str], score: dict, stage: dict) -> dict:
-    """Emulates the ACTUAL 18e4078 (Phase 4 HEAD) runtime path (w.md Phase
-    4.2 Major Fix 1 -- Architect Review Major 1 finding). 18e4078 already
-    built a PrecomputedTickerContext and passed snapshot_context to every
-    Baseline/Julia x Primary/Sensitivity pass, sharing FastSnapshotCache/
-    MonthlySnapshotCache across all 4 -- the ONLY Phase-4.1-specific delta
-    is enable_pre_window_pruning (introduced in Phase 4.1; False here
-    reproduces the exact pre-4.1 full-valid-weeks search range). The
-    previous version of this function incorrectly omitted snapshot_context
-    entirely, which credited Phase 4.1 with speedup that was actually
-    already banked by Phase 4 itself."""
+    """PHASE4_HEAD_APPROXIMATION (w.md Phase 4.3 Section 19): an
+    APPROXIMATION of the Phase 4 HEAD (18e4078) runtime path on the CURRENT
+    tree, not a literal reproduction of 18e4078 itself -- the current tree's
+    simulate_ticker_strategy_2022 already includes Phase 4.1's
+    searchsorted/date-lookup optimizations, which did not exist at 18e4078.
+    This path builds a PrecomputedTickerContext and passes snapshot_context
+    to every Baseline/Julia x Primary/Sensitivity pass, sharing
+    FastSnapshotCache/MonthlySnapshotCache across all 4 (w.md Phase 4.2
+    Major Fix 1 -- Architect Review Major 1 finding: an earlier version of
+    this function incorrectly omitted snapshot_context entirely, which
+    credited Phase 4.1 with speedup that was actually already banked by
+    Phase 4 itself). The only toggle isolated here is
+    enable_pre_window_pruning=False (PRE_WINDOW_PRUNING_DISABLED), so the
+    measured delta against _run_phase4_1_optimized is a current-tree
+    incremental pruning/search-optimization comparison, not a
+    Phase-4.1-vs-4.0 historical delta."""
     fast_cache_evals = 0
     monthly_cache_evals = 0
     trade_count = 0

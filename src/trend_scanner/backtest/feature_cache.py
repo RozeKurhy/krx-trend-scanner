@@ -106,6 +106,24 @@ class FastSnapshotCache:
         for key, v in data.items():
             self._store[key] = _FAILED if v == _FAILED_MARKER else v
 
+    def merge_store(self, exported: dict[tuple[str, pd.Timestamp], dict | str]) -> None:
+        """Merges an exported store (e.g. a parallel worker's per-ticker
+        result, BACKTEST_PERFORMANCE_ENGINEERING_V01 Phase 4.3) into this
+        cache. Unlike ``import_store`` (which always overwrites), a key
+        that already exists here with a DIFFERENT value than the incoming
+        one is a correctness violation -- ``(ticker, reference_date)`` must
+        be a deterministic pure function, so two sources disagreeing means
+        something is wrong -- and fails closed rather than silently picking
+        one side (w.md Phase 4.3 Section 8)."""
+        for key, v in exported.items():
+            incoming = _FAILED if v == _FAILED_MARKER else v
+            if key in self._store:
+                existing = self._store[key]
+                if existing != incoming:
+                    raise ValueError(f"FastSnapshotCache.merge_store: duplicate key {key!r} with unequal value")
+                continue
+            self._store[key] = incoming
+
 
 class MonthlySnapshotCache:
     """Memoizes the monthly Pattern A (stage, score) snapshot by ``(ticker, month)``."""
@@ -154,3 +172,16 @@ class MonthlySnapshotCache:
     def import_store(self, data: dict[tuple[str, pd.Timestamp], dict[str, Any]]) -> None:
         """Bulk-loads entries from a previously exported store."""
         self._store.update(data)
+
+    def merge_store(self, exported: dict[tuple[str, pd.Timestamp], dict[str, Any]]) -> None:
+        """Merges an exported store (e.g. a parallel worker's per-ticker
+        result, BACKTEST_PERFORMANCE_ENGINEERING_V01 Phase 4.3) into this
+        cache. A key already present with a DIFFERENT value fails closed
+        (see ``FastSnapshotCache.merge_store``'s docstring for the
+        rationale)."""
+        for key, v in exported.items():
+            if key in self._store:
+                if self._store[key] != v:
+                    raise ValueError(f"MonthlySnapshotCache.merge_store: duplicate key {key!r} with unequal value")
+                continue
+            self._store[key] = v

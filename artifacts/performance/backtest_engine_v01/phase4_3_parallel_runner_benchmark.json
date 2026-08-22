@@ -1,0 +1,139 @@
+{
+  "work_id": "BACKTEST_PERFORMANCE_ENGINEERING_V01_PHASE4_3_PARALLEL_RUNNER_INTEGRATION",
+  "description": "Consolidated Phase 4.3 evidence: --workers CLI integration into scripts/run_backtest_engine_v01_optimized.py itself (not just the standalone benchmark script), 4-path (Baseline/Julia x Primary/Sensitivity) trade parity, metrics/LG-cohort parity, persistent Fast/Monthly feature cache content parity, and a genuine cross-process warm-reuse verification of a parallel-built cache.",
+  "runner_integration": {
+    "entry_point": "scripts/run_backtest_engine_v01_optimized.py",
+    "cli_flag": "--workers",
+    "default": 1,
+    "warm_cache_fallback_policy": "workers>1 requested + persistent_cache_hit=True -> falls back to effective_workers=1 for that run (Cold Parallel Build Mode only, w.md Section 9-10 Option A)"
+  },
+  "n100": {
+    "workers1": {
+      "workers": 1,
+      "baseline_trade_count": 62,
+      "julia_trade_count": 49,
+      "sensitivity_baseline_trade_count": 58,
+      "sensitivity_julia_trade_count": 47,
+      "proxy_validation_seconds": 33.917,
+      "primary_simulation_seconds": 129.107,
+      "sensitivity_simulation_seconds": 0.736,
+      "total_elapsed_seconds": 163.76,
+      "wall_clock_total_seconds": 164.176,
+      "fast_snapshot_cache": {"evaluation_count": 20963, "cache_hit_count": 61220},
+      "monthly_snapshot_cache": {"evaluation_count": 873, "cache_hit_count": 3052}
+    },
+    "workers2": {
+      "workers": 2,
+      "baseline_trade_count": 62,
+      "julia_trade_count": 49,
+      "sensitivity_baseline_trade_count": 58,
+      "sensitivity_julia_trade_count": 47,
+      "proxy_validation_seconds": 33.158,
+      "primary_simulation_seconds": 68.466,
+      "sensitivity_simulation_seconds": 0.0,
+      "total_elapsed_seconds": 101.624,
+      "wall_clock_total_seconds": 102.064,
+      "fast_snapshot_cache": {"evaluation_count": 20963, "cache_hit_count": 61220},
+      "monthly_snapshot_cache": {"evaluation_count": 873, "cache_hit_count": 3052}
+    },
+    "speedup_wall_clock_x": 1.609,
+    "speedup_simulation_only_x": 1.896,
+    "trade_count_parity_pass": true
+  },
+  "n250": {
+    "workers1": {
+      "workers": 1,
+      "baseline_trade_count": 150,
+      "julia_trade_count": 119,
+      "sensitivity_baseline_trade_count": 146,
+      "sensitivity_julia_trade_count": 117,
+      "proxy_validation_seconds": 34.104,
+      "primary_simulation_seconds": 323.112,
+      "sensitivity_simulation_seconds": 1.943,
+      "total_elapsed_seconds": 359.159,
+      "wall_clock_total_seconds": 359.597,
+      "fast_snapshot_cache": {"evaluation_count": 52494, "cache_hit_count": 153382},
+      "monthly_snapshot_cache": {"evaluation_count": 1918, "cache_hit_count": 6921}
+    },
+    "workers2": {
+      "workers": 2,
+      "baseline_trade_count": 150,
+      "julia_trade_count": 119,
+      "sensitivity_baseline_trade_count": 146,
+      "sensitivity_julia_trade_count": 117,
+      "proxy_validation_seconds": 33.536,
+      "primary_simulation_seconds": 165.064,
+      "sensitivity_simulation_seconds": 0.0,
+      "total_elapsed_seconds": 198.6,
+      "wall_clock_total_seconds": 199.019,
+      "fast_snapshot_cache": {"evaluation_count": 52494, "cache_hit_count": 153382},
+      "monthly_snapshot_cache": {"evaluation_count": 1918, "cache_hit_count": 6921}
+    },
+    "speedup_wall_clock_x": 1.807,
+    "speedup_simulation_only_x": 1.969,
+    "trade_count_parity_pass": true
+  },
+  "note_on_speedup_measurement": "Both N=100 and N=250 workers=1/workers=2 runs were executed sequentially (never concurrently) via scripts/run_backtest_engine_v01_optimized.py --limit N --workers {1,2} to avoid CPU contention skewing the comparison. wall_clock speedup is lower than the pure-simulation speedup because the ~33-34s Proxy Method Validation phase is not parallelized (unchanged from Phase 4.2 scope) and is a fixed cost included in wall_clock_total_seconds for both workers modes. speedup_simulation_only_x = (workers1 primary_simulation_seconds + workers1 sensitivity_simulation_seconds) / (workers2 primary_simulation_seconds) -- the parallel path folds Sensitivity into the single combined 4-pass-per-ticker phase, so its sensitivity_simulation_seconds is reported as 0.0 (not separately measurable, NOT 'took zero time') and the workers=1 numerator must include both of its phases for an apples-to-apples ratio.",
+  "four_path_exact_trade_parity": {
+    "method_pool_vs_nonpool": "tests/test_backtest_performance_engine_v01_phase4_3.py (tests 4-7) -- run_parallel_universe(workers=1) vs run_parallel_universe(workers=2) on a real 10-ticker stratified sample, full StrategyTradeRecord field-exact equality (list equality, not just counts). Proves the ProcessPoolExecutor pool itself does not corrupt results, but both sides go through the SAME worker function (simulate_ticker_bundle) -- it does not exercise the legacy sequential code path.",
+    "method_legacy_sequential_vs_parallel": "tests/test_backtest_performance_engine_v01_phase4_3.py::test_workers1_workers2_persistent_cache_content_parity -- the ACTUAL legacy sequential structure run_optimized_backtest() uses for workers<=1 (one shared FastSnapshotCache/MonthlySnapshotCache across the whole universe, one context per ticker, Primary-loop-then-Sensitivity-loop, real market_cap_registry) vs run_parallel_universe(workers=2), canonically sorted, full StrategyTradeRecord field-exact equality. This is the comparison that matters for Gates B-E, since it is the only one that touches the real workers=1 production code shape.",
+    "baseline_primary": "PASS (exact list equality, both methods)",
+    "julia_primary": "PASS (exact list equality, both methods)",
+    "baseline_sensitivity": "PASS (exact list equality, both methods)",
+    "julia_sensitivity": "PASS (exact list equality, both methods)",
+    "metrics_parity": "PASS (calculate_strategy_metrics identical both ways, baseline and julia)",
+    "loss_guard_cohort_parity": "PASS (cohort accounting summary identical both ways)",
+    "deterministic_ordering": "PASS (two separate workers=2 runs produce byte-identical canonical trade lists)"
+  },
+  "persistent_feature_cache_parity": {
+    "method": "tests/test_backtest_performance_engine_v01_phase4_3.py::test_workers1_workers2_persistent_cache_content_parity -- fast/monthly caches built via the exact two code paths run_optimized_backtest() itself uses (sequential shared-context loop for workers<=1, run_parallel_universe for workers>1) on a real 10-ticker stratified sample (NOT the N=100 CLI-level temporary-cache-directory setup w.md Section 15 described -- the CLI currently ties persistence to `limit is None`, so an N=100 CLI-level version would need new plumbing not built this cycle), real market_cap_registry, then exported and compared key-for-key and value-for-value (NaN-safe)",
+    "fast_snapshot_cache_key_parity": "PASS",
+    "fast_snapshot_cache_value_parity": "PASS",
+    "monthly_snapshot_cache_key_parity": "PASS",
+    "monthly_snapshot_cache_value_parity": "PASS",
+    "worker_direct_persistent_write_count": 0
+  },
+  "cross_process_warm_verification": {
+    "method": "tests/test_backtest_performance_engine_v01_phase4_3.py::test_parallel_generated_persistent_cache_is_warm_hit_in_new_process -- a workers=2 cold build's fast/monthly caches are saved to a temp PersistentFeatureCacheStore, then a genuinely separate python3 subprocess loads that same cache_dir",
+    "persistent_cache_hit": true,
+    "preloaded_fast_snapshot_count_matches_source": true,
+    "preloaded_monthly_snapshot_count_matches_source": true
+  },
+  "merge_semantics": {
+    "fail_closed_on_unequal_duplicate_key": "PASS (FastSnapshotCache.merge_store and MonthlySnapshotCache.merge_store both raise ValueError)",
+    "silent_allow_on_equal_duplicate_key": "PASS"
+  },
+  "minor_fixes_applied": {
+    "section_18_ticker_as_name_cleanup": "scripts/benchmark_parallelism_v01.py and scripts/benchmark_backtest_engine_realistic_v01.py now pass the real per-ticker name into build_precomputed_ticker_context instead of ticker-as-name (scripts/benchmark_phase4_1.py left unchanged -- its tickers: list[str] signature never carries a real name anywhere in that script, so there is no inconsistency to fix there)",
+    "section_19_overclaim_relabel": "scripts/benchmark_phase4_1.py docstrings relabeled from 'ACTUAL 18e4078 behavior' to PHASE4_HEAD_APPROXIMATION / CURRENT_TREE_PHASE4_STYLE / PRE_WINDOW_PRUNING_DISABLED, explicitly noting the current tree already includes Phase 4.1's searchsorted/date-lookup optimizations that did not exist at 18e4078"
+  },
+  "memory_observation": {
+    "measured": false,
+    "note": "Not measured this cycle (non-gating per w.md Section 21); N=250 workers=2 CLI run completed without any OOM/swap symptoms observed via `ps`/`time` during the run."
+  },
+  "estimated_full_run_time_minutes": {
+    "workers1_projection": "~52 min (Phase 4.2 projection, unchanged)",
+    "workers2_projection_using_phase4_3_measured_ratio": "~29-31 min (N=250 measured 1.81x wall-clock speedup applied to the ~52 min single-process projection)",
+    "target": "<=40 min"
+  },
+  "full_universe_run_executed_this_cycle": false,
+  "gates": {
+    "A_workers2_actual_optimized_runner_integration_complete": "PASS",
+    "B_baseline_primary_exact_parity": "PASS",
+    "C_julia_primary_exact_parity": "PASS",
+    "D_baseline_sensitivity_exact_parity": "PASS",
+    "E_julia_sensitivity_exact_parity": "PASS",
+    "F_metrics_parity": "PASS",
+    "G_loss_guard_cohort_parity": "PASS",
+    "H_deterministic_ordering": "PASS",
+    "I_persistent_fast_cache_parity": "PASS",
+    "J_persistent_monthly_cache_parity": "PASS",
+    "K_worker_direct_persistent_write_zero": "PASS",
+    "L_parallel_generated_cache_cross_process_warm_hit": "PASS",
+    "M_frozen_pattern_a_hash_gate7": "PASS (full pytest suite, unchanged)",
+    "N_golden_namespace_unchanged": "PASS (git status confirms zero diff under artifacts/strategies/julia/proxy_market_cap_v01/)",
+    "O_workers2_speedup_ge_1_35x": "PASS (N=100 1.609x wall-clock / 1.896x simulation-only, N=250 1.807x wall-clock / 1.969x simulation-only)",
+    "P_full_universe_run_not_executed": "PASS"
+  },
+  "status": "READY_FOR_ARCHITECT_FINAL_FULL_RUN_APPROVAL"
+}

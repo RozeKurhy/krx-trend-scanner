@@ -69,7 +69,7 @@ def simulate_one_ticker_bundle(args: tuple[str, str, str, bool]) -> dict:
     if daily is None or daily.empty:
         return {"ticker": ticker, "baseline_trades": [], "julia_trades": []}
 
-    context = build_precomputed_ticker_context(ticker, ticker, daily)
+    context = build_precomputed_ticker_context(ticker, name, daily)
     fast_cache = FastSnapshotCache()
     monthly_cache = MonthlySnapshotCache()
 

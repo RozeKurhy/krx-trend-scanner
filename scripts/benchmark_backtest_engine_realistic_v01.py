@@ -142,7 +142,7 @@ def _run_realistic_path(
             daily = ticker_cache.load(ticker)
             if daily is None or daily.empty:
                 continue
-            context = build_precomputed_ticker_context(ticker, ticker, daily)
+            context = build_precomputed_ticker_context(ticker, name, daily)
             fast_cache = FastSnapshotCache()
             monthly_cache = MonthlySnapshotCache()
 

@@ -57,6 +57,7 @@ import pandas as pd
 
 from trend_scanner.backtest.context import TickerDataCache
 from trend_scanner.backtest.feature_cache import FastSnapshotCache, MonthlySnapshotCache
+from trend_scanner.backtest.parallel_runner import run_parallel_universe
 from trend_scanner.backtest.parity import compare_trade_csvs, diff_summary_dicts
 from trend_scanner.backtest.persistent_cache import PersistentFeatureCacheStore
 from trend_scanner.backtest.snapshot_context import (
@@ -83,7 +84,7 @@ PERF_DIR = ROOT / "artifacts/performance/backtest_engine_v01"
 FULL_RUN_DIR = PERF_DIR / "full_run"
 
 
-def run_optimized_backtest(limit: int | None = None) -> dict[str, Any]:
+def run_optimized_backtest(limit: int | None = None, workers: int = 1) -> dict[str, Any]:
     logger.info("Initializing Optimized Backtest Engine V01 (BACKTEST_PERFORMANCE_ENGINEERING_V01)...")
 
     score_contract = json.loads(SCORE_CONTRACT_PATH.read_text(encoding="utf-8"))
@@ -101,6 +102,19 @@ def run_optimized_backtest(limit: int | None = None) -> dict[str, Any]:
     persistent_cache_hit = persistent_store.load_into(fast_cache, monthly_cache)
     preloaded_fast_count = len(fast_cache)
     preloaded_monthly_count = len(monthly_cache)
+
+    # w.md Phase 4.3 Section 9-10 (Option A): the parallel path is a
+    # Cold-Build-only mode. If the persistent cache is already warm, fall
+    # back to the existing single-process path rather than attempting a
+    # parallel warm run -- workers=1's warm-reuse behavior must never change.
+    effective_workers = workers
+    if workers > 1 and persistent_cache_hit:
+        logger.info(
+            "Persistent feature cache HIT -- falling back to single-process "
+            "path for this warm run (workers=%d requested, parallel mode is "
+            "Cold-Build-only, w.md Phase 4.3 Section 9-10).", workers,
+        )
+        effective_workers = 1
 
     timings: dict[str, float] = {}
 
@@ -137,57 +151,98 @@ def run_optimized_backtest(limit: int | None = None) -> dict[str, Any]:
             ticker_contexts[ticker] = ctx
         return ctx
 
-    # 3. Primary Simulation (Baseline V2 vs Julia V00)
-    t0 = time.perf_counter()
-    baseline_trades, julia_trades = [], []
-    for idx, (ticker, name, market) in enumerate(universe):
-        if (idx + 1) % 500 == 0 or idx == len(universe) - 1:
-            logger.info("Primary: simulated %d / %d tickers...", idx + 1, len(universe))
-        daily_df = ticker_cache.load(ticker)
-        if daily_df is None or daily_df.empty:
-            continue
-        context = _context_for(ticker, name, daily_df)
-        b_t = simulate_ticker_strategy_2022(
-            ticker, name, market, daily_df, score_contract, stage_contract,
-            enable_loss_guard=True, market_cap_registry=proxy_registry,
-            fast_snapshot_cache=fast_cache, monthly_snapshot_cache=monthly_cache,
-            snapshot_context=context,
-        )
-        j_t = simulate_ticker_strategy_2022(
-            ticker, name, market, daily_df, score_contract, stage_contract,
-            enable_loss_guard=False, market_cap_registry=proxy_registry,
-            fast_snapshot_cache=fast_cache, monthly_snapshot_cache=monthly_cache,
-            snapshot_context=context,
-        )
-        baseline_trades.extend(b_t)
-        julia_trades.extend(j_t)
-    timings["primary_simulation_seconds"] = round(time.perf_counter() - t0, 3)
-    logger.info("Primary Simulation Complete: Baseline=%d, Julia=%d", len(baseline_trades), len(julia_trades))
+    if effective_workers <= 1:
+        # 3. Primary Simulation (Baseline V2 vs Julia V00)
+        t0 = time.perf_counter()
+        baseline_trades, julia_trades = [], []
+        for idx, (ticker, name, market) in enumerate(universe):
+            if (idx + 1) % 500 == 0 or idx == len(universe) - 1:
+                logger.info("Primary: simulated %d / %d tickers...", idx + 1, len(universe))
+            daily_df = ticker_cache.load(ticker)
+            if daily_df is None or daily_df.empty:
+                continue
+            context = _context_for(ticker, name, daily_df)
+            b_t = simulate_ticker_strategy_2022(
+                ticker, name, market, daily_df, score_contract, stage_contract,
+                enable_loss_guard=True, market_cap_registry=proxy_registry,
+                fast_snapshot_cache=fast_cache, monthly_snapshot_cache=monthly_cache,
+                snapshot_context=context,
+            )
+            j_t = simulate_ticker_strategy_2022(
+                ticker, name, market, daily_df, score_contract, stage_contract,
+                enable_loss_guard=False, market_cap_registry=proxy_registry,
+                fast_snapshot_cache=fast_cache, monthly_snapshot_cache=monthly_cache,
+                snapshot_context=context,
+            )
+            baseline_trades.extend(b_t)
+            julia_trades.extend(j_t)
+        timings["primary_simulation_seconds"] = round(time.perf_counter() - t0, 3)
+        logger.info("Primary Simulation Complete: Baseline=%d, Julia=%d", len(baseline_trades), len(julia_trades))
 
-    # 4. Conservative Boundary Sensitivity Simulation
-    t0 = time.perf_counter()
-    sens_baseline_trades, sens_julia_trades = [], []
-    for ticker, name, market in universe:
-        daily_df = ticker_cache.load(ticker)
-        if daily_df is None or daily_df.empty:
-            continue
-        context = _context_for(ticker, name, daily_df)
-        sb_t = simulate_ticker_strategy_2022(
-            ticker, name, market, daily_df, score_contract, stage_contract,
-            enable_loss_guard=True, market_cap_registry=proxy_registry, sensitivity_mode=True,
-            fast_snapshot_cache=fast_cache, monthly_snapshot_cache=monthly_cache,
-            snapshot_context=context,
+        # 4. Conservative Boundary Sensitivity Simulation
+        t0 = time.perf_counter()
+        sens_baseline_trades, sens_julia_trades = [], []
+        for ticker, name, market in universe:
+            daily_df = ticker_cache.load(ticker)
+            if daily_df is None or daily_df.empty:
+                continue
+            context = _context_for(ticker, name, daily_df)
+            sb_t = simulate_ticker_strategy_2022(
+                ticker, name, market, daily_df, score_contract, stage_contract,
+                enable_loss_guard=True, market_cap_registry=proxy_registry, sensitivity_mode=True,
+                fast_snapshot_cache=fast_cache, monthly_snapshot_cache=monthly_cache,
+                snapshot_context=context,
+            )
+            sj_t = simulate_ticker_strategy_2022(
+                ticker, name, market, daily_df, score_contract, stage_contract,
+                enable_loss_guard=False, market_cap_registry=proxy_registry, sensitivity_mode=True,
+                fast_snapshot_cache=fast_cache, monthly_snapshot_cache=monthly_cache,
+                snapshot_context=context,
+            )
+            sens_baseline_trades.extend(sb_t)
+            sens_julia_trades.extend(sj_t)
+        timings["sensitivity_simulation_seconds"] = round(time.perf_counter() - t0, 3)
+        logger.info("Sensitivity Simulation Complete: Baseline=%d, Julia=%d", len(sens_baseline_trades), len(sens_julia_trades))
+    else:
+        # w.md Phase 4.3 Sections 3/11-12: Cold Parallel Build Mode -- one
+        # worker task = one ticker running all 4 passes together, sharing
+        # its own local context/feature-caches; results merged back into
+        # this process's fast_cache/monthly_cache (fail-closed on unequal
+        # duplicate keys) and assigned into the SAME variable names/shapes
+        # the sequential path above produces, so all downstream logic
+        # (metrics, LG cohort accounting, persistence, parity comparison)
+        # needs no changes at all.
+        t0 = time.perf_counter()
+        parallel_result = run_parallel_universe(
+            universe, ROOT, score_contract, stage_contract, effective_workers,
+            fast_cache, monthly_cache,
         )
-        sj_t = simulate_ticker_strategy_2022(
-            ticker, name, market, daily_df, score_contract, stage_contract,
-            enable_loss_guard=False, market_cap_registry=proxy_registry, sensitivity_mode=True,
-            fast_snapshot_cache=fast_cache, monthly_snapshot_cache=monthly_cache,
-            snapshot_context=context,
+        parallel_elapsed = round(time.perf_counter() - t0, 3)
+        # No separate Primary/Sensitivity phase boundary exists in the
+        # parallel path (all 4 passes run together per ticker); the combined
+        # wall time is attributed to primary_simulation_seconds and
+        # sensitivity_simulation_seconds is reported as 0.0 for shape
+        # compatibility with the sequential path's timings dict.
+        timings["primary_simulation_seconds"] = parallel_elapsed
+        timings["sensitivity_simulation_seconds"] = 0.0
+        baseline_trades = parallel_result["baseline_primary_trades"]
+        julia_trades = parallel_result["julia_primary_trades"]
+        sens_baseline_trades = parallel_result["baseline_sensitivity_trades"]
+        sens_julia_trades = parallel_result["julia_sensitivity_trades"]
+        # fast_cache/monthly_cache only received merge_store() calls in this
+        # path (never .get()), so their own evaluation_count/cache_hit_count
+        # counters stay at 0 -- backfill them from the aggregated per-worker
+        # diagnostics so reported diagnostics remain meaningful.
+        fast_cache.evaluation_count = parallel_result["fast_evaluation_count"]
+        fast_cache.cache_hit_count = parallel_result["fast_cache_hit_count"]
+        monthly_cache.evaluation_count = parallel_result["monthly_evaluation_count"]
+        monthly_cache.cache_hit_count = parallel_result["monthly_cache_hit_count"]
+        logger.info(
+            "Parallel (workers=%d) Simulation Complete: Baseline=%d, Julia=%d, "
+            "SensBaseline=%d, SensJulia=%d",
+            effective_workers, len(baseline_trades), len(julia_trades),
+            len(sens_baseline_trades), len(sens_julia_trades),
         )
-        sens_baseline_trades.extend(sb_t)
-        sens_julia_trades.extend(sj_t)
-    timings["sensitivity_simulation_seconds"] = round(time.perf_counter() - t0, 3)
-    logger.info("Sensitivity Simulation Complete: Baseline=%d, Julia=%d", len(sens_baseline_trades), len(sens_julia_trades))
 
     b_metrics = calculate_strategy_metrics(baseline_trades)
     j_metrics = calculate_strategy_metrics(julia_trades)
@@ -238,6 +293,8 @@ def run_optimized_backtest(limit: int | None = None) -> dict[str, Any]:
             "preloaded_fast_snapshot_count": preloaded_fast_count,
             "preloaded_monthly_snapshot_count": preloaded_monthly_count,
         },
+        "workers_requested": workers,
+        "workers_effective": effective_workers,
         "baseline_trades": baseline_trades,
         "julia_trades": julia_trades,
         "b_metrics": b_metrics,
@@ -306,9 +363,20 @@ def main() -> None:
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--limit", type=int, default=None, help="Restrict universe to first N tickers (plumbing smoke test only, not a parity run)")
+    parser.add_argument(
+        "--workers", type=int, default=1,
+        help=(
+            "Number of worker processes for Cold Parallel Build Mode "
+            "(BACKTEST_PERFORMANCE_ENGINEERING_V01 Phase 4.3). Default 1 "
+            "preserves the original single-process behavior exactly, "
+            "including warm persistent-cache reuse. workers>1 is a "
+            "cold-build-only mode: if the persistent cache is warm at "
+            "startup, it automatically falls back to workers=1 for that run."
+        ),
+    )
     args = parser.parse_args()
 
-    run_result = run_optimized_backtest(limit=args.limit)
+    run_result = run_optimized_backtest(limit=args.limit, workers=args.workers)
 
     if run_result["limited"]:
         wall_clock_total_seconds = round(time.perf_counter() - wall_clock_start, 3)
@@ -321,6 +389,8 @@ def main() -> None:
             "ticker_data_cache": run_result["ticker_data_cache"],
             "fast_snapshot_cache": run_result["fast_snapshot_cache"],
             "monthly_snapshot_cache": run_result["monthly_snapshot_cache"],
+            "workers_requested": run_result["workers_requested"],
+            "workers_effective": run_result["workers_effective"],
         }, indent=2, ensure_ascii=False), flush=True)
         return
 
@@ -352,6 +422,8 @@ def main() -> None:
         "monthly_snapshot_cache_diagnostics": run_result["monthly_snapshot_cache"],
         "persistent_cache_diagnostics": run_result["persistent_cache"],
         "proxy_validation_observation_count": run_result["val_summary"].get("validation_sample_count"),
+        "workers_requested": run_result["workers_requested"],
+        "workers_effective": run_result["workers_effective"],
         "machine_context": {"python": "3.13", "note": "single local run, no controlled machine isolation"},
     }
     (PERF_DIR / "runtime_comparison.json").write_text(json.dumps(runtime_comparison, indent=2, ensure_ascii=False), encoding="utf-8")
