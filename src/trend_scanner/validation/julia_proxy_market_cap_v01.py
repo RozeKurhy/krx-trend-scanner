@@ -13,6 +13,7 @@ Implements:
 
 from __future__ import annotations
 
+import bisect
 from dataclasses import asdict, dataclass
 import hashlib
 import json
@@ -110,15 +111,29 @@ class ProxyHistoricalMarketCapRegistry:
         self.all_required_dates = sorted(all_required_dates)
         self.official_available_dates = sorted(list(official_registry.available_dates))
         self.close_semantics = close_semantics
+        # Precomputed once (BACKTEST_PERFORMANCE_ENGINEERING_V01, Priority "Anchor
+        # Search Optimization"): avoids re-parsing every date in
+        # official_available_dates to pd.Timestamp and rescanning it with a linear
+        # comprehension on every get_market_cap_at_reference() call. Same sort order
+        # as official_available_dates, so bisect_left/bisect_right partition it
+        # identically to the original `< signal_reference_date` / `> ...`
+        # comprehensions.
+        self._official_ts = [pd.Timestamp(d) for d in self.official_available_dates]
 
         # Query audit log
         self._audit_records: list[ProxyQueryRecord] = []
         self._estimates_by_key: dict[tuple[str, str], ProxyQueryRecord] = {}
 
     @classmethod
-    def load_from_repository(cls, root: Path = ROOT) -> ProxyHistoricalMarketCapRegistry:
+    def load_from_repository(cls, root: Path = ROOT, cache: Any | None = None) -> ProxyHistoricalMarketCapRegistry:
+        """``cache`` defaults to a fresh ``ParquetCache`` (original behavior).
+        Callers may pass a memoizing cache (e.g.
+        ``trend_scanner.backtest.context.TickerDataCache``) exposing the same
+        ``.load(ticker)`` contract to avoid redundant disk reads inside
+        ``get_market_cap_at_reference``'s proxy price lookups."""
         official_reg = HistoricalMarketCapRegistry.load_from_repository(root, enforce_integrity=True)
-        cache = ParquetCache(base_dir=root / "data/raw/stocks")
+        if cache is None:
+            cache = ParquetCache(base_dir=root / "data/raw/stocks")
 
         man_path = root / "artifacts/strategies/julia/v00/historical_market_cap_source_manifest.csv"
         miss_path = root / "artifacts/strategies/julia/v00/historical_market_cap_missing_dates.csv"
@@ -211,7 +226,9 @@ class ProxyHistoricalMarketCapRegistry:
             return None, None
 
         # 3. Method B: Prior Anchor Price Ratio Proxy
-        prior_anchors = [d for d in self.official_available_dates if pd.Timestamp(d) < pd.Timestamp(signal_reference_date)]
+        target_ts = pd.Timestamp(signal_reference_date)
+        prior_idx = bisect.bisect_left(self._official_ts, target_ts)
+        prior_anchors = self.official_available_dates[:prior_idx]
         if not prior_anchors:
             rec = ProxyQueryRecord(
                 ticker=ticker,
@@ -380,8 +397,8 @@ class ProxyHistoricalMarketCapRegistry:
 
         near_thresh = bool(SENSITIVITY_LOWER_BOUND_KRW <= estimated_mcap <= SENSITIVITY_UPPER_BOUND_KRW)
 
-        future_anchors = [d for d in self.official_available_dates if pd.Timestamp(d) > pd.Timestamp(signal_reference_date)]
-        next_anchor_d = future_anchors[0] if future_anchors else None
+        future_idx = bisect.bisect_right(self._official_ts, target_ts)
+        next_anchor_d = self.official_available_dates[future_idx] if future_idx < len(self.official_available_dates) else None
 
         rec = ProxyQueryRecord(
             ticker=ticker,
@@ -439,10 +456,20 @@ class ProxyHistoricalMarketCapRegistry:
 def run_proxy_method_validation(
     root: Path = ROOT,
     sample_stride: int = 1,
+    cache: Any | None = None,
 ) -> tuple[pd.DataFrame, dict[str, Any]]:
-    """Validate Method B (Anchor Price Ratio Proxy) accuracy across known official snapshots."""
+    """Validate Method B (Anchor Price Ratio Proxy) accuracy across known official snapshots.
+
+    ``cache`` defaults to a fresh ``ParquetCache`` (original behavior,
+    one disk read per (ticker, date-pair) observation). Callers may pass a
+    memoizing cache (e.g. ``trend_scanner.backtest.context.TickerDataCache``)
+    exposing the same ``.load(ticker)`` contract to reuse an already-loaded
+    ticker frame across observations -- this changes IO only, never the
+    returned validation values.
+    """
     official_reg = HistoricalMarketCapRegistry.load_from_repository(root, enforce_integrity=True)
-    cache = ParquetCache(base_dir=root / "data/raw/stocks")
+    if cache is None:
+        cache = ParquetCache(base_dir=root / "data/raw/stocks")
     avail_dates = sorted(list(official_reg.available_dates))
 
     records: list[dict[str, Any]] = []

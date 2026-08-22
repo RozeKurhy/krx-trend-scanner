@@ -1,0 +1,139 @@
+{
+  "phase": "BACKTEST_PERFORMANCE_ENGINEERING_V01_PHASE1_PROFILING",
+  "engine": "legacy_uncached",
+  "runs_by_subset_size": {
+    "n20": {
+      "ticker_count": 20,
+      "pass_count_per_ticker": 4,
+      "total_trades_all_passes": 44,
+      "elapsed_seconds": 241.9005,
+      "tickers_per_sec": 0.0827,
+      "parquet_disk_reads": 42,
+      "fast_snapshot_cache": null,
+      "monthly_snapshot_cache": null
+    },
+    "n50": {
+      "ticker_count": 50,
+      "pass_count_per_ticker": 4,
+      "total_trades_all_passes": 63,
+      "elapsed_seconds": 510.9172,
+      "tickers_per_sec": 0.0979,
+      "parquet_disk_reads": 243,
+      "fast_snapshot_cache": null,
+      "monthly_snapshot_cache": null
+    }
+  },
+  "top_bottleneck_functions_005930_4passes": [
+    {
+      "function": "julia_strategy_v00.py:346(simulate_ticker_strategy_2022)",
+      "call_count": 4,
+      "total_time_seconds": 0.0696,
+      "cumulative_time_seconds": 58.7446
+    },
+    {
+      "function": "pattern_a_fast_evaluator.py:169(evaluate_pattern_a_fast)",
+      "call_count": 1856,
+      "total_time_seconds": 0.0473,
+      "cumulative_time_seconds": 51.8153
+    },
+    {
+      "function": "historical_snapshot.py:90(build_historical_snapshot)",
+      "call_count": 2032,
+      "total_time_seconds": 0.0176,
+      "cumulative_time_seconds": 40.283
+    },
+    {
+      "function": "resampler.py:27(_resample)",
+      "call_count": 4072,
+      "total_time_seconds": 0.022,
+      "cumulative_time_seconds": 27.9052
+    },
+    {
+      "function": "resample.py:343(aggregate)",
+      "call_count": 4072,
+      "total_time_seconds": 0.005,
+      "cumulative_time_seconds": 24.281
+    },
+    {
+      "function": "apply.py:172(agg)",
+      "call_count": 4072,
+      "total_time_seconds": 0.003,
+      "cumulative_time_seconds": 24.2712
+    },
+    {
+      "function": "apply.py:415(agg_dict_like)",
+      "call_count": 4072,
+      "total_time_seconds": 0.012,
+      "cumulative_time_seconds": 24.2585
+    },
+    {
+      "function": "apply.py:1570(agg_or_apply_dict_like)",
+      "call_count": 4072,
+      "total_time_seconds": 0.0166,
+      "cumulative_time_seconds": 24.2465
+    },
+    {
+      "function": "apply.py:425(compute_dict_like)",
+      "call_count": 4072,
+      "total_time_seconds": 0.0389,
+      "cumulative_time_seconds": 22.4232
+    },
+    {
+      "function": "generic.py:232(aggregate)",
+      "call_count": 24432,
+      "total_time_seconds": 0.0276,
+      "cumulative_time_seconds": 20.9955
+    },
+    {
+      "function": "resampler.py:31(to_weekly)",
+      "call_count": 2036,
+      "total_time_seconds": 0.0008,
+      "cumulative_time_seconds": 20.7093
+    },
+    {
+      "function": "generic.py:318(_python_agg_general)",
+      "call_count": 4072,
+      "total_time_seconds": 0.015,
+      "cumulative_time_seconds": 19.6838
+    },
+    {
+      "function": "ops.py:849(agg_series)",
+      "call_count": 4072,
+      "total_time_seconds": 0.0545,
+      "cumulative_time_seconds": 19.4673
+    },
+    {
+      "function": "ops.py:882(_aggregate_series_pure_python)",
+      "call_count": 4072,
+      "total_time_seconds": 0.5228,
+      "cumulative_time_seconds": 19.4028
+    },
+    {
+      "function": "series.py:6439(_reduce)",
+      "call_count": 1179336,
+      "total_time_seconds": 0.9023,
+      "cumulative_time_seconds": 13.248
+    }
+  ],
+  "proxy_validation_cold_vs_warm": {
+    "sample_stride": 20,
+    "observation_count": 13244,
+    "output_identical": true,
+    "cold_parquetcache": {
+      "elapsed_seconds": 9.0191,
+      "disk_read_count": 16223
+    },
+    "warm_tickerdatacache": {
+      "elapsed_seconds": 2.9823,
+      "unique_tickers_loaded": 2926,
+      "disk_read_count": 2926,
+      "memory_hit_count": 13297,
+      "memory_miss_count": 2926,
+      "weekly_resample_count": 0,
+      "monthly_resample_count": 0
+    },
+    "note": "Reduced-scale measurement (stride>1). Full sample_stride=1 IO reduction is realized identically at full scale in the optimized production run because the memoization is per-ticker, not per-stride."
+  },
+  "historical_full_universe_runtime_minutes_reference": 330,
+  "historical_full_universe_runtime_source": "w.md Section 2 (37da35e closure commit), not re-executed here per Section 12 policy"
+}

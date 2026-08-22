@@ -1,0 +1,56 @@
+{
+  "phase": "BACKTEST_PERFORMANCE_ENGINEERING_V01_PHASE1_PROFILING",
+  "engine": "optimized_cached",
+  "runs_by_subset_size": {
+    "n20": {
+      "ticker_count": 20,
+      "pass_count_per_ticker": 4,
+      "total_trades_all_passes": 44,
+      "elapsed_seconds": 64.3279,
+      "tickers_per_sec": 0.3109,
+      "ticker_data_cache": {
+        "unique_tickers_loaded": 20,
+        "disk_read_count": 20,
+        "memory_hit_count": 22,
+        "memory_miss_count": 20,
+        "weekly_resample_count": 0,
+        "monthly_resample_count": 0
+      },
+      "fast_snapshot_cache": {
+        "evaluation_count": 6069,
+        "cache_hit_count": 17551
+      },
+      "monthly_snapshot_cache": {
+        "evaluation_count": 242,
+        "cache_hit_count": 982
+      }
+    },
+    "n50": {
+      "ticker_count": 50,
+      "pass_count_per_ticker": 4,
+      "total_trades_all_passes": 63,
+      "elapsed_seconds": 132.4374,
+      "tickers_per_sec": 0.3775,
+      "ticker_data_cache": {
+        "unique_tickers_loaded": 50,
+        "disk_read_count": 50,
+        "memory_hit_count": 193,
+        "memory_miss_count": 50,
+        "weekly_resample_count": 0,
+        "monthly_resample_count": 0
+      },
+      "fast_snapshot_cache": {
+        "evaluation_count": 13607,
+        "cache_hit_count": 40064
+      },
+      "monthly_snapshot_cache": {
+        "evaluation_count": 323,
+        "cache_hit_count": 1177
+      }
+    }
+  },
+  "speedup_by_subset_size": {
+    "n20": 3.76,
+    "n50": 3.858
+  }
+}

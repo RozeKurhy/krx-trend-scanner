@@ -355,8 +355,30 @@ def simulate_ticker_strategy_2022(
     start_date: pd.Timestamp = EVALUATION_START_DATE,
     cutoff_date: pd.Timestamp = EVALUATION_END_DATE,
     sensitivity_mode: bool = False,
+    fast_snapshot_cache: Any | None = None,
+    monthly_snapshot_cache: Any | None = None,
+    min_market_cap_krw: float = MIN_MARKET_CAP_KRW,
 ) -> list[StrategyTradeRecord]:
-    """Simulate a single ticker trade lifecycle starting from start_date (2022-01-01+)."""
+    """Simulate a single ticker trade lifecycle starting from start_date (2022-01-01+).
+
+    ``min_market_cap_krw`` externalizes the investability market-cap
+    eligibility gate as a research parameter (w.md Section 20 "Market Cap
+    Threshold Architecture"). Default is unchanged
+    (``MIN_MARKET_CAP_KRW`` = 100B, the production investability default);
+    passing a different value only changes which candidates pass the
+    strict-INVESTABLE gate below, and never touches
+    ``filters.investability.MIN_MARKET_CAP_KRW`` itself.
+
+    ``fast_snapshot_cache``/``monthly_snapshot_cache`` are optional
+    strategy-invariant memoization caches (see
+    ``trend_scanner.backtest.feature_cache``): ``evaluate_pattern_a_fast``
+    and the monthly Pattern A snapshot are pure functions of
+    ``(ticker, reference_date)`` given fixed ``daily``/contracts, independent
+    of ``enable_loss_guard``/``sensitivity_mode``. When omitted (default),
+    behavior is byte-for-byte identical to the original inline
+    try/except evaluation -- this parameter never changes strategy output,
+    only whether an already-computed result is reused.
+    """
     if daily is None or daily.empty:
         return []
 
@@ -397,7 +419,12 @@ def simulate_ticker_strategy_2022(
         candidate_weeks = [w for w in valid_weeks if w >= cur_search_date]
         for w in candidate_weeks:
             try:
-                res = evaluate_pattern_a_fast(ticker, name, daily[daily.index <= w], w, score_contract, stage_contract)
+                if fast_snapshot_cache is not None:
+                    res = fast_snapshot_cache.get(ticker, name, daily, w, score_contract, stage_contract)
+                    if res is None:
+                        continue
+                else:
+                    res = evaluate_pattern_a_fast(ticker, name, daily[daily.index <= w], w, score_contract, stage_contract)
                 is_trigger = (res["fast_machine_stage"] == "TRIGGER" and res["fast_machine_stage_status"] == "READY")
                 is_permitted = (res["fast_monthly_permission_state"] == "PERMITTED_REGIME")
                 is_non_extreme = (res["fast_daily_risk_state"] in {"NORMAL", "ELEVATED"})
@@ -434,7 +461,7 @@ def simulate_ticker_strategy_2022(
                         daily=daily_as_of,
                         market_cap=mcap_val,
                         market_cap_effective_date=w_str if mcap_val is not None else None,
-                        min_market_cap_krw=MIN_MARKET_CAP_KRW,
+                        min_market_cap_krw=min_market_cap_krw,
                         min_avg_trading_value_20d_krw=MIN_AVG_TRADING_VALUE_20D_KRW,
                     )
 
@@ -477,6 +504,9 @@ def simulate_ticker_strategy_2022(
 
         monthly_snapshots: list[dict[str, Any]] = []
         for m in m_dates:
+            if monthly_snapshot_cache is not None:
+                monthly_snapshots.append(monthly_snapshot_cache.get(ticker, name, daily, m))
+                continue
             try:
                 snap = build_historical_snapshot(ticker, name, daily[daily.index <= m], m, include_incomplete_periods=False)
                 eval_res = evaluate_pattern_a(snap)

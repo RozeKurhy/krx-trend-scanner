@@ -1,0 +1,86 @@
+{
+  "limited_smoke_test": false,
+  "baseline": {
+    "golden_trade_count": 845,
+    "optimized_trade_count": 845,
+    "exact_trade_identity": false,
+    "field_mismatch_count": 2001,
+    "metrics_diff": []
+  },
+  "julia": {
+    "golden_trade_count": 687,
+    "optimized_trade_count": 687,
+    "exact_trade_identity": false,
+    "field_mismatch_count": 3779,
+    "metrics_diff": []
+  },
+  "loss_guard_cohort_diff": [],
+  "proxy_validation_diff": [],
+  "mismatch_examples": {
+    "baseline": [
+      {
+        "field": "investability_market_cap",
+        "row": 5,
+        "golden": "1083419202800.0",
+        "optimized": "1083419202799.9999"
+      },
+      {
+        "field": "previous_exit_type",
+        "row": 0,
+        "golden": "nan",
+        "optimized": "None"
+      },
+      {
+        "field": "loss_guard_signal_date",
+        "row": 0,
+        "golden": "nan",
+        "optimized": "None"
+      },
+      {
+        "field": "loss_guard_execution_date",
+        "row": 0,
+        "golden": "nan",
+        "optimized": "None"
+      },
+      {
+        "field": "first_progressed_date",
+        "row": 1,
+        "golden": "nan",
+        "optimized": "None"
+      }
+    ],
+    "julia": [
+      {
+        "field": "investability_market_cap",
+        "row": 17,
+        "golden": "1054802808149.0472",
+        "optimized": "1054802808149.0471"
+      },
+      {
+        "field": "previous_exit_type",
+        "row": 0,
+        "golden": "nan",
+        "optimized": "None"
+      },
+      {
+        "field": "loss_guard_signal_date",
+        "row": 0,
+        "golden": "nan",
+        "optimized": "None"
+      },
+      {
+        "field": "loss_guard_execution_date",
+        "row": 0,
+        "golden": "nan",
+        "optimized": "None"
+      },
+      {
+        "field": "loss_guard_execution_price",
+        "row": 0,
+        "golden": "nan",
+        "optimized": "None"
+      }
+    ]
+  },
+  "overall_exact_parity": false
+}
