@@ -14,7 +14,7 @@ Core Strategy Mandate:
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 import hashlib
 import json
 import logging
@@ -198,6 +198,10 @@ class HistoricalMarketCapRegistry:
 
         return cls(snapshots=snapshots, metadata=metadata)
 
+    @property
+    def available_dates(self) -> set[str]:
+        return set(self.snapshots.keys())
+
     def get_market_cap_at_reference(self, ticker: str, reference_date: str) -> tuple[float | None, dict[str, Any] | None]:
         if reference_date not in self.snapshots:
             return None, None
@@ -259,6 +263,7 @@ class StrategyTradeRecord:
     profit_capture: float | None
     holding_weeks: float
     trade_status: str
+    investability_meta: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -346,9 +351,10 @@ def simulate_ticker_strategy_2022(
     score_contract: dict,
     stage_contract: dict,
     enable_loss_guard: bool,
-    market_cap_registry: HistoricalMarketCapRegistry | None = None,
+    market_cap_registry: Any | None = None,
     start_date: pd.Timestamp = EVALUATION_START_DATE,
     cutoff_date: pd.Timestamp = EVALUATION_END_DATE,
+    sensitivity_mode: bool = False,
 ) -> list[StrategyTradeRecord]:
     """Simulate a single ticker trade lifecycle starting from start_date (2022-01-01+)."""
     if daily is None or daily.empty:
@@ -414,7 +420,12 @@ def simulate_ticker_strategy_2022(
                     mcap_val = None
                     src_meta = None
                     if market_cap_registry is not None:
-                        mcap_val, src_meta = market_cap_registry.get_market_cap_at_reference(ticker, w_str)
+                        try:
+                            mcap_val, src_meta = market_cap_registry.get_market_cap_at_reference(
+                                ticker, w_str, sensitivity_mode=sensitivity_mode
+                            )
+                        except TypeError:
+                            mcap_val, src_meta = market_cap_registry.get_market_cap_at_reference(ticker, w_str)
 
                     daily_as_of = daily[daily.index <= w]
                     inv_res = evaluate_investability(
@@ -665,6 +676,7 @@ def simulate_ticker_strategy_2022(
             profit_capture=res_outcome["terminal_profit_capture"],
             holding_weeks=res_outcome["holding_weeks"],
             trade_status=res_outcome["trade_status"],
+            investability_meta=inv_source_meta or {},
         )
         trades.append(record)
 

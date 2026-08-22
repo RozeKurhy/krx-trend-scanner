@@ -1,0 +1,18 @@
+{
+  "strategy_id": "JULIA_STRATEGY_V00",
+  "base_strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+  "experiment_id": "JULIA_V00_PROXY_MARKET_CAP_PIT_V01",
+  "evidence_status": "NON_AUTHORITATIVE_PROXY_PIT",
+  "evaluation_window": {
+    "start": "2022-01-01",
+    "end": "2026-08-14"
+  },
+  "proxy_rules": {
+    "official_dates_rule": "USE_EXACT_KRX_OFFICIAL_MARKET_CAP",
+    "missing_dates_rule": "METHOD_B_ANCHOR_PRICE_RATIO_PROXY",
+    "anchor_direction": "STRICTLY_PRIOR_ANCHOR_ONLY",
+    "future_anchor_forbidden": true,
+    "current_shares_fallback_forbidden": true,
+    "interpolation_forbidden": true
+  }
+}
