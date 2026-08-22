@@ -23,23 +23,30 @@ rather than fails, since a cold cache is just the pre-this-task baseline,
 not an error).
 
 Cache version contract (w.md Section 28, ``BACKTEST_FEATURE_CACHE_V01``;
-Phase 4 Major Fix 1 strengthened the last two fields):
+Phase 4 Major Fix 1 and Phase 4.1 Sections 2-3 strengthened this further):
   - schema_version
   - score_contract_sha256 / stage_contract_sha256 (Pattern A FAST version identity)
   - feature_implementation_sha256: aggregate sha256 over a sorted
     {relative_path: sha256} manifest of the source files that directly
     determine Pattern A / FAST snapshot output (see
-    ``FEATURE_IMPLEMENTATION_FILES`` below). A JSON-contract-only version
-    key cannot detect a code change to these files, so relying on
-    schema_version + contract hashes alone risks a stale HIT after an
-    implementation change with no contract change. Deliberately NOT a raw
-    git commit SHA (w.md: unrelated changes such as docs must not
-    invalidate the whole cache).
+    ``FEATURE_IMPLEMENTATION_FILES`` below, which includes the Phase 4.1
+    ``snapshot_context.py`` performance module now that the precomputed-
+    context code lives there instead of inside the frozen
+    ``historical_snapshot.py``). A JSON-contract-only version key cannot
+    detect a code change to these files, so relying on schema_version +
+    contract hashes alone risks a stale HIT after an implementation change
+    with no contract change. Deliberately NOT a raw git commit SHA (w.md:
+    unrelated changes such as docs must not invalidate the whole cache).
   - source_data_fingerprint: sha256 over a sorted
     [relative_filename, file_size, mtime_ns] manifest for every parquet
     under ``source_data_dir`` -- stat-only, never reads file content
     (reading 2,506 parquet files' content to hash them would reintroduce
     the exact IO cost this cache exists to avoid).
+  - runtime_identity: {python_version, pandas_version, numpy_version} full
+    version strings (w.md Phase 4.1 Section 3) -- a persisted cache built
+    under a different interpreter/library version may not be safe to reuse
+    silently, so any of these changing forces a cold rebuild rather than a
+    silent stale HIT.
   - generated_at
 """
 
@@ -49,10 +56,15 @@ import hashlib
 import json
 import logging
 import pickle
+import platform
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from datetime import datetime, timezone
 from typing import Any
+
+import numpy
+import pandas
 
 from trend_scanner.backtest.feature_cache import FastSnapshotCache, MonthlySnapshotCache
 
@@ -62,11 +74,12 @@ CACHE_SCHEMA_VERSION = "BACKTEST_FEATURE_CACHE_V01"
 DEFAULT_CACHE_DIR = Path("data/cache/backtest_features")
 
 # Source files that directly determine Pattern A / FAST snapshot output
-# (w.md Phase 4 Major Fix 1, Section 2's explicit list). Paths are relative
-# to the repository root (the parent of ``src/``).
+# (w.md Phase 4 Major Fix 1 Section 2 / Phase 4.1 Section 2's explicit
+# list). Paths are relative to the repository root (the parent of ``src/``).
 FEATURE_IMPLEMENTATION_FILES: tuple[str, ...] = (
     "src/trend_scanner/patterns/pattern_a_fast_evaluator.py",
     "src/trend_scanner/validation/historical_snapshot.py",
+    "src/trend_scanner/backtest/snapshot_context.py",
     "src/trend_scanner/patterns/pattern_a_evaluator.py",
     "src/trend_scanner/validation/feature_report.py",
     "src/trend_scanner/research/pattern_a_fast_daily_features.py",
@@ -75,6 +88,30 @@ FEATURE_IMPLEMENTATION_FILES: tuple[str, ...] = (
     "src/trend_scanner/data/resampler.py",
     "src/trend_scanner/data/market_calendar.py",
 )
+
+
+def _python_version() -> str:
+    return platform.python_version()
+
+
+def _pandas_version() -> str:
+    return pandas.__version__
+
+
+def _numpy_version() -> str:
+    return numpy.__version__
+
+
+def _runtime_identity() -> dict[str, str]:
+    """{python_version, pandas_version, numpy_version} full version strings
+    (w.md Phase 4.1 Section 3). Implemented as separate injectable
+    functions (rather than inlined ``sys``/``pandas``/``numpy`` lookups) so
+    tests can monkeypatch exactly one of the three independently."""
+    return {
+        "python_version": _python_version(),
+        "pandas_version": _pandas_version(),
+        "numpy_version": _numpy_version(),
+    }
 
 
 def _sha256_file(path: Path) -> str:
@@ -126,6 +163,7 @@ class PersistentFeatureCacheStore:
             "stage_contract_sha256": _sha256_file(self.stage_contract_path),
             "feature_implementation_sha256": _feature_implementation_fingerprint(self.repo_root),
             "source_data_fingerprint": _source_data_fingerprint(self.source_data_dir),
+            "runtime_identity": _runtime_identity(),
         }
 
     def _cache_file(self) -> Path:

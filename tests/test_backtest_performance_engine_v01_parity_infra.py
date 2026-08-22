@@ -184,6 +184,72 @@ def test_compare_trade_csvs_same_ticker_sequence_different_trade_id_fails(tmp_pa
 
 
 # =============================================================================
+# compare_trade_csvs -- Phase 4.1 Section 4: ROW_KEY uniqueness fail-closed
+# =============================================================================
+
+def test_compare_trade_csvs_optimized_duplicate_row_key_fails(tmp_path):
+    golden_path = tmp_path / "golden.csv"
+    optimized_path = tmp_path / "optimized.csv"
+
+    _write_trade_csv(golden_path, [
+        {"ticker": "005930", "trade_id": "005930_01", "trade_sequence": 1, "entry_open": 70000.0, "previous_exit_type": None, "terminal_return": 12.34},
+    ])
+    # optimized has TWO rows with the same (ticker, trade_sequence) -- not a
+    # valid trade identity, must fail closed rather than merge/compare.
+    _write_trade_csv(optimized_path, [
+        {"ticker": "005930", "trade_id": "005930_01", "trade_sequence": 1, "entry_open": 70000.0, "previous_exit_type": None, "terminal_return": 12.34},
+        {"ticker": "005930", "trade_id": "005930_01b", "trade_sequence": 1, "entry_open": 70000.0, "previous_exit_type": None, "terminal_return": 12.34},
+    ])
+    # Pad golden to the same trade count so this isn't short-circuited by
+    # the count-mismatch check instead of the duplicate-key check.
+    _write_trade_csv(golden_path, [
+        {"ticker": "005930", "trade_id": "005930_01", "trade_sequence": 1, "entry_open": 70000.0, "previous_exit_type": None, "terminal_return": 12.34},
+        {"ticker": "000660", "trade_id": "000660_01", "trade_sequence": 1, "entry_open": 50000.0, "previous_exit_type": None, "terminal_return": 1.0},
+    ])
+
+    result = compare_trade_csvs(golden_path, optimized_path, parity_fields=_TRADE_COLUMNS)
+
+    assert result["exact_trade_identity"] is False
+    assert result["duplicate_row_keys"]["optimized"] == 2
+    assert result["duplicate_row_keys"]["golden"] == 0
+
+
+def test_compare_trade_csvs_golden_duplicate_row_key_fails(tmp_path):
+    golden_path = tmp_path / "golden.csv"
+    optimized_path = tmp_path / "optimized.csv"
+
+    _write_trade_csv(golden_path, [
+        {"ticker": "005930", "trade_id": "005930_01", "trade_sequence": 1, "entry_open": 70000.0, "previous_exit_type": None, "terminal_return": 12.34},
+        {"ticker": "005930", "trade_id": "005930_01b", "trade_sequence": 1, "entry_open": 70000.0, "previous_exit_type": None, "terminal_return": 12.34},
+    ])
+    _write_trade_csv(optimized_path, [
+        {"ticker": "005930", "trade_id": "005930_01", "trade_sequence": 1, "entry_open": 70000.0, "previous_exit_type": None, "terminal_return": 12.34},
+        {"ticker": "000660", "trade_id": "000660_01", "trade_sequence": 1, "entry_open": 50000.0, "previous_exit_type": None, "terminal_return": 1.0},
+    ])
+
+    result = compare_trade_csvs(golden_path, optimized_path, parity_fields=_TRADE_COLUMNS)
+
+    assert result["exact_trade_identity"] is False
+    assert result["duplicate_row_keys"]["golden"] == 2
+    assert result["duplicate_row_keys"]["optimized"] == 0
+
+
+def test_compare_trade_csvs_normal_unique_keys_behavior_unchanged(tmp_path):
+    """Regression guard: the new uniqueness check must not affect the
+    already-covered normal (unique-key) PASS/FAIL behavior."""
+    golden_path = tmp_path / "golden.csv"
+    optimized_path = tmp_path / "optimized.csv"
+
+    _write_trade_csv(golden_path, [{"ticker": "005930", "trade_id": "005930_01", "trade_sequence": 1, "entry_open": 70000.0, "previous_exit_type": None, "terminal_return": 12.34}])
+    _write_trade_csv(optimized_path, [{"ticker": "005930", "trade_id": "005930_01", "trade_sequence": 1, "entry_open": 70000.0, "previous_exit_type": None, "terminal_return": 12.34}])
+
+    result = compare_trade_csvs(golden_path, optimized_path, parity_fields=_TRADE_COLUMNS)
+
+    assert result["exact_trade_identity"] is True
+    assert result["duplicate_row_keys"] == {"golden": 0, "optimized": 0}
+
+
+# =============================================================================
 # diff_summary_dicts
 # =============================================================================
 
@@ -412,3 +478,59 @@ def test_persistent_cache_parquet_mtime_ns_change_is_miss(tmp_path, monkeypatch)
 
     hit = store.load_into(FastSnapshotCache(), MonthlySnapshotCache())
     assert hit is False
+
+
+# =============================================================================
+# PersistentFeatureCacheStore -- runtime dependency identity (Phase 4.1 Section 3)
+# =============================================================================
+# Covers w.md Phase 4.1 Section 22's [Persistent Cache] items 4-8: identical
+# runtime identity HIT; python/pandas/numpy version mismatch each MISS;
+# snapshot_context.py source change MISS (covered by the FEATURE_IMPLEMENTATION_FILES
+# manifest test below, since snapshot_context.py is now in that list).
+
+def test_persistent_cache_identical_runtime_identity_is_hit(tmp_path, monkeypatch):
+    store, _, _ = _build_store(tmp_path, monkeypatch)
+    _seed_cache(store)
+
+    hit = store.load_into(FastSnapshotCache(), MonthlySnapshotCache())
+    assert hit is True
+
+
+def test_persistent_cache_python_version_change_is_miss(tmp_path, monkeypatch):
+    store, _, _ = _build_store(tmp_path, monkeypatch)
+    _seed_cache(store)
+
+    monkeypatch.setattr(persistent_cache_module, "_python_version", lambda: "9.9.9")
+    hit = store.load_into(FastSnapshotCache(), MonthlySnapshotCache())
+    assert hit is False
+
+
+def test_persistent_cache_pandas_version_change_is_miss(tmp_path, monkeypatch):
+    store, _, _ = _build_store(tmp_path, monkeypatch)
+    _seed_cache(store)
+
+    monkeypatch.setattr(persistent_cache_module, "_pandas_version", lambda: "0.0.0-fake")
+    hit = store.load_into(FastSnapshotCache(), MonthlySnapshotCache())
+    assert hit is False
+
+
+def test_persistent_cache_numpy_version_change_is_miss(tmp_path, monkeypatch):
+    store, _, _ = _build_store(tmp_path, monkeypatch)
+    _seed_cache(store)
+
+    monkeypatch.setattr(persistent_cache_module, "_numpy_version", lambda: "0.0.0-fake")
+    hit = store.load_into(FastSnapshotCache(), MonthlySnapshotCache())
+    assert hit is False
+
+
+def test_persistent_cache_snapshot_context_module_in_implementation_manifest():
+    """snapshot_context.py (Phase 4.1 Major Fix 1's new performance module,
+    now holding the code that used to live inside the frozen
+    historical_snapshot.py) must itself be covered by the implementation
+    fingerprint, since it directly determines Pattern A/FAST snapshot
+    output for the optimized path. The generic "an implementation file
+    changed -> MISS" mechanism is already proven by
+    test_persistent_cache_implementation_sha_change_is_miss above; this
+    test only proves snapshot_context.py is actually one of the covered
+    files (not left out of the list after the Phase 4.1 module split)."""
+    assert "src/trend_scanner/backtest/snapshot_context.py" in persistent_cache_module.FEATURE_IMPLEMENTATION_FILES

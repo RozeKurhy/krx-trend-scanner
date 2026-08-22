@@ -59,7 +59,7 @@ from trend_scanner.backtest.context import TickerDataCache
 from trend_scanner.backtest.feature_cache import FastSnapshotCache, MonthlySnapshotCache
 from trend_scanner.backtest.parity import compare_trade_csvs, diff_summary_dicts
 from trend_scanner.backtest.persistent_cache import PersistentFeatureCacheStore
-from trend_scanner.validation.historical_snapshot import (
+from trend_scanner.backtest.snapshot_context import (
     PrecomputedTickerContext,
     build_precomputed_ticker_context,
 )

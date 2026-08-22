@@ -127,6 +127,7 @@ def compare_trade_csvs(golden_path: Path, optimized_path: Path, parity_fields: l
             "field_mismatch_count": None,
             "count_mismatch": False,
             "missing_required_fields": {"golden": missing_golden, "optimized": missing_optimized},
+            "duplicate_row_keys": {"golden": None, "optimized": None},
             "unmatched_trade_identity_count": {"golden_only": None, "optimized_only": None},
             "mismatch_examples": [],
             "near_equal_diagnostic_mismatch_count": None,
@@ -140,6 +141,28 @@ def compare_trade_csvs(golden_path: Path, optimized_path: Path, parity_fields: l
             "field_mismatch_count": None,
             "count_mismatch": True,
             "missing_required_fields": {"golden": [], "optimized": []},
+            "duplicate_row_keys": {"golden": None, "optimized": None},
+            "unmatched_trade_identity_count": {"golden_only": None, "optimized_only": None},
+            "mismatch_examples": [],
+            "near_equal_diagnostic_mismatch_count": None,
+        }
+
+    # w.md Phase 4.1 Section 4: ROW_KEY must be unique within each side
+    # BEFORE merging -- a duplicate (ticker, trade_sequence) means the file
+    # does not encode a valid trade identity, so an outer merge on that key
+    # would silently fan out (cross-join) rather than compare real trades.
+    # Fail closed rather than attempt exact parity on an ill-defined key.
+    golden_dup_count = int(golden.duplicated(subset=ROW_KEY, keep=False).sum())
+    optimized_dup_count = int(optimized.duplicated(subset=ROW_KEY, keep=False).sum())
+    if golden_dup_count > 0 or optimized_dup_count > 0:
+        return {
+            "golden_trade_count": len(golden),
+            "optimized_trade_count": len(optimized),
+            "exact_trade_identity": False,
+            "field_mismatch_count": None,
+            "count_mismatch": False,
+            "missing_required_fields": {"golden": [], "optimized": []},
+            "duplicate_row_keys": {"golden": golden_dup_count, "optimized": optimized_dup_count},
             "unmatched_trade_identity_count": {"golden_only": None, "optimized_only": None},
             "mismatch_examples": [],
             "near_equal_diagnostic_mismatch_count": None,
@@ -182,6 +205,7 @@ def compare_trade_csvs(golden_path: Path, optimized_path: Path, parity_fields: l
         "field_mismatch_count": mismatch_count,
         "count_mismatch": False,
         "missing_required_fields": {"golden": [], "optimized": []},
+        "duplicate_row_keys": {"golden": 0, "optimized": 0},
         "unmatched_trade_identity_count": {"golden_only": unmatched_golden_only, "optimized_only": unmatched_optimized_only},
         "mismatch_examples": mismatch_examples,
         "near_equal_diagnostic_mismatch_count": near_equal_diagnostic_mismatch_count,

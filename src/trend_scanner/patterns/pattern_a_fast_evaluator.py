@@ -31,11 +31,11 @@ from trend_scanner.patterns.pattern_a_evaluator import evaluate_pattern_a
 from trend_scanner.research.pattern_a_fast_daily_features import compute_daily_timing_features
 from trend_scanner.research.pattern_a_fast_monthly_features import compute_monthly_regime_features
 from trend_scanner.research.pattern_a_fast_weekly_features import compute_weekly_trigger_features
-from trend_scanner.validation.historical_snapshot import (
+from trend_scanner.backtest.snapshot_context import (
     PrecomputedTickerContext,
-    build_historical_snapshot,
     build_historical_snapshot_from_context,
 )
+from trend_scanner.validation.historical_snapshot import build_historical_snapshot
 
 
 def _zone(value: object, zones: list[dict], output: str) -> float:

@@ -36,10 +36,8 @@ from trend_scanner.filters.investability import (
 )
 from trend_scanner.patterns.pattern_a_evaluator import evaluate_pattern_a
 from trend_scanner.patterns.pattern_a_fast_evaluator import evaluate_pattern_a_fast
-from trend_scanner.validation.historical_snapshot import (
-    build_historical_snapshot,
-    build_historical_snapshot_from_context,
-)
+from trend_scanner.backtest.snapshot_context import build_historical_snapshot_from_context
+from trend_scanner.validation.historical_snapshot import build_historical_snapshot
 from trend_scanner.validation.pattern_a_fast_core_v02_reentry import (
     DATA_CUTOFF,
     calculate_distribution_stats,
@@ -363,12 +361,13 @@ def simulate_ticker_strategy_2022(
     monthly_snapshot_cache: Any | None = None,
     min_market_cap_krw: float = MIN_MARKET_CAP_KRW,
     snapshot_context: Any | None = None,
+    enable_pre_window_pruning: bool = True,
 ) -> list[StrategyTradeRecord]:
     """Simulate a single ticker trade lifecycle starting from start_date (2022-01-01+).
 
     ``snapshot_context`` (optional, BACKTEST_PERFORMANCE_ENGINEERING_V01
     Phase 4): a ``PrecomputedTickerContext`` (see
-    ``trend_scanner.validation.historical_snapshot``) built once for THIS
+    ``trend_scanner.backtest.snapshot_context``) built once for THIS
     ticker's full daily history. When given, it is forwarded to
     ``fast_snapshot_cache``/``monthly_snapshot_cache`` so a cache miss uses
     the optimized snapshot-reuse path instead of re-resampling the full
@@ -383,6 +382,14 @@ def simulate_ticker_strategy_2022(
     strict-INVESTABLE gate below, and never touches
     ``filters.investability.MIN_MARKET_CAP_KRW`` itself.
 
+    ``enable_pre_window_pruning`` (default True, BACKTEST_PERFORMANCE_ENGINEERING_V01
+    Phase 4.1 Major Fix 2): skips straight to the earliest week whose next
+    trading day could possibly be >= start_date, instead of evaluating
+    every FAST snapshot from the ticker's very first valid week onward.
+    Trade output is identical either way (this only prunes weeks that could
+    never produce a usable signal); set False only for a legacy-equivalent
+    before/after benchmark comparison within the same process.
+
     ``fast_snapshot_cache``/``monthly_snapshot_cache`` are optional
     strategy-invariant memoization caches (see
     ``trend_scanner.backtest.feature_cache``): ``evaluate_pattern_a_fast``
@@ -393,39 +400,95 @@ def simulate_ticker_strategy_2022(
     try/except evaluation -- this parameter never changes strategy output,
     only whether an already-computed result is reused.
     """
-    if daily is None or daily.empty:
-        return []
-
-    daily = daily.sort_index()
-    daily = daily[daily.index <= cutoff_date]
+    # w.md Phase 4.1 Sections 7-8: when a PrecomputedTickerContext is given,
+    # reuse its already-sorted daily and already-resampled weekly/monthly
+    # (via the same tail-bucket-safe cutoff-safe views used for per-snapshot
+    # construction) instead of repeating sort_index()/to_weekly()/
+    # to_monthly() on every one of the 4 Baseline/Julia x Primary/
+    # Sensitivity passes for this ticker. Legacy path (no context) is
+    # completely unchanged.
+    if snapshot_context is not None:
+        if snapshot_context.daily.empty:
+            return []
+        daily = snapshot_context.daily_up_to(cutoff_date)
+    else:
+        if daily is None or daily.empty:
+            return []
+        daily = daily.sort_index()
+        daily = daily[daily.index <= cutoff_date]
 
     required_cols = {"open", "high", "low", "close"}
     if not required_cols.issubset(daily.columns) or len(daily) < 60:
         return []
 
-    weekly_bars = to_weekly(daily)
-    # A weekly label w's bar is "completed" (this ticker actually traded up
-    # through the label date, i.e. daily[daily.index <= w].index.max() == w)
-    # iff w itself is one of the ticker's own trading dates: if w is present
-    # in daily.index, the last date <= w is trivially w itself; if w is
-    # absent (e.g. a holiday Friday), the last date <= w is strictly earlier.
-    # This turns an O(len(weekly_bars) * len(daily)) boolean-mask-per-week
-    # scan into O(len(weekly_bars)) O(1) set lookups, with no semantic
-    # change (w.md Phase 4 Section 8, VALID_WEEK_SET_MISMATCH=0 proof in
-    # tests/test_backtest_performance_engine_v01_snapshot_context.py).
-    _daily_dates_set = set(daily.index)
-    valid_weeks = [w for w in weekly_bars.index if w in _daily_dates_set]
+    if snapshot_context is not None:
+        weekly_bars = snapshot_context.weekly_up_to(cutoff_date)
+        valid_weeks = snapshot_context.valid_weeks_up_to(cutoff_date)
+    else:
+        weekly_bars = to_weekly(daily)
+        # A weekly label w's bar is "completed" (this ticker actually traded up
+        # through the label date, i.e. daily[daily.index <= w].index.max() == w)
+        # iff w itself is one of the ticker's own trading dates: if w is present
+        # in daily.index, the last date <= w is trivially w itself; if w is
+        # absent (e.g. a holiday Friday), the last date <= w is strictly earlier.
+        # This turns an O(len(weekly_bars) * len(daily)) boolean-mask-per-week
+        # scan into O(len(weekly_bars)) O(1) set lookups, with no semantic
+        # change (w.md Phase 4 Section 8, VALID_WEEK_SET_MISMATCH=0 proof in
+        # tests/test_backtest_performance_engine_v01_snapshot_context.py).
+        _daily_dates_set = set(daily.index)
+        valid_weeks = [w for w in weekly_bars.index if w in _daily_dates_set]
 
     if not valid_weeks:
         return []
 
-    monthly_bars = to_monthly(daily)
+    monthly_bars = snapshot_context.monthly_up_to(cutoff_date) if snapshot_context is not None else to_monthly(daily)
 
     strategy_id = "PATTERN_A_FAST_FINAL_STRATEGY_V02" if enable_loss_guard else "JULIA_STRATEGY_V00"
 
     trades: list[StrategyTradeRecord] = []
     trade_seq = 0
-    cur_search_date: pd.Timestamp | None = valid_weeks[0]
+
+    # w.md Phase 4.1 Major Fix 2 (Section 5): a FAST-trigger signal at week w
+    # can only ever produce a valid entry if next_trading_day_after(w) >=
+    # start_date -- entries execute on the next trading day after the
+    # signal week, and any entry before start_date is unconditionally
+    # discarded later (the pre-existing `candidate_exec_d < start_date:
+    # continue` check). Skipping straight to the earliest week that COULD
+    # satisfy this avoids evaluating FAST snapshots for weeks whose result
+    # can never matter (e.g. 2016-2021 history for a long-listed ticker),
+    # while still keeping the late-2021-signal -> first-2022-trading-day-
+    # execution case eligible (that week's next trading day is itself
+    # >= start_date, so it is NOT pruned).
+    daily_dates_sorted = list(daily.index)
+
+    def _next_trading_day_or_far_future(w: pd.Timestamp) -> pd.Timestamp:
+        pos = bisect.bisect_right(daily_dates_sorted, w)
+        return daily_dates_sorted[pos] if pos < len(daily_dates_sorted) else pd.Timestamp.max
+
+    def _next_trading_day_position(d: pd.Timestamp) -> int | None:
+        """w.md Phase 4.1 Section 10: searchsorted-based equivalent of
+        ``daily[(daily.index > d) & (daily.index <= cutoff_date)].index[0]``
+        (daily is already cutoff-truncated, so the extra upper bound is a
+        no-op here). Returns the position in daily_dates_sorted / daily.iloc,
+        or None if there is no later trading day."""
+        pos = bisect.bisect_right(daily_dates_sorted, d)
+        return pos if pos < len(daily_dates_sorted) else None
+
+    def _last_trading_day_position_on_or_before(d: pd.Timestamp) -> int | None:
+        """w.md Phase 4.1 Section 12: searchsorted-based equivalent of
+        ``daily[daily.index <= d].index.max()`` (returned as a position, not
+        a date, so callers needing the row too don't pay for a second lookup)."""
+        pos = bisect.bisect_right(daily_dates_sorted, d) - 1
+        return pos if pos >= 0 else None
+
+    if enable_pre_window_pruning:
+        pre_window_start_idx = bisect.bisect_left(valid_weeks, start_date, key=_next_trading_day_or_far_future)
+    else:
+        pre_window_start_idx = 0
+
+    cur_search_date: pd.Timestamp | None = valid_weeks[pre_window_start_idx] if pre_window_start_idx < len(valid_weeks) else None
+    if cur_search_date is None:
+        return []
     prev_exit_type: str | None = None
     prev_exit_exec_date: str | None = None
 
@@ -461,10 +524,10 @@ def simulate_ticker_strategy_2022(
                 pa_stage = str(raw_stage).upper() if (raw_stage is not None and not pd.isna(raw_stage)) else "UNAVAILABLE"
 
                 if is_fast and pa_stage in {"TRANSITION", "EARLY_TREND"}:
-                    fut_daily = daily[(daily.index > w) & (daily.index <= cutoff_date)]
-                    if fut_daily.empty:
+                    next_pos = _next_trading_day_position(w)
+                    if next_pos is None:
                         continue
-                    candidate_exec_d = fut_daily.index[0]
+                    candidate_exec_d = daily_dates_sorted[next_pos]
                     if candidate_exec_d < start_date:
                         continue
 
@@ -480,7 +543,11 @@ def simulate_ticker_strategy_2022(
                         except TypeError:
                             mcap_val, src_meta = market_cap_registry.get_market_cap_at_reference(ticker, w_str)
 
-                    daily_as_of = daily[daily.index <= w]
+                    if snapshot_context is not None:
+                        daily_as_of = snapshot_context.slice_daily_up_to(w)
+                    else:
+                        w_pos = _last_trading_day_position_on_or_before(w)
+                        daily_as_of = daily.iloc[: w_pos + 1] if w_pos is not None else daily.iloc[0:0]
                     inv_res = evaluate_investability(
                         ticker=ticker,
                         as_of=w,
@@ -498,7 +565,7 @@ def simulate_ticker_strategy_2022(
                     found_signal_w = w
                     found_signal_res = res
                     entry_exec_date = candidate_exec_d
-                    entry_open_price = float(fut_daily.iloc[0]["open"])
+                    entry_open_price = float(daily.iloc[next_pos]["open"])
                     inv_eval_record = inv_res
                     inv_source_meta = src_meta
                     break
@@ -600,9 +667,9 @@ def simulate_ticker_strategy_2022(
         # Pre-PROGRESSED Loss Guard Check
         first_prog_eff_trading_d: pd.Timestamp | None = None
         if first_progressed_d is not None:
-            month_daily = daily[daily.index <= first_progressed_d]
-            if not month_daily.empty:
-                first_prog_eff_trading_d = month_daily.index.max()
+            _fp_pos = _last_trading_day_position_on_or_before(first_progressed_d)
+            if _fp_pos is not None:
+                first_prog_eff_trading_d = daily_dates_sorted[_fp_pos]
             pre_prog_daily = daily[(daily.index >= entry_exec_date) & (daily.index < first_prog_eff_trading_d)]
         else:
             pre_prog_daily = daily[(daily.index >= entry_exec_date) & (daily.index <= cutoff_date)]

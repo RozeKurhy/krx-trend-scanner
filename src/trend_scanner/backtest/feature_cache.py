@@ -30,13 +30,13 @@ from typing import Any
 
 import pandas as pd
 
-from trend_scanner.patterns.pattern_a_evaluator import evaluate_pattern_a
-from trend_scanner.patterns.pattern_a_fast_evaluator import evaluate_pattern_a_fast
-from trend_scanner.validation.historical_snapshot import (
+from trend_scanner.backtest.snapshot_context import (
     PrecomputedTickerContext,
-    build_historical_snapshot,
     build_historical_snapshot_from_context,
 )
+from trend_scanner.patterns.pattern_a_evaluator import evaluate_pattern_a
+from trend_scanner.patterns.pattern_a_fast_evaluator import evaluate_pattern_a_fast
+from trend_scanner.validation.historical_snapshot import build_historical_snapshot
 
 _FAILED = object()
 _FAILED_MARKER = "__FAST_SNAPSHOT_EVALUATION_FAILED__"

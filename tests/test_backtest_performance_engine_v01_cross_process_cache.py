@@ -35,7 +35,7 @@ import pandas as pd
 
 from trend_scanner.backtest.feature_cache import FastSnapshotCache, MonthlySnapshotCache
 from trend_scanner.backtest.persistent_cache import PersistentFeatureCacheStore
-from trend_scanner.validation.historical_snapshot import build_precomputed_ticker_context
+from trend_scanner.backtest.snapshot_context import build_precomputed_ticker_context
 from trend_scanner.data.resampler import to_weekly
 
 root = {root!r}

@@ -27,11 +27,11 @@ import pytest
 from trend_scanner.data.market_calendar import get_canonical_market_calendar
 from trend_scanner.patterns.pattern_a_evaluator import evaluate_pattern_a
 from trend_scanner.patterns.pattern_a_fast_evaluator import evaluate_pattern_a_fast
-from trend_scanner.validation.historical_snapshot import (
-    build_historical_snapshot,
+from trend_scanner.backtest.snapshot_context import (
     build_historical_snapshot_from_context,
     build_precomputed_ticker_context,
 )
+from trend_scanner.validation.historical_snapshot import build_historical_snapshot
 
 ROOT = Path(__file__).resolve().parent.parent
 STOCKS_DIR = ROOT / "data/raw/stocks"
