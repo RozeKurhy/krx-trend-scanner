@@ -86,10 +86,11 @@ class ProxyQueryRecord:
     market_cap_status: str
     near_threshold: bool
     confidence_class: str
-    posthoc_next_anchor_date: str | None
-    posthoc_next_anchor_shares: int | None
-    posthoc_share_change_flag: bool | None
-    failure_reason: str | None
+    sensitivity_status: str = "NOT_APPLICABLE"
+    posthoc_next_anchor_date: str | None = None
+    posthoc_next_anchor_shares: int | None = None
+    posthoc_share_change_flag: bool | None = None
+    failure_reason: str | None = None
 
 
 class ProxyHistoricalMarketCapRegistry:
@@ -189,6 +190,7 @@ class ProxyHistoricalMarketCapRegistry:
                 market_cap_status="PASS" if (mcap is not None and mcap >= PRIMARY_MIN_MARKET_CAP_KRW) else "FAIL",
                 near_threshold=near_thresh,
                 confidence_class="OFFICIAL_AUTHORITATIVE",
+                sensitivity_status="OFFICIAL_VALUE_UNAFFECTED",
                 posthoc_next_anchor_date=None,
                 posthoc_next_anchor_shares=None,
                 posthoc_share_change_flag=None,
@@ -400,6 +402,7 @@ class ProxyHistoricalMarketCapRegistry:
             market_cap_status="PASS" if estimated_mcap >= PRIMARY_MIN_MARKET_CAP_KRW else "FAIL",
             near_threshold=near_thresh,
             confidence_class=conf_class,
+            sensitivity_status="DATA_UNAVAILABLE_PROXY_BOUNDARY" if near_thresh else "ELIGIBLE",
             posthoc_next_anchor_date=next_anchor_d,
             posthoc_next_anchor_shares=None,
             posthoc_share_change_flag=None,

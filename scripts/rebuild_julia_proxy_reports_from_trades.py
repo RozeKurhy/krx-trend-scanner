@@ -1,14 +1,13 @@
-"""Rebuild Julia Proxy PIT Reports and Summaries from existing trade artifacts.
+"""Rebuild Julia Proxy PIT Reports and Summaries from existing trade artifacts (FIX02).
 
 Post-processing only:
 - Reuses existing trade CSVs (zero full simulation / zero parquet re-reads).
-- Corrects percentage-point vs decimal unit conversions in metrics, distributions, summaries, and reports.
-- Corrects Big Winners (>= +50%) and Worst Losses (<= -20%) artifact generation.
-- Expands Proxy Dependence breakdown (Near-threshold, High/Medium/Low confidence).
-- Normalizes Boundary Sensitivity units.
-- Evaluates 3-state deterministic research verdict (SUPPORTIVE_OF_JULIA / MIXED / UNFAVORABLE_TO_JULIA).
-- Updates proxy_contract.json with enhanced governance flags.
-- Regenerates docs/strategies/julia/proxy_market_cap_v01.md with correct percentage formatting.
+- Preserves exact 6-digit zero-padded ticker identities (e.g. 043260, 005930).
+- Enriches proxy query audit artifact with deterministic sensitivity_status column.
+- Fully restores and expands proxy_contract.json schema and proxy_rules.
+- Fully restores provenance metadata in proxy_run_manifest.json (SHA lineage, runtime invariants).
+- Normalizes sensitivity units with explicit contract (return_unit: PERCENTAGE_POINT).
+- Refines Markdown report terminology (removes 'fraction' mislabel, clarifies SHA lineage).
 - Re-seals all artifacts in proxy_run_manifest.json and verifies SHA-256 integrity.
 """
 
@@ -38,13 +37,19 @@ ROOT = Path(__file__).resolve().parent.parent
 PROXY_DIR = ROOT / "artifacts/strategies/julia/proxy_market_cap_v01"
 DOCS_REPORT_PATH = ROOT / "docs/strategies/julia/proxy_market_cap_v01.md"
 
+EXPERIMENT_BASE_SHA = "030e9c6145d8dd8b584ea8ce6cc0097cbbf4e377"
+PROXY_FULL_RUN_COMMIT = "6cdb5a6b00096d02c9cee4cc74f65ff8270056a1"
+FIX01_SOURCE_COMMIT = "afb967d211058bfce9ae053eebc2798b31b822e9"
+
 
 def load_trade_records_from_csv(csv_path: Path) -> list[StrategyTradeRecord]:
-    """Load StrategyTradeRecord list from CSV without running simulations."""
+    """Load StrategyTradeRecord list from CSV without running simulations, preserving 6-digit tickers."""
     if not csv_path.exists():
         raise FileNotFoundError(f"Trade artifact not found: {csv_path}")
 
-    df = pd.read_csv(csv_path)
+    df = pd.read_csv(csv_path, dtype={"ticker": str})
+    df["ticker"] = df["ticker"].astype(str).str.zfill(6)
+
     records: list[StrategyTradeRecord] = []
     for _, row in df.iterrows():
         # parse investability_meta
@@ -59,10 +64,11 @@ def load_trade_records_from_csv(csv_path: Path) -> list[StrategyTradeRecord]:
                 except Exception:
                     meta_dict = {}
 
+        ticker_str = str(row["ticker"]).zfill(6)
         rec = StrategyTradeRecord(
             strategy_id=str(row["strategy_id"]),
             pre_progressed_loss_guard_enabled=bool(row["pre_progressed_loss_guard_enabled"]),
-            ticker=str(row["ticker"]),
+            ticker=ticker_str,
             name=str(row["name"]),
             market=str(row["market"]),
             trade_id=str(row["trade_id"]),
@@ -111,11 +117,7 @@ def evaluate_research_verdict(
     j_metrics: dict[str, Any],
     sensitivity_summary: dict[str, Any],
 ) -> tuple[str, str]:
-    """Evaluate deterministic 3-state research verdict.
-
-    Returns:
-        (verdict, rationale)
-    """
+    """Evaluate deterministic 3-state research verdict."""
     b_mean = b_metrics["return_stats"]["mean"]
     j_mean = j_metrics["return_stats"]["mean"]
     b_median = b_metrics["return_stats"]["median"]
@@ -126,17 +128,13 @@ def evaluate_research_verdict(
     b_dist = b_metrics["distribution_stats"]
     j_dist = j_metrics["distribution_stats"]
 
-    # 1. Performance checks
+    # Performance
     mean_favorable = bool(j_mean > b_mean)
     median_favorable = bool(j_median > b_median)
     pos_rate_favorable = bool(j_pos_rate > b_pos_rate)
-
-    # 2. Boundary sensitivity check
     sens_favorable = bool(sensitivity_summary.get("conclusion_robust_to_boundary", False))
 
-    # 3. Downside risk checks
-    # In Julia, deep losses (<= -20%, <= -30%) should be lower than Baseline
-    # and big winners (>= +50%, >= +100%) should be higher than Baseline
+    # Downside tail risk checks
     loss_20_better = bool(j_dist["le_neg20_rate"] <= b_dist["le_neg20_rate"])
     loss_30_better = bool(j_dist["le_neg30_rate"] <= b_dist["le_neg30_rate"])
     win_50_better = bool(j_dist["ge_pos50_rate"] >= b_dist["ge_pos50_rate"])
@@ -158,7 +156,12 @@ def evaluate_research_verdict(
         rationale = "Julia underperforms Baseline V2 across primary return and risk metrics."
     else:
         verdict = "MIXED"
-        rationale = "Evidence presents mixed signals across performance, drawdown, and tail distribution metrics."
+        rationale = (
+            f"Julia demonstrates substantial performance upside (Mean Return +{j_mean - b_mean:.2f}%p, "
+            f"Median Return +{j_median - b_median:.2f}%p, Win Rate +{(j_pos_rate - b_pos_rate)*100:.2f}%p), "
+            f"but removing the Loss Guard increases <= -20% drawdown trades from {b_dist['le_neg20_rate']*100:.1f}% "
+            f"to {j_dist['le_neg20_rate']*100:.1f}% (Mean MAE worsens from {b_metrics['mae_stats']['mean']:.2f}% to {j_metrics['mae_stats']['mean']:.2f}%)."
+        )
 
     return verdict, rationale
 
@@ -173,7 +176,7 @@ def build_markdown_report(
     verdict: str,
     verdict_rationale: str,
 ) -> str:
-    """Generate professional markdown research report with exact unit formatting."""
+    """Generate professional markdown research report with exact unit formatting and SHA lineage."""
     b_m = summary["baseline_v2_proxy"]
     j_m = summary["julia_v00_proxy"]
     delta = summary["delta_julia_minus_baseline"]
@@ -190,7 +193,6 @@ def build_markdown_report(
     b_hold = b_m["holding_stats"]
     j_hold = j_m["holding_stats"]
 
-    # Format tables
     lines: list[str] = []
     lines.append("# Research Report: Julia Strategy V00 vs Baseline V2 Proxy PIT Comparative Backtest (2022+)")
     lines.append("")
@@ -218,7 +220,9 @@ def build_markdown_report(
     lines.append(f"| **Proxy Reference Dates** | **{summary['metadata']['proxy_reference_date_count']}개 (45.58%)** — Method B (Anchor Price Ratio Proxy) 적용 |")
     lines.append("| **Future Anchor Usage Count** | **0** (Strictly Prior Anchor Only) |")
     lines.append("| **Current Shares Fallback Count** | **0** (Zero Fallback) |")
-    lines.append(f"| **Authoritative Start SHA** | `{summary['metadata']['supersedes_commit']}` |")
+    lines.append(f"| **Experiment Base SHA** | `{EXPERIMENT_BASE_SHA}` |")
+    lines.append(f"| **Proxy Full Run Commit** | `{PROXY_FULL_RUN_COMMIT}` |")
+    lines.append(f"| **FIX01 Source Commit** | `{FIX01_SOURCE_COMMIT}` |")
     lines.append(f"| **Run ID** | `{summary['metadata']['run_id']}` |")
     lines.append("")
     lines.append("---")
@@ -251,14 +255,14 @@ def build_markdown_report(
     lines.append(f"| **Mean Return (%)** | **{b_ret['mean']:+.2f}%** | **{j_ret['mean']:+.2f}%** | **{delta['mean_return_delta_p']:+.2f}%p** |")
     lines.append(f"| **Median Return (%)** | **{b_ret['median']:+.2f}%** | **{j_ret['median']:+.2f}%** | **{delta['median_return_delta_p']:+.2f}%p** |")
     lines.append(f"| **Positive Return Rate (%)** | **{b_ret['positive_rate']*100:.2f}%** | **{j_ret['positive_rate']*100:.2f}%** | **{delta['positive_rate_delta_p']:+.2f}%p** |")
-    lines.append(f"| **Deep Losses ($\\\\le -10\\%$ fraction)** | {b_dist['le_neg10_count']}건 ({b_dist['le_neg10_rate']*100:.1f}%) | {j_dist['le_neg10_count']}건 ({j_dist['le_neg10_rate']*100:.1f}%) | {j_dist['le_neg10_count'] - b_dist['le_neg10_count']:+d}건 |")
-    lines.append(f"| **Deep Losses ($\\\\le -15\\%$ fraction)** | {b_dist['le_neg15_count']}건 ({b_dist['le_neg15_rate']*100:.1f}%) | {j_dist['le_neg15_count']}건 ({j_dist['le_neg15_rate']*100:.1f}%) | {j_dist['le_neg15_count'] - b_dist['le_neg15_count']:+d}건 |")
-    lines.append(f"| **Deep Losses ($\\\\le -20\\%$ fraction)** | {b_dist['le_neg20_count']}건 ({b_dist['le_neg20_rate']*100:.1f}%) | {j_dist['le_neg20_count']}건 ({j_dist['le_neg20_rate']*100:.1f}%) | {delta['le_neg20_delta_count']:+d}건 |")
-    lines.append(f"| **Deep Losses ($\\\\le -30\\%$ fraction)** | {b_dist['le_neg30_count']}건 ({b_dist['le_neg30_rate']*100:.1f}%) | {j_dist['le_neg30_count']}건 ({j_dist['le_neg30_rate']*100:.1f}%) | {delta['le_neg30_delta_count']:+d}건 |")
-    lines.append(f"| **Big Winners ($\\\\ge +20\\%$ fraction)** | {b_dist['ge_pos20_count']}건 ({b_dist['ge_pos20_rate']*100:.1f}%) | {j_dist['ge_pos20_count']}건 ({j_dist['ge_pos20_rate']*100:.1f}%) | {j_dist['ge_pos20_count'] - b_dist['ge_pos20_count']:+d}건 |")
-    lines.append(f"| **Big Winners ($\\\\ge +30\\%$ fraction)** | {b_dist['ge_pos30_count']}건 ({b_dist['ge_pos30_rate']*100:.1f}%) | {j_dist['ge_pos30_count']}건 ({j_dist['ge_pos30_rate']*100:.1f}%) | {j_dist['ge_pos30_count'] - b_dist['ge_pos30_count']:+d}건 |")
-    lines.append(f"| **Big Winners ($\\\\ge +50\\%$ fraction)** | {b_dist['ge_pos50_count']}건 ({b_dist['ge_pos50_rate']*100:.1f}%) | {j_dist['ge_pos50_count']}건 ({j_dist['ge_pos50_rate']*100:.1f}%) | {delta['ge_pos50_delta_count']:+d}건 |")
-    lines.append(f"| **Mega Winners ($\\\\ge +100\\%$ fraction)** | {b_dist['ge_pos100_count']}건 ({b_dist['ge_pos100_rate']*100:.1f}%) | {j_dist['ge_pos100_count']}건 ({j_dist['ge_pos100_rate']*100:.1f}%) | {delta['ge_pos100_delta_count']:+d}건 |")
+    lines.append(f"| **Deep Losses ($\\\\le -10\\%$)** | {b_dist['le_neg10_count']}건 ({b_dist['le_neg10_rate']*100:.1f}%) | {j_dist['le_neg10_count']}건 ({j_dist['le_neg10_rate']*100:.1f}%) | {j_dist['le_neg10_count'] - b_dist['le_neg10_count']:+d}건 |")
+    lines.append(f"| **Deep Losses ($\\\\le -15\\%$)** | {b_dist['le_neg15_count']}건 ({b_dist['le_neg15_rate']*100:.1f}%) | {j_dist['le_neg15_count']}건 ({j_dist['le_neg15_rate']*100:.1f}%) | {j_dist['le_neg15_count'] - b_dist['le_neg15_count']:+d}건 |")
+    lines.append(f"| **Deep Losses ($\\\\le -20\\%$)** | {b_dist['le_neg20_count']}건 ({b_dist['le_neg20_rate']*100:.1f}%) | {j_dist['le_neg20_count']}건 ({j_dist['le_neg20_rate']*100:.1f}%) | {delta['le_neg20_delta_count']:+d}건 |")
+    lines.append(f"| **Deep Losses ($\\\\le -30\\%$)** | {b_dist['le_neg30_count']}건 ({b_dist['le_neg30_rate']*100:.1f}%) | {j_dist['le_neg30_count']}건 ({j_dist['le_neg30_rate']*100:.1f}%) | {delta['le_neg30_delta_count']:+d}건 |")
+    lines.append(f"| **Big Winners ($\\\\ge +20\\%$)** | {b_dist['ge_pos20_count']}건 ({b_dist['ge_pos20_rate']*100:.1f}%) | {j_dist['ge_pos20_count']}건 ({j_dist['ge_pos20_rate']*100:.1f}%) | {j_dist['ge_pos20_count'] - b_dist['ge_pos20_count']:+d}건 |")
+    lines.append(f"| **Big Winners ($\\\\ge +30\\%$)** | {b_dist['ge_pos30_count']}건 ({b_dist['ge_pos30_rate']*100:.1f}%) | {j_dist['ge_pos30_count']}건 ({j_dist['ge_pos30_rate']*100:.1f}%) | {j_dist['ge_pos30_count'] - b_dist['ge_pos30_count']:+d}건 |")
+    lines.append(f"| **Big Winners ($\\\\ge +50\\%$)** | {b_dist['ge_pos50_count']}건 ({b_dist['ge_pos50_rate']*100:.1f}%) | {j_dist['ge_pos50_count']}건 ({j_dist['ge_pos50_rate']*100:.1f}%) | {delta['ge_pos50_delta_count']:+d}건 |")
+    lines.append(f"| **Mega Winners ($\\\\ge +100\\%$)** | {b_dist['ge_pos100_count']}건 ({b_dist['ge_pos100_rate']*100:.1f}%) | {j_dist['ge_pos100_count']}건 ({j_dist['ge_pos100_rate']*100:.1f}%) | {delta['ge_pos100_delta_count']:+d}건 |")
     lines.append(f"| **Mean MAE (%)** | **{b_mae['mean']:.2f}%** | **{j_mae['mean']:.2f}%** | **{j_mae['mean'] - b_mae['mean']:+.2f}%p** |")
     lines.append(f"| **Median MAE (%)** | **{b_mae['median']:.2f}%** | **{j_mae['median']:.2f}%** | **{j_mae['median'] - b_mae['median']:+.2f}%p** |")
     lines.append(f"| **Worst MAE (%)** | **{b_mae['worst']:.2f}%** | **{j_mae['worst']:.2f}%** | **{j_mae['worst'] - b_mae['worst']:+.2f}%p** |")
@@ -316,7 +320,8 @@ def build_markdown_report(
     lines.append("| :--- | :--- | :--- | :--- | :--- | :--- | :--- |")
     for _, w in df_winners.head(10).iterrows():
         exit_d = w["exit_execution_date"] if pd.notna(w["exit_execution_date"]) else "Cutoff (Open)"
-        lines.append(f"| `{w['ticker']}` | {w['name']} | {w['entry_execution_date']} | {exit_d} | **{float(w['terminal_return']):+.2f}%** | {float(w['mfe']):+.2f}% | `{w['exit_type']}` |")
+        t_code = str(w["ticker"]).zfill(6)
+        lines.append(f"| `{t_code}` | {w['name']} | {w['entry_execution_date']} | {exit_d} | **{float(w['terminal_return']):+.2f}%** | {float(w['mfe']):+.2f}% | `{w['exit_type']}` |")
     lines.append("")
     lines.append("### Top 10 Deep Losses in Julia V00 ($\\le -20\\%$)")
     lines.append("")
@@ -324,7 +329,8 @@ def build_markdown_report(
     lines.append("| :--- | :--- | :--- | :--- | :--- | :--- | :--- |")
     for _, l in df_worst.head(10).iterrows():
         exit_d = l["exit_execution_date"] if pd.notna(l["exit_execution_date"]) else "Cutoff (Open)"
-        lines.append(f"| `{l['ticker']}` | {l['name']} | {l['entry_execution_date']} | {exit_d} | **{float(l['terminal_return']):+.2f}%** | {float(l['mae']):+.2f}% | `{l['exit_type']}` |")
+        t_code = str(l["ticker"]).zfill(6)
+        lines.append(f"| `{t_code}` | {l['name']} | {l['entry_execution_date']} | {exit_d} | **{float(l['terminal_return']):+.2f}%** | {float(l['mae']):+.2f}% | `{l['exit_type']}` |")
     lines.append("")
     lines.append("---")
     lines.append("")
@@ -343,11 +349,39 @@ def build_markdown_report(
     return "\n".join(lines)
 
 
-def run_post_processing_rebuild() -> None:
-    """Execute complete post-processing report and artifact rebuild from existing trade files."""
-    logger.info("Starting Julia Proxy Report & Artifact Rebuild (Post-Processing Only)...")
+def enrich_query_audit_with_sensitivity_status(audit_csv_path: Path) -> None:
+    """Enrich existing query audit CSV with sensitivity_status column deterministically."""
+    if not audit_csv_path.exists():
+        logger.warning(f"Audit file not found for enrichment: {audit_csv_path}")
+        return
 
-    # 1. Load existing trade records
+    df_audit = pd.read_csv(audit_csv_path, dtype={"ticker": str})
+    df_audit["ticker"] = df_audit["ticker"].astype(str).str.zfill(6)
+
+    sensitivity_statuses = []
+    for _, row in df_audit.iterrows():
+        st = row.get("source_type")
+        near = bool(row.get("near_threshold") is True or row.get("near_threshold") == "True")
+        if st == "ACTUAL_KRX":
+            sensitivity_statuses.append("OFFICIAL_VALUE_UNAFFECTED")
+        elif st == "PROXY_ANCHOR_PRICE_RATIO":
+            if near:
+                sensitivity_statuses.append("DATA_UNAVAILABLE_PROXY_BOUNDARY")
+            else:
+                sensitivity_statuses.append("ELIGIBLE")
+        else:
+            sensitivity_statuses.append("NOT_APPLICABLE")
+
+    df_audit["sensitivity_status"] = sensitivity_statuses
+    df_audit.to_csv(audit_csv_path, index=False)
+    logger.info(f"Enriched query audit with sensitivity_status ({len(df_audit)} rows)")
+
+
+def run_post_processing_rebuild() -> None:
+    """Execute complete post-processing report and artifact rebuild from existing trade files (FIX02)."""
+    logger.info("Starting Julia Proxy Report & Artifact Rebuild FIX02 (Post-Processing Only)...")
+
+    # 1. Load existing trade records with 6-digit zero-padded ticker preservation
     b_csv_path = PROXY_DIR / "baseline_v2_proxy_trades.csv"
     j_csv_path = PROXY_DIR / "julia_v00_proxy_trades.csv"
     baseline_trades = load_trade_records_from_csv(b_csv_path)
@@ -358,7 +392,11 @@ def run_post_processing_rebuild() -> None:
     assert len(julia_trades) == 687, f"Julia trades count mismatch: {len(julia_trades)} != 687"
     assert len(set(t.ticker for t in baseline_trades)) == 673
     assert len(set(t.ticker for t in julia_trades)) == 673
-    logger.info(f"Verified trade counts: Baseline={len(baseline_trades)}, Julia={len(julia_trades)}")
+    for t in baseline_trades:
+        assert len(t.ticker) == 6 and t.ticker.isdigit(), f"Corrupted ticker format in baseline: {t.ticker}"
+    for t in julia_trades:
+        assert len(t.ticker) == 6 and t.ticker.isdigit(), f"Corrupted ticker format in julia: {t.ticker}"
+    logger.info(f"Verified trade counts and 6-digit ticker identities: Baseline={len(baseline_trades)}, Julia={len(julia_trades)}")
 
     # 2. Recalculate metrics with corrected percentage unit logic
     b_metrics = calculate_strategy_metrics(baseline_trades)
@@ -371,8 +409,10 @@ def run_post_processing_rebuild() -> None:
     b_pos_rate = b_metrics["return_stats"]["positive_rate"]
     j_pos_rate = j_metrics["return_stats"]["positive_rate"]
 
-    # 3. Big Winners (>= 50.0%) and Worst Losses (<= -20.0%)
-    df_j = pd.read_csv(j_csv_path)
+    # 3. Big Winners (>= 50.0%) and Worst Losses (<= -20.0%) with 6-digit tickers
+    df_j = pd.read_csv(j_csv_path, dtype={"ticker": str})
+    df_j["ticker"] = df_j["ticker"].astype(str).str.zfill(6)
+
     df_winners = df_j[df_j["terminal_return"] >= 50.0].sort_values("terminal_return", ascending=False)
     df_worst = df_j[df_j["terminal_return"] <= -20.0].sort_values("terminal_return", ascending=True)
 
@@ -380,7 +420,7 @@ def run_post_processing_rebuild() -> None:
     worst_csv_path = PROXY_DIR / "worst_losses.csv"
     df_winners.to_csv(winners_csv_path, index=False)
     df_worst.to_csv(worst_csv_path, index=False)
-    logger.info(f"Saved big_winners.csv ({len(df_winners)} rows) and worst_losses.csv ({len(df_worst)} rows)")
+    logger.info(f"Saved big_winners.csv ({len(df_winners)} rows) and worst_losses.csv ({len(df_worst)} rows) with 6-digit tickers")
 
     # 4. Proxy Dependence Breakdown
     b_actual_entries = len([t for t in baseline_trades if t.investability_meta.get("proxy_source_type") == "ACTUAL_KRX"])
@@ -397,16 +437,14 @@ def run_post_processing_rebuild() -> None:
     j_med_conf = len([t for t in julia_trades if t.investability_meta.get("confidence_class") == "MEDIUM_CONFIDENCE_PROXY"])
     j_low_conf = len([t for t in julia_trades if t.investability_meta.get("confidence_class") == "LOW_CONFIDENCE_PROXY"])
 
-    # 5. Boundary Sensitivity Normalization
+    # 5. Boundary Sensitivity Normalization with Explicit Contract
     boundary_path = PROXY_DIR / "boundary_sensitivity_summary.json"
     sens_raw = json.loads(boundary_path.read_text(encoding="utf-8"))
 
-    # If returns were previously multiplied by 100 (> 100), divide back to percentage points
-    def norm_ret(val: float) -> float:
-        return round(val / 100.0, 2) if abs(val) > 100.0 else round(val, 2)
-
+    # Explicit unit contract: values in boundary_sensitivity_summary are already percentage points
     sens_summary = {
         "sensitivity_mode": "CONSERVATIVE_BUFFER_80B_TO_120B_EXCLUDED",
+        "return_unit": "PERCENTAGE_POINT",
         "primary_baseline_trade_count": sens_raw.get("primary_baseline_trade_count", 845),
         "primary_julia_trade_count": sens_raw.get("primary_julia_trade_count", 687),
         "sensitivity_baseline_trade_count": sens_raw.get("sensitivity_baseline_trade_count", 810),
@@ -415,10 +453,10 @@ def run_post_processing_rebuild() -> None:
         "julia_trade_reduction_pct": sens_raw.get("julia_trade_reduction_pct", 4.51),
         "primary_baseline_mean_return": round(b_mean, 2),
         "primary_julia_mean_return": round(j_mean, 2),
-        "sensitivity_baseline_mean_return": norm_ret(sens_raw.get("sensitivity_baseline_mean_return", 13.24)),
-        "sensitivity_julia_mean_return": norm_ret(sens_raw.get("sensitivity_julia_mean_return", 24.24)),
+        "sensitivity_baseline_mean_return": round(float(sens_raw.get("sensitivity_baseline_mean_return", 13.24)), 2),
+        "sensitivity_julia_mean_return": round(float(sens_raw.get("sensitivity_julia_mean_return", 24.24)), 2),
         "primary_delta_mean_p": round(j_mean - b_mean, 2),
-        "sensitivity_delta_mean_p": round(norm_ret(sens_raw.get("sensitivity_julia_mean_return", 24.24)) - norm_ret(sens_raw.get("sensitivity_baseline_mean_return", 13.24)), 2),
+        "sensitivity_delta_mean_p": round(float(sens_raw.get("sensitivity_julia_mean_return", 24.24)) - float(sens_raw.get("sensitivity_baseline_mean_return", 13.24)), 2),
         "conclusion_robust_to_boundary": bool(sens_raw.get("conclusion_robust_to_boundary", True)),
     }
     boundary_path.write_text(json.dumps(sens_summary, indent=2, ensure_ascii=False), encoding="utf-8")
@@ -437,6 +475,7 @@ def run_post_processing_rebuild() -> None:
             "not_production_evidence": True,
             "official_full_pit_status": "INVALID_INCOMPLETE_PIT_COVERAGE",
             "julia_production_status": "NOT_APPROVED",
+            "production_default_strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
             "evaluation_start": "2022-01-01",
             "evaluation_end": "2026-08-14",
             "initial_position": "FLAT",
@@ -448,7 +487,9 @@ def run_post_processing_rebuild() -> None:
             "future_anchor_usage_count": 0,
             "current_shares_fallback_count": 0,
             "research_verdict": verdict,
-            "supersedes_commit": "030e9c6145d8dd8b584ea8ce6cc0097cbbf4e377",
+            "authoritative_experiment_base_sha": EXPERIMENT_BASE_SHA,
+            "proxy_full_run_commit": PROXY_FULL_RUN_COMMIT,
+            "fix01_source_commit": FIX01_SOURCE_COMMIT,
         },
         "proxy_dependence": {
             "baseline_total_trades": len(baseline_trades),
@@ -485,34 +526,55 @@ def run_post_processing_rebuild() -> None:
     summary_path = PROXY_DIR / "strategy_comparison_summary.json"
     summary_path.write_text(json.dumps(summary_data, indent=2, ensure_ascii=False), encoding="utf-8")
 
-    # 8. Update proxy_contract.json
+    # 8. Restore and Expand proxy_contract.json
     contract_data = {
         "contract_name": "JULIA_V00_PROXY_MARKET_CAP_PIT_V01",
+        "strategy_id": "JULIA_STRATEGY_V00",
+        "base_strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+        "experiment_id": "JULIA_V00_PROXY_MARKET_CAP_PIT_V01",
         "evidence_status": "NON_AUTHORITATIVE_PROXY_PIT",
         "estimated_market_cap_used": True,
         "not_100_percent_accurate_market_cap_data": True,
         "not_production_evidence": True,
         "official_full_pit_status": "INVALID_INCOMPLETE_PIT_COVERAGE",
         "julia_production_status": "NOT_APPROVED",
+        "production_default_strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+        "research_verdict": verdict,
+        "evaluation_window": {
+            "evaluation_start": "2022-01-01",
+            "evaluation_end": "2026-08-14",
+        },
         "official_reference_date_count": 117,
         "proxy_reference_date_count": 98,
         "total_reference_date_count": 215,
         "price_semantics": "ADJUSTED_CLOSE",
         "primary_proxy_method": "ANCHOR_PRICE_RATIO_PROXY",
+        "proxy_rules": {
+            "official_dates_rule": "USE_EXACT_KRX_OFFICIAL_MARKET_CAP",
+            "missing_dates_rule": "METHOD_B_ANCHOR_PRICE_RATIO_PROXY",
+            "anchor_direction": "STRICTLY_PRIOR_ANCHOR_ONLY",
+            "future_anchor_forbidden": True,
+            "current_shares_fallback_forbidden": True,
+            "interpolation_forbidden": True,
+            "proxy_only_on_frozen_missing_reference_dates": True,
+        },
         "conservative_boundary_buffer_krw": [80_000_000_000, 120_000_000_000],
-        "research_verdict": verdict,
     }
     contract_path = PROXY_DIR / "proxy_contract.json"
     contract_path.write_text(json.dumps(contract_data, indent=2, ensure_ascii=False), encoding="utf-8")
 
-    # 9. Load other summaries for Markdown
+    # 9. Enrich query audit artifact with sensitivity_status column
+    audit_csv_path = PROXY_DIR / "proxy_market_cap_query_audit.csv"
+    enrich_query_audit_with_sensitivity_status(audit_csv_path)
+
+    # 10. Load other summaries for Markdown
     val_sum_path = PROXY_DIR / "proxy_market_cap_validation_summary.json"
     val_summary = json.loads(val_sum_path.read_text(encoding="utf-8")) if val_sum_path.exists() else {}
 
     lg_sum_path = PROXY_DIR / "loss_guard_recovery_summary.json"
     lg_summary = json.loads(lg_sum_path.read_text(encoding="utf-8")) if lg_sum_path.exists() else {}
 
-    # 10. Generate Markdown Report
+    # 11. Generate Markdown Report
     md_content = build_markdown_report(
         summary=summary_data,
         val_summary=val_summary,
@@ -526,7 +588,7 @@ def run_post_processing_rebuild() -> None:
     DOCS_REPORT_PATH.write_text(md_content, encoding="utf-8")
     logger.info(f"Generated Markdown report to {DOCS_REPORT_PATH} ({len(md_content)} bytes)")
 
-    # 11. Compute and Seal SHA-256 Manifest
+    # 12. Compute and Seal SHA-256 Manifest with Full Provenance Metadata
     artifact_files = sorted([
         f for f in PROXY_DIR.iterdir()
         if f.is_file() and f.name != "proxy_run_manifest.json"
@@ -543,14 +605,30 @@ def run_post_processing_rebuild() -> None:
     manifest_payload = {
         "run_id": run_id,
         "created_at": datetime.now(timezone.utc).isoformat(),
+        "evidence_status": "NON_AUTHORITATIVE_PROXY_PIT",
+        "research_verdict": verdict,
+        "authoritative_experiment_base_sha": EXPERIMENT_BASE_SHA,
+        "proxy_full_run_commit": PROXY_FULL_RUN_COMMIT,
+        "fix01_source_commit": FIX01_SOURCE_COMMIT,
+        "evaluation_start": "2022-01-01",
+        "evaluation_end": "2026-08-14",
+        "official_reference_date_count": 117,
+        "proxy_reference_date_count": 98,
+        "total_reference_date_count": 215,
+        "market_cap_proxy_method": "ANCHOR_PRICE_RATIO_PROXY",
+        "price_semantics": "ADJUSTED_CLOSE",
+        "no_network_requests": True,
+        "no_tuning_parameters": True,
+        "full_backtest_rerun": False,
+        "existing_trade_artifacts_reused": True,
         "total_artifacts": len(manifest_entries),
         "artifacts": manifest_entries,
     }
     manifest_path = PROXY_DIR / "proxy_run_manifest.json"
     manifest_path.write_text(json.dumps(manifest_payload, indent=2, ensure_ascii=False), encoding="utf-8")
-    logger.info(f"Manifest sealed: {len(manifest_entries)} artifacts sealed.")
+    logger.info(f"Manifest sealed with provenance metadata: {len(manifest_entries)} artifacts sealed.")
 
-    # 12. Verification Pass
+    # 13. Verification Pass
     for name, entry in manifest_entries.items():
         actual_sha = hashlib.sha256((PROXY_DIR / name).read_bytes()).hexdigest()
         if actual_sha != entry["sha256"]:
