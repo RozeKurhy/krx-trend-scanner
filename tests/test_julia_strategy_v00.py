@@ -3,6 +3,8 @@
 Validates:
   - 215 Required Reference Dates Determinism & Partition (117 Available + 98 Missing)
   - 2023-09-22 Canonical UI Authority Classification and Crosscheck
+  - Mandatory Normalized Provenance Metadata (Zero Silent Fallback to Source Metadata)
+  - Negative tests on missing normalized_file, missing normalized_sha256, and missing column
   - True Bidirectional Grid <-> Active Provenance Set Equality & 3-Way Effective Date Contract
   - Negative tests on Grid/Provenance date set mismatch, effective date mismatch, and duplicates
   - Superseded Provenance Rows Excluded from Active Authority
@@ -138,6 +140,65 @@ def test_grid_and_active_provenance_must_match():
 
     authorities = load_canonical_ui_authorities()
     assert len(authorities) == len(active_dates) + 1  # Active Phase13J (22) + Phase 10 2025-01-31 (1) = 23
+
+
+def test_active_provenance_missing_normalized_file_raises():
+    """SealedMarketCapCheckpointIntegrityError must be raised when an ACTIVE row has empty normalized_file."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmp_dir = Path(tmpdir)
+        tmp_grid = tmp_dir / "grid.csv"
+        tmp_prov = tmp_dir / "prov.csv"
+
+        df_grid = pd.read_csv(GRID_CSV)
+        df_prov = pd.read_csv(PROVENANCE_CSV)
+
+        # Clear normalized_file of first active row in provenance
+        first_active_idx = df_prov[df_prov["reference_status"] == "ACTIVE_REFERENCE"].index[0]
+        df_prov.loc[first_active_idx, "normalized_file"] = ""
+
+        df_grid.to_csv(tmp_grid, index=False)
+        df_prov.to_csv(tmp_prov, index=False)
+
+        with pytest.raises(SealedMarketCapCheckpointIntegrityError, match="Missing required authority field in ACTIVE Provenance"):
+            load_canonical_ui_authorities(provenance_path=tmp_prov, grid_path=tmp_grid)
+
+
+def test_active_provenance_missing_normalized_sha_raises():
+    """SealedMarketCapCheckpointIntegrityError must be raised when an ACTIVE row has empty normalized_sha256."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmp_dir = Path(tmpdir)
+        tmp_grid = tmp_dir / "grid.csv"
+        tmp_prov = tmp_dir / "prov.csv"
+
+        df_grid = pd.read_csv(GRID_CSV)
+        df_prov = pd.read_csv(PROVENANCE_CSV)
+
+        # Clear normalized_sha256 of first active row in provenance
+        first_active_idx = df_prov[df_prov["reference_status"] == "ACTIVE_REFERENCE"].index[0]
+        df_prov.loc[first_active_idx, "normalized_sha256"] = ""
+
+        df_grid.to_csv(tmp_grid, index=False)
+        df_prov.to_csv(tmp_prov, index=False)
+
+        with pytest.raises(SealedMarketCapCheckpointIntegrityError, match="Missing required authority field in ACTIVE Provenance"):
+            load_canonical_ui_authorities(provenance_path=tmp_prov, grid_path=tmp_grid)
+
+
+def test_active_provenance_missing_normalized_column_raises():
+    """SealedMarketCapCheckpointIntegrityError must be raised when normalized_file/sha columns are missing."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmp_dir = Path(tmpdir)
+        tmp_grid = tmp_dir / "grid.csv"
+        tmp_prov = tmp_dir / "prov.csv"
+
+        df_grid = pd.read_csv(GRID_CSV)
+        df_prov = pd.read_csv(PROVENANCE_CSV).drop(columns=["normalized_sha256"])
+
+        df_grid.to_csv(tmp_grid, index=False)
+        df_prov.to_csv(tmp_prov, index=False)
+
+        with pytest.raises(SealedMarketCapCheckpointIntegrityError, match="Provenance CSV missing required columns"):
+            load_canonical_ui_authorities(provenance_path=tmp_prov, grid_path=tmp_grid)
 
 
 def test_grid_and_active_provenance_effective_date_mismatch_raises():

@@ -1,10 +1,10 @@
 #!/usr/bin/env python
-"""Seal 117/215 KRX Historical Market Cap Sources with True Bidirectional Authority Crosscheck.
+"""Seal 117/215 KRX Historical Market Cap Sources with Mandatory Normalized Provenance Metadata.
 
-Enforces strict bidirectional set equality and 3-way effective-date contract between Grid and
-ACTIVE_REFERENCE Provenance (exact source/normalized filename, SHA-256, and effective_date match),
-strictly hard-fails on sealed source corruption without downgrading to missing,
-and atomically replaces checkpoint artifacts.
+Enforces mandatory normalized_file and normalized_sha256 in ACTIVE_REFERENCE Provenance
+with zero silent fallback to source metadata, enforces strict bidirectional set equality and
+3-way effective-date contracts, strictly hard-fails on sealed source corruption without
+downgrading to missing, and atomically replaces checkpoint artifacts.
 """
 
 from __future__ import annotations
@@ -64,7 +64,7 @@ def load_canonical_ui_authorities(
     grid_path: Path = GRID_CSV,
     p10_source_path: Path = P10_SOURCE_20250131,
 ) -> dict[str, CanonicalUIAuthorityEntry]:
-    """Strictly cross-check Grid and ACTIVE Provenance with true bidirectional set equality and effective-date contracts."""
+    """Strictly cross-check Grid and ACTIVE Provenance with mandatory normalized metadata and zero silent fallback."""
     authorities: dict[str, CanonicalUIAuthorityEntry] = {}
 
     if not provenance_path.exists() or not grid_path.exists():
@@ -75,8 +75,16 @@ def load_canonical_ui_authorities(
     df_prov = pd.read_csv(provenance_path, dtype=str).fillna("")
     df_grid = pd.read_csv(grid_path, dtype=str).fillna("")
 
-    # 1. Validate required columns
-    req_prov_cols = {"reference_status", "completed_weekly_reference_date", "effective_date", "source_file", "sha256"}
+    # 1. Validate required columns including mandatory normalized metadata (Major 1)
+    req_prov_cols = {
+        "reference_status",
+        "completed_weekly_reference_date",
+        "effective_date",
+        "source_file",
+        "sha256",
+        "normalized_file",
+        "normalized_sha256",
+    }
     if not req_prov_cols.issubset(df_prov.columns):
         raise SealedMarketCapCheckpointIntegrityError(f"Provenance CSV missing required columns: {req_prov_cols - set(df_prov.columns)}")
 
@@ -94,7 +102,7 @@ def load_canonical_ui_authorities(
     if len(grid_ref_list) != len(set(grid_ref_list)):
         raise SealedMarketCapCheckpointIntegrityError("Duplicate completed_weekly_reference_date found in Grid CSV.")
 
-    # 3. Major 2: Enforce strict bidirectional set equality inside loader
+    # 3. Enforce strict bidirectional set equality inside loader
     active_prov_dates = set(active_ref_list)
     grid_dates = set(grid_ref_list)
 
@@ -113,11 +121,15 @@ def load_canonical_ui_authorities(
         eff_d = str(r["effective_date"]).strip()
         src_f = str(r["source_file"]).strip()
         src_sha = str(r["sha256"]).strip()
-        norm_f = str(r.get("normalized_file", "")).strip()
-        norm_sha = str(r.get("normalized_sha256", "")).strip()
+        norm_f = str(r["normalized_file"]).strip()
+        norm_sha = str(r["normalized_sha256"]).strip()
 
-        if not eff_d or not src_f or not src_sha:
-            raise SealedMarketCapCheckpointIntegrityError(f"Missing required authority field in ACTIVE Provenance for {ref_d}")
+        # Fail closed on any missing field in ACTIVE provenance (Zero fallback)
+        if not eff_d or not src_f or not src_sha or not norm_f or not norm_sha:
+            raise SealedMarketCapCheckpointIntegrityError(
+                f"Missing required authority field in ACTIVE Provenance for {ref_d}: "
+                f"eff_d='{eff_d}', src_f='{src_f}', src_sha='{src_sha}', norm_f='{norm_f}', norm_sha='{norm_sha}'"
+            )
 
         prov_by_date[ref_d] = {
             "effective_date": eff_d,
@@ -167,9 +179,9 @@ def load_canonical_ui_authorities(
                 f"Source SHA-256 mismatch for {ref_d}: provenance='{p_info['source_sha256']}', grid='{g_info['source_sha256']}'"
             )
 
-        norm_f = p_info["normalized_file"]
-        norm_name = Path(norm_f).name if norm_f else p_src_name
-        norm_sha = p_info["normalized_sha256"] if p_info["normalized_sha256"] else p_info["source_sha256"]
+        # Zero silent fallback: use normalized_file and normalized_sha256 directly from provenance
+        norm_name = Path(p_info["normalized_file"]).name
+        norm_sha = p_info["normalized_sha256"]
 
         authorities[ref_d] = CanonicalUIAuthorityEntry(
             completed_weekly_reference_date=ref_d,

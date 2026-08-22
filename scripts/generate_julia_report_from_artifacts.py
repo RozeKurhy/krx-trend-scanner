@@ -61,7 +61,7 @@ def generate_checkpoint_report(pit_audit: dict) -> str:
 | **Source Collection Status** | `INTERRUPTED_KRX_TEMPORARY_RESTRICTION` |
 | **Final PIT Backtest Ready** | `False` |
 | **Final Result Status** | `INVALID_INCOMPLETE_PIT_COVERAGE` |
-| **Authoritative Start SHA** | `8411a750821adcdd557c274740472591a930cf7b` |
+| **Authoritative Start SHA** | `7ba06f683cc3a9b2100fe4afaac8bab61a186bcf` |
 
 ---
 
@@ -261,7 +261,7 @@ def generate_full_research_report(
 | **Only Delta from Base** | Pre-PROGRESSED Loss Guard (-15% Daily Close Stop) `DISABLED` (OFF) |
 | **Tuning Gate** | `NO_TUNING` (All thresholds, parameters, and post-PROGRESSED exit rules frozen) |
 | **Historical Investability PIT** | `STRICT_POINT_IN_TIME` (Exact KRX snapshot, Fail Closed on missing date, Zero future fallback) |
-| **Authoritative Start SHA** | `{meta.get("supersedes_commit", "8411a750821adcdd557c274740472591a930cf7b")}` |
+| **Authoritative Start SHA** | `{meta.get("supersedes_commit", "7ba06f683cc3a9b2100fe4afaac8bab61a186bcf")}` |
 
 ---
 
