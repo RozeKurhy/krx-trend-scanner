@@ -1,0 +1,23 @@
+{
+  "n_tickers": 100,
+  "workers1": {
+    "workers": 1,
+    "n_tickers": 100,
+    "elapsed_seconds": 119.187,
+    "sec_per_ticker": 1.1919,
+    "baseline_trade_count": 39,
+    "julia_trade_count": 28
+  },
+  "workers2": {
+    "workers": 2,
+    "n_tickers": 100,
+    "elapsed_seconds": 63.369,
+    "sec_per_ticker": 0.6337,
+    "baseline_trade_count": 39,
+    "julia_trade_count": 28
+  },
+  "speedup_x": 1.881,
+  "baseline_parity_pass": true,
+  "julia_parity_pass": true,
+  "adopt_recommended": true
+}

@@ -423,7 +423,7 @@ def simulate_ticker_strategy_2022(
 
     if snapshot_context is not None:
         weekly_bars = snapshot_context.weekly_up_to(cutoff_date)
-        valid_weeks = snapshot_context.valid_weeks_up_to(cutoff_date)
+        valid_weeks = snapshot_context.valid_weeks_up_to(cutoff_date, weekly_frame=weekly_bars)
     else:
         weekly_bars = to_weekly(daily)
         # A weekly label w's bar is "completed" (this ticker actually traded up

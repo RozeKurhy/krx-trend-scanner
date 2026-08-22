@@ -7,18 +7,29 @@ re-running the actual 18e4078 commit against today's data hit an unrelated
 proxy-validation schema drift (see r.md's Phase 4 report). Both paths run in
 the SAME process on the SAME data:
 
-  - "phase4_head": enable_pre_window_pruning=False, no snapshot_context, no
-    FastSnapshotCache/MonthlySnapshotCache sharing across the 4 passes --
-    i.e. exactly what simulate_ticker_strategy_2022 did at 18e4078.
-  - "phase4_1_optimized": enable_pre_window_pruning=True (default), a
-    PrecomputedTickerContext built once per ticker and shared across all 4
-    Baseline/Julia x Primary/Sensitivity passes, plus shared
-    FastSnapshotCache/MonthlySnapshotCache.
+  - "phase4_head": a PrecomputedTickerContext built once per ticker and
+    shared FastSnapshotCache/MonthlySnapshotCache across all 4 Baseline/
+    Julia x Primary/Sensitivity passes -- matching what 18e4078 ACTUALLY
+    did -- with ONLY enable_pre_window_pruning=False (the one behavior
+    that did not exist yet at 18e4078).
+  - "phase4_1_optimized": the same context/cache structure, with
+    enable_pre_window_pruning=True (default) -- the current d95e96b
+    production optimized behavior.
+
+w.md Phase 4.2 Architect Review Major 1 correction: an earlier version of
+this benchmark's "phase4_head" path omitted snapshot_context entirely, so
+its measured "Phase 4 -> Phase 4.1" speedup incorrectly included the
+context-reuse gains Phase 4 itself had already banked. Isolating
+enable_pre_window_pruning as the only toggle measures Phase 4.1's actual
+incremental contribution.
 
 Measures: wall clock, sec/ticker, FAST evaluation count, weekly/monthly
 resample call count (distinguishing full-history vs tail-window calls),
-trade count (for a cheap sanity check, not full golden parity -- that is
-covered separately by the targeted parity test suites).
+trade count (for a cheap sanity check -- NOT a real strategy-lifecycle
+benchmark, since no market_cap_registry is passed here, so investability
+always fails DATA_UNAVAILABLE and trade_count is always 0; see
+scripts/benchmark_backtest_engine_realistic_v01.py for the realistic,
+registry-backed benchmark this cycle also adds).
 """
 
 from __future__ import annotations
@@ -92,6 +103,16 @@ class _ResampleCounter:
 
 
 def _run_phase4_head(tickers: list[str], score: dict, stage: dict) -> dict:
+    """Emulates the ACTUAL 18e4078 (Phase 4 HEAD) runtime path (w.md Phase
+    4.2 Major Fix 1 -- Architect Review Major 1 finding). 18e4078 already
+    built a PrecomputedTickerContext and passed snapshot_context to every
+    Baseline/Julia x Primary/Sensitivity pass, sharing FastSnapshotCache/
+    MonthlySnapshotCache across all 4 -- the ONLY Phase-4.1-specific delta
+    is enable_pre_window_pruning (introduced in Phase 4.1; False here
+    reproduces the exact pre-4.1 full-valid-weeks search range). The
+    previous version of this function incorrectly omitted snapshot_context
+    entirely, which credited Phase 4.1 with speedup that was actually
+    already banked by Phase 4 itself."""
     fast_cache_evals = 0
     monthly_cache_evals = 0
     trade_count = 0
@@ -99,12 +120,7 @@ def _run_phase4_head(tickers: list[str], score: dict, stage: dict) -> dict:
         t0 = time.perf_counter()
         for ticker in tickers:
             daily = pd.read_parquet(STOCKS_DIR / f"{ticker}.parquet").sort_index()
-            # Phase 4 HEAD (18e4078): fast/monthly caches ARE shared across
-            # the 4 passes per ticker (that sharing was already introduced
-            # in the Phase 1-3 checkpoint, unchanged through Phase 4) -- the
-            # deltas THIS benchmark isolates are Phase 4.1-only: no
-            # PrecomputedTickerContext (each pass still repeats
-            # sort_index()/to_weekly()/to_monthly()) and no pre-window pruning.
+            context = build_precomputed_ticker_context(ticker, ticker, daily)
             fc = FastSnapshotCache()
             mc = MonthlySnapshotCache()
             for enable_loss_guard in (True, False):
@@ -113,7 +129,7 @@ def _run_phase4_head(tickers: list[str], score: dict, stage: dict) -> dict:
                         ticker, ticker, "KOSPI", daily, score, stage,
                         enable_loss_guard=enable_loss_guard, sensitivity_mode=sensitivity_mode,
                         fast_snapshot_cache=fc, monthly_snapshot_cache=mc,
-                        enable_pre_window_pruning=False,
+                        snapshot_context=context, enable_pre_window_pruning=False,
                     )
                     trade_count += len(trades)
             fast_cache_evals += fc.evaluation_count

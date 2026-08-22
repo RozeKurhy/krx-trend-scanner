@@ -114,13 +114,19 @@ class PrecomputedTickerContext:
             return self.full_monthly.iloc[0:0]
         return _reconstruct_period_frame(self.full_monthly, self.monthly_labels, self.daily, effective_as_of, to_monthly)
 
-    def valid_weeks_up_to(self, cutoff_date: pd.Timestamp) -> list[pd.Timestamp]:
+    def valid_weeks_up_to(self, cutoff_date: pd.Timestamp, weekly_frame: pd.DataFrame | None = None) -> list[pd.Timestamp]:
         """Equivalent to the ``[w for w in to_weekly(daily_cutoff).index if
         w in set(daily_cutoff.index)]`` valid-week computation in
         ``simulate_ticker_strategy_2022`` (see that module's Phase 4
         VALID_WEEK_SET_MISMATCH=0 comment for why this set-membership form
-        is equivalent to the legacy per-week boolean-mask-and-max check)."""
-        weekly = self.weekly_up_to(cutoff_date)
+        is equivalent to the legacy per-week boolean-mask-and-max check).
+
+        ``weekly_frame`` (optional, w.md Phase 4.2 Section 13): pass the
+        already-computed ``weekly_up_to(cutoff_date)`` result here to avoid
+        reconstructing the same cutoff weekly frame twice when the caller
+        already has it (as ``simulate_ticker_strategy_2022`` does). Omitted:
+        reconstructs it internally, unchanged from before."""
+        weekly = weekly_frame if weekly_frame is not None else self.weekly_up_to(cutoff_date)
         daily_cutoff_dates = set(self.daily_up_to(cutoff_date).index)
         return [w for w in weekly.index if w in daily_cutoff_dates]
 
