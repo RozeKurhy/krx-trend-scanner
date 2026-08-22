@@ -32,7 +32,11 @@ import pandas as pd
 
 from trend_scanner.patterns.pattern_a_evaluator import evaluate_pattern_a
 from trend_scanner.patterns.pattern_a_fast_evaluator import evaluate_pattern_a_fast
-from trend_scanner.validation.historical_snapshot import build_historical_snapshot
+from trend_scanner.validation.historical_snapshot import (
+    PrecomputedTickerContext,
+    build_historical_snapshot,
+    build_historical_snapshot_from_context,
+)
 
 _FAILED = object()
 _FAILED_MARKER = "__FAST_SNAPSHOT_EVALUATION_FAILED__"
@@ -57,10 +61,18 @@ class FastSnapshotCache:
         w: pd.Timestamp,
         score_contract: dict,
         stage_contract: dict,
+        context: PrecomputedTickerContext | None = None,
     ) -> dict | None:
         """Returns the evaluate_pattern_a_fast result dict, or None on the
         same failure condition the original inline try/except would have
-        hit (caller must ``continue`` exactly as before on None)."""
+        hit (caller must ``continue`` exactly as before on None).
+
+        ``context`` (optional): a ``PrecomputedTickerContext`` for this same
+        ticker (see ``trend_scanner.validation.historical_snapshot``). When
+        given, ``evaluate_pattern_a_fast`` uses its optimized snapshot-reuse
+        path instead of re-resampling ``daily`` on every cache miss; the
+        result is proven identical to the legacy call (see
+        tests/test_backtest_performance_engine_v01_snapshot_context.py)."""
         key = (ticker, w)
         cached = self._store.get(key)
         if cached is not None:
@@ -69,7 +81,10 @@ class FastSnapshotCache:
 
         self.evaluation_count += 1
         try:
-            res = evaluate_pattern_a_fast(ticker, name, daily[daily.index <= w], w, score_contract, stage_contract)
+            if context is not None:
+                res = evaluate_pattern_a_fast(ticker, name, daily, w, score_contract, stage_contract, context=context)
+            else:
+                res = evaluate_pattern_a_fast(ticker, name, daily[daily.index <= w], w, score_contract, stage_contract)
         except Exception:
             self._store[key] = _FAILED
             return None
@@ -103,7 +118,14 @@ class MonthlySnapshotCache:
     def __len__(self) -> int:
         return len(self._store)
 
-    def get(self, ticker: str, name: str, daily: pd.DataFrame, m: pd.Timestamp) -> dict[str, Any]:
+    def get(
+        self,
+        ticker: str,
+        name: str,
+        daily: pd.DataFrame,
+        m: pd.Timestamp,
+        context: PrecomputedTickerContext | None = None,
+    ) -> dict[str, Any]:
         key = (ticker, m)
         cached = self._store.get(key)
         if cached is not None:
@@ -112,7 +134,10 @@ class MonthlySnapshotCache:
 
         self.evaluation_count += 1
         try:
-            snap = build_historical_snapshot(ticker, name, daily[daily.index <= m], m, include_incomplete_periods=False)
+            if context is not None:
+                snap = build_historical_snapshot_from_context(context, m, include_incomplete_periods=False)
+            else:
+                snap = build_historical_snapshot(ticker, name, daily[daily.index <= m], m, include_incomplete_periods=False)
             eval_res = evaluate_pattern_a(snap)
             st = eval_res.stage.value.upper() if eval_res.stage else "UNAVAILABLE"
             sc = float(round(eval_res.score, 2)) if eval_res.score is not None else None

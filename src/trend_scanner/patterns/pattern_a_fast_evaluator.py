@@ -31,7 +31,11 @@ from trend_scanner.patterns.pattern_a_evaluator import evaluate_pattern_a
 from trend_scanner.research.pattern_a_fast_daily_features import compute_daily_timing_features
 from trend_scanner.research.pattern_a_fast_monthly_features import compute_monthly_regime_features
 from trend_scanner.research.pattern_a_fast_weekly_features import compute_weekly_trigger_features
-from trend_scanner.validation.historical_snapshot import build_historical_snapshot
+from trend_scanner.validation.historical_snapshot import (
+    PrecomputedTickerContext,
+    build_historical_snapshot,
+    build_historical_snapshot_from_context,
+)
 
 
 def _zone(value: object, zones: list[dict], output: str) -> float:
@@ -173,20 +177,35 @@ def evaluate_pattern_a_fast(
     weekly_date: pd.Timestamp,
     score: dict,
     stage: dict,
+    context: PrecomputedTickerContext | None = None,
 ) -> dict:
     """단일 (ticker, weekly_date) 시점의 Pattern A FAST + 참고용 Pattern A 결과를 반환한다.
 
     ``weekly_date``는 완료된 주봉(completed weekly bar)이어야 한다. 호출자가
     completed-week 여부를 먼저 확인해야 하며, 미완료 주가 전달되면
     ``ValueError``를 raise한다(frozen script의 ``evaluate_timeline_point``와 동일 계약).
+
+    ``context``(선택, BACKTEST_PERFORMANCE_ENGINEERING_V01 Phase 4): 생략 시
+    기존과 완전히 동일한 legacy 경로(``build_historical_snapshot``, 매 호출마다
+    전체 daily를 다시 resample)를 사용한다. 전달되면 동일한 ticker에 대해
+    미리 만들어둔 ``PrecomputedTickerContext``(``build_precomputed_ticker_context``)를
+    사용하는 최적화 경로(``build_historical_snapshot_from_context``)로 스냅샷을
+    구성하며, Feature/Pattern A/FAST 산식은 전혀 변경되지 않는다 -- 대량
+    parity test(tests/test_backtest_performance_engine_v01_snapshot_context.py)로
+    두 경로의 동일성을 증명했다.
     """
-    snapshot = build_historical_snapshot(ticker, name, daily, weekly_date, include_incomplete_periods=False)
+    if context is not None:
+        snapshot = build_historical_snapshot_from_context(context, weekly_date, include_incomplete_periods=False)
+        daily_up_to = context.slice_daily_up_to(weekly_date)
+    else:
+        snapshot = build_historical_snapshot(ticker, name, daily, weekly_date, include_incomplete_periods=False)
+        daily_up_to = daily[daily.index <= weekly_date]
     if snapshot.weekly_as_of != weekly_date:
         raise ValueError(f"incomplete weekly date passed to evaluator: {ticker} {weekly_date}")
     features: dict[str, float] = {}
     features.update(compute_monthly_regime_features(snapshot.monthly))
     features.update(compute_weekly_trigger_features(snapshot.weekly))
-    features.update(compute_daily_timing_features(daily[daily.index <= weekly_date]))
+    features.update(compute_daily_timing_features(daily_up_to))
     fast = evaluate_fast_contract(features, score, stage)
     pattern = evaluate_pattern_a(snapshot)
     pattern_stage = pattern.stage.value if pattern.stage else None

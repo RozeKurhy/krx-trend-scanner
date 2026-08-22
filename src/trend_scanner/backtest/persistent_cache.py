@@ -12,31 +12,41 @@ previous run's cache.
 ``PersistentFeatureCacheStore`` adds a disk-backed layer under
 ``data/cache/backtest_features/`` (already covered by the repo's existing
 ``/data/*`` .gitignore rule -- no repo binary is committed). On load, it
-computes a version key from the two frozen contract files' sha256 and a
-cheap fingerprint of the raw OHLCV universe (file count + max mtime under
-``data/raw/stocks/``), and only reuses the persisted cache if that key
-matches exactly what is currently on disk -- otherwise it is treated as
-fully stale and NOT loaded (w.md Section 27: "stale cache를 silent reuse
-하면 안 된다"; Section 28: "version mismatch: fail or rebuild" -- this
-implementation rebuilds rather than fails, since a cold cache is just the
-pre-this-task baseline, not an error).
+computes a version key from the two frozen contract files' sha256, an
+aggregate hash over the actual Pattern A / FAST implementation source
+files, and a stat-based fingerprint of the raw OHLCV universe, and only
+reuses the persisted cache if that key matches exactly what is currently
+on disk -- otherwise it is treated as fully stale and NOT loaded (w.md
+Section 27: "stale cache를 silent reuse 하면 안 된다"; Section 28:
+"version mismatch: fail or rebuild" -- this implementation rebuilds
+rather than fails, since a cold cache is just the pre-this-task baseline,
+not an error).
 
-Cache version contract (w.md Section 28, ``BACKTEST_FEATURE_CACHE_V01``):
+Cache version contract (w.md Section 28, ``BACKTEST_FEATURE_CACHE_V01``;
+Phase 4 Major Fix 1 strengthened the last two fields):
   - schema_version
   - score_contract_sha256 / stage_contract_sha256 (Pattern A FAST version identity)
-  - source_data_fingerprint (ticker file_count + max mtime; cheap invalidation
-    signal for "new/updated OHLCV data since last cache build" -- NOT a full
-    content hash of every parquet file, which would itself cost as much as
-    the disk-read problem this task addresses. Documented limitation: a
-    source-data change that does not alter file count or advance mtime
-    beyond the recorded fingerprint would not be detected. See
-    docs/architecture/backtest_performance_engine_v01.md Section 12.)
+  - feature_implementation_sha256: aggregate sha256 over a sorted
+    {relative_path: sha256} manifest of the source files that directly
+    determine Pattern A / FAST snapshot output (see
+    ``FEATURE_IMPLEMENTATION_FILES`` below). A JSON-contract-only version
+    key cannot detect a code change to these files, so relying on
+    schema_version + contract hashes alone risks a stale HIT after an
+    implementation change with no contract change. Deliberately NOT a raw
+    git commit SHA (w.md: unrelated changes such as docs must not
+    invalidate the whole cache).
+  - source_data_fingerprint: sha256 over a sorted
+    [relative_filename, file_size, mtime_ns] manifest for every parquet
+    under ``source_data_dir`` -- stat-only, never reads file content
+    (reading 2,506 parquet files' content to hash them would reintroduce
+    the exact IO cost this cache exists to avoid).
   - generated_at
 """
 
 from __future__ import annotations
 
 import hashlib
+import json
 import logging
 import pickle
 from dataclasses import dataclass
@@ -51,15 +61,54 @@ logger = logging.getLogger(__name__)
 CACHE_SCHEMA_VERSION = "BACKTEST_FEATURE_CACHE_V01"
 DEFAULT_CACHE_DIR = Path("data/cache/backtest_features")
 
+# Source files that directly determine Pattern A / FAST snapshot output
+# (w.md Phase 4 Major Fix 1, Section 2's explicit list). Paths are relative
+# to the repository root (the parent of ``src/``).
+FEATURE_IMPLEMENTATION_FILES: tuple[str, ...] = (
+    "src/trend_scanner/patterns/pattern_a_fast_evaluator.py",
+    "src/trend_scanner/validation/historical_snapshot.py",
+    "src/trend_scanner/patterns/pattern_a_evaluator.py",
+    "src/trend_scanner/validation/feature_report.py",
+    "src/trend_scanner/research/pattern_a_fast_daily_features.py",
+    "src/trend_scanner/research/pattern_a_fast_weekly_features.py",
+    "src/trend_scanner/research/pattern_a_fast_monthly_features.py",
+    "src/trend_scanner/data/resampler.py",
+    "src/trend_scanner/data/market_calendar.py",
+)
+
 
 def _sha256_file(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def _source_data_fingerprint(source_data_dir: Path) -> dict[str, Any]:
-    files = list(source_data_dir.glob("*.parquet"))
-    max_mtime = max((f.stat().st_mtime for f in files), default=0.0)
-    return {"file_count": len(files), "max_mtime": max_mtime}
+def _sha256_json(payload: Any) -> str:
+    canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+def _feature_implementation_fingerprint(repo_root: Path) -> str:
+    """Aggregate sha256 over a sorted {relative_path: file_sha256} manifest.
+
+    Missing files hash to a fixed sentinel rather than raising, so a file
+    rename/deletion is itself a version-key change (MISS) instead of a
+    crash -- consistent with this store's "never error on version drift,
+    always treat as cold start" contract.
+    """
+    manifest = {}
+    for relative_path in sorted(FEATURE_IMPLEMENTATION_FILES):
+        path = repo_root / relative_path
+        manifest[relative_path] = _sha256_file(path) if path.exists() else "__MISSING__"
+    return _sha256_json(manifest)
+
+
+def _source_data_fingerprint(source_data_dir: Path) -> str:
+    """sha256 over a sorted [filename, size, mtime_ns] manifest. Stat-only --
+    never reads parquet content (w.md Phase 4 Major Fix 1B)."""
+    manifest = []
+    for f in sorted(source_data_dir.glob("*.parquet"), key=lambda p: p.name):
+        st = f.stat()
+        manifest.append([f.name, st.st_size, st.st_mtime_ns])
+    return _sha256_json(manifest)
 
 
 @dataclass
@@ -68,12 +117,14 @@ class PersistentFeatureCacheStore:
     stage_contract_path: Path
     source_data_dir: Path
     cache_dir: Path = DEFAULT_CACHE_DIR
+    repo_root: Path = Path(__file__).resolve().parents[3]
 
     def _version_key(self) -> dict[str, Any]:
         return {
             "schema_version": CACHE_SCHEMA_VERSION,
             "score_contract_sha256": _sha256_file(self.score_contract_path),
             "stage_contract_sha256": _sha256_file(self.stage_contract_path),
+            "feature_implementation_sha256": _feature_implementation_fingerprint(self.repo_root),
             "source_data_fingerprint": _source_data_fingerprint(self.source_data_dir),
         }
 

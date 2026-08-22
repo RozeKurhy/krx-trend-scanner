@@ -59,6 +59,10 @@ from trend_scanner.backtest.context import TickerDataCache
 from trend_scanner.backtest.feature_cache import FastSnapshotCache, MonthlySnapshotCache
 from trend_scanner.backtest.parity import compare_trade_csvs, diff_summary_dicts
 from trend_scanner.backtest.persistent_cache import PersistentFeatureCacheStore
+from trend_scanner.validation.historical_snapshot import (
+    PrecomputedTickerContext,
+    build_precomputed_ticker_context,
+)
 from trend_scanner.validation.julia_proxy_market_cap_v01 import (
     ProxyHistoricalMarketCapRegistry,
     calculate_strategy_metrics,
@@ -120,6 +124,19 @@ def run_optimized_backtest(limit: int | None = None) -> dict[str, Any]:
     universe = [(sf.stem, *master_dict.get(sf.stem, (sf.stem, "KOSPI"))) for sf in stock_files]
     logger.info("Universe size: %d tickers%s", len(universe), " (--limit smoke test)" if limit else "")
 
+    # Precomputed Ticker Snapshot Context (BACKTEST_PERFORMANCE_ENGINEERING_V01
+    # Phase 4): one per ticker, built lazily on first use and reused across
+    # Baseline/Julia x Primary/Sensitivity (all 4 passes share the same
+    # strategy-invariant weekly/monthly resample for that ticker).
+    ticker_contexts: dict[str, PrecomputedTickerContext] = {}
+
+    def _context_for(ticker: str, name: str, daily_df: pd.DataFrame) -> PrecomputedTickerContext:
+        ctx = ticker_contexts.get(ticker)
+        if ctx is None:
+            ctx = build_precomputed_ticker_context(ticker, name, daily_df)
+            ticker_contexts[ticker] = ctx
+        return ctx
+
     # 3. Primary Simulation (Baseline V2 vs Julia V00)
     t0 = time.perf_counter()
     baseline_trades, julia_trades = [], []
@@ -129,15 +146,18 @@ def run_optimized_backtest(limit: int | None = None) -> dict[str, Any]:
         daily_df = ticker_cache.load(ticker)
         if daily_df is None or daily_df.empty:
             continue
+        context = _context_for(ticker, name, daily_df)
         b_t = simulate_ticker_strategy_2022(
             ticker, name, market, daily_df, score_contract, stage_contract,
             enable_loss_guard=True, market_cap_registry=proxy_registry,
             fast_snapshot_cache=fast_cache, monthly_snapshot_cache=monthly_cache,
+            snapshot_context=context,
         )
         j_t = simulate_ticker_strategy_2022(
             ticker, name, market, daily_df, score_contract, stage_contract,
             enable_loss_guard=False, market_cap_registry=proxy_registry,
             fast_snapshot_cache=fast_cache, monthly_snapshot_cache=monthly_cache,
+            snapshot_context=context,
         )
         baseline_trades.extend(b_t)
         julia_trades.extend(j_t)
@@ -151,15 +171,18 @@ def run_optimized_backtest(limit: int | None = None) -> dict[str, Any]:
         daily_df = ticker_cache.load(ticker)
         if daily_df is None or daily_df.empty:
             continue
+        context = _context_for(ticker, name, daily_df)
         sb_t = simulate_ticker_strategy_2022(
             ticker, name, market, daily_df, score_contract, stage_contract,
             enable_loss_guard=True, market_cap_registry=proxy_registry, sensitivity_mode=True,
             fast_snapshot_cache=fast_cache, monthly_snapshot_cache=monthly_cache,
+            snapshot_context=context,
         )
         sj_t = simulate_ticker_strategy_2022(
             ticker, name, market, daily_df, score_contract, stage_contract,
             enable_loss_guard=False, market_cap_registry=proxy_registry, sensitivity_mode=True,
             fast_snapshot_cache=fast_cache, monthly_snapshot_cache=monthly_cache,
+            snapshot_context=context,
         )
         sens_baseline_trades.extend(sb_t)
         sens_julia_trades.extend(sj_t)
@@ -273,6 +296,14 @@ def compare_against_golden() -> dict[str, Any]:
 
 
 def main() -> None:
+    # w.md Phase 4 Section 4: wall_clock_total_seconds must cover the entire
+    # user-perceived run lifecycle (run start / persistent cache load through
+    # parity comparison completion), NOT just the sum of the individual
+    # simulation-phase timings recorded in `timings["total_elapsed_seconds"]`
+    # (which omits persistent cache load/save, universe build, artifact
+    # serialization, and parity comparison itself).
+    wall_clock_start = time.perf_counter()
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--limit", type=int, default=None, help="Restrict universe to first N tickers (plumbing smoke test only, not a parity run)")
     args = parser.parse_args()
@@ -280,12 +311,23 @@ def main() -> None:
     run_result = run_optimized_backtest(limit=args.limit)
 
     if run_result["limited"]:
-        print(json.dumps({"limited_smoke_test": True, "baseline_trade_count": len(run_result["baseline_trades"]), "julia_trade_count": len(run_result["julia_trades"])}, indent=2, ensure_ascii=False), flush=True)
+        wall_clock_total_seconds = round(time.perf_counter() - wall_clock_start, 3)
+        print(json.dumps({
+            "limited_smoke_test": True,
+            "baseline_trade_count": len(run_result["baseline_trades"]),
+            "julia_trade_count": len(run_result["julia_trades"]),
+            "timings": run_result["timings"],
+            "wall_clock_total_seconds": wall_clock_total_seconds,
+            "ticker_data_cache": run_result["ticker_data_cache"],
+            "fast_snapshot_cache": run_result["fast_snapshot_cache"],
+            "monthly_snapshot_cache": run_result["monthly_snapshot_cache"],
+        }, indent=2, ensure_ascii=False), flush=True)
         return
 
     persist_optimized_artifacts(run_result)
     full_parity_summary = compare_against_golden()
     full_parity_summary["limited_smoke_test"] = False
+    wall_clock_total_seconds = round(time.perf_counter() - wall_clock_start, 3)
     (PERF_DIR / "full_parity_summary.json").write_text(json.dumps(full_parity_summary, indent=2, ensure_ascii=False), encoding="utf-8")
 
     runtime_comparison = {
@@ -293,7 +335,17 @@ def main() -> None:
         "historical_runtime_source": "w.md Section 51 (37da35e closure commit reference), not re-executed this run",
         "optimized_cold_runtime_seconds": run_result["timings"]["total_elapsed_seconds"],
         "optimized_cold_runtime_minutes": round(run_result["timings"]["total_elapsed_seconds"] / 60.0, 2),
+        "wall_clock_total_seconds": wall_clock_total_seconds,
+        "wall_clock_total_minutes": round(wall_clock_total_seconds / 60.0, 2),
+        "wall_clock_measurement_scope": (
+            "run start (before persistent cache load) -> persistent cache load -> "
+            "proxy validation -> universe build -> Primary -> Sensitivity -> aggregation -> "
+            "persistent cache save -> artifact serialization -> parity comparison "
+            "(w.md Phase 4 Section 4); excludes only the write of this summary JSON itself, "
+            "which cannot self-report its own write time"
+        ),
         "speedup_cold_x": round((330 * 60) / run_result["timings"]["total_elapsed_seconds"], 2) if run_result["timings"]["total_elapsed_seconds"] > 0 else None,
+        "speedup_cold_wall_clock_x": round((330 * 60) / wall_clock_total_seconds, 2) if wall_clock_total_seconds > 0 else None,
         "timings_breakdown": run_result["timings"],
         "ticker_data_cache_diagnostics": run_result["ticker_data_cache"],
         "fast_snapshot_cache_diagnostics": run_result["fast_snapshot_cache"],

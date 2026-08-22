@@ -14,6 +14,7 @@ Core Strategy Mandate:
 
 from __future__ import annotations
 
+import bisect
 from dataclasses import asdict, dataclass, field
 import hashlib
 import json
@@ -35,7 +36,10 @@ from trend_scanner.filters.investability import (
 )
 from trend_scanner.patterns.pattern_a_evaluator import evaluate_pattern_a
 from trend_scanner.patterns.pattern_a_fast_evaluator import evaluate_pattern_a_fast
-from trend_scanner.validation.historical_snapshot import build_historical_snapshot
+from trend_scanner.validation.historical_snapshot import (
+    build_historical_snapshot,
+    build_historical_snapshot_from_context,
+)
 from trend_scanner.validation.pattern_a_fast_core_v02_reentry import (
     DATA_CUTOFF,
     calculate_distribution_stats,
@@ -358,8 +362,18 @@ def simulate_ticker_strategy_2022(
     fast_snapshot_cache: Any | None = None,
     monthly_snapshot_cache: Any | None = None,
     min_market_cap_krw: float = MIN_MARKET_CAP_KRW,
+    snapshot_context: Any | None = None,
 ) -> list[StrategyTradeRecord]:
     """Simulate a single ticker trade lifecycle starting from start_date (2022-01-01+).
+
+    ``snapshot_context`` (optional, BACKTEST_PERFORMANCE_ENGINEERING_V01
+    Phase 4): a ``PrecomputedTickerContext`` (see
+    ``trend_scanner.validation.historical_snapshot``) built once for THIS
+    ticker's full daily history. When given, it is forwarded to
+    ``fast_snapshot_cache``/``monthly_snapshot_cache`` so a cache miss uses
+    the optimized snapshot-reuse path instead of re-resampling the full
+    daily history on every miss. Omitted (default): behavior is
+    byte-for-byte identical to today.
 
     ``min_market_cap_krw`` externalizes the investability market-cap
     eligibility gate as a research parameter (w.md Section 20 "Market Cap
@@ -390,10 +404,17 @@ def simulate_ticker_strategy_2022(
         return []
 
     weekly_bars = to_weekly(daily)
-    valid_weeks = [
-        w for w in weekly_bars.index
-        if daily[daily.index <= w].index.max().normalize() == w.normalize()
-    ]
+    # A weekly label w's bar is "completed" (this ticker actually traded up
+    # through the label date, i.e. daily[daily.index <= w].index.max() == w)
+    # iff w itself is one of the ticker's own trading dates: if w is present
+    # in daily.index, the last date <= w is trivially w itself; if w is
+    # absent (e.g. a holiday Friday), the last date <= w is strictly earlier.
+    # This turns an O(len(weekly_bars) * len(daily)) boolean-mask-per-week
+    # scan into O(len(weekly_bars)) O(1) set lookups, with no semantic
+    # change (w.md Phase 4 Section 8, VALID_WEEK_SET_MISMATCH=0 proof in
+    # tests/test_backtest_performance_engine_v01_snapshot_context.py).
+    _daily_dates_set = set(daily.index)
+    valid_weeks = [w for w in weekly_bars.index if w in _daily_dates_set]
 
     if not valid_weeks:
         return []
@@ -416,13 +437,18 @@ def simulate_ticker_strategy_2022(
         inv_eval_record: InvestabilityEvaluationResult | None = None
         inv_source_meta: dict[str, Any] | None = None
 
-        candidate_weeks = [w for w in valid_weeks if w >= cur_search_date]
+        # valid_weeks is sorted ascending (built from weekly_bars.index in
+        # order); bisect finds the first index >= cur_search_date directly
+        # instead of scanning the full list every outer-loop iteration.
+        candidate_weeks = valid_weeks[bisect.bisect_left(valid_weeks, cur_search_date):]
         for w in candidate_weeks:
             try:
                 if fast_snapshot_cache is not None:
-                    res = fast_snapshot_cache.get(ticker, name, daily, w, score_contract, stage_contract)
+                    res = fast_snapshot_cache.get(ticker, name, daily, w, score_contract, stage_contract, context=snapshot_context)
                     if res is None:
                         continue
+                elif snapshot_context is not None:
+                    res = evaluate_pattern_a_fast(ticker, name, daily, w, score_contract, stage_contract, context=snapshot_context)
                 else:
                     res = evaluate_pattern_a_fast(ticker, name, daily[daily.index <= w], w, score_contract, stage_contract)
                 is_trigger = (res["fast_machine_stage"] == "TRIGGER" and res["fast_machine_stage_status"] == "READY")
@@ -505,10 +531,13 @@ def simulate_ticker_strategy_2022(
         monthly_snapshots: list[dict[str, Any]] = []
         for m in m_dates:
             if monthly_snapshot_cache is not None:
-                monthly_snapshots.append(monthly_snapshot_cache.get(ticker, name, daily, m))
+                monthly_snapshots.append(monthly_snapshot_cache.get(ticker, name, daily, m, context=snapshot_context))
                 continue
             try:
-                snap = build_historical_snapshot(ticker, name, daily[daily.index <= m], m, include_incomplete_periods=False)
+                if snapshot_context is not None:
+                    snap = build_historical_snapshot_from_context(snapshot_context, m, include_incomplete_periods=False)
+                else:
+                    snap = build_historical_snapshot(ticker, name, daily[daily.index <= m], m, include_incomplete_periods=False)
                 eval_res = evaluate_pattern_a(snap)
                 st = eval_res.stage.value.upper() if eval_res.stage else "UNAVAILABLE"
                 sc = float(round(eval_res.score, 2)) if eval_res.score is not None else None

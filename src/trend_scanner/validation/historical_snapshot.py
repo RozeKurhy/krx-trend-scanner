@@ -24,8 +24,9 @@ completed monthly/weekly 정책:
 
 from __future__ import annotations
 
+import bisect
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Callable
 
 import pandas as pd
 
@@ -109,6 +110,154 @@ def build_historical_snapshot(
         weekly = _drop_incomplete_weekly(weekly, effective_as_of)
 
     features = build_feature_row(ticker, name, sliced, weekly, monthly)
+
+    return HistoricalSnapshot(
+        requested_snapshot_date=requested,
+        effective_as_of=effective_as_of,
+        include_incomplete_periods=include_incomplete_periods,
+        monthly_as_of=_last_or_none(monthly),
+        weekly_as_of=_last_or_none(weekly),
+        features=features,
+        monthly=monthly,
+        weekly=weekly,
+    )
+
+
+@dataclass
+class PrecomputedTickerContext:
+    """One-per-ticker precomputed context (w.md Phase 4 Section 5) that lets
+    ``build_historical_snapshot_from_context`` avoid re-running
+    ``to_weekly()``/``to_monthly()`` over the full history on every
+    snapshot call.
+
+    Deliberately NOT "resample once, slice by label" (forbidden -- see
+    module-level Phase 4 note below): ``full_weekly``/``full_monthly`` are
+    resampled once, but only buckets whose LABEL is <= the snapshot's
+    ``effective_as_of`` are reused as-is. A resample bucket's label is
+    always its calendar upper boundary, so label <= effective_as_of proves
+    every day that could ever fall in that bucket has already occurred at
+    or before effective_as_of -- reuse cannot leak a future day, regardless
+    of calendar-label vs actual-last-trading-day divergence. The bucket
+    whose label is > effective_as_of (the still-in-progress "current"
+    bucket, at most one such bucket per snapshot) is instead recomputed
+    fresh from just the daily rows that belong to it, exactly reproducing
+    what ``to_weekly(sliced)``/``to_monthly(sliced)`` would have computed
+    for that same bucket. This is proven equivalent to the legacy
+    per-snapshot resample by the parity tests in
+    tests/test_backtest_performance_engine_v01_snapshot_context.py
+    (SNAPSHOT_PARITY_MISMATCH = 0 target, w.md Phase 4 Section 7).
+    """
+
+    ticker: str
+    name: str
+    daily: pd.DataFrame
+    daily_dates: list[pd.Timestamp]
+    full_weekly: pd.DataFrame
+    full_monthly: pd.DataFrame
+    weekly_labels: list[pd.Timestamp]
+    monthly_labels: list[pd.Timestamp]
+
+    def slice_daily_up_to(self, requested: pd.Timestamp) -> pd.DataFrame:
+        """searchsorted-based equivalent of ``daily[daily.index <= requested]``
+        (used by both snapshot construction and any other per-snapshot daily
+        slicing, e.g. ``compute_daily_timing_features`` inputs, so callers
+        never need to re-run the O(N) boolean-mask scan this context exists
+        to avoid)."""
+        _, pos = _effective_as_of_position(self, pd.Timestamp(requested))
+        return self.daily.iloc[: pos + 1] if pos >= 0 else self.daily.iloc[0:0]
+
+
+def build_precomputed_ticker_context(ticker: str, name: str, daily: pd.DataFrame) -> PrecomputedTickerContext:
+    """Builds the one-time-per-ticker precomputed context. Cheap to call
+    repeatedly with the SAME daily frame (idempotent), but callers should
+    build this once per ticker per process and reuse it across all
+    snapshot dates for that ticker."""
+    daily_sorted = daily.sort_index()
+    full_weekly = to_weekly(daily_sorted)
+    full_monthly = to_monthly(daily_sorted)
+    return PrecomputedTickerContext(
+        ticker=ticker,
+        name=name,
+        daily=daily_sorted,
+        daily_dates=list(daily_sorted.index),
+        full_weekly=full_weekly,
+        full_monthly=full_monthly,
+        weekly_labels=list(full_weekly.index),
+        monthly_labels=list(full_monthly.index),
+    )
+
+
+def _effective_as_of_position(context: PrecomputedTickerContext, requested: pd.Timestamp) -> tuple[pd.Timestamp | None, int]:
+    """Returns (effective_as_of, position) for the last daily date <=
+    requested via bisect (searchsorted) over the precomputed sorted date
+    list, or (None, -1) if no such date exists."""
+    pos = bisect.bisect_right(context.daily_dates, requested) - 1
+    if pos < 0:
+        return None, -1
+    return context.daily_dates[pos], pos
+
+
+def _reconstruct_period_frame(
+    full_frame: pd.DataFrame,
+    labels: list[pd.Timestamp],
+    daily: pd.DataFrame,
+    effective_as_of: pd.Timestamp,
+    resample_fn: Callable[[pd.DataFrame], pd.DataFrame],
+) -> pd.DataFrame:
+    """Reconstructs the weekly/monthly frame equivalent to
+    ``resample_fn(daily[daily.index <= effective_as_of])`` by reusing
+    precomputed buckets whose label <= effective_as_of and recomputing only
+    the (at most one) tail bucket whose label is > effective_as_of."""
+    safe_upto = bisect.bisect_right(labels, effective_as_of)
+    safe_part = full_frame.iloc[:safe_upto]
+
+    if safe_upto >= len(labels):
+        return safe_part
+
+    prev_boundary = labels[safe_upto - 1] if safe_upto > 0 else None
+    if prev_boundary is None:
+        tail_window = daily[daily.index <= effective_as_of]
+    else:
+        tail_window = daily[(daily.index > prev_boundary) & (daily.index <= effective_as_of)]
+
+    if tail_window.empty:
+        return safe_part
+
+    tail_frame = resample_fn(tail_window)
+    if tail_frame.empty:
+        return safe_part
+    return pd.concat([safe_part, tail_frame])
+
+
+def build_historical_snapshot_from_context(
+    context: PrecomputedTickerContext,
+    snapshot_date: str | pd.Timestamp,
+    include_incomplete_periods: bool = True,
+    market_calendar: MarketCalendarAuthority | None = None,
+) -> HistoricalSnapshot:
+    """Optimized fast-path counterpart to ``build_historical_snapshot`` (w.md
+    Phase 4 Section 6). Reuses ``build_feature_row``,
+    ``_drop_incomplete_current_month``, ``_drop_incomplete_weekly`` verbatim
+    -- no feature formula, Pattern A logic, FAST contract logic, or
+    weekly/monthly completion semantics is reimplemented here. Must remain
+    provably parity-identical to ``build_historical_snapshot`` for the same
+    (ticker, daily, snapshot_date, include_incomplete_periods)."""
+    requested = pd.Timestamp(snapshot_date)
+    effective_as_of, pos = _effective_as_of_position(context, requested)
+
+    if effective_as_of is None:
+        weekly = context.full_weekly.iloc[0:0]
+        monthly = context.full_monthly.iloc[0:0]
+    else:
+        weekly = _reconstruct_period_frame(context.full_weekly, context.weekly_labels, context.daily, effective_as_of, to_weekly)
+        monthly = _reconstruct_period_frame(context.full_monthly, context.monthly_labels, context.daily, effective_as_of, to_monthly)
+
+    if not include_incomplete_periods:
+        monthly = _drop_incomplete_current_month(monthly, requested, market_calendar=market_calendar)
+        weekly = _drop_incomplete_weekly(weekly, effective_as_of)
+
+    sliced_daily = context.daily.iloc[: pos + 1] if pos >= 0 else context.daily.iloc[0:0]
+    features = build_feature_row(context.ticker, context.name, sliced_daily, weekly, monthly)
 
     return HistoricalSnapshot(
         requested_snapshot_date=requested,
