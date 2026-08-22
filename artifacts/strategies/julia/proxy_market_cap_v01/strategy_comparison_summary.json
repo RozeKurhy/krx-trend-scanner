@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "run_id": "JULIA_V00_PROXY_PIT_20260822_062127",
+    "run_id": "JULIA_V00_PROXY_PIT_20260822_063504",
     "evidence_status": "NON_AUTHORITATIVE_PROXY_PIT",
     "not_100_percent_accurate_market_cap_data": true,
     "not_production_evidence": true,
@@ -16,6 +16,7 @@
     "primary_proxy_method": "ANCHOR_PRICE_RATIO_PROXY",
     "future_anchor_usage_count": 0,
     "current_shares_fallback_count": 0,
+    "research_verdict": "MIXED",
     "supersedes_commit": "030e9c6145d8dd8b584ea8ce6cc0097cbbf4e377"
   },
   "proxy_dependence": {
@@ -23,10 +24,18 @@
     "baseline_actual_krx_entries": 89,
     "baseline_proxy_entries": 756,
     "baseline_proxy_percentage": 89.47,
+    "baseline_near_threshold_proxy_entries": 58,
+    "baseline_high_confidence_proxy_entries": 225,
+    "baseline_medium_confidence_proxy_entries": 237,
+    "baseline_low_confidence_proxy_entries": 294,
     "julia_total_trades": 687,
     "julia_actual_krx_entries": 65,
     "julia_proxy_entries": 622,
-    "julia_proxy_percentage": 90.54
+    "julia_proxy_percentage": 90.54,
+    "julia_near_threshold_proxy_entries": 54,
+    "julia_high_confidence_proxy_entries": 201,
+    "julia_medium_confidence_proxy_entries": 211,
+    "julia_low_confidence_proxy_entries": 210
   },
   "baseline_v2_proxy": {
     "total_trades": 845,
@@ -37,22 +46,22 @@
       "positive_rate": 0.3455621301775148
     },
     "distribution_stats": {
-      "le_neg10_count": 551,
-      "le_neg10_rate": 0.6520710059171597,
-      "le_neg15_count": 551,
-      "le_neg15_rate": 0.6520710059171597,
-      "le_neg20_count": 551,
-      "le_neg20_rate": 0.6520710059171597,
-      "le_neg30_count": 551,
-      "le_neg30_rate": 0.6520710059171597,
-      "ge_pos20_count": 292,
-      "ge_pos20_rate": 0.3455621301775148,
-      "ge_pos30_count": 292,
-      "ge_pos30_rate": 0.3455621301775148,
-      "ge_pos50_count": 292,
-      "ge_pos50_rate": 0.3455621301775148,
-      "ge_pos100_count": 289,
-      "ge_pos100_rate": 0.34201183431952664
+      "le_neg10_count": 508,
+      "le_neg10_rate": 0.6011834319526628,
+      "le_neg15_count": 393,
+      "le_neg15_rate": 0.4650887573964497,
+      "le_neg20_count": 47,
+      "le_neg20_rate": 0.05562130177514793,
+      "le_neg30_count": 14,
+      "le_neg30_rate": 0.016568047337278107,
+      "ge_pos20_count": 214,
+      "ge_pos20_rate": 0.2532544378698225,
+      "ge_pos30_count": 184,
+      "ge_pos30_rate": 0.21775147928994082,
+      "ge_pos50_count": 152,
+      "ge_pos50_rate": 0.17988165680473372,
+      "ge_pos100_count": 52,
+      "ge_pos100_rate": 0.06153846153846154
     },
     "mae_stats": {
       "mean": -15.405881656804732,
@@ -87,22 +96,22 @@
       "positive_rate": 0.5109170305676856
     },
     "distribution_stats": {
-      "le_neg10_count": 335,
-      "le_neg10_rate": 0.487627365356623,
-      "le_neg15_count": 335,
-      "le_neg15_rate": 0.487627365356623,
-      "le_neg20_count": 335,
-      "le_neg20_rate": 0.487627365356623,
-      "le_neg30_count": 335,
-      "le_neg30_rate": 0.487627365356623,
-      "ge_pos20_count": 351,
-      "ge_pos20_rate": 0.5109170305676856,
-      "ge_pos30_count": 351,
-      "ge_pos30_rate": 0.5109170305676856,
-      "ge_pos50_count": 350,
-      "ge_pos50_rate": 0.5094614264919942,
-      "ge_pos100_count": 346,
-      "ge_pos100_rate": 0.5036390101892285
+      "le_neg10_count": 263,
+      "le_neg10_rate": 0.38282387190684136,
+      "le_neg15_count": 226,
+      "le_neg15_rate": 0.3289665211062591,
+      "le_neg20_count": 187,
+      "le_neg20_rate": 0.27219796215429404,
+      "le_neg30_count": 113,
+      "le_neg30_rate": 0.16448326055312956,
+      "ge_pos20_count": 256,
+      "ge_pos20_rate": 0.3726346433770015,
+      "ge_pos30_count": 222,
+      "ge_pos30_rate": 0.3231441048034934,
+      "ge_pos50_count": 182,
+      "ge_pos50_rate": 0.264919941775837,
+      "ge_pos100_count": 69,
+      "ge_pos100_rate": 0.10043668122270742
     },
     "mae_stats": {
       "mean": -26.312852983988357,
@@ -129,12 +138,12 @@
   },
   "delta_julia_minus_baseline": {
     "trade_count_delta": -158,
-    "mean_return_delta_p": 1033.07,
-    "median_return_delta_p": 1570.0,
+    "mean_return_delta_p": 10.33,
+    "median_return_delta_p": 15.7,
     "positive_rate_delta_p": 16.54,
-    "le_neg20_delta_count": -216,
-    "le_neg30_delta_count": -216,
-    "ge_pos50_delta_count": 58,
-    "ge_pos100_delta_count": 57
+    "le_neg20_delta_count": 140,
+    "le_neg30_delta_count": 99,
+    "ge_pos50_delta_count": 30,
+    "ge_pos100_delta_count": 17
   }
 }

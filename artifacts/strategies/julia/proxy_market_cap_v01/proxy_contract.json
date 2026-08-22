@@ -1,18 +1,19 @@
 {
-  "strategy_id": "JULIA_STRATEGY_V00",
-  "base_strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
-  "experiment_id": "JULIA_V00_PROXY_MARKET_CAP_PIT_V01",
+  "contract_name": "JULIA_V00_PROXY_MARKET_CAP_PIT_V01",
   "evidence_status": "NON_AUTHORITATIVE_PROXY_PIT",
-  "evaluation_window": {
-    "start": "2022-01-01",
-    "end": "2026-08-14"
-  },
-  "proxy_rules": {
-    "official_dates_rule": "USE_EXACT_KRX_OFFICIAL_MARKET_CAP",
-    "missing_dates_rule": "METHOD_B_ANCHOR_PRICE_RATIO_PROXY",
-    "anchor_direction": "STRICTLY_PRIOR_ANCHOR_ONLY",
-    "future_anchor_forbidden": true,
-    "current_shares_fallback_forbidden": true,
-    "interpolation_forbidden": true
-  }
+  "estimated_market_cap_used": true,
+  "not_100_percent_accurate_market_cap_data": true,
+  "not_production_evidence": true,
+  "official_full_pit_status": "INVALID_INCOMPLETE_PIT_COVERAGE",
+  "julia_production_status": "NOT_APPROVED",
+  "official_reference_date_count": 117,
+  "proxy_reference_date_count": 98,
+  "total_reference_date_count": 215,
+  "price_semantics": "ADJUSTED_CLOSE",
+  "primary_proxy_method": "ANCHOR_PRICE_RATIO_PROXY",
+  "conservative_boundary_buffer_krw": [
+    80000000000,
+    120000000000
+  ],
+  "research_verdict": "MIXED"
 }

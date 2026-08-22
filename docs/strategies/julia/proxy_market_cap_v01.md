@@ -25,7 +25,7 @@
 | **Future Anchor Usage Count** | **0** (Strictly Prior Anchor Only) |
 | **Current Shares Fallback Count** | **0** (Zero Fallback) |
 | **Authoritative Start SHA** | `030e9c6145d8dd8b584ea8ce6cc0097cbbf4e377` |
-| **Run ID** | `JULIA_V00_PROXY_PIT_20260822_062127` |
+| **Run ID** | `JULIA_V00_PROXY_PIT_20260822_063504` |
 
 ---
 
@@ -54,15 +54,24 @@
 | :--- | :--- | :--- | :--- |
 | **Total Trades** | **845건** | **687건** | **-158건** |
 | **Unique Tickers** | **673개** | **673개** | **+0개** |
-| **Mean Return (%)** | **+1280.02%** | **+2313.09%** | **+1033.07%p** |
-| **Median Return (%)** | **-1457.00%** | **+113.00%** | **+1570.00%p** |
+| **Mean Return (%)** | **+12.80%** | **+23.13%** | **+10.33%p** |
+| **Median Return (%)** | **-14.57%** | **+1.13%** | **+15.70%p** |
 | **Positive Return Rate (%)** | **34.56%** | **51.09%** | **+16.54%p** |
-| **Deep Losses ($\le -20\%$)** | **551건 (65.2%)** | **335건 (48.8%)** | **-216건** |
-| **Deep Losses ($\le -30\%$)** | **551건 (65.2%)** | **335건 (48.8%)** | **-216건** |
-| **Big Winners ($\ge +50\%$)** | **292건 (34.6%)** | **350건 (50.9%)** | **+58건** |
-| **Mega Winners ($\ge +100\%$)** | **289건 (34.2%)** | **346건 (50.4%)** | **+57건** |
-| **Mean MAE (%)** | **-1540.59%** | **-2631.29%** | **-1090.70%p** |
-| **Mean MFE (%)** | **5323.73%** | **7792.14%** | **+2468.40%p** |
+| **Deep Losses ($\\le -10\%$ fraction)** | 508건 (60.1%) | 263건 (38.3%) | -245건 |
+| **Deep Losses ($\\le -15\%$ fraction)** | 393건 (46.5%) | 226건 (32.9%) | -167건 |
+| **Deep Losses ($\\le -20\%$ fraction)** | 47건 (5.6%) | 187건 (27.2%) | +140건 |
+| **Deep Losses ($\\le -30\%$ fraction)** | 14건 (1.7%) | 113건 (16.4%) | +99건 |
+| **Big Winners ($\\ge +20\%$ fraction)** | 214건 (25.3%) | 256건 (37.3%) | +42건 |
+| **Big Winners ($\\ge +30\%$ fraction)** | 184건 (21.8%) | 222건 (32.3%) | +38건 |
+| **Big Winners ($\\ge +50\%$ fraction)** | 152건 (18.0%) | 182건 (26.5%) | +30건 |
+| **Mega Winners ($\\ge +100\%$ fraction)** | 52건 (6.2%) | 69건 (10.0%) | +17건 |
+| **Mean MAE (%)** | **-15.41%** | **-26.31%** | **-10.91%p** |
+| **Median MAE (%)** | **-16.37%** | **-22.05%** | **-5.68%p** |
+| **Worst MAE (%)** | **-73.66%** | **-90.09%** | **-16.43%p** |
+| **Mean MFE (%)** | **53.24%** | **77.92%** | **+24.68%p** |
+| **Median MFE (%)** | **23.44%** | **48.81%** | **+25.37%p** |
+| **Mean Holding Time** | **23.77 weeks** | **47.52 weeks** | **+23.75 weeks** |
+| **Median Holding Time** | **16.40 weeks** | **41.60 weeks** | **+25.20 weeks** |
 
 ---
 
@@ -72,20 +81,25 @@ $$\text{Baseline Loss Guard Total } N = 477 = M(397) + (N-M)(80)$$
 
 - **Baseline Loss Guard Triggered Total ($N$)**: **477건**
 - **Paired in Julia ($M$)**: **397건**
-- **Julia Higher Terminal Return (Recovered)**: **197건**
-- **Julia Deeper Terminal Loss**: **200건**
-- **Julia Successfully Reached PROGRESSED Stage**: **160건**
+- **Unpaired in Julia ($N-M$)**: **80건**
+- **Julia Higher Terminal Return (Recovered)**: **197건 (49.62%)**
+- **Julia Deeper Terminal Loss**: **200건 (50.38%)**
+- **Julia Successfully Reached PROGRESSED Stage**: **160건 (40.30%)**
 
 ---
 
 ## 5. Proxy Dependence & Boundary Sensitivity Analysis
 
-### A. Proxy Data Dependence
+### A. Proxy Data Dependence Breakdown
 
 | Metric | Baseline V2 | Julia V00 |
 | :--- | :--- | :--- |
 | **Actual KRX Entry Trades** | 89건 (10.5%) | 65건 (9.5%) |
 | **Proxy-Dependent Entry Trades** | 756건 (89.5%) | 622건 (90.5%) |
+| **- Near-Threshold (80B~120B) Proxy Entries** | 58건 | 54건 |
+| **- High Confidence (<=35d) Proxy Entries** | 225건 | 201건 |
+| **- Medium Confidence (36~90d) Proxy Entries** | 237건 | 211건 |
+| **- Low Confidence (>90d) Proxy Entries** | 294건 | 210건 |
 
 ### B. Conservative Boundary Sensitivity (80B ~ 120B Buffer Excluded)
 
@@ -93,9 +107,9 @@ $$\text{Baseline Loss Guard Total } N = 477 = M(397) + (N-M)(80)$$
 | :--- | :--- | :--- | :--- |
 | **Baseline Trade Count** | 845건 | 810건 | -4.14% |
 | **Julia Trade Count** | 687건 | 656건 | -4.51% |
-| **Baseline Mean Return** | +1280.02% | +1324.46% | +44.44%p |
-| **Julia Mean Return** | +2313.09% | +2423.68% | +110.59%p |
-| **Julia - Baseline Return Delta** | **+1033.07%p** | **+1099.22%p** | **+66.15%p** |
+| **Baseline Mean Return** | +12.80% | +13.24% | +0.44%p |
+| **Julia Mean Return** | +23.13% | +24.24% | +1.11%p |
+| **Julia - Baseline Return Delta** | **+10.33%p** | **+11.00%p** | **+0.67%p** |
 | **Conclusion Robust to Boundary** | - | - | **YES** |
 
 ---
@@ -106,40 +120,41 @@ $$\text{Baseline Loss Guard Total } N = 477 = M(397) + (N-M)(80)$$
 
 | Ticker | Name | Entry Date | Exit Date | Julia Ret (%) | Julia MFE (%) | Exit Type |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| `043260` | 043260 | 2025-10-31 | Cutoff (Open) | **+91241.00%** | +285782.00% | `NO_EXIT_BEFORE_CUTOFF` |
-| `047040` | 047040 | 2025-05-30 | 2026-05-04 | **+71871.00%** | +84386.00% | `EXIT4_SCORE_DRAWDOWN_GE_15` |
-| `058610` | 058610 | 2025-01-31 | 2026-02-02 | **+39180.00%** | +44328.00% | `EXIT4_SCORE_DRAWDOWN_GE_15` |
-| `131290` | 131290 | 2025-10-10 | Cutoff (Open) | **+39149.00%** | +45577.00% | `NO_EXIT_BEFORE_CUTOFF` |
-| `036930` | 036930 | 2025-03-21 | 2026-06-01 | **+37533.00%** | +49595.00% | `EXIT4_SCORE_DRAWDOWN_GE_15` |
-| `001820` | 001820 | 2025-10-10 | 2026-07-01 | **+33842.00%** | +45593.00% | `EXIT4_SCORE_DRAWDOWN_GE_15` |
-| `006340` | 006340 | 2025-10-31 | 2026-05-04 | **+32824.00%** | +33346.00% | `EXIT4_SCORE_DRAWDOWN_GE_15` |
-| `226950` | 226950 | 2024-10-11 | Cutoff (Open) | **+32748.00%** | +72824.00% | `NO_EXIT_BEFORE_CUTOFF` |
-| `080220` | 080220 | 2025-09-19 | Cutoff (Open) | **+32338.00%** | +61688.00% | `NO_EXIT_BEFORE_CUTOFF` |
-| `241770` | 241770 | 2025-02-28 | Cutoff (Open) | **+31033.00%** | +38632.00% | `NO_EXIT_BEFORE_CUTOFF` |
+| `43260` | 43260 | 2025-11-03 | Cutoff (Open) | **+912.41%** | +2857.82% | `NO_EXIT_BEFORE_CUTOFF` |
+| `47040` | 47040 | 2025-06-02 | 2026-05-04 | **+718.71%** | +843.86% | `EXIT4_SCORE_DRAWDOWN_GE_15` |
+| `58610` | 58610 | 2025-02-03 | 2026-02-02 | **+391.80%** | +443.28% | `EXIT4_SCORE_DRAWDOWN_GE_15` |
+| `131290` | 131290 | 2025-10-13 | Cutoff (Open) | **+391.49%** | +455.77% | `NO_EXIT_BEFORE_CUTOFF` |
+| `36930` | 36930 | 2025-03-24 | 2026-06-01 | **+375.33%** | +495.95% | `EXIT4_SCORE_DRAWDOWN_GE_15` |
+| `1820` | 1820 | 2025-10-13 | 2026-07-01 | **+338.42%** | +455.93% | `EXIT4_SCORE_DRAWDOWN_GE_15` |
+| `6340` | 6340 | 2025-11-03 | 2026-05-04 | **+328.24%** | +333.46% | `EXIT4_SCORE_DRAWDOWN_GE_15` |
+| `226950` | 226950 | 2024-10-14 | Cutoff (Open) | **+327.48%** | +728.24% | `NO_EXIT_BEFORE_CUTOFF` |
+| `80220` | 80220 | 2025-09-22 | Cutoff (Open) | **+323.38%** | +616.88% | `NO_EXIT_BEFORE_CUTOFF` |
+| `241770` | 241770 | 2025-03-04 | Cutoff (Open) | **+310.33%** | +386.32% | `NO_EXIT_BEFORE_CUTOFF` |
 
 ### Top 10 Deep Losses in Julia V00 ($\le -20\%$)
 
 | Ticker | Name | Entry Date | Exit Date | Julia Ret (%) | Julia MAE (%) | Exit Type |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| `195990` | 195990 | 2024-11-08 | Cutoff (Open) | **-8732.00%** | -9009.00% | `NO_PROGRESSED_BEFORE_CUTOFF` |
-| `091810` | 091810 | 2024-09-20 | Cutoff (Open) | **-8011.00%** | -8434.00% | `NO_PROGRESSED_BEFORE_CUTOFF` |
-| `058970` | 058970 | 2025-02-07 | Cutoff (Open) | **-7903.00%** | -8514.00% | `NO_PROGRESSED_BEFORE_CUTOFF` |
-| `014990` | 014990 | 2025-07-11 | Cutoff (Open) | **-7401.00%** | -8020.00% | `NO_EXIT_BEFORE_CUTOFF` |
-| `217270` | 217270 | 2025-07-04 | Cutoff (Open) | **-7347.00%** | -7934.00% | `NO_PROGRESSED_BEFORE_CUTOFF` |
-| `058820` | 058820 | 2024-08-16 | Cutoff (Open) | **-7276.00%** | -7494.00% | `NO_PROGRESSED_BEFORE_CUTOFF` |
-| `069460` | 069460 | 2025-05-02 | Cutoff (Open) | **-7209.00%** | -7366.00% | `NO_EXIT_BEFORE_CUTOFF` |
-| `039240` | 039240 | 2025-01-17 | Cutoff (Open) | **-7186.00%** | -7757.00% | `NO_EXIT_BEFORE_CUTOFF` |
-| `307870` | 307870 | 2024-08-02 | Cutoff (Open) | **-7074.00%** | -8454.00% | `NO_PROGRESSED_BEFORE_CUTOFF` |
-| `311390` | 311390 | 2025-04-11 | Cutoff (Open) | **-6934.00%** | -7518.00% | `NO_PROGRESSED_BEFORE_CUTOFF` |
+| `195990` | 195990 | 2024-11-11 | Cutoff (Open) | **-87.32%** | -90.09% | `NO_PROGRESSED_BEFORE_CUTOFF` |
+| `91810` | 91810 | 2024-09-23 | Cutoff (Open) | **-80.11%** | -84.34% | `NO_PROGRESSED_BEFORE_CUTOFF` |
+| `58970` | 58970 | 2025-02-10 | Cutoff (Open) | **-79.03%** | -85.14% | `NO_PROGRESSED_BEFORE_CUTOFF` |
+| `14990` | 14990 | 2025-07-14 | Cutoff (Open) | **-74.01%** | -80.20% | `NO_EXIT_BEFORE_CUTOFF` |
+| `217270` | 217270 | 2025-07-07 | Cutoff (Open) | **-73.47%** | -79.34% | `NO_PROGRESSED_BEFORE_CUTOFF` |
+| `58820` | 58820 | 2024-08-19 | Cutoff (Open) | **-72.76%** | -74.94% | `NO_PROGRESSED_BEFORE_CUTOFF` |
+| `69460` | 69460 | 2025-05-07 | Cutoff (Open) | **-72.09%** | -73.66% | `NO_EXIT_BEFORE_CUTOFF` |
+| `39240` | 39240 | 2025-01-20 | Cutoff (Open) | **-71.86%** | -77.57% | `NO_EXIT_BEFORE_CUTOFF` |
+| `307870` | 307870 | 2024-08-05 | Cutoff (Open) | **-70.74%** | -84.54% | `NO_PROGRESSED_BEFORE_CUTOFF` |
+| `311390` | 311390 | 2025-04-14 | Cutoff (Open) | **-69.34%** | -75.18% | `NO_PROGRESSED_BEFORE_CUTOFF` |
 
 ---
 
-## 7. Strategic Governance & Next Steps
+## 7. Strategic Governance & Verdict
 
-1. **Proxy Research Verdict**:
-   - **`SUPPORTIVE_OF_JULIA`**
+1. **Proxy Research Verdict**: **`MIXED`**
+   - **Rationale**: Evidence presents mixed signals across performance, drawdown, and tail distribution metrics.
 2. **Production Status Invariant**:
    - `JULIA_PRODUCTION_STATUS = NOT_APPROVED`
+   - `OFFICIAL_FULL_PIT_STATUS = INVALID_INCOMPLETE_PIT_COVERAGE`
    - 기본 프로덕션 전략은 `PATTERN_A_FAST_FINAL_STRATEGY_V02` (783 historical trades)를 엄격히 유지합니다.
 3. **Next Steps**:
    - KRX Open API 98 dates 공식 확보 후 Proxy vs Actual 시총 오차 및 백테스트 결과 Reconciliation 수행 예정.
