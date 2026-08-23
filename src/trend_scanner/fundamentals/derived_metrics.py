@@ -236,11 +236,14 @@ class DerivedMetricsEngine:
 
     def _ready(self, item: PeriodizedFinancialObservation | None) -> bool:
         available = _source_available_on(item)
-        return _value_ready(item) and (
-            self._requested_as_of_date is None
-            or available is None
-            or available <= self._requested_as_of_date
-        )
+        if not _value_ready(item):
+            return False
+        if self._requested_as_of_date is None:
+            return True
+        # A PIT request without an auditable availability date is not safe to
+        # use.  Treat unknown availability as INPUT_NOT_READY rather than
+        # allowing a numerically valid observation to cross the cutoff gate.
+        return available is not None and available <= self._requested_as_of_date
 
     def _coherence(self, items: Iterable[PeriodizedFinancialObservation | None]) -> tuple[str, str | None]:
         values = tuple(items)
@@ -339,6 +342,10 @@ class DerivedMetricsEngine:
             final_status = INPUT_NOT_READY
             final_value = None
             final_reason = "FUTURE_DATA_AFTER_REQUESTED_AS_OF"
+        elif (status == READY and self._requested_as_of_date is not None and not pit_dates):
+            final_status = INPUT_NOT_READY
+            final_value = None
+            final_reason = "PIT_AVAILABILITY_UNKNOWN"
         return DerivedMetricObservation(
             ticker, corp_code, family, str(current.fiscal_year) if current else "",
             current.fiscal_period if current else "", metric, metric_type, final_value,
