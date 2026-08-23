@@ -113,6 +113,17 @@ class PeriodizationFact:
 
 
 @dataclass(frozen=True)
+class PriorCumulativeSelection:
+    """PIT selection state used by derived-quarter resolution."""
+
+    status: str
+    selected: PeriodizationFact | None = None
+    eligible: tuple[PeriodizationFact, ...] = ()
+    latest_rcept_dt: str | None = None
+    reason: str | None = None
+
+
+@dataclass(frozen=True)
 class PeriodizedFinancialObservation:
     ticker: str
     corp_code: str
@@ -142,6 +153,9 @@ class PeriodizedFinancialObservation:
     cumulative_value: int | float | None = None
     derived_standalone_value: int | float | None = None
     direct_derived_difference: int | float | None = None
+    # Appended at the end to preserve positional-constructor compatibility
+    # for existing consumers of the V01 model.
+    source_rcept_dts: tuple[str, ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -163,6 +177,7 @@ class PeriodizedFinancialObservation:
             "anchor_rcept_no": self.anchor_rcept_no,
             "anchor_rcept_dt": self.anchor_rcept_dt,
             "source_rcept_nos": list(self.source_rcept_nos),
+            "source_rcept_dts": list(self.source_rcept_dts),
             "source_sha256s": list(self.source_sha256s),
             "fs_div_used": self.fs_div_used,
             "pit_available_from": self.pit_available_from,

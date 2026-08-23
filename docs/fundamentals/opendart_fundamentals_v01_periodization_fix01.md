@@ -74,8 +74,9 @@ flag를 사용한다.
       --env-file /Users/june/Documents/projects/env.md
 
 bounded window로 삼성전자(005930)와 에스티팜(237690)의 FY2025 Q1/H1/Q3/
-Annual filing-specific XBRL을 확인했다. 총 OpenDART 요청은 12건(최대 30),
-context row는 168건이다. Hana(086790)는 기존 Annual cache만 있는
+Annual filing-specific XBRL을 확인했다. historical artifact 기준 network
+request는 8건(registry 8건, XBRL network fetch 0건; filing-specific XBRL
+cache hit 8건)이며, context row는 168건이다. Hana(086790)는 기존 Annual cache만 있는
 `OFFLINE_CACHE_ONLY` control로 기록했으며 bounded live cohort에는 넣지
 않았다.
 

@@ -27,6 +27,7 @@ from .period_models import (
     PeriodizationFact,
     PeriodizationResult,
     PeriodizedFinancialObservation,
+    PriorCumulativeSelection,
     READY,
     STANDALONE_QUARTER,
     as_facts,
@@ -59,6 +60,10 @@ REPORT_PERIODS = {
 }
 REPORT_CODE_ORDER = ("11013", "11012", "11014", "11011")
 PRIOR_CUMULATIVE_CODE = {"11012": "11013", "11014": "11012", "11011": "11014"}
+PRIOR_READY = "READY"
+PRIOR_MISSING = "MISSING"
+PRIOR_AMBIGUOUS = "AMBIGUOUS"
+PRIOR_PIT_MULTIPLE_FILINGS_ON_SAME_EOD = "PRIOR_PIT_MULTIPLE_FILINGS_ON_SAME_EOD"
 
 
 def _parse_date(value: Any) -> date | None:
@@ -402,7 +407,8 @@ class PeriodizationEngine:
                                                          "Q1_STANDALONE_UNAVAILABLE"))
                 continue
 
-            prior = self._prior_cumulative(group, code, anchor)
+            prior_selection = self._prior_cumulative_selection(group, code, anchor)
+            prior = prior_selection.selected
             if len(cumulative) > 1 or len(direct) > 1:
                 observations.append(self._unavailable(anchor, fiscal_start, period_info[0], PERIOD_AMBIGUOUS,
                                                      "MULTIPLE_CURRENT_PERIOD_CONTEXTS"))
@@ -416,8 +422,11 @@ class PeriodizationEngine:
             derived_value = None
             derived_reason = None
             if cumulative_candidate is not None:
-                coherent, derived_reason = _coherence(cumulative_candidate, prior, fiscal_start)
-                if coherent:
+                if prior_selection.status == PRIOR_AMBIGUOUS:
+                    derived_reason = prior_selection.reason or PRIOR_PIT_MULTIPLE_FILINGS_ON_SAME_EOD
+                else:
+                    coherent, derived_reason = _coherence(cumulative_candidate, prior, fiscal_start)
+                if prior_selection.status != PRIOR_AMBIGUOUS and coherent:
                     derived_value = _difference(cumulative_candidate.value, prior.value)
                 else:
                     derived_reason = derived_reason or DERIVATION_UNAVAILABLE
@@ -436,7 +445,8 @@ class PeriodizationEngine:
                 observations.append(self._derived(anchor, fiscal_start, period_label, cumulative_candidate, prior,
                                                   derived_value, "DERIVED_DIFFERENCE"))
             else:
-                status = DERIVATION_UNAVAILABLE if cumulative_candidate is not None else DATA_UNAVAILABLE
+                status = (PERIOD_AMBIGUOUS if prior_selection.status == PRIOR_AMBIGUOUS
+                          else DERIVATION_UNAVAILABLE if cumulative_candidate is not None else DATA_UNAVAILABLE)
                 observations.append(self._unavailable(anchor, fiscal_start, period_label, status,
                                                      derived_reason or "STANDALONE_UNAVAILABLE"))
         return observations, parity, diagnostics
@@ -445,13 +455,35 @@ class PeriodizationEngine:
     def _unique(values: list[PeriodizationFact]) -> PeriodizationFact | None:
         return values[0] if len(values) == 1 else None
 
-    def _prior_cumulative(self, group: list[PeriodizationFact], code: str, anchor: PeriodizationFact) -> PeriodizationFact | None:
+    def _prior_cumulative_selection(self, group: list[PeriodizationFact], code: str,
+                                    anchor: PeriodizationFact) -> PriorCumulativeSelection:
         prior_code = PRIOR_CUMULATIVE_CODE[code]
-        candidates = [item for item in group if item.reprt_code == prior_code and _semantic(item) == CUMULATIVE_YTD
-                      and _valid_source(item) and (not _parse_date(anchor.rcept_dt) or not _parse_date(item.rcept_dt)
-                                                   or _parse_date(item.rcept_dt) <= _parse_date(anchor.rcept_dt))]
-        candidates.sort(key=lambda item: (_parse_date(item.rcept_dt) or date.min, item.rcept_no))
-        return candidates[-1] if candidates else None
+        anchor_dt = _parse_date(anchor.rcept_dt)
+        if anchor_dt is None:
+            return PriorCumulativeSelection(PRIOR_MISSING, reason="PRIOR_PIT_ANCHOR_RECEIPT_UNRESOLVED")
+        candidates = [item for item in group
+                      if item.reprt_code == prior_code and _semantic(item) == CUMULATIVE_YTD
+                      and _valid_source(item) and _parse_date(item.rcept_dt) is not None
+                      and _parse_date(item.rcept_dt) <= anchor_dt]
+        if not candidates:
+            return PriorCumulativeSelection(PRIOR_MISSING, reason="MISSING_PRIOR_CUMULATIVE")
+        latest_dt = max(_parse_date(item.rcept_dt) for item in candidates)
+        latest = tuple(item for item in candidates if _parse_date(item.rcept_dt) == latest_dt)
+        distinct_rcept_nos = {item.rcept_no for item in latest}
+        latest_text = latest_dt.isoformat() if latest_dt else None
+        if len(distinct_rcept_nos) > 1:
+            return PriorCumulativeSelection(
+                PRIOR_AMBIGUOUS, eligible=latest, latest_rcept_dt=latest_text,
+                reason=PRIOR_PIT_MULTIPLE_FILINGS_ON_SAME_EOD,
+            )
+        return PriorCumulativeSelection(PRIOR_READY, selected=latest[0], eligible=latest,
+                                        latest_rcept_dt=latest_text)
+
+    def _prior_cumulative(self, group: list[PeriodizationFact], code: str,
+                          anchor: PeriodizationFact) -> PeriodizationFact | None:
+        """Backward-compatible selected-fact accessor; ambiguity returns None."""
+
+        return self._prior_cumulative_selection(group, code, anchor).selected
 
     def _base(self, fact: PeriodizationFact, fiscal_start: str | None, period: str, semantic: str,
               *, value: Any, method: str, source: list[PeriodizationFact], status: str = READY,
@@ -465,7 +497,8 @@ class PeriodizationEngine:
             anchor_report_type=fact.report_type or REPORT_TYPE_BY_CODE.get(fact.reprt_code, "UNKNOWN"),
             anchor_reprt_code=fact.reprt_code, anchor_rcept_no=fact.rcept_no, anchor_rcept_dt=fact.rcept_dt,
             source_rcept_nos=tuple(item.rcept_no for item in source),
-            source_sha256s=tuple(item.source_sha256 for item in source if item.source_sha256),
+            source_rcept_dts=tuple(item.rcept_dt for item in source),
+            source_sha256s=tuple(item.source_sha256 or "" for item in source),
             fs_div_used=fact.fs_div_used, pit_available_from=fact.pit_available_from or fact.rcept_dt,
             pit_granularity=self.pit_granularity, resolution_status=status, reason=reason,
             direct_value=_number(direct), cumulative_value=_number(cumulative),

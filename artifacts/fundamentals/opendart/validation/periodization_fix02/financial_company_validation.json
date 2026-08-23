@@ -1,0 +1,227 @@
+{
+  "ambiguity_count": 1,
+  "basis_values": [
+    "CFS"
+  ],
+  "cfs_ofs_mixing": false,
+  "company": "하나금융지주",
+  "company_family": "FINANCIAL",
+  "comparative_excluded": true,
+  "comparative_policy": {
+    "comparative_context_count": 34,
+    "current_context_count": 24,
+    "excluded_from_periodization": true
+  },
+  "filing_resolutions": [
+    {
+      "candidates": [
+        {
+          "rcept_dt": "20250515",
+          "rcept_no": "20250515002336",
+          "report_nm": "분기보고서 (2025.03)",
+          "source_sha256": "61723a55aa82344f505779c596639f21845d6e3d1179d120370f6646eb41033e"
+        }
+      ],
+      "parser_result": "READY",
+      "reason": "LATEST_ELIGIBLE_FILING",
+      "report_type": "Q1",
+      "reprt_code": "11013",
+      "selected_rcept_dt": "20250515",
+      "selected_rcept_no": "20250515002336",
+      "status": "READY"
+    },
+    {
+      "candidates": [
+        {
+          "rcept_dt": "20250814",
+          "rcept_no": "20250814003918",
+          "report_nm": "반기보고서 (2025.06)",
+          "source_sha256": null
+        },
+        {
+          "rcept_dt": "20250814",
+          "rcept_no": "20250814004489",
+          "report_nm": "[기재정정]반기보고서 (2025.06)",
+          "source_sha256": null
+        }
+      ],
+      "parser_result": "NOT_RUN_PIT_NOT_READY",
+      "reason": "MULTIPLE_FILINGS_ON_SAME_DATE",
+      "report_type": "HALF_YEAR",
+      "reprt_code": "11012",
+      "selected_rcept_dt": null,
+      "selected_rcept_no": null,
+      "status": "AMBIGUOUS"
+    },
+    {
+      "candidates": [
+        {
+          "rcept_dt": "20251114",
+          "rcept_no": "20251114002661",
+          "report_nm": "분기보고서 (2025.09)",
+          "source_sha256": "af590d9ff03fe04188bc149b314f95a0306fd9e6e559ead33d0cc0f90fc10c75"
+        }
+      ],
+      "parser_result": "READY",
+      "reason": "LATEST_ELIGIBLE_FILING",
+      "report_type": "Q3",
+      "reprt_code": "11014",
+      "selected_rcept_dt": "20251114",
+      "selected_rcept_no": "20251114002661",
+      "status": "READY"
+    },
+    {
+      "candidates": [
+        {
+          "rcept_dt": "20260316",
+          "rcept_no": "20260316001292",
+          "report_nm": "사업보고서 (2025.12)",
+          "source_sha256": "e7d5f224b7b1b9619bd3f927b6b588496b10df91ac5c2603efa31ffe83779efb"
+        }
+      ],
+      "parser_result": "READY",
+      "reason": "LATEST_ELIGIBLE_FILING",
+      "report_type": "ANNUAL",
+      "reprt_code": "11011",
+      "selected_rcept_dt": "20260316",
+      "selected_rcept_no": "20260316001292",
+      "status": "READY"
+    }
+  ],
+  "filings": [
+    {
+      "basis": "CFS",
+      "cache_hit": true,
+      "company": "하나금융지주",
+      "company_family": "FINANCIAL",
+      "comparative_context_count": 9,
+      "context_count": 17,
+      "current_context_count": 8,
+      "fiscal_year": "2025",
+      "metric_context_counts": {
+        "assets": 2,
+        "equity": 3,
+        "liabilities": 2,
+        "net_income": 4,
+        "operating_cash_flow": 2,
+        "operating_income": 4
+      },
+      "parser_result": "READY",
+      "pit_status": "READY",
+      "rcept_dt": "20250515",
+      "rcept_no": "20250515002336",
+      "report_type": "Q1",
+      "reprt_code": "11013",
+      "source_sha256": "61723a55aa82344f505779c596639f21845d6e3d1179d120370f6646eb41033e",
+      "ticker": "086790"
+    },
+    {
+      "basis": "CFS",
+      "cache_hit": true,
+      "company": "하나금융지주",
+      "company_family": "FINANCIAL",
+      "comparative_context_count": 12,
+      "context_count": 21,
+      "current_context_count": 9,
+      "fiscal_year": "2025",
+      "metric_context_counts": {
+        "assets": 3,
+        "equity": 3,
+        "liabilities": 3,
+        "net_income": 4,
+        "operating_cash_flow": 2,
+        "operating_income": 6
+      },
+      "parser_result": "READY",
+      "pit_status": "READY",
+      "rcept_dt": "20251114",
+      "rcept_no": "20251114002661",
+      "report_type": "Q3",
+      "reprt_code": "11014",
+      "source_sha256": "af590d9ff03fe04188bc149b314f95a0306fd9e6e559ead33d0cc0f90fc10c75",
+      "ticker": "086790"
+    },
+    {
+      "basis": "CFS",
+      "cache_hit": true,
+      "company": "하나금융지주",
+      "company_family": "FINANCIAL",
+      "comparative_context_count": 13,
+      "context_count": 20,
+      "current_context_count": 7,
+      "fiscal_year": "2025",
+      "metric_context_counts": {
+        "assets": 3,
+        "equity": 3,
+        "liabilities": 3,
+        "net_income": 3,
+        "operating_cash_flow": 3,
+        "operating_income": 5
+      },
+      "parser_result": "READY",
+      "pit_status": "READY",
+      "rcept_dt": "20260316",
+      "rcept_no": "20260316001292",
+      "report_type": "ANNUAL",
+      "reprt_code": "11011",
+      "source_sha256": "e7d5f224b7b1b9619bd3f927b6b588496b10df91ac5c2603efa31ffe83779efb",
+      "ticker": "086790"
+    }
+  ],
+  "fiscal_year": "2025",
+  "instant_metrics": {
+    "assets": {
+      "observation_count": 3,
+      "resolution_status_counts": {
+        "READY": 3
+      },
+      "status": "READY"
+    },
+    "equity": {
+      "observation_count": 3,
+      "resolution_status_counts": {
+        "READY": 3
+      },
+      "status": "READY"
+    },
+    "liabilities": {
+      "observation_count": 3,
+      "resolution_status_counts": {
+        "READY": 3
+      },
+      "status": "READY"
+    }
+  },
+  "metric_resolution": {
+    "net_income": {
+      "observation_count": 6,
+      "resolution_status_counts": {
+        "DATA_UNAVAILABLE": 1,
+        "PERIOD_AMBIGUOUS": 1,
+        "READY": 4
+      },
+      "status": "READY"
+    },
+    "operating_cash_flow": {
+      "observation_count": 6,
+      "resolution_status_counts": {
+        "DERIVATION_UNAVAILABLE": 1,
+        "READY": 5
+      },
+      "status": "READY"
+    },
+    "operating_income": {
+      "observation_count": 1,
+      "resolution_status_counts": {
+        "NOT_APPLICABLE": 1
+      },
+      "status": "NOT_APPLICABLE"
+    },
+    "revenue": {
+      "observation_count": 0,
+      "resolution_status_counts": {},
+      "status": "NOT_APPLICABLE"
+    }
+  },
+  "ticker": "086790"
+}

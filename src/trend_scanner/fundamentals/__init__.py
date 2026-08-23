@@ -20,7 +20,7 @@ from .models import FinancialObservation, NormalizedFinancialReport, RegisteredF
 from .opendart_client import OpenDartClient
 from .pit_resolver import PITResolver
 from .xbrl_repository import XbrlRepository
-from .period_models import PeriodizationFact, PeriodizationResult, PeriodizedFinancialObservation
+from .period_models import PeriodizationFact, PeriodizationResult, PeriodizedFinancialObservation, PriorCumulativeSelection
 from .periodization import PeriodizationEngine, facts_from_xbrl_rows, periodize_facts, periodize_fiscal_year
 from .periodization_provider import PeriodizationBuild, PeriodizationProvider, PeriodizationProviderError
 
@@ -48,6 +48,7 @@ __all__ = [
     "PeriodizationFact",
     "PeriodizationResult",
     "PeriodizedFinancialObservation",
+    "PriorCumulativeSelection",
     "PeriodizationEngine",
     "facts_from_xbrl_rows",
     "periodize_facts",

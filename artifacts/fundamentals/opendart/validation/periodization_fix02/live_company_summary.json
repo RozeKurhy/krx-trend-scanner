@@ -1,0 +1,794 @@
+{
+  "005930": {
+    "FY": "READY",
+    "H1": "READY",
+    "OCF_contexts": 4,
+    "Q1": "READY",
+    "Q3": "READY",
+    "ambiguity": 3,
+    "company": "삼성전자",
+    "company_family": "NON_FINANCIAL",
+    "direct_derived_parity": [
+      {
+        "anchor_rcept_no": "20250814003156",
+        "derived_value": 5116435000000,
+        "difference": 0,
+        "direct_value": 5116435000000,
+        "fiscal_period": "Q2",
+        "metric": "net_income",
+        "reason": null,
+        "status": "MATCH"
+      },
+      {
+        "anchor_rcept_no": "20251114002447",
+        "derived_value": 12225747000000,
+        "difference": 0,
+        "direct_value": 12225747000000,
+        "fiscal_period": "Q3",
+        "metric": "net_income",
+        "reason": null,
+        "status": "MATCH"
+      },
+      {
+        "anchor_rcept_no": "20250814003156",
+        "derived_value": 4676057000000,
+        "difference": 0,
+        "direct_value": 4676057000000,
+        "fiscal_period": "Q2",
+        "metric": "operating_income",
+        "reason": null,
+        "status": "MATCH"
+      },
+      {
+        "anchor_rcept_no": "20251114002447",
+        "derived_value": 12166062000000,
+        "difference": 0,
+        "direct_value": 12166062000000,
+        "fiscal_period": "Q3",
+        "metric": "operating_income",
+        "reason": null,
+        "status": "MATCH"
+      },
+      {
+        "anchor_rcept_no": "20250814003156",
+        "derived_value": 74566317000000,
+        "difference": 0,
+        "direct_value": 74566317000000,
+        "fiscal_period": "Q2",
+        "metric": "revenue",
+        "reason": null,
+        "status": "MATCH"
+      },
+      {
+        "anchor_rcept_no": "20251114002447",
+        "derived_value": 86061747000000,
+        "difference": 0,
+        "direct_value": 86061747000000,
+        "fiscal_period": "Q3",
+        "metric": "revenue",
+        "reason": null,
+        "status": "MATCH"
+      }
+    ],
+    "filing_resolutions": [
+      {
+        "candidates": [
+          {
+            "rcept_dt": "20250515",
+            "rcept_no": "20250515001922",
+            "report_nm": "분기보고서 (2025.03)",
+            "source_sha256": "3eeec9c2b63fc168d5bce2c757df8869f17fb230d505cb6fadc434d40677a960"
+          }
+        ],
+        "parser_result": "READY",
+        "reason": "LATEST_ELIGIBLE_FILING",
+        "report_type": "Q1",
+        "reprt_code": "11013",
+        "selected_rcept_dt": "20250515",
+        "selected_rcept_no": "20250515001922",
+        "status": "READY"
+      },
+      {
+        "candidates": [
+          {
+            "rcept_dt": "20250814",
+            "rcept_no": "20250814003156",
+            "report_nm": "반기보고서 (2025.06)",
+            "source_sha256": "e1953af83730a45da434277a9ca9bcd9a41ccee652e69c631a1b8f78a9195927"
+          }
+        ],
+        "parser_result": "READY",
+        "reason": "LATEST_ELIGIBLE_FILING",
+        "report_type": "HALF_YEAR",
+        "reprt_code": "11012",
+        "selected_rcept_dt": "20250814",
+        "selected_rcept_no": "20250814003156",
+        "status": "READY"
+      },
+      {
+        "candidates": [
+          {
+            "rcept_dt": "20251114",
+            "rcept_no": "20251114002447",
+            "report_nm": "분기보고서 (2025.09)",
+            "source_sha256": "a4b68a90e1b8a649cbb5d29d3fc7b62467cd6fb66a2496a03c6318a6a9a909e8"
+          }
+        ],
+        "parser_result": "READY",
+        "reason": "LATEST_ELIGIBLE_FILING",
+        "report_type": "Q3",
+        "reprt_code": "11014",
+        "selected_rcept_dt": "20251114",
+        "selected_rcept_no": "20251114002447",
+        "status": "READY"
+      },
+      {
+        "candidates": [
+          {
+            "rcept_dt": "20260310",
+            "rcept_no": "20260310002820",
+            "report_nm": "사업보고서 (2025.12)",
+            "source_sha256": "946ed3c81628c5cb69e460217a1e3f656d857b64c9dde15fdac981c2d68323d1"
+          }
+        ],
+        "parser_result": "READY",
+        "reason": "LATEST_ELIGIBLE_FILING",
+        "report_type": "ANNUAL",
+        "reprt_code": "11011",
+        "selected_rcept_dt": "20260310",
+        "selected_rcept_no": "20260310002820",
+        "status": "READY"
+      }
+    ],
+    "filings": [
+      {
+        "basis": "CFS",
+        "cache_hit": true,
+        "company": "삼성전자",
+        "company_family": "NON_FINANCIAL",
+        "comparative_context_count": 11,
+        "context_count": 21,
+        "current_context_count": 10,
+        "fiscal_year": "2025",
+        "metric_context_counts": {
+          "assets": 2,
+          "equity": 3,
+          "liabilities": 2,
+          "net_income": 4,
+          "operating_cash_flow": 2,
+          "operating_income": 4,
+          "revenue": 4
+        },
+        "parser_result": "READY",
+        "pit_status": "READY",
+        "rcept_dt": "20250515",
+        "rcept_no": "20250515001922",
+        "report_type": "Q1",
+        "reprt_code": "11013",
+        "source_sha256": "3eeec9c2b63fc168d5bce2c757df8869f17fb230d505cb6fadc434d40677a960",
+        "ticker": "005930"
+      },
+      {
+        "basis": "CFS",
+        "cache_hit": true,
+        "company": "삼성전자",
+        "company_family": "NON_FINANCIAL",
+        "comparative_context_count": 11,
+        "context_count": 21,
+        "current_context_count": 10,
+        "fiscal_year": "2025",
+        "metric_context_counts": {
+          "assets": 2,
+          "equity": 3,
+          "liabilities": 2,
+          "net_income": 4,
+          "operating_cash_flow": 2,
+          "operating_income": 4,
+          "revenue": 4
+        },
+        "parser_result": "READY",
+        "pit_status": "READY",
+        "rcept_dt": "20250814",
+        "rcept_no": "20250814003156",
+        "report_type": "HALF_YEAR",
+        "reprt_code": "11012",
+        "source_sha256": "e1953af83730a45da434277a9ca9bcd9a41ccee652e69c631a1b8f78a9195927",
+        "ticker": "005930"
+      },
+      {
+        "basis": "CFS",
+        "cache_hit": true,
+        "company": "삼성전자",
+        "company_family": "NON_FINANCIAL",
+        "comparative_context_count": 11,
+        "context_count": 21,
+        "current_context_count": 10,
+        "fiscal_year": "2025",
+        "metric_context_counts": {
+          "assets": 2,
+          "equity": 3,
+          "liabilities": 2,
+          "net_income": 4,
+          "operating_cash_flow": 2,
+          "operating_income": 4,
+          "revenue": 4
+        },
+        "parser_result": "READY",
+        "pit_status": "READY",
+        "rcept_dt": "20251114",
+        "rcept_no": "20251114002447",
+        "report_type": "Q3",
+        "reprt_code": "11014",
+        "source_sha256": "a4b68a90e1b8a649cbb5d29d3fc7b62467cd6fb66a2496a03c6318a6a9a909e8",
+        "ticker": "005930"
+      },
+      {
+        "basis": "CFS",
+        "cache_hit": true,
+        "company": "삼성전자",
+        "company_family": "NON_FINANCIAL",
+        "comparative_context_count": 14,
+        "context_count": 21,
+        "current_context_count": 7,
+        "fiscal_year": "2025",
+        "metric_context_counts": {
+          "assets": 3,
+          "equity": 3,
+          "liabilities": 3,
+          "net_income": 3,
+          "operating_cash_flow": 3,
+          "operating_income": 3,
+          "revenue": 3
+        },
+        "parser_result": "READY",
+        "pit_status": "READY",
+        "rcept_dt": "20260310",
+        "rcept_no": "20260310002820",
+        "report_type": "ANNUAL",
+        "reprt_code": "11011",
+        "source_sha256": "946ed3c81628c5cb69e460217a1e3f656d857b64c9dde15fdac981c2d68323d1",
+        "ticker": "005930"
+      }
+    ],
+    "fiscal_year": "2025",
+    "metric_resolution": {
+      "net_income": {
+        "observation_count": 8,
+        "resolution_status_counts": {
+          "DATA_UNAVAILABLE": 1,
+          "PERIOD_AMBIGUOUS": 1,
+          "READY": 6
+        },
+        "status": "READY"
+      },
+      "operating_cash_flow": {
+        "observation_count": 8,
+        "resolution_status_counts": {
+          "READY": 8
+        },
+        "status": "READY"
+      },
+      "operating_income": {
+        "observation_count": 8,
+        "resolution_status_counts": {
+          "DATA_UNAVAILABLE": 1,
+          "PERIOD_AMBIGUOUS": 1,
+          "READY": 6
+        },
+        "status": "READY"
+      },
+      "revenue": {
+        "observation_count": 8,
+        "resolution_status_counts": {
+          "DATA_UNAVAILABLE": 1,
+          "PERIOD_AMBIGUOUS": 1,
+          "READY": 6
+        },
+        "status": "READY"
+      }
+    },
+    "net_income_contexts": 7,
+    "notes": [],
+    "operating_income_contexts": 7,
+    "revenue_contexts": 7,
+    "ticker": "005930"
+  },
+  "086790": {
+    "FY": "READY",
+    "H1": "AMBIGUOUS",
+    "OCF_contexts": 3,
+    "Q1": "READY",
+    "Q3": "READY",
+    "ambiguity": 1,
+    "company": "하나금융지주",
+    "company_family": "FINANCIAL",
+    "direct_derived_parity": [],
+    "filing_resolutions": [
+      {
+        "candidates": [
+          {
+            "rcept_dt": "20250515",
+            "rcept_no": "20250515002336",
+            "report_nm": "분기보고서 (2025.03)",
+            "source_sha256": "61723a55aa82344f505779c596639f21845d6e3d1179d120370f6646eb41033e"
+          }
+        ],
+        "parser_result": "READY",
+        "reason": "LATEST_ELIGIBLE_FILING",
+        "report_type": "Q1",
+        "reprt_code": "11013",
+        "selected_rcept_dt": "20250515",
+        "selected_rcept_no": "20250515002336",
+        "status": "READY"
+      },
+      {
+        "candidates": [
+          {
+            "rcept_dt": "20250814",
+            "rcept_no": "20250814003918",
+            "report_nm": "반기보고서 (2025.06)",
+            "source_sha256": null
+          },
+          {
+            "rcept_dt": "20250814",
+            "rcept_no": "20250814004489",
+            "report_nm": "[기재정정]반기보고서 (2025.06)",
+            "source_sha256": null
+          }
+        ],
+        "parser_result": "NOT_RUN_PIT_NOT_READY",
+        "reason": "MULTIPLE_FILINGS_ON_SAME_DATE",
+        "report_type": "HALF_YEAR",
+        "reprt_code": "11012",
+        "selected_rcept_dt": null,
+        "selected_rcept_no": null,
+        "status": "AMBIGUOUS"
+      },
+      {
+        "candidates": [
+          {
+            "rcept_dt": "20251114",
+            "rcept_no": "20251114002661",
+            "report_nm": "분기보고서 (2025.09)",
+            "source_sha256": "af590d9ff03fe04188bc149b314f95a0306fd9e6e559ead33d0cc0f90fc10c75"
+          }
+        ],
+        "parser_result": "READY",
+        "reason": "LATEST_ELIGIBLE_FILING",
+        "report_type": "Q3",
+        "reprt_code": "11014",
+        "selected_rcept_dt": "20251114",
+        "selected_rcept_no": "20251114002661",
+        "status": "READY"
+      },
+      {
+        "candidates": [
+          {
+            "rcept_dt": "20260316",
+            "rcept_no": "20260316001292",
+            "report_nm": "사업보고서 (2025.12)",
+            "source_sha256": "e7d5f224b7b1b9619bd3f927b6b588496b10df91ac5c2603efa31ffe83779efb"
+          }
+        ],
+        "parser_result": "READY",
+        "reason": "LATEST_ELIGIBLE_FILING",
+        "report_type": "ANNUAL",
+        "reprt_code": "11011",
+        "selected_rcept_dt": "20260316",
+        "selected_rcept_no": "20260316001292",
+        "status": "READY"
+      }
+    ],
+    "filings": [
+      {
+        "basis": "CFS",
+        "cache_hit": true,
+        "company": "하나금융지주",
+        "company_family": "FINANCIAL",
+        "comparative_context_count": 9,
+        "context_count": 17,
+        "current_context_count": 8,
+        "fiscal_year": "2025",
+        "metric_context_counts": {
+          "assets": 2,
+          "equity": 3,
+          "liabilities": 2,
+          "net_income": 4,
+          "operating_cash_flow": 2,
+          "operating_income": 4
+        },
+        "parser_result": "READY",
+        "pit_status": "READY",
+        "rcept_dt": "20250515",
+        "rcept_no": "20250515002336",
+        "report_type": "Q1",
+        "reprt_code": "11013",
+        "source_sha256": "61723a55aa82344f505779c596639f21845d6e3d1179d120370f6646eb41033e",
+        "ticker": "086790"
+      },
+      {
+        "basis": "CFS",
+        "cache_hit": true,
+        "company": "하나금융지주",
+        "company_family": "FINANCIAL",
+        "comparative_context_count": 12,
+        "context_count": 21,
+        "current_context_count": 9,
+        "fiscal_year": "2025",
+        "metric_context_counts": {
+          "assets": 3,
+          "equity": 3,
+          "liabilities": 3,
+          "net_income": 4,
+          "operating_cash_flow": 2,
+          "operating_income": 6
+        },
+        "parser_result": "READY",
+        "pit_status": "READY",
+        "rcept_dt": "20251114",
+        "rcept_no": "20251114002661",
+        "report_type": "Q3",
+        "reprt_code": "11014",
+        "source_sha256": "af590d9ff03fe04188bc149b314f95a0306fd9e6e559ead33d0cc0f90fc10c75",
+        "ticker": "086790"
+      },
+      {
+        "basis": "CFS",
+        "cache_hit": true,
+        "company": "하나금융지주",
+        "company_family": "FINANCIAL",
+        "comparative_context_count": 13,
+        "context_count": 20,
+        "current_context_count": 7,
+        "fiscal_year": "2025",
+        "metric_context_counts": {
+          "assets": 3,
+          "equity": 3,
+          "liabilities": 3,
+          "net_income": 3,
+          "operating_cash_flow": 3,
+          "operating_income": 5
+        },
+        "parser_result": "READY",
+        "pit_status": "READY",
+        "rcept_dt": "20260316",
+        "rcept_no": "20260316001292",
+        "report_type": "ANNUAL",
+        "reprt_code": "11011",
+        "source_sha256": "e7d5f224b7b1b9619bd3f927b6b588496b10df91ac5c2603efa31ffe83779efb",
+        "ticker": "086790"
+      }
+    ],
+    "fiscal_year": "2025",
+    "metric_resolution": {
+      "net_income": {
+        "observation_count": 6,
+        "resolution_status_counts": {
+          "DATA_UNAVAILABLE": 1,
+          "PERIOD_AMBIGUOUS": 1,
+          "READY": 4
+        },
+        "status": "READY"
+      },
+      "operating_cash_flow": {
+        "observation_count": 6,
+        "resolution_status_counts": {
+          "DERIVATION_UNAVAILABLE": 1,
+          "READY": 5
+        },
+        "status": "READY"
+      },
+      "operating_income": {
+        "observation_count": 1,
+        "resolution_status_counts": {
+          "NOT_APPLICABLE": 1
+        },
+        "status": "NOT_APPLICABLE"
+      },
+      "revenue": {
+        "observation_count": 0,
+        "resolution_status_counts": {},
+        "status": "NOT_APPLICABLE"
+      }
+    },
+    "net_income_contexts": 5,
+    "notes": [],
+    "operating_income_contexts": 7,
+    "revenue_contexts": 0,
+    "ticker": "086790"
+  },
+  "237690": {
+    "FY": "READY",
+    "H1": "READY",
+    "OCF_contexts": 4,
+    "Q1": "READY",
+    "Q3": "READY",
+    "ambiguity": 3,
+    "company": "에스티팜",
+    "company_family": "NON_FINANCIAL",
+    "direct_derived_parity": [
+      {
+        "anchor_rcept_no": "20250814003419",
+        "derived_value": 5367408105,
+        "difference": 0,
+        "direct_value": 5367408105,
+        "fiscal_period": "Q2",
+        "metric": "net_income",
+        "reason": null,
+        "status": "MATCH"
+      },
+      {
+        "anchor_rcept_no": "20251114002347",
+        "derived_value": 17461337439,
+        "difference": 0,
+        "direct_value": 17461337439,
+        "fiscal_period": "Q3",
+        "metric": "net_income",
+        "reason": null,
+        "status": "MATCH"
+      },
+      {
+        "anchor_rcept_no": "20250814003419",
+        "derived_value": 12918898204,
+        "difference": 0,
+        "direct_value": 12918898204,
+        "fiscal_period": "Q2",
+        "metric": "operating_income",
+        "reason": null,
+        "status": "MATCH"
+      },
+      {
+        "anchor_rcept_no": "20251114002347",
+        "derived_value": 14724930873,
+        "difference": 0,
+        "direct_value": 14724930873,
+        "fiscal_period": "Q3",
+        "metric": "operating_income",
+        "reason": null,
+        "status": "MATCH"
+      },
+      {
+        "anchor_rcept_no": "20250814003419",
+        "derived_value": 68250893813,
+        "difference": 0,
+        "direct_value": 68250893813,
+        "fiscal_period": "Q2",
+        "metric": "revenue",
+        "reason": null,
+        "status": "MATCH"
+      },
+      {
+        "anchor_rcept_no": "20251114002347",
+        "derived_value": 81910210108,
+        "difference": 0,
+        "direct_value": 81910210108,
+        "fiscal_period": "Q3",
+        "metric": "revenue",
+        "reason": null,
+        "status": "MATCH"
+      }
+    ],
+    "filing_resolutions": [
+      {
+        "candidates": [
+          {
+            "rcept_dt": "20250515",
+            "rcept_no": "20250515002354",
+            "report_nm": "분기보고서 (2025.03)",
+            "source_sha256": "b08f7588fd073b6ff3c8acd710c36038494408e7801efb8411c953d6db345d38"
+          }
+        ],
+        "parser_result": "READY",
+        "reason": "LATEST_ELIGIBLE_FILING",
+        "report_type": "Q1",
+        "reprt_code": "11013",
+        "selected_rcept_dt": "20250515",
+        "selected_rcept_no": "20250515002354",
+        "status": "READY"
+      },
+      {
+        "candidates": [
+          {
+            "rcept_dt": "20250814",
+            "rcept_no": "20250814003419",
+            "report_nm": "반기보고서 (2025.06)",
+            "source_sha256": "cca07d5427f5be97e0e368f5c45f41701930d01fbcaab89b10e76bb267491041"
+          }
+        ],
+        "parser_result": "READY",
+        "reason": "LATEST_ELIGIBLE_FILING",
+        "report_type": "HALF_YEAR",
+        "reprt_code": "11012",
+        "selected_rcept_dt": "20250814",
+        "selected_rcept_no": "20250814003419",
+        "status": "READY"
+      },
+      {
+        "candidates": [
+          {
+            "rcept_dt": "20251114",
+            "rcept_no": "20251114002347",
+            "report_nm": "분기보고서 (2025.09)",
+            "source_sha256": "1955e6b94e9d2dbe5c7dfbb4595de14b91ec32430fad47db65e2f82e948be834"
+          }
+        ],
+        "parser_result": "READY",
+        "reason": "LATEST_ELIGIBLE_FILING",
+        "report_type": "Q3",
+        "reprt_code": "11014",
+        "selected_rcept_dt": "20251114",
+        "selected_rcept_no": "20251114002347",
+        "status": "READY"
+      },
+      {
+        "candidates": [
+          {
+            "rcept_dt": "20260318",
+            "rcept_no": "20260318001605",
+            "report_nm": "사업보고서 (2025.12)",
+            "source_sha256": "c7ce79a84c5829080ceae4601e2dd70b5dc90dc3c7a4ea971ff3575438b2f92e"
+          }
+        ],
+        "parser_result": "READY",
+        "reason": "LATEST_ELIGIBLE_FILING",
+        "report_type": "ANNUAL",
+        "reprt_code": "11011",
+        "selected_rcept_dt": "20260318",
+        "selected_rcept_no": "20260318001605",
+        "status": "READY"
+      }
+    ],
+    "filings": [
+      {
+        "basis": "CFS",
+        "cache_hit": true,
+        "company": "에스티팜",
+        "company_family": "NON_FINANCIAL",
+        "comparative_context_count": 11,
+        "context_count": 21,
+        "current_context_count": 10,
+        "fiscal_year": "2025",
+        "metric_context_counts": {
+          "assets": 2,
+          "equity": 3,
+          "liabilities": 2,
+          "net_income": 4,
+          "operating_cash_flow": 2,
+          "operating_income": 4,
+          "revenue": 4
+        },
+        "parser_result": "READY",
+        "pit_status": "READY",
+        "rcept_dt": "20250515",
+        "rcept_no": "20250515002354",
+        "report_type": "Q1",
+        "reprt_code": "11013",
+        "source_sha256": "b08f7588fd073b6ff3c8acd710c36038494408e7801efb8411c953d6db345d38",
+        "ticker": "237690"
+      },
+      {
+        "basis": "CFS",
+        "cache_hit": true,
+        "company": "에스티팜",
+        "company_family": "NON_FINANCIAL",
+        "comparative_context_count": 11,
+        "context_count": 21,
+        "current_context_count": 10,
+        "fiscal_year": "2025",
+        "metric_context_counts": {
+          "assets": 2,
+          "equity": 3,
+          "liabilities": 2,
+          "net_income": 4,
+          "operating_cash_flow": 2,
+          "operating_income": 4,
+          "revenue": 4
+        },
+        "parser_result": "READY",
+        "pit_status": "READY",
+        "rcept_dt": "20250814",
+        "rcept_no": "20250814003419",
+        "report_type": "HALF_YEAR",
+        "reprt_code": "11012",
+        "source_sha256": "cca07d5427f5be97e0e368f5c45f41701930d01fbcaab89b10e76bb267491041",
+        "ticker": "237690"
+      },
+      {
+        "basis": "CFS",
+        "cache_hit": true,
+        "company": "에스티팜",
+        "company_family": "NON_FINANCIAL",
+        "comparative_context_count": 11,
+        "context_count": 21,
+        "current_context_count": 10,
+        "fiscal_year": "2025",
+        "metric_context_counts": {
+          "assets": 2,
+          "equity": 3,
+          "liabilities": 2,
+          "net_income": 4,
+          "operating_cash_flow": 2,
+          "operating_income": 4,
+          "revenue": 4
+        },
+        "parser_result": "READY",
+        "pit_status": "READY",
+        "rcept_dt": "20251114",
+        "rcept_no": "20251114002347",
+        "report_type": "Q3",
+        "reprt_code": "11014",
+        "source_sha256": "1955e6b94e9d2dbe5c7dfbb4595de14b91ec32430fad47db65e2f82e948be834",
+        "ticker": "237690"
+      },
+      {
+        "basis": "CFS",
+        "cache_hit": true,
+        "company": "에스티팜",
+        "company_family": "NON_FINANCIAL",
+        "comparative_context_count": 14,
+        "context_count": 21,
+        "current_context_count": 7,
+        "fiscal_year": "2025",
+        "metric_context_counts": {
+          "assets": 3,
+          "equity": 3,
+          "liabilities": 3,
+          "net_income": 3,
+          "operating_cash_flow": 3,
+          "operating_income": 3,
+          "revenue": 3
+        },
+        "parser_result": "READY",
+        "pit_status": "READY",
+        "rcept_dt": "20260318",
+        "rcept_no": "20260318001605",
+        "report_type": "ANNUAL",
+        "reprt_code": "11011",
+        "source_sha256": "c7ce79a84c5829080ceae4601e2dd70b5dc90dc3c7a4ea971ff3575438b2f92e",
+        "ticker": "237690"
+      }
+    ],
+    "fiscal_year": "2025",
+    "metric_resolution": {
+      "net_income": {
+        "observation_count": 8,
+        "resolution_status_counts": {
+          "DATA_UNAVAILABLE": 1,
+          "PERIOD_AMBIGUOUS": 1,
+          "READY": 6
+        },
+        "status": "READY"
+      },
+      "operating_cash_flow": {
+        "observation_count": 8,
+        "resolution_status_counts": {
+          "READY": 8
+        },
+        "status": "READY"
+      },
+      "operating_income": {
+        "observation_count": 8,
+        "resolution_status_counts": {
+          "DATA_UNAVAILABLE": 1,
+          "PERIOD_AMBIGUOUS": 1,
+          "READY": 6
+        },
+        "status": "READY"
+      },
+      "revenue": {
+        "observation_count": 8,
+        "resolution_status_counts": {
+          "DATA_UNAVAILABLE": 1,
+          "PERIOD_AMBIGUOUS": 1,
+          "READY": 6
+        },
+        "status": "READY"
+      }
+    },
+    "net_income_contexts": 7,
+    "notes": [],
+    "operating_income_contexts": 7,
+    "revenue_contexts": 7,
+    "ticker": "237690"
+  }
+}
