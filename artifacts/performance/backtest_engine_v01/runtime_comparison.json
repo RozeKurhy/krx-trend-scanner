@@ -1,0 +1,43 @@
+{
+  "historical_runtime_minutes": 330,
+  "historical_runtime_source": "w.md Section 51 (37da35e closure commit reference), not re-executed this run",
+  "optimized_cold_runtime_seconds": 1641.282,
+  "optimized_cold_runtime_minutes": 27.35,
+  "wall_clock_total_seconds": 1642.685,
+  "wall_clock_total_minutes": 27.38,
+  "wall_clock_measurement_scope": "run start (before persistent cache load) -> persistent cache load -> proxy validation -> universe build -> Primary -> Sensitivity -> aggregation -> persistent cache save -> artifact serialization -> parity comparison (w.md Phase 4 Section 4); excludes only the write of this summary JSON itself, which cannot self-report its own write time",
+  "speedup_cold_x": 12.06,
+  "speedup_cold_wall_clock_x": 12.05,
+  "timings_breakdown": {
+    "proxy_validation_seconds": 33.7,
+    "primary_simulation_seconds": 1607.582,
+    "sensitivity_simulation_seconds": 0.0,
+    "total_elapsed_seconds": 1641.282
+  },
+  "ticker_data_cache_diagnostics": {
+    "unique_tickers_loaded": 3064,
+    "disk_read_count": 3064,
+    "memory_hit_count": 312356,
+    "memory_miss_count": 3064
+  },
+  "fast_snapshot_cache_diagnostics": {
+    "evaluation_count": 508071,
+    "cache_hit_count": 1497657
+  },
+  "monthly_snapshot_cache_diagnostics": {
+    "evaluation_count": 10413,
+    "cache_hit_count": 35108
+  },
+  "persistent_cache_diagnostics": {
+    "hit": false,
+    "preloaded_fast_snapshot_count": 0,
+    "preloaded_monthly_snapshot_count": 0
+  },
+  "proxy_validation_observation_count": 258055,
+  "workers_requested": 2,
+  "workers_effective": 2,
+  "machine_context": {
+    "python": "3.13",
+    "note": "single local run, no controlled machine isolation"
+  }
+}
