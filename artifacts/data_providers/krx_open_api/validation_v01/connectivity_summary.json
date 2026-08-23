@@ -1,0 +1,92 @@
+{
+  "work_id": "KRX_OPEN_API_VALIDATION_V01",
+  "canonical_validation_date": "2026-08-14",
+  "overall_status": "BLOCKED_API_ACCESS_OR_SERVICE_APPROVAL",
+  "reason": "All four official endpoints returned HTTP 401 Unauthorized API Call.",
+  "services": [
+    {
+      "http_status": 401,
+      "resp_code": "401",
+      "resp_msg": "Unauthorized API Call",
+      "top_level_keys": [
+        "respCode",
+        "respMsg"
+      ],
+      "record_count": 0,
+      "attempts": 1,
+      "service_name": "kospi_stock_daily",
+      "api_id": "stk_bydd_trd",
+      "endpoint_without_secret": "https://data-dbg.krx.co.kr/svc/apis/sto/stk_bydd_trd",
+      "query_parameter_names": [
+        "basDd"
+      ],
+      "validation_dates": [
+        "2026-08-14"
+      ],
+      "kind": "stock"
+    },
+    {
+      "http_status": 401,
+      "resp_code": "401",
+      "resp_msg": "Unauthorized API Call",
+      "top_level_keys": [
+        "respCode",
+        "respMsg"
+      ],
+      "record_count": 0,
+      "attempts": 1,
+      "service_name": "kosdaq_stock_daily",
+      "api_id": "ksq_bydd_trd",
+      "endpoint_without_secret": "https://data-dbg.krx.co.kr/svc/apis/sto/ksq_bydd_trd",
+      "query_parameter_names": [
+        "basDd"
+      ],
+      "validation_dates": [
+        "2026-08-14"
+      ],
+      "kind": "stock"
+    },
+    {
+      "http_status": 401,
+      "resp_code": "401",
+      "resp_msg": "Unauthorized API Call",
+      "top_level_keys": [
+        "respCode",
+        "respMsg"
+      ],
+      "record_count": 0,
+      "attempts": 1,
+      "service_name": "kospi_index_daily",
+      "api_id": "kospi_dd_trd",
+      "endpoint_without_secret": "https://data-dbg.krx.co.kr/svc/apis/idx/kospi_dd_trd",
+      "query_parameter_names": [
+        "basDd"
+      ],
+      "validation_dates": [
+        "2026-08-14"
+      ],
+      "kind": "index"
+    },
+    {
+      "http_status": 401,
+      "resp_code": "401",
+      "resp_msg": "Unauthorized API Call",
+      "top_level_keys": [
+        "respCode",
+        "respMsg"
+      ],
+      "record_count": 0,
+      "attempts": 1,
+      "service_name": "kosdaq_index_daily",
+      "api_id": "kosdaq_dd_trd",
+      "endpoint_without_secret": "https://data-dbg.krx.co.kr/svc/apis/idx/kosdaq_dd_trd",
+      "query_parameter_names": [
+        "basDd"
+      ],
+      "validation_dates": [
+        "2026-08-14"
+      ],
+      "kind": "index"
+    }
+  ]
+}

@@ -1,0 +1,55 @@
+{
+  "work_id": "KRX_OPEN_API_VALIDATION_V01",
+  "status": "BLOCKED_API_ACCESS_OR_SERVICE_APPROVAL",
+  "actual_data_schema_available": false,
+  "observed_error_response_schema": {
+    "kospi_stock_daily": [
+      "respCode",
+      "respMsg"
+    ],
+    "kosdaq_stock_daily": [
+      "respCode",
+      "respMsg"
+    ],
+    "kospi_index_daily": [
+      "respCode",
+      "respMsg"
+    ],
+    "kosdaq_index_daily": [
+      "respCode",
+      "respMsg"
+    ]
+  },
+  "expected_stock_fields_from_official_spec": [
+    "BAS_DD",
+    "ISU_CD",
+    "ISU_NM",
+    "MKT_NM",
+    "SECT_TP_NM",
+    "TDD_CLSPRC",
+    "CMPPREVDD_PRC",
+    "FLUC_RT",
+    "TDD_OPNPRC",
+    "TDD_HGPRC",
+    "TDD_LWPRC",
+    "ACC_TRDVOL",
+    "ACC_TRDVAL",
+    "MKTCAP",
+    "LIST_SHRS"
+  ],
+  "expected_index_fields_from_official_spec": [
+    "BAS_DD",
+    "IDX_NM",
+    "CLSPRC_IDX",
+    "FLUC_TP_CD",
+    "PRV_DD_CMPR",
+    "FLUC_RT",
+    "OPNPRC_IDX",
+    "HGPRC_IDX",
+    "LWPRC_IDX",
+    "ACC_TRDVOL",
+    "ACC_TRDVAL",
+    "MKTCAP"
+  ],
+  "schema_drift": "NOT_EVALUATED_AUTH_BLOCKED"
+}

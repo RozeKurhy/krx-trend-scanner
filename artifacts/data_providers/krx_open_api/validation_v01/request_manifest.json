@@ -1,0 +1,49 @@
+{
+  "work_id": "KRX_OPEN_API_VALIDATION_V01",
+  "start_head": "b73ae96a6a30f1211a045fedae7688973adb195f",
+  "auth_key_present": true,
+  "auth_key_exposed": false,
+  "services": [
+    {
+      "service_name": "kospi_stock_daily",
+      "api_id": "stk_bydd_trd",
+      "endpoint_without_secret": "https://data-dbg.krx.co.kr/svc/apis/sto/stk_bydd_trd",
+      "query_parameter_names": "basDd",
+      "validation_dates": "2026-08-14",
+      "http_status": 401,
+      "record_count": 0,
+      "attempts": 1
+    },
+    {
+      "service_name": "kosdaq_stock_daily",
+      "api_id": "ksq_bydd_trd",
+      "endpoint_without_secret": "https://data-dbg.krx.co.kr/svc/apis/sto/ksq_bydd_trd",
+      "query_parameter_names": "basDd",
+      "validation_dates": "2026-08-14",
+      "http_status": 401,
+      "record_count": 0,
+      "attempts": 1
+    },
+    {
+      "service_name": "kospi_index_daily",
+      "api_id": "kospi_dd_trd",
+      "endpoint_without_secret": "https://data-dbg.krx.co.kr/svc/apis/idx/kospi_dd_trd",
+      "query_parameter_names": "basDd",
+      "validation_dates": "2026-08-14",
+      "http_status": 401,
+      "record_count": 0,
+      "attempts": 1
+    },
+    {
+      "service_name": "kosdaq_index_daily",
+      "api_id": "kosdaq_dd_trd",
+      "endpoint_without_secret": "https://data-dbg.krx.co.kr/svc/apis/idx/kosdaq_dd_trd",
+      "query_parameter_names": "basDd",
+      "validation_dates": "2026-08-14",
+      "http_status": 401,
+      "record_count": 0,
+      "attempts": 1
+    }
+  ],
+  "total_api_requests": 4
+}
