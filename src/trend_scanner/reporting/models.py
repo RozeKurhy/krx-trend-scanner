@@ -335,10 +335,7 @@ class AFastCoreTradeHistoryItem:
 @dataclass
 class AFastCoreProvenance:
     strategy_contract: str = "PATTERN_A_FAST_FINAL_STRATEGY_V02"
-    # Keep the frozen v0.2 provenance path for v0.2 -> v0.3 parity. The file
-    # remains a compatibility stub; the canonical strategy document is linked
-    # from that stub and is validated independently.
-    strategy_contract_path: str = "docs/validation/pattern_a_fast_final_strategy_v02.md"
+    strategy_contract_path: str = "docs/patterns/pattern_a_fast/strategy/final_v02.md"
     architecture_authority_commit: str = "89df82a938dba1961c2342064db2dc0061a5f2ca"
     calendar_authority_commit: str = "88d54d85bdee1f2121bec9b27a250cbc1cb9f98f"
     trade_generation_authority_commit: str = "b9ba613be973906915e5081a0e5828dd6e1350d6"

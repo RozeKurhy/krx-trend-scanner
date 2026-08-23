@@ -53,6 +53,9 @@ from trend_scanner.universe.asset_classifier import AssetType
 from trend_scanner.universe.instrument_metadata import resolve_instrument_metadata
 from trend_scanner.validation.historical_snapshot import build_historical_snapshot
 
+
+LEGACY_A_FAST_CORE_PROVENANCE_PATH = "docs/validation/pattern_a_fast_final_strategy_v02.md"
+
 logger = logging.getLogger(__name__)
 
 
@@ -271,6 +274,10 @@ def _generate_deterministic_narrative(
 
 def _format_rs_return(value: float | None) -> str:
     return "N/A" if value is None else f"{value * 100:+.2f}%"
+
+
+def _format_rs_point_delta(value: float | None) -> str:
+    return "N/A" if value is None else f"{value * 100:+.2f}%p"
 
 
 def _format_rs_percentile(value: float | None) -> str:
@@ -557,9 +564,9 @@ def render_markdown_report(report: StockReport) -> str:
             f"- **12M → 6M → 3M**: {_format_rs_return(rs.market_rs_12m)} → "
             f"{_format_rs_return(rs.market_rs_6m)} → {_format_rs_return(rs.market_rs_3m)}"
         )
-        md.append(f"- **3M vs 6M 개선도**: {_format_rs_return(rs.market_rs_delta_3m_vs_6m)}")
-        md.append(f"- **6M vs 12M 개선도**: {_format_rs_return(rs.market_rs_delta_6m_vs_12m)}")
-        md.append(f"- **RS acceleration**: {_format_rs_return(rs.market_rs_acceleration_3_6_12m)}")
+        md.append(f"- **3M vs 6M 개선도**: {_format_rs_point_delta(rs.market_rs_delta_3m_vs_6m)}")
+        md.append(f"- **6M vs 12M 개선도**: {_format_rs_point_delta(rs.market_rs_delta_6m_vs_12m)}")
+        md.append(f"- **RS acceleration**: {_format_rs_point_delta(rs.market_rs_acceleration_3_6_12m)}")
     md.append(f"- **해석**: {rs.explanation}")
     if rs.source_artifact:
         md.append(f"- **기준 snapshot**: `{rs.source_as_of}` · `{rs.source_artifact}`")
@@ -1033,6 +1040,9 @@ def generate_stock_report(
         is_common_stock=is_common,
         metadata_provenance_mode=metadata_provenance_mode,
     )
+    # Preserve the frozen report-artifact provenance while keeping the model's
+    # default pointed at the canonical strategy document.
+    a_fast_core_section.provenance.strategy_contract_path = LEGACY_A_FAST_CORE_PROVENANCE_PATH
 
     # 9. Header & Summary
     if (

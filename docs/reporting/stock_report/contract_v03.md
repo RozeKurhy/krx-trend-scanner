@@ -43,8 +43,11 @@ Universe Scanner를 실행하지 않는다.
 ------------
 - Markdown에서 외국인 수급 다음, 거래대금 앞에 `## 7.5. 시장 상대강도 (RS)`를
   표시한다.
-- 3개월·6개월·12개월 RS, delta, acceleration, 전체 시장 rank/percentile,
-  benchmark와 anchor 날짜를 함께 보여준다.
+- 3개월·6개월·12개월 RS, delta, acceleration, 전체 시장 rank/percentile와
+  benchmark를 보여준다. anchor 날짜는 JSON contract의 provenance/diagnostic
+  field로 보존한다.
+- Market RS level은 Markdown에서 `%`, improvement delta와 RS acceleration은
+  percentage-point 단위인 `%p`로 표시한다. JSON raw 값은 decimal을 유지한다.
 - 서술은 장기 약세 후 회복, 기간별 개선, 기간별 약화, 혼조/데이터 제한의
   규칙 기반 문장만 사용한다.
 - acceleration은 숫자로만 표시하며 매매 신호·추천·전략 언어를 사용하지 않는다.

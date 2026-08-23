@@ -13,7 +13,13 @@ from trend_scanner.reporting.relative_strength_report import (
     RS_ARTIFACT_TEMPLATE,
     load_relative_strength_section,
 )
-from trend_scanner.reporting.stock_report import render_markdown_report
+from trend_scanner.reporting.models import AFastCoreProvenance
+from trend_scanner.reporting.stock_report import (
+    _format_rs_point_delta,
+    _format_rs_return,
+    generate_stock_report,
+    render_markdown_report,
+)
 
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -54,6 +60,13 @@ def test_celltrion_exact_phase12_regression():
     assert rs.all_market_rs_percentile_6m == 31.887755102040817
     assert rs.all_market_rs_percentile_3m == 81.72954641797372
     assert "회복" in rs.explanation
+
+
+def test_rs_level_and_point_delta_formatters_use_distinct_units():
+    assert _format_rs_return(0.2363) == "+23.63%"
+    assert _format_rs_point_delta(0.5372271679336682) == "+53.72%p"
+    assert _format_rs_point_delta(-0.20155629268750408) == "-20.16%p"
+    assert _format_rs_point_delta(None) == "N/A"
 
 
 def test_rs_narrative_rules_cover_recovery_and_weakening():
@@ -142,6 +155,42 @@ def test_markdown_rs_section_is_between_foreign_flow_and_trading_value():
     rs_text = md[md.index("## 7.5. 시장 상대강도 (RS)"):md.index("## 8. 거래대금")]
     assert "매수 추천" not in rs_text
     assert "매도 추천" not in rs_text
+
+
+def test_celltrion_markdown_uses_percentage_points_for_changes():
+    report, _, _ = generate_stock_report(
+        ticker="068270", as_of="2026-08-14", repo_root=REPO_ROOT, save_artifacts=False
+    )
+    md = render_markdown_report(report)
+    assert AFastCoreProvenance().strategy_contract_path == "docs/patterns/pattern_a_fast/strategy/final_v02.md"
+    assert report.a_fast_core.provenance.strategy_contract_path == "docs/validation/pattern_a_fast_final_strategy_v02.md"
+    assert "+53.72%p" in md
+    assert "+14.88%p" in md
+    assert "+38.85%p" in md
+    assert "- **3M vs 6M 개선도**: +53.72%\n" not in md
+
+
+def test_all_production_markdown_rs_units_are_consistent():
+    for path in sorted(REPORT_DIR.glob("*.md")):
+        md = path.read_text(encoding="utf-8")
+        if "- **3M vs 6M 개선도**:" not in md:
+            continue
+        rs_text = md[md.index("## 7.5. 시장 상대강도 (RS)"):md.index("## 8. 거래대금")]
+        for label in ("3M vs 6M 개선도", "6M vs 12M 개선도", "RS acceleration"):
+            line = next(line for line in rs_text.splitlines() if f"**{label}**:" in line)
+            value = line.split(":", 1)[1].strip()
+            assert value == "N/A" or value.endswith("%p"), f"{path.name}: {line}"
+        for line in rs_text.splitlines():
+            if line.startswith(("| 3개월 |", "| 6개월 |", "| 12개월 |")):
+                value = line.split("|")[2].strip()
+                assert value.endswith("%") and not value.endswith("%p"), f"{path.name}: {line}"
+
+
+def test_contract_documents_units_and_anchor_semantics():
+    contract = (REPO_ROOT / "docs/reporting/stock_report/contract_v03.md").read_text(encoding="utf-8")
+    assert "anchor 날짜는 JSON contract의 provenance/diagnostic" in contract
+    assert "Market RS level은 Markdown에서 `%`" in contract
+    assert "percentage-point 단위인 `%p`" in contract
 
 
 def test_loader_has_no_scanner_hook(monkeypatch, tmp_path):
