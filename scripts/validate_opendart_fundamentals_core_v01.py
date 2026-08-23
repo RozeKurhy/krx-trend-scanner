@@ -97,6 +97,7 @@ def main() -> int:
     for ticker in TICKERS:
         rows = registry.list_regular_filings(
             ticker=ticker, corp_code=corp_repo.get_corp_code(ticker), bsns_year="2025", reprt_code="11011",
+            as_of=date.today().isoformat(),
             force_refresh=args.force_refresh,
         )
         filings_by_ticker[ticker] = rows

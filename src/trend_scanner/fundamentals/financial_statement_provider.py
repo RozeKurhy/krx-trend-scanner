@@ -48,6 +48,7 @@ class FinancialStatementProvider:
         record = self.corp_codes.get_record(ticker)
         rows = self.filings.list_regular_filings(ticker=ticker, corp_code=record.corp_code,
                                                  bsns_year=str(bsns_year), reprt_code=str(reprt_code),
+                                                 as_of=as_of,
                                                  force_refresh=force_refresh)
         resolution = self.pit.resolve(rows, as_of=as_of, bsns_year=str(bsns_year), reprt_code=str(reprt_code))
         selected = resolution.selected

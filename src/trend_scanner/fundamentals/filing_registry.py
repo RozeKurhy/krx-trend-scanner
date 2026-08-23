@@ -37,8 +37,37 @@ class IncompleteRegistryError(FilingRegistryError):
     pass
 
 
+class InvalidAsOfError(FilingRegistryError):
+    pass
+
+
+class RegistryCoverageInsufficientError(FilingRegistryError):
+    pass
+
+
+class FilingRegistryConflictError(FilingRegistryError):
+    pass
+
+
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def _as_of_date(value: str | date | None) -> date:
+    if value is None:
+        requested = date.today()
+    elif isinstance(value, datetime):
+        requested = value.date()
+    elif isinstance(value, date):
+        requested = value
+    else:
+        try:
+            requested = date.fromisoformat(str(value)[:10])
+        except (TypeError, ValueError):
+            raise InvalidAsOfError(f"Invalid historical as_of: {value!r}") from None
+    if requested > date.today():
+        raise InvalidAsOfError(f"Historical as_of is in the future: {requested.isoformat()}")
+    return requested
 
 
 def _normalise_report_name(value: Any) -> str:
@@ -147,6 +176,13 @@ class FilingRegistry:
         return rows, metadata
 
     @staticmethod
+    def _cache_covers(metadata: dict[str, Any], *, required_start: str, requested_as_of: str) -> bool:
+        coverage_start = str(metadata.get("coverage_start") or "")
+        coverage_end = str(metadata.get("coverage_end") or "")
+        return bool(coverage_start and coverage_end and coverage_start <= required_start
+                    and coverage_end >= requested_as_of)
+
+    @staticmethod
     def _success(response: JsonResponse) -> bool:
         return response.http_status == 200 and response.status == "000"
 
@@ -213,54 +249,53 @@ class FilingRegistry:
         return raw_rows, responses, total_count, total_page
 
     def list_regular_filings(self, *, ticker: str, corp_code: str, bsns_year: str, reprt_code: str,
-                             force_refresh: bool = False) -> list[RegisteredFiling]:
+                             as_of: str | date | None = None, force_refresh: bool = False) -> list[RegisteredFiling]:
         if reprt_code not in REGULAR_REPORT_CODES:
             raise ValueError(f"Unsupported regular report code: {reprt_code}")
+        requested_as_of = _as_of_date(as_of)
+        requested_as_of_text = requested_as_of.isoformat()
+        coverage_start = f"{int(bsns_year):04d}-01-01"
         path = self._cache_path(corp_code, str(bsns_year), reprt_code)
+        cached: tuple[list[RegisteredFiling], dict[str, Any]] | None = None
         if not force_refresh:
-            loaded = self._load(path)
-            if loaded is not None:
-                rows, self.last_metadata = loaded
+            cached = self._load(path)
+            if cached is not None and self._cache_covers(cached[1], required_start=coverage_start,
+                                                         requested_as_of=requested_as_of_text):
+                rows, self.last_metadata = cached
                 return rows
         if self.client is None:
+            if cached is not None:
+                raise RegistryCoverageInsufficientError(
+                    f"Registry cache coverage ends at {cached[1].get('coverage_end')}, "
+                    f"requested {requested_as_of_text}"
+                )
             raise RuntimeError("OpenDART client is required for filing registry refresh")
-        year = int(bsns_year)
         retrieved_at = _now()
-        request_windows = [{
-            "bgn_de": f"{year:04d}0101",
-            "end_de": f"{min(year + 2, date.today().year + 1):04d}1231",
-        }]
+        # A single deterministic window is sufficient for list.json and makes
+        # the requested as_of an explicit coverage boundary.  If a future API
+        # limit requires splitting, each window must pass _fetch_pages before
+        # the aggregate cache is written.
+        query_end = max(requested_as_of_text, coverage_start)
+        request_windows = [{"bgn_de": coverage_start.replace("-", ""), "end_de": query_end.replace("-", "")}]
         raw_rows, responses, total_count, total_page = self._fetch_pages(
             corp_code=corp_code, **request_windows[0])
-        targeted_responses: list[JsonResponse] = []
-        targeted_total_count: int | None = None
-        targeted_total_page: int | None = None
-        # Keep the bounded annual recovery window, but subject it to the same
-        # status gate and full pagination as every other report type.
-        if reprt_code == "11011" and not any(
-            isinstance(raw, dict)
-            and infer_report_code(str(raw.get("report_nm") or "")) == reprt_code
-            and infer_business_year(str(raw.get("report_nm") or ""), str(raw.get("rcept_dt") or "")) == str(bsns_year)
-            for raw in raw_rows
-        ):
-            annual_window = {"bgn_de": f"{year + 1:04d}0301", "end_de": f"{year + 1:04d}0430"}
-            request_windows.append(annual_window)
-            extra, targeted_responses, targeted_total_count, targeted_total_page = self._fetch_pages(
-                corp_code=corp_code, **annual_window
-            )
-            raw_rows = [*raw_rows, *extra]
         dedupe: dict[str, RegisteredFiling] = {}
+        raw_by_rcept: dict[str, str] = {}
         for raw in raw_rows:
             if not isinstance(raw, dict):
                 continue
+            rcept_no = str(raw.get("rcept_no") or "")
+            raw_digest = json.dumps(raw, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+            if rcept_no and rcept_no in raw_by_rcept and raw_by_rcept[rcept_no] != raw_digest:
+                raise FilingRegistryConflictError(f"Conflicting payloads for rcept_no={rcept_no}")
+            if rcept_no:
+                raw_by_rcept[rcept_no] = raw_digest
             item = to_registered_filing(raw, ticker=ticker, retrieved_at=retrieved_at)
             if item is not None and item.bsns_year == str(bsns_year) and item.reprt_code == reprt_code:
                 dedupe[item.rcept_no] = item
         rows = sorted(dedupe.values(), key=lambda item: (item.rcept_dt, item.rcept_no))
-        all_responses = [*responses, *targeted_responses]
+        all_responses = responses
         source_hash = hashlib.sha256(b"".join(response.raw for response in all_responses)).hexdigest()
-        total_counts = [item for item in (total_count, targeted_total_count) if item is not None]
-        total_pages = [item for item in (total_page, targeted_total_page) if item is not None]
         self.last_metadata = {
             "corp_code": corp_code,
             "ticker": ticker,
@@ -269,17 +304,20 @@ class FilingRegistry:
             "request_parameters": {"corp_code": corp_code, "bsns_year": str(bsns_year), "reprt_code": reprt_code},
             "request_window": request_windows[0],
             "request_windows": request_windows,
+            "requested_as_of": requested_as_of_text,
+            "coverage_start": coverage_start,
+            "coverage_end": query_end,
             "retrieved_at": retrieved_at,
             "page_count_requested": PAGE_COUNT,
             "pages_fetched": len(all_responses),
-            "total_count": sum(total_counts) if total_counts else len(raw_rows),
-            "total_page": sum(total_pages) if total_pages else len(all_responses),
+            "window_count": len(request_windows),
+            "total_count": total_count if total_count is not None else len(raw_rows),
+            "total_page": total_page if total_page is not None else len(all_responses),
             "http_status": 200,
             "api_status": "000",
             "source_sha256": source_hash,
             "record_count": len(rows),
             "cache_complete": True,
-            "targeted_annual_window": bool(targeted_responses),
             "cache_hit": False,
         }
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -293,11 +331,11 @@ class FilingRegistry:
         return rows
 
     def get_filings(self, ticker: str, bsns_year: str, reprt_code: str, *, corp_code: str | None = None,
-                    force_refresh: bool = False) -> list[RegisteredFiling]:
+                    as_of: str | date | None = None, force_refresh: bool = False) -> list[RegisteredFiling]:
         if corp_code is None:
             raise ValueError("corp_code is required; resolve it through CorpCodeRepository first")
         return self.list_regular_filings(ticker=ticker, corp_code=corp_code, bsns_year=bsns_year,
-                                         reprt_code=reprt_code, force_refresh=force_refresh)
+                                         reprt_code=reprt_code, as_of=as_of, force_refresh=force_refresh)
 
     def to_contract_records(self, rows: Iterable[RegisteredFiling]) -> list[FilingRecord]:
         return [_to_contract(item) for item in rows]
