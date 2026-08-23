@@ -1,0 +1,1061 @@
+{
+  "work_id": "OPENDART_FUNDAMENTALS_V01_ARCHITECTURE",
+  "run_date": "2026-08-23",
+  "access_validation_authority_sha": "7b235817607f7b58d46e49a2346bc14b0b28936c",
+  "pit_granularity": "DAILY_EOD_KST",
+  "current_latest_source": "fnlttSinglAcntAll.json (convenience/latest diagnostic only)",
+  "historical_strict_pit_candidate": "Filing Registry (list.json) + filing-specific fnlttXbrl.xml",
+  "fnlttSinglAcntAll_strict_historical_ssot": false,
+  "same_day_policy": "rcept_dt == as_of is AVAILABLE_AT_EOD; DAILY_EOD_KST information set",
+  "revision_policy": "Eligible filings are rcept_dt <= as_of; latest eligible filing within an identified chain; unknown chain identity fails closed",
+  "future_filing_policy": "rcept_dt > as_of is FUTURE_FORBIDDEN",
+  "filing_registry": {
+    "005930": {
+      "status": "000",
+      "classification": "PASS",
+      "row_count": 154,
+      "filing_record_count": 2,
+      "sample_filings": [
+        {
+          "corp_code": "00126380",
+          "stock_code": "005930",
+          "corp_name": "삼성전자",
+          "report_nm": "기타경영사항(자율공시)              ",
+          "rcept_no": "20260821800837",
+          "rcept_dt": "20260821",
+          "flr_nm": "삼성전자",
+          "rm": "유"
+        },
+        {
+          "corp_code": "00126380",
+          "stock_code": "005930",
+          "corp_name": "삼성전자",
+          "report_nm": "주요사항보고서(자기주식취득결정)",
+          "rcept_no": "20260821000616",
+          "rcept_dt": "20260821",
+          "flr_nm": "삼성전자",
+          "rm": ""
+        },
+        {
+          "corp_code": "00126380",
+          "stock_code": "005930",
+          "corp_name": "삼성전자",
+          "report_nm": "수시공시의무관련사항(공정공시)              ",
+          "rcept_no": "20260821800763",
+          "rcept_dt": "20260821",
+          "flr_nm": "삼성전자",
+          "rm": "유"
+        },
+        {
+          "corp_code": "00126380",
+          "stock_code": "005930",
+          "corp_name": "삼성전자",
+          "report_nm": "임원ㆍ주요주주특정증권등소유상황보고서",
+          "rcept_no": "20260821000262",
+          "rcept_dt": "20260821",
+          "flr_nm": "이명재",
+          "rm": ""
+        },
+        {
+          "corp_code": "00126380",
+          "stock_code": "005930",
+          "corp_name": "삼성전자",
+          "report_nm": "임원ㆍ주요주주특정증권등소유상황보고서",
+          "rcept_no": "20260820000290",
+          "rcept_dt": "20260820",
+          "flr_nm": "김경태",
+          "rm": ""
+        },
+        {
+          "corp_code": "00126380",
+          "stock_code": "005930",
+          "corp_name": "삼성전자",
+          "report_nm": "임원ㆍ주요주주특정증권등소유상황보고서",
+          "rcept_no": "20260820000040",
+          "rcept_dt": "20260820",
+          "flr_nm": "이희곤",
+          "rm": ""
+        },
+        {
+          "corp_code": "00126380",
+          "stock_code": "005930",
+          "corp_name": "삼성전자",
+          "report_nm": "[기재정정]임원ㆍ주요주주특정증권등소유상황보고서",
+          "rcept_no": "20260814003973",
+          "rcept_dt": "20260814",
+          "flr_nm": "박태훈",
+          "rm": ""
+        },
+        {
+          "corp_code": "00126380",
+          "stock_code": "005930",
+          "corp_name": "삼성전자",
+          "report_nm": "[기재정정]임원ㆍ주요주주특정증권등소유상황보고서",
+          "rcept_no": "20260814003950",
+          "rcept_dt": "20260814",
+          "flr_nm": "박태훈",
+          "rm": ""
+        }
+      ],
+      "targeted_annual_window": {
+        "status": "000",
+        "row_count": 54
+      }
+    },
+    "237690": {
+      "status": "000",
+      "classification": "PASS",
+      "row_count": 100,
+      "filing_record_count": 9,
+      "sample_filings": [
+        {
+          "corp_code": "00871833",
+          "stock_code": "237690",
+          "corp_name": "에스티팜",
+          "report_nm": "반기보고서 (2026.06)",
+          "rcept_no": "20260814003399",
+          "rcept_dt": "20260814",
+          "flr_nm": "에스티팜",
+          "rm": ""
+        },
+        {
+          "corp_code": "00871833",
+          "stock_code": "237690",
+          "corp_name": "에스티팜",
+          "report_nm": "전환사채(해외전환사채포함)발행후만기전사채취득              ",
+          "rcept_no": "20260811900409",
+          "rcept_dt": "20260811",
+          "flr_nm": "에스티팜",
+          "rm": "코"
+        },
+        {
+          "corp_code": "00871833",
+          "stock_code": "237690",
+          "corp_name": "에스티팜",
+          "report_nm": "임원ㆍ주요주주특정증권등소유상황보고서",
+          "rcept_no": "20260731000677",
+          "rcept_dt": "20260731",
+          "flr_nm": "최용훈",
+          "rm": ""
+        },
+        {
+          "corp_code": "00871833",
+          "stock_code": "237690",
+          "corp_name": "에스티팜",
+          "report_nm": "기업설명회(IR)개최              ",
+          "rcept_no": "20260727900382",
+          "rcept_dt": "20260727",
+          "flr_nm": "에스티팜",
+          "rm": "코"
+        },
+        {
+          "corp_code": "00871833",
+          "stock_code": "237690",
+          "corp_name": "에스티팜",
+          "report_nm": "연결재무제표기준영업(잠정)실적(공정공시)              ",
+          "rcept_no": "20260727900237",
+          "rcept_dt": "20260727",
+          "flr_nm": "에스티팜",
+          "rm": "코"
+        },
+        {
+          "corp_code": "00871833",
+          "stock_code": "237690",
+          "corp_name": "에스티팜",
+          "report_nm": "기업설명회(IR)개최              ",
+          "rcept_no": "20260723900203",
+          "rcept_dt": "20260723",
+          "flr_nm": "에스티팜",
+          "rm": "코"
+        },
+        {
+          "corp_code": "00871833",
+          "stock_code": "237690",
+          "corp_name": "에스티팜",
+          "report_nm": "결산실적공시예고              ",
+          "rcept_no": "20260723900196",
+          "rcept_dt": "20260723",
+          "flr_nm": "에스티팜",
+          "rm": "코"
+        },
+        {
+          "corp_code": "00871833",
+          "stock_code": "237690",
+          "corp_name": "에스티팜",
+          "report_nm": "투자판단관련주요경영사항(임상시험결과)              (HIV-1 치료제 STP0404 임상 2a상 임상시험 탑라인 결과)",
+          "rcept_no": "20260714900442",
+          "rcept_dt": "20260714",
+          "flr_nm": "에스티팜",
+          "rm": "코"
+        }
+      ],
+      "targeted_annual_window": null
+    },
+    "086790": {
+      "status": "000",
+      "classification": "PASS",
+      "row_count": 100,
+      "filing_record_count": 4,
+      "sample_filings": [
+        {
+          "corp_code": "00547583",
+          "stock_code": "086790",
+          "corp_name": "하나금융지주",
+          "report_nm": "기업설명회(IR)개최(안내공시)              ",
+          "rcept_no": "20260819800197",
+          "rcept_dt": "20260819",
+          "flr_nm": "하나금융지주",
+          "rm": "유"
+        },
+        {
+          "corp_code": "00547583",
+          "stock_code": "086790",
+          "corp_name": "하나금융지주",
+          "report_nm": "[기재정정]사업보고서 (2025.12)",
+          "rcept_no": "20260814004019",
+          "rcept_dt": "20260814",
+          "flr_nm": "하나금융지주",
+          "rm": "연"
+        },
+        {
+          "corp_code": "00547583",
+          "stock_code": "086790",
+          "corp_name": "하나금융지주",
+          "report_nm": "[기재정정]일괄신고서",
+          "rcept_no": "20260814003925",
+          "rcept_dt": "20260814",
+          "flr_nm": "하나금융지주",
+          "rm": ""
+        },
+        {
+          "corp_code": "00547583",
+          "stock_code": "086790",
+          "corp_name": "하나금융지주",
+          "report_nm": "반기보고서 (2026.06)",
+          "rcept_no": "20260814003800",
+          "rcept_dt": "20260814",
+          "flr_nm": "하나금융지주",
+          "rm": ""
+        },
+        {
+          "corp_code": "00547583",
+          "stock_code": "086790",
+          "corp_name": "하나금융지주",
+          "report_nm": "단기차입금증가결정(자회사의 주요경영사항)              ",
+          "rcept_no": "20260811800447",
+          "rcept_dt": "20260811",
+          "flr_nm": "하나금융지주",
+          "rm": "유"
+        },
+        {
+          "corp_code": "00547583",
+          "stock_code": "086790",
+          "corp_name": "하나금융지주",
+          "report_nm": "임원ㆍ주요주주특정증권등소유상황보고서",
+          "rcept_no": "20260807000587",
+          "rcept_dt": "20260807",
+          "flr_nm": "엄태성",
+          "rm": ""
+        },
+        {
+          "corp_code": "00547583",
+          "stock_code": "086790",
+          "corp_name": "하나금융지주",
+          "report_nm": "주요사항보고서(상각형조건부자본증권발행결정)",
+          "rcept_no": "20260724000499",
+          "rcept_dt": "20260724",
+          "flr_nm": "하나금융지주",
+          "rm": ""
+        },
+        {
+          "corp_code": "00547583",
+          "stock_code": "086790",
+          "corp_name": "하나금융지주",
+          "report_nm": "타법인주식및출자증권취득결정(자율공시)              ",
+          "rcept_no": "20260724800443",
+          "rcept_dt": "20260724",
+          "flr_nm": "하나금융지주",
+          "rm": "유"
+        }
+      ],
+      "targeted_annual_window": null
+    }
+  },
+  "pit_selection": {
+    "005930": {
+      "status": "READY",
+      "availability": "AVAILABLE",
+      "reason": "LATEST_ELIGIBLE_FILING",
+      "selected": {
+        "ticker": "005930",
+        "corp_code": "00126380",
+        "bsns_year": "2025",
+        "reprt_code": "11011",
+        "report_nm": "사업보고서 (2025.12)",
+        "rcept_no": "20260310002820",
+        "rcept_dt": "20260310",
+        "fs_div": null,
+        "filing_chain_key": null
+      },
+      "eligible_count": 1,
+      "future_count": 0
+    },
+    "237690": {
+      "status": "READY",
+      "availability": "AVAILABLE",
+      "reason": "LATEST_ELIGIBLE_FILING",
+      "selected": {
+        "ticker": "237690",
+        "corp_code": "00871833",
+        "bsns_year": "2025",
+        "reprt_code": "11011",
+        "report_nm": "[기재정정]사업보고서 (2025.12)",
+        "rcept_no": "20260602000343",
+        "rcept_dt": "20260602",
+        "fs_div": null,
+        "filing_chain_key": null
+      },
+      "eligible_count": 2,
+      "future_count": 0
+    },
+    "086790": {
+      "status": "READY",
+      "availability": "AVAILABLE",
+      "reason": "LATEST_ELIGIBLE_FILING",
+      "selected": {
+        "ticker": "086790",
+        "corp_code": "00547583",
+        "bsns_year": "2025",
+        "reprt_code": "11011",
+        "report_nm": "[기재정정]사업보고서 (2025.12)",
+        "rcept_no": "20260814004019",
+        "rcept_dt": "20260814",
+        "fs_div": null,
+        "filing_chain_key": null
+      },
+      "eligible_count": 2,
+      "future_count": 0
+    }
+  },
+  "filing_specific_xbrl_probe": {
+    "primary_filing": {
+      "ticker": "005930",
+      "corp_code": "00126380",
+      "report_nm": "사업보고서 (2025.12)",
+      "rcept_no": "20260310002820",
+      "rcept_dt": "20260310",
+      "reprt_code": "11011"
+    },
+    "first_request": {
+      "label": "xbrl_primary",
+      "endpoint": "https://opendart.fss.or.kr/api/fnlttXbrl.xml",
+      "redacted_request": "https://opendart.fss.or.kr/api/fnlttXbrl.xml?rcept_no=20260310002820&reprt_code=11011&crtfc_key=%3CREDACTED%3E",
+      "parameters": {
+        "rcept_no": "20260310002820",
+        "reprt_code": "11011",
+        "crtfc_key": "<REDACTED>"
+      },
+      "http_status": 200,
+      "content_type": "application/x-msdownload;charset=UTF-8",
+      "response_byte_length": 802368,
+      "status": null,
+      "classification": "PASS",
+      "zip_parse": "PASS",
+      "member_count": 7,
+      "member_names": [
+        "entity00126380_2025-12-31.xbrl",
+        "entity00126380_2025-12-31.xsd",
+        "entity00126380_2025-12-31_def.xml",
+        "entity00126380_2025-12-31_cal.xml",
+        "entity00126380_2025-12-31_pre.xml",
+        "entity00126380_2025-12-31_lab-ko.xml",
+        "entity00126380_2025-12-31_lab-en.xml"
+      ],
+      "sha256": "946ed3c81628c5cb69e460217a1e3f656d857b64c9dde15fdac981c2d68323d1",
+      "error_type": null
+    },
+    "repeat_request": {
+      "label": "xbrl_primary_repeat",
+      "endpoint": "https://opendart.fss.or.kr/api/fnlttXbrl.xml",
+      "redacted_request": "https://opendart.fss.or.kr/api/fnlttXbrl.xml?rcept_no=20260310002820&reprt_code=11011&crtfc_key=%3CREDACTED%3E",
+      "parameters": {
+        "rcept_no": "20260310002820",
+        "reprt_code": "11011",
+        "crtfc_key": "<REDACTED>"
+      },
+      "http_status": 200,
+      "content_type": "application/x-msdownload;charset=UTF-8",
+      "response_byte_length": 802368,
+      "status": null,
+      "classification": "PASS",
+      "zip_parse": "PASS",
+      "member_count": 7,
+      "member_names": [
+        "entity00126380_2025-12-31.xbrl",
+        "entity00126380_2025-12-31.xsd",
+        "entity00126380_2025-12-31_def.xml",
+        "entity00126380_2025-12-31_cal.xml",
+        "entity00126380_2025-12-31_pre.xml",
+        "entity00126380_2025-12-31_lab-ko.xml",
+        "entity00126380_2025-12-31_lab-en.xml"
+      ],
+      "sha256": "946ed3c81628c5cb69e460217a1e3f656d857b64c9dde15fdac981c2d68323d1",
+      "error_type": null
+    },
+    "deterministic_sha_match": true,
+    "correction_pair": {
+      "005930": {
+        "found": false,
+        "original": null,
+        "correction": null
+      },
+      "237690": {
+        "found": true,
+        "original": {
+          "ticker": "237690",
+          "corp_code": "00871833",
+          "bsns_year": "2025",
+          "reprt_code": "11011",
+          "report_nm": "사업보고서 (2025.12)",
+          "rcept_no": "20260318001605",
+          "rcept_dt": "20260318",
+          "fs_div": null,
+          "filing_chain_key": null
+        },
+        "correction": {
+          "ticker": "237690",
+          "corp_code": "00871833",
+          "bsns_year": "2025",
+          "reprt_code": "11011",
+          "report_nm": "[기재정정]사업보고서 (2025.12)",
+          "rcept_no": "20260602000343",
+          "rcept_dt": "20260602",
+          "fs_div": null,
+          "filing_chain_key": null
+        }
+      },
+      "086790": {
+        "found": true,
+        "original": {
+          "ticker": "086790",
+          "corp_code": "00547583",
+          "bsns_year": "2025",
+          "reprt_code": "11011",
+          "report_nm": "사업보고서 (2025.12)",
+          "rcept_no": "20260316001292",
+          "rcept_dt": "20260316",
+          "fs_div": null,
+          "filing_chain_key": null
+        },
+        "correction": {
+          "ticker": "086790",
+          "corp_code": "00547583",
+          "bsns_year": "2025",
+          "reprt_code": "11011",
+          "report_nm": "[기재정정]사업보고서 (2025.12)",
+          "rcept_no": "20260814004019",
+          "rcept_dt": "20260814",
+          "fs_div": null,
+          "filing_chain_key": null
+        }
+      }
+    },
+    "correction_xbrl": {
+      "correction_original": {
+        "label": "xbrl_correction_original",
+        "endpoint": "https://opendart.fss.or.kr/api/fnlttXbrl.xml",
+        "redacted_request": "https://opendart.fss.or.kr/api/fnlttXbrl.xml?rcept_no=20260318001605&reprt_code=11011&crtfc_key=%3CREDACTED%3E",
+        "parameters": {
+          "rcept_no": "20260318001605",
+          "reprt_code": "11011",
+          "crtfc_key": "<REDACTED>"
+        },
+        "http_status": 200,
+        "content_type": "application/x-msdownload;charset=UTF-8",
+        "response_byte_length": 844023,
+        "status": null,
+        "classification": "PASS",
+        "zip_parse": "PASS",
+        "member_count": 7,
+        "member_names": [
+          "entity00871833_2025-12-31.xbrl",
+          "entity00871833_2025-12-31.xsd",
+          "entity00871833_2025-12-31_def.xml",
+          "entity00871833_2025-12-31_cal.xml",
+          "entity00871833_2025-12-31_pre.xml",
+          "entity00871833_2025-12-31_lab-ko.xml",
+          "entity00871833_2025-12-31_lab-en.xml"
+        ],
+        "sha256": "c7ce79a84c5829080ceae4601e2dd70b5dc90dc3c7a4ea971ff3575438b2f92e",
+        "error_type": null
+      },
+      "correction_filing": {
+        "label": "xbrl_correction_filing",
+        "endpoint": "https://opendart.fss.or.kr/api/fnlttXbrl.xml",
+        "redacted_request": "https://opendart.fss.or.kr/api/fnlttXbrl.xml?rcept_no=20260602000343&reprt_code=11011&crtfc_key=%3CREDACTED%3E",
+        "parameters": {
+          "rcept_no": "20260602000343",
+          "reprt_code": "11011",
+          "crtfc_key": "<REDACTED>"
+        },
+        "http_status": 200,
+        "content_type": "application/x-msdownload;charset=UTF-8",
+        "response_byte_length": 822731,
+        "status": null,
+        "classification": "PASS",
+        "zip_parse": "PASS",
+        "member_count": 7,
+        "member_names": [
+          "entity00871833_2025-12-31.xbrl",
+          "entity00871833_2025-12-31.xsd",
+          "entity00871833_2025-12-31_def.xml",
+          "entity00871833_2025-12-31_cal.xml",
+          "entity00871833_2025-12-31_pre.xml",
+          "entity00871833_2025-12-31_lab-ko.xml",
+          "entity00871833_2025-12-31_lab-en.xml"
+        ],
+        "sha256": "faafbf7b347987c3c2c43a748e99e60f61025059a2a969fa8aa519839b90d900",
+        "error_type": null
+      }
+    }
+  },
+  "half_year_2026_field_semantics": {
+    "005930": {
+      "ticker": "005930",
+      "status": "000",
+      "classification": "PASS",
+      "row_count": 223,
+      "observed_fields": [
+        "account_detail",
+        "account_id",
+        "account_nm",
+        "bsns_year",
+        "corp_code",
+        "currency",
+        "frmtrm_add_amount",
+        "frmtrm_amount",
+        "frmtrm_nm",
+        "frmtrm_q_amount",
+        "frmtrm_q_nm",
+        "ord",
+        "rcept_no",
+        "reprt_code",
+        "sj_div",
+        "sj_nm",
+        "thstrm_add_amount",
+        "thstrm_amount",
+        "thstrm_nm"
+      ],
+      "field_presence": {
+        "thstrm_nm": {
+          "present_row_count": 223,
+          "non_blank_row_count": 223
+        },
+        "thstrm_amount": {
+          "present_row_count": 223,
+          "non_blank_row_count": 223
+        },
+        "thstrm_add_amount": {
+          "present_row_count": 30,
+          "non_blank_row_count": 30
+        },
+        "frmtrm_nm": {
+          "present_row_count": 49,
+          "non_blank_row_count": 49
+        },
+        "frmtrm_amount": {
+          "present_row_count": 50,
+          "non_blank_row_count": 50
+        },
+        "frmtrm_q_nm": {
+          "present_row_count": 174,
+          "non_blank_row_count": 174
+        },
+        "frmtrm_q_amount": {
+          "present_row_count": 174,
+          "non_blank_row_count": 174
+        },
+        "frmtrm_add_amount": {
+          "present_row_count": 30,
+          "non_blank_row_count": 30
+        }
+      },
+      "diagnostic_rows": [
+        {
+          "account_id": "ifrs-full_CurrentTradeReceivables",
+          "account_nm": "매출채권",
+          "sj_div": "BS",
+          "thstrm_nm": "제 58 기 반기말",
+          "thstrm_amount": "96408968000000",
+          "thstrm_add_amount": null,
+          "frmtrm_nm": "제 57 기말",
+          "frmtrm_amount": "51127642000000"
+        },
+        {
+          "account_id": "dart_OperatingIncomeLoss",
+          "account_nm": "영업이익",
+          "sj_div": "IS",
+          "thstrm_nm": "제 58 기 반기",
+          "thstrm_amount": "89492412000000",
+          "thstrm_add_amount": "146725209000000",
+          "frmtrm_nm": null,
+          "frmtrm_amount": null
+        },
+        {
+          "account_id": "ifrs-full_CostOfSales",
+          "account_nm": "매출원가",
+          "sj_div": "IS",
+          "thstrm_nm": "제 58 기 반기",
+          "thstrm_amount": "52198759000000",
+          "thstrm_add_amount": "104159030000000",
+          "frmtrm_nm": null,
+          "frmtrm_amount": null
+        },
+        {
+          "account_id": "ifrs-full_GrossProfit",
+          "account_nm": "매출총이익",
+          "sj_div": "IS",
+          "thstrm_nm": "제 58 기 반기",
+          "thstrm_amount": "119300711000000",
+          "thstrm_add_amount": "201213884000000",
+          "frmtrm_nm": null,
+          "frmtrm_amount": null
+        },
+        {
+          "account_id": "ifrs-full_Revenue",
+          "account_nm": "매출액",
+          "sj_div": "IS",
+          "thstrm_nm": "제 58 기 반기",
+          "thstrm_amount": "171499470000000",
+          "thstrm_add_amount": "305372914000000",
+          "frmtrm_nm": null,
+          "frmtrm_amount": null
+        }
+      ]
+    },
+    "237690": {
+      "ticker": "237690",
+      "status": "000",
+      "classification": "PASS",
+      "row_count": 175,
+      "observed_fields": [
+        "account_detail",
+        "account_id",
+        "account_nm",
+        "bsns_year",
+        "corp_code",
+        "currency",
+        "frmtrm_add_amount",
+        "frmtrm_amount",
+        "frmtrm_nm",
+        "frmtrm_q_amount",
+        "frmtrm_q_nm",
+        "ord",
+        "rcept_no",
+        "reprt_code",
+        "sj_div",
+        "sj_nm",
+        "thstrm_add_amount",
+        "thstrm_amount",
+        "thstrm_nm"
+      ],
+      "field_presence": {
+        "thstrm_nm": {
+          "present_row_count": 175,
+          "non_blank_row_count": 175
+        },
+        "thstrm_amount": {
+          "present_row_count": 175,
+          "non_blank_row_count": 175
+        },
+        "thstrm_add_amount": {
+          "present_row_count": 23,
+          "non_blank_row_count": 23
+        },
+        "frmtrm_nm": {
+          "present_row_count": 43,
+          "non_blank_row_count": 43
+        },
+        "frmtrm_amount": {
+          "present_row_count": 44,
+          "non_blank_row_count": 44
+        },
+        "frmtrm_q_nm": {
+          "present_row_count": 132,
+          "non_blank_row_count": 132
+        },
+        "frmtrm_q_amount": {
+          "present_row_count": 132,
+          "non_blank_row_count": 132
+        },
+        "frmtrm_add_amount": {
+          "present_row_count": 23,
+          "non_blank_row_count": 23
+        }
+      },
+      "diagnostic_rows": [
+        {
+          "account_id": "ifrs-full_CurrentTradeReceivables",
+          "account_nm": "매출채권",
+          "sj_div": "BS",
+          "thstrm_nm": "제 19 기 반기말",
+          "thstrm_amount": "47270771869",
+          "thstrm_add_amount": null,
+          "frmtrm_nm": "제 18 기말",
+          "frmtrm_amount": "96660942933"
+        },
+        {
+          "account_id": "dart_OperatingIncomeLoss",
+          "account_nm": "영업이익",
+          "sj_div": "CIS",
+          "thstrm_nm": "제 19 기 반기",
+          "thstrm_amount": "18307057461",
+          "thstrm_add_amount": "29836195460",
+          "frmtrm_nm": null,
+          "frmtrm_amount": null
+        },
+        {
+          "account_id": "ifrs-full_CostOfSales",
+          "account_nm": "매출원가",
+          "sj_div": "CIS",
+          "thstrm_nm": "제 19 기 반기",
+          "thstrm_amount": "69375066785",
+          "thstrm_add_amount": "105212232735",
+          "frmtrm_nm": null,
+          "frmtrm_amount": null
+        },
+        {
+          "account_id": "ifrs-full_GrossProfit",
+          "account_nm": "매출총이익",
+          "sj_div": "CIS",
+          "thstrm_nm": "제 19 기 반기",
+          "thstrm_amount": "39108942592",
+          "thstrm_add_amount": "70233233862",
+          "frmtrm_nm": null,
+          "frmtrm_amount": null
+        },
+        {
+          "account_id": "ifrs-full_ProfitLoss",
+          "account_nm": "당기순이익",
+          "sj_div": "CIS",
+          "thstrm_nm": "제 19 기 반기",
+          "thstrm_amount": "13150929276",
+          "thstrm_add_amount": "28351572695",
+          "frmtrm_nm": null,
+          "frmtrm_amount": null
+        },
+        {
+          "account_id": "ifrs-full_ProfitLossAttributableToOwnersOfParent",
+          "account_nm": "지배주주 보통주 당기순이익",
+          "sj_div": "CIS",
+          "thstrm_nm": "제 19 기 반기",
+          "thstrm_amount": "13209572704",
+          "thstrm_add_amount": "28272859033",
+          "frmtrm_nm": null,
+          "frmtrm_amount": null
+        },
+        {
+          "account_id": "ifrs-full_Revenue",
+          "account_nm": "매출액",
+          "sj_div": "CIS",
+          "thstrm_nm": "제 19 기 반기",
+          "thstrm_amount": "108484009377",
+          "thstrm_add_amount": "175445466597",
+          "frmtrm_nm": null,
+          "frmtrm_amount": null
+        },
+        {
+          "account_id": "ifrs-full_ProfitLoss",
+          "account_nm": "당기순이익",
+          "sj_div": "SCE",
+          "thstrm_nm": "제 19 기 반기",
+          "thstrm_amount": "13150929276",
+          "thstrm_add_amount": null,
+          "frmtrm_nm": null,
+          "frmtrm_amount": null
+        },
+        {
+          "account_id": "ifrs-full_ProfitLoss",
+          "account_nm": "당기순이익",
+          "sj_div": "SCE",
+          "thstrm_nm": "제 19 기 반기",
+          "thstrm_amount": "0",
+          "thstrm_add_amount": null,
+          "frmtrm_nm": null,
+          "frmtrm_amount": null
+        },
+        {
+          "account_id": "ifrs-full_ProfitLoss",
+          "account_nm": "당기순이익",
+          "sj_div": "SCE",
+          "thstrm_nm": "제 19 기 반기",
+          "thstrm_amount": "28272859033",
+          "thstrm_add_amount": null,
+          "frmtrm_nm": null,
+          "frmtrm_amount": null
+        },
+        {
+          "account_id": "ifrs-full_ProfitLoss",
+          "account_nm": "당기순이익",
+          "sj_div": "SCE",
+          "thstrm_nm": "제 19 기 반기",
+          "thstrm_amount": "0",
+          "thstrm_add_amount": null,
+          "frmtrm_nm": null,
+          "frmtrm_amount": null
+        },
+        {
+          "account_id": "ifrs-full_ProfitLoss",
+          "account_nm": "당기순이익",
+          "sj_div": "SCE",
+          "thstrm_nm": "제 19 기 반기",
+          "thstrm_amount": "0",
+          "thstrm_add_amount": null,
+          "frmtrm_nm": null,
+          "frmtrm_amount": null
+        }
+      ]
+    }
+  },
+  "request_audit": [
+    {
+      "label": "list_005930",
+      "endpoint": "https://opendart.fss.or.kr/api/list.json",
+      "redacted_request": "https://opendart.fss.or.kr/api/list.json?corp_code=00126380&bgn_de=20250101&end_de=20260823&page_no=1&page_count=100&crtfc_key=%3CREDACTED%3E",
+      "parameters": {
+        "corp_code": "00126380",
+        "bgn_de": "20250101",
+        "end_de": "20260823",
+        "page_no": "1",
+        "page_count": "100",
+        "crtfc_key": "<REDACTED>"
+      },
+      "http_status": 200,
+      "content_type": "application/json;charset=UTF-8",
+      "response_byte_length": 24228,
+      "status": "000",
+      "classification": "PASS",
+      "record_count": 100,
+      "error_type": null
+    },
+    {
+      "label": "list_005930_2025_annual_window",
+      "endpoint": "https://opendart.fss.or.kr/api/list.json",
+      "redacted_request": "https://opendart.fss.or.kr/api/list.json?corp_code=00126380&bgn_de=20260301&end_de=20260430&page_no=1&page_count=100&crtfc_key=%3CREDACTED%3E",
+      "parameters": {
+        "corp_code": "00126380",
+        "bgn_de": "20260301",
+        "end_de": "20260430",
+        "page_no": "1",
+        "page_count": "100",
+        "crtfc_key": "<REDACTED>"
+      },
+      "http_status": 200,
+      "content_type": "application/json;charset=UTF-8",
+      "response_byte_length": 12992,
+      "status": "000",
+      "classification": "PASS",
+      "record_count": 54,
+      "error_type": null
+    },
+    {
+      "label": "list_237690",
+      "endpoint": "https://opendart.fss.or.kr/api/list.json",
+      "redacted_request": "https://opendart.fss.or.kr/api/list.json?corp_code=00871833&bgn_de=20250101&end_de=20260823&page_no=1&page_count=100&crtfc_key=%3CREDACTED%3E",
+      "parameters": {
+        "corp_code": "00871833",
+        "bgn_de": "20250101",
+        "end_de": "20260823",
+        "page_no": "1",
+        "page_count": "100",
+        "crtfc_key": "<REDACTED>"
+      },
+      "http_status": 200,
+      "content_type": "application/json;charset=UTF-8",
+      "response_byte_length": 23845,
+      "status": "000",
+      "classification": "PASS",
+      "record_count": 100,
+      "error_type": null
+    },
+    {
+      "label": "list_086790",
+      "endpoint": "https://opendart.fss.or.kr/api/list.json",
+      "redacted_request": "https://opendart.fss.or.kr/api/list.json?corp_code=00547583&bgn_de=20250101&end_de=20260823&page_no=1&page_count=100&crtfc_key=%3CREDACTED%3E",
+      "parameters": {
+        "corp_code": "00547583",
+        "bgn_de": "20250101",
+        "end_de": "20260823",
+        "page_no": "1",
+        "page_count": "100",
+        "crtfc_key": "<REDACTED>"
+      },
+      "http_status": 200,
+      "content_type": "application/json;charset=UTF-8",
+      "response_byte_length": 25455,
+      "status": "000",
+      "classification": "PASS",
+      "record_count": 100,
+      "error_type": null
+    },
+    {
+      "label": "xbrl_primary",
+      "endpoint": "https://opendart.fss.or.kr/api/fnlttXbrl.xml",
+      "redacted_request": "https://opendart.fss.or.kr/api/fnlttXbrl.xml?rcept_no=20260310002820&reprt_code=11011&crtfc_key=%3CREDACTED%3E",
+      "parameters": {
+        "rcept_no": "20260310002820",
+        "reprt_code": "11011",
+        "crtfc_key": "<REDACTED>"
+      },
+      "http_status": 200,
+      "content_type": "application/x-msdownload;charset=UTF-8",
+      "response_byte_length": 802368,
+      "status": null,
+      "classification": "PASS",
+      "zip_parse": "PASS",
+      "member_count": 7,
+      "member_names": [
+        "entity00126380_2025-12-31.xbrl",
+        "entity00126380_2025-12-31.xsd",
+        "entity00126380_2025-12-31_def.xml",
+        "entity00126380_2025-12-31_cal.xml",
+        "entity00126380_2025-12-31_pre.xml",
+        "entity00126380_2025-12-31_lab-ko.xml",
+        "entity00126380_2025-12-31_lab-en.xml"
+      ],
+      "sha256": "946ed3c81628c5cb69e460217a1e3f656d857b64c9dde15fdac981c2d68323d1",
+      "error_type": null
+    },
+    {
+      "label": "xbrl_primary_repeat",
+      "endpoint": "https://opendart.fss.or.kr/api/fnlttXbrl.xml",
+      "redacted_request": "https://opendart.fss.or.kr/api/fnlttXbrl.xml?rcept_no=20260310002820&reprt_code=11011&crtfc_key=%3CREDACTED%3E",
+      "parameters": {
+        "rcept_no": "20260310002820",
+        "reprt_code": "11011",
+        "crtfc_key": "<REDACTED>"
+      },
+      "http_status": 200,
+      "content_type": "application/x-msdownload;charset=UTF-8",
+      "response_byte_length": 802368,
+      "status": null,
+      "classification": "PASS",
+      "zip_parse": "PASS",
+      "member_count": 7,
+      "member_names": [
+        "entity00126380_2025-12-31.xbrl",
+        "entity00126380_2025-12-31.xsd",
+        "entity00126380_2025-12-31_def.xml",
+        "entity00126380_2025-12-31_cal.xml",
+        "entity00126380_2025-12-31_pre.xml",
+        "entity00126380_2025-12-31_lab-ko.xml",
+        "entity00126380_2025-12-31_lab-en.xml"
+      ],
+      "sha256": "946ed3c81628c5cb69e460217a1e3f656d857b64c9dde15fdac981c2d68323d1",
+      "error_type": null
+    },
+    {
+      "label": "financial_2026_half_year_005930",
+      "endpoint": "https://opendart.fss.or.kr/api/fnlttSinglAcntAll.json",
+      "redacted_request": "https://opendart.fss.or.kr/api/fnlttSinglAcntAll.json?corp_code=00126380&bsns_year=2026&reprt_code=11012&fs_div=CFS&crtfc_key=%3CREDACTED%3E",
+      "parameters": {
+        "corp_code": "00126380",
+        "bsns_year": "2026",
+        "reprt_code": "11012",
+        "fs_div": "CFS",
+        "crtfc_key": "<REDACTED>"
+      },
+      "http_status": 200,
+      "content_type": "application/json;charset=UTF-8",
+      "response_byte_length": 101553,
+      "status": "000",
+      "classification": "PASS",
+      "record_count": 223,
+      "error_type": null
+    },
+    {
+      "label": "financial_2026_half_year_237690",
+      "endpoint": "https://opendart.fss.or.kr/api/fnlttSinglAcntAll.json",
+      "redacted_request": "https://opendart.fss.or.kr/api/fnlttSinglAcntAll.json?corp_code=00871833&bsns_year=2026&reprt_code=11012&fs_div=CFS&crtfc_key=%3CREDACTED%3E",
+      "parameters": {
+        "corp_code": "00871833",
+        "bsns_year": "2026",
+        "reprt_code": "11012",
+        "fs_div": "CFS",
+        "crtfc_key": "<REDACTED>"
+      },
+      "http_status": 200,
+      "content_type": "application/json;charset=UTF-8",
+      "response_byte_length": 79489,
+      "status": "000",
+      "classification": "PASS",
+      "record_count": 175,
+      "error_type": null
+    },
+    {
+      "label": "xbrl_correction_original",
+      "endpoint": "https://opendart.fss.or.kr/api/fnlttXbrl.xml",
+      "redacted_request": "https://opendart.fss.or.kr/api/fnlttXbrl.xml?rcept_no=20260318001605&reprt_code=11011&crtfc_key=%3CREDACTED%3E",
+      "parameters": {
+        "rcept_no": "20260318001605",
+        "reprt_code": "11011",
+        "crtfc_key": "<REDACTED>"
+      },
+      "http_status": 200,
+      "content_type": "application/x-msdownload;charset=UTF-8",
+      "response_byte_length": 844023,
+      "status": null,
+      "classification": "PASS",
+      "zip_parse": "PASS",
+      "member_count": 7,
+      "member_names": [
+        "entity00871833_2025-12-31.xbrl",
+        "entity00871833_2025-12-31.xsd",
+        "entity00871833_2025-12-31_def.xml",
+        "entity00871833_2025-12-31_cal.xml",
+        "entity00871833_2025-12-31_pre.xml",
+        "entity00871833_2025-12-31_lab-ko.xml",
+        "entity00871833_2025-12-31_lab-en.xml"
+      ],
+      "sha256": "c7ce79a84c5829080ceae4601e2dd70b5dc90dc3c7a4ea971ff3575438b2f92e",
+      "error_type": null
+    },
+    {
+      "label": "xbrl_correction_filing",
+      "endpoint": "https://opendart.fss.or.kr/api/fnlttXbrl.xml",
+      "redacted_request": "https://opendart.fss.or.kr/api/fnlttXbrl.xml?rcept_no=20260602000343&reprt_code=11011&crtfc_key=%3CREDACTED%3E",
+      "parameters": {
+        "rcept_no": "20260602000343",
+        "reprt_code": "11011",
+        "crtfc_key": "<REDACTED>"
+      },
+      "http_status": 200,
+      "content_type": "application/x-msdownload;charset=UTF-8",
+      "response_byte_length": 822731,
+      "status": null,
+      "classification": "PASS",
+      "zip_parse": "PASS",
+      "member_count": 7,
+      "member_names": [
+        "entity00871833_2025-12-31.xbrl",
+        "entity00871833_2025-12-31.xsd",
+        "entity00871833_2025-12-31_def.xml",
+        "entity00871833_2025-12-31_cal.xml",
+        "entity00871833_2025-12-31_pre.xml",
+        "entity00871833_2025-12-31_lab-ko.xml",
+        "entity00871833_2025-12-31_lab-en.xml"
+      ],
+      "sha256": "faafbf7b347987c3c2c43a748e99e60f61025059a2a969fa8aa519839b90d900",
+      "error_type": null
+    }
+  ],
+  "total_http_requests": 10,
+  "request_budget_max": 15,
+  "request_budget_pass": true,
+  "api_key_present": true,
+  "secret_leak_count": 0,
+  "final_status": "READY_FOR_ARCHITECT_OPENDART_FUNDAMENTALS_ARCHITECTURE_REVIEW",
+  "strict_pit_supported": true,
+  "strict_pit_support_scope": "Filing-specific source feasibility proven; full correction-chain resolver remains a later implementation boundary",
+  "filing_specific_retrieval_proven": true
+}

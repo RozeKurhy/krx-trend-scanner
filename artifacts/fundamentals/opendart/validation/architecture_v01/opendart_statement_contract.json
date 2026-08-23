@@ -1,0 +1,87 @@
+{
+  "work_id": "OPENDART_FUNDAMENTALS_V01_ARCHITECTURE",
+  "raw_sj_div_to_statement_family": {
+    "BS": "BALANCE_SHEET",
+    "IS": "INCOME_STATEMENT",
+    "CIS": "INCOME_STATEMENT",
+    "CF": "CASH_FLOW",
+    "SCE": "EQUITY_CHANGES"
+  },
+  "raw_sj_div_preserved": true,
+  "statement_family_selection": "Metric candidates are filtered by canonical statement family; SCE is never used for BS/IS metrics.",
+  "fs_div_contract": {
+    "preferred": "CFS",
+    "fallback": "OFS only when CFS status is 013 and OFS status is 000 with usable rows",
+    "api_error_rule": "CFS API errors fail closed; no silent OFS fallback",
+    "basis_atomicity": "One report-level fs_div basis; account-level CFS/OFS mixing prohibited"
+  },
+  "company_family_contract": {
+    "enum": [
+      "NON_FINANCIAL",
+      "FINANCIAL",
+      "UNKNOWN"
+    ],
+    "fixture_results": {
+      "005930": {
+        "company_family": "NON_FINANCIAL",
+        "evidence": [
+          "induty_code:264"
+        ],
+        "status": "FIXTURE_CONFIDENT"
+      },
+      "237690": {
+        "company_family": "NON_FINANCIAL",
+        "evidence": [
+          "induty_code:212"
+        ],
+        "status": "FIXTURE_CONFIDENT"
+      },
+      "086790": {
+        "company_family": "FINANCIAL",
+        "evidence": [
+          "induty_code:64992"
+        ],
+        "status": "FIXTURE_CONFIDENT"
+      }
+    },
+    "classification_scope": "Evidence-based representative fixture only; not a full KRX industry engine"
+  },
+  "duplicate_account_contract": {
+    "required_context": [
+      "statement_family",
+      "raw_sj_div",
+      "account_id",
+      "account_nm",
+      "account_detail",
+      "period_context",
+      "ord"
+    ],
+    "first_match_forbidden": true,
+    "tie_behavior": "AMBIGUOUS / fail closed"
+  },
+  "report_codes": {
+    "11013": "Q1",
+    "11012": "HALF_YEAR",
+    "11014": "Q3",
+    "11011": "ANNUAL"
+  },
+  "canonical_metric_candidates": {
+    "NON_FINANCIAL": [
+      "assets",
+      "liabilities",
+      "equity",
+      "revenue",
+      "operating_income",
+      "net_income",
+      "operating_cash_flow"
+    ],
+    "FINANCIAL": [
+      "assets",
+      "liabilities",
+      "equity",
+      "net_income",
+      "operating_cash_flow"
+    ]
+  },
+  "score_or_valuation_implemented": false
+}

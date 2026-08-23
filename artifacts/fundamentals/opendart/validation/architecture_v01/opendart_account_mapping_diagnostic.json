@@ -1,0 +1,506 @@
+{
+  "work_id": "OPENDART_FUNDAMENTALS_V01_ARCHITECTURE",
+  "source": "access_v01 annual 2025 CFS diagnostic rows",
+  "diagnostics": {
+    "005930": {
+      "ticker": "005930",
+      "name": "삼성전자",
+      "company_family": "NON_FINANCIAL",
+      "family_evidence": [
+        "induty_code:264"
+      ],
+      "metrics": [
+        {
+          "metric": "assets",
+          "company_family": "NON_FINANCIAL",
+          "candidate_account_id": "ifrs-full_Assets",
+          "account_nm": "자산총계",
+          "raw_sj_div": "BS",
+          "canonical_statement_family": "BALANCE_SHEET",
+          "match_count": 1,
+          "resolution_status": "RESOLVED",
+          "account_id": "ifrs-full_Assets",
+          "account_detail": null,
+          "ord": null,
+          "thstrm_amount": "566942110000000"
+        },
+        {
+          "metric": "liabilities",
+          "company_family": "NON_FINANCIAL",
+          "candidate_account_id": "ifrs-full_Liabilities",
+          "account_nm": "부채총계",
+          "raw_sj_div": "BS",
+          "canonical_statement_family": "BALANCE_SHEET",
+          "match_count": 1,
+          "resolution_status": "RESOLVED",
+          "account_id": "ifrs-full_Liabilities",
+          "account_detail": null,
+          "ord": null,
+          "thstrm_amount": "130621773000000"
+        },
+        {
+          "metric": "equity",
+          "company_family": "NON_FINANCIAL",
+          "candidate_account_id": "ifrs-full_Equity",
+          "account_nm": "자본총계",
+          "raw_sj_div": "BS",
+          "canonical_statement_family": "BALANCE_SHEET",
+          "match_count": 1,
+          "resolution_status": "RESOLVED",
+          "account_id": "ifrs-full_Equity",
+          "account_detail": null,
+          "ord": null,
+          "thstrm_amount": "436320337000000"
+        },
+        {
+          "metric": "revenue",
+          "company_family": "NON_FINANCIAL",
+          "candidate_account_id": "ifrs-full_Revenue",
+          "account_nm": "매출액",
+          "raw_sj_div": "IS",
+          "canonical_statement_family": "INCOME_STATEMENT",
+          "match_count": 1,
+          "resolution_status": "RESOLVED",
+          "account_id": "ifrs-full_Revenue",
+          "account_detail": null,
+          "ord": null,
+          "thstrm_amount": "333605938000000"
+        },
+        {
+          "metric": "operating_income",
+          "company_family": "NON_FINANCIAL",
+          "candidate_account_id": "dart_OperatingIncomeLoss",
+          "account_nm": "영업이익",
+          "raw_sj_div": "IS",
+          "canonical_statement_family": "INCOME_STATEMENT",
+          "match_count": 1,
+          "resolution_status": "RESOLVED",
+          "account_id": "dart_OperatingIncomeLoss",
+          "account_detail": null,
+          "ord": null,
+          "thstrm_amount": "43601051000000"
+        },
+        {
+          "metric": "net_income",
+          "company_family": "NON_FINANCIAL",
+          "candidate_account_id": "ifrs-full_ProfitLoss",
+          "account_nm": "당기순이익",
+          "raw_sj_div": "IS",
+          "canonical_statement_family": "INCOME_STATEMENT",
+          "match_count": 2,
+          "resolution_status": "RESOLVED",
+          "account_id": "ifrs-full_ProfitLoss",
+          "account_detail": null,
+          "ord": null,
+          "thstrm_amount": "45206805000000"
+        },
+        {
+          "metric": "operating_cash_flow",
+          "company_family": "NON_FINANCIAL",
+          "candidate_account_id": "ifrs-full_CashFlowsFromUsedInOperatingActivities",
+          "account_nm": "영업활동현금흐름",
+          "raw_sj_div": "CF",
+          "canonical_statement_family": "CASH_FLOW",
+          "match_count": 1,
+          "resolution_status": "RESOLVED",
+          "account_id": "ifrs-full_CashFlowsFromUsedInOperatingActivities",
+          "account_detail": null,
+          "ord": null,
+          "thstrm_amount": "85315148000000"
+        }
+      ],
+      "duplicate_account_cases": [
+        {
+          "account_id": "ifrs-full_Equity",
+          "match_count": 8,
+          "raw_sj_div_values": [
+            "BS",
+            "SCE"
+          ],
+          "statement_families": [
+            "BALANCE_SHEET",
+            "EQUITY_CHANGES"
+          ]
+        },
+        {
+          "account_id": "ifrs-full_ProfitLoss",
+          "match_count": 10,
+          "raw_sj_div_values": [
+            "CF",
+            "CIS",
+            "IS",
+            "SCE"
+          ],
+          "statement_families": [
+            "CASH_FLOW",
+            "EQUITY_CHANGES",
+            "INCOME_STATEMENT"
+          ]
+        }
+      ]
+    },
+    "237690": {
+      "ticker": "237690",
+      "name": "에스티팜",
+      "company_family": "NON_FINANCIAL",
+      "family_evidence": [
+        "induty_code:212"
+      ],
+      "metrics": [
+        {
+          "metric": "assets",
+          "company_family": "NON_FINANCIAL",
+          "candidate_account_id": "ifrs-full_Assets",
+          "account_nm": "자산총계",
+          "raw_sj_div": "BS",
+          "canonical_statement_family": "BALANCE_SHEET",
+          "match_count": 1,
+          "resolution_status": "RESOLVED",
+          "account_id": "ifrs-full_Assets",
+          "account_detail": null,
+          "ord": null,
+          "thstrm_amount": "782566948564"
+        },
+        {
+          "metric": "liabilities",
+          "company_family": "NON_FINANCIAL",
+          "candidate_account_id": "ifrs-full_Liabilities",
+          "account_nm": "부채총계",
+          "raw_sj_div": "BS",
+          "canonical_statement_family": "BALANCE_SHEET",
+          "match_count": 1,
+          "resolution_status": "RESOLVED",
+          "account_id": "ifrs-full_Liabilities",
+          "account_detail": null,
+          "ord": null,
+          "thstrm_amount": "189563266216"
+        },
+        {
+          "metric": "equity",
+          "company_family": "NON_FINANCIAL",
+          "candidate_account_id": "ifrs-full_Equity",
+          "account_nm": "자본총계",
+          "raw_sj_div": "BS",
+          "canonical_statement_family": "BALANCE_SHEET",
+          "match_count": 1,
+          "resolution_status": "RESOLVED",
+          "account_id": "ifrs-full_Equity",
+          "account_detail": null,
+          "ord": null,
+          "thstrm_amount": "593003682348"
+        },
+        {
+          "metric": "revenue",
+          "company_family": "NON_FINANCIAL",
+          "candidate_account_id": "ifrs-full_Revenue",
+          "account_nm": "매출",
+          "raw_sj_div": "CIS",
+          "canonical_statement_family": "INCOME_STATEMENT",
+          "match_count": 1,
+          "resolution_status": "RESOLVED",
+          "account_id": "ifrs-full_Revenue",
+          "account_detail": null,
+          "ord": null,
+          "thstrm_amount": "331681282447"
+        },
+        {
+          "metric": "operating_income",
+          "company_family": "NON_FINANCIAL",
+          "candidate_account_id": "dart_OperatingIncomeLoss",
+          "account_nm": "영업이익",
+          "raw_sj_div": "CIS",
+          "canonical_statement_family": "INCOME_STATEMENT",
+          "match_count": 1,
+          "resolution_status": "RESOLVED",
+          "account_id": "dart_OperatingIncomeLoss",
+          "account_detail": null,
+          "ord": null,
+          "thstrm_amount": "54932543750"
+        },
+        {
+          "metric": "net_income",
+          "company_family": "NON_FINANCIAL",
+          "candidate_account_id": "ifrs-full_ProfitLoss",
+          "account_nm": "당기순이익",
+          "raw_sj_div": "CIS",
+          "canonical_statement_family": "INCOME_STATEMENT",
+          "match_count": 1,
+          "resolution_status": "RESOLVED",
+          "account_id": "ifrs-full_ProfitLoss",
+          "account_detail": null,
+          "ord": null,
+          "thstrm_amount": "54561944733"
+        },
+        {
+          "metric": "operating_cash_flow",
+          "company_family": "NON_FINANCIAL",
+          "candidate_account_id": "ifrs-full_CashFlowsFromUsedInOperatingActivities",
+          "account_nm": "영업활동으로 인한 현금흐름",
+          "raw_sj_div": "CF",
+          "canonical_statement_family": "CASH_FLOW",
+          "match_count": 1,
+          "resolution_status": "RESOLVED",
+          "account_id": "ifrs-full_CashFlowsFromUsedInOperatingActivities",
+          "account_detail": null,
+          "ord": null,
+          "thstrm_amount": "13989325017"
+        }
+      ],
+      "duplicate_account_cases": [
+        {
+          "account_id": "ifrs-full_Equity",
+          "match_count": 9,
+          "raw_sj_div_values": [
+            "BS",
+            "SCE"
+          ],
+          "statement_families": [
+            "BALANCE_SHEET",
+            "EQUITY_CHANGES"
+          ]
+        },
+        {
+          "account_id": "ifrs-full_ProfitLoss",
+          "match_count": 9,
+          "raw_sj_div_values": [
+            "CIS",
+            "SCE"
+          ],
+          "statement_families": [
+            "EQUITY_CHANGES",
+            "INCOME_STATEMENT"
+          ]
+        }
+      ]
+    },
+    "086790": {
+      "ticker": "086790",
+      "name": "하나금융지주",
+      "company_family": "FINANCIAL",
+      "family_evidence": [
+        "induty_code:64992"
+      ],
+      "metrics": [
+        {
+          "metric": "assets",
+          "company_family": "FINANCIAL",
+          "candidate_account_id": "ifrs-full_Assets",
+          "account_nm": "자산총계",
+          "raw_sj_div": "BS",
+          "canonical_statement_family": "BALANCE_SHEET",
+          "match_count": 1,
+          "resolution_status": "RESOLVED",
+          "account_id": "ifrs-full_Assets",
+          "account_detail": null,
+          "ord": null,
+          "thstrm_amount": "674590676000000"
+        },
+        {
+          "metric": "liabilities",
+          "company_family": "FINANCIAL",
+          "candidate_account_id": "ifrs-full_Liabilities",
+          "account_nm": "부채총계",
+          "raw_sj_div": "BS",
+          "canonical_statement_family": "BALANCE_SHEET",
+          "match_count": 1,
+          "resolution_status": "RESOLVED",
+          "account_id": "ifrs-full_Liabilities",
+          "account_detail": null,
+          "ord": null,
+          "thstrm_amount": "628945122000000"
+        },
+        {
+          "metric": "equity",
+          "company_family": "FINANCIAL",
+          "candidate_account_id": "ifrs-full_Equity",
+          "account_nm": "자본총계",
+          "raw_sj_div": "BS",
+          "canonical_statement_family": "BALANCE_SHEET",
+          "match_count": 1,
+          "resolution_status": "RESOLVED",
+          "account_id": "ifrs-full_Equity",
+          "account_detail": null,
+          "ord": null,
+          "thstrm_amount": "45645554000000"
+        },
+        {
+          "metric": "revenue",
+          "company_family": "FINANCIAL",
+          "resolution_status": "NOT_APPLICABLE",
+          "match_count": 0,
+          "reason": "NON_FINANCIAL_ONLY_METRIC"
+        },
+        {
+          "metric": "operating_income",
+          "company_family": "FINANCIAL",
+          "resolution_status": "NOT_APPLICABLE",
+          "match_count": 0,
+          "reason": "NON_FINANCIAL_ONLY_METRIC"
+        },
+        {
+          "metric": "net_income",
+          "company_family": "FINANCIAL",
+          "candidate_account_id": "ifrs-full_ProfitLoss",
+          "account_nm": "연결당기순이익",
+          "raw_sj_div": "CIS",
+          "canonical_statement_family": "INCOME_STATEMENT",
+          "match_count": 1,
+          "resolution_status": "RESOLVED",
+          "account_id": "ifrs-full_ProfitLoss",
+          "account_detail": null,
+          "ord": null,
+          "thstrm_amount": "4036638000000"
+        },
+        {
+          "metric": "operating_cash_flow",
+          "company_family": "FINANCIAL",
+          "candidate_account_id": "ifrs-full_CashFlowsFromUsedInOperatingActivities",
+          "account_nm": "영업활동으로 인한 현금흐름",
+          "raw_sj_div": "CF",
+          "canonical_statement_family": "CASH_FLOW",
+          "match_count": 1,
+          "resolution_status": "RESOLVED",
+          "account_id": "ifrs-full_CashFlowsFromUsedInOperatingActivities",
+          "account_detail": null,
+          "ord": null,
+          "thstrm_amount": "-1962471000000"
+        }
+      ],
+      "duplicate_account_cases": [
+        {
+          "account_id": "-표준계정코드 미사용-",
+          "match_count": 2,
+          "raw_sj_div_values": [
+            "CIS"
+          ],
+          "statement_families": [
+            "INCOME_STATEMENT"
+          ]
+        },
+        {
+          "account_id": "ifrs-full_Equity",
+          "match_count": 10,
+          "raw_sj_div_values": [
+            "BS",
+            "SCE"
+          ],
+          "statement_families": [
+            "BALANCE_SHEET",
+            "EQUITY_CHANGES"
+          ]
+        },
+        {
+          "account_id": "ifrs-full_ProfitLoss",
+          "match_count": 6,
+          "raw_sj_div_values": [
+            "CF",
+            "CIS",
+            "SCE"
+          ],
+          "statement_families": [
+            "CASH_FLOW",
+            "EQUITY_CHANGES",
+            "INCOME_STATEMENT"
+          ]
+        }
+      ]
+    }
+  },
+  "duplicate_account_cases_found": {
+    "005930": [
+      {
+        "account_id": "ifrs-full_Equity",
+        "match_count": 8,
+        "raw_sj_div_values": [
+          "BS",
+          "SCE"
+        ],
+        "statement_families": [
+          "BALANCE_SHEET",
+          "EQUITY_CHANGES"
+        ]
+      },
+      {
+        "account_id": "ifrs-full_ProfitLoss",
+        "match_count": 10,
+        "raw_sj_div_values": [
+          "CF",
+          "CIS",
+          "IS",
+          "SCE"
+        ],
+        "statement_families": [
+          "CASH_FLOW",
+          "EQUITY_CHANGES",
+          "INCOME_STATEMENT"
+        ]
+      }
+    ],
+    "237690": [
+      {
+        "account_id": "ifrs-full_Equity",
+        "match_count": 9,
+        "raw_sj_div_values": [
+          "BS",
+          "SCE"
+        ],
+        "statement_families": [
+          "BALANCE_SHEET",
+          "EQUITY_CHANGES"
+        ]
+      },
+      {
+        "account_id": "ifrs-full_ProfitLoss",
+        "match_count": 9,
+        "raw_sj_div_values": [
+          "CIS",
+          "SCE"
+        ],
+        "statement_families": [
+          "EQUITY_CHANGES",
+          "INCOME_STATEMENT"
+        ]
+      }
+    ],
+    "086790": [
+      {
+        "account_id": "-표준계정코드 미사용-",
+        "match_count": 2,
+        "raw_sj_div_values": [
+          "CIS"
+        ],
+        "statement_families": [
+          "INCOME_STATEMENT"
+        ]
+      },
+      {
+        "account_id": "ifrs-full_Equity",
+        "match_count": 10,
+        "raw_sj_div_values": [
+          "BS",
+          "SCE"
+        ],
+        "statement_families": [
+          "BALANCE_SHEET",
+          "EQUITY_CHANGES"
+        ]
+      },
+      {
+        "account_id": "ifrs-full_ProfitLoss",
+        "match_count": 6,
+        "raw_sj_div_values": [
+          "CF",
+          "CIS",
+          "SCE"
+        ],
+        "statement_families": [
+          "CASH_FLOW",
+          "EQUITY_CHANGES",
+          "INCOME_STATEMENT"
+        ]
+      }
+    ]
+  },
+  "first_match_account_selection_used": false,
+  "resolution_policy": "statement family + raw sj_div + account_id + account_nm + account_detail + ord; tied candidates fail closed"
+}
