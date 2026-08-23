@@ -168,7 +168,8 @@ def test_provider_keeps_selected_rcept_and_filing_specific_values(tmp_path: Path
     corp = CorpCodeRepository(records=[CorpCodeRecord("00871833", "에스티팜", "237690", "")])
     filing = _filing("20260318001605", "20260318")
     provider = FinancialStatementProvider(corp, FixtureRegistry([filing]), XbrlRepository(client, cache_dir=tmp_path))
-    result = provider.normalize(ticker="237690", bsns_year="2025", reprt_code="11011", as_of="2026-04-01")
+    result = provider.normalize(ticker="237690", bsns_year="2025", reprt_code="11011", as_of="2026-04-01",
+                                company={"induty_code": "264"})
     values = {item.metric: item for item in result.observations}
     assert result.rcept_no == filing.rcept_no and result.fs_div_used == "CFS"
     assert values["revenue"].value == 331 and values["operating_income"].value == 54

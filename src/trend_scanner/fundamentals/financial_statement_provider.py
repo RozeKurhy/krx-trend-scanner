@@ -17,7 +17,6 @@ from .opendart_contract import (
     REPORT_TYPE_BY_CODE,
     classify_company_family,
     resolve_core_account,
-    select_statement_basis,
 )
 from .pit_resolver import PITResolver
 from .xbrl_repository import XbrlRepository
@@ -65,29 +64,58 @@ class FinancialStatementProvider:
         raw_rows = self.xbrl.statement_rows(artifact, bsns_year=str(bsns_year), reprt_code=str(reprt_code))
         basis, statement_rows = self.xbrl.basis_rows(raw_rows, fs_div_requested)
         if not basis:
-            separate_rows = [row for row in raw_rows if row.get("basis") == "SeparateMember"]
-            cfs_status: str | None = None
-            ofs_status: str | None = None
-            # Only consult the report-level API when the filing-specific XBRL
-            # has no consolidated context.  Canonical values still come from
-            # the selected rcept_no XBRL artifact, never from this convenience
-            # endpoint.
-            if self.xbrl.client is not None:
-                cfs_response = self.xbrl.client.financial_statements(selected.corp_code, str(bsns_year), str(reprt_code), "CFS")
-                cfs_status = cfs_response.status
-                if cfs_status == "013":
-                    ofs_response = self.xbrl.client.financial_statements(selected.corp_code, str(bsns_year), str(reprt_code), "OFS")
-                    ofs_status = ofs_response.status
-            basis_selection = select_statement_basis(cfs_status, [], ofs_status, separate_rows)
-            if basis_selection.fs_div_used == "OFS":
-                basis, statement_rows = "OFS", separate_rows
-            else:
-                basis, statement_rows = "", []
-        family = classify_company_family(company or {}, statement_rows)
+            # Historical normalization is strictly filing-specific.  The
+            # report-level fnlttSinglAcntAll endpoint is a CURRENT_LATEST
+            # convenience and cannot decide the basis of an as-of filing.
+            return NormalizedFinancialReport(
+                ticker=ticker, corp_code=record.corp_code, company_family=CompanyFamily.UNKNOWN.value,
+                bsns_year=str(bsns_year), reprt_code=str(reprt_code),
+                report_type=REPORT_TYPE_BY_CODE.get(str(reprt_code), "UNKNOWN"),
+                period_start=None, period_end=None, rcept_no=selected.rcept_no, rcept_dt=selected.rcept_dt,
+                pit_as_of=str(as_of), pit_availability=resolution.availability or "AVAILABLE",
+                fs_div_requested=fs_div_requested, fs_div_used=None, fallback_used=False, fallback_reason=None,
+                source_sha256=artifact.sha256, observations=(), status="BASIS_UNRESOLVED",
+                reason="HISTORICAL_BASIS_UNRESOLVED",
+            )
+        # Missing company metadata is not evidence for the non-financial
+        # branch.  In particular, do not turn an omitted company into a
+        # normal READY report merely because common revenue facts exist.
+        company_fields = company.get("selected_fields") if isinstance(company, Mapping) \
+            and isinstance(company.get("selected_fields"), Mapping) else company
+        industry_code = str((company_fields or {}).get("induty_code") or "").strip() \
+            if isinstance(company_fields, Mapping) else ""
+        family = ({"company_family": CompanyFamily.UNKNOWN.value, "evidence": [],
+                   "status": "COMPANY_METADATA_MISSING"}
+                  if not industry_code else classify_company_family(company, statement_rows))
         company_family = family["company_family"]
+        if company_family == CompanyFamily.UNKNOWN.value:
+            return NormalizedFinancialReport(
+                ticker=ticker, corp_code=record.corp_code, company_family=company_family,
+                bsns_year=str(bsns_year), reprt_code=str(reprt_code),
+                report_type=REPORT_TYPE_BY_CODE.get(str(reprt_code), "UNKNOWN"),
+                period_start=None, period_end=None, rcept_no=selected.rcept_no, rcept_dt=selected.rcept_dt,
+                pit_as_of=str(as_of), pit_availability=resolution.availability or "AVAILABLE",
+                fs_div_requested=fs_div_requested, fs_div_used=basis, fallback_used=False, fallback_reason=None,
+                source_sha256=artifact.sha256, observations=(), status="COMPANY_FAMILY_UNRESOLVED",
+                reason="COMPANY_FAMILY_UNKNOWN",
+            )
+        if company_family == CompanyFamily.FINANCIAL.value:
+            metrics = FINANCIAL_METRICS
+        elif company_family == CompanyFamily.NON_FINANCIAL.value:
+            metrics = NON_FINANCIAL_METRICS
+        else:  # defensive fail-closed guard for future classifier values
+            return NormalizedFinancialReport(
+                ticker=ticker, corp_code=record.corp_code, company_family=CompanyFamily.UNKNOWN.value,
+                bsns_year=str(bsns_year), reprt_code=str(reprt_code),
+                report_type=REPORT_TYPE_BY_CODE.get(str(reprt_code), "UNKNOWN"),
+                period_start=None, period_end=None, rcept_no=selected.rcept_no, rcept_dt=selected.rcept_dt,
+                pit_as_of=str(as_of), pit_availability=resolution.availability or "AVAILABLE",
+                fs_div_requested=fs_div_requested, fs_div_used=basis, fallback_used=False, fallback_reason=None,
+                source_sha256=artifact.sha256, observations=(), status="COMPANY_FAMILY_UNRESOLVED",
+                reason="COMPANY_FAMILY_UNKNOWN",
+            )
         fallback_used = basis == "OFS"
         fallback_reason = "CFS_DATA_NOT_FOUND" if fallback_used else None
-        metrics = FINANCIAL_METRICS if company_family == CompanyFamily.FINANCIAL.value else NON_FINANCIAL_METRICS
         duration_rows = [row for row in statement_rows if row.get("period_start")]
         period_row = duration_rows[0] if duration_rows else (statement_rows[0] if statement_rows else {})
         observations: list[FinancialObservation] = []

@@ -1,0 +1,20 @@
+{
+  "work_id": "OPENDART_FUNDAMENTALS_V01_CORE_FIX01",
+  "validation": "offline_fixture",
+  "status_gate": {
+    "http_200_status_000": "PASS",
+    "status_010": "EXPLICIT_EXCEPTION_NO_CACHE",
+    "status_013": "EXPLICIT_EXCEPTION_NO_CACHE",
+    "status_020": "EXPLICIT_EXCEPTION_NO_CACHE"
+  },
+  "page_2_failure": "EXPLICIT_EXCEPTION_NO_PARTIAL_CACHE",
+  "max_pages_guard": "INCOMPLETE_REGISTRY_NO_CACHE",
+  "valid_cache_force_refresh_failure": "OLD_CACHE_PRESERVED",
+  "cache_metadata_required": [
+    "corp_code", "ticker", "bsns_year", "reprt_code", "retrieved_at",
+    "request_window", "page_count_requested", "pages_fetched", "total_count",
+    "total_page", "record_count", "source_sha256", "cache_complete",
+    "api_status", "http_status"
+  ],
+  "source_policy": "No API key, raw JSON, ZIP, or XML is committed"
+}
