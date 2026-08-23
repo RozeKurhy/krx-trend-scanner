@@ -1,0 +1,674 @@
+{
+  "annual_2025_cfs": {
+    "005930": {
+      "status": "000",
+      "message": "정상",
+      "classification": "PASS",
+      "row_count": 229,
+      "observed_fields": [
+        "account_detail",
+        "account_id",
+        "account_nm",
+        "bfefrmtrm_amount",
+        "bfefrmtrm_nm",
+        "bsns_year",
+        "corp_code",
+        "currency",
+        "frmtrm_amount",
+        "frmtrm_nm",
+        "ord",
+        "rcept_no",
+        "reprt_code",
+        "sj_div",
+        "sj_nm",
+        "thstrm_add_amount",
+        "thstrm_amount",
+        "thstrm_nm"
+      ],
+      "missing_expected_fields": [
+        "frmtrm_add_amount",
+        "frmtrm_q_amount",
+        "frmtrm_q_nm"
+      ],
+      "schema_status": "PASS",
+      "unique_sj_div": [
+        "BS",
+        "CF",
+        "CIS",
+        "IS",
+        "SCE"
+      ],
+      "unique_sj_nm": [
+        "손익계산서",
+        "자본변동표",
+        "재무상태표",
+        "포괄손익계산서",
+        "현금흐름표"
+      ],
+      "corp_code_consistency": true,
+      "diagnostic_account_rows": [
+        {
+          "account_id": "ifrs-full_Assets",
+          "account_nm": "자산총계",
+          "sj_div": "BS",
+          "thstrm_amount": "566942110000000"
+        },
+        {
+          "account_id": "ifrs-full_CurrentTradeReceivables",
+          "account_nm": "매출채권",
+          "sj_div": "BS",
+          "thstrm_amount": "51127642000000"
+        },
+        {
+          "account_id": "ifrs-full_Equity",
+          "account_nm": "자본총계",
+          "sj_div": "BS",
+          "thstrm_amount": "436320337000000"
+        },
+        {
+          "account_id": "ifrs-full_EquityAndLiabilities",
+          "account_nm": "부채와자본총계",
+          "sj_div": "BS",
+          "thstrm_amount": "566942110000000"
+        },
+        {
+          "account_id": "ifrs-full_Liabilities",
+          "account_nm": "부채총계",
+          "sj_div": "BS",
+          "thstrm_amount": "130621773000000"
+        },
+        {
+          "account_id": "dart_OperatingIncomeLoss",
+          "account_nm": "영업이익",
+          "sj_div": "IS",
+          "thstrm_amount": "43601051000000"
+        },
+        {
+          "account_id": "ifrs-full_CostOfSales",
+          "account_nm": "매출원가",
+          "sj_div": "IS",
+          "thstrm_amount": "202235513000000"
+        },
+        {
+          "account_id": "ifrs-full_GrossProfit",
+          "account_nm": "매출총이익",
+          "sj_div": "IS",
+          "thstrm_amount": "131370425000000"
+        },
+        {
+          "account_id": "ifrs-full_ProfitLoss",
+          "account_nm": "당기순이익",
+          "sj_div": "IS",
+          "thstrm_amount": "45206805000000"
+        },
+        {
+          "account_id": "ifrs-full_Revenue",
+          "account_nm": "매출액",
+          "sj_div": "IS",
+          "thstrm_amount": "333605938000000"
+        },
+        {
+          "account_id": "ifrs-full_ProfitLoss",
+          "account_nm": "당기순이익",
+          "sj_div": "CIS",
+          "thstrm_amount": "45206805000000"
+        },
+        {
+          "account_id": "ifrs-full_CashFlowsFromUsedInOperatingActivities",
+          "account_nm": "영업활동현금흐름",
+          "sj_div": "CF",
+          "thstrm_amount": "85315148000000"
+        },
+        {
+          "account_id": "dart_AdjustmentsForAssetsLiabilitiesOfOperatingActivities",
+          "account_nm": "영업활동으로 인한 자산부채의 변동",
+          "sj_div": "CF",
+          "thstrm_amount": "-9613906000000"
+        },
+        {
+          "account_id": "ifrs-full_ProfitLoss",
+          "account_nm": "당기순이익",
+          "sj_div": "CF",
+          "thstrm_amount": "45206805000000"
+        },
+        {
+          "account_id": "ifrs-full_Equity",
+          "account_nm": "자본총계",
+          "sj_div": "SCE",
+          "thstrm_amount": "897514000000"
+        },
+        {
+          "account_id": "ifrs-full_Equity",
+          "account_nm": "자본총계",
+          "sj_div": "SCE",
+          "thstrm_amount": "402135600000000"
+        },
+        {
+          "account_id": "ifrs-full_Equity",
+          "account_nm": "자본총계",
+          "sj_div": "SCE",
+          "thstrm_amount": "16876248000000"
+        },
+        {
+          "account_id": "ifrs-full_Equity",
+          "account_nm": "자본총계",
+          "sj_div": "SCE",
+          "thstrm_amount": "424313255000000"
+        },
+        {
+          "account_id": "ifrs-full_Equity",
+          "account_nm": "자본총계",
+          "sj_div": "SCE",
+          "thstrm_amount": "12007082000000"
+        },
+        {
+          "account_id": "ifrs-full_Equity",
+          "account_nm": "자본총계",
+          "sj_div": "SCE",
+          "thstrm_amount": "436320337000000"
+        },
+        {
+          "account_id": "ifrs-full_Equity",
+          "account_nm": "자본총계",
+          "sj_div": "SCE",
+          "thstrm_amount": "4403893000000"
+        },
+        {
+          "account_id": "ifrs-full_ProfitLoss",
+          "account_nm": "당기순이익",
+          "sj_div": "SCE",
+          "thstrm_amount": "44260956000000"
+        },
+        {
+          "account_id": "ifrs-full_ProfitLoss",
+          "account_nm": "당기순이익",
+          "sj_div": "SCE",
+          "thstrm_amount": "945849000000"
+        },
+        {
+          "account_id": "ifrs-full_ProfitLoss",
+          "account_nm": "당기순이익",
+          "sj_div": "SCE",
+          "thstrm_amount": "45206805000000"
+        },
+        {
+          "account_id": "ifrs-full_ProfitLoss",
+          "account_nm": "당기순이익",
+          "sj_div": "SCE",
+          "thstrm_amount": "0"
+        },
+        {
+          "account_id": "ifrs-full_ProfitLoss",
+          "account_nm": "당기순이익",
+          "sj_div": "SCE",
+          "thstrm_amount": "0"
+        },
+        {
+          "account_id": "ifrs-full_ProfitLoss",
+          "account_nm": "당기순이익",
+          "sj_div": "SCE",
+          "thstrm_amount": "0"
+        },
+        {
+          "account_id": "ifrs-full_ProfitLoss",
+          "account_nm": "당기순이익",
+          "sj_div": "SCE",
+          "thstrm_amount": "44260956000000"
+        }
+      ],
+      "schema_required_missing_fields": [],
+      "schema_optional_missing_fields": [
+        "frmtrm_add_amount",
+        "frmtrm_q_amount",
+        "frmtrm_q_nm"
+      ]
+    },
+    "237690": {
+      "status": "000",
+      "message": "정상",
+      "classification": "PASS",
+      "row_count": 210,
+      "observed_fields": [
+        "account_detail",
+        "account_id",
+        "account_nm",
+        "bfefrmtrm_amount",
+        "bfefrmtrm_nm",
+        "bsns_year",
+        "corp_code",
+        "currency",
+        "frmtrm_amount",
+        "frmtrm_nm",
+        "ord",
+        "rcept_no",
+        "reprt_code",
+        "sj_div",
+        "sj_nm",
+        "thstrm_add_amount",
+        "thstrm_amount",
+        "thstrm_nm"
+      ],
+      "missing_expected_fields": [
+        "frmtrm_add_amount",
+        "frmtrm_q_amount",
+        "frmtrm_q_nm"
+      ],
+      "schema_status": "PASS",
+      "unique_sj_div": [
+        "BS",
+        "CF",
+        "CIS",
+        "SCE"
+      ],
+      "unique_sj_nm": [
+        "자본변동표",
+        "재무상태표",
+        "포괄손익계산서",
+        "현금흐름표"
+      ],
+      "corp_code_consistency": true,
+      "diagnostic_account_rows": [
+        {
+          "account_id": "ifrs-full_Assets",
+          "account_nm": "자산총계",
+          "sj_div": "BS",
+          "thstrm_amount": "782566948564"
+        },
+        {
+          "account_id": "ifrs-full_CurrentTradeReceivables",
+          "account_nm": "매출채권",
+          "sj_div": "BS",
+          "thstrm_amount": "96660942933"
+        },
+        {
+          "account_id": "ifrs-full_Equity",
+          "account_nm": "자본총계",
+          "sj_div": "BS",
+          "thstrm_amount": "593003682348"
+        },
+        {
+          "account_id": "ifrs-full_EquityAndLiabilities",
+          "account_nm": "부채 및 자본총계",
+          "sj_div": "BS",
+          "thstrm_amount": "782566948564"
+        },
+        {
+          "account_id": "ifrs-full_Liabilities",
+          "account_nm": "부채총계",
+          "sj_div": "BS",
+          "thstrm_amount": "189563266216"
+        },
+        {
+          "account_id": "dart_OperatingIncomeLoss",
+          "account_nm": "영업이익",
+          "sj_div": "CIS",
+          "thstrm_amount": "54932543750"
+        },
+        {
+          "account_id": "ifrs-full_CostOfSales",
+          "account_nm": "매출원가",
+          "sj_div": "CIS",
+          "thstrm_amount": "195478661557"
+        },
+        {
+          "account_id": "ifrs-full_GrossProfit",
+          "account_nm": "매출총이익",
+          "sj_div": "CIS",
+          "thstrm_amount": "136202620890"
+        },
+        {
+          "account_id": "ifrs-full_ProfitLoss",
+          "account_nm": "당기순이익",
+          "sj_div": "CIS",
+          "thstrm_amount": "54561944733"
+        },
+        {
+          "account_id": "ifrs-full_ProfitLossAttributableToOwnersOfParent",
+          "account_nm": "지배주주 보통주 당기순이익",
+          "sj_div": "CIS",
+          "thstrm_amount": "54991748144"
+        },
+        {
+          "account_id": "ifrs-full_Revenue",
+          "account_nm": "매출",
+          "sj_div": "CIS",
+          "thstrm_amount": "331681282447"
+        },
+        {
+          "account_id": "ifrs-full_CashFlowsFromUsedInOperatingActivities",
+          "account_nm": "영업활동으로 인한 현금흐름",
+          "sj_div": "CF",
+          "thstrm_amount": "13989325017"
+        },
+        {
+          "account_id": "ifrs-full_Equity",
+          "account_nm": "자본총계",
+          "sj_div": "SCE",
+          "thstrm_amount": "593003682348"
+        },
+        {
+          "account_id": "ifrs-full_Equity",
+          "account_nm": "자본총계",
+          "sj_div": "SCE",
+          "thstrm_amount": "-438894843"
+        },
+        {
+          "account_id": "ifrs-full_Equity",
+          "account_nm": "자본총계",
+          "sj_div": "SCE",
+          "thstrm_amount": "593442577191"
+        },
+        {
+          "account_id": "ifrs-full_Equity",
+          "account_nm": "자본총계",
+          "sj_div": "SCE",
+          "thstrm_amount": "34307781876"
+        },
+        {
+          "account_id": "ifrs-full_Equity",
+          "account_nm": "자본총계",
+          "sj_div": "SCE",
+          "thstrm_amount": "4877003782"
+        },
+        {
+          "account_id": "ifrs-full_Equity",
+          "account_nm": "자본총계",
+          "sj_div": "SCE",
+          "thstrm_amount": "204242878785"
+        },
+        {
+          "account_id": "ifrs-full_Equity",
+          "account_nm": "자본총계",
+          "sj_div": "SCE",
+          "thstrm_amount": "10350842000"
+        },
+        {
+          "account_id": "ifrs-full_Equity",
+          "account_nm": "자본총계",
+          "sj_div": "SCE",
+          "thstrm_amount": "339664070748"
+        },
+        {
+          "account_id": "ifrs-full_ProfitLoss",
+          "account_nm": "당기순이익",
+          "sj_div": "SCE",
+          "thstrm_amount": "54561944733"
+        },
+        {
+          "account_id": "ifrs-full_ProfitLoss",
+          "account_nm": "당기순이익",
+          "sj_div": "SCE",
+          "thstrm_amount": "-429803411"
+        },
+        {
+          "account_id": "ifrs-full_ProfitLoss",
+          "account_nm": "당기순이익",
+          "sj_div": "SCE",
+          "thstrm_amount": "54991748144"
+        },
+        {
+          "account_id": "ifrs-full_ProfitLoss",
+          "account_nm": "당기순이익",
+          "sj_div": "SCE",
+          "thstrm_amount": "0"
+        },
+        {
+          "account_id": "ifrs-full_ProfitLoss",
+          "account_nm": "당기순이익",
+          "sj_div": "SCE",
+          "thstrm_amount": "0"
+        },
+        {
+          "account_id": "ifrs-full_ProfitLoss",
+          "account_nm": "당기순이익",
+          "sj_div": "SCE",
+          "thstrm_amount": "54991748144"
+        },
+        {
+          "account_id": "ifrs-full_ProfitLoss",
+          "account_nm": "당기순이익",
+          "sj_div": "SCE",
+          "thstrm_amount": "0"
+        },
+        {
+          "account_id": "ifrs-full_ProfitLoss",
+          "account_nm": "당기순이익",
+          "sj_div": "SCE",
+          "thstrm_amount": "0"
+        }
+      ],
+      "schema_required_missing_fields": [],
+      "schema_optional_missing_fields": [
+        "frmtrm_add_amount",
+        "frmtrm_q_amount",
+        "frmtrm_q_nm"
+      ]
+    },
+    "086790": {
+      "status": "000",
+      "message": "정상",
+      "classification": "PASS",
+      "row_count": 272,
+      "observed_fields": [
+        "account_detail",
+        "account_id",
+        "account_nm",
+        "bfefrmtrm_amount",
+        "bfefrmtrm_nm",
+        "bsns_year",
+        "corp_code",
+        "currency",
+        "frmtrm_amount",
+        "frmtrm_nm",
+        "ord",
+        "rcept_no",
+        "reprt_code",
+        "sj_div",
+        "sj_nm",
+        "thstrm_add_amount",
+        "thstrm_amount",
+        "thstrm_nm"
+      ],
+      "missing_expected_fields": [
+        "frmtrm_add_amount",
+        "frmtrm_q_amount",
+        "frmtrm_q_nm"
+      ],
+      "schema_status": "PASS",
+      "unique_sj_div": [
+        "BS",
+        "CF",
+        "CIS",
+        "SCE"
+      ],
+      "unique_sj_nm": [
+        "자본변동표",
+        "재무상태표",
+        "포괄손익계산서",
+        "현금흐름표"
+      ],
+      "corp_code_consistency": true,
+      "diagnostic_account_rows": [
+        {
+          "account_id": "ifrs-full_Assets",
+          "account_nm": "자산총계",
+          "sj_div": "BS",
+          "thstrm_amount": "674590676000000"
+        },
+        {
+          "account_id": "ifrs-full_Equity",
+          "account_nm": "자본총계",
+          "sj_div": "BS",
+          "thstrm_amount": "45645554000000"
+        },
+        {
+          "account_id": "ifrs-full_EquityAndLiabilities",
+          "account_nm": "부채및자본총계",
+          "sj_div": "BS",
+          "thstrm_amount": "674590676000000"
+        },
+        {
+          "account_id": "ifrs-full_Liabilities",
+          "account_nm": "부채총계",
+          "sj_div": "BS",
+          "thstrm_amount": "628945122000000"
+        },
+        {
+          "account_id": "-표준계정코드 미사용-",
+          "account_nm": "순영업이익",
+          "sj_div": "CIS",
+          "thstrm_amount": "12049749000000"
+        },
+        {
+          "account_id": "-표준계정코드 미사용-",
+          "account_nm": "총영업이익",
+          "sj_div": "CIS",
+          "thstrm_amount": "13341546000000"
+        },
+        {
+          "account_id": "ifrs-full_ProfitLoss",
+          "account_nm": "연결당기순이익",
+          "sj_div": "CIS",
+          "thstrm_amount": "4036638000000"
+        },
+        {
+          "account_id": "ifrs-full_ProfitLossFromOperatingActivities",
+          "account_nm": "영업이익",
+          "sj_div": "CIS",
+          "thstrm_amount": "5350898000000"
+        },
+        {
+          "account_id": "ifrs-full_CashFlowsFromUsedInOperatingActivities",
+          "account_nm": "영업활동으로 인한 현금흐름",
+          "sj_div": "CF",
+          "thstrm_amount": "-1962471000000"
+        },
+        {
+          "account_id": "dart_AdjustmentsForAssetsLiabilitiesOfOperatingActivities",
+          "account_nm": "영업활동으로 인한 자산 부채의 변동",
+          "sj_div": "CF",
+          "thstrm_amount": "-7752620000000"
+        },
+        {
+          "account_id": "ifrs-full_AdjustmentsForReconcileProfitLoss",
+          "account_nm": "당기순이익조정을 위한 가감",
+          "sj_div": "CF",
+          "thstrm_amount": "-5720101000000"
+        },
+        {
+          "account_id": "ifrs-full_ProfitLoss",
+          "account_nm": "연결당기순이익",
+          "sj_div": "CF",
+          "thstrm_amount": "4036638000000"
+        },
+        {
+          "account_id": "ifrs-full_ProfitLoss",
+          "account_nm": "연결당기순이익",
+          "sj_div": "SCE",
+          "thstrm_amount": "4036638000000"
+        },
+        {
+          "account_id": "ifrs-full_ProfitLoss",
+          "account_nm": "연결당기순이익",
+          "sj_div": "SCE",
+          "thstrm_amount": "33756000000"
+        },
+        {
+          "account_id": "ifrs-full_ProfitLoss",
+          "account_nm": "연결당기순이익",
+          "sj_div": "SCE",
+          "thstrm_amount": "4002882000000"
+        },
+        {
+          "account_id": "ifrs-full_ProfitLoss",
+          "account_nm": "연결당기순이익",
+          "sj_div": "SCE",
+          "thstrm_amount": "4002882000000"
+        },
+        {
+          "account_id": "ifrs-full_Equity",
+          "account_nm": "자본총계",
+          "sj_div": "SCE",
+          "thstrm_amount": "10576317000000"
+        },
+        {
+          "account_id": "ifrs-full_Equity",
+          "account_nm": "자본총계",
+          "sj_div": "SCE",
+          "thstrm_amount": "1501210000000"
+        },
+        {
+          "account_id": "ifrs-full_Equity",
+          "account_nm": "자본총계",
+          "sj_div": "SCE",
+          "thstrm_amount": "29690875000000"
+        },
+        {
+          "account_id": "ifrs-full_Equity",
+          "account_nm": "자본총계",
+          "sj_div": "SCE",
+          "thstrm_amount": "4269517000000"
+        },
+        {
+          "account_id": "ifrs-full_Equity",
+          "account_nm": "자본총계",
+          "sj_div": "SCE",
+          "thstrm_amount": "-909399000000"
+        },
+        {
+          "account_id": "ifrs-full_Equity",
+          "account_nm": "자본총계",
+          "sj_div": "SCE",
+          "thstrm_amount": "44579957000000"
+        },
+        {
+          "account_id": "ifrs-full_Equity",
+          "account_nm": "자본총계",
+          "sj_div": "SCE",
+          "thstrm_amount": "1065597000000"
+        },
+        {
+          "account_id": "ifrs-full_Equity",
+          "account_nm": "자본총계",
+          "sj_div": "SCE",
+          "thstrm_amount": "-548563000000"
+        },
+        {
+          "account_id": "ifrs-full_Equity",
+          "account_nm": "자본총계",
+          "sj_div": "SCE",
+          "thstrm_amount": "45645554000000"
+        }
+      ],
+      "schema_required_missing_fields": [],
+      "schema_optional_missing_fields": [
+        "frmtrm_add_amount",
+        "frmtrm_q_amount",
+        "frmtrm_q_nm"
+      ]
+    }
+  },
+  "half_year_2026_cfs": {
+    "005930": {
+      "status": "000",
+      "message": "정상",
+      "classification": "PASS",
+      "availability": "AVAILABLE",
+      "row_count": 223
+    },
+    "237690": {
+      "status": "000",
+      "message": "정상",
+      "classification": "PASS",
+      "availability": "AVAILABLE",
+      "row_count": 175
+    },
+    "086790": {
+      "status": "000",
+      "message": "정상",
+      "classification": "PASS",
+      "availability": "AVAILABLE",
+      "row_count": 382
+    }
+  }
+}

@@ -1,0 +1,1294 @@
+{
+  "work_id": "OPENDART_API_ACCESS_VALIDATION_V01",
+  "run_date": "2026-08-23",
+  "api_key_present": true,
+  "corp_code_download": "PASS",
+  "corp_code_content_type": "application/x-msdownload;charset=UTF-8",
+  "corp_code_zip_parse": "PASS",
+  "corp_code_record_count": 118747,
+  "corp_code_mapping_status": "PASS",
+  "corp_code_mapping": {
+    "005930": {
+      "corp_code": "00126380",
+      "corp_name": "삼성전자",
+      "stock_code": "005930",
+      "modify_date": "20251201"
+    },
+    "086790": {
+      "corp_code": "00547583",
+      "corp_name": "하나금융지주",
+      "stock_code": "086790",
+      "modify_date": "20260306"
+    },
+    "237690": {
+      "corp_code": "00871833",
+      "corp_name": "에스티팜",
+      "stock_code": "237690",
+      "modify_date": "20240625"
+    }
+  },
+  "company_api": {
+    "005930": {
+      "status": "000",
+      "message": "정상",
+      "classification": "PASS",
+      "observed_fields": [
+        "acc_mt",
+        "adres",
+        "bizr_no",
+        "ceo_nm",
+        "corp_cls",
+        "corp_code",
+        "corp_name",
+        "corp_name_eng",
+        "est_dt",
+        "fax_no",
+        "hm_url",
+        "induty_code",
+        "ir_url",
+        "jurir_no",
+        "message",
+        "phn_no",
+        "status",
+        "stock_code",
+        "stock_name"
+      ],
+      "missing_expected_fields": [],
+      "identity": {
+        "corp_code": "00126380",
+        "corp_name": "삼성전자(주)",
+        "stock_name": "삼성전자",
+        "stock_code": "005930"
+      },
+      "identity_consistency": true,
+      "selected_fields": {
+        "corp_code": "00126380",
+        "corp_name": "삼성전자(주)",
+        "corp_name_eng": "SAMSUNG ELECTRONICS CO,.LTD",
+        "stock_name": "삼성전자",
+        "stock_code": "005930",
+        "ceo_nm": "전영현, 노태문",
+        "corp_cls": "Y",
+        "jurir_no": "1301110006246",
+        "bizr_no": "1248100998",
+        "adres": "경기도 수원시 영통구  삼성로 129 (매탄동)",
+        "hm_url": "www.samsung.com/sec",
+        "ir_url": "",
+        "phn_no": "02-2255-0114",
+        "fax_no": "031-200-7538",
+        "induty_code": "264",
+        "est_dt": "19690113",
+        "acc_mt": "12"
+      },
+      "expected_identity": {
+        "corp_code": "00126380",
+        "corp_name": "삼성전자",
+        "stock_code": "005930",
+        "modify_date": "20251201"
+      },
+      "corp_name_match_after_legal_suffix_normalization": true
+    },
+    "237690": {
+      "status": "000",
+      "message": "정상",
+      "classification": "PASS",
+      "observed_fields": [
+        "acc_mt",
+        "adres",
+        "bizr_no",
+        "ceo_nm",
+        "corp_cls",
+        "corp_code",
+        "corp_name",
+        "corp_name_eng",
+        "est_dt",
+        "fax_no",
+        "hm_url",
+        "induty_code",
+        "ir_url",
+        "jurir_no",
+        "message",
+        "phn_no",
+        "status",
+        "stock_code",
+        "stock_name"
+      ],
+      "missing_expected_fields": [],
+      "identity": {
+        "corp_code": "00871833",
+        "corp_name": "에스티팜(주)",
+        "stock_name": "에스티팜",
+        "stock_code": "237690"
+      },
+      "identity_consistency": true,
+      "selected_fields": {
+        "corp_code": "00871833",
+        "corp_name": "에스티팜(주)",
+        "corp_name_eng": "ST PHARM CO., LTD.",
+        "stock_name": "에스티팜",
+        "stock_code": "237690",
+        "ceo_nm": "Sung Moo-je",
+        "corp_cls": "K",
+        "jurir_no": "1545110039704",
+        "bizr_no": "3038152269",
+        "adres": "경기도 시흥시 협력로 231(정왕동, 시화공단 1나 802호) &nbsp",
+        "hm_url": "www.stpharm.co.kr",
+        "ir_url": "",
+        "phn_no": "02-527-6300",
+        "fax_no": "02-561-6006",
+        "induty_code": "212",
+        "est_dt": "20080818",
+        "acc_mt": "12"
+      },
+      "expected_identity": {
+        "corp_code": "00871833",
+        "corp_name": "에스티팜",
+        "stock_code": "237690",
+        "modify_date": "20240625"
+      },
+      "corp_name_match_after_legal_suffix_normalization": true
+    },
+    "086790": {
+      "status": "000",
+      "message": "정상",
+      "classification": "PASS",
+      "observed_fields": [
+        "acc_mt",
+        "adres",
+        "bizr_no",
+        "ceo_nm",
+        "corp_cls",
+        "corp_code",
+        "corp_name",
+        "corp_name_eng",
+        "est_dt",
+        "fax_no",
+        "hm_url",
+        "induty_code",
+        "ir_url",
+        "jurir_no",
+        "message",
+        "phn_no",
+        "status",
+        "stock_code",
+        "stock_name"
+      ],
+      "missing_expected_fields": [],
+      "identity": {
+        "corp_code": "00547583",
+        "corp_name": "(주)하나금융지주",
+        "stock_name": "하나금융지주",
+        "stock_code": "086790"
+      },
+      "identity_consistency": true,
+      "selected_fields": {
+        "corp_code": "00547583",
+        "corp_name": "(주)하나금융지주",
+        "corp_name_eng": "Hana Financial Group Inc.",
+        "stock_name": "하나금융지주",
+        "stock_code": "086790",
+        "ceo_nm": "함영주",
+        "corp_cls": "Y",
+        "jurir_no": "1101113352004",
+        "bizr_no": "1078671509",
+        "adres": "서울특별시 중구 을지로 66 (을지로 2가)",
+        "hm_url": "www.hanafn.com",
+        "ir_url": "https://www.hanafn.com",
+        "phn_no": "02-2002-1110",
+        "fax_no": "02-317-5865",
+        "induty_code": "64992",
+        "est_dt": "20051201",
+        "acc_mt": "12"
+      },
+      "expected_identity": {
+        "corp_code": "00547583",
+        "corp_name": "하나금융지주",
+        "stock_code": "086790",
+        "modify_date": "20260306"
+      },
+      "corp_name_match_after_legal_suffix_normalization": true
+    }
+  },
+  "disclosure_search_api": {
+    "005930": {
+      "status": "000",
+      "message": "정상",
+      "classification": "PASS",
+      "row_count": 5,
+      "observed_fields": [
+        "corp_cls",
+        "corp_code",
+        "corp_name",
+        "flr_nm",
+        "rcept_dt",
+        "rcept_no",
+        "report_nm",
+        "rm",
+        "stock_code"
+      ],
+      "corp_code_consistency": true,
+      "sample_rows": [
+        {
+          "corp_cls": "Y",
+          "corp_name": "삼성전자",
+          "corp_code": "00126380",
+          "stock_code": "005930",
+          "report_nm": "기타경영사항(자율공시)              ",
+          "rcept_no": "20260821800837",
+          "flr_nm": "삼성전자",
+          "rcept_dt": "20260821",
+          "rm": "유"
+        },
+        {
+          "corp_cls": "Y",
+          "corp_name": "삼성전자",
+          "corp_code": "00126380",
+          "stock_code": "005930",
+          "report_nm": "주요사항보고서(자기주식취득결정)",
+          "rcept_no": "20260821000616",
+          "flr_nm": "삼성전자",
+          "rcept_dt": "20260821",
+          "rm": ""
+        },
+        {
+          "corp_cls": "Y",
+          "corp_name": "삼성전자",
+          "corp_code": "00126380",
+          "stock_code": "005930",
+          "report_nm": "수시공시의무관련사항(공정공시)              ",
+          "rcept_no": "20260821800763",
+          "flr_nm": "삼성전자",
+          "rcept_dt": "20260821",
+          "rm": "유"
+        }
+      ]
+    },
+    "237690": {
+      "status": "000",
+      "message": "정상",
+      "classification": "PASS",
+      "row_count": 5,
+      "observed_fields": [
+        "corp_cls",
+        "corp_code",
+        "corp_name",
+        "flr_nm",
+        "rcept_dt",
+        "rcept_no",
+        "report_nm",
+        "rm",
+        "stock_code"
+      ],
+      "corp_code_consistency": true,
+      "sample_rows": [
+        {
+          "corp_cls": "K",
+          "corp_name": "에스티팜",
+          "corp_code": "00871833",
+          "stock_code": "237690",
+          "report_nm": "반기보고서 (2026.06)",
+          "rcept_no": "20260814003399",
+          "flr_nm": "에스티팜",
+          "rcept_dt": "20260814",
+          "rm": ""
+        },
+        {
+          "corp_cls": "K",
+          "corp_name": "에스티팜",
+          "corp_code": "00871833",
+          "stock_code": "237690",
+          "report_nm": "전환사채(해외전환사채포함)발행후만기전사채취득              ",
+          "rcept_no": "20260811900409",
+          "flr_nm": "에스티팜",
+          "rcept_dt": "20260811",
+          "rm": "코"
+        },
+        {
+          "corp_cls": "K",
+          "corp_name": "에스티팜",
+          "corp_code": "00871833",
+          "stock_code": "237690",
+          "report_nm": "임원ㆍ주요주주특정증권등소유상황보고서",
+          "rcept_no": "20260731000677",
+          "flr_nm": "최용훈",
+          "rcept_dt": "20260731",
+          "rm": ""
+        }
+      ]
+    },
+    "086790": {
+      "status": "000",
+      "message": "정상",
+      "classification": "PASS",
+      "row_count": 5,
+      "observed_fields": [
+        "corp_cls",
+        "corp_code",
+        "corp_name",
+        "flr_nm",
+        "rcept_dt",
+        "rcept_no",
+        "report_nm",
+        "rm",
+        "stock_code"
+      ],
+      "corp_code_consistency": true,
+      "sample_rows": [
+        {
+          "corp_cls": "Y",
+          "corp_name": "하나금융지주",
+          "corp_code": "00547583",
+          "stock_code": "086790",
+          "report_nm": "기업설명회(IR)개최(안내공시)              ",
+          "rcept_no": "20260819800197",
+          "flr_nm": "하나금융지주",
+          "rcept_dt": "20260819",
+          "rm": "유"
+        },
+        {
+          "corp_cls": "Y",
+          "corp_name": "하나금융지주",
+          "corp_code": "00547583",
+          "stock_code": "086790",
+          "report_nm": "[기재정정]사업보고서 (2025.12)",
+          "rcept_no": "20260814004019",
+          "flr_nm": "하나금융지주",
+          "rcept_dt": "20260814",
+          "rm": "연"
+        },
+        {
+          "corp_cls": "Y",
+          "corp_name": "하나금융지주",
+          "corp_code": "00547583",
+          "stock_code": "086790",
+          "report_nm": "[기재정정]일괄신고서",
+          "rcept_no": "20260814003925",
+          "flr_nm": "하나금융지주",
+          "rcept_dt": "20260814",
+          "rm": ""
+        }
+      ]
+    }
+  },
+  "financial_statement_2025_annual": {
+    "005930": {
+      "status": "000",
+      "message": "정상",
+      "classification": "PASS",
+      "row_count": 229,
+      "observed_fields": [
+        "account_detail",
+        "account_id",
+        "account_nm",
+        "bfefrmtrm_amount",
+        "bfefrmtrm_nm",
+        "bsns_year",
+        "corp_code",
+        "currency",
+        "frmtrm_amount",
+        "frmtrm_nm",
+        "ord",
+        "rcept_no",
+        "reprt_code",
+        "sj_div",
+        "sj_nm",
+        "thstrm_add_amount",
+        "thstrm_amount",
+        "thstrm_nm"
+      ],
+      "missing_expected_fields": [
+        "frmtrm_add_amount",
+        "frmtrm_q_amount",
+        "frmtrm_q_nm"
+      ],
+      "schema_status": "PASS",
+      "unique_sj_div": [
+        "BS",
+        "CF",
+        "CIS",
+        "IS",
+        "SCE"
+      ],
+      "unique_sj_nm": [
+        "손익계산서",
+        "자본변동표",
+        "재무상태표",
+        "포괄손익계산서",
+        "현금흐름표"
+      ],
+      "corp_code_consistency": true,
+      "diagnostic_account_rows": [
+        {
+          "account_id": "ifrs-full_Assets",
+          "account_nm": "자산총계",
+          "sj_div": "BS",
+          "thstrm_amount": "566942110000000"
+        },
+        {
+          "account_id": "ifrs-full_CurrentTradeReceivables",
+          "account_nm": "매출채권",
+          "sj_div": "BS",
+          "thstrm_amount": "51127642000000"
+        },
+        {
+          "account_id": "ifrs-full_Equity",
+          "account_nm": "자본총계",
+          "sj_div": "BS",
+          "thstrm_amount": "436320337000000"
+        },
+        {
+          "account_id": "ifrs-full_EquityAndLiabilities",
+          "account_nm": "부채와자본총계",
+          "sj_div": "BS",
+          "thstrm_amount": "566942110000000"
+        },
+        {
+          "account_id": "ifrs-full_Liabilities",
+          "account_nm": "부채총계",
+          "sj_div": "BS",
+          "thstrm_amount": "130621773000000"
+        },
+        {
+          "account_id": "dart_OperatingIncomeLoss",
+          "account_nm": "영업이익",
+          "sj_div": "IS",
+          "thstrm_amount": "43601051000000"
+        },
+        {
+          "account_id": "ifrs-full_CostOfSales",
+          "account_nm": "매출원가",
+          "sj_div": "IS",
+          "thstrm_amount": "202235513000000"
+        },
+        {
+          "account_id": "ifrs-full_GrossProfit",
+          "account_nm": "매출총이익",
+          "sj_div": "IS",
+          "thstrm_amount": "131370425000000"
+        },
+        {
+          "account_id": "ifrs-full_ProfitLoss",
+          "account_nm": "당기순이익",
+          "sj_div": "IS",
+          "thstrm_amount": "45206805000000"
+        },
+        {
+          "account_id": "ifrs-full_Revenue",
+          "account_nm": "매출액",
+          "sj_div": "IS",
+          "thstrm_amount": "333605938000000"
+        },
+        {
+          "account_id": "ifrs-full_ProfitLoss",
+          "account_nm": "당기순이익",
+          "sj_div": "CIS",
+          "thstrm_amount": "45206805000000"
+        },
+        {
+          "account_id": "ifrs-full_CashFlowsFromUsedInOperatingActivities",
+          "account_nm": "영업활동현금흐름",
+          "sj_div": "CF",
+          "thstrm_amount": "85315148000000"
+        },
+        {
+          "account_id": "dart_AdjustmentsForAssetsLiabilitiesOfOperatingActivities",
+          "account_nm": "영업활동으로 인한 자산부채의 변동",
+          "sj_div": "CF",
+          "thstrm_amount": "-9613906000000"
+        },
+        {
+          "account_id": "ifrs-full_ProfitLoss",
+          "account_nm": "당기순이익",
+          "sj_div": "CF",
+          "thstrm_amount": "45206805000000"
+        },
+        {
+          "account_id": "ifrs-full_Equity",
+          "account_nm": "자본총계",
+          "sj_div": "SCE",
+          "thstrm_amount": "897514000000"
+        },
+        {
+          "account_id": "ifrs-full_Equity",
+          "account_nm": "자본총계",
+          "sj_div": "SCE",
+          "thstrm_amount": "402135600000000"
+        },
+        {
+          "account_id": "ifrs-full_Equity",
+          "account_nm": "자본총계",
+          "sj_div": "SCE",
+          "thstrm_amount": "16876248000000"
+        },
+        {
+          "account_id": "ifrs-full_Equity",
+          "account_nm": "자본총계",
+          "sj_div": "SCE",
+          "thstrm_amount": "424313255000000"
+        },
+        {
+          "account_id": "ifrs-full_Equity",
+          "account_nm": "자본총계",
+          "sj_div": "SCE",
+          "thstrm_amount": "12007082000000"
+        },
+        {
+          "account_id": "ifrs-full_Equity",
+          "account_nm": "자본총계",
+          "sj_div": "SCE",
+          "thstrm_amount": "436320337000000"
+        },
+        {
+          "account_id": "ifrs-full_Equity",
+          "account_nm": "자본총계",
+          "sj_div": "SCE",
+          "thstrm_amount": "4403893000000"
+        },
+        {
+          "account_id": "ifrs-full_ProfitLoss",
+          "account_nm": "당기순이익",
+          "sj_div": "SCE",
+          "thstrm_amount": "44260956000000"
+        },
+        {
+          "account_id": "ifrs-full_ProfitLoss",
+          "account_nm": "당기순이익",
+          "sj_div": "SCE",
+          "thstrm_amount": "945849000000"
+        },
+        {
+          "account_id": "ifrs-full_ProfitLoss",
+          "account_nm": "당기순이익",
+          "sj_div": "SCE",
+          "thstrm_amount": "45206805000000"
+        },
+        {
+          "account_id": "ifrs-full_ProfitLoss",
+          "account_nm": "당기순이익",
+          "sj_div": "SCE",
+          "thstrm_amount": "0"
+        },
+        {
+          "account_id": "ifrs-full_ProfitLoss",
+          "account_nm": "당기순이익",
+          "sj_div": "SCE",
+          "thstrm_amount": "0"
+        },
+        {
+          "account_id": "ifrs-full_ProfitLoss",
+          "account_nm": "당기순이익",
+          "sj_div": "SCE",
+          "thstrm_amount": "0"
+        },
+        {
+          "account_id": "ifrs-full_ProfitLoss",
+          "account_nm": "당기순이익",
+          "sj_div": "SCE",
+          "thstrm_amount": "44260956000000"
+        }
+      ],
+      "schema_required_missing_fields": [],
+      "schema_optional_missing_fields": [
+        "frmtrm_add_amount",
+        "frmtrm_q_amount",
+        "frmtrm_q_nm"
+      ]
+    },
+    "237690": {
+      "status": "000",
+      "message": "정상",
+      "classification": "PASS",
+      "row_count": 210,
+      "observed_fields": [
+        "account_detail",
+        "account_id",
+        "account_nm",
+        "bfefrmtrm_amount",
+        "bfefrmtrm_nm",
+        "bsns_year",
+        "corp_code",
+        "currency",
+        "frmtrm_amount",
+        "frmtrm_nm",
+        "ord",
+        "rcept_no",
+        "reprt_code",
+        "sj_div",
+        "sj_nm",
+        "thstrm_add_amount",
+        "thstrm_amount",
+        "thstrm_nm"
+      ],
+      "missing_expected_fields": [
+        "frmtrm_add_amount",
+        "frmtrm_q_amount",
+        "frmtrm_q_nm"
+      ],
+      "schema_status": "PASS",
+      "unique_sj_div": [
+        "BS",
+        "CF",
+        "CIS",
+        "SCE"
+      ],
+      "unique_sj_nm": [
+        "자본변동표",
+        "재무상태표",
+        "포괄손익계산서",
+        "현금흐름표"
+      ],
+      "corp_code_consistency": true,
+      "diagnostic_account_rows": [
+        {
+          "account_id": "ifrs-full_Assets",
+          "account_nm": "자산총계",
+          "sj_div": "BS",
+          "thstrm_amount": "782566948564"
+        },
+        {
+          "account_id": "ifrs-full_CurrentTradeReceivables",
+          "account_nm": "매출채권",
+          "sj_div": "BS",
+          "thstrm_amount": "96660942933"
+        },
+        {
+          "account_id": "ifrs-full_Equity",
+          "account_nm": "자본총계",
+          "sj_div": "BS",
+          "thstrm_amount": "593003682348"
+        },
+        {
+          "account_id": "ifrs-full_EquityAndLiabilities",
+          "account_nm": "부채 및 자본총계",
+          "sj_div": "BS",
+          "thstrm_amount": "782566948564"
+        },
+        {
+          "account_id": "ifrs-full_Liabilities",
+          "account_nm": "부채총계",
+          "sj_div": "BS",
+          "thstrm_amount": "189563266216"
+        },
+        {
+          "account_id": "dart_OperatingIncomeLoss",
+          "account_nm": "영업이익",
+          "sj_div": "CIS",
+          "thstrm_amount": "54932543750"
+        },
+        {
+          "account_id": "ifrs-full_CostOfSales",
+          "account_nm": "매출원가",
+          "sj_div": "CIS",
+          "thstrm_amount": "195478661557"
+        },
+        {
+          "account_id": "ifrs-full_GrossProfit",
+          "account_nm": "매출총이익",
+          "sj_div": "CIS",
+          "thstrm_amount": "136202620890"
+        },
+        {
+          "account_id": "ifrs-full_ProfitLoss",
+          "account_nm": "당기순이익",
+          "sj_div": "CIS",
+          "thstrm_amount": "54561944733"
+        },
+        {
+          "account_id": "ifrs-full_ProfitLossAttributableToOwnersOfParent",
+          "account_nm": "지배주주 보통주 당기순이익",
+          "sj_div": "CIS",
+          "thstrm_amount": "54991748144"
+        },
+        {
+          "account_id": "ifrs-full_Revenue",
+          "account_nm": "매출",
+          "sj_div": "CIS",
+          "thstrm_amount": "331681282447"
+        },
+        {
+          "account_id": "ifrs-full_CashFlowsFromUsedInOperatingActivities",
+          "account_nm": "영업활동으로 인한 현금흐름",
+          "sj_div": "CF",
+          "thstrm_amount": "13989325017"
+        },
+        {
+          "account_id": "ifrs-full_Equity",
+          "account_nm": "자본총계",
+          "sj_div": "SCE",
+          "thstrm_amount": "593003682348"
+        },
+        {
+          "account_id": "ifrs-full_Equity",
+          "account_nm": "자본총계",
+          "sj_div": "SCE",
+          "thstrm_amount": "-438894843"
+        },
+        {
+          "account_id": "ifrs-full_Equity",
+          "account_nm": "자본총계",
+          "sj_div": "SCE",
+          "thstrm_amount": "593442577191"
+        },
+        {
+          "account_id": "ifrs-full_Equity",
+          "account_nm": "자본총계",
+          "sj_div": "SCE",
+          "thstrm_amount": "34307781876"
+        },
+        {
+          "account_id": "ifrs-full_Equity",
+          "account_nm": "자본총계",
+          "sj_div": "SCE",
+          "thstrm_amount": "4877003782"
+        },
+        {
+          "account_id": "ifrs-full_Equity",
+          "account_nm": "자본총계",
+          "sj_div": "SCE",
+          "thstrm_amount": "204242878785"
+        },
+        {
+          "account_id": "ifrs-full_Equity",
+          "account_nm": "자본총계",
+          "sj_div": "SCE",
+          "thstrm_amount": "10350842000"
+        },
+        {
+          "account_id": "ifrs-full_Equity",
+          "account_nm": "자본총계",
+          "sj_div": "SCE",
+          "thstrm_amount": "339664070748"
+        },
+        {
+          "account_id": "ifrs-full_ProfitLoss",
+          "account_nm": "당기순이익",
+          "sj_div": "SCE",
+          "thstrm_amount": "54561944733"
+        },
+        {
+          "account_id": "ifrs-full_ProfitLoss",
+          "account_nm": "당기순이익",
+          "sj_div": "SCE",
+          "thstrm_amount": "-429803411"
+        },
+        {
+          "account_id": "ifrs-full_ProfitLoss",
+          "account_nm": "당기순이익",
+          "sj_div": "SCE",
+          "thstrm_amount": "54991748144"
+        },
+        {
+          "account_id": "ifrs-full_ProfitLoss",
+          "account_nm": "당기순이익",
+          "sj_div": "SCE",
+          "thstrm_amount": "0"
+        },
+        {
+          "account_id": "ifrs-full_ProfitLoss",
+          "account_nm": "당기순이익",
+          "sj_div": "SCE",
+          "thstrm_amount": "0"
+        },
+        {
+          "account_id": "ifrs-full_ProfitLoss",
+          "account_nm": "당기순이익",
+          "sj_div": "SCE",
+          "thstrm_amount": "54991748144"
+        },
+        {
+          "account_id": "ifrs-full_ProfitLoss",
+          "account_nm": "당기순이익",
+          "sj_div": "SCE",
+          "thstrm_amount": "0"
+        },
+        {
+          "account_id": "ifrs-full_ProfitLoss",
+          "account_nm": "당기순이익",
+          "sj_div": "SCE",
+          "thstrm_amount": "0"
+        }
+      ],
+      "schema_required_missing_fields": [],
+      "schema_optional_missing_fields": [
+        "frmtrm_add_amount",
+        "frmtrm_q_amount",
+        "frmtrm_q_nm"
+      ]
+    },
+    "086790": {
+      "status": "000",
+      "message": "정상",
+      "classification": "PASS",
+      "row_count": 272,
+      "observed_fields": [
+        "account_detail",
+        "account_id",
+        "account_nm",
+        "bfefrmtrm_amount",
+        "bfefrmtrm_nm",
+        "bsns_year",
+        "corp_code",
+        "currency",
+        "frmtrm_amount",
+        "frmtrm_nm",
+        "ord",
+        "rcept_no",
+        "reprt_code",
+        "sj_div",
+        "sj_nm",
+        "thstrm_add_amount",
+        "thstrm_amount",
+        "thstrm_nm"
+      ],
+      "missing_expected_fields": [
+        "frmtrm_add_amount",
+        "frmtrm_q_amount",
+        "frmtrm_q_nm"
+      ],
+      "schema_status": "PASS",
+      "unique_sj_div": [
+        "BS",
+        "CF",
+        "CIS",
+        "SCE"
+      ],
+      "unique_sj_nm": [
+        "자본변동표",
+        "재무상태표",
+        "포괄손익계산서",
+        "현금흐름표"
+      ],
+      "corp_code_consistency": true,
+      "diagnostic_account_rows": [
+        {
+          "account_id": "ifrs-full_Assets",
+          "account_nm": "자산총계",
+          "sj_div": "BS",
+          "thstrm_amount": "674590676000000"
+        },
+        {
+          "account_id": "ifrs-full_Equity",
+          "account_nm": "자본총계",
+          "sj_div": "BS",
+          "thstrm_amount": "45645554000000"
+        },
+        {
+          "account_id": "ifrs-full_EquityAndLiabilities",
+          "account_nm": "부채및자본총계",
+          "sj_div": "BS",
+          "thstrm_amount": "674590676000000"
+        },
+        {
+          "account_id": "ifrs-full_Liabilities",
+          "account_nm": "부채총계",
+          "sj_div": "BS",
+          "thstrm_amount": "628945122000000"
+        },
+        {
+          "account_id": "-표준계정코드 미사용-",
+          "account_nm": "순영업이익",
+          "sj_div": "CIS",
+          "thstrm_amount": "12049749000000"
+        },
+        {
+          "account_id": "-표준계정코드 미사용-",
+          "account_nm": "총영업이익",
+          "sj_div": "CIS",
+          "thstrm_amount": "13341546000000"
+        },
+        {
+          "account_id": "ifrs-full_ProfitLoss",
+          "account_nm": "연결당기순이익",
+          "sj_div": "CIS",
+          "thstrm_amount": "4036638000000"
+        },
+        {
+          "account_id": "ifrs-full_ProfitLossFromOperatingActivities",
+          "account_nm": "영업이익",
+          "sj_div": "CIS",
+          "thstrm_amount": "5350898000000"
+        },
+        {
+          "account_id": "ifrs-full_CashFlowsFromUsedInOperatingActivities",
+          "account_nm": "영업활동으로 인한 현금흐름",
+          "sj_div": "CF",
+          "thstrm_amount": "-1962471000000"
+        },
+        {
+          "account_id": "dart_AdjustmentsForAssetsLiabilitiesOfOperatingActivities",
+          "account_nm": "영업활동으로 인한 자산 부채의 변동",
+          "sj_div": "CF",
+          "thstrm_amount": "-7752620000000"
+        },
+        {
+          "account_id": "ifrs-full_AdjustmentsForReconcileProfitLoss",
+          "account_nm": "당기순이익조정을 위한 가감",
+          "sj_div": "CF",
+          "thstrm_amount": "-5720101000000"
+        },
+        {
+          "account_id": "ifrs-full_ProfitLoss",
+          "account_nm": "연결당기순이익",
+          "sj_div": "CF",
+          "thstrm_amount": "4036638000000"
+        },
+        {
+          "account_id": "ifrs-full_ProfitLoss",
+          "account_nm": "연결당기순이익",
+          "sj_div": "SCE",
+          "thstrm_amount": "4036638000000"
+        },
+        {
+          "account_id": "ifrs-full_ProfitLoss",
+          "account_nm": "연결당기순이익",
+          "sj_div": "SCE",
+          "thstrm_amount": "33756000000"
+        },
+        {
+          "account_id": "ifrs-full_ProfitLoss",
+          "account_nm": "연결당기순이익",
+          "sj_div": "SCE",
+          "thstrm_amount": "4002882000000"
+        },
+        {
+          "account_id": "ifrs-full_ProfitLoss",
+          "account_nm": "연결당기순이익",
+          "sj_div": "SCE",
+          "thstrm_amount": "4002882000000"
+        },
+        {
+          "account_id": "ifrs-full_Equity",
+          "account_nm": "자본총계",
+          "sj_div": "SCE",
+          "thstrm_amount": "10576317000000"
+        },
+        {
+          "account_id": "ifrs-full_Equity",
+          "account_nm": "자본총계",
+          "sj_div": "SCE",
+          "thstrm_amount": "1501210000000"
+        },
+        {
+          "account_id": "ifrs-full_Equity",
+          "account_nm": "자본총계",
+          "sj_div": "SCE",
+          "thstrm_amount": "29690875000000"
+        },
+        {
+          "account_id": "ifrs-full_Equity",
+          "account_nm": "자본총계",
+          "sj_div": "SCE",
+          "thstrm_amount": "4269517000000"
+        },
+        {
+          "account_id": "ifrs-full_Equity",
+          "account_nm": "자본총계",
+          "sj_div": "SCE",
+          "thstrm_amount": "-909399000000"
+        },
+        {
+          "account_id": "ifrs-full_Equity",
+          "account_nm": "자본총계",
+          "sj_div": "SCE",
+          "thstrm_amount": "44579957000000"
+        },
+        {
+          "account_id": "ifrs-full_Equity",
+          "account_nm": "자본총계",
+          "sj_div": "SCE",
+          "thstrm_amount": "1065597000000"
+        },
+        {
+          "account_id": "ifrs-full_Equity",
+          "account_nm": "자본총계",
+          "sj_div": "SCE",
+          "thstrm_amount": "-548563000000"
+        },
+        {
+          "account_id": "ifrs-full_Equity",
+          "account_nm": "자본총계",
+          "sj_div": "SCE",
+          "thstrm_amount": "45645554000000"
+        }
+      ],
+      "schema_required_missing_fields": [],
+      "schema_optional_missing_fields": [
+        "frmtrm_add_amount",
+        "frmtrm_q_amount",
+        "frmtrm_q_nm"
+      ]
+    }
+  },
+  "half_year_2026_probe": {
+    "005930": {
+      "status": "000",
+      "message": "정상",
+      "classification": "PASS",
+      "availability": "AVAILABLE",
+      "row_count": 223
+    },
+    "237690": {
+      "status": "000",
+      "message": "정상",
+      "classification": "PASS",
+      "availability": "AVAILABLE",
+      "row_count": 175
+    },
+    "086790": {
+      "status": "000",
+      "message": "정상",
+      "classification": "PASS",
+      "availability": "AVAILABLE",
+      "row_count": 382
+    }
+  },
+  "request_audit": [
+    {
+      "label": "corp_code_download",
+      "endpoint": "https://opendart.fss.or.kr/api/corpCode.xml",
+      "redacted_request": "https://opendart.fss.or.kr/api/corpCode.xml?crtfc_key=%3CREDACTED%3E",
+      "parameters": {
+        "crtfc_key": "<REDACTED>"
+      },
+      "http_status": 200,
+      "content_type": "application/x-msdownload;charset=UTF-8",
+      "response_byte_length": 3598077,
+      "status": null,
+      "message": null,
+      "record_count": 0,
+      "error_type": null
+    },
+    {
+      "label": "company_005930",
+      "endpoint": "https://opendart.fss.or.kr/api/company.json",
+      "redacted_request": "https://opendart.fss.or.kr/api/company.json?corp_code=00126380&crtfc_key=%3CREDACTED%3E",
+      "parameters": {
+        "corp_code": "00126380",
+        "crtfc_key": "<REDACTED>"
+      },
+      "http_status": 200,
+      "content_type": "application/json;charset=UTF-8",
+      "response_byte_length": 495,
+      "status": "000",
+      "message": "정상",
+      "record_count": 0,
+      "error_type": null
+    },
+    {
+      "label": "disclosure_005930",
+      "endpoint": "https://opendart.fss.or.kr/api/list.json",
+      "redacted_request": "https://opendart.fss.or.kr/api/list.json?corp_code=00126380&bgn_de=20250101&end_de=20260823&page_no=1&page_count=5&crtfc_key=%3CREDACTED%3E",
+      "parameters": {
+        "corp_code": "00126380",
+        "bgn_de": "20250101",
+        "end_de": "20260823",
+        "page_no": "1",
+        "page_count": "5",
+        "crtfc_key": "<REDACTED>"
+      },
+      "http_status": 200,
+      "content_type": "application/json;charset=UTF-8",
+      "response_byte_length": 1302,
+      "status": "000",
+      "message": "정상",
+      "record_count": 5,
+      "error_type": null
+    },
+    {
+      "label": "financial_2025_annual_005930",
+      "endpoint": "https://opendart.fss.or.kr/api/fnlttSinglAcntAll.json",
+      "redacted_request": "https://opendart.fss.or.kr/api/fnlttSinglAcntAll.json?corp_code=00126380&bsns_year=2025&reprt_code=11011&fs_div=CFS&crtfc_key=%3CREDACTED%3E",
+      "parameters": {
+        "corp_code": "00126380",
+        "bsns_year": "2025",
+        "reprt_code": "11011",
+        "fs_div": "CFS",
+        "crtfc_key": "<REDACTED>"
+      },
+      "http_status": 200,
+      "content_type": "application/json;charset=UTF-8",
+      "response_byte_length": 114947,
+      "status": "000",
+      "message": "정상",
+      "record_count": 229,
+      "error_type": null
+    },
+    {
+      "label": "financial_2026_half_year_005930",
+      "endpoint": "https://opendart.fss.or.kr/api/fnlttSinglAcntAll.json",
+      "redacted_request": "https://opendart.fss.or.kr/api/fnlttSinglAcntAll.json?corp_code=00126380&bsns_year=2026&reprt_code=11012&fs_div=CFS&crtfc_key=%3CREDACTED%3E",
+      "parameters": {
+        "corp_code": "00126380",
+        "bsns_year": "2026",
+        "reprt_code": "11012",
+        "fs_div": "CFS",
+        "crtfc_key": "<REDACTED>"
+      },
+      "http_status": 200,
+      "content_type": "application/json;charset=UTF-8",
+      "response_byte_length": 101553,
+      "status": "000",
+      "message": "정상",
+      "record_count": 223,
+      "error_type": null
+    },
+    {
+      "label": "company_237690",
+      "endpoint": "https://opendart.fss.or.kr/api/company.json",
+      "redacted_request": "https://opendart.fss.or.kr/api/company.json?corp_code=00871833&crtfc_key=%3CREDACTED%3E",
+      "parameters": {
+        "corp_code": "00871833",
+        "crtfc_key": "<REDACTED>"
+      },
+      "http_status": 200,
+      "content_type": "application/json;charset=UTF-8",
+      "response_byte_length": 493,
+      "status": "000",
+      "message": "정상",
+      "record_count": 0,
+      "error_type": null
+    },
+    {
+      "label": "disclosure_237690",
+      "endpoint": "https://opendart.fss.or.kr/api/list.json",
+      "redacted_request": "https://opendart.fss.or.kr/api/list.json?corp_code=00871833&bgn_de=20250101&end_de=20260823&page_no=1&page_count=5&crtfc_key=%3CREDACTED%3E",
+      "parameters": {
+        "corp_code": "00871833",
+        "bgn_de": "20250101",
+        "end_de": "20260823",
+        "page_no": "1",
+        "page_count": "5",
+        "crtfc_key": "<REDACTED>"
+      },
+      "http_status": 200,
+      "content_type": "application/json;charset=UTF-8",
+      "response_byte_length": 1316,
+      "status": "000",
+      "message": "정상",
+      "record_count": 5,
+      "error_type": null
+    },
+    {
+      "label": "financial_2025_annual_237690",
+      "endpoint": "https://opendart.fss.or.kr/api/fnlttSinglAcntAll.json",
+      "redacted_request": "https://opendart.fss.or.kr/api/fnlttSinglAcntAll.json?corp_code=00871833&bsns_year=2025&reprt_code=11011&fs_div=CFS&crtfc_key=%3CREDACTED%3E",
+      "parameters": {
+        "corp_code": "00871833",
+        "bsns_year": "2025",
+        "reprt_code": "11011",
+        "fs_div": "CFS",
+        "crtfc_key": "<REDACTED>"
+      },
+      "http_status": 200,
+      "content_type": "application/json;charset=UTF-8",
+      "response_byte_length": 102137,
+      "status": "000",
+      "message": "정상",
+      "record_count": 210,
+      "error_type": null
+    },
+    {
+      "label": "financial_2026_half_year_237690",
+      "endpoint": "https://opendart.fss.or.kr/api/fnlttSinglAcntAll.json",
+      "redacted_request": "https://opendart.fss.or.kr/api/fnlttSinglAcntAll.json?corp_code=00871833&bsns_year=2026&reprt_code=11012&fs_div=CFS&crtfc_key=%3CREDACTED%3E",
+      "parameters": {
+        "corp_code": "00871833",
+        "bsns_year": "2026",
+        "reprt_code": "11012",
+        "fs_div": "CFS",
+        "crtfc_key": "<REDACTED>"
+      },
+      "http_status": 200,
+      "content_type": "application/json;charset=UTF-8",
+      "response_byte_length": 79489,
+      "status": "000",
+      "message": "정상",
+      "record_count": 175,
+      "error_type": null
+    },
+    {
+      "label": "company_086790",
+      "endpoint": "https://opendart.fss.or.kr/api/company.json",
+      "redacted_request": "https://opendart.fss.or.kr/api/company.json?corp_code=00547583&crtfc_key=%3CREDACTED%3E",
+      "parameters": {
+        "corp_code": "00547583",
+        "crtfc_key": "<REDACTED>"
+      },
+      "http_status": 200,
+      "content_type": "application/json;charset=UTF-8",
+      "response_byte_length": 508,
+      "status": "000",
+      "message": "정상",
+      "record_count": 0,
+      "error_type": null
+    },
+    {
+      "label": "disclosure_086790",
+      "endpoint": "https://opendart.fss.or.kr/api/list.json",
+      "redacted_request": "https://opendart.fss.or.kr/api/list.json?corp_code=00547583&bgn_de=20250101&end_de=20260823&page_no=1&page_count=5&crtfc_key=%3CREDACTED%3E",
+      "parameters": {
+        "corp_code": "00547583",
+        "bgn_de": "20250101",
+        "end_de": "20260823",
+        "page_no": "1",
+        "page_count": "5",
+        "crtfc_key": "<REDACTED>"
+      },
+      "http_status": 200,
+      "content_type": "application/json;charset=UTF-8",
+      "response_byte_length": 1324,
+      "status": "000",
+      "message": "정상",
+      "record_count": 5,
+      "error_type": null
+    },
+    {
+      "label": "financial_2025_annual_086790",
+      "endpoint": "https://opendart.fss.or.kr/api/fnlttSinglAcntAll.json",
+      "redacted_request": "https://opendart.fss.or.kr/api/fnlttSinglAcntAll.json?corp_code=00547583&bsns_year=2025&reprt_code=11011&fs_div=CFS&crtfc_key=%3CREDACTED%3E",
+      "parameters": {
+        "corp_code": "00547583",
+        "bsns_year": "2025",
+        "reprt_code": "11011",
+        "fs_div": "CFS",
+        "crtfc_key": "<REDACTED>"
+      },
+      "http_status": 200,
+      "content_type": "application/json;charset=UTF-8",
+      "response_byte_length": 133965,
+      "status": "000",
+      "message": "정상",
+      "record_count": 272,
+      "error_type": null
+    },
+    {
+      "label": "financial_2026_half_year_086790",
+      "endpoint": "https://opendart.fss.or.kr/api/fnlttSinglAcntAll.json",
+      "redacted_request": "https://opendart.fss.or.kr/api/fnlttSinglAcntAll.json?corp_code=00547583&bsns_year=2026&reprt_code=11012&fs_div=CFS&crtfc_key=%3CREDACTED%3E",
+      "parameters": {
+        "corp_code": "00547583",
+        "bsns_year": "2026",
+        "reprt_code": "11012",
+        "fs_div": "CFS",
+        "crtfc_key": "<REDACTED>"
+      },
+      "http_status": 200,
+      "content_type": "application/json;charset=UTF-8",
+      "response_byte_length": 179655,
+      "status": "000",
+      "message": "정상",
+      "record_count": 382,
+      "error_type": null
+    }
+  ],
+  "total_http_requests": 13,
+  "request_budget_max": 13,
+  "request_budget_pass": true,
+  "status_codes_encountered": [
+    "000"
+  ],
+  "http_network_errors": [],
+  "secret_leak_count": 0,
+  "corp_code_mapping_errors": [],
+  "final_status": "READY_FOR_ARCHITECT_OPENDART_API_ACCESS_REVIEW"
+}
