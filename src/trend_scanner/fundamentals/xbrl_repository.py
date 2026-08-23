@@ -7,13 +7,14 @@ import io
 import json
 import zipfile
 from dataclasses import replace
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
 from xml.etree import ElementTree as ET
 
 from .models import RawXbrlArtifact, RegisteredFiling
 from .opendart_client import BinaryResponse, OpenDartClient
+from .opendart_contract import REPORT_TYPE_BY_CODE
 
 
 class XbrlRepositoryError(RuntimeError):
@@ -42,16 +43,20 @@ def _prefix(namespace: str) -> str:
     return namespace.rsplit("/", 1)[-1] or "xbrl"
 
 
+def _parse_date(value: Any) -> date | None:
+    if value in (None, ""):
+        return None
+    try:
+        return date.fromisoformat(str(value)[:10])
+    except (TypeError, ValueError):
+        return None
+
+
 def _text(element: ET.Element, child_name: str) -> str | None:
     for child in element.iter():
         if _local(child.tag) == child_name:
             return (child.text or "").strip() or None
     return None
-
-
-def _expected_period_end(bsns_year: str, reprt_code: str) -> str:
-    return {"11013": f"{bsns_year}-03-31", "11012": f"{bsns_year}-06-30",
-            "11014": f"{bsns_year}-09-30", "11011": f"{bsns_year}-12-31"}.get(reprt_code, f"{bsns_year}-12-31")
 
 
 def _context_info(context: ET.Element) -> dict[str, Any]:
@@ -62,10 +67,18 @@ def _context_info(context: ET.Element) -> dict[str, Any]:
     instant = _text(context, "instant")
     start = _text(context, "startDate")
     end = _text(context, "endDate") or instant
+    duration_days = None
+    try:
+        if start and end and start <= end:
+            duration_days = (datetime.fromisoformat(end) - datetime.fromisoformat(start)).days + 1
+    except ValueError:
+        duration_days = None
     basis = next((item["member"].split(":")[-1] for item in members
                   if item["dimension"] and item["dimension"].split(":")[-1] == "ConsolidatedAndSeparateFinancialStatementsAxis"), None)
     return {
         "id": context.get("id"), "start": start, "end": end, "instant": instant,
+        "duration_days": duration_days,
+        "context_semantics": "INSTANT" if instant and not start else "UNKNOWN",
         "members": members, "basis": basis,
         "primary": len(members) <= 1 and basis in {"ConsolidatedMember", "SeparateMember"},
     }
@@ -165,7 +178,6 @@ class XbrlRepository:
             item.get("id"): _context_info(item)
             for item in root if _local(item.tag) == "context" and item.get("id")
         }
-        expected_end = _expected_period_end(str(bsns_year), str(reprt_code))
         target_ids = {
             "ifrs-full_Assets", "ifrs-full_Liabilities", "ifrs-full_Equity", "ifrs-full_Revenue",
             "dart_OperatingIncomeLoss", "ifrs-full_ProfitLoss",
@@ -178,16 +190,20 @@ class XbrlRepository:
             "ifrs-full_ProfitLossFromOperatingActivities": "영업이익", "ifrs-full_ProfitLoss": "당기순이익",
             "ifrs-full_CashFlowsFromUsedInOperatingActivities": "영업활동현금흐름",
         }
-        primary_contexts = [item for item in contexts.values() if item["primary"] and str(item.get("end") or "").startswith(str(bsns_year))]
+        primary_contexts = [item for item in contexts.values() if item["primary"] and item.get("end")]
+        filing_end = _parse_date(artifact.rcept_dt)
+        if filing_end:
+            primary_contexts = [item for item in primary_contexts
+                                if not _parse_date(item.get("end")) or _parse_date(item.get("end")) <= filing_end]
         available_ends = sorted({str(item["end"]) for item in primary_contexts if item.get("end")})
-        actual_end = expected_end if expected_end in available_ends else (available_ends[-1] if available_ends else expected_end)
+        actual_end = available_ends[-1] if available_ends else None
         rows: list[dict[str, Any]] = []
         for fact in root:
             context_ref = fact.get("contextRef")
             if not context_ref or context_ref not in contexts:
                 continue
             context = contexts[context_ref]
-            if context["end"] != actual_end or not context["primary"]:
+            if not actual_end or context["end"] != actual_end or not context["primary"]:
                 continue
             namespace = fact.tag.split("}", 1)[0].lstrip("{") if "}" in fact.tag else ""
             account_id = f"{_prefix(namespace)}_{_local(fact.tag)}"
@@ -211,7 +227,83 @@ class XbrlRepository:
                 "context_ref": context_ref,
                 "period_start": context["start"],
                 "period_end": context["end"],
+                "instant": context["instant"],
+                "duration_days": context["duration_days"],
+                "context_semantics": context["context_semantics"],
                 "basis": context["basis"],
+            })
+        return rows
+
+    def period_context_rows(self, artifact: RawXbrlArtifact, *, bsns_year: str, reprt_code: str,
+                            preferred_basis: str = "CFS") -> list[dict[str, Any]]:
+        """Return all filing-specific primary metric contexts for periodization.
+
+        Unlike :meth:`statement_rows`, this method intentionally retains both
+        current and comparative contexts.  Comparative rows are marked so the
+        periodization layer can exclude them without treating a first match as
+        current.  No calendar-quarter date is used as authority.
+        """
+        zip_path, _ = self._paths(artifact.rcept_no, artifact.reprt_code)
+        with zipfile.ZipFile(zip_path) as archive:
+            xbrl_names = [name for name in archive.namelist() if name.lower().endswith(".xbrl")]
+            if not xbrl_names:
+                raise XbrlRepositoryError("Filing ZIP has no XBRL instance document")
+            root = ET.fromstring(archive.read(xbrl_names[0]))
+        contexts = {
+            item.get("id"): _context_info(item)
+            for item in root if _local(item.tag) == "context" and item.get("id")
+        }
+        target_ids = {
+            "ifrs-full_Assets", "ifrs-full_Liabilities", "ifrs-full_Equity", "ifrs-full_Revenue",
+            "dart_OperatingIncomeLoss", "ifrs-full_ProfitLoss",
+            "ifrs-full_ProfitLossFromOperatingActivities",
+            "ifrs-full_CashFlowsFromUsedInOperatingActivities",
+        }
+        names = {
+            "ifrs-full_Assets": "자산총계", "ifrs-full_Liabilities": "부채총계", "ifrs-full_Equity": "자본총계",
+            "ifrs-full_Revenue": "매출액", "dart_OperatingIncomeLoss": "영업이익",
+            "ifrs-full_ProfitLossFromOperatingActivities": "영업이익", "ifrs-full_ProfitLoss": "당기순이익",
+            "ifrs-full_CashFlowsFromUsedInOperatingActivities": "영업활동현금흐름",
+        }
+        primary_contexts = [item for item in contexts.values() if item["primary"] and item.get("end")]
+        filing_end = _parse_date(artifact.rcept_dt)
+        if filing_end:
+            primary_contexts = [item for item in primary_contexts
+                                if not _parse_date(item.get("end")) or _parse_date(item.get("end")) <= filing_end]
+        latest_end_by_basis: dict[str | None, str] = {}
+        for context in primary_contexts:
+            basis = context.get("basis")
+            end = str(context.get("end") or "")
+            if end > latest_end_by_basis.get(basis, ""):
+                latest_end_by_basis[basis] = end
+        rows: list[dict[str, Any]] = []
+        for fact in root:
+            context_ref = fact.get("contextRef")
+            if not context_ref or context_ref not in contexts:
+                continue
+            context = contexts[context_ref]
+            if context not in primary_contexts:
+                continue
+            namespace = fact.tag.split("}", 1)[0].lstrip("{") if "}" in fact.tag else ""
+            account_id = f"{_prefix(namespace)}_{_local(fact.tag)}"
+            if account_id not in target_ids:
+                continue
+            family = "BALANCE_SHEET" if account_id in {"ifrs-full_Assets", "ifrs-full_Liabilities", "ifrs-full_Equity"} else (
+                "CASH_FLOW" if account_id == "ifrs-full_CashFlowsFromUsedInOperatingActivities" else "INCOME_STATEMENT"
+            )
+            raw_sj = "CF" if family == "CASH_FLOW" else ("BS" if family == "BALANCE_SHEET" else "CIS")
+            rows.append({
+                "ticker": artifact.ticker, "corp_code": artifact.corp_code, "bsns_year": str(bsns_year),
+                "reprt_code": str(reprt_code), "report_type": REPORT_TYPE_BY_CODE.get(str(reprt_code), "UNKNOWN"),
+                "account_id": account_id, "account_nm": names.get(account_id), "sj_div": raw_sj,
+                "statement_family": family, "account_detail": None, "thstrm_amount": fact.text,
+                "value": _numeric_value(fact.text), "currency": fact.get("unitRef"), "ord": len(rows),
+                "context_ref": context_ref, "period_start": context["start"], "period_end": context["end"],
+                "instant": context["instant"], "duration_days": context["duration_days"],
+                "context_semantics": context["context_semantics"],
+                "comparative": str(context.get("end")) != latest_end_by_basis.get(context.get("basis")),
+                "basis": context["basis"], "rcept_no": artifact.rcept_no, "rcept_dt": artifact.rcept_dt,
+                "source_sha256": artifact.sha256,
             })
         return rows
 
