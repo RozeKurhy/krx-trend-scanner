@@ -1,0 +1,160 @@
+{
+  "negative_control_ambiguous_current_records": [
+    {
+      "allowed_historical_prior_source_count": 0,
+      "canonical_anchor_rcept_nos": [],
+      "canonical_input_anchor_rcept_nos": [
+        "H1-A"
+      ],
+      "canonical_input_level_violation_count": 1,
+      "canonical_result_anchor_rcept_nos": [
+        "H1-A"
+      ],
+      "current_anchor_rcept_nos": [],
+      "current_authority": {
+        "11012": {
+          "selected_rcept_no": null,
+          "status": "AMBIGUOUS"
+        }
+      },
+      "fact_rcept_nos": [
+        "H1-A"
+      ],
+      "fiscal_year": "2024",
+      "historical_materialized_as_current_count": 1,
+      "historical_only_materialized_rcept_nos": [
+        "H1-A"
+      ],
+      "prior_pit_selected_rcept_nos": [],
+      "promoted_anchor_rcept_nos": [
+        "H1-A"
+      ],
+      "result_level_violation_count": 1,
+      "status": "FAIL",
+      "ticker": "FIX02-AUDIT",
+      "violations": [
+        {
+          "anchor_rcept_no": "H1-A",
+          "fiscal_period": "Q2",
+          "level": "canonical_or_result",
+          "reason": "HISTORICAL_AUTHORITY_WHILE_CURRENT_NOT_READY",
+          "reprt_code": "11012",
+          "resolution_status": "READY",
+          "selected_rcept_no": null
+        },
+        {
+          "anchor_rcept_no": "H1-A",
+          "fiscal_period": "Q2",
+          "level": "canonical_or_result",
+          "reason": "HISTORICAL_AUTHORITY_WHILE_CURRENT_NOT_READY",
+          "reprt_code": "11012",
+          "resolution_status": "READY",
+          "selected_rcept_no": null
+        }
+      ]
+    }
+  ],
+  "negative_control_detected_count": 2,
+  "negative_control_non_selected_current_records": [
+    {
+      "allowed_historical_prior_source_count": 0,
+      "canonical_anchor_rcept_nos": [],
+      "canonical_input_anchor_rcept_nos": [
+        "H1-A"
+      ],
+      "canonical_input_level_violation_count": 1,
+      "canonical_result_anchor_rcept_nos": [
+        "H1-A"
+      ],
+      "current_anchor_rcept_nos": [
+        "H1-B"
+      ],
+      "current_authority": {
+        "11012": {
+          "selected_rcept_no": "H1-B",
+          "status": "READY"
+        }
+      },
+      "fact_rcept_nos": [
+        "H1-A",
+        "H1-B"
+      ],
+      "fiscal_year": "2024",
+      "historical_materialized_as_current_count": 1,
+      "historical_only_materialized_rcept_nos": [
+        "H1-A"
+      ],
+      "prior_pit_selected_rcept_nos": [],
+      "promoted_anchor_rcept_nos": [
+        "H1-A"
+      ],
+      "result_level_violation_count": 1,
+      "status": "FAIL",
+      "ticker": "FIX02-AUDIT",
+      "violations": [
+        {
+          "anchor_rcept_no": "H1-A",
+          "fiscal_period": "Q2",
+          "level": "canonical_or_result",
+          "reason": "NON_SELECTED_CURRENT_AUTHORITY",
+          "reprt_code": "11012",
+          "resolution_status": "READY",
+          "selected_rcept_no": "H1-B"
+        },
+        {
+          "anchor_rcept_no": "H1-A",
+          "fiscal_period": "Q2",
+          "level": "canonical_or_result",
+          "reason": "NON_SELECTED_CURRENT_AUTHORITY",
+          "reprt_code": "11012",
+          "resolution_status": "READY",
+          "selected_rcept_no": "H1-B"
+        }
+      ]
+    }
+  ],
+  "positive_control_allowed_historical_prior_source_count": 1,
+  "positive_control_records": [
+    {
+      "allowed_historical_prior_source_count": 1,
+      "canonical_anchor_rcept_nos": [
+        "Q3-B"
+      ],
+      "canonical_input_anchor_rcept_nos": [
+        "Q3-B"
+      ],
+      "canonical_input_level_violation_count": 0,
+      "canonical_result_anchor_rcept_nos": [
+        "Q3-B"
+      ],
+      "current_anchor_rcept_nos": [
+        "Q3-B"
+      ],
+      "current_authority": {
+        "11014": {
+          "selected_rcept_no": "Q3-B",
+          "status": "READY"
+        }
+      },
+      "fact_rcept_nos": [
+        "H1-A",
+        "Q3-B"
+      ],
+      "fiscal_year": "2024",
+      "historical_materialized_as_current_count": 0,
+      "historical_only_materialized_rcept_nos": [
+        "H1-A"
+      ],
+      "prior_pit_selected_rcept_nos": [
+        "H1-A"
+      ],
+      "promoted_anchor_rcept_nos": [],
+      "result_level_violation_count": 0,
+      "status": "PASS",
+      "ticker": "FIX02-AUDIT",
+      "violations": []
+    }
+  ],
+  "positive_control_violation_count": 0,
+  "status": "PASS"
+}

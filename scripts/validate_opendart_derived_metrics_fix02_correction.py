@@ -410,31 +410,97 @@ def _historical_detector(builds: Iterable[Any]) -> tuple[list[dict[str, Any]], i
     promoted_count = 0
     for derived_build in builds:
         for period_build in derived_build.periodization_builds:
-            current = {str(item.get("selected_rcept_no")) for item in period_build.anchor_selections
+            authority = {
+                str(item.get("reprt_code")): {
+                    "status": item.get("status"),
+                    "selected_rcept_no": str(item.get("selected_rcept_no"))
+                    if item.get("selected_rcept_no") else None,
+                }
+                for item in period_build.anchor_selections
+            }
+            current = {str(item["selected_rcept_no"]) for item in authority.values()
                        if item.get("status") == "READY" and item.get("selected_rcept_no")}
             fact_nos = {str(fact.rcept_no) for fact in period_build.facts if fact.rcept_no}
             historical_only = sorted(fact_nos - current)
-            # PeriodizationBuild.result intentionally retains eligible vintage
-            # observations for PIT reconstruction.  Only observations anchored
-            # by the current selected filing are current canonical output;
-            # historical prior observations remain valid vintage evidence and
-            # must not be mistaken for promotion.
-            canonical_result_nos = sorted({str(item.anchor_rcept_no) for item in period_build.result.observations
+            result_observations = list(period_build.result.observations)
+            canonical_observations = [item for item in getattr(derived_build, "canonical_observations", ())
+                                      if str(getattr(item, "fiscal_year", "")) == str(period_build.fiscal_year)]
+
+            def violations(observations: Iterable[Any]) -> list[dict[str, Any]]:
+                found: list[dict[str, Any]] = []
+                for observation in observations:
+                    code = str(getattr(observation, "anchor_reprt_code", "") or "")
+                    anchor_no = str(getattr(observation, "anchor_rcept_no", "") or "")
+                    if not code or not anchor_no:
+                        continue
+                    selected = authority.get(code, {})
+                    status = selected.get("status")
+                    selected_no = selected.get("selected_rcept_no")
+                    if status == "READY":
+                        if anchor_no != selected_no:
+                            anchor_dt = str(getattr(observation, "anchor_rcept_dt", "") or "")[:10]
+                            selected_dt = str(next(
+                                (item.get("selected_rcept_dt") for item in period_build.anchor_selections
+                                 if str(item.get("reprt_code")) == code), "") or "")[:10]
+                            # A prior receipt is a legitimate retained PIT
+                            # vintage.  Same-EOD or later non-selected data
+                            # cannot be treated as the current authority.
+                            if not anchor_dt or not selected_dt or anchor_dt >= selected_dt:
+                                found.append({
+                                    "level": "canonical_or_result",
+                                    "reason": "NON_SELECTED_CURRENT_AUTHORITY",
+                                    "reprt_code": code,
+                                    "anchor_rcept_no": anchor_no,
+                                    "selected_rcept_no": selected_no,
+                                    "resolution_status": getattr(observation, "resolution_status", None),
+                                    "fiscal_period": getattr(observation, "fiscal_period", None),
+                                })
+                    elif status in {"AMBIGUOUS", "MISSING", "DATA_UNAVAILABLE", "FUTURE_FORBIDDEN"}:
+                        if anchor_no in historical_only and getattr(observation, "resolution_status", None) == "READY":
+                            found.append({
+                                "level": "canonical_or_result",
+                                "reason": "HISTORICAL_AUTHORITY_WHILE_CURRENT_NOT_READY",
+                                "reprt_code": code,
+                                "anchor_rcept_no": anchor_no,
+                                "selected_rcept_no": selected_no,
+                                "resolution_status": getattr(observation, "resolution_status", None),
+                                "fiscal_period": getattr(observation, "fiscal_period", None),
+                            })
+                return found
+
+            result_violations = violations(result_observations)
+            canonical_violations = violations(canonical_observations)
+            all_violations = result_violations + canonical_violations
+            promoted = sorted({item["anchor_rcept_no"] for item in all_violations})
+            canonical_result_nos = sorted({str(item.anchor_rcept_no) for item in result_observations
                                            if item.anchor_rcept_no})
-            canonical_nos = sorted(set(canonical_result_nos).intersection(current))
-            promoted = sorted(set(canonical_nos).intersection(historical_only))
+            canonical_input_nos = sorted({str(item.anchor_rcept_no) for item in canonical_observations
+                                          if item.anchor_rcept_no})
+            canonical_nos = sorted(set(canonical_input_nos).intersection(current))
+            prior_source_count = sum(
+                1
+                for observation in canonical_observations
+                if any(str(no) in historical_only for no in getattr(observation, "source_rcept_nos", ()))
+                and str(getattr(observation, "anchor_rcept_no", "")) not in historical_only
+            )
             promoted_count += len(promoted)
             prior_ids = sorted({str((selection.get("prior_pit") or {}).get("selected_rcept_no"))
                                 for selection in period_build.anchor_selections
                                 if (selection.get("prior_pit") or {}).get("selected_rcept_no")})
             records.append({
                 "ticker": period_build.ticker, "fiscal_year": period_build.fiscal_year,
+                "current_authority": authority,
                 "current_anchor_rcept_nos": sorted(current), "fact_rcept_nos": sorted(fact_nos),
                 "historical_only_materialized_rcept_nos": historical_only,
                 "prior_pit_selected_rcept_nos": prior_ids,
                 "canonical_result_anchor_rcept_nos": canonical_result_nos,
+                "canonical_input_anchor_rcept_nos": canonical_input_nos,
                 "canonical_anchor_rcept_nos": canonical_nos,
                 "promoted_anchor_rcept_nos": promoted,
+                "result_level_violation_count": len(result_violations),
+                "canonical_input_level_violation_count": len(canonical_violations),
+                "violations": all_violations,
+                "allowed_historical_prior_source_count": prior_source_count,
                 "historical_materialized_as_current_count": len(promoted),
                 "status": "PASS" if not promoted else "FAIL",
             })
