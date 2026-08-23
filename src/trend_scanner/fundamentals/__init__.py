@@ -1,8 +1,4 @@
-"""Architecture-stage contracts for OpenDART Fundamentals.
-
-This package intentionally contains small, production-independent contracts
-only.  It does not fetch data, calculate scores, or integrate Stock Reports.
-"""
+"""PIT-safe OpenDART fundamentals foundation."""
 
 from .opendart_contract import (
     PIT_GRANULARITY,
@@ -17,6 +13,13 @@ from .opendart_contract import (
     select_pit_filing,
     select_statement_basis,
 )
+from .corp_code_repository import CorpCodeRepository
+from .filing_registry import FilingRegistry
+from .financial_statement_provider import FinancialStatementProvider
+from .models import FinancialObservation, NormalizedFinancialReport, RegisteredFiling
+from .opendart_client import OpenDartClient
+from .pit_resolver import PITResolver
+from .xbrl_repository import XbrlRepository
 
 __all__ = [
     "PIT_GRANULARITY",
@@ -30,4 +33,13 @@ __all__ = [
     "resolve_core_account",
     "select_pit_filing",
     "select_statement_basis",
+    "CorpCodeRepository",
+    "FilingRegistry",
+    "FinancialStatementProvider",
+    "FinancialObservation",
+    "NormalizedFinancialReport",
+    "RegisteredFiling",
+    "OpenDartClient",
+    "PITResolver",
+    "XbrlRepository",
 ]
