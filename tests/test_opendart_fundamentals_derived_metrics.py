@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from trend_scanner.fundamentals.derived_metrics import (
     DATA_UNAVAILABLE,
+    UNDEFINED_BASE,
     DerivedMetricsEngine,
     derive_metrics,
 )
@@ -86,14 +87,15 @@ def test_unavailable_and_zero_prior_values_fail_closed_without_zero_imputation()
     result = derive_metrics(rows)
     revenue_yoy = result.get("revenue", "QUARTERLY_YOY", "2024", "Q1")
     op_margin = result.get("operating_income", "OPERATING_MARGIN", "2024", "Q1")
-    assert revenue_yoy.resolution_status == DATA_UNAVAILABLE
-    assert revenue_yoy.reason == "PRIOR_VALUE_ZERO"
-    assert op_margin.resolution_status == DATA_UNAVAILABLE
+    assert revenue_yoy.resolution_status == UNDEFINED_BASE
+    assert revenue_yoy.reason == "NON_POSITIVE_OR_SIGN_TRANSITION_BASE"
+    assert op_margin.resolution_status == "INPUT_NOT_READY"
     assert op_margin.value is None
 
 
 def test_financial_non_applicable_revenue_does_not_create_margin_or_api_dependency():
     row = _obs("net_income", "2024", "Q1", 10, family=CompanyFamily.FINANCIAL.value)
     result = derive_metrics([row])
-    assert result.get("net_income", "NET_MARGIN", "2024", "Q1") is None
+    margin = result.get("net_income", "NET_MARGIN", "2024", "Q1")
+    assert margin is not None and margin.resolution_status == "NOT_APPLICABLE"
     assert not any(item.metric == "revenue" for item in result)

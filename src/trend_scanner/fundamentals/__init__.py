@@ -24,13 +24,20 @@ from .period_models import PeriodizationFact, PeriodizationResult, PeriodizedFin
 from .periodization import PeriodizationEngine, facts_from_xbrl_rows, periodize_facts, periodize_fiscal_year
 from .periodization_provider import PeriodizationBuild, PeriodizationProvider, PeriodizationProviderError
 from .derived_metrics import (
+    BASIS_MISMATCH,
+    CURRENCY_MISMATCH,
+    DATA_UNAVAILABLE,
     DerivedMetricObservation,
     DerivedMetricsEngine,
     DerivedMetricsError,
     DerivedMetricsResult,
+    INPUT_NOT_READY,
+    NOT_APPLICABLE,
+    UNDEFINED_BASE,
     calculate_derived_metrics,
     derive_metrics,
 )
+from .derived_metrics_provider import DerivedMetricsBuild, DerivedMetricsProvider
 
 __all__ = [
     "PIT_GRANULARITY",
@@ -68,6 +75,14 @@ __all__ = [
     "DerivedMetricsEngine",
     "DerivedMetricsError",
     "DerivedMetricsResult",
+    "DATA_UNAVAILABLE",
+    "INPUT_NOT_READY",
+    "UNDEFINED_BASE",
+    "NOT_APPLICABLE",
+    "BASIS_MISMATCH",
+    "CURRENCY_MISMATCH",
     "calculate_derived_metrics",
     "derive_metrics",
+    "DerivedMetricsBuild",
+    "DerivedMetricsProvider",
 ]

@@ -16,6 +16,11 @@ from .period_models import PeriodizationResult, PeriodizedFinancialObservation, 
 
 
 DATA_UNAVAILABLE = "DATA_UNAVAILABLE"
+INPUT_NOT_READY = "INPUT_NOT_READY"
+UNDEFINED_BASE = "UNDEFINED_BASE"
+NOT_APPLICABLE = "NOT_APPLICABLE"
+BASIS_MISMATCH = "BASIS_MISMATCH"
+CURRENCY_MISMATCH = "CURRENCY_MISMATCH"
 PERIOD_AMBIGUOUS = "PERIOD_AMBIGUOUS"
 QUARTERS = ("Q1", "Q2", "Q3", "Q4")
 QUARTER_NUMBER = {period: index for index, period in enumerate(QUARTERS, 1)}
@@ -72,6 +77,19 @@ def _value_ready(item: PeriodizedFinancialObservation | None) -> bool:
     return bool(item and item.resolution_status == READY and _number(item.value) is not None)
 
 
+def _normalise_as_of(value: Any) -> tuple[str | None, date | None]:
+    if value in (None, ""):
+        return None, None
+    parsed = _parse_date(value)
+    return (parsed.isoformat(), parsed) if parsed is not None else (str(value), None)
+
+
+def _source_available_on(item: PeriodizedFinancialObservation | None) -> date | None:
+    if item is None:
+        return None
+    return _parse_date(item.pit_available_from or item.anchor_rcept_dt)
+
+
 class DerivedMetricsError(ValueError):
     """Raised when the derived metrics input is not canonical periodization."""
 
@@ -83,7 +101,7 @@ class DerivedMetricObservation:
         "ticker", "corp_code", "company_family", "fiscal_year", "fiscal_period",
         "metric", "metric_type", "value", "unit", "resolution_status", "reason",
         "period_end", "source_rcept_nos", "source_rcept_dts", "source_sha256s",
-        "metadata",
+        "requested_as_of", "pit_available_from", "metadata",
     )
 
     def __init__(self, ticker: str, corp_code: str, company_family: str, fiscal_year: str,
@@ -92,6 +110,7 @@ class DerivedMetricObservation:
                  resolution_status: str = READY, reason: str | None = None,
                  period_end: str | None = None, source_rcept_nos: Iterable[str] = (),
                  source_rcept_dts: Iterable[str] = (), source_sha256s: Iterable[str] = (),
+                 requested_as_of: str | None = None, pit_available_from: str | None = None,
                  metadata: Mapping[str, Any] | None = None):
         self.ticker = ticker
         self.corp_code = corp_code
@@ -108,6 +127,8 @@ class DerivedMetricObservation:
         self.source_rcept_nos = tuple(source_rcept_nos)
         self.source_rcept_dts = tuple(source_rcept_dts)
         self.source_sha256s = tuple(source_sha256s)
+        self.requested_as_of = requested_as_of
+        self.pit_available_from = pit_available_from
         self.metadata = dict(metadata or {})
 
     @property
@@ -133,6 +154,8 @@ class DerivedMetricObservation:
             "reason": self.reason, "source_rcept_nos": list(self.source_rcept_nos),
             "source_rcept_dts": list(self.source_rcept_dts),
             "source_sha256s": list(self.source_sha256s), "metadata": dict(self.metadata),
+            "requested_as_of": self.requested_as_of,
+            "pit_available_from": self.pit_available_from,
         }
 
     def __repr__(self) -> str:
@@ -177,18 +200,25 @@ class DerivedMetricsResult:
 class DerivedMetricsEngine:
     """Calculate growth, TTM, margins, trends, and transitions from PIT facts."""
 
-    def derive(self, source: PeriodizationResult | Iterable[PeriodizedFinancialObservation]) -> DerivedMetricsResult:
+    def __init__(self):
+        self._requested_as_of: str | None = None
+        self._requested_as_of_date: date | None = None
+
+    def derive(self, source: PeriodizationResult | Iterable[PeriodizedFinancialObservation],
+               *, requested_as_of: Any = None) -> DerivedMetricsResult:
+        self._requested_as_of, self._requested_as_of_date = _normalise_as_of(requested_as_of)
         observations = self._coerce(source)
         selected = self._select_periods(observations)
         output: list[DerivedMetricObservation] = []
         diagnostics: list[Mapping[str, Any]] = []
         for group_key, periods in sorted(selected.items()):
-            ticker, corp_code, family, metric = group_key
+            _, _, _, metric = group_key
             if metric not in FLOW_METRICS:
                 continue
             output.extend(self._growth_metrics(group_key, periods))
             output.extend(self._ttm_metrics(group_key, periods))
             output.extend(self._margin_metrics(group_key, selected))
+            output.extend(self._ttm_margin_metrics(group_key, selected))
             output.extend(self._margin_expansion_metrics(group_key, selected))
             output.extend(self._transition_metrics(group_key, periods))
             output.extend(self._trend_metrics(group_key, periods))
@@ -196,11 +226,33 @@ class DerivedMetricsEngine:
                                       item.fiscal_period, item.metric_type))
         return DerivedMetricsResult(output, diagnostics)
 
-    def calculate(self, source: PeriodizationResult | Iterable[PeriodizedFinancialObservation]) -> DerivedMetricsResult:
-        return self.derive(source)
+    def calculate(self, source: PeriodizationResult | Iterable[PeriodizedFinancialObservation],
+                  *, requested_as_of: Any = None) -> DerivedMetricsResult:
+        return self.derive(source, requested_as_of=requested_as_of)
 
-    def compute(self, source: PeriodizationResult | Iterable[PeriodizedFinancialObservation]) -> DerivedMetricsResult:
-        return self.derive(source)
+    def compute(self, source: PeriodizationResult | Iterable[PeriodizedFinancialObservation],
+                *, requested_as_of: Any = None) -> DerivedMetricsResult:
+        return self.derive(source, requested_as_of=requested_as_of)
+
+    def _ready(self, item: PeriodizedFinancialObservation | None) -> bool:
+        available = _source_available_on(item)
+        return _value_ready(item) and (
+            self._requested_as_of_date is None
+            or available is None
+            or available <= self._requested_as_of_date
+        )
+
+    def _coherence(self, items: Iterable[PeriodizedFinancialObservation | None]) -> tuple[str, str | None]:
+        values = tuple(items)
+        if any(item is None for item in values):
+            return DATA_UNAVAILABLE, "MISSING_COMPARABLE_PERIOD"
+        if any(item.fs_div_used != values[0].fs_div_used for item in values[1:]):
+            return BASIS_MISMATCH, "BASIS_MISMATCH"
+        if any(item.currency != values[0].currency for item in values[1:]):
+            return CURRENCY_MISMATCH, "CURRENCY_MISMATCH"
+        if any(not self._ready(item) for item in values):
+            return INPUT_NOT_READY, "INPUT_NOT_READY"
+        return READY, None
 
     @staticmethod
     def _coerce(source: Any) -> tuple[PeriodizedFinancialObservation, ...]:
@@ -214,11 +266,14 @@ class DerivedMetricsEngine:
             raise DerivedMetricsError("DerivedMetricsEngine requires PeriodizedFinancialObservation inputs")
         return tuple(values)
 
-    @staticmethod
-    def _select_periods(observations: Iterable[PeriodizedFinancialObservation]):
+    def _select_periods(self, observations: Iterable[PeriodizedFinancialObservation]):
         grouped: dict[tuple[str, str, str, str], list[PeriodizedFinancialObservation]] = defaultdict(list)
         for item in observations:
             if item.metric not in FLOW_METRICS or item.fiscal_period not in (*QUARTERS, "FY"):
+                continue
+            if item.fiscal_period in QUARTERS and item.period_semantics != "STANDALONE_QUARTER":
+                continue
+            if item.fiscal_period == "FY" and item.period_semantics not in {"CUMULATIVE_YTD", "FULL_YEAR"}:
                 continue
             grouped[(item.ticker, item.corp_code, item.company_family, item.metric)].append(item)
         selected: dict[tuple[str, str, str, str], dict[tuple[str, str], PeriodizedFinancialObservation | None]] = {}
@@ -228,7 +283,7 @@ class DerivedMetricsEngine:
                 candidates[(str(value.fiscal_year), value.fiscal_period)].append(value)
             periods: dict[tuple[str, str], PeriodizedFinancialObservation | None] = {}
             for period_key, period_values in candidates.items():
-                ready = [item for item in period_values if _value_ready(item)]
+                ready = [item for item in period_values if self._ready(item)]
                 if not ready:
                     # Keep a single unavailable/ambiguous observation so derived
                     # output retains the canonical fiscal context and fail-closed
@@ -265,43 +320,65 @@ class DerivedMetricsEngine:
                     nos.append(triple[0]); dts.append(triple[1]); shas.append(triple[2])
         return tuple(nos), tuple(dts), tuple(shas)
 
-    @staticmethod
-    def _period_context(group_key, current: PeriodizedFinancialObservation | None,
+    def _period_context(self, group_key, current: PeriodizedFinancialObservation | None,
                         *, metric_type: str, value: Any, unit: str,
                         status: str = READY, reason: str | None = None,
                         sources: Iterable[PeriodizedFinancialObservation | None] = (),
                         metadata: Mapping[str, Any] | None = None) -> DerivedMetricObservation:
         ticker, corp_code, family, metric = group_key
         source_items = tuple(sources)
-        nos, dts, shas = DerivedMetricsEngine._source(source_items)
+        nos, dts, shas = self._source(source_items)
+        pit_dates = [available for item in source_items
+                     if (available := _source_available_on(item)) is not None]
+        pit_available = max(pit_dates).isoformat() if pit_dates else None
+        final_status = status
+        final_value = value
+        final_reason = reason
+        if (status == READY and self._requested_as_of_date is not None
+                and pit_dates and max(pit_dates) > self._requested_as_of_date):
+            final_status = INPUT_NOT_READY
+            final_value = None
+            final_reason = "FUTURE_DATA_AFTER_REQUESTED_AS_OF"
         return DerivedMetricObservation(
             ticker, corp_code, family, str(current.fiscal_year) if current else "",
-            current.fiscal_period if current else "", metric, metric_type, value,
-            unit=unit, resolution_status=status, reason=reason,
+            current.fiscal_period if current else "", metric, metric_type, final_value,
+            unit=unit, resolution_status=final_status, reason=final_reason,
             period_end=current.period_end if current else None,
             source_rcept_nos=nos, source_rcept_dts=dts, source_sha256s=shas,
+            requested_as_of=self._requested_as_of, pit_available_from=pit_available,
             metadata=metadata,
         )
 
-    @staticmethod
-    def _rate(current: PeriodizedFinancialObservation | None, prior: PeriodizedFinancialObservation | None,
-              group_key, metric_type: str, *, sources=()) -> DerivedMetricObservation:
-        if not _value_ready(current):
-            return DerivedMetricsEngine._period_context(group_key, current, metric_type=metric_type, value=None,
-                                                        unit="PERCENT", status=DATA_UNAVAILABLE,
-                                                        reason="CURRENT_OBSERVATION_UNAVAILABLE", sources=sources or (current,))
-        if not _value_ready(prior):
-            return DerivedMetricsEngine._period_context(group_key, current, metric_type=metric_type, value=None,
-                                                        unit="PERCENT", status=DATA_UNAVAILABLE,
-                                                        reason="MISSING_PRIOR_PERIOD", sources=sources or (current, prior))
+    def _rate(self, current: PeriodizedFinancialObservation | None,
+              prior: PeriodizedFinancialObservation | None, group_key, metric_type: str,
+              *, sources=()) -> DerivedMetricObservation:
+        source_items = sources or (current, prior)
+        if current is None or not self._ready(current):
+            return self._period_context(group_key, current, metric_type=metric_type, value=None,
+                                        unit="PERCENT", status=INPUT_NOT_READY,
+                                        reason="CURRENT_OBSERVATION_UNAVAILABLE", sources=source_items)
+        if prior is None:
+            return self._period_context(group_key, current, metric_type=metric_type, value=None,
+                                        unit="PERCENT", status=DATA_UNAVAILABLE,
+                                        reason="MISSING_PRIOR_PERIOD", sources=source_items)
+        coherence_status, coherence_reason = self._coherence((current, prior))
+        if coherence_status in {BASIS_MISMATCH, CURRENCY_MISMATCH}:
+            return self._period_context(group_key, current, metric_type=metric_type, value=None,
+                                        unit="PERCENT", status=coherence_status,
+                                        reason=coherence_reason, sources=source_items)
+        if coherence_status != READY:
+            return self._period_context(group_key, current, metric_type=metric_type, value=None,
+                                        unit="PERCENT", status=coherence_status,
+                                        reason=coherence_reason or "INPUT_NOT_READY", sources=source_items)
         prior_value = _number(prior.value)
-        if prior_value == 0:
-            return DerivedMetricsEngine._period_context(group_key, current, metric_type=metric_type, value=None,
-                                                        unit="PERCENT", status=DATA_UNAVAILABLE,
-                                                        reason="PRIOR_VALUE_ZERO", sources=sources or (current, prior))
-        value = ((_number(current.value) - prior_value) / abs(prior_value)) * 100
-        return DerivedMetricsEngine._period_context(group_key, current, metric_type=metric_type, value=value,
-                                                    unit="PERCENT", sources=sources or (current, prior))
+        current_value = _number(current.value)
+        if prior_value is None or prior_value <= 0 or current_value is None or current_value < 0:
+            return self._period_context(group_key, current, metric_type=metric_type, value=None,
+                                        unit="PERCENT", status=UNDEFINED_BASE,
+                                        reason="NON_POSITIVE_OR_SIGN_TRANSITION_BASE", sources=source_items)
+        value = ((current_value - prior_value) / prior_value) * 100
+        return self._period_context(group_key, current, metric_type=metric_type, value=value,
+                                    unit="PERCENT", sources=source_items)
 
     def _growth_metrics(self, group_key, periods):
         metric = group_key[-1]
@@ -325,36 +402,61 @@ class DerivedMetricsEngine:
         quarters = {index: item for (year, period), item in periods.items()
                     if period in QUARTERS
                     for index in [_quarter_index(year, period)]}
-        ttm: dict[int, DerivedMetricObservation] = {}
+        ttm: dict[int, tuple[DerivedMetricObservation, tuple[PeriodizedFinancialObservation, ...]]] = {}
         for index, current in sorted(quarters.items()):
             source_items = [quarters.get(index - offset) for offset in (3, 2, 1, 0)]
-            if any(not _value_ready(item) for item in source_items):
-                if not _value_ready(current):
+            if any(item is None for item in source_items):
+                if not self._ready(current):
                     continue
                 output.append(self._period_context(group_key, current, metric_type="TTM", value=None,
                                                    unit="VALUE", status=DATA_UNAVAILABLE,
                                                    reason="MISSING_FOUR_QUARTER_WINDOW", sources=source_items))
                 continue
+            coherence_status, coherence_reason = self._coherence(source_items)
+            if coherence_status != READY:
+                if current is None:
+                    continue
+                output.append(self._period_context(group_key, current, metric_type="TTM", value=None,
+                                                   unit="VALUE", status=coherence_status,
+                                                   reason=coherence_reason or "INPUT_NOT_READY",
+                                                   sources=source_items))
+                continue
             value = sum(_number(item.value) for item in source_items)
             ttm_item = self._period_context(group_key, current, metric_type="TTM", value=value,
                                              unit="VALUE", sources=source_items)
-            ttm[index] = ttm_item
+            ttm[index] = (ttm_item, tuple(source_items))
             output.append(ttm_item)
-        for index, current_ttm in sorted(ttm.items()):
-            prior_ttm = ttm.get(index - 4)
+        for index, (current_ttm, current_sources) in sorted(ttm.items()):
+            prior_entry = ttm.get(index - 4)
             current_obs = quarters[index]
-            if prior_ttm is None:
+            if prior_entry is None:
                 output.append(self._period_context(group_key, current_obs, metric_type="TTM_YOY", value=None,
                                                    unit="PERCENT", status=DATA_UNAVAILABLE,
-                                                   reason="MISSING_PRIOR_TTM", sources=(current_obs,)))
+                                                   reason="MISSING_PRIOR_TTM", sources=current_sources))
             else:
-                value = ((_number(current_ttm.value) - _number(prior_ttm.value)) / abs(_number(prior_ttm.value)) * 100
-                         if _number(prior_ttm.value) != 0 else None)
+                prior_ttm, prior_sources = prior_entry
+                all_sources = current_sources + prior_sources
+                coherence_status, coherence_reason = self._coherence(all_sources)
+                if coherence_status != READY:
+                    output.append(self._period_context(
+                        group_key, current_obs, metric_type="TTM_YOY", value=None,
+                        unit="PERCENT", status=coherence_status,
+                        reason=coherence_reason or "INPUT_NOT_READY", sources=all_sources,
+                    ))
+                    continue
+                prior_value = _number(prior_ttm.value)
+                current_value = _number(current_ttm.value)
+                if prior_value is None or prior_value <= 0 or current_value is None or current_value < 0:
+                    output.append(self._period_context(
+                        group_key, current_obs, metric_type="TTM_YOY", value=None,
+                        unit="PERCENT", status=UNDEFINED_BASE,
+                        reason="NON_POSITIVE_OR_SIGN_TRANSITION_BASE", sources=all_sources,
+                    ))
+                    continue
+                value = ((current_value - prior_value) / prior_value) * 100
                 output.append(self._period_context(
                     group_key, current_obs, metric_type="TTM_YOY", value=value, unit="PERCENT",
-                    status=READY if value is not None else DATA_UNAVAILABLE,
-                    reason=None if value is not None else "PRIOR_TTM_ZERO",
-                    sources=(current_obs, quarters.get(index - 4)),
+                    sources=all_sources,
                 ))
         return output
 
@@ -365,25 +467,113 @@ class DerivedMetricsEngine:
         revenue_key = group_key[:-1] + ("revenue",)
         revenue_periods = selected.get(revenue_key, {})
         numerator_periods = selected.get(group_key, {})
-        if not revenue_periods:
+        if not revenue_periods and group_key[2] != "FINANCIAL":
             return []
         output: list[DerivedMetricObservation] = []
         for period_key in sorted(set(revenue_periods) | set(numerator_periods), key=lambda item: (_year_number(item[0]) or 0, item[1])):
             revenue = revenue_periods.get(period_key)
             numerator = numerator_periods.get(period_key)
             current = numerator or revenue
-            if not _value_ready(numerator) or not _value_ready(revenue):
+            if group_key[2] == "FINANCIAL":
+                if current is not None:
+                    output.append(self._period_context(
+                        group_key, current, metric_type=MARGIN_METRICS[metric], value=None,
+                        unit="PERCENT", status=NOT_APPLICABLE,
+                        reason="FINANCIAL_COMPANY_REVENUE_MARGIN_NOT_APPLICABLE",
+                        sources=(numerator, revenue),
+                    ))
+                continue
+            if not self._ready(numerator) or not self._ready(revenue):
                 output.append(self._period_context(
                     group_key, current, metric_type=MARGIN_METRICS[metric], value=None, unit="PERCENT",
-                    status=DATA_UNAVAILABLE, reason="MARGIN_INPUT_UNAVAILABLE", sources=(numerator, revenue),
+                    status=INPUT_NOT_READY, reason="MARGIN_INPUT_UNAVAILABLE", sources=(numerator, revenue),
+                ))
+                continue
+            coherence_status, coherence_reason = self._coherence((numerator, revenue))
+            if coherence_status in {BASIS_MISMATCH, CURRENCY_MISMATCH}:
+                output.append(self._period_context(
+                    group_key, numerator, metric_type=MARGIN_METRICS[metric], value=None, unit="PERCENT",
+                    status=coherence_status, reason=coherence_reason,
+                    sources=(numerator, revenue),
                 ))
                 continue
             denominator = _number(revenue.value)
-            value = (_number(numerator.value) / denominator * 100) if denominator else None
+            if denominator is None or denominator <= 0:
+                output.append(self._period_context(
+                    group_key, numerator, metric_type=MARGIN_METRICS[metric], value=None, unit="PERCENT",
+                    status=UNDEFINED_BASE, reason="NON_POSITIVE_REVENUE_BASE",
+                    sources=(numerator, revenue),
+                ))
+                continue
+            value = _number(numerator.value) / denominator * 100
             output.append(self._period_context(
                 group_key, numerator, metric_type=MARGIN_METRICS[metric], value=value, unit="PERCENT",
-                status=READY if value is not None else DATA_UNAVAILABLE,
-                reason=None if value is not None else "REVENUE_ZERO", sources=(numerator, revenue),
+                sources=(numerator, revenue),
+            ))
+        return output
+
+    def _ttm_margin_metrics(self, group_key, selected):
+        metric = group_key[-1]
+        if metric not in MARGIN_METRICS:
+            return []
+        ttm_metric = {
+            "operating_income": "TTM_OPERATING_MARGIN",
+            "net_income": "TTM_NET_MARGIN",
+            "operating_cash_flow": "TTM_OPERATING_CASH_FLOW_MARGIN",
+        }[metric]
+        numerator_periods = selected.get(group_key, {})
+        revenue_periods = selected.get(group_key[:-1] + ("revenue",), {})
+        numerator_quarters = {
+            _quarter_index(year, period): item
+            for (year, period), item in numerator_periods.items() if period in QUARTERS
+        }
+        revenue_quarters = {
+            _quarter_index(year, period): item
+            for (year, period), item in revenue_periods.items() if period in QUARTERS
+        }
+        output: list[DerivedMetricObservation] = []
+        for index, numerator_current in sorted(numerator_quarters.items()):
+            revenue_current = revenue_quarters.get(index)
+            if group_key[2] == "FINANCIAL":
+                output.append(self._period_context(
+                    group_key, numerator_current, metric_type=ttm_metric, value=None,
+                    unit="PERCENT", status=NOT_APPLICABLE,
+                    reason="FINANCIAL_COMPANY_REVENUE_MARGIN_NOT_APPLICABLE",
+                    sources=(numerator_current,),
+                ))
+                continue
+            numerator_window = tuple(numerator_quarters.get(index - offset) for offset in (3, 2, 1, 0))
+            revenue_window = tuple(revenue_quarters.get(index - offset) for offset in (3, 2, 1, 0))
+            all_sources = numerator_window + revenue_window
+            if any(item is None for item in all_sources):
+                if numerator_current is not None or revenue_current is not None:
+                    output.append(self._period_context(
+                        group_key, numerator_current or revenue_current, metric_type=ttm_metric,
+                        value=None, unit="PERCENT", status=DATA_UNAVAILABLE,
+                        reason="MISSING_FOUR_QUARTER_WINDOW", sources=all_sources,
+                    ))
+                continue
+            coherence_status, coherence_reason = self._coherence(all_sources)
+            if coherence_status != READY:
+                output.append(self._period_context(
+                    group_key, numerator_current, metric_type=ttm_metric, value=None,
+                    unit="PERCENT", status=coherence_status,
+                    reason=coherence_reason or "INPUT_NOT_READY", sources=all_sources,
+                ))
+                continue
+            revenue_total = sum(_number(item.value) for item in revenue_window)
+            numerator_total = sum(_number(item.value) for item in numerator_window)
+            if revenue_total <= 0:
+                output.append(self._period_context(
+                    group_key, numerator_current, metric_type=ttm_metric, value=None,
+                    unit="PERCENT", status=UNDEFINED_BASE,
+                    reason="NON_POSITIVE_REVENUE_BASE", sources=all_sources,
+                ))
+                continue
+            output.append(self._period_context(
+                group_key, numerator_current, metric_type=ttm_metric,
+                value=numerator_total / revenue_total * 100, unit="PERCENT",
+                sources=all_sources,
             ))
         return output
 
@@ -397,15 +587,34 @@ class DerivedMetricsEngine:
             if current is None:
                 continue
             prior = periods.get((str((_year_number(year) or 0) - 1), period))
-            if not _value_ready(current) or not _value_ready(prior):
+            if prior is None:
                 output.append(self._period_context(group_key, current, metric_type="EARNINGS_TRANSITION", value=None,
                                                    unit="CLASSIFICATION", status=DATA_UNAVAILABLE,
                                                    reason="MISSING_PRIOR_PERIOD", sources=(current, prior)))
                 continue
+            coherence_status, coherence_reason = self._coherence((current, prior))
+            if coherence_status in {BASIS_MISMATCH, CURRENCY_MISMATCH, INPUT_NOT_READY}:
+                output.append(self._period_context(
+                    group_key, current, metric_type="EARNINGS_TRANSITION", value=None,
+                    unit="CLASSIFICATION", status=coherence_status,
+                    reason=coherence_reason or "INPUT_NOT_READY", sources=(current, prior),
+                ))
+                continue
             left, right = _number(prior.value), _number(current.value)
-            if left < 0 <= right:
+            if left is None or right is None:
+                output.append(self._period_context(
+                    group_key, current, metric_type="EARNINGS_TRANSITION", value=None,
+                    unit="CLASSIFICATION", status=INPUT_NOT_READY,
+                    reason="INPUT_NOT_READY", sources=(current, prior),
+                ))
+                continue
+            if left == 0:
+                transition = "ZERO_BASE"
+            elif right == 0:
+                transition = "ZERO_CURRENT"
+            elif left < 0 < right:
                 transition = "LOSS_TO_PROFIT"
-            elif left >= 0 > right:
+            elif left > 0 > right:
                 transition = "PROFIT_TO_LOSS"
             elif left < 0 and right < 0:
                 transition = "LOSS_NARROWING" if abs(right) < abs(left) else "LOSS_WIDENING" if abs(right) > abs(left) else "LOSS_UNCHANGED"
@@ -432,23 +641,40 @@ class DerivedMetricsEngine:
             prior = numerator_periods.get(prior_key)
             prior_revenue = revenue_periods.get(prior_key)
             source = (current, revenue, prior, prior_revenue)
-            if not (_value_ready(current) and _value_ready(revenue)
-                    and _value_ready(prior) and _value_ready(prior_revenue)):
+            if group_key[2] == "FINANCIAL":
+                if current is not None:
+                    output.append(self._period_context(
+                        group_key, current, metric_type="MARGIN_EXPANSION_TREND",
+                        value=None, unit="PERCENTAGE_POINTS", status=NOT_APPLICABLE,
+                        reason="FINANCIAL_COMPANY_REVENUE_MARGIN_NOT_APPLICABLE",
+                        sources=source,
+                    ))
+                continue
+            if not (self._ready(current) and self._ready(revenue)
+                    and self._ready(prior) and self._ready(prior_revenue)):
                 if current is None and revenue is None:
                     continue
                 output.append(self._period_context(
                     group_key, current or revenue, metric_type="MARGIN_EXPANSION_TREND",
-                    value=None, unit="PERCENTAGE_POINTS", status=DATA_UNAVAILABLE,
+                    value=None, unit="PERCENTAGE_POINTS", status=INPUT_NOT_READY,
                     reason="MISSING_COMPARABLE_MARGIN_PERIOD", sources=source,
+                ))
+                continue
+            coherence_status, coherence_reason = self._coherence(source)
+            if coherence_status in {BASIS_MISMATCH, CURRENCY_MISMATCH, INPUT_NOT_READY}:
+                output.append(self._period_context(
+                    group_key, current, metric_type="MARGIN_EXPANSION_TREND",
+                    value=None, unit="PERCENTAGE_POINTS", status=coherence_status,
+                    reason=coherence_reason or "INPUT_NOT_READY", sources=source,
                 ))
                 continue
             current_revenue = _number(revenue.value)
             prior_revenue_value = _number(prior_revenue.value)
-            if current_revenue == 0 or prior_revenue_value == 0:
+            if current_revenue is None or current_revenue <= 0 or prior_revenue_value is None or prior_revenue_value <= 0:
                 output.append(self._period_context(
                     group_key, current, metric_type="MARGIN_EXPANSION_TREND",
-                    value=None, unit="PERCENTAGE_POINTS", status=DATA_UNAVAILABLE,
-                    reason="REVENUE_ZERO", sources=source,
+                    value=None, unit="PERCENTAGE_POINTS", status=UNDEFINED_BASE,
+                    reason="NON_POSITIVE_REVENUE_BASE", sources=source,
                 ))
                 continue
             current_margin = _number(current.value) / current_revenue * 100
@@ -519,9 +745,11 @@ class DerivedMetricsEngine:
         return output
 
 
-def derive_metrics(source: PeriodizationResult | Iterable[PeriodizedFinancialObservation]) -> DerivedMetricsResult:
-    return DerivedMetricsEngine().derive(source)
+def derive_metrics(source: PeriodizationResult | Iterable[PeriodizedFinancialObservation],
+                   *, requested_as_of: Any = None) -> DerivedMetricsResult:
+    return DerivedMetricsEngine().derive(source, requested_as_of=requested_as_of)
 
 
-def calculate_derived_metrics(source: PeriodizationResult | Iterable[PeriodizedFinancialObservation]) -> DerivedMetricsResult:
-    return derive_metrics(source)
+def calculate_derived_metrics(source: PeriodizationResult | Iterable[PeriodizedFinancialObservation],
+                              *, requested_as_of: Any = None) -> DerivedMetricsResult:
+    return derive_metrics(source, requested_as_of=requested_as_of)
