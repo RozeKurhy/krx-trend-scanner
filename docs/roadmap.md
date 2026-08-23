@@ -82,7 +82,7 @@ CLOSED고 Production 승격 여부는 별도"임을 한 토큰으로 강조하�
 | | Test Suite Performance Audit | CLOSED | 실행 시간 단축 (~66분 ➔ ~11분44초) |
 | **Project Management** | README & Roadmap Refresh | **CLOSED** | Refresh 및 Semantics 정합성 완료 |
 | | **Documentation Closure** | **READY_FOR_ARCHITECT_DOCUMENTATION_CLOSURE_REVIEW** | README/Roadmap 상태 동기화 작업 |
-| | **Phase13 OpenDART Fundamentals** | **NEXT / PLANNED** | 공시일 기준 PIT-safe 실적 분석 축 |
+| | **OpenDART Fundamentals** | **NEXT / PLANNED** | 공시일 기준 PIT-safe 실적 분석 축 |
 | | **KRX Open API Validation** | **WAITING_FOR_SERVICE_APPROVAL** | 서비스 API 승인 대기 |
 | | **Julia Strategy V00 Official PIT** | **INCOMPLETE / BLOCKED_BY_KRX_DATA** | 117/215 확보, 98개 기준일 누락 |
 | | **Market Cap Threshold Research** | **AFTER_OFFICIAL_JULIA_PIT** | Official PIT 100% 이후 strategy path 재생성 연구 |
@@ -97,7 +97,7 @@ CLOSED고 Production 승격 여부는 별도"임을 한 토큰으로 강조하�
 ```text
 1. README / Roadmap Documentation Closure = CURRENT
        ↓
-2. Phase13 OpenDART Fundamentals = NEXT / PLANNED
+2. OpenDART Fundamentals = NEXT / PLANNED
        ↓
 3. KRX Open API Validation = WAITING_FOR_SERVICE_APPROVAL
        ↓
@@ -330,7 +330,7 @@ Pattern A, Pattern A FAST, Investability 필터, 손절 및 청산 규칙을 결
   * 재진입이 금지된 단일 진입 기준 모델 (**`HISTORICAL_FROZEN_BASELINE`**, [V1 Contract](patterns/pattern_a_fast/strategy/final_v01.md)).
 * **운용 정책**: 본 전략은 리포트를 통한 **투자 의사결정 지원(Decision Support)** 목적으로 사용되며, 자동 주문 실행(Automated Trading)용으로 승인되지 않았습니다.
 
-## Next Phase 13. OpenDART Fundamentals — NEXT / PLANNED
+## OpenDART Fundamentals — NEXT / PLANNED
 
 Pattern A, Investability, Foreign Flow, Market RS와 독립된 실적 분석 축을 추가하는 다음 개발 단계.
 
@@ -346,7 +346,7 @@ Pattern A, Investability, Foreign Flow, Market RS와 독립된 실적 분석 축
 Historical as-of report에서는 `disclosure / filing availability date <= as_of`인 실제 공시 데이터만 사용한다. 미래 공시 데이터가 과거 리포트에 유입되는 future filing leakage를 금지한다.
 
 ### 아직 확정하지 않는 항목
-Fundamentals Score, Pattern A Score와의 합산, 매매 signal, PER/PBR, valuation score 및 fundamental cutoff는 Phase13 설계 단계에서 확정한다. 현재는 `NEXT / PLANNED`이며 OpenDART가 production 통합 완료된 상태가 아니다.
+Fundamentals Score, Pattern A Score와의 합산, 매매 signal, PER/PBR, valuation score 및 fundamental cutoff는 OpenDART Fundamentals 설계 단계에서 확정한다. 현재는 `NEXT / PLANNED`이며 OpenDART가 production 통합 완료된 상태가 아니다.
 
 ---
 
@@ -414,7 +414,7 @@ KRX Open API 기반 데이터 계층 전환은 서비스 API 승인 대기 상�
 6. Corporate-action adjusted-price semantics 검증
 7. `KRX_ONLY` vs `KRX_PLUS_KIS` architecture 결정
 
-현재는 migration 완료나 production 전환으로 표시하지 않는다. Phase13 Fundamentals의 작은 작업 단위가 진행 중 승인되면, 해당 단위를 마친 뒤 KRX validation을 우선 재개할 수 있다.
+현재는 migration 완료나 production 전환으로 표시하지 않는다. OpenDART Fundamentals의 작은 작업 단위가 진행 중 승인되면, 해당 단위를 마친 뒤 KRX validation을 우선 재개할 수 있다.
 
 ## Market Cap Threshold Research — AFTER_OFFICIAL_JULIA_PIT
 
@@ -430,8 +430,8 @@ Julia Official PIT가 100% 완료된 뒤 A FAST Core V2와 Julia를 대상으로
 
 목적: Stock Report v0.3 산출물을 웹 브라우저에서 편리하게 조회/검색할 수 있는 뷰어 인터페이스 구축.
 
-* **실행 의존성**: Phase13 Fundamentals $\rightarrow$ 핵심 데이터 계층 정리 $\rightarrow$ Web Report Viewer.
-* **현재 상태**: 즉시 구현 대상이 아니며, Phase13 및 핵심 데이터 계층 이후의 미래 단계.
+* **실행 의존성**: OpenDART Fundamentals $\rightarrow$ 핵심 데이터 계층 정리 $\rightarrow$ Web Report Viewer.
+* **현재 상태**: 즉시 구현 대상이 아니며, OpenDART Fundamentals 및 핵심 데이터 계층 이후의 미래 단계.
 * **설계 방향**: 실시간 대규모 연산 대신 사전에 생성된 정적/공식 아티팩트(Static/Canonical JSON)를 우선 소비하는 구조로 설계.
 
 ---
@@ -480,7 +480,7 @@ CLI / Web 대시보드, 관심종목 워크플로우, 실시간 알림 등 최�
 12. Stock Report v0.3 Integration — CLOSED (`0e54ad5`)
 13. Documentation & Artifacts IA Reorganization — CLOSED (`a81e3bb`)
 14. README / Roadmap Documentation Closure — **CURRENT**
-15. Phase13 OpenDART Fundamentals — **NEXT / PLANNED**
+15. OpenDART Fundamentals — **NEXT / PLANNED**
 16. KRX Open API Validation — **WAITING_FOR_SERVICE_APPROVAL**
 17. Julia Strategy V00 Official PIT — **INCOMPLETE / BLOCKED_BY_KRX_DATA**
 18. Market Cap Threshold Research — **AFTER_OFFICIAL_JULIA_PIT**

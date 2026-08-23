@@ -66,7 +66,7 @@
 * **현재 상태**: **`WAITING_FOR_SERVICE_APPROVAL`**
 * KRX Open API 기반 데이터 계층 전환을 준비 중이며, 필요한 서비스 API 승인 전에는 migration 완료로 간주하지 않습니다.
 
-### 5. Phase13 OpenDART Fundamentals (Next / Planned)
+### 5. OpenDART Fundamentals (Next / Planned)
 * **다음 개발 영역**: OpenDART 기반 매출, 영업이익, 당기순이익, 수익성, 성장률, 실적 추세 및 공시일 기준 PIT 처리.
 * **현재 상태**: **`NEXT / PLANNED`**. Fundamentals Score, Pattern A Score와의 합산, valuation score 및 매매 signal은 아직 확정하지 않았습니다.
 
@@ -197,7 +197,7 @@ print(f"Markdown: {md_path}")
 ```text
 [README/Roadmap Documentation Closure] (CURRENT)
        ↓
-[Phase13 OpenDART Fundamentals] (NEXT / PLANNED)
+[OpenDART Fundamentals] (NEXT / PLANNED)
        ↓
 [KRX Open API Validation] (WAITING_FOR_SERVICE_APPROVAL)
        ↓
@@ -219,7 +219,7 @@ print(f"Markdown: {md_path}")
 7. **Engineering IA Reorganization (Docs & Artifacts)** — **`CLOSED`**
 8. **README & Roadmap Refresh** — **`CLOSED`**
 9. **README / Roadmap Documentation Closure** — **`CURRENT`**
-10. **Phase13 OpenDART Fundamentals** — **`NEXT / PLANNED`** (KRX API 승인과 독립적으로 착수 가능)
+10. **OpenDART Fundamentals** — **`NEXT / PLANNED`** (KRX API 승인과 독립적으로 착수 가능)
 11. **KRX Open API Validation** — **`WAITING_FOR_SERVICE_APPROVAL`**
 12. **Julia Strategy V00 Official PIT** — **`INCOMPLETE / BLOCKED_BY_KRX_DATA`** (117/215, 98개 기준일 누락)
 13. **Market Cap Threshold Research** — **`AFTER_OFFICIAL_JULIA_PIT`**
