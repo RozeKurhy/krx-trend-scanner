@@ -168,6 +168,12 @@ family 안에서 후보로 다루며, 삼성전자처럼 둘 다 존재하면 ra
 이번 단계의 분류는 대표 fixture용 evidence-based initial classification이다.
 전체 KRX 산업분류 엔진으로 선언하지 않는다.
 
+초기 금융 family 경계:
+- induty_code prefix 64 / 65 / 66 -> FINANCIAL
+- 그 외 non-empty induty_code -> NON_FINANCIAL
+- induty_code 없음 + 금융 account structure evidence -> FINANCIAL fallback
+- prefix 67은 이번 rule에 포함하지 않음
+
 ticker       company_family   evidence
 --------------------------------------------------
 005930       NON_FINANCIAL    induty_code 264

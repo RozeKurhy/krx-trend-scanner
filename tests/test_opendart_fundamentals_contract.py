@@ -5,6 +5,7 @@ from trend_scanner.fundamentals.opendart_contract import (
     CompanyFamily,
     FilingSelectionStatus,
     StatementFamily,
+    classify_company_family,
     map_statement_family,
     redact_url,
     resolve_core_account,
@@ -104,6 +105,37 @@ def test_cfs_api_error_does_not_silently_fallback_to_ofs():
 def test_financial_family_marks_nonfinancial_metric_not_applicable():
     result = resolve_core_account([], "revenue", CompanyFamily.FINANCIAL.value)
     assert result["resolution_status"] == AccountResolutionStatus.NOT_APPLICABLE.value
+
+
+def test_financial_industry_prefixes_cover_finance_insurance_and_related_services():
+    for code in ("64992", "65110", "66110", "64000", "65000", "66000"):
+        result = classify_company_family({"induty_code": code})
+        assert result["company_family"] == CompanyFamily.FINANCIAL.value
+
+
+def test_financial_industry_prefix_boundary_does_not_include_67():
+    result = classify_company_family({"induty_code": "67000"})
+    assert result["company_family"] == CompanyFamily.NON_FINANCIAL.value
+
+
+def test_existing_nonfinancial_industry_fixtures_remain_nonfinancial():
+    for code in ("264", "212"):
+        result = classify_company_family({"induty_code": code})
+        assert result["company_family"] == CompanyFamily.NON_FINANCIAL.value
+
+
+def test_insurance_family_blocks_nonfinancial_revenue_and_operating_income():
+    company = classify_company_family({"induty_code": "65110"})
+    assert company["company_family"] == CompanyFamily.FINANCIAL.value
+    for metric in ("revenue", "operating_income"):
+        result = resolve_core_account([], metric, company["company_family"])
+        assert result["resolution_status"] == AccountResolutionStatus.NOT_APPLICABLE.value
+
+
+def test_missing_industry_code_keeps_financial_account_structure_fallback():
+    result = classify_company_family({}, [{"account_nm": "순영업이익", "sj_div": "CIS"}])
+    assert result["company_family"] == CompanyFamily.FINANCIAL.value
+    assert result["status"] == "STRUCTURE_DIAGNOSTIC"
 
 
 def test_account_resolution_uses_cis_when_is_is_absent():

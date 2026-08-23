@@ -44,7 +44,14 @@
         "status": "FIXTURE_CONFIDENT"
       }
     },
-    "classification_scope": "Evidence-based representative fixture only; not a full KRX industry engine"
+    "classification_scope": "Evidence-based representative fixture only; not a full KRX industry engine",
+    "financial_industry_prefixes": [
+      "64",
+      "65",
+      "66"
+    ],
+    "non_empty_other_prefix_rule": "NON_FINANCIAL",
+    "missing_code_account_structure_fallback": "FINANCIAL only when financial-account evidence is present"
   },
   "duplicate_account_contract": {
     "required_context": [

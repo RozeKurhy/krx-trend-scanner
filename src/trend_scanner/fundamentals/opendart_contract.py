@@ -18,6 +18,7 @@ from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 
 PIT_GRANULARITY = "DAILY_EOD_KST"
+FINANCIAL_INDUSTRY_PREFIXES = ("64", "65", "66")
 SAME_DAY_AVAILABILITY = "AVAILABLE_AT_EOD"
 REPORT_TYPE_BY_CODE = {
     "11013": "Q1",
@@ -270,7 +271,7 @@ def classify_company_family(
     fields = company.get("selected_fields") if isinstance(company.get("selected_fields"), Mapping) else company
     industry_code = str((fields or {}).get("induty_code") or "").strip()
     evidence: list[str] = []
-    if industry_code.startswith("64"):
+    if industry_code.startswith(FINANCIAL_INDUSTRY_PREFIXES):
         evidence.append(f"induty_code:{industry_code}")
         return {"company_family": CompanyFamily.FINANCIAL.value, "evidence": evidence, "status": "FIXTURE_CONFIDENT"}
     if industry_code:
