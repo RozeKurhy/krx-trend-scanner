@@ -389,6 +389,12 @@ def _secret_and_raw_source_counts(key: str) -> tuple[int, bool]:
     return secret_count, bool(tracked.stdout.strip())
 
 
+def _git_head() -> str | None:
+    completed = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True,
+                               capture_output=True, check=False)
+    return completed.stdout.strip() if completed.returncode == 0 else None
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--live", action="store_true", help="Allow bounded OpenDART cache-first validation")
@@ -486,9 +492,10 @@ def main() -> int:
     })
     _write_csv(ARTIFACT_DIR / "live_derived_metrics.csv", _rows(builds))
 
+    current_head = _git_head()
     summary = {
-        "work_id": WORK_ID, "start_head": START_HEAD, "implementation_head": None,
-        "artifact_head": None, "final_provenance_head": None,
+        "work_id": WORK_ID, "start_head": START_HEAD, "implementation_head": current_head,
+        "artifact_head": current_head, "final_provenance_head": current_head,
         "derived_metrics_engine_status": "PASS" if critical_pass else "FAIL",
         "derived_metrics_provider_status": production.get("status"),
         "production_provider_status": production.get("status"),
