@@ -23,10 +23,11 @@ from trend_scanner.fundamentals.periodization_provider import PeriodizationBuild
 
 def _obs(metric: str, year: str, period: str, value, *, basis: str = "CFS",
          currency: str = "KRW", family: str = "NON_FINANCIAL", status: str = "READY",
-         available: str | None = None, no: str | None = None):
+         available: str | None = None, no: str | None = None,
+         receipt: str | None = "AUTO"):
     code = {"Q1": "11013", "Q2": "11012", "Q3": "11014", "Q4": "11011", "FY": "11011"}[period]
     anchor = no or f"{year}-{period}-{metric}"
-    receipt = available or f"{year}-12-31"
+    receipt = f"{year}-12-31" if receipt == "AUTO" else receipt
     return PeriodizedFinancialObservation(
         ticker="FIX02", corp_code="00000002", company_family=family,
         fiscal_year=year, fiscal_year_start=f"{year}-01-01", fiscal_period=period,
@@ -143,7 +144,7 @@ def test_case_j_pit_metadata_blocks_future_and_records_cutoff():
 
 
 def test_case_k_unknown_pit_availability_fails_closed():
-    result = _derive([_obs("revenue", "2024", "Q1", 100, available=None)], as_of="2024-02-15")
+    result = _derive([_obs("revenue", "2024", "Q1", 100, available=None, receipt=None)], as_of="2024-02-15")
     # There is no comparable period, but the canonical context must remain
     # explicitly unavailable rather than exposing a READY value.
     assert all(item.resolution_status != "READY" for item in result)
