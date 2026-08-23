@@ -213,6 +213,16 @@ class PatternAUniverseScanRow:
     market_anchor_date_3m: str | None = None
     market_anchor_date_6m: str | None = None
     market_anchor_date_12m: str | None = None
+    # Phase 12 completion layer: derived from the complete COMMON reference.
+    market_rs_delta_3m_vs_6m: float | None = None
+    market_rs_delta_6m_vs_12m: float | None = None
+    market_rs_acceleration_3_6_12m: float | None = None
+    all_market_rs_rank_3m: float | None = None
+    all_market_rs_rank_6m: float | None = None
+    all_market_rs_rank_12m: float | None = None
+    all_market_rs_percentile_3m: float | None = None
+    all_market_rs_percentile_6m: float | None = None
+    all_market_rs_percentile_12m: float | None = None
 
     sector_rs_data_status: str = "NOT_EVALUATED"
     sector_name: str | None = None
@@ -334,6 +344,15 @@ class PatternAUniverseScanRow:
             "market_anchor_date_3m": self.market_anchor_date_3m,
             "market_anchor_date_6m": self.market_anchor_date_6m,
             "market_anchor_date_12m": self.market_anchor_date_12m,
+            "market_rs_delta_3m_vs_6m": self.market_rs_delta_3m_vs_6m,
+            "market_rs_delta_6m_vs_12m": self.market_rs_delta_6m_vs_12m,
+            "market_rs_acceleration_3_6_12m": self.market_rs_acceleration_3_6_12m,
+            "all_market_rs_rank_3m": self.all_market_rs_rank_3m,
+            "all_market_rs_rank_6m": self.all_market_rs_rank_6m,
+            "all_market_rs_rank_12m": self.all_market_rs_rank_12m,
+            "all_market_rs_percentile_3m": self.all_market_rs_percentile_3m,
+            "all_market_rs_percentile_6m": self.all_market_rs_percentile_6m,
+            "all_market_rs_percentile_12m": self.all_market_rs_percentile_12m,
             "sector_rs_data_status": self.sector_rs_data_status,
             "sector_name": self.sector_name,
             "sector_code": self.sector_code,

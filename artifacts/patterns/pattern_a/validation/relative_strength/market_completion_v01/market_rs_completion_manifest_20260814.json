@@ -1,0 +1,26 @@
+{
+  "work_id": "PHASE12_MARKET_RELATIVE_STRENGTH_COMPLETION_V01",
+  "start_head": "de53a3c729d0837c1270a09708206bb37616c4cc",
+  "as_of": "2026-08-14",
+  "implementation_files": [
+    "src/trend_scanner/relative_strength/cross_section.py",
+    "src/trend_scanner/scanner/full_universe_scanner.py"
+  ],
+  "validation_files": [
+    "scripts/run_phase12_market_relative_strength_completion_v01.py",
+    "tests/test_relative_strength_cross_section_v01.py"
+  ],
+  "source_paths": [
+    "artifacts/patterns/pattern_a/validation/relative_strength/source/market_index_daily_20260814.parquet",
+    "data/raw/stocks/*.parquet",
+    "artifacts/patterns/pattern_a/production/investability/",
+    "artifacts/patterns/pattern_a/production/flow/"
+  ],
+  "market_index_sha256": "82646acedfa97e85fcec7f88922ab8bc0990f7623f9d9e7a3f9bc78156dd71fa",
+  "network_requests": 0,
+  "production_strategy_logic_changed": false,
+  "pattern_a_logic_changed": false,
+  "investability_logic_changed": false,
+  "foreign_flow_logic_changed": false,
+  "sector_rs_changed": false
+}

@@ -335,8 +335,8 @@ def test_subset_filters_and_count_separation(mock_scanner_env):
     assert len(res_limit.rows) == 2
 
 
-def test_no_ranking_or_decision_fields_exist(mock_scanner_env):
-    """결과 딕셔너리에 rank, cutoff, composite score, buy/sell decision 필드가 존재하지 않음을 검증."""
+def test_no_policy_ranking_or_decision_fields_exist(mock_scanner_env):
+    """정책용 랭킹/의사결정 필드는 없고 분석용 Market RS 순위만 허용함을 검증."""
     res = scan_pattern_a_universe(
         cache=mock_scanner_env["cache"],
         as_of=mock_scanner_env["as_of"],
@@ -346,12 +346,19 @@ def test_no_ranking_or_decision_fields_exist(mock_scanner_env):
     df = res.to_dataframe()
     cols = set(df.columns)
 
+    allowed_analytics_fields = {
+        "all_market_rs_rank_3m",
+        "all_market_rs_rank_6m",
+        "all_market_rs_rank_12m",
+    }
     forbidden_patterns = [
         "rank", "cutoff", "unified", "composite", "top_n",
         "buy_signal", "sell_signal", "buy_decision", "sell_decision",
         "recommendation", "action",
     ]
     for col in cols:
+        if col in allowed_analytics_fields:
+            continue
         for pattern in forbidden_patterns:
             assert pattern not in col.lower(), f"Forbidden field '{col}' found in scanner output!"
 

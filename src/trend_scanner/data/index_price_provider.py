@@ -12,12 +12,6 @@ from pathlib import Path
 from typing import Any
 
 import pandas as pd
-from dotenv import load_dotenv
-
-load_dotenv()
-
-from pykrx import stock  # noqa: E402
-
 from trend_scanner.data.errors import MarketDataError
 
 _STANDARD_INDEX_COLUMNS = (
@@ -84,6 +78,13 @@ class IndexPriceDataProvider:
     ) -> pd.DataFrame:
         """단일 인덱스의 OHLCV 시계열 데이터를 수집한다 (재시도 및 Rate Limit 지연 포함)."""
         import time
+        # Lazy import is intentional: importing local validation code must not
+        # initialize PyKRX's network session. Network access occurs only when
+        # this fetch method is explicitly invoked.
+        from dotenv import load_dotenv
+        from pykrx import stock
+
+        load_dotenv()
 
         clean_start = start_date.replace("-", "")
         clean_end = end_date.replace("-", "")

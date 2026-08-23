@@ -12,11 +12,6 @@ from pathlib import Path
 from typing import Any
 
 import pandas as pd
-from dotenv import load_dotenv
-
-load_dotenv()
-
-from pykrx import stock  # noqa: E402
 
 from trend_scanner.data.errors import MarketDataError
 
@@ -48,6 +43,10 @@ class ForeignFlowDataProvider:
         clean_date = date_str.replace("-", "")
         formatted_date = f"{clean_date[:4]}-{clean_date[4:6]}-{clean_date[6:8]}"
         try:
+            from dotenv import load_dotenv
+            from pykrx import stock
+
+            load_dotenv()
             raw_df = stock.get_market_net_purchases_of_equities_by_ticker(
                 clean_date, clean_date, "ALL", "외국인"
             )

@@ -19,14 +19,9 @@ import json
 from pathlib import Path
 from typing import Any
 
-from dotenv import load_dotenv
 import numpy as np
 import pandas as pd
-from pykrx import stock
-
 from trend_scanner.data.cache import ParquetCache
-
-load_dotenv()
 
 CANONICAL_AS_OF = "2026-08-14"
 CANONICAL_MCAP_SHA256 = "c45a496d0a5bb38ea4d4350d3a0a1db8cc141887c22df1ad4ca702a75722b55d"
@@ -100,6 +95,11 @@ def load_canonical_mcap_snapshot(
         return df, sha256
 
     # Fetch from pykrx if not cached
+    from dotenv import load_dotenv
+    from pykrx import stock
+
+    load_dotenv()
+
     try:
         as_of_clean = as_of.replace("-", "")
         df_raw = stock.get_market_cap_by_ticker(as_of_clean)
