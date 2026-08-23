@@ -68,6 +68,8 @@ class PeriodizationBuild:
     result: PeriodizationResult
     anchor_selections: tuple[Mapping[str, Any], ...] = ()
     skipped_anchors: tuple[Mapping[str, Any], ...] = ()
+    canonical_duplicate_group_count: int = 0
+    canonical_duplicate_fact_removed_count: int = 0
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -80,6 +82,8 @@ class PeriodizationBuild:
             "result": self.result.to_dict(),
             "anchor_selections": [dict(item) for item in self.anchor_selections],
             "skipped_anchors": [dict(item) for item in self.skipped_anchors],
+            "canonical_duplicate_group_count": self.canonical_duplicate_group_count,
+            "canonical_duplicate_fact_removed_count": self.canonical_duplicate_fact_removed_count,
         }
 
 
@@ -116,9 +120,13 @@ class PeriodizationProvider:
         filings_by_code: dict[str, list[RegisteredFiling]] = {}
         prior_pit_states: dict[tuple[str, str], Mapping[str, Any]] = {}
         materialized_keys: set[tuple[str, str]] = set()
+        canonical_duplicate_group_count = 0
+        canonical_duplicate_fact_removed_count = 0
 
         def materialize(filing: RegisteredFiling) -> dict[str, Any]:
             """Materialize one filing exactly once for this provider build."""
+
+            nonlocal canonical_duplicate_group_count, canonical_duplicate_fact_removed_count
 
             key = (str(filing.reprt_code), str(filing.rcept_no))
             if key in materialized_keys:
@@ -146,13 +154,16 @@ class PeriodizationProvider:
                     "source_sha256": artifact.sha256,
                     "basis": basis,
                 }
+            collapse_stats: dict[str, int] = {}
             new_facts = facts_from_xbrl_rows(
                 selected_rows, ticker=ticker, corp_code=record.corp_code,
                 company_family=family, fiscal_year=fiscal_year, reprt_code=filing.reprt_code,
                 report_type=filing.report_type, rcept_no=filing.rcept_no,
                 rcept_dt=filing.rcept_dt, fs_div_used=basis,
-                source_sha256=artifact.sha256,
+                source_sha256=artifact.sha256, collapse_stats=collapse_stats,
             )
+            canonical_duplicate_group_count += int(collapse_stats.get("group_count", 0))
+            canonical_duplicate_fact_removed_count += int(collapse_stats.get("removed_fact_count", 0))
             if not new_facts:
                 return {
                     "materialized": False,
@@ -278,6 +289,8 @@ class PeriodizationProvider:
             ticker=ticker, fiscal_year=fiscal_year, requested_as_of=cutoff_text,
             company_family=family, filings=tuple(all_filings), facts=tuple(facts),
             result=result, anchor_selections=tuple(selections), skipped_anchors=tuple(skipped),
+            canonical_duplicate_group_count=canonical_duplicate_group_count,
+            canonical_duplicate_fact_removed_count=canonical_duplicate_fact_removed_count,
         )
 
     def periodize(self, ticker: str, fiscal_year: str, requested_as_of: str | date, **kwargs: Any) -> PeriodizationResult:

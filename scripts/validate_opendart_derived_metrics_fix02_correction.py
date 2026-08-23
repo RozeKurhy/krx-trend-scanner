@@ -382,7 +382,16 @@ def _recompute_margin(build: Any, sample: Any) -> dict[str, Any]:
     actual = sample.value
     difference = abs(float(expected) - float(actual)) if expected is not None and actual is not None else None
     source_alignment = len(sample.source_rcept_nos) == len(sample.source_rcept_dts) == len(sample.source_sha256s)
-    canonical_sources = {item.anchor_rcept_no for item in revenues + numerators if item is not None}
+    canonical_sources: set[str] = set()
+    for item in revenues + numerators:
+        if item is None:
+            continue
+        canonical_sources.add(item.anchor_rcept_no)
+        # A validated direct/derived observation can legitimately retain the
+        # prior filing receipt used for its derivation.  That receipt is part
+        # of the canonical observation provenance even when it is not the
+        # observation's anchor receipt.
+        canonical_sources.update(item.source_rcept_nos)
     source_traceable = set(sample.source_rcept_nos).issubset(canonical_sources)
     return {
         "ticker": sample.ticker, "selected_metric_type": sample.metric_type,

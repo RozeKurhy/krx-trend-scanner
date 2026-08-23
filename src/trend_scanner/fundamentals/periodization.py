@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from datetime import date
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from typing import Any, Iterable, Mapping
 
 from .models import FinancialObservation
@@ -65,6 +65,71 @@ PRIOR_MISSING = "MISSING"
 PRIOR_AMBIGUOUS = "AMBIGUOUS"
 PRIOR_PIT_MULTIPLE_FILINGS_ON_SAME_EOD = "PRIOR_PIT_MULTIPLE_FILINGS_ON_SAME_EOD"
 PRIOR_PIT_MULTIPLE_CURRENT_CUMULATIVE_CONTEXTS = "PRIOR_PIT_MULTIPLE_CURRENT_CUMULATIVE_CONTEXTS"
+
+
+# Raw XBRL concept/QName is intentionally absent.  ``facts_from_xbrl_rows``
+# has already translated every supported account into this canonical metric
+# namespace, so equivalent representations from one filing can be collapsed
+# only when every economic/provenance field below (including the value) is
+# identical.  Keeping this list explicit makes the fail-closed boundary easy
+# to audit and prevents an accidental context-id winner rule.
+CANONICAL_DUPLICATE_IDENTITY_FIELDS = (
+    "ticker", "corp_code", "company_family", "fiscal_year", "fiscal_year_start",
+    "metric", "value", "currency", "reprt_code", "report_type", "rcept_no", "rcept_dt",
+    "period_start", "period_end", "fs_div_used", "source_sha256", "resolution_status",
+    "period_semantics", "context_semantics", "duration_days", "instant", "comparative",
+    "pit_available_from",
+)
+
+
+@dataclass(frozen=True)
+class CanonicalDuplicateCollapseStats:
+    """Diagnostics for equivalent canonical facts removed within one filing."""
+
+    input_fact_count: int = 0
+    output_fact_count: int = 0
+    group_count: int = 0
+    removed_fact_count: int = 0
+
+
+def canonical_duplicate_identity(fact: PeriodizationFact) -> tuple[Any, ...]:
+    """Return the canonical identity used for safe representation collapse."""
+
+    return tuple(getattr(fact, field) for field in CANONICAL_DUPLICATE_IDENTITY_FIELDS)
+
+
+def collapse_canonical_duplicate_periodization_facts(
+    facts: Iterable[PeriodizationFact],
+    *,
+    stats: dict[str, int] | None = None,
+) -> tuple[PeriodizationFact, ...]:
+    """Collapse only identical canonical facts, preserving all conflicts.
+
+    The operation is deterministic and keeps the first representative only
+    after the complete canonical identity (including value and provenance) is
+    proven equal.  It never merges facts across receipts, sources, periods,
+    currencies, bases, or comparative flags.
+    """
+
+    values = tuple(facts)
+    seen: set[tuple[Any, ...]] = set()
+    duplicate_identities: set[tuple[Any, ...]] = set()
+    collapsed: list[PeriodizationFact] = []
+    for fact in values:
+        identity = canonical_duplicate_identity(fact)
+        if identity in seen:
+            duplicate_identities.add(identity)
+            continue
+        seen.add(identity)
+        collapsed.append(fact)
+    if stats is not None:
+        stats.update({
+            "input_fact_count": len(values),
+            "output_fact_count": len(collapsed),
+            "group_count": len(duplicate_identities),
+            "removed_fact_count": len(values) - len(collapsed),
+        })
+    return tuple(collapsed)
 
 
 def _parse_date(value: Any) -> date | None:
@@ -620,7 +685,8 @@ def facts_from_xbrl_rows(rows: Iterable[Mapping[str, Any]], *, ticker: str, corp
                          company_family: str, fiscal_year: str, reprt_code: str,
                          report_type: str | None = None, rcept_no: str, rcept_dt: str,
                          fs_div_used: str | None, source_sha256: str | None,
-                         fiscal_year_start: str | None = None) -> tuple[PeriodizationFact, ...]:
+                         fiscal_year_start: str | None = None,
+                         collapse_stats: dict[str, int] | None = None) -> tuple[PeriodizationFact, ...]:
     """Adapt ``XbrlRepository.period_context_rows`` into periodization facts.
 
     Fiscal start is taken from the earliest non-comparative duration context
@@ -655,4 +721,7 @@ def facts_from_xbrl_rows(rows: Iterable[Mapping[str, Any]], *, ticker: str, corp
             instant=row.get("instant"), comparative=bool(row.get("comparative")),
             pit_available_from=rcept_dt,
         ))
-    return tuple(result)
+    # Collapse only representation duplicates produced by the same filing's
+    # canonical account mapping.  Genuine conflicts remain as separate facts
+    # and therefore continue to trigger the engine's fail-closed ambiguity.
+    return collapse_canonical_duplicate_periodization_facts(result, stats=collapse_stats)

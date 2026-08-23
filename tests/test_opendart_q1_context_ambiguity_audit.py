@@ -1,6 +1,10 @@
 from __future__ import annotations
 
-from scripts.audit_opendart_q1_context_ambiguity import classify_context_group, semantic_fingerprint
+from scripts.audit_opendart_q1_context_ambiguity import (
+    canonical_semantic_fingerprint,
+    classify_context_group,
+    semantic_fingerprint,
+)
 
 
 def _row(*, context: str, value: int, dimensions=None, concept="ifrs-full_Revenue"):
@@ -36,7 +40,13 @@ def test_same_context_duplicate_fact_is_parser_duplicate_candidate():
     assert classify_context_group([_row(context="A", value=100), _row(context="A", value=100)]) == "PARSER_DUPLICATION"
 
 
-def test_concept_alias_remains_semantically_visible_in_fingerprint():
+def test_concept_alias_remains_visible_in_raw_fingerprint():
     left = _row(context="A", value=100, concept="dart_OperatingIncomeLoss")
     right = _row(context="B", value=100, concept="ifrs-full_ProfitLossFromOperatingActivities")
     assert semantic_fingerprint(left) != semantic_fingerprint(right)
+
+
+def test_concept_aliases_share_canonical_fingerprint():
+    left = _row(context="A", value=100, concept="dart_OperatingIncomeLoss")
+    right = _row(context="B", value=100, concept="ifrs-full_ProfitLossFromOperatingActivities")
+    assert canonical_semantic_fingerprint(left) == canonical_semantic_fingerprint(right)

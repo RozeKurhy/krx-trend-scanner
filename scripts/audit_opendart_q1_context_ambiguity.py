@@ -224,6 +224,26 @@ def semantic_fingerprint(row: dict[str, Any]) -> str:
     return hashlib.sha256(encoded).hexdigest()
 
 
+def canonical_semantic_fingerprint(row: dict[str, Any]) -> str:
+    """Fingerprint the canonical economic identity, excluding raw QName."""
+
+    payload = {
+        "ticker": row.get("ticker"), "corp_code": row.get("corp_code"),
+        "company_family": row.get("company_family"), "fiscal_year": row.get("fiscal_year"),
+        "metric": row.get("metric"), "value": row.get("value"),
+        "period_start": row.get("period_start"), "period_end": row.get("period_end"),
+        "instant": row.get("instant"), "fs_div_used": row.get("fs_div_used"),
+        "currency": row.get("currency"), "reprt_code": row.get("reprt_code"),
+        "report_type": row.get("report_type"), "rcept_no": row.get("rcept_no"),
+        "rcept_dt": row.get("rcept_dt"), "source_sha256": row.get("source_sha256"),
+        "dimensions_normalized": row.get("dimensions_normalized", []),
+        "period_semantics": row.get("period_semantics"), "context_semantics": row.get("context_semantics"),
+        "duration_days": row.get("duration_days"), "comparative": row.get("comparative"),
+    }
+    encoded = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
 def classify_context_group(rows: Iterable[dict[str, Any]]) -> str:
     values = list(rows)
     if not values:
@@ -296,6 +316,7 @@ def _raw_context_rows(artifact: Any, *, fiscal_year: str, reprt_code: str, selec
             continue
         fact_occurrences[(str(context_id), concept, row["value"], unit)] += 1
         row["semantic_fingerprint"] = semantic_fingerprint(row)
+        row["canonical_semantic_fingerprint"] = canonical_semantic_fingerprint(row)
         rows.append(row)
     for row in rows:
         row["fact_xml_node_count"] = fact_occurrences[(str(row["context_id"]), row["concept"], row["value"], row["unit"])]
@@ -637,7 +658,7 @@ def main() -> int:
         "account_id", "concept", "value", "currency", "unit", "fs_div_used", "context_id", "period_start",
         "period_end", "duration_days", "period_semantics", "context_semantics", "comparative", "entity_identifier",
         "dimensions_normalized", "has_dimensions", "segment_present", "scenario_present", "source_sha256",
-        "semantic_fingerprint", "fact_xml_node_count",
+        "semantic_fingerprint", "canonical_semantic_fingerprint", "fact_xml_node_count",
     ])
     for row in inventory:
         row["dimensions_normalized"] = json.dumps(row.get("dimensions_normalized", []), ensure_ascii=False, sort_keys=True)
@@ -646,7 +667,7 @@ def main() -> int:
         "account_id", "concept", "value", "currency", "unit", "fs_div_used", "context_id", "period_start",
         "period_end", "duration_days", "period_semantics", "context_semantics", "comparative", "entity_identifier",
         "dimensions_normalized", "has_dimensions", "segment_present", "scenario_present", "source_sha256",
-        "semantic_fingerprint", "fact_xml_node_count",
+        "semantic_fingerprint", "canonical_semantic_fingerprint", "fact_xml_node_count",
     ])
     fingerprint_rows: list[dict[str, Any]] = []
     for key_tuple, detail in fingerprints.items():

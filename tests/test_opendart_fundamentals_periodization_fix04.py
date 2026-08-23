@@ -130,7 +130,9 @@ def test_case_c_ready_prior_allows_direct_derived_validation():
 
 def test_case_d_provider_retains_same_filing_context_ambiguity():
     filings = [_filing("11013", "Q1", "2025-05-15"), _filing("11012", "H1", "2025-08-14")]
-    build = _provider(filings, {"Q1": [_context("11013", 40), _context("11013", 40)], "H1": [_context("11012", 100)]}).build(
+    # Same-filing contexts with conflicting values are genuine ambiguity; an
+    # exact canonical-equivalent representation is intentionally collapsed.
+    build = _provider(filings, {"Q1": [_context("11013", 40), _context("11013", 41)], "H1": [_context("11012", 100)]}).build(
         "005930", "2025", "2025-12-31", company={"induty_code": "26"}
     )
     q2 = _observation(build, "Q2")
