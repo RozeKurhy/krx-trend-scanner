@@ -202,9 +202,11 @@ class PeriodizationEngine:
         *,
         as_of: str | date | None = None,
         prior_pit_states: Mapping[tuple[str, str], Mapping[str, Any]] | None = None,
+        current_pit_states: Mapping[str, Mapping[str, Any] | str] | None = None,
     ) -> PeriodizationResult:
         facts = self._prepare(values, as_of=as_of)
         prior_pit_states = prior_pit_states or {}
+        current_pit_states = current_pit_states or {}
         observations: list[PeriodizedFinancialObservation] = []
         parity: list[DirectDerivedParity] = []
         diagnostics: list[Mapping[str, Any]] = []
@@ -214,7 +216,7 @@ class PeriodizationEngine:
 
         for identity, group in sorted(groups.items()):
             observations_for_group, parity_for_group, diagnostic_for_group = self._periodize_group(
-                group, prior_pit_states=prior_pit_states
+                group, prior_pit_states=prior_pit_states, current_pit_states=current_pit_states
             )
             observations.extend(observations_for_group)
             parity.extend(parity_for_group)
@@ -306,8 +308,10 @@ class PeriodizationEngine:
 
     def canonical_series(self, values: Iterable[PeriodizationFact | FinancialObservation | Mapping[str, Any]],
                          *, as_of: str | date | None = None,
-                         prior_pit_states: Mapping[tuple[str, str], Mapping[str, Any]] | None = None) -> PeriodizationResult:
-        return self.periodize(values, as_of=as_of, prior_pit_states=prior_pit_states)
+                         prior_pit_states: Mapping[tuple[str, str], Mapping[str, Any]] | None = None,
+                         current_pit_states: Mapping[str, Mapping[str, Any] | str] | None = None) -> PeriodizationResult:
+        return self.periodize(values, as_of=as_of, prior_pit_states=prior_pit_states,
+                              current_pit_states=current_pit_states)
 
     def _prepare(self, values: Iterable[PeriodizationFact | FinancialObservation | Mapping[str, Any]],
                  *, as_of: str | date | None) -> tuple[PeriodizationFact, ...]:
@@ -339,7 +343,8 @@ class PeriodizationEngine:
         return tuple(prepared)
 
     def _periodize_group(self, group: list[PeriodizationFact], *,
-                         prior_pit_states: Mapping[tuple[str, str], Mapping[str, Any]] | None = None):
+                         prior_pit_states: Mapping[tuple[str, str], Mapping[str, Any]] | None = None,
+                         current_pit_states: Mapping[str, Mapping[str, Any] | str] | None = None):
         observations: list[PeriodizedFinancialObservation] = []
         parity: list[DirectDerivedParity] = []
         diagnostics: list[Mapping[str, Any]] = []
@@ -364,6 +369,15 @@ class PeriodizationEngine:
             if fact.reprt_code in REPORT_PERIODS:
                 by_anchor[(fact.reprt_code, fact.rcept_no)].append(fact)
         for (code, anchor_no), anchor_facts in sorted(by_anchor.items(), key=lambda item: (_parse_date(item[1][0].rcept_dt) or date.min, item[0])):
+            current_state = (current_pit_states or {}).get(code)
+            current_status = (current_state.get("status") if isinstance(current_state, Mapping)
+                              else str(current_state or "")).upper()
+            # Historical prior materialization may add facts for a filing code
+            # whose current requested_as_of selection is ambiguous.  Those
+            # facts remain available to later anchors, but must not overwrite
+            # the current snapshot's canonical ambiguity.
+            if current_status and current_status != READY:
+                continue
             anchor = min(anchor_facts, key=lambda item: (_parse_date(item.rcept_dt) or date.min, item.rcept_no))
             period_info = REPORT_PERIODS[code]
             semantic_map = defaultdict(list)
@@ -587,13 +601,19 @@ class PeriodizationEngine:
 
 
 def periodize_facts(values: Iterable[PeriodizationFact | FinancialObservation | Mapping[str, Any]], *,
-                    as_of: str | date | None = None) -> PeriodizationResult:
-    return PeriodizationEngine().periodize(values, as_of=as_of)
+                    as_of: str | date | None = None,
+                    prior_pit_states: Mapping[tuple[str, str], Mapping[str, Any]] | None = None,
+                    current_pit_states: Mapping[str, Mapping[str, Any] | str] | None = None) -> PeriodizationResult:
+    return PeriodizationEngine().periodize(values, as_of=as_of, prior_pit_states=prior_pit_states,
+                                           current_pit_states=current_pit_states)
 
 
 def periodize_fiscal_year(values: Iterable[PeriodizationFact | FinancialObservation | Mapping[str, Any]], *,
-                          as_of: str | date | None = None) -> PeriodizationResult:
-    return periodize_facts(values, as_of=as_of)
+                          as_of: str | date | None = None,
+                          prior_pit_states: Mapping[tuple[str, str], Mapping[str, Any]] | None = None,
+                          current_pit_states: Mapping[str, Mapping[str, Any] | str] | None = None) -> PeriodizationResult:
+    return periodize_facts(values, as_of=as_of, prior_pit_states=prior_pit_states,
+                           current_pit_states=current_pit_states)
 
 
 def facts_from_xbrl_rows(rows: Iterable[Mapping[str, Any]], *, ticker: str, corp_code: str,

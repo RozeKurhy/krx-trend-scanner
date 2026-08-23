@@ -1,0 +1,68 @@
+{
+  "cases": {
+    "A_current_ambiguous_historical_ready_cumulative": {
+      "current_h1_status": "AMBIGUOUS",
+      "fetch_count_h1_a": 1,
+      "historical_source_materialized": true,
+      "parity_count": 0,
+      "q3_method": "DERIVED_DIFFERENCE",
+      "q3_prior_rcept_no": "H1-A",
+      "q3_prior_status": "READY",
+      "q3_status": "READY",
+      "q3_value": 50
+    },
+    "B_current_ambiguous_historical_ready_direct": {
+      "parity_count": 1,
+      "parity_status": "MATCH",
+      "q3_method": "DIRECT_VALIDATED_BY_DERIVATION",
+      "q3_status": "READY",
+      "q3_value": 50
+    },
+    "C_historical_source_provenance": {
+      "aligned": true,
+      "correction_sources_excluded": true,
+      "source_rcept_dts": [
+        "2025-11-14",
+        "2025-08-14"
+      ],
+      "source_rcept_nos": [
+        "Q3",
+        "H1-A"
+      ],
+      "source_sha256s": [
+        "sha-Q3",
+        "sha-H1-A"
+      ]
+    },
+    "D_current_ambiguity_preserved": {
+      "current_h1_observations": 0,
+      "current_h1_status": "AMBIGUOUS",
+      "materialized_h1_rcept_nos": [
+        "H1-A"
+      ]
+    },
+    "E_historical_prior_ambiguity": {
+      "parity_count": 0,
+      "q3_prior_reason": "PRIOR_PIT_MULTIPLE_FILINGS_ON_SAME_EOD",
+      "q3_prior_status": "AMBIGUOUS",
+      "q3_status": "PERIOD_AMBIGUOUS"
+    },
+    "F_historical_context_ambiguity": {
+      "parity_count": 0,
+      "q3_reason": "PRIOR_PIT_MULTIPLE_CURRENT_CUMULATIVE_CONTEXTS",
+      "q3_status": "PERIOD_AMBIGUOUS"
+    },
+    "G_late_correction_isolation": {
+      "correction_sources_excluded": true,
+      "q3_source_rcept_nos": [
+        "Q3",
+        "H1-A"
+      ],
+      "q3_value": 50
+    }
+  },
+  "historical_ready_materialization_status": "PASS",
+  "production_boundary": "PeriodizationProvider.build",
+  "provider_ready_to_missing_count": 0,
+  "status": "PASS"
+}

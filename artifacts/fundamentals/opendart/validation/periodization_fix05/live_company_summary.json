@@ -1,0 +1,583 @@
+{
+  "005930": {
+    "ambiguity_count": 3,
+    "anchor_selections": [
+      {
+        "availability": "AVAILABLE",
+        "candidate_rcept_nos": [
+          "20250515001922"
+        ],
+        "eligible_count": 1,
+        "future_count": 0,
+        "reason": "LATEST_ELIGIBLE_FILING",
+        "report_type": "Q1",
+        "reprt_code": "11013",
+        "selected_rcept_dt": "20250515",
+        "selected_rcept_no": "20250515001922",
+        "status": "READY"
+      },
+      {
+        "availability": "AVAILABLE",
+        "candidate_rcept_nos": [
+          "20250814003156"
+        ],
+        "eligible_count": 1,
+        "future_count": 0,
+        "prior_pit": {
+          "availability": "AVAILABLE",
+          "candidate_rcept_nos": [
+            "20250515001922"
+          ],
+          "canonical_reason": "LATEST_ELIGIBLE_FILING",
+          "historical_source_fact_count": 0,
+          "historical_source_materialization_reason": "ALREADY_MATERIALIZED",
+          "historical_source_materialized": true,
+          "historical_source_sha256": null,
+          "raw_reason": "LATEST_ELIGIBLE_FILING",
+          "reason": "LATEST_ELIGIBLE_FILING",
+          "reprt_code": "11013",
+          "selected_rcept_dt": "20250515",
+          "selected_rcept_no": "20250515001922",
+          "status": "READY"
+        },
+        "reason": "LATEST_ELIGIBLE_FILING",
+        "report_type": "HALF_YEAR",
+        "reprt_code": "11012",
+        "selected_rcept_dt": "20250814",
+        "selected_rcept_no": "20250814003156",
+        "status": "READY"
+      },
+      {
+        "availability": "AVAILABLE",
+        "candidate_rcept_nos": [
+          "20251114002447"
+        ],
+        "eligible_count": 1,
+        "future_count": 0,
+        "prior_pit": {
+          "availability": "AVAILABLE",
+          "candidate_rcept_nos": [
+            "20250814003156"
+          ],
+          "canonical_reason": "LATEST_ELIGIBLE_FILING",
+          "historical_source_fact_count": 0,
+          "historical_source_materialization_reason": "ALREADY_MATERIALIZED",
+          "historical_source_materialized": true,
+          "historical_source_sha256": null,
+          "raw_reason": "LATEST_ELIGIBLE_FILING",
+          "reason": "LATEST_ELIGIBLE_FILING",
+          "reprt_code": "11012",
+          "selected_rcept_dt": "20250814",
+          "selected_rcept_no": "20250814003156",
+          "status": "READY"
+        },
+        "reason": "LATEST_ELIGIBLE_FILING",
+        "report_type": "Q3",
+        "reprt_code": "11014",
+        "selected_rcept_dt": "20251114",
+        "selected_rcept_no": "20251114002447",
+        "status": "READY"
+      },
+      {
+        "availability": "AVAILABLE",
+        "candidate_rcept_nos": [
+          "20260310002820"
+        ],
+        "eligible_count": 1,
+        "future_count": 0,
+        "prior_pit": {
+          "availability": "AVAILABLE",
+          "candidate_rcept_nos": [
+            "20251114002447"
+          ],
+          "canonical_reason": "LATEST_ELIGIBLE_FILING",
+          "historical_source_fact_count": 0,
+          "historical_source_materialization_reason": "ALREADY_MATERIALIZED",
+          "historical_source_materialized": true,
+          "historical_source_sha256": null,
+          "raw_reason": "LATEST_ELIGIBLE_FILING",
+          "reason": "LATEST_ELIGIBLE_FILING",
+          "reprt_code": "11014",
+          "selected_rcept_dt": "20251114",
+          "selected_rcept_no": "20251114002447",
+          "status": "READY"
+        },
+        "reason": "LATEST_ELIGIBLE_FILING",
+        "report_type": "ANNUAL",
+        "reprt_code": "11011",
+        "selected_rcept_dt": "20260310",
+        "selected_rcept_no": "20260310002820",
+        "status": "READY"
+      }
+    ],
+    "company": "삼성전자",
+    "company_family": "NON_FINANCIAL",
+    "direct_derived_parity": [
+      {
+        "anchor_rcept_no": "20251114002447",
+        "derived_value": 12225747000000,
+        "difference": 0,
+        "direct_value": 12225747000000,
+        "fiscal_period": "Q3",
+        "metric": "net_income",
+        "reason": null,
+        "status": "MATCH"
+      },
+      {
+        "anchor_rcept_no": "20251114002447",
+        "derived_value": 12166062000000,
+        "difference": 0,
+        "direct_value": 12166062000000,
+        "fiscal_period": "Q3",
+        "metric": "operating_income",
+        "reason": null,
+        "status": "MATCH"
+      },
+      {
+        "anchor_rcept_no": "20251114002447",
+        "derived_value": 86061747000000,
+        "difference": 0,
+        "direct_value": 86061747000000,
+        "fiscal_period": "Q3",
+        "metric": "revenue",
+        "reason": null,
+        "status": "MATCH"
+      }
+    ],
+    "fact_count": 84,
+    "filing_count": 4,
+    "fiscal_year": "2025",
+    "instant_metrics": {
+      "assets": {
+        "observation_count": 4,
+        "resolution_status_counts": {
+          "READY": 4
+        },
+        "status": "READY"
+      },
+      "equity": {
+        "observation_count": 4,
+        "resolution_status_counts": {
+          "READY": 4
+        },
+        "status": "READY"
+      },
+      "liabilities": {
+        "observation_count": 4,
+        "resolution_status_counts": {
+          "READY": 4
+        },
+        "status": "READY"
+      }
+    },
+    "metric_resolution": {
+      "net_income": {
+        "observation_count": 7,
+        "resolution_status_counts": {
+          "PERIOD_AMBIGUOUS": 1,
+          "READY": 6
+        },
+        "status": "READY"
+      },
+      "operating_cash_flow": {
+        "observation_count": 8,
+        "resolution_status_counts": {
+          "READY": 8
+        },
+        "status": "READY"
+      },
+      "operating_income": {
+        "observation_count": 7,
+        "resolution_status_counts": {
+          "PERIOD_AMBIGUOUS": 1,
+          "READY": 6
+        },
+        "status": "READY"
+      },
+      "revenue": {
+        "observation_count": 7,
+        "resolution_status_counts": {
+          "PERIOD_AMBIGUOUS": 1,
+          "READY": 6
+        },
+        "status": "READY"
+      }
+    },
+    "requested_as_of": "2026-08-24",
+    "skipped_anchors": [],
+    "ticker": "005930"
+  },
+  "086790": {
+    "ambiguity_count": 2,
+    "anchor_selections": [
+      {
+        "availability": "AVAILABLE",
+        "candidate_rcept_nos": [
+          "20250515002336"
+        ],
+        "eligible_count": 1,
+        "future_count": 0,
+        "reason": "LATEST_ELIGIBLE_FILING",
+        "report_type": "Q1",
+        "reprt_code": "11013",
+        "selected_rcept_dt": "20250515",
+        "selected_rcept_no": "20250515002336",
+        "status": "READY"
+      },
+      {
+        "availability": null,
+        "candidate_rcept_nos": [
+          "20250814003918",
+          "20250814004489"
+        ],
+        "eligible_count": 2,
+        "future_count": 0,
+        "reason": "MULTIPLE_FILINGS_ON_SAME_DATE",
+        "report_type": "HALF_YEAR",
+        "reprt_code": "11012",
+        "selected_rcept_dt": null,
+        "selected_rcept_no": null,
+        "status": "AMBIGUOUS"
+      },
+      {
+        "availability": "AVAILABLE",
+        "candidate_rcept_nos": [
+          "20251114002661"
+        ],
+        "eligible_count": 1,
+        "future_count": 0,
+        "prior_pit": {
+          "availability": null,
+          "candidate_rcept_nos": [
+            "20250814003918",
+            "20250814004489"
+          ],
+          "canonical_reason": "PRIOR_PIT_MULTIPLE_FILINGS_ON_SAME_EOD",
+          "historical_source_fact_count": 0,
+          "historical_source_materialization_reason": "PRIOR_NOT_READY",
+          "historical_source_materialized": false,
+          "historical_source_sha256": null,
+          "raw_reason": "MULTIPLE_FILINGS_ON_SAME_DATE",
+          "reason": "PRIOR_PIT_MULTIPLE_FILINGS_ON_SAME_EOD",
+          "reprt_code": "11012",
+          "selected_rcept_dt": null,
+          "selected_rcept_no": null,
+          "status": "AMBIGUOUS"
+        },
+        "reason": "LATEST_ELIGIBLE_FILING",
+        "report_type": "Q3",
+        "reprt_code": "11014",
+        "selected_rcept_dt": "20251114",
+        "selected_rcept_no": "20251114002661",
+        "status": "READY"
+      },
+      {
+        "availability": "AVAILABLE",
+        "candidate_rcept_nos": [
+          "20260316001292"
+        ],
+        "eligible_count": 1,
+        "future_count": 0,
+        "prior_pit": {
+          "availability": "AVAILABLE",
+          "candidate_rcept_nos": [
+            "20251114002661"
+          ],
+          "canonical_reason": "LATEST_ELIGIBLE_FILING",
+          "historical_source_fact_count": 0,
+          "historical_source_materialization_reason": "ALREADY_MATERIALIZED",
+          "historical_source_materialized": true,
+          "historical_source_sha256": null,
+          "raw_reason": "LATEST_ELIGIBLE_FILING",
+          "reason": "LATEST_ELIGIBLE_FILING",
+          "reprt_code": "11014",
+          "selected_rcept_dt": "20251114",
+          "selected_rcept_no": "20251114002661",
+          "status": "READY"
+        },
+        "reason": "LATEST_ELIGIBLE_FILING",
+        "report_type": "ANNUAL",
+        "reprt_code": "11011",
+        "selected_rcept_dt": "20260316",
+        "selected_rcept_no": "20260316001292",
+        "status": "READY"
+      }
+    ],
+    "company": "하나금융지주",
+    "company_family": "FINANCIAL",
+    "direct_derived_parity": [],
+    "fact_count": 58,
+    "filing_count": 3,
+    "fiscal_year": "2025",
+    "instant_metrics": {
+      "assets": {
+        "observation_count": 3,
+        "resolution_status_counts": {
+          "READY": 3
+        },
+        "status": "READY"
+      },
+      "equity": {
+        "observation_count": 3,
+        "resolution_status_counts": {
+          "READY": 3
+        },
+        "status": "READY"
+      },
+      "liabilities": {
+        "observation_count": 3,
+        "resolution_status_counts": {
+          "READY": 3
+        },
+        "status": "READY"
+      }
+    },
+    "metric_resolution": {
+      "net_income": {
+        "observation_count": 5,
+        "resolution_status_counts": {
+          "PERIOD_AMBIGUOUS": 1,
+          "READY": 4
+        },
+        "status": "READY"
+      },
+      "operating_cash_flow": {
+        "observation_count": 6,
+        "resolution_status_counts": {
+          "PERIOD_AMBIGUOUS": 1,
+          "READY": 5
+        },
+        "status": "READY"
+      },
+      "operating_income": {
+        "observation_count": 1,
+        "resolution_status_counts": {
+          "NOT_APPLICABLE": 1
+        },
+        "status": "NOT_APPLICABLE"
+      },
+      "revenue": {
+        "observation_count": 0,
+        "resolution_status_counts": {},
+        "status": "NOT_APPLICABLE"
+      }
+    },
+    "requested_as_of": "2026-08-24",
+    "skipped_anchors": [
+      {
+        "reason": "MULTIPLE_FILINGS_ON_SAME_DATE",
+        "reprt_code": "11012",
+        "status": "AMBIGUOUS"
+      }
+    ],
+    "ticker": "086790"
+  },
+  "237690": {
+    "ambiguity_count": 3,
+    "anchor_selections": [
+      {
+        "availability": "AVAILABLE",
+        "candidate_rcept_nos": [
+          "20250515002354"
+        ],
+        "eligible_count": 1,
+        "future_count": 0,
+        "reason": "LATEST_ELIGIBLE_FILING",
+        "report_type": "Q1",
+        "reprt_code": "11013",
+        "selected_rcept_dt": "20250515",
+        "selected_rcept_no": "20250515002354",
+        "status": "READY"
+      },
+      {
+        "availability": "AVAILABLE",
+        "candidate_rcept_nos": [
+          "20250814003419"
+        ],
+        "eligible_count": 1,
+        "future_count": 0,
+        "prior_pit": {
+          "availability": "AVAILABLE",
+          "candidate_rcept_nos": [
+            "20250515002354"
+          ],
+          "canonical_reason": "LATEST_ELIGIBLE_FILING",
+          "historical_source_fact_count": 0,
+          "historical_source_materialization_reason": "ALREADY_MATERIALIZED",
+          "historical_source_materialized": true,
+          "historical_source_sha256": null,
+          "raw_reason": "LATEST_ELIGIBLE_FILING",
+          "reason": "LATEST_ELIGIBLE_FILING",
+          "reprt_code": "11013",
+          "selected_rcept_dt": "20250515",
+          "selected_rcept_no": "20250515002354",
+          "status": "READY"
+        },
+        "reason": "LATEST_ELIGIBLE_FILING",
+        "report_type": "HALF_YEAR",
+        "reprt_code": "11012",
+        "selected_rcept_dt": "20250814",
+        "selected_rcept_no": "20250814003419",
+        "status": "READY"
+      },
+      {
+        "availability": "AVAILABLE",
+        "candidate_rcept_nos": [
+          "20251114002347"
+        ],
+        "eligible_count": 1,
+        "future_count": 0,
+        "prior_pit": {
+          "availability": "AVAILABLE",
+          "candidate_rcept_nos": [
+            "20250814003419"
+          ],
+          "canonical_reason": "LATEST_ELIGIBLE_FILING",
+          "historical_source_fact_count": 0,
+          "historical_source_materialization_reason": "ALREADY_MATERIALIZED",
+          "historical_source_materialized": true,
+          "historical_source_sha256": null,
+          "raw_reason": "LATEST_ELIGIBLE_FILING",
+          "reason": "LATEST_ELIGIBLE_FILING",
+          "reprt_code": "11012",
+          "selected_rcept_dt": "20250814",
+          "selected_rcept_no": "20250814003419",
+          "status": "READY"
+        },
+        "reason": "LATEST_ELIGIBLE_FILING",
+        "report_type": "Q3",
+        "reprt_code": "11014",
+        "selected_rcept_dt": "20251114",
+        "selected_rcept_no": "20251114002347",
+        "status": "READY"
+      },
+      {
+        "availability": "AVAILABLE",
+        "candidate_rcept_nos": [
+          "20260318001605"
+        ],
+        "eligible_count": 1,
+        "future_count": 0,
+        "prior_pit": {
+          "availability": "AVAILABLE",
+          "candidate_rcept_nos": [
+            "20251114002347"
+          ],
+          "canonical_reason": "LATEST_ELIGIBLE_FILING",
+          "historical_source_fact_count": 0,
+          "historical_source_materialization_reason": "ALREADY_MATERIALIZED",
+          "historical_source_materialized": true,
+          "historical_source_sha256": null,
+          "raw_reason": "LATEST_ELIGIBLE_FILING",
+          "reason": "LATEST_ELIGIBLE_FILING",
+          "reprt_code": "11014",
+          "selected_rcept_dt": "20251114",
+          "selected_rcept_no": "20251114002347",
+          "status": "READY"
+        },
+        "reason": "LATEST_ELIGIBLE_FILING",
+        "report_type": "ANNUAL",
+        "reprt_code": "11011",
+        "selected_rcept_dt": "20260318",
+        "selected_rcept_no": "20260318001605",
+        "status": "READY"
+      }
+    ],
+    "company": "에스티팜",
+    "company_family": "NON_FINANCIAL",
+    "direct_derived_parity": [
+      {
+        "anchor_rcept_no": "20251114002347",
+        "derived_value": 17461337439,
+        "difference": 0,
+        "direct_value": 17461337439,
+        "fiscal_period": "Q3",
+        "metric": "net_income",
+        "reason": null,
+        "status": "MATCH"
+      },
+      {
+        "anchor_rcept_no": "20251114002347",
+        "derived_value": 14724930873,
+        "difference": 0,
+        "direct_value": 14724930873,
+        "fiscal_period": "Q3",
+        "metric": "operating_income",
+        "reason": null,
+        "status": "MATCH"
+      },
+      {
+        "anchor_rcept_no": "20251114002347",
+        "derived_value": 81910210108,
+        "difference": 0,
+        "direct_value": 81910210108,
+        "fiscal_period": "Q3",
+        "metric": "revenue",
+        "reason": null,
+        "status": "MATCH"
+      }
+    ],
+    "fact_count": 84,
+    "filing_count": 4,
+    "fiscal_year": "2025",
+    "instant_metrics": {
+      "assets": {
+        "observation_count": 4,
+        "resolution_status_counts": {
+          "READY": 4
+        },
+        "status": "READY"
+      },
+      "equity": {
+        "observation_count": 4,
+        "resolution_status_counts": {
+          "READY": 4
+        },
+        "status": "READY"
+      },
+      "liabilities": {
+        "observation_count": 4,
+        "resolution_status_counts": {
+          "READY": 4
+        },
+        "status": "READY"
+      }
+    },
+    "metric_resolution": {
+      "net_income": {
+        "observation_count": 7,
+        "resolution_status_counts": {
+          "PERIOD_AMBIGUOUS": 1,
+          "READY": 6
+        },
+        "status": "READY"
+      },
+      "operating_cash_flow": {
+        "observation_count": 8,
+        "resolution_status_counts": {
+          "READY": 8
+        },
+        "status": "READY"
+      },
+      "operating_income": {
+        "observation_count": 7,
+        "resolution_status_counts": {
+          "PERIOD_AMBIGUOUS": 1,
+          "READY": 6
+        },
+        "status": "READY"
+      },
+      "revenue": {
+        "observation_count": 7,
+        "resolution_status_counts": {
+          "PERIOD_AMBIGUOUS": 1,
+          "READY": 6
+        },
+        "status": "READY"
+      }
+    },
+    "requested_as_of": "2026-08-24",
+    "skipped_anchors": [],
+    "ticker": "237690"
+  }
+}

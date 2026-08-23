@@ -115,6 +115,66 @@ class PeriodizationProvider:
         skipped: list[Mapping[str, Any]] = []
         filings_by_code: dict[str, list[RegisteredFiling]] = {}
         prior_pit_states: dict[tuple[str, str], Mapping[str, Any]] = {}
+        materialized_keys: set[tuple[str, str]] = set()
+
+        def materialize(filing: RegisteredFiling) -> dict[str, Any]:
+            """Materialize one filing exactly once for this provider build."""
+
+            key = (str(filing.reprt_code), str(filing.rcept_no))
+            if key in materialized_keys:
+                return {
+                    "materialized": True,
+                    "reason": "ALREADY_MATERIALIZED",
+                    "reprt_code": filing.reprt_code,
+                    "rcept_no": filing.rcept_no,
+                    "fact_count": 0,
+                    "source_sha256": None,
+                    "basis": None,
+                }
+            artifact = self.xbrl.fetch(filing, force_refresh=force_refresh)
+            context_rows = self.xbrl.period_context_rows(
+                artifact, bsns_year=fiscal_year, reprt_code=filing.reprt_code,
+            )
+            selected_rows, basis = self._select_one_basis(context_rows, filing.fs_div)
+            if not selected_rows:
+                return {
+                    "materialized": False,
+                    "reason": "NO_PRIMARY_CONTEXT_FOR_BASIS",
+                    "reprt_code": filing.reprt_code,
+                    "rcept_no": filing.rcept_no,
+                    "fact_count": 0,
+                    "source_sha256": artifact.sha256,
+                    "basis": basis,
+                }
+            new_facts = facts_from_xbrl_rows(
+                selected_rows, ticker=ticker, corp_code=record.corp_code,
+                company_family=family, fiscal_year=fiscal_year, reprt_code=filing.reprt_code,
+                report_type=filing.report_type, rcept_no=filing.rcept_no,
+                rcept_dt=filing.rcept_dt, fs_div_used=basis,
+                source_sha256=artifact.sha256,
+            )
+            if not new_facts:
+                return {
+                    "materialized": False,
+                    "reason": "NO_SUPPORTED_FACTS",
+                    "reprt_code": filing.reprt_code,
+                    "rcept_no": filing.rcept_no,
+                    "fact_count": 0,
+                    "source_sha256": artifact.sha256,
+                    "basis": basis,
+                }
+            facts.extend(new_facts)
+            all_filings.append(filing)
+            materialized_keys.add(key)
+            return {
+                "materialized": True,
+                "reason": "MATERIALIZED",
+                "reprt_code": filing.reprt_code,
+                "rcept_no": filing.rcept_no,
+                "fact_count": len(new_facts),
+                "source_sha256": artifact.sha256,
+                "basis": basis,
+            }
 
         for reprt_code in ANCHOR_REPORT_CODES:
             rows = list(self.filings.list_regular_filings(
@@ -149,23 +209,10 @@ class PeriodizationProvider:
             eligible = [row for row in rows if self._receipt(row.rcept_dt) is not None
                         and self._receipt(row.rcept_dt) <= cutoff]
             for filing in sorted(eligible, key=lambda item: (item.rcept_dt, item.rcept_no)):
-                artifact = self.xbrl.fetch(filing, force_refresh=force_refresh)
-                context_rows = self.xbrl.period_context_rows(
-                    artifact, bsns_year=fiscal_year, reprt_code=reprt_code,
-                )
-                selected_rows, basis = self._select_one_basis(context_rows, filing.fs_div)
-                if not selected_rows:
+                materialization = materialize(filing)
+                if not materialization["materialized"]:
                     skipped.append({"reprt_code": reprt_code, "rcept_no": filing.rcept_no,
-                                    "status": "DATA_UNAVAILABLE", "reason": "NO_PRIMARY_CONTEXT_FOR_BASIS"})
-                    continue
-                facts.extend(facts_from_xbrl_rows(
-                    selected_rows, ticker=ticker, corp_code=record.corp_code,
-                    company_family=family, fiscal_year=fiscal_year, reprt_code=reprt_code,
-                    report_type=filing.report_type, rcept_no=filing.rcept_no,
-                    rcept_dt=filing.rcept_dt, fs_div_used=basis,
-                    source_sha256=artifact.sha256,
-                ))
-                all_filings.append(filing)
+                                    "status": "DATA_UNAVAILABLE", "reason": materialization["reason"]})
 
         # Make the anchor-specific prior resolution explicit in the production
         # audit trail.  The engine repeats the same receipt-date gate at fact
@@ -186,6 +233,17 @@ class PeriodizationProvider:
                 prior_rows, self._receipt(anchor_dt)
             )
             prior_reason = self._canonical_prior_reason(prior.status, prior.reason)
+            historical_materialization = {
+                "materialized": False,
+                "reason": "PRIOR_NOT_READY",
+                "reprt_code": prior_code,
+                "rcept_no": prior.selected_rcept_no,
+                "fact_count": 0,
+                "source_sha256": None,
+                "basis": None,
+            }
+            if prior.status == "READY" and prior.selected is not None:
+                historical_materialization = materialize(prior.selected)
             selection_meta["prior_pit"] = {
                 "reprt_code": prior_code,
                 "status": prior.status,
@@ -196,6 +254,10 @@ class PeriodizationProvider:
                 "raw_reason": prior.reason,
                 "canonical_reason": prior_reason,
                 "candidate_rcept_nos": prior_candidate_rcept_nos,
+                "historical_source_materialized": bool(historical_materialization["materialized"]),
+                "historical_source_materialization_reason": historical_materialization["reason"],
+                "historical_source_fact_count": historical_materialization["fact_count"],
+                "historical_source_sha256": historical_materialization["source_sha256"],
             }
             anchor_no = selection_meta.get("selected_rcept_no")
             if anchor_no:
@@ -204,7 +266,14 @@ class PeriodizationProvider:
                     "reason": prior_reason,
                 }
 
-        result = self.periodizer.periodize(facts, as_of=cutoff, prior_pit_states=prior_pit_states)
+        current_pit_states = {
+            str(item["reprt_code"]): {"status": item.get("status"), "reason": item.get("reason")}
+            for item in selections
+        }
+        result = self.periodizer.periodize(
+            facts, as_of=cutoff, prior_pit_states=prior_pit_states,
+            current_pit_states=current_pit_states,
+        )
         return PeriodizationBuild(
             ticker=ticker, fiscal_year=fiscal_year, requested_as_of=cutoff_text,
             company_family=family, filings=tuple(all_filings), facts=tuple(facts),
