@@ -695,6 +695,7 @@ def main() -> int:
         "production_ttm_margin_recalc_mismatch_count": margin_mismatch, "samples": margin_rechecks,
         "status": "PASS" if margin_mismatch == 0 and (margin_after > 0 or periodization_change_required) else "BLOCKED_PRODUCTION_INPUT",
     })
+    _write_json(ARTIFACT_DIR / "q1_context_audit_summary.json", summary)
     manifest_files = [path for path in sorted(ARTIFACT_DIR.iterdir()) if path.name != "q1_context_audit_manifest.json"]
     _write_json(ARTIFACT_DIR / "q1_context_audit_manifest.json", {
         "work_id": WORK_ID, "start_head": START_HEAD,
