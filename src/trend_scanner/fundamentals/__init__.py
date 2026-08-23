@@ -23,6 +23,14 @@ from .xbrl_repository import XbrlRepository
 from .period_models import PeriodizationFact, PeriodizationResult, PeriodizedFinancialObservation, PriorCumulativeSelection
 from .periodization import PeriodizationEngine, facts_from_xbrl_rows, periodize_facts, periodize_fiscal_year
 from .periodization_provider import PeriodizationBuild, PeriodizationProvider, PeriodizationProviderError
+from .derived_metrics import (
+    DerivedMetricObservation,
+    DerivedMetricsEngine,
+    DerivedMetricsError,
+    DerivedMetricsResult,
+    calculate_derived_metrics,
+    derive_metrics,
+)
 
 __all__ = [
     "PIT_GRANULARITY",
@@ -56,4 +64,10 @@ __all__ = [
     "PeriodizationBuild",
     "PeriodizationProvider",
     "PeriodizationProviderError",
+    "DerivedMetricObservation",
+    "DerivedMetricsEngine",
+    "DerivedMetricsError",
+    "DerivedMetricsResult",
+    "calculate_derived_metrics",
+    "derive_metrics",
 ]
