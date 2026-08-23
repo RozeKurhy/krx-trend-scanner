@@ -1,0 +1,223 @@
+{
+  "ambiguous_case": {
+    "actual_status": "INPUT_NOT_READY",
+    "actual_value": null,
+    "case_id": "I_AMBIGUOUS_INPUT",
+    "expected_status": "INPUT_NOT_READY",
+    "expected_value": null,
+    "target_exists": true,
+    "target_metric": "revenue",
+    "target_metric_type": "QUARTERLY_YOY",
+    "target_period": "Q1",
+    "target_year": "2024",
+    "violation": false
+  },
+  "ambiguous_input_used_count": 0,
+  "basis_cases": [
+    {
+      "actual_status": "BASIS_MISMATCH",
+      "actual_value": null,
+      "case_id": "A_BASIS_QUARTERLY_YOY",
+      "expected_status": "BASIS_MISMATCH",
+      "expected_value": null,
+      "target_exists": true,
+      "target_metric": "revenue",
+      "target_metric_type": "QUARTERLY_YOY",
+      "target_period": "Q2",
+      "target_year": "2024",
+      "violation": false
+    },
+    {
+      "actual_status": "BASIS_MISMATCH",
+      "actual_value": null,
+      "case_id": "B_BASIS_TTM",
+      "expected_status": "BASIS_MISMATCH",
+      "expected_value": null,
+      "target_exists": true,
+      "target_metric": "revenue",
+      "target_metric_type": "TTM",
+      "target_period": "Q4",
+      "target_year": "2024",
+      "violation": false
+    },
+    {
+      "actual_status": "BASIS_MISMATCH",
+      "actual_value": null,
+      "case_id": "C_BASIS_TTM_MARGIN",
+      "expected_status": "BASIS_MISMATCH",
+      "expected_value": null,
+      "target_exists": true,
+      "target_metric": "operating_income",
+      "target_metric_type": "TTM_OPERATING_MARGIN",
+      "target_period": "Q4",
+      "target_year": "2024",
+      "violation": false
+    },
+    {
+      "actual_status": "BASIS_MISMATCH",
+      "actual_value": null,
+      "case_id": "D_BASIS_QUARTER_MARGIN",
+      "expected_status": "BASIS_MISMATCH",
+      "expected_value": null,
+      "target_exists": true,
+      "target_metric": "operating_income",
+      "target_metric_type": "OPERATING_MARGIN",
+      "target_period": "Q2",
+      "target_year": "2024",
+      "violation": false
+    }
+  ],
+  "basis_mismatch_used_count": 0,
+  "basis_missing_target_count": 0,
+  "basis_status": "PASS",
+  "currency_cases": [
+    {
+      "actual_status": "CURRENCY_MISMATCH",
+      "actual_value": null,
+      "case_id": "E_CURRENCY_QUARTERLY_YOY",
+      "expected_status": "CURRENCY_MISMATCH",
+      "expected_value": null,
+      "target_exists": true,
+      "target_metric": "revenue",
+      "target_metric_type": "QUARTERLY_YOY",
+      "target_period": "Q2",
+      "target_year": "2024",
+      "violation": false
+    },
+    {
+      "actual_status": "CURRENCY_MISMATCH",
+      "actual_value": null,
+      "case_id": "F_CURRENCY_TTM",
+      "expected_status": "CURRENCY_MISMATCH",
+      "expected_value": null,
+      "target_exists": true,
+      "target_metric": "revenue",
+      "target_metric_type": "TTM",
+      "target_period": "Q4",
+      "target_year": "2024",
+      "violation": false
+    },
+    {
+      "actual_status": "CURRENCY_MISMATCH",
+      "actual_value": null,
+      "case_id": "G_CURRENCY_QUARTER_MARGIN",
+      "expected_status": "CURRENCY_MISMATCH",
+      "expected_value": null,
+      "target_exists": true,
+      "target_metric": "operating_income",
+      "target_metric_type": "OPERATING_MARGIN",
+      "target_period": "Q2",
+      "target_year": "2024",
+      "violation": false
+    },
+    {
+      "actual_status": "CURRENCY_MISMATCH",
+      "actual_value": null,
+      "case_id": "H_CURRENCY_TTM_MARGIN",
+      "expected_status": "CURRENCY_MISMATCH",
+      "expected_value": null,
+      "target_exists": true,
+      "target_metric": "operating_income",
+      "target_metric_type": "TTM_OPERATING_MARGIN",
+      "target_period": "Q4",
+      "target_year": "2024",
+      "violation": false
+    }
+  ],
+  "currency_mismatch_used_count": 0,
+  "currency_missing_target_count": 0,
+  "currency_status": "PASS",
+  "financial_margin_wrongly_computed_count": 0,
+  "mismatch_case": {
+    "actual_status": "INPUT_NOT_READY",
+    "actual_value": null,
+    "case_id": "J_MISMATCH_INPUT",
+    "expected_status": "INPUT_NOT_READY",
+    "expected_value": null,
+    "target_exists": true,
+    "target_metric": "revenue",
+    "target_metric_type": "QUARTERLY_YOY",
+    "target_period": "Q1",
+    "target_year": "2024",
+    "violation": false
+  },
+  "mismatch_input_used_count": 0,
+  "nonpositive_revenue_margin_count": 0,
+  "sign_cases": [
+    {
+      "actual_status": "UNDEFINED_BASE",
+      "actual_value": null,
+      "case_id": "K_LOSS_TO_PROFIT_QUARTERLY_YOY",
+      "target_metric_type": "QUARTERLY_YOY",
+      "violation": false
+    },
+    {
+      "actual_status": "UNDEFINED_BASE",
+      "actual_value": null,
+      "case_id": "K_LOSS_TO_PROFIT_NET_INCOME_GROWTH",
+      "target_metric_type": "NET_INCOME_GROWTH",
+      "violation": false
+    },
+    {
+      "actual_status": "UNDEFINED_BASE",
+      "actual_value": null,
+      "case_id": "K_PROFIT_TO_LOSS_QUARTERLY_YOY",
+      "target_metric_type": "QUARTERLY_YOY",
+      "violation": false
+    },
+    {
+      "actual_status": "UNDEFINED_BASE",
+      "actual_value": null,
+      "case_id": "K_PROFIT_TO_LOSS_NET_INCOME_GROWTH",
+      "target_metric_type": "NET_INCOME_GROWTH",
+      "violation": false
+    },
+    {
+      "actual_status": "UNDEFINED_BASE",
+      "actual_value": null,
+      "case_id": "K_LOSS_NARROWING_QUARTERLY_YOY",
+      "target_metric_type": "QUARTERLY_YOY",
+      "violation": false
+    },
+    {
+      "actual_status": "UNDEFINED_BASE",
+      "actual_value": null,
+      "case_id": "K_LOSS_NARROWING_NET_INCOME_GROWTH",
+      "target_metric_type": "NET_INCOME_GROWTH",
+      "violation": false
+    },
+    {
+      "actual_status": "UNDEFINED_BASE",
+      "actual_value": null,
+      "case_id": "K_LOSS_WIDENING_QUARTERLY_YOY",
+      "target_metric_type": "QUARTERLY_YOY",
+      "violation": false
+    },
+    {
+      "actual_status": "UNDEFINED_BASE",
+      "actual_value": null,
+      "case_id": "K_LOSS_WIDENING_NET_INCOME_GROWTH",
+      "target_metric_type": "NET_INCOME_GROWTH",
+      "violation": false
+    },
+    {
+      "actual_status": "UNDEFINED_BASE",
+      "actual_value": null,
+      "case_id": "K_ZERO_BASE_QUARTERLY_YOY",
+      "target_metric_type": "QUARTERLY_YOY",
+      "violation": false
+    },
+    {
+      "actual_status": "UNDEFINED_BASE",
+      "actual_value": null,
+      "case_id": "K_ZERO_BASE_NET_INCOME_GROWTH",
+      "target_metric_type": "NET_INCOME_GROWTH",
+      "violation": false
+    }
+  ],
+  "source_provenance_alignment_bad_count": 0,
+  "source_provenance_alignment_status": "PASS",
+  "ttm_yoy_incomplete_provenance_count": 0,
+  "undefined_percentage_emitted_count": 0,
+  "unknown_pit_availability_status": "PASS"
+}
