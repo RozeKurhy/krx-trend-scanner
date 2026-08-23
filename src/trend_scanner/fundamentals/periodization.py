@@ -216,26 +216,82 @@ class PeriodizationEngine:
 
     @staticmethod
     def _annual_sum_diagnostics(observations: list[PeriodizedFinancialObservation]) -> list[Mapping[str, Any]]:
+        """Compare an annual direct value with a single, PIT-aligned quarter vintage.
+
+        This is deliberately diagnostic only: the annual filing remains the
+        authority for FY.  A previous implementation used a dict keyed only by
+        fiscal period, which could silently combine a late correction with an
+        older annual filing.  Each annual anchor now receives its own
+        diagnostic version, and a future correction is ineligible by receipt
+        date.
+        """
         groups: dict[tuple[str, str, str, str], list[PeriodizedFinancialObservation]] = defaultdict(list)
         for item in observations:
             groups[(item.ticker, item.fiscal_year, item.metric, item.company_family)].append(item)
         diagnostics: list[Mapping[str, Any]] = []
         for (ticker, fiscal_year, metric, family), items in groups.items():
-            annual = next((item for item in items if item.fiscal_period == "FY" and item.resolution_status == READY), None)
-            quarters = {item.fiscal_period: item for item in items if item.fiscal_period in {"Q1", "Q2", "Q3", "Q4"}
-                        and item.resolution_status == READY}
-            if annual is None or len(quarters) != 4:
-                continue
-            values = [_number(quarters[key].value) for key in ("Q1", "Q2", "Q3", "Q4")]
-            if any(value is None for value in values) or _number(annual.value) is None:
-                continue
-            quarter_sum = sum(values)
-            difference = quarter_sum - _number(annual.value)
-            diagnostics.append({
-                "metric": metric, "ticker": ticker, "fiscal_year": fiscal_year, "company_family": family,
-                "quarter_sum": quarter_sum, "annual_value": _number(annual.value), "difference": difference,
-                "status": "MATCH" if difference == 0 else "MISMATCH",
-            })
+            annuals = [item for item in items if item.fiscal_period == "FY" and item.resolution_status == READY]
+            for annual in sorted(annuals, key=lambda item: (_parse_date(item.anchor_rcept_dt) or date.min,
+                                                              item.anchor_rcept_no)):
+                annual_dt = _parse_date(annual.anchor_rcept_dt)
+                selected: dict[str, PeriodizedFinancialObservation] = {}
+                ambiguous: list[str] = []
+                unavailable: list[str] = []
+                for period in ("Q1", "Q2", "Q3"):
+                    candidates = [item for item in items
+                                  if item.fiscal_period == period and item.resolution_status == READY
+                                  and annual_dt is not None
+                                  and _parse_date(item.anchor_rcept_dt) is not None
+                                  and _parse_date(item.anchor_rcept_dt) <= annual_dt]
+                    if not candidates:
+                        unavailable.append(period)
+                        continue
+                    latest_dt = max(_parse_date(item.anchor_rcept_dt) or date.min for item in candidates)
+                    latest = [item for item in candidates if (_parse_date(item.anchor_rcept_dt) or date.min) == latest_dt]
+                    # More than one distinct filing at the same EOD is not a
+                    # deterministic vintage; do not overwrite one in a dict.
+                    by_anchor = {item.anchor_rcept_no: item for item in latest}
+                    if len(by_anchor) != 1:
+                        ambiguous.append(period)
+                        continue
+                    selected[period] = next(iter(by_anchor.values()))
+
+                # Q4 is produced by the annual anchor itself.  Requiring the
+                # same rcept_no prevents a later annual correction from being
+                # paired with an earlier FY diagnostic version.
+                q4 = [item for item in items if item.fiscal_period == "Q4" and item.resolution_status == READY
+                      and item.anchor_reprt_code == "11011" and item.anchor_rcept_no == annual.anchor_rcept_no]
+                if len(q4) == 1:
+                    selected["Q4"] = q4[0]
+                elif len(q4) > 1:
+                    ambiguous.append("Q4")
+                else:
+                    unavailable.append("Q4")
+
+                base = {
+                    "metric": metric, "ticker": ticker, "fiscal_year": fiscal_year,
+                    "company_family": family, "annual_anchor_rcept_no": annual.anchor_rcept_no,
+                    "annual_anchor_rcept_dt": annual.anchor_rcept_dt,
+                    "quarter_anchor_rcept_nos": {key: value.anchor_rcept_no for key, value in selected.items()},
+                }
+                if ambiguous:
+                    diagnostics.append({**base, "status": PERIOD_AMBIGUOUS, "reason": "MULTIPLE_VINTAGES_AT_SAME_EOD",
+                                        "ambiguous_periods": ambiguous})
+                    continue
+                if unavailable or len(selected) != 4:
+                    diagnostics.append({**base, "status": "DIAGNOSTIC_UNAVAILABLE",
+                                        "reason": "MISSING_PIT_ALIGNED_QUARTER", "unavailable_periods": unavailable})
+                    continue
+                values = [_number(selected[key].value) for key in ("Q1", "Q2", "Q3", "Q4")]
+                if any(value is None for value in values) or _number(annual.value) is None:
+                    diagnostics.append({**base, "status": "DIAGNOSTIC_UNAVAILABLE", "reason": "VALUE_MISSING"})
+                    continue
+                quarter_sum = sum(values)
+                difference = quarter_sum - _number(annual.value)
+                diagnostics.append({
+                    **base, "quarter_sum": quarter_sum, "annual_value": _number(annual.value),
+                    "difference": difference, "status": "MATCH" if difference == 0 else "MISMATCH",
+                })
         return diagnostics
 
     def canonical_series(self, values: Iterable[PeriodizationFact | FinancialObservation | Mapping[str, Any]],

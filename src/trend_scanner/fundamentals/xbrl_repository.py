@@ -78,7 +78,8 @@ def _context_info(context: ET.Element) -> dict[str, Any]:
     return {
         "id": context.get("id"), "start": start, "end": end, "instant": instant,
         "duration_days": duration_days,
-        "context_semantics": "INSTANT" if instant and not start else "UNKNOWN",
+        "context_semantics": ("INSTANT" if instant and not start else
+                               "DURATION" if start and end else "UNKNOWN"),
         "members": members, "basis": basis,
         "primary": len(members) <= 1 and basis in {"ConsolidatedMember", "SeparateMember"},
     }
