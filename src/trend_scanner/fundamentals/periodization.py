@@ -201,8 +201,10 @@ class PeriodizationEngine:
         values: Iterable[PeriodizationFact | FinancialObservation | Mapping[str, Any]],
         *,
         as_of: str | date | None = None,
+        prior_pit_states: Mapping[tuple[str, str], Mapping[str, Any]] | None = None,
     ) -> PeriodizationResult:
         facts = self._prepare(values, as_of=as_of)
+        prior_pit_states = prior_pit_states or {}
         observations: list[PeriodizedFinancialObservation] = []
         parity: list[DirectDerivedParity] = []
         diagnostics: list[Mapping[str, Any]] = []
@@ -211,7 +213,9 @@ class PeriodizationEngine:
             groups[_identity(fact)].append(fact)
 
         for identity, group in sorted(groups.items()):
-            observations_for_group, parity_for_group, diagnostic_for_group = self._periodize_group(group)
+            observations_for_group, parity_for_group, diagnostic_for_group = self._periodize_group(
+                group, prior_pit_states=prior_pit_states
+            )
             observations.extend(observations_for_group)
             parity.extend(parity_for_group)
             diagnostics.extend(diagnostic_for_group)
@@ -301,8 +305,9 @@ class PeriodizationEngine:
         return diagnostics
 
     def canonical_series(self, values: Iterable[PeriodizationFact | FinancialObservation | Mapping[str, Any]],
-                         *, as_of: str | date | None = None) -> PeriodizationResult:
-        return self.periodize(values, as_of=as_of)
+                         *, as_of: str | date | None = None,
+                         prior_pit_states: Mapping[tuple[str, str], Mapping[str, Any]] | None = None) -> PeriodizationResult:
+        return self.periodize(values, as_of=as_of, prior_pit_states=prior_pit_states)
 
     def _prepare(self, values: Iterable[PeriodizationFact | FinancialObservation | Mapping[str, Any]],
                  *, as_of: str | date | None) -> tuple[PeriodizationFact, ...]:
@@ -333,7 +338,8 @@ class PeriodizationEngine:
             prepared.append(fact)
         return tuple(prepared)
 
-    def _periodize_group(self, group: list[PeriodizationFact]):
+    def _periodize_group(self, group: list[PeriodizationFact], *,
+                         prior_pit_states: Mapping[tuple[str, str], Mapping[str, Any]] | None = None):
         observations: list[PeriodizedFinancialObservation] = []
         parity: list[DirectDerivedParity] = []
         diagnostics: list[Mapping[str, Any]] = []
@@ -412,7 +418,23 @@ class PeriodizationEngine:
                                                          "Q1_STANDALONE_UNAVAILABLE"))
                 continue
 
-            prior_selection = self._prior_cumulative_selection(group, code, anchor)
+            provider_prior = (prior_pit_states or {}).get((code, anchor.rcept_no))
+            if provider_prior:
+                provider_status = str(provider_prior.get("status") or "").upper()
+                provider_reason = str(provider_prior.get("reason") or "").strip() or None
+            else:
+                provider_status = ""
+                provider_reason = None
+            if provider_status == PRIOR_AMBIGUOUS:
+                prior_selection = PriorCumulativeSelection(
+                    PRIOR_AMBIGUOUS, reason=provider_reason or PRIOR_PIT_MULTIPLE_FILINGS_ON_SAME_EOD
+                )
+            elif provider_status in {PRIOR_MISSING, DATA_UNAVAILABLE, "FUTURE_FORBIDDEN"}:
+                prior_selection = PriorCumulativeSelection(
+                    PRIOR_MISSING, reason=provider_reason or "MISSING_PRIOR_CUMULATIVE"
+                )
+            else:
+                prior_selection = self._prior_cumulative_selection(group, code, anchor)
             prior = prior_selection.selected
             if len(cumulative) > 1 or len(direct) > 1:
                 observations.append(self._unavailable(anchor, fiscal_start, period_info[0], PERIOD_AMBIGUOUS,
@@ -426,6 +448,8 @@ class PeriodizationEngine:
                 cumulative_candidate = None
             derived_value = None
             derived_reason = None
+            if prior_selection.status in {PRIOR_AMBIGUOUS, PRIOR_MISSING}:
+                derived_reason = prior_selection.reason
             if cumulative_candidate is not None:
                 if prior_selection.status == PRIOR_AMBIGUOUS:
                     derived_reason = prior_selection.reason or PRIOR_PIT_MULTIPLE_FILINGS_ON_SAME_EOD

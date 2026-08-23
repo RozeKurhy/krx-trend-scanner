@@ -18,7 +18,11 @@ from .filing_registry import FilingRegistry
 from .models import RegisteredFiling
 from .opendart_contract import CompanyFamily, REPORT_TYPE_BY_CODE, classify_company_family
 from .period_models import PeriodizationFact, PeriodizationResult
-from .periodization import PeriodizationEngine, facts_from_xbrl_rows
+from .periodization import (
+    PRIOR_PIT_MULTIPLE_FILINGS_ON_SAME_EOD,
+    PeriodizationEngine,
+    facts_from_xbrl_rows,
+)
 from .pit_resolver import PITResolver
 from .xbrl_repository import XbrlRepository
 
@@ -110,6 +114,7 @@ class PeriodizationProvider:
         selections: list[Mapping[str, Any]] = []
         skipped: list[Mapping[str, Any]] = []
         filings_by_code: dict[str, list[RegisteredFiling]] = {}
+        prior_pit_states: dict[tuple[str, str], Mapping[str, Any]] = {}
 
         for reprt_code in ANCHOR_REPORT_CODES:
             rows = list(self.filings.list_regular_filings(
@@ -121,6 +126,7 @@ class PeriodizationProvider:
             selection = self.pit_resolver.resolve(rows, as_of=cutoff, bsns_year=fiscal_year,
                                                   reprt_code=reprt_code)
             selected = selection.selected
+            eligible_rcept_nos = self._eligible_rcept_nos(rows, cutoff)
             selections.append({
                 "reprt_code": reprt_code,
                 "report_type": REPORT_TYPE_BY_CODE.get(reprt_code, "UNKNOWN"),
@@ -130,6 +136,7 @@ class PeriodizationProvider:
                 "availability": selection.availability,
                 "eligible_count": selection.eligible_count,
                 "future_count": selection.future_count,
+                "candidate_rcept_nos": eligible_rcept_nos,
                 "reason": selection.reason,
             })
             if selection.status != "READY":
@@ -174,16 +181,30 @@ class PeriodizationProvider:
                 filings_by_code.get(prior_code, ()), as_of=str(anchor_dt)[:10],
                 bsns_year=fiscal_year, reprt_code=prior_code,
             )
+            prior_rows = filings_by_code.get(prior_code, ())
+            prior_candidate_rcept_nos = self._eligible_rcept_nos(
+                prior_rows, self._receipt(anchor_dt)
+            )
+            prior_reason = self._canonical_prior_reason(prior.status, prior.reason)
             selection_meta["prior_pit"] = {
                 "reprt_code": prior_code,
                 "status": prior.status,
                 "selected_rcept_no": prior.selected_rcept_no,
                 "selected_rcept_dt": prior.selected_rcept_dt,
                 "availability": prior.availability,
-                "reason": prior.reason,
+                "reason": prior_reason,
+                "raw_reason": prior.reason,
+                "canonical_reason": prior_reason,
+                "candidate_rcept_nos": prior_candidate_rcept_nos,
             }
+            anchor_no = selection_meta.get("selected_rcept_no")
+            if anchor_no:
+                prior_pit_states[(code, str(anchor_no))] = {
+                    "status": prior.status,
+                    "reason": prior_reason,
+                }
 
-        result = self.periodizer.periodize(facts, as_of=cutoff)
+        result = self.periodizer.periodize(facts, as_of=cutoff, prior_pit_states=prior_pit_states)
         return PeriodizationBuild(
             ticker=ticker, fiscal_year=fiscal_year, requested_as_of=cutoff_text,
             company_family=family, filings=tuple(all_filings), facts=tuple(facts),
@@ -201,6 +222,21 @@ class PeriodizationProvider:
             return date.fromisoformat(str(value)[:10])
         except (TypeError, ValueError):
             return None
+
+    @classmethod
+    def _eligible_rcept_nos(cls, rows: Iterable[RegisteredFiling], cutoff: date | None) -> list[str]:
+        if cutoff is None:
+            return []
+        return sorted({row.rcept_no for row in rows
+                       if cls._receipt(row.rcept_dt) is not None and cls._receipt(row.rcept_dt) <= cutoff})
+
+    @staticmethod
+    def _canonical_prior_reason(status: str, reason: str | None) -> str | None:
+        if status == "AMBIGUOUS" and reason == "MULTIPLE_FILINGS_ON_SAME_DATE":
+            return PRIOR_PIT_MULTIPLE_FILINGS_ON_SAME_EOD
+        if status in {"DATA_UNAVAILABLE", "FUTURE_FORBIDDEN"}:
+            return "PRIOR_PIT_MISSING"
+        return reason
 
     @staticmethod
     def _company_family(company: Mapping[str, Any] | None) -> str:
