@@ -252,6 +252,12 @@ class IndexPriceDataProvider:
     ) -> pd.DataFrame:
         """KOSPI 및 KOSDAQ 업종 지수 구성 종목(PDF)을 취합하여 Ticker별 Sector 매핑을 생성한다."""
         import time
+        # Keep PyKRX initialization lazy: importing this provider is local-only,
+        # while this method explicitly opts into the network-backed operation.
+        from dotenv import load_dotenv
+        from pykrx import stock
+
+        load_dotenv()
 
         clean_date = as_of.replace("-", "")
         formatted_date = f"{clean_date[:4]}-{clean_date[4:6]}-{clean_date[6:8]}"

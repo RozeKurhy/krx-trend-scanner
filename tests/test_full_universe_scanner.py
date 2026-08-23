@@ -40,6 +40,7 @@ from trend_scanner.scanner.full_universe_scanner import (
     ScannerRowStatus,
     scan_pattern_a_universe,
 )
+import trend_scanner.scanner.full_universe_scanner as scanner_module
 from trend_scanner.universe.models import (
     AssetType,
     MarketType,
@@ -75,6 +76,24 @@ def _create_mock_daily(
     )
     df.index.name = "date"
     return df
+
+
+def _create_mock_market_index(as_of: str = "2026-08-14") -> pd.DataFrame:
+    """KOSPI/KOSDAQ 공통 기준으로 사용할 로컬 합성 지수 데이터."""
+    dates = pd.bdate_range(end=as_of, periods=320)
+    frames = []
+    for code, base in (("1001", 100.0), ("2001", 200.0)):
+        close = base + np.linspace(0.0, 20.0, len(dates))
+        frames.append(
+            pd.DataFrame(
+                {
+                    "date": dates.strftime("%Y-%m-%d"),
+                    "index_code": code,
+                    "close": close,
+                }
+            )
+        )
+    return pd.concat(frames, ignore_index=True)
 
 
 @pytest.fixture
@@ -361,6 +380,80 @@ def test_no_policy_ranking_or_decision_fields_exist(mock_scanner_env):
             continue
         for pattern in forbidden_patterns:
             assert pattern not in col.lower(), f"Forbidden field '{col}' found in scanner output!"
+
+
+def test_operational_market_rs_cross_section_populates_full_common_and_preserves_missing(
+    mock_scanner_env,
+):
+    """옵트인 운영 경로가 COMMON 전체를 한 번 계산하고 실제 값을 row에 연결한다."""
+    market_index = _create_mock_market_index(mock_scanner_env["as_of"])
+    res = scan_pattern_a_universe(
+        cache=mock_scanner_env["cache"],
+        as_of=mock_scanner_env["as_of"],
+        universe_securities=mock_scanner_env["universe"],
+        flow_df=pd.DataFrame(),
+        market_index_df=market_index,
+        sector_index_df=pd.DataFrame(),
+        sector_mapping={},
+        enrich_rs_for_candidates=False,
+        enrich_market_rs_cross_section=True,
+    )
+
+    frame = res.to_dataframe().set_index("ticker")
+    assert set(frame["market"].unique()) == {"KOSPI", "KOSDAQ"}
+    assert frame.loc["005930", "all_market_rs_rank_3m"] is not None
+    assert pd.notna(frame.loc["005930", "all_market_rs_percentile_3m"])
+    assert pd.notna(frame.loc["005930", "market_rs_delta_3m_vs_6m"])
+    missing = frame.loc["300002"]
+    assert missing["market_rs_data_status"] == "DATA_UNAVAILABLE"
+    for horizon in ("3m", "6m", "12m"):
+        assert pd.isna(missing[f"market_rs_{horizon}"])
+        assert pd.isna(missing[f"all_market_rs_rank_{horizon}"])
+        assert pd.isna(missing[f"all_market_rs_percentile_{horizon}"])
+
+
+def test_operational_market_rs_reference_is_full_common_not_candidate_subset(
+    mock_scanner_env,
+    monkeypatch,
+):
+    """운영 경로의 cross-section 호출은 Candidate가 아닌 COMMON 전체를 입력으로 받는다."""
+    market_index = _create_mock_market_index(mock_scanner_env["as_of"])
+    observed_sizes: list[int] = []
+    original = scanner_module.compute_market_rs_cross_section
+
+    def spy(rows):
+        observed_sizes.append(len(rows))
+        return original(rows)
+
+    monkeypatch.setattr(scanner_module, "compute_market_rs_cross_section", spy)
+    res = scan_pattern_a_universe(
+        cache=mock_scanner_env["cache"],
+        as_of=mock_scanner_env["as_of"],
+        universe_securities=mock_scanner_env["universe"],
+        flow_df=pd.DataFrame(),
+        market_index_df=market_index,
+        sector_index_df=pd.DataFrame(),
+        sector_mapping={},
+        enrich_market_rs_cross_section=True,
+    )
+
+    assert observed_sizes == [res.summary.rows_emitted]
+    assert observed_sizes == [4]
+    candidates = [r for r in res.rows if r.candidate_state == PatternACandidateState.CANDIDATE]
+    reference = res.to_dataframe().set_index("ticker")
+    for row in candidates:
+        assert row.all_market_rs_percentile_3m == reference.loc[row.ticker, "all_market_rs_percentile_3m"]
+
+
+def test_operational_market_rs_enrichment_is_opt_in_backward_compatible(mock_scanner_env):
+    """옵션을 끄면 기존 scanner caller의 cross-sectional 기본값(None)을 유지한다."""
+    res = scan_pattern_a_universe(
+        cache=mock_scanner_env["cache"],
+        as_of=mock_scanner_env["as_of"],
+        universe_securities=mock_scanner_env["universe"],
+    )
+    assert all(row.all_market_rs_rank_3m is None for row in res.rows)
+    assert all(row.market_rs_delta_3m_vs_6m is None for row in res.rows)
 
 
 def test_summary_and_artifacts_export(mock_scanner_env, tmp_path: Path):

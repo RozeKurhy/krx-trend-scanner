@@ -85,3 +85,21 @@ Sector RS 정책
 이 문서는 Phase12를 스스로 CLOSED 선언하지 않으며 다음 상태만 제안한다.
 
 `READY_FOR_ARCHITECT_PHASE12_CLOSURE_REVIEW`
+
+FIX01 운영 연결 및 회귀 보정
+--------------------------------------------------
+- 초기 completion commit: `ef458fb128139b1d624c1ec26edf1362c6cdf85d`
+- `scan_pattern_a_universe(..., enrich_market_rs_cross_section=True)`를 명시적
+  Full COMMON 운영 옵션으로 추가했다. 옵션 활성화 시 COMMON 전체 Market RS
+  reference를 한 번 계산하고 ticker lookup으로 최종 scanner row에 연결한다.
+- Candidate/Investable subset으로 percentile을 재계산하지 않으며, 기본 옵션은
+  `False`라 기존 caller의 runtime/의미론을 유지한다.
+- `build_sector_mapping()` 내부에 PyKRX lazy import를 복구했다. 모듈 import만으로
+  세션을 초기화하지 않고 실제 함수 호출 때만 기존 KRX-backed 동작을 수행한다.
+- 기존 completion manifest는 historical evidence로 보존하고, FIX01 provenance와
+  operational parity는 `market_rs_fix01_manifest_20260814.json`,
+  `market_rs_fix01_summary_20260814.json`,
+  `market_rs_operational_scanner_validation_20260814.json`에 기록한다.
+- FIX01 Full COMMON operational parity: 2,528/2,528, 모든 mismatch=0,
+  network_requests=0.
+- Sector RS는 계속 `DEFERRED_FUTURE_EXTENSION`이며 closure gating 대상이 아니다.

@@ -24,7 +24,7 @@ Readiness 및 Data Quality Flags를 종목별 단일 Row로 통합하는 Orchest
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from enum import Enum
 import json
 import logging
@@ -60,6 +60,10 @@ from trend_scanner.relative_strength.relative_strength import (
     RelativeStrengthFeatureResult,
     compute_relative_strength_features,
 )
+from trend_scanner.relative_strength.cross_section import (
+    CROSS_SECTION_COLUMNS,
+    compute_market_rs_cross_section,
+)
 from trend_scanner.universe.asset_classifier import classify_asset_type
 from trend_scanner.universe.krx_universe import (
     get_latest_market_trading_date,
@@ -76,6 +80,56 @@ from trend_scanner.validation.historical_snapshot import build_historical_snapsh
 from trend_scanner.validation.pattern_a_investability_audit import load_canonical_mcap_snapshot
 
 logger = logging.getLogger(__name__)
+
+
+def _relative_strength_row_updates(result: RelativeStrengthFeatureResult) -> dict[str, Any]:
+    """Map a RelativeStrengthFeatureResult onto scanner row fields."""
+
+    return {
+        "market_rs_data_status": result.market_rs_data_status.value,
+        "market_benchmark_name": result.market_benchmark_name,
+        "market_benchmark_code": result.market_benchmark_code,
+        "market_benchmark_last_observation_date": result.market_benchmark_last_observation_date,
+        "stock_return_3m": result.stock_return_3m,
+        "stock_return_6m": result.stock_return_6m,
+        "stock_return_12m": result.stock_return_12m,
+        "market_return_3m": result.market_return_3m,
+        "market_return_6m": result.market_return_6m,
+        "market_return_12m": result.market_return_12m,
+        "market_rs_3m": result.market_rs_3m,
+        "market_rs_6m": result.market_rs_6m,
+        "market_rs_12m": result.market_rs_12m,
+        "market_anchor_date_3m": result.market_anchor_date_3m,
+        "market_anchor_date_6m": result.market_anchor_date_6m,
+        "market_anchor_date_12m": result.market_anchor_date_12m,
+        "sector_rs_data_status": result.sector_rs_data_status.value,
+        "sector_name": result.sector_name,
+        "sector_code": result.sector_code,
+        "sector_benchmark_code": result.sector_benchmark_code,
+        "sector_benchmark_last_observation_date": result.sector_benchmark_last_observation_date,
+        "sector_return_3m": result.sector_return_3m,
+        "sector_return_6m": result.sector_return_6m,
+        "sector_return_12m": result.sector_return_12m,
+        "sector_rs_3m": result.sector_rs_3m,
+        "sector_rs_6m": result.sector_rs_6m,
+        "sector_rs_12m": result.sector_rs_12m,
+        "sector_anchor_date_3m": result.sector_anchor_date_3m,
+        "sector_anchor_date_6m": result.sector_anchor_date_6m,
+        "sector_anchor_date_12m": result.sector_anchor_date_12m,
+    }
+
+
+def _cross_section_value(value: Any) -> float | None:
+    """Convert pandas missing values to the scanner's None representation."""
+
+    if value is None:
+        return None
+    try:
+        if pd.isna(value):
+            return None
+        return float(value)
+    except (TypeError, ValueError):
+        return None
 
 
 class ScannerRowStatus(str, Enum):
@@ -616,6 +670,7 @@ def scan_pattern_a_universe(
     sector_mapping: dict[str, tuple[str, str]] | None = None,
     sector_mapping_path: Path | str | None = None,
     enrich_rs_for_candidates: bool = True,
+    enrich_market_rs_cross_section: bool = False,
 ) -> PatternAUniverseScanResult:
     """Official KRX COMMON Universe를 대상으로 Pattern A 스캔을 수행한다.
 
@@ -637,6 +692,9 @@ def scan_pattern_a_universe(
         sector_mapping: 종목별 업종 매핑 딕셔너리
         sector_mapping_path: 종목별 업종 매핑 파일 경로 (CSV)
         enrich_rs_for_candidates: Candidate 종목 대상 상대강도(RS) 피처 산출 여부
+        enrich_market_rs_cross_section: 공식 COMMON 전체를 기준으로 Market RS
+            improvement/rank/percentile을 계산해 모든 scanner row에 연결할지 여부.
+            명시적으로 활성화한 Full COMMON 실행에서만 사용하며, 기존 기본값은 유지한다.
 
     Returns:
         PatternAUniverseScanResult: 통합 결과 객체
@@ -859,6 +917,17 @@ def scan_pattern_a_universe(
         logger.warning("Failed loading sector mapping source (%s): %s", sector_mapping_path, exc)
         sector_map_loaded = None
 
+    if enrich_market_rs_cross_section:
+        if target_tickers is not None or target_markets is not None or limit is not None:
+            raise ValueError(
+                "enrich_market_rs_cross_section requires an unfiltered Full COMMON scan "
+                "so percentiles cannot be recomputed from a subset"
+            )
+        if market_index_df_loaded is None or market_index_df_loaded.empty:
+            raise ValueError(
+                "enrich_market_rs_cross_section requires the local market index reference"
+            )
+
     # 3. Ticker별 순차 평가 (One Cache Load -> One daily_as_of Slice -> Shared Context)
     rows: list[PatternAUniverseScanRow] = []
 
@@ -960,6 +1029,17 @@ def scan_pattern_a_universe(
                     tv20_last_observation_date=inv_eval.tv20_last_observation_date,
                     row_status=ScannerRowStatus.UNAVAILABLE,
                 )
+                if enrich_market_rs_cross_section:
+                    unavailable_rs = compute_relative_strength_features(
+                        ticker=ticker,
+                        as_of=req_as_of_str,
+                        stock_df=None,
+                        market_index_df=market_index_df_loaded,
+                        market=market,
+                        sector_index_df=sector_index_df_loaded,
+                        sector_mapping=sector_map_loaded,
+                    )
+                    row = replace(row, **_relative_strength_row_updates(unavailable_rs))
                 rows.append(row)
                 continue
 
@@ -1067,8 +1147,10 @@ def scan_pattern_a_universe(
 
             # 3.6.2 Downstream Relative Strength Confirmation Feature (Phase 12)
             if (
-                cand_state == PatternACandidateState.CANDIDATE
-                and enrich_rs_for_candidates
+                (
+                    enrich_market_rs_cross_section
+                    or (cand_state == PatternACandidateState.CANDIDATE and enrich_rs_for_candidates)
+                )
                 and market_index_df_loaded is not None
                 and not market_index_df_loaded.empty
             ):
@@ -1295,6 +1377,28 @@ def scan_pattern_a_universe(
                 error_message=str(exc),
             )
             rows.append(row)
+
+    # 3.8 Optional operational Phase 12 enrichment. The reference is built once
+    # from every row in the unfiltered COMMON scan, then looked up by ticker.
+    # Candidate/investable subsets are never used to recompute a percentile.
+    if enrich_market_rs_cross_section:
+        reference = compute_market_rs_cross_section(
+            pd.DataFrame([row.to_dict() for row in rows])
+        )
+        reference_by_ticker = reference.drop_duplicates("ticker").set_index("ticker")
+        if len(reference_by_ticker) != len(rows):
+            raise ValueError("Duplicate or missing ticker in operational Market RS reference")
+        enriched_rows: list[PatternAUniverseScanRow] = []
+        for row in rows:
+            if row.ticker not in reference_by_ticker.index:
+                raise ValueError(f"Operational Market RS reference missing ticker: {row.ticker}")
+            reference_row = reference_by_ticker.loc[row.ticker]
+            cross_section_updates = {
+                column: _cross_section_value(reference_row[column])
+                for column in CROSS_SECTION_COLUMNS
+            }
+            enriched_rows.append(replace(row, **cross_section_updates))
+        rows = enriched_rows
 
     # 4. 종합 통계 및 분포 산출
     cache_present_cnt = sum(1 for r in rows if r.cache_present)

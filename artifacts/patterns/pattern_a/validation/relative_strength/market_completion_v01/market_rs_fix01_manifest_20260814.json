@@ -1,0 +1,23 @@
+{
+  "work_id": "PHASE12_MARKET_RELATIVE_STRENGTH_COMPLETION_V01_FIX01",
+  "start_head": "ef458fb128139b1d624c1ec26edf1362c6cdf85d",
+  "fix01_implementation_files": [
+    "src/trend_scanner/relative_strength/cross_section.py",
+    "src/trend_scanner/scanner/full_universe_scanner.py",
+    "src/trend_scanner/data/index_price_provider.py"
+  ],
+  "fix01_validation_files": [
+    "scripts/run_phase12_market_relative_strength_fix01.py",
+    "tests/test_full_universe_scanner.py",
+    "tests/test_index_price_provider.py"
+  ],
+  "supporting_prior_completion_files": [
+    "src/trend_scanner/data/foreign_flow_provider.py",
+    "src/trend_scanner/validation/pattern_a_investability_audit.py"
+  ],
+  "original_completion_manifest_incomplete_file_list": true,
+  "original_completion_commit": "ef458fb128139b1d624c1ec26edf1362c6cdf85d",
+  "network_requests": 0,
+  "sector_rs_scope": "DEFERRED_FUTURE_EXTENSION",
+  "strategy_semantics_changed": false
+}
