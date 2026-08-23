@@ -1,5 +1,5 @@
 {
-  "report_version": "0.2",
+  "report_version": "0.3",
   "ticker": "035610",
   "name": "솔본",
   "market": "KOSDAQ",
@@ -24,9 +24,10 @@
       "현재 Pattern A Score는 58.41점(Stage: TRANSITION, Candidate: YES)입니다.",
       "시가총액 1378.2억원, 20일 평균 거래대금 3.48억원으로 Phase 10 Investability 기준을 충족합니다.",
       "외국인 수급: 외국인 수급이 기간별로 엇갈리는 혼조세 흐름입니다 (5일 순매수 강도: +6.96%).",
+      "시장 상대강도: 최근으로 갈수록 시장 대비 상대강도가 개선되는 흐름입니다.",
       "거래대금 추세: 최근 거래대금이 특정 방향성 없이 기간별로 혼조세를 나타내고 있습니다. (5일: 3.46억원, 20일: 3.48억원, 60일: 2.96억원)"
     ],
-    "combined_narrative": "현재 솔본은(는) Pattern A Score 58.41점, TRANSITION 단계이며 Phase 10 Investability 조건(시총 1,000억 이상 및 20일 거래대금 3억 이상)을 충족(INVESTABLE)했습니다. 최근 12개월 동안 TRANSITION(50.12점)에서 TRANSITION(58.41점)로 국면 이동이 관찰되었습니다. 외국인 수급은 FLOW_MIXED 상태로, 외국인 수급이 기간별로 엇갈리는 혼조세 흐름입니다 (5일 순매수 강도: +6.96%). 거래대금은 TRADING_VALUE_MIXED 상태로, 최근 거래대금이 특정 방향성 없이 기간별로 혼조세를 나타내고 있습니다. (5일: 3.46억원, 20일: 3.48억원, 60일: 2.96억원)",
+    "combined_narrative": "현재 솔본은(는) Pattern A Score 58.41점, TRANSITION 단계이며 Phase 10 Investability 조건(시총 1,000억 이상 및 20일 거래대금 3억 이상)을 충족(INVESTABLE)했습니다. 최근 12개월 동안 TRANSITION(50.12점)에서 TRANSITION(58.41점)로 국면 이동이 관찰되었습니다. 외국인 수급은 FLOW_MIXED 상태로, 외국인 수급이 기간별로 엇갈리는 혼조세 흐름입니다 (5일 순매수 강도: +6.96%). 거래대금은 TRADING_VALUE_MIXED 상태로, 최근 거래대금이 특정 방향성 없이 기간별로 혼조세를 나타내고 있습니다. (5일: 3.46억원, 20일: 3.48억원, 60일: 2.96억원) 시장 상대강도는 최근으로 갈수록 시장 대비 상대강도가 개선되는 흐름입니다.",
     "strategy_headline": "패스트 코어 V2 전략 포지션을 보유 중이며 아직 PROGRESSED 이전입니다. Pre-PROGRESSED Loss Guard(-15%)가 활성화되어 있습니다."
   },
   "current_snapshot": {
@@ -798,6 +799,33 @@
     "foreign_positive_days_5d": 3,
     "foreign_positive_days_20d": 8,
     "foreign_positive_days_60d": 25
+  },
+  "relative_strength": {
+    "applicability": "APPLICABLE",
+    "data_status": "READY",
+    "benchmark_name": "코스닥",
+    "benchmark_code": "2001",
+    "benchmark_last_observation_date": "2026-08-14",
+    "market_rs_3m": 0.9021374869394456,
+    "market_rs_6m": 0.6448439346486956,
+    "market_rs_12m": 0.0854344156246798,
+    "market_rs_delta_3m_vs_6m": 0.25729355229075,
+    "market_rs_delta_6m_vs_12m": 0.5594095190240158,
+    "market_rs_acceleration_3_6_12m": -0.3021159667332658,
+    "all_market_rs_rank_3m": 24.0,
+    "all_market_rs_rank_6m": 126.0,
+    "all_market_rs_rank_12m": 364.0,
+    "all_market_rs_percentile_3m": 99.02501059771089,
+    "all_market_rs_percentile_6m": 94.68537414965986,
+    "all_market_rs_percentile_12m": 84.38037865748709,
+    "market_anchor_date_3m": "2026-05-14",
+    "market_anchor_date_6m": "2026-02-06",
+    "market_anchor_date_12m": "2025-08-01",
+    "explanation": "최근으로 갈수록 시장 대비 상대강도가 개선되는 흐름입니다.",
+    "source_as_of": "2026-08-14",
+    "source_artifact": "artifacts/patterns/pattern_a/validation/relative_strength/market_completion_v01/market_rs_universe_20260814.csv",
+    "source_sha256": "4199d6168006bdae7c4fa2288f553e513d7e6715a8e329b927d7649f08541bb1",
+    "phase12_closure_sha": "5fdf97793c1fd7683c33d5fe77ff4da97fc75a19"
   },
   "trading_value_flow": {
     "trading_value_state": "TRADING_VALUE_MIXED",

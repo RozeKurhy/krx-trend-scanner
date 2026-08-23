@@ -1,0 +1,90 @@
+{
+  "artifact": "stock_report_v03_rs_integration_summary_20260814",
+  "report_version": "0.3",
+  "phase12_closure_sha": "5fdf97793c1fd7683c33d5fe77ff4da97fc75a19",
+  "report_count": 54,
+  "v02_archive_count": 54,
+  "v03_production_count": 54,
+  "production_json_count": 54,
+  "production_markdown_count": 54,
+  "archive_v02_json_count": 54,
+  "archive_v01_json_count": 54,
+  "ticker_set_equal": true,
+  "ticker_set_mismatch_count": 0,
+  "schema_error_count": 0,
+  "parity_mismatch_count": 0,
+  "rs_mismatch_count": 0,
+  "current_snapshot_mismatch_count": 0,
+  "monthly_history_mismatch_count": 0,
+  "foreign_flow_mismatch_count": 0,
+  "trading_value_flow_mismatch_count": 0,
+  "pattern_a_fast_mismatch_count": 0,
+  "a_fast_core_mismatch_count": 0,
+  "data_quality_mismatch_count": 0,
+  "header_mismatch_count": 0,
+  "relative_strength_exact_parity_mismatch_count": 0,
+  "markdown_error_count": 0,
+  "summary_headline_mismatch_count": 0,
+  "summary_strategy_headline_mismatch_count": 0,
+  "summary_bullet_parity_mismatch_count": 0,
+  "summary_narrative_prefix_mismatch_count": 0,
+  "allowed_summary_change_only": true,
+  "rs_ready_count": 36,
+  "rs_partial_count": 0,
+  "rs_data_unavailable_count": 1,
+  "rs_not_applicable_count": 17,
+  "exact_snapshot_missing_count": 0,
+  "ticker_missing_count": 1,
+  "phase12_numeric_mismatch_count": 0,
+  "phase12_percentile_mismatch_count": 0,
+  "phase12_rank_mismatch_count": 0,
+  "source_sha_mismatch_count": 0,
+  "network_requests": 0,
+  "full_universe_scanner_called": false,
+  "sector_rs": "DEFERRED",
+  "behavior_checks": {
+    "missing_snapshot": [
+      "DATA_UNAVAILABLE",
+      "DATA_UNAVAILABLE"
+    ],
+    "missing_ticker": [
+      "DATA_UNAVAILABLE",
+      "DATA_UNAVAILABLE"
+    ]
+  },
+  "representatives": {
+    "068270": {
+      "applicability": "APPLICABLE",
+      "data_status": "READY",
+      "market_rs_3m": 0.2363010527967675,
+      "market_rs_6m": -0.3009261151369007,
+      "market_rs_12m": -0.4496787607127102,
+      "explanation": "12개월 기준으로는 시장 대비 약세였으나 6개월, 3개월로 갈수록 상대강도가 연속 개선되며 최근 시장 대비 강도가 뚜렷하게 회복되고 있습니다."
+    },
+    "035420": {
+      "applicability": "APPLICABLE",
+      "data_status": "READY",
+      "market_rs_3m": 0.22435577358942083,
+      "market_rs_6m": -0.3321903854594984,
+      "market_rs_12m": -0.5470006716404363,
+      "explanation": "12개월 기준으로는 시장 대비 약세였으나 6개월, 3개월로 갈수록 상대강도가 연속 개선되며 최근 시장 대비 강도가 뚜렷하게 회복되고 있습니다."
+    },
+    "005930": {
+      "applicability": "APPLICABLE",
+      "data_status": "READY",
+      "market_rs_3m": 0.06072554451329215,
+      "market_rs_6m": 0.26228183720079623,
+      "market_rs_12m": 0.7810181942942702,
+      "explanation": "장기 대비 최근 시장 상대강도가 낮아지며 상대적인 주가 강도가 약화되는 흐름입니다."
+    },
+    "001540": {
+      "applicability": "APPLICABLE",
+      "data_status": "READY",
+      "market_rs_3m": 0.5976763464305517,
+      "market_rs_6m": 0.7603474430887258,
+      "market_rs_12m": 0.3767169910994814,
+      "explanation": "기간별 시장 상대강도가 엇갈리는 혼조 흐름입니다."
+    }
+  },
+  "final_status": "READY_FOR_ARCHITECT_STOCK_REPORT_V03_REVIEW"
+}

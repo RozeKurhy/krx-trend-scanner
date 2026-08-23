@@ -1,7 +1,8 @@
-"""Stock Report Data Models (Contract v0.2).
+"""Stock Report Data Models (Contract v0.3).
 
 종목 리포트의 JSON 직렬화 및 구조 정의 데이터 클래스를 제공한다.
-v0.2에서는 A FAST Core V2 전략 상태(a_fast_core) 섹션이 최상위 필드로 추가된다.
+v0.3에서는 Phase 12 Market Relative Strength(relative_strength) 섹션이 최상위
+필드로 추가된다.
 """
 
 from __future__ import annotations
@@ -131,6 +132,37 @@ class ForeignFlowSection:
     foreign_positive_days_5d: int | None
     foreign_positive_days_20d: int | None
     foreign_positive_days_60d: int | None
+
+
+@dataclass
+class RelativeStrengthSection:
+    """Phase 12 Market RS context, consumed from an exact-date authority snapshot."""
+
+    applicability: str
+    data_status: str
+    benchmark_name: str | None
+    benchmark_code: str | None
+    benchmark_last_observation_date: str | None
+    market_rs_3m: float | None
+    market_rs_6m: float | None
+    market_rs_12m: float | None
+    market_rs_delta_3m_vs_6m: float | None
+    market_rs_delta_6m_vs_12m: float | None
+    market_rs_acceleration_3_6_12m: float | None
+    all_market_rs_rank_3m: float | None
+    all_market_rs_rank_6m: float | None
+    all_market_rs_rank_12m: float | None
+    all_market_rs_percentile_3m: float | None
+    all_market_rs_percentile_6m: float | None
+    all_market_rs_percentile_12m: float | None
+    market_anchor_date_3m: str | None
+    market_anchor_date_6m: str | None
+    market_anchor_date_12m: str | None
+    explanation: str
+    source_as_of: str | None
+    source_artifact: str | None
+    source_sha256: str | None
+    phase12_closure_sha: str
 
 
 @dataclass
@@ -303,7 +335,10 @@ class AFastCoreTradeHistoryItem:
 @dataclass
 class AFastCoreProvenance:
     strategy_contract: str = "PATTERN_A_FAST_FINAL_STRATEGY_V02"
-    strategy_contract_path: str = "docs/patterns/pattern_a_fast/strategy/final_v02.md"
+    # Keep the frozen v0.2 provenance path for v0.2 -> v0.3 parity. The file
+    # remains a compatibility stub; the canonical strategy document is linked
+    # from that stub and is validated independently.
+    strategy_contract_path: str = "docs/validation/pattern_a_fast_final_strategy_v02.md"
     architecture_authority_commit: str = "89df82a938dba1961c2342064db2dc0061a5f2ca"
     calendar_authority_commit: str = "88d54d85bdee1f2121bec9b27a250cbc1cb9f98f"
     trade_generation_authority_commit: str = "b9ba613be973906915e5081a0e5828dd6e1350d6"
@@ -349,6 +384,7 @@ class StockReport:
     current_snapshot: CurrentSnapshot
     monthly_history: MonthlyHistorySection
     foreign_flow: ForeignFlowSection
+    relative_strength: RelativeStrengthSection
     trading_value_flow: TradingValueFlowSection
     data_quality: DataQualitySection
     provenance: ProvenanceSection

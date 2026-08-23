@@ -1,4 +1,4 @@
-# [KODEX 조선TOP10 (0115D0)] 종목 리포트 v0.2
+# [KODEX 조선TOP10 (0115D0)] 종목 리포트 v0.3
 
 - **시장 구분 (Listing Market)**: `KOSPI`
 - **자산 유형 (Asset Type)**: `ETF`
@@ -15,9 +15,10 @@
 > - 현재 Pattern A Score는 산출 불가(Stage: UNAVAILABLE) 상태입니다.
 > - 필수 데이터 부족(REQUIRED_METRIC_UNAVAILABLE)으로 Phase 10 Investability 판정이 불가능합니다.
 > - 외국인 수급: 외국인 수급 데이터가 준비되지 않아 수급 분석을 제공할 수 없습니다.
+> - 시장 상대강도: Phase12 Market RS는 KOSPI/KOSDAQ 보통주(COMMON)를 대상으로 정의되어 이 종목에는 적용되지 않습니다.
 > - 거래대금 추세: 최근 거래대금이 지속 감소(둔화)하는 흐름입니다. 5일 평균 거래대금(117.19억원)이 20일 평균(215.05억원) 및 60일 평균(288.48억원)을 밑돌고 있습니다.
 
-KODEX 조선TOP10(0115D0)는 현재 Pattern A UNAVAILABLE 단계이며, 필수 데이터 부족(DATA_UNAVAILABLE)으로 투자 적격성을 판정할 수 없습니다. 최근 12개월 이력 중 유효한 기술적 국면 관측치가 제한적입니다.
+KODEX 조선TOP10(0115D0)는 현재 Pattern A UNAVAILABLE 단계이며, 필수 데이터 부족(DATA_UNAVAILABLE)으로 투자 적격성을 판정할 수 없습니다. 최근 12개월 이력 중 유효한 기술적 국면 관측치가 제한적입니다. 시장 상대강도는 Phase12 Market RS는 KOSPI/KOSDAQ 보통주(COMMON)를 대상으로 정의되어 이 종목에는 적용되지 않습니다.
 
 ---
 
@@ -131,6 +132,13 @@ KODEX 조선TOP10(0115D0)는 현재 Pattern A UNAVAILABLE 단계이며, 필수 �
 - **수급 국면 판정**: `FLOW_UNAVAILABLE`
 - **규칙 기반 해석**: 외국인 수급 데이터가 준비되지 않아 수급 분석을 제공할 수 없습니다.
 
+
+---
+
+## 7.5. 시장 상대강도 (RS)
+- **적용 상태**: `NOT_APPLICABLE`
+- **데이터 상태**: `NOT_EVALUATED`
+- **해석**: Phase12 Market RS는 KOSPI/KOSDAQ 보통주(COMMON)를 대상으로 정의되어 이 종목에는 적용되지 않습니다.
 
 ---
 

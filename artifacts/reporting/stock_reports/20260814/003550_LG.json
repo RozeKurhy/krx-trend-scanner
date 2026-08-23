@@ -1,5 +1,5 @@
 {
-  "report_version": "0.2",
+  "report_version": "0.3",
   "ticker": "003550",
   "name": "LG",
   "market": "KOSPI",
@@ -24,9 +24,10 @@
       "현재 Pattern A Score는 53.20점(Stage: PROGRESSED, Candidate: NO)입니다.",
       "시가총액 181430.4억원, 20일 평균 거래대금 304.89억원으로 Phase 10 Investability 기준을 충족합니다.",
       "외국인 수급: 최근 5일, 20일, 60일 모두 외국인 누적 순매수가 플러스를 유지하며 중단기 전 구간에서 순매수 우위(매집) 기조입니다 (5일 순매수 강도: +5.32%).",
+      "시장 상대강도: 12개월 기준으로는 시장 대비 약세였으나 6개월, 3개월로 갈수록 상대강도가 연속 개선되며 최근 시장 대비 강도가 뚜렷하게 회복되고 있습니다.",
       "거래대금 추세: 최근 거래대금이 특정 방향성 없이 기간별로 혼조세를 나타내고 있습니다. (5일: 367.39억원, 20일: 304.89억원, 60일: 879.24억원)"
     ],
-    "combined_narrative": "현재 LG은(는) Pattern A Score 53.20점, PROGRESSED 단계이며 Phase 10 Investability 조건(시총 1,000억 이상 및 20일 거래대금 3억 이상)을 충족(INVESTABLE)했습니다. 최근 12개월 동안 TRANSITION(52.44점)에서 PROGRESSED(61.20점)로 국면 이동이 관찰되었습니다. 외국인 수급은 FLOW_ACCUMULATION 상태로, 최근 5일, 20일, 60일 모두 외국인 누적 순매수가 플러스를 유지하며 중단기 전 구간에서 순매수 우위(매집) 기조입니다 (5일 순매수 강도: +5.32%). 거래대금은 TRADING_VALUE_MIXED 상태로, 최근 거래대금이 특정 방향성 없이 기간별로 혼조세를 나타내고 있습니다. (5일: 367.39억원, 20일: 304.89억원, 60일: 879.24억원)",
+    "combined_narrative": "현재 LG은(는) Pattern A Score 53.20점, PROGRESSED 단계이며 Phase 10 Investability 조건(시총 1,000억 이상 및 20일 거래대금 3억 이상)을 충족(INVESTABLE)했습니다. 최근 12개월 동안 TRANSITION(52.44점)에서 PROGRESSED(61.20점)로 국면 이동이 관찰되었습니다. 외국인 수급은 FLOW_ACCUMULATION 상태로, 최근 5일, 20일, 60일 모두 외국인 누적 순매수가 플러스를 유지하며 중단기 전 구간에서 순매수 우위(매집) 기조입니다 (5일 순매수 강도: +5.32%). 거래대금은 TRADING_VALUE_MIXED 상태로, 최근 거래대금이 특정 방향성 없이 기간별로 혼조세를 나타내고 있습니다. (5일: 367.39억원, 20일: 304.89억원, 60일: 879.24억원) 시장 상대강도는 12개월 기준으로는 시장 대비 약세였으나 6개월, 3개월로 갈수록 상대강도가 연속 개선되며 최근 시장 대비 강도가 뚜렷하게 회복되고 있습니다.",
     "strategy_headline": "패스트 코어 V2 전략 포지션은 PROGRESSED 구간에 있습니다. 초기 Loss Guard는 비활성화되었으며 Exit3 / Exit4 기준으로 추세 종료 여부를 관찰합니다."
   },
   "current_snapshot": {
@@ -1656,6 +1657,33 @@
     "foreign_positive_days_5d": 2,
     "foreign_positive_days_20d": 16,
     "foreign_positive_days_60d": 44
+  },
+  "relative_strength": {
+    "applicability": "APPLICABLE",
+    "data_status": "READY",
+    "benchmark_name": "코스피",
+    "benchmark_code": "1001",
+    "benchmark_last_observation_date": "2026-08-14",
+    "market_rs_3m": 0.17313441194128054,
+    "market_rs_6m": -0.024323217622572946,
+    "market_rs_12m": -0.28569031550282564,
+    "market_rs_delta_3m_vs_6m": 0.1974576295638535,
+    "market_rs_delta_6m_vs_12m": 0.2613670978802527,
+    "market_rs_acceleration_3_6_12m": -0.06390946831639921,
+    "all_market_rs_rank_3m": 574.0,
+    "all_market_rs_rank_6m": 826.0,
+    "all_market_rs_rank_12m": 923.0,
+    "all_market_rs_percentile_3m": 75.71004662992794,
+    "all_market_rs_percentile_6m": 64.9234693877551,
+    "all_market_rs_percentile_12m": 60.327022375215144,
+    "market_anchor_date_3m": "2026-05-14",
+    "market_anchor_date_6m": "2026-02-06",
+    "market_anchor_date_12m": "2025-08-01",
+    "explanation": "12개월 기준으로는 시장 대비 약세였으나 6개월, 3개월로 갈수록 상대강도가 연속 개선되며 최근 시장 대비 강도가 뚜렷하게 회복되고 있습니다.",
+    "source_as_of": "2026-08-14",
+    "source_artifact": "artifacts/patterns/pattern_a/validation/relative_strength/market_completion_v01/market_rs_universe_20260814.csv",
+    "source_sha256": "4199d6168006bdae7c4fa2288f553e513d7e6715a8e329b927d7649f08541bb1",
+    "phase12_closure_sha": "5fdf97793c1fd7683c33d5fe77ff4da97fc75a19"
   },
   "trading_value_flow": {
     "trading_value_state": "TRADING_VALUE_MIXED",

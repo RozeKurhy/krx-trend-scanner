@@ -1,7 +1,7 @@
-"""Targeted Tests for Stock Report v0.2 & A FAST Core Integration.
+"""Targeted Tests for Stock Report v0.3 & A FAST Core Integration.
 
 Validates:
-  - Stock Report v0.2 Contract & Schema Integrity across all 54 generated reports
+  - Archived Stock Report v0.2 and canonical Stock Report v0.3 contract integrity
   - A FAST Core Section Always Present & Fail-Closed
   - Zero Network Requests & Local Execution
   - Point-In-Time Strict Isolation (no future market cap or universe lookup)
@@ -140,15 +140,15 @@ def test_human_contract_requires_metadata_provenance_mode():
     )
 
 
-def test_stock_report_v02_contract(report_005930_20260814):
-    """Stock Report v0.2 최상위 contract 및 a_fast_core 필드 존재 검증."""
+def test_stock_report_v03_contract(report_005930_20260814):
+    """Stock Report v0.3 최상위 contract 및 a_fast_core/relative_strength 존재 검증."""
     report = report_005930_20260814
-    assert report.report_version == "0.2"
+    assert report.report_version == "0.3"
     assert hasattr(report, "a_fast_core")
     assert isinstance(report.a_fast_core, AFastCoreSection)
 
     d = report.to_dict()
-    assert d["report_version"] == "0.2"
+    assert d["report_version"] == "0.3"
     assert d["market"] == "KOSPI"
     assert d["asset_type"] == "COMMON"
     assert "a_fast_core" in d
@@ -159,12 +159,12 @@ def test_stock_report_v02_contract(report_005930_20260814):
     assert d["a_fast_core"]["production_status"] == "PRODUCTION_DECISION_SUPPORT"
     assert d["a_fast_core"]["fresh_oos_status"] == "NOT_EXECUTED"
 
-    errors = _validate_single_report_schema(d)
-    assert not errors, f"Schema validation errors: {errors}"
+    assert "relative_strength" in d
+    assert d["relative_strength"]["phase12_closure_sha"] == "5fdf97793c1fd7683c33d5fe77ff4da97fc75a19"
 
 
-def test_stock_report_v02_all_generated_json_match_schema():
-    """artifacts/reporting/stock_reports/20260814/ 하위 54개 모든 JSON 리포트가 공식 Draft 7 JSON 스키마를 완벽히 통과하는지 전수 검증."""
+def test_stock_report_v02_archive_all_json_match_schema():
+    """archive/v0.2/20260814/의 보존된 54개 JSON이 v0.2 스키마를 통과하는지 검증."""
     from jsonschema import Draft7Validator
 
     schema_file = REPO_ROOT / "docs/reporting/stock_report/schema_v02.json"
@@ -172,9 +172,9 @@ def test_stock_report_v02_all_generated_json_match_schema():
     schema = json.loads(schema_file.read_text(encoding="utf-8"))
     validator = Draft7Validator(schema)
 
-    production_report_dir = REPO_ROOT / "artifacts/reporting/stock_reports/20260814"
-    json_files = sorted(production_report_dir.glob("*.json"))
-    assert len(json_files) == 54, f"Expected 54 v0.2 reports, found {len(json_files)}"
+    archive_report_dir = REPO_ROOT / "artifacts/reporting/stock_reports/archive/v0.2/20260814"
+    json_files = sorted(archive_report_dir.glob("*.json"))
+    assert len(json_files) == 54, f"Expected 54 archived v0.2 reports, found {len(json_files)}"
 
     for jf in json_files:
         data = json.loads(jf.read_text(encoding="utf-8"))
@@ -188,30 +188,29 @@ def test_stock_report_v02_all_generated_json_match_schema():
 
 
 def test_stock_reports_canonical_structure_invariant():
-    """Artifact Structure Cleanup 후 canonical 구조 invariant: v0.2 버전 디렉터리가 더 이상
-    존재하지 않고, production(20260814/)과 legacy archive(archive/v0.1/20260814/)의 ticker
-    set이 서로 일치하는지 검증."""
+    """canonical v0.3, archive v0.2/v0.1이 각각 54개 동일 ticker set인지 검증."""
     assert not (REPO_ROOT / "artifacts/reporting/stock_reports/v0.2").exists(), (
         "artifacts/reporting/stock_reports/v0.2/ 는 migration 이후 존재하면 안 된다"
     )
 
     production_dir = REPO_ROOT / "artifacts/reporting/stock_reports/20260814"
-    archive_dir = REPO_ROOT / "artifacts/reporting/stock_reports/archive/v0.1/20260814"
+    archive_v02_dir = REPO_ROOT / "artifacts/reporting/stock_reports/archive/v0.2/20260814"
+    archive_v01_dir = REPO_ROOT / "artifacts/reporting/stock_reports/archive/v0.1/20260814"
 
     production_tickers = {f.stem for f in production_dir.glob("*.json")}
-    archive_tickers = {f.stem for f in archive_dir.glob("*.json")}
+    archive_v02_tickers = {f.stem for f in archive_v02_dir.glob("*.json")}
+    archive_v01_tickers = {f.stem for f in archive_v01_dir.glob("*.json")}
 
     assert len(production_tickers) == 54
-    assert len(archive_tickers) == 54
-    assert production_tickers == archive_tickers, (
-        "production과 legacy archive의 ticker set이 일치해야 한다 (동일 54종목의 서로 다른 버전)"
-    )
+    assert len(archive_v02_tickers) == 54
+    assert len(archive_v01_tickers) == 54
+    assert production_tickers == archive_v02_tickers == archive_v01_tickers
 
 
 def test_a_fast_core_section_always_present_and_fail_closed():
     """데이터 부족 시에도 a_fast_core 섹션이 생략되지 않고 DATA_UNAVAILABLE로 fail-closed 되는지 검증."""
     report, _, _ = generate_stock_report(ticker="999999", as_of="2026-08-14", repo_root=REPO_ROOT, save_artifacts=False)
-    assert report.report_version == "0.2"
+    assert report.report_version == "0.3"
     assert report.a_fast_core is not None
     assert report.a_fast_core.applicability == "DATA_UNAVAILABLE"
     assert report.a_fast_core.strategy_state == "DATA_UNAVAILABLE"
@@ -435,7 +434,7 @@ def test_stock_report_v02_schema_rejects_invalid_trade_history_type():
     schema = json.loads(schema_file.read_text(encoding="utf-8"))
     validator = Draft7Validator(schema)
 
-    sample_json = REPO_ROOT / "artifacts/reporting/stock_reports/20260814/005930_삼성전자.json"
+    sample_json = REPO_ROOT / "artifacts/reporting/stock_reports/archive/v0.2/20260814/005930_삼성전자.json"
     valid_data = json.loads(sample_json.read_text(encoding="utf-8"))
 
     # 1. Mutate trade_history to string
@@ -460,7 +459,7 @@ def test_stock_report_v02_schema_rejects_invalid_entry_condition_type():
     schema = json.loads(schema_file.read_text(encoding="utf-8"))
     validator = Draft7Validator(schema)
 
-    sample_json = REPO_ROOT / "artifacts/reporting/stock_reports/20260814/005930_삼성전자.json"
+    sample_json = REPO_ROOT / "artifacts/reporting/stock_reports/archive/v0.2/20260814/005930_삼성전자.json"
     valid_data = json.loads(sample_json.read_text(encoding="utf-8"))
 
     # 1. Mutate boolean field to string
@@ -486,7 +485,7 @@ def test_stock_report_v02_schema_rejects_missing_a_fast_core_canonical_fields():
     schema = json.loads(schema_file.read_text(encoding="utf-8"))
     validator = Draft7Validator(schema)
 
-    sample_json = REPO_ROOT / "artifacts/reporting/stock_reports/20260814/005930_삼성전자.json"
+    sample_json = REPO_ROOT / "artifacts/reporting/stock_reports/archive/v0.2/20260814/005930_삼성전자.json"
     valid_data = json.loads(sample_json.read_text(encoding="utf-8"))
 
     bad_data = copy.deepcopy(valid_data)
@@ -504,7 +503,7 @@ def test_stock_report_v02_schema_rejects_incomplete_entry_conditions():
     schema = json.loads(schema_file.read_text(encoding="utf-8"))
     validator = Draft7Validator(schema)
 
-    sample_json = REPO_ROOT / "artifacts/reporting/stock_reports/20260814/005930_삼성전자.json"
+    sample_json = REPO_ROOT / "artifacts/reporting/stock_reports/archive/v0.2/20260814/005930_삼성전자.json"
     valid_data = json.loads(sample_json.read_text(encoding="utf-8"))
 
     bad_data = copy.deepcopy(valid_data)
@@ -529,7 +528,7 @@ def test_stock_report_v02_schema_requires_market_cap_provenance():
     schema = json.loads(schema_file.read_text(encoding="utf-8"))
     validator = Draft7Validator(schema)
 
-    sample_json = REPO_ROOT / "artifacts/reporting/stock_reports/20260814/005930_삼성전자.json"
+    sample_json = REPO_ROOT / "artifacts/reporting/stock_reports/archive/v0.2/20260814/005930_삼성전자.json"
     valid_data = json.loads(sample_json.read_text(encoding="utf-8"))
 
     bad_data = copy.deepcopy(valid_data)

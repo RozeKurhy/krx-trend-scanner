@@ -1,4 +1,4 @@
-"""Stock Report Generator Engine (Contract v0.2).
+"""Stock Report Generator Engine (Contract v0.3).
 
 로컬 Parquet 일봉 캐시와 정본 아티팩트만을 활용하여 단일 종목의 종합 분석 리포트를 생성하고
 A FAST Core V2 전략 상태를 포함한 JSON 및 GitHub Flavored Markdown 형식으로 출력한다.
@@ -39,6 +39,7 @@ from trend_scanner.reporting.models import (
     ReportHeader,
     ReportStatus,
     ReportSummary,
+    RelativeStrengthSection,
     ScoreTrend,
     StageTransition,
     StockReport,
@@ -46,6 +47,7 @@ from trend_scanner.reporting.models import (
     TradingValueState,
 )
 from trend_scanner.reporting.pattern_a_fast_report import build_pattern_a_fast_section
+from trend_scanner.reporting.relative_strength_report import load_relative_strength_section
 from trend_scanner.data.market_calendar import get_reference_market_month_ends as _get_ref_market_month_ends
 from trend_scanner.universe.asset_classifier import AssetType
 from trend_scanner.universe.instrument_metadata import resolve_instrument_metadata
@@ -182,6 +184,7 @@ def _generate_deterministic_narrative(
     current_snapshot: CurrentSnapshot,
     recent_12m: list[MonthlyObservation],
     flow_section: ForeignFlowSection,
+    relative_strength_section: RelativeStrengthSection,
     tv_section: TradingValueFlowSection,
 ) -> tuple[str, list[str], str]:
     if current_snapshot.investability_status == "INVESTABLE":
@@ -234,6 +237,7 @@ def _generate_deterministic_narrative(
         score_bullet,
         inv_bullet,
         f"외국인 수급: {flow_section.explanation}",
+        f"시장 상대강도: {relative_strength_section.explanation}",
         f"거래대금 추세: {tv_section.explanation}",
     ]
 
@@ -255,15 +259,34 @@ def _generate_deterministic_narrative(
             f"{inv_clause} {traj_sentence} "
             f"외국인 수급은 {flow_section.flow_state.value} 상태로, {flow_section.explanation} "
             f"거래대금은 {tv_section.trading_value_state.value} 상태로, {tv_section.explanation}"
+            f" 시장 상대강도는 {relative_strength_section.explanation}"
         )
     else:
-        combined_narrative = f"{headline} {traj_sentence}"
+        combined_narrative = (
+            f"{headline} {traj_sentence} 시장 상대강도는 {relative_strength_section.explanation}"
+        )
 
     return headline, bullet_points, combined_narrative
 
 
+def _format_rs_return(value: float | None) -> str:
+    return "N/A" if value is None else f"{value * 100:+.2f}%"
+
+
+def _format_rs_percentile(value: float | None) -> str:
+    return "N/A" if value is None else f"{value:.2f}"
+
+
+def _format_rs_position(value: float | None) -> str:
+    if value is None:
+        return "N/A"
+    if value >= 99.95:
+        return "시장 최상위권"
+    return f"상위 약 {max(0.0, 100.0 - value):.1f}%"
+
+
 def render_markdown_report(report: StockReport) -> str:
-    """StockReport JSON 객체를 사람이 읽기 쉬운 GitHub Flavored Markdown 보고서(v0.2)로 렌더링한다."""
+    """StockReport JSON 객체를 사람이 읽기 쉬운 GitHub Flavored Markdown 보고서(v0.3)로 렌더링한다."""
     cur = report.current_snapshot
     core = report.a_fast_core
     hist = report.monthly_history
@@ -497,6 +520,49 @@ def render_markdown_report(report: StockReport) -> str:
         md.append(f"| 5D | {nb5} | {i5} | {p5} |")
         md.append(f"| 20D | {nb20} | {i20} | {p20} |")
         md.append(f"| 60D | {nb60} | {i60} | {p60} |")
+    md.append("")
+    md.append("---")
+    md.append("")
+
+    # Section 7.5. Phase 12 Market Relative Strength (independent context)
+    rs = report.relative_strength
+    md.append("## 7.5. 시장 상대강도 (RS)")
+    md.append(f"- **적용 상태**: `{rs.applicability}`")
+    md.append(f"- **데이터 상태**: `{rs.data_status}`")
+    if rs.applicability == "APPLICABLE":
+        benchmark = rs.benchmark_name or "N/A"
+        if rs.benchmark_code:
+            benchmark = f"{benchmark} ({rs.benchmark_code})"
+        md.append(f"- **Benchmark**: `{benchmark}`")
+        md.append("")
+        md.append("| 기간 | 시장 대비 RS | 시장 백분위 | 시장 내 위치 |")
+        md.append("|---|---:|---:|---|")
+        md.append(
+            f"| 3개월 | {_format_rs_return(rs.market_rs_3m)} | "
+            f"{_format_rs_percentile(rs.all_market_rs_percentile_3m)} | "
+            f"{_format_rs_position(rs.all_market_rs_percentile_3m)} |"
+        )
+        md.append(
+            f"| 6개월 | {_format_rs_return(rs.market_rs_6m)} | "
+            f"{_format_rs_percentile(rs.all_market_rs_percentile_6m)} | "
+            f"{_format_rs_position(rs.all_market_rs_percentile_6m)} |"
+        )
+        md.append(
+            f"| 12개월 | {_format_rs_return(rs.market_rs_12m)} | "
+            f"{_format_rs_percentile(rs.all_market_rs_percentile_12m)} | "
+            f"{_format_rs_position(rs.all_market_rs_percentile_12m)} |"
+        )
+        md.append("")
+        md.append(
+            f"- **12M → 6M → 3M**: {_format_rs_return(rs.market_rs_12m)} → "
+            f"{_format_rs_return(rs.market_rs_6m)} → {_format_rs_return(rs.market_rs_3m)}"
+        )
+        md.append(f"- **3M vs 6M 개선도**: {_format_rs_return(rs.market_rs_delta_3m_vs_6m)}")
+        md.append(f"- **6M vs 12M 개선도**: {_format_rs_return(rs.market_rs_delta_6m_vs_12m)}")
+        md.append(f"- **RS acceleration**: {_format_rs_return(rs.market_rs_acceleration_3_6_12m)}")
+    md.append(f"- **해석**: {rs.explanation}")
+    if rs.source_artifact:
+        md.append(f"- **기준 snapshot**: `{rs.source_as_of}` · `{rs.source_artifact}`")
     md.append("")
     md.append("---")
     md.append("")
@@ -888,6 +954,15 @@ def generate_stock_report(
         foreign_positive_days_60d=flow_feat.foreign_positive_days_60d,
     )
 
+    # 7b. Phase 12 Market Relative Strength (exact local authority lookup)
+    relative_strength_section = load_relative_strength_section(
+        ticker=clean_ticker,
+        requested_as_of=canonical_as_of,
+        asset_type=asset_type,
+        market=market,
+        repo_root=root_path,
+    )
+
     # 8. Trading Value Flow Section
     tv_5d_val: float | None = None
     tv_20d_val: float | None = None
@@ -992,6 +1067,7 @@ def generate_stock_report(
         current_snapshot=current_snapshot,
         recent_12m=recent_12m_history,
         flow_section=foreign_flow_section,
+        relative_strength_section=relative_strength_section,
         tv_section=trading_value_section,
     )
 
@@ -1043,7 +1119,7 @@ def generate_stock_report(
     )
 
     report = StockReport(
-        report_version="0.2",
+        report_version="0.3",
         ticker=clean_ticker,
         name=name,
         market=market,
@@ -1056,6 +1132,7 @@ def generate_stock_report(
         pattern_a_fast=pattern_a_fast_section,
         monthly_history=monthly_section,
         foreign_flow=foreign_flow_section,
+        relative_strength=relative_strength_section,
         trading_value_flow=trading_value_section,
         data_quality=data_quality,
         provenance=provenance,

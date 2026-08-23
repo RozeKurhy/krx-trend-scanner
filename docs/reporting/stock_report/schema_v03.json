@@ -1,0 +1,1151 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "StockReport_v0.3",
+  "type": "object",
+  "required": [
+    "report_version",
+    "ticker",
+    "name",
+    "market",
+    "asset_type",
+    "requested_as_of",
+    "reference_market_date",
+    "header",
+    "summary",
+    "current_snapshot",
+    "a_fast_core",
+    "pattern_a_fast",
+    "monthly_history",
+    "foreign_flow",
+    "relative_strength",
+    "trading_value_flow",
+    "data_quality",
+    "provenance"
+  ],
+  "properties": {
+    "report_version": {
+      "type": "string",
+      "enum": [
+        "0.3"
+      ]
+    },
+    "ticker": {
+      "type": "string",
+      "pattern": "^[0-9A-Z]{6}$"
+    },
+    "name": {
+      "type": "string"
+    },
+    "market": {
+      "type": "string",
+      "enum": [
+        "KOSPI",
+        "KOSDAQ",
+        "KONEX",
+        "UNKNOWN"
+      ]
+    },
+    "asset_type": {
+      "type": "string",
+      "enum": [
+        "COMMON",
+        "PREFERRED",
+        "SPAC",
+        "REIT",
+        "ETF",
+        "ETN",
+        "OTHER",
+        "UNKNOWN"
+      ]
+    },
+    "requested_as_of": {
+      "type": "string"
+    },
+    "reference_market_date": {
+      "type": "string"
+    },
+    "header": {
+      "type": "object",
+      "required": [
+        "ticker",
+        "name",
+        "market",
+        "asset_type",
+        "requested_as_of",
+        "reference_market_date",
+        "cache_present",
+        "report_status"
+      ],
+      "properties": {
+        "ticker": {
+          "type": "string",
+          "pattern": "^[0-9A-Z]{6}$"
+        },
+        "name": {
+          "type": "string"
+        },
+        "market": {
+          "type": "string",
+          "enum": [
+            "KOSPI",
+            "KOSDAQ",
+            "KONEX",
+            "UNKNOWN"
+          ]
+        },
+        "asset_type": {
+          "type": "string",
+          "enum": [
+            "COMMON",
+            "PREFERRED",
+            "SPAC",
+            "REIT",
+            "ETF",
+            "ETN",
+            "OTHER",
+            "UNKNOWN"
+          ]
+        },
+        "requested_as_of": {
+          "type": "string"
+        },
+        "reference_market_date": {
+          "type": "string"
+        },
+        "effective_as_of": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "cache_present": {
+          "type": "boolean"
+        },
+        "cache_last_date": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "report_status": {
+          "type": "string",
+          "enum": [
+            "READY",
+            "PARTIAL",
+            "DATA_UNAVAILABLE"
+          ]
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "required": [
+        "headline",
+        "bullet_points",
+        "combined_narrative"
+      ],
+      "properties": {
+        "headline": {
+          "type": "string"
+        },
+        "strategy_headline": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "bullet_points": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "combined_narrative": {
+          "type": "string"
+        }
+      }
+    },
+    "current_snapshot": {
+      "type": "object",
+      "required": [
+        "official_stage",
+        "candidate_state",
+        "is_candidate",
+        "investability_status",
+        "investability_reason",
+        "is_investable",
+        "market_cap_effective_date",
+        "market_cap_source"
+      ],
+      "properties": {
+        "pattern_a_score": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "official_stage": {
+          "type": "string"
+        },
+        "candidate_state": {
+          "type": "string"
+        },
+        "is_candidate": {
+          "type": "boolean"
+        },
+        "market_cap_eok": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "avg_trading_value_20d_eok": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "investability_status": {
+          "type": "string"
+        },
+        "investability_reason": {
+          "type": "string"
+        },
+        "is_investable": {
+          "type": "boolean"
+        },
+        "market_cap_effective_date": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "market_cap_source": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "a_fast_core": {
+      "type": "object",
+      "required": [
+        "strategy_id",
+        "strategy_version",
+        "strategy_alias",
+        "strategy_status",
+        "production_status",
+        "fresh_oos_status",
+        "as_of",
+        "applicability",
+        "strategy_state",
+        "canonical_position",
+        "action",
+        "action_reason",
+        "execution_timing",
+        "entry_conditions",
+        "current_trade",
+        "protection_state",
+        "reentry_state",
+        "trade_history",
+        "interpretation",
+        "provenance",
+        "metadata_provenance_mode"
+      ],
+      "properties": {
+        "metadata_provenance_mode": {
+          "type": "string",
+          "enum": [
+            "CURRENT_VERIFIED",
+            "HISTORICAL_LEGACY_RESEARCH",
+            "DATA_UNAVAILABLE"
+          ]
+        },
+        "strategy_id": {
+          "type": "string",
+          "enum": [
+            "PATTERN_A_FAST_FINAL_STRATEGY_V02"
+          ]
+        },
+        "strategy_version": {
+          "type": "string",
+          "enum": [
+            "V02"
+          ]
+        },
+        "strategy_alias": {
+          "type": "string"
+        },
+        "strategy_status": {
+          "type": "string"
+        },
+        "production_status": {
+          "type": "string"
+        },
+        "fresh_oos_status": {
+          "type": "string"
+        },
+        "as_of": {
+          "type": "string"
+        },
+        "applicability": {
+          "type": "string",
+          "enum": [
+            "APPLICABLE",
+            "NOT_APPLICABLE",
+            "DATA_UNAVAILABLE"
+          ]
+        },
+        "strategy_state": {
+          "type": "string",
+          "enum": [
+            "HOLD_PROGRESSED",
+            "HOLD_PRE_PROGRESSED",
+            "ENTRY",
+            "EXIT",
+            "WAIT",
+            "NOT_APPLICABLE",
+            "DATA_UNAVAILABLE"
+          ]
+        },
+        "canonical_position": {
+          "type": "string",
+          "enum": [
+            "OPEN",
+            "FLAT",
+            "NOT_APPLICABLE",
+            "DATA_UNAVAILABLE"
+          ]
+        },
+        "action": {
+          "type": "string",
+          "enum": [
+            "HOLD",
+            "ENTER_NEXT_OPEN",
+            "EXIT_NEXT_OPEN",
+            "WAIT",
+            "NONE"
+          ]
+        },
+        "action_reason": {
+          "type": "string"
+        },
+        "execution_timing": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "interpretation": {
+          "type": "string"
+        },
+        "entry_conditions": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "required": [
+            "instrument_eligible",
+            "investability_pass",
+            "pattern_a_stage_eligible",
+            "fast_trigger_ready",
+            "monthly_regime_permitted",
+            "daily_risk_allowed",
+            "fast_score_status_allowed",
+            "no_open_position",
+            "all_conditions_met",
+            "failed_conditions",
+            "pattern_a_stage",
+            "fast_stage",
+            "fast_stage_status",
+            "monthly_regime",
+            "daily_risk",
+            "fast_score_status"
+          ],
+          "properties": {
+            "instrument_eligible": {
+              "type": "boolean"
+            },
+            "investability_pass": {
+              "type": "boolean"
+            },
+            "pattern_a_stage_eligible": {
+              "type": "boolean"
+            },
+            "fast_trigger_ready": {
+              "type": "boolean"
+            },
+            "monthly_regime_permitted": {
+              "type": "boolean"
+            },
+            "daily_risk_allowed": {
+              "type": "boolean"
+            },
+            "fast_score_status_allowed": {
+              "type": "boolean"
+            },
+            "no_open_position": {
+              "type": "boolean"
+            },
+            "all_conditions_met": {
+              "type": "boolean"
+            },
+            "failed_conditions": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "pattern_a_stage": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "fast_stage": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "fast_stage_status": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "monthly_regime": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "daily_risk": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "fast_score_status": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        },
+        "current_trade": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "required": [
+            "trade_id",
+            "trade_sequence",
+            "entry_signal_date",
+            "entry_execution_date",
+            "entry_open",
+            "entry_pattern_a_stage",
+            "previous_exit_type",
+            "previous_exit_execution_date",
+            "first_progressed_date",
+            "first_progressed_effective_trading_date",
+            "lifecycle_class",
+            "current_close",
+            "current_return_pct",
+            "trade_status",
+            "pending_exit_type",
+            "pending_exit_signal_date"
+          ],
+          "properties": {
+            "trade_id": {
+              "type": "string"
+            },
+            "trade_sequence": {
+              "type": "integer"
+            },
+            "entry_signal_date": {
+              "type": "string"
+            },
+            "entry_execution_date": {
+              "type": "string"
+            },
+            "entry_open": {
+              "type": "number"
+            },
+            "entry_pattern_a_stage": {
+              "type": "string"
+            },
+            "previous_exit_type": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "previous_exit_execution_date": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "first_progressed_date": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "first_progressed_effective_trading_date": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "lifecycle_class": {
+              "type": "string"
+            },
+            "current_close": {
+              "type": "number"
+            },
+            "current_return_pct": {
+              "type": "number"
+            },
+            "trade_status": {
+              "type": "string"
+            },
+            "pending_exit_type": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "pending_exit_signal_date": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        },
+        "protection_state": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "required": [
+            "phase",
+            "loss_guard_state",
+            "loss_guard_threshold_pct",
+            "first_progressed_date",
+            "first_progressed_effective_trading_date",
+            "lifecycle_class",
+            "exit3_state",
+            "exit4_state",
+            "progressed_hwm_score",
+            "current_pattern_a_score",
+            "score_drawdown_from_hwm_pt"
+          ],
+          "properties": {
+            "phase": {
+              "type": "string"
+            },
+            "loss_guard_state": {
+              "type": "string"
+            },
+            "loss_guard_threshold_pct": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "first_progressed_date": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "first_progressed_effective_trading_date": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "lifecycle_class": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "exit3_state": {
+              "type": "string"
+            },
+            "exit4_state": {
+              "type": "string"
+            },
+            "progressed_hwm_score": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "current_pattern_a_score": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "score_drawdown_from_hwm_pt": {
+              "type": [
+                "number",
+                "null"
+              ]
+            }
+          }
+        },
+        "reentry_state": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "required": [
+            "enabled",
+            "cooldown",
+            "maximum_reentries",
+            "pyramiding",
+            "overlapping_position",
+            "same_open_exit_and_reentry",
+            "completed_trade_count",
+            "current_trade_sequence",
+            "next_entry_sequence"
+          ],
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "cooldown": {
+              "type": "string"
+            },
+            "maximum_reentries": {
+              "type": "string"
+            },
+            "pyramiding": {
+              "type": "boolean"
+            },
+            "overlapping_position": {
+              "type": "boolean"
+            },
+            "same_open_exit_and_reentry": {
+              "type": "boolean"
+            },
+            "completed_trade_count": {
+              "type": "integer"
+            },
+            "current_trade_sequence": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "next_entry_sequence": {
+              "type": "integer"
+            }
+          }
+        },
+        "trade_history": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "trade_id",
+              "trade_sequence",
+              "entry_signal_date",
+              "entry_execution_date",
+              "entry_open",
+              "entry_pattern_a_stage",
+              "exit_type",
+              "exit_signal_date",
+              "exit_execution_date",
+              "exit_price",
+              "trade_status",
+              "return_pct",
+              "previous_exit_type",
+              "lifecycle_class"
+            ],
+            "properties": {
+              "trade_id": {
+                "type": "string"
+              },
+              "trade_sequence": {
+                "type": "integer"
+              },
+              "entry_signal_date": {
+                "type": "string"
+              },
+              "entry_execution_date": {
+                "type": "string"
+              },
+              "entry_open": {
+                "type": "number"
+              },
+              "entry_pattern_a_stage": {
+                "type": "string"
+              },
+              "exit_type": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "exit_signal_date": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "exit_execution_date": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "exit_price": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "trade_status": {
+                "type": "string"
+              },
+              "return_pct": {
+                "type": "number"
+              },
+              "previous_exit_type": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "lifecycle_class": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        },
+        "provenance": {
+          "type": "object",
+          "required": [
+            "strategy_contract",
+            "strategy_contract_path",
+            "architecture_authority_commit",
+            "calendar_authority_commit",
+            "trade_generation_authority_commit",
+            "evidence_closure_authority_commit",
+            "network_requests"
+          ],
+          "properties": {
+            "strategy_contract": {
+              "type": "string"
+            },
+            "strategy_contract_path": {
+              "type": "string"
+            },
+            "architecture_authority_commit": {
+              "type": "string"
+            },
+            "calendar_authority_commit": {
+              "type": "string"
+            },
+            "trade_generation_authority_commit": {
+              "type": "string"
+            },
+            "evidence_closure_authority_commit": {
+              "type": "string"
+            },
+            "network_requests": {
+              "type": "integer",
+              "enum": [
+                0
+              ]
+            }
+          }
+        }
+      }
+    },
+    "pattern_a_fast": {
+      "type": "object",
+      "required": [
+        "contract",
+        "label",
+        "lifecycle_status",
+        "history_start_as_of",
+        "history_end_as_of",
+        "observation_count",
+        "weekly_history"
+      ],
+      "properties": {
+        "contract": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "lifecycle_status": {
+          "type": "string"
+        },
+        "history_start_as_of": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "history_end_as_of": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "observation_count": {
+          "type": "integer"
+        },
+        "weekly_history": {
+          "type": "array"
+        }
+      }
+    },
+    "monthly_history": {
+      "type": "object",
+      "required": [
+        "history_start_as_of",
+        "history_end_as_of",
+        "observation_count",
+        "recent_12m_observation_count",
+        "full_monthly_history",
+        "recent_12m_history",
+        "first_pattern_a_available_as_of",
+        "pattern_a_available_observation_count",
+        "stage_transitions",
+        "score_trend"
+      ],
+      "properties": {
+        "history_start_as_of": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "history_end_as_of": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "observation_count": {
+          "type": "integer"
+        },
+        "recent_12m_observation_count": {
+          "type": "integer"
+        },
+        "full_monthly_history": {
+          "type": "array"
+        },
+        "recent_12m_history": {
+          "type": "array"
+        },
+        "first_pattern_a_available_as_of": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "pattern_a_available_observation_count": {
+          "type": "integer"
+        }
+      }
+    },
+    "foreign_flow": {
+      "type": "object",
+      "required": [
+        "data_status",
+        "flow_state",
+        "explanation"
+      ],
+      "properties": {
+        "data_status": {
+          "type": "string"
+        },
+        "flow_state": {
+          "type": "string"
+        },
+        "explanation": {
+          "type": "string"
+        }
+      }
+    },
+    "trading_value_flow": {
+      "type": "object",
+      "required": [
+        "trading_value_state",
+        "explanation"
+      ],
+      "properties": {
+        "trading_value_state": {
+          "type": "string"
+        },
+        "explanation": {
+          "type": "string"
+        }
+      }
+    },
+    "data_quality": {
+      "type": "object",
+      "required": [
+        "cache_present",
+        "daily_rows_count",
+        "completed_month_count",
+        "quality_status"
+      ],
+      "properties": {
+        "cache_present": {
+          "type": "boolean"
+        },
+        "cache_first_date": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "cache_last_date": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "daily_rows_count": {
+          "type": "integer"
+        },
+        "completed_month_count": {
+          "type": "integer"
+        },
+        "quality_status": {
+          "type": "string"
+        }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "required": [
+        "stock_price_source",
+        "score_contract",
+        "stage_contract",
+        "investability_contract",
+        "foreign_flow_contract",
+        "network_requests"
+      ],
+      "properties": {
+        "stock_price_source": {
+          "type": "string"
+        },
+        "score_contract": {
+          "type": "string"
+        },
+        "stage_contract": {
+          "type": "string"
+        },
+        "investability_contract": {
+          "type": "string"
+        },
+        "foreign_flow_contract": {
+          "type": "string"
+        },
+        "network_requests": {
+          "type": "integer",
+          "enum": [
+            0
+          ]
+        }
+      }
+    },
+    "relative_strength": {
+      "type": "object",
+      "required": [
+        "applicability",
+        "data_status",
+        "benchmark_name",
+        "benchmark_code",
+        "benchmark_last_observation_date",
+        "market_rs_3m",
+        "market_rs_6m",
+        "market_rs_12m",
+        "market_rs_delta_3m_vs_6m",
+        "market_rs_delta_6m_vs_12m",
+        "market_rs_acceleration_3_6_12m",
+        "all_market_rs_rank_3m",
+        "all_market_rs_rank_6m",
+        "all_market_rs_rank_12m",
+        "all_market_rs_percentile_3m",
+        "all_market_rs_percentile_6m",
+        "all_market_rs_percentile_12m",
+        "market_anchor_date_3m",
+        "market_anchor_date_6m",
+        "market_anchor_date_12m",
+        "explanation",
+        "source_as_of",
+        "source_artifact",
+        "source_sha256",
+        "phase12_closure_sha"
+      ],
+      "properties": {
+        "applicability": {
+          "type": "string",
+          "enum": [
+            "APPLICABLE",
+            "NOT_APPLICABLE",
+            "DATA_UNAVAILABLE"
+          ]
+        },
+        "data_status": {
+          "type": "string"
+        },
+        "benchmark_name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "benchmark_code": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "benchmark_last_observation_date": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "market_rs_3m": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "market_rs_6m": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "market_rs_12m": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "market_rs_delta_3m_vs_6m": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "market_rs_delta_6m_vs_12m": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "market_rs_acceleration_3_6_12m": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "all_market_rs_rank_3m": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "all_market_rs_rank_6m": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "all_market_rs_rank_12m": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "all_market_rs_percentile_3m": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "all_market_rs_percentile_6m": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "all_market_rs_percentile_12m": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "market_anchor_date_3m": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "market_anchor_date_6m": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "market_anchor_date_12m": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "source_as_of": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "source_artifact": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "source_sha256": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "explanation": {
+          "type": "string"
+        },
+        "phase12_closure_sha": {
+          "type": "string",
+          "enum": [
+            "5fdf97793c1fd7683c33d5fe77ff4da97fc75a19"
+          ]
+        }
+      }
+    }
+  }
+}
