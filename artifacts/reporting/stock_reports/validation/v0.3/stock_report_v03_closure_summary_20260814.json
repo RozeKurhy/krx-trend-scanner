@@ -1,0 +1,191 @@
+{
+  "artifact_counts": {
+    "v01_archive": {
+      "json": 54,
+      "markdown": 54
+    },
+    "v02_archive": {
+      "json": 54,
+      "markdown": 54
+    },
+    "v03_production": {
+      "json": 54,
+      "markdown": 54
+    }
+  },
+  "authority_chain": {
+    "fix01_commit": "2c96d69eead88f6bca0acb693aa646fa642a95fd",
+    "fix01_evidence_commit": "813309e9b4eb57cef1acf8ce48fac6727ff9a1ad",
+    "initial_v03_commit": "6695f99480f9824b3c903f074bdebdb3aa0fbc60",
+    "phase12_closure_sha": "5fdf97793c1fd7683c33d5fe77ff4da97fc75a19"
+  },
+  "ci_status": "NOT_REGISTERED",
+  "final_status": "READY_FOR_ARCHITECT_STOCK_REPORT_V03_FINAL_CLOSURE",
+  "full_suite": {
+    "command": "caffeinate -i env KRX_ID= KRX_PW= PYTHONDONTWRITEBYTECODE=1 PYTHONWARNINGS=ignore uv run pytest -q -p no:cacheprovider",
+    "completed_at": "2026-08-23T06:42:35Z",
+    "deselected": 5,
+    "duration_seconds": 1267.16,
+    "environment": {
+      "KRX_ID": "",
+      "KRX_PW": "",
+      "network_policy": "local-only"
+    },
+    "errors": 0,
+    "exit_code": 0,
+    "failed": 0,
+    "passed": 1078,
+    "preflight_attempt": {
+      "exit_code": 2,
+      "pytest_started": false,
+      "reason": "uv cache permission error before pytest startup; approved rerun executed the suite once"
+    },
+    "pytest_execution_count": 1,
+    "skipped": 6,
+    "started_at": "2026-08-23T06:21:28Z",
+    "status": "PASS"
+  },
+  "full_universe_scanner_called": false,
+  "generated_at": "2026-08-23T06:45:33Z",
+  "network_requests": 0,
+  "non_common_validation": {
+    "expected": "ETF rows are NOT_APPLICABLE / NOT_EVALUATED",
+    "failures": [],
+    "total": 17,
+    "valid": 17
+  },
+  "report_version": "0.3",
+  "representatives": {
+    "005930": {
+      "formatted_values": {
+        "acceleration": "+31.72%p",
+        "delta_3m_vs_6m": "-20.16%p",
+        "delta_6m_vs_12m": "-51.87%p",
+        "level_12m": "+78.10%",
+        "level_3m": "+6.07%",
+        "level_6m": "+26.23%"
+      },
+      "name": "삼성전자",
+      "phase12_applicability": "APPLICABLE",
+      "phase12_source_present": true,
+      "phase12_status": "READY",
+      "production_file": "005930_삼성전자.json",
+      "production_report_present": true,
+      "production_values_match_phase12": true,
+      "source_values": {
+        "all_market_rs_percentile_3m": 59.89826197541331,
+        "market_rs_12m": 0.7810181942942702,
+        "market_rs_3m": 0.06072554451329215,
+        "market_rs_6m": 0.26228183720079623,
+        "market_rs_acceleration_3_6_12m": 0.3171800644059699,
+        "market_rs_delta_3m_vs_6m": -0.20155629268750408,
+        "market_rs_delta_6m_vs_12m": -0.518736357093474
+      }
+    },
+    "035420": {
+      "formatted_values": {
+        "acceleration": "+34.17%p",
+        "delta_3m_vs_6m": "+55.65%p",
+        "delta_6m_vs_12m": "+21.48%p",
+        "level_12m": "-54.70%",
+        "level_3m": "+22.44%",
+        "level_6m": "-33.22%"
+      },
+      "name": "NAVER",
+      "phase12_applicability": "APPLICABLE",
+      "phase12_source_present": true,
+      "phase12_status": "READY",
+      "production_file": null,
+      "production_report_present": false,
+      "production_values_match_phase12": null,
+      "source_values": {
+        "all_market_rs_percentile_3m": 80.45782111064011,
+        "market_rs_12m": -0.5470006716404363,
+        "market_rs_3m": 0.22435577358942083,
+        "market_rs_6m": -0.3321903854594984,
+        "market_rs_acceleration_3_6_12m": 0.34173587286798135,
+        "market_rs_delta_3m_vs_6m": 0.5565461590489192,
+        "market_rs_delta_6m_vs_12m": 0.2148102861809379
+      }
+    },
+    "068270": {
+      "formatted_values": {
+        "acceleration": "+38.85%p",
+        "delta_3m_vs_6m": "+53.72%p",
+        "delta_6m_vs_12m": "+14.88%p",
+        "level_12m": "-44.97%",
+        "level_3m": "+23.63%",
+        "level_6m": "-30.09%"
+      },
+      "name": "셀트리온",
+      "phase12_applicability": "APPLICABLE",
+      "phase12_source_present": true,
+      "phase12_status": "READY",
+      "production_file": null,
+      "production_report_present": false,
+      "production_values_match_phase12": null,
+      "source_values": {
+        "all_market_rs_percentile_3m": 81.72954641797372,
+        "market_rs_12m": -0.4496787607127102,
+        "market_rs_3m": 0.2363010527967675,
+        "market_rs_6m": -0.3009261151369007,
+        "market_rs_acceleration_3_6_12m": 0.38847452235785873,
+        "market_rs_delta_3m_vs_6m": 0.5372271679336682,
+        "market_rs_delta_6m_vs_12m": 0.14875264557580947
+      }
+    }
+  },
+  "rs_distribution": {
+    "data_unavailable": 1,
+    "not_applicable": 17,
+    "partial": 0,
+    "ready": 36
+  },
+  "scope": {
+    "production_report_changed": false,
+    "readme_changed": false,
+    "roadmap_changed": false,
+    "sector_rs_status": "DEFERRED_FUTURE_EXTENSION",
+    "source_code_changed": false,
+    "strategy_semantics_changed": false
+  },
+  "start_head": "813309e9b4eb57cef1acf8ce48fac6727ff9a1ad",
+  "targeted_tests": {
+    "command": "PYTHONDONTWRITEBYTECODE=1 PYTHONWARNINGS=ignore KRX_ID= KRX_PW= .venv/bin/pytest -q -p no:cacheprovider tests/test_stock_report_v03_relative_strength.py tests/test_stock_report.py tests/test_a_fast_core_stock_report.py tests/test_pattern_a_fast_stock_report.py tests/test_relative_strength_cross_section_v01.py tests/test_pattern_a_relative_strength_infrastructure.py",
+    "deselected": 1,
+    "errors": 0,
+    "failed": 0,
+    "passed": 117,
+    "skipped": 0,
+    "status": "PASS"
+  },
+  "ticker_sets": {
+    "v03_v01_mismatch_count": 0,
+    "v03_v02_mismatch_count": 0,
+    "v03_v02_v01_equal": true
+  },
+  "validation_gates": {
+    "a_fast_core_mismatch_count": 0,
+    "current_snapshot_mismatch_count": 0,
+    "data_quality_mismatch_count": 0,
+    "foreign_flow_mismatch_count": 0,
+    "header_mismatch_count": 0,
+    "markdown_unit_mismatch_count": 0,
+    "monthly_history_mismatch_count": 0,
+    "pattern_a_fast_mismatch_count": 0,
+    "phase12_acceleration_mismatch_count": 0,
+    "phase12_improvement_mismatch_count": 0,
+    "phase12_level_mismatch_count": 0,
+    "phase12_percentile_mismatch_count": 0,
+    "phase12_rank_mismatch_count": 0,
+    "regression_parity_mismatch_count": 0,
+    "relative_strength_numeric_mismatch_count": 0,
+    "rs_acceleration_wrong_unit_count": 0,
+    "rs_delta_wrong_unit_count": 0,
+    "rs_level_wrong_unit_count": 0,
+    "schema_error_count": 0,
+    "source_sha_mismatch_count": 0,
+    "trading_value_flow_mismatch_count": 0
+  },
+  "work_id": "STOCK_REPORT_V03_CLOSURE_SUITE_V01"
+}

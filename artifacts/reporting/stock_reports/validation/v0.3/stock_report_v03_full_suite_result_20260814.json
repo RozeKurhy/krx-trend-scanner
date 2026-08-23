@@ -1,0 +1,24 @@
+{
+  "command": "caffeinate -i env KRX_ID= KRX_PW= PYTHONDONTWRITEBYTECODE=1 PYTHONWARNINGS=ignore uv run pytest -q -p no:cacheprovider",
+  "completed_at": "2026-08-23T06:42:35Z",
+  "deselected": 5,
+  "duration_seconds": 1267.16,
+  "environment": {
+    "KRX_ID": "",
+    "KRX_PW": "",
+    "network_policy": "local-only"
+  },
+  "errors": 0,
+  "exit_code": 0,
+  "failed": 0,
+  "passed": 1078,
+  "preflight_attempt": {
+    "exit_code": 2,
+    "pytest_started": false,
+    "reason": "uv cache permission error before pytest startup; approved rerun executed the suite once"
+  },
+  "pytest_execution_count": 1,
+  "skipped": 6,
+  "started_at": "2026-08-23T06:21:28Z",
+  "status": "PASS"
+}
