@@ -1,0 +1,97 @@
+{
+  "case_ambiguous_prior_direct_only": {
+    "parity_count": 0,
+    "q1": {
+      "reason": "MULTIPLE_CURRENT_PERIOD_CONTEXTS",
+      "status": "PERIOD_AMBIGUOUS",
+      "value": null
+    },
+    "q2": {
+      "derived_value": null,
+      "method": "DIRECT_ONLY",
+      "reason": null,
+      "status": "READY",
+      "value": 60
+    }
+  },
+  "case_late_correction": {
+    "parity_count": 0,
+    "q1": {
+      "reason": null,
+      "status": "READY",
+      "value": 40
+    },
+    "q1_late_correction_value": 45,
+    "q2": {
+      "derived_value": null,
+      "method": "NONE",
+      "reason": "PRIOR_PIT_MULTIPLE_FILINGS_ON_SAME_EOD",
+      "status": "PERIOD_AMBIGUOUS",
+      "value": null
+    }
+  },
+  "case_same_eod_multiple_filings": {
+    "parity_count": 0,
+    "q1": {
+      "reason": null,
+      "status": "READY",
+      "value": 40
+    },
+    "q2": {
+      "derived_value": null,
+      "method": "NONE",
+      "reason": "PRIOR_PIT_MULTIPLE_FILINGS_ON_SAME_EOD",
+      "status": "PERIOD_AMBIGUOUS",
+      "value": null
+    }
+  },
+  "case_same_filing_different_value": {
+    "parity_count": 0,
+    "q1": {
+      "reason": "MULTIPLE_CURRENT_PERIOD_CONTEXTS",
+      "status": "PERIOD_AMBIGUOUS",
+      "value": null
+    },
+    "q2": {
+      "derived_value": null,
+      "method": "NONE",
+      "reason": "PRIOR_PIT_MULTIPLE_CURRENT_CUMULATIVE_CONTEXTS",
+      "status": "PERIOD_AMBIGUOUS",
+      "value": null
+    }
+  },
+  "case_same_filing_same_value": {
+    "parity_count": 0,
+    "q1": {
+      "reason": "MULTIPLE_CURRENT_PERIOD_CONTEXTS",
+      "status": "PERIOD_AMBIGUOUS",
+      "value": null
+    },
+    "q2": {
+      "derived_value": null,
+      "method": "NONE",
+      "reason": "PRIOR_PIT_MULTIPLE_CURRENT_CUMULATIVE_CONTEXTS",
+      "status": "PERIOD_AMBIGUOUS",
+      "value": null
+    }
+  },
+  "case_unique_prior_direct_derived": {
+    "parity_count": 1,
+    "q1": {
+      "reason": null,
+      "status": "READY",
+      "value": 40
+    },
+    "q2": {
+      "derived_value": 60,
+      "method": "DIRECT_VALIDATED_BY_DERIVATION",
+      "reason": null,
+      "status": "READY",
+      "value": 60
+    }
+  },
+  "expected_reasons": {
+    "same_eod_filings": "PRIOR_PIT_MULTIPLE_FILINGS_ON_SAME_EOD",
+    "same_filing": "PRIOR_PIT_MULTIPLE_CURRENT_CUMULATIVE_CONTEXTS"
+  }
+}

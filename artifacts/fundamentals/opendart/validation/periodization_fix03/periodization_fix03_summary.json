@@ -1,0 +1,149 @@
+{
+  "CURRENT_LATEST_historical_calls": 0,
+  "all_parity_prior_sources_deterministic": true,
+  "ambiguous_prior_parity_count": 0,
+  "artifact_head": null,
+  "comparative_context_count": 128,
+  "context_row_count": 226,
+  "cumulative_candidate_count": 51,
+  "current_context_count": 98,
+  "direct_candidate_count": 90,
+  "error_location": null,
+  "error_type": null,
+  "exact_match_count": 6,
+  "final_provenance_head": null,
+  "final_status": "READY_FOR_ARCHITECT_OPENDART_FUNDAMENTALS_PERIODIZATION_FIX03_REVIEW",
+  "financial_branch_status": "PASS",
+  "future_correction_leakage": "NO",
+  "implementation_head": null,
+  "live_companies": [
+    "005930",
+    "237690",
+    "086790"
+  ],
+  "mismatch_count": 0,
+  "network_request_count": 12,
+  "parity_count": 6,
+  "prior_same_eod_filing_ambiguity_status": "PASS",
+  "prior_same_filing_context_ambiguity_status": "PASS",
+  "raw_source_committed": false,
+  "registry_request_count": 12,
+  "samsung_q1_duplicate_prior_status": {
+    "net_income": {
+      "q1_current_cumulative_context_count": 2,
+      "q1_distinct_rcept_no_count": 1,
+      "q1_rcept_nos": [
+        "20250515001922",
+        "20250515001922"
+      ],
+      "q2_derived_status": {
+        "status": "READY",
+        "value": null
+      },
+      "q2_direct_standalone_status": {
+        "method": "DIRECT_ONLY",
+        "reason": null,
+        "resolution_status": "READY",
+        "value": 5116435000000
+      },
+      "q2_final_method": "DIRECT_ONLY",
+      "q2_parity_emitted": false,
+      "selected_prior_status": {
+        "eligible_context_count": 2,
+        "eligible_rcept_nos": [
+          "20250515001922",
+          "20250515001922"
+        ],
+        "latest_rcept_dt": "2025-05-15",
+        "reason": "PRIOR_PIT_MULTIPLE_CURRENT_CUMULATIVE_CONTEXTS",
+        "status": "AMBIGUOUS"
+      }
+    },
+    "operating_income": {
+      "q1_current_cumulative_context_count": 2,
+      "q1_distinct_rcept_no_count": 1,
+      "q1_rcept_nos": [
+        "20250515001922",
+        "20250515001922"
+      ],
+      "q2_derived_status": {
+        "status": "READY",
+        "value": null
+      },
+      "q2_direct_standalone_status": {
+        "method": "DIRECT_ONLY",
+        "reason": null,
+        "resolution_status": "READY",
+        "value": 4676057000000
+      },
+      "q2_final_method": "DIRECT_ONLY",
+      "q2_parity_emitted": false,
+      "selected_prior_status": {
+        "eligible_context_count": 2,
+        "eligible_rcept_nos": [
+          "20250515001922",
+          "20250515001922"
+        ],
+        "latest_rcept_dt": "2025-05-15",
+        "reason": "PRIOR_PIT_MULTIPLE_CURRENT_CUMULATIVE_CONTEXTS",
+        "status": "AMBIGUOUS"
+      }
+    },
+    "revenue": {
+      "q1_current_cumulative_context_count": 2,
+      "q1_distinct_rcept_no_count": 1,
+      "q1_rcept_nos": [
+        "20250515001922",
+        "20250515001922"
+      ],
+      "q2_derived_status": {
+        "status": "READY",
+        "value": null
+      },
+      "q2_direct_standalone_status": {
+        "method": "DIRECT_ONLY",
+        "reason": null,
+        "resolution_status": "READY",
+        "value": 74566317000000
+      },
+      "q2_final_method": "DIRECT_ONLY",
+      "q2_parity_emitted": false,
+      "selected_prior_status": {
+        "eligible_context_count": 2,
+        "eligible_rcept_nos": [
+          "20250515001922",
+          "20250515001922"
+        ],
+        "latest_rcept_dt": "2025-05-15",
+        "reason": "PRIOR_PIT_MULTIPLE_CURRENT_CUMULATIVE_CONTEXTS",
+        "status": "AMBIGUOUS"
+      }
+    }
+  },
+  "samsung_q2_net_income_method": "DIRECT_ONLY",
+  "samsung_q2_operating_income_method": "DIRECT_ONLY",
+  "samsung_q2_revenue_method": "DIRECT_ONLY",
+  "secret_leak_count": 0,
+  "source_provenance_alignment_status": "PASS",
+  "st_pharm_parity_count": 3,
+  "st_pharm_regression_status": "PASS",
+  "start_head": "28c78b29ace74a3d6e7255abec16fd72289b07f2",
+  "targeted_test_command": "/Users/june/Documents/projects/krx-trend-scanner/.venv/bin/python -m pytest -q -p no:cacheprovider tests/test_opendart_fundamentals_contract.py tests/test_opendart_fundamentals_core.py tests/test_opendart_fundamentals_core_fix01.py tests/test_opendart_fundamentals_core_fix02.py tests/test_opendart_fundamentals_periodization_v01.py tests/test_opendart_fundamentals_periodization_fix01.py tests/test_opendart_fundamentals_periodization_fix02.py tests/test_opendart_fundamentals_periodization_fix03.py",
+  "targeted_test_count": 98,
+  "targeted_test_files": [
+    "tests/test_opendart_fundamentals_contract.py",
+    "tests/test_opendart_fundamentals_core.py",
+    "tests/test_opendart_fundamentals_core_fix01.py",
+    "tests/test_opendart_fundamentals_core_fix02.py",
+    "tests/test_opendart_fundamentals_periodization_v01.py",
+    "tests/test_opendart_fundamentals_periodization_fix01.py",
+    "tests/test_opendart_fundamentals_periodization_fix02.py",
+    "tests/test_opendart_fundamentals_periodization_fix03.py"
+  ],
+  "targeted_test_returncode": 0,
+  "targeted_test_status": "PASS",
+  "validated_filing_count": 11,
+  "work_id": "OPENDART_FUNDAMENTALS_V01_PERIODIZATION_FIX03",
+  "xbrl_cache_hit_count": 11,
+  "xbrl_network_fetch_count": 0
+}

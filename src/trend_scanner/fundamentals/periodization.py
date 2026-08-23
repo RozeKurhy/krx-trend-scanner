@@ -64,6 +64,7 @@ PRIOR_READY = "READY"
 PRIOR_MISSING = "MISSING"
 PRIOR_AMBIGUOUS = "AMBIGUOUS"
 PRIOR_PIT_MULTIPLE_FILINGS_ON_SAME_EOD = "PRIOR_PIT_MULTIPLE_FILINGS_ON_SAME_EOD"
+PRIOR_PIT_MULTIPLE_CURRENT_CUMULATIVE_CONTEXTS = "PRIOR_PIT_MULTIPLE_CURRENT_CUMULATIVE_CONTEXTS"
 
 
 def _parse_date(value: Any) -> date | None:
@@ -377,6 +378,10 @@ class PeriodizationEngine:
             if metric in INSTANT_METRICS:
                 observations.extend(self._instant_candidates(instants or cumulative, fiscal_start, period_info[2]))
                 continue
+            if code == "11013" and (len(cumulative) > 1 or len(direct) > 1):
+                observations.append(self._unavailable(anchor, fiscal_start, "Q1", PERIOD_AMBIGUOUS,
+                                                       "MULTIPLE_CURRENT_PERIOD_CONTEXTS"))
+                continue
             if cumulative:
                 if len(cumulative) == 1:
                     if _valid_source(cumulative[0]):
@@ -475,6 +480,11 @@ class PeriodizationEngine:
             return PriorCumulativeSelection(
                 PRIOR_AMBIGUOUS, eligible=latest, latest_rcept_dt=latest_text,
                 reason=PRIOR_PIT_MULTIPLE_FILINGS_ON_SAME_EOD,
+            )
+        if len(latest) > 1:
+            return PriorCumulativeSelection(
+                PRIOR_AMBIGUOUS, eligible=latest, latest_rcept_dt=latest_text,
+                reason=PRIOR_PIT_MULTIPLE_CURRENT_CUMULATIVE_CONTEXTS,
             )
         return PriorCumulativeSelection(PRIOR_READY, selected=latest[0], eligible=latest,
                                         latest_rcept_dt=latest_text)
