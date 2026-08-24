@@ -1,0 +1,154 @@
+{
+  "cases": [
+    {
+      "case": "I_I_I_M",
+      "component_counts": {
+        "deteriorating": 0,
+        "improving": 3,
+        "mixed": 1,
+        "stable": 0,
+        "unavailable": 0
+      },
+      "expected": "IMPROVING",
+      "mixed_component_unconditional_veto_count": 0,
+      "observed": "IMPROVING",
+      "states": [
+        "IMPROVING",
+        "IMPROVING",
+        "IMPROVING",
+        "MIXED"
+      ],
+      "status": "PASS"
+    },
+    {
+      "case": "D_D_M",
+      "component_counts": {
+        "deteriorating": 2,
+        "improving": 0,
+        "mixed": 1,
+        "stable": 0,
+        "unavailable": 0
+      },
+      "expected": "DETERIORATING",
+      "mixed_component_unconditional_veto_count": 0,
+      "observed": "DETERIORATING",
+      "states": [
+        "DETERIORATING",
+        "DETERIORATING",
+        "MIXED"
+      ],
+      "status": "PASS"
+    },
+    {
+      "case": "I_D",
+      "component_counts": {
+        "deteriorating": 1,
+        "improving": 1,
+        "mixed": 0,
+        "stable": 0,
+        "unavailable": 0
+      },
+      "expected": "MIXED",
+      "mixed_component_unconditional_veto_count": 0,
+      "observed": "MIXED",
+      "states": [
+        "IMPROVING",
+        "DETERIORATING"
+      ],
+      "status": "PASS"
+    },
+    {
+      "case": "M_M",
+      "component_counts": {
+        "deteriorating": 0,
+        "improving": 0,
+        "mixed": 2,
+        "stable": 0,
+        "unavailable": 0
+      },
+      "expected": "MIXED",
+      "mixed_component_unconditional_veto_count": 0,
+      "observed": "MIXED",
+      "states": [
+        "MIXED",
+        "MIXED"
+      ],
+      "status": "PASS"
+    },
+    {
+      "case": "S_S",
+      "component_counts": {
+        "deteriorating": 0,
+        "improving": 0,
+        "mixed": 0,
+        "stable": 2,
+        "unavailable": 0
+      },
+      "expected": "STABLE",
+      "mixed_component_unconditional_veto_count": 0,
+      "observed": "STABLE",
+      "states": [
+        "STABLE",
+        "STABLE"
+      ],
+      "status": "PASS"
+    },
+    {
+      "case": "U_U",
+      "component_counts": {
+        "deteriorating": 0,
+        "improving": 0,
+        "mixed": 0,
+        "stable": 0,
+        "unavailable": 2
+      },
+      "expected": "UNAVAILABLE",
+      "mixed_component_unconditional_veto_count": 0,
+      "observed": "UNAVAILABLE",
+      "states": [
+        "UNAVAILABLE",
+        "UNAVAILABLE"
+      ],
+      "status": "PASS"
+    },
+    {
+      "case": "I_M_S",
+      "component_counts": {
+        "deteriorating": 0,
+        "improving": 1,
+        "mixed": 1,
+        "stable": 1,
+        "unavailable": 0
+      },
+      "expected": "IMPROVING",
+      "mixed_component_unconditional_veto_count": 0,
+      "observed": "IMPROVING",
+      "states": [
+        "IMPROVING",
+        "MIXED",
+        "STABLE"
+      ],
+      "status": "PASS"
+    },
+    {
+      "case": "D_M_S",
+      "component_counts": {
+        "deteriorating": 1,
+        "improving": 0,
+        "mixed": 1,
+        "stable": 1,
+        "unavailable": 0
+      },
+      "expected": "DETERIORATING",
+      "mixed_component_unconditional_veto_count": 0,
+      "observed": "DETERIORATING",
+      "states": [
+        "DETERIORATING",
+        "MIXED",
+        "STABLE"
+      ],
+      "status": "PASS"
+    }
+  ],
+  "status": "PASS"
+}

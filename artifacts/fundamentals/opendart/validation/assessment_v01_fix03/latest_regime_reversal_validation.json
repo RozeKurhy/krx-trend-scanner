@@ -1,0 +1,90 @@
+{
+  "cases": [
+    {
+      "case": "REVERSING_DOWN",
+      "expected": "REVERSING_DOWN",
+      "observed": "REVERSING_DOWN",
+      "status": "PASS",
+      "values": [
+        8,
+        15,
+        24,
+        16
+      ]
+    },
+    {
+      "case": "DECELERATING_AFTER_DOWN_TURN",
+      "expected": "DECELERATING",
+      "observed": "DECELERATING",
+      "status": "PASS",
+      "values": [
+        8,
+        15,
+        24,
+        16,
+        14
+      ]
+    },
+    {
+      "case": "REVERSING_UP",
+      "expected": "REVERSING_UP",
+      "observed": "REVERSING_UP",
+      "status": "PASS",
+      "values": [
+        30,
+        20,
+        8,
+        14
+      ]
+    },
+    {
+      "case": "ACCELERATING_AFTER_UP_TURN",
+      "expected": "ACCELERATING",
+      "observed": "ACCELERATING",
+      "status": "PASS",
+      "values": [
+        30,
+        20,
+        8,
+        14,
+        18
+      ]
+    },
+    {
+      "case": "ACCELERATING_MINIMUM",
+      "expected": "ACCELERATING",
+      "observed": "ACCELERATING",
+      "status": "PASS",
+      "values": [
+        8,
+        15,
+        24
+      ]
+    },
+    {
+      "case": "DECELERATING_MINIMUM",
+      "expected": "DECELERATING",
+      "observed": "DECELERATING",
+      "status": "PASS",
+      "values": [
+        30,
+        20,
+        8
+      ]
+    },
+    {
+      "case": "MIXED_IRREGULAR",
+      "expected": "MIXED",
+      "observed": "MIXED",
+      "status": "PASS",
+      "values": [
+        10,
+        25,
+        15,
+        22,
+        20
+      ]
+    }
+  ],
+  "status": "PASS"
+}

@@ -1,0 +1,147 @@
+{
+  "checks": [
+    {
+      "component_axis": "GROWTH",
+      "component_id": "revenue_short_term_acceleration",
+      "evidence_axes": [
+        "GROWTH"
+      ],
+      "expected_axis": "GROWTH",
+      "metric": "revenue",
+      "metric_type": "YOY_GROWTH_ACCELERATION",
+      "status": "PASS"
+    },
+    {
+      "component_axis": "GROWTH",
+      "component_id": "operating_income_short_term_acceleration",
+      "evidence_axes": [
+        "GROWTH"
+      ],
+      "expected_axis": "GROWTH",
+      "metric": "operating_income",
+      "metric_type": "YOY_GROWTH_ACCELERATION",
+      "status": "PASS"
+    },
+    {
+      "component_axis": "GROWTH",
+      "component_id": "net_income_short_term_acceleration",
+      "evidence_axes": [
+        "GROWTH"
+      ],
+      "expected_axis": "GROWTH",
+      "metric": "net_income",
+      "metric_type": "YOY_GROWTH_ACCELERATION",
+      "status": "PASS"
+    },
+    {
+      "component_axis": "PROFITABILITY",
+      "component_id": "operating_income_margin_direction",
+      "evidence_axes": [
+        "PROFITABILITY"
+      ],
+      "expected_axis": "PROFITABILITY",
+      "metric": "operating_income",
+      "metric_type": "MARGIN_EXPANSION_TREND",
+      "status": "PASS"
+    },
+    {
+      "component_axis": "PROFITABILITY",
+      "component_id": "net_income_margin_direction",
+      "evidence_axes": [
+        "PROFITABILITY"
+      ],
+      "expected_axis": "PROFITABILITY",
+      "metric": "net_income",
+      "metric_type": "MARGIN_EXPANSION_TREND",
+      "status": "PASS"
+    },
+    {
+      "component_axis": "CASH_FLOW",
+      "component_id": "operating_cash_flow_short_term_acceleration",
+      "evidence_axes": [
+        "CASH_FLOW"
+      ],
+      "expected_axis": "CASH_FLOW",
+      "metric": "operating_cash_flow",
+      "metric_type": "YOY_GROWTH_ACCELERATION",
+      "status": "PASS"
+    },
+    {
+      "component_axis": "CASH_FLOW",
+      "component_id": "operating_cash_flow_short_term_trend",
+      "evidence_axes": [
+        "CASH_FLOW"
+      ],
+      "expected_axis": "CASH_FLOW",
+      "metric": "operating_cash_flow",
+      "metric_type": "OPERATING_CASH_FLOW_TREND",
+      "status": "PASS"
+    },
+    {
+      "component_axis": "CASH_FLOW",
+      "component_id": "operating_cash_flow_margin_direction",
+      "evidence_axes": [
+        "CASH_FLOW"
+      ],
+      "expected_axis": "CASH_FLOW",
+      "metric": "operating_cash_flow",
+      "metric_type": "MARGIN_EXPANSION_TREND",
+      "status": "PASS"
+    }
+  ],
+  "evidence_component_axis_mismatch_count": 0,
+  "ocf_acceleration_evidence": [
+    {
+      "axis": "CASH_FLOW",
+      "classification": "ACCELERATING",
+      "direction": "POSITIVE",
+      "explanation_code": "YOY_ACCELERATING",
+      "fiscal_period": "Q3",
+      "fiscal_year": "2025",
+      "metadata": {},
+      "metric": "operating_cash_flow",
+      "metric_type": "YOY_GROWTH_ACCELERATION",
+      "pit_available_from": "2025-10-15",
+      "reason": null,
+      "requested_as_of": "2025-10-15",
+      "source_rcept_dts": [
+        "2025-10-15"
+      ],
+      "source_rcept_nos": [
+        "FIX01-operating_cash_flow-YOY_GROWTH_ACCELERATION-2025-Q3"
+      ],
+      "source_sha256s": [
+        "sha-FIX01-operating_cash_flow-YOY_GROWTH_ACCELERATION-2025-Q3"
+      ],
+      "status": "READY",
+      "value": 1
+    },
+    {
+      "axis": "MOMENTUM",
+      "classification": "ACCELERATING",
+      "direction": "POSITIVE",
+      "explanation_code": "YOY_ACCELERATING",
+      "fiscal_period": "Q3",
+      "fiscal_year": "2025",
+      "metadata": {},
+      "metric": "operating_cash_flow",
+      "metric_type": "YOY_GROWTH_ACCELERATION",
+      "pit_available_from": "2025-10-15",
+      "reason": null,
+      "requested_as_of": "2025-10-15",
+      "source_rcept_dts": [
+        "2025-10-15"
+      ],
+      "source_rcept_nos": [
+        "FIX01-operating_cash_flow-YOY_GROWTH_ACCELERATION-2025-Q3"
+      ],
+      "source_sha256s": [
+        "sha-FIX01-operating_cash_flow-YOY_GROWTH_ACCELERATION-2025-Q3"
+      ],
+      "status": "READY",
+      "value": 1
+    }
+  ],
+  "ocf_growth_axis_evidence_count": 0,
+  "status": "PASS"
+}
