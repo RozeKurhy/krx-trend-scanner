@@ -21,9 +21,9 @@ from typing import Any, Iterable, Mapping
 from xml.etree import ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
-ARTIFACT_DIR = ROOT / "artifacts/fundamentals/opendart/validation/final_context_scope_closure"
-START_HEAD = "4637e8d41cbf5542dc4cff16fb5835611f5e7210"
-WORK_ID = "OPENDART_FUNDAMENTALS_V01_CANONICAL_CONTEXT_SCOPE_HARDENING"
+ARTIFACT_DIR = ROOT / "artifacts/fundamentals/opendart/validation/final_closure_gate_fix"
+START_HEAD = "f3aab12c4c698ff96025bf85b97d3beffad57fb8"
+WORK_ID = "OPENDART_FUNDAMENTALS_V01_FINAL_CLOSURE_GATE_FIX"
 TICKERS = ("005930", "237690", "005380", "000660", "035420", "068270", "012330")
 YEARS = ("2024", "2025")
 NAMES = {
@@ -212,7 +212,8 @@ def evaluate_periodization_readiness(values: Mapping[str, Any]) -> bool:
         "different_basis_wrongly_collapsed_count", "different_period_wrongly_collapsed_count",
         "different_receipt_wrongly_collapsed_count", "different_source_wrongly_collapsed_count",
         "genuine_ambiguity_wrongly_ready_count", "historical_production_violation_count",
-        "production_build_error_count",
+        "production_build_error_count", "known_duplicate_regression_count",
+        "ready_future_source_count",
     )
     return bool(
         values.get("targeted_test_status") == "PASS"
@@ -224,6 +225,10 @@ def evaluate_periodization_readiness(values: Mapping[str, Any]) -> bool:
         and values.get("source_provenance_alignment_status") == "PASS"
         and values.get("summary_consistency_status") == "PASS"
         and values.get("validator_negative_control_status") == "PASS"
+        and values.get("q1_production_regression_status") == "PASS"
+        and values.get("secret_leak_count") == 0
+        and values.get("raw_source_committed") is False
+        and values.get("pykrx_krx_network_request_count") == 0
     )
 
 
@@ -371,6 +376,21 @@ def main() -> int:
                                  for item in controls["controls"])
     duplicate_group_count = sum(item["group_count"] for item in duplicate_groups)
     duplicate_fact_removed_count = sum(item["removed_fact_count"] for item in duplicate_groups)
+    # The production cohort is the authority for this regression gate.  Any
+    # Q1 ambiguity that remains in a row known to contain a safe canonical
+    # duplicate is specifically a duplicate-collapse regression.
+    known_duplicate_regression_count = sum(
+        row["q1_ambiguous_after"]
+        for row in q1_rows
+        if row["canonical_duplicate_group_count"] > 0
+    )
+    q1_production_regression_status = (
+        "PASS"
+        if q1_after_ambiguous == 0
+        and q1_after_ready >= q1_before_ready
+        and known_duplicate_regression_count == 0
+        else "FAIL"
+    )
     canonical_status = "PASS" if duplicate_group_count > 0 and alias["status"] == "PASS" and controls["status"] == "PASS" else "FAIL"
     historical_status = "PASS" if historical_count == 0 and historical_controls["status"] == "PASS" else "FAIL"
     context_status = scope["status"] if scope_controls["status"] == "PASS" else "FAIL"
@@ -393,12 +413,27 @@ def main() -> int:
         "historical_detector_status": historical_status,
         "historical_production_violation_count": historical_count,
         "future_correction_leakage": "YES" if future_leakage else "NO",
+        "ready_future_source_count": future_ready_sources,
+        "q1_production_regression_status": q1_production_regression_status,
+        "known_duplicate_regression_count": known_duplicate_regression_count,
+        "q1_ambiguous_before": q1_before_ambiguous,
+        "q1_ambiguous_after": q1_after_ambiguous,
+        "q1_ready_before": q1_before_ready,
+        "q1_ready_after": q1_after_ready,
         "source_provenance_alignment_status": "PASS" if source_alignment else "FAIL",
         "production_build_error_count": len(build_errors),
         "production_ttm_ready_count": sum(item.metric_type == "TTM" and item.resolution_status == "READY" for item in results),
         "production_ttm_yoy_ready_count": sum(item.metric_type == "TTM_YOY" and item.resolution_status == "READY" for item in results),
         "production_ttm_margin_ready_count": len(margins),
+        "production_ttm_operating_margin_ready_count": types["TTM_OPERATING_MARGIN"],
+        "production_ttm_net_margin_ready_count": types["TTM_NET_MARGIN"],
+        "production_ttm_ocf_margin_ready_count": types["TTM_OPERATING_CASH_FLOW_MARGIN"],
         "production_ttm_margin_recalc_mismatch_count": margin_mismatch,
+        "secret_leak_count": secret_count,
+        "raw_source_committed": raw_source,
+        # This validator is cache-first and never imports/calls PyKRX/KRX.
+        "pykrx_krx_network_request_count": 0,
+        "opendart_network_request_count": len(client.audit) if client is not None else 0,
     }
     # Compare the values that will be emitted into the source artifacts before
     # evaluating the final gate.  A mismatch itself must block readiness.
@@ -425,6 +460,11 @@ def main() -> int:
         ("targeted_tests_fail", "targeted_test_status", "FAIL"),
         ("build_error", "production_build_error_count", 1),
         ("summary_inconsistency", "summary_consistency_status", "FAIL"),
+        ("secret_leak", "secret_leak_count", 1),
+        ("raw_source_committed", "raw_source_committed", True),
+        ("pykrx_network", "pykrx_krx_network_request_count", 1),
+        ("q1_production_regression_fail", "q1_production_regression_status", "FAIL"),
+        ("known_duplicate_regression", "known_duplicate_regression_count", 1),
     ):
         mutated = dict(gate_values); mutated[key] = value
         validator_negative_cases.append({"case": name, "target_present": True,
@@ -449,6 +489,9 @@ def main() -> int:
     _write_json(ARTIFACT_DIR / "production_context_scope_validation.json", {
         key: value for key, value in scope.items() if key != "rows"
     })
+    _write_json(ARTIFACT_DIR / "context_scope_regression.json", {
+        key: value for key, value in scope.items() if key != "rows"
+    } | {"negative_control_status": scope_controls["status"]})
     _write_json(ARTIFACT_DIR / "context_scope_negative_controls.json", scope_controls)
     _write_json(ARTIFACT_DIR / "canonical_duplicate_regression.json", {
         "status": canonical_status, "duplicate_group_count": duplicate_group_count,
@@ -465,7 +508,9 @@ def main() -> int:
     _write_json(ARTIFACT_DIR / "q1_production_regression.json", {
         "q1_ambiguous_before": q1_before_ambiguous, "q1_ambiguous_after": q1_after_ambiguous,
         "q1_ready_before": q1_before_ready, "q1_ready_after": q1_after_ready,
-        "rows": q1_rows, "status": "PASS" if q1_after_ambiguous == 0 and q1_after_ready >= q1_before_ready else "FAIL",
+        "known_duplicate_regression_count": known_duplicate_regression_count,
+        "rows": q1_rows, "status": q1_production_regression_status,
+        "q1_production_regression_status": q1_production_regression_status,
     })
     _write_json(ARTIFACT_DIR / "historical_detector_regression.json", {
         "positive_control_violation_count": historical_controls["positive_control_violation_count"],
@@ -476,6 +521,13 @@ def main() -> int:
         "future_correction_leakage": "YES" if future_leakage else "NO",
         "ready_future_source_count": future_ready_sources, "historical_production_violation_count": historical_count,
         "requested_as_of": "2026-08-20", "status": "PASS" if not future_leakage and historical_count == 0 else "FAIL",
+    })
+    _write_json(ARTIFACT_DIR / "security_validation.json", {
+        "secret_leak_count": secret_count,
+        "raw_source_committed": raw_source,
+        "pykrx_krx_network_request_count": gate_values["pykrx_krx_network_request_count"],
+        "opendart_network_request_count": gate_values["opendart_network_request_count"],
+        "status": "PASS" if secret_count == 0 and raw_source is False and gate_values["pykrx_krx_network_request_count"] == 0 else "FAIL",
     })
     _write_json(ARTIFACT_DIR / "production_derived_metrics_validation.json", {
         "build_count": len(builds), "production_build_error_count": len(build_errors), "build_errors": build_errors,
@@ -509,10 +561,29 @@ def main() -> int:
     # values with the gate inputs.  This prevents the summary from becoming a
     # second, independent source of truth.
     artifact_sources = {
+        "context_scope_validation_status": json.loads((ARTIFACT_DIR / "context_scope_regression.json").read_text(encoding="utf-8"))["status"],
         "production_ttm_margin_ready_count": json.loads((ARTIFACT_DIR / "production_ttm_margin_validation.json").read_text(encoding="utf-8"))["production_ttm_margin_ready_count"],
         "production_ttm_margin_recalc_mismatch_count": json.loads((ARTIFACT_DIR / "production_ttm_margin_validation.json").read_text(encoding="utf-8"))["production_ttm_margin_recalc_mismatch_count"],
+        "production_ttm_operating_margin_ready_count": json.loads((ARTIFACT_DIR / "production_ttm_margin_validation.json").read_text(encoding="utf-8"))["production_ttm_operating_margin_ready_count"],
+        "production_ttm_net_margin_ready_count": json.loads((ARTIFACT_DIR / "production_ttm_margin_validation.json").read_text(encoding="utf-8"))["production_ttm_net_margin_ready_count"],
+        "production_ttm_ocf_margin_ready_count": json.loads((ARTIFACT_DIR / "production_ttm_margin_validation.json").read_text(encoding="utf-8"))["production_ttm_ocf_margin_ready_count"],
+        "production_ttm_ready_count": json.loads((ARTIFACT_DIR / "production_derived_metrics_validation.json").read_text(encoding="utf-8"))["production_ttm_ready_count"],
+        "production_ttm_yoy_ready_count": json.loads((ARTIFACT_DIR / "production_derived_metrics_validation.json").read_text(encoding="utf-8"))["production_ttm_yoy_ready_count"],
         "historical_production_violation_count": json.loads((ARTIFACT_DIR / "historical_detector_regression.json").read_text(encoding="utf-8"))["production_violation_count"],
         "production_missing_context_scope_count": json.loads((ARTIFACT_DIR / "production_context_scope_validation.json").read_text(encoding="utf-8"))["production_missing_context_scope_count"],
+        "production_primary_with_typed_dimension_count": json.loads((ARTIFACT_DIR / "context_scope_regression.json").read_text(encoding="utf-8"))["production_primary_with_typed_dimension_count"],
+        "production_primary_with_additional_dimension_count": json.loads((ARTIFACT_DIR / "context_scope_regression.json").read_text(encoding="utf-8"))["production_primary_with_additional_dimension_count"],
+        "q1_production_regression_status": json.loads((ARTIFACT_DIR / "q1_production_regression.json").read_text(encoding="utf-8"))["q1_production_regression_status"],
+        "known_duplicate_regression_count": json.loads((ARTIFACT_DIR / "q1_production_regression.json").read_text(encoding="utf-8"))["known_duplicate_regression_count"],
+        "q1_ambiguous_after": json.loads((ARTIFACT_DIR / "q1_production_regression.json").read_text(encoding="utf-8"))["q1_ambiguous_after"],
+        "q1_ready_after": json.loads((ARTIFACT_DIR / "q1_production_regression.json").read_text(encoding="utf-8"))["q1_ready_after"],
+        "future_correction_leakage": json.loads((ARTIFACT_DIR / "pit_validation.json").read_text(encoding="utf-8"))["future_correction_leakage"],
+        "ready_future_source_count": json.loads((ARTIFACT_DIR / "pit_validation.json").read_text(encoding="utf-8"))["ready_future_source_count"],
+        "source_provenance_alignment_status": json.loads((ARTIFACT_DIR / "provenance_validation.json").read_text(encoding="utf-8"))["source_provenance_alignment_status"],
+        "production_build_error_count": json.loads((ARTIFACT_DIR / "production_derived_metrics_validation.json").read_text(encoding="utf-8"))["production_build_error_count"],
+        "secret_leak_count": json.loads((ARTIFACT_DIR / "security_validation.json").read_text(encoding="utf-8"))["secret_leak_count"],
+        "raw_source_committed": json.loads((ARTIFACT_DIR / "security_validation.json").read_text(encoding="utf-8"))["raw_source_committed"],
+        "pykrx_krx_network_request_count": json.loads((ARTIFACT_DIR / "security_validation.json").read_text(encoding="utf-8"))["pykrx_krx_network_request_count"],
     }
     summary_consistency_mismatch = sum(gate_values[key] != value for key, value in artifact_sources.items())
     gate_values["summary_consistency_status"] = "PASS" if summary_consistency_mismatch == 0 else "FAIL"
@@ -538,7 +609,10 @@ def main() -> int:
         "canonical_duplicate_collapse_status": canonical_status,
         "duplicate_group_count": duplicate_group_count, "duplicate_fact_removed_count": duplicate_fact_removed_count,
         "concept_alias_canonicalization_status": alias["status"],
-        "q1_ambiguous_after": q1_after_ambiguous, "q1_ready_after": q1_after_ready,
+        "q1_production_regression_status": q1_production_regression_status,
+        "known_duplicate_regression_count": known_duplicate_regression_count,
+        "q1_ambiguous_before": q1_before_ambiguous, "q1_ambiguous_after": q1_after_ambiguous,
+        "q1_ready_before": q1_before_ready, "q1_ready_after": q1_after_ready,
         "historical_positive_control_violation_count": historical_controls["positive_control_violation_count"],
         "historical_negative_control_detected_count": historical_controls["negative_control_detected_count"],
         "historical_production_violation_count": historical_count,
@@ -551,17 +625,17 @@ def main() -> int:
         "summary_consistency_status": gate_values["summary_consistency_status"],
         "validator_negative_control_status": validator_negative_status,
         "periodization_ready": periodization_ready, "derived_ready": derived_ready, "final_ready": final_ready,
-        "periodization_final_status": "CLOSED" if periodization_ready else "BLOCKED_CONTEXT_SCOPE_OR_REGRESSION",
+        "periodization_final_status": "CLOSED" if periodization_ready else "BLOCKED_OPENDART_V01_FINAL_CLOSURE",
         "derived_metrics_final_status": "READY_FOR_ARCHITECT_FINAL_CLOSURE_REVIEW" if derived_ready else "BLOCKED_DERIVED_METRICS_FINAL_CLOSURE",
-        "final_status": "READY_FOR_ARCHITECT_OPENDART_FINAL_CLOSURE_REVIEW" if final_ready else "BLOCKED_OPENDART_FINAL_CLOSURE",
+        "final_status": "READY_FOR_ARCHITECT_OPENDART_V01_FINAL_CLOSURE" if final_ready else "BLOCKED_OPENDART_V01_FINAL_CLOSURE",
         "targeted_test_count": targeted["targeted_test_count"], "targeted_test_status": targeted["targeted_test_status"],
         "full_repo_suite_status": "NOT_RUN_BY_SCOPE", "secret_leak_count": secret_count, "raw_source_committed": raw_source,
         "opendart_network_request_count": len(client.audit) if client is not None else 0, "pykrx_krx_network_request_count": 0,
         "git_diff_check_status": "PASS" if subprocess.run(["git", "diff", "--check"], cwd=ROOT, capture_output=True).returncode == 0 else "FAIL",
     }
-    _write_json(ARTIFACT_DIR / "final_context_scope_closure_summary.json", summary)
-    manifest_files = [path for path in sorted(ARTIFACT_DIR.iterdir()) if path.name != "final_context_scope_closure_manifest.json"]
-    _write_json(ARTIFACT_DIR / "final_context_scope_closure_manifest.json", {
+    _write_json(ARTIFACT_DIR / "final_closure_gate_summary.json", summary)
+    manifest_files = [path for path in sorted(ARTIFACT_DIR.iterdir()) if path.name != "final_closure_gate_manifest.json"]
+    _write_json(ARTIFACT_DIR / "final_closure_gate_manifest.json", {
         "work_id": WORK_ID, "start_head": START_HEAD,
         "files": {path.name: _sha(path) for path in manifest_files},
         "request_accounting": {"opendart": summary["opendart_network_request_count"], "pykrx_krx": 0},
