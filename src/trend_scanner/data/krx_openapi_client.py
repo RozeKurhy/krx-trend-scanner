@@ -16,6 +16,8 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
+from trend_scanner.data.krx_openapi_quota import LocalKrxOpenApiQuota
+
 
 DEFAULT_BASE_URL = "https://data-dbg.krx.co.kr/svc/apis"
 DEFAULT_AUTH_HEADER = "AUTH_KEY"
@@ -114,6 +116,7 @@ class KrxOpenApiClient:
         timeout: float = 30.0,
         opener: Callable[..., Any] = urlopen,
         sleeper: Callable[[float], None] = time.sleep,
+        quota: LocalKrxOpenApiQuota | None = None,
     ) -> None:
         if not auth_key or not auth_key.strip():
             raise ValueError("KRX Open API auth key is required")
@@ -129,9 +132,10 @@ class KrxOpenApiClient:
         self.timeout = timeout
         self._opener = opener
         self._sleeper = sleeper
+        self.quota = quota
         self.request_count = 0
         self.retry_count = 0
-        self.status_counts: dict[str, int] = {"401": 0, "403": 0, "429": 0, "5xx": 0}
+        self.status_counts: dict[str, int] = {"401": 0, "403": 0, "429": 0, "5xx": 0, "transport_error": 0}
         self.audit: list[dict[str, Any]] = []
 
     @property
@@ -145,6 +149,7 @@ class KrxOpenApiClient:
         *,
         date_parameter: str = DEFAULT_DATE_PARAMETER,
         extra_params: Mapping[str, str] | None = None,
+        quota_endpoint_key: str | None = None,
     ) -> KrxOpenApiResponse:
         """Fetch one date snapshot; the secret is sent only as an HTTP header."""
 
@@ -155,12 +160,14 @@ class KrxOpenApiClient:
             params.update({str(k): str(v) for k, v in extra_params.items()})
         url = f"{self.base_url}{endpoint_path}?{urlencode(params)}"
         headers = {self.auth_header: self._auth_key, "Accept": "application/json"}
+        endpoint_key = (quota_endpoint_key or endpoint_path).strip("/").split("/")[-1]
         last: KrxOpenApiResponse | None = None
         transient_seen = 0
 
         while True:
             if self.request_count >= self.max_requests:
                 raise KrxOpenApiBudgetError(f"KRX Open API request budget exhausted ({self.max_requests})")
+            quota_info = self.quota.reserve_attempt(endpoint_key) if self.quota is not None else None
             self.request_count += 1
             attempt = transient_seen + 1
             started = monotonic()
@@ -181,6 +188,7 @@ class KrxOpenApiClient:
                     url, int(exc.code), payload, started, attempt, dict(exc.headers.items()) if exc.headers else {}
                 )
             except (URLError, TimeoutError, OSError) as exc:
+                self.status_counts["transport_error"] += 1
                 response_obj = KrxOpenApiResponse(
                     url=url,
                     http_status=None,
@@ -204,6 +212,13 @@ class KrxOpenApiClient:
                     "record_count": last.record_count,
                     "top_level_keys": list(last.top_level_keys),
                     "headers": redact_headers({self.auth_header: "<present>"}),
+                    "endpoint_key": endpoint_key,
+                    "error_type": last.error_type,
+                    "quota_usage_date_kst": quota_info.get("usage_date_kst") if quota_info else None,
+                    "quota_endpoint_before": quota_info.get("quota_endpoint_before") if quota_info else None,
+                    "quota_endpoint_after": quota_info.get("quota_endpoint_after") if quota_info else None,
+                    "quota_global_before": quota_info.get("quota_global_before") if quota_info else None,
+                    "quota_global_after": quota_info.get("quota_global_after") if quota_info else None,
                 }
             )
             status = response_obj.http_status
@@ -223,6 +238,11 @@ class KrxOpenApiClient:
                     self.retry_count += 1
                     self._sleeper(min(2**transient_seen, 4))
                     continue
+            if status is None and response_obj.error_type is not None and transient_seen < self.max_transient_retries:
+                transient_seen += 1
+                self.retry_count += 1
+                self._sleeper(min(2**transient_seen, 4))
+                continue
             break
 
         assert last is not None
