@@ -1,0 +1,29 @@
+{
+  "ancillary_access": [
+    "get_raw_daily",
+    "get_daily_ancillary",
+    "get_stock_snapshot"
+  ],
+  "compatibility": "Existing get_daily consumers keep their current columns and receive no silent semantic change.",
+  "get_daily": {
+    "forward_fill": false,
+    "join_key": [
+      "ticker",
+      "date"
+    ],
+    "join_type": "INNER_CONSISTENT_TRADING_SESSION_JOIN",
+    "missing_side_behavior": "DATA_UNAVAILABLE",
+    "price_columns": [
+      "open",
+      "high",
+      "low",
+      "close"
+    ],
+    "price_semantics": "ADJUSTED",
+    "trading_value_column": "trading_value",
+    "trading_value_semantics": "RAW",
+    "volume_column": "volume",
+    "volume_semantics": "RAW"
+  },
+  "name": "MarketDataRepositoryV2"
+}

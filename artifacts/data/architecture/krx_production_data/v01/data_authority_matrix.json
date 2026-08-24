@@ -1,0 +1,306 @@
+{
+  "architecture_version": "KRX_PRODUCTION_DATA_ARCHITECTURE_V01",
+  "fields": [
+    {
+      "authority_id": "KRX_OPEN_API_STOCK_DAILY",
+      "authority_type": "AUTHORITATIVE",
+      "field_name": "raw_open",
+      "owner_store": "KRXRawStockStore",
+      "schema_version": "KRX_RAW_STOCK_V01",
+      "source_endpoints": [
+        "/sto/stk_bydd_trd",
+        "/sto/ksq_bydd_trd"
+      ],
+      "source_name": "KRX Open API",
+      "source_semantics": "UNADJUSTED_RAW"
+    },
+    {
+      "authority_id": "KRX_OPEN_API_STOCK_DAILY",
+      "authority_type": "AUTHORITATIVE",
+      "field_name": "raw_high",
+      "owner_store": "KRXRawStockStore",
+      "schema_version": "KRX_RAW_STOCK_V01",
+      "source_endpoints": [
+        "/sto/stk_bydd_trd",
+        "/sto/ksq_bydd_trd"
+      ],
+      "source_name": "KRX Open API",
+      "source_semantics": "UNADJUSTED_RAW"
+    },
+    {
+      "authority_id": "KRX_OPEN_API_STOCK_DAILY",
+      "authority_type": "AUTHORITATIVE",
+      "field_name": "raw_low",
+      "owner_store": "KRXRawStockStore",
+      "schema_version": "KRX_RAW_STOCK_V01",
+      "source_endpoints": [
+        "/sto/stk_bydd_trd",
+        "/sto/ksq_bydd_trd"
+      ],
+      "source_name": "KRX Open API",
+      "source_semantics": "UNADJUSTED_RAW"
+    },
+    {
+      "authority_id": "KRX_OPEN_API_STOCK_DAILY",
+      "authority_type": "AUTHORITATIVE",
+      "field_name": "raw_close",
+      "owner_store": "KRXRawStockStore",
+      "schema_version": "KRX_RAW_STOCK_V01",
+      "source_endpoints": [
+        "/sto/stk_bydd_trd",
+        "/sto/ksq_bydd_trd"
+      ],
+      "source_name": "KRX Open API",
+      "source_semantics": "UNADJUSTED_RAW"
+    },
+    {
+      "authority_id": "KRX_OPEN_API_STOCK_DAILY",
+      "authority_type": "AUTHORITATIVE",
+      "field_name": "volume",
+      "owner_store": "KRXRawStockStore",
+      "schema_version": "KRX_RAW_STOCK_V01",
+      "source_endpoints": [
+        "/sto/stk_bydd_trd",
+        "/sto/ksq_bydd_trd"
+      ],
+      "source_name": "KRX Open API",
+      "source_semantics": "RAW_DAILY_VOLUME"
+    },
+    {
+      "authority_id": "KRX_OPEN_API_STOCK_DAILY",
+      "authority_type": "AUTHORITATIVE",
+      "field_name": "trading_value",
+      "owner_store": "KRXRawStockStore",
+      "schema_version": "KRX_RAW_STOCK_V01",
+      "source_endpoints": [
+        "/sto/stk_bydd_trd",
+        "/sto/ksq_bydd_trd"
+      ],
+      "source_name": "KRX Open API",
+      "source_semantics": "RAW_DAILY_TRADING_VALUE"
+    },
+    {
+      "authority_id": "KRX_OPEN_API_STOCK_DAILY",
+      "authority_type": "AUTHORITATIVE",
+      "field_name": "market_cap",
+      "owner_store": "KRXRawStockStore",
+      "schema_version": "KRX_RAW_STOCK_V01",
+      "source_endpoints": [
+        "/sto/stk_bydd_trd",
+        "/sto/ksq_bydd_trd"
+      ],
+      "source_name": "KRX Open API",
+      "source_semantics": "RAW_DAILY_MARKET_CAP"
+    },
+    {
+      "authority_id": "KRX_OPEN_API_STOCK_DAILY",
+      "authority_type": "AUTHORITATIVE",
+      "field_name": "listed_shares",
+      "owner_store": "KRXRawStockStore",
+      "schema_version": "KRX_RAW_STOCK_V01",
+      "source_endpoints": [
+        "/sto/stk_bydd_trd",
+        "/sto/ksq_bydd_trd"
+      ],
+      "source_name": "KRX Open API",
+      "source_semantics": "RAW_DAILY_LISTED_SHARES"
+    },
+    {
+      "authority_id": "PYKRX_ADJUSTED_PRICE",
+      "authority_type": "AUTHORITATIVE",
+      "field_name": "adjusted_open",
+      "owner_store": "AdjustedPriceStore",
+      "schema_version": "ADJUSTED_PRICE_V01",
+      "source_endpoints": [
+        "stock.get_market_ohlcv_by_date(adjusted=True)"
+      ],
+      "source_name": "PyKRX",
+      "source_semantics": "ADJUSTED_OHLC"
+    },
+    {
+      "authority_id": "PYKRX_ADJUSTED_PRICE",
+      "authority_type": "AUTHORITATIVE",
+      "field_name": "adjusted_high",
+      "owner_store": "AdjustedPriceStore",
+      "schema_version": "ADJUSTED_PRICE_V01",
+      "source_endpoints": [
+        "stock.get_market_ohlcv_by_date(adjusted=True)"
+      ],
+      "source_name": "PyKRX",
+      "source_semantics": "ADJUSTED_OHLC"
+    },
+    {
+      "authority_id": "PYKRX_ADJUSTED_PRICE",
+      "authority_type": "AUTHORITATIVE",
+      "field_name": "adjusted_low",
+      "owner_store": "AdjustedPriceStore",
+      "schema_version": "ADJUSTED_PRICE_V01",
+      "source_endpoints": [
+        "stock.get_market_ohlcv_by_date(adjusted=True)"
+      ],
+      "source_name": "PyKRX",
+      "source_semantics": "ADJUSTED_OHLC"
+    },
+    {
+      "authority_id": "PYKRX_ADJUSTED_PRICE",
+      "authority_type": "AUTHORITATIVE",
+      "field_name": "adjusted_close",
+      "owner_store": "AdjustedPriceStore",
+      "schema_version": "ADJUSTED_PRICE_V01",
+      "source_endpoints": [
+        "stock.get_market_ohlcv_by_date(adjusted=True)"
+      ],
+      "source_name": "PyKRX",
+      "source_semantics": "ADJUSTED_OHLC"
+    },
+    {
+      "authority_id": "NONE",
+      "authority_type": "NOT_PROVIDED",
+      "field_name": "adjusted_volume",
+      "owner_store": null,
+      "schema_version": "ADJUSTED_PRICE_V01",
+      "source_endpoints": [],
+      "source_name": "NONE",
+      "source_semantics": "ADJUSTED_VOLUME_NOT_DECLARED"
+    },
+    {
+      "authority_id": "KRX_OPEN_API_BASIC_INFO",
+      "authority_type": "AUTHORITATIVE",
+      "field_name": "ticker",
+      "owner_store": "StockMasterStore",
+      "schema_version": "STOCK_MASTER_V01",
+      "source_endpoints": [
+        "/sto/stk_isu_base_info",
+        "/sto/ksq_isu_base_info"
+      ],
+      "source_name": "KRX Open API Basic Info",
+      "source_semantics": "SIX_DIGIT_TICKER_FROM_ISU_SRT_CD"
+    },
+    {
+      "authority_id": "KRX_OPEN_API_BASIC_INFO",
+      "authority_type": "AUTHORITATIVE",
+      "field_name": "standard_code",
+      "owner_store": "StockMasterStore",
+      "schema_version": "STOCK_MASTER_V01",
+      "source_endpoints": [
+        "/sto/stk_isu_base_info",
+        "/sto/ksq_isu_base_info"
+      ],
+      "source_name": "KRX Open API Basic Info",
+      "source_semantics": "KRX_STANDARD_CODE_FROM_ISU_CD"
+    },
+    {
+      "authority_id": "KRX_OPEN_API_BASIC_INFO",
+      "authority_type": "AUTHORITATIVE",
+      "field_name": "name",
+      "owner_store": "StockMasterStore",
+      "schema_version": "STOCK_MASTER_V01",
+      "source_endpoints": [
+        "/sto/stk_isu_base_info",
+        "/sto/ksq_isu_base_info"
+      ],
+      "source_name": "KRX Open API Basic Info",
+      "source_semantics": "SECURITY_NAME"
+    },
+    {
+      "authority_id": "KRX_OPEN_API_BASIC_INFO",
+      "authority_type": "AUTHORITATIVE",
+      "field_name": "market",
+      "owner_store": "StockMasterStore",
+      "schema_version": "STOCK_MASTER_V01",
+      "source_endpoints": [
+        "/sto/stk_isu_base_info",
+        "/sto/ksq_isu_base_info"
+      ],
+      "source_name": "KRX Open API Basic Info",
+      "source_semantics": "MARKET_NAMESPACE"
+    },
+    {
+      "authority_id": "KRX_OPEN_API_BASIC_INFO",
+      "authority_type": "AUTHORITATIVE",
+      "field_name": "listing_date",
+      "owner_store": "StockMasterStore",
+      "schema_version": "STOCK_MASTER_V01",
+      "source_endpoints": [
+        "/sto/stk_isu_base_info",
+        "/sto/ksq_isu_base_info"
+      ],
+      "source_name": "KRX Open API Basic Info",
+      "source_semantics": "LISTING_DATE"
+    },
+    {
+      "authority_id": "KRX_OPEN_API_BASIC_INFO",
+      "authority_type": "AUTHORITATIVE",
+      "field_name": "par_value",
+      "owner_store": "StockMasterStore",
+      "schema_version": "STOCK_MASTER_V01",
+      "source_endpoints": [
+        "/sto/stk_isu_base_info",
+        "/sto/ksq_isu_base_info"
+      ],
+      "source_name": "KRX Open API Basic Info",
+      "source_semantics": "PAR_VALUE"
+    },
+    {
+      "authority_id": "KRX_OPEN_API_NATIVE_SECTOR_INDEX",
+      "authority_type": "AUTHORITATIVE",
+      "field_name": "native_sector_index_ohlc",
+      "owner_store": "IndexStore",
+      "schema_version": "INDEX_STORE_V01",
+      "source_endpoints": [
+        "/idx/kospi_dd_trd",
+        "/idx/kosdaq_dd_trd"
+      ],
+      "source_name": "KRX Open API",
+      "source_semantics": "KRX_NATIVE_SECTOR_INDEX"
+    },
+    {
+      "authority_id": "PYKRX_MARKET_INDEX_CURRENT",
+      "authority_type": "LEGACY",
+      "field_name": "market_index_ohlc",
+      "owner_store": "IndexStore",
+      "schema_version": "INDEX_STORE_V01",
+      "source_endpoints": [
+        "IndexPriceDataProvider.fetch_index_series"
+      ],
+      "source_name": "PyKRX existing source",
+      "source_semantics": "CURRENT_LEGACY_MARKET_INDEX"
+    },
+    {
+      "authority_id": "PYKRX_SECTOR_MEMBERSHIP_CURRENT",
+      "authority_type": "LEGACY",
+      "field_name": "ticker_sector_membership",
+      "owner_store": "SectorMembershipStore",
+      "schema_version": "STOCK_MASTER_V01",
+      "source_endpoints": [
+        "stock.get_index_portfolio_deposit_file"
+      ],
+      "source_name": "PyKRX",
+      "source_semantics": "CURRENT_PYKRX_MEMBERSHIP_NO_PIT_STORE"
+    },
+    {
+      "authority_id": "OPENDART_FUNDAMENTALS",
+      "authority_type": "AUTHORITATIVE",
+      "field_name": "fundamentals",
+      "owner_store": "FundamentalsStore",
+      "schema_version": "FUNDAMENTALS_V01",
+      "source_endpoints": [
+        "OpenDART financial statements"
+      ],
+      "source_name": "OpenDART",
+      "source_semantics": "REPORTED_FINANCIAL_STATEMENTS"
+    },
+    {
+      "authority_id": "CURRENT_FOREIGN_FLOW_PROVIDER",
+      "authority_type": "LEGACY",
+      "field_name": "foreign_institution_flow",
+      "owner_store": null,
+      "schema_version": "FLOW_V01",
+      "source_endpoints": [
+        "src/trend_scanner/flow/foreign_flow.py"
+      ],
+      "source_name": "Existing production flow source",
+      "source_semantics": "CURRENT_PRODUCTION_FLOW"
+    }
+  ]
+}

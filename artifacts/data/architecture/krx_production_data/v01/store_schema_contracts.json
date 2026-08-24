@@ -1,0 +1,188 @@
+{
+  "architecture_version": "KRX_PRODUCTION_DATA_ARCHITECTURE_V01",
+  "schema_versions": {
+    "AdjustedPriceStore": "ADJUSTED_PRICE_V01",
+    "DataHealthSnapshot": "DATA_HEALTH_V01",
+    "IndexStore": "INDEX_STORE_V01",
+    "KRXRawStockStore": "KRX_RAW_STOCK_V01",
+    "StockMasterStore": "STOCK_MASTER_V01"
+  },
+  "stores": [
+    {
+      "description": "KRX unadjusted daily stock facts",
+      "fields": [
+        "date",
+        "ticker",
+        "open",
+        "high",
+        "low",
+        "close",
+        "volume",
+        "trading_value",
+        "market_cap",
+        "listed_shares"
+      ],
+      "ownership": "Raw OHLC and raw ancillary are owned here; no adjustment",
+      "pit_required": true,
+      "required_fields": [
+        "date",
+        "ticker",
+        "open",
+        "high",
+        "low",
+        "close",
+        "volume",
+        "trading_value",
+        "market_cap",
+        "listed_shares"
+      ],
+      "schema_version": "KRX_RAW_STOCK_V01",
+      "store_id": "KRXRawStockStore",
+      "write_policy": "New normalized store; no bulk migration in this phase"
+    },
+    {
+      "description": "Adjusted OHLC only",
+      "fields": [
+        "date",
+        "ticker",
+        "open",
+        "high",
+        "low",
+        "close"
+      ],
+      "ownership": "Adjusted OHLC only; ancillary fields are prohibited",
+      "pit_required": true,
+      "required_fields": [
+        "date",
+        "ticker",
+        "open",
+        "high",
+        "low",
+        "close"
+      ],
+      "schema_version": "ADJUSTED_PRICE_V01",
+      "store_id": "AdjustedPriceStore",
+      "write_policy": "Mutable refresh state is tracked separately"
+    },
+    {
+      "description": "Point-in-time KRX security master",
+      "fields": [
+        "as_of",
+        "ticker",
+        "standard_code",
+        "name",
+        "market",
+        "listing_date",
+        "security_group",
+        "par_value",
+        "listed_shares"
+      ],
+      "ownership": "Historical snapshots, not latest-only identity",
+      "pit_required": true,
+      "required_fields": [
+        "as_of",
+        "ticker",
+        "standard_code",
+        "name",
+        "market"
+      ],
+      "schema_version": "STOCK_MASTER_V01",
+      "store_id": "StockMasterStore",
+      "write_policy": "PIT snapshots; no replacement of current cache in this phase"
+    },
+    {
+      "description": "Market and native sector index families",
+      "fields": [
+        "date",
+        "family",
+        "index_code",
+        "index_name",
+        "open",
+        "high",
+        "low",
+        "close",
+        "volume",
+        "trading_value"
+      ],
+      "ownership": "MARKET_INDEX, NATIVE_SECTOR_INDEX, and KRX_BRANDED_TAXONOMY namespaces stay distinct",
+      "pit_required": true,
+      "required_fields": [
+        "date",
+        "family",
+        "index_code",
+        "close"
+      ],
+      "schema_version": "INDEX_STORE_V01",
+      "store_id": "IndexStore",
+      "write_policy": "Sector index migrated; market index remains legacy"
+    },
+    {
+      "description": "PIT ticker to sector membership",
+      "fields": [
+        "effective_date",
+        "as_of",
+        "ticker",
+        "sector_code",
+        "sector_name",
+        "market",
+        "source"
+      ],
+      "ownership": "Membership is an independent PIT store",
+      "pit_required": true,
+      "required_fields": [
+        "effective_date",
+        "ticker",
+        "sector_code",
+        "market"
+      ],
+      "schema_version": "SECTOR_MEMBERSHIP_V01",
+      "store_id": "SectorMembershipStore",
+      "write_policy": "Future PIT membership phase; current PyKRX source remains"
+    },
+    {
+      "description": "PIT reported fundamentals",
+      "fields": [
+        "ticker",
+        "period_end",
+        "report_date",
+        "availability_date",
+        "metric",
+        "value",
+        "source"
+      ],
+      "ownership": "OpenDART facts are independent of price authority",
+      "pit_required": true,
+      "required_fields": [
+        "ticker",
+        "period_end",
+        "availability_date",
+        "metric",
+        "value"
+      ],
+      "schema_version": "FUNDAMENTALS_V01",
+      "store_id": "FundamentalsStore",
+      "write_policy": "Existing OpenDART pipeline; no migration in this phase"
+    },
+    {
+      "description": "Adjusted-cache refresh state",
+      "fields": [
+        "ticker",
+        "as_of",
+        "status",
+        "dirty_reason",
+        "last_success_at",
+        "last_attempt_at"
+      ],
+      "ownership": "State is separate from immutable raw history and mutable adjusted cache",
+      "pit_required": true,
+      "required_fields": [
+        "ticker",
+        "as_of",
+        "status"
+      ],
+      "schema_version": "CORPORATE_ACTION_STATE_V01",
+      "store_id": "CorporateActionStateStore",
+      "write_policy": "Detector only; no custom adjustment engine"
+    }
+  ]
+}

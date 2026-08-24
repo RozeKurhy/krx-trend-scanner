@@ -1,0 +1,51 @@
+{
+  "BASIC_INFO": {
+    "endpoints": [
+      "/sto/stk_isu_base_info",
+      "/sto/ksq_isu_base_info"
+    ],
+    "fields": {
+      "ISU_CD": {
+        "identifier_namespace": "KRX_STANDARD_CODE",
+        "semantic": "standard_code",
+        "target_field": "standard_code"
+      },
+      "ISU_SRT_CD": {
+        "identifier_namespace": "SIX_DIGIT_TICKER",
+        "semantic": "ticker",
+        "target_field": "ticker"
+      },
+      "SECT_TP_NM": {
+        "identifier_namespace": "NOT_SECTOR_MEMBERSHIP",
+        "semantic": "listing_section_or_security_group",
+        "target_field": "security_group"
+      }
+    }
+  },
+  "DAILY_TRADING": {
+    "endpoints": [
+      "/sto/stk_bydd_trd",
+      "/sto/ksq_bydd_trd"
+    ],
+    "fields": {
+      "ISU_CD": {
+        "identifier_namespace": "SIX_DIGIT_TICKER",
+        "semantic": "ticker",
+        "target_field": "ticker"
+      }
+    }
+  },
+  "NATIVE_SECTOR_INDEX": {
+    "endpoints": [
+      "/idx/kospi_dd_trd",
+      "/idx/kosdaq_dd_trd"
+    ],
+    "fields": {
+      "IDX_CD": {
+        "identifier_namespace": "KRX_NATIVE_SECTOR_INDEX",
+        "semantic": "native_sector_index_code",
+        "target_field": "index_code"
+      }
+    }
+  }
+}

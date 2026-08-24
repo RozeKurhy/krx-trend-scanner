@@ -1,0 +1,36 @@
+{
+  "quota_fields": [
+    "usage_date_kst",
+    "used",
+    "limit",
+    "remaining",
+    "percentage",
+    "endpoint_usage"
+  ],
+  "snapshot_fields": [
+    "layer_id",
+    "status",
+    "source_name",
+    "latest_data_date",
+    "expected_latest_date",
+    "date_min",
+    "date_max",
+    "row_count",
+    "ticker_count",
+    "missing_count",
+    "stale_count",
+    "error_count",
+    "last_success_at",
+    "last_attempt_at",
+    "message"
+  ],
+  "statuses": [
+    "READY",
+    "STALE",
+    "PARTIAL",
+    "MISSING",
+    "ERROR",
+    "NOT_MIGRATED",
+    "DIRTY"
+  ]
+}

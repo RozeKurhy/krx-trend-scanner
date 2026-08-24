@@ -1,0 +1,159 @@
+{
+  "architecture_version": "KRX_PRODUCTION_DATA_ARCHITECTURE_V01",
+  "layers": [
+    {
+      "authority": "KRX Open API",
+      "current_source": "KRX Open API",
+      "description": "Raw stock OHLC and ancillary",
+      "freshness_policy": "Daily trading session",
+      "layer_id": "STOCK_RAW_KRX",
+      "migration_status": "VALIDATED_NOT_PRODUCTION_MIGRATED",
+      "pit_required": true,
+      "storage_role": "KRXRawStockStore",
+      "target_source": "KRX Open API"
+    },
+    {
+      "authority": "PyKRX adjusted=True",
+      "current_source": "Legacy composite cache",
+      "description": "Adjusted stock OHLC",
+      "freshness_policy": "Daily trading session",
+      "layer_id": "STOCK_ADJUSTED_PYKRX",
+      "migration_status": "LEGACY_COMPOSITE_NOT_SPLIT",
+      "pit_required": true,
+      "storage_role": "AdjustedPriceStore",
+      "target_source": "AdjustedPriceStore"
+    },
+    {
+      "authority": "KRX Open API Basic Info",
+      "current_source": "KRX Open API Basic Info",
+      "description": "PIT stock master",
+      "freshness_policy": "Snapshot on source effective date",
+      "layer_id": "STOCK_MASTER_KRX",
+      "migration_status": "VALIDATED_NOT_PRODUCTION_MIGRATED",
+      "pit_required": true,
+      "storage_role": "StockMasterStore",
+      "target_source": "StockMasterStore"
+    },
+    {
+      "authority": "KRX Open API",
+      "current_source": "PyKRX existing source",
+      "description": "KOSPI/KOSDAQ representative indexes",
+      "freshness_policy": "Daily trading session",
+      "layer_id": "MARKET_INDEX",
+      "migration_status": "LEGACY_SOURCE",
+      "pit_required": true,
+      "storage_role": "IndexStore:MARKET_INDEX",
+      "target_source": "KRX Open API"
+    },
+    {
+      "authority": "KRX Open API",
+      "current_source": "KRX Open API",
+      "description": "Native 46 sector indexes",
+      "freshness_policy": "Daily trading session",
+      "layer_id": "SECTOR_INDEX_KRX",
+      "migration_status": "MIGRATED",
+      "pit_required": true,
+      "storage_role": "IndexStore:NATIVE_SECTOR_INDEX",
+      "target_source": "KRX Open API"
+    },
+    {
+      "authority": "PyKRX current source",
+      "current_source": "PyKRX get_index_portfolio_deposit_file",
+      "description": "Ticker to sector membership",
+      "freshness_policy": "Effective-date snapshot",
+      "layer_id": "SECTOR_MEMBERSHIP",
+      "migration_status": "LEGACY_SOURCE",
+      "pit_required": true,
+      "storage_role": "SectorMembershipStore",
+      "target_source": "SectorMembershipStore"
+    },
+    {
+      "authority": "Existing production flow source",
+      "current_source": "Existing production flow source",
+      "description": "Foreign/institution flow",
+      "freshness_policy": "Provider-defined",
+      "layer_id": "FOREIGN_FLOW",
+      "migration_status": "LEGACY_SOURCE",
+      "pit_required": true,
+      "storage_role": "Flow store (existing)",
+      "target_source": "Existing production flow source"
+    },
+    {
+      "authority": "OpenDART",
+      "current_source": "OpenDART",
+      "description": "Reported financial statements",
+      "freshness_policy": "Availability-date/PIT",
+      "layer_id": "FUNDAMENTALS_OPENDART",
+      "migration_status": "CLOSED / AVAILABLE",
+      "pit_required": true,
+      "storage_role": "FundamentalsStore",
+      "target_source": "FundamentalsStore"
+    },
+    {
+      "authority": "Derived from stock and market index",
+      "current_source": "Existing analytics",
+      "description": "Market relative strength",
+      "freshness_policy": "As-of session",
+      "layer_id": "MARKET_RS",
+      "migration_status": "NOT_MIGRATED",
+      "pit_required": true,
+      "storage_role": "Analytics output",
+      "target_source": "Existing analytics"
+    },
+    {
+      "authority": "Derived from sector index",
+      "current_source": "Existing analytics",
+      "description": "Sector relative strength",
+      "freshness_policy": "As-of session",
+      "layer_id": "SECTOR_RS",
+      "migration_status": "NOT_MIGRATED",
+      "pit_required": true,
+      "storage_role": "Analytics output",
+      "target_source": "Existing analytics"
+    },
+    {
+      "authority": "Derived",
+      "current_source": "Existing analytics",
+      "description": "Pattern A features and score",
+      "freshness_policy": "As-of session",
+      "layer_id": "PATTERN_A",
+      "migration_status": "NOT_MIGRATED",
+      "pit_required": true,
+      "storage_role": "Analytics output",
+      "target_source": "Existing analytics"
+    },
+    {
+      "authority": "Derived",
+      "current_source": "Existing analytics",
+      "description": "FastCore features and score",
+      "freshness_policy": "As-of session",
+      "layer_id": "FASTCORE",
+      "migration_status": "NOT_MIGRATED",
+      "pit_required": true,
+      "storage_role": "Analytics output",
+      "target_source": "Existing analytics"
+    },
+    {
+      "authority": "Derived",
+      "current_source": "Existing analytics",
+      "description": "Julia strategy inputs and outputs",
+      "freshness_policy": "As-of session",
+      "layer_id": "JULIA",
+      "migration_status": "NOT_MIGRATED",
+      "pit_required": true,
+      "storage_role": "Analytics output",
+      "target_source": "Existing analytics"
+    },
+    {
+      "authority": "Derived",
+      "current_source": "Existing reporting",
+      "description": "Stock report",
+      "freshness_policy": "As-of session",
+      "layer_id": "STOCK_REPORT",
+      "migration_status": "NOT_MIGRATED",
+      "pit_required": true,
+      "storage_role": "Analytics output",
+      "target_source": "Existing reporting"
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "classification": "LEGACY_COMPOSITE_STOCK_CACHE",
+  "contains": [
+    "adjusted OHLC",
+    "raw volume",
+    "raw trading_value"
+  ],
+  "path": "data/raw/stocks/<ticker>.parquet",
+  "raw_krx_store": false,
+  "rewritten_in_this_phase": false,
+  "write_protection": [
+    "rewrite",
+    "move",
+    "delete",
+    "bulk rename"
+  ]
+}
