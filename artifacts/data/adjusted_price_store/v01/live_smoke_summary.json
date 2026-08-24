@@ -39,7 +39,66 @@
     "adjusted_true_call_count": 3,
     "live_smoke_failure_count": 0,
     "live_smoke_ticker_count": 3,
-    "logical_pykrx_fetch_count": 3
+    "logical_pykrx_fetch_count": 3,
+    "provider_legacy_legacy_only_date_count": 0,
+    "provider_legacy_parity_date_mismatch_count": 0,
+    "provider_legacy_parity_ohlc_mismatch_count": 0,
+    "provider_legacy_parity_row_count": 121,
+    "provider_legacy_parity_ticker_count": 3,
+    "provider_legacy_provider_only_date_count": 8
   },
-  "mode": "live-smoke"
+  "mode": "live-smoke",
+  "provider_legacy_parity": [
+    {
+      "close_mismatch_count": 0,
+      "common_rows": 57,
+      "date_mismatch_count": 0,
+      "high_mismatch_count": 0,
+      "legacy_only_date_count": 0,
+      "legacy_rows": 57,
+      "low_mismatch_count": 0,
+      "open_mismatch_count": 0,
+      "provider_only_date_count": 0,
+      "provider_rows": 57,
+      "requested_end": "2018-06-30",
+      "requested_start": "2018-04-01",
+      "status": "PASS",
+      "ticker": "005930",
+      "total_ohlc_mismatch_count": 0
+    },
+    {
+      "close_mismatch_count": 0,
+      "common_rows": 32,
+      "date_mismatch_count": 0,
+      "high_mismatch_count": 0,
+      "legacy_only_date_count": 0,
+      "legacy_rows": 32,
+      "low_mismatch_count": 0,
+      "open_mismatch_count": 0,
+      "provider_only_date_count": 4,
+      "provider_rows": 36,
+      "requested_end": "2026-08-21",
+      "requested_start": "2026-07-01",
+      "status": "PASS",
+      "ticker": "000660",
+      "total_ohlc_mismatch_count": 0
+    },
+    {
+      "close_mismatch_count": 0,
+      "common_rows": 32,
+      "date_mismatch_count": 0,
+      "high_mismatch_count": 0,
+      "legacy_only_date_count": 0,
+      "legacy_rows": 32,
+      "low_mismatch_count": 0,
+      "open_mismatch_count": 0,
+      "provider_only_date_count": 4,
+      "provider_rows": 36,
+      "requested_end": "2026-08-21",
+      "requested_start": "2026-07-01",
+      "status": "PASS",
+      "ticker": "068270",
+      "total_ohlc_mismatch_count": 0
+    }
+  ]
 }

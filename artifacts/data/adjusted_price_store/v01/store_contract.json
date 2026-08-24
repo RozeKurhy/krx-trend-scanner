@@ -1,7 +1,12 @@
 {
+  "caller_allowed_metadata_fields": [
+    "requested_start",
+    "requested_end"
+  ],
   "default_path": "data/market/adjusted/stocks/<ticker>.parquet",
   "full_replacement": true,
   "hash_algorithm": "SHA-256",
+  "metadata_context_policy": "ALLOWLIST",
   "metadata_suffix": ".meta.json",
   "mutable_history": true,
   "physical_columns": [
@@ -12,5 +17,6 @@
     "low",
     "close"
   ],
+  "store_owned_metadata_immutable": true,
   "store_version": "ADJUSTED_PRICE_STORE_V01"
 }
