@@ -1,18 +1,23 @@
 {
-  "architecture_version": "KRX_PRODUCTION_DATA_ARCHITECTURE_V01",
+  "architecture_version": "KRX_PRODUCTION_DATA_ARCHITECTURE_V01_FIX01",
   "blockers": [],
   "branch": "codex/krx-production-data-architecture-v01",
   "counters": {
     "authority_conflict_count": 0,
-    "authority_field_count": 20,
+    "authority_field_count": 28,
     "authority_missing_count": 0,
+    "basic_info_semantic_conflict_count": 0,
     "consumer_count": 7,
     "consumer_unresolved_count": 0,
     "dependency_cycle_count": 0,
     "dependency_node_count": 7,
     "duplicate_layer_id_count": 0,
     "endpoint_identifier_conflict_count": 0,
+    "foreign_flow_lineage_unresolved_count": 0,
     "layer_count": 14,
+    "layer_missing_migration_status_count": 0,
+    "layer_missing_operational_status_count": 0,
+    "layer_source_state_conflict_count": 0,
     "legacy_cache_unclassified_count": 0,
     "network_request_count": 0,
     "observability_contract_missing_count": 0,
@@ -21,10 +26,28 @@
     "schema_conflict_count": 0,
     "secret_occurrence_count": 0,
     "store_count": 7,
+    "store_field_ambiguous_authority_count": 0,
+    "store_required_field_count": 42,
+    "store_required_field_covered_count": 42,
+    "store_required_field_missing_count": 0,
     "validation_source_head_mismatch_count": 0
   },
   "end_head": null,
-  "implementation_head": "0657bde7a8e0a21135693e349a8f756496f6908c",
+  "foreign_flow_lineage": {
+    "authority_type": "LEGACY",
+    "consumer": "compute_foreign_flow_features; full_universe_scanner; stock_report",
+    "current_production_source": "KRX_PYKRX_FOREIGN_FLOW",
+    "engine_is_upstream_authority": false,
+    "engine_module": "src/trend_scanner/flow/foreign_flow.py",
+    "input_metadata": "foreign_flow_daily_<as_of>_meta.json (source_name, SHA-256, date/row/ticker counts)",
+    "input_store_or_cache": "artifacts/patterns/pattern_a/production/flow/source/foreign_flow_daily_<as_of>.parquet",
+    "lineage_status": "CONFIRMED_FROM_REPOSITORY",
+    "producer": "ForeignFlowDataProvider.fetch_date_batch -> build_historical_cache; scripts/fetch_foreign_flow_20260814.py",
+    "source_endpoint": "pykrx.stock.get_market_net_purchases_of_equities_by_ticker(date, date, 'ALL', '외국인')",
+    "source_name": "KRX_PYKRX_FOREIGN_FLOW",
+    "source_semantics": "daily foreign investor buy/sell/net-buy KRW values by ticker"
+  },
+  "implementation_head": "c72e9a068640f17c3cd3eda5a3d3d054cf44b328",
   "layer_ids": [
     "STOCK_RAW_KRX",
     "STOCK_ADJUSTED_PYKRX",
@@ -44,7 +67,8 @@
   "network": {
     "krx_open_api_calls": 0,
     "opendart_calls": 0,
-    "pykrx_calls": 0
+    "pykrx_calls": 0,
+    "static_forbidden_import_count": 0
   },
   "production_behavior_changes": {
     "fastcore_changed": false,
@@ -56,17 +80,38 @@
     "sector_membership_source_changed": false,
     "stock_cache_rewritten": false
   },
+  "production_behavior_diff_guard": {
+    "allowed_paths": [
+      "docs/architecture/krx_production_data_architecture_v01.md",
+      "scripts/validate_krx_production_data_architecture_v01.py",
+      "src/trend_scanner/data/source_contracts.py",
+      "tests/test_krx_production_data_architecture_v01.py"
+    ],
+    "changed_paths": [
+      "docs/architecture/krx_production_data_architecture_v01.md",
+      "scripts/validate_krx_production_data_architecture_v01.py",
+      "src/trend_scanner/data/source_contracts.py",
+      "tests/test_krx_production_data_architecture_v01.py"
+    ],
+    "disallowed_paths": [],
+    "implementation_head": "c72e9a068640f17c3cd3eda5a3d3d054cf44b328",
+    "production_behavior_change_count": 0,
+    "start_head": "9b232a4422afe4383125d0dd1c36b691b83ad421"
+  },
   "recommendation": "RECOMMEND_PROCEED_TO_ADJUSTED_PRICE_STORE_V01",
   "required_zero": [
     "authority_conflict_count",
     "authority_missing_count",
-    "duplicate_layer_id_count",
     "schema_conflict_count",
     "endpoint_identifier_conflict_count",
+    "store_required_field_missing_count",
+    "store_field_ambiguous_authority_count",
+    "layer_missing_operational_status_count",
+    "layer_missing_migration_status_count",
+    "layer_source_state_conflict_count",
+    "basic_info_semantic_conflict_count",
     "consumer_unresolved_count",
     "dependency_cycle_count",
-    "legacy_cache_unclassified_count",
-    "observability_contract_missing_count",
     "runtime_artifact_dependency_count",
     "production_behavior_change_count",
     "network_request_count",
@@ -80,8 +125,8 @@
     "KRXRawStockStore": "KRX_RAW_STOCK_V01",
     "StockMasterStore": "STOCK_MASTER_V01"
   },
-  "start_head": "9d0d4178c4286157e8c3815a145b7c46996f9f86",
-  "status": "READY_FOR_ARCHITECT_KRX_PRODUCTION_DATA_ARCHITECTURE_V01_REVIEW",
+  "start_head": "9b232a4422afe4383125d0dd1c36b691b83ad421",
+  "status": "READY_FOR_ARCHITECT_KRX_PRODUCTION_DATA_ARCHITECTURE_V01_FIX01_REVIEW",
   "store_names": [
     "KRXRawStockStore",
     "AdjustedPriceStore",
@@ -91,5 +136,5 @@
     "FundamentalsStore",
     "CorporateActionStateStore"
   ],
-  "validation_source_head": "0657bde7a8e0a21135693e349a8f756496f6908c"
+  "validation_source_head": "c72e9a068640f17c3cd3eda5a3d3d054cf44b328"
 }

@@ -1,5 +1,5 @@
 {
-  "architecture_version": "KRX_PRODUCTION_DATA_ARCHITECTURE_V01",
+  "architecture_version": "KRX_PRODUCTION_DATA_ARCHITECTURE_V01_FIX01",
   "schema_versions": {
     "AdjustedPriceStore": "ADJUSTED_PRICE_V01",
     "DataHealthSnapshot": "DATA_HEALTH_V01",
@@ -74,6 +74,7 @@
         "market",
         "listing_date",
         "security_group",
+        "listing_section",
         "par_value",
         "listed_shares"
       ],
@@ -84,11 +85,16 @@
         "ticker",
         "standard_code",
         "name",
-        "market"
+        "market",
+        "listing_date",
+        "security_group",
+        "listing_section",
+        "par_value",
+        "listed_shares"
       ],
       "schema_version": "STOCK_MASTER_V01",
       "store_id": "StockMasterStore",
-      "write_policy": "PIT snapshots; no replacement of current cache in this phase"
+      "write_policy": "PIT snapshots; no replacement of current frozen artifact in this phase"
     },
     {
       "description": "Market and native sector index families",

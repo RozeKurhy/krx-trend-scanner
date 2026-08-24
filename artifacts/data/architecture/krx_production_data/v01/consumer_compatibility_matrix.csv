@@ -3,6 +3,6 @@ Pattern A,MarketDataRepository/get_daily or legacy cache,"open,high,low,close,vo
 FastCore,legacy composite cache,"open,high,low,close,volume",legacy composite,adjusted OHLC + raw volume,PLANNED_REPOSITORY_V2,NONE
 Julia,legacy composite cache,"open,high,low,close,volume,market_cap",legacy cache plus ancillary,adjusted OHLC + raw ancillary,PLANNED_REPOSITORY_V2,NONE
 Relative Strength,stock/index daily frames,close,current index providers,PIT repository/index stores,PLANNED_INDEX_PIT,NONE
-Foreign Flow,existing flow provider,"date,ticker",current production flow source,existing flow source,NO_RUNTIME_CHANGE,NONE
+Foreign Flow,foreign_flow_daily_<as_of>.parquet,"date,ticker,foreign_net_buy_value",KRX_PYKRX_FOREIGN_FLOW,ForeignFlowStore,PLANNED_REPOSITORY_V2,NONE
 Stock Report,legacy cache and analytics,"open,high,low,close,volume",legacy composite,repository contract,PLANNED_REPOSITORY_V2,NONE
 Resampler,daily repository output,"open,high,low,close,volume,trading_value",daily adjusted OHLC + raw ancillary,derived weekly/monthly,NO_RUNTIME_CHANGE,NONE
