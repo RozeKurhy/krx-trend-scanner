@@ -1,0 +1,16 @@
+{
+  "default_path": "data/market/adjusted/stocks/<ticker>.parquet",
+  "full_replacement": true,
+  "hash_algorithm": "SHA-256",
+  "metadata_suffix": ".meta.json",
+  "mutable_history": true,
+  "physical_columns": [
+    "date",
+    "ticker",
+    "open",
+    "high",
+    "low",
+    "close"
+  ],
+  "store_version": "ADJUSTED_PRICE_STORE_V01"
+}

@@ -1,0 +1,45 @@
+{
+  "adjusted": true,
+  "call_audit": {
+    "adjusted_false_call_count": 0,
+    "adjusted_true_call_count": 4,
+    "ancillary_persisted_column_count": 0,
+    "atomic_write_failure_preservation_error_count": 0,
+    "duplicate_date_count": 0,
+    "empty_overwrite_count": 0,
+    "invalid_ohlc_count": 0,
+    "krx_open_api_request_count": 0,
+    "legacy_cache_modified_count": 0,
+    "legacy_ohlc_parity_mismatch_count": 0,
+    "legacy_ohlc_parity_row_count": 8997,
+    "live_smoke_failure_count": 0,
+    "live_smoke_ticker_count": 3,
+    "logical_pykrx_fetch_count": 4,
+    "metadata_hash_mismatch_count": 0,
+    "metadata_missing_count": 0,
+    "opendart_request_count": 0,
+    "physical_schema_error_count": 0,
+    "production_consumer_changed_count": 0,
+    "provider_test_count": 12,
+    "provider_test_failure_count": 0,
+    "secret_occurrence_count": 0,
+    "store_test_count": 21,
+    "store_test_failure_count": 0,
+    "ticker_mismatch_count": 0,
+    "validation_source_head_mismatch_count": 0
+  },
+  "credential_dependency": false,
+  "output_columns": [
+    "open",
+    "high",
+    "low",
+    "close"
+  ],
+  "prohibited_columns": [
+    "volume",
+    "trading_value",
+    "market_cap",
+    "listed_shares"
+  ],
+  "source_endpoint": "pykrx.stock.get_market_ohlcv_by_date"
+}
