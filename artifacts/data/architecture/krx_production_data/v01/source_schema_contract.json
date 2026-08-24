@@ -1,0 +1,49 @@
+{
+  "basic_info_response_fields": [
+    "ISU_CD",
+    "ISU_SRT_CD",
+    "ISU_NM",
+    "ISU_ABBRV",
+    "ISU_ENG_NM",
+    "LIST_DD",
+    "MKT_TP_NM",
+    "SECUGRP_NM",
+    "SECT_TP_NM",
+    "KIND_STKCERT_TP_NM",
+    "PARVAL",
+    "LIST_SHRS"
+  ],
+  "daily_stock_response_fields": [
+    "BAS_DD",
+    "ISU_CD",
+    "TDD_OPNPRC",
+    "TDD_HGPRC",
+    "TDD_LWPRC",
+    "TDD_CLSPRC",
+    "ACC_TRDVOL",
+    "ACC_TRDVAL",
+    "MKTCAP",
+    "LIST_SHRS"
+  ],
+  "derived_identity_rules": {
+    "IndexStore.index_code": "(source_api, IDX_CLSS, IDX_NM) -> KRX_NATIVE_SECTOR_INDEX_MAP -> canonical index_code",
+    "StockMasterStore.as_of": "REQUEST_PARAMETER.basDd -> REQUESTED_SNAPSHOT_DATE"
+  },
+  "index_response_fields": [
+    "BAS_DD",
+    "IDX_CLSS",
+    "IDX_NM",
+    "OPNPRC_IDX",
+    "HGPRC_IDX",
+    "LWPRC_IDX",
+    "CLSPRC_IDX",
+    "ACC_TRDVOL",
+    "ACC_TRDVAL",
+    "MKTCAP"
+  ],
+  "request_parameters": {
+    "BASIC_INFO": [
+      "basDd"
+    ]
+  }
+}

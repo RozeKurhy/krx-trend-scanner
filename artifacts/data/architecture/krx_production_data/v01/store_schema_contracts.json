@@ -1,5 +1,5 @@
 {
-  "architecture_version": "KRX_PRODUCTION_DATA_ARCHITECTURE_V01_FIX01",
+  "architecture_version": "KRX_PRODUCTION_DATA_ARCHITECTURE_V01_FIX02",
   "schema_versions": {
     "AdjustedPriceStore": "ADJUSTED_PRICE_V01",
     "DataHealthSnapshot": "DATA_HEALTH_V01",
@@ -110,7 +110,7 @@
         "volume",
         "trading_value"
       ],
-      "ownership": "MARKET_INDEX, NATIVE_SECTOR_INDEX, and KRX_BRANDED_TAXONOMY namespaces stay distinct",
+      "ownership": "MARKET_INDEX, NATIVE_SECTOR_INDEX, and KRX_BRANDED_TAXONOMY namespaces stay distinct; canonical identity is (family, index_code)",
       "pit_required": true,
       "required_fields": [
         "date",

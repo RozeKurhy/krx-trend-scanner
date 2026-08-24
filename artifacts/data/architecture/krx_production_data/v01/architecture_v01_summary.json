@@ -1,14 +1,15 @@
 {
-  "architecture_version": "KRX_PRODUCTION_DATA_ARCHITECTURE_V01_FIX01",
+  "architecture_version": "KRX_PRODUCTION_DATA_ARCHITECTURE_V01_FIX02",
   "blockers": [],
   "branch": "codex/krx-production-data-architecture-v01",
   "counters": {
     "authority_conflict_count": 0,
-    "authority_field_count": 28,
+    "authority_field_count": 27,
     "authority_missing_count": 0,
     "basic_info_semantic_conflict_count": 0,
     "consumer_count": 7,
     "consumer_unresolved_count": 0,
+    "declared_nonexistent_response_field_count": 0,
     "dependency_cycle_count": 0,
     "dependency_node_count": 7,
     "duplicate_layer_id_count": 0,
@@ -19,17 +20,22 @@
     "layer_missing_operational_status_count": 0,
     "layer_source_state_conflict_count": 0,
     "legacy_cache_unclassified_count": 0,
+    "legacy_runtime_artifact_dependency_count": 4,
+    "legacy_runtime_artifact_dependency_unclassified_count": 0,
     "network_request_count": 0,
     "observability_contract_missing_count": 0,
     "production_behavior_change_count": 0,
-    "runtime_artifact_dependency_count": 0,
+    "request_derived_field_contract_error_count": 0,
     "schema_conflict_count": 0,
     "secret_occurrence_count": 0,
+    "static_forbidden_network_import_count": 0,
+    "static_mapping_field_contract_error_count": 0,
     "store_count": 7,
     "store_field_ambiguous_authority_count": 0,
     "store_required_field_count": 42,
     "store_required_field_covered_count": 42,
     "store_required_field_missing_count": 0,
+    "target_runtime_artifact_dependency_count": 0,
     "validation_source_head_mismatch_count": 0
   },
   "end_head": null,
@@ -47,7 +53,7 @@
     "source_name": "KRX_PYKRX_FOREIGN_FLOW",
     "source_semantics": "daily foreign investor buy/sell/net-buy KRW values by ticker"
   },
-  "implementation_head": "c72e9a068640f17c3cd3eda5a3d3d054cf44b328",
+  "implementation_head": "4404279bf5d8e1f45a4d9f2db9fbb84bf4b50ee3",
   "layer_ids": [
     "STOCK_RAW_KRX",
     "STOCK_ADJUSTED_PYKRX",
@@ -64,11 +70,95 @@
     "JULIA",
     "STOCK_REPORT"
   ],
+  "legacy_runtime_artifact_dependencies": {
+    "legacy_runtime_artifact_dependencies": [
+      "FOREIGN_FLOW_ARTIFACT_CACHE",
+      "INVESTABILITY_MARKET_CAP_ARTIFACT_CACHE",
+      "PATTERN_A_FAST_CONTRACT_ARTIFACT",
+      "RELATIVE_STRENGTH_ARTIFACT_CACHE"
+    ],
+    "legacy_runtime_artifact_dependency_count": 4,
+    "legacy_runtime_artifact_dependency_unclassified_count": 0,
+    "legacy_runtime_artifact_literals": [
+      {
+        "dependency_id": "PATTERN_A_FAST_CONTRACT_ARTIFACT",
+        "file": "src/trend_scanner/reporting/pattern_a_fast_report.py",
+        "path": "artifacts/patterns/pattern_a_fast/production/contract_prototype/pattern_a_fast_score_prototype_v01.json"
+      },
+      {
+        "dependency_id": "PATTERN_A_FAST_CONTRACT_ARTIFACT",
+        "file": "src/trend_scanner/reporting/pattern_a_fast_report.py",
+        "path": "artifacts/patterns/pattern_a_fast/production/contract_prototype/pattern_a_fast_stage_prototype_v01.json"
+      },
+      {
+        "dependency_id": "RELATIVE_STRENGTH_ARTIFACT_CACHE",
+        "file": "src/trend_scanner/reporting/relative_strength_report.py",
+        "path": "artifacts/patterns/pattern_a/validation/relative_strength/market_completion_v01/market_rs_universe_{date}.csv"
+      },
+      {
+        "dependency_id": "INVESTABILITY_MARKET_CAP_ARTIFACT_CACHE",
+        "file": "src/trend_scanner/reporting/stock_report.py",
+        "path": "artifacts/patterns/pattern_a/production/investability"
+      },
+      {
+        "dependency_id": "INVESTABILITY_MARKET_CAP_ARTIFACT_CACHE",
+        "file": "src/trend_scanner/reporting/stock_report.py",
+        "path": "artifacts/patterns/pattern_a/production/scanner"
+      },
+      {
+        "dependency_id": "PATTERN_A_FAST_CONTRACT_ARTIFACT",
+        "file": "src/trend_scanner/reporting/stock_report.py",
+        "path": "artifacts/patterns/pattern_a_fast/production/contract_prototype/pattern_a_fast_score_prototype_v01.json"
+      },
+      {
+        "dependency_id": "PATTERN_A_FAST_CONTRACT_ARTIFACT",
+        "file": "src/trend_scanner/reporting/stock_report.py",
+        "path": "artifacts/patterns/pattern_a_fast/production/contract_prototype/pattern_a_fast_stage_prototype_v01.json"
+      },
+      {
+        "dependency_id": "INVESTABILITY_MARKET_CAP_ARTIFACT_CACHE",
+        "file": "src/trend_scanner/reporting/stock_report.py",
+        "path": "artifacts/patterns/pattern_a/production/investability/source"
+      },
+      {
+        "dependency_id": "INVESTABILITY_MARKET_CAP_ARTIFACT_CACHE",
+        "file": "src/trend_scanner/reporting/stock_report.py",
+        "path": "artifacts/patterns/pattern_a/validation/investability_history/normalized"
+      },
+      {
+        "dependency_id": "FOREIGN_FLOW_ARTIFACT_CACHE",
+        "file": "src/trend_scanner/reporting/stock_report.py",
+        "path": "artifacts/patterns/pattern_a/production/flow/source"
+      },
+      {
+        "dependency_id": "INVESTABILITY_MARKET_CAP_ARTIFACT_CACHE",
+        "file": "src/trend_scanner/scanner/full_universe_scanner.py",
+        "path": "artifacts/patterns/pattern_a/production/investability"
+      },
+      {
+        "dependency_id": "INVESTABILITY_MARKET_CAP_ARTIFACT_CACHE",
+        "file": "src/trend_scanner/scanner/full_universe_scanner.py",
+        "path": "artifacts/patterns/pattern_a/production/scanner"
+      },
+      {
+        "dependency_id": "FOREIGN_FLOW_ARTIFACT_CACHE",
+        "file": "src/trend_scanner/scanner/full_universe_scanner.py",
+        "path": "artifacts/patterns/pattern_a/production/flow/source"
+      },
+      {
+        "dependency_id": "RELATIVE_STRENGTH_ARTIFACT_CACHE",
+        "file": "src/trend_scanner/scanner/full_universe_scanner.py",
+        "path": "artifacts/patterns/pattern_a/validation/relative_strength/source"
+      }
+    ],
+    "unclassified_runtime_artifact_literals": []
+  },
   "network": {
     "krx_open_api_calls": 0,
+    "network_request_count": 0,
     "opendart_calls": 0,
     "pykrx_calls": 0,
-    "static_forbidden_import_count": 0
+    "static_forbidden_network_import_count": 0
   },
   "production_behavior_changes": {
     "fastcore_changed": false,
@@ -78,7 +168,8 @@
     "production_fetch_behavior_changed": false,
     "rs_formula_changed": false,
     "sector_membership_source_changed": false,
-    "stock_cache_rewritten": false
+    "stock_cache_rewritten": false,
+    "stock_report_runtime_changed": false
   },
   "production_behavior_diff_guard": {
     "allowed_paths": [
@@ -94,9 +185,58 @@
       "tests/test_krx_production_data_architecture_v01.py"
     ],
     "disallowed_paths": [],
-    "implementation_head": "c72e9a068640f17c3cd3eda5a3d3d054cf44b328",
+    "implementation_head": "4404279bf5d8e1f45a4d9f2db9fbb84bf4b50ee3",
     "production_behavior_change_count": 0,
-    "start_head": "9b232a4422afe4383125d0dd1c36b691b83ad421"
+    "start_head": "3e1ae095cb8f411bb9bb7790a57e5eecd3f4a66c"
+  },
+  "raw_schema_contract": {
+    "basic_info_response_fields": [
+      "ISU_CD",
+      "ISU_SRT_CD",
+      "ISU_NM",
+      "ISU_ABBRV",
+      "ISU_ENG_NM",
+      "LIST_DD",
+      "MKT_TP_NM",
+      "SECUGRP_NM",
+      "SECT_TP_NM",
+      "KIND_STKCERT_TP_NM",
+      "PARVAL",
+      "LIST_SHRS"
+    ],
+    "daily_stock_response_fields": [
+      "BAS_DD",
+      "ISU_CD",
+      "TDD_OPNPRC",
+      "TDD_HGPRC",
+      "TDD_LWPRC",
+      "TDD_CLSPRC",
+      "ACC_TRDVOL",
+      "ACC_TRDVAL",
+      "MKTCAP",
+      "LIST_SHRS"
+    ],
+    "derived_identity_rules": {
+      "IndexStore.index_code": "(source_api, IDX_CLSS, IDX_NM) -> KRX_NATIVE_SECTOR_INDEX_MAP -> canonical index_code",
+      "StockMasterStore.as_of": "REQUEST_PARAMETER.basDd -> REQUESTED_SNAPSHOT_DATE"
+    },
+    "index_response_fields": [
+      "BAS_DD",
+      "IDX_CLSS",
+      "IDX_NM",
+      "OPNPRC_IDX",
+      "HGPRC_IDX",
+      "LWPRC_IDX",
+      "CLSPRC_IDX",
+      "ACC_TRDVOL",
+      "ACC_TRDVAL",
+      "MKTCAP"
+    ],
+    "request_parameters": {
+      "BASIC_INFO": [
+        "basDd"
+      ]
+    }
   },
   "recommendation": "RECOMMEND_PROCEED_TO_ADJUSTED_PRICE_STORE_V01",
   "required_zero": [
@@ -112,8 +252,13 @@
     "basic_info_semantic_conflict_count",
     "consumer_unresolved_count",
     "dependency_cycle_count",
-    "runtime_artifact_dependency_count",
     "production_behavior_change_count",
+    "declared_nonexistent_response_field_count",
+    "request_derived_field_contract_error_count",
+    "static_mapping_field_contract_error_count",
+    "legacy_runtime_artifact_dependency_unclassified_count",
+    "target_runtime_artifact_dependency_count",
+    "static_forbidden_network_import_count",
     "network_request_count",
     "secret_occurrence_count",
     "validation_source_head_mismatch_count"
@@ -125,8 +270,8 @@
     "KRXRawStockStore": "KRX_RAW_STOCK_V01",
     "StockMasterStore": "STOCK_MASTER_V01"
   },
-  "start_head": "9b232a4422afe4383125d0dd1c36b691b83ad421",
-  "status": "READY_FOR_ARCHITECT_KRX_PRODUCTION_DATA_ARCHITECTURE_V01_FIX01_REVIEW",
+  "start_head": "3e1ae095cb8f411bb9bb7790a57e5eecd3f4a66c",
+  "status": "READY_FOR_ARCHITECT_KRX_PRODUCTION_DATA_ARCHITECTURE_V01_FIX02_REVIEW",
   "store_names": [
     "KRXRawStockStore",
     "AdjustedPriceStore",
@@ -136,5 +281,5 @@
     "FundamentalsStore",
     "CorporateActionStateStore"
   ],
-  "validation_source_head": "c72e9a068640f17c3cd3eda5a3d3d054cf44b328"
+  "validation_source_head": "4404279bf5d8e1f45a4d9f2db9fbb84bf4b50ee3"
 }

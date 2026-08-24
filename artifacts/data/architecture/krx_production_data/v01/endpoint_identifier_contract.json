@@ -24,7 +24,8 @@
         "identifier_namespace": "NOT_SECTOR_MEMBERSHIP",
         "semantic": "security_group",
         "target_field": "security_group"
-      }
+      },
+      "snapshot_date_source": "REQUEST_PARAMETER.basDd"
     }
   },
   "DAILY_TRADING": {
@@ -41,16 +42,48 @@
     }
   },
   "NATIVE_SECTOR_INDEX": {
+    "canonical_identity": {
+      "canonical_examples": [
+        "1005",
+        "1006",
+        "2012"
+      ],
+      "derivation": "DERIVED_FROM_KRX_NATIVE_SECTOR_INDEX_MAP",
+      "index_namespace": "NATIVE_SECTOR_INDEX",
+      "mapping_key": [
+        "source_api",
+        "IDX_CLSS",
+        "IDX_NM"
+      ],
+      "provenance_origin": "STATIC_MAPPING",
+      "source_locator": "KRX_NATIVE_SECTOR_INDEX_MAP[(source_api, IDX_CLSS, IDX_NM)]",
+      "target_field": "index_code"
+    },
     "endpoints": [
       "/idx/kospi_dd_trd",
       "/idx/kosdaq_dd_trd"
     ],
     "fields": {
-      "IDX_CD": {
-        "identifier_namespace": "KRX_NATIVE_SECTOR_INDEX",
-        "semantic": "native_sector_index_code",
-        "target_field": "index_code"
+      "BAS_DD": {
+        "identifier_namespace": "KRX_INDEX_RESPONSE",
+        "semantic": "observation_date",
+        "target_field": "date"
+      },
+      "IDX_CLSS": {
+        "identifier_namespace": "KRX_INDEX_RESPONSE",
+        "semantic": "source_index_family",
+        "target_field": "family"
+      },
+      "IDX_NM": {
+        "identifier_namespace": "KRX_INDEX_RESPONSE",
+        "semantic": "source_index_name",
+        "target_field": "index_name"
       }
-    }
+    },
+    "raw_identity_fields": [
+      "source_api",
+      "IDX_CLSS",
+      "IDX_NM"
+    ]
   }
 }

@@ -1,18 +1,21 @@
 {
-  "architecture_version": "KRX_PRODUCTION_DATA_ARCHITECTURE_V01_FIX01",
+  "architecture_version": "KRX_PRODUCTION_DATA_ARCHITECTURE_V01_FIX02",
   "fields": [
     {
       "authority_id": "KRX_OPEN_API_STOCK_DAILY",
       "authority_type": "DERIVED",
       "contract_id": "raw.date",
+      "derivation_keys": [],
       "field_role": "TEMPORAL_KEY",
       "owner_store": "KRXRawStockStore",
+      "provenance_origin": "RESPONSE_FIELD",
       "schema_version": "KRX_RAW_STOCK_V01",
       "source_endpoints": [
         "/sto/stk_bydd_trd",
         "/sto/ksq_bydd_trd"
       ],
       "source_field": "BAS_DD",
+      "source_locator": null,
       "source_name": "KRX Open API",
       "source_semantics": "SOURCE_OBSERVATION_DATE",
       "target_field": "date"
@@ -21,14 +24,17 @@
       "authority_id": "KRX_OPEN_API_STOCK_DAILY",
       "authority_type": "AUTHORITATIVE",
       "contract_id": "raw.ticker",
+      "derivation_keys": [],
       "field_role": "IDENTITY_KEY",
       "owner_store": "KRXRawStockStore",
+      "provenance_origin": "RESPONSE_FIELD",
       "schema_version": "KRX_RAW_STOCK_V01",
       "source_endpoints": [
         "/sto/stk_bydd_trd",
         "/sto/ksq_bydd_trd"
       ],
       "source_field": "ISU_CD",
+      "source_locator": null,
       "source_name": "KRX Open API",
       "source_semantics": "SIX_DIGIT_TICKER",
       "target_field": "ticker"
@@ -37,14 +43,17 @@
       "authority_id": "KRX_OPEN_API_STOCK_DAILY",
       "authority_type": "AUTHORITATIVE",
       "contract_id": "raw.open",
+      "derivation_keys": [],
       "field_role": "AUTHORITATIVE_SOURCE",
       "owner_store": "KRXRawStockStore",
+      "provenance_origin": "RESPONSE_FIELD",
       "schema_version": "KRX_RAW_STOCK_V01",
       "source_endpoints": [
         "/sto/stk_bydd_trd",
         "/sto/ksq_bydd_trd"
       ],
       "source_field": "TDD_OPNPRC",
+      "source_locator": null,
       "source_name": "KRX Open API",
       "source_semantics": "UNADJUSTED_RAW",
       "target_field": "open"
@@ -53,14 +62,17 @@
       "authority_id": "KRX_OPEN_API_STOCK_DAILY",
       "authority_type": "AUTHORITATIVE",
       "contract_id": "raw.high",
+      "derivation_keys": [],
       "field_role": "AUTHORITATIVE_SOURCE",
       "owner_store": "KRXRawStockStore",
+      "provenance_origin": "RESPONSE_FIELD",
       "schema_version": "KRX_RAW_STOCK_V01",
       "source_endpoints": [
         "/sto/stk_bydd_trd",
         "/sto/ksq_bydd_trd"
       ],
       "source_field": "TDD_HGPRC",
+      "source_locator": null,
       "source_name": "KRX Open API",
       "source_semantics": "UNADJUSTED_RAW",
       "target_field": "high"
@@ -69,14 +81,17 @@
       "authority_id": "KRX_OPEN_API_STOCK_DAILY",
       "authority_type": "AUTHORITATIVE",
       "contract_id": "raw.low",
+      "derivation_keys": [],
       "field_role": "AUTHORITATIVE_SOURCE",
       "owner_store": "KRXRawStockStore",
+      "provenance_origin": "RESPONSE_FIELD",
       "schema_version": "KRX_RAW_STOCK_V01",
       "source_endpoints": [
         "/sto/stk_bydd_trd",
         "/sto/ksq_bydd_trd"
       ],
       "source_field": "TDD_LWPRC",
+      "source_locator": null,
       "source_name": "KRX Open API",
       "source_semantics": "UNADJUSTED_RAW",
       "target_field": "low"
@@ -85,14 +100,17 @@
       "authority_id": "KRX_OPEN_API_STOCK_DAILY",
       "authority_type": "AUTHORITATIVE",
       "contract_id": "raw.close",
+      "derivation_keys": [],
       "field_role": "AUTHORITATIVE_SOURCE",
       "owner_store": "KRXRawStockStore",
+      "provenance_origin": "RESPONSE_FIELD",
       "schema_version": "KRX_RAW_STOCK_V01",
       "source_endpoints": [
         "/sto/stk_bydd_trd",
         "/sto/ksq_bydd_trd"
       ],
       "source_field": "TDD_CLSPRC",
+      "source_locator": null,
       "source_name": "KRX Open API",
       "source_semantics": "UNADJUSTED_RAW",
       "target_field": "close"
@@ -101,14 +119,17 @@
       "authority_id": "KRX_OPEN_API_STOCK_DAILY",
       "authority_type": "AUTHORITATIVE",
       "contract_id": "raw.volume",
+      "derivation_keys": [],
       "field_role": "AUTHORITATIVE_SOURCE",
       "owner_store": "KRXRawStockStore",
+      "provenance_origin": "RESPONSE_FIELD",
       "schema_version": "KRX_RAW_STOCK_V01",
       "source_endpoints": [
         "/sto/stk_bydd_trd",
         "/sto/ksq_bydd_trd"
       ],
       "source_field": "ACC_TRDVOL",
+      "source_locator": null,
       "source_name": "KRX Open API",
       "source_semantics": "RAW_DAILY_VOLUME",
       "target_field": "volume"
@@ -117,14 +138,17 @@
       "authority_id": "KRX_OPEN_API_STOCK_DAILY",
       "authority_type": "AUTHORITATIVE",
       "contract_id": "raw.trading_value",
+      "derivation_keys": [],
       "field_role": "AUTHORITATIVE_SOURCE",
       "owner_store": "KRXRawStockStore",
+      "provenance_origin": "RESPONSE_FIELD",
       "schema_version": "KRX_RAW_STOCK_V01",
       "source_endpoints": [
         "/sto/stk_bydd_trd",
         "/sto/ksq_bydd_trd"
       ],
       "source_field": "ACC_TRDVAL",
+      "source_locator": null,
       "source_name": "KRX Open API",
       "source_semantics": "RAW_DAILY_TRADING_VALUE",
       "target_field": "trading_value"
@@ -133,14 +157,17 @@
       "authority_id": "KRX_OPEN_API_STOCK_DAILY",
       "authority_type": "AUTHORITATIVE",
       "contract_id": "raw.market_cap",
+      "derivation_keys": [],
       "field_role": "AUTHORITATIVE_SOURCE",
       "owner_store": "KRXRawStockStore",
+      "provenance_origin": "RESPONSE_FIELD",
       "schema_version": "KRX_RAW_STOCK_V01",
       "source_endpoints": [
         "/sto/stk_bydd_trd",
         "/sto/ksq_bydd_trd"
       ],
       "source_field": "MKTCAP",
+      "source_locator": null,
       "source_name": "KRX Open API",
       "source_semantics": "RAW_DAILY_MARKET_CAP",
       "target_field": "market_cap"
@@ -149,14 +176,17 @@
       "authority_id": "KRX_OPEN_API_STOCK_DAILY",
       "authority_type": "AUTHORITATIVE",
       "contract_id": "raw.listed_shares",
+      "derivation_keys": [],
       "field_role": "AUTHORITATIVE_SOURCE",
       "owner_store": "KRXRawStockStore",
+      "provenance_origin": "RESPONSE_FIELD",
       "schema_version": "KRX_RAW_STOCK_V01",
       "source_endpoints": [
         "/sto/stk_bydd_trd",
         "/sto/ksq_bydd_trd"
       ],
       "source_field": "LIST_SHRS",
+      "source_locator": null,
       "source_name": "KRX Open API",
       "source_semantics": "RAW_DAILY_LISTED_SHARES",
       "target_field": "listed_shares"
@@ -165,13 +195,16 @@
       "authority_id": "PYKRX_ADJUSTED_PRICE",
       "authority_type": "DERIVED",
       "contract_id": "adjusted.date",
+      "derivation_keys": [],
       "field_role": "TEMPORAL_KEY",
       "owner_store": "AdjustedPriceStore",
+      "provenance_origin": "RESPONSE_FIELD",
       "schema_version": "ADJUSTED_PRICE_V01",
       "source_endpoints": [
         "stock.get_market_ohlcv_by_date(adjusted=True)"
       ],
       "source_field": "date",
+      "source_locator": null,
       "source_name": "PyKRX",
       "source_semantics": "SOURCE_OBSERVATION_DATE",
       "target_field": "date"
@@ -180,13 +213,16 @@
       "authority_id": "PYKRX_ADJUSTED_PRICE",
       "authority_type": "DERIVED",
       "contract_id": "adjusted.ticker",
+      "derivation_keys": [],
       "field_role": "IDENTITY_KEY",
       "owner_store": "AdjustedPriceStore",
+      "provenance_origin": "RESPONSE_FIELD",
       "schema_version": "ADJUSTED_PRICE_V01",
       "source_endpoints": [
         "stock.get_market_ohlcv_by_date(adjusted=True)"
       ],
       "source_field": "ticker",
+      "source_locator": null,
       "source_name": "PyKRX",
       "source_semantics": "SIX_DIGIT_TICKER",
       "target_field": "ticker"
@@ -195,13 +231,16 @@
       "authority_id": "PYKRX_ADJUSTED_PRICE",
       "authority_type": "AUTHORITATIVE",
       "contract_id": "adjusted.open",
+      "derivation_keys": [],
       "field_role": "AUTHORITATIVE_SOURCE",
       "owner_store": "AdjustedPriceStore",
+      "provenance_origin": "RESPONSE_FIELD",
       "schema_version": "ADJUSTED_PRICE_V01",
       "source_endpoints": [
         "stock.get_market_ohlcv_by_date(adjusted=True)"
       ],
       "source_field": "시가",
+      "source_locator": null,
       "source_name": "PyKRX",
       "source_semantics": "ADJUSTED_OHLC",
       "target_field": "open"
@@ -210,13 +249,16 @@
       "authority_id": "PYKRX_ADJUSTED_PRICE",
       "authority_type": "AUTHORITATIVE",
       "contract_id": "adjusted.high",
+      "derivation_keys": [],
       "field_role": "AUTHORITATIVE_SOURCE",
       "owner_store": "AdjustedPriceStore",
+      "provenance_origin": "RESPONSE_FIELD",
       "schema_version": "ADJUSTED_PRICE_V01",
       "source_endpoints": [
         "stock.get_market_ohlcv_by_date(adjusted=True)"
       ],
       "source_field": "고가",
+      "source_locator": null,
       "source_name": "PyKRX",
       "source_semantics": "ADJUSTED_OHLC",
       "target_field": "high"
@@ -225,13 +267,16 @@
       "authority_id": "PYKRX_ADJUSTED_PRICE",
       "authority_type": "AUTHORITATIVE",
       "contract_id": "adjusted.low",
+      "derivation_keys": [],
       "field_role": "AUTHORITATIVE_SOURCE",
       "owner_store": "AdjustedPriceStore",
+      "provenance_origin": "RESPONSE_FIELD",
       "schema_version": "ADJUSTED_PRICE_V01",
       "source_endpoints": [
         "stock.get_market_ohlcv_by_date(adjusted=True)"
       ],
       "source_field": "저가",
+      "source_locator": null,
       "source_name": "PyKRX",
       "source_semantics": "ADJUSTED_OHLC",
       "target_field": "low"
@@ -240,13 +285,16 @@
       "authority_id": "PYKRX_ADJUSTED_PRICE",
       "authority_type": "AUTHORITATIVE",
       "contract_id": "adjusted.close",
+      "derivation_keys": [],
       "field_role": "AUTHORITATIVE_SOURCE",
       "owner_store": "AdjustedPriceStore",
+      "provenance_origin": "RESPONSE_FIELD",
       "schema_version": "ADJUSTED_PRICE_V01",
       "source_endpoints": [
         "stock.get_market_ohlcv_by_date(adjusted=True)"
       ],
       "source_field": "종가",
+      "source_locator": null,
       "source_name": "PyKRX",
       "source_semantics": "ADJUSTED_OHLC",
       "target_field": "close"
@@ -255,30 +303,36 @@
       "authority_id": "KRX_OPEN_API_BASIC_INFO",
       "authority_type": "DERIVED",
       "contract_id": "master.as_of",
+      "derivation_keys": [],
       "field_role": "TEMPORAL_KEY",
       "owner_store": "StockMasterStore",
+      "provenance_origin": "REQUEST_PARAMETER",
       "schema_version": "STOCK_MASTER_V01",
       "source_endpoints": [
         "/sto/stk_isu_base_info",
         "/sto/ksq_isu_base_info"
       ],
-      "source_field": "BAS_DD",
+      "source_field": null,
+      "source_locator": "REQUEST_PARAMETER.basDd",
       "source_name": "KRX Open API Basic Info",
-      "source_semantics": "SOURCE_OBSERVATION_DATE",
+      "source_semantics": "REQUESTED_SNAPSHOT_DATE",
       "target_field": "as_of"
     },
     {
       "authority_id": "KRX_OPEN_API_BASIC_INFO",
       "authority_type": "AUTHORITATIVE",
       "contract_id": "master.ticker",
+      "derivation_keys": [],
       "field_role": "IDENTITY_KEY",
       "owner_store": "StockMasterStore",
+      "provenance_origin": "RESPONSE_FIELD",
       "schema_version": "STOCK_MASTER_V01",
       "source_endpoints": [
         "/sto/stk_isu_base_info",
         "/sto/ksq_isu_base_info"
       ],
       "source_field": "ISU_SRT_CD",
+      "source_locator": null,
       "source_name": "KRX Open API Basic Info",
       "source_semantics": "SIX_DIGIT_TICKER",
       "target_field": "ticker"
@@ -287,14 +341,17 @@
       "authority_id": "KRX_OPEN_API_BASIC_INFO",
       "authority_type": "AUTHORITATIVE",
       "contract_id": "master.standard_code",
+      "derivation_keys": [],
       "field_role": "IDENTITY_KEY",
       "owner_store": "StockMasterStore",
+      "provenance_origin": "RESPONSE_FIELD",
       "schema_version": "STOCK_MASTER_V01",
       "source_endpoints": [
         "/sto/stk_isu_base_info",
         "/sto/ksq_isu_base_info"
       ],
       "source_field": "ISU_CD",
+      "source_locator": null,
       "source_name": "KRX Open API Basic Info",
       "source_semantics": "KRX_STANDARD_CODE",
       "target_field": "standard_code"
@@ -303,14 +360,17 @@
       "authority_id": "KRX_OPEN_API_BASIC_INFO",
       "authority_type": "AUTHORITATIVE",
       "contract_id": "master.name",
+      "derivation_keys": [],
       "field_role": "AUTHORITATIVE_SOURCE",
       "owner_store": "StockMasterStore",
+      "provenance_origin": "RESPONSE_FIELD",
       "schema_version": "STOCK_MASTER_V01",
       "source_endpoints": [
         "/sto/stk_isu_base_info",
         "/sto/ksq_isu_base_info"
       ],
       "source_field": "ISU_ABBRV",
+      "source_locator": null,
       "source_name": "KRX Open API Basic Info",
       "source_semantics": "SECURITY_NAME",
       "target_field": "name"
@@ -319,14 +379,17 @@
       "authority_id": "KRX_OPEN_API_BASIC_INFO",
       "authority_type": "AUTHORITATIVE",
       "contract_id": "master.market",
+      "derivation_keys": [],
       "field_role": "AUTHORITATIVE_SOURCE",
       "owner_store": "StockMasterStore",
+      "provenance_origin": "RESPONSE_FIELD",
       "schema_version": "STOCK_MASTER_V01",
       "source_endpoints": [
         "/sto/stk_isu_base_info",
         "/sto/ksq_isu_base_info"
       ],
       "source_field": "MKT_TP_NM",
+      "source_locator": null,
       "source_name": "KRX Open API Basic Info",
       "source_semantics": "MARKET_NAMESPACE",
       "target_field": "market"
@@ -335,14 +398,17 @@
       "authority_id": "KRX_OPEN_API_BASIC_INFO",
       "authority_type": "AUTHORITATIVE",
       "contract_id": "master.listing_date",
+      "derivation_keys": [],
       "field_role": "AUTHORITATIVE_SOURCE",
       "owner_store": "StockMasterStore",
+      "provenance_origin": "RESPONSE_FIELD",
       "schema_version": "STOCK_MASTER_V01",
       "source_endpoints": [
         "/sto/stk_isu_base_info",
         "/sto/ksq_isu_base_info"
       ],
       "source_field": "LIST_DD",
+      "source_locator": null,
       "source_name": "KRX Open API Basic Info",
       "source_semantics": "LISTING_DATE",
       "target_field": "listing_date"
@@ -351,14 +417,17 @@
       "authority_id": "KRX_OPEN_API_BASIC_INFO",
       "authority_type": "AUTHORITATIVE",
       "contract_id": "master.security_group",
+      "derivation_keys": [],
       "field_role": "AUTHORITATIVE_SOURCE",
       "owner_store": "StockMasterStore",
+      "provenance_origin": "RESPONSE_FIELD",
       "schema_version": "STOCK_MASTER_V01",
       "source_endpoints": [
         "/sto/stk_isu_base_info",
         "/sto/ksq_isu_base_info"
       ],
       "source_field": "SECUGRP_NM",
+      "source_locator": null,
       "source_name": "KRX Open API Basic Info",
       "source_semantics": "SECURITY_GROUP",
       "target_field": "security_group"
@@ -367,14 +436,17 @@
       "authority_id": "KRX_OPEN_API_BASIC_INFO",
       "authority_type": "AUTHORITATIVE",
       "contract_id": "master.listing_section",
+      "derivation_keys": [],
       "field_role": "AUTHORITATIVE_SOURCE",
       "owner_store": "StockMasterStore",
+      "provenance_origin": "RESPONSE_FIELD",
       "schema_version": "STOCK_MASTER_V01",
       "source_endpoints": [
         "/sto/stk_isu_base_info",
         "/sto/ksq_isu_base_info"
       ],
       "source_field": "SECT_TP_NM",
+      "source_locator": null,
       "source_name": "KRX Open API Basic Info",
       "source_semantics": "LISTING_SECTION",
       "target_field": "listing_section"
@@ -383,14 +455,17 @@
       "authority_id": "KRX_OPEN_API_BASIC_INFO",
       "authority_type": "AUTHORITATIVE",
       "contract_id": "master.par_value",
+      "derivation_keys": [],
       "field_role": "AUTHORITATIVE_SOURCE",
       "owner_store": "StockMasterStore",
+      "provenance_origin": "RESPONSE_FIELD",
       "schema_version": "STOCK_MASTER_V01",
       "source_endpoints": [
         "/sto/stk_isu_base_info",
         "/sto/ksq_isu_base_info"
       ],
       "source_field": "PARVAL",
+      "source_locator": null,
       "source_name": "KRX Open API Basic Info",
       "source_semantics": "PAR_VALUE",
       "target_field": "par_value"
@@ -399,14 +474,17 @@
       "authority_id": "KRX_OPEN_API_BASIC_INFO",
       "authority_type": "AUTHORITATIVE",
       "contract_id": "master.listed_shares",
+      "derivation_keys": [],
       "field_role": "AUTHORITATIVE_SOURCE",
       "owner_store": "StockMasterStore",
+      "provenance_origin": "RESPONSE_FIELD",
       "schema_version": "STOCK_MASTER_V01",
       "source_endpoints": [
         "/sto/stk_isu_base_info",
         "/sto/ksq_isu_base_info"
       ],
       "source_field": "LIST_SHRS",
+      "source_locator": null,
       "source_name": "KRX Open API Basic Info",
       "source_semantics": "MASTER_SNAPSHOT_LISTED_SHARES",
       "target_field": "listed_shares"
@@ -415,14 +493,17 @@
       "authority_id": "KRX_INDEX_SOURCE",
       "authority_type": "DERIVED",
       "contract_id": "index.date",
+      "derivation_keys": [],
       "field_role": "TEMPORAL_KEY",
       "owner_store": "IndexStore",
+      "provenance_origin": "RESPONSE_FIELD",
       "schema_version": "INDEX_STORE_V01",
       "source_endpoints": [
         "/idx/kospi_dd_trd",
         "/idx/kosdaq_dd_trd"
       ],
       "source_field": "BAS_DD",
+      "source_locator": null,
       "source_name": "KRX index source",
       "source_semantics": "SOURCE_OBSERVATION_DATE",
       "target_field": "date"
@@ -431,46 +512,58 @@
       "authority_id": "KRX_INDEX_SOURCE",
       "authority_type": "DERIVED",
       "contract_id": "index.family",
+      "derivation_keys": [],
       "field_role": "IDENTITY_KEY",
       "owner_store": "IndexStore",
+      "provenance_origin": "RESPONSE_FIELD",
       "schema_version": "INDEX_STORE_V01",
       "source_endpoints": [
         "/idx/kospi_dd_trd",
         "/idx/kosdaq_dd_trd"
       ],
       "source_field": "IDX_CLSS",
+      "source_locator": null,
       "source_name": "KRX index source",
       "source_semantics": "INDEX_FAMILY_NAMESPACE",
       "target_field": "family"
     },
     {
-      "authority_id": "KRX_NATIVE_SECTOR_INDEX",
-      "authority_type": "AUTHORITATIVE",
+      "authority_id": "KRX_NATIVE_SECTOR_INDEX_MAP",
+      "authority_type": "DERIVED",
       "contract_id": "index.index_code",
+      "derivation_keys": [
+        "source_api",
+        "IDX_CLSS",
+        "IDX_NM"
+      ],
       "field_role": "IDENTITY_KEY",
       "owner_store": "IndexStore",
+      "provenance_origin": "STATIC_MAPPING",
       "schema_version": "INDEX_STORE_V01",
       "source_endpoints": [
-        "/idx/kospi_dd_trd",
-        "/idx/kosdaq_dd_trd"
+        "KRX_NATIVE_SECTOR_INDEX_MAP"
       ],
-      "source_field": "IDX_CD",
-      "source_name": "KRX Open API",
-      "source_semantics": "INDEX_CODE",
+      "source_field": null,
+      "source_locator": "KRX_NATIVE_SECTOR_INDEX_MAP[(source_api, IDX_CLSS, IDX_NM)]",
+      "source_name": "KRX_NATIVE_SECTOR_INDEX_MAP",
+      "source_semantics": "INTERNAL_CANONICAL_INDEX_CODE_FROM_SOURCE_QUALIFIED_MAPPING",
       "target_field": "index_code"
     },
     {
       "authority_id": "KRX_NATIVE_SECTOR_INDEX",
       "authority_type": "AUTHORITATIVE",
       "contract_id": "index.close",
+      "derivation_keys": [],
       "field_role": "AUTHORITATIVE_SOURCE",
       "owner_store": "IndexStore",
+      "provenance_origin": "RESPONSE_FIELD",
       "schema_version": "INDEX_STORE_V01",
       "source_endpoints": [
         "/idx/kospi_dd_trd",
         "/idx/kosdaq_dd_trd"
       ],
       "source_field": "CLSPRC_IDX",
+      "source_locator": null,
       "source_name": "KRX Open API",
       "source_semantics": "INDEX_CLOSE",
       "target_field": "close"
@@ -479,13 +572,16 @@
       "authority_id": "PYKRX_SECTOR_MEMBERSHIP_CURRENT",
       "authority_type": "LEGACY",
       "contract_id": "membership.effective_date",
+      "derivation_keys": [],
       "field_role": "TEMPORAL_KEY",
       "owner_store": "SectorMembershipStore",
+      "provenance_origin": "LEGACY_SOURCE",
       "schema_version": "SECTOR_MEMBERSHIP_V01",
       "source_endpoints": [
         "stock.get_index_portfolio_deposit_file"
       ],
       "source_field": "date",
+      "source_locator": null,
       "source_name": "PyKRX",
       "source_semantics": "MEMBERSHIP_EFFECTIVE_DATE",
       "target_field": "effective_date"
@@ -494,13 +590,16 @@
       "authority_id": "PYKRX_SECTOR_MEMBERSHIP_CURRENT",
       "authority_type": "LEGACY",
       "contract_id": "membership.ticker",
+      "derivation_keys": [],
       "field_role": "IDENTITY_KEY",
       "owner_store": "SectorMembershipStore",
+      "provenance_origin": "LEGACY_SOURCE",
       "schema_version": "SECTOR_MEMBERSHIP_V01",
       "source_endpoints": [
         "stock.get_index_portfolio_deposit_file"
       ],
       "source_field": "ticker",
+      "source_locator": null,
       "source_name": "PyKRX",
       "source_semantics": "SIX_DIGIT_TICKER",
       "target_field": "ticker"
@@ -509,13 +608,16 @@
       "authority_id": "KRX_NATIVE_SECTOR_INDEX",
       "authority_type": "DERIVED",
       "contract_id": "membership.sector_code",
+      "derivation_keys": [],
       "field_role": "AUTHORITATIVE_SOURCE",
       "owner_store": "SectorMembershipStore",
+      "provenance_origin": "STATIC_MAPPING",
       "schema_version": "SECTOR_MEMBERSHIP_V01",
       "source_endpoints": [
         "KRX_NATIVE_SECTOR_INDEX_MAP"
       ],
-      "source_field": "sector_code",
+      "source_field": null,
+      "source_locator": "KRX_NATIVE_SECTOR_INDEX_MAP.sector_code",
       "source_name": "KRX native sector mapping",
       "source_semantics": "NATIVE_SECTOR_CODE",
       "target_field": "sector_code"
@@ -524,13 +626,16 @@
       "authority_id": "KRX_NATIVE_SECTOR_INDEX",
       "authority_type": "DERIVED",
       "contract_id": "membership.market",
+      "derivation_keys": [],
       "field_role": "AUTHORITATIVE_SOURCE",
       "owner_store": "SectorMembershipStore",
+      "provenance_origin": "STATIC_MAPPING",
       "schema_version": "SECTOR_MEMBERSHIP_V01",
       "source_endpoints": [
         "KRX_NATIVE_SECTOR_INDEX_MAP"
       ],
-      "source_field": "market",
+      "source_field": null,
+      "source_locator": "KRX_NATIVE_SECTOR_INDEX_MAP.market",
       "source_name": "KRX native sector mapping",
       "source_semantics": "MARKET_NAMESPACE",
       "target_field": "market"
@@ -539,13 +644,16 @@
       "authority_id": "OPENDART_FUNDAMENTALS",
       "authority_type": "AUTHORITATIVE",
       "contract_id": "fundamentals.ticker",
+      "derivation_keys": [],
       "field_role": "IDENTITY_KEY",
       "owner_store": "FundamentalsStore",
+      "provenance_origin": "RESPONSE_FIELD",
       "schema_version": "FUNDAMENTALS_V01",
       "source_endpoints": [
         "OpenDART financial statements"
       ],
       "source_field": "stock_code",
+      "source_locator": null,
       "source_name": "OpenDART",
       "source_semantics": "SIX_DIGIT_TICKER",
       "target_field": "ticker"
@@ -554,13 +662,16 @@
       "authority_id": "OPENDART_FUNDAMENTALS",
       "authority_type": "AUTHORITATIVE",
       "contract_id": "fundamentals.period_end",
+      "derivation_keys": [],
       "field_role": "TEMPORAL_KEY",
       "owner_store": "FundamentalsStore",
+      "provenance_origin": "RESPONSE_FIELD",
       "schema_version": "FUNDAMENTALS_V01",
       "source_endpoints": [
         "OpenDART financial statements"
       ],
       "source_field": "period_end",
+      "source_locator": null,
       "source_name": "OpenDART",
       "source_semantics": "REPORTING_PERIOD_END",
       "target_field": "period_end"
@@ -569,13 +680,16 @@
       "authority_id": "OPENDART_FUNDAMENTALS",
       "authority_type": "DERIVED",
       "contract_id": "fundamentals.availability_date",
+      "derivation_keys": [],
       "field_role": "TEMPORAL_KEY",
       "owner_store": "FundamentalsStore",
+      "provenance_origin": "RESPONSE_FIELD",
       "schema_version": "FUNDAMENTALS_V01",
       "source_endpoints": [
         "filing_registry"
       ],
       "source_field": "receipt_date",
+      "source_locator": null,
       "source_name": "OpenDART filing registry",
       "source_semantics": "PIT_AVAILABILITY_DATE",
       "target_field": "availability_date"
@@ -584,13 +698,16 @@
       "authority_id": "OPENDART_FUNDAMENTALS",
       "authority_type": "AUTHORITATIVE",
       "contract_id": "fundamentals.metric",
+      "derivation_keys": [],
       "field_role": "AUTHORITATIVE_SOURCE",
       "owner_store": "FundamentalsStore",
+      "provenance_origin": "RESPONSE_FIELD",
       "schema_version": "FUNDAMENTALS_V01",
       "source_endpoints": [
         "OpenDART financial statements"
       ],
       "source_field": "account_id",
+      "source_locator": null,
       "source_name": "OpenDART",
       "source_semantics": "FINANCIAL_METRIC",
       "target_field": "metric"
@@ -599,13 +716,16 @@
       "authority_id": "OPENDART_FUNDAMENTALS",
       "authority_type": "AUTHORITATIVE",
       "contract_id": "fundamentals.value",
+      "derivation_keys": [],
       "field_role": "AUTHORITATIVE_SOURCE",
       "owner_store": "FundamentalsStore",
+      "provenance_origin": "RESPONSE_FIELD",
       "schema_version": "FUNDAMENTALS_V01",
       "source_endpoints": [
         "OpenDART financial statements"
       ],
       "source_field": "value",
+      "source_locator": null,
       "source_name": "OpenDART",
       "source_semantics": "REPORTED_FINANCIAL_VALUE",
       "target_field": "value"
@@ -614,13 +734,16 @@
       "authority_id": "CORPORATE_ACTION_DETECTOR",
       "authority_type": "DERIVED",
       "contract_id": "corp_action.ticker",
+      "derivation_keys": [],
       "field_role": "IDENTITY_KEY",
       "owner_store": "CorporateActionStateStore",
+      "provenance_origin": "RESPONSE_FIELD",
       "schema_version": "CORPORATE_ACTION_STATE_V01",
       "source_endpoints": [
         "LIST_SHRS/PARVAL comparison"
       ],
       "source_field": "ticker",
+      "source_locator": null,
       "source_name": "Corporate action detector",
       "source_semantics": "SIX_DIGIT_TICKER",
       "target_field": "ticker"
@@ -629,13 +752,16 @@
       "authority_id": "CORPORATE_ACTION_DETECTOR",
       "authority_type": "DERIVED",
       "contract_id": "corp_action.as_of",
+      "derivation_keys": [],
       "field_role": "TEMPORAL_KEY",
       "owner_store": "CorporateActionStateStore",
+      "provenance_origin": "RESPONSE_FIELD",
       "schema_version": "CORPORATE_ACTION_STATE_V01",
       "source_endpoints": [
         "LIST_SHRS/PARVAL comparison"
       ],
       "source_field": "as_of",
+      "source_locator": null,
       "source_name": "Corporate action detector",
       "source_semantics": "STATE_OBSERVATION_DATE",
       "target_field": "as_of"
@@ -644,13 +770,16 @@
       "authority_id": "CORPORATE_ACTION_DETECTOR",
       "authority_type": "DERIVED",
       "contract_id": "corp_action.status",
+      "derivation_keys": [],
       "field_role": "STATE_METADATA",
       "owner_store": "CorporateActionStateStore",
+      "provenance_origin": "RESPONSE_FIELD",
       "schema_version": "CORPORATE_ACTION_STATE_V01",
       "source_endpoints": [
         "LIST_SHRS/PARVAL comparison"
       ],
       "source_field": "status",
+      "source_locator": null,
       "source_name": "Corporate action detector",
       "source_semantics": "CLEAN_DIRTY_REFRESHING_FAILED",
       "target_field": "status"
@@ -659,11 +788,14 @@
       "authority_id": "NONE",
       "authority_type": "NOT_PROVIDED",
       "contract_id": "adjusted_volume.none",
+      "derivation_keys": [],
       "field_role": "PROVENANCE_METADATA",
       "owner_store": null,
+      "provenance_origin": "DERIVED",
       "schema_version": "ADJUSTED_PRICE_V01",
       "source_endpoints": [],
       "source_field": null,
+      "source_locator": null,
       "source_name": "NONE",
       "source_semantics": "ADJUSTED_VOLUME_NOT_DECLARED",
       "target_field": "adjusted_volume"

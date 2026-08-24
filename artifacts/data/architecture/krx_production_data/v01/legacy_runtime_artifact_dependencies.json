@@ -1,0 +1,69 @@
+{
+  "dependencies": [
+    {
+      "classification": "LEGACY_RUNTIME_ARTIFACT_DEPENDENCY",
+      "consumer": [
+        "full_universe_scanner",
+        "stock_report"
+      ],
+      "current_source": "KRX_PYKRX_FOREIGN_FLOW artifact-backed cache",
+      "dependency_id": "FOREIGN_FLOW_ARTIFACT_CACHE",
+      "migration_phase": "ADJUSTED_PRICE_STORE_V01+",
+      "migration_target": "ForeignFlowStore",
+      "path_patterns": [
+        "artifacts/patterns/pattern_a/production/flow/source/foreign_flow_daily_*.parquet",
+        "artifacts/patterns/pattern_a/production/flow/source/foreign_flow_daily_*.csv",
+        "artifacts/patterns/pattern_a/production/flow/source*"
+      ],
+      "purpose": "Foreign Flow daily cache consumption"
+    },
+    {
+      "classification": "LEGACY_RUNTIME_ARTIFACT_DEPENDENCY",
+      "consumer": [
+        "full_universe_scanner",
+        "stock_report"
+      ],
+      "current_source": "Pattern A investability/scanner artifact snapshots",
+      "dependency_id": "INVESTABILITY_MARKET_CAP_ARTIFACT_CACHE",
+      "migration_phase": "ADJUSTED_PRICE_STORE_V01+",
+      "migration_target": "StockMasterStore + KRXRawStockStore ancillary access",
+      "path_patterns": [
+        "artifacts/patterns/pattern_a/production/investability*",
+        "artifacts/patterns/pattern_a/validation/investability_history/normalized*",
+        "artifacts/patterns/pattern_a/production/scanner*"
+      ],
+      "purpose": "Investability universe and PIT market-cap snapshots"
+    },
+    {
+      "classification": "LEGACY_RUNTIME_ARTIFACT_DEPENDENCY",
+      "consumer": [
+        "full_universe_scanner",
+        "relative_strength_report"
+      ],
+      "current_source": "Pattern A relative-strength validation artifacts",
+      "dependency_id": "RELATIVE_STRENGTH_ARTIFACT_CACHE",
+      "migration_phase": "INDEX_PIT_MIGRATION_V01",
+      "migration_target": "Market/sector index stores and RS runtime source",
+      "path_patterns": [
+        "artifacts/patterns/pattern_a/validation/relative_strength*"
+      ],
+      "purpose": "Market/sector relative-strength snapshot consumption"
+    },
+    {
+      "classification": "LEGACY_RUNTIME_ARTIFACT_DEPENDENCY",
+      "consumer": [
+        "pattern_a_fast_report",
+        "stock_report"
+      ],
+      "current_source": "Pattern A FAST contract prototype artifacts",
+      "dependency_id": "PATTERN_A_FAST_CONTRACT_ARTIFACT",
+      "migration_phase": "FASTCORE_CONTRACT_MIGRATION_V01",
+      "migration_target": "Versioned package contract / Store-independent runtime configuration",
+      "path_patterns": [
+        "artifacts/patterns/pattern_a_fast/production/contract_prototype*"
+      ],
+      "purpose": "Pattern A FAST score/stage contract loading"
+    }
+  ],
+  "dependency_count": 4
+}
