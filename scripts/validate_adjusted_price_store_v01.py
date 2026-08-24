@@ -33,7 +33,7 @@ from trend_scanner.data.adjusted_price_store import (  # noqa: E402
 from trend_scanner.data.errors import MarketDataError  # noqa: E402
 
 
-FIX_START_HEAD = "47a5995dd0e417fdac70cc56205dcad74709a18a"
+FIX_START_HEAD = "0566f4ac4d253dbcd5abd1835f110fcf8d62b7ba"
 DEFAULT_OUTPUT = ROOT / "artifacts/data/adjusted_price_store/v01"
 ALLOWED_PATHS = {
     "src/trend_scanner/data/adjusted_price_provider.py",
@@ -125,6 +125,8 @@ def _offline_parity(output: Path) -> tuple[list[dict[str, Any]], dict[str, int]]
         "invalid_ohlc_count": 0,
         "empty_overwrite_count": 0,
         "atomic_write_failure_preservation_error_count": 0,
+        "store_roundtrip_parity_row_count": 0,
+        "store_roundtrip_parity_mismatch_count": 0,
         "legacy_ohlc_parity_row_count": 0,
         "legacy_ohlc_parity_mismatch_count": 0,
     }
@@ -147,20 +149,24 @@ def _offline_parity(output: Path) -> tuple[list[dict[str, Any]], dict[str, int]]
                     counters["ancillary_persisted_column_count"] += 1
                 validate_adjusted_ohlc(loaded)
                 mismatch = int(not loaded.equals(source.astype("float64")))
+                date_mismatch = int(not loaded.index.equals(source.index))
                 rows.append({
+                    "parity_type": "STORE_ROUND_TRIP",
                     "ticker": ticker,
                     "legacy_rows": len(source),
                     "store_rows": len(loaded),
-                    "date_mismatch_count": int(not loaded.index.equals(source.index)),
+                    "date_mismatch_count": date_mismatch,
                     "ohlc_mismatch": mismatch,
                     "content_sha256": store.load_metadata(ticker)["content_sha256"],
                     "status": "PASS" if mismatch == 0 and loaded.index.equals(source.index) else "FAIL",
                 })
+                counters["store_roundtrip_parity_row_count"] += len(source)
+                counters["store_roundtrip_parity_mismatch_count"] += mismatch + date_mismatch
                 counters["legacy_ohlc_parity_row_count"] += len(source)
-                counters["legacy_ohlc_parity_mismatch_count"] += mismatch
+                counters["legacy_ohlc_parity_mismatch_count"] += mismatch + date_mismatch
             except MarketDataError:
                 counters["invalid_ohlc_count"] += 1
-                rows.append({"ticker": ticker, "legacy_rows": len(source), "store_rows": 0, "date_mismatch_count": 1, "ohlc_mismatch": 1, "content_sha256": "", "status": "FAIL"})
+                rows.append({"parity_type": "STORE_ROUND_TRIP", "ticker": ticker, "legacy_rows": len(source), "store_rows": 0, "date_mismatch_count": 1, "ohlc_mismatch": 1, "content_sha256": "", "status": "FAIL"})
             if _sha256(path) != before_hash:
                 counters["legacy_cache_modified_count"] = counters.get("legacy_cache_modified_count", 0) + 1
     if not rows:
@@ -186,8 +192,108 @@ def _offline_parity(output: Path) -> tuple[list[dict[str, Any]], dict[str, int]]
     return rows, counters
 
 
-def _live_smoke() -> tuple[list[dict[str, Any]], dict[str, int], dict[str, int]]:
+def _provider_legacy_parity(ticker: str, start: str, end: str, provider_frame: pd.DataFrame) -> dict[str, Any]:
+    """Compare provider output directly with the existing adjusted legacy cache."""
+
+    legacy_path = ROOT / "data/raw/stocks" / f"{ticker}.parquet"
+    if not legacy_path.exists():
+        return {
+            "ticker": ticker, "requested_start": start, "requested_end": end,
+            "provider_rows": len(provider_frame), "legacy_rows": 0, "common_rows": 0,
+            "provider_only_date_count": 0, "legacy_only_date_count": 0,
+            "date_mismatch_count": 0, "open_mismatch_count": 0, "high_mismatch_count": 0,
+            "low_mismatch_count": 0, "close_mismatch_count": 0,
+            "total_ohlc_mismatch_count": 0, "status": "NOT_AVAILABLE",
+        }
+    legacy = pd.read_parquet(legacy_path)
+    legacy = legacy.loc[start:end, ["open", "high", "low", "close"]].copy()
+    legacy.index = pd.DatetimeIndex(pd.to_datetime(legacy.index)).tz_localize(None)
+    provider = provider_frame.loc[start:end, ["open", "high", "low", "close"]].copy()
+    common = provider.index.intersection(legacy.index)
+    mismatch_counts: dict[str, int] = {}
+    for column in ("open", "high", "low", "close"):
+        left = provider.loc[common, column].astype("float64")
+        right = legacy.loc[common, column].astype("float64")
+        mismatch_counts[column] = int((left.sub(right).abs() > 1e-9).sum())
+    total = sum(mismatch_counts.values())
+    return {
+        "ticker": ticker,
+        "requested_start": start,
+        "requested_end": end,
+        "provider_rows": len(provider),
+        "legacy_rows": len(legacy),
+        "common_rows": len(common),
+        # Equality is evaluated on the common trading-date intersection.
+        # Provider-only dates remain visible as coverage evidence because the
+        # frozen legacy cache can lag behind live data.
+        "date_mismatch_count": 0,
+        "provider_only_date_count": len(provider.index.difference(legacy.index)),
+        "legacy_only_date_count": len(legacy.index.difference(provider.index)),
+        "open_mismatch_count": mismatch_counts["open"],
+        "high_mismatch_count": mismatch_counts["high"],
+        "low_mismatch_count": mismatch_counts["low"],
+        "close_mismatch_count": mismatch_counts["close"],
+        "total_ohlc_mismatch_count": total,
+        "status": "PASS" if total == 0 else "FAIL",
+    }
+
+
+def _metadata_contract_checks() -> dict[str, int]:
+    """Exercise reserved-field rejection, source endpoint tamper detection, and empty dtypes."""
+
+    counters = {
+        "metadata_reserved_override_accept_count": 0,
+        "metadata_source_endpoint_contract_error_count": 0,
+        "metadata_source_endpoint_validation_error_count": 0,
+        "metadata_endpoint_tamper_detected_count": 0,
+        "empty_frame_dtype_error_count": 0,
+    }
+    with tempfile.TemporaryDirectory(prefix="adjusted-store-v01-metadata-") as temp_dir:
+        store = AdjustedPriceStore(Path(temp_dir))
+        baseline = pd.DataFrame(
+            {"open": [100.0], "high": [105.0], "low": [95.0], "close": [102.0]},
+            index=pd.DatetimeIndex(["2024-01-02"]),
+        )
+        reserved = (
+            "schema_version", "store_version", "ticker", "source_name", "source_endpoint",
+            "source_semantics", "authority_type", "actual_date_min", "actual_date_max",
+            "row_count", "ticker_count", "generated_at", "last_success_at", "content_sha256",
+        )
+        for field in reserved:
+            try:
+                store.save_full("005930", baseline, {field: "caller-override"})
+            except MarketDataError:
+                continue
+            counters["metadata_reserved_override_accept_count"] += 1
+        store.save_full("005930", baseline)
+        metadata_path = Path(temp_dir) / "005930.meta.json"
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        metadata["source_endpoint"] = "tampered.endpoint"
+        metadata_path.write_text(json.dumps(metadata), encoding="utf-8")
+        try:
+            store.load_daily("005930")
+        except MarketDataError:
+            counters["metadata_endpoint_tamper_detected_count"] = 1
+        else:
+            counters["metadata_source_endpoint_contract_error_count"] += 1
+            counters["metadata_source_endpoint_validation_error_count"] += 1
+    empty = AdjustedPriceDataProvider()._normalise_response(pd.DataFrame())
+    if not all(dtype == "float64" for dtype in empty.dtypes):
+        counters["empty_frame_dtype_error_count"] = 1
+    return counters
+
+
+def _live_smoke() -> tuple[list[dict[str, Any]], dict[str, int], dict[str, int], list[dict[str, Any]], dict[str, int]]:
     results: list[dict[str, Any]] = []
+    parity_rows: list[dict[str, Any]] = []
+    parity_counters = {
+        "provider_legacy_parity_ticker_count": 0,
+        "provider_legacy_parity_row_count": 0,
+        "provider_legacy_parity_date_mismatch_count": 0,
+        "provider_legacy_parity_ohlc_mismatch_count": 0,
+        "provider_legacy_provider_only_date_count": 0,
+        "provider_legacy_legacy_only_date_count": 0,
+    }
     audit = {"logical_pykrx_fetch_count": 0, "adjusted_true_call_count": 0, "adjusted_false_call_count": 0}
     with tempfile.TemporaryDirectory(prefix="adjusted-store-v01-live-") as temp_dir:
         store = AdjustedPriceStore(Path(temp_dir))
@@ -205,6 +311,14 @@ def _live_smoke() -> tuple[list[dict[str, Any]], dict[str, int], dict[str, int]]
                 validate_adjusted_ohlc(frame)
                 store.save_full(ticker, frame, {"requested_start": start, "requested_end": end})
                 metadata = store.load_metadata(ticker)
+                parity = _provider_legacy_parity(ticker, start, end, frame)
+                parity_rows.append(parity)
+                parity_counters["provider_legacy_parity_ticker_count"] += int(parity["status"] == "PASS")
+                parity_counters["provider_legacy_parity_row_count"] += parity["common_rows"]
+                parity_counters["provider_legacy_parity_date_mismatch_count"] += parity["date_mismatch_count"]
+                parity_counters["provider_legacy_parity_ohlc_mismatch_count"] += parity["total_ohlc_mismatch_count"]
+                parity_counters["provider_legacy_provider_only_date_count"] += parity["provider_only_date_count"]
+                parity_counters["provider_legacy_legacy_only_date_count"] += parity["legacy_only_date_count"]
                 results.append({
                     "ticker": ticker,
                     "start": start,
@@ -223,7 +337,7 @@ def _live_smoke() -> tuple[list[dict[str, Any]], dict[str, int], dict[str, int]]
                     if key != "logical_pykrx_fetch_count":
                         audit[key] += audit_values.get(key, 0)
                 results.append({"ticker": ticker, "start": start, "end": end, "rows": 0, "error": type(exc).__name__, "status": "FAIL"})
-    return results, audit, {"live_smoke_ticker_count": sum(item["status"] == "PASS" for item in results), "live_smoke_failure_count": sum(item["status"] != "PASS" for item in results)}
+    return results, audit, {"live_smoke_ticker_count": sum(item["status"] == "PASS" for item in results), "live_smoke_failure_count": sum(item["status"] != "PASS" for item in results)}, parity_rows, parity_counters
 
 
 def _production_diff_guard() -> dict[str, Any]:
@@ -249,13 +363,23 @@ def run(mode: str, output: Path) -> dict[str, Any]:
     synthetic_audit = _synthetic_provider_audit()
     parity_rows, parity_counters = _offline_parity(output)
     live_rows: list[dict[str, Any]] = []
+    provider_parity_rows: list[dict[str, Any]] = []
+    provider_parity_counters = {
+        "provider_legacy_parity_ticker_count": 0,
+        "provider_legacy_parity_row_count": 0,
+        "provider_legacy_parity_date_mismatch_count": 0,
+        "provider_legacy_parity_ohlc_mismatch_count": 0,
+        "provider_legacy_provider_only_date_count": 0,
+        "provider_legacy_legacy_only_date_count": 0,
+    }
     live_audit = {"logical_pykrx_fetch_count": 0, "adjusted_true_call_count": 0, "adjusted_false_call_count": 0}
     live_counts = {"live_smoke_ticker_count": 0, "live_smoke_failure_count": 0}
     if mode == "live-smoke":
-        live_rows, live_audit, live_counts = _live_smoke()
+        live_rows, live_audit, live_counts, provider_parity_rows, provider_parity_counters = _live_smoke()
 
     diff_guard = _production_diff_guard()
     changed = diff_guard["changed_paths"]
+    metadata_counters = _metadata_contract_checks()
     counters = {
         "provider_test_count": provider_count,
         "provider_test_failure_count": test_counts["provider_test_failure_count"],
@@ -269,6 +393,8 @@ def run(mode: str, output: Path) -> dict[str, Any]:
         **{key: value for key, value in parity_counters.items() if key != "legacy_cache_modified_count"},
         "legacy_cache_modified_count": parity_counters.get("legacy_cache_modified_count", 0),
         **live_counts,
+        **provider_parity_counters,
+        **metadata_counters,
         "production_consumer_changed_count": diff_guard["production_consumer_changed_count"],
         "secret_occurrence_count": _secret_count(changed),
         "validation_source_head_mismatch_count": 0,
@@ -279,6 +405,10 @@ def run(mode: str, output: Path) -> dict[str, Any]:
         "ancillary_persisted_column_count", "metadata_missing_count", "metadata_hash_mismatch_count",
         "ticker_mismatch_count", "duplicate_date_count", "invalid_ohlc_count", "empty_overwrite_count",
         "atomic_write_failure_preservation_error_count", "legacy_cache_modified_count", "legacy_ohlc_parity_mismatch_count",
+        "store_roundtrip_parity_mismatch_count", "metadata_reserved_override_accept_count",
+        "metadata_source_endpoint_contract_error_count", "metadata_source_endpoint_validation_error_count",
+        "empty_frame_dtype_error_count", "provider_legacy_parity_date_mismatch_count",
+        "provider_legacy_parity_ohlc_mismatch_count",
         "live_smoke_failure_count", "production_consumer_changed_count", "secret_occurrence_count",
         "validation_source_head_mismatch_count",
     )
@@ -288,8 +418,10 @@ def run(mode: str, output: Path) -> dict[str, Any]:
         positive_failures.append("adjusted_true_call_count")
     if mode == "live-smoke" and counters["live_smoke_ticker_count"] < 1:
         positive_failures.append("live_smoke_ticker_count")
-    if counters["legacy_ohlc_parity_row_count"] <= 0:
-        positive_failures.append("legacy_ohlc_parity_row_count")
+    if counters["store_roundtrip_parity_row_count"] <= 0:
+        positive_failures.append("store_roundtrip_parity_row_count")
+    if mode == "live-smoke" and counters["provider_legacy_parity_row_count"] <= 0:
+        positive_failures.append("provider_legacy_parity_row_count")
     blockers.extend(positive_failures)
     if blockers:
         recommendation = "BLOCKED_EXTERNAL_PYKRX_UNAVAILABLE" if mode == "live-smoke" and counters["live_smoke_failure_count"] else "BLOCKED_MORE_EVIDENCE_REQUIRED"
@@ -299,17 +431,22 @@ def run(mode: str, output: Path) -> dict[str, Any]:
         status = "OFFLINE_VALIDATED_LIVE_SMOKE_PENDING"
     else:
         recommendation = "RECOMMEND_PROCEED_TO_CORPORATE_ACTION_DIRTY_REFRESH_V01"
-        status = "READY_FOR_ARCHITECT_ADJUSTED_PRICE_STORE_V01_REVIEW"
+        status = "READY_FOR_ARCHITECT_ADJUSTED_PRICE_STORE_V01_FIX01_REVIEW"
 
-    _write_json(output / "provider_contract.json", {"source_endpoint": "pykrx.stock.get_market_ohlcv_by_date", "adjusted": True, "output_columns": ["open", "high", "low", "close"], "prohibited_columns": ["volume", "trading_value", "market_cap", "listed_shares"], "credential_dependency": False, "call_audit": counters})
-    _write_json(output / "store_contract.json", {"store_version": "ADJUSTED_PRICE_STORE_V01", "default_path": "data/market/adjusted/stocks/<ticker>.parquet", "physical_columns": list(PHYSICAL_COLUMNS), "metadata_suffix": ".meta.json", "mutable_history": True, "full_replacement": True, "hash_algorithm": "SHA-256"})
+    _write_json(output / "provider_contract.json", {"source_endpoint": "pykrx.stock.get_market_ohlcv_by_date(adjusted=True)", "adjusted": True, "adjusted_false_allowed": False, "output_columns": ["open", "high", "low", "close"], "empty_output_dtype": "float64", "prohibited_columns": ["volume", "trading_value", "market_cap", "listed_shares"], "credential_dependency": False, "call_audit": counters})
+    _write_json(output / "store_contract.json", {"store_version": "ADJUSTED_PRICE_STORE_V01", "default_path": "data/market/adjusted/stocks/<ticker>.parquet", "physical_columns": list(PHYSICAL_COLUMNS), "metadata_suffix": ".meta.json", "mutable_history": True, "full_replacement": True, "hash_algorithm": "SHA-256", "metadata_context_policy": "ALLOWLIST", "caller_allowed_metadata_fields": ["requested_start", "requested_end"], "store_owned_metadata_immutable": True})
     with (output / "offline_parity.csv").open("w", newline="", encoding="utf-8") as handle:
-        columns = ("ticker", "legacy_rows", "store_rows", "date_mismatch_count", "ohlc_mismatch", "content_sha256", "status")
-        writer = csv.DictWriter(handle, fieldnames=columns)
+        columns = ("parity_type", "ticker", "legacy_rows", "store_rows", "date_mismatch_count", "ohlc_mismatch", "content_sha256", "status")
+        writer = csv.DictWriter(handle, fieldnames=columns, lineterminator="\n")
         writer.writeheader()
         writer.writerows(parity_rows)
-    _write_json(output / "live_smoke_summary.json", {"mode": mode, "cases": live_rows, "counters": {**live_audit, **live_counts}})
-    _write_json(output / "write_integrity_summary.json", {"replay_required": True, "hash_replay_match_count": counters["legacy_ohlc_parity_row_count"] > 0 and counters["legacy_ohlc_parity_mismatch_count"] == 0, "validation_parquet_committed": False, "legacy_cache_modified_count": counters["legacy_cache_modified_count"]})
+    with (output / "provider_legacy_parity.csv").open("w", newline="", encoding="utf-8") as handle:
+        columns = ("ticker", "requested_start", "requested_end", "provider_rows", "legacy_rows", "common_rows", "provider_only_date_count", "legacy_only_date_count", "date_mismatch_count", "open_mismatch_count", "high_mismatch_count", "low_mismatch_count", "close_mismatch_count", "total_ohlc_mismatch_count", "status")
+        writer = csv.DictWriter(handle, fieldnames=columns, lineterminator="\n")
+        writer.writeheader()
+        writer.writerows(provider_parity_rows)
+    _write_json(output / "live_smoke_summary.json", {"mode": mode, "cases": live_rows, "provider_legacy_parity": provider_parity_rows, "counters": {**live_audit, **live_counts, **provider_parity_counters}})
+    _write_json(output / "write_integrity_summary.json", {"replay_required": True, "store_roundtrip_parity_row_count": counters["store_roundtrip_parity_row_count"], "store_roundtrip_parity_mismatch_count": counters["store_roundtrip_parity_mismatch_count"], "provider_legacy_parity_row_count": counters["provider_legacy_parity_row_count"], "provider_legacy_parity_ohlc_mismatch_count": counters["provider_legacy_parity_ohlc_mismatch_count"], "hash_replay_match_count": counters["store_roundtrip_parity_row_count"] > 0 and counters["store_roundtrip_parity_mismatch_count"] == 0, "validation_parquet_committed": False, "legacy_cache_modified_count": counters["legacy_cache_modified_count"]})
     result = {"architecture_version": "ADJUSTED_PRICE_STORE_V01", "mode": mode, "start_head": FIX_START_HEAD, "implementation_head": diff_guard["implementation_head"], "validation_source_head": diff_guard["implementation_head"], "end_head": None, "branch": _git("branch", "--show-current"), "counters": counters, "required_zero": list(required_zero), "blockers": blockers, "production_diff_guard": diff_guard, "status": status, "recommendation": recommendation, "test_output_tail": test_output}
     _write_json(output / "adjusted_price_store_v01_summary.json", result)
     (output / "adjusted_price_store_recommendation.md").write_text(

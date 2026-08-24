@@ -122,6 +122,7 @@ def test_provider_returns_typed_empty_frame(monkeypatch):
     assert result.empty
     assert tuple(result.columns) == ADJUSTED_OHLC_COLUMNS
     assert isinstance(result.index, pd.DatetimeIndex)
+    assert all(dtype == "float64" for dtype in result.dtypes)
 
 
 def test_validate_adjusted_ohlc_rejects_ancillary_columns():

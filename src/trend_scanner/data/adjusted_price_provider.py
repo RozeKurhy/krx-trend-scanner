@@ -7,8 +7,6 @@ PyKRX for the unadjusted response used by the legacy composite provider.
 
 from __future__ import annotations
 
-from collections.abc import Mapping
-
 import pandas as pd
 
 from trend_scanner.data.errors import MarketDataError
@@ -29,7 +27,13 @@ def normalize_ticker(ticker: str | int) -> str:
 
 
 def _empty_adjusted_frame() -> pd.DataFrame:
-    return pd.DataFrame(columns=list(ADJUSTED_OHLC_COLUMNS), index=pd.DatetimeIndex([]))
+    return pd.DataFrame(
+        {
+            column: pd.Series(dtype="float64")
+            for column in ADJUSTED_OHLC_COLUMNS
+        },
+        index=pd.DatetimeIndex([]),
+    )
 
 
 def _normalise_index(index: pd.Index) -> pd.DatetimeIndex:

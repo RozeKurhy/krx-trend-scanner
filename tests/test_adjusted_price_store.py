@@ -207,3 +207,97 @@ def test_metadata_has_no_credential_markers(tmp_path):
     assert "KRX_OPEN_API_AUTH_KEY" not in text
     assert "KRX_ID" not in text
     assert "KRX_PW" not in text
+
+
+def _assert_reserved_metadata_rejected(tmp_path, field: str):
+    with pytest.raises(MarketDataError, match="metadata_context"):
+        AdjustedPriceStore(tmp_path).save_full("005930", _frame(), {field: "caller-override"})
+
+
+def test_metadata_context_cannot_override_schema_version(tmp_path):
+    _assert_reserved_metadata_rejected(tmp_path, "schema_version")
+
+
+def test_metadata_context_cannot_override_store_version(tmp_path):
+    _assert_reserved_metadata_rejected(tmp_path, "store_version")
+
+
+def test_metadata_context_cannot_override_ticker(tmp_path):
+    _assert_reserved_metadata_rejected(tmp_path, "ticker")
+
+
+def test_metadata_context_cannot_override_source_name(tmp_path):
+    _assert_reserved_metadata_rejected(tmp_path, "source_name")
+
+
+def test_metadata_context_cannot_override_source_endpoint(tmp_path):
+    _assert_reserved_metadata_rejected(tmp_path, "source_endpoint")
+
+
+def test_metadata_context_cannot_override_source_semantics(tmp_path):
+    _assert_reserved_metadata_rejected(tmp_path, "source_semantics")
+
+
+def test_metadata_context_cannot_override_authority_type(tmp_path):
+    _assert_reserved_metadata_rejected(tmp_path, "authority_type")
+
+
+def test_metadata_context_cannot_override_actual_date_bounds(tmp_path):
+    _assert_reserved_metadata_rejected(tmp_path, "actual_date_min")
+    _assert_reserved_metadata_rejected(tmp_path, "actual_date_max")
+
+
+def test_metadata_context_cannot_override_row_count(tmp_path):
+    _assert_reserved_metadata_rejected(tmp_path, "row_count")
+
+
+def test_metadata_context_cannot_override_ticker_count(tmp_path):
+    _assert_reserved_metadata_rejected(tmp_path, "ticker_count")
+
+
+def test_metadata_context_cannot_override_generated_at(tmp_path):
+    _assert_reserved_metadata_rejected(tmp_path, "generated_at")
+
+
+def test_metadata_context_cannot_override_last_success_at(tmp_path):
+    _assert_reserved_metadata_rejected(tmp_path, "last_success_at")
+
+
+def test_metadata_context_cannot_override_content_sha256(tmp_path):
+    _assert_reserved_metadata_rejected(tmp_path, "content_sha256")
+
+
+def test_metadata_context_allows_requested_bounds(tmp_path):
+    store = AdjustedPriceStore(tmp_path)
+    store.save_full(
+        "005930",
+        _frame(),
+        {"requested_start": "2024-01-01", "requested_end": "2024-01-05"},
+    )
+    metadata = store.load_metadata("005930")
+    assert metadata["requested_start"] == "2024-01-01"
+    assert metadata["requested_end"] == "2024-01-05"
+
+
+def test_metadata_context_rejects_unknown_field(tmp_path):
+    _assert_reserved_metadata_rejected(tmp_path, "unregistered_context")
+
+
+def test_metadata_context_rejects_reversed_requested_bounds(tmp_path):
+    with pytest.raises(MarketDataError, match="requested_start"):
+        AdjustedPriceStore(tmp_path).save_full(
+            "005930",
+            _frame(),
+            {"requested_start": "2024-01-05", "requested_end": "2024-01-01"},
+        )
+
+
+def test_metadata_context_cannot_override_source_endpoint_after_save(tmp_path):
+    store = AdjustedPriceStore(tmp_path)
+    store.save_full("005930", _frame())
+    path = tmp_path / "005930.meta.json"
+    metadata = json.loads(path.read_text())
+    metadata["source_endpoint"] = "unexpected.endpoint"
+    path.write_text(json.dumps(metadata))
+    with pytest.raises(MarketDataError, match="source_endpoint"):
+        store.load_daily("005930")

@@ -9,7 +9,7 @@ AdjustedPriceStore v01
 
 이 문서는 frozen Production Data Architecture v01의 adjusted OHLC authority를
 실제 provider/store primitive로 구현한 계약이다. 최종 상태는
-`READY_FOR_ARCHITECT_ADJUSTED_PRICE_STORE_V01_REVIEW`이며, Architect 승인 전에는
+`READY_FOR_ARCHITECT_ADJUSTED_PRICE_STORE_V01_FIX01_REVIEW`이며, Architect 승인 전에는
 `ADJUSTED_PRICE_STORE_V01 = CLOSED`로 선언하지 않는다.
 
 이번 단계의 범위
@@ -18,6 +18,8 @@ AdjustedPriceStore v01
 - `AdjustedPriceDataProvider`가 PyKRX `adjusted=True` OHLC만 조회한다.
 - `AdjustedPriceStore`가 ticker 단위 mutable full replacement를 지원한다.
 - Parquet physical schema와 metadata sidecar, SHA-256 pair integrity를 보존한다.
+- Store-owned metadata provenance와 caller request context를 분리한다.
+- 새 provider와 기존 legacy adjusted OHLC의 직접 parity evidence를 별도 기록한다.
 - 기존 legacy composite cache와 production consumer는 전환하지 않는다.
 - 다음 dirty-refresh phase가 사용할 fail-closed storage primitive를 고정한다.
 
@@ -145,15 +147,23 @@ sidecar:
 - `content_sha256 = 최종 parquet byte의 SHA-256`
 
 `generated_at`, `last_success_at`은 timezone-aware ISO-8601이어야 한다. KRX key,
-KRX_ID, KRX_PW 등 credential은 metadata에 저장하지 않는다. filename ticker,
-metadata ticker, parquet ticker column은 모두 동일해야 한다.
+KRX_ID, KRX_PW 등 credential은 metadata에 저장하지 않는다. `metadata_context`는
+allowlist이며 caller가 지정할 수 있는 필드는 `requested_start`, `requested_end`뿐이다.
+schema/store version, ticker, source provenance, actual bounds, row/ticker count,
+timestamps, content hash는 Store-owned reserved field라 override 시 fail closed한다.
+`source_endpoint`도 `pykrx.stock.get_market_ohlcv_by_date(adjusted=True)`와 완전
+일치해야 한다. filename ticker, metadata ticker, parquet ticker column은 모두 동일해야 한다.
 
 6. Legacy parity와 validation
 ----------------------------------------------------------------------
 
 offline validator는 기존 `data/raw/stocks/`에서 OHLC만 추출해 임시 Store에
-round-trip하고 date/row/OHLC parity를 비교한다. volume/trading_value는 parity
-비교 대상이 아니다. validation parquet는 artifacts나 git에 commit하지 않는다.
+round-trip하고 date/row/OHLC parity를 비교한다. 이는 `STORE_ROUND_TRIP` evidence다.
+별도로 live smoke에서 새 `AdjustedPriceDataProvider` output과 동일 요청 범위의
+legacy adjusted OHLC를 직접 비교한다. 값과 날짜는 공통 거래일 intersection에서
+검증하고, frozen legacy cache에만 없는 provider-only 날짜와 legacy-only 날짜는
+coverage evidence로 별도 기록한다. volume/trading_value는 parity 비교 대상이 아니다.
+validation parquet는 artifacts나 git에 commit하지 않는다.
 
 live smoke 모드에서만 다음 3개 logical fetch를 수행한다.
 
@@ -168,6 +178,11 @@ live smoke 모드에서만 다음 3개 logical fetch를 수행한다.
 live smoke도 adjusted=True만 허용하며, 결과는 target production path가 아닌
 temporary directory에 저장한다. 외부 PyKRX 장애나 empty/error는 성공으로
 위장하지 않고 `BLOCKED_EXTERNAL_PYKRX_UNAVAILABLE`로 기록한다.
+
+provider parity artifact는 `provider_legacy_parity.csv`이며 ticker, requested bounds,
+provider/legacy/common row 수, provider-only/legacy-only coverage, date mismatch,
+open/high/low/close mismatch를 분리한다. Store round-trip artifact
+`offline_parity.csv`와 의미를 혼동하지 않는다.
 
 7. Production boundary
 ----------------------------------------------------------------------
@@ -187,6 +202,7 @@ behavioral diff는 0이어야 한다. 향후 `MarketDataRepositoryV2`가
 - `provider_contract.json`
 - `store_contract.json`
 - `offline_parity.csv`
+- `provider_legacy_parity.csv`
 - `live_smoke_summary.json`
 - `write_integrity_summary.json`
 - `adjusted_price_store_recommendation.md`

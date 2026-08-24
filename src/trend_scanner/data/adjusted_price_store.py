@@ -30,6 +30,25 @@ SOURCE_ENDPOINT = "pykrx.stock.get_market_ohlcv_by_date(adjusted=True)"
 SOURCE_SEMANTICS = "ADJUSTED_OHLC_ONLY"
 AUTHORITY_TYPE = "AUTHORITATIVE"
 _SECRET_MARKERS = ("KRX_OPEN_API_AUTH_KEY", "KRX_ID", "KRX_PW")
+_CALLER_METADATA_FIELDS = frozenset(("requested_start", "requested_end"))
+_RESERVED_METADATA_FIELDS = frozenset(
+    {
+        "schema_version",
+        "store_version",
+        "ticker",
+        "source_name",
+        "source_endpoint",
+        "source_semantics",
+        "authority_type",
+        "actual_date_min",
+        "actual_date_max",
+        "row_count",
+        "ticker_count",
+        "generated_at",
+        "last_success_at",
+        "content_sha256",
+    }
+)
 _METADATA_FIELDS = (
     "schema_version",
     "store_version",
@@ -60,6 +79,13 @@ def _sha256(path: Path) -> str:
 
 def _iso_date(value: Any) -> str:
     return pd.Timestamp(value).date().isoformat()
+
+
+def _normalise_requested_date(value: Any, field: str) -> str:
+    try:
+        return _iso_date(value)
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise MarketDataError(f"metadata {field}가 유효한 date-like 값이 아닙니다: {value!r}") from exc
 
 
 def _normalise_frame(frame: pd.DataFrame) -> tuple[pd.DataFrame, str | None]:
@@ -138,6 +164,8 @@ def _validate_metadata(metadata: Mapping[str, Any], ticker: str, frame: pd.DataF
         raise MarketDataError("metadata ticker가 요청 ticker와 일치하지 않습니다.")
     if metadata["source_name"] != SOURCE_NAME or metadata["source_semantics"] != SOURCE_SEMANTICS:
         raise MarketDataError("metadata source provenance가 AdjustedPriceStore 계약과 다릅니다.")
+    if metadata["source_endpoint"] != SOURCE_ENDPOINT:
+        raise MarketDataError("metadata source_endpoint가 AdjustedPriceStore 계약과 다릅니다.")
     if metadata["authority_type"] != AUTHORITY_TYPE:
         raise MarketDataError("metadata authority_type이 AUTHORITATIVE가 아닙니다.")
     if int(metadata["ticker_count"]) != 1 or int(metadata["row_count"]) != len(frame):
@@ -147,6 +175,15 @@ def _validate_metadata(metadata: Mapping[str, Any], ticker: str, frame: pd.DataF
             raise MarketDataError("metadata date bounds가 parquet와 일치하지 않습니다.")
     if metadata["content_sha256"] != digest:
         raise MarketDataError("metadata content_sha256와 parquet hash가 일치하지 않습니다.")
+    requested_start = _normalise_requested_date(metadata["requested_start"], "requested_start")
+    requested_end = _normalise_requested_date(metadata["requested_end"], "requested_end")
+    if requested_start > requested_end:
+        raise MarketDataError("metadata requested_start가 requested_end보다 늦습니다.")
+    if not frame.empty and (
+        _iso_date(frame.index.min()) < requested_start
+        or _iso_date(frame.index.max()) > requested_end
+    ):
+        raise MarketDataError("metadata requested bounds가 실제 frame 범위를 포함하지 않습니다.")
     for field in ("generated_at", "last_success_at"):
         timestamp = pd.Timestamp(metadata[field])
         if timestamp.tzinfo is None:
@@ -223,7 +260,23 @@ class AdjustedPriceStore:
         final_parquet = self._parquet_path(normalized)
         final_metadata = self._metadata_path(normalized)
         context = dict(metadata_context or {})
+        unknown_keys = set(context) - _CALLER_METADATA_FIELDS
+        if unknown_keys:
+            raise MarketDataError(
+                "metadata_context에 Store-owned 또는 허용되지 않은 field가 있습니다: "
+                f"{sorted(unknown_keys)}"
+            )
         now = datetime.now(timezone.utc).isoformat()
+        requested_start = _normalise_requested_date(
+            context.get("requested_start", adjusted.index.min()), "requested_start"
+        )
+        requested_end = _normalise_requested_date(
+            context.get("requested_end", adjusted.index.max()), "requested_end"
+        )
+        if requested_start > requested_end:
+            raise MarketDataError("requested_start가 requested_end보다 늦습니다.")
+        if _iso_date(adjusted.index.min()) < requested_start or _iso_date(adjusted.index.max()) > requested_end:
+            raise MarketDataError("requested bounds가 입력 frame 범위를 포함하지 않습니다.")
         metadata = {
             "schema_version": SCHEMA_VERSION,
             "store_version": STORE_VERSION,
@@ -232,8 +285,8 @@ class AdjustedPriceStore:
             "source_endpoint": SOURCE_ENDPOINT,
             "source_semantics": SOURCE_SEMANTICS,
             "authority_type": AUTHORITY_TYPE,
-            "requested_start": context.pop("requested_start", _iso_date(adjusted.index.min())),
-            "requested_end": context.pop("requested_end", _iso_date(adjusted.index.max())),
+            "requested_start": requested_start,
+            "requested_end": requested_end,
             "actual_date_min": _iso_date(adjusted.index.min()),
             "actual_date_max": _iso_date(adjusted.index.max()),
             "row_count": int(len(adjusted)),
@@ -242,7 +295,6 @@ class AdjustedPriceStore:
             "last_success_at": now,
             "content_sha256": "",
         }
-        metadata.update(context)
         _assert_no_secret_metadata(metadata)
 
         physical = pd.DataFrame(
