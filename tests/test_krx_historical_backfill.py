@@ -9,7 +9,7 @@ from trend_scanner.data.krx_openapi_client import KrxOpenApiAuthorizationError
 from trend_scanner.data.krx_raw_stock_provider import KrxRawStockSnapshotError, RAW_COLUMNS
 from trend_scanner.data.krx_raw_stock_store import KrxRawStockStore
 from trend_scanner.data.krx_historical_backfill import KrxHistoricalBackfillRunner, candidate_dates
-from scripts.validate_krx_historical_backfill_v01 import _coverage, _validation_source_head, pilot_parameters, pilot_status
+from scripts.validate_krx_historical_backfill_v01 import FIX_START_HEAD, _coverage, _validation_source_head, pilot_parameters, pilot_status
 
 
 def _frame(day, ticker):
@@ -76,6 +76,18 @@ def test_live_pilot_contract_remains_three_dates_and_six_requests():
     assert parameters["dates"] == ("2018-04-27", "2018-05-04", "2026-08-21")
     assert parameters["request_budget"] == 6
     assert parameters["max_transient_retries"] == 0
+
+
+def test_fix03_provenance_start_head_is_frozen():
+    assert FIX_START_HEAD == "eaa01ed3e9b4cccedb43a11f83305216b388dee2"
+
+
+def test_artifact_only_dirty_state_preserves_source_provenance(monkeypatch):
+    monkeypatch.setattr(
+        "scripts.validate_krx_historical_backfill_v01.subprocess.check_output",
+        lambda command, **kwargs: " M artifacts/data/krx_historical_backfill/v01/krx_historical_backfill_v01_summary.json" if command[1] == "status" else "",
+    )
+    assert _validation_source_head("abc123") == "abc123"
 
 
 def test_http_503_is_transport_not_schema(tmp_path):
