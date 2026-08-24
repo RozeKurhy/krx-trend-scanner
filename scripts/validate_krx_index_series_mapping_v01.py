@@ -12,6 +12,7 @@ import json
 import os
 import re
 import subprocess
+import sys
 import time
 from collections import Counter, defaultdict
 from contextlib import redirect_stderr, redirect_stdout
@@ -59,6 +60,17 @@ MAPPING_STATUSES = (
 )
 DUPLICATE_STATUSES = (
     "EXACT_CROSS_API_DUPLICATE", "SAME_NAME_DIFFERENT_SERIES", "PARTIAL_CROSS_API_EVIDENCE", "UNKNOWN_CROSS_API_RELATION",
+)
+TAXONOMY_RELATIONS = (
+    "EXACT_CROSS_TAXONOMY_EQUIVALENT",
+    "DISTINCT_KRX_TAXONOMY",
+    "PARTIAL_CROSS_TAXONOMY_EVIDENCE",
+    "UNKNOWN_CROSS_TAXONOMY_RELATION",
+)
+KRX_TAXONOMY_TOKENS = (
+    "자동차", "반도체", "헬스케어", "은행", "에너지화학", "철강", "방송통신", "건설", "증권",
+    "기계장비", "보험", "운송", "경기소비재", "필수소비재", "정보기술", "유틸리티", "자유소비재",
+    "산업재", "소재", "커뮤니케이션서비스", "금융",
 )
 
 
@@ -133,6 +145,202 @@ def classify_duplicate(common_date_count: int, compared_field_count: int, exact_
     if exact_field_match_count == compared_field_count:
         return "EXACT_CROSS_API_DUPLICATE"
     return "SAME_NAME_DIFFERENT_SERIES"
+
+
+def _is_krx_sector_name(name: Any) -> bool:
+    text = str(name or "").strip()
+    return bool(text) and any(token in text for token in KRX_TAXONOMY_TOKENS)
+
+
+def _required_raw_snapshot_keys() -> tuple[tuple[str, str], ...]:
+    return tuple((service["api_id"], date) for service in KRX_SERVICES for date in PRIMARY_DATES)
+
+
+def load_committed_raw_snapshots(raw_dir: Path = RAW_DIR) -> dict[tuple[str, str], list[dict[str, Any]]]:
+    """Load only committed snapshots; this function never has a live fallback."""
+
+    snapshots: dict[tuple[str, str], list[dict[str, Any]]] = {}
+    missing: list[str] = []
+    for api_id, date in _required_raw_snapshot_keys():
+        path = raw_dir / f"{api_id}_{date.replace('-', '')}.json"
+        if not path.is_file():
+            missing.append(str(path))
+            continue
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise ValueError(f"invalid committed raw snapshot: {path}") from exc
+        rows = payload.get("OutBlock_1")
+        if not isinstance(rows, list):
+            raise ValueError(f"raw snapshot has no OutBlock_1 list: {path}")
+        snapshots[(api_id, date)] = [dict(row) for row in rows if isinstance(row, Mapping)]
+    if missing:
+        raise FileNotFoundError("missing committed raw snapshots: " + ", ".join(missing))
+    return snapshots
+
+
+def _snapshot_identity_maps(snapshots: Mapping[tuple[str, str], Iterable[Mapping[str, Any]]]) -> dict[tuple[str, str], dict[tuple[str, str], dict[str, Any]]]:
+    result: dict[tuple[str, str], dict[tuple[str, str], dict[str, Any]]] = {}
+    for key, rows in snapshots.items():
+        result[key] = {}
+        for row in rows:
+            idx_class = str(row.get("IDX_CLSS", "")).strip()
+            idx_name = str(row.get("IDX_NM", "")).strip()
+            if idx_class and idx_name:
+                result[key][(idx_class, idx_name)] = dict(row)
+    return result
+
+
+def extract_krx_taxonomy_rows(snapshots: Mapping[tuple[str, str], Iterable[Mapping[str, Any]]]) -> list[dict[str, Any]]:
+    """Extract the 24 KRX-branded sector rows without deciding their relation."""
+
+    identity_maps = _snapshot_identity_maps(snapshots)
+    names: set[str] = set()
+    for date in PRIMARY_DATES:
+        for (idx_class, name), row in identity_maps.get(("krx_dd_trd", date), {}).items():
+            if idx_class == "KRX" and _is_krx_sector_name(name):
+                names.add(name)
+    rows: list[dict[str, Any]] = []
+    for name in sorted(names):
+        rows.append({
+            "krx_idx_name": name,
+            "official_idx_name": name,
+            "krx_source_api": "krx_dd_trd",
+            "source_api": "krx_dd_trd",
+            "official_idx_class": "KRX",
+            "classification": "SECTOR_INDUSTRY",
+            "has_close": any(
+                normalize_decimal(identity_maps.get(("krx_dd_trd", date), {}).get(("KRX", name), {}).get("CLSPRC_IDX")) is not None
+                for date in PRIMARY_DATES
+            ),
+        })
+    return rows
+
+
+def _native_authority_rows(path: Path = ARTIFACT_DIR / "sector_code_mapping.csv") -> list[dict[str, str]]:
+    if not path.is_file():
+        raise FileNotFoundError(f"native mapping authority missing: {path}")
+    with path.open(encoding="utf-8", newline="") as handle:
+        rows = list(csv.DictReader(handle))
+    required = {"market", "sector_code", "official_idx_name", "source_api", "official_idx_class", "mapping_status"}
+    if not rows or not required.issubset(rows[0]):
+        raise ValueError("native mapping authority has an unexpected schema")
+    if len(rows) != 46 or any(row.get("mapping_status") != "EXACT_MARKET_SERIES_MATCH" for row in rows):
+        raise ValueError("native mapping authority is not the frozen 46/46 exact result")
+    if any(not all(str(row.get(field, "")).strip() for field in ("market", "sector_code", "official_idx_name", "source_api", "official_idx_class")) for row in rows):
+        raise ValueError("native mapping authority contains an incomplete identity")
+    return [{key: str(value or "") for key, value in row.items()} for row in rows]
+
+
+def build_cross_taxonomy_relations(
+    snapshots: Mapping[tuple[str, str], Iterable[Mapping[str, Any]]],
+    native_rows: Iterable[Mapping[str, Any]],
+    taxonomy_rows: Iterable[Mapping[str, Any]] | None = None,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, int]]:
+    """Classify KRX taxonomy using source-qualified six-date OHLC evidence."""
+
+    identity_maps = _snapshot_identity_maps(snapshots)
+    taxonomy = list(taxonomy_rows or extract_krx_taxonomy_rows(snapshots))
+    native = list(native_rows)
+    relation_rows: list[dict[str, Any]] = []
+    parity_rows: list[dict[str, Any]] = []
+    for taxonomy_row in taxonomy:
+        krx_name = str(taxonomy_row.get("krx_idx_name", taxonomy_row.get("official_idx_name", ""))).strip()
+        krx_source = str(taxonomy_row.get("krx_source_api", taxonomy_row.get("source_api", "krx_dd_trd"))).strip()
+        krx_class = str(taxonomy_row.get("official_idx_class", "KRX")).strip() or "KRX"
+        candidate_evidence: list[dict[str, Any]] = []
+        exact_matches: list[dict[str, Any]] = []
+        krx_complete_dates: list[str] = []
+        for date in PRIMARY_DATES:
+            krx_row = identity_maps.get((krx_source, date), {}).get((krx_class, krx_name))
+            if krx_row is not None and all(normalize_decimal(krx_row.get(field)) is not None for field in ("OPNPRC_IDX", "HGPRC_IDX", "LWPRC_IDX", "CLSPRC_IDX")):
+                krx_complete_dates.append(date)
+        for native_row in native:
+            native_api = str(native_row.get("source_api", "")).strip()
+            native_class = str(native_row.get("official_idx_class", "")).strip()
+            native_name = str(native_row.get("official_idx_name", "")).strip()
+            comparisons: list[dict[str, Any]] = []
+            for date in PRIMARY_DATES:
+                krx = identity_maps.get((krx_source, date), {}).get((krx_class, krx_name))
+                native_item = identity_maps.get((native_api, date), {}).get((native_class, native_name))
+                if krx is None or native_item is None:
+                    continue
+                krx_signature = _krx_row_signature(krx)
+                native_signature = _krx_row_signature(native_item)
+                comparison = compare_signatures(krx_signature, native_signature)
+                comparisons.append({"date": date, "krx": signature_values(krx_signature), "native": signature_values(native_signature), **comparison})
+                parity_rows.append({
+                    "krx_idx_name": krx_name,
+                    "native_market": str(native_row.get("market", "")),
+                    "native_sector_code": str(native_row.get("sector_code", "")),
+                    "native_idx_name": native_name,
+                    "native_source_api": native_api,
+                    "date": date,
+                    "krx_open": signature_values(krx_signature)["open"], "krx_high": signature_values(krx_signature)["high"], "krx_low": signature_values(krx_signature)["low"], "krx_close": signature_values(krx_signature)["close"],
+                    "native_open": signature_values(native_signature)["open"], "native_high": signature_values(native_signature)["high"], "native_low": signature_values(native_signature)["low"], "native_close": signature_values(native_signature)["close"],
+                    "open_match": comparison["matches"]["open"], "high_match": comparison["matches"]["high"], "low_match": comparison["matches"]["low"], "close_match": comparison["matches"]["close"],
+                })
+            # Both signatures are represented by the comparison's match map and difference map;
+            # count a field only when both sides carry a value.
+            compared = 0
+            exact = 0
+            for item in comparisons:
+                for field in OHLC_FIELDS:
+                    left = normalize_decimal(item["krx"].get(field))
+                    right = normalize_decimal(item["native"].get(field))
+                    if left is not None and right is not None:
+                        compared += 1
+                        exact += int(left == right)
+            common = len(comparisons)
+            evidence = {
+                "market": str(native_row.get("market", "")), "sector_code": str(native_row.get("sector_code", "")),
+                "source_api": native_api, "official_idx_class": native_class, "official_idx_name": native_name,
+                "common_date_count": common, "compared_field_count": compared, "exact_field_match_count": exact,
+                "evidence_dates": [item["date"] for item in comparisons],
+            }
+            candidate_evidence.append(evidence)
+            if common == len(PRIMARY_DATES) and compared == len(PRIMARY_DATES) * len(OHLC_FIELDS) and exact == compared:
+                exact_matches.append({key: evidence[key] for key in ("market", "sector_code", "source_api", "official_idx_class", "official_idx_name")})
+        all_complete = bool(candidate_evidence) and all(
+            item["common_date_count"] == len(PRIMARY_DATES) and item["compared_field_count"] == len(PRIMARY_DATES) * len(OHLC_FIELDS)
+            for item in candidate_evidence
+        )
+        evidence_dates = sorted({date for item in candidate_evidence for date in item["evidence_dates"]})
+        common_date_count = max((item["common_date_count"] for item in candidate_evidence), default=0)
+        compared_field_count = sum(item["compared_field_count"] for item in candidate_evidence)
+        exact_field_match_count = sum(item["exact_field_match_count"] for item in candidate_evidence)
+        if len(exact_matches) > 1:
+            relation = "UNKNOWN_CROSS_TAXONOMY_RELATION"
+            reason = "MULTIPLE_EXACT_NATIVE_CANDIDATES"
+        elif len(exact_matches) == 1:
+            relation = "EXACT_CROSS_TAXONOMY_EQUIVALENT"
+            reason = "6_DATE_OHLC_EXACT_PRICE_IDENTITY"
+        elif not krx_complete_dates or common_date_count == 0:
+            relation = "UNKNOWN_CROSS_TAXONOMY_RELATION"
+            reason = "NO_COMMON_NATIVE_EVIDENCE"
+        elif len(krx_complete_dates) < len(PRIMARY_DATES) or not all_complete:
+            relation = "PARTIAL_CROSS_TAXONOMY_EVIDENCE"
+            reason = "INCOMPLETE_COMMON_DATES_OR_OHLC"
+        else:
+            relation = "DISTINCT_KRX_TAXONOMY"
+            reason = "6_DATE_OHLC_EVIDENCE_WITH_NO_EXACT_NATIVE_CANDIDATE"
+        relation_rows.append({
+            "krx_idx_name": krx_name, "krx_source_api": krx_source, "relation": relation,
+            "native_exact_match_count": len(exact_matches), "native_exact_matches": exact_matches,
+            "common_date_count": common_date_count, "compared_field_count": compared_field_count,
+            "exact_field_match_count": exact_field_match_count, "evidence_dates": evidence_dates, "reason": reason,
+            "native_candidate_evidence": candidate_evidence,
+        })
+    counters = {
+        "krx_sector_taxonomy_count": len(relation_rows),
+        "krx_sector_exact_equivalence_count": sum(item["relation"] == "EXACT_CROSS_TAXONOMY_EQUIVALENT" for item in relation_rows),
+        "krx_sector_distinct_count": sum(item["relation"] == "DISTINCT_KRX_TAXONOMY" for item in relation_rows),
+        "krx_sector_partial_count": sum(item["relation"] == "PARTIAL_CROSS_TAXONOMY_EVIDENCE" for item in relation_rows),
+        "krx_sector_unknown_count": sum(item["relation"] == "UNKNOWN_CROSS_TAXONOMY_RELATION" for item in relation_rows),
+    }
+    if sum(counters[key] for key in ("krx_sector_exact_equivalence_count", "krx_sector_distinct_count", "krx_sector_partial_count", "krx_sector_unknown_count")) != counters["krx_sector_taxonomy_count"]:
+        raise ValueError("cross-taxonomy relation counters do not close")
+    return relation_rows, parity_rows, counters
 
 
 def readiness_gate(counters: Mapping[str, int]) -> bool:
@@ -253,7 +461,16 @@ def _krx_row_signature(row: Mapping[str, Any]) -> dict[str, Any]:
     return build_signature(row, source="KRX_OPEN_API")
 
 
-def _fetch_pykrx_series(code: str, *, start: str, end: str, delay_seconds: float, state: dict[str, Any]) -> dict[str, Any]:
+def _fetch_pykrx_series(
+    code: str,
+    *,
+    start: str,
+    end: str,
+    delay_seconds: float,
+    state: dict[str, Any],
+    probe: Any | None = None,
+    max_operations: int = PYKRX_MAX_OPERATIONS,
+) -> dict[str, Any]:
     """One bounded range call per code with at most one retry."""
 
     attempts = 0
@@ -261,6 +478,12 @@ def _fetch_pykrx_series(code: str, *, start: str, end: str, delay_seconds: float
     for attempt in range(2):
         if state.get("halted"):
             return {"code": code, "status": "PYKRX_REFERENCE_UNAVAILABLE", "rows": {}, "attempts": attempts, "error": "probe halted after suspected block"}
+        # This gate deliberately precedes sleep, import, and the actual backend
+        # invocation.  A retry therefore cannot begin as operation 61.
+        if int(state.get("network_operations", 0)) >= max_operations:
+            state["budget_exhausted"] = True
+            state["hard_cap_block_count"] = int(state.get("hard_cap_block_count", 0)) + 1
+            return {"code": code, "status": "PYKRX_OPERATION_BUDGET_EXHAUSTED", "rows": {}, "attempts": attempts, "error": "PYKRX operation budget exhausted before attempt"}
         if delay_seconds > 0:
             time.sleep(delay_seconds)
         attempts += 1
@@ -268,8 +491,11 @@ def _fetch_pykrx_series(code: str, *, start: str, end: str, delay_seconds: float
         capture = StringIO()
         try:
             with redirect_stdout(capture), redirect_stderr(capture):
-                from pykrx import stock
-                frame = stock.get_index_ohlcv_by_date(start.replace("-", ""), end.replace("-", ""), code)
+                if probe is None:
+                    from pykrx import stock
+                    frame = stock.get_index_ohlcv_by_date(start.replace("-", ""), end.replace("-", ""), code)
+                else:
+                    frame = probe(start.replace("-", ""), end.replace("-", ""), code)
             if frame is None or getattr(frame, "empty", True):
                 last_error = "EMPTY_DATAFRAME"
                 state["consecutive_empty"] = int(state.get("consecutive_empty", 0)) + 1
@@ -470,16 +696,14 @@ def run_validation() -> dict[str, Any]:
         for service in KRX_SERVICES:
             fetch(service, date)
 
-    py_state: dict[str, Any] = {"network_operations": 0, "consecutive_empty": 0, "consecutive_errors": 0, "halted": False, "suspected_block_events": 0}
+    py_state: dict[str, Any] = {"network_operations": 0, "consecutive_empty": 0, "consecutive_errors": 0, "halted": False, "suspected_block_events": 0, "budget_exhausted": False, "hard_cap_block_count": 0}
     load_krx_operator_credentials()
     names = internal_sector_names()
     code_specs = [("KOSPI", code) for code in KOSPI_SECTOR_CODES] + [("KOSDAQ", code) for code in KOSDAQ_SECTOR_CODES]
     py_results: dict[str, dict[str, Any]] = {}
     for market, code in code_specs:
         py_results[code] = _fetch_pykrx_series(code, start=PYKRX_START, end=PYKRX_END, delay_seconds=PYKRX_DELAY_SECONDS, state=py_state)
-        if py_state["network_operations"] > PYKRX_MAX_OPERATIONS:
-            py_state["halted"] = True
-            py_state["suspected_block_events"] += 1
+        if py_state.get("budget_exhausted"):
             break
     for market, code in code_specs:
         if code not in py_results:
@@ -502,25 +726,22 @@ def run_validation() -> dict[str, Any]:
 
     duplicate_pairs, duplicate_detail_rows = _duplicate_evidence(responses)
     duplicate_snapshot_row_count = _duplicate_snapshot_rows(responses)
-    krx_sector_rows = []
-    for date in PRIMARY_DATES:
-        for row in _snapshot_rows(responses, "krx_index_daily", date):
-            if str(row.get("IDX_CLSS", "")) == "KRX" and str(row.get("IDX_NM", "")).strip() and any(token in str(row.get("IDX_NM")) for token in ("자동차", "반도체", "헬스케어", "은행", "에너지화학", "철강", "방송통신", "건설", "증권", "기계장비", "보험", "운송", "경기소비재", "필수소비재", "정보기술", "유틸리티", "자유소비재", "산업재", "소재", "커뮤니케이션서비스", "금융")):
-                krx_sector_rows.append(row)
-    unique_taxonomy: dict[str, dict[str, Any]] = {}
-    for row in krx_sector_rows:
-        unique_taxonomy[str(row.get("IDX_NM"))] = row
-    taxonomy_rows = [{"official_idx_name": name, "source_api": "krx_dd_trd", "official_idx_class": "KRX", "classification": "SECTOR_INDUSTRY", "has_close": normalize_decimal(row.get("CLSPRC_IDX")) is not None} for name, row in sorted(unique_taxonomy.items())]
-    exact_taxonomy_count = sum(1 for row in taxonomy_rows if row["classification"] == "EXACT_CROSS_TAXONOMY_EQUIVALENT")
-    relation_rows = [{"official_idx_name": row["official_idx_name"], "native_match_names": [], "relation": "DISTINCT_KRX_TAXONOMY", "reason": "KRX-branded sector series is source-qualified and not substituted by name similarity."} for row in taxonomy_rows]
+    live_snapshots = {
+        (service["api_id"], date): _snapshot_rows(responses, service["service_name"], date)
+        for service in KRX_SERVICES for date in PRIMARY_DATES
+    }
+    taxonomy_rows = extract_krx_taxonomy_rows(live_snapshots)
+    native_rows = _native_authority_rows()
+    relation_rows, taxonomy_parity_rows, taxonomy_counters = build_cross_taxonomy_relations(live_snapshots, native_rows, taxonomy_rows)
+    exact_taxonomy_count = taxonomy_counters["krx_sector_exact_equivalence_count"]
 
     mapping_status_counts = Counter(item["summary"]["mapping_status"] for item in mapping_details)
     active_items = [item["summary"] for item in mapping_details if item["summary"]["active_reference_code"]]
     counters = {
-        "sector_code_total_count": len(code_specs), "active_sector_code_count": len(active_items), "exact_mapping_count": mapping_status_counts["EXACT_MARKET_SERIES_MATCH"], "rounding_only_mapping_count": mapping_status_counts["ROUNDING_ONLY_MARKET_SERIES_MATCH"], "inactive_legacy_count": mapping_status_counts["INACTIVE_OR_LEGACY_CODE"], "active_ambiguous_count": sum(item["mapping_status"] == "AMBIGUOUS_PRICE_SIGNATURE" for item in active_items), "active_no_match_count": sum(item["mapping_status"] == "NO_MARKET_SERIES_MATCH" for item in active_items), "active_reference_unavailable_count": sum(item["mapping_status"] == "PYKRX_REFERENCE_UNAVAILABLE" for item in active_items), "active_insufficient_common_dates_count": sum(item["mapping_status"] == "INSUFFICIENT_COMMON_DATES" for item in active_items), "cross_api_duplicate_pair_count": len(duplicate_pairs), "cross_api_exact_duplicate_count": sum(item["classification"] == "EXACT_CROSS_API_DUPLICATE" for item in duplicate_pairs), "cross_api_same_name_different_count": sum(item["classification"] == "SAME_NAME_DIFFERENT_SERIES" for item in duplicate_pairs), "cross_api_partial_count": sum(item["classification"] == "PARTIAL_CROSS_API_EVIDENCE" for item in duplicate_pairs), "cross_api_unknown_count": sum(item["classification"] == "UNKNOWN_CROSS_API_RELATION" for item in duplicate_pairs), "krx_access_fail_count": sum(not (responses.get((service["service_name"], date)) and responses[(service["service_name"], date)].http_status == 200) for date in PRIMARY_DATES for service in KRX_SERVICES), "quota_counter_mismatch_count": int(quota.get_usage()["global_total"] != client.request_count), "request_audit_mismatch_count": int(len(client.audit) != client.request_count), "secret_occurrence_count": 0, "validation_source_head_mismatch_count": int(implementation_head != git_sha("HEAD")), "duplicate_snapshot_row_count": duplicate_snapshot_row_count}
+        "sector_code_total_count": len(code_specs), "active_sector_code_count": len(active_items), "exact_mapping_count": mapping_status_counts["EXACT_MARKET_SERIES_MATCH"], "rounding_only_mapping_count": mapping_status_counts["ROUNDING_ONLY_MARKET_SERIES_MATCH"], "inactive_legacy_count": mapping_status_counts["INACTIVE_OR_LEGACY_CODE"], "active_ambiguous_count": sum(item["mapping_status"] == "AMBIGUOUS_PRICE_SIGNATURE" for item in active_items), "active_no_match_count": sum(item["mapping_status"] == "NO_MARKET_SERIES_MATCH" for item in active_items), "active_reference_unavailable_count": sum(item["mapping_status"] == "PYKRX_REFERENCE_UNAVAILABLE" for item in active_items), "active_insufficient_common_dates_count": sum(item["mapping_status"] == "INSUFFICIENT_COMMON_DATES" for item in active_items), "cross_api_duplicate_pair_count": len(duplicate_pairs), "cross_api_exact_duplicate_count": sum(item["classification"] == "EXACT_CROSS_API_DUPLICATE" for item in duplicate_pairs), "cross_api_same_name_different_count": sum(item["classification"] == "SAME_NAME_DIFFERENT_SERIES" for item in duplicate_pairs), "cross_api_partial_count": sum(item["classification"] == "PARTIAL_CROSS_API_EVIDENCE" for item in duplicate_pairs), "cross_api_unknown_count": sum(item["classification"] == "UNKNOWN_CROSS_API_RELATION" for item in duplicate_pairs), "krx_access_fail_count": sum(not (responses.get((service["service_name"], date)) and responses[(service["service_name"], date)].http_status == 200) for date in PRIMARY_DATES for service in KRX_SERVICES), "quota_counter_mismatch_count": int(quota.get_usage()["global_total"] != client.request_count), "request_audit_mismatch_count": int(len(client.audit) != client.request_count), "secret_occurrence_count": 0, "validation_source_head_mismatch_count": int(implementation_head != git_sha("HEAD")), "duplicate_snapshot_row_count": duplicate_snapshot_row_count, **taxonomy_counters}
     secret_scan = scan_secret(secret)
     counters["secret_occurrence_count"] = secret_scan["secret_occurrence_count"]
-    final_status = "READY_FOR_ARCHITECT_KRX_INDEX_SERIES_MAPPING_V01_REVIEW" if readiness_gate(counters) and duplicate_snapshot_row_count == 0 and not py_state.get("halted") and py_state.get("suspected_block_events", 0) == 0 else "BLOCKED_MORE_EVIDENCE_REQUIRED"
+    final_status = "READY_FOR_ARCHITECT_KRX_INDEX_SERIES_MAPPING_V01_REVIEW" if readiness_gate(counters) and duplicate_snapshot_row_count == 0 and counters["krx_sector_partial_count"] == 0 and counters["krx_sector_unknown_count"] == 0 and not py_state.get("halted") and not py_state.get("budget_exhausted") and py_state.get("suspected_block_events", 0) == 0 else "BLOCKED_MORE_EVIDENCE_REQUIRED"
     if py_state.get("halted") or py_state.get("suspected_block_events", 0):
         final_status = "BLOCKED_PYKRX_REFERENCE_ACCESS"
     if failures and any(item["status"] == "BLOCKED_KRX_INDEX_ACCESS" for item in failures):
@@ -530,7 +751,7 @@ def run_validation() -> dict[str, Any]:
     endpoint_contract = {"work_id": WORK_ID, "method": "GET", "auth_header": "AUTH_KEY", "date_parameter": "basDd", "date_format": "YYYYMMDD", "records_container": "OutBlock_1", "services": [{**service, "actual_endpoint": service["endpoint"]} for service in KRX_SERVICES]}
     pykrx_started_calls = sum(1 for item in py_results.values() if int(item.get("attempts", 0)) > 0)
     network_summary = {"work_id": WORK_ID, "fingerprint_dates": [{"requested_date": date, "actual_date": date, "status": {service["service_name"]: _response_status(responses.get((service["service_name"], date))) for service in KRX_SERVICES}} for date in PRIMARY_DATES], "krx_kospi_snapshot_requests": len(PRIMARY_DATES), "krx_kosdaq_snapshot_requests": len(PRIMARY_DATES), "krx_series_snapshot_requests": len(PRIMARY_DATES), "actual_http_attempts": client.request_count, "quota_recorded_attempts": usage["global_total"], "pykrx_primary_calls": pykrx_started_calls, "pykrx_retries": max(0, py_state["network_operations"] - pykrx_started_calls), "pykrx_total_network_operations": py_state["network_operations"], "pykrx_throttle_seconds": PYKRX_DELAY_SECONDS, "suspected_block_events": py_state.get("suspected_block_events", 0), "duplicate_snapshot_row_count": duplicate_snapshot_row_count, "failures": failures}
-    safe_write_json(ARTIFACT_DIR / "index_mapping_v01_summary.json", {"work_id": WORK_ID, "status": final_status, "recommendation": recommendation, "start_head": start_head, "implementation_head": implementation_head, "validation_source_head": implementation_head, "counters": counters, "krx_sector_taxonomy_count": len(taxonomy_rows), "krx_sector_exact_equivalence_count": exact_taxonomy_count, "krx_distinct_taxonomy_count": len(taxonomy_rows) - exact_taxonomy_count, "pykrx_state": py_state, "fingerprint_dates": list(PRIMARY_DATES)}, secret)
+    safe_write_json(ARTIFACT_DIR / "index_mapping_v01_summary.json", {"work_id": WORK_ID, "status": final_status, "recommendation": recommendation, "start_head": start_head, "implementation_head": implementation_head, "validation_source_head": implementation_head, "counters": counters, **taxonomy_counters, "krx_distinct_taxonomy_count": taxonomy_counters["krx_sector_distinct_count"], "pykrx_state": py_state, "fingerprint_dates": list(PRIMARY_DATES)}, secret)
     safe_write_json(ARTIFACT_DIR / "index_mapping_v01_manifest.json", {"work_id": WORK_ID, "start_head": start_head, "implementation_head": implementation_head, "validation_source_head": implementation_head, "end_head": None, "status": final_status, "recommendation": recommendation, "counters": counters, "secret_occurrence_count": secret_scan["secret_occurrence_count"]}, secret)
     write_csv(ARTIFACT_DIR / "sector_code_mapping.csv", ["market", "sector_code", "internal_sector_name", "official_idx_name", "source_api", "official_idx_class", "common_date_count", "ohlc_compared_field_count", "exact_field_match_count", "rounding_difference_count", "candidate_count", "mapping_status", "evidence_dates", "active_reference_code", "name_semantic_warning"], [{**item["summary"], "evidence_dates": ";".join(item["summary"]["evidence_dates"])} for item in mapping_details])
     safe_write_json(ARTIFACT_DIR / "sector_code_mapping_detail.json", {"work_id": WORK_ID, "mapping_statuses": list(MAPPING_STATUSES), "items": mapping_details}, secret)
@@ -539,7 +760,8 @@ def run_validation() -> dict[str, Any]:
     write_csv(ARTIFACT_DIR / "cross_api_duplicate_parity.csv", ["idx_name", "left_source_api", "right_source_api", "date", "classification", "left_open", "left_high", "left_low", "left_close", "right_open", "right_high", "right_low", "right_close", "open_match", "high_match", "low_match", "close_match"], duplicate_detail_rows)
     safe_write_json(ARTIFACT_DIR / "cross_api_duplicate_contract.json", {"work_id": WORK_ID, "duplicate_name_count": len(duplicate_pairs), "pair_classifications": list(DUPLICATE_STATUSES), "pairs": duplicate_pairs, "authority_rule": {"EXACT_CROSS_API_DUPLICATE": "native KOSPI→kospi_dd_trd; native KOSDAQ→kosdaq_dd_trd; KRX-branded→krx_dd_trd", "SAME_NAME_DIFFERENT_SERIES": "retain source-qualified identity (source_api, IDX_CLSS, IDX_NM)", "PARTIAL_CROSS_API_EVIDENCE": "do not deduplicate until complete evidence", "UNKNOWN_CROSS_API_RELATION": "block authority decision"}, "unknown_count": counters["cross_api_unknown_count"]}, secret)
     write_csv(ARTIFACT_DIR / "krx_sector_taxonomy.csv", ["official_idx_name", "source_api", "official_idx_class", "classification", "has_close"], taxonomy_rows)
-    safe_write_json(ARTIFACT_DIR / "krx_sector_taxonomy_relation.json", {"work_id": WORK_ID, "taxonomy_count": len(taxonomy_rows), "exact_equivalence_count": exact_taxonomy_count, "distinct_taxonomy_count": len(taxonomy_rows) - exact_taxonomy_count, "relations": relation_rows, "substitution_policy": "KRX taxonomy is not a drop-in replacement for native 46-code sector RS."}, secret)
+    safe_write_json(ARTIFACT_DIR / "krx_sector_taxonomy_relation.json", {"work_id": WORK_ID, **taxonomy_counters, "relations": relation_rows, "substitution_policy": "KRX taxonomy is not a drop-in replacement for native 46-code sector RS."}, secret)
+    write_csv(ARTIFACT_DIR / "krx_sector_taxonomy_parity.csv", ["krx_idx_name", "native_market", "native_sector_code", "native_idx_name", "native_source_api", "date", "krx_open", "krx_high", "krx_low", "krx_close", "native_open", "native_high", "native_low", "native_close", "open_match", "high_match", "low_match", "close_match"], taxonomy_parity_rows)
     safe_write_json(ARTIFACT_DIR / "network_request_summary.json", network_summary, secret)
     safe_write_json(ARTIFACT_DIR / "quota_validation.json", {"storage_type": "SQLite", "usage_date_kst": usage["usage_date_kst"], "endpoint_usage": usage["endpoint_usage"], "global_total": usage["global_total"], "actual_http_attempts": client.request_count, "quota_recorded_attempts": usage["global_total"], "quota_counter_mismatch_count": counters["quota_counter_mismatch_count"], "endpoint_limit": quota.endpoint_limit, "global_safety_limit": quota.global_safety_limit, "reserve": quota.reserve}, secret)
     safe_write_json(ARTIFACT_DIR / "request_audit.json", {"work_id": WORK_ID, "max_requests": MAX_KRX_ATTEMPTS, "request_count": client.request_count, "retry_count": client.retry_count, "status_counts": client.status_counts, "failures": failures, "requests": client.audit}, secret)
@@ -555,9 +777,143 @@ def run_validation() -> dict[str, Any]:
     return {"status": final_status, "recommendation": recommendation, "start_head": start_head, "implementation_head": implementation_head, "request_count": client.request_count, "pykrx_operations": py_state["network_operations"], "pykrx_state": py_state, "counters": counters, "mapping_details": mapping_details, "duplicate_pairs": duplicate_pairs, "taxonomy_rows": taxonomy_rows, "secret_scan": secret_scan, "quota": usage}
 
 
+def _offline_mapping_regression() -> dict[str, Any]:
+    mapping_path = ARTIFACT_DIR / "sector_code_mapping.csv"
+    parity_path = ARTIFACT_DIR / "sector_price_parity.csv"
+    detail_path = ARTIFACT_DIR / "sector_code_mapping_detail.json"
+    if not mapping_path.is_file() or not parity_path.is_file() or not detail_path.is_file():
+        raise FileNotFoundError("native mapping regression artifacts are incomplete")
+    with mapping_path.open(encoding="utf-8", newline="") as handle:
+        mapping_rows = list(csv.DictReader(handle))
+    with parity_path.open(encoding="utf-8", newline="") as handle:
+        parity_rows = list(csv.DictReader(handle))
+    details = json.loads(detail_path.read_text(encoding="utf-8"))
+    exact_fields = sum(int(row.get("exact_field_match_count", 0) or 0) for row in mapping_rows)
+    exact_ohlc = sum(str(row.get(f"{field}_match", "")).lower() == "true" for row in parity_rows for field in OHLC_FIELDS)
+    return {
+        "sector_code_total_count": len(mapping_rows),
+        "active_sector_code_count": sum(str(row.get("active_reference_code", "")).lower() == "true" for row in mapping_rows),
+        "exact_mapping_count": sum(row.get("mapping_status") == "EXACT_MARKET_SERIES_MATCH" for row in mapping_rows),
+        "rounding_only_mapping_count": sum(row.get("mapping_status") == "ROUNDING_ONLY_MARKET_SERIES_MATCH" for row in mapping_rows),
+        "active_ambiguous_count": sum(row.get("mapping_status") == "AMBIGUOUS_PRICE_SIGNATURE" and str(row.get("active_reference_code", "")).lower() == "true" for row in mapping_rows),
+        "active_no_match_count": sum(row.get("mapping_status") == "NO_MARKET_SERIES_MATCH" and str(row.get("active_reference_code", "")).lower() == "true" for row in mapping_rows),
+        "active_reference_unavailable_count": sum(row.get("mapping_status") == "PYKRX_REFERENCE_UNAVAILABLE" and str(row.get("active_reference_code", "")).lower() == "true" for row in mapping_rows),
+        "active_insufficient_common_dates_count": sum(row.get("mapping_status") == "INSUFFICIENT_COMMON_DATES" and str(row.get("active_reference_code", "")).lower() == "true" for row in mapping_rows),
+        "exact_ohlc_fields": exact_ohlc,
+        "parity_row_count": len(parity_rows),
+        "detail_item_count": len(details.get("items", [])),
+    }
+
+
+def run_offline_replay() -> dict[str, Any]:
+    """Replay FIX01 solely from committed evidence; no client/provider is touched."""
+
+    fix_work_id = "KRX_INDEX_SERIES_MAPPING_V01_FIX01"
+    implementation_head = git_sha("HEAD")
+    fix_start_head = git_sha("HEAD^")
+    validation_source_head = implementation_head
+    secret = load_auth_key()
+    network_summary = {
+        "work_id": fix_work_id,
+        "validation_mode": "OFFLINE_REPLAY",
+        "krx_open_api_attempts": 0,
+        "pykrx_network_operations": 0,
+        "raw_snapshot_count": 0,
+    }
+    try:
+        snapshots = load_committed_raw_snapshots()
+        native_rows = _native_authority_rows()
+        taxonomy_rows = extract_krx_taxonomy_rows(snapshots)
+        relation_rows, taxonomy_parity_rows, taxonomy_counters = build_cross_taxonomy_relations(snapshots, native_rows, taxonomy_rows)
+        native_regression = _offline_mapping_regression()
+        previous_summary = json.loads((ARTIFACT_DIR / "index_mapping_v01_summary.json").read_text(encoding="utf-8"))
+        previous_counters = dict(previous_summary.get("counters", {}))
+    except (FileNotFoundError, ValueError, json.JSONDecodeError) as exc:
+        status = "BLOCKED_OFFLINE_EVIDENCE_MISSING"
+        result = {"work_id": fix_work_id, "fix_start_head": fix_start_head, "implementation_head": implementation_head, "validation_source_head": validation_source_head, "end_head": None, "status": status, "recommendation": "BLOCKED_OFFLINE_EVIDENCE_MISSING", "error": type(exc).__name__, "validation_mode": "OFFLINE_REPLAY", "krx_open_api_attempts": 0, "pykrx_network_operations": 0}
+        safe_write_json(ARTIFACT_DIR / "fix01_network_summary.json", network_summary, secret)
+        safe_write_json(ARTIFACT_DIR / "index_mapping_v01_fix01_summary.json", result, secret)
+        return result
+
+    network_summary["raw_snapshot_count"] = len(snapshots)
+    native_ok = (
+        native_regression["sector_code_total_count"] == 46
+        and native_regression["active_sector_code_count"] == 46
+        and native_regression["exact_mapping_count"] == 46
+        and native_regression["rounding_only_mapping_count"] == 0
+        and native_regression["active_ambiguous_count"] == 0
+        and native_regression["active_no_match_count"] == 0
+        and native_regression["active_reference_unavailable_count"] == 0
+        and native_regression["active_insufficient_common_dates_count"] == 0
+        and native_regression["exact_ohlc_fields"] == 1104
+        and native_regression["parity_row_count"] == 276
+    )
+    cross_regression = {
+        key: int(previous_counters.get(key, 0))
+        for key in ("cross_api_duplicate_pair_count", "cross_api_exact_duplicate_count", "cross_api_same_name_different_count", "cross_api_partial_count", "cross_api_unknown_count")
+    }
+    cross_ok = cross_regression == {
+        "cross_api_duplicate_pair_count": 20,
+        "cross_api_exact_duplicate_count": 0,
+        "cross_api_same_name_different_count": 20,
+        "cross_api_partial_count": 0,
+        "cross_api_unknown_count": 0,
+    }
+    taxonomy_ok = taxonomy_counters["krx_sector_taxonomy_count"] == 24 and taxonomy_counters["krx_sector_partial_count"] == 0 and taxonomy_counters["krx_sector_unknown_count"] == 0
+    if not taxonomy_ok:
+        status = "BLOCKED_CROSS_TAXONOMY_EVIDENCE"
+        recommendation = "BLOCKED_CROSS_TAXONOMY_EVIDENCE"
+    elif not native_ok or not cross_ok:
+        status = "BLOCKED_REGRESSION"
+        recommendation = "BLOCKED_REGRESSION"
+    else:
+        status = "READY_FOR_ARCHITECT_KRX_INDEX_SERIES_MAPPING_V01_FIX01_REVIEW"
+        recommendation = "RECOMMEND_SECTOR_RS_KRX_MIGRATION"
+    secret_scan = scan_secret(secret)
+    counters = {**previous_counters, **native_regression, **cross_regression, **taxonomy_counters, "secret_occurrence_count": secret_scan["secret_occurrence_count"]}
+    result = {
+        "work_id": fix_work_id,
+        "fix_start_head": fix_start_head,
+        "implementation_head": implementation_head,
+        "validation_source_head": validation_source_head,
+        "end_head": None,
+        "status": status,
+        "recommendation": recommendation,
+        "validation_mode": "OFFLINE_REPLAY",
+        "krx_open_api_attempts": 0,
+        "pykrx_network_operations": 0,
+        "native_mapping": native_regression,
+        "cross_api_duplicates": cross_regression,
+        "taxonomy": taxonomy_counters,
+        "counters": counters,
+        "secret_scan": secret_scan,
+    }
+    summary_path = ARTIFACT_DIR / "index_mapping_v01_summary.json"
+    summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    summary.update({"implementation_head": implementation_head, "validation_source_head": validation_source_head, "status": status, "recommendation": recommendation, "counters": counters, **taxonomy_counters, "krx_distinct_taxonomy_count": taxonomy_counters["krx_sector_distinct_count"]})
+    safe_write_json(summary_path, summary, secret)
+    manifest_path = ARTIFACT_DIR / "index_mapping_v01_manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest.update({"implementation_head": implementation_head, "validation_source_head": validation_source_head, "end_head": None, "status": status, "recommendation": recommendation, "counters": counters, "secret_occurrence_count": secret_scan["secret_occurrence_count"]})
+    safe_write_json(manifest_path, manifest, secret)
+    safe_write_json(ARTIFACT_DIR / "krx_sector_taxonomy_relation.json", {"work_id": fix_work_id, **taxonomy_counters, "relations": relation_rows, "substitution_policy": "KRX taxonomy is not a drop-in replacement for native 46-code sector RS."}, secret)
+    write_csv(ARTIFACT_DIR / "krx_sector_taxonomy_parity.csv", ["krx_idx_name", "native_market", "native_sector_code", "native_idx_name", "native_source_api", "date", "krx_open", "krx_high", "krx_low", "krx_close", "native_open", "native_high", "native_low", "native_close", "open_match", "high_match", "low_match", "close_match"], taxonomy_parity_rows)
+    safe_write_json(ARTIFACT_DIR / "fix01_network_summary.json", network_summary, secret)
+    safe_write_json(ARTIFACT_DIR / "index_mapping_v01_fix01_summary.json", result, secret)
+    architecture_text = "\n".join([
+        "architecture_recommendation.md", "=" * 80, "KRX Index Series Mapping V01 FIX01 recommendation", "=" * 80, "",
+        f"VALIDATION_MODE: OFFLINE_REPLAY", f"RECOMMENDATION: {recommendation}", "",
+        "KRX-branded taxonomy relations are classified only from source-qualified six-date OHLC evidence.",
+        "Native 46-sector mapping remains frozen at 46/46 exact and is not rediscovered in replay.",
+        "PyKRX is validation reference only; production provider and RS formula were not changed.",
+    ])
+    (ARTIFACT_DIR / "architecture_recommendation.md").write_text(architecture_text + "\n", encoding="utf-8")
+    return result
+
+
 def main() -> int:
     try:
-        result = run_validation()
+        result = run_offline_replay() if "--offline-replay" in sys.argv[1:] else run_validation()
     except Exception as exc:
         print(f"FINAL_STATUS=BLOCKED_VALIDATION_EXCEPTION_{type(exc).__name__}")
         return 1
