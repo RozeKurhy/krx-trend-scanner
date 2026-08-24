@@ -1,0 +1,25 @@
+{
+  "different_content": "RAW_PARTITION_CONFLICT",
+  "hashes": [
+    "content_sha256",
+    "file_sha256"
+  ],
+  "immutable_complete_partition": true,
+  "manifest": "data/market/raw/krx_stocks/v01/manifest.sqlite3",
+  "partition": "market=MARKET/year=YYYY/YYYY-MM-DD.parquet",
+  "physical_columns": [
+    "date",
+    "ticker",
+    "open",
+    "high",
+    "low",
+    "close",
+    "volume",
+    "trading_value",
+    "market_cap",
+    "listed_shares"
+  ],
+  "root": "data/market/raw/krx_stocks/v01/",
+  "same_content": "IDEMPOTENT_NOOP",
+  "schema_version": "KRX_RAW_STOCK_V01"
+}

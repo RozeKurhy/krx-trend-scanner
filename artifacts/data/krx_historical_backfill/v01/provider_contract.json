@@ -1,0 +1,23 @@
+{
+  "adjustment": false,
+  "authority": "KRX Open API Stock Daily",
+  "markets": {
+    "KOSDAQ": "/sto/ksq_bydd_trd",
+    "KOSPI": "/sto/stk_bydd_trd"
+  },
+  "records_root": "OutBlock_1",
+  "schema_version": "KRX_RAW_STOCK_V01",
+  "source_fields": {
+    "ACC_TRDVAL": "trading_value",
+    "ACC_TRDVOL": "volume",
+    "BAS_DD": "date",
+    "ISU_CD": "ticker",
+    "LIST_SHRS": "listed_shares",
+    "MKTCAP": "market_cap",
+    "TDD_CLSPRC": "close",
+    "TDD_HGPRC": "high",
+    "TDD_LWPRC": "low",
+    "TDD_OPNPRC": "open"
+  },
+  "zero_preservation": true
+}
