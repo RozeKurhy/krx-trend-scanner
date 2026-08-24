@@ -1,0 +1,70 @@
+{
+  "auth_key_exposed": false,
+  "auth_key_present": true,
+  "implementation_head": "0b764656fed60db52ef1059f2124bed9bd492445",
+  "new_api_access_fail_count": 0,
+  "new_api_access_pass_count": 3,
+  "services": [
+    {
+      "access_status": "PASS",
+      "actual_endpoint": "/idx/krx_dd_trd",
+      "api_id": "krx_dd_trd",
+      "auth_header": "AUTH_KEY",
+      "expected_endpoint": "/idx/krx_dd_trd",
+      "http_status": 200,
+      "method": "GET",
+      "query_date_format": "YYYYMMDD",
+      "query_parameter_names": [
+        "basDd"
+      ],
+      "record_count": 40,
+      "records_container": "OutBlock_1",
+      "requested_date": "2026-08-20",
+      "required_fields_missing": [],
+      "schema_status": "KNOWN",
+      "service_name": "krx_index_daily"
+    },
+    {
+      "access_status": "PASS",
+      "actual_endpoint": "/sto/stk_isu_base_info",
+      "api_id": "stk_isu_base_info",
+      "auth_header": "AUTH_KEY",
+      "expected_endpoint": "/sto/stk_isu_base_info",
+      "http_status": 200,
+      "method": "GET",
+      "query_date_format": "YYYYMMDD",
+      "query_parameter_names": [
+        "basDd"
+      ],
+      "record_count": 942,
+      "records_container": "OutBlock_1",
+      "requested_date": "2026-08-20",
+      "required_fields_missing": [],
+      "schema_status": "KNOWN",
+      "service_name": "kospi_basic_info"
+    },
+    {
+      "access_status": "PASS",
+      "actual_endpoint": "/sto/ksq_isu_base_info",
+      "api_id": "ksq_isu_base_info",
+      "auth_header": "AUTH_KEY",
+      "expected_endpoint": "/sto/ksq_isu_base_info",
+      "http_status": 200,
+      "method": "GET",
+      "query_date_format": "YYYYMMDD",
+      "query_parameter_names": [
+        "basDd"
+      ],
+      "record_count": 1821,
+      "records_container": "OutBlock_1",
+      "requested_date": "2026-08-20",
+      "required_fields_missing": [],
+      "schema_status": "KNOWN",
+      "service_name": "kosdaq_basic_info"
+    }
+  ],
+  "start_head": "8a42e70a37a43177e9a6e388b18fabcf92f91f94",
+  "status": "READY_FOR_ARCHITECT_KRX_OPEN_API_V02_REVIEW",
+  "validation_source_head": "0b764656fed60db52ef1059f2124bed9bd492445",
+  "work_id": "KRX_OPEN_API_V02_EXPANSION_VALIDATION"
+}

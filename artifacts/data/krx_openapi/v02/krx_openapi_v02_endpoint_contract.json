@@ -1,0 +1,40 @@
+{
+  "auth_header": "AUTH_KEY",
+  "base_url": "https://data-dbg.krx.co.kr/svc/apis",
+  "method": "GET",
+  "query_parameters": {
+    "date": "basDd",
+    "format": "YYYYMMDD"
+  },
+  "records_container": "OutBlock_1",
+  "services": [
+    {
+      "actual_endpoint": "/idx/krx_dd_trd",
+      "api_id": "krx_dd_trd",
+      "auth_header": "AUTH_KEY",
+      "date_parameter": "basDd",
+      "expected_endpoint": "/idx/krx_dd_trd",
+      "method": "GET",
+      "service_name": "krx_index_daily"
+    },
+    {
+      "actual_endpoint": "/sto/stk_isu_base_info",
+      "api_id": "stk_isu_base_info",
+      "auth_header": "AUTH_KEY",
+      "date_parameter": "basDd",
+      "expected_endpoint": "/sto/stk_isu_base_info",
+      "method": "GET",
+      "service_name": "kospi_basic_info"
+    },
+    {
+      "actual_endpoint": "/sto/ksq_isu_base_info",
+      "api_id": "ksq_isu_base_info",
+      "auth_header": "AUTH_KEY",
+      "date_parameter": "basDd",
+      "expected_endpoint": "/sto/ksq_isu_base_info",
+      "method": "GET",
+      "service_name": "kosdaq_basic_info"
+    }
+  ],
+  "work_id": "KRX_OPEN_API_V02_EXPANSION_VALIDATION"
+}

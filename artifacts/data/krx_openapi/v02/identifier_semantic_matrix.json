@@ -1,0 +1,40 @@
+{
+  "daily_identifier_samples": [
+    {
+      "ISU_CD": "095570",
+      "classification": "SHORT_TICKER",
+      "market": "KOSPI"
+    },
+    {
+      "ISU_CD": "060310",
+      "classification": "SHORT_TICKER",
+      "market": "KOSDAQ"
+    }
+  ],
+  "daily_vs_basic_ISU_CD_conclusion": "ENDPOINT_SPECIFIC_SEMANTICS_DAILY_SHORT_TICKER_BASIC_STANDARD_CODE",
+  "endpoint_semantics": {
+    "ksq_bydd_trd": {
+      "ISU_CD": "SHORT_TICKER"
+    },
+    "ksq_isu_base_info": {
+      "ISU_CD": "STANDARD_CODE",
+      "ISU_SRT_CD": "SHORT_TICKER"
+    },
+    "stk_bydd_trd": {
+      "ISU_CD": "SHORT_TICKER"
+    },
+    "stk_isu_base_info": {
+      "ISU_CD": "STANDARD_CODE",
+      "ISU_SRT_CD": "SHORT_TICKER"
+    }
+  },
+  "internal_ticker_field": "ISU_SRT_CD",
+  "samsung": {
+    "ISU_CD": "KR7005930003",
+    "ISU_NM": "삼성전자보통주",
+    "ISU_SRT_CD": "005930",
+    "classification": "BASE_INFO_ISU_CD_STANDARD_CODE"
+  },
+  "unknown_identifier_semantic_count": 0,
+  "work_id": "KRX_OPEN_API_V02_EXPANSION_VALIDATION"
+}
