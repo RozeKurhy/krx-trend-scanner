@@ -1,0 +1,30 @@
+{
+  "allowed_transitions": {
+    "CLEAN": [
+      "CLEAN",
+      "DIRTY"
+    ],
+    "DIRTY": [
+      "DIRTY",
+      "REFRESHING"
+    ],
+    "FAILED": [
+      "DIRTY",
+      "REFRESHING"
+    ],
+    "REFRESHING": [
+      "CLEAN",
+      "FAILED"
+    ]
+  },
+  "backend": "SQLite",
+  "default_path": "data/market/state/corporate_action.sqlite3",
+  "runtime_database_committed": false,
+  "statuses": [
+    "CLEAN",
+    "DIRTY",
+    "REFRESHING",
+    "FAILED"
+  ],
+  "transaction": "BEGIN IMMEDIATE compare-and-set"
+}

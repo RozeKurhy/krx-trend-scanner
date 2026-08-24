@@ -1,0 +1,28 @@
+{
+  "absent": [
+    "CLEAN",
+    "DIRTY"
+  ],
+  "allowed": {
+    "CLEAN": [
+      "CLEAN",
+      "DIRTY"
+    ],
+    "DIRTY": [
+      "DIRTY",
+      "REFRESHING"
+    ],
+    "FAILED": [
+      "DIRTY",
+      "REFRESHING"
+    ],
+    "REFRESHING": [
+      "CLEAN",
+      "FAILED"
+    ]
+  },
+  "forbidden": [
+    "DIRTY->CLEAN",
+    "FAILED->CLEAN"
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "adjusted_true_only": true,
+  "clean_transition": "only after provider/save/reload/integrity success",
+  "coverage_rule": "old trading dates must be subset of new frame",
+  "empty_response": "FAILED without save",
+  "end_rule": "refresh_end >= existing actual_date_max",
+  "existing_store_required": true,
+  "full_history_start": "metadata.requested_start fallback metadata.actual_date_min",
+  "one_logical_fetch_per_invocation": true,
+  "partial_response": "FAILED without save",
+  "provider": "AdjustedPriceDataProvider"
+}
