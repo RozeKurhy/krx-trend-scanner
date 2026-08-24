@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import csv
 import json
+from types import SimpleNamespace
 from pathlib import Path
 
 import pandas as pd
@@ -19,6 +20,8 @@ from trend_scanner.data.krx_sector_index import (
     MAPPING_CONTRACT_VERSION,
     mapping_contract_sha256,
 )
+from trend_scanner.relative_strength.relative_strength import RelativeStrengthDataStatus, compute_relative_strength_features
+from scripts import migrate_sector_rs_krx_v01 as migration
 
 
 class FakeResponse:
@@ -182,3 +185,34 @@ def test_provider_sector_build_does_not_use_pykrx_fetch(tmp_path: Path, monkeypa
     )
     assert len(result) == 46
     assert len(client.calls) == 2
+
+
+def test_pit_mapping_requires_three_tuple_and_ready_result() -> None:
+    dates = pd.date_range("2025-01-01", periods=320, freq="B").strftime("%Y-%m-%d")
+    stock = pd.DataFrame({"close": 100.0}, index=pd.to_datetime(dates))
+    market = pd.DataFrame({"date": dates, "index_code": "1001", "close": 100.0})
+    sector = pd.DataFrame({"date": dates, "index_code": "1005", "close": 100.0})
+    rejected = compute_relative_strength_features("005930", dates[-1], stock, market, "KOSPI", sector, {"005930": ("1005", "음식료·담배")})
+    accepted = compute_relative_strength_features("005930", dates[-1], stock, market, "KOSPI", sector, {"005930": ("1005", "음식료·담배", dates[0])})
+    future = compute_relative_strength_features("005930", dates[-1], stock, market, "KOSPI", sector, {"005930": ("1005", "음식료·담배", "2099-01-01")})
+    assert rejected.sector_rs_data_status == RelativeStrengthDataStatus.DATA_UNAVAILABLE
+    assert accepted.sector_rs_data_status == RelativeStrengthDataStatus.READY
+    assert future.sector_rs_data_status == RelativeStrengthDataStatus.DATA_UNAVAILABLE
+
+
+def test_quota_delta_uses_run_scope_and_audit_count() -> None:
+    client = SimpleNamespace(request_count=6, audit=[{}] * 6, retry_count=1)
+    before = {"global_total": 500, "kospi_dd_trd": 200, "kosdaq_dd_trd": 300}
+    after = {"global_total": 506, "kospi_dd_trd": 203, "kosdaq_dd_trd": 303}
+    delta = migration._quota_delta(before, after, client)
+    assert delta["quota_global_delta"] == 6
+    assert delta["endpoint_delta"] == {"kospi_dd_trd": 3, "kosdaq_dd_trd": 3}
+    assert delta["client_request_count"] == delta["audit_entry_count"] == 6
+    assert delta["quota_counter_mismatch_count"] == delta["request_audit_mismatch_count"] == 0
+
+
+def test_offline_reference_reconstruction_is_explicit() -> None:
+    frame = migration._reconstruct_reference_from_parity_artifact()
+    assert frame is not None
+    assert frame["index_code"].nunique() == 46
+    assert frame["date"].nunique() >= 299

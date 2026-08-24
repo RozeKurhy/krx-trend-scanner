@@ -189,7 +189,7 @@ def compute_relative_strength_features(
     market_index_df: pd.DataFrame | None,
     market: MarketType | str = MarketType.KOSPI,
     sector_index_df: pd.DataFrame | None = None,
-    sector_mapping: dict[str, tuple[str, str]] | None = None,
+    sector_mapping: dict[str, tuple[str, str, str]] | None = None,
 ) -> RelativeStrengthFeatureResult:
     """단일 종목에 대해 PIT 원칙에 따라 시장 및 업종 상대강도(RS) 피처를 계산한다.
 
@@ -200,7 +200,7 @@ def compute_relative_strength_features(
         market_index_df: 시장 대표 지수 DataFrame (columns: ['date', 'index_code', 'close']).
         market: 종목의 시장 (KOSPI 또는 KOSDAQ).
         sector_index_df: 업종 지수 DataFrame (columns: ['date', 'index_code', 'close']).
-        sector_mapping: Ticker -> (sector_code, sector_name) 딕셔너리.
+        sector_mapping: Ticker -> (sector_code, sector_name, effective_date) 딕셔너리.
 
     Returns:
         RelativeStrengthFeatureResult 객체.
@@ -386,10 +386,11 @@ def compute_relative_strength_features(
     if (
         sector_mapping is not None
         and ticker_z in sector_mapping
+        and s_code is not None
         and sector_index_df is not None
         and not sector_index_df.empty
     ):
-        mapped_code, mapped_name = sector_mapping[ticker_z]
+        mapped_code, mapped_name = sector_mapping[ticker_z][0], sector_mapping[ticker_z][1]
         sec_code = mapped_code
         sec_name = mapped_name
         sec_bench_code = mapped_code

@@ -54,3 +54,22 @@ cache metadata에는 source_name, fetch_mode, source_apis, mapping contract
 version/hash, date range, index/row counts, Parquet SHA-256을 기록한다.
 검증 결과는 `artifacts/data/krx_openapi/sector_rs_migration/v01/`에 저장하고,
 production cache 자체는 `.cache/` 아래에 둔다.
+
+FIX01 validation contract
+----------------------------------------------------------------------
+- RS parity validation은 production과 동일한
+  `(sector_code, sector_name, effective_date)` PIT tuple을 사용한다.
+- `effective_date > as_of` 또는 2-tuple mapping은 fail-closed이며,
+  old/new 결과가 모두 `READY`인 표본만 parity를 통과시킨다.
+- KOSDAQ validation-only membership은 native sector code별 bounded
+  `get_index_portfolio_deposit_file()` probe로 확보할 수 있다. 이 증적은
+  production membership cache나 `build_sector_mapping()`을 변경하지 않는다.
+- cache parity는 `LOCAL_PYKRX_SECTOR_CACHE` 또는 committed
+  `LOCAL_PYKRX_SECTOR_CACHE_RECONSTRUCTED` replay만 사용하며, 암묵적인
+  live PyKRX 가격 fallback은 수행하지 않는다.
+- daily quota authority는 `LocalKrxOpenApiQuota()`의 canonical DB다.
+  validation은 `quota_before`/`quota_after` run delta와 현재 run audit만
+  비교하며, 과거 cache build의 640회 요청과 legacy task-local 800회 기록은
+  현재 audit에 섞지 않는다.
+- live smoke는 2026-08-14/20/21의 3 dates × 2 endpoints로 제한하고,
+  46 sectors × 4 OHLC = 552 fields를 production cache와 exact 비교한다.
