@@ -1,11 +1,16 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 import sqlite3
 
 import pytest
 
-from trend_scanner.data.corporate_action_detector import CorporateActionDetector, CorporateActionSnapshot
+from trend_scanner.data.corporate_action_detector import (
+    CorporateActionDecision,
+    CorporateActionDetector,
+    CorporateActionSnapshot,
+)
 from trend_scanner.data.corporate_action_state_store import CorporateActionStateStore
 from trend_scanner.data.errors import MarketDataError
 
@@ -185,3 +190,100 @@ def test_stale_decision_cannot_overwrite_newer_state(tmp_path):
         store.record_observation(stale_snapshot, stale_decision)
     assert store.get("005930").as_of.isoformat() == "2024-01-03"
     assert store.get("005930").listed_shares == 300
+
+
+def test_record_observation_rejects_current_value_mismatch(tmp_path):
+    store = CorporateActionStateStore(tmp_path / "state.sqlite3")
+    detector = CorporateActionDetector()
+    store.evaluate_and_record(_snapshot("2024-01-01"), detector)
+    incoming = _snapshot("2024-01-02", 200)
+    fake_clean = CorporateActionDecision(
+        ticker="005930",
+        previous_as_of=_snapshot("2024-01-01").as_of,
+        current_as_of=incoming.as_of,
+        is_dirty=False,
+        dirty_reasons=(),
+        previous_listed_shares=100,
+        current_listed_shares=100,
+        previous_par_value=5000,
+        current_par_value=5000,
+        listed_shares_ratio=1.0,
+        par_value_ratio=1.0,
+    )
+    with pytest.raises(MarketDataError, match="DECISION_MISMATCH"):
+        store.record_observation(incoming, fake_clean)
+    state = store.get("005930")
+    assert state.as_of.isoformat() == "2024-01-01"
+    assert state.listed_shares == 100
+    assert state.status == "CLEAN"
+
+
+def test_record_observation_cannot_bypass_semantic_conflict(tmp_path):
+    store = CorporateActionStateStore(tmp_path / "state.sqlite3")
+    detector = CorporateActionDetector()
+    store.evaluate_and_record(_snapshot("2024-01-01"), detector)
+    incoming = CorporateActionSnapshot(
+        "005930", "2024-01-02", 100, 5000, "MASTER_SNAPSHOT_LISTED_SHARES"
+    )
+    fake_clean = CorporateActionDecision(
+        ticker="005930",
+        previous_as_of=_snapshot("2024-01-01").as_of,
+        current_as_of=incoming.as_of,
+        is_dirty=False,
+        dirty_reasons=(),
+        previous_listed_shares=100,
+        current_listed_shares=100,
+        previous_par_value=5000,
+        current_par_value=5000,
+        listed_shares_ratio=1.0,
+        par_value_ratio=1.0,
+    )
+    with pytest.raises(MarketDataError, match="SOURCE_SEMANTIC_CONFLICT"):
+        store.record_observation(incoming, fake_clean)
+    state = store.get("005930")
+    assert state.as_of.isoformat() == "2024-01-01"
+    assert state.listed_shares_semantics == "RAW_DAILY_LISTED_SHARES"
+    assert len(store.transition_log("005930")) == 1
+
+
+def test_record_observation_cannot_write_false_clean(tmp_path):
+    store = CorporateActionStateStore(tmp_path / "state.sqlite3")
+    detector = CorporateActionDetector()
+    store.evaluate_and_record(_snapshot("2024-01-01"), detector)
+    incoming = _snapshot("2024-01-02", 200)
+    canonical = detector.evaluate(store.get("005930").snapshot(), incoming)
+    fake_clean = replace(canonical, is_dirty=False, dirty_reasons=())
+    with pytest.raises(MarketDataError, match="DECISION_MISMATCH"):
+        store.record_observation(incoming, fake_clean)
+    state = store.get("005930")
+    assert state.status == "CLEAN"
+    assert state.as_of.isoformat() == "2024-01-01"
+    assert state.listed_shares == 100
+
+
+def test_record_observation_rejects_false_dirty(tmp_path):
+    store = CorporateActionStateStore(tmp_path / "state.sqlite3")
+    detector = CorporateActionDetector()
+    store.evaluate_and_record(_snapshot("2024-01-01"), detector)
+    incoming = _snapshot("2024-01-02", 100)
+    canonical = detector.evaluate(store.get("005930").snapshot(), incoming)
+    fake_dirty = replace(canonical, is_dirty=True, dirty_reasons=("LISTED_SHARES_CHANGED",))
+    with pytest.raises(MarketDataError, match="DECISION_MISMATCH"):
+        store.record_observation(incoming, fake_dirty)
+    state = store.get("005930")
+    assert state.status == "CLEAN"
+    assert state.as_of.isoformat() == "2024-01-01"
+
+
+def test_record_observation_rejects_dirty_reason_mismatch(tmp_path):
+    store = CorporateActionStateStore(tmp_path / "state.sqlite3")
+    detector = CorporateActionDetector()
+    store.evaluate_and_record(_snapshot("2024-01-01"), detector)
+    incoming = _snapshot("2024-01-02", 200)
+    canonical = detector.evaluate(store.get("005930").snapshot(), incoming)
+    fake_reason = replace(canonical, dirty_reasons=("PAR_VALUE_CHANGED",))
+    with pytest.raises(MarketDataError, match="DECISION_MISMATCH"):
+        store.record_observation(incoming, fake_reason)
+    state = store.get("005930")
+    assert state.status == "CLEAN"
+    assert state.as_of.isoformat() == "2024-01-01"

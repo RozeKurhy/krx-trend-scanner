@@ -251,7 +251,39 @@ class CorporateActionStateStore:
                     or decision.previous_par_value != previous.par_value
                 ):
                     raise MarketDataError("STALE_DECISION")
-            return self._record_observation_locked(connection, snapshot, decision, previous)
+            # The caller-supplied decision is an assertion only.  Recompute the
+            # canonical decision from the locked persisted snapshot and the
+            # incoming observation before allowing any state mutation.  This
+            # keeps the public compatibility API from bypassing detector
+            # invariants (including semantic conflicts) or writing false CLEAN.
+            canonical_decision = CorporateActionDetector().evaluate(
+                previous.snapshot() if previous else None,
+                snapshot,
+            )
+            if not self._decisions_match(decision, canonical_decision):
+                raise MarketDataError("DECISION_MISMATCH")
+            return self._record_observation_locked(connection, snapshot, canonical_decision, previous)
+
+    @staticmethod
+    def _decisions_match(
+        supplied: CorporateActionDecision,
+        canonical: CorporateActionDecision,
+    ) -> bool:
+        """Compare every decision field before accepting a public write."""
+
+        return (
+            supplied.ticker == canonical.ticker
+            and supplied.previous_as_of == canonical.previous_as_of
+            and supplied.current_as_of == canonical.current_as_of
+            and supplied.is_dirty == canonical.is_dirty
+            and supplied.dirty_reasons == canonical.dirty_reasons
+            and supplied.previous_listed_shares == canonical.previous_listed_shares
+            and supplied.current_listed_shares == canonical.current_listed_shares
+            and supplied.previous_par_value == canonical.previous_par_value
+            and supplied.current_par_value == canonical.current_par_value
+            and supplied.listed_shares_ratio == canonical.listed_shares_ratio
+            and supplied.par_value_ratio == canonical.par_value_ratio
+        )
 
     def _record_observation_locked(
         self,

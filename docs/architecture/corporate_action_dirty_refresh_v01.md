@@ -93,6 +93,16 @@ transition log를 수행하며 persisted `as_of`는 절대 감소하지 않는�
 새 authority observation은 `OBSERVATION_DURING_REFRESH`로 fail closed하고 state row를
 변경하지 않는다. refresh 종료 후 caller가 observation을 재제출한다.
 
+관찰값을 기록하는 canonical production entrypoint는 `evaluate_and_record(snapshot)`다.
+기존 호환성을 위해 `record_observation(snapshot, decision)`을 유지하더라도
+`CorporateActionDecision`은 persisted state를 직접 갱신하는 authority가 아니다.
+public method는 transaction 안에서 현재 persisted snapshot과 incoming snapshot으로
+`CorporateActionDetector.evaluate()`를 다시 호출하고, caller decision의 모든 필드와
+canonical decision을 exact compare한 뒤에만 private writer를 호출한다. 불일치 시
+`DECISION_MISMATCH`로 거부하며, semantic namespace 충돌과 날짜 순서 invariant는
+재계산된 detector 결과를 통해 동일하게 fail closed한다. 따라서 외부 caller가 fake
+CLEAN, fake DIRTY 또는 dirty reason을 주입해 state를 우회할 수 없다.
+
 3. Refresh contract
 ----------------------------------------------------------------------
 
@@ -144,7 +154,9 @@ frozen architecture 파일로 재수정하지 않는다.
 6. Validation evidence
 ----------------------------------------------------------------------
 
-validator는 detector cases, state transition matrix, dirty latch, concurrent
+FIX02 validator의 provenance 시작 HEAD는
+`f6afc9d5888b2316606bc8ccc986b2c12ea1f477`로 고정한다. validator는 detector cases,
+public observation decision mismatch, state transition matrix, dirty latch, concurrent
 claim, interrupted recovery, successful/failed/partial/empty/missing-store
 refresh를 offline에서 검증한다. live mode는 optional이며 temporary Store만
 사용한다. 필수 artifact는 다음과 같다.

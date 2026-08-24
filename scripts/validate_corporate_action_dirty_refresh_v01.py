@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+from dataclasses import replace
 import hashlib
 import json
 import os
@@ -24,6 +25,7 @@ sys.path.insert(0, str(SRC))
 from trend_scanner.data.adjusted_price_provider import AdjustedPriceDataProvider  # noqa: E402
 from trend_scanner.data.adjusted_price_store import AdjustedPriceStore  # noqa: E402
 from trend_scanner.data.corporate_action_detector import (  # noqa: E402
+    CorporateActionDecision,
     CorporateActionDetector,
     CorporateActionSnapshot,
     LISTED_SHARES_AND_PAR_VALUE_CHANGED,
@@ -36,7 +38,7 @@ from trend_scanner.data.corporate_action_state_store import (  # noqa: E402
 from trend_scanner.data.errors import MarketDataError  # noqa: E402
 
 
-FIX_START_HEAD = "f3a3083f6382183b2b38717dbf5595b9a137a539"
+FIX_START_HEAD = "f6afc9d5888b2316606bc8ccc986b2c12ea1f477"
 DEFAULT_OUTPUT = ROOT / "artifacts/data/corporate_action_dirty_refresh/v01"
 ALLOWED_PATHS = {
     "src/trend_scanner/data/corporate_action_detector.py",
@@ -179,6 +181,10 @@ def _state_coordination_checks() -> dict[str, int]:
         "out_of_order_state_write_accept_count": 0,
         "stale_decision_accept_count": 0,
         "atomic_observation_error_count": 0,
+        "record_observation_mismatch_detection_test_count": 0,
+        "record_observation_decision_mismatch_accept_count": 0,
+        "record_observation_semantic_bypass_accept_count": 0,
+        "record_observation_false_clean_accept_count": 0,
     }
     detector = CorporateActionDetector()
     semantic_previous = CorporateActionSnapshot(
@@ -252,6 +258,103 @@ def _state_coordination_checks() -> dict[str, int]:
                 counters["atomic_observation_error_count"] += 1
         else:
             counters["stale_decision_accept_count"] += 1
+
+        def expect_decision_rejection(
+            store: CorporateActionStateStore,
+            incoming: CorporateActionSnapshot,
+            supplied: CorporateActionDecision,
+            accept_counter: str | None = None,
+        ) -> None:
+            before = store.get(incoming.ticker)
+            try:
+                store.record_observation(incoming, supplied)
+            except MarketDataError as exc:
+                if "DECISION_MISMATCH" not in str(exc):
+                    counters["atomic_observation_error_count"] += 1
+                else:
+                    counters["record_observation_mismatch_detection_test_count"] += 1
+            else:
+                if accept_counter is not None:
+                    counters[accept_counter] += 1
+            if store.get(incoming.ticker) != before:
+                counters["atomic_observation_error_count"] += 1
+
+        mismatch_store = CorporateActionStateStore(root / "public-mismatch.sqlite3")
+        mismatch_store.evaluate_and_record(CorporateActionSnapshot("005930", "2024-01-01", 100, 5000), detector)
+        mismatch_incoming = CorporateActionSnapshot("005930", "2024-01-02", 200, 5000)
+        mismatch_canonical = detector.evaluate(mismatch_store.get("005930").snapshot(), mismatch_incoming)
+        expect_decision_rejection(
+            mismatch_store,
+            mismatch_incoming,
+            replace(mismatch_canonical, current_listed_shares=100, listed_shares_ratio=1.0),
+            "record_observation_decision_mismatch_accept_count",
+        )
+
+        false_clean_store = CorporateActionStateStore(root / "public-false-clean.sqlite3")
+        false_clean_store.evaluate_and_record(CorporateActionSnapshot("005930", "2024-01-01", 100, 5000), detector)
+        false_clean_incoming = CorporateActionSnapshot("005930", "2024-01-02", 200, 5000)
+        false_clean_canonical = detector.evaluate(
+            false_clean_store.get("005930").snapshot(), false_clean_incoming
+        )
+        expect_decision_rejection(
+            false_clean_store,
+            false_clean_incoming,
+            replace(false_clean_canonical, is_dirty=False, dirty_reasons=()),
+            "record_observation_false_clean_accept_count",
+        )
+
+        false_dirty_store = CorporateActionStateStore(root / "public-false-dirty.sqlite3")
+        false_dirty_store.evaluate_and_record(CorporateActionSnapshot("005930", "2024-01-01", 100, 5000), detector)
+        false_dirty_incoming = CorporateActionSnapshot("005930", "2024-01-02", 100, 5000)
+        false_dirty_canonical = detector.evaluate(
+            false_dirty_store.get("005930").snapshot(), false_dirty_incoming
+        )
+        expect_decision_rejection(
+            false_dirty_store,
+            false_dirty_incoming,
+            replace(false_dirty_canonical, is_dirty=True, dirty_reasons=("LISTED_SHARES_CHANGED",)),
+            "record_observation_decision_mismatch_accept_count",
+        )
+
+        reason_store = CorporateActionStateStore(root / "public-dirty-reason.sqlite3")
+        reason_store.evaluate_and_record(CorporateActionSnapshot("005930", "2024-01-01", 100, 5000), detector)
+        reason_incoming = CorporateActionSnapshot("005930", "2024-01-02", 200, 5000)
+        reason_canonical = detector.evaluate(reason_store.get("005930").snapshot(), reason_incoming)
+        expect_decision_rejection(
+            reason_store,
+            reason_incoming,
+            replace(reason_canonical, dirty_reasons=("PAR_VALUE_CHANGED",)),
+            "record_observation_decision_mismatch_accept_count",
+        )
+
+        semantic_store = CorporateActionStateStore(root / "public-semantic.sqlite3")
+        semantic_store.evaluate_and_record(CorporateActionSnapshot("005930", "2024-01-01", 100, 5000), detector)
+        semantic_incoming = CorporateActionSnapshot(
+            "005930", "2024-01-02", 100, 5000, "MASTER_SNAPSHOT_LISTED_SHARES"
+        )
+        semantic_fake_clean = CorporateActionDecision(
+            ticker="005930",
+            previous_as_of=semantic_store.get("005930").as_of,
+            current_as_of=semantic_incoming.as_of,
+            is_dirty=False,
+            dirty_reasons=(),
+            previous_listed_shares=100,
+            current_listed_shares=100,
+            previous_par_value=5000,
+            current_par_value=5000,
+            listed_shares_ratio=1.0,
+            par_value_ratio=1.0,
+        )
+        semantic_before = semantic_store.get("005930")
+        try:
+            semantic_store.record_observation(semantic_incoming, semantic_fake_clean)
+        except MarketDataError as exc:
+            if "SOURCE_SEMANTIC_CONFLICT" not in str(exc):
+                counters["atomic_observation_error_count"] += 1
+            elif semantic_store.get("005930") != semantic_before:
+                counters["atomic_observation_error_count"] += 1
+        else:
+            counters["record_observation_semantic_bypass_accept_count"] += 1
     return counters
 
 
@@ -451,15 +554,21 @@ def _production_diff_guard() -> dict[str, Any]:
         "src/trend_scanner/data/cache.py",
         "src/trend_scanner/data/source_contracts.py",
     }
+    frozen_production_paths = production_paths | {
+        "src/trend_scanner/data/adjusted_price_provider.py",
+        "src/trend_scanner/data/adjusted_price_store.py",
+        "src/trend_scanner/data/corporate_action_refresh.py",
+    }
     production_count = len(production_paths.intersection(changed))
     return {
         "start_head": FIX_START_HEAD,
         "implementation_head": implementation_head,
         "changed_paths": changed,
         "disallowed_paths": disallowed,
-        "production_consumer_changed_count": len(disallowed),
+        "disallowed_path_count": len(disallowed),
+        "production_consumer_changed_count": production_count,
         "production_adjusted_store_modified_count": int("src/trend_scanner/data/adjusted_price_store.py" in changed),
-        "frozen_production_path_changed_count": production_count,
+        "frozen_production_path_changed_count": len(frozen_production_paths.intersection(changed)),
     }
 
 
@@ -484,6 +593,8 @@ def run(mode: str, output: Path) -> dict[str, Any]:
         "production_consumer_changed_count": 0,
         "legacy_cache_modified_count": 0,
         "production_adjusted_store_modified_count": 0,
+        "frozen_production_path_changed_count": 0,
+        "disallowed_path_count": 0,
         "secret_occurrence_count": 0,
         "validation_source_head_mismatch_count": 0,
         **test_counts,
@@ -497,6 +608,8 @@ def run(mode: str, output: Path) -> dict[str, Any]:
     diff_guard = _production_diff_guard()
     counters["production_consumer_changed_count"] = diff_guard["production_consumer_changed_count"]
     counters["production_adjusted_store_modified_count"] = diff_guard["production_adjusted_store_modified_count"]
+    counters["frozen_production_path_changed_count"] = diff_guard["frozen_production_path_changed_count"]
+    counters["disallowed_path_count"] = diff_guard["disallowed_path_count"]
     counters["validation_source_head_mismatch_count"] = int(diff_guard["start_head"] != FIX_START_HEAD)
     counters["secret_occurrence_count"] = _secret_count(diff_guard["changed_paths"])
     required_zero = (
@@ -509,11 +622,15 @@ def run(mode: str, output: Path) -> dict[str, Any]:
         "adjusted_false_call_count", "krx_open_api_request_count", "opendart_request_count",
         "production_consumer_changed_count", "legacy_cache_modified_count",
         "production_adjusted_store_modified_count", "secret_occurrence_count",
+        "frozen_production_path_changed_count", "disallowed_path_count",
         "validation_source_head_mismatch_count", "new_test_failure_count",
         "semantic_conflict_detection_error_count",
         "observation_during_refresh_state_mutation_error_count",
         "out_of_order_state_write_accept_count", "atomic_observation_error_count",
         "stale_decision_accept_count",
+        "record_observation_decision_mismatch_accept_count",
+        "record_observation_semantic_bypass_accept_count",
+        "record_observation_false_clean_accept_count",
     )
     blockers = [name for name in required_zero if counters.get(name, 0) != 0]
     positives = [
@@ -523,6 +640,10 @@ def run(mode: str, output: Path) -> dict[str, Any]:
         ("refresh_success_count", counters["refresh_success_count"] > 0),
         ("semantic_conflict_detected_count", counters["semantic_conflict_detected_count"] >= 1),
         ("observation_during_refresh_rejected_count", counters["observation_during_refresh_rejected_count"] >= 1),
+        (
+            "record_observation_mismatch_detection_test_count",
+            counters["record_observation_mismatch_detection_test_count"] > 0,
+        ),
         ("synthetic_refresh_provider_call_count", counters["synthetic_refresh_provider_call_count"] > 0),
     ]
     if mode == "live-smoke":
@@ -538,7 +659,7 @@ def run(mode: str, output: Path) -> dict[str, Any]:
         status = "BLOCKED_CORPORATE_ACTION_DIRTY_REFRESH_V01"
     else:
         recommendation = "RECOMMEND_PROCEED_TO_KRX_HISTORICAL_BACKFILL_V01"
-        status = "READY_FOR_ARCHITECT_CORPORATE_ACTION_DIRTY_REFRESH_V01_REVIEW"
+        status = "READY_FOR_ARCHITECT_CORPORATE_ACTION_DIRTY_REFRESH_V01_FIX02_REVIEW"
 
     _write_json(output / "detector_contract.json", {
         "snapshot_fields": ["ticker", "as_of", "listed_shares", "par_value", "listed_shares_semantics", "source_name"],
@@ -560,13 +681,20 @@ def run(mode: str, output: Path) -> dict[str, Any]:
         "refreshing_observation_policy": "REJECT",
         "refreshing_observation_error": "OBSERVATION_DURING_REFRESH",
         "pit_monotonicity": "PERSISTED_AS_OF_NEVER_DECREASES",
+        "observation_write_entrypoint": "evaluate_and_record",
+        "public_record_observation": True,
+        "external_decision_authority": False,
+        "external_decision_validation": "RECOMPUTE_WITH_CURRENT_PERSISTED_STATE_AND_EXACT_COMPARE",
         "runtime_database_committed": False,
     })
     _write_json(output / "state_transition_matrix.json", {
         "absent": ["CLEAN", "DIRTY"],
         "allowed": {key: sorted(value) for key, value in ALLOWED_TRANSITIONS.items()},
         "forbidden": ["DIRTY->CLEAN", "FAILED->CLEAN"],
-        "observation_rules": {"REFRESHING": "REJECT_AUTHORITY_OBSERVATION"},
+        "observation_rules": {
+            "REFRESHING": "REJECT_AUTHORITY_OBSERVATION",
+            "record_observation": "RECOMPUTE_AND_EXACT_COMPARE_EXTERNAL_DECISION",
+        },
     })
     _write_json(output / "refresh_contract.json", {
         "provider": "AdjustedPriceDataProvider",
@@ -612,6 +740,7 @@ def run(mode: str, output: Path) -> dict[str, Any]:
     (output / "corporate_action_dirty_refresh_recommendation.md").write_text(recommendation_text, encoding="utf-8")
     result = {
         "architecture_version": "CORPORATE_ACTION_DIRTY_REFRESH_V01",
+        "fix_version": "FIX02",
         "mode": mode,
         "start_head": FIX_START_HEAD,
         "implementation_head": diff_guard["implementation_head"],
@@ -633,6 +762,7 @@ def run(mode: str, output: Path) -> dict[str, Any]:
     )
     _write_json(output / "corporate_action_dirty_refresh_v01_manifest.json", {
         "architecture_version": "CORPORATE_ACTION_DIRTY_REFRESH_V01",
+        "fix_version": "FIX02",
         "start_head": FIX_START_HEAD,
         "implementation_head": diff_guard["implementation_head"],
         "validation_source_head": diff_guard["implementation_head"],
