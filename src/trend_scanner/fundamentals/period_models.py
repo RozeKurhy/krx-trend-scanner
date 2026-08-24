@@ -53,6 +53,12 @@ class PeriodizationFact:
     instant: str | None = None
     comparative: bool = False
     pit_available_from: str | None = None
+    context_scope_fingerprint: str | None = None
+    context_has_additional_dimensions: bool = False
+    context_has_typed_dimensions: bool = False
+    explicit_dimension_count: int = 0
+    typed_dimension_count: int = 0
+    additional_explicit_dimension_count: int = 0
 
     @classmethod
     def from_mapping(cls, value: Mapping[str, Any]) -> "PeriodizationFact":
@@ -80,6 +86,12 @@ class PeriodizationFact:
         data.setdefault("instant", data.get("instant"))
         data.setdefault("comparative", bool(data.get("comparative", False)))
         data.setdefault("pit_available_from", data.get("pit_available_from") or data.get("rcept_dt"))
+        data.setdefault("context_scope_fingerprint", data.get("context_scope_fingerprint"))
+        data.setdefault("context_has_additional_dimensions", bool(data.get("context_has_additional_dimensions", False)))
+        data.setdefault("context_has_typed_dimensions", bool(data.get("context_has_typed_dimensions", False)))
+        data.setdefault("explicit_dimension_count", int(data.get("explicit_dimension_count", 0) or 0))
+        data.setdefault("typed_dimension_count", int(data.get("typed_dimension_count", 0) or 0))
+        data.setdefault("additional_explicit_dimension_count", int(data.get("additional_explicit_dimension_count", 0) or 0))
         allowed = {item.name for item in cls.__dataclass_fields__.values()}
         return cls(**{key: data[key] for key in allowed if key in data})
 
@@ -109,6 +121,12 @@ class PeriodizationFact:
             "instant": self.instant,
             "comparative": self.comparative,
             "pit_available_from": self.pit_available_from,
+            "context_scope_fingerprint": self.context_scope_fingerprint,
+            "context_has_additional_dimensions": self.context_has_additional_dimensions,
+            "context_has_typed_dimensions": self.context_has_typed_dimensions,
+            "explicit_dimension_count": self.explicit_dimension_count,
+            "typed_dimension_count": self.typed_dimension_count,
+            "additional_explicit_dimension_count": self.additional_explicit_dimension_count,
         }
 
 

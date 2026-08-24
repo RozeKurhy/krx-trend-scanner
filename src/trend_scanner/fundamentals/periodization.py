@@ -78,7 +78,7 @@ CANONICAL_DUPLICATE_IDENTITY_FIELDS = (
     "metric", "value", "currency", "reprt_code", "report_type", "rcept_no", "rcept_dt",
     "period_start", "period_end", "fs_div_used", "source_sha256", "resolution_status",
     "period_semantics", "context_semantics", "duration_days", "instant", "comparative",
-    "pit_available_from",
+    "pit_available_from", "context_scope_fingerprint",
 )
 
 
@@ -720,6 +720,12 @@ def facts_from_xbrl_rows(rows: Iterable[Mapping[str, Any]], *, ticker: str, corp
             context_semantics=row.get("context_semantics"), duration_days=row.get("duration_days"),
             instant=row.get("instant"), comparative=bool(row.get("comparative")),
             pit_available_from=rcept_dt,
+            context_scope_fingerprint=row.get("context_scope_fingerprint"),
+            context_has_additional_dimensions=bool(row.get("context_has_additional_dimensions", False)),
+            context_has_typed_dimensions=bool(row.get("context_has_typed_dimensions", False)),
+            explicit_dimension_count=int(row.get("explicit_dimension_count", 0) or 0),
+            typed_dimension_count=int(row.get("typed_dimension_count", 0) or 0),
+            additional_explicit_dimension_count=int(row.get("additional_explicit_dimension_count", 0) or 0),
         ))
     # Collapse only representation duplicates produced by the same filing's
     # canonical account mapping.  Genuine conflicts remain as separate facts

@@ -59,11 +59,39 @@ def _text(element: ET.Element, child_name: str) -> str | None:
     return None
 
 
+def _canonical_xml(element: ET.Element) -> str:
+    """Return a deterministic representation of a typed/extra scope node."""
+
+    tag = str(element.tag)
+    attrs = " ".join(f"{key}={json.dumps(str(value), ensure_ascii=False)}"
+                     for key, value in sorted(element.attrib.items()))
+    text = " ".join((element.text or "").split())
+    children = sorted(_canonical_xml(child) for child in list(element))
+    payload = f"<{tag}{(' ' + attrs) if attrs else ''}>"
+    if text:
+        payload += text
+    payload += "".join(children) + f"</{tag}>"
+    return payload
+
+
+def _scope_fingerprint(payload: dict[str, Any]) -> str:
+    encoded = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
 def _context_info(context: ET.Element) -> dict[str, Any]:
-    members = [
-        {"dimension": item.get("dimension"), "member": (item.text or "").strip()}
-        for item in context.iter() if _local(item.tag) == "explicitMember"
-    ]
+    members = [{
+        "dimension": item.get("dimension"), "member": (item.text or "").strip(),
+    } for item in context.iter() if _local(item.tag) == "explicitMember"]
+    members.sort(key=lambda item: (str(item.get("dimension")), str(item.get("member"))))
+    typed_members = [{
+        "dimension": item.get("dimension"),
+        "value": _canonical_xml(next(iter(item), item)),
+    } for item in context.iter() if _local(item.tag) == "typedMember"]
+    typed_members.sort(key=lambda item: (str(item.get("dimension")), str(item.get("value"))))
+    identifier = next((item for item in context.iter() if _local(item.tag) == "identifier"), None)
+    entity_identifier = (identifier.text or "").strip() if identifier is not None else None
+    entity_scheme = identifier.get("scheme") if identifier is not None else None
     instant = _text(context, "instant")
     start = _text(context, "startDate")
     end = _text(context, "endDate") or instant
@@ -73,15 +101,42 @@ def _context_info(context: ET.Element) -> dict[str, Any]:
             duration_days = (datetime.fromisoformat(end) - datetime.fromisoformat(start)).days + 1
     except ValueError:
         duration_days = None
+    basis_axes = {"ConsolidatedAndSeparateFinancialStatementsAxis", "StatementInformationAxis"}
     basis = next((item["member"].split(":")[-1] for item in members
-                  if item["dimension"] and item["dimension"].split(":")[-1] == "ConsolidatedAndSeparateFinancialStatementsAxis"), None)
+                  if item["dimension"] and item["dimension"].split(":")[-1] in basis_axes), None)
+    additional_members = [item for item in members
+                           if str(item.get("dimension") or "").split(":")[-1] not in basis_axes]
+    segment = next((item for item in context.iter() if _local(item.tag) == "segment"), None)
+    scenario = next((item for item in context.iter() if _local(item.tag) == "scenario"), None)
+    segment_payload = _canonical_xml(segment) if segment is not None else None
+    scenario_payload = _canonical_xml(scenario) if scenario is not None else None
+    context_semantics = ("INSTANT" if instant and not start else
+                         "DURATION" if start and end else "UNKNOWN")
+    scope_payload = {
+        "entity_identifier": entity_identifier, "entity_scheme": entity_scheme,
+        "explicit_members": members, "typed_members": typed_members,
+        "basis": basis, "segment_present": segment is not None,
+        "scenario_present": scenario is not None, "segment_payload": segment_payload,
+        "scenario_payload": scenario_payload, "start": start, "end": end,
+        "instant": instant, "context_semantics": context_semantics,
+    }
     return {
         "id": context.get("id"), "start": start, "end": end, "instant": instant,
         "duration_days": duration_days,
-        "context_semantics": ("INSTANT" if instant and not start else
-                               "DURATION" if start and end else "UNKNOWN"),
-        "members": members, "basis": basis,
-        "primary": len(members) <= 1 and basis in {"ConsolidatedMember", "SeparateMember"},
+        "context_semantics": context_semantics,
+        "members": members, "typed_members": typed_members, "basis": basis,
+        "entity_identifier": entity_identifier, "entity_scheme": entity_scheme,
+        "segment_present": segment is not None, "scenario_present": scenario is not None,
+        "segment_payload": segment_payload, "scenario_payload": scenario_payload,
+        "additional_members": additional_members,
+        "explicit_dimension_count": len(members),
+        "typed_dimension_count": len(typed_members),
+        "additional_explicit_dimension_count": len(additional_members),
+        "context_scope_fingerprint": _scope_fingerprint(scope_payload),
+        "context_has_additional_dimensions": bool(additional_members),
+        "context_has_typed_dimensions": bool(typed_members),
+        "primary": basis in {"ConsolidatedMember", "SeparateMember"}
+        and not additional_members and not typed_members,
     }
 
 
@@ -231,6 +286,12 @@ class XbrlRepository:
                 "instant": context["instant"],
                 "duration_days": context["duration_days"],
                 "context_semantics": context["context_semantics"],
+                "context_scope_fingerprint": context["context_scope_fingerprint"],
+                "context_has_additional_dimensions": context["context_has_additional_dimensions"],
+                "context_has_typed_dimensions": context["context_has_typed_dimensions"],
+                "explicit_dimension_count": context["explicit_dimension_count"],
+                "typed_dimension_count": context["typed_dimension_count"],
+                "additional_explicit_dimension_count": context["additional_explicit_dimension_count"],
                 "basis": context["basis"],
             })
         return rows
@@ -302,6 +363,12 @@ class XbrlRepository:
                 "context_ref": context_ref, "period_start": context["start"], "period_end": context["end"],
                 "instant": context["instant"], "duration_days": context["duration_days"],
                 "context_semantics": context["context_semantics"],
+                "context_scope_fingerprint": context["context_scope_fingerprint"],
+                "context_has_additional_dimensions": context["context_has_additional_dimensions"],
+                "context_has_typed_dimensions": context["context_has_typed_dimensions"],
+                "explicit_dimension_count": context["explicit_dimension_count"],
+                "typed_dimension_count": context["typed_dimension_count"],
+                "additional_explicit_dimension_count": context["additional_explicit_dimension_count"],
                 "comparative": str(context.get("end")) != latest_end_by_basis.get(context.get("basis")),
                 "basis": context["basis"], "rcept_no": artifact.rcept_no, "rcept_dt": artifact.rcept_dt,
                 "source_sha256": artifact.sha256,
