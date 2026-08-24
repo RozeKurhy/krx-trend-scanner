@@ -24,5 +24,8 @@
   "forbidden": [
     "DIRTY->CLEAN",
     "FAILED->CLEAN"
-  ]
+  ],
+  "observation_rules": {
+    "REFRESHING": "REJECT_AUTHORITY_OBSERVATION"
+  }
 }

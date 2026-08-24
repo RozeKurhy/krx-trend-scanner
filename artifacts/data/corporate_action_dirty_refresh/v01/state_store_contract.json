@@ -19,6 +19,10 @@
   },
   "backend": "SQLite",
   "default_path": "data/market/state/corporate_action.sqlite3",
+  "observation_atomicity": "BEGIN_IMMEDIATE_READ_EVALUATE_WRITE",
+  "pit_monotonicity": "PERSISTED_AS_OF_NEVER_DECREASES",
+  "refreshing_observation_error": "OBSERVATION_DURING_REFRESH",
+  "refreshing_observation_policy": "REJECT",
   "runtime_database_committed": false,
   "statuses": [
     "CLEAN",
