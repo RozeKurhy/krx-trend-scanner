@@ -1,5 +1,5 @@
 {
-  "architecture_version": "KRX_PRODUCTION_DATA_ARCHITECTURE_V01_FIX02",
+  "architecture_version": "KRX_PRODUCTION_DATA_ARCHITECTURE_V01_FIX03",
   "layers": [
     {
       "authority": "KRX Open API",
@@ -29,8 +29,8 @@
     },
     {
       "authority": "KRX Open API Basic Info",
-      "current_production_source": "InstrumentMetadataResolver -> data/reference/krx_instrument_metadata.parquet (frozen local KRX artifact)",
-      "description": "PIT stock master",
+      "current_production_source": "InstrumentMetadataResolver -> data/reference/krx_instrument_metadata.parquet (frozen local KRX artifact; raw/master facts)",
+      "description": "PIT raw/canonical KRX security master; asset_type authority is separate",
       "freshness_policy": "Snapshot on source effective date",
       "layer_id": "STOCK_MASTER_KRX",
       "migration_status": "VALIDATED_NOT_PRODUCTION_MIGRATED",
@@ -39,6 +39,19 @@
       "storage_role": "StockMasterStore",
       "target_source": "StockMasterStore",
       "validated_source": "KRX Open API Basic Info"
+    },
+    {
+      "authority": "InstrumentMetadataResolver formal instrument metadata authority",
+      "current_production_source": "InstrumentMetadataResolver -> data/reference/krx_instrument_metadata.parquet",
+      "description": "PIT canonical instrument asset-type and applicability classification",
+      "freshness_policy": "Effective-date PIT lookup",
+      "layer_id": "INSTRUMENT_CLASSIFICATION",
+      "migration_status": "LEGACY_SOURCE",
+      "operational_status": "ACTIVE",
+      "pit_required": true,
+      "storage_role": "InstrumentClassificationStore",
+      "target_source": "InstrumentClassificationStore",
+      "validated_source": "Existing formal KRX instrument classification pipeline"
     },
     {
       "authority": "KRX Open API",

@@ -15,6 +15,16 @@
         "semantic": "ticker",
         "target_field": "ticker"
       },
+      "KIND_STKCERT_TP_NM": {
+        "identifier_namespace": "SECURITY_CERTIFICATE_KIND",
+        "semantic": "security_kind",
+        "target_field": "security_kind"
+      },
+      "MKT_TP_NM": {
+        "identifier_namespace": "KRX_RAW_MARKET_TYPE",
+        "semantic": "raw_market",
+        "target_field": "raw_market"
+      },
       "SECT_TP_NM": {
         "identifier_namespace": "NOT_SECTOR_MEMBERSHIP",
         "semantic": "listing_section",
@@ -71,8 +81,8 @@
       },
       "IDX_CLSS": {
         "identifier_namespace": "KRX_INDEX_RESPONSE",
-        "semantic": "source_index_family",
-        "target_field": "family"
+        "semantic": "source_index_class",
+        "target_field": "source_index_class"
       },
       "IDX_NM": {
         "identifier_namespace": "KRX_INDEX_RESPONSE",

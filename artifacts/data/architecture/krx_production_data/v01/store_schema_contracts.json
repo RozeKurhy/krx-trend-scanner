@@ -1,9 +1,10 @@
 {
-  "architecture_version": "KRX_PRODUCTION_DATA_ARCHITECTURE_V01_FIX02",
+  "architecture_version": "KRX_PRODUCTION_DATA_ARCHITECTURE_V01_FIX03",
   "schema_versions": {
     "AdjustedPriceStore": "ADJUSTED_PRICE_V01",
     "DataHealthSnapshot": "DATA_HEALTH_V01",
     "IndexStore": "INDEX_STORE_V01",
+    "InstrumentClassificationStore": "INSTRUMENT_CLASSIFICATION_V01",
     "KRXRawStockStore": "KRX_RAW_STOCK_V01",
     "StockMasterStore": "STOCK_MASTER_V01"
   },
@@ -65,30 +66,34 @@
       "write_policy": "Mutable refresh state is tracked separately"
     },
     {
-      "description": "Point-in-time KRX security master",
+      "description": "Point-in-time KRX raw/canonical security master; final asset_type belongs to InstrumentClassificationStore",
       "fields": [
         "as_of",
         "ticker",
         "standard_code",
         "name",
+        "raw_market",
         "market",
         "listing_date",
         "security_group",
         "listing_section",
+        "security_kind",
         "par_value",
         "listed_shares"
       ],
-      "ownership": "Historical snapshots, not latest-only identity",
+      "ownership": "Historical snapshots, not latest-only identity; no final asset_type authority",
       "pit_required": true,
       "required_fields": [
         "as_of",
         "ticker",
         "standard_code",
         "name",
+        "raw_market",
         "market",
         "listing_date",
         "security_group",
         "listing_section",
+        "security_kind",
         "par_value",
         "listed_shares"
       ],
@@ -97,10 +102,35 @@
       "write_policy": "PIT snapshots; no replacement of current frozen artifact in this phase"
     },
     {
+      "description": "Point-in-time canonical instrument applicability and asset-type classification",
+      "fields": [
+        "effective_date",
+        "ticker",
+        "asset_type",
+        "classification_authority",
+        "asset_type_source",
+        "source_security_type",
+        "is_common_stock"
+      ],
+      "ownership": "Derived classification authority; equity inputs come from StockMasterStore and ETF/ETN inputs retain formal product-master authority",
+      "pit_required": true,
+      "required_fields": [
+        "effective_date",
+        "ticker",
+        "asset_type",
+        "classification_authority",
+        "asset_type_source"
+      ],
+      "schema_version": "INSTRUMENT_CLASSIFICATION_V01",
+      "store_id": "InstrumentClassificationStore",
+      "write_policy": "PIT classification snapshots; future migration from InstrumentMetadataResolver"
+    },
+    {
       "description": "Market and native sector index families",
       "fields": [
         "date",
         "family",
+        "source_index_class",
         "index_code",
         "index_name",
         "open",
@@ -115,6 +145,7 @@
       "required_fields": [
         "date",
         "family",
+        "source_index_class",
         "index_code",
         "close"
       ],

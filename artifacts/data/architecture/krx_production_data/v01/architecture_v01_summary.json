@@ -1,13 +1,13 @@
 {
-  "architecture_version": "KRX_PRODUCTION_DATA_ARCHITECTURE_V01_FIX02",
+  "architecture_version": "KRX_PRODUCTION_DATA_ARCHITECTURE_V01_FIX03",
   "blockers": [],
   "branch": "codex/krx-production-data-architecture-v01",
   "counters": {
     "authority_conflict_count": 0,
-    "authority_field_count": 27,
+    "authority_field_count": 29,
     "authority_missing_count": 0,
     "basic_info_semantic_conflict_count": 0,
-    "consumer_count": 7,
+    "consumer_count": 8,
     "consumer_unresolved_count": 0,
     "declared_nonexistent_response_field_count": 0,
     "dependency_cycle_count": 0,
@@ -15,7 +15,12 @@
     "duplicate_layer_id_count": 0,
     "endpoint_identifier_conflict_count": 0,
     "foreign_flow_lineage_unresolved_count": 0,
-    "layer_count": 14,
+    "index_family_semantic_conflict_count": 0,
+    "index_source_class_missing_count": 0,
+    "instrument_classification_capability_gap_count": 0,
+    "instrument_classification_consumer_missing_count": 0,
+    "instrument_classification_contract_missing_count": 0,
+    "layer_count": 15,
     "layer_missing_migration_status_count": 0,
     "layer_missing_operational_status_count": 0,
     "layer_source_state_conflict_count": 0,
@@ -30,10 +35,12 @@
     "secret_occurrence_count": 0,
     "static_forbidden_network_import_count": 0,
     "static_mapping_field_contract_error_count": 0,
-    "store_count": 7,
+    "stock_master_market_normalization_error_count": 0,
+    "stock_master_security_kind_missing_count": 0,
+    "store_count": 8,
     "store_field_ambiguous_authority_count": 0,
-    "store_required_field_count": 42,
-    "store_required_field_covered_count": 42,
+    "store_required_field_count": 50,
+    "store_required_field_covered_count": 50,
     "store_required_field_missing_count": 0,
     "target_runtime_artifact_dependency_count": 0,
     "validation_source_head_mismatch_count": 0
@@ -53,11 +60,12 @@
     "source_name": "KRX_PYKRX_FOREIGN_FLOW",
     "source_semantics": "daily foreign investor buy/sell/net-buy KRW values by ticker"
   },
-  "implementation_head": "4404279bf5d8e1f45a4d9f2db9fbb84bf4b50ee3",
+  "implementation_head": "a4ba0bd25bc0854a497358f635701dc6532c0ae3",
   "layer_ids": [
     "STOCK_RAW_KRX",
     "STOCK_ADJUSTED_PYKRX",
     "STOCK_MASTER_KRX",
+    "INSTRUMENT_CLASSIFICATION",
     "MARKET_INDEX",
     "SECTOR_INDEX_KRX",
     "SECTOR_MEMBERSHIP",
@@ -185,9 +193,9 @@
       "tests/test_krx_production_data_architecture_v01.py"
     ],
     "disallowed_paths": [],
-    "implementation_head": "4404279bf5d8e1f45a4d9f2db9fbb84bf4b50ee3",
+    "implementation_head": "a4ba0bd25bc0854a497358f635701dc6532c0ae3",
     "production_behavior_change_count": 0,
-    "start_head": "3e1ae095cb8f411bb9bb7790a57e5eecd3f4a66c"
+    "start_head": "bba23053b806b3775159acf89cb6a0b143937ebd"
   },
   "raw_schema_contract": {
     "basic_info_response_fields": [
@@ -252,6 +260,13 @@
     "basic_info_semantic_conflict_count",
     "consumer_unresolved_count",
     "dependency_cycle_count",
+    "stock_master_security_kind_missing_count",
+    "stock_master_market_normalization_error_count",
+    "instrument_classification_contract_missing_count",
+    "instrument_classification_capability_gap_count",
+    "instrument_classification_consumer_missing_count",
+    "index_family_semantic_conflict_count",
+    "index_source_class_missing_count",
     "production_behavior_change_count",
     "declared_nonexistent_response_field_count",
     "request_derived_field_contract_error_count",
@@ -267,19 +282,21 @@
     "AdjustedPriceStore": "ADJUSTED_PRICE_V01",
     "DataHealthSnapshot": "DATA_HEALTH_V01",
     "IndexStore": "INDEX_STORE_V01",
+    "InstrumentClassificationStore": "INSTRUMENT_CLASSIFICATION_V01",
     "KRXRawStockStore": "KRX_RAW_STOCK_V01",
     "StockMasterStore": "STOCK_MASTER_V01"
   },
-  "start_head": "3e1ae095cb8f411bb9bb7790a57e5eecd3f4a66c",
-  "status": "READY_FOR_ARCHITECT_KRX_PRODUCTION_DATA_ARCHITECTURE_V01_FIX02_REVIEW",
+  "start_head": "bba23053b806b3775159acf89cb6a0b143937ebd",
+  "status": "READY_FOR_ARCHITECT_KRX_PRODUCTION_DATA_ARCHITECTURE_V01_FIX03_REVIEW",
   "store_names": [
     "KRXRawStockStore",
     "AdjustedPriceStore",
     "StockMasterStore",
+    "InstrumentClassificationStore",
     "IndexStore",
     "SectorMembershipStore",
     "FundamentalsStore",
     "CorporateActionStateStore"
   ],
-  "validation_source_head": "4404279bf5d8e1f45a4d9f2db9fbb84bf4b50ee3"
+  "validation_source_head": "a4ba0bd25bc0854a497358f635701dc6532c0ae3"
 }

@@ -1,10 +1,10 @@
 architecture_recommendation.md
 
 ================================================================================
-KRX Production Data Architecture v01 FIX02 Recommendation
+KRX Production Data Architecture v01 FIX03 Recommendation
 ================================================================================
 
-STATUS: READY_FOR_ARCHITECT_KRX_PRODUCTION_DATA_ARCHITECTURE_V01_FIX02_REVIEW
+STATUS: READY_FOR_ARCHITECT_KRX_PRODUCTION_DATA_ARCHITECTURE_V01_FIX03_REVIEW
 RECOMMENDATION: RECOMMEND_PROCEED_TO_ADJUSTED_PRICE_STORE_V01
 
 검증은 committed contract와 tracked source inspection만 사용했으며

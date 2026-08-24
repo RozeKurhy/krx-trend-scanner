@@ -1,0 +1,17 @@
+{
+  "basic_info_scope": "KRX KOSPI/KOSDAQ stock Basic Info is not a full ETF/ETN authority",
+  "current_production_authority": "InstrumentMetadataResolver -> data/reference/krx_instrument_metadata.parquet",
+  "equity_source_inputs": [
+    "StockMasterStore.security_group",
+    "StockMasterStore.listing_section",
+    "StockMasterStore.security_kind"
+  ],
+  "etf_etn_current_authority": "Existing formal ETF/ETN product-master authority retained until separately migrated",
+  "lookup": "latest effective_date <= requested_as_of",
+  "pit_key": [
+    "effective_date",
+    "ticker"
+  ],
+  "store_id": "InstrumentClassificationStore",
+  "target_authority": "InstrumentClassificationStore"
+}

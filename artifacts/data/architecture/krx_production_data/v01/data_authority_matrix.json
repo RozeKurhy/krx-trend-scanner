@@ -1,5 +1,5 @@
 {
-  "architecture_version": "KRX_PRODUCTION_DATA_ARCHITECTURE_V01_FIX02",
+  "architecture_version": "KRX_PRODUCTION_DATA_ARCHITECTURE_V01_FIX03",
   "fields": [
     {
       "authority_id": "KRX_OPEN_API_STOCK_DAILY",
@@ -378,7 +378,7 @@
     {
       "authority_id": "KRX_OPEN_API_BASIC_INFO",
       "authority_type": "AUTHORITATIVE",
-      "contract_id": "master.market",
+      "contract_id": "master.raw_market",
       "derivation_keys": [],
       "field_role": "AUTHORITATIVE_SOURCE",
       "owner_store": "StockMasterStore",
@@ -391,7 +391,25 @@
       "source_field": "MKT_TP_NM",
       "source_locator": null,
       "source_name": "KRX Open API Basic Info",
-      "source_semantics": "MARKET_NAMESPACE",
+      "source_semantics": "KRX_RAW_MARKET_TYPE",
+      "target_field": "raw_market"
+    },
+    {
+      "authority_id": "PROJECT_MARKET_NORMALIZATION",
+      "authority_type": "DERIVED",
+      "contract_id": "master.market",
+      "derivation_keys": [],
+      "field_role": "DERIVED_CLASSIFICATION",
+      "owner_store": "StockMasterStore",
+      "provenance_origin": "DERIVED",
+      "schema_version": "STOCK_MASTER_V01",
+      "source_endpoints": [
+        "normalize_krx_market"
+      ],
+      "source_field": null,
+      "source_locator": "normalize_krx_market(raw_market)",
+      "source_name": "Project market normalization",
+      "source_semantics": "CANONICAL_PROJECT_MARKET",
       "target_field": "market"
     },
     {
@@ -454,6 +472,25 @@
     {
       "authority_id": "KRX_OPEN_API_BASIC_INFO",
       "authority_type": "AUTHORITATIVE",
+      "contract_id": "master.security_kind",
+      "derivation_keys": [],
+      "field_role": "AUTHORITATIVE_SOURCE",
+      "owner_store": "StockMasterStore",
+      "provenance_origin": "RESPONSE_FIELD",
+      "schema_version": "STOCK_MASTER_V01",
+      "source_endpoints": [
+        "/sto/stk_isu_base_info",
+        "/sto/ksq_isu_base_info"
+      ],
+      "source_field": "KIND_STKCERT_TP_NM",
+      "source_locator": null,
+      "source_name": "KRX Open API Basic Info",
+      "source_semantics": "SECURITY_CERTIFICATE_KIND",
+      "target_field": "security_kind"
+    },
+    {
+      "authority_id": "KRX_OPEN_API_BASIC_INFO",
+      "authority_type": "AUTHORITATIVE",
       "contract_id": "master.par_value",
       "derivation_keys": [],
       "field_role": "AUTHORITATIVE_SOURCE",
@@ -490,6 +527,134 @@
       "target_field": "listed_shares"
     },
     {
+      "authority_id": "INSTRUMENT_CLASSIFICATION",
+      "authority_type": "DERIVED",
+      "contract_id": "classification.effective_date",
+      "derivation_keys": [],
+      "field_role": "TEMPORAL_KEY",
+      "owner_store": "InstrumentClassificationStore",
+      "provenance_origin": "DERIVED",
+      "schema_version": "INSTRUMENT_CLASSIFICATION_V01",
+      "source_endpoints": [
+        "InstrumentMetadataResolver"
+      ],
+      "source_field": null,
+      "source_locator": "InstrumentMetadataResolver.effective_date",
+      "source_name": "InstrumentMetadataResolver",
+      "source_semantics": "CLASSIFICATION_EFFECTIVE_DATE",
+      "target_field": "effective_date"
+    },
+    {
+      "authority_id": "INSTRUMENT_CLASSIFICATION",
+      "authority_type": "DERIVED",
+      "contract_id": "classification.ticker",
+      "derivation_keys": [],
+      "field_role": "IDENTITY_KEY",
+      "owner_store": "InstrumentClassificationStore",
+      "provenance_origin": "DERIVED",
+      "schema_version": "INSTRUMENT_CLASSIFICATION_V01",
+      "source_endpoints": [
+        "InstrumentMetadataResolver"
+      ],
+      "source_field": null,
+      "source_locator": "InstrumentMetadataResolver.ticker",
+      "source_name": "InstrumentMetadataResolver",
+      "source_semantics": "SIX_DIGIT_TICKER",
+      "target_field": "ticker"
+    },
+    {
+      "authority_id": "INSTRUMENT_CLASSIFICATION",
+      "authority_type": "DERIVED",
+      "contract_id": "classification.asset_type",
+      "derivation_keys": [],
+      "field_role": "DERIVED_CLASSIFICATION",
+      "owner_store": "InstrumentClassificationStore",
+      "provenance_origin": "DERIVED",
+      "schema_version": "INSTRUMENT_CLASSIFICATION_V01",
+      "source_endpoints": [
+        "StockMasterStore",
+        "formal product-master authority"
+      ],
+      "source_field": null,
+      "source_locator": "StockMasterStore.security_group/listing_section/security_kind",
+      "source_name": "Instrument classification pipeline",
+      "source_semantics": "FORMAL_INSTRUMENT_CLASSIFICATION",
+      "target_field": "asset_type"
+    },
+    {
+      "authority_id": "INSTRUMENT_CLASSIFICATION",
+      "authority_type": "DERIVED",
+      "contract_id": "classification.classification_authority",
+      "derivation_keys": [],
+      "field_role": "PROVENANCE_METADATA",
+      "owner_store": "InstrumentClassificationStore",
+      "provenance_origin": "STATE",
+      "schema_version": "INSTRUMENT_CLASSIFICATION_V01",
+      "source_endpoints": [
+        "InstrumentMetadataResolver"
+      ],
+      "source_field": null,
+      "source_locator": "InstrumentMetadataResolver.classification_authority",
+      "source_name": "InstrumentMetadataResolver",
+      "source_semantics": "CLASSIFICATION_AUTHORITY",
+      "target_field": "classification_authority"
+    },
+    {
+      "authority_id": "INSTRUMENT_CLASSIFICATION",
+      "authority_type": "DERIVED",
+      "contract_id": "classification.asset_type_source",
+      "derivation_keys": [],
+      "field_role": "PROVENANCE_METADATA",
+      "owner_store": "InstrumentClassificationStore",
+      "provenance_origin": "PROVENANCE_METADATA",
+      "schema_version": "INSTRUMENT_CLASSIFICATION_V01",
+      "source_endpoints": [
+        "InstrumentMetadataResolver"
+      ],
+      "source_field": null,
+      "source_locator": "InstrumentMetadataResolver.asset_type_source",
+      "source_name": "InstrumentMetadataResolver",
+      "source_semantics": "ASSET_TYPE_SOURCE",
+      "target_field": "asset_type_source"
+    },
+    {
+      "authority_id": "INSTRUMENT_CLASSIFICATION",
+      "authority_type": "DERIVED",
+      "contract_id": "classification.source_security_type",
+      "derivation_keys": [],
+      "field_role": "PROVENANCE_METADATA",
+      "owner_store": "InstrumentClassificationStore",
+      "provenance_origin": "DERIVED_SOURCE_TRACE",
+      "schema_version": "INSTRUMENT_CLASSIFICATION_V01",
+      "source_endpoints": [
+        "StockMasterStore",
+        "formal product-master authority"
+      ],
+      "source_field": null,
+      "source_locator": "security_group/listing_section/security_kind and formal product-master evidence",
+      "source_name": "Instrument classification pipeline",
+      "source_semantics": "DERIVED_SOURCE_TRACE",
+      "target_field": "source_security_type"
+    },
+    {
+      "authority_id": "INSTRUMENT_CLASSIFICATION",
+      "authority_type": "DERIVED",
+      "contract_id": "classification.is_common_stock",
+      "derivation_keys": [],
+      "field_role": "DERIVED_CLASSIFICATION",
+      "owner_store": "InstrumentClassificationStore",
+      "provenance_origin": "DERIVED",
+      "schema_version": "INSTRUMENT_CLASSIFICATION_V01",
+      "source_endpoints": [
+        "InstrumentClassificationStore"
+      ],
+      "source_field": null,
+      "source_locator": "asset_type == COMMON",
+      "source_name": "Instrument classification pipeline",
+      "source_semantics": "DERIVED_COMMON_STOCK_FLAG",
+      "target_field": "is_common_stock"
+    },
+    {
       "authority_id": "KRX_INDEX_SOURCE",
       "authority_type": "DERIVED",
       "contract_id": "index.date",
@@ -509,11 +674,29 @@
       "target_field": "date"
     },
     {
-      "authority_id": "KRX_INDEX_SOURCE",
+      "authority_id": "KRX_INDEX_LOGICAL_FAMILY",
       "authority_type": "DERIVED",
       "contract_id": "index.family",
       "derivation_keys": [],
       "field_role": "IDENTITY_KEY",
+      "owner_store": "IndexStore",
+      "provenance_origin": "STATIC_MAPPING",
+      "schema_version": "INDEX_STORE_V01",
+      "source_endpoints": [
+        "KRX_NATIVE_SECTOR_INDEX_MAP"
+      ],
+      "source_field": null,
+      "source_locator": "KRX_NATIVE_SECTOR_INDEX_MAP -> native sector rows -> NATIVE_SECTOR_INDEX",
+      "source_name": "KRX native sector mapping",
+      "source_semantics": "LOGICAL_INDEX_FAMILY",
+      "target_field": "family"
+    },
+    {
+      "authority_id": "KRX_INDEX_SOURCE",
+      "authority_type": "DERIVED",
+      "contract_id": "index.source_index_class",
+      "derivation_keys": [],
+      "field_role": "PROVENANCE_METADATA",
       "owner_store": "IndexStore",
       "provenance_origin": "RESPONSE_FIELD",
       "schema_version": "INDEX_STORE_V01",
@@ -524,8 +707,27 @@
       "source_field": "IDX_CLSS",
       "source_locator": null,
       "source_name": "KRX index source",
-      "source_semantics": "INDEX_FAMILY_NAMESPACE",
-      "target_field": "family"
+      "source_semantics": "KRX_SOURCE_INDEX_CLASS",
+      "target_field": "source_index_class"
+    },
+    {
+      "authority_id": "KRX_INDEX_SOURCE",
+      "authority_type": "AUTHORITATIVE",
+      "contract_id": "index.index_name",
+      "derivation_keys": [],
+      "field_role": "AUTHORITATIVE_SOURCE",
+      "owner_store": "IndexStore",
+      "provenance_origin": "RESPONSE_FIELD",
+      "schema_version": "INDEX_STORE_V01",
+      "source_endpoints": [
+        "/idx/kospi_dd_trd",
+        "/idx/kosdaq_dd_trd"
+      ],
+      "source_field": "IDX_NM",
+      "source_locator": null,
+      "source_name": "KRX index source",
+      "source_semantics": "SOURCE_INDEX_NAME",
+      "target_field": "index_name"
     },
     {
       "authority_id": "KRX_NATIVE_SECTOR_INDEX_MAP",
