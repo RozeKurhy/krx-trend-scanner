@@ -65,12 +65,12 @@ class FundamentalsAssessmentProvider:
         ticker: str,
         requested_as_of: str | date,
         *,
-        lookback_fiscal_years: int = 3,
+        lookback_fiscal_years: int = 5,
         company: Mapping[str, Any] | None = None,
         company_metadata: Mapping[str, Any] | None = None,
         force_refresh: bool = False,
     ) -> FundamentalsAssessmentResult:
-        """Build a CURRENT_AS_OF assessment over a Y-2..Y fiscal window."""
+        """Build a CURRENT_AS_OF assessment over a configurable ending-Y window."""
 
         cutoff = _as_of(requested_as_of)
         if lookback_fiscal_years < 1:

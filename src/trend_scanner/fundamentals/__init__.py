@@ -38,7 +38,13 @@ from .derived_metrics import (
     derive_metrics,
 )
 from .derived_metrics_provider import DerivedMetricsBuild, DerivedMetricsProvider
-from .assessment_models import AssessmentEvidence, FundamentalsAssessmentResult
+from .assessment_models import (
+    AssessmentEvidence,
+    DirectionComponent,
+    FundamentalsAssessmentResult,
+    SamePeriodYoYPoint,
+    SamePeriodYoYSeries,
+)
 from .assessment import (
     ASSESSMENT_SCOPE_CURRENT,
     ASSESSMENT_SCOPE_RANGE,
@@ -98,6 +104,9 @@ __all__ = [
     "DerivedMetricsBuild",
     "DerivedMetricsProvider",
     "AssessmentEvidence",
+    "SamePeriodYoYPoint",
+    "SamePeriodYoYSeries",
+    "DirectionComponent",
     "FundamentalsAssessmentResult",
     "FundamentalsAssessment",
     "FundamentalsAssessmentEngine",

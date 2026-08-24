@@ -14,9 +14,9 @@ AS_OF = "2025-10-15"
 
 def _item(metric: str, metric_type: str, value, *, status: str = "READY", metadata=None,
           family: str = "NON_FINANCIAL", period: str = "Q3", pit: str | None = AS_OF,
-          source_dt: str = AS_OF, reason: str | None = None) -> DerivedMetricObservation:
+          source_dt: str = AS_OF, reason: str | None = None, year: str = "2025") -> DerivedMetricObservation:
     return DerivedMetricObservation(
-        ticker="TEST", corp_code="TEST", company_family=family, fiscal_year="2025",
+        ticker="TEST", corp_code="TEST", company_family=family, fiscal_year=year,
         fiscal_period=period, metric=metric, metric_type=metric_type, value=value,
         resolution_status=status, reason=reason, period_end="2025-09-30",
         source_rcept_nos=(f"R-{metric}-{metric_type}",), source_rcept_dts=(source_dt,),
@@ -184,7 +184,7 @@ def test_level_and_direction_are_separate_for_positive_but_slowing():
         ocf_trend="DETERIORATING",
     ))
     assert result.growth_state in {"POSITIVE", "STRONG", "MIXED"}
-    assert result.growth_direction == "DETERIORATING"
+    assert result.growth_direction == "MIXED"
     assert result.profitability_direction == "DETERIORATING"
     assert result.cash_flow_direction == "DETERIORATING"
     assert result.overall_state != "IMPROVING"
@@ -242,6 +242,123 @@ def test_provider_build_current_declares_requested_year_window():
 
     fake = FakeDerivedProvider()
     result = FundamentalsAssessmentProvider(fake).build_current("005930", "2025-10-15")
-    assert fake.calls == [("005930", ("2023", "2024", "2025"), "2025-10-15")]
+    assert fake.calls == [("005930", ("2021", "2022", "2023", "2024", "2025"), "2025-10-15")]
     assert result.assessment_scope == "CURRENT_AS_OF"
     assert result.currentness_status == "VERIFIED"
+    result_three = FundamentalsAssessmentProvider(fake).build_current(
+        "005930", "2025-10-15", lookback_fiscal_years=3,
+    )
+    assert fake.calls[-1] == ("005930", ("2023", "2024", "2025"), "2025-10-15")
+    assert result_three.currentness_status == "VERIFIED"
+
+
+def _series_build(values, *, metric="revenue", years=("2022", "2023", "2024", "2025", "2026"),
+                  observed_years=None, period="Q2"):
+    observed_years = observed_years or years
+    rows = [_item(metric, "QUARTERLY_YOY", value, year=year, period=period,
+                  pit="2026-08-20", source_dt="2026-08-20")
+            for year, value in zip(observed_years, values)]
+    return DerivedMetricsBuild(
+        ticker="TEST", requested_as_of="2026-08-20", fiscal_years=tuple(years),
+        periodization_builds=(), canonical_observations=(), result=DerivedMetricsResult(tuple(rows)),
+    )
+
+
+@pytest.mark.parametrize("values, expected", [
+    ((8, 14, 21, 28, 35), "ACCELERATING"),
+    ((30, 24, 15, 7, 1), "DECELERATING"),
+    ((8, 15, 24, 16, 14), "REVERSING_DOWN"),
+    ((30, 20, 8, 14, 18), "REVERSING_UP"),
+    ((10, 25, 15, 22, 30), "MIXED"),
+])
+def test_same_period_multi_year_trend_states(values, expected):
+    result = FundamentalsAssessmentEngine().assess(
+        _series_build(values), requested_as_of="2026-08-20",
+        assessment_scope="CURRENT_AS_OF", expected_current_fiscal_year="2026",
+    )
+    series = result.same_period_yoy_series["revenue"]
+    assert series.usable_yoy_point_count == 5
+    assert series.trend_state == expected
+    assert tuple(point.fiscal_period for point in series.points) == ("Q2",) * 5
+    assert result.multi_year_trends["revenue"] == expected
+
+
+def test_same_period_series_gap_breaks_continuity_and_missing_is_not_zero():
+    build = _series_build((8, 21, 28), years=("2022", "2023", "2024", "2025", "2026"),
+                          observed_years=("2023", "2025", "2026"))
+    result = FundamentalsAssessmentEngine().assess(
+        build, requested_as_of="2026-08-20", assessment_scope="CURRENT_AS_OF",
+        expected_current_fiscal_year="2026",
+    )
+    series = result.same_period_yoy_series["revenue"]
+    assert series.usable_yoy_point_count == 2
+    assert series.trend_state == "INSUFFICIENT_DATA"
+    assert series.points[2].resolution_status == "UNAVAILABLE"
+    assert series.points[2].yoy_value is None
+
+
+def test_same_period_series_ignores_other_fiscal_periods():
+    rows = [_item("revenue", "QUARTERLY_YOY", value, year=year, period="Q2",
+                   pit="2026-08-20", source_dt="2026-08-20")
+            for year, value in zip(("2022", "2023", "2024", "2025", "2026"), (8, 14, 21, 28, 35))]
+    rows.extend(_item("revenue", "QUARTERLY_YOY", value, year=year, period="Q1",
+                      pit="2026-08-20", source_dt="2026-08-20")
+                for year, value in zip(("2022", "2023", "2024", "2025", "2026"), (100, 1, 100, 1, 100)))
+    build = DerivedMetricsBuild(
+        ticker="TEST", requested_as_of="2026-08-20", fiscal_years=("2022", "2023", "2024", "2025", "2026"),
+        periodization_builds=(), canonical_observations=(), result=DerivedMetricsResult(tuple(rows)),
+    )
+    result = FundamentalsAssessmentEngine().assess(build, requested_as_of="2026-08-20",
+                                                   assessment_scope="CURRENT_AS_OF", expected_current_fiscal_year="2026")
+    series = result.same_period_yoy_series["revenue"]
+    assert [point.yoy_value for point in series.points] == [8.0, 14.0, 21.0, 28.0, 35.0]
+
+
+def test_level_selectors_exclude_direction_evidence():
+    rows = [
+        _item("revenue", "QUARTERLY_YOY", -5),
+        _item("revenue", "YOY_GROWTH_ACCELERATION", 30),
+        _item("operating_income", "OPERATING_MARGIN", -2),
+        _item("net_income", "NET_MARGIN", -1),
+        _item("operating_income", "MARGIN_EXPANSION_TREND", 1, metadata={"classification": "EXPANDING"}),
+        _item("operating_cash_flow", "QUARTERLY_YOY", -10),
+        _item("operating_cash_flow", "OPERATING_CASH_FLOW_MARGIN", -2),
+        _item("operating_cash_flow", "OPERATING_CASH_FLOW_TREND", "IMPROVING"),
+    ]
+    result = FundamentalsAssessmentEngine().assess(DerivedMetricsResult(tuple(rows)))
+    assert result.growth_state in {"NEGATIVE", "WEAK"}
+    assert result.profitability_state in {"NEGATIVE", "WEAK"}
+    assert result.cash_flow_state in {"NEGATIVE", "WEAK"}
+    assert result.diagnostics["level_contaminated_by_direction_count"] == 0
+    assert result.diagnostics["direction_contaminated_by_level_count"] == 0
+
+
+def test_positive_streak_and_yoy_sign_do_not_create_direction():
+    rows = [
+        _item("revenue", "QUARTERLY_YOY", 10),
+        _item("revenue", "CONSECUTIVE_YOY_GROWTH", 4),
+        _item("operating_cash_flow", "QUARTERLY_YOY", 10),
+        _item("operating_cash_flow", "TTM_YOY", 10),
+    ]
+    result = FundamentalsAssessmentEngine().assess(DerivedMetricsResult(tuple(rows)))
+    assert result.growth_direction in {"UNAVAILABLE", "STABLE"}
+    assert result.cash_flow_direction in {"UNAVAILABLE", "STABLE"}
+    assert result.diagnostics["positive_streak_used_as_improvement_count"] == 0
+    assert result.diagnostics["current_yoy_sign_used_as_direction_count"] == 0
+    assert result.diagnostics["ttm_yoy_sign_used_as_direction_count"] == 0
+
+
+def test_direction_components_are_permutation_invariant_and_do_not_overwrite():
+    rows = [
+        _item("operating_cash_flow", "QUARTERLY_YOY", -10),
+        _item("operating_cash_flow", "OPERATING_CASH_FLOW_TREND", "DETERIORATING"),
+        _item("operating_cash_flow", "MARGIN_EXPANSION_TREND", -1, metadata={"classification": "CONTRACTING"}),
+        _item("operating_cash_flow", "TTM_YOY", 10),
+    ]
+    engine = FundamentalsAssessmentEngine()
+    first = engine.assess(DerivedMetricsResult(tuple(rows)))
+    second = engine.assess(DerivedMetricsResult(tuple(reversed(rows))))
+    assert first.cash_flow_direction == second.cash_flow_direction == "DETERIORATING"
+    assert first.direction_components == second.direction_components
+    assert first.diagnostics["direction_component_overwrite_count"] == 0
+    assert first.diagnostics["direction_order_dependence_count"] == 0

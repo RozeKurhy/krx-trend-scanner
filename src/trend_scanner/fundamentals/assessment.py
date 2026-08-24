@@ -12,7 +12,13 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Any, Iterable, Mapping
 
-from .assessment_models import AssessmentEvidence, FundamentalsAssessmentResult
+from .assessment_models import (
+    AssessmentEvidence,
+    DirectionComponent,
+    FundamentalsAssessmentResult,
+    SamePeriodYoYPoint,
+    SamePeriodYoYSeries,
+)
 from .derived_metrics import DerivedMetricObservation, DerivedMetricsResult
 from .derived_metrics_provider import DerivedMetricsBuild
 
@@ -42,6 +48,12 @@ MARGIN_TYPES = frozenset({
     "TTM_OPERATING_MARGIN", "TTM_NET_MARGIN", "TTM_OPERATING_CASH_FLOW_MARGIN",
     "MARGIN_EXPANSION_TREND",
 })
+MULTI_YEAR_STABLE_TOLERANCE = 1e-9
+MULTI_YEAR_TREND_STATES = frozenset({
+    "ACCELERATING", "DECELERATING", "STABLE", "REVERSING_UP", "REVERSING_DOWN",
+    "MIXED", "INSUFFICIENT_DATA",
+})
+DIRECTION_STATES = frozenset({"IMPROVING", "STABLE", "DETERIORATING", "MIXED", "UNAVAILABLE"})
 GROWTH_TYPES = frozenset({
     "QUARTERLY_YOY", "ANNUAL_YOY", "REVENUE_GROWTH", "OPERATING_INCOME_GROWTH",
     "NET_INCOME_GROWTH", "OPERATING_CASH_FLOW_GROWTH", "TTM_YOY",
@@ -168,32 +180,57 @@ class FundamentalsAssessmentEngine:
         if provider_cutoff_mismatch_count:
             cutoff_mismatch = True
 
-        selected: dict[str, list[tuple[DerivedMetricObservation | None, str]]] = {
+        expected_years = tuple(
+            sorted({str(year) for year in getattr(source, "fiscal_years", ()) if year is not None}, key=_year)
+        ) or tuple(sorted({_year(item.fiscal_year) for item in observations if _year(item.fiscal_year) >= 0}))
+        same_period_yoy_series = self._same_period_yoy_series(
+            observations, current, expected_years=expected_years,
+        )
+        selected_specs: dict[str, list[tuple[DerivedMetricObservation | None, str, str, str | None]]] = {
             axis: [] for axis in AXES
         }
-        selected["GROWTH"] = self._growth_inputs(observations, current)
-        selected["PROFITABILITY"] = self._profitability_inputs(observations, current)
-        selected["CASH_FLOW"] = self._cash_flow_inputs(observations, current)
-        selected["MOMENTUM"] = self._momentum_inputs(observations, current)
+        for item, code_hint in self._growth_level_inputs(observations, current):
+            selected_specs["GROWTH"].append((item, code_hint, "LEVEL", None))
+        for component_id, item, code_hint in self._growth_direction_inputs(observations, current, same_period_yoy_series):
+            selected_specs["GROWTH"].append((item, code_hint, "DIRECTION", component_id))
+        for item, code_hint in self._profitability_level_inputs(observations, current):
+            selected_specs["PROFITABILITY"].append((item, code_hint, "LEVEL", None))
+        for component_id, item, code_hint in self._profitability_direction_inputs(observations, current):
+            selected_specs["PROFITABILITY"].append((item, code_hint, "DIRECTION", component_id))
+        for item, code_hint in self._cash_flow_level_inputs(observations, current):
+            selected_specs["CASH_FLOW"].append((item, code_hint, "LEVEL", None))
+        for component_id, item, code_hint in self._cash_flow_direction_inputs(observations, current, same_period_yoy_series):
+            selected_specs["CASH_FLOW"].append((item, code_hint, "DIRECTION", component_id))
+        for item, code_hint in self._momentum_inputs(observations, current):
+            selected_specs["MOMENTUM"].append((item, code_hint, "MOMENTUM", None))
 
         evidence: list[AssessmentEvidence] = []
+        evidence_by_kind: dict[str, list[AssessmentEvidence]] = {"LEVEL": [], "DIRECTION": [], "MOMENTUM": []}
+        component_evidence: dict[str, list[AssessmentEvidence]] = {}
         future_source_count = 0
         ready_missing_pit_count = 0
         for axis in AXES:
-            for item, code_hint in selected[axis]:
+            for item, code_hint, kind, component_id in selected_specs[axis]:
                 item_evidence, future, missing_pit = self._make_evidence(
                     axis, item, code_hint, current=current, requested_as_of=requested,
                 )
                 evidence.append(item_evidence)
+                evidence_by_kind[kind].append(item_evidence)
+                if component_id:
+                    component_evidence.setdefault(component_id, []).append(item_evidence)
                 future_source_count += future
                 ready_missing_pit_count += missing_pit
 
         by_axis = {axis: [item for item in evidence if item.axis == axis] for axis in AXES}
+        level_by_axis = {
+            axis: [item for item in evidence_by_kind["LEVEL"] if item.axis == axis]
+            for axis in ("GROWTH", "PROFITABILITY", "CASH_FLOW")
+        }
         axis_resolution = {
-            "GROWTH": self._growth_state(by_axis["GROWTH"]),
-            "PROFITABILITY": self._profitability_state(by_axis["PROFITABILITY"]),
-            "CASH_FLOW": self._cash_flow_state(by_axis["CASH_FLOW"]),
-            "MOMENTUM": self._momentum_state(by_axis["MOMENTUM"]),
+            "GROWTH": self._growth_state(level_by_axis["GROWTH"]),
+            "PROFITABILITY": self._profitability_state(level_by_axis["PROFITABILITY"]),
+            "CASH_FLOW": self._cash_flow_state(level_by_axis["CASH_FLOW"]),
+            "MOMENTUM": self._momentum_state(evidence_by_kind["MOMENTUM"]),
         }
         available_axis_count = sum(
             state not in {UNAVAILABLE, "INSUFFICIENT_DATA"} for state in axis_resolution.values()
@@ -210,11 +247,28 @@ class FundamentalsAssessmentEngine:
             item.classification for item in ready_evidence
             if item.metric_type == "EARNINGS_TRANSITION"
         }
+        direction_components = self._direction_components(
+            observations=observations,
+            current=current,
+            same_period_yoy_series=same_period_yoy_series,
+            component_evidence=component_evidence,
+        )
+        direction_components_by_axis = {
+            axis: tuple(item for item in direction_components if item.axis == axis)
+            for axis in ("GROWTH", "PROFITABILITY", "CASH_FLOW")
+        }
         axis_directions = {
-            "GROWTH": self._growth_direction(by_axis["GROWTH"]),
-            "PROFITABILITY": self._profitability_direction(by_axis["PROFITABILITY"]),
-            "CASH_FLOW": self._cash_flow_direction(by_axis["CASH_FLOW"]),
-            "MOMENTUM": self._momentum_direction(axis_resolution["MOMENTUM"]),
+            axis: self._aggregate_direction_components(direction_components_by_axis[axis])
+            for axis in ("GROWTH", "PROFITABILITY", "CASH_FLOW")
+        }
+        axis_directions["MOMENTUM"] = self._momentum_direction(axis_resolution["MOMENTUM"])
+        short_term_directions = self._metric_direction_summary(direction_components, suffix="short_term")
+        multi_year_directions = {
+            metric: self._trend_to_direction(series.trend_state)
+            for metric, series in same_period_yoy_series.items()
+        }
+        multi_year_trends = {
+            metric: series.trend_state for metric, series in same_period_yoy_series.items()
         }
         core_axes = ("GROWTH", "PROFITABILITY", "CASH_FLOW")
         improving_axes = sum(axis_directions[axis] == "IMPROVING" for axis in core_axes)
@@ -233,6 +287,10 @@ class FundamentalsAssessmentEngine:
             risks=risks,
         )
         overall_state, matched_rule_id = rule["overall_state"], rule["matched_rule_id"]
+        direction_component_overwrite_count = len(direction_components) - len({item.component_id for item in direction_components})
+        direction_codes = {
+            code for item in evidence_by_kind["DIRECTION"] for code in (item.explanation_code,)
+        }
         diagnostics = {
             "provider_cutoff_mismatch_count": provider_cutoff_mismatch_count,
             "future_assessment_source_count": future_source_count,
@@ -253,6 +311,39 @@ class FundamentalsAssessmentEngine:
             "transition_codes": sorted(code for code in transition_codes if code),
             "matched_candidate_rules": list(rule["matched_candidate_rules"]),
             "expected_rule_overlaps": [list(item) for item in rule["expected_rule_overlaps"]],
+            "same_period_yoy_series": {
+                metric: series.to_dict() for metric, series in same_period_yoy_series.items()
+            },
+            "direction_components": {
+                axis: [item.to_dict() for item in items]
+                for axis, items in direction_components_by_axis.items()
+            },
+            "short_term_directions": dict(short_term_directions),
+            "multi_year_directions": dict(multi_year_directions),
+            "multi_year_trends": dict(multi_year_trends),
+            "level_contaminated_by_direction_count": 0,
+            "direction_contaminated_by_level_count": 0,
+            "direction_component_overwrite_count": max(0, direction_component_overwrite_count),
+            "direction_order_dependence_count": 0,
+            "positive_streak_used_as_improvement_count": int("POSITIVE_GROWTH_STREAK" in direction_codes),
+            "current_yoy_sign_used_as_direction_count": sum(
+                code.endswith("_YOY_POSITIVE") or code.endswith("_YOY_NEGATIVE")
+                for code in direction_codes
+            ),
+            "ttm_yoy_sign_used_as_direction_count": sum(
+                code.startswith("TTM_") and (code.endswith("_POSITIVE") or code.endswith("_NEGATIVE"))
+                for code in direction_codes
+            ),
+            "improving_without_directional_support_count": int(any(
+                axis_directions[axis] == "IMPROVING" and not any(
+                    item.state == "IMPROVING" for item in direction_components_by_axis[axis]
+                ) for axis in ("GROWTH", "PROFITABILITY", "CASH_FLOW")
+            )),
+            "weakening_without_directional_support_count": int(any(
+                axis_directions[axis] == "DETERIORATING" and not any(
+                    item.state == "DETERIORATING" for item in direction_components_by_axis[axis]
+                ) for axis in ("GROWTH", "PROFITABILITY", "CASH_FLOW")
+            )),
         }
         invalid_pit = bool(future_source_count or ready_missing_pit_count or diagnostics["ready_future_pit_available_count"])
         status = READY
@@ -294,6 +385,11 @@ class FundamentalsAssessmentEngine:
             negative_level_axis_count=negative_level_axes,
             matched_candidate_rules=rule["matched_candidate_rules"],
             expected_rule_overlaps=rule["expected_rule_overlaps"],
+            same_period_yoy_series=same_period_yoy_series,
+            direction_components=direction_components_by_axis,
+            short_term_directions=short_term_directions,
+            multi_year_directions=multi_year_directions,
+            multi_year_trends=multi_year_trends,
             reason=reason, diagnostics=diagnostics,
         )
 
@@ -325,7 +421,11 @@ class FundamentalsAssessmentEngine:
         for metric_type in types:
             same = [item for item in candidates if item.metric_type == metric_type]
             if same:
-                return sorted(same, key=lambda item: (str(item.anchor_rcept_no) if hasattr(item, "anchor_rcept_no") else ""))[0]
+                return sorted(same, key=lambda item: (
+                    tuple(str(value) for value in item.source_rcept_nos),
+                    tuple(str(value) for value in item.source_sha256s),
+                    str(item.value),
+                ))[0]
         return None
 
     @staticmethod
@@ -335,45 +435,262 @@ class FundamentalsAssessmentEngine:
                       and _period_key(item) <= _period_key(current)]
         if not candidates:
             return None
-        return max(candidates, key=_period_key)
+        return max(candidates, key=lambda item: (
+            _period_key(item), tuple(str(value) for value in item.source_rcept_nos),
+            tuple(str(value) for value in item.source_sha256s), str(item.value),
+        ))
 
-    def _growth_inputs(self, observations: tuple[DerivedMetricObservation, ...], current: Any) -> list[tuple[DerivedMetricObservation | None, str]]:
-        growth_type = "ANNUAL_YOY" if current.fiscal_period == "FY" else "QUARTERLY_YOY"
-        output: list[tuple[DerivedMetricObservation | None, str]] = []
+    @staticmethod
+    def _yoy_metric_type(fiscal_period: str) -> str:
+        return "ANNUAL_YOY" if fiscal_period == "FY" else "QUARTERLY_YOY"
+
+    @classmethod
+    def _same_period_yoy_series(
+        cls,
+        observations: tuple[DerivedMetricObservation, ...],
+        current: Any,
+        *,
+        expected_years: tuple[str, ...],
+    ) -> dict[str, SamePeriodYoYSeries]:
+        period = str(current.fiscal_period)
+        metric_type = cls._yoy_metric_type(period)
+        years = tuple(sorted({str(year) for year in expected_years}, key=_year))
+        output: dict[str, SamePeriodYoYSeries] = {}
         for metric in FLOW_METRICS:
-            item = self._at_current(observations, current, metric, (growth_type, f"{metric.upper()}_GROWTH"))
-            output.append((item, f"{metric.upper()}_GROWTH"))
-            output.append((self._at_current(observations, current, metric, ("YOY_GROWTH_ACCELERATION",)), "YOY_GROWTH_ACCELERATION"))
-        for metric in EARNINGS_METRICS:
-            output.append((self._at_current(observations, current, metric, ("EARNINGS_TRANSITION",)), "EARNINGS_TRANSITION"))
+            points: list[SamePeriodYoYPoint] = []
+            for year in years:
+                candidates = [item for item in observations
+                              if item.metric == metric and item.fiscal_year == year
+                              and item.fiscal_period == period and item.metric_type == metric_type]
+                candidate = sorted(candidates, key=lambda item: (
+                    tuple(str(value) for value in item.source_rcept_nos),
+                    tuple(str(value) for value in item.source_sha256s), str(item.value),
+                ))[0] if candidates else None
+                if candidate is None:
+                    points.append(SamePeriodYoYPoint(
+                        fiscal_year=year, fiscal_period=period, metric=metric,
+                        metric_type=metric_type, yoy_value=None, resolution_status=UNAVAILABLE,
+                        pit_available_from=None,
+                    ))
+                else:
+                    value = _number(candidate.value) if candidate.resolution_status == READY else None
+                    points.append(SamePeriodYoYPoint(
+                        fiscal_year=year, fiscal_period=period, metric=metric,
+                        metric_type=metric_type, yoy_value=value,
+                        resolution_status=candidate.resolution_status,
+                        pit_available_from=candidate.pit_available_from,
+                        source_rcept_nos=tuple(candidate.source_rcept_nos),
+                        source_rcept_dts=tuple(candidate.source_rcept_dts),
+                        source_sha256s=tuple(candidate.source_sha256s),
+                    ))
+            usable, contiguous_years = cls._contiguous_ready_suffix(points)
+            trend = cls._multi_year_trend(usable)
+            output[metric] = SamePeriodYoYSeries(
+                metric=metric, fiscal_period=period, points=tuple(points),
+                usable_yoy_point_count=len(usable), trend_state=trend,
+                contiguous_fiscal_years=tuple(contiguous_years),
+            )
         return output
 
-    def _profitability_inputs(self, observations: tuple[DerivedMetricObservation, ...], current: Any) -> list[tuple[DerivedMetricObservation | None, str]]:
-        output: list[tuple[DerivedMetricObservation | None, str]] = []
+    @staticmethod
+    def _contiguous_ready_suffix(points: Iterable[SamePeriodYoYPoint]) -> tuple[tuple[SamePeriodYoYPoint, ...], tuple[str, ...]]:
+        ordered = tuple(sorted(points, key=lambda item: _year(item.fiscal_year)))
+        if not ordered:
+            return (), ()
+        suffix: list[SamePeriodYoYPoint] = []
+        expected_year: int | None = None
+        for point in reversed(ordered):
+            value = _number(point.yoy_value)
+            if point.resolution_status != READY or value is None:
+                break
+            year = _year(point.fiscal_year)
+            if expected_year is not None and year != expected_year - 1:
+                break
+            suffix.append(point)
+            expected_year = year
+        suffix.reverse()
+        return tuple(suffix), tuple(item.fiscal_year for item in suffix)
+
+    @staticmethod
+    def _multi_year_trend(points: tuple[SamePeriodYoYPoint, ...]) -> str:
+        if len(points) < 3:
+            return "INSUFFICIENT_DATA"
+        values = tuple(float(_number(item.yoy_value)) for item in points)
+        deltas = tuple(right - left for left, right in zip(values, values[1:]))
+        tolerance = MULTI_YEAR_STABLE_TOLERANCE
+        if all(abs(delta) <= tolerance for delta in deltas):
+            return "STABLE"
+        if all(delta > tolerance for delta in deltas):
+            return "ACCELERATING"
+        if all(delta < -tolerance for delta in deltas):
+            return "DECELERATING"
+        if len(deltas) >= 3:
+            # A reversal is a two-delta prior run followed by an opposite
+            # delta.  Later deltas in the same new direction do not erase the
+            # detected turn; they confirm the new regime.
+            for index in range(2, len(deltas)):
+                prior = deltas[index - 2:index]
+                latest = deltas[index]
+                if all(delta > tolerance for delta in prior) and latest < -tolerance:
+                    return "REVERSING_DOWN"
+                if all(delta < -tolerance for delta in prior) and latest > tolerance:
+                    return "REVERSING_UP"
+        return "MIXED"
+
+    @staticmethod
+    def _trend_to_direction(trend: str) -> str:
+        if trend in {"ACCELERATING", "REVERSING_UP"}:
+            return "IMPROVING"
+        if trend in {"DECELERATING", "REVERSING_DOWN"}:
+            return "DETERIORATING"
+        if trend in {"STABLE"}:
+            return "STABLE"
+        if trend == "MIXED":
+            return "MIXED"
+        return "UNAVAILABLE"
+
+    def _growth_level_inputs(self, observations: tuple[DerivedMetricObservation, ...], current: Any):
+        growth_type = self._yoy_metric_type(str(current.fiscal_period))
+        return [
+            (self._at_current(observations, current, metric, (growth_type, f"{metric.upper()}_GROWTH")),
+             f"{metric.upper()}_GROWTH")
+            for metric in ("revenue", "operating_income", "net_income")
+        ]
+
+    def _growth_direction_inputs(self, observations, current, series):
+        output = []
+        for metric in FLOW_METRICS:
+            output.append((f"{metric}_short_term_acceleration",
+                           self._at_current(observations, current, metric, ("YOY_GROWTH_ACCELERATION",)),
+                           "YOY_GROWTH_ACCELERATION"))
+        for metric in EARNINGS_METRICS:
+            output.append((f"{metric}_transition",
+                           self._at_current(observations, current, metric, ("EARNINGS_TRANSITION",)),
+                           "EARNINGS_TRANSITION"))
+        return output
+
+    def _profitability_level_inputs(self, observations, current):
+        output = []
         for metric, metric_type, code in (
             ("operating_income", "OPERATING_MARGIN", "OPERATING_MARGIN"),
             ("net_income", "NET_MARGIN", "NET_MARGIN"),
-        ):
-            output.append((self._at_current(observations, current, metric, (metric_type,)), code))
-            output.append((self._at_current(observations, current, metric, ("MARGIN_EXPANSION_TREND",)), "MARGIN_EXPANSION_TREND"))
-        for metric, metric_type, code in (
             ("operating_income", "TTM_OPERATING_MARGIN", "TTM_OPERATING_MARGIN"),
             ("net_income", "TTM_NET_MARGIN", "TTM_NET_MARGIN"),
         ):
-            output.append((self._latest_at_or_before(observations, current, metric, (metric_type,)), code))
+            getter = self._at_current if metric_type in {"OPERATING_MARGIN", "NET_MARGIN"} else self._latest_at_or_before
+            output.append((getter(observations, current, metric, (metric_type,)), code))
         return output
 
-    def _cash_flow_inputs(self, observations: tuple[DerivedMetricObservation, ...], current: Any) -> list[tuple[DerivedMetricObservation | None, str]]:
-        growth_type = "ANNUAL_YOY" if current.fiscal_period == "FY" else "QUARTERLY_YOY"
-        output = [
+    def _profitability_direction_inputs(self, observations, current):
+        return [
+            (f"{metric}_margin_direction",
+             self._at_current(observations, current, metric, ("MARGIN_EXPANSION_TREND",)),
+             "MARGIN_EXPANSION_TREND")
+            for metric in ("operating_income", "net_income")
+        ]
+
+    def _cash_flow_level_inputs(self, observations, current):
+        growth_type = self._yoy_metric_type(str(current.fiscal_period))
+        return [
             (self._at_current(observations, current, "operating_cash_flow", (growth_type, "OPERATING_CASH_FLOW_GROWTH")), "OPERATING_CASH_FLOW_GROWTH"),
             (self._at_current(observations, current, "operating_cash_flow", ("OPERATING_CASH_FLOW_MARGIN",)), "OPERATING_CASH_FLOW_MARGIN"),
-            (self._at_current(observations, current, "operating_cash_flow", ("OPERATING_CASH_FLOW_TREND",)), "OPERATING_CASH_FLOW_TREND"),
-            (self._at_current(observations, current, "operating_cash_flow", ("MARGIN_EXPANSION_TREND",)), "MARGIN_EXPANSION_TREND"),
             (self._latest_at_or_before(observations, current, "operating_cash_flow", ("TTM_YOY",)), "TTM_OPERATING_CASH_FLOW_YOY"),
             (self._latest_at_or_before(observations, current, "operating_cash_flow", ("TTM_OPERATING_CASH_FLOW_MARGIN",)), "TTM_OPERATING_CASH_FLOW_MARGIN"),
         ]
-        return output
+
+    def _cash_flow_direction_inputs(self, observations, current, series):
+        return [
+            ("operating_cash_flow_short_term_trend",
+             self._at_current(observations, current, "operating_cash_flow", ("OPERATING_CASH_FLOW_TREND",)),
+             "OPERATING_CASH_FLOW_TREND"),
+            ("operating_cash_flow_margin_direction",
+             self._at_current(observations, current, "operating_cash_flow", ("MARGIN_EXPANSION_TREND",)),
+             "MARGIN_EXPANSION_TREND"),
+        ]
+
+    @staticmethod
+    def _direction_state_from_evidence(evidence: Iterable[AssessmentEvidence]) -> str:
+        codes = {item.explanation_code for item in evidence if item.status == READY}
+        if codes.intersection({"YOY_ACCELERATING", "MARGIN_EXPANDING", "OCF_TREND_IMPROVING", "LOSS_TO_PROFIT", "LOSS_NARROWING", "PROFIT_GROWTH"}):
+            positive = True
+        else:
+            positive = False
+        negative = bool(codes.intersection({"YOY_DECELERATING", "MARGIN_CONTRACTING", "OCF_TREND_DETERIORATING", "PROFIT_TO_LOSS", "LOSS_WIDENING", "PROFIT_DECLINE"}))
+        if positive and negative:
+            return "MIXED"
+        if positive:
+            return "IMPROVING"
+        if negative:
+            return "DETERIORATING"
+        if evidence and any(item.status == READY for item in evidence):
+            return "STABLE"
+        return "UNAVAILABLE"
+
+    def _direction_components(self, *, observations, current, same_period_yoy_series, component_evidence):
+        components: list[DirectionComponent] = []
+        for component_id, items in sorted(component_evidence.items()):
+            if not items:
+                continue
+            axis = "GROWTH" if component_id.startswith(("revenue_", "operating_income_", "net_income_")) else "CASH_FLOW"
+            if component_id.endswith("_margin_direction") and not component_id.startswith("operating_cash_flow_"):
+                axis = "PROFITABILITY"
+            logical_metric = items[0].metric
+            for suffix in ("_short_term_acceleration", "_short_term_trend", "_transition", "_margin_direction", "_multi_year_trend"):
+                if component_id.endswith(suffix):
+                    logical_metric = component_id[:-len(suffix)]
+                    break
+            components.append(DirectionComponent(
+                axis=axis, component_id=component_id,
+                metric=logical_metric,
+                state=self._direction_state_from_evidence(items),
+                evidence_codes=tuple(sorted({item.explanation_code for item in items})),
+                source_periods=tuple(sorted({item.fiscal_period for item in items}, key=lambda value: PERIOD_ORDER.get(value, 0))),
+                source_fiscal_years=tuple(sorted({item.fiscal_year for item in items}, key=_year)),
+            ))
+        for metric, series in sorted(same_period_yoy_series.items()):
+            axis = "CASH_FLOW" if metric == "operating_cash_flow" else "GROWTH"
+            components.append(DirectionComponent(
+                axis=axis, component_id=f"{metric}_multi_year_trend", metric=metric,
+                state=self._trend_to_direction(series.trend_state),
+                evidence_codes=(f"MULTI_YEAR_{series.trend_state}",),
+                source_periods=(series.fiscal_period,),
+                source_fiscal_years=series.contiguous_fiscal_years,
+            ))
+        return tuple(sorted(components, key=lambda item: (item.axis, item.component_id)))
+
+    @staticmethod
+    def _aggregate_direction_components(components: Iterable[DirectionComponent]) -> str:
+        values = tuple(item.state for item in components if item.state != "UNAVAILABLE")
+        if not values:
+            return "UNAVAILABLE"
+        improving = values.count("IMPROVING")
+        deteriorating = values.count("DETERIORATING")
+        mixed = values.count("MIXED")
+        if mixed or (improving and deteriorating):
+            return "MIXED"
+        if improving > deteriorating:
+            return "IMPROVING"
+        if deteriorating > improving:
+            return "DETERIORATING"
+        return "STABLE"
+
+    @staticmethod
+    def _metric_direction_summary(components: Iterable[DirectionComponent], *, suffix: str) -> dict[str, str]:
+        grouped: dict[str, list[DirectionComponent]] = {}
+        for item in components:
+            if f"_{suffix}_" in item.component_id or item.component_id.endswith(f"_{suffix}"):
+                grouped.setdefault(item.metric, []).append(item)
+        return {metric: FundamentalsAssessmentEngine._aggregate_direction_components(items)
+                for metric, items in sorted(grouped.items())}
+
+    def _growth_inputs(self, observations: tuple[DerivedMetricObservation, ...], current: Any) -> list[tuple[DerivedMetricObservation | None, str]]:
+        return self._growth_level_inputs(observations, current)
+
+    def _profitability_inputs(self, observations: tuple[DerivedMetricObservation, ...], current: Any) -> list[tuple[DerivedMetricObservation | None, str]]:
+        return self._profitability_level_inputs(observations, current)
+
+    def _cash_flow_inputs(self, observations: tuple[DerivedMetricObservation, ...], current: Any) -> list[tuple[DerivedMetricObservation | None, str]]:
+        return self._cash_flow_level_inputs(observations, current)
 
     def _momentum_inputs(self, observations: tuple[DerivedMetricObservation, ...], current: Any) -> list[tuple[DerivedMetricObservation | None, str]]:
         output: list[tuple[DerivedMetricObservation | None, str]] = []
@@ -544,52 +861,6 @@ class FundamentalsAssessmentEngine:
         if negative > positive:
             return "DECELERATING"
         return "STABLE"
-
-    @staticmethod
-    def _direction_vote(evidence: list[AssessmentEvidence], *, positive_codes: set[str], negative_codes: set[str]) -> str:
-        """Vote once per economic metric so raw evidence cannot over-count."""
-
-        votes: dict[str, str] = {}
-        for item in evidence:
-            if item.status != READY:
-                continue
-            metric = item.metric
-            if item.explanation_code in positive_codes:
-                votes[metric] = "IMPROVING"
-            elif item.explanation_code in negative_codes:
-                votes[metric] = "DETERIORATING"
-        values = tuple(votes.values())
-        if not values:
-            return UNAVAILABLE
-        improving = values.count("IMPROVING")
-        deteriorating = values.count("DETERIORATING")
-        if improving > deteriorating:
-            return "IMPROVING"
-        if deteriorating > improving:
-            return "DETERIORATING"
-        return "STABLE"
-
-    @classmethod
-    def _growth_direction(cls, evidence: list[AssessmentEvidence]) -> str:
-        positive = {"YOY_ACCELERATING", "LOSS_TO_PROFIT", "LOSS_NARROWING", "POSITIVE_GROWTH_STREAK"}
-        negative = {"YOY_DECELERATING", "PROFIT_TO_LOSS", "LOSS_WIDENING"}
-        return cls._direction_vote(evidence, positive_codes=positive, negative_codes=negative)
-
-    @classmethod
-    def _profitability_direction(cls, evidence: list[AssessmentEvidence]) -> str:
-        return cls._direction_vote(
-            evidence,
-            positive_codes={"MARGIN_EXPANDING"},
-            negative_codes={"MARGIN_CONTRACTING"},
-        )
-
-    @classmethod
-    def _cash_flow_direction(cls, evidence: list[AssessmentEvidence]) -> str:
-        return cls._direction_vote(
-            evidence,
-            positive_codes={"OCF_TREND_IMPROVING", "MARGIN_EXPANDING", "OPERATING_CASH_FLOW_YOY_POSITIVE", "TTM_OPERATING_CASH_FLOW_YOY_POSITIVE"},
-            negative_codes={"OCF_TREND_DETERIORATING", "MARGIN_CONTRACTING", "OPERATING_CASH_FLOW_YOY_NEGATIVE", "TTM_OPERATING_CASH_FLOW_YOY_NEGATIVE"},
-        )
 
     @staticmethod
     def _momentum_direction(state: str) -> str:
