@@ -3,7 +3,7 @@
   "blockers": [],
   "counters": {
     "adjusted_store_modified_count": 0,
-    "backfill_test_count": 28,
+    "backfill_test_count": 30,
     "basic_info_attempt_count": 0,
     "candidate_date_count": 0,
     "complete_date_count": 0,
@@ -29,7 +29,7 @@
     "missing_kospi_partition_count": 0,
     "no_data_date_count": 0,
     "numeric_parse_error_count": 0,
-    "offline_test_passed": 50,
+    "offline_test_passed": 52,
     "ohlc_relation_error_count": 0,
     "opendart_request_count": 0,
     "partial_date_count": 0,
@@ -65,7 +65,7 @@
     "validation_source_head_mismatch_count": 0
   },
   "end_head": null,
-  "implementation_head": "4d87a8420492235709730939a96c09a57c52d0a9",
+  "implementation_head": "e0fc98653e5139f5d27dd2c3eb091a17eca96ffc",
   "known_phase_blockers": [
     "LIVE_DIAGNOSTIC_NOT_RUN",
     "PRODUCTION_COVERAGE_INCOMPLETE"
@@ -85,7 +85,7 @@
     "offline_validation": {
       "blockers": [],
       "status": "PASS",
-      "tests": 50
+      "tests": 52
     },
     "production_coverage": {
       "candidate_date_count": 0,
@@ -98,6 +98,10 @@
   "production_diff_guard": {
     "adjusted_store_modified_count": 0,
     "changed_paths": [
+      "artifacts/data/krx_historical_backfill/v01/coverage_summary.json",
+      "artifacts/data/krx_historical_backfill/v01/krx_historical_backfill_v01_manifest.json",
+      "artifacts/data/krx_historical_backfill/v01/krx_historical_backfill_v01_summary.json",
+      "artifacts/data/krx_historical_backfill/v01/live_diagnostic_summary.json",
       "scripts/validate_krx_historical_backfill_v01.py",
       "scripts/validate_krx_production_data_architecture_v01.py",
       "src/trend_scanner/data/krx_historical_backfill.py",
@@ -109,7 +113,7 @@
     "disallowed_path_count": 0,
     "disallowed_paths": [],
     "frozen_path_changed_count": 0,
-    "implementation_head": "4d87a8420492235709730939a96c09a57c52d0a9",
+    "implementation_head": "e0fc98653e5139f5d27dd2c3eb091a17eca96ffc",
     "legacy_cache_modified_count": 0,
     "production_consumer_changed_count": 0,
     "source_contracts_modified_count": 0,
@@ -118,6 +122,6 @@
   "recommendation": "BLOCKED_MORE_EVIDENCE_REQUIRED",
   "start_head": "eaa01ed3e9b4cccedb43a11f83305216b388dee2",
   "status": "BACKFILL_IN_PROGRESS",
-  "test_output_tail": "..................................................                       [100%]\n50 passed in 0.57s\n",
-  "validation_source_head": "4d87a8420492235709730939a96c09a57c52d0a9"
+  "test_output_tail": "....................................................                     [100%]\n52 passed in 0.57s\n",
+  "validation_source_head": "e0fc98653e5139f5d27dd2c3eb091a17eca96ffc"
 }
