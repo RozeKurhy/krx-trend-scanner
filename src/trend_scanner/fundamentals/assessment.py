@@ -29,7 +29,12 @@ READY = "READY"
 INPUT_NOT_READY = "INPUT_NOT_READY"
 NOT_APPLICABLE = "NOT_APPLICABLE"
 UNAVAILABLE = "UNAVAILABLE"
-PERIOD_ORDER = {"Q1": 1, "Q2": 2, "Q3": 3, "Q4": 4, "FY": 4}
+ASSESSMENT_SCOPE_CURRENT = "CURRENT_AS_OF"
+ASSESSMENT_SCOPE_RANGE = "EXPLICIT_RANGE"
+CURRENTNESS_VERIFIED = "VERIFIED"
+CURRENTNESS_RANGE_ONLY = "RANGE_ONLY"
+CURRENTNESS_STALE = "STALE_INPUT_RANGE"
+PERIOD_ORDER = {"Q1": 1, "Q2": 2, "Q3": 3, "Q4": 4, "FY": 5}
 FLOW_METRICS = ("revenue", "operating_income", "net_income", "operating_cash_flow")
 EARNINGS_METRICS = frozenset({"operating_income", "net_income"})
 MARGIN_TYPES = frozenset({
@@ -102,6 +107,8 @@ class FundamentalsAssessmentEngine:
         source: DerivedMetricsResult | DerivedMetricsBuild,
         *,
         requested_as_of: Any = None,
+        assessment_scope: str = ASSESSMENT_SCOPE_RANGE,
+        expected_current_fiscal_year: str | None = None,
     ) -> FundamentalsAssessmentResult:
         result, build_cutoff = self._coerce_source(source)
         requested = _as_of(requested_as_of) or build_cutoff or self._result_cutoff(result)
@@ -118,6 +125,15 @@ class FundamentalsAssessmentEngine:
         current = max(observations, key=_period_key) if observations else None
         current_year = str(current.fiscal_year) if current else None
         current_period = str(current.fiscal_period) if current else None
+        input_years = tuple(str(year) for year in getattr(source, "fiscal_years", ()) if year is not None)
+        if assessment_scope == ASSESSMENT_SCOPE_CURRENT:
+            currentness_status = (
+                CURRENTNESS_VERIFIED
+                if expected_current_fiscal_year is None or str(expected_current_fiscal_year) in input_years
+                else CURRENTNESS_STALE
+            )
+        else:
+            currentness_status = CURRENTNESS_RANGE_ONLY
 
         if family == "FINANCIAL":
             return FundamentalsAssessmentResult(
@@ -129,6 +145,8 @@ class FundamentalsAssessmentEngine:
                 available_axis_count=0, missing_axis_count=self.total_axis_count,
                 pit_available_from=None, status=NOT_APPLICABLE,
                 matched_rule_id="FINANCIAL_PROFILE_NOT_IMPLEMENTED",
+                assessment_scope=assessment_scope, currentness_status=currentness_status,
+                axis_directions={axis: UNAVAILABLE for axis in AXES},
                 reason="FINANCIAL_PROFILE_NOT_IMPLEMENTED",
                 diagnostics={"financial_revenue_margin_policy": "NOT_APPLICABLE"},
             )
@@ -137,6 +155,7 @@ class FundamentalsAssessmentEngine:
             return self._insufficient(
                 ticker=ticker, family=family, requested=requested,
                 reason="NO_DERIVED_METRICS",
+                assessment_scope=assessment_scope, currentness_status=currentness_status,
             )
 
         cutoff_mismatch = bool(build_cutoff and requested and build_cutoff != requested)
@@ -191,24 +210,29 @@ class FundamentalsAssessmentEngine:
             item.classification for item in ready_evidence
             if item.metric_type == "EARNINGS_TRANSITION"
         }
-        deterioration_axes = sum(
-            axis_resolution[axis] in {"NEGATIVE", "WEAK"}
-            for axis in ("GROWTH", "PROFITABILITY", "CASH_FLOW")
-        )
-        improvement_axes = sum(
-            axis_resolution[axis] in {"POSITIVE", "STRONG"}
-            for axis in ("GROWTH", "PROFITABILITY", "CASH_FLOW")
-        )
+        axis_directions = {
+            "GROWTH": self._growth_direction(by_axis["GROWTH"]),
+            "PROFITABILITY": self._profitability_direction(by_axis["PROFITABILITY"]),
+            "CASH_FLOW": self._cash_flow_direction(by_axis["CASH_FLOW"]),
+            "MOMENTUM": self._momentum_direction(axis_resolution["MOMENTUM"]),
+        }
+        core_axes = ("GROWTH", "PROFITABILITY", "CASH_FLOW")
+        improving_axes = sum(axis_directions[axis] == "IMPROVING" for axis in core_axes)
+        deteriorating_axes = sum(axis_directions[axis] == "DETERIORATING" for axis in core_axes)
+        negative_level_axes = sum(axis_resolution[axis] in {"NEGATIVE", "WEAK"} for axis in core_axes)
         momentum_state = axis_resolution["MOMENTUM"]
-        overall_state, matched_rule_id = self._overall_state(
+        rule = self._rule_diagnostics(
             available_axis_count=available_axis_count,
             transition_codes=transition_codes,
-            deterioration_axes=deterioration_axes,
-            improvement_axes=improvement_axes,
+            improving_axes=improving_axes,
+            deteriorating_axes=deteriorating_axes,
+            negative_level_axes=negative_level_axes,
             axis_resolution=axis_resolution,
+            axis_directions=axis_directions,
             momentum_state=momentum_state,
             risks=risks,
         )
+        overall_state, matched_rule_id = rule["overall_state"], rule["matched_rule_id"]
         diagnostics = {
             "provider_cutoff_mismatch_count": provider_cutoff_mismatch_count,
             "future_assessment_source_count": future_source_count,
@@ -218,9 +242,17 @@ class FundamentalsAssessmentEngine:
                 if requested and _as_date(item.pit_available_from) and _as_date(item.pit_available_from) > _as_date(requested)
             ),
             "axis_resolution": dict(axis_resolution),
-            "deterioration_axis_count": deterioration_axes,
-            "improvement_axis_count": improvement_axes,
+            "axis_directions": dict(axis_directions),
+            # Compatibility aliases; FIX01 rule decisions use explicit
+            # level/direction counters below.
+            "deterioration_axis_count": deteriorating_axes,
+            "improvement_axis_count": improving_axes,
+            "deteriorating_direction_axis_count": deteriorating_axes,
+            "improving_direction_axis_count": improving_axes,
+            "negative_level_axis_count": negative_level_axes,
             "transition_codes": sorted(code for code in transition_codes if code),
+            "matched_candidate_rules": list(rule["matched_candidate_rules"]),
+            "expected_rule_overlaps": [list(item) for item in rule["expected_rule_overlaps"]],
         }
         invalid_pit = bool(future_source_count or ready_missing_pit_count or diagnostics["ready_future_pit_available_count"])
         status = READY
@@ -231,6 +263,9 @@ class FundamentalsAssessmentEngine:
         elif invalid_pit:
             status, overall_state, matched_rule_id = INPUT_NOT_READY, "INSUFFICIENT_DATA", "PIT_PROVENANCE_INVALID"
             reason = "FUTURE_OR_MISSING_PIT_PROVENANCE"
+        elif currentness_status == CURRENTNESS_STALE:
+            status, overall_state, matched_rule_id = INPUT_NOT_READY, "INSUFFICIENT_DATA", "STALE_INPUT_RANGE"
+            reason = "CURRENT_AS_OF_INPUT_RANGE_OMITS_REQUESTED_YEAR"
         elif available_axis_count < 2:
             status, overall_state, matched_rule_id = "INSUFFICIENT_DATA", "INSUFFICIENT_DATA", "OVERALL_INSUFFICIENT_DATA_V01"
             reason = "ASSESSMENT_AXIS_COVERAGE_BELOW_MINIMUM"
@@ -247,7 +282,18 @@ class FundamentalsAssessmentEngine:
             status=status, matched_rule_id=matched_rule_id,
             available_evidence_count=available_evidence_count,
             missing_evidence_count=missing_evidence_count,
-            axis_resolution=axis_resolution, assessment_rule_conflict_count=0,
+            axis_resolution=axis_resolution,
+            assessment_rule_conflict_count=rule["assessment_rule_conflict_count"],
+            assessment_rule_mismatch_count=rule["assessment_rule_mismatch_count"],
+            assessment_scope=assessment_scope, currentness_status=currentness_status,
+            growth_direction=axis_directions["GROWTH"],
+            profitability_direction=axis_directions["PROFITABILITY"],
+            cash_flow_direction=axis_directions["CASH_FLOW"], axis_directions=axis_directions,
+            improving_direction_axis_count=improving_axes,
+            deteriorating_direction_axis_count=deteriorating_axes,
+            negative_level_axis_count=negative_level_axes,
+            matched_candidate_rules=rule["matched_candidate_rules"],
+            expected_rule_overlaps=rule["expected_rule_overlaps"],
             reason=reason, diagnostics=diagnostics,
         )
 
@@ -297,6 +343,7 @@ class FundamentalsAssessmentEngine:
         for metric in FLOW_METRICS:
             item = self._at_current(observations, current, metric, (growth_type, f"{metric.upper()}_GROWTH"))
             output.append((item, f"{metric.upper()}_GROWTH"))
+            output.append((self._at_current(observations, current, metric, ("YOY_GROWTH_ACCELERATION",)), "YOY_GROWTH_ACCELERATION"))
         for metric in EARNINGS_METRICS:
             output.append((self._at_current(observations, current, metric, ("EARNINGS_TRANSITION",)), "EARNINGS_TRANSITION"))
         return output
@@ -322,6 +369,7 @@ class FundamentalsAssessmentEngine:
             (self._at_current(observations, current, "operating_cash_flow", (growth_type, "OPERATING_CASH_FLOW_GROWTH")), "OPERATING_CASH_FLOW_GROWTH"),
             (self._at_current(observations, current, "operating_cash_flow", ("OPERATING_CASH_FLOW_MARGIN",)), "OPERATING_CASH_FLOW_MARGIN"),
             (self._at_current(observations, current, "operating_cash_flow", ("OPERATING_CASH_FLOW_TREND",)), "OPERATING_CASH_FLOW_TREND"),
+            (self._at_current(observations, current, "operating_cash_flow", ("MARGIN_EXPANSION_TREND",)), "MARGIN_EXPANSION_TREND"),
             (self._latest_at_or_before(observations, current, "operating_cash_flow", ("TTM_YOY",)), "TTM_OPERATING_CASH_FLOW_YOY"),
             (self._latest_at_or_before(observations, current, "operating_cash_flow", ("TTM_OPERATING_CASH_FLOW_MARGIN",)), "TTM_OPERATING_CASH_FLOW_MARGIN"),
         ]
@@ -498,32 +546,110 @@ class FundamentalsAssessmentEngine:
         return "STABLE"
 
     @staticmethod
-    def _overall_state(*, available_axis_count: int, transition_codes: set[str | None], deterioration_axes: int,
-                       improvement_axes: int, axis_resolution: Mapping[str, str], momentum_state: str,
-                       risks: tuple[str, ...]) -> tuple[str, str]:
-        if available_axis_count < 2:
-            return "INSUFFICIENT_DATA", "OVERALL_INSUFFICIENT_DATA_V01"
-        if ("LOSS_TO_PROFIT" in transition_codes and improvement_axes >= 1
-                and not (axis_resolution["CASH_FLOW"] == "WEAK" and "OCF_TREND_DETERIORATING" in risks)):
-            return "TURNAROUND", "OVERALL_TURNAROUND_V01"
-        if deterioration_axes >= 3 or (
-            "PROFIT_TO_LOSS" in transition_codes and deterioration_axes >= 2
-        ):
-            return "WEAK", "OVERALL_WEAK_V01"
-        if deterioration_axes >= 2:
-            return "WEAKENING", "OVERALL_WEAKENING_V01"
-        if (axis_resolution["GROWTH"] in {"STRONG", "POSITIVE"}
-                and axis_resolution["PROFITABILITY"] in {"STRONG", "POSITIVE"}
-                and axis_resolution["CASH_FLOW"] in {"STRONG", "POSITIVE"}
-                and momentum_state in {"ACCELERATING", "IMPROVING", "STABLE"}
-                and not risks):
-            return "STRONG", "OVERALL_STRONG_V01"
-        if (improvement_axes >= 2 and not (deterioration_axes >= 2)
-                and axis_resolution["CASH_FLOW"] not in {"NEGATIVE", "WEAK"}):
-            return "IMPROVING", "OVERALL_IMPROVING_V01"
-        return "MIXED", "OVERALL_MIXED_V01"
+    def _direction_vote(evidence: list[AssessmentEvidence], *, positive_codes: set[str], negative_codes: set[str]) -> str:
+        """Vote once per economic metric so raw evidence cannot over-count."""
 
-    def _insufficient(self, *, ticker: str, family: str, requested: str | None, reason: str) -> FundamentalsAssessmentResult:
+        votes: dict[str, str] = {}
+        for item in evidence:
+            if item.status != READY:
+                continue
+            metric = item.metric
+            if item.explanation_code in positive_codes:
+                votes[metric] = "IMPROVING"
+            elif item.explanation_code in negative_codes:
+                votes[metric] = "DETERIORATING"
+        values = tuple(votes.values())
+        if not values:
+            return UNAVAILABLE
+        improving = values.count("IMPROVING")
+        deteriorating = values.count("DETERIORATING")
+        if improving > deteriorating:
+            return "IMPROVING"
+        if deteriorating > improving:
+            return "DETERIORATING"
+        return "STABLE"
+
+    @classmethod
+    def _growth_direction(cls, evidence: list[AssessmentEvidence]) -> str:
+        positive = {"YOY_ACCELERATING", "LOSS_TO_PROFIT", "LOSS_NARROWING", "POSITIVE_GROWTH_STREAK"}
+        negative = {"YOY_DECELERATING", "PROFIT_TO_LOSS", "LOSS_WIDENING"}
+        return cls._direction_vote(evidence, positive_codes=positive, negative_codes=negative)
+
+    @classmethod
+    def _profitability_direction(cls, evidence: list[AssessmentEvidence]) -> str:
+        return cls._direction_vote(
+            evidence,
+            positive_codes={"MARGIN_EXPANDING"},
+            negative_codes={"MARGIN_CONTRACTING"},
+        )
+
+    @classmethod
+    def _cash_flow_direction(cls, evidence: list[AssessmentEvidence]) -> str:
+        return cls._direction_vote(
+            evidence,
+            positive_codes={"OCF_TREND_IMPROVING", "MARGIN_EXPANDING", "OPERATING_CASH_FLOW_YOY_POSITIVE", "TTM_OPERATING_CASH_FLOW_YOY_POSITIVE"},
+            negative_codes={"OCF_TREND_DETERIORATING", "MARGIN_CONTRACTING", "OPERATING_CASH_FLOW_YOY_NEGATIVE", "TTM_OPERATING_CASH_FLOW_YOY_NEGATIVE"},
+        )
+
+    @staticmethod
+    def _momentum_direction(state: str) -> str:
+        if state in {"ACCELERATING", "IMPROVING"}:
+            return "IMPROVING"
+        if state in {"DECELERATING", "DETERIORATING"}:
+            return "DETERIORATING"
+        if state == "STABLE":
+            return "STABLE"
+        return UNAVAILABLE
+
+    @staticmethod
+    def _rule_diagnostics(*, available_axis_count: int, transition_codes: set[str | None], improving_axes: int,
+                          deteriorating_axes: int, negative_level_axes: int, axis_resolution: Mapping[str, str],
+                          axis_directions: Mapping[str, str], momentum_state: str,
+                          risks: tuple[str, ...]) -> dict[str, Any]:
+        severe_cash = axis_resolution["CASH_FLOW"] == "WEAK" and "OCF_TREND_DETERIORATING" in risks
+        strong_candidate = (
+            all(axis_resolution[axis] in {"STRONG", "POSITIVE"} for axis in ("GROWTH", "PROFITABILITY", "CASH_FLOW"))
+            and not {"PROFIT_TO_LOSS", "LOSS_TO_PROFIT"}.intersection(transition_codes)
+            and deteriorating_axes == 0
+            and momentum_state not in {"DECELERATING", "DETERIORATING"}
+        )
+        candidates: dict[str, bool] = {
+            "OVERALL_INSUFFICIENT_DATA_V01": available_axis_count < 2,
+            "OVERALL_TURNAROUND_V01": "LOSS_TO_PROFIT" in transition_codes and improving_axes >= 1 and not severe_cash,
+            "OVERALL_WEAK_V01": negative_level_axes >= 3 or ("PROFIT_TO_LOSS" in transition_codes and negative_level_axes >= 2),
+            "OVERALL_WEAKENING_V01": deteriorating_axes >= 2 and not (negative_level_axes >= 3 or ("PROFIT_TO_LOSS" in transition_codes and negative_level_axes >= 2)),
+            "OVERALL_STRONG_V01": strong_candidate,
+            "OVERALL_IMPROVING_V01": (
+                improving_axes >= 2 and deteriorating_axes < 2 and negative_level_axes < 2
+                and axis_resolution["CASH_FLOW"] not in {"NEGATIVE", "WEAK"}
+                and not strong_candidate
+            ),
+        }
+        matched = [name for name, value in candidates.items() if value]
+        expected_pairs = {
+            tuple(sorted(("OVERALL_TURNAROUND_V01", "OVERALL_IMPROVING_V01"))),
+        }
+        unexpected = [tuple(sorted((left, right))) for index, left in enumerate(matched) for right in matched[index + 1:]
+                      if tuple(sorted((left, right))) not in expected_pairs]
+        if not matched:
+            matched.append("OVERALL_MIXED_V01")
+        chosen = next((name for name in (
+            "OVERALL_INSUFFICIENT_DATA_V01", "OVERALL_TURNAROUND_V01", "OVERALL_WEAK_V01",
+            "OVERALL_WEAKENING_V01", "OVERALL_STRONG_V01", "OVERALL_IMPROVING_V01",
+            "OVERALL_MIXED_V01",
+        ) if name in matched), "OVERALL_MIXED_V01")
+        return {
+            "overall_state": chosen.removeprefix("OVERALL_").removesuffix("_V01"),
+            "matched_rule_id": chosen,
+            "matched_candidate_rules": tuple(matched),
+            "expected_rule_overlaps": tuple(sorted(pair) for pair in expected_pairs if all(item in matched for item in pair)),
+            "assessment_rule_conflict_count": len(unexpected),
+            "assessment_rule_mismatch_count": int(chosen not in matched),
+        }
+
+    def _insufficient(self, *, ticker: str, family: str, requested: str | None, reason: str,
+                      assessment_scope: str = ASSESSMENT_SCOPE_RANGE,
+                      currentness_status: str = CURRENTNESS_RANGE_ONLY) -> FundamentalsAssessmentResult:
         return FundamentalsAssessmentResult(
             ticker=ticker, company_family=family, requested_as_of=requested,
             current_fiscal_year=None, current_fiscal_period=None,
@@ -533,6 +659,9 @@ class FundamentalsAssessmentEngine:
             available_axis_count=0, missing_axis_count=self.total_axis_count,
             pit_available_from=None, status="INSUFFICIENT_DATA",
             matched_rule_id="OVERALL_INSUFFICIENT_DATA_V01",
+            assessment_scope=assessment_scope, currentness_status=currentness_status,
+            axis_directions={axis: UNAVAILABLE for axis in AXES},
+            matched_candidate_rules=("OVERALL_INSUFFICIENT_DATA_V01",),
             reason=reason,
         )
 
@@ -546,10 +675,16 @@ def assess_fundamentals(
     source: DerivedMetricsResult | DerivedMetricsBuild,
     *,
     requested_as_of: Any = None,
+    assessment_scope: str = ASSESSMENT_SCOPE_RANGE,
+    expected_current_fiscal_year: str | None = None,
 ) -> FundamentalsAssessmentResult:
     """Convenience function for the pure assessment engine."""
 
-    return FundamentalsAssessmentEngine().assess(source, requested_as_of=requested_as_of)
+    return FundamentalsAssessmentEngine().assess(
+        source, requested_as_of=requested_as_of,
+        assessment_scope=assessment_scope,
+        expected_current_fiscal_year=expected_current_fiscal_year,
+    )
 
 
 FundamentalsAssessment = FundamentalsAssessmentEngine

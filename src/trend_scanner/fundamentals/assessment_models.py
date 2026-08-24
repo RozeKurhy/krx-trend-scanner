@@ -82,6 +82,18 @@ class FundamentalsAssessmentResult:
     missing_evidence_count: int = 0
     axis_resolution: Mapping[str, str] = field(default_factory=dict)
     assessment_rule_conflict_count: int = 0
+    assessment_rule_mismatch_count: int = 0
+    assessment_scope: str = "EXPLICIT_RANGE"
+    currentness_status: str = "RANGE_ONLY"
+    growth_direction: str = "UNAVAILABLE"
+    profitability_direction: str = "UNAVAILABLE"
+    cash_flow_direction: str = "UNAVAILABLE"
+    axis_directions: Mapping[str, str] = field(default_factory=dict)
+    improving_direction_axis_count: int = 0
+    deteriorating_direction_axis_count: int = 0
+    negative_level_axis_count: int = 0
+    matched_candidate_rules: tuple[str, ...] = ()
+    expected_rule_overlaps: tuple[tuple[str, str], ...] = ()
     reason: str | None = None
     diagnostics: Mapping[str, Any] = field(default_factory=dict)
 
@@ -90,6 +102,9 @@ class FundamentalsAssessmentResult:
         object.__setattr__(self, "risks", tuple(self.risks))
         object.__setattr__(self, "evidence", tuple(self.evidence))
         object.__setattr__(self, "axis_resolution", dict(self.axis_resolution))
+        object.__setattr__(self, "axis_directions", dict(self.axis_directions))
+        object.__setattr__(self, "matched_candidate_rules", tuple(self.matched_candidate_rules))
+        object.__setattr__(self, "expected_rule_overlaps", tuple(tuple(item) for item in self.expected_rule_overlaps))
         object.__setattr__(self, "diagnostics", dict(self.diagnostics))
 
     def to_dict(self) -> dict[str, Any]:
@@ -117,6 +132,18 @@ class FundamentalsAssessmentResult:
             "matched_rule_id": self.matched_rule_id,
             "axis_resolution": dict(self.axis_resolution),
             "assessment_rule_conflict_count": self.assessment_rule_conflict_count,
+            "assessment_rule_mismatch_count": self.assessment_rule_mismatch_count,
+            "assessment_scope": self.assessment_scope,
+            "currentness_status": self.currentness_status,
+            "growth_direction": self.growth_direction,
+            "profitability_direction": self.profitability_direction,
+            "cash_flow_direction": self.cash_flow_direction,
+            "axis_directions": dict(self.axis_directions),
+            "improving_direction_axis_count": self.improving_direction_axis_count,
+            "deteriorating_direction_axis_count": self.deteriorating_direction_axis_count,
+            "negative_level_axis_count": self.negative_level_axis_count,
+            "matched_candidate_rules": list(self.matched_candidate_rules),
+            "expected_rule_overlaps": [list(item) for item in self.expected_rule_overlaps],
             "reason": self.reason,
             "diagnostics": dict(self.diagnostics),
         }

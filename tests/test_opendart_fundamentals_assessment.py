@@ -5,6 +5,8 @@ import pytest
 from trend_scanner.fundamentals.assessment import FundamentalsAssessmentEngine
 from trend_scanner.fundamentals.assessment_models import FundamentalsAssessmentResult
 from trend_scanner.fundamentals.derived_metrics import DerivedMetricObservation, DerivedMetricsResult
+from trend_scanner.fundamentals.derived_metrics_provider import DerivedMetricsBuild
+from trend_scanner.fundamentals.assessment_provider import FundamentalsAssessmentProvider
 
 
 AS_OF = "2025-10-15"
@@ -139,3 +141,107 @@ def test_pit_and_cutoff_fail_closed_without_future_evidence():
     mismatch = FundamentalsAssessmentEngine().assess(_scenario(), requested_as_of="2025-11-01")
     assert mismatch.status == "INPUT_NOT_READY"
     assert mismatch.matched_rule_id == "INPUT_CUTOFF_MISMATCH"
+
+
+def test_currentness_scope_and_stale_range_are_explicit():
+    source = DerivedMetricsResult(tuple(_scenario().observations))
+    build = DerivedMetricsBuild(
+        ticker="TEST", requested_as_of=AS_OF, fiscal_years=("2023", "2024", "2025"),
+        periodization_builds=(), canonical_observations=(), result=source,
+    )
+    current = FundamentalsAssessmentEngine().assess(
+        build, requested_as_of=AS_OF, assessment_scope="CURRENT_AS_OF", expected_current_fiscal_year="2025",
+    )
+    assert current.assessment_scope == "CURRENT_AS_OF"
+    assert current.currentness_status == "VERIFIED"
+    stale_build = DerivedMetricsBuild(
+        ticker="TEST", requested_as_of=AS_OF, fiscal_years=("2023", "2024"),
+        periodization_builds=(), canonical_observations=(), result=source,
+    )
+    stale = FundamentalsAssessmentEngine().assess(
+        stale_build, requested_as_of=AS_OF, assessment_scope="CURRENT_AS_OF", expected_current_fiscal_year="2025",
+    )
+    assert stale.currentness_status == "STALE_INPUT_RANGE"
+    assert stale.status == "INPUT_NOT_READY"
+
+
+def test_fy_wins_q4_and_input_order_is_invariant():
+    q4 = [_item(item.metric, item.metric_type, item.value, metadata=dict(item.metadata), period="Q4") for item in _scenario()]
+    fy = [_item(item.metric, item.metric_type, item.value, metadata=dict(item.metadata), period="FY") for item in _scenario()]
+    engine = FundamentalsAssessmentEngine()
+    first = engine.assess(DerivedMetricsResult(tuple(q4 + fy)))
+    second = engine.assess(DerivedMetricsResult(tuple(reversed(fy + q4))))
+    assert first.current_fiscal_period == "FY"
+    assert second.current_fiscal_period == "FY"
+    assert first.overall_state == second.overall_state
+    assert first.matched_rule_id == second.matched_rule_id
+    assert [item.to_dict() for item in first.evidence] == [item.to_dict() for item in second.evidence]
+
+
+def test_level_and_direction_are_separate_for_positive_but_slowing():
+    result = FundamentalsAssessmentEngine().assess(_scenario(
+        acceleration=-1, op_expansion="CONTRACTING", net_expansion="CONTRACTING",
+        ocf_trend="DETERIORATING",
+    ))
+    assert result.growth_state in {"POSITIVE", "STRONG", "MIXED"}
+    assert result.growth_direction == "DETERIORATING"
+    assert result.profitability_direction == "DETERIORATING"
+    assert result.cash_flow_direction == "DETERIORATING"
+    assert result.overall_state != "IMPROVING"
+
+
+def test_weak_level_can_have_improving_direction():
+    result = FundamentalsAssessmentEngine().assess(_scenario(
+        op_margin=-1, net_margin=-1, op_expansion="EXPANDING", net_expansion="EXPANDING",
+        op_transition="LOSS_NARROWING", ocf_trend="IMPROVING",
+    ))
+    assert result.profitability_direction == "IMPROVING"
+    assert result.cash_flow_direction == "IMPROVING"
+    assert result.overall_state == "IMPROVING"
+    assert result.negative_level_axis_count < 2
+
+
+def test_expected_turnaround_overlap_is_diagnosed_without_conflict():
+    result = FundamentalsAssessmentEngine().assess(_scenario(op_transition="LOSS_TO_PROFIT"))
+    assert "OVERALL_TURNAROUND_V01" in result.matched_candidate_rules
+    assert "OVERALL_IMPROVING_V01" in result.matched_candidate_rules
+    assert result.assessment_rule_conflict_count == 0
+    assert result.assessment_rule_mismatch_count == 0
+
+
+def test_unexpected_turnaround_weak_overlap_is_counted_as_conflict():
+    result = FundamentalsAssessmentEngine().assess(_scenario(
+        revenue=-10, operating_income=-20, net_income=-20, ocf=-20,
+        op_margin=-2, net_margin=-3, ocf_margin=-4,
+        op_expansion="EXPANDING", net_expansion="FLAT", ocf_trend="IMPROVING",
+        acceleration=0, streak=0, op_transition="LOSS_TO_PROFIT", net_transition="PROFIT_DECLINE",
+    ))
+    assert result.overall_state == "TURNAROUND"
+    assert "OVERALL_WEAK_V01" in result.matched_candidate_rules
+    assert result.assessment_rule_conflict_count >= 1
+
+
+def test_strong_candidate_does_not_create_undocumented_improving_overlap():
+    result = FundamentalsAssessmentEngine().assess(_scenario())
+    assert result.overall_state == "STRONG"
+    assert result.assessment_rule_conflict_count == 0
+
+
+def test_provider_build_current_declares_requested_year_window():
+    class FakeDerivedProvider:
+        def __init__(self):
+            self.calls = []
+
+        def build(self, ticker, fiscal_years, requested_as_of, **kwargs):
+            years = tuple(str(year) for year in fiscal_years)
+            self.calls.append((ticker, years, requested_as_of))
+            return DerivedMetricsBuild(
+                ticker=str(ticker), requested_as_of=str(requested_as_of), fiscal_years=years,
+                periodization_builds=(), canonical_observations=(), result=_scenario(),
+            )
+
+    fake = FakeDerivedProvider()
+    result = FundamentalsAssessmentProvider(fake).build_current("005930", "2025-10-15")
+    assert fake.calls == [("005930", ("2023", "2024", "2025"), "2025-10-15")]
+    assert result.assessment_scope == "CURRENT_AS_OF"
+    assert result.currentness_status == "VERIFIED"

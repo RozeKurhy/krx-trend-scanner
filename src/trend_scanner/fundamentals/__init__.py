@@ -39,7 +39,16 @@ from .derived_metrics import (
 )
 from .derived_metrics_provider import DerivedMetricsBuild, DerivedMetricsProvider
 from .assessment_models import AssessmentEvidence, FundamentalsAssessmentResult
-from .assessment import FundamentalsAssessment, FundamentalsAssessmentEngine, assess_fundamentals
+from .assessment import (
+    ASSESSMENT_SCOPE_CURRENT,
+    ASSESSMENT_SCOPE_RANGE,
+    CURRENTNESS_RANGE_ONLY,
+    CURRENTNESS_STALE,
+    CURRENTNESS_VERIFIED,
+    FundamentalsAssessment,
+    FundamentalsAssessmentEngine,
+    assess_fundamentals,
+)
 from .assessment_provider import FundamentalsAssessmentProvider
 
 __all__ = [
@@ -94,4 +103,9 @@ __all__ = [
     "FundamentalsAssessmentEngine",
     "assess_fundamentals",
     "FundamentalsAssessmentProvider",
+    "ASSESSMENT_SCOPE_CURRENT",
+    "ASSESSMENT_SCOPE_RANGE",
+    "CURRENTNESS_RANGE_ONLY",
+    "CURRENTNESS_STALE",
+    "CURRENTNESS_VERIFIED",
 ]

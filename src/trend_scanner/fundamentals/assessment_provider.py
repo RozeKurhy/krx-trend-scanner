@@ -10,7 +10,11 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Any, Iterable, Mapping
 
-from .assessment import FundamentalsAssessmentEngine
+from .assessment import (
+    ASSESSMENT_SCOPE_CURRENT,
+    ASSESSMENT_SCOPE_RANGE,
+    FundamentalsAssessmentEngine,
+)
 from .assessment_models import FundamentalsAssessmentResult
 from .derived_metrics_provider import DerivedMetricsProvider
 
@@ -49,8 +53,38 @@ class FundamentalsAssessmentProvider:
             str(ticker), fiscal_years, cutoff, company=company,
             company_metadata=company_metadata, force_refresh=force_refresh,
         )
-        # The engine validates that the build cutoff and every declared metric
-        # cutoff are identical to the requested cutoff.
-        return self.assessment_engine.assess(derived_build, requested_as_of=cutoff)
+        # A caller-provided fiscal-year list is an explicit range, not a claim
+        # about the full current filing universe.
+        return self.assessment_engine.assess(
+            derived_build, requested_as_of=cutoff,
+            assessment_scope=ASSESSMENT_SCOPE_RANGE,
+        )
+
+    def build_current(
+        self,
+        ticker: str,
+        requested_as_of: str | date,
+        *,
+        lookback_fiscal_years: int = 3,
+        company: Mapping[str, Any] | None = None,
+        company_metadata: Mapping[str, Any] | None = None,
+        force_refresh: bool = False,
+    ) -> FundamentalsAssessmentResult:
+        """Build a CURRENT_AS_OF assessment over a Y-2..Y fiscal window."""
+
+        cutoff = _as_of(requested_as_of)
+        if lookback_fiscal_years < 1:
+            raise ValueError("lookback_fiscal_years must be >= 1")
+        year = int(cutoff[:4])
+        fiscal_years = tuple(str(value) for value in range(year - lookback_fiscal_years + 1, year + 1))
+        derived_build = self.derived_metrics_provider.build(
+            str(ticker), fiscal_years, cutoff, company=company,
+            company_metadata=company_metadata, force_refresh=force_refresh,
+        )
+        return self.assessment_engine.assess(
+            derived_build, requested_as_of=cutoff,
+            assessment_scope=ASSESSMENT_SCOPE_CURRENT,
+            expected_current_fiscal_year=str(year),
+        )
 
     assess = build
