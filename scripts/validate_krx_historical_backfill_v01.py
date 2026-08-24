@@ -22,7 +22,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "src"
 sys.path.insert(0, str(SRC))
 
-from trend_scanner.data.krx_historical_backfill import KrxHistoricalBackfillRunner, candidate_dates  # noqa: E402
+from trend_scanner.data.krx_historical_backfill import KrxHistoricalBackfillRunner, candidate_dates, prioritize_blockers  # noqa: E402
 from trend_scanner.data.krx_openapi_client import KrxOpenApiAuthorizationError, KrxOpenApiClient  # noqa: E402
 from trend_scanner.data.krx_openapi_quota import LocalKrxOpenApiQuota  # noqa: E402
 from trend_scanner.data.krx_raw_stock_provider import (  # noqa: E402
@@ -46,6 +46,7 @@ ALLOWED_PATHS = {
     "tests/test_krx_raw_stock_provider.py",
     "tests/test_krx_raw_stock_store.py",
     "tests/test_krx_historical_backfill.py",
+    "tests/test_krx_open_api_validation_v01.py",
     "scripts/backfill_krx_raw_stock_v01.py",
     "scripts/validate_krx_historical_backfill_v01.py",
     "docs/architecture/krx_historical_backfill_v01.md",
@@ -66,8 +67,31 @@ FROZEN_PATHS = {
 SECRET_ASSIGNMENT = re.compile(r"\b(?:KRX_ID|KRX_PW|KRX_OPEN_API_AUTH_KEY)\s*=\s*(['\"])(?!<redacted>|your_|change_me|$)[^'\"]+\1")
 
 
+def pilot_status(results: list[dict[str, Any]]) -> tuple[str, list[str]]:
+    """Return the highest-priority actual blocker from bounded pilot results."""
+
+    blockers = prioritize_blockers(
+        blocker
+        for result in results
+        for blocker in result.get("blockers", [])
+    )
+    return ("PASS" if not blockers else blockers[0], blockers)
+
+
 def _git(*args: str) -> str:
     return subprocess.check_output(["git", *args], cwd=ROOT, text=True).strip()
+
+
+def _validation_source_head(implementation_head: str) -> str:
+    """Return the HEAD that actually supplied source, or flag a dirty source tree."""
+
+    dirty = _git("status", "--porcelain", "--untracked-files=all").splitlines()
+    source_dirty = any(
+        (line[3:] if len(line) >= 4 else line).strip()
+        and not (line[3:] if len(line) >= 4 else line).strip().startswith("artifacts/")
+        for line in dirty
+    )
+    return "WORKTREE_DIRTY" if source_dirty else implementation_head
 
 
 def _write_json(path: Path, payload: Any) -> None:
@@ -316,7 +340,7 @@ def _coverage(store: KrxRawStockStore, start: str, end: str) -> dict[str, Any]:
         "failed_date_count": len(failed_dates),
         "failure_date_count": len(failed_dates),
         "partial_date_count": len(partial_dates),
-        "unexplained_missing_date_count": len([day for day in candidates if day not in complete_dates and day not in no_data_dates]),
+        "unexplained_missing_date_count": len(missing_dates),
         "unexplained_missing_partition_count": missing_partition_count,
         "missing_kospi_partition_count": missing_by_market["KOSPI"],
         "missing_kosdaq_partition_count": missing_by_market["KOSDAQ"],
@@ -404,8 +428,10 @@ def _live_pilot(counters: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any
             item.get("error_code") in {"RAW_SNAPSHOT_SCHEMA_ERROR", "RAW_SNAPSHOT_HTTP_STATUS"}
             for item in diagnostics
         )
+        status, pilot_blockers = pilot_status(results)
         return {
-            "status": "PASS" if not any(item["blockers"] for item in results) else "BLOCKED_KRX_SCHEMA",
+            "status": status,
+            "blockers": pilot_blockers,
             "dates": results,
             "audit": audit,
             "diagnostics": diagnostics,
@@ -466,6 +492,7 @@ def run(mode: str, output: Path, raw_root: Path) -> dict[str, Any]:
         raise ValueError(f"unknown mode: {mode}")
 
     diff_guard = _production_diff_guard()
+    validation_source_head = _validation_source_head(diff_guard["implementation_head"])
     counters.update({
         "production_consumer_changed_count": diff_guard["production_consumer_changed_count"],
         "legacy_cache_modified_count": diff_guard["legacy_cache_modified_count"],
@@ -473,7 +500,7 @@ def run(mode: str, output: Path, raw_root: Path) -> dict[str, Any]:
         "corporate_action_state_modified_count": diff_guard["corporate_action_state_modified_count"],
         "source_contracts_modified_count": diff_guard["source_contracts_modified_count"],
         "secret_occurrence_count": _secret_count(diff_guard["changed_paths"]),
-        "validation_source_head_mismatch_count": int(diff_guard["start_head"] != FIX_START_HEAD),
+        "validation_source_head_mismatch_count": int(validation_source_head != diff_guard["implementation_head"]),
         "disallowed_path_count": diff_guard["disallowed_path_count"],
     })
     required_zero = [
@@ -490,7 +517,32 @@ def run(mode: str, output: Path, raw_root: Path) -> dict[str, Any]:
         "opendart_request_count", "secret_occurrence_count", "validation_source_head_mismatch_count",
         "disallowed_path_count",
     ]
-    blockers = [name for name in required_zero if counters.get(name, 0) != 0]
+    counter_blocker_map = {
+        "raw_provider_test_failure_count": "BLOCKED_KRX_SCHEMA",
+        "snapshot_schema_error_count": "BLOCKED_KRX_SCHEMA",
+        "source_date_mismatch_count": "BLOCKED_KRX_SCHEMA",
+        "duplicate_ticker_count": "BLOCKED_KRX_SCHEMA",
+        "ticker_format_error_count": "BLOCKED_KRX_SCHEMA",
+        "numeric_parse_error_count": "BLOCKED_KRX_SCHEMA",
+        "unexpected_records_key_count": "BLOCKED_KRX_SCHEMA",
+        "required_field_missing_count": "BLOCKED_KRX_SCHEMA",
+        "ohlc_relation_error_count": "BLOCKED_KRX_SCHEMA",
+        "partition_integrity_error_count": "BLOCKED_RAW_STORE_INTEGRITY",
+        "content_hash_mismatch_count": "BLOCKED_RAW_STORE_INTEGRITY",
+        "file_hash_mismatch_count": "BLOCKED_RAW_STORE_INTEGRITY",
+        "cross_market_ticker_conflict_count": "BLOCKED_CROSS_MARKET_TICKER_CONFLICT",
+        "failed_date_count": "BLOCKED_COVERAGE",
+        "partial_date_count": "BLOCKED_COVERAGE",
+        "unexplained_missing_date_count": "BLOCKED_COVERAGE",
+        "unexplained_missing_partition_count": "BLOCKED_COVERAGE",
+        "http_401_count": "BLOCKED_KRX_AUTH",
+        "http_403_count": "BLOCKED_KRX_AUTH",
+        "http_429_count": "BACKFILL_PAUSED_QUOTA",
+        "validation_source_head_mismatch_count": "BLOCKED_PROVENANCE",
+        "disallowed_path_count": "BLOCKED_PRODUCTION_REGRESSION",
+        "secret_occurrence_count": "BLOCKED_PROVENANCE",
+    }
+    blockers = [counter_blocker_map.get(name, name) for name in required_zero if counters.get(name, 0) != 0]
     if mode == "offline" and counters.get("offline_test_passed", 0) <= 0:
         blockers.append("BLOCKED_MORE_EVIDENCE_REQUIRED")
     if mode == "live-pilot":
@@ -500,7 +552,7 @@ def run(mode: str, output: Path, raw_root: Path) -> dict[str, Any]:
     if mode == "production-coverage":
         if counters.get("candidate_date_count", 0) <= 0 or counters.get("production_complete_partition_count", 0) <= 0 or counters.get("production_total_raw_rows", 0) <= 0:
             blockers.append("BLOCKED_COVERAGE")
-    blockers = list(dict.fromkeys(blockers))
+    blockers = prioritize_blockers(blockers)
     if any(item in blockers for item in {"unexplained_missing_date_count", "unexplained_missing_partition_count"}):
         blockers = ["BLOCKED_COVERAGE", *[item for item in blockers if item != "BLOCKED_COVERAGE"]]
     coverage_ready = (
@@ -511,8 +563,8 @@ def run(mode: str, output: Path, raw_root: Path) -> dict[str, Any]:
         and counters.get("production_total_raw_rows", 0) > 0
     )
     if not blockers and coverage_ready:
-        status = "READY_FOR_ARCHITECT_KRX_HISTORICAL_BACKFILL_V01_FIX01_REVIEW"
-        recommendation = "READY_FOR_ARCHITECT_KRX_HISTORICAL_BACKFILL_V01_FIX01_REVIEW"
+        status = "READY_FOR_ARCHITECT_KRX_HISTORICAL_BACKFILL_V01_FIX02_REVIEW"
+        recommendation = "READY_FOR_ARCHITECT_KRX_HISTORICAL_BACKFILL_V01_FIX02_REVIEW"
     elif not blockers:
         status = "BACKFILL_IN_PROGRESS"
         recommendation = "BLOCKED_MORE_EVIDENCE_REQUIRED"
@@ -607,17 +659,24 @@ def run(mode: str, output: Path, raw_root: Path) -> dict[str, Any]:
         "unexplained_missing_partition_count": coverage_payload.get("unexplained_missing_partition_count", 0),
         "missing_dates": coverage_payload.get("missing_dates", []),
     })
+    pilot_diagnostics = pilot_summary.get("diagnostics", [])
+    if pilot_diagnostics:
+        schema_evidence_status = "BLOCKED_KRX_SCHEMA" if pilot_summary.get("status") == "BLOCKED_KRX_SCHEMA" else "NO_SCHEMA_BLOCKER"
+    elif pilot_summary.get("status") == "BLOCKED_KRX_SCHEMA":
+        schema_evidence_status = "LEGACY_GENERIC_BLOCKER"
+    else:
+        schema_evidence_status = "NOT_RUN"
     _write_json(output / "schema_blocker_evidence.json", {
-        "status": pilot_summary.get("status") if pilot_summary.get("status") == "BLOCKED_KRX_SCHEMA" else "NOT_RUN",
-        "observations": pilot_summary.get("diagnostics", []),
-        "note": "No new KRX request was issued in this validation run; prior live pilot did not persist exact provider diagnostic fields." if not pilot_summary.get("diagnostics") else None,
+        "status": schema_evidence_status,
+        "observations": pilot_diagnostics,
+        "note": "No new KRX request was issued in this validation run; prior live pilot did not persist exact provider diagnostic fields." if not pilot_diagnostics else None,
     })
     summary = {
         "architecture_version": "KRX_HISTORICAL_BACKFILL_V01",
         "mode": mode,
         "start_head": FIX_START_HEAD,
         "implementation_head": diff_guard["implementation_head"],
-        "validation_source_head": diff_guard["implementation_head"],
+        "validation_source_head": validation_source_head,
         "end_head": None,
         "status": status,
         "recommendation": recommendation,
@@ -632,7 +691,7 @@ def run(mode: str, output: Path, raw_root: Path) -> dict[str, Any]:
         "architecture_version": "KRX_HISTORICAL_BACKFILL_V01",
         "start_head": FIX_START_HEAD,
         "implementation_head": diff_guard["implementation_head"],
-        "validation_source_head": diff_guard["implementation_head"],
+        "validation_source_head": validation_source_head,
         "end_head": None,
         "artifacts": artifacts + ["krx_historical_backfill_v01_manifest.json"],
         "artifact_count": len(artifacts) + 1,

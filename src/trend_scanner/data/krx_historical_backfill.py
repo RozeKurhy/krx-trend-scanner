@@ -29,6 +29,24 @@ from trend_scanner.data.krx_raw_stock_store import KrxRawStockStore
 
 KST = ZoneInfo("Asia/Seoul")
 NO_DATA_FINALIZATION_LAG_DAYS = 2
+BLOCKER_PRIORITY = (
+    "BLOCKED_KRX_AUTH",
+    "BACKFILL_PAUSED_QUOTA",
+    "BACKFILL_PAUSED_TASK_BUDGET",
+    "BLOCKED_KRX_SCHEMA",
+    "BLOCKED_RAW_STORE_INTEGRITY",
+    "BLOCKED_CROSS_MARKET_TICKER_CONFLICT",
+    "BLOCKED_COVERAGE",
+    "BLOCKED_MORE_EVIDENCE_REQUIRED",
+)
+
+
+def prioritize_blockers(blockers: Iterable[str]) -> list[str]:
+    """Deduplicate blockers while preserving the declared status precedence."""
+
+    unique = list(dict.fromkeys(str(item) for item in blockers if item))
+    rank = {name: index for index, name in enumerate(BLOCKER_PRIORITY)}
+    return sorted(unique, key=lambda item: (rank.get(item, len(rank)), item))
 
 
 def candidate_dates(start: Any, end: Any) -> list[str]:
@@ -278,11 +296,18 @@ class KrxHistoricalBackfillRunner:
         client = getattr(self.provider, "client", None)
         if client is not None:
             status_counts.update({str(key): int(value) for key, value in getattr(client, "status_counts", {}).items()})
-        # Preserve first occurrence while keeping the report deterministic.
-        blockers = list(dict.fromkeys(blockers))
-        if not blockers and aggregate["complete_date_count"] + aggregate["no_data_date_count"] < len(dates):
+        if aggregate["integrity_error_count"] > 0:
+            blockers.append("BLOCKED_RAW_STORE_INTEGRITY")
+        if aggregate["cross_market_ticker_conflict_count"] > 0:
+            blockers.append("BLOCKED_CROSS_MARKET_TICKER_CONFLICT")
+        if (
+            aggregate["complete_date_count"] + aggregate["no_data_date_count"] != len(dates)
+            or aggregate["failed_date_count"] > 0
+            or aggregate["partial_date_count"] > 0
+        ):
             blockers.append("BLOCKED_COVERAGE")
-        status = "READY_FOR_ARCHITECT_KRX_HISTORICAL_BACKFILL_V01_REVIEW" if not blockers and aggregate["failed_date_count"] == 0 and aggregate["partial_date_count"] == 0 else (blockers[0] if blockers else "BACKFILL_IN_PROGRESS")
+        blockers = prioritize_blockers(blockers)
+        status = "READY_FOR_ARCHITECT_KRX_HISTORICAL_BACKFILL_V01_FIX02_REVIEW" if not blockers else blockers[0]
         return {
             "status": status,
             "recommendation": "RECOMMEND_PROCEED_TO_MARKET_DATA_REPOSITORY_V02" if status.startswith("READY_") else status,
@@ -309,6 +334,8 @@ class KrxHistoricalBackfillRunner:
 
 __all__ = [
     "NO_DATA_FINALIZATION_LAG_DAYS",
+    "BLOCKER_PRIORITY",
     "KrxHistoricalBackfillRunner",
     "candidate_dates",
+    "prioritize_blockers",
 ]

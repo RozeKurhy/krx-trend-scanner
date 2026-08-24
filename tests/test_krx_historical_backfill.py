@@ -8,7 +8,7 @@ from trend_scanner.data.krx_openapi_quota import KrxOpenApiQuotaExceeded
 from trend_scanner.data.krx_raw_stock_provider import RAW_COLUMNS
 from trend_scanner.data.krx_raw_stock_store import KrxRawStockStore
 from trend_scanner.data.krx_historical_backfill import KrxHistoricalBackfillRunner, candidate_dates
-from scripts.validate_krx_historical_backfill_v01 import _coverage
+from scripts.validate_krx_historical_backfill_v01 import _coverage, _validation_source_head, pilot_status
 
 
 def _frame(day, ticker):
@@ -116,6 +116,47 @@ def test_cross_market_conflict_is_counted(tmp_path):
     runner, _ = _runner(tmp_path, _ConflictProvider())
     result = runner.run("2020-01-03", "2020-01-03", max_task_attempts=2)
     assert result["aggregate"]["cross_market_ticker_conflict_count"] == 1
+    assert not result["status"].startswith("READY_")
+    assert "BLOCKED_CROSS_MARKET_TICKER_CONFLICT" in result["blockers"]
+
+
+def test_integrity_error_cannot_ready(tmp_path):
+    provider = _Provider()
+    runner, _ = _runner(tmp_path, provider)
+    runner.run("2020-01-03", "2020-01-03", max_task_attempts=2)
+    path = tmp_path / "raw" / "market=KOSPI" / "year=2020" / "2020-01-03.parquet"
+    path.write_bytes(path.read_bytes() + b"corrupt")
+    result = runner.run("2020-01-03", "2020-01-03", resume=True, max_task_attempts=2)
+    assert result["aggregate"]["integrity_error_count"] > 0
+    assert result["status"] == "BLOCKED_RAW_STORE_INTEGRITY"
+    assert "BLOCKED_RAW_STORE_INTEGRITY" in result["blockers"]
+
+
+@pytest.mark.parametrize(
+    ("runner_blocker", "expected_status"),
+    [
+        ("BLOCKED_KRX_AUTH", "BLOCKED_KRX_AUTH"),
+        ("BACKFILL_PAUSED_QUOTA", "BACKFILL_PAUSED_QUOTA"),
+        ("BLOCKED_KRX_SCHEMA", "BLOCKED_KRX_SCHEMA"),
+        ("BLOCKED_COVERAGE", "BLOCKED_COVERAGE"),
+        ("BLOCKED_RAW_STORE_INTEGRITY", "BLOCKED_RAW_STORE_INTEGRITY"),
+        ("BLOCKED_CROSS_MARKET_TICKER_CONFLICT", "BLOCKED_CROSS_MARKET_TICKER_CONFLICT"),
+    ],
+)
+def test_pilot_preserves_actual_blocker(runner_blocker, expected_status):
+    status, blockers = pilot_status([{"blockers": [runner_blocker]}])
+    assert status == expected_status
+    assert blockers == [expected_status]
+
+
+def test_validation_source_head_detects_dirty_source(monkeypatch):
+    monkeypatch.setattr(
+        "scripts.validate_krx_historical_backfill_v01._git",
+        lambda *args: " M src/trend_scanner/data/krx_historical_backfill.py",
+    )
+    assert _validation_source_head("abc123") == "WORKTREE_DIRTY"
+    monkeypatch.setattr("scripts.validate_krx_historical_backfill_v01._git", lambda *args: "")
+    assert _validation_source_head("abc123") == "abc123"
 
 
 def test_coverage_gate_does_not_accept_one_complete_date(tmp_path):
@@ -126,6 +167,26 @@ def test_coverage_gate_does_not_accept_one_complete_date(tmp_path):
     assert coverage["candidate_date_count"] == 5
     assert coverage["complete_date_count"] == 1
     assert coverage["unexplained_missing_date_count"] == 4
+
+
+def test_coverage_separates_failed_from_missing(tmp_path):
+    store = KrxRawStockStore(tmp_path / "raw")
+    store.save_failure("KOSPI", "2020-01-02", "/sto/stk_bydd_trd", "TEMPORARY", "retry")
+    store.save_failure("KOSDAQ", "2020-01-02", "/sto/ksq_bydd_trd", "TEMPORARY", "retry")
+    coverage = _coverage(store, "2020-01-02", "2020-01-02")
+    assert coverage["failed_date_count"] == 1
+    assert coverage["unexplained_missing_date_count"] == 0
+    assert coverage["unexplained_missing_partition_count"] == 0
+
+
+def test_coverage_partial_and_missing_are_distinct(tmp_path):
+    store = KrxRawStockStore(tmp_path / "raw")
+    store.save_snapshot("KOSPI", "2020-01-02", _frame("2020-01-02", "005930"), "/sto/stk_bydd_trd")
+    store.save_failure("KOSPI", "2020-01-03", "/sto/stk_bydd_trd", "TEMPORARY", "retry")
+    coverage = _coverage(store, "2020-01-02", "2020-01-03")
+    assert coverage["partial_date_count"] == 1
+    assert coverage["unexplained_missing_date_count"] == 2
+    assert coverage["unexplained_missing_partition_count"] == 2
 
 
 def test_coverage_gate_accepts_complete_and_finalized_no_data_pairs(tmp_path):
