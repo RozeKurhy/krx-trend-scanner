@@ -21,6 +21,7 @@ LISTED_SHARES_CHANGED = "LISTED_SHARES_CHANGED"
 PAR_VALUE_CHANGED = "PAR_VALUE_CHANGED"
 LISTED_SHARES_AND_PAR_VALUE_CHANGED = "LISTED_SHARES_AND_PAR_VALUE_CHANGED"
 INITIAL_BASELINE = "INITIAL_BASELINE"
+SOURCE_SEMANTIC_CONFLICT = "SOURCE_SEMANTIC_CONFLICT"
 
 
 def normalise_as_of(value: Any) -> date:
@@ -129,6 +130,10 @@ class CorporateActionDetector:
                 previous_par_value=None,
                 current_par_value=current.par_value,
             )
+        if previous.listed_shares_semantics != current.listed_shares_semantics:
+            raise MarketDataError(
+                f"{SOURCE_SEMANTIC_CONFLICT}: listed_shares semantic namespace가 다릅니다."
+            )
         if previous.as_of > current.as_of:
             raise MarketDataError("OUT_OF_ORDER: previous.as_of가 current.as_of보다 늦습니다.")
         if previous.as_of == current.as_of and (
@@ -176,5 +181,6 @@ __all__ = [
     "LISTED_SHARES_AND_PAR_VALUE_CHANGED",
     "LISTED_SHARES_CHANGED",
     "PAR_VALUE_CHANGED",
+    "SOURCE_SEMANTIC_CONFLICT",
     "normalise_as_of",
 ]

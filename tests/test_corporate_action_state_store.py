@@ -121,3 +121,67 @@ def test_unknown_persisted_status_fails_closed(tmp_path):
         connection.commit()
     with pytest.raises(MarketDataError):
         store.get("005930")
+
+
+def test_observation_during_refresh_is_rejected_without_state_mutation(tmp_path):
+    store, _ = _dirty_store(tmp_path)
+    assert store.claim_refresh("005930") is True
+    before = store.get("005930")
+    before_log_count = len(store.transition_log("005930"))
+    with pytest.raises(MarketDataError, match="OBSERVATION_DURING_REFRESH"):
+        store.evaluate_and_record(_snapshot("2024-01-03", 300), CorporateActionDetector())
+    after = store.get("005930")
+    assert after == before
+    assert len(store.transition_log("005930")) == before_log_count
+
+
+def test_rejected_refreshing_observation_can_be_replayed_after_clean_and_become_dirty(tmp_path):
+    store, _ = _dirty_store(tmp_path)
+    assert store.claim_refresh("005930") is True
+    with pytest.raises(MarketDataError, match="OBSERVATION_DURING_REFRESH"):
+        store.evaluate_and_record(_snapshot("2024-01-03", 300), CorporateActionDetector())
+    store.mark_clean("005930", "a" * 64)
+    decision = store.evaluate_and_record(_snapshot("2024-01-03", 300), CorporateActionDetector())
+    assert decision.is_dirty is True
+    assert store.get("005930").status == "DIRTY"
+    assert store.get("005930").listed_shares == 300
+
+
+def test_out_of_order_concurrent_observation_cannot_regress_state(tmp_path):
+    path = tmp_path / "state.sqlite3"
+    first = CorporateActionStateStore(path)
+    second = CorporateActionStateStore(path)
+    detector = CorporateActionDetector()
+    first.evaluate_and_record(_snapshot("2024-01-01", 100), detector)
+    second.evaluate_and_record(_snapshot("2024-01-03", 300), detector)
+    with pytest.raises(MarketDataError, match="OUT_OF_ORDER"):
+        first.evaluate_and_record(_snapshot("2024-01-02", 200), detector)
+    state = second.get("005930")
+    assert state.as_of.isoformat() == "2024-01-03"
+    assert state.listed_shares == 300
+
+
+def test_evaluate_and_record_reads_current_persisted_snapshot_atomically(tmp_path):
+    path = tmp_path / "state.sqlite3"
+    worker_a = CorporateActionStateStore(path)
+    worker_b = CorporateActionStateStore(path)
+    detector = CorporateActionDetector()
+    worker_a.evaluate_and_record(_snapshot("2024-01-01", 100), detector)
+    worker_b.evaluate_and_record(_snapshot("2024-01-02", 200), detector)
+    with pytest.raises(MarketDataError, match="OUT_OF_ORDER"):
+        worker_a.evaluate_and_record(_snapshot("2024-01-01", 150), detector)
+    assert worker_a.get("005930").listed_shares == 200
+
+
+def test_stale_decision_cannot_overwrite_newer_state(tmp_path):
+    path = tmp_path / "state.sqlite3"
+    store = CorporateActionStateStore(path)
+    detector = CorporateActionDetector()
+    store.evaluate_and_record(_snapshot("2024-01-01", 100), detector)
+    stale_snapshot = _snapshot("2024-01-02", 200)
+    stale_decision = detector.evaluate(_snapshot("2024-01-01", 100), stale_snapshot)
+    store.evaluate_and_record(_snapshot("2024-01-03", 300), detector)
+    with pytest.raises(MarketDataError, match="STALE_DECISION"):
+        store.record_observation(stale_snapshot, stale_decision)
+    assert store.get("005930").as_of.isoformat() == "2024-01-03"
+    assert store.get("005930").listed_shares == 300

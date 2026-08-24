@@ -37,9 +37,14 @@ numeric이며 missing은 허용하지만 음수와 파싱 실패는 거부한다
 idempotent observation으로 처리하고, 동일 날짜의 다른 authority 값은
 `SOURCE_CONFLICT`로 fail closed한다. 역순은 `OUT_OF_ORDER`로 거부한다.
 
-dirty primary signal은 normalized `LIST_SHRS`의 실제 변화다. `PARVAL`은
+dirty primary signal은 동일 semantic namespace 안에서 normalized `LIST_SHRS`의 실제 변화다. `PARVAL`은
 corroborating signal이며 양쪽 값이 모두 존재할 때만 비교한다. 따라서 missing
 PARVAL만으로는 dirty를 선언하지 않지만 LIST_SHRS 변화는 항상 dirty다.
+
+`RAW_DAILY_LISTED_SHARES`와 `MASTER_SNAPSHOT_LISTED_SHARES`처럼
+`listed_shares_semantics`가 다르면 값을 비교하지 않고
+`SOURCE_SEMANTIC_CONFLICT`로 fail closed한다. `source_name`은 audit provenance이며
+동일 semantic이면 서로 달라도 비교를 허용한다.
 
 dirty reason은 다음 factual evidence만 사용한다.
 
@@ -82,8 +87,11 @@ FAILED -> DIRTY / REFRESHING
 REFRESHING -> CLEAN / FAILED
 
 `DIRTY -> CLEAN`, `FAILED -> CLEAN`은 성공적인 refresh 없이 허용하지 않는다.
-clean observation이 들어와도 DIRTY와 FAILED는 latch를 유지한다. REFRESHING 중
-새 evidence는 상태를 바꾸지 않고 snapshot evidence만 갱신한다.
+clean observation이 들어와도 DIRTY와 FAILED는 latch를 유지한다. `evaluate_and_record()`는
+`BEGIN IMMEDIATE` 안에서 persisted snapshot read, detector evaluation, state write와
+transition log를 수행하며 persisted `as_of`는 절대 감소하지 않는다. REFRESHING 중
+새 authority observation은 `OBSERVATION_DURING_REFRESH`로 fail closed하고 state row를
+변경하지 않는다. refresh 종료 후 caller가 observation을 재제출한다.
 
 3. Refresh contract
 ----------------------------------------------------------------------

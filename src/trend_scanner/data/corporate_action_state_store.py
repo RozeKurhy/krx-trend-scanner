@@ -219,10 +219,13 @@ class CorporateActionStateStore:
         detector: CorporateActionDetector | None = None,
     ) -> CorporateActionDecision:
         detector = detector or CorporateActionDetector()
-        previous_state = self.get(snapshot.ticker)
-        decision = detector.evaluate(previous_state.snapshot() if previous_state else None, snapshot)
-        self.record_observation(snapshot, decision)
-        return decision
+        with self._transaction() as connection:
+            previous = self._row_to_state(self._fetch_locked(connection, snapshot.ticker))
+            if previous is not None and previous.status == "REFRESHING":
+                raise MarketDataError("OBSERVATION_DURING_REFRESH")
+            decision = detector.evaluate(previous.snapshot() if previous else None, snapshot)
+            self._record_observation_locked(connection, snapshot, decision, previous)
+            return decision
 
     def record_observation(
         self,
@@ -232,96 +235,99 @@ class CorporateActionStateStore:
         if decision.ticker != snapshot.ticker or decision.current_as_of != snapshot.as_of:
             raise MarketDataError("decision과 snapshot의 ticker/as_of가 일치하지 않습니다.")
         with self._transaction() as connection:
-            row = self._fetch_locked(connection, snapshot.ticker)
-            previous = self._row_to_state(row)
-            previous_status = previous.status if previous else None
-            now = _utc_now()
+            previous = self._row_to_state(self._fetch_locked(connection, snapshot.ticker))
+            if previous is not None and previous.status == "REFRESHING":
+                raise MarketDataError("OBSERVATION_DURING_REFRESH")
             if previous is None:
-                target_status = "DIRTY" if decision.is_dirty else "CLEAN"
-                dirty_reason = ";".join(decision.dirty_reasons) if decision.is_dirty else INITIAL_BASELINE
-                dirty_since = now if decision.is_dirty else None
-                last_error = None
-            elif previous.status == "REFRESHING":
-                target_status = "REFRESHING"
-                dirty_reason = previous.dirty_reason
-                dirty_since = previous.dirty_since
-                last_error = previous.last_error
-            elif decision.is_dirty:
-                target_status = "DIRTY"
-                dirty_reason = ";".join(decision.dirty_reasons)
-                dirty_since = previous.dirty_since or now
-                last_error = None
+                if decision.previous_as_of is not None:
+                    raise MarketDataError("STALE_DECISION")
             else:
-                target_status = previous.status if previous.status in {"DIRTY", "FAILED"} else "CLEAN"
-                dirty_reason = previous.dirty_reason if target_status != "CLEAN" else None
-                dirty_since = previous.dirty_since if target_status != "CLEAN" else None
-                last_error = previous.last_error if target_status == "FAILED" else None
+                if decision.previous_as_of != previous.as_of:
+                    raise MarketDataError("STALE_DECISION")
+                if snapshot.as_of < previous.as_of:
+                    raise MarketDataError("OUT_OF_ORDER")
+                if (
+                    decision.previous_listed_shares != previous.listed_shares
+                    or decision.previous_par_value != previous.par_value
+                ):
+                    raise MarketDataError("STALE_DECISION")
+            return self._record_observation_locked(connection, snapshot, decision, previous)
 
-            if target_status not in STATUSES:
-                raise MarketDataError(f"알 수 없는 target status입니다: {target_status}")
-            if (
-                previous_status is not None
-                and target_status != previous_status
-                and target_status not in ALLOWED_TRANSITIONS[previous_status]
-            ):
-                raise MarketDataError(f"허용되지 않은 transition입니다: {previous_status} -> {target_status}")
-            values = (
-                snapshot.as_of.isoformat(),
-                target_status,
-                dirty_reason,
-                previous.last_success_at if previous else None,
-                previous.last_attempt_at if previous else None,
-                dirty_since,
-                last_error,
-                now,
-                previous.last_content_sha256 if previous else None,
-                previous.refresh_requested_start if previous else None,
-                previous.refresh_requested_end if previous else None,
-                snapshot.listed_shares,
-                snapshot.par_value,
-                snapshot.listed_shares_semantics,
-                snapshot.source_name,
-                snapshot.ticker,
+    def _record_observation_locked(
+        self,
+        connection: sqlite3.Connection,
+        snapshot: CorporateActionSnapshot,
+        decision: CorporateActionDecision,
+        previous: CorporateActionState | None,
+    ) -> CorporateActionState:
+        """Persist an already-evaluated observation inside the caller transaction."""
+
+        previous_status = previous.status if previous else None
+        now = _utc_now()
+        if previous is None:
+            target_status = "DIRTY" if decision.is_dirty else "CLEAN"
+            dirty_reason = ";".join(decision.dirty_reasons) if decision.is_dirty else INITIAL_BASELINE
+            dirty_since = now if decision.is_dirty else None
+            last_error = None
+        elif decision.is_dirty:
+            target_status = "DIRTY"
+            dirty_reason = ";".join(decision.dirty_reasons)
+            dirty_since = previous.dirty_since or now
+            last_error = None
+        else:
+            target_status = previous.status if previous.status in {"DIRTY", "FAILED"} else "CLEAN"
+            dirty_reason = previous.dirty_reason if target_status != "CLEAN" else None
+            dirty_since = previous.dirty_since if target_status != "CLEAN" else None
+            last_error = previous.last_error if target_status == "FAILED" else None
+
+        if target_status not in STATUSES:
+            raise MarketDataError(f"알 수 없는 target status입니다: {target_status}")
+        if (
+            previous_status is not None
+            and target_status != previous_status
+            and target_status not in ALLOWED_TRANSITIONS[previous_status]
+        ):
+            raise MarketDataError(f"허용되지 않은 transition입니다: {previous_status} -> {target_status}")
+        values = (
+            snapshot.as_of.isoformat(), target_status, dirty_reason,
+            previous.last_success_at if previous else None,
+            previous.last_attempt_at if previous else None, dirty_since, last_error, now,
+            previous.last_content_sha256 if previous else None,
+            previous.refresh_requested_start if previous else None,
+            previous.refresh_requested_end if previous else None,
+            snapshot.listed_shares, snapshot.par_value,
+            snapshot.listed_shares_semantics, snapshot.source_name, snapshot.ticker,
+        )
+        if previous is None:
+            connection.execute(
+                """
+                INSERT INTO corporate_action_state
+                (as_of,status,dirty_reason,last_success_at,last_attempt_at,dirty_since,
+                 last_error,updated_at,last_content_sha256,refresh_requested_start,
+                 refresh_requested_end,listed_shares,par_value,listed_shares_semantics,
+                 source_name,ticker)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                """, values,
             )
-            if previous is None:
-                connection.execute(
-                    """
-                    INSERT INTO corporate_action_state
-                    (as_of,status,dirty_reason,last_success_at,last_attempt_at,dirty_since,
-                     last_error,updated_at,last_content_sha256,refresh_requested_start,
-                     refresh_requested_end,listed_shares,par_value,listed_shares_semantics,
-                     source_name,ticker)
-                    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-                    """,
-                    values,
-                )
-            else:
-                connection.execute(
-                    """
-                    UPDATE corporate_action_state SET
-                    as_of=?, status=?, dirty_reason=?, last_success_at=?, last_attempt_at=?,
-                    dirty_since=?, last_error=?, updated_at=?, last_content_sha256=?,
-                    refresh_requested_start=?, refresh_requested_end=?, listed_shares=?,
-                    par_value=?, listed_shares_semantics=?, source_name=?
-                    WHERE ticker=?
-                    """,
-                    values,
-                )
-            if previous_status != target_status:
-                self._insert_log(
-                    connection,
-                    snapshot.ticker,
-                    previous_status,
-                    target_status,
-                    snapshot.as_of,
-                    dirty_reason,
-                    {"dirty_reasons": list(decision.dirty_reasons)},
-                )
-            row = self._fetch_locked(connection, snapshot.ticker)
-            state = self._row_to_state(row)
-            if state is None:
-                raise MarketDataError("state 저장 후 조회에 실패했습니다.")
-            return state
+        else:
+            connection.execute(
+                """
+                UPDATE corporate_action_state SET
+                as_of=?, status=?, dirty_reason=?, last_success_at=?, last_attempt_at=?,
+                dirty_since=?, last_error=?, updated_at=?, last_content_sha256=?,
+                refresh_requested_start=?, refresh_requested_end=?, listed_shares=?,
+                par_value=?, listed_shares_semantics=?, source_name=? WHERE ticker=?
+                """, values,
+            )
+        if previous_status != target_status:
+            self._insert_log(
+                connection, snapshot.ticker, previous_status, target_status,
+                snapshot.as_of, dirty_reason, {"dirty_reasons": list(decision.dirty_reasons)},
+            )
+        state = self._row_to_state(self._fetch_locked(connection, snapshot.ticker))
+        if state is None:
+            raise MarketDataError("state 저장 후 조회에 실패했습니다.")
+        return state
 
     def transition(self, ticker: str, to_status: str, reason: str | None = None) -> CorporateActionState:
         normalized = normalize_ticker(ticker)

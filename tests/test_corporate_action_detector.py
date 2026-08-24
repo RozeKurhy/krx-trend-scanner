@@ -98,3 +98,25 @@ def test_different_tickers_fail_closed():
             _snapshot("2024-01-01"),
             CorporateActionSnapshot("000660", "2024-01-02", 100, 5000),
         )
+
+
+def test_different_listed_shares_semantics_fail_closed():
+    previous = CorporateActionSnapshot(
+        "005930", "2024-01-01", 100, 5000, "RAW_DAILY_LISTED_SHARES"
+    )
+    current = CorporateActionSnapshot(
+        "005930", "2024-01-02", 101, 5000, "MASTER_SNAPSHOT_LISTED_SHARES"
+    )
+    with pytest.raises(MarketDataError, match="SOURCE_SEMANTIC_CONFLICT"):
+        CorporateActionDetector().evaluate(previous, current)
+
+
+def test_same_semantics_different_source_name_can_compare():
+    previous = CorporateActionSnapshot(
+        "005930", "2024-01-01", 100, 5000, "RAW_DAILY_LISTED_SHARES", "provider-a"
+    )
+    current = CorporateActionSnapshot(
+        "005930", "2024-01-02", 100, 5000, "RAW_DAILY_LISTED_SHARES", "provider-b"
+    )
+    decision = CorporateActionDetector().evaluate(previous, current)
+    assert decision.is_dirty is False

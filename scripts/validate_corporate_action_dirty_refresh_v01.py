@@ -170,6 +170,91 @@ def _detector_checks() -> dict[str, int]:
     return counters
 
 
+def _state_coordination_checks() -> dict[str, int]:
+    counters = {
+        "semantic_conflict_detected_count": 0,
+        "semantic_conflict_detection_error_count": 0,
+        "observation_during_refresh_rejected_count": 0,
+        "observation_during_refresh_state_mutation_error_count": 0,
+        "out_of_order_state_write_accept_count": 0,
+        "stale_decision_accept_count": 0,
+        "atomic_observation_error_count": 0,
+    }
+    detector = CorporateActionDetector()
+    semantic_previous = CorporateActionSnapshot(
+        "005930", "2024-01-01", 100, 5000, "RAW_DAILY_LISTED_SHARES"
+    )
+    semantic_current = CorporateActionSnapshot(
+        "005930", "2024-01-02", 101, 5000, "MASTER_SNAPSHOT_LISTED_SHARES"
+    )
+    try:
+        detector.evaluate(semantic_previous, semantic_current)
+    except MarketDataError as exc:
+        if "SOURCE_SEMANTIC_CONFLICT" in str(exc):
+            counters["semantic_conflict_detected_count"] += 1
+        else:
+            counters["semantic_conflict_detection_error_count"] += 1
+    else:
+        counters["semantic_conflict_detection_error_count"] += 1
+
+    with tempfile.TemporaryDirectory(prefix="corporate-action-v01-state-") as temp_dir:
+        root = Path(temp_dir)
+        state = CorporateActionStateStore(root / "refreshing.sqlite3")
+        state.evaluate_and_record(CorporateActionSnapshot("005930", "2024-01-01", 100, 5000), detector)
+        state.evaluate_and_record(CorporateActionSnapshot("005930", "2024-01-02", 200, 5000), detector)
+        state.claim_refresh("005930")
+        before = state.get("005930")
+        log_count = len(state.transition_log("005930"))
+        try:
+            state.evaluate_and_record(CorporateActionSnapshot("005930", "2024-01-03", 300, 5000), detector)
+        except MarketDataError as exc:
+            if "OBSERVATION_DURING_REFRESH" in str(exc):
+                counters["observation_during_refresh_rejected_count"] += 1
+            else:
+                counters["atomic_observation_error_count"] += 1
+        else:
+            counters["atomic_observation_error_count"] += 1
+        after = state.get("005930")
+        if after != before or len(state.transition_log("005930")) != log_count:
+            counters["observation_during_refresh_state_mutation_error_count"] += 1
+        state.mark_clean("005930", "a" * 64)
+        try:
+            decision = state.evaluate_and_record(CorporateActionSnapshot("005930", "2024-01-03", 300, 5000), detector)
+            if not decision.is_dirty or state.get("005930").status != "DIRTY":
+                counters["atomic_observation_error_count"] += 1
+        except MarketDataError:
+            counters["atomic_observation_error_count"] += 1
+
+        first = CorporateActionStateStore(root / "out-of-order.sqlite3")
+        second = CorporateActionStateStore(root / "out-of-order.sqlite3")
+        first.evaluate_and_record(CorporateActionSnapshot("000660", "2024-01-01", 100, 5000), detector)
+        second.evaluate_and_record(CorporateActionSnapshot("000660", "2024-01-03", 300, 5000), detector)
+        try:
+            first.evaluate_and_record(CorporateActionSnapshot("000660", "2024-01-02", 200, 5000), detector)
+        except MarketDataError as exc:
+            if "OUT_OF_ORDER" not in str(exc):
+                counters["atomic_observation_error_count"] += 1
+        else:
+            counters["out_of_order_state_write_accept_count"] += 1
+        current = second.get("000660")
+        if current.as_of.isoformat() != "2024-01-03" or current.listed_shares != 300:
+            counters["atomic_observation_error_count"] += 1
+
+        stale = CorporateActionStateStore(root / "stale.sqlite3")
+        stale.evaluate_and_record(CorporateActionSnapshot("068270", "2024-01-01", 100, 5000), detector)
+        stale_snapshot = CorporateActionSnapshot("068270", "2024-01-02", 200, 5000)
+        stale_decision = detector.evaluate(stale.get("068270").snapshot(), stale_snapshot)
+        stale.evaluate_and_record(CorporateActionSnapshot("068270", "2024-01-03", 300, 5000), detector)
+        try:
+            stale.record_observation(stale_snapshot, stale_decision)
+        except MarketDataError as exc:
+            if "STALE_DECISION" not in str(exc):
+                counters["atomic_observation_error_count"] += 1
+        else:
+            counters["stale_decision_accept_count"] += 1
+    return counters
+
+
 def _seed_state_and_store(root: Path) -> tuple[AdjustedPriceStore, CorporateActionStateStore, pd.DataFrame]:
     index = pd.date_range("2024-01-02", periods=5, freq="D")
     frame = pd.DataFrame(
@@ -220,6 +305,9 @@ def _refresh_checks() -> dict[str, int]:
         "old_store_preservation_error_count": 0,
         "post_refresh_integrity_error_count": 0,
         "logical_adjusted_refresh_fetch_count": 0,
+        "refresh_service_provider_invocation_count": 0,
+        "synthetic_refresh_provider_call_count": 0,
+        "actual_adjusted_provider_fetch_count": 0,
         "adjusted_true_call_count": 0,
         "adjusted_false_call_count": 0,
     }
@@ -233,8 +321,8 @@ def _refresh_checks() -> dict[str, int]:
         refreshed.loc[:, ["open", "high", "low", "close"]] += 10
         provider = _FakeProvider(refreshed)
         result = CorporateActionRefreshService(state, provider, adjusted).refresh_dirty("005930", "2024-01-07")
-        counters["logical_adjusted_refresh_fetch_count"] += provider.calls
-        counters["adjusted_true_call_count"] += provider.calls
+        counters["synthetic_refresh_provider_call_count"] += provider.calls
+        counters["refresh_service_provider_invocation_count"] += provider.calls
         counters["state_transition_test_count"] += len(state.transition_log("005930"))
         if result.status == "CLEAN" and state.get("005930").status == "CLEAN":
             counters["refresh_success_count"] += 1
@@ -250,8 +338,8 @@ def _refresh_checks() -> dict[str, int]:
         before_bytes = parquet_path.read_bytes()
         provider = _FakeProvider(error=RuntimeError("synthetic provider failure"))
         result = CorporateActionRefreshService(state, provider, adjusted).refresh_dirty("005930", "2024-01-07")
-        counters["logical_adjusted_refresh_fetch_count"] += provider.calls
-        counters["adjusted_true_call_count"] += provider.calls
+        counters["synthetic_refresh_provider_call_count"] += provider.calls
+        counters["refresh_service_provider_invocation_count"] += provider.calls
         if result.status != "FAILED" or state.get("005930").status != "FAILED":
             counters["refresh_failure_detection_error_count"] += 1
         if parquet_path.read_bytes() != before_bytes:
@@ -261,8 +349,8 @@ def _refresh_checks() -> dict[str, int]:
         partial = _seed_state_and_store(root / "partial-source")[2].iloc[:-1]
         provider = _FakeProvider(partial)
         result = CorporateActionRefreshService(state, provider, adjusted).refresh_dirty("005930", "2024-01-07")
-        counters["logical_adjusted_refresh_fetch_count"] += provider.calls
-        counters["adjusted_true_call_count"] += provider.calls
+        counters["synthetic_refresh_provider_call_count"] += provider.calls
+        counters["refresh_service_provider_invocation_count"] += provider.calls
         if result.status != "FAILED" or result.reason != "PARTIAL_REFRESH_RESPONSE":
             counters["refresh_failure_detection_error_count"] += 1
             counters["partial_response_accept_count"] += 1
@@ -274,8 +362,8 @@ def _refresh_checks() -> dict[str, int]:
         )
         provider = _FakeProvider(empty)
         result = CorporateActionRefreshService(state, provider, adjusted).refresh_dirty("005930", "2024-01-07")
-        counters["logical_adjusted_refresh_fetch_count"] += provider.calls
-        counters["adjusted_true_call_count"] += provider.calls
+        counters["synthetic_refresh_provider_call_count"] += provider.calls
+        counters["refresh_service_provider_invocation_count"] += provider.calls
         if result.status != "FAILED" or result.reason != "EMPTY_REFRESH_RESPONSE":
             counters["refresh_failure_detection_error_count"] += 1
             counters["empty_response_accept_count"] += 1
@@ -342,7 +430,8 @@ def _live_refresh_smoke(counters: dict[str, int]) -> dict[str, Any]:
         provider = AdjustedPriceDataProvider()
         result = CorporateActionRefreshService(state, provider, adjusted).refresh_dirty("005930", "2018-06-30")
         audit = provider.call_audit()
-        counters["logical_adjusted_refresh_fetch_count"] += audit["logical_fetch_count"]
+        counters["actual_adjusted_provider_fetch_count"] += audit["logical_fetch_count"]
+        counters["refresh_service_provider_invocation_count"] += audit["logical_fetch_count"]
         counters["adjusted_true_call_count"] += audit["adjusted_true_call_count"]
         counters["adjusted_false_call_count"] += audit["adjusted_false_call_count"]
         return {"ticker": "005930", "status": result.status, "reason": result.reason, "rows": result.rows, "audit": audit}
@@ -388,6 +477,7 @@ def run(mode: str, output: Path) -> dict[str, Any]:
     collected = _collect_tests()
     counters = {
         **_detector_checks(),
+        **_state_coordination_checks(),
         **_refresh_checks(),
         "krx_open_api_request_count": 0,
         "opendart_request_count": 0,
@@ -399,6 +489,7 @@ def run(mode: str, output: Path) -> dict[str, Any]:
         **test_counts,
         **collected,
     }
+    counters["logical_adjusted_refresh_fetch_count"] = counters["refresh_service_provider_invocation_count"]
     live_result: dict[str, Any] | None = None
     if mode == "live-smoke":
         live_result = _live_refresh_smoke(counters)
@@ -419,6 +510,10 @@ def run(mode: str, output: Path) -> dict[str, Any]:
         "production_consumer_changed_count", "legacy_cache_modified_count",
         "production_adjusted_store_modified_count", "secret_occurrence_count",
         "validation_source_head_mismatch_count", "new_test_failure_count",
+        "semantic_conflict_detection_error_count",
+        "observation_during_refresh_state_mutation_error_count",
+        "out_of_order_state_write_accept_count", "atomic_observation_error_count",
+        "stale_decision_accept_count",
     )
     blockers = [name for name in required_zero if counters.get(name, 0) != 0]
     positives = [
@@ -426,11 +521,14 @@ def run(mode: str, output: Path) -> dict[str, Any]:
         ("samsung_split_dirty_detection_count", counters["samsung_split_dirty_detection_count"] == 1),
         ("state_transition_test_count", counters["state_transition_test_count"] > 0),
         ("refresh_success_count", counters["refresh_success_count"] > 0),
+        ("semantic_conflict_detected_count", counters["semantic_conflict_detected_count"] >= 1),
+        ("observation_during_refresh_rejected_count", counters["observation_during_refresh_rejected_count"] >= 1),
+        ("synthetic_refresh_provider_call_count", counters["synthetic_refresh_provider_call_count"] > 0),
     ]
     if mode == "live-smoke":
         positives.extend(
             [
-                ("logical_adjusted_refresh_fetch_count", counters["logical_adjusted_refresh_fetch_count"] > 0),
+                ("actual_adjusted_provider_fetch_count", counters["actual_adjusted_provider_fetch_count"] > 0),
                 ("adjusted_true_call_count", counters["adjusted_true_call_count"] > 0),
             ]
         )
@@ -443,9 +541,11 @@ def run(mode: str, output: Path) -> dict[str, Any]:
         status = "READY_FOR_ARCHITECT_CORPORATE_ACTION_DIRTY_REFRESH_V01_REVIEW"
 
     _write_json(output / "detector_contract.json", {
-        "snapshot_fields": ["ticker", "as_of", "listed_shares", "par_value"],
+        "snapshot_fields": ["ticker", "as_of", "listed_shares", "par_value", "listed_shares_semantics", "source_name"],
         "primary_signal": "LIST_SHRS",
         "corroborating_signal": "PARVAL",
+        "listed_shares_semantic_rule": "SAME_NAMESPACE_REQUIRED",
+        "semantic_conflict_behavior": "FAIL_CLOSED",
         "event_classification": False,
         "price_gap_signal": False,
         "counters": counters,
@@ -456,12 +556,17 @@ def run(mode: str, output: Path) -> dict[str, Any]:
         "statuses": ["CLEAN", "DIRTY", "REFRESHING", "FAILED"],
         "allowed_transitions": {key: sorted(value) for key, value in ALLOWED_TRANSITIONS.items()},
         "transaction": "BEGIN IMMEDIATE compare-and-set",
+        "observation_atomicity": "BEGIN_IMMEDIATE_READ_EVALUATE_WRITE",
+        "refreshing_observation_policy": "REJECT",
+        "refreshing_observation_error": "OBSERVATION_DURING_REFRESH",
+        "pit_monotonicity": "PERSISTED_AS_OF_NEVER_DECREASES",
         "runtime_database_committed": False,
     })
     _write_json(output / "state_transition_matrix.json", {
         "absent": ["CLEAN", "DIRTY"],
         "allowed": {key: sorted(value) for key, value in ALLOWED_TRANSITIONS.items()},
         "forbidden": ["DIRTY->CLEAN", "FAILED->CLEAN"],
+        "observation_rules": {"REFRESHING": "REJECT_AUTHORITY_OBSERVATION"},
     })
     _write_json(output / "refresh_contract.json", {
         "provider": "AdjustedPriceDataProvider",
@@ -534,7 +639,7 @@ def run(mode: str, output: Path) -> dict[str, Any]:
         "end_head": None,
         "artifact_count": len(artifact_names) + 1,
         "artifacts": artifact_names + ["corporate_action_dirty_refresh_v01_manifest.json"],
-        "network_request_count": counters["logical_adjusted_refresh_fetch_count"] if mode == "live-smoke" else 0,
+        "network_request_count": counters["actual_adjusted_provider_fetch_count"] if mode == "live-smoke" else 0,
         "status": status,
     })
     return result
