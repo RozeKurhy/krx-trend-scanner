@@ -1,0 +1,92 @@
+{
+  "classification": "SHORT_TICKER_NATIVE",
+  "cohort": [
+    {
+      "classification": "SHORT_TICKER_NATIVE",
+      "identifier_length": 6,
+      "internal_ticker": "005930",
+      "krx_identifier": "005930",
+      "market": "KOSPI",
+      "name": "삼성전자"
+    },
+    {
+      "classification": "SHORT_TICKER_NATIVE",
+      "identifier_length": 6,
+      "internal_ticker": "000660",
+      "krx_identifier": "000660",
+      "market": "KOSPI",
+      "name": "SK하이닉스"
+    },
+    {
+      "classification": "SHORT_TICKER_NATIVE",
+      "identifier_length": 6,
+      "internal_ticker": "035420",
+      "krx_identifier": "035420",
+      "market": "KOSPI",
+      "name": "NAVER"
+    },
+    {
+      "classification": "SHORT_TICKER_NATIVE",
+      "identifier_length": 6,
+      "internal_ticker": "068270",
+      "krx_identifier": "068270",
+      "market": "KOSPI",
+      "name": "셀트리온"
+    },
+    {
+      "classification": "SHORT_TICKER_NATIVE",
+      "identifier_length": 6,
+      "internal_ticker": "005380",
+      "krx_identifier": "005380",
+      "market": "KOSPI",
+      "name": "현대차"
+    },
+    {
+      "classification": "SHORT_TICKER_NATIVE",
+      "identifier_length": 6,
+      "internal_ticker": "237690",
+      "krx_identifier": "237690",
+      "market": "KOSDAQ",
+      "name": "에스티팜"
+    },
+    {
+      "classification": "SHORT_TICKER_NATIVE",
+      "identifier_length": 6,
+      "internal_ticker": "028300",
+      "krx_identifier": "028300",
+      "market": "KOSDAQ",
+      "name": "HLB"
+    },
+    {
+      "classification": "SHORT_TICKER_NATIVE",
+      "identifier_length": 6,
+      "internal_ticker": "293490",
+      "krx_identifier": "293490",
+      "market": "KOSDAQ",
+      "name": "카카오게임즈"
+    }
+  ],
+  "index_mapping": {
+    "KOSDAQ": {
+      "ancillary_selection_rule": "For PyKRX volume/trading-value parity only: IDX_CLSS == 'KOSDAQ' AND IDX_NM == '코스닥 (외국주포함)'",
+      "candidate_count": 1,
+      "internal_index_code": "2001",
+      "internal_index_name": "코스닥",
+      "krx_response_identifier": "KOSDAQ:코스닥",
+      "krx_response_name": "코스닥",
+      "resolved": true,
+      "selection_rule": "IDX_CLSS == 'KOSDAQ' AND IDX_NM == '코스닥' AND CLSPRC_IDX is nonblank"
+    },
+    "KOSPI": {
+      "ancillary_selection_rule": "For PyKRX volume/trading-value parity only: IDX_CLSS == 'KOSPI' AND IDX_NM == '코스피 (외국주포함)'",
+      "candidate_count": 1,
+      "internal_index_code": "1001",
+      "internal_index_name": "코스피",
+      "krx_response_identifier": "KOSPI:코스피",
+      "krx_response_name": "코스피",
+      "resolved": true,
+      "selection_rule": "IDX_CLSS == 'KOSPI' AND IDX_NM == '코스피' AND CLSPRC_IDX is nonblank"
+    }
+  },
+  "stock_identifier_field": "ISU_CD"
+}

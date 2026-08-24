@@ -1,0 +1,35 @@
+{
+  "auth_header": "AUTH_KEY",
+  "base_url": "https://data-dbg.krx.co.kr/svc/apis",
+  "method": "GET",
+  "pagination": "NONE",
+  "query_parameters": {
+    "date": "basDd",
+    "format": "YYYYMMDD"
+  },
+  "records_container": "OutBlock_1",
+  "services": [
+    {
+      "actual_endpoint": "/sto/stk_bydd_trd",
+      "expected_endpoint": "/sto/stk_bydd_trd",
+      "service_name": "kospi_stock_daily"
+    },
+    {
+      "actual_endpoint": "/sto/ksq_bydd_trd",
+      "expected_endpoint": "/sto/ksq_bydd_trd",
+      "service_name": "kosdaq_stock_daily"
+    },
+    {
+      "actual_endpoint": "/idx/kospi_dd_trd",
+      "expected_endpoint": "/idx/kospi_dd_trd",
+      "service_name": "kospi_index_daily"
+    },
+    {
+      "actual_endpoint": "/idx/kosdaq_dd_trd",
+      "expected_endpoint": "/idx/kosdaq_dd_trd",
+      "service_name": "kosdaq_index_daily"
+    }
+  ],
+  "snapshot_semantics": "MARKET_WIDE_DAILY_SNAPSHOT",
+  "work_id": "KRX_OPEN_API_V01_ACCESS_AND_PARITY_VALIDATION"
+}

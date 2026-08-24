@@ -1,0 +1,32 @@
+{
+  "counters": {
+    "kosdaq_index_compared_count": 3,
+    "kosdaq_index_mismatch_count": 3,
+    "kospi_index_compared_count": 3,
+    "kospi_index_mismatch_count": 3
+  },
+  "representative_mapping": {
+    "KOSDAQ": {
+      "ancillary_selection_rule": "For PyKRX volume/trading-value parity only: IDX_CLSS == 'KOSDAQ' AND IDX_NM == '코스닥 (외국주포함)'",
+      "candidate_count": 1,
+      "internal_index_code": "2001",
+      "internal_index_name": "코스닥",
+      "krx_response_identifier": "KOSDAQ:코스닥",
+      "krx_response_name": "코스닥",
+      "resolved": true,
+      "selection_rule": "IDX_CLSS == 'KOSDAQ' AND IDX_NM == '코스닥' AND CLSPRC_IDX is nonblank"
+    },
+    "KOSPI": {
+      "ancillary_selection_rule": "For PyKRX volume/trading-value parity only: IDX_CLSS == 'KOSPI' AND IDX_NM == '코스피 (외국주포함)'",
+      "candidate_count": 1,
+      "internal_index_code": "1001",
+      "internal_index_name": "코스피",
+      "krx_response_identifier": "KOSPI:코스피",
+      "krx_response_name": "코스피",
+      "resolved": true,
+      "selection_rule": "IDX_CLSS == 'KOSPI' AND IDX_NM == '코스피' AND CLSPRC_IDX is nonblank"
+    }
+  },
+  "unknown_difference_count": 0,
+  "work_id": "KRX_OPEN_API_V01_ACCESS_AND_PARITY_VALIDATION"
+}

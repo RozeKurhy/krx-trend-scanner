@@ -1,0 +1,536 @@
+{
+  "anchor_date": "2026-08-20",
+  "endpoints": {
+    "kosdaq_index_daily": {
+      "fields": [
+        {
+          "blank_count": 0,
+          "field_name": "ACC_TRDVAL",
+          "field_type_observed": [
+            "str"
+          ],
+          "nullable": false
+        },
+        {
+          "blank_count": 0,
+          "field_name": "ACC_TRDVOL",
+          "field_type_observed": [
+            "str"
+          ],
+          "nullable": false
+        },
+        {
+          "blank_count": 0,
+          "field_name": "BAS_DD",
+          "field_type_observed": [
+            "str"
+          ],
+          "nullable": false
+        },
+        {
+          "blank_count": 1,
+          "field_name": "CLSPRC_IDX",
+          "field_type_observed": [
+            "str"
+          ],
+          "nullable": true
+        },
+        {
+          "blank_count": 1,
+          "field_name": "CMPPREVDD_IDX",
+          "field_type_observed": [
+            "str"
+          ],
+          "nullable": true
+        },
+        {
+          "blank_count": 1,
+          "field_name": "FLUC_RT",
+          "field_type_observed": [
+            "str"
+          ],
+          "nullable": true
+        },
+        {
+          "blank_count": 1,
+          "field_name": "HGPRC_IDX",
+          "field_type_observed": [
+            "str"
+          ],
+          "nullable": true
+        },
+        {
+          "blank_count": 0,
+          "field_name": "IDX_CLSS",
+          "field_type_observed": [
+            "str"
+          ],
+          "nullable": false
+        },
+        {
+          "blank_count": 0,
+          "field_name": "IDX_NM",
+          "field_type_observed": [
+            "str"
+          ],
+          "nullable": false
+        },
+        {
+          "blank_count": 1,
+          "field_name": "LWPRC_IDX",
+          "field_type_observed": [
+            "str"
+          ],
+          "nullable": true
+        },
+        {
+          "blank_count": 0,
+          "field_name": "MKTCAP",
+          "field_type_observed": [
+            "str"
+          ],
+          "nullable": false
+        },
+        {
+          "blank_count": 1,
+          "field_name": "OPNPRC_IDX",
+          "field_type_observed": [
+            "str"
+          ],
+          "nullable": true
+        }
+      ],
+      "record_count": 40,
+      "record_keys": [
+        "ACC_TRDVAL",
+        "ACC_TRDVOL",
+        "BAS_DD",
+        "CLSPRC_IDX",
+        "CMPPREVDD_IDX",
+        "FLUC_RT",
+        "HGPRC_IDX",
+        "IDX_CLSS",
+        "IDX_NM",
+        "LWPRC_IDX",
+        "MKTCAP",
+        "OPNPRC_IDX"
+      ],
+      "records_container": "OutBlock_1",
+      "top_level_keys": [
+        "OutBlock_1"
+      ]
+    },
+    "kosdaq_stock_daily": {
+      "fields": [
+        {
+          "blank_count": 0,
+          "field_name": "ACC_TRDVAL",
+          "field_type_observed": [
+            "str"
+          ],
+          "nullable": false
+        },
+        {
+          "blank_count": 0,
+          "field_name": "ACC_TRDVOL",
+          "field_type_observed": [
+            "str"
+          ],
+          "nullable": false
+        },
+        {
+          "blank_count": 0,
+          "field_name": "BAS_DD",
+          "field_type_observed": [
+            "str"
+          ],
+          "nullable": false
+        },
+        {
+          "blank_count": 0,
+          "field_name": "CMPPREVDD_PRC",
+          "field_type_observed": [
+            "str"
+          ],
+          "nullable": false
+        },
+        {
+          "blank_count": 0,
+          "field_name": "FLUC_RT",
+          "field_type_observed": [
+            "str"
+          ],
+          "nullable": false
+        },
+        {
+          "blank_count": 0,
+          "field_name": "ISU_CD",
+          "field_type_observed": [
+            "str"
+          ],
+          "nullable": false
+        },
+        {
+          "blank_count": 0,
+          "field_name": "ISU_NM",
+          "field_type_observed": [
+            "str"
+          ],
+          "nullable": false
+        },
+        {
+          "blank_count": 0,
+          "field_name": "LIST_SHRS",
+          "field_type_observed": [
+            "str"
+          ],
+          "nullable": false
+        },
+        {
+          "blank_count": 0,
+          "field_name": "MKTCAP",
+          "field_type_observed": [
+            "str"
+          ],
+          "nullable": false
+        },
+        {
+          "blank_count": 0,
+          "field_name": "MKT_NM",
+          "field_type_observed": [
+            "str"
+          ],
+          "nullable": false
+        },
+        {
+          "blank_count": 0,
+          "field_name": "SECT_TP_NM",
+          "field_type_observed": [
+            "str"
+          ],
+          "nullable": false
+        },
+        {
+          "blank_count": 0,
+          "field_name": "TDD_CLSPRC",
+          "field_type_observed": [
+            "str"
+          ],
+          "nullable": false
+        },
+        {
+          "blank_count": 0,
+          "field_name": "TDD_HGPRC",
+          "field_type_observed": [
+            "str"
+          ],
+          "nullable": false
+        },
+        {
+          "blank_count": 0,
+          "field_name": "TDD_LWPRC",
+          "field_type_observed": [
+            "str"
+          ],
+          "nullable": false
+        },
+        {
+          "blank_count": 0,
+          "field_name": "TDD_OPNPRC",
+          "field_type_observed": [
+            "str"
+          ],
+          "nullable": false
+        }
+      ],
+      "record_count": 1821,
+      "record_keys": [
+        "ACC_TRDVAL",
+        "ACC_TRDVOL",
+        "BAS_DD",
+        "CMPPREVDD_PRC",
+        "FLUC_RT",
+        "ISU_CD",
+        "ISU_NM",
+        "LIST_SHRS",
+        "MKTCAP",
+        "MKT_NM",
+        "SECT_TP_NM",
+        "TDD_CLSPRC",
+        "TDD_HGPRC",
+        "TDD_LWPRC",
+        "TDD_OPNPRC"
+      ],
+      "records_container": "OutBlock_1",
+      "top_level_keys": [
+        "OutBlock_1"
+      ]
+    },
+    "kospi_index_daily": {
+      "fields": [
+        {
+          "blank_count": 0,
+          "field_name": "ACC_TRDVAL",
+          "field_type_observed": [
+            "str"
+          ],
+          "nullable": false
+        },
+        {
+          "blank_count": 0,
+          "field_name": "ACC_TRDVOL",
+          "field_type_observed": [
+            "str"
+          ],
+          "nullable": false
+        },
+        {
+          "blank_count": 0,
+          "field_name": "BAS_DD",
+          "field_type_observed": [
+            "str"
+          ],
+          "nullable": false
+        },
+        {
+          "blank_count": 1,
+          "field_name": "CLSPRC_IDX",
+          "field_type_observed": [
+            "str"
+          ],
+          "nullable": true
+        },
+        {
+          "blank_count": 1,
+          "field_name": "CMPPREVDD_IDX",
+          "field_type_observed": [
+            "str"
+          ],
+          "nullable": true
+        },
+        {
+          "blank_count": 1,
+          "field_name": "FLUC_RT",
+          "field_type_observed": [
+            "str"
+          ],
+          "nullable": true
+        },
+        {
+          "blank_count": 1,
+          "field_name": "HGPRC_IDX",
+          "field_type_observed": [
+            "str"
+          ],
+          "nullable": true
+        },
+        {
+          "blank_count": 0,
+          "field_name": "IDX_CLSS",
+          "field_type_observed": [
+            "str"
+          ],
+          "nullable": false
+        },
+        {
+          "blank_count": 0,
+          "field_name": "IDX_NM",
+          "field_type_observed": [
+            "str"
+          ],
+          "nullable": false
+        },
+        {
+          "blank_count": 1,
+          "field_name": "LWPRC_IDX",
+          "field_type_observed": [
+            "str"
+          ],
+          "nullable": true
+        },
+        {
+          "blank_count": 0,
+          "field_name": "MKTCAP",
+          "field_type_observed": [
+            "str"
+          ],
+          "nullable": false
+        },
+        {
+          "blank_count": 1,
+          "field_name": "OPNPRC_IDX",
+          "field_type_observed": [
+            "str"
+          ],
+          "nullable": true
+        }
+      ],
+      "record_count": 51,
+      "record_keys": [
+        "ACC_TRDVAL",
+        "ACC_TRDVOL",
+        "BAS_DD",
+        "CLSPRC_IDX",
+        "CMPPREVDD_IDX",
+        "FLUC_RT",
+        "HGPRC_IDX",
+        "IDX_CLSS",
+        "IDX_NM",
+        "LWPRC_IDX",
+        "MKTCAP",
+        "OPNPRC_IDX"
+      ],
+      "records_container": "OutBlock_1",
+      "top_level_keys": [
+        "OutBlock_1"
+      ]
+    },
+    "kospi_stock_daily": {
+      "fields": [
+        {
+          "blank_count": 0,
+          "field_name": "ACC_TRDVAL",
+          "field_type_observed": [
+            "str"
+          ],
+          "nullable": false
+        },
+        {
+          "blank_count": 0,
+          "field_name": "ACC_TRDVOL",
+          "field_type_observed": [
+            "str"
+          ],
+          "nullable": false
+        },
+        {
+          "blank_count": 0,
+          "field_name": "BAS_DD",
+          "field_type_observed": [
+            "str"
+          ],
+          "nullable": false
+        },
+        {
+          "blank_count": 0,
+          "field_name": "CMPPREVDD_PRC",
+          "field_type_observed": [
+            "str"
+          ],
+          "nullable": false
+        },
+        {
+          "blank_count": 0,
+          "field_name": "FLUC_RT",
+          "field_type_observed": [
+            "str"
+          ],
+          "nullable": false
+        },
+        {
+          "blank_count": 0,
+          "field_name": "ISU_CD",
+          "field_type_observed": [
+            "str"
+          ],
+          "nullable": false
+        },
+        {
+          "blank_count": 0,
+          "field_name": "ISU_NM",
+          "field_type_observed": [
+            "str"
+          ],
+          "nullable": false
+        },
+        {
+          "blank_count": 0,
+          "field_name": "LIST_SHRS",
+          "field_type_observed": [
+            "str"
+          ],
+          "nullable": false
+        },
+        {
+          "blank_count": 0,
+          "field_name": "MKTCAP",
+          "field_type_observed": [
+            "str"
+          ],
+          "nullable": false
+        },
+        {
+          "blank_count": 0,
+          "field_name": "MKT_NM",
+          "field_type_observed": [
+            "str"
+          ],
+          "nullable": false
+        },
+        {
+          "blank_count": 942,
+          "field_name": "SECT_TP_NM",
+          "field_type_observed": [
+            "missing"
+          ],
+          "nullable": true
+        },
+        {
+          "blank_count": 0,
+          "field_name": "TDD_CLSPRC",
+          "field_type_observed": [
+            "str"
+          ],
+          "nullable": false
+        },
+        {
+          "blank_count": 0,
+          "field_name": "TDD_HGPRC",
+          "field_type_observed": [
+            "str"
+          ],
+          "nullable": false
+        },
+        {
+          "blank_count": 0,
+          "field_name": "TDD_LWPRC",
+          "field_type_observed": [
+            "str"
+          ],
+          "nullable": false
+        },
+        {
+          "blank_count": 0,
+          "field_name": "TDD_OPNPRC",
+          "field_type_observed": [
+            "str"
+          ],
+          "nullable": false
+        }
+      ],
+      "record_count": 942,
+      "record_keys": [
+        "ACC_TRDVAL",
+        "ACC_TRDVOL",
+        "BAS_DD",
+        "CMPPREVDD_PRC",
+        "FLUC_RT",
+        "ISU_CD",
+        "ISU_NM",
+        "LIST_SHRS",
+        "MKTCAP",
+        "MKT_NM",
+        "SECT_TP_NM",
+        "TDD_CLSPRC",
+        "TDD_HGPRC",
+        "TDD_LWPRC",
+        "TDD_OPNPRC"
+      ],
+      "records_container": "OutBlock_1",
+      "top_level_keys": [
+        "OutBlock_1"
+      ]
+    }
+  },
+  "work_id": "KRX_OPEN_API_V01_ACCESS_AND_PARITY_VALIDATION"
+}

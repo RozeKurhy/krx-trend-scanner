@@ -1,0 +1,83 @@
+{
+  "auth_key_exposed": false,
+  "auth_key_present": true,
+  "four_endpoint_gate": "FOUR_ENDPOINT_ACCESS_PASS",
+  "implementation_head": "af27d0120ffa8ca21217419c666f1ceac6c987ed",
+  "services": [
+    {
+      "access_status": "PASS",
+      "actual_endpoint": "/sto/stk_bydd_trd",
+      "api_id": "stk_bydd_trd",
+      "auth_header": "AUTH_KEY",
+      "auth_mode": "header_only",
+      "base_url": "https://data-dbg.krx.co.kr/svc/apis",
+      "expected_endpoint": "/sto/stk_bydd_trd",
+      "http_status": 200,
+      "method": "GET",
+      "query_date_format": "YYYYMMDD",
+      "query_parameter_names": [
+        "basDd"
+      ],
+      "record_count": 942,
+      "schema_status": "KNOWN",
+      "service_name": "kospi_stock_daily"
+    },
+    {
+      "access_status": "PASS",
+      "actual_endpoint": "/sto/ksq_bydd_trd",
+      "api_id": "ksq_bydd_trd",
+      "auth_header": "AUTH_KEY",
+      "auth_mode": "header_only",
+      "base_url": "https://data-dbg.krx.co.kr/svc/apis",
+      "expected_endpoint": "/sto/ksq_bydd_trd",
+      "http_status": 200,
+      "method": "GET",
+      "query_date_format": "YYYYMMDD",
+      "query_parameter_names": [
+        "basDd"
+      ],
+      "record_count": 1821,
+      "schema_status": "KNOWN",
+      "service_name": "kosdaq_stock_daily"
+    },
+    {
+      "access_status": "PASS",
+      "actual_endpoint": "/idx/kospi_dd_trd",
+      "api_id": "kospi_dd_trd",
+      "auth_header": "AUTH_KEY",
+      "auth_mode": "header_only",
+      "base_url": "https://data-dbg.krx.co.kr/svc/apis",
+      "expected_endpoint": "/idx/kospi_dd_trd",
+      "http_status": 200,
+      "method": "GET",
+      "query_date_format": "YYYYMMDD",
+      "query_parameter_names": [
+        "basDd"
+      ],
+      "record_count": 51,
+      "schema_status": "KNOWN",
+      "service_name": "kospi_index_daily"
+    },
+    {
+      "access_status": "PASS",
+      "actual_endpoint": "/idx/kosdaq_dd_trd",
+      "api_id": "kosdaq_dd_trd",
+      "auth_header": "AUTH_KEY",
+      "auth_mode": "header_only",
+      "base_url": "https://data-dbg.krx.co.kr/svc/apis",
+      "expected_endpoint": "/idx/kosdaq_dd_trd",
+      "http_status": 200,
+      "method": "GET",
+      "query_date_format": "YYYYMMDD",
+      "query_parameter_names": [
+        "basDd"
+      ],
+      "record_count": 40,
+      "schema_status": "KNOWN",
+      "service_name": "kosdaq_index_daily"
+    }
+  ],
+  "start_head": "af27d0120ffa8ca21217419c666f1ceac6c987ed",
+  "validation_source_head": "af27d0120ffa8ca21217419c666f1ceac6c987ed",
+  "work_id": "KRX_OPEN_API_V01_ACCESS_AND_PARITY_VALIDATION"
+}
