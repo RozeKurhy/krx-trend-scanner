@@ -623,6 +623,7 @@ def main() -> int:
         "production_build_error_count": len(build_errors),
         "summary_consistency_mismatch_count": summary_consistency_mismatch,
         "summary_consistency_status": gate_values["summary_consistency_status"],
+        "validator_negative_control_count": len(validator_negative_cases),
         "validator_negative_control_status": validator_negative_status,
         "periodization_ready": periodization_ready, "derived_ready": derived_ready, "final_ready": final_ready,
         "periodization_final_status": "CLOSED" if periodization_ready else "BLOCKED_OPENDART_V01_FINAL_CLOSURE",
