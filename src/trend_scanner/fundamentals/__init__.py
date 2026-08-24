@@ -38,6 +38,9 @@ from .derived_metrics import (
     derive_metrics,
 )
 from .derived_metrics_provider import DerivedMetricsBuild, DerivedMetricsProvider
+from .assessment_models import AssessmentEvidence, FundamentalsAssessmentResult
+from .assessment import FundamentalsAssessment, FundamentalsAssessmentEngine, assess_fundamentals
+from .assessment_provider import FundamentalsAssessmentProvider
 
 __all__ = [
     "PIT_GRANULARITY",
@@ -85,4 +88,10 @@ __all__ = [
     "derive_metrics",
     "DerivedMetricsBuild",
     "DerivedMetricsProvider",
+    "AssessmentEvidence",
+    "FundamentalsAssessmentResult",
+    "FundamentalsAssessment",
+    "FundamentalsAssessmentEngine",
+    "assess_fundamentals",
+    "FundamentalsAssessmentProvider",
 ]
