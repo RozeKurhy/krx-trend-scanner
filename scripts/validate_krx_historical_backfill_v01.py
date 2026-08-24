@@ -574,21 +574,21 @@ def run(mode: str, output: Path, raw_root: Path) -> dict[str, Any]:
     with (output / "failed_dates.csv").open("w", newline="", encoding="utf-8") as handle:
         writer = csv.writer(handle, lineterminator="\n")
         writer.writerow(["date", "market", "status", "error_code"])
-        written_failures: set[tuple[str, str, str]] = set()
+        written_failures: set[tuple[str, str, str, str]] = set()
         for item in pilot_summary.get("failure_observations", []):
-            row = (str(item.get("date")), str(item.get("market")), str(item.get("error_code")))
+            row = (str(item.get("date")), str(item.get("market")), str(item.get("status", "FAILED")), str(item.get("error_code")))
             written_failures.add(row)
             writer.writerow(row)
         for item in pilot_summary.get("dates", []):
             for observation in item.get("failure_observations", []):
-                row = (str(observation.get("date")), str(observation.get("market")), str(observation.get("error_code")))
+                row = (str(observation.get("date")), str(observation.get("market")), str(observation.get("status", "FAILED")), str(observation.get("error_code")))
                 written_failures.add(row)
                 writer.writerow(row)
             # Preserve the prior bounded-pilot blocker even when its old
             # runner did not persist per-market failure observations.
             if "BLOCKED_KRX_SCHEMA" in item.get("blockers", []):
                 for market in MARKETS:
-                    row = (str(item.get("date")), market, "BLOCKED_KRX_SCHEMA")
+                    row = (str(item.get("date")), market, "FAILED", "BLOCKED_KRX_SCHEMA")
                     if row not in written_failures:
                         writer.writerow(row)
                         written_failures.add(row)
