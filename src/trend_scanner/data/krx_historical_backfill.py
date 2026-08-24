@@ -66,6 +66,8 @@ class KrxHistoricalBackfillRunner:
 
     @staticmethod
     def _error_code(exc: Exception) -> str:
+        if getattr(exc, "error_code", None):
+            return str(exc.error_code)
         text = str(exc)
         if text.startswith("RAW_"):
             return text.split(":", 1)[0]
@@ -81,19 +83,30 @@ class KrxHistoricalBackfillRunner:
         no_data_dates: list[str] = []
         failed_dates: list[str] = []
         partial_dates: list[str] = []
+        integrity_error_count = 0
+        cross_market_conflicts: list[dict[str, Any]] = []
         for day in dates:
             states = self._snapshot_state(day)
             statuses = {market: (states[market] or {}).get("status") for market in MARKETS}
             if all(statuses[market] == "COMPLETE" for market in MARKETS):
                 complete_dates.append(day)
+                seen: dict[str, str] = {}
                 for market in MARKETS:
                     row = states[market] or {}
                     rows_by_market[market] += int(row.get("row_count") or 0)
                     try:
                         frame = self.store.load_snapshot(market, day)
-                        tickers_by_market[market].update(frame["ticker"].astype(str).tolist())
                     except Exception:
-                        pass
+                        integrity_error_count += 1
+                        continue
+                    tickers = frame["ticker"].astype(str).tolist()
+                    tickers_by_market[market].update(tickers)
+                    for ticker in tickers:
+                        previous = seen.get(ticker)
+                        if previous is not None and previous != market:
+                            cross_market_conflicts.append({"date": day, "ticker": ticker, "markets": [previous, market]})
+                        else:
+                            seen[ticker] = market
             elif all(statuses[market] == "NO_DATA" for market in MARKETS):
                 no_data_dates.append(day)
             else:
@@ -113,6 +126,9 @@ class KrxHistoricalBackfillRunner:
             "total_rows": sum(rows_by_market.values()),
             "rows_by_market": rows_by_market,
             "unique_tickers_by_market": {market: len(values) for market, values in tickers_by_market.items()},
+            "integrity_error_count": integrity_error_count,
+            "cross_market_ticker_conflict_count": len(cross_market_conflicts),
+            "cross_market_conflict_samples": cross_market_conflicts[:20],
         }
 
     def run(
@@ -141,6 +157,8 @@ class KrxHistoricalBackfillRunner:
         retry_attempt_count = 0
         market_attempts = {market: 0 for market in MARKETS}
         status_counts = {"401": 0, "403": 0, "429": 0, "5xx": 0, "transport_error": 0}
+        diagnostics: list[dict[str, Any]] = []
+        failure_observations: list[dict[str, Any]] = []
 
         for day in dates:
             states = self._snapshot_state(day)
@@ -191,7 +209,19 @@ class KrxHistoricalBackfillRunner:
                     break
                 except Exception as exc:  # schema/transport failures are recorded and the run remains resumable
                     failures[market] = exc
-                    self.store.save_failure(market, day, MARKET_ENDPOINTS[market], self._error_code(exc), str(exc))
+                    error_code = self._error_code(exc)
+                    self.store.save_failure(market, day, MARKET_ENDPOINTS[market], error_code, str(exc))
+                    observation = {
+                        "date": day,
+                        "market": market,
+                        "endpoint": MARKET_ENDPOINTS[market],
+                        "error_code": error_code,
+                    }
+                    diagnostic = getattr(exc, "diagnostic", None)
+                    if diagnostic:
+                        observation.update(diagnostic)
+                    diagnostics.append(observation)
+                    failure_observations.append({"date": day, "market": market, "status": "FAILED", "error_code": error_code})
                     if isinstance(exc, KrxRawStockSnapshotError) or str(exc).startswith("RAW_"):
                         blockers.append("BLOCKED_KRX_SCHEMA")
                     else:
@@ -208,8 +238,13 @@ class KrxHistoricalBackfillRunner:
                     today = datetime.now(KST).date()
                     if date.fromisoformat(day) > today - timedelta(days=NO_DATA_FINALIZATION_LAG_DAYS):
                         recent_empty_unfinalized_count += 1
-                        for market in MARKETS:
-                            self.store.save_failure(market, day, MARKET_ENDPOINTS[market], "RECENT_EMPTY_NOT_FINAL", "both markets returned empty within finalization lag")
+                        diagnostics.append({
+                            "date": day,
+                            "market": "BOTH",
+                            "endpoint": "KOSPI+KOSDAQ",
+                            "error_code": "RECENT_EMPTY_NOT_FINAL",
+                            "record_count": 0,
+                        })
                     else:
                         for market in MARKETS:
                             self.store.save_snapshot(market, day, fetched[market], MARKET_ENDPOINTS[market])
@@ -267,6 +302,8 @@ class KrxHistoricalBackfillRunner:
             "status_counts": status_counts,
             "aggregate": aggregate,
             "blockers": blockers,
+            "diagnostics": diagnostics,
+            "failure_observations": failure_observations,
         }
 
 

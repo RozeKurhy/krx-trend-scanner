@@ -22,7 +22,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "src"
 sys.path.insert(0, str(SRC))
 
-from trend_scanner.data.krx_historical_backfill import KrxHistoricalBackfillRunner  # noqa: E402
+from trend_scanner.data.krx_historical_backfill import KrxHistoricalBackfillRunner, candidate_dates  # noqa: E402
 from trend_scanner.data.krx_openapi_client import KrxOpenApiAuthorizationError, KrxOpenApiClient  # noqa: E402
 from trend_scanner.data.krx_openapi_quota import LocalKrxOpenApiQuota  # noqa: E402
 from trend_scanner.data.krx_raw_stock_provider import (  # noqa: E402
@@ -34,7 +34,7 @@ from trend_scanner.data.krx_raw_stock_provider import (  # noqa: E402
 from trend_scanner.data.krx_raw_stock_store import DEFAULT_RAW_STOCK_ROOT, KrxRawStockStore  # noqa: E402
 
 
-FIX_START_HEAD = "3a87e780981491fcd2bfaf63b4f933513924b3b6"
+FIX_START_HEAD = "b2f969a921cbaccdaeea8c25747c686ca223a4af"
 DEFAULT_OUTPUT = ROOT / "artifacts/data/krx_historical_backfill/v01"
 PILOT_DATES = ("2018-04-27", "2018-05-04", "2026-08-21")
 TARGET_START = "2010-01-04"
@@ -165,6 +165,8 @@ def _base_counters() -> dict[str, Any]:
         "ticker_format_error_count": 0,
         "numeric_parse_error_count": 0,
         "unexpected_records_key_count": 0,
+        "required_field_missing_count": 0,
+        "ohlc_relation_error_count": 0,
         "store_test_failure_count": 0,
         "partition_integrity_error_count": 0,
         "partition_conflict_count": 0,
@@ -174,9 +176,16 @@ def _base_counters() -> dict[str, Any]:
         "cross_market_ticker_conflict_count": 0,
         "candidate_date_count": 0,
         "complete_date_count": 0,
+        "finalized_no_data_date_count": 0,
         "no_data_date_count": 0,
         "failed_date_count": 0,
         "partial_date_count": 0,
+        "unexplained_missing_date_count": 0,
+        "unexplained_missing_partition_count": 0,
+        "missing_kospi_partition_count": 0,
+        "missing_kosdaq_partition_count": 0,
+        "complete_partition_count": 0,
+        "partition_integrity_scan_count": 0,
         "recent_empty_unfinalized_count": 0,
         "resume_skip_complete_count": 0,
         "resume_skip_no_data_count": 0,
@@ -204,64 +213,127 @@ def _base_counters() -> dict[str, Any]:
         "opendart_request_count": 0,
         "secret_occurrence_count": 0,
         "validation_source_head_mismatch_count": 0,
+        "cross_market_conflict_sample_count": 0,
     }
 
 
 def _coverage(store: KrxRawStockStore, start: str, end: str) -> dict[str, Any]:
-    rows = store.list_manifest()
+    candidates = candidate_dates(start, end)
     by_year: dict[str, dict[str, int]] = {}
-    integrity_count = 0
+    complete_dates: list[str] = []
+    no_data_dates: list[str] = []
+    failed_dates: list[str] = []
+    partial_dates: list[str] = []
+    missing_dates: list[str] = []
+    integrity_scan_count = 0
     integrity_errors = 0
+    content_hash_mismatches = 0
+    file_hash_mismatches = 0
     duplicate_tickers = 0
-    cross_market: set[tuple[str, str]] = set()
-    for row in rows:
-        day = str(row["date"])
-        if not start <= day <= end:
-            continue
+    cross_market_conflicts: list[dict[str, Any]] = []
+    total_rows = 0
+    rows_by_market = {market: 0 for market in MARKETS}
+    complete_partition_count = 0
+    missing_partition_count = 0
+    missing_by_market = {market: 0 for market in MARKETS}
+
+    for day in candidates:
         year = day[:4]
-        bucket = by_year.setdefault(year, {"candidate_dates": 0, "complete_snapshot_dates": 0, "no_data_dates": 0, "failure_dates": 0, "row_count": 0})
-        if row["status"] == "COMPLETE":
-            integrity_count += 1
-            check = store.verify_snapshot(row["market"], day)
-            if not check.get("valid"):
-                integrity_errors += 1
-            bucket["row_count"] += int(row["row_count"] or 0)
-            try:
-                frame = store.load_snapshot(row["market"], day)
-                duplicate_tickers += int(frame["ticker"].duplicated().sum())
-                for ticker in frame["ticker"].astype(str):
-                    key = (day, ticker)
-                    if key in cross_market:
-                        pass
-                    cross_market.add(key)
-            except Exception:
-                pass
-        elif row["status"] == "NO_DATA":
-            bucket["no_data_dates"] += 1
-        else:
-            bucket["failure_dates"] += 1
-    complete_by_day = {}
-    no_data_by_day = {}
-    for day in sorted({str(row["date"]) for row in rows if start <= str(row["date"]) <= end}):
+        bucket = by_year.setdefault(year, {
+            "candidate_dates": 0, "complete_dates": 0, "finalized_no_data_dates": 0,
+            "failed_dates": 0, "partial_dates": 0, "missing_dates": 0,
+            "complete_partitions": 0, "row_count": 0,
+        })
+        bucket["candidate_dates"] += 1
         states = {market: store.get_manifest(market, day) for market in MARKETS}
-        complete_by_day[day] = all((states[market] or {}).get("status") == "COMPLETE" for market in MARKETS)
-        no_data_by_day[day] = all((states[market] or {}).get("status") == "NO_DATA" for market in MARKETS)
-    complete_dates = [day for day, yes in complete_by_day.items() if yes]
-    no_data_dates = [day for day, yes in no_data_by_day.items() if yes]
-    failed_dates = [day for day in complete_by_day if not complete_by_day[day] and not no_data_by_day.get(day, False)]
+        statuses = {market: (states[market] or {}).get("status") for market in MARKETS}
+        is_complete = all(statuses[market] == "COMPLETE" for market in MARKETS)
+        is_no_data = all(statuses[market] == "NO_DATA" for market in MARKETS)
+        if is_complete:
+            complete_dates.append(day)
+            bucket["complete_dates"] += 1
+        elif is_no_data:
+            no_data_dates.append(day)
+            bucket["finalized_no_data_dates"] += 1
+        else:
+            missing_for_day = False
+            if any(statuses[market] is None for market in MARKETS):
+                missing_for_day = True
+                for market in MARKETS:
+                    if statuses[market] is None:
+                        missing_partition_count += 1
+                        missing_by_market[market] += 1
+            if any(status == "FAILED" for status in statuses.values()):
+                failed_dates.append(day)
+                bucket["failed_dates"] += 1
+            if sum(status == "COMPLETE" for status in statuses.values()) == 1:
+                partial_dates.append(day)
+                bucket["partial_dates"] += 1
+            if missing_for_day:
+                missing_dates.append(day)
+                bucket["missing_dates"] += 1
+
+        if is_complete:
+            frames: dict[str, pd.DataFrame] = {}
+            for market in MARKETS:
+                complete_partition_count += 1
+                bucket["complete_partitions"] += 1
+                integrity_scan_count += 1
+                check = store.verify_snapshot(market, day)
+                if not check.get("valid"):
+                    integrity_errors += 1
+                    error_text = " ".join(str(item) for item in check.get("errors", []))
+                    content_hash_mismatches += int("content hash mismatch" in error_text)
+                    file_hash_mismatches += int("file hash mismatch" in error_text)
+                    continue
+                frame = store.load_snapshot(market, day)
+                frames[market] = frame
+                duplicate_tickers += int(frame["ticker"].duplicated().sum())
+                row_count = len(frame)
+                total_rows += row_count
+                rows_by_market[market] += row_count
+                bucket["row_count"] += row_count
+
+            seen: dict[str, str] = {}
+            for market in MARKETS:
+                frame = frames.get(market)
+                if frame is None:
+                    continue
+                for ticker in frame["ticker"].astype(str):
+                    previous = seen.get(ticker)
+                    if previous is not None and previous != market:
+                        cross_market_conflicts.append({"date": day, "ticker": ticker, "markets": [previous, market]})
+                    else:
+                        seen[ticker] = market
+
     return {
+        "candidate_date_count": len(candidates),
         "first_complete_trading_date": min(complete_dates) if complete_dates else None,
         "last_complete_trading_date": max(complete_dates) if complete_dates else None,
-        "complete_partition_count": sum(1 for row in rows if row["status"] == "COMPLETE" and start <= str(row["date"]) <= end),
+        "complete_date_count": len(complete_dates),
+        "finalized_no_data_date_count": len(no_data_dates),
         "no_data_count": len(no_data_dates),
+        "failed_date_count": len(failed_dates),
         "failure_date_count": len(failed_dates),
-        "partial_date_count": sum(1 for day in failed_dates if sum((store.get_manifest(market, day) or {}).get("status") == "COMPLETE" for market in MARKETS) == 1),
-        "total_raw_rows": sum(int(row["row_count"] or 0) for row in rows if row["status"] == "COMPLETE" and start <= str(row["date"]) <= end),
-        "integrity_scan_count": integrity_count,
+        "partial_date_count": len(partial_dates),
+        "unexplained_missing_date_count": len([day for day in candidates if day not in complete_dates and day not in no_data_dates]),
+        "unexplained_missing_partition_count": missing_partition_count,
+        "missing_kospi_partition_count": missing_by_market["KOSPI"],
+        "missing_kosdaq_partition_count": missing_by_market["KOSDAQ"],
+        "complete_partition_count": complete_partition_count,
+        "total_raw_rows": total_rows,
+        "rows_by_market": rows_by_market,
+        "integrity_scan_count": integrity_scan_count,
+        "partition_integrity_scan_count": integrity_scan_count,
         "integrity_error_count": integrity_errors,
+        "partition_integrity_error_count": integrity_errors,
+        "content_hash_mismatch_count": content_hash_mismatches,
+        "file_hash_mismatch_count": file_hash_mismatches,
         "duplicate_ticker_count": duplicate_tickers,
-        "cross_market_ticker_conflict_count": 0,
+        "cross_market_ticker_conflict_count": len(cross_market_conflicts),
+        "cross_market_conflict_samples": cross_market_conflicts[:20],
         "coverage_by_year": by_year,
+        "missing_dates": missing_dates[:100],
     }
 
 
@@ -279,7 +351,14 @@ def _live_pilot(counters: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any
         results = []
         for day in PILOT_DATES:
             result = runner.run(day, day, max_task_attempts=2)
-            results.append({"date": day, "status": result["status"], "aggregate": result["aggregate"], "blockers": result["blockers"]})
+            results.append({
+                "date": day,
+                "status": result["status"],
+                "aggregate": result["aggregate"],
+                "blockers": result["blockers"],
+                "diagnostics": result.get("diagnostics", []),
+                "failure_observations": result.get("failure_observations", []),
+            })
             if result["blockers"]:
                 break
         audit = {
@@ -306,13 +385,46 @@ def _live_pilot(counters: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any
             except Exception as exc:
                 samsung["observations"].append({"date": day, "error": type(exc).__name__})
                 samsung["discrepancies"].append(day)
-        return {"status": "PASS" if not any(item["blockers"] for item in results) else "BLOCKED_KRX_SCHEMA", "dates": results, "audit": audit}, samsung
+        diagnostics = [item for result in results for item in result.get("diagnostics", [])]
+        failures = [item for result in results for item in result.get("failure_observations", [])]
+        error_counter_by_code = {
+            "RAW_SNAPSHOT_REQUIRED_FIELD_MISSING": "required_field_missing_count",
+            "RAW_SNAPSHOT_RECORDS_KEY": "unexpected_records_key_count",
+            "RAW_SNAPSHOT_DATE_MISMATCH": "source_date_mismatch_count",
+            "RAW_SNAPSHOT_TICKER_FORMAT_ERROR": "ticker_format_error_count",
+            "RAW_SNAPSHOT_NUMERIC_PARSE_ERROR": "numeric_parse_error_count",
+            "RAW_SNAPSHOT_NUMERIC_RANGE_ERROR": "numeric_parse_error_count",
+            "RAW_SNAPSHOT_OHLC_RELATION_ERROR": "ohlc_relation_error_count",
+        }
+        for item in diagnostics:
+            key = error_counter_by_code.get(item.get("error_code"))
+            if key:
+                counters[key] += 1
+        counters["snapshot_schema_error_count"] += sum(
+            item.get("error_code") in {"RAW_SNAPSHOT_SCHEMA_ERROR", "RAW_SNAPSHOT_HTTP_STATUS"}
+            for item in diagnostics
+        )
+        return {
+            "status": "PASS" if not any(item["blockers"] for item in results) else "BLOCKED_KRX_SCHEMA",
+            "dates": results,
+            "audit": audit,
+            "diagnostics": diagnostics,
+            "failure_observations": failures,
+        }, samsung
 
 
 def run(mode: str, output: Path, raw_root: Path) -> dict[str, Any]:
     output.mkdir(parents=True, exist_ok=True)
     counters = _base_counters()
     pilot_summary: dict[str, Any] = {"status": "NOT_RUN", "dates": []}
+    prior_live_summary_path = output / "live_pilot_summary.json"
+    if mode != "live-pilot" and prior_live_summary_path.exists():
+        try:
+            prior_live_summary = json.loads(prior_live_summary_path.read_text(encoding="utf-8"))
+            if isinstance(prior_live_summary, dict):
+                pilot_summary = prior_live_summary
+        except (OSError, json.JSONDecodeError):
+            pass
     samsung: dict[str, Any] = {"ticker": "005930", "observations": [], "expected_values": {"2018-04-27": 128386494, "2018-05-04": 6419324700}, "discrepancies": []}
     test_tail = ""
     if mode == "offline":
@@ -329,14 +441,25 @@ def run(mode: str, output: Path, raw_root: Path) -> dict[str, Any]:
         store = KrxRawStockStore(raw_root)
         coverage = _coverage(store, TARGET_START, TARGET_END)
         counters.update({
-            "complete_date_count": coverage["complete_partition_count"] // 2,
-            "no_data_date_count": coverage["no_data_count"],
-            "failed_date_count": coverage["failure_date_count"],
+            "candidate_date_count": coverage["candidate_date_count"],
+            "complete_date_count": coverage["complete_date_count"],
+            "finalized_no_data_date_count": coverage["finalized_no_data_date_count"],
+            "no_data_date_count": coverage["finalized_no_data_date_count"],
+            "failed_date_count": coverage["failed_date_count"],
             "partial_date_count": coverage["partial_date_count"],
-            "partition_integrity_error_count": coverage["integrity_error_count"],
+            "unexplained_missing_date_count": coverage["unexplained_missing_date_count"],
+            "unexplained_missing_partition_count": coverage["unexplained_missing_partition_count"],
+            "missing_kospi_partition_count": coverage["missing_kospi_partition_count"],
+            "missing_kosdaq_partition_count": coverage["missing_kosdaq_partition_count"],
+            "complete_partition_count": coverage["complete_partition_count"],
+            "partition_integrity_scan_count": coverage["partition_integrity_scan_count"],
+            "partition_integrity_error_count": coverage["partition_integrity_error_count"],
+            "content_hash_mismatch_count": coverage["content_hash_mismatch_count"],
+            "file_hash_mismatch_count": coverage["file_hash_mismatch_count"],
             "duplicate_ticker_count": coverage["duplicate_ticker_count"],
             "cross_market_ticker_conflict_count": coverage["cross_market_ticker_conflict_count"],
         })
+        counters["cross_market_conflict_sample_count"] = len(coverage.get("cross_market_conflict_samples", []))
         counters["production_complete_partition_count"] = coverage["complete_partition_count"]
         counters["production_total_raw_rows"] = coverage["total_raw_rows"]
     else:
@@ -356,7 +479,9 @@ def run(mode: str, output: Path, raw_root: Path) -> dict[str, Any]:
     required_zero = [
         "raw_provider_test_failure_count", "snapshot_schema_error_count", "source_date_mismatch_count",
         "duplicate_ticker_count", "ticker_format_error_count", "numeric_parse_error_count",
-        "unexpected_records_key_count", "store_test_failure_count", "partition_integrity_error_count",
+        "unexpected_records_key_count", "required_field_missing_count", "ohlc_relation_error_count",
+        "store_test_failure_count", "partition_integrity_error_count", "unexplained_missing_date_count",
+        "unexplained_missing_partition_count",
         "partition_conflict_count", "physical_schema_error_count", "content_hash_mismatch_count",
         "file_hash_mismatch_count", "cross_market_ticker_conflict_count", "failed_date_count",
         "partial_date_count", "basic_info_attempt_count", "http_401_count", "http_403_count",
@@ -373,12 +498,21 @@ def run(mode: str, output: Path, raw_root: Path) -> dict[str, Any]:
         if pilot_summary.get("status") != "PASS":
             blockers.append(pilot_summary.get("status", "BLOCKED_MORE_EVIDENCE_REQUIRED"))
     if mode == "production-coverage":
-        if counters.get("production_complete_partition_count", 0) <= 0 or counters.get("production_total_raw_rows", 0) <= 0:
+        if counters.get("candidate_date_count", 0) <= 0 or counters.get("production_complete_partition_count", 0) <= 0 or counters.get("production_total_raw_rows", 0) <= 0:
             blockers.append("BLOCKED_COVERAGE")
     blockers = list(dict.fromkeys(blockers))
-    if not blockers and mode == "production-coverage" and counters.get("production_complete_partition_count", 0) > 0 and counters.get("production_total_raw_rows", 0) > 0:
-        status = "READY_FOR_ARCHITECT_KRX_HISTORICAL_BACKFILL_V01_REVIEW"
-        recommendation = "RECOMMEND_PROCEED_TO_MARKET_DATA_REPOSITORY_V02"
+    if any(item in blockers for item in {"unexplained_missing_date_count", "unexplained_missing_partition_count"}):
+        blockers = ["BLOCKED_COVERAGE", *[item for item in blockers if item != "BLOCKED_COVERAGE"]]
+    coverage_ready = (
+        mode == "production-coverage"
+        and counters.get("candidate_date_count", 0) > 0
+        and counters.get("complete_date_count", 0) + counters.get("finalized_no_data_date_count", 0) == counters.get("candidate_date_count", 0)
+        and counters.get("production_complete_partition_count", 0) > 0
+        and counters.get("production_total_raw_rows", 0) > 0
+    )
+    if not blockers and coverage_ready:
+        status = "READY_FOR_ARCHITECT_KRX_HISTORICAL_BACKFILL_V01_FIX01_REVIEW"
+        recommendation = "READY_FOR_ARCHITECT_KRX_HISTORICAL_BACKFILL_V01_FIX01_REVIEW"
     elif not blockers:
         status = "BACKFILL_IN_PROGRESS"
         recommendation = "BLOCKED_MORE_EVIDENCE_REQUIRED"
@@ -419,6 +553,7 @@ def run(mode: str, output: Path, raw_root: Path) -> dict[str, Any]:
         "both_empty": "NO_DATA only outside two-day finalization lag",
         "asymmetric_empty": "ASYMMETRIC_EMPTY_SNAPSHOT",
         "resume": ["COMPLETE", "NO_DATA"],
+        "recent_empty": "RECENT_EMPTY_NOT_FINAL is report-only; no manifest checkpoint; general --resume refetches",
         "failed_retry": "--retry-failures",
         "quota": "LocalKrxOpenApiQuota.reserve_attempt before every client HTTP attempt",
         "sequential_markets": True,
@@ -427,16 +562,43 @@ def run(mode: str, output: Path, raw_root: Path) -> dict[str, Any]:
     _write_json(output / "coverage_summary.json", {"target_start": TARGET_START, "target_end": TARGET_END, "coverage": coverage_payload, "counters": counters})
     _write_json(output / "quota_summary.json", {key: counters.get(key) for key in ("quota_usage_date_kst", "quota_global_before", "quota_global_after", "quota_remaining_after", "krx_open_api_attempt_count", "retry_attempt_count", "http_401_count", "http_403_count", "http_429_count", "http_5xx_count", "transport_error_count")})
     _write_json(output / "samsung_listed_shares_evidence.json", samsung)
-    _write_json(output / "partition_integrity_summary.json", {"integrity_scan_count": counters.get("partition_integrity_error_count", 0), "integrity_error_count": counters.get("partition_integrity_error_count", 0), "duplicate_ticker_count": counters.get("duplicate_ticker_count", 0), "cross_market_ticker_conflict_count": counters.get("cross_market_ticker_conflict_count", 0)})
+    _write_json(output / "partition_integrity_summary.json", {
+        "integrity_scan_count": counters.get("partition_integrity_scan_count", 0),
+        "integrity_error_count": counters.get("partition_integrity_error_count", 0),
+        "content_hash_mismatch_count": counters.get("content_hash_mismatch_count", 0),
+        "file_hash_mismatch_count": counters.get("file_hash_mismatch_count", 0),
+        "duplicate_ticker_count": counters.get("duplicate_ticker_count", 0),
+        "cross_market_ticker_conflict_count": counters.get("cross_market_ticker_conflict_count", 0),
+    })
     _write_json(output / "live_pilot_summary.json", pilot_summary)
     with (output / "failed_dates.csv").open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.writer(handle)
+        writer = csv.writer(handle, lineterminator="\n")
         writer.writerow(["date", "market", "status", "error_code"])
+        for item in pilot_summary.get("failure_observations", []):
+            writer.writerow([item.get("date"), item.get("market"), item.get("status", "FAILED"), item.get("error_code")])
+        for item in pilot_summary.get("dates", []):
+            for observation in item.get("failure_observations", []):
+                writer.writerow([observation.get("date"), observation.get("market"), observation.get("status", "FAILED"), observation.get("error_code")])
     with (output / "coverage_by_year.csv").open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.writer(handle)
-        writer.writerow(["year", "candidate_dates", "complete_snapshot_dates", "no_data_dates", "failure_dates", "row_count"])
+        writer = csv.writer(handle, lineterminator="\n")
+        writer.writerow(["year", "candidate_dates", "complete_dates", "finalized_no_data_dates", "failed_dates", "partial_dates", "missing_dates", "complete_partitions", "row_count"])
         for year, values in coverage_payload.get("coverage_by_year", {}).items():
-            writer.writerow([year, *[values.get(key, 0) for key in ("candidate_dates", "complete_snapshot_dates", "no_data_dates", "failure_dates", "row_count")]])
+            writer.writerow([year, *[values.get(key, 0) for key in ("candidate_dates", "complete_dates", "finalized_no_data_dates", "failed_dates", "partial_dates", "missing_dates", "complete_partitions", "row_count")]])
+    _write_json(output / "cross_market_conflict_evidence.json", {
+        "count": coverage_payload.get("cross_market_ticker_conflict_count", 0),
+        "samples": coverage_payload.get("cross_market_conflict_samples", []),
+    })
+    _write_json(output / "missing_coverage_evidence.json", {
+        "candidate_date_count": coverage_payload.get("candidate_date_count", 0),
+        "unexplained_missing_date_count": coverage_payload.get("unexplained_missing_date_count", 0),
+        "unexplained_missing_partition_count": coverage_payload.get("unexplained_missing_partition_count", 0),
+        "missing_dates": coverage_payload.get("missing_dates", []),
+    })
+    _write_json(output / "schema_blocker_evidence.json", {
+        "status": pilot_summary.get("status") if pilot_summary.get("status") == "BLOCKED_KRX_SCHEMA" else "NOT_RUN",
+        "observations": pilot_summary.get("diagnostics", []),
+        "note": "No new KRX request was issued in this validation run; prior live pilot did not persist exact provider diagnostic fields." if not pilot_summary.get("diagnostics") else None,
+    })
     summary = {
         "architecture_version": "KRX_HISTORICAL_BACKFILL_V01",
         "mode": mode,

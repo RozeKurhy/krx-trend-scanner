@@ -83,3 +83,13 @@ def test_failed_manifest_can_be_retried_without_overwriting_complete(tmp_path):
     assert store.get_manifest("KOSPI", "2026-08-21")["status"] == "FAILED"
     store.save_snapshot("KOSPI", "2026-08-21", _frame(), "/sto/stk_bydd_trd")
     assert store.get_manifest("KOSPI", "2026-08-21")["status"] == "COMPLETE"
+
+
+def test_failure_cannot_downgrade_finalized_no_data(tmp_path):
+    store = KrxRawStockStore(tmp_path / "raw")
+    empty = _frame().iloc[0:0].copy()
+    store.save_snapshot("KOSPI", "2020-01-03", empty, "/sto/stk_bydd_trd")
+    store.save_failure("KOSPI", "2020-01-03", "/sto/stk_bydd_trd", "RAW_SNAPSHOT_SCHEMA_ERROR", "late observation")
+    manifest = store.get_manifest("KOSPI", "2020-01-03")
+    assert manifest["status"] == "NO_DATA"
+    assert manifest["error_code"] is None

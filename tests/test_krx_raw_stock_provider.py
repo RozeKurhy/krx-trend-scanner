@@ -69,8 +69,10 @@ def test_exact_endpoint_mapping_and_source_field_mapping(market, endpoint):
 
 def test_outblock_1_is_required():
     client = _Client(_Response(records_key="Other", records=(_row(),)))
-    with pytest.raises(KrxRawStockSnapshotError, match="RAW_SNAPSHOT_RECORDS_KEY"):
+    with pytest.raises(KrxRawStockSnapshotError, match="RAW_SNAPSHOT_RECORDS_KEY") as caught:
         KrxRawStockSnapshotProvider(client).fetch_market_snapshot("KOSPI", "20260821")
+    assert caught.value.error_code == "RAW_SNAPSHOT_RECORDS_KEY"
+    assert caught.value.diagnostic["record_count"] == 1
 
 
 def test_http_status_is_fail_closed():
@@ -128,6 +130,16 @@ def test_missing_field_and_negative_values_fail_closed():
         KrxRawStockSnapshotProvider(_Client(_Response(records=(missing,)))).fetch_market_snapshot("KOSPI", "20260821")
     with pytest.raises(KrxRawStockSnapshotError, match="RAW_SNAPSHOT_NUMERIC_RANGE_ERROR"):
         KrxRawStockSnapshotProvider(_Client(_Response(records=(_row(ACC_TRDVAL="-1"),)))).fetch_market_snapshot("KOSPI", "20260821")
+
+
+def test_schema_failure_diagnostic_is_secret_safe_and_structured():
+    missing = _row()
+    del missing["LIST_SHRS"]
+    with pytest.raises(KrxRawStockSnapshotError) as caught:
+        KrxRawStockSnapshotProvider(_Client(_Response(records=(missing,)))).fetch_market_snapshot("KOSPI", "20260821")
+    assert caught.value.error_code == "RAW_SNAPSHOT_REQUIRED_FIELD_MISSING"
+    assert caught.value.diagnostic["required_missing_fields"] == ["LIST_SHRS"]
+    assert "AUTH_KEY" not in repr(caught.value.diagnostic)
 
 
 def test_no_one_won_correction_or_adjusted_calculation():

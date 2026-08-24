@@ -58,11 +58,21 @@ _DATE_PATTERN = re.compile(r"^\d{8}$")
 class KrxRawStockSnapshotError(MarketDataError):
     """Raised when a raw KRX snapshot violates its fail-closed contract."""
 
+    def __init__(self, error_code: str, message: str = "", *, diagnostic: Mapping[str, Any] | None = None) -> None:
+        self.error_code = str(error_code)
+        self.diagnostic = dict(diagnostic or {})
+        detail = f": {message}" if message else ""
+        super().__init__(f"{self.error_code}{detail}")
+
+
+def _snapshot_error(error_code: str, message: str = "", **diagnostic: Any) -> KrxRawStockSnapshotError:
+    return KrxRawStockSnapshotError(error_code, message, diagnostic=diagnostic)
+
 
 def normalize_market(market: str) -> str:
     value = str(market).strip().upper()
     if value not in MARKETS:
-        raise KrxRawStockSnapshotError(f"RAW_SNAPSHOT_INVALID_MARKET: {market!r}")
+        raise _snapshot_error("RAW_SNAPSHOT_INVALID_MARKET", repr(market))
     return value
 
 
@@ -75,14 +85,14 @@ def normalize_bas_dd(value: Any) -> str:
         text = str(value).strip()
         digits = re.sub(r"[^0-9]", "", text)
         if len(digits) != 8:
-            raise KrxRawStockSnapshotError(f"RAW_SNAPSHOT_INVALID_DATE: {value!r}")
+            raise _snapshot_error("RAW_SNAPSHOT_INVALID_DATE", repr(value))
         result = f"{digits[:4]}-{digits[4:6]}-{digits[6:]}"
     try:
         parsed = pd.Timestamp(result)
     except (TypeError, ValueError, OverflowError) as exc:
-        raise KrxRawStockSnapshotError(f"RAW_SNAPSHOT_INVALID_DATE: {value!r}") from exc
+        raise _snapshot_error("RAW_SNAPSHOT_INVALID_DATE", repr(value)) from exc
     if pd.isna(parsed):
-        raise KrxRawStockSnapshotError(f"RAW_SNAPSHOT_INVALID_DATE: {value!r}")
+        raise _snapshot_error("RAW_SNAPSHOT_INVALID_DATE", repr(value))
     return parsed.date().isoformat()
 
 
@@ -93,19 +103,19 @@ def _source_date(value: Any) -> str:
 
 def _parse_int(value: Any, field: str, *, strictly_positive: bool = False) -> int:
     if isinstance(value, bool) or value is None:
-        raise KrxRawStockSnapshotError(f"RAW_SNAPSHOT_NUMERIC_PARSE_ERROR: {field}")
+        raise _snapshot_error("RAW_SNAPSHOT_NUMERIC_PARSE_ERROR", field, numeric_field=field)
     text = str(value).replace(",", "").strip()
     if not text or text in {"-", "—", "nan", "NaN", "None", "null"}:
-        raise KrxRawStockSnapshotError(f"RAW_SNAPSHOT_NUMERIC_PARSE_ERROR: {field}")
+        raise _snapshot_error("RAW_SNAPSHOT_NUMERIC_PARSE_ERROR", field, numeric_field=field)
     try:
         number = Decimal(text)
     except (InvalidOperation, ValueError) as exc:
-        raise KrxRawStockSnapshotError(f"RAW_SNAPSHOT_NUMERIC_PARSE_ERROR: {field}") from exc
+        raise _snapshot_error("RAW_SNAPSHOT_NUMERIC_PARSE_ERROR", field, numeric_field=field) from exc
     if not number.is_finite() or number != number.to_integral_value():
-        raise KrxRawStockSnapshotError(f"RAW_SNAPSHOT_NUMERIC_PARSE_ERROR: {field}")
+        raise _snapshot_error("RAW_SNAPSHOT_NUMERIC_PARSE_ERROR", field, numeric_field=field)
     parsed = int(number)
     if parsed < (1 if strictly_positive else 0) or parsed > _INT64_MAX:
-        raise KrxRawStockSnapshotError(f"RAW_SNAPSHOT_NUMERIC_RANGE_ERROR: {field}")
+        raise _snapshot_error("RAW_SNAPSHOT_NUMERIC_RANGE_ERROR", field, numeric_field=field)
     return parsed
 
 
@@ -179,34 +189,68 @@ class KrxRawStockSnapshotProvider:
             requested_date,
             quota_endpoint_key=MARKET_ENDPOINTS[normalized_market].strip("/"),
         )
+        response_diagnostic = {
+            "http_status": getattr(response, "http_status", None),
+            "records_key": getattr(response, "records_key", None),
+            "record_count": len(getattr(response, "records", ()) or ()),
+            "top_level_keys": list(getattr(response, "top_level_keys", ()) or ()),
+            "record_keys": sorted({str(key) for row in (getattr(response, "records", ()) or ()) for key in row.keys()})[:64],
+        }
         if response.http_status != 200:
-            raise KrxRawStockSnapshotError(f"RAW_SNAPSHOT_HTTP_STATUS: {response.http_status}")
+            raise _snapshot_error("RAW_SNAPSHOT_HTTP_STATUS", str(response.http_status), **response_diagnostic)
         if response.records_key != "OutBlock_1":
-            raise KrxRawStockSnapshotError("RAW_SNAPSHOT_RECORDS_KEY")
-        if not response.records:
+            raise _snapshot_error("RAW_SNAPSHOT_RECORDS_KEY", **response_diagnostic)
+        if not getattr(response, "records", ()):
             return _typed_empty_snapshot()
         rows: list[dict[str, Any]] = []
         for source_row in response.records:
             missing = [source for source in SOURCE_FIELDS.values() if source not in source_row]
             if missing:
-                raise KrxRawStockSnapshotError(f"RAW_SNAPSHOT_REQUIRED_FIELD_MISSING: {missing}")
+                raise _snapshot_error(
+                    "RAW_SNAPSHOT_REQUIRED_FIELD_MISSING",
+                    str(missing),
+                    **response_diagnostic,
+                    required_missing_fields=missing,
+                )
             source_date = _source_date(source_row[SOURCE_FIELDS["date"]])
             if source_date != requested_date.replace("-", ""):
-                raise KrxRawStockSnapshotError("RAW_SNAPSHOT_DATE_MISMATCH")
+                raise _snapshot_error(
+                    "RAW_SNAPSHOT_DATE_MISMATCH",
+                    **response_diagnostic,
+                    source_date_sample_shape="8-digit" if source_date else "invalid",
+                )
             ticker = str(source_row[SOURCE_FIELDS["ticker"]]).strip()
             if not re.fullmatch(r"\d{6}", ticker):
-                raise KrxRawStockSnapshotError("RAW_SNAPSHOT_TICKER_FORMAT_ERROR")
+                raise _snapshot_error(
+                    "RAW_SNAPSHOT_TICKER_FORMAT_ERROR",
+                    **response_diagnostic,
+                    ticker_sample_shape=f"length={len(ticker)}" if ticker else "empty",
+                )
             row: dict[str, Any] = {"date": pd.Timestamp(requested_date), "ticker": ticker}
             for field in RAW_NUMERIC_COLUMNS:
-                row[field] = _parse_int(
-                    source_row[SOURCE_FIELDS[field]],
-                    field,
-                    strictly_positive=field == "listed_shares",
-                )
+                try:
+                    row[field] = _parse_int(
+                        source_row[SOURCE_FIELDS[field]],
+                        field,
+                        strictly_positive=field == "listed_shares",
+                    )
+                except KrxRawStockSnapshotError as exc:
+                    raise KrxRawStockSnapshotError(
+                        exc.error_code,
+                        str(exc).split(": ", 1)[-1],
+                        diagnostic={**response_diagnostic, **exc.diagnostic, "numeric_field_failure": field},
+                    ) from exc
             _validate_ohlc_relation(row)
             rows.append(row)
         frame = pd.DataFrame(rows, columns=list(RAW_COLUMNS))
-        return validate_raw_snapshot_frame(frame, requested_date)
+        try:
+            return validate_raw_snapshot_frame(frame, requested_date)
+        except KrxRawStockSnapshotError as exc:
+            raise KrxRawStockSnapshotError(
+                exc.error_code,
+                str(exc).split(": ", 1)[-1],
+                diagnostic={**response_diagnostic, **exc.diagnostic},
+            ) from exc
 
 
 __all__ = [

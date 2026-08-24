@@ -280,6 +280,11 @@ class KrxRawStockStore:
         if existing is not None and existing["status"] == "COMPLETE":
             self._verify_complete_row(existing)
             return
+        if existing is not None and existing["status"] == "NO_DATA":
+            # NO_DATA is a finalized, valid terminal observation.  A later
+            # failure must not silently downgrade it to FAILED; correction is
+            # intentionally reserved for an explicit repair workflow.
+            return
         with self._connect() as connection:
             connection.execute("BEGIN IMMEDIATE")
             connection.execute(
