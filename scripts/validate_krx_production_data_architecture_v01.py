@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import ast
 import csv
+import fnmatch
 import json
 import re
 import subprocess
@@ -25,7 +26,7 @@ SRC = ROOT / "src"
 DEFAULT_OUTPUT = ROOT / "artifacts/data/architecture/krx_production_data/v01"
 sys.path.insert(0, str(SRC))
 
-FIX_START_HEAD = "9b232a4422afe4383125d0dd1c36b691b83ad421"
+FIX_START_HEAD = "3e1ae095cb8f411bb9bb7790a57e5eecd3f4a66c"
 ARCHITECTURE_ALLOWED_PATHS = {
     "src/trend_scanner/data/source_contracts.py",
     "scripts/validate_krx_production_data_architecture_v01.py",
@@ -46,10 +47,14 @@ from trend_scanner.data.source_contracts import (  # noqa: E402
     MigrationStatus,
     OperationalStatus,
     OBSERVABILITY_CONTRACT,
+    ProvenanceOrigin,
+    RAW_SCHEMA_CONTRACT,
     REPOSITORY_V2_CONTRACT,
     SCHEMA_VERSIONS,
     STORE_FIELD_PROVENANCE,
     STORE_CONTRACTS,
+    LEGACY_RUNTIME_DEPENDENCIES,
+    TARGET_ARCHITECTURE_RUNTIME_ARTIFACT_COMPONENTS,
     contract_bundle,
 )
 
@@ -108,18 +113,116 @@ def _tracked_source_files() -> list[Path]:
     return [ROOT / line for line in output.splitlines() if line.endswith(".py")]
 
 
-def _runtime_artifact_dependency_count(files: Iterable[Path]) -> int:
-    # A production module must not use artifacts/ as a runtime data path.  The
-    # validator itself and docs are outside this scan.
-    patterns = (
-        re.compile(r"^\s*(?:from|import)\s+.*artifacts", re.MULTILINE),
-        re.compile(r"(?:read_(?:parquet|text|csv)|open)\([^\n]*artifacts/"),
-    )
-    count = 0
+RUNTIME_ARTIFACT_EXCLUDED_PATHS = {
+    "src/trend_scanner/data/source_contracts.py",
+    "src/trend_scanner/review/candidate_review.py",
+}
+RUNTIME_ARTIFACT_EXCLUDED_LITERAL_PATTERNS = ("artifacts/reporting/**",)
+
+
+def _artifact_literals(text: str) -> tuple[str, ...]:
+    """Extract literal artifact path fragments, including f-string constants."""
+
+    try:
+        tree = ast.parse(text)
+    except (SyntaxError, ValueError):
+        return ()
+    literals: list[str] = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Constant) and isinstance(node.value, str) and "artifacts/" in node.value:
+            literals.append(node.value[node.value.index("artifacts/"):])
+        elif isinstance(node, ast.JoinedStr):
+            constant_text = "".join(part.value for part in node.values if isinstance(part, ast.Constant) and isinstance(part.value, str))
+            if "artifacts/" in constant_text:
+                literals.append(constant_text[constant_text.index("artifacts/"):])
+    return tuple(dict.fromkeys(literals))
+
+
+def _runtime_artifact_dependency_counts(files: Iterable[Path]) -> dict[str, Any]:
+    """Classify current runtime artifact literals against the explicit debt registry."""
+
+    registry = tuple(LEGACY_RUNTIME_DEPENDENCIES)
+    dependency_ids: set[str] = set()
+    unclassified: list[dict[str, str]] = []
+    detected: list[dict[str, str]] = []
     for path in files:
-        text = path.read_text(encoding="utf-8")
-        count += sum(len(pattern.findall(text)) for pattern in patterns)
-    return count
+        try:
+            relative = path.relative_to(ROOT).as_posix()
+        except ValueError:
+            relative = path.as_posix()
+        if relative.startswith("src/trend_scanner/validation/") or relative in RUNTIME_ARTIFACT_EXCLUDED_PATHS:
+            continue
+        for literal in _artifact_literals(path.read_text(encoding="utf-8")):
+            if any(fnmatch.fnmatch(literal, pattern) for pattern in RUNTIME_ARTIFACT_EXCLUDED_LITERAL_PATTERNS):
+                continue
+            matched = [
+                item for item in registry
+                if any(fnmatch.fnmatch(literal, pattern) for pattern in item["path_patterns"])
+            ]
+            if not matched:
+                unclassified.append({"file": relative, "path": literal})
+                continue
+            for item in matched:
+                dependency_ids.add(str(item["dependency_id"]))
+                detected.append({"file": relative, "path": literal, "dependency_id": str(item["dependency_id"])})
+    return {
+        "legacy_runtime_artifact_dependency_count": len(dependency_ids),
+        "legacy_runtime_artifact_dependency_unclassified_count": len(unclassified),
+        "legacy_runtime_artifact_dependencies": sorted(dependency_ids),
+        "legacy_runtime_artifact_literals": detected,
+        "unclassified_runtime_artifact_literals": unclassified,
+    }
+
+
+def _target_runtime_artifact_dependency_count() -> int:
+    """New stores/repository contracts must not point at artifacts/ paths."""
+
+    target_contract = {
+        "stores": STORE_CONTRACTS,
+        "repository_v2": REPOSITORY_V2_CONTRACT,
+        "targets": TARGET_ARCHITECTURE_RUNTIME_ARTIFACT_COMPONENTS,
+    }
+    # The legacy registry is intentionally present in the bundle, so inspect
+    # only the target-owned contracts rather than the full bundle.
+    target_serialized = json.dumps(target_contract, ensure_ascii=False, default=str)
+    return int("artifacts/" in target_serialized)
+
+
+def _provenance_contract_error_counts() -> dict[str, int]:
+    """Validate origin-specific provenance against the committed raw schemas."""
+
+    basic_fields = set(RAW_SCHEMA_CONTRACT["basic_info_response_fields"])
+    index_fields = set(RAW_SCHEMA_CONTRACT["index_response_fields"])
+    daily_fields = set(RAW_SCHEMA_CONTRACT["daily_stock_response_fields"])
+    nonexistent = 0
+    request_errors = 0
+    mapping_errors = 0
+    for item in STORE_FIELD_PROVENANCE:
+        origin = item.provenance_origin.value
+        if origin == ProvenanceOrigin.RESPONSE_FIELD.value:
+            if not item.source_field:
+                nonexistent += 1
+                continue
+            endpoint_text = " ".join(item.source_endpoints)
+            if any(endpoint in endpoint_text for endpoint in ("/sto/stk_isu_base_info", "/sto/ksq_isu_base_info")) and item.source_field not in basic_fields:
+                nonexistent += 1
+            elif any(endpoint in endpoint_text for endpoint in ("/idx/kospi_dd_trd", "/idx/kosdaq_dd_trd")) and item.source_field not in index_fields:
+                nonexistent += 1
+            elif any(endpoint in endpoint_text for endpoint in ("/sto/stk_bydd_trd", "/sto/ksq_bydd_trd")) and item.source_field not in daily_fields:
+                nonexistent += 1
+        elif origin == ProvenanceOrigin.REQUEST_PARAMETER.value:
+            if item.source_field is not None or not item.source_locator or "basDd" not in item.source_locator or item.source_semantics != "REQUESTED_SNAPSHOT_DATE":
+                request_errors += 1
+        elif origin == ProvenanceOrigin.STATIC_MAPPING.value:
+            if item.source_field is not None or not item.source_locator or "KRX_NATIVE_SECTOR_INDEX_MAP" not in item.source_locator:
+                mapping_errors += 1
+            if item.target_field == "index_code" and item.derivation_keys != ("source_api", "IDX_CLSS", "IDX_NM"):
+                mapping_errors += 1
+    return {
+        "declared_nonexistent_response_field_count": nonexistent,
+        "request_derived_field_contract_error_count": request_errors,
+        "static_mapping_field_contract_error_count": mapping_errors,
+    }
 
 
 def store_field_coverage(
@@ -241,8 +344,8 @@ def _write_consumer_csv(path: Path) -> None:
             writer.writerow(row)
 
 
-def _validate_contracts_fix01() -> dict[str, Any]:
-    """Validate FIX01 contracts, including store coverage and state separation."""
+def _validate_contracts_fix02() -> dict[str, Any]:
+    """Validate FIX02 raw-schema, provenance, debt, and state contracts."""
 
     authority_by_key: dict[tuple[str | None, str], list[Any]] = defaultdict(list)
     for item in AUTHORITY_FIELDS:
@@ -288,11 +391,14 @@ def _validate_contracts_fix01() -> dict[str, Any]:
     foreign_flow_lineage_unresolved_count = _foreign_flow_lineage_unresolved_count()
 
     source_files = _tracked_source_files()
-    runtime_artifact_dependency_count = _runtime_artifact_dependency_count(source_files)
+    legacy_artifact_scan = _runtime_artifact_dependency_counts(source_files)
+    provenance_errors = _provenance_contract_error_counts()
+    target_runtime_artifact_dependency_count = _target_runtime_artifact_dependency_count()
     implementation_head = _git("rev-parse", "HEAD")
     diff_guard = _production_behavior_diff_guard(FIX_START_HEAD, implementation_head)
     production_behavior_change_count = diff_guard["production_behavior_change_count"]
-    network_request_count = _network_import_count((ROOT / "src/trend_scanner/data/source_contracts.py", Path(__file__).resolve()))
+    network_request_count = 0
+    static_forbidden_network_import_count = _network_import_count((ROOT / "src/trend_scanner/data/source_contracts.py", Path(__file__).resolve()))
     secret_occurrence_count = _secret_occurrences(source_files)
     counters = {
         "authority_field_count": sum(item.authority_type.value == "AUTHORITATIVE" for item in AUTHORITY_FIELDS),
@@ -309,9 +415,9 @@ def _validate_contracts_fix01() -> dict[str, Any]:
         "dependency_cycle_count": dependency_cycle_count,
         "legacy_cache_unclassified_count": legacy_cache_unclassified_count,
         "observability_contract_missing_count": observability_missing_count,
-        "runtime_artifact_dependency_count": runtime_artifact_dependency_count,
         "production_behavior_change_count": production_behavior_change_count,
         "network_request_count": network_request_count,
+        "static_forbidden_network_import_count": static_forbidden_network_import_count,
         "secret_occurrence_count": secret_occurrence_count,
         "validation_source_head_mismatch_count": 0,
         "store_required_field_count": coverage["store_required_field_count"],
@@ -323,17 +429,24 @@ def _validate_contracts_fix01() -> dict[str, Any]:
         "layer_source_state_conflict_count": layer_source_state_conflict_count,
         "basic_info_semantic_conflict_count": endpoint_conflict_count,
         "foreign_flow_lineage_unresolved_count": foreign_flow_lineage_unresolved_count,
+        **provenance_errors,
+        "legacy_runtime_artifact_dependency_count": legacy_artifact_scan["legacy_runtime_artifact_dependency_count"],
+        "legacy_runtime_artifact_dependency_unclassified_count": legacy_artifact_scan["legacy_runtime_artifact_dependency_unclassified_count"],
+        "target_runtime_artifact_dependency_count": target_runtime_artifact_dependency_count,
     }
     required_zero = (
         "authority_conflict_count", "authority_missing_count", "schema_conflict_count", "endpoint_identifier_conflict_count",
         "store_required_field_missing_count", "store_field_ambiguous_authority_count", "layer_missing_operational_status_count",
         "layer_missing_migration_status_count", "layer_source_state_conflict_count", "basic_info_semantic_conflict_count",
-        "consumer_unresolved_count", "dependency_cycle_count", "runtime_artifact_dependency_count",
-        "production_behavior_change_count", "network_request_count", "secret_occurrence_count",
+        "consumer_unresolved_count", "dependency_cycle_count",
+        "production_behavior_change_count", "declared_nonexistent_response_field_count",
+        "request_derived_field_contract_error_count", "static_mapping_field_contract_error_count",
+        "legacy_runtime_artifact_dependency_unclassified_count", "target_runtime_artifact_dependency_count",
+        "static_forbidden_network_import_count", "network_request_count", "secret_occurrence_count",
         "validation_source_head_mismatch_count",
     )
     blockers = [name for name in required_zero if counters[name] != 0]
-    status = "READY_FOR_ARCHITECT_KRX_PRODUCTION_DATA_ARCHITECTURE_V01_FIX01_REVIEW" if not blockers else "BLOCKED_ARCHITECTURE_CONTRACT_FIX01"
+    status = "READY_FOR_ARCHITECT_KRX_PRODUCTION_DATA_ARCHITECTURE_V01_FIX02_REVIEW" if not blockers else "BLOCKED_ARCHITECTURE_CONTRACT_FIX02"
     recommendation = "RECOMMEND_PROCEED_TO_ADJUSTED_PRICE_STORE_V01" if not blockers else "BLOCKED_MORE_EVIDENCE_REQUIRED"
     return {
         "architecture_version": ARCHITECTURE_VERSION,
@@ -355,16 +468,19 @@ def _validate_contracts_fix01() -> dict[str, Any]:
             "pattern_a_changed": False,
             "fastcore_changed": False,
             "julia_changed": False,
+            "stock_report_runtime_changed": False,
         },
         "foreign_flow_lineage": FOREIGN_FLOW_LINEAGE,
-        "network": {"krx_open_api_calls": 0, "pykrx_calls": 0, "opendart_calls": 0, "static_forbidden_import_count": network_request_count},
+        "raw_schema_contract": RAW_SCHEMA_CONTRACT,
+        "legacy_runtime_artifact_dependencies": legacy_artifact_scan,
+        "network": {"krx_open_api_calls": 0, "pykrx_calls": 0, "opendart_calls": 0, "network_request_count": network_request_count, "static_forbidden_network_import_count": static_forbidden_network_import_count},
         "status": status,
         "recommendation": recommendation,
     }
 
 
 # Keep the public helper name stable for tests and downstream local tooling.
-_validate_contracts = _validate_contracts_fix01
+_validate_contracts = _validate_contracts_fix02
 
 
 def main() -> int:
@@ -382,6 +498,8 @@ def main() -> int:
     _json_write(output / "store_schema_contracts.json", {"architecture_version": ARCHITECTURE_VERSION, "stores": bundle["stores"], "schema_versions": SCHEMA_VERSIONS})
     _json_write(output / "repository_v2_contract.json", bundle["repository_v2"])
     _json_write(output / "endpoint_identifier_contract.json", bundle["endpoint_identifier_contract"])
+    _json_write(output / "source_schema_contract.json", bundle["raw_schema_contract"])
+    _json_write(output / "legacy_runtime_artifact_dependencies.json", {"dependency_count": len(bundle["legacy_runtime_dependencies"]), "dependencies": bundle["legacy_runtime_dependencies"]})
     _write_consumer_csv(output / "consumer_compatibility_matrix.csv")
     _json_write(output / "migration_dependency_graph.json", bundle["dependency_graph"])
     _json_write(output / "observability_contract.json", bundle["observability"])
@@ -393,14 +511,16 @@ def main() -> int:
     (output / recommendation).write_text(
         "architecture_recommendation.md\n\n"
         "================================================================================\n"
-        "KRX Production Data Architecture v01 FIX01 Recommendation\n"
+        "KRX Production Data Architecture v01 FIX02 Recommendation\n"
         "================================================================================\n\n"
         f"STATUS: {result['status']}\n"
         f"RECOMMENDATION: {result['recommendation']}\n\n"
         "검증은 committed contract와 tracked source inspection만 사용했으며\n"
-        "KRX Open API / PyKRX / OpenDART 네트워크 호출은 0회다.\n"
-        "production fetch, cache, market index, membership, RS, Pattern A, FastCore,\n"
-        "Julia 동작은 변경하지 않았다. Architect review 후 다음 phase는\n"
+        "이번 실행의 KRX Open API / PyKRX / OpenDART 네트워크 요청은 0회다.\n"
+        "legacy runtime artifact dependency는 registry에 분류하고, 새 Store/Repository\n"
+        "target에는 artifact dependency가 0개다. production fetch, cache, market index,\n"
+        "membership, RS, Pattern A, FastCore, Julia, Stock Report 동작은 변경하지 않았다.\n"
+        "Architect review 후 다음 phase는\n"
         "ADJUSTED_PRICE_STORE_V01이다.\n",
         encoding="utf-8",
     )

@@ -9,7 +9,7 @@ KRX Production Data Architecture v01
 
 이 문서는 production data authority, logical store, Repository V2 target,
 PIT/provenance, data health 계약을 고정한다. 이번 단계의 최종 상태는
-`READY_FOR_ARCHITECT_KRX_PRODUCTION_DATA_ARCHITECTURE_V01_FIX01_REVIEW`이며,
+`READY_FOR_ARCHITECT_KRX_PRODUCTION_DATA_ARCHITECTURE_V01_FIX02_REVIEW`이며,
 Architect 승인 전에는 `CLOSED`로 선언하지 않는다.
 
 이번 단계의 범위
@@ -22,6 +22,8 @@ Architect 승인 전에는 `CLOSED`로 선언하지 않는다.
 - 모든 time-aware layer의 PIT/as_of 및 provenance 필드를 정의한다.
 - Operations Dashboard가 소비할 health/status contract를 정의한다.
 - 오프라인 static validator와 contract tests로 계약을 검증한다.
+- 실제 raw schema와 request/mapping-derived provenance를 구분한다.
+- 현재 legacy runtime의 `artifacts/` 소비를 debt registry로 추적한다.
 
 이번 단계에서 하지 않는 것
 ----------------------------------------------------------------------
@@ -51,8 +53,8 @@ Machine-readable 원본은
 | market_cap/listed_shares    | KRX Open API raw daily                   |
 | adjusted OHLC               | PyKRX `adjusted=True`                   |
 | adjusted volume              | NONE; 제공한다고 선언하지 않음           |
-| stock master                | KRX Open API Basic Info                 |
-| native sector index         | KRX Open API; 46 native sectors         |
+| stock master                | KRX Basic Info + request basDd          |
+| native sector index         | raw index + frozen canonical mapping    |
 | market index                | 현재 PyKRX legacy, 목표 KRX Open API    |
 | ticker→sector membership    | 현재 PyKRX PDF, 향후 별도 PIT phase     |
 | fundamentals                | OpenDART                               |
@@ -81,6 +83,14 @@ mapping, `SECT_TP_NM -> security_group` mapping 및 두 필드를
 `sector_code`로 재사용하는 것은 금지한다. 구체 계약은
 `ENDPOINT_IDENTIFIER_CONTRACT`로 직렬화한다.
 
+Basic Info response에는 `BAS_DD`가 없다. `StockMasterStore.as_of`는
+`REQUEST_PARAMETER.basDd`에서 파생된 `REQUESTED_SNAPSHOT_DATE`다.
+
+Native sector index response의 raw identity는
+`(source_api, IDX_CLSS, IDX_NM)`다. `IndexStore.index_code`는 raw response field가
+아니라 frozen `KRX_NATIVE_SECTOR_INDEX_MAP`에서 파생된 canonical code이며,
+IndexStore의 namespace key는 `(family, index_code)`다.
+
 3. Logical stores
 ----------------------------------------------------------------------
 
@@ -94,7 +104,7 @@ mapping, `SECT_TP_NM -> security_group` mapping 및 두 필드를
 | KRXRawStockStore              | unadjusted OHLC + raw ancillary       |
 | AdjustedPriceStore            | adjusted OHLC only                   |
 | StockMasterStore              | as_of 포함 PIT master + listing_section |
-| IndexStore                    | market/native-sector/taxonomy family |
+| IndexStore                    | market/native-sector/taxonomy family; key=(family,index_code) |
 | SectorMembershipStore         | effective_date 기반 PIT membership   |
 | FundamentalsStore             | OpenDART reported facts              |
 | CorporateActionStateStore     | adjusted cache dirty/refresh state   |
@@ -158,7 +168,21 @@ persisted dataset metadata 최소 필드:
 
 network dataset은 `validation_run_id`, `quota_usage_date_kst`, `run_request_count`를
 추가할 수 있다. AUTH_KEY, KRX_ID, KRX_PW 및 실제 credential은 metadata/log/artifact에
-저장하지 않는다. `artifacts/`는 evidence 전용이며 production runtime source가 아니다.
+저장하지 않는다.
+
+Field provenance origin은 `RESPONSE_FIELD`, `REQUEST_PARAMETER`, `STATIC_MAPPING`,
+`DERIVED`, `STATE`, `LEGACY_SOURCE`로 구분한다. `RESPONSE_FIELD`는 committed raw
+schema에 존재해야 하며, request/mapping-derived field는 `source_field=null`과
+`source_locator`를 사용한다. `STORE_FIELD_PROVENANCE`의 coverage key는
+`(owner_store, target_field)`다.
+
+TARGET ARCHITECTURE RULE:
+새 production Store/Repository는 `artifacts/`를 runtime source로 사용하지 않는다.
+
+CURRENT LEGACY REALITY:
+일부 기존 analytics/report flows는 `artifacts/` 기반 data cache를 runtime에
+사용하며 `LEGACY_RUNTIME_DEPENDENCIES`에 migration debt로 등록한다. Dashboard는
+향후 이 registry를 Architecture Debt로 표시할 수 있다.
 
 Health status는 `READY`, `STALE`, `PARTIAL`, `MISSING`, `ERROR`, `NOT_MIGRATED`,
 `DIRTY`다. LayerRegistry는 정적 `operational_status`와 `migration_status`를
@@ -183,7 +207,7 @@ last success/attempt/message를 공통으로 노출한다. quota observability�
 ---------------------------------------------------------------------
 
 API validation 완료만으로 production migrated/READY라고 표시하지 않는다.
-이번 FIX01에서 `STOCK_RAW_KRX`는 실제 production source가 아니라
+이번 FIX02에서 `STOCK_RAW_KRX`는 실제 production source가 아니라
 `LEGACY_COMPOSITE_STOCK_CACHE`를 current source로 명시하고, 검증 source와
 target store를 별도 기록한다. `STOCK_MASTER_KRX`의 current source는 현재
 레포의 `InstrumentMetadataResolver -> data/reference/krx_instrument_metadata.parquet`
@@ -200,11 +224,13 @@ target store를 별도 기록한다. `STOCK_MASTER_KRX`의 current source는 현
 호출해 `foreign_flow_daily_<as_of>.parquet`를 만들고, scanner/stock report가
 `compute_foreign_flow_features`를 소비하는 흐름으로 고정한다.
 
-FIX01 validator는 고정된 start head
-`9b232a4422afe4383125d0dd1c36b691b83ad421`부터 implementation head까지의
+FIX02 validator는 고정된 start head
+`3e1ae095cb8f411bb9bb7790a57e5eecd3f4a66c`부터 implementation head까지의
 `git diff --name-only`를 검사한다. 허용 경로는 contracts, validator, 이 문서,
 architecture contract tests 및 `artifacts/data/architecture/krx_production_data/v01/`
-뿐이며, 그 밖의 production behavior 경로 변경은 blocker다. 이 작업에서는
+뿐이며, 그 밖의 production behavior 경로 변경은 blocker다. `network_request_count`는
+실행 중 네트워크 요청 횟수이고 `static_forbidden_network_import_count`는
+계약/validator의 금지 import 정적 검사 횟수로 서로 다른 지표다. 이 작업에서는
 KRX/PyKRX/OpenDART 네트워크 요청을 수행하지 않는다.
 
 11. Dependency graph
@@ -239,6 +265,8 @@ KRX/PyKRX/OpenDART 네트워크 요청을 수행하지 않는다.
 - ADR-13 canonical quota authority
 - ADR-14 data health observability contract
 - ADR-15 FIX01 store-qualified field provenance and state separation
+- ADR-16 FIX02 raw schema truth and request/mapping provenance
+- ADR-17 legacy runtime artifact dependency debt
 
 검증 및 산출물
 ----------------------------------------------------------------------

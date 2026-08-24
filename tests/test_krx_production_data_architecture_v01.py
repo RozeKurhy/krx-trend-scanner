@@ -13,11 +13,14 @@ from trend_scanner.data.source_contracts import (
     ENDPOINT_IDENTIFIER_CONTRACT,
     FOREIGN_FLOW_LINEAGE,
     HealthStatus,
+    LEGACY_RUNTIME_DEPENDENCIES,
     LAYER_REGISTRY,
     LEGACY_CACHE_CLASSIFICATION,
     MigrationStatus,
     OperationalStatus,
     OBSERVABILITY_CONTRACT,
+    ProvenanceOrigin,
+    RAW_SCHEMA_CONTRACT,
     REPOSITORY_V2_CONTRACT,
     STORE_CONTRACTS,
     STORE_FIELD_PROVENANCE,
@@ -79,6 +82,96 @@ def test_endpoint_identifier_semantics_are_qualified():
     assert sect["target_field"] != "sector_code"
     assert security_group["identifier_namespace"] == "NOT_SECTOR_MEMBERSHIP"
     assert sect["identifier_namespace"] == "NOT_SECTOR_MEMBERSHIP"
+
+
+def test_basic_info_response_has_no_bas_dd_contract():
+    assert "BAS_DD" not in RAW_SCHEMA_CONTRACT["basic_info_response_fields"]
+    as_of = next(item for item in STORE_FIELD_PROVENANCE if item.owner_store == "StockMasterStore" and item.target_field == "as_of")
+    assert as_of.source_field is None
+
+
+def test_stock_master_as_of_is_request_parameter_derived():
+    as_of = next(item for item in STORE_FIELD_PROVENANCE if item.owner_store == "StockMasterStore" and item.target_field == "as_of")
+    assert as_of.provenance_origin == ProvenanceOrigin.REQUEST_PARAMETER
+    assert as_of.source_locator == "REQUEST_PARAMETER.basDd"
+    assert as_of.source_semantics == "REQUESTED_SNAPSHOT_DATE"
+
+
+def test_response_field_contracts_exist_in_known_raw_schema():
+    validator = _load_validator("krx_architecture_schema_validator")
+    assert validator._provenance_contract_error_counts() == {
+        "declared_nonexistent_response_field_count": 0,
+        "request_derived_field_contract_error_count": 0,
+        "static_mapping_field_contract_error_count": 0,
+    }
+
+
+def test_native_index_response_has_no_idx_cd():
+    native = ENDPOINT_IDENTIFIER_CONTRACT["NATIVE_SECTOR_INDEX"]
+    assert "IDX_CD" not in RAW_SCHEMA_CONTRACT["index_response_fields"]
+    assert "IDX_CD" not in native["raw_identity_fields"]
+    assert "IDX_CD" not in native["fields"]
+    assert next(item for item in STORE_FIELD_PROVENANCE if item.owner_store == "IndexStore" and item.target_field == "index_code").source_field is None
+
+
+def test_index_code_is_static_mapping_derived():
+    index_code = next(item for item in STORE_FIELD_PROVENANCE if item.owner_store == "IndexStore" and item.target_field == "index_code")
+    assert index_code.provenance_origin == ProvenanceOrigin.STATIC_MAPPING
+    assert index_code.source_name == "KRX_NATIVE_SECTOR_INDEX_MAP"
+    assert index_code.source_locator == "KRX_NATIVE_SECTOR_INDEX_MAP[(source_api, IDX_CLSS, IDX_NM)]"
+    assert index_code.derivation_keys == ("source_api", "IDX_CLSS", "IDX_NM")
+
+
+def test_index_identity_is_source_qualified():
+    native = ENDPOINT_IDENTIFIER_CONTRACT["NATIVE_SECTOR_INDEX"]
+    assert native["raw_identity_fields"] == ("source_api", "IDX_CLSS", "IDX_NM")
+    assert native["canonical_identity"]["mapping_key"] == ("source_api", "IDX_CLSS", "IDX_NM")
+    assert native["canonical_identity"]["index_namespace"] == "NATIVE_SECTOR_INDEX"
+
+
+def test_internal_sector_code_remains_1005_etc_contract():
+    examples = ENDPOINT_IDENTIFIER_CONTRACT["NATIVE_SECTOR_INDEX"]["canonical_identity"]["canonical_examples"]
+    assert {"1005", "1006", "2012"}.issubset(examples)
+
+
+def _load_validator(module_name: str):
+    validator_path = Path(__file__).resolve().parents[1] / "scripts/validate_krx_production_data_architecture_v01.py"
+    spec = importlib.util.spec_from_file_location(module_name, validator_path)
+    assert spec and spec.loader
+    validator = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(validator)
+    return validator
+
+
+def test_legacy_runtime_artifact_dependencies_are_explicit():
+    validator = _load_validator("krx_architecture_legacy_dependency_validator")
+    scan = validator._runtime_artifact_dependency_counts(validator._tracked_source_files())
+    assert scan["legacy_runtime_artifact_dependency_count"] >= 1
+    assert scan["legacy_runtime_artifact_dependency_unclassified_count"] == 0
+    assert set(scan["legacy_runtime_artifact_dependencies"]) == {item["dependency_id"] for item in LEGACY_RUNTIME_DEPENDENCIES}
+
+
+def test_unclassified_runtime_artifact_dependency_is_blocked(tmp_path):
+    validator = _load_validator("krx_architecture_unclassified_validator")
+    synthetic = tmp_path / "synthetic_runtime.py"
+    synthetic.write_text('path = Path("artifacts/patterns/unknown/data.csv")\n', encoding="utf-8")
+    scan = validator._runtime_artifact_dependency_counts((synthetic,))
+    assert scan["legacy_runtime_artifact_dependency_unclassified_count"] == 1
+    assert scan["legacy_runtime_artifact_dependency_count"] == 0
+
+
+def test_target_stores_have_zero_runtime_artifact_dependency():
+    validator = _load_validator("krx_architecture_target_dependency_validator")
+    assert validator._target_runtime_artifact_dependency_count() == 0
+
+
+def test_network_request_and_static_import_counters_are_distinct():
+    validator = _load_validator("krx_architecture_network_validator")
+    result = validator._validate_contracts()
+    assert result["network"]["network_request_count"] == 0
+    assert result["network"]["static_forbidden_network_import_count"] == 0
+    assert result["counters"]["network_request_count"] == 0
+    assert result["counters"]["static_forbidden_network_import_count"] == 0
 
 
 def test_basic_info_security_group_and_listing_section_are_distinct():
@@ -167,7 +260,7 @@ def test_production_behavior_diff_guard_uses_fixed_git_diff():
     spec.loader.exec_module(validator)
     head = validator._git("rev-parse", "HEAD")
     guard = validator._production_behavior_diff_guard(validator.FIX_START_HEAD, head)
-    assert guard["start_head"] == "9b232a4422afe4383125d0dd1c36b691b83ad421"
+    assert guard["start_head"] == "3e1ae095cb8f411bb9bb7790a57e5eecd3f4a66c"
     assert guard["production_behavior_change_count"] == 0
     assert guard["disallowed_paths"] == []
 
@@ -215,10 +308,12 @@ def test_registered_store_and_layer_ids_are_unique():
 
 def test_contract_bundle_is_json_safe_and_network_free():
     bundle = contract_bundle()
-    assert bundle["architecture_version"] == "KRX_PRODUCTION_DATA_ARCHITECTURE_V01_FIX01"
+    assert bundle["architecture_version"] == "KRX_PRODUCTION_DATA_ARCHITECTURE_V01_FIX02"
     assert bundle["endpoint_identifier_contract"]["BASIC_INFO"]["fields"]["ISU_CD"]["semantic"] == "standard_code"
     source = Path(__file__).resolve().parents[1] / "src/trend_scanner/data/source_contracts.py"
     source_text = source.read_text(encoding="utf-8")
     assert "from pykrx" not in source_text
     assert "OpenDART calls" not in source_text
     assert bundle["foreign_flow_lineage"]["engine_is_upstream_authority"] is False
+    assert bundle["raw_schema_contract"]["basic_info_response_fields"]
+    assert bundle["legacy_runtime_dependencies"]
