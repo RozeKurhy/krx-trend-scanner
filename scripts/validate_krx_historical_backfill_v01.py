@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import argparse
 import csv
-from datetime import datetime
+from datetime import datetime, timezone
 import hashlib
 import json
 import os
@@ -23,20 +23,31 @@ SRC = ROOT / "src"
 sys.path.insert(0, str(SRC))
 
 from trend_scanner.data.krx_historical_backfill import KrxHistoricalBackfillRunner, candidate_dates, prioritize_blockers  # noqa: E402
-from trend_scanner.data.krx_openapi_client import KrxOpenApiAuthorizationError, KrxOpenApiClient  # noqa: E402
-from trend_scanner.data.krx_openapi_quota import LocalKrxOpenApiQuota  # noqa: E402
+from trend_scanner.data.krx_openapi_client import (  # noqa: E402
+    KrxOpenApiAuthorizationError,
+    KrxOpenApiBudgetError,
+    KrxOpenApiClient,
+    KrxOpenApiRateLimitError,
+)
+from trend_scanner.data.krx_openapi_quota import KrxOpenApiQuotaExceeded, LocalKrxOpenApiQuota  # noqa: E402
 from trend_scanner.data.krx_raw_stock_provider import (  # noqa: E402
     MARKET_ENDPOINTS,
     MARKETS,
     RAW_COLUMNS,
+    KrxRawStockSnapshotError,
     KrxRawStockSnapshotProvider,
 )
 from trend_scanner.data.krx_raw_stock_store import DEFAULT_RAW_STOCK_ROOT, KrxRawStockStore  # noqa: E402
 
 
-FIX_START_HEAD = "eaa01ed3e9b4cccedb43a11f83305216b388dee2"
+FIX_VERSION = "FIX04"
+FIX_START_HEAD = "ca9b5e6eabbad693fb10a829a241b28b82de879b"
 DEFAULT_OUTPUT = ROOT / "artifacts/data/krx_historical_backfill/v01"
 PILOT_DATES = ("2018-04-27", "2018-05-04", "2026-08-21")
+SAMSUNG_LISTED_SHARES_EXPECTED = {
+    "2018-04-27": 128386494,
+    "2018-05-04": 6419324700,
+}
 TARGET_START = "2010-01-04"
 TARGET_END = "2026-08-21"
 ALLOWED_PATHS = {
@@ -101,6 +112,135 @@ def pilot_parameters(diagnostic_only: bool = False) -> dict[str, Any]:
         "request_budget": 6,
         "max_transient_retries": 0,
     }
+
+
+def _evidence_metadata(mode: str, source_head: str | None = None) -> dict[str, Any]:
+    return {
+        "validation_generation": FIX_VERSION,
+        "source_head": source_head,
+        "mode": mode,
+        "observed_at": datetime.now(timezone.utc).isoformat(),
+        "legacy": False,
+    }
+
+
+def _is_current_evidence(payload: Any, mode: str) -> bool:
+    return isinstance(payload, dict) and payload.get("validation_generation") == FIX_VERSION and payload.get("mode") == mode and payload.get("legacy") is False
+
+
+def _load_json(path: Path) -> dict[str, Any] | None:
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    return value if isinstance(value, dict) else None
+
+
+def _load_legacy_live_evidence(output: Path) -> dict[str, Any]:
+    existing = _load_json(output / "legacy_live_evidence.json")
+    if existing is not None:
+        return existing
+    legacy: dict[str, Any] = {}
+    for name in ("live_diagnostic_summary.json", "live_pilot_summary.json"):
+        payload = _load_json(output / name)
+        if payload is not None and not _is_current_evidence(payload, payload.get("mode", "live-pilot")):
+            legacy[name.removesuffix("_summary.json")] = payload
+    if not legacy:
+        return {"validation_generation": "PRE_FIX04", "legacy": True, "evidence": {}}
+    return {
+        "validation_generation": "PRE_FIX04",
+        "legacy": True,
+        "evidence": legacy,
+    }
+
+
+def _error_code(exc: Exception) -> str:
+    if getattr(exc, "error_code", None):
+        return str(exc.error_code)
+    text = str(exc)
+    return text.split(":", 1)[0] if text.startswith("RAW_") else type(exc).__name__.upper()
+
+
+def _snapshot_blocker(exc: Exception, diagnostic: dict[str, Any]) -> str:
+    if isinstance(exc, KrxOpenApiAuthorizationError):
+        return "BLOCKED_KRX_AUTH"
+    if isinstance(exc, (KrxOpenApiRateLimitError, KrxOpenApiQuotaExceeded)):
+        return "BACKFILL_PAUSED_QUOTA"
+    if isinstance(exc, KrxOpenApiBudgetError):
+        return "BACKFILL_PAUSED_TASK_BUDGET"
+    http_status = diagnostic.get("http_status")
+    if (isinstance(http_status, int) and 500 <= http_status <= 599) or (http_status is None and diagnostic.get("transport_error_type")):
+        return "BLOCKED_KRX_TRANSPORT"
+    if isinstance(exc, KrxRawStockSnapshotError) or _error_code(exc).startswith("RAW_"):
+        return "BLOCKED_KRX_SCHEMA"
+    return "BLOCKED_MORE_EVIDENCE_REQUIRED"
+
+
+def _client_audit_diagnostic(client: KrxOpenApiClient, market: str) -> dict[str, Any]:
+    endpoint_key = MARKET_ENDPOINTS[market].strip("/")
+    for item in reversed(client.audit):
+        if item.get("endpoint_key") == endpoint_key:
+            return {
+                "http_status": item.get("http_status"),
+                "record_count": item.get("record_count", 0),
+                "top_level_keys": item.get("top_level_keys", []),
+                "transport_error_type": item.get("error_type"),
+            }
+    return {}
+
+
+def _samsung_evidence(store: KrxRawStockStore | None, available_dates: tuple[str, ...]) -> dict[str, Any]:
+    observations: list[dict[str, Any]] = []
+    target_dates = tuple(day for day in SAMSUNG_LISTED_SHARES_EXPECTED if day in available_dates)
+    for day in target_dates:
+        expected = SAMSUNG_LISTED_SHARES_EXPECTED[day]
+        observed: int | None = None
+        ticker_found = False
+        snapshot_available = False
+        if store is not None:
+            try:
+                frame = store.load_snapshot("KOSPI", day)
+                snapshot_available = True
+                matched = frame.loc[frame["ticker"].astype(str) == "005930"]
+                if not matched.empty:
+                    ticker_found = True
+                    observed = int(matched.iloc[0]["listed_shares"])
+            except Exception:
+                snapshot_available = False
+        observations.append({
+            "date": day,
+            "ticker": "005930",
+            "expected": expected,
+            "observed": observed,
+            "ticker_found": ticker_found,
+            "snapshot_available": snapshot_available,
+            "match": bool(ticker_found and observed == expected),
+        })
+    if not observations:
+        return {"ticker": "005930", "observations": [], "status": "NOT_RUN", "blockers": []}
+    if len(observations) < len(SAMSUNG_LISTED_SHARES_EXPECTED):
+        status = "PARTIAL_EVIDENCE"
+        blockers: list[str] = []
+    elif all(item["match"] for item in observations):
+        status = "PASS"
+        blockers = []
+    else:
+        status = "MISMATCH"
+        blockers = ["BLOCKED_SAMSUNG_LISTED_SHARES_EVIDENCE"]
+    return {"ticker": "005930", "observations": observations, "status": status, "blockers": blockers}
+
+
+def _schema_evidence_status(current_diagnostic: dict[str, Any]) -> str:
+    status = current_diagnostic.get("status", "NOT_RUN")
+    if status == "NOT_RUN":
+        return "NOT_RUN"
+    if status == "BLOCKED_KRX_SCHEMA":
+        return "BLOCKED_KRX_SCHEMA"
+    if status == "BLOCKED_KRX_TRANSPORT":
+        return "NO_SCHEMA_CONCLUSION_TRANSPORT_BLOCKED"
+    if status == "PASS":
+        return "NO_SCHEMA_BLOCKER"
+    return "NO_SCHEMA_CONCLUSION"
 
 
 def _git(*args: str) -> str:
@@ -168,6 +308,8 @@ def _run_offline_tests() -> tuple[dict[str, Any], str]:
         "tests/test_krx_raw_stock_provider.py",
         "tests/test_krx_raw_stock_store.py",
         "tests/test_krx_historical_backfill.py",
+        "tests/test_krx_open_api_validation_v01.py",
+        "tests/test_krx_production_data_architecture_v01.py",
     ]
     completed = subprocess.run(
         [sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider", *paths],
@@ -390,29 +532,142 @@ def _coverage(store: KrxRawStockStore, start: str, end: str) -> dict[str, Any]:
     }
 
 
-def _live_pilot(counters: dict[str, Any], *, diagnostic_only: bool = False) -> tuple[dict[str, Any], dict[str, Any]]:
+def _live_diagnostic(counters: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
+    parameters = pilot_parameters(diagnostic_only=True)
     secret = load_auth_key()
-    parameters = pilot_parameters(diagnostic_only)
     if not secret:
         return {
-            "mode": parameters["mode"],
+            **_evidence_metadata("live-diagnostic"),
+            "date": parameters["dates"][0],
             "dates": [],
+            "candidate_dates": list(parameters["dates"]),
             "markets": list(parameters["markets"]),
-            "request_budget": parameters["request_budget"],
+            "request_budget": 2,
             "request_count": 0,
             "retry_count": 0,
             "status": "BLOCKED_KRX_AUTH",
             "blockers": ["BLOCKED_KRX_AUTH"],
-        }, {}
+            "per_market": {market: {"attempted": False, "status": "NOT_ATTEMPTED"} for market in MARKETS},
+            "diagnostics": [],
+            "failure_observations": [],
+        }, _samsung_evidence(None, parameters["dates"])
+    with tempfile.TemporaryDirectory(prefix="krx-historical-diagnostic-") as temp_dir:
+        root = Path(temp_dir)
+        quota = LocalKrxOpenApiQuota(root / "quota.sqlite3", endpoint_limit=100, global_safety_limit=100)
+        client = KrxOpenApiClient(secret, max_requests=2, max_transient_retries=0, quota=quota)
+        provider = KrxRawStockSnapshotProvider(client)
+        store = KrxRawStockStore(root / "raw")
+        per_market: dict[str, dict[str, Any]] = {}
+        diagnostics: list[dict[str, Any]] = []
+        failures: list[dict[str, Any]] = []
+        stop = False
+        day = parameters["dates"][0]
+        for market in MARKETS:
+            if stop:
+                per_market[market] = {"attempted": False, "date": day, "market": market, "status": "NOT_ATTEMPTED"}
+                continue
+            endpoint = MARKET_ENDPOINTS[market]
+            try:
+                frame = provider.fetch_market_snapshot(market, day)
+                audit = _client_audit_diagnostic(client, market)
+                store.save_snapshot(market, day, frame, endpoint)
+                per_market[market] = {
+                    "attempted": True,
+                    "date": day,
+                    "market": market,
+                    "endpoint": endpoint,
+                    "status": "PASS",
+                    "blocker": None,
+                    "error_code": None,
+                    "records_key": "OutBlock_1" if audit.get("http_status") == 200 else None,
+                    **audit,
+                    "record_count": len(frame),
+                }
+            except Exception as exc:
+                diagnostic = dict(getattr(exc, "diagnostic", {}) or {})
+                diagnostic.setdefault("date", day)
+                diagnostic.setdefault("market", market)
+                diagnostic.setdefault("endpoint", endpoint)
+                diagnostic["error_code"] = _error_code(exc)
+                blocker = _snapshot_blocker(exc, diagnostic)
+                diagnostic["blocker"] = blocker
+                diagnostics.append(diagnostic)
+                failures.append({"date": day, "market": market, "status": "FAILED", "error_code": diagnostic["error_code"]})
+                per_market[market] = {
+                    "attempted": True,
+                    "date": day,
+                    "market": market,
+                    "endpoint": endpoint,
+                    "status": blocker,
+                    **diagnostic,
+                }
+                if blocker in {"BLOCKED_KRX_AUTH", "BACKFILL_PAUSED_QUOTA", "BACKFILL_PAUSED_TASK_BUDGET"}:
+                    stop = True
+        audit = {
+            "request_count": client.request_count,
+            "retry_count": client.retry_count,
+            "status_counts": client.status_counts,
+            "quota_usage": quota.get_usage(),
+        }
+        counters["krx_open_api_attempt_count"] = client.request_count
+        counters["retry_attempt_count"] = client.retry_count
+        counters["kospi_daily_attempt_count"] = sum(1 for item in client.audit if item.get("endpoint_key") == "stk_bydd_trd")
+        counters["kosdaq_daily_attempt_count"] = sum(1 for item in client.audit if item.get("endpoint_key") == "ksq_bydd_trd")
+        for key, value in client.status_counts.items():
+            counters[{"401": "http_401_count", "403": "http_403_count", "429": "http_429_count", "5xx": "http_5xx_count", "transport_error": "transport_error_count"}[key]] = value
+        for item in diagnostics:
+            code = item.get("error_code")
+            counter = {
+                "RAW_SNAPSHOT_REQUIRED_FIELD_MISSING": "required_field_missing_count",
+                "RAW_SNAPSHOT_RECORDS_KEY": "unexpected_records_key_count",
+                "RAW_SNAPSHOT_DATE_MISMATCH": "source_date_mismatch_count",
+                "RAW_SNAPSHOT_TICKER_FORMAT_ERROR": "ticker_format_error_count",
+                "RAW_SNAPSHOT_NUMERIC_PARSE_ERROR": "numeric_parse_error_count",
+                "RAW_SNAPSHOT_NUMERIC_RANGE_ERROR": "numeric_parse_error_count",
+                "RAW_SNAPSHOT_OHLC_RELATION_ERROR": "ohlc_relation_error_count",
+            }.get(code)
+            if counter:
+                counters[counter] += 1
+        blockers = prioritize_blockers(item.get("blocker") for item in diagnostics)
+        attempted_all = all(per_market[market].get("attempted") for market in MARKETS)
+        passed_all = all(per_market[market].get("status") == "PASS" for market in MARKETS)
+        status = "PASS" if attempted_all and passed_all and audit["request_count"] == 2 else (blockers[0] if blockers else "BLOCKED_MORE_EVIDENCE_REQUIRED")
+        return {
+            **_evidence_metadata("live-diagnostic"),
+            "date": day,
+            "dates": [],
+            "candidate_dates": list(parameters["dates"]),
+            "markets": list(parameters["markets"]),
+            "request_budget": 2,
+            "request_count": audit["request_count"],
+            "retry_count": audit["retry_count"],
+            "status": status,
+            "blockers": blockers,
+            "per_market": per_market,
+            "audit": audit,
+            "diagnostics": diagnostics,
+            "failure_observations": failures,
+        }, _samsung_evidence(store, parameters["dates"])
+
+
+def _live_pilot(counters: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
+    parameters = pilot_parameters()
+    secret = load_auth_key()
+    if not secret:
+        return {
+            **_evidence_metadata("live-pilot"),
+            "dates": [],
+            "markets": list(parameters["markets"]),
+            "request_budget": 6,
+            "request_count": 0,
+            "retry_count": 0,
+            "status": "BLOCKED_KRX_AUTH",
+            "blockers": ["BLOCKED_KRX_AUTH"],
+        }, _samsung_evidence(None, parameters["dates"])
     with tempfile.TemporaryDirectory(prefix="krx-historical-pilot-") as temp_dir:
         root = Path(temp_dir)
         quota = LocalKrxOpenApiQuota(root / "quota.sqlite3", endpoint_limit=100, global_safety_limit=100)
-        client = KrxOpenApiClient(
-            secret,
-            max_requests=parameters["request_budget"],
-            max_transient_retries=parameters["max_transient_retries"],
-            quota=quota,
-        )
+        client = KrxOpenApiClient(secret, max_requests=6, max_transient_retries=0, quota=quota)
         provider = KrxRawStockSnapshotProvider(client)
         store = KrxRawStockStore(root / "raw")
         runner = KrxHistoricalBackfillRunner(provider, store, quota, request_interval_ms=100)
@@ -429,87 +684,45 @@ def _live_pilot(counters: dict[str, Any], *, diagnostic_only: bool = False) -> t
             })
             if result["blockers"]:
                 break
-        audit = {
-            "request_count": client.request_count,
-            "retry_count": client.retry_count,
-            "status_counts": client.status_counts,
-            "quota_usage": quota.get_usage(),
-        }
+        audit = {"request_count": client.request_count, "retry_count": client.retry_count, "status_counts": client.status_counts, "quota_usage": quota.get_usage()}
         counters["krx_open_api_attempt_count"] = client.request_count
         counters["retry_attempt_count"] = client.retry_count
         counters["kospi_daily_attempt_count"] = sum(1 for item in client.audit if item.get("endpoint_key") == "stk_bydd_trd")
         counters["kosdaq_daily_attempt_count"] = sum(1 for item in client.audit if item.get("endpoint_key") == "ksq_bydd_trd")
         for key, value in client.status_counts.items():
             counters[{"401": "http_401_count", "403": "http_403_count", "429": "http_429_count", "5xx": "http_5xx_count", "transport_error": "transport_error_count"}[key]] = value
-        samsung: dict[str, Any] = {"ticker": "005930", "observations": [], "expected_values": {"2018-04-27": 128386494, "2018-05-04": 6419324700}, "discrepancies": []}
-        for day in parameters["dates"]:
-            try:
-                frame = store.load_snapshot("KOSPI", day)
-                matched = frame.loc[frame["ticker"].astype(str) == "005930"]
-                value = int(matched.iloc[0]["listed_shares"]) if not matched.empty else None
-                samsung["observations"].append({"date": day, "listed_shares": value})
-                if value != samsung["expected_values"][day]:
-                    samsung["discrepancies"].append(day)
-            except Exception as exc:
-                samsung["observations"].append({"date": day, "error": type(exc).__name__})
-                samsung["discrepancies"].append(day)
         diagnostics = [item for result in results for item in result.get("diagnostics", [])]
         failures = [item for result in results for item in result.get("failure_observations", [])]
-        error_counter_by_code = {
-            "RAW_SNAPSHOT_REQUIRED_FIELD_MISSING": "required_field_missing_count",
-            "RAW_SNAPSHOT_RECORDS_KEY": "unexpected_records_key_count",
-            "RAW_SNAPSHOT_DATE_MISMATCH": "source_date_mismatch_count",
-            "RAW_SNAPSHOT_TICKER_FORMAT_ERROR": "ticker_format_error_count",
-            "RAW_SNAPSHOT_NUMERIC_PARSE_ERROR": "numeric_parse_error_count",
-            "RAW_SNAPSHOT_NUMERIC_RANGE_ERROR": "numeric_parse_error_count",
-            "RAW_SNAPSHOT_OHLC_RELATION_ERROR": "ohlc_relation_error_count",
-        }
-        for item in diagnostics:
-            key = error_counter_by_code.get(item.get("error_code"))
-            if key:
-                counters[key] += 1
-        counters["snapshot_schema_error_count"] += sum(
-            item.get("error_code") in {"RAW_SNAPSHOT_SCHEMA_ERROR", "RAW_SNAPSHOT_HTTP_STATUS"}
-            for item in diagnostics
-        )
         status, pilot_blockers = pilot_status(results)
         return {
-            "mode": parameters["mode"],
+            **_evidence_metadata("live-pilot"),
             "markets": list(parameters["markets"]),
-            "request_budget": parameters["request_budget"],
+            "request_budget": 6,
             "status": status,
             "blockers": pilot_blockers,
             "dates": results,
+            "candidate_dates": list(parameters["dates"]),
             "request_count": audit["request_count"],
             "retry_count": audit["retry_count"],
             "audit": audit,
             "diagnostics": diagnostics,
             "failure_observations": failures,
-        }, samsung
+        }, _samsung_evidence(store, parameters["dates"])
 
 
 def run(mode: str, output: Path, raw_root: Path) -> dict[str, Any]:
     output.mkdir(parents=True, exist_ok=True)
     counters = _base_counters()
-    pilot_summary: dict[str, Any] = {"mode": "live-pilot", "status": "NOT_RUN", "dates": []}
-    diagnostic_summary: dict[str, Any] = {"mode": "live-diagnostic", "status": "NOT_RUN", "dates": []}
-    prior_live_summary_path = output / "live_pilot_summary.json"
-    prior_diagnostic_summary_path = output / "live_diagnostic_summary.json"
-    if mode != "live-pilot" and prior_live_summary_path.exists():
-        try:
-            prior_live_summary = json.loads(prior_live_summary_path.read_text(encoding="utf-8"))
-            if isinstance(prior_live_summary, dict):
-                pilot_summary = prior_live_summary
-        except (OSError, json.JSONDecodeError):
-            pass
-    if mode != "live-diagnostic" and prior_diagnostic_summary_path.exists():
-        try:
-            prior_diagnostic_summary = json.loads(prior_diagnostic_summary_path.read_text(encoding="utf-8"))
-            if isinstance(prior_diagnostic_summary, dict):
-                diagnostic_summary = prior_diagnostic_summary
-        except (OSError, json.JSONDecodeError):
-            pass
-    samsung: dict[str, Any] = {"ticker": "005930", "observations": [], "expected_values": {"2018-04-27": 128386494, "2018-05-04": 6419324700}, "discrepancies": []}
+    pilot_summary: dict[str, Any] = {**_evidence_metadata("live-pilot"), "status": "NOT_RUN", "dates": [], "candidate_dates": list(PILOT_DATES)}
+    diagnostic_summary: dict[str, Any] = {**_evidence_metadata("live-diagnostic"), "status": "NOT_RUN", "date": PILOT_DATES[0], "dates": [], "candidate_dates": [PILOT_DATES[0]]}
+    legacy_live_evidence = _load_legacy_live_evidence(output)
+    prior_live_summary = _load_json(output / "live_pilot_summary.json")
+    prior_diagnostic_summary = _load_json(output / "live_diagnostic_summary.json")
+    if mode != "live-pilot" and _is_current_evidence(prior_live_summary, "live-pilot"):
+        pilot_summary = prior_live_summary
+    if mode != "live-diagnostic" and _is_current_evidence(prior_diagnostic_summary, "live-diagnostic"):
+        diagnostic_summary = prior_diagnostic_summary
+    samsung: dict[str, Any] = _samsung_evidence(None, ())
     test_tail = ""
     if mode == "offline":
         test_result, test_tail = _run_offline_tests()
@@ -519,8 +732,10 @@ def run(mode: str, output: Path, raw_root: Path) -> dict[str, Any]:
         counters["provider_test_count"] = _collect("tests/test_krx_raw_stock_provider.py")
         counters["store_test_count"] = _collect("tests/test_krx_raw_stock_store.py")
         counters["backfill_test_count"] = _collect("tests/test_krx_historical_backfill.py")
+        counters["openapi_validation_test_count"] = _collect("tests/test_krx_open_api_validation_v01.py")
+        counters["architecture_test_count"] = _collect("tests/test_krx_production_data_architecture_v01.py")
     elif mode == "live-diagnostic":
-        diagnostic_summary, samsung = _live_pilot(counters, diagnostic_only=True)
+        diagnostic_summary, samsung = _live_diagnostic(counters)
     elif mode == "live-pilot":
         pilot_summary, samsung = _live_pilot(counters)
     elif mode == "production-coverage":
@@ -553,6 +768,22 @@ def run(mode: str, output: Path, raw_root: Path) -> dict[str, Any]:
 
     diff_guard = _production_diff_guard()
     validation_source_head = _validation_source_head(diff_guard["implementation_head"])
+    pilot_summary = {**pilot_summary, **_evidence_metadata("live-pilot", diff_guard["implementation_head"])}
+    diagnostic_summary = {**diagnostic_summary, **_evidence_metadata("live-diagnostic", diff_guard["implementation_head"])}
+    full_regression = _load_json(output / "full_regression_summary.json") or {
+        "command": "uv run pytest -q -p no:cacheprovider",
+        "started_at": None,
+        "finished_at": None,
+        "completed": False,
+        "return_code": None,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0,
+        "deselected": 0,
+        "duration_seconds": None,
+        "slowest_tests": [],
+        "hang_diagnostic": "NOT_RECORDED",
+    }
     counters.update({
         "production_consumer_changed_count": diff_guard["production_consumer_changed_count"],
         "legacy_cache_modified_count": diff_guard["legacy_cache_modified_count"],
@@ -615,9 +846,13 @@ def run(mode: str, output: Path, raw_root: Path) -> dict[str, Any]:
         blockers.extend(pilot_summary.get("blockers", []))
         if pilot_summary.get("status") != "PASS":
             blockers.append(pilot_summary.get("status", "BLOCKED_MORE_EVIDENCE_REQUIRED"))
+        if samsung.get("status") != "PASS":
+            blockers.extend(samsung.get("blockers", ["BLOCKED_SAMSUNG_LISTED_SHARES_EVIDENCE"]))
     if mode == "production-coverage":
         if counters.get("candidate_date_count", 0) <= 0 or counters.get("production_complete_partition_count", 0) <= 0 or counters.get("production_total_raw_rows", 0) <= 0:
             blockers.append("BLOCKED_COVERAGE")
+    if not full_regression.get("completed") or full_regression.get("return_code") != 0 or full_regression.get("failed", 0) != 0:
+        blockers.append("BLOCKED_PRODUCTION_REGRESSION")
     blockers = prioritize_blockers(blockers)
     if any(item in blockers for item in {"unexplained_missing_date_count", "unexplained_missing_partition_count"}):
         blockers = ["BLOCKED_COVERAGE", *[item for item in blockers if item != "BLOCKED_COVERAGE"]]
@@ -629,8 +864,8 @@ def run(mode: str, output: Path, raw_root: Path) -> dict[str, Any]:
         and counters.get("production_total_raw_rows", 0) > 0
     )
     if not blockers and coverage_ready:
-        status = "READY_FOR_ARCHITECT_KRX_HISTORICAL_BACKFILL_V01_FIX03_REVIEW"
-        recommendation = "READY_FOR_ARCHITECT_KRX_HISTORICAL_BACKFILL_V01_FIX03_REVIEW"
+        status = "READY_FOR_ARCHITECT_KRX_HISTORICAL_BACKFILL_V01_FIX04_REVIEW"
+        recommendation = "READY_FOR_ARCHITECT_KRX_HISTORICAL_BACKFILL_V01_FIX04_REVIEW"
     elif not blockers:
         status = "BACKFILL_IN_PROGRESS"
         recommendation = "BLOCKED_MORE_EVIDENCE_REQUIRED"
@@ -642,10 +877,18 @@ def run(mode: str, output: Path, raw_root: Path) -> dict[str, Any]:
         recommendation = blockers[0] if blockers[0] in {
             "BACKFILL_PAUSED_QUOTA", "BACKFILL_PAUSED_TASK_BUDGET", "BLOCKED_KRX_AUTH", "BLOCKED_KRX_TRANSPORT",
             "BLOCKED_KRX_SCHEMA", "BLOCKED_RAW_PARTITION_CONFLICT", "BLOCKED_RAW_STORE_INTEGRITY",
+            "BLOCKED_SAMSUNG_LISTED_SHARES_EVIDENCE",
             "BLOCKED_COVERAGE", "BLOCKED_PRODUCTION_REGRESSION", "BLOCKED_PROVENANCE", "BLOCKED_MORE_EVIDENCE_REQUIRED",
         } else "BLOCKED_MORE_EVIDENCE_REQUIRED"
 
-    coverage_payload = _coverage(KrxRawStockStore(raw_root), TARGET_START, TARGET_END) if raw_root.exists() else {"coverage_by_year": {}}
+    coverage_payload = _coverage(KrxRawStockStore(raw_root), TARGET_START, TARGET_END) if raw_root.exists() else {
+        "candidate_date_count": 0,
+        "complete_date_count": 0,
+        "finalized_no_data_date_count": 0,
+        "unexplained_missing_date_count": 0,
+        "unexplained_missing_partition_count": 0,
+        "coverage_by_year": {},
+    }
     _write_json(output / "provider_contract.json", {
         "authority": "KRX Open API Stock Daily",
         "schema_version": "KRX_RAW_STOCK_V01",
@@ -690,6 +933,8 @@ def run(mode: str, output: Path, raw_root: Path) -> dict[str, Any]:
     })
     _write_json(output / "live_pilot_summary.json", pilot_summary)
     _write_json(output / "live_diagnostic_summary.json", diagnostic_summary)
+    _write_json(output / "legacy_live_evidence.json", legacy_live_evidence)
+    _write_json(output / "full_regression_summary.json", full_regression)
     with (output / "failed_dates.csv").open("w", newline="", encoding="utf-8") as handle:
         writer = csv.writer(handle, lineterminator="\n")
         writer.writerow(["date", "market", "status", "error_code"])
@@ -732,20 +977,13 @@ def run(mode: str, output: Path, raw_root: Path) -> dict[str, Any]:
         "unexplained_missing_partition_count": coverage_payload.get("unexplained_missing_partition_count", 0),
         "missing_dates": coverage_payload.get("missing_dates", []),
     })
-    pilot_diagnostics = pilot_summary.get("diagnostics", [])
     diagnostic_diagnostics = diagnostic_summary.get("diagnostics", [])
-    schema_diagnostics = diagnostic_diagnostics or pilot_diagnostics
-    schema_source = diagnostic_summary if diagnostic_diagnostics else pilot_summary
-    if schema_diagnostics:
-        schema_evidence_status = "BLOCKED_KRX_SCHEMA" if schema_source.get("status") == "BLOCKED_KRX_SCHEMA" else "NO_SCHEMA_BLOCKER"
-    elif schema_source.get("status") == "BLOCKED_KRX_SCHEMA":
-        schema_evidence_status = "LEGACY_GENERIC_BLOCKER"
-    else:
-        schema_evidence_status = "NOT_RUN"
+    schema_evidence_status = _schema_evidence_status(diagnostic_summary)
     _write_json(output / "schema_blocker_evidence.json", {
         "status": schema_evidence_status,
-        "observations": schema_diagnostics,
-        "note": "No new KRX request was issued in this validation run; prior live pilot did not persist exact provider diagnostic fields." if not schema_diagnostics else None,
+        "observations": diagnostic_diagnostics,
+        "legacy_evidence": legacy_live_evidence,
+        "note": "Current FIX04 diagnostic has not run; legacy evidence is preserved separately." if schema_evidence_status == "NOT_RUN" else None,
     })
     phase_results = {
         "offline_validation": {
@@ -763,12 +1001,25 @@ def run(mode: str, output: Path, raw_root: Path) -> dict[str, Any]:
             "attempts": pilot_summary.get("request_count", pilot_summary.get("audit", {}).get("request_count", 0)),
             "blockers": pilot_summary.get("blockers", []),
         },
+        "samsung_evidence": {
+            "status": samsung.get("status", "NOT_RUN"),
+            "blockers": samsung.get("blockers", []),
+            "observation_count": len(samsung.get("observations", [])),
+        },
+        "full_regression": {
+            "status": "PASS" if full_regression.get("completed") and full_regression.get("return_code") == 0 and full_regression.get("failed", 0) == 0 else "INCOMPLETE",
+            "completed": bool(full_regression.get("completed")),
+            "return_code": full_regression.get("return_code"),
+            "passed": full_regression.get("passed", 0),
+            "failed": full_regression.get("failed", 0),
+        },
         "production_coverage": {
             "status": "PASS" if coverage_ready else "INCOMPLETE",
-            "candidate_date_count": counters.get("candidate_date_count", 0),
-            "complete_date_count": counters.get("complete_date_count", 0),
-            "finalized_no_data_date_count": counters.get("finalized_no_data_date_count", 0),
-            "missing_date_count": counters.get("unexplained_missing_date_count", 0),
+            "candidate_date_count": coverage_payload.get("candidate_date_count", 0),
+            "complete_date_count": coverage_payload.get("complete_date_count", 0),
+            "finalized_no_data_date_count": coverage_payload.get("finalized_no_data_date_count", 0),
+            "missing_date_count": coverage_payload.get("unexplained_missing_date_count", 0),
+            "missing_partition_count": coverage_payload.get("unexplained_missing_partition_count", 0),
         },
     }
     known_phase_blockers: list[str] = []
@@ -776,10 +1027,17 @@ def run(mode: str, output: Path, raw_root: Path) -> dict[str, Any]:
         known_phase_blockers.append("LIVE_DIAGNOSTIC_NOT_RUN")
     if pilot_summary.get("status") == "NOT_RUN":
         known_phase_blockers.append("LIVE_PILOT_NOT_RUN")
+    if mode == "live-pilot" and samsung.get("status") != "PASS":
+        known_phase_blockers.append("SAMSUNG_EVIDENCE_INCOMPLETE")
+    if not full_regression.get("completed") or full_regression.get("return_code") != 0 or full_regression.get("failed", 0) != 0:
+        known_phase_blockers.append("FULL_REGRESSION_INCOMPLETE")
+    elif mode != "live-pilot":
+        known_phase_blockers.append("SAMSUNG_EVIDENCE_INCOMPLETE")
     if not coverage_ready:
         known_phase_blockers.append("PRODUCTION_COVERAGE_INCOMPLETE")
     summary = {
         "architecture_version": "KRX_HISTORICAL_BACKFILL_V01",
+        "fix_version": FIX_VERSION,
         "mode": mode,
         "start_head": FIX_START_HEAD,
         "implementation_head": diff_guard["implementation_head"],
@@ -792,12 +1050,16 @@ def run(mode: str, output: Path, raw_root: Path) -> dict[str, Any]:
         "phase_results": phase_results,
         "counters": counters,
         "production_diff_guard": diff_guard,
+        "production_coverage": phase_results["production_coverage"],
+        "full_regression": full_regression,
+        "legacy_live_evidence": legacy_live_evidence,
         "test_output_tail": test_tail,
     }
     _write_json(output / "krx_historical_backfill_v01_summary.json", summary)
     artifacts = sorted(path.name for path in output.iterdir() if path.is_file() and path.name != "krx_historical_backfill_v01_manifest.json")
     _write_json(output / "krx_historical_backfill_v01_manifest.json", {
         "architecture_version": "KRX_HISTORICAL_BACKFILL_V01",
+        "fix_version": FIX_VERSION,
         "start_head": FIX_START_HEAD,
         "implementation_head": diff_guard["implementation_head"],
         "validation_source_head": validation_source_head,
@@ -812,7 +1074,7 @@ def run(mode: str, output: Path, raw_root: Path) -> dict[str, Any]:
         "======================================================================\n"
         "KRX Historical Backfill V01 Recommendation\n"
         "======================================================================\n\n"
-        f"STATUS: {status}\nRECOMMENDATION: {recommendation}\n\n"
+        f"FIX_VERSION: {FIX_VERSION}\nSTATUS: {status}\nRECOMMENDATION: {recommendation}\n\n"
         "Raw KRX snapshots preserve source values without adjustment, filtering, or historical corporate-action replay.\n",
         encoding="utf-8",
     )
