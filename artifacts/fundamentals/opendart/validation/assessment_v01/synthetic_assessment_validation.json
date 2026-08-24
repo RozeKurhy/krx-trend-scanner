@@ -1,0 +1,63 @@
+{
+  "case_count": 7,
+  "case_pass_count": 7,
+  "cases": [
+    {
+      "case": "BROAD_STRONG",
+      "expected": "STRONG",
+      "matched_rule_id": "OVERALL_STRONG_V01",
+      "observed": "STRONG",
+      "status": "PASS"
+    },
+    {
+      "case": "TURNAROUND",
+      "expected": "TURNAROUND",
+      "matched_rule_id": "OVERALL_TURNAROUND_V01",
+      "observed": "TURNAROUND",
+      "status": "PASS"
+    },
+    {
+      "case": "MARGIN_WARNING",
+      "expected": "MIXED",
+      "matched_rule_id": "OVERALL_MIXED_V01",
+      "observed": "MIXED",
+      "status": "PASS"
+    },
+    {
+      "case": "CASH_FLOW_DIVERGENCE",
+      "expected": "MIXED",
+      "matched_rule_id": "OVERALL_MIXED_V01",
+      "observed": "MIXED",
+      "status": "PASS"
+    },
+    {
+      "case": "BROAD_WEAK",
+      "expected": "WEAK",
+      "matched_rule_id": "OVERALL_WEAK_V01",
+      "observed": "WEAK",
+      "status": "PASS"
+    },
+    {
+      "case": "DECELERATION",
+      "expected": "WEAKENING",
+      "matched_rule_id": "OVERALL_WEAKENING_V01",
+      "observed": "WEAKENING",
+      "status": "PASS"
+    },
+    {
+      "case": "INSUFFICIENT",
+      "expected": "INSUFFICIENT_DATA",
+      "matched_rule_id": "OVERALL_INSUFFICIENT_DATA_V01",
+      "observed": "INSUFFICIENT_DATA",
+      "status": "PASS"
+    }
+  ],
+  "sign_transition_checks": {
+    "loss_narrowing_positive_evidence": true,
+    "loss_widening_risk_evidence": true,
+    "sign_transition_loss_to_profit": true,
+    "zero_base_no_positive_growth": true
+  },
+  "sign_transition_status": "PASS",
+  "status": "PASS"
+}
