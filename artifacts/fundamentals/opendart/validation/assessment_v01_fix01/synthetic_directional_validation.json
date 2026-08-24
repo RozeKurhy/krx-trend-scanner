@@ -1,0 +1,105 @@
+{
+  "case_count": 6,
+  "case_pass_count": 6,
+  "cases": [
+    {
+      "axis_directions": {
+        "CASH_FLOW": "IMPROVING",
+        "GROWTH": "IMPROVING",
+        "MOMENTUM": "IMPROVING",
+        "PROFITABILITY": "IMPROVING"
+      },
+      "case": "BROAD_STRONG",
+      "expected": "STRONG",
+      "matched_candidate_rules": [
+        "OVERALL_STRONG_V01"
+      ],
+      "matched_rule_id": "OVERALL_STRONG_V01",
+      "observed": "STRONG",
+      "status": "PASS"
+    },
+    {
+      "axis_directions": {
+        "CASH_FLOW": "IMPROVING",
+        "GROWTH": "IMPROVING",
+        "MOMENTUM": "IMPROVING",
+        "PROFITABILITY": "IMPROVING"
+      },
+      "case": "TURNAROUND",
+      "expected": "TURNAROUND",
+      "matched_candidate_rules": [
+        "OVERALL_TURNAROUND_V01",
+        "OVERALL_IMPROVING_V01"
+      ],
+      "matched_rule_id": "OVERALL_TURNAROUND_V01",
+      "observed": "TURNAROUND",
+      "status": "PASS"
+    },
+    {
+      "axis_directions": {
+        "CASH_FLOW": "IMPROVING",
+        "GROWTH": "IMPROVING",
+        "MOMENTUM": "IMPROVING",
+        "PROFITABILITY": "IMPROVING"
+      },
+      "case": "WEAK_LEVEL_IMPROVING_DIRECTION",
+      "expected": "IMPROVING",
+      "matched_candidate_rules": [
+        "OVERALL_IMPROVING_V01"
+      ],
+      "matched_rule_id": "OVERALL_IMPROVING_V01",
+      "observed": "IMPROVING",
+      "status": "PASS"
+    },
+    {
+      "axis_directions": {
+        "CASH_FLOW": "DETERIORATING",
+        "GROWTH": "DETERIORATING",
+        "MOMENTUM": "DETERIORATING",
+        "PROFITABILITY": "DETERIORATING"
+      },
+      "case": "BROAD_WEAK",
+      "expected": "WEAK",
+      "matched_candidate_rules": [
+        "OVERALL_WEAK_V01"
+      ],
+      "matched_rule_id": "OVERALL_WEAK_V01",
+      "observed": "WEAK",
+      "status": "PASS"
+    },
+    {
+      "axis_directions": {
+        "CASH_FLOW": "DETERIORATING",
+        "GROWTH": "DETERIORATING",
+        "MOMENTUM": "DETERIORATING",
+        "PROFITABILITY": "DETERIORATING"
+      },
+      "case": "DECELERATION",
+      "expected": "WEAKENING",
+      "matched_candidate_rules": [
+        "OVERALL_WEAKENING_V01"
+      ],
+      "matched_rule_id": "OVERALL_WEAKENING_V01",
+      "observed": "WEAKENING",
+      "status": "PASS"
+    },
+    {
+      "axis_directions": {
+        "CASH_FLOW": "UNAVAILABLE",
+        "GROWTH": "UNAVAILABLE",
+        "MOMENTUM": "UNAVAILABLE",
+        "PROFITABILITY": "UNAVAILABLE"
+      },
+      "case": "INSUFFICIENT",
+      "expected": "INSUFFICIENT_DATA",
+      "matched_candidate_rules": [
+        "OVERALL_INSUFFICIENT_DATA_V01"
+      ],
+      "matched_rule_id": "OVERALL_INSUFFICIENT_DATA_V01",
+      "observed": "INSUFFICIENT_DATA",
+      "status": "PASS"
+    }
+  ],
+  "directional_semantic_violation_count": 0,
+  "status": "PASS"
+}

@@ -1,0 +1,2844 @@
+{
+  "explicit_range": {
+    "assessment_rule_conflict_count": 0,
+    "assessment_rule_mismatch_count": 0,
+    "assessment_scope": "EXPLICIT_RANGE",
+    "available_axis_count": 4,
+    "available_evidence_count": 30,
+    "axis_directions": {
+      "CASH_FLOW": "IMPROVING",
+      "GROWTH": "IMPROVING",
+      "MOMENTUM": "IMPROVING",
+      "PROFITABILITY": "IMPROVING"
+    },
+    "axis_resolution": {
+      "CASH_FLOW": "STRONG",
+      "GROWTH": "STRONG",
+      "MOMENTUM": "ACCELERATING",
+      "PROFITABILITY": "STRONG"
+    },
+    "cash_flow_direction": "IMPROVING",
+    "cash_flow_state": "STRONG",
+    "company_family": "NON_FINANCIAL",
+    "current_fiscal_period": "Q3",
+    "current_fiscal_year": "2026",
+    "currentness_status": "RANGE_ONLY",
+    "deteriorating_direction_axis_count": 0,
+    "diagnostics": {
+      "axis_directions": {
+        "CASH_FLOW": "IMPROVING",
+        "GROWTH": "IMPROVING",
+        "MOMENTUM": "IMPROVING",
+        "PROFITABILITY": "IMPROVING"
+      },
+      "axis_resolution": {
+        "CASH_FLOW": "STRONG",
+        "GROWTH": "STRONG",
+        "MOMENTUM": "ACCELERATING",
+        "PROFITABILITY": "STRONG"
+      },
+      "deteriorating_direction_axis_count": 0,
+      "deterioration_axis_count": 0,
+      "expected_rule_overlaps": [],
+      "future_assessment_source_count": 0,
+      "improvement_axis_count": 3,
+      "improving_direction_axis_count": 3,
+      "matched_candidate_rules": [
+        "OVERALL_STRONG_V01"
+      ],
+      "negative_level_axis_count": 0,
+      "provider_cutoff_mismatch_count": 0,
+      "ready_future_pit_available_count": 0,
+      "ready_missing_pit_available_count": 0,
+      "transition_codes": [
+        "PROFIT_GROWTH"
+      ]
+    },
+    "evidence": [
+      {
+        "axis": "GROWTH",
+        "classification": "POSITIVE",
+        "direction": "POSITIVE",
+        "explanation_code": "REVENUE_YOY_POSITIVE",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "revenue",
+        "metric_type": "QUARTERLY_YOY",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-revenue-QUARTERLY_YOY-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-revenue-QUARTERLY_YOY-2026-Q3"
+        ],
+        "status": "READY",
+        "value": 10
+      },
+      {
+        "axis": "GROWTH",
+        "classification": "ACCELERATING",
+        "direction": "POSITIVE",
+        "explanation_code": "YOY_ACCELERATING",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "revenue",
+        "metric_type": "YOY_GROWTH_ACCELERATION",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-revenue-YOY_GROWTH_ACCELERATION-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-revenue-YOY_GROWTH_ACCELERATION-2026-Q3"
+        ],
+        "status": "READY",
+        "value": 1
+      },
+      {
+        "axis": "GROWTH",
+        "classification": "POSITIVE",
+        "direction": "POSITIVE",
+        "explanation_code": "OPERATING_INCOME_YOY_POSITIVE",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "operating_income",
+        "metric_type": "QUARTERLY_YOY",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-operating_income-QUARTERLY_YOY-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-operating_income-QUARTERLY_YOY-2026-Q3"
+        ],
+        "status": "READY",
+        "value": 10
+      },
+      {
+        "axis": "GROWTH",
+        "classification": "ACCELERATING",
+        "direction": "POSITIVE",
+        "explanation_code": "YOY_ACCELERATING",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "operating_income",
+        "metric_type": "YOY_GROWTH_ACCELERATION",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-operating_income-YOY_GROWTH_ACCELERATION-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-operating_income-YOY_GROWTH_ACCELERATION-2026-Q3"
+        ],
+        "status": "READY",
+        "value": 1
+      },
+      {
+        "axis": "GROWTH",
+        "classification": "POSITIVE",
+        "direction": "POSITIVE",
+        "explanation_code": "NET_INCOME_YOY_POSITIVE",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "net_income",
+        "metric_type": "QUARTERLY_YOY",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-net_income-QUARTERLY_YOY-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-net_income-QUARTERLY_YOY-2026-Q3"
+        ],
+        "status": "READY",
+        "value": 10
+      },
+      {
+        "axis": "GROWTH",
+        "classification": "ACCELERATING",
+        "direction": "POSITIVE",
+        "explanation_code": "YOY_ACCELERATING",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "net_income",
+        "metric_type": "YOY_GROWTH_ACCELERATION",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-net_income-YOY_GROWTH_ACCELERATION-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-net_income-YOY_GROWTH_ACCELERATION-2026-Q3"
+        ],
+        "status": "READY",
+        "value": 1
+      },
+      {
+        "axis": "GROWTH",
+        "classification": "POSITIVE",
+        "direction": "POSITIVE",
+        "explanation_code": "OPERATING_CASH_FLOW_YOY_POSITIVE",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "operating_cash_flow",
+        "metric_type": "QUARTERLY_YOY",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-operating_cash_flow-QUARTERLY_YOY-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-operating_cash_flow-QUARTERLY_YOY-2026-Q3"
+        ],
+        "status": "READY",
+        "value": 10
+      },
+      {
+        "axis": "GROWTH",
+        "classification": "ACCELERATING",
+        "direction": "POSITIVE",
+        "explanation_code": "YOY_ACCELERATING",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "operating_cash_flow",
+        "metric_type": "YOY_GROWTH_ACCELERATION",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-operating_cash_flow-YOY_GROWTH_ACCELERATION-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-operating_cash_flow-YOY_GROWTH_ACCELERATION-2026-Q3"
+        ],
+        "status": "READY",
+        "value": 1
+      },
+      {
+        "axis": "GROWTH",
+        "classification": "PROFIT_GROWTH",
+        "direction": "POSITIVE",
+        "explanation_code": "PROFIT_GROWTH",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "operating_income",
+        "metric_type": "EARNINGS_TRANSITION",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-operating_income-EARNINGS_TRANSITION-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-operating_income-EARNINGS_TRANSITION-2026-Q3"
+        ],
+        "status": "READY",
+        "value": "PROFIT_GROWTH"
+      },
+      {
+        "axis": "GROWTH",
+        "classification": "PROFIT_GROWTH",
+        "direction": "POSITIVE",
+        "explanation_code": "PROFIT_GROWTH",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "net_income",
+        "metric_type": "EARNINGS_TRANSITION",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-net_income-EARNINGS_TRANSITION-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-net_income-EARNINGS_TRANSITION-2026-Q3"
+        ],
+        "status": "READY",
+        "value": "PROFIT_GROWTH"
+      },
+      {
+        "axis": "PROFITABILITY",
+        "classification": "POSITIVE",
+        "direction": "POSITIVE",
+        "explanation_code": "OPERATING_INCOME_MARGIN_POSITIVE",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "operating_income",
+        "metric_type": "OPERATING_MARGIN",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-operating_income-OPERATING_MARGIN-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-operating_income-OPERATING_MARGIN-2026-Q3"
+        ],
+        "status": "READY",
+        "value": 10
+      },
+      {
+        "axis": "PROFITABILITY",
+        "classification": "EXPANDING",
+        "direction": "POSITIVE",
+        "explanation_code": "MARGIN_EXPANDING",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {
+          "classification": "EXPANDING"
+        },
+        "metric": "operating_income",
+        "metric_type": "MARGIN_EXPANSION_TREND",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-operating_income-MARGIN_EXPANSION_TREND-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-operating_income-MARGIN_EXPANSION_TREND-2026-Q3"
+        ],
+        "status": "READY",
+        "value": 1
+      },
+      {
+        "axis": "PROFITABILITY",
+        "classification": "POSITIVE",
+        "direction": "POSITIVE",
+        "explanation_code": "NET_INCOME_MARGIN_POSITIVE",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "net_income",
+        "metric_type": "NET_MARGIN",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-net_income-NET_MARGIN-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-net_income-NET_MARGIN-2026-Q3"
+        ],
+        "status": "READY",
+        "value": 5
+      },
+      {
+        "axis": "PROFITABILITY",
+        "classification": "EXPANDING",
+        "direction": "POSITIVE",
+        "explanation_code": "MARGIN_EXPANDING",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {
+          "classification": "EXPANDING"
+        },
+        "metric": "net_income",
+        "metric_type": "MARGIN_EXPANSION_TREND",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-net_income-MARGIN_EXPANSION_TREND-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-net_income-MARGIN_EXPANSION_TREND-2026-Q3"
+        ],
+        "status": "READY",
+        "value": 1
+      },
+      {
+        "axis": "PROFITABILITY",
+        "classification": null,
+        "direction": "NEUTRAL",
+        "explanation_code": "TTM_OPERATING_MARGIN_UNAVAILABLE",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "ttm_operating_margin",
+        "metric_type": "TTM_OPERATING_MARGIN",
+        "pit_available_from": null,
+        "reason": "MISSING_CURRENT_DERIVED_METRIC",
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [],
+        "source_rcept_nos": [],
+        "source_sha256s": [],
+        "status": "UNAVAILABLE",
+        "value": null
+      },
+      {
+        "axis": "PROFITABILITY",
+        "classification": null,
+        "direction": "NEUTRAL",
+        "explanation_code": "TTM_NET_MARGIN_UNAVAILABLE",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "ttm_net_margin",
+        "metric_type": "TTM_NET_MARGIN",
+        "pit_available_from": null,
+        "reason": "MISSING_CURRENT_DERIVED_METRIC",
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [],
+        "source_rcept_nos": [],
+        "source_sha256s": [],
+        "status": "UNAVAILABLE",
+        "value": null
+      },
+      {
+        "axis": "CASH_FLOW",
+        "classification": "POSITIVE",
+        "direction": "POSITIVE",
+        "explanation_code": "OPERATING_CASH_FLOW_YOY_POSITIVE",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "operating_cash_flow",
+        "metric_type": "QUARTERLY_YOY",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-operating_cash_flow-QUARTERLY_YOY-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-operating_cash_flow-QUARTERLY_YOY-2026-Q3"
+        ],
+        "status": "READY",
+        "value": 10
+      },
+      {
+        "axis": "CASH_FLOW",
+        "classification": "POSITIVE",
+        "direction": "POSITIVE",
+        "explanation_code": "OPERATING_CASH_FLOW_MARGIN_POSITIVE",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "operating_cash_flow",
+        "metric_type": "OPERATING_CASH_FLOW_MARGIN",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-operating_cash_flow-OPERATING_CASH_FLOW_MARGIN-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-operating_cash_flow-OPERATING_CASH_FLOW_MARGIN-2026-Q3"
+        ],
+        "status": "READY",
+        "value": 4
+      },
+      {
+        "axis": "CASH_FLOW",
+        "classification": "IMPROVING",
+        "direction": "POSITIVE",
+        "explanation_code": "OCF_TREND_IMPROVING",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "operating_cash_flow",
+        "metric_type": "OPERATING_CASH_FLOW_TREND",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-operating_cash_flow-OPERATING_CASH_FLOW_TREND-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-operating_cash_flow-OPERATING_CASH_FLOW_TREND-2026-Q3"
+        ],
+        "status": "READY",
+        "value": "IMPROVING"
+      },
+      {
+        "axis": "CASH_FLOW",
+        "classification": null,
+        "direction": "NEUTRAL",
+        "explanation_code": "MARGIN_EXPANSION_TREND_UNAVAILABLE",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "margin_expansion_trend",
+        "metric_type": "MARGIN_EXPANSION_TREND",
+        "pit_available_from": null,
+        "reason": "MISSING_CURRENT_DERIVED_METRIC",
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [],
+        "source_rcept_nos": [],
+        "source_sha256s": [],
+        "status": "UNAVAILABLE",
+        "value": null
+      },
+      {
+        "axis": "CASH_FLOW",
+        "classification": null,
+        "direction": "NEUTRAL",
+        "explanation_code": "TTM_OPERATING_CASH_FLOW_YOY_UNAVAILABLE",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "ttm_operating_cash_flow_yoy",
+        "metric_type": "TTM_OPERATING_CASH_FLOW_YOY",
+        "pit_available_from": null,
+        "reason": "MISSING_CURRENT_DERIVED_METRIC",
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [],
+        "source_rcept_nos": [],
+        "source_sha256s": [],
+        "status": "UNAVAILABLE",
+        "value": null
+      },
+      {
+        "axis": "CASH_FLOW",
+        "classification": null,
+        "direction": "NEUTRAL",
+        "explanation_code": "TTM_OPERATING_CASH_FLOW_MARGIN_UNAVAILABLE",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "ttm_operating_cash_flow_margin",
+        "metric_type": "TTM_OPERATING_CASH_FLOW_MARGIN",
+        "pit_available_from": null,
+        "reason": "MISSING_CURRENT_DERIVED_METRIC",
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [],
+        "source_rcept_nos": [],
+        "source_sha256s": [],
+        "status": "UNAVAILABLE",
+        "value": null
+      },
+      {
+        "axis": "MOMENTUM",
+        "classification": "ACCELERATING",
+        "direction": "POSITIVE",
+        "explanation_code": "YOY_ACCELERATING",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "revenue",
+        "metric_type": "YOY_GROWTH_ACCELERATION",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-revenue-YOY_GROWTH_ACCELERATION-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-revenue-YOY_GROWTH_ACCELERATION-2026-Q3"
+        ],
+        "status": "READY",
+        "value": 1
+      },
+      {
+        "axis": "MOMENTUM",
+        "classification": "POSITIVE_STREAK",
+        "direction": "POSITIVE",
+        "explanation_code": "POSITIVE_GROWTH_STREAK",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "revenue",
+        "metric_type": "CONSECUTIVE_YOY_GROWTH",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-revenue-CONSECUTIVE_YOY_GROWTH-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-revenue-CONSECUTIVE_YOY_GROWTH-2026-Q3"
+        ],
+        "status": "READY",
+        "value": 3
+      },
+      {
+        "axis": "MOMENTUM",
+        "classification": "ACCELERATING",
+        "direction": "POSITIVE",
+        "explanation_code": "YOY_ACCELERATING",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "operating_income",
+        "metric_type": "YOY_GROWTH_ACCELERATION",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-operating_income-YOY_GROWTH_ACCELERATION-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-operating_income-YOY_GROWTH_ACCELERATION-2026-Q3"
+        ],
+        "status": "READY",
+        "value": 1
+      },
+      {
+        "axis": "MOMENTUM",
+        "classification": "POSITIVE_STREAK",
+        "direction": "POSITIVE",
+        "explanation_code": "POSITIVE_GROWTH_STREAK",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "operating_income",
+        "metric_type": "CONSECUTIVE_YOY_GROWTH",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-operating_income-CONSECUTIVE_YOY_GROWTH-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-operating_income-CONSECUTIVE_YOY_GROWTH-2026-Q3"
+        ],
+        "status": "READY",
+        "value": 3
+      },
+      {
+        "axis": "MOMENTUM",
+        "classification": "ACCELERATING",
+        "direction": "POSITIVE",
+        "explanation_code": "YOY_ACCELERATING",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "net_income",
+        "metric_type": "YOY_GROWTH_ACCELERATION",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-net_income-YOY_GROWTH_ACCELERATION-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-net_income-YOY_GROWTH_ACCELERATION-2026-Q3"
+        ],
+        "status": "READY",
+        "value": 1
+      },
+      {
+        "axis": "MOMENTUM",
+        "classification": "POSITIVE_STREAK",
+        "direction": "POSITIVE",
+        "explanation_code": "POSITIVE_GROWTH_STREAK",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "net_income",
+        "metric_type": "CONSECUTIVE_YOY_GROWTH",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-net_income-CONSECUTIVE_YOY_GROWTH-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-net_income-CONSECUTIVE_YOY_GROWTH-2026-Q3"
+        ],
+        "status": "READY",
+        "value": 3
+      },
+      {
+        "axis": "MOMENTUM",
+        "classification": "ACCELERATING",
+        "direction": "POSITIVE",
+        "explanation_code": "YOY_ACCELERATING",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "operating_cash_flow",
+        "metric_type": "YOY_GROWTH_ACCELERATION",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-operating_cash_flow-YOY_GROWTH_ACCELERATION-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-operating_cash_flow-YOY_GROWTH_ACCELERATION-2026-Q3"
+        ],
+        "status": "READY",
+        "value": 1
+      },
+      {
+        "axis": "MOMENTUM",
+        "classification": "POSITIVE_STREAK",
+        "direction": "POSITIVE",
+        "explanation_code": "POSITIVE_GROWTH_STREAK",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "operating_cash_flow",
+        "metric_type": "CONSECUTIVE_YOY_GROWTH",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-operating_cash_flow-CONSECUTIVE_YOY_GROWTH-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-operating_cash_flow-CONSECUTIVE_YOY_GROWTH-2026-Q3"
+        ],
+        "status": "READY",
+        "value": 3
+      },
+      {
+        "axis": "MOMENTUM",
+        "classification": "EXPANDING",
+        "direction": "POSITIVE",
+        "explanation_code": "MARGIN_EXPANDING",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {
+          "classification": "EXPANDING"
+        },
+        "metric": "operating_income",
+        "metric_type": "MARGIN_EXPANSION_TREND",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-operating_income-MARGIN_EXPANSION_TREND-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-operating_income-MARGIN_EXPANSION_TREND-2026-Q3"
+        ],
+        "status": "READY",
+        "value": 1
+      },
+      {
+        "axis": "MOMENTUM",
+        "classification": "EXPANDING",
+        "direction": "POSITIVE",
+        "explanation_code": "MARGIN_EXPANDING",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {
+          "classification": "EXPANDING"
+        },
+        "metric": "net_income",
+        "metric_type": "MARGIN_EXPANSION_TREND",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-net_income-MARGIN_EXPANSION_TREND-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-net_income-MARGIN_EXPANSION_TREND-2026-Q3"
+        ],
+        "status": "READY",
+        "value": 1
+      },
+      {
+        "axis": "MOMENTUM",
+        "classification": "IMPROVING",
+        "direction": "POSITIVE",
+        "explanation_code": "OCF_TREND_IMPROVING",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "operating_cash_flow",
+        "metric_type": "OPERATING_CASH_FLOW_TREND",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-operating_cash_flow-OPERATING_CASH_FLOW_TREND-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-operating_cash_flow-OPERATING_CASH_FLOW_TREND-2026-Q3"
+        ],
+        "status": "READY",
+        "value": "IMPROVING"
+      },
+      {
+        "axis": "MOMENTUM",
+        "classification": "PROFIT_GROWTH",
+        "direction": "POSITIVE",
+        "explanation_code": "PROFIT_GROWTH",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "operating_income",
+        "metric_type": "EARNINGS_TRANSITION",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-operating_income-EARNINGS_TRANSITION-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-operating_income-EARNINGS_TRANSITION-2026-Q3"
+        ],
+        "status": "READY",
+        "value": "PROFIT_GROWTH"
+      },
+      {
+        "axis": "MOMENTUM",
+        "classification": "PROFIT_GROWTH",
+        "direction": "POSITIVE",
+        "explanation_code": "PROFIT_GROWTH",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "net_income",
+        "metric_type": "EARNINGS_TRANSITION",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-net_income-EARNINGS_TRANSITION-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-net_income-EARNINGS_TRANSITION-2026-Q3"
+        ],
+        "status": "READY",
+        "value": "PROFIT_GROWTH"
+      }
+    ],
+    "expected_rule_overlaps": [],
+    "growth_direction": "IMPROVING",
+    "growth_state": "STRONG",
+    "improving_direction_axis_count": 3,
+    "matched_candidate_rules": [
+      "OVERALL_STRONG_V01"
+    ],
+    "matched_rule_id": "OVERALL_STRONG_V01",
+    "missing_axis_count": 0,
+    "missing_evidence_count": 5,
+    "momentum_state": "ACCELERATING",
+    "negative_level_axis_count": 0,
+    "overall_state": "STRONG",
+    "pit_available_from": "2026-08-20",
+    "profitability_direction": "IMPROVING",
+    "profitability_state": "STRONG",
+    "reason": null,
+    "requested_as_of": "2026-08-20",
+    "risks": [],
+    "status": "READY",
+    "strengths": [
+      "REVENUE_YOY_POSITIVE",
+      "YOY_ACCELERATING",
+      "OPERATING_INCOME_YOY_POSITIVE",
+      "NET_INCOME_YOY_POSITIVE",
+      "OPERATING_CASH_FLOW_YOY_POSITIVE",
+      "PROFIT_GROWTH",
+      "OPERATING_INCOME_MARGIN_POSITIVE",
+      "MARGIN_EXPANDING",
+      "NET_INCOME_MARGIN_POSITIVE",
+      "OPERATING_CASH_FLOW_MARGIN_POSITIVE",
+      "OCF_TREND_IMPROVING",
+      "POSITIVE_GROWTH_STREAK"
+    ],
+    "ticker": "FIX01",
+    "total_axis_count": 4
+  },
+  "stale_negative_control": {
+    "assessment_rule_conflict_count": 0,
+    "assessment_rule_mismatch_count": 0,
+    "assessment_scope": "CURRENT_AS_OF",
+    "available_axis_count": 4,
+    "available_evidence_count": 30,
+    "axis_directions": {
+      "CASH_FLOW": "IMPROVING",
+      "GROWTH": "IMPROVING",
+      "MOMENTUM": "IMPROVING",
+      "PROFITABILITY": "IMPROVING"
+    },
+    "axis_resolution": {
+      "CASH_FLOW": "STRONG",
+      "GROWTH": "STRONG",
+      "MOMENTUM": "ACCELERATING",
+      "PROFITABILITY": "STRONG"
+    },
+    "cash_flow_direction": "IMPROVING",
+    "cash_flow_state": "STRONG",
+    "company_family": "NON_FINANCIAL",
+    "current_fiscal_period": "Q3",
+    "current_fiscal_year": "2026",
+    "currentness_status": "STALE_INPUT_RANGE",
+    "deteriorating_direction_axis_count": 0,
+    "diagnostics": {
+      "axis_directions": {
+        "CASH_FLOW": "IMPROVING",
+        "GROWTH": "IMPROVING",
+        "MOMENTUM": "IMPROVING",
+        "PROFITABILITY": "IMPROVING"
+      },
+      "axis_resolution": {
+        "CASH_FLOW": "STRONG",
+        "GROWTH": "STRONG",
+        "MOMENTUM": "ACCELERATING",
+        "PROFITABILITY": "STRONG"
+      },
+      "deteriorating_direction_axis_count": 0,
+      "deterioration_axis_count": 0,
+      "expected_rule_overlaps": [],
+      "future_assessment_source_count": 0,
+      "improvement_axis_count": 3,
+      "improving_direction_axis_count": 3,
+      "matched_candidate_rules": [
+        "OVERALL_STRONG_V01"
+      ],
+      "negative_level_axis_count": 0,
+      "provider_cutoff_mismatch_count": 0,
+      "ready_future_pit_available_count": 0,
+      "ready_missing_pit_available_count": 0,
+      "transition_codes": [
+        "PROFIT_GROWTH"
+      ]
+    },
+    "evidence": [
+      {
+        "axis": "GROWTH",
+        "classification": "POSITIVE",
+        "direction": "POSITIVE",
+        "explanation_code": "REVENUE_YOY_POSITIVE",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "revenue",
+        "metric_type": "QUARTERLY_YOY",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-revenue-QUARTERLY_YOY-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-revenue-QUARTERLY_YOY-2026-Q3"
+        ],
+        "status": "READY",
+        "value": 10
+      },
+      {
+        "axis": "GROWTH",
+        "classification": "ACCELERATING",
+        "direction": "POSITIVE",
+        "explanation_code": "YOY_ACCELERATING",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "revenue",
+        "metric_type": "YOY_GROWTH_ACCELERATION",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-revenue-YOY_GROWTH_ACCELERATION-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-revenue-YOY_GROWTH_ACCELERATION-2026-Q3"
+        ],
+        "status": "READY",
+        "value": 1
+      },
+      {
+        "axis": "GROWTH",
+        "classification": "POSITIVE",
+        "direction": "POSITIVE",
+        "explanation_code": "OPERATING_INCOME_YOY_POSITIVE",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "operating_income",
+        "metric_type": "QUARTERLY_YOY",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-operating_income-QUARTERLY_YOY-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-operating_income-QUARTERLY_YOY-2026-Q3"
+        ],
+        "status": "READY",
+        "value": 10
+      },
+      {
+        "axis": "GROWTH",
+        "classification": "ACCELERATING",
+        "direction": "POSITIVE",
+        "explanation_code": "YOY_ACCELERATING",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "operating_income",
+        "metric_type": "YOY_GROWTH_ACCELERATION",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-operating_income-YOY_GROWTH_ACCELERATION-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-operating_income-YOY_GROWTH_ACCELERATION-2026-Q3"
+        ],
+        "status": "READY",
+        "value": 1
+      },
+      {
+        "axis": "GROWTH",
+        "classification": "POSITIVE",
+        "direction": "POSITIVE",
+        "explanation_code": "NET_INCOME_YOY_POSITIVE",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "net_income",
+        "metric_type": "QUARTERLY_YOY",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-net_income-QUARTERLY_YOY-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-net_income-QUARTERLY_YOY-2026-Q3"
+        ],
+        "status": "READY",
+        "value": 10
+      },
+      {
+        "axis": "GROWTH",
+        "classification": "ACCELERATING",
+        "direction": "POSITIVE",
+        "explanation_code": "YOY_ACCELERATING",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "net_income",
+        "metric_type": "YOY_GROWTH_ACCELERATION",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-net_income-YOY_GROWTH_ACCELERATION-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-net_income-YOY_GROWTH_ACCELERATION-2026-Q3"
+        ],
+        "status": "READY",
+        "value": 1
+      },
+      {
+        "axis": "GROWTH",
+        "classification": "POSITIVE",
+        "direction": "POSITIVE",
+        "explanation_code": "OPERATING_CASH_FLOW_YOY_POSITIVE",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "operating_cash_flow",
+        "metric_type": "QUARTERLY_YOY",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-operating_cash_flow-QUARTERLY_YOY-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-operating_cash_flow-QUARTERLY_YOY-2026-Q3"
+        ],
+        "status": "READY",
+        "value": 10
+      },
+      {
+        "axis": "GROWTH",
+        "classification": "ACCELERATING",
+        "direction": "POSITIVE",
+        "explanation_code": "YOY_ACCELERATING",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "operating_cash_flow",
+        "metric_type": "YOY_GROWTH_ACCELERATION",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-operating_cash_flow-YOY_GROWTH_ACCELERATION-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-operating_cash_flow-YOY_GROWTH_ACCELERATION-2026-Q3"
+        ],
+        "status": "READY",
+        "value": 1
+      },
+      {
+        "axis": "GROWTH",
+        "classification": "PROFIT_GROWTH",
+        "direction": "POSITIVE",
+        "explanation_code": "PROFIT_GROWTH",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "operating_income",
+        "metric_type": "EARNINGS_TRANSITION",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-operating_income-EARNINGS_TRANSITION-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-operating_income-EARNINGS_TRANSITION-2026-Q3"
+        ],
+        "status": "READY",
+        "value": "PROFIT_GROWTH"
+      },
+      {
+        "axis": "GROWTH",
+        "classification": "PROFIT_GROWTH",
+        "direction": "POSITIVE",
+        "explanation_code": "PROFIT_GROWTH",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "net_income",
+        "metric_type": "EARNINGS_TRANSITION",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-net_income-EARNINGS_TRANSITION-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-net_income-EARNINGS_TRANSITION-2026-Q3"
+        ],
+        "status": "READY",
+        "value": "PROFIT_GROWTH"
+      },
+      {
+        "axis": "PROFITABILITY",
+        "classification": "POSITIVE",
+        "direction": "POSITIVE",
+        "explanation_code": "OPERATING_INCOME_MARGIN_POSITIVE",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "operating_income",
+        "metric_type": "OPERATING_MARGIN",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-operating_income-OPERATING_MARGIN-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-operating_income-OPERATING_MARGIN-2026-Q3"
+        ],
+        "status": "READY",
+        "value": 10
+      },
+      {
+        "axis": "PROFITABILITY",
+        "classification": "EXPANDING",
+        "direction": "POSITIVE",
+        "explanation_code": "MARGIN_EXPANDING",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {
+          "classification": "EXPANDING"
+        },
+        "metric": "operating_income",
+        "metric_type": "MARGIN_EXPANSION_TREND",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-operating_income-MARGIN_EXPANSION_TREND-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-operating_income-MARGIN_EXPANSION_TREND-2026-Q3"
+        ],
+        "status": "READY",
+        "value": 1
+      },
+      {
+        "axis": "PROFITABILITY",
+        "classification": "POSITIVE",
+        "direction": "POSITIVE",
+        "explanation_code": "NET_INCOME_MARGIN_POSITIVE",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "net_income",
+        "metric_type": "NET_MARGIN",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-net_income-NET_MARGIN-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-net_income-NET_MARGIN-2026-Q3"
+        ],
+        "status": "READY",
+        "value": 5
+      },
+      {
+        "axis": "PROFITABILITY",
+        "classification": "EXPANDING",
+        "direction": "POSITIVE",
+        "explanation_code": "MARGIN_EXPANDING",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {
+          "classification": "EXPANDING"
+        },
+        "metric": "net_income",
+        "metric_type": "MARGIN_EXPANSION_TREND",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-net_income-MARGIN_EXPANSION_TREND-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-net_income-MARGIN_EXPANSION_TREND-2026-Q3"
+        ],
+        "status": "READY",
+        "value": 1
+      },
+      {
+        "axis": "PROFITABILITY",
+        "classification": null,
+        "direction": "NEUTRAL",
+        "explanation_code": "TTM_OPERATING_MARGIN_UNAVAILABLE",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "ttm_operating_margin",
+        "metric_type": "TTM_OPERATING_MARGIN",
+        "pit_available_from": null,
+        "reason": "MISSING_CURRENT_DERIVED_METRIC",
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [],
+        "source_rcept_nos": [],
+        "source_sha256s": [],
+        "status": "UNAVAILABLE",
+        "value": null
+      },
+      {
+        "axis": "PROFITABILITY",
+        "classification": null,
+        "direction": "NEUTRAL",
+        "explanation_code": "TTM_NET_MARGIN_UNAVAILABLE",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "ttm_net_margin",
+        "metric_type": "TTM_NET_MARGIN",
+        "pit_available_from": null,
+        "reason": "MISSING_CURRENT_DERIVED_METRIC",
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [],
+        "source_rcept_nos": [],
+        "source_sha256s": [],
+        "status": "UNAVAILABLE",
+        "value": null
+      },
+      {
+        "axis": "CASH_FLOW",
+        "classification": "POSITIVE",
+        "direction": "POSITIVE",
+        "explanation_code": "OPERATING_CASH_FLOW_YOY_POSITIVE",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "operating_cash_flow",
+        "metric_type": "QUARTERLY_YOY",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-operating_cash_flow-QUARTERLY_YOY-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-operating_cash_flow-QUARTERLY_YOY-2026-Q3"
+        ],
+        "status": "READY",
+        "value": 10
+      },
+      {
+        "axis": "CASH_FLOW",
+        "classification": "POSITIVE",
+        "direction": "POSITIVE",
+        "explanation_code": "OPERATING_CASH_FLOW_MARGIN_POSITIVE",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "operating_cash_flow",
+        "metric_type": "OPERATING_CASH_FLOW_MARGIN",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-operating_cash_flow-OPERATING_CASH_FLOW_MARGIN-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-operating_cash_flow-OPERATING_CASH_FLOW_MARGIN-2026-Q3"
+        ],
+        "status": "READY",
+        "value": 4
+      },
+      {
+        "axis": "CASH_FLOW",
+        "classification": "IMPROVING",
+        "direction": "POSITIVE",
+        "explanation_code": "OCF_TREND_IMPROVING",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "operating_cash_flow",
+        "metric_type": "OPERATING_CASH_FLOW_TREND",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-operating_cash_flow-OPERATING_CASH_FLOW_TREND-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-operating_cash_flow-OPERATING_CASH_FLOW_TREND-2026-Q3"
+        ],
+        "status": "READY",
+        "value": "IMPROVING"
+      },
+      {
+        "axis": "CASH_FLOW",
+        "classification": null,
+        "direction": "NEUTRAL",
+        "explanation_code": "MARGIN_EXPANSION_TREND_UNAVAILABLE",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "margin_expansion_trend",
+        "metric_type": "MARGIN_EXPANSION_TREND",
+        "pit_available_from": null,
+        "reason": "MISSING_CURRENT_DERIVED_METRIC",
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [],
+        "source_rcept_nos": [],
+        "source_sha256s": [],
+        "status": "UNAVAILABLE",
+        "value": null
+      },
+      {
+        "axis": "CASH_FLOW",
+        "classification": null,
+        "direction": "NEUTRAL",
+        "explanation_code": "TTM_OPERATING_CASH_FLOW_YOY_UNAVAILABLE",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "ttm_operating_cash_flow_yoy",
+        "metric_type": "TTM_OPERATING_CASH_FLOW_YOY",
+        "pit_available_from": null,
+        "reason": "MISSING_CURRENT_DERIVED_METRIC",
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [],
+        "source_rcept_nos": [],
+        "source_sha256s": [],
+        "status": "UNAVAILABLE",
+        "value": null
+      },
+      {
+        "axis": "CASH_FLOW",
+        "classification": null,
+        "direction": "NEUTRAL",
+        "explanation_code": "TTM_OPERATING_CASH_FLOW_MARGIN_UNAVAILABLE",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "ttm_operating_cash_flow_margin",
+        "metric_type": "TTM_OPERATING_CASH_FLOW_MARGIN",
+        "pit_available_from": null,
+        "reason": "MISSING_CURRENT_DERIVED_METRIC",
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [],
+        "source_rcept_nos": [],
+        "source_sha256s": [],
+        "status": "UNAVAILABLE",
+        "value": null
+      },
+      {
+        "axis": "MOMENTUM",
+        "classification": "ACCELERATING",
+        "direction": "POSITIVE",
+        "explanation_code": "YOY_ACCELERATING",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "revenue",
+        "metric_type": "YOY_GROWTH_ACCELERATION",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-revenue-YOY_GROWTH_ACCELERATION-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-revenue-YOY_GROWTH_ACCELERATION-2026-Q3"
+        ],
+        "status": "READY",
+        "value": 1
+      },
+      {
+        "axis": "MOMENTUM",
+        "classification": "POSITIVE_STREAK",
+        "direction": "POSITIVE",
+        "explanation_code": "POSITIVE_GROWTH_STREAK",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "revenue",
+        "metric_type": "CONSECUTIVE_YOY_GROWTH",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-revenue-CONSECUTIVE_YOY_GROWTH-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-revenue-CONSECUTIVE_YOY_GROWTH-2026-Q3"
+        ],
+        "status": "READY",
+        "value": 3
+      },
+      {
+        "axis": "MOMENTUM",
+        "classification": "ACCELERATING",
+        "direction": "POSITIVE",
+        "explanation_code": "YOY_ACCELERATING",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "operating_income",
+        "metric_type": "YOY_GROWTH_ACCELERATION",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-operating_income-YOY_GROWTH_ACCELERATION-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-operating_income-YOY_GROWTH_ACCELERATION-2026-Q3"
+        ],
+        "status": "READY",
+        "value": 1
+      },
+      {
+        "axis": "MOMENTUM",
+        "classification": "POSITIVE_STREAK",
+        "direction": "POSITIVE",
+        "explanation_code": "POSITIVE_GROWTH_STREAK",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "operating_income",
+        "metric_type": "CONSECUTIVE_YOY_GROWTH",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-operating_income-CONSECUTIVE_YOY_GROWTH-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-operating_income-CONSECUTIVE_YOY_GROWTH-2026-Q3"
+        ],
+        "status": "READY",
+        "value": 3
+      },
+      {
+        "axis": "MOMENTUM",
+        "classification": "ACCELERATING",
+        "direction": "POSITIVE",
+        "explanation_code": "YOY_ACCELERATING",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "net_income",
+        "metric_type": "YOY_GROWTH_ACCELERATION",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-net_income-YOY_GROWTH_ACCELERATION-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-net_income-YOY_GROWTH_ACCELERATION-2026-Q3"
+        ],
+        "status": "READY",
+        "value": 1
+      },
+      {
+        "axis": "MOMENTUM",
+        "classification": "POSITIVE_STREAK",
+        "direction": "POSITIVE",
+        "explanation_code": "POSITIVE_GROWTH_STREAK",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "net_income",
+        "metric_type": "CONSECUTIVE_YOY_GROWTH",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-net_income-CONSECUTIVE_YOY_GROWTH-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-net_income-CONSECUTIVE_YOY_GROWTH-2026-Q3"
+        ],
+        "status": "READY",
+        "value": 3
+      },
+      {
+        "axis": "MOMENTUM",
+        "classification": "ACCELERATING",
+        "direction": "POSITIVE",
+        "explanation_code": "YOY_ACCELERATING",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "operating_cash_flow",
+        "metric_type": "YOY_GROWTH_ACCELERATION",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-operating_cash_flow-YOY_GROWTH_ACCELERATION-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-operating_cash_flow-YOY_GROWTH_ACCELERATION-2026-Q3"
+        ],
+        "status": "READY",
+        "value": 1
+      },
+      {
+        "axis": "MOMENTUM",
+        "classification": "POSITIVE_STREAK",
+        "direction": "POSITIVE",
+        "explanation_code": "POSITIVE_GROWTH_STREAK",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "operating_cash_flow",
+        "metric_type": "CONSECUTIVE_YOY_GROWTH",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-operating_cash_flow-CONSECUTIVE_YOY_GROWTH-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-operating_cash_flow-CONSECUTIVE_YOY_GROWTH-2026-Q3"
+        ],
+        "status": "READY",
+        "value": 3
+      },
+      {
+        "axis": "MOMENTUM",
+        "classification": "EXPANDING",
+        "direction": "POSITIVE",
+        "explanation_code": "MARGIN_EXPANDING",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {
+          "classification": "EXPANDING"
+        },
+        "metric": "operating_income",
+        "metric_type": "MARGIN_EXPANSION_TREND",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-operating_income-MARGIN_EXPANSION_TREND-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-operating_income-MARGIN_EXPANSION_TREND-2026-Q3"
+        ],
+        "status": "READY",
+        "value": 1
+      },
+      {
+        "axis": "MOMENTUM",
+        "classification": "EXPANDING",
+        "direction": "POSITIVE",
+        "explanation_code": "MARGIN_EXPANDING",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {
+          "classification": "EXPANDING"
+        },
+        "metric": "net_income",
+        "metric_type": "MARGIN_EXPANSION_TREND",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-net_income-MARGIN_EXPANSION_TREND-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-net_income-MARGIN_EXPANSION_TREND-2026-Q3"
+        ],
+        "status": "READY",
+        "value": 1
+      },
+      {
+        "axis": "MOMENTUM",
+        "classification": "IMPROVING",
+        "direction": "POSITIVE",
+        "explanation_code": "OCF_TREND_IMPROVING",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "operating_cash_flow",
+        "metric_type": "OPERATING_CASH_FLOW_TREND",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-operating_cash_flow-OPERATING_CASH_FLOW_TREND-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-operating_cash_flow-OPERATING_CASH_FLOW_TREND-2026-Q3"
+        ],
+        "status": "READY",
+        "value": "IMPROVING"
+      },
+      {
+        "axis": "MOMENTUM",
+        "classification": "PROFIT_GROWTH",
+        "direction": "POSITIVE",
+        "explanation_code": "PROFIT_GROWTH",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "operating_income",
+        "metric_type": "EARNINGS_TRANSITION",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-operating_income-EARNINGS_TRANSITION-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-operating_income-EARNINGS_TRANSITION-2026-Q3"
+        ],
+        "status": "READY",
+        "value": "PROFIT_GROWTH"
+      },
+      {
+        "axis": "MOMENTUM",
+        "classification": "PROFIT_GROWTH",
+        "direction": "POSITIVE",
+        "explanation_code": "PROFIT_GROWTH",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "net_income",
+        "metric_type": "EARNINGS_TRANSITION",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-net_income-EARNINGS_TRANSITION-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-net_income-EARNINGS_TRANSITION-2026-Q3"
+        ],
+        "status": "READY",
+        "value": "PROFIT_GROWTH"
+      }
+    ],
+    "expected_rule_overlaps": [],
+    "growth_direction": "IMPROVING",
+    "growth_state": "STRONG",
+    "improving_direction_axis_count": 3,
+    "matched_candidate_rules": [
+      "OVERALL_STRONG_V01"
+    ],
+    "matched_rule_id": "STALE_INPUT_RANGE",
+    "missing_axis_count": 0,
+    "missing_evidence_count": 5,
+    "momentum_state": "ACCELERATING",
+    "negative_level_axis_count": 0,
+    "overall_state": "INSUFFICIENT_DATA",
+    "pit_available_from": "2026-08-20",
+    "profitability_direction": "IMPROVING",
+    "profitability_state": "STRONG",
+    "reason": "CURRENT_AS_OF_INPUT_RANGE_OMITS_REQUESTED_YEAR",
+    "requested_as_of": "2026-08-20",
+    "risks": [],
+    "status": "INPUT_NOT_READY",
+    "strengths": [
+      "REVENUE_YOY_POSITIVE",
+      "YOY_ACCELERATING",
+      "OPERATING_INCOME_YOY_POSITIVE",
+      "NET_INCOME_YOY_POSITIVE",
+      "OPERATING_CASH_FLOW_YOY_POSITIVE",
+      "PROFIT_GROWTH",
+      "OPERATING_INCOME_MARGIN_POSITIVE",
+      "MARGIN_EXPANDING",
+      "NET_INCOME_MARGIN_POSITIVE",
+      "OPERATING_CASH_FLOW_MARGIN_POSITIVE",
+      "OCF_TREND_IMPROVING",
+      "POSITIVE_GROWTH_STREAK"
+    ],
+    "ticker": "FIX01",
+    "total_axis_count": 4
+  },
+  "status": "PASS",
+  "verified": {
+    "assessment_rule_conflict_count": 0,
+    "assessment_rule_mismatch_count": 0,
+    "assessment_scope": "CURRENT_AS_OF",
+    "available_axis_count": 4,
+    "available_evidence_count": 30,
+    "axis_directions": {
+      "CASH_FLOW": "IMPROVING",
+      "GROWTH": "IMPROVING",
+      "MOMENTUM": "IMPROVING",
+      "PROFITABILITY": "IMPROVING"
+    },
+    "axis_resolution": {
+      "CASH_FLOW": "STRONG",
+      "GROWTH": "STRONG",
+      "MOMENTUM": "ACCELERATING",
+      "PROFITABILITY": "STRONG"
+    },
+    "cash_flow_direction": "IMPROVING",
+    "cash_flow_state": "STRONG",
+    "company_family": "NON_FINANCIAL",
+    "current_fiscal_period": "Q3",
+    "current_fiscal_year": "2026",
+    "currentness_status": "VERIFIED",
+    "deteriorating_direction_axis_count": 0,
+    "diagnostics": {
+      "axis_directions": {
+        "CASH_FLOW": "IMPROVING",
+        "GROWTH": "IMPROVING",
+        "MOMENTUM": "IMPROVING",
+        "PROFITABILITY": "IMPROVING"
+      },
+      "axis_resolution": {
+        "CASH_FLOW": "STRONG",
+        "GROWTH": "STRONG",
+        "MOMENTUM": "ACCELERATING",
+        "PROFITABILITY": "STRONG"
+      },
+      "deteriorating_direction_axis_count": 0,
+      "deterioration_axis_count": 0,
+      "expected_rule_overlaps": [],
+      "future_assessment_source_count": 0,
+      "improvement_axis_count": 3,
+      "improving_direction_axis_count": 3,
+      "matched_candidate_rules": [
+        "OVERALL_STRONG_V01"
+      ],
+      "negative_level_axis_count": 0,
+      "provider_cutoff_mismatch_count": 0,
+      "ready_future_pit_available_count": 0,
+      "ready_missing_pit_available_count": 0,
+      "transition_codes": [
+        "PROFIT_GROWTH"
+      ]
+    },
+    "evidence": [
+      {
+        "axis": "GROWTH",
+        "classification": "POSITIVE",
+        "direction": "POSITIVE",
+        "explanation_code": "REVENUE_YOY_POSITIVE",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "revenue",
+        "metric_type": "QUARTERLY_YOY",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-revenue-QUARTERLY_YOY-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-revenue-QUARTERLY_YOY-2026-Q3"
+        ],
+        "status": "READY",
+        "value": 10
+      },
+      {
+        "axis": "GROWTH",
+        "classification": "ACCELERATING",
+        "direction": "POSITIVE",
+        "explanation_code": "YOY_ACCELERATING",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "revenue",
+        "metric_type": "YOY_GROWTH_ACCELERATION",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-revenue-YOY_GROWTH_ACCELERATION-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-revenue-YOY_GROWTH_ACCELERATION-2026-Q3"
+        ],
+        "status": "READY",
+        "value": 1
+      },
+      {
+        "axis": "GROWTH",
+        "classification": "POSITIVE",
+        "direction": "POSITIVE",
+        "explanation_code": "OPERATING_INCOME_YOY_POSITIVE",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "operating_income",
+        "metric_type": "QUARTERLY_YOY",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-operating_income-QUARTERLY_YOY-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-operating_income-QUARTERLY_YOY-2026-Q3"
+        ],
+        "status": "READY",
+        "value": 10
+      },
+      {
+        "axis": "GROWTH",
+        "classification": "ACCELERATING",
+        "direction": "POSITIVE",
+        "explanation_code": "YOY_ACCELERATING",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "operating_income",
+        "metric_type": "YOY_GROWTH_ACCELERATION",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-operating_income-YOY_GROWTH_ACCELERATION-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-operating_income-YOY_GROWTH_ACCELERATION-2026-Q3"
+        ],
+        "status": "READY",
+        "value": 1
+      },
+      {
+        "axis": "GROWTH",
+        "classification": "POSITIVE",
+        "direction": "POSITIVE",
+        "explanation_code": "NET_INCOME_YOY_POSITIVE",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "net_income",
+        "metric_type": "QUARTERLY_YOY",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-net_income-QUARTERLY_YOY-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-net_income-QUARTERLY_YOY-2026-Q3"
+        ],
+        "status": "READY",
+        "value": 10
+      },
+      {
+        "axis": "GROWTH",
+        "classification": "ACCELERATING",
+        "direction": "POSITIVE",
+        "explanation_code": "YOY_ACCELERATING",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "net_income",
+        "metric_type": "YOY_GROWTH_ACCELERATION",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-net_income-YOY_GROWTH_ACCELERATION-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-net_income-YOY_GROWTH_ACCELERATION-2026-Q3"
+        ],
+        "status": "READY",
+        "value": 1
+      },
+      {
+        "axis": "GROWTH",
+        "classification": "POSITIVE",
+        "direction": "POSITIVE",
+        "explanation_code": "OPERATING_CASH_FLOW_YOY_POSITIVE",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "operating_cash_flow",
+        "metric_type": "QUARTERLY_YOY",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-operating_cash_flow-QUARTERLY_YOY-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-operating_cash_flow-QUARTERLY_YOY-2026-Q3"
+        ],
+        "status": "READY",
+        "value": 10
+      },
+      {
+        "axis": "GROWTH",
+        "classification": "ACCELERATING",
+        "direction": "POSITIVE",
+        "explanation_code": "YOY_ACCELERATING",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "operating_cash_flow",
+        "metric_type": "YOY_GROWTH_ACCELERATION",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-operating_cash_flow-YOY_GROWTH_ACCELERATION-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-operating_cash_flow-YOY_GROWTH_ACCELERATION-2026-Q3"
+        ],
+        "status": "READY",
+        "value": 1
+      },
+      {
+        "axis": "GROWTH",
+        "classification": "PROFIT_GROWTH",
+        "direction": "POSITIVE",
+        "explanation_code": "PROFIT_GROWTH",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "operating_income",
+        "metric_type": "EARNINGS_TRANSITION",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-operating_income-EARNINGS_TRANSITION-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-operating_income-EARNINGS_TRANSITION-2026-Q3"
+        ],
+        "status": "READY",
+        "value": "PROFIT_GROWTH"
+      },
+      {
+        "axis": "GROWTH",
+        "classification": "PROFIT_GROWTH",
+        "direction": "POSITIVE",
+        "explanation_code": "PROFIT_GROWTH",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "net_income",
+        "metric_type": "EARNINGS_TRANSITION",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-net_income-EARNINGS_TRANSITION-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-net_income-EARNINGS_TRANSITION-2026-Q3"
+        ],
+        "status": "READY",
+        "value": "PROFIT_GROWTH"
+      },
+      {
+        "axis": "PROFITABILITY",
+        "classification": "POSITIVE",
+        "direction": "POSITIVE",
+        "explanation_code": "OPERATING_INCOME_MARGIN_POSITIVE",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "operating_income",
+        "metric_type": "OPERATING_MARGIN",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-operating_income-OPERATING_MARGIN-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-operating_income-OPERATING_MARGIN-2026-Q3"
+        ],
+        "status": "READY",
+        "value": 10
+      },
+      {
+        "axis": "PROFITABILITY",
+        "classification": "EXPANDING",
+        "direction": "POSITIVE",
+        "explanation_code": "MARGIN_EXPANDING",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {
+          "classification": "EXPANDING"
+        },
+        "metric": "operating_income",
+        "metric_type": "MARGIN_EXPANSION_TREND",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-operating_income-MARGIN_EXPANSION_TREND-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-operating_income-MARGIN_EXPANSION_TREND-2026-Q3"
+        ],
+        "status": "READY",
+        "value": 1
+      },
+      {
+        "axis": "PROFITABILITY",
+        "classification": "POSITIVE",
+        "direction": "POSITIVE",
+        "explanation_code": "NET_INCOME_MARGIN_POSITIVE",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "net_income",
+        "metric_type": "NET_MARGIN",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-net_income-NET_MARGIN-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-net_income-NET_MARGIN-2026-Q3"
+        ],
+        "status": "READY",
+        "value": 5
+      },
+      {
+        "axis": "PROFITABILITY",
+        "classification": "EXPANDING",
+        "direction": "POSITIVE",
+        "explanation_code": "MARGIN_EXPANDING",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {
+          "classification": "EXPANDING"
+        },
+        "metric": "net_income",
+        "metric_type": "MARGIN_EXPANSION_TREND",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-net_income-MARGIN_EXPANSION_TREND-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-net_income-MARGIN_EXPANSION_TREND-2026-Q3"
+        ],
+        "status": "READY",
+        "value": 1
+      },
+      {
+        "axis": "PROFITABILITY",
+        "classification": null,
+        "direction": "NEUTRAL",
+        "explanation_code": "TTM_OPERATING_MARGIN_UNAVAILABLE",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "ttm_operating_margin",
+        "metric_type": "TTM_OPERATING_MARGIN",
+        "pit_available_from": null,
+        "reason": "MISSING_CURRENT_DERIVED_METRIC",
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [],
+        "source_rcept_nos": [],
+        "source_sha256s": [],
+        "status": "UNAVAILABLE",
+        "value": null
+      },
+      {
+        "axis": "PROFITABILITY",
+        "classification": null,
+        "direction": "NEUTRAL",
+        "explanation_code": "TTM_NET_MARGIN_UNAVAILABLE",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "ttm_net_margin",
+        "metric_type": "TTM_NET_MARGIN",
+        "pit_available_from": null,
+        "reason": "MISSING_CURRENT_DERIVED_METRIC",
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [],
+        "source_rcept_nos": [],
+        "source_sha256s": [],
+        "status": "UNAVAILABLE",
+        "value": null
+      },
+      {
+        "axis": "CASH_FLOW",
+        "classification": "POSITIVE",
+        "direction": "POSITIVE",
+        "explanation_code": "OPERATING_CASH_FLOW_YOY_POSITIVE",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "operating_cash_flow",
+        "metric_type": "QUARTERLY_YOY",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-operating_cash_flow-QUARTERLY_YOY-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-operating_cash_flow-QUARTERLY_YOY-2026-Q3"
+        ],
+        "status": "READY",
+        "value": 10
+      },
+      {
+        "axis": "CASH_FLOW",
+        "classification": "POSITIVE",
+        "direction": "POSITIVE",
+        "explanation_code": "OPERATING_CASH_FLOW_MARGIN_POSITIVE",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "operating_cash_flow",
+        "metric_type": "OPERATING_CASH_FLOW_MARGIN",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-operating_cash_flow-OPERATING_CASH_FLOW_MARGIN-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-operating_cash_flow-OPERATING_CASH_FLOW_MARGIN-2026-Q3"
+        ],
+        "status": "READY",
+        "value": 4
+      },
+      {
+        "axis": "CASH_FLOW",
+        "classification": "IMPROVING",
+        "direction": "POSITIVE",
+        "explanation_code": "OCF_TREND_IMPROVING",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "operating_cash_flow",
+        "metric_type": "OPERATING_CASH_FLOW_TREND",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-operating_cash_flow-OPERATING_CASH_FLOW_TREND-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-operating_cash_flow-OPERATING_CASH_FLOW_TREND-2026-Q3"
+        ],
+        "status": "READY",
+        "value": "IMPROVING"
+      },
+      {
+        "axis": "CASH_FLOW",
+        "classification": null,
+        "direction": "NEUTRAL",
+        "explanation_code": "MARGIN_EXPANSION_TREND_UNAVAILABLE",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "margin_expansion_trend",
+        "metric_type": "MARGIN_EXPANSION_TREND",
+        "pit_available_from": null,
+        "reason": "MISSING_CURRENT_DERIVED_METRIC",
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [],
+        "source_rcept_nos": [],
+        "source_sha256s": [],
+        "status": "UNAVAILABLE",
+        "value": null
+      },
+      {
+        "axis": "CASH_FLOW",
+        "classification": null,
+        "direction": "NEUTRAL",
+        "explanation_code": "TTM_OPERATING_CASH_FLOW_YOY_UNAVAILABLE",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "ttm_operating_cash_flow_yoy",
+        "metric_type": "TTM_OPERATING_CASH_FLOW_YOY",
+        "pit_available_from": null,
+        "reason": "MISSING_CURRENT_DERIVED_METRIC",
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [],
+        "source_rcept_nos": [],
+        "source_sha256s": [],
+        "status": "UNAVAILABLE",
+        "value": null
+      },
+      {
+        "axis": "CASH_FLOW",
+        "classification": null,
+        "direction": "NEUTRAL",
+        "explanation_code": "TTM_OPERATING_CASH_FLOW_MARGIN_UNAVAILABLE",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "ttm_operating_cash_flow_margin",
+        "metric_type": "TTM_OPERATING_CASH_FLOW_MARGIN",
+        "pit_available_from": null,
+        "reason": "MISSING_CURRENT_DERIVED_METRIC",
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [],
+        "source_rcept_nos": [],
+        "source_sha256s": [],
+        "status": "UNAVAILABLE",
+        "value": null
+      },
+      {
+        "axis": "MOMENTUM",
+        "classification": "ACCELERATING",
+        "direction": "POSITIVE",
+        "explanation_code": "YOY_ACCELERATING",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "revenue",
+        "metric_type": "YOY_GROWTH_ACCELERATION",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-revenue-YOY_GROWTH_ACCELERATION-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-revenue-YOY_GROWTH_ACCELERATION-2026-Q3"
+        ],
+        "status": "READY",
+        "value": 1
+      },
+      {
+        "axis": "MOMENTUM",
+        "classification": "POSITIVE_STREAK",
+        "direction": "POSITIVE",
+        "explanation_code": "POSITIVE_GROWTH_STREAK",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "revenue",
+        "metric_type": "CONSECUTIVE_YOY_GROWTH",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-revenue-CONSECUTIVE_YOY_GROWTH-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-revenue-CONSECUTIVE_YOY_GROWTH-2026-Q3"
+        ],
+        "status": "READY",
+        "value": 3
+      },
+      {
+        "axis": "MOMENTUM",
+        "classification": "ACCELERATING",
+        "direction": "POSITIVE",
+        "explanation_code": "YOY_ACCELERATING",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "operating_income",
+        "metric_type": "YOY_GROWTH_ACCELERATION",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-operating_income-YOY_GROWTH_ACCELERATION-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-operating_income-YOY_GROWTH_ACCELERATION-2026-Q3"
+        ],
+        "status": "READY",
+        "value": 1
+      },
+      {
+        "axis": "MOMENTUM",
+        "classification": "POSITIVE_STREAK",
+        "direction": "POSITIVE",
+        "explanation_code": "POSITIVE_GROWTH_STREAK",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "operating_income",
+        "metric_type": "CONSECUTIVE_YOY_GROWTH",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-operating_income-CONSECUTIVE_YOY_GROWTH-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-operating_income-CONSECUTIVE_YOY_GROWTH-2026-Q3"
+        ],
+        "status": "READY",
+        "value": 3
+      },
+      {
+        "axis": "MOMENTUM",
+        "classification": "ACCELERATING",
+        "direction": "POSITIVE",
+        "explanation_code": "YOY_ACCELERATING",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "net_income",
+        "metric_type": "YOY_GROWTH_ACCELERATION",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-net_income-YOY_GROWTH_ACCELERATION-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-net_income-YOY_GROWTH_ACCELERATION-2026-Q3"
+        ],
+        "status": "READY",
+        "value": 1
+      },
+      {
+        "axis": "MOMENTUM",
+        "classification": "POSITIVE_STREAK",
+        "direction": "POSITIVE",
+        "explanation_code": "POSITIVE_GROWTH_STREAK",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "net_income",
+        "metric_type": "CONSECUTIVE_YOY_GROWTH",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-net_income-CONSECUTIVE_YOY_GROWTH-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-net_income-CONSECUTIVE_YOY_GROWTH-2026-Q3"
+        ],
+        "status": "READY",
+        "value": 3
+      },
+      {
+        "axis": "MOMENTUM",
+        "classification": "ACCELERATING",
+        "direction": "POSITIVE",
+        "explanation_code": "YOY_ACCELERATING",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "operating_cash_flow",
+        "metric_type": "YOY_GROWTH_ACCELERATION",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-operating_cash_flow-YOY_GROWTH_ACCELERATION-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-operating_cash_flow-YOY_GROWTH_ACCELERATION-2026-Q3"
+        ],
+        "status": "READY",
+        "value": 1
+      },
+      {
+        "axis": "MOMENTUM",
+        "classification": "POSITIVE_STREAK",
+        "direction": "POSITIVE",
+        "explanation_code": "POSITIVE_GROWTH_STREAK",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "operating_cash_flow",
+        "metric_type": "CONSECUTIVE_YOY_GROWTH",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-operating_cash_flow-CONSECUTIVE_YOY_GROWTH-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-operating_cash_flow-CONSECUTIVE_YOY_GROWTH-2026-Q3"
+        ],
+        "status": "READY",
+        "value": 3
+      },
+      {
+        "axis": "MOMENTUM",
+        "classification": "EXPANDING",
+        "direction": "POSITIVE",
+        "explanation_code": "MARGIN_EXPANDING",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {
+          "classification": "EXPANDING"
+        },
+        "metric": "operating_income",
+        "metric_type": "MARGIN_EXPANSION_TREND",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-operating_income-MARGIN_EXPANSION_TREND-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-operating_income-MARGIN_EXPANSION_TREND-2026-Q3"
+        ],
+        "status": "READY",
+        "value": 1
+      },
+      {
+        "axis": "MOMENTUM",
+        "classification": "EXPANDING",
+        "direction": "POSITIVE",
+        "explanation_code": "MARGIN_EXPANDING",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {
+          "classification": "EXPANDING"
+        },
+        "metric": "net_income",
+        "metric_type": "MARGIN_EXPANSION_TREND",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-net_income-MARGIN_EXPANSION_TREND-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-net_income-MARGIN_EXPANSION_TREND-2026-Q3"
+        ],
+        "status": "READY",
+        "value": 1
+      },
+      {
+        "axis": "MOMENTUM",
+        "classification": "IMPROVING",
+        "direction": "POSITIVE",
+        "explanation_code": "OCF_TREND_IMPROVING",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "operating_cash_flow",
+        "metric_type": "OPERATING_CASH_FLOW_TREND",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-operating_cash_flow-OPERATING_CASH_FLOW_TREND-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-operating_cash_flow-OPERATING_CASH_FLOW_TREND-2026-Q3"
+        ],
+        "status": "READY",
+        "value": "IMPROVING"
+      },
+      {
+        "axis": "MOMENTUM",
+        "classification": "PROFIT_GROWTH",
+        "direction": "POSITIVE",
+        "explanation_code": "PROFIT_GROWTH",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "operating_income",
+        "metric_type": "EARNINGS_TRANSITION",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-operating_income-EARNINGS_TRANSITION-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-operating_income-EARNINGS_TRANSITION-2026-Q3"
+        ],
+        "status": "READY",
+        "value": "PROFIT_GROWTH"
+      },
+      {
+        "axis": "MOMENTUM",
+        "classification": "PROFIT_GROWTH",
+        "direction": "POSITIVE",
+        "explanation_code": "PROFIT_GROWTH",
+        "fiscal_period": "Q3",
+        "fiscal_year": "2026",
+        "metadata": {},
+        "metric": "net_income",
+        "metric_type": "EARNINGS_TRANSITION",
+        "pit_available_from": "2026-08-20",
+        "reason": null,
+        "requested_as_of": "2026-08-20",
+        "source_rcept_dts": [
+          "2026-08-20"
+        ],
+        "source_rcept_nos": [
+          "FIX01-net_income-EARNINGS_TRANSITION-2026-Q3"
+        ],
+        "source_sha256s": [
+          "sha-FIX01-net_income-EARNINGS_TRANSITION-2026-Q3"
+        ],
+        "status": "READY",
+        "value": "PROFIT_GROWTH"
+      }
+    ],
+    "expected_rule_overlaps": [],
+    "growth_direction": "IMPROVING",
+    "growth_state": "STRONG",
+    "improving_direction_axis_count": 3,
+    "matched_candidate_rules": [
+      "OVERALL_STRONG_V01"
+    ],
+    "matched_rule_id": "OVERALL_STRONG_V01",
+    "missing_axis_count": 0,
+    "missing_evidence_count": 5,
+    "momentum_state": "ACCELERATING",
+    "negative_level_axis_count": 0,
+    "overall_state": "STRONG",
+    "pit_available_from": "2026-08-20",
+    "profitability_direction": "IMPROVING",
+    "profitability_state": "STRONG",
+    "reason": null,
+    "requested_as_of": "2026-08-20",
+    "risks": [],
+    "status": "READY",
+    "strengths": [
+      "REVENUE_YOY_POSITIVE",
+      "YOY_ACCELERATING",
+      "OPERATING_INCOME_YOY_POSITIVE",
+      "NET_INCOME_YOY_POSITIVE",
+      "OPERATING_CASH_FLOW_YOY_POSITIVE",
+      "PROFIT_GROWTH",
+      "OPERATING_INCOME_MARGIN_POSITIVE",
+      "MARGIN_EXPANDING",
+      "NET_INCOME_MARGIN_POSITIVE",
+      "OPERATING_CASH_FLOW_MARGIN_POSITIVE",
+      "OCF_TREND_IMPROVING",
+      "POSITIVE_GROWTH_STREAK"
+    ],
+    "ticker": "FIX01",
+    "total_axis_count": 4
+  }
+}

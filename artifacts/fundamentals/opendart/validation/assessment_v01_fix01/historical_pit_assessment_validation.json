@@ -1,0 +1,3444 @@
+{
+  "cohort": [
+    "005930",
+    "000660",
+    "068270"
+  ],
+  "errors": [],
+  "fiscal_years": [
+    "2022",
+    "2023",
+    "2024"
+  ],
+  "historical_ready_count": 3,
+  "historical_result_count": 3,
+  "requested_as_of": "2024-02-15",
+  "results": [
+    {
+      "assessment_rule_conflict_count": 0,
+      "assessment_rule_mismatch_count": 0,
+      "assessment_scope": "EXPLICIT_RANGE",
+      "available_axis_count": 4,
+      "available_evidence_count": 30,
+      "axis_directions": {
+        "CASH_FLOW": "DETERIORATING",
+        "GROWTH": "IMPROVING",
+        "MOMENTUM": "DETERIORATING",
+        "PROFITABILITY": "DETERIORATING"
+      },
+      "axis_resolution": {
+        "CASH_FLOW": "NEGATIVE",
+        "GROWTH": "NEGATIVE",
+        "MOMENTUM": "DETERIORATING",
+        "PROFITABILITY": "POSITIVE"
+      },
+      "cash_flow_direction": "DETERIORATING",
+      "cash_flow_state": "NEGATIVE",
+      "company_family": "NON_FINANCIAL",
+      "current_fiscal_period": "Q3",
+      "current_fiscal_year": "2023",
+      "currentness_status": "RANGE_ONLY",
+      "deteriorating_direction_axis_count": 2,
+      "diagnostics": {
+        "axis_directions": {
+          "CASH_FLOW": "DETERIORATING",
+          "GROWTH": "IMPROVING",
+          "MOMENTUM": "DETERIORATING",
+          "PROFITABILITY": "DETERIORATING"
+        },
+        "axis_resolution": {
+          "CASH_FLOW": "NEGATIVE",
+          "GROWTH": "NEGATIVE",
+          "MOMENTUM": "DETERIORATING",
+          "PROFITABILITY": "POSITIVE"
+        },
+        "deteriorating_direction_axis_count": 2,
+        "deterioration_axis_count": 2,
+        "expected_rule_overlaps": [],
+        "future_assessment_source_count": 0,
+        "improvement_axis_count": 1,
+        "improving_direction_axis_count": 1,
+        "matched_candidate_rules": [
+          "OVERALL_WEAKENING_V01"
+        ],
+        "negative_level_axis_count": 2,
+        "provider_cutoff_mismatch_count": 0,
+        "ready_future_pit_available_count": 0,
+        "ready_missing_pit_available_count": 0,
+        "transition_codes": [
+          "PROFIT_DECLINE"
+        ]
+      },
+      "evidence": [
+        {
+          "axis": "GROWTH",
+          "classification": "NEGATIVE",
+          "direction": "RISK",
+          "explanation_code": "REVENUE_YOY_NEGATIVE",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "revenue",
+          "metric_type": "QUARTERLY_YOY",
+          "pit_available_from": "2023-11-14",
+          "reason": null,
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [
+            "20231114",
+            "20230814",
+            "20221114",
+            "20220816"
+          ],
+          "source_rcept_nos": [
+            "20231114002109",
+            "20230814002534",
+            "20221114001832",
+            "20220816001711"
+          ],
+          "source_sha256s": [
+            "5c96c8b3fe0e114a7d9fbb2a2037f15c48262a12f8ccf7eea9d133207d77a304",
+            "bffb09cf64a6c832d3766c91f6e929c3ac877cda32c1ac8f299b1a6f396ee010",
+            "a1105844c926eb955813c1aac08cc4e9834b900cb0f780adf90d455c73133f33",
+            "7291be66fe5cd687ff9b7797bc2132953543223f862ab41a6de7a591b4a2d3ba"
+          ],
+          "status": "READY",
+          "value": -12.21258508540058
+        },
+        {
+          "axis": "GROWTH",
+          "classification": "ACCELERATING",
+          "direction": "POSITIVE",
+          "explanation_code": "YOY_ACCELERATING",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "revenue",
+          "metric_type": "YOY_GROWTH_ACCELERATION",
+          "pit_available_from": "2023-11-14",
+          "reason": null,
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [
+            "20231114",
+            "20230814",
+            "20230515"
+          ],
+          "source_rcept_nos": [
+            "20231114002109",
+            "20230814002534",
+            "20230515002335"
+          ],
+          "source_sha256s": [
+            "5c96c8b3fe0e114a7d9fbb2a2037f15c48262a12f8ccf7eea9d133207d77a304",
+            "bffb09cf64a6c832d3766c91f6e929c3ac877cda32c1ac8f299b1a6f396ee010",
+            "4bc89631ff6574cc22034fab0fcd36c970504952d412f7e718c0dd4fe39101fe"
+          ],
+          "status": "READY",
+          "value": 10.063672033000636
+        },
+        {
+          "axis": "GROWTH",
+          "classification": "NEGATIVE",
+          "direction": "RISK",
+          "explanation_code": "OPERATING_INCOME_YOY_NEGATIVE",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "operating_income",
+          "metric_type": "QUARTERLY_YOY",
+          "pit_available_from": "2023-11-14",
+          "reason": null,
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [
+            "20231114",
+            "20230814",
+            "20221114",
+            "20220816"
+          ],
+          "source_rcept_nos": [
+            "20231114002109",
+            "20230814002534",
+            "20221114001832",
+            "20220816001711"
+          ],
+          "source_sha256s": [
+            "5c96c8b3fe0e114a7d9fbb2a2037f15c48262a12f8ccf7eea9d133207d77a304",
+            "bffb09cf64a6c832d3766c91f6e929c3ac877cda32c1ac8f299b1a6f396ee010",
+            "a1105844c926eb955813c1aac08cc4e9834b900cb0f780adf90d455c73133f33",
+            "7291be66fe5cd687ff9b7797bc2132953543223f862ab41a6de7a591b4a2d3ba"
+          ],
+          "status": "READY",
+          "value": -77.5753417904183
+        },
+        {
+          "axis": "GROWTH",
+          "classification": "ACCELERATING",
+          "direction": "POSITIVE",
+          "explanation_code": "YOY_ACCELERATING",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "operating_income",
+          "metric_type": "YOY_GROWTH_ACCELERATION",
+          "pit_available_from": "2023-11-14",
+          "reason": null,
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [
+            "20231114",
+            "20230814",
+            "20230515"
+          ],
+          "source_rcept_nos": [
+            "20231114002109",
+            "20230814002534",
+            "20230515002335"
+          ],
+          "source_sha256s": [
+            "5c96c8b3fe0e114a7d9fbb2a2037f15c48262a12f8ccf7eea9d133207d77a304",
+            "bffb09cf64a6c832d3766c91f6e929c3ac877cda32c1ac8f299b1a6f396ee010",
+            "4bc89631ff6574cc22034fab0fcd36c970504952d412f7e718c0dd4fe39101fe"
+          ],
+          "status": "READY",
+          "value": 17.68219622552759
+        },
+        {
+          "axis": "GROWTH",
+          "classification": "NEGATIVE",
+          "direction": "RISK",
+          "explanation_code": "NET_INCOME_YOY_NEGATIVE",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "net_income",
+          "metric_type": "QUARTERLY_YOY",
+          "pit_available_from": "2023-11-14",
+          "reason": null,
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [
+            "20231114",
+            "20230814",
+            "20221114",
+            "20220816"
+          ],
+          "source_rcept_nos": [
+            "20231114002109",
+            "20230814002534",
+            "20221114001832",
+            "20220816001711"
+          ],
+          "source_sha256s": [
+            "5c96c8b3fe0e114a7d9fbb2a2037f15c48262a12f8ccf7eea9d133207d77a304",
+            "bffb09cf64a6c832d3766c91f6e929c3ac877cda32c1ac8f299b1a6f396ee010",
+            "a1105844c926eb955813c1aac08cc4e9834b900cb0f780adf90d455c73133f33",
+            "7291be66fe5cd687ff9b7797bc2132953543223f862ab41a6de7a591b4a2d3ba"
+          ],
+          "status": "READY",
+          "value": -37.756440965458395
+        },
+        {
+          "axis": "GROWTH",
+          "classification": "ACCELERATING",
+          "direction": "POSITIVE",
+          "explanation_code": "YOY_ACCELERATING",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "net_income",
+          "metric_type": "YOY_GROWTH_ACCELERATION",
+          "pit_available_from": "2023-11-14",
+          "reason": null,
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [
+            "20231114",
+            "20230814",
+            "20230515"
+          ],
+          "source_rcept_nos": [
+            "20231114002109",
+            "20230814002534",
+            "20230515002335"
+          ],
+          "source_sha256s": [
+            "5c96c8b3fe0e114a7d9fbb2a2037f15c48262a12f8ccf7eea9d133207d77a304",
+            "bffb09cf64a6c832d3766c91f6e929c3ac877cda32c1ac8f299b1a6f396ee010",
+            "4bc89631ff6574cc22034fab0fcd36c970504952d412f7e718c0dd4fe39101fe"
+          ],
+          "status": "READY",
+          "value": 46.71422051566502
+        },
+        {
+          "axis": "GROWTH",
+          "classification": "NEGATIVE",
+          "direction": "RISK",
+          "explanation_code": "OPERATING_CASH_FLOW_YOY_NEGATIVE",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "operating_cash_flow",
+          "metric_type": "QUARTERLY_YOY",
+          "pit_available_from": "2023-11-14",
+          "reason": null,
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [
+            "20231114",
+            "20230814",
+            "20221114",
+            "20220816"
+          ],
+          "source_rcept_nos": [
+            "20231114002109",
+            "20230814002534",
+            "20221114001832",
+            "20220816001711"
+          ],
+          "source_sha256s": [
+            "5c96c8b3fe0e114a7d9fbb2a2037f15c48262a12f8ccf7eea9d133207d77a304",
+            "bffb09cf64a6c832d3766c91f6e929c3ac877cda32c1ac8f299b1a6f396ee010",
+            "a1105844c926eb955813c1aac08cc4e9834b900cb0f780adf90d455c73133f33",
+            "7291be66fe5cd687ff9b7797bc2132953543223f862ab41a6de7a591b4a2d3ba"
+          ],
+          "status": "READY",
+          "value": -48.730968157906254
+        },
+        {
+          "axis": "GROWTH",
+          "classification": "DECELERATING",
+          "direction": "RISK",
+          "explanation_code": "YOY_DECELERATING",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "operating_cash_flow",
+          "metric_type": "YOY_GROWTH_ACCELERATION",
+          "pit_available_from": "2023-11-14",
+          "reason": null,
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [
+            "20231114",
+            "20230814",
+            "20230515"
+          ],
+          "source_rcept_nos": [
+            "20231114002109",
+            "20230814002534",
+            "20230515002335"
+          ],
+          "source_sha256s": [
+            "5c96c8b3fe0e114a7d9fbb2a2037f15c48262a12f8ccf7eea9d133207d77a304",
+            "bffb09cf64a6c832d3766c91f6e929c3ac877cda32c1ac8f299b1a6f396ee010",
+            "4bc89631ff6574cc22034fab0fcd36c970504952d412f7e718c0dd4fe39101fe"
+          ],
+          "status": "READY",
+          "value": -6.525795940968393
+        },
+        {
+          "axis": "GROWTH",
+          "classification": "PROFIT_DECLINE",
+          "direction": "RISK",
+          "explanation_code": "PROFIT_DECLINE",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {
+            "transition": "PROFIT_DECLINE"
+          },
+          "metric": "operating_income",
+          "metric_type": "EARNINGS_TRANSITION",
+          "pit_available_from": "2023-11-14",
+          "reason": null,
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [
+            "20231114",
+            "20230814",
+            "20221114",
+            "20220816"
+          ],
+          "source_rcept_nos": [
+            "20231114002109",
+            "20230814002534",
+            "20221114001832",
+            "20220816001711"
+          ],
+          "source_sha256s": [
+            "5c96c8b3fe0e114a7d9fbb2a2037f15c48262a12f8ccf7eea9d133207d77a304",
+            "bffb09cf64a6c832d3766c91f6e929c3ac877cda32c1ac8f299b1a6f396ee010",
+            "a1105844c926eb955813c1aac08cc4e9834b900cb0f780adf90d455c73133f33",
+            "7291be66fe5cd687ff9b7797bc2132953543223f862ab41a6de7a591b4a2d3ba"
+          ],
+          "status": "READY",
+          "value": "PROFIT_DECLINE"
+        },
+        {
+          "axis": "GROWTH",
+          "classification": "PROFIT_DECLINE",
+          "direction": "RISK",
+          "explanation_code": "PROFIT_DECLINE",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {
+            "transition": "PROFIT_DECLINE"
+          },
+          "metric": "net_income",
+          "metric_type": "EARNINGS_TRANSITION",
+          "pit_available_from": "2023-11-14",
+          "reason": null,
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [
+            "20231114",
+            "20230814",
+            "20221114",
+            "20220816"
+          ],
+          "source_rcept_nos": [
+            "20231114002109",
+            "20230814002534",
+            "20221114001832",
+            "20220816001711"
+          ],
+          "source_sha256s": [
+            "5c96c8b3fe0e114a7d9fbb2a2037f15c48262a12f8ccf7eea9d133207d77a304",
+            "bffb09cf64a6c832d3766c91f6e929c3ac877cda32c1ac8f299b1a6f396ee010",
+            "a1105844c926eb955813c1aac08cc4e9834b900cb0f780adf90d455c73133f33",
+            "7291be66fe5cd687ff9b7797bc2132953543223f862ab41a6de7a591b4a2d3ba"
+          ],
+          "status": "READY",
+          "value": "PROFIT_DECLINE"
+        },
+        {
+          "axis": "PROFITABILITY",
+          "classification": "POSITIVE",
+          "direction": "POSITIVE",
+          "explanation_code": "OPERATING_INCOME_MARGIN_POSITIVE",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "operating_income",
+          "metric_type": "OPERATING_MARGIN",
+          "pit_available_from": "2023-11-14",
+          "reason": null,
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [
+            "20231114",
+            "20230814"
+          ],
+          "source_rcept_nos": [
+            "20231114002109",
+            "20230814002534"
+          ],
+          "source_sha256s": [
+            "5c96c8b3fe0e114a7d9fbb2a2037f15c48262a12f8ccf7eea9d133207d77a304",
+            "bffb09cf64a6c832d3766c91f6e929c3ac877cda32c1ac8f299b1a6f396ee010"
+          ],
+          "status": "READY",
+          "value": 3.6103353815994774
+        },
+        {
+          "axis": "PROFITABILITY",
+          "classification": "CONTRACTING",
+          "direction": "RISK",
+          "explanation_code": "MARGIN_CONTRACTING",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {
+            "classification": "CONTRACTING",
+            "current_margin": 3.6103353815994774,
+            "prior_margin": 14.133638388740646
+          },
+          "metric": "operating_income",
+          "metric_type": "MARGIN_EXPANSION_TREND",
+          "pit_available_from": "2023-11-14",
+          "reason": null,
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [
+            "20231114",
+            "20230814",
+            "20221114",
+            "20220816"
+          ],
+          "source_rcept_nos": [
+            "20231114002109",
+            "20230814002534",
+            "20221114001832",
+            "20220816001711"
+          ],
+          "source_sha256s": [
+            "5c96c8b3fe0e114a7d9fbb2a2037f15c48262a12f8ccf7eea9d133207d77a304",
+            "bffb09cf64a6c832d3766c91f6e929c3ac877cda32c1ac8f299b1a6f396ee010",
+            "a1105844c926eb955813c1aac08cc4e9834b900cb0f780adf90d455c73133f33",
+            "7291be66fe5cd687ff9b7797bc2132953543223f862ab41a6de7a591b4a2d3ba"
+          ],
+          "status": "READY",
+          "value": -10.52330300714117
+        },
+        {
+          "axis": "PROFITABILITY",
+          "classification": "POSITIVE",
+          "direction": "POSITIVE",
+          "explanation_code": "NET_INCOME_MARGIN_POSITIVE",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "net_income",
+          "metric_type": "NET_MARGIN",
+          "pit_available_from": "2023-11-14",
+          "reason": null,
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [
+            "20231114",
+            "20230814"
+          ],
+          "source_rcept_nos": [
+            "20231114002109",
+            "20230814002534"
+          ],
+          "source_sha256s": [
+            "5c96c8b3fe0e114a7d9fbb2a2037f15c48262a12f8ccf7eea9d133207d77a304",
+            "bffb09cf64a6c832d3766c91f6e929c3ac877cda32c1ac8f299b1a6f396ee010"
+          ],
+          "status": "READY",
+          "value": 8.670278425293256
+        },
+        {
+          "axis": "PROFITABILITY",
+          "classification": "CONTRACTING",
+          "direction": "RISK",
+          "explanation_code": "MARGIN_CONTRACTING",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {
+            "classification": "CONTRACTING",
+            "current_margin": 8.670278425293256,
+            "prior_margin": 12.228435220484887
+          },
+          "metric": "net_income",
+          "metric_type": "MARGIN_EXPANSION_TREND",
+          "pit_available_from": "2023-11-14",
+          "reason": null,
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [
+            "20231114",
+            "20230814",
+            "20221114",
+            "20220816"
+          ],
+          "source_rcept_nos": [
+            "20231114002109",
+            "20230814002534",
+            "20221114001832",
+            "20220816001711"
+          ],
+          "source_sha256s": [
+            "5c96c8b3fe0e114a7d9fbb2a2037f15c48262a12f8ccf7eea9d133207d77a304",
+            "bffb09cf64a6c832d3766c91f6e929c3ac877cda32c1ac8f299b1a6f396ee010",
+            "a1105844c926eb955813c1aac08cc4e9834b900cb0f780adf90d455c73133f33",
+            "7291be66fe5cd687ff9b7797bc2132953543223f862ab41a6de7a591b4a2d3ba"
+          ],
+          "status": "READY",
+          "value": -3.55815679519163
+        },
+        {
+          "axis": "PROFITABILITY",
+          "classification": "POSITIVE",
+          "direction": "POSITIVE",
+          "explanation_code": "OPERATING_INCOME_MARGIN_POSITIVE",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "operating_income",
+          "metric_type": "TTM_OPERATING_MARGIN",
+          "pit_available_from": "2023-11-14",
+          "reason": null,
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [
+            "20230307",
+            "20221114",
+            "20230515",
+            "20230814",
+            "20231114"
+          ],
+          "source_rcept_nos": [
+            "20230307000542",
+            "20221114001832",
+            "20230515002335",
+            "20230814002534",
+            "20231114002109"
+          ],
+          "source_sha256s": [
+            "c104eb2e9598d6dcdc91977c862ed2fcfddfd5ba3b7bf2186e03721a3a353868",
+            "a1105844c926eb955813c1aac08cc4e9834b900cb0f780adf90d455c73133f33",
+            "4bc89631ff6574cc22034fab0fcd36c970504952d412f7e718c0dd4fe39101fe",
+            "bffb09cf64a6c832d3766c91f6e929c3ac877cda32c1ac8f299b1a6f396ee010",
+            "5c96c8b3fe0e114a7d9fbb2a2037f15c48262a12f8ccf7eea9d133207d77a304"
+          ],
+          "status": "READY",
+          "value": 3.0763649453260156
+        },
+        {
+          "axis": "PROFITABILITY",
+          "classification": "POSITIVE",
+          "direction": "POSITIVE",
+          "explanation_code": "NET_INCOME_MARGIN_POSITIVE",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "net_income",
+          "metric_type": "TTM_NET_MARGIN",
+          "pit_available_from": "2023-11-14",
+          "reason": null,
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [
+            "20230307",
+            "20221114",
+            "20230515",
+            "20230814",
+            "20231114"
+          ],
+          "source_rcept_nos": [
+            "20230307000542",
+            "20221114001832",
+            "20230515002335",
+            "20230814002534",
+            "20231114002109"
+          ],
+          "source_sha256s": [
+            "c104eb2e9598d6dcdc91977c862ed2fcfddfd5ba3b7bf2186e03721a3a353868",
+            "a1105844c926eb955813c1aac08cc4e9834b900cb0f780adf90d455c73133f33",
+            "4bc89631ff6574cc22034fab0fcd36c970504952d412f7e718c0dd4fe39101fe",
+            "bffb09cf64a6c832d3766c91f6e929c3ac877cda32c1ac8f299b1a6f396ee010",
+            "5c96c8b3fe0e114a7d9fbb2a2037f15c48262a12f8ccf7eea9d133207d77a304"
+          ],
+          "status": "READY",
+          "value": 12.607511460958637
+        },
+        {
+          "axis": "CASH_FLOW",
+          "classification": "NEGATIVE",
+          "direction": "RISK",
+          "explanation_code": "OPERATING_CASH_FLOW_YOY_NEGATIVE",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "operating_cash_flow",
+          "metric_type": "QUARTERLY_YOY",
+          "pit_available_from": "2023-11-14",
+          "reason": null,
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [
+            "20231114",
+            "20230814",
+            "20221114",
+            "20220816"
+          ],
+          "source_rcept_nos": [
+            "20231114002109",
+            "20230814002534",
+            "20221114001832",
+            "20220816001711"
+          ],
+          "source_sha256s": [
+            "5c96c8b3fe0e114a7d9fbb2a2037f15c48262a12f8ccf7eea9d133207d77a304",
+            "bffb09cf64a6c832d3766c91f6e929c3ac877cda32c1ac8f299b1a6f396ee010",
+            "a1105844c926eb955813c1aac08cc4e9834b900cb0f780adf90d455c73133f33",
+            "7291be66fe5cd687ff9b7797bc2132953543223f862ab41a6de7a591b4a2d3ba"
+          ],
+          "status": "READY",
+          "value": -48.730968157906254
+        },
+        {
+          "axis": "CASH_FLOW",
+          "classification": "POSITIVE",
+          "direction": "POSITIVE",
+          "explanation_code": "OPERATING_CASH_FLOW_MARGIN_POSITIVE",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "operating_cash_flow",
+          "metric_type": "OPERATING_CASH_FLOW_MARGIN",
+          "pit_available_from": "2023-11-14",
+          "reason": null,
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [
+            "20231114",
+            "20230814"
+          ],
+          "source_rcept_nos": [
+            "20231114002109",
+            "20230814002534"
+          ],
+          "source_sha256s": [
+            "5c96c8b3fe0e114a7d9fbb2a2037f15c48262a12f8ccf7eea9d133207d77a304",
+            "bffb09cf64a6c832d3766c91f6e929c3ac877cda32c1ac8f299b1a6f396ee010"
+          ],
+          "status": "READY",
+          "value": 14.43596059215616
+        },
+        {
+          "axis": "CASH_FLOW",
+          "classification": "DETERIORATING",
+          "direction": "RISK",
+          "explanation_code": "OCF_TREND_DETERIORATING",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {
+            "latest_yoy": -48.730968157906254,
+            "prior_yoy": -42.20517221693786
+          },
+          "metric": "operating_cash_flow",
+          "metric_type": "OPERATING_CASH_FLOW_TREND",
+          "pit_available_from": "2023-11-14",
+          "reason": null,
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [
+            "20231114",
+            "20230814"
+          ],
+          "source_rcept_nos": [
+            "20231114002109",
+            "20230814002534"
+          ],
+          "source_sha256s": [
+            "5c96c8b3fe0e114a7d9fbb2a2037f15c48262a12f8ccf7eea9d133207d77a304",
+            "bffb09cf64a6c832d3766c91f6e929c3ac877cda32c1ac8f299b1a6f396ee010"
+          ],
+          "status": "READY",
+          "value": "DETERIORATING"
+        },
+        {
+          "axis": "CASH_FLOW",
+          "classification": "CONTRACTING",
+          "direction": "RISK",
+          "explanation_code": "MARGIN_CONTRACTING",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {
+            "classification": "CONTRACTING",
+            "current_margin": 14.43596059215616,
+            "prior_margin": 24.718540933201773
+          },
+          "metric": "operating_cash_flow",
+          "metric_type": "MARGIN_EXPANSION_TREND",
+          "pit_available_from": "2023-11-14",
+          "reason": null,
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [
+            "20231114",
+            "20230814",
+            "20221114",
+            "20220816"
+          ],
+          "source_rcept_nos": [
+            "20231114002109",
+            "20230814002534",
+            "20221114001832",
+            "20220816001711"
+          ],
+          "source_sha256s": [
+            "5c96c8b3fe0e114a7d9fbb2a2037f15c48262a12f8ccf7eea9d133207d77a304",
+            "bffb09cf64a6c832d3766c91f6e929c3ac877cda32c1ac8f299b1a6f396ee010",
+            "a1105844c926eb955813c1aac08cc4e9834b900cb0f780adf90d455c73133f33",
+            "7291be66fe5cd687ff9b7797bc2132953543223f862ab41a6de7a591b4a2d3ba"
+          ],
+          "status": "READY",
+          "value": -10.282580341045612
+        },
+        {
+          "axis": "CASH_FLOW",
+          "classification": null,
+          "direction": "NEUTRAL",
+          "explanation_code": "TTM_OPERATING_CASH_FLOW_YOY_UNAVAILABLE",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "operating_cash_flow",
+          "metric_type": "TTM_YOY",
+          "pit_available_from": "2023-11-14",
+          "reason": "MISSING_PRIOR_TTM",
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [
+            "20230307",
+            "20221114",
+            "20230515",
+            "20230814",
+            "20231114"
+          ],
+          "source_rcept_nos": [
+            "20230307000542",
+            "20221114001832",
+            "20230515002335",
+            "20230814002534",
+            "20231114002109"
+          ],
+          "source_sha256s": [
+            "c104eb2e9598d6dcdc91977c862ed2fcfddfd5ba3b7bf2186e03721a3a353868",
+            "a1105844c926eb955813c1aac08cc4e9834b900cb0f780adf90d455c73133f33",
+            "4bc89631ff6574cc22034fab0fcd36c970504952d412f7e718c0dd4fe39101fe",
+            "bffb09cf64a6c832d3766c91f6e929c3ac877cda32c1ac8f299b1a6f396ee010",
+            "5c96c8b3fe0e114a7d9fbb2a2037f15c48262a12f8ccf7eea9d133207d77a304"
+          ],
+          "status": "DATA_UNAVAILABLE",
+          "value": null
+        },
+        {
+          "axis": "CASH_FLOW",
+          "classification": "POSITIVE",
+          "direction": "POSITIVE",
+          "explanation_code": "OPERATING_CASH_FLOW_MARGIN_POSITIVE",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "operating_cash_flow",
+          "metric_type": "TTM_OPERATING_CASH_FLOW_MARGIN",
+          "pit_available_from": "2023-11-14",
+          "reason": null,
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [
+            "20230307",
+            "20221114",
+            "20230515",
+            "20230814",
+            "20231114"
+          ],
+          "source_rcept_nos": [
+            "20230307000542",
+            "20221114001832",
+            "20230515002335",
+            "20230814002534",
+            "20231114002109"
+          ],
+          "source_sha256s": [
+            "c104eb2e9598d6dcdc91977c862ed2fcfddfd5ba3b7bf2186e03721a3a353868",
+            "a1105844c926eb955813c1aac08cc4e9834b900cb0f780adf90d455c73133f33",
+            "4bc89631ff6574cc22034fab0fcd36c970504952d412f7e718c0dd4fe39101fe",
+            "bffb09cf64a6c832d3766c91f6e929c3ac877cda32c1ac8f299b1a6f396ee010",
+            "5c96c8b3fe0e114a7d9fbb2a2037f15c48262a12f8ccf7eea9d133207d77a304"
+          ],
+          "status": "READY",
+          "value": 16.36154596987034
+        },
+        {
+          "axis": "MOMENTUM",
+          "classification": "ACCELERATING",
+          "direction": "POSITIVE",
+          "explanation_code": "YOY_ACCELERATING",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "revenue",
+          "metric_type": "YOY_GROWTH_ACCELERATION",
+          "pit_available_from": "2023-11-14",
+          "reason": null,
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [
+            "20231114",
+            "20230814",
+            "20230515"
+          ],
+          "source_rcept_nos": [
+            "20231114002109",
+            "20230814002534",
+            "20230515002335"
+          ],
+          "source_sha256s": [
+            "5c96c8b3fe0e114a7d9fbb2a2037f15c48262a12f8ccf7eea9d133207d77a304",
+            "bffb09cf64a6c832d3766c91f6e929c3ac877cda32c1ac8f299b1a6f396ee010",
+            "4bc89631ff6574cc22034fab0fcd36c970504952d412f7e718c0dd4fe39101fe"
+          ],
+          "status": "READY",
+          "value": 10.063672033000636
+        },
+        {
+          "axis": "MOMENTUM",
+          "classification": null,
+          "direction": "NEUTRAL",
+          "explanation_code": "CONSECUTIVE_YOY_GROWTH_UNAVAILABLE",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "consecutive_yoy_growth",
+          "metric_type": "CONSECUTIVE_YOY_GROWTH",
+          "pit_available_from": null,
+          "reason": "MISSING_CURRENT_DERIVED_METRIC",
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [],
+          "source_rcept_nos": [],
+          "source_sha256s": [],
+          "status": "UNAVAILABLE",
+          "value": null
+        },
+        {
+          "axis": "MOMENTUM",
+          "classification": "ACCELERATING",
+          "direction": "POSITIVE",
+          "explanation_code": "YOY_ACCELERATING",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "operating_income",
+          "metric_type": "YOY_GROWTH_ACCELERATION",
+          "pit_available_from": "2023-11-14",
+          "reason": null,
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [
+            "20231114",
+            "20230814",
+            "20230515"
+          ],
+          "source_rcept_nos": [
+            "20231114002109",
+            "20230814002534",
+            "20230515002335"
+          ],
+          "source_sha256s": [
+            "5c96c8b3fe0e114a7d9fbb2a2037f15c48262a12f8ccf7eea9d133207d77a304",
+            "bffb09cf64a6c832d3766c91f6e929c3ac877cda32c1ac8f299b1a6f396ee010",
+            "4bc89631ff6574cc22034fab0fcd36c970504952d412f7e718c0dd4fe39101fe"
+          ],
+          "status": "READY",
+          "value": 17.68219622552759
+        },
+        {
+          "axis": "MOMENTUM",
+          "classification": null,
+          "direction": "NEUTRAL",
+          "explanation_code": "CONSECUTIVE_YOY_GROWTH_UNAVAILABLE",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "consecutive_yoy_growth",
+          "metric_type": "CONSECUTIVE_YOY_GROWTH",
+          "pit_available_from": null,
+          "reason": "MISSING_CURRENT_DERIVED_METRIC",
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [],
+          "source_rcept_nos": [],
+          "source_sha256s": [],
+          "status": "UNAVAILABLE",
+          "value": null
+        },
+        {
+          "axis": "MOMENTUM",
+          "classification": "ACCELERATING",
+          "direction": "POSITIVE",
+          "explanation_code": "YOY_ACCELERATING",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "net_income",
+          "metric_type": "YOY_GROWTH_ACCELERATION",
+          "pit_available_from": "2023-11-14",
+          "reason": null,
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [
+            "20231114",
+            "20230814",
+            "20230515"
+          ],
+          "source_rcept_nos": [
+            "20231114002109",
+            "20230814002534",
+            "20230515002335"
+          ],
+          "source_sha256s": [
+            "5c96c8b3fe0e114a7d9fbb2a2037f15c48262a12f8ccf7eea9d133207d77a304",
+            "bffb09cf64a6c832d3766c91f6e929c3ac877cda32c1ac8f299b1a6f396ee010",
+            "4bc89631ff6574cc22034fab0fcd36c970504952d412f7e718c0dd4fe39101fe"
+          ],
+          "status": "READY",
+          "value": 46.71422051566502
+        },
+        {
+          "axis": "MOMENTUM",
+          "classification": null,
+          "direction": "NEUTRAL",
+          "explanation_code": "CONSECUTIVE_YOY_GROWTH_UNAVAILABLE",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "consecutive_yoy_growth",
+          "metric_type": "CONSECUTIVE_YOY_GROWTH",
+          "pit_available_from": null,
+          "reason": "MISSING_CURRENT_DERIVED_METRIC",
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [],
+          "source_rcept_nos": [],
+          "source_sha256s": [],
+          "status": "UNAVAILABLE",
+          "value": null
+        },
+        {
+          "axis": "MOMENTUM",
+          "classification": "DECELERATING",
+          "direction": "RISK",
+          "explanation_code": "YOY_DECELERATING",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "operating_cash_flow",
+          "metric_type": "YOY_GROWTH_ACCELERATION",
+          "pit_available_from": "2023-11-14",
+          "reason": null,
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [
+            "20231114",
+            "20230814",
+            "20230515"
+          ],
+          "source_rcept_nos": [
+            "20231114002109",
+            "20230814002534",
+            "20230515002335"
+          ],
+          "source_sha256s": [
+            "5c96c8b3fe0e114a7d9fbb2a2037f15c48262a12f8ccf7eea9d133207d77a304",
+            "bffb09cf64a6c832d3766c91f6e929c3ac877cda32c1ac8f299b1a6f396ee010",
+            "4bc89631ff6574cc22034fab0fcd36c970504952d412f7e718c0dd4fe39101fe"
+          ],
+          "status": "READY",
+          "value": -6.525795940968393
+        },
+        {
+          "axis": "MOMENTUM",
+          "classification": null,
+          "direction": "NEUTRAL",
+          "explanation_code": "CONSECUTIVE_YOY_GROWTH_UNAVAILABLE",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "consecutive_yoy_growth",
+          "metric_type": "CONSECUTIVE_YOY_GROWTH",
+          "pit_available_from": null,
+          "reason": "MISSING_CURRENT_DERIVED_METRIC",
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [],
+          "source_rcept_nos": [],
+          "source_sha256s": [],
+          "status": "UNAVAILABLE",
+          "value": null
+        },
+        {
+          "axis": "MOMENTUM",
+          "classification": "CONTRACTING",
+          "direction": "RISK",
+          "explanation_code": "MARGIN_CONTRACTING",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {
+            "classification": "CONTRACTING",
+            "current_margin": 3.6103353815994774,
+            "prior_margin": 14.133638388740646
+          },
+          "metric": "operating_income",
+          "metric_type": "MARGIN_EXPANSION_TREND",
+          "pit_available_from": "2023-11-14",
+          "reason": null,
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [
+            "20231114",
+            "20230814",
+            "20221114",
+            "20220816"
+          ],
+          "source_rcept_nos": [
+            "20231114002109",
+            "20230814002534",
+            "20221114001832",
+            "20220816001711"
+          ],
+          "source_sha256s": [
+            "5c96c8b3fe0e114a7d9fbb2a2037f15c48262a12f8ccf7eea9d133207d77a304",
+            "bffb09cf64a6c832d3766c91f6e929c3ac877cda32c1ac8f299b1a6f396ee010",
+            "a1105844c926eb955813c1aac08cc4e9834b900cb0f780adf90d455c73133f33",
+            "7291be66fe5cd687ff9b7797bc2132953543223f862ab41a6de7a591b4a2d3ba"
+          ],
+          "status": "READY",
+          "value": -10.52330300714117
+        },
+        {
+          "axis": "MOMENTUM",
+          "classification": "CONTRACTING",
+          "direction": "RISK",
+          "explanation_code": "MARGIN_CONTRACTING",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {
+            "classification": "CONTRACTING",
+            "current_margin": 8.670278425293256,
+            "prior_margin": 12.228435220484887
+          },
+          "metric": "net_income",
+          "metric_type": "MARGIN_EXPANSION_TREND",
+          "pit_available_from": "2023-11-14",
+          "reason": null,
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [
+            "20231114",
+            "20230814",
+            "20221114",
+            "20220816"
+          ],
+          "source_rcept_nos": [
+            "20231114002109",
+            "20230814002534",
+            "20221114001832",
+            "20220816001711"
+          ],
+          "source_sha256s": [
+            "5c96c8b3fe0e114a7d9fbb2a2037f15c48262a12f8ccf7eea9d133207d77a304",
+            "bffb09cf64a6c832d3766c91f6e929c3ac877cda32c1ac8f299b1a6f396ee010",
+            "a1105844c926eb955813c1aac08cc4e9834b900cb0f780adf90d455c73133f33",
+            "7291be66fe5cd687ff9b7797bc2132953543223f862ab41a6de7a591b4a2d3ba"
+          ],
+          "status": "READY",
+          "value": -3.55815679519163
+        },
+        {
+          "axis": "MOMENTUM",
+          "classification": "DETERIORATING",
+          "direction": "RISK",
+          "explanation_code": "OCF_TREND_DETERIORATING",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {
+            "latest_yoy": -48.730968157906254,
+            "prior_yoy": -42.20517221693786
+          },
+          "metric": "operating_cash_flow",
+          "metric_type": "OPERATING_CASH_FLOW_TREND",
+          "pit_available_from": "2023-11-14",
+          "reason": null,
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [
+            "20231114",
+            "20230814"
+          ],
+          "source_rcept_nos": [
+            "20231114002109",
+            "20230814002534"
+          ],
+          "source_sha256s": [
+            "5c96c8b3fe0e114a7d9fbb2a2037f15c48262a12f8ccf7eea9d133207d77a304",
+            "bffb09cf64a6c832d3766c91f6e929c3ac877cda32c1ac8f299b1a6f396ee010"
+          ],
+          "status": "READY",
+          "value": "DETERIORATING"
+        },
+        {
+          "axis": "MOMENTUM",
+          "classification": "PROFIT_DECLINE",
+          "direction": "RISK",
+          "explanation_code": "PROFIT_DECLINE",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {
+            "transition": "PROFIT_DECLINE"
+          },
+          "metric": "operating_income",
+          "metric_type": "EARNINGS_TRANSITION",
+          "pit_available_from": "2023-11-14",
+          "reason": null,
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [
+            "20231114",
+            "20230814",
+            "20221114",
+            "20220816"
+          ],
+          "source_rcept_nos": [
+            "20231114002109",
+            "20230814002534",
+            "20221114001832",
+            "20220816001711"
+          ],
+          "source_sha256s": [
+            "5c96c8b3fe0e114a7d9fbb2a2037f15c48262a12f8ccf7eea9d133207d77a304",
+            "bffb09cf64a6c832d3766c91f6e929c3ac877cda32c1ac8f299b1a6f396ee010",
+            "a1105844c926eb955813c1aac08cc4e9834b900cb0f780adf90d455c73133f33",
+            "7291be66fe5cd687ff9b7797bc2132953543223f862ab41a6de7a591b4a2d3ba"
+          ],
+          "status": "READY",
+          "value": "PROFIT_DECLINE"
+        },
+        {
+          "axis": "MOMENTUM",
+          "classification": "PROFIT_DECLINE",
+          "direction": "RISK",
+          "explanation_code": "PROFIT_DECLINE",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {
+            "transition": "PROFIT_DECLINE"
+          },
+          "metric": "net_income",
+          "metric_type": "EARNINGS_TRANSITION",
+          "pit_available_from": "2023-11-14",
+          "reason": null,
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [
+            "20231114",
+            "20230814",
+            "20221114",
+            "20220816"
+          ],
+          "source_rcept_nos": [
+            "20231114002109",
+            "20230814002534",
+            "20221114001832",
+            "20220816001711"
+          ],
+          "source_sha256s": [
+            "5c96c8b3fe0e114a7d9fbb2a2037f15c48262a12f8ccf7eea9d133207d77a304",
+            "bffb09cf64a6c832d3766c91f6e929c3ac877cda32c1ac8f299b1a6f396ee010",
+            "a1105844c926eb955813c1aac08cc4e9834b900cb0f780adf90d455c73133f33",
+            "7291be66fe5cd687ff9b7797bc2132953543223f862ab41a6de7a591b4a2d3ba"
+          ],
+          "status": "READY",
+          "value": "PROFIT_DECLINE"
+        }
+      ],
+      "expected_rule_overlaps": [],
+      "growth_direction": "IMPROVING",
+      "growth_state": "NEGATIVE",
+      "improving_direction_axis_count": 1,
+      "matched_candidate_rules": [
+        "OVERALL_WEAKENING_V01"
+      ],
+      "matched_rule_id": "OVERALL_WEAKENING_V01",
+      "missing_axis_count": 0,
+      "missing_evidence_count": 5,
+      "momentum_state": "DETERIORATING",
+      "negative_level_axis_count": 2,
+      "overall_state": "WEAKENING",
+      "pit_available_from": "2023-11-14",
+      "profitability_direction": "DETERIORATING",
+      "profitability_state": "POSITIVE",
+      "reason": null,
+      "requested_as_of": "2024-02-15",
+      "risks": [
+        "REVENUE_YOY_NEGATIVE",
+        "OPERATING_INCOME_YOY_NEGATIVE",
+        "NET_INCOME_YOY_NEGATIVE",
+        "OPERATING_CASH_FLOW_YOY_NEGATIVE",
+        "YOY_DECELERATING",
+        "PROFIT_DECLINE",
+        "MARGIN_CONTRACTING",
+        "OCF_TREND_DETERIORATING"
+      ],
+      "status": "READY",
+      "strengths": [
+        "YOY_ACCELERATING",
+        "OPERATING_INCOME_MARGIN_POSITIVE",
+        "NET_INCOME_MARGIN_POSITIVE",
+        "OPERATING_CASH_FLOW_MARGIN_POSITIVE"
+      ],
+      "ticker": "005930",
+      "total_axis_count": 4
+    },
+    {
+      "assessment_rule_conflict_count": 0,
+      "assessment_rule_mismatch_count": 0,
+      "assessment_scope": "EXPLICIT_RANGE",
+      "available_axis_count": 3,
+      "available_evidence_count": 6,
+      "axis_directions": {
+        "CASH_FLOW": "DETERIORATING",
+        "GROWTH": "DETERIORATING",
+        "MOMENTUM": "DETERIORATING",
+        "PROFITABILITY": "UNAVAILABLE"
+      },
+      "axis_resolution": {
+        "CASH_FLOW": "NEGATIVE",
+        "GROWTH": "WEAK",
+        "MOMENTUM": "DETERIORATING",
+        "PROFITABILITY": "UNAVAILABLE"
+      },
+      "cash_flow_direction": "DETERIORATING",
+      "cash_flow_state": "NEGATIVE",
+      "company_family": "NON_FINANCIAL",
+      "current_fiscal_period": "Q3",
+      "current_fiscal_year": "2023",
+      "currentness_status": "RANGE_ONLY",
+      "deteriorating_direction_axis_count": 2,
+      "diagnostics": {
+        "axis_directions": {
+          "CASH_FLOW": "DETERIORATING",
+          "GROWTH": "DETERIORATING",
+          "MOMENTUM": "DETERIORATING",
+          "PROFITABILITY": "UNAVAILABLE"
+        },
+        "axis_resolution": {
+          "CASH_FLOW": "NEGATIVE",
+          "GROWTH": "WEAK",
+          "MOMENTUM": "DETERIORATING",
+          "PROFITABILITY": "UNAVAILABLE"
+        },
+        "deteriorating_direction_axis_count": 2,
+        "deterioration_axis_count": 2,
+        "expected_rule_overlaps": [],
+        "future_assessment_source_count": 0,
+        "improvement_axis_count": 0,
+        "improving_direction_axis_count": 0,
+        "matched_candidate_rules": [
+          "OVERALL_WEAKENING_V01"
+        ],
+        "negative_level_axis_count": 2,
+        "provider_cutoff_mismatch_count": 0,
+        "ready_future_pit_available_count": 0,
+        "ready_missing_pit_available_count": 0,
+        "transition_codes": []
+      },
+      "evidence": [
+        {
+          "axis": "GROWTH",
+          "classification": null,
+          "direction": "NEUTRAL",
+          "explanation_code": "REVENUE_GROWTH_UNAVAILABLE",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "revenue",
+          "metric_type": "QUARTERLY_YOY",
+          "pit_available_from": "2023-11-14",
+          "reason": "CURRENT_OBSERVATION_UNAVAILABLE",
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [
+            "20231114",
+            "20230814",
+            "20221114",
+            "20220816"
+          ],
+          "source_rcept_nos": [
+            "20231114002574",
+            "20230814002376",
+            "20221114001566",
+            "20220816001536"
+          ],
+          "source_sha256s": [
+            "0a288744465eab5acb30c8478145422cc93034b201e256342c2de8223403319c",
+            "fe6b151655f2405ebbc460efcd52ac4e01f3a7c009f399b567843d02a45874b7",
+            "0c7fb3e685dc668bf4ece20bc6a8298e8e78a1ecde0b558df8b307f529a91214",
+            "750d72cd0538a4acb13537701adb6dca8c797795f935199acaf73ac58f485f62"
+          ],
+          "status": "INPUT_NOT_READY",
+          "value": null
+        },
+        {
+          "axis": "GROWTH",
+          "classification": null,
+          "direction": "NEUTRAL",
+          "explanation_code": "YOY_GROWTH_ACCELERATION_UNAVAILABLE",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "yoy_growth_acceleration",
+          "metric_type": "YOY_GROWTH_ACCELERATION",
+          "pit_available_from": null,
+          "reason": "MISSING_CURRENT_DERIVED_METRIC",
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [],
+          "source_rcept_nos": [],
+          "source_sha256s": [],
+          "status": "UNAVAILABLE",
+          "value": null
+        },
+        {
+          "axis": "GROWTH",
+          "classification": null,
+          "direction": "NEUTRAL",
+          "explanation_code": "OPERATING_INCOME_GROWTH_UNAVAILABLE",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "operating_income",
+          "metric_type": "QUARTERLY_YOY",
+          "pit_available_from": "2023-11-14",
+          "reason": "INPUT_NOT_READY",
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [
+            "20231114",
+            "20230814",
+            "20221114",
+            "20220816"
+          ],
+          "source_rcept_nos": [
+            "20231114002574",
+            "20230814002376",
+            "20221114001566",
+            "20220816001536"
+          ],
+          "source_sha256s": [
+            "0a288744465eab5acb30c8478145422cc93034b201e256342c2de8223403319c",
+            "fe6b151655f2405ebbc460efcd52ac4e01f3a7c009f399b567843d02a45874b7",
+            "0c7fb3e685dc668bf4ece20bc6a8298e8e78a1ecde0b558df8b307f529a91214",
+            "750d72cd0538a4acb13537701adb6dca8c797795f935199acaf73ac58f485f62"
+          ],
+          "status": "INPUT_NOT_READY",
+          "value": null
+        },
+        {
+          "axis": "GROWTH",
+          "classification": null,
+          "direction": "NEUTRAL",
+          "explanation_code": "YOY_GROWTH_ACCELERATION_UNAVAILABLE",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "yoy_growth_acceleration",
+          "metric_type": "YOY_GROWTH_ACCELERATION",
+          "pit_available_from": null,
+          "reason": "MISSING_CURRENT_DERIVED_METRIC",
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [],
+          "source_rcept_nos": [],
+          "source_sha256s": [],
+          "status": "UNAVAILABLE",
+          "value": null
+        },
+        {
+          "axis": "GROWTH",
+          "classification": null,
+          "direction": "NEUTRAL",
+          "explanation_code": "NET_INCOME_GROWTH_UNAVAILABLE",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "net_income",
+          "metric_type": "QUARTERLY_YOY",
+          "pit_available_from": "2023-11-14",
+          "reason": "INPUT_NOT_READY",
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [
+            "20231114",
+            "20230814",
+            "20221114",
+            "20220816"
+          ],
+          "source_rcept_nos": [
+            "20231114002574",
+            "20230814002376",
+            "20221114001566",
+            "20220816001536"
+          ],
+          "source_sha256s": [
+            "0a288744465eab5acb30c8478145422cc93034b201e256342c2de8223403319c",
+            "fe6b151655f2405ebbc460efcd52ac4e01f3a7c009f399b567843d02a45874b7",
+            "0c7fb3e685dc668bf4ece20bc6a8298e8e78a1ecde0b558df8b307f529a91214",
+            "750d72cd0538a4acb13537701adb6dca8c797795f935199acaf73ac58f485f62"
+          ],
+          "status": "INPUT_NOT_READY",
+          "value": null
+        },
+        {
+          "axis": "GROWTH",
+          "classification": null,
+          "direction": "NEUTRAL",
+          "explanation_code": "YOY_GROWTH_ACCELERATION_UNAVAILABLE",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "yoy_growth_acceleration",
+          "metric_type": "YOY_GROWTH_ACCELERATION",
+          "pit_available_from": null,
+          "reason": "MISSING_CURRENT_DERIVED_METRIC",
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [],
+          "source_rcept_nos": [],
+          "source_sha256s": [],
+          "status": "UNAVAILABLE",
+          "value": null
+        },
+        {
+          "axis": "GROWTH",
+          "classification": "NEGATIVE",
+          "direction": "RISK",
+          "explanation_code": "OPERATING_CASH_FLOW_YOY_NEGATIVE",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "operating_cash_flow",
+          "metric_type": "QUARTERLY_YOY",
+          "pit_available_from": "2023-11-14",
+          "reason": null,
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [
+            "20231114",
+            "20230814",
+            "20221114",
+            "20220816"
+          ],
+          "source_rcept_nos": [
+            "20231114002574",
+            "20230814002376",
+            "20221114001566",
+            "20220816001536"
+          ],
+          "source_sha256s": [
+            "0a288744465eab5acb30c8478145422cc93034b201e256342c2de8223403319c",
+            "fe6b151655f2405ebbc460efcd52ac4e01f3a7c009f399b567843d02a45874b7",
+            "0c7fb3e685dc668bf4ece20bc6a8298e8e78a1ecde0b558df8b307f529a91214",
+            "750d72cd0538a4acb13537701adb6dca8c797795f935199acaf73ac58f485f62"
+          ],
+          "status": "READY",
+          "value": -73.7341551169377
+        },
+        {
+          "axis": "GROWTH",
+          "classification": "DECELERATING",
+          "direction": "RISK",
+          "explanation_code": "YOY_DECELERATING",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "operating_cash_flow",
+          "metric_type": "YOY_GROWTH_ACCELERATION",
+          "pit_available_from": "2023-11-14",
+          "reason": null,
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [
+            "20231114",
+            "20230814",
+            "20230515"
+          ],
+          "source_rcept_nos": [
+            "20231114002574",
+            "20230814002376",
+            "20230515001677"
+          ],
+          "source_sha256s": [
+            "0a288744465eab5acb30c8478145422cc93034b201e256342c2de8223403319c",
+            "fe6b151655f2405ebbc460efcd52ac4e01f3a7c009f399b567843d02a45874b7",
+            "c705cdba63ed45581ad8fc26c89e7ad5fb1618a37f5c4faef8a19a3ad5be7697"
+          ],
+          "status": "READY",
+          "value": -2.4078555300637134
+        },
+        {
+          "axis": "GROWTH",
+          "classification": null,
+          "direction": "NEUTRAL",
+          "explanation_code": "EARNINGS_TRANSITION_UNAVAILABLE",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "operating_income",
+          "metric_type": "EARNINGS_TRANSITION",
+          "pit_available_from": "2023-11-14",
+          "reason": "INPUT_NOT_READY",
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [
+            "20231114",
+            "20230814",
+            "20221114",
+            "20220816"
+          ],
+          "source_rcept_nos": [
+            "20231114002574",
+            "20230814002376",
+            "20221114001566",
+            "20220816001536"
+          ],
+          "source_sha256s": [
+            "0a288744465eab5acb30c8478145422cc93034b201e256342c2de8223403319c",
+            "fe6b151655f2405ebbc460efcd52ac4e01f3a7c009f399b567843d02a45874b7",
+            "0c7fb3e685dc668bf4ece20bc6a8298e8e78a1ecde0b558df8b307f529a91214",
+            "750d72cd0538a4acb13537701adb6dca8c797795f935199acaf73ac58f485f62"
+          ],
+          "status": "INPUT_NOT_READY",
+          "value": null
+        },
+        {
+          "axis": "GROWTH",
+          "classification": null,
+          "direction": "NEUTRAL",
+          "explanation_code": "EARNINGS_TRANSITION_UNAVAILABLE",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "net_income",
+          "metric_type": "EARNINGS_TRANSITION",
+          "pit_available_from": "2023-11-14",
+          "reason": "INPUT_NOT_READY",
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [
+            "20231114",
+            "20230814",
+            "20221114",
+            "20220816"
+          ],
+          "source_rcept_nos": [
+            "20231114002574",
+            "20230814002376",
+            "20221114001566",
+            "20220816001536"
+          ],
+          "source_sha256s": [
+            "0a288744465eab5acb30c8478145422cc93034b201e256342c2de8223403319c",
+            "fe6b151655f2405ebbc460efcd52ac4e01f3a7c009f399b567843d02a45874b7",
+            "0c7fb3e685dc668bf4ece20bc6a8298e8e78a1ecde0b558df8b307f529a91214",
+            "750d72cd0538a4acb13537701adb6dca8c797795f935199acaf73ac58f485f62"
+          ],
+          "status": "INPUT_NOT_READY",
+          "value": null
+        },
+        {
+          "axis": "PROFITABILITY",
+          "classification": null,
+          "direction": "NEUTRAL",
+          "explanation_code": "OPERATING_MARGIN_UNAVAILABLE",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "operating_income",
+          "metric_type": "OPERATING_MARGIN",
+          "pit_available_from": "2023-11-14",
+          "reason": "MARGIN_INPUT_UNAVAILABLE",
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [
+            "20231114",
+            "20230814"
+          ],
+          "source_rcept_nos": [
+            "20231114002574",
+            "20230814002376"
+          ],
+          "source_sha256s": [
+            "0a288744465eab5acb30c8478145422cc93034b201e256342c2de8223403319c",
+            "fe6b151655f2405ebbc460efcd52ac4e01f3a7c009f399b567843d02a45874b7"
+          ],
+          "status": "INPUT_NOT_READY",
+          "value": null
+        },
+        {
+          "axis": "PROFITABILITY",
+          "classification": null,
+          "direction": "NEUTRAL",
+          "explanation_code": "MARGIN_EXPANSION_TREND_UNAVAILABLE",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "operating_income",
+          "metric_type": "MARGIN_EXPANSION_TREND",
+          "pit_available_from": "2023-11-14",
+          "reason": "MISSING_COMPARABLE_MARGIN_PERIOD",
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [
+            "20231114",
+            "20230814",
+            "20221114",
+            "20220816"
+          ],
+          "source_rcept_nos": [
+            "20231114002574",
+            "20230814002376",
+            "20221114001566",
+            "20220816001536"
+          ],
+          "source_sha256s": [
+            "0a288744465eab5acb30c8478145422cc93034b201e256342c2de8223403319c",
+            "fe6b151655f2405ebbc460efcd52ac4e01f3a7c009f399b567843d02a45874b7",
+            "0c7fb3e685dc668bf4ece20bc6a8298e8e78a1ecde0b558df8b307f529a91214",
+            "750d72cd0538a4acb13537701adb6dca8c797795f935199acaf73ac58f485f62"
+          ],
+          "status": "INPUT_NOT_READY",
+          "value": null
+        },
+        {
+          "axis": "PROFITABILITY",
+          "classification": null,
+          "direction": "NEUTRAL",
+          "explanation_code": "NET_MARGIN_UNAVAILABLE",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "net_income",
+          "metric_type": "NET_MARGIN",
+          "pit_available_from": "2023-11-14",
+          "reason": "MARGIN_INPUT_UNAVAILABLE",
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [
+            "20231114",
+            "20230814"
+          ],
+          "source_rcept_nos": [
+            "20231114002574",
+            "20230814002376"
+          ],
+          "source_sha256s": [
+            "0a288744465eab5acb30c8478145422cc93034b201e256342c2de8223403319c",
+            "fe6b151655f2405ebbc460efcd52ac4e01f3a7c009f399b567843d02a45874b7"
+          ],
+          "status": "INPUT_NOT_READY",
+          "value": null
+        },
+        {
+          "axis": "PROFITABILITY",
+          "classification": null,
+          "direction": "NEUTRAL",
+          "explanation_code": "MARGIN_EXPANSION_TREND_UNAVAILABLE",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "net_income",
+          "metric_type": "MARGIN_EXPANSION_TREND",
+          "pit_available_from": "2023-11-14",
+          "reason": "MISSING_COMPARABLE_MARGIN_PERIOD",
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [
+            "20231114",
+            "20230814",
+            "20221114",
+            "20220816"
+          ],
+          "source_rcept_nos": [
+            "20231114002574",
+            "20230814002376",
+            "20221114001566",
+            "20220816001536"
+          ],
+          "source_sha256s": [
+            "0a288744465eab5acb30c8478145422cc93034b201e256342c2de8223403319c",
+            "fe6b151655f2405ebbc460efcd52ac4e01f3a7c009f399b567843d02a45874b7",
+            "0c7fb3e685dc668bf4ece20bc6a8298e8e78a1ecde0b558df8b307f529a91214",
+            "750d72cd0538a4acb13537701adb6dca8c797795f935199acaf73ac58f485f62"
+          ],
+          "status": "INPUT_NOT_READY",
+          "value": null
+        },
+        {
+          "axis": "PROFITABILITY",
+          "classification": null,
+          "direction": "NEUTRAL",
+          "explanation_code": "TTM_OPERATING_MARGIN_UNAVAILABLE",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "operating_income",
+          "metric_type": "TTM_OPERATING_MARGIN",
+          "pit_available_from": "2023-11-14",
+          "reason": "INPUT_NOT_READY",
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [
+            "20230321",
+            "20221114",
+            "20230515",
+            "20230814",
+            "20231114"
+          ],
+          "source_rcept_nos": [
+            "20230321001209",
+            "20221114001566",
+            "20230515001677",
+            "20230814002376",
+            "20231114002574"
+          ],
+          "source_sha256s": [
+            "fdc4b2765379130b67940d55e8a089bf28de08a0b0ea49f2495499b20f83f34d",
+            "0c7fb3e685dc668bf4ece20bc6a8298e8e78a1ecde0b558df8b307f529a91214",
+            "c705cdba63ed45581ad8fc26c89e7ad5fb1618a37f5c4faef8a19a3ad5be7697",
+            "fe6b151655f2405ebbc460efcd52ac4e01f3a7c009f399b567843d02a45874b7",
+            "0a288744465eab5acb30c8478145422cc93034b201e256342c2de8223403319c"
+          ],
+          "status": "INPUT_NOT_READY",
+          "value": null
+        },
+        {
+          "axis": "PROFITABILITY",
+          "classification": null,
+          "direction": "NEUTRAL",
+          "explanation_code": "TTM_NET_MARGIN_UNAVAILABLE",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "net_income",
+          "metric_type": "TTM_NET_MARGIN",
+          "pit_available_from": "2023-11-14",
+          "reason": "INPUT_NOT_READY",
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [
+            "20230321",
+            "20221114",
+            "20230515",
+            "20230814",
+            "20231114"
+          ],
+          "source_rcept_nos": [
+            "20230321001209",
+            "20221114001566",
+            "20230515001677",
+            "20230814002376",
+            "20231114002574"
+          ],
+          "source_sha256s": [
+            "fdc4b2765379130b67940d55e8a089bf28de08a0b0ea49f2495499b20f83f34d",
+            "0c7fb3e685dc668bf4ece20bc6a8298e8e78a1ecde0b558df8b307f529a91214",
+            "c705cdba63ed45581ad8fc26c89e7ad5fb1618a37f5c4faef8a19a3ad5be7697",
+            "fe6b151655f2405ebbc460efcd52ac4e01f3a7c009f399b567843d02a45874b7",
+            "0a288744465eab5acb30c8478145422cc93034b201e256342c2de8223403319c"
+          ],
+          "status": "INPUT_NOT_READY",
+          "value": null
+        },
+        {
+          "axis": "CASH_FLOW",
+          "classification": "NEGATIVE",
+          "direction": "RISK",
+          "explanation_code": "OPERATING_CASH_FLOW_YOY_NEGATIVE",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "operating_cash_flow",
+          "metric_type": "QUARTERLY_YOY",
+          "pit_available_from": "2023-11-14",
+          "reason": null,
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [
+            "20231114",
+            "20230814",
+            "20221114",
+            "20220816"
+          ],
+          "source_rcept_nos": [
+            "20231114002574",
+            "20230814002376",
+            "20221114001566",
+            "20220816001536"
+          ],
+          "source_sha256s": [
+            "0a288744465eab5acb30c8478145422cc93034b201e256342c2de8223403319c",
+            "fe6b151655f2405ebbc460efcd52ac4e01f3a7c009f399b567843d02a45874b7",
+            "0c7fb3e685dc668bf4ece20bc6a8298e8e78a1ecde0b558df8b307f529a91214",
+            "750d72cd0538a4acb13537701adb6dca8c797795f935199acaf73ac58f485f62"
+          ],
+          "status": "READY",
+          "value": -73.7341551169377
+        },
+        {
+          "axis": "CASH_FLOW",
+          "classification": null,
+          "direction": "NEUTRAL",
+          "explanation_code": "OPERATING_CASH_FLOW_MARGIN_UNAVAILABLE",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "operating_cash_flow",
+          "metric_type": "OPERATING_CASH_FLOW_MARGIN",
+          "pit_available_from": "2023-11-14",
+          "reason": "MARGIN_INPUT_UNAVAILABLE",
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [
+            "20231114",
+            "20230814"
+          ],
+          "source_rcept_nos": [
+            "20231114002574",
+            "20230814002376"
+          ],
+          "source_sha256s": [
+            "0a288744465eab5acb30c8478145422cc93034b201e256342c2de8223403319c",
+            "fe6b151655f2405ebbc460efcd52ac4e01f3a7c009f399b567843d02a45874b7"
+          ],
+          "status": "INPUT_NOT_READY",
+          "value": null
+        },
+        {
+          "axis": "CASH_FLOW",
+          "classification": "DETERIORATING",
+          "direction": "RISK",
+          "explanation_code": "OCF_TREND_DETERIORATING",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {
+            "latest_yoy": -73.7341551169377,
+            "prior_yoy": -71.32629958687399
+          },
+          "metric": "operating_cash_flow",
+          "metric_type": "OPERATING_CASH_FLOW_TREND",
+          "pit_available_from": "2023-11-14",
+          "reason": null,
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [
+            "20231114",
+            "20230814"
+          ],
+          "source_rcept_nos": [
+            "20231114002574",
+            "20230814002376"
+          ],
+          "source_sha256s": [
+            "0a288744465eab5acb30c8478145422cc93034b201e256342c2de8223403319c",
+            "fe6b151655f2405ebbc460efcd52ac4e01f3a7c009f399b567843d02a45874b7"
+          ],
+          "status": "READY",
+          "value": "DETERIORATING"
+        },
+        {
+          "axis": "CASH_FLOW",
+          "classification": null,
+          "direction": "NEUTRAL",
+          "explanation_code": "MARGIN_EXPANSION_TREND_UNAVAILABLE",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "operating_cash_flow",
+          "metric_type": "MARGIN_EXPANSION_TREND",
+          "pit_available_from": "2023-11-14",
+          "reason": "MISSING_COMPARABLE_MARGIN_PERIOD",
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [
+            "20231114",
+            "20230814",
+            "20221114",
+            "20220816"
+          ],
+          "source_rcept_nos": [
+            "20231114002574",
+            "20230814002376",
+            "20221114001566",
+            "20220816001536"
+          ],
+          "source_sha256s": [
+            "0a288744465eab5acb30c8478145422cc93034b201e256342c2de8223403319c",
+            "fe6b151655f2405ebbc460efcd52ac4e01f3a7c009f399b567843d02a45874b7",
+            "0c7fb3e685dc668bf4ece20bc6a8298e8e78a1ecde0b558df8b307f529a91214",
+            "750d72cd0538a4acb13537701adb6dca8c797795f935199acaf73ac58f485f62"
+          ],
+          "status": "INPUT_NOT_READY",
+          "value": null
+        },
+        {
+          "axis": "CASH_FLOW",
+          "classification": null,
+          "direction": "NEUTRAL",
+          "explanation_code": "TTM_OPERATING_CASH_FLOW_YOY_UNAVAILABLE",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "operating_cash_flow",
+          "metric_type": "TTM_YOY",
+          "pit_available_from": "2023-11-14",
+          "reason": "MISSING_PRIOR_TTM",
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [
+            "20230321",
+            "20221114",
+            "20230515",
+            "20230814",
+            "20231114"
+          ],
+          "source_rcept_nos": [
+            "20230321001209",
+            "20221114001566",
+            "20230515001677",
+            "20230814002376",
+            "20231114002574"
+          ],
+          "source_sha256s": [
+            "fdc4b2765379130b67940d55e8a089bf28de08a0b0ea49f2495499b20f83f34d",
+            "0c7fb3e685dc668bf4ece20bc6a8298e8e78a1ecde0b558df8b307f529a91214",
+            "c705cdba63ed45581ad8fc26c89e7ad5fb1618a37f5c4faef8a19a3ad5be7697",
+            "fe6b151655f2405ebbc460efcd52ac4e01f3a7c009f399b567843d02a45874b7",
+            "0a288744465eab5acb30c8478145422cc93034b201e256342c2de8223403319c"
+          ],
+          "status": "DATA_UNAVAILABLE",
+          "value": null
+        },
+        {
+          "axis": "CASH_FLOW",
+          "classification": null,
+          "direction": "NEUTRAL",
+          "explanation_code": "TTM_OPERATING_CASH_FLOW_MARGIN_UNAVAILABLE",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "operating_cash_flow",
+          "metric_type": "TTM_OPERATING_CASH_FLOW_MARGIN",
+          "pit_available_from": "2023-11-14",
+          "reason": "INPUT_NOT_READY",
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [
+            "20230321",
+            "20221114",
+            "20230515",
+            "20230814",
+            "20231114"
+          ],
+          "source_rcept_nos": [
+            "20230321001209",
+            "20221114001566",
+            "20230515001677",
+            "20230814002376",
+            "20231114002574"
+          ],
+          "source_sha256s": [
+            "fdc4b2765379130b67940d55e8a089bf28de08a0b0ea49f2495499b20f83f34d",
+            "0c7fb3e685dc668bf4ece20bc6a8298e8e78a1ecde0b558df8b307f529a91214",
+            "c705cdba63ed45581ad8fc26c89e7ad5fb1618a37f5c4faef8a19a3ad5be7697",
+            "fe6b151655f2405ebbc460efcd52ac4e01f3a7c009f399b567843d02a45874b7",
+            "0a288744465eab5acb30c8478145422cc93034b201e256342c2de8223403319c"
+          ],
+          "status": "INPUT_NOT_READY",
+          "value": null
+        },
+        {
+          "axis": "MOMENTUM",
+          "classification": null,
+          "direction": "NEUTRAL",
+          "explanation_code": "YOY_GROWTH_ACCELERATION_UNAVAILABLE",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "yoy_growth_acceleration",
+          "metric_type": "YOY_GROWTH_ACCELERATION",
+          "pit_available_from": null,
+          "reason": "MISSING_CURRENT_DERIVED_METRIC",
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [],
+          "source_rcept_nos": [],
+          "source_sha256s": [],
+          "status": "UNAVAILABLE",
+          "value": null
+        },
+        {
+          "axis": "MOMENTUM",
+          "classification": null,
+          "direction": "NEUTRAL",
+          "explanation_code": "CONSECUTIVE_YOY_GROWTH_UNAVAILABLE",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "consecutive_yoy_growth",
+          "metric_type": "CONSECUTIVE_YOY_GROWTH",
+          "pit_available_from": null,
+          "reason": "MISSING_CURRENT_DERIVED_METRIC",
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [],
+          "source_rcept_nos": [],
+          "source_sha256s": [],
+          "status": "UNAVAILABLE",
+          "value": null
+        },
+        {
+          "axis": "MOMENTUM",
+          "classification": null,
+          "direction": "NEUTRAL",
+          "explanation_code": "YOY_GROWTH_ACCELERATION_UNAVAILABLE",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "yoy_growth_acceleration",
+          "metric_type": "YOY_GROWTH_ACCELERATION",
+          "pit_available_from": null,
+          "reason": "MISSING_CURRENT_DERIVED_METRIC",
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [],
+          "source_rcept_nos": [],
+          "source_sha256s": [],
+          "status": "UNAVAILABLE",
+          "value": null
+        },
+        {
+          "axis": "MOMENTUM",
+          "classification": null,
+          "direction": "NEUTRAL",
+          "explanation_code": "CONSECUTIVE_YOY_GROWTH_UNAVAILABLE",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "consecutive_yoy_growth",
+          "metric_type": "CONSECUTIVE_YOY_GROWTH",
+          "pit_available_from": null,
+          "reason": "MISSING_CURRENT_DERIVED_METRIC",
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [],
+          "source_rcept_nos": [],
+          "source_sha256s": [],
+          "status": "UNAVAILABLE",
+          "value": null
+        },
+        {
+          "axis": "MOMENTUM",
+          "classification": null,
+          "direction": "NEUTRAL",
+          "explanation_code": "YOY_GROWTH_ACCELERATION_UNAVAILABLE",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "yoy_growth_acceleration",
+          "metric_type": "YOY_GROWTH_ACCELERATION",
+          "pit_available_from": null,
+          "reason": "MISSING_CURRENT_DERIVED_METRIC",
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [],
+          "source_rcept_nos": [],
+          "source_sha256s": [],
+          "status": "UNAVAILABLE",
+          "value": null
+        },
+        {
+          "axis": "MOMENTUM",
+          "classification": null,
+          "direction": "NEUTRAL",
+          "explanation_code": "CONSECUTIVE_YOY_GROWTH_UNAVAILABLE",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "consecutive_yoy_growth",
+          "metric_type": "CONSECUTIVE_YOY_GROWTH",
+          "pit_available_from": null,
+          "reason": "MISSING_CURRENT_DERIVED_METRIC",
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [],
+          "source_rcept_nos": [],
+          "source_sha256s": [],
+          "status": "UNAVAILABLE",
+          "value": null
+        },
+        {
+          "axis": "MOMENTUM",
+          "classification": "DECELERATING",
+          "direction": "RISK",
+          "explanation_code": "YOY_DECELERATING",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "operating_cash_flow",
+          "metric_type": "YOY_GROWTH_ACCELERATION",
+          "pit_available_from": "2023-11-14",
+          "reason": null,
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [
+            "20231114",
+            "20230814",
+            "20230515"
+          ],
+          "source_rcept_nos": [
+            "20231114002574",
+            "20230814002376",
+            "20230515001677"
+          ],
+          "source_sha256s": [
+            "0a288744465eab5acb30c8478145422cc93034b201e256342c2de8223403319c",
+            "fe6b151655f2405ebbc460efcd52ac4e01f3a7c009f399b567843d02a45874b7",
+            "c705cdba63ed45581ad8fc26c89e7ad5fb1618a37f5c4faef8a19a3ad5be7697"
+          ],
+          "status": "READY",
+          "value": -2.4078555300637134
+        },
+        {
+          "axis": "MOMENTUM",
+          "classification": null,
+          "direction": "NEUTRAL",
+          "explanation_code": "CONSECUTIVE_YOY_GROWTH_UNAVAILABLE",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "consecutive_yoy_growth",
+          "metric_type": "CONSECUTIVE_YOY_GROWTH",
+          "pit_available_from": null,
+          "reason": "MISSING_CURRENT_DERIVED_METRIC",
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [],
+          "source_rcept_nos": [],
+          "source_sha256s": [],
+          "status": "UNAVAILABLE",
+          "value": null
+        },
+        {
+          "axis": "MOMENTUM",
+          "classification": null,
+          "direction": "NEUTRAL",
+          "explanation_code": "MARGIN_EXPANSION_TREND_UNAVAILABLE",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "operating_income",
+          "metric_type": "MARGIN_EXPANSION_TREND",
+          "pit_available_from": "2023-11-14",
+          "reason": "MISSING_COMPARABLE_MARGIN_PERIOD",
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [
+            "20231114",
+            "20230814",
+            "20221114",
+            "20220816"
+          ],
+          "source_rcept_nos": [
+            "20231114002574",
+            "20230814002376",
+            "20221114001566",
+            "20220816001536"
+          ],
+          "source_sha256s": [
+            "0a288744465eab5acb30c8478145422cc93034b201e256342c2de8223403319c",
+            "fe6b151655f2405ebbc460efcd52ac4e01f3a7c009f399b567843d02a45874b7",
+            "0c7fb3e685dc668bf4ece20bc6a8298e8e78a1ecde0b558df8b307f529a91214",
+            "750d72cd0538a4acb13537701adb6dca8c797795f935199acaf73ac58f485f62"
+          ],
+          "status": "INPUT_NOT_READY",
+          "value": null
+        },
+        {
+          "axis": "MOMENTUM",
+          "classification": null,
+          "direction": "NEUTRAL",
+          "explanation_code": "MARGIN_EXPANSION_TREND_UNAVAILABLE",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "net_income",
+          "metric_type": "MARGIN_EXPANSION_TREND",
+          "pit_available_from": "2023-11-14",
+          "reason": "MISSING_COMPARABLE_MARGIN_PERIOD",
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [
+            "20231114",
+            "20230814",
+            "20221114",
+            "20220816"
+          ],
+          "source_rcept_nos": [
+            "20231114002574",
+            "20230814002376",
+            "20221114001566",
+            "20220816001536"
+          ],
+          "source_sha256s": [
+            "0a288744465eab5acb30c8478145422cc93034b201e256342c2de8223403319c",
+            "fe6b151655f2405ebbc460efcd52ac4e01f3a7c009f399b567843d02a45874b7",
+            "0c7fb3e685dc668bf4ece20bc6a8298e8e78a1ecde0b558df8b307f529a91214",
+            "750d72cd0538a4acb13537701adb6dca8c797795f935199acaf73ac58f485f62"
+          ],
+          "status": "INPUT_NOT_READY",
+          "value": null
+        },
+        {
+          "axis": "MOMENTUM",
+          "classification": "DETERIORATING",
+          "direction": "RISK",
+          "explanation_code": "OCF_TREND_DETERIORATING",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {
+            "latest_yoy": -73.7341551169377,
+            "prior_yoy": -71.32629958687399
+          },
+          "metric": "operating_cash_flow",
+          "metric_type": "OPERATING_CASH_FLOW_TREND",
+          "pit_available_from": "2023-11-14",
+          "reason": null,
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [
+            "20231114",
+            "20230814"
+          ],
+          "source_rcept_nos": [
+            "20231114002574",
+            "20230814002376"
+          ],
+          "source_sha256s": [
+            "0a288744465eab5acb30c8478145422cc93034b201e256342c2de8223403319c",
+            "fe6b151655f2405ebbc460efcd52ac4e01f3a7c009f399b567843d02a45874b7"
+          ],
+          "status": "READY",
+          "value": "DETERIORATING"
+        },
+        {
+          "axis": "MOMENTUM",
+          "classification": null,
+          "direction": "NEUTRAL",
+          "explanation_code": "EARNINGS_TRANSITION_UNAVAILABLE",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "operating_income",
+          "metric_type": "EARNINGS_TRANSITION",
+          "pit_available_from": "2023-11-14",
+          "reason": "INPUT_NOT_READY",
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [
+            "20231114",
+            "20230814",
+            "20221114",
+            "20220816"
+          ],
+          "source_rcept_nos": [
+            "20231114002574",
+            "20230814002376",
+            "20221114001566",
+            "20220816001536"
+          ],
+          "source_sha256s": [
+            "0a288744465eab5acb30c8478145422cc93034b201e256342c2de8223403319c",
+            "fe6b151655f2405ebbc460efcd52ac4e01f3a7c009f399b567843d02a45874b7",
+            "0c7fb3e685dc668bf4ece20bc6a8298e8e78a1ecde0b558df8b307f529a91214",
+            "750d72cd0538a4acb13537701adb6dca8c797795f935199acaf73ac58f485f62"
+          ],
+          "status": "INPUT_NOT_READY",
+          "value": null
+        },
+        {
+          "axis": "MOMENTUM",
+          "classification": null,
+          "direction": "NEUTRAL",
+          "explanation_code": "EARNINGS_TRANSITION_UNAVAILABLE",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "net_income",
+          "metric_type": "EARNINGS_TRANSITION",
+          "pit_available_from": "2023-11-14",
+          "reason": "INPUT_NOT_READY",
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [
+            "20231114",
+            "20230814",
+            "20221114",
+            "20220816"
+          ],
+          "source_rcept_nos": [
+            "20231114002574",
+            "20230814002376",
+            "20221114001566",
+            "20220816001536"
+          ],
+          "source_sha256s": [
+            "0a288744465eab5acb30c8478145422cc93034b201e256342c2de8223403319c",
+            "fe6b151655f2405ebbc460efcd52ac4e01f3a7c009f399b567843d02a45874b7",
+            "0c7fb3e685dc668bf4ece20bc6a8298e8e78a1ecde0b558df8b307f529a91214",
+            "750d72cd0538a4acb13537701adb6dca8c797795f935199acaf73ac58f485f62"
+          ],
+          "status": "INPUT_NOT_READY",
+          "value": null
+        }
+      ],
+      "expected_rule_overlaps": [],
+      "growth_direction": "DETERIORATING",
+      "growth_state": "WEAK",
+      "improving_direction_axis_count": 0,
+      "matched_candidate_rules": [
+        "OVERALL_WEAKENING_V01"
+      ],
+      "matched_rule_id": "OVERALL_WEAKENING_V01",
+      "missing_axis_count": 1,
+      "missing_evidence_count": 29,
+      "momentum_state": "DETERIORATING",
+      "negative_level_axis_count": 2,
+      "overall_state": "WEAKENING",
+      "pit_available_from": "2023-11-14",
+      "profitability_direction": "UNAVAILABLE",
+      "profitability_state": "UNAVAILABLE",
+      "reason": null,
+      "requested_as_of": "2024-02-15",
+      "risks": [
+        "OPERATING_CASH_FLOW_YOY_NEGATIVE",
+        "YOY_DECELERATING",
+        "OCF_TREND_DETERIORATING"
+      ],
+      "status": "READY",
+      "strengths": [],
+      "ticker": "000660",
+      "total_axis_count": 4
+    },
+    {
+      "assessment_rule_conflict_count": 0,
+      "assessment_rule_mismatch_count": 0,
+      "assessment_scope": "EXPLICIT_RANGE",
+      "available_axis_count": 4,
+      "available_evidence_count": 12,
+      "axis_directions": {
+        "CASH_FLOW": "UNAVAILABLE",
+        "GROWTH": "IMPROVING",
+        "MOMENTUM": "IMPROVING",
+        "PROFITABILITY": "UNAVAILABLE"
+      },
+      "axis_resolution": {
+        "CASH_FLOW": "MIXED",
+        "GROWTH": "STRONG",
+        "MOMENTUM": "IMPROVING",
+        "PROFITABILITY": "STRONG"
+      },
+      "cash_flow_direction": "UNAVAILABLE",
+      "cash_flow_state": "MIXED",
+      "company_family": "NON_FINANCIAL",
+      "current_fiscal_period": "Q3",
+      "current_fiscal_year": "2023",
+      "currentness_status": "RANGE_ONLY",
+      "deteriorating_direction_axis_count": 0,
+      "diagnostics": {
+        "axis_directions": {
+          "CASH_FLOW": "UNAVAILABLE",
+          "GROWTH": "IMPROVING",
+          "MOMENTUM": "IMPROVING",
+          "PROFITABILITY": "UNAVAILABLE"
+        },
+        "axis_resolution": {
+          "CASH_FLOW": "MIXED",
+          "GROWTH": "STRONG",
+          "MOMENTUM": "IMPROVING",
+          "PROFITABILITY": "STRONG"
+        },
+        "deteriorating_direction_axis_count": 0,
+        "deterioration_axis_count": 0,
+        "expected_rule_overlaps": [],
+        "future_assessment_source_count": 0,
+        "improvement_axis_count": 1,
+        "improving_direction_axis_count": 1,
+        "matched_candidate_rules": [
+          "OVERALL_MIXED_V01"
+        ],
+        "negative_level_axis_count": 0,
+        "provider_cutoff_mismatch_count": 0,
+        "ready_future_pit_available_count": 0,
+        "ready_missing_pit_available_count": 0,
+        "transition_codes": [
+          "PROFIT_GROWTH"
+        ]
+      },
+      "evidence": [
+        {
+          "axis": "GROWTH",
+          "classification": null,
+          "direction": "NEUTRAL",
+          "explanation_code": "REVENUE_GROWTH_UNAVAILABLE",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "revenue",
+          "metric_type": "QUARTERLY_YOY",
+          "pit_available_from": "2023-11-14",
+          "reason": "INPUT_NOT_READY",
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [
+            "20231114",
+            "20230814",
+            "20221114",
+            "20220816"
+          ],
+          "source_rcept_nos": [
+            "20231114001566",
+            "20230814001614",
+            "20221114001373",
+            "20220816001373"
+          ],
+          "source_sha256s": [
+            "99160792892cbe611685be6bc87adb7eef5f00b19e22b024ddf03dfd4faf0edd",
+            "9e0165f3751c644e3ac047ddbdeb53d07855708df3acfa3258f2ef9de88637b8",
+            "353de21ddcb5d876ab7a62d2a7fe72998c429a1bb1b54e0bfcbbf61c6ef5fc57",
+            "66e7248c32ef111b9d4065be7209ed442d6b67dc49d1a602007996ca18a31572"
+          ],
+          "status": "INPUT_NOT_READY",
+          "value": null
+        },
+        {
+          "axis": "GROWTH",
+          "classification": null,
+          "direction": "NEUTRAL",
+          "explanation_code": "YOY_GROWTH_ACCELERATION_UNAVAILABLE",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "yoy_growth_acceleration",
+          "metric_type": "YOY_GROWTH_ACCELERATION",
+          "pit_available_from": null,
+          "reason": "MISSING_CURRENT_DERIVED_METRIC",
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [],
+          "source_rcept_nos": [],
+          "source_sha256s": [],
+          "status": "UNAVAILABLE",
+          "value": null
+        },
+        {
+          "axis": "GROWTH",
+          "classification": null,
+          "direction": "NEUTRAL",
+          "explanation_code": "OPERATING_INCOME_GROWTH_UNAVAILABLE",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "operating_income",
+          "metric_type": "QUARTERLY_YOY",
+          "pit_available_from": "2023-11-14",
+          "reason": "INPUT_NOT_READY",
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [
+            "20231114",
+            "20230814",
+            "20221114",
+            "20220816"
+          ],
+          "source_rcept_nos": [
+            "20231114001566",
+            "20230814001614",
+            "20221114001373",
+            "20220816001373"
+          ],
+          "source_sha256s": [
+            "99160792892cbe611685be6bc87adb7eef5f00b19e22b024ddf03dfd4faf0edd",
+            "9e0165f3751c644e3ac047ddbdeb53d07855708df3acfa3258f2ef9de88637b8",
+            "353de21ddcb5d876ab7a62d2a7fe72998c429a1bb1b54e0bfcbbf61c6ef5fc57",
+            "66e7248c32ef111b9d4065be7209ed442d6b67dc49d1a602007996ca18a31572"
+          ],
+          "status": "INPUT_NOT_READY",
+          "value": null
+        },
+        {
+          "axis": "GROWTH",
+          "classification": null,
+          "direction": "NEUTRAL",
+          "explanation_code": "YOY_GROWTH_ACCELERATION_UNAVAILABLE",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "yoy_growth_acceleration",
+          "metric_type": "YOY_GROWTH_ACCELERATION",
+          "pit_available_from": null,
+          "reason": "MISSING_CURRENT_DERIVED_METRIC",
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [],
+          "source_rcept_nos": [],
+          "source_sha256s": [],
+          "status": "UNAVAILABLE",
+          "value": null
+        },
+        {
+          "axis": "GROWTH",
+          "classification": "POSITIVE",
+          "direction": "POSITIVE",
+          "explanation_code": "NET_INCOME_YOY_POSITIVE",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "net_income",
+          "metric_type": "QUARTERLY_YOY",
+          "pit_available_from": "2023-11-14",
+          "reason": null,
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [
+            "20231114",
+            "20230814",
+            "20221114",
+            "20220816"
+          ],
+          "source_rcept_nos": [
+            "20231114001566",
+            "20230814001614",
+            "20221114001373",
+            "20220816001373"
+          ],
+          "source_sha256s": [
+            "99160792892cbe611685be6bc87adb7eef5f00b19e22b024ddf03dfd4faf0edd",
+            "9e0165f3751c644e3ac047ddbdeb53d07855708df3acfa3258f2ef9de88637b8",
+            "353de21ddcb5d876ab7a62d2a7fe72998c429a1bb1b54e0bfcbbf61c6ef5fc57",
+            "66e7248c32ef111b9d4065be7209ed442d6b67dc49d1a602007996ca18a31572"
+          ],
+          "status": "READY",
+          "value": 32.57919695274371
+        },
+        {
+          "axis": "GROWTH",
+          "classification": "ACCELERATING",
+          "direction": "POSITIVE",
+          "explanation_code": "YOY_ACCELERATING",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "net_income",
+          "metric_type": "YOY_GROWTH_ACCELERATION",
+          "pit_available_from": "2023-11-14",
+          "reason": null,
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [
+            "20231114",
+            "20230814",
+            "20230512"
+          ],
+          "source_rcept_nos": [
+            "20231114001566",
+            "20230814001614",
+            "20230512001099"
+          ],
+          "source_sha256s": [
+            "99160792892cbe611685be6bc87adb7eef5f00b19e22b024ddf03dfd4faf0edd",
+            "9e0165f3751c644e3ac047ddbdeb53d07855708df3acfa3258f2ef9de88637b8",
+            "f8903a3330765bd7b4a03b97496dbb72061a751cd30bb0d89cb631643b74d8a2"
+          ],
+          "status": "READY",
+          "value": 50.594294330872856
+        },
+        {
+          "axis": "GROWTH",
+          "classification": null,
+          "direction": "NEUTRAL",
+          "explanation_code": "OPERATING_CASH_FLOW_GROWTH_UNAVAILABLE",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "operating_cash_flow",
+          "metric_type": "QUARTERLY_YOY",
+          "pit_available_from": "2023-11-14",
+          "reason": "NON_POSITIVE_OR_SIGN_TRANSITION_BASE",
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [
+            "20231114",
+            "20230814",
+            "20221114",
+            "20220816"
+          ],
+          "source_rcept_nos": [
+            "20231114001566",
+            "20230814001614",
+            "20221114001373",
+            "20220816001373"
+          ],
+          "source_sha256s": [
+            "99160792892cbe611685be6bc87adb7eef5f00b19e22b024ddf03dfd4faf0edd",
+            "9e0165f3751c644e3ac047ddbdeb53d07855708df3acfa3258f2ef9de88637b8",
+            "353de21ddcb5d876ab7a62d2a7fe72998c429a1bb1b54e0bfcbbf61c6ef5fc57",
+            "66e7248c32ef111b9d4065be7209ed442d6b67dc49d1a602007996ca18a31572"
+          ],
+          "status": "UNDEFINED_BASE",
+          "value": null
+        },
+        {
+          "axis": "GROWTH",
+          "classification": null,
+          "direction": "NEUTRAL",
+          "explanation_code": "YOY_GROWTH_ACCELERATION_UNAVAILABLE",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "yoy_growth_acceleration",
+          "metric_type": "YOY_GROWTH_ACCELERATION",
+          "pit_available_from": null,
+          "reason": "MISSING_CURRENT_DERIVED_METRIC",
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [],
+          "source_rcept_nos": [],
+          "source_sha256s": [],
+          "status": "UNAVAILABLE",
+          "value": null
+        },
+        {
+          "axis": "GROWTH",
+          "classification": null,
+          "direction": "NEUTRAL",
+          "explanation_code": "EARNINGS_TRANSITION_UNAVAILABLE",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "operating_income",
+          "metric_type": "EARNINGS_TRANSITION",
+          "pit_available_from": "2023-11-14",
+          "reason": "INPUT_NOT_READY",
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [
+            "20231114",
+            "20230814",
+            "20221114",
+            "20220816"
+          ],
+          "source_rcept_nos": [
+            "20231114001566",
+            "20230814001614",
+            "20221114001373",
+            "20220816001373"
+          ],
+          "source_sha256s": [
+            "99160792892cbe611685be6bc87adb7eef5f00b19e22b024ddf03dfd4faf0edd",
+            "9e0165f3751c644e3ac047ddbdeb53d07855708df3acfa3258f2ef9de88637b8",
+            "353de21ddcb5d876ab7a62d2a7fe72998c429a1bb1b54e0bfcbbf61c6ef5fc57",
+            "66e7248c32ef111b9d4065be7209ed442d6b67dc49d1a602007996ca18a31572"
+          ],
+          "status": "INPUT_NOT_READY",
+          "value": null
+        },
+        {
+          "axis": "GROWTH",
+          "classification": "PROFIT_GROWTH",
+          "direction": "POSITIVE",
+          "explanation_code": "PROFIT_GROWTH",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {
+            "transition": "PROFIT_GROWTH"
+          },
+          "metric": "net_income",
+          "metric_type": "EARNINGS_TRANSITION",
+          "pit_available_from": "2023-11-14",
+          "reason": null,
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [
+            "20231114",
+            "20230814",
+            "20221114",
+            "20220816"
+          ],
+          "source_rcept_nos": [
+            "20231114001566",
+            "20230814001614",
+            "20221114001373",
+            "20220816001373"
+          ],
+          "source_sha256s": [
+            "99160792892cbe611685be6bc87adb7eef5f00b19e22b024ddf03dfd4faf0edd",
+            "9e0165f3751c644e3ac047ddbdeb53d07855708df3acfa3258f2ef9de88637b8",
+            "353de21ddcb5d876ab7a62d2a7fe72998c429a1bb1b54e0bfcbbf61c6ef5fc57",
+            "66e7248c32ef111b9d4065be7209ed442d6b67dc49d1a602007996ca18a31572"
+          ],
+          "status": "READY",
+          "value": "PROFIT_GROWTH"
+        },
+        {
+          "axis": "PROFITABILITY",
+          "classification": "POSITIVE",
+          "direction": "POSITIVE",
+          "explanation_code": "OPERATING_INCOME_MARGIN_POSITIVE",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "operating_income",
+          "metric_type": "OPERATING_MARGIN",
+          "pit_available_from": "2023-11-14",
+          "reason": null,
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [
+            "20231114",
+            "20230814"
+          ],
+          "source_rcept_nos": [
+            "20231114001566",
+            "20230814001614"
+          ],
+          "source_sha256s": [
+            "99160792892cbe611685be6bc87adb7eef5f00b19e22b024ddf03dfd4faf0edd",
+            "9e0165f3751c644e3ac047ddbdeb53d07855708df3acfa3258f2ef9de88637b8"
+          ],
+          "status": "READY",
+          "value": 39.80851999563569
+        },
+        {
+          "axis": "PROFITABILITY",
+          "classification": null,
+          "direction": "NEUTRAL",
+          "explanation_code": "MARGIN_EXPANSION_TREND_UNAVAILABLE",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "operating_income",
+          "metric_type": "MARGIN_EXPANSION_TREND",
+          "pit_available_from": "2023-11-14",
+          "reason": "MISSING_COMPARABLE_MARGIN_PERIOD",
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [
+            "20231114",
+            "20230814",
+            "20221114",
+            "20220816"
+          ],
+          "source_rcept_nos": [
+            "20231114001566",
+            "20230814001614",
+            "20221114001373",
+            "20220816001373"
+          ],
+          "source_sha256s": [
+            "99160792892cbe611685be6bc87adb7eef5f00b19e22b024ddf03dfd4faf0edd",
+            "9e0165f3751c644e3ac047ddbdeb53d07855708df3acfa3258f2ef9de88637b8",
+            "353de21ddcb5d876ab7a62d2a7fe72998c429a1bb1b54e0bfcbbf61c6ef5fc57",
+            "66e7248c32ef111b9d4065be7209ed442d6b67dc49d1a602007996ca18a31572"
+          ],
+          "status": "INPUT_NOT_READY",
+          "value": null
+        },
+        {
+          "axis": "PROFITABILITY",
+          "classification": "POSITIVE",
+          "direction": "POSITIVE",
+          "explanation_code": "NET_INCOME_MARGIN_POSITIVE",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "net_income",
+          "metric_type": "NET_MARGIN",
+          "pit_available_from": "2023-11-14",
+          "reason": null,
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [
+            "20231114",
+            "20230814"
+          ],
+          "source_rcept_nos": [
+            "20231114001566",
+            "20230814001614"
+          ],
+          "source_sha256s": [
+            "99160792892cbe611685be6bc87adb7eef5f00b19e22b024ddf03dfd4faf0edd",
+            "9e0165f3751c644e3ac047ddbdeb53d07855708df3acfa3258f2ef9de88637b8"
+          ],
+          "status": "READY",
+          "value": 32.907975539611506
+        },
+        {
+          "axis": "PROFITABILITY",
+          "classification": null,
+          "direction": "NEUTRAL",
+          "explanation_code": "MARGIN_EXPANSION_TREND_UNAVAILABLE",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "net_income",
+          "metric_type": "MARGIN_EXPANSION_TREND",
+          "pit_available_from": "2023-11-14",
+          "reason": "MISSING_COMPARABLE_MARGIN_PERIOD",
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [
+            "20231114",
+            "20230814",
+            "20221114",
+            "20220816"
+          ],
+          "source_rcept_nos": [
+            "20231114001566",
+            "20230814001614",
+            "20221114001373",
+            "20220816001373"
+          ],
+          "source_sha256s": [
+            "99160792892cbe611685be6bc87adb7eef5f00b19e22b024ddf03dfd4faf0edd",
+            "9e0165f3751c644e3ac047ddbdeb53d07855708df3acfa3258f2ef9de88637b8",
+            "353de21ddcb5d876ab7a62d2a7fe72998c429a1bb1b54e0bfcbbf61c6ef5fc57",
+            "66e7248c32ef111b9d4065be7209ed442d6b67dc49d1a602007996ca18a31572"
+          ],
+          "status": "INPUT_NOT_READY",
+          "value": null
+        },
+        {
+          "axis": "PROFITABILITY",
+          "classification": "POSITIVE",
+          "direction": "POSITIVE",
+          "explanation_code": "OPERATING_INCOME_MARGIN_POSITIVE",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "operating_income",
+          "metric_type": "TTM_OPERATING_MARGIN",
+          "pit_available_from": "2023-11-14",
+          "reason": null,
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [
+            "20230320",
+            "20221114",
+            "20230512",
+            "20230814",
+            "20231114"
+          ],
+          "source_rcept_nos": [
+            "20230320000842",
+            "20221114001373",
+            "20230512001099",
+            "20230814001614",
+            "20231114001566"
+          ],
+          "source_sha256s": [
+            "ccfb9128ded3c11197cd650e0cf6e87dea2502f4c57ed2eed8b1e5a7e40a4b7d",
+            "353de21ddcb5d876ab7a62d2a7fe72998c429a1bb1b54e0bfcbbf61c6ef5fc57",
+            "f8903a3330765bd7b4a03b97496dbb72061a751cd30bb0d89cb631643b74d8a2",
+            "9e0165f3751c644e3ac047ddbdeb53d07855708df3acfa3258f2ef9de88637b8",
+            "99160792892cbe611685be6bc87adb7eef5f00b19e22b024ddf03dfd4faf0edd"
+          ],
+          "status": "READY",
+          "value": 31.837415731098073
+        },
+        {
+          "axis": "PROFITABILITY",
+          "classification": "POSITIVE",
+          "direction": "POSITIVE",
+          "explanation_code": "NET_INCOME_MARGIN_POSITIVE",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "net_income",
+          "metric_type": "TTM_NET_MARGIN",
+          "pit_available_from": "2023-11-14",
+          "reason": null,
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [
+            "20230320",
+            "20221114",
+            "20230512",
+            "20230814",
+            "20231114"
+          ],
+          "source_rcept_nos": [
+            "20230320000842",
+            "20221114001373",
+            "20230512001099",
+            "20230814001614",
+            "20231114001566"
+          ],
+          "source_sha256s": [
+            "ccfb9128ded3c11197cd650e0cf6e87dea2502f4c57ed2eed8b1e5a7e40a4b7d",
+            "353de21ddcb5d876ab7a62d2a7fe72998c429a1bb1b54e0bfcbbf61c6ef5fc57",
+            "f8903a3330765bd7b4a03b97496dbb72061a751cd30bb0d89cb631643b74d8a2",
+            "9e0165f3751c644e3ac047ddbdeb53d07855708df3acfa3258f2ef9de88637b8",
+            "99160792892cbe611685be6bc87adb7eef5f00b19e22b024ddf03dfd4faf0edd"
+          ],
+          "status": "READY",
+          "value": 26.456462933949343
+        },
+        {
+          "axis": "CASH_FLOW",
+          "classification": null,
+          "direction": "NEUTRAL",
+          "explanation_code": "OPERATING_CASH_FLOW_GROWTH_UNAVAILABLE",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "operating_cash_flow",
+          "metric_type": "QUARTERLY_YOY",
+          "pit_available_from": "2023-11-14",
+          "reason": "NON_POSITIVE_OR_SIGN_TRANSITION_BASE",
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [
+            "20231114",
+            "20230814",
+            "20221114",
+            "20220816"
+          ],
+          "source_rcept_nos": [
+            "20231114001566",
+            "20230814001614",
+            "20221114001373",
+            "20220816001373"
+          ],
+          "source_sha256s": [
+            "99160792892cbe611685be6bc87adb7eef5f00b19e22b024ddf03dfd4faf0edd",
+            "9e0165f3751c644e3ac047ddbdeb53d07855708df3acfa3258f2ef9de88637b8",
+            "353de21ddcb5d876ab7a62d2a7fe72998c429a1bb1b54e0bfcbbf61c6ef5fc57",
+            "66e7248c32ef111b9d4065be7209ed442d6b67dc49d1a602007996ca18a31572"
+          ],
+          "status": "UNDEFINED_BASE",
+          "value": null
+        },
+        {
+          "axis": "CASH_FLOW",
+          "classification": "NEGATIVE",
+          "direction": "RISK",
+          "explanation_code": "OPERATING_CASH_FLOW_MARGIN_NEGATIVE",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "operating_cash_flow",
+          "metric_type": "OPERATING_CASH_FLOW_MARGIN",
+          "pit_available_from": "2023-11-14",
+          "reason": null,
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [
+            "20231114",
+            "20230814"
+          ],
+          "source_rcept_nos": [
+            "20231114001566",
+            "20230814001614"
+          ],
+          "source_sha256s": [
+            "99160792892cbe611685be6bc87adb7eef5f00b19e22b024ddf03dfd4faf0edd",
+            "9e0165f3751c644e3ac047ddbdeb53d07855708df3acfa3258f2ef9de88637b8"
+          ],
+          "status": "READY",
+          "value": -7.123952721077574
+        },
+        {
+          "axis": "CASH_FLOW",
+          "classification": null,
+          "direction": "NEUTRAL",
+          "explanation_code": "OPERATING_CASH_FLOW_TREND_UNAVAILABLE",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "operating_cash_flow_trend",
+          "metric_type": "OPERATING_CASH_FLOW_TREND",
+          "pit_available_from": null,
+          "reason": "MISSING_CURRENT_DERIVED_METRIC",
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [],
+          "source_rcept_nos": [],
+          "source_sha256s": [],
+          "status": "UNAVAILABLE",
+          "value": null
+        },
+        {
+          "axis": "CASH_FLOW",
+          "classification": null,
+          "direction": "NEUTRAL",
+          "explanation_code": "MARGIN_EXPANSION_TREND_UNAVAILABLE",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "operating_cash_flow",
+          "metric_type": "MARGIN_EXPANSION_TREND",
+          "pit_available_from": "2023-11-14",
+          "reason": "MISSING_COMPARABLE_MARGIN_PERIOD",
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [
+            "20231114",
+            "20230814",
+            "20221114",
+            "20220816"
+          ],
+          "source_rcept_nos": [
+            "20231114001566",
+            "20230814001614",
+            "20221114001373",
+            "20220816001373"
+          ],
+          "source_sha256s": [
+            "99160792892cbe611685be6bc87adb7eef5f00b19e22b024ddf03dfd4faf0edd",
+            "9e0165f3751c644e3ac047ddbdeb53d07855708df3acfa3258f2ef9de88637b8",
+            "353de21ddcb5d876ab7a62d2a7fe72998c429a1bb1b54e0bfcbbf61c6ef5fc57",
+            "66e7248c32ef111b9d4065be7209ed442d6b67dc49d1a602007996ca18a31572"
+          ],
+          "status": "INPUT_NOT_READY",
+          "value": null
+        },
+        {
+          "axis": "CASH_FLOW",
+          "classification": null,
+          "direction": "NEUTRAL",
+          "explanation_code": "TTM_OPERATING_CASH_FLOW_YOY_UNAVAILABLE",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "operating_cash_flow",
+          "metric_type": "TTM_YOY",
+          "pit_available_from": "2023-11-14",
+          "reason": "MISSING_PRIOR_TTM",
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [
+            "20230320",
+            "20221114",
+            "20230512",
+            "20230814",
+            "20231114"
+          ],
+          "source_rcept_nos": [
+            "20230320000842",
+            "20221114001373",
+            "20230512001099",
+            "20230814001614",
+            "20231114001566"
+          ],
+          "source_sha256s": [
+            "ccfb9128ded3c11197cd650e0cf6e87dea2502f4c57ed2eed8b1e5a7e40a4b7d",
+            "353de21ddcb5d876ab7a62d2a7fe72998c429a1bb1b54e0bfcbbf61c6ef5fc57",
+            "f8903a3330765bd7b4a03b97496dbb72061a751cd30bb0d89cb631643b74d8a2",
+            "9e0165f3751c644e3ac047ddbdeb53d07855708df3acfa3258f2ef9de88637b8",
+            "99160792892cbe611685be6bc87adb7eef5f00b19e22b024ddf03dfd4faf0edd"
+          ],
+          "status": "DATA_UNAVAILABLE",
+          "value": null
+        },
+        {
+          "axis": "CASH_FLOW",
+          "classification": "POSITIVE",
+          "direction": "POSITIVE",
+          "explanation_code": "OPERATING_CASH_FLOW_MARGIN_POSITIVE",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "operating_cash_flow",
+          "metric_type": "TTM_OPERATING_CASH_FLOW_MARGIN",
+          "pit_available_from": "2023-11-14",
+          "reason": null,
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [
+            "20230320",
+            "20221114",
+            "20230512",
+            "20230814",
+            "20231114"
+          ],
+          "source_rcept_nos": [
+            "20230320000842",
+            "20221114001373",
+            "20230512001099",
+            "20230814001614",
+            "20231114001566"
+          ],
+          "source_sha256s": [
+            "ccfb9128ded3c11197cd650e0cf6e87dea2502f4c57ed2eed8b1e5a7e40a4b7d",
+            "353de21ddcb5d876ab7a62d2a7fe72998c429a1bb1b54e0bfcbbf61c6ef5fc57",
+            "f8903a3330765bd7b4a03b97496dbb72061a751cd30bb0d89cb631643b74d8a2",
+            "9e0165f3751c644e3ac047ddbdeb53d07855708df3acfa3258f2ef9de88637b8",
+            "99160792892cbe611685be6bc87adb7eef5f00b19e22b024ddf03dfd4faf0edd"
+          ],
+          "status": "READY",
+          "value": 20.60675457525855
+        },
+        {
+          "axis": "MOMENTUM",
+          "classification": null,
+          "direction": "NEUTRAL",
+          "explanation_code": "YOY_GROWTH_ACCELERATION_UNAVAILABLE",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "yoy_growth_acceleration",
+          "metric_type": "YOY_GROWTH_ACCELERATION",
+          "pit_available_from": null,
+          "reason": "MISSING_CURRENT_DERIVED_METRIC",
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [],
+          "source_rcept_nos": [],
+          "source_sha256s": [],
+          "status": "UNAVAILABLE",
+          "value": null
+        },
+        {
+          "axis": "MOMENTUM",
+          "classification": null,
+          "direction": "NEUTRAL",
+          "explanation_code": "CONSECUTIVE_YOY_GROWTH_UNAVAILABLE",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "consecutive_yoy_growth",
+          "metric_type": "CONSECUTIVE_YOY_GROWTH",
+          "pit_available_from": null,
+          "reason": "MISSING_CURRENT_DERIVED_METRIC",
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [],
+          "source_rcept_nos": [],
+          "source_sha256s": [],
+          "status": "UNAVAILABLE",
+          "value": null
+        },
+        {
+          "axis": "MOMENTUM",
+          "classification": null,
+          "direction": "NEUTRAL",
+          "explanation_code": "YOY_GROWTH_ACCELERATION_UNAVAILABLE",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "yoy_growth_acceleration",
+          "metric_type": "YOY_GROWTH_ACCELERATION",
+          "pit_available_from": null,
+          "reason": "MISSING_CURRENT_DERIVED_METRIC",
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [],
+          "source_rcept_nos": [],
+          "source_sha256s": [],
+          "status": "UNAVAILABLE",
+          "value": null
+        },
+        {
+          "axis": "MOMENTUM",
+          "classification": null,
+          "direction": "NEUTRAL",
+          "explanation_code": "CONSECUTIVE_YOY_GROWTH_UNAVAILABLE",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "consecutive_yoy_growth",
+          "metric_type": "CONSECUTIVE_YOY_GROWTH",
+          "pit_available_from": null,
+          "reason": "MISSING_CURRENT_DERIVED_METRIC",
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [],
+          "source_rcept_nos": [],
+          "source_sha256s": [],
+          "status": "UNAVAILABLE",
+          "value": null
+        },
+        {
+          "axis": "MOMENTUM",
+          "classification": "ACCELERATING",
+          "direction": "POSITIVE",
+          "explanation_code": "YOY_ACCELERATING",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "net_income",
+          "metric_type": "YOY_GROWTH_ACCELERATION",
+          "pit_available_from": "2023-11-14",
+          "reason": null,
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [
+            "20231114",
+            "20230814",
+            "20230512"
+          ],
+          "source_rcept_nos": [
+            "20231114001566",
+            "20230814001614",
+            "20230512001099"
+          ],
+          "source_sha256s": [
+            "99160792892cbe611685be6bc87adb7eef5f00b19e22b024ddf03dfd4faf0edd",
+            "9e0165f3751c644e3ac047ddbdeb53d07855708df3acfa3258f2ef9de88637b8",
+            "f8903a3330765bd7b4a03b97496dbb72061a751cd30bb0d89cb631643b74d8a2"
+          ],
+          "status": "READY",
+          "value": 50.594294330872856
+        },
+        {
+          "axis": "MOMENTUM",
+          "classification": "NO_STREAK",
+          "direction": "NEUTRAL",
+          "explanation_code": "NO_POSITIVE_GROWTH_STREAK",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {
+            "is_consecutive": false
+          },
+          "metric": "net_income",
+          "metric_type": "CONSECUTIVE_YOY_GROWTH",
+          "pit_available_from": "2023-11-14",
+          "reason": null,
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [
+            "20231114",
+            "20230814"
+          ],
+          "source_rcept_nos": [
+            "20231114001566",
+            "20230814001614"
+          ],
+          "source_sha256s": [
+            "99160792892cbe611685be6bc87adb7eef5f00b19e22b024ddf03dfd4faf0edd",
+            "9e0165f3751c644e3ac047ddbdeb53d07855708df3acfa3258f2ef9de88637b8"
+          ],
+          "status": "READY",
+          "value": 1
+        },
+        {
+          "axis": "MOMENTUM",
+          "classification": null,
+          "direction": "NEUTRAL",
+          "explanation_code": "YOY_GROWTH_ACCELERATION_UNAVAILABLE",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "yoy_growth_acceleration",
+          "metric_type": "YOY_GROWTH_ACCELERATION",
+          "pit_available_from": null,
+          "reason": "MISSING_CURRENT_DERIVED_METRIC",
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [],
+          "source_rcept_nos": [],
+          "source_sha256s": [],
+          "status": "UNAVAILABLE",
+          "value": null
+        },
+        {
+          "axis": "MOMENTUM",
+          "classification": null,
+          "direction": "NEUTRAL",
+          "explanation_code": "CONSECUTIVE_YOY_GROWTH_UNAVAILABLE",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "consecutive_yoy_growth",
+          "metric_type": "CONSECUTIVE_YOY_GROWTH",
+          "pit_available_from": null,
+          "reason": "MISSING_CURRENT_DERIVED_METRIC",
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [],
+          "source_rcept_nos": [],
+          "source_sha256s": [],
+          "status": "UNAVAILABLE",
+          "value": null
+        },
+        {
+          "axis": "MOMENTUM",
+          "classification": null,
+          "direction": "NEUTRAL",
+          "explanation_code": "MARGIN_EXPANSION_TREND_UNAVAILABLE",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "operating_income",
+          "metric_type": "MARGIN_EXPANSION_TREND",
+          "pit_available_from": "2023-11-14",
+          "reason": "MISSING_COMPARABLE_MARGIN_PERIOD",
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [
+            "20231114",
+            "20230814",
+            "20221114",
+            "20220816"
+          ],
+          "source_rcept_nos": [
+            "20231114001566",
+            "20230814001614",
+            "20221114001373",
+            "20220816001373"
+          ],
+          "source_sha256s": [
+            "99160792892cbe611685be6bc87adb7eef5f00b19e22b024ddf03dfd4faf0edd",
+            "9e0165f3751c644e3ac047ddbdeb53d07855708df3acfa3258f2ef9de88637b8",
+            "353de21ddcb5d876ab7a62d2a7fe72998c429a1bb1b54e0bfcbbf61c6ef5fc57",
+            "66e7248c32ef111b9d4065be7209ed442d6b67dc49d1a602007996ca18a31572"
+          ],
+          "status": "INPUT_NOT_READY",
+          "value": null
+        },
+        {
+          "axis": "MOMENTUM",
+          "classification": null,
+          "direction": "NEUTRAL",
+          "explanation_code": "MARGIN_EXPANSION_TREND_UNAVAILABLE",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "net_income",
+          "metric_type": "MARGIN_EXPANSION_TREND",
+          "pit_available_from": "2023-11-14",
+          "reason": "MISSING_COMPARABLE_MARGIN_PERIOD",
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [
+            "20231114",
+            "20230814",
+            "20221114",
+            "20220816"
+          ],
+          "source_rcept_nos": [
+            "20231114001566",
+            "20230814001614",
+            "20221114001373",
+            "20220816001373"
+          ],
+          "source_sha256s": [
+            "99160792892cbe611685be6bc87adb7eef5f00b19e22b024ddf03dfd4faf0edd",
+            "9e0165f3751c644e3ac047ddbdeb53d07855708df3acfa3258f2ef9de88637b8",
+            "353de21ddcb5d876ab7a62d2a7fe72998c429a1bb1b54e0bfcbbf61c6ef5fc57",
+            "66e7248c32ef111b9d4065be7209ed442d6b67dc49d1a602007996ca18a31572"
+          ],
+          "status": "INPUT_NOT_READY",
+          "value": null
+        },
+        {
+          "axis": "MOMENTUM",
+          "classification": null,
+          "direction": "NEUTRAL",
+          "explanation_code": "OPERATING_CASH_FLOW_TREND_UNAVAILABLE",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "operating_cash_flow_trend",
+          "metric_type": "OPERATING_CASH_FLOW_TREND",
+          "pit_available_from": null,
+          "reason": "MISSING_CURRENT_DERIVED_METRIC",
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [],
+          "source_rcept_nos": [],
+          "source_sha256s": [],
+          "status": "UNAVAILABLE",
+          "value": null
+        },
+        {
+          "axis": "MOMENTUM",
+          "classification": null,
+          "direction": "NEUTRAL",
+          "explanation_code": "EARNINGS_TRANSITION_UNAVAILABLE",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {},
+          "metric": "operating_income",
+          "metric_type": "EARNINGS_TRANSITION",
+          "pit_available_from": "2023-11-14",
+          "reason": "INPUT_NOT_READY",
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [
+            "20231114",
+            "20230814",
+            "20221114",
+            "20220816"
+          ],
+          "source_rcept_nos": [
+            "20231114001566",
+            "20230814001614",
+            "20221114001373",
+            "20220816001373"
+          ],
+          "source_sha256s": [
+            "99160792892cbe611685be6bc87adb7eef5f00b19e22b024ddf03dfd4faf0edd",
+            "9e0165f3751c644e3ac047ddbdeb53d07855708df3acfa3258f2ef9de88637b8",
+            "353de21ddcb5d876ab7a62d2a7fe72998c429a1bb1b54e0bfcbbf61c6ef5fc57",
+            "66e7248c32ef111b9d4065be7209ed442d6b67dc49d1a602007996ca18a31572"
+          ],
+          "status": "INPUT_NOT_READY",
+          "value": null
+        },
+        {
+          "axis": "MOMENTUM",
+          "classification": "PROFIT_GROWTH",
+          "direction": "POSITIVE",
+          "explanation_code": "PROFIT_GROWTH",
+          "fiscal_period": "Q3",
+          "fiscal_year": "2023",
+          "metadata": {
+            "transition": "PROFIT_GROWTH"
+          },
+          "metric": "net_income",
+          "metric_type": "EARNINGS_TRANSITION",
+          "pit_available_from": "2023-11-14",
+          "reason": null,
+          "requested_as_of": "2024-02-15",
+          "source_rcept_dts": [
+            "20231114",
+            "20230814",
+            "20221114",
+            "20220816"
+          ],
+          "source_rcept_nos": [
+            "20231114001566",
+            "20230814001614",
+            "20221114001373",
+            "20220816001373"
+          ],
+          "source_sha256s": [
+            "99160792892cbe611685be6bc87adb7eef5f00b19e22b024ddf03dfd4faf0edd",
+            "9e0165f3751c644e3ac047ddbdeb53d07855708df3acfa3258f2ef9de88637b8",
+            "353de21ddcb5d876ab7a62d2a7fe72998c429a1bb1b54e0bfcbbf61c6ef5fc57",
+            "66e7248c32ef111b9d4065be7209ed442d6b67dc49d1a602007996ca18a31572"
+          ],
+          "status": "READY",
+          "value": "PROFIT_GROWTH"
+        }
+      ],
+      "expected_rule_overlaps": [],
+      "growth_direction": "IMPROVING",
+      "growth_state": "STRONG",
+      "improving_direction_axis_count": 1,
+      "matched_candidate_rules": [
+        "OVERALL_MIXED_V01"
+      ],
+      "matched_rule_id": "OVERALL_MIXED_V01",
+      "missing_axis_count": 0,
+      "missing_evidence_count": 23,
+      "momentum_state": "IMPROVING",
+      "negative_level_axis_count": 0,
+      "overall_state": "MIXED",
+      "pit_available_from": "2023-11-14",
+      "profitability_direction": "UNAVAILABLE",
+      "profitability_state": "STRONG",
+      "reason": null,
+      "requested_as_of": "2024-02-15",
+      "risks": [
+        "OPERATING_CASH_FLOW_MARGIN_NEGATIVE"
+      ],
+      "status": "READY",
+      "strengths": [
+        "NET_INCOME_YOY_POSITIVE",
+        "YOY_ACCELERATING",
+        "PROFIT_GROWTH",
+        "OPERATING_INCOME_MARGIN_POSITIVE",
+        "NET_INCOME_MARGIN_POSITIVE",
+        "OPERATING_CASH_FLOW_MARGIN_POSITIVE"
+      ],
+      "ticker": "068270",
+      "total_axis_count": 4
+    }
+  ],
+  "status": "PASS"
+}
