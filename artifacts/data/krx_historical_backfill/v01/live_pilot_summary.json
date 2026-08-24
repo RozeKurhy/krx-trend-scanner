@@ -1,53 +1,14 @@
 {
-  "audit": {
-    "quota_usage": {
-      "endpoint_usage": {
-        "ksq_bydd_trd": 1,
-        "stk_bydd_trd": 1
-      },
-      "global_total": 2,
-      "last_attempt_at_utc": "2026-08-24T20:34:36.527252+00:00",
-      "usage_date_kst": "2026-08-25"
-    },
-    "request_count": 2,
-    "retry_count": 0,
-    "status_counts": {
-      "401": 0,
-      "403": 0,
-      "429": 0,
-      "5xx": 0,
-      "transport_error": 0
-    }
-  },
-  "dates": [
-    {
-      "aggregate": {
-        "complete_date_count": 0,
-        "complete_dates": [],
-        "failed_date_count": 1,
-        "failed_dates": [
-          "2018-04-27"
-        ],
-        "no_data_date_count": 0,
-        "no_data_dates": [],
-        "partial_date_count": 0,
-        "partial_dates": [],
-        "rows_by_market": {
-          "KOSDAQ": 0,
-          "KOSPI": 0
-        },
-        "total_rows": 0,
-        "unique_tickers_by_market": {
-          "KOSDAQ": 0,
-          "KOSPI": 0
-        }
-      },
-      "blockers": [
-        "BLOCKED_KRX_SCHEMA"
-      ],
-      "date": "2018-04-27",
-      "status": "BLOCKED_KRX_SCHEMA"
-    }
+  "candidate_dates": [
+    "2018-04-27",
+    "2018-05-04",
+    "2026-08-21"
   ],
-  "status": "BLOCKED_KRX_SCHEMA"
+  "dates": [],
+  "legacy": false,
+  "mode": "live-pilot",
+  "observed_at": "2026-08-24T23:41:07.856529+00:00",
+  "source_head": "a6f3cd1dc4c1d73b34fa84b3bb745d8776f94836",
+  "status": "NOT_RUN",
+  "validation_generation": "FIX04"
 }
