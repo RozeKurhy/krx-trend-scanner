@@ -150,12 +150,18 @@ def test_pilot_preserves_actual_blocker(runner_blocker, expected_status):
 
 
 def test_validation_source_head_detects_dirty_source(monkeypatch):
+    def fake_check_output(command, **kwargs):
+        return " M src/trend_scanner/data/krx_historical_backfill.py" if command[1] == "status" else ""
+
     monkeypatch.setattr(
-        "scripts.validate_krx_historical_backfill_v01._git",
-        lambda *args: " M src/trend_scanner/data/krx_historical_backfill.py",
+        "scripts.validate_krx_historical_backfill_v01.subprocess.check_output",
+        fake_check_output,
     )
     assert _validation_source_head("abc123") == "WORKTREE_DIRTY"
-    monkeypatch.setattr("scripts.validate_krx_historical_backfill_v01._git", lambda *args: "")
+    monkeypatch.setattr(
+        "scripts.validate_krx_historical_backfill_v01.subprocess.check_output",
+        lambda command, **kwargs: "" if command[1] == "status" else "",
+    )
     assert _validation_source_head("abc123") == "abc123"
 
 

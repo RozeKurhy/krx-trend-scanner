@@ -85,7 +85,11 @@ def _git(*args: str) -> str:
 def _validation_source_head(implementation_head: str) -> str:
     """Return the HEAD that actually supplied source, or flag a dirty source tree."""
 
-    dirty = _git("status", "--porcelain", "--untracked-files=all").splitlines()
+    dirty = subprocess.check_output(
+        ["git", "status", "--porcelain", "--untracked-files=all"],
+        cwd=ROOT,
+        text=True,
+    ).splitlines()
     source_dirty = any(
         (line[3:] if len(line) >= 4 else line).strip()
         and not (line[3:] if len(line) >= 4 else line).strip().startswith("artifacts/")
