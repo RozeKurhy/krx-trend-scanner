@@ -257,8 +257,16 @@ class FundamentalsAssessmentEngine:
             axis: tuple(item for item in direction_components if item.axis == axis)
             for axis in ("GROWTH", "PROFITABILITY", "CASH_FLOW")
         }
+        direction_component_counts = {
+            axis: self._direction_component_counts(direction_components_by_axis[axis])
+            for axis in ("GROWTH", "PROFITABILITY", "CASH_FLOW")
+        }
         axis_directions = {
             axis: self._aggregate_direction_components(direction_components_by_axis[axis])
+            for axis in ("GROWTH", "PROFITABILITY", "CASH_FLOW")
+        }
+        direction_aggregation_rule_id = {
+            axis: self._direction_aggregation_rule_id(direction_component_counts[axis])
             for axis in ("GROWTH", "PROFITABILITY", "CASH_FLOW")
         }
         axis_directions["MOMENTUM"] = self._momentum_direction(axis_resolution["MOMENTUM"])
@@ -291,6 +299,29 @@ class FundamentalsAssessmentEngine:
         direction_codes = {
             code for item in evidence_by_kind["DIRECTION"] for code in (item.explanation_code,)
         }
+        evidence_component_axis_mismatch_count = sum(
+            int(evidence.axis != component.axis)
+            for component in direction_components
+            for evidence in component_evidence.get(component.component_id, ())
+        )
+        mixed_component_unconditional_veto_count = sum(
+            int(
+                direction_component_counts[axis]["mixed"] > 0
+                and (
+                    (direction_component_counts[axis]["improving"] > 0
+                     and direction_component_counts[axis]["deteriorating"] == 0
+                     and axis_directions[axis] == "MIXED")
+                    or (direction_component_counts[axis]["deteriorating"] > 0
+                        and direction_component_counts[axis]["improving"] == 0
+                        and axis_directions[axis] == "MIXED")
+                )
+            )
+            for axis in ("GROWTH", "PROFITABILITY", "CASH_FLOW")
+        )
+        reversal_stale_event_count = sum(
+            self._reversal_stale_event_count(series)
+            for series in same_period_yoy_series.values()
+        )
         diagnostics = {
             "provider_cutoff_mismatch_count": provider_cutoff_mismatch_count,
             "future_assessment_source_count": future_source_count,
@@ -301,6 +332,10 @@ class FundamentalsAssessmentEngine:
             ),
             "axis_resolution": dict(axis_resolution),
             "axis_directions": dict(axis_directions),
+            "direction_aggregation_rule_id": dict(direction_aggregation_rule_id),
+            "direction_component_counts": {
+                axis: dict(counts) for axis, counts in direction_component_counts.items()
+            },
             # Compatibility aliases; FIX01 rule decisions use explicit
             # level/direction counters below.
             "deterioration_axis_count": deteriorating_axes,
@@ -325,6 +360,9 @@ class FundamentalsAssessmentEngine:
             "direction_contaminated_by_level_count": 0,
             "direction_component_overwrite_count": max(0, direction_component_overwrite_count),
             "direction_order_dependence_count": 0,
+            "mixed_component_unconditional_veto_count": mixed_component_unconditional_veto_count,
+            "evidence_component_axis_mismatch_count": evidence_component_axis_mismatch_count,
+            "reversal_stale_event_count": reversal_stale_event_count,
             "positive_streak_used_as_improvement_count": int("POSITIVE_GROWTH_STREAK" in direction_codes),
             "current_yoy_sign_used_as_direction_count": sum(
                 code.endswith("_YOY_POSITIVE") or code.endswith("_YOY_NEGATIVE")
@@ -518,24 +556,55 @@ class FundamentalsAssessmentEngine:
         values = tuple(float(_number(item.yoy_value)) for item in points)
         deltas = tuple(right - left for left, right in zip(values, values[1:]))
         tolerance = MULTI_YEAR_STABLE_TOLERANCE
-        if all(abs(delta) <= tolerance for delta in deltas):
+        non_stable = tuple(delta for delta in deltas if abs(delta) > tolerance)
+        if not non_stable:
             return "STABLE"
-        if all(delta > tolerance for delta in deltas):
-            return "ACCELERATING"
-        if all(delta < -tolerance for delta in deltas):
-            return "DECELERATING"
-        if len(deltas) >= 3:
-            # A reversal is a two-delta prior run followed by an opposite
-            # delta.  Later deltas in the same new direction do not erase the
-            # detected turn; they confirm the new regime.
-            for index in range(2, len(deltas)):
-                prior = deltas[index - 2:index]
-                latest = deltas[index]
-                if all(delta > tolerance for delta in prior) and latest < -tolerance:
-                    return "REVERSING_DOWN"
-                if all(delta < -tolerance for delta in prior) and latest > tolerance:
-                    return "REVERSING_UP"
+        latest_sign, latest_run, prior_run = FundamentalsAssessmentEngine._latest_delta_regime(deltas)
+        if latest_run >= 2:
+            return "ACCELERATING" if latest_sign > 0 else "DECELERATING"
+        if latest_sign > 0 and prior_run >= 2:
+            return "REVERSING_UP"
+        if latest_sign < 0 and prior_run >= 2:
+            return "REVERSING_DOWN"
         return "MIXED"
+
+    @staticmethod
+    def _latest_delta_regime(deltas: Iterable[float]) -> tuple[int, int, int]:
+        """Return latest sign, latest same-sign run, and preceding run."""
+        signs = tuple(1 if delta > MULTI_YEAR_STABLE_TOLERANCE else -1
+                      for delta in deltas if abs(delta) > MULTI_YEAR_STABLE_TOLERANCE)
+        if not signs:
+            return 0, 0, 0
+        latest_sign = signs[-1]
+        latest_run = 0
+        for sign in reversed(signs):
+            if sign != latest_sign:
+                break
+            latest_run += 1
+        prior_sign = -latest_sign
+        prior_run = 0
+        for sign in reversed(signs[:-latest_run]):
+            if sign != prior_sign:
+                break
+            prior_run += 1
+        return latest_sign, latest_run, prior_run
+
+    @classmethod
+    def _reversal_stale_event_count(cls, series: SamePeriodYoYSeries) -> int:
+        if series.trend_state not in {"REVERSING_UP", "REVERSING_DOWN"}:
+            return 0
+        points = tuple(point for point in series.points
+                       if point.fiscal_year in series.contiguous_fiscal_years)
+        if len(points) < 3:
+            return 1
+        values = tuple(float(_number(item.yoy_value)) for item in points)
+        latest_sign, latest_run, prior_run = cls._latest_delta_regime(
+            tuple(right - left for left, right in zip(values, values[1:]))
+        )
+        expected = "REVERSING_UP" if latest_sign > 0 and latest_run == 1 and prior_run >= 2 else (
+            "REVERSING_DOWN" if latest_sign < 0 and latest_run == 1 and prior_run >= 2 else None
+        )
+        return int(expected != series.trend_state)
 
     @staticmethod
     def _trend_to_direction(trend: str) -> str:
@@ -559,7 +628,7 @@ class FundamentalsAssessmentEngine:
 
     def _growth_direction_inputs(self, observations, current, series):
         output = []
-        for metric in FLOW_METRICS:
+        for metric in ("revenue", "operating_income", "net_income"):
             output.append((f"{metric}_short_term_acceleration",
                            self._at_current(observations, current, metric, ("YOY_GROWTH_ACCELERATION",)),
                            "YOY_GROWTH_ACCELERATION"))
@@ -600,6 +669,9 @@ class FundamentalsAssessmentEngine:
 
     def _cash_flow_direction_inputs(self, observations, current, series):
         return [
+            ("operating_cash_flow_short_term_acceleration",
+             self._at_current(observations, current, "operating_cash_flow", ("YOY_GROWTH_ACCELERATION",)),
+             "YOY_GROWTH_ACCELERATION"),
             ("operating_cash_flow_short_term_trend",
              self._at_current(observations, current, "operating_cash_flow", ("OPERATING_CASH_FLOW_TREND",)),
              "OPERATING_CASH_FLOW_TREND"),
@@ -660,19 +732,47 @@ class FundamentalsAssessmentEngine:
 
     @staticmethod
     def _aggregate_direction_components(components: Iterable[DirectionComponent]) -> str:
-        values = tuple(item.state for item in components if item.state != "UNAVAILABLE")
-        if not values:
-            return "UNAVAILABLE"
-        improving = values.count("IMPROVING")
-        deteriorating = values.count("DETERIORATING")
-        mixed = values.count("MIXED")
-        if mixed or (improving and deteriorating):
-            return "MIXED"
-        if improving > deteriorating:
+        counts = FundamentalsAssessmentEngine._direction_component_counts(components)
+        improving = counts["improving"]
+        deteriorating = counts["deteriorating"]
+        mixed = counts["mixed"]
+        stable = counts["stable"]
+        if improving > 0 and deteriorating == 0:
             return "IMPROVING"
-        if deteriorating > improving:
+        if deteriorating > 0 and improving == 0:
             return "DETERIORATING"
-        return "STABLE"
+        if improving > 0 and deteriorating > 0:
+            return "MIXED"
+        if mixed > 0:
+            return "MIXED"
+        if stable > 0:
+            return "STABLE"
+        return "UNAVAILABLE"
+
+    @staticmethod
+    def _direction_component_counts(components: Iterable[DirectionComponent]) -> dict[str, int]:
+        counts = {"improving": 0, "deteriorating": 0, "mixed": 0, "stable": 0, "unavailable": 0}
+        for item in components:
+            key = str(item.state).lower()
+            if key in counts:
+                counts[key] += 1
+            else:
+                counts["unavailable"] += 1
+        return counts
+
+    @staticmethod
+    def _direction_aggregation_rule_id(counts: Mapping[str, int]) -> str:
+        if counts["improving"] > 0 and counts["deteriorating"] == 0:
+            return "AXIS_DIRECTION_IMPROVING_NO_OPPOSING_V01"
+        if counts["deteriorating"] > 0 and counts["improving"] == 0:
+            return "AXIS_DIRECTION_DETERIORATING_NO_OPPOSING_V01"
+        if counts["improving"] > 0 and counts["deteriorating"] > 0:
+            return "AXIS_DIRECTION_CONFLICT_MIXED_V01"
+        if counts["mixed"] > 0:
+            return "AXIS_DIRECTION_AMBIGUOUS_ONLY_V01"
+        if counts["stable"] > 0:
+            return "AXIS_DIRECTION_STABLE_V01"
+        return "AXIS_DIRECTION_UNAVAILABLE_V01"
 
     @staticmethod
     def _metric_direction_summary(components: Iterable[DirectionComponent], *, suffix: str) -> dict[str, str]:

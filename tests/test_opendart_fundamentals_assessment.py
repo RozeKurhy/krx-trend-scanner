@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 
 from trend_scanner.fundamentals.assessment import FundamentalsAssessmentEngine
-from trend_scanner.fundamentals.assessment_models import FundamentalsAssessmentResult
+from trend_scanner.fundamentals.assessment_models import DirectionComponent, FundamentalsAssessmentResult
 from trend_scanner.fundamentals.derived_metrics import DerivedMetricObservation, DerivedMetricsResult
 from trend_scanner.fundamentals.derived_metrics_provider import DerivedMetricsBuild
 from trend_scanner.fundamentals.assessment_provider import FundamentalsAssessmentProvider
@@ -267,20 +267,46 @@ def _series_build(values, *, metric="revenue", years=("2022", "2023", "2024", "2
 @pytest.mark.parametrize("values, expected", [
     ((8, 14, 21, 28, 35), "ACCELERATING"),
     ((30, 24, 15, 7, 1), "DECELERATING"),
-    ((8, 15, 24, 16, 14), "REVERSING_DOWN"),
-    ((30, 20, 8, 14, 18), "REVERSING_UP"),
-    ((10, 25, 15, 22, 30), "MIXED"),
+    ((8, 15, 24), "ACCELERATING"),
+    ((30, 20, 8), "DECELERATING"),
+    ((8, 15, 24, 16), "REVERSING_DOWN"),
+    ((30, 20, 8, 14), "REVERSING_UP"),
+    ((8, 15, 24, 16, 14), "DECELERATING"),
+    ((30, 20, 8, 14, 18), "ACCELERATING"),
+    ((10, 25, 15, 22, 30), "ACCELERATING"),
 ])
 def test_same_period_multi_year_trend_states(values, expected):
+    years = tuple(str(year) for year in range(2027 - len(values), 2027))
+    result = FundamentalsAssessmentEngine().assess(
+        _series_build(values, years=years), requested_as_of="2026-08-20",
+        assessment_scope="CURRENT_AS_OF", expected_current_fiscal_year="2026",
+    )
+    series = result.same_period_yoy_series["revenue"]
+    assert series.usable_yoy_point_count == len(values)
+    assert series.trend_state == expected
+    assert tuple(point.fiscal_period for point in series.points) == ("Q2",) * len(values)
+    assert result.multi_year_trends["revenue"] == expected
+
+
+@pytest.mark.parametrize("values, expected", [
+    ((8, 15, 24, 16, 14), "DECELERATING"),
+    ((30, 20, 8, 14, 18), "ACCELERATING"),
+])
+def test_latest_regime_replaces_stale_reversal(values, expected):
     result = FundamentalsAssessmentEngine().assess(
         _series_build(values), requested_as_of="2026-08-20",
         assessment_scope="CURRENT_AS_OF", expected_current_fiscal_year="2026",
     )
-    series = result.same_period_yoy_series["revenue"]
-    assert series.usable_yoy_point_count == 5
-    assert series.trend_state == expected
-    assert tuple(point.fiscal_period for point in series.points) == ("Q2",) * 5
-    assert result.multi_year_trends["revenue"] == expected
+    assert result.same_period_yoy_series["revenue"].trend_state == expected
+    assert result.diagnostics["reversal_stale_event_count"] == 0
+
+
+def test_irregular_series_without_latest_regime_is_mixed():
+    result = FundamentalsAssessmentEngine().assess(
+        _series_build((10, 25, 15, 22, 20)), requested_as_of="2026-08-20",
+        assessment_scope="CURRENT_AS_OF", expected_current_fiscal_year="2026",
+    )
+    assert result.same_period_yoy_series["revenue"].trend_state == "MIXED"
 
 
 def test_same_period_series_gap_breaks_continuity_and_missing_is_not_zero():
@@ -362,3 +388,42 @@ def test_direction_components_are_permutation_invariant_and_do_not_overwrite():
     assert first.direction_components == second.direction_components
     assert first.diagnostics["direction_component_overwrite_count"] == 0
     assert first.diagnostics["direction_order_dependence_count"] == 0
+
+
+@pytest.mark.parametrize("states, expected", [
+    (("IMPROVING", "IMPROVING", "IMPROVING", "MIXED"), "IMPROVING"),
+    (("DETERIORATING", "DETERIORATING", "MIXED"), "DETERIORATING"),
+    (("IMPROVING", "DETERIORATING"), "MIXED"),
+    (("MIXED", "MIXED"), "MIXED"),
+    (("STABLE", "STABLE"), "STABLE"),
+    (("UNAVAILABLE", "UNAVAILABLE"), "UNAVAILABLE"),
+    (("IMPROVING", "MIXED", "STABLE"), "IMPROVING"),
+    (("DETERIORATING", "MIXED", "STABLE"), "DETERIORATING"),
+])
+def test_direction_aggregation_mixed_is_abstention(states, expected):
+    components = tuple(DirectionComponent(
+        axis="GROWTH", component_id=f"fixture_{index}", metric="revenue", state=state,
+    ) for index, state in enumerate(states))
+    assert FundamentalsAssessmentEngine._aggregate_direction_components(components) == expected
+
+
+def test_ocf_acceleration_evidence_and_component_share_cash_flow_axis():
+    result = FundamentalsAssessmentEngine().assess(_scenario())
+    acceleration = [item for item in result.evidence
+                    if item.metric == "operating_cash_flow" and item.metric_type == "YOY_GROWTH_ACCELERATION"]
+    assert any(item.axis == "CASH_FLOW" for item in acceleration)
+    assert not any(item.axis == "GROWTH" for item in acceleration)
+    component = next(item for item in result.direction_components["CASH_FLOW"]
+                     if item.component_id == "operating_cash_flow_short_term_acceleration")
+    assert component.axis == "CASH_FLOW"
+    assert result.diagnostics["evidence_component_axis_mismatch_count"] == 0
+    assert result.diagnostics["mixed_component_unconditional_veto_count"] == 0
+
+
+def test_direction_component_counts_and_aggregation_trace_are_serialized():
+    result = FundamentalsAssessmentEngine().assess(_scenario())
+    counts = result.diagnostics["direction_component_counts"]
+    rules = result.diagnostics["direction_aggregation_rule_id"]
+    assert set(counts) == {"GROWTH", "PROFITABILITY", "CASH_FLOW"}
+    assert set(rules) == set(counts)
+    assert all("improving" in counts[axis] and "mixed" in counts[axis] for axis in counts)
