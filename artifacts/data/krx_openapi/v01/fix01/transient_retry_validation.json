@@ -1,0 +1,36 @@
+{
+  "cases": {
+    "ConnectionOSError": {
+      "attempts": 3,
+      "error_types": [
+        "ConnectionError",
+        "ConnectionError",
+        null
+      ],
+      "pass": true,
+      "retry_count": 2
+    },
+    "TimeoutError": {
+      "attempts": 3,
+      "error_types": [
+        "TimeoutError",
+        "TimeoutError",
+        null
+      ],
+      "pass": true,
+      "retry_count": 2
+    },
+    "URLError": {
+      "attempts": 3,
+      "error_types": [
+        "URLError",
+        "URLError",
+        null
+      ],
+      "pass": true,
+      "retry_count": 2
+    }
+  },
+  "policy": "HTTP 5xx/URLError/TimeoutError/connection OSError retry up to 2; 401/403/429/schema/quota no retry",
+  "transport_retry_violation_count": 0
+}
