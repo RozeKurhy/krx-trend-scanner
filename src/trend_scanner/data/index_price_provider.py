@@ -13,6 +13,12 @@ from typing import Any
 
 import pandas as pd
 from trend_scanner.data.errors import MarketDataError
+from trend_scanner.data.krx_sector_index import (
+    KOSDAQ_SECTOR_CODES as KRX_KOSDAQ_SECTOR_CODES,
+    KOSPI_SECTOR_CODES as KRX_KOSPI_SECTOR_CODES,
+    KRX_NATIVE_SECTOR_INDEX_MAP,
+    KrxSectorIndexCacheBuilder,
+)
 
 _STANDARD_INDEX_COLUMNS = (
     "date",
@@ -29,17 +35,10 @@ _STANDARD_INDEX_COLUMNS = (
 MARKET_INDEX_KOSPI = "1001"
 MARKET_INDEX_KOSDAQ = "2001"
 
-KOSPI_SECTOR_CODES = (
-    "1005", "1006", "1007", "1008", "1009", "1010", "1011", "1012", "1013", "1014",
-    "1015", "1016", "1017", "1018", "1019", "1020", "1021", "1024", "1025", "1026",
-    "1027", "1045", "1046", "1047",
-)
-
-KOSDAQ_SECTOR_CODES = (
-    "2012", "2024", "2026", "2027", "2029", "2031", "2037", "2056", "2058", "2062",
-    "2063", "2065", "2066", "2067", "2068", "2070", "2072", "2074", "2075", "2077",
-    "2114", "2118",
-)
+# Keep the historical public constants stable while sourcing their values from
+# the immutable production contract.
+KOSPI_SECTOR_CODES = KRX_KOSPI_SECTOR_CODES
+KOSDAQ_SECTOR_CODES = KRX_KOSDAQ_SECTOR_CODES
 
 
 def compute_file_sha256(file_path: Path) -> str:
@@ -198,49 +197,58 @@ class IndexPriceDataProvider:
         end_date: str,
         output_parquet: Path,
         output_meta: Path,
+        *,
+        client: Any | None = None,
+        auth_key: str | None = None,
+        quota: Any | None = None,
+        max_requests: int = 800,
+        throttle_seconds: float = 0.0,
+        minimum_sessions: int = 270,
     ) -> pd.DataFrame:
-        """지정된 업종 지수들의 시계열을 수집하고 Parquet/Meta로 저장한다."""
-        dfs = []
-        unique_codes = sorted(list(set(sector_codes)))
-        for code in unique_codes:
-            df_idx = self.fetch_index_series(code, start_date, end_date)
-            if not df_idx.empty:
-                dfs.append(df_idx)
+        """시장별 KRX snapshot 1회로 native 46 sector cache를 생성한다."""
+        requested_codes = {str(code) for code in sector_codes}
+        if requested_codes != set(KRX_NATIVE_SECTOR_INDEX_MAP):
+            raise MarketDataError("sector index production cache requires the frozen native 46-code universe")
+        builder = KrxSectorIndexCacheBuilder(
+            client=client,
+            auth_key=auth_key,
+            quota=quota,
+            max_requests=max_requests,
+            throttle_seconds=throttle_seconds,
+        )
+        return builder.build(
+            start_date=start_date,
+            end_date=end_date,
+            output_parquet=Path(output_parquet),
+            output_meta=Path(output_meta),
+            minimum_sessions=minimum_sessions,
+        ).dataframe
 
-        if not dfs:
-            combined = pd.DataFrame(columns=list(_STANDARD_INDEX_COLUMNS))
-        else:
-            combined = pd.concat(dfs, ignore_index=True)
-
-        combined["date"] = combined["date"].astype(str)
-        combined["index_code"] = combined["index_code"].astype(str)
-        combined["index_name"] = combined["index_name"].astype(str)
-        for col in ("open", "high", "low", "close", "trading_value"):
-            combined[col] = combined[col].astype("float64")
-        combined["volume"] = combined["volume"].astype("int64")
-
-        combined = combined.sort_values(by=["index_code", "date"]).reset_index(drop=True)
-
-        if combined.duplicated(subset=["date", "index_code"]).any():
-            raise MarketDataError("Duplicate (date, index_code) found in sector index dataset")
-
-        output_parquet.parent.mkdir(parents=True, exist_ok=True)
-        combined.to_parquet(output_parquet, index=False)
-
-        sha256 = compute_file_sha256(output_parquet)
-        meta = {
-            "source_name": "KRX_PYKRX_SECTOR_INDEX",
-            "requested_as_of": end_date,
-            "date_min": str(combined["date"].min()) if not combined.empty else "",
-            "date_max": str(combined["date"].max()) if not combined.empty else "",
-            "index_codes": unique_codes,
-            "row_count": len(combined),
-            "parquet_sha256": sha256,
-            "fetch_mode": "BATCH_PYKRX",
-            "generation_timestamp": pd.Timestamp.now(tz="UTC").isoformat(),
-        }
-        output_meta.write_text(json.dumps(meta, indent=2, ensure_ascii=False), encoding="utf-8")
-        return combined
+    def update_sector_index_cache(
+        self,
+        target_date: str,
+        output_parquet: Path,
+        output_meta: Path,
+        *,
+        client: Any | None = None,
+        auth_key: str | None = None,
+        quota: Any | None = None,
+        max_requests: int = 800,
+        throttle_seconds: float = 0.0,
+    ) -> pd.DataFrame:
+        """원하는 하루만 snapshot으로 교체하는 atomic/idempotent 갱신."""
+        builder = KrxSectorIndexCacheBuilder(
+            client=client,
+            auth_key=auth_key,
+            quota=quota,
+            max_requests=max_requests,
+            throttle_seconds=throttle_seconds,
+        )
+        return builder.update(
+            target_date=target_date,
+            output_parquet=Path(output_parquet),
+            output_meta=Path(output_meta),
+        ).dataframe
 
     def build_sector_mapping(
         self,
