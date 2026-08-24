@@ -1,9 +1,7 @@
-"""Production market-data authority and storage contracts.
+"""Machine-readable production data authority contracts.
 
-This module is deliberately declarative.  It does not import a network client,
-PyKRX, OpenDART, or any runtime artifact.  The architecture validator serializes
-these immutable contracts into evidence files; production consumers may adopt the
-contracts incrementally without changing today's data-fetch behavior.
+The module is declarative and network-free. It separates source authority,
+field provenance, operational availability, migration state, and runtime health.
 """
 
 from __future__ import annotations
@@ -22,13 +20,22 @@ class AuthorityType(str, Enum):
     NOT_PROVIDED = "NOT_PROVIDED"
 
 
+class OperationalStatus(str, Enum):
+    ACTIVE = "ACTIVE"
+    INACTIVE = "INACTIVE"
+    NOT_IMPLEMENTED = "NOT_IMPLEMENTED"
+    DEGRADED = "DEGRADED"
+    VALIDATION_ONLY = "VALIDATION_ONLY"
+
+
 class MigrationStatus(str, Enum):
     MIGRATED = "MIGRATED"
     LEGACY_SOURCE = "LEGACY_SOURCE"
     VALIDATED_NOT_PRODUCTION_MIGRATED = "VALIDATED_NOT_PRODUCTION_MIGRATED"
     LEGACY_COMPOSITE_NOT_SPLIT = "LEGACY_COMPOSITE_NOT_SPLIT"
-    CLOSED_AVAILABLE = "CLOSED / AVAILABLE"
-    NOT_MIGRATED = "NOT_MIGRATED"
+    PARTIALLY_MIGRATED = "PARTIALLY_MIGRATED"
+    NOT_APPLICABLE = "NOT_APPLICABLE"
+    PLANNED = "PLANNED"
 
 
 class HealthStatus(str, Enum):
@@ -43,14 +50,25 @@ class HealthStatus(str, Enum):
 
 @dataclass(frozen=True)
 class AuthorityFieldContract:
-    field_name: str
+    """One explicit (store, target_field) provenance contract."""
+
+    contract_id: str
+    owner_store: str | None
+    target_field: str
     authority_id: str
     authority_type: AuthorityType
     source_name: str
     source_endpoints: tuple[str, ...]
+    source_field: str | None
     source_semantics: str
-    owner_store: str | None
+    field_role: str
     schema_version: str
+
+    @property
+    def field_name(self) -> str:
+        """Compatibility alias; validation identity is owner_store + target_field."""
+
+        return self.target_field
 
 
 @dataclass(frozen=True)
@@ -70,11 +88,13 @@ class LayerContract:
     layer_id: str
     description: str
     authority: str
-    current_source: str
+    current_production_source: str
+    validated_source: str
     target_source: str
     storage_role: str
     pit_required: bool
     freshness_policy: str
+    operational_status: str
     migration_status: str
 
 
@@ -83,43 +103,78 @@ class ObservabilityContract:
     statuses: tuple[str, ...]
     snapshot_fields: tuple[str, ...]
     quota_fields: tuple[str, ...]
+    separation: str
 
 
-ARCHITECTURE_VERSION = "KRX_PRODUCTION_DATA_ARCHITECTURE_V01"
+ARCHITECTURE_VERSION = "KRX_PRODUCTION_DATA_ARCHITECTURE_V01_FIX01"
+
+
+def _field(contract_id: str, store_id: str, target_field: str, authority_id: str, authority_type: AuthorityType, source_name: str, source_endpoints: tuple[str, ...], source_field: str | None, source_semantics: str, field_role: str, schema_version: str) -> AuthorityFieldContract:
+    return AuthorityFieldContract(contract_id, store_id, target_field, authority_id, authority_type, source_name, source_endpoints, source_field, source_semantics, field_role, schema_version)
+
+
+_KRX_DAILY = ("/sto/stk_bydd_trd", "/sto/ksq_bydd_trd")
+_KRX_BASIC = ("/sto/stk_isu_base_info", "/sto/ksq_isu_base_info")
+_PYKRX_ADJUSTED = ("stock.get_market_ohlcv_by_date(adjusted=True)",)
 
 
 AUTHORITY_FIELDS: tuple[AuthorityFieldContract, ...] = (
-    AuthorityFieldContract("raw_open", "KRX_OPEN_API_STOCK_DAILY", AuthorityType.AUTHORITATIVE, "KRX Open API", ("/sto/stk_bydd_trd", "/sto/ksq_bydd_trd"), "UNADJUSTED_RAW", "KRXRawStockStore", "KRX_RAW_STOCK_V01"),
-    AuthorityFieldContract("raw_high", "KRX_OPEN_API_STOCK_DAILY", AuthorityType.AUTHORITATIVE, "KRX Open API", ("/sto/stk_bydd_trd", "/sto/ksq_bydd_trd"), "UNADJUSTED_RAW", "KRXRawStockStore", "KRX_RAW_STOCK_V01"),
-    AuthorityFieldContract("raw_low", "KRX_OPEN_API_STOCK_DAILY", AuthorityType.AUTHORITATIVE, "KRX Open API", ("/sto/stk_bydd_trd", "/sto/ksq_bydd_trd"), "UNADJUSTED_RAW", "KRXRawStockStore", "KRX_RAW_STOCK_V01"),
-    AuthorityFieldContract("raw_close", "KRX_OPEN_API_STOCK_DAILY", AuthorityType.AUTHORITATIVE, "KRX Open API", ("/sto/stk_bydd_trd", "/sto/ksq_bydd_trd"), "UNADJUSTED_RAW", "KRXRawStockStore", "KRX_RAW_STOCK_V01"),
-    AuthorityFieldContract("volume", "KRX_OPEN_API_STOCK_DAILY", AuthorityType.AUTHORITATIVE, "KRX Open API", ("/sto/stk_bydd_trd", "/sto/ksq_bydd_trd"), "RAW_DAILY_VOLUME", "KRXRawStockStore", "KRX_RAW_STOCK_V01"),
-    AuthorityFieldContract("trading_value", "KRX_OPEN_API_STOCK_DAILY", AuthorityType.AUTHORITATIVE, "KRX Open API", ("/sto/stk_bydd_trd", "/sto/ksq_bydd_trd"), "RAW_DAILY_TRADING_VALUE", "KRXRawStockStore", "KRX_RAW_STOCK_V01"),
-    AuthorityFieldContract("market_cap", "KRX_OPEN_API_STOCK_DAILY", AuthorityType.AUTHORITATIVE, "KRX Open API", ("/sto/stk_bydd_trd", "/sto/ksq_bydd_trd"), "RAW_DAILY_MARKET_CAP", "KRXRawStockStore", "KRX_RAW_STOCK_V01"),
-    AuthorityFieldContract("listed_shares", "KRX_OPEN_API_STOCK_DAILY", AuthorityType.AUTHORITATIVE, "KRX Open API", ("/sto/stk_bydd_trd", "/sto/ksq_bydd_trd"), "RAW_DAILY_LISTED_SHARES", "KRXRawStockStore", "KRX_RAW_STOCK_V01"),
-    AuthorityFieldContract("adjusted_open", "PYKRX_ADJUSTED_PRICE", AuthorityType.AUTHORITATIVE, "PyKRX", ("stock.get_market_ohlcv_by_date(adjusted=True)",), "ADJUSTED_OHLC", "AdjustedPriceStore", "ADJUSTED_PRICE_V01"),
-    AuthorityFieldContract("adjusted_high", "PYKRX_ADJUSTED_PRICE", AuthorityType.AUTHORITATIVE, "PyKRX", ("stock.get_market_ohlcv_by_date(adjusted=True)",), "ADJUSTED_OHLC", "AdjustedPriceStore", "ADJUSTED_PRICE_V01"),
-    AuthorityFieldContract("adjusted_low", "PYKRX_ADJUSTED_PRICE", AuthorityType.AUTHORITATIVE, "PyKRX", ("stock.get_market_ohlcv_by_date(adjusted=True)",), "ADJUSTED_OHLC", "AdjustedPriceStore", "ADJUSTED_PRICE_V01"),
-    AuthorityFieldContract("adjusted_close", "PYKRX_ADJUSTED_PRICE", AuthorityType.AUTHORITATIVE, "PyKRX", ("stock.get_market_ohlcv_by_date(adjusted=True)",), "ADJUSTED_OHLC", "AdjustedPriceStore", "ADJUSTED_PRICE_V01"),
-    AuthorityFieldContract("adjusted_volume", "NONE", AuthorityType.NOT_PROVIDED, "NONE", (), "ADJUSTED_VOLUME_NOT_DECLARED", None, "ADJUSTED_PRICE_V01"),
-    AuthorityFieldContract("ticker", "KRX_OPEN_API_BASIC_INFO", AuthorityType.AUTHORITATIVE, "KRX Open API Basic Info", ("/sto/stk_isu_base_info", "/sto/ksq_isu_base_info"), "SIX_DIGIT_TICKER_FROM_ISU_SRT_CD", "StockMasterStore", "STOCK_MASTER_V01"),
-    AuthorityFieldContract("standard_code", "KRX_OPEN_API_BASIC_INFO", AuthorityType.AUTHORITATIVE, "KRX Open API Basic Info", ("/sto/stk_isu_base_info", "/sto/ksq_isu_base_info"), "KRX_STANDARD_CODE_FROM_ISU_CD", "StockMasterStore", "STOCK_MASTER_V01"),
-    AuthorityFieldContract("name", "KRX_OPEN_API_BASIC_INFO", AuthorityType.AUTHORITATIVE, "KRX Open API Basic Info", ("/sto/stk_isu_base_info", "/sto/ksq_isu_base_info"), "SECURITY_NAME", "StockMasterStore", "STOCK_MASTER_V01"),
-    AuthorityFieldContract("market", "KRX_OPEN_API_BASIC_INFO", AuthorityType.AUTHORITATIVE, "KRX Open API Basic Info", ("/sto/stk_isu_base_info", "/sto/ksq_isu_base_info"), "MARKET_NAMESPACE", "StockMasterStore", "STOCK_MASTER_V01"),
-    AuthorityFieldContract("listing_date", "KRX_OPEN_API_BASIC_INFO", AuthorityType.AUTHORITATIVE, "KRX Open API Basic Info", ("/sto/stk_isu_base_info", "/sto/ksq_isu_base_info"), "LISTING_DATE", "StockMasterStore", "STOCK_MASTER_V01"),
-    AuthorityFieldContract("par_value", "KRX_OPEN_API_BASIC_INFO", AuthorityType.AUTHORITATIVE, "KRX Open API Basic Info", ("/sto/stk_isu_base_info", "/sto/ksq_isu_base_info"), "PAR_VALUE", "StockMasterStore", "STOCK_MASTER_V01"),
-    AuthorityFieldContract("native_sector_index_ohlc", "KRX_OPEN_API_NATIVE_SECTOR_INDEX", AuthorityType.AUTHORITATIVE, "KRX Open API", ("/idx/kospi_dd_trd", "/idx/kosdaq_dd_trd"), "KRX_NATIVE_SECTOR_INDEX", "IndexStore", "INDEX_STORE_V01"),
-    AuthorityFieldContract("market_index_ohlc", "PYKRX_MARKET_INDEX_CURRENT", AuthorityType.LEGACY, "PyKRX existing source", ("IndexPriceDataProvider.fetch_index_series",), "CURRENT_LEGACY_MARKET_INDEX", "IndexStore", "INDEX_STORE_V01"),
-    AuthorityFieldContract("ticker_sector_membership", "PYKRX_SECTOR_MEMBERSHIP_CURRENT", AuthorityType.LEGACY, "PyKRX", ("stock.get_index_portfolio_deposit_file",), "CURRENT_PYKRX_MEMBERSHIP_NO_PIT_STORE", "SectorMembershipStore", "STOCK_MASTER_V01"),
-    AuthorityFieldContract("fundamentals", "OPENDART_FUNDAMENTALS", AuthorityType.AUTHORITATIVE, "OpenDART", ("OpenDART financial statements",), "REPORTED_FINANCIAL_STATEMENTS", "FundamentalsStore", "FUNDAMENTALS_V01"),
-    AuthorityFieldContract("foreign_institution_flow", "CURRENT_FOREIGN_FLOW_PROVIDER", AuthorityType.LEGACY, "Existing production flow source", ("src/trend_scanner/flow/foreign_flow.py",), "CURRENT_PRODUCTION_FLOW", None, "FLOW_V01"),
+    _field("raw.date", "KRXRawStockStore", "date", "KRX_OPEN_API_STOCK_DAILY", AuthorityType.DERIVED, "KRX Open API", _KRX_DAILY, "BAS_DD", "SOURCE_OBSERVATION_DATE", "TEMPORAL_KEY", "KRX_RAW_STOCK_V01"),
+    _field("raw.ticker", "KRXRawStockStore", "ticker", "KRX_OPEN_API_STOCK_DAILY", AuthorityType.AUTHORITATIVE, "KRX Open API", _KRX_DAILY, "ISU_CD", "SIX_DIGIT_TICKER", "IDENTITY_KEY", "KRX_RAW_STOCK_V01"),
+    _field("raw.open", "KRXRawStockStore", "open", "KRX_OPEN_API_STOCK_DAILY", AuthorityType.AUTHORITATIVE, "KRX Open API", _KRX_DAILY, "TDD_OPNPRC", "UNADJUSTED_RAW", "AUTHORITATIVE_SOURCE", "KRX_RAW_STOCK_V01"),
+    _field("raw.high", "KRXRawStockStore", "high", "KRX_OPEN_API_STOCK_DAILY", AuthorityType.AUTHORITATIVE, "KRX Open API", _KRX_DAILY, "TDD_HGPRC", "UNADJUSTED_RAW", "AUTHORITATIVE_SOURCE", "KRX_RAW_STOCK_V01"),
+    _field("raw.low", "KRXRawStockStore", "low", "KRX_OPEN_API_STOCK_DAILY", AuthorityType.AUTHORITATIVE, "KRX Open API", _KRX_DAILY, "TDD_LWPRC", "UNADJUSTED_RAW", "AUTHORITATIVE_SOURCE", "KRX_RAW_STOCK_V01"),
+    _field("raw.close", "KRXRawStockStore", "close", "KRX_OPEN_API_STOCK_DAILY", AuthorityType.AUTHORITATIVE, "KRX Open API", _KRX_DAILY, "TDD_CLSPRC", "UNADJUSTED_RAW", "AUTHORITATIVE_SOURCE", "KRX_RAW_STOCK_V01"),
+    _field("raw.volume", "KRXRawStockStore", "volume", "KRX_OPEN_API_STOCK_DAILY", AuthorityType.AUTHORITATIVE, "KRX Open API", _KRX_DAILY, "ACC_TRDVOL", "RAW_DAILY_VOLUME", "AUTHORITATIVE_SOURCE", "KRX_RAW_STOCK_V01"),
+    _field("raw.trading_value", "KRXRawStockStore", "trading_value", "KRX_OPEN_API_STOCK_DAILY", AuthorityType.AUTHORITATIVE, "KRX Open API", _KRX_DAILY, "ACC_TRDVAL", "RAW_DAILY_TRADING_VALUE", "AUTHORITATIVE_SOURCE", "KRX_RAW_STOCK_V01"),
+    _field("raw.market_cap", "KRXRawStockStore", "market_cap", "KRX_OPEN_API_STOCK_DAILY", AuthorityType.AUTHORITATIVE, "KRX Open API", _KRX_DAILY, "MKTCAP", "RAW_DAILY_MARKET_CAP", "AUTHORITATIVE_SOURCE", "KRX_RAW_STOCK_V01"),
+    _field("raw.listed_shares", "KRXRawStockStore", "listed_shares", "KRX_OPEN_API_STOCK_DAILY", AuthorityType.AUTHORITATIVE, "KRX Open API", _KRX_DAILY, "LIST_SHRS", "RAW_DAILY_LISTED_SHARES", "AUTHORITATIVE_SOURCE", "KRX_RAW_STOCK_V01"),
+    _field("adjusted.date", "AdjustedPriceStore", "date", "PYKRX_ADJUSTED_PRICE", AuthorityType.DERIVED, "PyKRX", _PYKRX_ADJUSTED, "date", "SOURCE_OBSERVATION_DATE", "TEMPORAL_KEY", "ADJUSTED_PRICE_V01"),
+    _field("adjusted.ticker", "AdjustedPriceStore", "ticker", "PYKRX_ADJUSTED_PRICE", AuthorityType.DERIVED, "PyKRX", _PYKRX_ADJUSTED, "ticker", "SIX_DIGIT_TICKER", "IDENTITY_KEY", "ADJUSTED_PRICE_V01"),
+    _field("adjusted.open", "AdjustedPriceStore", "open", "PYKRX_ADJUSTED_PRICE", AuthorityType.AUTHORITATIVE, "PyKRX", _PYKRX_ADJUSTED, "시가", "ADJUSTED_OHLC", "AUTHORITATIVE_SOURCE", "ADJUSTED_PRICE_V01"),
+    _field("adjusted.high", "AdjustedPriceStore", "high", "PYKRX_ADJUSTED_PRICE", AuthorityType.AUTHORITATIVE, "PyKRX", _PYKRX_ADJUSTED, "고가", "ADJUSTED_OHLC", "AUTHORITATIVE_SOURCE", "ADJUSTED_PRICE_V01"),
+    _field("adjusted.low", "AdjustedPriceStore", "low", "PYKRX_ADJUSTED_PRICE", AuthorityType.AUTHORITATIVE, "PyKRX", _PYKRX_ADJUSTED, "저가", "ADJUSTED_OHLC", "AUTHORITATIVE_SOURCE", "ADJUSTED_PRICE_V01"),
+    _field("adjusted.close", "AdjustedPriceStore", "close", "PYKRX_ADJUSTED_PRICE", AuthorityType.AUTHORITATIVE, "PyKRX", _PYKRX_ADJUSTED, "종가", "ADJUSTED_OHLC", "AUTHORITATIVE_SOURCE", "ADJUSTED_PRICE_V01"),
+    _field("master.as_of", "StockMasterStore", "as_of", "KRX_OPEN_API_BASIC_INFO", AuthorityType.DERIVED, "KRX Open API Basic Info", _KRX_BASIC, "BAS_DD", "SOURCE_OBSERVATION_DATE", "TEMPORAL_KEY", "STOCK_MASTER_V01"),
+    _field("master.ticker", "StockMasterStore", "ticker", "KRX_OPEN_API_BASIC_INFO", AuthorityType.AUTHORITATIVE, "KRX Open API Basic Info", _KRX_BASIC, "ISU_SRT_CD", "SIX_DIGIT_TICKER", "IDENTITY_KEY", "STOCK_MASTER_V01"),
+    _field("master.standard_code", "StockMasterStore", "standard_code", "KRX_OPEN_API_BASIC_INFO", AuthorityType.AUTHORITATIVE, "KRX Open API Basic Info", _KRX_BASIC, "ISU_CD", "KRX_STANDARD_CODE", "IDENTITY_KEY", "STOCK_MASTER_V01"),
+    _field("master.name", "StockMasterStore", "name", "KRX_OPEN_API_BASIC_INFO", AuthorityType.AUTHORITATIVE, "KRX Open API Basic Info", _KRX_BASIC, "ISU_ABBRV", "SECURITY_NAME", "AUTHORITATIVE_SOURCE", "STOCK_MASTER_V01"),
+    _field("master.market", "StockMasterStore", "market", "KRX_OPEN_API_BASIC_INFO", AuthorityType.AUTHORITATIVE, "KRX Open API Basic Info", _KRX_BASIC, "MKT_TP_NM", "MARKET_NAMESPACE", "AUTHORITATIVE_SOURCE", "STOCK_MASTER_V01"),
+    _field("master.listing_date", "StockMasterStore", "listing_date", "KRX_OPEN_API_BASIC_INFO", AuthorityType.AUTHORITATIVE, "KRX Open API Basic Info", _KRX_BASIC, "LIST_DD", "LISTING_DATE", "AUTHORITATIVE_SOURCE", "STOCK_MASTER_V01"),
+    _field("master.security_group", "StockMasterStore", "security_group", "KRX_OPEN_API_BASIC_INFO", AuthorityType.AUTHORITATIVE, "KRX Open API Basic Info", _KRX_BASIC, "SECUGRP_NM", "SECURITY_GROUP", "AUTHORITATIVE_SOURCE", "STOCK_MASTER_V01"),
+    _field("master.listing_section", "StockMasterStore", "listing_section", "KRX_OPEN_API_BASIC_INFO", AuthorityType.AUTHORITATIVE, "KRX Open API Basic Info", _KRX_BASIC, "SECT_TP_NM", "LISTING_SECTION", "AUTHORITATIVE_SOURCE", "STOCK_MASTER_V01"),
+    _field("master.par_value", "StockMasterStore", "par_value", "KRX_OPEN_API_BASIC_INFO", AuthorityType.AUTHORITATIVE, "KRX Open API Basic Info", _KRX_BASIC, "PARVAL", "PAR_VALUE", "AUTHORITATIVE_SOURCE", "STOCK_MASTER_V01"),
+    _field("master.listed_shares", "StockMasterStore", "listed_shares", "KRX_OPEN_API_BASIC_INFO", AuthorityType.AUTHORITATIVE, "KRX Open API Basic Info", _KRX_BASIC, "LIST_SHRS", "MASTER_SNAPSHOT_LISTED_SHARES", "AUTHORITATIVE_SOURCE", "STOCK_MASTER_V01"),
+    _field("index.date", "IndexStore", "date", "KRX_INDEX_SOURCE", AuthorityType.DERIVED, "KRX index source", ("/idx/kospi_dd_trd", "/idx/kosdaq_dd_trd"), "BAS_DD", "SOURCE_OBSERVATION_DATE", "TEMPORAL_KEY", "INDEX_STORE_V01"),
+    _field("index.family", "IndexStore", "family", "KRX_INDEX_SOURCE", AuthorityType.DERIVED, "KRX index source", ("/idx/kospi_dd_trd", "/idx/kosdaq_dd_trd"), "IDX_CLSS", "INDEX_FAMILY_NAMESPACE", "IDENTITY_KEY", "INDEX_STORE_V01"),
+    _field("index.index_code", "IndexStore", "index_code", "KRX_NATIVE_SECTOR_INDEX", AuthorityType.AUTHORITATIVE, "KRX Open API", ("/idx/kospi_dd_trd", "/idx/kosdaq_dd_trd"), "IDX_CD", "INDEX_CODE", "IDENTITY_KEY", "INDEX_STORE_V01"),
+    _field("index.close", "IndexStore", "close", "KRX_NATIVE_SECTOR_INDEX", AuthorityType.AUTHORITATIVE, "KRX Open API", ("/idx/kospi_dd_trd", "/idx/kosdaq_dd_trd"), "CLSPRC_IDX", "INDEX_CLOSE", "AUTHORITATIVE_SOURCE", "INDEX_STORE_V01"),
+    _field("membership.effective_date", "SectorMembershipStore", "effective_date", "PYKRX_SECTOR_MEMBERSHIP_CURRENT", AuthorityType.LEGACY, "PyKRX", ("stock.get_index_portfolio_deposit_file",), "date", "MEMBERSHIP_EFFECTIVE_DATE", "TEMPORAL_KEY", "SECTOR_MEMBERSHIP_V01"),
+    _field("membership.ticker", "SectorMembershipStore", "ticker", "PYKRX_SECTOR_MEMBERSHIP_CURRENT", AuthorityType.LEGACY, "PyKRX", ("stock.get_index_portfolio_deposit_file",), "ticker", "SIX_DIGIT_TICKER", "IDENTITY_KEY", "SECTOR_MEMBERSHIP_V01"),
+    _field("membership.sector_code", "SectorMembershipStore", "sector_code", "KRX_NATIVE_SECTOR_INDEX", AuthorityType.DERIVED, "KRX native sector mapping", ("KRX_NATIVE_SECTOR_INDEX_MAP",), "sector_code", "NATIVE_SECTOR_CODE", "AUTHORITATIVE_SOURCE", "SECTOR_MEMBERSHIP_V01"),
+    _field("membership.market", "SectorMembershipStore", "market", "KRX_NATIVE_SECTOR_INDEX", AuthorityType.DERIVED, "KRX native sector mapping", ("KRX_NATIVE_SECTOR_INDEX_MAP",), "market", "MARKET_NAMESPACE", "AUTHORITATIVE_SOURCE", "SECTOR_MEMBERSHIP_V01"),
+    _field("fundamentals.ticker", "FundamentalsStore", "ticker", "OPENDART_FUNDAMENTALS", AuthorityType.AUTHORITATIVE, "OpenDART", ("OpenDART financial statements",), "stock_code", "SIX_DIGIT_TICKER", "IDENTITY_KEY", "FUNDAMENTALS_V01"),
+    _field("fundamentals.period_end", "FundamentalsStore", "period_end", "OPENDART_FUNDAMENTALS", AuthorityType.AUTHORITATIVE, "OpenDART", ("OpenDART financial statements",), "period_end", "REPORTING_PERIOD_END", "TEMPORAL_KEY", "FUNDAMENTALS_V01"),
+    _field("fundamentals.availability_date", "FundamentalsStore", "availability_date", "OPENDART_FUNDAMENTALS", AuthorityType.DERIVED, "OpenDART filing registry", ("filing_registry",), "receipt_date", "PIT_AVAILABILITY_DATE", "TEMPORAL_KEY", "FUNDAMENTALS_V01"),
+    _field("fundamentals.metric", "FundamentalsStore", "metric", "OPENDART_FUNDAMENTALS", AuthorityType.AUTHORITATIVE, "OpenDART", ("OpenDART financial statements",), "account_id", "FINANCIAL_METRIC", "AUTHORITATIVE_SOURCE", "FUNDAMENTALS_V01"),
+    _field("fundamentals.value", "FundamentalsStore", "value", "OPENDART_FUNDAMENTALS", AuthorityType.AUTHORITATIVE, "OpenDART", ("OpenDART financial statements",), "value", "REPORTED_FINANCIAL_VALUE", "AUTHORITATIVE_SOURCE", "FUNDAMENTALS_V01"),
+    _field("corp_action.ticker", "CorporateActionStateStore", "ticker", "CORPORATE_ACTION_DETECTOR", AuthorityType.DERIVED, "Corporate action detector", ("LIST_SHRS/PARVAL comparison",), "ticker", "SIX_DIGIT_TICKER", "IDENTITY_KEY", "CORPORATE_ACTION_STATE_V01"),
+    _field("corp_action.as_of", "CorporateActionStateStore", "as_of", "CORPORATE_ACTION_DETECTOR", AuthorityType.DERIVED, "Corporate action detector", ("LIST_SHRS/PARVAL comparison",), "as_of", "STATE_OBSERVATION_DATE", "TEMPORAL_KEY", "CORPORATE_ACTION_STATE_V01"),
+    _field("corp_action.status", "CorporateActionStateStore", "status", "CORPORATE_ACTION_DETECTOR", AuthorityType.DERIVED, "Corporate action detector", ("LIST_SHRS/PARVAL comparison",), "status", "CLEAN_DIRTY_REFRESHING_FAILED", "STATE_METADATA", "CORPORATE_ACTION_STATE_V01"),
+    AuthorityFieldContract("adjusted_volume.none", None, "adjusted_volume", "NONE", AuthorityType.NOT_PROVIDED, "NONE", (), None, "ADJUSTED_VOLUME_NOT_DECLARED", "PROVENANCE_METADATA", "ADJUSTED_PRICE_V01"),
+)
+
+# Every persisted required field is covered by exactly one entry in this
+# store-qualified matrix.  The NONE adjusted-volume declaration is excluded.
+STORE_FIELD_PROVENANCE: tuple[AuthorityFieldContract, ...] = tuple(
+    item for item in AUTHORITY_FIELDS if item.owner_store is not None
 )
 
 
 STORE_CONTRACTS: tuple[StoreContract, ...] = (
     StoreContract("KRXRawStockStore", "KRX unadjusted daily stock facts", "KRX_RAW_STOCK_V01", ("date", "ticker", "open", "high", "low", "close", "volume", "trading_value", "market_cap", "listed_shares"), ("date", "ticker", "open", "high", "low", "close", "volume", "trading_value", "market_cap", "listed_shares"), "Raw OHLC and raw ancillary are owned here; no adjustment", True, "New normalized store; no bulk migration in this phase"),
     StoreContract("AdjustedPriceStore", "Adjusted OHLC only", "ADJUSTED_PRICE_V01", ("date", "ticker", "open", "high", "low", "close"), ("date", "ticker", "open", "high", "low", "close"), "Adjusted OHLC only; ancillary fields are prohibited", True, "Mutable refresh state is tracked separately"),
-    StoreContract("StockMasterStore", "Point-in-time KRX security master", "STOCK_MASTER_V01", ("as_of", "ticker", "standard_code", "name", "market", "listing_date", "security_group", "par_value", "listed_shares"), ("as_of", "ticker", "standard_code", "name", "market"), "Historical snapshots, not latest-only identity", True, "PIT snapshots; no replacement of current cache in this phase"),
+    StoreContract("StockMasterStore", "Point-in-time KRX security master", "STOCK_MASTER_V01", ("as_of", "ticker", "standard_code", "name", "market", "listing_date", "security_group", "listing_section", "par_value", "listed_shares"), ("as_of", "ticker", "standard_code", "name", "market", "listing_date", "security_group", "listing_section", "par_value", "listed_shares"), "Historical snapshots, not latest-only identity", True, "PIT snapshots; no replacement of current frozen artifact in this phase"),
     StoreContract("IndexStore", "Market and native sector index families", "INDEX_STORE_V01", ("date", "family", "index_code", "index_name", "open", "high", "low", "close", "volume", "trading_value"), ("date", "family", "index_code", "close"), "MARKET_INDEX, NATIVE_SECTOR_INDEX, and KRX_BRANDED_TAXONOMY namespaces stay distinct", True, "Sector index migrated; market index remains legacy"),
     StoreContract("SectorMembershipStore", "PIT ticker to sector membership", "SECTOR_MEMBERSHIP_V01", ("effective_date", "as_of", "ticker", "sector_code", "sector_name", "market", "source"), ("effective_date", "ticker", "sector_code", "market"), "Membership is an independent PIT store", True, "Future PIT membership phase; current PyKRX source remains"),
     StoreContract("FundamentalsStore", "PIT reported fundamentals", "FUNDAMENTALS_V01", ("ticker", "period_end", "report_date", "availability_date", "metric", "value", "source"), ("ticker", "period_end", "availability_date", "metric", "value"), "OpenDART facts are independent of price authority", True, "Existing OpenDART pipeline; no migration in this phase"),
@@ -127,58 +182,43 @@ STORE_CONTRACTS: tuple[StoreContract, ...] = (
 )
 
 
+def _layer(layer_id: str, description: str, authority: str, current: str, validated: str, target: str, storage: str, freshness: str, operational: OperationalStatus, migration: MigrationStatus) -> LayerContract:
+    return LayerContract(layer_id, description, authority, current, validated, target, storage, True, freshness, operational.value, migration.value)
+
+
 LAYER_REGISTRY: tuple[LayerContract, ...] = (
-    LayerContract("STOCK_RAW_KRX", "Raw stock OHLC and ancillary", "KRX Open API", "KRX Open API", "KRX Open API", "KRXRawStockStore", True, "Daily trading session", MigrationStatus.VALIDATED_NOT_PRODUCTION_MIGRATED.value),
-    LayerContract("STOCK_ADJUSTED_PYKRX", "Adjusted stock OHLC", "PyKRX adjusted=True", "Legacy composite cache", "AdjustedPriceStore", "AdjustedPriceStore", True, "Daily trading session", MigrationStatus.LEGACY_COMPOSITE_NOT_SPLIT.value),
-    LayerContract("STOCK_MASTER_KRX", "PIT stock master", "KRX Open API Basic Info", "KRX Open API Basic Info", "StockMasterStore", "StockMasterStore", True, "Snapshot on source effective date", MigrationStatus.VALIDATED_NOT_PRODUCTION_MIGRATED.value),
-    LayerContract("MARKET_INDEX", "KOSPI/KOSDAQ representative indexes", "KRX Open API", "PyKRX existing source", "KRX Open API", "IndexStore:MARKET_INDEX", True, "Daily trading session", MigrationStatus.LEGACY_SOURCE.value),
-    LayerContract("SECTOR_INDEX_KRX", "Native 46 sector indexes", "KRX Open API", "KRX Open API", "KRX Open API", "IndexStore:NATIVE_SECTOR_INDEX", True, "Daily trading session", MigrationStatus.MIGRATED.value),
-    LayerContract("SECTOR_MEMBERSHIP", "Ticker to sector membership", "PyKRX current source", "PyKRX get_index_portfolio_deposit_file", "SectorMembershipStore", "SectorMembershipStore", True, "Effective-date snapshot", MigrationStatus.LEGACY_SOURCE.value),
-    LayerContract("FOREIGN_FLOW", "Foreign/institution flow", "Existing production flow source", "Existing production flow source", "Existing production flow source", "Flow store (existing)", True, "Provider-defined", MigrationStatus.LEGACY_SOURCE.value),
-    LayerContract("FUNDAMENTALS_OPENDART", "Reported financial statements", "OpenDART", "OpenDART", "FundamentalsStore", "FundamentalsStore", True, "Availability-date/PIT", MigrationStatus.CLOSED_AVAILABLE.value),
-    LayerContract("MARKET_RS", "Market relative strength", "Derived from stock and market index", "Existing analytics", "Existing analytics", "Analytics output", True, "As-of session", MigrationStatus.NOT_MIGRATED.value),
-    LayerContract("SECTOR_RS", "Sector relative strength", "Derived from sector index", "Existing analytics", "Existing analytics", "Analytics output", True, "As-of session", MigrationStatus.NOT_MIGRATED.value),
-    LayerContract("PATTERN_A", "Pattern A features and score", "Derived", "Existing analytics", "Existing analytics", "Analytics output", True, "As-of session", MigrationStatus.NOT_MIGRATED.value),
-    LayerContract("FASTCORE", "FastCore features and score", "Derived", "Existing analytics", "Existing analytics", "Analytics output", True, "As-of session", MigrationStatus.NOT_MIGRATED.value),
-    LayerContract("JULIA", "Julia strategy inputs and outputs", "Derived", "Existing analytics", "Existing analytics", "Analytics output", True, "As-of session", MigrationStatus.NOT_MIGRATED.value),
-    LayerContract("STOCK_REPORT", "Stock report", "Derived", "Existing reporting", "Existing reporting", "Analytics output", True, "As-of session", MigrationStatus.NOT_MIGRATED.value),
+    _layer("STOCK_RAW_KRX", "Raw stock OHLC and ancillary", "KRX Open API", "LEGACY_COMPOSITE_STOCK_CACHE", "KRX Open API", "KRXRawStockStore", "KRXRawStockStore", "Daily trading session", OperationalStatus.INACTIVE, MigrationStatus.VALIDATED_NOT_PRODUCTION_MIGRATED),
+    _layer("STOCK_ADJUSTED_PYKRX", "Adjusted stock OHLC", "PyKRX adjusted=True", "LEGACY_COMPOSITE_STOCK_CACHE", "PyKRX adjusted=True", "AdjustedPriceStore", "AdjustedPriceStore", "Daily trading session", OperationalStatus.ACTIVE, MigrationStatus.LEGACY_COMPOSITE_NOT_SPLIT),
+    _layer("STOCK_MASTER_KRX", "PIT stock master", "KRX Open API Basic Info", "InstrumentMetadataResolver -> data/reference/krx_instrument_metadata.parquet (frozen local KRX artifact)", "KRX Open API Basic Info", "StockMasterStore", "StockMasterStore", "Snapshot on source effective date", OperationalStatus.ACTIVE, MigrationStatus.VALIDATED_NOT_PRODUCTION_MIGRATED),
+    _layer("MARKET_INDEX", "KOSPI/KOSDAQ representative indexes", "KRX Open API", "PyKRX existing source", "KRX Open API validated index endpoints", "KRX Open API / IndexStore", "IndexStore:MARKET_INDEX", "Daily trading session", OperationalStatus.ACTIVE, MigrationStatus.LEGACY_SOURCE),
+    _layer("SECTOR_INDEX_KRX", "Native 46 sector indexes", "KRX Open API", "KRX Open API", "KRX Open API", "KRX Open API / IndexStore", "IndexStore:NATIVE_SECTOR_INDEX", "Daily trading session", OperationalStatus.ACTIVE, MigrationStatus.MIGRATED),
+    _layer("SECTOR_MEMBERSHIP", "Ticker to sector membership", "PyKRX current source", "PyKRX get_index_portfolio_deposit_file", "PyKRX get_index_portfolio_deposit_file", "SectorMembershipStore", "SectorMembershipStore", "Effective-date snapshot", OperationalStatus.ACTIVE, MigrationStatus.LEGACY_SOURCE),
+    _layer("FOREIGN_FLOW", "Foreign/institution flow", "KRX_PYKRX_FOREIGN_FLOW", "KRX_PYKRX_FOREIGN_FLOW artifact-backed cache", "PyKRX get_market_net_purchases_of_equities_by_ticker", "ForeignFlowStore (future)", "Foreign flow artifact/cache", "Provider-defined daily batch", OperationalStatus.ACTIVE, MigrationStatus.LEGACY_SOURCE),
+    _layer("FUNDAMENTALS_OPENDART", "Reported financial statements", "OpenDART", "OpenDART", "OpenDART", "FundamentalsStore", "FundamentalsStore", "Availability-date/PIT", OperationalStatus.ACTIVE, MigrationStatus.NOT_APPLICABLE),
+    _layer("MARKET_RS", "Market relative strength", "Derived from stock and market index", "Existing analytics", "Existing analytics", "Existing analytics", "Analytics output", "As-of session", OperationalStatus.ACTIVE, MigrationStatus.PARTIALLY_MIGRATED),
+    _layer("SECTOR_RS", "Sector relative strength", "Derived from KRX sector index", "Existing analytics", "KRX sector index migration", "Existing analytics", "Analytics output", "As-of session", OperationalStatus.ACTIVE, MigrationStatus.MIGRATED),
+    _layer("PATTERN_A", "Pattern A features and score", "Derived", "Existing analytics", "Existing analytics", "Existing analytics", "Analytics output", "As-of session", OperationalStatus.ACTIVE, MigrationStatus.NOT_APPLICABLE),
+    _layer("FASTCORE", "FastCore features and score", "Derived", "Existing analytics", "Existing analytics", "Existing analytics", "Analytics output", "As-of session", OperationalStatus.ACTIVE, MigrationStatus.NOT_APPLICABLE),
+    _layer("JULIA", "Julia strategy inputs and outputs", "Derived", "Existing analytics", "Existing analytics", "Existing analytics", "Analytics output", "As-of session", OperationalStatus.ACTIVE, MigrationStatus.NOT_APPLICABLE),
+    _layer("STOCK_REPORT", "Stock report", "Derived", "Existing reporting", "Existing reporting", "Existing reporting", "Analytics output", "As-of session", OperationalStatus.ACTIVE, MigrationStatus.NOT_APPLICABLE),
 )
 
 
 ENDPOINT_IDENTIFIER_CONTRACT: dict[str, Any] = {
-    "DAILY_TRADING": {
-        "endpoints": ("/sto/stk_bydd_trd", "/sto/ksq_bydd_trd"),
-        "fields": {"ISU_CD": {"semantic": "ticker", "target_field": "ticker", "identifier_namespace": "SIX_DIGIT_TICKER"}},
-    },
-    "BASIC_INFO": {
-        "endpoints": ("/sto/stk_isu_base_info", "/sto/ksq_isu_base_info"),
-        "fields": {
-            "ISU_CD": {"semantic": "standard_code", "target_field": "standard_code", "identifier_namespace": "KRX_STANDARD_CODE"},
-            "ISU_SRT_CD": {"semantic": "ticker", "target_field": "ticker", "identifier_namespace": "SIX_DIGIT_TICKER"},
-            "SECT_TP_NM": {"semantic": "listing_section_or_security_group", "target_field": "security_group", "identifier_namespace": "NOT_SECTOR_MEMBERSHIP"},
-        },
-    },
-    "NATIVE_SECTOR_INDEX": {
-        "endpoints": ("/idx/kospi_dd_trd", "/idx/kosdaq_dd_trd"),
-        "fields": {"IDX_CD": {"semantic": "native_sector_index_code", "target_field": "index_code", "identifier_namespace": "KRX_NATIVE_SECTOR_INDEX"}},
-    },
+    "DAILY_TRADING": {"endpoints": _KRX_DAILY, "fields": {"ISU_CD": {"semantic": "ticker", "target_field": "ticker", "identifier_namespace": "SIX_DIGIT_TICKER"}}},
+    "BASIC_INFO": {"endpoints": _KRX_BASIC, "fields": {
+        "ISU_CD": {"semantic": "standard_code", "target_field": "standard_code", "identifier_namespace": "KRX_STANDARD_CODE"},
+        "ISU_SRT_CD": {"semantic": "ticker", "target_field": "ticker", "identifier_namespace": "SIX_DIGIT_TICKER"},
+        "SECUGRP_NM": {"semantic": "security_group", "target_field": "security_group", "identifier_namespace": "NOT_SECTOR_MEMBERSHIP"},
+        "SECT_TP_NM": {"semantic": "listing_section", "target_field": "listing_section", "identifier_namespace": "NOT_SECTOR_MEMBERSHIP"},
+    }},
+    "NATIVE_SECTOR_INDEX": {"endpoints": ("/idx/kospi_dd_trd", "/idx/kosdaq_dd_trd"), "fields": {"IDX_CD": {"semantic": "native_sector_index_code", "target_field": "index_code", "identifier_namespace": "KRX_NATIVE_SECTOR_INDEX"}}},
 }
 
 
 REPOSITORY_V2_CONTRACT: dict[str, Any] = {
     "name": "MarketDataRepositoryV2",
-    "get_daily": {
-        "price_columns": ("open", "high", "low", "close"),
-        "price_semantics": "ADJUSTED",
-        "volume_column": "volume",
-        "volume_semantics": "RAW",
-        "trading_value_column": "trading_value",
-        "trading_value_semantics": "RAW",
-        "join_key": ("ticker", "date"),
-        "join_type": "INNER_CONSISTENT_TRADING_SESSION_JOIN",
-        "missing_side_behavior": "DATA_UNAVAILABLE",
-        "forward_fill": False,
-    },
+    "get_daily": {"price_columns": ("open", "high", "low", "close"), "price_semantics": "ADJUSTED", "volume_column": "volume", "volume_semantics": "RAW", "trading_value_column": "trading_value", "trading_value_semantics": "RAW", "join_key": ("ticker", "date"), "join_type": "INNER_CONSISTENT_TRADING_SESSION_JOIN", "missing_side_behavior": "DATA_UNAVAILABLE", "forward_fill": False},
     "ancillary_access": ("get_raw_daily", "get_daily_ancillary", "get_stock_snapshot"),
     "compatibility": "Existing get_daily consumers keep their current columns and receive no silent semantic change.",
 }
@@ -189,16 +229,33 @@ CONSUMER_COMPATIBILITY: tuple[dict[str, Any], ...] = (
     {"consumer": "FastCore", "current_input": "legacy composite cache", "required_columns": ("open", "high", "low", "close", "volume"), "current_source_semantics": "legacy composite", "target_source_semantics": "adjusted OHLC + raw volume", "migration_required": "PLANNED_REPOSITORY_V2", "expected_behavior_change": "NONE"},
     {"consumer": "Julia", "current_input": "legacy composite cache", "required_columns": ("open", "high", "low", "close", "volume", "market_cap"), "current_source_semantics": "legacy cache plus ancillary", "target_source_semantics": "adjusted OHLC + raw ancillary", "migration_required": "PLANNED_REPOSITORY_V2", "expected_behavior_change": "NONE"},
     {"consumer": "Relative Strength", "current_input": "stock/index daily frames", "required_columns": ("close",), "current_source_semantics": "current index providers", "target_source_semantics": "PIT repository/index stores", "migration_required": "PLANNED_INDEX_PIT", "expected_behavior_change": "NONE"},
-    {"consumer": "Foreign Flow", "current_input": "existing flow provider", "required_columns": ("date", "ticker"), "current_source_semantics": "current production flow source", "target_source_semantics": "existing flow source", "migration_required": "NO_RUNTIME_CHANGE", "expected_behavior_change": "NONE"},
+    {"consumer": "Foreign Flow", "current_input": "foreign_flow_daily_<as_of>.parquet", "required_columns": ("date", "ticker", "foreign_net_buy_value"), "current_source_semantics": "KRX_PYKRX_FOREIGN_FLOW", "target_source_semantics": "ForeignFlowStore", "migration_required": "PLANNED_REPOSITORY_V2", "expected_behavior_change": "NONE"},
     {"consumer": "Stock Report", "current_input": "legacy cache and analytics", "required_columns": ("open", "high", "low", "close", "volume"), "current_source_semantics": "legacy composite", "target_source_semantics": "repository contract", "migration_required": "PLANNED_REPOSITORY_V2", "expected_behavior_change": "NONE"},
     {"consumer": "Resampler", "current_input": "daily repository output", "required_columns": ("open", "high", "low", "close", "volume", "trading_value"), "current_source_semantics": "daily adjusted OHLC + raw ancillary", "target_source_semantics": "derived weekly/monthly", "migration_required": "NO_RUNTIME_CHANGE", "expected_behavior_change": "NONE"},
 )
+
+
+FOREIGN_FLOW_LINEAGE: dict[str, Any] = {
+    "current_production_source": "KRX_PYKRX_FOREIGN_FLOW",
+    "authority_type": AuthorityType.LEGACY.value,
+    "source_name": "KRX_PYKRX_FOREIGN_FLOW",
+    "source_endpoint": "pykrx.stock.get_market_net_purchases_of_equities_by_ticker(date, date, 'ALL', '외국인')",
+    "source_semantics": "daily foreign investor buy/sell/net-buy KRW values by ticker",
+    "producer": "ForeignFlowDataProvider.fetch_date_batch -> build_historical_cache; scripts/fetch_foreign_flow_20260814.py",
+    "input_store_or_cache": "artifacts/patterns/pattern_a/production/flow/source/foreign_flow_daily_<as_of>.parquet",
+    "input_metadata": "foreign_flow_daily_<as_of>_meta.json (source_name, SHA-256, date/row/ticker counts)",
+    "consumer": "compute_foreign_flow_features; full_universe_scanner; stock_report",
+    "engine_module": "src/trend_scanner/flow/foreign_flow.py",
+    "engine_is_upstream_authority": False,
+    "lineage_status": "CONFIRMED_FROM_REPOSITORY",
+}
 
 
 OBSERVABILITY_CONTRACT = ObservabilityContract(
     statuses=tuple(status.value for status in HealthStatus),
     snapshot_fields=("layer_id", "status", "source_name", "latest_data_date", "expected_latest_date", "date_min", "date_max", "row_count", "ticker_count", "missing_count", "stale_count", "error_count", "last_success_at", "last_attempt_at", "message"),
     quota_fields=("usage_date_kst", "used", "limit", "remaining", "percentage", "endpoint_usage"),
+    separation="LayerRegistry is static operational/migration architecture state; DataHealthSnapshot is runtime condition; Dashboard joins both by layer_id.",
 )
 
 
@@ -208,23 +265,8 @@ DEPENDENCY_GRAPH: dict[str, Any] = {
 }
 
 
-LEGACY_CACHE_CLASSIFICATION = {
-    "path": "data/raw/stocks/<ticker>.parquet",
-    "classification": "LEGACY_COMPOSITE_STOCK_CACHE",
-    "contains": ("adjusted OHLC", "raw volume", "raw trading_value"),
-    "raw_krx_store": False,
-    "rewritten_in_this_phase": False,
-    "write_protection": ("rewrite", "move", "delete", "bulk rename"),
-}
-
-
-SCHEMA_VERSIONS = {
-    "KRXRawStockStore": "KRX_RAW_STOCK_V01",
-    "AdjustedPriceStore": "ADJUSTED_PRICE_V01",
-    "StockMasterStore": "STOCK_MASTER_V01",
-    "IndexStore": "INDEX_STORE_V01",
-    "DataHealthSnapshot": "DATA_HEALTH_V01",
-}
+LEGACY_CACHE_CLASSIFICATION = {"path": "data/raw/stocks/<ticker>.parquet", "classification": "LEGACY_COMPOSITE_STOCK_CACHE", "contains": ("adjusted OHLC", "raw volume", "raw trading_value"), "raw_krx_store": False, "rewritten_in_this_phase": False, "write_protection": ("rewrite", "move", "delete", "bulk rename")}
+SCHEMA_VERSIONS = {"KRXRawStockStore": "KRX_RAW_STOCK_V01", "AdjustedPriceStore": "ADJUSTED_PRICE_V01", "StockMasterStore": "STOCK_MASTER_V01", "IndexStore": "INDEX_STORE_V01", "DataHealthSnapshot": "DATA_HEALTH_V01"}
 
 
 def _jsonable(value: Any) -> Any:
@@ -240,16 +282,16 @@ def _jsonable(value: Any) -> Any:
 
 
 def contract_bundle() -> dict[str, Any]:
-    """Return a JSON-safe snapshot of every architecture contract."""
-
     return _jsonable({
         "architecture_version": ARCHITECTURE_VERSION,
         "authority_fields": AUTHORITY_FIELDS,
+        "store_field_provenance": STORE_FIELD_PROVENANCE,
         "stores": STORE_CONTRACTS,
         "layers": LAYER_REGISTRY,
         "endpoint_identifier_contract": ENDPOINT_IDENTIFIER_CONTRACT,
         "repository_v2": REPOSITORY_V2_CONTRACT,
         "consumer_compatibility": CONSUMER_COMPATIBILITY,
+        "foreign_flow_lineage": FOREIGN_FLOW_LINEAGE,
         "observability": OBSERVABILITY_CONTRACT,
         "dependency_graph": DEPENDENCY_GRAPH,
         "legacy_cache": LEGACY_CACHE_CLASSIFICATION,

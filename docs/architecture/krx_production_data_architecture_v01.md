@@ -9,7 +9,7 @@ KRX Production Data Architecture v01
 
 이 문서는 production data authority, logical store, Repository V2 target,
 PIT/provenance, data health 계약을 고정한다. 이번 단계의 최종 상태는
-`READY_FOR_ARCHITECT_KRX_PRODUCTION_DATA_ARCHITECTURE_V01_REVIEW`이며,
+`READY_FOR_ARCHITECT_KRX_PRODUCTION_DATA_ARCHITECTURE_V01_FIX01_REVIEW`이며,
 Architect 승인 전에는 `CLOSED`로 선언하지 않는다.
 
 이번 단계의 범위
@@ -71,23 +71,29 @@ listed_shares를 저장하지 않는다.
 - Daily trading: `ISU_CD -> ticker` (6자리 종목코드)
 - Basic info: `ISU_CD -> standard_code`
 - Basic info: `ISU_SRT_CD -> ticker`
-- `SECT_TP_NM`은 상장부/관리 분류인 `security_group`이며 sector membership이 아니다.
+- Basic info: `SECUGRP_NM -> security_group`
+- Basic info: `SECT_TP_NM -> listing_section`
+- `SECUGRP_NM`과 `SECT_TP_NM`은 모두 `NOT_SECTOR_MEMBERSHIP` namespace이며,
+  어느 필드도 `sector_code` 또는 ticker->sector membership을 의미하지 않는다.
 
-따라서 generic `ISU_CD = ticker` mapping과 `SECT_TP_NM -> sector_code` mapping은
-금지한다. 구체 계약은 `ENDPOINT_IDENTIFIER_CONTRACT`로 직렬화한다.
+따라서 generic `ISU_CD = ticker` mapping, `SECUGRP_NM -> listing_section`
+mapping, `SECT_TP_NM -> security_group` mapping 및 두 필드를
+`sector_code`로 재사용하는 것은 금지한다. 구체 계약은
+`ENDPOINT_IDENTIFIER_CONTRACT`로 직렬화한다.
 
 3. Logical stores
 ----------------------------------------------------------------------
 
 `source_contracts.py`의 `STORE_CONTRACTS`가 다음 7개 store와 schema version을
-정의한다.
+정의한다. 각 required field의 provenance는 전역 필드명이 아니라
+`(owner_store, target_field)` 키로 `STORE_FIELD_PROVENANCE`에서 관리한다.
 
 ---------------------------------------------------------------------
 | Store                         | 핵심 소유권                           |
 ---------------------------------------------------------------------
 | KRXRawStockStore              | unadjusted OHLC + raw ancillary       |
 | AdjustedPriceStore            | adjusted OHLC only                   |
-| StockMasterStore              | as_of 포함 PIT master                |
+| StockMasterStore              | as_of 포함 PIT master + listing_section |
 | IndexStore                    | market/native-sector/taxonomy family |
 | SectorMembershipStore         | effective_date 기반 PIT membership   |
 | FundamentalsStore             | OpenDART reported facts              |
@@ -155,7 +161,10 @@ network dataset은 `validation_run_id`, `quota_usage_date_kst`, `run_request_cou
 저장하지 않는다. `artifacts/`는 evidence 전용이며 production runtime source가 아니다.
 
 Health status는 `READY`, `STALE`, `PARTIAL`, `MISSING`, `ERROR`, `NOT_MIGRATED`,
-`DIRTY`다. `DataHealthSnapshot`은 layer/source/date/row/ticker/missing/stale/error와
+`DIRTY`다. LayerRegistry는 정적 `operational_status`와 `migration_status`를
+분리해 보유하고, `DataHealthSnapshot`은 별도 런타임 `HealthStatus`를 보유한다.
+대시보드는 `layer_id`로 두 상태를 join한다. Snapshot은
+layer/source/date/row/ticker/missing/stale/error와
 last success/attempt/message를 공통으로 노출한다. quota observability는
 `usage_date_kst`, `used`, `limit`, `remaining`, `percentage`, `endpoint_usage`다.
 
@@ -174,8 +183,31 @@ last success/attempt/message를 공통으로 노출한다. quota observability�
 ---------------------------------------------------------------------
 
 API validation 완료만으로 production migrated/READY라고 표시하지 않는다.
+이번 FIX01에서 `STOCK_RAW_KRX`는 실제 production source가 아니라
+`LEGACY_COMPOSITE_STOCK_CACHE`를 current source로 명시하고, 검증 source와
+target store를 별도 기록한다. `STOCK_MASTER_KRX`의 current source는 현재
+레포의 `InstrumentMetadataResolver -> data/reference/krx_instrument_metadata.parquet`
+동결 artifact authority이며, KRX Basic Info는 validated/target 계약이다.
 
-9. Dependency graph
+10. Foreign Flow lineage와 production diff guard
+----------------------------------------------------------------------
+
+`src/trend_scanner/flow/foreign_flow.py`는 foreign flow upstream authority가
+아니라 feature 계산 엔진이다. 현재 lineage는
+`ForeignFlowDataProvider.fetch_date_batch -> build_historical_cache`와
+`scripts/fetch_foreign_flow_20260814.py`가 PyKRX
+`get_market_net_purchases_of_equities_by_ticker(date, date, "ALL", "외국인")`를
+호출해 `foreign_flow_daily_<as_of>.parquet`를 만들고, scanner/stock report가
+`compute_foreign_flow_features`를 소비하는 흐름으로 고정한다.
+
+FIX01 validator는 고정된 start head
+`9b232a4422afe4383125d0dd1c36b691b83ad421`부터 implementation head까지의
+`git diff --name-only`를 검사한다. 허용 경로는 contracts, validator, 이 문서,
+architecture contract tests 및 `artifacts/data/architecture/krx_production_data/v01/`
+뿐이며, 그 밖의 production behavior 경로 변경은 blocker다. 이 작업에서는
+KRX/PyKRX/OpenDART 네트워크 요청을 수행하지 않는다.
+
+11. Dependency graph
 ----------------------------------------------------------------------
 
 `KRX_PRODUCTION_DATA_ARCHITECTURE_V01`
@@ -189,7 +221,7 @@ API validation 완료만으로 production migrated/READY라고 표시하지 않�
 그래프는 static validator에서 cycle을 검사한다. Repository V2와 AdjustedPriceStore
 사이의 역방향 dependency는 만들지 않는다.
 
-10. ADR 목록
+12. ADR 목록
 ----------------------------------------------------------------------
 
 - ADR-01 KRX raw authority
@@ -206,6 +238,7 @@ API validation 완료만으로 production migrated/READY라고 표시하지 않�
 - ADR-12 runtime artifact dependency prohibition
 - ADR-13 canonical quota authority
 - ADR-14 data health observability contract
+- ADR-15 FIX01 store-qualified field provenance and state separation
 
 검증 및 산출물
 ----------------------------------------------------------------------
