@@ -376,8 +376,7 @@ def test_production_behavior_diff_guard_uses_fixed_git_diff():
     assert spec and spec.loader
     validator = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(validator)
-    head = validator._git("rev-parse", "HEAD")
-    guard = validator._production_behavior_diff_guard(validator.FIX_START_HEAD, head)
+    guard = validator._production_behavior_diff_guard(validator.FIX_START_HEAD, validator.ARCHITECTURE_FIX03_END_HEAD)
     assert guard["start_head"] == "bba23053b806b3775159acf89cb6a0b143937ebd"
     assert guard["production_behavior_change_count"] == 0
     assert guard["disallowed_paths"] == []

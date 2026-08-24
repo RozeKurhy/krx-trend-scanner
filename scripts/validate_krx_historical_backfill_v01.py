@@ -34,7 +34,7 @@ from trend_scanner.data.krx_raw_stock_provider import (  # noqa: E402
 from trend_scanner.data.krx_raw_stock_store import DEFAULT_RAW_STOCK_ROOT, KrxRawStockStore  # noqa: E402
 
 
-FIX_START_HEAD = "b2f969a921cbaccdaeea8c25747c686ca223a4af"
+FIX_START_HEAD = "eaa01ed3e9b4cccedb43a11f83305216b388dee2"
 DEFAULT_OUTPUT = ROOT / "artifacts/data/krx_historical_backfill/v01"
 PILOT_DATES = ("2018-04-27", "2018-05-04", "2026-08-21")
 TARGET_START = "2010-01-04"
@@ -47,6 +47,11 @@ ALLOWED_PATHS = {
     "tests/test_krx_raw_stock_store.py",
     "tests/test_krx_historical_backfill.py",
     "tests/test_krx_open_api_validation_v01.py",
+    # FIX03 updates the CLOSED architecture guard to use its frozen END;
+    # these two validator/test paths are bounded regression evidence, not
+    # production runtime behavior.
+    "scripts/validate_krx_production_data_architecture_v01.py",
+    "tests/test_krx_production_data_architecture_v01.py",
     "scripts/backfill_krx_raw_stock_v01.py",
     "scripts/validate_krx_historical_backfill_v01.py",
     "docs/architecture/krx_historical_backfill_v01.md",
@@ -76,6 +81,26 @@ def pilot_status(results: list[dict[str, Any]]) -> tuple[str, list[str]]:
         for blocker in result.get("blockers", [])
     )
     return ("PASS" if not blockers else blockers[0], blockers)
+
+
+def pilot_parameters(diagnostic_only: bool = False) -> dict[str, Any]:
+    """Return the bounded request contract for each live validation mode."""
+
+    if diagnostic_only:
+        return {
+            "mode": "live-diagnostic",
+            "dates": (PILOT_DATES[0],),
+            "markets": MARKETS,
+            "request_budget": 2,
+            "max_transient_retries": 0,
+        }
+    return {
+        "mode": "live-pilot",
+        "dates": PILOT_DATES,
+        "markets": MARKETS,
+        "request_budget": 6,
+        "max_transient_retries": 0,
+    }
 
 
 def _git(*args: str) -> str:
@@ -365,19 +390,34 @@ def _coverage(store: KrxRawStockStore, start: str, end: str) -> dict[str, Any]:
     }
 
 
-def _live_pilot(counters: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
+def _live_pilot(counters: dict[str, Any], *, diagnostic_only: bool = False) -> tuple[dict[str, Any], dict[str, Any]]:
     secret = load_auth_key()
+    parameters = pilot_parameters(diagnostic_only)
     if not secret:
-        return {"status": "BLOCKED_KRX_AUTH", "blockers": ["BLOCKED_KRX_AUTH"], "dates": []}, {}
+        return {
+            "mode": parameters["mode"],
+            "dates": [],
+            "markets": list(parameters["markets"]),
+            "request_budget": parameters["request_budget"],
+            "request_count": 0,
+            "retry_count": 0,
+            "status": "BLOCKED_KRX_AUTH",
+            "blockers": ["BLOCKED_KRX_AUTH"],
+        }, {}
     with tempfile.TemporaryDirectory(prefix="krx-historical-pilot-") as temp_dir:
         root = Path(temp_dir)
         quota = LocalKrxOpenApiQuota(root / "quota.sqlite3", endpoint_limit=100, global_safety_limit=100)
-        client = KrxOpenApiClient(secret, max_requests=6, max_transient_retries=0, quota=quota)
+        client = KrxOpenApiClient(
+            secret,
+            max_requests=parameters["request_budget"],
+            max_transient_retries=parameters["max_transient_retries"],
+            quota=quota,
+        )
         provider = KrxRawStockSnapshotProvider(client)
         store = KrxRawStockStore(root / "raw")
         runner = KrxHistoricalBackfillRunner(provider, store, quota, request_interval_ms=100)
         results = []
-        for day in PILOT_DATES:
+        for day in parameters["dates"]:
             result = runner.run(day, day, max_task_attempts=2)
             results.append({
                 "date": day,
@@ -402,7 +442,7 @@ def _live_pilot(counters: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any
         for key, value in client.status_counts.items():
             counters[{"401": "http_401_count", "403": "http_403_count", "429": "http_429_count", "5xx": "http_5xx_count", "transport_error": "transport_error_count"}[key]] = value
         samsung: dict[str, Any] = {"ticker": "005930", "observations": [], "expected_values": {"2018-04-27": 128386494, "2018-05-04": 6419324700}, "discrepancies": []}
-        for day in PILOT_DATES[:2]:
+        for day in parameters["dates"]:
             try:
                 frame = store.load_snapshot("KOSPI", day)
                 matched = frame.loc[frame["ticker"].astype(str) == "005930"]
@@ -434,9 +474,14 @@ def _live_pilot(counters: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any
         )
         status, pilot_blockers = pilot_status(results)
         return {
+            "mode": parameters["mode"],
+            "markets": list(parameters["markets"]),
+            "request_budget": parameters["request_budget"],
             "status": status,
             "blockers": pilot_blockers,
             "dates": results,
+            "request_count": audit["request_count"],
+            "retry_count": audit["retry_count"],
             "audit": audit,
             "diagnostics": diagnostics,
             "failure_observations": failures,
@@ -446,13 +491,22 @@ def _live_pilot(counters: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any
 def run(mode: str, output: Path, raw_root: Path) -> dict[str, Any]:
     output.mkdir(parents=True, exist_ok=True)
     counters = _base_counters()
-    pilot_summary: dict[str, Any] = {"status": "NOT_RUN", "dates": []}
+    pilot_summary: dict[str, Any] = {"mode": "live-pilot", "status": "NOT_RUN", "dates": []}
+    diagnostic_summary: dict[str, Any] = {"mode": "live-diagnostic", "status": "NOT_RUN", "dates": []}
     prior_live_summary_path = output / "live_pilot_summary.json"
+    prior_diagnostic_summary_path = output / "live_diagnostic_summary.json"
     if mode != "live-pilot" and prior_live_summary_path.exists():
         try:
             prior_live_summary = json.loads(prior_live_summary_path.read_text(encoding="utf-8"))
             if isinstance(prior_live_summary, dict):
                 pilot_summary = prior_live_summary
+        except (OSError, json.JSONDecodeError):
+            pass
+    if mode != "live-diagnostic" and prior_diagnostic_summary_path.exists():
+        try:
+            prior_diagnostic_summary = json.loads(prior_diagnostic_summary_path.read_text(encoding="utf-8"))
+            if isinstance(prior_diagnostic_summary, dict):
+                diagnostic_summary = prior_diagnostic_summary
         except (OSError, json.JSONDecodeError):
             pass
     samsung: dict[str, Any] = {"ticker": "005930", "observations": [], "expected_values": {"2018-04-27": 128386494, "2018-05-04": 6419324700}, "discrepancies": []}
@@ -465,6 +519,8 @@ def run(mode: str, output: Path, raw_root: Path) -> dict[str, Any]:
         counters["provider_test_count"] = _collect("tests/test_krx_raw_stock_provider.py")
         counters["store_test_count"] = _collect("tests/test_krx_raw_stock_store.py")
         counters["backfill_test_count"] = _collect("tests/test_krx_historical_backfill.py")
+    elif mode == "live-diagnostic":
+        diagnostic_summary, samsung = _live_pilot(counters, diagnostic_only=True)
     elif mode == "live-pilot":
         pilot_summary, samsung = _live_pilot(counters)
     elif mode == "production-coverage":
@@ -519,7 +575,7 @@ def run(mode: str, output: Path, raw_root: Path) -> dict[str, Any]:
         "http_429_count", "production_consumer_changed_count", "legacy_cache_modified_count",
         "adjusted_store_modified_count", "corporate_action_state_modified_count", "source_contracts_modified_count",
         "opendart_request_count", "secret_occurrence_count", "validation_source_head_mismatch_count",
-        "disallowed_path_count",
+        "disallowed_path_count", "http_5xx_count", "transport_error_count",
     ]
     counter_blocker_map = {
         "raw_provider_test_failure_count": "BLOCKED_KRX_SCHEMA",
@@ -542,6 +598,8 @@ def run(mode: str, output: Path, raw_root: Path) -> dict[str, Any]:
         "http_401_count": "BLOCKED_KRX_AUTH",
         "http_403_count": "BLOCKED_KRX_AUTH",
         "http_429_count": "BACKFILL_PAUSED_QUOTA",
+        "http_5xx_count": "BLOCKED_KRX_TRANSPORT",
+        "transport_error_count": "BLOCKED_KRX_TRANSPORT",
         "validation_source_head_mismatch_count": "BLOCKED_PROVENANCE",
         "disallowed_path_count": "BLOCKED_PRODUCTION_REGRESSION",
         "secret_occurrence_count": "BLOCKED_PROVENANCE",
@@ -549,6 +607,10 @@ def run(mode: str, output: Path, raw_root: Path) -> dict[str, Any]:
     blockers = [counter_blocker_map.get(name, name) for name in required_zero if counters.get(name, 0) != 0]
     if mode == "offline" and counters.get("offline_test_passed", 0) <= 0:
         blockers.append("BLOCKED_MORE_EVIDENCE_REQUIRED")
+    if mode == "live-diagnostic":
+        blockers.extend(diagnostic_summary.get("blockers", []))
+        if diagnostic_summary.get("status") != "PASS":
+            blockers.append(diagnostic_summary.get("status", "BLOCKED_MORE_EVIDENCE_REQUIRED"))
     if mode == "live-pilot":
         blockers.extend(pilot_summary.get("blockers", []))
         if pilot_summary.get("status") != "PASS":
@@ -567,18 +629,18 @@ def run(mode: str, output: Path, raw_root: Path) -> dict[str, Any]:
         and counters.get("production_total_raw_rows", 0) > 0
     )
     if not blockers and coverage_ready:
-        status = "READY_FOR_ARCHITECT_KRX_HISTORICAL_BACKFILL_V01_FIX02_REVIEW"
-        recommendation = "READY_FOR_ARCHITECT_KRX_HISTORICAL_BACKFILL_V01_FIX02_REVIEW"
+        status = "READY_FOR_ARCHITECT_KRX_HISTORICAL_BACKFILL_V01_FIX03_REVIEW"
+        recommendation = "READY_FOR_ARCHITECT_KRX_HISTORICAL_BACKFILL_V01_FIX03_REVIEW"
     elif not blockers:
         status = "BACKFILL_IN_PROGRESS"
         recommendation = "BLOCKED_MORE_EVIDENCE_REQUIRED"
-    elif mode == "live-pilot" and "BLOCKED_KRX_AUTH" in blockers:
+    elif mode in {"live-diagnostic", "live-pilot"} and "BLOCKED_KRX_AUTH" in blockers:
         status = "BLOCKED_KRX_AUTH"
         recommendation = "BLOCKED_KRX_AUTH"
     else:
         status = "BACKFILL_IN_PROGRESS" if mode == "offline" else blockers[0]
         recommendation = blockers[0] if blockers[0] in {
-            "BACKFILL_PAUSED_QUOTA", "BACKFILL_PAUSED_TASK_BUDGET", "BLOCKED_KRX_AUTH",
+            "BACKFILL_PAUSED_QUOTA", "BACKFILL_PAUSED_TASK_BUDGET", "BLOCKED_KRX_AUTH", "BLOCKED_KRX_TRANSPORT",
             "BLOCKED_KRX_SCHEMA", "BLOCKED_RAW_PARTITION_CONFLICT", "BLOCKED_RAW_STORE_INTEGRITY",
             "BLOCKED_COVERAGE", "BLOCKED_PRODUCTION_REGRESSION", "BLOCKED_PROVENANCE", "BLOCKED_MORE_EVIDENCE_REQUIRED",
         } else "BLOCKED_MORE_EVIDENCE_REQUIRED"
@@ -627,6 +689,7 @@ def run(mode: str, output: Path, raw_root: Path) -> dict[str, Any]:
         "cross_market_ticker_conflict_count": counters.get("cross_market_ticker_conflict_count", 0),
     })
     _write_json(output / "live_pilot_summary.json", pilot_summary)
+    _write_json(output / "live_diagnostic_summary.json", diagnostic_summary)
     with (output / "failed_dates.csv").open("w", newline="", encoding="utf-8") as handle:
         writer = csv.writer(handle, lineterminator="\n")
         writer.writerow(["date", "market", "status", "error_code"])
@@ -648,6 +711,12 @@ def run(mode: str, output: Path, raw_root: Path) -> dict[str, Any]:
                     if row not in written_failures:
                         writer.writerow(row)
                         written_failures.add(row)
+        for item in diagnostic_summary.get("dates", []):
+            for observation in item.get("failure_observations", []):
+                row = (str(observation.get("date")), str(observation.get("market")), str(observation.get("status", "FAILED")), str(observation.get("error_code")))
+                if row not in written_failures:
+                    writer.writerow(row)
+                    written_failures.add(row)
     with (output / "coverage_by_year.csv").open("w", newline="", encoding="utf-8") as handle:
         writer = csv.writer(handle, lineterminator="\n")
         writer.writerow(["year", "candidate_dates", "complete_dates", "finalized_no_data_dates", "failed_dates", "partial_dates", "missing_dates", "complete_partitions", "row_count"])
@@ -664,17 +733,51 @@ def run(mode: str, output: Path, raw_root: Path) -> dict[str, Any]:
         "missing_dates": coverage_payload.get("missing_dates", []),
     })
     pilot_diagnostics = pilot_summary.get("diagnostics", [])
-    if pilot_diagnostics:
-        schema_evidence_status = "BLOCKED_KRX_SCHEMA" if pilot_summary.get("status") == "BLOCKED_KRX_SCHEMA" else "NO_SCHEMA_BLOCKER"
-    elif pilot_summary.get("status") == "BLOCKED_KRX_SCHEMA":
+    diagnostic_diagnostics = diagnostic_summary.get("diagnostics", [])
+    schema_diagnostics = diagnostic_diagnostics or pilot_diagnostics
+    schema_source = diagnostic_summary if diagnostic_diagnostics else pilot_summary
+    if schema_diagnostics:
+        schema_evidence_status = "BLOCKED_KRX_SCHEMA" if schema_source.get("status") == "BLOCKED_KRX_SCHEMA" else "NO_SCHEMA_BLOCKER"
+    elif schema_source.get("status") == "BLOCKED_KRX_SCHEMA":
         schema_evidence_status = "LEGACY_GENERIC_BLOCKER"
     else:
         schema_evidence_status = "NOT_RUN"
     _write_json(output / "schema_blocker_evidence.json", {
         "status": schema_evidence_status,
-        "observations": pilot_diagnostics,
-        "note": "No new KRX request was issued in this validation run; prior live pilot did not persist exact provider diagnostic fields." if not pilot_diagnostics else None,
+        "observations": schema_diagnostics,
+        "note": "No new KRX request was issued in this validation run; prior live pilot did not persist exact provider diagnostic fields." if not schema_diagnostics else None,
     })
+    phase_results = {
+        "offline_validation": {
+            "status": "PASS" if mode == "offline" and not blockers else ("NOT_RUN" if mode != "offline" else status),
+            "tests": counters.get("offline_test_passed", 0),
+            "blockers": [] if mode != "offline" else blockers,
+        },
+        "live_diagnostic": {
+            "status": diagnostic_summary.get("status", "NOT_RUN"),
+            "attempts": diagnostic_summary.get("request_count", diagnostic_summary.get("audit", {}).get("request_count", 0)),
+            "blockers": diagnostic_summary.get("blockers", []),
+        },
+        "live_pilot": {
+            "status": pilot_summary.get("status", "NOT_RUN"),
+            "attempts": pilot_summary.get("request_count", pilot_summary.get("audit", {}).get("request_count", 0)),
+            "blockers": pilot_summary.get("blockers", []),
+        },
+        "production_coverage": {
+            "status": "PASS" if coverage_ready else "INCOMPLETE",
+            "candidate_date_count": counters.get("candidate_date_count", 0),
+            "complete_date_count": counters.get("complete_date_count", 0),
+            "finalized_no_data_date_count": counters.get("finalized_no_data_date_count", 0),
+            "missing_date_count": counters.get("unexplained_missing_date_count", 0),
+        },
+    }
+    known_phase_blockers: list[str] = []
+    if diagnostic_summary.get("status") == "NOT_RUN":
+        known_phase_blockers.append("LIVE_DIAGNOSTIC_NOT_RUN")
+    if pilot_summary.get("status") == "NOT_RUN":
+        known_phase_blockers.append("LIVE_PILOT_NOT_RUN")
+    if not coverage_ready:
+        known_phase_blockers.append("PRODUCTION_COVERAGE_INCOMPLETE")
     summary = {
         "architecture_version": "KRX_HISTORICAL_BACKFILL_V01",
         "mode": mode,
@@ -685,6 +788,8 @@ def run(mode: str, output: Path, raw_root: Path) -> dict[str, Any]:
         "status": status,
         "recommendation": recommendation,
         "blockers": blockers,
+        "known_phase_blockers": known_phase_blockers,
+        "phase_results": phase_results,
         "counters": counters,
         "production_diff_guard": diff_guard,
         "test_output_tail": test_tail,
@@ -718,12 +823,13 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Validate KRX historical raw stock backfill v01")
     mode = parser.add_mutually_exclusive_group(required=True)
     mode.add_argument("--offline", action="store_true")
+    mode.add_argument("--live-diagnostic", action="store_true")
     mode.add_argument("--live-pilot", action="store_true")
     mode.add_argument("--production-coverage", action="store_true")
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT)
     parser.add_argument("--raw-root", type=Path, default=DEFAULT_RAW_STOCK_ROOT)
     args = parser.parse_args()
-    selected_mode = "offline" if args.offline else "live-pilot" if args.live_pilot else "production-coverage"
+    selected_mode = "offline" if args.offline else "live-diagnostic" if args.live_diagnostic else "live-pilot" if args.live_pilot else "production-coverage"
     output = args.output_dir if args.output_dir.is_absolute() else ROOT / args.output_dir
     raw_root = args.raw_root if args.raw_root.is_absolute() else ROOT / args.raw_root
     result = run(selected_mode, output, raw_root)

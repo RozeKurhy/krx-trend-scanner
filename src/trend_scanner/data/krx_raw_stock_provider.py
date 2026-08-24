@@ -191,6 +191,7 @@ class KrxRawStockSnapshotProvider:
         )
         response_diagnostic = {
             "http_status": getattr(response, "http_status", None),
+            "transport_error_type": getattr(response, "error_type", None),
             "records_key": getattr(response, "records_key", None),
             "record_count": len(getattr(response, "records", ()) or ()),
             "top_level_keys": list(getattr(response, "top_level_keys", ()) or ()),

@@ -32,6 +32,7 @@ NO_DATA_FINALIZATION_LAG_DAYS = 2
 BLOCKER_PRIORITY = (
     "BLOCKED_KRX_AUTH",
     "BACKFILL_PAUSED_QUOTA",
+    "BLOCKED_KRX_TRANSPORT",
     "BACKFILL_PAUSED_TASK_BUDGET",
     "BLOCKED_KRX_SCHEMA",
     "BLOCKED_RAW_STORE_INTEGRITY",
@@ -240,7 +241,15 @@ class KrxHistoricalBackfillRunner:
                         observation.update(diagnostic)
                     diagnostics.append(observation)
                     failure_observations.append({"date": day, "market": market, "status": "FAILED", "error_code": error_code})
-                    if isinstance(exc, KrxRawStockSnapshotError) or str(exc).startswith("RAW_"):
+                    http_status = observation.get("http_status")
+                    is_transport = (
+                        isinstance(http_status, int) and 500 <= http_status <= 599
+                    ) or (
+                        http_status is None and bool(observation.get("transport_error_type"))
+                    )
+                    if is_transport:
+                        blockers.append("BLOCKED_KRX_TRANSPORT")
+                    elif isinstance(exc, KrxRawStockSnapshotError) or str(exc).startswith("RAW_"):
                         blockers.append("BLOCKED_KRX_SCHEMA")
                     else:
                         blockers.append("BLOCKED_MORE_EVIDENCE_REQUIRED")
@@ -300,6 +309,8 @@ class KrxHistoricalBackfillRunner:
             blockers.append("BLOCKED_RAW_STORE_INTEGRITY")
         if aggregate["cross_market_ticker_conflict_count"] > 0:
             blockers.append("BLOCKED_CROSS_MARKET_TICKER_CONFLICT")
+        if status_counts.get("5xx", 0) or status_counts.get("transport_error", 0):
+            blockers.append("BLOCKED_KRX_TRANSPORT")
         if (
             aggregate["complete_date_count"] + aggregate["no_data_date_count"] != len(dates)
             or aggregate["failed_date_count"] > 0
@@ -307,7 +318,7 @@ class KrxHistoricalBackfillRunner:
         ):
             blockers.append("BLOCKED_COVERAGE")
         blockers = prioritize_blockers(blockers)
-        status = "READY_FOR_ARCHITECT_KRX_HISTORICAL_BACKFILL_V01_FIX02_REVIEW" if not blockers else blockers[0]
+        status = "READY_FOR_ARCHITECT_KRX_HISTORICAL_BACKFILL_V01_FIX03_REVIEW" if not blockers else blockers[0]
         return {
             "status": status,
             "recommendation": "RECOMMEND_PROCEED_TO_MARKET_DATA_REPOSITORY_V02" if status.startswith("READY_") else status,

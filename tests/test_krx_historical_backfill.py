@@ -5,10 +5,11 @@ import pytest
 
 from trend_scanner.data.krx_openapi_quota import LocalKrxOpenApiQuota
 from trend_scanner.data.krx_openapi_quota import KrxOpenApiQuotaExceeded
-from trend_scanner.data.krx_raw_stock_provider import RAW_COLUMNS
+from trend_scanner.data.krx_openapi_client import KrxOpenApiAuthorizationError
+from trend_scanner.data.krx_raw_stock_provider import KrxRawStockSnapshotError, RAW_COLUMNS
 from trend_scanner.data.krx_raw_stock_store import KrxRawStockStore
 from trend_scanner.data.krx_historical_backfill import KrxHistoricalBackfillRunner, candidate_dates
-from scripts.validate_krx_historical_backfill_v01 import _coverage, _validation_source_head, pilot_status
+from scripts.validate_krx_historical_backfill_v01 import _coverage, _validation_source_head, pilot_parameters, pilot_status
 
 
 def _frame(day, ticker):
@@ -43,6 +44,16 @@ class _QuotaProvider(_Provider):
         )
 
 
+class _ErrorProvider(_Provider):
+    def __init__(self, error):
+        super().__init__()
+        self.error = error
+
+    def fetch_market_snapshot(self, market, day):
+        self.calls.append((market, day))
+        raise self.error
+
+
 def _runner(tmp_path, provider):
     quota = LocalKrxOpenApiQuota(tmp_path / "quota.sqlite3", endpoint_limit=100, global_safety_limit=100)
     return KrxHistoricalBackfillRunner(provider, KrxRawStockStore(tmp_path / "raw"), quota), quota
@@ -50,6 +61,50 @@ def _runner(tmp_path, provider):
 
 def test_candidate_dates_are_weekdays_only():
     assert candidate_dates("2026-08-21", "2026-08-24") == ["2026-08-21", "2026-08-24"]
+
+
+def test_live_diagnostic_contract_is_one_date_two_requests_without_retry():
+    parameters = pilot_parameters(diagnostic_only=True)
+    assert parameters["dates"] == ("2018-04-27",)
+    assert parameters["markets"] == ("KOSPI", "KOSDAQ")
+    assert parameters["request_budget"] == 2
+    assert parameters["max_transient_retries"] == 0
+
+
+def test_live_pilot_contract_remains_three_dates_and_six_requests():
+    parameters = pilot_parameters()
+    assert parameters["dates"] == ("2018-04-27", "2018-05-04", "2026-08-21")
+    assert parameters["request_budget"] == 6
+    assert parameters["max_transient_retries"] == 0
+
+
+def test_http_503_is_transport_not_schema(tmp_path):
+    provider = _ErrorProvider(KrxRawStockSnapshotError("RAW_SNAPSHOT_HTTP_STATUS", diagnostic={"http_status": 503}))
+    runner, _ = _runner(tmp_path, provider)
+    result = runner.run("2018-04-27", "2018-04-27", max_task_attempts=2)
+    assert result["status"] == "BLOCKED_KRX_TRANSPORT"
+    assert "BLOCKED_KRX_SCHEMA" not in result["blockers"]
+    assert result["diagnostics"][0]["http_status"] == 503
+
+
+def test_timeout_is_transport_not_schema(tmp_path):
+    provider = _ErrorProvider(KrxRawStockSnapshotError("RAW_SNAPSHOT_HTTP_STATUS", diagnostic={"http_status": None, "transport_error_type": "TimeoutError"}))
+    runner, _ = _runner(tmp_path, provider)
+    result = runner.run("2018-04-27", "2018-04-27", max_task_attempts=2)
+    assert result["status"] == "BLOCKED_KRX_TRANSPORT"
+    assert "BLOCKED_KRX_SCHEMA" not in result["blockers"]
+
+
+def test_auth_remains_auth(tmp_path):
+    runner, _ = _runner(tmp_path, _ErrorProvider(KrxOpenApiAuthorizationError("401")))
+    result = runner.run("2018-04-27", "2018-04-27", max_task_attempts=2)
+    assert result["status"] == "BLOCKED_KRX_AUTH"
+
+
+def test_actual_schema_error_remains_schema(tmp_path):
+    runner, _ = _runner(tmp_path, _ErrorProvider(KrxRawStockSnapshotError("RAW_SNAPSHOT_REQUIRED_FIELD_MISSING")))
+    result = runner.run("2018-04-27", "2018-04-27", max_task_attempts=2)
+    assert result["status"] == "BLOCKED_KRX_SCHEMA"
 
 
 def test_complete_date_fetches_both_markets_sequentially(tmp_path):
