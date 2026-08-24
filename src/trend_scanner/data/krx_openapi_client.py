@@ -194,6 +194,18 @@ class KrxOpenApiClient:
                     error_message=type(exc).__name__,
                 )
             last = response_obj
+            self.audit.append(
+                {
+                    "url": f"{self.base_url}{endpoint_path}",
+                    "date": date.replace("-", ""),
+                    "attempt": last.attempt,
+                    "http_status": last.http_status,
+                    "elapsed_ms": last.elapsed_ms,
+                    "record_count": last.record_count,
+                    "top_level_keys": list(last.top_level_keys),
+                    "headers": redact_headers({self.auth_header: "<present>"}),
+                }
+            )
             status = response_obj.http_status
             if status == 401:
                 self.status_counts["401"] += 1
@@ -214,18 +226,6 @@ class KrxOpenApiClient:
             break
 
         assert last is not None
-        self.audit.append(
-            {
-                "url": f"{self.base_url}{endpoint_path}",
-                "date": date.replace("-", ""),
-                "attempt": last.attempt,
-                "http_status": last.http_status,
-                "elapsed_ms": last.elapsed_ms,
-                "record_count": last.record_count,
-                "top_level_keys": list(last.top_level_keys),
-                "headers": redact_headers({self.auth_header: "<present>"}),
-            }
-        )
         return last
 
     @staticmethod

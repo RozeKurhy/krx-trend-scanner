@@ -74,9 +74,11 @@ def test_client_does_not_retry_authorization_or_rate_limit() -> None:
         calls.append(1)
         raise HTTPError(request.full_url, 401, "unauthorized", {}, io.BytesIO(b'{"respCode":"401"}'))
 
+    auth_client = KrxOpenApiClient("secret", opener=auth_opener)
     with pytest.raises(KrxOpenApiAuthorizationError):
-        KrxOpenApiClient("secret", opener=auth_opener).fetch("/sto/stk_bydd_trd", "20260820")
+        auth_client.fetch("/sto/stk_bydd_trd", "20260820")
     assert len(calls) == 1
+    assert auth_client.audit[0]["http_status"] == 401
 
     calls.clear()
 
@@ -84,9 +86,11 @@ def test_client_does_not_retry_authorization_or_rate_limit() -> None:
         calls.append(1)
         raise HTTPError(request.full_url, 403, "forbidden", {}, io.BytesIO(b'{"respCode":"403"}'))
 
+    forbidden_client = KrxOpenApiClient("secret", opener=forbidden_opener)
     with pytest.raises(KrxOpenApiAuthorizationError):
-        KrxOpenApiClient("secret", opener=forbidden_opener).fetch("/sto/stk_bydd_trd", "20260820")
+        forbidden_client.fetch("/sto/stk_bydd_trd", "20260820")
     assert len(calls) == 1
+    assert forbidden_client.audit[0]["http_status"] == 403
 
     calls.clear()
 
@@ -94,9 +98,11 @@ def test_client_does_not_retry_authorization_or_rate_limit() -> None:
         calls.append(1)
         raise HTTPError(request.full_url, 429, "rate", {}, io.BytesIO(b'{"respCode":"429"}'))
 
+    rate_client = KrxOpenApiClient("secret", opener=rate_opener)
     with pytest.raises(KrxOpenApiRateLimitError):
-        KrxOpenApiClient("secret", opener=rate_opener).fetch("/sto/stk_bydd_trd", "20260820")
+        rate_client.fetch("/sto/stk_bydd_trd", "20260820")
     assert len(calls) == 1
+    assert rate_client.audit[0]["http_status"] == 429
 
 
 def test_client_retries_transient_5xx_at_most_twice() -> None:
@@ -111,6 +117,7 @@ def test_client_retries_transient_5xx_at_most_twice() -> None:
     assert response.http_status == 503
     assert len(calls) == 3
     assert client.retry_count == 2
+    assert [entry["attempt"] for entry in client.audit] == [1, 2, 3]
 
 
 def test_client_budget_is_hard_and_schema_empty_is_explicit() -> None:
