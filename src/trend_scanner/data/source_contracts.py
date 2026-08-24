@@ -26,6 +26,8 @@ class ProvenanceOrigin(str, Enum):
     STATIC_MAPPING = "STATIC_MAPPING"
     DERIVED = "DERIVED"
     STATE = "STATE"
+    PROVENANCE_METADATA = "PROVENANCE_METADATA"
+    DERIVED_SOURCE_TRACE = "DERIVED_SOURCE_TRACE"
     LEGACY_SOURCE = "LEGACY_SOURCE"
 
 
@@ -118,7 +120,7 @@ class ObservabilityContract:
     separation: str
 
 
-ARCHITECTURE_VERSION = "KRX_PRODUCTION_DATA_ARCHITECTURE_V01_FIX02"
+ARCHITECTURE_VERSION = "KRX_PRODUCTION_DATA_ARCHITECTURE_V01_FIX03"
 
 
 def _field(
@@ -189,14 +191,25 @@ AUTHORITY_FIELDS: tuple[AuthorityFieldContract, ...] = (
     _field("master.ticker", "StockMasterStore", "ticker", "KRX_OPEN_API_BASIC_INFO", AuthorityType.AUTHORITATIVE, "KRX Open API Basic Info", _KRX_BASIC, "ISU_SRT_CD", "SIX_DIGIT_TICKER", "IDENTITY_KEY", "STOCK_MASTER_V01"),
     _field("master.standard_code", "StockMasterStore", "standard_code", "KRX_OPEN_API_BASIC_INFO", AuthorityType.AUTHORITATIVE, "KRX Open API Basic Info", _KRX_BASIC, "ISU_CD", "KRX_STANDARD_CODE", "IDENTITY_KEY", "STOCK_MASTER_V01"),
     _field("master.name", "StockMasterStore", "name", "KRX_OPEN_API_BASIC_INFO", AuthorityType.AUTHORITATIVE, "KRX Open API Basic Info", _KRX_BASIC, "ISU_ABBRV", "SECURITY_NAME", "AUTHORITATIVE_SOURCE", "STOCK_MASTER_V01"),
-    _field("master.market", "StockMasterStore", "market", "KRX_OPEN_API_BASIC_INFO", AuthorityType.AUTHORITATIVE, "KRX Open API Basic Info", _KRX_BASIC, "MKT_TP_NM", "MARKET_NAMESPACE", "AUTHORITATIVE_SOURCE", "STOCK_MASTER_V01"),
+    _field("master.raw_market", "StockMasterStore", "raw_market", "KRX_OPEN_API_BASIC_INFO", AuthorityType.AUTHORITATIVE, "KRX Open API Basic Info", _KRX_BASIC, "MKT_TP_NM", "KRX_RAW_MARKET_TYPE", "AUTHORITATIVE_SOURCE", "STOCK_MASTER_V01", provenance_origin=ProvenanceOrigin.RESPONSE_FIELD),
+    _field("master.market", "StockMasterStore", "market", "PROJECT_MARKET_NORMALIZATION", AuthorityType.DERIVED, "Project market normalization", ("normalize_krx_market",), None, "CANONICAL_PROJECT_MARKET", "DERIVED_CLASSIFICATION", "STOCK_MASTER_V01", source_locator="normalize_krx_market(raw_market)"),
     _field("master.listing_date", "StockMasterStore", "listing_date", "KRX_OPEN_API_BASIC_INFO", AuthorityType.AUTHORITATIVE, "KRX Open API Basic Info", _KRX_BASIC, "LIST_DD", "LISTING_DATE", "AUTHORITATIVE_SOURCE", "STOCK_MASTER_V01"),
     _field("master.security_group", "StockMasterStore", "security_group", "KRX_OPEN_API_BASIC_INFO", AuthorityType.AUTHORITATIVE, "KRX Open API Basic Info", _KRX_BASIC, "SECUGRP_NM", "SECURITY_GROUP", "AUTHORITATIVE_SOURCE", "STOCK_MASTER_V01"),
     _field("master.listing_section", "StockMasterStore", "listing_section", "KRX_OPEN_API_BASIC_INFO", AuthorityType.AUTHORITATIVE, "KRX Open API Basic Info", _KRX_BASIC, "SECT_TP_NM", "LISTING_SECTION", "AUTHORITATIVE_SOURCE", "STOCK_MASTER_V01"),
+    _field("master.security_kind", "StockMasterStore", "security_kind", "KRX_OPEN_API_BASIC_INFO", AuthorityType.AUTHORITATIVE, "KRX Open API Basic Info", _KRX_BASIC, "KIND_STKCERT_TP_NM", "SECURITY_CERTIFICATE_KIND", "AUTHORITATIVE_SOURCE", "STOCK_MASTER_V01", provenance_origin=ProvenanceOrigin.RESPONSE_FIELD),
     _field("master.par_value", "StockMasterStore", "par_value", "KRX_OPEN_API_BASIC_INFO", AuthorityType.AUTHORITATIVE, "KRX Open API Basic Info", _KRX_BASIC, "PARVAL", "PAR_VALUE", "AUTHORITATIVE_SOURCE", "STOCK_MASTER_V01"),
     _field("master.listed_shares", "StockMasterStore", "listed_shares", "KRX_OPEN_API_BASIC_INFO", AuthorityType.AUTHORITATIVE, "KRX Open API Basic Info", _KRX_BASIC, "LIST_SHRS", "MASTER_SNAPSHOT_LISTED_SHARES", "AUTHORITATIVE_SOURCE", "STOCK_MASTER_V01"),
+    _field("classification.effective_date", "InstrumentClassificationStore", "effective_date", "INSTRUMENT_CLASSIFICATION", AuthorityType.DERIVED, "InstrumentMetadataResolver", ("InstrumentMetadataResolver",), None, "CLASSIFICATION_EFFECTIVE_DATE", "TEMPORAL_KEY", "INSTRUMENT_CLASSIFICATION_V01", source_locator="InstrumentMetadataResolver.effective_date"),
+    _field("classification.ticker", "InstrumentClassificationStore", "ticker", "INSTRUMENT_CLASSIFICATION", AuthorityType.DERIVED, "InstrumentMetadataResolver", ("InstrumentMetadataResolver",), None, "SIX_DIGIT_TICKER", "IDENTITY_KEY", "INSTRUMENT_CLASSIFICATION_V01", source_locator="InstrumentMetadataResolver.ticker"),
+    _field("classification.asset_type", "InstrumentClassificationStore", "asset_type", "INSTRUMENT_CLASSIFICATION", AuthorityType.DERIVED, "Instrument classification pipeline", ("StockMasterStore", "formal product-master authority"), None, "FORMAL_INSTRUMENT_CLASSIFICATION", "DERIVED_CLASSIFICATION", "INSTRUMENT_CLASSIFICATION_V01", source_locator="StockMasterStore.security_group/listing_section/security_kind"),
+    _field("classification.classification_authority", "InstrumentClassificationStore", "classification_authority", "INSTRUMENT_CLASSIFICATION", AuthorityType.DERIVED, "InstrumentMetadataResolver", ("InstrumentMetadataResolver",), None, "CLASSIFICATION_AUTHORITY", "PROVENANCE_METADATA", "INSTRUMENT_CLASSIFICATION_V01", provenance_origin=ProvenanceOrigin.STATE, source_locator="InstrumentMetadataResolver.classification_authority"),
+    _field("classification.asset_type_source", "InstrumentClassificationStore", "asset_type_source", "INSTRUMENT_CLASSIFICATION", AuthorityType.DERIVED, "InstrumentMetadataResolver", ("InstrumentMetadataResolver",), None, "ASSET_TYPE_SOURCE", "PROVENANCE_METADATA", "INSTRUMENT_CLASSIFICATION_V01", provenance_origin=ProvenanceOrigin.PROVENANCE_METADATA, source_locator="InstrumentMetadataResolver.asset_type_source"),
+    _field("classification.source_security_type", "InstrumentClassificationStore", "source_security_type", "INSTRUMENT_CLASSIFICATION", AuthorityType.DERIVED, "Instrument classification pipeline", ("StockMasterStore", "formal product-master authority"), None, "DERIVED_SOURCE_TRACE", "PROVENANCE_METADATA", "INSTRUMENT_CLASSIFICATION_V01", provenance_origin=ProvenanceOrigin.DERIVED_SOURCE_TRACE, source_locator="security_group/listing_section/security_kind and formal product-master evidence"),
+    _field("classification.is_common_stock", "InstrumentClassificationStore", "is_common_stock", "INSTRUMENT_CLASSIFICATION", AuthorityType.DERIVED, "Instrument classification pipeline", ("InstrumentClassificationStore",), None, "DERIVED_COMMON_STOCK_FLAG", "DERIVED_CLASSIFICATION", "INSTRUMENT_CLASSIFICATION_V01", source_locator="asset_type == COMMON"),
     _field("index.date", "IndexStore", "date", "KRX_INDEX_SOURCE", AuthorityType.DERIVED, "KRX index source", ("/idx/kospi_dd_trd", "/idx/kosdaq_dd_trd"), "BAS_DD", "SOURCE_OBSERVATION_DATE", "TEMPORAL_KEY", "INDEX_STORE_V01"),
-    _field("index.family", "IndexStore", "family", "KRX_INDEX_SOURCE", AuthorityType.DERIVED, "KRX index source", ("/idx/kospi_dd_trd", "/idx/kosdaq_dd_trd"), "IDX_CLSS", "INDEX_FAMILY_NAMESPACE", "IDENTITY_KEY", "INDEX_STORE_V01"),
+    _field("index.family", "IndexStore", "family", "KRX_INDEX_LOGICAL_FAMILY", AuthorityType.DERIVED, "KRX native sector mapping", ("KRX_NATIVE_SECTOR_INDEX_MAP",), None, "LOGICAL_INDEX_FAMILY", "IDENTITY_KEY", "INDEX_STORE_V01", provenance_origin=ProvenanceOrigin.STATIC_MAPPING, source_locator="KRX_NATIVE_SECTOR_INDEX_MAP -> native sector rows -> NATIVE_SECTOR_INDEX"),
+    _field("index.source_index_class", "IndexStore", "source_index_class", "KRX_INDEX_SOURCE", AuthorityType.DERIVED, "KRX index source", ("/idx/kospi_dd_trd", "/idx/kosdaq_dd_trd"), "IDX_CLSS", "KRX_SOURCE_INDEX_CLASS", "PROVENANCE_METADATA", "INDEX_STORE_V01", provenance_origin=ProvenanceOrigin.RESPONSE_FIELD),
+    _field("index.index_name", "IndexStore", "index_name", "KRX_INDEX_SOURCE", AuthorityType.AUTHORITATIVE, "KRX index source", ("/idx/kospi_dd_trd", "/idx/kosdaq_dd_trd"), "IDX_NM", "SOURCE_INDEX_NAME", "AUTHORITATIVE_SOURCE", "INDEX_STORE_V01", provenance_origin=ProvenanceOrigin.RESPONSE_FIELD),
     _field("index.index_code", "IndexStore", "index_code", "KRX_NATIVE_SECTOR_INDEX_MAP", AuthorityType.DERIVED, "KRX_NATIVE_SECTOR_INDEX_MAP", ("KRX_NATIVE_SECTOR_INDEX_MAP",), None, "INTERNAL_CANONICAL_INDEX_CODE_FROM_SOURCE_QUALIFIED_MAPPING", "IDENTITY_KEY", "INDEX_STORE_V01", provenance_origin=ProvenanceOrigin.STATIC_MAPPING, source_locator="KRX_NATIVE_SECTOR_INDEX_MAP[(source_api, IDX_CLSS, IDX_NM)]", derivation_keys=("source_api", "IDX_CLSS", "IDX_NM")),
     _field("index.close", "IndexStore", "close", "KRX_NATIVE_SECTOR_INDEX", AuthorityType.AUTHORITATIVE, "KRX Open API", ("/idx/kospi_dd_trd", "/idx/kosdaq_dd_trd"), "CLSPRC_IDX", "INDEX_CLOSE", "AUTHORITATIVE_SOURCE", "INDEX_STORE_V01"),
     _field("membership.effective_date", "SectorMembershipStore", "effective_date", "PYKRX_SECTOR_MEMBERSHIP_CURRENT", AuthorityType.LEGACY, "PyKRX", ("stock.get_index_portfolio_deposit_file",), "date", "MEMBERSHIP_EFFECTIVE_DATE", "TEMPORAL_KEY", "SECTOR_MEMBERSHIP_V01"),
@@ -224,8 +237,9 @@ STORE_FIELD_PROVENANCE: tuple[AuthorityFieldContract, ...] = tuple(
 STORE_CONTRACTS: tuple[StoreContract, ...] = (
     StoreContract("KRXRawStockStore", "KRX unadjusted daily stock facts", "KRX_RAW_STOCK_V01", ("date", "ticker", "open", "high", "low", "close", "volume", "trading_value", "market_cap", "listed_shares"), ("date", "ticker", "open", "high", "low", "close", "volume", "trading_value", "market_cap", "listed_shares"), "Raw OHLC and raw ancillary are owned here; no adjustment", True, "New normalized store; no bulk migration in this phase"),
     StoreContract("AdjustedPriceStore", "Adjusted OHLC only", "ADJUSTED_PRICE_V01", ("date", "ticker", "open", "high", "low", "close"), ("date", "ticker", "open", "high", "low", "close"), "Adjusted OHLC only; ancillary fields are prohibited", True, "Mutable refresh state is tracked separately"),
-    StoreContract("StockMasterStore", "Point-in-time KRX security master", "STOCK_MASTER_V01", ("as_of", "ticker", "standard_code", "name", "market", "listing_date", "security_group", "listing_section", "par_value", "listed_shares"), ("as_of", "ticker", "standard_code", "name", "market", "listing_date", "security_group", "listing_section", "par_value", "listed_shares"), "Historical snapshots, not latest-only identity", True, "PIT snapshots; no replacement of current frozen artifact in this phase"),
-    StoreContract("IndexStore", "Market and native sector index families", "INDEX_STORE_V01", ("date", "family", "index_code", "index_name", "open", "high", "low", "close", "volume", "trading_value"), ("date", "family", "index_code", "close"), "MARKET_INDEX, NATIVE_SECTOR_INDEX, and KRX_BRANDED_TAXONOMY namespaces stay distinct; canonical identity is (family, index_code)", True, "Sector index migrated; market index remains legacy"),
+    StoreContract("StockMasterStore", "Point-in-time KRX raw/canonical security master; final asset_type belongs to InstrumentClassificationStore", "STOCK_MASTER_V01", ("as_of", "ticker", "standard_code", "name", "raw_market", "market", "listing_date", "security_group", "listing_section", "security_kind", "par_value", "listed_shares"), ("as_of", "ticker", "standard_code", "name", "raw_market", "market", "listing_date", "security_group", "listing_section", "security_kind", "par_value", "listed_shares"), "Historical snapshots, not latest-only identity; no final asset_type authority", True, "PIT snapshots; no replacement of current frozen artifact in this phase"),
+    StoreContract("InstrumentClassificationStore", "Point-in-time canonical instrument applicability and asset-type classification", "INSTRUMENT_CLASSIFICATION_V01", ("effective_date", "ticker", "asset_type", "classification_authority", "asset_type_source", "source_security_type", "is_common_stock"), ("effective_date", "ticker", "asset_type", "classification_authority", "asset_type_source"), "Derived classification authority; equity inputs come from StockMasterStore and ETF/ETN inputs retain formal product-master authority", True, "PIT classification snapshots; future migration from InstrumentMetadataResolver"),
+    StoreContract("IndexStore", "Market and native sector index families", "INDEX_STORE_V01", ("date", "family", "source_index_class", "index_code", "index_name", "open", "high", "low", "close", "volume", "trading_value"), ("date", "family", "source_index_class", "index_code", "close"), "MARKET_INDEX, NATIVE_SECTOR_INDEX, and KRX_BRANDED_TAXONOMY namespaces stay distinct; canonical identity is (family, index_code)", True, "Sector index migrated; market index remains legacy"),
     StoreContract("SectorMembershipStore", "PIT ticker to sector membership", "SECTOR_MEMBERSHIP_V01", ("effective_date", "as_of", "ticker", "sector_code", "sector_name", "market", "source"), ("effective_date", "ticker", "sector_code", "market"), "Membership is an independent PIT store", True, "Future PIT membership phase; current PyKRX source remains"),
     StoreContract("FundamentalsStore", "PIT reported fundamentals", "FUNDAMENTALS_V01", ("ticker", "period_end", "report_date", "availability_date", "metric", "value", "source"), ("ticker", "period_end", "availability_date", "metric", "value"), "OpenDART facts are independent of price authority", True, "Existing OpenDART pipeline; no migration in this phase"),
     StoreContract("CorporateActionStateStore", "Adjusted-cache refresh state", "CORPORATE_ACTION_STATE_V01", ("ticker", "as_of", "status", "dirty_reason", "last_success_at", "last_attempt_at"), ("ticker", "as_of", "status"), "State is separate from immutable raw history and mutable adjusted cache", True, "Detector only; no custom adjustment engine"),
@@ -239,7 +253,8 @@ def _layer(layer_id: str, description: str, authority: str, current: str, valida
 LAYER_REGISTRY: tuple[LayerContract, ...] = (
     _layer("STOCK_RAW_KRX", "Raw stock OHLC and ancillary", "KRX Open API", "LEGACY_COMPOSITE_STOCK_CACHE", "KRX Open API", "KRXRawStockStore", "KRXRawStockStore", "Daily trading session", OperationalStatus.INACTIVE, MigrationStatus.VALIDATED_NOT_PRODUCTION_MIGRATED),
     _layer("STOCK_ADJUSTED_PYKRX", "Adjusted stock OHLC", "PyKRX adjusted=True", "LEGACY_COMPOSITE_STOCK_CACHE", "PyKRX adjusted=True", "AdjustedPriceStore", "AdjustedPriceStore", "Daily trading session", OperationalStatus.ACTIVE, MigrationStatus.LEGACY_COMPOSITE_NOT_SPLIT),
-    _layer("STOCK_MASTER_KRX", "PIT stock master", "KRX Open API Basic Info", "InstrumentMetadataResolver -> data/reference/krx_instrument_metadata.parquet (frozen local KRX artifact)", "KRX Open API Basic Info", "StockMasterStore", "StockMasterStore", "Snapshot on source effective date", OperationalStatus.ACTIVE, MigrationStatus.VALIDATED_NOT_PRODUCTION_MIGRATED),
+    _layer("STOCK_MASTER_KRX", "PIT raw/canonical KRX security master; asset_type authority is separate", "KRX Open API Basic Info", "InstrumentMetadataResolver -> data/reference/krx_instrument_metadata.parquet (frozen local KRX artifact; raw/master facts)", "KRX Open API Basic Info", "StockMasterStore", "StockMasterStore", "Snapshot on source effective date", OperationalStatus.ACTIVE, MigrationStatus.VALIDATED_NOT_PRODUCTION_MIGRATED),
+    _layer("INSTRUMENT_CLASSIFICATION", "PIT canonical instrument asset-type and applicability classification", "InstrumentMetadataResolver formal instrument metadata authority", "InstrumentMetadataResolver -> data/reference/krx_instrument_metadata.parquet", "Existing formal KRX instrument classification pipeline", "InstrumentClassificationStore", "InstrumentClassificationStore", "Effective-date PIT lookup", OperationalStatus.ACTIVE, MigrationStatus.LEGACY_SOURCE),
     _layer("MARKET_INDEX", "KOSPI/KOSDAQ representative indexes", "KRX Open API", "PyKRX existing source", "KRX Open API validated index endpoints", "KRX Open API / IndexStore", "IndexStore:MARKET_INDEX", "Daily trading session", OperationalStatus.ACTIVE, MigrationStatus.LEGACY_SOURCE),
     _layer("SECTOR_INDEX_KRX", "Native 46 sector indexes", "KRX Open API", "KRX Open API", "KRX Open API", "KRX Open API / IndexStore", "IndexStore:NATIVE_SECTOR_INDEX", "Daily trading session", OperationalStatus.ACTIVE, MigrationStatus.MIGRATED),
     _layer("SECTOR_MEMBERSHIP", "Ticker to sector membership", "PyKRX current source", "PyKRX get_index_portfolio_deposit_file", "PyKRX get_index_portfolio_deposit_file", "SectorMembershipStore", "SectorMembershipStore", "Effective-date snapshot", OperationalStatus.ACTIVE, MigrationStatus.LEGACY_SOURCE),
@@ -259,8 +274,10 @@ ENDPOINT_IDENTIFIER_CONTRACT: dict[str, Any] = {
     "BASIC_INFO": {"endpoints": _KRX_BASIC, "fields": {
         "ISU_CD": {"semantic": "standard_code", "target_field": "standard_code", "identifier_namespace": "KRX_STANDARD_CODE"},
         "ISU_SRT_CD": {"semantic": "ticker", "target_field": "ticker", "identifier_namespace": "SIX_DIGIT_TICKER"},
+        "MKT_TP_NM": {"semantic": "raw_market", "target_field": "raw_market", "identifier_namespace": "KRX_RAW_MARKET_TYPE"},
         "SECUGRP_NM": {"semantic": "security_group", "target_field": "security_group", "identifier_namespace": "NOT_SECTOR_MEMBERSHIP"},
         "SECT_TP_NM": {"semantic": "listing_section", "target_field": "listing_section", "identifier_namespace": "NOT_SECTOR_MEMBERSHIP"},
+        "KIND_STKCERT_TP_NM": {"semantic": "security_kind", "target_field": "security_kind", "identifier_namespace": "SECURITY_CERTIFICATE_KIND"},
         "snapshot_date_source": "REQUEST_PARAMETER.basDd",
     }},
     "NATIVE_SECTOR_INDEX": {
@@ -277,10 +294,22 @@ ENDPOINT_IDENTIFIER_CONTRACT: dict[str, Any] = {
         },
         "fields": {
             "BAS_DD": {"semantic": "observation_date", "target_field": "date", "identifier_namespace": "KRX_INDEX_RESPONSE"},
-            "IDX_CLSS": {"semantic": "source_index_family", "target_field": "family", "identifier_namespace": "KRX_INDEX_RESPONSE"},
+            "IDX_CLSS": {"semantic": "source_index_class", "target_field": "source_index_class", "identifier_namespace": "KRX_INDEX_RESPONSE"},
             "IDX_NM": {"semantic": "source_index_name", "target_field": "index_name", "identifier_namespace": "KRX_INDEX_RESPONSE"},
         },
     },
+}
+
+
+INSTRUMENT_CLASSIFICATION_CONTRACT: dict[str, Any] = {
+    "store_id": "InstrumentClassificationStore",
+    "pit_key": ("effective_date", "ticker"),
+    "lookup": "latest effective_date <= requested_as_of",
+    "equity_source_inputs": ("StockMasterStore.security_group", "StockMasterStore.listing_section", "StockMasterStore.security_kind"),
+    "current_production_authority": "InstrumentMetadataResolver -> data/reference/krx_instrument_metadata.parquet",
+    "target_authority": "InstrumentClassificationStore",
+    "etf_etn_current_authority": "Existing formal ETF/ETN product-master authority retained until separately migrated",
+    "basic_info_scope": "KRX KOSPI/KOSDAQ stock Basic Info is not a full ETF/ETN authority",
 }
 
 
@@ -358,7 +387,7 @@ LEGACY_RUNTIME_DEPENDENCIES: tuple[dict[str, Any], ...] = (
 
 
 TARGET_ARCHITECTURE_RUNTIME_ARTIFACT_COMPONENTS: tuple[str, ...] = (
-    "KRXRawStockStore", "AdjustedPriceStore", "StockMasterStore", "IndexStore", "MarketDataRepositoryV2",
+    "KRXRawStockStore", "AdjustedPriceStore", "StockMasterStore", "InstrumentClassificationStore", "IndexStore", "MarketDataRepositoryV2",
 )
 
 
@@ -377,6 +406,7 @@ CONSUMER_COMPATIBILITY: tuple[dict[str, Any], ...] = (
     {"consumer": "Relative Strength", "current_input": "stock/index daily frames", "required_columns": ("close",), "current_source_semantics": "current index providers", "target_source_semantics": "PIT repository/index stores", "migration_required": "PLANNED_INDEX_PIT", "expected_behavior_change": "NONE"},
     {"consumer": "Foreign Flow", "current_input": "foreign_flow_daily_<as_of>.parquet", "required_columns": ("date", "ticker", "foreign_net_buy_value"), "current_source_semantics": "KRX_PYKRX_FOREIGN_FLOW", "target_source_semantics": "ForeignFlowStore", "migration_required": "PLANNED_REPOSITORY_V2", "expected_behavior_change": "NONE"},
     {"consumer": "Stock Report", "current_input": "legacy cache and analytics", "required_columns": ("open", "high", "low", "close", "volume"), "current_source_semantics": "legacy composite", "target_source_semantics": "repository contract", "migration_required": "PLANNED_REPOSITORY_V2", "expected_behavior_change": "NONE"},
+    {"consumer": "Instrument Metadata / Applicability", "current_input": "InstrumentMetadataResolver", "required_columns": ("ticker", "asset_type", "classification_authority", "asset_type_source", "effective_date"), "current_source_semantics": "current formal InstrumentMetadata authority", "target_source_semantics": "InstrumentClassificationStore PIT classification", "migration_required": "PLANNED_CLASSIFICATION_STORE", "expected_behavior_change": "NONE"},
     {"consumer": "Resampler", "current_input": "daily repository output", "required_columns": ("open", "high", "low", "close", "volume", "trading_value"), "current_source_semantics": "daily adjusted OHLC + raw ancillary", "target_source_semantics": "derived weekly/monthly", "migration_required": "NO_RUNTIME_CHANGE", "expected_behavior_change": "NONE"},
 )
 
@@ -412,7 +442,7 @@ DEPENDENCY_GRAPH: dict[str, Any] = {
 
 
 LEGACY_CACHE_CLASSIFICATION = {"path": "data/raw/stocks/<ticker>.parquet", "classification": "LEGACY_COMPOSITE_STOCK_CACHE", "contains": ("adjusted OHLC", "raw volume", "raw trading_value"), "raw_krx_store": False, "rewritten_in_this_phase": False, "write_protection": ("rewrite", "move", "delete", "bulk rename")}
-SCHEMA_VERSIONS = {"KRXRawStockStore": "KRX_RAW_STOCK_V01", "AdjustedPriceStore": "ADJUSTED_PRICE_V01", "StockMasterStore": "STOCK_MASTER_V01", "IndexStore": "INDEX_STORE_V01", "DataHealthSnapshot": "DATA_HEALTH_V01"}
+SCHEMA_VERSIONS = {"KRXRawStockStore": "KRX_RAW_STOCK_V01", "AdjustedPriceStore": "ADJUSTED_PRICE_V01", "StockMasterStore": "STOCK_MASTER_V01", "InstrumentClassificationStore": "INSTRUMENT_CLASSIFICATION_V01", "IndexStore": "INDEX_STORE_V01", "DataHealthSnapshot": "DATA_HEALTH_V01"}
 
 
 def _jsonable(value: Any) -> Any:
@@ -436,6 +466,7 @@ def contract_bundle() -> dict[str, Any]:
         "layers": LAYER_REGISTRY,
         "endpoint_identifier_contract": ENDPOINT_IDENTIFIER_CONTRACT,
         "raw_schema_contract": RAW_SCHEMA_CONTRACT,
+        "instrument_classification_contract": INSTRUMENT_CLASSIFICATION_CONTRACT,
         "repository_v2": REPOSITORY_V2_CONTRACT,
         "consumer_compatibility": CONSUMER_COMPATIBILITY,
         "foreign_flow_lineage": FOREIGN_FLOW_LINEAGE,

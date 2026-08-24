@@ -9,7 +9,7 @@ KRX Production Data Architecture v01
 
 이 문서는 production data authority, logical store, Repository V2 target,
 PIT/provenance, data health 계약을 고정한다. 이번 단계의 최종 상태는
-`READY_FOR_ARCHITECT_KRX_PRODUCTION_DATA_ARCHITECTURE_V01_FIX02_REVIEW`이며,
+`READY_FOR_ARCHITECT_KRX_PRODUCTION_DATA_ARCHITECTURE_V01_FIX03_REVIEW`이며,
 Architect 승인 전에는 `CLOSED`로 선언하지 않는다.
 
 이번 단계의 범위
@@ -23,6 +23,8 @@ Architect 승인 전에는 `CLOSED`로 선언하지 않는다.
 - Operations Dashboard가 소비할 health/status contract를 정의한다.
 - 오프라인 static validator와 contract tests로 계약을 검증한다.
 - 실제 raw schema와 request/mapping-derived provenance를 구분한다.
+- StockMaster raw fact, canonical market, instrument classification의 경계를 구분한다.
+- KRX `IDX_CLSS` source class와 logical index family를 분리한다.
 - 현재 legacy runtime의 `artifacts/` 소비를 debt registry로 추적한다.
 
 이번 단계에서 하지 않는 것
@@ -53,7 +55,9 @@ Machine-readable 원본은
 | market_cap/listed_shares    | KRX Open API raw daily                   |
 | adjusted OHLC               | PyKRX `adjusted=True`                   |
 | adjusted volume              | NONE; 제공한다고 선언하지 않음           |
-| stock master                | KRX Basic Info + request basDd          |
+| stock master raw facts     | KRX Basic Info + request basDd          |
+| stock master canonical market | `normalize_krx_market(raw_market)`    |
+| instrument asset type      | InstrumentMetadataResolver/formal product-master classification |
 | native sector index         | raw index + frozen canonical mapping    |
 | market index                | 현재 PyKRX legacy, 목표 KRX Open API    |
 | ticker→sector membership    | 현재 PyKRX PDF, 향후 별도 PIT phase     |
@@ -75,6 +79,8 @@ listed_shares를 저장하지 않는다.
 - Basic info: `ISU_SRT_CD -> ticker`
 - Basic info: `SECUGRP_NM -> security_group`
 - Basic info: `SECT_TP_NM -> listing_section`
+- Basic info: `MKT_TP_NM -> raw_market`
+- Basic info: `KIND_STKCERT_TP_NM -> security_kind`
 - `SECUGRP_NM`과 `SECT_TP_NM`은 모두 `NOT_SECTOR_MEMBERSHIP` namespace이며,
   어느 필드도 `sector_code` 또는 ticker->sector membership을 의미하지 않는다.
 
@@ -86,15 +92,23 @@ mapping, `SECT_TP_NM -> security_group` mapping 및 두 필드를
 Basic Info response에는 `BAS_DD`가 없다. `StockMasterStore.as_of`는
 `REQUEST_PARAMETER.basDd`에서 파생된 `REQUESTED_SNAPSHOT_DATE`다.
 
+`StockMasterStore.raw_market`는 `MKT_TP_NM` 원문이다. `StockMasterStore.market`는
+`normalize_krx_market(raw_market)`로 얻는 project canonical value이며, 두 필드를
+같은 의미의 중복 authority로 취급하지 않는다. `StockMasterStore`는
+`security_group`, `listing_section`, `security_kind` 같은 raw/master fact를 보유하지만
+최종 `asset_type` authority가 아니다.
+
 Native sector index response의 raw identity는
 `(source_api, IDX_CLSS, IDX_NM)`다. `IndexStore.index_code`는 raw response field가
 아니라 frozen `KRX_NATIVE_SECTOR_INDEX_MAP`에서 파생된 canonical code이며,
-IndexStore의 namespace key는 `(family, index_code)`다.
+`IndexStore.family`는 `MARKET_INDEX`, `NATIVE_SECTOR_INDEX`,
+`KRX_BRANDED_TAXONOMY` 중 logical family다. `IDX_CLSS`는 `source_index_class`로
+보존하며 logical family로 사용하지 않는다. canonical key는 `(family, index_code)`다.
 
 3. Logical stores
 ----------------------------------------------------------------------
 
-`source_contracts.py`의 `STORE_CONTRACTS`가 다음 7개 store와 schema version을
+`source_contracts.py`의 `STORE_CONTRACTS`가 다음 8개 store와 schema version을
 정의한다. 각 required field의 provenance는 전역 필드명이 아니라
 `(owner_store, target_field)` 키로 `STORE_FIELD_PROVENANCE`에서 관리한다.
 
@@ -103,7 +117,8 @@ IndexStore의 namespace key는 `(family, index_code)`다.
 ---------------------------------------------------------------------
 | KRXRawStockStore              | unadjusted OHLC + raw ancillary       |
 | AdjustedPriceStore            | adjusted OHLC only                   |
-| StockMasterStore              | as_of 포함 PIT master + listing_section |
+| StockMasterStore              | as_of 포함 PIT raw/canonical master; final asset_type 제외 |
+| InstrumentClassificationStore| PIT asset_type/applicability + provenance |
 | IndexStore                    | market/native-sector/taxonomy family; key=(family,index_code) |
 | SectorMembershipStore         | effective_date 기반 PIT membership   |
 | FundamentalsStore             | OpenDART reported facts              |
@@ -112,6 +127,22 @@ IndexStore의 namespace key는 `(family, index_code)`다.
 
 이번 phase에서는 protocol/dataclass 수준의 계약만 정의한다. 실제 모든 store의
 구현과 대량 데이터 이동은 후속 phase다.
+
+InstrumentClassificationStore
+----------------------------------------------------------------------
+
+required field는 `effective_date`, `ticker`, `asset_type`,
+`classification_authority`, `asset_type_source`다. `(effective_date, ticker)`를
+canonical PIT key로 사용하고 requested `as_of` 이하의 최신 effective date를 조회한다.
+`asset_type`은 `StockMasterStore.security_group/listing_section/security_kind`와
+필요한 formal product-master evidence를 해석한 DERIVED 결과다. 현재 production
+authority인 `InstrumentMetadataResolver -> data/reference/krx_instrument_metadata.parquet`
+와 formal ETF/ETN product-master authority는 이번 phase에서 교체하지 않는다.
+KOSPI/KOSDAQ Basic Info만으로 ETF/ETN까지 분류한다고 선언하지 않는다.
+
+Pattern A, FastCore, Stock Report 등 instrument applicability 판단은 이 classification
+layer를 사용해야 하며, consumer가 `KIND_STKCERT_TP_NM`, `SECUGRP_NM`, `SECT_TP_NM`을
+각자 즉석 해석하는 중복 architecture는 금지한다.
 
 4. Legacy composite cache
 ----------------------------------------------------------------------
@@ -171,7 +202,8 @@ network dataset은 `validation_run_id`, `quota_usage_date_kst`, `run_request_cou
 저장하지 않는다.
 
 Field provenance origin은 `RESPONSE_FIELD`, `REQUEST_PARAMETER`, `STATIC_MAPPING`,
-`DERIVED`, `STATE`, `LEGACY_SOURCE`로 구분한다. `RESPONSE_FIELD`는 committed raw
+`DERIVED`, `STATE`, `PROVENANCE_METADATA`, `DERIVED_SOURCE_TRACE`, `LEGACY_SOURCE`로
+구분한다. `RESPONSE_FIELD`는 committed raw
 schema에 존재해야 하며, request/mapping-derived field는 `source_field=null`과
 `source_locator`를 사용한다. `STORE_FIELD_PROVENANCE`의 coverage key는
 `(owner_store, target_field)`다.
@@ -203,15 +235,18 @@ last success/attempt/message를 공통으로 노출한다. quota observability�
 | STOCK_RAW_KRX              | VALIDATED_NOT_PRODUCTION_MIGRATED    |
 | STOCK_ADJUSTED_PYKRX       | LEGACY_COMPOSITE_NOT_SPLIT           |
 | STOCK_MASTER_KRX           | VALIDATED_NOT_PRODUCTION_MIGRATED    |
+| INSTRUMENT_CLASSIFICATION  | LEGACY_SOURCE                         |
 | FUNDAMENTALS_OPENDART      | CLOSED / AVAILABLE                   |
 ---------------------------------------------------------------------
 
 API validation 완료만으로 production migrated/READY라고 표시하지 않는다.
-이번 FIX02에서 `STOCK_RAW_KRX`는 실제 production source가 아니라
+이번 FIX03에서 `STOCK_RAW_KRX`는 실제 production source가 아니라
 `LEGACY_COMPOSITE_STOCK_CACHE`를 current source로 명시하고, 검증 source와
 target store를 별도 기록한다. `STOCK_MASTER_KRX`의 current source는 현재
 레포의 `InstrumentMetadataResolver -> data/reference/krx_instrument_metadata.parquet`
 동결 artifact authority이며, KRX Basic Info는 validated/target 계약이다.
+`STOCK_MASTER_KRX`는 raw/canonical master 경계만 담당하고, asset type authority는
+`INSTRUMENT_CLASSIFICATION` layer로 분리한다.
 
 10. Foreign Flow lineage와 production diff guard
 ----------------------------------------------------------------------
@@ -224,8 +259,8 @@ target store를 별도 기록한다. `STOCK_MASTER_KRX`의 current source는 현
 호출해 `foreign_flow_daily_<as_of>.parquet`를 만들고, scanner/stock report가
 `compute_foreign_flow_features`를 소비하는 흐름으로 고정한다.
 
-FIX02 validator는 고정된 start head
-`3e1ae095cb8f411bb9bb7790a57e5eecd3f4a66c`부터 implementation head까지의
+FIX03 validator는 고정된 start head
+`bba23053b806b3775159acf89cb6a0b143937ebd`부터 implementation head까지의
 `git diff --name-only`를 검사한다. 허용 경로는 contracts, validator, 이 문서,
 architecture contract tests 및 `artifacts/data/architecture/krx_production_data/v01/`
 뿐이며, 그 밖의 production behavior 경로 변경은 blocker다. `network_request_count`는
@@ -267,6 +302,9 @@ KRX/PyKRX/OpenDART 네트워크 요청을 수행하지 않는다.
 - ADR-15 FIX01 store-qualified field provenance and state separation
 - ADR-16 FIX02 raw schema truth and request/mapping provenance
 - ADR-17 legacy runtime artifact dependency debt
+- ADR-18 FIX03 StockMaster raw/canonical market와 instrument classification boundary
+- ADR-19 FIX03 logical index family와 `IDX_CLSS` source class 분리
+- ADR-20 FIX03 PIT classification compatibility와 ETF/ETN authority 보존
 
 검증 및 산출물
 ----------------------------------------------------------------------

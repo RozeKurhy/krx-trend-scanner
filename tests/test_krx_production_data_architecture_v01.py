@@ -13,6 +13,7 @@ from trend_scanner.data.source_contracts import (
     ENDPOINT_IDENTIFIER_CONTRACT,
     FOREIGN_FLOW_LINEAGE,
     HealthStatus,
+    INSTRUMENT_CLASSIFICATION_CONTRACT,
     LEGACY_RUNTIME_DEPENDENCIES,
     LAYER_REGISTRY,
     LEGACY_CACHE_CLASSIFICATION,
@@ -184,6 +185,123 @@ def test_basic_info_security_group_and_listing_section_are_distinct():
     assert by_field[("StockMasterStore", "security_group")].source_semantics != by_field[("StockMasterStore", "listing_section")].source_semantics
 
 
+def test_stock_master_security_kind_comes_from_kind_stkcert_tp_nm():
+    master = next(item for item in STORE_CONTRACTS if item.store_id == "StockMasterStore")
+    field = next(item for item in STORE_FIELD_PROVENANCE if item.owner_store == "StockMasterStore" and item.target_field == "security_kind")
+    assert "security_kind" in master.required_fields
+    assert "KIND_STKCERT_TP_NM" in RAW_SCHEMA_CONTRACT["basic_info_response_fields"]
+    assert field.source_field == "KIND_STKCERT_TP_NM"
+    assert field.provenance_origin == ProvenanceOrigin.RESPONSE_FIELD
+    assert field.source_semantics == "SECURITY_CERTIFICATE_KIND"
+
+
+def test_stock_master_raw_market_is_response_field():
+    field = next(item for item in STORE_FIELD_PROVENANCE if item.owner_store == "StockMasterStore" and item.target_field == "raw_market")
+    assert field.source_field == "MKT_TP_NM"
+    assert field.provenance_origin == ProvenanceOrigin.RESPONSE_FIELD
+    assert field.authority_type.value == "AUTHORITATIVE"
+    assert field.source_semantics == "KRX_RAW_MARKET_TYPE"
+
+
+def test_stock_master_market_is_canonical_derived_value():
+    field = next(item for item in STORE_FIELD_PROVENANCE if item.owner_store == "StockMasterStore" and item.target_field == "market")
+    assert field.source_field is None
+    assert field.provenance_origin == ProvenanceOrigin.DERIVED
+    assert "normalize_krx_market" in (field.source_locator or "")
+    assert field.source_semantics == "CANONICAL_PROJECT_MARKET"
+
+
+def test_stock_master_does_not_own_final_asset_type():
+    master = next(item for item in STORE_CONTRACTS if item.store_id == "StockMasterStore")
+    assert "asset_type" not in master.fields
+    assert "asset_type" not in master.required_fields
+    assert "final asset_type" in master.description
+
+
+def test_instrument_classification_store_exists():
+    store = next(item for item in STORE_CONTRACTS if item.store_id == "InstrumentClassificationStore")
+    assert set(("effective_date", "ticker", "asset_type", "classification_authority", "asset_type_source")).issubset(store.fields)
+    assert set(("effective_date", "ticker", "asset_type", "classification_authority", "asset_type_source")).issubset(store.required_fields)
+
+
+def test_instrument_classification_is_pit():
+    store = next(item for item in STORE_CONTRACTS if item.store_id == "InstrumentClassificationStore")
+    assert store.pit_required is True
+    assert INSTRUMENT_CLASSIFICATION_CONTRACT["pit_key"] == ("effective_date", "ticker")
+    assert "latest effective_date" in INSTRUMENT_CLASSIFICATION_CONTRACT["lookup"]
+
+
+def test_instrument_classification_preserves_asset_type_provenance():
+    by_field = {(item.owner_store, item.target_field): item for item in STORE_FIELD_PROVENANCE}
+    asset_type = by_field[("InstrumentClassificationStore", "asset_type")]
+    authority = by_field[("InstrumentClassificationStore", "classification_authority")]
+    source = by_field[("InstrumentClassificationStore", "asset_type_source")]
+    assert asset_type.authority_type.value == "DERIVED"
+    assert asset_type.source_semantics == "FORMAL_INSTRUMENT_CLASSIFICATION"
+    assert "security_group" in (asset_type.source_locator or "")
+    assert authority.provenance_origin == ProvenanceOrigin.STATE
+    assert source.provenance_origin == ProvenanceOrigin.PROVENANCE_METADATA
+
+
+def test_instrument_classification_layer_exists():
+    layer = next(item for item in LAYER_REGISTRY if item.layer_id == "INSTRUMENT_CLASSIFICATION")
+    assert layer.operational_status == OperationalStatus.ACTIVE.value
+    assert layer.migration_status in {MigrationStatus.LEGACY_SOURCE.value, MigrationStatus.PLANNED.value}
+    assert "InstrumentMetadataResolver" in layer.current_production_source
+    assert layer.target_source == "InstrumentClassificationStore"
+
+
+def test_instrument_classification_consumer_is_registered():
+    entry = next(item for item in CONSUMER_COMPATIBILITY if item["consumer"] == "Instrument Metadata / Applicability")
+    assert set(entry["required_columns"]) == {"ticker", "asset_type", "classification_authority", "asset_type_source", "effective_date"}
+    assert entry["current_input"] == "InstrumentMetadataResolver"
+    assert entry["target_source_semantics"] == "InstrumentClassificationStore PIT classification"
+    assert entry["migration_required"] == "PLANNED_CLASSIFICATION_STORE"
+
+
+def test_basic_info_not_falsely_declared_as_full_etf_etn_authority():
+    basic = ENDPOINT_IDENTIFIER_CONTRACT["BASIC_INFO"]
+    assert "ETF" not in str(basic)
+    assert "ETN" not in str(basic)
+    assert "ETF/ETN" in INSTRUMENT_CLASSIFICATION_CONTRACT["etf_etn_current_authority"]
+    assert "not a full ETF/ETN authority" in INSTRUMENT_CLASSIFICATION_CONTRACT["basic_info_scope"]
+
+
+def test_index_family_is_logical_not_idx_clss():
+    family = next(item for item in STORE_FIELD_PROVENANCE if item.owner_store == "IndexStore" and item.target_field == "family")
+    assert family.source_field is None
+    assert family.source_semantics == "LOGICAL_INDEX_FAMILY"
+    assert family.provenance_origin in {ProvenanceOrigin.DERIVED, ProvenanceOrigin.STATIC_MAPPING}
+
+
+def test_index_source_index_class_comes_from_idx_clss():
+    source_class = next(item for item in STORE_FIELD_PROVENANCE if item.owner_store == "IndexStore" and item.target_field == "source_index_class")
+    assert source_class.source_field == "IDX_CLSS"
+    assert source_class.provenance_origin == ProvenanceOrigin.RESPONSE_FIELD
+    assert source_class.source_semantics == "KRX_SOURCE_INDEX_CLASS"
+
+
+def test_native_sector_canonical_key_is_family_plus_code():
+    index = next(item for item in STORE_CONTRACTS if item.store_id == "IndexStore")
+    endpoint = ENDPOINT_IDENTIFIER_CONTRACT["NATIVE_SECTOR_INDEX"]
+    assert "family" in index.required_fields and "index_code" in index.required_fields
+    assert "(family, index_code)" in index.ownership
+    assert endpoint["canonical_identity"]["index_namespace"] == "NATIVE_SECTOR_INDEX"
+
+
+def test_idx_clss_kospi_is_not_logical_family():
+    family = next(item for item in STORE_FIELD_PROVENANCE if item.owner_store == "IndexStore" and item.target_field == "family")
+    assert family.source_field != "IDX_CLSS"
+    assert family.source_semantics != "source_index_family"
+    assert "KOSPI" not in {"MARKET_INDEX", "NATIVE_SECTOR_INDEX", "KRX_BRANDED_TAXONOMY"}
+
+
+def test_target_classification_store_has_no_artifact_runtime_dependency():
+    validator = _load_validator("krx_architecture_classification_target_dependency_validator")
+    assert "InstrumentClassificationStore" in validator.TARGET_ARCHITECTURE_RUNTIME_ARTIFACT_COMPONENTS
+    assert validator._target_runtime_artifact_dependency_count() == 0
+
+
 def test_store_required_fields_have_store_qualified_provenance():
     keys = [(item.owner_store, item.target_field) for item in STORE_FIELD_PROVENANCE]
     assert len(keys) == len(set(keys))
@@ -260,7 +378,7 @@ def test_production_behavior_diff_guard_uses_fixed_git_diff():
     spec.loader.exec_module(validator)
     head = validator._git("rev-parse", "HEAD")
     guard = validator._production_behavior_diff_guard(validator.FIX_START_HEAD, head)
-    assert guard["start_head"] == "3e1ae095cb8f411bb9bb7790a57e5eecd3f4a66c"
+    assert guard["start_head"] == "bba23053b806b3775159acf89cb6a0b143937ebd"
     assert guard["production_behavior_change_count"] == 0
     assert guard["disallowed_paths"] == []
 
@@ -296,7 +414,7 @@ def test_dependency_graph_is_acyclic():
 
 
 def test_consumer_compatibility_matrix_is_complete():
-    expected = {"Pattern A", "FastCore", "Julia", "Relative Strength", "Foreign Flow", "Stock Report", "Resampler"}
+    expected = {"Pattern A", "FastCore", "Julia", "Relative Strength", "Foreign Flow", "Stock Report", "Instrument Metadata / Applicability", "Resampler"}
     assert {item["consumer"] for item in CONSUMER_COMPATIBILITY} == expected
     assert all(item["required_columns"] and item["expected_behavior_change"] == "NONE" for item in CONSUMER_COMPATIBILITY)
 
@@ -308,7 +426,7 @@ def test_registered_store_and_layer_ids_are_unique():
 
 def test_contract_bundle_is_json_safe_and_network_free():
     bundle = contract_bundle()
-    assert bundle["architecture_version"] == "KRX_PRODUCTION_DATA_ARCHITECTURE_V01_FIX02"
+    assert bundle["architecture_version"] == "KRX_PRODUCTION_DATA_ARCHITECTURE_V01_FIX03"
     assert bundle["endpoint_identifier_contract"]["BASIC_INFO"]["fields"]["ISU_CD"]["semantic"] == "standard_code"
     source = Path(__file__).resolve().parents[1] / "src/trend_scanner/data/source_contracts.py"
     source_text = source.read_text(encoding="utf-8")

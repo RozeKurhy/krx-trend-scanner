@@ -26,7 +26,7 @@ SRC = ROOT / "src"
 DEFAULT_OUTPUT = ROOT / "artifacts/data/architecture/krx_production_data/v01"
 sys.path.insert(0, str(SRC))
 
-FIX_START_HEAD = "3e1ae095cb8f411bb9bb7790a57e5eecd3f4a66c"
+FIX_START_HEAD = "bba23053b806b3775159acf89cb6a0b143937ebd"
 ARCHITECTURE_ALLOWED_PATHS = {
     "src/trend_scanner/data/source_contracts.py",
     "scripts/validate_krx_production_data_architecture_v01.py",
@@ -42,6 +42,7 @@ from trend_scanner.data.source_contracts import (  # noqa: E402
     ENDPOINT_IDENTIFIER_CONTRACT,
     FOREIGN_FLOW_LINEAGE,
     HealthStatus,
+    INSTRUMENT_CLASSIFICATION_CONTRACT,
     LAYER_REGISTRY,
     LEGACY_CACHE_CLASSIFICATION,
     MigrationStatus,
@@ -296,6 +297,102 @@ def _foreign_flow_lineage_unresolved_count() -> int:
     return 0
 
 
+def _field_by_key(owner_store: str, target_field: str) -> Any | None:
+    return next(
+        (item for item in STORE_FIELD_PROVENANCE if item.owner_store == owner_store and item.target_field == target_field),
+        None,
+    )
+
+
+def _stock_master_security_kind_missing_count() -> int:
+    field = _field_by_key("StockMasterStore", "security_kind")
+    return int(
+        "KIND_STKCERT_TP_NM" not in RAW_SCHEMA_CONTRACT["basic_info_response_fields"]
+        or field is None
+        or field.source_field != "KIND_STKCERT_TP_NM"
+        or field.provenance_origin != ProvenanceOrigin.RESPONSE_FIELD
+        or field.source_semantics != "SECURITY_CERTIFICATE_KIND"
+    )
+
+
+def _stock_master_market_normalization_error_count() -> int:
+    raw_market = _field_by_key("StockMasterStore", "raw_market")
+    market = _field_by_key("StockMasterStore", "market")
+    return int(
+        raw_market is None
+        or raw_market.source_field != "MKT_TP_NM"
+        or raw_market.provenance_origin != ProvenanceOrigin.RESPONSE_FIELD
+        or market is None
+        or market.source_field is not None
+        or market.provenance_origin != ProvenanceOrigin.DERIVED
+        or "normalize_krx_market" not in (market.source_locator or "")
+        or market.source_semantics != "CANONICAL_PROJECT_MARKET"
+    )
+
+
+def _instrument_classification_contract_counts() -> tuple[int, int]:
+    store = next((item for item in STORE_CONTRACTS if item.store_id == "InstrumentClassificationStore"), None)
+    layer = next((item for item in LAYER_REGISTRY if item.layer_id == "INSTRUMENT_CLASSIFICATION"), None)
+    required = {"effective_date", "ticker", "asset_type", "classification_authority", "asset_type_source"}
+    missing = int(store is None or not required.issubset(set(store.required_fields)))
+    capability_gap = int(
+        store is None
+        or not store.pit_required
+        or _field_by_key("InstrumentClassificationStore", "asset_type") is None
+        or _field_by_key("InstrumentClassificationStore", "asset_type").source_semantics != "FORMAL_INSTRUMENT_CLASSIFICATION"
+        or _field_by_key("InstrumentClassificationStore", "classification_authority") is None
+        or _field_by_key("InstrumentClassificationStore", "asset_type_source") is None
+        or layer is None
+        or layer.operational_status != OperationalStatus.ACTIVE.value
+        or "InstrumentMetadataResolver" not in layer.current_production_source
+        or "data/reference/krx_instrument_metadata.parquet" not in layer.current_production_source
+        or "formal KRX instrument classification" not in layer.validated_source
+        or layer.target_source != "InstrumentClassificationStore"
+        or "ETF/ETN" not in INSTRUMENT_CLASSIFICATION_CONTRACT.get("etf_etn_current_authority", "")
+    )
+    return missing, capability_gap
+
+
+def _instrument_classification_consumer_missing_count() -> int:
+    required = {"ticker", "asset_type", "classification_authority", "asset_type_source", "effective_date"}
+    entry = next((item for item in CONSUMER_COMPATIBILITY if item.get("consumer") == "Instrument Metadata / Applicability"), None)
+    return int(
+        entry is None
+        or set(entry.get("required_columns", ())) != required
+        or entry.get("current_input") != "InstrumentMetadataResolver"
+        or entry.get("target_source_semantics") != "InstrumentClassificationStore PIT classification"
+        or entry.get("migration_required") != "PLANNED_CLASSIFICATION_STORE"
+        or entry.get("expected_behavior_change") != "NONE"
+    )
+
+
+def _index_family_semantic_conflict_count() -> int:
+    family = _field_by_key("IndexStore", "family")
+    endpoint = ENDPOINT_IDENTIFIER_CONTRACT.get("NATIVE_SECTOR_INDEX", {})
+    allowed = {"MARKET_INDEX", "NATIVE_SECTOR_INDEX", "KRX_BRANDED_TAXONOMY"}
+    return int(
+        family is None
+        or family.source_field is not None
+        or family.source_semantics != "LOGICAL_INDEX_FAMILY"
+        or family.provenance_origin not in {ProvenanceOrigin.DERIVED, ProvenanceOrigin.STATIC_MAPPING}
+        or not allowed.issuperset({"NATIVE_SECTOR_INDEX"})
+        or endpoint.get("canonical_identity", {}).get("index_namespace") != "NATIVE_SECTOR_INDEX"
+        or endpoint.get("canonical_identity", {}).get("mapping_key") != ("source_api", "IDX_CLSS", "IDX_NM")
+    )
+
+
+def _index_source_class_missing_count() -> int:
+    source_class = _field_by_key("IndexStore", "source_index_class")
+    endpoint_field = ENDPOINT_IDENTIFIER_CONTRACT.get("NATIVE_SECTOR_INDEX", {}).get("fields", {}).get("IDX_CLSS", {})
+    return int(
+        source_class is None
+        or source_class.source_field != "IDX_CLSS"
+        or source_class.provenance_origin != ProvenanceOrigin.RESPONSE_FIELD
+        or source_class.source_semantics != "KRX_SOURCE_INDEX_CLASS"
+        or endpoint_field.get("target_field") != "source_index_class"
+    )
+
+
 def _production_behavior_diff_guard(start_head: str, implementation_head: str) -> dict[str, Any]:
     changed = [
         item for item in _git("diff", "--name-only", f"{start_head}..{implementation_head}").splitlines()
@@ -344,8 +441,8 @@ def _write_consumer_csv(path: Path) -> None:
             writer.writerow(row)
 
 
-def _validate_contracts_fix02() -> dict[str, Any]:
-    """Validate FIX02 raw-schema, provenance, debt, and state contracts."""
+def _validate_contracts_fix03() -> dict[str, Any]:
+    """Validate FIX03 raw/canonical, classification, provenance, and state contracts."""
 
     authority_by_key: dict[tuple[str | None, str], list[Any]] = defaultdict(list)
     for item in AUTHORITY_FIELDS:
@@ -389,6 +486,12 @@ def _validate_contracts_fix02() -> dict[str, Any]:
     layer_missing_migration_status_count = sum(not item.migration_status for item in LAYER_REGISTRY)
     layer_source_state_conflict_count = _layer_source_state_conflict_count()
     foreign_flow_lineage_unresolved_count = _foreign_flow_lineage_unresolved_count()
+    security_kind_missing = _stock_master_security_kind_missing_count()
+    market_normalization_errors = _stock_master_market_normalization_error_count()
+    classification_contract_missing, classification_capability_gap = _instrument_classification_contract_counts()
+    classification_consumer_missing = _instrument_classification_consumer_missing_count()
+    index_family_conflicts = _index_family_semantic_conflict_count()
+    source_index_class_missing = _index_source_class_missing_count()
 
     source_files = _tracked_source_files()
     legacy_artifact_scan = _runtime_artifact_dependency_counts(source_files)
@@ -429,6 +532,13 @@ def _validate_contracts_fix02() -> dict[str, Any]:
         "layer_source_state_conflict_count": layer_source_state_conflict_count,
         "basic_info_semantic_conflict_count": endpoint_conflict_count,
         "foreign_flow_lineage_unresolved_count": foreign_flow_lineage_unresolved_count,
+        "stock_master_security_kind_missing_count": security_kind_missing,
+        "stock_master_market_normalization_error_count": market_normalization_errors,
+        "instrument_classification_contract_missing_count": classification_contract_missing,
+        "instrument_classification_capability_gap_count": classification_capability_gap,
+        "instrument_classification_consumer_missing_count": classification_consumer_missing,
+        "index_family_semantic_conflict_count": index_family_conflicts,
+        "index_source_class_missing_count": source_index_class_missing,
         **provenance_errors,
         "legacy_runtime_artifact_dependency_count": legacy_artifact_scan["legacy_runtime_artifact_dependency_count"],
         "legacy_runtime_artifact_dependency_unclassified_count": legacy_artifact_scan["legacy_runtime_artifact_dependency_unclassified_count"],
@@ -439,6 +549,10 @@ def _validate_contracts_fix02() -> dict[str, Any]:
         "store_required_field_missing_count", "store_field_ambiguous_authority_count", "layer_missing_operational_status_count",
         "layer_missing_migration_status_count", "layer_source_state_conflict_count", "basic_info_semantic_conflict_count",
         "consumer_unresolved_count", "dependency_cycle_count",
+        "stock_master_security_kind_missing_count", "stock_master_market_normalization_error_count",
+        "instrument_classification_contract_missing_count", "instrument_classification_capability_gap_count",
+        "instrument_classification_consumer_missing_count", "index_family_semantic_conflict_count",
+        "index_source_class_missing_count",
         "production_behavior_change_count", "declared_nonexistent_response_field_count",
         "request_derived_field_contract_error_count", "static_mapping_field_contract_error_count",
         "legacy_runtime_artifact_dependency_unclassified_count", "target_runtime_artifact_dependency_count",
@@ -446,7 +560,7 @@ def _validate_contracts_fix02() -> dict[str, Any]:
         "validation_source_head_mismatch_count",
     )
     blockers = [name for name in required_zero if counters[name] != 0]
-    status = "READY_FOR_ARCHITECT_KRX_PRODUCTION_DATA_ARCHITECTURE_V01_FIX02_REVIEW" if not blockers else "BLOCKED_ARCHITECTURE_CONTRACT_FIX02"
+    status = "READY_FOR_ARCHITECT_KRX_PRODUCTION_DATA_ARCHITECTURE_V01_FIX03_REVIEW" if not blockers else "BLOCKED_ARCHITECTURE_CONTRACT_FIX03"
     recommendation = "RECOMMEND_PROCEED_TO_ADJUSTED_PRICE_STORE_V01" if not blockers else "BLOCKED_MORE_EVIDENCE_REQUIRED"
     return {
         "architecture_version": ARCHITECTURE_VERSION,
@@ -480,7 +594,7 @@ def _validate_contracts_fix02() -> dict[str, Any]:
 
 
 # Keep the public helper name stable for tests and downstream local tooling.
-_validate_contracts = _validate_contracts_fix02
+_validate_contracts = _validate_contracts_fix03
 
 
 def main() -> int:
@@ -499,6 +613,7 @@ def main() -> int:
     _json_write(output / "repository_v2_contract.json", bundle["repository_v2"])
     _json_write(output / "endpoint_identifier_contract.json", bundle["endpoint_identifier_contract"])
     _json_write(output / "source_schema_contract.json", bundle["raw_schema_contract"])
+    _json_write(output / "instrument_classification_contract.json", bundle["instrument_classification_contract"])
     _json_write(output / "legacy_runtime_artifact_dependencies.json", {"dependency_count": len(bundle["legacy_runtime_dependencies"]), "dependencies": bundle["legacy_runtime_dependencies"]})
     _write_consumer_csv(output / "consumer_compatibility_matrix.csv")
     _json_write(output / "migration_dependency_graph.json", bundle["dependency_graph"])
@@ -511,7 +626,7 @@ def main() -> int:
     (output / recommendation).write_text(
         "architecture_recommendation.md\n\n"
         "================================================================================\n"
-        "KRX Production Data Architecture v01 FIX02 Recommendation\n"
+        "KRX Production Data Architecture v01 FIX03 Recommendation\n"
         "================================================================================\n\n"
         f"STATUS: {result['status']}\n"
         f"RECOMMENDATION: {result['recommendation']}\n\n"
