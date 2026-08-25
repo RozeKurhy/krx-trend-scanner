@@ -70,6 +70,17 @@ RS_COMPARE_FIELDS = (
     "market_return_12m", "market_rs_3m", "market_rs_6m", "market_rs_12m",
     "market_anchor_date_3m", "market_anchor_date_6m", "market_anchor_date_12m",
 )
+RS_NUMERIC_FIELDS = (
+    "market_return_3m", "market_return_6m", "market_return_12m",
+    "market_rs_3m", "market_rs_6m", "market_rs_12m",
+)
+RS_IDENTITY_FIELDS = (
+    "market_rs_data_status", "market_benchmark_name", "market_benchmark_code",
+    "market_benchmark_last_observation_date", "market_anchor_date_3m",
+    "market_anchor_date_6m", "market_anchor_date_12m",
+)
+MARKET_INDEX_CODES = frozenset({"1001", "2001"})
+RS_NUMERIC_TOLERANCE = 1e-12
 
 
 def _read_env_value(path: Path, name: str) -> str:
@@ -158,6 +169,56 @@ def _load_staging() -> pd.DataFrame:
         raise MarketDataError("BLOCKED_STAGING_INTEGRITY") from exc
 
 
+def validate_complete_staged_date(frame: pd.DataFrame, day: str) -> dict[str, Any]:
+    """Return the fail-closed completeness decision for one staged date."""
+
+    date_text = _date(day)
+    if frame.empty:
+        rows = frame
+    else:
+        rows = frame[frame["date"].astype(str) == date_text]
+    codes = [str(value) for value in rows.get("index_code", pd.Series(dtype="string")).tolist()]
+    duplicate_count = int(rows.duplicated(subset=["date", "family", "index_code"]).sum()) if not rows.empty else 0
+    if duplicate_count:
+        status = "FAIL_STAGING_PAIR_DUPLICATE"
+    elif len(rows) != 2 or set(codes) != MARKET_INDEX_CODES or len(set(codes)) != 2:
+        status = "BLOCKED_STAGING_PAIR_INCOMPLETE" if set(codes).issubset(MARKET_INDEX_CODES) else "FAIL_STAGING_PAIR_INVALID"
+    else:
+        status = "COMPLETE"
+    return {
+        "date": date_text,
+        "status": status,
+        "row_count": int(len(rows)),
+        "codes": sorted(set(codes)),
+        "duplicate_count": duplicate_count,
+    }
+
+
+def validate_staging_reuse(frame: pd.DataFrame, target_dates: Iterable[str]) -> dict[str, Any]:
+    """Validate an existing staging file without fetching or rewriting it."""
+
+    normalized = normalize_index_frame(frame, MARKET_INDEX_FAMILY)
+    targets = {_date(day) for day in target_dates}
+    staged_dates = set(normalized["date"].astype(str)) if not normalized.empty else set()
+    extra_dates = sorted(staged_dates - targets)
+    if extra_dates:
+        raise MarketDataError("BLOCKED_STAGING_EXTRA_DATE")
+    reports = [validate_complete_staged_date(normalized, day) for day in sorted(staged_dates)]
+    incomplete = [item for item in reports if item["status"] != "COMPLETE"]
+    if incomplete:
+        code = incomplete[0]["status"]
+        raise MarketDataError(code)
+    return {
+        "row_count": int(len(normalized)),
+        "date_count": int(len(staged_dates)),
+        "pair_complete_date_count": int(len(reports)),
+        "incomplete_pair_date_count": int(len(incomplete)),
+        "staged_dates": sorted(staged_dates),
+        "extra_calendar_date_count": len(extra_dates),
+        "decision": "STAGING_REUSE_AUTHORIZED",
+    }
+
+
 def _save_staging(frame: pd.DataFrame, *, start: str, end: str) -> dict[str, Any]:
     store = IndexStore(STAGING_DIR)
     metadata = store.save_family_full(
@@ -218,9 +279,12 @@ class MarketIndexMigrationRunner:
         self.builder = KrxMarketIndexBuilder(client=self.client, throttle_seconds=throttle_seconds)
 
     def run(self, calendar: Mapping[str, Any], *, resume: bool = True, publish: bool = False, max_dates: int | None = None) -> dict[str, Any]:
+        if publish:
+            raise MarketDataError("PRODUCTION_PUBLISH_REQUIRES_FINALIZATION")
         target_dates = list(calendar.get("target_dates", []))
         existing = _load_staging() if resume else pd.DataFrame(columns=list(INDEX_STORE_COLUMNS))
-        complete_existing = set(existing["date"].astype(str).unique()) if not existing.empty else set()
+        reuse = validate_staging_reuse(existing, target_dates)
+        complete_existing = set(reuse["staged_dates"])
         pending = [day for day in target_dates if day not in complete_existing]
         quota_before = _quota_usage(self.quota)
         capacity = _available_whole_dates(self.quota, len(pending))
@@ -234,7 +298,8 @@ class MarketIndexMigrationRunner:
         for day in selected:
             try:
                 frame, report = self.builder.fetch_date(day)
-                if report["status"] != "COMPLETE" or len(frame) != 2:
+                pair = validate_complete_staged_date(frame, day)
+                if report["status"] != "COMPLETE" or pair["status"] != "COMPLETE":
                     raise KrxMarketIndexError("BLOCKED_KRX_INDEX_SCHEMA", "target trading date did not yield two rows")
                 existing = pd.concat([existing, frame], ignore_index=True)
                 existing = normalize_index_frame(existing, MARKET_INDEX_FAMILY)
@@ -250,11 +315,6 @@ class MarketIndexMigrationRunner:
         result["dates_fetched_this_run"] = fetched_dates
         result["dates_resumed_or_skipped"] = sorted(complete_existing)
         result["production_index_store_publish_count"] = 0
-        if not blockers and not pending_after and publish:
-            # Production publication is deliberately a single full replacement.
-            IndexStore(PRODUCTION_PARQUET.parent).save_family_full(MARKET_INDEX_FAMILY, existing)
-            result["production_index_store_publish_count"] = 1
-            result["production_integrity"] = IndexStore(PRODUCTION_PARQUET.parent).verify_family(MARKET_INDEX_FAMILY)
         return result
 
     def _result(self, calendar: Mapping[str, Any], frame: pd.DataFrame, pending: list[str], quota_before: Mapping[str, Any], *, blockers: list[str]) -> dict[str, Any]:
@@ -262,7 +322,7 @@ class MarketIndexMigrationRunner:
         request_count = int(getattr(self.client, "request_count", 0))
         target_count = int(calendar.get("complete_trading_date_count", len(calendar.get("target_dates", []))))
         complete_count = int(frame["date"].nunique()) if not frame.empty else 0
-        status = "READY_FOR_ARCHITECT_KRX_INDEX_MIGRATION_V01_REVIEW" if not blockers and complete_count == target_count else "PARTIAL_RESUMABLE_KRX_INDEX_MIGRATION_V01"
+        status = "PARTIAL_RESUMABLE_KRX_INDEX_MIGRATION_V01"
         return {
             "status": status,
             "target_date_count": target_count,
@@ -301,20 +361,39 @@ def compare_legacy_market_parity(new_frame: pd.DataFrame, reference_path: Path =
     for frame in (left, reference):
         frame["date"] = frame["date"].astype(str)
         frame["index_code"] = frame["index_code"].astype(str)
-    left = left[left["index_code"].isin({"1001", "2001"})]
-    reference = reference[reference["index_code"].isin({"1001", "2001"})]
+    left = left[left["index_code"].isin(MARKET_INDEX_CODES)]
+    reference = reference[reference["index_code"].isin(MARKET_INDEX_CODES)]
+    session_counts = reference.groupby("index_code")["date"].nunique().to_dict()
+    if any(int(session_counts.get(code, 0)) < 253 for code in MARKET_INDEX_CODES):
+        raise MarketDataError("BLOCKED_LEGACY_MARKET_REFERENCE_COVERAGE")
     left_map = {(row.date, row.index_code): row for row in left.itertuples()}
     ref_map = {(row.date, row.index_code): row for row in reference.itertuples()}
+    if len(left_map) != len(left) or len(ref_map) != len(reference):
+        raise MarketDataError("BLOCKED_LEGACY_MARKET_REFERENCE_DUPLICATE_KEY")
+    reference_dates = {key[0] for key in ref_map}
+    reference_date_min = min(reference_dates) if reference_dates else None
+    reference_date_max = max(reference_dates) if reference_dates else None
+    new_only_keys = set(left_map) - set(ref_map)
+    extra_within_scope = {
+        key for key in new_only_keys
+        if reference_date_min is not None and reference_date_min <= key[0] <= reference_date_max
+    }
+    ignored_outside_scope = new_only_keys - extra_within_scope
     rows: list[dict[str, Any]] = []
-    compared_fields = exact_fields = mismatches = 0
-    for key in sorted(set(left_map) | set(ref_map)):
+    compared_fields = exact_fields = ohlc_mismatches = 0
+    missing_rows = 0
+    for key in sorted(set(ref_map)):
         lrow, rrow = left_map.get(key), ref_map.get(key)
         row: dict[str, Any] = {"date": key[0], "index_code": key[1], "index_name": getattr(lrow or rrow, "index_name", "")}
-        row_mismatch = lrow is None or rrow is None
+        row_mismatch = lrow is None
+        missing_rows += int(lrow is None)
         for field in OHLC_FIELDS:
             lv = getattr(lrow, field, None) if lrow is not None else None
             rv = getattr(rrow, field, None) if rrow is not None else None
-            match = lv is not None and rv is not None and Decimal(str(lv)) == Decimal(str(rv))
+            try:
+                match = lv is not None and rv is not None and Decimal(str(lv)) == Decimal(str(rv))
+            except (InvalidOperation, ValueError):
+                match = False
             row[f"krx_{field}"] = "" if lv is None else str(lv)
             row[f"reference_{field}"] = "" if rv is None else str(rv)
             row[f"{field}_match"] = bool(match)
@@ -322,19 +401,30 @@ def compare_legacy_market_parity(new_frame: pd.DataFrame, reference_path: Path =
             exact_fields += int(match)
             row_mismatch |= not match
         row["row_mismatch"] = bool(row_mismatch)
-        mismatches += int(row_mismatch)
+        ohlc_mismatches += int(row_mismatch and lrow is not None)
         rows.append(row)
     result = pd.DataFrame(rows)
+    mismatch_count = missing_rows + ohlc_mismatches
     summary = {
         **reference_info,
+        "reference_date_min": reference_date_min,
+        "reference_date_max": reference_date_max,
+        "reference_key_count": len(ref_map),
+        "reference_date_count": len(reference_dates),
+        "1001_session_count": int(session_counts.get("1001", 0)),
+        "2001_session_count": int(session_counts.get("2001", 0)),
+        "compared_key_count": len(set(left_map) & set(ref_map)),
         "compared_index_count": len({key[1] for key in set(left_map) & set(ref_map)}),
         "compared_date_count": len({key[0] for key in set(left_map) & set(ref_map)}),
         "compared_field_count": compared_fields,
         "exact_field_count": exact_fields,
-        "mismatch_count": mismatches,
-        "missing_krx_row_count": len(set(ref_map) - set(left_map)),
-        "missing_reference_row_count": len(set(left_map) - set(ref_map)),
-        "status": "PASS" if mismatches == 0 else "FAIL",
+        "ohlc_mismatch_count": ohlc_mismatches,
+        "mismatch_count": mismatch_count,
+        "missing_krx_row_count": missing_rows,
+        "missing_reference_row_count": len(extra_within_scope),
+        "extra_krx_within_reference_scope_count": len(extra_within_scope),
+        "ignored_krx_outside_reference_scope_count": len(ignored_outside_scope),
+        "status": "PASS" if mismatch_count == 0 else "FAIL",
     }
     return result, summary
 
@@ -348,21 +438,155 @@ def market_rs_parity(new_frame: pd.DataFrame, reference_path: Path = LEGACY_REFE
         old_result = compute_relative_strength_features("SYNTH01", str(dates.max().date()), stock, old, market)
         new_result = compute_relative_strength_features("SYNTH01", str(dates.max().date()), stock, new_frame, market)
         old_dict, new_dict = old_result.to_dict(), new_result.to_dict()
-        numeric_diffs = [abs(float(old_dict[field]) - float(new_dict[field])) for field in RS_COMPARE_FIELDS if isinstance(old_dict.get(field), (int, float)) and isinstance(new_dict.get(field), (int, float))]
-        fields_match = all(old_dict.get(field) == new_dict.get(field) for field in RS_COMPARE_FIELDS if field not in {"market_return_3m", "market_return_6m", "market_return_12m", "market_rs_3m", "market_rs_6m", "market_rs_12m"})
+        identity_match = all(old_dict.get(field) == new_dict.get(field) for field in RS_IDENTITY_FIELDS)
+        numeric_diffs: list[float] = []
+        numeric_checks: dict[str, bool] = {}
+        for field in RS_NUMERIC_FIELDS:
+            old_value, new_value = old_dict.get(field), new_dict.get(field)
+            if old_value is None or new_value is None:
+                numeric_checks[field] = old_value is None and new_value is None
+            else:
+                try:
+                    diff = abs(float(old_value) - float(new_value))
+                    numeric_diffs.append(diff)
+                    numeric_checks[field] = diff <= RS_NUMERIC_TOLERANCE
+                except (TypeError, ValueError):
+                    numeric_checks[field] = False
+        status_match = old_dict.get("market_rs_data_status") == new_dict.get("market_rs_data_status") == "READY"
+        ready_numeric_complete = (
+            not status_match
+            or all(old_dict.get(field) is not None and new_dict.get(field) is not None for field in RS_NUMERIC_FIELDS)
+        )
+        returns_match = all(numeric_checks[f"market_return_{h}"] for h in ("3m", "6m", "12m"))
+        rs_match = all(numeric_checks[f"market_rs_{h}"] for h in ("3m", "6m", "12m"))
+        all_numeric_match = all(numeric_checks.values()) and ready_numeric_complete
+        case_status = all((status_match, identity_match, returns_match, rs_match, all_numeric_match))
         cases[market] = {
             "old_status": old_dict["market_rs_data_status"],
             "new_status": new_dict["market_rs_data_status"],
+            "status_match": status_match,
+            "identity_fields_match": identity_match,
             "benchmark_code_match": old_dict["market_benchmark_code"] == new_dict["market_benchmark_code"] == code,
             "benchmark_name_match": old_dict["market_benchmark_name"] == new_dict["market_benchmark_name"] == name,
             "last_observation_match": old_dict["market_benchmark_last_observation_date"] == new_dict["market_benchmark_last_observation_date"],
             "anchor_dates_match": all(old_dict[f"market_anchor_date_{h}"] == new_dict[f"market_anchor_date_{h}"] for h in ("3m", "6m", "12m")),
-            "market_returns_match": all(abs(float(old_dict[f"market_return_{h}"]) - float(new_dict[f"market_return_{h}"])) <= 1e-12 for h in ("3m", "6m", "12m") if old_dict[f"market_return_{h}"] is not None and new_dict[f"market_return_{h}"] is not None),
-            "market_rs_match": all(abs(float(old_dict[f"market_rs_{h}"]) - float(new_dict[f"market_rs_{h}"])) <= 1e-12 for h in ("3m", "6m", "12m") if old_dict[f"market_rs_{h}"] is not None and new_dict[f"market_rs_{h}"] is not None),
+            "market_returns_match": returns_match,
+            "market_rs_match": rs_match,
+            "numeric_fields_match": all_numeric_match,
+            "ready_numeric_complete": ready_numeric_complete,
             "max_abs_numeric_diff": max(numeric_diffs, default=None),
-            "status": "PASS" if fields_match and old_dict["market_rs_data_status"] == new_dict["market_rs_data_status"] == "READY" else "FAIL",
+            "status": "PASS" if case_status else "FAIL",
         }
     return {"cases": cases, "status": "PASS" if all(item["status"] == "PASS" for item in cases.values()) else "FAIL"}
+
+
+def validate_quota_reconciliation(ledger: Mapping[str, Any]) -> dict[str, Any]:
+    """Validate phase/run-scoped quota accounting; never infer across runs."""
+
+    required = {
+        "phase_global_before", "phase_global_after", "phase_global_delta",
+        "pilot_delta", "backfill_global_before", "backfill_global_after",
+        "backfill_delta", "client_request_count_phase", "audit_entry_count_phase",
+    }
+    missing = sorted(required - set(ledger))
+    if missing:
+        return {"status": "FAIL", "reason": "missing_fields", "missing_fields": missing}
+    phase_delta = int(ledger["phase_global_after"]) - int(ledger["phase_global_before"])
+    expected_phase = int(ledger["pilot_delta"]) + int(ledger["backfill_delta"])
+    checks = {
+        "phase_delta_match": int(ledger["phase_global_delta"]) == phase_delta,
+        "run_delta_match": int(ledger["backfill_delta"]) == int(ledger["backfill_global_after"]) - int(ledger["backfill_global_before"]),
+        "phase_components_match": phase_delta == expected_phase,
+        "client_audit_match": int(ledger["client_request_count_phase"]) == int(ledger["audit_entry_count_phase"]) == phase_delta,
+    }
+    runs = ledger.get("runs", [])
+    if runs:
+        checks["run_ledger_reconciles"] = all(
+            int(run.get("global_delta", -1)) == int(run.get("client_request_count", -2)) == int(run.get("audit_entry_count", -3))
+            and int(run.get("global_delta", -1)) == sum(int(value) for value in (run.get("endpoint_deltas") or {}).values())
+            for run in runs
+        )
+    else:
+        checks["run_ledger_reconciles"] = False
+    return {"status": "PASS" if all(checks.values()) else "FAIL", **checks}
+
+
+def _gate_status(value: Mapping[str, Any] | None, *, default_reason: str) -> dict[str, Any]:
+    if value is None:
+        return {"status": "FAIL", "reason": default_reason}
+    status = str(value.get("status", "FAIL"))
+    return {**dict(value), "status": "PASS" if status == "PASS" else "FAIL"}
+
+
+def finalize_market_index_migration(
+    *,
+    calendar: Mapping[str, Any],
+    staging_frame: pd.DataFrame | None = None,
+    legacy_reference_path: Path = LEGACY_REFERENCE,
+    quota_ledger: Mapping[str, Any] | None = None,
+    provenance_audit: Mapping[str, Any] | None = None,
+    secret: str = "",
+    diff_guard: Mapping[str, Any] | None = None,
+    publish: bool = False,
+    production_writer: Any | None = None,
+) -> dict[str, Any]:
+    """Run the ordered finalization gates; production write is the last action."""
+
+    frame = staging_frame if staging_frame is not None else _load_staging()
+    gates: dict[str, Any] = {}
+    production_write_count = 0
+
+    # 1. staging verification / 2. full target coverage / 3. exact pairs
+    try:
+        target_dates = {_date(value) for value in calendar.get("target_dates", [])}
+        normalized = normalize_index_frame(frame, MARKET_INDEX_FAMILY)
+        reuse = validate_staging_reuse(normalized, target_dates)
+        gates["staging_verification_gate"] = {"status": "PASS", **reuse}
+    except Exception as exc:
+        gates["staging_verification_gate"] = {"status": "FAIL", "reason": str(exc)}
+        normalized = frame
+    target_dates = {_date(value) for value in calendar.get("target_dates", [])}
+    observed_dates = set(normalized["date"].astype(str)) if isinstance(normalized, pd.DataFrame) and not normalized.empty else set()
+    gates["coverage_gate"] = {"status": "PASS" if observed_dates == target_dates else "FAIL", "target_date_count": len(target_dates), "observed_date_count": len(observed_dates)}
+    pair_reports = [validate_complete_staged_date(normalized, day) for day in sorted(observed_dates)] if isinstance(normalized, pd.DataFrame) else []
+    gates["pair_gate"] = {"status": "PASS" if len(pair_reports) == len(observed_dates) and all(item["status"] == "COMPLETE" for item in pair_reports) else "FAIL", "reports": pair_reports}
+
+    # 4. reference SHA / 5. legacy OHLC / 6. market RS
+    try:
+        ref_info = legacy_reference_summary(legacy_reference_path)
+        gates["legacy_reference_sha_gate"] = {**ref_info, "status": "PASS" if ref_info.get("reference_hash_match") else "FAIL"}
+        _, legacy_summary = compare_legacy_market_parity(normalized, legacy_reference_path)
+        gates["legacy_ohlc_parity_gate"] = legacy_summary
+    except Exception as exc:
+        gates.setdefault("legacy_reference_sha_gate", {"status": "FAIL", "reason": str(exc)})
+        gates["legacy_ohlc_parity_gate"] = {"status": "FAIL", "reason": str(exc)}
+    try:
+        gates["market_rs_parity_gate"] = market_rs_parity(normalized, legacy_reference_path)
+    except Exception as exc:
+        gates["market_rs_parity_gate"] = {"status": "FAIL", "reason": str(exc)}
+
+    # 7. provenance/network audit / 8. secret scan / 9. diff-source freeze
+    gates["provenance_network_gate"] = _gate_status(provenance_audit, default_reason="provenance audit not supplied")
+    scan = secret_scan(secret)
+    gates["secret_gate"] = {**scan, "status": "PASS" if int(scan.get("secret_occurrence_count", 0)) == 0 else "FAIL"}
+    gates["diff_source_freeze_gate"] = _gate_status(diff_guard, default_reason="diff/source freeze diagnostic not supplied")
+    ordered = (
+        "staging_verification_gate", "coverage_gate", "pair_gate", "legacy_reference_sha_gate",
+        "legacy_ohlc_parity_gate", "market_rs_parity_gate", "provenance_network_gate",
+        "secret_gate", "diff_source_freeze_gate", "quota_gate",
+    )
+    quota_result = validate_quota_reconciliation(quota_ledger or {})
+    gates["quota_gate"] = quota_result
+    gates["all_gates_pass"] = {"status": "PASS" if all(gates.get(name, {}).get("status") == "PASS" for name in ordered) else "FAIL", "order": list(ordered)}
+
+    if publish and gates["all_gates_pass"]["status"] == "PASS":
+        writer = production_writer or (lambda value: IndexStore(PRODUCTION_PARQUET.parent).save_family_full(MARKET_INDEX_FAMILY, value))
+        writer(normalized)
+        production_write_count = 1
+        gates["production_reload_integrity_gate"] = IndexStore(PRODUCTION_PARQUET.parent).verify_family(MARKET_INDEX_FAMILY) if production_writer is None else {"status": "PASS"}
+    else:
+        gates["production_reload_integrity_gate"] = {"status": "NOT_RUN"}
+    return {"status": "PASS" if gates["all_gates_pass"]["status"] == "PASS" and (not publish or production_write_count == 1) else "FAIL", "gates": gates, "production_index_store_publish_count": production_write_count}
 
 
 def secret_scan(secret: str) -> dict[str, Any]:
@@ -389,9 +613,9 @@ def write_migration_artifacts(*, calendar: Mapping[str, Any], pilot: Mapping[str
     safe_write_json(ARTIFACT_DIR / "pilot_summary.json", {**pilot, "validation_source_head": source_head}, auth_key)
     safe_write_json(ARTIFACT_DIR / "backfill_progress_summary.json", {**backfill, "validation_source_head": source_head}, auth_key)
     safe_write_json(ARTIFACT_DIR / "coverage_summary.json", {"raw_target_date_count": calendar.get("complete_trading_date_count"), "index_store_date_count": backfill.get("complete_date_count"), "index_store_row_count": backfill.get("staging_rows"), "index_count": 2, "codes": ["1001", "2001"], "status": "PASS" if backfill.get("status", "").startswith("READY_") else "PARTIAL"}, auth_key)
-    safe_write_json(ARTIFACT_DIR / "network_request_summary.json", {"krx_request_count": backfill.get("krx_request_count", 0), "kospi_dd_trd_request_count": getattr(backfill, "kospi_dd_trd_request_count", 0), "kosdaq_dd_trd_request_count": getattr(backfill, "kosdaq_dd_trd_request_count", 0), "krx_dd_trd_request_count": 0, "retry_count": backfill.get("retry_count", 0), "audit_entry_count": backfill.get("audit_entry_count", 0), "pykrx_live_market_calls": 0}, auth_key)
+    safe_write_json(ARTIFACT_DIR / "network_request_summary.json", {"krx_request_count": backfill.get("krx_request_count", 0), "kospi_dd_trd_request_count": backfill.get("kospi_dd_trd_request_count", 0), "kosdaq_dd_trd_request_count": backfill.get("kosdaq_dd_trd_request_count", 0), "krx_dd_trd_request_count": 0, "retry_count": backfill.get("retry_count", 0), "audit_entry_count": backfill.get("audit_entry_count", 0), "pykrx_live_market_calls": 0}, auth_key)
     safe_write_json(ARTIFACT_DIR / "secret_scan.json", secret_scan(auth_key), auth_key)
-    safe_write_json(ARTIFACT_DIR / "market_index_migration_v01_manifest.json", {"work_id": "KRX_INDEX_MIGRATION_V01", "start_head": START_HEAD, "implementation_head": source_head, "validation_source_head": source_head, "status": backfill.get("status"), "blockers": backfill.get("blockers", []), "artifact_files": sorted(path.name for path in ARTIFACT_DIR.iterdir() if path.is_file())}, auth_key)
+    safe_write_json(ARTIFACT_DIR / "market_index_migration_v01_manifest.json", {"work_id": "KRX_INDEX_MIGRATION_V01", "start_head": START_HEAD, "phase_start_head": START_HEAD, "original_implementation_head": "f20e428c0b8d6a6f7bd6a87e7ceb5395c98edf62", "fix01_start_head": "b7f265bd93c19dd72953553787e34b382a9678f4", "fix01_validation_source_head": source_head, "artifact_generation_source_head": source_head, "status": backfill.get("status"), "blockers": backfill.get("blockers", []), "artifact_files": sorted(path.name for path in ARTIFACT_DIR.iterdir() if path.is_file())}, auth_key)
 
 
 def main() -> int:
@@ -399,7 +623,7 @@ def main() -> int:
     parser.add_argument("--start", default=START_DATE)
     parser.add_argument("--end", default=END_DATE)
     parser.add_argument("--pilot", action="store_true")
-    parser.add_argument("--resume", action="store_true")
+    parser.add_argument("--resume", dest="resume", action="store_true", default=True, help="reuse valid complete staged dates (default; staging reset is not supported)")
     parser.add_argument("--publish", action="store_true")
     args = parser.parse_args()
     calendar = derive_raw_trading_calendar(args.start, args.end)
@@ -414,7 +638,7 @@ def main() -> int:
         backfill = {"status": pilot.get("status"), "krx_request_count": pilot.get("krx_request_count"), "blockers": pilot.get("blockers", [])}
     else:
         pilot = {"status": "NOT_RUN", "request_count": 0}
-        backfill = runner.run(calendar, resume=args.resume or True, publish=args.publish)
+        backfill = runner.run(calendar, resume=args.resume, publish=args.publish)
     write_migration_artifacts(calendar=calendar, pilot=pilot, backfill=backfill, source_head=subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(), auth_key=auth_key)
     print(json.dumps({"pilot": pilot, "backfill": backfill}, ensure_ascii=False, indent=2))
     return 0 if str(backfill.get("status", "")).startswith(("READY_", "PARTIAL_")) else 1
@@ -426,5 +650,5 @@ if __name__ == "__main__":
 
 __all__ = [
     "ARTIFACT_DIR", "END_DATE", "LEGACY_REFERENCE", "LEGACY_REFERENCE_SHA256", "PILOT_DATES", "START_DATE", "START_HEAD",
-    "MarketIndexMigrationRunner", "compare_legacy_market_parity", "derive_raw_trading_calendar", "legacy_reference_summary", "load_auth_key", "market_rs_parity", "mapping_contract_sha256", "safe_write_json", "secret_scan", "write_migration_artifacts",
+    "MarketIndexMigrationRunner", "compare_legacy_market_parity", "derive_raw_trading_calendar", "finalize_market_index_migration", "legacy_reference_summary", "load_auth_key", "market_rs_parity", "mapping_contract_sha256", "safe_write_json", "secret_scan", "validate_complete_staged_date", "validate_quota_reconciliation", "validate_staging_reuse", "write_migration_artifacts",
 ]
