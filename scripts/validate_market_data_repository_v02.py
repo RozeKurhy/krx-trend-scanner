@@ -1655,6 +1655,7 @@ def _write_evidence(
         ],
         "blockers": blockers,
         "warnings": live.get("performance_warnings", []),
+        "provenance": provenance,
         "generated_at": datetime.now(timezone.utc).isoformat(),
     }
     _write_json("FIX03_trading_session_semantics.json", semantics)
