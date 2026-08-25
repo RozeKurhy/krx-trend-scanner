@@ -1,22 +1,24 @@
 {
-  "mapping_version": "KRX_MARKET_INDEX_MAP_V01",
-  "mapping_sha256": "58a53794aef65dc04f0de62d7b4d0251eaf5dad8db8a32bae1986b90fefbe231",
   "entries": {
     "1001": {
+      "endpoint": "/idx/kospi_dd_trd",
       "family": "MARKET_INDEX",
+      "index_code": "1001",
       "market": "KOSPI",
       "source_api": "kospi_dd_trd",
-      "endpoint": "/idx/kospi_dd_trd",
       "source_index_class": "KOSPI",
       "source_index_name": "코스피"
     },
     "2001": {
+      "endpoint": "/idx/kosdaq_dd_trd",
       "family": "MARKET_INDEX",
+      "index_code": "2001",
       "market": "KOSDAQ",
       "source_api": "kosdaq_dd_trd",
-      "endpoint": "/idx/kosdaq_dd_trd",
       "source_index_class": "KOSDAQ",
       "source_index_name": "코스닥"
     }
-  }
+  },
+  "mapping_sha256": "58a53794aef65dc04f0de62d7b4d0251eaf5dad8db8a32bae1986b90fefbe231",
+  "mapping_version": "KRX_MARKET_INDEX_MAP_V01"
 }
