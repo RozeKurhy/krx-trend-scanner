@@ -1,64 +1,127 @@
 {
-  "KRX_request_count": 0,
-  "OpenDART_request_count": 0,
-  "PyKRX_request_count": 0,
-  "adjusted_write_count": 0,
-  "ancillary_columns": [
-    "volume",
-    "trading_value",
-    "market_cap",
-    "listed_shares"
-  ],
+  "architect_review_start_head": "4d39251a69789f7e23489c0d8a03628bc0540634",
+  "artifacts_runtime_dependency_count": 0,
   "blockers": [
-    "BLOCKED_NO_PRODUCTION_OVERLAP_SAMPLE"
+    "BLOCKED_EXTERNAL_PYKRX_UNAVAILABLE",
+    "BLOCKED_NO_LIVE_AUTHORITY_SAMPLE"
   ],
   "bounded_regression": {
-    "command": "uv run pytest -q -p no:cacheprovider tests/test_repository.py tests/test_repository_v2.py tests/test_adjusted_price_store.py tests/test_krx_raw_stock_store.py tests/test_krx_identifier_contract_errata_v01.py tests/test_krx_production_data_architecture_v01.py",
-    "duration_seconds": 1.5,
+    "command": "uv run pytest -q -p no:cacheprovider tests/test_repository.py tests/test_repository_v2.py tests/test_market_data_repository_v02_validation.py tests/test_adjusted_price_store.py tests/test_krx_raw_stock_store.py tests/test_krx_identifier_contract_errata_v01.py tests/test_krx_production_data_architecture_v01.py",
+    "duration_seconds": 1.69,
     "failed": 0,
-    "passed": 131,
+    "passed": 142,
     "status": "PASS"
   },
   "consumer_auto_migration_count": 0,
-  "corporate_action_state_write_count": 0,
-  "daily_columns": [
-    "open",
-    "high",
-    "low",
-    "close",
-    "volume",
-    "trading_value"
-  ],
-  "frozen_contract_path": "artifacts/data/architecture/krx_production_data/v01/repository_v2_contract.json",
-  "generated_at": "2026-08-25T06:08:40.660836+00:00",
-  "implementation_class": "MarketDataRepositoryV2",
-  "implementation_head": "b04e871881a857640d86422c09c57d7c6a642d62",
+  "consumer_migration_prerequisite": true,
+  "fix01_validation_source_head": "237784e3a277a5bde4cb0c915954b046ac4e7332",
+  "frozen_contract_changed": false,
+  "frozen_store_sources_changed": false,
+  "generated_at": "2026-08-25T06:50:55.420397+00:00",
+  "git_diff_check": {
+    "command": "git diff --check 0f7b35be5f6ac3840266e0580e37c2e4519dbf7c HEAD",
+    "return_code": 0,
+    "status": "PASS",
+    "stderr": "",
+    "stdout": "",
+    "validation_head": "237784e3a277a5bde4cb0c915954b046ac4e7332"
+  },
   "known_limitations": [
-    "PRODUCTION_PROBE_REQUIRES_LOCAL_ADJUSTED_STORE"
+    "PRODUCTION_ADJUSTED_STORE_POPULATION_NOT_IMPLEMENTED",
+    "FULL_REGRESSION_CLOSURE_DEFERRED"
   ],
-  "network_data_request_count": 0,
-  "phase": "MARKET_DATA_REPOSITORY_V02",
-  "production_probe": {
-    "alphanumeric_probe": {
+  "legacy_repository_changed": false,
+  "live_execution_head": "237784e3a277a5bde4cb0c915954b046ac4e7332",
+  "live_probe": {
+    "KRX_open_api_request_count": 0,
+    "OpenDART_request_count": 0,
+    "all_requested_samples_pass": false,
+    "alphanumeric": {
       "performed": false,
       "status": "NOT_RUN"
     },
     "blockers": [
-      "BLOCKED_NO_PRODUCTION_OVERLAP_SAMPLE"
+      "BLOCKED_EXTERNAL_PYKRX_UNAVAILABLE",
+      "BLOCKED_NO_LIVE_AUTHORITY_SAMPLE"
     ],
-    "comparisons": [],
-    "performance": [],
-    "sample_date_ranges": {},
-    "sample_tickers": [],
-    "samsung_probe": {
+    "comparisons": [
+      {
+        "error_code": "INVALID_REPOSITORY_V2_OUTPUT",
+        "error_message": "INVALID_REPOSITORY_V2_OUTPUT",
+        "requested_end": "2018-06-30",
+        "requested_start": "2018-04-01",
+        "status": "FAIL",
+        "ticker": "005930",
+        "total_elapsed_seconds": 3.00851
+      }
+    ],
+    "corporate_action_state_write_count": 0,
+    "fallback_request_count": 0,
+    "minimum_required_sample_count": 2,
+    "mode": "TEMP_ADJUSTED_LIVE_PLUS_PRODUCTION_RAW",
+    "performance": [
+      {
+        "requested_end": "2018-06-30",
+        "requested_start": "2018-04-01",
+        "ticker": "005930",
+        "total_elapsed_seconds": 3.00851
+      }
+    ],
+    "production_adjusted_root_used_for_write": false,
+    "production_adjusted_snapshot_after": {},
+    "production_adjusted_snapshot_before": {},
+    "production_adjusted_snapshot_equal": true,
+    "production_adjusted_write_count": 0,
+    "production_raw_manifest_after_sha": "44d8a6f7954202b5862e71e81166b6aa41903692ee7bbd643f6825e1b70dde2a",
+    "production_raw_manifest_before_sha": "44d8a6f7954202b5862e71e81166b6aa41903692ee7bbd643f6825e1b70dde2a",
+    "production_raw_manifest_equal": true,
+    "production_raw_write_count": 0,
+    "provider_audit": {
+      "adjusted_false_call_count": 0,
+      "adjusted_true_call_count": 1,
+      "logical_fetch_count": 1
+    },
+    "requested_samples": [
+      "005930",
+      "000660",
+      "068270"
+    ],
+    "retry_count": 0,
+    "sample_gate": {
+      "all_requested_samples_pass": false,
+      "blocker": "BLOCKED_NO_LIVE_AUTHORITY_SAMPLE",
+      "minimum_required_sample_count": 2,
+      "requested_sample_count": 3,
+      "status": "BLOCKED_NO_LIVE_AUTHORITY_SAMPLE",
+      "successful_adjusted_fetch_count": 1,
+      "successful_composition_probe_count": 0,
+      "usable_sample_count": 0
+    },
+    "samsung": {
       "performed": false,
       "status": "NOT_RUN"
     },
-    "status": "BLOCKED_NO_PRODUCTION_OVERLAP_SAMPLE",
-    "warnings": [
-      "No complete local AdjustedPriceStore ticker pair was found."
-    ]
+    "status": "BLOCKED_EXTERNAL_PYKRX_UNAVAILABLE",
+    "successful_adjusted_fetch_count": 1,
+    "successful_composition_probe_count": 0,
+    "temporary_store_cleanup": "PASS",
+    "temporary_store_created": true,
+    "temporary_store_exists_after_cleanup": false,
+    "temporary_store_path": "/var/folders/gc/z332p011725457d90yqf3s4w0000gn/T/market-data-repository-v02-fix01-00_uwuyc",
+    "temporary_store_ticker_count": 0,
+    "usable_sample_count": 0
   },
+  "network": {
+    "KRX_request_count": 0,
+    "OpenDART_request_count": 0,
+    "adjusted_false_call_count": 0,
+    "adjusted_true_call_count": 1,
+    "fallback_request_count": 0,
+    "logical_pykrx_fetch_count": 1,
+    "retry_count": 0
+  },
+  "phase": "MARKET_DATA_REPOSITORY_V02_FIX01",
+  "production_adjusted_population": "NOT_YET_IMPLEMENTED",
   "production_runtime_head": "e508005c16e5fa3fa19c03b6568ba56ab9ac9294",
   "provenance": {
     "close": {
@@ -102,39 +165,9 @@
       "store": "KrxRawStockStore"
     }
   },
-  "raw_daily_columns": [
-    "open",
-    "high",
-    "low",
-    "close",
-    "volume",
-    "trading_value",
-    "market_cap",
-    "listed_shares"
-  ],
-  "raw_write_count": 0,
-  "start_head": "0f7b35be5f6ac3840266e0580e37c2e4519dbf7c",
-  "static_checks": {
-    "artifacts_runtime_dependency_count": 0,
-    "changed_files": [
-      "docs/architecture/market_data_repository_v02.md",
-      "scripts/validate_market_data_repository_v02.py",
-      "src/trend_scanner/data/repository_v2.py",
-      "tests/test_repository_v2.py"
-    ],
-    "closed_artifact_changed_count": 0,
-    "consumer_auto_migration_count": 0,
-    "forbidden_network_import_count": 0,
-    "forbidden_network_imports": [],
-    "frozen_contract_modified": false,
-    "frozen_source_changed_count": 0,
-    "git_diff_check": false,
-    "legacy_repository_changed": false,
-    "secret_occurrence_count": 0
-  },
-  "status": "BLOCKED_NO_PRODUCTION_OVERLAP_SAMPLE",
-  "validation_source_head": "25e45a8b7eb994c43f3e9796caf8f22c96f0c825",
-  "warnings": [
-    "No complete local AdjustedPriceStore ticker pair was found."
-  ]
+  "repository_implementation_head": "b04e871881a857640d86422c09c57d7c6a642d62",
+  "repository_v2_changed": false,
+  "runtime_network_forbidden_count": 0,
+  "status": "BLOCKED_EXTERNAL_PYKRX_UNAVAILABLE",
+  "warnings": []
 }

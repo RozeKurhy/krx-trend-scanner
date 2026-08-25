@@ -1,0 +1,83 @@
+{
+  "KRX_open_api_request_count": 0,
+  "OpenDART_request_count": 0,
+  "all_requested_samples_pass": false,
+  "alphanumeric": {
+    "performed": false,
+    "status": "NOT_RUN"
+  },
+  "blockers": [
+    "BLOCKED_EXTERNAL_PYKRX_UNAVAILABLE",
+    "BLOCKED_NO_LIVE_AUTHORITY_SAMPLE"
+  ],
+  "comparisons": [
+    {
+      "error_code": "INVALID_REPOSITORY_V2_OUTPUT",
+      "error_message": "INVALID_REPOSITORY_V2_OUTPUT",
+      "requested_end": "2018-06-30",
+      "requested_start": "2018-04-01",
+      "status": "FAIL",
+      "ticker": "005930",
+      "total_elapsed_seconds": 3.00851
+    }
+  ],
+  "corporate_action_state_write_count": 0,
+  "execution_head": "237784e3a277a5bde4cb0c915954b046ac4e7332",
+  "fallback_request_count": 0,
+  "fix01_validation_source_head": "237784e3a277a5bde4cb0c915954b046ac4e7332",
+  "minimum_required_sample_count": 2,
+  "mode": "TEMP_ADJUSTED_LIVE_PLUS_PRODUCTION_RAW",
+  "observed_at": "2026-08-25T06:50:55.420852+00:00",
+  "performance": [
+    {
+      "requested_end": "2018-06-30",
+      "requested_start": "2018-04-01",
+      "ticker": "005930",
+      "total_elapsed_seconds": 3.00851
+    }
+  ],
+  "production_adjusted_root_used_for_write": false,
+  "production_adjusted_snapshot_after": {},
+  "production_adjusted_snapshot_before": {},
+  "production_adjusted_snapshot_equal": true,
+  "production_adjusted_write_count": 0,
+  "production_raw_manifest_after_sha": "44d8a6f7954202b5862e71e81166b6aa41903692ee7bbd643f6825e1b70dde2a",
+  "production_raw_manifest_before_sha": "44d8a6f7954202b5862e71e81166b6aa41903692ee7bbd643f6825e1b70dde2a",
+  "production_raw_manifest_equal": true,
+  "production_raw_write_count": 0,
+  "provider_audit": {
+    "adjusted_false_call_count": 0,
+    "adjusted_true_call_count": 1,
+    "logical_fetch_count": 1
+  },
+  "repository_implementation_head": "b04e871881a857640d86422c09c57d7c6a642d62",
+  "requested_samples": [
+    "005930",
+    "000660",
+    "068270"
+  ],
+  "retry_count": 0,
+  "sample_gate": {
+    "all_requested_samples_pass": false,
+    "blocker": "BLOCKED_NO_LIVE_AUTHORITY_SAMPLE",
+    "minimum_required_sample_count": 2,
+    "requested_sample_count": 3,
+    "status": "BLOCKED_NO_LIVE_AUTHORITY_SAMPLE",
+    "successful_adjusted_fetch_count": 1,
+    "successful_composition_probe_count": 0,
+    "usable_sample_count": 0
+  },
+  "samsung": {
+    "performed": false,
+    "status": "NOT_RUN"
+  },
+  "status": "BLOCKED_EXTERNAL_PYKRX_UNAVAILABLE",
+  "successful_adjusted_fetch_count": 1,
+  "successful_composition_probe_count": 0,
+  "temporary_store_cleanup": "PASS",
+  "temporary_store_created": true,
+  "temporary_store_exists_after_cleanup": false,
+  "temporary_store_path": "/var/folders/gc/z332p011725457d90yqf3s4w0000gn/T/market-data-repository-v02-fix01-00_uwuyc",
+  "temporary_store_ticker_count": 0,
+  "usable_sample_count": 0
+}
