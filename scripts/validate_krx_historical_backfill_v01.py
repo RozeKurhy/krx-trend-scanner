@@ -177,9 +177,7 @@ def _load_stale_live_evidence(output: Path, implementation_head: str) -> dict[st
     """Preserve same-generation evidence from another source HEAD verbatim."""
 
     existing = _load_json(output / "stale_live_evidence.json")
-    if existing is not None:
-        return existing
-    stale: dict[str, Any] = {}
+    stale: dict[str, Any] = dict(existing.get("evidence", {})) if existing is not None else {}
     specs = (
         ("live_diagnostic_summary.json", "live-diagnostic"),
         ("live_pilot_summary.json", "live-pilot"),
