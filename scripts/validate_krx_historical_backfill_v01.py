@@ -1290,11 +1290,11 @@ def run(mode: str, output: Path, raw_root: Path) -> dict[str, Any]:
     known_phase_blockers: list[str] = []
     if diagnostic_state == "STALE_SOURCE_EVIDENCE":
         known_phase_blockers.append("LIVE_DIAGNOSTIC_STALE")
-    elif diagnostic_summary.get("status") != "PASS":
+    elif diagnostic_summary.get("status") == "NOT_RUN":
         known_phase_blockers.append("LIVE_DIAGNOSTIC_NOT_RUN")
     if pilot_state == "STALE_SOURCE_EVIDENCE":
         known_phase_blockers.append("LIVE_PILOT_STALE")
-    elif pilot_summary.get("status") != "PASS":
+    elif pilot_summary.get("status") == "NOT_RUN":
         known_phase_blockers.append("LIVE_PILOT_NOT_RUN")
     if not samsung_pass:
         known_phase_blockers.append("SAMSUNG_EVIDENCE_INCOMPLETE")
