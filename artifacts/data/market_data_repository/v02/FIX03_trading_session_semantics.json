@@ -1,0 +1,35 @@
+{
+  "adjusted_only_behavior": "FAIL_CLOSED: BLOCKED_ADJUSTED_SESSION_WITHOUT_RAW_FACTS",
+  "frozen_contract_changed": false,
+  "phase": "MARKET_DATA_REPOSITORY_V02_FIX03",
+  "placeholder_fields": [
+    "open == 0",
+    "high == 0",
+    "low == 0",
+    "close > 0",
+    "volume == 0",
+    "trading_value == 0"
+  ],
+  "placeholder_predicate_basis": "ADJUSTED_PRICE_PROVIDER_PHANTOM_COMPATIBILITY",
+  "placeholder_predicate_name": "NON_TRADING_PLACEHOLDER_V01",
+  "placeholder_predicate_version": "V01",
+  "projection_scope": "get_daily only",
+  "provenance": {
+    "artifact_commit_head": null,
+    "artifact_generation_head": "4eaa1d4135e4a0dc583e51d6de842740615d11fa",
+    "fix02_repository_implementation_head": "d172860b21ba908033ef27e7d11e9f50684c279d",
+    "fix03_repository_implementation_head": "4eaa1d4135e4a0dc583e51d6de842740615d11fa",
+    "fix03_validation_source_head": "4eaa1d4135e4a0dc583e51d6de842740615d11fa",
+    "live_execution_head": "4eaa1d4135e4a0dc583e51d6de842740615d11fa",
+    "market_data_repository_v02_original_implementation_head": "b04e871881a857640d86422c09c57d7c6a642d62"
+  },
+  "raw_api_preservation": {
+    "get_daily_ancillary": true,
+    "get_raw_daily": true,
+    "get_stock_snapshot": true
+  },
+  "silent_inner_drop_count": 0,
+  "silent_inner_join": false,
+  "status": "PASS",
+  "unclassified_raw_only_behavior": "FAIL_CLOSED: BLOCKED_UNCLASSIFIED_RAW_ONLY_SESSION"
+}

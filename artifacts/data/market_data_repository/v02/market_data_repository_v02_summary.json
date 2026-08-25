@@ -1,103 +1,240 @@
 {
-  "artifact_head": "d172860b21ba908033ef27e7d11e9f50684c279d",
+  "artifact_commit_head": null,
+  "artifact_generation_head": "4eaa1d4135e4a0dc583e51d6de842740615d11fa",
   "artifacts_runtime_dependency_count": 0,
-  "blockers": [
-    "BLOCKED_PRODUCTION_COMPOSITION_PROBE"
-  ],
+  "blockers": [],
   "bounded_regression": {
     "command": "uv run pytest -q -p no:cacheprovider tests/test_repository.py tests/test_repository_v2.py tests/test_market_data_repository_v02_validation.py tests/test_adjusted_price_store.py tests/test_krx_raw_stock_store.py tests/test_krx_identifier_contract_errata_v01.py tests/test_krx_production_data_architecture_v01.py",
-    "duration_seconds": 1.8,
+    "duration_seconds": 2.23,
     "failed": 0,
-    "passed": 155,
+    "passed": 164,
     "status": "PASS"
   },
   "consumer_auto_migration_count": 0,
   "consumer_migration_prerequisite": true,
   "fix02_repository_implementation_head": "d172860b21ba908033ef27e7d11e9f50684c279d",
-  "fix02_validation_source_head": "d172860b21ba908033ef27e7d11e9f50684c279d",
+  "fix03_repository_implementation_head": "4eaa1d4135e4a0dc583e51d6de842740615d11fa",
+  "fix03_validation_source_head": "4eaa1d4135e4a0dc583e51d6de842740615d11fa",
   "frozen_contract_changed": false,
   "frozen_store_sources_changed": false,
-  "generated_at": "2026-08-25T07:22:35.071760+00:00",
+  "generated_at": "2026-08-25T08:24:47.058747+00:00",
   "git_diff_check": {
     "command": "git diff --check 0f7b35be5f6ac3840266e0580e37c2e4519dbf7c HEAD",
     "return_code": 0,
     "status": "PASS",
     "stderr": "",
     "stdout": "",
-    "validation_head": "d172860b21ba908033ef27e7d11e9f50684c279d"
+    "validation_head": "4eaa1d4135e4a0dc583e51d6de842740615d11fa"
   },
   "known_limitations": [
     "PRODUCTION_ADJUSTED_STORE_POPULATION_NOT_IMPLEMENTED",
-    "FULL_REGRESSION_CLOSURE_DEFERRED"
+    "CONSUMER_MIGRATION_NOT_PERFORMED"
   ],
   "legacy_repository_changed": false,
-  "live_execution_head": "d172860b21ba908033ef27e7d11e9f50684c279d",
+  "live_execution_head": "4eaa1d4135e4a0dc583e51d6de842740615d11fa",
   "live_probe": {
     "KRX_open_api_request_count": 0,
     "OpenDART_request_count": 0,
-    "all_requested_samples_pass": false,
-    "blockers": [
-      "BLOCKED_PRODUCTION_COMPOSITION_PROBE"
-    ],
+    "all_requested_samples_pass": true,
+    "blockers": [],
     "composition_records": [
       {
+        "accepted_placeholder_dates": [
+          "2018-04-30",
+          "2018-05-02",
+          "2018-05-03"
+        ],
         "actual_adjusted_end": "2018-06-29",
         "actual_adjusted_start": "2018-04-02",
-        "adjusted_ohlc_exact_match": false,
-        "adjusted_rows": null,
-        "ancillary_exact_match": false,
-        "date_set_exact_match": false,
-        "error_code": "REPOSITORY_V2_TRADING_SESSION_MISMATCH",
-        "error_message": "REPOSITORY_V2_TRADING_SESSION_MISMATCH",
+        "adjusted_load_elapsed_seconds": 0.002184,
+        "adjusted_ohlc_exact_match": true,
+        "adjusted_only_dates": [],
+        "adjusted_rows": 57,
+        "ancillary_exact_match": true,
+        "date_set_exact_match": true,
+        "explicit_placeholder_projection_count": 3,
+        "physical_raw_rows": 60,
+        "projected_date_set_exact_match": true,
+        "projected_raw_rows": 57,
+        "projection_elapsed_seconds": 0.000465,
+        "raw_load_elapsed_seconds": 1.532208,
+        "raw_only_dates": [
+          "2018-04-30",
+          "2018-05-02",
+          "2018-05-03"
+        ],
+        "raw_only_row_details": [
+          {
+            "adjusted_present": false,
+            "classification": "NON_TRADING_PLACEHOLDER",
+            "classification_reason": "all six NON_TRADING_PLACEHOLDER_V01 fields match",
+            "close": 2650000,
+            "date": "2018-04-30",
+            "high": 0,
+            "listed_shares": 128386494,
+            "low": 0,
+            "market_cap": 340224209100000,
+            "open": 0,
+            "placeholder_predicate_fields": {
+              "close_positive": true,
+              "high_zero": true,
+              "low_zero": true,
+              "open_zero": true,
+              "trading_value_zero": true,
+              "volume_zero": true
+            },
+            "placeholder_predicate_name": "NON_TRADING_PLACEHOLDER_V01",
+            "raw_present": true,
+            "trading_value": 0,
+            "volume": 0
+          },
+          {
+            "adjusted_present": false,
+            "classification": "NON_TRADING_PLACEHOLDER",
+            "classification_reason": "all six NON_TRADING_PLACEHOLDER_V01 fields match",
+            "close": 2650000,
+            "date": "2018-05-02",
+            "high": 0,
+            "listed_shares": 128386494,
+            "low": 0,
+            "market_cap": 340224209100000,
+            "open": 0,
+            "placeholder_predicate_fields": {
+              "close_positive": true,
+              "high_zero": true,
+              "low_zero": true,
+              "open_zero": true,
+              "trading_value_zero": true,
+              "volume_zero": true
+            },
+            "placeholder_predicate_name": "NON_TRADING_PLACEHOLDER_V01",
+            "raw_present": true,
+            "trading_value": 0,
+            "volume": 0
+          },
+          {
+            "adjusted_present": false,
+            "classification": "NON_TRADING_PLACEHOLDER",
+            "classification_reason": "all six NON_TRADING_PLACEHOLDER_V01 fields match",
+            "close": 2650000,
+            "date": "2018-05-03",
+            "high": 0,
+            "listed_shares": 128386494,
+            "low": 0,
+            "market_cap": 340224209100000,
+            "open": 0,
+            "placeholder_predicate_fields": {
+              "close_positive": true,
+              "high_zero": true,
+              "low_zero": true,
+              "open_zero": true,
+              "trading_value_zero": true,
+              "volume_zero": true
+            },
+            "placeholder_predicate_name": "NON_TRADING_PLACEHOLDER_V01",
+            "raw_present": true,
+            "trading_value": 0,
+            "volume": 0
+          }
+        ],
         "raw_rows": 60,
-        "raw_trading_value_exact_match": false,
-        "raw_volume_exact_match": false,
+        "raw_trading_value_exact_match": true,
+        "raw_volume_exact_match": true,
         "record_type": "composition",
-        "repository_rows": null,
+        "rejected_raw_only_dates": [],
+        "repository_join_elapsed_seconds": 3.056753,
+        "repository_rows": 57,
         "requested_end": "2018-06-30",
         "requested_start": "2018-04-01",
+        "silent_inner_drop_count": 0,
         "stage": "REPOSITORY_COMPOSITION",
-        "status": "FAIL",
+        "status": "PASS",
         "ticker": "005930",
-        "total_elapsed_seconds": 3.017653
+        "total_elapsed_seconds": 4.593005
+      },
+      {
+        "accepted_placeholder_dates": [],
+        "actual_adjusted_end": "2026-08-21",
+        "actual_adjusted_start": "2026-07-01",
+        "adjusted_load_elapsed_seconds": 0.002186,
+        "adjusted_ohlc_exact_match": true,
+        "adjusted_only_dates": [],
+        "adjusted_rows": 36,
+        "ancillary_exact_match": true,
+        "date_set_exact_match": true,
+        "explicit_placeholder_projection_count": 0,
+        "physical_raw_rows": 36,
+        "projected_date_set_exact_match": true,
+        "projected_raw_rows": 36,
+        "projection_elapsed_seconds": 0.000152,
+        "raw_load_elapsed_seconds": 1.152695,
+        "raw_only_dates": [],
+        "raw_only_row_details": [],
+        "raw_rows": 36,
+        "raw_trading_value_exact_match": true,
+        "raw_volume_exact_match": true,
+        "record_type": "composition",
+        "rejected_raw_only_dates": [],
+        "repository_join_elapsed_seconds": 2.213793,
+        "repository_rows": 36,
+        "requested_end": "2026-08-21",
+        "requested_start": "2026-07-01",
+        "silent_inner_drop_count": 0,
+        "stage": "REPOSITORY_COMPOSITION",
+        "status": "PASS",
+        "ticker": "000660",
+        "total_elapsed_seconds": 3.370067
+      },
+      {
+        "accepted_placeholder_dates": [],
+        "actual_adjusted_end": "2026-08-21",
+        "actual_adjusted_start": "2026-07-01",
+        "adjusted_load_elapsed_seconds": 0.002626,
+        "adjusted_ohlc_exact_match": true,
+        "adjusted_only_dates": [],
+        "adjusted_rows": 36,
+        "ancillary_exact_match": true,
+        "date_set_exact_match": true,
+        "explicit_placeholder_projection_count": 0,
+        "physical_raw_rows": 36,
+        "projected_date_set_exact_match": true,
+        "projected_raw_rows": 36,
+        "projection_elapsed_seconds": 0.000165,
+        "raw_load_elapsed_seconds": 1.081702,
+        "raw_only_dates": [],
+        "raw_only_row_details": [],
+        "raw_rows": 36,
+        "raw_trading_value_exact_match": true,
+        "raw_volume_exact_match": true,
+        "record_type": "composition",
+        "rejected_raw_only_dates": [],
+        "repository_join_elapsed_seconds": 2.203371,
+        "repository_rows": 36,
+        "requested_end": "2026-08-21",
+        "requested_start": "2026-07-01",
+        "silent_inner_drop_count": 0,
+        "stage": "REPOSITORY_COMPOSITION",
+        "status": "PASS",
+        "ticker": "068270",
+        "total_elapsed_seconds": 3.289136
       }
     ],
     "corporate_action_state_write_count": 0,
     "evidence_consistency": {
+      "accepted_placeholder_projection_count": null,
       "blocker": null,
-      "composition_pass_record_count": 0,
+      "composition_pass_record_count": 3,
       "mismatches": [],
-      "provider_pass_record_count": 1,
+      "provider_pass_record_count": 3,
+      "rejected_raw_only_count": null,
       "status": "PASS",
-      "successful_composition_probe_count": 0,
-      "successful_provider_fetch_count": 1,
-      "successful_temp_store_integrity_count": 1,
-      "temp_store_pass_record_count": 1,
-      "temporary_store_ticker_count": 1
+      "successful_composition_probe_count": 3,
+      "successful_provider_fetch_count": 3,
+      "successful_temp_store_integrity_count": 3,
+      "temp_store_pass_record_count": 3,
+      "temporary_store_ticker_count": 3
     },
-    "failure_records": [
-      {
-        "actual_adjusted_end": "2018-06-29",
-        "actual_adjusted_start": "2018-04-02",
-        "adjusted_ohlc_exact_match": false,
-        "adjusted_rows": null,
-        "ancillary_exact_match": false,
-        "date_set_exact_match": false,
-        "error_code": "REPOSITORY_V2_TRADING_SESSION_MISMATCH",
-        "error_message": "REPOSITORY_V2_TRADING_SESSION_MISMATCH",
-        "raw_rows": 60,
-        "raw_trading_value_exact_match": false,
-        "raw_volume_exact_match": false,
-        "record_type": "composition",
-        "repository_rows": null,
-        "requested_end": "2018-06-30",
-        "requested_start": "2018-04-01",
-        "stage": "REPOSITORY_COMPOSITION",
-        "status": "FAIL",
-        "ticker": "005930",
-        "total_elapsed_seconds": 3.017653
-      }
-    ],
+    "failure_records": [],
     "fallback_request_count": 0,
     "minimum_required_sample_count": 2,
     "mode": "TEMP_ADJUSTED_LIVE_PLUS_PRODUCTION_RAW",
@@ -116,11 +253,106 @@
         "ticker": "03473K"
       },
       "blockers": [],
+      "placeholder_candidates": [
+        {
+          "adjusted_present": null,
+          "candidate_count": 3,
+          "candidate_dates": [
+            "2018-04-30",
+            "2018-05-02",
+            "2018-05-03"
+          ],
+          "candidate_rows": [
+            {
+              "adjusted_present": null,
+              "close": 2650000,
+              "date": "2018-04-30",
+              "high": 0,
+              "listed_shares": 128386494,
+              "low": 0,
+              "market_cap": 340224209100000,
+              "open": 0,
+              "raw_present": true,
+              "trading_value": 0,
+              "volume": 0
+            },
+            {
+              "adjusted_present": null,
+              "close": 2650000,
+              "date": "2018-05-02",
+              "high": 0,
+              "listed_shares": 128386494,
+              "low": 0,
+              "market_cap": 340224209100000,
+              "open": 0,
+              "raw_present": true,
+              "trading_value": 0,
+              "volume": 0
+            },
+            {
+              "adjusted_present": null,
+              "close": 2650000,
+              "date": "2018-05-03",
+              "high": 0,
+              "listed_shares": 128386494,
+              "low": 0,
+              "market_cap": 340224209100000,
+              "open": 0,
+              "raw_present": true,
+              "trading_value": 0,
+              "volume": 0
+            }
+          ],
+          "elapsed_seconds": 1.501774,
+          "predicate_name": "NON_TRADING_PLACEHOLDER_V01",
+          "range": [
+            "2018-04-01",
+            "2018-06-30"
+          ],
+          "raw_present": true,
+          "record_type": "raw_placeholder_candidate",
+          "status": "PASS",
+          "ticker": "005930"
+        },
+        {
+          "adjusted_present": null,
+          "candidate_count": 0,
+          "candidate_dates": [],
+          "candidate_rows": [],
+          "elapsed_seconds": 1.08372,
+          "predicate_name": "NON_TRADING_PLACEHOLDER_V01",
+          "range": [
+            "2026-07-01",
+            "2026-08-21"
+          ],
+          "raw_present": true,
+          "record_type": "raw_placeholder_candidate",
+          "status": "PASS",
+          "ticker": "000660"
+        },
+        {
+          "adjusted_present": null,
+          "candidate_count": 0,
+          "candidate_dates": [],
+          "candidate_rows": [],
+          "elapsed_seconds": 1.087302,
+          "predicate_name": "NON_TRADING_PLACEHOLDER_V01",
+          "range": [
+            "2026-07-01",
+            "2026-08-21"
+          ],
+          "raw_present": true,
+          "record_type": "raw_placeholder_candidate",
+          "status": "PASS",
+          "ticker": "068270"
+        }
+      ],
+      "placeholder_semantics_gate": "PASS",
       "records": [
         {
           "all_positive_relation_violation_count": 0,
           "all_positive_row_count": 57,
-          "elapsed_seconds": 3.024797,
+          "elapsed_seconds": 3.072878,
           "range": [
             "2018-04-01",
             "2018-06-30"
@@ -136,7 +368,7 @@
         {
           "all_positive_relation_violation_count": 0,
           "all_positive_row_count": 36,
-          "elapsed_seconds": 2.144812,
+          "elapsed_seconds": 2.182006,
           "range": [
             "2026-07-01",
             "2026-08-21"
@@ -152,7 +384,7 @@
         {
           "all_positive_relation_violation_count": 0,
           "all_positive_row_count": 36,
-          "elapsed_seconds": 2.133406,
+          "elapsed_seconds": 2.173015,
           "range": [
             "2026-07-01",
             "2026-08-21"
@@ -186,13 +418,44 @@
       {
         "actual_adjusted_end": "2018-06-29",
         "actual_adjusted_start": "2018-04-02",
-        "adjusted_rows": null,
+        "adjusted_load_elapsed_seconds": 0.002184,
+        "adjusted_rows": 57,
+        "raw_load_elapsed_seconds": 1.532208,
         "raw_rows": 60,
-        "repository_rows": null,
+        "repository_join_elapsed_seconds": 3.056753,
+        "repository_rows": 57,
         "requested_end": "2018-06-30",
         "requested_start": "2018-04-01",
         "ticker": "005930",
-        "total_elapsed_seconds": 3.017653
+        "total_elapsed_seconds": 4.593005
+      },
+      {
+        "actual_adjusted_end": "2026-08-21",
+        "actual_adjusted_start": "2026-07-01",
+        "adjusted_load_elapsed_seconds": 0.002186,
+        "adjusted_rows": 36,
+        "raw_load_elapsed_seconds": 1.152695,
+        "raw_rows": 36,
+        "repository_join_elapsed_seconds": 2.213793,
+        "repository_rows": 36,
+        "requested_end": "2026-08-21",
+        "requested_start": "2026-07-01",
+        "ticker": "000660",
+        "total_elapsed_seconds": 3.370067
+      },
+      {
+        "actual_adjusted_end": "2026-08-21",
+        "actual_adjusted_start": "2026-07-01",
+        "adjusted_load_elapsed_seconds": 0.002626,
+        "adjusted_rows": 36,
+        "raw_load_elapsed_seconds": 1.081702,
+        "raw_rows": 36,
+        "repository_join_elapsed_seconds": 2.203371,
+        "repository_rows": 36,
+        "requested_end": "2026-08-21",
+        "requested_start": "2026-07-01",
+        "ticker": "068270",
+        "total_elapsed_seconds": 3.289136
       }
     ],
     "performance_warnings": [],
@@ -207,14 +470,14 @@
     "production_raw_write_count": 0,
     "provider_audit": {
       "adjusted_false_call_count": 0,
-      "adjusted_true_call_count": 1,
-      "logical_fetch_count": 1
+      "adjusted_true_call_count": 3,
+      "logical_fetch_count": 3
     },
     "provider_fetch_records": [
       {
         "actual_date_max": "2018-06-29",
         "actual_date_min": "2018-04-02",
-        "elapsed_seconds": 0.276572,
+        "elapsed_seconds": 0.266928,
         "provider_error": null,
         "record_type": "provider_fetch",
         "requested_end": "2018-06-30",
@@ -223,6 +486,32 @@
         "stage": "ADJUSTED_PROVIDER_FETCH",
         "status": "PASS",
         "ticker": "005930"
+      },
+      {
+        "actual_date_max": "2026-08-21",
+        "actual_date_min": "2026-07-01",
+        "elapsed_seconds": 0.023158,
+        "provider_error": null,
+        "record_type": "provider_fetch",
+        "requested_end": "2026-08-21",
+        "requested_start": "2026-07-01",
+        "row_count": 36,
+        "stage": "ADJUSTED_PROVIDER_FETCH",
+        "status": "PASS",
+        "ticker": "000660"
+      },
+      {
+        "actual_date_max": "2026-08-21",
+        "actual_date_min": "2026-07-01",
+        "elapsed_seconds": 0.023929,
+        "provider_error": null,
+        "record_type": "provider_fetch",
+        "requested_end": "2026-08-21",
+        "requested_start": "2026-07-01",
+        "row_count": 36,
+        "stage": "ADJUSTED_PROVIDER_FETCH",
+        "status": "PASS",
+        "ticker": "068270"
       }
     ],
     "requested_samples": [
@@ -232,22 +521,22 @@
     ],
     "retry_count": 0,
     "sample_gate": {
-      "all_requested_samples_pass": false,
-      "blocker": "BLOCKED_PRODUCTION_COMPOSITION_PROBE",
+      "all_requested_samples_pass": true,
+      "blocker": null,
       "minimum_required_sample_count": 2,
       "requested_sample_count": 3,
-      "status": "BLOCKED_PRODUCTION_COMPOSITION_PROBE",
-      "successful_adjusted_fetch_count": 1,
-      "successful_composition_probe_count": 0,
-      "successful_provider_fetch_count": 1,
-      "successful_temp_store_integrity_count": 1,
-      "usable_sample_count": 0
+      "status": "PASS",
+      "successful_adjusted_fetch_count": 3,
+      "successful_composition_probe_count": 3,
+      "successful_provider_fetch_count": 3,
+      "successful_temp_store_integrity_count": 3,
+      "usable_sample_count": 3
     },
-    "status": "BLOCKED_PRODUCTION_COMPOSITION_PROBE",
-    "successful_adjusted_fetch_count": 1,
-    "successful_composition_probe_count": 0,
-    "successful_provider_fetch_count": 1,
-    "successful_temp_store_integrity_count": 1,
+    "status": "PASS",
+    "successful_adjusted_fetch_count": 3,
+    "successful_composition_probe_count": 3,
+    "successful_provider_fetch_count": 3,
+    "successful_temp_store_integrity_count": 3,
     "temp_store_integrity_records": [
       {
         "actual_date_max": "2018-06-29",
@@ -264,32 +553,112 @@
         "stage": "TEMP_ADJUSTED_STORE_WRITE",
         "status": "PASS",
         "ticker": "005930"
+      },
+      {
+        "actual_date_max": "2026-08-21",
+        "actual_date_min": "2026-07-01",
+        "hash_status": "PASS",
+        "metadata_status": "PASS",
+        "readback_status": "PASS",
+        "record_type": "temp_store_integrity",
+        "requested_end": "2026-08-21",
+        "requested_start": "2026-07-01",
+        "row_count": 36,
+        "save_attempted": true,
+        "save_status": "PASS",
+        "stage": "TEMP_ADJUSTED_STORE_WRITE",
+        "status": "PASS",
+        "ticker": "000660"
+      },
+      {
+        "actual_date_max": "2026-08-21",
+        "actual_date_min": "2026-07-01",
+        "hash_status": "PASS",
+        "metadata_status": "PASS",
+        "readback_status": "PASS",
+        "record_type": "temp_store_integrity",
+        "requested_end": "2026-08-21",
+        "requested_start": "2026-07-01",
+        "row_count": 36,
+        "save_attempted": true,
+        "save_status": "PASS",
+        "stage": "TEMP_ADJUSTED_STORE_WRITE",
+        "status": "PASS",
+        "ticker": "068270"
       }
     ],
     "temporary_store_cleanup": "PASS",
     "temporary_store_created": true,
     "temporary_store_exists_after_cleanup": false,
-    "temporary_store_path": "/var/folders/gc/z332p011725457d90yqf3s4w0000gn/T/market-data-repository-v02-fix02-wp_cumw8",
-    "temporary_store_ticker_count": 1,
-    "usable_composition_sample_count": 0
+    "temporary_store_path": "/var/folders/gc/z332p011725457d90yqf3s4w0000gn/T/market-data-repository-v02-fix02-tg6pfmb1",
+    "temporary_store_ticker_count": 3,
+    "usable_composition_sample_count": 3
   },
   "market_data_repository_v02_original_implementation_head": "b04e871881a857640d86422c09c57d7c6a642d62",
   "network": {
-    "KRX_request_count": 0,
+    "KRX_open_api_request_count": 0,
     "OpenDART_request_count": 0,
     "adjusted_false_call_count": 0,
-    "adjusted_true_call_count": 1,
+    "adjusted_true_call_count": 3,
+    "external_blocker_present": false,
     "fallback_request_count": 0,
-    "logical_pykrx_fetch_count": 1,
+    "logical_pykrx_fetch_count": 3,
+    "phase": "MARKET_DATA_REPOSITORY_V02_FIX03",
+    "provenance": {
+      "artifact_commit_head": null,
+      "artifact_generation_head": "4eaa1d4135e4a0dc583e51d6de842740615d11fa",
+      "fix02_repository_implementation_head": "d172860b21ba908033ef27e7d11e9f50684c279d",
+      "fix03_repository_implementation_head": "4eaa1d4135e4a0dc583e51d6de842740615d11fa",
+      "fix03_validation_source_head": "4eaa1d4135e4a0dc583e51d6de842740615d11fa",
+      "live_execution_head": "4eaa1d4135e4a0dc583e51d6de842740615d11fa",
+      "market_data_repository_v02_original_implementation_head": "b04e871881a857640d86422c09c57d7c6a642d62"
+    },
     "retry_count": 0
   },
-  "phase": "MARKET_DATA_REPOSITORY_V02_FIX02",
-  "production_adjusted_population": "NOT_YET_IMPLEMENTED",
-  "provenance_fields": {
-    "artifact_head": "d172860b21ba908033ef27e7d11e9f50684c279d",
+  "phase": "MARKET_DATA_REPOSITORY_V02_FIX03",
+  "placeholder_semantics": {
+    "adjusted_only_behavior": "FAIL_CLOSED: BLOCKED_ADJUSTED_SESSION_WITHOUT_RAW_FACTS",
+    "frozen_contract_changed": false,
+    "phase": "MARKET_DATA_REPOSITORY_V02_FIX03",
+    "placeholder_fields": [
+      "open == 0",
+      "high == 0",
+      "low == 0",
+      "close > 0",
+      "volume == 0",
+      "trading_value == 0"
+    ],
+    "placeholder_predicate_basis": "ADJUSTED_PRICE_PROVIDER_PHANTOM_COMPATIBILITY",
+    "placeholder_predicate_name": "NON_TRADING_PLACEHOLDER_V01",
+    "placeholder_predicate_version": "V01",
+    "projection_scope": "get_daily only",
+    "provenance": {
+      "artifact_commit_head": null,
+      "artifact_generation_head": "4eaa1d4135e4a0dc583e51d6de842740615d11fa",
+      "fix02_repository_implementation_head": "d172860b21ba908033ef27e7d11e9f50684c279d",
+      "fix03_repository_implementation_head": "4eaa1d4135e4a0dc583e51d6de842740615d11fa",
+      "fix03_validation_source_head": "4eaa1d4135e4a0dc583e51d6de842740615d11fa",
+      "live_execution_head": "4eaa1d4135e4a0dc583e51d6de842740615d11fa",
+      "market_data_repository_v02_original_implementation_head": "b04e871881a857640d86422c09c57d7c6a642d62"
+    },
+    "raw_api_preservation": {
+      "get_daily_ancillary": true,
+      "get_raw_daily": true,
+      "get_stock_snapshot": true
+    },
+    "silent_inner_drop_count": 0,
+    "silent_inner_join": false,
+    "status": "PASS",
+    "unclassified_raw_only_behavior": "FAIL_CLOSED: BLOCKED_UNCLASSIFIED_RAW_ONLY_SESSION"
+  },
+  "production_adjusted_population": "NOT_IMPLEMENTED",
+  "provenance": {
+    "artifact_commit_head": null,
+    "artifact_generation_head": "4eaa1d4135e4a0dc583e51d6de842740615d11fa",
     "fix02_repository_implementation_head": "d172860b21ba908033ef27e7d11e9f50684c279d",
-    "fix02_validation_source_head": "d172860b21ba908033ef27e7d11e9f50684c279d",
-    "live_execution_head": "d172860b21ba908033ef27e7d11e9f50684c279d",
+    "fix03_repository_implementation_head": "4eaa1d4135e4a0dc583e51d6de842740615d11fa",
+    "fix03_validation_source_head": "4eaa1d4135e4a0dc583e51d6de842740615d11fa",
+    "live_execution_head": "4eaa1d4135e4a0dc583e51d6de842740615d11fa",
     "market_data_repository_v02_original_implementation_head": "b04e871881a857640d86422c09c57d7c6a642d62"
   },
   "raw_offline_probe": {
@@ -306,11 +675,106 @@
       "ticker": "03473K"
     },
     "blockers": [],
+    "placeholder_candidates": [
+      {
+        "adjusted_present": null,
+        "candidate_count": 3,
+        "candidate_dates": [
+          "2018-04-30",
+          "2018-05-02",
+          "2018-05-03"
+        ],
+        "candidate_rows": [
+          {
+            "adjusted_present": null,
+            "close": 2650000,
+            "date": "2018-04-30",
+            "high": 0,
+            "listed_shares": 128386494,
+            "low": 0,
+            "market_cap": 340224209100000,
+            "open": 0,
+            "raw_present": true,
+            "trading_value": 0,
+            "volume": 0
+          },
+          {
+            "adjusted_present": null,
+            "close": 2650000,
+            "date": "2018-05-02",
+            "high": 0,
+            "listed_shares": 128386494,
+            "low": 0,
+            "market_cap": 340224209100000,
+            "open": 0,
+            "raw_present": true,
+            "trading_value": 0,
+            "volume": 0
+          },
+          {
+            "adjusted_present": null,
+            "close": 2650000,
+            "date": "2018-05-03",
+            "high": 0,
+            "listed_shares": 128386494,
+            "low": 0,
+            "market_cap": 340224209100000,
+            "open": 0,
+            "raw_present": true,
+            "trading_value": 0,
+            "volume": 0
+          }
+        ],
+        "elapsed_seconds": 1.501774,
+        "predicate_name": "NON_TRADING_PLACEHOLDER_V01",
+        "range": [
+          "2018-04-01",
+          "2018-06-30"
+        ],
+        "raw_present": true,
+        "record_type": "raw_placeholder_candidate",
+        "status": "PASS",
+        "ticker": "005930"
+      },
+      {
+        "adjusted_present": null,
+        "candidate_count": 0,
+        "candidate_dates": [],
+        "candidate_rows": [],
+        "elapsed_seconds": 1.08372,
+        "predicate_name": "NON_TRADING_PLACEHOLDER_V01",
+        "range": [
+          "2026-07-01",
+          "2026-08-21"
+        ],
+        "raw_present": true,
+        "record_type": "raw_placeholder_candidate",
+        "status": "PASS",
+        "ticker": "000660"
+      },
+      {
+        "adjusted_present": null,
+        "candidate_count": 0,
+        "candidate_dates": [],
+        "candidate_rows": [],
+        "elapsed_seconds": 1.087302,
+        "predicate_name": "NON_TRADING_PLACEHOLDER_V01",
+        "range": [
+          "2026-07-01",
+          "2026-08-21"
+        ],
+        "raw_present": true,
+        "record_type": "raw_placeholder_candidate",
+        "status": "PASS",
+        "ticker": "068270"
+      }
+    ],
+    "placeholder_semantics_gate": "PASS",
     "records": [
       {
         "all_positive_relation_violation_count": 0,
         "all_positive_row_count": 57,
-        "elapsed_seconds": 3.024797,
+        "elapsed_seconds": 3.072878,
         "range": [
           "2018-04-01",
           "2018-06-30"
@@ -326,7 +790,7 @@
       {
         "all_positive_relation_violation_count": 0,
         "all_positive_row_count": 36,
-        "elapsed_seconds": 2.144812,
+        "elapsed_seconds": 2.182006,
         "range": [
           "2026-07-01",
           "2026-08-21"
@@ -342,7 +806,7 @@
       {
         "all_positive_relation_violation_count": 0,
         "all_positive_row_count": 36,
-        "elapsed_seconds": 2.133406,
+        "elapsed_seconds": 2.173015,
         "range": [
           "2026-07-01",
           "2026-08-21"
@@ -377,27 +841,120 @@
   "runtime_network_forbidden_count": 0,
   "samsung_composition": {
     "record": {
+      "accepted_placeholder_dates": [
+        "2018-04-30",
+        "2018-05-02",
+        "2018-05-03"
+      ],
       "actual_adjusted_end": "2018-06-29",
       "actual_adjusted_start": "2018-04-02",
-      "adjusted_ohlc_exact_match": false,
-      "adjusted_rows": null,
-      "ancillary_exact_match": false,
-      "date_set_exact_match": false,
-      "error_code": "REPOSITORY_V2_TRADING_SESSION_MISMATCH",
-      "error_message": "REPOSITORY_V2_TRADING_SESSION_MISMATCH",
+      "adjusted_load_elapsed_seconds": 0.002184,
+      "adjusted_ohlc_exact_match": true,
+      "adjusted_only_dates": [],
+      "adjusted_rows": 57,
+      "ancillary_exact_match": true,
+      "date_set_exact_match": true,
+      "explicit_placeholder_projection_count": 3,
+      "physical_raw_rows": 60,
+      "projected_date_set_exact_match": true,
+      "projected_raw_rows": 57,
+      "projection_elapsed_seconds": 0.000465,
+      "raw_load_elapsed_seconds": 1.532208,
+      "raw_only_dates": [
+        "2018-04-30",
+        "2018-05-02",
+        "2018-05-03"
+      ],
+      "raw_only_row_details": [
+        {
+          "adjusted_present": false,
+          "classification": "NON_TRADING_PLACEHOLDER",
+          "classification_reason": "all six NON_TRADING_PLACEHOLDER_V01 fields match",
+          "close": 2650000,
+          "date": "2018-04-30",
+          "high": 0,
+          "listed_shares": 128386494,
+          "low": 0,
+          "market_cap": 340224209100000,
+          "open": 0,
+          "placeholder_predicate_fields": {
+            "close_positive": true,
+            "high_zero": true,
+            "low_zero": true,
+            "open_zero": true,
+            "trading_value_zero": true,
+            "volume_zero": true
+          },
+          "placeholder_predicate_name": "NON_TRADING_PLACEHOLDER_V01",
+          "raw_present": true,
+          "trading_value": 0,
+          "volume": 0
+        },
+        {
+          "adjusted_present": false,
+          "classification": "NON_TRADING_PLACEHOLDER",
+          "classification_reason": "all six NON_TRADING_PLACEHOLDER_V01 fields match",
+          "close": 2650000,
+          "date": "2018-05-02",
+          "high": 0,
+          "listed_shares": 128386494,
+          "low": 0,
+          "market_cap": 340224209100000,
+          "open": 0,
+          "placeholder_predicate_fields": {
+            "close_positive": true,
+            "high_zero": true,
+            "low_zero": true,
+            "open_zero": true,
+            "trading_value_zero": true,
+            "volume_zero": true
+          },
+          "placeholder_predicate_name": "NON_TRADING_PLACEHOLDER_V01",
+          "raw_present": true,
+          "trading_value": 0,
+          "volume": 0
+        },
+        {
+          "adjusted_present": false,
+          "classification": "NON_TRADING_PLACEHOLDER",
+          "classification_reason": "all six NON_TRADING_PLACEHOLDER_V01 fields match",
+          "close": 2650000,
+          "date": "2018-05-03",
+          "high": 0,
+          "listed_shares": 128386494,
+          "low": 0,
+          "market_cap": 340224209100000,
+          "open": 0,
+          "placeholder_predicate_fields": {
+            "close_positive": true,
+            "high_zero": true,
+            "low_zero": true,
+            "open_zero": true,
+            "trading_value_zero": true,
+            "volume_zero": true
+          },
+          "placeholder_predicate_name": "NON_TRADING_PLACEHOLDER_V01",
+          "raw_present": true,
+          "trading_value": 0,
+          "volume": 0
+        }
+      ],
       "raw_rows": 60,
-      "raw_trading_value_exact_match": false,
-      "raw_volume_exact_match": false,
+      "raw_trading_value_exact_match": true,
+      "raw_volume_exact_match": true,
       "record_type": "composition",
-      "repository_rows": null,
+      "rejected_raw_only_dates": [],
+      "repository_join_elapsed_seconds": 3.056753,
+      "repository_rows": 57,
       "requested_end": "2018-06-30",
       "requested_start": "2018-04-01",
+      "silent_inner_drop_count": 0,
       "stage": "REPOSITORY_COMPOSITION",
-      "status": "FAIL",
+      "status": "PASS",
       "ticker": "005930",
-      "total_elapsed_seconds": 3.017653
+      "total_elapsed_seconds": 4.593005
     },
-    "status": "FAIL"
+    "status": "PASS"
   },
   "samsung_raw": {
     "expected": {
@@ -413,6 +970,6 @@
     "stage": "SAMSUNG_SEMANTIC_PROBE",
     "status": "PASS"
   },
-  "status": "BLOCKED_PRODUCTION_COMPOSITION_PROBE",
+  "status": "READY_FOR_ARCHITECT_MARKET_DATA_REPOSITORY_V02_FIX03_REVIEW",
   "warnings": []
 }
