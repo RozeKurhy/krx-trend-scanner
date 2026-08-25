@@ -1,0 +1,32 @@
+{
+  "phase": "MARKET_DATA_REPOSITORY_V02_FIX02",
+  "provenance": {
+    "artifact_head": "d172860b21ba908033ef27e7d11e9f50684c279d",
+    "fix02_repository_implementation_head": "d172860b21ba908033ef27e7d11e9f50684c279d",
+    "fix02_validation_source_head": "d172860b21ba908033ef27e7d11e9f50684c279d",
+    "live_execution_head": "d172860b21ba908033ef27e7d11e9f50684c279d",
+    "market_data_repository_v02_original_implementation_head": "b04e871881a857640d86422c09c57d7c6a642d62"
+  },
+  "provider_audit": {
+    "adjusted_false_call_count": 0,
+    "adjusted_true_call_count": 1,
+    "logical_fetch_count": 1
+  },
+  "records": [
+    {
+      "actual_date_max": "2018-06-29",
+      "actual_date_min": "2018-04-02",
+      "elapsed_seconds": 0.276572,
+      "provider_error": null,
+      "record_type": "provider_fetch",
+      "requested_end": "2018-06-30",
+      "requested_start": "2018-04-01",
+      "row_count": 57,
+      "stage": "ADJUSTED_PROVIDER_FETCH",
+      "status": "PASS",
+      "ticker": "005930"
+    }
+  ],
+  "status": "PASS",
+  "successful_provider_fetch_count": 1
+}

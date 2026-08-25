@@ -1,41 +1,374 @@
 {
-  "all_requested_samples_pass": false,
-  "alphanumeric": {
-    "performed": false,
-    "status": "NOT_RUN"
-  },
   "blockers": [
-    "BLOCKED_EXTERNAL_PYKRX_UNAVAILABLE",
-    "BLOCKED_NO_LIVE_AUTHORITY_SAMPLE"
+    "BLOCKED_PRODUCTION_COMPOSITION_PROBE"
   ],
-  "comparisons": [
-    {
-      "error_code": "INVALID_REPOSITORY_V2_OUTPUT",
-      "error_message": "INVALID_REPOSITORY_V2_OUTPUT",
+  "live_probe": {
+    "KRX_open_api_request_count": 0,
+    "OpenDART_request_count": 0,
+    "all_requested_samples_pass": false,
+    "blockers": [
+      "BLOCKED_PRODUCTION_COMPOSITION_PROBE"
+    ],
+    "composition_records": [
+      {
+        "actual_adjusted_end": "2018-06-29",
+        "actual_adjusted_start": "2018-04-02",
+        "adjusted_ohlc_exact_match": false,
+        "adjusted_rows": null,
+        "ancillary_exact_match": false,
+        "date_set_exact_match": false,
+        "error_code": "REPOSITORY_V2_TRADING_SESSION_MISMATCH",
+        "error_message": "REPOSITORY_V2_TRADING_SESSION_MISMATCH",
+        "raw_rows": 60,
+        "raw_trading_value_exact_match": false,
+        "raw_volume_exact_match": false,
+        "record_type": "composition",
+        "repository_rows": null,
+        "requested_end": "2018-06-30",
+        "requested_start": "2018-04-01",
+        "stage": "REPOSITORY_COMPOSITION",
+        "status": "FAIL",
+        "ticker": "005930",
+        "total_elapsed_seconds": 3.017653
+      }
+    ],
+    "corporate_action_state_write_count": 0,
+    "evidence_consistency": {
+      "blocker": null,
+      "composition_pass_record_count": 0,
+      "mismatches": [],
+      "provider_pass_record_count": 1,
+      "status": "PASS",
+      "successful_composition_probe_count": 0,
+      "successful_provider_fetch_count": 1,
+      "successful_temp_store_integrity_count": 1,
+      "temp_store_pass_record_count": 1,
+      "temporary_store_ticker_count": 1
+    },
+    "failure_records": [
+      {
+        "actual_adjusted_end": "2018-06-29",
+        "actual_adjusted_start": "2018-04-02",
+        "adjusted_ohlc_exact_match": false,
+        "adjusted_rows": null,
+        "ancillary_exact_match": false,
+        "date_set_exact_match": false,
+        "error_code": "REPOSITORY_V2_TRADING_SESSION_MISMATCH",
+        "error_message": "REPOSITORY_V2_TRADING_SESSION_MISMATCH",
+        "raw_rows": 60,
+        "raw_trading_value_exact_match": false,
+        "raw_volume_exact_match": false,
+        "record_type": "composition",
+        "repository_rows": null,
+        "requested_end": "2018-06-30",
+        "requested_start": "2018-04-01",
+        "stage": "REPOSITORY_COMPOSITION",
+        "status": "FAIL",
+        "ticker": "005930",
+        "total_elapsed_seconds": 3.017653
+      }
+    ],
+    "fallback_request_count": 0,
+    "minimum_required_sample_count": 2,
+    "mode": "TEMP_ADJUSTED_LIVE_PLUS_PRODUCTION_RAW",
+    "network_blockers": [],
+    "offline": {
+      "alphanumeric": {
+        "adjusted_unsupported": true,
+        "ancillary": true,
+        "domain_not_widened": true,
+        "performed": true,
+        "raw_daily": true,
+        "record_type": "alphanumeric",
+        "snapshot": true,
+        "stage": "ALPHANUMERIC_RAW_PROBE",
+        "status": "PASS",
+        "ticker": "03473K"
+      },
+      "blockers": [],
+      "records": [
+        {
+          "all_positive_relation_violation_count": 0,
+          "all_positive_row_count": 57,
+          "elapsed_seconds": 3.024797,
+          "range": [
+            "2018-04-01",
+            "2018-06-30"
+          ],
+          "raw_rows": 60,
+          "record_type": "raw_authority",
+          "repository_raw_rows": 60,
+          "source_to_repository_exact_match": true,
+          "status": "PASS",
+          "ticker": "005930",
+          "zero_price_row_count": 3
+        },
+        {
+          "all_positive_relation_violation_count": 0,
+          "all_positive_row_count": 36,
+          "elapsed_seconds": 2.144812,
+          "range": [
+            "2026-07-01",
+            "2026-08-21"
+          ],
+          "raw_rows": 36,
+          "record_type": "raw_authority",
+          "repository_raw_rows": 36,
+          "source_to_repository_exact_match": true,
+          "status": "PASS",
+          "ticker": "000660",
+          "zero_price_row_count": 0
+        },
+        {
+          "all_positive_relation_violation_count": 0,
+          "all_positive_row_count": 36,
+          "elapsed_seconds": 2.133406,
+          "range": [
+            "2026-07-01",
+            "2026-08-21"
+          ],
+          "raw_rows": 36,
+          "record_type": "raw_authority",
+          "repository_raw_rows": 36,
+          "source_to_repository_exact_match": true,
+          "status": "PASS",
+          "ticker": "068270",
+          "zero_price_row_count": 0
+        }
+      ],
+      "samsung_raw": {
+        "expected": {
+          "2018-04-27": 128386494,
+          "2018-05-04": 6419324700
+        },
+        "observed": {
+          "2018-04-27": 128386494,
+          "2018-05-04": 6419324700
+        },
+        "raw_semantics": true,
+        "record_type": "samsung_raw",
+        "stage": "SAMSUNG_SEMANTIC_PROBE",
+        "status": "PASS"
+      },
+      "status": "PASS"
+    },
+    "performance": [
+      {
+        "actual_adjusted_end": "2018-06-29",
+        "actual_adjusted_start": "2018-04-02",
+        "adjusted_rows": null,
+        "raw_rows": 60,
+        "repository_rows": null,
+        "requested_end": "2018-06-30",
+        "requested_start": "2018-04-01",
+        "ticker": "005930",
+        "total_elapsed_seconds": 3.017653
+      }
+    ],
+    "performance_warnings": [],
+    "production_adjusted_root_used_for_write": false,
+    "production_adjusted_snapshot_after": {},
+    "production_adjusted_snapshot_before": {},
+    "production_adjusted_snapshot_equal": true,
+    "production_adjusted_write_count": 0,
+    "production_raw_manifest_after_sha": "44d8a6f7954202b5862e71e81166b6aa41903692ee7bbd643f6825e1b70dde2a",
+    "production_raw_manifest_before_sha": "44d8a6f7954202b5862e71e81166b6aa41903692ee7bbd643f6825e1b70dde2a",
+    "production_raw_manifest_equal": true,
+    "production_raw_write_count": 0,
+    "provider_audit": {
+      "adjusted_false_call_count": 0,
+      "adjusted_true_call_count": 1,
+      "logical_fetch_count": 1
+    },
+    "provider_fetch_records": [
+      {
+        "actual_date_max": "2018-06-29",
+        "actual_date_min": "2018-04-02",
+        "elapsed_seconds": 0.276572,
+        "provider_error": null,
+        "record_type": "provider_fetch",
+        "requested_end": "2018-06-30",
+        "requested_start": "2018-04-01",
+        "row_count": 57,
+        "stage": "ADJUSTED_PROVIDER_FETCH",
+        "status": "PASS",
+        "ticker": "005930"
+      }
+    ],
+    "requested_samples": [
+      "005930",
+      "000660",
+      "068270"
+    ],
+    "retry_count": 0,
+    "sample_gate": {
+      "all_requested_samples_pass": false,
+      "blocker": "BLOCKED_PRODUCTION_COMPOSITION_PROBE",
+      "minimum_required_sample_count": 2,
+      "requested_sample_count": 3,
+      "status": "BLOCKED_PRODUCTION_COMPOSITION_PROBE",
+      "successful_adjusted_fetch_count": 1,
+      "successful_composition_probe_count": 0,
+      "successful_provider_fetch_count": 1,
+      "successful_temp_store_integrity_count": 1,
+      "usable_sample_count": 0
+    },
+    "status": "BLOCKED_PRODUCTION_COMPOSITION_PROBE",
+    "successful_adjusted_fetch_count": 1,
+    "successful_composition_probe_count": 0,
+    "successful_provider_fetch_count": 1,
+    "successful_temp_store_integrity_count": 1,
+    "temp_store_integrity_records": [
+      {
+        "actual_date_max": "2018-06-29",
+        "actual_date_min": "2018-04-02",
+        "hash_status": "PASS",
+        "metadata_status": "PASS",
+        "readback_status": "PASS",
+        "record_type": "temp_store_integrity",
+        "requested_end": "2018-06-30",
+        "requested_start": "2018-04-01",
+        "row_count": 57,
+        "save_attempted": true,
+        "save_status": "PASS",
+        "stage": "TEMP_ADJUSTED_STORE_WRITE",
+        "status": "PASS",
+        "ticker": "005930"
+      }
+    ],
+    "temporary_store_cleanup": "PASS",
+    "temporary_store_created": true,
+    "temporary_store_exists_after_cleanup": false,
+    "temporary_store_path": "/var/folders/gc/z332p011725457d90yqf3s4w0000gn/T/market-data-repository-v02-fix02-wp_cumw8",
+    "temporary_store_ticker_count": 1,
+    "usable_composition_sample_count": 0
+  },
+  "phase": "MARKET_DATA_REPOSITORY_V02_FIX02",
+  "provenance": {
+    "artifact_head": "d172860b21ba908033ef27e7d11e9f50684c279d",
+    "fix02_repository_implementation_head": "d172860b21ba908033ef27e7d11e9f50684c279d",
+    "fix02_validation_source_head": "d172860b21ba908033ef27e7d11e9f50684c279d",
+    "live_execution_head": "d172860b21ba908033ef27e7d11e9f50684c279d",
+    "market_data_repository_v02_original_implementation_head": "b04e871881a857640d86422c09c57d7c6a642d62"
+  },
+  "raw_offline_probe": {
+    "alphanumeric": {
+      "adjusted_unsupported": true,
+      "ancillary": true,
+      "domain_not_widened": true,
+      "performed": true,
+      "raw_daily": true,
+      "record_type": "alphanumeric",
+      "snapshot": true,
+      "stage": "ALPHANUMERIC_RAW_PROBE",
+      "status": "PASS",
+      "ticker": "03473K"
+    },
+    "blockers": [],
+    "records": [
+      {
+        "all_positive_relation_violation_count": 0,
+        "all_positive_row_count": 57,
+        "elapsed_seconds": 3.024797,
+        "range": [
+          "2018-04-01",
+          "2018-06-30"
+        ],
+        "raw_rows": 60,
+        "record_type": "raw_authority",
+        "repository_raw_rows": 60,
+        "source_to_repository_exact_match": true,
+        "status": "PASS",
+        "ticker": "005930",
+        "zero_price_row_count": 3
+      },
+      {
+        "all_positive_relation_violation_count": 0,
+        "all_positive_row_count": 36,
+        "elapsed_seconds": 2.144812,
+        "range": [
+          "2026-07-01",
+          "2026-08-21"
+        ],
+        "raw_rows": 36,
+        "record_type": "raw_authority",
+        "repository_raw_rows": 36,
+        "source_to_repository_exact_match": true,
+        "status": "PASS",
+        "ticker": "000660",
+        "zero_price_row_count": 0
+      },
+      {
+        "all_positive_relation_violation_count": 0,
+        "all_positive_row_count": 36,
+        "elapsed_seconds": 2.133406,
+        "range": [
+          "2026-07-01",
+          "2026-08-21"
+        ],
+        "raw_rows": 36,
+        "record_type": "raw_authority",
+        "repository_raw_rows": 36,
+        "source_to_repository_exact_match": true,
+        "status": "PASS",
+        "ticker": "068270",
+        "zero_price_row_count": 0
+      }
+    ],
+    "samsung_raw": {
+      "expected": {
+        "2018-04-27": 128386494,
+        "2018-05-04": 6419324700
+      },
+      "observed": {
+        "2018-04-27": 128386494,
+        "2018-05-04": 6419324700
+      },
+      "raw_semantics": true,
+      "record_type": "samsung_raw",
+      "stage": "SAMSUNG_SEMANTIC_PROBE",
+      "status": "PASS"
+    },
+    "status": "PASS"
+  },
+  "repository_raw_authority_compatible": true,
+  "samsung_composition": {
+    "record": {
+      "actual_adjusted_end": "2018-06-29",
+      "actual_adjusted_start": "2018-04-02",
+      "adjusted_ohlc_exact_match": false,
+      "adjusted_rows": null,
+      "ancillary_exact_match": false,
+      "date_set_exact_match": false,
+      "error_code": "REPOSITORY_V2_TRADING_SESSION_MISMATCH",
+      "error_message": "REPOSITORY_V2_TRADING_SESSION_MISMATCH",
+      "raw_rows": 60,
+      "raw_trading_value_exact_match": false,
+      "raw_volume_exact_match": false,
+      "record_type": "composition",
+      "repository_rows": null,
       "requested_end": "2018-06-30",
       "requested_start": "2018-04-01",
+      "stage": "REPOSITORY_COMPOSITION",
       "status": "FAIL",
       "ticker": "005930",
-      "total_elapsed_seconds": 3.00851
-    }
-  ],
-  "execution_head": "237784e3a277a5bde4cb0c915954b046ac4e7332",
-  "fix01_validation_source_head": "237784e3a277a5bde4cb0c915954b046ac4e7332",
-  "minimum_required_sample_count": 2,
-  "mode": "TEMP_ADJUSTED_LIVE_PLUS_PRODUCTION_RAW",
-  "observed_at": "2026-08-25T06:50:55.420675+00:00",
-  "repository_implementation_head": "b04e871881a857640d86422c09c57d7c6a642d62",
-  "requested_samples": [
-    "005930",
-    "000660",
-    "068270"
-  ],
-  "samsung": {
-    "performed": false,
-    "status": "NOT_RUN"
+      "total_elapsed_seconds": 3.017653
+    },
+    "status": "FAIL"
   },
-  "status": "BLOCKED_EXTERNAL_PYKRX_UNAVAILABLE",
-  "successful_adjusted_fetch_count": 1,
-  "successful_composition_probe_count": 0,
-  "usable_sample_count": 0
+  "samsung_raw": {
+    "expected": {
+      "2018-04-27": 128386494,
+      "2018-05-04": 6419324700
+    },
+    "observed": {
+      "2018-04-27": 128386494,
+      "2018-05-04": 6419324700
+    },
+    "raw_semantics": true,
+    "record_type": "samsung_raw",
+    "stage": "SAMSUNG_SEMANTIC_PROBE",
+    "status": "PASS"
+  },
+  "status": "BLOCKED_PRODUCTION_COMPOSITION_PROBE"
 }
