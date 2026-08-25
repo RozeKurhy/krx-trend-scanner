@@ -1,5 +1,24 @@
 {
   "evidence": {
+    "live_diagnostic_summary__d6eed1c": {
+      "state": "STALE_SOURCE_EVIDENCE",
+      "payload": {
+        "validation_generation": "FIX05",
+        "source_head": "d6eed1cdf749b91da5c67dfb94f0477a6bda1206",
+        "observed_at": "2026-08-25T00:10:20.293143+00:00",
+        "mode": "live-diagnostic",
+        "legacy": false,
+        "date": "2018-04-27",
+        "status": "BLOCKED_KRX_SCHEMA",
+        "request_count": 2,
+        "retry_count": 0,
+        "blockers": ["BLOCKED_KRX_SCHEMA"],
+        "diagnostics": [
+          {"market": "KOSPI", "endpoint": "/sto/stk_bydd_trd", "error_code": "RAW_SNAPSHOT_TICKER_FORMAT_ERROR", "http_status": 200, "record_count": 892, "records_key": "OutBlock_1", "ticker_sample": "03473K"},
+          {"market": "KOSDAQ", "endpoint": "/sto/ksq_bydd_trd", "error_code": "RAW_SNAPSHOT_TICKER_FORMAT_ERROR", "http_status": 200, "record_count": 1272, "records_key": "OutBlock_1", "ticker_sample": "08537M"}
+        ]
+      }
+    },
     "live_diagnostic_summary__a6ab4fbc": {
       "state": "STALE_SOURCE_EVIDENCE",
       "payload": {
