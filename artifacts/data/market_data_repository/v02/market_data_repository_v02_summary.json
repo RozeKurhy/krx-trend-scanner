@@ -753,7 +753,7 @@
     },
     "retry_count": 0
   },
-  "phase": "MARKET_DATA_REPOSITORY_V02_FIX04",
+  "phase": "MARKET_DATA_REPOSITORY_V02",
   "production_adjusted_population": "NOT_IMPLEMENTED",
   "provenance": {
     "artifact_commit_head": null,
@@ -1133,6 +1133,26 @@
     "stage": "SAMSUNG_SEMANTIC_PROBE",
     "status": "PASS"
   },
-  "status": "READY_FOR_ARCHITECT_MARKET_DATA_REPOSITORY_V02_FIX04_REVIEW",
-  "warnings": []
+  "status": "CLOSED",
+  "warnings": [],
+  "phase_status": "CLOSED",
+  "closure_status": "CLOSED",
+  "architect_review": {
+    "critical": 0,
+    "major": 0,
+    "acceptance_blockers": 0,
+    "decision": "ACCEPTED"
+  },
+  "merge_authorized": true,
+  "phase_start_head": "0f7b35be5f6ac3840266e0580e37c2e4519dbf7c",
+  "accepted_evidence_head": "aab7d4f9cd1728139748b3ffac530e6b0e834e9d",
+  "validated_source_head": "be2bcbe5ddd11eb043515f078835f56242bcca96",
+  "next_phase": "KRX_INDEX_MIGRATION_V01",
+  "closure_authorized": true,
+  "fix04_evidence_status": "ACCEPTED",
+  "closure_sanity_regression": {
+    "passed": 171,
+    "failed": 0,
+    "status": "PASS"
+  }
 }

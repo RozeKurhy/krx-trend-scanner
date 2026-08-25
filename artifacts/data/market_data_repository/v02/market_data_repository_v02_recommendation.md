@@ -1,13 +1,11 @@
-MARKET_DATA_REPOSITORY_V02_FIX04
+MARKET_DATA_REPOSITORY_V02 = CLOSED
 
-STATUS
-READY_FOR_ARCHITECT_MARKET_DATA_REPOSITORY_V02_FIX04_REVIEW
+Architect review accepted.
+No acceptance blockers remain.
+Merge into main is authorized using a true no-ff merge.
 
-BLOCKERS
-[]
+Known migration prerequisite:
+PRODUCTION_ADJUSTED_STORE_POPULATION_NOT_IMPLEMENTED.
 
-SHARED-DATE PLACEHOLDER
-FAIL-CLOSED: REPOSITORY_V2_SESSION_SEMANTIC_CONFLICT
-
-PLACEHOLDER EVIDENCE
-{"accepted_placeholder_projection_count": 3, "rejected_raw_only_count": 0, "shared_placeholder_conflict_count": 0}
+Next phase:
+KRX_INDEX_MIGRATION_V01.

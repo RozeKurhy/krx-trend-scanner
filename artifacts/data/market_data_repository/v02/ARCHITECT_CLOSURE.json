@@ -1,0 +1,68 @@
+{
+  "phase": "MARKET_DATA_REPOSITORY_V02",
+  "architect_decision": "CLOSED",
+  "closure_status": "CLOSED",
+  "merge_authorized": true,
+  "branch": "codex/market-data-repository-v02",
+  "phase_start_head": "0f7b35be5f6ac3840266e0580e37c2e4519dbf7c",
+  "accepted_evidence_head": "aab7d4f9cd1728139748b3ffac530e6b0e834e9d",
+  "validated_source_head": "be2bcbe5ddd11eb043515f078835f56242bcca96",
+  "architect_review": {
+    "critical": 0,
+    "major": 0,
+    "acceptance_blockers": 0
+  },
+  "repository_contract": {
+    "adjusted_ohlc_authority": "AdjustedPriceStore",
+    "raw_volume_authority": "KrxRawStockStore",
+    "raw_trading_value_authority": "KrxRawStockStore",
+    "market_cap_in_get_daily": false,
+    "listed_shares_in_get_daily": false,
+    "raw_api_physical_observations_preserved": true,
+    "silent_inner_join": false,
+    "forward_fill": false
+  },
+  "trading_session_semantics": {
+    "placeholder_predicate": "NON_TRADING_PLACEHOLDER_V01",
+    "raw_only_placeholder": "EXPLICIT_PROJECTION",
+    "raw_only_non_placeholder": "FAIL_CLOSED",
+    "adjusted_only": "FAIL_CLOSED",
+    "shared_date_placeholder": "FAIL_CLOSED",
+    "shared_date_placeholder_error": "REPOSITORY_V2_SESSION_SEMANTIC_CONFLICT"
+  },
+  "final_live_validation": {
+    "requested_samples": 3,
+    "provider_pass": 3,
+    "temp_store_pass": 3,
+    "composition_pass": 3,
+    "usable_samples": 3,
+    "accepted_placeholder_projection_count": 3,
+    "rejected_raw_only_count": 0,
+    "shared_placeholder_conflict_count": 0,
+    "silent_inner_drop_count": 0
+  },
+  "network": {
+    "pykrx_logical_fetch_count": 3,
+    "adjusted_true_call_count": 3,
+    "adjusted_false_call_count": 0,
+    "krx_open_api_request_count": 0,
+    "opendart_request_count": 0,
+    "retry_count": 0
+  },
+  "mutation": {
+    "production_raw_write_count": 0,
+    "production_adjusted_write_count": 0,
+    "corporate_action_state_write_count": 0
+  },
+  "bounded_regression": {
+    "passed": 171,
+    "failed": 0
+  },
+  "blockers": [],
+  "known_limitations": [
+    "PRODUCTION_ADJUSTED_STORE_POPULATION_NOT_IMPLEMENTED",
+    "CONSUMER_MIGRATION_NOT_PERFORMED"
+  ],
+  "consumer_migration_prerequisite": true,
+  "next_phase": "KRX_INDEX_MIGRATION_V01"
+}
