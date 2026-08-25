@@ -1944,6 +1944,7 @@ def _write_fix04_evidence(
         "consumer_auto_migration_count": static["consumer_auto_migration_count"],
         "raw_offline_probe": offline,
         "live_probe": live,
+        "network": network,
         "samsung_raw": offline.get("samsung_raw"),
         "samsung_composition": _samsung_composition(live),
         "bounded_regression": regression,
