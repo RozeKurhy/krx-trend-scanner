@@ -77,6 +77,13 @@ def test_load_ticker_sorts_dates_and_detects_cross_market_conflict(tmp_path):
         store.load_ticker("005930", "2026-08-20", "2026-08-20")
 
 
+def test_load_ticker_accepts_alphanumeric_short_code_without_conversion(tmp_path):
+    store = KrxRawStockStore(tmp_path / "raw")
+    store.save_snapshot("KOSPI", "2026-08-21", _frame(ticker="03473K"), "/sto/stk_bydd_trd")
+    result = store.load_ticker("03473K", "2026-08-21", "2026-08-21")
+    assert result.loc[0, "ticker"] == "03473K"
+
+
 def test_failed_manifest_can_be_retried_without_overwriting_complete(tmp_path):
     store = KrxRawStockStore(tmp_path / "raw")
     store.save_failure("KOSPI", "2026-08-21", "/sto/stk_bydd_trd", "TEMPORARY", "retry")

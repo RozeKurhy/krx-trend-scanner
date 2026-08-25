@@ -425,7 +425,7 @@ def test_registered_store_and_layer_ids_are_unique():
 
 def test_contract_bundle_is_json_safe_and_network_free():
     bundle = contract_bundle()
-    assert bundle["architecture_version"] == "KRX_PRODUCTION_DATA_ARCHITECTURE_V01_FIX03"
+    assert bundle["architecture_version"] == "KRX_PRODUCTION_DATA_ARCHITECTURE_V01_ERRATA01"
     assert bundle["endpoint_identifier_contract"]["BASIC_INFO"]["fields"]["ISU_CD"]["semantic"] == "standard_code"
     source = Path(__file__).resolve().parents[1] / "src/trend_scanner/data/source_contracts.py"
     source_text = source.read_text(encoding="utf-8")

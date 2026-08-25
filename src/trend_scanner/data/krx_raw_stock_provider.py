@@ -53,6 +53,17 @@ SCHEMA_VERSION = "KRX_RAW_STOCK_V01"
 AUTHORITY = "KRX Open API Stock Daily"
 _INT64_MAX = int(np.iinfo("int64").max)
 _DATE_PATTERN = re.compile(r"^\d{8}$")
+KRX_SHORT_CODE_PATTERN = re.compile(r"^[0-9A-Z]{6}$")
+
+
+def is_valid_krx_short_code(value: Any) -> bool:
+    """Return whether *value* is an exact KRX six-character short code.
+
+    Validation is deliberately source-preserving: no trimming, upper-casing,
+    numeric coercion, or suffix removal is performed here.
+    """
+
+    return isinstance(value, str) and KRX_SHORT_CODE_PATTERN.fullmatch(value) is not None
 
 
 class KrxRawStockSnapshotError(MarketDataError):
@@ -158,7 +169,7 @@ def validate_raw_snapshot_frame(frame: pd.DataFrame, expected_date: Any) -> pd.D
         raise KrxRawStockSnapshotError("RAW_SNAPSHOT_DATE_MISMATCH")
     result["date"] = pd.Series(pd.DatetimeIndex(dates).normalize(), index=result.index, dtype="datetime64[ns]")
     tickers = result["ticker"].astype("string")
-    if tickers.isna().any() or not tickers.str.fullmatch(r"\d{6}").all():
+    if tickers.isna().any() or not tickers.str.fullmatch(KRX_SHORT_CODE_PATTERN).all():
         raise KrxRawStockSnapshotError("RAW_SNAPSHOT_TICKER_FORMAT_ERROR")
     if tickers.duplicated().any():
         raise KrxRawStockSnapshotError("RAW_SNAPSHOT_DUPLICATE_TICKER")
@@ -220,8 +231,8 @@ class KrxRawStockSnapshotProvider:
                     **response_diagnostic,
                     source_date_sample_shape="8-digit" if source_date else "invalid",
                 )
-            ticker = str(source_row[SOURCE_FIELDS["ticker"]]).strip()
-            if not re.fullmatch(r"\d{6}", ticker):
+            ticker = str(source_row[SOURCE_FIELDS["ticker"]])
+            if not is_valid_krx_short_code(ticker):
                 raise _snapshot_error(
                     "RAW_SNAPSHOT_TICKER_FORMAT_ERROR",
                     **response_diagnostic,
@@ -265,6 +276,8 @@ __all__ = [
     "SOURCE_FIELDS",
     "KrxRawStockSnapshotError",
     "KrxRawStockSnapshotProvider",
+    "KRX_SHORT_CODE_PATTERN",
+    "is_valid_krx_short_code",
     "normalize_bas_dd",
     "normalize_market",
     "validate_raw_snapshot_frame",

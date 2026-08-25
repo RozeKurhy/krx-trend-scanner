@@ -93,12 +93,24 @@ def test_duplicate_ticker_is_rejected():
         KrxRawStockSnapshotProvider(client).fetch_market_snapshot("KOSPI", "20260821")
 
 
-@pytest.mark.parametrize("ticker", ["5930", "KR7005930003", "ABC930"])
-def test_ticker_must_be_six_digits(ticker):
+@pytest.mark.parametrize("ticker", ["5930", "3473K", "03473K0", "KR7005930003", "03473k", "03473-K", "03473 K", ""])
+def test_invalid_short_code_shape_is_rejected(ticker):
     client = _Client(_Response(records=(_row(ISU_CD=ticker),)))
     with pytest.raises(KrxRawStockSnapshotError, match="RAW_SNAPSHOT_TICKER_FORMAT_ERROR") as caught:
         KrxRawStockSnapshotProvider(client).fetch_market_snapshot("KOSPI", "20260821")
     assert caught.value.diagnostic["ticker_sample"] == ticker
+
+
+@pytest.mark.parametrize("ticker", ["005930", "005935", "03473K", "08537M", "ABC930"])
+def test_valid_short_codes_are_preserved_exactly(ticker):
+    result = KrxRawStockSnapshotProvider(_Client(_Response(records=(_row(ISU_CD=ticker),)))).fetch_market_snapshot("KOSPI", "20260821")
+    assert result.loc[0, "ticker"] == ticker
+
+
+def test_duplicate_alphanumeric_ticker_is_rejected():
+    response = _Response(records=(_row(ISU_CD="03473K"), _row(ISU_CD="03473K", TDD_CLSPRC="106")))
+    with pytest.raises(KrxRawStockSnapshotError, match="RAW_SNAPSHOT_DUPLICATE_TICKER"):
+        KrxRawStockSnapshotProvider(_Client(response)).fetch_market_snapshot("KOSPI", "20260821")
 
 
 def test_numeric_parse_failure_is_rejected():

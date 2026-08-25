@@ -20,6 +20,7 @@ from trend_scanner.data.krx_raw_stock_provider import (
     RAW_COLUMNS,
     SCHEMA_VERSION,
     KrxRawStockSnapshotError,
+    is_valid_krx_short_code,
     normalize_bas_dd,
     normalize_market,
     validate_raw_snapshot_frame,
@@ -325,8 +326,8 @@ class KrxRawStockStore:
         return [str(row["date"]) for row in self.list_manifest(market) if row["status"] in {"COMPLETE", "NO_DATA"}]
 
     def load_ticker(self, ticker: str, start: Any | None = None, end: Any | None = None) -> pd.DataFrame:
-        value = str(ticker).strip()
-        if not re.fullmatch(r"\d{6}", value):
+        value = str(ticker)
+        if not is_valid_krx_short_code(value):
             raise MarketDataError("RAW_TICKER_FORMAT_ERROR")
         start_day = normalize_bas_dd(start) if start is not None else None
         end_day = normalize_bas_dd(end) if end is not None else None

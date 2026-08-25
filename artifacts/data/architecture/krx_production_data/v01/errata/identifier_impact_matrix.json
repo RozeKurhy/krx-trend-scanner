@@ -1,0 +1,29 @@
+{
+  "classification_counts": {
+    "C_CLASSIFICATION_IDENTITY": 1,
+    "D_NUMERIC_ONLY_CONSUMER_BY_DESIGN": 8,
+    "A_KRX_SOURCE_AUTHORITY": 4,
+    "B_KRX_MASTER_AUTHORITY": 1,
+    "E_LEGACY": 1
+  },
+  "consumer_auto_migration_count": 0,
+  "hits": [
+    {"path": "src/trend_scanner/data/source_contracts.py", "symbol": "raw.ticker/master.ticker", "current_assumption": "SIX_DIGIT_TICKER", "classification": "A_KRX_SOURCE_AUTHORITY/B_KRX_MASTER_AUTHORITY", "requires_change": true, "reason": "Verified KRX short-code namespace"},
+    {"path": "src/trend_scanner/data/krx_raw_stock_provider.py", "symbol": "validate_raw_snapshot_frame/fetch_market_snapshot", "current_assumption": "^[0-9]{6}$", "classification": "A_KRX_SOURCE_AUTHORITY", "requires_change": true, "reason": "Accept exact uppercase alphanumeric source code"},
+    {"path": "src/trend_scanner/data/krx_raw_stock_store.py", "symbol": "load_ticker", "current_assumption": "^[0-9]{6}$", "classification": "A_KRX_SOURCE_AUTHORITY", "requires_change": true, "reason": "Allow retrieval of a stored source-preserving short code"},
+    {"path": "scripts/build_krx_instrument_metadata.py", "symbol": "ISU_SRT_CD", "current_assumption": "Basic Info short-code field", "classification": "B_KRX_MASTER_AUTHORITY", "requires_change": false, "reason": "Parser already preserves source values; no numeric validator"},
+    {"path": "src/trend_scanner/universe/instrument_metadata.py", "symbol": "InstrumentMetadataResolver.ticker", "current_assumption": "zfill(6) normalization", "classification": "C_CLASSIFICATION_IDENTITY", "requires_change": false, "reason": "Six-character alphanumeric values are unchanged by zfill; no source rewrite"},
+    {"path": "src/trend_scanner/data/adjusted_price_provider.py", "symbol": "_normalize_ticker", "current_assumption": "numeric-only adjusted consumer", "classification": "D_NUMERIC_ONLY_CONSUMER_BY_DESIGN", "requires_change": false, "reason": "PyKRX adjusted support domain remains explicit"},
+    {"path": "src/trend_scanner/data/foreign_flow_provider.py", "symbol": "ticker normalization", "current_assumption": "numeric PyKRX flow consumer", "classification": "D_NUMERIC_ONLY_CONSUMER_BY_DESIGN", "requires_change": false, "reason": "No raw authority migration in this ERRATA"},
+    {"path": "src/trend_scanner/flow/foreign_flow.py", "symbol": "zfill(6)", "current_assumption": "numeric flow input", "classification": "D_NUMERIC_ONLY_CONSUMER_BY_DESIGN", "requires_change": false, "reason": "Strategy flow consumer scope unchanged"},
+    {"path": "src/trend_scanner/reporting/stock_report.py", "symbol": "_format_ticker", "current_assumption": "numeric report input", "classification": "D_NUMERIC_ONLY_CONSUMER_BY_DESIGN", "requires_change": false, "reason": "Report runtime is not raw whole-market authority"},
+    {"path": "src/trend_scanner/relative_strength/relative_strength.py", "symbol": "ticker_z", "current_assumption": "numeric RS input", "classification": "D_NUMERIC_ONLY_CONSUMER_BY_DESIGN", "requires_change": false, "reason": "RS phase is out of scope"},
+    {"path": "src/trend_scanner/validation/pattern_a_relative_strength_infrastructure.py", "symbol": "ticker normalization", "current_assumption": "numeric research input", "classification": "D_NUMERIC_ONLY_CONSUMER_BY_DESIGN", "requires_change": false, "reason": "Pattern A/RS research scope is unchanged"},
+    {"path": "src/trend_scanner/validation/julia_strategy_v00.py", "symbol": "zfill(6)", "current_assumption": "numeric strategy input", "classification": "D_NUMERIC_ONLY_CONSUMER_BY_DESIGN", "requires_change": false, "reason": "Julia strategy scope is unchanged"},
+    {"path": "src/trend_scanner/fundamentals/corp_code_repository.py", "symbol": "ticker.isdigit", "current_assumption": "OpenDART six-digit corporate code", "classification": "D_NUMERIC_ONLY_CONSUMER_BY_DESIGN", "requires_change": false, "reason": "OpenDART issuer-code domain is separate"},
+    {"path": "src/trend_scanner/data/corporate_action_state_store.py", "symbol": "ticker identity", "current_assumption": "existing adjusted-cache state key", "classification": "E_LEGACY", "requires_change": false, "reason": "Corporate-action state is explicitly frozen in this ERRATA"}
+  ],
+  "required_concepts_audited": ["source_contracts", "krx_raw_stock_provider", "StockMaster provider", "InstrumentClassification", "instrument_metadata", "asset_classifier", "adjusted_price_provider", "PyKRX universe loader", "foreign flow provider", "MarketDataRepository", "Stock Report", "Pattern A", "FastCore", "Julia"],
+  "total_hits": 14,
+  "unrelated_or_deferred_hits": 0
+}
