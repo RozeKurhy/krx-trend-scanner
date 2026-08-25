@@ -1,0 +1,18 @@
+{
+  "schema_version": "INDEX_STORE_V01",
+  "family": "MARKET_INDEX",
+  "staging_path": ".cache/krx_openapi/market_index_migration/v01/market_index_staging.parquet",
+  "staging_meta_path": ".cache/krx_openapi/market_index_migration/v01/market_index_staging.meta.json",
+  "staging_date_min": "2010-01-04",
+  "staging_date_max": "2026-08-21",
+  "staging_row_count": 1312,
+  "staging_index_count": 2,
+  "staging_codes": ["1001", "2001"],
+  "staging_sha256": "5685dc257b20a833e510367c7e77c15a0a4786564a80d93f493f750172e3890e",
+  "staging_meta_sha_match": true,
+  "staging_verify_status": "PASS",
+  "production_path": "data/market/index/v01/market_index.parquet",
+  "production_meta_path": "data/market/index/v01/market_index.meta.json",
+  "production_published": false,
+  "production_verify_status": "NOT_PUBLISHED"
+}

@@ -1,0 +1,28 @@
+{
+  "validation_source_head": "f20e428c0b8d6a6f7bd6a87e7ceb5395c98edf62",
+  "mode": "live-pilot",
+  "dates": ["2010-01-04", "2018-05-04", "2026-08-21"],
+  "endpoint_calls": {
+    "kospi_dd_trd": 3,
+    "kosdaq_dd_trd": 3,
+    "krx_dd_trd": 0
+  },
+  "request_count": 6,
+  "retry_count": 0,
+  "quota_delta": 6,
+  "selected_identities": [
+    ["kospi_dd_trd", "KOSPI", "코스피"],
+    ["kosdaq_dd_trd", "KOSDAQ", "코스닥"]
+  ],
+  "row_count": 6,
+  "rows": [
+    {"date": "2010-01-04", "index_code": "1001", "index_name": "코스피", "open": 1681.71, "high": 1696.14, "low": 1681.71, "close": 1696.14},
+    {"date": "2010-01-04", "index_code": "2001", "index_name": "코스닥", "open": 517.03, "high": 528.1, "low": 517.03, "close": 528.09},
+    {"date": "2018-05-04", "index_code": "1001", "index_name": "코스피", "open": 2486.47, "high": 2487.77, "low": 2461.38, "close": 2461.38},
+    {"date": "2018-05-04", "index_code": "2001", "index_name": "코스닥", "open": 868.35, "high": 870.1, "low": 856.34, "close": 856.34},
+    {"date": "2026-08-21", "index_code": "1001", "index_name": "코스피", "open": 6759.95, "high": 6954.12, "low": 6742.44, "close": 6912.95},
+    {"date": "2026-08-21", "index_code": "2001", "index_name": "코스닥", "open": 824.05, "high": 824.05, "low": 795.57, "close": 801.94}
+  ],
+  "production_index_store_publish_count": 0,
+  "status": "PASS"
+}
