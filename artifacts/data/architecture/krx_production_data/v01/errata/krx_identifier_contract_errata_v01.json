@@ -3,7 +3,7 @@
   "errata_id": "KRX_IDENTIFIER_CONTRACT_ERRATA_V01",
   "evidence_summary": {"date": "2018-04-27", "daily_markets": ["KOSPI", "KOSDAQ"], "daily_requests": 2, "basic_info_requests": 2, "samples": ["03473K", "08537M"]},
   "frozen_history_preserved": true,
-  "implementation_head": null,
+  "implementation_head": "e508005c16e5fa3fa19c03b6568ba56ab9ac9294",
   "impact_summary": {"raw_authority_accepts_alphanumeric": true, "numeric_consumers_auto_migrated": false, "impact_matrix": "identifier_impact_matrix.json"},
   "new_contract": {"namespace": "KRX_SHORT_CODE", "shape": "exactly six uppercase ASCII alphanumeric characters", "regex": "^[0-9A-Z]{6}$"},
   "old_contract": {"namespace": "SIX_DIGIT_TICKER", "regex": "^[0-9]{6}$"},
@@ -13,6 +13,6 @@
   "status": "VALIDATED_DAILY_AND_BASIC_INFO",
   "supersedes": {"architecture": "KRX_PRODUCTION_DATA_ARCHITECTURE_V01", "field": "raw.ticker"},
   "unaffected_fields": ["master.standard_code", "adjusted.ticker", "AdjustedPriceProvider numeric-only policy", "Pattern A", "RS", "FastCore", "Julia", "Stock Report"],
-  "validation_source_head": null,
+  "validation_source_head": "e508005c16e5fa3fa19c03b6568ba56ab9ac9294",
   "verified_date": "2018-04-27"
 }

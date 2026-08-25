@@ -63,3 +63,14 @@ def test_errata_does_not_auto_migrate_consumers():
     matrix = json.loads((ERRATA / "identifier_impact_matrix.json").read_text(encoding="utf-8"))
     assert matrix["consumer_auto_migration_count"] == 0
     assert not any(item["requires_change"] and item["classification"].startswith("D_") for item in matrix["hits"])
+
+
+def test_corrected_diagnostic_is_two_request_pass_with_partial_samsung_evidence():
+    diagnostic = json.loads((ROOT / "artifacts/data/krx_historical_backfill/v01/FIX06_live_diagnostic_summary.json").read_text(encoding="utf-8"))
+    samsung = json.loads((ROOT / "artifacts/data/krx_historical_backfill/v01/FIX06_samsung_listed_shares_evidence.json").read_text(encoding="utf-8"))
+    assert diagnostic["status"] == "PASS"
+    assert diagnostic["request_count"] == 2
+    assert diagnostic["retry_count"] == 0
+    assert all(item["ticker_format_error_count"] == 0 for item in diagnostic["diagnostics"])
+    assert samsung["status"] == "PARTIAL_EVIDENCE"
+    assert samsung["match"] is True
