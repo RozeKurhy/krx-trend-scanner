@@ -1,0 +1,29 @@
+{
+  "authority": "metadata.published is True AND IndexStore.verify_family == PASS",
+  "cases": {
+    "A_files_absent": {
+      "production_published": false,
+      "status": "NOT_PUBLISHED"
+    },
+    "B_files_exist_without_explicit_state": {
+      "explicit_published": false,
+      "production_published": false,
+      "status": "NOT_PUBLISHED"
+    },
+    "C_explicit_state_but_integrity_invalid": {
+      "explicit_published": true,
+      "integrity_status": "FAIL",
+      "production_published": false,
+      "status": "FAIL"
+    },
+    "D_explicit_state_and_integrity_pass": {
+      "explicit_published": true,
+      "integrity_status": "PASS",
+      "production_published": true,
+      "status": "PASS"
+    }
+  },
+  "repository_production_writes": 0,
+  "status": "PASS",
+  "tmp_fixture_writes": 3
+}

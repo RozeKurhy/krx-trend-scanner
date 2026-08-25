@@ -1,0 +1,47 @@
+{
+  "fix04_validation_anchor": "4fbe4cc23834f368628be698a2f01e1237d372f9",
+  "fix05_evidence_start_head": "87898fa0a811ca82950134b5a8474bac881697de",
+  "focused_regression": {
+    "failed": 0,
+    "passed": 66,
+    "warnings": 1
+  },
+  "full_regression": {
+    "deselected": 5,
+    "failed": 1,
+    "known_baseline_failure": "tests/test_krx_historical_backfill.py::test_recent_empty_is_not_checkpointed_and_general_resume_retries",
+    "new_failures": 0,
+    "passed": 1793,
+    "skipped": 6,
+    "warnings": 289638
+  },
+  "historical_state": {
+    "dates": 4095,
+    "exact_pairs": 4095,
+    "next_pending": null,
+    "rows": 8190,
+    "staging_sha256": "c95b6a581213eca1306f4fb321f71de4812d7414504a31ec4ecc1cf17b5bc1a8"
+  },
+  "major_r1": {
+    "artifact_generation_head": "23273982132ecc9c53c87cc31dacf801743f46d2",
+    "last_resume_execution_head": "87777472c113b54de53ed5117a242307023d92ec",
+    "separated": true,
+    "status": "PASS"
+  },
+  "major_r2": {
+    "authority": "explicit metadata.published true AND validated IndexStore integrity",
+    "current_production_published": false,
+    "file_existence_only_false_positive_blocked": true,
+    "status": "PASS"
+  },
+  "network_zero": true,
+  "production_writes": 0,
+  "revision": "FIX05 REVISION",
+  "revision_source_head": "23273982132ecc9c53c87cc31dacf801743f46d2",
+  "run3_evidence_unchanged": true,
+  "run3_execution_head": "87777472c113b54de53ed5117a242307023d92ec",
+  "run3_ledger_unchanged": true,
+  "start_head": "87898fa0a811ca82950134b5a8474bac881697de",
+  "status": "READY_FOR_ARCHITECT_FIX05_REVISION_REVIEW",
+  "work_id": "KRX_INDEX_MIGRATION_V01"
+}
