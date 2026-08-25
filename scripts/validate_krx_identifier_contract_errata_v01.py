@@ -42,6 +42,7 @@ ALLOWED_PATHS = {
     "tests/test_krx_raw_stock_store.py",
     "tests/test_krx_production_data_architecture_v01.py",
     "docs/architecture/errata/krx_identifier_contract_errata_v01.md",
+    "artifacts/data/krx_historical_backfill/v01/stale_live_evidence.json",
 }
 ERRATA_PREFIX = "artifacts/data/architecture/krx_production_data/v01/errata/"
 FIX06_PREFIX = "artifacts/data/krx_historical_backfill/v01/FIX06_"
