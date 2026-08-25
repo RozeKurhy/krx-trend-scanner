@@ -226,6 +226,7 @@ class KrxRawStockSnapshotProvider:
                     "RAW_SNAPSHOT_TICKER_FORMAT_ERROR",
                     **response_diagnostic,
                     ticker_sample_shape=f"length={len(ticker)}" if ticker else "empty",
+                    ticker_sample=ticker,
                 )
             row: dict[str, Any] = {"date": pd.Timestamp(requested_date), "ticker": ticker}
             for field in RAW_NUMERIC_COLUMNS:

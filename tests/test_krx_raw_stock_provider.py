@@ -96,8 +96,9 @@ def test_duplicate_ticker_is_rejected():
 @pytest.mark.parametrize("ticker", ["5930", "KR7005930003", "ABC930"])
 def test_ticker_must_be_six_digits(ticker):
     client = _Client(_Response(records=(_row(ISU_CD=ticker),)))
-    with pytest.raises(KrxRawStockSnapshotError, match="RAW_SNAPSHOT_TICKER_FORMAT_ERROR"):
+    with pytest.raises(KrxRawStockSnapshotError, match="RAW_SNAPSHOT_TICKER_FORMAT_ERROR") as caught:
         KrxRawStockSnapshotProvider(client).fetch_market_snapshot("KOSPI", "20260821")
+    assert caught.value.diagnostic["ticker_sample"] == ticker
 
 
 def test_numeric_parse_failure_is_rejected():
