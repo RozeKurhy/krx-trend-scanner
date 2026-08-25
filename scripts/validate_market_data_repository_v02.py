@@ -974,6 +974,15 @@ def _samsung_composition(live: dict[str, Any]) -> dict[str, Any]:
     return {"status": "NOT_RUN", "record": None}
 
 
+def _stage_evidence_status(
+    records: list[dict[str, Any]],
+    failure_blocker: str,
+) -> str:
+    if not records:
+        return "NOT_RUN"
+    return "PASS" if all(record.get("status") == "PASS" for record in records) else failure_blocker
+
+
 def _write_evidence(
     validation_head: str,
     static: dict[str, Any],
@@ -1068,7 +1077,9 @@ def _write_evidence(
     })
     _write_json("FIX02_provider_fetch_summary.json", {
         "phase": summary["phase"],
-        "status": "PASS" if live["successful_provider_fetch_count"] == 3 else "BLOCKED_LIVE_ADJUSTED_SAMPLE",
+        "status": _stage_evidence_status(
+            live["provider_fetch_records"], "BLOCKED_EXTERNAL_PYKRX_UNAVAILABLE"
+        ),
         "records": live["provider_fetch_records"],
         "successful_provider_fetch_count": live["successful_provider_fetch_count"],
         "provider_audit": live["provider_audit"],
@@ -1076,7 +1087,9 @@ def _write_evidence(
     })
     _write_json("FIX02_temp_store_integrity_summary.json", {
         "phase": summary["phase"],
-        "status": "PASS" if live["successful_temp_store_integrity_count"] == 3 else "BLOCKED_TEMP_ADJUSTED_STORE_INTEGRITY",
+        "status": _stage_evidence_status(
+            live["temp_store_integrity_records"], "BLOCKED_TEMP_ADJUSTED_STORE_INTEGRITY"
+        ),
         "records": live["temp_store_integrity_records"],
         "successful_temp_store_integrity_count": live["successful_temp_store_integrity_count"],
         "temporary_store_ticker_count": live["temporary_store_ticker_count"],
@@ -1086,7 +1099,9 @@ def _write_evidence(
     })
     _write_json("FIX02_composition_probe_summary.json", {
         "phase": summary["phase"],
-        "status": "PASS" if live["successful_composition_probe_count"] == 3 else "BLOCKED_PRODUCTION_COMPOSITION_PROBE",
+        "status": _stage_evidence_status(
+            live["composition_records"], "BLOCKED_PRODUCTION_COMPOSITION_PROBE"
+        ),
         "records": live["composition_records"],
         "successful_composition_probe_count": live["successful_composition_probe_count"],
         "usable_composition_sample_count": live["usable_composition_sample_count"],

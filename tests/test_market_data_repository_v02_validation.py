@@ -3,6 +3,7 @@ from __future__ import annotations
 from scripts.validate_market_data_repository_v02 import (
     _error_record,
     _runtime_network_guard,
+    _stage_evidence_status,
     _stage_blocker,
     evidence_consistency_gate,
     git_diff_gate_from_result,
@@ -198,3 +199,8 @@ def test_temp_store_count_matches_integrity_records() -> None:
     assert result["successful_temp_store_integrity_count"] == 1
     assert result["temporary_store_ticker_count"] == 1
     assert result["status"] == "PASS"
+
+
+def test_composition_failure_does_not_mark_temp_store_evidence_failed() -> None:
+    assert _stage_evidence_status([{"status": "PASS"}], "BLOCKED_TEMP_ADJUSTED_STORE_INTEGRITY") == "PASS"
+    assert _stage_evidence_status([{"status": "FAIL"}], "BLOCKED_TEMP_ADJUSTED_STORE_INTEGRITY") == "BLOCKED_TEMP_ADJUSTED_STORE_INTEGRITY"
