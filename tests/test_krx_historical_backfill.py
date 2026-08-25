@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import pandas as pd
 import pytest
 
@@ -10,7 +11,21 @@ from trend_scanner.data.krx_raw_stock_provider import KrxRawStockSnapshotError, 
 from trend_scanner.data.krx_raw_stock_store import KrxRawStockStore
 from trend_scanner.data.krx_historical_backfill import BLOCKER_PRIORITY, KrxHistoricalBackfillRunner, candidate_dates
 from scripts import validate_krx_historical_backfill_v01 as validation
-from scripts.validate_krx_historical_backfill_v01 import FIX_START_HEAD, _coverage, _is_current_evidence, _load_legacy_live_evidence, _samsung_evidence, _schema_evidence_status, _validation_source_head, pilot_parameters, pilot_status
+from scripts.validate_krx_historical_backfill_v01 import (
+    FIX_START_HEAD,
+    _coverage,
+    _evidence_state,
+    _final_ready_gate,
+    _is_current_evidence,
+    _is_current_samsung_evidence,
+    _load_legacy_live_evidence,
+    _load_stale_live_evidence,
+    _samsung_evidence,
+    _schema_evidence_status,
+    _validation_source_head,
+    pilot_parameters,
+    pilot_status,
+)
 
 
 def _frame(day, ticker):
@@ -221,7 +236,7 @@ def test_samsung_diagnostic_partial_evidence_is_allowed():
     assert evidence["blockers"] == []
 
 
-def test_legacy_live_evidence_does_not_become_current_fix04(tmp_path):
+def test_legacy_live_evidence_does_not_become_current_fix05(tmp_path):
     (tmp_path / "live_pilot_summary.json").write_text('{"mode":"live-pilot","status":"BLOCKED_KRX_SCHEMA"}\n', encoding="utf-8")
     legacy = _load_legacy_live_evidence(tmp_path)
     assert legacy["legacy"] is True
@@ -229,7 +244,7 @@ def test_legacy_live_evidence_does_not_become_current_fix04(tmp_path):
 
 
 def test_current_diagnostic_metadata_is_generation_scoped():
-    current = {"validation_generation": "FIX04", "mode": "live-diagnostic", "legacy": False}
+    current = {"validation_generation": "FIX05", "source_head": "head", "mode": "live-diagnostic", "legacy": False}
     assert _is_current_evidence(current, "live-diagnostic") is True
     assert _is_current_evidence(current, "live-pilot") is False
 
@@ -244,14 +259,107 @@ def test_current_diagnostic_transport_does_not_become_schema():
 
 def test_current_live_pilot_not_run_is_not_satisfied_by_legacy_summary():
     legacy = {"mode": "live-pilot", "status": "BLOCKED_KRX_SCHEMA"}
-    current = {"validation_generation": "FIX04", "mode": "live-pilot", "legacy": False, "status": "NOT_RUN"}
+    current = {"validation_generation": "FIX05", "source_head": "head", "mode": "live-pilot", "legacy": False, "status": "NOT_RUN"}
     assert _is_current_evidence(legacy, "live-pilot") is False
     assert _is_current_evidence(current, "live-pilot") is True
     assert current["status"] == "NOT_RUN"
 
 
-def test_fix04_provenance_start_head_is_frozen():
-    assert FIX_START_HEAD == "ca9b5e6eabbad693fb10a829a241b28b82de879b"
+def test_fix05_same_source_evidence_is_current_but_other_source_is_stale():
+    evidence = {"validation_generation": "FIX05", "source_head": "source-a", "mode": "live-diagnostic", "legacy": False, "observed_at": "t0"}
+    assert _is_current_evidence(evidence, "live-diagnostic", "source-a") is True
+    assert _is_current_evidence(evidence, "live-diagnostic", "source-b") is False
+    assert _evidence_state(evidence, "live-diagnostic", "source-b") == "STALE_SOURCE_EVIDENCE"
+
+
+def test_fix05_stale_loader_preserves_source_head_and_observed_at(tmp_path):
+    payload = {
+        "validation_generation": "FIX05",
+        "source_head": "source-a",
+        "mode": "live-diagnostic",
+        "observed_at": "2026-08-25T00:00:00+00:00",
+        "legacy": False,
+        "status": "PASS",
+    }
+    (tmp_path / "live_diagnostic_summary.json").write_text(json.dumps(payload), encoding="utf-8")
+    stale = _load_stale_live_evidence(tmp_path, "source-b")
+    preserved = stale["evidence"]["live_diagnostic_summary"]["payload"]
+    assert stale["evidence"]["live_diagnostic_summary"]["state"] == "STALE_SOURCE_EVIDENCE"
+    assert preserved["source_head"] == "source-a"
+    assert preserved["observed_at"] == "2026-08-25T00:00:00+00:00"
+
+
+def test_fix05_current_samsung_requires_source_and_pilot_metadata():
+    evidence = _samsung_evidence(None, (), source_head="source-a", mode="live-pilot")
+    evidence.update({"status": "PASS", "observations": [{"match": True}, {"match": True}]})
+    assert _is_current_samsung_evidence(evidence, "source-a") is True
+    assert _is_current_samsung_evidence(evidence, "source-b") is False
+
+
+@pytest.mark.parametrize("empty_market", ["KOSPI", "KOSDAQ", "BOTH"])
+def test_live_diagnostic_empty_historical_response_never_passes(monkeypatch, empty_market):
+    outcomes = {
+        "KOSPI": _frame("2018-04-27", "005930"),
+        "KOSDAQ": _frame("2018-04-27", "000660"),
+    }
+    if empty_market in {"KOSPI", "BOTH"}:
+        outcomes["KOSPI"] = outcomes["KOSPI"].iloc[0:0].copy()
+    if empty_market in {"KOSDAQ", "BOTH"}:
+        outcomes["KOSDAQ"] = outcomes["KOSDAQ"].iloc[0:0].copy()
+    summary, _ = _run_diagnostic(monkeypatch, outcomes)
+    assert summary["request_count"] == 2
+    assert summary["status"] == "BLOCKED_MORE_EVIDENCE_REQUIRED"
+    assert all(summary["per_market"][market]["attempted"] for market in ("KOSPI", "KOSDAQ"))
+
+
+def test_live_diagnostic_both_non_empty_remains_pass(monkeypatch):
+    summary, _ = _run_diagnostic(monkeypatch, {"KOSPI": _frame("2018-04-27", "005930"), "KOSDAQ": _frame("2018-04-27", "000660")})
+    assert summary["status"] == "PASS"
+
+
+def test_auth_exception_merges_client_audit_http_evidence():
+    client = _DiagnosticClient()
+    client.audit.append({"endpoint_key": "sto/stk_bydd_trd", "http_status": 401, "record_count": 0, "top_level_keys": [], "error_type": None})
+    diagnostic = validation._client_audit_diagnostic(client, "KOSPI")
+    assert diagnostic["http_status"] == 401
+
+
+def test_quota_exception_merges_client_audit_http_evidence():
+    client = _DiagnosticClient()
+    client.audit.append({"endpoint_key": "sto/ksq_bydd_trd", "http_status": 429, "record_count": 0, "top_level_keys": [], "error_type": None})
+    diagnostic = validation._client_audit_diagnostic(client, "KOSDAQ")
+    assert diagnostic["http_status"] == 429
+
+
+@pytest.mark.parametrize("missing_gate", ["diagnostic_pass", "pilot_pass", "samsung_pass"])
+def test_final_ready_requires_every_current_live_gate(missing_gate):
+    values = {
+        "bounded_pass": True,
+        "diagnostic_pass": True,
+        "pilot_pass": True,
+        "samsung_pass": True,
+        "coverage_ready": True,
+        "integrity_clean": True,
+        "provenance_clean": True,
+    }
+    values[missing_gate] = False
+    assert _final_ready_gate(**values) is False
+
+
+def test_final_ready_all_current_gates_passes():
+    assert _final_ready_gate(
+        bounded_pass=True,
+        diagnostic_pass=True,
+        pilot_pass=True,
+        samsung_pass=True,
+        coverage_ready=True,
+        integrity_clean=True,
+        provenance_clean=True,
+    ) is True
+
+
+def test_fix05_provenance_start_head_is_frozen():
+    assert FIX_START_HEAD == "7fac0d140db75b8e0914ad4f26ed344848d0a1ec"
 
 
 def test_artifact_only_dirty_state_preserves_source_provenance(monkeypatch):
