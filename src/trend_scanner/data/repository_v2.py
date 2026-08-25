@@ -38,6 +38,17 @@ RAW_DAILY_COLUMNS = (
 )
 ANCILLARY_COLUMNS = ("volume", "trading_value", "market_cap", "listed_shares")
 
+NON_TRADING_PLACEHOLDER_PREDICATE_NAME = "NON_TRADING_PLACEHOLDER_V01"
+NON_TRADING_PLACEHOLDER_PREDICATE_BASIS = "ADJUSTED_PRICE_PROVIDER_PHANTOM_COMPATIBILITY"
+NON_TRADING_PLACEHOLDER_FIELDS = (
+    "open == 0",
+    "high == 0",
+    "low == 0",
+    "close > 0",
+    "volume == 0",
+    "trading_value == 0",
+)
+
 
 def _empty_frame(columns: tuple[str, ...]) -> pd.DataFrame:
     return pd.DataFrame(
@@ -156,6 +167,129 @@ def _validate_ancillary(frame: pd.DataFrame) -> None:
         raise MarketDataError("INVALID_REPOSITORY_V2_OUTPUT")
 
 
+def _is_non_trading_placeholder(row: pd.Series) -> bool:
+    """Return true only for the exact, deliberately narrow placeholder shape."""
+
+    return bool(
+        row["open"] == 0
+        and row["high"] == 0
+        and row["low"] == 0
+        and row["close"] > 0
+        and row["volume"] == 0
+        and row["trading_value"] == 0
+    )
+
+
+def _placeholder_predicate_fields(row: pd.Series) -> dict[str, bool]:
+    return {
+        "open_zero": bool(row["open"] == 0),
+        "high_zero": bool(row["high"] == 0),
+        "low_zero": bool(row["low"] == 0),
+        "close_positive": bool(row["close"] > 0),
+        "volume_zero": bool(row["volume"] == 0),
+        "trading_value_zero": bool(row["trading_value"] == 0),
+    }
+
+
+def _json_scalar(value: Any) -> Any:
+    return value.item() if hasattr(value, "item") else value
+
+
+def _session_projection_evidence(
+    adjusted: pd.DataFrame,
+    raw: pd.DataFrame,
+) -> dict[str, Any]:
+    """Describe and explicitly apply the raw-only session projection.
+
+    The returned ``projected_raw`` is a copy.  The caller's physical raw frame is
+    never mutated, and this helper is intentionally limited to the composed
+    ``get_daily`` view.
+    """
+
+    adjusted_dates = sorted(pd.Timestamp(value).normalize() for value in adjusted.index)
+    raw_dates = sorted(pd.Timestamp(value).normalize() for value in raw.index)
+    adjusted_date_set = set(adjusted_dates)
+    raw_date_set = set(raw_dates)
+    adjusted_only_dates = sorted(adjusted_date_set - raw_date_set)
+    raw_only_dates = sorted(raw_date_set - adjusted_date_set)
+
+    raw_only_row_details: list[dict[str, Any]] = []
+    accepted_placeholder_dates: list[pd.Timestamp] = []
+    rejected_raw_only_dates: list[pd.Timestamp] = []
+    for date in raw_only_dates:
+        row = raw.loc[date]
+        predicate_fields = _placeholder_predicate_fields(row)
+        accepted = _is_non_trading_placeholder(row)
+        if accepted:
+            accepted_placeholder_dates.append(date)
+            classification = "NON_TRADING_PLACEHOLDER"
+            classification_reason = (
+                "all six NON_TRADING_PLACEHOLDER_V01 fields match"
+            )
+        else:
+            rejected_raw_only_dates.append(date)
+            mismatched_fields = [
+                field for field, matches in predicate_fields.items() if not matches
+            ]
+            classification = "UNCLASSIFIED_RAW_ONLY"
+            classification_reason = "predicate fields failed: " + ", ".join(mismatched_fields)
+        raw_only_row_details.append(
+            {
+                "date": date.date().isoformat(),
+                "open": _json_scalar(row["open"]),
+                "high": _json_scalar(row["high"]),
+                "low": _json_scalar(row["low"]),
+                "close": _json_scalar(row["close"]),
+                "volume": _json_scalar(row["volume"]),
+                "trading_value": _json_scalar(row["trading_value"]),
+                "market_cap": _json_scalar(row["market_cap"]),
+                "listed_shares": _json_scalar(row["listed_shares"]),
+                "adjusted_present": False,
+                "raw_present": True,
+                "placeholder_predicate_name": NON_TRADING_PLACEHOLDER_PREDICATE_NAME,
+                "placeholder_predicate_fields": predicate_fields,
+                "classification": classification,
+                "classification_reason": classification_reason,
+            }
+        )
+
+    projected_raw = raw.copy()
+    if accepted_placeholder_dates:
+        projected_raw = projected_raw.drop(index=accepted_placeholder_dates)
+    projected_raw = projected_raw.sort_index()
+    projected_date_set = set(projected_raw.index)
+    projected_date_set_exact_match = projected_date_set == adjusted_date_set
+    return {
+        "adjusted_dates": [date.date().isoformat() for date in adjusted_dates],
+        "raw_dates": [date.date().isoformat() for date in raw_dates],
+        "adjusted_only_dates": [date.date().isoformat() for date in adjusted_only_dates],
+        "raw_only_dates": [date.date().isoformat() for date in raw_only_dates],
+        "raw_only_row_details": raw_only_row_details,
+        "accepted_placeholder_dates": [
+            date.date().isoformat() for date in accepted_placeholder_dates
+        ],
+        "rejected_raw_only_dates": [
+            date.date().isoformat() for date in rejected_raw_only_dates
+        ],
+        "projected_raw": projected_raw,
+        "projected_raw_rows": len(projected_raw),
+        "projected_date_set_exact_match": projected_date_set_exact_match,
+        "explicit_placeholder_projection_count": len(accepted_placeholder_dates),
+        "silent_inner_drop_count": 0,
+    }
+
+
+def _project_raw_trading_sessions(adjusted: pd.DataFrame, raw: pd.DataFrame) -> pd.DataFrame:
+    evidence = _session_projection_evidence(adjusted, raw)
+    if (
+        evidence["adjusted_only_dates"]
+        or evidence["rejected_raw_only_dates"]
+        or not evidence["projected_date_set_exact_match"]
+    ):
+        raise MarketDataError("REPOSITORY_V2_TRADING_SESSION_MISMATCH")
+    return evidence["projected_raw"]
+
+
 class MarketDataRepositoryV2:
     """Compose adjusted OHLC with raw KRX daily facts without owning I/O."""
 
@@ -231,10 +365,6 @@ class MarketDataRepositoryV2:
         _validate_raw_daily(result)
         return result
 
-    @staticmethod
-    def _session_mismatch(adjusted: pd.DataFrame, raw: pd.DataFrame) -> bool:
-        return set(adjusted.index) != set(raw.index)
-
     def get_daily(self, ticker: str, start: str, end: str) -> pd.DataFrame:
         start_ts, end_ts = _date_range(start, end)
         adjusted_ticker = self._adjusted_ticker(ticker)
@@ -247,11 +377,9 @@ class MarketDataRepositoryV2:
             raise MarketDataError("DATA_UNAVAILABLE: ADJUSTED_MISSING")
         if raw.empty:
             raise MarketDataError("DATA_UNAVAILABLE: RAW_MISSING")
-        if self._session_mismatch(adjusted, raw):
-            raise MarketDataError("REPOSITORY_V2_TRADING_SESSION_MISMATCH")
 
         adjusted = adjusted.sort_index()
-        raw = raw.sort_index()
+        raw = _project_raw_trading_sessions(adjusted, raw)
         result = pd.concat(
             [
                 adjusted.loc[:, list(ADJUSTED_OHLC_COLUMNS)],

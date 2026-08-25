@@ -322,3 +322,152 @@ def test_negative_raw_numeric_fails(tmp_path):
     invalid_repo = MarketDataRepositoryV2(repo._adjusted_price_store, InvalidRawStore())
     with pytest.raises(MarketDataError, match="INVALID_REPOSITORY_V2_OUTPUT"):
         invalid_repo.get_raw_daily("005930", "2024-01-02", "2024-01-02")
+
+
+def _projection_raw_row(date: str, *, placeholder: bool = False, **overrides) -> dict:
+    if placeholder:
+        values = {
+            "open": 0,
+            "high": 0,
+            "low": 0,
+            "close": 100,
+            "volume": 0,
+            "trading_value": 0,
+        }
+    else:
+        values = {
+            "open": 100,
+            "high": 105,
+            "low": 95,
+            "close": 101,
+            "volume": 10,
+            "trading_value": 1000,
+        }
+    values.update(overrides)
+    return {
+        "date": pd.Timestamp(date),
+        "ticker": "005930",
+        **values,
+        "market_cap": 10000,
+        "listed_shares": 20000,
+    }
+
+
+def _projection_repo(tmp_path, adjusted_dates: list[str], raw_rows: list[dict]):
+    adjusted_store = AdjustedPriceStore(tmp_path / "adjusted")
+    raw_store = KrxRawStockStore(tmp_path / "raw")
+    adjusted_index = pd.DatetimeIndex(adjusted_dates)
+    adjusted_store.save_full("005930", _adjusted_frame(adjusted_index))
+    for row in raw_rows:
+        raw_store.save_snapshot(
+            "KOSPI",
+            row["date"].strftime("%Y-%m-%d"),
+            pd.DataFrame([row], columns=list(RAW_COLUMNS)),
+            "fixture",
+        )
+    return MarketDataRepositoryV2(adjusted_store, raw_store)
+
+
+def test_strict_placeholder_projects_only_from_composed_daily_and_raw_apis_preserve_it(tmp_path):
+    rows = [
+        _projection_raw_row("2024-01-02"),
+        _projection_raw_row("2024-01-03", placeholder=True),
+        _projection_raw_row("2024-01-04"),
+    ]
+    repo = _projection_repo(tmp_path, ["2024-01-02", "2024-01-04"], rows)
+
+    daily = repo.get_daily("005930", "2024-01-02", "2024-01-04")
+    assert list(daily.index) == [pd.Timestamp("2024-01-02"), pd.Timestamp("2024-01-04")]
+    raw = repo.get_raw_daily("005930", "2024-01-02", "2024-01-04")
+    ancillary = repo.get_daily_ancillary("005930", "2024-01-02", "2024-01-04")
+    snapshot = repo.get_stock_snapshot("005930", "2024-01-03")
+    assert pd.Timestamp("2024-01-03") in raw.index
+    assert raw.loc[pd.Timestamp("2024-01-03"), "close"] == 100
+    assert ancillary.loc[pd.Timestamp("2024-01-03"), "market_cap"] == 10000
+    assert snapshot.loc[pd.Timestamp("2024-01-03"), "volume"] == 0
+
+
+def test_active_raw_only_session_fails_closed(tmp_path):
+    rows = [
+        _projection_raw_row("2024-01-02"),
+        _projection_raw_row("2024-01-03", volume=0),
+        _projection_raw_row("2024-01-04"),
+    ]
+    repo = _projection_repo(tmp_path, ["2024-01-02", "2024-01-04"], rows)
+    with pytest.raises(MarketDataError, match="REPOSITORY_V2_TRADING_SESSION_MISMATCH"):
+        repo.get_daily("005930", "2024-01-02", "2024-01-04")
+
+
+def test_volume_zero_only_raw_only_session_is_not_removed(tmp_path):
+    rows = [
+        _projection_raw_row("2024-01-02"),
+        _projection_raw_row(
+            "2024-01-03", open=100, high=105, low=95, close=101, volume=0, trading_value=0
+        ),
+        _projection_raw_row("2024-01-04"),
+    ]
+    repo = _projection_repo(tmp_path, ["2024-01-02", "2024-01-04"], rows)
+    with pytest.raises(MarketDataError, match="REPOSITORY_V2_TRADING_SESSION_MISMATCH"):
+        repo.get_daily("005930", "2024-01-02", "2024-01-04")
+
+
+def test_trading_value_positive_raw_only_session_is_not_removed(tmp_path):
+    rows = [
+        _projection_raw_row("2024-01-02"),
+        _projection_raw_row("2024-01-03", placeholder=True, trading_value=1),
+        _projection_raw_row("2024-01-04"),
+    ]
+    repo = _projection_repo(tmp_path, ["2024-01-02", "2024-01-04"], rows)
+    with pytest.raises(MarketDataError, match="REPOSITORY_V2_TRADING_SESSION_MISMATCH"):
+        repo.get_daily("005930", "2024-01-02", "2024-01-04")
+
+
+def test_adjusted_only_session_fails_closed(tmp_path):
+    rows = [_projection_raw_row("2024-01-02"), _projection_raw_row("2024-01-04")]
+    repo = _projection_repo(tmp_path, ["2024-01-02", "2024-01-03", "2024-01-04"], rows)
+    with pytest.raises(MarketDataError, match="REPOSITORY_V2_TRADING_SESSION_MISMATCH"):
+        repo.get_daily("005930", "2024-01-02", "2024-01-04")
+
+
+def test_exact_session_sets_project_without_drops(tmp_path):
+    rows = [_projection_raw_row("2024-01-02"), _projection_raw_row("2024-01-04")]
+    repo = _projection_repo(tmp_path, ["2024-01-02", "2024-01-04"], rows)
+    result = repo.get_daily("005930", "2024-01-02", "2024-01-04")
+    assert len(result) == 2
+
+
+def test_multiple_raw_only_placeholders_are_projected_explicitly(tmp_path):
+    rows = [
+        _projection_raw_row("2024-01-02"),
+        _projection_raw_row("2024-01-03", placeholder=True),
+        _projection_raw_row("2024-01-04", placeholder=True),
+        _projection_raw_row("2024-01-05"),
+    ]
+    repo = _projection_repo(tmp_path, ["2024-01-02", "2024-01-05"], rows)
+    result = repo.get_daily("005930", "2024-01-02", "2024-01-05")
+    assert len(result) == 2
+
+
+def test_mixed_placeholder_and_active_raw_only_sessions_fail_closed(tmp_path):
+    rows = [
+        _projection_raw_row("2024-01-02"),
+        _projection_raw_row("2024-01-03", placeholder=True),
+        _projection_raw_row("2024-01-04", close=101, volume=1, trading_value=1000),
+        _projection_raw_row("2024-01-05"),
+    ]
+    repo = _projection_repo(tmp_path, ["2024-01-02", "2024-01-05"], rows)
+    with pytest.raises(MarketDataError, match="REPOSITORY_V2_TRADING_SESSION_MISMATCH"):
+        repo.get_daily("005930", "2024-01-02", "2024-01-05")
+
+
+def test_placeholder_on_shared_date_is_retained_in_projection(tmp_path):
+    rows = [
+        _projection_raw_row("2024-01-02"),
+        _projection_raw_row("2024-01-03", placeholder=True),
+        _projection_raw_row("2024-01-04"),
+    ]
+    repo = _projection_repo(tmp_path, ["2024-01-02", "2024-01-03", "2024-01-04"], rows)
+    daily = repo.get_daily("005930", "2024-01-02", "2024-01-04")
+    raw = repo.get_raw_daily("005930", "2024-01-02", "2024-01-04")
+    assert list(daily.index) == list(raw.index)
+    assert daily.loc[pd.Timestamp("2024-01-03"), "volume"] == 0

@@ -112,3 +112,34 @@ FIX02 raw authority 및 probe evidence
 * Network 0 offline raw probe는 005930, 000660, 068270의 raw parity와
   zero-price row count를 확인하고, Samsung listed_shares와 alphanumeric
   raw domain probe는 adjusted live 샘플과 독립적으로 수행한다.
+
+FIX03 trading-session projection
+--------------------------------
+* KrxRawStockStore의 모든 row는 PHYSICAL_RAW_OBSERVATION이다. 이 물리 관측치와
+  adjusted price provider가 반환하는 TRADING_SESSION 집합은 동일하다고
+  가정하지 않는다.
+* get_raw_daily, get_daily_ancillary, get_stock_snapshot은 물리 raw row를
+  전부 보존한다. 이 API들은 placeholder를 제거하거나 거래일 집합을 투영하지
+  않는다.
+* get_daily에 한해서만 raw-only 날짜를 명시적으로 투영한다. 투영 허용 predicate는
+  NON_TRADING_PLACEHOLDER_V01이며 다음 여섯 조건을 모두 만족해야 한다.
+  open == 0, high == 0, low == 0, close > 0, volume == 0,
+  trading_value == 0.
+* 위 predicate는
+  ADJUSTED_PRICE_PROVIDER_PHANTOM_COMPATIBILITY 근거로만 사용한다.
+  volume == 0 단독 조건, OHLC 전체 0 조건, trading_value 조건 일부, 또는
+  임의의 inner join은 허용하지 않는다.
+* adjusted-only 날짜는 BLOCKED_ADJUSTED_SESSION_WITHOUT_RAW_FACTS로,
+  predicate를 만족하지 않는 raw-only 날짜는
+  BLOCKED_UNCLASSIFIED_RAW_ONLY_SESSION으로 fail-closed한다. 외부 관측치의
+  불일치를 조용히 숨기지 않는다.
+* 투영 결과의 날짜 집합은 adjusted 집합과 exact match여야 하며, 제거된
+  placeholder 개수와 실제 날짜/필드/분류를 증적에 남긴다. silent inner drop은
+  항상 0이어야 한다.
+* FIX03 offline gate는 네트워크 없이 세 표본의 후보를 검사한다. 005930의
+  2018-04-01..2018-06-30 physical raw 범위에서 후보가 정확히 3개가 아니면
+  BLOCKED_PLACEHOLDER_SEMANTICS_UNPROVEN으로 live probe를 실행하지 않는다.
+  후보 날짜와 실제 raw 필드는 하드코딩하지 않고 저장소에서 산출한다.
+* live composition의 volume/trading_value 비교 대상은 projected raw이고,
+  ancillary 비교 대상은 physical raw다. 성능 증적에는 raw load, adjusted load,
+  projection, join, total elapsed를 ticker별로 기록하며 60초 이상은 warning이다.
