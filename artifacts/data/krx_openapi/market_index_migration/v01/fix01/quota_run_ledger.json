@@ -1,0 +1,38 @@
+{
+  "usage_date_kst": "2026-08-25",
+  "runs": [
+    {
+      "run_id": "RUN1_PILOT",
+      "scope": "PILOT",
+      "global_before": 8688,
+      "global_after": 8694,
+      "global_delta": 6,
+      "endpoint_deltas": {"kospi_dd_trd": 3, "kosdaq_dd_trd": 3},
+      "client_request_count": 6,
+      "audit_entry_count": 6,
+      "retry_count": 0,
+      "reconciliation": "PASS"
+    },
+    {
+      "run_id": "RUN2_HISTORICAL_BACKFILL_TRANCHE",
+      "scope": "HISTORICAL_BACKFILL_TRANCHE",
+      "global_before": 8694,
+      "global_after": 10000,
+      "global_delta": 1306,
+      "endpoint_deltas": {"kospi_dd_trd": 653, "kosdaq_dd_trd": 653},
+      "client_request_count": 1306,
+      "audit_entry_count": 1306,
+      "retry_count": 0,
+      "reconciliation": "PASS"
+    }
+  ],
+  "phase_cumulative": {
+    "global_before": 8688,
+    "global_after": 10000,
+    "global_delta": 1312,
+    "endpoint_deltas": {"kospi_dd_trd": 656, "kosdaq_dd_trd": 656},
+    "client_request_count": 1312,
+    "audit_entry_count": 1312
+  },
+  "status": "PASS"
+}
