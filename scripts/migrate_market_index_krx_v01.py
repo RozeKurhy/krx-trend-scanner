@@ -1094,6 +1094,108 @@ def validate_runtime_network_provenance(ledger: Mapping[str, Any]) -> dict[str, 
     return {**summary, "status": "PASS" if summary["status"] == "PASS" and quota.get("status") == "PASS" else "FAIL", "quota_status": quota.get("status")}
 
 
+def validate_production_publication_authority(
+    *,
+    production_root: Path | str = PRODUCTION_PARQUET.parent,
+) -> dict[str, Any]:
+    """Evaluate publication state without treating file existence as authority.
+
+    A production pair is accepted only when its metadata explicitly records
+    ``published: true`` and ``IndexStore.verify_family`` validates the parquet
+    and metadata contract.  Missing, malformed, unpublished, or inconsistent
+    files fail closed and never report ``production_published=True``.
+    """
+
+    root = Path(production_root)
+    parquet_path = root / PRODUCTION_PARQUET.name
+    meta_path = root / PRODUCTION_META.name
+    result: dict[str, Any] = {
+        "production_root": str(root),
+        "parquet_exists": parquet_path.exists(),
+        "meta_exists": meta_path.exists(),
+        "explicit_published": False,
+        "integrity_status": "NOT_RUN",
+        "production_published": False,
+    }
+    if not parquet_path.exists() or not meta_path.exists():
+        result.update({"status": "NOT_PUBLISHED", "reason": "PRODUCTION_FILES_MISSING"})
+        return result
+    try:
+        metadata = json.loads(meta_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        result.update({"status": "FAIL", "reason": "PRODUCTION_METADATA_INVALID", "integrity_status": "FAIL"})
+        return result
+    explicit_published = metadata.get("published") is True
+    result["explicit_published"] = explicit_published
+    if not explicit_published:
+        result.update({"status": "NOT_PUBLISHED", "reason": "EXPLICIT_PUBLISH_STATE_REQUIRED"})
+        return result
+    try:
+        integrity = IndexStore(root).verify_family(MARKET_INDEX_FAMILY)
+    except Exception as exc:
+        result.update({"status": "FAIL", "reason": str(exc), "integrity_status": "FAIL"})
+        return result
+    result["integrity_status"] = str(integrity.get("status", "FAIL"))
+    result["integrity"] = integrity
+    if result["integrity_status"] != "PASS":
+        result.update({"status": "FAIL", "reason": "PRODUCTION_INTEGRITY_FAILED"})
+        return result
+    result.update({"status": "PASS", "reason": "EXPLICIT_PUBLISH_STATE_AND_INTEGRITY_PASS", "production_published": True})
+    return result
+
+
+def _execution_head_from_ledger(operational_ledger: Mapping[str, Any] | None) -> str | None:
+    """Read an execution HEAD only when the ledger labels it as execution provenance."""
+
+    if not isinstance(operational_ledger, Mapping):
+        return None
+    for key in ("execution_head", "last_resume_execution_head"):
+        value = str(operational_ledger.get(key, "")).strip()
+        if value:
+            return value
+    runs = operational_ledger.get("runs", [])
+    if not isinstance(runs, list):
+        return None
+    for run in reversed(runs):
+        if not isinstance(run, Mapping):
+            continue
+        run_type = str(run.get("run_type", run.get("scope", ""))).upper()
+        if "RESUME" not in run_type and "BACKFILL" not in run_type:
+            continue
+        value = str(run.get("execution_head", "")).strip()
+        if value:
+            return value
+    return None
+
+
+def resolve_last_resume_execution_head(
+    *,
+    operational_ledger: Mapping[str, Any] | None = None,
+    manifest: Mapping[str, Any] | None = None,
+    execution_artifact_path: Path | None = None,
+) -> str | None:
+    """Resolve the last real network execution HEAD, never the current source HEAD."""
+
+    ledger_head = _execution_head_from_ledger(operational_ledger)
+    if ledger_head:
+        return ledger_head
+    artifact_path = execution_artifact_path or (ARTIFACT_DIR / "execution/run3_resume_20260826.json")
+    execution = _read_json_artifact(artifact_path)
+    run = execution.get("run", {}) if isinstance(execution, Mapping) else {}
+    if (
+        str(execution.get("execution_kind", "")) == "MARKET_INDEX_HISTORICAL_RESUME"
+        and str(execution.get("status", "")) == "PASS"
+        and isinstance(run, Mapping)
+        and str(run.get("state", "")) == "COMPLETED"
+    ):
+        value = str(execution.get("execution_head", "")).strip()
+        if value:
+            return value
+    existing = manifest if isinstance(manifest, Mapping) else {}
+    value = str(existing.get("last_resume_execution_head", "")).strip()
+    return value or None
+
+
 def finalize_market_index_migration(
     *,
     calendar: Mapping[str, Any],
@@ -1203,7 +1305,7 @@ def finalize_market_index_migration(
     gates["all_gates_pass"] = {"status": "PASS" if all(gates.get(name, {}).get("status") == "PASS" for name in ordered) else "FAIL", "order": list(ordered)}
 
     if publish and gates["all_gates_pass"]["status"] == "PASS":
-        writer = production_writer or (lambda value: IndexStore(PRODUCTION_PARQUET.parent).save_family_full(MARKET_INDEX_FAMILY, value))
+        writer = production_writer or (lambda value: IndexStore(PRODUCTION_PARQUET.parent).save_family_full(MARKET_INDEX_FAMILY, value, metadata_context={"published": True}))
         writer(normalized)
         production_write_count = 1
         gates["production_reload_integrity_gate"] = IndexStore(PRODUCTION_PARQUET.parent).verify_family(MARKET_INDEX_FAMILY) if production_writer is None else {"status": "PASS"}
@@ -1275,7 +1377,7 @@ def derive_migration_artifact_state(*, calendar: Mapping[str, Any], backfill: Ma
     return {
         "status": status,
         "historical_collection_status": status,
-        "production_published": bool(PRODUCTION_PARQUET.exists() and PRODUCTION_META.exists()),
+        "production_published": validate_production_publication_authority()["production_published"],
         "target_date_count": target_count,
         "complete_date_count": complete_count,
         "staging_rows": staging_rows,
@@ -1326,11 +1428,17 @@ def write_migration_artifacts(*, calendar: Mapping[str, Any], pilot: Mapping[str
     safe_write_json(ARTIFACT_DIR / "network_request_summary.json", network_summary, auth_key)
     safe_write_json(ARTIFACT_DIR / "secret_scan.json", secret_scan(auth_key), auth_key)
     manifest = _read_json_artifact(ARTIFACT_DIR / "market_index_migration_v01_manifest.json")
+    last_resume_execution_head = resolve_last_resume_execution_head(
+        operational_ledger=operational_ledger,
+        manifest=manifest,
+    )
     if validation_source_head:
         validate_manifest_anchor_immutability(manifest, field="fix04_validation_source_head", proposed=validation_source_head)
         if not manifest.get("fix04_validation_source_head"):
             manifest["fix04_validation_source_head"] = validation_source_head
-    manifest.update({"work_id": "KRX_INDEX_MIGRATION_V01", "start_head": START_HEAD, "phase_start_head": START_HEAD, "original_implementation_head": "f20e428c0b8d6a6f7bd6a87e7ceb5395c98edf62", "fix01_start_head": "b7f265bd93c19dd72953553787e34b382a9678f4", "status": canonical["status"], "current_status": "HISTORICAL_COLLECTION_COMPLETED_NOT_PUBLISHED" if canonical["status"] == "COMPLETED" else canonical["status"], "historical_collection_status": canonical["historical_collection_status"], "production_published": canonical["production_published"], "finalization_status": canonical["finalization_status"], "migration_closure_status": canonical["migration_closure_status"], "blockers": backfill.get("blockers", []), "artifact_generation_head": source_head, "last_resume_execution_head": source_head, "artifact_files": sorted(str(path.relative_to(ARTIFACT_DIR)) for path in ARTIFACT_DIR.rglob("*") if path.is_file())})
+    manifest.update({"work_id": "KRX_INDEX_MIGRATION_V01", "start_head": START_HEAD, "phase_start_head": START_HEAD, "original_implementation_head": "f20e428c0b8d6a6f7bd6a87e7ceb5395c98edf62", "fix01_start_head": "b7f265bd93c19dd72953553787e34b382a9678f4", "status": canonical["status"], "current_status": "HISTORICAL_COLLECTION_COMPLETED_NOT_PUBLISHED" if canonical["status"] == "COMPLETED" else canonical["status"], "historical_collection_status": canonical["historical_collection_status"], "production_published": canonical["production_published"], "finalization_status": canonical["finalization_status"], "migration_closure_status": canonical["migration_closure_status"], "blockers": backfill.get("blockers", []), "artifact_generation_head": source_head, "artifact_files": sorted(str(path.relative_to(ARTIFACT_DIR)) for path in ARTIFACT_DIR.rglob("*") if path.is_file())})
+    if last_resume_execution_head:
+        manifest["last_resume_execution_head"] = last_resume_execution_head
     if operational_ledger is not None:
         manifest.update({"operational_ledger_schema": OPERATIONAL_LEDGER_SCHEMA_VERSION, "operational_ledger_path": str(OPERATIONAL_LEDGER_PATH.relative_to(ROOT))})
     safe_write_json(ARTIFACT_DIR / "market_index_migration_v01_manifest.json", manifest, auth_key)
@@ -1432,5 +1540,5 @@ if __name__ == "__main__":
 
 __all__ = [
     "ARTIFACT_DIR", "END_DATE", "LEGACY_REFERENCE", "LEGACY_REFERENCE_SHA256", "PILOT_DATES", "START_DATE", "START_HEAD",
-    "ARTIFACT_DIR", "KNOWN_CHECKPOINT_656_SHA256", "OPERATIONAL_LEDGER_PATH", "OPERATIONAL_LEDGER_SCHEMA_VERSION", "MarketIndexMigrationRunner", "append_operational_run", "atomic_write_json", "compare_legacy_market_parity", "derive_migration_artifact_state", "derive_raw_trading_calendar", "ensure_operational_ledger", "finalize_market_index_migration", "legacy_reference_summary", "load_auth_key", "load_offline_calendar", "load_operational_ledger", "market_rs_parity", "mapping_contract_sha256", "network_summary_from_operational_ledger", "resolve_validation_source_head", "safe_write_json", "secret_scan", "seed_operational_ledger_from_checkpoint", "terminal_run_state", "upgrade_seeded_ledger_checkpoint", "update_operational_run", "validate_complete_staged_date", "validate_current_source_freeze", "validate_cumulative_progress", "validate_manifest_anchor_immutability", "validate_operational_ledger", "validate_operational_ledger_chain", "validate_quota_reconciliation", "validate_resume_pre_network", "validate_runtime_network_provenance", "validate_staging_ledger_continuity", "validate_staging_reuse", "write_migration_artifacts",
+    "ARTIFACT_DIR", "KNOWN_CHECKPOINT_656_SHA256", "OPERATIONAL_LEDGER_PATH", "OPERATIONAL_LEDGER_SCHEMA_VERSION", "MarketIndexMigrationRunner", "append_operational_run", "atomic_write_json", "compare_legacy_market_parity", "derive_migration_artifact_state", "derive_raw_trading_calendar", "ensure_operational_ledger", "finalize_market_index_migration", "legacy_reference_summary", "load_auth_key", "load_offline_calendar", "load_operational_ledger", "market_rs_parity", "mapping_contract_sha256", "network_summary_from_operational_ledger", "resolve_last_resume_execution_head", "resolve_validation_source_head", "safe_write_json", "secret_scan", "seed_operational_ledger_from_checkpoint", "terminal_run_state", "upgrade_seeded_ledger_checkpoint", "update_operational_run", "validate_complete_staged_date", "validate_current_source_freeze", "validate_cumulative_progress", "validate_manifest_anchor_immutability", "validate_operational_ledger", "validate_operational_ledger_chain", "validate_production_publication_authority", "validate_quota_reconciliation", "validate_resume_pre_network", "validate_runtime_network_provenance", "validate_staging_ledger_continuity", "validate_staging_reuse", "write_migration_artifacts",
 ]

@@ -204,6 +204,88 @@ def test_artifact_writer_emits_completed_state_without_manual_patch(tmp_path: Pa
     assert manifest["current_status"] == "HISTORICAL_COLLECTION_COMPLETED_NOT_PUBLISHED"
 
 
+def test_artifact_generation_preserves_last_resume_execution_head(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    artifact_dir = tmp_path / "artifacts"
+    (artifact_dir / "execution").mkdir(parents=True)
+    (artifact_dir / "execution/run3_resume_20260826.json").write_text(
+        json.dumps({
+            "execution_kind": "MARKET_INDEX_HISTORICAL_RESUME",
+            "execution_head": "RUN3_EXECUTION_HEAD",
+            "status": "PASS",
+            "run": {"state": "COMPLETED"},
+        }),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(migration, "ARTIFACT_DIR", artifact_dir)
+    kwargs = {
+        "calendar": {"target_dates": ["2026-08-14"], "complete_trading_date_count": 1},
+        "pilot": {"status": "NOT_RUN"},
+        "backfill": {"status": "PARTIAL_RESUMABLE_KRX_INDEX_MIGRATION_V01", "complete_date_count": 0, "staging_rows": 0, "blockers": []},
+        "staging_frame": _staged_rows(["2026-08-14"]),
+    }
+    migration.write_migration_artifacts(**kwargs, source_head="FIX05_REVISION_HEAD")
+    first = json.loads((artifact_dir / "market_index_migration_v01_manifest.json").read_text(encoding="utf-8"))
+    migration.write_migration_artifacts(**kwargs, source_head="A_SECOND_ARTIFACT_HEAD")
+    second = json.loads((artifact_dir / "market_index_migration_v01_manifest.json").read_text(encoding="utf-8"))
+    assert first["artifact_generation_head"] == "FIX05_REVISION_HEAD"
+    assert second["artifact_generation_head"] == "A_SECOND_ARTIFACT_HEAD"
+    assert first["last_resume_execution_head"] == "RUN3_EXECUTION_HEAD"
+    assert second["last_resume_execution_head"] == "RUN3_EXECUTION_HEAD"
+
+
+def test_artifact_generation_without_new_execution_keeps_existing_head(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    artifact_dir = tmp_path / "artifacts"
+    artifact_dir.mkdir()
+    manifest_path = artifact_dir / "market_index_migration_v01_manifest.json"
+    manifest_path.write_text(json.dumps({"last_resume_execution_head": "RUN3_EXECUTION_HEAD"}), encoding="utf-8")
+    monkeypatch.setattr(migration, "ARTIFACT_DIR", artifact_dir)
+    migration.write_migration_artifacts(
+        calendar={"target_dates": ["2026-08-14"], "complete_trading_date_count": 1},
+        pilot={"status": "NOT_RUN"},
+        backfill={"status": "PARTIAL_RESUMABLE_KRX_INDEX_MIGRATION_V01", "complete_date_count": 0, "staging_rows": 0, "blockers": []},
+        source_head="FIX05_REVISION_HEAD",
+        staging_frame=_staged_rows(["2026-08-14"]),
+    )
+    saved = json.loads(manifest_path.read_text(encoding="utf-8"))
+    assert saved["last_resume_execution_head"] == "RUN3_EXECUTION_HEAD"
+
+
+def test_production_publication_authority_fails_closed_for_missing_or_unpublished(tmp_path: Path) -> None:
+    root = tmp_path / "production"
+    missing = migration.validate_production_publication_authority(production_root=root)
+    assert missing["production_published"] is False
+    frame = _staged_rows(["2026-08-14"])
+    migration.IndexStore(root).save_family_full(migration.MARKET_INDEX_FAMILY, frame)
+    unpublished = migration.validate_production_publication_authority(production_root=root)
+    assert unpublished["parquet_exists"] is True
+    assert unpublished["meta_exists"] is True
+    assert unpublished["explicit_published"] is False
+    assert unpublished["production_published"] is False
+
+
+def test_production_publication_authority_requires_integrity(tmp_path: Path) -> None:
+    root = tmp_path / "production"
+    frame = _staged_rows(["2026-08-14"])
+    migration.IndexStore(root).save_family_full(migration.MARKET_INDEX_FAMILY, frame, metadata_context={"published": True})
+    meta_path = root / "market_index.meta.json"
+    metadata = json.loads(meta_path.read_text(encoding="utf-8"))
+    metadata["content_sha256"] = "tampered"
+    meta_path.write_text(json.dumps(metadata), encoding="utf-8")
+    invalid = migration.validate_production_publication_authority(production_root=root)
+    assert invalid["explicit_published"] is True
+    assert invalid["integrity_status"] == "FAIL"
+    assert invalid["production_published"] is False
+
+
+def test_production_publication_authority_accepts_explicit_valid_publish(tmp_path: Path) -> None:
+    root = tmp_path / "production"
+    migration.IndexStore(root).save_family_full(migration.MARKET_INDEX_FAMILY, _staged_rows(["2026-08-14"]), metadata_context={"published": True})
+    accepted = migration.validate_production_publication_authority(production_root=root)
+    assert accepted["explicit_published"] is True
+    assert accepted["integrity_status"] == "PASS"
+    assert accepted["production_published"] is True
+
+
 class FakeQuota:
     def __init__(self, remaining_slots: int):
         self.remaining_slots = remaining_slots
