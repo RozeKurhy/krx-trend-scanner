@@ -1,7 +1,20 @@
 krx_historical_backfill_v01_recommendation.md
-================================================================================
-FIX09 status: READY_FOR_ARCHITECT_KRX_HISTORICAL_BACKFILL_V01_FIX09_REVIEW
-provenance_status: PASS
-coverage_status: PASS
-blockers: []
-FULL_REGRESSION_CLOSURE_DEFERRED remains a known phase limitation.
+KRX_HISTORICAL_BACKFILL_V01
+
+STATUS
+CLOSED
+
+ARCHITECT REVIEW HEAD
+f43de51d801a071a15c77405d66723529f8d983d
+
+FIX09
+ACCEPTED
+
+MERGE TO MAIN
+AUTHORIZED
+
+KNOWN NON-BLOCKING LIMITATION
+FULL_REGRESSION_CLOSURE_DEFERRED
+
+NEXT
+MARKET_DATA_REPOSITORY_V02
