@@ -1,0 +1,20 @@
+{
+  "blockers": [],
+  "date": "2018-04-27",
+  "diagnostics": [
+    {"attempted": true, "date": "2018-04-27", "endpoint": "/sto/stk_bydd_trd", "error_code": null, "http_status": 200, "market": "KOSPI", "ohlc_relation_error_count": 0, "record_count": 892, "records_key": "OutBlock_1", "required_field_error_count": 0, "status": "PASS", "ticker_format_error_count": 0, "numeric_parse_error_count": 0, "numeric_range_error_count": 0, "date_mismatch_count": 0},
+    {"attempted": true, "date": "2018-04-27", "endpoint": "/sto/ksq_bydd_trd", "error_code": null, "http_status": 200, "market": "KOSDAQ", "ohlc_relation_error_count": 0, "record_count": 1272, "records_key": "OutBlock_1", "required_field_error_count": 0, "status": "PASS", "ticker_format_error_count": 0, "numeric_parse_error_count": 0, "numeric_range_error_count": 0, "date_mismatch_count": 0}
+  ],
+  "legacy": false,
+  "mode": "corrected-diagnostic",
+  "request_audit": [
+    {"attempt": 1, "date": "20180427", "elapsed_ms": 729, "endpoint": "/sto/stk_bydd_trd", "endpoint_key": "stk_bydd_trd", "headers": {"AUTH_KEY": "<redacted>"}, "http_status": 200, "record_count": 892},
+    {"attempt": 1, "date": "20180427", "elapsed_ms": 869, "endpoint": "/sto/ksq_bydd_trd", "endpoint_key": "ksq_bydd_trd", "headers": {"AUTH_KEY": "<redacted>"}, "http_status": 200, "record_count": 1272}
+  ],
+  "request_count": 2,
+  "retry_count": 0,
+  "source_head": "e508005c16e5fa3fa19c03b6568ba56ab9ac9294",
+  "status": "PASS",
+  "status_counts": {"401": 0, "403": 0, "429": 0, "5xx": 0, "transport_error": 0},
+  "validation_generation": "FIX06"
+}

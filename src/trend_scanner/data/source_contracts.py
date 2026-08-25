@@ -120,7 +120,8 @@ class ObservabilityContract:
     separation: str
 
 
-ARCHITECTURE_VERSION = "KRX_PRODUCTION_DATA_ARCHITECTURE_V01_FIX03"
+BASE_ARCHITECTURE_VERSION = "KRX_PRODUCTION_DATA_ARCHITECTURE_V01_FIX03"
+ARCHITECTURE_VERSION = "KRX_PRODUCTION_DATA_ARCHITECTURE_V01_ERRATA01"
 
 
 def _field(
@@ -172,7 +173,7 @@ _PYKRX_ADJUSTED = ("stock.get_market_ohlcv_by_date(adjusted=True)",)
 
 AUTHORITY_FIELDS: tuple[AuthorityFieldContract, ...] = (
     _field("raw.date", "KRXRawStockStore", "date", "KRX_OPEN_API_STOCK_DAILY", AuthorityType.DERIVED, "KRX Open API", _KRX_DAILY, "BAS_DD", "SOURCE_OBSERVATION_DATE", "TEMPORAL_KEY", "KRX_RAW_STOCK_V01"),
-    _field("raw.ticker", "KRXRawStockStore", "ticker", "KRX_OPEN_API_STOCK_DAILY", AuthorityType.AUTHORITATIVE, "KRX Open API", _KRX_DAILY, "ISU_CD", "SIX_DIGIT_TICKER", "IDENTITY_KEY", "KRX_RAW_STOCK_V01"),
+    _field("raw.ticker", "KRXRawStockStore", "ticker", "KRX_OPEN_API_STOCK_DAILY", AuthorityType.AUTHORITATIVE, "KRX Open API", _KRX_DAILY, "ISU_CD", "KRX_SHORT_CODE", "IDENTITY_KEY", "KRX_RAW_STOCK_V01"),
     _field("raw.open", "KRXRawStockStore", "open", "KRX_OPEN_API_STOCK_DAILY", AuthorityType.AUTHORITATIVE, "KRX Open API", _KRX_DAILY, "TDD_OPNPRC", "UNADJUSTED_RAW", "AUTHORITATIVE_SOURCE", "KRX_RAW_STOCK_V01"),
     _field("raw.high", "KRXRawStockStore", "high", "KRX_OPEN_API_STOCK_DAILY", AuthorityType.AUTHORITATIVE, "KRX Open API", _KRX_DAILY, "TDD_HGPRC", "UNADJUSTED_RAW", "AUTHORITATIVE_SOURCE", "KRX_RAW_STOCK_V01"),
     _field("raw.low", "KRXRawStockStore", "low", "KRX_OPEN_API_STOCK_DAILY", AuthorityType.AUTHORITATIVE, "KRX Open API", _KRX_DAILY, "TDD_LWPRC", "UNADJUSTED_RAW", "AUTHORITATIVE_SOURCE", "KRX_RAW_STOCK_V01"),
@@ -188,7 +189,7 @@ AUTHORITY_FIELDS: tuple[AuthorityFieldContract, ...] = (
     _field("adjusted.low", "AdjustedPriceStore", "low", "PYKRX_ADJUSTED_PRICE", AuthorityType.AUTHORITATIVE, "PyKRX", _PYKRX_ADJUSTED, "저가", "ADJUSTED_OHLC", "AUTHORITATIVE_SOURCE", "ADJUSTED_PRICE_V01"),
     _field("adjusted.close", "AdjustedPriceStore", "close", "PYKRX_ADJUSTED_PRICE", AuthorityType.AUTHORITATIVE, "PyKRX", _PYKRX_ADJUSTED, "종가", "ADJUSTED_OHLC", "AUTHORITATIVE_SOURCE", "ADJUSTED_PRICE_V01"),
     _field("master.as_of", "StockMasterStore", "as_of", "KRX_OPEN_API_BASIC_INFO", AuthorityType.DERIVED, "KRX Open API Basic Info", _KRX_BASIC, None, "REQUESTED_SNAPSHOT_DATE", "TEMPORAL_KEY", "STOCK_MASTER_V01", provenance_origin=ProvenanceOrigin.REQUEST_PARAMETER, source_locator="REQUEST_PARAMETER.basDd"),
-    _field("master.ticker", "StockMasterStore", "ticker", "KRX_OPEN_API_BASIC_INFO", AuthorityType.AUTHORITATIVE, "KRX Open API Basic Info", _KRX_BASIC, "ISU_SRT_CD", "SIX_DIGIT_TICKER", "IDENTITY_KEY", "STOCK_MASTER_V01"),
+    _field("master.ticker", "StockMasterStore", "ticker", "KRX_OPEN_API_BASIC_INFO", AuthorityType.AUTHORITATIVE, "KRX Open API Basic Info", _KRX_BASIC, "ISU_SRT_CD", "KRX_SHORT_CODE", "IDENTITY_KEY", "STOCK_MASTER_V01"),
     _field("master.standard_code", "StockMasterStore", "standard_code", "KRX_OPEN_API_BASIC_INFO", AuthorityType.AUTHORITATIVE, "KRX Open API Basic Info", _KRX_BASIC, "ISU_CD", "KRX_STANDARD_CODE", "IDENTITY_KEY", "STOCK_MASTER_V01"),
     _field("master.name", "StockMasterStore", "name", "KRX_OPEN_API_BASIC_INFO", AuthorityType.AUTHORITATIVE, "KRX Open API Basic Info", _KRX_BASIC, "ISU_ABBRV", "SECURITY_NAME", "AUTHORITATIVE_SOURCE", "STOCK_MASTER_V01"),
     _field("master.raw_market", "StockMasterStore", "raw_market", "KRX_OPEN_API_BASIC_INFO", AuthorityType.AUTHORITATIVE, "KRX Open API Basic Info", _KRX_BASIC, "MKT_TP_NM", "KRX_RAW_MARKET_TYPE", "AUTHORITATIVE_SOURCE", "STOCK_MASTER_V01", provenance_origin=ProvenanceOrigin.RESPONSE_FIELD),
@@ -200,7 +201,7 @@ AUTHORITY_FIELDS: tuple[AuthorityFieldContract, ...] = (
     _field("master.par_value", "StockMasterStore", "par_value", "KRX_OPEN_API_BASIC_INFO", AuthorityType.AUTHORITATIVE, "KRX Open API Basic Info", _KRX_BASIC, "PARVAL", "PAR_VALUE", "AUTHORITATIVE_SOURCE", "STOCK_MASTER_V01"),
     _field("master.listed_shares", "StockMasterStore", "listed_shares", "KRX_OPEN_API_BASIC_INFO", AuthorityType.AUTHORITATIVE, "KRX Open API Basic Info", _KRX_BASIC, "LIST_SHRS", "MASTER_SNAPSHOT_LISTED_SHARES", "AUTHORITATIVE_SOURCE", "STOCK_MASTER_V01"),
     _field("classification.effective_date", "InstrumentClassificationStore", "effective_date", "INSTRUMENT_CLASSIFICATION", AuthorityType.DERIVED, "InstrumentMetadataResolver", ("InstrumentMetadataResolver",), None, "CLASSIFICATION_EFFECTIVE_DATE", "TEMPORAL_KEY", "INSTRUMENT_CLASSIFICATION_V01", source_locator="InstrumentMetadataResolver.effective_date"),
-    _field("classification.ticker", "InstrumentClassificationStore", "ticker", "INSTRUMENT_CLASSIFICATION", AuthorityType.DERIVED, "InstrumentMetadataResolver", ("InstrumentMetadataResolver",), None, "SIX_DIGIT_TICKER", "IDENTITY_KEY", "INSTRUMENT_CLASSIFICATION_V01", source_locator="InstrumentMetadataResolver.ticker"),
+    _field("classification.ticker", "InstrumentClassificationStore", "ticker", "INSTRUMENT_CLASSIFICATION", AuthorityType.DERIVED, "InstrumentMetadataResolver", ("InstrumentMetadataResolver",), None, "KRX_SHORT_CODE", "IDENTITY_KEY", "INSTRUMENT_CLASSIFICATION_V01", source_locator="InstrumentMetadataResolver.ticker (StockMasterStore KRX_SHORT_CODE namespace)"),
     _field("classification.asset_type", "InstrumentClassificationStore", "asset_type", "INSTRUMENT_CLASSIFICATION", AuthorityType.DERIVED, "Instrument classification pipeline", ("StockMasterStore", "formal product-master authority"), None, "FORMAL_INSTRUMENT_CLASSIFICATION", "DERIVED_CLASSIFICATION", "INSTRUMENT_CLASSIFICATION_V01", source_locator="StockMasterStore.security_group/listing_section/security_kind"),
     _field("classification.classification_authority", "InstrumentClassificationStore", "classification_authority", "INSTRUMENT_CLASSIFICATION", AuthorityType.DERIVED, "InstrumentMetadataResolver", ("InstrumentMetadataResolver",), None, "CLASSIFICATION_AUTHORITY", "PROVENANCE_METADATA", "INSTRUMENT_CLASSIFICATION_V01", provenance_origin=ProvenanceOrigin.STATE, source_locator="InstrumentMetadataResolver.classification_authority"),
     _field("classification.asset_type_source", "InstrumentClassificationStore", "asset_type_source", "INSTRUMENT_CLASSIFICATION", AuthorityType.DERIVED, "InstrumentMetadataResolver", ("InstrumentMetadataResolver",), None, "ASSET_TYPE_SOURCE", "PROVENANCE_METADATA", "INSTRUMENT_CLASSIFICATION_V01", provenance_origin=ProvenanceOrigin.PROVENANCE_METADATA, source_locator="InstrumentMetadataResolver.asset_type_source"),
@@ -270,10 +271,10 @@ LAYER_REGISTRY: tuple[LayerContract, ...] = (
 
 
 ENDPOINT_IDENTIFIER_CONTRACT: dict[str, Any] = {
-    "DAILY_TRADING": {"endpoints": _KRX_DAILY, "fields": {"ISU_CD": {"semantic": "ticker", "target_field": "ticker", "identifier_namespace": "SIX_DIGIT_TICKER"}}},
+    "DAILY_TRADING": {"endpoints": _KRX_DAILY, "fields": {"ISU_CD": {"semantic": "ticker", "target_field": "ticker", "identifier_namespace": "KRX_SHORT_CODE"}}},
     "BASIC_INFO": {"endpoints": _KRX_BASIC, "fields": {
         "ISU_CD": {"semantic": "standard_code", "target_field": "standard_code", "identifier_namespace": "KRX_STANDARD_CODE"},
-        "ISU_SRT_CD": {"semantic": "ticker", "target_field": "ticker", "identifier_namespace": "SIX_DIGIT_TICKER"},
+        "ISU_SRT_CD": {"semantic": "ticker", "target_field": "ticker", "identifier_namespace": "KRX_SHORT_CODE"},
         "MKT_TP_NM": {"semantic": "raw_market", "target_field": "raw_market", "identifier_namespace": "KRX_RAW_MARKET_TYPE"},
         "SECUGRP_NM": {"semantic": "security_group", "target_field": "security_group", "identifier_namespace": "NOT_SECTOR_MEMBERSHIP"},
         "SECT_TP_NM": {"semantic": "listing_section", "target_field": "listing_section", "identifier_namespace": "NOT_SECTOR_MEMBERSHIP"},

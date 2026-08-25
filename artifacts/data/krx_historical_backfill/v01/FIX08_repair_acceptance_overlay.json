@@ -1,0 +1,43 @@
+{
+  "attempt_count": 1,
+  "blockers": [],
+  "date": "2019-04-26",
+  "directly_observed_in_client_audit": false,
+  "http_status": 200,
+  "implementation_to_execution_diff_paths": [
+    "artifacts/data/krx_historical_backfill/v01/FIX07_live_pilot_summary.json",
+    "artifacts/data/krx_historical_backfill/v01/FIX07_samsung_listed_shares_evidence.json"
+  ],
+  "inferred_from_successful_provider_contract": true,
+  "market": "KOSDAQ",
+  "new_status": "COMPLETE",
+  "observed_at": "2026-08-25T03:16:17.255230+00:00",
+  "original_repair_artifact": "artifacts/data/krx_historical_backfill/v01/FIX07_failed_partition_repair.json",
+  "original_repair_status": "PASS",
+  "original_validation_source_head": "5398d62761c80b9960cd61986a585a3b06a5b3e2",
+  "paired_market": "KOSPI",
+  "paired_market_status": "COMPLETE",
+  "production_runtime_diff_count": 0,
+  "records_key_direct_audit": null,
+  "records_key_verification_basis": "PROVIDER_FAIL_CLOSED_RESPONSE_CONTRACT",
+  "records_key_verified": "OutBlock_1",
+  "repair_execution_head": "5398d62761c80b9960cd61986a585a3b06a5b3e2",
+  "repair_runner_implementation_head": "0bee785d6e14ebefffb191c2913a18868bd4caf6",
+  "retry_count": 0,
+  "row_count": 1334,
+  "runner_code_diff_count": 0,
+  "runner_compatible_between_heads": true,
+  "status": "PASS",
+  "validation_generation": "FIX08",
+  "verification": {
+    "content_sha256": "c80bcb9b06974530646d0eb8d90fdd2f43f0ec967af3b4666e38d1740c0ebb8c",
+    "date": "2019-04-26",
+    "errors": [],
+    "exists": true,
+    "file_sha256": "beda827f7bd572846f3928513891e1ccf336408f83585fe530ba85881a560691",
+    "market": "KOSDAQ",
+    "row_count": 1334,
+    "status": "COMPLETE",
+    "valid": true
+  }
+}

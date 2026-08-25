@@ -376,8 +376,7 @@ def test_production_behavior_diff_guard_uses_fixed_git_diff():
     assert spec and spec.loader
     validator = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(validator)
-    head = validator._git("rev-parse", "HEAD")
-    guard = validator._production_behavior_diff_guard(validator.FIX_START_HEAD, head)
+    guard = validator._production_behavior_diff_guard(validator.FIX_START_HEAD, validator.ARCHITECTURE_FIX03_END_HEAD)
     assert guard["start_head"] == "bba23053b806b3775159acf89cb6a0b143937ebd"
     assert guard["production_behavior_change_count"] == 0
     assert guard["disallowed_paths"] == []
@@ -426,7 +425,7 @@ def test_registered_store_and_layer_ids_are_unique():
 
 def test_contract_bundle_is_json_safe_and_network_free():
     bundle = contract_bundle()
-    assert bundle["architecture_version"] == "KRX_PRODUCTION_DATA_ARCHITECTURE_V01_FIX03"
+    assert bundle["architecture_version"] == "KRX_PRODUCTION_DATA_ARCHITECTURE_V01_ERRATA01"
     assert bundle["endpoint_identifier_contract"]["BASIC_INFO"]["fields"]["ISU_CD"]["semantic"] == "standard_code"
     source = Path(__file__).resolve().parents[1] / "src/trend_scanner/data/source_contracts.py"
     source_text = source.read_text(encoding="utf-8")

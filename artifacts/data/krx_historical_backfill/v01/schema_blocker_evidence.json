@@ -1,0 +1,136 @@
+{
+  "legacy_evidence": {
+    "evidence": {
+      "live_diagnostic": {
+        "dates": [],
+        "mode": "live-diagnostic",
+        "status": "NOT_RUN"
+      },
+      "live_pilot": {
+        "audit": {
+          "quota_usage": {
+            "endpoint_usage": {
+              "ksq_bydd_trd": 1,
+              "stk_bydd_trd": 1
+            },
+            "global_total": 2,
+            "last_attempt_at_utc": "2026-08-24T20:34:36.527252+00:00",
+            "usage_date_kst": "2026-08-25"
+          },
+          "request_count": 2,
+          "retry_count": 0,
+          "status_counts": {
+            "401": 0,
+            "403": 0,
+            "429": 0,
+            "5xx": 0,
+            "transport_error": 0
+          }
+        },
+        "dates": [
+          {
+            "aggregate": {
+              "complete_date_count": 0,
+              "complete_dates": [],
+              "failed_date_count": 1,
+              "failed_dates": [
+                "2018-04-27"
+              ],
+              "no_data_date_count": 0,
+              "no_data_dates": [],
+              "partial_date_count": 0,
+              "partial_dates": [],
+              "rows_by_market": {
+                "KOSDAQ": 0,
+                "KOSPI": 0
+              },
+              "total_rows": 0,
+              "unique_tickers_by_market": {
+                "KOSDAQ": 0,
+                "KOSPI": 0
+              }
+            },
+            "blockers": [
+              "BLOCKED_KRX_SCHEMA"
+            ],
+            "date": "2018-04-27",
+            "status": "BLOCKED_KRX_SCHEMA"
+          }
+        ],
+        "status": "BLOCKED_KRX_SCHEMA"
+      }
+    },
+    "legacy": true,
+    "validation_generation": "PRE_FIX04"
+  },
+  "note": null,
+  "observations": [
+    {
+      "blocker": "BLOCKED_KRX_SCHEMA",
+      "date": "2018-04-27",
+      "endpoint": "/sto/stk_bydd_trd",
+      "error_code": "RAW_SNAPSHOT_TICKER_FORMAT_ERROR",
+      "http_status": 200,
+      "market": "KOSPI",
+      "record_count": 892,
+      "record_keys": [
+        "ACC_TRDVAL",
+        "ACC_TRDVOL",
+        "BAS_DD",
+        "CMPPREVDD_PRC",
+        "FLUC_RT",
+        "ISU_CD",
+        "ISU_NM",
+        "LIST_SHRS",
+        "MKTCAP",
+        "MKT_NM",
+        "SECT_TP_NM",
+        "TDD_CLSPRC",
+        "TDD_HGPRC",
+        "TDD_LWPRC",
+        "TDD_OPNPRC"
+      ],
+      "records_key": "OutBlock_1",
+      "ticker_sample": "03473K",
+      "ticker_sample_shape": "length=6",
+      "top_level_keys": [
+        "OutBlock_1"
+      ],
+      "transport_error_type": null
+    },
+    {
+      "blocker": "BLOCKED_KRX_SCHEMA",
+      "date": "2018-04-27",
+      "endpoint": "/sto/ksq_bydd_trd",
+      "error_code": "RAW_SNAPSHOT_TICKER_FORMAT_ERROR",
+      "http_status": 200,
+      "market": "KOSDAQ",
+      "record_count": 1272,
+      "record_keys": [
+        "ACC_TRDVAL",
+        "ACC_TRDVOL",
+        "BAS_DD",
+        "CMPPREVDD_PRC",
+        "FLUC_RT",
+        "ISU_CD",
+        "ISU_NM",
+        "LIST_SHRS",
+        "MKTCAP",
+        "MKT_NM",
+        "SECT_TP_NM",
+        "TDD_CLSPRC",
+        "TDD_HGPRC",
+        "TDD_LWPRC",
+        "TDD_OPNPRC"
+      ],
+      "records_key": "OutBlock_1",
+      "ticker_sample": "08537M",
+      "ticker_sample_shape": "length=6",
+      "top_level_keys": [
+        "OutBlock_1"
+      ],
+      "transport_error_type": null
+    }
+  ],
+  "status": "BLOCKED_KRX_SCHEMA"
+}

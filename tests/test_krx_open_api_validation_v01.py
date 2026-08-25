@@ -168,8 +168,11 @@ def test_sqlite_quota_counts_attempts_and_endpoint_isolation(tmp_path) -> None:
     assert LocalKrxOpenApiQuota(tmp_path / "quota.sqlite3").get_global_usage() == 3
 
 
-def test_sqlite_quota_stops_before_opener_and_rolls_over_kst(tmp_path) -> None:
+def test_sqlite_quota_stops_before_opener_and_rolls_over_kst(tmp_path, monkeypatch) -> None:
     quota = LocalKrxOpenApiQuota(tmp_path / "quota.sqlite3", endpoint_limit=1, global_safety_limit=1)
+    # Keep the client-side rollover assertion deterministic across calendar days.
+    original_usage_date = LocalKrxOpenApiQuota.usage_date_kst
+    monkeypatch.setattr(LocalKrxOpenApiQuota, "usage_date_kst", staticmethod(lambda now=None: "2026-08-24" if now is None else original_usage_date(now)))
     quota.reserve_attempt("stk_bydd_trd", now=datetime(2026, 8, 24, 23, 59))
     assert quota.get_endpoint_usage("stk_bydd_trd", "2026-08-24") == 1
     assert quota.get_endpoint_usage("stk_bydd_trd", "2026-08-25") == 0

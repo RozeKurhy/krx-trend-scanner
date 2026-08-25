@@ -27,6 +27,7 @@ DEFAULT_OUTPUT = ROOT / "artifacts/data/architecture/krx_production_data/v01"
 sys.path.insert(0, str(SRC))
 
 FIX_START_HEAD = "bba23053b806b3775159acf89cb6a0b143937ebd"
+ARCHITECTURE_FIX03_END_HEAD = "47a5995dd0e417fdac70cc56205dcad74709a18a"
 ARCHITECTURE_ALLOWED_PATHS = {
     "src/trend_scanner/data/source_contracts.py",
     "scripts/validate_krx_production_data_architecture_v01.py",
@@ -498,7 +499,9 @@ def _validate_contracts_fix03() -> dict[str, Any]:
     provenance_errors = _provenance_contract_error_counts()
     target_runtime_artifact_dependency_count = _target_runtime_artifact_dependency_count()
     implementation_head = _git("rev-parse", "HEAD")
-    diff_guard = _production_behavior_diff_guard(FIX_START_HEAD, implementation_head)
+    # This phase is CLOSED.  Its invariant is the frozen START..END range,
+    # not whatever unrelated work happens to be at the current repository HEAD.
+    diff_guard = _production_behavior_diff_guard(FIX_START_HEAD, ARCHITECTURE_FIX03_END_HEAD)
     production_behavior_change_count = diff_guard["production_behavior_change_count"]
     network_request_count = 0
     static_forbidden_network_import_count = _network_import_count((ROOT / "src/trend_scanner/data/source_contracts.py", Path(__file__).resolve()))

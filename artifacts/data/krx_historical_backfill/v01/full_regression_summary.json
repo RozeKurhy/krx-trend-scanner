@@ -1,0 +1,20 @@
+{
+  "command": "uv run pytest -vv -p no:cacheprovider -o faulthandler_timeout=60",
+  "completed": false,
+  "deselected": 5,
+  "duration_seconds": 3684,
+  "failed": 0,
+  "finished_at": "2026-08-24T23:40:36Z",
+  "hang_diagnostic": "STOPPED_AFTER_60_MINUTES_AT_tests/test_stage_v02_preseal_validation.py::test_preseal_gate_matrix_execution; faulthandler_timeout=60 also observed CPU-bound pandas/pivot work earlier in tests/test_pattern_a_foreign_flow_infrastructure.py",
+  "notes": "No test failure was observed before SIGTERM. Full regression is incomplete and must not be treated as PASS. No network request was made.",
+  "passed": null,
+  "requested_command": "uv run pytest -q -p no:cacheprovider",
+  "return_code": -15,
+  "selected": 1587,
+  "skipped": null,
+  "slowest_tests": [
+    "tests/test_stage_v02_preseal_validation.py::test_preseal_gate_matrix_execution"
+  ],
+  "started_at": "2026-08-24T22:39:12Z",
+  "status": "INCOMPLETE_HEAVY_INTEGRATION_SUITE"
+}

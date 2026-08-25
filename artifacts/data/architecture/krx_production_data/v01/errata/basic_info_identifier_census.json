@@ -1,0 +1,49 @@
+{
+  "candidate_regex": "^[0-9A-Z]{6}$",
+  "date": "2018-04-27",
+  "fallback": {
+    "executed": false,
+    "requests": 0,
+    "reason": "Historical Basic Info was non-empty and shape-valid"
+  },
+  "markets": ["KOSPI", "KOSDAQ"],
+  "primary_requests": 2,
+  "retries": 0,
+  "per_market": {
+    "KOSPI": {
+      "alphanumeric_samples": ["03473K", "28513K", "00499K", "00680K", "02826K", "00781K", "26490K", "18064K", "00088K"],
+      "contains_letter_count": 9,
+      "empty_count": 0,
+      "endpoint": "/sto/stk_isu_base_info",
+      "http_status": 200,
+      "invalid_charset_count": 0,
+      "invalid_count": 0,
+      "invalid_length_count": 0,
+      "isu_srt_cd_field_present_count": 892,
+      "missing_count": 0,
+      "numeric_6_count": 883,
+      "offending_samples": [{"short_code": "03473K", "name": "SK우", "standard_code": "KR703473K016"}],
+      "record_count": 892,
+      "records_key": "OutBlock_1",
+      "uppercase_alphanumeric_6_count": 892
+    },
+    "KOSDAQ": {
+      "alphanumeric_samples": ["08537M"],
+      "contains_letter_count": 1,
+      "empty_count": 0,
+      "endpoint": "/sto/ksq_isu_base_info",
+      "http_status": 200,
+      "invalid_charset_count": 0,
+      "invalid_count": 0,
+      "invalid_length_count": 0,
+      "isu_srt_cd_field_present_count": 1272,
+      "missing_count": 0,
+      "numeric_6_count": 1271,
+      "offending_samples": [{"short_code": "08537M", "name": "루트로닉3우C", "standard_code": "KR708537K039"}],
+      "record_count": 1272,
+      "records_key": "OutBlock_1",
+      "uppercase_alphanumeric_6_count": 1272
+    }
+  },
+  "status": "VALIDATED_KRX_SHORT_CODE"
+}
