@@ -65,7 +65,28 @@ Validation evidence
 -------------------
 * tests/test_repository_v2.py: source authority, strict join, domain, missing,
   mutation, cross-market, duplicate-date 및 network isolation 관련 검증
-* scripts/validate_market_data_repository_v02.py: local store-only production probe
+* tests/test_market_data_repository_v02_validation.py: FIX01의 샘플 수,
+  metadata-derived 범위, empty comparison, 예외 구조화 및 diff-check gate 검증
+* scripts/validate_market_data_repository_v02.py: FIX01 검증 gate와 임시
+  AdjustedPriceStore 기반의 제한된 live authority probe
 * artifacts/data/market_data_repository/v02/: contract, provenance, probe,
   compatibility, performance 및 regression 증적
 
+FIX01 실행 경계
+---------------
+* validator 실행 전에 source/test/doc 변경을 고정하고, bounded regression을
+  통과한 커밋 이후에만 live probe를 수행한다.
+* live probe의 adjusted 샘플은 005930(2018-04-01..2018-06-30),
+  000660(2026-07-01..2026-08-21), 068270(2026-07-01..2026-08-21) 세 건으로
+  제한한다. 실제 비교 범위는 임시 store metadata의 actual_date_min/max에서
+  파생하며 날짜를 하드코딩하지 않는다.
+* PyKRX adjusted=True 호출만 허용하고 KRX Open API, OpenDART, fallback 및
+  retry는 0건이어야 한다. 외부 실패 시 재시도하지 않고 blocker로 기록한다.
+* 임시 AdjustedPriceStore에만 adjusted 데이터를 저장하고 live probe 종료 후
+  경로가 제거되는지 확인한다. production raw/adjusted store와 corporate-action
+  state에는 쓰지 않으며 before/after snapshot이 동일해야 한다.
+* 세 샘플 모두 adjusted OHLC, raw volume/trading_value, ancillary 및 날짜 집합이
+  exact match여야 하며, Samsung listed_shares 의미론과 alphanumeric raw ticker
+  probe도 별도 gate로 확인한다.
+* production adjusted store population과 consumer migration은 이 단계에서
+  구현하지 않는다. 둘은 후속 migration 전제조건으로 문서화한다.
