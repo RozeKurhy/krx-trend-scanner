@@ -1,0 +1,13 @@
+{
+  "fixture": "RUN1_PILOT + RUN2_HISTORICAL_BACKFILL_TRANCHE + synthetic RUN3",
+  "runs_before": 2,
+  "runs_after": 3,
+  "synthetic_run_id": "RUN3_HISTORICAL_BACKFILL_RESUME_20260826T000001",
+  "synthetic_run_global_delta": 200,
+  "synthetic_run_endpoint_deltas": {"kospi_dd_trd": 100, "kosdaq_dd_trd": 100},
+  "phase_total_after": 1512,
+  "previous_runs_preserved": true,
+  "duplicate_run_id_fail_closed": true,
+  "status": "PASS",
+  "network_requests_during_fixture": 0
+}
