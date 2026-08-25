@@ -1265,6 +1265,7 @@ def _write_evidence(
         ],
         "blockers": blockers,
         "warnings": live.get("performance_warnings", []),
+        "provenance": provenance,
         "generated_at": datetime.now(timezone.utc).isoformat(),
     }
     _write_json("FIX02_raw_authority_compatibility_summary.json", {
@@ -1751,7 +1752,7 @@ def main() -> int:
             {
                 "status": summary["status"],
                 "blockers": summary["blockers"],
-                "fix02_validation_source_head": summary["fix02_validation_source_head"],
+                "fix03_validation_source_head": summary["fix03_validation_source_head"],
                 "live_execution_head": summary["live_execution_head"],
                 "network": summary["network"],
             },
