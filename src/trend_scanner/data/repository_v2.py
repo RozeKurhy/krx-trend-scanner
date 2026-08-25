@@ -95,6 +95,30 @@ def _validate_ohlc_columns(frame: pd.DataFrame, columns: tuple[str, ...]) -> Non
     _validate_numeric(frame, columns)
 
 
+def _validate_raw_ohlc_columns(frame: pd.DataFrame) -> None:
+    """Apply the frozen raw authority relation only to all-positive rows."""
+
+    columns = ("open", "high", "low", "close")
+    values = frame.loc[:, list(columns)].apply(pd.to_numeric, errors="coerce")
+    if values.isna().any().any():
+        raise MarketDataError("INVALID_REPOSITORY_V2_OUTPUT")
+    if not np.isfinite(values.to_numpy(dtype="float64")).all():
+        raise MarketDataError("INVALID_REPOSITORY_V2_OUTPUT")
+    positive_mask = (values > 0).all(axis=1)
+    if not positive_mask.any():
+        return
+    positive = values.loc[positive_mask]
+    relation_violations = (
+        (positive["high"] < positive["low"])
+        | (positive["high"] < positive["open"])
+        | (positive["high"] < positive["close"])
+        | (positive["low"] > positive["open"])
+        | (positive["low"] > positive["close"])
+    )
+    if relation_violations.any():
+        raise MarketDataError("INVALID_REPOSITORY_V2_OUTPUT")
+
+
 def validate_repository_v2_daily(frame: pd.DataFrame) -> None:
     """Validate the exact composed daily schema without changing source values."""
 
@@ -115,7 +139,7 @@ def _validate_raw_daily(frame: pd.DataFrame) -> None:
     _validate_index(frame)
     if frame.empty:
         return
-    _validate_ohlc_columns(frame, ("open", "high", "low", "close"))
+    _validate_raw_ohlc_columns(frame)
     _validate_numeric(frame, RAW_DAILY_COLUMNS)
     if (frame.loc[:, list(ANCILLARY_COLUMNS)] < 0).any().any():
         raise MarketDataError("INVALID_REPOSITORY_V2_OUTPUT")

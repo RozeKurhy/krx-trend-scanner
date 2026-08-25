@@ -1,13 +1,12 @@
-"""FIX01 offline gates and temporary live adjusted-authority probe."""
+"""FIX02 raw-authority compatibility gates and staged live-probe evidence."""
 
 from __future__ import annotations
 
 import argparse
 import ast
-import csv
-from datetime import datetime, timezone
 import hashlib
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 import subprocess
 import tempfile
@@ -16,23 +15,25 @@ from typing import Any
 
 import pandas as pd
 
-from trend_scanner.data.adjusted_price_provider import AdjustedPriceDataProvider
+from trend_scanner.data.adjusted_price_provider import (
+    ADJUSTED_OHLC_COLUMNS,
+    AdjustedPriceDataProvider,
+)
 from trend_scanner.data.adjusted_price_store import AdjustedPriceStore
 from trend_scanner.data.errors import MarketDataError
 from trend_scanner.data.krx_raw_stock_provider import RAW_COLUMNS
 from trend_scanner.data.krx_raw_stock_store import KrxRawStockStore
 from trend_scanner.data.repository_v2 import (
     ANCILLARY_COLUMNS,
-    DAILY_COLUMNS,
     RAW_DAILY_COLUMNS,
     MarketDataRepositoryV2,
 )
 
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / "artifacts/data/market_data_repository/v02"
-START_HEAD = "4d39251a69789f7e23489c0d8a03628bc0540634"
+START_HEAD = "b1fb9c44193c61ac9c2a47a6fd33f50044c1eb97"
 DIFF_CHECK_BASELINE = "0f7b35be5f6ac3840266e0580e37c2e4519dbf7c"
-REPOSITORY_IMPLEMENTATION_HEAD = "b04e871881a857640d86422c09c57d7c6a642d62"
+ORIGINAL_REPOSITORY_IMPLEMENTATION_HEAD = "b04e871881a857640d86422c09c57d7c6a642d62"
 FROZEN_CONTRACT = ROOT / "artifacts/data/architecture/krx_production_data/v01/repository_v2_contract.json"
 PRODUCTION_ADJUSTED_ROOT = ROOT / "data/market/adjusted/stocks"
 PRODUCTION_RAW_ROOT = ROOT / "data/market/raw/krx_stocks/v01"
@@ -47,6 +48,15 @@ FORBIDDEN_NAMES = {
     "KrxOpenApiClient",
     "KrxRawStockSnapshotProvider",
     "AdjustedPriceDataProvider",
+}
+STAGE_BLOCKERS = {
+    "ADJUSTED_PROVIDER_FETCH": "BLOCKED_EXTERNAL_PYKRX_UNAVAILABLE",
+    "TEMP_ADJUSTED_STORE_WRITE": "BLOCKED_TEMP_ADJUSTED_STORE_INTEGRITY",
+    "TEMP_ADJUSTED_STORE_READBACK": "BLOCKED_TEMP_ADJUSTED_STORE_INTEGRITY",
+    "RAW_PRODUCTION_LOAD": "BLOCKED_PRODUCTION_RAW_PROBE",
+    "REPOSITORY_COMPOSITION": "BLOCKED_PRODUCTION_COMPOSITION_PROBE",
+    "SAMSUNG_SEMANTIC_PROBE": "BLOCKED_SAMSUNG_SEMANTIC_PROBE",
+    "ALPHANUMERIC_RAW_PROBE": "BLOCKED_ALPHANUMERIC_PROBE",
 }
 
 
@@ -111,6 +121,7 @@ def _same_frame(left: pd.DataFrame, right: pd.DataFrame) -> bool:
 
 def probe_range_from_metadata(metadata: dict[str, Any]) -> tuple[str, str]:
     """Derive a probe range from AdjustedPriceStore metadata only."""
+
     start = str(metadata.get("actual_date_min", "")).strip()
     end = str(metadata.get("actual_date_max", "")).strip()
     if not start or not end or start > end:
@@ -118,35 +129,106 @@ def probe_range_from_metadata(metadata: dict[str, Any]) -> tuple[str, str]:
     return start, end
 
 
+def _stage_blocker(stage: str) -> str | None:
+    return STAGE_BLOCKERS.get(stage)
+
+
 def sample_gate(
     requested_sample_count: int,
     successful_adjusted_fetch_count: int,
     successful_composition_probe_count: int,
     comparisons: list[dict[str, Any]],
+    *,
+    successful_provider_fetch_count: int | None = None,
+    successful_temp_store_integrity_count: int | None = None,
+    failure_records: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
+    """Evaluate sample readiness without inferring external failure from counts."""
+
+    provider_count = (
+        successful_adjusted_fetch_count
+        if successful_provider_fetch_count is None
+        else successful_provider_fetch_count
+    )
+    temp_count = (
+        provider_count
+        if successful_temp_store_integrity_count is None
+        else successful_temp_store_integrity_count
+    )
     usable = sum(item.get("status") == "PASS" for item in comparisons)
-    if usable == 0:
-        blocker = "BLOCKED_NO_LIVE_AUTHORITY_SAMPLE"
-    elif usable == 1:
-        blocker = "BLOCKED_INSUFFICIENT_LIVE_AUTHORITY_SAMPLES"
-    elif (
-        requested_sample_count < 2
-        or successful_adjusted_fetch_count != requested_sample_count
-    ):
-        blocker = "BLOCKED_LIVE_ADJUSTED_SAMPLE"
-    elif successful_composition_probe_count != requested_sample_count or usable != requested_sample_count:
-        blocker = "BLOCKED_PRODUCTION_COMPOSITION_PROBE"
-    else:
-        blocker = None
+    failure_records = failure_records or []
+    stage_failures = [
+        record.get("stage")
+        for record in failure_records
+        if record.get("status") == "FAIL"
+    ]
+    blocker = next(
+        (_stage_blocker(stage) for stage in stage_failures if _stage_blocker(stage)),
+        None,
+    )
+    if blocker is None:
+        if usable == 0:
+            blocker = "BLOCKED_NO_LIVE_AUTHORITY_SAMPLE"
+        elif usable == 1:
+            blocker = "BLOCKED_INSUFFICIENT_LIVE_AUTHORITY_SAMPLES"
+        elif requested_sample_count < 2:
+            blocker = "BLOCKED_LIVE_ADJUSTED_SAMPLE"
+        elif (
+            provider_count != requested_sample_count
+            or temp_count != requested_sample_count
+        ):
+            blocker = "BLOCKED_LIVE_ADJUSTED_SAMPLE"
+        elif (
+            successful_composition_probe_count != requested_sample_count
+            or usable != requested_sample_count
+        ):
+            blocker = "BLOCKED_PRODUCTION_COMPOSITION_PROBE"
     return {
         "requested_sample_count": requested_sample_count,
         "successful_adjusted_fetch_count": successful_adjusted_fetch_count,
+        "successful_provider_fetch_count": provider_count,
+        "successful_temp_store_integrity_count": temp_count,
         "successful_composition_probe_count": successful_composition_probe_count,
         "minimum_required_sample_count": 2,
         "usable_sample_count": usable,
-        "all_requested_samples_pass": usable == requested_sample_count == 3,
+        "all_requested_samples_pass": (
+            requested_sample_count == 3
+            and provider_count == 3
+            and temp_count == 3
+            and successful_composition_probe_count == 3
+            and usable == 3
+        ),
         "status": "PASS" if blocker is None else blocker,
         "blocker": blocker,
+    }
+
+
+def evidence_consistency_gate(
+    provider_records: list[dict[str, Any]],
+    temp_records: list[dict[str, Any]],
+    composition_records: list[dict[str, Any]],
+    temporary_store_ticker_count: int,
+) -> dict[str, Any]:
+    provider_pass = sum(record.get("status") == "PASS" for record in provider_records)
+    temp_pass = sum(record.get("status") == "PASS" for record in temp_records)
+    composition_pass = sum(record.get("status") == "PASS" for record in composition_records)
+    expected = {
+        "successful_provider_fetch_count": provider_pass,
+        "successful_temp_store_integrity_count": temp_pass,
+        "successful_composition_probe_count": composition_pass,
+        "temporary_store_ticker_count": temporary_store_ticker_count,
+    }
+    mismatches = []
+    if temporary_store_ticker_count != temp_pass:
+        mismatches.append("temporary_store_ticker_count")
+    return {
+        **expected,
+        "provider_pass_record_count": provider_pass,
+        "temp_store_pass_record_count": temp_pass,
+        "composition_pass_record_count": composition_pass,
+        "mismatches": mismatches,
+        "status": "PASS" if not mismatches else "BLOCKED_EVIDENCE_INCONSISTENCY",
+        "blocker": None if not mismatches else "BLOCKED_EVIDENCE_INCONSISTENCY",
     }
 
 
@@ -157,9 +239,8 @@ def _runtime_network_guard() -> dict[str, Any]:
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
             for alias in node.names:
-                module = alias.name
-                if module.startswith(FORBIDDEN_MODULE_PREFIXES) or alias.name in FORBIDDEN_NAMES:
-                    violations.append(module)
+                if alias.name.startswith(FORBIDDEN_MODULE_PREFIXES):
+                    violations.append(alias.name)
         elif isinstance(node, ast.ImportFrom):
             module = node.module or ""
             if module.startswith(FORBIDDEN_MODULE_PREFIXES):
@@ -188,9 +269,8 @@ def _runtime_network_guard() -> dict[str, Any]:
 def git_diff_gate_from_result(
     return_code: int, stdout: str = "", stderr: str = ""
 ) -> dict[str, Any]:
-    command = f"git diff --check {DIFF_CHECK_BASELINE} HEAD"
     return {
-        "command": command,
+        "command": f"git diff --check {DIFF_CHECK_BASELINE} HEAD",
         "return_code": return_code,
         "stdout": stdout,
         "stderr": stderr,
@@ -225,7 +305,6 @@ def _static_checks(validation_head: str) -> dict[str, Any]:
         or item.startswith("artifacts/data/adjusted_price_store/v01/")
     ]
     source_text = REPOSITORY_SOURCE.read_text(encoding="utf-8")
-    guard = _runtime_network_guard()
     return {
         "changed_files": changed,
         "legacy_repository_changed": "src/trend_scanner/data/repository.py" in changed,
@@ -247,22 +326,172 @@ def _static_checks(validation_head: str) -> dict[str, Any]:
             for marker in ("KRX_OPEN_API_AUTH_KEY", "KRX_ID", "KRX_PW", "OPENDART_API_KEY")
         ),
         "artifacts_runtime_dependency_count": source_text.count("artifacts"),
-        "runtime_network_guard": guard,
+        "runtime_network_guard": _runtime_network_guard(),
         "git_diff_check": _git_diff_check(validation_head),
     }
 
 
-def _error_record(ticker: str, exc: Exception) -> dict[str, Any]:
-    message = str(exc)
+def _error_record(
+    ticker: str,
+    exc: Exception,
+    *,
+    requested_start: str = "",
+    requested_end: str = "",
+    stage: str = "UNKNOWN",
+    record_type: str = "failure",
+) -> dict[str, Any]:
+    message = str(exc) or exc.__class__.__name__
     return {
         "ticker": ticker,
-        "status": "FAIL",
+        "requested_start": requested_start,
+        "requested_end": requested_end,
+        "stage": stage,
         "error_code": message.split(":", 1)[0],
         "error_message": message[:2000],
+        "status": "FAIL",
+        "record_type": record_type,
     }
 
 
-def _probe_one(
+def _pass_record(
+    ticker: str,
+    *,
+    requested_start: str,
+    requested_end: str,
+    stage: str,
+    record_type: str,
+    **fields: Any,
+) -> dict[str, Any]:
+    return {
+        "ticker": ticker,
+        "requested_start": requested_start,
+        "requested_end": requested_end,
+        "stage": stage,
+        "status": "PASS",
+        "record_type": record_type,
+        **fields,
+    }
+
+
+def _provider_fetch(
+    provider: AdjustedPriceDataProvider,
+    ticker: str,
+    requested_start: str,
+    requested_end: str,
+) -> tuple[dict[str, Any], pd.DataFrame | None]:
+    started = monotonic()
+    try:
+        frame = provider.load_daily(ticker, requested_start, requested_end)
+        if frame is None or frame.empty:
+            raise MarketDataError("BLOCKED_LIVE_ADJUSTED_SAMPLE: EMPTY_RESPONSE")
+        actual_start = pd.Timestamp(frame.index.min()).date().isoformat()
+        actual_end = pd.Timestamp(frame.index.max()).date().isoformat()
+        return (
+            _pass_record(
+                ticker,
+                requested_start=requested_start,
+                requested_end=requested_end,
+                stage="ADJUSTED_PROVIDER_FETCH",
+                record_type="provider_fetch",
+                row_count=int(len(frame)),
+                actual_date_min=actual_start,
+                actual_date_max=actual_end,
+                provider_error=None,
+                elapsed_seconds=round(monotonic() - started, 6),
+            ),
+            frame,
+        )
+    except Exception as exc:
+        return (
+            _error_record(
+                ticker,
+                exc,
+                requested_start=requested_start,
+                requested_end=requested_end,
+                stage="ADJUSTED_PROVIDER_FETCH",
+                record_type="provider_fetch",
+            )
+            | {"elapsed_seconds": round(monotonic() - started, 6), "row_count": 0},
+            None,
+        )
+
+
+def _temp_store_ticker_count(store: AdjustedPriceStore) -> int:
+    if not store.base_dir.exists():
+        return 0
+    return sum(
+        1
+        for parquet in store.base_dir.glob("*.parquet")
+        if parquet.with_suffix(".meta.json").exists()
+    )
+
+
+def _temp_store_integrity(
+    store: AdjustedPriceStore,
+    ticker: str,
+    frame: pd.DataFrame,
+    requested_start: str,
+    requested_end: str,
+) -> tuple[dict[str, Any], dict[str, Any] | None]:
+    record: dict[str, Any] = {
+        "ticker": ticker,
+        "requested_start": requested_start,
+        "requested_end": requested_end,
+        "stage": "TEMP_ADJUSTED_STORE_WRITE",
+        "record_type": "temp_store_integrity",
+        "save_attempted": True,
+        "save_status": "NOT_RUN",
+        "metadata_status": "NOT_RUN",
+        "hash_status": "NOT_RUN",
+        "readback_status": "NOT_RUN",
+        "row_count": 0,
+        "actual_date_min": None,
+        "actual_date_max": None,
+        "status": "FAIL",
+    }
+    try:
+        store.save_full(
+            ticker,
+            frame,
+            {"requested_start": requested_start, "requested_end": requested_end},
+        )
+        record["save_status"] = "PASS"
+    except Exception as exc:
+        return (
+            record
+            | {
+                "stage": "TEMP_ADJUSTED_STORE_WRITE",
+                "error_code": str(exc).split(":", 1)[0],
+                "error_message": str(exc)[:2000],
+            },
+            None,
+        )
+    try:
+        metadata = store.load_metadata(ticker)
+        record["metadata_status"] = "PASS"
+        actual_start, actual_end = probe_range_from_metadata(metadata)
+        record["actual_date_min"] = actual_start
+        record["actual_date_max"] = actual_end
+        parquet = store._parquet_path(ticker)
+        digest = _sha256(parquet)
+        record["hash_status"] = (
+            "PASS" if digest == metadata.get("content_sha256") else "FAIL"
+        )
+        if record["hash_status"] != "PASS":
+            raise MarketDataError("BLOCKED_TEMP_ADJUSTED_STORE_INTEGRITY: HASH_MISMATCH")
+        readback = store.load_daily(ticker, actual_start, actual_end)
+        record["readback_status"] = "PASS"
+        record["row_count"] = int(len(readback))
+        record["status"] = "PASS"
+        return record, metadata
+    except Exception as exc:
+        record["stage"] = "TEMP_ADJUSTED_STORE_READBACK"
+        record["error_code"] = str(exc).split(":", 1)[0]
+        record["error_message"] = str(exc)[:2000]
+        return record, None
+
+
+def _composition_probe(
     repository: MarketDataRepositoryV2,
     adjusted_store: AdjustedPriceStore,
     raw_store: KrxRawStockStore,
@@ -271,229 +500,439 @@ def _probe_one(
     requested_end: str,
 ) -> tuple[dict[str, Any], dict[str, Any] | None]:
     started = monotonic()
+    record: dict[str, Any] = {
+        "ticker": ticker,
+        "requested_start": requested_start,
+        "requested_end": requested_end,
+        "stage": "RAW_PRODUCTION_LOAD",
+        "record_type": "composition",
+        "actual_adjusted_start": None,
+        "actual_adjusted_end": None,
+        "adjusted_rows": None,
+        "raw_rows": None,
+        "repository_rows": None,
+        "date_set_exact_match": False,
+        "adjusted_ohlc_exact_match": False,
+        "raw_volume_exact_match": False,
+        "raw_trading_value_exact_match": False,
+        "ancillary_exact_match": False,
+        "status": "FAIL",
+    }
     try:
         metadata = adjusted_store.load_metadata(ticker)
         actual_start, actual_end = probe_range_from_metadata(metadata)
-        adjusted_started = monotonic()
-        adjusted = adjusted_store.load_daily(ticker, actual_start, actual_end)
-        adjusted_elapsed = monotonic() - adjusted_started
+        record["actual_adjusted_start"] = actual_start
+        record["actual_adjusted_end"] = actual_end
         raw_started = monotonic()
         raw = raw_store.load_ticker(ticker, actual_start, actual_end)
         raw_elapsed = monotonic() - raw_started
+        raw_view = _raw_view(raw)
+        record["raw_rows"] = int(len(raw_view))
+    except Exception as exc:
+        record.update(
+            _error_record(
+                ticker,
+                exc,
+                requested_start=requested_start,
+                requested_end=requested_end,
+                stage="RAW_PRODUCTION_LOAD",
+                record_type="composition",
+            )
+        )
+        record["total_elapsed_seconds"] = round(monotonic() - started, 6)
+        return record, None
+    try:
+        adjusted_started = monotonic()
+        adjusted = adjusted_store.load_daily(ticker, actual_start, actual_end)
+        adjusted_elapsed = monotonic() - adjusted_started
         join_started = monotonic()
         composed = repository.get_daily(ticker, actual_start, actual_end)
-        join_elapsed = monotonic() - join_started
         ancillary = repository.get_daily_ancillary(ticker, actual_start, actual_end)
-        raw_view = _raw_view(raw)
-        comparison = {
-            "ticker": ticker,
-            "requested_start": requested_start,
-            "requested_end": requested_end,
-            "actual_adjusted_start": actual_start,
-            "actual_adjusted_end": actual_end,
-            "adjusted_rows": len(adjusted),
-            "raw_rows": len(raw_view),
-            "repository_rows": len(composed),
-            "adjusted_ohlc_exact_match": _same_frame(
-                composed.loc[:, ["open", "high", "low", "close"]], adjusted
-            ),
-            "raw_volume_exact_match": _same_frame(
-                composed.loc[:, ["volume"]], raw_view.loc[:, ["volume"]]
-            ),
-            "raw_trading_value_exact_match": _same_frame(
-                composed.loc[:, ["trading_value"]], raw_view.loc[:, ["trading_value"]]
-            ),
-            "ancillary_exact_match": _same_frame(
-                ancillary, raw_view.loc[:, list(ANCILLARY_COLUMNS)]
-            ),
-            "date_set_exact_match": (
-                set(composed.index) == set(adjusted.index) == set(raw_view.index)
-            ),
-            "status": "PASS",
-        }
-        required = (
-            "adjusted_rows", "raw_rows", "repository_rows",
-            "adjusted_ohlc_exact_match", "raw_volume_exact_match",
-            "raw_trading_value_exact_match", "ancillary_exact_match",
-            "date_set_exact_match",
+        join_elapsed = monotonic() - join_started
+        record.update(
+            {
+                "adjusted_rows": int(len(adjusted)),
+                "repository_rows": int(len(composed)),
+                "date_set_exact_match": (
+                    set(composed.index) == set(adjusted.index) == set(raw_view.index)
+                ),
+                "adjusted_ohlc_exact_match": _same_frame(
+                    composed.loc[:, ["open", "high", "low", "close"]],
+                    adjusted,
+                ),
+                "raw_volume_exact_match": _same_frame(
+                    composed.loc[:, ["volume"]],
+                    raw_view.loc[:, ["volume"]],
+                ),
+                "raw_trading_value_exact_match": _same_frame(
+                    composed.loc[:, ["trading_value"]],
+                    raw_view.loc[:, ["trading_value"]],
+                ),
+                "ancillary_exact_match": _same_frame(
+                    ancillary,
+                    raw_view.loc[:, ["volume", "trading_value", "market_cap", "listed_shares"]],
+                ),
+                "raw_load_elapsed_seconds": round(raw_elapsed, 6),
+                "adjusted_load_elapsed_seconds": round(adjusted_elapsed, 6),
+                "repository_join_elapsed_seconds": round(join_elapsed, 6),
+                "total_elapsed_seconds": round(monotonic() - started, 6),
+            }
         )
-        if not comparison["adjusted_rows"] or not comparison["raw_rows"]:
-            comparison["status"] = "FAIL"
-            comparison["error_code"] = "BLOCKED_PRODUCTION_COMPOSITION_PROBE"
-        elif not all(comparison[key] for key in required[3:]):
-            comparison["status"] = "FAIL"
-            comparison["error_code"] = "BLOCKED_PRODUCTION_COMPOSITION_PROBE"
-        comparison["raw_load_elapsed_seconds"] = round(raw_elapsed, 6)
-        comparison["adjusted_load_elapsed_seconds"] = round(adjusted_elapsed, 6)
-        comparison["repository_join_elapsed_seconds"] = round(join_elapsed, 6)
-        comparison["total_elapsed_seconds"] = round(monotonic() - started, 6)
-        return comparison, {
-            "ticker": ticker,
-            "metadata": metadata,
-            "actual_range": [actual_start, actual_end],
-            "adjusted_frame": adjusted,
-            "composed_frame": composed,
-        }
+        exact_keys = (
+            "date_set_exact_match",
+            "adjusted_ohlc_exact_match",
+            "raw_volume_exact_match",
+            "raw_trading_value_exact_match",
+            "ancillary_exact_match",
+        )
+        if all(record[key] for key in exact_keys):
+            record["stage"] = "REPOSITORY_COMPOSITION"
+            record["status"] = "PASS"
+            return record, {
+                "metadata": metadata,
+                "adjusted": adjusted,
+                "composed": composed,
+            }
+        raise MarketDataError("BLOCKED_PRODUCTION_COMPOSITION_PROBE")
     except Exception as exc:
-        failure = _error_record(ticker, exc)
-        failure.update({
-            "requested_start": requested_start,
-            "requested_end": requested_end,
-            "status": "FAIL",
-            "total_elapsed_seconds": round(monotonic() - started, 6),
-        })
-        return failure, None
+        record.update(
+            _error_record(
+                ticker,
+                exc,
+                requested_start=requested_start,
+                requested_end=requested_end,
+                stage="REPOSITORY_COMPOSITION",
+                record_type="composition",
+            )
+        )
+        record["total_elapsed_seconds"] = round(monotonic() - started, 6)
+        return record, None
 
 
 def _find_alphanumeric(raw_store: KrxRawStockStore) -> str | None:
     for ticker in ("03473K", "08537M"):
         for market in ("KOSPI", "KOSDAQ"):
-            frame = raw_store.load_snapshot(market, "2018-04-27")
+            try:
+                frame = raw_store.load_snapshot(market, "2018-04-27")
+            except Exception:
+                continue
             if not frame.empty and ticker in set(frame["ticker"].astype(str)):
                 return ticker
     return None
 
 
-def _run_live_probe(
-    raw_root: Path,
+def _raw_authority_probe(
+    repository: MarketDataRepositoryV2,
+    raw_store: KrxRawStockStore,
+    ticker: str,
+    start: str,
+    end: str,
 ) -> dict[str, Any]:
+    started = monotonic()
+    base = {
+        "ticker": ticker,
+        "range": [start, end],
+        "record_type": "raw_authority",
+        "raw_rows": 0,
+        "zero_price_row_count": 0,
+        "all_positive_row_count": 0,
+        "all_positive_relation_violation_count": 0,
+        "repository_raw_rows": 0,
+        "source_to_repository_exact_match": False,
+        "status": "FAIL",
+    }
+    try:
+        source = _raw_view(raw_store.load_ticker(ticker, start, end))
+    except Exception as exc:
+        return base | _error_record(
+            ticker,
+            exc,
+            requested_start=start,
+            requested_end=end,
+            stage="RAW_PRODUCTION_LOAD",
+            record_type="raw_authority",
+        ) | {"elapsed_seconds": round(monotonic() - started, 6)}
+    try:
+        ohlc = source.loc[:, ["open", "high", "low", "close"]]
+        positive = (ohlc > 0).all(axis=1)
+        relation_violation = (
+            (ohlc["high"] < ohlc["low"])
+            | (ohlc["high"] < ohlc["open"])
+            | (ohlc["high"] < ohlc["close"])
+            | (ohlc["low"] > ohlc["open"])
+            | (ohlc["low"] > ohlc["close"])
+        )
+        repository_raw = repository.get_raw_daily(ticker, start, end)
+        base.update(
+            {
+                "raw_rows": int(len(source)),
+                "zero_price_row_count": int((~positive).sum()),
+                "all_positive_row_count": int(positive.sum()),
+                "all_positive_relation_violation_count": int(
+                    (relation_violation & positive).sum()
+                ),
+                "repository_raw_rows": int(len(repository_raw)),
+                "source_to_repository_exact_match": _same_frame(source, repository_raw),
+                "status": "PASS",
+                "elapsed_seconds": round(monotonic() - started, 6),
+            }
+        )
+        if not base["source_to_repository_exact_match"]:
+            raise MarketDataError("BLOCKED_PRODUCTION_RAW_PROBE")
+        return base
+    except Exception as exc:
+        return base | _error_record(
+            ticker,
+            exc,
+            requested_start=start,
+            requested_end=end,
+            stage="REPOSITORY_COMPOSITION",
+            record_type="raw_authority",
+        ) | {"elapsed_seconds": round(monotonic() - started, 6)}
+
+
+def _samsung_raw_probe(repository: MarketDataRepositoryV2) -> dict[str, Any]:
+    expected = {"2018-04-27": 128386494, "2018-05-04": 6419324700}
+    record = {
+        "stage": "SAMSUNG_SEMANTIC_PROBE",
+        "record_type": "samsung_raw",
+        "expected": expected,
+        "observed": {},
+        "raw_semantics": False,
+        "status": "FAIL",
+    }
+    try:
+        ancillary = repository.get_daily_ancillary("005930", "2018-04-27", "2018-05-04")
+        observed = {
+            day: int(ancillary.loc[pd.Timestamp(day), "listed_shares"])
+            for day in expected
+            if pd.Timestamp(day) in ancillary.index
+        }
+        record["observed"] = observed
+        record["raw_semantics"] = observed == expected
+        record["status"] = "PASS" if record["raw_semantics"] else "FAIL"
+        if record["status"] != "PASS":
+            record["error_code"] = "BLOCKED_SAMSUNG_SEMANTIC_PROBE"
+    except Exception as exc:
+        record.update(_error_record(
+            "005930",
+            exc,
+            requested_start="2018-04-27",
+            requested_end="2018-05-04",
+            stage="SAMSUNG_SEMANTIC_PROBE",
+            record_type="samsung_raw",
+        ))
+    return record
+
+
+def _alphanumeric_probe(repository: MarketDataRepositoryV2, raw_store: KrxRawStockStore) -> dict[str, Any]:
+    record: dict[str, Any] = {
+        "stage": "ALPHANUMERIC_RAW_PROBE",
+        "record_type": "alphanumeric",
+        "performed": False,
+        "ticker": None,
+        "raw_daily": False,
+        "ancillary": False,
+        "snapshot": False,
+        "adjusted_unsupported": False,
+        "domain_not_widened": False,
+        "status": "NOT_RUN",
+    }
+    ticker = _find_alphanumeric(raw_store)
+    if not ticker:
+        record.update(
+            {
+                "performed": True,
+                "status": "FAIL",
+                "error_code": "BLOCKED_ALPHANUMERIC_PROBE",
+                "error_message": "03473K/08537M not found in production raw store",
+            }
+        )
+        return record
+    record["performed"] = True
+    record["ticker"] = ticker
+    try:
+        record["raw_daily"] = len(repository.get_raw_daily(ticker, "2018-04-27", "2018-04-27")) == 1
+        record["ancillary"] = len(repository.get_daily_ancillary(ticker, "2018-04-27", "2018-04-27")) == 1
+        record["snapshot"] = len(repository.get_stock_snapshot(ticker, "2018-04-27")) == 1
+        try:
+            repository.get_daily(ticker, "2018-04-27", "2018-04-27")
+        except MarketDataError as exc:
+            record["adjusted_unsupported"] = "UNSUPPORTED_ADJUSTED_TICKER" in str(exc)
+        record["domain_not_widened"] = record["adjusted_unsupported"]
+        record["status"] = (
+            "PASS"
+            if all(
+                record[key]
+                for key in ("raw_daily", "ancillary", "snapshot", "adjusted_unsupported", "domain_not_widened")
+            )
+            else "FAIL"
+        )
+        if record["status"] != "PASS":
+            record["error_code"] = "BLOCKED_ALPHANUMERIC_PROBE"
+    except Exception as exc:
+        record.update(_error_record(
+            ticker,
+            exc,
+            requested_start="2018-04-27",
+            requested_end="2018-04-27",
+            stage="ALPHANUMERIC_RAW_PROBE",
+            record_type="alphanumeric",
+        ))
+    return record
+
+
+def _offline_probes(raw_root: Path) -> dict[str, Any]:
+    raw_store = KrxRawStockStore(raw_root)
+    records: list[dict[str, Any]] = []
+    with tempfile.TemporaryDirectory(prefix="market-data-repository-v02-fix02-offline-") as temp_dir:
+        repository = MarketDataRepositoryV2(AdjustedPriceStore(temp_dir), raw_store)
+        for ticker, start, end in REQUESTED_SAMPLES:
+            records.append(_raw_authority_probe(repository, raw_store, ticker, start, end))
+        samsung_raw = _samsung_raw_probe(repository)
+        alpha = _alphanumeric_probe(repository, raw_store)
+    blockers = []
+    if any(item.get("status") != "PASS" for item in records):
+        blockers.append("BLOCKED_PRODUCTION_RAW_PROBE")
+    if samsung_raw.get("status") != "PASS":
+        blockers.append("BLOCKED_SAMSUNG_SEMANTIC_PROBE")
+    if alpha.get("status") != "PASS":
+        blockers.append("BLOCKED_ALPHANUMERIC_PROBE")
+    return {
+        "records": records,
+        "samsung_raw": samsung_raw,
+        "alphanumeric": alpha,
+        "status": "PASS" if not blockers else blockers[0],
+        "blockers": blockers,
+    }
+
+
+def _run_live_probe(raw_root: Path, offline: dict[str, Any]) -> dict[str, Any]:
     raw_before = _snapshot(raw_root / "manifest.sqlite3")
     adjusted_before = _snapshot(PRODUCTION_ADJUSTED_ROOT)
     provider = AdjustedPriceDataProvider()
     raw_store = KrxRawStockStore(raw_root)
-    requested = list(REQUESTED_SAMPLES)
-    comparisons: list[dict[str, Any]] = []
-    successful: list[dict[str, Any]] = []
-    successful_adjusted_fetch_count = 0
+    provider_records: list[dict[str, Any]] = []
+    temp_records: list[dict[str, Any]] = []
+    composition_records: list[dict[str, Any]] = []
     temporary_path: str | None = None
+    temporary_store_ticker_count = 0
     temp_cleanup = "FAIL"
     temp_exists_after = True
-    samsung: dict[str, Any] = {"performed": False, "status": "NOT_RUN"}
-    alpha: dict[str, Any] = {"performed": False, "status": "NOT_RUN"}
-    with tempfile.TemporaryDirectory(prefix="market-data-repository-v02-fix01-") as temp_dir:
+    with tempfile.TemporaryDirectory(prefix="market-data-repository-v02-fix02-") as temp_dir:
         temporary_path = temp_dir
         adjusted_store = AdjustedPriceStore(temp_dir)
         repository = MarketDataRepositoryV2(adjusted_store, raw_store)
-        for ticker, requested_start, requested_end in requested:
-            try:
-                frame = provider.load_daily(ticker, requested_start, requested_end)
-                if frame.empty:
-                    raise MarketDataError("BLOCKED_LIVE_ADJUSTED_SAMPLE: EMPTY_RESPONSE")
-                adjusted_store.save_full(
-                    ticker,
-                    frame,
-                    {
-                        "requested_start": requested_start,
-                        "requested_end": requested_end,
-                    },
-                )
-                metadata = adjusted_store.load_metadata(ticker)
-                adjusted_store.load_daily(
-                    ticker,
-                    metadata["actual_date_min"],
-                    metadata["actual_date_max"],
-                )
-                successful_adjusted_fetch_count += 1
-            except Exception as exc:
-                comparisons.append(_error_record(ticker, exc))
-                break
-            comparison, details = _probe_one(
-                repository, adjusted_store, raw_store,
-                ticker, requested_start, requested_end,
+        for ticker, requested_start, requested_end in REQUESTED_SAMPLES:
+            provider_record, frame = _provider_fetch(
+                provider, ticker, requested_start, requested_end
             )
-            comparisons.append(comparison)
-            if comparison.get("status") != "PASS":
+            provider_records.append(provider_record)
+            if frame is None:
                 break
-            successful.append(details)
-        if len(successful) == len(requested):
-            try:
-                ancillary = repository.get_daily_ancillary(
-                    "005930", "2018-04-27", "2018-05-04"
-                )
-                expected = {"2018-04-27": 128386494, "2018-05-04": 6419324700}
-                observed = {
-                    day: int(ancillary.loc[pd.Timestamp(day), "listed_shares"])
-                    for day in expected
-                    if pd.Timestamp(day) in ancillary.index
-                }
-                samsung_daily = repository.get_daily(
-                    "005930", "2018-04-27", "2018-05-04"
-                )
-                samsung = {
-                    "performed": True,
-                    "expected": expected,
-                    "observed": observed,
-                    "raw_semantics": observed == expected,
-                    "adjusted_price_semantics": "market_cap" not in samsung_daily.columns,
-                    "status": "PASS" if observed == expected else "FAIL",
-                }
-            except Exception as exc:
-                samsung = {"performed": True, **_error_record("005930", exc)}
-            try:
-                alpha_ticker = _find_alphanumeric(raw_store)
-                if not alpha_ticker:
-                    raise MarketDataError("BLOCKED_ALPHANUMERIC_PROBE")
-                raw_daily = repository.get_raw_daily(alpha_ticker, "2018-04-27", "2018-04-27")
-                ancillary = repository.get_daily_ancillary(alpha_ticker, "2018-04-27", "2018-04-27")
-                snapshot = repository.get_stock_snapshot(alpha_ticker, "2018-04-27")
-                try:
-                    repository.get_daily(alpha_ticker, "2018-04-27", "2018-04-27")
-                except MarketDataError as exc:
-                    unsupported = "UNSUPPORTED_ADJUSTED_TICKER" in str(exc)
-                else:
-                    unsupported = False
-                alpha = {
-                    "performed": True,
-                    "ticker": alpha_ticker,
-                    "raw_daily": len(raw_daily) == 1,
-                    "ancillary": len(ancillary) == 1,
-                    "snapshot": len(snapshot) == 1,
-                    "adjusted_unsupported": unsupported,
-                    "adjusted_domain_not_widened": unsupported,
-                    "status": "PASS" if len(raw_daily) == 1 and len(ancillary) == 1 and len(snapshot) == 1 and unsupported else "FAIL",
-                }
-            except Exception as exc:
-                alpha = {"performed": True, **_error_record("alphanumeric", exc)}
+            temp_record, metadata = _temp_store_integrity(
+                adjusted_store, ticker, frame, requested_start, requested_end
+            )
+            temp_records.append(temp_record)
+            if metadata is None:
+                break
+            composition_record, _ = _composition_probe(
+                repository,
+                adjusted_store,
+                raw_store,
+                ticker,
+                requested_start,
+                requested_end,
+            )
+            composition_records.append(composition_record)
+            if composition_record.get("status") != "PASS":
+                break
+        temporary_store_ticker_count = _temp_store_ticker_count(adjusted_store)
     temp_exists_after = bool(temporary_path and Path(temporary_path).exists())
     temp_cleanup = "PASS" if not temp_exists_after else "FAIL"
     raw_after = _snapshot(raw_root / "manifest.sqlite3")
     adjusted_after = _snapshot(PRODUCTION_ADJUSTED_ROOT)
     audit = provider.call_audit()
+    failure_records = [
+        record
+        for record in provider_records + temp_records + composition_records
+        if record.get("status") == "FAIL"
+    ]
+    successful_provider = sum(record.get("status") == "PASS" for record in provider_records)
+    successful_temp = sum(record.get("status") == "PASS" for record in temp_records)
+    successful_composition = sum(record.get("status") == "PASS" for record in composition_records)
     gate = sample_gate(
-        len(requested),
-        successful_adjusted_fetch_count,
-        sum(item.get("status") == "PASS" for item in comparisons),
-        comparisons,
+        len(REQUESTED_SAMPLES),
+        successful_provider,
+        successful_composition,
+        composition_records,
+        successful_provider_fetch_count=successful_provider,
+        successful_temp_store_integrity_count=successful_temp,
+        failure_records=failure_records,
     )
-    blockers = []
+    consistency = evidence_consistency_gate(
+        provider_records,
+        temp_records,
+        composition_records,
+        temporary_store_ticker_count,
+    )
+    blockers = list(offline.get("blockers", []))
     if gate["status"] != "PASS":
         blockers.append(gate["status"])
-    if samsung.get("performed") and samsung.get("status") != "PASS":
-        blockers.append("BLOCKED_SAMSUNG_SEMANTIC_PROBE")
-    if alpha.get("performed") and alpha.get("status") != "PASS":
-        blockers.append("BLOCKED_ALPHANUMERIC_PROBE")
+    if consistency["status"] != "PASS":
+        blockers.append(consistency["status"])
     if temp_cleanup != "PASS":
         blockers.append("BLOCKED_TEMP_STORE_CLEANUP")
     if raw_before != raw_after or adjusted_before != adjusted_after:
         blockers.append("BLOCKED_STORE_MUTATION")
-    if audit["adjusted_false_call_count"] != 0 or audit["logical_fetch_count"] != len(requested):
-        blockers.append("BLOCKED_EXTERNAL_PYKRX_UNAVAILABLE")
+    performance = [
+        {
+            key: item[key]
+            for key in (
+                "ticker",
+                "requested_start",
+                "requested_end",
+                "actual_adjusted_start",
+                "actual_adjusted_end",
+                "adjusted_rows",
+                "raw_rows",
+                "repository_rows",
+                "raw_load_elapsed_seconds",
+                "adjusted_load_elapsed_seconds",
+                "repository_join_elapsed_seconds",
+                "total_elapsed_seconds",
+            )
+            if key in item
+        }
+        for item in composition_records
+    ]
+    warnings = [
+        "RAW_TICKER_ACCESS_PERFORMANCE_RISK"
+        for item in performance
+        if item.get("total_elapsed_seconds", 0) >= 60
+    ]
+    network_blocker = []
+    if audit["adjusted_false_call_count"] != 0:
+        network_blocker.append("BLOCKED_EXTERNAL_PYKRX_UNAVAILABLE")
+    all_blockers = list(dict.fromkeys(blockers + network_blocker))
     return {
         "mode": "TEMP_ADJUSTED_LIVE_PLUS_PRODUCTION_RAW",
-        "requested_samples": [item[0] for item in requested],
-        "successful_adjusted_fetch_count": successful_adjusted_fetch_count,
-        "successful_composition_probe_count": sum(
-            item.get("status") == "PASS" for item in comparisons
-        ),
+        "requested_samples": [item[0] for item in REQUESTED_SAMPLES],
+        "provider_fetch_records": provider_records,
+        "temp_store_integrity_records": temp_records,
+        "composition_records": composition_records,
+        "failure_records": failure_records,
+        "successful_provider_fetch_count": successful_provider,
+        "successful_adjusted_fetch_count": successful_provider,
+        "successful_temp_store_integrity_count": successful_temp,
+        "successful_composition_probe_count": successful_composition,
+        "usable_composition_sample_count": gate["usable_sample_count"],
         "minimum_required_sample_count": 2,
-        "usable_sample_count": gate["usable_sample_count"],
         "all_requested_samples_pass": gate["all_requested_samples_pass"],
         "sample_gate": gate,
-        "comparisons": comparisons,
-        "samsung": samsung,
-        "alphanumeric": alpha,
+        "evidence_consistency": consistency,
         "temporary_store_created": True,
-        "temporary_store_ticker_count": len(successful),
+        "temporary_store_ticker_count": temporary_store_ticker_count,
         "temporary_store_cleanup": temp_cleanup,
         "temporary_store_exists_after_cleanup": temp_exists_after,
         "temporary_store_path": temporary_path,
@@ -507,56 +946,44 @@ def _run_live_probe(
         "production_raw_write_count": int(raw_before != raw_after),
         "production_adjusted_write_count": int(adjusted_before != adjusted_after),
         "corporate_action_state_write_count": 0,
-        "performance": [
-            {
-                key: item[key]
-                for key in (
-                    "ticker", "requested_start", "requested_end",
-                    "actual_adjusted_start", "actual_adjusted_end",
-                    "adjusted_rows", "raw_rows", "repository_rows",
-                    "raw_load_elapsed_seconds", "adjusted_load_elapsed_seconds",
-                    "repository_join_elapsed_seconds", "total_elapsed_seconds",
-                )
-                if key in item
-            }
-            for item in comparisons
-        ],
+        "performance": performance,
+        "performance_warnings": warnings,
         "provider_audit": audit,
         "KRX_open_api_request_count": 0,
         "OpenDART_request_count": 0,
         "fallback_request_count": 0,
         "retry_count": 0,
-        "blockers": sorted(set(blockers)),
-        "status": "PASS" if not blockers else sorted(set(blockers))[0],
+        "offline": offline,
+        "network_blockers": network_blocker,
+        "blockers": all_blockers,
+        "status": "PASS" if not all_blockers else all_blockers[0],
     }
 
 
-def _write_compatibility() -> None:
-    rows = [
-        ["consumer_or_api", "before_source", "v2_source", "output_columns", "semantic_change", "auto_migrated", "status"],
-        ["legacy MarketDataRepository", "provider + ParquetCache", "unchanged legacy path", "legacy schema", "none", "0", "UNCHANGED"],
-        ["MarketDataRepositoryV2.get_daily", "none", "AdjustedPriceStore + KrxRawStockStore", "open,high,low,close,volume,trading_value", "explicit field composition", "0", "PASS"],
-        ["get_raw_daily", "none", "KrxRawStockStore", "raw OHLC + ancillary", "new read API", "0", "PASS"],
-        ["get_daily_ancillary", "none", "KrxRawStockStore", "volume,trading_value,market_cap,listed_shares", "new read API", "0", "PASS"],
-        ["get_stock_snapshot", "none", "KrxRawStockStore", "raw OHLC + ancillary", "new read API", "0", "PASS"],
-        ["Pattern A", "unchanged", "unchanged", "unchanged", "none", "0", "DEFERRED"],
-        ["FastCore", "unchanged", "unchanged", "unchanged", "none", "0", "DEFERRED"],
-        ["Julia", "unchanged", "unchanged", "unchanged", "none", "0", "DEFERRED"],
-        ["RS", "unchanged", "unchanged", "unchanged", "none", "0", "DEFERRED"],
-        ["Stock Report", "unchanged", "unchanged", "unchanged", "none", "0", "DEFERRED"],
-    ]
-    OUTPUT.mkdir(parents=True, exist_ok=True)
-    with (OUTPUT / "compatibility_matrix.csv").open("w", encoding="utf-8", newline="") as handle:
-        csv.writer(handle, lineterminator="\n").writerows(rows)
+def _samsung_composition(live: dict[str, Any]) -> dict[str, Any]:
+    for record in live["composition_records"]:
+        if record.get("ticker") == "005930":
+            return {
+                "status": "PASS"
+                if record.get("status") == "PASS"
+                and record.get("adjusted_ohlc_exact_match")
+                and record.get("ancillary_exact_match")
+                else "FAIL",
+                "record": record,
+            }
+    return {"status": "NOT_RUN", "record": None}
 
 
 def _write_evidence(
     validation_head: str,
     static: dict[str, Any],
+    offline: dict[str, Any],
     live: dict[str, Any],
     regression: dict[str, Any],
 ) -> dict[str, Any]:
-    blockers = list(live["blockers"])
+    blockers: list[str] = []
+    blockers.extend(offline.get("blockers", []))
+    blockers.extend(live.get("blockers", []))
     if static["git_diff_check"]["status"] != "PASS":
         blockers.append("BLOCKED_GIT_DIFF_CHECK")
     if static["legacy_repository_changed"] or static["frozen_store_source_changed_count"]:
@@ -567,35 +994,34 @@ def _write_evidence(
         blockers.append("BLOCKED_CLOSED_ARTIFACT_OVERWRITE")
     if static["consumer_auto_migration_count"]:
         blockers.append("BLOCKED_CONSUMER_AUTO_MIGRATION")
-    if static["secret_occurrence_count"] or static["runtime_network_guard"]["runtime_forbidden_network_dependency_count"]:
+    if static["secret_occurrence_count"]:
+        blockers.append("BLOCKED_SECRET_OCCURRENCE")
+    if static["runtime_network_guard"]["runtime_forbidden_network_dependency_count"]:
         blockers.append("BLOCKED_RUNTIME_NETWORK_DEPENDENCY")
     if static["artifacts_runtime_dependency_count"]:
         blockers.append("BLOCKED_RUNTIME_ARTIFACT_DEPENDENCY")
     if regression["failed"]:
         blockers.append("BLOCKED_REGRESSION")
-    if live["production_raw_write_count"] or live["production_adjusted_write_count"]:
-        blockers.append("BLOCKED_STORE_MUTATION")
-    blockers = sorted(set(blockers))
-    status = "READY_FOR_ARCHITECT_MARKET_DATA_REPOSITORY_V02_FIX01_REVIEW" if not blockers else blockers[0]
+    blockers = list(dict.fromkeys(blockers))
+    status = (
+        "READY_FOR_ARCHITECT_MARKET_DATA_REPOSITORY_V02_FIX02_REVIEW"
+        if not blockers
+        else blockers[0]
+    )
+    raw_records = offline["records"]
+    samsung_composition = _samsung_composition(live)
     provenance = {
-        "open": {"store": "AdjustedPriceStore", "source": "PYKRX_ADJUSTED_PRICE", "semantics": "ADJUSTED"},
-        "high": {"store": "AdjustedPriceStore", "source": "PYKRX_ADJUSTED_PRICE", "semantics": "ADJUSTED"},
-        "low": {"store": "AdjustedPriceStore", "source": "PYKRX_ADJUSTED_PRICE", "semantics": "ADJUSTED"},
-        "close": {"store": "AdjustedPriceStore", "source": "PYKRX_ADJUSTED_PRICE", "semantics": "ADJUSTED"},
-        "volume": {"store": "KrxRawStockStore", "source": "KRX_OPEN_API_STOCK_DAILY", "semantics": "RAW"},
-        "trading_value": {"store": "KrxRawStockStore", "source": "KRX_OPEN_API_STOCK_DAILY", "semantics": "RAW"},
-        "market_cap": {"store": "KrxRawStockStore", "source": "raw ancillary only", "semantics": "RAW"},
-        "listed_shares": {"store": "KrxRawStockStore", "source": "raw ancillary only", "semantics": "RAW"},
+        "market_data_repository_v02_original_implementation_head": ORIGINAL_REPOSITORY_IMPLEMENTATION_HEAD,
+        "fix02_repository_implementation_head": validation_head,
+        "fix02_validation_source_head": validation_head,
+        "live_execution_head": validation_head,
+        "artifact_head": validation_head,
     }
     summary = {
-        "phase": "MARKET_DATA_REPOSITORY_V02_FIX01",
+        "phase": "MARKET_DATA_REPOSITORY_V02_FIX02",
         "status": status,
-        "repository_implementation_head": REPOSITORY_IMPLEMENTATION_HEAD,
-        "fix01_validation_source_head": validation_head,
-        "live_execution_head": validation_head,
-        "architect_review_start_head": START_HEAD,
-        "production_runtime_head": "e508005c16e5fa3fa19c03b6568ba56ab9ac9294",
-        "repository_v2_changed": False,
+        **provenance,
+        "repository_v2_changed": True,
         "legacy_repository_changed": static["legacy_repository_changed"],
         "frozen_contract_changed": static["frozen_contract_modified"],
         "frozen_store_sources_changed": static["frozen_store_source_changed_count"] != 0,
@@ -603,6 +1029,10 @@ def _write_evidence(
         "runtime_network_forbidden_count": static["runtime_network_guard"]["runtime_forbidden_network_dependency_count"],
         "artifacts_runtime_dependency_count": static["artifacts_runtime_dependency_count"],
         "consumer_auto_migration_count": static["consumer_auto_migration_count"],
+        "repository_raw_authority_compatible": all(
+            item.get("status") == "PASS" for item in raw_records
+        ),
+        "raw_offline_probe": offline,
         "network": {
             "logical_pykrx_fetch_count": live["provider_audit"]["logical_fetch_count"],
             "adjusted_true_call_count": live["provider_audit"]["adjusted_true_call_count"],
@@ -613,7 +1043,9 @@ def _write_evidence(
             "retry_count": live["retry_count"],
         },
         "live_probe": live,
-        "provenance": provenance,
+        "samsung_raw": offline["samsung_raw"],
+        "samsung_composition": samsung_composition,
+        "provenance_fields": provenance,
         "bounded_regression": regression,
         "production_adjusted_population": "NOT_YET_IMPLEMENTED",
         "consumer_migration_prerequisite": True,
@@ -622,75 +1054,71 @@ def _write_evidence(
             "FULL_REGRESSION_CLOSURE_DEFERRED",
         ],
         "blockers": blockers,
-        "warnings": [
-            "RAW_TICKER_ACCESS_PERFORMANCE_RISK"
-            for item in live["performance"]
-            if item.get("total_elapsed_seconds", 0) >= 60
-        ],
+        "warnings": live.get("performance_warnings", []),
         "generated_at": datetime.now(timezone.utc).isoformat(),
     }
-    _write_json("market_data_repository_v02_summary.json", summary)
-    _write_json("production_probe_summary.json", {
-        "mode": live["mode"],
-        "status": live["status"],
-        "repository_implementation_head": REPOSITORY_IMPLEMENTATION_HEAD,
-        "fix01_validation_source_head": validation_head,
-        "execution_head": validation_head,
-        "requested_samples": live["requested_samples"],
-        "successful_adjusted_fetch_count": live["successful_adjusted_fetch_count"],
-        "successful_composition_probe_count": live["successful_composition_probe_count"],
-        "minimum_required_sample_count": live["minimum_required_sample_count"],
-        "usable_sample_count": live["usable_sample_count"],
-        "all_requested_samples_pass": live["all_requested_samples_pass"],
-        "comparisons": live["comparisons"],
-        "samsung": live["samsung"],
-        "alphanumeric": live["alphanumeric"],
-        "blockers": live["blockers"],
-        "observed_at": datetime.now(timezone.utc).isoformat(),
+    _write_json("FIX02_raw_authority_compatibility_summary.json", {
+        "phase": summary["phase"],
+        "status": offline["status"],
+        "records": raw_records,
+        "samsung_raw": offline["samsung_raw"],
+        "alphanumeric": offline["alphanumeric"],
+        "blockers": offline["blockers"],
+        "provenance": provenance,
     })
-    _write_json("FIX01_validator_gate_summary.json", {
-        "status": status,
-        "blockers": blockers,
-        "git_diff_check": static["git_diff_check"],
-        "runtime_network_guard": static["runtime_network_guard"],
-        "consumer_auto_migration_count": static["consumer_auto_migration_count"],
-        "frozen_contract_changed": static["frozen_contract_modified"],
-        "bounded_regression": regression,
-        "repository_implementation_head": REPOSITORY_IMPLEMENTATION_HEAD,
-        "fix01_validation_source_head": validation_head,
+    _write_json("FIX02_provider_fetch_summary.json", {
+        "phase": summary["phase"],
+        "status": "PASS" if live["successful_provider_fetch_count"] == 3 else "BLOCKED_LIVE_ADJUSTED_SAMPLE",
+        "records": live["provider_fetch_records"],
+        "successful_provider_fetch_count": live["successful_provider_fetch_count"],
+        "provider_audit": live["provider_audit"],
+        "provenance": provenance,
     })
-    _write_json("FIX01_live_authority_probe_summary.json", live | {
-        "repository_implementation_head": REPOSITORY_IMPLEMENTATION_HEAD,
-        "fix01_validation_source_head": validation_head,
-        "execution_head": validation_head,
-        "observed_at": datetime.now(timezone.utc).isoformat(),
-    })
-    _write_json("FIX01_temp_adjusted_store_summary.json", {
-        "temporary_store_mode": True,
+    _write_json("FIX02_temp_store_integrity_summary.json", {
+        "phase": summary["phase"],
+        "status": "PASS" if live["successful_temp_store_integrity_count"] == 3 else "BLOCKED_TEMP_ADJUSTED_STORE_INTEGRITY",
+        "records": live["temp_store_integrity_records"],
+        "successful_temp_store_integrity_count": live["successful_temp_store_integrity_count"],
         "temporary_store_ticker_count": live["temporary_store_ticker_count"],
-        "production_adjusted_root_used_for_write": False,
-        "temporary_store_cleanup": live["temporary_store_cleanup"],
-        "temporary_store_exists_after_cleanup": live["temporary_store_exists_after_cleanup"],
-        "per_ticker": [
-            {
-                "ticker": item.get("ticker"),
-                "row_count": item.get("adjusted_rows"),
-                "metadata_status": "PASS" if item.get("adjusted_rows", 0) > 0 else "FAIL",
-                "hash_status": "PASS" if item.get("adjusted_rows", 0) > 0 else "FAIL",
-            }
-            for item in live["comparisons"]
-        ],
+        "cleanup": live["temporary_store_cleanup"],
+        "exists_after_cleanup": live["temporary_store_exists_after_cleanup"],
+        "provenance": provenance,
     })
-    _write_json("FIX01_network_summary.json", {
+    _write_json("FIX02_composition_probe_summary.json", {
+        "phase": summary["phase"],
+        "status": "PASS" if live["successful_composition_probe_count"] == 3 else "BLOCKED_PRODUCTION_COMPOSITION_PROBE",
+        "records": live["composition_records"],
+        "successful_composition_probe_count": live["successful_composition_probe_count"],
+        "usable_composition_sample_count": live["usable_composition_sample_count"],
+        "provenance": provenance,
+    })
+    _write_json("FIX02_failure_classification_summary.json", {
+        "phase": summary["phase"],
+        "status": "PASS" if not live["failure_records"] else "FAIL",
+        "failures": live["failure_records"],
+        "stage_blockers": {
+            record.get("stage"): _stage_blocker(record.get("stage", ""))
+            for record in live["failure_records"]
+        },
+        "provenance": provenance,
+    })
+    _write_json("FIX02_network_summary.json", {
+        "phase": summary["phase"],
         "logical_pykrx_fetch_count": live["provider_audit"]["logical_fetch_count"],
         "adjusted_true_call_count": live["provider_audit"]["adjusted_true_call_count"],
         "adjusted_false_call_count": live["provider_audit"]["adjusted_false_call_count"],
         "KRX_open_api_request_count": 0,
         "OpenDART_request_count": 0,
-        "fallback_request_count": live["fallback_request_count"],
-        "retry_count": live["retry_count"],
+        "fallback_request_count": 0,
+        "retry_count": 0,
+        "external_blocker_requires_provider_stage": True,
+        "external_blocker_present": any(
+            item.get("stage") == "ADJUSTED_PROVIDER_FETCH"
+            for item in live["failure_records"]
+        ),
+        "provenance": provenance,
     })
-    _write_json("FIX01_production_mutation_guard.json", {
+    _write_json("FIX02_production_mutation_guard.json", {
         "production_raw_manifest_before_sha": live["production_raw_manifest_before_sha"],
         "production_raw_manifest_after_sha": live["production_raw_manifest_after_sha"],
         "production_raw_manifest_equal": live["production_raw_manifest_equal"],
@@ -700,32 +1128,90 @@ def _write_evidence(
         "production_raw_write_count": live["production_raw_write_count"],
         "production_adjusted_write_count": live["production_adjusted_write_count"],
         "corporate_action_state_write_count": live["corporate_action_state_write_count"],
+        "provenance": provenance,
     })
-    _write_json("bounded_regression_summary.json", regression)
+    _write_json("FIX02_live_authority_probe_summary.json", {
+        "phase": summary["phase"],
+        "status": live["status"],
+        "mode": live["mode"],
+        "requested_samples": live["requested_samples"],
+        "provider_fetch_records": live["provider_fetch_records"],
+        "temp_store_integrity_records": live["temp_store_integrity_records"],
+        "composition_records": live["composition_records"],
+        "failure_records": live["failure_records"],
+        "counters": {
+            "successful_provider_fetch_count": live["successful_provider_fetch_count"],
+            "successful_temp_store_integrity_count": live["successful_temp_store_integrity_count"],
+            "successful_composition_probe_count": live["successful_composition_probe_count"],
+            "usable_composition_sample_count": live["usable_composition_sample_count"],
+        },
+        "sample_gate": live["sample_gate"],
+        "evidence_consistency": live["evidence_consistency"],
+        "provider_audit": live["provider_audit"],
+        "blockers": live["blockers"],
+        "provenance": provenance,
+    })
+    _write_json("FIX02_validator_gate_summary.json", {
+        "phase": summary["phase"],
+        "status": status,
+        "blockers": blockers,
+        "static": static,
+        "offline": offline,
+        "live": {
+            "sample_gate": live["sample_gate"],
+            "evidence_consistency": live["evidence_consistency"],
+            "blockers": live["blockers"],
+            "status": live["status"],
+        },
+        "bounded_regression": regression,
+        "provenance": provenance,
+    })
+    _write_json("market_data_repository_v02_summary.json", summary)
+    _write_json("production_probe_summary.json", {
+        "phase": summary["phase"],
+        "status": status,
+        "repository_raw_authority_compatible": summary["repository_raw_authority_compatible"],
+        "raw_offline_probe": offline,
+        "live_probe": live,
+        "samsung_raw": offline["samsung_raw"],
+        "samsung_composition": samsung_composition,
+        "blockers": blockers,
+        "provenance": provenance,
+    })
     _write_json("performance_summary.json", {
+        "phase": summary["phase"],
         "status": "PASS" if live["performance"] else "NOT_RUN",
         "observations": live["performance"],
-        "warnings": summary["warnings"],
+        "warnings": live["performance_warnings"],
+        "provenance": provenance,
     })
-    _write_compatibility()
+    _write_json("bounded_regression_summary.json", regression)
     (OUTPUT / "market_data_repository_v02_recommendation.md").write_text(
-        "\n".join([
-            "MARKET_DATA_REPOSITORY_V02_FIX01",
-            "",
-            "STATUS", status,
-            "",
-            "BLOCKERS", json.dumps(blockers, ensure_ascii=False),
-            "",
-            "PRODUCTION ADJUSTED POPULATION",
-            "NOT_YET_IMPLEMENTED",
-            "",
-            "CONSUMER MIGRATION PREREQUISITE",
-            "YES",
-            "",
-            "KNOWN LIMITATIONS",
-            "PRODUCTION_ADJUSTED_STORE_POPULATION_NOT_IMPLEMENTED",
-            "FULL_REGRESSION_CLOSURE_DEFERRED",
-        ]) + "\n",
+        "\n".join(
+            [
+                "MARKET_DATA_REPOSITORY_V02_FIX02",
+                "",
+                "STATUS",
+                status,
+                "",
+                "BLOCKERS",
+                json.dumps(blockers, ensure_ascii=False),
+                "",
+                "RAW AUTHORITY COMPATIBILITY",
+                "PASS" if summary["repository_raw_authority_compatible"] else "FAIL",
+                "",
+                "PRODUCTION ADJUSTED POPULATION",
+                "NOT_YET_IMPLEMENTED",
+                "",
+                "CONSUMER MIGRATION PREREQUISITE",
+                "YES",
+                "",
+                "KNOWN LIMITATIONS",
+                "PRODUCTION_ADJUSTED_STORE_POPULATION_NOT_IMPLEMENTED",
+                "FULL_REGRESSION_CLOSURE_DEFERRED",
+            ]
+        )
+        + "\n",
         encoding="utf-8",
     )
     return summary
@@ -741,8 +1227,9 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         "duration_seconds": args.bounded_duration,
         "status": "PASS" if args.bounded_failed == 0 else "BLOCKED_REGRESSION",
     }
-    live = _run_live_probe(Path(args.raw_root))
-    return _write_evidence(validation_head, static, live, regression)
+    offline = _offline_probes(Path(args.raw_root))
+    live = _run_live_probe(Path(args.raw_root), offline)
+    return _write_evidence(validation_head, static, offline, live, regression)
 
 
 def main() -> int:
@@ -752,17 +1239,21 @@ def main() -> int:
     parser.add_argument("--bounded-passed", type=int, default=0)
     parser.add_argument("--bounded-failed", type=int, default=0)
     parser.add_argument("--bounded-duration", type=float, default=0.0)
-    args = parser.parse_args()
-    summary = run(args)
-    print(json.dumps({
-        "status": summary["status"],
-        "blockers": summary["blockers"],
-        "repository_implementation_head": summary["repository_implementation_head"],
-        "fix01_validation_source_head": summary["fix01_validation_source_head"],
-        "live_execution_head": summary["live_execution_head"],
-        "network": summary["network"],
-    }, ensure_ascii=False, sort_keys=True))
-    return 0 if summary["status"] == "READY_FOR_ARCHITECT_MARKET_DATA_REPOSITORY_V02_FIX01_REVIEW" else 1
+    summary = run(parser.parse_args())
+    print(
+        json.dumps(
+            {
+                "status": summary["status"],
+                "blockers": summary["blockers"],
+                "fix02_validation_source_head": summary["fix02_validation_source_head"],
+                "live_execution_head": summary["live_execution_head"],
+                "network": summary["network"],
+            },
+            ensure_ascii=False,
+            sort_keys=True,
+        )
+    )
+    return 0 if summary["status"] == "READY_FOR_ARCHITECT_MARKET_DATA_REPOSITORY_V02_FIX02_REVIEW" else 1
 
 
 if __name__ == "__main__":

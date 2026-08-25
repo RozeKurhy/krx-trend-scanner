@@ -3,6 +3,8 @@ from __future__ import annotations
 from scripts.validate_market_data_repository_v02 import (
     _error_record,
     _runtime_network_guard,
+    _stage_blocker,
+    evidence_consistency_gate,
     git_diff_gate_from_result,
     probe_range_from_metadata,
     sample_gate,
@@ -78,9 +80,13 @@ def test_failed_ticker_exception_is_structured_without_stacktrace() -> None:
     record = _error_record("068270", MarketDataError("BLOCKED_LIVE_ADJUSTED_SAMPLE: timeout"))
     assert record == {
         "ticker": "068270",
+        "requested_start": "",
+        "requested_end": "",
+        "stage": "UNKNOWN",
         "status": "FAIL",
         "error_code": "BLOCKED_LIVE_ADJUSTED_SAMPLE",
         "error_message": "BLOCKED_LIVE_ADJUSTED_SAMPLE: timeout",
+        "record_type": "failure",
     }
     assert "Traceback" not in record["error_message"]
 
@@ -102,3 +108,93 @@ def test_passed_git_diff_check_captures_command_and_streams() -> None:
     assert result["status"] == "PASS"
     assert result["stdout"] == ""
     assert result["stderr"] == ""
+
+
+def test_provider_failure_stage_is_explicit_and_maps_external_blocker() -> None:
+    record = _error_record(
+        "005930",
+        MarketDataError("provider exploded"),
+        requested_start="2018-04-01",
+        requested_end="2018-06-30",
+        stage="ADJUSTED_PROVIDER_FETCH",
+        record_type="provider_fetch",
+    )
+    assert record["stage"] == "ADJUSTED_PROVIDER_FETCH"
+    assert _stage_blocker(record["stage"]) == "BLOCKED_EXTERNAL_PYKRX_UNAVAILABLE"
+
+
+def test_composition_exception_does_not_map_to_external_pykrx() -> None:
+    record = _error_record(
+        "005930", MarketDataError("INVALID_REPOSITORY_V2_OUTPUT"), stage="REPOSITORY_COMPOSITION"
+    )
+    assert _stage_blocker(record["stage"]) == "BLOCKED_PRODUCTION_COMPOSITION_PROBE"
+    assert _stage_blocker(record["stage"]) != "BLOCKED_EXTERNAL_PYKRX_UNAVAILABLE"
+
+
+def test_temp_store_failure_stage_is_explicit() -> None:
+    record = _error_record("005930", MarketDataError("hash"), stage="TEMP_ADJUSTED_STORE_READBACK")
+    assert _stage_blocker(record["stage"]) == "BLOCKED_TEMP_ADJUSTED_STORE_INTEGRITY"
+
+
+def test_raw_load_failure_stage_is_explicit() -> None:
+    record = _error_record("005930", MarketDataError("raw"), stage="RAW_PRODUCTION_LOAD")
+    assert _stage_blocker(record["stage"]) == "BLOCKED_PRODUCTION_RAW_PROBE"
+
+
+def test_early_stop_after_composition_failure_does_not_imply_external_failure() -> None:
+    result = sample_gate(
+        3,
+        1,
+        0,
+        [],
+        successful_provider_fetch_count=1,
+        successful_temp_store_integrity_count=1,
+        failure_records=[
+            {
+                "status": "FAIL",
+                "stage": "REPOSITORY_COMPOSITION",
+            }
+        ],
+    )
+    assert result["status"] == "BLOCKED_PRODUCTION_COMPOSITION_PROBE"
+
+
+def test_provider_success_and_composition_failure_are_distinct() -> None:
+    result = sample_gate(
+        3,
+        1,
+        0,
+        [],
+        successful_provider_fetch_count=1,
+        successful_temp_store_integrity_count=1,
+        failure_records=[{"status": "FAIL", "stage": "REPOSITORY_COMPOSITION"}],
+    )
+    assert result["successful_provider_fetch_count"] == 1
+    assert result["successful_temp_store_integrity_count"] == 1
+    assert result["status"] != "BLOCKED_EXTERNAL_PYKRX_UNAVAILABLE"
+
+
+def test_evidence_counter_record_consistency_requires_matching_temp_pairs() -> None:
+    provider_records = [{"status": "PASS"}]
+    temp_records = [{"status": "PASS"}]
+    composition_records = [{"status": "FAIL"}]
+    consistent = evidence_consistency_gate(
+        provider_records, temp_records, composition_records, temporary_store_ticker_count=1
+    )
+    assert consistent["status"] == "PASS"
+    inconsistent = evidence_consistency_gate(
+        provider_records, temp_records, composition_records, temporary_store_ticker_count=0
+    )
+    assert inconsistent["status"] == "BLOCKED_EVIDENCE_INCONSISTENCY"
+
+
+def test_temp_store_count_matches_integrity_records() -> None:
+    result = evidence_consistency_gate(
+        [{"status": "PASS"}, {"status": "PASS"}],
+        [{"status": "PASS"}, {"status": "FAIL"}],
+        [{"status": "FAIL"}],
+        temporary_store_ticker_count=1,
+    )
+    assert result["successful_temp_store_integrity_count"] == 1
+    assert result["temporary_store_ticker_count"] == 1
+    assert result["status"] == "PASS"

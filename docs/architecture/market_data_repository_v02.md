@@ -90,3 +90,25 @@ FIX01 실행 경계
   probe도 별도 gate로 확인한다.
 * production adjusted store population과 consumer migration은 이 단계에서
   구현하지 않는다. 둘은 후속 migration 전제조건으로 문서화한다.
+
+FIX02 raw authority 및 probe evidence
+-------------------------------------
+* Repository V2의 raw OHLC relation은 frozen KRX raw authority와 동일하게
+  모든 OHLC 값이 양수인 row에만 적용한다. zero-price row는 source-valid
+  semantics를 보존하며 repository가 새 validity rule을 추가하지 않는다.
+* raw numeric parseability, NaN/inf, 음수 ancillary 및 volume/trading_value
+  범위는 계속 fail-closed로 검증한다. source 값의 repair, fill, clamp, adjust,
+  round 또는 대체 의미론 변환은 수행하지 않는다.
+* FIX02 validator는 adjusted provider fetch, temporary store write/readback,
+  production raw load, repository composition, Samsung semantic 및
+  alphanumeric raw probe를 별도 stage와 record로 남긴다.
+* successful_provider_fetch_count, successful_temp_store_integrity_count,
+  successful_composition_probe_count 및 usable_composition_sample_count는
+  서로 독립적으로 계산한다. logical_fetch_count가 3보다 작다는 사실만으로
+  PyKRX 외부 장애를 추론하지 않는다.
+* 외부 PyKRX blocker는 ADJUSTED_PROVIDER_FETCH stage의 실제 exception 또는
+  empty/invalid provider output이 증적에 존재할 때만 부여한다. composition,
+  temporary store, raw load 실패는 각각 전용 blocker로 기록한다.
+* Network 0 offline raw probe는 005930, 000660, 068270의 raw parity와
+  zero-price row count를 확인하고, Samsung listed_shares와 alphanumeric
+  raw domain probe는 adjusted live 샘플과 독립적으로 수행한다.

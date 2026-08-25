@@ -9,6 +9,7 @@ import pytest
 from trend_scanner.data.adjusted_price_store import AdjustedPriceStore
 from trend_scanner.data.errors import MarketDataError
 from trend_scanner.data.krx_raw_stock_provider import RAW_COLUMNS
+from trend_scanner.data.krx_raw_stock_provider import validate_raw_snapshot_frame
 from trend_scanner.data.krx_raw_stock_store import KrxRawStockStore
 from trend_scanner.data.repository_v2 import (
     ANCILLARY_COLUMNS,
@@ -228,3 +229,96 @@ def test_adjusted_store_is_not_widened_for_numeric_only_contract(tmp_path):
     repo, _, _ = _repo(tmp_path)
     with pytest.raises(MarketDataError, match="UNSUPPORTED_ADJUSTED_TICKER"):
         repo.get_daily("08537M", "2024-01-02", "2024-01-04")
+
+
+def _source_valid_zero_price_raw_frame() -> pd.DataFrame:
+    return pd.DataFrame(
+        [
+            {
+                "date": pd.Timestamp("2024-01-02"),
+                "ticker": "005930",
+                "open": 0,
+                "high": 0,
+                "low": 0,
+                "close": 10,
+                "volume": 0,
+                "trading_value": 25,
+                "market_cap": 100,
+                "listed_shares": 200,
+            }
+        ],
+        columns=list(RAW_COLUMNS),
+    )
+
+
+def test_source_valid_zero_price_raw_row_is_repository_valid(tmp_path):
+    source = _source_valid_zero_price_raw_frame()
+    normalized = validate_raw_snapshot_frame(source, "2024-01-02")
+    assert len(normalized) == 1
+
+    adjusted_store = AdjustedPriceStore(tmp_path / "adjusted")
+    adjusted_store.save_full(
+        "005930",
+        pd.DataFrame(
+            {"open": [20.0], "high": [22.0], "low": [19.0], "close": [21.0]},
+            index=pd.DatetimeIndex(["2024-01-02"]),
+        ),
+    )
+    raw_store = KrxRawStockStore(tmp_path / "raw")
+    raw_store.save_snapshot("KOSPI", "2024-01-02", source, "fixture")
+    repo = MarketDataRepositoryV2(adjusted_store, raw_store)
+
+    raw = repo.get_raw_daily("005930", "2024-01-02", "2024-01-02")
+    ancillary = repo.get_daily_ancillary("005930", "2024-01-02", "2024-01-02")
+    assert len(raw) == 1
+    assert len(ancillary) == 1
+    assert raw.loc[pd.Timestamp("2024-01-02"), "open"] == 0
+
+
+def test_zero_price_raw_row_composes_with_adjusted_ohlc(tmp_path):
+    source = _source_valid_zero_price_raw_frame()
+    adjusted_store = AdjustedPriceStore(tmp_path / "adjusted")
+    adjusted_store.save_full(
+        "005930",
+        pd.DataFrame(
+            {"open": [20.0], "high": [22.0], "low": [19.0], "close": [21.0]},
+            index=pd.DatetimeIndex(["2024-01-02"]),
+        ),
+    )
+    raw_store = KrxRawStockStore(tmp_path / "raw")
+    raw_store.save_snapshot("KOSPI", "2024-01-02", source, "fixture")
+    result = MarketDataRepositoryV2(adjusted_store, raw_store).get_daily(
+        "005930", "2024-01-02", "2024-01-02"
+    )
+    assert result.loc[pd.Timestamp("2024-01-02"), "open"] == 20.0
+    assert result.loc[pd.Timestamp("2024-01-02"), "close"] == 21.0
+    assert result.loc[pd.Timestamp("2024-01-02"), "volume"] == 0
+    assert result.loc[pd.Timestamp("2024-01-02"), "trading_value"] == 25
+
+
+def test_positive_invalid_raw_ohlc_still_fails(tmp_path):
+    repo, _, raw_store = _repo(tmp_path)
+    invalid = raw_store.load_ticker("005930", "2024-01-02", "2024-01-02").copy()
+    invalid.loc[invalid.index[0], "high"] = 1
+
+    class InvalidRawStore:
+        def load_ticker(self, ticker, start, end):
+            return invalid
+
+    invalid_repo = MarketDataRepositoryV2(repo._adjusted_price_store, InvalidRawStore())
+    with pytest.raises(MarketDataError, match="INVALID_REPOSITORY_V2_OUTPUT"):
+        invalid_repo.get_raw_daily("005930", "2024-01-02", "2024-01-02")
+
+
+def test_negative_raw_numeric_fails(tmp_path):
+    repo, _, raw_store = _repo(tmp_path)
+    invalid = raw_store.load_ticker("005930", "2024-01-02", "2024-01-02").copy()
+    invalid.loc[invalid.index[0], "volume"] = -1
+
+    class InvalidRawStore:
+        def load_ticker(self, ticker, start, end):
+            return invalid
+
+    invalid_repo = MarketDataRepositoryV2(repo._adjusted_price_store, InvalidRawStore())
+    with pytest.raises(MarketDataError, match="INVALID_REPOSITORY_V2_OUTPUT"):
+        invalid_repo.get_raw_daily("005930", "2024-01-02", "2024-01-02")
