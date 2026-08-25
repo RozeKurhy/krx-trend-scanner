@@ -460,14 +460,51 @@ def test_mixed_placeholder_and_active_raw_only_sessions_fail_closed(tmp_path):
         repo.get_daily("005930", "2024-01-02", "2024-01-05")
 
 
-def test_placeholder_on_shared_date_is_retained_in_projection(tmp_path):
+def test_shared_date_placeholder_fails_closed(tmp_path):
     rows = [
         _projection_raw_row("2024-01-02"),
         _projection_raw_row("2024-01-03", placeholder=True),
         _projection_raw_row("2024-01-04"),
     ]
     repo = _projection_repo(tmp_path, ["2024-01-02", "2024-01-03", "2024-01-04"], rows)
+    with pytest.raises(MarketDataError, match="REPOSITORY_V2_SESSION_SEMANTIC_CONFLICT"):
+        repo.get_daily("005930", "2024-01-02", "2024-01-04")
+
+
+def test_shared_date_normal_zero_volume_row_is_not_a_placeholder_conflict(tmp_path):
+    rows = [
+        _projection_raw_row("2024-01-02"),
+        _projection_raw_row(
+            "2024-01-03",
+            open=100,
+            high=105,
+            low=95,
+            close=101,
+            volume=0,
+            trading_value=0,
+        ),
+        _projection_raw_row("2024-01-04"),
+    ]
+    repo = _projection_repo(tmp_path, ["2024-01-02", "2024-01-03", "2024-01-04"], rows)
     daily = repo.get_daily("005930", "2024-01-02", "2024-01-04")
-    raw = repo.get_raw_daily("005930", "2024-01-02", "2024-01-04")
-    assert list(daily.index) == list(raw.index)
+    assert len(daily) == 3
     assert daily.loc[pd.Timestamp("2024-01-03"), "volume"] == 0
+
+
+def test_shared_date_partial_phantom_is_not_placeholder_conflict(tmp_path):
+    rows = [
+        _projection_raw_row("2024-01-02"),
+        _projection_raw_row(
+            "2024-01-03",
+            open=0,
+            high=0,
+            low=0,
+            close=101,
+            volume=0,
+            trading_value=1,
+        ),
+        _projection_raw_row("2024-01-04"),
+    ]
+    repo = _projection_repo(tmp_path, ["2024-01-02", "2024-01-03", "2024-01-04"], rows)
+    daily = repo.get_daily("005930", "2024-01-02", "2024-01-04")
+    assert len(daily) == 3

@@ -220,6 +220,7 @@ def evidence_consistency_gate(
     *,
     accepted_placeholder_projection_count: int | None = None,
     rejected_raw_only_count: int | None = None,
+    shared_placeholder_conflict_count: int | None = None,
 ) -> dict[str, Any]:
     provider_pass = sum(record.get("status") == "PASS" for record in provider_records)
     temp_pass = sum(record.get("status") == "PASS" for record in temp_records)
@@ -233,23 +234,54 @@ def evidence_consistency_gate(
     mismatches = []
     if temporary_store_ticker_count != temp_pass:
         mismatches.append("temporary_store_ticker_count")
-    if accepted_placeholder_projection_count is not None:
-        observed = sum(
-            int(record.get("explicit_placeholder_projection_count", 0))
-            for record in composition_records
+    evidence_records = [
+        record for record in composition_records if record.get("record_type") == "composition"
+    ]
+    mandatory_fields_missing = False
+    if evidence_records:
+        mandatory_fields_missing = any(
+            record.get(field) is None
+            for record in evidence_records
+            for field in (
+                "explicit_placeholder_projection_count",
+                "rejected_raw_only_dates",
+                "shared_placeholder_conflict_dates",
+            )
         )
-        if observed != accepted_placeholder_projection_count:
-            mismatches.append("accepted_placeholder_projection_count")
-    if rejected_raw_only_count is not None:
-        observed = sum(
-            len(record.get("rejected_raw_only_dates", [])) for record in composition_records
-        )
-        if observed != rejected_raw_only_count:
-            mismatches.append("rejected_raw_only_count")
+        if mandatory_fields_missing:
+            mismatches.append("mandatory_placeholder_evidence")
+    observed_accepted = sum(
+        int(record.get("explicit_placeholder_projection_count") or 0)
+        for record in composition_records
+    )
+    observed_rejected = sum(
+        len(record.get("rejected_raw_only_dates") or []) for record in composition_records
+    )
+    observed_shared = sum(
+        len(record.get("shared_placeholder_conflict_dates") or [])
+        for record in composition_records
+    )
+    if (
+        accepted_placeholder_projection_count is not None
+        and observed_accepted != accepted_placeholder_projection_count
+    ):
+        mismatches.append("accepted_placeholder_projection_count")
+    if rejected_raw_only_count is not None and observed_rejected != rejected_raw_only_count:
+        mismatches.append("rejected_raw_only_count")
+    if (
+        shared_placeholder_conflict_count is not None
+        and observed_shared != shared_placeholder_conflict_count
+    ):
+        mismatches.append("shared_placeholder_conflict_count")
+    if observed_rejected:
+        mismatches.append("rejected_raw_only_nonzero")
+    if observed_shared:
+        mismatches.append("shared_placeholder_conflict_nonzero")
     return {
         **expected,
-        "accepted_placeholder_projection_count": accepted_placeholder_projection_count,
-        "rejected_raw_only_count": rejected_raw_only_count,
+        "accepted_placeholder_projection_count": observed_accepted,
+        "rejected_raw_only_count": observed_rejected,
+        "shared_placeholder_conflict_count": observed_shared,
         "provider_pass_record_count": provider_pass,
         "temp_store_pass_record_count": temp_pass,
         "composition_pass_record_count": composition_pass,
@@ -544,6 +576,10 @@ def _composition_probe(
         "adjusted_only_dates": [],
         "raw_only_dates": [],
         "raw_only_row_details": [],
+        "shared_dates": [],
+        "shared_placeholder_conflict_dates": [],
+        "shared_placeholder_conflict_count": 0,
+        "shared_placeholder_conflict_row_details": [],
         "accepted_placeholder_dates": [],
         "rejected_raw_only_dates": [],
         "explicit_placeholder_projection_count": 0,
@@ -593,6 +629,10 @@ def _composition_probe(
                     "adjusted_only_dates",
                     "raw_only_dates",
                     "raw_only_row_details",
+                    "shared_dates",
+                    "shared_placeholder_conflict_dates",
+                    "shared_placeholder_conflict_count",
+                    "shared_placeholder_conflict_row_details",
                     "accepted_placeholder_dates",
                     "rejected_raw_only_dates",
                     "explicit_placeholder_projection_count",
@@ -605,6 +645,8 @@ def _composition_probe(
         record["projection_elapsed_seconds"] = round(projection_elapsed, 6)
         if projection["adjusted_only_dates"]:
             record["session_projection_blocker"] = "BLOCKED_ADJUSTED_SESSION_WITHOUT_RAW_FACTS"
+        elif projection["shared_placeholder_conflict_dates"]:
+            record["session_projection_blocker"] = "BLOCKED_SHARED_DATE_PLACEHOLDER_CONFLICT"
         elif projection["rejected_raw_only_dates"]:
             record["session_projection_blocker"] = "BLOCKED_UNCLASSIFIED_RAW_ONLY_SESSION"
         join_started = monotonic()
@@ -1725,6 +1767,261 @@ def _write_evidence(
     return summary
 
 
+def _write_fix04_evidence(
+    validation_head: str,
+    static: dict[str, Any],
+    offline: dict[str, Any],
+    live: dict[str, Any],
+    regression: dict[str, Any],
+) -> dict[str, Any]:
+    blockers = list(offline.get("blockers", [])) + list(live.get("blockers", []))
+    if static["git_diff_check"]["status"] != "PASS":
+        blockers.append("BLOCKED_GIT_DIFF_CHECK")
+    if (
+        static["legacy_repository_changed"]
+        or static["frozen_store_source_changed_count"]
+        or static["frozen_contract_modified"]
+    ):
+        blockers.append("BLOCKED_FROZEN_CONTRACT_MISMATCH")
+    if static["closed_artifact_changed_count"]:
+        blockers.append("BLOCKED_CLOSED_ARTIFACT_OVERWRITE")
+    if static["consumer_auto_migration_count"]:
+        blockers.append("BLOCKED_CONSUMER_AUTO_MIGRATION")
+    if static["secret_occurrence_count"]:
+        blockers.append("BLOCKED_SECRET_OCCURRENCE")
+    if static["runtime_network_guard"]["runtime_forbidden_network_dependency_count"]:
+        blockers.append("BLOCKED_RUNTIME_NETWORK_DEPENDENCY")
+    if static["artifacts_runtime_dependency_count"]:
+        blockers.append("BLOCKED_RUNTIME_ARTIFACT_DEPENDENCY")
+    if regression["failed"]:
+        blockers.append("BLOCKED_REGRESSION")
+    if live.get("evidence_consistency", {}).get("status") != "PASS":
+        blockers.append("BLOCKED_EVIDENCE_INCONSISTENCY")
+    blockers = list(dict.fromkeys(blockers))
+    status = (
+        "READY_FOR_ARCHITECT_MARKET_DATA_REPOSITORY_V02_FIX04_REVIEW"
+        if not blockers
+        else blockers[0]
+    )
+    composition_records = live.get("composition_records", [])
+    provenance = {
+        "fix03_repository_implementation_head": FIX03_REPOSITORY_IMPLEMENTATION_HEAD,
+        "fix04_repository_implementation_head": validation_head,
+        "fix04_validation_source_head": validation_head,
+        "live_execution_head": validation_head if live.get("provider_fetch_records") else None,
+        "artifact_generation_head": validation_head,
+        "artifact_commit_head": None,
+    }
+    semantics = {
+        "phase": "MARKET_DATA_REPOSITORY_V02_FIX04",
+        "status": "PASS",
+        "placeholder_predicate_name": NON_TRADING_PLACEHOLDER_PREDICATE_NAME,
+        "raw_only_placeholder_behavior": "PROJECT",
+        "shared_date_placeholder_behavior": "FAIL_CLOSED",
+        "adjusted_only_behavior": "FAIL_CLOSED",
+        "unclassified_raw_only_behavior": "FAIL_CLOSED",
+        "shared_date_conflict_error": "REPOSITORY_V2_SESSION_SEMANTIC_CONFLICT",
+        "shared_date_conflict_blocker": "BLOCKED_SHARED_DATE_PLACEHOLDER_CONFLICT",
+        "projection_scope": "get_daily only",
+        "silent_inner_drop_count": 0,
+        "frozen_contract_changed": False,
+        "provenance": provenance,
+    }
+    shared_summary = {
+        "phase": "MARKET_DATA_REPOSITORY_V02_FIX04",
+        "status": "PASS" if not any(record.get("shared_placeholder_conflict_dates") for record in composition_records) else "BLOCKED_SHARED_DATE_PLACEHOLDER_CONFLICT",
+        "records": [
+            {
+                key: record.get(key)
+                for key in (
+                    "ticker",
+                    "shared_dates",
+                    "shared_placeholder_conflict_dates",
+                    "shared_placeholder_conflict_count",
+                    "shared_placeholder_conflict_row_details",
+                    "session_projection_blocker",
+                    "status",
+                )
+            }
+            for record in composition_records
+        ],
+        "provenance": provenance,
+    }
+    evidence_consistency = live.get("evidence_consistency", {})
+    placeholder_consistency = {
+        "phase": "MARKET_DATA_REPOSITORY_V02_FIX04",
+        "status": evidence_consistency.get("status", "NOT_RUN"),
+        "provider_pass_record_count": evidence_consistency.get("provider_pass_record_count", 0),
+        "temp_store_pass_record_count": evidence_consistency.get("temp_store_pass_record_count", 0),
+        "composition_pass_record_count": evidence_consistency.get("composition_pass_record_count", 0),
+        "accepted_placeholder_projection_count": evidence_consistency.get("accepted_placeholder_projection_count", 0),
+        "rejected_raw_only_count": evidence_consistency.get("rejected_raw_only_count", 0),
+        "shared_placeholder_conflict_count": evidence_consistency.get("shared_placeholder_conflict_count", 0),
+        "mismatches": evidence_consistency.get("mismatches", []),
+        "provenance": provenance,
+    }
+    live_summary = {
+        "phase": "MARKET_DATA_REPOSITORY_V02_FIX04",
+        "status": live.get("status"),
+        "requested_samples": live.get("requested_samples", []),
+        "provider_fetch_records": live.get("provider_fetch_records", []),
+        "temp_store_integrity_records": live.get("temp_store_integrity_records", []),
+        "composition_records": composition_records,
+        "failure_records": live.get("failure_records", []),
+        "sample_gate": live.get("sample_gate"),
+        "evidence_consistency": evidence_consistency,
+        "provider_audit": live.get("provider_audit"),
+        "blockers": live.get("blockers", []),
+        "provenance": provenance,
+    }
+    composition = {
+        "phase": "MARKET_DATA_REPOSITORY_V02_FIX04",
+        "status": _stage_evidence_status(
+            composition_records, "BLOCKED_PRODUCTION_COMPOSITION_PROBE"
+        ),
+        "records": composition_records,
+        "successful_composition_probe_count": live.get("successful_composition_probe_count", 0),
+        "usable_composition_sample_count": live.get("usable_composition_sample_count", 0),
+        "provenance": provenance,
+    }
+    network = {
+        "phase": "MARKET_DATA_REPOSITORY_V02_FIX04",
+        "logical_pykrx_fetch_count": live.get("provider_audit", {}).get("logical_fetch_count", 0),
+        "adjusted_true_call_count": live.get("provider_audit", {}).get("adjusted_true_call_count", 0),
+        "adjusted_false_call_count": live.get("provider_audit", {}).get("adjusted_false_call_count", 0),
+        "KRX_open_api_request_count": live.get("KRX_open_api_request_count", 0),
+        "OpenDART_request_count": live.get("OpenDART_request_count", 0),
+        "fallback_request_count": live.get("fallback_request_count", 0),
+        "retry_count": live.get("retry_count", 0),
+        "provenance": provenance,
+    }
+    temp_store = {
+        "phase": "MARKET_DATA_REPOSITORY_V02_FIX04",
+        "status": _stage_evidence_status(
+            live.get("temp_store_integrity_records", []),
+            "BLOCKED_TEMP_ADJUSTED_STORE_INTEGRITY",
+        ),
+        "records": live.get("temp_store_integrity_records", []),
+        "temporary_store_ticker_count": live.get("temporary_store_ticker_count", 0),
+        "cleanup": live.get("temporary_store_cleanup", "NOT_RUN"),
+        "exists_after_cleanup": live.get("temporary_store_exists_after_cleanup", False),
+        "provenance": provenance,
+    }
+    mutation = {
+        key: live.get(key)
+        for key in (
+            "production_raw_manifest_before_sha",
+            "production_raw_manifest_after_sha",
+            "production_raw_manifest_equal",
+            "production_adjusted_snapshot_before",
+            "production_adjusted_snapshot_after",
+            "production_adjusted_snapshot_equal",
+            "production_raw_write_count",
+            "production_adjusted_write_count",
+            "corporate_action_state_write_count",
+        )
+    }
+    mutation["provenance"] = provenance
+    performance = {
+        "phase": "MARKET_DATA_REPOSITORY_V02_FIX04",
+        "status": "PASS" if live.get("performance") else "NOT_RUN",
+        "observations": live.get("performance", []),
+        "warnings": live.get("performance_warnings", []),
+        "provenance": provenance,
+    }
+    summary = {
+        "phase": "MARKET_DATA_REPOSITORY_V02_FIX04",
+        "status": status,
+        **provenance,
+        "repository_v2_changed": True,
+        "legacy_repository_changed": static["legacy_repository_changed"],
+        "frozen_contract_changed": static["frozen_contract_modified"],
+        "frozen_store_sources_changed": static["frozen_store_source_changed_count"] != 0,
+        "git_diff_check": static["git_diff_check"],
+        "runtime_network_forbidden_count": static["runtime_network_guard"]["runtime_forbidden_network_dependency_count"],
+        "artifacts_runtime_dependency_count": static["artifacts_runtime_dependency_count"],
+        "consumer_auto_migration_count": static["consumer_auto_migration_count"],
+        "raw_offline_probe": offline,
+        "live_probe": live,
+        "samsung_raw": offline.get("samsung_raw"),
+        "samsung_composition": _samsung_composition(live),
+        "bounded_regression": regression,
+        "production_adjusted_population": "NOT_IMPLEMENTED",
+        "consumer_migration_prerequisite": True,
+        "blockers": blockers,
+        "warnings": live.get("performance_warnings", []),
+        "provenance": provenance,
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    _write_json("FIX04_shared_session_conflict_summary.json", shared_summary)
+    _write_json("FIX04_placeholder_evidence_consistency.json", placeholder_consistency)
+    _write_json("FIX04_live_authority_probe_summary.json", live_summary)
+    _write_json("FIX04_composition_probe_summary.json", composition)
+    _write_json("FIX04_validator_gate_summary.json", {
+        "phase": summary["phase"],
+        "status": status,
+        "blockers": blockers,
+        "static": static,
+        "offline": offline,
+        "live": {
+            "sample_gate": live.get("sample_gate"),
+            "evidence_consistency": evidence_consistency,
+            "status": live.get("status"),
+        },
+        "bounded_regression": regression,
+        "provenance": provenance,
+    })
+    _write_json("FIX04_network_summary.json", network)
+    _write_json("FIX04_temp_store_integrity_summary.json", temp_store)
+    _write_json("FIX04_production_mutation_guard.json", mutation)
+    _write_json("market_data_repository_v02_summary.json", summary)
+    _write_json("production_probe_summary.json", {
+        "phase": summary["phase"],
+        "status": status,
+        "raw_offline_probe": offline,
+        "live_probe": live,
+        "samsung_raw": offline.get("samsung_raw"),
+        "samsung_composition": summary["samsung_composition"],
+        "blockers": blockers,
+        "provenance": provenance,
+    })
+    _write_json("performance_summary.json", performance)
+    _write_json("bounded_regression_summary.json", regression)
+    (OUTPUT / "market_data_repository_v02_recommendation.md").write_text(
+        "\n".join([
+            "MARKET_DATA_REPOSITORY_V02_FIX04",
+            "",
+            "STATUS",
+            status,
+            "",
+            "BLOCKERS",
+            json.dumps(blockers, ensure_ascii=False),
+            "",
+            "SHARED-DATE PLACEHOLDER",
+            "FAIL-CLOSED: REPOSITORY_V2_SESSION_SEMANTIC_CONFLICT",
+            "",
+            "PLACEHOLDER EVIDENCE",
+            json.dumps({
+                "accepted_placeholder_projection_count": evidence_consistency.get("accepted_placeholder_projection_count", 0),
+                "rejected_raw_only_count": evidence_consistency.get("rejected_raw_only_count", 0),
+                "shared_placeholder_conflict_count": evidence_consistency.get("shared_placeholder_conflict_count", 0),
+            }, ensure_ascii=False),
+        ]) + "\n",
+        encoding="utf-8",
+    )
+    return summary
+
+
+def _write_evidence(
+    validation_head: str,
+    static: dict[str, Any],
+    offline: dict[str, Any],
+    live: dict[str, Any],
+    regression: dict[str, Any],
+) -> dict[str, Any]:
+    return _write_fix04_evidence(validation_head, static, offline, live, regression)
+
+
 def run(args: argparse.Namespace) -> dict[str, Any]:
     validation_head = _git("rev-parse", "HEAD")
     static = _static_checks(validation_head)
@@ -1753,7 +2050,7 @@ def main() -> int:
             {
                 "status": summary["status"],
                 "blockers": summary["blockers"],
-                "fix03_validation_source_head": summary["fix03_validation_source_head"],
+                "fix04_validation_source_head": summary["fix04_validation_source_head"],
                 "live_execution_head": summary["live_execution_head"],
                 "network": summary["network"],
             },
@@ -1761,7 +2058,7 @@ def main() -> int:
             sort_keys=True,
         )
     )
-    return 0 if summary["status"] == "READY_FOR_ARCHITECT_MARKET_DATA_REPOSITORY_V02_FIX03_REVIEW" else 1
+    return 0 if summary["status"] == "READY_FOR_ARCHITECT_MARKET_DATA_REPOSITORY_V02_FIX04_REVIEW" else 1
 
 
 if __name__ == "__main__":

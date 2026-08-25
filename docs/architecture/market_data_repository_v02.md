@@ -143,3 +143,21 @@ FIX03 trading-session projection
 * live composition의 volume/trading_value 비교 대상은 projected raw이고,
   ancillary 비교 대상은 physical raw다. 성능 증적에는 raw load, adjusted load,
   projection, join, total elapsed를 ticker별로 기록하며 60초 이상은 warning이다.
+
+FIX04 shared-date semantic conflict
+-----------------------------------
+* adjusted와 raw 양쪽에 같은 날짜가 있어도 raw row가
+  NON_TRADING_PLACEHOLDER_V01이면 두 authority의 session 의미가 충돌한다.
+  이 상태는 정상 daily row로 합성하지 않고
+  REPOSITORY_V2_SESSION_SEMANTIC_CONFLICT로 fail-closed한다.
+* shared-date placeholder는 projection/drop 대상이 아니다. evidence에는
+  shared_dates, shared_placeholder_conflict_dates,
+  shared_placeholder_conflict_count 및 실제 row detail을 별도로 기록한다.
+* raw-only strict placeholder만 explicit projection 대상이며,
+  shared-date strict placeholder는 BLOCKED_SHARED_DATE_PLACEHOLDER_CONFLICT로
+  분류한다. shared-date 정상 raw row(volume=0 포함)는 placeholder predicate와
+  일치하지 않으면 정상적으로 PASS한다.
+* closure evidence의 accepted_placeholder_projection_count,
+  rejected_raw_only_count, shared_placeholder_conflict_count는 composition
+  records에서 validator가 직접 aggregate하고 항상 numeric이어야 한다.
+  null 또는 aggregate 불일치는 BLOCKED_EVIDENCE_INCONSISTENCY다.

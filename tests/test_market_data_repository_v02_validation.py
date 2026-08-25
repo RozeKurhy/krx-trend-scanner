@@ -204,3 +204,105 @@ def test_temp_store_count_matches_integrity_records() -> None:
 def test_composition_failure_does_not_mark_temp_store_evidence_failed() -> None:
     assert _stage_evidence_status([{"status": "PASS"}], "BLOCKED_TEMP_ADJUSTED_STORE_INTEGRITY") == "PASS"
     assert _stage_evidence_status([{"status": "FAIL"}], "BLOCKED_TEMP_ADJUSTED_STORE_INTEGRITY") == "BLOCKED_TEMP_ADJUSTED_STORE_INTEGRITY"
+
+
+def _composition_evidence_record(**overrides):
+    record = {
+        "record_type": "composition",
+        "status": "PASS",
+        "explicit_placeholder_projection_count": 1,
+        "rejected_raw_only_dates": [],
+        "shared_placeholder_conflict_dates": [],
+    }
+    record.update(overrides)
+    return record
+
+
+def test_placeholder_counters_are_never_null() -> None:
+    result = evidence_consistency_gate(
+        [{"status": "PASS"}],
+        [{"status": "PASS"}],
+        [_composition_evidence_record()],
+        temporary_store_ticker_count=1,
+    )
+    assert result["status"] == "PASS"
+    assert result["accepted_placeholder_projection_count"] == 1
+    assert result["rejected_raw_only_count"] == 0
+    assert result["shared_placeholder_conflict_count"] == 0
+    assert all(result[key] is not None for key in (
+        "accepted_placeholder_projection_count",
+        "rejected_raw_only_count",
+        "shared_placeholder_conflict_count",
+    ))
+
+
+def test_placeholder_counters_are_aggregated_from_composition_records() -> None:
+    result = evidence_consistency_gate(
+        [{"status": "PASS"}, {"status": "PASS"}],
+        [{"status": "PASS"}, {"status": "PASS"}],
+        [
+            _composition_evidence_record(
+                explicit_placeholder_projection_count=2,
+                rejected_raw_only_dates=["2024-01-02"],
+                shared_placeholder_conflict_dates=["2024-01-03"],
+            ),
+            _composition_evidence_record(
+                explicit_placeholder_projection_count=1,
+                rejected_raw_only_dates=[],
+                shared_placeholder_conflict_dates=[],
+            ),
+        ],
+        temporary_store_ticker_count=2,
+    )
+    assert result["accepted_placeholder_projection_count"] == 3
+    assert result["rejected_raw_only_count"] == 1
+    assert result["shared_placeholder_conflict_count"] == 1
+
+
+def test_counter_mismatch_blocks_ready() -> None:
+    result = evidence_consistency_gate(
+        [{"status": "PASS"}],
+        [{"status": "PASS"}],
+        [_composition_evidence_record()],
+        temporary_store_ticker_count=1,
+        accepted_placeholder_projection_count=0,
+        rejected_raw_only_count=0,
+        shared_placeholder_conflict_count=0,
+    )
+    assert result["status"] == "BLOCKED_EVIDENCE_INCONSISTENCY"
+    assert "accepted_placeholder_projection_count" in result["mismatches"]
+
+
+def test_null_placeholder_counter_blocks_closure_evidence() -> None:
+    result = evidence_consistency_gate(
+        [{"status": "PASS"}],
+        [{"status": "PASS"}],
+        [
+            _composition_evidence_record(
+                explicit_placeholder_projection_count=None,
+            )
+        ],
+        temporary_store_ticker_count=1,
+    )
+    assert result["status"] == "BLOCKED_EVIDENCE_INCONSISTENCY"
+    assert result["accepted_placeholder_projection_count"] == 0
+
+
+def test_shared_conflict_composition_failure_is_not_external_pykrx() -> None:
+    result = sample_gate(
+        3,
+        3,
+        2,
+        [{"status": "PASS"}, {"status": "PASS"}],
+        successful_provider_fetch_count=3,
+        successful_temp_store_integrity_count=3,
+        failure_records=[
+            {
+                "status": "FAIL",
+                "stage": "REPOSITORY_COMPOSITION",
+                "session_projection_blocker": "BLOCKED_SHARED_DATE_PLACEHOLDER_CONFLICT",
+            }
+        ],
+    )
+    assert result["status"] == "BLOCKED_SHARED_DATE_PLACEHOLDER_CONFLICT"
+    assert result["status"] != "BLOCKED_EXTERNAL_PYKRX_UNAVAILABLE"

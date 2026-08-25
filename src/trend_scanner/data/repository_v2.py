@@ -253,6 +253,36 @@ def _session_projection_evidence(
             }
         )
 
+    shared_dates = sorted(adjusted_date_set & raw_date_set)
+    shared_placeholder_conflict_dates: list[pd.Timestamp] = []
+    shared_placeholder_conflict_row_details: list[dict[str, Any]] = []
+    for date in shared_dates:
+        row = raw.loc[date]
+        if not _is_non_trading_placeholder(row):
+            continue
+        shared_placeholder_conflict_dates.append(date)
+        shared_placeholder_conflict_row_details.append(
+            {
+                "date": date.date().isoformat(),
+                "open": _json_scalar(row["open"]),
+                "high": _json_scalar(row["high"]),
+                "low": _json_scalar(row["low"]),
+                "close": _json_scalar(row["close"]),
+                "volume": _json_scalar(row["volume"]),
+                "trading_value": _json_scalar(row["trading_value"]),
+                "market_cap": _json_scalar(row["market_cap"]),
+                "listed_shares": _json_scalar(row["listed_shares"]),
+                "adjusted_present": True,
+                "raw_present": True,
+                "placeholder_predicate_name": NON_TRADING_PLACEHOLDER_PREDICATE_NAME,
+                "placeholder_predicate_fields": _placeholder_predicate_fields(row),
+                "classification": "SHARED_DATE_PLACEHOLDER_CONFLICT",
+                "classification_reason": (
+                    "shared adjusted/raw date has NON_TRADING_PLACEHOLDER_V01 raw semantics"
+                ),
+            }
+        )
+
     projected_raw = raw.copy()
     if accepted_placeholder_dates:
         projected_raw = projected_raw.drop(index=accepted_placeholder_dates)
@@ -265,6 +295,12 @@ def _session_projection_evidence(
         "adjusted_only_dates": [date.date().isoformat() for date in adjusted_only_dates],
         "raw_only_dates": [date.date().isoformat() for date in raw_only_dates],
         "raw_only_row_details": raw_only_row_details,
+        "shared_dates": [date.date().isoformat() for date in shared_dates],
+        "shared_placeholder_conflict_dates": [
+            date.date().isoformat() for date in shared_placeholder_conflict_dates
+        ],
+        "shared_placeholder_conflict_count": len(shared_placeholder_conflict_dates),
+        "shared_placeholder_conflict_row_details": shared_placeholder_conflict_row_details,
         "accepted_placeholder_dates": [
             date.date().isoformat() for date in accepted_placeholder_dates
         ],
@@ -284,8 +320,11 @@ def _project_raw_trading_sessions(adjusted: pd.DataFrame, raw: pd.DataFrame) -> 
     if (
         evidence["adjusted_only_dates"]
         or evidence["rejected_raw_only_dates"]
+        or evidence["shared_placeholder_conflict_dates"]
         or not evidence["projected_date_set_exact_match"]
     ):
+        if evidence["shared_placeholder_conflict_dates"]:
+            raise MarketDataError("REPOSITORY_V2_SESSION_SEMANTIC_CONFLICT")
         raise MarketDataError("REPOSITORY_V2_TRADING_SESSION_MISMATCH")
     return evidence["projected_raw"]
 
