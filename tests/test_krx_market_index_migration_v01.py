@@ -197,15 +197,17 @@ def test_runner_remaining_two_fetches_one_whole_date(monkeypatch: pytest.MonkeyP
 
 
 def test_runner_zero_quota_does_not_create_operational_run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    frame = _staged_rows(["2010-01-04"])
+    frame = migration._load_staging()
     client = FakeClient()
     quota = FakeQuota(0)
     monkeypatch.setattr(migration, "_load_staging", lambda: frame)
+    monkeypatch.setattr(migration, "_staging_snapshot", lambda _frame: {"date_count": 656, "row_count": 1312, "sha256": "SHA656"})
     ledger = _operational_ledger_fixture()
     ledger_path = tmp_path / "ledger.json"
     migration.atomic_write_json(ledger_path, ledger)
     runner = migration.MarketIndexMigrationRunner(client=client, quota=quota)
-    result = runner.run({"target_dates": ["2010-01-04", "2010-01-05"], "complete_trading_date_count": 2}, operational_ledger_path=ledger_path)
+    target_dates = sorted(frame["date"].astype(str).unique()) + ["2099-01-01"]
+    result = runner.run({"target_dates": target_dates, "complete_trading_date_count": len(target_dates)}, operational_ledger_path=ledger_path)
     assert result["operational_run_created"] is False
     assert client.calls == []
     assert len(migration.load_operational_ledger(ledger_path)["runs"]) == 2
@@ -442,7 +444,7 @@ def _operational_ledger_fixture() -> dict[str, object]:
     runs = []
     for index, run in enumerate(base["runs"]):
         value = dict(run)
-        value.update({"run_type": "PILOT" if index == 0 else "HISTORICAL_BACKFILL_TRANCHE", "state": "COMPLETED", "started_at_kst": None, "completed_at_kst": None, "staging_date_count_before": 0 if index == 0 else 3, "staging_date_count_after": 3 if index == 0 else 656, "staging_row_count_before": 0 if index == 0 else 6, "staging_row_count_after": 6 if index == 0 else 1312, "dates_fetched": 3 if index == 0 else 653, "next_pending_date": "2010-01-05" if index == 0 else "2012-08-16", "run_status": "COMPLETED"})
+        value.update({"run_type": "PILOT" if index == 0 else "HISTORICAL_BACKFILL_TRANCHE", "state": "COMPLETED", "started_at_kst": None, "completed_at_kst": None, "staging_date_count_before": 0 if index == 0 else 3, "staging_date_count_after": 3 if index == 0 else 656, "staging_row_count_before": 0 if index == 0 else 6, "staging_row_count_after": 6 if index == 0 else 1312, "staging_sha_before": None if index == 0 else "SHA3", "staging_sha_after": "SHA3" if index == 0 else "SHA656", "dates_fetched": 3 if index == 0 else 653, "next_pending_date": "2010-01-05" if index == 0 else "2012-08-16", "run_status": "COMPLETED"})
         runs.append(value)
     return {"schema_version": migration.OPERATIONAL_LEDGER_SCHEMA_VERSION, "phase": "KRX_INDEX_MIGRATION_V01", "runs": runs, "phase_cumulative": {"global_delta": 1312, "client_request_count": 1312, "audit_entry_count": 1312, "retry_count": 0, "endpoint_deltas": {"kospi_dd_trd": 656, "kosdaq_dd_trd": 656}}}
 
@@ -470,7 +472,7 @@ def test_append_cross_day_resume_run_preserves_previous_runs(tmp_path: Path) -> 
     path = tmp_path / "ledger.json"
     ledger = _operational_ledger_fixture()
     migration.atomic_write_json(path, ledger)
-    run3 = {"run_id": "RUN3_HISTORICAL_BACKFILL_RESUME_20260826T000001", "usage_date_kst": "2026-08-26", "run_type": "HISTORICAL_BACKFILL_RESUME", "state": "COMPLETED", "global_before": 0, "global_after": 200, "global_delta": 200, "client_request_count": 200, "audit_entry_count": 200, "retry_count": 0, "endpoint_deltas": {"kospi_dd_trd": 100, "kosdaq_dd_trd": 100}, "staging_date_count_before": 656, "staging_date_count_after": 756, "staging_row_count_before": 1312, "staging_row_count_after": 1512, "dates_fetched": 100}
+    run3 = {"run_id": "RUN3_HISTORICAL_BACKFILL_RESUME_20260826T000001", "usage_date_kst": "2026-08-26", "run_type": "HISTORICAL_BACKFILL_RESUME", "state": "COMPLETED", "global_before": 0, "global_after": 200, "global_delta": 200, "client_request_count": 200, "audit_entry_count": 200, "retry_count": 0, "endpoint_deltas": {"kospi_dd_trd": 100, "kosdaq_dd_trd": 100}, "staging_date_count_before": 656, "staging_date_count_after": 756, "staging_row_count_before": 1312, "staging_row_count_after": 1512, "staging_sha_before": "SHA656", "staging_sha_after": "SHA756", "dates_fetched": 100}
     updated = migration.append_operational_run(ledger, run3, path)
     assert len(updated["runs"]) == 3
     assert updated["runs"][0]["run_id"] == "RUN1_PILOT"
@@ -482,7 +484,7 @@ def test_second_resume_and_duplicate_run_are_fail_closed(tmp_path: Path) -> None
     path = tmp_path / "ledger.json"
     ledger = _operational_ledger_fixture()
     migration.atomic_write_json(path, ledger)
-    run4 = {"run_id": "RUN4", "usage_date_kst": "2026-08-27", "state": "COMPLETED", "global_before": 0, "global_after": 10, "global_delta": 10, "client_request_count": 10, "audit_entry_count": 10, "retry_count": 0, "endpoint_deltas": {"kospi_dd_trd": 5, "kosdaq_dd_trd": 5}, "staging_date_count_before": 656, "staging_date_count_after": 661, "staging_row_count_before": 1312, "staging_row_count_after": 1322, "dates_fetched": 5}
+    run4 = {"run_id": "RUN4", "usage_date_kst": "2026-08-27", "state": "COMPLETED", "global_before": 0, "global_after": 10, "global_delta": 10, "client_request_count": 10, "audit_entry_count": 10, "retry_count": 0, "endpoint_deltas": {"kospi_dd_trd": 5, "kosdaq_dd_trd": 5}, "staging_date_count_before": 656, "staging_date_count_after": 661, "staging_row_count_before": 1312, "staging_row_count_after": 1322, "staging_sha_before": "SHA656", "staging_sha_after": "SHA661", "dates_fetched": 5}
     migration.append_operational_run(ledger, run4, path)
     assert len(migration.load_operational_ledger(path)["runs"]) == 3
     with pytest.raises(MarketDataError, match="BLOCKED_DUPLICATE_RUN_ID"):
@@ -522,6 +524,7 @@ def test_finalizer_uses_operational_ledger_not_static_artifacts(tmp_path: Path, 
     good = _operational_ledger_fixture()
     migration.atomic_write_json(op_path, good)
     monkeypatch.setattr(migration, "validate_current_source_freeze", lambda *_args, **_kwargs: {"status": "PASS"})
+    monkeypatch.setattr(migration, "validate_staging_ledger_continuity", lambda *_args, **_kwargs: {"status": "PASS"})
     monkeypatch.setattr(migration, "secret_scan", lambda _secret: {"scanned_file_count": 100, "secret_occurrence_count": 0})
     writes: list[int] = []
     bad_static = {**_valid_quota_ledger(), "phase_global_delta": 9999}
@@ -569,3 +572,144 @@ def test_resume_writer_rejects_cumulative_network_regression(tmp_path: Path, mon
     monkeypatch.setattr(migration, "ARTIFACT_DIR", artifact_dir)
     with pytest.raises(MarketDataError, match="BLOCKED_CUMULATIVE_EVIDENCE_REGRESSION"):
         migration.write_migration_artifacts(calendar={"complete_trading_date_count": 656}, pilot={"status": "NOT_RUN"}, backfill={"status": "PARTIAL_RESUMABLE_KRX_INDEX_MIGRATION_V01", "complete_date_count": 656, "staging_rows": 1312}, source_head="HEAD", operational_ledger=_operational_ledger_fixture())
+
+
+def _continuity_fixture(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[pd.DataFrame, dict[str, object], Path]:
+    frame = _staged_rows(["2026-08-14"])
+    staging_path = tmp_path / "market_index_staging.parquet"
+    frame.to_parquet(staging_path, index=False)
+    monkeypatch.setattr(migration, "STAGING_PARQUET", staging_path)
+    ledger = _operational_ledger_fixture()
+    terminal = ledger["runs"][-1]
+    terminal["staging_date_count_before"] = 0
+    terminal["staging_date_count_after"] = 1
+    terminal["staging_row_count_before"] = 0
+    terminal["staging_row_count_after"] = 2
+    terminal["staging_sha_before"] = "SHA0"
+    terminal["staging_sha_after"] = migration.file_sha256(staging_path)
+    ledger["runs"][0]["staging_date_count_after"] = 0
+    ledger["runs"][0]["staging_row_count_after"] = 0
+    ledger["runs"][0]["staging_sha_after"] = "SHA0"
+    ledger["runs"][1]["staging_date_count_before"] = 0
+    ledger["runs"][1]["staging_row_count_before"] = 0
+    ledger["runs"][1]["staging_sha_before"] = "SHA0"
+    ledger["phase_cumulative"] = migration._phase_cumulative_from_runs(ledger["runs"])
+    return frame, ledger, staging_path
+
+
+def test_current_staging_matches_terminal_ledger_passes(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    frame, ledger, _ = _continuity_fixture(tmp_path, monkeypatch)
+    assert migration.validate_staging_ledger_continuity(frame, ledger)["status"] == "PASS"
+
+
+@pytest.mark.parametrize("mode", ["ahead", "behind", "same_count_different_sha"])
+def test_current_staging_divergence_blocks(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, mode: str) -> None:
+    frame, ledger, _ = _continuity_fixture(tmp_path, monkeypatch)
+    if mode == "ahead":
+        frame = _staged_rows(["2026-08-14", "2026-08-15"])
+    elif mode == "behind":
+        frame = _staged_rows([])
+    else:
+        frame = _staged_rows(["2026-08-14"])
+        ledger["runs"][-1]["staging_sha_after"] = "DIFFERENT_SHA"
+    assert migration.validate_staging_ledger_continuity(frame, ledger)["reason"] == "BLOCKED_STAGING_LEDGER_DIVERGENCE"
+
+
+def test_adjacent_run_staging_chain_passes_and_mismatch_fails() -> None:
+    ledger = _operational_ledger_fixture()
+    assert migration.validate_operational_ledger_chain(ledger)["status"] == "PASS"
+    ledger["runs"][1]["staging_date_count_before"] = 4
+    ledger["runs"][1]["dates_fetched"] = 652
+    assert migration.validate_operational_ledger(ledger)["reason"] == "BLOCKED_OPERATIONAL_LEDGER_STAGING_CHAIN"
+
+
+def test_new_run_before_snapshot_equals_previous_after(tmp_path: Path) -> None:
+    path = tmp_path / "ledger.json"
+    ledger = _operational_ledger_fixture()
+    migration.atomic_write_json(path, ledger)
+    run3 = {"run_id": "RUN3_CHAIN", "usage_date_kst": "2026-08-26", "state": "COMPLETED", "global_before": 0, "global_after": 2, "global_delta": 2, "client_request_count": 2, "audit_entry_count": 2, "retry_count": 0, "endpoint_deltas": {"kospi_dd_trd": 1, "kosdaq_dd_trd": 1}, "staging_date_count_before": 656, "staging_date_count_after": 657, "staging_row_count_before": 1312, "staging_row_count_after": 1314, "staging_sha_before": "SHA656", "staging_sha_after": "SHA657", "dates_fetched": 1}
+    updated = migration.append_operational_run(ledger, run3, path)
+    assert updated["runs"][2]["staging_sha_before"] == updated["runs"][1]["staging_sha_after"]
+
+
+def test_seeded_ledger_continuity_upgrade_is_offline(tmp_path: Path) -> None:
+    path = tmp_path / "ledger.json"
+    ledger = migration.seed_operational_ledger_from_checkpoint(frame=migration._load_staging(), path=path)
+    assert ledger["runs"][-1]["staging_sha_after"] is None
+    upgraded = migration.upgrade_seeded_ledger_checkpoint(frame=migration._load_staging(), path=path)
+    assert upgraded["runs"][-1]["staging_sha_after"] == "5685dc257b20a833e510367c7e77c15a0a4786564a80d93f493f750172e3890e"
+    assert migration.validate_operational_ledger(upgraded, require_terminal_snapshot=True)["status"] == "PASS"
+
+
+def test_manifest_validation_source_anchor_is_immutable(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    artifact_dir = tmp_path / "artifacts"
+    artifact_dir.mkdir()
+    manifest_path = artifact_dir / "market_index_migration_v01_manifest.json"
+    manifest_path.write_text(json.dumps({"fix03_validation_source_head": "SOURCE_A", "fix04_validation_source_head": "SOURCE_A"}), encoding="utf-8")
+    monkeypatch.setattr(migration, "ARTIFACT_DIR", artifact_dir)
+    migration.write_migration_artifacts(calendar={"complete_trading_date_count": 1}, pilot={"status": "NOT_RUN"}, backfill={"status": "PARTIAL_RESUMABLE_KRX_INDEX_MIGRATION_V01", "complete_date_count": 0, "staging_rows": 0}, source_head="EXECUTION_E", operational_ledger=None)
+    saved = json.loads(manifest_path.read_text(encoding="utf-8"))
+    assert saved["fix03_validation_source_head"] == "SOURCE_A"
+    assert saved["fix04_validation_source_head"] == "SOURCE_A"
+    assert saved["artifact_generation_head"] == "EXECUTION_E"
+    with pytest.raises(MarketDataError, match="BLOCKED_VALIDATION_SOURCE_ANCHOR_MUTATION"):
+        migration.write_migration_artifacts(calendar={"complete_trading_date_count": 1}, pilot={"status": "NOT_RUN"}, backfill={"status": "PARTIAL_RESUMABLE_KRX_INDEX_MIGRATION_V01", "complete_date_count": 0, "staging_rows": 0}, source_head="EXECUTION_E", validation_source_head="SOURCE_B")
+
+
+def test_missing_validation_anchor_fails_closed(tmp_path: Path) -> None:
+    with pytest.raises(MarketDataError, match="BLOCKED_VALIDATION_SOURCE_ANCHOR_MISSING"):
+        migration.resolve_validation_source_head(tmp_path / "manifest.json")
+
+
+@pytest.mark.parametrize(
+    "exc,expected",
+    [
+        (migration.KrxOpenApiRateLimitError("quota"), "PARTIAL"),
+        (migration.KrxOpenApiAuthorizationError("auth"), "BLOCKED"),
+        (RuntimeError("transport failure"), "BLOCKED"),
+        (migration.KrxMarketIndexError("BLOCKED_KRX_INDEX_SCHEMA", "schema"), "BLOCKED"),
+    ],
+)
+def test_terminal_run_state_semantics(exc: Exception, expected: str) -> None:
+    assert migration.terminal_run_state([migration._classify_blocker(exc)], ["2012-08-16"]) == expected
+    if expected == "BLOCKED":
+        assert migration.terminal_run_state([migration._classify_blocker(exc)], []) == "BLOCKED"
+    else:
+        assert migration.terminal_run_state([], ["2012-08-16"]) == "PARTIAL"
+    assert migration.terminal_run_state([], []) == "COMPLETED"
+
+
+def test_pre_network_source_failure_has_zero_calls_and_no_journal(monkeypatch: pytest.MonkeyPatch) -> None:
+    frame = migration._load_staging()
+    ledger = _operational_ledger_fixture()
+    ledger["runs"][-1]["staging_sha_after"] = migration.file_sha256(migration.STAGING_PARQUET)
+    monkeypatch.setattr(migration, "validate_current_source_freeze", lambda *_args, **_kwargs: {"status": "FAIL"})
+    calls: list[str] = []
+    with pytest.raises(MarketDataError, match="BLOCKED_CURRENT_SOURCE_FREEZE"):
+        migration.validate_resume_pre_network(staging_frame=frame, ledger=ledger, target_dates=frame["date"].astype(str).unique(), validation_source_head="SOURCE_A")
+    assert calls == []
+    assert len(ledger["runs"]) == 2
+
+
+def test_pre_network_continuity_failure_has_zero_calls(monkeypatch: pytest.MonkeyPatch) -> None:
+    frame = migration._load_staging()
+    ledger = _operational_ledger_fixture()
+    ledger["runs"][-1]["staging_sha_after"] = "DIFFERENT_SHA"
+    monkeypatch.setattr(migration, "validate_current_source_freeze", lambda *_args, **_kwargs: {"status": "PASS"})
+    with pytest.raises(MarketDataError, match="BLOCKED_STAGING_LEDGER_DIVERGENCE"):
+        migration.validate_resume_pre_network(staging_frame=frame, ledger=ledger, target_dates=frame["date"].astype(str).unique(), validation_source_head="SOURCE_A")
+    assert len(ledger["runs"]) == 2
+
+
+def test_finalizer_continuity_gate_blocks_publish_on_divergence(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    frame = _reference_as_index_store_frame()
+    op_path = tmp_path / "ledger.json"
+    ledger = _operational_ledger_fixture()
+    migration.atomic_write_json(op_path, ledger)
+    monkeypatch.setattr(migration, "validate_current_source_freeze", lambda *_args, **_kwargs: {"status": "PASS"})
+    monkeypatch.setattr(migration, "secret_scan", lambda _secret: {"scanned_file_count": 100, "secret_occurrence_count": 0})
+    kwargs = _finalizer_kwargs(frame)
+    kwargs["secret"] = "synthetic_secret"
+    result = migration.finalize_market_index_migration(**kwargs, operational_ledger_path=op_path, validation_source_head="HEAD", publish=True, production_writer=lambda _value: pytest.fail("production write must be blocked"))
+    assert result["gates"]["staging_ledger_continuity_gate"]["status"] == "FAIL"
+    assert result["production_index_store_publish_count"] == 0

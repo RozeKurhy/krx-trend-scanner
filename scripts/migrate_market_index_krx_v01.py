@@ -85,6 +85,20 @@ RS_IDENTITY_FIELDS = (
 MARKET_INDEX_CODES = frozenset({"1001", "2001"})
 RS_NUMERIC_TOLERANCE = 1e-12
 OPERATIONAL_RUN_STATES = frozenset({"STARTED", "COMPLETED", "PARTIAL", "BLOCKED"})
+TERMINAL_RUN_STATES = frozenset({"COMPLETED", "PARTIAL", "BLOCKED"})
+FATAL_RUN_BLOCKERS = frozenset({
+    "BLOCKED_KRX_AUTH",
+    "BLOCKED_KRX_TRANSPORT",
+    "BLOCKED_KRX_INDEX_SCHEMA",
+    "BLOCKED_STAGING_LEDGER_DIVERGENCE",
+    "BLOCKED_CURRENT_SOURCE_FREEZE",
+})
+IMMUTABLE_VALIDATION_ANCHORS = (
+    "fix01_validation_source_head",
+    "fix02_validation_source_head",
+    "fix03_validation_source_head",
+    "fix04_validation_source_head",
+)
 
 
 def _read_env_value(path: Path, name: str) -> str:
@@ -270,6 +284,80 @@ def validate_staging_reuse(frame: pd.DataFrame, target_dates: Iterable[str]) -> 
     }
 
 
+def _terminal_run(ledger: Mapping[str, Any]) -> Mapping[str, Any] | None:
+    runs = ledger.get("runs")
+    if not isinstance(runs, list) or not runs:
+        return None
+    terminal = runs[-1]
+    if not isinstance(terminal, Mapping) or str(terminal.get("state")) not in TERMINAL_RUN_STATES:
+        return None
+    return terminal
+
+
+def _terminal_snapshot_complete(run: Mapping[str, Any] | None) -> bool:
+    if run is None:
+        return False
+    try:
+        return int(run["staging_date_count_after"]) >= 0 and int(run["staging_row_count_after"]) >= 0 and bool(str(run.get("staging_sha_after", "")))
+    except (KeyError, TypeError, ValueError):
+        return False
+
+
+def validate_operational_ledger_chain(ledger: Mapping[str, Any]) -> dict[str, Any]:
+    """Validate adjacent staging snapshots without requiring legacy null hashes."""
+
+    runs = ledger.get("runs")
+    if not isinstance(runs, list) or not runs:
+        return {"status": "FAIL", "reason": "BLOCKED_OPERATIONAL_LEDGER_SCHEMA", "date_chain_mismatch": 0, "row_chain_mismatch": 0, "sha_chain_mismatch": 0}
+    date_mismatch = row_mismatch = sha_mismatch = 0
+    for previous, current in zip(runs, runs[1:]):
+        try:
+            date_mismatch += int(int(current["staging_date_count_before"]) != int(previous["staging_date_count_after"]))
+            row_mismatch += int(int(current["staging_row_count_before"]) != int(previous["staging_row_count_after"]))
+        except (KeyError, TypeError, ValueError):
+            date_mismatch += 1
+            row_mismatch += 1
+        previous_sha = str(previous.get("staging_sha_after") or "")
+        current_sha = str(current.get("staging_sha_before") or "")
+        if previous_sha and current_sha and previous_sha != current_sha:
+            sha_mismatch += 1
+    terminal_complete = _terminal_snapshot_complete(_terminal_run(ledger))
+    return {
+        "status": "PASS" if not date_mismatch and not row_mismatch and not sha_mismatch else "FAIL",
+        "date_chain_mismatch": date_mismatch,
+        "row_chain_mismatch": row_mismatch,
+        "sha_chain_mismatch": sha_mismatch,
+        "terminal_snapshot_complete": terminal_complete,
+        "adjacent_chain_count": max(0, len(runs) - 1),
+    }
+
+
+def validate_staging_ledger_continuity(frame: pd.DataFrame, ledger: Mapping[str, Any]) -> dict[str, Any]:
+    """Require current staging to equal the last terminal operational snapshot."""
+
+    terminal = _terminal_run(ledger)
+    current = _staging_snapshot(frame)
+    if terminal is None:
+        return {"status": "FAIL", "reason": "BLOCKED_STAGING_LEDGER_DIVERGENCE", "current": current, "terminal": None}
+    terminal_snapshot = {
+        "date_count": terminal.get("staging_date_count_after"),
+        "row_count": terminal.get("staging_row_count_after"),
+        "sha256": terminal.get("staging_sha_after"),
+    }
+    matches = (
+        current["date_count"] == terminal_snapshot["date_count"]
+        and current["row_count"] == terminal_snapshot["row_count"]
+        and bool(terminal_snapshot["sha256"])
+        and current["sha256"] == terminal_snapshot["sha256"]
+    )
+    return {
+        "status": "PASS" if matches else "FAIL",
+        "reason": "STAGING_LEDGER_CONTINUITY_PASS" if matches else "BLOCKED_STAGING_LEDGER_DIVERGENCE",
+        "current": current,
+        "terminal": terminal_snapshot,
+    }
+
+
 def _now_kst_iso() -> str:
     return datetime.now().astimezone().isoformat()
 
@@ -317,7 +405,7 @@ def _validate_ledger_structure(ledger: Mapping[str, Any]) -> dict[str, Any]:
     return {"status": "PASS"}
 
 
-def validate_operational_ledger(ledger: Mapping[str, Any]) -> dict[str, Any]:
+def validate_operational_ledger(ledger: Mapping[str, Any], *, require_terminal_snapshot: bool = False) -> dict[str, Any]:
     """Validate the mutable run ledger and its run-derived quota totals."""
 
     structure = _validate_ledger_structure(ledger)
@@ -336,8 +424,13 @@ def validate_operational_ledger(ledger: Mapping[str, Any]) -> dict[str, Any]:
             return {"status": "FAIL", "reason": "BLOCKED_OPERATIONAL_LEDGER_SCHEMA"}
         if after_dates - before_dates != fetched and str(run.get("state")) not in {"PARTIAL", "BLOCKED"}:
             return {"status": "FAIL", "reason": "BLOCKED_OPERATIONAL_LEDGER_SCHEMA"}
+    chain = validate_operational_ledger_chain(ledger)
+    if chain["status"] != "PASS":
+        return {"status": "FAIL", "reason": "BLOCKED_OPERATIONAL_LEDGER_STAGING_CHAIN", "chain": chain}
+    if require_terminal_snapshot and not chain["terminal_snapshot_complete"]:
+        return {"status": "FAIL", "reason": "BLOCKED_OPERATIONAL_LEDGER_SCHEMA", "chain": chain}
     quota = validate_quota_reconciliation(ledger)
-    return {"status": "PASS" if quota.get("status") == "PASS" else "FAIL", "quota": quota}
+    return {"status": "PASS" if quota.get("status") == "PASS" else "FAIL", "quota": quota, "chain": chain}
 
 
 def _normalize_seed_run(run: Mapping[str, Any], *, before_dates: int, after_dates: int, before_rows: int, after_rows: int, dates_fetched: int, next_pending: str | None) -> dict[str, Any]:
@@ -385,7 +478,7 @@ def seed_operational_ledger_from_checkpoint(*, frame: pd.DataFrame, path: Path =
     return ledger
 
 
-def load_operational_ledger(path: Path = OPERATIONAL_LEDGER_PATH) -> dict[str, Any] | None:
+def load_operational_ledger(path: Path = OPERATIONAL_LEDGER_PATH, *, require_terminal_snapshot: bool = False) -> dict[str, Any] | None:
     if not path.exists():
         return None
     try:
@@ -397,14 +490,40 @@ def load_operational_ledger(path: Path = OPERATIONAL_LEDGER_PATH) -> dict[str, A
     structure = _validate_ledger_structure(ledger)
     if structure["status"] != "PASS":
         raise MarketDataError(str(structure["reason"]))
-    if validate_operational_ledger(ledger).get("status") != "PASS":
+    if validate_operational_ledger(ledger, require_terminal_snapshot=require_terminal_snapshot).get("status") != "PASS":
         raise MarketDataError("BLOCKED_OPERATIONAL_LEDGER_RECONCILIATION")
+    return ledger
+
+
+def upgrade_seeded_ledger_checkpoint(*, frame: pd.DataFrame, path: Path = OPERATIONAL_LEDGER_PATH) -> dict[str, Any]:
+    """Add the canonical current staging SHA to the known FIX03 seed, offline only."""
+
+    observed = _staging_snapshot(frame)
+    expected_sha = "5685dc257b20a833e510367c7e77c15a0a4786564a80d93f493f750172e3890e"
+    if observed != {"date_count": 656, "row_count": 1312, "sha256": expected_sha}:
+        raise MarketDataError("BLOCKED_STAGING_LEDGER_DIVERGENCE")
+    ledger = load_operational_ledger(path)
+    if ledger is None or len(ledger.get("runs", [])) != 2 or ledger.get("phase_cumulative", {}).get("global_delta") != 1312:
+        raise MarketDataError("BLOCKED_OPERATIONAL_LEDGER_SCHEMA")
+    if [str(run.get("run_id")) for run in ledger["runs"]] != ["RUN1_PILOT", "RUN2_HISTORICAL_BACKFILL_TRANCHE"]:
+        raise MarketDataError("BLOCKED_OPERATIONAL_LEDGER_SCHEMA")
+    terminal = ledger["runs"][-1]
+    existing_sha = str(terminal.get("staging_sha_after") or "")
+    if existing_sha and existing_sha != expected_sha:
+        raise MarketDataError("BLOCKED_STAGING_LEDGER_DIVERGENCE")
+    terminal["staging_sha_after"] = expected_sha
+    ledger["continuity_upgrade"] = "FIX04_LEDGER_CONTINUITY_UPGRADE_V01"
+    if validate_operational_ledger(ledger, require_terminal_snapshot=True).get("status") != "PASS":
+        raise MarketDataError("BLOCKED_OPERATIONAL_LEDGER_RECONCILIATION")
+    atomic_write_json(path, ledger)
     return ledger
 
 
 def ensure_operational_ledger(*, frame: pd.DataFrame, path: Path = OPERATIONAL_LEDGER_PATH, target_dates: Iterable[str] = ()) -> dict[str, Any]:
     existing = load_operational_ledger(path)
     if existing is not None:
+        if not _terminal_snapshot_complete(_terminal_run(existing)):
+            return upgrade_seeded_ledger_checkpoint(frame=frame, path=path)
         return existing
     return seed_operational_ledger_from_checkpoint(frame=frame, path=path, target_dates=target_dates)
 
@@ -415,8 +534,13 @@ def _append_run_record(ledger: dict[str, Any], run: Mapping[str, Any], path: Pat
         raise MarketDataError("BLOCKED_DUPLICATE_RUN_ID")
     if any(str(item.get("state")) == "STARTED" for item in ledger.get("runs", []) if isinstance(item, Mapping)):
         raise MarketDataError("BLOCKED_INCOMPLETE_RUN_JOURNAL")
-    ledger["runs"].append(dict(run))
+    candidate = dict(run)
+    ledger["runs"].append(candidate)
     ledger["phase_cumulative"] = _phase_cumulative_from_runs(ledger["runs"])
+    if str(candidate.get("state")) != "STARTED" and validate_operational_ledger(ledger, require_terminal_snapshot=True).get("status") != "PASS":
+        ledger["runs"].pop()
+        ledger["phase_cumulative"] = _phase_cumulative_from_runs(ledger["runs"])
+        raise MarketDataError("BLOCKED_OPERATIONAL_LEDGER_RECONCILIATION")
     atomic_write_json(path, ledger)
     return ledger
 
@@ -426,6 +550,8 @@ def _update_run_record(ledger: dict[str, Any], run_id: str, updates: Mapping[str
         if str(run.get("run_id")) == run_id:
             run.update(dict(updates))
             ledger["phase_cumulative"] = _phase_cumulative_from_runs(ledger["runs"])
+            if validate_operational_ledger(ledger, require_terminal_snapshot=True).get("status") != "PASS":
+                raise MarketDataError("BLOCKED_OPERATIONAL_LEDGER_RECONCILIATION")
             atomic_write_json(path, ledger)
             return ledger
     raise MarketDataError("BLOCKED_OPERATIONAL_LEDGER_SCHEMA")
@@ -504,6 +630,15 @@ def _classify_blocker(exc: Exception) -> str:
     return "BLOCKED_KRX_TRANSPORT" if "transport" in str(exc).lower() else "BLOCKED_KRX_INDEX_SCHEMA"
 
 
+def terminal_run_state(blockers: Iterable[str], pending_after: Iterable[str]) -> str:
+    blocker_set = {str(value) for value in blockers}
+    if blocker_set & FATAL_RUN_BLOCKERS:
+        return "BLOCKED"
+    if blocker_set or list(pending_after):
+        return "PARTIAL"
+    return "COMPLETED"
+
+
 class MarketIndexMigrationRunner:
     """Sequential, whole-date resumable staging runner."""
 
@@ -531,6 +666,9 @@ class MarketIndexMigrationRunner:
         ledger: dict[str, Any] | None = None
         if operational_ledger_path is not None:
             ledger = ensure_operational_ledger(frame=existing, path=operational_ledger_path, target_dates=target_dates)
+            continuity = validate_staging_ledger_continuity(existing, ledger)
+            if continuity.get("status") != "PASS":
+                raise MarketDataError("BLOCKED_STAGING_LEDGER_DIVERGENCE")
         capacity = _available_whole_dates(self.quota, len(pending))
         if max_dates is not None:
             capacity = min(capacity, int(max_dates))
@@ -603,7 +741,7 @@ class MarketIndexMigrationRunner:
             endpoint_after = dict(quota_after.get("endpoint_usage", {}))
             endpoint_deltas = {key: int(endpoint_after.get(key, 0)) - int(endpoint_before.get(key, 0)) for key in set(endpoint_before) | set(endpoint_after)}
             staging_after = _staging_snapshot(existing)
-            state = "COMPLETED" if not blockers and not pending_after else ("PARTIAL" if fetched_dates or pending_after else "BLOCKED")
+            state = terminal_run_state(blockers, pending_after)
             ledger = _update_run_record(ledger, operational_run_id, {
                 "state": state,
                 "completed_at_kst": _now_kst_iso(),
@@ -913,6 +1051,41 @@ def validate_current_source_freeze(validation_source_head: str, repo_root: Path 
     }
 
 
+def resolve_validation_source_head(manifest_path: Path = ARTIFACT_DIR / "market_index_migration_v01_manifest.json") -> str:
+    manifest = _read_json_artifact(manifest_path)
+    value = str(manifest.get("fix04_validation_source_head", "")).strip()
+    if not value:
+        raise MarketDataError("BLOCKED_VALIDATION_SOURCE_ANCHOR_MISSING")
+    return value
+
+
+def validate_manifest_anchor_immutability(manifest: Mapping[str, Any], *, field: str, proposed: str | None) -> dict[str, Any]:
+    existing = str(manifest.get(field, "")).strip()
+    candidate = str(proposed or "").strip()
+    if existing and candidate and existing != candidate:
+        raise MarketDataError("BLOCKED_VALIDATION_SOURCE_ANCHOR_MUTATION")
+    return {"field": field, "existing": existing or None, "proposed": candidate or None, "status": "PASS"}
+
+
+def validate_resume_pre_network(*, staging_frame: pd.DataFrame, ledger: Mapping[str, Any], target_dates: Iterable[str], validation_source_head: str, repo_root: Path = ROOT) -> dict[str, Any]:
+    """Run every resumable provenance gate before constructing a KRX client."""
+
+    try:
+        staging = validate_staging_reuse(staging_frame, target_dates)
+    except Exception as exc:
+        raise MarketDataError(str(exc)) from exc
+    ledger_gate = validate_operational_ledger(ledger, require_terminal_snapshot=True)
+    if ledger_gate.get("status") != "PASS":
+        raise MarketDataError(str(ledger_gate.get("reason", "BLOCKED_OPERATIONAL_LEDGER_RECONCILIATION")))
+    continuity = validate_staging_ledger_continuity(staging_frame, ledger)
+    if continuity.get("status") != "PASS":
+        raise MarketDataError("BLOCKED_STAGING_LEDGER_DIVERGENCE")
+    source_guard = validate_current_source_freeze(validation_source_head, repo_root)
+    if source_guard.get("status") != "PASS":
+        raise MarketDataError("BLOCKED_CURRENT_SOURCE_FREEZE")
+    return {"staging": staging, "ledger": ledger_gate, "continuity": continuity, "source_guard": source_guard, "status": "PASS"}
+
+
 def validate_runtime_network_provenance(ledger: Mapping[str, Any]) -> dict[str, Any]:
     summary = network_summary_from_operational_ledger(ledger)
     quota = validate_quota_reconciliation(ledger)
@@ -942,13 +1115,16 @@ def finalize_market_index_migration(
     effective_ledger: dict[str, Any] | None = None
     if operational_ledger_path is not None:
         try:
-            effective_ledger = load_operational_ledger(operational_ledger_path)
+            effective_ledger = load_operational_ledger(operational_ledger_path, require_terminal_snapshot=True)
             if effective_ledger is None:
                 raise MarketDataError("BLOCKED_OPERATIONAL_LEDGER_SCHEMA")
         except MarketDataError as exc:
             gates["operational_ledger_load_gate"] = {"status": "FAIL", "reason": str(exc)}
+        else:
+            gates["operational_ledger_load_gate"] = {"status": "PASS", "run_count": len(effective_ledger.get("runs", []))}
     else:
         effective_ledger = dict(quota_ledger) if isinstance(quota_ledger, Mapping) else None
+        gates["operational_ledger_load_gate"] = {"status": "PASS" if effective_ledger is not None else "FAIL", "authority": "supplied_quota_ledger"}
 
     # 1. staging verification / 2. full target coverage / 3. exact pairs
     try:
@@ -964,6 +1140,12 @@ def finalize_market_index_migration(
     gates["coverage_gate"] = {"status": "PASS" if observed_dates == target_dates else "FAIL", "target_date_count": len(target_dates), "observed_date_count": len(observed_dates)}
     pair_reports = [validate_complete_staged_date(normalized, day) for day in sorted(observed_dates)] if isinstance(normalized, pd.DataFrame) else []
     gates["pair_gate"] = {"status": "PASS" if len(pair_reports) == len(observed_dates) and all(item["status"] == "COMPLETE" for item in pair_reports) else "FAIL", "reports": pair_reports}
+    if operational_ledger_path is not None and effective_ledger is not None:
+        gates["staging_ledger_continuity_gate"] = validate_staging_ledger_continuity(normalized, effective_ledger)
+    elif operational_ledger_path is not None:
+        gates["staging_ledger_continuity_gate"] = {"status": "FAIL", "reason": "BLOCKED_OPERATIONAL_LEDGER_SCHEMA"}
+    else:
+        gates["staging_ledger_continuity_gate"] = {"status": "PASS", "reason": "legacy finalizer fixture has no operational path"}
 
     # 4. reference SHA / 5. legacy OHLC / 6. market RS
     try:
@@ -999,17 +1181,18 @@ def finalize_market_index_migration(
         else:
             gates["secret_gate"] = {**scan, "status": "PASS", "scan_status": "PASS"}
     if operational_ledger_path is not None:
-        source_head = validation_source_head
-        if source_head is None:
-            manifest = _read_json_artifact(ARTIFACT_DIR / "market_index_migration_v01_manifest.json")
-            source_head = str(manifest.get("fix03_validation_source_head", "")) or None
-        gates["runtime_source_freeze_gate"] = validate_current_source_freeze(source_head, source_freeze_repo) if source_head else {"status": "FAIL", "reason": "BLOCKED_VALIDATION_SOURCE_NOT_ANCESTOR"}
+        try:
+            source_head = validation_source_head or resolve_validation_source_head()
+        except MarketDataError as exc:
+            gates["runtime_source_freeze_gate"] = {"status": "FAIL", "reason": str(exc)}
+        else:
+            gates["runtime_source_freeze_gate"] = validate_current_source_freeze(source_head, source_freeze_repo)
         gates["diff_source_freeze_gate"] = gates["runtime_source_freeze_gate"]
     else:
         gates["diff_source_freeze_gate"] = _gate_status(diff_guard, default_reason="diff/source freeze diagnostic not supplied")
         gates["runtime_source_freeze_gate"] = gates["diff_source_freeze_gate"]
     ordered = (
-        "staging_verification_gate", "coverage_gate", "pair_gate", "legacy_reference_sha_gate",
+        "staging_verification_gate", "operational_ledger_load_gate", "staging_ledger_continuity_gate", "coverage_gate", "pair_gate", "legacy_reference_sha_gate",
         "legacy_ohlc_parity_gate", "market_rs_parity_gate", "provenance_network_gate",
         "secret_gate", "runtime_source_freeze_gate", "quota_gate",
     )
@@ -1044,14 +1227,18 @@ def secret_scan(secret: str) -> dict[str, Any]:
     return {"secret_occurrence_count": count, "scanned_file_count": scanned}
 
 
-def write_migration_artifacts(*, calendar: Mapping[str, Any], pilot: Mapping[str, Any], backfill: Mapping[str, Any], source_head: str, auth_key: str = "", operational_ledger: Mapping[str, Any] | None = None) -> None:
+def write_migration_artifacts(*, calendar: Mapping[str, Any], pilot: Mapping[str, Any], backfill: Mapping[str, Any], source_head: str, auth_key: str = "", operational_ledger: Mapping[str, Any] | None = None, validation_source_head: str | None = None) -> None:
     ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
     safe_write_json(ARTIFACT_DIR / "market_index_mapping_contract.json", {"mapping_version": MAPPING_CONTRACT_VERSION, "entries": mapping_contract_as_dict(), "mapping_sha256": mapping_contract_sha256()}, auth_key)
     safe_write_json(ARTIFACT_DIR / "raw_trading_calendar_summary.json", {key: value for key, value in calendar.items() if key != "target_dates"}, auth_key)
     pilot_path = ARTIFACT_DIR / "pilot_summary.json"
     if str(pilot.get("status")) != "NOT_RUN" and not pilot_path.exists():
         safe_write_json(pilot_path, {**pilot, "validation_source_head": source_head}, auth_key)
-    safe_write_json(ARTIFACT_DIR / "backfill_progress_summary.json", {**backfill, "validation_source_head": source_head}, auth_key)
+    previous_backfill = _read_json_artifact(ARTIFACT_DIR / "backfill_progress_summary.json")
+    progress = {**backfill, "artifact_generation_head": source_head}
+    if "validation_source_head" in previous_backfill:
+        progress["validation_source_head"] = previous_backfill["validation_source_head"]
+    safe_write_json(ARTIFACT_DIR / "backfill_progress_summary.json", progress, auth_key)
     safe_write_json(ARTIFACT_DIR / "coverage_summary.json", {"raw_target_date_count": calendar.get("complete_trading_date_count"), "index_store_date_count": backfill.get("complete_date_count"), "index_store_row_count": backfill.get("staging_rows"), "index_count": 2, "codes": ["1001", "2001"], "status": "PASS" if backfill.get("status", "").startswith("READY_") else "PARTIAL"}, auth_key)
     network_summary = network_summary_from_operational_ledger(operational_ledger) if operational_ledger is not None else {"krx_request_count": backfill.get("krx_request_count", 0), "kospi_dd_trd_request_count": backfill.get("kospi_dd_trd_request_count", 0), "kosdaq_dd_trd_request_count": backfill.get("kosdaq_dd_trd_request_count", 0), "krx_dd_trd_request_count": 0, "retry_count": backfill.get("retry_count", 0), "audit_entry_count": backfill.get("audit_entry_count", 0), "pykrx_live_market_calls": 0}
     previous_network = _read_json_artifact(ARTIFACT_DIR / "network_request_summary.json")
@@ -1062,9 +1249,13 @@ def write_migration_artifacts(*, calendar: Mapping[str, Any], pilot: Mapping[str
     safe_write_json(ARTIFACT_DIR / "network_request_summary.json", network_summary, auth_key)
     safe_write_json(ARTIFACT_DIR / "secret_scan.json", secret_scan(auth_key), auth_key)
     manifest = _read_json_artifact(ARTIFACT_DIR / "market_index_migration_v01_manifest.json")
-    manifest.update({"work_id": "KRX_INDEX_MIGRATION_V01", "start_head": START_HEAD, "phase_start_head": START_HEAD, "original_implementation_head": "f20e428c0b8d6a6f7bd6a87e7ceb5395c98edf62", "fix01_start_head": "b7f265bd93c19dd72953553787e34b382a9678f4", "status": backfill.get("status"), "current_status": backfill.get("status"), "blockers": backfill.get("blockers", []), "artifact_files": sorted(str(path.relative_to(ARTIFACT_DIR)) for path in ARTIFACT_DIR.rglob("*") if path.is_file())})
+    if validation_source_head:
+        validate_manifest_anchor_immutability(manifest, field="fix04_validation_source_head", proposed=validation_source_head)
+        if not manifest.get("fix04_validation_source_head"):
+            manifest["fix04_validation_source_head"] = validation_source_head
+    manifest.update({"work_id": "KRX_INDEX_MIGRATION_V01", "start_head": START_HEAD, "phase_start_head": START_HEAD, "original_implementation_head": "f20e428c0b8d6a6f7bd6a87e7ceb5395c98edf62", "fix01_start_head": "b7f265bd93c19dd72953553787e34b382a9678f4", "status": backfill.get("status"), "current_status": backfill.get("status"), "blockers": backfill.get("blockers", []), "artifact_generation_head": source_head, "last_resume_execution_head": source_head, "artifact_files": sorted(str(path.relative_to(ARTIFACT_DIR)) for path in ARTIFACT_DIR.rglob("*") if path.is_file())})
     if operational_ledger is not None:
-        manifest.update({"fix03_validation_source_head": source_head, "artifact_generation_source_head": source_head, "operational_ledger_schema": OPERATIONAL_LEDGER_SCHEMA_VERSION, "operational_ledger_path": str(OPERATIONAL_LEDGER_PATH.relative_to(ROOT)), "recommendation": "READY_FOR_ARCHITECT_FIX03_REVIEW", "resume_authorization": "PENDING_ARCHITECT_FIX03_REVIEW"})
+        manifest.update({"operational_ledger_schema": OPERATIONAL_LEDGER_SCHEMA_VERSION, "operational_ledger_path": str(OPERATIONAL_LEDGER_PATH.relative_to(ROOT))})
     safe_write_json(ARTIFACT_DIR / "market_index_migration_v01_manifest.json", manifest, auth_key)
 
 
@@ -1074,6 +1265,31 @@ def _read_json_artifact(path: Path) -> dict[str, Any]:
     except (OSError, json.JSONDecodeError):
         return {}
     return value if isinstance(value, dict) else {}
+
+
+def _quota_blocked_result(calendar: Mapping[str, Any], frame: pd.DataFrame, pending: list[str], quota_before: Mapping[str, Any], quota_after: Mapping[str, Any]) -> dict[str, Any]:
+    return {
+        "status": "PARTIAL_RESUMABLE_KRX_INDEX_MIGRATION_V01",
+        "target_date_count": int(calendar.get("complete_trading_date_count", len(calendar.get("target_dates", [])))),
+        "complete_date_count": int(frame["date"].nunique()) if not frame.empty else 0,
+        "pending_date_count": len(pending),
+        "failed_date_count": 0,
+        "next_pending_date": pending[0] if pending else None,
+        "staging_rows": int(len(frame)),
+        "krx_request_count": 0,
+        "quota_before": dict(quota_before),
+        "quota_after": dict(quota_after),
+        "quota_delta": 0,
+        "client_request_count": 0,
+        "audit_entry_count": 0,
+        "retry_count": 0,
+        "blockers": ["BACKFILL_PAUSED_QUOTA"],
+        "production_index_store_publish_count": 0,
+        "operational_run_created": False,
+        "staging_parquet": str(STAGING_PARQUET),
+        "staging_meta": str(STAGING_META),
+        "codes": ["1001", "2001"],
+    }
 
 
 def main() -> int:
@@ -1089,31 +1305,42 @@ def main() -> int:
     if args.finalize:
         calendar = load_offline_calendar(args.start, args.end)
         auth_key = load_auth_key()
-        manifest = _read_json_artifact(ARTIFACT_DIR / "market_index_migration_v01_manifest.json")
         result = finalize_market_index_migration(
             calendar=calendar,
             secret=auth_key,
             operational_ledger_path=OPERATIONAL_LEDGER_PATH,
-            validation_source_head=str(manifest.get("fix03_validation_source_head", "")) or None,
+            validation_source_head=resolve_validation_source_head(),
             publish=args.publish,
         )
         print(json.dumps(result, ensure_ascii=False, indent=2, default=str))
         return 0 if result.get("status") == "PASS" else 1
 
     calendar = derive_raw_trading_calendar(args.start, args.end)
+    existing = _load_staging()
+    ledger = ensure_operational_ledger(frame=existing, path=OPERATIONAL_LEDGER_PATH, target_dates=calendar["target_dates"])
+    validation_source_head = resolve_validation_source_head()
+    validate_resume_pre_network(staging_frame=existing, ledger=ledger, target_dates=calendar["target_dates"], validation_source_head=validation_source_head)
+    quota = LocalKrxOpenApiQuota()
+    quota_before = _quota_usage(quota)
+    pending = [day for day in calendar["target_dates"] if day not in set(existing["date"].astype(str).unique())]
+    capacity = _available_whole_dates(quota, len(pending))
     auth_key = load_auth_key()
-    runner = MarketIndexMigrationRunner(auth_key=auth_key)
+    runner: MarketIndexMigrationRunner | None = None
+    if pending and capacity > 0:
+        runner = MarketIndexMigrationRunner(auth_key=auth_key, quota=quota)
     dates = list(PILOT_DATES) if args.pilot else None
     if dates is not None:
         missing = sorted(set(dates) - set(calendar["target_dates"]))
         if missing:
             raise SystemExit(f"pilot dates are not raw target dates: {missing}")
+        if runner is None:
+            raise MarketDataError("BACKFILL_PAUSED_QUOTA")
         pilot = runner.run({**calendar, "target_dates": dates, "complete_trading_date_count": len(dates)}, resume=True, publish=False, operational_ledger_path=OPERATIONAL_LEDGER_PATH, run_type="PILOT")
         backfill = {"status": pilot.get("status"), "krx_request_count": pilot.get("krx_request_count"), "blockers": pilot.get("blockers", [])}
     else:
         pilot = {"status": "NOT_RUN", "request_count": 0}
-        backfill = runner.run(calendar, resume=True, publish=False, operational_ledger_path=OPERATIONAL_LEDGER_PATH)
-    operational_ledger = load_operational_ledger(OPERATIONAL_LEDGER_PATH)
+        backfill = _quota_blocked_result(calendar, existing, pending, quota_before, _quota_usage(quota)) if runner is None else runner.run(calendar, resume=True, publish=False, operational_ledger_path=OPERATIONAL_LEDGER_PATH)
+    operational_ledger = load_operational_ledger(OPERATIONAL_LEDGER_PATH, require_terminal_snapshot=True)
     write_migration_artifacts(calendar=calendar, pilot=pilot, backfill=backfill, source_head=subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(), auth_key=auth_key, operational_ledger=operational_ledger)
     print(json.dumps({"pilot": pilot, "backfill": backfill}, ensure_ascii=False, indent=2))
     return 0 if str(backfill.get("status", "")).startswith(("READY_", "PARTIAL_")) else 1
@@ -1125,5 +1352,5 @@ if __name__ == "__main__":
 
 __all__ = [
     "ARTIFACT_DIR", "END_DATE", "LEGACY_REFERENCE", "LEGACY_REFERENCE_SHA256", "PILOT_DATES", "START_DATE", "START_HEAD",
-    "ARTIFACT_DIR", "OPERATIONAL_LEDGER_PATH", "OPERATIONAL_LEDGER_SCHEMA_VERSION", "MarketIndexMigrationRunner", "append_operational_run", "atomic_write_json", "compare_legacy_market_parity", "derive_raw_trading_calendar", "ensure_operational_ledger", "finalize_market_index_migration", "legacy_reference_summary", "load_auth_key", "load_offline_calendar", "load_operational_ledger", "market_rs_parity", "mapping_contract_sha256", "network_summary_from_operational_ledger", "seed_operational_ledger_from_checkpoint", "safe_write_json", "secret_scan", "update_operational_run", "validate_complete_staged_date", "validate_current_source_freeze", "validate_cumulative_progress", "validate_operational_ledger", "validate_quota_reconciliation", "validate_runtime_network_provenance", "validate_staging_reuse", "write_migration_artifacts",
+    "ARTIFACT_DIR", "OPERATIONAL_LEDGER_PATH", "OPERATIONAL_LEDGER_SCHEMA_VERSION", "MarketIndexMigrationRunner", "append_operational_run", "atomic_write_json", "compare_legacy_market_parity", "derive_raw_trading_calendar", "ensure_operational_ledger", "finalize_market_index_migration", "legacy_reference_summary", "load_auth_key", "load_offline_calendar", "load_operational_ledger", "market_rs_parity", "mapping_contract_sha256", "network_summary_from_operational_ledger", "resolve_validation_source_head", "safe_write_json", "secret_scan", "seed_operational_ledger_from_checkpoint", "terminal_run_state", "upgrade_seeded_ledger_checkpoint", "update_operational_run", "validate_complete_staged_date", "validate_current_source_freeze", "validate_cumulative_progress", "validate_manifest_anchor_immutability", "validate_operational_ledger", "validate_operational_ledger_chain", "validate_quota_reconciliation", "validate_resume_pre_network", "validate_runtime_network_provenance", "validate_staging_ledger_continuity", "validate_staging_reuse", "write_migration_artifacts",
 ]
