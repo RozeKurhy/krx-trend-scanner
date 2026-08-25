@@ -236,7 +236,48 @@
     "cross_market_ticker_conflict_count": 0,
     "samples": []
   },
-  "fix_version": "FIX09",
+  "current_evidence": {
+    "diagnostic": {
+      "current": true,
+      "status": "PASS"
+    },
+    "idempotency": {
+      "current": true,
+      "status": "PASS"
+    },
+    "pilot": {
+      "current": true,
+      "status": "PASS"
+    },
+    "repair_2019": {
+      "current": true,
+      "status": "PASS"
+    },
+    "repair_2023": {
+      "current": true,
+      "status": "PASS"
+    },
+    "resume": {
+      "current": true,
+      "status": "PASS"
+    },
+    "samsung": {
+      "current": true,
+      "status": "PASS"
+    }
+  },
+  "fix09_implementation_head": "2c6ec5ecb8cc49b80af1053bb4f10ebfbbbf388a",
+  "generated_at": "2026-08-25T05:01:58.513257+00:00",
+  "idempotency": {
+    "actual_network_request_count": 0,
+    "candidate_partition_count": 8680,
+    "observed_at": "2026-08-25T05:01:58.072393+00:00",
+    "pending_partition_count": 0,
+    "status": "PASS",
+    "terminal_partition_count": 8680,
+    "validation_generation": "FIX09",
+    "would_fetch_partition_count": 0
+  },
   "identifier": {
     "alphanumeric_sample_codes": [
       "0004Y0",
@@ -310,10 +351,12 @@
     "row_count_mismatch_count": 0,
     "source_date_mismatch_count": 0
   },
+  "known_phase_limitations": [
+    "FULL_REGRESSION_CLOSURE_DEFERRED"
+  ],
   "physical_complete_partition_count": 8190,
   "production_runtime_head": "e508005c16e5fa3fa19c03b6568ba56ab9ac9294",
   "provenance_status": "PASS",
-  "start_head": "aeedb48b778ee022cf0771cfdb3fcb2432130de7",
   "status": "READY_FOR_ARCHITECT_KRX_HISTORICAL_BACKFILL_V01_FIX09_REVIEW",
-  "validation_source_head": "2c6ec5ecb8cc49b80af1053bb4f10ebfbbbf388a"
+  "validation_generation": "FIX09"
 }

@@ -1,7 +1,7 @@
 krx_historical_backfill_v01_recommendation.md
 ================================================================================
-FIX08 status: BLOCKED_KRX_TRANSPORT
+FIX09 status: READY_FOR_ARCHITECT_KRX_HISTORICAL_BACKFILL_V01_FIX09_REVIEW
 provenance_status: PASS
-coverage_status: INCOMPLETE
-blockers: BLOCKED_KRX_TRANSPORT, BLOCKED_COVERAGE
+coverage_status: PASS
+blockers: []
 FULL_REGRESSION_CLOSURE_DEFERRED remains a known phase limitation.
