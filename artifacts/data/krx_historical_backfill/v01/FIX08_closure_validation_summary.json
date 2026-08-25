@@ -1,4 +1,20 @@
 {
+  "artifact_generation_head": "e18d3c646aa87b5559ab324190fe64683d011fa9",
+  "blockers": [
+    "BLOCKED_COVERAGE"
+  ],
+  "checks": {
+    "coverage_ok": false,
+    "cross_market_ok": true,
+    "diagnostic_ok": true,
+    "idempotency_ok": false,
+    "identifier_ok": true,
+    "integrity_ok": true,
+    "pilot_ok": true,
+    "repair_ok": true,
+    "resume_ok": false,
+    "samsung_ok": true
+  },
   "coverage": {
     "candidate_date_count": 4340,
     "complete_date_count": 2300,
@@ -2124,6 +2140,127 @@
     "terminal_partition_count": 4862,
     "total_raw_rows": 4630937
   },
-  "generated_at": "2026-08-25T03:14:59.880642+00:00",
-  "status": "INCOMPLETE"
+  "coverage_status": "INCOMPLETE",
+  "cross_market": {
+    "cross_market_ticker_conflict_count": 0,
+    "samples": []
+  },
+  "current_evidence": {
+    "diagnostic": {
+      "current": true,
+      "status": "PASS"
+    },
+    "idempotency": {
+      "current": false,
+      "status": "INCOMPLETE"
+    },
+    "pilot": {
+      "current": true,
+      "status": "PASS"
+    },
+    "repair": {
+      "current": true,
+      "status": "PASS"
+    },
+    "resume": {
+      "current": false,
+      "status": null
+    },
+    "samsung": {
+      "current": true,
+      "status": "PASS"
+    }
+  },
+  "fix08_implementation_head": "e18d3c646aa87b5559ab324190fe64683d011fa9",
+  "generated_at": "2026-08-25T03:17:45.925606+00:00",
+  "idempotency": {
+    "actual_network_request_count": 0,
+    "candidate_partition_count": 8680,
+    "observed_at": "2026-08-25T03:17:45.863038+00:00",
+    "pending_partition_count": 3818,
+    "status": "INCOMPLETE",
+    "terminal_partition_count": 4862,
+    "validation_generation": "FIX08",
+    "would_fetch_partition_count": 3818
+  },
+  "identifier": {
+    "alphanumeric_sample_codes": [
+      "0001A0",
+      "0004V0",
+      "0004Y0",
+      "0007C0",
+      "00088K",
+      "0008Z0",
+      "0009K0",
+      "0010F0",
+      "0011A0",
+      "0013V0",
+      "0015G0",
+      "0015N0",
+      "0017J0",
+      "00341A",
+      "00341D",
+      "0037T0",
+      "0039P0",
+      "0041B0",
+      "0044K0",
+      "00499K",
+      "00680K",
+      "0068Y0",
+      "0071M0",
+      "0072Z0",
+      "00781K",
+      "00806K",
+      "0088D0",
+      "0088M0",
+      "0091W0",
+      "0093G0",
+      "0096B0",
+      "0096D0",
+      "0097F0",
+      "0098T0",
+      "0099W0",
+      "0099X0",
+      "0115H0",
+      "0129K0",
+      "0130D0",
+      "0132G0",
+      "0134X0",
+      "0156T0",
+      "0165X0",
+      "0218L0",
+      "02826K",
+      "03473K",
+      "08537M",
+      "18064K",
+      "26490K",
+      "28513K"
+    ],
+    "alphanumeric_short_code_row_count": 9424,
+    "invalid_short_code_count": 0,
+    "numeric_short_code_row_count": 4621513,
+    "unique_alphanumeric_ticker_count": 80,
+    "unique_numeric_ticker_count": 3461
+  },
+  "integrity": {
+    "content_hash_mismatch_count": 0,
+    "duplicate_ticker_count": 0,
+    "errors": [],
+    "file_hash_mismatch_count": 0,
+    "integrity_error_count": 0,
+    "integrity_scan_count": 4600,
+    "no_data_errors": [],
+    "no_data_integrity_error_count": 0,
+    "no_data_integrity_scan_count": 262,
+    "physical_schema_error_count": 0,
+    "row_count_mismatch_count": 0,
+    "source_date_mismatch_count": 0
+  },
+  "known_phase_limitations": [
+    "FULL_REGRESSION_CLOSURE_DEFERRED"
+  ],
+  "production_runtime_head": "e508005c16e5fa3fa19c03b6568ba56ab9ac9294",
+  "provenance_status": "PASS",
+  "status": "BLOCKED_COVERAGE",
+  "validation_generation": "FIX08"
 }
