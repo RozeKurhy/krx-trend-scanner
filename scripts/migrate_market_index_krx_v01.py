@@ -86,6 +86,7 @@ MARKET_INDEX_CODES = frozenset({"1001", "2001"})
 RS_NUMERIC_TOLERANCE = 1e-12
 OPERATIONAL_RUN_STATES = frozenset({"STARTED", "COMPLETED", "PARTIAL", "BLOCKED"})
 TERMINAL_RUN_STATES = frozenset({"COMPLETED", "PARTIAL", "BLOCKED"})
+KNOWN_CHECKPOINT_656_SHA256 = "5685dc257b20a833e510367c7e77c15a0a4786564a80d93f493f750172e3890e"
 FATAL_RUN_BLOCKERS = frozenset({
     "BLOCKED_KRX_AUTH",
     "BLOCKED_KRX_TRANSPORT",
@@ -453,11 +454,11 @@ def _normalize_seed_run(run: Mapping[str, Any], *, before_dates: int, after_date
     return result
 
 
-def seed_operational_ledger_from_checkpoint(*, frame: pd.DataFrame, path: Path = OPERATIONAL_LEDGER_PATH, target_dates: Iterable[str] = ()) -> dict[str, Any]:
-    """Seed .cache operational state only from the known 656-date checkpoint."""
+def seed_operational_ledger_from_checkpoint(*, frame: pd.DataFrame, path: Path = OPERATIONAL_LEDGER_PATH, target_dates: Iterable[str] = (), expected_checkpoint_sha256: str | None = None) -> dict[str, Any]:
+    """Seed operational state from a verified 656-date checkpoint or explicit test fixture."""
 
     observed = _staging_snapshot(frame)
-    expected_sha = "5685dc257b20a833e510367c7e77c15a0a4786564a80d93f493f750172e3890e"
+    expected_sha = str(expected_checkpoint_sha256 or KNOWN_CHECKPOINT_656_SHA256)
     if observed["sha256"] != expected_sha or observed["date_count"] != 656 or observed["row_count"] != 1312:
         raise MarketDataError("BLOCKED_OPERATIONAL_LEDGER_MISSING_FOR_ADVANCED_STAGING")
     if any(item["status"] != "COMPLETE" for item in (validate_complete_staged_date(frame, day) for day in frame["date"].astype(str).unique())):
@@ -495,11 +496,11 @@ def load_operational_ledger(path: Path = OPERATIONAL_LEDGER_PATH, *, require_ter
     return ledger
 
 
-def upgrade_seeded_ledger_checkpoint(*, frame: pd.DataFrame, path: Path = OPERATIONAL_LEDGER_PATH) -> dict[str, Any]:
-    """Add the canonical current staging SHA to the known FIX03 seed, offline only."""
+def upgrade_seeded_ledger_checkpoint(*, frame: pd.DataFrame, path: Path = OPERATIONAL_LEDGER_PATH, expected_checkpoint_sha256: str | None = None) -> dict[str, Any]:
+    """Add a verified checkpoint SHA to a seeded ledger, offline only."""
 
     observed = _staging_snapshot(frame)
-    expected_sha = "5685dc257b20a833e510367c7e77c15a0a4786564a80d93f493f750172e3890e"
+    expected_sha = str(expected_checkpoint_sha256 or KNOWN_CHECKPOINT_656_SHA256)
     if observed != {"date_count": 656, "row_count": 1312, "sha256": expected_sha}:
         raise MarketDataError("BLOCKED_STAGING_LEDGER_DIVERGENCE")
     ledger = load_operational_ledger(path)
@@ -770,7 +771,8 @@ class MarketIndexMigrationRunner:
         request_count = int(getattr(self.client, "request_count", 0))
         target_count = int(calendar.get("complete_trading_date_count", len(calendar.get("target_dates", []))))
         complete_count = int(frame["date"].nunique()) if not frame.empty else 0
-        status = "PARTIAL_RESUMABLE_KRX_INDEX_MIGRATION_V01"
+        run_state = terminal_run_state(blockers, pending)
+        status = "COMPLETED" if run_state == "COMPLETED" else ("BLOCKED" if run_state == "BLOCKED" else "PARTIAL_RESUMABLE_KRX_INDEX_MIGRATION_V01")
         return {
             "status": status,
             "target_date_count": target_count,
@@ -1227,7 +1229,69 @@ def secret_scan(secret: str) -> dict[str, Any]:
     return {"secret_occurrence_count": count, "scanned_file_count": scanned}
 
 
-def write_migration_artifacts(*, calendar: Mapping[str, Any], pilot: Mapping[str, Any], backfill: Mapping[str, Any], source_head: str, auth_key: str = "", operational_ledger: Mapping[str, Any] | None = None, validation_source_head: str | None = None) -> None:
+def derive_migration_artifact_state(*, calendar: Mapping[str, Any], backfill: Mapping[str, Any], staging_frame: pd.DataFrame | None = None) -> dict[str, Any]:
+    """Derive generated coverage state from current staging and target calendar."""
+
+    target_dates = {_date(value) for value in calendar.get("target_dates", [])}
+    target_count = int(calendar.get("complete_trading_date_count", len(target_dates)))
+    if staging_frame is None or not target_dates:
+        complete_count = int(backfill.get("complete_date_count", 0))
+        staging_rows = int(backfill.get("staging_rows", 0))
+        pending_count = int(backfill.get("pending_date_count", max(0, target_count - complete_count)))
+        next_pending = backfill.get("next_pending_date")
+        exact_pairs = int(backfill.get("exact_pair_count", complete_count if staging_rows == complete_count * 2 else 0))
+        duplicate_pairs = int(backfill.get("duplicate_pair_count", 0))
+        incomplete_pairs = int(backfill.get("incomplete_pair_count", pending_count))
+        extra_dates = int(backfill.get("extra_date_count", 0))
+    else:
+        normalized = normalize_index_frame(staging_frame, MARKET_INDEX_FAMILY)
+        observed_dates = set(normalized["date"].astype(str)) if not normalized.empty else set()
+        reports = {day: validate_complete_staged_date(normalized, day) for day in sorted(observed_dates)}
+        valid_dates = {day for day, report in reports.items() if report["status"] == "COMPLETE"}
+        missing_dates = target_dates - valid_dates
+        complete_count = len(valid_dates & target_dates)
+        staging_rows = int(len(normalized))
+        pending_count = len(missing_dates)
+        next_pending = min(missing_dates) if missing_dates else None
+        exact_pairs = complete_count
+        duplicate_pairs = sum(1 for report in reports.values() if report["duplicate_count"] > 0)
+        incomplete_pairs = sum(1 for day in target_dates if reports.get(day, {}).get("status") != "COMPLETE")
+        extra_dates = len(observed_dates - target_dates)
+    blockers = sorted({str(value) for value in backfill.get("blockers", []) if str(value)})
+    completed = (
+        target_count > 0
+        and complete_count == target_count
+        and staging_rows == target_count * 2
+        and pending_count == 0
+        and next_pending is None
+        and exact_pairs == target_count
+        and duplicate_pairs == 0
+        and incomplete_pairs == 0
+        and extra_dates == 0
+        and not blockers
+    )
+    fallback_status = str(backfill.get("status", "PARTIAL_RESUMABLE_KRX_INDEX_MIGRATION_V01"))
+    status = "COMPLETED" if completed else fallback_status
+    return {
+        "status": status,
+        "historical_collection_status": status,
+        "production_published": bool(PRODUCTION_PARQUET.exists() and PRODUCTION_META.exists()),
+        "target_date_count": target_count,
+        "complete_date_count": complete_count,
+        "staging_rows": staging_rows,
+        "pending_date_count": pending_count,
+        "missing_date_count": pending_count,
+        "next_pending_date": next_pending,
+        "exact_pair_count": exact_pairs,
+        "duplicate_pair_count": duplicate_pairs,
+        "incomplete_pair_count": incomplete_pairs,
+        "extra_date_count": extra_dates,
+        "finalization_status": "PENDING",
+        "migration_closure_status": "PENDING",
+    }
+
+
+def write_migration_artifacts(*, calendar: Mapping[str, Any], pilot: Mapping[str, Any], backfill: Mapping[str, Any], source_head: str, auth_key: str = "", operational_ledger: Mapping[str, Any] | None = None, validation_source_head: str | None = None, staging_frame: pd.DataFrame | None = None) -> None:
     ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
     safe_write_json(ARTIFACT_DIR / "market_index_mapping_contract.json", {"mapping_version": MAPPING_CONTRACT_VERSION, "entries": mapping_contract_as_dict(), "mapping_sha256": mapping_contract_sha256()}, auth_key)
     safe_write_json(ARTIFACT_DIR / "raw_trading_calendar_summary.json", {key: value for key, value in calendar.items() if key != "target_dates"}, auth_key)
@@ -1235,11 +1299,24 @@ def write_migration_artifacts(*, calendar: Mapping[str, Any], pilot: Mapping[str
     if str(pilot.get("status")) != "NOT_RUN" and not pilot_path.exists():
         safe_write_json(pilot_path, {**pilot, "validation_source_head": source_head}, auth_key)
     previous_backfill = _read_json_artifact(ARTIFACT_DIR / "backfill_progress_summary.json")
-    progress = {**backfill, "artifact_generation_head": source_head}
+    canonical = derive_migration_artifact_state(calendar=calendar, backfill=backfill, staging_frame=staging_frame)
+    progress = {**previous_backfill, **backfill, **canonical, "artifact_generation_head": source_head}
+    if operational_ledger is not None:
+        ledger_network = network_summary_from_operational_ledger(operational_ledger)
+        progress.update({
+            "krx_request_count": ledger_network["krx_request_count"],
+            "kospi_dd_trd_request_count": ledger_network["kospi_dd_trd_request_count"],
+            "kosdaq_dd_trd_request_count": ledger_network["kosdaq_dd_trd_request_count"],
+            "krx_dd_trd_request_count": ledger_network["krx_dd_trd_request_count"],
+            "audit_entry_count": ledger_network["audit_entry_count"],
+            "retry_count": ledger_network["retry_count"],
+            "pykrx_live_market_calls": ledger_network["pykrx_live_market_calls"],
+        })
     if "validation_source_head" in previous_backfill:
         progress["validation_source_head"] = previous_backfill["validation_source_head"]
     safe_write_json(ARTIFACT_DIR / "backfill_progress_summary.json", progress, auth_key)
-    safe_write_json(ARTIFACT_DIR / "coverage_summary.json", {"raw_target_date_count": calendar.get("complete_trading_date_count"), "index_store_date_count": backfill.get("complete_date_count"), "index_store_row_count": backfill.get("staging_rows"), "index_count": 2, "codes": ["1001", "2001"], "status": "PASS" if backfill.get("status", "").startswith("READY_") else "PARTIAL"}, auth_key)
+    coverage_status = "PASS" if canonical["status"] == "COMPLETED" else ("BLOCKED" if canonical["status"] == "BLOCKED" else "PARTIAL")
+    safe_write_json(ARTIFACT_DIR / "coverage_summary.json", {"raw_target_date_count": canonical["target_date_count"], "index_store_date_count": canonical["complete_date_count"], "index_store_row_count": canonical["staging_rows"], "exact_pair_count": canonical["exact_pair_count"], "duplicate_pair_count": canonical["duplicate_pair_count"], "incomplete_pair_count": canonical["incomplete_pair_count"], "missing_date_count": canonical["missing_date_count"], "next_pending_date": canonical["next_pending_date"], "production_published": canonical["production_published"], "index_count": 2, "codes": ["1001", "2001"], "status": coverage_status}, auth_key)
     network_summary = network_summary_from_operational_ledger(operational_ledger) if operational_ledger is not None else {"krx_request_count": backfill.get("krx_request_count", 0), "kospi_dd_trd_request_count": backfill.get("kospi_dd_trd_request_count", 0), "kosdaq_dd_trd_request_count": backfill.get("kosdaq_dd_trd_request_count", 0), "krx_dd_trd_request_count": 0, "retry_count": backfill.get("retry_count", 0), "audit_entry_count": backfill.get("audit_entry_count", 0), "pykrx_live_market_calls": 0}
     previous_network = _read_json_artifact(ARTIFACT_DIR / "network_request_summary.json")
     if previous_network:
@@ -1253,7 +1330,7 @@ def write_migration_artifacts(*, calendar: Mapping[str, Any], pilot: Mapping[str
         validate_manifest_anchor_immutability(manifest, field="fix04_validation_source_head", proposed=validation_source_head)
         if not manifest.get("fix04_validation_source_head"):
             manifest["fix04_validation_source_head"] = validation_source_head
-    manifest.update({"work_id": "KRX_INDEX_MIGRATION_V01", "start_head": START_HEAD, "phase_start_head": START_HEAD, "original_implementation_head": "f20e428c0b8d6a6f7bd6a87e7ceb5395c98edf62", "fix01_start_head": "b7f265bd93c19dd72953553787e34b382a9678f4", "status": backfill.get("status"), "current_status": backfill.get("status"), "blockers": backfill.get("blockers", []), "artifact_generation_head": source_head, "last_resume_execution_head": source_head, "artifact_files": sorted(str(path.relative_to(ARTIFACT_DIR)) for path in ARTIFACT_DIR.rglob("*") if path.is_file())})
+    manifest.update({"work_id": "KRX_INDEX_MIGRATION_V01", "start_head": START_HEAD, "phase_start_head": START_HEAD, "original_implementation_head": "f20e428c0b8d6a6f7bd6a87e7ceb5395c98edf62", "fix01_start_head": "b7f265bd93c19dd72953553787e34b382a9678f4", "status": canonical["status"], "current_status": "HISTORICAL_COLLECTION_COMPLETED_NOT_PUBLISHED" if canonical["status"] == "COMPLETED" else canonical["status"], "historical_collection_status": canonical["historical_collection_status"], "production_published": canonical["production_published"], "finalization_status": canonical["finalization_status"], "migration_closure_status": canonical["migration_closure_status"], "blockers": backfill.get("blockers", []), "artifact_generation_head": source_head, "last_resume_execution_head": source_head, "artifact_files": sorted(str(path.relative_to(ARTIFACT_DIR)) for path in ARTIFACT_DIR.rglob("*") if path.is_file())})
     if operational_ledger is not None:
         manifest.update({"operational_ledger_schema": OPERATIONAL_LEDGER_SCHEMA_VERSION, "operational_ledger_path": str(OPERATIONAL_LEDGER_PATH.relative_to(ROOT))})
     safe_write_json(ARTIFACT_DIR / "market_index_migration_v01_manifest.json", manifest, auth_key)
@@ -1268,7 +1345,7 @@ def _read_json_artifact(path: Path) -> dict[str, Any]:
 
 
 def _quota_blocked_result(calendar: Mapping[str, Any], frame: pd.DataFrame, pending: list[str], quota_before: Mapping[str, Any], quota_after: Mapping[str, Any]) -> dict[str, Any]:
-    return {
+    result = {
         "status": "PARTIAL_RESUMABLE_KRX_INDEX_MIGRATION_V01",
         "target_date_count": int(calendar.get("complete_trading_date_count", len(calendar.get("target_dates", [])))),
         "complete_date_count": int(frame["date"].nunique()) if not frame.empty else 0,
@@ -1283,13 +1360,16 @@ def _quota_blocked_result(calendar: Mapping[str, Any], frame: pd.DataFrame, pend
         "client_request_count": 0,
         "audit_entry_count": 0,
         "retry_count": 0,
-        "blockers": ["BACKFILL_PAUSED_QUOTA"],
+        "blockers": ["BACKFILL_PAUSED_QUOTA"] if pending else [],
         "production_index_store_publish_count": 0,
         "operational_run_created": False,
         "staging_parquet": str(STAGING_PARQUET),
         "staging_meta": str(STAGING_META),
         "codes": ["1001", "2001"],
     }
+    state = derive_migration_artifact_state(calendar=calendar, backfill=result, staging_frame=frame)
+    result.update({key: state[key] for key in ("status", "complete_date_count", "staging_rows", "pending_date_count", "missing_date_count", "next_pending_date", "exact_pair_count", "duplicate_pair_count", "incomplete_pair_count", "extra_date_count", "production_published")})
+    return result
 
 
 def main() -> int:
@@ -1341,7 +1421,7 @@ def main() -> int:
         pilot = {"status": "NOT_RUN", "request_count": 0}
         backfill = _quota_blocked_result(calendar, existing, pending, quota_before, _quota_usage(quota)) if runner is None else runner.run(calendar, resume=True, publish=False, operational_ledger_path=OPERATIONAL_LEDGER_PATH)
     operational_ledger = load_operational_ledger(OPERATIONAL_LEDGER_PATH, require_terminal_snapshot=True)
-    write_migration_artifacts(calendar=calendar, pilot=pilot, backfill=backfill, source_head=subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(), auth_key=auth_key, operational_ledger=operational_ledger)
+    write_migration_artifacts(calendar=calendar, pilot=pilot, backfill=backfill, source_head=subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(), auth_key=auth_key, operational_ledger=operational_ledger, staging_frame=_load_staging())
     print(json.dumps({"pilot": pilot, "backfill": backfill}, ensure_ascii=False, indent=2))
     return 0 if str(backfill.get("status", "")).startswith(("READY_", "PARTIAL_")) else 1
 
@@ -1352,5 +1432,5 @@ if __name__ == "__main__":
 
 __all__ = [
     "ARTIFACT_DIR", "END_DATE", "LEGACY_REFERENCE", "LEGACY_REFERENCE_SHA256", "PILOT_DATES", "START_DATE", "START_HEAD",
-    "ARTIFACT_DIR", "OPERATIONAL_LEDGER_PATH", "OPERATIONAL_LEDGER_SCHEMA_VERSION", "MarketIndexMigrationRunner", "append_operational_run", "atomic_write_json", "compare_legacy_market_parity", "derive_raw_trading_calendar", "ensure_operational_ledger", "finalize_market_index_migration", "legacy_reference_summary", "load_auth_key", "load_offline_calendar", "load_operational_ledger", "market_rs_parity", "mapping_contract_sha256", "network_summary_from_operational_ledger", "resolve_validation_source_head", "safe_write_json", "secret_scan", "seed_operational_ledger_from_checkpoint", "terminal_run_state", "upgrade_seeded_ledger_checkpoint", "update_operational_run", "validate_complete_staged_date", "validate_current_source_freeze", "validate_cumulative_progress", "validate_manifest_anchor_immutability", "validate_operational_ledger", "validate_operational_ledger_chain", "validate_quota_reconciliation", "validate_resume_pre_network", "validate_runtime_network_provenance", "validate_staging_ledger_continuity", "validate_staging_reuse", "write_migration_artifacts",
+    "ARTIFACT_DIR", "KNOWN_CHECKPOINT_656_SHA256", "OPERATIONAL_LEDGER_PATH", "OPERATIONAL_LEDGER_SCHEMA_VERSION", "MarketIndexMigrationRunner", "append_operational_run", "atomic_write_json", "compare_legacy_market_parity", "derive_migration_artifact_state", "derive_raw_trading_calendar", "ensure_operational_ledger", "finalize_market_index_migration", "legacy_reference_summary", "load_auth_key", "load_offline_calendar", "load_operational_ledger", "market_rs_parity", "mapping_contract_sha256", "network_summary_from_operational_ledger", "resolve_validation_source_head", "safe_write_json", "secret_scan", "seed_operational_ledger_from_checkpoint", "terminal_run_state", "upgrade_seeded_ledger_checkpoint", "update_operational_run", "validate_complete_staged_date", "validate_current_source_freeze", "validate_cumulative_progress", "validate_manifest_anchor_immutability", "validate_operational_ledger", "validate_operational_ledger_chain", "validate_quota_reconciliation", "validate_resume_pre_network", "validate_runtime_network_provenance", "validate_staging_ledger_continuity", "validate_staging_reuse", "write_migration_artifacts",
 ]

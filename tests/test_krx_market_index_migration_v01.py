@@ -137,6 +137,73 @@ def _staged_rows(days: list[str]) -> pd.DataFrame:
     return pd.DataFrame(rows, columns=list(migration.INDEX_STORE_COLUMNS))
 
 
+def _checkpoint_656_fixture(tmp_path: Path) -> tuple[pd.DataFrame, Path, str]:
+    """Build an explicit frozen checkpoint instead of reading mutable production staging."""
+
+    days = [day.strftime("%Y-%m-%d") for day in pd.date_range("2010-01-04", periods=656, freq="B")]
+    frame = _staged_rows(days)
+    staging_path = tmp_path / "checkpoint_656.parquet"
+    frame.to_parquet(staging_path, index=False)
+    return frame, staging_path, migration.file_sha256(staging_path)
+
+
+def test_artifact_state_derives_completed_from_staging_not_stale_backfill() -> None:
+    frame = _staged_rows(["2026-08-14"])
+    stale_backfill = {
+        "status": "PARTIAL_RESUMABLE_KRX_INDEX_MIGRATION_V01",
+        "complete_date_count": 0,
+        "staging_rows": 0,
+        "pending_date_count": 1,
+        "next_pending_date": "2026-08-14",
+        "blockers": [],
+    }
+    first = migration.derive_migration_artifact_state(
+        calendar={"target_dates": ["2026-08-14"], "complete_trading_date_count": 1},
+        backfill=stale_backfill,
+        staging_frame=frame,
+    )
+    second = migration.derive_migration_artifact_state(
+        calendar={"target_dates": ["2026-08-14"], "complete_trading_date_count": 1},
+        backfill=stale_backfill,
+        staging_frame=frame,
+    )
+    assert first == second
+    assert first["status"] == "COMPLETED"
+    assert first["complete_date_count"] == 1
+    assert first["staging_rows"] == 2
+    assert first["pending_date_count"] == 0
+    assert first["next_pending_date"] is None
+    assert first["exact_pair_count"] == 1
+    assert first["duplicate_pair_count"] == 0
+    assert first["incomplete_pair_count"] == 0
+
+
+def test_artifact_writer_emits_completed_state_without_manual_patch(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    artifact_dir = tmp_path / "artifacts"
+    artifact_dir.mkdir()
+    monkeypatch.setattr(migration, "ARTIFACT_DIR", artifact_dir)
+    frame = _staged_rows(["2026-08-14"])
+    migration.write_migration_artifacts(
+        calendar={"target_dates": ["2026-08-14"], "complete_trading_date_count": 1},
+        pilot={"status": "NOT_RUN"},
+        backfill={"status": "PARTIAL_RESUMABLE_KRX_INDEX_MIGRATION_V01", "complete_date_count": 0, "staging_rows": 0, "pending_date_count": 1, "next_pending_date": "2026-08-14", "blockers": []},
+        source_head="FIX05_TEST_HEAD",
+        staging_frame=frame,
+    )
+    progress = json.loads((artifact_dir / "backfill_progress_summary.json").read_text(encoding="utf-8"))
+    coverage = json.loads((artifact_dir / "coverage_summary.json").read_text(encoding="utf-8"))
+    manifest = json.loads((artifact_dir / "market_index_migration_v01_manifest.json").read_text(encoding="utf-8"))
+    assert progress["status"] == "COMPLETED"
+    assert progress["complete_date_count"] == 1
+    assert progress["pending_date_count"] == 0
+    assert progress["next_pending_date"] is None
+    assert coverage["status"] == "PASS"
+    assert coverage["missing_date_count"] == 0
+    assert coverage["production_published"] is False
+    assert manifest["status"] == "COMPLETED"
+    assert manifest["current_status"] == "HISTORICAL_COLLECTION_COMPLETED_NOT_PUBLISHED"
+
+
 class FakeQuota:
     def __init__(self, remaining_slots: int):
         self.remaining_slots = remaining_slots
@@ -449,12 +516,15 @@ def _operational_ledger_fixture() -> dict[str, object]:
     return {"schema_version": migration.OPERATIONAL_LEDGER_SCHEMA_VERSION, "phase": "KRX_INDEX_MIGRATION_V01", "runs": runs, "phase_cumulative": {"global_delta": 1312, "client_request_count": 1312, "audit_entry_count": 1312, "retry_count": 0, "endpoint_deltas": {"kospi_dd_trd": 656, "kosdaq_dd_trd": 656}}}
 
 
-def test_seed_operational_ledger_from_known_checkpoint(tmp_path: Path) -> None:
+def test_seed_operational_ledger_from_known_checkpoint(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    frame, staging_path, fixture_sha = _checkpoint_656_fixture(tmp_path)
+    monkeypatch.setattr(migration, "STAGING_PARQUET", staging_path)
     ledger_path = tmp_path / "quota_run_ledger.json"
-    ledger = migration.seed_operational_ledger_from_checkpoint(frame=migration._load_staging(), path=ledger_path)
+    ledger = migration.seed_operational_ledger_from_checkpoint(frame=frame, path=ledger_path, expected_checkpoint_sha256=fixture_sha)
     assert ledger["schema_version"] == migration.OPERATIONAL_LEDGER_SCHEMA_VERSION
     assert len(ledger["runs"]) == 2
     assert ledger["phase_cumulative"]["global_delta"] == 1312
+    assert ledger["seed_checkpoint_sha256"] == fixture_sha
     assert migration.validate_operational_ledger(ledger)["status"] == "PASS"
 
 
@@ -632,12 +702,14 @@ def test_new_run_before_snapshot_equals_previous_after(tmp_path: Path) -> None:
     assert updated["runs"][2]["staging_sha_before"] == updated["runs"][1]["staging_sha_after"]
 
 
-def test_seeded_ledger_continuity_upgrade_is_offline(tmp_path: Path) -> None:
+def test_seeded_ledger_continuity_upgrade_is_offline(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    frame, staging_path, fixture_sha = _checkpoint_656_fixture(tmp_path)
+    monkeypatch.setattr(migration, "STAGING_PARQUET", staging_path)
     path = tmp_path / "ledger.json"
-    ledger = migration.seed_operational_ledger_from_checkpoint(frame=migration._load_staging(), path=path)
+    ledger = migration.seed_operational_ledger_from_checkpoint(frame=frame, path=path, expected_checkpoint_sha256=fixture_sha)
     assert ledger["runs"][-1]["staging_sha_after"] is None
-    upgraded = migration.upgrade_seeded_ledger_checkpoint(frame=migration._load_staging(), path=path)
-    assert upgraded["runs"][-1]["staging_sha_after"] == "5685dc257b20a833e510367c7e77c15a0a4786564a80d93f493f750172e3890e"
+    upgraded = migration.upgrade_seeded_ledger_checkpoint(frame=frame, path=path, expected_checkpoint_sha256=fixture_sha)
+    assert upgraded["runs"][-1]["staging_sha_after"] == fixture_sha
     assert migration.validate_operational_ledger(upgraded, require_terminal_snapshot=True)["status"] == "PASS"
 
 
@@ -679,10 +751,10 @@ def test_terminal_run_state_semantics(exc: Exception, expected: str) -> None:
     assert migration.terminal_run_state([], []) == "COMPLETED"
 
 
-def test_pre_network_source_failure_has_zero_calls_and_no_journal(monkeypatch: pytest.MonkeyPatch) -> None:
-    frame = migration._load_staging()
-    ledger = _operational_ledger_fixture()
-    ledger["runs"][-1]["staging_sha_after"] = migration.file_sha256(migration.STAGING_PARQUET)
+def test_pre_network_source_failure_has_zero_calls_and_no_journal(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    frame, ledger, _ = _continuity_fixture(tmp_path, monkeypatch)
+    ledger["runs"][0]["dates_fetched"] = 0
+    ledger["runs"][1]["dates_fetched"] = 1
     monkeypatch.setattr(migration, "validate_current_source_freeze", lambda *_args, **_kwargs: {"status": "FAIL"})
     calls: list[str] = []
     with pytest.raises(MarketDataError, match="BLOCKED_CURRENT_SOURCE_FREEZE"):
