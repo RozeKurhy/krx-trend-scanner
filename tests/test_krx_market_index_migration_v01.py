@@ -182,6 +182,7 @@ def test_artifact_writer_emits_completed_state_without_manual_patch(tmp_path: Pa
     artifact_dir = tmp_path / "artifacts"
     artifact_dir.mkdir()
     monkeypatch.setattr(migration, "ARTIFACT_DIR", artifact_dir)
+    monkeypatch.setattr(migration, "validate_production_publication_authority", lambda: {"production_published": False})
     frame = _staged_rows(["2026-08-14"])
     migration.write_migration_artifacts(
         calendar={"target_dates": ["2026-08-14"], "complete_trading_date_count": 1},
