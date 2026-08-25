@@ -160,6 +160,37 @@ def derive_raw_trading_calendar(
     }
 
 
+def load_offline_calendar(start: str = START_DATE, end: str = END_DATE) -> dict[str, Any]:
+    """Load the already-closed raw manifest without constructing any client."""
+
+    store = KrxRawStockStore(ROOT / "data/market/raw/krx_stocks/v01")
+    rows = store.list_manifest()
+    states: dict[str, dict[str, str]] = {}
+    for row in rows:
+        day = str(row.get("date", ""))
+        market = str(row.get("market", ""))
+        if start <= day <= end and market in {"KOSPI", "KOSDAQ"}:
+            states.setdefault(day, {})[market] = str(row.get("status", ""))
+    target = sorted(day for day, pair in states.items() if pair.get("KOSPI") == pair.get("KOSDAQ") == "COMPLETE")
+    no_data = sorted(day for day, pair in states.items() if pair.get("KOSPI") == pair.get("KOSDAQ") == "NO_DATA")
+    asymmetric = sorted(day for day, pair in states.items() if day not in set(target) and day not in set(no_data))
+    if asymmetric:
+        raise MarketDataError("BLOCKED_RAW_TRADING_CALENDAR_INCONSISTENT")
+    return {
+        "requested_start": start,
+        "requested_end": end,
+        "candidate_date_count": len(states),
+        "complete_trading_date_count": len(target),
+        "no_data_date_count": len(no_data),
+        "asymmetric_date_count": len(asymmetric),
+        "first_trading_date": target[0] if target else None,
+        "last_trading_date": target[-1] if target else None,
+        "target_date_sha256": _sha_dates(target),
+        "target_dates": target,
+        "no_data_dates": no_data,
+    }
+
+
 def _load_staging() -> pd.DataFrame:
     if not STAGING_PARQUET.exists() or not STAGING_META.exists():
         return pd.DataFrame(columns=list(INDEX_STORE_COLUMNS))
@@ -421,10 +452,9 @@ def compare_legacy_market_parity(new_frame: pd.DataFrame, reference_path: Path =
         "ohlc_mismatch_count": ohlc_mismatches,
         "mismatch_count": mismatch_count,
         "missing_krx_row_count": missing_rows,
-        "missing_reference_row_count": len(extra_within_scope),
         "extra_krx_within_reference_scope_count": len(extra_within_scope),
         "ignored_krx_outside_reference_scope_count": len(ignored_outside_scope),
-        "status": "PASS" if mismatch_count == 0 else "FAIL",
+        "status": "PASS" if missing_rows == 0 and len(extra_within_scope) == 0 and ohlc_mismatches == 0 else "FAIL",
     }
     return result, summary
 
@@ -453,6 +483,10 @@ def market_rs_parity(new_frame: pd.DataFrame, reference_path: Path = LEGACY_REFE
                 except (TypeError, ValueError):
                     numeric_checks[field] = False
         status_match = old_dict.get("market_rs_data_status") == new_dict.get("market_rs_data_status") == "READY"
+        canonical_identity_match = (
+            old_dict.get("market_benchmark_code") == new_dict.get("market_benchmark_code") == code
+            and old_dict.get("market_benchmark_name") == new_dict.get("market_benchmark_name") == name
+        )
         ready_numeric_complete = (
             not status_match
             or all(old_dict.get(field) is not None and new_dict.get(field) is not None for field in RS_NUMERIC_FIELDS)
@@ -460,12 +494,15 @@ def market_rs_parity(new_frame: pd.DataFrame, reference_path: Path = LEGACY_REFE
         returns_match = all(numeric_checks[f"market_return_{h}"] for h in ("3m", "6m", "12m"))
         rs_match = all(numeric_checks[f"market_rs_{h}"] for h in ("3m", "6m", "12m"))
         all_numeric_match = all(numeric_checks.values()) and ready_numeric_complete
-        case_status = all((status_match, identity_match, returns_match, rs_match, all_numeric_match))
+        max_abs_numeric_diff = max(numeric_diffs, default=None)
+        numeric_tolerance_match = max_abs_numeric_diff is not None and max_abs_numeric_diff <= RS_NUMERIC_TOLERANCE
+        case_status = all((status_match, identity_match, canonical_identity_match, returns_match, rs_match, all_numeric_match, numeric_tolerance_match))
         cases[market] = {
             "old_status": old_dict["market_rs_data_status"],
             "new_status": new_dict["market_rs_data_status"],
             "status_match": status_match,
             "identity_fields_match": identity_match,
+            "canonical_identity_match": canonical_identity_match,
             "benchmark_code_match": old_dict["market_benchmark_code"] == new_dict["market_benchmark_code"] == code,
             "benchmark_name_match": old_dict["market_benchmark_name"] == new_dict["market_benchmark_name"] == name,
             "last_observation_match": old_dict["market_benchmark_last_observation_date"] == new_dict["market_benchmark_last_observation_date"],
@@ -474,41 +511,77 @@ def market_rs_parity(new_frame: pd.DataFrame, reference_path: Path = LEGACY_REFE
             "market_rs_match": rs_match,
             "numeric_fields_match": all_numeric_match,
             "ready_numeric_complete": ready_numeric_complete,
-            "max_abs_numeric_diff": max(numeric_diffs, default=None),
+            "max_abs_numeric_diff": max_abs_numeric_diff,
+            "numeric_tolerance_match": numeric_tolerance_match,
             "status": "PASS" if case_status else "FAIL",
         }
     return {"cases": cases, "status": "PASS" if all(item["status"] == "PASS" for item in cases.values()) else "FAIL"}
 
 
 def validate_quota_reconciliation(ledger: Mapping[str, Any]) -> dict[str, Any]:
-    """Validate phase/run-scoped quota accounting; never infer across runs."""
+    """Validate independent runs and derive phase totals from their deltas.
 
-    required = {
-        "phase_global_before", "phase_global_after", "phase_global_delta",
-        "pilot_delta", "backfill_global_before", "backfill_global_after",
-        "backfill_delta", "client_request_count_phase", "audit_entry_count_phase",
+    A KST quota counter may reset between runs.  Therefore no phase value is
+    calculated by subtracting a later run's global counter from an earlier
+    run's counter; ``runs`` is the sole phase authority.
+    """
+
+    runs = ledger.get("runs")
+    if not isinstance(runs, list) or not runs:
+        return {"status": "FAIL", "reason": "runs ledger is required", "run_reconciliation": "FAIL"}
+    run_results: list[dict[str, Any]] = []
+    derived_delta = derived_client = derived_audit = 0
+    derived_endpoint: dict[str, int] = {}
+    for run in runs:
+        if not isinstance(run, Mapping):
+            run_results.append({"status": "FAIL", "reason": "invalid run record"})
+            continue
+        try:
+            global_before = int(run["global_before"])
+            global_after = int(run["global_after"])
+            declared_delta = int(run["global_delta"])
+            client_count = int(run["client_request_count"])
+            audit_count = int(run["audit_entry_count"])
+            endpoint_deltas = {str(key): int(value) for key, value in dict(run["endpoint_deltas"]).items()}
+            checks = {
+                "counter_delta_match": global_after - global_before == declared_delta,
+                "client_delta_match": declared_delta == client_count,
+                "audit_delta_match": declared_delta == audit_count,
+                "endpoint_delta_match": sum(endpoint_deltas.values()) == declared_delta,
+            }
+        except (KeyError, TypeError, ValueError):
+            run_results.append({"run_id": run.get("run_id"), "status": "FAIL", "reason": "missing or invalid run fields"})
+            continue
+        run_status = "PASS" if all(checks.values()) else "FAIL"
+        run_results.append({"run_id": run.get("run_id"), "usage_date_kst": run.get("usage_date_kst"), "status": run_status, **checks})
+        derived_delta += declared_delta
+        derived_client += client_count
+        derived_audit += audit_count
+        for endpoint, value in endpoint_deltas.items():
+            derived_endpoint[endpoint] = derived_endpoint.get(endpoint, 0) + value
+
+    phase = ledger.get("phase_cumulative") if isinstance(ledger.get("phase_cumulative"), Mapping) else {}
+    declared_phase_delta = ledger.get("phase_global_delta", phase.get("global_delta"))
+    declared_phase_client = ledger.get("phase_request_count", ledger.get("client_request_count_phase", phase.get("client_request_count")))
+    declared_phase_audit = ledger.get("phase_audit_count", ledger.get("audit_entry_count_phase", phase.get("audit_entry_count")))
+    declared_phase_endpoint = ledger.get("phase_endpoint_deltas", phase.get("endpoint_deltas"))
+    phase_checks = {
+        "phase_delta_matches_runs": declared_phase_delta is not None and int(declared_phase_delta) == derived_delta,
+        "phase_client_matches_runs": declared_phase_client is not None and int(declared_phase_client) == derived_client,
+        "phase_audit_matches_runs": declared_phase_audit is not None and int(declared_phase_audit) == derived_audit,
+        "phase_endpoint_matches_runs": declared_phase_endpoint is not None and {str(k): int(v) for k, v in dict(declared_phase_endpoint).items()} == derived_endpoint,
     }
-    missing = sorted(required - set(ledger))
-    if missing:
-        return {"status": "FAIL", "reason": "missing_fields", "missing_fields": missing}
-    phase_delta = int(ledger["phase_global_after"]) - int(ledger["phase_global_before"])
-    expected_phase = int(ledger["pilot_delta"]) + int(ledger["backfill_delta"])
-    checks = {
-        "phase_delta_match": int(ledger["phase_global_delta"]) == phase_delta,
-        "run_delta_match": int(ledger["backfill_delta"]) == int(ledger["backfill_global_after"]) - int(ledger["backfill_global_before"]),
-        "phase_components_match": phase_delta == expected_phase,
-        "client_audit_match": int(ledger["client_request_count_phase"]) == int(ledger["audit_entry_count_phase"]) == phase_delta,
+    all_run_pass = bool(run_results) and all(item.get("status") == "PASS" for item in run_results)
+    return {
+        "status": "PASS" if all_run_pass and all(phase_checks.values()) else "FAIL",
+        "run_reconciliation": "PASS" if all_run_pass else "FAIL",
+        "runs": run_results,
+        "derived_phase_delta": derived_delta,
+        "derived_request_count": derived_client,
+        "derived_audit_count": derived_audit,
+        "derived_endpoint_deltas": derived_endpoint,
+        **phase_checks,
     }
-    runs = ledger.get("runs", [])
-    if runs:
-        checks["run_ledger_reconciles"] = all(
-            int(run.get("global_delta", -1)) == int(run.get("client_request_count", -2)) == int(run.get("audit_entry_count", -3))
-            and int(run.get("global_delta", -1)) == sum(int(value) for value in (run.get("endpoint_deltas") or {}).values())
-            for run in runs
-        )
-    else:
-        checks["run_ledger_reconciles"] = False
-    return {"status": "PASS" if all(checks.values()) else "FAIL", **checks}
 
 
 def _gate_status(value: Mapping[str, Any] | None, *, default_reason: str) -> dict[str, Any]:
@@ -567,8 +640,20 @@ def finalize_market_index_migration(
 
     # 7. provenance/network audit / 8. secret scan / 9. diff-source freeze
     gates["provenance_network_gate"] = _gate_status(provenance_audit, default_reason="provenance audit not supplied")
-    scan = secret_scan(secret)
-    gates["secret_gate"] = {**scan, "status": "PASS" if int(scan.get("secret_occurrence_count", 0)) == 0 else "FAIL"}
+    if not publish and not secret:
+        gates["secret_gate"] = {"status": "NOT_EVALUATED", "reason": "non-publish diagnostic has no secret"}
+    elif not secret:
+        gates["secret_gate"] = {"status": "FAIL", "reason": "BLOCKED_SECRET_SCAN_UNAVAILABLE", "secret_occurrence_count": 0, "scanned_file_count": 0}
+    else:
+        scan = secret_scan(secret)
+        scanned_count = int(scan.get("scanned_file_count", 0))
+        occurrence_count = int(scan.get("secret_occurrence_count", 0))
+        if scanned_count <= 0:
+            gates["secret_gate"] = {**scan, "status": "FAIL", "reason": "BLOCKED_SECRET_SCAN_EMPTY_SCOPE"}
+        elif occurrence_count > 0:
+            gates["secret_gate"] = {**scan, "status": "FAIL", "reason": "BLOCKED_SECRET_EXPOSURE"}
+        else:
+            gates["secret_gate"] = {**scan, "status": "PASS", "scan_status": "PASS"}
     gates["diff_source_freeze_gate"] = _gate_status(diff_guard, default_reason="diff/source freeze diagnostic not supplied")
     ordered = (
         "staging_verification_gate", "coverage_gate", "pair_gate", "legacy_reference_sha_gate",
@@ -591,7 +676,7 @@ def finalize_market_index_migration(
 
 def secret_scan(secret: str) -> dict[str, Any]:
     if not secret:
-        return {"secret_occurrence_count": 0, "scanned_file_count": 0}
+        return {"secret_occurrence_count": 0, "scanned_file_count": 0, "status": "BLOCKED_SECRET_SCAN_UNAVAILABLE"}
     try:
         paths = subprocess.check_output(["git", "ls-files", "-z"], cwd=ROOT).decode().split("\0")
     except (OSError, subprocess.CalledProcessError):
@@ -618,14 +703,46 @@ def write_migration_artifacts(*, calendar: Mapping[str, Any], pilot: Mapping[str
     safe_write_json(ARTIFACT_DIR / "market_index_migration_v01_manifest.json", {"work_id": "KRX_INDEX_MIGRATION_V01", "start_head": START_HEAD, "phase_start_head": START_HEAD, "original_implementation_head": "f20e428c0b8d6a6f7bd6a87e7ceb5395c98edf62", "fix01_start_head": "b7f265bd93c19dd72953553787e34b382a9678f4", "fix01_validation_source_head": source_head, "artifact_generation_source_head": source_head, "status": backfill.get("status"), "blockers": backfill.get("blockers", []), "artifact_files": sorted(path.name for path in ARTIFACT_DIR.iterdir() if path.is_file())}, auth_key)
 
 
+def _read_json_artifact(path: Path) -> dict[str, Any]:
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return value if isinstance(value, dict) else {}
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Migrate KOSPI/KOSDAQ representative indexes to KRX Open API IndexStore")
     parser.add_argument("--start", default=START_DATE)
     parser.add_argument("--end", default=END_DATE)
     parser.add_argument("--pilot", action="store_true")
-    parser.add_argument("--resume", dest="resume", action="store_true", default=True, help="reuse valid complete staged dates (default; staging reset is not supported)")
+    parser.add_argument("--finalize", action="store_true", help="run offline finalization gates against current staging")
     parser.add_argument("--publish", action="store_true")
     args = parser.parse_args()
+    if args.publish and not args.finalize:
+        parser.error("--publish requires --finalize")
+    if args.finalize:
+        calendar = load_offline_calendar(args.start, args.end)
+        auth_key = load_auth_key()
+        quota_ledger = _read_json_artifact(ARTIFACT_DIR / "fix01" / "quota_run_ledger.json")
+        provenance = _read_json_artifact(ARTIFACT_DIR / "network_request_summary.json")
+        try:
+            provenance["status"] = "PASS" if int(provenance.get("krx_request_count", -1)) == int(provenance.get("audit_entry_count", -2)) else "FAIL"
+        except (TypeError, ValueError):
+            provenance["status"] = "FAIL"
+        diff_guard = _read_json_artifact(ARTIFACT_DIR / "fix01" / "diff_guard.json")
+        diff_guard["status"] = "PASS" if diff_guard.get("git_diff_check") == "PASS" and not diff_guard.get("forbidden_changes") else "FAIL"
+        result = finalize_market_index_migration(
+            calendar=calendar,
+            quota_ledger=quota_ledger,
+            provenance_audit=provenance,
+            secret=auth_key,
+            diff_guard=diff_guard,
+            publish=args.publish,
+        )
+        print(json.dumps(result, ensure_ascii=False, indent=2, default=str))
+        return 0 if result.get("status") == "PASS" else 1
+
     calendar = derive_raw_trading_calendar(args.start, args.end)
     auth_key = load_auth_key()
     runner = MarketIndexMigrationRunner(auth_key=auth_key)
@@ -634,11 +751,11 @@ def main() -> int:
         missing = sorted(set(dates) - set(calendar["target_dates"]))
         if missing:
             raise SystemExit(f"pilot dates are not raw target dates: {missing}")
-        pilot = runner.run({**calendar, "target_dates": dates, "complete_trading_date_count": len(dates)}, resume=args.resume, publish=False)
+        pilot = runner.run({**calendar, "target_dates": dates, "complete_trading_date_count": len(dates)}, resume=True, publish=False)
         backfill = {"status": pilot.get("status"), "krx_request_count": pilot.get("krx_request_count"), "blockers": pilot.get("blockers", [])}
     else:
         pilot = {"status": "NOT_RUN", "request_count": 0}
-        backfill = runner.run(calendar, resume=args.resume, publish=args.publish)
+        backfill = runner.run(calendar, resume=True, publish=False)
     write_migration_artifacts(calendar=calendar, pilot=pilot, backfill=backfill, source_head=subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(), auth_key=auth_key)
     print(json.dumps({"pilot": pilot, "backfill": backfill}, ensure_ascii=False, indent=2))
     return 0 if str(backfill.get("status", "")).startswith(("READY_", "PARTIAL_")) else 1
@@ -650,5 +767,5 @@ if __name__ == "__main__":
 
 __all__ = [
     "ARTIFACT_DIR", "END_DATE", "LEGACY_REFERENCE", "LEGACY_REFERENCE_SHA256", "PILOT_DATES", "START_DATE", "START_HEAD",
-    "MarketIndexMigrationRunner", "compare_legacy_market_parity", "derive_raw_trading_calendar", "finalize_market_index_migration", "legacy_reference_summary", "load_auth_key", "market_rs_parity", "mapping_contract_sha256", "safe_write_json", "secret_scan", "validate_complete_staged_date", "validate_quota_reconciliation", "validate_staging_reuse", "write_migration_artifacts",
+    "MarketIndexMigrationRunner", "compare_legacy_market_parity", "derive_raw_trading_calendar", "finalize_market_index_migration", "legacy_reference_summary", "load_auth_key", "load_offline_calendar", "market_rs_parity", "mapping_contract_sha256", "safe_write_json", "secret_scan", "validate_complete_staged_date", "validate_quota_reconciliation", "validate_staging_reuse", "write_migration_artifacts",
 ]

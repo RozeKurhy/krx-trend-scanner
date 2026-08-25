@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
+import sys
 from types import SimpleNamespace
 from pathlib import Path
 
@@ -214,11 +216,80 @@ def _valid_quota_ledger() -> dict[str, object]:
         "phase_global_before": 8688, "phase_global_after": 10000, "phase_global_delta": 1312,
         "pilot_delta": 6, "backfill_global_before": 8694, "backfill_global_after": 10000,
         "backfill_delta": 1306, "client_request_count_phase": 1312, "audit_entry_count_phase": 1312,
+        "phase_endpoint_deltas": {"kospi_dd_trd": 656, "kosdaq_dd_trd": 656},
         "runs": [
-            {"global_delta": 6, "client_request_count": 6, "audit_entry_count": 6, "endpoint_deltas": {"kospi_dd_trd": 3, "kosdaq_dd_trd": 3}},
-            {"global_delta": 1306, "client_request_count": 1306, "audit_entry_count": 1306, "endpoint_deltas": {"kospi_dd_trd": 653, "kosdaq_dd_trd": 653}},
+            {"run_id": "RUN1_PILOT", "usage_date_kst": "2026-08-25", "global_before": 8688, "global_after": 8694, "global_delta": 6, "client_request_count": 6, "audit_entry_count": 6, "endpoint_deltas": {"kospi_dd_trd": 3, "kosdaq_dd_trd": 3}},
+            {"run_id": "RUN2_HISTORICAL_BACKFILL_TRANCHE", "usage_date_kst": "2026-08-25", "global_before": 8694, "global_after": 10000, "global_delta": 1306, "client_request_count": 1306, "audit_entry_count": 1306, "endpoint_deltas": {"kospi_dd_trd": 653, "kosdaq_dd_trd": 653}},
         ],
     }
+
+
+def test_quota_reconciliation_cross_day_reset_passes() -> None:
+    ledger = {
+        "phase_global_delta": 1512,
+        "phase_request_count": 1512,
+        "phase_audit_count": 1512,
+        "phase_endpoint_deltas": {"kospi_dd_trd": 756, "kosdaq_dd_trd": 756},
+        "runs": [
+            {"run_id": "RUN1", "usage_date_kst": "2026-08-25", "global_before": 8688, "global_after": 8694, "global_delta": 6, "client_request_count": 6, "audit_entry_count": 6, "endpoint_deltas": {"kospi_dd_trd": 3, "kosdaq_dd_trd": 3}},
+            {"run_id": "RUN2", "usage_date_kst": "2026-08-25", "global_before": 8694, "global_after": 10000, "global_delta": 1306, "client_request_count": 1306, "audit_entry_count": 1306, "endpoint_deltas": {"kospi_dd_trd": 653, "kosdaq_dd_trd": 653}},
+            {"run_id": "RUN3", "usage_date_kst": "2026-08-26", "global_before": 0, "global_after": 200, "global_delta": 200, "client_request_count": 200, "audit_entry_count": 200, "endpoint_deltas": {"kospi_dd_trd": 100, "kosdaq_dd_trd": 100}},
+        ],
+    }
+    result = migration.validate_quota_reconciliation(ledger)
+    assert result["status"] == "PASS"
+    assert result["derived_phase_delta"] == 1512
+    assert result["derived_request_count"] == 1512
+    assert result["derived_audit_count"] == 1512
+
+
+def test_quota_reconciliation_bad_cross_day_run_fails() -> None:
+    ledger = {
+        "phase_global_delta": 1511,
+        "phase_request_count": 1511,
+        "phase_audit_count": 1511,
+        "phase_endpoint_deltas": {"kospi_dd_trd": 755, "kosdaq_dd_trd": 756},
+        "runs": [
+            {"run_id": "RUN1", "usage_date_kst": "2026-08-25", "global_before": 8688, "global_after": 8694, "global_delta": 6, "client_request_count": 6, "audit_entry_count": 6, "endpoint_deltas": {"kospi_dd_trd": 3, "kosdaq_dd_trd": 3}},
+            {"run_id": "RUN3", "usage_date_kst": "2026-08-26", "global_before": 0, "global_after": 200, "global_delta": 199, "client_request_count": 199, "audit_entry_count": 199, "endpoint_deltas": {"kospi_dd_trd": 99, "kosdaq_dd_trd": 100}},
+        ],
+    }
+    result = migration.validate_quota_reconciliation(ledger)
+    assert result["status"] == "FAIL"
+    assert result["runs"][1]["counter_delta_match"] is False
+
+
+def test_legacy_in_scope_extra_key_fails() -> None:
+    frame = _reference_as_index_store_frame()
+    extra = frame.iloc[[0]].copy()
+    extra["date"] = "2026-01-03"
+    _, summary = migration.compare_legacy_market_parity(pd.concat([frame, extra], ignore_index=True))
+    assert summary["extra_krx_within_reference_scope_count"] == 1
+    assert summary["status"] == "FAIL"
+
+
+def test_rs_same_wrong_code_on_both_sides_fails(monkeypatch: pytest.MonkeyPatch) -> None:
+    original = migration.compute_relative_strength_features
+
+    def wrong_code(*args, **kwargs):
+        return replace(original(*args, **kwargs), market_benchmark_code="9999")
+
+    monkeypatch.setattr(migration, "compute_relative_strength_features", wrong_code)
+    result = migration.market_rs_parity(_reference_as_index_store_frame())
+    assert result["status"] == "FAIL"
+    assert all(case["canonical_identity_match"] is False for case in result["cases"].values())
+
+
+def test_rs_same_wrong_name_on_both_sides_fails(monkeypatch: pytest.MonkeyPatch) -> None:
+    original = migration.compute_relative_strength_features
+
+    def wrong_name(*args, **kwargs):
+        return replace(original(*args, **kwargs), market_benchmark_name="잘못된 이름")
+
+    monkeypatch.setattr(migration, "compute_relative_strength_features", wrong_name)
+    result = migration.market_rs_parity(_reference_as_index_store_frame())
+    assert result["status"] == "FAIL"
+    assert all(case["canonical_identity_match"] is False for case in result["cases"].values())
 
 
 def _finalizer_kwargs(frame: pd.DataFrame) -> dict[str, object]:
@@ -287,10 +358,64 @@ def test_finalizer_rs_failure_blocks_publish(monkeypatch: pytest.MonkeyPatch) ->
     assert writes == []
 
 
-def test_finalizer_synthetic_all_pass_publishes_once() -> None:
+def test_finalizer_empty_secret_blocks_publish() -> None:
     frame = _reference_as_index_store_frame()
     writes: list[int] = []
     result = migration.finalize_market_index_migration(**_finalizer_kwargs(frame), publish=True, production_writer=lambda value: writes.append(len(value)))
+    assert result["gates"]["secret_gate"]["reason"] == "BLOCKED_SECRET_SCAN_UNAVAILABLE"
+    assert result["production_index_store_publish_count"] == 0
+    assert writes == []
+
+
+def test_finalizer_zero_scan_scope_blocks_publish(monkeypatch: pytest.MonkeyPatch) -> None:
+    frame = _reference_as_index_store_frame()
+    monkeypatch.setattr(migration, "secret_scan", lambda _secret: {"scanned_file_count": 0, "secret_occurrence_count": 0})
+    kwargs = _finalizer_kwargs(frame)
+    kwargs["secret"] = "synthetic_secret"
+    writes: list[int] = []
+    result = migration.finalize_market_index_migration(**kwargs, publish=True, production_writer=lambda value: writes.append(len(value)))
+    assert result["gates"]["secret_gate"]["reason"] == "BLOCKED_SECRET_SCAN_EMPTY_SCOPE"
+    assert result["production_index_store_publish_count"] == 0
+    assert writes == []
+
+
+def test_finalizer_secret_found_blocks_publish(monkeypatch: pytest.MonkeyPatch) -> None:
+    frame = _reference_as_index_store_frame()
+    monkeypatch.setattr(migration, "secret_scan", lambda _secret: {"scanned_file_count": 100, "secret_occurrence_count": 1})
+    kwargs = _finalizer_kwargs(frame)
+    kwargs["secret"] = "synthetic_secret"
+    writes: list[int] = []
+    result = migration.finalize_market_index_migration(**kwargs, publish=True, production_writer=lambda value: writes.append(len(value)))
+    assert result["gates"]["secret_gate"]["reason"] == "BLOCKED_SECRET_EXPOSURE"
+    assert result["production_index_store_publish_count"] == 0
+    assert writes == []
+
+
+def test_finalizer_clean_secret_gate_allows_publish(monkeypatch: pytest.MonkeyPatch) -> None:
+    frame = _reference_as_index_store_frame()
+    monkeypatch.setattr(migration, "secret_scan", lambda _secret: {"scanned_file_count": 100, "secret_occurrence_count": 0})
+    kwargs = _finalizer_kwargs(frame)
+    kwargs["secret"] = "synthetic_secret"
+    writes: list[int] = []
+    result = migration.finalize_market_index_migration(**kwargs, publish=True, production_writer=lambda value: writes.append(len(value)))
     assert result["status"] == "PASS"
+    assert result["gates"]["secret_gate"]["status"] == "PASS"
     assert result["production_index_store_publish_count"] == 1
     assert writes == [len(frame)]
+
+
+def test_publish_without_finalize_fails(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(sys, "argv", ["migrate_market_index_krx_v01.py", "--publish"])
+    with pytest.raises(SystemExit):
+        migration.main()
+
+
+def test_finalize_partial_staging_does_not_fetch_or_publish() -> None:
+    frame = _reference_as_index_store_frame().iloc[:2].copy()
+    kwargs = _finalizer_kwargs(frame)
+    kwargs["calendar"] = {"target_dates": [str(frame["date"].iloc[0]), "2026-08-21"]}
+    writes: list[int] = []
+    result = migration.finalize_market_index_migration(**kwargs, publish=True, production_writer=lambda value: writes.append(len(value)))
+    assert result["gates"]["coverage_gate"]["status"] == "FAIL"
+    assert result["production_index_store_publish_count"] == 0
+    assert writes == []
