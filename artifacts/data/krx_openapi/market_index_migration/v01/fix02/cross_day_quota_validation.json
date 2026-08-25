@@ -1,0 +1,7 @@
+{
+  "same_day_case": {"usage_date_kst": "2026-08-25", "run_deltas": [6, 1306], "derived_phase_delta": 1312, "status": "PASS"},
+  "cross_day_case": {"runs": [{"run_id": "RUN1", "usage_date_kst": "2026-08-25", "global_before": 8688, "global_after": 8694, "global_delta": 6}, {"run_id": "RUN2", "usage_date_kst": "2026-08-25", "global_before": 8694, "global_after": 10000, "global_delta": 1306}, {"run_id": "RUN3", "usage_date_kst": "2026-08-26", "global_before": 0, "global_after": 200, "global_delta": 200}], "derived_phase_delta": 1512, "derived_request_count": 1512, "derived_audit_count": 1512, "derived_endpoint_deltas": {"kospi_dd_trd": 756, "kosdaq_dd_trd": 756}, "status": "PASS"},
+  "bad_run_delta_case": {"run_id": "RUN3", "global_before": 0, "global_after": 200, "declared_global_delta": 199, "run_reconciliation": "FAIL", "phase_reconciliation": "FAIL", "status": "PASS"},
+  "quota_cumulative_authority": "SUM_OF_RUN_DELTAS",
+  "status": "PASS"
+}
