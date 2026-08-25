@@ -1,0 +1,140 @@
+{
+  "KRX_request_count": 0,
+  "OpenDART_request_count": 0,
+  "PyKRX_request_count": 0,
+  "adjusted_write_count": 0,
+  "ancillary_columns": [
+    "volume",
+    "trading_value",
+    "market_cap",
+    "listed_shares"
+  ],
+  "blockers": [
+    "BLOCKED_NO_PRODUCTION_OVERLAP_SAMPLE"
+  ],
+  "bounded_regression": {
+    "command": "uv run pytest -q -p no:cacheprovider tests/test_repository.py tests/test_repository_v2.py tests/test_adjusted_price_store.py tests/test_krx_raw_stock_store.py tests/test_krx_identifier_contract_errata_v01.py tests/test_krx_production_data_architecture_v01.py",
+    "duration_seconds": 1.5,
+    "failed": 0,
+    "passed": 131,
+    "status": "PASS"
+  },
+  "consumer_auto_migration_count": 0,
+  "corporate_action_state_write_count": 0,
+  "daily_columns": [
+    "open",
+    "high",
+    "low",
+    "close",
+    "volume",
+    "trading_value"
+  ],
+  "frozen_contract_path": "artifacts/data/architecture/krx_production_data/v01/repository_v2_contract.json",
+  "generated_at": "2026-08-25T06:08:40.660836+00:00",
+  "implementation_class": "MarketDataRepositoryV2",
+  "implementation_head": "b04e871881a857640d86422c09c57d7c6a642d62",
+  "known_limitations": [
+    "PRODUCTION_PROBE_REQUIRES_LOCAL_ADJUSTED_STORE"
+  ],
+  "network_data_request_count": 0,
+  "phase": "MARKET_DATA_REPOSITORY_V02",
+  "production_probe": {
+    "alphanumeric_probe": {
+      "performed": false,
+      "status": "NOT_RUN"
+    },
+    "blockers": [
+      "BLOCKED_NO_PRODUCTION_OVERLAP_SAMPLE"
+    ],
+    "comparisons": [],
+    "performance": [],
+    "sample_date_ranges": {},
+    "sample_tickers": [],
+    "samsung_probe": {
+      "performed": false,
+      "status": "NOT_RUN"
+    },
+    "status": "BLOCKED_NO_PRODUCTION_OVERLAP_SAMPLE",
+    "warnings": [
+      "No complete local AdjustedPriceStore ticker pair was found."
+    ]
+  },
+  "production_runtime_head": "e508005c16e5fa3fa19c03b6568ba56ab9ac9294",
+  "provenance": {
+    "close": {
+      "semantics": "ADJUSTED",
+      "source": "PYKRX_ADJUSTED_PRICE",
+      "store": "AdjustedPriceStore"
+    },
+    "high": {
+      "semantics": "ADJUSTED",
+      "source": "PYKRX_ADJUSTED_PRICE",
+      "store": "AdjustedPriceStore"
+    },
+    "listed_shares": {
+      "semantics": "RAW",
+      "source": "raw ancillary only",
+      "store": "KrxRawStockStore"
+    },
+    "low": {
+      "semantics": "ADJUSTED",
+      "source": "PYKRX_ADJUSTED_PRICE",
+      "store": "AdjustedPriceStore"
+    },
+    "market_cap": {
+      "semantics": "RAW",
+      "source": "raw ancillary only",
+      "store": "KrxRawStockStore"
+    },
+    "open": {
+      "semantics": "ADJUSTED",
+      "source": "PYKRX_ADJUSTED_PRICE",
+      "store": "AdjustedPriceStore"
+    },
+    "trading_value": {
+      "semantics": "RAW",
+      "source": "KRX_OPEN_API_STOCK_DAILY",
+      "store": "KrxRawStockStore"
+    },
+    "volume": {
+      "semantics": "RAW",
+      "source": "KRX_OPEN_API_STOCK_DAILY",
+      "store": "KrxRawStockStore"
+    }
+  },
+  "raw_daily_columns": [
+    "open",
+    "high",
+    "low",
+    "close",
+    "volume",
+    "trading_value",
+    "market_cap",
+    "listed_shares"
+  ],
+  "raw_write_count": 0,
+  "start_head": "0f7b35be5f6ac3840266e0580e37c2e4519dbf7c",
+  "static_checks": {
+    "artifacts_runtime_dependency_count": 0,
+    "changed_files": [
+      "docs/architecture/market_data_repository_v02.md",
+      "scripts/validate_market_data_repository_v02.py",
+      "src/trend_scanner/data/repository_v2.py",
+      "tests/test_repository_v2.py"
+    ],
+    "closed_artifact_changed_count": 0,
+    "consumer_auto_migration_count": 0,
+    "forbidden_network_import_count": 0,
+    "forbidden_network_imports": [],
+    "frozen_contract_modified": false,
+    "frozen_source_changed_count": 0,
+    "git_diff_check": false,
+    "legacy_repository_changed": false,
+    "secret_occurrence_count": 0
+  },
+  "status": "BLOCKED_NO_PRODUCTION_OVERLAP_SAMPLE",
+  "validation_source_head": "25e45a8b7eb994c43f3e9796caf8f22c96f0c825",
+  "warnings": [
+    "No complete local AdjustedPriceStore ticker pair was found."
+  ]
+}
