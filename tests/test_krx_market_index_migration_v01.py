@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
+import json
 import sys
 from types import SimpleNamespace
 from pathlib import Path
@@ -193,6 +194,21 @@ def test_runner_remaining_two_fetches_one_whole_date(monkeypatch: pytest.MonkeyP
     result = runner.run({"requested_start": "2026-08-14", "requested_end": "2026-08-14", "target_dates": ["2026-08-14"], "complete_trading_date_count": 1}, resume=True)
     assert result["dates_fetched_this_run"] == ["2026-08-14"]
     assert len(client.calls) == 2
+
+
+def test_runner_zero_quota_does_not_create_operational_run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    frame = _staged_rows(["2010-01-04"])
+    client = FakeClient()
+    quota = FakeQuota(0)
+    monkeypatch.setattr(migration, "_load_staging", lambda: frame)
+    ledger = _operational_ledger_fixture()
+    ledger_path = tmp_path / "ledger.json"
+    migration.atomic_write_json(ledger_path, ledger)
+    runner = migration.MarketIndexMigrationRunner(client=client, quota=quota)
+    result = runner.run({"target_dates": ["2010-01-04", "2010-01-05"], "complete_trading_date_count": 2}, operational_ledger_path=ledger_path)
+    assert result["operational_run_created"] is False
+    assert client.calls == []
+    assert len(migration.load_operational_ledger(ledger_path)["runs"]) == 2
 
 
 def test_runner_publish_flag_fails_closed_without_production_write(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -419,3 +435,137 @@ def test_finalize_partial_staging_does_not_fetch_or_publish() -> None:
     assert result["gates"]["coverage_gate"]["status"] == "FAIL"
     assert result["production_index_store_publish_count"] == 0
     assert writes == []
+
+
+def _operational_ledger_fixture() -> dict[str, object]:
+    base = _valid_quota_ledger()
+    runs = []
+    for index, run in enumerate(base["runs"]):
+        value = dict(run)
+        value.update({"run_type": "PILOT" if index == 0 else "HISTORICAL_BACKFILL_TRANCHE", "state": "COMPLETED", "started_at_kst": None, "completed_at_kst": None, "staging_date_count_before": 0 if index == 0 else 3, "staging_date_count_after": 3 if index == 0 else 656, "staging_row_count_before": 0 if index == 0 else 6, "staging_row_count_after": 6 if index == 0 else 1312, "dates_fetched": 3 if index == 0 else 653, "next_pending_date": "2010-01-05" if index == 0 else "2012-08-16", "run_status": "COMPLETED"})
+        runs.append(value)
+    return {"schema_version": migration.OPERATIONAL_LEDGER_SCHEMA_VERSION, "phase": "KRX_INDEX_MIGRATION_V01", "runs": runs, "phase_cumulative": {"global_delta": 1312, "client_request_count": 1312, "audit_entry_count": 1312, "retry_count": 0, "endpoint_deltas": {"kospi_dd_trd": 656, "kosdaq_dd_trd": 656}}}
+
+
+def test_seed_operational_ledger_from_known_checkpoint(tmp_path: Path) -> None:
+    ledger_path = tmp_path / "quota_run_ledger.json"
+    ledger = migration.seed_operational_ledger_from_checkpoint(frame=migration._load_staging(), path=ledger_path)
+    assert ledger["schema_version"] == migration.OPERATIONAL_LEDGER_SCHEMA_VERSION
+    assert len(ledger["runs"]) == 2
+    assert ledger["phase_cumulative"]["global_delta"] == 1312
+    assert migration.validate_operational_ledger(ledger)["status"] == "PASS"
+
+
+def test_missing_ledger_with_advanced_staging_fails(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    dates = [day.strftime("%Y-%m-%d") for day in pd.date_range("2010-01-04", periods=657, freq="D")]
+    advanced = _staged_rows(dates)
+    staging_path = tmp_path / "advanced.parquet"
+    advanced.to_parquet(staging_path, index=False)
+    monkeypatch.setattr(migration, "STAGING_PARQUET", staging_path)
+    with pytest.raises(MarketDataError, match="BLOCKED_OPERATIONAL_LEDGER_MISSING_FOR_ADVANCED_STAGING"):
+        migration.seed_operational_ledger_from_checkpoint(frame=advanced, path=tmp_path / "ledger.json")
+
+
+def test_append_cross_day_resume_run_preserves_previous_runs(tmp_path: Path) -> None:
+    path = tmp_path / "ledger.json"
+    ledger = _operational_ledger_fixture()
+    migration.atomic_write_json(path, ledger)
+    run3 = {"run_id": "RUN3_HISTORICAL_BACKFILL_RESUME_20260826T000001", "usage_date_kst": "2026-08-26", "run_type": "HISTORICAL_BACKFILL_RESUME", "state": "COMPLETED", "global_before": 0, "global_after": 200, "global_delta": 200, "client_request_count": 200, "audit_entry_count": 200, "retry_count": 0, "endpoint_deltas": {"kospi_dd_trd": 100, "kosdaq_dd_trd": 100}, "staging_date_count_before": 656, "staging_date_count_after": 756, "staging_row_count_before": 1312, "staging_row_count_after": 1512, "dates_fetched": 100}
+    updated = migration.append_operational_run(ledger, run3, path)
+    assert len(updated["runs"]) == 3
+    assert updated["runs"][0]["run_id"] == "RUN1_PILOT"
+    assert updated["phase_cumulative"]["global_delta"] == 1512
+    assert migration.validate_operational_ledger(updated)["status"] == "PASS"
+
+
+def test_second_resume_and_duplicate_run_are_fail_closed(tmp_path: Path) -> None:
+    path = tmp_path / "ledger.json"
+    ledger = _operational_ledger_fixture()
+    migration.atomic_write_json(path, ledger)
+    run4 = {"run_id": "RUN4", "usage_date_kst": "2026-08-27", "state": "COMPLETED", "global_before": 0, "global_after": 10, "global_delta": 10, "client_request_count": 10, "audit_entry_count": 10, "retry_count": 0, "endpoint_deltas": {"kospi_dd_trd": 5, "kosdaq_dd_trd": 5}, "staging_date_count_before": 656, "staging_date_count_after": 661, "staging_row_count_before": 1312, "staging_row_count_after": 1322, "dates_fetched": 5}
+    migration.append_operational_run(ledger, run4, path)
+    assert len(migration.load_operational_ledger(path)["runs"]) == 3
+    with pytest.raises(MarketDataError, match="BLOCKED_DUPLICATE_RUN_ID"):
+        migration.append_operational_run(ledger, run4, path)
+
+
+def test_started_run_blocks_next_resume(tmp_path: Path) -> None:
+    path = tmp_path / "ledger.json"
+    ledger = _operational_ledger_fixture()
+    migration.atomic_write_json(path, ledger)
+    started = {"run_id": "RUN3_STARTED", "usage_date_kst": "2026-08-26", "state": "STARTED", "global_before": 0, "global_after": 0, "global_delta": 0, "client_request_count": 0, "audit_entry_count": 0, "retry_count": 0, "endpoint_deltas": {}}
+    migration.append_operational_run(ledger, started, path)
+    with pytest.raises(MarketDataError, match="BLOCKED_INCOMPLETE_RUN_JOURNAL"):
+        migration.load_operational_ledger(path)
+
+
+def test_operational_ledger_atomic_write_leaves_no_temporary_file(tmp_path: Path) -> None:
+    path = tmp_path / "ledger.json"
+    migration.atomic_write_json(path, {"schema_version": migration.OPERATIONAL_LEDGER_SCHEMA_VERSION})
+    assert path.exists()
+    assert list(tmp_path.glob(".*.tmp")) == []
+
+
+def test_runtime_source_guard_artifact_only_and_source_changes(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(migration.subprocess, "check_output", lambda command, **kwargs: "HEAD\n" if command[:3] == ["git", "rev-parse", "HEAD"] else ("artifacts/data/krx_openapi/market_index_migration/v01/fix03/a.json\n" if command[:2] == ["git", "diff"] else ""))
+    monkeypatch.setattr(migration.subprocess, "run", lambda *args, **kwargs: SimpleNamespace(returncode=0))
+    assert migration.validate_current_source_freeze("HEAD")["status"] == "PASS"
+    monkeypatch.setattr(migration.subprocess, "check_output", lambda command, **kwargs: "HEAD\n" if command[:3] == ["git", "rev-parse", "HEAD"] else ("scripts/migrate_market_index_krx_v01.py\n" if command[:2] == ["git", "diff"] else ""))
+    assert migration.validate_current_source_freeze("HEAD")["status"] == "FAIL"
+    monkeypatch.setattr(migration.subprocess, "check_output", lambda command, **kwargs: "HEAD\n" if command[:3] == ["git", "rev-parse", "HEAD"] else ("src/trend_scanner/data/index_store.py\n" if command[:2] == ["git", "diff"] else ""))
+    assert migration.validate_current_source_freeze("HEAD")["status"] == "FAIL"
+
+
+def test_finalizer_uses_operational_ledger_not_static_artifacts(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    frame = _reference_as_index_store_frame()
+    op_path = tmp_path / "ledger.json"
+    good = _operational_ledger_fixture()
+    migration.atomic_write_json(op_path, good)
+    monkeypatch.setattr(migration, "validate_current_source_freeze", lambda *_args, **_kwargs: {"status": "PASS"})
+    monkeypatch.setattr(migration, "secret_scan", lambda _secret: {"scanned_file_count": 100, "secret_occurrence_count": 0})
+    writes: list[int] = []
+    bad_static = {**_valid_quota_ledger(), "phase_global_delta": 9999}
+    kwargs = _finalizer_kwargs(frame)
+    kwargs["quota_ledger"] = bad_static
+    kwargs["secret"] = "synthetic_secret"
+    kwargs["diff_guard"] = {"status": "FAIL", "reason": "stale static guard must be ignored"}
+    result = migration.finalize_market_index_migration(**kwargs, operational_ledger_path=op_path, validation_source_head="HEAD", publish=True, production_writer=lambda value: writes.append(len(value)))
+    assert result["gates"]["quota_gate"]["status"] == "PASS"
+    assert result["gates"]["provenance_network_gate"]["status"] == "PASS"
+    assert result["production_index_store_publish_count"] == 1
+    assert writes == [len(frame)]
+
+    bad_operational = _operational_ledger_fixture()
+    bad_operational["runs"][0]["global_delta"] = 5
+    migration.atomic_write_json(op_path, bad_operational)
+    kwargs = _finalizer_kwargs(frame)
+    kwargs["quota_ledger"] = _valid_quota_ledger()
+    kwargs["secret"] = "synthetic_secret"
+    result = migration.finalize_market_index_migration(**kwargs, operational_ledger_path=op_path, validation_source_head="HEAD", publish=True, production_writer=lambda value: writes.append(len(value)))
+    assert result["gates"]["quota_gate"]["status"] == "FAIL"
+    assert result["production_index_store_publish_count"] == 0
+
+
+def test_resume_writer_preserves_historical_pilot_and_network_is_cumulative(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    artifact_dir = tmp_path / "artifacts"
+    artifact_dir.mkdir()
+    pilot_path = artifact_dir / "pilot_summary.json"
+    pilot_path.write_text("{\"historical\":true}\n", encoding="utf-8")
+    before = migration.file_sha256(pilot_path)
+    monkeypatch.setattr(migration, "ARTIFACT_DIR", artifact_dir)
+    ledger = _operational_ledger_fixture()
+    migration.write_migration_artifacts(calendar={"complete_trading_date_count": 656}, pilot={"status": "NOT_RUN"}, backfill={"status": "PARTIAL_RESUMABLE_KRX_INDEX_MIGRATION_V01", "complete_date_count": 656, "staging_rows": 1312}, source_head="HEAD", operational_ledger=ledger)
+    assert migration.file_sha256(pilot_path) == before
+    summary = migration.network_summary_from_operational_ledger(ledger)
+    assert summary["krx_request_count"] == 1312
+    assert migration.validate_cumulative_progress(summary, {**summary, "krx_request_count": 1512})["status"] == "PASS"
+    assert migration.validate_cumulative_progress(summary, {**summary, "krx_request_count": 200})["status"] == "FAIL"
+
+
+def test_resume_writer_rejects_cumulative_network_regression(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    artifact_dir = tmp_path / "artifacts"
+    artifact_dir.mkdir()
+    (artifact_dir / "network_request_summary.json").write_text(json.dumps({"krx_request_count": 1512, "kospi_dd_trd_request_count": 756, "kosdaq_dd_trd_request_count": 756, "audit_entry_count": 1512, "retry_count": 0}), encoding="utf-8")
+    monkeypatch.setattr(migration, "ARTIFACT_DIR", artifact_dir)
+    with pytest.raises(MarketDataError, match="BLOCKED_CUMULATIVE_EVIDENCE_REGRESSION"):
+        migration.write_migration_artifacts(calendar={"complete_trading_date_count": 656}, pilot={"status": "NOT_RUN"}, backfill={"status": "PARTIAL_RESUMABLE_KRX_INDEX_MIGRATION_V01", "complete_date_count": 656, "staging_rows": 1312}, source_head="HEAD", operational_ledger=_operational_ledger_fixture())
