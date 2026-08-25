@@ -1,8 +1,9 @@
 {
   "architecture_version": "KRX_HISTORICAL_BACKFILL_V01",
-  "artifact_count": 19,
+  "artifact_count": 21,
   "artifacts": [
     "backfill_contract.json",
+    "bounded_regression_summary.json",
     "coverage_by_year.csv",
     "coverage_summary.json",
     "cross_market_conflict_evidence.json",
@@ -19,14 +20,19 @@
     "quota_summary.json",
     "samsung_listed_shares_evidence.json",
     "schema_blocker_evidence.json",
+    "stale_live_evidence.json",
     "store_contract.json",
     "krx_historical_backfill_v01_manifest.json"
   ],
+  "bounded_live_gate": {
+    "completed": true,
+    "status": "PASS"
+  },
   "end_head": null,
-  "fix_version": "FIX04",
-  "implementation_head": "a6f3cd1dc4c1d73b34fa84b3bb745d8776f94836",
-  "network_request_count": 0,
-  "start_head": "ca9b5e6eabbad693fb10a829a241b28b82de879b",
-  "status": "BACKFILL_IN_PROGRESS",
-  "validation_source_head": "a6f3cd1dc4c1d73b34fa84b3bb745d8776f94836"
+  "fix_version": "FIX05",
+  "implementation_head": "d6eed1cdf749b91da5c67dfb94f0477a6bda1206",
+  "network_request_count": 2,
+  "start_head": "7fac0d140db75b8e0914ad4f26ed344848d0a1ec",
+  "status": "BLOCKED_KRX_SCHEMA",
+  "validation_source_head": "d6eed1cdf749b91da5c67dfb94f0477a6bda1206"
 }
