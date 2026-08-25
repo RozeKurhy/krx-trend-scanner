@@ -1,0 +1,36 @@
+{
+  "phase": "MARKET_DATA_REPOSITORY_V02_FIX02",
+  "provenance": {
+    "artifact_head": "d172860b21ba908033ef27e7d11e9f50684c279d",
+    "fix02_repository_implementation_head": "d172860b21ba908033ef27e7d11e9f50684c279d",
+    "fix02_validation_source_head": "d172860b21ba908033ef27e7d11e9f50684c279d",
+    "live_execution_head": "d172860b21ba908033ef27e7d11e9f50684c279d",
+    "market_data_repository_v02_original_implementation_head": "b04e871881a857640d86422c09c57d7c6a642d62"
+  },
+  "records": [
+    {
+      "actual_adjusted_end": "2018-06-29",
+      "actual_adjusted_start": "2018-04-02",
+      "adjusted_ohlc_exact_match": false,
+      "adjusted_rows": null,
+      "ancillary_exact_match": false,
+      "date_set_exact_match": false,
+      "error_code": "REPOSITORY_V2_TRADING_SESSION_MISMATCH",
+      "error_message": "REPOSITORY_V2_TRADING_SESSION_MISMATCH",
+      "raw_rows": 60,
+      "raw_trading_value_exact_match": false,
+      "raw_volume_exact_match": false,
+      "record_type": "composition",
+      "repository_rows": null,
+      "requested_end": "2018-06-30",
+      "requested_start": "2018-04-01",
+      "stage": "REPOSITORY_COMPOSITION",
+      "status": "FAIL",
+      "ticker": "005930",
+      "total_elapsed_seconds": 3.017653
+    }
+  ],
+  "status": "BLOCKED_PRODUCTION_COMPOSITION_PROBE",
+  "successful_composition_probe_count": 0,
+  "usable_composition_sample_count": 0
+}

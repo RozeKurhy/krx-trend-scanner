@@ -1,0 +1,266 @@
+{
+  "blockers": [],
+  "bounded_regression": {
+    "command": "uv run pytest -q -p no:cacheprovider tests/test_repository.py tests/test_repository_v2.py tests/test_market_data_repository_v02_validation.py tests/test_adjusted_price_store.py tests/test_krx_raw_stock_store.py tests/test_krx_identifier_contract_errata_v01.py tests/test_krx_production_data_architecture_v01.py",
+    "duration_seconds": 2.29,
+    "failed": 0,
+    "passed": 171,
+    "status": "PASS"
+  },
+  "live": {
+    "evidence_consistency": {
+      "accepted_placeholder_projection_count": 3,
+      "blocker": null,
+      "composition_pass_record_count": 3,
+      "mismatches": [],
+      "provider_pass_record_count": 3,
+      "rejected_raw_only_count": 0,
+      "shared_placeholder_conflict_count": 0,
+      "status": "PASS",
+      "successful_composition_probe_count": 3,
+      "successful_provider_fetch_count": 3,
+      "successful_temp_store_integrity_count": 3,
+      "temp_store_pass_record_count": 3,
+      "temporary_store_ticker_count": 3
+    },
+    "sample_gate": {
+      "all_requested_samples_pass": true,
+      "blocker": null,
+      "minimum_required_sample_count": 2,
+      "requested_sample_count": 3,
+      "status": "PASS",
+      "successful_adjusted_fetch_count": 3,
+      "successful_composition_probe_count": 3,
+      "successful_provider_fetch_count": 3,
+      "successful_temp_store_integrity_count": 3,
+      "usable_sample_count": 3
+    },
+    "status": "PASS"
+  },
+  "offline": {
+    "alphanumeric": {
+      "adjusted_unsupported": true,
+      "ancillary": true,
+      "domain_not_widened": true,
+      "performed": true,
+      "raw_daily": true,
+      "record_type": "alphanumeric",
+      "snapshot": true,
+      "stage": "ALPHANUMERIC_RAW_PROBE",
+      "status": "PASS",
+      "ticker": "03473K"
+    },
+    "blockers": [],
+    "placeholder_candidates": [
+      {
+        "adjusted_present": null,
+        "candidate_count": 3,
+        "candidate_dates": [
+          "2018-04-30",
+          "2018-05-02",
+          "2018-05-03"
+        ],
+        "candidate_rows": [
+          {
+            "adjusted_present": null,
+            "close": 2650000,
+            "date": "2018-04-30",
+            "high": 0,
+            "listed_shares": 128386494,
+            "low": 0,
+            "market_cap": 340224209100000,
+            "open": 0,
+            "raw_present": true,
+            "trading_value": 0,
+            "volume": 0
+          },
+          {
+            "adjusted_present": null,
+            "close": 2650000,
+            "date": "2018-05-02",
+            "high": 0,
+            "listed_shares": 128386494,
+            "low": 0,
+            "market_cap": 340224209100000,
+            "open": 0,
+            "raw_present": true,
+            "trading_value": 0,
+            "volume": 0
+          },
+          {
+            "adjusted_present": null,
+            "close": 2650000,
+            "date": "2018-05-03",
+            "high": 0,
+            "listed_shares": 128386494,
+            "low": 0,
+            "market_cap": 340224209100000,
+            "open": 0,
+            "raw_present": true,
+            "trading_value": 0,
+            "volume": 0
+          }
+        ],
+        "elapsed_seconds": 1.495739,
+        "predicate_name": "NON_TRADING_PLACEHOLDER_V01",
+        "range": [
+          "2018-04-01",
+          "2018-06-30"
+        ],
+        "raw_present": true,
+        "record_type": "raw_placeholder_candidate",
+        "status": "PASS",
+        "ticker": "005930"
+      },
+      {
+        "adjusted_present": null,
+        "candidate_count": 0,
+        "candidate_dates": [],
+        "candidate_rows": [],
+        "elapsed_seconds": 1.075711,
+        "predicate_name": "NON_TRADING_PLACEHOLDER_V01",
+        "range": [
+          "2026-07-01",
+          "2026-08-21"
+        ],
+        "raw_present": true,
+        "record_type": "raw_placeholder_candidate",
+        "status": "PASS",
+        "ticker": "000660"
+      },
+      {
+        "adjusted_present": null,
+        "candidate_count": 0,
+        "candidate_dates": [],
+        "candidate_rows": [],
+        "elapsed_seconds": 1.080324,
+        "predicate_name": "NON_TRADING_PLACEHOLDER_V01",
+        "range": [
+          "2026-07-01",
+          "2026-08-21"
+        ],
+        "raw_present": true,
+        "record_type": "raw_placeholder_candidate",
+        "status": "PASS",
+        "ticker": "068270"
+      }
+    ],
+    "placeholder_semantics_gate": "PASS",
+    "records": [
+      {
+        "all_positive_relation_violation_count": 0,
+        "all_positive_row_count": 57,
+        "elapsed_seconds": 3.047792,
+        "range": [
+          "2018-04-01",
+          "2018-06-30"
+        ],
+        "raw_rows": 60,
+        "record_type": "raw_authority",
+        "repository_raw_rows": 60,
+        "source_to_repository_exact_match": true,
+        "status": "PASS",
+        "ticker": "005930",
+        "zero_price_row_count": 3
+      },
+      {
+        "all_positive_relation_violation_count": 0,
+        "all_positive_row_count": 36,
+        "elapsed_seconds": 2.165515,
+        "range": [
+          "2026-07-01",
+          "2026-08-21"
+        ],
+        "raw_rows": 36,
+        "record_type": "raw_authority",
+        "repository_raw_rows": 36,
+        "source_to_repository_exact_match": true,
+        "status": "PASS",
+        "ticker": "000660",
+        "zero_price_row_count": 0
+      },
+      {
+        "all_positive_relation_violation_count": 0,
+        "all_positive_row_count": 36,
+        "elapsed_seconds": 2.161613,
+        "range": [
+          "2026-07-01",
+          "2026-08-21"
+        ],
+        "raw_rows": 36,
+        "record_type": "raw_authority",
+        "repository_raw_rows": 36,
+        "source_to_repository_exact_match": true,
+        "status": "PASS",
+        "ticker": "068270",
+        "zero_price_row_count": 0
+      }
+    ],
+    "samsung_raw": {
+      "expected": {
+        "2018-04-27": 128386494,
+        "2018-05-04": 6419324700
+      },
+      "observed": {
+        "2018-04-27": 128386494,
+        "2018-05-04": 6419324700
+      },
+      "raw_semantics": true,
+      "record_type": "samsung_raw",
+      "stage": "SAMSUNG_SEMANTIC_PROBE",
+      "status": "PASS"
+    },
+    "status": "PASS"
+  },
+  "phase": "MARKET_DATA_REPOSITORY_V02_FIX04",
+  "provenance": {
+    "artifact_commit_head": null,
+    "artifact_generation_head": "be2bcbe5ddd11eb043515f078835f56242bcca96",
+    "fix03_repository_implementation_head": "4eaa1d4135e4a0dc583e51d6de842740615d11fa",
+    "fix04_repository_implementation_head": "be2bcbe5ddd11eb043515f078835f56242bcca96",
+    "fix04_validation_source_head": "be2bcbe5ddd11eb043515f078835f56242bcca96",
+    "live_execution_head": "be2bcbe5ddd11eb043515f078835f56242bcca96"
+  },
+  "static": {
+    "artifacts_runtime_dependency_count": 0,
+    "changed_files": [
+      "artifacts/data/market_data_repository/v02/FIX04_composition_probe_summary.json",
+      "artifacts/data/market_data_repository/v02/FIX04_live_authority_probe_summary.json",
+      "artifacts/data/market_data_repository/v02/FIX04_network_summary.json",
+      "artifacts/data/market_data_repository/v02/FIX04_placeholder_evidence_consistency.json",
+      "artifacts/data/market_data_repository/v02/FIX04_production_mutation_guard.json",
+      "artifacts/data/market_data_repository/v02/FIX04_shared_session_conflict_summary.json",
+      "artifacts/data/market_data_repository/v02/FIX04_temp_store_integrity_summary.json",
+      "artifacts/data/market_data_repository/v02/FIX04_validator_gate_summary.json",
+      "artifacts/data/market_data_repository/v02/bounded_regression_summary.json",
+      "artifacts/data/market_data_repository/v02/market_data_repository_v02_recommendation.md",
+      "artifacts/data/market_data_repository/v02/market_data_repository_v02_summary.json",
+      "artifacts/data/market_data_repository/v02/performance_summary.json",
+      "artifacts/data/market_data_repository/v02/production_probe_summary.json",
+      "docs/architecture/market_data_repository_v02.md",
+      "scripts/validate_market_data_repository_v02.py",
+      "src/trend_scanner/data/repository_v2.py",
+      "tests/test_market_data_repository_v02_validation.py",
+      "tests/test_repository_v2.py"
+    ],
+    "closed_artifact_changed_count": 0,
+    "consumer_auto_migration_count": 0,
+    "frozen_contract_modified": false,
+    "frozen_store_source_changed_count": 0,
+    "git_diff_check": {
+      "command": "git diff --check 0f7b35be5f6ac3840266e0580e37c2e4519dbf7c HEAD",
+      "return_code": 0,
+      "status": "PASS",
+      "stderr": "",
+      "stdout": "",
+      "validation_head": "be2bcbe5ddd11eb043515f078835f56242bcca96"
+    },
+    "legacy_repository_changed": false,
+    "runtime_network_guard": {
+      "runtime_forbidden_network_dependencies": [],
+      "runtime_forbidden_network_dependency_count": 0
+    },
+    "secret_occurrence_count": 0
+  },
+  "status": "READY_FOR_ARCHITECT_MARKET_DATA_REPOSITORY_V02_FIX04_REVIEW"
+}

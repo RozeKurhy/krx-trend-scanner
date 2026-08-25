@@ -1,0 +1,67 @@
+{
+  "architecture_version": "KRX_PRODUCTION_DATA_ARCHITECTURE_V01_ERRATA01",
+  "consumer_migration_count": 0,
+  "frozen_contract_path": "artifacts/data/architecture/krx_production_data/v01/repository_v2_contract.json",
+  "get_daily": {
+    "columns": [
+      "open",
+      "high",
+      "low",
+      "close",
+      "volume",
+      "trading_value"
+    ],
+    "forward_fill": false,
+    "join": "INNER_CONSISTENT_TRADING_SESSION_JOIN",
+    "missing_behavior": "DATA_UNAVAILABLE",
+    "price_authority": "AdjustedPriceStore / PYKRX_ADJUSTED_PRICE",
+    "trading_value_authority": "KrxRawStockStore / KRX_OPEN_API_STOCK_DAILY",
+    "volume_authority": "KrxRawStockStore / KRX_OPEN_API_STOCK_DAILY"
+  },
+  "get_daily_ancillary": {
+    "columns": [
+      "volume",
+      "trading_value",
+      "market_cap",
+      "listed_shares"
+    ],
+    "semantics": "RAW"
+  },
+  "get_raw_daily": {
+    "columns": [
+      "open",
+      "high",
+      "low",
+      "close",
+      "volume",
+      "trading_value",
+      "market_cap",
+      "listed_shares"
+    ],
+    "semantics": "ALL_RAW"
+  },
+  "get_stock_snapshot": {
+    "columns": [
+      "open",
+      "high",
+      "low",
+      "close",
+      "volume",
+      "trading_value",
+      "market_cap",
+      "listed_shares"
+    ],
+    "semantics": "ALL_RAW"
+  },
+  "implementation_class": "MarketDataRepositoryV2",
+  "phase": "MARKET_DATA_REPOSITORY_V02",
+  "read_only": true,
+  "source_stores": [
+    "AdjustedPriceStore",
+    "KrxRawStockStore"
+  ],
+  "ticker_domains": {
+    "adjusted": "SIX_DIGIT_TICKER",
+    "raw": "KRX_SHORT_CODE ^[0-9A-Z]{6}$"
+  }
+}

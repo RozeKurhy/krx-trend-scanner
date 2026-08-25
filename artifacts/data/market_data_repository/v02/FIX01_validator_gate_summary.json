@@ -1,0 +1,30 @@
+{
+  "blockers": [
+    "BLOCKED_EXTERNAL_PYKRX_UNAVAILABLE",
+    "BLOCKED_NO_LIVE_AUTHORITY_SAMPLE"
+  ],
+  "bounded_regression": {
+    "command": "uv run pytest -q -p no:cacheprovider tests/test_repository.py tests/test_repository_v2.py tests/test_market_data_repository_v02_validation.py tests/test_adjusted_price_store.py tests/test_krx_raw_stock_store.py tests/test_krx_identifier_contract_errata_v01.py tests/test_krx_production_data_architecture_v01.py",
+    "duration_seconds": 1.69,
+    "failed": 0,
+    "passed": 142,
+    "status": "PASS"
+  },
+  "consumer_auto_migration_count": 0,
+  "fix01_validation_source_head": "237784e3a277a5bde4cb0c915954b046ac4e7332",
+  "frozen_contract_changed": false,
+  "git_diff_check": {
+    "command": "git diff --check 0f7b35be5f6ac3840266e0580e37c2e4519dbf7c HEAD",
+    "return_code": 0,
+    "status": "PASS",
+    "stderr": "",
+    "stdout": "",
+    "validation_head": "237784e3a277a5bde4cb0c915954b046ac4e7332"
+  },
+  "repository_implementation_head": "b04e871881a857640d86422c09c57d7c6a642d62",
+  "runtime_network_guard": {
+    "runtime_forbidden_network_dependencies": [],
+    "runtime_forbidden_network_dependency_count": 0
+  },
+  "status": "BLOCKED_EXTERNAL_PYKRX_UNAVAILABLE"
+}

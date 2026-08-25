@@ -1,0 +1,11 @@
+consumer_or_api,before_source,v2_source,output_columns,semantic_change,auto_migrated,status
+legacy MarketDataRepository,provider + ParquetCache,unchanged legacy path,legacy schema,none,0,UNCHANGED
+MarketDataRepositoryV2.get_daily,none,AdjustedPriceStore + KrxRawStockStore,"open,high,low,close,volume,trading_value",explicit field composition,0,PASS
+get_raw_daily,none,KrxRawStockStore,raw OHLC + ancillary,new read API,0,PASS
+get_daily_ancillary,none,KrxRawStockStore,"volume,trading_value,market_cap,listed_shares",new read API,0,PASS
+get_stock_snapshot,none,KrxRawStockStore,raw OHLC + ancillary,new read API,0,PASS
+Pattern A,unchanged,unchanged,unchanged,none,0,DEFERRED
+FastCore,unchanged,unchanged,unchanged,none,0,DEFERRED
+Julia,unchanged,unchanged,unchanged,none,0,DEFERRED
+RS,unchanged,unchanged,unchanged,none,0,DEFERRED
+Stock Report,unchanged,unchanged,unchanged,none,0,DEFERRED
