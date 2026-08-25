@@ -28,6 +28,7 @@ START_HEAD = "901af3ecaece64f918e983a5fa67ab07a7cc81f5"
 PRODUCTION_RUNTIME_HEAD = "e508005c16e5fa3fa19c03b6568ba56ab9ac9294"
 FIX07_PILOT_VALIDATION_HEAD = "0bee785d6e14ebefffb191c2913a18868bd4caf6"
 FIX07_REPAIR_EXECUTION_HEAD = "5398d62761c80b9960cd61986a585a3b06a5b3e2"
+FIX08_IMPLEMENTATION_HEAD = "e18d3c646aa87b5559ab324190fe64683d011fa9"
 TARGET_START = "2010-01-04"
 TARGET_END = "2026-08-21"
 MARKETS = ("KOSPI", "KOSDAQ")
@@ -67,14 +68,7 @@ def git_head() -> str:
 
 
 def implementation_head() -> str:
-    return subprocess.check_output(
-        ["git", "log", "-1", "--format=%H", "--",
-         "scripts/run_krx_historical_backfill_v01_fix08.py",
-         "scripts/validate_krx_historical_backfill_v01_fix08.py",
-         "tests/test_krx_historical_backfill_v01_fix08.py"],
-        cwd=ROOT,
-        text=True,
-    ).strip()
+    return FIX08_IMPLEMENTATION_HEAD
 
 
 def production_runtime_compatible() -> bool:
@@ -391,6 +385,9 @@ def main() -> int:
     blockers: list[str] = []
     if provenance_status != "PASS":
         blockers.append("BLOCKED_PROVENANCE")
+    resume_status_counts = resume.get("status_counts", {}) if isinstance(resume, dict) else {}
+    if str(resume.get("status", "")).startswith("BLOCKED_KRX_TRANSPORT") or int(resume_status_counts.get("transport_error", 0)) > 0 or int(resume_status_counts.get("5xx", 0)) > 0:
+        blockers.append("BLOCKED_KRX_TRANSPORT")
     if not checks["resume_ok"]:
         blockers.append("BLOCKED_COVERAGE")
     if not checks["coverage_ok"]:
