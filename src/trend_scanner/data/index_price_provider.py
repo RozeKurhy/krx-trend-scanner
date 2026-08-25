@@ -13,6 +13,8 @@ from typing import Any
 
 import pandas as pd
 from trend_scanner.data.errors import MarketDataError
+from trend_scanner.data.index_store import IndexStore, MARKET_INDEX_FAMILY
+from trend_scanner.data.krx_market_index import KrxMarketIndexBuilder, MAPPING_CONTRACT_VERSION, mapping_contract_sha256
 from trend_scanner.data.krx_sector_index import (
     KOSDAQ_SECTOR_CODES as KRX_KOSDAQ_SECTOR_CODES,
     KOSPI_SECTOR_CODES as KRX_KOSPI_SECTOR_CODES,
@@ -146,48 +148,45 @@ class IndexPriceDataProvider:
         end_date: str,
         output_parquet: Path,
         output_meta: Path,
+        *,
+        client: Any | None = None,
+        auth_key: str | None = None,
+        quota: Any | None = None,
+        max_requests: int = 80,
+        throttle_seconds: float = 0.0,
+        trading_dates: list[str] | tuple[str, ...] | None = None,
     ) -> pd.DataFrame:
-        """KOSPI(1001) 및 KOSDAQ(2001) 시장 대표 지수를 수집하고 Parquet/Meta로 저장한다."""
-        dfs = []
-        for code in (MARKET_INDEX_KOSPI, MARKET_INDEX_KOSDAQ):
-            df_idx = self.fetch_index_series(code, start_date, end_date)
-            if not df_idx.empty:
-                dfs.append(df_idx)
+        """Build MARKET_INDEX through KRX Open API and persist INDEX_STORE_V01.
 
-        if not dfs:
-            combined = pd.DataFrame(columns=list(_STANDARD_INDEX_COLUMNS))
-        else:
-            combined = pd.concat(dfs, ignore_index=True)
-
-        combined["date"] = combined["date"].astype(str)
-        combined["index_code"] = combined["index_code"].astype(str)
-        combined["index_name"] = combined["index_name"].astype(str)
-        for col in ("open", "high", "low", "close", "trading_value"):
-            combined[col] = combined[col].astype("float64")
-        combined["volume"] = combined["volume"].astype("int64")
-
-        combined = combined.sort_values(by=["index_code", "date"]).reset_index(drop=True)
-
-        if combined.duplicated(subset=["date", "index_code"]).any():
-            raise MarketDataError("Duplicate (date, index_code) found in market index dataset")
-
-        output_parquet.parent.mkdir(parents=True, exist_ok=True)
-        combined.to_parquet(output_parquet, index=False)
-
-        sha256 = compute_file_sha256(output_parquet)
-        meta = {
-            "source_name": "KRX_PYKRX_MARKET_INDEX",
-            "requested_as_of": end_date,
-            "date_min": str(combined["date"].min()) if not combined.empty else "",
-            "date_max": str(combined["date"].max()) if not combined.empty else "",
-            "index_codes": [MARKET_INDEX_KOSPI, MARKET_INDEX_KOSDAQ],
-            "index_names": ["코스피", "코스닥"],
-            "row_count": len(combined),
-            "parquet_sha256": sha256,
-            "fetch_mode": "BATCH_PYKRX",
-            "generation_timestamp": pd.Timestamp.now(tz="UTC").isoformat(),
-        }
-        output_meta.write_text(json.dumps(meta, indent=2, ensure_ascii=False), encoding="utf-8")
+        The historical runner supplies the authoritative raw-stock trading dates.
+        A single-day default is retained for callers that use this convenience
+        method directly; multi-day production runs must pass ``trading_dates``.
+        """
+        if trading_dates is None:
+            if str(start_date).replace("-", "") != str(end_date).replace("-", ""):
+                raise MarketDataError("MARKET_INDEX_TRADING_DATES_REQUIRED")
+            trading_dates = (start_date,)
+        builder = KrxMarketIndexBuilder(
+            client=client,
+            auth_key=auth_key,
+            quota=quota,
+            max_requests=max_requests,
+            throttle_seconds=throttle_seconds,
+        )
+        combined, _ = builder.build(trading_dates)
+        IndexStore(output_parquet.parent).save_family_full(
+            MARKET_INDEX_FAMILY,
+            combined,
+            metadata_context={
+                "requested_start": start_date,
+                "requested_end": end_date,
+                "mapping_contract_version": MAPPING_CONTRACT_VERSION,
+                "mapping_contract_sha256": mapping_contract_sha256(),
+            },
+            output_parquet=Path(output_parquet),
+            output_meta=Path(output_meta),
+        )
+        self._cached_market_df = combined
         return combined
 
     def build_sector_index_cache(
