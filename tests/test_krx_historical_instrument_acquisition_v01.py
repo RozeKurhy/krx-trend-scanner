@@ -240,13 +240,19 @@ def test_specialized_reconciliation_rejects_wrong_date_delta_or_endpoint(usage_d
 
 
 def test_quota_reserve_500_enforces_9500_and_10000_boundaries(tmp_path):
+    # Deterministic: the fixture's seeded usage_date_kst and the `now` passed
+    # to reserve_attempt must be the same KST day regardless of when this
+    # test actually runs — using now=None here would silently fall back to
+    # the real current date and stop exercising the boundary the day the
+    # calendar rolls over past the hardcoded fixture date.
+    fixture_now = datetime(2026, 8, 26, 12, 0, 0, tzinfo=timezone.utc)
     quota = LocalKrxOpenApiQuota(tmp_path / "quota.sqlite3", endpoint_limit=10000, global_safety_limit=10000, reserve=500)
     with sqlite3.connect(quota.db_path) as connection:
         connection.execute("INSERT INTO quota_usage VALUES (?, ?, ?, ?)", ("2026-08-26", "stk_isu_base_info", 9499, "2026-08-26T00:00:00+00:00"))
         connection.commit()
-    quota.reserve_attempt("stk_isu_base_info", now=None)
+    quota.reserve_attempt("stk_isu_base_info", now=fixture_now)
     with pytest.raises(KrxOpenApiQuotaExceeded):
-        quota.reserve_attempt("stk_isu_base_info", now=None)
+        quota.reserve_attempt("stk_isu_base_info", now=fixture_now)
     assert quota.remaining("stk_isu_base_info", "2026-08-26")["endpoint"] == 0
 
 

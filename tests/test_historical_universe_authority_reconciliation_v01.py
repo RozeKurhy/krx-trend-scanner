@@ -767,10 +767,17 @@ def test_security_type_mapping_evidence_has_rule_ids_and_authority_reference() -
     assert evidence["production_authority_alignment"]["existing_authority_reference"]
 
 
-def test_default_preflight_reports_pending_authority_without_network() -> None:
+def test_default_preflight_reports_pending_authority_without_network(tmp_path: Path) -> None:
+    # This test's purpose is to verify the NO-AUTHORITY-YET state, not the
+    # production filesystem's current contents — it must not depend on
+    # whether the real production basic_info root happens to be populated
+    # (it now holds a completed 8190-file acquisition). The empty-authority
+    # environment is reproduced explicitly via an isolated tmp_path root.
     result = run_reconciliation_preflight(
         target_identities_path=ROOT / DEFAULT_TARGET_IDENTITY_PATH,
-        basic_info_root=ROOT / "data/reference/source/history/krx_instrument_master/v01/basic_info",
+        basic_info_root=tmp_path / "basic_info",
+        acquisition_checkpoint_path=tmp_path / "checkpoint.json",
+        acquisition_final_summary_path=tmp_path / "acquisition_final_summary.json",
     )
     assert result["reconciliation_input_status"] == AWAITING_HISTORICAL_BASIC_INFO_ACQUISITION
     assert result["classification_executed"] is False
