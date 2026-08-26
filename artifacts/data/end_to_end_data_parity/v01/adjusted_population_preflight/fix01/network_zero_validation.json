@@ -1,0 +1,20 @@
+{
+  "schema": "adjusted_population_preflight_fix01_network_zero_validation_v01",
+  "validation_scope": "FIX01 offline contract/evidence only",
+  "application_network_requests": {
+    "pykrx_live": 0,
+    "krx_web_or_open_api": 0,
+    "opendart": 0,
+    "adjusted_price_store_production_writes": 0
+  },
+  "repository_sync": {
+    "git_fetch_origin": 1,
+    "purpose": "repository state inspection only; not a KRX/PyKRX/OpenDART data request"
+  },
+  "live_pilot": 0,
+  "full_population": 0,
+  "consumer_switch": 0,
+  "adjusted_false": 0,
+  "result": "PASS_FOR_FIX01_OFFLINE_SCOPE",
+  "note": "No PyKRX/KRX/OpenDART retry is permitted after a live-network blocker is observed."
+}

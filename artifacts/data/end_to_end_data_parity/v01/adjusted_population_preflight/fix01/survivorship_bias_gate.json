@@ -1,0 +1,28 @@
+{
+  "schema": "adjusted_population_preflight_fix01_survivorship_bias_gate_v01",
+  "generated_offline": true,
+  "network_requests": {"pykrx": 0, "krx_open_api": 0, "opendart": 0},
+  "gate": "HISTORICAL_KOSPI_KOSDAQ_COMMON_COMPLETENESS",
+  "window": ["2010-01-04", "2026-08-21"],
+  "authorities": [
+    "data/market/raw/krx_stocks/v01 identity inventory",
+    "data/reference/krx_instrument_metadata.parquet verified snapshot effective_date=2026-08-21",
+    "data/reference/krx_instrument_metadata.parquet PIT/local frozen historical rows",
+    "data/raw/stocks legacy cache is parity-only, not survivorship-safe authority"
+  ],
+  "observed": {
+    "historical_only_numeric": 1058,
+    "historical_common_required": 218,
+    "known_common_missing_from_prior_denominator": 215,
+    "classification_unknown": 555
+  },
+  "result": "BLOCK",
+  "reason": "Known historical COMMON identities are missing and UNKNOWN identities prevent proving that no additional COMMON identities are missing.",
+  "pass_conditions": [
+    "historical-only identities are reconciled against authoritative PIT COMMON/non-COMMON classifications",
+    "classification_unknown == 0",
+    "missing historical COMMON identities are added to the denominator contract",
+    "reconciliation hash is frozen"
+  ],
+  "live_pilot_authorized": false
+}

@@ -1,0 +1,14 @@
+{
+  "schema": "adjusted_population_preflight_fix01_retry_contract_v01",
+  "max_attempts_per_logical_case": 2,
+  "max_retries_per_logical_case": 1,
+  "backoff_seconds": [2],
+  "schedule": ["attempt_1_immediate", "attempt_2_after_2_seconds"],
+  "retryable": ["TIMEOUT", "TRANSIENT_TRANSPORT", "RATE_LIMIT"],
+  "non_retryable": ["INVALID_IDENTITY", "SCHEMA_FAILURE", "UNEXPECTED_EMPTY", "UNSUPPORTED", "NO_HISTORY"],
+  "empty_response_rule": "Do not retry an empty response; classify against raw expected-date evidence first.",
+  "counter_rule": "attempt_count includes timed-out and failed attempts; no hidden retries inside provider/client.",
+  "ceiling_rule": "Any attempt beyond 2 is a contract violation and abort condition.",
+  "previous_contract_fix": "Replaces inconsistent [2,8] backoff with one retry and [2] seconds.",
+  "execution_in_fix01": false
+}

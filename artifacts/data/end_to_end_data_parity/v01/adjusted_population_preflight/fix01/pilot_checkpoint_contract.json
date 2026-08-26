@@ -1,0 +1,9 @@
+{
+  "schema": "adjusted_population_preflight_fix01_pilot_checkpoint_contract_v01",
+  "manifest_fields": ["ticker", "path", "requested_start", "requested_end", "attempt_count", "status", "last_error", "actual_date_min", "actual_date_max", "row_count", "content_sha256", "completed_at"],
+  "terminal_statuses": ["COMPLETE", "NO_HISTORY", "NOT_APPLICABLE", "UNSUPPORTED", "SUPPORT_UNRESOLVED", "UNEXPECTED_EMPTY", "FAILED_RETRYABLE", "FAILED_PERMANENT", "TIMEOUT"],
+  "checkpoint_condition": "Only after response normalization, adjusted=True/schema validation, metadata, hash, and pair-integrity checks pass.",
+  "resume_policy": "Skip only revalidated terminal records; retry FAILED_RETRYABLE/TIMEOUT within the bounded budget; never resume partial temp files.",
+  "publication": "Pilot outputs remain in temp/pilot namespace; production AdjustedPriceStore remains empty and consumers remain disabled.",
+  "execution_in_fix01": false
+}

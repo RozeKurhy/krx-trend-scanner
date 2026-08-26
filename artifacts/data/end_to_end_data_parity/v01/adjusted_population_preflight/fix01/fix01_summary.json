@@ -1,0 +1,28 @@
+{
+  "schema": "adjusted_population_preflight_fix01_summary_v01",
+  "work_id": "END_TO_END_DATA_PARITY_V01",
+  "revision": "ADJUSTED_POPULATION_PREFLIGHT_FIX01",
+  "status": "BLOCKED_HISTORICAL_UNIVERSE_AUTHORITY",
+  "critical_issues": 0,
+  "major_blockers": [
+    "215 known historical COMMON identities are outside the prior 2560 denominator.",
+    "555 numeric historical-only identities remain HISTORICAL_CLASSIFICATION_UNKNOWN."
+  ],
+  "resolved_contract_issues": [
+    "Legacy 2506 artifact reclassified as parity-only.",
+    "Historical-only numeric identities are no longer auto-mapped to NON_CONSUMER.",
+    "Direct alpha diagnostic path is specified without changing the production provider.",
+    "Retry budget is max_attempts=2/max_retries=1/backoff=[2].",
+    "Hard timeout requires process isolation and termination.",
+    "Common alpha pilot cohort expanded to three cases."
+  ],
+  "pilot_executed": false,
+  "full_population_executed": false,
+  "production_writes": 0,
+  "focused_test": {
+    "command": ".venv/bin/pytest -q -p no:cacheprovider tests/test_adjusted_price_store.py tests/test_repository_v2.py tests/test_market_data_repository_v02_validation.py tests/test_krx_identifier_contract_errata_v01.py",
+    "result": "110 passed in 1.61s"
+  },
+  "full_regression": "NOT_RUN; artifact-only change and live/network execution prohibited",
+  "next_action": "Obtain authoritative historical PIT COMMON/non-COMMON reconciliation, rerun the gate, then request separate live pilot authorization."
+}

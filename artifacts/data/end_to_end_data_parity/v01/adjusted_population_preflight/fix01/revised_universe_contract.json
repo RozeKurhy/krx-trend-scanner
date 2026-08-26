@@ -1,0 +1,24 @@
+{
+  "schema": "adjusted_population_preflight_fix01_revised_universe_contract_v01",
+  "work_id": "END_TO_END_DATA_PARITY_V01",
+  "revision": "ADJUSTED_POPULATION_PREFLIGHT_FIX01",
+  "network_policy": {"pykrx": 0, "krx_open_api": 0, "opendart": 0},
+  "authority": {
+    "current_common": "verified 2026-08-21 KRX metadata snapshot, KOSPI/KOSDAQ COMMON",
+    "historical_common": "PIT/local frozen metadata evidence, requiring formal authority upgrade before freeze",
+    "legacy_2506": "LEGACY_BACKTEST_PARITY_UNIVERSE only; never treated as survivorship-safe authority",
+    "raw_historical": "raw KRX store identity inventory"
+  },
+  "classification_contract": {
+    "historical_common_evidence": "HISTORICAL_COMMON_REQUIRED",
+    "historical_non_common_evidence": "HISTORICAL_NOT_COMMON",
+    "no_evidence_or_conflict": "HISTORICAL_CLASSIFICATION_UNKNOWN",
+    "unknown_policy": "never auto-map to NON_CONSUMER or NOT_APPLICABLE"
+  },
+  "denominator_definition": "current verified COMMON union every HISTORICAL_COMMON_REQUIRED identity after authority reconciliation",
+  "prior_denominator": {"count": 2560, "status": "PROVISIONAL_NOT_FROZEN"},
+  "current_fix01_status": "BLOCKED_HISTORICAL_UNIVERSE_AUTHORITY",
+  "consumer_switch": "DISABLED",
+  "production_population": "NOT_AUTHORIZED",
+  "next_gate": "Resolve 555 UNKNOWN identities and formally reconcile at least 215 missing historical COMMON identities."
+}

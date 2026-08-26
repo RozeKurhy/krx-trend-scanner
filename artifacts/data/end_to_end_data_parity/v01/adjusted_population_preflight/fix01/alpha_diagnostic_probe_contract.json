@@ -1,0 +1,28 @@
+{
+  "schema": "adjusted_population_preflight_fix01_alpha_diagnostic_probe_contract_v01",
+  "purpose": "Diagnostic-only support-domain probe for alphanumeric tickers; does not alter the production provider or denominator.",
+  "execution_in_fix01": false,
+  "direct_call": {
+    "callable": "pykrx.stock.get_market_ohlcv_by_date(start, end, ticker, adjusted=True)",
+    "argument_order": ["start", "end", "ticker"],
+    "adjusted": true,
+    "path": "direct diagnostic harness only; bypasses D_NUMERIC_ONLY_CONSUMER_BY_DESIGN provider"
+  },
+  "result_classes": [
+    "PYKRX_ALPHA_SUPPORTED",
+    "UNSUPPORTED",
+    "NO_HISTORY",
+    "TRANSIENT_FAILURE",
+    "SUPPORT_UNRESOLVED"
+  ],
+  "validation": [
+    "ticker identity remains exact and alphanumeric",
+    "response normalizes to date,ticker,open,high,low,close",
+    "adjusted=True is observable in the call contract",
+    "empty response is classified against raw expected dates",
+    "no result changes denominator eligibility without authority and review"
+  ],
+  "non_consumer_policy": "SPAC, PREFERRED, and formal UNKNOWN probes are diagnostics only and never enter the COMMON denominator.",
+  "production_provider_policy": "No normalize_ticker change; numeric-only consumer contract remains frozen.",
+  "network_guard": "A future runner must require explicit live-pilot authorization and must not run under this FIX01 artifact-only revision."
+}
