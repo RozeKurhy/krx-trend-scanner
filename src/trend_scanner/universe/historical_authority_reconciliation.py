@@ -1092,7 +1092,12 @@ def build_denominator_candidate(
         "status": "CANDIDATE_ONLY",
         "current_entries": current_entries,
         "historical_identity_intervals": historical_identity_intervals,
-        "count": len(current_entries) + len(historical_identity_intervals),
+        # NOT "count": historical_identity_intervals now includes NOT_COMMON
+        # legs too (Section 26), so a summed count would overstate the
+        # candidate's actual COMMON-denominator size. Use ticker_union_count
+        # for that; these two are raw structural sizes only.
+        "current_entry_count": len(current_entries),
+        "historical_identity_interval_count": len(historical_identity_intervals),
         "ticker_union_count": len(ticker_union),
         "numeric_ticker_union_count": sum(ticker.isdigit() for ticker in ticker_union),
         "alphanumeric_ticker_union_count": sum(not ticker.isdigit() for ticker in ticker_union),

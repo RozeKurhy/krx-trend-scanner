@@ -175,6 +175,14 @@ def main() -> int:
     evidence: dict[str, Path] = {}
     start_head = START_HEAD
     end_head_before_evidence = git_head()
+    # Section 59 failure-terminal gates. Every evidence status computed below
+    # feeds one of these buckets so a FAIL cannot silently pass through to
+    # RECONCILIATION_HARNESS_READY (that exact hole is what MAJOR-04 fixed in
+    # the harness itself — this validator must not reopen it).
+    gates: dict[str, list[str]] = {}
+
+    def _gate(bucket: str, status: str) -> None:
+        gates.setdefault(bucket, []).append(status)
 
     # 03/04/05/06/07: acquisition-authority binding scenarios (Section A).
     with tempfile.TemporaryDirectory() as td:
@@ -197,45 +205,55 @@ def main() -> int:
 
         raw_root, ckpt, summary = _write_acquisition_fixture(tmp / "terminal", dates, rows, final_summary_status="PAUSED_QUOTA")
         wrong_terminal = load_basic_info_snapshots(raw_root, calendar_dates=dates, acquisition_checkpoint_path=ckpt, acquisition_final_summary_path=summary)
-        _dump("03_acquisition_terminal_gate_validation.json", {
+        p03 = {
             "happy_path_status": happy.status,
             "wrong_terminal_status": wrong_terminal.status,
             "wrong_terminal_errors": list(wrong_terminal.errors),
             "status": "PASS" if happy.status == "READY" and wrong_terminal.status == BLOCKED_RECONCILIATION_INPUT_AUTHORITY else "FAIL",
-        })
+        }
+        _dump("03_acquisition_terminal_gate_validation.json", p03)
+        _gate("ACQUISITION_AUTHORITY_BINDING", p03["status"])
 
         raw_root, ckpt, summary = _write_acquisition_fixture(tmp / "noncomplete", dates, rows, non_complete_status_for=("2020-01-02", "KOSPI"))
         non_complete = load_basic_info_snapshots(raw_root, calendar_dates=dates, acquisition_checkpoint_path=ckpt, acquisition_final_summary_path=summary)
-        _dump("04_checkpoint_complete_gate_validation.json", {
+        p04 = {
             "non_complete_status": non_complete.status,
             "non_complete_errors": list(non_complete.errors),
             "status": "PASS" if non_complete.status == BLOCKED_RECONCILIATION_INPUT_AUTHORITY else "FAIL",
-        })
+        }
+        _dump("04_checkpoint_complete_gate_validation.json", p04)
+        _gate("ACQUISITION_AUTHORITY_BINDING", p04["status"])
 
         raw_root, ckpt, summary = _write_acquisition_fixture(tmp / "missing", dates, rows, drop_entry_for=("2020-01-02", "KOSPI"))
         missing = load_basic_info_snapshots(raw_root, calendar_dates=dates, acquisition_checkpoint_path=ckpt, acquisition_final_summary_path=summary)
         raw_root, ckpt, summary = _write_acquisition_fixture(tmp / "extra", dates, rows, extra_entry=True)
         extra = load_basic_info_snapshots(raw_root, calendar_dates=dates, acquisition_checkpoint_path=ckpt, acquisition_final_summary_path=summary)
-        _dump("05_manifest_binding_validation.json", {
+        p05 = {
             "missing_entry_status": missing.status, "missing_entry_errors": list(missing.errors),
             "extra_entry_status": extra.status, "extra_entry_errors": list(extra.errors),
             "status": "PASS" if missing.status == extra.status == BLOCKED_RECONCILIATION_INPUT_AUTHORITY else "FAIL",
-        })
+        }
+        _dump("05_manifest_binding_validation.json", p05)
+        _gate("ACQUISITION_AUTHORITY_BINDING", p05["status"])
 
         raw_root, ckpt, summary = _write_acquisition_fixture(tmp / "tamper", dates, rows, tamper_sha_for=("2020-01-02", "KOSPI"))
         tampered = load_basic_info_snapshots(raw_root, calendar_dates=dates, acquisition_checkpoint_path=ckpt, acquisition_final_summary_path=summary)
-        _dump("06_raw_sha_tamper_validation.json", {
+        p06 = {
             "tampered_status": tampered.status, "tampered_errors": list(tampered.errors),
             "schema_valid_but_authority_fails": True,
             "status": "PASS" if tampered.status == BLOCKED_RECONCILIATION_INPUT_AUTHORITY else "FAIL",
-        })
+        }
+        _dump("06_raw_sha_tamper_validation.json", p06)
+        _gate("ACQUISITION_AUTHORITY_BINDING", p06["status"])
 
         raw_root, ckpt, summary = _write_acquisition_fixture(tmp / "rowcount", dates, rows, wrong_row_count_for=("2020-01-02", "KOSDAQ"))
         row_mismatch = load_basic_info_snapshots(raw_root, calendar_dates=dates, acquisition_checkpoint_path=ckpt, acquisition_final_summary_path=summary)
-        _dump("07_row_count_binding_validation.json", {
+        p07 = {
             "row_count_mismatch_status": row_mismatch.status, "errors": list(row_mismatch.errors),
             "status": "PASS" if row_mismatch.status == BLOCKED_RECONCILIATION_INPUT_AUTHORITY else "FAIL",
-        })
+        }
+        _dump("07_row_count_binding_validation.json", p07)
+        _gate("ACQUISITION_AUTHORITY_BINDING", p07["status"])
 
         # 15/16/17: raw status / CLI exit contract (Section D).
         waiting_cli = _run_cli(tmp, tmp / "out_waiting", "--basic-info-root", str(tmp / "does_not_exist"),
@@ -252,15 +270,19 @@ def main() -> int:
             "awaiting_status": "AWAITING_HISTORICAL_BASIC_INFO_ACQUISITION -> top-level READY_FOR_RECONCILIATION_AFTER_AUTHORITY_ACQUISITION, exit 0",
             "blocked_status": "BLOCKED_RECONCILIATION_INPUT_AUTHORITY -> top-level BLOCKED_RECONCILIATION_INPUT_AUTHORITY, non-zero exit",
         })
+        p16_pass = waiting_cli["returncode"] == 0 and waiting_cli["stdout"].get("status") == "READY_FOR_RECONCILIATION_AFTER_AUTHORITY_ACQUISITION"
         _dump("16_waiting_exit_validation.json", {
-            "returncode": waiting_cli["returncode"], "status": waiting_cli["stdout"].get("status"),
-            "pass": waiting_cli["returncode"] == 0 and waiting_cli["stdout"].get("status") == "READY_FOR_RECONCILIATION_AFTER_AUTHORITY_ACQUISITION",
+            "returncode": waiting_cli["returncode"], "cli_status": waiting_cli["stdout"].get("status"),
+            "pass": p16_pass, "status": "PASS" if p16_pass else "FAIL",
         })
+        _gate("RAW_STATUS_CONTRACT", "PASS" if p16_pass else "FAIL")
+        p17_pass = broken_cli["returncode"] != 0 and tamper_cli["returncode"] != 0
         _dump("17_broken_raw_exit_validation.json", {
             "partial_raw": {"returncode": broken_cli["returncode"], "status": broken_cli["stdout"].get("status")},
             "tampered_raw": {"returncode": tamper_cli["returncode"], "status": tamper_cli["stdout"].get("status")},
-            "pass": broken_cli["returncode"] != 0 and tamper_cli["returncode"] != 0,
+            "pass": p17_pass, "status": "PASS" if p17_pass else "FAIL",
         })
+        _gate("RAW_STATUS_CONTRACT", "PASS" if p17_pass else "FAIL")
 
     # 08/09/10: temporal lifecycle contract (Section B).
     _dump("08_temporal_lifecycle_contract.json", {
@@ -282,20 +304,24 @@ def main() -> int:
         [_target("005930")], [_snapshot("2020-01-02", _row("005930")), _snapshot("2020-01-03", _row("005930", kind="신형우선주"))],
         expected_dates=["2020-01-02", "2020-01-03"],
     )["results"][0]
-    _dump("09_temporal_transition_validation.json", {
+    p09 = {
         "not_common_to_common": {"final": not_common_to_common["historical_classification"], "reason": not_common_to_common["classification_reason"]},
         "common_to_not_common": {"final": common_to_not_common["historical_classification"], "reason": common_to_not_common["classification_reason"]},
         "status": "PASS" if not_common_to_common["historical_classification"] == common_to_not_common["historical_classification"] == HISTORICAL_COMMON_REQUIRED else "FAIL",
-    })
+    }
+    _dump("09_temporal_transition_validation.json", p09)
+    _gate("TEMPORAL_CLASSIFICATION_CONTRACT", p09["status"])
     same_day_conflict = reconcile_target_identities(
         [_target("005930")],
         [_snapshot("2020-01-02", _row("005930", isu_cd="SAME"), _row("005930", isu_cd="SAME", kind="신형우선주"))],
         expected_dates=["2020-01-02"],
     )["results"][0]
-    _dump("10_true_conflict_validation.json", {
+    p10 = {
         "same_day_same_identity_contradiction": {"final": same_day_conflict["historical_classification"], "reason": same_day_conflict["classification_reason"]},
         "status": "PASS" if same_day_conflict["historical_classification"] == HISTORICAL_AUTHORITY_UNRESOLVED else "FAIL",
-    })
+    }
+    _dump("10_true_conflict_validation.json", p10)
+    _gate("TEMPORAL_CLASSIFICATION_CONTRACT", p10["status"])
 
     # 11/12/13/14: identity-aware reuse (Section C).
     _dump("11_identity_aware_reuse_contract.json", {
@@ -313,32 +339,38 @@ def main() -> int:
         ],
         expected_dates=["2020-01-02", "2020-01-03"],
     )
-    _dump("12_non_overlap_reuse_validation.json", {
+    p12 = {
         "ticker_reuse_status": non_overlap["results"][0]["ticker_reuse_status"],
         "identity_count": len(non_overlap["results"][0]["intervals"]),
         "ticker_count": 1,
         "reuse_gate_status": evaluate_ticker_identity_reuse_gate(non_overlap)["status"],
         "status": "PASS" if len(non_overlap["results"][0]["intervals"]) == 2 else "FAIL",
-    })
+    }
+    _dump("12_non_overlap_reuse_validation.json", p12)
+    _gate("IDENTITY_REUSE_CONTRACT", p12["status"])
     candidate = build_denominator_candidate([], non_overlap, raw_input_status="READY", raw_integrity_pass=True, expected_total=1)
-    _dump("13_reuse_candidate_identity_validation.json", {
+    p13 = {
         "candidate_status": candidate["status"],
         "historical_identity_interval_count": len(candidate.get("historical_identity_intervals", [])),
         "ticker_union_count": candidate.get("ticker_union_count"),
         "collapse_to_ticker_only": candidate.get("ticker_only_collapse"),
         "status": "PASS" if len(candidate.get("historical_identity_intervals", [])) == 2 and candidate.get("ticker_only_collapse") is False else "FAIL",
-    })
+    }
+    _dump("13_reuse_candidate_identity_validation.json", p13)
+    _gate("IDENTITY_REUSE_CONTRACT", p13["status"])
     overlap = reconcile_target_identities(
         [_target("005930")], [_snapshot("2020-01-02", _row("005930", isu_cd="OLD"), _row("005930", isu_cd="NEW"))],
         expected_dates=["2020-01-02"],
     )
     overlap_candidate = build_denominator_candidate([], overlap, raw_input_status="READY", raw_integrity_pass=True, expected_total=1)
-    _dump("14_overlap_collision_validation.json", {
+    p14 = {
         "ticker_reuse_status": overlap["results"][0]["ticker_reuse_status"],
         "reuse_gate_status": evaluate_ticker_identity_reuse_gate(overlap)["status"],
         "denominator_candidate_status": overlap_candidate["status"],
         "status": "PASS" if overlap_candidate["status"] == "BLOCKED_DENOMINATOR_FREEZE_GATE" else "FAIL",
-    })
+    }
+    _dump("14_overlap_collision_validation.json", p14)
+    _gate("IDENTITY_REUSE_CONTRACT", p14["status"])
 
     # 18: security-type mapping provenance (Section E, Minor).
     mapping_sample_path = ROOT / "data/reference/krx_instrument_metadata.parquet"
@@ -366,31 +398,43 @@ def main() -> int:
         [_snapshot("2018-06-01", _row("005930", sector="SPAC(소속부없음)")), _snapshot("2020-01-02", _row("005930", sector="관리종목(소속부없음)"))],
         expected_dates=["2018-06-01", "2020-01-02"],
     )["results"][0]
-    _dump("18_security_mapping_provenance.json", {
+    p18 = {
         "mapping_evidence": mapping_evidence,
         "managed_issue_after_spac_history_alignment": {
             "final": managed_after_spac["historical_classification"],
             "reasons": sorted({i["classification_reason"] for i in managed_after_spac["intervals"]}),
         },
         "status": "PASS" if managed_after_spac["historical_classification"] == HISTORICAL_AUTHORITY_UNRESOLVED else "FAIL",
-    })
+    }
+    _dump("18_security_mapping_provenance.json", p18)
+    _gate("SECURITY_TYPE_CLASSIFICATION_CONTRACT", p18["status"])
 
     # 19/20/21: target identity / network / quota regression.
     loaded_target = load_target_identities(ROOT / DEFAULT_TARGET_IDENTITY_PATH)
-    _dump("19_target_identity_regression.json", {
+    _EXPECTED_TARGET_HASH = "cb3e5af122fa5f514e2800565dd4280ea9c4b00541d620f86fe6d4062cb4bfe7"
+    counts_match = loaded_target["counts"] == {"total": 1116, "numeric": 1058, "alphanumeric": 58}
+    hash_match = loaded_target["target_identity_set_sha256"] == _EXPECTED_TARGET_HASH
+    p19 = {
         "counts": loaded_target["counts"],
         "hash": loaded_target["target_identity_set_sha256"],
-        "expected": {"total": 1116, "numeric": 1058, "alphanumeric": 58, "hash": "cb3e5af122fa5f514e2800565dd4280ea9c4b00541d620f86fe6d4062cb4bfe7"},
-        "unchanged": loaded_target["counts"] == {"total": 1116, "numeric": 1058, "alphanumeric": 58},
-    })
+        "expected": {"total": 1116, "numeric": 1058, "alphanumeric": 58, "hash": _EXPECTED_TARGET_HASH},
+        # Both must hold — matching counts alone does not prove the hash
+        # (and therefore the exact identity set) is unchanged.
+        "unchanged": counts_match and hash_match,
+        "status": "PASS" if counts_match and hash_match else "FAIL",
+    }
+    _dump("19_target_identity_regression.json", p19)
+    _gate("TARGET_IDENTITY_CONTRACT", p19["status"])
     default_preflight = run_reconciliation_preflight(
         target_identities_path=ROOT / DEFAULT_TARGET_IDENTITY_PATH,
         basic_info_root=ROOT / "data/reference/source/history/krx_instrument_master/v01/basic_info",
     )
-    _dump("20_network_zero_validation.json", {
+    p20 = {
         "network_requests": default_preflight["network_requests"],
         "status": "PASS" if all(v == 0 for v in default_preflight["network_requests"].values()) else "FAIL",
-    })
+    }
+    _dump("20_network_zero_validation.json", p20)
+    _gate("NETWORK_PROVENANCE", p20["status"])
     _dump("21_quota_zero_delta_validation.json", {
         "reserve_attempt": 0, "quota_mutation": 0, "quota_delta": 0,
         "note": "no live acquisition executed by this FIX; quota untouched by construction",
@@ -410,16 +454,30 @@ def main() -> int:
         [sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider", *focused_targets],
         cwd=ROOT, capture_output=True, text=True, env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"},
     )
-    _dump("22_focused_test_result.json", {
+    p22 = {
         "targets": focused_targets, "returncode": focused.returncode, "tail": focused.stdout.strip().splitlines()[-5:],
         "status": "PASS" if focused.returncode == 0 else "FAIL",
-    })
+    }
+    _dump("22_focused_test_result.json", p22)
+    _gate("REGRESSION", p22["status"])
 
     precomputed_full_log = os.getenv("FIX01_FULL_REGRESSION_LOG", "").strip()
+    # The log's actual source HEAD must be supplied explicitly — a stale log
+    # silently reused across commits without recording what tree it measured
+    # is exactly the fail-open pattern MAJOR-01 exists to prevent.
+    measured_at_head = os.getenv("FIX01_FULL_REGRESSION_LOG_HEAD", "").strip() or git_head()
     if precomputed_full_log and Path(precomputed_full_log).is_file():
         full_stdout = Path(precomputed_full_log).read_text(encoding="utf-8", errors="ignore")
         last_line = full_stdout.strip().splitlines()[-1] if full_stdout.strip() else ""
         full_returncode = 1 if ("failed" in last_line or "error" in last_line.lower()) else 0
+        # Best-effort provenance: if the log's mtime predates this HEAD by a
+        # nontrivial margin, callers should not assume it reflects the exact
+        # current tree — the log's own path/mtime is recorded either way so
+        # r.md can state explicitly what state was actually measured.
+        try:
+            log_mtime = Path(precomputed_full_log).stat().st_mtime
+        except OSError:
+            log_mtime = None
     else:
         full = subprocess.run(
             [sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider"],
@@ -427,6 +485,7 @@ def main() -> int:
         )
         full_stdout = full.stdout
         full_returncode = full.returncode
+        log_mtime = None
     known_unrelated = "test_recent_empty_is_not_checkpointed_and_general_resume_retries" in full_stdout
     summary_line = full_stdout.strip().splitlines()[-1] if full_stdout.strip() else ""
     only_known_unrelated = full_returncode != 0 and "1 failed" in summary_line and known_unrelated
@@ -435,7 +494,11 @@ def main() -> int:
         "returncode": full_returncode, "summary_line": summary_line,
         "known_unrelated_failure_present": known_unrelated, "status": full_status,
         "source": "precomputed_log" if precomputed_full_log else "inline_run",
+        "measured_at_head": measured_at_head,
+        "log_path": precomputed_full_log or None,
+        "log_mtime_epoch": log_mtime,
     })
+    _gate("REGRESSION", "PASS" if full_status in ("PASS", "PASS_WITH_KNOWN_UNRELATED_FAILURE") else "FAIL")
 
     # 24: secret scan.
     krx_auth_key = os.getenv("KRX_OPEN_API_AUTH_KEY", "")
@@ -460,9 +523,28 @@ def main() -> int:
         "status": "PASS" if not out_of_scope else "BLOCKED_DIFF_GUARD",
     })
 
+    # Section 59 priority order. The first bucket carrying any non-PASS
+    # status determines final_status; a clean run (or diff/secret-scan-only
+    # failure, which §59 has no dedicated terminal for) falls through to
+    # BLOCKED_RECONCILIATION_HARNESS or RECONCILIATION_HARNESS_READY.
+    _FAILURE_PRIORITY = (
+        ("ACQUISITION_AUTHORITY_BINDING", "BLOCKED_ACQUISITION_AUTHORITY_BINDING"),
+        ("TEMPORAL_CLASSIFICATION_CONTRACT", "BLOCKED_TEMPORAL_CLASSIFICATION_CONTRACT"),
+        ("IDENTITY_REUSE_CONTRACT", "BLOCKED_IDENTITY_REUSE_CONTRACT"),
+        ("RAW_STATUS_CONTRACT", "BLOCKED_RAW_STATUS_CONTRACT"),
+        ("SECURITY_TYPE_CLASSIFICATION_CONTRACT", "BLOCKED_SECURITY_TYPE_CLASSIFICATION_CONTRACT"),
+        ("TARGET_IDENTITY_CONTRACT", "BLOCKED_TARGET_IDENTITY_CONTRACT"),
+        ("NETWORK_PROVENANCE", "BLOCKED_NETWORK_PROVENANCE"),
+        ("REGRESSION", "BLOCKED_REGRESSION"),
+    )
     final_status = "RECONCILIATION_HARNESS_READY"
-    if full_status == "BLOCKED_REGRESSION" or focused.returncode != 0 or out_of_scope or secret_scan["secret_occurrence_count"]:
-        final_status = "BLOCKED_REGRESSION"
+    for bucket, terminal in _FAILURE_PRIORITY:
+        if any(status != "PASS" for status in gates.get(bucket, [])):
+            final_status = terminal
+            break
+    if final_status == "RECONCILIATION_HARNESS_READY" and (out_of_scope or secret_scan["secret_occurrence_count"]):
+        final_status = "BLOCKED_RECONCILIATION_HARNESS"
+    gate_snapshot = dict(gates)
 
     _dump("01_fix01_summary.json", {
         "work_id": "HISTORICAL_UNIVERSE_AUTHORITY_RECONCILIATION_V01_HARNESS_FIX01",
@@ -479,6 +561,7 @@ def main() -> int:
         "full_regression_status": full_status,
         "diff_guard_status": "PASS" if not out_of_scope else "BLOCKED_DIFF_GUARD",
         "secret_scan_status": "PASS" if secret_scan["secret_occurrence_count"] == 0 else "FAIL",
+        "gate_snapshot": gate_snapshot,
         "final_status": final_status,
     })
     _dump("26_final_summary.json", {
