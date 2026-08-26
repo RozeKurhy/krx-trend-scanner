@@ -1,0 +1,27 @@
+{
+  "schema": "adjusted_population_historical_authority_acquisition_plan_v01",
+  "execution_in_this_task": false,
+  "reason": "Local source inventory has no TIER_A historical security-type PIT source.",
+  "required_official_source": "KRX official historical instrument/security-type master or immutable dated listing/delisting master snapshots",
+  "required_fields": [
+    "ticker",
+    "ISIN/full_code",
+    "market",
+    "security/instrument type",
+    "listing_date",
+    "delisting_date",
+    "effective_from",
+    "effective_to",
+    "source_observation_date",
+    "provenance/hash"
+  ],
+  "required_period": ["2010-01-04", "2026-08-21"],
+  "required_coverage": "all KOSPI/KOSDAQ identities observed in raw historical inventory, including delisted and ticker-reused instruments",
+  "acquisition_channel": "authenticated KRX MDC file/API export or official downloadable historical master",
+  "authentication": "existing KRX account/credential path in local env; credential values must not enter artifacts",
+  "rate_limit_and_scope": "prefer one bulk master/snapshot per dated PIT; do not re-call price OHLC API",
+  "cache_plan": "immutable raw response archive plus canonical normalized artifact, each content_sha256 and source_observation_date",
+  "PIT_preservation": "never backdate a current snapshot; preserve each source observation date and effective interval",
+  "acceptance_gate": "authority_unresolved=0, weak_only_final_decisions=0, delisted_common_missing=0",
+  "status": "BLOCKED_PENDING_EXTERNAL_AUTHORITY_ACQUISITION"
+}

@@ -1,0 +1,22 @@
+{
+  "schema": "adjusted_population_historical_authority_diff_guard_v01",
+  "baseline_head": "01bead032d342d7b36209c9f9b18caa1a13d3f87",
+  "allowed_change_scope": [
+    "artifacts/data/end_to_end_data_parity/v01/adjusted_population_preflight/historical_authority_resolution/**",
+    "r.md"
+  ],
+  "forbidden_change_scope": [
+    "production source/provider",
+    "data/reference current metadata",
+    "raw price stores",
+    "legacy cache",
+    "PyKRX/KRX/OpenDART execution",
+    "consumer switch",
+    "previous FIX01 evidence"
+  ],
+  "source_changed": false,
+  "scripts_changed": false,
+  "tests_changed": false,
+  "production_data_changed": false,
+  "status": "PASS_IF_ONLY_NEW_RESOLUTION_EVIDENCE_AND_RMD_CHANGE"
+}

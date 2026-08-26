@@ -1,0 +1,21 @@
+{
+  "schema": "adjusted_population_historical_authority_resolution_summary_v01",
+  "work_id": "ADJUSTED_PRICE_POPULATION_V01",
+  "revision": "HISTORICAL_UNIVERSE_AUTHORITY_RESOLUTION",
+  "start_head": "01bead032d342d7b36209c9f9b18caa1a13d3f87",
+  "raw_historical_universe": 3673,
+  "current_common": 2557,
+  "historical_only_numeric": 1058,
+  "previous_classification": {"common_candidate": 218, "not_common_candidate": 285, "unknown": 555},
+  "final_classification": {"historical_common_required": 0, "historical_not_common": 0, "historical_authority_unresolved": 1058},
+  "authority": {"tier_a_historical_pit": 0, "tier_b_lifecycle_only": 555, "tier_c_evidence": 503, "weak_only_final_decisions": 0},
+  "delisted": {"reference_count": 905, "former_common_candidate": 215, "missing_common_final": "UNRESOLVED"},
+  "ticker_identity_reuse": {"detected": 0, "collisions": 0, "gate": "PASS_WITH_COVERAGE_LIMITATION"},
+  "denominator": {"candidate": 2775, "final": null, "frozen": false},
+  "network": {"krx": 0, "pykrx": 0, "opendart": 0},
+  "production_writes": 0,
+  "full_population": false,
+  "live_pilot": false,
+  "terminal_status": "BLOCKED_HISTORICAL_AUTHORITY_SOURCE_MISSING",
+  "next_action": "Acquire official historical PIT instrument/security-type authority; do not infer or run live price pilot."
+}
