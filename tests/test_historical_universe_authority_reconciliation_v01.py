@@ -354,13 +354,14 @@ def test_denominator_candidate_keeps_alpha_support_unknown() -> None:
 
 
 def test_denominator_candidate_never_collapses_non_overlap_reuse_to_ticker_set() -> None:
-    """§24/MAJOR-03: denominator candidate must keep both identity intervals
-    for a non-overlapping ticker reuse instead of merging into set(ticker)."""
+    """§24/§28/MAJOR-03: denominator candidate must keep BOTH identity
+    intervals for a non-overlapping ticker reuse — including the NOT_COMMON
+    one — instead of merging into set(ticker) or dropping the non-COMMON leg."""
     result = reconcile_target_identities(
         [_target("005930")],
         [
             _snapshot("2020-01-02", _row("005930", isu_cd="OLD")),
-            _snapshot("2020-01-03", _row("005930", isu_cd="NEW")),
+            _snapshot("2020-01-03", _row("005930", isu_cd="NEW", kind="신형우선주")),
         ],
         expected_dates=["2020-01-02", "2020-01-03"],
     )
@@ -371,6 +372,10 @@ def test_denominator_candidate_never_collapses_non_overlap_reuse_to_ticker_set()
     matching = [row for row in candidate["historical_identity_intervals"] if row["ticker"] == "005930"]
     assert len(matching) == 2
     assert {row["ISU_CD"] for row in matching} == {"OLD", "NEW"}
+    by_isu = {row["ISU_CD"]: row["historical_common_required"] for row in matching}
+    assert by_isu == {"OLD": True, "NEW": False}
+    # The ticker is still historically required overall (the OLD interval was
+    # COMMON), but that verdict must not erase the NOT_COMMON NEW interval.
     assert candidate["ticker_union_count"] == 1
 
 
@@ -579,9 +584,13 @@ def test_managed_issue_without_spac_history_still_resolves_common() -> None:
 def test_security_type_mapping_evidence_has_rule_ids_and_authority_reference() -> None:
     from trend_scanner.universe.historical_authority_reconciliation import build_security_type_mapping_evidence
 
-    evidence = build_security_type_mapping_evidence([_row("005930")])
+    evidence = build_security_type_mapping_evidence(
+        [_row("005930")], sample_source_path="data/reference/krx_instrument_metadata.parquet"
+    )
     assert all(rule["rule_id"].startswith("HISTORICAL_SECURITY_TYPE_RULE_") for rule in evidence["mappings"])
     assert all("existing_authority_reference" in rule for rule in evidence["mappings"])
+    assert all(rule["sample_source_path"] == "data/reference/krx_instrument_metadata.parquet" for rule in evidence["mappings"])
+    assert all("SECUGRP_NM" in rule and "KIND_STKCERT_TP_NM" in rule and "SECT_TP_NM_condition" in rule for rule in evidence["mappings"])
     assert evidence["production_authority_alignment"]["existing_authority_reference"]
 
 

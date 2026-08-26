@@ -334,7 +334,26 @@ def main() -> int:
     })
 
     # 18: security-type mapping provenance (Section E, Minor).
-    mapping_evidence = build_security_type_mapping_evidence([_row("005930")])
+    mapping_sample_path = ROOT / "data/reference/krx_instrument_metadata.parquet"
+    mapping_sample_rows: list[dict[str, str]] = []
+    if mapping_sample_path.is_file():
+        try:
+            import pandas as pd
+
+            frame = pd.read_parquet(mapping_sample_path, columns=["source_security_type"])
+            for raw_value in frame["source_security_type"].dropna():
+                fields: dict[str, str] = {}
+                for part in str(raw_value).split("|"):
+                    if "=" in part:
+                        key, _, value = part.partition("=")
+                        fields[key.strip()] = value.strip()
+                if fields:
+                    mapping_sample_rows.append(fields)
+        except Exception:
+            mapping_sample_rows = []
+    mapping_evidence = build_security_type_mapping_evidence(
+        mapping_sample_rows, sample_source_path=str(mapping_sample_path.relative_to(ROOT)) if mapping_sample_path.is_file() else None
+    )
     managed_after_spac = reconcile_target_identities(
         [_target("005930")],
         [_snapshot("2018-06-01", _row("005930", sector="SPAC(소속부없음)")), _snapshot("2020-01-02", _row("005930", sector="관리종목(소속부없음)"))],
@@ -441,7 +460,13 @@ def main() -> int:
     _dump("01_fix01_summary.json", {
         "work_id": "HISTORICAL_UNIVERSE_AUTHORITY_RECONCILIATION_V01_HARNESS_FIX01",
         "start_head": start_head,
-        "end_head": git_head(),
+        # This evidence file is committed together with the change it
+        # describes, so it structurally cannot know its own future commit
+        # hash (repo convention: scripts/validate_krx_open_api_v02.py uses
+        # the same null + implementation_head split). r.md records the
+        # actual END HEAD after the commit exists.
+        "implementation_head": git_head(),
+        "end_head": None,
         "branch": subprocess.check_output(["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=ROOT, text=True).strip(),
         "focused_test_status": "PASS" if focused.returncode == 0 else "FAIL",
         "full_regression_status": full_status,

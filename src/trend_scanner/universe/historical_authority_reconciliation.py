@@ -632,11 +632,31 @@ load_basic_info_raw = load_basic_info_snapshots
 # combinations deliberately remain unresolved instead of falling through to
 # COMMON.  The sector field may be blank when the other two fields suffice.
 SECURITY_TYPE_MAPPING: tuple[dict[str, Any], ...] = (
-    {"rule": "SECUGRP_NM=주권 and KIND_STKCERT_TP_NM=보통주 and SECT_TP_NM not SPAC", "classification": CLASS_COMMON, "reason": "TIER_A_COMMON_SECURITY_TYPE"},
-    {"rule": "SECUGRP_NM in {외국주권,주식예탁증권,사회간접자본투융자회사,투자회사} and KIND_STKCERT_TP_NM=보통주", "classification": CLASS_COMMON, "reason": "TIER_A_COMMON_SECURITY_TYPE"},
-    {"rule": "SECUGRP_NM=부동산투자회사", "classification": CLASS_NOT_COMMON, "reason": "TIER_A_NON_COMMON_SECURITY_TYPE"},
-    {"rule": "SECUGRP_NM=주권 and SECT_TP_NM starts SPAC", "classification": CLASS_NOT_COMMON, "reason": "TIER_A_NON_COMMON_SECURITY_TYPE"},
-    {"rule": "KIND_STKCERT_TP_NM in {구형우선주,신형우선주}", "classification": CLASS_NOT_COMMON, "reason": "TIER_A_NON_COMMON_SECURITY_TYPE"},
+    {
+        "rule": "SECUGRP_NM=주권 and KIND_STKCERT_TP_NM=보통주 and SECT_TP_NM not SPAC",
+        "classification": CLASS_COMMON, "reason": "TIER_A_COMMON_SECURITY_TYPE",
+        "SECUGRP_NM": "주권", "KIND_STKCERT_TP_NM": "보통주", "SECT_TP_NM_condition": "does not start with SPAC",
+    },
+    {
+        "rule": "SECUGRP_NM in {외국주권,주식예탁증권,사회간접자본투융자회사,투자회사} and KIND_STKCERT_TP_NM=보통주",
+        "classification": CLASS_COMMON, "reason": "TIER_A_COMMON_SECURITY_TYPE",
+        "SECUGRP_NM": "외국주권 | 주식예탁증권 | 사회간접자본투융자회사 | 투자회사", "KIND_STKCERT_TP_NM": "보통주", "SECT_TP_NM_condition": "any",
+    },
+    {
+        "rule": "SECUGRP_NM=부동산투자회사",
+        "classification": CLASS_NOT_COMMON, "reason": "TIER_A_NON_COMMON_SECURITY_TYPE",
+        "SECUGRP_NM": "부동산투자회사", "KIND_STKCERT_TP_NM": "any", "SECT_TP_NM_condition": "any",
+    },
+    {
+        "rule": "SECUGRP_NM=주권 and SECT_TP_NM starts SPAC",
+        "classification": CLASS_NOT_COMMON, "reason": "TIER_A_NON_COMMON_SECURITY_TYPE",
+        "SECUGRP_NM": "주권", "KIND_STKCERT_TP_NM": "any", "SECT_TP_NM_condition": "starts with SPAC",
+    },
+    {
+        "rule": "KIND_STKCERT_TP_NM in {구형우선주,신형우선주}",
+        "classification": CLASS_NOT_COMMON, "reason": "TIER_A_NON_COMMON_SECURITY_TYPE",
+        "SECUGRP_NM": "any", "KIND_STKCERT_TP_NM": "구형우선주 | 신형우선주", "SECT_TP_NM_condition": "any",
+    },
 )
 _COMMON_GROUPS = frozenset({"주권", "외국주권", "주식예탁증권", "사회간접자본투융자회사", "투자회사"})
 _PREFERRED_KINDS = frozenset({"구형우선주", "신형우선주"})
@@ -665,13 +685,19 @@ def classify_security_type(row: Mapping[str, Any]) -> dict[str, str]:
     return {"classification": CLASS_UNRESOLVED, "reason": "UNKNOWN_SECURITY_TYPE_VALUE"}
 
 
-def build_security_type_mapping_evidence(observed_rows: Iterable[Mapping[str, Any]] = ()) -> dict[str, Any]:
+def build_security_type_mapping_evidence(
+    observed_rows: Iterable[Mapping[str, Any]] = (),
+    *,
+    sample_source_path: str | None = None,
+) -> dict[str, Any]:
     """Mapping provenance evidence, strengthened per Section E (Minor).
 
     ``observed_rows`` (if provided) is a local sample used only to count how
     many observed formal-field combinations match each rule; it never widens
     or narrows the mapping itself, and an unmatched combination is reported
-    as its own UNRESOLVED inventory row rather than guessed.
+    as its own UNRESOLVED inventory row rather than guessed. ``sample_source_path``
+    should name where that sample actually came from (Section 37 requires this
+    to be a real local path, not left implicit).
     """
 
     reason_sample_counts: dict[str, int] = {}
@@ -694,14 +720,20 @@ def build_security_type_mapping_evidence(observed_rows: Iterable[Mapping[str, An
             **dict(rule),
             "authority_tier": "TIER_A",
             "existing_authority_reference": "docs/architecture/instrument_metadata_authority.md#6-source-category--assettype-deterministic-mapping-fix-round-08-갱신",
+            "sample_source_path": sample_source_path,
             # Multiple rules can share one reason string (rules 1-2 both
-            # resolve TIER_A_COMMON_SECURITY_TYPE); the count is per reason,
-            # not a claim that this exact rule fired that many times.
+            # resolve TIER_A_COMMON_SECURITY_TYPE); this count is per REASON,
+            # not per rule — it cannot distinguish which of rules 1/2 (or
+            # 3/4/5) actually fired for a given sample row.
             "observed_sample_count": reason_sample_counts.get(rule["reason"], 0),
         })
     return {
         "schema": "historical_universe_security_type_mapping_v01",
         "authority": "KRX Open API Basic Info Tier A observed/local formal inventory",
+        "observed_sample_count_caveat": (
+            "observed_sample_count is aggregated per classification reason, not per rule_id; "
+            "rules sharing a reason (1-2 for COMMON, 3-5 for NOT_COMMON) cannot be individually attributed"
+        ),
         "mappings": mappings,
         "unknown_policy": "UNRESOLVED; never default to COMMON",
         "sector_blank_policy": "SECT_TP_NM blank is allowed when group+kind establish an observed rule",
@@ -1030,6 +1062,10 @@ def build_denominator_candidate(
     # Section 24: never collapse to set(ticker) — keep each historical
     # identity interval (ticker + ISU_CD + effective interval) distinct so a
     # non-overlapping ticker reuse is never re-merged into one ticker row.
+    # Every identity interval is kept — including NOT_COMMON ones — so a
+    # non-overlapping reuse never loses an interval (Section 26: "identity
+    # 정보를 유실하지 않는 것이 목적").  Only intervals with
+    # historical_common_required=True feed the COMMON-candidate ticker union.
     historical_identity_intervals = [
         {
             "ticker": interval["ticker"],
@@ -1040,7 +1076,6 @@ def build_denominator_candidate(
             "adjusted_price_support": "UNKNOWN" if not str(interval["ticker"]).isdigit() else "NUMERIC_CONSUMER_CONTRACT_UNCHANGED",
         }
         for interval in reconciliation.get("identity_intervals", [])
-        if interval.get("historical_common_required")
     ]
     current_entries = [
         {
@@ -1049,8 +1084,10 @@ def build_denominator_candidate(
         }
         for ticker in sorted(current)
     ]
-    historical_tickers = {interval["ticker"] for interval in historical_identity_intervals}
-    ticker_union = current | historical_tickers
+    historical_common_tickers = {
+        interval["ticker"] for interval in historical_identity_intervals if interval["historical_common_required"]
+    }
+    ticker_union = current | historical_common_tickers
     return {
         "status": "CANDIDATE_ONLY",
         "current_entries": current_entries,
