@@ -1,0 +1,10 @@
+{
+  "authority_digest_equals_derived_digest_when_untampered": true,
+  "checkpoint_complete_gate": "checkpoint entries must exactly cover expected pairs, all COMPLETE",
+  "contract": "acquisition closure/checkpoint/manifest immutable authority binding",
+  "final_status_gate": "acquisition_final_summary.status must equal READY_FOR_HISTORICAL_UNIVERSE_AUTHORITY_RECONCILIATION",
+  "happy_path_status": "READY",
+  "manifest_gate": "checkpoint entry keys must exactly equal expected basDd|market|endpoint keys (no missing, no extra)",
+  "raw_sha_gate": "current raw bytes sha256 must equal the checkpoint's stored raw_content_sha256 (never the reverse)",
+  "row_count_gate": "current validated row_count must equal the checkpoint's stored row_count"
+}

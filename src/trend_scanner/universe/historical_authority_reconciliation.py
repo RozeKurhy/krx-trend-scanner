@@ -40,6 +40,10 @@ DEFAULT_TARGET_SUMMARY_PATH = (
 )
 DEFAULT_RAW_ROOT = Path("data/reference/source/history/krx_instrument_master/v01/basic_info")
 DEFAULT_CALENDAR_PATH = Path("data/reference/source/history/krx_instrument_master/v01/historical_trading_calendar.json")
+DEFAULT_ACQUISITION_CHECKPOINT_PATH = Path("data/reference/source/history/krx_instrument_master/v01/checkpoint.json")
+DEFAULT_ACQUISITION_FINAL_SUMMARY_PATH = Path(
+    "data/reference/source/history/krx_instrument_master/v01/acquisition_final_summary.json"
+)
 DEFAULT_HARNESS_OUTPUT_DIR = (
     _ARTIFACTS
     / "data/end_to_end_data_parity/v01/"
@@ -56,6 +60,24 @@ HISTORICAL_AUTHORITY_UNRESOLVED = "HISTORICAL_AUTHORITY_UNRESOLVED"
 
 AWAITING_HISTORICAL_BASIC_INFO_ACQUISITION = "AWAITING_HISTORICAL_BASIC_INFO_ACQUISITION"
 BLOCKED_RECONCILIATION_INPUT_AUTHORITY = "BLOCKED_RECONCILIATION_INPUT_AUTHORITY"
+
+# Acquisition closure contract (Section A).  The acquisition harness itself
+# (``krx_historical_instrument_acquisition.py``) is never modified here; this
+# module only consumes its checkpoint.json and an explicit final-summary
+# artifact that a separate, already-approved acquisition execution produces.
+READY_FOR_HISTORICAL_UNIVERSE_AUTHORITY_RECONCILIATION = "READY_FOR_HISTORICAL_UNIVERSE_AUTHORITY_RECONCILIATION"
+ACQUISITION_COMPLETE_STATUS = "COMPLETE"
+
+# Production instrument-metadata authority alignment (Section E, Minor).
+# docs/architecture/instrument_metadata_authority.md §6.1: a formally COMMON
+# (보통주) row filed under the 관리종목(소속부없음) section is fail-closed to
+# UNKNOWN when the same ticker also carries a Tier A SPAC-section observation
+# anywhere in its history.  ``classify_security_type`` stays row-pure; this
+# label only feeds the cross-observation alignment step below.
+_MANAGED_ISSUE_SECTION = "관리종목(소속부없음)"
+PRODUCTION_AUTHORITY_UNMAPPED_MANAGED_ISSUE_AFTER_SPAC_HISTORY = (
+    "PRODUCTION_AUTHORITY_UNMAPPED_MANAGED_ISSUE_AFTER_SPAC_HISTORY"
+)
 
 
 class ReconciliationContractError(RuntimeError):
@@ -337,6 +359,7 @@ class BasicInfoInput:
     snapshots: tuple[dict[str, Any], ...]
     raw_manifest_sha256: str | None
     errors: tuple[str, ...] = ()
+    derived_raw_manifest_sha256: str | None = None
 
     @property
     def ready(self) -> bool:
@@ -350,8 +373,22 @@ class BasicInfoInput:
             "current_files": self.current_files,
             "files_by_market": self.files_by_market,
             "raw_manifest_sha256": self.raw_manifest_sha256,
+            "derived_raw_manifest_sha256": self.derived_raw_manifest_sha256,
             "errors": list(self.errors),
         }
+
+
+def _canonical_raw_manifest_digest(entries: Iterable[tuple[str, str, str]]) -> str:
+    """Canonical ``basDd|market|raw_content_sha256`` digest (sorted, final newline).
+
+    Both the acquisition-authority digest (from stored checkpoint hashes) and
+    the derived-validation digest (from freshly re-hashed raw bytes) must use
+    this exact same canonicalization, or the two digests are not comparable.
+    """
+
+    lines = sorted(f"{bas_dd}|{market}|{digest}" for bas_dd, market, digest in entries)
+    manifest = "\n".join(lines) + "\n" if lines else ""
+    return hashlib.sha256(manifest.encode("utf-8")).hexdigest()
 
 
 def _expected_dates(calendar_dates: Iterable[str] | None) -> list[str]:
@@ -367,14 +404,126 @@ def _expected_dates(calendar_dates: Iterable[str] | None) -> list[str]:
         raise ReconciliationContractError(BLOCKED_RECONCILIATION_INPUT_AUTHORITY, "historical calendar is unavailable") from exc
 
 
+def _blocked(
+    root: Path,
+    expected_paths: set[Path],
+    actual_paths: set[Path],
+    errors: Sequence[str],
+) -> BasicInfoInput:
+    return BasicInfoInput(
+        status=BLOCKED_RECONCILIATION_INPUT_AUTHORITY,
+        raw_root=str(root),
+        expected_files=len(expected_paths),
+        current_files=len(actual_paths),
+        files_by_market={
+            market: sum(path.name == f"{market}.json" for path in actual_paths)
+            for market in ("KOSPI", "KOSDAQ")
+        },
+        snapshots=(),
+        raw_manifest_sha256=None,
+        errors=tuple(errors[:20]),
+    )
+
+
+def _load_acquisition_authority(
+    dates: Sequence[str],
+    *,
+    checkpoint_path: Path,
+    final_summary_path: Path,
+) -> tuple[dict[str, dict[str, Any]] | None, list[str]]:
+    """Validate the acquisition closure/checkpoint/manifest immutable authority.
+
+    Returns ``(entries_by_key, errors)``.  ``entries_by_key`` is ``None`` when
+    any structural/status/coverage check failed; callers must treat that as
+    fail-closed regardless of raw-file presence (Section A).
+    """
+
+    errors: list[str] = []
+
+    if not final_summary_path.is_file():
+        errors.append(f"missing_acquisition_final_summary:{final_summary_path}")
+        summary: Mapping[str, Any] | None = None
+    else:
+        try:
+            summary = json.loads(final_summary_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            summary = None
+        if not isinstance(summary, Mapping):
+            errors.append("acquisition_final_summary_unreadable")
+        elif summary.get("status") != READY_FOR_HISTORICAL_UNIVERSE_AUTHORITY_RECONCILIATION:
+            errors.append(f"acquisition_final_summary_status_invalid:{summary.get('status')!r}")
+
+    if not checkpoint_path.is_file():
+        errors.append(f"missing_acquisition_checkpoint:{checkpoint_path}")
+        return None, errors
+    try:
+        checkpoint_payload = json.loads(checkpoint_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        errors.append("acquisition_checkpoint_unreadable")
+        return None, errors
+    if not isinstance(checkpoint_payload, Mapping) or not isinstance(checkpoint_payload.get("entries"), Mapping):
+        errors.append("acquisition_checkpoint_shape_invalid")
+        return None, errors
+    checkpoint_entries: dict[str, Any] = dict(checkpoint_payload["entries"])
+
+    expected_keys = {
+        f"{day.replace('-', '')}|{market}|{'stk_isu_base_info' if market == 'KOSPI' else 'ksq_isu_base_info'}"
+        for day in dates
+        for market in ("KOSPI", "KOSDAQ")
+    }
+    actual_keys = set(checkpoint_entries)
+    missing_entries = sorted(expected_keys - actual_keys)
+    extra_entries = sorted(actual_keys - expected_keys)
+    if missing_entries:
+        errors.append(f"acquisition_checkpoint_missing_entries:{len(missing_entries)}")
+    if extra_entries:
+        errors.append(f"acquisition_checkpoint_extra_entries:{len(extra_entries)}")
+
+    non_complete: dict[str, int] = {}
+    for key in sorted(expected_keys & actual_keys):
+        entry = checkpoint_entries[key]
+        entry_status = str(entry.get("status")) if isinstance(entry, Mapping) else "INVALID_ENTRY"
+        if entry_status != ACQUISITION_COMPLETE_STATUS:
+            non_complete[entry_status] = non_complete.get(entry_status, 0) + 1
+    if non_complete:
+        errors.append(f"acquisition_checkpoint_non_complete_statuses:{non_complete}")
+
+    if errors:
+        return None, errors
+
+    for key in expected_keys:
+        entry = checkpoint_entries[key]
+        if entry.get("schema_validation") != "PASS" or entry.get("identity_validation") != "PASS":
+            errors.append(f"acquisition_checkpoint_validation_not_pass:{key}")
+        elif not entry.get("raw_content_sha256"):
+            errors.append(f"acquisition_checkpoint_missing_sha:{key}")
+
+    if errors:
+        return None, errors
+
+    return checkpoint_entries, errors
+
+
 def load_basic_info_snapshots(
     raw_root: str | Path = DEFAULT_RAW_ROOT,
     *,
     calendar_dates: Iterable[str] | None = None,
+    acquisition_checkpoint_path: str | Path = DEFAULT_ACQUISITION_CHECKPOINT_PATH,
+    acquisition_final_summary_path: str | Path = DEFAULT_ACQUISITION_FINAL_SUMMARY_PATH,
 ) -> BasicInfoInput:
-    """Load and validate raw Basic Info without making any network request."""
+    """Load and validate raw Basic Info without making any network request.
+
+    A missing raw root is normal waiting (Section 30).  A raw root that
+    exists but whose files, acquisition checkpoint, or acquisition final
+    summary do not exactly and provably match the immutable acquisition
+    authority is fail-closed as ``BLOCKED_RECONCILIATION_INPUT_AUTHORITY``
+    (Section 31) — never silently treated as waiting, and never accepted on
+    the strength of a freshly recomputed hash alone (Section 9).
+    """
 
     root = Path(raw_root)
+    checkpoint_path = Path(acquisition_checkpoint_path)
+    final_summary_path = Path(acquisition_final_summary_path)
     dates = _expected_dates(calendar_dates)
     expected_paths = {
         root / day[:4] / day.replace("-", "") / f"{market}.json"
@@ -396,23 +545,14 @@ def load_basic_info_snapshots(
     missing = sorted(expected_paths - actual_paths)
     extra = sorted(actual_paths - expected_paths)
     if missing or extra:
-        errors = tuple(
-            [f"missing:{path}" for path in missing[:20]]
-            + [f"extra:{path}" for path in extra[:20]]
-        )
-        return BasicInfoInput(
-            status=BLOCKED_RECONCILIATION_INPUT_AUTHORITY,
-            raw_root=str(root),
-            expected_files=len(expected_paths),
-            current_files=len(actual_paths),
-            files_by_market={
-                market: sum(path.name == f"{market}.json" for path in actual_paths)
-                for market in ("KOSPI", "KOSDAQ")
-            },
-            snapshots=(),
-            raw_manifest_sha256=None,
-            errors=errors,
-        )
+        errors = [f"missing:{path}" for path in missing[:20]] + [f"extra:{path}" for path in extra[:20]]
+        return _blocked(root, expected_paths, actual_paths, errors)
+
+    checkpoint_entries, authority_errors = _load_acquisition_authority(
+        dates, checkpoint_path=checkpoint_path, final_summary_path=final_summary_path
+    )
+    if checkpoint_entries is None:
+        return _blocked(root, expected_paths, actual_paths, authority_errors)
 
     try:
         from trend_scanner.data.krx_historical_instrument_acquisition import validate_basic_info_response
@@ -420,18 +560,29 @@ def load_basic_info_snapshots(
         raise ReconciliationContractError(BLOCKED_RECONCILIATION_INPUT_AUTHORITY, "Basic Info schema validator unavailable") from exc
 
     snapshots: list[dict[str, Any]] = []
-    manifest_lines: list[str] = []
+    authority_tuples: list[tuple[str, str, str]] = []
+    derived_tuples: list[tuple[str, str, str]] = []
     errors: list[str] = []
     for day in dates:
         bas_dd = day.replace("-", "")
         for market in ("KOSPI", "KOSDAQ"):
             endpoint = "stk_isu_base_info" if market == "KOSPI" else "ksq_isu_base_info"
+            key = f"{bas_dd}|{market}|{endpoint}"
+            entry = checkpoint_entries[key]
             path = root / day[:4] / bas_dd / f"{market}.json"
             try:
                 content = path.read_bytes()
+                current_digest = hashlib.sha256(content).hexdigest()
+                derived_tuples.append((bas_dd, market, current_digest))
+                stored_digest = entry.get("raw_content_sha256")
+                if current_digest != stored_digest:
+                    errors.append(f"raw_sha_tamper:{key}")
+                    continue
                 payload = json.loads(content.decode("utf-8"))
                 checked = validate_basic_info_response(payload, bas_dd=bas_dd, market=market, endpoint=endpoint)
-                digest = hashlib.sha256(content).hexdigest()
+                if checked["row_count"] != int(entry.get("row_count", -1)):
+                    errors.append(f"row_count_mismatch:{key}")
+                    continue
                 rows = []
                 for row in checked["records"]:
                     # The KRX short code is a six-character string contract;
@@ -449,29 +600,16 @@ def load_basic_info_snapshots(
                     "market": market,
                     "endpoint": endpoint,
                     "raw_path": str(path),
-                    "raw_content_sha256": digest,
+                    "raw_content_sha256": current_digest,
                     "rows": rows,
                 })
-                manifest_lines.append(f"{bas_dd}|{market}|{digest}")
+                authority_tuples.append((bas_dd, market, stored_digest))
             except Exception as exc:
                 errors.append(f"{path}:{type(exc).__name__}:{exc}")
 
     if errors:
-        return BasicInfoInput(
-            status=BLOCKED_RECONCILIATION_INPUT_AUTHORITY,
-            raw_root=str(root),
-            expected_files=len(expected_paths),
-            current_files=len(actual_paths),
-            files_by_market={
-                market: sum(path.name == f"{market}.json" for path in actual_paths)
-                for market in ("KOSPI", "KOSDAQ")
-            },
-            snapshots=(),
-            raw_manifest_sha256=None,
-            errors=tuple(errors[:20]),
-        )
+        return _blocked(root, expected_paths, actual_paths, errors)
 
-    manifest = "\n".join(sorted(manifest_lines)) + "\n"
     return BasicInfoInput(
         status="READY",
         raw_root=str(root),
@@ -479,7 +617,11 @@ def load_basic_info_snapshots(
         current_files=len(actual_paths),
         files_by_market={"KOSPI": len(dates), "KOSDAQ": len(dates)},
         snapshots=tuple(snapshots),
-        raw_manifest_sha256=hashlib.sha256(manifest.encode("utf-8")).hexdigest(),
+        # Authority digest: derived from the acquisition checkpoint's own
+        # stored hashes, never from the hashes this loader just recomputed
+        # (Section 9/52) — the current-raw digest is retained separately.
+        raw_manifest_sha256=_canonical_raw_manifest_digest(authority_tuples),
+        derived_raw_manifest_sha256=_canonical_raw_manifest_digest(derived_tuples),
     )
 
 
@@ -523,14 +665,93 @@ def classify_security_type(row: Mapping[str, Any]) -> dict[str, str]:
     return {"classification": CLASS_UNRESOLVED, "reason": "UNKNOWN_SECURITY_TYPE_VALUE"}
 
 
-def build_security_type_mapping_evidence() -> dict[str, Any]:
+def build_security_type_mapping_evidence(observed_rows: Iterable[Mapping[str, Any]] = ()) -> dict[str, Any]:
+    """Mapping provenance evidence, strengthened per Section E (Minor).
+
+    ``observed_rows`` (if provided) is a local sample used only to count how
+    many observed formal-field combinations match each rule; it never widens
+    or narrows the mapping itself, and an unmatched combination is reported
+    as its own UNRESOLVED inventory row rather than guessed.
+    """
+
+    reason_sample_counts: dict[str, int] = {}
+    unresolved_combinations: dict[tuple[str, str, str], int] = {}
+    for row in observed_rows:
+        checked = classify_security_type(row)
+        reason_sample_counts[checked["reason"]] = reason_sample_counts.get(checked["reason"], 0) + 1
+        if checked["classification"] == CLASS_UNRESOLVED:
+            key = (
+                str(row.get("SECUGRP_NM", "")).strip(),
+                str(row.get("KIND_STKCERT_TP_NM", "")).strip(),
+                str(row.get("SECT_TP_NM", "")).strip(),
+            )
+            unresolved_combinations[key] = unresolved_combinations.get(key, 0) + 1
+
+    mappings = []
+    for index, rule in enumerate(SECURITY_TYPE_MAPPING):
+        mappings.append({
+            "rule_id": f"HISTORICAL_SECURITY_TYPE_RULE_{index + 1:02d}",
+            **dict(rule),
+            "authority_tier": "TIER_A",
+            "existing_authority_reference": "docs/architecture/instrument_metadata_authority.md#6-source-category--assettype-deterministic-mapping-fix-round-08-갱신",
+            # Multiple rules can share one reason string (rules 1-2 both
+            # resolve TIER_A_COMMON_SECURITY_TYPE); the count is per reason,
+            # not a claim that this exact rule fired that many times.
+            "observed_sample_count": reason_sample_counts.get(rule["reason"], 0),
+        })
     return {
         "schema": "historical_universe_security_type_mapping_v01",
         "authority": "KRX Open API Basic Info Tier A observed/local formal inventory",
-        "mappings": [dict(rule) for rule in SECURITY_TYPE_MAPPING],
+        "mappings": mappings,
         "unknown_policy": "UNRESOLVED; never default to COMMON",
         "sector_blank_policy": "SECT_TP_NM blank is allowed when group+kind establish an observed rule",
+        "production_authority_alignment": {
+            "existing_authority_reference": "docs/architecture/instrument_metadata_authority.md §6.1",
+            "note": (
+                "Production maps any KIND_STKCERT_TP_NM=보통주 row to COMMON regardless of SECUGRP_NM "
+                "(외국주권/주식예탁증권/사회간접자본투융자회사/투자회사 included), matching this module's "
+                "rules 1-2. The one alignment gap production carries — 보통주 + SECT_TP_NM=관리종목(소속부없음) "
+                "on a ticker that also has Tier A SPAC-section history elsewhere — is fail-closed to UNKNOWN "
+                "instead of guessed as COMMON; that exception is applied in reconcile_target_identities via "
+                f"reason={PRODUCTION_AUTHORITY_UNMAPPED_MANAGED_ISSUE_AFTER_SPAC_HISTORY!r} rather than in this "
+                "row-pure classifier, since it requires the ticker's full observation history."
+            ),
+        },
+        "unresolved_combinations_observed": [
+            {"SECUGRP_NM": group, "KIND_STKCERT_TP_NM": kind, "SECT_TP_NM": sector, "count": count}
+            for (group, kind, sector), count in sorted(unresolved_combinations.items())
+        ],
     }
+
+
+def _classify_observations(observations: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
+    """Row-pure classification plus the one documented cross-observation
+    production-authority alignment exception (see ``build_security_type_mapping_evidence``).
+    """
+
+    spac_seen = any(
+        str(obs.get("SECUGRP_NM", "")).strip() == "주권"
+        and str(obs.get("SECT_TP_NM", "")).strip().startswith("SPAC")
+        for obs in observations
+    )
+    classified: list[dict[str, Any]] = []
+    for obs in observations:
+        checked = classify_security_type(obs)
+        classification = checked["classification"]
+        reason = checked["reason"]
+        if (
+            classification == CLASS_COMMON
+            and spac_seen
+            and str(obs.get("KIND_STKCERT_TP_NM", "")).strip() == "보통주"
+            and str(obs.get("SECT_TP_NM", "")).strip() == _MANAGED_ISSUE_SECTION
+        ):
+            classification = CLASS_UNRESOLVED
+            reason = PRODUCTION_AUTHORITY_UNMAPPED_MANAGED_ISSUE_AFTER_SPAC_HISTORY
+        merged = dict(obs)
+        merged["classification"] = classification
+        merged["classification_reason"] = reason
+        classified.append(merged)
+    return classified
 
 
 def build_pit_identity_timeline(snapshots: Iterable[Mapping[str, Any]]) -> dict[str, list[dict[str, Any]]]:
@@ -559,28 +780,52 @@ def build_pit_identity_timeline(snapshots: Iterable[Mapping[str, Any]]) -> dict[
     return timeline
 
 
-def _intervalize(observations: Sequence[Mapping[str, Any]], expected_dates: Sequence[str] | None) -> list[dict[str, Any]]:
-    if not observations:
+def _intervalize(
+    classified: Sequence[Mapping[str, Any]],
+    expected_dates: Sequence[str] | None,
+    *,
+    source_manifest_sha256: str | None = None,
+) -> list[dict[str, Any]]:
+    """Build identity-aware intervals from already-classified observations.
+
+    Each interval keeps ``ISU_CD``/``effective_from``/``effective_to`` so a
+    non-overlapping ticker reuse never collapses into a single ticker-only
+    row downstream (Section C).  ``historical_common_required`` is an
+    interval-level fact (this interval's own classification), never
+    inherited from the target's overall historical verdict.
+    """
+
+    if not classified:
         return []
     date_index = {day: index for index, day in enumerate(expected_dates or [])}
+    isu_order: list[str] = []
     intervals: list[dict[str, Any]] = []
-    for obs in observations:
-        checked = classify_security_type(obs)
-        state = (str(obs.get("ISU_CD", "")), str(obs.get("MKT_TP_NM", "")).strip(), checked["classification"])
+    for obs in classified:
+        ticker = str(obs.get("ticker", obs.get("ISU_SRT_CD", "")))
+        isu = str(obs.get("ISU_CD", "") or "").strip()
+        if isu and isu not in isu_order:
+            isu_order.append(isu)
+        state = (isu, str(obs.get("MKT_TP_NM", "")).strip(), obs["classification"])
         current = {
             "effective_from": obs["effective_date"],
             "effective_to": obs["effective_date"],
-            "ticker": obs.get("ticker", obs.get("ISU_SRT_CD", "")),
+            "ticker": ticker,
             "ISU_CD": obs.get("ISU_CD"),
             "market": obs.get("MKT_TP_NM", ""),
-            "security_type": checked["classification"],
-            "classification": checked["classification"],
-            "classification_reason": checked["reason"],
+            "classification": obs["classification"],
+            "classification_reason": obs["classification_reason"],
+            "historical_common_required": obs["classification"] == CLASS_COMMON,
+            "reuse_group": f"{ticker}:{isu}" if isu else None,
             "authority": "TIER_A_KRX_OPEN_API_BASIC_INFO",
+            "source_manifest_sha256": source_manifest_sha256,
         }
         if intervals:
             previous = intervals[-1]
-            previous_state = (str(previous.get("ISU_CD", "")), str(previous.get("market", "")).strip(), previous["classification"])
+            previous_state = (
+                str(previous.get("ISU_CD", "") or ""),
+                str(previous.get("market", "")).strip(),
+                previous["classification"],
+            )
             adjacent = True
             if date_index:
                 adjacent = date_index.get(previous["effective_to"], -2) + 1 == date_index.get(current["effective_from"], -1)
@@ -606,21 +851,23 @@ def reconcile_target_identities(
     for target in targets:
         ticker = target["ticker"]
         observations = timeline.get(ticker, [])
+        classified = _classify_observations(observations)
         states: list[str] = []
         reasons: list[str] = []
         dates: list[str] = []
         markets: set[str] = set()
         isu_values: set[str] = set()
         by_date: dict[str, set[str]] = {}
-        for observation in observations:
-            checked = classify_security_type(observation)
-            states.append(checked["classification"])
-            reasons.append(checked["reason"])
+        conflict_groups: dict[tuple[str, str], set[str]] = {}
+        for observation in classified:
+            states.append(observation["classification"])
+            reasons.append(observation["classification_reason"])
             dates.append(observation["effective_date"])
             markets.add(str(observation.get("MKT_TP_NM", "")).strip())
             isu = str(observation.get("ISU_CD", "")).strip()
             isu_values.add(isu)
             by_date.setdefault(observation["effective_date"], set()).add(isu)
+            conflict_groups.setdefault((observation["effective_date"], isu), set()).add(observation["classification"])
         overlapping_codes = any(len(codes) > 1 for codes in by_date.values())
         if overlapping_codes:
             reuse_status = "AMBIGUOUS"
@@ -628,6 +875,12 @@ def reconcile_target_identities(
             reuse_status = "REUSE_DETECTED"
         else:
             reuse_status = "PASS"
+        # A true conflict (Section 18) is the SAME effective date and SAME
+        # resolved identity carrying mutually contradictory official rows —
+        # never a plain lifecycle transition across different dates.
+        true_conflict = any(
+            {CLASS_COMMON, CLASS_NOT_COMMON} <= state_set for state_set in conflict_groups.values()
+        )
 
         if not observations:
             final = HISTORICAL_AUTHORITY_UNRESOLVED
@@ -635,19 +888,23 @@ def reconcile_target_identities(
         elif reuse_status == "AMBIGUOUS":
             final = HISTORICAL_AUTHORITY_UNRESOLVED
             reason = "IDENTITY_COLLISION"
+        elif true_conflict:
+            final = HISTORICAL_AUTHORITY_UNRESOLVED
+            reason = "SAME_DATE_CONTRADICTORY_CLASSIFICATION"
         elif CLASS_UNRESOLVED in states:
             final = HISTORICAL_AUTHORITY_UNRESOLVED
             reason = next((item for item in reasons if item not in {"TIER_A_COMMON_SECURITY_TYPE", "TIER_A_NON_COMMON_SECURITY_TYPE"}), "UNKNOWN_SECURITY_TYPE_VALUE")
-        elif CLASS_COMMON in states and CLASS_NOT_COMMON in states:
-            final = HISTORICAL_AUTHORITY_UNRESOLVED
-            reason = "CONFLICTING_OFFICIAL_CLASSIFICATION"
         elif CLASS_COMMON in states:
+            # A resolved COMMON interval anywhere in the PIT history is
+            # sufficient (Section 15/17C); a NOT_COMMON interval elsewhere is
+            # a normal lifecycle transition, not a conflict (Section 16).
             final = HISTORICAL_COMMON_REQUIRED
-            reason = "TIER_A_COMMON_SECURITY_TYPE"
+            reason = "TIER_A_COMMON_SECURITY_TYPE" if CLASS_NOT_COMMON not in states else "TIER_A_COMMON_INTERVAL_OBSERVED"
         else:
             final = HISTORICAL_NOT_COMMON
             reason = "TIER_A_NON_COMMON_SECURITY_TYPE"
 
+        intervals = _intervalize(classified, expected_dates, source_manifest_sha256=source_manifest_sha256)
         results.append(
             {
                 "target_ticker": ticker,
@@ -665,7 +922,7 @@ def reconcile_target_identities(
                 "unresolved_observation_count": states.count(CLASS_UNRESOLVED),
                 "security_type_states": sorted(set(states)),
                 "ticker_reuse_status": reuse_status,
-                "intervals": _intervalize(observations, expected_dates),
+                "intervals": intervals,
                 "adjusted_price_support": "UNKNOWN" if target["identity_type"] == "alphanumeric" else "NUMERIC_CONSUMER_CONTRACT_UNCHANGED",
                 "source_manifest_sha256": source_manifest_sha256,
             }
@@ -678,6 +935,11 @@ def reconcile_target_identities(
     }
     return {
         "results": results,
+        # Section 22: identity-aware structure kept alongside the per-target
+        # view so a non-overlapping ticker reuse never has to be recovered
+        # from a lossy ticker-only set downstream.
+        "results_by_target": results,
+        "identity_intervals": [interval for row in results for interval in row["intervals"]],
         "counts": counts,
         "target_total": len(targets),
         "source_manifest_sha256": source_manifest_sha256,
@@ -758,23 +1020,47 @@ def build_denominator_candidate(
         expected_total=expected_total,
     )
     if gate["status"] not in {"ELIGIBLE_NOT_PUBLISHED"}:
-        return {"status": gate["status"], "entries": [], "actual_freeze": False}
+        return {
+            "status": gate["status"],
+            "current_entries": [],
+            "historical_identity_intervals": [],
+            "actual_freeze": False,
+        }
     current = {_normalise_ticker(value) for value in current_common_tickers}
-    historical = {
-        row["target_ticker"]
-        for row in reconciliation.get("results", [])
-        if row.get("historical_classification") == HISTORICAL_COMMON_REQUIRED
-    }
-    entries = [
-        {"ticker": ticker, "historical_common_required": ticker in historical, "adjusted_price_support": "UNKNOWN" if not ticker.isdigit() else "NUMERIC_CONSUMER_CONTRACT_UNCHANGED"}
-        for ticker in sorted(current | historical)
+    # Section 24: never collapse to set(ticker) — keep each historical
+    # identity interval (ticker + ISU_CD + effective interval) distinct so a
+    # non-overlapping ticker reuse is never re-merged into one ticker row.
+    historical_identity_intervals = [
+        {
+            "ticker": interval["ticker"],
+            "ISU_CD": interval.get("ISU_CD"),
+            "effective_from": interval["effective_from"],
+            "effective_to": interval["effective_to"],
+            "historical_common_required": bool(interval.get("historical_common_required")),
+            "adjusted_price_support": "UNKNOWN" if not str(interval["ticker"]).isdigit() else "NUMERIC_CONSUMER_CONTRACT_UNCHANGED",
+        }
+        for interval in reconciliation.get("identity_intervals", [])
+        if interval.get("historical_common_required")
     ]
+    current_entries = [
+        {
+            "ticker": ticker,
+            "adjusted_price_support": "UNKNOWN" if not ticker.isdigit() else "NUMERIC_CONSUMER_CONTRACT_UNCHANGED",
+        }
+        for ticker in sorted(current)
+    ]
+    historical_tickers = {interval["ticker"] for interval in historical_identity_intervals}
+    ticker_union = current | historical_tickers
     return {
         "status": "CANDIDATE_ONLY",
-        "entries": entries,
-        "count": len(entries),
-        "numeric_count": sum(entry["ticker"].isdigit() for entry in entries),
-        "alphanumeric_count": sum(not entry["ticker"].isdigit() for entry in entries),
+        "current_entries": current_entries,
+        "historical_identity_intervals": historical_identity_intervals,
+        "count": len(current_entries) + len(historical_identity_intervals),
+        "ticker_union_count": len(ticker_union),
+        "numeric_ticker_union_count": sum(ticker.isdigit() for ticker in ticker_union),
+        "alphanumeric_ticker_union_count": sum(not ticker.isdigit() for ticker in ticker_union),
+        "identity_aware": True,
+        "ticker_only_collapse": False,
         "actual_freeze": False,
     }
 
@@ -784,12 +1070,20 @@ def run_reconciliation_preflight(
     target_identities_path: str | Path = DEFAULT_TARGET_IDENTITY_PATH,
     basic_info_root: str | Path = DEFAULT_RAW_ROOT,
     calendar_dates: Iterable[str] | None = None,
+    acquisition_checkpoint_path: str | Path = DEFAULT_ACQUISITION_CHECKPOINT_PATH,
+    acquisition_final_summary_path: str | Path = DEFAULT_ACQUISITION_FINAL_SUMMARY_PATH,
 ) -> dict[str, Any]:
     """Run the default offline preflight; no classification occurs without raw authority."""
 
     target = load_target_identities(target_identities_path)
-    raw = load_basic_info_snapshots(basic_info_root, calendar_dates=calendar_dates)
-    if not raw.ready:
+    raw = load_basic_info_snapshots(
+        basic_info_root,
+        calendar_dates=calendar_dates,
+        acquisition_checkpoint_path=acquisition_checkpoint_path,
+        acquisition_final_summary_path=acquisition_final_summary_path,
+    )
+    if raw.status == AWAITING_HISTORICAL_BASIC_INFO_ACQUISITION:
+        # Section 30: normal preflight waiting — CLI exit 0.
         return {
             "status": "READY_FOR_RECONCILIATION_AFTER_AUTHORITY_ACQUISITION",
             "reconciliation_input_status": raw.status,
@@ -800,6 +1094,22 @@ def run_reconciliation_preflight(
             "network_requests": {"krx_open_api": 0, "krx_mdc": 0, "pykrx": 0, "opendart": 0},
             "survivorship_bias_gate": "BLOCKED_INPUT_PENDING",
             "ticker_identity_reuse_gate": "BLOCKED_INPUT_PENDING",
+            "denominator_freeze_gate": "NOT_EXECUTED_INPUT_AUTHORITY_PENDING",
+        }
+    if raw.status == BLOCKED_RECONCILIATION_INPUT_AUTHORITY:
+        # Section 31/MAJOR-04: partial/corrupt/tampered/wrong-terminal input is
+        # never reported as the same top-level status as normal waiting, so
+        # the CLI (Section 32) can map this to a non-zero exit distinctly.
+        return {
+            "status": BLOCKED_RECONCILIATION_INPUT_AUTHORITY,
+            "reconciliation_input_status": raw.status,
+            "target": {"counts": target["counts"], "target_identity_set_sha256": target["target_identity_set_sha256"]},
+            "raw_input": raw.as_dict(),
+            "classification_executed": False,
+            "actual_denominator_frozen": False,
+            "network_requests": {"krx_open_api": 0, "krx_mdc": 0, "pykrx": 0, "opendart": 0},
+            "survivorship_bias_gate": "BLOCKED_INPUT_AUTHORITY",
+            "ticker_identity_reuse_gate": "BLOCKED_INPUT_AUTHORITY",
             "denominator_freeze_gate": "NOT_EXECUTED_INPUT_AUTHORITY_PENDING",
         }
     reconciliation = reconcile_target_identities(target["identities"], raw.snapshots, expected_dates=_expected_dates(calendar_dates), source_manifest_sha256=raw.raw_manifest_sha256)
@@ -830,6 +1140,8 @@ __all__ = [
     "CLASS_COMMON",
     "CLASS_NOT_COMMON",
     "CLASS_UNRESOLVED",
+    "DEFAULT_ACQUISITION_CHECKPOINT_PATH",
+    "DEFAULT_ACQUISITION_FINAL_SUMMARY_PATH",
     "DEFAULT_HARNESS_OUTPUT_DIR",
     "DEFAULT_RAW_ROOT",
     "DEFAULT_TARGET_IDENTITY_PATH",
@@ -839,6 +1151,8 @@ __all__ = [
     "HISTORICAL_AUTHORITY_UNRESOLVED",
     "HISTORICAL_COMMON_REQUIRED",
     "HISTORICAL_NOT_COMMON",
+    "PRODUCTION_AUTHORITY_UNMAPPED_MANAGED_ISSUE_AFTER_SPAC_HISTORY",
+    "READY_FOR_HISTORICAL_UNIVERSE_AUTHORITY_RECONCILIATION",
     "BasicInfoInput",
     "ReconciliationContractError",
     "SECURITY_TYPE_MAPPING",

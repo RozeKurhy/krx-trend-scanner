@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 import socket
@@ -18,6 +19,7 @@ from trend_scanner.universe.historical_authority_reconciliation import (
     HISTORICAL_AUTHORITY_UNRESOLVED,
     HISTORICAL_COMMON_REQUIRED,
     HISTORICAL_NOT_COMMON,
+    READY_FOR_HISTORICAL_UNIVERSE_AUTHORITY_RECONCILIATION,
     ReconciliationContractError,
     build_denominator_candidate,
     build_pit_identity_timeline,
@@ -36,6 +38,67 @@ from trend_scanner.universe.historical_authority_reconciliation import (
 
 
 ROOT = Path(__file__).resolve().parents[1]
+_ENDPOINT = {"KOSPI": "stk_isu_base_info", "KOSDAQ": "ksq_isu_base_info"}
+
+
+def _write_acquisition_fixture(
+    tmp_path: Path,
+    dates: list[str],
+    rows_by_date_market: dict[tuple[str, str], list[dict[str, str]]],
+    *,
+    tamper_sha_for: tuple[str, str] | None = None,
+    wrong_row_count_for: tuple[str, str] | None = None,
+    drop_entry_for: tuple[str, str] | None = None,
+    extra_entry: bool = False,
+    non_complete_status_for: tuple[str, str] | None = None,
+    final_summary_status: str = READY_FOR_HISTORICAL_UNIVERSE_AUTHORITY_RECONCILIATION,
+) -> tuple[Path, Path, Path]:
+    """Write a raw Basic Info archive plus a matching acquisition
+    checkpoint/final-summary fixture, with optional corruption knobs for the
+    MAJOR-01 acquisition-authority-binding gate tests."""
+
+    raw_root = tmp_path / "basic_info"
+    entries: dict[str, dict[str, object]] = {}
+    for day in dates:
+        bas_dd = day.replace("-", "")
+        for market in ("KOSPI", "KOSDAQ"):
+            rows = rows_by_date_market[(day, market)]
+            content = json.dumps({"OutBlock_1": rows}, ensure_ascii=False).encode("utf-8")
+            path = raw_root / day[:4] / bas_dd / f"{market}.json"
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(content)
+            digest = hashlib.sha256(content).hexdigest()
+            if tamper_sha_for == (day, market):
+                digest = "0" * 64
+            row_count = len(rows) if wrong_row_count_for != (day, market) else len(rows) + 1
+            key = f"{bas_dd}|{market}|{_ENDPOINT[market]}"
+            if drop_entry_for == (day, market):
+                continue
+            entries[key] = {
+                "basDd": bas_dd,
+                "market": market,
+                "endpoint": _ENDPOINT[market],
+                "status": "COMPLETE" if non_complete_status_for != (day, market) else "PAUSED_QUOTA",
+                "raw_path": str(path),
+                "raw_content_sha256": digest,
+                "row_count": row_count,
+                "schema_validation": "PASS",
+                "identity_validation": "PASS",
+            }
+    if extra_entry:
+        entries["99999999|KOSPI|stk_isu_base_info"] = {
+            "basDd": "99999999", "market": "KOSPI", "endpoint": "stk_isu_base_info",
+            "status": "COMPLETE", "raw_path": "unused", "raw_content_sha256": "f" * 64,
+            "row_count": 0, "schema_validation": "PASS", "identity_validation": "PASS",
+        }
+    checkpoint_path = tmp_path / "checkpoint.json"
+    checkpoint_path.write_text(
+        json.dumps({"schema_version": "KRX_HISTORICAL_INSTRUMENT_ACQUISITION_V01", "entries": entries}),
+        encoding="utf-8",
+    )
+    final_summary_path = tmp_path / "acquisition_final_summary.json"
+    final_summary_path.write_text(json.dumps({"status": final_summary_status}), encoding="utf-8")
+    return raw_root, checkpoint_path, final_summary_path
 
 
 def _target(ticker: str) -> dict[str, object]:
@@ -146,7 +209,10 @@ def test_reconcile_common_and_not_common_states() -> None:
     assert by_ticker["00088K"]["adjusted_price_support"] == "UNKNOWN"
 
 
-def test_conflicting_official_classification_is_unresolved() -> None:
+def test_normal_lifecycle_transition_requires_historical_common() -> None:
+    """A COMMON interval anywhere in the PIT history is sufficient (§15/§17C);
+    a NOT_COMMON interval on a *different* date is a normal lifecycle
+    transition, never a conflict (§16), so this must NOT be UNRESOLVED."""
     result = reconcile_target_identities(
         [_target("005930")],
         [
@@ -156,8 +222,41 @@ def test_conflicting_official_classification_is_unresolved() -> None:
         expected_dates=["2020-01-02", "2020-01-03"],
     )
     row = result["results"][0]
+    assert row["historical_classification"] == HISTORICAL_COMMON_REQUIRED
+    assert row["classification_reason"] == "TIER_A_COMMON_INTERVAL_OBSERVED"
+
+
+def test_temporal_transition_not_common_to_common_requires_historical_common() -> None:
+    result = reconcile_target_identities(
+        [_target("005930")],
+        [
+            _snapshot("2018-06-01", _row("005930", kind="신형우선주")),
+            _snapshot("2020-01-02", _row("005930")),
+        ],
+        expected_dates=["2018-06-01", "2020-01-02"],
+    )
+    row = result["results"][0]
+    assert row["historical_classification"] == HISTORICAL_COMMON_REQUIRED
+
+
+def test_same_day_contradictory_state_is_unresolved() -> None:
+    """§18: a TRUE conflict is the same date + same resolved identity (ISU_CD)
+    carrying mutually contradictory official rows — this must stay UNRESOLVED
+    even though the lifecycle-transition case above is no longer UNRESOLVED."""
+    result = reconcile_target_identities(
+        [_target("005930")],
+        [
+            _snapshot(
+                "2020-01-02",
+                _row("005930", isu_cd="SAME"),
+                {**_row("005930", isu_cd="SAME", kind="신형우선주"), "MKT_TP_NM": "KOSDAQ"},
+            ),
+        ],
+        expected_dates=["2020-01-02"],
+    )
+    row = result["results"][0]
     assert row["historical_classification"] == HISTORICAL_AUTHORITY_UNRESOLVED
-    assert row["classification_reason"] == "CONFLICTING_OFFICIAL_CLASSIFICATION"
+    assert row["classification_reason"] == "SAME_DATE_CONTRADICTORY_CLASSIFICATION"
 
 
 def test_ticker_reuse_is_separated_and_gate_allows_non_overlapping_reuse() -> None:
@@ -175,6 +274,24 @@ def test_ticker_reuse_is_separated_and_gate_allows_non_overlapping_reuse() -> No
     assert len(row["intervals"]) == 2
 
 
+def test_non_overlap_reuse_keeps_per_interval_historical_common_flag_distinct() -> None:
+    """§28/L: identity-aware structure must not re-collapse the two interval
+    flags to one target-level verdict — one interval is COMMON, the other is
+    NOT_COMMON, even though the *target* is HISTORICAL_COMMON_REQUIRED."""
+    result = reconcile_target_identities(
+        [_target("005930")],
+        [
+            _snapshot("2020-01-02", _row("005930", isu_cd="OLD")),
+            _snapshot("2020-01-03", _row("005930", isu_cd="NEW", kind="신형우선주")),
+        ],
+        expected_dates=["2020-01-02", "2020-01-03"],
+    )
+    row = result["results"][0]
+    assert row["historical_classification"] == HISTORICAL_COMMON_REQUIRED
+    by_isu = {interval["ISU_CD"]: interval["historical_common_required"] for interval in row["intervals"]}
+    assert by_isu == {"OLD": True, "NEW": False}
+
+
 def test_overlapping_ticker_collision_is_unresolved_and_blocks_gate() -> None:
     result = reconcile_target_identities(
         [_target("005930")],
@@ -184,6 +301,19 @@ def test_overlapping_ticker_collision_is_unresolved_and_blocks_gate() -> None:
     assert result["results"][0]["ticker_reuse_status"] == "AMBIGUOUS"
     assert result["results"][0]["historical_classification"] == HISTORICAL_AUTHORITY_UNRESOLVED
     assert evaluate_ticker_identity_reuse_gate(result)["status"] == "BLOCKED_TICKER_REUSE_CONTRACT"
+
+
+def test_overlap_collision_blocks_denominator_candidate_gate() -> None:
+    result = reconcile_target_identities(
+        [_target("005930")],
+        [_snapshot("2020-01-02", _row("005930", isu_cd="OLD"), _row("005930", isu_cd="NEW"))],
+        expected_dates=["2020-01-02"],
+    )
+    candidate = build_denominator_candidate(
+        [], result, raw_input_status="READY", raw_integrity_pass=True, expected_total=1
+    )
+    assert candidate["status"] == "BLOCKED_DENOMINATOR_FREEZE_GATE"
+    assert candidate["historical_identity_intervals"] == []
 
 
 def test_survivorship_gate_requires_exact_accounting_and_zero_unresolved() -> None:
@@ -216,9 +346,32 @@ def test_denominator_candidate_keeps_alpha_support_unknown() -> None:
         ["123456"], reconciliation, raw_input_status="READY", raw_integrity_pass=True, expected_total=2
     )
     assert candidate["status"] == "CANDIDATE_ONLY"
-    alpha = next(row for row in candidate["entries"] if row["ticker"] == "00088K")
+    assert candidate["identity_aware"] is True
+    assert candidate["ticker_only_collapse"] is False
+    alpha = next(row for row in candidate["historical_identity_intervals"] if row["ticker"] == "00088K")
     assert alpha["adjusted_price_support"] == "UNKNOWN"
     assert candidate["actual_freeze"] is False
+
+
+def test_denominator_candidate_never_collapses_non_overlap_reuse_to_ticker_set() -> None:
+    """§24/MAJOR-03: denominator candidate must keep both identity intervals
+    for a non-overlapping ticker reuse instead of merging into set(ticker)."""
+    result = reconcile_target_identities(
+        [_target("005930")],
+        [
+            _snapshot("2020-01-02", _row("005930", isu_cd="OLD")),
+            _snapshot("2020-01-03", _row("005930", isu_cd="NEW")),
+        ],
+        expected_dates=["2020-01-02", "2020-01-03"],
+    )
+    candidate = build_denominator_candidate(
+        [], result, raw_input_status="READY", raw_integrity_pass=True, expected_total=1
+    )
+    assert candidate["status"] == "CANDIDATE_ONLY"
+    matching = [row for row in candidate["historical_identity_intervals"] if row["ticker"] == "005930"]
+    assert len(matching) == 2
+    assert {row["ISU_CD"] for row in matching} == {"OLD", "NEW"}
+    assert candidate["ticker_union_count"] == 1
 
 
 def test_raw_not_ready_is_a_normal_waiting_state(tmp_path: Path) -> None:
@@ -246,6 +399,190 @@ def test_invalid_short_code_is_rejected_by_raw_loader(tmp_path: Path) -> None:
     raw = load_basic_info_snapshots(tmp_path / "basic_info", calendar_dates=["2020-01-02"])
     assert raw.status == BLOCKED_RECONCILIATION_INPUT_AUTHORITY
     assert raw.snapshots == ()
+
+
+def _rows_by_date_market(dates: list[str]) -> dict[tuple[str, str], list[dict[str, str]]]:
+    return {(day, market): [_row("005930", market=market)] for day in dates for market in ("KOSPI", "KOSDAQ")}
+
+
+def test_acquisition_manifest_sha_exact_match_passes_and_binds_authority_digest(tmp_path: Path) -> None:
+    """MAJOR-01 / Section H-A: a fully-bound acquisition closure reaches READY
+    and the authority digest is bound from the stored checkpoint hashes."""
+    dates = ["2020-01-02"]
+    raw_root, checkpoint_path, final_summary_path = _write_acquisition_fixture(tmp_path, dates, _rows_by_date_market(dates))
+    raw = load_basic_info_snapshots(
+        raw_root,
+        calendar_dates=dates,
+        acquisition_checkpoint_path=checkpoint_path,
+        acquisition_final_summary_path=final_summary_path,
+    )
+    assert raw.status == "READY"
+    assert raw.raw_manifest_sha256 is not None
+    assert raw.raw_manifest_sha256 == raw.derived_raw_manifest_sha256
+    assert len(raw.snapshots) == 2
+
+
+def test_schema_valid_raw_tamper_is_rejected_by_acquisition_authority_binding(tmp_path: Path) -> None:
+    dates = ["2020-01-02"]
+    raw_root, checkpoint_path, final_summary_path = _write_acquisition_fixture(
+        tmp_path, dates, _rows_by_date_market(dates), tamper_sha_for=("2020-01-02", "KOSPI")
+    )
+    raw = load_basic_info_snapshots(
+        raw_root,
+        calendar_dates=dates,
+        acquisition_checkpoint_path=checkpoint_path,
+        acquisition_final_summary_path=final_summary_path,
+    )
+    assert raw.status == BLOCKED_RECONCILIATION_INPUT_AUTHORITY
+    assert raw.snapshots == ()
+    assert any("raw_sha_tamper" in error for error in raw.errors)
+
+
+def test_checkpoint_non_complete_status_blocks_before_classification(tmp_path: Path) -> None:
+    dates = ["2020-01-02"]
+    raw_root, checkpoint_path, final_summary_path = _write_acquisition_fixture(
+        tmp_path, dates, _rows_by_date_market(dates), non_complete_status_for=("2020-01-02", "KOSPI")
+    )
+    raw = load_basic_info_snapshots(
+        raw_root,
+        calendar_dates=dates,
+        acquisition_checkpoint_path=checkpoint_path,
+        acquisition_final_summary_path=final_summary_path,
+    )
+    assert raw.status == BLOCKED_RECONCILIATION_INPUT_AUTHORITY
+    assert raw.snapshots == ()
+
+
+def test_wrong_acquisition_terminal_blocks_classification(tmp_path: Path) -> None:
+    dates = ["2020-01-02"]
+    raw_root, checkpoint_path, final_summary_path = _write_acquisition_fixture(
+        tmp_path, dates, _rows_by_date_market(dates), final_summary_status="PAUSED_QUOTA"
+    )
+    raw = load_basic_info_snapshots(
+        raw_root,
+        calendar_dates=dates,
+        acquisition_checkpoint_path=checkpoint_path,
+        acquisition_final_summary_path=final_summary_path,
+    )
+    assert raw.status == BLOCKED_RECONCILIATION_INPUT_AUTHORITY
+    assert raw.snapshots == ()
+    assert any("acquisition_final_summary_status_invalid" in error for error in raw.errors)
+
+
+def test_manifest_missing_entry_blocks_classification(tmp_path: Path) -> None:
+    dates = ["2020-01-02"]
+    raw_root, checkpoint_path, final_summary_path = _write_acquisition_fixture(
+        tmp_path, dates, _rows_by_date_market(dates), drop_entry_for=("2020-01-02", "KOSPI")
+    )
+    raw = load_basic_info_snapshots(
+        raw_root,
+        calendar_dates=dates,
+        acquisition_checkpoint_path=checkpoint_path,
+        acquisition_final_summary_path=final_summary_path,
+    )
+    assert raw.status == BLOCKED_RECONCILIATION_INPUT_AUTHORITY
+    assert any("acquisition_checkpoint_missing_entries" in error for error in raw.errors)
+
+
+def test_manifest_extra_entry_blocks_classification(tmp_path: Path) -> None:
+    dates = ["2020-01-02"]
+    raw_root, checkpoint_path, final_summary_path = _write_acquisition_fixture(
+        tmp_path, dates, _rows_by_date_market(dates), extra_entry=True
+    )
+    raw = load_basic_info_snapshots(
+        raw_root,
+        calendar_dates=dates,
+        acquisition_checkpoint_path=checkpoint_path,
+        acquisition_final_summary_path=final_summary_path,
+    )
+    assert raw.status == BLOCKED_RECONCILIATION_INPUT_AUTHORITY
+    assert any("acquisition_checkpoint_extra_entries" in error for error in raw.errors)
+
+
+def test_row_count_mismatch_blocks_classification(tmp_path: Path) -> None:
+    dates = ["2020-01-02"]
+    raw_root, checkpoint_path, final_summary_path = _write_acquisition_fixture(
+        tmp_path, dates, _rows_by_date_market(dates), wrong_row_count_for=("2020-01-02", "KOSDAQ")
+    )
+    raw = load_basic_info_snapshots(
+        raw_root,
+        calendar_dates=dates,
+        acquisition_checkpoint_path=checkpoint_path,
+        acquisition_final_summary_path=final_summary_path,
+    )
+    assert raw.status == BLOCKED_RECONCILIATION_INPUT_AUTHORITY
+    assert any("row_count_mismatch" in error for error in raw.errors)
+
+
+def test_preflight_top_level_status_distinguishes_blocked_from_waiting(tmp_path: Path) -> None:
+    """MAJOR-04: a partial/corrupt/tampered input must not surface at the
+    top level as the same status used for normal preflight waiting."""
+    dates = ["2020-01-02"]
+    raw_root, checkpoint_path, final_summary_path = _write_acquisition_fixture(
+        tmp_path, dates, _rows_by_date_market(dates), tamper_sha_for=("2020-01-02", "KOSPI")
+    )
+    target_payload = load_target_identities(ROOT / DEFAULT_TARGET_IDENTITY_PATH)
+    target_path = tmp_path / "target_identities.json"
+    target_path.write_text(json.dumps(target_payload), encoding="utf-8")
+    result = run_reconciliation_preflight(
+        target_identities_path=target_path,
+        basic_info_root=raw_root,
+        calendar_dates=dates,
+        acquisition_checkpoint_path=checkpoint_path,
+        acquisition_final_summary_path=final_summary_path,
+    )
+    assert result["status"] == BLOCKED_RECONCILIATION_INPUT_AUTHORITY
+    assert result["status"] != "READY_FOR_RECONCILIATION_AFTER_AUTHORITY_ACQUISITION"
+    assert result["classification_executed"] is False
+
+
+def test_preflight_top_level_status_is_waiting_when_raw_root_absent(tmp_path: Path) -> None:
+    result = run_reconciliation_preflight(
+        target_identities_path=ROOT / DEFAULT_TARGET_IDENTITY_PATH,
+        basic_info_root=tmp_path / "missing",
+        acquisition_checkpoint_path=tmp_path / "missing_checkpoint.json",
+        acquisition_final_summary_path=tmp_path / "missing_summary.json",
+    )
+    assert result["status"] == "READY_FOR_RECONCILIATION_AFTER_AUTHORITY_ACQUISITION"
+
+
+def test_production_authority_alignment_fail_closes_managed_issue_after_spac_history() -> None:
+    """Section E (Minor): docs/architecture/instrument_metadata_authority.md
+    §6.1 fail-closes a 보통주+관리종목(소속부없음) row to UNKNOWN when the same
+    ticker also carries Tier A SPAC-section history; this module must align."""
+    result = reconcile_target_identities(
+        [_target("005930")],
+        [
+            _snapshot("2018-06-01", _row("005930", sector="SPAC(소속부없음)")),
+            _snapshot("2020-01-02", _row("005930", sector="관리종목(소속부없음)")),
+        ],
+        expected_dates=["2018-06-01", "2020-01-02"],
+    )
+    row = result["results"][0]
+    assert row["historical_classification"] == HISTORICAL_AUTHORITY_UNRESOLVED
+    reasons = {interval["classification_reason"] for interval in row["intervals"]}
+    assert "PRODUCTION_AUTHORITY_UNMAPPED_MANAGED_ISSUE_AFTER_SPAC_HISTORY" in reasons
+
+
+def test_managed_issue_without_spac_history_still_resolves_common() -> None:
+    """The alignment exception only fires when SPAC history is actually
+    observed for the ticker; otherwise 보통주+관리종목(소속부없음) stays COMMON."""
+    result = reconcile_target_identities(
+        [_target("005930")],
+        [_snapshot("2020-01-02", _row("005930", sector="관리종목(소속부없음)"))],
+        expected_dates=["2020-01-02"],
+    )
+    row = result["results"][0]
+    assert row["historical_classification"] == HISTORICAL_COMMON_REQUIRED
+
+
+def test_security_type_mapping_evidence_has_rule_ids_and_authority_reference() -> None:
+    from trend_scanner.universe.historical_authority_reconciliation import build_security_type_mapping_evidence
+
+    evidence = build_security_type_mapping_evidence([_row("005930")])
+    assert all(rule["rule_id"].startswith("HISTORICAL_SECURITY_TYPE_RULE_") for rule in evidence["mappings"])
+    assert all("existing_authority_reference" in rule for rule in evidence["mappings"])
+    assert evidence["production_authority_alignment"]["existing_authority_reference"]
 
 
 def test_default_preflight_reports_pending_authority_without_network() -> None:

@@ -1,0 +1,68 @@
+{
+  "managed_issue_after_spac_history_alignment": {
+    "final": "HISTORICAL_AUTHORITY_UNRESOLVED",
+    "reasons": [
+      "PRODUCTION_AUTHORITY_UNMAPPED_MANAGED_ISSUE_AFTER_SPAC_HISTORY",
+      "TIER_A_NON_COMMON_SECURITY_TYPE"
+    ]
+  },
+  "mapping_evidence": {
+    "authority": "KRX Open API Basic Info Tier A observed/local formal inventory",
+    "mappings": [
+      {
+        "authority_tier": "TIER_A",
+        "classification": "COMMON",
+        "existing_authority_reference": "docs/architecture/instrument_metadata_authority.md#6-source-category--assettype-deterministic-mapping-fix-round-08-갱신",
+        "observed_sample_count": 1,
+        "reason": "TIER_A_COMMON_SECURITY_TYPE",
+        "rule": "SECUGRP_NM=주권 and KIND_STKCERT_TP_NM=보통주 and SECT_TP_NM not SPAC",
+        "rule_id": "HISTORICAL_SECURITY_TYPE_RULE_01"
+      },
+      {
+        "authority_tier": "TIER_A",
+        "classification": "COMMON",
+        "existing_authority_reference": "docs/architecture/instrument_metadata_authority.md#6-source-category--assettype-deterministic-mapping-fix-round-08-갱신",
+        "observed_sample_count": 1,
+        "reason": "TIER_A_COMMON_SECURITY_TYPE",
+        "rule": "SECUGRP_NM in {외국주권,주식예탁증권,사회간접자본투융자회사,투자회사} and KIND_STKCERT_TP_NM=보통주",
+        "rule_id": "HISTORICAL_SECURITY_TYPE_RULE_02"
+      },
+      {
+        "authority_tier": "TIER_A",
+        "classification": "NOT_COMMON",
+        "existing_authority_reference": "docs/architecture/instrument_metadata_authority.md#6-source-category--assettype-deterministic-mapping-fix-round-08-갱신",
+        "observed_sample_count": 0,
+        "reason": "TIER_A_NON_COMMON_SECURITY_TYPE",
+        "rule": "SECUGRP_NM=부동산투자회사",
+        "rule_id": "HISTORICAL_SECURITY_TYPE_RULE_03"
+      },
+      {
+        "authority_tier": "TIER_A",
+        "classification": "NOT_COMMON",
+        "existing_authority_reference": "docs/architecture/instrument_metadata_authority.md#6-source-category--assettype-deterministic-mapping-fix-round-08-갱신",
+        "observed_sample_count": 0,
+        "reason": "TIER_A_NON_COMMON_SECURITY_TYPE",
+        "rule": "SECUGRP_NM=주권 and SECT_TP_NM starts SPAC",
+        "rule_id": "HISTORICAL_SECURITY_TYPE_RULE_04"
+      },
+      {
+        "authority_tier": "TIER_A",
+        "classification": "NOT_COMMON",
+        "existing_authority_reference": "docs/architecture/instrument_metadata_authority.md#6-source-category--assettype-deterministic-mapping-fix-round-08-갱신",
+        "observed_sample_count": 0,
+        "reason": "TIER_A_NON_COMMON_SECURITY_TYPE",
+        "rule": "KIND_STKCERT_TP_NM in {구형우선주,신형우선주}",
+        "rule_id": "HISTORICAL_SECURITY_TYPE_RULE_05"
+      }
+    ],
+    "production_authority_alignment": {
+      "existing_authority_reference": "docs/architecture/instrument_metadata_authority.md §6.1",
+      "note": "Production maps any KIND_STKCERT_TP_NM=보통주 row to COMMON regardless of SECUGRP_NM (외국주권/주식예탁증권/사회간접자본투융자회사/투자회사 included), matching this module's rules 1-2. The one alignment gap production carries — 보통주 + SECT_TP_NM=관리종목(소속부없음) on a ticker that also has Tier A SPAC-section history elsewhere — is fail-closed to UNKNOWN instead of guessed as COMMON; that exception is applied in reconcile_target_identities via reason='PRODUCTION_AUTHORITY_UNMAPPED_MANAGED_ISSUE_AFTER_SPAC_HISTORY' rather than in this row-pure classifier, since it requires the ticker's full observation history."
+    },
+    "schema": "historical_universe_security_type_mapping_v01",
+    "sector_blank_policy": "SECT_TP_NM blank is allowed when group+kind establish an observed rule",
+    "unknown_policy": "UNRESOLVED; never default to COMMON",
+    "unresolved_combinations_observed": []
+  },
+  "status": "PASS"
+}
