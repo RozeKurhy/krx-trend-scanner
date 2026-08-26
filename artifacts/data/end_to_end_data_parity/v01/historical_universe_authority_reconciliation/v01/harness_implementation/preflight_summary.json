@@ -1,0 +1,35 @@
+{
+  "actual_denominator_frozen": false,
+  "classification_executed": false,
+  "denominator_freeze_gate": "NOT_EXECUTED_INPUT_AUTHORITY_PENDING",
+  "network_requests": {
+    "krx_mdc": 0,
+    "krx_open_api": 0,
+    "opendart": 0,
+    "pykrx": 0
+  },
+  "raw_input": {
+    "current_files": 0,
+    "errors": [],
+    "expected_files": 8190,
+    "files_by_market": {
+      "KOSDAQ": 0,
+      "KOSPI": 0
+    },
+    "raw_manifest_sha256": null,
+    "raw_root": "data/reference/source/history/krx_instrument_master/v01/basic_info",
+    "status": "AWAITING_HISTORICAL_BASIC_INFO_ACQUISITION"
+  },
+  "reconciliation_input_status": "AWAITING_HISTORICAL_BASIC_INFO_ACQUISITION",
+  "status": "READY_FOR_RECONCILIATION_AFTER_AUTHORITY_ACQUISITION",
+  "survivorship_bias_gate": "BLOCKED_INPUT_PENDING",
+  "target": {
+    "counts": {
+      "alphanumeric": 58,
+      "numeric": 1058,
+      "total": 1116
+    },
+    "target_identity_set_sha256": "cb3e5af122fa5f514e2800565dd4280ea9c4b00541d620f86fe6d4062cb4bfe7"
+  },
+  "ticker_identity_reuse_gate": "BLOCKED_INPUT_PENDING"
+}

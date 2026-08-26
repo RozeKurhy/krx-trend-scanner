@@ -1,0 +1,16 @@
+{
+  "authority": "KRX Open API Basic Info Tier A observed/local formal inventory",
+  "mapping_source": "central SECURITY_TYPE_MAPPING in harness",
+  "common_rules": [
+    "SECUGRP_NM=주권 and KIND_STKCERT_TP_NM=보통주 and sector is not SPAC",
+    "observed foreign/depository/infrastructure/investment groups with KIND_STKCERT_TP_NM=보통주"
+  ],
+  "not_common_rules": [
+    "SECUGRP_NM=부동산투자회사",
+    "SECUGRP_NM=주권 and SECT_TP_NM starts SPAC",
+    "KIND_STKCERT_TP_NM in {구형우선주,신형우선주}"
+  ],
+  "unknown_policy": "UNRESOLVED; never default to COMMON",
+  "sector_blank_policy": "allowed when group and kind establish an observed rule",
+  "status": "PASS"
+}
