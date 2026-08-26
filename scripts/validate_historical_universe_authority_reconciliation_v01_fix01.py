@@ -192,7 +192,8 @@ def main() -> int:
 
         raw_root, ckpt, summary = _write_acquisition_fixture(tmp / "happy", dates, rows)
         happy = load_basic_info_snapshots(raw_root, calendar_dates=dates, acquisition_checkpoint_path=ckpt, acquisition_final_summary_path=summary)
-        evidence["02_acquisition_authority_binding_contract.json"] = _dump("02_acquisition_authority_binding_contract.json", {
+        p02_digest_match = happy.raw_manifest_sha256 == happy.derived_raw_manifest_sha256
+        p02 = {
             "contract": "acquisition closure/checkpoint/manifest immutable authority binding",
             "final_status_gate": "acquisition_final_summary.status must equal READY_FOR_HISTORICAL_UNIVERSE_AUTHORITY_RECONCILIATION",
             "checkpoint_complete_gate": "checkpoint entries must exactly cover expected pairs, all COMPLETE",
@@ -200,8 +201,16 @@ def main() -> int:
             "raw_sha_gate": "current raw bytes sha256 must equal the checkpoint's stored raw_content_sha256 (never the reverse)",
             "row_count_gate": "current validated row_count must equal the checkpoint's stored row_count",
             "happy_path_status": happy.status,
-            "authority_digest_equals_derived_digest_when_untampered": happy.raw_manifest_sha256 == happy.derived_raw_manifest_sha256,
-        })
+            # §52: the authority digest (from stored checkpoint hashes) and the
+            # derived digest (from freshly re-hashed raw bytes) must use the
+            # same canonicalization to even be comparable — this asserts they
+            # actually match on the untampered happy path, not just that both
+            # exist.
+            "authority_digest_equals_derived_digest_when_untampered": p02_digest_match,
+            "status": "PASS" if happy.status == "READY" and p02_digest_match else "FAIL",
+        }
+        evidence["02_acquisition_authority_binding_contract.json"] = _dump("02_acquisition_authority_binding_contract.json", p02)
+        _gate("ACQUISITION_AUTHORITY_BINDING", p02["status"])
 
         raw_root, ckpt, summary = _write_acquisition_fixture(tmp / "terminal", dates, rows, final_summary_status="PAUSED_QUOTA")
         wrong_terminal = load_basic_info_snapshots(raw_root, calendar_dates=dates, acquisition_checkpoint_path=ckpt, acquisition_final_summary_path=summary)
