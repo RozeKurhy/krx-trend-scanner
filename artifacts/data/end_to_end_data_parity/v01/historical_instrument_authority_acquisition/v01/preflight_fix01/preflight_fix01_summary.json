@@ -1,0 +1,15 @@
+{
+  "work_id": "KRX_HISTORICAL_INSTRUMENT_AUTHORITY_ACQUISITION_V01_FIX01",
+  "start_head": "ea992b91d2724481deef9b8167f4e97f7f91639a",
+  "branch": "codex/end-to-end-data-parity-v01",
+  "primary_source": "KRX_OPEN_API_BASIC_INFO",
+  "delisted_contract": {"status": "PASS", "non_empty_cases": 4, "live_schema": true, "known_targets": ["002270", "299900"]},
+  "quota_contract": {"hard_limit": 10000, "reserve": 500, "soft_limit": 9500, "runtime_usage_kst": 6878, "safe_remaining": 2622, "status": "PASS_WITH_EXECUTION_CONFIG_GAP"},
+  "harness": {"existing_quota_reuse": true, "instrument_specific_runner": false, "status": "BLOCKED_ACQUISITION_HARNESS_IMPLEMENTATION"},
+  "planned_full_execution": {"trading_dates": 4095, "markets": 2, "primary_pairs": 8190, "no_retry_expected_attempts": 8190, "theoretical_max_attempts": 16380, "started": false},
+  "network": {"logical_cases": 4, "actual_external_http_attempts": 8, "actual_krx_open_api_attempts": 0, "actual_mdc_attempts": 5, "authentication_attempts": 3, "retry_attempts": 0, "price_calls": 0},
+  "production_writes": 0,
+  "discovery_evidence_modified": false,
+  "status": "BLOCKED_ACQUISITION_HARNESS_IMPLEMENTATION",
+  "live_adjusted_pilot": "NOT AUTHORIZED"
+}

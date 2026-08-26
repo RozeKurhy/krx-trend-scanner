@@ -1,0 +1,10 @@
+{
+  "work_id": "KRX_HISTORICAL_INSTRUMENT_AUTHORITY_ACQUISITION_V01_FIX01",
+  "http_status": 200,
+  "response_container": "output",
+  "observed_fields": ["ARRANTRD_END_DD", "ARRANTRD_MKTACT_ENFORCE_DD", "DELIST_DD", "DELIST_RSN_DSC", "IDX_IND_NM", "ISU_CD", "ISU_NM", "KIND_STKCERT_TP_NM", "LIST_DD", "LIST_SHRS", "MKT_NM", "PARVAL", "SECUGRP_NM", "TO_ISU_ABBRV", "TO_ISU_SRT_CD"],
+  "required_fields_observed": {"ISU_CD": true, "market": "MKT_NM", "security_type": ["SECUGRP_NM", "KIND_STKCERT_TP_NM"], "LIST_DD": true, "DELIST_DD": true},
+  "field_semantics": {"ISU_CD": "live response is six-character short code; filter input uses full_code in isuCd and short code in isuCd2", "LIST_DD": "YYYY/MM/DD", "DELIST_DD": "YYYY/MM/DD", "MKT_NM": "KOSPI/KOSDAQ"},
+  "raw_payload_policy": "retain response bytes and SHA256 in execution archive; no credential/session data",
+  "status": "PASS"
+}

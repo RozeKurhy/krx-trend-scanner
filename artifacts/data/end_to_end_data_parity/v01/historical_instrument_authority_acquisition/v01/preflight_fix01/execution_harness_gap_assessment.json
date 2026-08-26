@@ -1,0 +1,22 @@
+{
+  "work_id": "KRX_HISTORICAL_INSTRUMENT_AUTHORITY_ACQUISITION_V01_FIX01",
+  "reusable": [
+    "LocalKrxOpenApiQuota atomic SQLite attempt reservation",
+    "KST quota-day accounting",
+    "KrxOpenApiClient audit and retry counters",
+    "KrxHistoricalBackfillRunner quota pause and manifest resume semantics",
+    "raw parquet store hash/integrity patterns"
+  ],
+  "missing_or_not_safe_to_reuse_directly": [
+    "instrument-master-specific acquisition runner and raw JSON archive",
+    "explicit reserve=500 execution configuration",
+    "pre-attempt soft-limit gate at 9500 for this source",
+    "exact PAUSED_QUOTA status and cross-day instrument checkpoint",
+    "ISU_CD/ISU_SRT_CD/security-type schema and identity validation",
+    "idempotent basic-info COMPLETE skip based on raw content hash"
+  ],
+  "source_changes_made": 0,
+  "implementation_required": true,
+  "status": "BLOCKED_ACQUISITION_HARNESS_IMPLEMENTATION",
+  "policy": "do not implement or start 8190 acquisition in FIX01; request separate execution-harness implementation/review"
+}

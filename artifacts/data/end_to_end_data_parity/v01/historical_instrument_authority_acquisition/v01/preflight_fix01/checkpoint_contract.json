@@ -1,0 +1,11 @@
+{
+  "work_id": "KRX_HISTORICAL_INSTRUMENT_AUTHORITY_ACQUISITION_V01_FIX01",
+  "key": ["basDd", "market", "endpoint"],
+  "example": "20100104/KOSPI/stk_isu_base_info",
+  "minimum_fields": ["basDd", "market", "endpoint", "status", "attempt_count_total", "attempt_count_current_quota_day", "http_status", "row_count", "raw_content_sha256", "raw_path", "schema_validation", "identity_validation", "quota_day_kst", "completed_at", "last_error"],
+  "terminal_statuses": ["COMPLETE", "NO_DATA_EXPECTED", "FAILED_RETRYABLE", "FAILED_PERMANENT", "PAUSED_QUOTA", "SCHEMA_INVALID", "IDENTITY_INVALID"],
+  "complete_skip": "skip without network only when raw file exists, manifest hash matches, schema and identity validation pass",
+  "broken_complete": "manifest COMPLETE with missing/mismatched raw/hash/schema is not skipped; mark integrity failure",
+  "raw_layout": "data/reference/source/history/krx_instrument_master/v01/basic_info/YYYY/YYYYMMDD/{KOSPI,KOSDAQ}.json",
+  "status": "CONTRACT_FROZEN_FOR_IMPLEMENTATION"
+}
