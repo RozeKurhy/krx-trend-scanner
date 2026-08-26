@@ -360,6 +360,10 @@ class BasicInfoInput:
     raw_manifest_sha256: str | None
     errors: tuple[str, ...] = ()
     derived_raw_manifest_sha256: str | None = None
+    # SHA256 of the checkpoint.json FILE BYTES itself, bound against the
+    # acquisition closure's frozen checkpoint_manifest_sha256 (FIX02 Section
+    # B) — distinct from raw_manifest_sha256 above (Section 16 naming).
+    checkpoint_authority_sha256: str | None = None
 
     @property
     def ready(self) -> bool:
@@ -374,6 +378,7 @@ class BasicInfoInput:
             "files_by_market": self.files_by_market,
             "raw_manifest_sha256": self.raw_manifest_sha256,
             "derived_raw_manifest_sha256": self.derived_raw_manifest_sha256,
+            "checkpoint_authority_sha256": self.checkpoint_authority_sha256,
             "errors": list(self.errors),
         }
 
@@ -409,6 +414,8 @@ def _blocked(
     expected_paths: set[Path],
     actual_paths: set[Path],
     errors: Sequence[str],
+    *,
+    checkpoint_authority_sha256: str | None = None,
 ) -> BasicInfoInput:
     return BasicInfoInput(
         status=BLOCKED_RECONCILIATION_INPUT_AUTHORITY,
@@ -422,7 +429,24 @@ def _blocked(
         snapshots=(),
         raw_manifest_sha256=None,
         errors=tuple(errors[:20]),
+        checkpoint_authority_sha256=checkpoint_authority_sha256,
     )
+
+
+_HEX64_RE = re.compile(r"^[0-9a-f]{64}$")
+_REQUIRED_FINAL_SUMMARY_FIELDS = (
+    "status", "runner_status", "target_count", "completed_count", "pending_count", "checkpoint_manifest_sha256",
+)
+
+
+@dataclass(frozen=True)
+class AcquisitionAuthorityCheck:
+    entries: dict[str, dict[str, Any]] | None
+    errors: tuple[str, ...]
+    # SHA256 of the current checkpoint.json FILE BYTES — distinct from
+    # raw_manifest_sha256, which digests the per-file raw_content_sha256
+    # values recorded *inside* the checkpoint (Section 16 naming).
+    checkpoint_authority_sha256: str | None = None
 
 
 def _load_acquisition_authority(
@@ -430,15 +454,20 @@ def _load_acquisition_authority(
     *,
     checkpoint_path: Path,
     final_summary_path: Path,
-) -> tuple[dict[str, dict[str, Any]] | None, list[str]]:
+) -> AcquisitionAuthorityCheck:
     """Validate the acquisition closure/checkpoint/manifest immutable authority.
 
-    Returns ``(entries_by_key, errors)``.  ``entries_by_key`` is ``None`` when
-    any structural/status/coverage check failed; callers must treat that as
-    fail-closed regardless of raw-file presence (Section A).
+    ``entries`` is ``None`` when any structural/status/coverage check failed;
+    callers must treat that as fail-closed regardless of raw-file presence
+    (Section A). FIX02 adds the closure ↔ checkpoint binding (Section B): the
+    closure's frozen ``checkpoint_manifest_sha256`` must exact-match the
+    current checkpoint.json file bytes, not just the per-file raw hashes
+    already bound by FIX01.
     """
 
     errors: list[str] = []
+    frozen_checkpoint_sha: str | None = None
+    missing_fields: list[str] = []
 
     if not final_summary_path.is_file():
         errors.append(f"missing_acquisition_final_summary:{final_summary_path}")
@@ -450,27 +479,64 @@ def _load_acquisition_authority(
             summary = None
         if not isinstance(summary, Mapping):
             errors.append("acquisition_final_summary_unreadable")
-        elif summary.get("status") != READY_FOR_HISTORICAL_UNIVERSE_AUTHORITY_RECONCILIATION:
-            errors.append(f"acquisition_final_summary_status_invalid:{summary.get('status')!r}")
+        else:
+            missing_fields = sorted(field for field in _REQUIRED_FINAL_SUMMARY_FIELDS if field not in summary)
+            if missing_fields:
+                errors.append(f"acquisition_final_summary_missing_fields:{missing_fields}")
+            if summary.get("status") != READY_FOR_HISTORICAL_UNIVERSE_AUTHORITY_RECONCILIATION:
+                errors.append(f"acquisition_final_summary_status_invalid:{summary.get('status')!r}")
+            if summary.get("runner_status") != ACQUISITION_COMPLETE_STATUS:
+                errors.append(f"acquisition_final_summary_runner_status_invalid:{summary.get('runner_status')!r}")
+            candidate_sha = summary.get("checkpoint_manifest_sha256")
+            if isinstance(candidate_sha, str) and _HEX64_RE.fullmatch(candidate_sha):
+                frozen_checkpoint_sha = candidate_sha
+            else:
+                errors.append(f"acquisition_final_summary_checkpoint_sha_format_invalid:{candidate_sha!r}")
 
     if not checkpoint_path.is_file():
         errors.append(f"missing_acquisition_checkpoint:{checkpoint_path}")
-        return None, errors
+        return AcquisitionAuthorityCheck(None, tuple(errors))
+    checkpoint_bytes = checkpoint_path.read_bytes()
+    current_checkpoint_sha256 = hashlib.sha256(checkpoint_bytes).hexdigest()
     try:
-        checkpoint_payload = json.loads(checkpoint_path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
+        checkpoint_payload = json.loads(checkpoint_bytes.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError):
         errors.append("acquisition_checkpoint_unreadable")
-        return None, errors
+        return AcquisitionAuthorityCheck(None, tuple(errors), current_checkpoint_sha256)
     if not isinstance(checkpoint_payload, Mapping) or not isinstance(checkpoint_payload.get("entries"), Mapping):
         errors.append("acquisition_checkpoint_shape_invalid")
-        return None, errors
+        return AcquisitionAuthorityCheck(None, tuple(errors), current_checkpoint_sha256)
     checkpoint_entries: dict[str, Any] = dict(checkpoint_payload["entries"])
+
+    # Section B / MAJOR-01: the closure's frozen checkpoint digest must match
+    # the checkpoint file as it exists right now — a raw+checkpoint
+    # coordinated tamper that keeps per-file hashes internally consistent
+    # would otherwise slip past the FIX01 per-entry binding alone.
+    if frozen_checkpoint_sha is not None and frozen_checkpoint_sha != current_checkpoint_sha256:
+        errors.append(
+            f"ACQUISITION_CHECKPOINT_MANIFEST_SHA_MISMATCH:current={current_checkpoint_sha256}:frozen={frozen_checkpoint_sha}"
+        )
 
     expected_keys = {
         f"{day.replace('-', '')}|{market}|{'stk_isu_base_info' if market == 'KOSPI' else 'ksq_isu_base_info'}"
         for day in dates
         for market in ("KOSPI", "KOSDAQ")
     }
+    if isinstance(summary, Mapping) and not missing_fields:
+        # Section 26: the count gate scales with the calendar under test
+        # (expected_keys), not a hardcoded 8190 — production naturally lands
+        # on 8190 once the calendar covers the full frozen historical range.
+        expected_pair_count = len(expected_keys)
+        if (
+            summary.get("target_count") != expected_pair_count
+            or summary.get("completed_count") != expected_pair_count
+            or summary.get("pending_count") != 0
+        ):
+            errors.append(
+                "acquisition_final_summary_count_mismatch:"
+                f"target={summary.get('target_count')},completed={summary.get('completed_count')},"
+                f"pending={summary.get('pending_count')},expected={expected_pair_count}"
+            )
     actual_keys = set(checkpoint_entries)
     missing_entries = sorted(expected_keys - actual_keys)
     extra_entries = sorted(actual_keys - expected_keys)
@@ -489,7 +555,7 @@ def _load_acquisition_authority(
         errors.append(f"acquisition_checkpoint_non_complete_statuses:{non_complete}")
 
     if errors:
-        return None, errors
+        return AcquisitionAuthorityCheck(None, tuple(errors), current_checkpoint_sha256)
 
     for key in expected_keys:
         entry = checkpoint_entries[key]
@@ -499,9 +565,9 @@ def _load_acquisition_authority(
             errors.append(f"acquisition_checkpoint_missing_sha:{key}")
 
     if errors:
-        return None, errors
+        return AcquisitionAuthorityCheck(None, tuple(errors), current_checkpoint_sha256)
 
-    return checkpoint_entries, errors
+    return AcquisitionAuthorityCheck(checkpoint_entries, tuple(errors), current_checkpoint_sha256)
 
 
 def load_basic_info_snapshots(
@@ -548,11 +614,16 @@ def load_basic_info_snapshots(
         errors = [f"missing:{path}" for path in missing[:20]] + [f"extra:{path}" for path in extra[:20]]
         return _blocked(root, expected_paths, actual_paths, errors)
 
-    checkpoint_entries, authority_errors = _load_acquisition_authority(
+    authority_check = _load_acquisition_authority(
         dates, checkpoint_path=checkpoint_path, final_summary_path=final_summary_path
     )
+    checkpoint_entries = authority_check.entries
     if checkpoint_entries is None:
-        return _blocked(root, expected_paths, actual_paths, authority_errors)
+        return _blocked(
+            root, expected_paths, actual_paths, list(authority_check.errors),
+            checkpoint_authority_sha256=authority_check.checkpoint_authority_sha256,
+        )
+    checkpoint_authority_sha256 = authority_check.checkpoint_authority_sha256
 
     try:
         from trend_scanner.data.krx_historical_instrument_acquisition import validate_basic_info_response
@@ -608,7 +679,7 @@ def load_basic_info_snapshots(
                 errors.append(f"{path}:{type(exc).__name__}:{exc}")
 
     if errors:
-        return _blocked(root, expected_paths, actual_paths, errors)
+        return _blocked(root, expected_paths, actual_paths, errors, checkpoint_authority_sha256=checkpoint_authority_sha256)
 
     return BasicInfoInput(
         status="READY",
@@ -622,6 +693,7 @@ def load_basic_info_snapshots(
         # (Section 9/52) — the current-raw digest is retained separately.
         raw_manifest_sha256=_canonical_raw_manifest_digest(authority_tuples),
         derived_raw_manifest_sha256=_canonical_raw_manifest_digest(derived_tuples),
+        checkpoint_authority_sha256=checkpoint_authority_sha256,
     )
 
 

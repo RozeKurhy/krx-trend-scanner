@@ -52,10 +52,17 @@ def _write_acquisition_fixture(
     extra_entry: bool = False,
     non_complete_status_for: tuple[str, str] | None = None,
     final_summary_status: str = READY_FOR_HISTORICAL_UNIVERSE_AUTHORITY_RECONCILIATION,
+    runner_status: str = "COMPLETE",
+    frozen_checkpoint_sha_override: str | None = None,
+    omit_checkpoint_manifest_sha: bool = False,
+    omit_final_summary_fields: tuple[str, ...] = (),
+    target_count_override: int | None = None,
+    completed_count_override: int | None = None,
+    pending_count_override: int | None = None,
 ) -> tuple[Path, Path, Path]:
     """Write a raw Basic Info archive plus a matching acquisition
     checkpoint/final-summary fixture, with optional corruption knobs for the
-    MAJOR-01 acquisition-authority-binding gate tests."""
+    MAJOR-01/FIX02 acquisition-authority-binding gate tests."""
 
     raw_root = tmp_path / "basic_info"
     entries: dict[str, dict[str, object]] = {}
@@ -92,13 +99,60 @@ def _write_acquisition_fixture(
             "row_count": 0, "schema_validation": "PASS", "identity_validation": "PASS",
         }
     checkpoint_path = tmp_path / "checkpoint.json"
-    checkpoint_path.write_text(
-        json.dumps({"schema_version": "KRX_HISTORICAL_INSTRUMENT_ACQUISITION_V01", "entries": entries}),
-        encoding="utf-8",
-    )
+    checkpoint_bytes = json.dumps(
+        {"schema_version": "KRX_HISTORICAL_INSTRUMENT_ACQUISITION_V01", "entries": entries}
+    ).encode("utf-8")
+    checkpoint_path.write_bytes(checkpoint_bytes)
+
+    expected_pair_count = len(dates) * 2
+    final_summary: dict[str, object] = {
+        "schema_version": "KRX_HISTORICAL_UNIVERSE_ACQUISITION_CLOSURE_V01",
+        "status": final_summary_status,
+        "runner_status": runner_status,
+        "target_count": target_count_override if target_count_override is not None else expected_pair_count,
+        "completed_count": completed_count_override if completed_count_override is not None else expected_pair_count,
+        "pending_count": pending_count_override if pending_count_override is not None else 0,
+        "failures": 0,
+        "schema_failures": 0,
+        "identity_failures": 0,
+        "quota_pause": False,
+        "raw_file_count": expected_pair_count,
+    }
+    if not omit_checkpoint_manifest_sha:
+        final_summary["checkpoint_manifest_sha256"] = (
+            frozen_checkpoint_sha_override
+            if frozen_checkpoint_sha_override is not None
+            else hashlib.sha256(checkpoint_bytes).hexdigest()
+        )
+    for field in omit_final_summary_fields:
+        final_summary.pop(field, None)
     final_summary_path = tmp_path / "acquisition_final_summary.json"
-    final_summary_path.write_text(json.dumps({"status": final_summary_status}), encoding="utf-8")
+    final_summary_path.write_text(json.dumps(final_summary), encoding="utf-8")
     return raw_root, checkpoint_path, final_summary_path
+
+
+def _coordinated_tamper(
+    checkpoint_path: Path,
+    raw_root: Path,
+    day: str,
+    market: str,
+    new_rows: list[dict[str, str]],
+) -> None:
+    """Mutate a raw file AND its checkpoint entry so raw<->checkpoint stay
+    internally consistent, while the checkpoint FILE BYTES (and therefore its
+    overall SHA256) change — this is the coordinated tamper that a frozen
+    closure checkpoint_manifest_sha256 must still catch (Section 33)."""
+
+    bas_dd = day.replace("-", "")
+    path = raw_root / day[:4] / bas_dd / f"{market}.json"
+    content = json.dumps({"OutBlock_1": new_rows}, ensure_ascii=False).encode("utf-8")
+    path.write_bytes(content)
+    digest = hashlib.sha256(content).hexdigest()
+    payload = json.loads(checkpoint_path.read_text(encoding="utf-8"))
+    key = f"{bas_dd}|{market}|{_ENDPOINT[market]}"
+    payload["entries"][key]["raw_content_sha256"] = digest
+    payload["entries"][key]["row_count"] = len(new_rows)
+    checkpoint_path.write_text(json.dumps(payload), encoding="utf-8")
 
 
 def _target(ticker: str) -> dict[str, object]:
@@ -517,6 +571,125 @@ def test_row_count_mismatch_blocks_classification(tmp_path: Path) -> None:
     )
     assert raw.status == BLOCKED_RECONCILIATION_INPUT_AUTHORITY
     assert any("row_count_mismatch" in error for error in raw.errors)
+
+
+def test_acquisition_closure_checkpoint_binding_passes_on_happy_path(tmp_path: Path) -> None:
+    """FIX02 Section B: the closure's frozen checkpoint_manifest_sha256 must
+    exact-match the current checkpoint.json bytes for READY to be reached."""
+    dates = ["2020-01-02"]
+    raw_root, checkpoint_path, final_summary_path = _write_acquisition_fixture(tmp_path, dates, _rows_by_date_market(dates))
+    raw = load_basic_info_snapshots(
+        raw_root, calendar_dates=dates, acquisition_checkpoint_path=checkpoint_path, acquisition_final_summary_path=final_summary_path,
+    )
+    assert raw.status == "READY"
+    assert raw.checkpoint_authority_sha256 is not None
+
+
+def test_checkpoint_tamper_after_closure_is_rejected(tmp_path: Path) -> None:
+    """§32: checkpoint JSON modified (schema-valid) after closure was frozen,
+    raw left untouched — must BLOCK with the manifest-SHA-mismatch reason,
+    and the closure-level gate must short-circuit BEFORE the per-file
+    row_count comparison ever runs (gate ordering, not just detection)."""
+    dates = ["2020-01-02"]
+    raw_root, checkpoint_path, final_summary_path = _write_acquisition_fixture(tmp_path, dates, _rows_by_date_market(dates))
+    # Schema-valid mutation: change a field reconciliation actually reads
+    # (row_count) on one checkpoint entry, without touching any raw file.
+    # If the checkpoint-authority gate did not short-circuit first, this
+    # would instead surface as a row_count_mismatch from the per-file loop.
+    payload = json.loads(checkpoint_path.read_text(encoding="utf-8"))
+    any_key = next(iter(payload["entries"]))
+    payload["entries"][any_key]["row_count"] = payload["entries"][any_key]["row_count"] + 1
+    checkpoint_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    raw = load_basic_info_snapshots(
+        raw_root, calendar_dates=dates, acquisition_checkpoint_path=checkpoint_path, acquisition_final_summary_path=final_summary_path,
+    )
+    assert raw.status == BLOCKED_RECONCILIATION_INPUT_AUTHORITY
+    assert any("ACQUISITION_CHECKPOINT_MANIFEST_SHA_MISMATCH" in error for error in raw.errors)
+    # Gate ordering proof: the raw-level check never ran, so its error text
+    # must not appear even though the entry's row_count is now wrong.
+    assert not any("row_count_mismatch" in error for error in raw.errors)
+
+
+def test_coordinated_raw_and_checkpoint_tamper_is_still_rejected(tmp_path: Path) -> None:
+    """§33: the Major-01 regression. raw and checkpoint are modified TOGETHER
+    so they stay mutually consistent — but the checkpoint file's own bytes no
+    longer match the closure's frozen digest, so this must still BLOCK."""
+    dates = ["2020-01-02"]
+    raw_root, checkpoint_path, final_summary_path = _write_acquisition_fixture(tmp_path, dates, _rows_by_date_market(dates))
+    # Sanity: happy path would be READY before the coordinated tamper.
+    before = load_basic_info_snapshots(
+        raw_root, calendar_dates=dates, acquisition_checkpoint_path=checkpoint_path, acquisition_final_summary_path=final_summary_path,
+    )
+    assert before.status == "READY"
+
+    _coordinated_tamper(checkpoint_path, raw_root, "2020-01-02", "KOSPI", [_row("999999")])
+
+    after = load_basic_info_snapshots(
+        raw_root, calendar_dates=dates, acquisition_checkpoint_path=checkpoint_path, acquisition_final_summary_path=final_summary_path,
+    )
+    assert after.status == BLOCKED_RECONCILIATION_INPUT_AUTHORITY
+    assert any("ACQUISITION_CHECKPOINT_MANIFEST_SHA_MISMATCH" in error for error in after.errors)
+
+
+def test_wrong_closure_manifest_sha_blocks(tmp_path: Path) -> None:
+    dates = ["2020-01-02"]
+    raw_root, checkpoint_path, final_summary_path = _write_acquisition_fixture(
+        tmp_path, dates, _rows_by_date_market(dates), frozen_checkpoint_sha_override="0" * 64
+    )
+    raw = load_basic_info_snapshots(
+        raw_root, calendar_dates=dates, acquisition_checkpoint_path=checkpoint_path, acquisition_final_summary_path=final_summary_path,
+    )
+    assert raw.status == BLOCKED_RECONCILIATION_INPUT_AUTHORITY
+    assert any("ACQUISITION_CHECKPOINT_MANIFEST_SHA_MISMATCH" in error for error in raw.errors)
+
+
+def test_missing_closure_manifest_sha_blocks(tmp_path: Path) -> None:
+    dates = ["2020-01-02"]
+    raw_root, checkpoint_path, final_summary_path = _write_acquisition_fixture(
+        tmp_path, dates, _rows_by_date_market(dates), omit_checkpoint_manifest_sha=True
+    )
+    raw = load_basic_info_snapshots(
+        raw_root, calendar_dates=dates, acquisition_checkpoint_path=checkpoint_path, acquisition_final_summary_path=final_summary_path,
+    )
+    assert raw.status == BLOCKED_RECONCILIATION_INPUT_AUTHORITY
+    assert any("acquisition_final_summary_missing_fields" in error for error in raw.errors)
+
+
+def test_final_summary_missing_required_field_blocks(tmp_path: Path) -> None:
+    dates = ["2020-01-02"]
+    raw_root, checkpoint_path, final_summary_path = _write_acquisition_fixture(
+        tmp_path, dates, _rows_by_date_market(dates), omit_final_summary_fields=("target_count",)
+    )
+    raw = load_basic_info_snapshots(
+        raw_root, calendar_dates=dates, acquisition_checkpoint_path=checkpoint_path, acquisition_final_summary_path=final_summary_path,
+    )
+    assert raw.status == BLOCKED_RECONCILIATION_INPUT_AUTHORITY
+    assert any("acquisition_final_summary_missing_fields" in error for error in raw.errors)
+
+
+def test_final_summary_wrong_runner_status_blocks(tmp_path: Path) -> None:
+    dates = ["2020-01-02"]
+    raw_root, checkpoint_path, final_summary_path = _write_acquisition_fixture(
+        tmp_path, dates, _rows_by_date_market(dates), runner_status="PARTIAL"
+    )
+    raw = load_basic_info_snapshots(
+        raw_root, calendar_dates=dates, acquisition_checkpoint_path=checkpoint_path, acquisition_final_summary_path=final_summary_path,
+    )
+    assert raw.status == BLOCKED_RECONCILIATION_INPUT_AUTHORITY
+    assert any("acquisition_final_summary_runner_status_invalid" in error for error in raw.errors)
+
+
+def test_final_summary_count_mismatch_blocks(tmp_path: Path) -> None:
+    dates = ["2020-01-02"]
+    raw_root, checkpoint_path, final_summary_path = _write_acquisition_fixture(
+        tmp_path, dates, _rows_by_date_market(dates), pending_count_override=1
+    )
+    raw = load_basic_info_snapshots(
+        raw_root, calendar_dates=dates, acquisition_checkpoint_path=checkpoint_path, acquisition_final_summary_path=final_summary_path,
+    )
+    assert raw.status == BLOCKED_RECONCILIATION_INPUT_AUTHORITY
+    assert any("acquisition_final_summary_count_mismatch" in error for error in raw.errors)
 
 
 def test_preflight_top_level_status_distinguishes_blocked_from_waiting(tmp_path: Path) -> None:
