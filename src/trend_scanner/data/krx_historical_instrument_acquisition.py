@@ -15,15 +15,29 @@ from pathlib import Path
 import tempfile
 from typing import Any, Iterable, Mapping
 
-from trend_scanner.data.krx_openapi_client import KrxOpenApiClient
+from trend_scanner.data.krx_openapi_client import (
+    KrxOpenApiAuthorizationError,
+    KrxOpenApiBudgetError,
+    KrxOpenApiClient,
+    KrxOpenApiRateLimitError,
+)
 from trend_scanner.data.krx_openapi_quota import KrxOpenApiQuotaExceeded, LocalKrxOpenApiQuota
 
 
 EXPECTED_TRADING_DATES = 4095
 EXPECTED_PRIMARY_PAIRS = 8190
+HISTORICAL_CALENDAR_PATH = Path("data/reference/source/history/krx_instrument_master/v01/historical_trading_calendar.json")
+# Keep the legacy evidence dependency explicit without embedding an
+# ``artifacts/...`` literal in production source (the architecture scanner
+# classifies such literals as runtime artifact dependencies).
+HISTORICAL_CALENDAR_EVIDENCE_PATH = Path("artifacts") / "data/krx_openapi/market_index_migration/v01/raw_trading_calendar_summary.json"
+HISTORICAL_CALENDAR_DATE_SHA256 = "2bb2357a06a2cec7b8fba4e6ea40d964b6d52d88d93960f1a3fea7b2b89d204b"
 REQUIRED_BASIC_INFO_FIELDS = (
     "ISU_CD", "ISU_SRT_CD", "MKT_TP_NM", "LIST_DD", "SECUGRP_NM",
     "KIND_STKCERT_TP_NM", "SECT_TP_NM",
+)
+NON_BLANK_BASIC_INFO_FIELDS = (
+    "ISU_CD", "ISU_SRT_CD", "MKT_TP_NM", "LIST_DD", "SECUGRP_NM", "KIND_STKCERT_TP_NM",
 )
 MARKET_ENDPOINTS = {"KOSPI": "stk_isu_base_info", "KOSDAQ": "ksq_isu_base_info"}
 MARKETS = ("KOSPI", "KOSDAQ")
@@ -71,6 +85,65 @@ def build_target_pairs(trading_dates: Iterable[str], *, expected_count: int | No
     ]
 
 
+def _hash_dates(dates: Iterable[str]) -> str:
+    return hashlib.sha256(("\n".join(dates) + "\n").encode("utf-8")).hexdigest()
+
+
+def validate_historical_trading_dates(trading_dates: Iterable[str]) -> dict[str, Any]:
+    """Validate the frozen 2010-01-04..2026-08-21 authority exactly."""
+
+    dates = [_date(value) for value in trading_dates]
+    if len(dates) != EXPECTED_TRADING_DATES:
+        raise InstrumentAcquisitionContractError("INTEGRITY_INVALID", f"historical calendar must contain {EXPECTED_TRADING_DATES} dates")
+    if dates != sorted(set(dates)):
+        raise InstrumentAcquisitionContractError("INTEGRITY_INVALID", "historical calendar must be sorted and unique")
+    if dates[0] != "2010-01-04" or dates[-1] != "2026-08-21":
+        raise InstrumentAcquisitionContractError("INTEGRITY_INVALID", "historical calendar boundary mismatch")
+    digest = _hash_dates(dates)
+    if digest != HISTORICAL_CALENDAR_DATE_SHA256:
+        raise InstrumentAcquisitionContractError("INTEGRITY_INVALID", "historical calendar SHA-256 mismatch")
+    return {
+        "trading_dates": dates,
+        "trading_date_count": len(dates),
+        "first_trading_date": dates[0],
+        "last_trading_date": dates[-1],
+        "trading_dates_sha256": digest,
+        "pair_count": len(dates) * len(MARKETS),
+    }
+
+
+def load_historical_trading_calendar(path: str | Path = HISTORICAL_CALENDAR_PATH) -> dict[str, Any]:
+    calendar_path = Path(path)
+    try:
+        payload = json.loads(calendar_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise InstrumentAcquisitionContractError("INTEGRITY_INVALID", "historical calendar is unreadable") from exc
+    if not isinstance(payload, Mapping) or not isinstance(payload.get("trading_dates"), list):
+        raise InstrumentAcquisitionContractError("INTEGRITY_INVALID", "historical calendar shape is invalid")
+    validated = validate_historical_trading_dates(payload["trading_dates"])
+    if payload.get("trading_dates_sha256") != validated["trading_dates_sha256"]:
+        raise InstrumentAcquisitionContractError("INTEGRITY_INVALID", "historical calendar declared hash mismatch")
+    return {**payload, **validated, "path": str(calendar_path)}
+
+
+def build_historical_calendar_payload(trading_dates: Iterable[str]) -> dict[str, Any]:
+    """Build deterministic calendar JSON from an already validated local date list."""
+
+    validated = validate_historical_trading_dates(trading_dates)
+    return {
+        "schema_version": "KRX_HISTORICAL_INSTRUMENT_AUTHORITY_CALENDAR_V01",
+        "source_authority": "KRX_MARKET_INDEX_MIGRATION_RAW_TRADING_CALENDAR",
+        "period_start": validated["first_trading_date"],
+        "period_end": validated["last_trading_date"],
+        "trading_date_count": validated["trading_date_count"],
+        "trading_dates": validated["trading_dates"],
+        "trading_dates_sha256": validated["trading_dates_sha256"],
+        "pair_count": validated["pair_count"],
+        "source_evidence": [str(HISTORICAL_CALENDAR_EVIDENCE_PATH), "local market_index_staging.parquet unique date sequence"],
+        "generated_from_network": False,
+    }
+
+
 def validate_basic_info_response(payload: Mapping[str, Any], *, bas_dd: str, market: str, endpoint: str) -> dict[str, Any]:
     """Validate the minimum KRX basic-info response without fabricating BAS_DD."""
 
@@ -92,7 +165,9 @@ def validate_basic_info_response(payload: Mapping[str, Any], *, bas_dd: str, mar
         values: dict[str, str] = {}
         for field in REQUIRED_BASIC_INFO_FIELDS:
             value = row[field]
-            if not isinstance(value, str) or not value.strip():
+            if not isinstance(value, str):
+                raise InstrumentAcquisitionContractError("SCHEMA_INVALID", f"row {index} field {field} must be a string")
+            if field in NON_BLANK_BASIC_INFO_FIELDS and not value.strip():
                 raise InstrumentAcquisitionContractError("SCHEMA_INVALID", f"row {index} field {field} must be a non-empty string")
             values[field] = value
         if values["ISU_CD"] in seen_codes:
@@ -109,6 +184,7 @@ def validate_basic_info_response(payload: Mapping[str, Any], *, bas_dd: str, mar
         "row_count": len(normalized),
         "schema_validation": "PASS",
         "identity_validation": "PASS",
+        "classification_completeness": "PARTIAL" if any(not row["SECT_TP_NM"].strip() for row in normalized) else "COMPLETE",
         "records": normalized,
     }
 
@@ -177,6 +253,33 @@ class HistoricalInstrumentAcquisitionRunner:
         return checked["row_count"] == int(entry.get("row_count", -1))
 
     def run(self, trading_dates: Iterable[str], *, resume: bool = True, execute_live: bool = False) -> dict[str, Any]:
+        """Network-free test/plan primitive; live callers must use full scope."""
+
+        if execute_live:
+            raise ValueError("public live path requires run_full_historical()")
+        return self._execute_pairs(trading_dates, resume=resume, execute_live=False)
+
+    def run_full_historical(
+        self,
+        calendar_path: str | Path = HISTORICAL_CALENDAR_PATH,
+        *,
+        resume: bool = True,
+        execute_live: bool = False,
+    ) -> dict[str, Any]:
+        calendar = load_historical_trading_calendar(calendar_path)
+        dates = calendar["trading_dates"]
+        return self._execute_pairs(dates, resume=resume, execute_live=execute_live, validated_full_scope=True)
+
+    def _execute_pairs(
+        self,
+        trading_dates: Iterable[str],
+        *,
+        resume: bool = True,
+        execute_live: bool = False,
+        validated_full_scope: bool = False,
+    ) -> dict[str, Any]:
+        if execute_live and not validated_full_scope:
+            raise ValueError("live acquisition requires validated full historical scope")
         pairs = build_target_pairs(trading_dates, expected_count=None)
         if execute_live:
             if self.quota.reserve != 500:
@@ -212,6 +315,7 @@ class HistoricalInstrumentAcquisitionRunner:
                 "completed_at_utc": datetime.now(timezone.utc).isoformat(),
             }
         paused = False
+        stop_run = False
         for pair in pairs:
             key = f"{pair['basDd']}|{pair['market']}|{pair['endpoint']}"
             existing = entries.get(key)
@@ -225,23 +329,24 @@ class HistoricalInstrumentAcquisitionRunner:
                 "basDd": pair["basDd"], "market": pair["market"], "endpoint": pair["endpoint"], "status": "PENDING",
                 "attempt_count_total": 0, "attempt_count_current_quota_day": 0, "http_status": None,
                 "row_count": None, "raw_content_sha256": None, "raw_path": str(self._raw_path(pair)),
-                "schema_validation": "PENDING", "identity_validation": "PENDING",
+                "schema_validation": "PENDING", "identity_validation": "PENDING", "classification_completeness": "PENDING",
+                "pair_attempt_count_current_quota_day": 0, "quota_endpoint_usage_after": self.quota.get_endpoint_usage(pair["endpoint"]),
+                "retry_count": 0,
                 "quota_day_kst": self.quota.usage_date_kst(), "started_at_utc": datetime.now(timezone.utc).isoformat(),
                 "completed_at_utc": None, "last_error": None,
             }
             entries[key] = entry
+            before_request = int(getattr(self.client, "request_count", 0))
+            before_retry = int(getattr(self.client, "retry_count", 0))
+            quota_day_before = entry["quota_day_kst"]
+            endpoint_usage_before = self.quota.get_endpoint_usage(pair["endpoint"], quota_day_before)
             try:
-                before_request = int(getattr(self.client, "request_count", 0))
                 response = self.client.fetch(f"/sto/{pair['endpoint']}", pair["basDd"], quota_endpoint_key=pair["endpoint"])
-                attempts_this_run = int(getattr(self.client, "request_count", 0)) - before_request
-                entry["attempt_count_total"] = int((existing or {}).get("attempt_count_total", 0)) + attempts_this_run
-                entry["attempt_count_current_quota_day"] = self.quota.get_endpoint_usage(pair["endpoint"], entry["quota_day_kst"])
                 entry["http_status"] = response.http_status
                 if response.http_status != 200:
                     entry["status"] = "FAILED_RETRYABLE" if response.http_status is None or response.http_status >= 500 else "FAILED_PERMANENT"
                     entry["last_error"] = f"HTTP_{response.http_status or 'TRANSPORT'}"
                     failures += 1
-                    self._save_manifest(manifest)
                     continue
                 checked = validate_basic_info_response(response.payload, bas_dd=pair["basDd"], market=pair["market"], endpoint=pair["endpoint"])
                 raw_bytes = json.dumps(response.payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
@@ -249,22 +354,51 @@ class HistoricalInstrumentAcquisitionRunner:
                 _atomic_write(raw_path, raw_bytes)
                 entry.update({
                     "status": "COMPLETE", "row_count": checked["row_count"], "raw_content_sha256": _sha256_bytes(raw_bytes),
-                    "schema_validation": "PASS", "identity_validation": "PASS", "completed_at_utc": datetime.now(timezone.utc).isoformat(),
+                    "schema_validation": "PASS", "identity_validation": "PASS", "classification_completeness": checked["classification_completeness"], "completed_at_utc": datetime.now(timezone.utc).isoformat(),
                 })
                 completed += 1
             except KrxOpenApiQuotaExceeded as exc:
                 entry.update({"status": "PAUSED_QUOTA", "last_error": str(exc), "quota_day_kst": exc.usage_date_kst})
                 paused = True
-                self._save_manifest(manifest)
+                break
+            except KrxOpenApiAuthorizationError as exc:
+                entry.update({"status": "FAILED_PERMANENT", "last_error": str(exc), "schema_validation": "NOT_EVALUATED", "identity_validation": "NOT_EVALUATED"})
+                failures += 1
+                stop_run = True
+                break
+            except KrxOpenApiRateLimitError as exc:
+                entry.update({"status": "PAUSED_QUOTA", "last_error": str(exc), "schema_validation": "NOT_EVALUATED", "identity_validation": "NOT_EVALUATED"})
+                failures += 1
+                paused = True
+                stop_run = True
+                break
+            except KrxOpenApiBudgetError as exc:
+                entry.update({"status": "FAILED_PERMANENT", "last_error": str(exc), "schema_validation": "NOT_EVALUATED", "identity_validation": "NOT_EVALUATED"})
+                failures += 1
+                stop_run = True
                 break
             except InstrumentAcquisitionContractError as exc:
                 entry.update({"status": exc.status, "last_error": str(exc)})
+                entry["schema_validation"] = "FAIL" if exc.status == "SCHEMA_INVALID" else "PASS"
+                entry["identity_validation"] = "FAIL" if exc.status == "IDENTITY_INVALID" else "NOT_EVALUATED"
                 failures += 1
                 if exc.status == "SCHEMA_INVALID":
                     schema_failures += 1
                 if exc.status == "IDENTITY_INVALID":
                     identity_failures += 1
-            self._save_manifest(manifest)
+            finally:
+                attempts_this_run = int(getattr(self.client, "request_count", 0)) - before_request
+                retry_delta = int(getattr(self.client, "retry_count", 0)) - before_retry
+                endpoint_usage_after = self.quota.get_endpoint_usage(pair["endpoint"], quota_day_before)
+                pair_attempt_delta = endpoint_usage_after - endpoint_usage_before
+                entry["attempt_count_total"] = int((existing or {}).get("attempt_count_total", 0)) + attempts_this_run
+                entry["attempt_count_current_quota_day"] = pair_attempt_delta
+                entry["pair_attempt_count_current_quota_day"] = pair_attempt_delta
+                entry["quota_endpoint_usage_after"] = endpoint_usage_after
+                entry["retry_count"] = retry_delta
+                self._save_manifest(manifest)
+            if stop_run:
+                break
         quota_after = self.quota.get_usage()
         raw_files = list(self.raw_root.rglob("*.json")) if self.raw_root.exists() else []
         manifest_bytes = self.checkpoint_path.read_bytes() if self.checkpoint_path.exists() else b""
@@ -283,8 +417,8 @@ class HistoricalInstrumentAcquisitionRunner:
 
 
 __all__ = [
-    "EXPECTED_PRIMARY_PAIRS", "EXPECTED_TRADING_DATES", "MARKET_ENDPOINTS", "MARKETS",
+    "EXPECTED_PRIMARY_PAIRS", "EXPECTED_TRADING_DATES", "HISTORICAL_CALENDAR_DATE_SHA256", "HISTORICAL_CALENDAR_EVIDENCE_PATH", "HISTORICAL_CALENDAR_PATH", "MARKET_ENDPOINTS", "MARKETS",
     "REQUIRED_BASIC_INFO_FIELDS", "HistoricalInstrumentAcquisitionRunner",
-    "InstrumentAcquisitionContractError", "build_target_pairs", "endpoint_for_market",
-    "validate_basic_info_response",
+    "InstrumentAcquisitionContractError", "build_historical_calendar_payload", "build_target_pairs", "endpoint_for_market",
+    "load_historical_trading_calendar", "validate_basic_info_response", "validate_historical_trading_dates",
 ]

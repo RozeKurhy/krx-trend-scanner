@@ -20,6 +20,8 @@ from trend_scanner.data.krx_openapi_quota import LocalKrxOpenApiQuota
 
 _DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 RECONCILIATION_TABLE = "quota_reconciliation"
+DISCOVERY_DATES = ("2010-01-04", "2018-04-27", "2026-08-21")
+DISCOVERY_ENDPOINTS = {"stk_isu_base_info", "ksq_isu_base_info"}
 
 
 def file_sha256(path: str | Path) -> str:
@@ -175,6 +177,95 @@ def reconcile_known_attempts(
     }
 
 
+def validate_historical_authority_discovery_evidence(
+    evidence_path: str | Path,
+    *,
+    usage_date_kst: str,
+    corrections: Mapping[str, int],
+) -> dict[str, Any]:
+    """Validate the exact six-call discovery semantics before any correction."""
+
+    if usage_date_kst != "2026-08-26":
+        raise ValueError("historical authority discovery evidence belongs to 2026-08-26")
+    expected_delta = {"stk_isu_base_info": 3, "ksq_isu_base_info": 3}
+    normalized = {_endpoint_key(key): int(value) for key, value in corrections.items()}
+    if normalized != expected_delta:
+        raise ValueError("discovery evidence supports exactly +3/+3 basic-info corrections")
+    evidence = Path(evidence_path)
+    try:
+        payload = json.loads(evidence.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError("discovery evidence is unreadable") from exc
+    entries = payload.get("entries") if isinstance(payload, dict) else None
+    if not isinstance(entries, list):
+        raise ValueError("discovery evidence entries are missing")
+    matches = [
+        entry for entry in entries
+        if isinstance(entry, dict)
+        and entry.get("source") == "KRX Open API"
+        and all(endpoint in str(entry.get("endpoint", "")) for endpoint in DISCOVERY_ENDPOINTS)
+    ]
+    if len(matches) != 1:
+        raise ValueError("expected one six-call KRX Open API discovery entry")
+    entry = matches[0]
+    timestamp = str(entry.get("timestamp", ""))
+    if not timestamp.startswith("2026-08-26") or "+09:00" not in timestamp:
+        raise ValueError("discovery timestamp is not a 2026-08-26 KST session")
+    rows = entry.get("response_rows")
+    if not isinstance(rows, dict) or set(rows) != set(DISCOVERY_DATES):
+        raise ValueError("discovery snapshots must cover the three frozen dates")
+    endpoint_counts = {endpoint: 0 for endpoint in DISCOVERY_ENDPOINTS}
+    for day in DISCOVERY_DATES:
+        markets = rows.get(day)
+        if not isinstance(markets, dict) or set(markets) != {"KOSPI", "KOSDAQ"}:
+            raise ValueError("discovery response rows must include both markets for each date")
+        endpoint_counts["stk_isu_base_info"] += 1
+        endpoint_counts["ksq_isu_base_info"] += 1
+    if entry.get("request_count") != 6 or endpoint_counts != expected_delta:
+        raise ValueError("discovery evidence does not prove six basic-info requests")
+    if payload.get("logical_request_count", 0) < 6:
+        raise ValueError("discovery ledger logical request count is inconsistent")
+    return {
+        "status": "PASS",
+        "evidence_path": str(evidence),
+        "usage_date_kst": usage_date_kst,
+        "source": entry["source"],
+        "timestamp": timestamp,
+        "snapshot_dates": list(DISCOVERY_DATES),
+        "endpoint_delta": expected_delta,
+        "request_count": 6,
+        "evidence_sha256": file_sha256(evidence),
+    }
+
+
+def reconcile_historical_authority_discovery(
+    quota: LocalKrxOpenApiQuota,
+    *,
+    reconciliation_id: str,
+    usage_date_kst: str,
+    corrections: Mapping[str, int],
+    evidence_path: str | Path,
+    evidence_sha256: str | None = None,
+    applied_at_utc: str | None = None,
+) -> dict[str, Any]:
+    """Semantic gate followed by the generic idempotent ledger correction."""
+
+    semantic = validate_historical_authority_discovery_evidence(
+        evidence_path, usage_date_kst=usage_date_kst, corrections=corrections
+    )
+    result = reconcile_known_attempts(
+        quota,
+        reconciliation_id=reconciliation_id,
+        usage_date_kst=usage_date_kst,
+        corrections=corrections,
+        evidence_path=evidence_path,
+        evidence_sha256=evidence_sha256 or semantic["evidence_sha256"],
+        applied_at_utc=applied_at_utc,
+    )
+    result["semantic_validation"] = semantic
+    return result
+
+
 def _usage(connection: sqlite3.Connection, usage_date_kst: str) -> dict[str, Any]:
     rows = connection.execute(
         "SELECT endpoint_key, attempt_count FROM quota_usage WHERE usage_date_kst = ? ORDER BY endpoint_key",
@@ -184,4 +275,8 @@ def _usage(connection: sqlite3.Connection, usage_date_kst: str) -> dict[str, Any
     return {"usage_date_kst": usage_date_kst, "endpoint_usage": endpoints, "global_total": sum(endpoints.values())}
 
 
-__all__ = ["RECONCILIATION_TABLE", "file_sha256", "reconcile_known_attempts"]
+__all__ = [
+    "DISCOVERY_DATES", "DISCOVERY_ENDPOINTS", "RECONCILIATION_TABLE", "file_sha256",
+    "reconcile_historical_authority_discovery", "reconcile_known_attempts",
+    "validate_historical_authority_discovery_evidence",
+]

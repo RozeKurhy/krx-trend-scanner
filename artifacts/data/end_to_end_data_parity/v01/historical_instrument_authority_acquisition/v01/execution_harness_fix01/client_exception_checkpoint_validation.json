@@ -1,0 +1,11 @@
+{
+  "status": "PASS",
+  "exceptions": {
+    "KrxOpenApiAuthorizationError": "FAILED_PERMANENT + checkpoint + stop",
+    "KrxOpenApiRateLimitError": "PAUSED_QUOTA + checkpoint + stop",
+    "KrxOpenApiBudgetError": "FAILED_PERMANENT + checkpoint + stop",
+    "KrxOpenApiQuotaExceeded": "PAUSED_QUOTA + checkpoint + stop"
+  },
+  "additional_network_after_stop": 0,
+  "finally_accounting": true
+}

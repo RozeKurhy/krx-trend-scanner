@@ -1,0 +1,7 @@
+{
+  "status": "PASS",
+  "contract": "opener attempts = quota reservations = client request delta = pair recorded attempt delta",
+  "normal": {"opener": 2, "quota_delta": 2, "client_delta": 2, "pair_delta_total": 2},
+  "retry_success": {"opener": 3, "quota_delta": 3, "client_delta": 3, "pair_delta_total": 3, "retry_delta": 1},
+  "exception_paths": "finally records deltas before checkpoint persistence"
+}
