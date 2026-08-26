@@ -302,8 +302,15 @@ def main() -> int:
         "identity_key": "ticker|ISU_CD|effective_from|effective_to",
         "denominator_candidate_never_uses_set_of_ticker": True,
     })
+    # §28 fixture: OLD=COMMON, NEW=NOT_COMMON — this is the exact shape that
+    # previously collapsed in the denominator candidate (MAJOR-03); a
+    # both-COMMON fixture would not exercise that bug at all.
     non_overlap = reconcile_target_identities(
-        [_target("005930")], [_snapshot("2020-01-02", _row("005930", isu_cd="OLD")), _snapshot("2020-01-03", _row("005930", isu_cd="NEW"))],
+        [_target("005930")],
+        [
+            _snapshot("2020-01-02", _row("005930", isu_cd="OLD")),
+            _snapshot("2020-01-03", _row("005930", isu_cd="NEW", kind="신형우선주")),
+        ],
         expected_dates=["2020-01-02", "2020-01-03"],
     )
     _dump("12_non_overlap_reuse_validation.json", {
