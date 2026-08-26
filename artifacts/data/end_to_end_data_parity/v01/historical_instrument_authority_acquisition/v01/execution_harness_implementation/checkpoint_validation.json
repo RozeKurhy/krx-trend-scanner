@@ -1,0 +1,9 @@
+{
+  "status": "PASS",
+  "key": ["basDd", "market", "endpoint"],
+  "terminal_statuses": ["PENDING", "COMPLETE", "FAILED_RETRYABLE", "FAILED_PERMANENT", "PAUSED_QUOTA", "SCHEMA_INVALID", "IDENTITY_INVALID", "INTEGRITY_INVALID", "NO_DATA_UNEXPECTED"],
+  "complete_skip_requires": ["raw exists", "hash matches", "schema pass", "identity pass"],
+  "broken_complete": "INTEGRITY_INVALID then repair request",
+  "atomic_checkpoint_write": true,
+  "minimum_fields_present": true
+}
