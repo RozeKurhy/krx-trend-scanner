@@ -1,0 +1,10 @@
+{
+  "work_id": "KRX_HISTORICAL_INSTRUMENT_AUTHORITY_ACQUISITION_V01",
+  "identity_fields": ["ISU_CD", "ISU_SRT_CD"],
+  "current_support": "observed in KRX Open API basic-info responses",
+  "historical_support": "observed in 2010-01-04 and 2018-04-27 snapshots",
+  "2010_2019": "PIT date snapshots available by basDd; full identity interval archive deferred to execution",
+  "ticker_reuse_gate": "PROVISIONAL_PASS_WITH_COVERAGE_LIMITATION",
+  "collision_policy": "same full identity with overlapping incompatible intervals is a hard conflict; same short ticker with different full identity is reuse, never silent merge",
+  "status": "READY_FOR_EXECUTION_VALIDATION"
+}

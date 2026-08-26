@@ -1,0 +1,68 @@
+{
+  "work_id": "KRX_HISTORICAL_INSTRUMENT_AUTHORITY_ACQUISITION_V01",
+  "generated_locally": true,
+  "source_candidates": [
+    {
+      "source_name": "KRX_OPEN_API_BASIC_INFO",
+      "official_provider": "KRX Data Marketplace Open API",
+      "channel": "authenticated HTTPS GET",
+      "endpoints": ["/svc/apis/sto/stk_isu_base_info", "/svc/apis/ksq_isu_base_info"],
+      "authentication": "AUTH_KEY header",
+      "credential_usable": true,
+      "request_parameters": {"date": "basDd", "format": "YYYYMMDD"},
+      "pagination": "not observed; one bulk market snapshot per request",
+      "response_container": "OutBlock_1",
+      "response_fields": ["ISU_CD", "ISU_SRT_CD", "ISU_NM", "ISU_ABBRV", "ISU_ENG_NM", "MKT_TP_NM", "SECUGRP_NM", "SECT_TP_NM", "KIND_STKCERT_TP_NM", "LIST_DD", "PARVAL", "LIST_SHRS"],
+      "historical_availability": "observed at 2010-01-04, 2018-04-27, and 2026-08-21",
+      "pit": "AUTHORITATIVE_PIT_PARTIAL",
+      "bulk_model": "per-date, per-market bulk snapshot",
+      "delisted": "historical snapshots include instruments present on requested date; exact delisting event fields are supplemental",
+      "rate_limit": "not published in local contract; acquisition must use bounded quota and checkpointing",
+      "authority_tier": "TIER_A",
+      "fit_for_2010_2026_pit": "YES_PENDING_EXECUTION"
+    },
+    {
+      "source_name": "KRX_MDC_DELISTED_STATUS",
+      "official_provider": "KRX Data Marketplace, [20037] 상장폐지종목 현황",
+      "channel": "authenticated KRX MDC web bld",
+      "url": "https://data.krx.co.kr/contents/MDC/STAT/issue/MDCSTAT238.jsp",
+      "endpoint": "https://data.krx.co.kr/comm/bldAttendant/getJsonData.cmd",
+      "bld": "dbms/MDC/STAT/issue/MDCSTAT23801",
+      "authentication": "KRX web session",
+      "request_parameters": ["locale", "mktId", "strtDd", "endDd", "isuCd", "isuCd2"],
+      "documented_fields": ["ISU_CD", "ISU_NM", "MKT_NM", "SECUGRP_NM", "KIND_STKCERT_TP_NM", "LIST_DD", "DELIST_DD", "DELIST_RSN_DSC", "IDX_IND_NM", "PARVAL", "LIST_SHRS", "TO_ISU_SRT_CD", "TO_ISU_ABBRV"],
+      "historical_availability": "date-range query documented by page contract",
+      "pit": "LIFECYCLE_ONLY",
+      "bulk_model": "date-range delisted event query",
+      "diagnostic_result": "HTTP 200, output=0 for 2020-01-01..2020-12-31 with initial payload contract; page schema confirmed, row payload not confirmed",
+      "authority_tier": "TIER_B",
+      "fit_for_2010_2026_pit": "PARTIAL"
+    },
+    {
+      "source_name": "KRX_MDC_CURRENT_FORMAL_UNIVERSE",
+      "official_provider": "KRX Market Data Center authenticated MDC",
+      "channel": "authenticated HTTPS POST",
+      "endpoint": "https://data.krx.co.kr/comm/bldAttendant/getJsonData.cmd",
+      "blds": ["dbms/MDC/STAT/standard/MDCSTAT01901", "dbms/MDC/STAT/standard/MDCSTAT04601", "dbms/MDC/STAT/standard/MDCSTAT06701"],
+      "historical_availability": "current snapshot only in existing local evidence",
+      "pit": "CURRENT_ONLY",
+      "authority_tier": "TIER_A_CURRENT",
+      "fit_for_2010_2026_pit": "NO"
+    },
+    {
+      "source_name": "KRX_DELISU_FINDER",
+      "official_provider": "KRX Market Data Center finder",
+      "channel": "authenticated MDC finder",
+      "bld": "dbms/comm/finder/finder_listdelisu",
+      "response_fields": ["full_code", "short_code", "codeName", "marketCode", "marketName"],
+      "historical_availability": "identity presence only",
+      "pit": "NO_SECURITY_TYPE",
+      "authority_tier": "TIER_B",
+      "fit_for_2010_2026_pit": "NO"
+    }
+  ],
+  "candidate_count": 4,
+  "primary_source": "KRX_OPEN_API_BASIC_INFO",
+  "supplemental_source": "KRX_MDC_DELISTED_STATUS",
+  "status": "READY_FOR_HISTORICAL_INSTRUMENT_AUTHORITY_ACQUISITION"
+}

@@ -1,0 +1,16 @@
+{
+  "work_id": "KRX_HISTORICAL_INSTRUMENT_AUTHORITY_ACQUISITION_V01",
+  "credential_values_recorded": false,
+  "entries": [
+    {"sequence": "1-3", "timestamp": "2026-08-26T11:55:00+09:00", "source": "KRX MDC session", "endpoint": "MDCCOMS001.cmd + login.jsp + MDCCOMS001D1.cmd", "purpose": "authenticated session bootstrap", "status": "success", "retry": 0, "response_rows": null, "error_class": null, "request_count": 3},
+    {"sequence": "4-9", "timestamp": "2026-08-26T11:57:00+09:00", "source": "KRX Open API", "endpoint": "/svc/apis/sto/stk_isu_base_info and /svc/apis/ksq_isu_base_info", "purpose": "2010-01-04, 2018-04-27, 2026-08-21 PIT capability snapshots", "status": "HTTP_200", "retry": 0, "response_rows": {"2010-01-04": {"KOSPI": 925, "KOSDAQ": 1036}, "2018-04-27": {"KOSPI": 892, "KOSDAQ": 1272}, "2026-08-21": {"KOSPI": 942, "KOSDAQ": 1822}}, "error_class": null, "request_count": 6},
+    {"sequence": "10", "timestamp": "2026-08-26T11:58:00+09:00", "source": "KRX MDC", "endpoint": "/comm/bldAttendant/getJsonData.cmd bld=dbms/MDC/STAT/issue/MDCSTAT23801", "purpose": "unauthenticated delisted endpoint probe", "status": "HTML_ERROR_PAGE", "retry": 0, "response_rows": 0, "error_class": "authentication_or_contract_required", "request_count": 1},
+    {"sequence": "11", "timestamp": "2026-08-26T11:59:00+09:00", "source": "KRX MDC", "endpoint": "/contents/MDC/STAT/issue/MDCSTAT238.jsp", "purpose": "official page field/request contract discovery", "status": "HTTP_200", "retry": 0, "response_rows": null, "error_class": null, "request_count": 6},
+    {"sequence": "12", "timestamp": "2026-08-26T12:00:00+09:00", "source": "KRX MDC authenticated web bld", "endpoint": "/comm/bldAttendant/getJsonData.cmd bld=dbms/MDC/STAT/issue/MDCSTAT23801", "purpose": "delisted lifecycle response capability probe", "status": "HTTP_200_EMPTY_OUTPUT", "retry": 0, "response_rows": 0, "error_class": "initial_payload_contract_unverified", "request_count": 1}
+  ],
+  "logical_request_count": 17,
+  "logical_diagnostic_count": 8,
+  "documentation_page_reads_excluded_from_logical_diagnostic_count": 6,
+  "absolute_ceiling": 20,
+  "status": "PASS_WITHIN_CEILING"
+}

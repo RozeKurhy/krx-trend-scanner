@@ -1,0 +1,15 @@
+{
+  "work_id": "KRX_HISTORICAL_INSTRUMENT_AUTHORITY_ACQUISITION_V01",
+  "period": {"start": "2010-01-04", "end": "2026-08-21"},
+  "fields": [
+    {"field": "ticker", "authoritative_source": "KRX_OPEN_API_BASIC_INFO.ISU_SRT_CD", "authority_tier": "TIER_A", "pit_semantics": "requested basDd snapshot", "coverage": "KOSPI/KOSDAQ date snapshots", "fallback": "KRX_MDC_DELISTED_STATUS.ISU_CD", "missing_policy": "unresolved"},
+    {"field": "full_identity", "authoritative_source": "KRX_OPEN_API_BASIC_INFO.ISU_CD", "authority_tier": "TIER_A", "pit_semantics": "requested basDd snapshot", "coverage": "observed at boundary dates; acquire all trading dates", "fallback": "KRX_MDC_DELISTED_STATUS.ISU_CD", "missing_policy": "identity_gate_fail_closed"},
+    {"field": "market", "authoritative_source": "KRX_OPEN_API_BASIC_INFO.MKT_TP_NM", "authority_tier": "TIER_A", "pit_semantics": "requested basDd snapshot", "coverage": "KOSPI/KOSDAQ", "fallback": "KRX_MDC_DELISTED_STATUS.MKT_NM", "missing_policy": "unresolved"},
+    {"field": "security_type", "authoritative_source": "KRX_OPEN_API_BASIC_INFO.SECUGRP_NM + KIND_STKCERT_TP_NM + SECT_TP_NM", "authority_tier": "TIER_A", "pit_semantics": "requested basDd snapshot", "coverage": "observed at boundary dates; acquire all trading dates", "fallback": "delisted page fields only as Tier B", "missing_policy": "never infer; unresolved"},
+    {"field": "listing_date", "authoritative_source": "KRX_OPEN_API_BASIC_INFO.LIST_DD", "authority_tier": "TIER_A", "pit_semantics": "snapshot row attribute", "coverage": "KOSPI/KOSDAQ", "fallback": "KRX_MDC_DELISTED_STATUS.LIST_DD", "missing_policy": "unresolved"},
+    {"field": "delisting_date", "authoritative_source": "KRX_MDC_DELISTED_STATUS.DELIST_DD", "authority_tier": "TIER_B", "pit_semantics": "official delisting event date", "coverage": "delisted event query; live row contract pending execution validation", "fallback": "none", "missing_policy": "delisted unresolved"},
+    {"field": "effective_from", "authoritative_source": "requested basDd attached to basic-info response", "authority_tier": "TIER_A_DERIVED", "pit_semantics": "explicit request snapshot date", "coverage": "all acquired trading dates", "fallback": "none", "missing_policy": "reject unlabelled rows"},
+    {"field": "effective_to", "authoritative_source": "next observed snapshot or lifecycle event boundary", "authority_tier": "TIER_A_B_DERIVED", "pit_semantics": "interval derived after conflict-free ordering", "coverage": "after acquisition and intervalization", "fallback": "no forward fill across gaps", "missing_policy": "unresolved"}
+  ],
+  "policy": "Tier C/D cannot finalize denominator classification"
+}

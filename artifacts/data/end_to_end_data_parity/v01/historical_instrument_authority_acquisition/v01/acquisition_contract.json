@@ -1,0 +1,17 @@
+{
+  "work_id": "KRX_HISTORICAL_INSTRUMENT_AUTHORITY_ACQUISITION_V01_EXECUTION_PLAN",
+  "status": "FROZEN_FOR_SEPARATE_APPROVAL",
+  "primary_source": "KRX_OPEN_API_BASIC_INFO",
+  "supplemental_source": "KRX_MDC_DELISTED_STATUS",
+  "target_period": ["2010-01-04", "2026-08-21"],
+  "target_markets": ["KOSPI", "KOSDAQ"],
+  "target_identities": {"historical_only_numeric": 1058, "historical_only_alphanumeric": 58, "total": 1116},
+  "request_model": "one bulk snapshot per local trading date per market, basDd=YYYYMMDD",
+  "expected_basic_requests": 8190,
+  "expected_delisted_requests": "one or more date-range partitions; exact partition count must be measured before execution",
+  "expected_files": "one immutable raw JSON per request plus normalized partition files and manifest",
+  "rate_limit": "bounded quota required; no undocumented rate assumption",
+  "retry": {"max_attempts": 2, "max_retries": 1, "backoff_seconds": [2], "retry_statuses": ["bounded transport", "5xx"]},
+  "authorization_status": "separate execution approval required",
+  "forbidden": ["price/OHLC endpoints", "9.2M row backfill", "production writes", "consumer switch", "live adjusted pilot"]
+}

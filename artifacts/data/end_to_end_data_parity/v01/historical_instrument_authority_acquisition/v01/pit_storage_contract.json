@@ -1,0 +1,12 @@
+{
+  "work_id": "KRX_HISTORICAL_INSTRUMENT_AUTHORITY_ACQUISITION_V01",
+  "raw_archive": "data/reference/source/history/krx_instrument_master/v01/",
+  "raw_unit": "one source response per requested date/market or delisted partition",
+  "raw_immutable": true,
+  "raw_metadata": ["source", "endpoint", "request parameters excluding secrets", "retrieval timestamp", "requested/effective date", "content_sha256"],
+  "normalized_path": "data/reference/history/krx_instrument_master/v01/",
+  "manifest": "data/reference/history/krx_instrument_master/v01/manifest.json",
+  "secret_policy": "AUTH_KEY, KRX_ID, KRX_PW, cookies and tokens never stored",
+  "date_policy": "requested basDd is the only effective date assigned to basic-info rows; no current snapshot backdating",
+  "resume": "checkpoint after each successful request; failed partitions remain visible"
+}
