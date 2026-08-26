@@ -1119,6 +1119,12 @@
     "HISTORICAL_NOT_COMMON": 0,
     "HISTORICAL_CLASSIFICATION_UNKNOWN": 0
   },
+  "detail_files": [
+    "historical_numeric_classification_common.json",
+    "historical_numeric_classification_not_common.json",
+    "historical_numeric_classification_unknown_a.json",
+    "historical_numeric_classification_unknown_b.json"
+  ],
   "canonical_classification_sha256": "ba9ad4e46ee4b69da8a4c081622c82f7a788547fca324343febe9bf04636dcff",
   "method": "raw identity inventory minus current verified COMMON; metadata asset_type COMMON/non-COMMON evidence is retained. Metadata rows with only LEGACY_UNVERIFIED are evidence, not formal verification. UNKNOWN is never auto-mapped to NON_CONSUMER.",
   "reconciliation": "C+N+U == 1058; UNKNOWN count > 0 blocks denominator freeze and live pilot authorization."
