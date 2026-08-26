@@ -1,0 +1,32 @@
+{
+  "work_id": "END_TO_END_DATA_PARITY_V01",
+  "stage": "STAGE_1_FOUNDATION_READINESS",
+  "start_head": "7090959e6fc2bc9b597084573e87733f6d7513ca",
+  "branch": "codex/end-to-end-data-parity-v01",
+  "terminal_status": "BLOCKED_ADJUSTED_STORE_POPULATION_REQUIRES_EXTERNAL_FETCH",
+  "required_questions": {
+    "Q1_adjusted_price_store_population": "0 production parquet, 0 metadata sidecars, 0 rows, 0 tickers; production path does not exist.",
+    "Q2_authoritative_existing_full_universe": "No. Legacy data/raw/stocks is not authoritative adjusted=True data; existing adjusted artifacts are validation-only and three-ticker bounded evidence.",
+    "Q3_pykrx_fetch_needed": "Yes, a separately approved PyKRX adjusted=True historical population is required before repository parity.",
+    "Q4_scope": "At least 2506 current legacy-cache identities; broader raw historical candidate universe 3673 identities including 81 alphanumeric. Target range 2010-01-04..2026-08-21. Naive logical request envelope 2506-3673 ticker-window calls before retries/chunking; runtime requires an approved pilot.",
+    "Q5_repository_v2_consumer_ready": "No for production: implementation is read-only and correctly composes AdjustedPriceStore + KrxRawStockStore, but empty adjusted production store raises DATA_UNAVAILABLE: ADJUSTED_MISSING.",
+    "Q6_stage_2_immediately_possible": "No. Stage 2-8 are not run because Stage 1 adjusted authority/coverage gates are blocked."
+  },
+  "foundation": {
+    "raw_store": "READY",
+    "adjusted_store": "BLOCKED_EMPTY",
+    "market_index": "PASS",
+    "sector_index": "CURRENT_BOUNDED_ONLY",
+    "repository_v2": "IMPLEMENTED_NOT_CONSUMER_READY",
+    "consumer_migration": "DEFERRED"
+  },
+  "tests": {
+    "command": "caffeinate -i ./.venv/bin/pytest -q -p no:cacheprovider tests/test_adjusted_price_store.py tests/test_repository_v2.py tests/test_market_data_repository_v02_validation.py tests/test_krx_raw_stock_store.py",
+    "passed": 103,
+    "failed": 0,
+    "duration_seconds": 1.65,
+    "network_requests": 0
+  },
+  "downstream_stages_run": [],
+  "next_action": "Architect approval for a separate PyKRX adjusted=True population pilot and execution plan; do not switch consumers or fill/migrate legacy cache."
+}

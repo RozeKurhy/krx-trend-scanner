@@ -1,0 +1,97 @@
+{
+  "work_id": "END_TO_END_DATA_PARITY_V01",
+  "stage": "STAGE_1_FOUNDATION_READINESS",
+  "population_status": "INCOMPLETE",
+  "production_store": {
+    "path": "data/market/adjusted/stocks",
+    "exists": false,
+    "parquet_count": 0,
+    "metadata_count": 0,
+    "row_count": 0,
+    "ticker_count": 0,
+    "date_range": null
+  },
+  "source_inventory": [
+    {
+      "path": "data/raw/stocks",
+      "authority": "LEGACY_COMPOSITE_STOCK_CACHE",
+      "adjusted_true_provenance": false,
+      "ticker_count": 2506,
+      "row_count": 2926889,
+      "date_range": ["2011-01-03", "2026-08-14"],
+      "production_usable": false,
+      "reason": "Legacy composite cache has no authoritative adjusted=True provenance/sidecars and is classified RAW_UNADJUSTED."
+    },
+    {
+      "path": "artifacts/data/adjusted_price_store/v01/offline_parity.csv",
+      "authority": "TEMPORARY_VALIDATION_ROUND_TRIP",
+      "adjusted_true_provenance": false,
+      "ticker_count": 3,
+      "row_count": 8997,
+      "date_range": "per-ticker rows only",
+      "production_usable": false,
+      "reason": "Validation-only temporary store; no production population."
+    },
+    {
+      "path": "artifacts/data/adjusted_price_store/v01/provider_legacy_parity.csv",
+      "authority": "HISTORICAL_LIVE_SMOKE_EVIDENCE",
+      "adjusted_true_provenance": true,
+      "ticker_count": 3,
+      "row_count": 121,
+      "production_usable": false,
+      "reason": "Historical three-ticker smoke evidence, not a full-universe immutable dataset and not executed in this run."
+    },
+    {
+      "path": "artifacts/patterns/pattern_a/validation/relative_strength/source/sector_index_daily_20260814.parquet",
+      "authority": "PATTERN_A_VALIDATION_SOURCE",
+      "adjusted_true_provenance": false,
+      "production_usable": false,
+      "reason": "Not an adjusted stock OHLC dataset; file is empty in the current checkout."
+    }
+  ],
+  "authority_gate": {
+    "required": "PyKRX adjusted=True per OHLC row with immutable sidecar provenance",
+    "status": "FAIL",
+    "reason": "No full-universe authoritative adjusted dataset exists locally."
+  },
+  "coverage_gate": {
+    "status": "NOT_RUN",
+    "reason": "Production store is empty and no authoritative source is available for offline population."
+  },
+  "identity_gate": {
+    "required": "^[0-9A-Z]{6}$ without numeric-only assumption",
+    "status": "FAIL",
+    "evidence": "Raw store has 81 alphanumeric identities; adjusted_price_provider.normalize_ticker currently accepts digits only."
+  },
+  "duplicate_gate": {"status": "NOT_RUN", "reason": "No production adjusted rows."},
+  "missing_gate": {"status": "NOT_RUN", "reason": "No production adjusted rows; no fill permitted."},
+  "external_fetch": {
+    "required": true,
+    "blocker": "BLOCKED_ADJUSTED_STORE_POPULATION_REQUIRES_EXTERNAL_FETCH",
+    "source": "PyKRX adjusted=True",
+    "execution_performed": false,
+    "scope_estimate": {
+      "minimum_current_legacy_universe_tickers": 2506,
+      "broader_raw_historical_identity_candidates": 3673,
+      "raw_alphanumeric_candidates": 81,
+      "target_date_range": ["2010-01-04", "2026-08-21"],
+      "complete_market_session_count": 4095,
+      "candidate_weekday_count": 4340,
+      "estimated_logical_fetches": "2506-3673 ticker-window requests before retries/chunking; exact count requires a frozen universe",
+      "estimated_missing_rows_envelope": {
+        "minimum_universe_x_complete_sessions": 10262070,
+        "broad_raw_identity_x_complete_sessions": 15040935,
+        "note": "Envelope only; listed-date availability and PyKRX coverage must be measured by an approved pilot."
+      },
+      "runtime": "Not credibly estimable offline; derive throughput and quota behavior from a separately approved pilot."
+    },
+    "execution_plan_required_before_run": {
+      "cache": "Ticker-scoped parquet + metadata sidecar in temp staging; preserve source endpoint and requested/actual bounds.",
+      "resume": "SQLite/JSON manifest keyed by ticker and requested window; checkpoint only after pair integrity PASS.",
+      "failure_retry": "Bounded retries with exponential backoff; classify rate-limit/transient/empty/invalid separately; no partial publication.",
+      "publication": "Atomic per-ticker pair replacement followed by aggregate manifest and coverage gate; no custom adjustment formula or fill.",
+      "validation": "Schema, provenance, hash, identity, duplicate, OHLC relation, date coverage, and missing gates before consumer use."
+    }
+  },
+  "stage_2_ready": false
+}
