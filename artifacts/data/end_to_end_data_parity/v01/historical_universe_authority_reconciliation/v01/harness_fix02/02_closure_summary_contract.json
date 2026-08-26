@@ -1,0 +1,18 @@
+{
+  "checkpoint_manifest_sha256_is_copied_verbatim_never_recomputed": true,
+  "contract": "closure summary READY/NOT_READY predicate",
+  "every_live_run_overwrites_regardless_of_outcome": true,
+  "ready_requires_all": [
+    "runner status == COMPLETE",
+    "target_count == completed_count == expected_pairs",
+    "pending_count == 0",
+    "failures == 0",
+    "schema_failures == 0",
+    "identity_failures == 0",
+    "quota_pause is falsy",
+    "raw_file_count == expected_pairs",
+    "manifest_sha256 is present"
+  ],
+  "status": "PASS",
+  "write_is_atomic_tempfile_plus_os_replace": true
+}
