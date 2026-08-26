@@ -1,0 +1,39 @@
+{
+  "all_pre_publish_gates": {
+    "order": [
+      "staging_verification_gate",
+      "operational_ledger_load_gate",
+      "staging_ledger_continuity_gate",
+      "coverage_gate",
+      "pair_gate",
+      "legacy_reference_sha_gate",
+      "legacy_ohlc_parity_gate",
+      "market_rs_parity_gate",
+      "provenance_network_gate",
+      "secret_gate",
+      "runtime_source_freeze_gate",
+      "quota_gate"
+    ],
+    "status": "PASS"
+  },
+  "gates": {
+    "all_gates_pass": "PASS",
+    "coverage_gate": "PASS",
+    "diff_source_freeze_gate": "PASS",
+    "legacy_ohlc_parity_gate": "PASS",
+    "legacy_reference_sha_gate": "PASS",
+    "market_rs_parity_gate": "PASS",
+    "operational_ledger_load_gate": "PASS",
+    "pair_gate": "PASS",
+    "production_reload_integrity_gate": "NOT_RUN",
+    "provenance_network_gate": "PASS",
+    "quota_gate": "PASS",
+    "runtime_source_freeze_gate": "PASS",
+    "secret_gate": "PASS",
+    "staging_ledger_continuity_gate": "PASS",
+    "staging_verification_gate": "PASS"
+  },
+  "production_writes_before_publish": 0,
+  "status": "PASS",
+  "validation_source_head": "5bd8d2db6cf9daad6f079cec4332a5afd3b9e227"
+}
