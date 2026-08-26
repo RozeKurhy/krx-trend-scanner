@@ -1,0 +1,12 @@
+{
+  "global_request_range": ["2010-01-04", "2026-08-21"],
+  "global_complete_market_sessions": 4095,
+  "global_candidate_dates": 4340,
+  "ticker_specific_required": true,
+  "requested_window_semantics": "Record requested_start/requested_end separately from actual returned bounds.",
+  "actual_available_window": "Use non-empty adjusted=True response bounds; compare with raw observed bounds and listing/delisting authority when available.",
+  "pre_listing": "EXPECTED_NO_HISTORY; do not fill.",
+  "post_delisting": "EXPECTED_NO_HISTORY after authority boundary; do not fill.",
+  "missing_trading_dates": "No generic fill; preserve provider trading-date set.",
+  "coverage_gate": "Per-ticker pair is valid only when schema/provenance/hash/identity pass and returned bounds are recorded; no universal 4095-row requirement."
+}

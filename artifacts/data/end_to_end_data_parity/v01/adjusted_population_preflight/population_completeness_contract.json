@@ -1,0 +1,11 @@
+{
+  "planned_population_denominator": 2560,
+  "definition": "Union of verified current KOSPI/KOSDAQ COMMON and COMMON identities in frozen 2506-ticker historical backtest cohort.",
+  "current_numeric_eligible_count": 2537,
+  "pending_alphanumeric_count": 23,
+  "unsupported_count": 0,
+  "complete_when": "Every denominator ticker has approved terminal eligibility outcome and every ADJUSTED_ELIGIBLE ticker has valid parquet+sidecar pair with authority/integrity/identity/duplicate/date gates PASS; pending alpha cannot be silently excluded.",
+  "pending_policy": "23 alpha common identities remain denominator-pending until bounded pilot verifies support or Architect explicitly records exclusion/unsupported outcome.",
+  "not_applicable_policy": "Formal SPAC/PREFERRED/REIT/ETF/ETN are outside adjusted COMMON consumer denominator and are not fetched for this store.",
+  "missing_policy": "No fill; pre-listing/post-delisting and missing dates remain absent with explicit status."
+}

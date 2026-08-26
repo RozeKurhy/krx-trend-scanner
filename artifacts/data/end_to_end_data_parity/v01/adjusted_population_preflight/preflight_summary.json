@@ -1,0 +1,13 @@
+{
+  "work_id": "END_TO_END_DATA_PARITY_V01",
+  "revision": "STAGE_1_REVISION_ADJUSTED_POPULATION_PREFLIGHT_UNIVERSE_CONTRACT",
+  "start_head": "4f745df108aab5b26df58dfa1aadef7f4975f93a",
+  "branch": "codex/end-to-end-data-parity-v01",
+  "terminal_status": "READY_FOR_ADJUSTED_PRICE_POPULATION_PILOT_REVIEW",
+  "critical_issues": [],
+  "major_issues": ["Alphanumeric common-equity support remains UNKNOWN_REQUIRES_PILOT for 23 denominator identities; no provider/source change is authorized in this revision.", "The 2560 planned denominator is frozen by explicit current+historical COMMON authority, but 23 alpha entries remain pending pilot resolution before full population."],
+  "minor_issues": ["557 raw historical identities are outside the frozen current/backtest common scope and are classified NON_CONSUMER rather than silently added to the denominator.", "Sector index remains FUTURE_STAGE_4_BLOCKER by explicit w.md scope."],
+  "required_acceptance": {"raw_historical": 3673, "alpha_total": 81, "alpha_classified": 81, "alpha_unclassified": 0, "planned_denominator": 2560, "eligible_numeric": 2537, "pending_alpha": 23, "network": 0, "production_writes": 0},
+  "next_action": "Architect review of frozen preflight; only after acceptance run bounded ADJUSTED_PRICE_POPULATION_V01 live pilot under the recorded ceiling.",
+  "downstream_stages_run": []
+}

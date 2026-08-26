@@ -1,0 +1,20 @@
+{
+  "work_id": "END_TO_END_DATA_PARITY_V01",
+  "revision": "STAGE_1_REVISION_ADJUSTED_POPULATION_PREFLIGHT_UNIVERSE_CONTRACT",
+  "start_head": "4f745df108aab5b26df58dfa1aadef7f4975f93a",
+  "branch": "codex/end-to-end-data-parity-v01",
+  "base_main": "7090959e6fc2bc9b597084573e87733f6d7513ca",
+  "network_policy": {"krx_open_api": 0, "pykrx_live": 0, "opendart": 0},
+  "authorities": {
+    "current_market": "data/reference/krx_instrument_metadata.parquet verified snapshot effective_date=2026-08-21",
+    "historical_backtest": "artifacts/performance/backtest_engine_v01/final_full_run_sha256_manifest.json full_universe_size=2506 plus data/raw/stocks file identity set",
+    "raw_historical": "data/market/raw/krx_stocks/v01 manifest/parquet identity inventory",
+    "delisted_reference": "data/reference/source/krx_instrument_metadata_source_snapshot_2026-08-21.json delisted list"
+  },
+  "raw_historical_universe": {"count": 3673, "numeric": 3592, "alphanumeric": 81, "date_min": "2010-01-04", "date_max": "2026-08-21"},
+  "current_market_universe": {"count": 2557, "numeric": 2534, "alphanumeric": 23, "definition": "verified 2026-08-21 COMMON on KOSPI/KOSDAQ only", "verified_snapshot_row_count": 4407, "raw_intersection_count": 2557},
+  "historical_backtest_required_universe": {"count": 2506, "numeric": 2505, "alphanumeric": 1, "common_equity_subset_count": 2489, "authority_artifact": "final_full_run_sha256_manifest.json full_universe_size=2506", "delisted_common_required_count": 3, "delisted_common_required_tickers": ["002270", "010620", "299900"]},
+  "adjusted_population_scope": {"planned_denominator_count": 2560, "definition": "union(current verified KOSPI/KOSDAQ COMMON, historical-backtest COMMON subset)", "numeric_eligible_count": 2537, "pending_alphanumeric_pilot_count": 23, "unsupported_count": 0, "not_applicable_raw_count": 329, "non_consumer_raw_count": 784, "reconciliation": "eligible + pending_pilot + not_applicable + non_consumer = raw_historical_universe"},
+  "provider_policy": "Preserve D_NUMERIC_ONLY_CONSUMER_BY_DESIGN; no normalize_ticker change in this revision.",
+  "freeze_status": "FROZEN_FOR_PILOT_REVIEW"
+}
