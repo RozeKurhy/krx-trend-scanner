@@ -1,0 +1,26 @@
+{
+  "consumer_migration": "DEFERRED_TO_NEXT_PHASE",
+  "current_market_index_authority": "KRX_OPEN_API_INDEX_STORE_V01",
+  "known_remaining_limitation": "PRODUCTION_ADJUSTED_STORE_POPULATION_NOT_IMPLEMENTED",
+  "next_phase": "END_TO_END_DATA_PARITY_V01",
+  "next_phase_scope": [
+    "MarketDataRepository V2",
+    "adjusted OHLC",
+    "KRX raw volume",
+    "KRX raw trading_value",
+    "MARKET_INDEX production IndexStore",
+    "Market RS",
+    "Sector RS",
+    "Pattern A input",
+    "FastCore input",
+    "Julia input",
+    "Stock Report",
+    "missing/fill semantics",
+    "date alignment",
+    "ticker identity",
+    "provenance",
+    "no silent inner join"
+  ],
+  "status": "HANDOFF_READY",
+  "work_id": "KRX_INDEX_MIGRATION_V01"
+}
