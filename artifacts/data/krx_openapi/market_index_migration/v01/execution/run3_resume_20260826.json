@@ -1,0 +1,101 @@
+{
+  "work_id": "KRX_INDEX_MIGRATION_V01",
+  "execution_kind": "MARKET_INDEX_HISTORICAL_RESUME",
+  "execution_head": "87777472c113b54de53ed5117a242307023d92ec",
+  "main_head": "9e1856df7c2a9e4232484a88220735ceaae6d0fe",
+  "validation_source_head": "4fbe4cc23834f368628be698a2f01e1237d372f9",
+  "runtime_source_guard": {
+    "status": "PASS",
+    "forbidden_source_changes": 0,
+    "pykrx_live_market_calls": 0,
+    "opendart_requests": 0
+  },
+  "preflight": {
+    "calendar_start": "2010-01-04",
+    "calendar_end": "2026-08-21",
+    "target_dates": 4095,
+    "starting_next_pending_date": "2012-08-16",
+    "staging_dates": 656,
+    "staging_rows": 1312,
+    "staging_sha256": "5685dc257b20a833e510367c7e77c15a0a4786564a80d93f493f750172e3890e",
+    "ledger_sha256": "e898d0f48234d6ca9e3a7da1b3557f4b77d1d16dc1dcec545019819f1515fc03",
+    "staging_ledger_continuity": "PASS",
+    "adjacent_run_chain": "PASS",
+    "quota_baseline_global": 0,
+    "quota_baseline_date_kst": "2026-08-26",
+    "secret_exposed": false
+  },
+  "run": {
+    "run_id": "RUN_HISTORICAL_BACKFILL_RESUME_20260826T061354993921",
+    "run_type": "HISTORICAL_BACKFILL_RESUME",
+    "state": "COMPLETED",
+    "started_at_kst": "2026-08-26T06:13:54.993928+09:00",
+    "completed_at_kst": "2026-08-26T06:25:10.798374+09:00",
+    "first_attempted_date": "2012-08-16",
+    "first_completed_date": "2012-08-16",
+    "last_completed_date": "2026-08-21",
+    "dates_fetched": 3439,
+    "staging_dates_before": 656,
+    "staging_dates_after": 4095,
+    "staging_rows_before": 1312,
+    "staging_rows_after": 8190,
+    "staging_sha_before": "5685dc257b20a833e510367c7e77c15a0a4786564a80d93f493f750172e3890e",
+    "staging_sha_after": "c95b6a581213eca1306f4fb321f71de4812d7414504a31ec4ecc1cf17b5bc1a8",
+    "next_pending_date": null
+  },
+  "network": {
+    "kospi_endpoint": "/idx/kospi_dd_trd",
+    "kosdaq_endpoint": "/idx/kosdaq_dd_trd",
+    "forbidden_krx_endpoint_requests": 0,
+    "kospi_requests": 3439,
+    "kosdaq_requests": 3439,
+    "total_actual_requests": 6878,
+    "audit_count": 6878,
+    "retry_count": 0,
+    "quota_delta": 6878,
+    "quota_after_global": 6878,
+    "quota_after_endpoint_counts": {
+      "kospi_dd_trd": 3439,
+      "kosdaq_dd_trd": 3439
+    }
+  },
+  "result": {
+    "terminal_status": "COMPLETED",
+    "final_dates": 4095,
+    "final_rows": 8190,
+    "exact_pairs": 4095,
+    "duplicate_pairs": 0,
+    "incomplete_pairs": 0,
+    "codes": ["1001", "2001"],
+    "names": ["코스닥", "코스피"],
+    "staging_readable": true,
+    "staging_ledger_terminal_match": "PASS",
+    "ledger_chain": "PASS",
+    "quota_reconciliation": "PASS",
+    "source_guard": "PASS"
+  },
+  "focused_regression": {
+    "command": ".venv/bin/pytest -q -p no:cacheprovider tests/test_krx_market_index_migration_v01.py",
+    "passed": 56,
+    "failed": 3,
+    "warnings": 1,
+    "network_requests": 0,
+    "status": "KNOWN_FIXTURE_MISMATCH",
+    "failures": [
+      "test_seed_operational_ledger_from_known_checkpoint: test still requires the retired 656-date checkpoint",
+      "test_seeded_ledger_continuity_upgrade_is_offline: test still requires the retired 656-date checkpoint",
+      "test_pre_network_source_failure_has_zero_calls_and_no_journal: legacy fixture diverges from the completed staging terminal snapshot"
+    ],
+    "full_regression": "NOT_RUN_EXECUTION_ONLY_SCOPE"
+  },
+  "writes_and_scope": {
+    "production_index_store_writes": 0,
+    "source_modification_count": 0,
+    "main_merge": "NOT_PERFORMED",
+    "consumer_migration": "NOT_PERFORMED",
+    "finalization_parity": "PENDING_SEPARATE_PHASE",
+    "secret_scan_occurrences": 0
+  },
+  "ledger_terminal_sha256": "78505a0624515b84b44c4aadb3791b8ceb0ed020914f53b987e9bbcf74cb1ee1",
+  "status": "PASS"
+}

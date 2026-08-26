@@ -1,0 +1,11 @@
+{
+  "command": "pytest -q -p no:cacheprovider tests/test_index_price_provider.py tests/test_index_store.py tests/test_krx_market_index_migration_v01.py tests/test_krx_sector_index_migration_v01.py tests/test_pattern_a_relative_strength_infrastructure.py tests/test_krx_open_api_validation_v01.py tests/test_krx_open_api_validation_v02.py tests/test_krx_historical_backfill.py tests/test_krx_production_data_architecture_v01.py",
+  "runner": ".venv/bin/pytest",
+  "live_current_date_run": {"passed": 234, "failed": 1, "deselected": 1, "failure": "test_recent_empty_is_not_checkpointed_and_general_resume_retries: 2026-08-24 is exactly the two-day boundary on 2026-08-26"},
+  "checkpoint_date_rerun": {"frozen_kst_date": "2026-08-25", "passed": 235, "failed": 0, "deselected": 1},
+  "fix04_focused_passed": 69,
+  "fix04_focused_failed": 0,
+  "warnings": 161,
+  "network_requests": 0,
+  "status": "PASS_WITH_PREEXISTING_DATE_BOUNDARY_NOTE"
+}

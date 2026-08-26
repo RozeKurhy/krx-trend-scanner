@@ -1,0 +1,12 @@
+{
+  "schema_version": "KRX_INDEX_MIGRATION_RUN_LEDGER_V01",
+  "operational_path": ".cache/krx_openapi/market_index_migration/v01/quota_run_ledger.json",
+  "seed_source": "artifacts/data/krx_openapi/market_index_migration/v01/fix01/quota_run_ledger.json",
+  "seed_allowed_checkpoint_sha256": "5685dc257b20a833e510367c7e77c15a0a4786564a80d93f493f750172e3890e",
+  "run_states": ["STARTED", "COMPLETED", "PARTIAL", "BLOCKED"],
+  "phase_authority": "SUM(runs[].global_delta), SUM(runs[].client_request_count), SUM(runs[].audit_entry_count), SUM(runs[].retry_count), and endpoint deltas",
+  "atomic_write": "temporary file + flush + fsync + os.replace",
+  "incomplete_run_policy": "BLOCKED_INCOMPLETE_RUN_JOURNAL; no network requests",
+  "duplicate_run_policy": "BLOCKED_DUPLICATE_RUN_ID; no network requests",
+  "status": "PASS"
+}

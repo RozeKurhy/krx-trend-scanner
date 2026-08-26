@@ -1,0 +1,16 @@
+{
+  "status": "PASS",
+  "mutable_production_staging_reads_in_fixed_tests": 0,
+  "retired_checkpoint_fixture": "tmp frozen parquet, 656 dates / 1312 rows",
+  "fixture_sha": "runtime_calculated",
+  "checkpoint_seed_sha_assertion": "fixture_sha_runtime_equality",
+  "source_freeze_prerequisites": "matching staging and terminal ledger snapshot",
+  "source_freeze_expected_error": "BLOCKED_CURRENT_SOURCE_FREEZE",
+  "source_freeze_network_calls": 0,
+  "source_freeze_journal_appends": 0,
+  "fixed_tests": [
+    "test_seed_operational_ledger_from_known_checkpoint",
+    "test_seeded_ledger_continuity_upgrade_is_offline",
+    "test_pre_network_source_failure_has_zero_calls_and_no_journal"
+  ]
+}

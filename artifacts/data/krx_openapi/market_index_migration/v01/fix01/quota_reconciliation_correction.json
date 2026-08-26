@@ -1,0 +1,20 @@
+{
+  "usage_date_kst": "2026-08-25",
+  "original_issue": "Previous quota_delta combined the pilot-start global value with the backfill-end global value while quota_before was labeled as the backfill start, making the 1312 delta scope ambiguous.",
+  "original_evidence": {
+    "quota_before_global_total": 8694,
+    "quota_after_global_total": 10000,
+    "recorded_delta": 1312
+  },
+  "correct_scopes": {
+    "pilot": {"global_before": 8688, "global_after": 8694, "delta": 6},
+    "backfill": {"global_before": 8694, "global_after": 10000, "delta": 1306},
+    "phase_cumulative": {"global_before": 8688, "global_after": 10000, "delta": 1312}
+  },
+  "endpoint_reconciliation": {
+    "pilot": {"kospi_dd_trd": 3, "kosdaq_dd_trd": 3},
+    "backfill": {"kospi_dd_trd": 653, "kosdaq_dd_trd": 653},
+    "phase_cumulative": {"kospi_dd_trd": 656, "kosdaq_dd_trd": 656}
+  },
+  "correction_status": "PASS"
+}

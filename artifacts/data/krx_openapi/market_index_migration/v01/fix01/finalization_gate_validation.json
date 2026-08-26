@@ -1,0 +1,29 @@
+{
+  "gate_order": [
+    "staging_verification_gate",
+    "coverage_gate",
+    "pair_gate",
+    "legacy_reference_sha_gate",
+    "legacy_ohlc_parity_gate",
+    "market_rs_parity_gate",
+    "provenance_network_gate",
+    "secret_gate",
+    "diff_source_freeze_gate",
+    "quota_gate",
+    "all_gates_pass",
+    "production_publish",
+    "production_reload_integrity_gate"
+  ],
+  "coverage_gate": "PASS",
+  "pair_gate": "PASS",
+  "legacy_parity_gate_test": "PASS",
+  "rs_parity_gate_test": "PASS",
+  "quota_gate_test": "PASS",
+  "secret_gate_test": "PASS",
+  "publish_failure_path_tests": "PASS",
+  "production_write_on_failure_count": 0,
+  "synthetic_success_publish_count": 1,
+  "fix01_production_index_store_write_count": 0,
+  "fix01_network_request_count": 0,
+  "status": "PASS"
+}

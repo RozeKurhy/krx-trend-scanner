@@ -1,0 +1,121 @@
+{
+  "audit_count": 8190,
+  "chain": {
+    "adjacent_chain_count": 2,
+    "date_chain_mismatch": 0,
+    "row_chain_mismatch": 0,
+    "sha_chain_mismatch": 0,
+    "status": "PASS",
+    "terminal_snapshot_complete": true
+  },
+  "kosdaq_requests": 4095,
+  "kospi_requests": 4095,
+  "ledger_sha256": "78505a0624515b84b44c4aadb3791b8ceb0ed020914f53b987e9bbcf74cb1ee1",
+  "ledger_validation": {
+    "chain": {
+      "adjacent_chain_count": 2,
+      "date_chain_mismatch": 0,
+      "row_chain_mismatch": 0,
+      "sha_chain_mismatch": 0,
+      "status": "PASS",
+      "terminal_snapshot_complete": true
+    },
+    "quota": {
+      "derived_audit_count": 8190,
+      "derived_endpoint_deltas": {
+        "kosdaq_dd_trd": 4095,
+        "kospi_dd_trd": 4095
+      },
+      "derived_phase_delta": 8190,
+      "derived_request_count": 8190,
+      "phase_audit_matches_runs": true,
+      "phase_client_matches_runs": true,
+      "phase_delta_matches_runs": true,
+      "phase_endpoint_matches_runs": true,
+      "run_reconciliation": "PASS",
+      "runs": [
+        {
+          "audit_delta_match": true,
+          "client_delta_match": true,
+          "counter_delta_match": true,
+          "endpoint_delta_match": true,
+          "run_id": "RUN1_PILOT",
+          "status": "PASS",
+          "usage_date_kst": null
+        },
+        {
+          "audit_delta_match": true,
+          "client_delta_match": true,
+          "counter_delta_match": true,
+          "endpoint_delta_match": true,
+          "run_id": "RUN2_HISTORICAL_BACKFILL_TRANCHE",
+          "status": "PASS",
+          "usage_date_kst": null
+        },
+        {
+          "audit_delta_match": true,
+          "client_delta_match": true,
+          "counter_delta_match": true,
+          "endpoint_delta_match": true,
+          "run_id": "RUN_HISTORICAL_BACKFILL_RESUME_20260826T061354993921",
+          "status": "PASS",
+          "usage_date_kst": "2026-08-26"
+        }
+      ],
+      "status": "PASS"
+    },
+    "status": "PASS"
+  },
+  "quota_reconciliation": {
+    "derived_audit_count": 8190,
+    "derived_endpoint_deltas": {
+      "kosdaq_dd_trd": 4095,
+      "kospi_dd_trd": 4095
+    },
+    "derived_phase_delta": 8190,
+    "derived_request_count": 8190,
+    "phase_audit_matches_runs": true,
+    "phase_client_matches_runs": true,
+    "phase_delta_matches_runs": true,
+    "phase_endpoint_matches_runs": true,
+    "run_reconciliation": "PASS",
+    "runs": [
+      {
+        "audit_delta_match": true,
+        "client_delta_match": true,
+        "counter_delta_match": true,
+        "endpoint_delta_match": true,
+        "run_id": "RUN1_PILOT",
+        "status": "PASS",
+        "usage_date_kst": null
+      },
+      {
+        "audit_delta_match": true,
+        "client_delta_match": true,
+        "counter_delta_match": true,
+        "endpoint_delta_match": true,
+        "run_id": "RUN2_HISTORICAL_BACKFILL_TRANCHE",
+        "status": "PASS",
+        "usage_date_kst": null
+      },
+      {
+        "audit_delta_match": true,
+        "client_delta_match": true,
+        "counter_delta_match": true,
+        "endpoint_delta_match": true,
+        "run_id": "RUN_HISTORICAL_BACKFILL_RESUME_20260826T061354993921",
+        "status": "PASS",
+        "usage_date_kst": "2026-08-26"
+      }
+    ],
+    "status": "PASS"
+  },
+  "retries": 0,
+  "runs": [
+    "RUN1_PILOT",
+    "RUN2_HISTORICAL_BACKFILL_TRANCHE",
+    "RUN_HISTORICAL_BACKFILL_RESUME_20260826T061354993921"
+  ],
+  "status": "PASS",
+  "total_requests": 8190
+}
