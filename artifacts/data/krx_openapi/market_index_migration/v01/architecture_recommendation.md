@@ -3,6 +3,17 @@ docs/architecture/krx_index_migration_v01.md
 KRX_INDEX_MIGRATION_V01 RECOMMENDATION
 ================================================================================
 
+HISTORICAL SNAPSHOT — SUPERSEDED
+--------------------------------
+This artifact records the earlier quota-paused checkpoint. It is preserved as
+historical evidence and is not the current migration status.
+
+CURRENT AUTHORITATIVE STATUS
+KRX_INDEX_MIGRATION_V01 = CLOSED_AND_MERGED
+Main merge = 7d71d2a9d978d176afd1d737e66735eb5608a06a
+Closure commit = c9bd2f9bf415cddacf04a339c1a1b8cb1aef75c5
+See market_index_migration_v01_manifest.json, closure/, and finalization/.
+
 FINAL STATUS
 PARTIAL_RESUMABLE_KRX_INDEX_MIGRATION_V01
 
