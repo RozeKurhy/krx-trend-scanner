@@ -1,5 +1,6 @@
 {
-  "schema": "adjusted_price_store_bounded_live_pilot_v01_fix03",
+  "schema": "adjusted_price_store_bounded_live_pilot_v01_fix04",
+  "execution_id": "ADJUSTED_PRICE_PILOT_FIX04_1787819387_REUSE",
   "status": "PILOT_COMPLETED",
   "final_verdict": "ACCEPT",
   "next_state": "READY_FOR_ADJUSTED_PRICE_STORE_FULL_POPULATION",
@@ -8,7 +9,16 @@
     "population_manifest_sha256": "f14c3d46e5305571b311c4d120d9a2f1eba1644e7f059cde4e59eabab42d1aff",
     "population_mutated": false
   },
+  "suspension_authority": {
+    "artifact_path": "historical_suspension_authority_v01.json",
+    "artifact_sha256": "e3b687b861648bbfb407fce7a1d032e2e49eda36b623a4b883049e5557afa2f7"
+  },
+  "actual_source_evidence": {
+    "artifact_path": "pilot_actual_source_dates.json",
+    "artifact_sha256": "7591f75e0195ff56e32f919d901771f26301a95595778b5082aad4543ebebd1a"
+  },
   "execution_provenance": {
+    "execution_id": "ADJUSTED_PRICE_PILOT_FIX04_1787819387_REUSE",
     "execution_mode": "REUSE",
     "new_live_request_count": 0,
     "reused_sample_count": 43,
@@ -90,6 +100,7 @@
     "fix01_new_pykrx_requests": 0,
     "fix02_new_pykrx_requests": 43,
     "fix03_new_pykrx_requests": 0,
+    "fix04_new_pykrx_requests": 0,
     "cumulative_total_pykrx_requests": 86,
     "pykrx_retries": 0,
     "krx_open_api_requests": 0,
