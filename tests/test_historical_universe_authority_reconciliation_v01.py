@@ -20,6 +20,10 @@ from trend_scanner.universe.historical_authority_reconciliation import (
     HISTORICAL_COMMON_REQUIRED,
     HISTORICAL_NOT_COMMON,
     READY_FOR_HISTORICAL_UNIVERSE_AUTHORITY_RECONCILIATION,
+    SUPPLEMENTAL_AUTHORITY_PREFERRED_CLASS_CONFIRMED,
+    SUPPLEMENTAL_AUTHORITY_SPAC_DISSOLUTION_CONFIRMED,
+    SUPPLEMENTAL_AUTHORITY_SPAC_MERGER_COMMON_LINEAGE_CONFIRMED,
+    SUPPLEMENTAL_AUTHORITY_STILL_INSUFFICIENT,
     ReconciliationContractError,
     build_denominator_candidate,
     build_pit_identity_timeline,
@@ -30,6 +34,7 @@ from trend_scanner.universe.historical_authority_reconciliation import (
     evaluate_survivorship_bias_gate,
     evaluate_ticker_identity_reuse_gate,
     load_basic_info_snapshots,
+    load_supplemental_authority_records,
     load_target_identities,
     reconcile_target_identities,
     run_reconciliation_preflight,
@@ -930,6 +935,206 @@ def test_unknown_future_stock_certificate_kind_stays_fail_closed() -> None:
     )
     row = result["results"][0]
     assert row["historical_classification"] == HISTORICAL_AUTHORITY_UNRESOLVED
+
+
+def test_supplemental_authority_spac_dissolution_confirmed_resolves_not_common() -> None:
+    """HISTORICAL_UNIVERSE_RESIDUAL_AUTHORITY_RESOLUTION_V01 Section 12/14 (A2):
+    an official DART dissolution disclosure ('해산사유발생') for this exact
+    identity resolves the residual managed-issue interval to NOT_COMMON —
+    the SPAC never completed a merger and never became an operating
+    company's common stock under this code."""
+    supplemental = {
+        ("204440", "KR7204440002"): {
+            "decision": "NOT_COMMON",
+            "decision_reason_code": SUPPLEMENTAL_AUTHORITY_SPAC_DISSOLUTION_CONFIRMED,
+        }
+    }
+    result = reconcile_target_identities(
+        [_target("204440")],
+        [
+            _snapshot("2014-10-22", _row("204440", isu_cd="KR7204440002", sector="SPAC(소속부없음)")),
+            _snapshot("2017-05-26", _row("204440", isu_cd="KR7204440002", sector="관리종목(소속부없음)")),
+        ],
+        expected_dates=["2014-10-22", "2017-05-26"],
+        supplemental_authority=supplemental,
+    )
+    row = result["results"][0]
+    assert row["historical_classification"] == HISTORICAL_NOT_COMMON
+    reasons = {interval["classification_reason"] for interval in row["intervals"]}
+    assert SUPPLEMENTAL_AUTHORITY_SPAC_DISSOLUTION_CONFIRMED in reasons
+
+
+def test_supplemental_authority_spac_merger_common_lineage_confirmed_resolves_common() -> None:
+    """Section 12 (A1): official evidence of an explicit SPAC-exit / merger
+    completion with confirmed common-equity lineage promotes the residual
+    interval to COMMON. (Synthetic — none of the real 114 cases resolved
+    this way; this exercises the code path the real data did not exercise.)"""
+    supplemental = {
+        ("999901", "KR999901"): {
+            "decision": "COMMON",
+            "decision_reason_code": SUPPLEMENTAL_AUTHORITY_SPAC_MERGER_COMMON_LINEAGE_CONFIRMED,
+        }
+    }
+    result = reconcile_target_identities(
+        [_target("999901")],
+        [
+            _snapshot("2014-10-22", _row("999901", isu_cd="KR999901", sector="SPAC(소속부없음)")),
+            _snapshot("2017-05-26", _row("999901", isu_cd="KR999901", sector="관리종목(소속부없음)")),
+        ],
+        expected_dates=["2014-10-22", "2017-05-26"],
+        supplemental_authority=supplemental,
+    )
+    row = result["results"][0]
+    assert row["historical_classification"] == HISTORICAL_COMMON_REQUIRED
+    reasons = {interval["classification_reason"] for interval in row["intervals"]}
+    assert SUPPLEMENTAL_AUTHORITY_SPAC_MERGER_COMMON_LINEAGE_CONFIRMED in reasons
+
+
+def test_supplemental_authority_merger_withdrawn_not_promoted_to_common() -> None:
+    """Section 15/45: a withdrawn merger decision must never be promoted to
+    COMMON. The resolver records the review (INSUFFICIENT) but the identity
+    stays UNRESOLVED — matching real case 465320 (교보15호스팩)."""
+    supplemental = {
+        ("465320", "KR7465320000"): {
+            "decision": "INSUFFICIENT",
+            "decision_reason_code": SUPPLEMENTAL_AUTHORITY_STILL_INSUFFICIENT,
+        }
+    }
+    result = reconcile_target_identities(
+        [_target("465320")],
+        [
+            _snapshot("2023-12-05", _row("465320", isu_cd="KR7465320000", sector="SPAC(소속부없음)")),
+            _snapshot("2026-08-21", _row("465320", isu_cd="KR7465320000", sector="관리종목(소속부없음)")),
+        ],
+        expected_dates=["2023-12-05", "2026-08-21"],
+        supplemental_authority=supplemental,
+    )
+    row = result["results"][0]
+    assert row["historical_classification"] == HISTORICAL_AUTHORITY_UNRESOLVED
+    reasons = {interval["classification_reason"] for interval in row["intervals"]}
+    assert SUPPLEMENTAL_AUTHORITY_STILL_INSUFFICIENT in reasons
+
+
+def test_supplemental_authority_identity_mismatch_never_applies() -> None:
+    """Section 13: a supplemental record for a DIFFERENT ISU_CD under the
+    same ticker string must never resolve this identity — ticker name alone
+    is not identity."""
+    supplemental = {
+        ("204440", "KR_SOME_OTHER_IDENTITY"): {
+            "decision": "NOT_COMMON",
+            "decision_reason_code": SUPPLEMENTAL_AUTHORITY_SPAC_DISSOLUTION_CONFIRMED,
+        }
+    }
+    result = reconcile_target_identities(
+        [_target("204440")],
+        [
+            _snapshot("2014-10-22", _row("204440", isu_cd="KR7204440002", sector="SPAC(소속부없음)")),
+            _snapshot("2017-05-26", _row("204440", isu_cd="KR7204440002", sector="관리종목(소속부없음)")),
+        ],
+        expected_dates=["2014-10-22", "2017-05-26"],
+        supplemental_authority=supplemental,
+    )
+    row = result["results"][0]
+    assert row["historical_classification"] == HISTORICAL_AUTHORITY_UNRESOLVED
+
+
+def test_supplemental_authority_malformed_decision_stays_fail_closed() -> None:
+    """An unrecognised ``decision`` value in a supplemental record must never
+    be trusted into a classification change — fail-closed, same as an
+    unmapped official field value."""
+    supplemental = {
+        ("204440", "KR7204440002"): {"decision": "MAYBE", "decision_reason_code": "NOT_A_REAL_CODE"},
+    }
+    result = reconcile_target_identities(
+        [_target("204440")],
+        [
+            _snapshot("2014-10-22", _row("204440", isu_cd="KR7204440002", sector="SPAC(소속부없음)")),
+            _snapshot("2017-05-26", _row("204440", isu_cd="KR7204440002", sector="관리종목(소속부없음)")),
+        ],
+        expected_dates=["2014-10-22", "2017-05-26"],
+        supplemental_authority=supplemental,
+    )
+    row = result["results"][0]
+    assert row["historical_classification"] == HISTORICAL_AUTHORITY_UNRESOLVED
+
+
+def test_supplemental_authority_preferred_class_confirmed_resolves_not_common() -> None:
+    """Section 20 (via supplemental authority): 종류주권 with an official
+    per-issuer preferred-class confirmation (KRX ISU_NM + DART share-class
+    breakdown) resolves to NOT_COMMON — matches real case 02826K (삼성물산
+    1우선주(신형))."""
+    supplemental = {
+        ("02826K", "KR702826K016"): {
+            "decision": "NOT_COMMON",
+            "decision_reason_code": SUPPLEMENTAL_AUTHORITY_PREFERRED_CLASS_CONFIRMED,
+        }
+    }
+    result = reconcile_target_identities(
+        [_target("02826K")],
+        [_snapshot("2015-09-15", _row("02826K", isu_cd="KR702826K016", kind="종류주권"))],
+        expected_dates=["2015-09-15"],
+        supplemental_authority=supplemental,
+    )
+    row = result["results"][0]
+    assert row["historical_classification"] == HISTORICAL_NOT_COMMON
+    reasons = {interval["classification_reason"] for interval in row["intervals"]}
+    assert SUPPLEMENTAL_AUTHORITY_PREFERRED_CLASS_CONFIRMED in reasons
+
+
+def test_supplemental_authority_preferred_class_common_equivalent_resolves_common() -> None:
+    """Section 20: if official authority instead confirmed a 종류주권 case
+    was actually common-equivalent, it resolves to COMMON. (Synthetic — none
+    of the real 14 cases resolved this way.)"""
+    supplemental = {
+        ("999902", "KR999902"): {"decision": "COMMON", "decision_reason_code": "SUPPLEMENTAL_AUTHORITY_CONFIRMED_COMMON"},
+    }
+    result = reconcile_target_identities(
+        [_target("999902")],
+        [_snapshot("2015-09-15", _row("999902", isu_cd="KR999902", kind="종류주권"))],
+        expected_dates=["2015-09-15"],
+        supplemental_authority=supplemental,
+    )
+    row = result["results"][0]
+    assert row["historical_classification"] == HISTORICAL_COMMON_REQUIRED
+
+
+def test_supplemental_authority_absent_record_never_changes_unknown_fallback() -> None:
+    """Section 26: unknown fail-closed must not weaken even when a
+    (non-empty) supplemental authority table is supplied — a ticker with no
+    matching record passes through unchanged."""
+    supplemental = {
+        ("02826K", "KR702826K016"): {
+            "decision": "NOT_COMMON",
+            "decision_reason_code": SUPPLEMENTAL_AUTHORITY_PREFERRED_CLASS_CONFIRMED,
+        }
+    }
+    result = reconcile_target_identities(
+        [_target("999999")],
+        [_snapshot("2020-01-02", _row("999999", group="미확인지분증권XYZ"))],
+        expected_dates=["2020-01-02"],
+        supplemental_authority=supplemental,
+    )
+    row = result["results"][0]
+    assert row["historical_classification"] == HISTORICAL_AUTHORITY_UNRESOLVED
+
+
+def test_load_supplemental_authority_records_missing_directory_is_empty(tmp_path: Path) -> None:
+    """A missing supplemental-authority directory yields an empty lookup —
+    never an implicit resolution (fail-closed default)."""
+    lookup = load_supplemental_authority_records(tmp_path / "does_not_exist")
+    assert lookup == {}
+
+
+def test_load_supplemental_authority_records_reads_canonical_manifests() -> None:
+    """The canonical on-disk manifests (SPAC + preferred-class residuals)
+    load into a lookup keyed by (target_ticker, isu_cd), one entry per
+    individually-investigated identity — 114 + 14 = 128 total."""
+    lookup = load_supplemental_authority_records()
+    assert len(lookup) == 128
+    assert lookup[("204440", "KR7204440002")]["decision"] == "NOT_COMMON"
+    assert lookup[("02826K", "KR702826K016")]["decision"] == "NOT_COMMON"
+    decisions = {record["decision"] for record in lookup.values()}
+    assert decisions == {"NOT_COMMON", "INSUFFICIENT"}
 
 
 def test_security_type_mapping_evidence_has_rule_ids_and_authority_reference() -> None:

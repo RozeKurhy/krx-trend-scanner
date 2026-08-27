@@ -44,6 +44,9 @@ DEFAULT_ACQUISITION_CHECKPOINT_PATH = Path("data/reference/source/history/krx_in
 DEFAULT_ACQUISITION_FINAL_SUMMARY_PATH = Path(
     "data/reference/source/history/krx_instrument_master/v01/acquisition_final_summary.json"
 )
+DEFAULT_SUPPLEMENTAL_AUTHORITY_DIR = Path(
+    "data/reference/source/history/krx_instrument_master/v01/supplemental_authority"
+)
 DEFAULT_HARNESS_OUTPUT_DIR = (
     _ARTIFACTS
     / "data/end_to_end_data_parity/v01/"
@@ -78,6 +81,20 @@ _MANAGED_ISSUE_SECTION = "관리종목(소속부없음)"
 PRODUCTION_AUTHORITY_UNMAPPED_MANAGED_ISSUE_AFTER_SPAC_HISTORY = (
     "PRODUCTION_AUTHORITY_UNMAPPED_MANAGED_ISSUE_AFTER_SPAC_HISTORY"
 )
+
+# Supplemental authority layer (HISTORICAL_UNIVERSE_RESIDUAL_AUTHORITY_RESOLUTION_V01).
+# KRX PIT Basic Info stays the sole primary authority and is never modified;
+# these records add official non-Basic-Info evidence (OpenDART filings, KRX
+# official issue-name fields) keyed by (target_ticker, ISU_CD) so a specific,
+# individually-investigated identity can be resolved without widening any
+# row-pure classification rule. Absence of a record is never an implicit
+# resolution — see ``load_supplemental_authority_records``.
+SUPPLEMENTAL_AUTHORITY_SPAC_DISSOLUTION_CONFIRMED = "SUPPLEMENTAL_AUTHORITY_SPAC_DISSOLUTION_CONFIRMED"
+SUPPLEMENTAL_AUTHORITY_SPAC_MERGER_ABSORBED_TERMINATED = "SUPPLEMENTAL_AUTHORITY_SPAC_MERGER_ABSORBED_TERMINATED"
+SUPPLEMENTAL_AUTHORITY_SPAC_MERGER_COMMON_LINEAGE_CONFIRMED = "SUPPLEMENTAL_AUTHORITY_SPAC_MERGER_COMMON_LINEAGE_CONFIRMED"
+SUPPLEMENTAL_AUTHORITY_PREFERRED_CLASS_CONFIRMED = "SUPPLEMENTAL_AUTHORITY_PREFERRED_CLASS_CONFIRMED"
+SUPPLEMENTAL_AUTHORITY_STILL_INSUFFICIENT = "SUPPLEMENTAL_AUTHORITY_STILL_INSUFFICIENT"
+_SUPPLEMENTAL_DECISION_TO_CLASS = {"COMMON": CLASS_COMMON, "NOT_COMMON": CLASS_NOT_COMMON}
 
 
 class ReconciliationContractError(RuntimeError):
@@ -700,6 +717,33 @@ def load_basic_info_snapshots(
 load_basic_info_raw = load_basic_info_snapshots
 
 
+def load_supplemental_authority_records(
+    directory: str | Path = DEFAULT_SUPPLEMENTAL_AUTHORITY_DIR,
+) -> dict[tuple[str, str], dict[str, Any]]:
+    """Load supplemental (non-Basic-Info) official authority records.
+
+    Returns a lookup keyed by ``(target_ticker, isu_cd)``. A missing directory
+    or an empty/absent ``records`` list yields an empty lookup — this is a
+    fail-closed default, never an implicit resolution. Each manifest file
+    under ``directory`` is expected to carry a top-level ``records`` list of
+    individually-investigated identities (see
+    ``data/reference/source/history/krx_instrument_master/v01/supplemental_authority/``).
+    """
+
+    directory = Path(directory)
+    lookup: dict[tuple[str, str], dict[str, Any]] = {}
+    if not directory.is_dir():
+        return lookup
+    for path in sorted(directory.glob("*.json")):
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        for record in payload.get("records", []):
+            ticker = str(record.get("target_ticker", "")).strip()
+            isu_cd = str(record.get("isu_cd", "")).strip()
+            if ticker and isu_cd:
+                lookup[(ticker, isu_cd)] = record
+    return lookup
+
+
 # Central mapping based on observed KRX formal field combinations.  Unknown
 # combinations deliberately remain unresolved instead of falling through to
 # COMMON.  The sector field may be blank when the other two fields suffice.
@@ -853,9 +897,45 @@ def build_security_type_mapping_evidence(
     }
 
 
-def _classify_observations(observations: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
-    """Row-pure classification plus the one documented cross-observation
-    production-authority alignment exception (see ``build_security_type_mapping_evidence``).
+def _apply_supplemental_authority(
+    obs: Mapping[str, Any],
+    classification: str,
+    reason: str,
+    supplemental_authority: Mapping[tuple[str, str], Mapping[str, Any]],
+) -> tuple[str, str]:
+    """Override a residual UNRESOLVED classification using a supplemental
+    authority record for this exact ``(ticker, ISU_CD)`` identity, if one
+    exists (HISTORICAL_UNIVERSE_RESIDUAL_AUTHORITY_RESOLUTION_V01).
+
+    A record's ``decision`` of "INSUFFICIENT" (or any value this module does
+    not recognise) never changes the classification — only the reason code is
+    updated to show the identity was reviewed. Absence of a record for this
+    identity is a no-op: the row-pure/primary-authority result passes through
+    unchanged.
+    """
+
+    key = (str(obs.get("ticker", "")).strip(), str(obs.get("ISU_CD", "")).strip())
+    record = supplemental_authority.get(key)
+    if record is None:
+        return classification, reason
+    decision = str(record.get("decision", "")).strip()
+    reason_code = str(record.get("decision_reason_code", "") or "").strip()
+    if decision in _SUPPLEMENTAL_DECISION_TO_CLASS:
+        return _SUPPLEMENTAL_DECISION_TO_CLASS[decision], reason_code or classification
+    if decision == "INSUFFICIENT":
+        return classification, reason_code or SUPPLEMENTAL_AUTHORITY_STILL_INSUFFICIENT
+    return classification, reason
+
+
+def _classify_observations(
+    observations: Sequence[Mapping[str, Any]],
+    *,
+    supplemental_authority: Mapping[tuple[str, str], Mapping[str, Any]] | None = None,
+) -> list[dict[str, Any]]:
+    """Row-pure classification plus the documented cross-observation
+    production-authority alignment exception (see ``build_security_type_mapping_evidence``),
+    plus an optional supplemental-authority override for individually
+    investigated residual identities (HISTORICAL_UNIVERSE_RESIDUAL_AUTHORITY_RESOLUTION_V01).
 
     HISTORICAL_UNIVERSE_AUTHORITY_UNRESOLVED_RESOLUTION_V01 Fix A: the SPAC
     exception is chronological, not a blanket "SPAC ever observed" flag. Past
@@ -866,8 +946,16 @@ def _classify_observations(observations: Sequence[Mapping[str, Any]]) -> list[di
     ``observations`` is pre-sorted by ``build_pit_identity_timeline``), later
     managed-issue observations for that identity resolve normally instead —
     no arbitrary time threshold, purely explicit-transition-based (Section 8/9).
+
+    ``supplemental_authority`` (see ``load_supplemental_authority_records``)
+    only ever narrows a residual UNRESOLVED result for an identity that was
+    individually investigated against official non-Basic-Info evidence; it
+    never widens or replaces the primary Basic-Info-driven classification for
+    any other identity. ``None``/empty behaves exactly as before this layer
+    existed.
     """
 
+    supplemental_authority = supplemental_authority or {}
     classified: list[dict[str, Any]] = []
     spac_seen = False
     common_confirmed = False
@@ -887,6 +975,9 @@ def _classify_observations(observations: Sequence[Mapping[str, Any]]) -> list[di
         if is_managed_common_shape and spac_seen and not common_confirmed:
             classification = CLASS_UNRESOLVED
             reason = PRODUCTION_AUTHORITY_UNMAPPED_MANAGED_ISSUE_AFTER_SPAC_HISTORY
+            classification, reason = _apply_supplemental_authority(obs, classification, reason, supplemental_authority)
+        elif classification == CLASS_UNRESOLVED and reason == "UNKNOWN_SECURITY_TYPE_VALUE":
+            classification, reason = _apply_supplemental_authority(obs, classification, reason, supplemental_authority)
         merged = dict(obs)
         merged["classification"] = classification
         merged["classification_reason"] = reason
@@ -949,7 +1040,13 @@ def _intervalize(
         isu = str(obs.get("ISU_CD", "") or "").strip()
         if isu and isu not in isu_order:
             isu_order.append(isu)
-        state = (isu, str(obs.get("MKT_TP_NM", "")).strip(), obs["classification"])
+        # classification_reason is part of the merge key (not just
+        # classification) so a reason transition always draws an interval
+        # boundary — otherwise a supplemental-authority override on one
+        # observation can be silently swallowed into an adjacent same
+        # -classification interval's original reason, breaking Section 33
+        # traceability (HISTORICAL_UNIVERSE_RESIDUAL_AUTHORITY_RESOLUTION_V01).
+        state = (isu, str(obs.get("MKT_TP_NM", "")).strip(), obs["classification"], obs["classification_reason"])
         current = {
             "effective_from": obs["effective_date"],
             "effective_to": obs["effective_date"],
@@ -969,6 +1066,7 @@ def _intervalize(
                 str(previous.get("ISU_CD", "") or ""),
                 str(previous.get("market", "")).strip(),
                 previous["classification"],
+                previous["classification_reason"],
             )
             adjacent = True
             if date_index:
@@ -986,8 +1084,14 @@ def reconcile_target_identities(
     *,
     expected_dates: Sequence[str] | None = None,
     source_manifest_sha256: str | None = None,
+    supplemental_authority: Mapping[tuple[str, str], Mapping[str, Any]] | None = None,
 ) -> dict[str, Any]:
-    """Reconcile target identities against already-loaded PIT snapshots."""
+    """Reconcile target identities against already-loaded PIT snapshots.
+
+    ``supplemental_authority`` (see ``load_supplemental_authority_records``)
+    is optional and defaults to ``None`` (no override — identical behaviour
+    to before HISTORICAL_UNIVERSE_RESIDUAL_AUTHORITY_RESOLUTION_V01).
+    """
 
     targets = canonical_target_identity_records(target_identities)
     timeline = build_pit_identity_timeline(snapshots)
@@ -995,7 +1099,7 @@ def reconcile_target_identities(
     for target in targets:
         ticker = target["ticker"]
         observations = timeline.get(ticker, [])
-        classified = _classify_observations(observations)
+        classified = _classify_observations(observations, supplemental_authority=supplemental_authority)
         states: list[str] = []
         reasons: list[str] = []
         dates: list[str] = []
@@ -1226,6 +1330,7 @@ def run_reconciliation_preflight(
     calendar_dates: Iterable[str] | None = None,
     acquisition_checkpoint_path: str | Path = DEFAULT_ACQUISITION_CHECKPOINT_PATH,
     acquisition_final_summary_path: str | Path = DEFAULT_ACQUISITION_FINAL_SUMMARY_PATH,
+    supplemental_authority_dir: str | Path = DEFAULT_SUPPLEMENTAL_AUTHORITY_DIR,
 ) -> dict[str, Any]:
     """Run the default offline preflight; no classification occurs without raw authority."""
 
@@ -1266,7 +1371,14 @@ def run_reconciliation_preflight(
             "ticker_identity_reuse_gate": "BLOCKED_INPUT_AUTHORITY",
             "denominator_freeze_gate": "NOT_EXECUTED_INPUT_AUTHORITY_PENDING",
         }
-    reconciliation = reconcile_target_identities(target["identities"], raw.snapshots, expected_dates=_expected_dates(calendar_dates), source_manifest_sha256=raw.raw_manifest_sha256)
+    supplemental_authority = load_supplemental_authority_records(supplemental_authority_dir)
+    reconciliation = reconcile_target_identities(
+        target["identities"],
+        raw.snapshots,
+        expected_dates=_expected_dates(calendar_dates),
+        source_manifest_sha256=raw.raw_manifest_sha256,
+        supplemental_authority=supplemental_authority,
+    )
     survivor = evaluate_survivorship_bias_gate(reconciliation)
     reuse = evaluate_ticker_identity_reuse_gate(reconciliation)
     freeze = evaluate_denominator_freeze_gate(reconciliation, raw_input_status=raw.status, raw_integrity_pass=True)
@@ -1282,6 +1394,14 @@ def run_reconciliation_preflight(
         "classification_executed": True,
         "actual_denominator_frozen": False,
         "network_requests": {"krx_open_api": 0, "krx_mdc": 0, "pykrx": 0, "opendart": 0},
+        "supplemental_authority": {
+            "directory": str(supplemental_authority_dir),
+            "record_count": len(supplemental_authority),
+            "decision_counts": {
+                decision: sum(1 for record in supplemental_authority.values() if record.get("decision") == decision)
+                for decision in sorted({str(record.get("decision")) for record in supplemental_authority.values()})
+            },
+        },
     }
 
 
@@ -1298,6 +1418,7 @@ __all__ = [
     "DEFAULT_ACQUISITION_FINAL_SUMMARY_PATH",
     "DEFAULT_HARNESS_OUTPUT_DIR",
     "DEFAULT_RAW_ROOT",
+    "DEFAULT_SUPPLEMENTAL_AUTHORITY_DIR",
     "DEFAULT_TARGET_IDENTITY_PATH",
     "EXPECTED_ALPHANUMERIC_TOTAL",
     "EXPECTED_NUMERIC_TOTAL",
@@ -1307,6 +1428,11 @@ __all__ = [
     "HISTORICAL_NOT_COMMON",
     "PRODUCTION_AUTHORITY_UNMAPPED_MANAGED_ISSUE_AFTER_SPAC_HISTORY",
     "READY_FOR_HISTORICAL_UNIVERSE_AUTHORITY_RECONCILIATION",
+    "SUPPLEMENTAL_AUTHORITY_PREFERRED_CLASS_CONFIRMED",
+    "SUPPLEMENTAL_AUTHORITY_SPAC_DISSOLUTION_CONFIRMED",
+    "SUPPLEMENTAL_AUTHORITY_SPAC_MERGER_ABSORBED_TERMINATED",
+    "SUPPLEMENTAL_AUTHORITY_SPAC_MERGER_COMMON_LINEAGE_CONFIRMED",
+    "SUPPLEMENTAL_AUTHORITY_STILL_INSUFFICIENT",
     "BasicInfoInput",
     "ReconciliationContractError",
     "SECURITY_TYPE_MAPPING",
@@ -1324,6 +1450,7 @@ __all__ = [
     "evaluate_ticker_identity_reuse_gate",
     "load_basic_info_raw",
     "load_basic_info_snapshots",
+    "load_supplemental_authority_records",
     "load_target_identities",
     "reconcile_historical_universe",
     "reconcile_target_identities",

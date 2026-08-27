@@ -503,3 +503,92 @@ historical reconciliation에서도 동일한 근거(공식 필드만으로는 �
 
 숫자를 0으로 맞추기 위한 조정은 없었다 — 종류주권 14건과 SPAC 114건은 근거
 부족으로 계속 UNRESOLVED다.
+
+## 19. Supplemental Authority Layer — KRX Basic Info 만으로 부족한 residual 해소
+
+`HISTORICAL_UNIVERSE_RESIDUAL_AUTHORITY_RESOLUTION_V01`에서 §18의 잔여
+128건(SPAC 114 + 종류주권 14)을 KRX Basic Info 외부의 공식 source(OpenDART
+공시, KRX 공식 종목명 필드)로 개별 조사하여 해소했다.
+
+**Primary authority(KRX PIT Basic Info)는 절대 수정하지 않는다.** 대신 별도
+supplemental authority layer를 두어, 개별적으로 조사된 identity에 한해서만
+분류를 override한다.
+
+### 19.1 구조
+
+- 위치: `data/reference/source/history/krx_instrument_master/v01/supplemental_authority/`
+  - `spac_residual_resolution_v01.json` (114 records)
+  - `preferred_class_residual_resolution_v01.json` (14 records)
+- 각 record는 `(target_ticker, isu_cd)`로 identity를 특정하고, `authority_source`
+  (OpenDART 등), `official_document_id`(DART rcept_no), `authority_date`,
+  `evidence_summary`, `decision`(`COMMON`/`NOT_COMMON`/`INSUFFICIENT`),
+  `decision_reason_code`를 기록한다.
+- `load_supplemental_authority_records()`가 이 디렉터리를 `(ticker, isu_cd) ->
+  record` lookup으로 로드한다. 디렉터리가 없거나 record가 없으면 빈 lookup —
+  묵시적 해소는 절대 없다(fail-closed 기본값).
+- `_classify_observations()`가 두 지점에서만 이 lookup을 참조한다:
+  1. SPAC-이력 관리종목 예외(§18.1)가 발동한 관측 — `(ticker, isu_cd)` 일치하는
+     record가 있으면 그 record의 `decision`으로 override.
+  2. `UNKNOWN_SECURITY_TYPE_VALUE`로 남은 관측(종류주권 등) — 동일하게 override.
+- 다른 모든 관측(다른 identity, 다른 gap)은 이 layer의 영향을 전혀 받지 않는다
+  — record가 없는 identity는 기존 §18 규칙 그대로 통과한다.
+- `decision`이 `INSUFFICIENT`이거나 인식되지 않는 값이면 classification은
+  바뀌지 않고 `classification_reason`만 `SUPPLEMENTAL_AUTHORITY_STILL_INSUFFICIENT`
+  (또는 record의 값)로 갱신된다 — "조사했지만 근거 불충분"이라는 사실 자체를
+  추적 가능하게 남긴다.
+
+### 19.2 SPAC 114건 결과 (OpenDART 공시 기반)
+
+DART corpCode 레지스트리로 114개 ticker 전부 corp_code를 식별(stock_code exact
+match, 100% 매칭)한 뒤 각 corp의 공시 목록을 조회했다.
+
+| 결과 | 건수 | 근거 |
+|---|---|---|
+| NOT_COMMON (해산 확정) | 110 | DART "주요사항보고서(해산사유발생)" 등 공식 해산 공시 — SPAC이 법정 기한 내 합병을 완료하지 못하고 해산 |
+| NOT_COMMON (합병 소멸) | 1 | 거래정지 사유 "SPAC 소멸합병" + 이후 공시 완전 중단 + DART corp_name 미변경 — 이 identity 자체는 합병으로 소멸되어 독립적 common lineage로 이어지지 않음 |
+| INSUFFICIENT (UNRESOLVED 유지) | 3 | 465320(합병 결정 후 철회, 기업 존속 중), 471050/472220(합병/해산 관련 공시 자체가 없음, 존속 중) — 확정적 결론을 내릴 공식 근거 없음 |
+
+114건 전부 최소 1건 이상의 공식 DART 공시를 확인했다(공시가 전혀 없는 경우도
+"공시 없음"이라는 사실 자체가 조회 결과다). 합병 완료(Q1=YES) + 공식 common
+lineage 확정(Q2=YES) 사례는 0건이었다 — 114건 중 어느 것도 COMMON으로
+승격되지 않았다. "SPAC은 대부분 합병했을 것"이라는 추정이 아니라 실제 조회
+결과가 반대(대부분 해산)임을 보여준다.
+
+### 19.3 종류주권 14건 결과 (KRX 공식 종목명 + DART 사업보고서)
+
+14건 전부 KRX Basic Info의 `ISU_NM`(공식 전체 종목명, ticker suffix가 아닌
+KRX가 직접 부여하는 정식 명칭)이 "OOO우선주" 형태임을 확인했다. 이는 §20에서
+금지하는 ticker suffix(K/5/7/우/우B/신형) 추정이 아니라 KRX가 공식적으로
+발행하는 종목명 필드 자체다.
+
+12건은 발행사의 DART 사업보고서 "주식의 총수 현황"이 `보통주`/`우선주`를 별도
+항목으로 명시했다(예: 삼성물산 FY2025 — 보통주 169,976,544주 / 우선주
+1,467,590주). SK/DL이앤씨 2건은 이 보고서의 항목명이 다르게 표기되어(의결권
+있는/없는 주식, 보통주식/기타주식) 추가로 DART 배당사항(alotMatter)의
+`stock_knd`별 배당 라인을 확인해 우선주 계열로 재확인했다(예: SK 보통주
+8,000원/우선주 8,050원).
+
+14건 전부 → HISTORICAL_NOT_COMMON.
+
+### 19.4 결과 요약
+
+| gap | 건수 | 해소 | 근거 |
+|---|---|---|---|
+| SPAC 잔여 114 | 114 | 111 NOT_COMMON / 3 UNRESOLVED 유지 | DART 해산/합병소멸 공시 (§19.2) |
+| 종류주권 14 | 14 | 14 NOT_COMMON | KRX ISU_NM + DART 사업보고서/배당사항 (§19.3) |
+
+재실행 후 `HISTORICAL_AUTHORITY_UNRESOLVED = 3`(465320/471050/472220) —
+공식 근거가 존재하지 않는 case만 UNRESOLVED로 남았고, 숫자를 0으로 맞추기
+위한 조정은 없었다.
+
+### 19.5 Interval 병합과 reason 보존
+
+`_intervalize()`의 구간 병합 키에 `classification_reason`을 추가했다(기존에는
+`classification` 값만 비교). 이유: supplemental override로 인해 같은
+`classification`(예: NOT_COMMON)이지만 reason이 다른(예: 원래 SPAC 구간의
+`TIER_A_NON_COMMON_SECURITY_TYPE` vs override된 관리종목 구간의
+`SUPPLEMENTAL_AUTHORITY_SPAC_DISSOLUTION_CONFIRMED`) 두 관측이 달력상
+인접하면, reason을 구간 병합 키에서 빼는 기존 로직은 이 둘을 하나의 구간으로
+합쳐 supplemental 근거를 결과물에서 지워버렸다(§33 traceability 위반). 이
+수정은 순수 표현/추적성 수정이며 어떤 ticker의 최종 classification도 바꾸지
+않는다.
