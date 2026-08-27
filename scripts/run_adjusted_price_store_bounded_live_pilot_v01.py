@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""CLI runner for Adjusted Price Store Bounded Live Pilot (FIX02)."""
+"""CLI runner for Adjusted Price Store Bounded Live Pilot (FIX03)."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ DEFAULT_OUTPUT_DIR = Path(
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Run Adjusted Price Store Bounded Live Pilot FIX02")
+    parser = argparse.ArgumentParser(description="Run Adjusted Price Store Bounded Live Pilot FIX03")
     parser.add_argument(
         "--output-dir",
         type=Path,
@@ -25,13 +25,13 @@ def main() -> int:
     parser.add_argument(
         "--mode",
         type=str,
-        default="auto",
-        choices=["auto", "live", "reuse"],
-        help="Execution mode (auto, live, reuse)",
+        default="live",
+        choices=["live", "reuse"],
+        help="Execution mode: 'live' (execute live provider queries) or 'reuse' (offline cached reclassification)",
     )
     args = parser.parse_args()
 
-    print(f"Starting Adjusted Price Store Bounded Live Pilot (FIX02)...")
+    print(f"Starting Adjusted Price Store Bounded Live Pilot (FIX03)...")
     print(f"Output directory: {args.output_dir}")
     print(f"Mode: {args.mode}")
 
