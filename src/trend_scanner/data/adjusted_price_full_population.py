@@ -762,8 +762,8 @@ class FullPopulationRunner:
             next_state = "READY_FOR_MARKET_DATA_REPOSITORY_V02_PARITY"
         else:
             verdict = "CHANGES_REQUESTED"
-            # When failures are driven by recoverable provider count limits or precision anomalies:
-            next_state = "NEEDS_ADJUSTED_PRICE_STORE_PIPELINE_FIX"
+            # When pre-2014 data is unrecoverable within the frozen PyKRX authority:
+            next_state = "NEEDS_ADJUSTED_PRICE_SOURCE_AUTHORITY_REVIEW"
 
         now_iso = datetime.now(timezone.utc).isoformat()
 

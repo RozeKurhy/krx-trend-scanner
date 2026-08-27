@@ -1,0 +1,29 @@
+{
+  "schema": "artifact_supersession_manifest_v01",
+  "directive_id": "ADJUSTED_PRICE_STORE_FULL_POPULATION_V01_FIX04",
+  "superseded_artifacts": [
+    {
+      "artifact_path": "provider_root_cause_probe_summary.json",
+      "previous_claim": "Global pre-2014 source gap across all tickers",
+      "superseded_by": "provider_historical_capability_probe_summary.json",
+      "superseded_reason": "Disproven by 064420 pre-2014 retrieval; replaced by 3,000 count plateau & capability proof",
+      "authoritative_now": false
+    },
+    {
+      "artifact_path": "provider_root_cause_probe_manifest.json",
+      "previous_claim": "Single-shape chunking test",
+      "superseded_by": "provider_historical_capability_probe_results.csv",
+      "superseded_reason": "Varying todate does not perform upstream chunking",
+      "authoritative_now": false
+    },
+    {
+      "artifact_path": "provider_count_limit_probe_summary.json",
+      "previous_claim": "Pipeline fix recommendation without capability proof",
+      "superseded_by": "fix04_root_cause_manifest.json",
+      "superseded_reason": "Capability proof demonstrates pre-2014 unreachability under frozen authority",
+      "authoritative_now": false
+    }
+  ],
+  "active_canonical_verdict": "NOT_RECOVERABLE_WITHIN_FROZEN_AUTHORITY",
+  "updated_at": "2026-08-27T23:43:36.765584+00:00"
+}

@@ -1,7 +1,11 @@
 {
-  "schema": "current_common_error_probe_summary_v01",
+  "schema": "current_common_error_probe_summary_v02",
   "probed_ticker_count": 15,
-  "precision_anomaly_count": 15,
-  "consistent_repeat_behavior": true,
-  "root_cause_explanation": "Upstream Naver adjusted OHLC contains precision/rounding artifacts on certain historical corporate action dates where close price exceeds high price by 1~5 KRW (e.g. 000100 on 2014-06-10 has High=24672, Close=24673). Strict OHLC validation correctly rejects these anomalous rows."
+  "iterations_per_ticker": 3,
+  "total_probes_executed": 45,
+  "persistent_provider_anomaly_count": 15,
+  "transient_provider_anomaly_count": 0,
+  "repeat_query_consistent": true,
+  "confirmed_classification": "PROVIDER_INVALID_ADJUSTED_OHLC",
+  "hypothesis_notes": "Upstream corporate action adjustment integer conversion precision artifact"
 }

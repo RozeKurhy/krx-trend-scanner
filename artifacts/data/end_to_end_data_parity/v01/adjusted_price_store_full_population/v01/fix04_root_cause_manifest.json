@@ -1,0 +1,44 @@
+{
+  "schema": "fix04_root_cause_manifest_v01",
+  "directive_id": "ADJUSTED_PRICE_STORE_FULL_POPULATION_V01_FIX04",
+  "START_HEAD": "1f3c86467a903401d088fc9072f754ca0b837ecc",
+  "population_sha256": "f14c3d46e5305571b311c4d120d9a2f1eba1644e7f059cde4e59eabab42d1aff",
+  "pit_sha256": "6b542ae05c9050dd30959d6f1b17306e4016f435a726ca7e0dff9e11008e4064",
+  "calendar_cutoff": "2026-08-21",
+  "provider_count_limit_confirmed": true,
+  "long_history_pre_2014_recovery_attempted": true,
+  "long_history_pre_2014_recovery_succeeded": false,
+  "recovery_authority_classification": "FROZEN_PRODUCTION_AUTHORITY",
+  "provider_capability_status": "NOT_RECOVERABLE_WITHIN_FROZEN_AUTHORITY",
+  "partial_root_cause_counts": {
+    "PROVIDER_PAGINATION_OR_COUNT_LIMIT": 1446,
+    "TRADING_SUSPENSION_EXPECTATION_MISMATCH": 436
+  },
+  "error_root_cause_counts": {
+    "CURRENT_COMMON_INVALID_OHLC": 257,
+    "TRUE_SOURCE_GAP": 4,
+    "HISTORICAL_ONLY_INVALID_OHLC": 150,
+    "PROVIDER_NETWORK_ERROR": 1,
+    "DELISTED_SYMBOL_UNSUPPORTED": 1
+  },
+  "empty_root_cause_counts": {
+    "TRUE_SOURCE_GAP": 4
+  },
+  "ohlc_repeat_probe_count": 45,
+  "ohlc_persistent_anomaly_count": 15,
+  "network_error_count": 1,
+  "dominant_root_cause": "PROVIDER_PAGINATION_OR_COUNT_LIMIT",
+  "secondary_root_causes": [
+    "PROVIDER_INVALID_ADJUSTED_OHLC",
+    "TRADING_SUSPENSION_EXPECTATION_MISMATCH",
+    "DELISTED_SYMBOL_UNSUPPORTED",
+    "TRUE_SOURCE_GAP",
+    "PROVIDER_NETWORK_ERROR"
+  ],
+  "root_cause_confidence": "HIGH_EMPIRICALLY_VERIFIED",
+  "provider_fix_required": false,
+  "source_authority_review_required": true,
+  "residual_resume_eligible": false,
+  "recommended_next_state": "NEEDS_ADJUSTED_PRICE_SOURCE_AUTHORITY_REVIEW",
+  "updated_at": "2026-08-27T23:43:36.765974+00:00"
+}

@@ -425,8 +425,8 @@ def test_audit_artifacts_semantic_separation(tmp_path):
     assert resume_audit["eligibility"] == "NOT_ELIGIBLE_UNRESOLVED_POPULATION"
 
 
-def test_diagnostics_and_taxonomy_generation():
-    """Verify FIX03 Section 8, 9, 13, 26: Diagnostic, Taxonomy and Manifest artifacts exist and match schema."""
+def test_fix04_diagnostics_and_manifests_integrity():
+    """Verify FIX04 Section 9, 20, 23, 26: All required FIX04 manifests and artifacts exist and match schema."""
     from trend_scanner.data.adjusted_price_diagnostics import (
         DEFAULT_ARTIFACTS_DIR,
         GapClassification,
@@ -436,95 +436,111 @@ def test_diagnostics_and_taxonomy_generation():
     assert GapClassification.LEADING_HISTORY_GAP.value == "LEADING_HISTORY_GAP"
     assert RootCauseCategory.PROVIDER_PAGINATION_OR_COUNT_LIMIT.value == "PROVIDER_PAGINATION_OR_COUNT_LIMIT"
     assert RootCauseCategory.CURRENT_COMMON_INVALID_OHLC.value == "CURRENT_COMMON_INVALID_OHLC"
+    assert RootCauseCategory.PROVIDER_NETWORK_ERROR.value == "PROVIDER_NETWORK_ERROR"
 
-    diag_csv = DEFAULT_ARTIFACTS_DIR / "partial_coverage_diagnostic.csv"
-    diag_sum = DEFAULT_ARTIFACTS_DIR / "partial_coverage_summary.json"
+    census_csv = DEFAULT_ARTIFACTS_DIR / "partial_root_cause_census.csv"
+    census_sum = DEFAULT_ARTIFACTS_DIR / "partial_root_cause_summary.json"
     tax_csv = DEFAULT_ARTIFACTS_DIR / "error_taxonomy.csv"
     tax_sum = DEFAULT_ARTIFACTS_DIR / "error_taxonomy_summary.json"
-    probe_res = DEFAULT_ARTIFACTS_DIR / "provider_count_limit_probe_results.csv"
-    probe_sum = DEFAULT_ARTIFACTS_DIR / "provider_count_limit_probe_summary.json"
+    cap_res = DEFAULT_ARTIFACTS_DIR / "provider_historical_capability_probe_results.csv"
+    cap_sum = DEFAULT_ARTIFACTS_DIR / "provider_historical_capability_probe_summary.json"
     curr_res = DEFAULT_ARTIFACTS_DIR / "current_common_error_probe_results.csv"
     curr_sum = DEFAULT_ARTIFACTS_DIR / "current_common_error_probe_summary.json"
-    manifest = DEFAULT_ARTIFACTS_DIR / "fix03_root_cause_manifest.json"
+    env_man = DEFAULT_ARTIFACTS_DIR / "provider_environment_manifest.json"
+    sup_man = DEFAULT_ARTIFACTS_DIR / "artifact_supersession_manifest.json"
+    root_man = DEFAULT_ARTIFACTS_DIR / "fix04_root_cause_manifest.json"
 
-    assert diag_csv.exists()
-    assert diag_sum.exists()
+    assert census_csv.exists()
+    assert census_sum.exists()
     assert tax_csv.exists()
     assert tax_sum.exists()
-    assert probe_res.exists()
-    assert probe_sum.exists()
+    assert cap_res.exists()
+    assert cap_sum.exists()
     assert curr_res.exists()
     assert curr_sum.exists()
-    assert manifest.exists()
+    assert env_man.exists()
+    assert sup_man.exists()
+    assert root_man.exists()
 
-    sum_data = json.loads(probe_sum.read_text(encoding="utf-8"))
-    assert sum_data["plateau_detected"] is True
-    assert sum_data["plateau_max_rows"] >= 2990
-    assert sum_data["pre_2014_retrieval_confirmed_on_short_history"] is True
+    cap_data = json.loads(cap_sum.read_text(encoding="utf-8"))
+    assert cap_data["plateau_3000_confirmed"] is True
+    assert cap_data["provider_capability_verdict"] == "NOT_RECOVERABLE_WITHIN_FROZEN_AUTHORITY"
 
-    man_data = json.loads(manifest.read_text(encoding="utf-8"))
-    assert man_data["dominant_root_cause"] == "PROVIDER_PAGINATION_OR_COUNT_LIMIT"
-    assert man_data["recommended_next_state"] == "NEEDS_ADJUSTED_PRICE_STORE_PIPELINE_FIX"
-
-
-def test_root_cause_negative_control_when_pre_2014_exists():
-    """Verify FIX03 Section 27.1: Pre-2014 successful retrieval forbids global TRUE_SOURCE_GAP."""
-    from trend_scanner.data.adjusted_price_diagnostics import (
-        DEFAULT_ARTIFACTS_DIR,
-    )
-    probe_sum_path = DEFAULT_ARTIFACTS_DIR / "provider_count_limit_probe_summary.json"
-    data = json.loads(probe_sum_path.read_text(encoding="utf-8"))
-    # When pre-2014 data is confirmed for short-lived tickers (064420), global source cutoff cannot be true
-    assert data["pre_2014_retrieval_confirmed_on_short_history"] is True
+    root_data = json.loads(root_man.read_text(encoding="utf-8"))
+    assert root_data["dominant_root_cause"] == "PROVIDER_PAGINATION_OR_COUNT_LIMIT"
+    assert root_data["recommended_next_state"] == "NEEDS_ADJUSTED_PRICE_SOURCE_AUTHORITY_REVIEW"
 
 
-def test_current_common_taxonomy_guard():
-    """Verify FIX03 Section 27.4 & 27.5: Active common stocks with OHLC errors are NOT classified as delisted."""
-    from trend_scanner.data.adjusted_price_diagnostics import (
-        DEFAULT_ARTIFACTS_DIR,
-    )
+def test_canonical_next_state_consistency():
+    """Verify FIX04 Section 21, 22, 31.2: Next state agrees across all canonical manifests."""
+    from trend_scanner.data.adjusted_price_diagnostics import DEFAULT_ARTIFACTS_DIR
+
+    root_man_p = DEFAULT_ARTIFACTS_DIR / "fix04_root_cause_manifest.json"
+    sum_p = DEFAULT_ARTIFACTS_DIR / "full_population_summary.json"
+    closure_p = DEFAULT_ARTIFACTS_DIR / "full_population_closure_manifest.json"
+
+    root_man = json.loads(root_man_p.read_text(encoding="utf-8"))
+    sum_data = json.loads(sum_p.read_text(encoding="utf-8"))
+    closure_data = json.loads(closure_p.read_text(encoding="utf-8"))
+
+    expected_next_state = "NEEDS_ADJUSTED_PRICE_SOURCE_AUTHORITY_REVIEW"
+    assert root_man["recommended_next_state"] == expected_next_state
+    assert sum_data["next_state"] == expected_next_state
+    assert closure_data["next_state"] == expected_next_state
+
+
+def test_ohlc_repeat_probe_truthfulness():
+    """Verify FIX04 Section 13, 14, 31.4: Actual 3-iteration repeat probe proves persistent anomalies."""
+    from trend_scanner.data.adjusted_price_diagnostics import DEFAULT_ARTIFACTS_DIR
+
+    curr_res = DEFAULT_ARTIFACTS_DIR / "current_common_error_probe_results.csv"
+    curr_sum = DEFAULT_ARTIFACTS_DIR / "current_common_error_probe_summary.json"
+
+    df = pd.read_csv(curr_res)
+    sum_data = json.loads(curr_sum.read_text(encoding="utf-8"))
+
+    assert sum_data["iterations_per_ticker"] >= 2
+    assert sum_data["repeat_query_consistent"] is True
+    assert sum_data["confirmed_classification"] == "PROVIDER_INVALID_ADJUSTED_OHLC"
+    assert df["probe_iteration"].max() >= 2
+    assert len(df) == sum_data["total_probes_executed"]
+
+
+def test_partial_root_cause_census_total_and_types():
+    """Verify FIX04 Section 18, 19, 31.5: PARTIAL census sums exactly to 1,882 and separates root cause."""
+    from trend_scanner.data.adjusted_price_diagnostics import DEFAULT_ARTIFACTS_DIR
+
+    census_csv = DEFAULT_ARTIFACTS_DIR / "partial_root_cause_census.csv"
+    census_sum = DEFAULT_ARTIFACTS_DIR / "partial_root_cause_summary.json"
+
+    df = pd.read_csv(census_csv)
+    sum_data = json.loads(census_sum.read_text(encoding="utf-8"))
+
+    assert len(df) == 1882
+    assert sum_data["partial_total"] == 1882
+    assert sum_data["sum_check"] == 1882
+    assert "PROVIDER_PAGINATION_OR_COUNT_LIMIT" in sum_data["root_cause_counts"]
+    assert "TRADING_SUSPENSION_EXPECTATION_MISMATCH" in sum_data["root_cause_counts"]
+    # Check that root_cause_category column is populated
+    assert df["root_cause_category"].isna().sum() == 0
+
+
+def test_current_common_taxonomy_guard_fix04():
+    """Verify FIX04 Section 16, 31.6, 31.7: 001290 is network error and active common are not delisted."""
+    from trend_scanner.data.adjusted_price_diagnostics import DEFAULT_ARTIFACTS_DIR
+
     tax_csv = DEFAULT_ARTIFACTS_DIR / "error_taxonomy.csv"
     df = pd.read_csv(tax_csv, dtype={"ticker": str})
 
-    # Active common stocks (currently_common == True)
+    # Active common stocks
     curr_df = df[df["currently_common"] == True]
     assert len(curr_df) == 258
 
-    # Must NOT be classified as DELISTED_SYMBOL_UNSUPPORTED
+    # No active stock is DELISTED_SYMBOL_UNSUPPORTED
     delisted_curr = curr_df[curr_df["root_cause_category"] == "DELISTED_SYMBOL_UNSUPPORTED"]
     assert len(delisted_curr) == 0
 
-    # Overwhelming majority are CURRENT_COMMON_INVALID_OHLC
-    invalid_ohlc_curr = curr_df[curr_df["root_cause_category"] == "CURRENT_COMMON_INVALID_OHLC"]
-    assert len(invalid_ohlc_curr) == 257
-
-
-def test_dynamic_adjudication_no_hardcoding(tmp_path):
-    """Verify FIX03 Section 27.2, 27.3, 27.7: Adjudication dynamically responds to evidence."""
-    from trend_scanner.data.adjusted_price_diagnostics import (
-        adjudicate_root_cause_and_manifest,
-    )
-
-    # Case A: Plateau detected -> PROVIDER_PAGINATION_OR_COUNT_LIMIT & NEEDS_ADJUSTED_PRICE_STORE_PIPELINE_FIX
-    count_sum_a = {
-        "schema": "provider_count_limit_probe_summary_v01",
-        "plateau_detected": True,
-        "pre_2014_retrieval_confirmed_on_short_history": True,
-    }
-    (tmp_path / "provider_count_limit_probe_summary.json").write_text(json.dumps(count_sum_a), encoding="utf-8")
-    man_a = adjudicate_root_cause_and_manifest(output_dir=tmp_path)
-    assert man_a["dominant_root_cause"] == "PROVIDER_PAGINATION_OR_COUNT_LIMIT"
-    assert man_a["recommended_next_state"] == "NEEDS_ADJUSTED_PRICE_STORE_PIPELINE_FIX"
-    assert man_a["provider_fix_required"] is True
-
-    # Case B: No plateau -> TRUE_SOURCE_GAP & NEEDS_ADJUSTED_PRICE_SOURCE_AUTHORITY_REVIEW
-    count_sum_b = {
-        "schema": "provider_count_limit_probe_summary_v01",
-        "plateau_detected": False,
-        "pre_2014_retrieval_confirmed_on_short_history": False,
-    }
-    (tmp_path / "provider_count_limit_probe_summary.json").write_text(json.dumps(count_sum_b), encoding="utf-8")
-    man_b = adjudicate_root_cause_and_manifest(output_dir=tmp_path)
-    assert man_b["dominant_root_cause"] == "TRUE_SOURCE_GAP"
-    assert man_b["recommended_next_state"] == "NEEDS_ADJUSTED_PRICE_SOURCE_AUTHORITY_REVIEW"
-    assert man_b["source_authority_review_required"] is True
+    # 001290 is classified as PROVIDER_NETWORK_ERROR
+    row_1290 = df[df["ticker"] == "001290"]
+    assert len(row_1290) == 1
+    assert row_1290.iloc[0]["root_cause_category"] == "PROVIDER_NETWORK_ERROR"

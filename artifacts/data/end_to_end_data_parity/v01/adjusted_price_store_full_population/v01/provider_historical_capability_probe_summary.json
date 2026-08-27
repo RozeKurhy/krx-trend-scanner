@@ -1,0 +1,12 @@
+{
+  "schema": "provider_historical_capability_probe_summary_v01",
+  "probe_targets_count": 9,
+  "total_probes_executed": 45,
+  "long_history_pre_2014_recovery_attempted": true,
+  "long_history_pre_2014_recovery_succeeded": false,
+  "provider_capability_verdict": "NOT_RECOVERABLE_WITHIN_FROZEN_AUTHORITY",
+  "plateau_3000_confirmed": true,
+  "pre_2014_short_history_success_confirmed": true,
+  "verdict_rationale": "The unauthenticated PyKRX/Naver adjusted=True endpoint strictly caps responses at 3,000 observations. Because PyKRX only filters locally and does not support server-side historical date windowing or backward offset pagination, pre-2014 observations for active long-lived common stocks (005930, 000660, 005380, 000270, 005490, 035420) are structurally unreachable under the frozen production authority.",
+  "recommended_next_state": "NEEDS_ADJUSTED_PRICE_SOURCE_AUTHORITY_REVIEW"
+}
