@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""CLI runner for Adjusted Price Store Bounded Live Pilot (FIX01)."""
+"""CLI runner for Adjusted Price Store Bounded Live Pilot (FIX02)."""
 
 from __future__ import annotations
 
@@ -15,19 +15,27 @@ DEFAULT_OUTPUT_DIR = Path(
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Run Adjusted Price Store Bounded Live Pilot FIX01")
+    parser = argparse.ArgumentParser(description="Run Adjusted Price Store Bounded Live Pilot FIX02")
     parser.add_argument(
         "--output-dir",
         type=Path,
         default=DEFAULT_OUTPUT_DIR,
         help="Directory to save canonical pilot artifacts",
     )
+    parser.add_argument(
+        "--mode",
+        type=str,
+        default="auto",
+        choices=["auto", "live", "reuse"],
+        help="Execution mode (auto, live, reuse)",
+    )
     args = parser.parse_args()
 
-    print(f"Starting Adjusted Price Store Bounded Live Pilot (FIX01)...")
+    print(f"Starting Adjusted Price Store Bounded Live Pilot (FIX02)...")
     print(f"Output directory: {args.output_dir}")
+    print(f"Mode: {args.mode}")
 
-    pilot_data = run_bounded_live_pilot(output_dir=args.output_dir)
+    pilot_data = run_bounded_live_pilot(output_dir=args.output_dir, mode=args.mode)
     summary = pilot_data["summary"]
 
     print("\n--- Pilot Execution Completed ---")
@@ -36,6 +44,8 @@ def main() -> int:
     print(f"Total Samples: {summary['sample_counts']['total_samples']}")
     print(f"Eligible Full: {summary['outcome_counts']['eligible_full']}")
     print(f"Alpha 23 Supported: {summary['group_summaries']['alpha_23_census']['supported']}/23")
+    print(f"Coverage Totals: missing={summary['coverage_totals']['total_missing_expected_dates']}, "
+          f"unexpected={summary['coverage_totals']['total_unexpected_source_dates']}")
     print(f"Data Quality: duplicates={summary['data_quality']['total_duplicate_rows']}, "
           f"invalid_ohlc={summary['data_quality']['total_invalid_ohlc_rows']}, "
           f"future_rows={summary['data_quality']['total_future_rows']}")
