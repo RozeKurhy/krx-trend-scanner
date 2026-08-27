@@ -341,8 +341,8 @@ def test_canonical_actual_20260814_regression():
     """
     cal = get_canonical_market_calendar()
 
-    assert cal.max_observed_trading_date in (pd.Timestamp("2026-08-14"), pd.Timestamp("2026-08-21"))
-    assert cal.is_completed_month("2026-08-14") is False
+    assert cal.max_observed_trading_date == pd.Timestamp("2026-08-21")
+    assert cal.is_completed_month("2026-08-21") is False
     assert cal.is_completed_month("2026-07-31") is True
     assert cal.get_actual_month_end(2026, 8) is None
     assert cal.get_actual_month_end(2026, 7) == pd.Timestamp("2026-07-31")
