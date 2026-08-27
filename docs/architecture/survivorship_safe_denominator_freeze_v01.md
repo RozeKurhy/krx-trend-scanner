@@ -108,6 +108,22 @@ resolution rounds), the full-universe derivation splits cleanly:
 This is a consequence of the derivation, verified after the fact; it was not
 used as a target the derivation was tuned to hit (Section 9's own caution).
 
+### 5.1. Market Breakdown Accounting & Cross-Market Transitions
+
+The Population Universe market breakdown:
+
+- `kospi_ever_common_identity_count`: 982
+- `kosdaq_ever_common_identity_count`: 2,202
+- `cross_market_common_identity_count`: 22
+- Total unique identities: `982 + 2,202 - 22 = 3,162`
+
+The 22 difference between the simple sum (`3,184`) and the Population total (`3,162`) is the exact set of 22 cross-market companies (e.g. `035720` Kakao, `068270` Celltrion, `022100` POSCO DX) that migrated from KOSDAQ to KOSPI during the historical period.
+
+**Accounting semantics:**
+- KOSPI (982) and KOSDAQ (2,202) counts represent "ever-common by market" (identities that had at least one COMMON interval in that market during the historical period), **not** mutually-exclusive current snapshot buckets.
+- Same-date dual-market membership is strictly zero across all 4,095 trading dates: no identity is ever in both KOSPI COMMON and KOSDAQ COMMON on the same date.
+- Transition boundaries are strictly contiguous: for every migrating identity, the final trading date in the old market and the initial trading date in the new market are exactly consecutive trading days (trading day difference = 1, zero overlap, zero gap).
+
 ## 6. Population ⋃ PIT invariant
 
 Every identity that appears in any PIT COMMON interval must appear in the
@@ -119,15 +135,11 @@ derivation, not an expected edge case.
 
 ## 7. Alpha membership vs. adjusted-price eligibility — separate questions
 
-23 alpha-identifier (e.g. `00781K`-shaped) tickers are in the Population
-Universe as legitimate historical COMMON identities. Whether `PyKRX
-adjusted=True` can actually source adjusted OHLC for these identifiers is a
-**separate, unverified** question — this freeze does not test it and does
-not exclude alpha identities because that eligibility is unknown. Silently
-dropping alpha membership here would itself be a survivorship-adjacent bug
-(quietly shrinking the historical universe for reasons unrelated to whether
-the security was actually common stock). Adjusted-price source eligibility
-is explicitly deferred to `ADJUSTED_PRICE_STORE_BOUNDED_LIVE_PILOT_V01`.
+23 alphanumeric-identifier (e.g. `0008Z0`, `0009K0`, `0010F0`-shaped) tickers are in the Population Universe as legitimate historical COMMON identities (all currently active common stocks introduced under KRX's alphanumeric ticker issuance rules).
+
+Conversely, prior supplemental authority confirmed that preferred-class alphanumeric tickers (e.g. `00781K` 코리아써키트2우선주(신형), along with all 14 preferred-class residual items and all 58 historical NOT_COMMON alpha items) are `HISTORICAL_NOT_COMMON` and are strictly **excluded** from both the Population Universe and the PIT COMMON intervals (intersection count = 0).
+
+Whether `PyKRX adjusted=True` can actually source adjusted OHLC for these legitimate alphanumeric COMMON identifiers is a **separate, unverified** question — this freeze does not test it and does not exclude alpha identities because that eligibility is unknown. Silently dropping alpha membership here would itself be a survivorship-adjacent bug (quietly shrinking the historical universe for reasons unrelated to whether the security was actually common stock). Adjusted-price source eligibility is explicitly deferred to `ADJUSTED_PRICE_STORE_BOUNDED_LIVE_PILOT_V01`.
 
 ## 8. Future-event leakage
 

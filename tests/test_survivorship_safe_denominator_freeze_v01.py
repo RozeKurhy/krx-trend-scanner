@@ -92,7 +92,7 @@ def test_not_common_to_common_lifecycle_included_in_population() -> None:
 
 
 def test_alpha_common_identity_not_silently_dropped_from_population() -> None:
-    full = {"00781K": [_interval("00781K", "KR00781K", "KOSPI", "COMMON", "2015-01-02", "2020-01-02")]}
+    full = {"0008Z0": [_interval("0008Z0", "KR70008Z0005", "KOSDAQ", "COMMON", "2025-08-19", "2026-08-21")]}
     population, _ = derive_population_and_pit_records(full)
     assert len(population) == 1
     assert population[0]["numeric_or_alpha"] == "alphanumeric"
@@ -404,3 +404,118 @@ def test_real_closure_artifact_records_correct_historical_only_counts() -> None:
     }
     assert closure["status"] == "CLOSED_AND_FROZEN"
     assert closure["pit"]["trading_date_coverage"] == 4095
+
+
+def test_real_preferred_alpha_not_common_excluded(frozen_population, frozen_pit) -> None:
+    """Section 18: preferred-class alpha identities (including 00781K and the
+    other 13 preferred-class supplemental items) confirmed HISTORICAL_NOT_COMMON
+    must be strictly excluded from both Population and PIT COMMON intervals."""
+    preferred_14 = {
+        "00781K", "00806K", "02826K", "03473K", "03481K",
+        "08537M", "18064K", "28513K", "35320K", "36328K",
+        "37550K", "38380K", "45014K", "45226K",
+    }
+    population_tickers = {r["ticker"] for r in frozen_population}
+    pit_tickers = {r["ticker"] for r in frozen_pit}
+
+    assert population_tickers.intersection(preferred_14) == set()
+    assert pit_tickers.intersection(preferred_14) == set()
+
+
+def test_real_legitimate_alpha_common_preserved(frozen_population, frozen_pit) -> None:
+    """Section 19: legitimate alphanumeric COMMON identities (23 active items)
+    must be preserved in Population and present in PIT on their active dates."""
+    alpha_population = [r for r in frozen_population if r.get("numeric_or_alpha") == "alphanumeric"]
+    assert len(alpha_population) == 23
+
+    cal = ROOT / "data/reference/source/history/krx_instrument_master/v01/historical_trading_calendar.json"
+    for sample_ticker in ["0008Z0", "0009K0", "0010F0"]:
+        record = next((r for r in alpha_population if r["ticker"] == sample_ticker), None)
+        assert record is not None
+        assert record["included_in_population"] is True
+        assert record["currently_common"] is True
+
+        included = get_common_universe_as_of(record["first_common_date"], intervals=frozen_pit, calendar_path=cal)
+        assert sample_ticker in {r["ticker"] for r in included}
+
+
+def test_real_market_overlap_accounting(frozen_population) -> None:
+    """Section 20: market breakdown follows inclusion-exclusion principle:
+    KOSPI_EVER (982) + KOSDAQ_EVER (2202) - CROSS_MARKET (22) == TOTAL_POPULATION (3162)."""
+    kospi_ever = {(r["ticker"], tuple(r["isu_cd"])) for r in frozen_population if "KOSPI" in r["market"]}
+    kosdaq_ever = {(r["ticker"], tuple(r["isu_cd"])) for r in frozen_population if "KOSDAQ" in r["market"]}
+    cross_market = kospi_ever & kosdaq_ever
+
+    assert len(kospi_ever) == 982
+    assert len(kosdaq_ever) == 2202
+    assert len(cross_market) == 22
+    assert len(kospi_ever) + len(kosdaq_ever) - len(cross_market) == len(frozen_population) == 3162
+
+
+def test_real_no_same_date_dual_market_membership(frozen_pit) -> None:
+    """Section 21: across all 4,095 trading dates, no identity may ever hold
+    membership in more than one market's COMMON denominator on the same date."""
+    import json
+    from collections import defaultdict
+
+    cal_path = ROOT / "data/reference/source/history/krx_instrument_master/v01/historical_trading_calendar.json"
+    calendar = json.loads(cal_path.read_text(encoding="utf-8"))
+    trading_dates = calendar["trading_dates"]
+    assert len(trading_dates) == 4095
+
+    # Group intervals by identity
+    ident_intervals = defaultdict(list)
+    for inv in frozen_pit:
+        ident_intervals[(inv["ticker"], inv["isu_cd"])].append(inv)
+
+    dual_conflicts = 0
+    for ident, intervals in ident_intervals.items():
+        if len({i["market"] for i in intervals}) <= 1:
+            continue
+        # For cross-market identities, ensure intervals never overlap on any trading day
+        sorted_inv = sorted(intervals, key=lambda x: x["effective_from"])
+        for i in range(len(sorted_inv) - 1):
+            curr_end = sorted_inv[i]["effective_to"]
+            next_start = sorted_inv[i + 1]["effective_from"]
+            curr_idx = trading_dates.index(curr_end)
+            next_idx = trading_dates.index(next_start)
+            if next_idx <= curr_idx:
+                dual_conflicts += 1
+
+    assert dual_conflicts == 0
+
+
+def test_real_cross_market_transfer_lifecycle(frozen_pit) -> None:
+    """Section 22: cross-market migration boundary lifecycle test.
+    For representative migrating tickers (Kakao 035720, Celltrion 068270, POSCO DX 022100),
+    verify exact inclusion/exclusion on transition boundaries with trading day diff == 1."""
+    import json
+
+    cal_path = ROOT / "data/reference/source/history/krx_instrument_master/v01/historical_trading_calendar.json"
+    calendar = json.loads(cal_path.read_text(encoding="utf-8"))
+    trading_dates = calendar["trading_dates"]
+
+    test_cases = [
+        # (ticker, last_kosdaq_date, first_kospi_date)
+        ("035720", "2017-07-07", "2017-07-10"),  # Kakao
+        ("068270", "2018-02-08", "2018-02-09"),  # Celltrion
+        ("022100", "2023-12-28", "2024-01-02"),  # POSCO DX
+    ]
+
+    for ticker, last_kosdaq, first_kospi in test_cases:
+        last_k_idx = trading_dates.index(last_kosdaq)
+        first_p_idx = trading_dates.index(first_kospi)
+        assert first_p_idx - last_k_idx == 1, f"{ticker} transition dates must be consecutive trading days"
+
+        # On last KOSDAQ date: in KOSDAQ, not in KOSPI
+        kosdaq_univ = get_common_universe_as_of(last_kosdaq, market="KOSDAQ", intervals=frozen_pit, calendar_path=cal_path)
+        kospi_univ = get_common_universe_as_of(last_kosdaq, market="KOSPI", intervals=frozen_pit, calendar_path=cal_path)
+        assert ticker in {r["ticker"] for r in kosdaq_univ}
+        assert ticker not in {r["ticker"] for r in kospi_univ}
+
+        # On first KOSPI date: in KOSPI, not in KOSDAQ
+        kosdaq_univ_after = get_common_universe_as_of(first_kospi, market="KOSDAQ", intervals=frozen_pit, calendar_path=cal_path)
+        kospi_univ_after = get_common_universe_as_of(first_kospi, market="KOSPI", intervals=frozen_pit, calendar_path=cal_path)
+        assert ticker not in {r["ticker"] for r in kosdaq_univ_after}
+        assert ticker in {r["ticker"] for r in kospi_univ_after}
+
