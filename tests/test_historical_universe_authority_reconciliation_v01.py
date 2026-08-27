@@ -20,9 +20,12 @@ from trend_scanner.universe.historical_authority_reconciliation import (
     HISTORICAL_COMMON_REQUIRED,
     HISTORICAL_NOT_COMMON,
     READY_FOR_HISTORICAL_UNIVERSE_AUTHORITY_RECONCILIATION,
+    SUPPLEMENTAL_AUTHORITY_ACTIVE_SPAC_AT_HISTORICAL_CUTOFF,
+    SUPPLEMENTAL_AUTHORITY_MERGER_WITHDRAWN_SPAC_IDENTITY_PRESERVED,
     SUPPLEMENTAL_AUTHORITY_PREFERRED_CLASS_CONFIRMED,
     SUPPLEMENTAL_AUTHORITY_SPAC_DISSOLUTION_CONFIRMED,
     SUPPLEMENTAL_AUTHORITY_SPAC_MERGER_COMMON_LINEAGE_CONFIRMED,
+    SUPPLEMENTAL_AUTHORITY_SPAC_TERMINATION_IN_PROGRESS_NO_COMMON_TRANSITION,
     SUPPLEMENTAL_AUTHORITY_STILL_INSUFFICIENT,
     ReconciliationContractError,
     build_denominator_candidate,
@@ -1128,13 +1131,197 @@ def test_load_supplemental_authority_records_missing_directory_is_empty(tmp_path
 def test_load_supplemental_authority_records_reads_canonical_manifests() -> None:
     """The canonical on-disk manifests (SPAC + preferred-class residuals)
     load into a lookup keyed by (target_ticker, isu_cd), one entry per
-    individually-investigated identity — 114 + 14 = 128 total."""
+    individually-investigated identity — 114 + 14 = 128 total.
+
+    HISTORICAL_UNIVERSE_FINAL_RESIDUAL_SPAC_RESOLUTION_V01: all 128 are now
+    NOT_COMMON — the last 3 (465320/471050/472220) were reclassified from
+    INSUFFICIENT once the AS-OF-cutoff semantic correction was applied
+    (active/unterminated SPAC identity is itself positive NOT_COMMON
+    authority, Section 8)."""
     lookup = load_supplemental_authority_records()
     assert len(lookup) == 128
     assert lookup[("204440", "KR7204440002")]["decision"] == "NOT_COMMON"
     assert lookup[("02826K", "KR702826K016")]["decision"] == "NOT_COMMON"
+    for ticker, isu_cd in [("465320", "KR7465320000"), ("471050", "KR7471050005"), ("472220", "KR7472220003")]:
+        assert lookup[(ticker, isu_cd)]["decision"] == "NOT_COMMON"
     decisions = {record["decision"] for record in lookup.values()}
-    assert decisions == {"NOT_COMMON", "INSUFFICIENT"}
+    assert decisions == {"NOT_COMMON"}
+
+
+def test_active_spac_at_cutoff_resolves_not_common_not_unresolved() -> None:
+    """HISTORICAL_UNIVERSE_FINAL_RESIDUAL_SPAC_RESOLUTION_V01 Section 8/17:
+    an officially-confirmed active SPAC at the historical cutoff — no merger,
+    no termination, no common transition — is itself positive NOT_COMMON
+    authority. 'Not yet dissolved' must never mean UNRESOLVED once the
+    identity's SPAC status at cutoff is confirmed by supplemental authority."""
+    supplemental = {
+        ("472220", "KR7472220003"): {
+            "decision": "NOT_COMMON",
+            "decision_reason_code": SUPPLEMENTAL_AUTHORITY_ACTIVE_SPAC_AT_HISTORICAL_CUTOFF,
+        }
+    }
+    result = reconcile_target_identities(
+        [_target("472220")],
+        [
+            _snapshot("2024-02-06", _row("472220", isu_cd="KR7472220003", sector="SPAC(소속부없음)")),
+            _snapshot("2026-08-21", _row("472220", isu_cd="KR7472220003", sector="관리종목(소속부없음)")),
+        ],
+        expected_dates=["2024-02-06", "2026-08-21"],
+        supplemental_authority=supplemental,
+    )
+    row = result["results"][0]
+    assert row["historical_classification"] == HISTORICAL_NOT_COMMON
+    reasons = {interval["classification_reason"] for interval in row["intervals"]}
+    assert SUPPLEMENTAL_AUTHORITY_ACTIVE_SPAC_AT_HISTORICAL_CUTOFF in reasons
+
+
+def test_merger_withdrawal_with_spac_identity_preserved_resolves_not_common() -> None:
+    """Section 9/18: a withdrawn merger decision, with the identity remaining
+    an officially confirmed SPAC through cutoff and no common transition,
+    resolves NOT_COMMON — the possibility of a future new merger attempt does
+    not change the as-of-cutoff historical state (Section 6)."""
+    supplemental = {
+        ("465320", "KR7465320000"): {
+            "decision": "NOT_COMMON",
+            "decision_reason_code": SUPPLEMENTAL_AUTHORITY_MERGER_WITHDRAWN_SPAC_IDENTITY_PRESERVED,
+        }
+    }
+    result = reconcile_target_identities(
+        [_target("465320")],
+        [
+            _snapshot("2023-12-05", _row("465320", isu_cd="KR7465320000", sector="SPAC(소속부없음)")),
+            _snapshot("2026-08-21", _row("465320", isu_cd="KR7465320000", sector="관리종목(소속부없음)")),
+        ],
+        expected_dates=["2023-12-05", "2026-08-21"],
+        supplemental_authority=supplemental,
+    )
+    row = result["results"][0]
+    assert row["historical_classification"] == HISTORICAL_NOT_COMMON
+    reasons = {interval["classification_reason"] for interval in row["intervals"]}
+    assert SUPPLEMENTAL_AUTHORITY_MERGER_WITHDRAWN_SPAC_IDENTITY_PRESERVED in reasons
+
+
+def test_termination_in_progress_without_formal_dissolution_report_resolves_not_common() -> None:
+    """Section 10/19: a delisting/termination process already underway before
+    cutoff (trading halt for 상장폐지 사유발생), with the identity still an
+    officially confirmed SPAC and no common transition, resolves NOT_COMMON
+    even though the formal 해산사유발생 report has not yet been filed —
+    legal-dissolution completion and security-denominator classification are
+    separate questions (Section 10)."""
+    supplemental = {
+        ("471050", "KR7471050005"): {
+            "decision": "NOT_COMMON",
+            "decision_reason_code": SUPPLEMENTAL_AUTHORITY_SPAC_TERMINATION_IN_PROGRESS_NO_COMMON_TRANSITION,
+        }
+    }
+    result = reconcile_target_identities(
+        [_target("471050")],
+        [
+            _snapshot("2024-01-24", _row("471050", isu_cd="KR7471050005", sector="SPAC(소속부없음)")),
+            _snapshot("2026-08-21", _row("471050", isu_cd="KR7471050005", sector="관리종목(소속부없음)")),
+        ],
+        expected_dates=["2024-01-24", "2026-08-21"],
+        supplemental_authority=supplemental,
+    )
+    row = result["results"][0]
+    assert row["historical_classification"] == HISTORICAL_NOT_COMMON
+    reasons = {interval["classification_reason"] for interval in row["intervals"]}
+    assert SUPPLEMENTAL_AUTHORITY_SPAC_TERMINATION_IN_PROGRESS_NO_COMMON_TRANSITION in reasons
+
+
+def test_completed_merger_common_transition_regression_still_resolves_common() -> None:
+    """Section 20: the existing COMMON-transition resolution path (confirmed
+    merger completion + common-equity lineage) must keep working exactly as
+    before this AS-OF-cutoff semantic correction — this fix only affects the
+    'still SPAC / terminated' side, never weakens the COMMON path."""
+    supplemental = {
+        ("999903", "KR999903"): {
+            "decision": "COMMON",
+            "decision_reason_code": SUPPLEMENTAL_AUTHORITY_SPAC_MERGER_COMMON_LINEAGE_CONFIRMED,
+        }
+    }
+    result = reconcile_target_identities(
+        [_target("999903")],
+        [
+            _snapshot("2015-01-01", _row("999903", isu_cd="KR999903", sector="SPAC(소속부없음)")),
+            _snapshot("2020-01-02", _row("999903", isu_cd="KR999903", sector="관리종목(소속부없음)")),
+        ],
+        expected_dates=["2015-01-01", "2020-01-02"],
+        supplemental_authority=supplemental,
+    )
+    row = result["results"][0]
+    assert row["historical_classification"] == HISTORICAL_COMMON_REQUIRED
+
+
+def test_future_merger_completion_after_cutoff_does_not_leak_backward() -> None:
+    """Section 16: a supplemental decision must never let a FUTURE (post-
+    cutoff) event retroactively promote an as-of-cutoff-dated observation to
+    COMMON. A supplemental record whose own evidence is dated after the
+    frozen cutoff represents fabricated/out-of-window provenance and must
+    not be trusted to override the pre-cutoff observation — the resolver
+    only reads decision/decision_reason_code, it does not itself enforce a
+    cutoff, so this is a contract the record-authoring process must uphold;
+    this test locks in that a record's positive decision applies uniformly
+    to the observation it is attached to regardless of a later, unrelated
+    event, and that no mechanism in this module ever inspects dates after
+    the observation's own effective_date to decide a classification."""
+    # A record whose decision is NOT_COMMON (as-of the 2026-08-21 cutoff)
+    # must resolve the pre-cutoff observation to NOT_COMMON even though a
+    # hypothetical 2026-09-10 merger completion is known to have later
+    # occurred in the real world — that future fact is simply never passed
+    # to the resolver, because the resolver classifies exactly the
+    # observations it is given and nothing else.
+    supplemental = {
+        ("999904", "KR999904"): {
+            "decision": "NOT_COMMON",
+            "decision_reason_code": SUPPLEMENTAL_AUTHORITY_ACTIVE_SPAC_AT_HISTORICAL_CUTOFF,
+        }
+    }
+    result = reconcile_target_identities(
+        [_target("999904")],
+        [
+            _snapshot("2015-01-01", _row("999904", isu_cd="KR999904", sector="SPAC(소속부없음)")),
+            _snapshot("2026-08-21", _row("999904", isu_cd="KR999904", sector="관리종목(소속부없음)")),
+            # A genuine post-cutoff COMMON-shaped observation (e.g. after a
+            # 2026-09-10 merger completes) is classified independently and
+            # correctly as COMMON at the row level — it is never influenced
+            # by the earlier NOT_COMMON supplemental decision, because that
+            # decision only overrides the specific managed-issue-shaped
+            # observation it was attached to, not the identity as a whole.
+            _snapshot("2026-09-10", _row("999904", isu_cd="KR999904")),
+        ],
+        expected_dates=["2015-01-01", "2026-08-21", "2026-09-10"],
+        supplemental_authority=supplemental,
+    )
+    row = result["results"][0]
+    reasons_by_date = {interval["effective_from"]: interval["classification"] for interval in row["intervals"]}
+    assert reasons_by_date["2026-08-21"] == CLASS_NOT_COMMON
+    assert reasons_by_date["2026-09-10"] == CLASS_COMMON
+    # Ticker-level aggregation still resolves COMMON overall (Section 15/17C
+    # precedence — unrelated to this leakage guarantee), but the as-of-cutoff
+    # interval itself was never retroactively promoted.
+    assert row["historical_classification"] == HISTORICAL_COMMON_REQUIRED
+
+
+def test_insufficient_authority_is_not_a_blanket_not_common_default() -> None:
+    """Section 21: the AS-OF-cutoff semantic correction must not become a
+    blanket 'any managed-issue-after-SPAC observation is NOT_COMMON' rule.
+    Without a supplemental record for this identity, the residual stays
+    UNRESOLVED exactly as before — only individually-investigated,
+    explicitly-decided identities are ever promoted."""
+    result = reconcile_target_identities(
+        [_target("999905")],
+        [
+            _snapshot("2015-01-01", _row("999905", isu_cd="KR999905", sector="SPAC(소속부없음)")),
+            _snapshot("2020-01-02", _row("999905", isu_cd="KR999905", sector="관리종목(소속부없음)")),
+        ],
+        expected_dates=["2015-01-01", "2020-01-02"],
+        supplemental_authority={},
+    )
+    row = result["results"][0]
+    assert row["historical_classification"] == HISTORICAL_AUTHORITY_UNRESOLVED
+    reasons = {interval["classification_reason"] for interval in row["intervals"]}
+    assert "PRODUCTION_AUTHORITY_UNMAPPED_MANAGED_ISSUE_AFTER_SPAC_HISTORY" in reasons
 
 
 def test_security_type_mapping_evidence_has_rule_ids_and_authority_reference() -> None:

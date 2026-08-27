@@ -592,3 +592,83 @@ KRX가 직접 부여하는 정식 명칭)이 "OOO우선주" 형태임을 확인�
 합쳐 supplemental 근거를 결과물에서 지워버렸다(§33 traceability 위반). 이
 수정은 순수 표현/추적성 수정이며 어떤 ticker의 최종 classification도 바꾸지
 않는다.
+
+## 20. AS-OF-Cutoff SPAC Semantics — "아직 해산 안 됨" ≠ "근거 부족"
+
+`HISTORICAL_UNIVERSE_FINAL_RESIDUAL_SPAC_RESOLUTION_V01`에서 §19의 잔여
+3건(465320/471050/472220)이 계속 UNRESOLVED로 남아있던 원인은 evidence
+부족이 아니라 **잘못 설정된 판정 기준**이었다 — "공식 해산/합병완료 확정
+evidence가 있어야만 결론을 낼 수 있다"는 암묵적 전제 자체가 project
+denominator semantics와 맞지 않았다.
+
+### 20.1 핵심 원칙: ACTIVE SPAC은 POSITIVE NOT_COMMON EVIDENCE다
+
+`HISTORICAL_NOT_COMMON`은 "결국 그 종목이 사라졌다/해산됐다"는 terminal
+label이 아니다. 의미는: **해당 historical interval에서 일반 common-stock
+strategy denominator 대상이 아니다**. 이 project의 기존 policy상 SPAC은
+common-stock denominator에서 제외된다(§18.1 참조 — SPAC 자체 관측은 이미
+row-level에서 `TIER_A_NON_COMMON_SECURITY_TYPE`로 NOT_COMMON). 따라서:
+
+- "이 identity가 frozen cutoff(2026-08-21)까지 공식적으로 SPAC 상태를
+  유지했다"는 사실 자체가 NOT_COMMON의 **적극적 근거**다.
+- "아직 해산/합병완료 공시가 없다"는 이 판정을 막는 장애물이 아니다 —
+  오히려 "아직 common-equity로 전환되지 않았다"는 것을 보강한다.
+- 반대로 COMMON으로 승격하려면 반드시 explicit한 공식 merger-completion +
+  common-equity lineage 확인이 필요하다(§18.1 원칙 그대로 유지, 완화 없음).
+- 미래(cutoff 이후) event는 과거 cutoff 판정에 소급 적용하지 않는다 — 판정은
+  항상 "AS-OF 2026-08-21 기준 이 identity가 무엇이었는가"에 대한 답이다.
+
+### 20.2 3건 최종 판정
+
+| ticker | 상태(cutoff 기준) | 핵심 근거 | 최종 |
+|---|---|---|---|
+| 465320 (교보15호스팩) | 합병 결정 → 공식 철회(2026-07-31), SPAC 정체성 유지 | 반기보고서(2026.06, 2026-08-14 제출) 등 cutoff 이전 문서 전부 SPAC corp_name 유지, COMMON 전환 없음 | `SUPPLEMENTAL_AUTHORITY_MERGER_WITHDRAWN_SPAC_IDENTITY_PRESERVED` → NOT_COMMON |
+| 471050 (대신밸런스제17호스팩) | 상장폐지 사유발생 거래정지(2026-08-19) + 청산 관련 안내(2026-08-21), 정식 해산보고서는 cutoff까지 미제출 | 법인 청산 절차 완료 여부와 security denominator 판정은 별개 질문(§10) — 절차 개시 + SPAC 정체성 유지 + COMMON 전환 없음으로 충분 | `SUPPLEMENTAL_AUTHORITY_SPAC_TERMINATION_IN_PROGRESS_NO_COMMON_TRANSITION` → NOT_COMMON |
+| 472220 (신영스팩10호) | 합병/해산 이벤트 자체 없음, cutoff까지 활동 중인 평범한 SPAC | 반기보고서(2026.06, 2026-08-10 제출)까지 SPAC corp_name 유지, COMMON 전환 없음 | `SUPPLEMENTAL_AUTHORITY_ACTIVE_SPAC_AT_HISTORICAL_CUTOFF` → NOT_COMMON |
+
+3건 모두 cutoff(2026-08-21) **이전** 날짜의 공식 DART 문서만 근거로 사용했다
+— cutoff 이후 발간된 문서(예: 471050/472220의 2026-08-22 이후 "상장폐지
+우려 예고")는 미래 정보 소급 적용을 막기 위해 evidence에서 명시적으로
+제외했다.
+
+**주의 (interval 경계 vs authority_date는 서로 다른 것을 가리킨다):**
+재실행된 `preflight_summary.json`에서 이 3건의 interval 경계일(예: 471050의
+2026-07-20, 472220의 2026-07-30)은 supplemental record의 `authority_date`/
+`event_effective_date`(예: 471050 2026-08-19, 472220 2026-08-10)와 다르다.
+이는 모순이 아니다 — interval 경계는 primary KRX Basic Info의
+`SECT_TP_NM`이 SPAC 소속부에서 관리종목(소속부없음)으로 실제 전환된 날짜(1차
+authority가 결정)이고, `authority_date`는 그 관리종목 상태를 NOT_COMMON으로
+판정하는 데 사용한 supplemental 문서의 발간일(2차 authority가 결정)이다. 두
+날짜는 서로 다른 질문에 답하며 일치할 필요가 없다.
+
+### 20.3 Future Event Leakage 방지
+
+이 semantic 수정은 코드 로직 변경이 아니라 **판정 기준(record 작성 원칙)의
+수정**이다 — `_classify_observations`/`_apply_supplemental_authority`는
+그대로이며, supplemental record의 `decision` 값 해석 방식도 동일하다.
+resolver 자체는 날짜 기반 cutoff 로직을 갖고 있지 않다 — 각 record는 그것이
+attach된 특정 관측(observation)만 override하며, 그 관측 자체의
+`effective_date`가 이미 raw archive의 frozen 범위(≤2026-08-21) 안에
+있다. 만약 향후 raw archive가 확장되어 2026-08-21 이후 관측이 추가되고 그
+관측이 실제로 genuine COMMON shape(관리종목이 아닌 정상 보통주)라면, 그
+관측은 row-level `classify_security_type()`에서 직접 COMMON으로 판정되며
+이번 supplemental record의 영향을 받지 않는다 — 즉 과거의 NOT_COMMON
+판정이 미래의 진짜 COMMON 관측을 막지 않는다(regression test로 고정,
+`test_future_merger_completion_after_cutoff_does_not_leak_backward`).
+
+### 20.4 Population Universe vs Point-In-Time Denominator (다음 단계 계약)
+
+다음 단계(`SURVIVORSHIP_SAFE_DENOMINATOR_FREEZE_V01`)를 위해 명시적으로
+구분해야 하는 두 개념:
+
+- **A. Population universe**: historical 기간 중 COMMON interval이 한 번이라도
+  존재한 identity 전체 (예: AdjustedPriceStore population target에 사용).
+- **B. Point-In-Time denominator**: 특정 date에 실제 COMMON 상태인 identity
+  집합만(survivorship-safe backtest denominator에 사용).
+
+예: 어떤 ticker가 2013~2015년 COMMON, 2016~2018년 NOT_COMMON이라면, population
+universe에는 포함되지만 2016~2018 기간의 PIT denominator에는 포함되면 안
+된다. 이번 라운드는 freeze 자체를 실행하지 않지만, 이 원칙을 다음 단계
+설계에 명시적으로 전달한다 — 단순 ticker-level 목록만으로 freeze하면
+lifecycle transition이 있는 identity(§18.1의 8건 COMMON-lineage SPAC 포함)의
+PIT semantics가 깨진다.
