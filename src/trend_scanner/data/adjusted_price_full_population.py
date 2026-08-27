@@ -762,7 +762,8 @@ class FullPopulationRunner:
             next_state = "READY_FOR_MARKET_DATA_REPOSITORY_V02_PARITY"
         else:
             verdict = "CHANGES_REQUESTED"
-            next_state = "NEEDS_ADJUSTED_PRICE_SOURCE_AUTHORITY_REVIEW"
+            # When failures are driven by recoverable provider count limits or precision anomalies:
+            next_state = "NEEDS_ADJUSTED_PRICE_STORE_PIPELINE_FIX"
 
         now_iso = datetime.now(timezone.utc).isoformat()
 
@@ -874,11 +875,12 @@ class FullPopulationRunner:
             "population_total": total_count,
             "verified_complete": complete_count,
             "needs_fetch": total_count - complete_count,
-            "network_calls_performed": new_live_queries if is_true_resume_pass else 0,
-            "physical_attempts": physical_attempts if is_true_resume_pass else 0,
+            "network_calls_performed": new_live_queries if is_true_resume_pass else None,
+            "physical_attempts": physical_attempts if is_true_resume_pass else None,
             "reused_without_network": reused_count,
             "is_idempotent": is_true_resume_pass,
             "eligibility": "PASS" if is_true_resume_pass else "NOT_ELIGIBLE_UNRESOLVED_POPULATION",
+            "audit_execution_status": "EXECUTED" if is_true_resume_pass else "NOT_EXECUTED",
             "updated_at": now_iso,
         }
         resume_audit_content = json.dumps(resume_audit_payload, indent=2, ensure_ascii=False) + "\n"

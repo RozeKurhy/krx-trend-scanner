@@ -1,0 +1,17 @@
+{
+  "schema": "provider_count_limit_probe_summary_v01",
+  "probe_tickers_count": 9,
+  "total_queries_executed": 90,
+  "plateau_detected": true,
+  "plateau_max_rows": 3000,
+  "plateau_tickers": [
+    "000270",
+    "000660",
+    "005380",
+    "005490",
+    "005930",
+    "035420"
+  ],
+  "pre_2014_retrieval_confirmed_on_short_history": true,
+  "root_cause_finding": "Naver Sise backend enforces a hard cap of approximately 3,000 observations per query. For long-listed common stocks, queries with count >= 3,000 plateau at ~3,000 rows (first date ~2014-06-09). Shorter historical tickers (e.g. 064420) successfully return pre-2014 data because their total lifespan <= 3,000 rows."
+}

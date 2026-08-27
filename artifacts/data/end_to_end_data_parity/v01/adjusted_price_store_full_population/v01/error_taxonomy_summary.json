@@ -1,37 +1,30 @@
 {
-  "schema": "error_taxonomy_summary_v01",
-  "total_failures": 413,
-  "error_count": 409,
+  "schema": "error_taxonomy_summary_v02",
+  "total_errors": 413,
   "empty_count": 4,
-  "root_cause_category_counts": {
-    "DELISTED_SYMBOL_UNSUPPORTED": 409,
-    "TRUE_SOURCE_GAP": 4
+  "error_count": 409,
+  "currently_common_total": 258,
+  "historical_only_total": 155,
+  "category_counts": {
+    "CURRENT_COMMON_INVALID_OHLC": 257,
+    "TRUE_SOURCE_GAP": 4,
+    "HISTORICAL_ONLY_INVALID_OHLC": 150,
+    "UNKNOWN": 1,
+    "DELISTED_SYMBOL_UNSUPPORTED": 1
   },
-  "error_type_counts": {
-    "MarketDataError": 409,
-    "None": 4
+  "currently_common_breakdown": {
+    "CURRENT_COMMON_INVALID_OHLC": 257,
+    "UNKNOWN": 1
   },
-  "historical_breakdown": {
-    "historical_only": 155,
-    "currently_common": 258
+  "historical_only_breakdown": {
+    "TRUE_SOURCE_GAP": 4,
+    "HISTORICAL_ONLY_INVALID_OHLC": 150,
+    "DELISTED_SYMBOL_UNSUPPORTED": 1
   },
-  "representative_tickers": {
-    "EMPTY": [
-      "000610",
-      "015940",
-      "037510",
-      "045820"
-    ],
-    "DELISTED_SYMBOL_UNSUPPORTED": [
-      "000100",
-      "000230",
-      "000520",
-      "001060",
-      "001140"
-    ],
-    "TRUE_SOURCE_GAP": [
-      "000610",
-      "015940"
-    ]
-  }
+  "empty_tickers": [
+    "000610",
+    "015940",
+    "037510",
+    "045820"
+  ]
 }

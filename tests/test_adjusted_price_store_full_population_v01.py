@@ -426,7 +426,7 @@ def test_audit_artifacts_semantic_separation(tmp_path):
 
 
 def test_diagnostics_and_taxonomy_generation():
-    """Verify FIX02 Section 5, 6, 8, 9: Diagnostic and Taxonomy artifacts exist and match schema."""
+    """Verify FIX03 Section 8, 9, 13, 26: Diagnostic, Taxonomy and Manifest artifacts exist and match schema."""
     from trend_scanner.data.adjusted_price_diagnostics import (
         DEFAULT_ARTIFACTS_DIR,
         GapClassification,
@@ -434,14 +434,18 @@ def test_diagnostics_and_taxonomy_generation():
     )
 
     assert GapClassification.LEADING_HISTORY_GAP.value == "LEADING_HISTORY_GAP"
-    assert RootCauseCategory.TRUE_SOURCE_GAP.value == "TRUE_SOURCE_GAP"
+    assert RootCauseCategory.PROVIDER_PAGINATION_OR_COUNT_LIMIT.value == "PROVIDER_PAGINATION_OR_COUNT_LIMIT"
+    assert RootCauseCategory.CURRENT_COMMON_INVALID_OHLC.value == "CURRENT_COMMON_INVALID_OHLC"
 
     diag_csv = DEFAULT_ARTIFACTS_DIR / "partial_coverage_diagnostic.csv"
     diag_sum = DEFAULT_ARTIFACTS_DIR / "partial_coverage_summary.json"
     tax_csv = DEFAULT_ARTIFACTS_DIR / "error_taxonomy.csv"
     tax_sum = DEFAULT_ARTIFACTS_DIR / "error_taxonomy_summary.json"
-    probe_res = DEFAULT_ARTIFACTS_DIR / "provider_root_cause_probe_results.csv"
-    probe_sum = DEFAULT_ARTIFACTS_DIR / "provider_root_cause_probe_summary.json"
+    probe_res = DEFAULT_ARTIFACTS_DIR / "provider_count_limit_probe_results.csv"
+    probe_sum = DEFAULT_ARTIFACTS_DIR / "provider_count_limit_probe_summary.json"
+    curr_res = DEFAULT_ARTIFACTS_DIR / "current_common_error_probe_results.csv"
+    curr_sum = DEFAULT_ARTIFACTS_DIR / "current_common_error_probe_summary.json"
+    manifest = DEFAULT_ARTIFACTS_DIR / "fix03_root_cause_manifest.json"
 
     assert diag_csv.exists()
     assert diag_sum.exists()
@@ -449,7 +453,78 @@ def test_diagnostics_and_taxonomy_generation():
     assert tax_sum.exists()
     assert probe_res.exists()
     assert probe_sum.exists()
+    assert curr_res.exists()
+    assert curr_sum.exists()
+    assert manifest.exists()
 
     sum_data = json.loads(probe_sum.read_text(encoding="utf-8"))
-    assert sum_data["root_cause_verdict"] == "TRUE_SOURCE_GAP"
-    assert sum_data["old_window_empty_count"] > 0
+    assert sum_data["plateau_detected"] is True
+    assert sum_data["plateau_max_rows"] >= 2990
+    assert sum_data["pre_2014_retrieval_confirmed_on_short_history"] is True
+
+    man_data = json.loads(manifest.read_text(encoding="utf-8"))
+    assert man_data["dominant_root_cause"] == "PROVIDER_PAGINATION_OR_COUNT_LIMIT"
+    assert man_data["recommended_next_state"] == "NEEDS_ADJUSTED_PRICE_STORE_PIPELINE_FIX"
+
+
+def test_root_cause_negative_control_when_pre_2014_exists():
+    """Verify FIX03 Section 27.1: Pre-2014 successful retrieval forbids global TRUE_SOURCE_GAP."""
+    from trend_scanner.data.adjusted_price_diagnostics import (
+        DEFAULT_ARTIFACTS_DIR,
+    )
+    probe_sum_path = DEFAULT_ARTIFACTS_DIR / "provider_count_limit_probe_summary.json"
+    data = json.loads(probe_sum_path.read_text(encoding="utf-8"))
+    # When pre-2014 data is confirmed for short-lived tickers (064420), global source cutoff cannot be true
+    assert data["pre_2014_retrieval_confirmed_on_short_history"] is True
+
+
+def test_current_common_taxonomy_guard():
+    """Verify FIX03 Section 27.4 & 27.5: Active common stocks with OHLC errors are NOT classified as delisted."""
+    from trend_scanner.data.adjusted_price_diagnostics import (
+        DEFAULT_ARTIFACTS_DIR,
+    )
+    tax_csv = DEFAULT_ARTIFACTS_DIR / "error_taxonomy.csv"
+    df = pd.read_csv(tax_csv, dtype={"ticker": str})
+
+    # Active common stocks (currently_common == True)
+    curr_df = df[df["currently_common"] == True]
+    assert len(curr_df) == 258
+
+    # Must NOT be classified as DELISTED_SYMBOL_UNSUPPORTED
+    delisted_curr = curr_df[curr_df["root_cause_category"] == "DELISTED_SYMBOL_UNSUPPORTED"]
+    assert len(delisted_curr) == 0
+
+    # Overwhelming majority are CURRENT_COMMON_INVALID_OHLC
+    invalid_ohlc_curr = curr_df[curr_df["root_cause_category"] == "CURRENT_COMMON_INVALID_OHLC"]
+    assert len(invalid_ohlc_curr) == 257
+
+
+def test_dynamic_adjudication_no_hardcoding(tmp_path):
+    """Verify FIX03 Section 27.2, 27.3, 27.7: Adjudication dynamically responds to evidence."""
+    from trend_scanner.data.adjusted_price_diagnostics import (
+        adjudicate_root_cause_and_manifest,
+    )
+
+    # Case A: Plateau detected -> PROVIDER_PAGINATION_OR_COUNT_LIMIT & NEEDS_ADJUSTED_PRICE_STORE_PIPELINE_FIX
+    count_sum_a = {
+        "schema": "provider_count_limit_probe_summary_v01",
+        "plateau_detected": True,
+        "pre_2014_retrieval_confirmed_on_short_history": True,
+    }
+    (tmp_path / "provider_count_limit_probe_summary.json").write_text(json.dumps(count_sum_a), encoding="utf-8")
+    man_a = adjudicate_root_cause_and_manifest(output_dir=tmp_path)
+    assert man_a["dominant_root_cause"] == "PROVIDER_PAGINATION_OR_COUNT_LIMIT"
+    assert man_a["recommended_next_state"] == "NEEDS_ADJUSTED_PRICE_STORE_PIPELINE_FIX"
+    assert man_a["provider_fix_required"] is True
+
+    # Case B: No plateau -> TRUE_SOURCE_GAP & NEEDS_ADJUSTED_PRICE_SOURCE_AUTHORITY_REVIEW
+    count_sum_b = {
+        "schema": "provider_count_limit_probe_summary_v01",
+        "plateau_detected": False,
+        "pre_2014_retrieval_confirmed_on_short_history": False,
+    }
+    (tmp_path / "provider_count_limit_probe_summary.json").write_text(json.dumps(count_sum_b), encoding="utf-8")
+    man_b = adjudicate_root_cause_and_manifest(output_dir=tmp_path)
+    assert man_b["dominant_root_cause"] == "TRUE_SOURCE_GAP"
+    assert man_b["recommended_next_state"] == "NEEDS_ADJUSTED_PRICE_SOURCE_AUTHORITY_REVIEW"
+    assert man_b["source_authority_review_required"] is True
