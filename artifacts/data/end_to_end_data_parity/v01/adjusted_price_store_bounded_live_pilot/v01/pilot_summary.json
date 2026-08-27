@@ -1,6 +1,6 @@
 {
-  "schema": "adjusted_price_store_bounded_live_pilot_v01_fix04",
-  "execution_id": "ADJUSTED_PRICE_PILOT_FIX04_1787819387_REUSE",
+  "schema": "adjusted_price_store_bounded_live_pilot_v01_fix05",
+  "execution_id": "ADJUSTED_PRICE_PILOT_FIX04_1787819364_LIVE",
   "status": "PILOT_COMPLETED",
   "final_verdict": "ACCEPT",
   "next_state": "READY_FOR_ADJUSTED_PRICE_STORE_FULL_POPULATION",
@@ -11,17 +11,18 @@
   },
   "suspension_authority": {
     "artifact_path": "historical_suspension_authority_v01.json",
-    "artifact_sha256": "e3b687b861648bbfb407fce7a1d032e2e49eda36b623a4b883049e5557afa2f7"
+    "artifact_sha256": "71739258954b1467390e4a5e3bf49531ab277043614e11a99af8165033c3e4f8"
   },
   "actual_source_evidence": {
     "artifact_path": "pilot_actual_source_dates.json",
-    "artifact_sha256": "7591f75e0195ff56e32f919d901771f26301a95595778b5082aad4543ebebd1a"
+    "artifact_sha256": "7591f75e0195ff56e32f919d901771f26301a95595778b5082aad4543ebebd1a",
+    "source_execution_id": "ADJUSTED_PRICE_PILOT_FIX04_1787819364_LIVE"
   },
   "execution_provenance": {
-    "execution_id": "ADJUSTED_PRICE_PILOT_FIX04_1787819387_REUSE",
-    "execution_mode": "REUSE",
-    "new_live_request_count": 0,
-    "reused_sample_count": 43,
+    "execution_id": "ADJUSTED_PRICE_PILOT_FIX04_1787819364_LIVE",
+    "execution_mode": "LIVE",
+    "new_live_request_count": 43,
+    "reused_sample_count": 0,
     "retry_count": 0
   },
   "sample_counts": {
@@ -100,8 +101,9 @@
     "fix01_new_pykrx_requests": 0,
     "fix02_new_pykrx_requests": 43,
     "fix03_new_pykrx_requests": 0,
-    "fix04_new_pykrx_requests": 0,
-    "cumulative_total_pykrx_requests": 86,
+    "fix04_new_pykrx_requests": 43,
+    "fix05_new_pykrx_requests": 0,
+    "cumulative_total_pykrx_requests": 129,
     "pykrx_retries": 0,
     "krx_open_api_requests": 0,
     "opendart_requests": 0,
@@ -110,6 +112,7 @@
   "data_quality": {
     "total_duplicate_rows": 0,
     "total_invalid_ohlc_rows": 0,
-    "total_future_rows": 0
+    "total_future_rows": 0,
+    "ohlc_quality_revalidated": true
   }
 }
