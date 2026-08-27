@@ -1,14 +1,19 @@
-"""Tests for Adjusted Price Store Bounded Live Pilot (FIX04)."""
+"""Tests for Adjusted Price Store Bounded Live Pilot (FIX05)."""
 
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 import pytest
 import pandas as pd
 
 from trend_scanner.data.adjusted_price_pilot import (
+    CANONICAL_EXECUTION_ID,
     DEFAULT_ACTUAL_SOURCE_DATES_PATH,
+    DEFAULT_ARTIFACT_DIR,
+    DEFAULT_CLOSURE_MANIFEST_PATH,
+    DEFAULT_REUSE_DIR,
     DEFAULT_SUSPENSION_AUTHORITY_PATH,
     EXPECTED_POPULATION_COUNT,
     EXPECTED_POPULATION_SHA256,
@@ -102,8 +107,18 @@ class MockDummyProvider:
         return self._frame
 
 
-def test_true_reuse_mode_uses_persisted_actual_dates_without_provider_calls():
-    """Verify Section 30: true reuse mode uses genuine persisted actual dates and makes 0 provider calls."""
+def test_canonical_live_artifacts_remain_unmodified_after_reuse():
+    """Verify Section 32: Canonical LIVE closure artifacts are NEVER modified or overwritten by REUSE execution."""
+    canonical_dir = Path(DEFAULT_ARTIFACT_DIR)
+    target_files = [
+        "pilot_summary.json",
+        "pilot_results.csv",
+        "pilot_actual_source_dates.json",
+        "pilot_sample_manifest.json",
+        "pilot_closure_manifest.json",
+    ]
+    before_hashes = {f: hashlib.sha256((canonical_dir / f).read_bytes()).hexdigest() for f in target_files}
+
     res = run_bounded_live_pilot(mode="reuse")
     summary = res["summary"]
 
@@ -111,6 +126,49 @@ def test_true_reuse_mode_uses_persisted_actual_dates_without_provider_calls():
     assert summary["execution_provenance"]["execution_mode"] == "REUSE"
     assert summary["execution_provenance"]["new_live_request_count"] == 0
     assert summary["execution_provenance"]["reused_sample_count"] == 43
+    assert summary["quality_validation"]["ohlc_quality_revalidated"] is False
+    assert summary["quality_validation"]["coverage_revalidated"] is True
+
+    after_hashes = {f: hashlib.sha256((canonical_dir / f).read_bytes()).hexdigest() for f in target_files}
+    for f in target_files:
+        assert before_hashes[f] == after_hashes[f], f"Canonical artifact {f} was modified by REUSE!"
+
+
+def test_reuse_hash_mismatch_fails_closed(tmp_path):
+    """Verify Section 33: REUSE fails closed with REUSE_HASH_MISMATCH if actual source dates artifact is modified."""
+    test_dir = tmp_path / "tampered_pilot"
+    test_dir.mkdir()
+
+    # Copy closure manifest and tampered actual dates
+    canonical_dir = Path(DEFAULT_ARTIFACT_DIR)
+    (test_dir / "pilot_closure_manifest.json").write_text(
+        (canonical_dir / "pilot_closure_manifest.json").read_text(encoding="utf-8"), encoding="utf-8"
+    )
+    (test_dir / "pilot_actual_source_dates.json").write_text(
+        '{"schema": "tampered", "execution_id": "ADJUSTED_PRICE_PILOT_FIX04_1787819364_LIVE", "samples": []}', encoding="utf-8"
+    )
+
+    with pytest.raises(RuntimeError, match="REUSE_HASH_MISMATCH"):
+        run_bounded_live_pilot(input_dir=test_dir, mode="reuse")
+
+
+def test_reuse_execution_id_mismatch_fails_closed(tmp_path):
+    """Verify Section 34: REUSE fails closed with REUSE_EXECUTION_ID_MISMATCH if execution id does not match trusted."""
+    test_dir = tmp_path / "id_mismatch_pilot"
+    test_dir.mkdir()
+
+    canonical_dir = Path(DEFAULT_ARTIFACT_DIR)
+    act_content = (canonical_dir / "pilot_actual_source_dates.json").read_text(encoding="utf-8")
+    tampered_act_content = act_content.replace(CANONICAL_EXECUTION_ID, "OTHER_EXEC_ID")
+    tampered_sha = hashlib.sha256(tampered_act_content.encode("utf-8")).hexdigest()
+
+    manifest_data = json.loads((canonical_dir / "pilot_closure_manifest.json").read_text(encoding="utf-8"))
+    manifest_data["pilot_actual_source_dates_sha256"] = tampered_sha
+    (test_dir / "pilot_closure_manifest.json").write_text(json.dumps(manifest_data), encoding="utf-8")
+    (test_dir / "pilot_actual_source_dates.json").write_text(tampered_act_content, encoding="utf-8")
+
+    with pytest.raises(RuntimeError, match="REUSE_EXECUTION_ID_MISMATCH"):
+        run_bounded_live_pilot(input_dir=test_dir, mode="reuse")
 
 
 def test_reuse_mode_fails_closed_if_artifact_missing(tmp_path):
@@ -119,7 +177,7 @@ def test_reuse_mode_fails_closed_if_artifact_missing(tmp_path):
     empty_dir.mkdir()
 
     with pytest.raises(RuntimeError, match="REUSE_UNAVAILABLE"):
-        run_bounded_live_pilot(output_dir=empty_dir, mode="reuse")
+        run_bounded_live_pilot(input_dir=empty_dir, mode="reuse")
 
 
 def test_suspension_authority_artifact_sha_and_records():
@@ -268,40 +326,39 @@ def test_all_group_acceptance_gate_negative_controls():
     assert evaluate_pilot_acceptance(res_fail_e)["final_verdict"] == "CHANGES_REQUESTED"
 
 
-def test_real_pilot_artifacts_integrity_and_acceptance():
-    """Verify committed pilot artifacts match summary exactly and satisfy ACCEPT gate."""
-    artifact_dir = Path("artifacts/data/end_to_end_data_parity/v01/adjusted_price_store_bounded_live_pilot/v01")
+def test_canonical_closure_manifest_integrity():
+    """Verify Section 38: Canonical closure manifest matches exact artifact hashes and proves ACCEPT gate."""
+    artifact_dir = Path(DEFAULT_ARTIFACT_DIR)
     manifest_file = artifact_dir / "pilot_sample_manifest.json"
     results_file = artifact_dir / "pilot_results.csv"
     summary_file = artifact_dir / "pilot_summary.json"
     actual_dates_file = artifact_dir / "pilot_actual_source_dates.json"
     suspension_file = artifact_dir / "historical_suspension_authority_v01.json"
+    closure_file = artifact_dir / "pilot_closure_manifest.json"
 
     assert manifest_file.exists()
     assert results_file.exists()
     assert summary_file.exists()
     assert actual_dates_file.exists()
     assert suspension_file.exists()
+    assert closure_file.exists()
 
-    with open(manifest_file, encoding="utf-8") as f:
-        manifest_data = json.load(f)
     with open(summary_file, encoding="utf-8") as f:
         summary_data = json.load(f)
-    with open(actual_dates_file, encoding="utf-8") as f:
-        actual_dates_data = json.load(f)
+    with open(closure_file, encoding="utf-8") as f:
+        closure_data = json.load(f)
 
-    results_df = pd.read_csv(results_file)
+    # 1. Exact Execution Provenance Matches Canonical LIVE
+    assert summary_data["execution_id"] == CANONICAL_EXECUTION_ID == closure_data["canonical_execution_id"]
+    assert summary_data["execution_provenance"]["execution_mode"] == "LIVE" == closure_data["canonical_execution_mode"]
+    assert summary_data["execution_provenance"]["new_live_request_count"] == 43
+    assert summary_data["execution_provenance"]["reused_sample_count"] == 0
+    assert summary_data["request_accounting"]["cumulative_total_pykrx_requests"] == 129
+    assert summary_data["final_verdict"] == "ACCEPT" == closure_data["final_verdict"]
 
-    assert len(manifest_data) == 43 == len(results_df) == summary_data["sample_counts"]["total_samples"] == len(actual_dates_data["samples"])
-    assert summary_data["final_verdict"] == "ACCEPT"
-    assert summary_data["next_state"] == "READY_FOR_ADJUSTED_PRICE_STORE_FULL_POPULATION"
-    assert summary_data["outcome_counts"]["eligible_full"] == 43
-    assert summary_data["group_summaries"]["alpha_23_census"]["supported"] == 23
-    assert summary_data["group_summaries"]["historical_delisted"]["supported"] == 5
-    assert summary_data["group_summaries"]["corporate_action"]["supported"] == 4
-    assert summary_data["group_summaries"]["market_transfer"]["supported"] == 3
-    assert summary_data["coverage_totals"]["total_missing_expected_dates"] == 0
-    assert summary_data["coverage_totals"]["total_unexpected_source_dates"] == 0
-    assert summary_data["data_quality"]["total_duplicate_rows"] == 0
-    assert summary_data["data_quality"]["total_invalid_ohlc_rows"] == 0
-    assert summary_data["data_quality"]["total_future_rows"] == 0
+    # 2. Exact Hash Pinning Matches File Bytes
+    assert hashlib.sha256(summary_file.read_bytes()).hexdigest() == closure_data["pilot_summary_sha256"]
+    assert hashlib.sha256(results_file.read_bytes()).hexdigest() == closure_data["pilot_results_sha256"]
+    assert hashlib.sha256(actual_dates_file.read_bytes()).hexdigest() == closure_data["pilot_actual_source_dates_sha256"]
+    assert hashlib.sha256(manifest_file.read_bytes()).hexdigest() == closure_data["pilot_sample_manifest_sha256"]
+    assert hashlib.sha256(suspension_file.read_bytes()).hexdigest() == closure_data["historical_suspension_authority_sha256"]

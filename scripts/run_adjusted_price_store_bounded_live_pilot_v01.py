@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""CLI runner for Adjusted Price Store Bounded Live Pilot (FIX04)."""
+"""CLI runner for Adjusted Price Store Bounded Live Pilot (FIX05)."""
 
 from __future__ import annotations
 
@@ -7,32 +7,31 @@ import argparse
 from pathlib import Path
 import sys
 
-from trend_scanner.data.adjusted_price_pilot import run_bounded_live_pilot
-
-DEFAULT_OUTPUT_DIR = Path(
-    "artifacts/data/end_to_end_data_parity/v01/adjusted_price_store_bounded_live_pilot/v01"
+from trend_scanner.data.adjusted_price_pilot import (
+    DEFAULT_ARTIFACT_DIR,
+    DEFAULT_REUSE_DIR,
+    run_bounded_live_pilot,
 )
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Run Adjusted Price Store Bounded Live Pilot FIX04")
+    parser = argparse.ArgumentParser(description="Run Adjusted Price Store Bounded Live Pilot FIX05")
     parser.add_argument(
         "--output-dir",
         type=Path,
-        default=DEFAULT_OUTPUT_DIR,
-        help="Directory to save canonical pilot artifacts",
+        default=None,
+        help="Directory to save artifacts (default: canonical dir for live, reuse_verification for reuse)",
     )
     parser.add_argument(
         "--mode",
         type=str,
-        default="live",
+        default="reuse",
         choices=["live", "reuse"],
-        help="Execution mode: 'live' (execute live provider queries) or 'reuse' (source-faithful offline cached reclassification)",
+        help="Execution mode: 'live' (execute live provider queries) or 'reuse' (source-faithful offline cached verification)",
     )
     args = parser.parse_args()
 
-    print(f"Starting Adjusted Price Store Bounded Live Pilot (FIX04)...")
-    print(f"Output directory: {args.output_dir}")
+    print(f"Starting Adjusted Price Store Bounded Live Pilot (FIX05)...")
     print(f"Mode: {args.mode}")
 
     pilot_data = run_bounded_live_pilot(output_dir=args.output_dir, mode=args.mode)
@@ -43,16 +42,8 @@ def main() -> int:
     print(f"Execution Mode: {summary['execution_provenance']['execution_mode']}")
     print(f"Final Verdict: {summary['final_verdict']}")
     print(f"Next State: {summary['next_state']}")
-    print(f"Total Samples: {summary['sample_counts']['total_samples']}")
-    print(f"Eligible Full: {summary['outcome_counts']['eligible_full']}")
-    print(f"Alpha 23 Supported: {summary['group_summaries']['alpha_23_census']['supported']}/23")
-    print(f"Coverage Totals: missing={summary['coverage_totals']['total_missing_expected_dates']}, "
-          f"unexpected={summary['coverage_totals']['total_unexpected_source_dates']}")
-    print(f"Data Quality: duplicates={summary['data_quality']['total_duplicate_rows']}, "
-          f"invalid_ohlc={summary['data_quality']['total_invalid_ohlc_rows']}, "
-          f"future_rows={summary['data_quality']['total_future_rows']}")
-    print(f"Actual Source Dates Artifact SHA256: {summary['actual_source_evidence']['artifact_sha256']}")
-    print(f"Suspension Authority SHA256: {summary['suspension_authority']['artifact_sha256']}")
+    print(f"New Live Requests: {summary['execution_provenance']['new_live_request_count']}")
+    print(f"Reused Samples: {summary['execution_provenance']['reused_sample_count']}")
 
     return 0 if summary["final_verdict"] == "ACCEPT" else 1
 
