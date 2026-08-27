@@ -753,17 +753,24 @@ class FullPopulationRunner:
         elif self.failures_csv_path.exists():
             self.failures_csv_path.unlink()
 
-        # Verdict evaluation
-        all_complete = (complete_count == total_count == EXPECTED_POPULATION_COUNT)
-        quality_clean = (total_duplicates == 0 and total_invalid_ohlc == 0 and total_future_rows == 0)
+        # Verdict evaluation via canonical dynamic adjudicator (BLOCKER D)
+        from trend_scanner.data.adjusted_price_diagnostics import (
+            adjudicate_adjusted_price_full_population_state,
+        )
 
-        if all_complete and quality_clean:
-            verdict = "ACCEPT"
-            next_state = "READY_FOR_MARKET_DATA_REPOSITORY_V02_PARITY"
-        else:
-            verdict = "CHANGES_REQUESTED"
-            # When pre-2014 data is unrecoverable within the frozen PyKRX authority:
-            next_state = "NEEDS_ADJUSTED_PRICE_SOURCE_AUTHORITY_REVIEW"
+        quality_clean = (total_duplicates == 0 and total_invalid_ohlc == 0 and total_future_rows == 0)
+        adj = adjudicate_adjusted_price_full_population_state(
+            population_count=total_count,
+            complete_count=complete_count,
+            partial_count=partial_count,
+            empty_count=empty_count,
+            error_count=error_count,
+            provider_capability_status="NOT_RECOVERABLE_WITHIN_FROZEN_AUTHORITY",
+            quality_clean=quality_clean,
+            final_resume_passed=False,
+        )
+        verdict = adj["final_verdict"]
+        next_state = adj["recommended_next_state"]
 
         now_iso = datetime.now(timezone.utc).isoformat()
 
@@ -868,6 +875,7 @@ class FullPopulationRunner:
         execution_audit_path.write_text(json.dumps(execution_audit_payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
         # 6. Resume Audit Record (Dedicated Zero-Call Idempotency Verification)
+        all_complete = (complete_count == total_count == EXPECTED_POPULATION_COUNT)
         is_true_resume_pass = (all_complete and new_live_queries == 0 and physical_attempts == 0)
         resume_audit_payload = {
             "schema": "full_population_resume_audit_v01",
@@ -877,7 +885,8 @@ class FullPopulationRunner:
             "needs_fetch": total_count - complete_count,
             "network_calls_performed": new_live_queries if is_true_resume_pass else None,
             "physical_attempts": physical_attempts if is_true_resume_pass else None,
-            "reused_without_network": reused_count,
+            "retries": total_retries if is_true_resume_pass else None,
+            "reused_without_network": reused_count if is_true_resume_pass else None,
             "is_idempotent": is_true_resume_pass,
             "eligibility": "PASS" if is_true_resume_pass else "NOT_ELIGIBLE_UNRESOLVED_POPULATION",
             "audit_execution_status": "EXECUTED" if is_true_resume_pass else "NOT_EXECUTED",
