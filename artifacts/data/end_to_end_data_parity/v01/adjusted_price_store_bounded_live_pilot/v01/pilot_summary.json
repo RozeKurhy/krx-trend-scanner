@@ -1,5 +1,5 @@
 {
-  "schema": "adjusted_price_store_bounded_live_pilot_v01_fix01",
+  "schema": "adjusted_price_store_bounded_live_pilot_v01_fix02",
   "status": "PILOT_COMPLETED",
   "final_verdict": "ACCEPT",
   "next_state": "READY_FOR_ADJUSTED_PRICE_STORE_FULL_POPULATION",
@@ -7,6 +7,12 @@
     "population_count": 3162,
     "population_manifest_sha256": "f14c3d46e5305571b311c4d120d9a2f1eba1644e7f059cde4e59eabab42d1aff",
     "population_mutated": false
+  },
+  "execution_provenance": {
+    "execution_mode": "AUTO",
+    "new_live_request_count": 43,
+    "reused_sample_count": 0,
+    "retry_count": 0
   },
   "sample_counts": {
     "total_samples": 43,
@@ -24,33 +30,43 @@
     "error": 0,
     "schema_anomaly": 0
   },
+  "coverage_totals": {
+    "total_missing_expected_dates": 0,
+    "total_unexpected_source_dates": 0,
+    "insufficient_authority_sample_count": 0,
+    "no_expected_observation_sample_count": 0
+  },
   "group_gates": {
     "group_a_numeric_pass": true,
     "group_b_historical_delisted_pass": true,
     "group_c_corporate_action_pass": true,
     "group_d_alpha_census_pass": true,
-    "group_e_market_transfer_pass": true,
-    "all_gates_pass": true
+    "group_e_market_transfer_pass": true
   },
   "group_summaries": {
     "numeric_normal": {
       "total": 8,
       "supported": 8,
+      "partial": 0,
       "empty": 0,
-      "error": 0
+      "error": 0,
+      "anomaly": 0
     },
     "historical_delisted": {
       "total": 5,
       "supported": 5,
       "partial": 0,
       "empty": 0,
-      "error": 0
+      "error": 0,
+      "anomaly": 0
     },
     "corporate_action": {
       "total": 4,
       "supported": 4,
+      "partial": 0,
       "empty": 0,
-      "error": 0
+      "error": 0,
+      "anomaly": 0
     },
     "alpha_23_census": {
       "total": 23,
@@ -63,14 +79,17 @@
     "market_transfer": {
       "total": 3,
       "supported": 3,
+      "partial": 0,
       "empty": 0,
-      "error": 0
+      "error": 0,
+      "anomaly": 0
     }
   },
   "request_accounting": {
     "v01_pykrx_requests": 43,
     "fix01_new_pykrx_requests": 0,
-    "cumulative_total_pykrx_requests": 43,
+    "fix02_new_pykrx_requests": 43,
+    "cumulative_total_pykrx_requests": 86,
     "pykrx_retries": 0,
     "krx_open_api_requests": 0,
     "opendart_requests": 0,
