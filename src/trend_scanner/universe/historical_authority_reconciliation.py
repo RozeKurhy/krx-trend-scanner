@@ -1088,6 +1088,35 @@ def _intervalize(
     return intervals
 
 
+def classify_full_universe(
+    snapshots: Iterable[Mapping[str, Any]],
+    *,
+    expected_dates: Sequence[str] | None = None,
+    source_manifest_sha256: str | None = None,
+    supplemental_authority: Mapping[tuple[str, str], Mapping[str, Any]] | None = None,
+) -> dict[str, list[dict[str, Any]]]:
+    """Classify every identity ever observed in ``snapshots`` — not limited
+    to a fixed target list — into canonical COMMON/NOT_COMMON/UNRESOLVED
+    intervals, using exactly the same row-pure classification and
+    supplemental-authority override logic as ``reconcile_target_identities``.
+
+    SURVIVORSHIP_SAFE_DENOMINATOR_FREEZE_V01 derives both the Population
+    Universe (any identity with at least one COMMON interval, anywhere) and
+    the Point-In-Time Common Denominator (COMMON intervals themselves) from
+    this single walk over the full authority — never from two separate
+    computations, and never from arithmetic over the frozen 1,116-target
+    reconciliation counts plus some other "current universe" count. Returns
+    ``{ticker: [interval, ...]}`` for every ticker present in ``snapshots``.
+    """
+
+    timeline = build_pit_identity_timeline(snapshots)
+    result: dict[str, list[dict[str, Any]]] = {}
+    for ticker, observations in timeline.items():
+        classified = _classify_observations(observations, supplemental_authority=supplemental_authority)
+        result[ticker] = _intervalize(classified, expected_dates, source_manifest_sha256=source_manifest_sha256)
+    return result
+
+
 def reconcile_target_identities(
     target_identities: Iterable[Mapping[str, Any]],
     snapshots: Iterable[Mapping[str, Any]],
@@ -1454,6 +1483,7 @@ __all__ = [
     "build_security_type_mapping_evidence",
     "canonical_target_identity_records",
     "canonical_target_set_hash",
+    "classify_full_universe",
     "classify_security_type",
     "derive_target_identities",
     "derive_target_identities_from_repository",
