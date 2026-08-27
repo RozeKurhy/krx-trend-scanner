@@ -1,5 +1,5 @@
 {
-  "schema": "adjusted_price_store_bounded_live_pilot_v01_fix02",
+  "schema": "adjusted_price_store_bounded_live_pilot_v01_fix03",
   "status": "PILOT_COMPLETED",
   "final_verdict": "ACCEPT",
   "next_state": "READY_FOR_ADJUSTED_PRICE_STORE_FULL_POPULATION",
@@ -9,9 +9,9 @@
     "population_mutated": false
   },
   "execution_provenance": {
-    "execution_mode": "AUTO",
-    "new_live_request_count": 43,
-    "reused_sample_count": 0,
+    "execution_mode": "REUSE",
+    "new_live_request_count": 0,
+    "reused_sample_count": 43,
     "retry_count": 0
   },
   "sample_counts": {
@@ -89,6 +89,7 @@
     "v01_pykrx_requests": 43,
     "fix01_new_pykrx_requests": 0,
     "fix02_new_pykrx_requests": 43,
+    "fix03_new_pykrx_requests": 0,
     "cumulative_total_pykrx_requests": 86,
     "pykrx_retries": 0,
     "krx_open_api_requests": 0,
