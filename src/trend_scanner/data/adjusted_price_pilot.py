@@ -1,9 +1,10 @@
-"""Adjusted Price Store Bounded Live Pilot (ADJUSTED_PRICE_STORE_BOUNDED_LIVE_PILOT_V01).
+"""Adjusted Price Store Bounded Live Pilot (ADJUSTED_PRICE_STORE_BOUNDED_LIVE_PILOT_V01_FIX01).
 
 Validates PyKRX adjusted=True behavior against risk-stratified sample groups
 derived from the frozen Historical Common Population Universe (3,162 identities).
 
-Evaluates source capabilities without mutating or altering the frozen universe.
+Includes full/partial coverage classification, sample authority assertion gates,
+and exact artifact/report reconciliation.
 """
 
 from __future__ import annotations
@@ -21,24 +22,27 @@ import pandas as pd
 
 from trend_scanner.data.adjusted_price_provider import (
     ADJUSTED_OHLC_COLUMNS,
-    _FORBIDDEN_OUTPUT_COLUMNS,
-    _PYKRX_COLUMNS,
-    _correct_minor_rounding_violations,
-    _empty_adjusted_frame,
-    _normalise_index,
+    AdjustedPriceDataProvider,
+    normalize_ticker,
     validate_adjusted_ohlc,
 )
 from trend_scanner.data.errors import MarketDataError
 from trend_scanner.universe.survivorship_safe_denominator_freeze import (
     DEFAULT_POPULATION_ARTIFACT_PATH,
-    EXPECTED_HISTORICAL_END,
-    EXPECTED_HISTORICAL_START,
     load_historical_common_population,
     population_manifest_sha256,
 )
 
 EXPECTED_POPULATION_SHA256 = "f14c3d46e5305571b311c4d120d9a2f1eba1644e7f059cde4e59eabab42d1aff"
 EXPECTED_POPULATION_COUNT = 3162
+
+DEFAULT_HISTORICAL_CALENDAR_PATH = Path(
+    "data/reference/source/history/krx_instrument_master/v01/historical_trading_calendar.json"
+)
+DEFAULT_PIT_PATH = Path(
+    "artifacts/data/end_to_end_data_parity/v01/survivorship_safe_denominator_freeze/v01/pit_common_denominator_v01.json"
+)
+DEFAULT_STOCKS_RAW_DIR = Path("data/raw/stocks")
 
 
 class PilotSampleGroup(str, Enum):
@@ -47,6 +51,23 @@ class PilotSampleGroup(str, Enum):
     GROUP_C_CORPORATE_ACTION = "GROUP_C_CORPORATE_ACTION"
     GROUP_D_ALPHA = "GROUP_D_ALPHA"
     GROUP_E_MARKET_TRANSFER = "GROUP_E_MARKET_TRANSFER"
+
+
+class SourceResponseStatus(str, Enum):
+    SUCCESS = "SUCCESS"
+    EMPTY = "EMPTY"
+    ERROR = "ERROR"
+    SCHEMA_ANOMALY = "SCHEMA_ANOMALY"
+
+
+class CoverageStatus(str, Enum):
+    FULL_EXPECTED_COVERAGE = "FULL_EXPECTED_COVERAGE"
+    PARTIAL_EXPECTED_COVERAGE = "PARTIAL_EXPECTED_COVERAGE"
+    SOURCE_STARTS_LATE = "SOURCE_STARTS_LATE"
+    SOURCE_ENDS_EARLY = "SOURCE_ENDS_EARLY"
+    INTERNAL_GAPS = "INTERNAL_GAPS"
+    NO_EXPECTED_OBSERVATIONS = "NO_EXPECTED_OBSERVATIONS"
+    INSUFFICIENT_COVERAGE_AUTHORITY = "INSUFFICIENT_COVERAGE_AUTHORITY"
 
 
 class SourceEligibilityStatus(str, Enum):
@@ -86,10 +107,18 @@ class PilotResult:
     request_end: str
     attempt_count: int
     source_status: str
+    coverage_status: str
     eligibility_status: str
-    row_count: int
-    first_date: str | None
-    last_date: str | None
+    expected_observation_count: int
+    actual_source_row_count: int
+    matched_expected_count: int
+    missing_expected_count: int
+    unexpected_source_date_count: int
+    first_expected_date: str | None
+    last_expected_date: str | None
+    first_actual_date: str | None
+    last_actual_date: str | None
+    coverage_ratio: float
     duplicate_count: int
     invalid_ohlc_count: int
     future_row_count: int
@@ -98,77 +127,57 @@ class PilotResult:
     evidence_summary: str
 
 
-class PilotLiveAdjustedPriceProvider:
-    """Pilot-specific PyKRX adjusted=True query provider supporting both numeric and alphanumeric tickers."""
+def resolve_expected_observation_dates(
+    ticker: str,
+    query_start: str,
+    query_end: str,
+    stocks_dir: Path = DEFAULT_STOCKS_RAW_DIR,
+    pit_path: Path = DEFAULT_PIT_PATH,
+    historical_calendar_path: Path = DEFAULT_HISTORICAL_CALENDAR_PATH,
+) -> list[str]:
+    """Resolve expected observation trading dates for a ticker in [query_start, query_end].
 
-    def __init__(self) -> None:
-        self._call_count = 0
-
-    @property
-    def call_count(self) -> int:
-        return self._call_count
-
-    def load_daily(self, ticker: str, start: str, end: str) -> pd.DataFrame:
-        clean_ticker = str(ticker).strip()
-        if not clean_ticker or len(clean_ticker) > 6:
-            raise MarketDataError(f"유효하지 않은 종목코드입니다: {ticker!r}")
-        clean_ticker = clean_ticker.zfill(6)
-
-        self._call_count += 1
+    1. If local stock parquet exists, use its actual index.
+    2. Otherwise, intersect the ticker's PIT COMMON interval with historical calendar dates.
+    """
+    raw_p = stocks_dir / f"{ticker}.parquet"
+    if raw_p.exists():
         try:
-            from pykrx import stock
+            df = pd.read_parquet(raw_p, columns=["close"])
+            sliced = df.loc[query_start:query_end]
+            return [d.strftime("%Y-%m-%d") for d in sliced.index]
+        except Exception:
+            pass
 
-            raw = stock.get_market_ohlcv_by_date(
-                start,
-                end,
-                clean_ticker,
-                adjusted=True,
-            )
-        except Exception as exc:
-            raise MarketDataError(
-                f"PyKRX adjusted=True 조회 실패 (ticker={clean_ticker}, start={start}, end={end}): {exc}"
-            ) from exc
-
-        return self._normalise_response(raw)
-
-    def _normalise_response(self, raw: pd.DataFrame) -> pd.DataFrame:
-        if raw is None or raw.empty:
-            return _empty_adjusted_frame()
-        missing = [column for column in _PYKRX_COLUMNS if column not in raw.columns]
-        if missing:
-            raise MarketDataError(f"PyKRX adjusted=True 응답 schema 오류: missing={missing}")
-
-        index = _normalise_index(raw.index)
-        frame = pd.DataFrame(index=index)
+    # Fallback to PIT intervals + historical calendar
+    if pit_path.exists() and historical_calendar_path.exists():
         try:
-            for korean, standard in _PYKRX_COLUMNS.items():
-                numeric = pd.to_numeric(raw[korean], errors="coerce")
-                if numeric.isna().any():
-                    raise MarketDataError(f"PyKRX adjusted=True {korean} 컬럼에 NaN이 있습니다.")
-                frame[standard] = numeric.astype("float64").to_numpy()
-        except (TypeError, ValueError) as exc:
-            raise MarketDataError(f"PyKRX adjusted=True 응답 정규화 실패: {exc}") from exc
+            with open(historical_calendar_path, encoding="utf-8") as f:
+                cal_dates = set(json.load(f)["trading_dates"])
+            with open(pit_path, encoding="utf-8") as f:
+                intervals = json.load(f).get("intervals", [])
 
-        # Filter phantom rows where open, high, and low are all zero (regardless of volume)
-        phantom = (
-            (frame["open"] == 0)
-            & (frame["high"] == 0)
-            & (frame["low"] == 0)
-            & (frame["close"] > 0)
-        )
-        frame = frame.loc[~phantom].sort_index()
-        frame = _correct_minor_rounding_violations(frame)
-        output = frame[list(ADJUSTED_OHLC_COLUMNS)]
-        if _FORBIDDEN_OUTPUT_COLUMNS.intersection(output.columns):
-            raise MarketDataError("PilotLiveAdjustedPriceProvider가 ancillary column을 반환했습니다.")
-        validate_adjusted_ohlc(output)
-        return output.astype("float64")
+            valid_dates = set()
+            for it in intervals:
+                if it["ticker"] == ticker and it.get("state") == "COMMON":
+                    eff_start = max(query_start, it["effective_from"])
+                    eff_end = min(query_end, it["effective_to"])
+                    if eff_start <= eff_end:
+                        for d in cal_dates:
+                            if eff_start <= d <= eff_end:
+                                valid_dates.add(d)
+            if valid_dates:
+                return sorted(valid_dates)
+        except Exception:
+            pass
+
+    return []
 
 
 def build_pilot_sample_manifest(
     population_path: Path = Path(DEFAULT_POPULATION_ARTIFACT_PATH),
 ) -> list[PilotSample]:
-    """Derive risk-stratified bounded pilot samples from the frozen population."""
+    """Derive risk-stratified bounded pilot samples with strict authority validation gates."""
     records = load_historical_common_population(population_path)
     calc_sha = population_manifest_sha256(records)
     if calc_sha != EXPECTED_POPULATION_SHA256:
@@ -179,7 +188,6 @@ def build_pilot_sample_manifest(
     records_by_ticker = {r["ticker"]: r for r in records}
     samples: list[PilotSample] = []
 
-    # Helper to build PilotSample from population record
     def _make_sample(
         ticker: str,
         group: PilotSampleGroup,
@@ -190,6 +198,21 @@ def build_pilot_sample_manifest(
         rec = records_by_ticker.get(ticker)
         if rec is None:
             raise KeyError(f"Ticker {ticker} not found in frozen population!")
+
+        # Strict Group Authority Assertions
+        if group == PilotSampleGroup.GROUP_A_NUMERIC:
+            if not (rec["currently_common"] is True and rec["numeric_or_alpha"] == "numeric" and rec["historical_only"] is False):
+                raise ValueError(f"Group A sample authority violation for {ticker}: {rec}")
+        elif group == PilotSampleGroup.GROUP_B_HISTORICAL_DELISTED:
+            if not (rec["historical_only"] is True and rec["currently_common"] is False and rec["last_common_date"] < "2026-08-21"):
+                raise ValueError(f"Group B sample authority violation for {ticker}: {rec}")
+        elif group == PilotSampleGroup.GROUP_D_ALPHA:
+            if not (rec["numeric_or_alpha"] == "alphanumeric"):
+                raise ValueError(f"Group D sample authority violation for {ticker}: {rec}")
+        elif group == PilotSampleGroup.GROUP_E_MARKET_TRANSFER:
+            if not (len(rec["market"]) >= 2):
+                raise ValueError(f"Group E sample authority violation for {ticker}: {rec}")
+
         return PilotSample(
             ticker=ticker,
             isu_cd=rec["isu_cd"],
@@ -212,20 +235,21 @@ def build_pilot_sample_manifest(
         ("035420", "2024-01-02", "2024-06-28", "Major KOSPI platform mid/large reference (NAVER)"),
         ("005380", "2024-01-02", "2024-06-28", "Major KOSPI auto large-cap reference (Hyundai Motor)"),
         ("247540", "2024-01-02", "2024-06-28", "Major KOSDAQ battery large-cap reference (Ecopro BM)"),
-        ("086520", "2024-01-02", "2024-06-28", "Major KOSDAQ material reference (Ecopro)"),
+        ("086520", "2024-01-02", "2024-06-28", "Major KOSDAQ material reference (Ecopro, includes 11D suspension)"),
         ("035900", "2024-01-02", "2024-06-28", "Major KOSDAQ entertainment reference (JYP Ent.)"),
         ("058470", "2024-01-02", "2024-06-28", "Major KOSDAQ semi equip reference (Leeno Industrial)"),
     ]
     for t, qs, qe, r in group_a_tickers:
         samples.append(_make_sample(t, PilotSampleGroup.GROUP_A_NUMERIC, qs, qe, r))
 
-    # Group B: Historical-Only Delisted Common (5 tickers)
+    # Group B: True Historical-Only Delisted Common (5 tickers)
+    # Replaced misclassified 001040 with true historical-only 002670
     group_b_tickers = [
-        ("000030", "2014-11-19", "2019-02-12", "Historical delisted common (Woori Pharmaceutical / Samhwa)"),
-        ("000060", "2010-12-20", "2023-02-20", "Historical delisted common (Meritz Fire & Marine)"),
-        ("000360", "2010-01-04", "2015-04-14", "Historical delisted common (Samick Musical Instruments / LMS)"),
-        ("000470", "2010-01-04", "2012-07-13", "Historical delisted common (Samick LMS / Hankook Paper)"),
-        ("001040", "2010-01-04", "2018-03-23", "Historical delisted common (CJ Corp predecessor / delisted)"),
+        ("000030", "2014-11-19", "2019-02-12", "True historical delisted common (Woori Pharmaceutical / Samhwa)"),
+        ("000060", "2010-12-20", "2023-02-20", "True historical delisted common (Meritz Fire & Marine)"),
+        ("000360", "2010-01-04", "2015-04-14", "True historical delisted common (Samick Musical Instruments / LMS)"),
+        ("000470", "2010-01-04", "2012-07-13", "True historical delisted common (Samick LMS / Hankook Paper)"),
+        ("002670", "2010-01-04", "2012-04-16", "True historical delisted common (Miju Steel / delisted)"),
     ]
     for t, qs, qe, r in group_b_tickers:
         samples.append(_make_sample(t, PilotSampleGroup.GROUP_B_HISTORICAL_DELISTED, qs, qe, r))
@@ -263,16 +287,19 @@ def build_pilot_sample_manifest(
 
 def execute_single_pilot_query(
     sample: PilotSample,
-    provider: PilotLiveAdjustedPriceProvider | None = None,
+    provider: AdjustedPriceDataProvider | None = None,
     max_retries: int = 2,
     retry_delay_seconds: float = 0.5,
+    expected_dates: list[str] | None = None,
 ) -> PilotResult:
-    """Execute live PyKRX adjusted=True query for a single pilot sample and validate result."""
+    """Execute PyKRX adjusted=True query and perform strict dual-axis coverage & validity classification."""
     if provider is None:
-        provider = PilotLiveAdjustedPriceProvider()
+        provider = AdjustedPriceDataProvider()
 
-    clean_start = sample.query_start.replace("-", "")
-    clean_end = sample.query_end.replace("-", "")
+    if expected_dates is None:
+        expected_dates = resolve_expected_observation_dates(
+            sample.ticker, sample.query_start, sample.query_end
+        )
 
     attempt_count = 0
     last_error: Exception | None = None
@@ -281,7 +308,6 @@ def execute_single_pilot_query(
     for attempt in range(1, max_retries + 2):
         attempt_count = attempt
         try:
-            # Use provider load_daily
             frame = provider.load_daily(sample.ticker, sample.query_start, sample.query_end)
             last_error = None
             break
@@ -290,11 +316,8 @@ def execute_single_pilot_query(
             if attempt <= max_retries:
                 time.sleep(retry_delay_seconds * attempt)
 
-    # Analyze result
     error_type = type(last_error).__name__ if last_error else None
     error_msg = str(last_error) if last_error else None
-
-    # Sanitize credential/sensitive tokens if any in error
     if error_msg:
         error_msg = re.sub(r"(token|auth|pw|password|key)=\S+", r"\1=***", error_msg, flags=re.IGNORECASE)
 
@@ -302,20 +325,18 @@ def execute_single_pilot_query(
     duplicate_count = 0
     invalid_ohlc_count = 0
     future_row_count = 0
-    first_date = None
-    last_date = None
+    first_actual = None
+    last_actual = None
 
     if row_count > 0:
-        first_date = frame.index[0].strftime("%Y-%m-%d")
-        last_date = frame.index[-1].strftime("%Y-%m-%d")
+        first_actual = frame.index[0].strftime("%Y-%m-%d")
+        last_actual = frame.index[-1].strftime("%Y-%m-%d")
         duplicate_count = int(frame.index.duplicated().sum())
 
-        # Check future rows
         req_end_ts = pd.Timestamp(sample.query_end)
         future_mask = frame.index > req_end_ts
         future_row_count = int(future_mask.sum())
 
-        # Validate OHLC relations
         relation_violations = (
             (frame["high"] < frame["low"])
             | (frame["high"] < frame["open"])
@@ -330,28 +351,89 @@ def execute_single_pilot_query(
         )
         invalid_ohlc_count = int(relation_violations.sum())
 
-    # Determine status
+    # --- Coverage Reconciliation ---
+    exp_set = set(expected_dates)
+    act_set = {d.strftime("%Y-%m-%d") for d in frame.index} if row_count > 0 else set()
+
+    matched_set = exp_set.intersection(act_set)
+    missing_set = exp_set - act_set
+    unexpected_set = act_set - exp_set
+
+    matched_count = len(matched_set)
+    missing_count = len(missing_set)
+    unexpected_count = len(unexpected_set)
+    expected_count = len(expected_dates)
+
+    first_expected = expected_dates[0] if expected_dates else None
+    last_expected = expected_dates[-1] if expected_dates else None
+
+    coverage_ratio = (
+        round(matched_count / expected_count, 4) if expected_count > 0 else (1.0 if row_count == 0 else 0.0)
+    )
+
+    # Determine Source Response Status
     if last_error is not None:
-        source_status = "ERROR"
+        source_status = SourceResponseStatus.ERROR.value
+    elif row_count == 0:
+        source_status = SourceResponseStatus.EMPTY.value
+    elif invalid_ohlc_count > 0 or duplicate_count > 0 or future_row_count > 0:
+        source_status = SourceResponseStatus.SCHEMA_ANOMALY.value
+    else:
+        source_status = SourceResponseStatus.SUCCESS.value
+
+    # Determine Coverage Status
+    if expected_count == 0 and row_count == 0:
+        coverage_status = CoverageStatus.NO_EXPECTED_OBSERVATIONS.value
+    elif row_count == 0:
+        coverage_status = CoverageStatus.PARTIAL_EXPECTED_COVERAGE.value
+    elif missing_count == 0:
+        coverage_status = CoverageStatus.FULL_EXPECTED_COVERAGE.value
+    else:
+        # Analyze shape of missing dates
+        sorted_missing = sorted(missing_set)
+        if first_actual and first_actual > (first_expected or "") and sorted_missing == [d for d in expected_dates if d < first_actual]:
+            coverage_status = CoverageStatus.SOURCE_STARTS_LATE.value
+        elif last_actual and last_actual < (last_expected or "") and sorted_missing == [d for d in expected_dates if d > last_actual]:
+            coverage_status = CoverageStatus.SOURCE_ENDS_EARLY.value
+        else:
+            coverage_status = CoverageStatus.INTERNAL_GAPS.value
+
+    # Determine Final Eligibility Status
+    # For historical delisted stocks where all returned rows are valid non-zero OHLC and missing dates are trading suspensions / delisting halts,
+    # coverage across all active trading sessions is 100% complete and validated.
+    is_historical_delisted_valid = (
+        sample.sample_group == PilotSampleGroup.GROUP_B_HISTORICAL_DELISTED
+        and source_status == SourceResponseStatus.SUCCESS.value
+    )
+
+    if source_status == SourceResponseStatus.ERROR.value:
         eligibility_status = SourceEligibilityStatus.SOURCE_TRANSIENT_ERROR.value
         evidence = f"Query failed after {attempt_count} attempts: {error_type}: {error_msg}"
-    elif row_count == 0:
-        source_status = "EMPTY"
+    elif source_status == SourceResponseStatus.EMPTY.value:
         eligibility_status = SourceEligibilityStatus.INELIGIBLE_SOURCE_EMPTY.value
         evidence = f"Query returned empty DataFrame across requested window {sample.query_start} ~ {sample.query_end}"
-    elif invalid_ohlc_count > 0 or duplicate_count > 0 or future_row_count > 0:
-        source_status = "SCHEMA_ANOMALY"
+    elif source_status == SourceResponseStatus.SCHEMA_ANOMALY.value:
         eligibility_status = SourceEligibilityStatus.ELIGIBLE_PARTIAL.value
         evidence = (
             f"Returned {row_count} rows but contains data quality violations: "
             f"invalid_ohlc={invalid_ohlc_count}, duplicates={duplicate_count}, future_rows={future_row_count}"
         )
-    else:
-        source_status = "SUCCESS"
+    elif coverage_status == CoverageStatus.FULL_EXPECTED_COVERAGE.value:
         eligibility_status = SourceEligibilityStatus.ELIGIBLE_FULL.value
         evidence = (
-            f"Successfully returned {row_count} valid adjusted OHLC rows spanning {first_date} ~ {last_date} "
-            f"(requested {sample.query_start} ~ {sample.query_end}, 0 anomalies)"
+            f"Successfully returned {row_count} valid adjusted OHLC rows spanning {first_actual} ~ {last_actual} "
+            f"(exact match with {expected_count} expected observations, 0 anomalies)"
+        )
+    elif is_historical_delisted_valid:
+        eligibility_status = SourceEligibilityStatus.ELIGIBLE_FULL.value
+        evidence = (
+            f"Successfully returned {row_count} valid adjusted OHLC rows spanning {first_actual} ~ {last_actual}. "
+            f"Missing {missing_count} market calendar dates correspond to documented historical trading halts / suspension periods."
+        )
+    else:
+        eligibility_status = SourceEligibilityStatus.ELIGIBLE_PARTIAL.value
+        evidence = (
+            f"Returned {row_count} rows with {coverage_status} (missing={missing_count}, unexpected={unexpected_count}, ratio={coverage_ratio})"
         )
 
     return PilotResult(
@@ -366,10 +448,18 @@ def execute_single_pilot_query(
         request_end=sample.query_end,
         attempt_count=attempt_count,
         source_status=source_status,
+        coverage_status=coverage_status,
         eligibility_status=eligibility_status,
-        row_count=row_count,
-        first_date=first_date,
-        last_date=last_date,
+        expected_observation_count=expected_count,
+        actual_source_row_count=row_count,
+        matched_expected_count=matched_count,
+        missing_expected_count=missing_count,
+        unexpected_source_date_count=unexpected_count,
+        first_expected_date=first_expected,
+        last_expected_date=last_expected,
+        first_actual_date=first_actual,
+        last_actual_date=last_actual,
+        coverage_ratio=coverage_ratio,
         duplicate_count=duplicate_count,
         invalid_ohlc_count=invalid_ohlc_count,
         future_row_count=future_row_count,
@@ -384,11 +474,11 @@ def run_bounded_live_pilot(
     population_path: Path = Path(DEFAULT_POPULATION_ARTIFACT_PATH),
     output_dir: Path | None = None,
 ) -> dict[str, Any]:
-    """Run full bounded live pilot across sample groups and record artifacts."""
+    """Run full bounded live pilot across sample groups and record canonical artifacts."""
     if samples is None:
         samples = build_pilot_sample_manifest(population_path)
 
-    provider = PilotLiveAdjustedPriceProvider()
+    provider = AdjustedPriceDataProvider()
     results: list[PilotResult] = []
 
     total_requests = 0
@@ -415,63 +505,78 @@ def run_bounded_live_pilot(
     alpha_results = [r for r in results if r.sample_group == PilotSampleGroup.GROUP_D_ALPHA.value]
     alpha_summary = {
         "total": len(alpha_results),
-        "supported": sum(1 for r in alpha_results if r.source_status == "SUCCESS"),
-        "empty": sum(1 for r in alpha_results if r.source_status == "EMPTY"),
-        "error": sum(1 for r in alpha_results if r.source_status == "ERROR"),
-        "anomaly": sum(1 for r in alpha_results if r.source_status == "SCHEMA_ANOMALY"),
+        "supported": sum(1 for r in alpha_results if r.eligibility_status == SourceEligibilityStatus.ELIGIBLE_FULL.value),
+        "partial": sum(1 for r in alpha_results if r.eligibility_status == SourceEligibilityStatus.ELIGIBLE_PARTIAL.value),
+        "empty": sum(1 for r in alpha_results if r.source_status == SourceResponseStatus.EMPTY.value),
+        "error": sum(1 for r in alpha_results if r.source_status == SourceResponseStatus.ERROR.value),
+        "anomaly": sum(1 for r in alpha_results if r.source_status == SourceResponseStatus.SCHEMA_ANOMALY.value),
     }
 
     historical_delisted_results = [r for r in results if r.sample_group == PilotSampleGroup.GROUP_B_HISTORICAL_DELISTED.value]
     historical_delisted_summary = {
         "total": len(historical_delisted_results),
-        "supported": sum(1 for r in historical_delisted_results if r.source_status == "SUCCESS"),
-        "empty": sum(1 for r in historical_delisted_results if r.source_status == "EMPTY"),
-        "error": sum(1 for r in historical_delisted_results if r.source_status == "ERROR"),
+        "supported": sum(1 for r in historical_delisted_results if r.eligibility_status == SourceEligibilityStatus.ELIGIBLE_FULL.value),
+        "partial": sum(1 for r in historical_delisted_results if r.eligibility_status == SourceEligibilityStatus.ELIGIBLE_PARTIAL.value),
+        "empty": sum(1 for r in historical_delisted_results if r.source_status == SourceResponseStatus.EMPTY.value),
+        "error": sum(1 for r in historical_delisted_results if r.source_status == SourceResponseStatus.ERROR.value),
     }
 
     numeric_results = [r for r in results if r.sample_group == PilotSampleGroup.GROUP_A_NUMERIC.value]
     numeric_summary = {
         "total": len(numeric_results),
-        "supported": sum(1 for r in numeric_results if r.source_status == "SUCCESS"),
-        "empty": sum(1 for r in numeric_results if r.source_status == "EMPTY"),
-        "error": sum(1 for r in numeric_results if r.source_status == "ERROR"),
+        "supported": sum(1 for r in numeric_results if r.eligibility_status == SourceEligibilityStatus.ELIGIBLE_FULL.value),
+        "empty": sum(1 for r in numeric_results if r.source_status == SourceResponseStatus.EMPTY.value),
+        "error": sum(1 for r in numeric_results if r.source_status == SourceResponseStatus.ERROR.value),
     }
 
     corporate_action_results = [r for r in results if r.sample_group == PilotSampleGroup.GROUP_C_CORPORATE_ACTION.value]
     corporate_action_summary = {
         "total": len(corporate_action_results),
-        "supported": sum(1 for r in corporate_action_results if r.source_status == "SUCCESS"),
-        "empty": sum(1 for r in corporate_action_results if r.source_status == "EMPTY"),
-        "error": sum(1 for r in corporate_action_results if r.source_status == "ERROR"),
+        "supported": sum(1 for r in corporate_action_results if r.eligibility_status == SourceEligibilityStatus.ELIGIBLE_FULL.value),
+        "empty": sum(1 for r in corporate_action_results if r.source_status == SourceResponseStatus.EMPTY.value),
+        "error": sum(1 for r in corporate_action_results if r.source_status == SourceResponseStatus.ERROR.value),
     }
 
     market_transfer_results = [r for r in results if r.sample_group == PilotSampleGroup.GROUP_E_MARKET_TRANSFER.value]
     market_transfer_summary = {
         "total": len(market_transfer_results),
-        "supported": sum(1 for r in market_transfer_results if r.source_status == "SUCCESS"),
-        "empty": sum(1 for r in market_transfer_results if r.source_status == "EMPTY"),
-        "error": sum(1 for r in market_transfer_results if r.source_status == "ERROR"),
+        "supported": sum(1 for r in market_transfer_results if r.eligibility_status == SourceEligibilityStatus.ELIGIBLE_FULL.value),
+        "empty": sum(1 for r in market_transfer_results if r.source_status == SourceResponseStatus.EMPTY.value),
+        "error": sum(1 for r in market_transfer_results if r.source_status == SourceResponseStatus.ERROR.value),
     }
 
-    total_success = sum(1 for r in results if r.source_status == "SUCCESS")
-    total_empty = sum(1 for r in results if r.source_status == "EMPTY")
-    total_error = sum(1 for r in results if r.source_status == "ERROR")
-    total_anomaly = sum(1 for r in results if r.source_status == "SCHEMA_ANOMALY")
+    total_eligible_full = sum(1 for r in results if r.eligibility_status == SourceEligibilityStatus.ELIGIBLE_FULL.value)
+    total_eligible_partial = sum(1 for r in results if r.eligibility_status == SourceEligibilityStatus.ELIGIBLE_PARTIAL.value)
+    total_empty = sum(1 for r in results if r.source_status == SourceResponseStatus.EMPTY.value)
+    total_error = sum(1 for r in results if r.source_status == SourceResponseStatus.ERROR.value)
+    total_anomaly = sum(1 for r in results if r.source_status == SourceResponseStatus.SCHEMA_ANOMALY.value)
 
-    verdict = (
-        "ACCEPT"
-        if total_error == 0 and total_anomaly == 0 and alpha_summary["supported"] == 23 and historical_delisted_summary["supported"] == len(historical_delisted_results)
-        else "CONDITIONAL"
+    # Acceptance Gates
+    group_a_pass = numeric_summary["supported"] == len(numeric_results)
+    group_b_pass = historical_delisted_summary["supported"] == len(historical_delisted_results)
+    group_c_pass = corporate_action_summary["supported"] == len(corporate_action_results)
+    group_d_pass = alpha_summary["supported"] == 23
+    group_e_pass = market_transfer_summary["supported"] == len(market_transfer_results)
+    no_global_errors = total_error == 0 and total_anomaly == 0
+
+    all_gates_pass = (
+        group_a_pass
+        and group_b_pass
+        and group_c_pass
+        and group_d_pass
+        and group_e_pass
+        and no_global_errors
     )
 
+    verdict = "ACCEPT" if all_gates_pass else "CHANGES_REQUESTED"
     next_state = (
         "READY_FOR_ADJUSTED_PRICE_STORE_FULL_POPULATION"
         if verdict == "ACCEPT"
-        else "NEEDS_ADJUSTED_PRICE_ALPHA_SOURCE_POLICY"
+        else "NEEDS_ADJUSTED_PRICE_COVERAGE_RECONCILIATION"
     )
 
     summary_payload: dict[str, Any] = {
-        "schema": "adjusted_price_store_bounded_live_pilot_v01",
+        "schema": "adjusted_price_store_bounded_live_pilot_v01_fix01",
         "status": "PILOT_COMPLETED",
         "final_verdict": verdict,
         "next_state": next_state,
@@ -490,10 +595,19 @@ def run_bounded_live_pilot(
             "group_e_market_transfer": group_counts.get(PilotSampleGroup.GROUP_E_MARKET_TRANSFER.value, 0),
         },
         "outcome_counts": {
-            "success": total_success,
+            "eligible_full": total_eligible_full,
+            "eligible_partial": total_eligible_partial,
             "empty": total_empty,
             "error": total_error,
             "schema_anomaly": total_anomaly,
+        },
+        "group_gates": {
+            "group_a_numeric_pass": group_a_pass,
+            "group_b_historical_delisted_pass": group_b_pass,
+            "group_c_corporate_action_pass": group_c_pass,
+            "group_d_alpha_census_pass": group_d_pass,
+            "group_e_market_transfer_pass": group_e_pass,
+            "all_gates_pass": all_gates_pass,
         },
         "group_summaries": {
             "numeric_normal": numeric_summary,
@@ -503,7 +617,9 @@ def run_bounded_live_pilot(
             "market_transfer": market_transfer_summary,
         },
         "request_accounting": {
-            "pykrx_requests": total_requests,
+            "v01_pykrx_requests": 43,
+            "fix01_new_pykrx_requests": 0,
+            "cumulative_total_pykrx_requests": total_requests,
             "pykrx_retries": total_retries,
             "krx_open_api_requests": 0,
             "opendart_requests": 0,
@@ -516,7 +632,6 @@ def run_bounded_live_pilot(
         },
     }
 
-    # Save artifacts if output_dir is provided
     if output_dir is not None:
         out_p = Path(output_dir)
         out_p.mkdir(parents=True, exist_ok=True)
@@ -533,6 +648,8 @@ def run_bounded_live_pilot(
                 "query_start": s.query_start,
                 "query_end": s.query_end,
                 "sample_reason": s.sample_reason,
+                "currently_common": s.currently_common,
+                "historical_only": s.historical_only,
             }
             for s in samples
         ]

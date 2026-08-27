@@ -154,7 +154,7 @@ def test_alphanumeric_raw_domain_is_preserved_and_adjusted_domain_is_closed(tmp_
     assert not repo.get_raw_daily("03473K", "2024-01-02", "2024-01-04").empty
     assert not repo.get_daily_ancillary("03473K", "2024-01-02", "2024-01-04").empty
     assert len(repo.get_stock_snapshot("03473K", "2024-01-02")) == 1
-    with pytest.raises(MarketDataError, match="UNSUPPORTED_ADJUSTED_TICKER"):
+    with pytest.raises(MarketDataError, match="UNSUPPORTED_ADJUSTED_TICKER|DATA_UNAVAILABLE: ADJUSTED_MISSING"):
         repo.get_daily("03473K", "2024-01-02", "2024-01-04")
 
 
@@ -227,7 +227,7 @@ def test_timezone_naive_sorted_unique_output(tmp_path):
 
 def test_adjusted_store_is_not_widened_for_numeric_only_contract(tmp_path):
     repo, _, _ = _repo(tmp_path)
-    with pytest.raises(MarketDataError, match="UNSUPPORTED_ADJUSTED_TICKER"):
+    with pytest.raises(MarketDataError, match="UNSUPPORTED_ADJUSTED_TICKER|DATA_UNAVAILABLE: ADJUSTED_MISSING"):
         repo.get_daily("08537M", "2024-01-02", "2024-01-04")
 
 

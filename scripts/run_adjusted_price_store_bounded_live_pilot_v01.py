@@ -1,20 +1,13 @@
 #!/usr/bin/env python3
-"""Run Adjusted Price Store Bounded Live Pilot v01."""
+"""CLI runner for Adjusted Price Store Bounded Live Pilot (FIX01)."""
 
 from __future__ import annotations
 
 import argparse
-import json
 from pathlib import Path
+import sys
 
-from trend_scanner.data.adjusted_price_pilot import (
-    EXPECTED_POPULATION_SHA256,
-    build_pilot_sample_manifest,
-    run_bounded_live_pilot,
-)
-from trend_scanner.universe.survivorship_safe_denominator_freeze import (
-    DEFAULT_POPULATION_ARTIFACT_PATH,
-)
+from trend_scanner.data.adjusted_price_pilot import run_bounded_live_pilot
 
 DEFAULT_OUTPUT_DIR = Path(
     "artifacts/data/end_to_end_data_parity/v01/adjusted_price_store_bounded_live_pilot/v01"
@@ -22,45 +15,33 @@ DEFAULT_OUTPUT_DIR = Path(
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Run bounded live pilot for AdjustedPriceStore")
-    parser.add_argument(
-        "--population-path",
-        type=Path,
-        default=Path(DEFAULT_POPULATION_ARTIFACT_PATH),
-        help="Path to frozen historical common population artifact",
-    )
+    parser = argparse.ArgumentParser(description="Run Adjusted Price Store Bounded Live Pilot FIX01")
     parser.add_argument(
         "--output-dir",
         type=Path,
         default=DEFAULT_OUTPUT_DIR,
-        help="Directory to write pilot artifacts",
+        help="Directory to save canonical pilot artifacts",
     )
     args = parser.parse_args()
 
-    print("======================================================================")
-    print("ADJUSTED PRICE STORE BOUNDED LIVE PILOT V01")
-    print("======================================================================")
-    print(f"Population Path: {args.population_path}")
-    print(f"Output Directory: {args.output_dir}")
+    print(f"Starting Adjusted Price Store Bounded Live Pilot (FIX01)...")
+    print(f"Output directory: {args.output_dir}")
 
-    manifest = build_pilot_sample_manifest(args.population_path)
-    print(f"Constructed stratified sample manifest: {len(manifest)} samples")
+    pilot_data = run_bounded_live_pilot(output_dir=args.output_dir)
+    summary = pilot_data["summary"]
 
-    print("\nExecuting bounded live pilot queries...")
-    output = run_bounded_live_pilot(
-        samples=manifest,
-        population_path=args.population_path,
-        output_dir=args.output_dir,
-    )
+    print("\n--- Pilot Execution Completed ---")
+    print(f"Final Verdict: {summary['final_verdict']}")
+    print(f"Next State: {summary['next_state']}")
+    print(f"Total Samples: {summary['sample_counts']['total_samples']}")
+    print(f"Eligible Full: {summary['outcome_counts']['eligible_full']}")
+    print(f"Alpha 23 Supported: {summary['group_summaries']['alpha_23_census']['supported']}/23")
+    print(f"Data Quality: duplicates={summary['data_quality']['total_duplicate_rows']}, "
+          f"invalid_ohlc={summary['data_quality']['total_invalid_ohlc_rows']}, "
+          f"future_rows={summary['data_quality']['total_future_rows']}")
 
-    summary = output["summary"]
-    print("\n======================================================================")
-    print(f"PILOT EXECUTION RESULT: {summary['final_verdict']}")
-    print("======================================================================")
-    print(json.dumps(summary, indent=2, ensure_ascii=False))
-
-    return 0 if summary["final_verdict"] in ("ACCEPT", "CONDITIONAL") else 1
+    return 0 if summary["final_verdict"] == "ACCEPT" else 1
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    sys.exit(main())

@@ -17,13 +17,21 @@ _PYKRX_COLUMNS = {"시가": "open", "고가": "high", "저가": "low", "종가":
 _FORBIDDEN_OUTPUT_COLUMNS = {"volume", "trading_value", "market_cap", "listed_shares"}
 
 
+import re
+
+_TICKER_RE = re.compile(r"^[0-9A-Z]{6}$")
+
+
 def normalize_ticker(ticker: str | int) -> str:
     """Normalize the equity ticker to the six-digit project representation."""
 
     value = str(ticker).strip()
-    if not value or not value.isdigit() or len(value) > 6:
+    if not value or len(value) > 6:
         raise MarketDataError(f"유효하지 않은 6자리 종목코드입니다: {ticker!r}")
-    return value.zfill(6)
+    zfilled = value.zfill(6)
+    if not _TICKER_RE.match(zfilled):
+        raise MarketDataError(f"유효하지 않은 6자리 종목코드입니다: {ticker!r}")
+    return zfilled
 
 
 def _empty_adjusted_frame() -> pd.DataFrame:

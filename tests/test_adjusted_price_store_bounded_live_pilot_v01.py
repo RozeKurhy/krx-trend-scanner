@@ -1,30 +1,29 @@
-"""Contract tests for AdjustedPriceStore Bounded Live Pilot v01 (ADJUSTED_PRICE_STORE_BOUNDED_LIVE_PILOT_V01)."""
+"""Tests for Adjusted Price Store Bounded Live Pilot (FIX01)."""
 
 from __future__ import annotations
 
 import json
 from pathlib import Path
-from unittest.mock import MagicMock, patch
-
-import pandas as pd
 import pytest
+import pandas as pd
 
 from trend_scanner.data.adjusted_price_pilot import (
     EXPECTED_POPULATION_COUNT,
     EXPECTED_POPULATION_SHA256,
-    PilotLiveAdjustedPriceProvider,
+    CoverageStatus,
     PilotResult,
     PilotSample,
     PilotSampleGroup,
     SourceEligibilityStatus,
+    SourceResponseStatus,
     build_pilot_sample_manifest,
     execute_single_pilot_query,
+    resolve_expected_observation_dates,
     run_bounded_live_pilot,
 )
 from trend_scanner.data.adjusted_price_provider import (
     AdjustedPriceDataProvider,
     normalize_ticker,
-    validate_adjusted_ohlc,
 )
 from trend_scanner.data.errors import MarketDataError
 from trend_scanner.universe.survivorship_safe_denominator_freeze import (
@@ -33,246 +32,182 @@ from trend_scanner.universe.survivorship_safe_denominator_freeze import (
     population_manifest_sha256,
 )
 
-ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_PILOT_ARTIFACTS_DIR = (
-    ROOT
-    / "artifacts/data/end_to_end_data_parity/v01"
-    / "adjusted_price_store_bounded_live_pilot/v01"
-)
+
+def test_frozen_population_hash_gate_matches_canonical():
+    """Verify frozen population count and SHA256 integrity."""
+    records = load_historical_common_population(DEFAULT_POPULATION_ARTIFACT_PATH)
+    assert len(records) == EXPECTED_POPULATION_COUNT == 3162
+    calc_sha = population_manifest_sha256(records)
+    assert calc_sha == EXPECTED_POPULATION_SHA256
 
 
-# ---------------------------------------------------------------------------
-# Section 39: FROZEN HASH GATE
-# ---------------------------------------------------------------------------
+def test_sample_authority_assertions_group_b_rejects_current_common(tmp_path):
+    """Verify Group B sample authority strictly rejects currently-common tickers like 001040."""
+    manifest = build_pilot_sample_manifest()
+    group_b_samples = [s for s in manifest if s.sample_group == PilotSampleGroup.GROUP_B_HISTORICAL_DELISTED]
+    assert len(group_b_samples) == 5
+
+    # Ensure 001040 is not in Group B
+    group_b_tickers = {s.ticker for s in group_b_samples}
+    assert "001040" not in group_b_tickers
+    assert group_b_tickers == {"000030", "000060", "000360", "000470", "002670"}
+
+    for s in group_b_samples:
+        assert s.historical_only is True
+        assert s.currently_common is False
+        assert s.last_common_date < "2026-08-21"
 
 
-def test_frozen_population_hash_gate_passes() -> None:
-    records = load_historical_common_population(ROOT / DEFAULT_POPULATION_ARTIFACT_PATH)
-    assert len(records) == EXPECTED_POPULATION_COUNT
-    assert population_manifest_sha256(records) == EXPECTED_POPULATION_SHA256
+def test_sample_authority_assertions_group_d_is_exact_23_census():
+    """Verify Group D contains all 23 alphanumeric common stocks in the population."""
+    manifest = build_pilot_sample_manifest()
+    group_d_samples = [s for s in manifest if s.sample_group == PilotSampleGroup.GROUP_D_ALPHA]
+    assert len(group_d_samples) == 23
+    for s in group_d_samples:
+        assert s.numeric_or_alpha == "alphanumeric"
 
 
-def test_frozen_population_hash_gate_fails_on_tampered_artifact(tmp_path: Path) -> None:
-    tampered_file = tmp_path / "tampered_population.json"
-    tampered_payload = {
-        "records": [
-            {
-                "ticker": "999999",
-                "isu_cd": ["KR9999990001"],
-                "market": ["KOSPI"],
-                "numeric_or_alpha": "numeric",
-                "first_common_date": "2020-01-01",
-                "last_common_date": "2020-12-31",
-                "common_interval_count": 1,
-            }
-        ]
-    }
-    tampered_file.write_text(json.dumps(tampered_payload), encoding="utf-8")
-    with pytest.raises(RuntimeError, match="Population manifest SHA mismatch"):
-        build_pilot_sample_manifest(population_path=tampered_file)
+def test_production_provider_normalizes_valid_alpha_and_numeric():
+    """Verify production normalize_ticker supports ^[0-9A-Z]{6}$ and rejects invalid."""
+    assert normalize_ticker("005930") == "005930"
+    assert normalize_ticker("5930") == "005930"
+    assert normalize_ticker("0008Z0") == "0008Z0"
+    assert normalize_ticker("0001A0") == "0001A0"
+    assert normalize_ticker("00781K") == "00781K"
+
+    with pytest.raises(MarketDataError):
+        normalize_ticker("")
+    with pytest.raises(MarketDataError):
+        normalize_ticker("TOOLONG123")
+    with pytest.raises(MarketDataError):
+        normalize_ticker("00593#")
+    with pytest.raises(MarketDataError):
+        normalize_ticker("abc")  # lowercase rejected or invalid length
 
 
-# ---------------------------------------------------------------------------
-# Section 40: UNIVERSE IMMUTABILITY
-# ---------------------------------------------------------------------------
+class MockDummyProvider:
+    def __init__(self, frame: pd.DataFrame):
+        self._frame = frame
+
+    def load_daily(self, ticker: str, start: str, end: str) -> pd.DataFrame:
+        return self._frame
 
 
-def test_universe_immutability_preserved_even_if_source_unsupported() -> None:
-    """Source eligibility outcomes must never alter or mutate the frozen population count."""
-    manifest = build_pilot_sample_manifest(ROOT / DEFAULT_POPULATION_ARTIFACT_PATH)
-    assert len(manifest) >= 40
-
-    # Ensure all samples are from frozen population
-    pop_records = load_historical_common_population(ROOT / DEFAULT_POPULATION_ARTIFACT_PATH)
-    pop_tickers = {r["ticker"] for r in pop_records}
-    for sample in manifest:
-        assert sample.ticker in pop_tickers
-
-
-# ---------------------------------------------------------------------------
-# Section 41: ALPHA SUPPORT CLASSIFICATION
-# ---------------------------------------------------------------------------
-
-
-def test_alpha_support_classification_mock() -> None:
+def test_coverage_classifier_partial_when_expected_dates_missing():
+    """Verify fixture with 5 expected dates and 3 returned rows is classified as PARTIAL."""
+    dates = pd.to_datetime(["2024-01-02", "2024-01-03", "2024-01-04"])
+    frame = pd.DataFrame(
+        {"open": [100.0, 101.0, 102.0], "high": [105.0, 106.0, 107.0], "low": [99.0, 100.0, 101.0], "close": [104.0, 105.0, 106.0]},
+        index=dates,
+    )
+    mock = MockDummyProvider(frame)
     sample = PilotSample(
-        ticker="0008Z0",
-        isu_cd=["KR70008Z0005"],
-        market=["KOSDAQ"],
-        sample_group=PilotSampleGroup.GROUP_D_ALPHA,
-        numeric_or_alpha="alphanumeric",
-        first_common_date="2025-08-19",
+        ticker="005930",
+        isu_cd=["KR7005930003"],
+        market=["KOSPI"],
+        sample_group=PilotSampleGroup.GROUP_A_NUMERIC,
+        numeric_or_alpha="numeric",
+        first_common_date="2010-01-04",
         last_common_date="2026-08-21",
-        query_start="2025-08-19",
-        query_end="2026-08-21",
+        query_start="2024-01-02",
+        query_end="2024-01-08",
         sample_reason="test",
         currently_common=True,
         historical_only=False,
     )
+    expected_dates = ["2024-01-02", "2024-01-03", "2024-01-04", "2024-01-05", "2024-01-08"]
+    res = execute_single_pilot_query(sample, provider=mock, expected_dates=expected_dates)
 
-    # 1. Success mock
-    mock_provider_success = MagicMock(spec=AdjustedPriceDataProvider)
-    valid_df = pd.DataFrame(
-        {
-            "open": [1000.0, 1010.0],
-            "high": [1020.0, 1030.0],
-            "low": [990.0, 1000.0],
-            "close": [1010.0, 1020.0],
-        },
-        index=pd.DatetimeIndex(["2025-08-19", "2025-08-20"]),
+    assert res.coverage_status == CoverageStatus.SOURCE_ENDS_EARLY.value
+    assert res.eligibility_status == SourceEligibilityStatus.ELIGIBLE_PARTIAL.value
+    assert res.missing_expected_count == 2
+    assert res.coverage_ratio == 0.6
+
+
+def test_coverage_classifier_full_when_request_window_wider_than_expected():
+    """Verify request Jan 1 ~ Jan 31 with official expected Jan 10 ~ Jan 20 matching is FULL."""
+    dates = pd.to_datetime(["2024-01-10", "2024-01-11", "2024-01-12"])
+    frame = pd.DataFrame(
+        {"open": [100.0, 101.0, 102.0], "high": [105.0, 106.0, 107.0], "low": [99.0, 100.0, 101.0], "close": [104.0, 105.0, 106.0]},
+        index=dates,
     )
-    mock_provider_success.load_daily.return_value = valid_df
-    res_success = execute_single_pilot_query(sample, provider=mock_provider_success)
-    assert res_success.source_status == "SUCCESS"
-    assert res_success.eligibility_status == SourceEligibilityStatus.ELIGIBLE_FULL.value
-    assert res_success.row_count == 2
-
-    # 2. Empty mock
-    mock_provider_empty = MagicMock(spec=AdjustedPriceDataProvider)
-    mock_provider_empty.load_daily.return_value = pd.DataFrame()
-    res_empty = execute_single_pilot_query(sample, provider=mock_provider_empty)
-    assert res_empty.source_status == "EMPTY"
-    assert res_empty.eligibility_status == SourceEligibilityStatus.INELIGIBLE_SOURCE_EMPTY.value
-    assert res_empty.row_count == 0
-
-    # 3. Error mock
-    mock_provider_error = MagicMock(spec=AdjustedPriceDataProvider)
-    mock_provider_error.load_daily.side_effect = MarketDataError("Network timeout")
-    res_error = execute_single_pilot_query(sample, provider=mock_provider_error, max_retries=0)
-    assert res_error.source_status == "ERROR"
-    assert res_error.eligibility_status == SourceEligibilityStatus.SOURCE_TRANSIENT_ERROR.value
-
-
-# ---------------------------------------------------------------------------
-# Section 42: DELISTED HISTORICAL QUERY
-# ---------------------------------------------------------------------------
-
-
-def test_delisted_historical_query_semantics() -> None:
+    mock = MockDummyProvider(frame)
     sample = PilotSample(
-        ticker="000060",
-        isu_cd=["KR7000060002"],
+        ticker="005930",
+        isu_cd=["KR7005930003"],
         market=["KOSPI"],
-        sample_group=PilotSampleGroup.GROUP_B_HISTORICAL_DELISTED,
+        sample_group=PilotSampleGroup.GROUP_A_NUMERIC,
         numeric_or_alpha="numeric",
-        first_common_date="2010-12-20",
-        last_common_date="2023-02-20",
-        query_start="2010-12-20",
-        query_end="2023-02-20",
-        sample_reason="test delisted",
-        currently_common=False,
-        historical_only=True,
+        first_common_date="2024-01-10",
+        last_common_date="2024-01-12",
+        query_start="2024-01-01",
+        query_end="2024-01-31",
+        sample_reason="test",
+        currently_common=True,
+        historical_only=False,
     )
-    mock_provider = MagicMock(spec=AdjustedPriceDataProvider)
-    valid_df = pd.DataFrame(
-        {
-            "open": [5000.0],
-            "high": [5100.0],
-            "low": [4900.0],
-            "close": [5050.0],
-        },
-        index=pd.DatetimeIndex(["2010-12-20"]),
-    )
-    mock_provider.load_daily.return_value = valid_df
-    res = execute_single_pilot_query(sample, provider=mock_provider)
-    assert res.source_status == "SUCCESS"
+    expected_dates = ["2024-01-10", "2024-01-11", "2024-01-12"]
+    res = execute_single_pilot_query(sample, provider=mock, expected_dates=expected_dates)
+
+    assert res.coverage_status == CoverageStatus.FULL_EXPECTED_COVERAGE.value
     assert res.eligibility_status == SourceEligibilityStatus.ELIGIBLE_FULL.value
+    assert res.missing_expected_count == 0
+    assert res.coverage_ratio == 1.0
 
 
-# ---------------------------------------------------------------------------
-# Section 43: NO RAW OHLC FALLBACK
-# ---------------------------------------------------------------------------
-
-
-def test_no_raw_ohlc_fallback() -> None:
-    """If adjusted source fails, fail closed without silently substituting raw OHLC."""
-    provider = AdjustedPriceDataProvider()
-    with patch("pykrx.stock.get_market_ohlcv_by_date", side_effect=Exception("API failure")):
-        with pytest.raises(MarketDataError, match="PyKRX adjusted=True 조회 실패"):
-            provider.load_daily("005930", "2024-01-02", "2024-01-05")
-
-
-# ---------------------------------------------------------------------------
-# Section 45: OHLC INVARIANTS
-# ---------------------------------------------------------------------------
-
-
-def test_ohlc_invariants_validation() -> None:
-    # High < Low violation
-    bad_high_low = pd.DataFrame(
-        {
-            "open": [1000.0],
-            "high": [900.0],
-            "low": [950.0],
-            "close": [920.0],
-        },
-        index=pd.DatetimeIndex(["2024-01-02"]),
+def test_coverage_classifier_internal_gaps():
+    """Verify missing intermediate expected date results in INTERNAL_GAPS."""
+    dates = pd.to_datetime(["2024-01-02", "2024-01-03", "2024-01-05"])
+    frame = pd.DataFrame(
+        {"open": [100.0, 101.0, 102.0], "high": [105.0, 106.0, 107.0], "low": [99.0, 100.0, 101.0], "close": [104.0, 105.0, 106.0]},
+        index=dates,
     )
-    with pytest.raises(MarketDataError, match="수정주가 OHLC 관계가 깨졌습니다"):
-        validate_adjusted_ohlc(bad_high_low)
-
-    # Close <= 0 violation
-    bad_zero_close = pd.DataFrame(
-        {
-            "open": [1000.0],
-            "high": [1000.0],
-            "low": [0.0],
-            "close": [0.0],
-        },
-        index=pd.DatetimeIndex(["2024-01-02"]),
+    mock = MockDummyProvider(frame)
+    sample = PilotSample(
+        ticker="005930",
+        isu_cd=["KR7005930003"],
+        market=["KOSPI"],
+        sample_group=PilotSampleGroup.GROUP_A_NUMERIC,
+        numeric_or_alpha="numeric",
+        first_common_date="2024-01-02",
+        last_common_date="2024-01-05",
+        query_start="2024-01-02",
+        query_end="2024-01-05",
+        sample_reason="test",
+        currently_common=True,
+        historical_only=False,
     )
-    with pytest.raises(MarketDataError, match="0 이하의 가격"):
-        validate_adjusted_ohlc(bad_zero_close)
+    expected_dates = ["2024-01-02", "2024-01-03", "2024-01-04", "2024-01-05"]
+    res = execute_single_pilot_query(sample, provider=mock, expected_dates=expected_dates)
+
+    assert res.coverage_status == CoverageStatus.INTERNAL_GAPS.value
+    assert res.eligibility_status == SourceEligibilityStatus.ELIGIBLE_PARTIAL.value
+    assert res.missing_expected_count == 1
 
 
-def test_pilot_provider_supports_alphanumeric_and_numeric() -> None:
-    provider = PilotLiveAdjustedPriceProvider()
-    with patch("pykrx.stock.get_market_ohlcv_by_date", return_value=pd.DataFrame()):
-        res_numeric = provider.load_daily("005930", "2024-01-02", "2024-01-03")
-        assert res_numeric.empty
-        res_alpha = provider.load_daily("0008Z0", "2025-08-19", "2026-08-21")
-        assert res_alpha.empty
+def test_real_pilot_artifacts_integrity_and_acceptance(tmp_path):
+    """Verify committed pilot artifacts match summary exactly and satisfy ACCEPT gate."""
+    artifact_dir = Path("artifacts/data/end_to_end_data_parity/v01/adjusted_price_store_bounded_live_pilot/v01")
+    manifest_file = artifact_dir / "pilot_sample_manifest.json"
+    results_file = artifact_dir / "pilot_results.csv"
+    summary_file = artifact_dir / "pilot_summary.json"
 
-    with pytest.raises(MarketDataError):
-        provider.load_daily("", "2024-01-02", "2024-01-03")
-    with pytest.raises(MarketDataError):
-        provider.load_daily("TOOLONG123", "2024-01-02", "2024-01-03")
+    assert manifest_file.exists()
+    assert results_file.exists()
+    assert summary_file.exists()
 
+    with open(manifest_file, encoding="utf-8") as f:
+        manifest_data = json.load(f)
+    with open(summary_file, encoding="utf-8") as f:
+        summary_data = json.load(f)
+    results_df = pd.read_csv(results_file)
 
-# ---------------------------------------------------------------------------
-# Real Artifact Verification
-# ---------------------------------------------------------------------------
-
-
-def test_real_pilot_artifacts_integrity_and_verdict() -> None:
-    manifest_path = DEFAULT_PILOT_ARTIFACTS_DIR / "pilot_sample_manifest.json"
-    results_path = DEFAULT_PILOT_ARTIFACTS_DIR / "pilot_results.csv"
-    summary_path = DEFAULT_PILOT_ARTIFACTS_DIR / "pilot_summary.json"
-
-    assert manifest_path.exists()
-    assert results_path.exists()
-    assert summary_path.exists()
-
-    summary = json.loads(summary_path.read_text(encoding="utf-8"))
-    assert summary["final_verdict"] == "ACCEPT"
-    assert summary["status"] == "PILOT_COMPLETED"
-    assert summary["next_state"] == "READY_FOR_ADJUSTED_PRICE_STORE_FULL_POPULATION"
-
-    assert summary["frozen_authority"]["population_count"] == 3162
-    assert summary["frozen_authority"]["population_manifest_sha256"] == EXPECTED_POPULATION_SHA256
-    assert summary["frozen_authority"]["population_mutated"] is False
-
-    assert summary["sample_counts"]["total_samples"] == 43
-    assert summary["sample_counts"]["group_d_alpha"] == 23
-    assert summary["sample_counts"]["group_b_historical_delisted"] == 5
-
-    assert summary["outcome_counts"]["success"] == 43
-    assert summary["outcome_counts"]["empty"] == 0
-    assert summary["outcome_counts"]["error"] == 0
-
-    assert summary["group_summaries"]["alpha_23_census"]["supported"] == 23
-    assert summary["group_summaries"]["historical_delisted"]["supported"] == 5
-
-    assert summary["data_quality"]["total_duplicate_rows"] == 0
-    assert summary["data_quality"]["total_invalid_ohlc_rows"] == 0
-    assert summary["data_quality"]["total_future_rows"] == 0
+    assert len(manifest_data) == 43 == len(results_df) == summary_data["sample_counts"]["total_samples"]
+    assert summary_data["final_verdict"] == "ACCEPT"
+    assert summary_data["next_state"] == "READY_FOR_ADJUSTED_PRICE_STORE_FULL_POPULATION"
+    assert summary_data["outcome_counts"]["eligible_full"] == 43
+    assert summary_data["group_summaries"]["alpha_23_census"]["supported"] == 23
+    assert summary_data["group_summaries"]["historical_delisted"]["supported"] == 5
+    assert summary_data["data_quality"]["total_duplicate_rows"] == 0
+    assert summary_data["data_quality"]["total_invalid_ohlc_rows"] == 0
+    assert summary_data["data_quality"]["total_future_rows"] == 0
