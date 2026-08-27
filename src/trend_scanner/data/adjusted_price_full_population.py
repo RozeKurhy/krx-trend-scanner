@@ -1,14 +1,15 @@
-"""Adjusted Price Store Full Population Pipeline (ADJUSTED_PRICE_STORE_FULL_POPULATION_V01).
+"""Adjusted Price Store Full Population Pipeline (ADJUSTED_PRICE_STORE_FULL_POPULATION_V01_FIX01).
 
-Acquires and validates adjusted daily OHLC for all 3,162 frozen Historical Common Population
+Acquires, validates and persists adjusted daily OHLC for all 3,162 frozen Historical Common Population
 identities using PyKRX adjusted=True as the authoritative source.
 
 Invariants:
-1. Frozen Authority: strictly validates 3,162 population and SHA256.
-2. Independent Expected Coverage: determines expected tradable dates without PyKRX feedback.
-3. Resumable Execution: checkpoints per-ticker state; skips verified COMPLETE tickers idempotently.
-4. Atomic Storage & Post-Write Verify: verifies schema, row count, date min/max, and date set match.
-5. Strict Quality Gates: fail-closed on duplicate dates, invalid OHLC relations, and future rows.
+1. Frozen Authority: strictly validates 3,162 population count and SHA256.
+2. Checkpoint Authority Fail-Closed: raises CHECKPOINT_AUTHORITY_MISMATCH on tampered population or cutoff.
+3. Independent Expected Coverage: determines expected tradable dates without PyKRX feedback.
+4. Exact Resume Accounting: reused COMPLETE tickers have physical attempts = 0 and reused_without_network = True.
+5. Systemic Circuit Breakers: halts safely on consecutive errors or consecutive empties.
+6. Atomic Storage & Post-Write Verify: verifies schema, row count, date min/max, and date set match.
 """
 
 from __future__ import annotations
@@ -63,6 +64,7 @@ from trend_scanner.universe.survivorship_safe_denominator_freeze import (
 DEFAULT_FULL_POPULATION_DIR = Path(
     "artifacts/data/end_to_end_data_parity/v01/adjusted_price_store_full_population/v01"
 )
+CHECKPOINT_SCHEMA_VERSION = "full_population_checkpoint_v01"
 
 
 class AcquisitionStatus(str, Enum):
@@ -99,6 +101,7 @@ class TickerAcquisitionRecord:
     acquisition_status: str
     attempt_count: int
     retry_count: int
+    reused_without_network: bool
     stored_row_count: int
     stored_start: str | None
     stored_end: str | None
@@ -180,6 +183,8 @@ class FullPopulationRunner:
         self.results_csv_path = self.artifact_dir / "full_population_results.csv"
         self.summary_path = self.artifact_dir / "full_population_summary.json"
         self.closure_manifest_path = self.artifact_dir / "full_population_closure_manifest.json"
+        self.resume_audit_path = self.artifact_dir / "full_population_resume_audit.json"
+        self.failures_csv_path = self.artifact_dir / "full_population_failures.csv"
 
     def load_population(self) -> list[dict[str, Any]]:
         records = load_historical_common_population(self.population_path)
@@ -198,26 +203,45 @@ class FullPopulationRunner:
         if self.checkpoint_path.exists():
             try:
                 data = json.loads(self.checkpoint_path.read_text(encoding="utf-8"))
-                if (
-                    data.get("population_count") == EXPECTED_POPULATION_COUNT
-                    and data.get("population_sha256") == EXPECTED_POPULATION_SHA256
-                ):
-                    return FullPopulationCheckpoint(
-                        schema=data.get("schema", "full_population_checkpoint_v01"),
-                        execution_id=data.get("execution_id", self.execution_id),
-                        started_at=data.get("started_at", now_iso),
-                        updated_at=now_iso,
-                        population_count=data.get("population_count", EXPECTED_POPULATION_COUNT),
-                        population_sha256=data.get("population_sha256", EXPECTED_POPULATION_SHA256),
-                        calendar_cutoff_date=data.get("calendar_cutoff_date", CANONICAL_CALENDAR_CUTOFF),
-                        completed_tickers=data.get("completed_tickers", {}),
-                        in_progress_tickers=data.get("in_progress_tickers", {}),
-                    )
             except Exception as exc:
-                raise RuntimeError(f"CHECKPOINT_CORRUPTION: Failed to load existing checkpoint: {exc}")
+                raise RuntimeError(f"CHECKPOINT_CORRUPTION: Failed to parse checkpoint JSON: {exc}")
+
+            if data.get("schema") != CHECKPOINT_SCHEMA_VERSION:
+                raise RuntimeError(
+                    f"CHECKPOINT_SCHEMA_MISMATCH: Expected schema '{CHECKPOINT_SCHEMA_VERSION}', "
+                    f"got '{data.get('schema')}'"
+                )
+
+            if (
+                data.get("population_count") != EXPECTED_POPULATION_COUNT
+                or data.get("population_sha256") != EXPECTED_POPULATION_SHA256
+            ):
+                raise RuntimeError(
+                    f"CHECKPOINT_AUTHORITY_MISMATCH: Checkpoint population metadata "
+                    f"(count={data.get('population_count')}, sha256={data.get('population_sha256')}) "
+                    f"does not match frozen authority (count={EXPECTED_POPULATION_COUNT}, sha256={EXPECTED_POPULATION_SHA256})"
+                )
+
+            if data.get("calendar_cutoff_date") != CANONICAL_CALENDAR_CUTOFF:
+                raise RuntimeError(
+                    f"CHECKPOINT_AUTHORITY_MISMATCH: Checkpoint cutoff '{data.get('calendar_cutoff_date')}' "
+                    f"does not match canonical cutoff '{CANONICAL_CALENDAR_CUTOFF}'"
+                )
+
+            return FullPopulationCheckpoint(
+                schema=data.get("schema", CHECKPOINT_SCHEMA_VERSION),
+                execution_id=data.get("execution_id", self.execution_id),
+                started_at=data.get("started_at", now_iso),
+                updated_at=now_iso,
+                population_count=data.get("population_count", EXPECTED_POPULATION_COUNT),
+                population_sha256=data.get("population_sha256", EXPECTED_POPULATION_SHA256),
+                calendar_cutoff_date=data.get("calendar_cutoff_date", CANONICAL_CALENDAR_CUTOFF),
+                completed_tickers=data.get("completed_tickers", {}),
+                in_progress_tickers=data.get("in_progress_tickers", {}),
+            )
 
         return FullPopulationCheckpoint(
-            schema="full_population_checkpoint_v01",
+            schema=CHECKPOINT_SCHEMA_VERSION,
             execution_id=self.execution_id,
             started_at=now_iso,
             updated_at=now_iso,
@@ -236,7 +260,7 @@ class FullPopulationRunner:
         os.replace(temp_p, self.checkpoint_path)
 
     def dry_run_classify(self) -> dict[str, Any]:
-        """Classify all 3,162 identities without performing any network calls."""
+        """Strictly classify all 3,162 identities without performing any network calls."""
         population = self.load_population()
         checkpoint = self.load_or_create_checkpoint(population)
 
@@ -249,8 +273,11 @@ class FullPopulationRunner:
 
         for rec in population:
             t = rec["ticker"]
+            req_start = rec["first_common_date"]
+            req_end = min(rec["last_common_date"], CANONICAL_CALENDAR_CUTOFF)
+
+            # 1. If recorded as COMPLETE in checkpoint, verify stored physical file
             if t in checkpoint.completed_tickers:
-                # Check store verification
                 info = checkpoint.completed_tickers[t]
                 is_valid, _ = verify_stored_ticker_integrity(
                     self.store, t, info.get("stored_row_count", 0), info.get("actual_dates", [])
@@ -259,17 +286,23 @@ class FullPopulationRunner:
                     already_complete.append(t)
                     continue
 
-            # Check if existing in store directly
+            # 2. Strict store check (without checkpoint, must strictly verify against independent expected resolution)
             if self.store.exists(t):
                 try:
                     df = self.store.load_daily(t)
-                    if not df.empty:
+                    resolution = resolve_expected_coverage(t, req_start, req_end)
+                    if (
+                        resolution.authority_status == AuthorityStatus.VALID.value
+                        and resolution.expected_tradable_count > 0
+                        and len(df) == resolution.expected_tradable_count
+                        and list(df.index.strftime("%Y-%m-%d")) == list(resolution.expected_tradable_dates)
+                    ):
                         already_complete.append(t)
                         continue
                 except Exception:
                     pass
 
-            # If not complete, check checkpoint in-progress status
+            # 3. Check in-progress status from checkpoint
             if t in checkpoint.in_progress_tickers:
                 st = checkpoint.in_progress_tickers[t].get("acquisition_status")
                 if st == AcquisitionStatus.PARTIAL.value:
@@ -319,14 +352,16 @@ class FullPopulationRunner:
 
         attempt_count = 0
         retry_count = 0
+        reused_without_network = False
         last_error: Exception | None = None
         frame: pd.DataFrame = pd.DataFrame()
         actual_dates: list[str] = []
 
         if cached_info is not None and "actual_dates" in cached_info:
             actual_dates = cached_info["actual_dates"]
-            attempt_count = cached_info.get("attempt_count", 1)
-            retry_count = cached_info.get("retry_count", 0)
+            attempt_count = 0  # Reused from cache without network call
+            retry_count = 0
+            reused_without_network = True
         else:
             if provider is None:
                 provider = self.provider or AdjustedPriceDataProvider()
@@ -493,6 +528,7 @@ class FullPopulationRunner:
             acquisition_status=acq_status,
             attempt_count=attempt_count,
             retry_count=retry_count,
+            reused_without_network=reused_without_network,
             stored_row_count=stored_row_count,
             stored_start=stored_start,
             stored_end=stored_end,
@@ -505,12 +541,12 @@ class FullPopulationRunner:
             updated_at=now_iso,
         )
 
-
     def run_acquisition(
         self,
         provider: AdjustedPriceDataProvider | None = None,
         dry_run: bool = False,
         circuit_breaker_error_threshold: int = 20,
+        circuit_breaker_empty_threshold: int = 20,
         progress_callback: Callable[[int, int, str, str], None] | None = None,
     ) -> dict[str, Any]:
         """Execute full population acquisition with resumability, rate throttling and circuit-breaker."""
@@ -520,6 +556,7 @@ class FullPopulationRunner:
 
         total_population = len(population)
         consecutive_errors = 0
+        consecutive_empties = 0
 
         # Preflight Classification
         preflight_summary = self.dry_run_classify()
@@ -540,7 +577,6 @@ class FullPopulationRunner:
             # Resumability: if already complete and verified, reuse without network call
             if t in checkpoint.completed_tickers:
                 info = checkpoint.completed_tickers[t]
-                # Re-verify store
                 is_valid, _ = verify_stored_ticker_integrity(
                     self.store, t, info.get("stored_row_count", 0), info.get("actual_dates", [])
                 )
@@ -548,26 +584,38 @@ class FullPopulationRunner:
                     rec_obj = self.process_single_ticker(rec, cached_info=info)
                     records.append(rec_obj)
                     consecutive_errors = 0
+                    consecutive_empties = 0
                     if progress_callback:
                         progress_callback(idx, total_population, t, "COMPLETE (REUSED)")
                     continue
 
-            # Query via provider
+            # Query via provider with gentle rate-throttling to prevent KRX IP block
             rec_obj = self.process_single_ticker(rec, provider=provider)
             records.append(rec_obj)
+            if not rec_obj.reused_without_network:
+                time.sleep(0.25)  # Gentle delay between live PyKRX requests
 
             if rec_obj.acquisition_status == AcquisitionStatus.COMPLETE.value:
                 consecutive_errors = 0
+                consecutive_empties = 0
+                actual_dates_list = (
+                    self.store.load_daily(t).index.strftime("%Y-%m-%d").tolist()
+                    if self.store.exists(t)
+                    else []
+                )
                 checkpoint.completed_tickers[t] = {
                     "ticker": t,
                     "acquisition_status": rec_obj.acquisition_status,
+                    "requested_start": rec_obj.requested_start,
+                    "requested_end": rec_obj.requested_end,
                     "stored_row_count": rec_obj.stored_row_count,
                     "expected_count": rec_obj.expected_observation_count,
                     "actual_row_count": rec_obj.actual_source_row_count,
                     "first_actual_date": rec_obj.first_actual_date,
                     "last_actual_date": rec_obj.last_actual_date,
                     "post_write_verified": rec_obj.post_write_verified,
-                    "actual_dates": self.store.load_daily(t).index.strftime("%Y-%m-%d").tolist() if self.store.exists(t) else [],
+                    "actual_dates": actual_dates_list,
+                    "source_execution_attempt_count": rec_obj.attempt_count,
                     "updated_at": rec_obj.updated_at,
                 }
                 if t in checkpoint.in_progress_tickers:
@@ -586,8 +634,13 @@ class FullPopulationRunner:
                 }
                 if rec_obj.acquisition_status == AcquisitionStatus.ERROR.value:
                     consecutive_errors += 1
+                    consecutive_empties = 0
+                elif rec_obj.acquisition_status == AcquisitionStatus.EMPTY.value:
+                    consecutive_empties += 1
+                    consecutive_errors = 0
                 else:
                     consecutive_errors = 0
+                    consecutive_empties = 0
 
             # Periodic checkpoint save every 10 tickers
             if idx % 10 == 0 or idx == total_population:
@@ -596,12 +649,18 @@ class FullPopulationRunner:
             if progress_callback:
                 progress_callback(idx, total_population, t, rec_obj.acquisition_status)
 
-            # Circuit breaker
+            # Circuit breakers
             if consecutive_errors >= circuit_breaker_error_threshold:
                 self.save_checkpoint(checkpoint)
                 raise RuntimeError(
                     f"CIRCUIT_BREAKER_TRIGGERED: Aborted after {consecutive_errors} consecutive provider errors. "
                     f"Last error on ticker {t}: {rec_obj.error_type}: {rec_obj.error_message_sanitized}"
+                )
+            if consecutive_empties >= circuit_breaker_empty_threshold:
+                self.save_checkpoint(checkpoint)
+                raise RuntimeError(
+                    f"CIRCUIT_BREAKER_TRIGGERED: Aborted after {consecutive_empties} consecutive empty responses. "
+                    f"Last empty on ticker {t} ({rec['first_common_date']} ~ {rec['last_common_date']})"
                 )
 
         # Final checkpoint save
@@ -623,7 +682,7 @@ class FullPopulationRunner:
         preflight_summary: dict[str, Any],
         duration_seconds: float,
     ) -> dict[str, Any]:
-        """Generate results CSV, manifest, summary JSON, and closure manifest."""
+        """Generate results CSV, manifest, summary JSON, closure manifest, and resume audit."""
         self.artifact_dir.mkdir(parents=True, exist_ok=True)
 
         # 1. Save Results CSV
@@ -649,17 +708,28 @@ class FullPopulationRunner:
         historical_records = [r for r in records if r.historical_only]
         historical_complete = sum(1 for r in historical_records if r.acquisition_status == AcquisitionStatus.COMPLETE.value)
 
+        total_expected_rows = sum(r.expected_observation_count for r in records)
+        total_actual_rows = sum(r.actual_source_row_count for r in records)
+        total_stored_rows = sum(r.stored_row_count for r in records)
+
         total_missing = sum(r.missing_expected_count for r in records)
         total_unexpected = sum(r.unexpected_source_date_count for r in records)
         total_duplicates = sum(r.duplicate_count for r in records)
         total_invalid_ohlc = sum(r.invalid_ohlc_count for r in records)
         total_future_rows = sum(r.future_row_count for r in records)
-        total_stored_rows = sum(r.stored_row_count for r in records)
 
         logical_queries = total_count
+        new_live_queries = sum(1 for r in records if not r.reused_without_network)
         physical_attempts = sum(r.attempt_count for r in records)
         total_retries = sum(r.retry_count for r in records)
-        reused_count = sum(1 for r in records if r.attempt_count == 0)
+        reused_count = sum(1 for r in records if r.reused_without_network)
+
+        failures = [r for r in records if r.acquisition_status != AcquisitionStatus.COMPLETE.value]
+        if failures:
+            failures_df = pd.DataFrame([asdict(r) for r in failures])
+            self.failures_csv_path.write_text(failures_df.to_csv(index=False), encoding="utf-8")
+        elif self.failures_csv_path.exists():
+            self.failures_csv_path.unlink()
 
         # Verdict evaluation
         all_complete = (complete_count == total_count == EXPECTED_POPULATION_COUNT)
@@ -689,6 +759,8 @@ class FullPopulationRunner:
             "frozen_authority": {
                 "population_count": EXPECTED_POPULATION_COUNT,
                 "population_manifest_sha256": EXPECTED_POPULATION_SHA256,
+                "pit_trading_dates_count": 4095,
+                "pit_manifest_sha256": "6b542ae05c9050dd30959d6f1b17306e4016f435a726ca7e0dff9e11008e4064",
                 "calendar_cutoff_date": CANONICAL_CALENDAR_CUTOFF,
                 "calendar_row_count": EXPECTED_CALENDAR_ROW_COUNT,
             },
@@ -716,9 +788,11 @@ class FullPopulationRunner:
                 },
             },
             "coverage_totals": {
+                "total_expected_rows": total_expected_rows,
+                "total_actual_source_rows": total_actual_rows,
+                "total_stored_rows": total_stored_rows,
                 "total_missing_expected_dates": total_missing,
                 "total_unexpected_source_dates": total_unexpected,
-                "total_stored_rows": total_stored_rows,
             },
             "data_quality_totals": {
                 "total_duplicates": total_duplicates,
@@ -726,8 +800,9 @@ class FullPopulationRunner:
                 "total_future_rows": total_future_rows,
             },
             "network_accounting": {
-                "logical_ticker_queries": logical_queries,
-                "physical_attempts": physical_attempts,
+                "population_records_processed": logical_queries,
+                "new_live_ticker_queries": new_live_queries,
+                "physical_provider_attempts": physical_attempts,
                 "retries": total_retries,
                 "reused_without_network": reused_count,
                 "krx_open_api_requests": 0,
@@ -747,6 +822,7 @@ class FullPopulationRunner:
             "execution_id": self.execution_id,
             "population_count": EXPECTED_POPULATION_COUNT,
             "population_sha256": EXPECTED_POPULATION_SHA256,
+            "pit_sha256": "6b542ae05c9050dd30959d6f1b17306e4016f435a726ca7e0dff9e11008e4064",
             "calendar_cutoff_date": CANONICAL_CALENDAR_CUTOFF,
             "source_provider": "PyKRX (get_market_ohlcv_by_date, adjusted=True)",
             "store_version": "ADJUSTED_PRICE_STORE_V01",
@@ -755,16 +831,37 @@ class FullPopulationRunner:
         }
         self.manifest_path.write_text(json.dumps(manifest_payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
-        # 5. Closure Manifest
+        # 5. Resume Audit Record
+        resume_audit_payload = {
+            "schema": "full_population_resume_audit_v01",
+            "execution_id": self.execution_id,
+            "population_total": total_count,
+            "verified_complete": complete_count,
+            "needs_fetch": total_count - complete_count,
+            "network_calls_performed": new_live_queries,
+            "physical_attempts": physical_attempts,
+            "reused_without_network": reused_count,
+            "is_idempotent": (new_live_queries == 0 if complete_count == total_count else False),
+            "updated_at": now_iso,
+        }
+        resume_audit_content = json.dumps(resume_audit_payload, indent=2, ensure_ascii=False) + "\n"
+        self.resume_audit_path.write_text(resume_audit_content, encoding="utf-8")
+        resume_audit_sha = hashlib.sha256(resume_audit_content.encode("utf-8")).hexdigest()
+
+        # 6. Closure Manifest
         closure_payload = {
             "schema": "full_population_closure_manifest_v01",
             "execution_id": self.execution_id,
             "final_verdict": verdict,
             "next_state": next_state,
             "population_sha256": EXPECTED_POPULATION_SHA256,
+            "pit_sha256": "6b542ae05c9050dd30959d6f1b17306e4016f435a726ca7e0dff9e11008e4064",
             "calendar_cutoff_date": CANONICAL_CALENDAR_CUTOFF,
-            "summary_sha256": summary_sha,
             "results_sha256": results_sha,
+            "summary_sha256": summary_sha,
+            "resume_audit_sha256": resume_audit_sha,
+            "completed_count": complete_count,
+            "failure_count": len(failures),
         }
         self.closure_manifest_path.write_text(json.dumps(closure_payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 

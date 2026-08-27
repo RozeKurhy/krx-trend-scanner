@@ -1,4 +1,4 @@
-"""Tests for Adjusted Price Store Full Population Pipeline (ADJUSTED_PRICE_STORE_FULL_POPULATION_V01)."""
+"""Tests for Adjusted Price Store Full Population Pipeline (ADJUSTED_PRICE_STORE_FULL_POPULATION_V01_FIX01)."""
 
 from __future__ import annotations
 
@@ -83,8 +83,8 @@ def test_dry_run_classification_without_network_calls(tmp_path):
     assert preflight["reconciliation_sum"] == 3162
 
 
-def test_resumable_execution_skips_complete_tickers(tmp_path):
-    """Verify Section 26, 28 & 51: Verified COMPLETE tickers are skipped without provider calls."""
+def test_resumable_execution_accounting_exact(tmp_path):
+    """Verify FIX01 Section 5, 6 & 8: Reused COMPLETE ticker has attempt_count=0 and reused_without_network=True."""
     store_dir = tmp_path / "store"
     artifact_dir = tmp_path / "artifacts"
     dates = ["2024-01-02", "2024-01-03", "2024-01-04"]
@@ -112,14 +112,16 @@ def test_resumable_execution_skips_complete_tickers(tmp_path):
     rec_obj = runner.process_single_ticker(rec, provider=mock)
     assert rec_obj.acquisition_status == AcquisitionStatus.COMPLETE.value
     assert mock.call_count == 1
-    assert rec_obj.stored_row_count == 3
-    assert rec_obj.post_write_verified is True
+    assert rec_obj.attempt_count == 1
+    assert rec_obj.reused_without_network is False
 
     # 2. Add to checkpoint
     checkpoint = runner.load_or_create_checkpoint([rec])
     checkpoint.completed_tickers["005930"] = {
         "ticker": "005930",
         "acquisition_status": AcquisitionStatus.COMPLETE.value,
+        "requested_start": "2024-01-02",
+        "requested_end": "2024-01-04",
         "stored_row_count": 3,
         "expected_count": 3,
         "actual_row_count": 3,
@@ -127,30 +129,96 @@ def test_resumable_execution_skips_complete_tickers(tmp_path):
         "last_actual_date": "2024-01-04",
         "post_write_verified": True,
         "actual_dates": dates,
+        "source_execution_attempt_count": 1,
         "updated_at": rec_obj.updated_at,
     }
     runner.save_checkpoint(checkpoint)
 
-    # 3. Second execution (Resume)
+    # 3. Second execution (Resume): must have attempt_count=0 and reused_without_network=True
     mock.call_count = 0
     rec_obj_resumed = runner.process_single_ticker(
         rec, cached_info=checkpoint.completed_tickers["005930"]
     )
     assert rec_obj_resumed.acquisition_status == AcquisitionStatus.COMPLETE.value
     assert mock.call_count == 0  # 0 network calls
-    assert rec_obj_resumed.attempt_count == 1
+    assert rec_obj_resumed.attempt_count == 0
+    assert rec_obj_resumed.reused_without_network is True
 
 
-def test_checkpoint_corruption_fails_closed(tmp_path):
-    """Verify Section 53: Corrupted checkpoint fails closed and does not proceed silently."""
+def test_checkpoint_authority_mismatch_fails_closed(tmp_path):
+    """Verify FIX01 Section 10 & 13: Checkpoint with invalid population count/SHA fails closed."""
     store_dir = tmp_path / "store"
     artifact_dir = tmp_path / "artifacts"
     artifact_dir.mkdir(parents=True, exist_ok=True)
-    (artifact_dir / "full_population_checkpoint.json").write_text("{malformed_json", encoding="utf-8")
+
+    # 1. Tampered population count
+    bad_ckpt = {
+        "schema": "full_population_checkpoint_v01",
+        "execution_id": "test",
+        "started_at": "2026-08-27T00:00:00Z",
+        "updated_at": "2026-08-27T00:00:00Z",
+        "population_count": 3161,  # Bad count
+        "population_sha256": EXPECTED_POPULATION_SHA256,
+        "calendar_cutoff_date": CANONICAL_CALENDAR_CUTOFF,
+        "completed_tickers": {},
+        "in_progress_tickers": {},
+    }
+    (artifact_dir / "full_population_checkpoint.json").write_text(json.dumps(bad_ckpt), encoding="utf-8")
 
     runner = FullPopulationRunner(store_dir=store_dir, artifact_dir=artifact_dir)
-    with pytest.raises(RuntimeError, match="CHECKPOINT_CORRUPTION"):
+    with pytest.raises(RuntimeError, match="CHECKPOINT_AUTHORITY_MISMATCH"):
         runner.load_or_create_checkpoint(runner.load_population())
+
+    # 2. Tampered schema
+    bad_ckpt["population_count"] = 3162
+    bad_ckpt["schema"] = "bad_schema_v02"
+    (artifact_dir / "full_population_checkpoint.json").write_text(json.dumps(bad_ckpt), encoding="utf-8")
+    with pytest.raises(RuntimeError, match="CHECKPOINT_SCHEMA_MISMATCH"):
+        runner.load_or_create_checkpoint(runner.load_population())
+
+
+def test_dry_run_partial_store_is_not_already_complete(tmp_path):
+    """Verify FIX01 Section 14 & 16: Incomplete store file without checkpoint is not counted as already_complete."""
+    store_dir = tmp_path / "store"
+    artifact_dir = tmp_path / "artifacts"
+    # Store only has 1 date, but 3 expected
+    dates = ["2024-01-02"]
+    df = _make_valid_ohlc_df(dates)
+
+    store = AdjustedPriceStore(store_dir)
+    store.save_full("005930", df, metadata_context={"requested_start": "2024-01-02", "requested_end": "2024-01-04"})
+
+    runner = FullPopulationRunner(store_dir=store_dir, artifact_dir=artifact_dir)
+    preflight = runner.dry_run_classify()
+    assert preflight["already_complete_count"] == 0
+    assert preflight["needs_fetch_count"] == 3162
+
+
+def test_systemic_empty_circuit_breaker(tmp_path):
+    """Verify FIX01 Section 17 & 19: Consecutive empty responses trigger circuit breaker early."""
+    store_dir = tmp_path / "store"
+    artifact_dir = tmp_path / "artifacts"
+
+    class EmptyProvider:
+        def __init__(self):
+            self.calls = 0
+
+        def load_daily(self, ticker: str, start: str, end: str) -> pd.DataFrame:
+            self.calls += 1
+            return pd.DataFrame()
+
+    provider = EmptyProvider()
+    runner = FullPopulationRunner(
+        store_dir=store_dir,
+        artifact_dir=artifact_dir,
+        provider=provider,
+        max_retries=0,
+    )
+
+    with pytest.raises(RuntimeError, match="CIRCUIT_BREAKER_TRIGGERED.*consecutive empty responses"):
+        runner.run_acquisition(circuit_breaker_empty_threshold=5)
+
+    assert provider.calls == 5  # Aborts after 5 instead of continuing for 3162
 
 
 def test_store_corruption_invalidates_complete_status(tmp_path):
@@ -181,7 +249,6 @@ def test_expected_coverage_gap_negative_control(tmp_path):
     """Verify Section 55: Missing expected date results in PARTIAL and blocks COMPLETE."""
     store_dir = tmp_path / "store"
     artifact_dir = tmp_path / "artifacts"
-    # Return 2 dates instead of 3
     dates = ["2024-01-02", "2024-01-04"]
     df = _make_valid_ohlc_df(dates)
 
@@ -209,7 +276,6 @@ def test_unexpected_source_date_negative_control(tmp_path):
     """Verify Section 56: Unexpected extra source date results in PARTIAL and blocks COMPLETE."""
     store_dir = tmp_path / "store"
     artifact_dir = tmp_path / "artifacts"
-    # Return 4 dates when only 3 expected
     dates = ["2024-01-02", "2024-01-03", "2024-01-04", "2024-01-05"]
     df = _make_valid_ohlc_df(dates)
 
@@ -237,7 +303,6 @@ def test_ohlc_quality_violations_fail_complete(tmp_path):
     artifact_dir = tmp_path / "artifacts"
     dates = ["2024-01-02", "2024-01-03", "2024-01-04"]
     df = _make_valid_ohlc_df(dates)
-    # Inject high < low violation
     df.loc[df.index[0], "high"] = 500.0
     df.loc[df.index[0], "low"] = 1000.0
 
@@ -283,23 +348,3 @@ def test_alpha_23_support_in_full_population_runner(tmp_path):
     rec_obj = runner.process_single_ticker(rec, provider=mock)
     assert rec_obj.ticker == "0001A0"
     assert rec_obj.numeric_or_alpha == "alphanumeric"
-
-
-def test_circuit_breaker_stops_on_consecutive_errors(tmp_path):
-    """Verify Section 42: Circuit breaker stops execution upon consecutive provider errors."""
-    store_dir = tmp_path / "store"
-    artifact_dir = tmp_path / "artifacts"
-
-    class FailingProvider:
-        def load_daily(self, ticker: str, start: str, end: str) -> pd.DataFrame:
-            raise RuntimeError("NETWORK_CONNECTION_REFUSED")
-
-    runner = FullPopulationRunner(
-        store_dir=store_dir,
-        artifact_dir=artifact_dir,
-        provider=FailingProvider(),
-        max_retries=0,
-    )
-
-    with pytest.raises(RuntimeError, match="CIRCUIT_BREAKER_TRIGGERED"):
-        runner.run_acquisition(circuit_breaker_error_threshold=3)

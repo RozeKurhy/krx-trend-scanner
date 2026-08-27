@@ -101,6 +101,26 @@ def validate_adjusted_ohlc(frame: pd.DataFrame) -> None:
         raise MarketDataError(f"수정주가 OHLC 관계가 깨졌습니다: {bad_dates}")
 
 
+import signal
+
+
+class _TimeoutContext:
+    def __init__(self, seconds: int = 8) -> None:
+        self.seconds = seconds
+
+    def _handler(self, signum: Any, frame: Any) -> None:
+        raise TimeoutError(f"PyKRX 요청이 {self.seconds}초 내에 응답하지 않아 타임아웃되었습니다.")
+
+    def __enter__(self) -> _TimeoutContext:
+        self.old_handler = signal.signal(signal.SIGALRM, self._handler)
+        signal.alarm(self.seconds)
+        return self
+
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        signal.alarm(0)
+        signal.signal(signal.SIGALRM, self.old_handler)
+
+
 class AdjustedPriceDataProvider:
     """Fetch adjusted OHLC only from PyKRX."""
 
@@ -135,12 +155,13 @@ class AdjustedPriceDataProvider:
         try:
             from pykrx import stock
 
-            raw = stock.get_market_ohlcv_by_date(
-                start,
-                end,
-                normalized_ticker,
-                adjusted=True,
-            )
+            with _TimeoutContext(seconds=8):
+                raw = stock.get_market_ohlcv_by_date(
+                    start,
+                    end,
+                    normalized_ticker,
+                    adjusted=True,
+                )
         except Exception as exc:
             raise MarketDataError(
                 f"PyKRX adjusted=True 조회 실패 (ticker={normalized_ticker}, start={start}, end={end}): {exc}"

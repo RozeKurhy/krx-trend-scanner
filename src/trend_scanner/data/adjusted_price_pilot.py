@@ -15,6 +15,7 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass
 from enum import Enum
+import functools
 import hashlib
 import json
 from pathlib import Path
@@ -217,6 +218,24 @@ def is_nontradable_or_phantom_row(open_val: float, high_val: float, low_val: flo
     return open_val == 0.0 and high_val == 0.0 and low_val == 0.0 and close_val > 0.0
 
 
+@functools.lru_cache(maxsize=4)
+def _load_cached_calendar_dates(path: str) -> tuple[str, ...]:
+    with open(path, encoding="utf-8") as f:
+        return tuple(json.load(f).get("trading_dates", []))
+
+
+@functools.lru_cache(maxsize=4)
+def _load_cached_pit_intervals_by_ticker(path: str) -> dict[str, list[dict[str, Any]]]:
+    with open(path, encoding="utf-8") as f:
+        intervals = json.load(f).get("intervals", [])
+    mapping: dict[str, list[dict[str, Any]]] = {}
+    for it in intervals:
+        t = it.get("ticker")
+        if t:
+            mapping.setdefault(t, []).append(it)
+    return mapping
+
+
 def resolve_expected_coverage(
     ticker: str,
     query_start: str,
@@ -233,13 +252,17 @@ def resolve_expected_coverage(
     2. Canonical Historical Suspension Authority Artifact + PIT Common Calendar
     3. Pure PIT Common Calendar Approximation
     """
-    # 1. Primary: Local Canonical Stock Parquet (with OHLC tradability check)
+    # 1. Primary: Local Canonical Stock Parquet (with OHLC tradability check) if it covers full window
     raw_p = stocks_dir / f"{ticker}.parquet"
     if raw_p.exists():
         try:
             df = pd.read_parquet(raw_p, columns=["open", "high", "low", "close"])
             sliced = df.loc[query_start:query_end]
-            if not sliced.empty:
+            # Check if sliced parquet actually covers the requested window endpoints
+            covers_start = not sliced.empty and sliced.index.min() <= pd.Timestamp(query_start)
+            covers_end = not sliced.empty and sliced.index.max() >= pd.Timestamp(query_end)
+
+            if covers_start and covers_end:
                 raw_dates = [d.strftime("%Y-%m-%d") for d in sliced.index]
                 nontradable: list[str] = []
                 tradable: list[str] = []
@@ -265,35 +288,19 @@ def resolve_expected_coverage(
                     nontradable_dates=tuple(nontradable),
                     source_path=str(raw_p),
                 )
-        except Exception as exc:
-            return ExpectedCoverageResolution(
-                ticker=ticker,
-                query_start=query_start,
-                query_end=query_end,
-                authority_status=AuthorityStatus.ERROR.value,
-                authority_source="LOCAL_CANONICAL_STOCK_RAW",
-                authority_quality=AuthorityQuality.OBSERVED_DATES_WITH_TRADABILITY.value,
-                raw_observed_count=0,
-                excluded_nontradable_count=0,
-                expected_tradable_count=0,
-                expected_tradable_dates=(),
-                nontradable_dates=(),
-                source_path=str(raw_p),
-                error_type=type(exc).__name__,
-                error_message_sanitized=str(exc),
-            )
+        except Exception:
+            pass
 
     # 2. Secondary & Fallback: PIT COMMON Intervals intersected with Historical Calendar
     if pit_path.exists() and historical_calendar_path.exists():
         try:
-            with open(historical_calendar_path, encoding="utf-8") as f:
-                cal_dates = set(json.load(f).get("trading_dates", []))
-            with open(pit_path, encoding="utf-8") as f:
-                intervals = json.load(f).get("intervals", [])
+            cal_dates = set(_load_cached_calendar_dates(str(historical_calendar_path)))
+            intervals_by_ticker = _load_cached_pit_intervals_by_ticker(str(pit_path))
+            intervals = intervals_by_ticker.get(ticker, [])
 
             valid_dates = set()
             for it in intervals:
-                if it.get("ticker") == ticker and it.get("state") == "COMMON":
+                if it.get("state") == "COMMON":
                     eff_start = max(query_start, it["effective_from"])
                     eff_end = min(query_end, it["effective_to"])
                     if eff_start <= eff_end:
