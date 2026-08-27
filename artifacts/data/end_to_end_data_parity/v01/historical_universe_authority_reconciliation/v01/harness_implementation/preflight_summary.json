@@ -5,15 +5,15 @@
     "actual_freeze": false,
     "gate": "FINAL_DENOMINATOR_FREEZE_GATE",
     "raw_integrity_pass": true,
-    "status": "BLOCKED_DENOMINATOR_FREEZE_GATE",
+    "status": "ELIGIBLE_NOT_PUBLISHED",
     "survivorship_bias_gate": {
       "accounted": 1116,
       "classified_common": 605,
-      "classified_not_common": 508,
+      "classified_not_common": 511,
       "expected_total": 1116,
       "gate": "SURVIVORSHIP_BIAS_GATE",
-      "status": "BLOCKED_SURVIVORSHIP_GATE",
-      "unresolved": 3
+      "status": "PASS",
+      "unresolved": 0
     },
     "ticker_identity_reuse_gate": {
       "ambiguous_collision_count": 0,
@@ -45,9 +45,9 @@
   },
   "reconciliation": {
     "counts": {
-      "HISTORICAL_AUTHORITY_UNRESOLVED": 3,
+      "HISTORICAL_AUTHORITY_UNRESOLVED": 0,
       "HISTORICAL_COMMON_REQUIRED": 605,
-      "HISTORICAL_NOT_COMMON": 508
+      "HISTORICAL_NOT_COMMON": 511
     },
     "identity_intervals": [
       {
@@ -15497,8 +15497,8 @@
       {
         "ISU_CD": "KR7465320000",
         "authority": "TIER_A_KRX_OPEN_API_BASIC_INFO",
-        "classification": "UNRESOLVED",
-        "classification_reason": "SUPPLEMENTAL_AUTHORITY_STILL_INSUFFICIENT",
+        "classification": "NOT_COMMON",
+        "classification_reason": "SUPPLEMENTAL_AUTHORITY_MERGER_WITHDRAWN_SPAC_IDENTITY_PRESERVED",
         "effective_from": "2026-08-03",
         "effective_to": "2026-08-21",
         "historical_common_required": false,
@@ -15653,8 +15653,8 @@
       {
         "ISU_CD": "KR7471050005",
         "authority": "TIER_A_KRX_OPEN_API_BASIC_INFO",
-        "classification": "UNRESOLVED",
-        "classification_reason": "SUPPLEMENTAL_AUTHORITY_STILL_INSUFFICIENT",
+        "classification": "NOT_COMMON",
+        "classification_reason": "SUPPLEMENTAL_AUTHORITY_SPAC_TERMINATION_IN_PROGRESS_NO_COMMON_TRANSITION",
         "effective_from": "2026-07-20",
         "effective_to": "2026-08-21",
         "historical_common_required": false,
@@ -15679,8 +15679,8 @@
       {
         "ISU_CD": "KR7472220003",
         "authority": "TIER_A_KRX_OPEN_API_BASIC_INFO",
-        "classification": "UNRESOLVED",
-        "classification_reason": "SUPPLEMENTAL_AUTHORITY_STILL_INSUFFICIENT",
+        "classification": "NOT_COMMON",
+        "classification_reason": "SUPPLEMENTAL_AUTHORITY_ACTIVE_SPAC_AT_HISTORICAL_CUTOFF",
         "effective_from": "2026-07-30",
         "effective_to": "2026-08-21",
         "historical_common_required": false,
@@ -60190,10 +60190,10 @@
         ],
         "adjusted_price_support": "NUMERIC_CONSUMER_CONTRACT_UNCHANGED",
         "authority_tier": "TIER_A_KRX_OPEN_API_BASIC_INFO",
-        "classification_reason": "SUPPLEMENTAL_AUTHORITY_STILL_INSUFFICIENT",
+        "classification_reason": "TIER_A_NON_COMMON_SECURITY_TYPE",
         "common_observation_count": 0,
         "first_seen_date": "2023-12-05",
-        "historical_classification": "HISTORICAL_AUTHORITY_UNRESOLVED",
+        "historical_classification": "HISTORICAL_NOT_COMMON",
         "identity_key": "ticker:465320",
         "intervals": [
           {
@@ -60212,8 +60212,8 @@
           {
             "ISU_CD": "KR7465320000",
             "authority": "TIER_A_KRX_OPEN_API_BASIC_INFO",
-            "classification": "UNRESOLVED",
-            "classification_reason": "SUPPLEMENTAL_AUTHORITY_STILL_INSUFFICIENT",
+            "classification": "NOT_COMMON",
+            "classification_reason": "SUPPLEMENTAL_AUTHORITY_MERGER_WITHDRAWN_SPAC_IDENTITY_PRESERVED",
             "effective_from": "2026-08-03",
             "effective_to": "2026-08-21",
             "historical_common_required": false,
@@ -60227,16 +60227,15 @@
         "markets_seen": [
           "KOSDAQ"
         ],
-        "not_common_observation_count": 645,
+        "not_common_observation_count": 659,
         "numeric_or_alpha": "numeric",
         "security_type_states": [
-          "NOT_COMMON",
-          "UNRESOLVED"
+          "NOT_COMMON"
         ],
         "source_manifest_sha256": "7c7afcabd43416de22cdb3432105f51908117016ae03925fba6126de7e43341d",
         "target_ticker": "465320",
         "ticker_reuse_status": "PASS",
-        "unresolved_observation_count": 14
+        "unresolved_observation_count": 0
       },
       {
         "ISU_CD": [
@@ -60590,10 +60589,10 @@
         ],
         "adjusted_price_support": "NUMERIC_CONSUMER_CONTRACT_UNCHANGED",
         "authority_tier": "TIER_A_KRX_OPEN_API_BASIC_INFO",
-        "classification_reason": "SUPPLEMENTAL_AUTHORITY_STILL_INSUFFICIENT",
+        "classification_reason": "TIER_A_NON_COMMON_SECURITY_TYPE",
         "common_observation_count": 0,
         "first_seen_date": "2024-01-24",
-        "historical_classification": "HISTORICAL_AUTHORITY_UNRESOLVED",
+        "historical_classification": "HISTORICAL_NOT_COMMON",
         "identity_key": "ticker:471050",
         "intervals": [
           {
@@ -60612,8 +60611,8 @@
           {
             "ISU_CD": "KR7471050005",
             "authority": "TIER_A_KRX_OPEN_API_BASIC_INFO",
-            "classification": "UNRESOLVED",
-            "classification_reason": "SUPPLEMENTAL_AUTHORITY_STILL_INSUFFICIENT",
+            "classification": "NOT_COMMON",
+            "classification_reason": "SUPPLEMENTAL_AUTHORITY_SPAC_TERMINATION_IN_PROGRESS_NO_COMMON_TRANSITION",
             "effective_from": "2026-07-20",
             "effective_to": "2026-08-21",
             "historical_common_required": false,
@@ -60627,16 +60626,15 @@
         "markets_seen": [
           "KOSDAQ"
         ],
-        "not_common_observation_count": 602,
+        "not_common_observation_count": 626,
         "numeric_or_alpha": "numeric",
         "security_type_states": [
-          "NOT_COMMON",
-          "UNRESOLVED"
+          "NOT_COMMON"
         ],
         "source_manifest_sha256": "7c7afcabd43416de22cdb3432105f51908117016ae03925fba6126de7e43341d",
         "target_ticker": "471050",
         "ticker_reuse_status": "PASS",
-        "unresolved_observation_count": 24
+        "unresolved_observation_count": 0
       },
       {
         "ISU_CD": [
@@ -60644,10 +60642,10 @@
         ],
         "adjusted_price_support": "NUMERIC_CONSUMER_CONTRACT_UNCHANGED",
         "authority_tier": "TIER_A_KRX_OPEN_API_BASIC_INFO",
-        "classification_reason": "SUPPLEMENTAL_AUTHORITY_STILL_INSUFFICIENT",
+        "classification_reason": "TIER_A_NON_COMMON_SECURITY_TYPE",
         "common_observation_count": 0,
         "first_seen_date": "2024-02-06",
-        "historical_classification": "HISTORICAL_AUTHORITY_UNRESOLVED",
+        "historical_classification": "HISTORICAL_NOT_COMMON",
         "identity_key": "ticker:472220",
         "intervals": [
           {
@@ -60666,8 +60664,8 @@
           {
             "ISU_CD": "KR7472220003",
             "authority": "TIER_A_KRX_OPEN_API_BASIC_INFO",
-            "classification": "UNRESOLVED",
-            "classification_reason": "SUPPLEMENTAL_AUTHORITY_STILL_INSUFFICIENT",
+            "classification": "NOT_COMMON",
+            "classification_reason": "SUPPLEMENTAL_AUTHORITY_ACTIVE_SPAC_AT_HISTORICAL_CUTOFF",
             "effective_from": "2026-07-30",
             "effective_to": "2026-08-21",
             "historical_common_required": false,
@@ -60681,16 +60679,15 @@
         "markets_seen": [
           "KOSDAQ"
         ],
-        "not_common_observation_count": 601,
+        "not_common_observation_count": 617,
         "numeric_or_alpha": "numeric",
         "security_type_states": [
-          "NOT_COMMON",
-          "UNRESOLVED"
+          "NOT_COMMON"
         ],
         "source_manifest_sha256": "7c7afcabd43416de22cdb3432105f51908117016ae03925fba6126de7e43341d",
         "target_ticker": "472220",
         "ticker_reuse_status": "PASS",
-        "unresolved_observation_count": 16
+        "unresolved_observation_count": 0
       },
       {
         "ISU_CD": [
@@ -106732,10 +106729,10 @@
         ],
         "adjusted_price_support": "NUMERIC_CONSUMER_CONTRACT_UNCHANGED",
         "authority_tier": "TIER_A_KRX_OPEN_API_BASIC_INFO",
-        "classification_reason": "SUPPLEMENTAL_AUTHORITY_STILL_INSUFFICIENT",
+        "classification_reason": "TIER_A_NON_COMMON_SECURITY_TYPE",
         "common_observation_count": 0,
         "first_seen_date": "2023-12-05",
-        "historical_classification": "HISTORICAL_AUTHORITY_UNRESOLVED",
+        "historical_classification": "HISTORICAL_NOT_COMMON",
         "identity_key": "ticker:465320",
         "intervals": [
           {
@@ -106754,8 +106751,8 @@
           {
             "ISU_CD": "KR7465320000",
             "authority": "TIER_A_KRX_OPEN_API_BASIC_INFO",
-            "classification": "UNRESOLVED",
-            "classification_reason": "SUPPLEMENTAL_AUTHORITY_STILL_INSUFFICIENT",
+            "classification": "NOT_COMMON",
+            "classification_reason": "SUPPLEMENTAL_AUTHORITY_MERGER_WITHDRAWN_SPAC_IDENTITY_PRESERVED",
             "effective_from": "2026-08-03",
             "effective_to": "2026-08-21",
             "historical_common_required": false,
@@ -106769,16 +106766,15 @@
         "markets_seen": [
           "KOSDAQ"
         ],
-        "not_common_observation_count": 645,
+        "not_common_observation_count": 659,
         "numeric_or_alpha": "numeric",
         "security_type_states": [
-          "NOT_COMMON",
-          "UNRESOLVED"
+          "NOT_COMMON"
         ],
         "source_manifest_sha256": "7c7afcabd43416de22cdb3432105f51908117016ae03925fba6126de7e43341d",
         "target_ticker": "465320",
         "ticker_reuse_status": "PASS",
-        "unresolved_observation_count": 14
+        "unresolved_observation_count": 0
       },
       {
         "ISU_CD": [
@@ -107132,10 +107128,10 @@
         ],
         "adjusted_price_support": "NUMERIC_CONSUMER_CONTRACT_UNCHANGED",
         "authority_tier": "TIER_A_KRX_OPEN_API_BASIC_INFO",
-        "classification_reason": "SUPPLEMENTAL_AUTHORITY_STILL_INSUFFICIENT",
+        "classification_reason": "TIER_A_NON_COMMON_SECURITY_TYPE",
         "common_observation_count": 0,
         "first_seen_date": "2024-01-24",
-        "historical_classification": "HISTORICAL_AUTHORITY_UNRESOLVED",
+        "historical_classification": "HISTORICAL_NOT_COMMON",
         "identity_key": "ticker:471050",
         "intervals": [
           {
@@ -107154,8 +107150,8 @@
           {
             "ISU_CD": "KR7471050005",
             "authority": "TIER_A_KRX_OPEN_API_BASIC_INFO",
-            "classification": "UNRESOLVED",
-            "classification_reason": "SUPPLEMENTAL_AUTHORITY_STILL_INSUFFICIENT",
+            "classification": "NOT_COMMON",
+            "classification_reason": "SUPPLEMENTAL_AUTHORITY_SPAC_TERMINATION_IN_PROGRESS_NO_COMMON_TRANSITION",
             "effective_from": "2026-07-20",
             "effective_to": "2026-08-21",
             "historical_common_required": false,
@@ -107169,16 +107165,15 @@
         "markets_seen": [
           "KOSDAQ"
         ],
-        "not_common_observation_count": 602,
+        "not_common_observation_count": 626,
         "numeric_or_alpha": "numeric",
         "security_type_states": [
-          "NOT_COMMON",
-          "UNRESOLVED"
+          "NOT_COMMON"
         ],
         "source_manifest_sha256": "7c7afcabd43416de22cdb3432105f51908117016ae03925fba6126de7e43341d",
         "target_ticker": "471050",
         "ticker_reuse_status": "PASS",
-        "unresolved_observation_count": 24
+        "unresolved_observation_count": 0
       },
       {
         "ISU_CD": [
@@ -107186,10 +107181,10 @@
         ],
         "adjusted_price_support": "NUMERIC_CONSUMER_CONTRACT_UNCHANGED",
         "authority_tier": "TIER_A_KRX_OPEN_API_BASIC_INFO",
-        "classification_reason": "SUPPLEMENTAL_AUTHORITY_STILL_INSUFFICIENT",
+        "classification_reason": "TIER_A_NON_COMMON_SECURITY_TYPE",
         "common_observation_count": 0,
         "first_seen_date": "2024-02-06",
-        "historical_classification": "HISTORICAL_AUTHORITY_UNRESOLVED",
+        "historical_classification": "HISTORICAL_NOT_COMMON",
         "identity_key": "ticker:472220",
         "intervals": [
           {
@@ -107208,8 +107203,8 @@
           {
             "ISU_CD": "KR7472220003",
             "authority": "TIER_A_KRX_OPEN_API_BASIC_INFO",
-            "classification": "UNRESOLVED",
-            "classification_reason": "SUPPLEMENTAL_AUTHORITY_STILL_INSUFFICIENT",
+            "classification": "NOT_COMMON",
+            "classification_reason": "SUPPLEMENTAL_AUTHORITY_ACTIVE_SPAC_AT_HISTORICAL_CUTOFF",
             "effective_from": "2026-07-30",
             "effective_to": "2026-08-21",
             "historical_common_required": false,
@@ -107223,16 +107218,15 @@
         "markets_seen": [
           "KOSDAQ"
         ],
-        "not_common_observation_count": 601,
+        "not_common_observation_count": 617,
         "numeric_or_alpha": "numeric",
         "security_type_states": [
-          "NOT_COMMON",
-          "UNRESOLVED"
+          "NOT_COMMON"
         ],
         "source_manifest_sha256": "7c7afcabd43416de22cdb3432105f51908117016ae03925fba6126de7e43341d",
         "target_ticker": "472220",
         "ticker_reuse_status": "PASS",
-        "unresolved_observation_count": 16
+        "unresolved_observation_count": 0
       },
       {
         "ISU_CD": [
@@ -109522,8 +109516,7 @@
   "status": "RECONCILIATION_EXECUTED",
   "supplemental_authority": {
     "decision_counts": {
-      "INSUFFICIENT": 3,
-      "NOT_COMMON": 125
+      "NOT_COMMON": 128
     },
     "directory": "data/reference/source/history/krx_instrument_master/v01/supplemental_authority",
     "record_count": 128
@@ -109531,11 +109524,11 @@
   "survivorship_bias_gate": {
     "accounted": 1116,
     "classified_common": 605,
-    "classified_not_common": 508,
+    "classified_not_common": 511,
     "expected_total": 1116,
     "gate": "SURVIVORSHIP_BIAS_GATE",
-    "status": "BLOCKED_SURVIVORSHIP_GATE",
-    "unresolved": 3
+    "status": "PASS",
+    "unresolved": 0
   },
   "target": {
     "counts": {
