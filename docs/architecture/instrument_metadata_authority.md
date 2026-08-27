@@ -419,3 +419,87 @@ Historical effective_date row의 formal provenance가 실제 검증 가능한가
 - 향후 과거 시점 formal snapshot을 실제로 확보할 방법을 찾으면, Option A(과거
   시점도 실제로 formal 재검증)로 이 정책 자체를 갱신할 수 있다 — 아직 그런
   API를 발견하지 못했다(Option B로 §9.1을 도입해 대응함).
+
+
+## 18. Historical Universe Reconciliation — 별도 모듈, 별도 SECURITY_TYPE_MAPPING
+
+**주의: 이 섹션은 `InstrumentMetadataResolver`(§1-17, live 현재 시점 전용)가 아니라
+별도 모듈인 `trend_scanner.universe.historical_authority_reconciliation`
+(`SECURITY_TYPE_MAPPING`)의 정책을 기록한다.** 두 모듈은 같은 KRX Basic Info
+공식 필드(SECUGRP_NM/KIND_STKCERT_TP_NM/SECT_TP_NM)를 사용하지만 독립적으로
+유지된다 — 이 섹션의 규칙 변경이 §6의 live mapping을 바꾸지 않으며 그 반대도
+마찬가지다.
+
+`HISTORICAL_UNIVERSE_AUTHORITY_UNRESOLVED_RESOLUTION_V01`에서 production
+Basic Info 8190쌍 실데이터로 처음 발견된 4개 classification gap을 다음과 같이
+해소했다 (frozen target 1,116 기준):
+
+### 18.1 SPAC 이력 + 후속 관리종목 — chronological exception (122건 중 8건 해소)
+
+기존 규칙(FIX01 Minor): 이 identity 이력 어딘가에 SPAC 관측이 있고 현재
+`보통주+관리종목(소속부없음)`이면 UNKNOWN. 이 규칙이 실 데이터에서 122건에
+발동했으나, 그중 114건은 SPAC 종료 후 단 한 번도 명확한 non-SPAC COMMON
+구간이 관측되지 않은 채 바로 관리종목 상태로 전환된 사례였고, 8건만
+SPAC → (수년~10년의) 명확한 COMMON 구간 → 관리종목의 구조였다.
+
+개정 규칙(`_classify_observations`): SPAC 이력이 있어도, 그 이후 chronological
+순서상 명확한 non-SPAC COMMON 관측이 한 번이라도 확인되면 그 identity는
+"COMMON lineage 확정"으로 간주하고, 그 이후의 관리종목 관측은 더 이상
+SPAC-이력 예외로 fail-close하지 않는다(정상 COMMON으로 해소). 반대로 SPAC 이후
+COMMON 확정 전에 나타나는 관리종목 관측은 계속 fail-closed UNKNOWN이다.
+임의 시간 임계값(N년 등)은 사용하지 않는다 — 오직 명시적 lifecycle 순서만
+사용한다.
+
+- 8건: COMMON lineage 확정 → HISTORICAL_COMMON_REQUIRED로 해소.
+- 114건: 명시적 COMMON 구간 없음 → 계속 HISTORICAL_AUTHORITY_UNRESOLVED.
+
+### 18.2 선박투자회사 (Ship Investment Company) — NOT_COMMON (49건)
+
+SECUGRP_NM="선박투자회사"는 §6의 live mapping 카탈로그(주권/부동산투자회사/
+외국주권/주식예탁증권/사회간접자본투융자회사/투자회사)에 없는 값이다 — 현재
+live universe에 선박투자회사 종목이 전혀 없어 한 번도 관측되지 못했을 뿐,
+historical raw에는 2010~2023년 사이 49건이 존재한다(전부 단일 상태,
+identity 충돌 없음).
+
+`docs/patterns/pattern_a/validation/universe_quality_v01.md` §2.1이 이미
+부동산투자회사(REIT)를 "배당 중심 구조로 일반 추세 스캐너 대상에서 제외"라는
+명시적 원칙으로 배제한다. 선박투자회사법 역시 특정 자산(선박)을 보유하며
+용선료 수익 대부분을 배당으로 분배하도록 강제하는 특별법 기반 pooled
+investment vehicle로, REIT와 동일한 배당 중심 구조 원칙에 해당한다. 이름이나
+ticker 추정이 아니라 이 기존 원칙의 직접 적용이다.
+
+`_DIVIDEND_FOCUSED_INVESTMENT_VEHICLE_GROUPS = {부동산투자회사, 선박투자회사}`
+→ HISTORICAL_NOT_COMMON.
+
+### 18.3 종류주권 — 정책 유지, UNKNOWN 그대로 (14건, 미해소)
+
+§6.1(Fix Round 08 Major 1)이 이미 정확히 이 값(KIND_STKCERT_TP_NM="종류주권")에
+대해 이름 substring heuristic(`"우선주" in isu_nm`)을 의도적으로 제거하고
+UNKNOWN + `UNMAPPED_FORMAL_CATEGORY`로 fail-close하기로 결정한 전례가 있다.
+historical reconciliation에서도 동일한 근거(공식 필드만으로는 종류주권 내부의
+실제 우선주/기타 클래스 구분이 불가능함)로 이 값을 매핑하지 않고 UNKNOWN으로
+유지한다 — §6.1의 이미 검토된 정책과의 일관성이 이유이며, 새 heuristic이
+아니다. 14건 전부 다른 구간에 COMMON 이력이 없어 lifecycle 규칙으로도
+구제되지 않는다.
+
+### 18.4 주식예탁증서 — 주식예탁증권의 구 명칭 (5건 전부 해소)
+
+950010/950100/950110 세 종목 모두 SECUGRP_NM이 2014-03-03에 "주식예탁증서"에서
+"주식예탁증권"으로 정확히 동일한 날짜에 전환되며(동일 ISU_CD, 동일 ISU_ABBRV),
+2014-03-03 이전에 상장폐지된 나머지 2건(950030/950070)은 "주식예탁증서"만
+관측된다. 이는 KRX 공식 용어 개정(2014-03-03 cutover)이지 별도 카테고리가
+아니라는 명확한 증거다 — fuzzy 문자열 매칭이 아니라 exact value 추가.
+
+`_COMMON_GROUPS`에 "주식예탁증서" 추가 → 5건 전부 HISTORICAL_COMMON_REQUIRED.
+
+### 18.5 결과 요약
+
+| gap | 건수 | 해소 | 근거 |
+|---|---|---|---|
+| SPAC 이력+관리종목 | 122 | 8 COMMON / 114 UNRESOLVED 유지 | chronological lifecycle (§8.1) |
+| 선박투자회사 | 49 | 49 NOT_COMMON | REIT 배당중심구조 원칙 적용 (§18.2) |
+| 종류주권 | 14 | 0 (UNRESOLVED 유지) | §6.1 기존 fail-closed 정책과 일관성 |
+| 주식예탁증서 | 5 | 5 COMMON | KRX 용어 개정 확인 (§18.4) |
+
+숫자를 0으로 맞추기 위한 조정은 없었다 — 종류주권 14건과 SPAC 114건은 근거
+부족으로 계속 UNRESOLVED다.

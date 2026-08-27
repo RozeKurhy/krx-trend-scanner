@@ -710,14 +710,26 @@ SECURITY_TYPE_MAPPING: tuple[dict[str, Any], ...] = (
         "SECUGRP_NM": "주권", "KIND_STKCERT_TP_NM": "보통주", "SECT_TP_NM_condition": "does not start with SPAC",
     },
     {
-        "rule": "SECUGRP_NM in {외국주권,주식예탁증권,사회간접자본투융자회사,투자회사} and KIND_STKCERT_TP_NM=보통주",
+        # "주식예탁증서" added per HISTORICAL_UNIVERSE_AUTHORITY_UNRESOLVED_RESOLUTION_V01
+        # Fix B3: verified exact-value KRX terminology predecessor of
+        # "주식예탁증권" — all surviving DR tickers (950010/950100/950110)
+        # switch SECUGRP_NM from 증서->증권 on the exact same date
+        # (2014-03-03), same ISU_CD, same ISU_ABBRV either side of the cutover.
+        "rule": "SECUGRP_NM in {외국주권,주식예탁증권,주식예탁증서,사회간접자본투융자회사,투자회사} and KIND_STKCERT_TP_NM=보통주",
         "classification": CLASS_COMMON, "reason": "TIER_A_COMMON_SECURITY_TYPE",
-        "SECUGRP_NM": "외국주권 | 주식예탁증권 | 사회간접자본투융자회사 | 투자회사", "KIND_STKCERT_TP_NM": "보통주", "SECT_TP_NM_condition": "any",
+        "SECUGRP_NM": "외국주권 | 주식예탁증권 | 주식예탁증서 | 사회간접자본투융자회사 | 투자회사", "KIND_STKCERT_TP_NM": "보통주", "SECT_TP_NM_condition": "any",
     },
     {
-        "rule": "SECUGRP_NM=부동산투자회사",
+        # "선박투자회사" added per Fix B1: shares the exact documented exclusion
+        # principle already applied to 부동산투자회사/REIT in
+        # docs/patterns/pattern_a/validation/universe_quality_v01.md §2.1 —
+        # "배당 중심 구조로 일반 추세 스캐너 대상에서 제외" (dividend-centric
+        # distribution structure). Both are special-purpose-law asset-pooling
+        # vehicles (선박투자회사법 / 부동산투자회사법) required to distribute
+        # the large majority of income as dividends, not operating companies.
+        "rule": "SECUGRP_NM in {부동산투자회사,선박투자회사}",
         "classification": CLASS_NOT_COMMON, "reason": "TIER_A_NON_COMMON_SECURITY_TYPE",
-        "SECUGRP_NM": "부동산투자회사", "KIND_STKCERT_TP_NM": "any", "SECT_TP_NM_condition": "any",
+        "SECUGRP_NM": "부동산투자회사 | 선박투자회사", "KIND_STKCERT_TP_NM": "any", "SECT_TP_NM_condition": "any",
     },
     {
         "rule": "SECUGRP_NM=주권 and SECT_TP_NM starts SPAC",
@@ -730,7 +742,12 @@ SECURITY_TYPE_MAPPING: tuple[dict[str, Any], ...] = (
         "SECUGRP_NM": "any", "KIND_STKCERT_TP_NM": "구형우선주 | 신형우선주", "SECT_TP_NM_condition": "any",
     },
 )
-_COMMON_GROUPS = frozenset({"주권", "외국주권", "주식예탁증권", "사회간접자본투융자회사", "투자회사"})
+_COMMON_GROUPS = frozenset({"주권", "외국주권", "주식예탁증권", "주식예탁증서", "사회간접자본투융자회사", "투자회사"})
+# Dividend-centric asset-pooling vehicles excluded per the same principle as
+# docs/patterns/pattern_a/validation/universe_quality_v01.md §2.1's REIT
+# exclusion ("배당 중심 구조로 일반 추세 스캐너 대상에서 제외") — not a
+# ticker-name or suffix heuristic, an official SECUGRP_NM value match.
+_DIVIDEND_FOCUSED_INVESTMENT_VEHICLE_GROUPS = frozenset({"부동산투자회사", "선박투자회사"})
 _PREFERRED_KINDS = frozenset({"구형우선주", "신형우선주"})
 
 
@@ -746,7 +763,7 @@ def classify_security_type(row: Mapping[str, Any]) -> dict[str, str]:
     group = values["SECUGRP_NM"].strip()
     kind = values["KIND_STKCERT_TP_NM"].strip()
     sector = values["SECT_TP_NM"].strip()
-    if group == "부동산투자회사":
+    if group in _DIVIDEND_FOCUSED_INVESTMENT_VEHICLE_GROUPS:
         return {"classification": CLASS_NOT_COMMON, "reason": "TIER_A_NON_COMMON_SECURITY_TYPE"}
     if group == "주권" and sector.startswith("SPAC"):
         return {"classification": CLASS_NOT_COMMON, "reason": "TIER_A_NON_COMMON_SECURITY_TYPE"}
@@ -813,12 +830,20 @@ def build_security_type_mapping_evidence(
             "existing_authority_reference": "docs/architecture/instrument_metadata_authority.md §6.1",
             "note": (
                 "Production maps any KIND_STKCERT_TP_NM=보통주 row to COMMON regardless of SECUGRP_NM "
-                "(외국주권/주식예탁증권/사회간접자본투융자회사/투자회사 included), matching this module's "
-                "rules 1-2. The one alignment gap production carries — 보통주 + SECT_TP_NM=관리종목(소속부없음) "
-                "on a ticker that also has Tier A SPAC-section history elsewhere — is fail-closed to UNKNOWN "
-                "instead of guessed as COMMON; that exception is applied in reconcile_target_identities via "
-                f"reason={PRODUCTION_AUTHORITY_UNMAPPED_MANAGED_ISSUE_AFTER_SPAC_HISTORY!r} rather than in this "
-                "row-pure classifier, since it requires the ticker's full observation history."
+                "(외국주권/주식예탁증권/주식예탁증서/사회간접자본투융자회사/투자회사 included), matching this "
+                "module's rules 1-2. 부동산투자회사(REIT)/선박투자회사 are excluded under rule 3 on the same "
+                "documented 'dividend-centric distribution structure' principle "
+                "(docs/patterns/pattern_a/validation/universe_quality_v01.md §2.1) — not a bare SECUGRP_NM "
+                "enumeration. The one alignment gap production carries — 보통주 + SECT_TP_NM=관리종목(소속부없음) "
+                "on an identity that also has Tier A SPAC-section history earlier in its own timeline, with no "
+                "explicit non-SPAC COMMON interval yet confirmed between the SPAC period and this observation — "
+                "is fail-closed to UNKNOWN instead of guessed as COMMON; that exception is applied in "
+                "reconcile_target_identities via reason="
+                f"{PRODUCTION_AUTHORITY_UNMAPPED_MANAGED_ISSUE_AFTER_SPAC_HISTORY!r} rather than in this "
+                "row-pure classifier, since it requires the identity's chronological observation history. Once "
+                "an explicit non-SPAC COMMON interval is confirmed for that identity, later managed-issue "
+                "observations resolve normally (COMMON) — the exception never re-applies retroactively for that "
+                "identity (HISTORICAL_UNIVERSE_AUTHORITY_UNRESOLVED_RESOLUTION_V01 Fix A)."
             ),
         },
         "unresolved_combinations_observed": [
@@ -831,30 +856,45 @@ def build_security_type_mapping_evidence(
 def _classify_observations(observations: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
     """Row-pure classification plus the one documented cross-observation
     production-authority alignment exception (see ``build_security_type_mapping_evidence``).
+
+    HISTORICAL_UNIVERSE_AUTHORITY_UNRESOLVED_RESOLUTION_V01 Fix A: the SPAC
+    exception is chronological, not a blanket "SPAC ever observed" flag. Past
+    SPAC status does not permanently contaminate an identity's lineage —
+    only a managed-issue observation that occurs BEFORE any explicit
+    non-SPAC COMMON interval has been confirmed for that same identity is
+    fail-closed. Once a genuine COMMON observation is confirmed (chronologically,
+    ``observations`` is pre-sorted by ``build_pit_identity_timeline``), later
+    managed-issue observations for that identity resolve normally instead —
+    no arbitrary time threshold, purely explicit-transition-based (Section 8/9).
     """
 
-    spac_seen = any(
-        str(obs.get("SECUGRP_NM", "")).strip() == "주권"
-        and str(obs.get("SECT_TP_NM", "")).strip().startswith("SPAC")
-        for obs in observations
-    )
     classified: list[dict[str, Any]] = []
+    spac_seen = False
+    common_confirmed = False
     for obs in observations:
+        is_spac_obs = (
+            str(obs.get("SECUGRP_NM", "")).strip() == "주권"
+            and str(obs.get("SECT_TP_NM", "")).strip().startswith("SPAC")
+        )
         checked = classify_security_type(obs)
         classification = checked["classification"]
         reason = checked["reason"]
-        if (
+        is_managed_common_shape = (
             classification == CLASS_COMMON
-            and spac_seen
             and str(obs.get("KIND_STKCERT_TP_NM", "")).strip() == "보통주"
             and str(obs.get("SECT_TP_NM", "")).strip() == _MANAGED_ISSUE_SECTION
-        ):
+        )
+        if is_managed_common_shape and spac_seen and not common_confirmed:
             classification = CLASS_UNRESOLVED
             reason = PRODUCTION_AUTHORITY_UNMAPPED_MANAGED_ISSUE_AFTER_SPAC_HISTORY
         merged = dict(obs)
         merged["classification"] = classification
         merged["classification_reason"] = reason
         classified.append(merged)
+        if is_spac_obs:
+            spac_seen = True
+        if classification == CLASS_COMMON and not is_managed_common_shape:
+            common_confirmed = True
     return classified
 
 

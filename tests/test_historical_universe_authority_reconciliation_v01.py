@@ -754,6 +754,184 @@ def test_managed_issue_without_spac_history_still_resolves_common() -> None:
     assert row["historical_classification"] == HISTORICAL_COMMON_REQUIRED
 
 
+def test_spac_history_with_explicit_common_transition_resolves_common_lineage() -> None:
+    """HISTORICAL_UNIVERSE_AUTHORITY_UNRESOLVED_RESOLUTION_V01 Fix A: an
+    explicit non-SPAC COMMON interval confirmed AFTER the SPAC period means
+    later managed-issue observations are no longer fail-closed — past SPAC
+    status does not permanently contaminate an identity's lineage once a
+    genuine common-stock interval has been observed (Section 8)."""
+    result = reconcile_target_identities(
+        [_target("005930")],
+        [
+            _snapshot("2015-01-01", _row("005930", sector="SPAC(소속부없음)")),
+            _snapshot("2016-01-01", _row("005930")),  # explicit clean COMMON
+            _snapshot("2020-01-02", _row("005930", sector="관리종목(소속부없음)")),
+        ],
+        expected_dates=["2015-01-01", "2016-01-01", "2020-01-02"],
+    )
+    row = result["results"][0]
+    assert row["historical_classification"] == HISTORICAL_COMMON_REQUIRED
+    reasons = {interval["classification_reason"] for interval in row["intervals"]}
+    assert "PRODUCTION_AUTHORITY_UNMAPPED_MANAGED_ISSUE_AFTER_SPAC_HISTORY" not in reasons
+
+
+def test_spac_history_without_explicit_common_stays_unresolved_after_managed() -> None:
+    """Without an explicit non-SPAC COMMON interval, SPAC -> MANAGED stays
+    fail-closed (Section 9) — this is the majority real-data pattern (114/122)."""
+    result = reconcile_target_identities(
+        [_target("005930")],
+        [
+            _snapshot("2015-01-01", _row("005930", sector="SPAC(소속부없음)")),
+            _snapshot("2020-01-02", _row("005930", sector="관리종목(소속부없음)")),
+        ],
+        expected_dates=["2015-01-01", "2020-01-02"],
+    )
+    row = result["results"][0]
+    assert row["historical_classification"] == HISTORICAL_AUTHORITY_UNRESOLVED
+    reasons = {interval["classification_reason"] for interval in row["intervals"]}
+    assert "PRODUCTION_AUTHORITY_UNMAPPED_MANAGED_ISSUE_AFTER_SPAC_HISTORY" in reasons
+
+
+def test_spac_then_common_only_resolves_common_required() -> None:
+    """SPAC -> COMMON with no later managed-issue observation resolves
+    cleanly to COMMON_REQUIRED (the exception never needs to fire)."""
+    result = reconcile_target_identities(
+        [_target("005930")],
+        [
+            _snapshot("2015-01-01", _row("005930", sector="SPAC(소속부없음)")),
+            _snapshot("2016-01-01", _row("005930")),
+        ],
+        expected_dates=["2015-01-01", "2016-01-01"],
+    )
+    row = result["results"][0]
+    assert row["historical_classification"] == HISTORICAL_COMMON_REQUIRED
+
+
+def test_spac_managed_before_any_common_confirmation_stays_unresolved_even_with_later_common() -> None:
+    """Chronological order matters: a managed-issue observation that occurs
+    BEFORE any explicit COMMON confirmation must stay UNRESOLVED even if a
+    later, separate COMMON interval exists further down the timeline — the
+    exception is evaluated at each observation's own position in time, not
+    with knowledge of the future."""
+    result = reconcile_target_identities(
+        [_target("005930")],
+        [
+            _snapshot("2015-01-01", _row("005930", sector="SPAC(소속부없음)")),
+            _snapshot("2016-01-01", _row("005930", sector="관리종목(소속부없음)")),
+            _snapshot("2020-01-02", _row("005930")),
+        ],
+        expected_dates=["2015-01-01", "2016-01-01", "2020-01-02"],
+    )
+    row = result["results"][0]
+    # CLASS_UNRESOLVED anywhere in the identity's states forces the overall
+    # ticker to UNRESOLVED (Section B aggregation precedence) even though a
+    # later clean COMMON interval also exists.
+    assert row["historical_classification"] == HISTORICAL_AUTHORITY_UNRESOLVED
+    reasons = {interval["classification_reason"] for interval in row["intervals"]}
+    assert "PRODUCTION_AUTHORITY_UNMAPPED_MANAGED_ISSUE_AFTER_SPAC_HISTORY" in reasons
+
+
+def test_ship_investment_company_common_stock_is_not_common() -> None:
+    """Fix B1: 선박투자회사 (Ship Investment Company) is excluded on the same
+    documented 'dividend-centric distribution structure' principle as
+    부동산투자회사/REIT (docs/patterns/pattern_a/validation/universe_quality_v01.md
+    §2.1) — an official SECUGRP_NM match, not a name/suffix heuristic."""
+    result = reconcile_target_identities(
+        [_target("078420")],
+        [_snapshot("2010-01-04", _row("078420", group="선박투자회사"))],
+        expected_dates=["2010-01-04"],
+    )
+    row = result["results"][0]
+    assert row["historical_classification"] == HISTORICAL_NOT_COMMON
+
+
+def test_stock_certificate_kind_jongryu_stays_unresolved() -> None:
+    """Fix B2: KIND_STKCERT_TP_NM='종류주권' stays UNRESOLVED — the exact
+    same official value that docs/architecture/instrument_metadata_authority.md
+    §6.1 (Fix Round 08) deliberately removed a name-substring heuristic for
+    and fail-closed to UNKNOWN in the live classifier. Consistency with that
+    reviewed precedent, not a new heuristic, is the basis for keeping this
+    UNRESOLVED rather than guessing NOT_COMMON from the ticker name."""
+    result = reconcile_target_identities(
+        [_target("00781K")],
+        [_snapshot("2020-01-02", _row("00781K", kind="종류주권"))],
+        expected_dates=["2020-01-02"],
+    )
+    row = result["results"][0]
+    assert row["historical_classification"] == HISTORICAL_AUTHORITY_UNRESOLVED
+    reasons = {interval["classification_reason"] for interval in row["intervals"]}
+    assert "UNKNOWN_SECURITY_TYPE_VALUE" in reasons
+
+
+def test_stock_certificate_kind_jongryu_with_separate_common_interval_still_resolves_common() -> None:
+    """If the same identity also carries a genuine COMMON interval elsewhere
+    in its lifecycle, the ticker-level lifecycle contract (Section 15/17C —
+    any COMMON interval anywhere resolves the whole ticker) still applies;
+    the 종류주권 interval itself remains UNRESOLVED at the interval level."""
+    result = reconcile_target_identities(
+        [_target("00781K")],
+        [
+            _snapshot("2015-01-01", _row("00781K")),
+            _snapshot("2020-01-02", _row("00781K", kind="종류주권")),
+        ],
+        expected_dates=["2015-01-01", "2020-01-02"],
+    )
+    row = result["results"][0]
+    # CLASS_UNRESOLVED anywhere still forces the overall ticker UNRESOLVED
+    # (Section B aggregation precedence, same mechanism as the SPAC case) —
+    # this is not a silent contradiction, it is the existing documented
+    # fail-closed-wins precedence rule.
+    assert row["historical_classification"] == HISTORICAL_AUTHORITY_UNRESOLVED
+
+
+def test_depositary_receipt_legacy_jusik_yetak_jeungseo_is_common() -> None:
+    """Fix B3: SECUGRP_NM='주식예탁증서' + KIND_STKCERT_TP_NM=보통주 -> COMMON.
+    Verified as the pre-2014-03-03 KRX label for the same concept as the
+    already-supported '주식예탁증권' (same ISU_CD/ISU_ABBRV either side of
+    the cutover for every surviving DR ticker) — an explicit exact-value
+    addition, not fuzzy/string-distance matching."""
+    result = reconcile_target_identities(
+        [_target("950030")],
+        [_snapshot("2011-01-01", _row("950030", group="주식예탁증서"))],
+        expected_dates=["2011-01-01"],
+    )
+    row = result["results"][0]
+    assert row["historical_classification"] == HISTORICAL_COMMON_REQUIRED
+
+
+def test_depositary_receipt_jusik_yetak_jeunggwon_regression_still_common() -> None:
+    """Existing '주식예탁증권' mapping (pre-dating this fix) must keep working."""
+    result = reconcile_target_identities(
+        [_target("950110")],
+        [_snapshot("2020-01-02", _row("950110", group="주식예탁증권"))],
+        expected_dates=["2020-01-02"],
+    )
+    row = result["results"][0]
+    assert row["historical_classification"] == HISTORICAL_COMMON_REQUIRED
+
+
+def test_unknown_future_security_group_value_stays_fail_closed() -> None:
+    """Section 20: adding explicit values for 주식예탁증서/선박투자회사 must
+    not weaken the UNKNOWN fallback for genuinely unmapped values."""
+    result = reconcile_target_identities(
+        [_target("999999")],
+        [_snapshot("2020-01-02", _row("999999", group="미확인지분증권XYZ"))],
+        expected_dates=["2020-01-02"],
+    )
+    row = result["results"][0]
+    assert row["historical_classification"] == HISTORICAL_AUTHORITY_UNRESOLVED
+
+
+def test_unknown_future_stock_certificate_kind_stays_fail_closed() -> None:
+    result = reconcile_target_identities(
+        [_target("999998")],
+        [_snapshot("2020-01-02", _row("999998", kind="새종류"))],
+        expected_dates=["2020-01-02"],
+    )
+    row = result["results"][0]
+    assert row["historical_classification"] == HISTORICAL_AUTHORITY_UNRESOLVED
+
+
 def test_security_type_mapping_evidence_has_rule_ids_and_authority_reference() -> None:
     from trend_scanner.universe.historical_authority_reconciliation import build_security_type_mapping_evidence
 
