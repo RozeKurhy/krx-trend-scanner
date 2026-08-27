@@ -1,12 +1,12 @@
-"""Adjusted Price Store Bounded Live Pilot (ADJUSTED_PRICE_STORE_BOUNDED_LIVE_PILOT_V01_FIX05).
+"""Adjusted Price Store Bounded Live Pilot (ADJUSTED_PRICE_STORE_BOUNDED_LIVE_PILOT_V01_FIX06).
 
 Validates PyKRX adjusted=True behavior against risk-stratified sample groups
 derived from the frozen Historical Common Population Universe (3,162 identities).
 
 Enforces:
 1. Frozen Canonical LIVE Execution as the sole source & OHLC quality authority.
-2. Non-destructive, source-faithful Offline REUSE mode (writes to separate reuse_verification directory).
-3. Trusted SHA-256 and Execution ID pinning via closure manifest.
+2. Mandatory Closure Manifest Root-of-Trust (Fail-Closed if missing or invalid).
+3. Non-destructive, source-faithful Offline REUSE mode with strict hash validation.
 4. Independent, non-circular ExpectedCoverageResolution.
 """
 
@@ -38,6 +38,21 @@ from trend_scanner.universe.survivorship_safe_denominator_freeze import (
 EXPECTED_POPULATION_SHA256 = "f14c3d46e5305571b311c4d120d9a2f1eba1644e7f059cde4e59eabab42d1aff"
 EXPECTED_POPULATION_COUNT = 3162
 CANONICAL_EXECUTION_ID = "ADJUSTED_PRICE_PILOT_FIX04_1787819364_LIVE"
+CANONICAL_CALENDAR_CUTOFF = "2026-08-21"
+
+REQUIRED_CLOSURE_MANIFEST_KEYS = (
+    "canonical_execution_id",
+    "canonical_execution_mode",
+    "pilot_summary_sha256",
+    "pilot_results_sha256",
+    "pilot_actual_source_dates_sha256",
+    "pilot_sample_manifest_sha256",
+    "historical_suspension_authority_sha256",
+    "population_sha256",
+    "calendar_cutoff_date",
+    "final_verdict",
+    "next_state",
+)
 
 DEFAULT_HISTORICAL_CALENDAR_PATH = Path(
     "data/reference/source/history/krx_instrument_master/v01/historical_trading_calendar.json"
@@ -774,7 +789,7 @@ def run_bounded_live_pilot(
     """Run pilot across sample groups and record canonical closure or verification artifacts.
 
     LIVE mode: Performs PyKRX queries and writes canonical LIVE closure artifacts to output_dir.
-    REUSE mode: Reads genuine actual date evidence from input_dir/canonical_dir and writes to reuse_verification/ without overwriting canonical LIVE files.
+    REUSE mode: Reads genuine actual date evidence from input_dir/canonical_dir with MANDATORY closure manifest root-of-trust.
     """
     if samples is None:
         samples = build_pilot_sample_manifest(population_path)
@@ -799,6 +814,50 @@ def run_bounded_live_pilot(
     reused_count = 0
 
     if mode == "reuse":
+        # 1. MANDATORY Root-of-Trust Check: Closure Manifest Must Exist
+        manifest_path = source_p / "pilot_closure_manifest.json"
+        if not manifest_path.exists():
+            raise RuntimeError(
+                f"REUSE_TRUST_MANIFEST_MISSING: Mandatory pilot closure manifest not found at {manifest_path}. "
+                f"REUSE execution is fail-closed without trusted canonical closure manifest."
+            )
+
+        manifest_content = manifest_path.read_text(encoding="utf-8")
+        try:
+            manifest_data = json.loads(manifest_content)
+        except Exception as exc:
+            raise RuntimeError(f"REUSE_TRUST_MANIFEST_INVALID: Failed to parse manifest JSON: {exc}")
+
+        # 2. Validate All Required Closure Manifest Fields
+        for req_k in REQUIRED_CLOSURE_MANIFEST_KEYS:
+            if req_k not in manifest_data:
+                raise RuntimeError(f"REUSE_TRUST_MANIFEST_INVALID: Missing required key '{req_k}' in closure manifest")
+
+        if manifest_data["canonical_execution_mode"] != "LIVE":
+            raise RuntimeError(
+                f"REUSE_TRUST_MANIFEST_INVALID: canonical_execution_mode must be 'LIVE', "
+                f"got '{manifest_data['canonical_execution_mode']}'"
+            )
+
+        if manifest_data["final_verdict"] != "ACCEPT" or manifest_data["next_state"] != "READY_FOR_ADJUSTED_PRICE_STORE_FULL_POPULATION":
+            raise RuntimeError(
+                f"REUSE_TRUST_MANIFEST_INVALID: Trusted closure manifest verdict must be ACCEPT / READY, "
+                f"got {manifest_data['final_verdict']} / {manifest_data['next_state']}"
+            )
+
+        if manifest_data["population_sha256"] != EXPECTED_POPULATION_SHA256:
+            raise RuntimeError(
+                f"REUSE_FROZEN_AUTHORITY_MISMATCH: population_sha256 in manifest ({manifest_data['population_sha256']}) "
+                f"does not match expected canonical population SHA ({EXPECTED_POPULATION_SHA256})"
+            )
+
+        if manifest_data["calendar_cutoff_date"] != CANONICAL_CALENDAR_CUTOFF:
+            raise RuntimeError(
+                f"REUSE_CALENDAR_DRIFT: calendar_cutoff_date in manifest ({manifest_data['calendar_cutoff_date']}) "
+                f"does not match canonical calendar cutoff ({CANONICAL_CALENDAR_CUTOFF})"
+            )
+
+        # 3. Validate Actual Source Dates Artifact & Hash
         actual_dates_path = source_p / "pilot_actual_source_dates.json"
         if not actual_dates_path.exists():
             raise RuntimeError(
@@ -810,21 +869,37 @@ def run_bounded_live_pilot(
         actual_data = json.loads(actual_content)
         actual_sha = hashlib.sha256(actual_content.encode("utf-8")).hexdigest()
 
-        # Check trusted hash if closure manifest exists
-        manifest_path = source_p / "pilot_closure_manifest.json"
-        if manifest_path.exists():
-            manifest_data = json.loads(manifest_path.read_text(encoding="utf-8"))
-            trusted_sha = manifest_data.get("pilot_actual_source_dates_sha256")
-            if trusted_sha and actual_sha != trusted_sha:
+        trusted_act_sha = manifest_data["pilot_actual_source_dates_sha256"]
+        if actual_sha != trusted_act_sha:
+            raise RuntimeError(
+                f"REUSE_HASH_MISMATCH: Actual source dates artifact SHA {actual_sha} "
+                f"does not match trusted canonical SHA {trusted_act_sha}"
+            )
+
+        trusted_exec_id = manifest_data["canonical_execution_id"]
+        if actual_data.get("execution_id") != trusted_exec_id:
+            raise RuntimeError(
+                f"REUSE_EXECUTION_ID_MISMATCH: Artifact execution_id '{actual_data.get('execution_id')}' "
+                f"does not match trusted execution_id '{trusted_exec_id}'"
+            )
+
+        # 4. Validate Sample Manifest SHA & Suspension Authority SHA
+        sample_manifest_path = source_p / "pilot_sample_manifest.json"
+        if sample_manifest_path.exists():
+            sample_manifest_sha = hashlib.sha256(sample_manifest_path.read_bytes()).hexdigest()
+            if sample_manifest_sha != manifest_data["pilot_sample_manifest_sha256"]:
                 raise RuntimeError(
-                    f"REUSE_HASH_MISMATCH: Actual source dates artifact SHA {actual_sha} "
-                    f"does not match trusted canonical SHA {trusted_sha}"
+                    f"REUSE_SAMPLE_MANIFEST_HASH_MISMATCH: Sample manifest SHA {sample_manifest_sha} "
+                    f"does not match trusted manifest SHA {manifest_data['pilot_sample_manifest_sha256']}"
                 )
-            trusted_exec_id = manifest_data.get("canonical_execution_id")
-            if trusted_exec_id and actual_data.get("execution_id") != trusted_exec_id:
+
+        suspension_path = source_p / "historical_suspension_authority_v01.json"
+        if suspension_path.exists():
+            suspension_sha = hashlib.sha256(suspension_path.read_bytes()).hexdigest()
+            if suspension_sha != manifest_data["historical_suspension_authority_sha256"]:
                 raise RuntimeError(
-                    f"REUSE_EXECUTION_ID_MISMATCH: Artifact execution_id {actual_data.get('execution_id')} "
-                    f"does not match trusted execution_id {trusted_exec_id}"
+                    f"REUSE_SUSPENSION_AUTHORITY_HASH_MISMATCH: Suspension authority SHA {suspension_sha} "
+                    f"does not match trusted manifest SHA {manifest_data['historical_suspension_authority_sha256']}"
                 )
 
         cached_actual_dates_map: dict[tuple[str, str, str], list[str]] = {}
@@ -955,7 +1030,7 @@ def run_bounded_live_pilot(
     cum_requests = 43 + 0 + 43 + 0 + fix04_live  # 129
 
     summary_payload: dict[str, Any] = {
-        "schema": "adjusted_price_store_bounded_live_pilot_v01_fix05",
+        "schema": "adjusted_price_store_bounded_live_pilot_v01_fix06",
         "execution_id": execution_id,
         "status": "PILOT_COMPLETED",
         "final_verdict": eval_out["final_verdict"],
@@ -1007,6 +1082,7 @@ def run_bounded_live_pilot(
             "fix03_new_pykrx_requests": 0,
             "fix04_new_pykrx_requests": fix04_live,
             "fix05_new_pykrx_requests": 0,
+            "fix06_new_pykrx_requests": 0,
             "cumulative_total_pykrx_requests": cum_requests,
             "pykrx_retries": total_retries,
             "krx_open_api_requests": 0,
@@ -1062,7 +1138,7 @@ def run_bounded_live_pilot(
         "pilot_sample_manifest_sha256": manifest_sha,
         "historical_suspension_authority_sha256": suspension_sha,
         "population_sha256": EXPECTED_POPULATION_SHA256,
-        "calendar_cutoff_date": "2026-08-21",
+        "calendar_cutoff_date": CANONICAL_CALENDAR_CUTOFF,
         "final_verdict": "ACCEPT",
         "next_state": "READY_FOR_ADJUSTED_PRICE_STORE_FULL_POPULATION",
     }

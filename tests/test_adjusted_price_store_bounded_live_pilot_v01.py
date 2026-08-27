@@ -1,4 +1,4 @@
-"""Tests for Adjusted Price Store Bounded Live Pilot (FIX05)."""
+"""Tests for Adjusted Price Store Bounded Live Pilot (FIX06)."""
 
 from __future__ import annotations
 
@@ -9,11 +9,11 @@ import pytest
 import pandas as pd
 
 from trend_scanner.data.adjusted_price_pilot import (
+    CANONICAL_CALENDAR_CUTOFF,
     CANONICAL_EXECUTION_ID,
     DEFAULT_ACTUAL_SOURCE_DATES_PATH,
     DEFAULT_ARTIFACT_DIR,
     DEFAULT_CLOSURE_MANIFEST_PATH,
-    DEFAULT_REUSE_DIR,
     DEFAULT_SUSPENSION_AUTHORITY_PATH,
     EXPECTED_POPULATION_COUNT,
     EXPECTED_POPULATION_SHA256,
@@ -107,8 +107,8 @@ class MockDummyProvider:
         return self._frame
 
 
-def test_canonical_live_artifacts_remain_unmodified_after_reuse():
-    """Verify Section 32: Canonical LIVE closure artifacts are NEVER modified or overwritten by REUSE execution."""
+def test_canonical_live_artifacts_remain_unmodified_after_hermetic_reuse(tmp_path):
+    """Verify Section 21 & 32: Hermetic REUSE execution modifies 0 tracked files and preserves canonical SHA256."""
     canonical_dir = Path(DEFAULT_ARTIFACT_DIR)
     target_files = [
         "pilot_summary.json",
@@ -116,10 +116,12 @@ def test_canonical_live_artifacts_remain_unmodified_after_reuse():
         "pilot_actual_source_dates.json",
         "pilot_sample_manifest.json",
         "pilot_closure_manifest.json",
+        "historical_suspension_authority_v01.json",
     ]
     before_hashes = {f: hashlib.sha256((canonical_dir / f).read_bytes()).hexdigest() for f in target_files}
 
-    res = run_bounded_live_pilot(mode="reuse")
+    hermetic_out = tmp_path / "reuse_verification"
+    res = run_bounded_live_pilot(input_dir=canonical_dir, output_dir=hermetic_out, mode="reuse")
     summary = res["summary"]
 
     assert summary["final_verdict"] == "ACCEPT"
@@ -129,17 +131,52 @@ def test_canonical_live_artifacts_remain_unmodified_after_reuse():
     assert summary["quality_validation"]["ohlc_quality_revalidated"] is False
     assert summary["quality_validation"]["coverage_revalidated"] is True
 
+    # Check output written to tmp_path only
+    assert (hermetic_out / "reuse_results.csv").exists()
+    assert (hermetic_out / "reuse_summary.json").exists()
+
     after_hashes = {f: hashlib.sha256((canonical_dir / f).read_bytes()).hexdigest() for f in target_files}
     for f in target_files:
         assert before_hashes[f] == after_hashes[f], f"Canonical artifact {f} was modified by REUSE!"
 
 
+def test_reuse_missing_manifest_fails_closed(tmp_path):
+    """Verify Section 18: REUSE without pilot_closure_manifest.json fails closed with REUSE_TRUST_MANIFEST_MISSING."""
+    test_dir = tmp_path / "no_manifest_pilot"
+    test_dir.mkdir()
+
+    canonical_dir = Path(DEFAULT_ARTIFACT_DIR)
+    (test_dir / "pilot_actual_source_dates.json").write_text(
+        (canonical_dir / "pilot_actual_source_dates.json").read_text(encoding="utf-8"), encoding="utf-8"
+    )
+
+    with pytest.raises(RuntimeError, match="REUSE_TRUST_MANIFEST_MISSING"):
+        run_bounded_live_pilot(input_dir=test_dir, mode="reuse")
+
+
+def test_reuse_invalid_manifest_fails_closed(tmp_path):
+    """Verify Section 19: REUSE with incomplete closure manifest fails closed with REUSE_TRUST_MANIFEST_INVALID."""
+    test_dir = tmp_path / "invalid_manifest_pilot"
+    test_dir.mkdir()
+
+    canonical_dir = Path(DEFAULT_ARTIFACT_DIR)
+    (test_dir / "pilot_actual_source_dates.json").write_text(
+        (canonical_dir / "pilot_actual_source_dates.json").read_text(encoding="utf-8"), encoding="utf-8"
+    )
+    # Missing required keys
+    (test_dir / "pilot_closure_manifest.json").write_text(
+        '{"schema": "invalid", "canonical_execution_id": "test"}', encoding="utf-8"
+    )
+
+    with pytest.raises(RuntimeError, match="REUSE_TRUST_MANIFEST_INVALID"):
+        run_bounded_live_pilot(input_dir=test_dir, mode="reuse")
+
+
 def test_reuse_hash_mismatch_fails_closed(tmp_path):
-    """Verify Section 33: REUSE fails closed with REUSE_HASH_MISMATCH if actual source dates artifact is modified."""
+    """Verify Section 10: REUSE fails closed with REUSE_HASH_MISMATCH if actual source dates artifact is modified."""
     test_dir = tmp_path / "tampered_pilot"
     test_dir.mkdir()
 
-    # Copy closure manifest and tampered actual dates
     canonical_dir = Path(DEFAULT_ARTIFACT_DIR)
     (test_dir / "pilot_closure_manifest.json").write_text(
         (canonical_dir / "pilot_closure_manifest.json").read_text(encoding="utf-8"), encoding="utf-8"
@@ -153,7 +190,7 @@ def test_reuse_hash_mismatch_fails_closed(tmp_path):
 
 
 def test_reuse_execution_id_mismatch_fails_closed(tmp_path):
-    """Verify Section 34: REUSE fails closed with REUSE_EXECUTION_ID_MISMATCH if execution id does not match trusted."""
+    """Verify Section 11: REUSE fails closed with REUSE_EXECUTION_ID_MISMATCH if execution id does not match trusted."""
     test_dir = tmp_path / "id_mismatch_pilot"
     test_dir.mkdir()
 
@@ -171,13 +208,34 @@ def test_reuse_execution_id_mismatch_fails_closed(tmp_path):
         run_bounded_live_pilot(input_dir=test_dir, mode="reuse")
 
 
-def test_reuse_mode_fails_closed_if_artifact_missing(tmp_path):
-    """Verify Section 31: reuse mode fails closed if actual source dates artifact is missing."""
-    empty_dir = tmp_path / "empty_pilot"
-    empty_dir.mkdir()
+def test_reuse_sample_manifest_hash_mismatch_fails_closed(tmp_path):
+    """Verify Section 12: REUSE fails closed with REUSE_SAMPLE_MANIFEST_HASH_MISMATCH if sample manifest is modified."""
+    test_dir = tmp_path / "sample_manifest_mismatch"
+    test_dir.mkdir()
 
-    with pytest.raises(RuntimeError, match="REUSE_UNAVAILABLE"):
-        run_bounded_live_pilot(input_dir=empty_dir, mode="reuse")
+    canonical_dir = Path(DEFAULT_ARTIFACT_DIR)
+    for f in ["pilot_closure_manifest.json", "pilot_actual_source_dates.json", "historical_suspension_authority_v01.json"]:
+        (test_dir / f).write_text((canonical_dir / f).read_text(encoding="utf-8"), encoding="utf-8")
+
+    (test_dir / "pilot_sample_manifest.json").write_text('[]', encoding="utf-8")
+
+    with pytest.raises(RuntimeError, match="REUSE_SAMPLE_MANIFEST_HASH_MISMATCH"):
+        run_bounded_live_pilot(input_dir=test_dir, mode="reuse")
+
+
+def test_reuse_suspension_authority_hash_mismatch_fails_closed(tmp_path):
+    """Verify Section 13: REUSE fails closed with REUSE_SUSPENSION_AUTHORITY_HASH_MISMATCH if suspension authority is modified."""
+    test_dir = tmp_path / "suspension_mismatch"
+    test_dir.mkdir()
+
+    canonical_dir = Path(DEFAULT_ARTIFACT_DIR)
+    for f in ["pilot_closure_manifest.json", "pilot_actual_source_dates.json", "pilot_sample_manifest.json"]:
+        (test_dir / f).write_text((canonical_dir / f).read_text(encoding="utf-8"), encoding="utf-8")
+
+    (test_dir / "historical_suspension_authority_v01.json").write_text('{"records": []}', encoding="utf-8")
+
+    with pytest.raises(RuntimeError, match="REUSE_SUSPENSION_AUTHORITY_HASH_MISMATCH"):
+        run_bounded_live_pilot(input_dir=test_dir, mode="reuse")
 
 
 def test_suspension_authority_artifact_sha_and_records():
@@ -327,7 +385,7 @@ def test_all_group_acceptance_gate_negative_controls():
 
 
 def test_canonical_closure_manifest_integrity():
-    """Verify Section 38: Canonical closure manifest matches exact artifact hashes and proves ACCEPT gate."""
+    """Verify Section 30 & 38: Canonical closure manifest matches exact artifact hashes and proves ACCEPT gate."""
     artifact_dir = Path(DEFAULT_ARTIFACT_DIR)
     manifest_file = artifact_dir / "pilot_sample_manifest.json"
     results_file = artifact_dir / "pilot_results.csv"

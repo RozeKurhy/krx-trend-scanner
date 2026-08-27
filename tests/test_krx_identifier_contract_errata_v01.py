@@ -41,10 +41,13 @@ def test_errata_contract_namespace_is_declared_exactly():
     assert by_key[("InstrumentClassificationStore", "ticker")].source_semantics == "KRX_SHORT_CODE"
 
 
-def test_adjusted_price_numeric_only_policy_is_unchanged():
+def test_adjusted_price_identifier_contract_supports_alpha_and_numeric():
     assert normalize_ticker("5930") == "005930"
+    assert normalize_ticker("03473K") == "03473K"
     with pytest.raises(MarketDataError):
-        normalize_ticker("03473K")
+        normalize_ticker("03473k")
+    with pytest.raises(MarketDataError):
+        normalize_ticker("00593#")
 
 
 def test_census_artifacts_are_complete_and_source_shape_valid():
