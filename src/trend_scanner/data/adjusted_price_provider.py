@@ -79,8 +79,8 @@ def validate_adjusted_ohlc(frame: pd.DataFrame) -> None:
         raise MarketDataError("수정주가 거래일 index에 중복이 있습니다.")
     if frame[list(ADJUSTED_OHLC_COLUMNS)].isna().any().any():
         raise MarketDataError("수정주가 OHLC에 NaN이 있습니다.")
-    if (frame[list(ADJUSTED_OHLC_COLUMNS)] < 0).any().any():
-        raise MarketDataError("수정주가 OHLC에 음수 가격이 있습니다.")
+    if (frame[list(ADJUSTED_OHLC_COLUMNS)] <= 0).any().any():
+        raise MarketDataError("수정주가 OHLC에 0 이하의 가격이 있습니다.")
     relation_violations = (
         (frame["high"] < frame["low"])
         | (frame["high"] < frame["open"])
@@ -161,7 +161,6 @@ class AdjustedPriceDataProvider:
             (frame["open"] == 0)
             & (frame["high"] == 0)
             & (frame["low"] == 0)
-            & (frame["volume"] == 0)
             & (frame["close"] > 0)
         )
         frame = frame.loc[~phantom].sort_index()
