@@ -31,7 +31,7 @@ OUTPUT_DIR = ROOT / "data/reference"
 OUTPUT_PARQUET = OUTPUT_DIR / "krx_trading_calendar.parquet"
 OUTPUT_JSON = OUTPUT_DIR / "krx_trading_calendar.json"
 
-DEFAULT_CUTOFF = pd.Timestamp("2026-08-14")
+DEFAULT_CUTOFF = pd.Timestamp("2026-08-21")
 DEFAULT_LAST_COMPLETED_MONTH_END = pd.Timestamp("2026-07-31")
 
 
@@ -42,10 +42,27 @@ def build_krx_trading_calendar_from_dates(
     output_dir: Path | None = None,
     source_name: str = "CANONICAL_DERIVED_KRX_CALENDAR",
     provenance_description: str = "Derived canonical KRX Exchange Trading Calendar constructed from the union of all traded common stocks.",
+    allow_downgrade: bool = False,
 ) -> tuple[pd.DataFrame, dict[str, Any]]:
     """Trading dates 시계열과 명시적 completion boundary로부터 캘린더 아티팩트를 생성하고 검증한다."""
     cutoff_dt = pd.Timestamp(cutoff_date).normalize()
     last_cme_dt = pd.Timestamp(last_completed_market_month_end).normalize()
+
+    # Stale Downgrade Guard
+    if output_dir is not None and not allow_downgrade:
+        json_path = output_dir / "krx_trading_calendar.json"
+        if json_path.exists():
+            try:
+                with open(json_path, encoding="utf-8") as f:
+                    existing_meta = json.load(f)
+                existing_cutoff = pd.Timestamp(existing_meta.get("cutoff_date")).normalize()
+                if cutoff_dt < existing_cutoff:
+                    raise ValueError(
+                        f"Refusing stale calendar downgrade: attempted cutoff {cutoff_dt.strftime('%Y-%m-%d')} "
+                        f"is older than existing canonical cutoff {existing_cutoff.strftime('%Y-%m-%d')}"
+                    )
+            except (json.JSONDecodeError, KeyError):
+                pass
 
     # Slicing and normalization
     all_dt_series = pd.DatetimeIndex(pd.to_datetime(list(trading_dates)).normalize()).sort_values().unique()
