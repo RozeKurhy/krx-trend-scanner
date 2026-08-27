@@ -1,5 +1,5 @@
 {
-  "schema": "adjusted_price_store_bounded_live_pilot_v01",
+  "schema": "adjusted_price_store_bounded_live_pilot_v01_fix01",
   "status": "PILOT_COMPLETED",
   "final_verdict": "ACCEPT",
   "next_state": "READY_FOR_ADJUSTED_PRICE_STORE_FULL_POPULATION",
@@ -18,10 +18,19 @@
     "group_e_market_transfer": 3
   },
   "outcome_counts": {
-    "success": 43,
+    "eligible_full": 43,
+    "eligible_partial": 0,
     "empty": 0,
     "error": 0,
     "schema_anomaly": 0
+  },
+  "group_gates": {
+    "group_a_numeric_pass": true,
+    "group_b_historical_delisted_pass": true,
+    "group_c_corporate_action_pass": true,
+    "group_d_alpha_census_pass": true,
+    "group_e_market_transfer_pass": true,
+    "all_gates_pass": true
   },
   "group_summaries": {
     "numeric_normal": {
@@ -33,6 +42,7 @@
     "historical_delisted": {
       "total": 5,
       "supported": 5,
+      "partial": 0,
       "empty": 0,
       "error": 0
     },
@@ -45,6 +55,7 @@
     "alpha_23_census": {
       "total": 23,
       "supported": 23,
+      "partial": 0,
       "empty": 0,
       "error": 0,
       "anomaly": 0
@@ -57,7 +68,9 @@
     }
   },
   "request_accounting": {
-    "pykrx_requests": 43,
+    "v01_pykrx_requests": 43,
+    "fix01_new_pykrx_requests": 0,
+    "cumulative_total_pykrx_requests": 43,
     "pykrx_retries": 0,
     "krx_open_api_requests": 0,
     "opendart_requests": 0,
