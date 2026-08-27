@@ -30,10 +30,11 @@
       "source_type": "LOCAL_KRX_HISTORICAL_RAW",
       "description": "Canonical KRX KOSDAQ daily stock raw observation archive for 2012"
     },
-    "OFFICIAL_DISCLOSURE_KAKAO_SPLIT_2021": {
-      "source_reference": "KRX-DISCLOSURE-20210329-000124",
-      "source_type": "OFFICIAL_DISCLOSURE",
-      "description": "Kakao 5:1 stock split boundary trading halt schedule (2021-04-12 ~ 2021-04-14)"
+    "OFFICIAL_KAKAO_SPLIT_NOTICE_2021": {
+      "source_reference": "Kakao 5:1 stock split boundary notice; trading halt 2021-04-12 ~ 2021-04-14",
+      "source_type": "OFFICIAL_DISCLOSURE_REFERENCE_ONLY",
+      "verification_status": "DATE_WINDOW_VERIFIED_IDENTIFIER_UNVERIFIED",
+      "description": "Kakao 5:1 stock split trading halt schedule (2021-04-12 ~ 2021-04-14)"
     }
   },
   "records": [
@@ -1608,7 +1609,7 @@
       "date": "2021-04-12",
       "reason": "STOCK_SPLIT_TRADING_HALT",
       "authority_type": "OFFICIAL_DISCLOSURE",
-      "source_ref": "OFFICIAL_DISCLOSURE_KAKAO_SPLIT_2021",
+      "source_ref": "OFFICIAL_KAKAO_SPLIT_NOTICE_2021",
       "derivation_rule": "OFFICIAL_EXCHANGE_SUSPENSION_SCHEDULE",
       "evidence_note": "Kakao 5:1 stock split trading suspension window on 2021-04-12, 2021-04-13, 2021-04-14 (3 trading dates)"
     },
@@ -1617,7 +1618,7 @@
       "date": "2021-04-13",
       "reason": "STOCK_SPLIT_TRADING_HALT",
       "authority_type": "OFFICIAL_DISCLOSURE",
-      "source_ref": "OFFICIAL_DISCLOSURE_KAKAO_SPLIT_2021",
+      "source_ref": "OFFICIAL_KAKAO_SPLIT_NOTICE_2021",
       "derivation_rule": "OFFICIAL_EXCHANGE_SUSPENSION_SCHEDULE",
       "evidence_note": "Kakao 5:1 stock split trading suspension window on 2021-04-12, 2021-04-13, 2021-04-14 (3 trading dates)"
     },
@@ -1626,7 +1627,7 @@
       "date": "2021-04-14",
       "reason": "STOCK_SPLIT_TRADING_HALT",
       "authority_type": "OFFICIAL_DISCLOSURE",
-      "source_ref": "OFFICIAL_DISCLOSURE_KAKAO_SPLIT_2021",
+      "source_ref": "OFFICIAL_KAKAO_SPLIT_NOTICE_2021",
       "derivation_rule": "OFFICIAL_EXCHANGE_SUSPENSION_SCHEDULE",
       "evidence_note": "Kakao 5:1 stock split trading suspension window on 2021-04-12, 2021-04-13, 2021-04-14 (3 trading dates)"
     }
