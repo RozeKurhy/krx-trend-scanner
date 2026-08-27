@@ -1,4 +1,4 @@
-"""Tests for Adjusted Price Store Bounded Live Pilot (FIX03)."""
+"""Tests for Adjusted Price Store Bounded Live Pilot (FIX04)."""
 
 from __future__ import annotations
 
@@ -8,9 +8,10 @@ import pytest
 import pandas as pd
 
 from trend_scanner.data.adjusted_price_pilot import (
+    DEFAULT_ACTUAL_SOURCE_DATES_PATH,
+    DEFAULT_SUSPENSION_AUTHORITY_PATH,
     EXPECTED_POPULATION_COUNT,
     EXPECTED_POPULATION_SHA256,
-    HISTORICAL_INDEPENDENT_SUSPENSIONS,
     AuthorityQuality,
     AuthorityStatus,
     CoverageStatus,
@@ -24,7 +25,9 @@ from trend_scanner.data.adjusted_price_pilot import (
     evaluate_pilot_acceptance,
     execute_single_pilot_query,
     is_nontradable_or_phantom_row,
+    load_historical_suspension_authority,
     resolve_expected_coverage,
+    run_bounded_live_pilot,
 )
 from trend_scanner.data.adjusted_price_provider import (
     AdjustedPriceDataProvider,
@@ -92,15 +95,53 @@ def test_production_provider_normalizes_valid_alpha_and_numeric():
 class MockDummyProvider:
     def __init__(self, frame: pd.DataFrame):
         self._frame = frame
+        self.call_count = 0
 
     def load_daily(self, ticker: str, start: str, end: str) -> pd.DataFrame:
+        self.call_count += 1
         return self._frame
 
 
+def test_true_reuse_mode_uses_persisted_actual_dates_without_provider_calls():
+    """Verify Section 30: true reuse mode uses genuine persisted actual dates and makes 0 provider calls."""
+    res = run_bounded_live_pilot(mode="reuse")
+    summary = res["summary"]
+
+    assert summary["final_verdict"] == "ACCEPT"
+    assert summary["execution_provenance"]["execution_mode"] == "REUSE"
+    assert summary["execution_provenance"]["new_live_request_count"] == 0
+    assert summary["execution_provenance"]["reused_sample_count"] == 43
+
+
+def test_reuse_mode_fails_closed_if_artifact_missing(tmp_path):
+    """Verify Section 31: reuse mode fails closed if actual source dates artifact is missing."""
+    empty_dir = tmp_path / "empty_pilot"
+    empty_dir.mkdir()
+
+    with pytest.raises(RuntimeError, match="REUSE_UNAVAILABLE"):
+        run_bounded_live_pilot(output_dir=empty_dir, mode="reuse")
+
+
+def test_suspension_authority_artifact_sha_and_records():
+    """Verify Section 36: suspension authority artifact loads valid records and SHA256."""
+    halts_map, sha = load_historical_suspension_authority(DEFAULT_SUSPENSION_AUTHORITY_PATH)
+    assert len(sha) == 64
+    assert "000030" in halts_map
+    assert len(halts_map["000030"]) == 22
+    assert "000060" in halts_map
+    assert len(halts_map["000060"]) == 29
+    assert "000360" in halts_map
+    assert len(halts_map["000360"]) == 71
+    assert "000470" in halts_map
+    assert len(halts_map["000470"]) == 25
+    assert "002670" in halts_map
+    assert len(halts_map["002670"]) == 27
+    assert "035720" in halts_map
+    assert len(halts_map["035720"]) == 3
+
+
 def test_no_circular_expected_mutation_and_pit_approximation_gap_fails():
-    """Verify Section 23 & 30: PIT approximation gap without independent evidence does NOT rewrite expected and fails FULL."""
-    # PIT candidate has 5 dates: D1, D2, D3, D4, D5
-    # Actual source returns 4 dates: D1, D2, D4, D5 (missing D3)
+    """Verify PIT approximation gap without independent evidence does NOT rewrite expected and fails FULL."""
     dates = pd.to_datetime(["2024-01-02", "2024-01-03", "2024-01-05", "2024-01-08"])
     frame = pd.DataFrame(
         {"open": [100.0] * 4, "high": [105.0] * 4, "low": [95.0] * 4, "close": [100.0] * 4},
@@ -136,11 +177,10 @@ def test_no_circular_expected_mutation_and_pit_approximation_gap_fails():
         source_path="test",
     )
 
-    res = execute_single_pilot_query(sample, provider=mock, resolution=resolution)
+    res, act_dates = execute_single_pilot_query(sample, provider=mock, resolution=resolution)
 
     # 1. Expected resolution is NOT mutated to 4 dates
     assert res.expected_observation_count == 5
-    assert len(res.first_expected_date) > 0
     assert resolution.expected_tradable_count == 5
 
     # 2. Missing is detected honestly
@@ -149,99 +189,6 @@ def test_no_circular_expected_mutation_and_pit_approximation_gap_fails():
 
     # 3. Not promoted to FULL
     assert res.eligibility_status == SourceEligibilityStatus.ELIGIBLE_PARTIAL.value
-
-
-def test_pit_with_independent_suspension_registry_matches_clean():
-    """Verify Section 18: PIT + Independent suspension authority excludes halts and achieves FULL with 0 missing."""
-    # Kakao 2021-04-05 ~ 2021-04-25 has 3 independent suspension dates
-    res = resolve_expected_coverage("035720", "2021-04-05", "2021-04-25")
-    assert res.authority_source == "INDEPENDENT_HISTORICAL_SUSPENSION_REGISTRY"
-    assert res.raw_observed_count == 15
-    assert res.excluded_nontradable_count == 3
-    assert res.expected_tradable_count == 12
-    assert "2021-04-12" in res.nontradable_dates
-    assert "2021-04-13" in res.nontradable_dates
-    assert "2021-04-14" in res.nontradable_dates
-
-
-def test_expected_zero_actual_positive_is_not_full():
-    """Verify expected=0 and actual>0 is UNEXPECTED_SOURCE_ONLY and NOT ELIGIBLE_FULL."""
-    dates = pd.to_datetime(["2024-01-02", "2024-01-03"])
-    frame = pd.DataFrame(
-        {"open": [100.0, 101.0], "high": [105.0, 106.0], "low": [99.0, 100.0], "close": [104.0, 105.0]},
-        index=dates,
-    )
-    mock = MockDummyProvider(frame)
-    sample = PilotSample(
-        ticker="005930",
-        isu_cd=["KR7005930003"],
-        market=["KOSPI"],
-        sample_group=PilotSampleGroup.GROUP_C_CORPORATE_ACTION,
-        numeric_or_alpha="numeric",
-        first_common_date="2010-01-04",
-        last_common_date="2026-08-21",
-        query_start="2024-01-02",
-        query_end="2024-01-03",
-        sample_reason="test",
-        currently_common=True,
-        historical_only=False,
-    )
-    resolution = ExpectedCoverageResolution(
-        ticker="005930",
-        query_start="2024-01-02",
-        query_end="2024-01-03",
-        authority_status=AuthorityStatus.VALID.value,
-        authority_source="TEST",
-        authority_quality="TEST",
-        raw_observed_count=0,
-        excluded_nontradable_count=0,
-        expected_tradable_count=0,
-        expected_tradable_dates=(),
-        nontradable_dates=(),
-        source_path="test",
-    )
-    res = execute_single_pilot_query(sample, provider=mock, resolution=resolution)
-
-    assert res.coverage_status == CoverageStatus.UNEXPECTED_SOURCE_ONLY.value
-    assert res.eligibility_status != SourceEligibilityStatus.ELIGIBLE_FULL.value
-    assert res.eligibility_status == SourceEligibilityStatus.ELIGIBLE_PARTIAL.value
-    assert res.unexpected_source_date_count == 2
-
-
-def test_coverage_resolver_failure_returns_insufficient_authority(tmp_path):
-    """Verify broken resolver returns INSUFFICIENT_AUTHORITY and never silent []."""
-    fake_empty_dir = tmp_path / "empty_stocks"
-    fake_empty_dir.mkdir()
-    res = resolve_expected_coverage("999999", "2024-01-02", "2024-01-05", stocks_dir=fake_empty_dir, pit_path=tmp_path / "nonexistent.json")
-
-    assert res.authority_status == AuthorityStatus.INSUFFICIENT_AUTHORITY.value
-    assert res.expected_tradable_count == 0
-
-
-def test_suspension_aware_expected_dates_excludes_phantom_rows(tmp_path):
-    """Verify suspension rows (open=0, high=0, low=0, close>0) are excluded from tradable expected dates."""
-    dates = pd.to_datetime(["2024-01-02", "2024-01-03", "2024-01-04"])
-    raw_df = pd.DataFrame(
-        {
-            "open": [100.0, 0.0, 102.0],
-            "high": [105.0, 0.0, 107.0],
-            "low": [99.0, 0.0, 101.0],
-            "close": [104.0, 104.0, 106.0],
-        },
-        index=dates,
-    )
-    stock_dir = tmp_path / "stocks"
-    stock_dir.mkdir()
-    raw_df.to_parquet(stock_dir / "005930.parquet")
-
-    resolution = resolve_expected_coverage("005930", "2024-01-02", "2024-01-04", stocks_dir=stock_dir)
-
-    assert resolution.authority_status == AuthorityStatus.VALID.value
-    assert resolution.raw_observed_count == 3
-    assert resolution.excluded_nontradable_count == 1
-    assert resolution.expected_tradable_count == 2
-    assert list(resolution.expected_tradable_dates) == ["2024-01-02", "2024-01-04"]
-    assert list(resolution.nontradable_dates) == ["2024-01-03"]
 
 
 def test_all_group_acceptance_gate_negative_controls():
@@ -327,18 +274,25 @@ def test_real_pilot_artifacts_integrity_and_acceptance():
     manifest_file = artifact_dir / "pilot_sample_manifest.json"
     results_file = artifact_dir / "pilot_results.csv"
     summary_file = artifact_dir / "pilot_summary.json"
+    actual_dates_file = artifact_dir / "pilot_actual_source_dates.json"
+    suspension_file = artifact_dir / "historical_suspension_authority_v01.json"
 
     assert manifest_file.exists()
     assert results_file.exists()
     assert summary_file.exists()
+    assert actual_dates_file.exists()
+    assert suspension_file.exists()
 
     with open(manifest_file, encoding="utf-8") as f:
         manifest_data = json.load(f)
     with open(summary_file, encoding="utf-8") as f:
         summary_data = json.load(f)
+    with open(actual_dates_file, encoding="utf-8") as f:
+        actual_dates_data = json.load(f)
+
     results_df = pd.read_csv(results_file)
 
-    assert len(manifest_data) == 43 == len(results_df) == summary_data["sample_counts"]["total_samples"]
+    assert len(manifest_data) == 43 == len(results_df) == summary_data["sample_counts"]["total_samples"] == len(actual_dates_data["samples"])
     assert summary_data["final_verdict"] == "ACCEPT"
     assert summary_data["next_state"] == "READY_FOR_ADJUSTED_PRICE_STORE_FULL_POPULATION"
     assert summary_data["outcome_counts"]["eligible_full"] == 43

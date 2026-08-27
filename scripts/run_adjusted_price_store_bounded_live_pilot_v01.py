@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""CLI runner for Adjusted Price Store Bounded Live Pilot (FIX03)."""
+"""CLI runner for Adjusted Price Store Bounded Live Pilot (FIX04)."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ DEFAULT_OUTPUT_DIR = Path(
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Run Adjusted Price Store Bounded Live Pilot FIX03")
+    parser = argparse.ArgumentParser(description="Run Adjusted Price Store Bounded Live Pilot FIX04")
     parser.add_argument(
         "--output-dir",
         type=Path,
@@ -27,11 +27,11 @@ def main() -> int:
         type=str,
         default="live",
         choices=["live", "reuse"],
-        help="Execution mode: 'live' (execute live provider queries) or 'reuse' (offline cached reclassification)",
+        help="Execution mode: 'live' (execute live provider queries) or 'reuse' (source-faithful offline cached reclassification)",
     )
     args = parser.parse_args()
 
-    print(f"Starting Adjusted Price Store Bounded Live Pilot (FIX03)...")
+    print(f"Starting Adjusted Price Store Bounded Live Pilot (FIX04)...")
     print(f"Output directory: {args.output_dir}")
     print(f"Mode: {args.mode}")
 
@@ -39,6 +39,8 @@ def main() -> int:
     summary = pilot_data["summary"]
 
     print("\n--- Pilot Execution Completed ---")
+    print(f"Execution ID: {summary['execution_id']}")
+    print(f"Execution Mode: {summary['execution_provenance']['execution_mode']}")
     print(f"Final Verdict: {summary['final_verdict']}")
     print(f"Next State: {summary['next_state']}")
     print(f"Total Samples: {summary['sample_counts']['total_samples']}")
@@ -49,6 +51,8 @@ def main() -> int:
     print(f"Data Quality: duplicates={summary['data_quality']['total_duplicate_rows']}, "
           f"invalid_ohlc={summary['data_quality']['total_invalid_ohlc_rows']}, "
           f"future_rows={summary['data_quality']['total_future_rows']}")
+    print(f"Actual Source Dates Artifact SHA256: {summary['actual_source_evidence']['artifact_sha256']}")
+    print(f"Suspension Authority SHA256: {summary['suspension_authority']['artifact_sha256']}")
 
     return 0 if summary["final_verdict"] == "ACCEPT" else 1
 
