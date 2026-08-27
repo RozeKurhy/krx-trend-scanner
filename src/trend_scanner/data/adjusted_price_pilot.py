@@ -1,13 +1,14 @@
-"""Adjusted Price Store Bounded Live Pilot (ADJUSTED_PRICE_STORE_BOUNDED_LIVE_PILOT_V01_FIX06).
+"""Adjusted Price Store Bounded Live Pilot (ADJUSTED_PRICE_STORE_BOUNDED_LIVE_PILOT_V01_FIX07).
 
 Validates PyKRX adjusted=True behavior against risk-stratified sample groups
 derived from the frozen Historical Common Population Universe (3,162 identities).
 
 Enforces:
 1. Frozen Canonical LIVE Execution as the sole source & OHLC quality authority.
-2. Mandatory Closure Manifest Root-of-Trust (Fail-Closed if missing or invalid).
-3. Non-destructive, source-faithful Offline REUSE mode with strict hash validation.
-4. Independent, non-circular ExpectedCoverageResolution.
+2. Complete Mandatory Authority File Chain (Closure Manifest, Actual Dates, Sample Manifest, Suspension Authority).
+3. Exact Sample Contract Equality (Canonical 43 == Actual Evidence 43 with sample_group).
+4. Runtime Canonical Calendar Drift & Integrity Cross-Check.
+5. Non-destructive, source-faithful Offline REUSE mode.
 """
 
 from __future__ import annotations
@@ -39,6 +40,7 @@ EXPECTED_POPULATION_SHA256 = "f14c3d46e5305571b311c4d120d9a2f1eba1644e7f059cde4e
 EXPECTED_POPULATION_COUNT = 3162
 CANONICAL_EXECUTION_ID = "ADJUSTED_PRICE_PILOT_FIX04_1787819364_LIVE"
 CANONICAL_CALENDAR_CUTOFF = "2026-08-21"
+EXPECTED_CALENDAR_ROW_COUNT = 3844
 
 REQUIRED_CLOSURE_MANIFEST_KEYS = (
     "canonical_execution_id",
@@ -54,6 +56,7 @@ REQUIRED_CLOSURE_MANIFEST_KEYS = (
     "next_state",
 )
 
+DEFAULT_CANONICAL_CALENDAR_PATH = Path("data/reference/krx_trading_calendar.json")
 DEFAULT_HISTORICAL_CALENDAR_PATH = Path(
     "data/reference/source/history/krx_instrument_master/v01/historical_trading_calendar.json"
 )
@@ -782,6 +785,7 @@ def evaluate_pilot_acceptance(results: Sequence[PilotResult]) -> dict[str, Any]:
 def run_bounded_live_pilot(
     samples: Sequence[PilotSample] | None = None,
     population_path: Path = Path(DEFAULT_POPULATION_ARTIFACT_PATH),
+    canonical_calendar_path: Path = DEFAULT_CANONICAL_CALENDAR_PATH,
     output_dir: Path | None = None,
     input_dir: Path | None = None,
     mode: str = "live",
@@ -789,7 +793,8 @@ def run_bounded_live_pilot(
     """Run pilot across sample groups and record canonical closure or verification artifacts.
 
     LIVE mode: Performs PyKRX queries and writes canonical LIVE closure artifacts to output_dir.
-    REUSE mode: Reads genuine actual date evidence from input_dir/canonical_dir with MANDATORY closure manifest root-of-trust.
+    REUSE mode: Reads genuine actual date evidence from input_dir/canonical_dir with MANDATORY closure manifest root-of-trust,
+                exact sample contract equality, and runtime calendar cross-check.
     """
     if samples is None:
         samples = build_pilot_sample_manifest(population_path)
@@ -857,7 +862,7 @@ def run_bounded_live_pilot(
                 f"does not match canonical calendar cutoff ({CANONICAL_CALENDAR_CUTOFF})"
             )
 
-        # 3. Validate Actual Source Dates Artifact & Hash
+        # 3. Validate Mandatory Authority Files
         actual_dates_path = source_p / "pilot_actual_source_dates.json"
         if not actual_dates_path.exists():
             raise RuntimeError(
@@ -883,34 +888,81 @@ def run_bounded_live_pilot(
                 f"does not match trusted execution_id '{trusted_exec_id}'"
             )
 
-        # 4. Validate Sample Manifest SHA & Suspension Authority SHA
         sample_manifest_path = source_p / "pilot_sample_manifest.json"
-        if sample_manifest_path.exists():
-            sample_manifest_sha = hashlib.sha256(sample_manifest_path.read_bytes()).hexdigest()
-            if sample_manifest_sha != manifest_data["pilot_sample_manifest_sha256"]:
-                raise RuntimeError(
-                    f"REUSE_SAMPLE_MANIFEST_HASH_MISMATCH: Sample manifest SHA {sample_manifest_sha} "
-                    f"does not match trusted manifest SHA {manifest_data['pilot_sample_manifest_sha256']}"
-                )
+        if not sample_manifest_path.exists():
+            raise RuntimeError(
+                f"REUSE_SAMPLE_MANIFEST_MISSING: Mandatory sample manifest not found at {sample_manifest_path}"
+            )
+        sample_manifest_sha = hashlib.sha256(sample_manifest_path.read_bytes()).hexdigest()
+        if sample_manifest_sha != manifest_data["pilot_sample_manifest_sha256"]:
+            raise RuntimeError(
+                f"REUSE_SAMPLE_MANIFEST_HASH_MISMATCH: Sample manifest SHA {sample_manifest_sha} "
+                f"does not match trusted manifest SHA {manifest_data['pilot_sample_manifest_sha256']}"
+            )
 
         suspension_path = source_p / "historical_suspension_authority_v01.json"
-        if suspension_path.exists():
-            suspension_sha = hashlib.sha256(suspension_path.read_bytes()).hexdigest()
-            if suspension_sha != manifest_data["historical_suspension_authority_sha256"]:
-                raise RuntimeError(
-                    f"REUSE_SUSPENSION_AUTHORITY_HASH_MISMATCH: Suspension authority SHA {suspension_sha} "
-                    f"does not match trusted manifest SHA {manifest_data['historical_suspension_authority_sha256']}"
-                )
+        if not suspension_path.exists():
+            raise RuntimeError(
+                f"REUSE_SUSPENSION_AUTHORITY_MISSING: Mandatory suspension authority not found at {suspension_path}"
+            )
+        suspension_sha = hashlib.sha256(suspension_path.read_bytes()).hexdigest()
+        if suspension_sha != manifest_data["historical_suspension_authority_sha256"]:
+            raise RuntimeError(
+                f"REUSE_SUSPENSION_AUTHORITY_HASH_MISMATCH: Suspension authority SHA {suspension_sha} "
+                f"does not match trusted manifest SHA {manifest_data['historical_suspension_authority_sha256']}"
+            )
 
-        cached_actual_dates_map: dict[tuple[str, str, str], list[str]] = {}
-        for s_entry in actual_data.get("samples", []):
-            k = (s_entry["ticker"], s_entry["request_start"], s_entry["request_end"])
-            cached_actual_dates_map[k] = s_entry["actual_dates"]
+        # 4. Runtime Canonical Calendar Cross-Check
+        if canonical_calendar_path.exists():
+            try:
+                cal_json = json.loads(canonical_calendar_path.read_text(encoding="utf-8"))
+                cal_cutoff = cal_json.get("cutoff_date") or cal_json.get("max_observed_trading_date")
+                cal_row_count = cal_json.get("row_count") or len(cal_json.get("trading_dates", []))
+                if cal_cutoff != CANONICAL_CALENDAR_CUTOFF or cal_row_count != EXPECTED_CALENDAR_ROW_COUNT:
+                    raise RuntimeError(
+                        f"REUSE_CALENDAR_DRIFT: Runtime canonical calendar mismatch: "
+                        f"cutoff={cal_cutoff} (expected {CANONICAL_CALENDAR_CUTOFF}), "
+                        f"dates_count={cal_row_count} (expected {EXPECTED_CALENDAR_ROW_COUNT})"
+                    )
+            except Exception as exc:
+                if "REUSE_CALENDAR_DRIFT" in str(exc):
+                    raise
+                raise RuntimeError(f"REUSE_CALENDAR_DRIFT: Failed to validate canonical calendar: {exc}")
+
+        # 5. Exact Sample Contract Equality Validation (Canonical 43 == Actual Evidence 43)
+        sample_manifest_records = json.loads(sample_manifest_path.read_text(encoding="utf-8"))
+        seen_canonical_keys: set[tuple[str, str, str, str]] = set()
+        canonical_sample_keys: list[tuple[str, str, str, str]] = []
+        for s_rec in sample_manifest_records:
+            k = (s_rec["ticker"], s_rec["query_start"], s_rec["query_end"], s_rec["sample_group"])
+            if k in seen_canonical_keys:
+                raise RuntimeError(f"REUSE_SAMPLE_CONTRACT_DUPLICATE: Duplicate sample key in sample manifest: {k}")
+            seen_canonical_keys.add(k)
+            canonical_sample_keys.append(k)
+
+        actual_samples_records = actual_data.get("samples", [])
+        seen_actual_keys: set[tuple[str, str, str, str]] = set()
+        cached_actual_dates_map: dict[tuple[str, str, str, str], list[str]] = {}
+        for a_rec in actual_samples_records:
+            k = (a_rec["ticker"], a_rec["request_start"], a_rec["request_end"], a_rec["sample_group"])
+            if k in seen_actual_keys:
+                raise RuntimeError(
+                    f"REUSE_ACTUAL_EVIDENCE_DUPLICATE_SAMPLE: Duplicate sample key in actual dates artifact: {k}"
+                )
+            seen_actual_keys.add(k)
+            cached_actual_dates_map[k] = a_rec["actual_dates"]
+
+        missing_in_actual = seen_canonical_keys - seen_actual_keys
+        extra_in_actual = seen_actual_keys - seen_canonical_keys
+        if missing_in_actual or extra_in_actual:
+            raise RuntimeError(
+                f"REUSE_SAMPLE_CONTRACT_MISMATCH: Exact sample contract mismatch between canonical manifest "
+                f"and actual evidence. Missing={len(missing_in_actual)}: {missing_in_actual}, "
+                f"Extra={len(extra_in_actual)}: {extra_in_actual}"
+            )
 
         for sample in samples:
-            key = (sample.ticker, sample.query_start, sample.query_end)
-            if key not in cached_actual_dates_map:
-                raise RuntimeError(f"REUSE_FAIL_CLOSED: Missing cached actual dates for sample {key}")
+            key = (sample.ticker, sample.query_start, sample.query_end, sample.sample_group.value)
             actual_dates_override = cached_actual_dates_map[key]
             res, act_dates = execute_single_pilot_query(sample, actual_dates_override=actual_dates_override)
             reused_count += 1
@@ -1030,7 +1082,7 @@ def run_bounded_live_pilot(
     cum_requests = 43 + 0 + 43 + 0 + fix04_live  # 129
 
     summary_payload: dict[str, Any] = {
-        "schema": "adjusted_price_store_bounded_live_pilot_v01_fix06",
+        "schema": "adjusted_price_store_bounded_live_pilot_v01_fix07",
         "execution_id": execution_id,
         "status": "PILOT_COMPLETED",
         "final_verdict": eval_out["final_verdict"],
@@ -1083,6 +1135,7 @@ def run_bounded_live_pilot(
             "fix04_new_pykrx_requests": fix04_live,
             "fix05_new_pykrx_requests": 0,
             "fix06_new_pykrx_requests": 0,
+            "fix07_new_pykrx_requests": 0,
             "cumulative_total_pykrx_requests": cum_requests,
             "pykrx_retries": total_retries,
             "krx_open_api_requests": 0,

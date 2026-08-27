@@ -1,4 +1,4 @@
-"""Tests for Adjusted Price Store Bounded Live Pilot (FIX06)."""
+"""Tests for Adjusted Price Store Bounded Live Pilot (FIX07)."""
 
 from __future__ import annotations
 
@@ -172,15 +172,40 @@ def test_reuse_invalid_manifest_fails_closed(tmp_path):
         run_bounded_live_pilot(input_dir=test_dir, mode="reuse")
 
 
+def test_reuse_missing_sample_manifest_fails_closed(tmp_path):
+    """Verify FIX07 Major 1: REUSE without pilot_sample_manifest.json fails closed with REUSE_SAMPLE_MANIFEST_MISSING."""
+    test_dir = tmp_path / "no_sample_manifest"
+    test_dir.mkdir()
+
+    canonical_dir = Path(DEFAULT_ARTIFACT_DIR)
+    for f in ["pilot_closure_manifest.json", "pilot_actual_source_dates.json", "historical_suspension_authority_v01.json"]:
+        (test_dir / f).write_text((canonical_dir / f).read_text(encoding="utf-8"), encoding="utf-8")
+
+    with pytest.raises(RuntimeError, match="REUSE_SAMPLE_MANIFEST_MISSING"):
+        run_bounded_live_pilot(input_dir=test_dir, mode="reuse")
+
+
+def test_reuse_missing_suspension_authority_fails_closed(tmp_path):
+    """Verify FIX07 Major 1: REUSE without historical_suspension_authority_v01.json fails closed with REUSE_SUSPENSION_AUTHORITY_MISSING."""
+    test_dir = tmp_path / "no_suspension_auth"
+    test_dir.mkdir()
+
+    canonical_dir = Path(DEFAULT_ARTIFACT_DIR)
+    for f in ["pilot_closure_manifest.json", "pilot_actual_source_dates.json", "pilot_sample_manifest.json"]:
+        (test_dir / f).write_text((canonical_dir / f).read_text(encoding="utf-8"), encoding="utf-8")
+
+    with pytest.raises(RuntimeError, match="REUSE_SUSPENSION_AUTHORITY_MISSING"):
+        run_bounded_live_pilot(input_dir=test_dir, mode="reuse")
+
+
 def test_reuse_hash_mismatch_fails_closed(tmp_path):
     """Verify Section 10: REUSE fails closed with REUSE_HASH_MISMATCH if actual source dates artifact is modified."""
     test_dir = tmp_path / "tampered_pilot"
     test_dir.mkdir()
 
     canonical_dir = Path(DEFAULT_ARTIFACT_DIR)
-    (test_dir / "pilot_closure_manifest.json").write_text(
-        (canonical_dir / "pilot_closure_manifest.json").read_text(encoding="utf-8"), encoding="utf-8"
-    )
+    for f in ["pilot_closure_manifest.json", "pilot_sample_manifest.json", "historical_suspension_authority_v01.json"]:
+        (test_dir / f).write_text((canonical_dir / f).read_text(encoding="utf-8"), encoding="utf-8")
     (test_dir / "pilot_actual_source_dates.json").write_text(
         '{"schema": "tampered", "execution_id": "ADJUSTED_PRICE_PILOT_FIX04_1787819364_LIVE", "samples": []}', encoding="utf-8"
     )
@@ -195,6 +220,9 @@ def test_reuse_execution_id_mismatch_fails_closed(tmp_path):
     test_dir.mkdir()
 
     canonical_dir = Path(DEFAULT_ARTIFACT_DIR)
+    for f in ["pilot_sample_manifest.json", "historical_suspension_authority_v01.json"]:
+        (test_dir / f).write_text((canonical_dir / f).read_text(encoding="utf-8"), encoding="utf-8")
+
     act_content = (canonical_dir / "pilot_actual_source_dates.json").read_text(encoding="utf-8")
     tampered_act_content = act_content.replace(CANONICAL_EXECUTION_ID, "OTHER_EXEC_ID")
     tampered_sha = hashlib.sha256(tampered_act_content.encode("utf-8")).hexdigest()
@@ -236,6 +264,146 @@ def test_reuse_suspension_authority_hash_mismatch_fails_closed(tmp_path):
 
     with pytest.raises(RuntimeError, match="REUSE_SUSPENSION_AUTHORITY_HASH_MISMATCH"):
         run_bounded_live_pilot(input_dir=test_dir, mode="reuse")
+
+
+def test_reuse_actual_evidence_extra_sample_fails_closed(tmp_path):
+    """Verify FIX07 Major 2: REUSE with extra sample in actual dates artifact fails closed with REUSE_SAMPLE_CONTRACT_MISMATCH."""
+    test_dir = tmp_path / "extra_sample_pilot"
+    test_dir.mkdir()
+
+    canonical_dir = Path(DEFAULT_ARTIFACT_DIR)
+    for f in ["pilot_sample_manifest.json", "historical_suspension_authority_v01.json"]:
+        (test_dir / f).write_text((canonical_dir / f).read_text(encoding="utf-8"), encoding="utf-8")
+
+    act_data = json.loads((canonical_dir / "pilot_actual_source_dates.json").read_text(encoding="utf-8"))
+    extra_sample = dict(act_data["samples"][0])
+    extra_sample["ticker"] = "999999"
+    act_data["samples"].append(extra_sample)
+
+    new_act_content = json.dumps(act_data)
+    new_sha = hashlib.sha256(new_act_content.encode("utf-8")).hexdigest()
+    (test_dir / "pilot_actual_source_dates.json").write_text(new_act_content, encoding="utf-8")
+
+    manifest_data = json.loads((canonical_dir / "pilot_closure_manifest.json").read_text(encoding="utf-8"))
+    manifest_data["pilot_actual_source_dates_sha256"] = new_sha
+    (test_dir / "pilot_closure_manifest.json").write_text(json.dumps(manifest_data), encoding="utf-8")
+
+    with pytest.raises(RuntimeError, match="REUSE_SAMPLE_CONTRACT_MISMATCH"):
+        run_bounded_live_pilot(input_dir=test_dir, mode="reuse")
+
+
+def test_reuse_actual_evidence_missing_sample_fails_closed(tmp_path):
+    """Verify FIX07 Major 2: REUSE with missing sample in actual dates artifact fails closed with REUSE_SAMPLE_CONTRACT_MISMATCH."""
+    test_dir = tmp_path / "missing_sample_pilot"
+    test_dir.mkdir()
+
+    canonical_dir = Path(DEFAULT_ARTIFACT_DIR)
+    for f in ["pilot_sample_manifest.json", "historical_suspension_authority_v01.json"]:
+        (test_dir / f).write_text((canonical_dir / f).read_text(encoding="utf-8"), encoding="utf-8")
+
+    act_data = json.loads((canonical_dir / "pilot_actual_source_dates.json").read_text(encoding="utf-8"))
+    act_data["samples"] = act_data["samples"][1:]  # Drop first sample
+
+    new_act_content = json.dumps(act_data)
+    new_sha = hashlib.sha256(new_act_content.encode("utf-8")).hexdigest()
+    (test_dir / "pilot_actual_source_dates.json").write_text(new_act_content, encoding="utf-8")
+
+    manifest_data = json.loads((canonical_dir / "pilot_closure_manifest.json").read_text(encoding="utf-8"))
+    manifest_data["pilot_actual_source_dates_sha256"] = new_sha
+    (test_dir / "pilot_closure_manifest.json").write_text(json.dumps(manifest_data), encoding="utf-8")
+
+    with pytest.raises(RuntimeError, match="REUSE_SAMPLE_CONTRACT_MISMATCH"):
+        run_bounded_live_pilot(input_dir=test_dir, mode="reuse")
+
+
+def test_reuse_actual_evidence_duplicate_sample_fails_closed(tmp_path):
+    """Verify FIX07 Major 2: REUSE with duplicate sample in actual dates artifact fails closed with REUSE_ACTUAL_EVIDENCE_DUPLICATE_SAMPLE."""
+    test_dir = tmp_path / "dup_sample_pilot"
+    test_dir.mkdir()
+
+    canonical_dir = Path(DEFAULT_ARTIFACT_DIR)
+    for f in ["pilot_sample_manifest.json", "historical_suspension_authority_v01.json"]:
+        (test_dir / f).write_text((canonical_dir / f).read_text(encoding="utf-8"), encoding="utf-8")
+
+    act_data = json.loads((canonical_dir / "pilot_actual_source_dates.json").read_text(encoding="utf-8"))
+    act_data["samples"].append(dict(act_data["samples"][0]))  # Duplicate first sample
+
+    new_act_content = json.dumps(act_data)
+    new_sha = hashlib.sha256(new_act_content.encode("utf-8")).hexdigest()
+    (test_dir / "pilot_actual_source_dates.json").write_text(new_act_content, encoding="utf-8")
+
+    manifest_data = json.loads((canonical_dir / "pilot_closure_manifest.json").read_text(encoding="utf-8"))
+    manifest_data["pilot_actual_source_dates_sha256"] = new_sha
+    (test_dir / "pilot_closure_manifest.json").write_text(json.dumps(manifest_data), encoding="utf-8")
+
+    with pytest.raises(RuntimeError, match="REUSE_ACTUAL_EVIDENCE_DUPLICATE_SAMPLE"):
+        run_bounded_live_pilot(input_dir=test_dir, mode="reuse")
+
+
+def test_reuse_sample_group_mismatch_fails_closed(tmp_path):
+    """Verify FIX07 Major 2: REUSE with sample_group mismatch fails closed with REUSE_SAMPLE_CONTRACT_MISMATCH."""
+    test_dir = tmp_path / "group_mismatch_pilot"
+    test_dir.mkdir()
+
+    canonical_dir = Path(DEFAULT_ARTIFACT_DIR)
+    for f in ["pilot_sample_manifest.json", "historical_suspension_authority_v01.json"]:
+        (test_dir / f).write_text((canonical_dir / f).read_text(encoding="utf-8"), encoding="utf-8")
+
+    act_data = json.loads((canonical_dir / "pilot_actual_source_dates.json").read_text(encoding="utf-8"))
+    # Change sample group of first sample from GROUP_A_NUMERIC to GROUP_E_MARKET_TRANSFER
+    act_data["samples"][0]["sample_group"] = "GROUP_E_MARKET_TRANSFER"
+
+    new_act_content = json.dumps(act_data)
+    new_sha = hashlib.sha256(new_act_content.encode("utf-8")).hexdigest()
+    (test_dir / "pilot_actual_source_dates.json").write_text(new_act_content, encoding="utf-8")
+
+    manifest_data = json.loads((canonical_dir / "pilot_closure_manifest.json").read_text(encoding="utf-8"))
+    manifest_data["pilot_actual_source_dates_sha256"] = new_sha
+    (test_dir / "pilot_closure_manifest.json").write_text(json.dumps(manifest_data), encoding="utf-8")
+
+    with pytest.raises(RuntimeError, match="REUSE_SAMPLE_CONTRACT_MISMATCH"):
+        run_bounded_live_pilot(input_dir=test_dir, mode="reuse")
+
+
+def test_reuse_canonical_manifest_duplicate_sample_fails_closed(tmp_path):
+    """Verify FIX07 Section 18: Canonical sample manifest with duplicate sample fails closed with REUSE_SAMPLE_CONTRACT_DUPLICATE."""
+    test_dir = tmp_path / "manifest_dup_pilot"
+    test_dir.mkdir()
+
+    canonical_dir = Path(DEFAULT_ARTIFACT_DIR)
+    for f in ["pilot_actual_source_dates.json", "historical_suspension_authority_v01.json"]:
+        (test_dir / f).write_text((canonical_dir / f).read_text(encoding="utf-8"), encoding="utf-8")
+
+    manifest_records = json.loads((canonical_dir / "pilot_sample_manifest.json").read_text(encoding="utf-8"))
+    manifest_records.append(dict(manifest_records[0]))
+
+    new_manifest_content = json.dumps(manifest_records)
+    new_manifest_sha = hashlib.sha256(new_manifest_content.encode("utf-8")).hexdigest()
+    (test_dir / "pilot_sample_manifest.json").write_text(new_manifest_content, encoding="utf-8")
+
+    closure_data = json.loads((canonical_dir / "pilot_closure_manifest.json").read_text(encoding="utf-8"))
+    closure_data["pilot_sample_manifest_sha256"] = new_manifest_sha
+    (test_dir / "pilot_closure_manifest.json").write_text(json.dumps(closure_data), encoding="utf-8")
+
+    with pytest.raises(RuntimeError, match="REUSE_SAMPLE_CONTRACT_DUPLICATE"):
+        run_bounded_live_pilot(input_dir=test_dir, mode="reuse")
+
+
+def test_reuse_calendar_runtime_drift_fails_closed(tmp_path):
+    """Verify FIX07 Minor 1: Runtime canonical calendar drift fails closed with REUSE_CALENDAR_DRIFT."""
+    fake_cal = tmp_path / "drifted_calendar.json"
+    fake_cal.write_text(
+        json.dumps({"cutoff_date": "2026-08-14", "trading_dates": ["2026-08-14"] * 3800}), encoding="utf-8"
+    )
+
+    canonical_dir = Path(DEFAULT_ARTIFACT_DIR)
+    with pytest.raises(RuntimeError, match="REUSE_CALENDAR_DRIFT"):
+        run_bounded_live_pilot(
+            input_dir=canonical_dir,
+            output_dir=tmp_path / "reuse_verification",
+            canonical_calendar_path=fake_cal,
+            mode="reuse",
+        )
 
 
 def test_suspension_authority_artifact_sha_and_records():
