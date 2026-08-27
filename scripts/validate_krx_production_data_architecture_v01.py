@@ -120,6 +120,7 @@ RUNTIME_ARTIFACT_EXCLUDED_PATHS = {
     "src/trend_scanner/review/candidate_review.py",
     "src/trend_scanner/data/adjusted_price_pilot.py",
     "src/trend_scanner/data/adjusted_price_full_population.py",
+    "src/trend_scanner/data/adjusted_price_diagnostics.py",
 }
 RUNTIME_ARTIFACT_EXCLUDED_LITERAL_PATTERNS = ("artifacts/reporting/**",)
 

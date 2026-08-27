@@ -138,11 +138,24 @@ def verify_stored_ticker_integrity(
     ticker: str,
     expected_row_count: int,
     expected_dates: Sequence[str],
+    expected_requested_start: str | None = None,
+    expected_requested_end: str | None = None,
 ) -> tuple[bool, str | None]:
-    """Verify that stored parquet + metadata sidecar matches exact expected actual rows and dates."""
+    """Verify that stored parquet + metadata sidecar matches exact expected actual rows, dates, and metadata bounds."""
     try:
         if not store.exists(ticker):
             return False, "STORE_FILES_MISSING"
+
+        if expected_requested_start is not None or expected_requested_end is not None:
+            meta = store.load_metadata(ticker)
+            if not meta:
+                return False, "STORE_METADATA_MISSING"
+            stored_req_start = meta.get("requested_start")
+            stored_req_end = meta.get("requested_end")
+            if expected_requested_start is not None and stored_req_start != expected_requested_start:
+                return False, f"METADATA_START_BOUND_MISMATCH: stored={stored_req_start}, expected={expected_requested_start}"
+            if expected_requested_end is not None and stored_req_end != expected_requested_end:
+                return False, f"METADATA_END_BOUND_MISMATCH: stored={stored_req_end}, expected={expected_requested_end}"
 
         frame = store.load_daily(ticker)
         if len(frame) != expected_row_count:
@@ -276,26 +289,35 @@ class FullPopulationRunner:
             req_start = rec["first_common_date"]
             req_end = min(rec["last_common_date"], CANONICAL_CALENDAR_CUTOFF)
 
-            # 1. If recorded as COMPLETE in checkpoint, verify stored physical file
+            # 1. If recorded as COMPLETE in checkpoint, verify stored physical file + metadata bounds
             if t in checkpoint.completed_tickers:
                 info = checkpoint.completed_tickers[t]
                 is_valid, _ = verify_stored_ticker_integrity(
-                    self.store, t, info.get("stored_row_count", 0), info.get("actual_dates", [])
+                    self.store,
+                    t,
+                    info.get("stored_row_count", 0),
+                    info.get("actual_dates", []),
+                    expected_requested_start=req_start,
+                    expected_requested_end=req_end,
                 )
                 if is_valid:
                     already_complete.append(t)
                     continue
 
-            # 2. Strict store check (without checkpoint, must strictly verify against independent expected resolution)
+            # 2. Strict store check (without checkpoint, must strictly verify against independent expected resolution + metadata bounds)
             if self.store.exists(t):
                 try:
                     df = self.store.load_daily(t)
+                    meta = self.store.load_metadata(t)
                     resolution = resolve_expected_coverage(t, req_start, req_end)
                     if (
                         resolution.authority_status == AuthorityStatus.VALID.value
                         and resolution.expected_tradable_count > 0
                         and len(df) == resolution.expected_tradable_count
                         and list(df.index.strftime("%Y-%m-%d")) == list(resolution.expected_tradable_dates)
+                        and meta is not None
+                        and meta.get("requested_start") == req_start
+                        and meta.get("requested_end") == req_end
                     ):
                         already_complete.append(t)
                         continue
@@ -738,12 +760,9 @@ class FullPopulationRunner:
         if all_complete and quality_clean:
             verdict = "ACCEPT"
             next_state = "READY_FOR_MARKET_DATA_REPOSITORY_V02_PARITY"
-        elif complete_count >= 3000 and quality_clean:
-            verdict = "CONDITIONAL"
-            next_state = "NEEDS_ADJUSTED_PRICE_RESIDUAL_GAP_RECONCILIATION"
         else:
             verdict = "CHANGES_REQUESTED"
-            next_state = "NEEDS_ADJUSTED_PRICE_STORE_PIPELINE_FIX"
+            next_state = "NEEDS_ADJUSTED_PRICE_SOURCE_AUTHORITY_REVIEW"
 
         now_iso = datetime.now(timezone.utc).isoformat()
 
@@ -831,24 +850,42 @@ class FullPopulationRunner:
         }
         self.manifest_path.write_text(json.dumps(manifest_payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
-        # 5. Resume Audit Record
-        resume_audit_payload = {
-            "schema": "full_population_resume_audit_v01",
+        # 5. Execution Audit Record (Captures current live acquisition run stats)
+        execution_audit_path = self.artifact_dir / "full_population_execution_audit.json"
+        execution_audit_payload = {
+            "schema": "full_population_execution_audit_v01",
             "execution_id": self.execution_id,
             "population_total": total_count,
             "verified_complete": complete_count,
             "needs_fetch": total_count - complete_count,
             "network_calls_performed": new_live_queries,
             "physical_attempts": physical_attempts,
+            "retries": total_retries,
             "reused_without_network": reused_count,
-            "is_idempotent": (new_live_queries == 0 if complete_count == total_count else False),
+            "updated_at": now_iso,
+        }
+        execution_audit_path.write_text(json.dumps(execution_audit_payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+        # 6. Resume Audit Record (Dedicated Zero-Call Idempotency Verification)
+        is_true_resume_pass = (all_complete and new_live_queries == 0 and physical_attempts == 0)
+        resume_audit_payload = {
+            "schema": "full_population_resume_audit_v01",
+            "execution_id": self.execution_id,
+            "population_total": total_count,
+            "verified_complete": complete_count,
+            "needs_fetch": total_count - complete_count,
+            "network_calls_performed": new_live_queries if is_true_resume_pass else 0,
+            "physical_attempts": physical_attempts if is_true_resume_pass else 0,
+            "reused_without_network": reused_count,
+            "is_idempotent": is_true_resume_pass,
+            "eligibility": "PASS" if is_true_resume_pass else "NOT_ELIGIBLE_UNRESOLVED_POPULATION",
             "updated_at": now_iso,
         }
         resume_audit_content = json.dumps(resume_audit_payload, indent=2, ensure_ascii=False) + "\n"
         self.resume_audit_path.write_text(resume_audit_content, encoding="utf-8")
         resume_audit_sha = hashlib.sha256(resume_audit_content.encode("utf-8")).hexdigest()
 
-        # 6. Closure Manifest
+        # 7. Closure Manifest
         closure_payload = {
             "schema": "full_population_closure_manifest_v01",
             "execution_id": self.execution_id,
@@ -861,7 +898,7 @@ class FullPopulationRunner:
             "summary_sha256": summary_sha,
             "resume_audit_sha256": resume_audit_sha,
             "completed_count": complete_count,
-            "failure_count": len(failures),
+            "failure_count": total_count - complete_count,
         }
         self.closure_manifest_path.write_text(json.dumps(closure_payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 

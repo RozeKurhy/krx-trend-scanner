@@ -348,3 +348,108 @@ def test_alpha_23_support_in_full_population_runner(tmp_path):
     rec_obj = runner.process_single_ticker(rec, provider=mock)
     assert rec_obj.ticker == "0001A0"
     assert rec_obj.numeric_or_alpha == "alphanumeric"
+
+
+def test_dry_run_metadata_bounds_validation(tmp_path):
+    """Verify FIX02 Section 14: Incorrect metadata requested_start/end bounds reject COMPLETE."""
+    store_dir = tmp_path / "store"
+    store = AdjustedPriceStore(store_dir)
+    dates = ["2024-01-02", "2024-01-03"]
+    df = _make_valid_ohlc_df(dates)
+
+    # Save with metadata bounds 2024-01-01 ~ 2024-01-05 (which encloses the frame)
+    store.save_full("005930", df, metadata_context={"requested_start": "2024-01-01", "requested_end": "2024-01-05"})
+
+    # Valid dates but wrong expected bounds
+    is_valid, err = verify_stored_ticker_integrity(
+        store,
+        "005930",
+        2,
+        dates,
+        expected_requested_start="2024-01-02",
+        expected_requested_end="2024-01-03",
+    )
+    assert not is_valid
+    assert "METADATA_START_BOUND_MISMATCH" in str(err)
+
+    # Correct expected bounds -> valid
+    is_valid_ok, err_ok = verify_stored_ticker_integrity(
+        store,
+        "005930",
+        2,
+        dates,
+        expected_requested_start="2024-01-01",
+        expected_requested_end="2024-01-05",
+    )
+    assert is_valid_ok
+    assert err_ok is None
+
+
+def test_audit_artifacts_semantic_separation(tmp_path):
+    """Verify FIX02 Section 4: Execution audit and Resume audit are strictly separated."""
+    store_dir = tmp_path / "store"
+    artifact_dir = tmp_path / "artifacts"
+    runner = FullPopulationRunner(store_dir=store_dir, artifact_dir=artifact_dir)
+
+    dates = ["2024-01-02", "2024-01-03"]
+    df = _make_valid_ohlc_df(dates)
+    mock = MockProvider({"005930": df})
+
+    rec = {
+        "ticker": "005930",
+        "isu_cd": ["KR7005930003"],
+        "market": ["KOSPI"],
+        "first_common_date": "2024-01-02",
+        "last_common_date": "2024-01-03",
+        "numeric_or_alpha": "numeric",
+        "currently_common": True,
+        "historical_only": False,
+    }
+    rec_obj = runner.process_single_ticker(rec, provider=mock)
+    runner.generate_operational_artifacts([rec_obj], {}, 10.0)
+
+    exec_audit_path = artifact_dir / "full_population_execution_audit.json"
+    resume_audit_path = artifact_dir / "full_population_resume_audit.json"
+
+    assert exec_audit_path.exists()
+    assert resume_audit_path.exists()
+
+    exec_audit = json.loads(exec_audit_path.read_text(encoding="utf-8"))
+    resume_audit = json.loads(resume_audit_path.read_text(encoding="utf-8"))
+
+    assert exec_audit["schema"] == "full_population_execution_audit_v01"
+    assert resume_audit["schema"] == "full_population_resume_audit_v01"
+
+    # Since total != 3162, resume audit cannot be a PASS
+    assert not resume_audit["is_idempotent"]
+    assert resume_audit["eligibility"] == "NOT_ELIGIBLE_UNRESOLVED_POPULATION"
+
+
+def test_diagnostics_and_taxonomy_generation():
+    """Verify FIX02 Section 5, 6, 8, 9: Diagnostic and Taxonomy artifacts exist and match schema."""
+    from trend_scanner.data.adjusted_price_diagnostics import (
+        DEFAULT_ARTIFACTS_DIR,
+        GapClassification,
+        RootCauseCategory,
+    )
+
+    assert GapClassification.LEADING_HISTORY_GAP.value == "LEADING_HISTORY_GAP"
+    assert RootCauseCategory.TRUE_SOURCE_GAP.value == "TRUE_SOURCE_GAP"
+
+    diag_csv = DEFAULT_ARTIFACTS_DIR / "partial_coverage_diagnostic.csv"
+    diag_sum = DEFAULT_ARTIFACTS_DIR / "partial_coverage_summary.json"
+    tax_csv = DEFAULT_ARTIFACTS_DIR / "error_taxonomy.csv"
+    tax_sum = DEFAULT_ARTIFACTS_DIR / "error_taxonomy_summary.json"
+    probe_res = DEFAULT_ARTIFACTS_DIR / "provider_root_cause_probe_results.csv"
+    probe_sum = DEFAULT_ARTIFACTS_DIR / "provider_root_cause_probe_summary.json"
+
+    assert diag_csv.exists()
+    assert diag_sum.exists()
+    assert tax_csv.exists()
+    assert tax_sum.exists()
+    assert probe_res.exists()
+    assert probe_sum.exists()
+
+    sum_data = json.loads(probe_sum.read_text(encoding="utf-8"))
+    assert sum_data["root_cause_verdict"] == "TRUE_SOURCE_GAP"
+    assert sum_data["old_window_empty_count"] > 0
