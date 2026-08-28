@@ -1,7 +1,7 @@
 """OpenDART API key resolution, secret scrubbing, and connectivity preflight.
 
 Directives:
-- ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_5 (Section 4)
+- ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_6 (Section 4)
 """
 
 from __future__ import annotations
@@ -10,13 +10,12 @@ from datetime import datetime, timezone
 import json
 import os
 from pathlib import Path
-import re
 from typing import Any
 
 import requests
 
-DEFAULT_CORP_EVIDENCE_DIR_FIX03_CORRECTION_5 = Path(
-    "artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/corporate_action_evidence/v01_fix03_correction_5"
+DEFAULT_CORP_EVIDENCE_DIR_FIX03_CORRECTION_6 = Path(
+    "artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/corporate_action_evidence/v01_fix03_correction_6"
 )
 
 
@@ -62,19 +61,19 @@ def sanitize_url(url: str, secret: str) -> str:
 
 
 def run_opendart_preflight(
-    output_dir: Path = DEFAULT_CORP_EVIDENCE_DIR_FIX03_CORRECTION_5,
+    output_dir: Path = DEFAULT_CORP_EVIDENCE_DIR_FIX03_CORRECTION_6,
     allow_network: bool = True,
     canonical_run_id: str = "",
 ) -> dict[str, Any]:
     """Execute OpenDART connectivity preflight with scrubbed provenance."""
-    run_id = canonical_run_id or f"PREFLIGHT_FIX03_CORRECTION_5_{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}"
+    run_id = canonical_run_id or f"PREFLIGHT_FIX03_CORRECTION_6_{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}"
     output_dir.mkdir(parents=True, exist_ok=True)
 
     try:
         api_key = get_opendart_api_key()
     except OpenDARTCredentialMissingError as exc:
         res = {
-            "schema": "opendart_preflight_v01_fix03_correction_5",
+            "schema": "opendart_preflight_v01_fix03_correction_6",
             "canonical_run_id": run_id,
             "checked_at": datetime.now(timezone.utc).isoformat(),
             "verdict": "FAIL",
@@ -85,14 +84,14 @@ def run_opendart_preflight(
             "sanitized_endpoint": "https://opendart.fss.or.kr/api/list.json",
             "error_reason": str(exc),
         }
-        (output_dir / "opendart_preflight_v01_fix03_correction_5.json").write_text(
+        (output_dir / "opendart_preflight_v01_fix03_correction_6.json").write_text(
             json.dumps(res, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
         )
         return res
 
     if not allow_network:
         res = {
-            "schema": "opendart_preflight_v01_fix03_correction_5",
+            "schema": "opendart_preflight_v01_fix03_correction_6",
             "canonical_run_id": run_id,
             "checked_at": datetime.now(timezone.utc).isoformat(),
             "verdict": "READY",
@@ -103,12 +102,11 @@ def run_opendart_preflight(
             "sanitized_endpoint": "https://opendart.fss.or.kr/api/list.json?corp_code=00126380",
             "error_reason": "",
         }
-        (output_dir / "opendart_preflight_v01_fix03_correction_5.json").write_text(
+        (output_dir / "opendart_preflight_v01_fix03_correction_6.json").write_text(
             json.dumps(res, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
         )
         return res
 
-    # Live test ping
     test_url = "https://opendart.fss.or.kr/api/list.json"
     params = {
         "crtfc_key": api_key,
@@ -123,7 +121,6 @@ def run_opendart_preflight(
         st_code = resp.status_code
         data = resp.json()
         op_st = data.get("status", "")
-        # OpenDART status '000' is success, '013' is no data (still valid auth)
         is_ready = bool(st_code == 200 and op_st in ["000", "013"])
         err_msg = "" if is_ready else f"HTTP {st_code}, OpenDART status {op_st}: {data.get('message', '')}"
     except Exception as exc:
@@ -133,7 +130,7 @@ def run_opendart_preflight(
         err_msg = str(exc)
 
     res = {
-        "schema": "opendart_preflight_v01_fix03_correction_5",
+        "schema": "opendart_preflight_v01_fix03_correction_6",
         "canonical_run_id": run_id,
         "checked_at": datetime.now(timezone.utc).isoformat(),
         "verdict": "READY" if is_ready else "FAIL",
@@ -145,7 +142,7 @@ def run_opendart_preflight(
         "error_reason": err_msg,
     }
 
-    (output_dir / "opendart_preflight_v01_fix03_correction_5.json").write_text(
+    (output_dir / "opendart_preflight_v01_fix03_correction_6.json").write_text(
         json.dumps(res, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
     )
     return res

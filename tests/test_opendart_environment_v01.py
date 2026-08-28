@@ -1,7 +1,7 @@
 """Tests for OpenDART API environment resolution, secret scrubbing, and connectivity preflight.
 
 Directives:
-- ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_5 (Section 4)
+- ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_6 (Section 4)
 """
 
 import json
@@ -62,8 +62,8 @@ def test_live_ping_against_opendart_if_key_available(tmp_path):
 def test_preflight_artifact_created_with_expected_schema(tmp_path):
     key = os.environ.get("OPENDART_API_KEY", "TEST_KEY")
     res = run_opendart_preflight(output_dir=tmp_path, allow_network=False)
-    af = tmp_path / "opendart_preflight_v01_fix03_correction_5.json"
+    af = tmp_path / "opendart_preflight_v01_fix03_correction_6.json"
     assert af.exists()
     data = json.loads(af.read_text(encoding="utf-8"))
-    assert data["schema"] == "opendart_preflight_v01_fix03_correction_5"
+    assert data["schema"] == "opendart_preflight_v01_fix03_correction_6"
     assert data["verdict"] == "READY"
