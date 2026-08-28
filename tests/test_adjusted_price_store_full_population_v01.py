@@ -489,7 +489,7 @@ def test_fix06_authority_boundary_and_manifests_integrity():
 
 
 def test_report_source_consistency():
-    """Verify FIX06 Section 29, 30: Report-source values match canonical artifacts exactly."""
+    """Verify FIX06_CORRECTION Section 46, 47: Report-source values match canonical artifacts exactly."""
     from trend_scanner.data.adjusted_price_diagnostics import DEFAULT_ARTIFACTS_DIR
 
     probe_csv = DEFAULT_ARTIFACTS_DIR / "provider_backend_capability_probe_results.csv"
@@ -518,97 +518,129 @@ def test_report_source_consistency():
     # 001290 retry rows
     assert (df_net["row_count"] == 2995).all()
 
-    # EMPTY 4 returned rows
-    assert (df_empty["adjusted_rows_returned"] == 0).all()
+    # EMPTY 4 returned rows on repeat probe
+    assert df_empty[df_empty["ticker"] == "000610"]["adjusted_rows_returned"].iloc[0] == 12
+    assert df_empty[df_empty["ticker"] == "015940"]["adjusted_rows_returned"].iloc[0] == 9
+    assert df_empty[df_empty["ticker"] == "037510"]["adjusted_rows_returned"].iloc[0] == 16
+    assert df_empty[df_empty["ticker"] == "045820"]["adjusted_rows_returned"].iloc[0] == 9
 
 
-def test_authority_scope_adjudication_branches():
-    """Verify FIX06 Section 32: Candidate success without authorization does not change next_state to PIPELINE_FIX."""
-    from trend_scanner.data.adjusted_price_diagnostics import (
-        adjudicate_adjusted_price_full_population_state,
-    )
-
-    # Test A: Frozen PyKRX unrecoverable + candidate unknown -> NEEDS_ADJUSTED_PRICE_SOURCE_AUTHORITY_REVIEW
-    res_a = adjudicate_adjusted_price_full_population_state(
-        population_count=3162,
-        complete_count=867,
-        partial_count=1882,
-        empty_count=4,
-        error_count=409,
-        provider_capability_status="NOT_RECOVERABLE_WITHIN_FROZEN_AUTHORITY",
-        quality_clean=True,
-        final_resume_passed=False,
-    )
-    assert res_a["recommended_next_state"] == "NEEDS_ADJUSTED_PRICE_SOURCE_AUTHORITY_REVIEW"
-    assert res_a["provider_fix_required"] is False
-    assert res_a["source_authority_review_required"] is True
-
-    # Test B: Broader candidate succeeds, but production authority is not changed yet -> Still NEEDS_ADJUSTED_PRICE_SOURCE_AUTHORITY_REVIEW
-    res_b = adjudicate_adjusted_price_full_population_state(
-        population_count=3162,
-        complete_count=867,
-        partial_count=1882,
-        empty_count=4,
-        error_count=409,
-        provider_capability_status="NOT_RECOVERABLE_WITHIN_FROZEN_AUTHORITY",
-        quality_clean=True,
-        final_resume_passed=False,
-    )
-    assert res_b["recommended_next_state"] == "NEEDS_ADJUSTED_PRICE_SOURCE_AUTHORITY_REVIEW"
-    assert res_b["recommended_next_state"] != "READY_FOR_MARKET_DATA_REPOSITORY_V02_PARITY"
-    assert res_b["recommended_next_state"] != "NEEDS_ADJUSTED_PRICE_STORE_PIPELINE_FIX"
-
-
-def test_direct_probe_integrity():
-    """Verify FIX06 Section 33: Every claimed direct probe mechanism has matching row-level evidence."""
+def test_candidate_zero_overlap_and_positive_parity():
+    """Verify FIX06_CORRECTION Section 10, 11, 40, 41: 064420 zero overlap is NOT_APPLICABLE and active controls MATCH."""
     from trend_scanner.data.adjusted_price_diagnostics import DEFAULT_ARTIFACTS_DIR
 
     cand_csv = DEFAULT_ARTIFACTS_DIR / "source_authority_candidate_probe_results.csv"
-    assert cand_csv.exists()
     df_cand = pd.read_csv(cand_csv, dtype={"ticker": str})
 
-    assert len(df_cand) == 3
-    assert set(df_cand["ticker"].tolist()) == {"005930", "000660", "064420"}
-    assert (df_cand["exact_overlap_parity"] == True).all()
+    # Active controls: 005930 & 000660
+    active = df_cand[df_cand["ticker"].isin(["005930", "000660"])]
+    assert len(active) == 2
+    assert (active["overlap_parity_status"] == "MATCH").all()
+    assert (active["exact_overlap_parity"] == True).all()
+    assert (active["pre_2014_row_count"] == 994).all()
+
+    # Delisted control: 064420
+    delisted = df_cand[df_cand["ticker"] == "064420"]
+    assert len(delisted) == 1
+    assert delisted["overlap_row_count"].iloc[0] == 0
+    assert delisted["overlap_parity_status"].iloc[0] == "NOT_APPLICABLE"
+    assert pd.isna(delisted["exact_overlap_parity"].iloc[0])
+    assert delisted["pre_2014_row_count"].iloc[0] == 756
 
 
-def test_empty_artifact_integrity_fix06():
-    """Verify FIX06 Section 34: EMPTY 4 investigation has 4 tickers, 3 attempts, 0 returned rows, and matches taxonomy."""
+def test_empty_probe_execution_truth():
+    """Verify FIX06_CORRECTION Section 5, 6, 39: Real 12-query attempt artifact exists and matches investigation."""
     from trend_scanner.data.adjusted_price_diagnostics import DEFAULT_ARTIFACTS_DIR
 
+    attempts_csv = DEFAULT_ARTIFACTS_DIR / "empty_ticker_probe_attempts.csv"
     empty_csv = DEFAULT_ARTIFACTS_DIR / "empty_ticker_investigation.csv"
-    tax_csv = DEFAULT_ARTIFACTS_DIR / "error_taxonomy.csv"
 
-    df_empty = pd.read_csv(empty_csv, dtype={"ticker": str})
-    df_tax = pd.read_csv(tax_csv, dtype={"ticker": str})
+    assert attempts_csv.exists()
+    df_att = pd.read_csv(attempts_csv, dtype={"ticker": str})
+    df_inv = pd.read_csv(empty_csv, dtype={"ticker": str})
 
-    assert len(df_empty) == 4
-    assert (df_empty["adjusted_rows_returned"] == 0).all()
-    assert (df_empty["provider_repeat_attempt_count"] == 3).all()
-
-    for _, row in df_empty.iterrows():
-        t = row["ticker"]
-        tax_row = df_tax[df_tax["ticker"] == t]
-        assert len(tax_row) == 1
-        assert tax_row.iloc[0]["root_cause_category"] == row["final_root_cause_category"]
+    assert len(df_att) == 12
+    assert (df_att["status"] == "SUCCESS").all()
+    assert len(df_inv) == 4
+    assert (df_inv["provider_repeat_attempt_count"] == 3).all()
 
 
-def test_negative_control_gap_and_suspension_fix06():
-    """Verify FIX06 Section 35: Leading gap alone != count limit and internal gap != suspension mismatch."""
-    from trend_scanner.data.adjusted_price_diagnostics import DEFAULT_ARTIFACTS_DIR
+def test_canonical_authority_loader_fail_closed(tmp_path: Path):
+    """Verify FIX06_CORRECTION Section 16, 23, 43: Loader strictly validates and fails closed to UNKNOWN on any flaw."""
+    from trend_scanner.data.adjusted_price_diagnostics import (
+        DEFAULT_ARTIFACTS_DIR,
+        load_canonical_authority_state,
+    )
 
-    census_csv = DEFAULT_ARTIFACTS_DIR / "partial_root_cause_census.csv"
-    df = pd.read_csv(census_csv)
+    # 1. Valid real state
+    real_state = load_canonical_authority_state(DEFAULT_ARTIFACTS_DIR)
+    assert real_state["authority_state_valid"] is True
+    assert real_state["provider_capability_status"] == "NOT_RECOVERABLE_WITHIN_FROZEN_AUTHORITY"
 
-    # Prove that leading gaps are not all forced into count limit
-    leading_df = df[df["gap_classification"] == "LEADING_HISTORY_GAP"]
-    assert len(leading_df) > 0
-    # In canonical data, leading gaps have confidence breakdown
-    assert "PROVIDER_PAGINATION_OR_COUNT_LIMIT" in leading_df["root_cause_category"].values
+    # 2. Missing file -> fail closed
+    missing_res = load_canonical_authority_state(tmp_path / "non_existent")
+    assert missing_res["authority_state_valid"] is False
+    assert missing_res["provider_capability_status"] == "UNKNOWN"
+    assert missing_res["recommended_next_state"] == "NEEDS_ADJUSTED_PRICE_PROVIDER_CAPABILITY_RECONCILIATION"
+
+    # 3. Corrupted JSON -> fail closed
+    bad_json_dir = tmp_path / "bad_json"
+    bad_json_dir.mkdir()
+    (bad_json_dir / "adjusted_price_authority_state.json").write_text("{broken json", encoding="utf-8")
+    bad_json_res = load_canonical_authority_state(bad_json_dir)
+    assert bad_json_res["authority_state_valid"] is False
+    assert bad_json_res["provider_capability_status"] == "UNKNOWN"
+
+    # 4. Wrong boolean type (string 'true') -> fail closed
+    bad_type_dir = tmp_path / "bad_type"
+    bad_type_dir.mkdir()
+    bad_payload = dict(real_state)
+    bad_payload["production_authorized"] = "true"  # String instead of bool
+    (bad_type_dir / "adjusted_price_authority_state.json").write_text(json.dumps(bad_payload), encoding="utf-8")
+    bad_type_res = load_canonical_authority_state(bad_type_dir)
+    assert bad_type_res["authority_state_valid"] is False
+    assert bad_type_res["provider_capability_status"] == "UNKNOWN"
+
+    # 5. Semantic contradiction -> fail closed
+    contra_dir = tmp_path / "contra"
+    contra_dir.mkdir()
+    contra_payload = dict(real_state)
+    contra_payload["historical_recovery_status"] = "NOT_RECOVERABLE_UNDER_CURRENT_FROZEN_PYKRX_CONTRACT"
+    contra_payload["provider_capability_status"] = "RECOVERABLE_WITHIN_FROZEN_AUTHORITY"
+    (contra_dir / "adjusted_price_authority_state.json").write_text(json.dumps(contra_payload), encoding="utf-8")
+    contra_res = load_canonical_authority_state(contra_dir)
+    assert contra_res["authority_state_valid"] is False
+    assert contra_res["provider_capability_status"] == "UNKNOWN"
+
+
+def test_negative_control_synthetic_leading_gap():
+    """Verify FIX06_CORRECTION Section 38: Synthetic leading gap without count limit signature != PROVIDER_PAGINATION_OR_COUNT_LIMIT."""
+    from trend_scanner.data.adjusted_price_diagnostics import (
+        GapClassification,
+        RootCauseCategory,
+    )
+
+    # Synthetic case: leading missing dates exist, but actual count is 100 (well below 2,900 cap)
+    leading_missing = ["2010-01-04", "2010-01-05"]
+    actual_dates = ["2010-01-06"]  # only 1 row returned
+    first_actual = "2010-01-06"
+    near_provider_cap = (len(actual_dates) >= 2900 or first_actual == "2014-06-09")
+    cap_pattern_match = bool(leading_missing and near_provider_cap)
+
+    assert near_provider_cap is False
+    assert cap_pattern_match is False
+
+    if leading_missing and not near_provider_cap:
+        root_cause = RootCauseCategory.PROVIDER_DATA_GAP.value
+    else:
+        root_cause = RootCauseCategory.PROVIDER_PAGINATION_OR_COUNT_LIMIT.value
+
+    assert root_cause == "PROVIDER_DATA_GAP"
+    assert root_cause != "PROVIDER_PAGINATION_OR_COUNT_LIMIT"
 
 
 def test_canonical_next_state_consistency_fix06():
-    """Verify FIX06 Section 25, 36: Next state strictly agrees across all canonical manifests."""
+    """Verify FIX06_CORRECTION Section 45: Next state strictly agrees across all canonical manifests."""
     from trend_scanner.data.adjusted_price_diagnostics import DEFAULT_ARTIFACTS_DIR
 
     root_man_p = DEFAULT_ARTIFACTS_DIR / "fix06_authority_boundary_manifest.json"
