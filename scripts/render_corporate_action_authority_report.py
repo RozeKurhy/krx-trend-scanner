@@ -69,20 +69,11 @@ def render_report_from_git_head(head_sha: str, repo_root: Path, output_file: Pat
     pagination_val = json.loads(read_git_blob(head_sha, f"{base_rel}/corporate_action_discovery_pagination_validation_v01_fix03_correction_7.json", repo_root).decode("utf-8"))
     claim_indep_val = json.loads(read_git_blob(head_sha, f"{base_rel}/corporate_action_claim_independence_validation_v01_fix03_correction_7.json", repo_root).decode("utf-8"))
 
-    disc_csv = read_git_blob(head_sha, f"{base_rel}/corporate_action_official_discovery_v01_fix03_correction_7.csv", repo_root).decode("utf-8")
-    disc_df = pd.read_csv(io.StringIO(disc_csv), dtype=CSV_ID_DTYPES)
-
-    doc_csv = read_git_blob(head_sha, f"{base_rel}/corporate_action_official_document_validation_v01_fix03_correction_7.csv", repo_root).decode("utf-8")
-    doc_df = pd.read_csv(io.StringIO(doc_csv), dtype=CSV_ID_DTYPES)
-
-    parity_csv = read_git_blob(head_sha, f"{base_rel}/corporate_action_event_sensitive_parity_v01_fix03_correction_7.csv", repo_root).decode("utf-8")
-    parity_df = pd.read_csv(io.StringIO(parity_csv), dtype=CSV_ID_DTYPES)
-
-    cand_audit_csv = read_git_blob(head_sha, f"{base_rel}/corporate_action_discovery_candidate_audit_v01_fix03_correction_7.csv", repo_root).decode("utf-8")
-    cand_audit_df = pd.read_csv(io.StringIO(cand_audit_csv), dtype=CSV_ID_DTYPES)
-
-    probe_audit_csv = read_git_blob(head_sha, f"{base_rel}/corporate_action_document_probe_audit_v01_fix03_correction_7.csv", repo_root).decode("utf-8")
-    probe_audit_df = pd.read_csv(io.StringIO(probe_audit_csv), dtype=CSV_ID_DTYPES)
+    disc_df = pd.read_csv(io.StringIO(disc_csv), dtype=CSV_ID_DTYPES) if disc_csv.strip() else pd.DataFrame()
+    doc_df = pd.read_csv(io.StringIO(doc_csv), dtype=CSV_ID_DTYPES) if doc_csv.strip() else pd.DataFrame()
+    parity_df = pd.read_csv(io.StringIO(parity_csv), dtype=CSV_ID_DTYPES) if parity_csv.strip() else pd.DataFrame()
+    cand_audit_df = pd.read_csv(io.StringIO(cand_audit_csv), dtype=CSV_ID_DTYPES) if cand_audit_csv.strip() else pd.DataFrame()
+    probe_audit_df = pd.read_csv(io.StringIO(probe_audit_csv), dtype=CSV_ID_DTYPES) if probe_audit_csv.strip() else pd.DataFrame()
 
     # 4. Format tables and report
     report_lines = [
