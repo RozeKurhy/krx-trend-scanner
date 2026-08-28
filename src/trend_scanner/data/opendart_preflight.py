@@ -1,6 +1,6 @@
 """OpenDART Credential Loader, Diagnostic Preflight, and Environment Hard Gate.
 
-Directive: ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_3 (Section 4-7)
+Directive: ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_4 (Section 4-5)
 """
 
 from __future__ import annotations
@@ -45,10 +45,10 @@ def run_opendart_preflight(
     2. Endpoint reachable
     3. Small authenticated request succeeds
     4. OpenDART status in response payload is '000' (OK) or '013' (Authenticated No Data)
-    5. Correct OpenDART 013 vs 000 semantics (Section 7)
+    5. Correct OpenDART 013 vs 000 semantics (Section 5)
     """
     preflight_result: dict[str, Any] = {
-        "schema": "opendart_preflight_v01_fix03_correction_3",
+        "schema": "opendart_preflight_v01_fix03_correction_4",
         "canonical_run_id": canonical_run_id,
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "credential_present": False,
@@ -71,7 +71,7 @@ def run_opendart_preflight(
         preflight_result["error_reason"] = "OPENDART_CREDENTIAL_MISSING"
         if output_dir:
             output_dir.mkdir(parents=True, exist_ok=True)
-            p = output_dir / "opendart_preflight_v01_fix03_correction_3.json"
+            p = output_dir / "opendart_preflight_v01_fix03_correction_4.json"
             p.write_text(json.dumps(preflight_result, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
         return preflight_result
 
@@ -126,7 +126,7 @@ def run_opendart_preflight(
 
     if output_dir:
         output_dir.mkdir(parents=True, exist_ok=True)
-        p = output_dir / "opendart_preflight_v01_fix03_correction_3.json"
+        p = output_dir / "opendart_preflight_v01_fix03_correction_4.json"
         p.write_text(json.dumps(preflight_result, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
     return preflight_result

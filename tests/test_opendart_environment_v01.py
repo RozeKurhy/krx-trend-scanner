@@ -1,6 +1,6 @@
 """Dedicated Unit & Diagnostic Tests for OpenDART Environment and Preflight Module.
 
-Directive: ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_3 (Section 4-7)
+Directive: ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_4 (Section 4-5)
 """
 
 from __future__ import annotations
@@ -46,7 +46,7 @@ def test_opendart_preflight_success_000(monkeypatch, tmp_path):
         assert res["probe_response_status"] == "AUTHENTICATED_WITH_DATA"
         assert res["response_identity_status"] == "VALID"
 
-        artifact_p = tmp_path / "opendart_preflight_v01_fix03_correction_3.json"
+        artifact_p = tmp_path / "opendart_preflight_v01_fix03_correction_4.json"
         assert artifact_p.exists()
         art_data = json.loads(artifact_p.read_text(encoding="utf-8"))
         assert art_data["verdict"] == "READY"
