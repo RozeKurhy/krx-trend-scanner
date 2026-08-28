@@ -1,0 +1,28 @@
+{
+  "schema": "corporate_action_evidence_source_inventory_v01_fix03",
+  "directive_id": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03",
+  "sources": [
+    {
+      "source_id": "DART_OFFICIAL_DISCLOSURE",
+      "source_tier": "TIER_A1_OPENDART",
+      "source_name": "금융감독원 전자공시시스템 (DART) 공시원문",
+      "base_domain": "dart.fss.or.kr",
+      "endpoint_type": "OFFICIAL_DISCLOSURE_VIEWER",
+      "auth_required": false,
+      "raw_format": "HTML",
+      "parser_version": "v01_fix03",
+      "authority_validation_contract": "DART 고유 접수번호(rcpNo)가 부여된 주요사항보고서 본문에서 회사명/종목코드/보고서명/이벤트종류/일자가 완벽히 검증된 공시만 수용 (합성 문서 생성 절대 금지)"
+    },
+    {
+      "source_id": "KRX_KIND_DISCLOSURE",
+      "source_tier": "TIER_A2_KRX_KIND",
+      "source_name": "한국거래소 상장공시시스템 (KIND) 공시",
+      "base_domain": "kind.krx.co.kr",
+      "endpoint_type": "OFFICIAL_MARKET_DISCLOSURE",
+      "auth_required": false,
+      "raw_format": "HTML",
+      "parser_version": "v01_fix03",
+      "authority_validation_contract": "한국거래소 유가증권시장본부 공식 매매거래정지/신주상장/권리락 안내 공시"
+    }
+  ]
+}
