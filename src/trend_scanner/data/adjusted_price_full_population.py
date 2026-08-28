@@ -756,7 +756,11 @@ class FullPopulationRunner:
         # Verdict evaluation via canonical dynamic adjudicator (BLOCKER D)
         from trend_scanner.data.adjusted_price_diagnostics import (
             adjudicate_adjusted_price_full_population_state,
+            load_canonical_authority_state,
         )
+
+        auth_state = load_canonical_authority_state(self.artifact_dir)
+        cap_status = auth_state.get("provider_capability_status", "UNKNOWN")
 
         quality_clean = (total_duplicates == 0 and total_invalid_ohlc == 0 and total_future_rows == 0)
         adj = adjudicate_adjusted_price_full_population_state(
@@ -765,7 +769,7 @@ class FullPopulationRunner:
             partial_count=partial_count,
             empty_count=empty_count,
             error_count=error_count,
-            provider_capability_status="NOT_RECOVERABLE_WITHIN_FROZEN_AUTHORITY",
+            provider_capability_status=cap_status,
             quality_clean=quality_clean,
             final_resume_passed=False,
         )

@@ -1,14 +1,12 @@
 {
-  "schema": "provider_backend_capability_probe_summary_v01",
-  "directive_id": "ADJUSTED_PRICE_STORE_FULL_POPULATION_V01_FIX05",
+  "schema": "provider_backend_capability_probe_summary_v02",
+  "directive_id": "ADJUSTED_PRICE_STORE_FULL_POPULATION_V01_FIX06",
   "probe_targets_count": 9,
   "total_probes_executed": 45,
-  "static_capability_inspection_complete": true,
-  "supported_retrieval_mechanisms_exhausted": true,
-  "long_history_recovery_attempted": true,
+  "current_frozen_authority_id": "PYKRX_ADJUSTED_V1_PUBLIC_CONTRACT",
+  "pykrx_count_limit_confirmed": true,
   "long_history_recovery_succeeded": false,
   "provider_capability_verdict": "NOT_RECOVERABLE_WITHIN_FROZEN_AUTHORITY",
-  "plateau_3000_confirmed": true,
-  "pre_2014_short_history_success_confirmed": true,
-  "verdict_rationale": "Static inspection confirmed that PyKRX and the upstream Naver Sise backend support only single-query count-based requests capped at 3,000 observations, with zero support for pagination, offsets, or server-side date filtering. Consequently, pre-2014 adjusted rows for active long-lived common stocks are structurally unreachable."
+  "authority_scope_verdict": "NOT_RECOVERABLE_UNDER_CURRENT_FROZEN_PYKRX_CONTRACT",
+  "verdict_rationale": "The current frozen production contract pykrx.stock.get_market_ohlcv_by_date(..., adjusted=True) uses a count-bounded requestType=0 path capped at ~3,000 observations, making pre-2014 observations for active long-lived common stocks unrecoverable under this authority."
 }

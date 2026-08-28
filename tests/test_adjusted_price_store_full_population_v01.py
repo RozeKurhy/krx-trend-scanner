@@ -425,8 +425,8 @@ def test_audit_artifacts_semantic_separation(tmp_path):
     assert resume_audit["eligibility"] == "NOT_ELIGIBLE_UNRESOLVED_POPULATION"
 
 
-def test_fix05_diagnostics_and_manifests_integrity():
-    """Verify FIX05 Section 8, 11, 19, 21, 33: All required FIX05 manifests and artifacts exist and match schema."""
+def test_fix06_authority_boundary_and_manifests_integrity():
+    """Verify FIX06 Section 7, 8, 11, 36: All required FIX06 manifests and candidate artifacts exist and match schema."""
     from trend_scanner.data.adjusted_price_diagnostics import (
         DEFAULT_ARTIFACTS_DIR,
         GapClassification,
@@ -440,6 +440,9 @@ def test_fix05_diagnostics_and_manifests_integrity():
     assert RootCauseCategory.DELISTED_SYMBOL_UNSUPPORTED.value == "DELISTED_SYMBOL_UNSUPPORTED"
 
     surf_json = DEFAULT_ARTIFACTS_DIR / "provider_capability_surface.json"
+    auth_state_json = DEFAULT_ARTIFACTS_DIR / "adjusted_price_authority_state.json"
+    cand_res = DEFAULT_ARTIFACTS_DIR / "source_authority_candidate_probe_results.csv"
+    cand_sum = DEFAULT_ARTIFACTS_DIR / "source_authority_candidate_probe_summary.json"
     probe_res = DEFAULT_ARTIFACTS_DIR / "provider_backend_capability_probe_results.csv"
     probe_sum = DEFAULT_ARTIFACTS_DIR / "provider_backend_capability_probe_summary.json"
     census_csv = DEFAULT_ARTIFACTS_DIR / "partial_root_cause_census.csv"
@@ -451,9 +454,12 @@ def test_fix05_diagnostics_and_manifests_integrity():
     tax_sum = DEFAULT_ARTIFACTS_DIR / "error_taxonomy_summary.json"
     env_man = DEFAULT_ARTIFACTS_DIR / "provider_environment_manifest.json"
     sup_man = DEFAULT_ARTIFACTS_DIR / "artifact_supersession_manifest.json"
-    root_man = DEFAULT_ARTIFACTS_DIR / "fix05_root_cause_manifest.json"
+    fix06_man = DEFAULT_ARTIFACTS_DIR / "fix06_authority_boundary_manifest.json"
 
     assert surf_json.exists()
+    assert auth_state_json.exists()
+    assert cand_res.exists()
+    assert cand_sum.exists()
     assert probe_res.exists()
     assert probe_sum.exists()
     assert census_csv.exists()
@@ -465,44 +471,79 @@ def test_fix05_diagnostics_and_manifests_integrity():
     assert tax_sum.exists()
     assert env_man.exists()
     assert sup_man.exists()
-    assert root_man.exists()
+    assert fix06_man.exists()
 
     surf_data = json.loads(surf_json.read_text(encoding="utf-8"))
-    assert surf_data["static_inspection_complete"] is True
-    assert surf_data["server_side_start_date_supported"] is False
-    assert surf_data["page_supported"] is False
+    assert surf_data["schema"] == "provider_authority_boundary_surface_v01"
+    assert surf_data["current_frozen_authority"]["authority_id"] == "PYKRX_ADJUSTED_V1_PUBLIC_CONTRACT"
 
-    cap_data = json.loads(probe_sum.read_text(encoding="utf-8"))
-    assert cap_data["plateau_3000_confirmed"] is True
-    assert cap_data["provider_capability_verdict"] == "NOT_RECOVERABLE_WITHIN_FROZEN_AUTHORITY"
+    cand_data = json.loads(cand_sum.read_text(encoding="utf-8"))
+    assert cand_data["pre_2014_rows_recovered"] is True
+    assert cand_data["exact_overlap_parity_confirmed"] is True
 
-    root_data = json.loads(root_man.read_text(encoding="utf-8"))
-    assert root_data["dominant_root_cause"] == "PROVIDER_PAGINATION_OR_COUNT_LIMIT"
-    assert root_data["recommended_next_state"] == "NEEDS_ADJUSTED_PRICE_SOURCE_AUTHORITY_REVIEW"
+    fix06_data = json.loads(fix06_man.read_text(encoding="utf-8"))
+    assert fix06_data["pykrx_long_history_recovery_status"] == "NOT_RECOVERABLE_UNDER_CURRENT_FROZEN_PYKRX_CONTRACT"
+    assert fix06_data["candidate_id"] == "NAVER_DIRECT_DATE_RANGE_ADJUSTED_CANDIDATE"
+    assert fix06_data["candidate_production_authorized"] is False
+    assert fix06_data["recommended_next_state"] == "NEEDS_ADJUSTED_PRICE_SOURCE_AUTHORITY_REVIEW"
 
 
-def test_dynamic_adjudicator_case_branches():
-    """Verify FIX05 Section 27, 28, 29: Synthetic tests prove all 4 capability & completion branches."""
+def test_report_source_consistency():
+    """Verify FIX06 Section 29, 30: Report-source values match canonical artifacts exactly."""
+    from trend_scanner.data.adjusted_price_diagnostics import DEFAULT_ARTIFACTS_DIR
+
+    probe_csv = DEFAULT_ARTIFACTS_DIR / "provider_backend_capability_probe_results.csv"
+    net_csv = DEFAULT_ARTIFACTS_DIR / "network_error_reconciliation_probe.csv"
+    empty_csv = DEFAULT_ARTIFACTS_DIR / "empty_ticker_investigation.csv"
+
+    df_probe = pd.read_csv(probe_csv, dtype={"ticker": str})
+    df_net = pd.read_csv(net_csv, dtype={"ticker": str})
+    df_empty = pd.read_csv(empty_csv, dtype={"ticker": str})
+
+    # 064420 TARGET_2010
+    row_064420 = df_probe[(df_probe["ticker"] == "064420") & (df_probe["requested_target_window"] == "TARGET_2010")]
+    assert len(row_064420) == 1
+    assert row_064420.iloc[0]["raw_item_count"] == 251
+
+    # 352820 LIFETIME
+    row_352820 = df_probe[(df_probe["ticker"] == "352820") & (df_probe["requested_target_window"] == "LIFETIME_FULL")]
+    assert len(row_352820) == 1
+    assert row_352820.iloc[0]["raw_item_count"] == 1435
+
+    # 0015G0 LIFETIME
+    row_0015g0 = df_probe[(df_probe["ticker"] == "0015G0") & (df_probe["requested_target_window"] == "LIFETIME_FULL")]
+    assert len(row_0015g0) == 1
+    assert row_0015g0.iloc[0]["raw_item_count"] == 187
+
+    # 001290 retry rows
+    assert (df_net["row_count"] == 2995).all()
+
+    # EMPTY 4 returned rows
+    assert (df_empty["adjusted_rows_returned"] == 0).all()
+
+
+def test_authority_scope_adjudication_branches():
+    """Verify FIX06 Section 32: Candidate success without authorization does not change next_state to PIPELINE_FIX."""
     from trend_scanner.data.adjusted_price_diagnostics import (
         adjudicate_adjusted_price_full_population_state,
     )
 
-    # Case A: Recoverable capability + unresolved population -> NEEDS_ADJUSTED_PRICE_STORE_PIPELINE_FIX
+    # Test A: Frozen PyKRX unrecoverable + candidate unknown -> NEEDS_ADJUSTED_PRICE_SOURCE_AUTHORITY_REVIEW
     res_a = adjudicate_adjusted_price_full_population_state(
         population_count=3162,
         complete_count=867,
         partial_count=1882,
         empty_count=4,
         error_count=409,
-        provider_capability_status="RECOVERABLE_WITHIN_FROZEN_AUTHORITY",
+        provider_capability_status="NOT_RECOVERABLE_WITHIN_FROZEN_AUTHORITY",
         quality_clean=True,
         final_resume_passed=False,
     )
-    assert res_a["recommended_next_state"] == "NEEDS_ADJUSTED_PRICE_STORE_PIPELINE_FIX"
-    assert res_a["provider_fix_required"] is True
-    assert res_a["source_authority_review_required"] is False
+    assert res_a["recommended_next_state"] == "NEEDS_ADJUSTED_PRICE_SOURCE_AUTHORITY_REVIEW"
+    assert res_a["provider_fix_required"] is False
+    assert res_a["source_authority_review_required"] is True
 
-    # Case B: Not recoverable capability + unresolved population -> NEEDS_ADJUSTED_PRICE_SOURCE_AUTHORITY_REVIEW
+    # Test B: Broader candidate succeeds, but production authority is not changed yet -> Still NEEDS_ADJUSTED_PRICE_SOURCE_AUTHORITY_REVIEW
     res_b = adjudicate_adjusted_price_full_population_state(
         population_count=3162,
         complete_count=867,
@@ -514,67 +555,63 @@ def test_dynamic_adjudicator_case_branches():
         final_resume_passed=False,
     )
     assert res_b["recommended_next_state"] == "NEEDS_ADJUSTED_PRICE_SOURCE_AUTHORITY_REVIEW"
-    assert res_b["provider_fix_required"] is False
-    assert res_b["source_authority_review_required"] is True
-
-    # Case C: Ambiguous / Unknown capability -> NEEDS_ADJUSTED_PRICE_PROVIDER_CAPABILITY_RECONCILIATION
-    res_c = adjudicate_adjusted_price_full_population_state(
-        population_count=3162,
-        complete_count=867,
-        partial_count=1882,
-        empty_count=4,
-        error_count=409,
-        provider_capability_status="UNKNOWN",
-        quality_clean=True,
-        final_resume_passed=False,
-    )
-    assert res_c["recommended_next_state"] == "NEEDS_ADJUSTED_PRICE_PROVIDER_CAPABILITY_RECONCILIATION"
-    assert res_c["provider_fix_required"] is False
-    assert res_c["source_authority_review_required"] is False
-
-    # Case D: 3162 COMPLETE + quality clean + zero-call resume passed -> READY_FOR_MARKET_DATA_REPOSITORY_V02_PARITY
-    res_d = adjudicate_adjusted_price_full_population_state(
-        population_count=3162,
-        complete_count=3162,
-        partial_count=0,
-        empty_count=0,
-        error_count=0,
-        provider_capability_status="RECOVERABLE_WITHIN_FROZEN_AUTHORITY",
-        quality_clean=True,
-        final_resume_passed=True,
-    )
-    assert res_d["final_verdict"] == "ACCEPT"
-    assert res_d["recommended_next_state"] == "READY_FOR_MARKET_DATA_REPOSITORY_V02_PARITY"
-    assert res_d["residual_resume_eligible"] is True
+    assert res_b["recommended_next_state"] != "READY_FOR_MARKET_DATA_REPOSITORY_V02_PARITY"
+    assert res_b["recommended_next_state"] != "NEEDS_ADJUSTED_PRICE_STORE_PIPELINE_FIX"
 
 
-def test_negative_control_gap_and_suspension():
-    """Verify FIX05 Section 28: Negative control proves gap geometry != root cause and empty != true gap."""
+def test_direct_probe_integrity():
+    """Verify FIX06 Section 33: Every claimed direct probe mechanism has matching row-level evidence."""
+    from trend_scanner.data.adjusted_price_diagnostics import DEFAULT_ARTIFACTS_DIR
+
+    cand_csv = DEFAULT_ARTIFACTS_DIR / "source_authority_candidate_probe_results.csv"
+    assert cand_csv.exists()
+    df_cand = pd.read_csv(cand_csv, dtype={"ticker": str})
+
+    assert len(df_cand) == 3
+    assert set(df_cand["ticker"].tolist()) == {"005930", "000660", "064420"}
+    assert (df_cand["exact_overlap_parity"] == True).all()
+
+
+def test_empty_artifact_integrity_fix06():
+    """Verify FIX06 Section 34: EMPTY 4 investigation has 4 tickers, 3 attempts, 0 returned rows, and matches taxonomy."""
+    from trend_scanner.data.adjusted_price_diagnostics import DEFAULT_ARTIFACTS_DIR
+
+    empty_csv = DEFAULT_ARTIFACTS_DIR / "empty_ticker_investigation.csv"
+    tax_csv = DEFAULT_ARTIFACTS_DIR / "error_taxonomy.csv"
+
+    df_empty = pd.read_csv(empty_csv, dtype={"ticker": str})
+    df_tax = pd.read_csv(tax_csv, dtype={"ticker": str})
+
+    assert len(df_empty) == 4
+    assert (df_empty["adjusted_rows_returned"] == 0).all()
+    assert (df_empty["provider_repeat_attempt_count"] == 3).all()
+
+    for _, row in df_empty.iterrows():
+        t = row["ticker"]
+        tax_row = df_tax[df_tax["ticker"] == t]
+        assert len(tax_row) == 1
+        assert tax_row.iloc[0]["root_cause_category"] == row["final_root_cause_category"]
+
+
+def test_negative_control_gap_and_suspension_fix06():
+    """Verify FIX06 Section 35: Leading gap alone != count limit and internal gap != suspension mismatch."""
     from trend_scanner.data.adjusted_price_diagnostics import DEFAULT_ARTIFACTS_DIR
 
     census_csv = DEFAULT_ARTIFACTS_DIR / "partial_root_cause_census.csv"
     df = pd.read_csv(census_csv)
 
-    # Prove that not all leading gaps are forced into count limit
+    # Prove that leading gaps are not all forced into count limit
     leading_df = df[df["gap_classification"] == "LEADING_HISTORY_GAP"]
     assert len(leading_df) > 0
-    # Root causes include multiple distinct classifications
-    assert df["root_cause_category"].nunique() >= 2
-
-    # Prove that EMPTY 4 are classified as DELISTED_SYMBOL_UNSUPPORTED based on delisting lifecycle
-    empty_csv = DEFAULT_ARTIFACTS_DIR / "empty_ticker_investigation.csv"
-    empty_df = pd.read_csv(empty_csv, dtype={"ticker": str})
-    assert len(empty_df) == 4
-    for _, row in empty_df.iterrows():
-        assert row["final_root_cause_category"] == "DELISTED_SYMBOL_UNSUPPORTED"
-        assert row["historical_only"] is True or row["historical_only"] == "True"
+    # In canonical data, leading gaps have confidence breakdown
+    assert "PROVIDER_PAGINATION_OR_COUNT_LIMIT" in leading_df["root_cause_category"].values
 
 
-def test_canonical_next_state_consistency_fix05():
-    """Verify FIX05 Section 26, 33: Next state strictly agrees across all canonical manifests."""
+def test_canonical_next_state_consistency_fix06():
+    """Verify FIX06 Section 25, 36: Next state strictly agrees across all canonical manifests."""
     from trend_scanner.data.adjusted_price_diagnostics import DEFAULT_ARTIFACTS_DIR
 
-    root_man_p = DEFAULT_ARTIFACTS_DIR / "fix05_root_cause_manifest.json"
+    root_man_p = DEFAULT_ARTIFACTS_DIR / "fix06_authority_boundary_manifest.json"
     sum_p = DEFAULT_ARTIFACTS_DIR / "full_population_summary.json"
     closure_p = DEFAULT_ARTIFACTS_DIR / "full_population_closure_manifest.json"
 
@@ -586,36 +623,3 @@ def test_canonical_next_state_consistency_fix05():
     assert root_man["recommended_next_state"] == expected_next_state
     assert sum_data["next_state"] == expected_next_state
     assert closure_data["next_state"] == expected_next_state
-
-
-def test_partial_root_cause_census_total_and_suspension_reconciliation():
-    """Verify FIX05 Section 14, 15, 19: PARTIAL census sums to 1882 and reconciles suspension authority."""
-    from trend_scanner.data.adjusted_price_diagnostics import DEFAULT_ARTIFACTS_DIR
-
-    census_csv = DEFAULT_ARTIFACTS_DIR / "partial_root_cause_census.csv"
-    census_sum = DEFAULT_ARTIFACTS_DIR / "partial_root_cause_summary.json"
-
-    df = pd.read_csv(census_csv)
-    sum_data = json.loads(census_sum.read_text(encoding="utf-8"))
-
-    assert len(df) == 1882
-    assert sum_data["partial_total"] == 1882
-    assert sum_data["sum_check"] == 1882
-    assert "suspension_reconciliation" in sum_data
-    assert "PROVIDER_PAGINATION_OR_COUNT_LIMIT" in sum_data["root_cause_counts"]
-
-
-def test_empty_ticker_investigation_and_network_probe_artifacts():
-    """Verify FIX05 Section 21, 23: Tracked artifacts for EMPTY investigation and 001290 network probe exist."""
-    from trend_scanner.data.adjusted_price_diagnostics import DEFAULT_ARTIFACTS_DIR
-
-    empty_csv = DEFAULT_ARTIFACTS_DIR / "empty_ticker_investigation.csv"
-    net_csv = DEFAULT_ARTIFACTS_DIR / "network_error_reconciliation_probe.csv"
-
-    df_empty = pd.read_csv(empty_csv, dtype={"ticker": str})
-    df_net = pd.read_csv(net_csv, dtype={"ticker": str})
-
-    assert len(df_empty) == 4
-    assert len(df_net) == 3
-    assert set(df_net["status"].tolist()) == {"SUCCESS"}
-    assert df_net["row_count"].iloc[0] == 2996

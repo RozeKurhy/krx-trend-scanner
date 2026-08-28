@@ -1,29 +1,22 @@
 {
-  "schema": "artifact_supersession_manifest_v02",
-  "directive_id": "ADJUSTED_PRICE_STORE_FULL_POPULATION_V01_FIX05",
+  "schema": "artifact_supersession_manifest_v03",
+  "directive_id": "ADJUSTED_PRICE_STORE_FULL_POPULATION_V01_FIX06",
   "superseded_artifacts": [
     {
-      "artifact_path": "provider_root_cause_probe_summary.json",
-      "previous_claim": "Global pre-2014 source gap across all tickers",
-      "superseded_by": "provider_backend_capability_probe_summary.json",
-      "superseded_reason": "Disproven by 064420 pre-2014 retrieval; replaced by static capability surface and backend probe",
+      "artifact_path": "provider_capability_surface.json",
+      "previous_claim": "Overly broad claim that Naver backend has zero date-window capability",
+      "superseded_by": "provider_authority_boundary_surface_v01 in fix06 manifest",
+      "superseded_reason": "Scoped unreachability strictly to PyKRX frozen contract; candidate date-range identified",
       "authoritative_now": false
     },
     {
-      "artifact_path": "provider_count_limit_probe_summary.json",
-      "previous_claim": "Pipeline fix recommendation without static capability surface inspection",
-      "superseded_by": "fix05_root_cause_manifest.json",
-      "superseded_reason": "Static capability surface proof conclusively demonstrates unreachability",
-      "authoritative_now": false
-    },
-    {
-      "artifact_path": "fix04_root_cause_manifest.json",
-      "previous_claim": "Capability proof without suspension authority reconciliation or static surface inspection",
-      "superseded_by": "fix05_root_cause_manifest.json",
-      "superseded_reason": "Replaced by full capability surface closure and suspension-reconciled census",
+      "artifact_path": "fix05_root_cause_manifest.json",
+      "previous_claim": "Unscoped unreachability verdict and fictional direct Sise tested claim",
+      "superseded_by": "fix06_authority_boundary_manifest.json",
+      "superseded_reason": "Corrected authority boundary, added candidate probes, removed unexecuted claim",
       "authoritative_now": false
     }
   ],
-  "active_canonical_verdict": "NOT_RECOVERABLE_WITHIN_FROZEN_AUTHORITY",
-  "updated_at": "2026-08-27T23:54:41.143312+00:00"
+  "active_canonical_verdict": "NOT_RECOVERABLE_UNDER_CURRENT_FROZEN_PYKRX_CONTRACT",
+  "updated_at": "2026-08-28T00:11:27.982055+00:00"
 }

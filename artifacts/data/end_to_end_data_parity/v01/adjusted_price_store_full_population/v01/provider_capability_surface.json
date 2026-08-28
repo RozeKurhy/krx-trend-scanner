@@ -1,56 +1,54 @@
 {
-  "schema": "provider_capability_surface_v01",
-  "directive_id": "ADJUSTED_PRICE_STORE_FULL_POPULATION_V01_FIX05",
-  "pykrx_version": "1.2.8",
-  "adjusted_entrypoint": "pykrx.stock.get_market_ohlcv_by_date(..., adjusted=True)",
-  "call_chain": [
-    "pykrx.stock.get_market_ohlcv_by_date(fromdate, todate, ticker, freq='d', adjusted=True)",
-    "pykrx.website.naver.wrap.get_market_ohlcv_by_date(fromdate, todate, ticker)",
-    "pykrx.website.naver.core.Sise.fetch(ticker, count=elapsed.days, timeframe='day')",
-    "pykrx.website.naver.core.Sise.read(symbol=ticker, timeframe='day', count=count, requestType='0')",
-    "HTTP GET https://fchart.stock.naver.com/sise.nhn"
+  "schema": "provider_authority_boundary_surface_v01",
+  "directive_id": "ADJUSTED_PRICE_STORE_FULL_POPULATION_V01_FIX06",
+  "current_frozen_authority": {
+    "authority_id": "PYKRX_ADJUSTED_V1_PUBLIC_CONTRACT",
+    "authority_entrypoint": "pykrx.stock.get_market_ohlcv_by_date(..., adjusted=True)",
+    "pykrx_version": "1.2.8",
+    "call_chain": [
+      "pykrx.stock.get_market_ohlcv_by_date(fromdate, todate, ticker, freq='d', adjusted=True)",
+      "pykrx.website.naver.wrap.get_market_ohlcv_by_date(fromdate, todate, ticker)",
+      "pykrx.website.naver.core.Sise.fetch(ticker, count=elapsed.days, timeframe='day')",
+      "pykrx.website.naver.core.Sise.read(symbol=ticker, timeframe='day', count=count, requestType='0')",
+      "HTTP GET https://fchart.stock.naver.com/sise.nhn"
+    ],
+    "actual_http_endpoint": "https://fchart.stock.naver.com/sise.nhn",
+    "actual_request_parameters": [
+      "symbol",
+      "timeframe",
+      "count",
+      "requestType=0"
+    ],
+    "actual_request_type": "0 (count-based XML)",
+    "server_side_date_range_exposed_by_pykrx": false,
+    "pagination_exposed_by_pykrx": false,
+    "offset_exposed_by_pykrx": false,
+    "cursor_exposed_by_pykrx": false,
+    "historical_recovery_status": "NOT_RECOVERABLE_UNDER_CURRENT_FROZEN_PYKRX_CONTRACT",
+    "production_authorized": true
+  },
+  "broader_backend_candidates": [
+    {
+      "candidate_id": "NAVER_DIRECT_DATE_RANGE_ADJUSTED_CANDIDATE",
+      "endpoint": "https://fchart.stock.naver.com/sise.nhn",
+      "request_parameters": [
+        "symbol",
+        "timeframe",
+        "requestType=1",
+        "startTime",
+        "endTime"
+      ],
+      "semantics": "Direct server-side date-window slicing via requestType=1",
+      "production_authorization_status": "DIAGNOSTIC_CANDIDATE_ONLY_NOT_PRODUCTION_AUTHORIZED",
+      "historical_recovery_capability": "RECOVERS_PRE_2014_ROWS_CONFIRMED",
+      "overlap_parity_status": "EXACT_PARITY_WITH_PYKRX_ADJUSTED_ON_OVERLAP"
+    }
   ],
-  "backend_module": "pykrx.website.naver.core",
-  "backend_class": "pykrx.website.naver.core.Sise",
-  "http_endpoint": "https://fchart.stock.naver.com/sise.nhn",
-  "observed_http_parameters": [
-    "symbol",
-    "timeframe",
-    "count",
-    "requestType"
-  ],
-  "supported_parameter_candidates": [
-    "symbol",
-    "timeframe",
-    "count",
-    "requestType=0"
-  ],
-  "unsupported_parameter_candidates": [
-    "page",
-    "offset",
-    "cursor",
-    "start",
-    "startTime",
-    "beginDate",
-    "fromDate",
-    "toDate",
-    "end",
-    "targetDate"
-  ],
-  "server_side_start_date_supported": false,
-  "server_side_end_date_supported": false,
-  "page_supported": false,
-  "offset_supported": false,
-  "cursor_supported": false,
-  "request_type_values_observed": [
-    "0 (XML format)"
-  ],
-  "internal_pagination_helper_present": false,
   "source_file_hashes": {
     "stock_get_market_ohlcv_by_date_sha256": "e3507e69faffeeb5e9d9e33164e6b7ac54b31c003211d134b1386daf478d5a91",
     "naver_get_market_ohlcv_by_date_sha256": "7c10a61abb0e53ae3f8c03343573b3b886a49ba73c47cca3f9cf834ab76efae3",
     "sise_class_sha256": "5a42f5efa0d1bbb7b705a310295b15af0a69a3fc6f85bb65b0e01faaa01885ad"
   },
   "static_inspection_complete": true,
-  "inspection_timestamp_utc": "2026-08-27T23:53:52.788782+00:00"
+  "inspection_timestamp_utc": "2026-08-28T00:10:49.890512+00:00"
 }
