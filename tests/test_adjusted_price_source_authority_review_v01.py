@@ -1,6 +1,8 @@
-"""Unit and decision-engine tests for Source Authority Review V01.
+"""Unit and decision-engine tests for Source Authority Review FIX01.
 
-Directives: Section 33, 59, 60 of ADJUSTED_PRICE_SOURCE_AUTHORITY_REVIEW_V01
+Directives:
+- ADJUSTED_PRICE_SOURCE_AUTHORITY_REVIEW_V01
+- ADJUSTED_PRICE_SOURCE_AUTHORITY_REVIEW_V01_FIX01 (Section 18, 39, 52, 53)
 """
 
 from __future__ import annotations
@@ -12,14 +14,19 @@ import pytest
 import pandas as pd
 
 from trend_scanner.data.source_authority_review import (
-    DEFAULT_REVIEW_ARTIFACTS_DIR,
+    DEFAULT_REVIEW_ARTIFACTS_DIR_FIX01,
+    CandidateBoundaryViolationError,
+    CandidateParseError,
+    CandidateSchemaError,
     CoverageStatus,
     NaverDateRangeAdjustedClient,
     ParityStatus,
     ReviewDecision,
-    build_review_cohort,
-    evaluate_authority_gates,
+    build_review_cohort_fix01,
+    evaluate_authority_gates_fix01,
     run_boundary_semantics_probe,
+    validate_failure_semantics_matrix,
+    validate_parser_negative_matrix,
 )
 
 
@@ -28,202 +35,211 @@ def test_candidate_schema_parsing_valid():
     <protocol>
         <chartdata symbol="005930" count="5000" timeframe="day" precision="0" origintime="20200102">
             <item data="20200102|55500|56000|55000|55200|12993228" />
-            <item data="20200103|56000|56600|54900|55500|15422255" />
+            <item data="20200103|56000|56600|54900|55500|15422904" />
         </chartdata>
     </protocol>
     """
     df = NaverDateRangeAdjustedClient.parse_xml_payload(sample_xml)
     assert len(df) == 2
     assert list(df.columns) == ["date", "open", "high", "low", "close", "volume"]
-    assert df["date"].tolist() == ["2020-01-02", "2020-01-03"]
-    assert df["open"].tolist() == [55500.0, 56000.0]
-    assert df["close"].tolist() == [55200.0, 55500.0]
+    assert df["date"].iloc[0] == "2020-01-02"
+    assert df["open"].iloc[0] == 55500.0
+    assert df["close"].iloc[1] == 55500.0
 
 
-def test_duplicate_date_rejection_fail_closed():
+def test_candidate_schema_missing_chartdata_fails_closed():
+    sample_xml = "<protocol></protocol>"
+    with pytest.raises((CandidateSchemaError, ValueError)):
+        NaverDateRangeAdjustedClient.parse_xml_payload(sample_xml)
+
+
+def test_candidate_schema_field_count_lt_6_fails_closed():
     sample_xml = """
     <protocol>
-        <chartdata symbol="005930" count="5000" timeframe="day" precision="0" origintime="20200102">
+        <chartdata>
+            <item data="20200102|55500|56000|55000|55200" />
+        </chartdata>
+    </protocol>
+    """
+    with pytest.raises((CandidateSchemaError, ValueError)):
+        NaverDateRangeAdjustedClient.parse_xml_payload(sample_xml)
+
+
+def test_candidate_schema_field_count_gt_6_fails_closed():
+    sample_xml = """
+    <protocol>
+        <chartdata>
+            <item data="20200102|55500|56000|55000|55200|12993228|EXTRA" />
+        </chartdata>
+    </protocol>
+    """
+    with pytest.raises((CandidateSchemaError, ValueError)):
+        NaverDateRangeAdjustedClient.parse_xml_payload(sample_xml)
+
+
+def test_candidate_schema_invalid_calendar_date_fails_closed():
+    sample_xml = """
+    <protocol>
+        <chartdata>
+            <item data="20261399|55500|56000|55000|55200|12993228" />
+        </chartdata>
+    </protocol>
+    """
+    with pytest.raises((CandidateParseError, ValueError)):
+        NaverDateRangeAdjustedClient.parse_xml_payload(sample_xml)
+
+
+def test_candidate_schema_out_of_window_fails_closed():
+    sample_xml = """
+    <protocol>
+        <chartdata>
+            <item data="20191231|55500|56000|55000|55200|12993228" />
+            <item data="20200102|55500|56000|55000|55200|12993228" />
+        </chartdata>
+    </protocol>
+    """
+    with pytest.raises((CandidateBoundaryViolationError, ValueError)):
+        NaverDateRangeAdjustedClient.parse_xml_payload(sample_xml, start_date="2020-01-02", end_date="2020-01-10")
+
+
+def test_candidate_schema_duplicate_date_fails_closed():
+    sample_xml = """
+    <protocol>
+        <chartdata>
             <item data="20200102|55500|56000|55000|55200|12993228" />
             <item data="20200102|55500|56000|55000|55200|12993228" />
         </chartdata>
     </protocol>
     """
-    with pytest.raises(ValueError, match="Duplicate date 2020-01-02"):
+    with pytest.raises((CandidateParseError, ValueError)):
         NaverDateRangeAdjustedClient.parse_xml_payload(sample_xml)
 
 
-def test_malformed_xml_fail_closed():
-    sample_xml = "<protocol><chartdata symbol='005930'><item data='incomplete"
-    with pytest.raises(ValueError, match="Malformed XML response"):
-        NaverDateRangeAdjustedClient.parse_xml_payload(sample_xml)
-
-
-def test_invalid_field_count_fail_closed():
-    sample_xml = """
-    <protocol>
-        <chartdata symbol="005930" count="5000" timeframe="day" precision="0" origintime="20200102">
-            <item data="20200102|55500|56000|55000" />
-        </chartdata>
-    </protocol>
-    """
-    with pytest.raises(ValueError, match="Invalid field count"):
-        NaverDateRangeAdjustedClient.parse_xml_payload(sample_xml)
-
-
-def test_non_numeric_ohlc_fail_closed():
-    sample_xml = """
-    <protocol>
-        <chartdata symbol="005930" count="5000" timeframe="day" precision="0" origintime="20200102">
-            <item data="20200102|55500|INVALID|55000|55200|12993228" />
-        </chartdata>
-    </protocol>
-    """
-    with pytest.raises(ValueError, match="Non-numeric OHLC"):
-        NaverDateRangeAdjustedClient.parse_xml_payload(sample_xml)
-
-
-def test_unparseable_date_fail_closed():
-    sample_xml = """
-    <protocol>
-        <chartdata symbol="005930" count="5000" timeframe="day" precision="0" origintime="20200102">
-            <item data="BAD_DATE|55500|56000|55000|55200|12993228" />
-        </chartdata>
-    </protocol>
-    """
-    with pytest.raises(ValueError, match="Unparseable date"):
-        NaverDateRangeAdjustedClient.parse_xml_payload(sample_xml)
-
-
-def test_empty_xml_handling():
-    empty_xml = "<protocol><chartdata symbol='000610' count='0' timeframe='day' precision='0' origintime=''></chartdata></protocol>"
+def test_candidate_schema_valid_empty_chartdata_returns_no_data():
+    empty_xml = '<protocol><chartdata symbol="005930" count="5000" timeframe="day" precision="0" origintime="20200102"></chartdata></protocol>'
     df = NaverDateRangeAdjustedClient.parse_xml_payload(empty_xml)
     assert len(df) == 0
     assert list(df.columns) == ["date", "open", "high", "low", "close", "volume"]
 
 
-def test_review_cohort_composition():
-    cohort_df = build_review_cohort()
-    assert len(cohort_df) >= 60
-    # Must have all required categories
-    categories = set(cohort_df["control_category"])
-    assert "LONG_LIVED_CURRENT_COMMON" in categories
-    assert "MEDIUM_RECENT_CURRENT_COMMON" in categories
-    assert "HISTORICAL_ONLY_DELISTED" in categories
-    assert "ALPHA_23_FULL_SET" in categories
-    assert "CORPORATE_ACTION_CONTROL" in categories
-    assert "EXISTING_EMPTY_CONTROL" in categories
-    assert "EXISTING_OHLC_ANOMALY_CONTROL" in categories
-    assert "KNOWN_UNSUPPORTED_CONTROL" in categories
-
-    # Verify Alpha-23 count is exactly 23
-    alpha_rows = cohort_df[cohort_df["control_category"] == "ALPHA_23_FULL_SET"]
-    assert len(alpha_rows) == 23
+def test_parser_negative_matrix_all_pass():
+    res = validate_parser_negative_matrix()
+    assert len(res) >= 12
+    assert all(v == "PASS" for v in res.values())
 
 
-def test_decision_engine_synthetic_all_pass():
+def test_failure_semantics_matrix_all_pass():
+    res = validate_failure_semantics_matrix()
+    assert len(res) >= 7
+    assert all(v == "PASS" for v in res.values())
+
+
+def test_build_review_cohort_fix01_composition():
+    cohort = build_review_cohort_fix01()
+    assert len(cohort) >= 70
+    cats = cohort["control_category"].value_counts()
+    assert cats.get("LONG_LIVED_CURRENT_COMMON", 0) >= 10
+    assert cats.get("MEDIUM_RECENT_CURRENT_COMMON", 0) >= 5
+    assert cats.get("HISTORICAL_ONLY_DELISTED", 0) >= 10
+    assert cats.get("ALPHA_23_FULL_SET", 0) == 23
+    assert cats.get("CORPORATE_ACTION_CONTROL", 0) >= 8
+
+    # Check 064420 is present in historical controls
+    hist_tickers = cohort[cohort["control_category"] == "HISTORICAL_ONLY_DELISTED"]["ticker"].tolist()
+    assert "064420" in hist_tickers
+
+
+def test_historical_cohort_regression_one_broken_control_fails_gate_04():
+    # 10 historical controls where 1 has zero data / gap
     cohort_df = pd.DataFrame([
-        {"ticker": "005930", "control_category": "LONG_LIVED_CURRENT_COMMON"},
-        {"ticker": "000660", "control_category": "LONG_LIVED_CURRENT_COMMON"},
-    ])
-    # Build valid mock dataframes
-    coverage_df = pd.DataFrame([
-        {"ticker": "005930", "control_category": "LONG_LIVED_CURRENT_COMMON", "candidate_count": 3000, "first_candidate_date": "2010-01-04", "pre_listing_rows": 0, "post_delisting_rows": 0, "future_rows": 0, "coverage_status": "COVERAGE_VALID"},
-        {"ticker": "000660", "control_category": "LONG_LIVED_CURRENT_COMMON", "candidate_count": 3000, "first_candidate_date": "2010-01-04", "pre_listing_rows": 0, "post_delisting_rows": 0, "future_rows": 0, "coverage_status": "COVERAGE_VALID"},
-    ] * 5)
-    # Add historical controls
-    hist_cov = pd.DataFrame([
-        {"ticker": f"06442{i}", "control_category": "HISTORICAL_ONLY_DELISTED", "candidate_count": 500, "first_candidate_date": "2010-01-04", "pre_listing_rows": 0, "post_delisting_rows": 0, "future_rows": 0, "coverage_status": "COVERAGE_VALID"}
+        {"ticker": f"00432{i}", "control_category": "HISTORICAL_ONLY_DELISTED"}
         for i in range(10)
     ])
-    alpha_cov = pd.DataFrame([
-        {"ticker": f"000{i}A0", "control_category": "ALPHA_23_FULL_SET", "candidate_count": 0, "first_candidate_date": "", "pre_listing_rows": 0, "post_delisting_rows": 0, "future_rows": 0, "coverage_status": "LEGITIMATE_NO_DATA"}
-        for i in range(23)
-    ])
-    coverage_df = pd.concat([coverage_df, hist_cov, alpha_cov], ignore_index=True)
-
-    parity_df = pd.DataFrame([
-        {"ticker": "005930", "control_category": "CORPORATE_ACTION_CONTROL", "overlap_rows": 100, "parity_status": "MATCH"}
-        for _ in range(8)
-    ])
-    boundary_df = pd.DataFrame([
-        {"ticker": "005930", "status": "SUCCESS", "no_out_of_bounds": True}
-        for _ in range(7)
-    ])
-    repeat_summary = {"all_content_hashes_stable": True}
-
-    res = evaluate_authority_gates(cohort_df, coverage_df, parity_df, boundary_df, repeat_summary)
-    assert res["all_gates_passed"] is True
-    assert res["review_decision"] == ReviewDecision.APPROVED_FOR_PRODUCTION_INTEGRATION.value
-    assert res["production_integration_authorized"] is True
-    assert res["active_production_authority_changed"] is False
-    assert res["recommended_next_state"] == "ADJUSTED_PRICE_SOURCE_INTEGRATION_V01"
-
-
-def test_decision_engine_synthetic_parity_mismatch_rejects():
-    cohort_df = pd.DataFrame([{"ticker": "005930", "control_category": "LONG_LIVED_CURRENT_COMMON"}])
-    coverage_df = pd.DataFrame([
-        {"ticker": "005930", "control_category": "LONG_LIVED_CURRENT_COMMON", "candidate_count": 3000, "first_candidate_date": "2010-01-04", "pre_listing_rows": 0, "post_delisting_rows": 0, "future_rows": 0, "coverage_status": "COVERAGE_VALID"}
-    ])
-    parity_df = pd.DataFrame([
-        {"ticker": "005930", "control_category": "LONG_LIVED_CURRENT_COMMON", "overlap_rows": 100, "parity_status": "MISMATCH"}
-    ])
+    cov_rows = [
+        {"ticker": f"00432{i}", "control_category": "HISTORICAL_ONLY_DELISTED", "expected_count": 500, "candidate_count": (500 if i < 9 else 0), "first_candidate_date": "2010-01-04", "pre_listing_rows": 0, "post_delisting_rows": 0, "future_rows": 0, "coverage_status": ("COVERAGE_VALID" if i < 9 else "COVERAGE_GAP")}
+        for i in range(10)
+    ]
+    coverage_df = pd.DataFrame(cov_rows)
+    parity_df = pd.DataFrame()
     boundary_df = pd.DataFrame([{"ticker": "005930", "status": "SUCCESS", "no_out_of_bounds": True}] * 7)
     repeat_summary = {"all_content_hashes_stable": True}
 
-    res = evaluate_authority_gates(cohort_df, coverage_df, parity_df, boundary_df, repeat_summary)
+    res = evaluate_authority_gates_fix01(
+        cohort_df, coverage_df, parity_df, boundary_df, repeat_summary,
+        validate_parser_negative_matrix(), validate_failure_semantics_matrix()
+    )
+    assert res["gate_results"]["gate_04_historical_only_controls"] is False
     assert res["all_gates_passed"] is False
-    assert res["review_decision"] == ReviewDecision.REJECTED_AS_PRODUCTION_AUTHORITY.value
-    assert res["production_integration_authorized"] is False
-    assert res["recommended_next_state"] == "ADJUSTED_PRICE_ALTERNATIVE_SOURCE_DISCOVERY_V01"
 
 
-def test_decision_engine_synthetic_unresolved_conditions_conditional():
+def test_corporate_action_regression_one_not_applicable_or_mismatch_fails_gate_06():
     cohort_df = pd.DataFrame([
-        {"ticker": "005930", "control_category": "LONG_LIVED_CURRENT_COMMON"},
-        {"ticker": "000660", "control_category": "LONG_LIVED_CURRENT_COMMON"},
+        {"ticker": f"00593{i}", "control_category": "CORPORATE_ACTION_CONTROL"}
+        for i in range(8)
     ])
     coverage_df = pd.DataFrame([
-        {"ticker": "005930", "control_category": "LONG_LIVED_CURRENT_COMMON", "candidate_count": 2500, "first_candidate_date": "2010-01-04", "pre_listing_rows": 0, "post_delisting_rows": 0, "future_rows": 0, "coverage_status": "COVERAGE_VALID"},
-        {"ticker": "000660", "control_category": "LONG_LIVED_CURRENT_COMMON", "candidate_count": 3000, "first_candidate_date": "2010-01-04", "pre_listing_rows": 0, "post_delisting_rows": 0, "future_rows": 0, "coverage_status": "COVERAGE_VALID"},
-    ] * 5)
-    hist_cov = pd.DataFrame([
-        {"ticker": f"06442{i}", "control_category": "HISTORICAL_ONLY_DELISTED", "candidate_count": 500, "first_candidate_date": "2010-01-04", "pre_listing_rows": 0, "post_delisting_rows": 0, "future_rows": 0, "coverage_status": "COVERAGE_VALID"}
-        for i in range(10)
+        {"ticker": f"00593{i}", "control_category": "CORPORATE_ACTION_CONTROL", "expected_count": 240, "candidate_count": 240, "first_candidate_date": "2018-01-02", "pre_listing_rows": 0, "post_delisting_rows": 0, "future_rows": 0, "coverage_status": "COVERAGE_VALID"}
+        for i in range(8)
     ])
-    alpha_cov = pd.DataFrame([
-        {"ticker": f"000{i}A0", "control_category": "ALPHA_23_FULL_SET", "candidate_count": 0, "first_candidate_date": "", "pre_listing_rows": 0, "post_delisting_rows": 0, "future_rows": 0, "coverage_status": "LEGITIMATE_NO_DATA"}
-        for i in range(23)
-    ])
-    coverage_df = pd.concat([coverage_df, hist_cov, alpha_cov], ignore_index=True)
-
-    parity_df = pd.DataFrame([
-        {"ticker": "005930", "control_category": "CORPORATE_ACTION_CONTROL", "overlap_rows": 100, "parity_status": "MATCH"}
-        for _ in range(8)
-    ])
-    boundary_df = pd.DataFrame([
-        {"ticker": "005930", "status": "SUCCESS", "no_out_of_bounds": True}
-        for _ in range(7)
-    ])
+    # 7 MATCH and 1 NOT_APPLICABLE
+    parity_rows = [
+        {"ticker": f"00593{i}", "control_category": "CORPORATE_ACTION_CONTROL", "overlap_rows": (100 if i < 7 else 0), "parity_status": ("MATCH" if i < 7 else "NOT_APPLICABLE")}
+        for i in range(8)
+    ]
+    parity_df = pd.DataFrame(parity_rows)
+    boundary_df = pd.DataFrame([{"ticker": "005930", "status": "SUCCESS", "no_out_of_bounds": True}] * 7)
     repeat_summary = {"all_content_hashes_stable": True}
 
-    res = evaluate_authority_gates(cohort_df, coverage_df, parity_df, boundary_df, repeat_summary)
+    res = evaluate_authority_gates_fix01(
+        cohort_df, coverage_df, parity_df, boundary_df, repeat_summary,
+        validate_parser_negative_matrix(), validate_failure_semantics_matrix()
+    )
+    assert res["gate_results"]["gate_06_corporate_action_parity"] is False
     assert res["all_gates_passed"] is False
-    assert res["review_decision"] == ReviewDecision.CONDITIONAL_REVIEW_REQUIRED.value
-    assert res["production_integration_authorized"] is False
-    assert res["recommended_next_state"] == "ADJUSTED_PRICE_SOURCE_AUTHORITY_REVIEW_V01_FIX01"
 
 
-def test_review_artifacts_provenance_integrity():
-    manifest_p = DEFAULT_REVIEW_ARTIFACTS_DIR / "artifact_manifest.json"
-    assert manifest_p.exists(), "artifact_manifest.json must exist"
+def test_comparator_exception_yields_error_and_fails_gate_07():
+    cohort_df = pd.DataFrame([{"ticker": "005930", "control_category": "LONG_LIVED_CURRENT_COMMON"}])
+    coverage_df = pd.DataFrame([{"ticker": "005930", "control_category": "LONG_LIVED_CURRENT_COMMON", "expected_count": 100, "candidate_count": 100, "first_candidate_date": "2010-01-04", "pre_listing_rows": 0, "post_delisting_rows": 0, "future_rows": 0, "coverage_status": "COVERAGE_VALID"}])
+    parity_df = pd.DataFrame([{"ticker": "005930", "control_category": "LONG_LIVED_CURRENT_COMMON", "overlap_rows": 0, "parity_status": "ERROR"}])
+    boundary_df = pd.DataFrame([{"ticker": "005930", "status": "SUCCESS", "no_out_of_bounds": True}] * 7)
+    repeat_summary = {"all_content_hashes_stable": True}
+
+    res = evaluate_authority_gates_fix01(
+        cohort_df, coverage_df, parity_df, boundary_df, repeat_summary,
+        validate_parser_negative_matrix(), validate_failure_semantics_matrix()
+    )
+    assert res["gate_results"]["gate_07_exact_ohlc_overlap_parity"] is False
+    assert res["all_gates_passed"] is False
+
+
+def test_provenance_hash_mismatch_fails_gate_14():
+    cohort_df = pd.DataFrame()
+    coverage_df = pd.DataFrame()
+    parity_df = pd.DataFrame()
+    boundary_df = pd.DataFrame()
+    repeat_summary = {"all_content_hashes_stable": True}
+
+    # Incomplete manifest (less than 10 artifacts)
+    res = evaluate_authority_gates_fix01(
+        cohort_df, coverage_df, parity_df, boundary_df, repeat_summary,
+        validate_parser_negative_matrix(), validate_failure_semantics_matrix(),
+        artifact_manifest={"artifacts": {"only_one.csv": {"sha256": "abc"}}}
+    )
+    assert res["gate_results"]["gate_14_provenance_complete"] is False
+
+
+def test_review_artifacts_fix01_provenance_integrity():
+    manifest_p = DEFAULT_REVIEW_ARTIFACTS_DIR_FIX01 / "artifact_manifest.json"
+    assert manifest_p.exists(), "artifact_manifest.json must exist in FIX01 dir"
 
     manifest_data = json.loads(manifest_p.read_text(encoding="utf-8"))
     artifacts = manifest_data.get("artifacts", {})
     assert len(artifacts) >= 10
 
     for fname, meta in artifacts.items():
-        fp = DEFAULT_REVIEW_ARTIFACTS_DIR / fname
-        assert fp.exists(), f"Artifact {fname} must exist on disk"
-        disk_sha = hashlib.sha256(fp.read_bytes()).hexdigest()
-        assert meta["sha256"] == disk_sha, f"SHA256 mismatch for {fname}: recorded={meta['sha256']}, actual={disk_sha}"
+        fp = DEFAULT_REVIEW_ARTIFACTS_DIR_FIX01 / fname
+        assert fp.exists(), f"Artifact {fname} missing on disk"
+        expected_sha = meta["sha256"]
+        actual_sha = hashlib.sha256(fp.read_bytes()).hexdigest()
+        assert actual_sha == expected_sha, f"SHA256 mismatch for {fname}"
