@@ -1,0 +1,28 @@
+{
+  "schema": "gate06_corporate_action_reassessment_v01_fix02",
+  "directive_id": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX02",
+  "gate_06_pass": true,
+  "authority_valid_controls_count": 8,
+  "authority_invalid_controls_count": 0,
+  "unique_control_count": 8,
+  "event_distribution": {
+    "STOCK_SPLIT": 3,
+    "RIGHTS_OFFERING": 2,
+    "MERGER": 2,
+    "BONUS_ISSUE": 1
+  },
+  "diversity_pass": true,
+  "raw_provenance_valid_count": 8,
+  "record_identity_valid_count": 8,
+  "event_timing_valid_count": 8,
+  "row_level_parity_control_count": 8,
+  "parity_match_count": 8,
+  "insufficient_window_count": 0,
+  "date_set_mismatch_count": 0,
+  "ohlc_mismatch_control_count": 0,
+  "comparator_error_count": 0,
+  "cohort_frozen_before_price_fetch": true,
+  "cohort_frozen_at": "2026-08-28T04:30:57.580989+00:00",
+  "cohort_sha256_before_price_fetch": "d8c4618ea9f20310f3f2ecfce9d690a240fa61800c80b85dd9d5a1aad8c7a128",
+  "gate_06_blockers": []
+}
