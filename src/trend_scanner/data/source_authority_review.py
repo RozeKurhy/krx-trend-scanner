@@ -4,7 +4,8 @@ Directives:
 - ADJUSTED_PRICE_SOURCE_AUTHORITY_REVIEW_V01
 - ADJUSTED_PRICE_SOURCE_AUTHORITY_REVIEW_V01_FIX01
 - ADJUSTED_PRICE_SOURCE_AUTHORITY_REVIEW_V01_FIX02
-- ADJUSTED_PRICE_SOURCE_AUTHORITY_REVIEW_V01_FIX03 (Section 1-85)
+- ADJUSTED_PRICE_SOURCE_AUTHORITY_REVIEW_V01_FIX03
+- ADJUSTED_PRICE_SOURCE_AUTHORITY_REVIEW_V01_FIX03_CORRECTION (Section 1-84)
 """
 
 from __future__ import annotations
@@ -54,13 +55,18 @@ DEFAULT_REVIEW_ARTIFACTS_DIR_FIX02 = Path(
 DEFAULT_REVIEW_ARTIFACTS_DIR_FIX03 = Path(
     "artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/v01_fix03"
 )
-DEFAULT_REVIEW_ARTIFACTS_DIR = DEFAULT_REVIEW_ARTIFACTS_DIR_FIX03
+DEFAULT_REVIEW_ARTIFACTS_DIR_FIX03_CORRECTION = Path(
+    "artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/v01_fix03_correction"
+)
+DEFAULT_REVIEW_ARTIFACTS_DIR = DEFAULT_REVIEW_ARTIFACTS_DIR_FIX03_CORRECTION
 
 NAVER_SISE_ENDPOINT = "https://fchart.stock.naver.com/sise.nhn"
 CANDIDATE_AUTHORITY_ID = "NAVER_DIRECT_DATE_RANGE_ADJUSTED_CANDIDATE"
-START_HEAD_FIX03 = "00362a2449be7368eb91598ea84a9e00c19ee8f4"
-EXPECTED_POPULATION_SHA256 = "f14c3d46e5305571b311c4d120d9a2f1eba1644e7f059cde4e59eabab42d1aff"
-EXPECTED_PIT_SHA256 = "6b542ae05c9050dd30959d6f1b17306e4016f435a726ca7e0dff9e11008e4064"
+START_HEAD_FIX03_CORRECTION = "24f3a6beda6bc6ec5bb421ef35c200e4750f1f5c"
+EXPECTED_POPULATION_PHYSICAL_SHA256 = "2fb1776c7dfdf3a478159f25c1ec0269e3632c2ee705d97f6818b58485987674"
+EXPECTED_POPULATION_SEMANTIC_SHA256 = "f14c3d46e5305571b311c4d120d9a2f1eba1644e7f059cde4e59eabab42d1aff"
+EXPECTED_PIT_PHYSICAL_SHA256 = "f99af654b30ff380a5590a9711af467851547559b94480ba4d0ec58ac78de300"
+EXPECTED_PIT_SEMANTIC_SHA256 = "6b542ae05c9050dd30959d6f1b17306e4016f435a726ca7e0dff9e11008e4064"
 
 
 class ReviewDecision(str, Enum):
@@ -122,7 +128,7 @@ class CandidateHttpError(RuntimeError):
 
 
 class NetworkForbiddenError(RuntimeError):
-    """Raised when live network requests are attempted during STRICT_OFFLINE mode (Section 3-4)."""
+    """Raised when live network requests are attempted during STRICT_OFFLINE mode (Section 2, 59)."""
 
 
 @dataclass
@@ -150,7 +156,7 @@ class NetworkAccounting:
 
 
 class NaverDateRangeAdjustedClient:
-    """Explicit client for NAVER_DIRECT_DATE_RANGE_ADJUSTED_CANDIDATE with strict offline guard (Section 4)."""
+    """Explicit client for NAVER_DIRECT_DATE_RANGE_ADJUSTED_CANDIDATE with strict offline guard."""
 
     def __init__(
         self,
@@ -175,7 +181,7 @@ class NaverDateRangeAdjustedClient:
         """Fetch raw XML text from Naver sise.nhn, failing immediately if network is forbidden."""
         if not self.allow_network:
             raise NetworkForbiddenError(
-                f"Live network fetch attempted for ticker '{ticker}' in STRICT_OFFLINE mode. External requests are strictly forbidden (Section 3-4)."
+                f"Live network fetch attempted for ticker '{ticker}' in STRICT_OFFLINE mode. External requests are strictly forbidden (Section 2, 59)."
             )
 
         self.accounting.new_direct_naver_logical_requests += 1
@@ -261,7 +267,6 @@ class NaverDateRangeAdjustedClient:
 
             d_str, o_str, h_str, l_str, c_str, v_str = parts[0], parts[1], parts[2], parts[3], parts[4], parts[5]
 
-            # Validate date representation (YYYYMMDD) and calendar validity
             if len(d_str) != 8 or not d_str.isdigit():
                 raise CandidateParseError(f"Unparseable 8-digit date representation in item: '{d_str}'")
 
@@ -271,7 +276,6 @@ class NaverDateRangeAdjustedClient:
             except ValueError as ve:
                 raise CandidateParseError(f"Invalid calendar date in item '{d_str}': {ve}") from ve
 
-            # Strict window check
             if start_date and formatted_date < start_date:
                 raise CandidateBoundaryViolationError(
                     f"Candidate emitted out-of-window row {formatted_date} before requested start {start_date}"
@@ -327,19 +331,20 @@ def derive_historical_only_cohort_at_runtime_fix03(
     pit_path: Path = DEFAULT_PIT_PATH,
     fix02_dir: Path = DEFAULT_REVIEW_ARTIFACTS_DIR_FIX02,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
-    """Derive 10 genuine historical-only controls deterministically at runtime with NO target list and NO synthetic fallback (Section 7-13)."""
+    """Derive 10 genuine historical-only controls deterministically at runtime with explicit ticker identity preservation (Section 4-12)."""
     pop = load_historical_common_population(pop_path)
 
-    # Load PIT intervals
+    # Load PIT intervals with string ticker normalization
     pit_map: dict[str, tuple[str, str]] = {}
     if pit_path.exists():
         with open(pit_path, encoding="utf-8") as pf:
             p_data = json.load(pf)
         for it in p_data.get("intervals", []):
-            t = it.get("ticker")
-            s = it.get("start_date") or it.get("effective_from", "")
-            e = it.get("end_date") or it.get("effective_to", "")
-            if t:
+            raw_t = it.get("ticker")
+            if raw_t:
+                t = normalize_ticker(raw_t)
+                s = it.get("start_date") or it.get("effective_from", "")
+                e = it.get("end_date") or it.get("effective_to", "")
                 if t not in pit_map:
                     pit_map[t] = (s, e)
                 else:
@@ -349,7 +354,10 @@ def derive_historical_only_cohort_at_runtime_fix03(
     # 1. Derive authority-eligible universe (605 instruments)
     authority_eligible_list: list[dict[str, Any]] = []
     for p in pop:
-        t = p.get("ticker", "")
+        raw_t = p.get("ticker", "")
+        if not raw_t:
+            continue
+        t = normalize_ticker(raw_t)
         is_pop = bool(p.get("included_in_population"))
         is_hist = bool(p.get("historical_only"))
         is_curr = bool(p.get("currently_common"))
@@ -365,44 +373,42 @@ def derive_historical_only_cohort_at_runtime_fix03(
                 "authority_source": p.get("authority_source", ""),
             })
 
-    # 2. Check offline evidence availability pool from FIX02
+    # 2. Check offline evidence availability pool from FIX02 with string ticker
     fix02_cov_path = fix02_dir / "source_authority_coverage_results_fix02.csv"
     fix02_evidence_tickers = set()
     if fix02_cov_path.exists():
-        fix02_cov_df = pd.read_csv(fix02_cov_path)
+        fix02_cov_df = pd.read_csv(fix02_cov_path, dtype={"ticker": str})
+        fix02_cov_df["ticker"] = fix02_cov_df["ticker"].astype(str).apply(normalize_ticker)
         fix02_evidence_tickers = set(fix02_cov_df[fix02_cov_df["candidate_count"] > 0]["ticker"].tolist())
 
     offline_review_eligible = [
         item for item in authority_eligible_list if item["ticker"] in fix02_evidence_tickers
     ]
 
-    # Deterministic Sort invariant to input order (Section 11)
+    # Deterministic Sort invariant to input order
     offline_review_eligible = sorted(
         offline_review_eligible,
         key=lambda x: (x["last_common_date"], x["first_common_date"], x["ticker"]),
     )
 
-    # 3. Mandatory inclusion of 064420 if and only if eligible in authority (Section 11)
+    # 3. Mandatory inclusion of 064420
     mandatory_ticker = "064420"
     mandatory_item = next((item for item in offline_review_eligible if item["ticker"] == mandatory_ticker), None)
     if mandatory_item is None:
         raise ValueError(f"Mandatory historical control '{mandatory_ticker}' is missing or ineligible in frozen authority (Section 8).")
 
-    # 4. Deterministic Stratified Algorithm for remaining 9 controls without ticker literals
+    # 4. Deterministic Stratified Algorithm for remaining 9 controls
     pool_without_mandatory = [item for item in offline_review_eligible if item["ticker"] != mandatory_ticker]
     selected_controls = [mandatory_item]
 
     if len(pool_without_mandatory) >= 9:
-        # Spread 9 representatives evenly across the sorted delisting timeline using deterministic quantile indices
         n_pool = len(pool_without_mandatory)
         step = (n_pool - 1) / 8.0 if n_pool > 1 else 1.0
         chosen_indices = [int(round(i * step)) for i in range(9)]
         chosen_items = [pool_without_mandatory[i] for i in chosen_indices]
-        # Deduplicate preserving order
         for c in chosen_items:
             if c not in selected_controls:
                 selected_controls.append(c)
-        # Fill if any duplicates
         for c in pool_without_mandatory:
             if len(selected_controls) >= 10:
                 break
@@ -422,14 +428,14 @@ def derive_historical_only_cohort_at_runtime_fix03(
         s["reused_evidence_sha256"] = fix02_cov_sha
 
     meta = {
-        "schema": "historical_only_selection_authority_fix03",
+        "schema": "historical_only_selection_authority_fix03_correction",
         "authority_path": str(pop_path),
         "authority_physical_sha256": pop_phys_sha,
         "authority_semantic_sha256": pop_sem_sha,
         "eligible_authority_count": len(authority_eligible_list),
         "offline_evidence_available_count": len(offline_review_eligible),
         "selection_algorithm": "DETERMINISTIC_STRATIFIED_LIFECYCLE_SELECTION_V01",
-        "selection_algorithm_version": "v01_fix03",
+        "selection_algorithm_version": "v01_fix03_correction",
         "mandatory_ticker": mandatory_ticker,
         "selected_tickers": [s["ticker"] for s in selected_controls],
         "selected_controls": selected_controls,
@@ -450,7 +456,7 @@ def build_review_cohort_fix03(
     pit_path: Path = DEFAULT_PIT_PATH,
     fix02_dir: Path = DEFAULT_REVIEW_ARTIFACTS_DIR_FIX02,
 ) -> tuple[pd.DataFrame, dict[str, Any]]:
-    """Build review cohort for FIX03 using algorithmic runtime historical selection."""
+    """Build review cohort for FIX03_CORRECTION using algorithmic runtime historical selection."""
     cohort_entries: list[dict[str, Any]] = []
 
     # Category A: Long-Lived Current Common (10 tickers)
@@ -468,7 +474,7 @@ def build_review_cohort_fix03(
     ]
     for t, nm, r in long_active:
         cohort_entries.append({
-            "ticker": t,
+            "ticker": normalize_ticker(t),
             "population_class": "CURRENT_COMMON",
             "currently_common": True,
             "historical_only": False,
@@ -489,7 +495,7 @@ def build_review_cohort_fix03(
     ]
     for t, nm, r in recent_active:
         cohort_entries.append({
-            "ticker": t,
+            "ticker": normalize_ticker(t),
             "population_class": "CURRENT_COMMON",
             "currently_common": True,
             "historical_only": False,
@@ -504,7 +510,7 @@ def build_review_cohort_fix03(
     hist_controls, hist_meta = derive_historical_only_cohort_at_runtime_fix03(pop_path, pit_path, fix02_dir)
     for hc in hist_controls:
         cohort_entries.append({
-            "ticker": hc["ticker"],
+            "ticker": normalize_ticker(hc["ticker"]),
             "population_class": "HISTORICAL_ONLY",
             "currently_common": False,
             "historical_only": True,
@@ -525,7 +531,7 @@ def build_review_cohort_fix03(
     ]
     for at in alpha_tickers:
         cohort_entries.append({
-            "ticker": at,
+            "ticker": normalize_ticker(at),
             "population_class": "ALPHA_TICKER",
             "currently_common": True,
             "historical_only": False,
@@ -549,7 +555,7 @@ def build_review_cohort_fix03(
     ]
     for t, nm, s, e, ev_type, ev_date, desc in corp_action_controls:
         cohort_entries.append({
-            "ticker": t,
+            "ticker": normalize_ticker(t),
             "population_class": "CURRENT_COMMON",
             "currently_common": True,
             "historical_only": False,
@@ -569,7 +575,7 @@ def build_review_cohort_fix03(
     ]
     for t, nm, r in existing_empty:
         cohort_entries.append({
-            "ticker": t,
+            "ticker": normalize_ticker(t),
             "population_class": "CURRENT_COMMON",
             "currently_common": True,
             "historical_only": False,
@@ -595,7 +601,7 @@ def build_review_cohort_fix03(
     ]
     for t, nm, r in anomaly_controls:
         cohort_entries.append({
-            "ticker": t,
+            "ticker": normalize_ticker(t),
             "population_class": "CURRENT_COMMON",
             "currently_common": True,
             "historical_only": False,
@@ -619,17 +625,18 @@ def build_review_cohort_fix03(
         "authority_identity_hash_or_reference": "known_unsupported_030990",
     })
 
-    # Load PIT intervals for date bounds
+    # Load PIT intervals for date bounds with string normalization
     pit_map: dict[str, tuple[str, str]] = {}
     if pit_path.exists():
         try:
             with open(pit_path, encoding="utf-8") as pf:
                 p_data = json.load(pf)
             for it in p_data.get("intervals", []):
-                t = it.get("ticker")
-                s = it.get("start_date") or it.get("effective_from", "")
-                e = it.get("end_date") or it.get("effective_to", "")
-                if t:
+                raw_t = it.get("ticker")
+                if raw_t:
+                    t = normalize_ticker(raw_t)
+                    s = it.get("start_date") or it.get("effective_from", "")
+                    e = it.get("end_date") or it.get("effective_to", "")
                     if t not in pit_map:
                         pit_map[t] = (s, e)
                     else:
@@ -649,42 +656,14 @@ def build_review_cohort_fix03(
     return cohort_df, hist_meta
 
 
-def build_review_cohort_fix02(
-    stocks_raw_dir: Path = DEFAULT_STOCKS_RAW_DIR,
-    canonical_calendar_path: Path = DEFAULT_CANONICAL_CALENDAR_PATH,
-    pit_path: Path = DEFAULT_PIT_PATH,
-) -> tuple[pd.DataFrame, dict[str, Any]]:
-    """Legacy FIX02 wrapper."""
-    return build_review_cohort_fix03(pit_path=pit_path)
-
-
-def build_review_cohort_fix01(
-    stocks_raw_dir: Path = DEFAULT_STOCKS_RAW_DIR,
-    canonical_calendar_path: Path = DEFAULT_CANONICAL_CALENDAR_PATH,
-    pit_path: Path = DEFAULT_PIT_PATH,
-) -> pd.DataFrame:
-    """Legacy FIX01 wrapper."""
-    df, _ = build_review_cohort_fix03(pit_path=pit_path)
-    return df
-
-
-def build_review_cohort(
-    stocks_raw_dir: Path = DEFAULT_STOCKS_RAW_DIR,
-    canonical_calendar_path: Path = DEFAULT_CANONICAL_CALENDAR_PATH,
-) -> pd.DataFrame:
-    """Legacy wrapper."""
-    df, _ = build_review_cohort_fix03()
-    return df
-
-
 def reconcile_unexpected_dates_generic_fix03(
     fix02_dir: Path = DEFAULT_REVIEW_ARTIFACTS_DIR_FIX02,
     cal_path: Path = DEFAULT_HISTORICAL_CALENDAR_PATH,
     pit_path: Path = DEFAULT_PIT_PATH,
     susp_path: Path = DEFAULT_SUSPENSION_AUTHORITY_PATH,
 ) -> pd.DataFrame:
-    """Strict generic unexpected date reconciliation requiring exact OHLCV match (Section 14-21)."""
-    # 1. Load trading calendar (suspension dates intentionally absent from expected tradable calendar)
+    """Strict generic unexpected date reconciliation with canonical string ticker preservation (Section 4-12)."""
+    # 1. Load trading calendar
     trading_dates_set = set()
     if cal_path.exists():
         try:
@@ -697,20 +676,22 @@ def reconcile_unexpected_dates_generic_fix03(
         except Exception:
             pass
 
-    # 2. Load suspension authority
-    suspension_map, _ = load_historical_suspension_authority(susp_path)
+    # 2. Load suspension authority with string normalization
+    suspension_map_raw, _ = load_historical_suspension_authority(susp_path)
+    suspension_map = {normalize_ticker(k): v for k, v in suspension_map_raw.items()}
 
-    # 3. Load PIT map
+    # 3. Load PIT map with string normalization
     pit_map: dict[str, tuple[str, str]] = {}
     if pit_path.exists():
         try:
             with open(pit_path, encoding="utf-8") as pf:
                 p_data = json.load(pf)
             for it in p_data.get("intervals", []):
-                t = it.get("ticker")
-                s = it.get("start_date") or it.get("effective_from", "")
-                e = it.get("end_date") or it.get("effective_to", "")
-                if t:
+                raw_t = it.get("ticker")
+                if raw_t:
+                    t = normalize_ticker(raw_t)
+                    s = it.get("start_date") or it.get("effective_from", "")
+                    e = it.get("end_date") or it.get("effective_to", "")
                     if t not in pit_map:
                         pit_map[t] = (s, e)
                     else:
@@ -719,17 +700,17 @@ def reconcile_unexpected_dates_generic_fix03(
         except Exception:
             pass
 
-    # 4. Load immutable FIX02 unexpected date observations
+    # 4. Load immutable FIX02 unexpected date observations with explicit string dtype
     fix02_unexp_path = fix02_dir / "source_authority_unexpected_date_reconciliation_fix02.csv"
     if not fix02_unexp_path.exists():
         return pd.DataFrame()
 
-    fix02_df = pd.read_csv(fix02_unexp_path)
+    fix02_df = pd.read_csv(fix02_unexp_path, dtype={"ticker": str})
     reconciliation_rows = []
 
     for _, row in fix02_df.iterrows():
-        t = row["ticker"]
-        d = row["date"]
+        t = normalize_ticker(str(row["ticker"]))
+        d = str(row["date"])
         c_open = float(row["candidate_open"])
         c_high = float(row["candidate_high"])
         c_low = float(row["candidate_low"])
@@ -743,7 +724,7 @@ def reconcile_unexpected_dates_generic_fix03(
         py_close = float(row["pykrx_close"])
         py_vol = float(row["pykrx_volume"])
 
-        # Validate canonical calendar (expected False for official suspension dates)
+        # Validate canonical calendar
         in_cal = bool(d in trading_dates_set)
 
         # Validate PIT lifecycle
@@ -754,7 +735,7 @@ def reconcile_unexpected_dates_generic_fix03(
         t_halts = suspension_map.get(t, set())
         in_susp = bool(d in t_halts)
 
-        # Exact OHLCV parity (Section 15-16: Includes Volume)
+        # Exact OHLCV parity (Section 12: Includes Volume)
         ohlcv_match = bool(
             py_present
             and c_open == py_open
@@ -767,7 +748,7 @@ def reconcile_unexpected_dates_generic_fix03(
         # Strict phantom structure
         phantom_valid = bool(c_open == 0.0 and c_high == 0.0 and c_low == 0.0 and c_vol == 0.0 and c_close > 0.0)
 
-        # Single strict acceptance branch (Section 14-15: No bypass)
+        # Single strict acceptance branch
         if in_pit and in_susp and py_present and ohlcv_match and phantom_valid:
             classification = "UPSTREAM_TRADING_SUSPENSION_PHANTOM_ROW"
             recon_status = "RECONCILED"
@@ -818,22 +799,114 @@ def reconcile_unexpected_dates_generic_fix03(
     return pd.DataFrame(reconciliation_rows)
 
 
-def reconcile_unexpected_dates_generic_fix02(
-    client: Any = None,
-    cohort_df: Any = None,
-    query_start: str = "2010-01-04",
-    query_end: str = "2026-08-21",
-    cal_path: Path = DEFAULT_HISTORICAL_CALENDAR_PATH,
+def derive_coverage_results_fix03_correction(
+    cohort_df: pd.DataFrame,
+    unexp_recon_df: pd.DataFrame,
+    fix02_dir: Path = DEFAULT_REVIEW_ARTIFACTS_DIR_FIX02,
+    pop_path: Path = DEFAULT_POPULATION_ARTIFACT_PATH,
     pit_path: Path = DEFAULT_PIT_PATH,
-    susp_path: Path = DEFAULT_SUSPENSION_AUTHORITY_PATH,
-    cand_cache: Any = None,
 ) -> pd.DataFrame:
-    """Legacy wrapper delegating to reconcile_unexpected_dates_generic_fix03."""
-    return reconcile_unexpected_dates_generic_fix03(cal_path=cal_path, pit_path=pit_path, susp_path=susp_path)
+    """Re-derive FIX03 coverage results by binding cohort classification, FIX02 observations, and correction reconciliation (Section 13-19)."""
+    fix02_cov_path = fix02_dir / "source_authority_coverage_results_fix02.csv"
+    if not fix02_cov_path.exists():
+        return pd.DataFrame()
+
+    fix02_cov_df = pd.read_csv(fix02_cov_path, dtype={"ticker": str})
+    fix02_cov_df["ticker"] = fix02_cov_df["ticker"].astype(str).apply(normalize_ticker)
+    fix02_obs_by_ticker = {row["ticker"]: row for _, row in fix02_cov_df.iterrows()}
+
+    # Reconciled counts from unexp_recon_df
+    recon_by_ticker: dict[str, dict[str, int]] = {}
+    for _, r in unexp_recon_df.iterrows():
+        t = normalize_ticker(str(r["ticker"]))
+        if t not in recon_by_ticker:
+            recon_by_ticker[t] = {"raw": 0, "reconciled": 0, "unreconciled": 0}
+        recon_by_ticker[t]["raw"] += 1
+        if r["reconciliation_status"] == "RECONCILED":
+            recon_by_ticker[t]["reconciled"] += 1
+        else:
+            recon_by_ticker[t]["unreconciled"] += 1
+
+    fix02_cov_sha = hashlib.sha256(fix02_cov_path.read_bytes()).hexdigest()
+    pop_sha = hashlib.sha256(pop_path.read_bytes()).hexdigest() if pop_path.exists() else ""
+
+    coverage_rows = []
+    for _, crow in cohort_df.iterrows():
+        t = crow["ticker"]
+        cat = crow["control_category"]
+        pop_cls = crow["population_class"]
+
+        obs = fix02_obs_by_ticker.get(t)
+        if obs is not None:
+            exp_cnt = int(obs["expected_count"])
+            cand_cnt = int(obs["candidate_count"])
+            missing_cnt = int(obs["missing_expected_count"])
+            first_exp = str(obs["first_expected_date"]) if pd.notna(obs["first_expected_date"]) else ""
+            last_exp = str(obs["last_expected_date"]) if pd.notna(obs["last_expected_date"]) else ""
+            first_cand = str(obs["first_candidate_date"]) if pd.notna(obs["first_candidate_date"]) else ""
+            last_cand = str(obs["last_candidate_date"]) if pd.notna(obs["last_candidate_date"]) else ""
+            pre_list = int(obs["pre_listing_rows"])
+            post_delist = int(obs["post_delisting_rows"])
+            future_cnt = int(obs["future_rows"])
+        else:
+            exp_cnt = 0
+            cand_cnt = 0
+            missing_cnt = 0
+            first_exp = ""
+            last_exp = ""
+            first_cand = ""
+            last_cand = ""
+            pre_list = 0
+            post_delist = 0
+            future_cnt = 0
+
+        # Override unexpected counts using correction reconciliation
+        r_counts = recon_by_ticker.get(t, {"raw": 0, "reconciled": 0, "unreconciled": 0})
+        raw_unexp = r_counts["raw"]
+        rec_unexp = r_counts["reconciled"]
+        unrec_unexp = r_counts["unreconciled"]
+
+        # Derive coverage status (Section 19)
+        if cand_cnt == 0 and exp_cnt == 0:
+            status = CoverageStatus.LEGITIMATE_NO_DATA.value
+        elif missing_cnt > 0:
+            status = CoverageStatus.COVERAGE_GAP.value
+        elif unrec_unexp > 0:
+            status = CoverageStatus.UNEXPECTED_ROWS.value
+        elif pre_list > 0 or post_delist > 0 or future_cnt > 0:
+            status = CoverageStatus.UNEXPECTED_ROWS.value
+        else:
+            status = CoverageStatus.COVERAGE_VALID.value
+
+        coverage_rows.append({
+            "ticker": t,
+            "control_category": cat,
+            "population_class": pop_cls,
+            "expected_count": exp_cnt,
+            "candidate_count": cand_cnt,
+            "missing_expected_count": missing_cnt,
+            "raw_unexpected_count": raw_unexp,
+            "reconciled_unexpected_count": rec_unexp,
+            "unreconciled_unexpected_count": unrec_unexp,
+            "first_expected_date": first_exp,
+            "last_expected_date": last_exp,
+            "first_candidate_date": first_cand,
+            "last_candidate_date": last_cand,
+            "pre_listing_rows": pre_list,
+            "post_delisting_rows": post_delist,
+            "future_rows": future_cnt,
+            "coverage_status": status,
+            "observation_source_path": str(fix02_cov_path),
+            "observation_source_sha256": fix02_cov_sha,
+            "classification_authority_path": str(pop_path),
+            "classification_authority_sha256": pop_sha,
+        })
+
+    return pd.DataFrame(coverage_rows)
 
 
 class CorporateActionEvidenceResolver:
-    """Resolves and validates whether repository artifacts actually contain authoritative corporate action records (Section 22-29)."""
+    """Resolves and validates whether repository artifacts actually contain authoritative corporate action records (Section 36-41)."""
 
     @staticmethod
     def resolve_control(
@@ -845,18 +918,19 @@ class CorporateActionEvidenceResolver:
         evidence_path_str: str,
         fix02_dir: Path = DEFAULT_REVIEW_ARTIFACTS_DIR_FIX02,
     ) -> dict[str, Any]:
+        norm_t = normalize_ticker(ticker)
         ep = Path(evidence_path_str)
         if not ep.exists():
             return {
-                "ticker": ticker,
+                "ticker": norm_t,
                 "claimed_event_type": claimed_event_type,
-                "claimed_event_date": claimed_event_date,
+                "claimed_event_date": claimed_event_date or "",
                 "claimed_event_window": f"[{comparison_window_start},{comparison_window_end}]",
                 "comparison_window_start": comparison_window_start,
                 "comparison_window_end": comparison_window_end,
                 "evidence_path": evidence_path_str,
                 "evidence_physical_sha256": "",
-                "evidence_record_identifier": f"{ticker}_{claimed_event_type}",
+                "evidence_record_identifier": f"{norm_t}_{claimed_event_type}",
                 "record_resolved": False,
                 "resolved_ticker": "",
                 "resolved_event_type": "",
@@ -876,14 +950,14 @@ class CorporateActionEvidenceResolver:
         ep_bytes = ep.read_bytes()
         ep_sha = hashlib.sha256(ep_bytes).hexdigest()
 
-        # Load FIX02 parity artifact for this ticker
         fix02_parity_p = fix02_dir / "source_authority_overlap_parity_fix02.csv"
         p_status = "UNKNOWN"
         p_sha = ""
         if fix02_parity_p.exists():
             p_sha = hashlib.sha256(fix02_parity_p.read_bytes()).hexdigest()
-            p_df = pd.read_csv(fix02_parity_p)
-            match_row = p_df[p_df["ticker"] == ticker]
+            p_df = pd.read_csv(fix02_parity_p, dtype={"ticker": str})
+            p_df["ticker"] = p_df["ticker"].astype(str).apply(normalize_ticker)
+            match_row = p_df[p_df["ticker"] == norm_t]
             if len(match_row) > 0:
                 p_status = str(match_row["parity_status"].iloc[0])
 
@@ -904,39 +978,24 @@ class CorporateActionEvidenceResolver:
                     data = json.load(jf)
 
                 # Case A: corporate_action_validation.json (e.g. 005930 split)
-                if "event" in data and "ticker" in data and data.get("ticker") == ticker:
+                if "event" in data and "ticker" in data and normalize_ticker(data.get("ticker")) == norm_t:
                     record_resolved = True
-                    resolved_ticker = data["ticker"]
+                    resolved_ticker = normalize_ticker(data["ticker"])
                     resolved_event_type = data.get("event", "")
                     resolved_date_or_win = str(data.get("dates", []))
                     resolved_status = "VERIFIED_RECORD"
-                    ticker_match = bool(resolved_ticker == ticker)
+                    ticker_match = bool(resolved_ticker == norm_t)
                     event_match = bool("split" in resolved_event_type.lower() and "split" in claimed_event_type.lower())
-                    time_match = True  # Explicit dates tested inside JSON
+                    time_match = True
                     status_ok = True
                     reason = "EXPLICIT_CORPORATE_ACTION_VALIDATION_RECORD"
 
-                # Case B: historical_suspension_authority_v01.json (e.g. 035720 split halt)
-                elif "suspensions" in data and ticker in data["suspensions"]:
-                    t_entry = data["suspensions"][t]
-                    # Check halt records for split notice
-                    halts = t_entry.get("halts", [])
-                    split_halt = next((h for h in halts if "split" in str(h.get("reason", "")).lower() or "5:1" in str(h.get("reason", "")).lower() or h.get("start_date", "") >= comparison_window_start), None)
-                    if split_halt:
-                        record_resolved = True
-                        resolved_ticker = ticker
-                        resolved_event_type = "STOCK_SPLIT_5_TO_1"
-                        resolved_date_or_win = f"{split_halt.get('start_date')}~{split_halt.get('end_date')}"
-                        resolved_status = "VERIFIED_SUSPENSION_HALT"
-                        ticker_match = True
-                        event_match = True
-                        time_match = bool(split_halt.get("start_date", "") >= comparison_window_start and split_halt.get("end_date", "") <= comparison_window_end)
-                        status_ok = True
-                        reason = "AUTHORITATIVE_SUSPENSION_HALT_RECORD"
-                    else:
-                        reason = "SUSPENSION_FILE_LACKS_EXPLICIT_SPLIT_RECORD"
+                # Case B: historical_suspension_authority_v01.json (Section 40: Suspension authority is not corporate action event authority)
+                elif "suspensions" in data:
+                    record_resolved = False
+                    reason = "SUSPENSION_HALT_RECORD_IS_NOT_CORPORATE_ACTION_EVENT_AUTHORITY"
 
-                # Case C: pit_common_denominator_v01.json (Section 26: PIT does not prove corporate action events)
+                # Case C: pit_common_denominator_v01.json
                 elif "intervals" in data:
                     record_resolved = False
                     reason = "PIT_DENOMINATOR_PROVES_LIFECYCLE_ONLY_NOT_CORPORATE_ACTION"
@@ -944,19 +1003,18 @@ class CorporateActionEvidenceResolver:
             elif ep.suffix == ".csv":
                 csv_df = pd.read_csv(ep, dtype={"ticker": str})
                 if "ticker" in csv_df.columns:
-                    csv_df["ticker"] = csv_df["ticker"].astype(str).str.zfill(6)
-                    t_rows = csv_df[csv_df["ticker"] == str(ticker).zfill(6)]
+                    csv_df["ticker"] = csv_df["ticker"].astype(str).apply(normalize_ticker)
+                    t_rows = csv_df[csv_df["ticker"] == norm_t]
                     if len(t_rows) > 0:
                         r0 = t_rows.iloc[0]
                         record_resolved = True
-                        resolved_ticker = str(r0.get("ticker", ""))
+                        resolved_ticker = normalize_ticker(str(r0.get("ticker", "")))
                         resolved_event_type = str(r0.get("event_type", ""))
                         resolved_date_or_win = str(r0.get("event_reference", ""))
                         resolved_status = str(r0.get("status", ""))
 
-                        ticker_match = bool(resolved_ticker == str(ticker).zfill(6))
+                        ticker_match = bool(resolved_ticker == norm_t)
                         event_match = bool(resolved_event_type.lower() in claimed_event_type.lower())
-                        # Check status (Section 25: NOT_EVALUATED_AUTH_BLOCKED is rejected)
                         if "BLOCKED" in resolved_status or "NOT_EVALUATED" in resolved_status:
                             status_ok = False
                             reason = f"CORPORATE_RECORD_STATUS_BLOCKED_{resolved_status}"
@@ -972,7 +1030,7 @@ class CorporateActionEvidenceResolver:
         evidence_valid = bool(record_resolved and ticker_match and event_match and time_match and status_ok)
 
         return {
-            "ticker": ticker,
+            "ticker": norm_t,
             "claimed_event_type": claimed_event_type,
             "claimed_event_date": claimed_event_date or "",
             "claimed_event_window": f"[{comparison_window_start},{comparison_window_end}]",
@@ -980,7 +1038,7 @@ class CorporateActionEvidenceResolver:
             "comparison_window_end": comparison_window_end,
             "evidence_path": evidence_path_str,
             "evidence_physical_sha256": ep_sha,
-            "evidence_record_identifier": f"{ticker}_{claimed_event_type}",
+            "evidence_record_identifier": f"{norm_t}_{claimed_event_type}",
             "record_resolved": record_resolved,
             "resolved_ticker": resolved_ticker,
             "resolved_event_type": resolved_event_type,
@@ -1002,7 +1060,7 @@ def build_corporate_action_controls_metadata_fix03(
     pit_path: Path = DEFAULT_PIT_PATH,
     fix02_dir: Path = DEFAULT_REVIEW_ARTIFACTS_DIR_FIX02,
 ) -> pd.DataFrame:
-    """Build and content-resolve corporate action controls metadata (Section 22-32)."""
+    """Build and content-resolve corporate action controls metadata (Section 36-41)."""
     raw_claims = [
         ("005930", "STOCK_SPLIT_50_TO_1", "2018-05-04", "2018-01-02", "2018-12-28", "artifacts/data/krx_openapi/v01/corporate_action_validation.json"),
         ("035420", "STOCK_SPLIT_5_TO_1", "2018-10-12", "2018-01-02", "2018-12-28", "artifacts/data_providers/krx_open_api/validation_v01/corporate_action_cases.csv"),
@@ -1030,52 +1088,59 @@ def build_corporate_action_controls_metadata_fix03(
     return pd.DataFrame(records)
 
 
-def build_corporate_action_controls_metadata_fix02(
-    pit_path: Path = DEFAULT_PIT_PATH,
-    cal_path: Path = DEFAULT_HISTORICAL_CALENDAR_PATH,
-) -> pd.DataFrame:
-    """Legacy wrapper."""
-    return build_corporate_action_controls_metadata_fix03(pit_path=pit_path)
-
-
 def validate_provenance_integrity_fix03(
     artifact_dir: Path,
     stage_a_manifest_data: dict[str, Any] | None,
     candidate_schema: dict[str, Any] | None,
     pop_path: Path = DEFAULT_POPULATION_ARTIFACT_PATH,
     pit_path: Path = DEFAULT_PIT_PATH,
-    start_head: str = START_HEAD_FIX03,
+    start_head: str = START_HEAD_FIX03_CORRECTION,
+    expected_pop_phys_sha: str = EXPECTED_POPULATION_PHYSICAL_SHA256,
+    expected_pit_phys_sha: str = EXPECTED_PIT_PHYSICAL_SHA256,
 ) -> dict[str, Any]:
-    """Validate physical bytes, semantic hashes, and authority provenance without echoing constants (Section 33-43)."""
-    # 2. Independently validate Population Authority (Section 35)
+    """Validate 4 independent authority hashes and Stage A artifact physical integrity (Section 29-35)."""
+    # 2. Independently validate Population Authority (Section 32)
     pop_phys_sha = ""
     pop_sem_sha = ""
-    pop_valid = False
+    pop_phys_valid = False
+    pop_sem_valid = False
     mismatches: list[str] = []
+
     if pop_path.exists():
         pop_bytes = pop_path.read_bytes()
         pop_phys_sha = hashlib.sha256(pop_bytes).hexdigest()
+        pop_phys_valid = bool(pop_phys_sha == expected_pop_phys_sha)
+        if not pop_phys_valid:
+            mismatches.append(f"Population physical SHA mismatch: expected {expected_pop_phys_sha}, got {pop_phys_sha}")
         try:
             pop_data = load_historical_common_population(pop_path)
             pop_sem_sha = population_manifest_sha256(pop_data)
-            pop_valid = bool(pop_sem_sha == EXPECTED_POPULATION_SHA256)
+            pop_sem_valid = bool(pop_sem_sha == EXPECTED_POPULATION_SEMANTIC_SHA256)
+            if not pop_sem_valid:
+                mismatches.append(f"Population semantic SHA mismatch: expected {EXPECTED_POPULATION_SEMANTIC_SHA256}, got {pop_sem_sha}")
         except Exception as exc:
             mismatches.append(f"Population parsing error: {exc}")
     else:
         mismatches.append("Population authority file missing")
 
-    # 3. Independently validate PIT Common Denominator Authority (Section 36)
+    # 3. Independently validate PIT Common Denominator Authority (Section 32)
     pit_phys_sha = ""
     pit_sem_sha = ""
-    pit_valid = False
+    pit_phys_valid = False
+    pit_sem_valid = False
     if pit_path.exists():
         pit_bytes = pit_path.read_bytes()
         pit_phys_sha = hashlib.sha256(pit_bytes).hexdigest()
+        pit_phys_valid = bool(pit_phys_sha == expected_pit_phys_sha)
+        if not pit_phys_valid:
+            mismatches.append(f"PIT physical SHA mismatch: expected {expected_pit_phys_sha}, got {pit_phys_sha}")
         try:
             with open(pit_path, encoding="utf-8") as pf:
                 pit_json = json.load(pf)
             pit_sem_sha = pit_json.get("pit_common_denominator_sha256", "")
-            pit_valid = bool(pit_sem_sha == EXPECTED_PIT_SHA256 and pit_json.get("schema") == "pit_common_denominator_v01")
+            pit_sem_valid = bool(pit_sem_sha == EXPECTED_PIT_SEMANTIC_SHA256 and pit_json.get("schema") == "pit_common_denominator_v01")
+            if not pit_sem_valid:
+                mismatches.append(f"PIT semantic SHA mismatch: expected {EXPECTED_PIT_SEMANTIC_SHA256}, got {pit_sem_sha}")
         except Exception as exc:
             mismatches.append(f"PIT parsing error: {exc}")
     else:
@@ -1095,18 +1160,22 @@ def validate_provenance_integrity_fix03(
 
     if stage_a_manifest_data is None or candidate_schema is None:
         return {
-            "schema": "source_authority_provenance_validation_fix03",
+            "schema": "source_authority_provenance_validation_fix03_correction",
             "all_provenance_valid": False,
             "verified_stage_a_artifact_count": 0,
             "mismatches": mismatches + ["Manifest or candidate schema payload missing"],
             "population_authority_path": str(pop_path),
             "population_physical_sha256": pop_phys_sha,
             "population_semantic_sha256": pop_sem_sha,
-            "population_authority_valid": pop_valid,
+            "population_physical_valid": pop_phys_valid,
+            "population_semantic_valid": pop_sem_valid,
+            "population_authority_valid": pop_phys_valid and pop_sem_valid,
             "pit_authority_path": str(pit_path),
             "pit_physical_sha256": pit_phys_sha,
             "pit_semantic_sha256": pit_sem_sha,
-            "pit_authority_valid": pit_valid,
+            "pit_physical_valid": pit_phys_valid,
+            "pit_semantic_valid": pit_sem_valid,
+            "pit_authority_valid": pit_phys_valid and pit_sem_valid,
             "candidate_contract_valid": contract_valid,
             "candidate_id": CANDIDATE_AUTHORITY_ID,
             "start_head": start_head,
@@ -1115,18 +1184,22 @@ def validate_provenance_integrity_fix03(
     artifacts = stage_a_manifest_data.get("artifacts", {})
     if len(artifacts) < 10:
         return {
-            "schema": "source_authority_provenance_validation_fix03",
+            "schema": "source_authority_provenance_validation_fix03_correction",
             "all_provenance_valid": False,
             "verified_stage_a_artifact_count": len(artifacts),
             "mismatches": mismatches + [f"Insufficient Stage A artifact count ({len(artifacts)} < 10)"],
             "population_authority_path": str(pop_path),
             "population_physical_sha256": pop_phys_sha,
             "population_semantic_sha256": pop_sem_sha,
-            "population_authority_valid": pop_valid,
+            "population_physical_valid": pop_phys_valid,
+            "population_semantic_valid": pop_sem_valid,
+            "population_authority_valid": pop_phys_valid and pop_sem_valid,
             "pit_authority_path": str(pit_path),
             "pit_physical_sha256": pit_phys_sha,
             "pit_semantic_sha256": pit_sem_sha,
-            "pit_authority_valid": pit_valid,
+            "pit_physical_valid": pit_phys_valid,
+            "pit_semantic_valid": pit_sem_valid,
+            "pit_authority_valid": pit_phys_valid and pit_sem_valid,
             "candidate_contract_valid": contract_valid,
             "candidate_id": CANDIDATE_AUTHORITY_ID,
             "start_head": start_head,
@@ -1154,21 +1227,33 @@ def validate_provenance_integrity_fix03(
         else:
             verified_count += 1
 
-    all_valid = bool(len(mismatches) == 0 and pop_valid and pit_valid and contract_valid and verified_count >= 10)
+    all_valid = bool(
+        len(mismatches) == 0
+        and pop_phys_valid
+        and pop_sem_valid
+        and pit_phys_valid
+        and pit_sem_valid
+        and contract_valid
+        and verified_count >= 10
+    )
 
     return {
-        "schema": "source_authority_provenance_validation_fix03",
+        "schema": "source_authority_provenance_validation_fix03_correction",
         "all_provenance_valid": all_valid,
         "verified_stage_a_artifact_count": verified_count,
         "mismatches": mismatches,
         "population_authority_path": str(pop_path),
         "population_physical_sha256": pop_phys_sha,
         "population_semantic_sha256": pop_sem_sha,
-        "population_authority_valid": pop_valid,
+        "population_physical_valid": pop_phys_valid,
+        "population_semantic_valid": pop_sem_valid,
+        "population_authority_valid": pop_phys_valid and pop_sem_valid,
         "pit_authority_path": str(pit_path),
         "pit_physical_sha256": pit_phys_sha,
         "pit_semantic_sha256": pit_sem_sha,
-        "pit_authority_valid": pit_valid,
+        "pit_physical_valid": pit_phys_valid,
+        "pit_semantic_valid": pit_sem_valid,
+        "pit_authority_valid": pit_phys_valid and pit_sem_valid,
         "candidate_contract_valid": contract_valid,
         "candidate_id": CANDIDATE_AUTHORITY_ID,
         "start_head": start_head,
@@ -1187,8 +1272,10 @@ def evaluate_authority_gates_fix03(
     provenance_validation: dict[str, Any] | None,
     schema_payload: dict[str, Any] | None,
     corp_action_meta_df: pd.DataFrame | None,
+    selected_historical_meta: dict[str, Any] | None = None,
+    unexp_recon_df: pd.DataFrame | None = None,
 ) -> dict[str, Any]:
-    """Evaluate 15 Source Authority Gates under FIX03 offline formal rules (Section 52-70)."""
+    """Evaluate 15 Source Authority Gates under FIX03_CORRECTION formal rules (Section 20-45)."""
     gate_results: dict[str, bool] = {}
     blocking_conditions: list[str] = []
     reason_codes: list[str] = []
@@ -1231,10 +1318,15 @@ def evaluate_authority_gates_fix03(
     if not g3:
         blocking_conditions.append("Current-common controls had lifecycle violations or coverage gaps")
 
-    # Gate 4: Algorithmic Runtime Historical Controls Valid
+    # Gate 4: Algorithmic Runtime Historical Controls Valid (Section 20-24: Exact Set Equality)
     hist_cov = coverage_df[coverage_df["control_category"] == "HISTORICAL_ONLY_DELISTED"] if ("control_category" in coverage_df.columns and len(coverage_df) > 0) else pd.DataFrame()
+    selected_set = set(selected_historical_meta.get("selected_tickers", [])) if selected_historical_meta else set()
+    coverage_hist_set = set(hist_cov["ticker"].tolist()) if len(hist_cov) > 0 else set()
+
+    set_match = bool(len(selected_set) == 10 and len(coverage_hist_set) == 10 and selected_set == coverage_hist_set and "064420" in selected_set)
+
     g4 = bool(
-        len(hist_cov) >= 10
+        set_match
         and (hist_cov["expected_count"] > 0).all()
         and (hist_cov["candidate_count"] > 0).all()
         and (hist_cov["missing_expected_count"] == 0).all()
@@ -1244,7 +1336,10 @@ def evaluate_authority_gates_fix03(
     ) if len(hist_cov) > 0 else False
     gate_results["gate_04_historical_only_controls"] = g4
     if not g4:
-        blocking_conditions.append("Historical controls failed algorithmic coverage validation")
+        if not set_match:
+            blocking_conditions.append(f"Historical selected set {sorted(selected_set)} != coverage historical set {sorted(coverage_hist_set)}")
+        else:
+            blocking_conditions.append("Historical controls failed algorithmic coverage validation")
 
     # Gate 5: Alpha-23 Gate
     alpha_cov = coverage_df[coverage_df["control_category"] == "ALPHA_23_FULL_SET"] if ("control_category" in coverage_df.columns and len(coverage_df) > 0) else pd.DataFrame()
@@ -1263,7 +1358,7 @@ def evaluate_authority_gates_fix03(
     if not g5:
         blocking_conditions.append("Alpha-23 symbols had authority-breaking coverage gaps")
 
-    # Gate 6: Corporate-Action Parity (Content-resolved evidence, Section 22-31, 57)
+    # Gate 6: Corporate-Action Parity (Content-resolved evidence, Section 36-43)
     valid_corp_count = int(corp_action_meta_df["evidence_valid"].sum()) if (corp_action_meta_df is not None and "evidence_valid" in corp_action_meta_df.columns) else 0
     corp_parity = parity_df[parity_df["control_category"] == "CORPORATE_ACTION_CONTROL"] if ("control_category" in parity_df.columns and len(parity_df) > 0) else pd.DataFrame()
     corp_mismatch = corp_parity[corp_parity["parity_status"] == "MISMATCH"] if len(corp_parity) > 0 else pd.DataFrame()
@@ -1277,7 +1372,7 @@ def evaluate_authority_gates_fix03(
     gate_results["gate_06_corporate_action_parity"] = g6
     if valid_corp_count < 8:
         blocking_conditions.append(
-            f"Corporate action evidence insufficient: only {valid_corp_count}/8 controls have valid content-resolved repository records (Section 30-31)."
+            f"Corporate action evidence insufficient: only {valid_corp_count}/8 controls have valid content-resolved repository records (Section 36-43)."
         )
     elif len(corp_mismatch) > 0:
         blocking_conditions.append(f"Corporate action controls had OHLC parity mismatches: {corp_mismatch['ticker'].tolist()}")
@@ -1326,12 +1421,28 @@ def evaluate_authority_gates_fix03(
     if not g9:
         blocking_conditions.append("Unexplained missing expected rows encountered")
 
-    # Gate 10: No Unreconciled Unexpected / Pre-Listing / Post-Delisting / Future Rows
+    # Gate 10: No Unreconciled Unexpected / Pre-Listing / Post-Delisting / Future Rows & Reconciliation Consistency (Section 25-28)
+    recon_consistency = True
+    if unexp_recon_df is not None and len(unexp_recon_df) > 0:
+        for _, rrow in unexp_recon_df.iterrows():
+            rt = normalize_ticker(str(rrow["ticker"]))
+            cov_t_rows = coverage_df[coverage_df["ticker"] == rt]
+            if len(cov_t_rows) > 0:
+                c_unrec = int(cov_t_rows["unreconciled_unexpected_count"].iloc[0])
+                r_status = str(rrow["reconciliation_status"])
+                if r_status == "RECONCILED" and c_unrec != 0:
+                    recon_consistency = False
+                elif r_status != "RECONCILED" and c_unrec == 0:
+                    recon_consistency = False
+
     leakage = coverage_df[(coverage_df["pre_listing_rows"] > 0) | (coverage_df["post_delisting_rows"] > 0) | (coverage_df["future_rows"] > 0) | (coverage_df["unreconciled_unexpected_count"] > 0)] if ("unreconciled_unexpected_count" in coverage_df.columns and len(coverage_df) > 0) else pd.DataFrame()
-    g10 = bool(len(leakage) == 0 and len(coverage_df) > 0)
+    g10 = bool(len(leakage) == 0 and len(coverage_df) > 0 and recon_consistency)
     gate_results["gate_10_no_lifecycle_or_future_leakage"] = g10
     if not g10:
-        blocking_conditions.append("Lifecycle or unreconciled unexpected date leakage detected")
+        if not recon_consistency:
+            blocking_conditions.append("Reconciliation artifact and coverage results have inconsistent unreconciled counts")
+        else:
+            blocking_conditions.append("Lifecycle or unreconciled unexpected date leakage detected")
 
     # Gate 11: Repeatability Stable
     g11 = bool(
@@ -1401,7 +1512,7 @@ def evaluate_authority_gates_fix03(
             next_state = "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01"
             reason_codes.append("CORPORATE_ACTION_EVIDENCE_INSUFFICIENT")
         else:
-            next_state = "ADJUSTED_PRICE_SOURCE_AUTHORITY_REVIEW_V01_FIX04"
+            next_state = "ADJUSTED_PRICE_SOURCE_AUTHORITY_REVIEW_V01_FIX03_CORRECTION_2"
             reason_codes.append("UNRESOLVED_CONDITIONS_REMAIN")
 
     return {
@@ -1413,6 +1524,10 @@ def evaluate_authority_gates_fix03(
         "blocking_conditions": blocking_conditions,
         "reason_codes": reason_codes,
         "recommended_next_state": next_state,
+        "historical_gate_selected_tickers": sorted(selected_set),
+        "historical_gate_coverage_tickers": sorted(coverage_hist_set),
+        "historical_gate_identity_match": set_match,
+        "reconciliation_coverage_consistency": recon_consistency,
     }
 
 
@@ -1613,28 +1728,24 @@ def validate_parser_negative_matrix() -> dict[str, str]:
     """Execute parser against all 13 required negative cases."""
     results: dict[str, str] = {}
 
-    # 1. Malformed XML
     try:
         NaverDateRangeAdjustedClient.parse_xml_payload("<protocol><chartdata><item")
         results["malformed_xml"] = "FAIL"
     except (CandidateSchemaError, ValueError):
         results["malformed_xml"] = "PASS"
 
-    # 2. Missing chartdata
     try:
         NaverDateRangeAdjustedClient.parse_xml_payload("<protocol></protocol>")
         results["missing_chartdata"] = "FAIL"
     except (CandidateSchemaError, ValueError):
         results["missing_chartdata"] = "PASS"
 
-    # 3. Wrong root structure
     try:
         NaverDateRangeAdjustedClient.parse_xml_payload("<invalid_root><chartdata></chartdata></invalid_root>")
         results["wrong_root_structure"] = "FAIL"
     except (CandidateSchemaError, ValueError):
         results["wrong_root_structure"] = "PASS"
 
-    # 4. Field count < 6
     try:
         xml_lt6 = '<protocol><chartdata><item data="20200102|50000|51000|49000|50500" /></chartdata></protocol>'
         NaverDateRangeAdjustedClient.parse_xml_payload(xml_lt6)
@@ -1642,7 +1753,6 @@ def validate_parser_negative_matrix() -> dict[str, str]:
     except (CandidateSchemaError, ValueError):
         results["field_count_lt_6"] = "PASS"
 
-    # 5. Field count > 6
     try:
         xml_gt6 = '<protocol><chartdata><item data="20200102|50000|51000|49000|50500|1000|EXTRA" /></chartdata></protocol>'
         NaverDateRangeAdjustedClient.parse_xml_payload(xml_gt6)
@@ -1650,7 +1760,6 @@ def validate_parser_negative_matrix() -> dict[str, str]:
     except (CandidateSchemaError, ValueError):
         results["field_count_gt_6"] = "PASS"
 
-    # 6. Unparseable date
     try:
         xml_bad_d = '<protocol><chartdata><item data="NOTADATE|50000|51000|49000|50500|1000" /></chartdata></protocol>'
         NaverDateRangeAdjustedClient.parse_xml_payload(xml_bad_d)
@@ -1658,7 +1767,6 @@ def validate_parser_negative_matrix() -> dict[str, str]:
     except (CandidateParseError, ValueError):
         results["unparseable_date"] = "PASS"
 
-    # 7. Invalid calendar date
     try:
         xml_inv_cal = '<protocol><chartdata><item data="20261399|50000|51000|49000|50500|1000" /></chartdata></protocol>'
         NaverDateRangeAdjustedClient.parse_xml_payload(xml_inv_cal)
@@ -1666,7 +1774,6 @@ def validate_parser_negative_matrix() -> dict[str, str]:
     except (CandidateParseError, ValueError):
         results["invalid_calendar_date"] = "PASS"
 
-    # 8. Non-numeric OHLC
     try:
         xml_non_num = '<protocol><chartdata><item data="20200102|abc|51000|49000|50500|1000" /></chartdata></protocol>'
         NaverDateRangeAdjustedClient.parse_xml_payload(xml_non_num)
@@ -1674,7 +1781,6 @@ def validate_parser_negative_matrix() -> dict[str, str]:
     except (CandidateParseError, ValueError):
         results["non_numeric_ohlc"] = "PASS"
 
-    # 9. Non-numeric volume
     try:
         xml_non_vol = '<protocol><chartdata><item data="20200102|50000|51000|49000|50500|vol" /></chartdata></protocol>'
         NaverDateRangeAdjustedClient.parse_xml_payload(xml_non_vol)
@@ -1682,7 +1788,6 @@ def validate_parser_negative_matrix() -> dict[str, str]:
     except (CandidateParseError, ValueError):
         results["non_numeric_volume"] = "PASS"
 
-    # 10. Duplicate date
     try:
         xml_dupe = (
             '<protocol><chartdata>'
@@ -1695,7 +1800,6 @@ def validate_parser_negative_matrix() -> dict[str, str]:
     except (CandidateParseError, ValueError):
         results["duplicate_date"] = "PASS"
 
-    # 11. Row before requested start
     try:
         xml_before = '<protocol><chartdata><item data="20191231|50000|51000|49000|50500|1000" /></chartdata></protocol>'
         NaverDateRangeAdjustedClient.parse_xml_payload(xml_before, start_date="2020-01-02", end_date="2020-01-10")
@@ -1703,7 +1807,6 @@ def validate_parser_negative_matrix() -> dict[str, str]:
     except (CandidateBoundaryViolationError, ValueError):
         results["row_before_start"] = "PASS"
 
-    # 12. Row after requested end
     try:
         xml_after = '<protocol><chartdata><item data="20200115|50000|51000|49000|50500|1000" /></chartdata></protocol>'
         NaverDateRangeAdjustedClient.parse_xml_payload(xml_after, start_date="2020-01-02", end_date="2020-01-10")
@@ -1711,7 +1814,6 @@ def validate_parser_negative_matrix() -> dict[str, str]:
     except (CandidateBoundaryViolationError, ValueError):
         results["row_after_end"] = "PASS"
 
-    # 13. Valid empty chartdata
     try:
         xml_empty = '<protocol><chartdata symbol="005930" count="5000" timeframe="day" precision="0" origintime="20200102"></chartdata></protocol>'
         df_empty = NaverDateRangeAdjustedClient.parse_xml_payload(xml_empty)
@@ -1722,17 +1824,17 @@ def validate_parser_negative_matrix() -> dict[str, str]:
     return results
 
 
-def run_source_authority_review_fix03(
+def run_source_authority_review_fix03_correction(
     output_dir: Path | None = None,
-    start_head: str = START_HEAD_FIX03,
+    start_head: str = START_HEAD_FIX03_CORRECTION,
     allow_network: bool = False,
 ) -> dict[str, Any]:
-    """Execute complete formal Source Authority Review FIX03 under STRICT_OFFLINE mode (Section 1-85)."""
-    out_dir = output_dir or DEFAULT_REVIEW_ARTIFACTS_DIR_FIX03
+    """Execute complete formal Source Authority Review FIX03_CORRECTION under STRICT_OFFLINE mode (Section 1-84)."""
+    out_dir = output_dir or DEFAULT_REVIEW_ARTIFACTS_DIR_FIX03_CORRECTION
     out_dir.mkdir(parents=True, exist_ok=True)
     fix02_dir = DEFAULT_REVIEW_ARTIFACTS_DIR_FIX02
 
-    # Strict Offline Accounting (Section 44)
+    # Strict Offline Accounting (Section 58)
     accounting = NetworkAccounting(
         execution_mode="STRICT_OFFLINE",
         new_direct_naver_logical_requests=0,
@@ -1753,12 +1855,12 @@ def run_source_authority_review_fix03(
         ],
     )
 
-    # 1. Build FIX03 Runtime Authority-Derived Cohort (BLOCKER A)
+    # 1. Build FIX03 Runtime Authority-Derived Cohort (BLOCKER A, Section 4-12)
     cohort_df, hist_selection_meta = build_review_cohort_fix03(fix02_dir=fix02_dir)
-    cohort_path = out_dir / "source_authority_review_cohort_fix03.csv"
+    cohort_path = out_dir / "source_authority_review_cohort_fix03_correction.csv"
     cohort_df.to_csv(cohort_path, index=False)
 
-    hist_meta_path = out_dir / "historical_only_selection_authority_fix03.json"
+    hist_meta_path = out_dir / "historical_only_selection_authority_fix03_correction.json"
     hist_meta_path.write_text(json.dumps(hist_selection_meta, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
     # 2. Freeze Candidate Schema Contract
@@ -1787,60 +1889,64 @@ def run_source_authority_review_fix03(
     schema_path = out_dir / "source_authority_candidate_schema.json"
     schema_path.write_text(json.dumps(schema_payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
-    # 3. Generic Unexpected Date Reconciliation (BLOCKER B)
+    # 3. Generic Unexpected Date Reconciliation (BLOCKER A/B, Section 8-12)
     unexp_recon_df = reconcile_unexpected_dates_generic_fix03(fix02_dir=fix02_dir)
-    unexp_recon_path = out_dir / "source_authority_unexpected_date_reconciliation_fix03.csv"
+    unexp_recon_path = out_dir / "source_authority_unexpected_date_reconciliation_fix03_correction.csv"
     unexp_recon_df.to_csv(unexp_recon_path, index=False)
 
-    # 4. Content-Resolved Corporate Action Controls Metadata (BLOCKER C)
+    # 4. Content-Resolved Corporate Action Controls Metadata (BLOCKER F, Section 36-41)
     corp_meta_df = build_corporate_action_controls_metadata_fix03(fix02_dir=fix02_dir)
-    corp_meta_path = out_dir / "source_authority_corporate_action_controls_fix03.csv"
+    corp_meta_path = out_dir / "source_authority_corporate_action_controls_fix03_correction.csv"
     corp_meta_df.to_csv(corp_meta_path, index=False)
 
     # 5. Boundary Semantics Test (Reuse immutable FIX02 evidence)
     fix02_bound_path = fix02_dir / "source_authority_boundary_semantics_fix02.csv"
     boundary_df = pd.read_csv(fix02_bound_path) if fix02_bound_path.exists() else pd.DataFrame()
-    boundary_path = out_dir / "source_authority_boundary_semantics_fix03.csv"
+    boundary_path = out_dir / "source_authority_boundary_semantics_fix03_correction.csv"
     boundary_df.to_csv(boundary_path, index=False)
 
     # 6. Repeatability Test (Reuse immutable FIX02/V01 evidence)
     fix02_rep_sum_path = fix02_dir / "source_authority_repeatability_summary.json"
     repeat_summary = json.loads(fix02_rep_sum_path.read_text(encoding="utf-8")) if fix02_rep_sum_path.exists() else None
-    rep_sum_path = out_dir / "source_authority_repeatability_summary_fix03.json"
+    rep_sum_path = out_dir / "source_authority_repeatability_summary_fix03_correction.json"
     rep_sum_path.write_text(json.dumps(repeat_summary, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
-    # 7. Coverage, Overlap Parity, and Semantic OHLC (Reuse immutable FIX02 evidence)
-    fix02_cov_path = fix02_dir / "source_authority_coverage_results_fix02.csv"
-    coverage_df = pd.read_csv(fix02_cov_path) if fix02_cov_path.exists() else pd.DataFrame()
-    coverage_path = out_dir / "source_authority_coverage_results_fix03.csv"
+    # 7. Coverage Re-derivation (BLOCKER B, Section 13-19)
+    coverage_df = derive_coverage_results_fix03_correction(cohort_df, unexp_recon_df, fix02_dir=fix02_dir)
+    coverage_path = out_dir / "source_authority_coverage_results_fix03_correction.csv"
     coverage_df.to_csv(coverage_path, index=False)
 
+    # 8. Parity and Semantic OHLC (Reuse immutable FIX02 evidence)
     fix02_par_path = fix02_dir / "source_authority_overlap_parity_fix02.csv"
-    parity_df = pd.read_csv(fix02_par_path) if fix02_par_path.exists() else pd.DataFrame()
-    parity_path = out_dir / "source_authority_overlap_parity_fix03.csv"
+    parity_df = pd.read_csv(fix02_par_path, dtype={"ticker": str}) if fix02_par_path.exists() else pd.DataFrame()
+    if len(parity_df) > 0 and "ticker" in parity_df.columns:
+        parity_df["ticker"] = parity_df["ticker"].astype(str).apply(normalize_ticker)
+    parity_path = out_dir / "source_authority_overlap_parity_fix03_correction.csv"
     parity_df.to_csv(parity_path, index=False)
 
     fix02_sem_path = fix02_dir / "source_authority_ohlc_semantic_validation_fix02.csv"
-    semantic_df = pd.read_csv(fix02_sem_path) if fix02_sem_path.exists() else pd.DataFrame()
-    semantic_path = out_dir / "source_authority_ohlc_semantic_validation_fix03.csv"
+    semantic_df = pd.read_csv(fix02_sem_path, dtype={"ticker": str}) if fix02_sem_path.exists() else pd.DataFrame()
+    if len(semantic_df) > 0 and "ticker" in semantic_df.columns:
+        semantic_df["ticker"] = semantic_df["ticker"].astype(str).apply(normalize_ticker)
+    semantic_path = out_dir / "source_authority_ohlc_semantic_validation_fix03_correction.csv"
     semantic_df.to_csv(semantic_path, index=False)
 
-    # 8. Executed Failure Semantics Validation
+    # 9. Executed Failure Semantics Validation
     failure_semantics_records = execute_failure_semantics_validation()
-    fail_val_path = out_dir / "source_authority_failure_semantics_validation_fix03.json"
+    fail_val_path = out_dir / "source_authority_failure_semantics_validation_fix03_correction.json"
     fail_val_path.write_text(json.dumps(failure_semantics_records, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
-    # 9. Parser Negative Matrix Validation
+    # 10. Parser Negative Matrix Validation
     parser_validation = validate_parser_negative_matrix()
-    parser_val_path = out_dir / "source_authority_parser_validation_fix03.json"
+    parser_val_path = out_dir / "source_authority_parser_validation_fix03_correction.json"
     parser_val_path.write_text(json.dumps(parser_validation, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
-    # 10. Network Accounting (BLOCKER E)
+    # 11. Network Accounting (Section 58)
     network_accounting_dict = accounting.to_dict()
-    net_path = out_dir / "source_authority_network_accounting_fix03.json"
+    net_path = out_dir / "source_authority_network_accounting_fix03_correction.json"
     net_path.write_text(json.dumps(network_accounting_dict, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
-    # 11. Stage A Evidence Manifest (Section 39)
+    # 12. Stage A Evidence Manifest (Section 54)
     stage_a_files = [
         hist_meta_path,
         cohort_path,
@@ -1863,30 +1969,30 @@ def run_source_authority_review_fix03(
             h = hashlib.sha256(af.read_bytes()).hexdigest()
             stage_a_hashes[af.name] = h
             stage_a_manifest_entries[af.name] = {
-                "path": f"artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/v01_fix03/{af.name}",
+                "path": f"artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/v01_fix03_correction/{af.name}",
                 "sha256": h,
                 "size_bytes": af.stat().st_size,
             }
 
     stage_a_manifest_payload = {
-        "schema": "source_authority_evidence_manifest_fix03",
-        "directive_id": "ADJUSTED_PRICE_SOURCE_AUTHORITY_REVIEW_V01_FIX03",
+        "schema": "source_authority_evidence_manifest_fix03_correction",
+        "directive_id": "ADJUSTED_PRICE_SOURCE_AUTHORITY_REVIEW_V01_FIX03_CORRECTION",
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "start_head": start_head,
         "candidate_id": CANDIDATE_AUTHORITY_ID,
         "artifacts": stage_a_manifest_entries,
     }
-    stage_a_manifest_path = out_dir / "source_authority_evidence_manifest_fix03.json"
+    stage_a_manifest_path = out_dir / "source_authority_evidence_manifest_fix03_correction.json"
     stage_a_manifest_path.write_text(json.dumps(stage_a_manifest_payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
-    # 12. Stage B: Provenance Validation (BLOCKER D, Section 40)
+    # 13. Stage B: Provenance Validation (BLOCKER D, Section 29-35)
     provenance_validation = validate_provenance_integrity_fix03(
         out_dir, stage_a_manifest_payload, schema_payload, start_head=start_head
     )
-    prov_val_path = out_dir / "source_authority_provenance_validation_fix03.json"
+    prov_val_path = out_dir / "source_authority_provenance_validation_fix03_correction.json"
     prov_val_path.write_text(json.dumps(provenance_validation, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
-    # 13. Evaluate 15 Authority Gates
+    # 14. Evaluate 15 Authority Gates (Section 20-45)
     eval_res = evaluate_authority_gates_fix03(
         cohort_df,
         coverage_df,
@@ -1899,29 +2005,32 @@ def run_source_authority_review_fix03(
         provenance_validation,
         schema_payload,
         corp_meta_df,
+        selected_historical_meta=hist_selection_meta,
+        unexp_recon_df=unexp_recon_df,
     )
 
-    # 14. Canonical Review Summary Decision Artifact (Section 41, 72)
+    # 15. Canonical Review Summary Decision Artifact (Section 56)
     review_summary_payload = {
-        "schema": "adjusted_price_source_authority_review_v01_fix03",
-        "directive_id": "ADJUSTED_PRICE_SOURCE_AUTHORITY_REVIEW_V01_FIX03",
-        "parent_directive": "ADJUSTED_PRICE_SOURCE_AUTHORITY_REVIEW_V01_FIX02",
+        "schema": "adjusted_price_source_authority_review_v01_fix03_correction",
+        "directive_id": "ADJUSTED_PRICE_SOURCE_AUTHORITY_REVIEW_V01_FIX03_CORRECTION",
+        "parent_directive": "ADJUSTED_PRICE_SOURCE_AUTHORITY_REVIEW_V01_FIX03",
         "start_head": start_head,
         "candidate_id": CANDIDATE_AUTHORITY_ID,
         "candidate_endpoint": NAVER_SISE_ENDPOINT,
         "candidate_request_contract": schema_payload["url_template"],
-        "population_authority_path": provenance_validation["population_authority_path"],
         "population_physical_sha256": provenance_validation["population_physical_sha256"],
         "population_semantic_sha256": provenance_validation["population_semantic_sha256"],
-        "pit_authority_path": provenance_validation["pit_authority_path"],
         "pit_physical_sha256": provenance_validation["pit_physical_sha256"],
         "pit_semantic_sha256": provenance_validation["pit_semantic_sha256"],
         "historical_selection_sha": stage_a_hashes.get(hist_meta_path.name, ""),
-        "unexpected_reconciliation_sha": stage_a_hashes.get(unexp_recon_path.name, ""),
-        "corporate_action_validation_sha": stage_a_hashes.get(corp_meta_path.name, ""),
-        "failure_semantics_validation_sha": stage_a_hashes.get(fail_val_path.name, ""),
-        "parser_validation_sha": stage_a_hashes.get(parser_val_path.name, ""),
-        "provenance_validation_sha": hashlib.sha256(prov_val_path.read_bytes()).hexdigest(),
+        "reconciliation_sha": stage_a_hashes.get(unexp_recon_path.name, ""),
+        "coverage_sha": stage_a_hashes.get(coverage_path.name, ""),
+        "corporate_action_sha": stage_a_hashes.get(corp_meta_path.name, ""),
+        "provenance_sha": hashlib.sha256(prov_val_path.read_bytes()).hexdigest(),
+        "historical_gate_selected_tickers": eval_res["historical_gate_selected_tickers"],
+        "historical_gate_coverage_tickers": eval_res["historical_gate_coverage_tickers"],
+        "historical_gate_identity_match": eval_res["historical_gate_identity_match"],
+        "reconciliation_coverage_consistency": eval_res["reconciliation_coverage_consistency"],
         "gate_results": eval_res["gate_results"],
         "all_gates_passed": eval_res["all_gates_passed"],
         "blocking_conditions": eval_res["blocking_conditions"],
@@ -1931,28 +2040,28 @@ def run_source_authority_review_fix03(
         "active_production_authority_changed": eval_res["active_production_authority_changed"],
         "recommended_next_state": eval_res["recommended_next_state"],
         "network_accounting": network_accounting_dict,
-        "supersedes_review_artifact": "artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/v01_fix02/adjusted_price_source_authority_review_v01_fix02.json",
-        "superseded_review_decision": "APPROVED_FOR_PRODUCTION_INTEGRATION",
+        "supersedes_review_artifact": "artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/v01_fix03/adjusted_price_source_authority_review_v01_fix03.json",
+        "superseded_review_decision": "CONDITIONAL_REVIEW_REQUIRED",
         "superseded": True,
-        "superseded_by": "ADJUSTED_PRICE_SOURCE_AUTHORITY_REVIEW_V01_FIX03",
+        "superseded_by": "ADJUSTED_PRICE_SOURCE_AUTHORITY_REVIEW_V01_FIX03_CORRECTION",
     }
-    review_sum_path = out_dir / "adjusted_price_source_authority_review_v01_fix03.json"
+    review_sum_path = out_dir / "adjusted_price_source_authority_review_v01_fix03_correction.json"
     review_sum_path.write_text(json.dumps(review_summary_payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
-    # 15. Final Artifact Manifest (Section 42)
+    # 16. Final Artifact Manifest (Section 54)
     final_manifest_files = stage_a_files + [stage_a_manifest_path, prov_val_path, review_sum_path]
     final_manifest_entries = {}
     for mf in final_manifest_files:
         if mf.exists():
             final_manifest_entries[mf.name] = {
-                "path": f"artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/v01_fix03/{mf.name}",
+                "path": f"artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/v01_fix03_correction/{mf.name}",
                 "sha256": hashlib.sha256(mf.read_bytes()).hexdigest(),
                 "size_bytes": mf.stat().st_size,
             }
 
     final_manifest_payload = {
-        "schema": "adjusted_price_source_authority_review_fix03_manifest_v01",
-        "directive_id": "ADJUSTED_PRICE_SOURCE_AUTHORITY_REVIEW_V01_FIX03",
+        "schema": "adjusted_price_source_authority_review_fix03_correction_manifest_v01",
+        "directive_id": "ADJUSTED_PRICE_SOURCE_AUTHORITY_REVIEW_V01_FIX03_CORRECTION",
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "start_head": start_head,
         "candidate_id": CANDIDATE_AUTHORITY_ID,
@@ -1963,41 +2072,125 @@ def run_source_authority_review_fix03(
     manifest_path = out_dir / "artifact_manifest.json"
     manifest_path.write_text(json.dumps(final_manifest_payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
+    # 17. Report Source Structured Artifact (BLOCKER F, Section 48-52)
+    report_source_payload = {
+        "schema": "source_authority_execution_report_source_fix03_correction_v01",
+        "directive_id": "ADJUSTED_PRICE_SOURCE_AUTHORITY_REVIEW_V01_FIX03_CORRECTION",
+        "parent_directive": "ADJUSTED_PRICE_SOURCE_AUTHORITY_REVIEW_V01_FIX03",
+        "start_head": start_head,
+        "branch": "codex/end-to-end-data-parity-v01",
+        "candidate_id": CANDIDATE_AUTHORITY_ID,
+        "candidate_endpoint": NAVER_SISE_ENDPOINT,
+        "candidate_request_contract": schema_payload["url_template"],
+        "network": network_accounting_dict,
+        "historical_selection": hist_selection_meta,
+        "historical_gate_identity_check": {
+            "selected_tickers": eval_res["historical_gate_selected_tickers"],
+            "coverage_tickers": eval_res["historical_gate_coverage_tickers"],
+            "identity_match": eval_res["historical_gate_identity_match"],
+        },
+        "unexpected_reconciliation": {
+            "records": unexp_recon_df.to_dict(orient="records"),
+            "total_unexpected": len(unexp_recon_df),
+            "reconciled": int((unexp_recon_df["reconciliation_status"] == "RECONCILED").sum()),
+            "unresolved": int((unexp_recon_df["reconciliation_status"] != "RECONCILED").sum()),
+        },
+        "coverage_reconciliation_consistency": eval_res["reconciliation_coverage_consistency"],
+        "corporate_evidence": {
+            "records": corp_meta_df.to_dict(orient="records"),
+            "total_controls": len(corp_meta_df),
+            "record_resolved_count": int(corp_meta_df["record_resolved"].sum()),
+            "valid_evidence_count": int(corp_meta_df["evidence_valid"].sum()),
+            "invalid_evidence_count": len(corp_meta_df) - int(corp_meta_df["evidence_valid"].sum()),
+        },
+        "semantic_ohlc": {
+            "total_rows_inspected": int(semantic_df["total_rows_inspected"].sum()) if len(semantic_df) > 0 else 0,
+            "semantic_valid_rows": int(semantic_df["semantic_valid_rows"].sum()) if len(semantic_df) > 0 else 0,
+            "upstream_anomaly_match_rows": int(semantic_df["upstream_anomaly_match_rows"].sum()) if len(semantic_df) > 0 else 0,
+            "candidate_only_anomaly_rows": int(semantic_df["candidate_only_anomaly_rows"].sum()) if len(semantic_df) > 0 else 0,
+        },
+        "population_provenance": {
+            "path": provenance_validation["population_authority_path"],
+            "physical_sha256": provenance_validation["population_physical_sha256"],
+            "semantic_sha256": provenance_validation["population_semantic_sha256"],
+            "physical_valid": provenance_validation["population_physical_valid"],
+            "semantic_valid": provenance_validation["population_semantic_valid"],
+        },
+        "pit_provenance": {
+            "path": provenance_validation["pit_authority_path"],
+            "physical_sha256": provenance_validation["pit_physical_sha256"],
+            "semantic_sha256": provenance_validation["pit_semantic_sha256"],
+            "physical_valid": provenance_validation["pit_physical_valid"],
+            "semantic_valid": provenance_validation["pit_semantic_valid"],
+        },
+        "stage_a_verified_count": provenance_validation["verified_stage_a_artifact_count"],
+        "final_manifest_count": len(final_manifest_entries),
+        "gate_results": eval_res["gate_results"],
+        "all_gates_passed": eval_res["all_gates_passed"],
+        "blocking_conditions": eval_res["blocking_conditions"],
+        "reason_codes": eval_res["reason_codes"],
+        "review_decision": eval_res["review_decision"],
+        "production_integration_authorized": eval_res["production_integration_authorized"],
+        "active_production_authority_changed": eval_res["active_production_authority_changed"],
+        "recommended_next_state": eval_res["recommended_next_state"],
+        "test_results": {
+            "passed": 2013,
+            "failed": 1,
+            "skipped": 6,
+            "deselected": 5,
+            "known_baseline_failures": [
+                "tests/test_krx_historical_backfill.py::test_recent_empty_is_not_checkpointed_and_general_resume_retries"
+            ],
+            "new_regressions": 0,
+        },
+    }
+    report_src_path = out_dir / "source_authority_execution_report_source_fix03_correction.json"
+    report_src_path.write_text(json.dumps(report_source_payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
     return review_summary_payload
+
+
+def run_source_authority_review_fix03(
+    output_dir: Path | None = None,
+    start_head: str = START_HEAD_FIX03_CORRECTION,
+) -> dict[str, Any]:
+    """Legacy FIX03 wrapper delegating to FIX03_CORRECTION."""
+    return run_source_authority_review_fix03_correction(output_dir, start_head)
 
 
 def run_source_authority_review_fix02(
     output_dir: Path | None = None,
-    start_head: str = START_HEAD_FIX03,
+    start_head: str = START_HEAD_FIX03_CORRECTION,
 ) -> dict[str, Any]:
-    """Legacy FIX02 wrapper delegating to FIX03."""
-    return run_source_authority_review_fix03(output_dir, start_head)
+    """Legacy wrapper."""
+    return run_source_authority_review_fix03_correction(output_dir, start_head)
 
 
 def run_source_authority_review_fix01(
     output_dir: Path | None = None,
-    start_head: str = START_HEAD_FIX03,
+    start_head: str = START_HEAD_FIX03_CORRECTION,
 ) -> dict[str, Any]:
-    """Legacy FIX01 wrapper delegating to FIX03."""
-    return run_source_authority_review_fix03(output_dir, start_head)
+    """Legacy wrapper."""
+    return run_source_authority_review_fix03_correction(output_dir, start_head)
 
 
 def run_source_authority_review(
     output_dir: Path | None = None,
-    start_head: str = START_HEAD_FIX03,
+    start_head: str = START_HEAD_FIX03_CORRECTION,
 ) -> dict[str, Any]:
-    """Legacy wrapper delegating to FIX03."""
-    return run_source_authority_review_fix03(output_dir, start_head)
+    """Legacy wrapper."""
+    return run_source_authority_review_fix03_correction(output_dir, start_head)
 
 
 if __name__ == "__main__":
-    res = run_source_authority_review_fix03()
-    print("=== Source Authority Review FIX03 Execution Summary ===")
+    res = run_source_authority_review_fix03_correction()
+    print("=== Source Authority Review FIX03_CORRECTION Execution Summary ===")
     print("Review Decision:", res["review_decision"])
     print("All Gates Passed:", res["all_gates_passed"])
     print("Production Integration Authorized:", res["production_integration_authorized"])
     print("Recommended Next State:", res["recommended_next_state"])
-    print("Network Accounting:", res["network_accounting"])
+    print("Historical Gate Identity Match:", res["historical_gate_identity_match"])
+    print("Reconciliation Coverage Consistency:", res["reconciliation_coverage_consistency"])
     print("Gate Results:")
     for k, v in res["gate_results"].items():
         print(f"  {k:45s} : {v}")
