@@ -1,7 +1,7 @@
 """Corporate Action Authority Live Discovery, Pagination, True XML Hierarchy Tree Parsing, Claim-Free Official Anchor Selection, Immutable Physical Logs, and Gate 06/15 Adjudication.
 
 Directives:
-- ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_7 (Section 1-100)
+- ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_7_RESUME (Section 1-100)
 Authoritative Technical Parent: ADJUSTED_PRICE_SOURCE_AUTHORITY_REVIEW_V01_FIX03_CORRECTION
 """
 
@@ -31,6 +31,7 @@ from trend_scanner.data.adjusted_price_provider import normalize_ticker
 from trend_scanner.data.opendart_preflight import (
     OpenDARTCredentialMissingError,
     get_opendart_api_key,
+    run_document_endpoint_readiness_probe,
     run_opendart_preflight,
 )
 from trend_scanner.data.source_authority_review import NaverDateRangeAdjustedClient
@@ -38,15 +39,15 @@ from trend_scanner.data.source_authority_review import NaverDateRangeAdjustedCli
 PARENT_FIX03_CORRECTION_DIR = Path(
     "artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/v01_fix03_correction"
 )
-DEFAULT_CORP_EVIDENCE_DIR_FIX03_CORRECTION_6 = Path(
-    "artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/corporate_action_evidence/v01_fix03_correction_6"
-)
 DEFAULT_CORP_EVIDENCE_DIR_FIX03_CORRECTION_7 = Path(
     "artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/corporate_action_evidence/v01_fix03_correction_7"
 )
-DEFAULT_CORP_EVIDENCE_DIR = DEFAULT_CORP_EVIDENCE_DIR_FIX03_CORRECTION_7
+DEFAULT_CORP_EVIDENCE_DIR_FIX03_CORRECTION_7_RESUME = Path(
+    "artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/corporate_action_evidence/v01_fix03_correction_7_resume"
+)
+DEFAULT_CORP_EVIDENCE_DIR = DEFAULT_CORP_EVIDENCE_DIR_FIX03_CORRECTION_7_RESUME
 
-START_HEAD_CORP_EVIDENCE_FIX03_CORRECTION_7 = "690d60387e036f6174388311ca0f8e6ac99f6260"
+START_HEAD_CORP_EVIDENCE_FIX03_CORRECTION_7_RESUME = "850f1ad0d1184abf585a0e5e40a147a6665cf288"
 
 PARENT_FROZEN_HASHES = {
     "adjusted_price_source_authority_review_v01_fix03_correction.json": "3e38d97aeeb3fc0a2f48bfc3c0dd3f28293990dab12206d10f048309b12c5f1f",
@@ -149,7 +150,7 @@ class CorporateActionNetworkAccounting:
 
 
 def verify_parent_authority_freeze(parent_dir: Path = PARENT_FIX03_CORRECTION_DIR) -> dict[str, Any]:
-    """Verify that all parent FIX03_CORRECTION artifacts remain byte-for-byte unchanged (Section 3)."""
+    """Verify that all parent FIX03_CORRECTION artifacts remain byte-for-byte unchanged (Section 3, 4)."""
     mismatches = []
     observed_hashes = {}
 
@@ -165,10 +166,10 @@ def verify_parent_authority_freeze(parent_dir: Path = PARENT_FIX03_CORRECTION_DI
 
     all_valid = len(mismatches) == 0 and len(observed_hashes) == len(PARENT_FROZEN_HASHES)
     return {
-        "schema": "parent_authority_freeze_validation_v01_fix03_correction_7",
-        "directive_id": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_7",
-        "start_head": START_HEAD_CORP_EVIDENCE_FIX03_CORRECTION_7,
-        "parent_directive": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_6",
+        "schema": "parent_authority_freeze_validation_v01_fix03_correction_7_resume",
+        "directive_id": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_7_RESUME",
+        "start_head": START_HEAD_CORP_EVIDENCE_FIX03_CORRECTION_7_RESUME,
+        "parent_directive": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_7",
         "all_parent_inputs_unchanged": all_valid,
         "parent_artifacts_verified_count": len(observed_hashes),
         "mismatches": mismatches,
@@ -177,7 +178,7 @@ def verify_parent_authority_freeze(parent_dir: Path = PARENT_FIX03_CORRECTION_DI
 
 
 class SemanticTreeNode:
-    """Internal structured node representing real XML/HTML ancestry and content (Section 7-10)."""
+    """Internal structured node representing real XML/HTML ancestry and content."""
 
     def __init__(self, tag: str, path: str, depth: int, parent_path: str = "", ancestor_paths: list[str] = None):
         self.tag = tag.upper()
@@ -199,7 +200,7 @@ class SemanticTreeNode:
 
 
 class DARTTreeParser(HTMLParser):
-    """Recursive true XML/HTML tree builder with namespace stripping and stable indexed paths (Section 7-10)."""
+    """Recursive true XML/HTML tree builder with namespace stripping and stable indexed paths."""
 
     def __init__(self):
         super().__init__()
@@ -282,7 +283,7 @@ def finalize_semantic_tree(node: SemanticTreeNode, inherited_headings: list[str]
 
 
 # ---------------------------------------------------------------------------
-# Pure Production Validation and Resolution Helpers (Section 25-32, 55)
+# Pure Production Validation and Resolution Helpers (Section 16, 25-32)
 # ---------------------------------------------------------------------------
 
 def validate_discovery_duplicate_identity(items: list[dict[str, Any]]) -> tuple[bool, int, int, list[str]]:
@@ -321,7 +322,7 @@ def validate_archive_provenance(
     canonical_raw_sha256: str,
     transport_response_sha256: str,
 ) -> tuple[bool, list[str]]:
-    """Pure production validator for archive transport and member invariants (Section 17-20, 27)."""
+    """Pure production validator for archive transport and member invariants (Section 17-20)."""
     inconsistencies = []
 
     if archive_detected:
@@ -376,7 +377,6 @@ def resolve_archive_member(
             member_rule = "EXACTLY_ONE_XML_MEMBER"
             extracted_bytes = z.read(member_name)
         elif len(xml_members) > 1:
-            # Exact basename match ONLY: Path(m).name == f"{rcept_no}.xml" (Section 29)
             exact_matches = [n for n in xml_members if Path(n).name.lower() == f"{rcept_no}.xml".lower()]
             if len(exact_matches) == 1:
                 member_name = exact_matches[0]
@@ -400,7 +400,7 @@ def validate_pagination_pages(
     expected_total_pages: int,
     frozen_page1_meta: dict[str, Any],
 ) -> tuple[bool, list[str]]:
-    """Pure production validator for pagination page-to-page consistency and completeness (Section 25-27)."""
+    """Pure production validator for pagination page-to-page consistency and completeness."""
     inconsistencies = []
     observed_pages = [p["page_no"] for p in pages_meta]
     expected_pages = list(range(1, expected_total_pages + 1))
@@ -449,15 +449,12 @@ def select_official_anchor_by_priority(
             cands = anchors_by_type[p_type]
             distinct_dates = {c["anchor_date"] for c in cands}
             if len(distinct_dates) > 1:
-                # Same-priority conflicting official dates fail closed (Section 9)
                 return None, True, f"EVENT_TIMING_AMBIGUOUS: multiple distinct dates {distinct_dates} for priority anchor {p_type}", 0
-            # Same date repeated occurrences collapse deterministically (Section 10)
             winner = cands[0]
             winner["official_anchor_priority_rank"] = p_idx
             winner["timing_repetition_count"] = len(cands)
             return winner, False, "SUCCESS", p_idx
 
-    # Fallback if found anchors exist outside priority list
     first_type = found_anchors[0]["anchor_type"]
     cands = [a for a in found_anchors if a["anchor_type"] == first_type]
     distinct_dates = {c["anchor_date"] for c in cands}
@@ -547,6 +544,187 @@ def evaluate_gate06(metrics: dict[str, Any]) -> tuple[bool, list[str]]:
     return len(blockers) == 0, blockers
 
 
+def acquire_current_official_document(
+    ticker: str,
+    corp_code: str,
+    rcept_no: str,
+    candidate_rank: int,
+    api_key: str,
+    session: requests.Session,
+    accounting: CorporateActionNetworkAccounting,
+    canonical_run_id: str,
+) -> tuple[bytes, str, str, str, str, int, str, int, bool, int, str, str, bool, list[str]]:
+    """Pure production helper to acquire live official document with immutable request logging (Section 16)."""
+    probe_doc_req_id = f"REQ_DOC_PROBE_OPENDART_{ticker}_{rcept_no}_R{candidate_rank}"
+    p_start_time = datetime.now(timezone.utc).isoformat()
+
+    accounting.official_document_probe_logical_requests += 1
+    accounting.official_document_probe_physical_attempts += 1
+
+    probe_http_bytes = b""
+    probe_status = 0
+    probe_origin = "LIVE_OPENDART_DOCUMENT_RESPONSE"
+    probe_src = "OPENDART_OFFICIAL_API"
+    probe_retrieval_mode = "NEW_OPENDART_DOCUMENT_FETCH"
+
+    try:
+        p_resp = session.get(
+            "https://opendart.fss.or.kr/api/document.xml",
+            params={"crtfc_key": api_key, "rcept_no": rcept_no},
+            timeout=10.0,
+        )
+        p_end_time = datetime.now(timezone.utc).isoformat()
+        probe_status = p_resp.status_code
+        probe_http_bytes = p_resp.content
+    except Exception:
+        p_end_time = datetime.now(timezone.utc).isoformat()
+        probe_status = 500
+
+    http_sha = hashlib.sha256(probe_http_bytes).hexdigest()
+    http_size = len(probe_http_bytes)
+
+    (
+        extracted_bytes,
+        extracted_sha,
+        member_name,
+        archive_detected,
+        archive_members,
+        member_rule,
+        archive_ambiguous,
+        arch_fails,
+    ) = resolve_archive_member(probe_http_bytes, rcept_no)
+
+    extracted_size = len(extracted_bytes)
+    is_maintenance = bool(b"<status>800</status>" in probe_http_bytes or b"\xec\x8b\x9c\xec\x8a\xa4\xed\x85\x9c \xec\xa0\x90\xea\xb2\x80" in probe_http_bytes)
+
+    opendart_success = bool(
+        probe_status == 200
+        and extracted_size > 200
+        and not is_maintenance
+        and not archive_ambiguous
+    )
+
+    # Immutable physical log for OpenDART attempt (Section 8-10)
+    accounting.request_logs.append({
+        "canonical_run_id": canonical_run_id,
+        "request_id": probe_doc_req_id,
+        "source": "OPENDART_OFFICIAL_API",
+        "purpose": "OFFICIAL_DOCUMENT_PROBE",
+        "ticker": ticker,
+        "corp_code": corp_code,
+        "official_record_id": rcept_no,
+        "sanitized_endpoint": f"https://opendart.fss.or.kr/api/document.xml?rcept_no={rcept_no}",
+        "started_at": p_start_time,
+        "completed_at": p_end_time,
+        "physical_attempt": 1,
+        "http_status": probe_status,
+        "raw_http_response_size": http_size,
+        "raw_http_response_sha256": http_sha,
+        "transport_response_size": http_size,
+        "transport_response_sha256": http_sha,
+        "archive_detected": archive_detected,
+        "archive_member_count": archive_members,
+        "selected_member_name": member_name,
+        "extracted_member_size": extracted_size,
+        "extracted_member_sha256": extracted_sha,
+        "canonical_raw_sha256": extracted_sha if opendart_success else "",
+        "outcome": "SUCCESS" if opendart_success else "ERROR",
+        "error_type": "" if opendart_success else ("ARCHIVE_MEMBER_AMBIGUOUS" if archive_ambiguous else ("OPENDART_DOCUMENT_MAINTENANCE_800" if is_maintenance else "OPENDART_DOCUMENT_UNUSABLE")),
+    })
+
+    final_bytes = extracted_bytes if opendart_success else b""
+    final_sha = extracted_sha if opendart_success else ""
+    final_producing_req_id = probe_doc_req_id if opendart_success else ""
+    final_src = probe_src if opendart_success else ""
+    final_origin = probe_origin if opendart_success else ""
+    final_retrieval_mode = probe_retrieval_mode if opendart_success else ""
+    final_transport_sha = http_sha
+    final_transport_size = http_size
+    final_arch_det = archive_detected
+    final_arch_cnt = archive_members
+    final_mem_name = member_name
+    final_mem_rule = member_rule
+
+    # If OpenDART probe unusable and not ambiguous archive, attempt DART Official Viewer Fallback (Section 6, 11)
+    if not opendart_success and not archive_ambiguous:
+        v_req_id = f"REQ_DOC_VIEWER_DART_{ticker}_{rcept_no}_R{candidate_rank}"
+        v_start_time = datetime.now(timezone.utc).isoformat()
+        accounting.dart_viewer_fallback_physical_attempts += 1
+        v_url = f"https://dart.fss.or.kr/report/viewer.do?rcpNo={rcept_no}"
+        v_bytes = b""
+        v_status = 500
+        try:
+            v_resp = session.get(v_url, timeout=10.0)
+            v_end_time = datetime.now(timezone.utc).isoformat()
+            v_status = v_resp.status_code
+            v_bytes = v_resp.content
+        except Exception:
+            v_end_time = datetime.now(timezone.utc).isoformat()
+
+        v_sha = hashlib.sha256(v_bytes).hexdigest()
+        v_size = len(v_bytes)
+        viewer_success = bool(v_status == 200 and v_size > 200)
+
+        # Immutable physical log for Viewer attempt (Section 11)
+        accounting.request_logs.append({
+            "canonical_run_id": canonical_run_id,
+            "request_id": v_req_id,
+            "source": "DART_OFFICIAL_DISCLOSURE",
+            "purpose": "OFFICIAL_VIEWER_FALLBACK",
+            "ticker": ticker,
+            "corp_code": corp_code,
+            "official_record_id": rcept_no,
+            "sanitized_endpoint": f"https://dart.fss.or.kr/report/viewer.do?rcpNo={rcept_no}",
+            "started_at": v_start_time,
+            "completed_at": v_end_time,
+            "physical_attempt": 1,
+            "http_status": v_status,
+            "raw_http_response_size": v_size,
+            "raw_http_response_sha256": v_sha,
+            "transport_response_size": v_size,
+            "transport_response_sha256": v_sha,
+            "archive_detected": False,
+            "archive_member_count": 0,
+            "selected_member_name": "",
+            "extracted_member_size": v_size if viewer_success else 0,
+            "extracted_member_sha256": v_sha if viewer_success else "",
+            "canonical_raw_sha256": v_sha if viewer_success else "",
+            "outcome": "SUCCESS" if viewer_success else "ERROR",
+            "error_type": "" if viewer_success else "DART_VIEWER_EMPTY_OR_UNAVAILABLE",
+        })
+
+        if viewer_success:
+            final_bytes = v_bytes
+            final_sha = v_sha
+            final_producing_req_id = v_req_id
+            final_src = "DART_OFFICIAL_DISCLOSURE"
+            final_origin = "LIVE_DART_VIEWER_RESPONSE"
+            final_retrieval_mode = "NEW_DART_VIEWER_FETCH"
+            final_transport_sha = v_sha
+            final_transport_size = v_size
+            final_arch_det = False
+            final_arch_cnt = 0
+            final_mem_name = ""
+            final_mem_rule = "DIRECT_RESPONSE"
+
+    return (
+        final_bytes,
+        final_sha,
+        final_producing_req_id,
+        final_src,
+        final_origin,
+        final_transport_size,
+        final_transport_sha,
+        probe_status,
+        final_arch_det,
+        final_arch_cnt,
+        final_mem_name,
+        final_mem_rule,
+        archive_ambiguous,
+        arch_fails,
+    )
+
+
 class OfficialEvidenceContentParser:
     """True XML Tree Traversal Parser with Claim-Free Official Anchor Selection (Section 4-24)."""
 
@@ -620,7 +798,7 @@ class OfficialEvidenceContentParser:
 
     @classmethod
     def classify_text_event_family(cls, text: str) -> tuple[str, list[str]]:
-        """Classify event family from text without claim bias (Section 24, 25)."""
+        """Classify event family from text without claim bias."""
         clean_text = re.sub(r"\s+", "", text)
         found: dict[str, list[str]] = {}
         for fam, kws in cls.EVENT_FAMILY_KEYWORDS.items():
@@ -634,7 +812,6 @@ class OfficialEvidenceContentParser:
             fam = next(iter(found))
             return fam, found[fam]
 
-        # Incompatible multiple families without structured resolution
         return "EVENT_TYPE_AMBIGUOUS", [f"{k}:{v}" for k, v in found.items()]
 
     @classmethod
@@ -657,10 +834,9 @@ class OfficialEvidenceContentParser:
 
     @classmethod
     def find_lowest_specific_event_nodes(cls, root: SemanticTreeNode) -> list[dict[str, Any]]:
-        """Identify candidate event nodes picking lowest specific structured section container context (Section 13, 14)."""
+        """Identify candidate event nodes picking lowest specific structured section container context."""
         all_nodes = cls.collect_all_nodes(root)
 
-        # Section containers (highest priority structural context)
         section_nodes = [n for n in all_nodes if n.tag.startswith("SECTION") or n.tag in ["LIBRARY", "INSERTION"]]
         candidate_nodes = section_nodes if section_nodes else [n for n in all_nodes if n.tag in ["TABLE", "DIV", "BODY"]]
 
@@ -704,13 +880,12 @@ class OfficialEvidenceContentParser:
         event_cand: dict[str, Any],
         all_nodes: list[SemanticTreeNode],
     ) -> list[dict[str, Any]]:
-        """Extract allowed timing anchors within the event node's own subtree or valid descendant nodes (Section 11, 12)."""
+        """Extract allowed timing anchors within the event node's own subtree or valid descendant nodes."""
         ev_node: SemanticTreeNode = event_cand["node"]
         ev_fam = event_cand["event_family"]
         allowed_timings = cls.ALLOWED_EVENT_TIMING_FIELDS.get(ev_fam, [])
 
         descendant_nodes = [n for n in all_nodes if n.path == ev_node.path or ev_node.path in n.ancestor_paths]
-        # Sort descendant nodes by depth descending (deepest timing node first)
         descendant_nodes.sort(key=lambda x: x.depth, reverse=True)
 
         found_anchors = []
@@ -745,7 +920,7 @@ class OfficialEvidenceContentParser:
         doc_request_record_id: str,
         evidence_origin: str = "LIVE_OPENDART_DOCUMENT_RESPONSE",
     ) -> dict[str, Any]:
-        """Pure official event extraction with ZERO claim inputs allowed (Section 4, 23, 24)."""
+        """Pure official event extraction with ZERO claim inputs allowed."""
         if evidence_origin in ["GENERATED", "SYNTHETIC", "FIXTURE", "MOCK", "MANUAL", "INTERNAL_VALIDATION"]:
             return {
                 "official_source_valid": False,
@@ -893,26 +1068,19 @@ class OfficialEvidenceContentParser:
                 else:
                     parsed_issuer = t_str
 
-        # 1. Build true XML DOM tree
         tree_root = cls.build_tree_from_text(text)
         all_nodes = cls.collect_all_nodes(tree_root)
-
-        # 2. Extract lowest specific event candidates
         lowest_event_cands = cls.find_lowest_specific_event_nodes(tree_root)
 
-        # Check for multiple distinct event families (Section 18)
         distinct_families = {c["event_family"] for c in lowest_event_cands}
         event_type_ambiguous = len(distinct_families) > 1
 
-        # 3. Extract bound timings per candidate node
         node_timings: list[tuple[dict[str, Any], list[dict[str, Any]]]] = []
         for ec in lowest_event_cands:
             timings = cls.extract_timing_for_event_node(ec, all_nodes)
             if timings:
                 node_timings.append((ec, timings))
 
-        # Check for multiple independent event contexts (Section 12-21: No Same-Date Shortcut)
-        # If there are multiple independent sibling event contexts, fail closed
         event_context_ambiguous = len(node_timings) > 1
 
         selected_anchor = None
@@ -928,7 +1096,6 @@ class OfficialEvidenceContentParser:
             selected_context_id = f"{discovered_record_id}:{ev_fam}:{selected_ev_node.path}"
             timing_cands_count = len(tms_sel)
 
-            # Apply frozen priority anchor selection (Section 7-10)
             anchor_win, tm_ambig, tm_reason, p_rank = select_official_anchor_by_priority(ev_fam, tms_sel)
             selected_anchor = anchor_win
             event_timing_ambiguous = tm_ambig
@@ -1072,7 +1239,7 @@ class OfficialEvidenceContentParser:
         claimed_issuer: str,
         claimed_ticker: str,
     ) -> dict[str, Any]:
-        """Post-extraction claim comparison and independence validation (Section 11, 23, 86)."""
+        """Post-extraction claim comparison and independence validation (Section 8, 11)."""
         clean_claimed_iss = claimed_issuer.replace("(주)", "").strip()
         parsed_iss = official_auth.get("parsed_issuer", "")
         clean_parsed_iss = parsed_iss.replace("(주)", "").strip() if parsed_iss else ""
@@ -1081,14 +1248,13 @@ class OfficialEvidenceContentParser:
         iss_valid = bool(
             (clean_parsed_iss and (clean_claimed_iss in clean_parsed_iss or clean_parsed_iss in clean_claimed_iss))
             or any(al in parsed_iss or (clean_parsed_iss and al in clean_parsed_iss) for al in aliases)
-            or not parsed_iss  # if parsed_issuer not in header, ticker matching is checked separately
+            or not parsed_iss
         )
 
         ev_match = bool(official_auth["source_event_type"] == claimed_event_type)
         anc_type_match = bool(official_auth["official_anchor_type"] == claimed_anchor_type)
         anc_date_match = bool(official_auth["official_anchor_date"] == claimed_anchor_date)
 
-        # Explicit claim independence flags: NO claim parameters determine extraction
         claim_used_event = False
         claim_used_context = False
         claim_used_anchor_type = False
@@ -1096,12 +1262,12 @@ class OfficialEvidenceContentParser:
 
         claim_independence_valid = not (claim_used_event or claim_used_context or claim_used_anchor_type or claim_used_anchor_date)
 
-        adjudication_status = ClaimAdjudicationStatus.CONFIRMED.value if (
-            official_auth["authority_valid"] and ev_match and anc_date_match
-        ) else (
-            ClaimAdjudicationStatus.INSUFFICIENT_AUTHORITY.value if not official_auth["authority_valid"]
-            else ClaimAdjudicationStatus.REJECTED_CLAIM.value
-        )
+        if not official_auth["authority_valid"]:
+            adjudication_status = ClaimAdjudicationStatus.INSUFFICIENT_AUTHORITY.value
+        elif ev_match and anc_date_match:
+            adjudication_status = ClaimAdjudicationStatus.CONFIRMED.value
+        else:
+            adjudication_status = ClaimAdjudicationStatus.REJECTED_CLAIM.value
 
         return {
             "claimed_event_type": claimed_event_type,
@@ -1158,8 +1324,6 @@ class OfficialEvidenceContentParser:
         res["event_type_match"] = claim_adj["claim_event_type_match"]
         res["claim_anchor_match"] = claim_adj["claim_anchor_date_match"]
         res["issuer_identity_valid"] = claim_adj["issuer_identity_valid"]
-
-        # Combined authority validity
         res["authority_valid"] = bool(
             official_auth["authority_valid"]
             and claim_adj["issuer_identity_valid"]
@@ -1169,7 +1333,7 @@ class OfficialEvidenceContentParser:
 
 
 def rank_and_score_candidates(items: list[dict[str, Any]], target: dict[str, Any]) -> list[dict[str, Any]]:
-    """Deterministically score and rank complete discovery candidate records independent of response ordering (Section 15-18)."""
+    """Deterministically score and rank complete discovery candidate records independent of response ordering."""
     scored = []
     keywords = target["keywords"]
 
@@ -1215,7 +1379,7 @@ def rank_and_score_candidates(items: list[dict[str, Any]], target: dict[str, Any
 
 
 def get_official_discovery_search_targets() -> list[dict[str, Any]]:
-    """Official corporate action discovery search parameters for OpenDART (Section 19, 20)."""
+    """Official corporate action discovery search parameters for OpenDART."""
     return [
         {
             "control_id": "CORP_005930_STOCK_SPLIT",
@@ -1324,13 +1488,13 @@ def get_official_discovery_search_targets() -> list[dict[str, Any]]:
     ]
 
 
-def run_corporate_action_evidence_acquisition_fix03_correction_7(
-    output_dir: Path = DEFAULT_CORP_EVIDENCE_DIR_FIX03_CORRECTION_7,
+def run_corporate_action_evidence_acquisition_fix03_correction_7_resume(
+    output_dir: Path = DEFAULT_CORP_EVIDENCE_DIR_FIX03_CORRECTION_7_RESUME,
     parent_dir: Path = PARENT_FIX03_CORRECTION_DIR,
     allow_network: bool = True,
 ) -> dict[str, Any]:
     """Execute complete paginated discovery, True XML Tree Traversal, Claim-Free Official Anchor Selection, and Gate 06/15 adjudication (Section 1-100)."""
-    canonical_run_id = f"CORP_AUTH_FIX03_CORRECTION_7_{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}"
+    canonical_run_id = f"CORP_AUTH_FIX03_CORRECTION_7_RESUME_{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}"
 
     if output_dir.exists():
         raw_existing = output_dir / "raw"
@@ -1351,19 +1515,22 @@ def run_corporate_action_evidence_acquisition_fix03_correction_7(
     if preflight["verdict"] != "READY":
         raise RuntimeError(f"OpenDART Preflight Hard Gate FAIL: {preflight['error_reason']}")
 
-    # 2. Parent Freeze Validation (Section 3)
+    # 2. Document Endpoint Readiness Probe (Section 28-32)
+    doc_readiness = run_document_endpoint_readiness_probe(output_dir=output_dir, allow_network=allow_network, canonical_run_id=canonical_run_id)
+
+    # 3. Parent Freeze Validation (Section 3, 4)
     parent_freeze = verify_parent_authority_freeze(parent_dir)
-    parent_freeze_path = output_dir / "parent_authority_freeze_validation_v01_fix03_correction_7.json"
+    parent_freeze_path = output_dir / "parent_authority_freeze_validation_v01_fix03_correction_7_resume.json"
     parent_freeze_path.write_text(json.dumps(parent_freeze, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
     if not parent_freeze["all_parent_inputs_unchanged"]:
         raise ValueError(f"Parent FIX03_CORRECTION freeze validation failed: {parent_freeze['mismatches']}")
 
-    # 3. Source Inventory
+    # 4. Source Inventory
     source_inventory = {
-        "schema": "corporate_action_evidence_source_inventory_v01_fix03_correction_7",
+        "schema": "corporate_action_evidence_source_inventory_v01_fix03_correction_7_resume",
         "canonical_run_id": canonical_run_id,
-        "directive_id": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_7",
+        "directive_id": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_7_RESUME",
         "sources": [
             {
                 "source_id": "OPENDART_OFFICIAL_API",
@@ -1373,7 +1540,7 @@ def run_corporate_action_evidence_acquisition_fix03_correction_7(
                 "endpoint_type": "OFFICIAL_API_PAGINATED_DISCOVERY_AND_DOCUMENT",
                 "auth_required": True,
                 "raw_format": "JSON_AND_XML",
-                "parser_version": "v01_fix03_correction_7",
+                "parser_version": "v01_fix03_correction_7_resume",
                 "authority_validation_contract": "OpenDART 전수 페이지네이션 및 공시 원문 XML의 True XML Hierarchy Tree 파싱 기반 Claim-Free 공식 앵커 추출",
             },
             {
@@ -1384,14 +1551,14 @@ def run_corporate_action_evidence_acquisition_fix03_correction_7(
                 "endpoint_type": "OFFICIAL_DISCLOSURE_VIEWER",
                 "auth_required": False,
                 "raw_format": "HTML",
-                "parser_version": "v01_fix03_correction_7",
+                "parser_version": "v01_fix03_correction_7_resume",
             },
         ],
     }
-    source_inv_path = output_dir / "corporate_action_evidence_source_inventory_v01_fix03_correction_7.json"
+    source_inv_path = output_dir / "corporate_action_evidence_source_inventory_v01_fix03_correction_7_resume.json"
     source_inv_path.write_text(json.dumps(source_inventory, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
-    # 4. Live Paginated Discovery, Deterministic Ranking, Complete Provenance (Section 25-47)
+    # 5. Live Paginated Discovery, Deterministic Ranking, Complete Provenance (Section 25-47)
     api_key = get_opendart_api_key()
     accounting = CorporateActionNetworkAccounting()
     targets = get_official_discovery_search_targets()
@@ -1524,7 +1691,7 @@ def run_corporate_action_evidence_acquisition_fix03_correction_7(
             p_filename = f"disc_{t}_{ev_fam}_p{page_no:03d}.json"
             p_fp = disc_raw_dir / p_filename
             p_fp.write_bytes(disc_bytes)
-            p_rel_path = f"artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/corporate_action_evidence/v01_fix03_correction_7/discovery_raw/{p_filename}"
+            p_rel_path = f"artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/corporate_action_evidence/v01_fix03_correction_7_resume/discovery_raw/{p_filename}"
 
             discovery_page_manifest_entries[p_filename] = {
                 "ticker": t,
@@ -1554,7 +1721,6 @@ def run_corporate_action_evidence_acquisition_fix03_correction_7(
                 "outcome": "SUCCESS" if page_success else "ERROR",
             }
 
-            # Immutable physical log (Section 8-10)
             accounting.request_logs.append({
                 "canonical_run_id": canonical_run_id,
                 "request_id": disc_req_id,
@@ -1582,7 +1748,6 @@ def run_corporate_action_evidence_acquisition_fix03_correction_7(
         loaded_raw_count = len(all_raw_items)
         reported_total_count = frozen_page1_meta.get("reported_total_count", 0)
 
-        # Call production pagination validator helper (Section 25-27)
         pag_pass, ticker_pagination_inconsistencies = validate_pagination_pages(
             pages_meta=pages_meta,
             expected_total_count=reported_total_count,
@@ -1597,7 +1762,6 @@ def run_corporate_action_evidence_acquisition_fix03_correction_7(
             if pages_successful != pages_requested:
                 pagination_incomplete_failures.append(t)
 
-        # Call production duplicate validator helper (Section 55)
         dup_pass, duplicate_count, conflicting_duplicate_count, conflict_details = validate_discovery_duplicate_identity(all_raw_items)
         if not dup_pass:
             conflicting_duplicate_failures.extend(conflict_details)
@@ -1672,157 +1836,37 @@ def run_corporate_action_evidence_acquisition_fix03_correction_7(
                 })
                 continue
 
-            # 1. Attempt OpenDART document.xml probe (Section 6, 8-10)
-            probe_doc_req_id = f"REQ_DOC_PROBE_OPENDART_{t}_{r_no}_R{c_rank}"
-            p_start_time = datetime.now(timezone.utc).isoformat()
-
-            accounting.official_document_probe_logical_requests += 1
-            accounting.official_document_probe_physical_attempts += 1
-
-            probe_http_bytes = b""
-            probe_status = 0
-            probe_origin = "LIVE_OPENDART_DOCUMENT_RESPONSE"
-            probe_src = "OPENDART_OFFICIAL_API"
-            probe_retrieval_mode = "NEW_OPENDART_DOCUMENT_FETCH"
-
-            try:
-                p_resp = dart_session.get(
-                    "https://opendart.fss.or.kr/api/document.xml",
-                    params={"crtfc_key": api_key, "rcept_no": r_no},
-                    timeout=10.0,
-                )
-                p_end_time = datetime.now(timezone.utc).isoformat()
-                probe_status = p_resp.status_code
-                probe_http_bytes = p_resp.content
-            except Exception:
-                p_end_time = datetime.now(timezone.utc).isoformat()
-                probe_status = 500
-
-            http_sha = hashlib.sha256(probe_http_bytes).hexdigest()
-            http_size = len(probe_http_bytes)
-
+            # Call pure production document acquisition helper (Section 16)
             (
                 extracted_bytes,
                 extracted_sha,
-                member_name,
+                producing_req_id,
+                final_probe_src,
+                final_probe_origin,
+                final_transport_size,
+                final_transport_sha,
+                probe_status,
                 archive_detected,
                 archive_members,
+                member_name,
                 member_rule,
                 archive_ambiguous,
                 arch_fails,
-            ) = resolve_archive_member(probe_http_bytes, r_no)
+            ) = acquire_current_official_document(
+                ticker=t,
+                corp_code=tgt["corp_code"],
+                rcept_no=r_no,
+                candidate_rank=c_rank,
+                api_key=api_key,
+                session=dart_session,
+                accounting=accounting,
+                canonical_run_id=canonical_run_id,
+            )
 
             if arch_fails:
                 archive_member_ambiguity_failures.extend(arch_fails)
             extracted_size = len(extracted_bytes)
 
-            opendart_success = bool(
-                probe_status == 200
-                and extracted_size > 200
-                and b"<result>" not in extracted_bytes
-                and not archive_ambiguous
-            )
-
-            # Immutable physical log for OpenDART attempt (Section 8-10)
-            accounting.request_logs.append({
-                "canonical_run_id": canonical_run_id,
-                "request_id": probe_doc_req_id,
-                "source": "OPENDART_OFFICIAL_API",
-                "purpose": "OFFICIAL_DOCUMENT_PROBE",
-                "ticker": t,
-                "corp_code": tgt["corp_code"],
-                "official_record_id": r_no,
-                "sanitized_endpoint": f"https://opendart.fss.or.kr/api/document.xml?rcept_no={r_no}",
-                "started_at": p_start_time,
-                "completed_at": p_end_time,
-                "physical_attempt": 1,
-                "http_status": probe_status,
-                "raw_http_response_size": http_size,
-                "raw_http_response_sha256": http_sha,
-                "transport_response_size": http_size,
-                "transport_response_sha256": http_sha,
-                "archive_detected": archive_detected,
-                "archive_member_count": archive_members,
-                "selected_member_name": member_name,
-                "extracted_member_size": extracted_size,
-                "extracted_member_sha256": extracted_sha,
-                "canonical_raw_sha256": extracted_sha if opendart_success else "",
-                "outcome": "SUCCESS" if opendart_success else "ERROR",
-                "error_type": "" if opendart_success else ("ARCHIVE_MEMBER_AMBIGUOUS" if archive_ambiguous else "OPENDART_DOCUMENT_UNUSABLE_OR_MAINTENANCE"),
-            })
-
-            producing_req_id = probe_doc_req_id
-            final_probe_src = probe_src
-            final_probe_origin = probe_origin
-            final_retrieval_mode = probe_retrieval_mode
-            final_transport_sha = http_sha
-            final_transport_size = http_size
-
-            # 2. If OpenDART probe unusable and not ambiguous archive, attempt DART Official Viewer Fallback (Section 6, 11)
-            if not opendart_success and not archive_ambiguous:
-                v_req_id = f"REQ_DOC_VIEWER_DART_{t}_{r_no}_R{c_rank}"
-                v_start_time = datetime.now(timezone.utc).isoformat()
-                accounting.dart_viewer_fallback_physical_attempts += 1
-                v_url = f"https://dart.fss.or.kr/report/viewer.do?rcpNo={r_no}"
-                v_bytes = b""
-                v_status = 500
-                try:
-                    v_resp = dart_session.get(v_url, timeout=10.0)
-                    v_end_time = datetime.now(timezone.utc).isoformat()
-                    v_status = v_resp.status_code
-                    v_bytes = v_resp.content
-                except Exception:
-                    v_end_time = datetime.now(timezone.utc).isoformat()
-
-                v_sha = hashlib.sha256(v_bytes).hexdigest()
-                v_size = len(v_bytes)
-                viewer_success = bool(v_status == 200 and v_size > 200)
-
-                # Immutable physical log for Viewer attempt (Section 11)
-                accounting.request_logs.append({
-                    "canonical_run_id": canonical_run_id,
-                    "request_id": v_req_id,
-                    "source": "DART_OFFICIAL_DISCLOSURE",
-                    "purpose": "OFFICIAL_VIEWER_FALLBACK",
-                    "ticker": t,
-                    "corp_code": tgt["corp_code"],
-                    "official_record_id": r_no,
-                    "sanitized_endpoint": f"https://dart.fss.or.kr/report/viewer.do?rcpNo={r_no}",
-                    "started_at": v_start_time,
-                    "completed_at": v_end_time,
-                    "physical_attempt": 1,
-                    "http_status": v_status,
-                    "raw_http_response_size": v_size,
-                    "raw_http_response_sha256": v_sha,
-                    "transport_response_size": v_size,
-                    "transport_response_sha256": v_sha,
-                    "archive_detected": False,
-                    "archive_member_count": 0,
-                    "selected_member_name": "",
-                    "extracted_member_size": v_size if viewer_success else 0,
-                    "extracted_member_sha256": v_sha if viewer_success else "",
-                    "canonical_raw_sha256": v_sha if viewer_success else "",
-                    "outcome": "SUCCESS" if viewer_success else "ERROR",
-                    "error_type": "" if viewer_success else "DART_VIEWER_EMPTY_OR_UNAVAILABLE",
-                })
-
-                if viewer_success:
-                    extracted_bytes = v_bytes
-                    extracted_sha = v_sha
-                    extracted_size = v_size
-                    archive_detected = False
-                    archive_members = 0
-                    member_name = ""
-                    member_rule = "DIRECT_RESPONSE"
-                    probe_status = 200
-                    producing_req_id = v_req_id
-                    final_probe_src = "DART_OFFICIAL_DISCLOSURE"
-                    final_probe_origin = "LIVE_DART_VIEWER_RESPONSE"
-                    final_retrieval_mode = "NEW_DART_VIEWER_FETCH"
-                    final_transport_sha = v_sha
-                    final_transport_size = v_size
-
-            # Validate archive provenance invariants (Section 17-20)
             arch_prov_valid, arch_prov_fails = validate_archive_provenance(
                 archive_detected=archive_detected,
                 archive_member_count=archive_members,
@@ -1836,10 +1880,10 @@ def run_corporate_action_evidence_acquisition_fix03_correction_7(
             if not arch_prov_valid:
                 archive_provenance_failures.extend(arch_prov_fails)
 
-            if archive_ambiguous or not arch_prov_valid:
+            if archive_ambiguous or not arch_prov_valid or not extracted_bytes:
                 parsed_cand = {
-                    "official_source_valid": True,
-                    "blocked_page_detected": False,
+                    "official_source_valid": bool(final_probe_src),
+                    "blocked_page_detected": bool(not extracted_bytes),
                     "parsed_issuer": "",
                     "parsed_ticker": t,
                     "parsed_report_name": r_nm,
@@ -1887,10 +1931,9 @@ def run_corporate_action_evidence_acquisition_fix03_correction_7(
                     "event_timing_ambiguous": False,
                     "sibling_cross_binding_detected": False,
                     "authority_valid": False,
-                    "validation_reason": "ARCHIVE_PROVENANCE_INCONSISTENT" if not arch_prov_valid else "ARCHIVE_MEMBER_AMBIGUOUS",
+                    "validation_reason": "EMPTY_OR_UNUSABLE_DOCUMENT" if not extracted_bytes else ("ARCHIVE_PROVENANCE_INCONSISTENT" if not arch_prov_valid else "ARCHIVE_MEMBER_AMBIGUOUS"),
                 }
             else:
-                # Claim-Free extraction followed by adjudication (Section 4, 24)
                 official_auth_cand = OfficialEvidenceContentParser.extract_official_event_authority(
                     raw_content_bytes=extracted_bytes,
                     source_tier=AuthoritySourceTier.TIER_A1_OPENDART.value,
@@ -1927,7 +1970,7 @@ def run_corporate_action_evidence_acquisition_fix03_correction_7(
                 "probe_request_id": producing_req_id,
                 "source": final_probe_src,
                 "evidence_origin": final_probe_origin,
-                "retrieval_mode": final_retrieval_mode,
+                "retrieval_mode": "NEW_OPENDART_DOCUMENT_FETCH" if final_probe_src == "OPENDART_OFFICIAL_API" else ("NEW_DART_VIEWER_FETCH" if final_probe_src == "DART_OFFICIAL_DISCLOSURE" else ""),
                 "http_status": probe_status,
                 "transport_response_sha256": final_transport_sha,
                 "archive_detected": archive_detected,
@@ -1948,7 +1991,7 @@ def run_corporate_action_evidence_acquisition_fix03_correction_7(
                 selected_producing_req_id = producing_req_id
                 selected_evidence_origin = final_probe_origin
                 selected_source = final_probe_src
-                selected_retrieval_mode = final_retrieval_mode
+                selected_retrieval_mode = "NEW_OPENDART_DOCUMENT_FETCH" if final_probe_src == "OPENDART_OFFICIAL_API" else "NEW_DART_VIEWER_FETCH"
                 selected_candidate_rank = c_rank
                 selected_parsed = parsed_cand
                 selected_transport_sha = final_transport_sha
@@ -2012,7 +2055,6 @@ def run_corporate_action_evidence_acquisition_fix03_correction_7(
         final_rcp_no = selected_candidate.get("rcept_no", "") if selected_candidate else ""
         final_rep_name = selected_candidate.get("report_nm", "") if selected_candidate else ""
         final_rcp_date = selected_candidate.get("rcept_dt", "") if selected_candidate else ""
-
         legacy_match = bool(final_rcp_no and final_rcp_no in tgt["legacy_expected_record_id"])
 
         base_ranks = [c["rcept_no"] for c in ranked_candidates]
@@ -2076,50 +2118,51 @@ def run_corporate_action_evidence_acquisition_fix03_correction_7(
             "selected_receipt_date": final_rcp_date,
             "legacy_expected_record_id": tgt["legacy_expected_record_id"],
             "legacy_id_match": legacy_match,
-            "selection_algorithm": "OPENDART_DETERMINISTIC_PAGINATED_RANKING_V01_FIX03_CORRECTION_7",
+            "selection_algorithm": "OPENDART_DETERMINISTIC_PAGINATED_RANKING_V01_FIX03_CORRECTION_7_RESUME",
             "selection_rank": selected_candidate_rank,
             "selection_reason": f"Rank {selected_candidate_rank} match '{final_rep_name}' authenticated via True XML Hierarchy",
         })
 
-        raw_sha = hashlib.sha256(selected_raw_bytes).hexdigest()
+        raw_sha = hashlib.sha256(selected_raw_bytes).hexdigest() if selected_raw_bytes else ""
         raw_size = len(selected_raw_bytes)
         raw_ext = "xml" if selected_raw_format == "XML" else "html"
         raw_filename = f"{t}_{ev_fam}_{final_rcp_no}.{raw_ext}"
-        raw_fp = raw_dir / raw_filename
-        raw_fp.write_bytes(selected_raw_bytes)
-        raw_rel_path = f"artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/corporate_action_evidence/v01_fix03_correction_7/raw/{raw_filename}"
 
-        if selected_retrieval_mode not in ["NEW_OPENDART_DOCUMENT_FETCH", "NEW_DART_VIEWER_FETCH", "NEW_OFFICIAL_ALTERNATIVE_FETCH"]:
-            invalid_retrieval_modes.append(f"{t}:{selected_retrieval_mode}")
-
-        raw_manifest_entries[raw_filename] = {
-            "canonical_run_id": canonical_run_id,
-            "control_id": cid,
-            "ticker": t,
-            "path": raw_rel_path,
-            "size_bytes": raw_size,
-            "sha256": raw_sha,
-            "source": selected_source,
-            "retrieval_mode": selected_retrieval_mode,
-            "evidence_origin": selected_evidence_origin,
-            "official_record_id": final_rcp_no,
-            "producing_request_id": selected_producing_req_id,
-            "transport_response_size": selected_transport_size,
-            "transport_response_sha256": selected_transport_sha,
-            "archive_detected": selected_archive_detected,
-            "archive_member_count": selected_archive_members,
-            "selected_member_name": selected_member_name,
-            "member_selection_rule": selected_member_rule,
-            "extracted_member_size": selected_extracted_size,
-            "extracted_member_sha256": selected_extracted_sha,
-            "canonical_raw_size": raw_size,
-            "canonical_raw_sha256": raw_sha,
-            "content_type": f"application/{raw_ext}",
-            "requested_at": datetime.now(timezone.utc).isoformat(),
-            "retrieved_at": datetime.now(timezone.utc).isoformat(),
-            "content_validation_status": "VALID" if selected_parsed and selected_parsed["authority_valid"] else "INVALID",
-            "live_lineage_valid": bool(selected_producing_req_id and selected_parsed and selected_parsed["authority_valid"]),
-        }
+        # Do NOT create successful raw files on disk if acquisition failed (Section 7)
+        if selected_raw_bytes and selected_parsed and selected_parsed["authority_valid"]:
+            raw_fp = raw_dir / raw_filename
+            raw_fp.write_bytes(selected_raw_bytes)
+            raw_rel_path = f"artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/corporate_action_evidence/v01_fix03_correction_7_resume/raw/{raw_filename}"
+            raw_manifest_entries[raw_filename] = {
+                "canonical_run_id": canonical_run_id,
+                "control_id": cid,
+                "ticker": t,
+                "path": raw_rel_path,
+                "size_bytes": raw_size,
+                "sha256": raw_sha,
+                "source": selected_source,
+                "retrieval_mode": selected_retrieval_mode,
+                "evidence_origin": selected_evidence_origin,
+                "official_record_id": final_rcp_no,
+                "producing_request_id": selected_producing_req_id,
+                "transport_response_size": selected_transport_size,
+                "transport_response_sha256": selected_transport_sha,
+                "archive_detected": selected_archive_detected,
+                "archive_member_count": selected_archive_members,
+                "selected_member_name": selected_member_name,
+                "member_selection_rule": selected_member_rule,
+                "extracted_member_size": selected_extracted_size,
+                "extracted_member_sha256": selected_extracted_sha,
+                "canonical_raw_size": raw_size,
+                "canonical_raw_sha256": raw_sha,
+                "content_type": f"application/{raw_ext}",
+                "requested_at": datetime.now(timezone.utc).isoformat(),
+                "retrieved_at": datetime.now(timezone.utc).isoformat(),
+                "content_validation_status": "VALID",
+                "live_lineage_valid": True,
+            }
+        else:
+            raw_rel_path = ""
 
         parsed = selected_parsed if selected_parsed else OfficialEvidenceContentParser.parse_and_validate(
             raw_content_bytes=selected_raw_bytes,
@@ -2287,6 +2330,7 @@ def run_corporate_action_evidence_acquisition_fix03_correction_7(
             "claim_used_for_anchor_type_selection": claim_adj["claim_used_for_anchor_type_selection"],
             "claim_used_for_anchor_date_selection": claim_adj["claim_used_for_anchor_date_selection"],
             "claim_independence_valid": claim_adj["claim_independence_valid"],
+            "authority_valid": parsed["authority_valid"],
         }
 
         adjudication_rows.append({
@@ -2301,7 +2345,7 @@ def run_corporate_action_evidence_acquisition_fix03_correction_7(
             "authority_source_tier": AuthoritySourceTier.TIER_A1_OPENDART.value,
             "authority_record_id": final_rcp_no,
             "normalized_event_type": parsed["normalized_event_type"],
-            "adjudication": ClaimAdjudicationStatus.CONFIRMED.value if parsed["authority_valid"] else ClaimAdjudicationStatus.INSUFFICIENT_AUTHORITY.value,
+            "adjudication": claim_adj["adjudication_status"],
             "adjudication_reason": parsed["validation_reason"],
         })
 
@@ -2309,10 +2353,6 @@ def run_corporate_action_evidence_acquisition_fix03_correction_7(
             anc_dt = datetime.strptime(parsed["official_anchor_date"], "%Y-%m-%d")
             w_start = (anc_dt - timedelta(days=35)).strftime("%Y-%m-%d")
             w_end = (anc_dt + timedelta(days=35)).strftime("%Y-%m-%d")
-        else:
-            w_start, w_end = "2020-01-01", "2020-02-01"
-
-        if parsed["authority_valid"]:
             authority_records.append({
                 "control_id": cid,
                 "ticker": t,
@@ -2355,96 +2395,96 @@ def run_corporate_action_evidence_acquisition_fix03_correction_7(
             })
 
     disc_df = pd.DataFrame(discovery_rows)
-    disc_path = output_dir / "corporate_action_official_discovery_v01_fix03_correction_7.csv"
+    disc_path = output_dir / "corporate_action_official_discovery_v01_fix03_correction_7_resume.csv"
     disc_df.to_csv(disc_path, index=False)
 
-    page_man_path = output_dir / "corporate_action_discovery_page_manifest_v01_fix03_correction_7.json"
+    page_man_path = output_dir / "corporate_action_discovery_page_manifest_v01_fix03_correction_7_resume.json"
     page_man_path.write_text(json.dumps({
-        "schema": "corporate_action_discovery_page_manifest_v01_fix03_correction_7",
+        "schema": "corporate_action_discovery_page_manifest_v01_fix03_correction_7_resume",
         "canonical_run_id": canonical_run_id,
         "pages": discovery_page_manifest_entries,
     }, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
-    pag_val_path = output_dir / "corporate_action_discovery_pagination_validation_v01_fix03_correction_7.json"
+    pag_val_path = output_dir / "corporate_action_discovery_pagination_validation_v01_fix03_correction_7_resume.json"
     pag_val_path.write_text(json.dumps({
-        "schema": "corporate_action_discovery_pagination_validation_v01_fix03_correction_7",
+        "schema": "corporate_action_discovery_pagination_validation_v01_fix03_correction_7_resume",
         "canonical_run_id": canonical_run_id,
         "all_pagination_complete": all(v["pagination_complete"] for v in pagination_validation_entries.values()),
         "validation_by_ticker": pagination_validation_entries,
     }, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
     cand_audit_df = pd.DataFrame(candidate_audit_rows)
-    cand_audit_path = output_dir / "corporate_action_discovery_candidate_audit_v01_fix03_correction_7.csv"
+    cand_audit_path = output_dir / "corporate_action_discovery_candidate_audit_v01_fix03_correction_7_resume.csv"
     cand_audit_df.to_csv(cand_audit_path, index=False)
 
-    det_val_path = output_dir / "corporate_action_discovery_determinism_validation_v01_fix03_correction_7.json"
+    det_val_path = output_dir / "corporate_action_discovery_determinism_validation_v01_fix03_correction_7_resume.json"
     det_val_path.write_text(json.dumps({
-        "schema": "corporate_action_discovery_determinism_validation_v01_fix03_correction_7",
+        "schema": "corporate_action_discovery_determinism_validation_v01_fix03_correction_7_resume",
         "canonical_run_id": canonical_run_id,
         "all_controls_order_invariant": all(v["determinism_pass"] for v in determinism_validation_results.values()),
         "validation_by_ticker": determinism_validation_results,
     }, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
     probe_audit_df = pd.DataFrame(probe_audit_rows)
-    probe_audit_path = output_dir / "corporate_action_document_probe_audit_v01_fix03_correction_7.csv"
+    probe_audit_path = output_dir / "corporate_action_document_probe_audit_v01_fix03_correction_7_resume.csv"
     probe_audit_df.to_csv(probe_audit_path, index=False)
 
     disc_man_payload = {
-        "schema": "corporate_action_discovery_raw_manifest_v01_fix03_correction_7",
+        "schema": "corporate_action_discovery_raw_manifest_v01_fix03_correction_7_resume",
         "canonical_run_id": canonical_run_id,
         "artifacts": discovery_manifest_entries,
     }
-    disc_man_path = output_dir / "corporate_action_discovery_raw_manifest_v01_fix03_correction_7.json"
+    disc_man_path = output_dir / "corporate_action_discovery_raw_manifest_v01_fix03_correction_7_resume.json"
     disc_man_path.write_text(json.dumps(disc_man_payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
     doc_val_df = pd.DataFrame(doc_validation_rows)
-    doc_val_path = output_dir / "corporate_action_official_document_validation_v01_fix03_correction_7.csv"
+    doc_val_path = output_dir / "corporate_action_official_document_validation_v01_fix03_correction_7_resume.csv"
     doc_val_df.to_csv(doc_val_path, index=False)
 
     sem_bind_df = pd.DataFrame(semantic_binding_rows)
-    sem_bind_path = output_dir / "corporate_action_event_semantic_binding_v01_fix03_correction_7.csv"
+    sem_bind_path = output_dir / "corporate_action_event_semantic_binding_v01_fix03_correction_7_resume.csv"
     sem_bind_df.to_csv(sem_bind_path, index=False)
 
-    hier_val_path = output_dir / "corporate_action_event_hierarchy_validation_v01_fix03_correction_7.json"
+    hier_val_path = output_dir / "corporate_action_event_hierarchy_validation_v01_fix03_correction_7_resume.json"
     hier_val_path.write_text(json.dumps({
-        "schema": "corporate_action_event_hierarchy_validation_v01_fix03_correction_7",
+        "schema": "corporate_action_event_hierarchy_validation_v01_fix03_correction_7_resume",
         "canonical_run_id": canonical_run_id,
-        "directive_id": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_7",
+        "directive_id": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_7_RESUME",
         "all_hierarchy_valid": all(v["hierarchical_binding_valid"] for v in hierarchy_validation_entries.values()),
         "validation_by_ticker": hierarchy_validation_entries,
     }, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
-    claim_indep_path = output_dir / "corporate_action_claim_independence_validation_v01_fix03_correction_7.json"
+    claim_indep_path = output_dir / "corporate_action_claim_independence_validation_v01_fix03_correction_7_resume.json"
     claim_indep_path.write_text(json.dumps({
-        "schema": "corporate_action_claim_independence_validation_v01_fix03_correction_7",
+        "schema": "corporate_action_claim_independence_validation_v01_fix03_correction_7_resume",
         "canonical_run_id": canonical_run_id,
-        "directive_id": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_7",
+        "directive_id": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_7_RESUME",
         "all_claim_independent": all(v["claim_independence_valid"] for v in claim_independence_entries.values()),
         "validation_by_ticker": claim_independence_entries,
     }, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
     adj_df = pd.DataFrame(adjudication_rows)
-    adj_path = output_dir / "corporate_action_existing_claim_adjudication_v01_fix03_correction_7.csv"
+    adj_path = output_dir / "corporate_action_existing_claim_adjudication_v01_fix03_correction_7_resume.csv"
     adj_df.to_csv(adj_path, index=False)
 
-    rep_pool_path = output_dir / "corporate_action_replacement_pool_v01_fix03_correction_7.csv"
+    rep_pool_path = output_dir / "corporate_action_replacement_pool_v01_fix03_correction_7_resume.csv"
     pd.DataFrame(columns=["control_id", "ticker", "issuer_name", "status"]).to_csv(rep_pool_path, index=False)
 
-    auth_rec_path = output_dir / "corporate_action_authority_records_v01_fix03_correction_7.json"
+    auth_rec_path = output_dir / "corporate_action_authority_records_v01_fix03_correction_7_resume.json"
     auth_rec_path.write_text(json.dumps({
-        "schema": "corporate_action_authority_records_v01_fix03_correction_7",
+        "schema": "corporate_action_authority_records_v01_fix03_correction_7_resume",
         "canonical_run_id": canonical_run_id,
         "records": authority_records,
     }, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
-    raw_man_path = output_dir / "corporate_action_raw_evidence_manifest_v01_fix03_correction_7.json"
+    raw_man_path = output_dir / "corporate_action_raw_evidence_manifest_v01_fix03_correction_7_resume.json"
     raw_man_path.write_text(json.dumps({
-        "schema": "corporate_action_raw_evidence_manifest_v01_fix03_correction_7",
+        "schema": "corporate_action_raw_evidence_manifest_v01_fix03_correction_7_resume",
         "canonical_run_id": canonical_run_id,
         "artifacts": raw_manifest_entries,
     }, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
-    # 5. Freeze Authority Cohort Before Price Fetch (Section 60, 87)
+    # 6. Freeze Authority Cohort Before Price Fetch (Section 60)
     final_cohort_rows = []
     for idx, ar in enumerate(authority_records, start=1):
         final_cohort_rows.append({
@@ -2475,18 +2515,17 @@ def run_corporate_action_evidence_acquisition_fix03_correction_7(
             "raw_evidence_sha256": ar["raw_evidence_sha256"],
             "selection_role": "AUTHORITY_VALID_FROZEN_CONTROL",
             "selection_order": idx,
-            "selection_algorithm": "OPENDART_PAGINATED_CLAIM_FREE_TRUE_XML_HIERARCHY_COHORT_V01_FIX03_CORRECTION_7",
+            "selection_algorithm": "OPENDART_PAGINATED_CLAIM_FREE_TRUE_XML_HIERARCHY_COHORT_V01_FIX03_CORRECTION_7_RESUME",
         })
 
     cohort_df = pd.DataFrame(final_cohort_rows)
-    cohort_path = output_dir / "corporate_action_review_cohort_v01_fix03_correction_7.csv"
+    cohort_path = output_dir / "corporate_action_review_cohort_v01_fix03_correction_7_resume.csv"
     cohort_df.to_csv(cohort_path, index=False)
     cohort_sha = hashlib.sha256(cohort_path.read_bytes()).hexdigest()
     cohort_frozen_at = datetime.now(timezone.utc).isoformat()
 
-    # 6. Live Price Verification on Frozen Cohort (Section 61-69, 88-91)
+    # 7. Live Price Verification on Frozen Cohort
     import pykrx.stock as pykrx_stock
-
     naver_client = NaverDateRangeAdjustedClient(allow_network=allow_network)
 
     all_price_rows = []
@@ -2735,22 +2774,22 @@ def run_corporate_action_evidence_acquisition_fix03_correction_7(
         })
 
     price_df = pd.DataFrame(all_price_rows) if all_price_rows else pd.DataFrame(columns=["control_id", "ticker", "source", "evidence_origin", "request_id", "date", "open", "high", "low", "close", "volume"])
-    price_path = output_dir / "corporate_action_event_price_rows_v01_fix03_correction_7.csv"
+    price_path = output_dir / "corporate_action_event_price_rows_v01_fix03_correction_7_resume.csv"
     price_df.to_csv(price_path, index=False)
 
-    parity_df = pd.DataFrame(parity_rows)
-    parity_path = output_dir / "corporate_action_event_sensitive_parity_v01_fix03_correction_7.csv"
+    parity_df = pd.DataFrame(parity_rows) if parity_rows else pd.DataFrame(columns=["control_id", "ticker", "source_event_type", "normalized_event_type", "selected_source_event_context_id", "event_node_path", "timing_node_path", "binding_relationship", "official_anchor_type", "official_anchor_date", "official_source_field", "official_anchor_priority_rank", "price_window_start", "price_window_end", "candidate_row_count", "pykrx_row_count", "overlap_row_count", "pre_overlap_rows", "post_overlap_rows", "candidate_only_date_count", "candidate_only_dates", "pykrx_only_date_count", "pykrx_only_dates", "open_mismatch_count", "high_mismatch_count", "low_mismatch_count", "close_mismatch_count", "volume_mismatch_count", "candidate_error", "pykrx_error", "parity_status"])
+    parity_path = output_dir / "corporate_action_event_sensitive_parity_v01_fix03_correction_7_resume.csv"
     parity_df.to_csv(parity_path, index=False)
 
     recon_df = pd.DataFrame(reconciliation_rows) if reconciliation_rows else pd.DataFrame(columns=["control_id", "ticker", "candidate_only_dates", "pykrx_only_dates", "reconciliation_rule", "authority_artifact_path", "status"])
-    recon_path = output_dir / "corporate_action_date_reconciliation_v01_fix03_correction_7.csv"
+    recon_path = output_dir / "corporate_action_date_reconciliation_v01_fix03_correction_7_resume.csv"
     recon_df.to_csv(recon_path, index=False)
 
     accounting.compute_totals()
     phys_in_logs = sum(1 for r in accounting.request_logs if r.get("physical_attempt") == 1)
     accounting_consistent = bool(accounting.total_physical_external_calls == phys_in_logs)
 
-    net_path = output_dir / "corporate_action_evidence_network_accounting_v01_fix03_correction_7.json"
+    net_path = output_dir / "corporate_action_evidence_network_accounting_v01_fix03_correction_7_resume.json"
     net_dict = accounting.to_dict()
     net_dict["canonical_run_id"] = canonical_run_id
     net_dict["accounting_cross_invariant_pass"] = accounting_consistent
@@ -2838,9 +2877,9 @@ def run_corporate_action_evidence_acquisition_fix03_correction_7(
     total_orphans = len(raw_orphans) + len(disc_orphans)
 
     linkage_payload = {
-        "schema": "live_evidence_linkage_validation_v01_fix03_correction_7",
+        "schema": "live_evidence_linkage_validation_v01_fix03_correction_7_resume",
         "canonical_run_id": canonical_run_id,
-        "directive_id": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_7",
+        "directive_id": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_7_RESUME",
         "discovery_pages_checked": len(discovery_manifest_entries),
         "document_items_checked": len(raw_manifest_entries),
         "discovery_document_identity_failures": len(record_identity_failures),
@@ -2856,14 +2895,14 @@ def run_corporate_action_evidence_acquisition_fix03_correction_7(
         "all_linkage_valid": len(linkage_failures) == 0 and accounting_consistent,
         "linkage_failures": linkage_failures,
     }
-    linkage_path = output_dir / "live_evidence_linkage_validation_v01_fix03_correction_7.json"
+    linkage_path = output_dir / "live_evidence_linkage_validation_v01_fix03_correction_7_resume.json"
     linkage_path.write_text(json.dumps(linkage_payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
-    # 9. Attestation
+    # 8. Attestation
     attestation = {
-        "schema": "canonical_live_evidence_attestation_v01_fix03_correction_7",
+        "schema": "canonical_live_evidence_attestation_v01_fix03_correction_7_resume",
         "canonical_run_id": canonical_run_id,
-        "directive_id": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_7",
+        "directive_id": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_7_RESUME",
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "execution_mode": "LIVE_EVIDENCE_ACQUISITION",
         "synthetic_official_documents_used": False,
@@ -2878,11 +2917,11 @@ def run_corporate_action_evidence_acquisition_fix03_correction_7(
         "all_candidate_rows_request_linked": len(all_price_rows) > 0 and len(linkage_failures) == 0,
         "all_pykrx_rows_query_linked": len(all_price_rows) > 0 and len(linkage_failures) == 0,
     }
-    attestation_path = output_dir / "canonical_live_evidence_attestation_v01_fix03_correction_7.json"
+    attestation_path = output_dir / "canonical_live_evidence_attestation_v01_fix03_correction_7_resume.json"
     attestation_path.write_text(json.dumps(attestation, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     attestation_sha = hashlib.sha256(attestation_path.read_bytes()).hexdigest()
 
-    # 10. Gate 06 Reassessment with Fully Derived Metrics (Section 24-28, 51, 52)
+    # 9. Gate 06 Reassessment (Section 5, 24-28)
     auth_valid_count = len(authority_records)
     event_type_counts: dict[str, int] = {}
     for ar in authority_records:
@@ -2965,13 +3004,13 @@ def run_corporate_action_evidence_acquisition_fix03_correction_7(
     gate06_pass, gate06_blockers = evaluate_gate06(gate06_eval_metrics)
 
     gate06_payload = dict(gate06_eval_metrics)
-    gate06_payload["schema"] = "gate06_corporate_action_reassessment_v01_fix03_correction_7"
+    gate06_payload["schema"] = "gate06_corporate_action_reassessment_v01_fix03_correction_7_resume"
     gate06_payload["canonical_run_id"] = canonical_run_id
-    gate06_payload["directive_id"] = "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_7"
+    gate06_payload["directive_id"] = "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_7_RESUME"
     gate06_payload["gate_06_pass"] = gate06_pass
     gate06_payload["gate_06_blockers"] = gate06_blockers
 
-    gate06_path = output_dir / "gate06_corporate_action_reassessment_v01_fix03_correction_7.json"
+    gate06_path = output_dir / "gate06_corporate_action_reassessment_v01_fix03_correction_7_resume.json"
     gate06_path.write_text(json.dumps(gate06_payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
     parent_decision_fp = parent_dir / "adjusted_price_source_authority_review_v01_fix03_correction.json"
@@ -3013,7 +3052,7 @@ def run_corporate_action_evidence_acquisition_fix03_correction_7(
         prod_integration_auth = True
         next_state = "ADJUSTED_PRICE_SOURCE_INTEGRATION_V01"
         blocking_conditions = []
-        reason_codes = ["ALL_15_SOURCE_AUTHORITY_REVIEW_GATES_PASSED_FIX03_CORRECTION_7"]
+        reason_codes = ["ALL_15_SOURCE_AUTHORITY_REVIEW_GATES_PASSED_FIX03_CORRECTION_7_RESUME"]
     elif ohlc_mismatch_count > 0:
         review_decision = "REJECTED_AS_PRODUCTION_AUTHORITY"
         prod_integration_auth = False
@@ -3025,27 +3064,32 @@ def run_corporate_action_evidence_acquisition_fix03_correction_7(
         prod_integration_auth = False
         next_state = "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_7_RESUME"
         blocking_conditions = gate06_blockers
-        reason_codes = ["OFFICIAL_EVIDENCE_INCOMPLETE"]
+        reason_codes = ["TRANSIENT_OFFICIAL_DOCUMENT_ENDPOINT_UNAVAILABLE"] if doc_readiness["verdict"] != "READY" else ["OFFICIAL_EVIDENCE_INCOMPLETE"]
+
+    # Accurate success count (Section 5, 6): only valid current official documents with live lineage
+    successful_doc_count = sum(1 for m in raw_manifest_entries.values() if m.get("content_validation_status") == "VALID" and m.get("live_lineage_valid") and m.get("size_bytes", 0) > 0)
 
     decision_payload = {
-        "schema": "adjusted_price_source_authority_corporate_action_evidence_v01_fix03_correction_7",
+        "schema": "adjusted_price_source_authority_corporate_action_evidence_v01_fix03_correction_7_resume",
         "canonical_run_id": canonical_run_id,
-        "directive_id": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_7",
-        "parent_directive": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_6",
+        "directive_id": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_7_RESUME",
+        "parent_directive": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_7",
         "authoritative_technical_parent": "ADJUSTED_PRICE_SOURCE_AUTHORITY_REVIEW_V01_FIX03_CORRECTION",
-        "start_head": START_HEAD_CORP_EVIDENCE_FIX03_CORRECTION_7,
+        "start_head": START_HEAD_CORP_EVIDENCE_FIX03_CORRECTION_7_RESUME,
         "parent_freeze_valid": parent_freeze["all_parent_inputs_unchanged"],
         "preflight_verdict": preflight["verdict"],
+        "document_readiness_verdict": doc_readiness["verdict"],
         "live_execution_attestation_sha": attestation_sha,
         "candidate_id": "NAVER_DIRECT_DATE_RANGE_ADJUSTED_CANDIDATE",
         "candidate_endpoint": "https://fchart.stock.naver.com/sise.nhn",
         "official_discovery_requests_logical": accounting.official_discovery_logical_requests,
         "official_discovery_requests_physical": accounting.official_discovery_physical_attempts,
         "official_discovery_success_count": len(discovery_manifest_entries),
-        "official_document_success_count": len(raw_manifest_entries),
+        "official_document_manifest_entry_count": len(raw_manifest_entries),
+        "official_document_success_count": successful_doc_count,
         "authority_valid_control_count": auth_valid_count,
         "final_cohort_size": len(final_cohort_rows),
-        "final_cohort_sha": cohort_sha,
+        "final_cohort_sha": cohort_sha if final_cohort_rows else "",
         "event_distribution": event_type_counts,
         "naver_actual_requests": accounting.direct_naver_logical_requests,
         "raw_pykrx_actual_queries": accounting.raw_pykrx_logical_requests,
@@ -3082,15 +3126,17 @@ def run_corporate_action_evidence_acquisition_fix03_correction_7(
             "v01_fix03_correction_4": "SUPERSEDED_BY_FIX03_CORRECTION_5",
             "v01_fix03_correction_5": "SUPERSEDED_BY_FIX03_CORRECTION_6",
             "v01_fix03_correction_6": "SUPERSEDED_BY_FIX03_CORRECTION_7",
-            "v01_fix03_correction_7": "CANONICAL_AUTHORITY_DECISION",
+            "v01_fix03_correction_7": "SUPERSEDED_BY_FIX03_CORRECTION_7_RESUME",
+            "v01_fix03_correction_7_resume": "CANONICAL_AUTHORITY_DECISION",
         },
     }
-    decision_path = output_dir / "adjusted_price_source_authority_corporate_action_evidence_v01_fix03_correction_7.json"
+    decision_path = output_dir / "adjusted_price_source_authority_corporate_action_evidence_v01_fix03_correction_7_resume.json"
     decision_path.write_text(json.dumps(decision_payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
-    # 12. Artifact Manifest (Section 85)
+    # 10. Artifact Manifest
     artifact_files = [
-        output_dir / "opendart_preflight_v01_fix03_correction_7.json",
+        output_dir / "opendart_preflight_v01_fix03_correction_7_resume.json",
+        output_dir / "opendart_document_readiness_v01_fix03_correction_7_resume.json",
         parent_freeze_path,
         source_inv_path,
         disc_path,
@@ -3122,7 +3168,7 @@ def run_corporate_action_evidence_acquisition_fix03_correction_7(
     for af in artifact_files:
         if af.exists():
             manifest_entries[af.name] = {
-                "path": f"artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/corporate_action_evidence/v01_fix03_correction_7/{af.name}",
+                "path": f"artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/corporate_action_evidence/v01_fix03_correction_7_resume/{af.name}",
                 "size_bytes": af.stat().st_size,
                 "sha256": hashlib.sha256(af.read_bytes()).hexdigest(),
             }
@@ -3133,11 +3179,11 @@ def run_corporate_action_evidence_acquisition_fix03_correction_7(
         manifest_entries[f"discovery_raw/{dfname}"] = dmeta
 
     manifest_payload = {
-        "schema": "corporate_action_evidence_manifest_v01_fix03_correction_7",
+        "schema": "corporate_action_evidence_manifest_v01_fix03_correction_7_resume",
         "canonical_run_id": canonical_run_id,
-        "directive_id": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_7",
+        "directive_id": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_7_RESUME",
         "generated_at": datetime.now(timezone.utc).isoformat(),
-        "start_head": START_HEAD_CORP_EVIDENCE_FIX03_CORRECTION_7,
+        "start_head": START_HEAD_CORP_EVIDENCE_FIX03_CORRECTION_7_RESUME,
         "review_decision": review_decision,
         "production_integration_authorized": prod_integration_auth,
         "artifacts": manifest_entries,
@@ -3149,12 +3195,13 @@ def run_corporate_action_evidence_acquisition_fix03_correction_7(
 
 
 if __name__ == "__main__":
-    res = run_corporate_action_evidence_acquisition_fix03_correction_7()
-    print("=== Corporate Action Evidence Acquisition FIX03_CORRECTION_7 Execution Summary ===")
+    res = run_corporate_action_evidence_acquisition_fix03_correction_7_resume()
+    print("=== Corporate Action Evidence Acquisition FIX03_CORRECTION_7_RESUME Execution Summary ===")
     print("Review Decision:", res["review_decision"])
     print("All Gates Passed:", res["all_gates_passed"])
     print("Production Integration Authorized:", res["production_integration_authorized"])
     print("Authority Valid Controls Count:", res["authority_valid_control_count"])
+    print("Official Document Success Count:", res["official_document_success_count"])
     print("Gate 06 Result:", res["gate_06_result"])
     print("Gate 15 Result:", res["gate_15_result"])
     print("Gate Results:")

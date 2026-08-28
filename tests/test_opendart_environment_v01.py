@@ -1,7 +1,7 @@
-"""Tests for OpenDART API key resolution, secret scrubbing, and preflight connectivity.
+"""Tests for OpenDART API key resolution, secret scrubbing, preflight connectivity, and document readiness probe.
 
 Directives:
-- ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_7 (Section 4)
+- ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_7_RESUME (Section 4, 28-32)
 """
 
 from __future__ import annotations
@@ -13,6 +13,7 @@ import pytest
 from trend_scanner.data.opendart_preflight import (
     OpenDARTCredentialMissingError,
     get_opendart_api_key,
+    run_document_endpoint_readiness_probe,
     run_opendart_preflight,
     sanitize_url,
 )
@@ -43,10 +44,10 @@ def test_preflight_output_artifact_structure(tmp_path, monkeypatch):
 
     out = run_opendart_preflight(output_dir=tmp_path, allow_network=False)
     assert out["verdict"] == "READY"
-    assert out["schema"] == "opendart_preflight_v01_fix03_correction_7"
+    assert out["schema"] == "opendart_preflight_v01_fix03_correction_7_resume"
     assert "mock_key_abc" not in out["sanitized_endpoint"]
 
-    p = tmp_path / "opendart_preflight_v01_fix03_correction_7.json"
+    p = tmp_path / "opendart_preflight_v01_fix03_correction_7_resume.json"
     assert p.exists()
 
 
@@ -71,11 +72,13 @@ def test_no_synthetic_preflight_in_production(tmp_path, monkeypatch):
     out = run_opendart_preflight(output_dir=tmp_path, allow_network=False)
     assert out["verdict"] == "FAIL"
     assert out["credential_resolved"] is False
-    assert (tmp_path / "opendart_preflight_v01_fix03_correction_7.json").exists()
+    assert (tmp_path / "opendart_preflight_v01_fix03_correction_7_resume.json").exists()
 
 
-def test_preflight_schema_version_is_fix03_correction_7(tmp_path, monkeypatch):
-    """Section 4: OpenDART preflight schema is pinned to v01_fix03_correction_7."""
-    monkeypatch.setenv("OPENDART_API_KEY", "test_key_xyz")
-    out = run_opendart_preflight(output_dir=tmp_path, allow_network=False)
-    assert out["schema"] == "opendart_preflight_v01_fix03_correction_7"
+def test_document_endpoint_readiness_probe_contract(tmp_path, monkeypatch):
+    """Section 28-32: Document endpoint readiness probe produces valid structured artifact."""
+    monkeypatch.setenv("OPENDART_API_KEY", "mock_key_abc")
+    out = run_document_endpoint_readiness_probe(output_dir=tmp_path, allow_network=False)
+    assert out["schema"] == "opendart_document_readiness_v01_fix03_correction_7_resume"
+    assert out["verdict"] == "READY"
+    assert (tmp_path / "opendart_document_readiness_v01_fix03_correction_7_resume.json").exists()

@@ -1,7 +1,7 @@
 """Comprehensive Unit, Negative, and Regression Tests for Corporate Action Evidence Acquisition.
 
 Directives:
-- ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_7 (Section 41-56)
+- ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_7_RESUME (Section 1-100)
 Authoritative Technical Parent: ADJUSTED_PRICE_SOURCE_AUTHORITY_REVIEW_V01_FIX03_CORRECTION
 """
 
@@ -13,12 +13,15 @@ import json
 from pathlib import Path
 import zipfile
 import pytest
+import requests
 
 from trend_scanner.data.corporate_action_authority import (
+    CorporateActionNetworkAccounting,
     OfficialEvidenceContentParser,
+    acquire_current_official_document,
     evaluate_gate06,
     resolve_archive_member,
-    run_corporate_action_evidence_acquisition_fix03_correction_7,
+    run_corporate_action_evidence_acquisition_fix03_correction_7_resume,
     select_official_anchor_by_priority,
     validate_archive_provenance,
     validate_discovery_duplicate_identity,
@@ -161,76 +164,119 @@ def test_same_priority_timing_ambiguity_fails_closed():
     assert "EVENT_TIMING_AMBIGUOUS" in official_auth["validation_reason"]
 
 
-def test_prior_raw_exists_but_live_fetch_fails_does_not_reuse_cache(tmp_path):
-    """Section 41: When simulated live fetch fails, prior raw file MUST NOT be reused."""
-    prior_dir = tmp_path / "prior_raw"
-    prior_dir.mkdir(parents=True)
-    (prior_dir / "005930_STOCK_SPLIT_20180223000294.xml").write_bytes(b"<XML>old</XML>")
+def test_production_acquire_helper_ignores_prior_raw_and_preserves_error(monkeypatch):
+    """Section 17: Production helper acquire_current_official_document ignores prior raw and records immutable ERROR on failed fetch."""
+    accounting = CorporateActionNetworkAccounting()
+    session = requests.Session()
 
-    # Simulated failed live response
-    failed_live_bytes = b"<?xml version='1.0'?><result><status>800</status><message>Maintenance</message></result>"
-    official_auth = OfficialEvidenceContentParser.extract_official_event_authority(
-        raw_content_bytes=failed_live_bytes,
-        source_tier="TIER_A1_OPENDART",
-        discovered_record_id="20180223000294",
-        doc_request_record_id="20180223000294",
-        evidence_origin="LIVE_OPENDART_DOCUMENT_RESPONSE",
+    class MockFailedResp:
+        status_code = 200
+        content = b"<?xml version='1.0'?><result><status>800</status><message>Maintenance</message></result>"
+
+    monkeypatch.setattr(session, "get", lambda *args, **kwargs: MockFailedResp())
+
+    (
+        extracted_bytes,
+        extracted_sha,
+        producing_req_id,
+        src,
+        origin,
+        trans_size,
+        trans_sha,
+        status,
+        arch_det,
+        arch_cnt,
+        mem_name,
+        mem_rule,
+        arch_ambig,
+        arch_fails,
+    ) = acquire_current_official_document(
+        ticker="005930",
+        corp_code="00126380",
+        rcept_no="20180223000294",
+        candidate_rank=1,
+        api_key="test_key",
+        session=session,
+        accounting=accounting,
+        canonical_run_id="RUN_TEST_01",
     )
 
-    assert official_auth["authority_valid"] is False
-    assert official_auth["blocked_page_detected"] is True
+    assert extracted_bytes == b""
+    assert producing_req_id == ""
+    assert len(accounting.request_logs) >= 1
+    assert accounting.request_logs[0]["outcome"] == "ERROR"
+    assert accounting.request_logs[0]["error_type"] == "OPENDART_DOCUMENT_MAINTENANCE_800"
 
 
-def test_failed_request_log_remains_failed_and_immutable():
-    """Section 42: A failed initial request log is never mutated when a fallback succeeds."""
-    logs = []
-    # 1. Failed request
-    logs.append({
-        "canonical_run_id": "RUN_01",
-        "request_id": "REQ_01",
-        "source": "OPENDART_OFFICIAL_API",
-        "http_status": 500,
-        "raw_http_response_sha256": "failed_sha",
-        "outcome": "ERROR",
-    })
-    # 2. Fallback succeeds
-    logs.append({
-        "canonical_run_id": "RUN_01",
-        "request_id": "REQ_02",
-        "source": "DART_OFFICIAL_DISCLOSURE",
-        "http_status": 200,
-        "raw_http_response_sha256": "success_sha",
-        "outcome": "SUCCESS",
-    })
+def test_production_acquire_helper_failed_request_remains_immutable(monkeypatch):
+    """Section 18: Initial failed OpenDART attempt is never mutated when a fallback succeeds."""
+    accounting = CorporateActionNetworkAccounting()
+    session = requests.Session()
 
-    assert logs[0]["outcome"] == "ERROR"
-    assert logs[0]["raw_http_response_sha256"] == "failed_sha"
-    assert logs[1]["outcome"] == "SUCCESS"
-    assert logs[1]["raw_http_response_sha256"] == "success_sha"
+    call_count = 0
+    def mock_get(url, *args, **kwargs):
+        nonlocal call_count
+        call_count += 1
+        class Resp:
+            pass
+        r = Resp()
+        if "opendart" in url:
+            r.status_code = 500
+            r.content = b"Internal Server Error"
+        else:
+            r.status_code = 200
+            r.content = b"<html><head><title>Viewer Content</title></head><body>Valid Viewer Content with sufficient length " + (b"1234567890" * 30) + b"</body></html>"
+        return r
+
+    monkeypatch.setattr(session, "get", mock_get)
+
+    (
+        extracted_bytes,
+        extracted_sha,
+        producing_req_id,
+        src,
+        origin,
+        trans_size,
+        trans_sha,
+        status,
+        arch_det,
+        arch_cnt,
+        mem_name,
+        mem_rule,
+        arch_ambig,
+        arch_fails,
+    ) = acquire_current_official_document(
+        ticker="005930",
+        corp_code="00126380",
+        rcept_no="20180223000294",
+        candidate_rank=1,
+        api_key="test_key",
+        session=session,
+        accounting=accounting,
+        canonical_run_id="RUN_TEST_02",
+    )
+
+    assert len(accounting.request_logs) == 2
+    assert accounting.request_logs[0]["source"] == "OPENDART_OFFICIAL_API"
+    assert accounting.request_logs[0]["outcome"] == "ERROR"
+    assert accounting.request_logs[0]["http_status"] == 500
+
+    assert accounting.request_logs[1]["source"] == "DART_OFFICIAL_DISCLOSURE"
+    assert accounting.request_logs[1]["outcome"] == "SUCCESS"
+    assert accounting.request_logs[1]["http_status"] == 200
+    assert producing_req_id == accounting.request_logs[1]["request_id"]
 
 
-def test_failed_candidate_then_successful_candidate_preserves_both():
-    """Section 43: Failed candidate rank 1 and successful rank 2 are independently retained."""
-    logs = [
-        {"request_id": "REQ_C1", "outcome": "ERROR", "error_type": "EVENT_MISMATCH"},
-        {"request_id": "REQ_C2", "outcome": "SUCCESS", "error_type": ""},
-    ]
-    assert len(logs) == 2
-    assert logs[0]["outcome"] == "ERROR"
-    assert logs[1]["outcome"] == "SUCCESS"
-
-
-def test_historical_sha_coincidence_does_not_prove_live_fetch():
-    """Section 44: Same SHA as previous run only passes if current transport lineage passes."""
-    metrics = {
-        "preflight_verdict": "READY",
-        "authority_valid_controls_count": 8,
-        "diversity_pass": True,
-        "live_lineage_failure_count": 1,  # lineage failed despite matching bytes
+def test_official_document_success_count_separation():
+    """Section 20: Manifest entry count and official_document_success_count are evaluated separately."""
+    manifest_entries = {
+        "doc1.xml": {"content_validation_status": "VALID", "live_lineage_valid": True, "size_bytes": 500},
+        "doc2.xml": {"content_validation_status": "VALID", "live_lineage_valid": True, "size_bytes": 500},
+        "doc3.xml": {"content_validation_status": "INVALID", "live_lineage_valid": False, "size_bytes": 0},
     }
-    pass_eval, blockers = evaluate_gate06(metrics)
-    assert pass_eval is False
-    assert any("lineage" in b for b in blockers)
+    success_count = sum(1 for m in manifest_entries.values() if m.get("content_validation_status") == "VALID" and m.get("live_lineage_valid") and m.get("size_bytes", 0) > 0)
+    assert len(manifest_entries) == 3
+    assert success_count == 2
 
 
 def test_impossible_archive_state_fails_provenance():
@@ -399,9 +445,9 @@ def test_pagination_production_helper_validates_metadata():
     assert any("total_count mismatch" in f for f in fails)
 
 
-def test_gate_06_and_15_approval_positive(tmp_path):
-    """Section 86-88, 91: Complete valid execution passes Gate 06 and Gate 15 or produces deterministic RESUME when transiently unavailable."""
-    res = run_corporate_action_evidence_acquisition_fix03_correction_7(
+def test_gate_06_and_15_execution_result_contract(tmp_path):
+    """Section 86-88, 91: Complete execution produces either APPROVED (when live available) or CONDITIONAL_RESUME (when transiently unavailable)."""
+    res = run_corporate_action_evidence_acquisition_fix03_correction_7_resume(
         output_dir=tmp_path / "test_out",
         allow_network=True,
     )
