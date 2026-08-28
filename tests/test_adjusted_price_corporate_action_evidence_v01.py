@@ -1,7 +1,7 @@
 """Comprehensive Unit, Negative, and Regression Tests for Corporate Action Evidence Acquisition.
 
 Directives:
-- ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_7_RESUME (Section 1-100)
+- ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_8 (Section 0-23)
 Authoritative Technical Parent: ADJUSTED_PRICE_SOURCE_AUTHORITY_REVIEW_V01_FIX03_CORRECTION
 """
 
@@ -21,13 +21,14 @@ from trend_scanner.data.corporate_action_authority import (
     acquire_current_official_document,
     evaluate_gate06,
     resolve_archive_member,
-    run_corporate_action_evidence_acquisition_fix03_correction_7_resume,
+    run_corporate_action_evidence_acquisition_fix03_correction_8,
     select_official_anchor_by_priority,
     validate_archive_provenance,
     validate_discovery_duplicate_identity,
     validate_pagination_pages,
     verify_parent_authority_freeze,
 )
+import trend_scanner.data.corporate_action_authority as ca_module
 
 
 def test_parent_authority_freeze_validation_positive():
@@ -279,6 +280,75 @@ def test_official_document_success_count_separation():
     assert success_count == 2
 
 
+def test_readiness_fail_blocks_all_downstream_stages(tmp_path, monkeypatch):
+    """Section 5 (Test A): Readiness FAIL strictly blocks all downstream discovery/document/price execution."""
+    monkeypatch.setattr(ca_module, "run_opendart_preflight", lambda *args, **kwargs: {"verdict": "READY", "schema": "opendart_preflight_v01_fix03_correction_8"})
+    monkeypatch.setattr(ca_module, "run_document_endpoint_readiness_probe", lambda *args, **kwargs: {"verdict": "FAIL", "schema": "opendart_document_readiness_v01_fix03_correction_8"})
+
+    # Spy on session.get to ensure zero downstream calls
+    session_calls = []
+    orig_get = requests.Session.get
+    def mock_session_get(self, url, *args, **kwargs):
+        session_calls.append(url)
+        return orig_get(self, url, *args, **kwargs)
+    monkeypatch.setattr(requests.Session, "get", mock_session_get)
+
+    res = run_corporate_action_evidence_acquisition_fix03_correction_8(
+        output_dir=tmp_path / "test_readiness_fail",
+        allow_network=True,
+    )
+
+    assert res["review_decision"] == "CONDITIONAL_REVIEW_REQUIRED"
+    assert res["production_integration_authorized"] is False
+    assert res["gate_06_result"] is False
+    assert res["gate_15_result"] is False
+    assert res["official_discovery_requests_physical"] == 0
+    assert res["naver_actual_requests"] == 0
+    assert res["raw_pykrx_actual_queries"] == 0
+    assert len(session_calls) == 0  # Zero downstream network calls
+
+
+def test_readiness_ready_allows_downstream_execution(tmp_path, monkeypatch):
+    """Section 5 (Test B): Readiness READY allows downstream acquisition path to become reachable."""
+    monkeypatch.setattr(ca_module, "run_opendart_preflight", lambda *args, **kwargs: {"verdict": "READY", "schema": "opendart_preflight_v01_fix03_correction_8"})
+    monkeypatch.setattr(ca_module, "run_document_endpoint_readiness_probe", lambda *args, **kwargs: {"verdict": "READY", "schema": "opendart_document_readiness_v01_fix03_correction_8"})
+    monkeypatch.setattr(ca_module, "get_opendart_api_key", lambda: "mock_key")
+
+    mock_resp = requests.Response()
+    mock_resp.status_code = 200
+    mock_resp._content = json.dumps({"status": "000", "total_count": 0, "total_page": 1, "list": []}).encode("utf-8")
+    monkeypatch.setattr(requests.Session, "get", lambda *args, **kwargs: mock_resp)
+
+    res = run_corporate_action_evidence_acquisition_fix03_correction_8(
+        output_dir=tmp_path / "test_readiness_ready",
+        allow_network=True,
+    )
+
+    # Downstream discovery became reachable
+    assert res["official_discovery_requests_physical"] == 8
+
+
+def test_preflight_fail_blocks_readiness_and_downstream(tmp_path, monkeypatch):
+    """Section 5 (Test C): Preflight FAIL blocks readiness probe and all downstream calls."""
+    monkeypatch.setattr(ca_module, "run_opendart_preflight", lambda *args, **kwargs: {"verdict": "FAIL", "schema": "opendart_preflight_v01_fix03_correction_8"})
+
+    probe_called = False
+    def mock_probe(*args, **kwargs):
+        nonlocal probe_called
+        probe_called = True
+        return {"verdict": "READY"}
+    monkeypatch.setattr(ca_module, "run_document_endpoint_readiness_probe", mock_probe)
+
+    res = run_corporate_action_evidence_acquisition_fix03_correction_8(
+        output_dir=tmp_path / "test_preflight_fail",
+        allow_network=True,
+    )
+
+    assert probe_called is False
+    assert res["official_discovery_requests_physical"] == 0
+    assert res["review_decision"] == "CONDITIONAL_REVIEW_REQUIRED"
+
+
 def test_impossible_archive_state_fails_provenance():
     """Section 45: archive_detected=True with member_count=0 fails provenance validation."""
     valid, fails = validate_archive_provenance(
@@ -447,7 +517,7 @@ def test_pagination_production_helper_validates_metadata():
 
 def test_gate_06_and_15_execution_result_contract(tmp_path):
     """Section 86-88, 91: Complete execution produces either APPROVED (when live available) or CONDITIONAL_RESUME (when transiently unavailable)."""
-    res = run_corporate_action_evidence_acquisition_fix03_correction_7_resume(
+    res = run_corporate_action_evidence_acquisition_fix03_correction_8(
         output_dir=tmp_path / "test_out",
         allow_network=True,
     )
@@ -460,4 +530,4 @@ def test_gate_06_and_15_execution_result_contract(tmp_path):
     else:
         assert res["review_decision"] == "CONDITIONAL_REVIEW_REQUIRED"
         assert res["production_integration_authorized"] is False
-        assert res["recommended_next_state"] == "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_7_RESUME"
+        assert res["recommended_next_state"] == "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_8"

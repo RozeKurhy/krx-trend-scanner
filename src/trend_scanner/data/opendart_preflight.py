@@ -1,7 +1,7 @@
 """OpenDART API key resolution, secret scrubbing, preflight connectivity, and document readiness probe.
 
 Directives:
-- ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_7_RESUME (Section 4, 28-32)
+- ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_8 (Section 0, 4, 13)
 """
 
 from __future__ import annotations
@@ -17,13 +17,13 @@ import zipfile
 
 import requests
 
-DEFAULT_CORP_EVIDENCE_DIR_FIX03_CORRECTION_7 = Path(
-    "artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/corporate_action_evidence/v01_fix03_correction_7"
-)
 DEFAULT_CORP_EVIDENCE_DIR_FIX03_CORRECTION_7_RESUME = Path(
     "artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/corporate_action_evidence/v01_fix03_correction_7_resume"
 )
-DEFAULT_CORP_EVIDENCE_DIR = DEFAULT_CORP_EVIDENCE_DIR_FIX03_CORRECTION_7_RESUME
+DEFAULT_CORP_EVIDENCE_DIR_FIX03_CORRECTION_8 = Path(
+    "artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/corporate_action_evidence/v01_fix03_correction_8"
+)
+DEFAULT_CORP_EVIDENCE_DIR = DEFAULT_CORP_EVIDENCE_DIR_FIX03_CORRECTION_8
 
 
 class OpenDARTCredentialMissingError(RuntimeError):
@@ -68,19 +68,19 @@ def sanitize_url(url: str, secret: str) -> str:
 
 
 def run_opendart_preflight(
-    output_dir: Path = DEFAULT_CORP_EVIDENCE_DIR_FIX03_CORRECTION_7_RESUME,
+    output_dir: Path = DEFAULT_CORP_EVIDENCE_DIR_FIX03_CORRECTION_8,
     allow_network: bool = True,
     canonical_run_id: str = "",
 ) -> dict[str, Any]:
     """Execute OpenDART connectivity preflight with scrubbed provenance (Section 4)."""
-    run_id = canonical_run_id or f"PREFLIGHT_FIX03_CORRECTION_7_RESUME_{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}"
+    run_id = canonical_run_id or f"PREFLIGHT_FIX03_CORRECTION_8_{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}"
     output_dir.mkdir(parents=True, exist_ok=True)
 
     try:
         api_key = get_opendart_api_key()
     except OpenDARTCredentialMissingError as exc:
         res = {
-            "schema": "opendart_preflight_v01_fix03_correction_7_resume",
+            "schema": "opendart_preflight_v01_fix03_correction_8",
             "canonical_run_id": run_id,
             "checked_at": datetime.now(timezone.utc).isoformat(),
             "verdict": "FAIL",
@@ -91,14 +91,14 @@ def run_opendart_preflight(
             "sanitized_endpoint": "https://opendart.fss.or.kr/api/list.json",
             "error_reason": str(exc),
         }
-        (output_dir / "opendart_preflight_v01_fix03_correction_7_resume.json").write_text(
+        (output_dir / "opendart_preflight_v01_fix03_correction_8.json").write_text(
             json.dumps(res, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
         )
         return res
 
     if not allow_network:
         res = {
-            "schema": "opendart_preflight_v01_fix03_correction_7_resume",
+            "schema": "opendart_preflight_v01_fix03_correction_8",
             "canonical_run_id": run_id,
             "checked_at": datetime.now(timezone.utc).isoformat(),
             "verdict": "READY",
@@ -109,7 +109,7 @@ def run_opendart_preflight(
             "sanitized_endpoint": "https://opendart.fss.or.kr/api/list.json?corp_code=00126380",
             "error_reason": "",
         }
-        (output_dir / "opendart_preflight_v01_fix03_correction_7_resume.json").write_text(
+        (output_dir / "opendart_preflight_v01_fix03_correction_8.json").write_text(
             json.dumps(res, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
         )
         return res
@@ -137,7 +137,7 @@ def run_opendart_preflight(
         err_msg = str(exc)
 
     res = {
-        "schema": "opendart_preflight_v01_fix03_correction_7_resume",
+        "schema": "opendart_preflight_v01_fix03_correction_8",
         "canonical_run_id": run_id,
         "checked_at": datetime.now(timezone.utc).isoformat(),
         "verdict": "READY" if is_ready else "FAIL",
@@ -149,25 +149,25 @@ def run_opendart_preflight(
         "error_reason": err_msg,
     }
 
-    (output_dir / "opendart_preflight_v01_fix03_correction_7_resume.json").write_text(
+    (output_dir / "opendart_preflight_v01_fix03_correction_8.json").write_text(
         json.dumps(res, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
     )
     return res
 
 
 def run_document_endpoint_readiness_probe(
-    output_dir: Path = DEFAULT_CORP_EVIDENCE_DIR_FIX03_CORRECTION_7_RESUME,
+    output_dir: Path = DEFAULT_CORP_EVIDENCE_DIR_FIX03_CORRECTION_8,
     allow_network: bool = True,
     canonical_run_id: str = "",
     probe_rcept_no: str = "20180223000294",
 ) -> dict[str, Any]:
-    """Execute operational readiness check on official-document endpoint (Section 28-32)."""
-    run_id = canonical_run_id or f"DOC_READY_FIX03_CORRECTION_7_RESUME_{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}"
+    """Execute operational readiness check on official-document endpoint (Section 4, 13)."""
+    run_id = canonical_run_id or f"DOC_READY_FIX03_CORRECTION_8_{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}"
     output_dir.mkdir(parents=True, exist_ok=True)
 
     if not allow_network:
         res = {
-            "schema": "opendart_document_readiness_v01_fix03_correction_7_resume",
+            "schema": "opendart_document_readiness_v01_fix03_correction_8",
             "canonical_run_id": run_id,
             "checked_at": datetime.now(timezone.utc).isoformat(),
             "verdict": "READY",
@@ -178,7 +178,7 @@ def run_document_endpoint_readiness_probe(
             "archive_structure_valid": True,
             "error_reason": "",
         }
-        (output_dir / "opendart_document_readiness_v01_fix03_correction_7_resume.json").write_text(
+        (output_dir / "opendart_document_readiness_v01_fix03_correction_8.json").write_text(
             json.dumps(res, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
         )
         return res
@@ -187,7 +187,7 @@ def run_document_endpoint_readiness_probe(
         api_key = get_opendart_api_key()
     except Exception as exc:
         res = {
-            "schema": "opendart_document_readiness_v01_fix03_correction_7_resume",
+            "schema": "opendart_document_readiness_v01_fix03_correction_8",
             "canonical_run_id": run_id,
             "checked_at": datetime.now(timezone.utc).isoformat(),
             "verdict": "FAIL",
@@ -198,7 +198,7 @@ def run_document_endpoint_readiness_probe(
             "archive_structure_valid": False,
             "error_reason": str(exc),
         }
-        (output_dir / "opendart_document_readiness_v01_fix03_correction_7_resume.json").write_text(
+        (output_dir / "opendart_document_readiness_v01_fix03_correction_8.json").write_text(
             json.dumps(res, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
         )
         return res
@@ -229,7 +229,7 @@ def run_document_endpoint_readiness_probe(
         err_msg = str(exc)
 
     res = {
-        "schema": "opendart_document_readiness_v01_fix03_correction_7_resume",
+        "schema": "opendart_document_readiness_v01_fix03_correction_8",
         "canonical_run_id": run_id,
         "checked_at": datetime.now(timezone.utc).isoformat(),
         "verdict": verdict,
@@ -241,7 +241,7 @@ def run_document_endpoint_readiness_probe(
         "error_reason": err_msg,
     }
 
-    (output_dir / "opendart_document_readiness_v01_fix03_correction_7_resume.json").write_text(
+    (output_dir / "opendart_document_readiness_v01_fix03_correction_8.json").write_text(
         json.dumps(res, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
     )
     return res
