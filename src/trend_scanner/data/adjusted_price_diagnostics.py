@@ -1113,16 +1113,16 @@ def load_canonical_authority_state(output_dir: Path | None = None) -> dict[str, 
 
 def generate_authority_boundary_manifest(
     output_dir: Path | None = None,
-    start_head: str = "46fd64cca6bb08ba54f5c448732db60ddfba7016",
+    start_head: str = "2ab5a2a53bb3d93b6fd47bbd53fa60b80558e682",
 ) -> dict[str, Any]:
-    """BLOCKER D: Dynamically derive fix06_authority_boundary_manifest.json with strict quality & count parsing."""
+    """BLOCKER A & D: Dynamically derive fix06_authority_boundary_manifest.json with evidence-derived candidate authorization."""
     out_dir = output_dir or DEFAULT_ARTIFACTS_DIR
     out_dir.mkdir(parents=True, exist_ok=True)
 
     # 1. Supersession Manifest
     supersession_payload = {
-        "schema": "artifact_supersession_manifest_v05",
-        "directive_id": "ADJUSTED_PRICE_STORE_FULL_POPULATION_V01_FIX06_CORRECTION_2",
+        "schema": "artifact_supersession_manifest_v06",
+        "directive_id": "ADJUSTED_PRICE_STORE_FULL_POPULATION_V01_FIX06_CORRECTION_3",
         "superseded_artifacts": [
             {
                 "artifact_path": "provider_capability_surface.json",
@@ -1148,8 +1148,31 @@ def generate_authority_boundary_manifest(
 
     # 2. Gather Evidence Dynamically
     auth_state = load_canonical_authority_state(out_dir)
-    cap_status = auth_state.get("provider_capability_status", "UNKNOWN")
+    if not auth_state.get("authority_state_valid"):
+        cap_status = "UNKNOWN"
+    else:
+        cap_status = auth_state.get("provider_capability_status", "UNKNOWN")
 
+    # Read Candidate Summary for Authorization Evidence
+    cand_sum_p = out_dir / "source_authority_candidate_probe_summary.json"
+    if not cand_sum_p.exists():
+        raise FileNotFoundError(f"Canonical source_authority_candidate_probe_summary.json missing at {cand_sum_p}")
+
+    cand_sum_data = json.loads(cand_sum_p.read_text(encoding="utf-8"))
+    if "production_authorization_status" not in cand_sum_data:
+        raise KeyError("Missing required field 'production_authorization_status' in candidate summary")
+
+    cand_auth_status = cand_sum_data["production_authorization_status"]
+    allowed_cand_statuses = [
+        "DIAGNOSTIC_CANDIDATE_ONLY_NOT_PRODUCTION_AUTHORIZED",
+        "PRODUCTION_AUTHORIZED",
+    ]
+    if cand_auth_status not in allowed_cand_statuses:
+        raise ValueError(f"Unknown candidate production_authorization_status: {cand_auth_status}")
+
+    candidate_production_authorized = bool(cand_auth_status == "PRODUCTION_AUTHORIZED")
+
+    # Read Candidate Probe Results
     cand_csv_p = out_dir / "source_authority_candidate_probe_results.csv"
     cand_probe_executed = False
     cand_pre_2014 = False
@@ -1233,7 +1256,7 @@ def generate_authority_boundary_manifest(
 
     manifest_payload = {
         "schema": "fix06_authority_boundary_manifest_v01",
-        "directive_id": "ADJUSTED_PRICE_STORE_FULL_POPULATION_V01_FIX06_CORRECTION_2",
+        "directive_id": "ADJUSTED_PRICE_STORE_FULL_POPULATION_V01_FIX06_CORRECTION_3",
         "START_HEAD": start_head,
         "population_sha256": "f14c3d46e5305571b311c4d120d9a2f1eba1644e7f059cde4e59eabab42d1aff",
         "pit_sha256": "6b542ae05c9050dd30959d6f1b17306e4016f435a726ca7e0dff9e11008e4064",
@@ -1249,7 +1272,7 @@ def generate_authority_boundary_manifest(
         "candidate_id": "NAVER_DIRECT_DATE_RANGE_ADJUSTED_CANDIDATE",
         "candidate_pre_2014_recovery": cand_pre_2014,
         "candidate_overlap_parity": cand_parity,
-        "candidate_production_authorized": bool(auth_state.get("production_authorized") and False),
+        "candidate_production_authorized": candidate_production_authorized,
         "current_production_authority_sufficient": current_prod_auth_sufficient,
         "provider_capability_status": cap_status,
         "partial_root_cause_counts": part_sum.get("root_cause_counts", {}),

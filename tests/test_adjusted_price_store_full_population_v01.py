@@ -690,6 +690,13 @@ def test_missing_population_count_fails_closed(tmp_path: Path):
     import pytest
     from trend_scanner.data.adjusted_price_diagnostics import generate_authority_boundary_manifest
 
+    # Create dummy candidate summary
+    cand_sum = {
+        "schema": "source_authority_candidate_probe_summary_v02",
+        "production_authorization_status": "DIAGNOSTIC_CANDIDATE_ONLY_NOT_PRODUCTION_AUTHORIZED",
+    }
+    (tmp_path / "source_authority_candidate_probe_summary.json").write_text(json.dumps(cand_sum))
+
     # Create dummy summary missing 'partial'
     dummy_summary = {
         "status_counts": {
@@ -713,7 +720,7 @@ def test_missing_population_count_fails_closed(tmp_path: Path):
 
 
 def test_canonical_next_state_consistency_fix06():
-    """Verify FIX06_CORRECTION_2 Section 42, 45: Next state strictly agrees across all canonical manifests."""
+    """Verify FIX06_CORRECTION_3 Section 12: Next state strictly agrees across all canonical manifests."""
     from trend_scanner.data.adjusted_price_diagnostics import DEFAULT_ARTIFACTS_DIR
 
     root_man_p = DEFAULT_ARTIFACTS_DIR / "fix06_authority_boundary_manifest.json"
@@ -728,3 +735,61 @@ def test_canonical_next_state_consistency_fix06():
     assert root_man["recommended_next_state"] == expected_next_state
     assert sum_data["next_state"] == expected_next_state
     assert closure_data["next_state"] == expected_next_state
+
+
+def test_candidate_production_authorization_derivation(tmp_path: Path):
+    """Verify FIX06_CORRECTION_3 Section 11: Candidate authorization derivation is strictly evidence-driven across all cases."""
+    import pytest
+    from trend_scanner.data.adjusted_price_diagnostics import (
+        DEFAULT_ARTIFACTS_DIR,
+        generate_authority_boundary_manifest,
+    )
+
+    # Setup baseline mock directory
+    base_summary = (DEFAULT_ARTIFACTS_DIR / "full_population_summary.json").read_text()
+    (tmp_path / "full_population_summary.json").write_text(base_summary)
+    (tmp_path / "adjusted_price_authority_state.json").write_text(
+        (DEFAULT_ARTIFACTS_DIR / "adjusted_price_authority_state.json").read_text()
+    )
+    (tmp_path / "adjusted_price_authority_evidence_manifest.json").write_text(
+        (DEFAULT_ARTIFACTS_DIR / "adjusted_price_authority_evidence_manifest.json").read_text()
+    )
+    (tmp_path / "provider_capability_surface.json").write_text(
+        (DEFAULT_ARTIFACTS_DIR / "provider_capability_surface.json").read_text()
+    )
+
+    # Case A: Diagnostic only -> candidate_production_authorized is False
+    cand_sum_a = {
+        "schema": "source_authority_candidate_probe_summary_v02",
+        "production_authorization_status": "DIAGNOSTIC_CANDIDATE_ONLY_NOT_PRODUCTION_AUTHORIZED",
+    }
+    (tmp_path / "source_authority_candidate_probe_summary.json").write_text(json.dumps(cand_sum_a))
+    man_a = generate_authority_boundary_manifest(output_dir=tmp_path)
+    assert man_a["candidate_production_authorized"] is False
+
+    # Case B: Production authorized -> candidate_production_authorized is True
+    cand_sum_b = {
+        "schema": "source_authority_candidate_probe_summary_v02",
+        "production_authorization_status": "PRODUCTION_AUTHORIZED",
+    }
+    (tmp_path / "source_authority_candidate_probe_summary.json").write_text(json.dumps(cand_sum_b))
+    man_b = generate_authority_boundary_manifest(output_dir=tmp_path)
+    assert man_b["candidate_production_authorized"] is True
+
+    # Case C: Missing production_authorization_status field -> raises KeyError
+    cand_sum_c = {
+        "schema": "source_authority_candidate_probe_summary_v02",
+        # missing field
+    }
+    (tmp_path / "source_authority_candidate_probe_summary.json").write_text(json.dumps(cand_sum_c))
+    with pytest.raises(KeyError, match="production_authorization_status"):
+        generate_authority_boundary_manifest(output_dir=tmp_path)
+
+    # Case D: Unknown authorization status -> raises ValueError
+    cand_sum_d = {
+        "schema": "source_authority_candidate_probe_summary_v02",
+        "production_authorization_status": "SOMETHING_RANDOM",
+    }
+    (tmp_path / "source_authority_candidate_probe_summary.json").write_text(json.dumps(cand_sum_d))
+    with pytest.raises(ValueError, match="Unknown candidate production_authorization_status"):
+        generate_authority_boundary_manifest(output_dir=tmp_path)
