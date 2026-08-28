@@ -693,6 +693,7 @@ def test_missing_population_count_fails_closed(tmp_path: Path):
     # Create dummy candidate summary
     cand_sum = {
         "schema": "source_authority_candidate_probe_summary_v02",
+        "candidate_id": "NAVER_DIRECT_DATE_RANGE_ADJUSTED_CANDIDATE",
         "production_authorization_status": "DIAGNOSTIC_CANDIDATE_ONLY_NOT_PRODUCTION_AUTHORIZED",
     }
     (tmp_path / "source_authority_candidate_probe_summary.json").write_text(json.dumps(cand_sum))
@@ -738,7 +739,7 @@ def test_canonical_next_state_consistency_fix06():
 
 
 def test_candidate_production_authorization_derivation(tmp_path: Path):
-    """Verify FIX06_CORRECTION_3 Section 11: Candidate authorization derivation is strictly evidence-driven across all cases."""
+    """Verify FIX06_CORRECTION_4 Section 9: Candidate authorization derivation validates schema, candidate_id and authorization status."""
     import pytest
     from trend_scanner.data.adjusted_price_diagnostics import (
         DEFAULT_ARTIFACTS_DIR,
@@ -758,38 +759,62 @@ def test_candidate_production_authorization_derivation(tmp_path: Path):
         (DEFAULT_ARTIFACTS_DIR / "provider_capability_surface.json").read_text()
     )
 
-    # Case A: Diagnostic only -> candidate_production_authorized is False
+    # Case A: Valid Diagnostic only -> candidate_production_authorized is False
     cand_sum_a = {
         "schema": "source_authority_candidate_probe_summary_v02",
+        "candidate_id": "NAVER_DIRECT_DATE_RANGE_ADJUSTED_CANDIDATE",
         "production_authorization_status": "DIAGNOSTIC_CANDIDATE_ONLY_NOT_PRODUCTION_AUTHORIZED",
     }
     (tmp_path / "source_authority_candidate_probe_summary.json").write_text(json.dumps(cand_sum_a))
     man_a = generate_authority_boundary_manifest(output_dir=tmp_path)
     assert man_a["candidate_production_authorized"] is False
 
-    # Case B: Production authorized -> candidate_production_authorized is True
+    # Case B: Valid Production authorized -> candidate_production_authorized is True
     cand_sum_b = {
         "schema": "source_authority_candidate_probe_summary_v02",
+        "candidate_id": "NAVER_DIRECT_DATE_RANGE_ADJUSTED_CANDIDATE",
         "production_authorization_status": "PRODUCTION_AUTHORIZED",
     }
     (tmp_path / "source_authority_candidate_probe_summary.json").write_text(json.dumps(cand_sum_b))
     man_b = generate_authority_boundary_manifest(output_dir=tmp_path)
     assert man_b["candidate_production_authorized"] is True
 
-    # Case C: Missing production_authorization_status field -> raises KeyError
+    # Case C: Wrong Schema -> raises ValueError (Fail-Closed)
     cand_sum_c = {
-        "schema": "source_authority_candidate_probe_summary_v02",
-        # missing field
+        "schema": "bad_schema_v99",
+        "candidate_id": "NAVER_DIRECT_DATE_RANGE_ADJUSTED_CANDIDATE",
+        "production_authorization_status": "PRODUCTION_AUTHORIZED",
     }
     (tmp_path / "source_authority_candidate_probe_summary.json").write_text(json.dumps(cand_sum_c))
+    with pytest.raises(ValueError, match="Invalid candidate summary schema"):
+        generate_authority_boundary_manifest(output_dir=tmp_path)
+
+    # Case D: Wrong Candidate ID -> raises ValueError (Fail-Closed)
+    cand_sum_d = {
+        "schema": "source_authority_candidate_probe_summary_v02",
+        "candidate_id": "SOME_OTHER_SOURCE",
+        "production_authorization_status": "PRODUCTION_AUTHORIZED",
+    }
+    (tmp_path / "source_authority_candidate_probe_summary.json").write_text(json.dumps(cand_sum_d))
+    with pytest.raises(ValueError, match="Candidate ID mismatch"):
+        generate_authority_boundary_manifest(output_dir=tmp_path)
+
+    # Case E: Missing production_authorization_status field -> raises KeyError
+    cand_sum_e = {
+        "schema": "source_authority_candidate_probe_summary_v02",
+        "candidate_id": "NAVER_DIRECT_DATE_RANGE_ADJUSTED_CANDIDATE",
+        # missing field
+    }
+    (tmp_path / "source_authority_candidate_probe_summary.json").write_text(json.dumps(cand_sum_e))
     with pytest.raises(KeyError, match="production_authorization_status"):
         generate_authority_boundary_manifest(output_dir=tmp_path)
 
-    # Case D: Unknown authorization status -> raises ValueError
-    cand_sum_d = {
+    # Case F: Unknown authorization status -> raises ValueError
+    cand_sum_f = {
         "schema": "source_authority_candidate_probe_summary_v02",
+        "candidate_id": "NAVER_DIRECT_DATE_RANGE_ADJUSTED_CANDIDATE",
         "production_authorization_status": "SOMETHING_RANDOM",
     }
-    (tmp_path / "source_authority_candidate_probe_summary.json").write_text(json.dumps(cand_sum_d))
+    (tmp_path / "source_authority_candidate_probe_summary.json").write_text(json.dumps(cand_sum_f))
     with pytest.raises(ValueError, match="Unknown candidate production_authorization_status"):
         generate_authority_boundary_manifest(output_dir=tmp_path)

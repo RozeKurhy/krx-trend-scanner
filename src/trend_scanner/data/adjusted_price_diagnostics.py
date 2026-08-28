@@ -1113,16 +1113,16 @@ def load_canonical_authority_state(output_dir: Path | None = None) -> dict[str, 
 
 def generate_authority_boundary_manifest(
     output_dir: Path | None = None,
-    start_head: str = "2ab5a2a53bb3d93b6fd47bbd53fa60b80558e682",
+    start_head: str = "d1fa9ed0bc218083df8f6e214224a554e02ca5de",
 ) -> dict[str, Any]:
-    """BLOCKER A & D: Dynamically derive fix06_authority_boundary_manifest.json with evidence-derived candidate authorization."""
+    """BLOCKER A & D: Dynamically derive fix06_authority_boundary_manifest.json with validated candidate authorization schema."""
     out_dir = output_dir or DEFAULT_ARTIFACTS_DIR
     out_dir.mkdir(parents=True, exist_ok=True)
 
     # 1. Supersession Manifest
     supersession_payload = {
-        "schema": "artifact_supersession_manifest_v06",
-        "directive_id": "ADJUSTED_PRICE_STORE_FULL_POPULATION_V01_FIX06_CORRECTION_3",
+        "schema": "artifact_supersession_manifest_v07",
+        "directive_id": "ADJUSTED_PRICE_STORE_FULL_POPULATION_V01_FIX06_CORRECTION_4",
         "superseded_artifacts": [
             {
                 "artifact_path": "provider_capability_surface.json",
@@ -1153,12 +1153,23 @@ def generate_authority_boundary_manifest(
     else:
         cap_status = auth_state.get("provider_capability_status", "UNKNOWN")
 
-    # Read Candidate Summary for Authorization Evidence
+    # Read and Validate Candidate Summary for Authorization Evidence
     cand_sum_p = out_dir / "source_authority_candidate_probe_summary.json"
     if not cand_sum_p.exists():
         raise FileNotFoundError(f"Canonical source_authority_candidate_probe_summary.json missing at {cand_sum_p}")
 
     cand_sum_data = json.loads(cand_sum_p.read_text(encoding="utf-8"))
+
+    # Validate candidate summary schema
+    expected_cand_schema = "source_authority_candidate_probe_summary_v02"
+    if cand_sum_data.get("schema") != expected_cand_schema:
+        raise ValueError(f"Invalid candidate summary schema: {cand_sum_data.get('schema')}")
+
+    # Validate candidate identity
+    expected_cand_id = "NAVER_DIRECT_DATE_RANGE_ADJUSTED_CANDIDATE"
+    if cand_sum_data.get("candidate_id") != expected_cand_id:
+        raise ValueError(f"Candidate ID mismatch: {cand_sum_data.get('candidate_id')}")
+
     if "production_authorization_status" not in cand_sum_data:
         raise KeyError("Missing required field 'production_authorization_status' in candidate summary")
 
@@ -1256,7 +1267,7 @@ def generate_authority_boundary_manifest(
 
     manifest_payload = {
         "schema": "fix06_authority_boundary_manifest_v01",
-        "directive_id": "ADJUSTED_PRICE_STORE_FULL_POPULATION_V01_FIX06_CORRECTION_3",
+        "directive_id": "ADJUSTED_PRICE_STORE_FULL_POPULATION_V01_FIX06_CORRECTION_4",
         "START_HEAD": start_head,
         "population_sha256": "f14c3d46e5305571b311c4d120d9a2f1eba1644e7f059cde4e59eabab42d1aff",
         "pit_sha256": "6b542ae05c9050dd30959d6f1b17306e4016f435a726ca7e0dff9e11008e4064",
