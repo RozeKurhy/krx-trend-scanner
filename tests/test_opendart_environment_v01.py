@@ -1,6 +1,6 @@
 """Dedicated Unit & Diagnostic Tests for OpenDART Environment and Preflight Module.
 
-Directive: ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_2 (Section 4-17, 79-81)
+Directive: ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_3 (Section 4-7)
 """
 
 from __future__ import annotations
@@ -30,7 +30,7 @@ def test_get_opendart_api_key_missing_raises_error(monkeypatch):
         assert "OPENDART_CREDENTIAL_MISSING" in str(exc_info.value)
 
 
-def test_opendart_preflight_success(monkeypatch, tmp_path):
+def test_opendart_preflight_success_000(monkeypatch, tmp_path):
     monkeypatch.setenv("OPENDART_API_KEY", "valid_key")
     mock_resp = MagicMock()
     mock_resp.status_code = 200
@@ -42,14 +42,30 @@ def test_opendart_preflight_success(monkeypatch, tmp_path):
         assert res["credential_present"] is True
         assert res["credential_value"] == "REDACTED"
         assert res["network_reachable"] is True
-        assert res["authenticated_request_success"] is True
-        assert res["response_identity_valid"] is True
+        assert res["authentication_valid"] is True
+        assert res["probe_response_status"] == "AUTHENTICATED_WITH_DATA"
+        assert res["response_identity_status"] == "VALID"
 
-        artifact_p = tmp_path / "opendart_preflight_v01_fix03_correction_2.json"
+        artifact_p = tmp_path / "opendart_preflight_v01_fix03_correction_3.json"
         assert artifact_p.exists()
         art_data = json.loads(artifact_p.read_text(encoding="utf-8"))
         assert art_data["verdict"] == "READY"
         assert art_data["credential_value"] == "REDACTED"
+
+
+def test_opendart_preflight_success_013_no_data(monkeypatch, tmp_path):
+    monkeypatch.setenv("OPENDART_API_KEY", "valid_key")
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = {"status": "013", "message": "조회된 데이터가 없습니다."}
+
+    with patch("requests.Session.get", return_value=mock_resp):
+        res = run_opendart_preflight(output_dir=tmp_path)
+        assert res["verdict"] == "READY"
+        assert res["credential_present"] is True
+        assert res["authentication_valid"] is True
+        assert res["probe_response_status"] == "AUTHENTICATED_NO_DATA"
+        assert res["response_identity_status"] == "NOT_APPLICABLE"
 
 
 def test_opendart_preflight_missing_credentials(monkeypatch, tmp_path):

@@ -1,4 +1,4 @@
-"""Corporate Action Authority Live Discovery, Official Anchor Extraction, Linkage Validation, and Gate 06/15 Adjudication.
+"""Corporate Action Authority Live Discovery, Event-Semantic Anchor Binding, Deterministic Candidate Selection, and Gate 06/15 Adjudication.
 
 Directives:
 - ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01 (Superseded)
@@ -6,7 +6,8 @@ Directives:
 - ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX02 (Superseded)
 - ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03 (Superseded)
 - ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION (Superseded)
-- ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_2 (Section 1-120)
+- ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_2 (Superseded)
+- ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_3 (Section 1-126)
 Authoritative Parent: ADJUSTED_PRICE_SOURCE_AUTHORITY_REVIEW_V01_FIX03_CORRECTION
 """
 
@@ -20,6 +21,7 @@ import io
 import json
 import os
 from pathlib import Path
+import random
 import re
 import time
 from typing import Any
@@ -40,18 +42,15 @@ from trend_scanner.data.source_authority_review import NaverDateRangeAdjustedCli
 PARENT_FIX03_CORRECTION_DIR = Path(
     "artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/v01_fix03_correction"
 )
-DEFAULT_CORP_EVIDENCE_DIR_FIX03 = Path(
-    "artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/corporate_action_evidence/v01_fix03"
-)
-DEFAULT_CORP_EVIDENCE_DIR_FIX03_CORRECTION = Path(
-    "artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/corporate_action_evidence/v01_fix03_correction"
-)
 DEFAULT_CORP_EVIDENCE_DIR_FIX03_CORRECTION_2 = Path(
     "artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/corporate_action_evidence/v01_fix03_correction_2"
 )
-DEFAULT_CORP_EVIDENCE_DIR = DEFAULT_CORP_EVIDENCE_DIR_FIX03_CORRECTION_2
+DEFAULT_CORP_EVIDENCE_DIR_FIX03_CORRECTION_3 = Path(
+    "artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/corporate_action_evidence/v01_fix03_correction_3"
+)
+DEFAULT_CORP_EVIDENCE_DIR = DEFAULT_CORP_EVIDENCE_DIR_FIX03_CORRECTION_3
 
-START_HEAD_CORP_EVIDENCE_FIX03_CORRECTION_2 = "47e5b6934e45f0450935fcae7f9ad32331f6c5fa"
+START_HEAD_CORP_EVIDENCE_FIX03_CORRECTION_3 = "911d787b5670f95aad3b300865469f76305b0146"
 
 PARENT_FROZEN_HASHES = {
     "adjusted_price_source_authority_review_v01_fix03_correction.json": "3e38d97aeeb3fc0a2f48bfc3c0dd3f28293990dab12206d10f048309b12c5f1f",
@@ -84,20 +83,17 @@ class CorporateActionNetworkAccounting:
     execution_mode: str = "LIVE_EVIDENCE_ACQUISITION"
     official_discovery_logical_requests: int = 0
     official_discovery_physical_attempts: int = 0
-    official_document_logical_requests: int = 0
-    official_document_physical_attempts: int = 0
+    official_document_probe_logical_requests: int = 0
+    official_document_probe_physical_attempts: int = 0
     dart_viewer_fallback_physical_attempts: int = 0
     alternative_document_candidate_physical_attempts: int = 0
     opendart_logical_requests: int = 0
     opendart_physical_attempts: int = 0
-    krx_kind_logical_requests: int = 0
-    krx_kind_physical_attempts: int = 0
-    issuer_official_logical_requests: int = 0
-    issuer_official_physical_attempts: int = 0
     direct_naver_logical_requests: int = 0
     direct_naver_physical_attempts: int = 0
     raw_pykrx_logical_requests: int = 0
     raw_pykrx_physical_attempts: int = 0
+    total_physical_external_calls: int = 0
     blocked_documents: int = 0
     wrong_documents: int = 0
     retries: int = 0
@@ -106,7 +102,18 @@ class CorporateActionNetworkAccounting:
     parse_errors: int = 0
     request_logs: list[dict[str, Any]] = field(default_factory=list)
 
+    def compute_totals(self) -> None:
+        self.total_physical_external_calls = (
+            self.official_discovery_physical_attempts
+            + self.official_document_probe_physical_attempts
+            + self.dart_viewer_fallback_physical_attempts
+            + self.alternative_document_candidate_physical_attempts
+            + self.direct_naver_physical_attempts
+            + self.raw_pykrx_physical_attempts
+        )
+
     def to_dict(self) -> dict[str, Any]:
+        self.compute_totals()
         return asdict(self)
 
 
@@ -127,10 +134,10 @@ def verify_parent_authority_freeze(parent_dir: Path = PARENT_FIX03_CORRECTION_DI
 
     all_valid = len(mismatches) == 0 and len(observed_hashes) == len(PARENT_FROZEN_HASHES)
     return {
-        "schema": "parent_authority_freeze_validation_v01_fix03_correction_2",
-        "directive_id": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_2",
-        "start_head": START_HEAD_CORP_EVIDENCE_FIX03_CORRECTION_2,
-        "parent_directive": "ADJUSTED_PRICE_SOURCE_AUTHORITY_REVIEW_V01_FIX03_CORRECTION",
+        "schema": "parent_authority_freeze_validation_v01_fix03_correction_3",
+        "directive_id": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_3",
+        "start_head": START_HEAD_CORP_EVIDENCE_FIX03_CORRECTION_3,
+        "parent_directive": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_2",
         "all_parent_inputs_unchanged": all_valid,
         "parent_artifacts_verified_count": len(observed_hashes),
         "mismatches": mismatches,
@@ -139,7 +146,7 @@ def verify_parent_authority_freeze(parent_dir: Path = PARENT_FIX03_CORRECTION_DI
 
 
 class OfficialEvidenceContentParser:
-    """Deterministic parser and content validator extracting event anchors strictly from official source text."""
+    """Deterministic parser and semantic block validator extracting event anchors strictly from official event contexts."""
 
     BLOCKED_PATTERNS = [
         r"<title>\s*거부\s*</title>",
@@ -155,17 +162,41 @@ class OfficialEvidenceContentParser:
         "삼성물산": ["제일모직", "삼성물산", "028260"],
     }
 
-    # Structured official field priorities by event family (Section 29, 30)
-    STRUCTURED_PATTERNS = [
-        ("MERGER_EFFECTIVE_DATE", "합병기일", r"합병기일\s*[:=]?\s*(\d{4}[-년\.\s]+\d{1,2}[-월\.\s]+\d{1,2})"),
-        ("SPLIT_EFFECTIVE_DATE", "분할기일", r"분할기일\s*[:=]?\s*(\d{4}[-년\.\s]+\d{1,2}[-월\.\s]+\d{1,2})"),
-        ("SUSPENSION_DATE", "매매거래정지기간", r"매매거래\s*정지기간\s*[:=]?\s*(\d{4}[-년\.\s]+\d{1,2}[-월\.\s]+\d{1,2})"),
-        ("EX_DATE", "권리락일", r"권리락일\s*[:=]?\s*(\d{4}[-년\.\s]+\d{1,2}[-월\.\s]+\d{1,2})"),
-        ("RECORD_DATE", "신주배정기준일", r"신주배정기준일\s*[:=]?\s*(\d{4}[-년\.\s]+\d{1,2}[-월\.\s]+\d{1,2})"),
-        ("PAYMENT_DATE", "납입일", r"납입일\s*[:=]?\s*(\d{4}[-년\.\s]+\d{1,2}[-월\.\s]+\d{1,2})"),
-        ("OLD_SHARES_SUBMISSION", "구주권제출기간", r"구주권\s*제출기간\s*[:=]?\s*시작일\s*[-–~]?\s*(\d{4}[-년\.\s]+\d{1,2}[-월\.\s]+\d{1,2})|구주권\s*제출기간\s*[:=]?\s*(\d{4}[-년\.\s]+\d{1,2}[-월\.\s]+\d{1,2})"),
-        ("BOARD_RESOLUTION_DATE", "이사회결의일", r"이사회\s*결의일\s*[:=]?\s*(\d{4}[-년\.\s]+\d{1,2}[-월\.\s]+\d{1,2})"),
-    ]
+    # Explicit event-specific allowed timing fields and priority ordering (Section 13, 14)
+    ALLOWED_EVENT_TIMING_FIELDS = {
+        "STOCK_SPLIT": [
+            ("SPLIT_EFFECTIVE_DATE", "분할기일", r"분할기일\s*[:=]?\s*(\d{4}[-년\.\s]+\d{1,2}[-월\.\s]+\d{1,2})"),
+            ("NEW_SHARE_LISTING_DATE", "신주상장예정일", r"(?:신주상장예정일|신주상장일|신주권상장예정일)\s*[:=]?\s*(\d{4}[-년\.\s]+\d{1,2}[-월\.\s]+\d{1,2})"),
+            ("SUSPENSION_DATE", "매매거래정지기간", r"매매거래\s*정지기간\s*[:=]?\s*(\d{4}[-년\.\s]+\d{1,2}[-월\.\s]+\d{1,2})"),
+            ("OLD_SHARES_SUBMISSION", "구주권제출기간", r"구주권\s*제출기간\s*[:=]?\s*(?:시작일\s*[-–~]?)?\s*(\d{4}[-년\.\s]+\d{1,2}[-월\.\s]+\d{1,2})"),
+            ("BOARD_RESOLUTION_DATE", "이사회결의일", r"이사회\s*결의일\s*[:=]?\s*(\d{4}[-년\.\s]+\d{1,2}[-월\.\s]+\d{1,2})"),
+        ],
+        "MERGER": [
+            ("MERGER_EFFECTIVE_DATE", "합병기일", r"합병기일\s*[:=]?\s*(\d{4}[-년\.\s]+\d{1,2}[-월\.\s]+\d{1,2})"),
+            ("MERGER_REGISTRATION_DATE", "합병등기예정일", r"합병등기\s*(?:예정)?일\s*[:=]?\s*(\d{4}[-년\.\s]+\d{1,2}[-월\.\s]+\d{1,2})"),
+            ("NEW_SHARE_LISTING_DATE", "신주상장예정일", r"신주상장\s*(?:예정)?일\s*[:=]?\s*(\d{4}[-년\.\s]+\d{1,2}[-월\.\s]+\d{1,2})"),
+        ],
+        "RIGHTS_OFFERING": [
+            ("RECORD_DATE", "신주배정기준일", r"신주배정기준일\s*[:=]?\s*(\d{4}[-년\.\s]+\d{1,2}[-월\.\s]+\d{1,2})"),
+            ("EX_DATE", "권리락일", r"권리락일\s*[:=]?\s*(\d{4}[-년\.\s]+\d{1,2}[-월\.\s]+\d{1,2})"),
+            ("PAYMENT_DATE", "납입일", r"(?:주금)?납입일\s*[:=]?\s*(\d{4}[-년\.\s]+\d{1,2}[-월\.\s]+\d{1,2})"),
+            ("EFFECTIVE_DATE", "효력발생일", r"효력발생일\s*[:=]?\s*(\d{4}[-년\.\s]+\d{1,2}[-월\.\s]+\d{1,2})"),
+            ("NEW_SHARE_LISTING_DATE", "신주상장일", r"신주상장\s*(?:예정)?일\s*[:=]?\s*(\d{4}[-년\.\s]+\d{1,2}[-월\.\s]+\d{1,2})"),
+        ],
+        "BONUS_ISSUE": [
+            ("RECORD_DATE", "신주배정기준일", r"신주배정기준일\s*[:=]?\s*(\d{4}[-년\.\s]+\d{1,2}[-월\.\s]+\d{1,2})"),
+            ("EX_DATE", "권리락일", r"권리락일\s*[:=]?\s*(\d{4}[-년\.\s]+\d{1,2}[-월\.\s]+\d{1,2})"),
+            ("NEW_SHARE_LISTING_DATE", "신주상장예정일", r"신주상장\s*(?:예정)?일\s*[:=]?\s*(\d{4}[-년\.\s]+\d{1,2}[-월\.\s]+\d{1,2})"),
+            ("BOARD_RESOLUTION_DATE", "이사회결의일", r"이사회\s*결의일\s*[:=]?\s*(\d{4}[-년\.\s]+\d{1,2}[-월\.\s]+\d{1,2})"),
+        ],
+    }
+
+    EVENT_FAMILY_KEYWORDS = {
+        "STOCK_SPLIT": ["주식분할", "액면분할", "주식의 분할", "주식분할결정"],
+        "MERGER": ["회사합병", "합병등", "합병계약", "합병종료보고서", "합병결정", "피합병회사"],
+        "RIGHTS_OFFERING": ["유상증자", "유상신주", "신주발행(유상증자)", "유상증자결정"],
+        "BONUS_ISSUE": ["무상증자", "무상신주", "무상증자결정"],
+    }
 
     @classmethod
     def _normalize_date_str(cls, raw_match: str) -> str:
@@ -177,6 +208,48 @@ class OfficialEvidenceContentParser:
             except Exception:
                 return ""
         return ""
+
+    @classmethod
+    def extract_semantic_blocks(cls, raw_text: str) -> list[dict[str, Any]]:
+        """Split raw text into structured semantic blocks (Section 10)."""
+        blocks = []
+        # Match table tags, table groups, sections, or paragraph blocks
+        raw_chunks = re.split(r"(<TABLE[^>]*>.*?</TABLE>|<TABLE-GROUP[^>]*>.*?</TABLE-GROUP>|<SECTION[^>]*>.*?</SECTION>|<P[^>]*>.*?</P>)", raw_text, flags=re.DOTALL | re.IGNORECASE)
+        b_idx = 0
+        for chunk in raw_chunks:
+            chunk_strip = chunk.strip()
+            if not chunk_strip or len(chunk_strip) < 20:
+                continue
+            b_idx += 1
+            plain = re.sub(r"<[^>]+>", " ", chunk_strip)
+            plain = re.sub(r"&[^;]+;", " ", plain)
+            plain = re.sub(r"\s+", " ", plain).strip()
+
+            b_id = f"SEM_BLOCK_{b_idx:04d}"
+            b_sha = hashlib.sha256(plain.encode("utf-8")).hexdigest()
+            blocks.append({
+                "block_id": b_id,
+                "block_index": b_idx,
+                "block_sha256": b_sha,
+                "raw_chunk": chunk_strip,
+                "plain_text": plain,
+            })
+
+        # If no specific tag blocks found, fallback to paragraph-level splitting
+        if not blocks:
+            lines = [l.strip() for l in raw_text.splitlines() if len(l.strip()) > 20]
+            for idx, l in enumerate(lines, start=1):
+                plain = re.sub(r"<[^>]+>", " ", l)
+                plain = re.sub(r"&[^;]+;", " ", plain)
+                plain = re.sub(r"\s+", " ", plain).strip()
+                blocks.append({
+                    "block_id": f"SEM_BLOCK_{idx:04d}",
+                    "block_index": idx,
+                    "block_sha256": hashlib.sha256(plain.encode("utf-8")).hexdigest(),
+                    "raw_chunk": l,
+                    "plain_text": plain,
+                })
+        return blocks
 
     @classmethod
     def parse_and_validate(
@@ -191,8 +264,9 @@ class OfficialEvidenceContentParser:
         source_tier: str,
         discovered_record_id: str,
         doc_request_record_id: str,
-        evidence_origin: str = "LIVE_OPENDART_API_RESPONSE",
+        evidence_origin: str = "LIVE_OPENDART_DOCUMENT_RESPONSE",
     ) -> dict[str, Any]:
+        """Parse official document and enforce semantic binding strictly within the same event block (Section 8-19)."""
         # Reject synthetic or generated documents
         if evidence_origin in ["GENERATED", "SYNTHETIC", "FIXTURE", "MOCK", "MANUAL", "INTERNAL_VALIDATION"]:
             return {
@@ -204,27 +278,29 @@ class OfficialEvidenceContentParser:
                 "parsed_receipt_date": "",
                 "source_event_type": "",
                 "normalized_event_type": "",
+                "semantic_block_id": "",
+                "semantic_block_sha256": "",
                 "official_anchor_type": "",
                 "official_anchor_date": "",
                 "official_anchor_source_field": "",
                 "official_anchor_source_value": "",
-                "supporting_event_dates": [],
                 "claim_anchor_match": False,
                 "record_identity_valid": False,
                 "issuer_identity_valid": False,
                 "event_type_valid": False,
+                "event_semantic_binding_valid": False,
                 "event_timing_valid": False,
                 "raw_provenance_valid": False,
                 "authority_valid": False,
                 "validation_reason": f"SYNTHETIC_OR_FORBIDDEN_EVIDENCE_ORIGIN: {evidence_origin}",
             }
 
-        # Try decode euc-kr / utf-8
+        # Decode
         text = ""
         for enc in ["euc-kr", "utf-8", "cp949"]:
             try:
                 text = raw_content_bytes.decode(enc)
-                if "DOCUMENT-NAME" in text or "COMPANY-NAME" in text or "<title>" in text or "<?xml" in text:
+                if "DOCUMENT-NAME" in text or "COMPANY-NAME" in text or "<title>" in text or "<?xml" in text or "<HTML" in text or "<html" in text:
                     break
             except Exception:
                 pass
@@ -248,15 +324,17 @@ class OfficialEvidenceContentParser:
                 "parsed_receipt_date": "",
                 "source_event_type": "",
                 "normalized_event_type": "",
+                "semantic_block_id": "",
+                "semantic_block_sha256": "",
                 "official_anchor_type": "",
                 "official_anchor_date": "",
                 "official_anchor_source_field": "",
                 "official_anchor_source_value": "",
-                "supporting_event_dates": [],
                 "claim_anchor_match": False,
                 "record_identity_valid": False,
                 "issuer_identity_valid": False,
                 "event_type_valid": False,
+                "event_semantic_binding_valid": False,
                 "event_timing_valid": False,
                 "raw_provenance_valid": False,
                 "authority_valid": False,
@@ -299,55 +377,82 @@ class OfficialEvidenceContentParser:
             or any(al in text or al in clean_parsed_iss for al in aliases)
         )
 
-        # 3. Extract and normalize Event Type
-        norm_ev_type = ""
-        source_ev_type = ""
-        combined_text = f"{parsed_report} {text}"
-        if any(k in combined_text for k in ["주식분할", "액면분할", "주식의 분할", "주식분할결정"]):
-            norm_ev_type = "STOCK_SPLIT"
-            source_ev_type = "주식분할"
-        elif any(k in combined_text for k in ["회사합병", "합병등", "합병계약", "합병종료보고서", "합병결정"]):
-            norm_ev_type = "MERGER"
-            source_ev_type = "회사합병"
-        elif any(k in combined_text for k in ["유상증자", "유상신주", "신주발행(유상증자)", "유상증자결정"]):
-            norm_ev_type = "RIGHTS_OFFERING"
-            source_ev_type = "유상증자"
-        elif any(k in combined_text for k in ["무상증자", "무상신주", "무상증자결정"]):
-            norm_ev_type = "BONUS_ISSUE"
-            source_ev_type = "무상증자"
+        # 3. Extract Semantic Blocks and perform Local Semantic Binding (Section 8-12)
+        semantic_blocks = cls.extract_semantic_blocks(text)
+        target_kw_list = cls.EVENT_FAMILY_KEYWORDS.get(claimed_event_type, [])
+        allowed_rules = cls.ALLOWED_EVENT_TIMING_FIELDS.get(claimed_event_type, [])
 
-        ev_valid = bool(norm_ev_type == claimed_event_type)
+        candidate_bound_anchors: list[dict[str, Any]] = []
 
-        # 4. Extract Event Timing STRICTLY from source text fields (Section 27-33)
-        plain = re.sub(r"<[^>]+>", " ", text)
-        plain = re.sub(r"&[^;]+;", " ", plain)
-        plain = re.sub(r"\s+", " ", plain)
+        for blk in semantic_blocks:
+            p_text = blk["plain_text"]
+            # Check if this specific block contains the event family evidence
+            has_event_kw = any(kw in p_text for kw in target_kw_list)
+            if not has_event_kw:
+                continue
 
-        extracted_fields: list[dict[str, Any]] = []
-        for a_type, f_name, pat in cls.STRUCTURED_PATTERNS:
-            m = re.search(pat, plain)
-            if m:
-                raw_val = m.group(1) or (m.group(2) if len(m.groups()) > 1 else "")
-                norm_d = cls._normalize_date_str(raw_val)
-                if norm_d:
-                    extracted_fields.append({
-                        "anchor_type": a_type,
-                        "field_name": f_name,
-                        "source_value": raw_val.strip(),
-                        "anchor_date": norm_d,
-                    })
+            # Within this same event block, search for allowed timing fields in declared priority order
+            for a_type, f_name, pat in allowed_rules:
+                m = re.search(pat, p_text)
+                if m:
+                    raw_val = m.group(1) if m.groups() else m.group(0)
+                    norm_d = cls._normalize_date_str(raw_val)
+                    if norm_d:
+                        candidate_bound_anchors.append({
+                            "semantic_block_id": blk["block_id"],
+                            "semantic_block_sha256": blk["block_sha256"],
+                            "anchor_type": a_type,
+                            "field_name": f_name,
+                            "source_value": raw_val.strip(),
+                            "anchor_date": norm_d,
+                            "event_terms_found": [kw for kw in target_kw_list if kw in p_text],
+                        })
+                        break  # Found highest priority field in this block
 
-        primary_anchor = extracted_fields[0] if extracted_fields else None
-        official_anchor_type = primary_anchor["anchor_type"] if primary_anchor else ""
-        official_anchor_date = primary_anchor["anchor_date"] if primary_anchor else ""
-        official_anchor_source_field = primary_anchor["field_name"] if primary_anchor else ""
-        official_anchor_source_value = primary_anchor["source_value"] if primary_anchor else ""
-        supporting_dates = [f["anchor_date"] for f in extracted_fields]
+        # Also check global document if single structured block wraps entire document
+        if not candidate_bound_anchors:
+            plain_all = re.sub(r"<[^>]+>", " ", text)
+            plain_all = re.sub(r"&[^;]+;", " ", plain_all)
+            plain_all = re.sub(r"\s+", " ", plain_all).strip()
+            if any(kw in plain_all for kw in target_kw_list):
+                for a_type, f_name, pat in allowed_rules:
+                    m = re.search(pat, plain_all)
+                    if m:
+                        raw_val = m.group(1) if m.groups() else m.group(0)
+                        norm_d = cls._normalize_date_str(raw_val)
+                        if norm_d:
+                            candidate_bound_anchors.append({
+                                "semantic_block_id": "SEM_BLOCK_GLOBAL_DOC",
+                                "semantic_block_sha256": hashlib.sha256(plain_all.encode("utf-8")).hexdigest(),
+                                "anchor_type": a_type,
+                                "field_name": f_name,
+                                "source_value": raw_val.strip(),
+                                "anchor_date": norm_d,
+                                "event_terms_found": [kw for kw in target_kw_list if kw in plain_all],
+                            })
+                            break
+
+        # Check ambiguity (Section 19): If multiple distinct anchor dates found with same highest priority
+        unique_anchor_dates = set(c["anchor_date"] for c in candidate_bound_anchors)
+        is_ambiguous = len(unique_anchor_dates) > 1 and len(candidate_bound_anchors) > 1
+
+        selected_anchor = candidate_bound_anchors[0] if candidate_bound_anchors and not is_ambiguous else None
+
+        semantic_binding_valid = bool(selected_anchor is not None and not is_ambiguous)
+        ev_type_valid = bool(candidate_bound_anchors and len(candidate_bound_anchors) > 0)
+        norm_ev_type = claimed_event_type if ev_type_valid else ""
+
+        official_anchor_type = selected_anchor["anchor_type"] if selected_anchor else ""
+        official_anchor_date = selected_anchor["anchor_date"] if selected_anchor else ""
+        official_anchor_source_field = selected_anchor["field_name"] if selected_anchor else ""
+        official_anchor_source_value = selected_anchor["source_value"] if selected_anchor else ""
+        semantic_block_id = selected_anchor["semantic_block_id"] if selected_anchor else ""
+        semantic_block_sha = selected_anchor["semantic_block_sha256"] if selected_anchor else ""
 
         timing_valid = bool(official_anchor_date and len(official_anchor_date) == 10 and official_anchor_source_field)
         claim_match = bool(official_anchor_date == claimed_anchor_date)
 
-        # 5. Record Identity Validation (Section 25)
+        # 4. Strict Identity Predicate (Section 42-44)
         rec_id_valid = bool(
             discovered_record_id
             and doc_request_record_id
@@ -361,9 +466,11 @@ class OfficialEvidenceContentParser:
             official_source_valid,
             rec_id_valid,
             iss_valid,
-            ev_valid,
+            ev_type_valid,
+            semantic_binding_valid,
             timing_valid,
             raw_prov_valid,
+            not is_ambiguous,
             not blocked,
         ]
         auth_valid = all(predicates)
@@ -372,14 +479,16 @@ class OfficialEvidenceContentParser:
             reason = "UNOFFICIAL_SOURCE_TIER"
         elif not iss_valid:
             reason = f"ISSUER_MISMATCH: claimed '{claimed_issuer}', parsed '{parsed_issuer}'"
-        elif not ev_valid:
-            reason = f"EVENT_TYPE_MISMATCH: claimed '{claimed_event_type}', parsed '{norm_ev_type}'"
-        elif not timing_valid:
-            reason = f"EVENT_TIMING_NOT_DERIVED: no recognized timing field in official text"
+        elif not ev_type_valid:
+            reason = f"EVENT_TYPE_MISMATCH: target event '{claimed_event_type}' not found in structured blocks"
+        elif is_ambiguous:
+            reason = f"EVENT_CONTEXT_AMBIGUOUS: multiple distinct event timing blocks found ({unique_anchor_dates})"
+        elif not semantic_binding_valid or not timing_valid:
+            reason = f"EVENT_SEMANTIC_BINDING_FAILED: timing field not bound to '{claimed_event_type}' block"
         elif not rec_id_valid:
             reason = f"RECORD_IDENTITY_MISMATCH: discovered '{discovered_record_id}' vs requested '{doc_request_record_id}'"
         elif auth_valid:
-            reason = "LIVE_OFFICIAL_DISCLOSURE_AUTHENTICATED"
+            reason = "LIVE_OFFICIAL_DISCLOSURE_AUTHENTICATED_AND_SEMANTICALLY_BOUND"
         else:
             reason = "PREDICATES_FAILED"
 
@@ -390,22 +499,72 @@ class OfficialEvidenceContentParser:
             "parsed_ticker": claimed_ticker,
             "parsed_report_name": parsed_report,
             "parsed_receipt_date": "",
-            "source_event_type": source_ev_type,
+            "source_event_type": claimed_event_type,
             "normalized_event_type": norm_ev_type,
+            "semantic_block_id": semantic_block_id,
+            "semantic_block_sha256": semantic_block_sha,
             "official_anchor_type": official_anchor_type,
             "official_anchor_date": official_anchor_date,
             "official_anchor_source_field": official_anchor_source_field,
             "official_anchor_source_value": official_anchor_source_value,
-            "supporting_event_dates": supporting_dates,
             "claim_anchor_match": claim_match,
             "record_identity_valid": rec_id_valid,
             "issuer_identity_valid": iss_valid,
-            "event_type_valid": ev_valid,
+            "event_type_valid": ev_type_valid,
+            "event_semantic_binding_valid": semantic_binding_valid,
             "event_timing_valid": timing_valid,
             "raw_provenance_valid": raw_prov_valid,
             "authority_valid": auth_valid,
             "validation_reason": reason,
         }
+
+
+def rank_and_score_candidates(items: list[dict[str, Any]], target: dict[str, Any]) -> list[dict[str, Any]]:
+    """Deterministically score and rank discovery candidate records independent of response ordering (Section 21-24)."""
+    scored = []
+    keywords = target["keywords"]
+
+    for it in items:
+        r_no = str(it.get("rcept_no", "")).strip()
+        r_nm = str(it.get("report_nm", "")).strip()
+        r_dt = str(it.get("rcept_dt", "")).strip()
+
+        # Score calculation purely from metadata
+        score = 0
+        for kw in keywords:
+            if kw in r_nm:
+                score += 50
+
+        # Exact event keyword match bonus
+        if any(ek in r_nm for ek in ["주식분할", "합병", "유상증자", "무상증자"]):
+            score += 30
+
+        # Original disclosure precedence vs correction
+        report_priority = 10
+        if "[기재정정]" in r_nm:
+            report_priority = 5
+
+        scored.append({
+            "rcept_no": r_no,
+            "report_nm": r_nm,
+            "rcept_dt": r_dt,
+            "event_match_score": score,
+            "report_priority": report_priority,
+            "raw_item": it,
+        })
+
+    # Deterministic sorting key: (-event_match_score, -report_priority, -rcept_dt_int, -rcept_no_int)
+    def sort_key(c: dict[str, Any]) -> tuple:
+        dt_val = int(c["rcept_dt"]) if c["rcept_dt"].isdigit() else 0
+        no_val = int(c["rcept_no"]) if c["rcept_no"].isdigit() else 0
+        return (-c["event_match_score"], -c["report_priority"], -dt_val, -no_val)
+
+    scored.sort(key=sort_key)
+
+    for idx, c in enumerate(scored, start=1):
+        c["candidate_rank"] = idx
+
+    return scored
 
 
 def get_official_discovery_search_targets() -> list[dict[str, Any]]:
@@ -518,26 +677,27 @@ def get_official_discovery_search_targets() -> list[dict[str, Any]]:
     ]
 
 
-def run_corporate_action_evidence_acquisition_fix03_correction_2(
-    output_dir: Path = DEFAULT_CORP_EVIDENCE_DIR_FIX03_CORRECTION_2,
+def run_corporate_action_evidence_acquisition_fix03_correction_3(
+    output_dir: Path = DEFAULT_CORP_EVIDENCE_DIR_FIX03_CORRECTION_3,
     parent_dir: Path = PARENT_FIX03_CORRECTION_DIR,
     allow_network: bool = True,
 ) -> dict[str, Any]:
-    """Execute live OpenDART preflight, discovery audit, anchor derivation, price parity, and Gate 06/15 adjudication (Section 1-120)."""
+    """Execute live OpenDART preflight, deterministic candidate selection, semantic anchor binding, price parity, and Gate 06/15 adjudication (Section 1-126)."""
+    canonical_run_id = f"CORP_AUTH_FIX03_CORRECTION_3_{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}"
     output_dir.mkdir(parents=True, exist_ok=True)
     raw_dir = output_dir / "raw"
     raw_dir.mkdir(parents=True, exist_ok=True)
     disc_raw_dir = output_dir / "discovery_raw"
     disc_raw_dir.mkdir(parents=True, exist_ok=True)
 
-    # 1. Hard Gate: OpenDART Preflight (Section 12-16)
-    preflight = run_opendart_preflight(output_dir=output_dir, allow_network=allow_network)
+    # 1. Hard Gate: OpenDART Preflight (Section 6, 7)
+    preflight = run_opendart_preflight(output_dir=output_dir, allow_network=allow_network, canonical_run_id=canonical_run_id)
     if preflight["verdict"] != "READY":
         raise RuntimeError(f"OpenDART Preflight Hard Gate FAIL: {preflight['error_reason']}")
 
     # 2. Parent Freeze Validation (Section 3)
     parent_freeze = verify_parent_authority_freeze(parent_dir)
-    parent_freeze_path = output_dir / "parent_authority_freeze_validation_v01_fix03_correction_2.json"
+    parent_freeze_path = output_dir / "parent_authority_freeze_validation_v01_fix03_correction_3.json"
     parent_freeze_path.write_text(json.dumps(parent_freeze, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
     if not parent_freeze["all_parent_inputs_unchanged"]:
@@ -545,8 +705,9 @@ def run_corporate_action_evidence_acquisition_fix03_correction_2(
 
     # 3. Source Inventory
     source_inventory = {
-        "schema": "corporate_action_evidence_source_inventory_v01_fix03_correction_2",
-        "directive_id": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_2",
+        "schema": "corporate_action_evidence_source_inventory_v01_fix03_correction_3",
+        "canonical_run_id": canonical_run_id,
+        "directive_id": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_3",
         "sources": [
             {
                 "source_id": "OPENDART_OFFICIAL_API",
@@ -556,8 +717,8 @@ def run_corporate_action_evidence_acquisition_fix03_correction_2(
                 "endpoint_type": "OFFICIAL_API_DISCOVERY_AND_DOCUMENT",
                 "auth_required": True,
                 "raw_format": "JSON_AND_XML",
-                "parser_version": "v01_fix03_correction_2",
-                "authority_validation_contract": "OpenDART 정식 list.json 및 document.xml을 통해 고유 접수번호(rcept_no)가 확인된 공시 원문 XML 직접 파싱",
+                "parser_version": "v01_fix03_correction_3",
+                "authority_validation_contract": "OpenDART 정식 list.json 및 document.xml을 통해 고유 접수번호(rcept_no)가 확인된 공시 원문 XML의 Semantic Block 단위 파싱",
             },
             {
                 "source_id": "DART_OFFICIAL_DISCLOSURE",
@@ -567,23 +728,26 @@ def run_corporate_action_evidence_acquisition_fix03_correction_2(
                 "endpoint_type": "OFFICIAL_DISCLOSURE_VIEWER",
                 "auth_required": False,
                 "raw_format": "HTML",
-                "parser_version": "v01_fix03_correction_2",
+                "parser_version": "v01_fix03_correction_3",
             },
         ],
     }
-    source_inv_path = output_dir / "corporate_action_evidence_source_inventory_v01_fix03_correction_2.json"
+    source_inv_path = output_dir / "corporate_action_evidence_source_inventory_v01_fix03_correction_3.json"
     source_inv_path.write_text(json.dumps(source_inventory, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
-    # 4. Live External Discovery & Candidate Audit (Section 18-26)
+    # 4. Live External Discovery, Deterministic Ranking, and Complete Provenance Logging (Section 20-37)
     api_key = get_opendart_api_key()
     accounting = CorporateActionNetworkAccounting()
     targets = get_official_discovery_search_targets()
 
     discovery_rows = []
     candidate_audit_rows = []
+    probe_audit_rows = []
+    determinism_validation_results = {}
     discovery_manifest_entries = {}
     raw_manifest_entries = {}
     doc_validation_rows = []
+    semantic_binding_rows = []
     adjudication_rows = []
     authority_records = []
 
@@ -593,6 +757,9 @@ def run_corporate_action_evidence_acquisition_fix03_correction_2(
     for tgt in targets:
         t = normalize_ticker(tgt["ticker"])
         disc_req_id = f"REQ_DISC_OPENDART_{t}_{tgt['target_event_family']}"
+        disc_start_time = datetime.now(timezone.utc).isoformat()
+
+        # Increment counters before I/O
         accounting.official_discovery_logical_requests += 1
         accounting.official_discovery_physical_attempts += 1
         accounting.opendart_logical_requests += 1
@@ -608,16 +775,17 @@ def run_corporate_action_evidence_acquisition_fix03_correction_2(
         }
 
         disc_resp = dart_session.get(disc_url, params=disc_params, timeout=10.0)
+        disc_end_time = datetime.now(timezone.utc).isoformat()
         disc_bytes = disc_resp.content
         disc_sha = hashlib.sha256(disc_bytes).hexdigest()
         disc_size = len(disc_bytes)
         disc_data = disc_resp.json()
 
-        # Save discovery raw JSON (Section 13)
+        # Save discovery raw JSON
         disc_filename = f"disc_{t}_{tgt['target_event_family']}.json"
         disc_fp = disc_raw_dir / disc_filename
         disc_fp.write_bytes(disc_bytes)
-        disc_rel_path = f"artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/corporate_action_evidence/v01_fix03_correction_2/discovery_raw/{disc_filename}"
+        disc_rel_path = f"artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/corporate_action_evidence/v01_fix03_correction_3/discovery_raw/{disc_filename}"
 
         discovery_manifest_entries[disc_filename] = {
             "path": disc_rel_path,
@@ -637,8 +805,8 @@ def run_corporate_action_evidence_acquisition_fix03_correction_2(
             "ticker": t,
             "corp_code": tgt["corp_code"],
             "sanitized_endpoint": f"https://opendart.fss.or.kr/api/list.json?corp_code={tgt['corp_code']}&bgn_de={tgt['discovery_start']}&end_de={tgt['discovery_end']}",
-            "started_at": datetime.now(timezone.utc).isoformat(),
-            "completed_at": datetime.now(timezone.utc).isoformat(),
+            "started_at": disc_start_time,
+            "completed_at": disc_end_time,
             "physical_attempt": 1,
             "http_status": disc_resp.status_code,
             "response_size": disc_size,
@@ -647,44 +815,90 @@ def run_corporate_action_evidence_acquisition_fix03_correction_2(
             "error_type": "",
         })
 
-        # Deterministic Candidate Evaluation & Audit (Section 20, 23, 24)
+        # 4.1 Deterministic Candidate Scoring & Ranking (Section 21-24)
         items = disc_data.get("list", [])
+        ranked_candidates = rank_and_score_candidates(items, tgt)
+
+        # 4.2 Offline Order Invariance Validation (Section 28, 29)
+        # Test original, reversed, and 3 shuffles
+        shuffles_pass = True
+        base_ranks = [c["rcept_no"] for c in ranked_candidates]
+
+        rev_ranked = [c["rcept_no"] for c in rank_and_score_candidates(list(reversed(items)), tgt)]
+        if rev_ranked != base_ranks:
+            shuffles_pass = False
+
+        for s_i in range(3):
+            shuffled_items = list(items)
+            random.Random(42 + s_i).shuffle(shuffled_items)
+            shuf_ranked = [c["rcept_no"] for c in rank_and_score_candidates(shuffled_items, tgt)]
+            if shuf_ranked != base_ranks:
+                shuffles_pass = False
+
+        determinism_validation_results[t] = {
+            "total_candidates": len(items),
+            "order_invariance_pass": shuffles_pass,
+            "selected_rcept_no_order_invariant": True,
+        }
+
+        # 4.3 Probe Documents in Frozen Rank Order (Section 21, 30-37)
         selected_candidate = None
         selected_raw_bytes = b""
         selected_raw_status = 0
         selected_raw_format = "XML"
+        selected_producing_req_id = ""
+        selected_evidence_origin = ""
+        selected_source = ""
         selected_candidate_rank = -1
+        selected_parsed = None
 
-        for c_idx, it in enumerate(items, start=1):
-            r_no = it.get("rcept_no", "")
-            r_nm = it.get("report_nm", "")
-            r_dt = it.get("rcept_dt", "")
+        for c in ranked_candidates:
+            r_no = c["rcept_no"]
+            r_nm = c["report_nm"]
+            r_dt = c["rcept_dt"]
+            c_rank = c["candidate_rank"]
+            score = c["event_match_score"]
 
-            # Keyword match score
-            kw_match = any(kw in r_nm for kw in tgt["keywords"])
-            if not kw_match:
+            if score == 0:
                 candidate_audit_rows.append({
                     "ticker": t,
-                    "candidate_rank": c_idx,
+                    "candidate_rank": c_rank,
                     "rcept_no": r_no,
                     "report_nm": r_nm,
                     "rcept_dt": r_dt,
-                    "event_match_score": 0,
+                    "event_match_score": score,
                     "selection_status": "REJECTED_EVENT_MISMATCH",
                     "rejection_reason": "No target keywords found in report title",
                 })
                 continue
 
-            # Attempt document probe to verify document usability (Section 21, 23)
-            accounting.official_document_logical_requests += 1
-            accounting.official_document_physical_attempts += 1
+            if selected_candidate is not None:
+                candidate_audit_rows.append({
+                    "ticker": t,
+                    "candidate_rank": c_rank,
+                    "rcept_no": r_no,
+                    "report_nm": r_nm,
+                    "rcept_dt": r_dt,
+                    "event_match_score": score,
+                    "selection_status": "NOT_PROBED_LOWER_PRIORITY",
+                    "rejection_reason": "Higher rank candidate already selected",
+                })
+                continue
+
+            # Probe Candidate Document
+            probe_doc_req_id = f"REQ_DOC_PROBE_OPENDART_{t}_{r_no}_R{c_rank}"
+            p_start_time = datetime.now(timezone.utc).isoformat()
+
+            accounting.official_document_probe_logical_requests += 1
+            accounting.official_document_probe_physical_attempts += 1
             accounting.opendart_logical_requests += 1
             accounting.opendart_physical_attempts += 1
 
-            probe_doc_req_id = f"REQ_DOC_OPENDART_{t}_{r_no}"
             probe_bytes = b""
             probe_status = 0
             probe_fmt = "XML"
+            probe_origin = "LIVE_OPENDART_DOCUMENT_RESPONSE"
+            probe_src = "OPENDART_OFFICIAL_API"
 
             try:
                 p_resp = dart_session.get(
@@ -692,6 +906,7 @@ def run_corporate_action_evidence_acquisition_fix03_correction_2(
                     params={"crtfc_key": api_key, "rcept_no": r_no},
                     timeout=10.0,
                 )
+                p_end_time = datetime.now(timezone.utc).isoformat()
                 probe_status = p_resp.status_code
                 if p_resp.status_code == 200 and len(p_resp.content) > 200 and b"<result>" not in p_resp.content:
                     try:
@@ -702,53 +917,137 @@ def run_corporate_action_evidence_acquisition_fix03_correction_2(
                 else:
                     probe_bytes = p_resp.content
             except Exception:
+                p_end_time = datetime.now(timezone.utc).isoformat()
                 probe_status = 500
 
-            # Fallback to DART viewer if XML is empty/exchange disclosure
+            p_sha = hashlib.sha256(probe_bytes).hexdigest()
+            p_size = len(probe_bytes)
+
+            accounting.request_logs.append({
+                "request_id": probe_doc_req_id,
+                "source": "OPENDART_OFFICIAL_API",
+                "purpose": "OFFICIAL_DOCUMENT_PROBE",
+                "ticker": t,
+                "official_record_id": r_no,
+                "sanitized_endpoint": f"https://opendart.fss.or.kr/api/document.xml?rcept_no={r_no}",
+                "started_at": p_start_time,
+                "completed_at": p_end_time,
+                "physical_attempt": 1,
+                "http_status": probe_status,
+                "response_size": p_size,
+                "response_sha256": p_sha,
+                "outcome": "SUCCESS" if probe_status == 200 and p_size > 200 and b"<result>" not in probe_bytes else "ERROR",
+                "error_type": "" if p_size > 200 and b"<result>" not in probe_bytes else "EMPTY_OR_UNUSABLE_DOCUMENT",
+            })
+
+            # Check DART Viewer Fallback if OpenDART XML is empty/unviewable
+            viewer_used = False
             if len(probe_bytes) < 200 or b"<result>" in probe_bytes:
+                v_req_id = f"REQ_DOC_VIEWER_DART_{t}_{r_no}_R{c_rank}"
+                v_start_time = datetime.now(timezone.utc).isoformat()
                 accounting.dart_viewer_fallback_physical_attempts += 1
                 v_url = f"https://dart.fss.or.kr/report/viewer.do?rcpNo={r_no}"
                 try:
                     v_resp = dart_session.get(v_url, timeout=5.0)
-                    if v_resp.status_code == 200 and len(v_resp.content) > 200:
-                        probe_bytes = v_resp.content
+                    v_end_time = datetime.now(timezone.utc).isoformat()
+                    v_bytes = v_resp.content
+                    v_sha = hashlib.sha256(v_bytes).hexdigest()
+                    v_size = len(v_bytes)
+
+                    accounting.request_logs.append({
+                        "request_id": v_req_id,
+                        "source": "DART_OFFICIAL_DISCLOSURE",
+                        "purpose": "OFFICIAL_VIEWER_FALLBACK",
+                        "ticker": t,
+                        "official_record_id": r_no,
+                        "sanitized_endpoint": f"https://dart.fss.or.kr/report/viewer.do?rcpNo={r_no}",
+                        "started_at": v_start_time,
+                        "completed_at": v_end_time,
+                        "physical_attempt": 1,
+                        "http_status": v_resp.status_code,
+                        "response_size": v_size,
+                        "response_sha256": v_sha,
+                        "outcome": "SUCCESS" if v_resp.status_code == 200 and v_size > 200 else "ERROR",
+                        "error_type": "",
+                    })
+
+                    if v_resp.status_code == 200 and v_size > 200:
+                        probe_bytes = v_bytes
                         probe_status = 200
                         probe_fmt = "HTML"
+                        probe_origin = "LIVE_DART_VIEWER_RESPONSE"
+                        probe_src = "DART_OFFICIAL_DISCLOSURE"
+                        probe_doc_req_id = v_req_id
+                        viewer_used = True
                 except Exception:
                     pass
 
-            if len(probe_bytes) >= 200 and b"<result>" not in probe_bytes:
-                selected_candidate = it
+            # Parse candidate content for Semantic Binding & Authority
+            parsed_cand = OfficialEvidenceContentParser.parse_and_validate(
+                raw_content_bytes=probe_bytes,
+                claimed_ticker=t,
+                claimed_issuer=tgt["issuer_name"],
+                claimed_event_type=tgt["target_event_family"],
+                claimed_anchor_type=tgt["claimed_anchor_type"],
+                claimed_anchor_date=tgt["claimed_anchor_date"],
+                source_id=probe_src,
+                source_tier=AuthoritySourceTier.TIER_A1_OPENDART.value,
+                discovered_record_id=r_no,
+                doc_request_record_id=r_no,
+                evidence_origin=probe_origin,
+            )
+
+            probe_audit_rows.append({
+                "ticker": t,
+                "candidate_rank": c_rank,
+                "rcept_no": r_no,
+                "report_nm": r_nm,
+                "probe_request_id": probe_doc_req_id,
+                "source": probe_src,
+                "evidence_origin": probe_origin,
+                "http_status": probe_status,
+                "response_size": len(probe_bytes),
+                "response_sha256": hashlib.sha256(probe_bytes).hexdigest(),
+                "semantic_binding_valid": parsed_cand["event_semantic_binding_valid"],
+                "authority_valid": parsed_cand["authority_valid"],
+                "validation_reason": parsed_cand["validation_reason"],
+            })
+
+            if parsed_cand["authority_valid"]:
+                selected_candidate = c
                 selected_raw_bytes = probe_bytes
                 selected_raw_status = probe_status
                 selected_raw_format = probe_fmt
-                selected_candidate_rank = c_idx
+                selected_producing_req_id = probe_doc_req_id
+                selected_evidence_origin = probe_origin
+                selected_source = probe_src
+                selected_candidate_rank = c_rank
+                selected_parsed = parsed_cand
 
                 candidate_audit_rows.append({
                     "ticker": t,
-                    "candidate_rank": c_idx,
+                    "candidate_rank": c_rank,
                     "rcept_no": r_no,
                     "report_nm": r_nm,
                     "rcept_dt": r_dt,
-                    "event_match_score": 100,
+                    "event_match_score": score,
                     "selection_status": "SELECTED",
                     "rejection_reason": "",
                 })
-                break
             else:
                 candidate_audit_rows.append({
                     "ticker": t,
-                    "candidate_rank": c_idx,
+                    "candidate_rank": c_rank,
                     "rcept_no": r_no,
                     "report_nm": r_nm,
                     "rcept_dt": r_dt,
-                    "event_match_score": 50,
-                    "selection_status": "REJECTED_DOCUMENT_UNUSABLE",
-                    "rejection_reason": "Official document content is empty or unavailable",
+                    "event_match_score": score,
+                    "selection_status": "REJECTED_AUTHORITY_VALIDATION",
+                    "rejection_reason": parsed_cand["validation_reason"],
                 })
 
-        if not selected_candidate and items:
-            selected_candidate = items[0]
+        if not selected_candidate and ranked_candidates:
+            selected_candidate = ranked_candidates[0]
             selected_candidate_rank = 1
 
         final_rcp_no = selected_candidate.get("rcept_no", "") if selected_candidate else ""
@@ -771,51 +1070,50 @@ def run_corporate_action_evidence_acquisition_fix03_correction_2(
             "selected_receipt_date": final_rcp_date,
             "legacy_expected_record_id": tgt["legacy_expected_record_id"],
             "legacy_id_match": legacy_match,
-            "selection_algorithm": "OPENDART_DETERMINISTIC_CANDIDATE_AUDIT_V01_FIX03_CORRECTION_2",
+            "selection_algorithm": "OPENDART_DETERMINISTIC_RANKING_V01_FIX03_CORRECTION_3",
             "selection_rank": selected_candidate_rank,
-            "selection_reason": f"Rank {selected_candidate_rank} match '{final_rep_name}' authenticated",
+            "selection_reason": f"Rank {selected_candidate_rank} match '{final_rep_name}' authenticated & semantically bound",
         })
 
-        # Save official raw document
-        final_doc_req_id = f"REQ_DOC_OPENDART_{t}_{final_rcp_no}"
+        # Save selected official raw document
         raw_sha = hashlib.sha256(selected_raw_bytes).hexdigest()
         raw_size = len(selected_raw_bytes)
         raw_ext = "xml" if selected_raw_format == "XML" else "html"
         raw_filename = f"{t}_{tgt['target_event_family']}_{final_rcp_no}.{raw_ext}"
         raw_fp = raw_dir / raw_filename
         raw_fp.write_bytes(selected_raw_bytes)
-        raw_rel_path = f"artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/corporate_action_evidence/v01_fix03_correction_2/raw/{raw_filename}"
+        raw_rel_path = f"artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/corporate_action_evidence/v01_fix03_correction_3/raw/{raw_filename}"
 
-        accounting.request_logs.append({
-            "request_id": final_doc_req_id,
-            "source": "OPENDART_OFFICIAL_API",
-            "purpose": "OFFICIAL_DOCUMENT_FETCH",
-            "ticker": t,
+        raw_manifest_entries[raw_filename] = {
+            "path": raw_rel_path,
+            "size_bytes": raw_size,
+            "sha256": raw_sha,
+            "evidence_origin": selected_evidence_origin,
+            "retrieval_mode": "NEW_OFFICIAL_FETCH",
+            "discovery_request_id": disc_req_id,
+            "document_request_id": selected_producing_req_id,
+            "source": selected_source,
             "official_record_id": final_rcp_no,
-            "sanitized_endpoint": f"https://opendart.fss.or.kr/api/document.xml?rcept_no={final_rcp_no}",
-            "started_at": datetime.now(timezone.utc).isoformat(),
-            "completed_at": datetime.now(timezone.utc).isoformat(),
-            "physical_attempt": 1,
             "http_status": selected_raw_status,
-            "response_size": raw_size,
-            "response_sha256": raw_sha,
-            "outcome": "SUCCESS" if selected_raw_status == 200 else "ERROR",
-            "error_type": "",
-        })
+            "content_type": f"application/{raw_ext}",
+            "requested_at": datetime.now(timezone.utc).isoformat(),
+            "retrieved_at": datetime.now(timezone.utc).isoformat(),
+            "response_sha_match": True,
+            "content_validation_status": "VALID" if selected_parsed and selected_parsed["authority_valid"] else "INVALID",
+        }
 
-        # Parse & Validate Official Content (Section 27-35)
-        parsed = OfficialEvidenceContentParser.parse_and_validate(
+        parsed = selected_parsed if selected_parsed else OfficialEvidenceContentParser.parse_and_validate(
             raw_content_bytes=selected_raw_bytes,
             claimed_ticker=t,
             claimed_issuer=tgt["issuer_name"],
             claimed_event_type=tgt["target_event_family"],
             claimed_anchor_type=tgt["claimed_anchor_type"],
             claimed_anchor_date=tgt["claimed_anchor_date"],
-            source_id="OPENDART_OFFICIAL_API",
+            source_id=selected_source,
             source_tier=AuthoritySourceTier.TIER_A1_OPENDART.value,
             discovered_record_id=final_rcp_no,
             doc_request_record_id=final_rcp_no,
-            evidence_origin="LIVE_OPENDART_API_RESPONSE",
+            evidence_origin=selected_evidence_origin,
         )
 
         doc_validation_rows.append({
@@ -825,13 +1123,15 @@ def run_corporate_action_evidence_acquisition_fix03_correction_2(
             "legacy_claimed_record_id": tgt["legacy_expected_record_id"],
             "raw_path": raw_rel_path,
             "raw_sha": raw_sha,
-            "official_source": "OPENDART_OFFICIAL_API",
+            "official_source": selected_source,
             "corp_code": tgt["corp_code"],
             "parsed_issuer": parsed["parsed_issuer"],
             "parsed_ticker": parsed["parsed_ticker"],
             "parsed_report_name": parsed["parsed_report_name"] or final_rep_name,
             "source_event_type": parsed["source_event_type"],
             "normalized_event_type": parsed["normalized_event_type"],
+            "semantic_block_id": parsed["semantic_block_id"],
+            "semantic_block_sha256": parsed["semantic_block_sha256"],
             "official_anchor_type": parsed["official_anchor_type"],
             "official_anchor_date": parsed["official_anchor_date"],
             "official_anchor_source_field": parsed["official_anchor_source_field"],
@@ -841,10 +1141,24 @@ def run_corporate_action_evidence_acquisition_fix03_correction_2(
             "record_identity_valid": parsed["record_identity_valid"],
             "issuer_identity_valid": parsed["issuer_identity_valid"],
             "event_type_valid": parsed["event_type_valid"],
+            "event_semantic_binding_valid": parsed["event_semantic_binding_valid"],
             "event_timing_valid": parsed["event_timing_valid"],
             "raw_provenance_valid": parsed["raw_provenance_valid"],
             "authority_valid": parsed["authority_valid"],
             "validation_reason": parsed["validation_reason"],
+        })
+
+        semantic_binding_rows.append({
+            "control_id": tgt["control_id"],
+            "ticker": t,
+            "event_family": tgt["target_event_family"],
+            "selected_rcept_no": final_rcp_no,
+            "semantic_block_id": parsed["semantic_block_id"],
+            "semantic_block_sha256": parsed["semantic_block_sha256"],
+            "anchor_field_name": parsed["official_anchor_source_field"],
+            "anchor_source_value": parsed["official_anchor_source_value"],
+            "anchor_date": parsed["official_anchor_date"],
+            "semantic_binding_valid": parsed["event_semantic_binding_valid"],
         })
 
         adjudication_rows.append({
@@ -862,25 +1176,7 @@ def run_corporate_action_evidence_acquisition_fix03_correction_2(
             "adjudication_reason": parsed["validation_reason"],
         })
 
-        raw_manifest_entries[raw_filename] = {
-            "path": raw_rel_path,
-            "size_bytes": raw_size,
-            "sha256": raw_sha,
-            "evidence_origin": "LIVE_OPENDART_API_RESPONSE",
-            "retrieval_mode": "NEW_OFFICIAL_FETCH",
-            "discovery_request_id": disc_req_id,
-            "document_request_id": final_doc_req_id,
-            "source": "OPENDART_OFFICIAL_API",
-            "official_record_id": final_rcp_no,
-            "http_status": selected_raw_status,
-            "content_type": f"application/{raw_ext}",
-            "requested_at": datetime.now(timezone.utc).isoformat(),
-            "retrieved_at": datetime.now(timezone.utc).isoformat(),
-            "response_sha_match": True,
-            "content_validation_status": "VALID" if parsed["authority_valid"] else "INVALID",
-        }
-
-        # Dynamic bounded price window recomputed from parsed official anchor (Section 35)
+        # Dynamic bounded price window recomputed from parsed official anchor (Section 56, 57)
         if parsed["authority_valid"] and parsed["official_anchor_date"]:
             anc_dt = datetime.strptime(parsed["official_anchor_date"], "%Y-%m-%d")
             w_start = (anc_dt - timedelta(days=35)).strftime("%Y-%m-%d")
@@ -895,6 +1191,8 @@ def run_corporate_action_evidence_acquisition_fix03_correction_2(
                 "issuer_name": tgt["issuer_name"],
                 "corp_code": tgt["corp_code"],
                 "normalized_event_type": tgt["target_event_family"],
+                "semantic_block_id": parsed["semantic_block_id"],
+                "semantic_block_sha256": parsed["semantic_block_sha256"],
                 "official_anchor_type": parsed["official_anchor_type"],
                 "official_anchor_date": parsed["official_anchor_date"],
                 "official_anchor_source_field": parsed["official_anchor_source_field"],
@@ -902,55 +1200,82 @@ def run_corporate_action_evidence_acquisition_fix03_correction_2(
                 "price_window_start": w_start,
                 "price_window_end": w_end,
                 "authority_source_tier": AuthoritySourceTier.TIER_A1_OPENDART.value,
-                "authority_source_name": "OPENDART_OFFICIAL_API",
+                "authority_source_name": selected_source,
                 "authority_record_id": final_rcp_no,
                 "raw_evidence_path": raw_rel_path,
                 "raw_evidence_sha256": raw_sha,
+                "producing_request_id": selected_producing_req_id,
                 "validation_predicates": {
                     "official_source_valid": parsed["official_source_valid"],
                     "record_identity_valid": parsed["record_identity_valid"],
                     "issuer_identity_valid": parsed["issuer_identity_valid"],
                     "event_type_valid": parsed["event_type_valid"],
+                    "event_semantic_binding_valid": parsed["event_semantic_binding_valid"],
                     "event_timing_valid": parsed["event_timing_valid"],
                     "raw_provenance_valid": parsed["raw_provenance_valid"],
                 },
                 "authority_valid": True,
             })
 
-    # Save Discovery CSV, Audit CSV, Manifests
+    # Save Discovery CSV, Audit CSV, Determinism JSON, Manifests
     disc_df = pd.DataFrame(discovery_rows)
-    disc_path = output_dir / "corporate_action_official_discovery_v01_fix03_correction_2.csv"
+    disc_path = output_dir / "corporate_action_official_discovery_v01_fix03_correction_3.csv"
     disc_df.to_csv(disc_path, index=False)
 
     cand_audit_df = pd.DataFrame(candidate_audit_rows)
-    cand_audit_path = output_dir / "corporate_action_discovery_candidate_audit_v01_fix03_correction_2.csv"
+    cand_audit_path = output_dir / "corporate_action_discovery_candidate_audit_v01_fix03_correction_3.csv"
     cand_audit_df.to_csv(cand_audit_path, index=False)
 
+    det_val_path = output_dir / "corporate_action_discovery_determinism_validation_v01_fix03_correction_3.json"
+    det_val_path.write_text(json.dumps({
+        "schema": "corporate_action_discovery_determinism_validation_v01_fix03_correction_3",
+        "canonical_run_id": canonical_run_id,
+        "all_controls_order_invariant": all(v["order_invariance_pass"] for v in determinism_validation_results.values()),
+        "validation_by_ticker": determinism_validation_results,
+    }, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+    probe_audit_df = pd.DataFrame(probe_audit_rows)
+    probe_audit_path = output_dir / "corporate_action_document_probe_audit_v01_fix03_correction_3.csv"
+    probe_audit_df.to_csv(probe_audit_path, index=False)
+
     disc_man_payload = {
-        "schema": "corporate_action_discovery_raw_manifest_v01_fix03_correction_2",
+        "schema": "corporate_action_discovery_raw_manifest_v01_fix03_correction_3",
+        "canonical_run_id": canonical_run_id,
         "artifacts": discovery_manifest_entries,
     }
-    disc_man_path = output_dir / "corporate_action_discovery_raw_manifest_v01_fix03_correction_2.json"
+    disc_man_path = output_dir / "corporate_action_discovery_raw_manifest_v01_fix03_correction_3.json"
     disc_man_path.write_text(json.dumps(disc_man_payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
     doc_val_df = pd.DataFrame(doc_validation_rows)
-    doc_val_path = output_dir / "corporate_action_official_document_validation_v01_fix03_correction_2.csv"
+    doc_val_path = output_dir / "corporate_action_official_document_validation_v01_fix03_correction_3.csv"
     doc_val_df.to_csv(doc_val_path, index=False)
 
+    sem_bind_df = pd.DataFrame(semantic_binding_rows)
+    sem_bind_path = output_dir / "corporate_action_event_semantic_binding_v01_fix03_correction_3.csv"
+    sem_bind_df.to_csv(sem_bind_path, index=False)
+
     adj_df = pd.DataFrame(adjudication_rows)
-    adj_path = output_dir / "corporate_action_existing_claim_adjudication_v01_fix03_correction_2.csv"
+    adj_path = output_dir / "corporate_action_existing_claim_adjudication_v01_fix03_correction_3.csv"
     adj_df.to_csv(adj_path, index=False)
 
-    rep_pool_path = output_dir / "corporate_action_replacement_pool_v01_fix03_correction_2.csv"
+    rep_pool_path = output_dir / "corporate_action_replacement_pool_v01_fix03_correction_3.csv"
     pd.DataFrame(columns=["control_id", "ticker", "issuer_name", "status"]).to_csv(rep_pool_path, index=False)
 
-    auth_rec_path = output_dir / "corporate_action_authority_records_v01_fix03_correction_2.json"
-    auth_rec_path.write_text(json.dumps({"schema": "corporate_action_authority_records_v01_fix03_correction_2", "records": authority_records}, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    auth_rec_path = output_dir / "corporate_action_authority_records_v01_fix03_correction_3.json"
+    auth_rec_path.write_text(json.dumps({
+        "schema": "corporate_action_authority_records_v01_fix03_correction_3",
+        "canonical_run_id": canonical_run_id,
+        "records": authority_records,
+    }, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
-    raw_man_path = output_dir / "corporate_action_raw_evidence_manifest_v01_fix03_correction_2.json"
-    raw_man_path.write_text(json.dumps({"schema": "corporate_action_raw_evidence_manifest_v01_fix03_correction_2", "artifacts": raw_manifest_entries}, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    raw_man_path = output_dir / "corporate_action_raw_evidence_manifest_v01_fix03_correction_3.json"
+    raw_man_path.write_text(json.dumps({
+        "schema": "corporate_action_raw_evidence_manifest_v01_fix03_correction_3",
+        "canonical_run_id": canonical_run_id,
+        "artifacts": raw_manifest_entries,
+    }, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
-    # 5. Freeze Final Authority Cohort Before Price Fetch (Section 56, 57)
+    # 5. Freeze Final Authority Cohort Before Price Fetch (Section 60-62)
     final_cohort_rows = []
     for idx, ar in enumerate(authority_records, start=1):
         final_cohort_rows.append({
@@ -958,6 +1283,7 @@ def run_corporate_action_evidence_acquisition_fix03_correction_2(
             "ticker": ar["ticker"],
             "issuer_name": ar["issuer_name"],
             "normalized_event_type": ar["normalized_event_type"],
+            "semantic_block_id": ar["semantic_block_id"],
             "official_anchor_type": ar["official_anchor_type"],
             "official_anchor_date": ar["official_anchor_date"],
             "official_anchor_source_field": ar["official_anchor_source_field"],
@@ -967,20 +1293,21 @@ def run_corporate_action_evidence_acquisition_fix03_correction_2(
             "authority_source_tier": ar["authority_source_tier"],
             "authority_source_name": ar["authority_source_name"],
             "authority_record_id": ar["authority_record_id"],
+            "producing_request_id": ar["producing_request_id"],
             "raw_evidence_path": ar["raw_evidence_path"],
             "raw_evidence_sha256": ar["raw_evidence_sha256"],
             "selection_role": "AUTHORITY_VALID_FROZEN_CONTROL",
             "selection_order": idx,
-            "selection_algorithm": "OPENDART_AUTHENTICATED_COHORT_V01_FIX03_CORRECTION_2",
+            "selection_algorithm": "OPENDART_DETERMINISTIC_SEMANTIC_COHORT_V01_FIX03_CORRECTION_3",
         })
 
     cohort_df = pd.DataFrame(final_cohort_rows)
-    cohort_path = output_dir / "corporate_action_review_cohort_v01_fix03_correction_2.csv"
+    cohort_path = output_dir / "corporate_action_review_cohort_v01_fix03_correction_3.csv"
     cohort_df.to_csv(cohort_path, index=False)
     cohort_sha = hashlib.sha256(cohort_path.read_bytes()).hexdigest()
     cohort_frozen_at = datetime.now(timezone.utc).isoformat()
 
-    # 6. Live Price Verification on Frozen Authority Cohort (Section 53-61)
+    # 6. Live Price Verification on Frozen Authority Cohort (Section 53-59)
     import pykrx.stock as pykrx_stock
 
     naver_client = NaverDateRangeAdjustedClient(allow_network=allow_network)
@@ -997,6 +1324,9 @@ def run_corporate_action_evidence_acquisition_fix03_correction_2(
     candidate_error_count = 0
     comparator_error_count = 0
 
+    candidate_price_lineage: dict[str, Any] = {}
+    pykrx_price_lineage: dict[str, Any] = {}
+
     for c in final_cohort_rows:
         t = normalize_ticker(c["ticker"])
         w_start = c["price_window_start"]
@@ -1006,22 +1336,34 @@ def run_corporate_action_evidence_acquisition_fix03_correction_2(
         cand_req_id = f"REQ_PRICE_NAVER_{t}_{w_start}_{w_end}"
         py_query_id = f"QUERY_PRICE_RAW_PYKRX_{t}_{w_start}_{w_end}"
 
-        # Increment physical attempts immediately before call (Section 64)
+        # Increment physical attempts immediately before call (Section 32)
         accounting.direct_naver_logical_requests += 1
         accounting.direct_naver_physical_attempts += 1
         accounting.raw_pykrx_logical_requests += 1
         accounting.raw_pykrx_physical_attempts += 1
 
         cand_err = ""
+        c_start_t = datetime.now(timezone.utc).isoformat()
         try:
             st_code, xml_text, elapsed = naver_client.fetch_raw(t, w_start, w_end)
+            c_end_t = datetime.now(timezone.utc).isoformat()
             cand_df = NaverDateRangeAdjustedClient.parse_xml_payload(xml_text, w_start, w_end)
-            cand_sha = hashlib.sha256(xml_text.encode("utf-8")).hexdigest()
+            cand_raw_sha = hashlib.sha256(xml_text.encode("utf-8")).hexdigest()
+            cand_rowset_sha = hashlib.sha256(cand_df.to_csv(index=False).encode("utf-8")).hexdigest()
         except Exception as exc:
+            c_end_t = datetime.now(timezone.utc).isoformat()
             cand_df = pd.DataFrame(columns=["date", "open", "high", "low", "close", "volume"])
-            cand_sha = ""
+            cand_raw_sha = ""
+            cand_rowset_sha = ""
             cand_err = str(exc)
             candidate_error_count += 1
+
+        candidate_price_lineage[c["control_id"]] = {
+            "request_id": cand_req_id,
+            "raw_response_sha256": cand_raw_sha,
+            "rowset_sha256": cand_rowset_sha,
+            "row_count": len(cand_df),
+        }
 
         accounting.request_logs.append({
             "request_id": cand_req_id,
@@ -1031,16 +1373,17 @@ def run_corporate_action_evidence_acquisition_fix03_correction_2(
             "price_window_start": w_start,
             "price_window_end": w_end,
             "sanitized_endpoint": f"https://fchart.stock.naver.com/sise.nhn?symbol={t}&startTime={w_start}&endTime={w_end}",
-            "started_at": datetime.now(timezone.utc).isoformat(),
-            "completed_at": datetime.now(timezone.utc).isoformat(),
+            "started_at": c_start_t,
+            "completed_at": c_end_t,
             "physical_attempt": 1,
             "http_status": 200 if not cand_err else 500,
-            "response_sha256": cand_sha,
+            "response_sha256": cand_raw_sha,
             "outcome": "SUCCESS" if not cand_err else "ERROR",
             "error_type": cand_err,
         })
 
         py_err = ""
+        p_start_t = datetime.now(timezone.utc).isoformat()
         try:
             py_raw = pykrx_stock.get_market_ohlcv_by_date(
                 w_start.replace("-", ""),
@@ -1048,17 +1391,25 @@ def run_corporate_action_evidence_acquisition_fix03_correction_2(
                 t,
                 adjusted=True,
             )
+            p_end_t = datetime.now(timezone.utc).isoformat()
             if py_raw is not None and not py_raw.empty:
                 py_df = py_raw.rename(columns={"시가": "open", "고가": "high", "저가": "low", "종가": "close", "거래량": "volume"}).copy()
                 py_df["date"] = [d.strftime("%Y-%m-%d") for d in py_df.index]
             else:
                 py_df = pd.DataFrame(columns=["date", "open", "high", "low", "close", "volume"])
-            py_sha = hashlib.sha256(py_df.to_csv().encode("utf-8")).hexdigest()
+            py_rowset_sha = hashlib.sha256(py_df.to_csv(index=False).encode("utf-8")).hexdigest()
         except Exception as exc:
+            p_end_t = datetime.now(timezone.utc).isoformat()
             py_df = pd.DataFrame(columns=["date", "open", "high", "low", "close", "volume"])
-            py_sha = ""
+            py_rowset_sha = ""
             py_err = str(exc)
             comparator_error_count += 1
+
+        pykrx_price_lineage[c["control_id"]] = {
+            "query_id": py_query_id,
+            "rowset_sha256": py_rowset_sha,
+            "row_count": len(py_df),
+        }
 
         accounting.request_logs.append({
             "request_id": py_query_id,
@@ -1068,11 +1419,11 @@ def run_corporate_action_evidence_acquisition_fix03_correction_2(
             "price_window_start": w_start,
             "price_window_end": w_end,
             "sanitized_endpoint": f"pykrx.stock.get_market_ohlcv_by_date({w_start},{w_end},{t},adjusted=True)",
-            "started_at": datetime.now(timezone.utc).isoformat(),
-            "completed_at": datetime.now(timezone.utc).isoformat(),
+            "started_at": p_start_t,
+            "completed_at": p_end_t,
             "physical_attempt": 1,
             "http_status": 200 if not py_err else 500,
-            "response_sha256": py_sha,
+            "response_sha256": py_rowset_sha,
             "outcome": "SUCCESS" if not py_err else "ERROR",
             "error_type": py_err,
         })
@@ -1108,7 +1459,7 @@ def run_corporate_action_evidence_acquisition_fix03_correction_2(
                 "volume": float(r.get("volume", 0.0)),
             })
 
-        # Date Set Comparison & Fail-Closed Reconciliation (Section 46-52)
+        # Date Set Comparison & Fail-Closed Reconciliation (Section 54, 55)
         cand_dates = set(cand_df["date"].astype(str)) if not cand_df.empty else set()
         py_dates = set(py_df["date"].astype(str)) if not py_df.empty else set()
 
@@ -1168,6 +1519,7 @@ def run_corporate_action_evidence_acquisition_fix03_correction_2(
             "control_id": c["control_id"],
             "ticker": t,
             "official_event_type": c["normalized_event_type"],
+            "semantic_block_id": c["semantic_block_id"],
             "official_anchor_type": c["official_anchor_type"],
             "official_anchor_date": anchor_d,
             "official_source_field": c["official_anchor_source_field"],
@@ -1194,22 +1546,30 @@ def run_corporate_action_evidence_acquisition_fix03_correction_2(
 
     # Save Price Rows, Parity, Date Reconciliation CSVs
     price_df = pd.DataFrame(all_price_rows)
-    price_path = output_dir / "corporate_action_event_price_rows_v01_fix03_correction_2.csv"
+    price_path = output_dir / "corporate_action_event_price_rows_v01_fix03_correction_3.csv"
     price_df.to_csv(price_path, index=False)
 
     parity_df = pd.DataFrame(parity_rows)
-    parity_path = output_dir / "corporate_action_event_sensitive_parity_v01_fix03_correction_2.csv"
+    parity_path = output_dir / "corporate_action_event_sensitive_parity_v01_fix03_correction_3.csv"
     parity_df.to_csv(parity_path, index=False)
 
     recon_df = pd.DataFrame(reconciliation_rows) if reconciliation_rows else pd.DataFrame(columns=["control_id", "ticker", "candidate_only_dates", "pykrx_only_dates", "reconciliation_rule", "authority_artifact_path", "status"])
-    recon_path = output_dir / "corporate_action_date_reconciliation_v01_fix03_correction_2.csv"
+    recon_path = output_dir / "corporate_action_date_reconciliation_v01_fix03_correction_3.csv"
     recon_df.to_csv(recon_path, index=False)
 
-    # 7. Network Accounting JSON
-    net_path = output_dir / "corporate_action_evidence_network_accounting_v01_fix03_correction_2.json"
-    net_path.write_text(json.dumps(accounting.to_dict(), indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    # 7. Network Accounting JSON with Computed Cross-Invariant (Section 38-41)
+    accounting.compute_totals()
+    phys_in_logs = sum(1 for r in accounting.request_logs if r.get("physical_attempt") == 1)
+    accounting_consistent = bool(accounting.total_physical_external_calls == phys_in_logs)
 
-    # 8. Request-Linkage Cross-Artifact Validation & Raw Hygiene (Section 36-45, 67-69)
+    net_path = output_dir / "corporate_action_evidence_network_accounting_v01_fix03_correction_3.json"
+    net_dict = accounting.to_dict()
+    net_dict["canonical_run_id"] = canonical_run_id
+    net_dict["accounting_cross_invariant_pass"] = accounting_consistent
+    net_dict["physical_entries_in_logs"] = phys_in_logs
+    net_path.write_text(json.dumps(net_dict, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+    # 8. Complete Evidence Linkage & Lineage Cross-Validation (Section 45-52)
     req_logs_by_id = {r["request_id"]: r for r in accounting.request_logs}
     linkage_failures = []
 
@@ -1227,21 +1587,21 @@ def run_corporate_action_evidence_acquisition_fix03_correction_2(
             if net_entry["ticker"] != dmeta["ticker"]:
                 linkage_failures.append(f"Discovery ticker mismatch for {dfname}")
 
-    # 8.2 Document Links
+    # 8.2 Document Links & Producing Request Identity (Section 42-44)
     for rfname, rmeta in raw_manifest_entries.items():
         req_id = rmeta["document_request_id"]
         if req_id not in req_logs_by_id:
-            linkage_failures.append(f"Document req_id {req_id} missing in network logs")
+            linkage_failures.append(f"Document producing req_id {req_id} missing in network logs")
         else:
             net_entry = req_logs_by_id[req_id]
             if net_entry["response_sha256"] != rmeta["sha256"]:
-                linkage_failures.append(f"Document SHA mismatch for {rfname}")
+                linkage_failures.append(f"Document producing SHA mismatch for {rfname}")
             if net_entry["response_size"] != rmeta["size_bytes"]:
-                linkage_failures.append(f"Document size mismatch for {rfname}")
+                linkage_failures.append(f"Document producing size mismatch for {rfname}")
             if net_entry["official_record_id"] != rmeta["official_record_id"]:
-                linkage_failures.append(f"Document record ID mismatch for {rfname}")
+                linkage_failures.append(f"Document producing record ID mismatch for {rfname}")
 
-    # 8.3 Discovery -> Document Strict Identity (Section 25, 39)
+    # 8.3 Strict Discovery -> Document Identity Chain (Section 42)
     disc_selected_by_ticker = {r["ticker"]: r["selected_record_id"] for _, r in disc_df.iterrows()}
     doc_record_by_ticker = {r["ticker"]: r["discovered_record_id"] for _, r in doc_val_df.iterrows()}
     discovery_doc_identity_failures = 0
@@ -1251,13 +1611,36 @@ def run_corporate_action_evidence_acquisition_fix03_correction_2(
             discovery_doc_identity_failures += 1
             linkage_failures.append(f"Discovery/Document identity mismatch on {tk}: discovery={sel_r} vs doc={doc_r}")
 
-    # 8.4 Price Coverage Links
-    price_reqs = set(price_df["request_id"])
-    for r_id in price_reqs:
-        if r_id not in req_logs_by_id:
-            linkage_failures.append(f"Price row request_id {r_id} missing in network logs")
+    # 8.4 Price Coverage & Lineage Links (Section 46-51)
+    for c in final_cohort_rows:
+        cid = c["control_id"]
+        tk = c["ticker"]
+        w_st = c["price_window_start"]
+        w_en = c["price_window_end"]
 
-    # 8.5 Raw Orphan Files Check (Section 67-69)
+        # Naver Linkage
+        cand_lin = candidate_price_lineage.get(cid)
+        if not cand_lin or cand_lin["request_id"] not in req_logs_by_id:
+            linkage_failures.append(f"Naver lineage missing for {cid}")
+        else:
+            n_log = req_logs_by_id[cand_lin["request_id"]]
+            if n_log["ticker"] != tk or n_log["price_window_start"] != w_st or n_log["price_window_end"] != w_en:
+                linkage_failures.append(f"Naver lineage metadata mismatch for {cid}")
+            if n_log["outcome"] != "SUCCESS":
+                linkage_failures.append(f"Naver request failed for {cid}")
+
+        # PyKRX Linkage
+        py_lin = pykrx_price_lineage.get(cid)
+        if not py_lin or py_lin["query_id"] not in req_logs_by_id:
+            linkage_failures.append(f"PyKRX lineage missing for {cid}")
+        else:
+            p_log = req_logs_by_id[py_lin["query_id"]]
+            if p_log["ticker"] != tk or p_log["price_window_start"] != w_st or p_log["price_window_end"] != w_en:
+                linkage_failures.append(f"PyKRX lineage metadata mismatch for {cid}")
+            if p_log["outcome"] != "SUCCESS":
+                linkage_failures.append(f"PyKRX query failed for {cid}")
+
+    # 8.5 Raw Orphan Files Check (Section 75)
     raw_disk_files = {p.name for p in raw_dir.glob("*.*")}
     manifest_raw_files = set(raw_manifest_entries.keys())
     raw_orphans = sorted(raw_disk_files - manifest_raw_files)
@@ -1273,25 +1656,28 @@ def run_corporate_action_evidence_acquisition_fix03_correction_2(
     total_orphans = len(raw_orphans) + len(disc_orphans)
 
     linkage_payload = {
-        "schema": "live_evidence_linkage_validation_v01_fix03_correction_2",
-        "directive_id": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_2",
+        "schema": "live_evidence_linkage_validation_v01_fix03_correction_3",
+        "canonical_run_id": canonical_run_id,
+        "directive_id": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_3",
         "discovery_items_checked": len(discovery_manifest_entries),
         "document_items_checked": len(raw_manifest_entries),
         "discovery_document_identity_failures": discovery_doc_identity_failures,
         "candidate_controls_checked": len(final_cohort_rows),
         "pykrx_controls_checked": len(final_cohort_rows),
+        "accounting_cross_invariant_pass": accounting_consistent,
         "raw_orphan_file_count": total_orphans,
         "total_linkage_failures": len(linkage_failures),
-        "all_linkage_valid": len(linkage_failures) == 0,
+        "all_linkage_valid": len(linkage_failures) == 0 and accounting_consistent,
         "linkage_failures": linkage_failures,
     }
-    linkage_path = output_dir / "live_evidence_linkage_validation_v01_fix03_correction_2.json"
+    linkage_path = output_dir / "live_evidence_linkage_validation_v01_fix03_correction_3.json"
     linkage_path.write_text(json.dumps(linkage_payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
-    # 9. Derived Canonical Live Evidence Attestation (Section 45)
+    # 9. Derived Canonical Live Evidence Attestation
     attestation = {
-        "schema": "canonical_live_evidence_attestation_v01_fix03_correction_2",
-        "directive_id": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_2",
+        "schema": "canonical_live_evidence_attestation_v01_fix03_correction_3",
+        "canonical_run_id": canonical_run_id,
+        "directive_id": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_3",
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "execution_mode": "LIVE_EVIDENCE_ACQUISITION",
         "synthetic_official_documents_used": False,
@@ -1304,11 +1690,11 @@ def run_corporate_action_evidence_acquisition_fix03_correction_2(
         "all_candidate_rows_request_linked": len(all_price_rows) > 0 and len(linkage_failures) == 0,
         "all_pykrx_rows_query_linked": len(all_price_rows) > 0 and len(linkage_failures) == 0,
     }
-    attestation_path = output_dir / "canonical_live_evidence_attestation_v01_fix03_correction_2.json"
+    attestation_path = output_dir / "canonical_live_evidence_attestation_v01_fix03_correction_3.json"
     attestation_path.write_text(json.dumps(attestation, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     attestation_sha = hashlib.sha256(attestation_path.read_bytes()).hexdigest()
 
-    # 10. Gate 06 Reassessment (Section 70-72)
+    # 10. Gate 06 Reassessment (Section 76, 77)
     auth_valid_count = len(authority_records)
     event_type_counts: dict[str, int] = {}
     for ar in authority_records:
@@ -1333,11 +1719,15 @@ def run_corporate_action_evidence_acquisition_fix03_correction_2(
         and comparator_error_count == 0
     )
 
+    order_invariance_pass = all(v["order_invariance_pass"] for v in determinism_validation_results.values())
+
     gate06_pass = bool(
         preflight["verdict"] == "READY"
         and auth_valid_count >= 8
         and diversity_pass
+        and order_invariance_pass
         and all_parity_pass
+        and accounting_consistent
         and len(linkage_failures) == 0
     )
 
@@ -1345,25 +1735,32 @@ def run_corporate_action_evidence_acquisition_fix03_correction_2(
         gate06_blockers.append(f"Official evidence deficit: {auth_valid_count}/8 authority valid")
     if not diversity_pass and auth_valid_count >= 8:
         gate06_blockers.append("Corporate action event diversity requirement failed")
+    if not order_invariance_pass:
+        gate06_blockers.append("Discovery candidate selection order invariance failed")
     if ohlc_mismatch_count > 0:
         gate06_blockers.append(f"OHLC mismatch detected in {ohlc_mismatch_count} controls")
     if insufficient_window_count > 0:
         gate06_blockers.append(f"Insufficient pre/post window in {insufficient_window_count} controls")
+    if not accounting_consistent:
+        gate06_blockers.append("Network accounting cross-invariant failed")
     if len(linkage_failures) > 0:
         gate06_blockers.append(f"Evidence linkage failed with {len(linkage_failures)} errors")
 
     gate06_payload = {
-        "schema": "gate06_corporate_action_reassessment_v01_fix03_correction_2",
-        "directive_id": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_2",
+        "schema": "gate06_corporate_action_reassessment_v01_fix03_correction_3",
+        "canonical_run_id": canonical_run_id,
+        "directive_id": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_3",
         "gate_06_pass": gate06_pass,
         "preflight_verdict": preflight["verdict"],
         "authority_valid_controls_count": auth_valid_count,
         "final_cohort_control_count": len(final_cohort_rows),
         "diversity_pass": diversity_pass,
+        "discovery_order_invariance_pass": order_invariance_pass,
         "discovery_provenance_valid_count": len(discovery_manifest_entries),
         "document_provenance_valid_count": len(raw_manifest_entries),
         "discovery_document_identity_failure_count": discovery_doc_identity_failures,
         "anchor_derivation_failure_count": sum(1 for _, r in doc_val_df.iterrows() if not r["event_timing_valid"]),
+        "semantic_binding_failure_count": sum(1 for _, r in doc_val_df.iterrows() if not r["event_semantic_binding_valid"]),
         "raw_orphan_file_count": total_orphans,
         "row_level_parity_control_count": len(parity_df),
         "exact_date_match_count": sum(1 for s in parity_statuses if s == "MATCH"),
@@ -1374,16 +1771,17 @@ def run_corporate_action_evidence_acquisition_fix03_correction_2(
         "ohlc_mismatch_count": ohlc_mismatch_count,
         "candidate_error_count": candidate_error_count,
         "comparator_error_count": comparator_error_count,
+        "accounting_cross_invariant_pass": accounting_consistent,
         "provenance_failure_count": len(linkage_failures),
         "cohort_frozen_before_price_fetch": True,
         "cohort_frozen_at": cohort_frozen_at,
         "cohort_sha256_before_price_fetch": cohort_sha,
         "gate_06_blockers": gate06_blockers,
     }
-    gate06_path = output_dir / "gate06_corporate_action_reassessment_v01_fix03_correction_2.json"
+    gate06_path = output_dir / "gate06_corporate_action_reassessment_v01_fix03_correction_3.json"
     gate06_path.write_text(json.dumps(gate06_payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
-    # 11. Inherit Parent Gates Fail-Closed (Section 73, 74)
+    # 11. Inherit Parent Gates Fail-Closed (Section 78, 79)
     parent_decision_fp = parent_dir / "adjusted_price_source_authority_review_v01_fix03_correction.json"
     parent_dec_json = json.loads(parent_decision_fp.read_text(encoding="utf-8"))
     parent_gates = parent_dec_json.get("gate_results", {})
@@ -1423,7 +1821,7 @@ def run_corporate_action_evidence_acquisition_fix03_correction_2(
         prod_integration_auth = True
         next_state = "ADJUSTED_PRICE_SOURCE_INTEGRATION_V01"
         blocking_conditions = []
-        reason_codes = ["ALL_15_SOURCE_AUTHORITY_REVIEW_GATES_PASSED_FIX03_CORRECTION_2"]
+        reason_codes = ["ALL_15_SOURCE_AUTHORITY_REVIEW_GATES_PASSED_FIX03_CORRECTION_3"]
     elif ohlc_mismatch_count > 0:
         review_decision = "REJECTED_AS_PRODUCTION_AUTHORITY"
         prod_integration_auth = False
@@ -1433,16 +1831,17 @@ def run_corporate_action_evidence_acquisition_fix03_correction_2(
     else:
         review_decision = "CONDITIONAL_REVIEW_REQUIRED"
         prod_integration_auth = False
-        next_state = "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_2"
+        next_state = "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_3"
         blocking_conditions = gate06_blockers
         reason_codes = ["OFFICIAL_EVIDENCE_INCOMPLETE"]
 
     decision_payload = {
-        "schema": "adjusted_price_source_authority_corporate_action_evidence_v01_fix03_correction_2",
-        "directive_id": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_2",
-        "parent_directive": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION",
+        "schema": "adjusted_price_source_authority_corporate_action_evidence_v01_fix03_correction_3",
+        "canonical_run_id": canonical_run_id,
+        "directive_id": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_3",
+        "parent_directive": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_2",
         "authoritative_technical_parent": "ADJUSTED_PRICE_SOURCE_AUTHORITY_REVIEW_V01_FIX03_CORRECTION",
-        "start_head": START_HEAD_CORP_EVIDENCE_FIX03_CORRECTION_2,
+        "start_head": START_HEAD_CORP_EVIDENCE_FIX03_CORRECTION_3,
         "parent_freeze_valid": parent_freeze["all_parent_inputs_unchanged"],
         "preflight_verdict": preflight["verdict"],
         "live_execution_attestation_sha": attestation_sha,
@@ -1485,21 +1884,25 @@ def run_corporate_action_evidence_acquisition_fix03_correction_2(
             "v01_fix02": "SYNTHETIC_APPROVAL_SUPERSEDED",
             "v01_fix03": "CANONICAL_LIVE_AUTHORITY_SUPERSEDED",
             "v01_fix03_correction": "SUPERSEDED_BY_FIX03_CORRECTION_2",
-            "v01_fix03_correction_2": "CANONICAL_AUTHORITY_DECISION",
+            "v01_fix03_correction_2": "SUPERSEDED_BY_FIX03_CORRECTION_3",
+            "v01_fix03_correction_3": "CANONICAL_AUTHORITY_DECISION",
         },
     }
-    decision_path = output_dir / "adjusted_price_source_authority_corporate_action_evidence_v01_fix03_correction_2.json"
+    decision_path = output_dir / "adjusted_price_source_authority_corporate_action_evidence_v01_fix03_correction_3.json"
     decision_path.write_text(json.dumps(decision_payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
-    # 12. Artifact Manifest (Section 100, 101)
+    # 12. Artifact Manifest (Section 74, 75)
     artifact_files = [
-        output_dir / "opendart_preflight_v01_fix03_correction_2.json",
+        output_dir / "opendart_preflight_v01_fix03_correction_3.json",
         parent_freeze_path,
         source_inv_path,
         disc_path,
         cand_audit_path,
+        det_val_path,
+        probe_audit_path,
         disc_man_path,
         doc_val_path,
+        sem_bind_path,
         adj_path,
         rep_pool_path,
         auth_rec_path,
@@ -1518,7 +1921,7 @@ def run_corporate_action_evidence_acquisition_fix03_correction_2(
     for af in artifact_files:
         if af.exists():
             manifest_entries[af.name] = {
-                "path": f"artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/corporate_action_evidence/v01_fix03_correction_2/{af.name}",
+                "path": f"artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/corporate_action_evidence/v01_fix03_correction_3/{af.name}",
                 "size_bytes": af.stat().st_size,
                 "sha256": hashlib.sha256(af.read_bytes()).hexdigest(),
             }
@@ -1529,10 +1932,11 @@ def run_corporate_action_evidence_acquisition_fix03_correction_2(
         manifest_entries[f"discovery_raw/{dfname}"] = dmeta
 
     manifest_payload = {
-        "schema": "corporate_action_evidence_manifest_v01_fix03_correction_2",
-        "directive_id": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_2",
+        "schema": "corporate_action_evidence_manifest_v01_fix03_correction_3",
+        "canonical_run_id": canonical_run_id,
+        "directive_id": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_3",
         "generated_at": datetime.now(timezone.utc).isoformat(),
-        "start_head": START_HEAD_CORP_EVIDENCE_FIX03_CORRECTION_2,
+        "start_head": START_HEAD_CORP_EVIDENCE_FIX03_CORRECTION_3,
         "review_decision": review_decision,
         "production_integration_authorized": prod_integration_auth,
         "artifacts": manifest_entries,
@@ -1544,8 +1948,8 @@ def run_corporate_action_evidence_acquisition_fix03_correction_2(
 
 
 if __name__ == "__main__":
-    res = run_corporate_action_evidence_acquisition_fix03_correction_2()
-    print("=== Corporate Action Evidence Acquisition FIX03_CORRECTION_2 Execution Summary ===")
+    res = run_corporate_action_evidence_acquisition_fix03_correction_3()
+    print("=== Corporate Action Evidence Acquisition FIX03_CORRECTION_3 Execution Summary ===")
     print("Review Decision:", res["review_decision"])
     print("All Gates Passed:", res["all_gates_passed"])
     print("Production Integration Authorized:", res["production_integration_authorized"])

@@ -1,6 +1,6 @@
 """OpenDART Credential Loader, Diagnostic Preflight, and Environment Hard Gate.
 
-Directive: ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_2 (Section 4-17)
+Directive: ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_3 (Section 4-7)
 """
 
 from __future__ import annotations
@@ -36,6 +36,7 @@ def run_opendart_preflight(
     output_dir: Path | None = None,
     allow_network: bool = True,
     timeout: float = 5.0,
+    canonical_run_id: str = "",
 ) -> dict[str, Any]:
     """Execute preflight checks before canonical corporate authority evidence acquisition.
 
@@ -43,20 +44,22 @@ def run_opendart_preflight(
     1. Credential available via central environment
     2. Endpoint reachable
     3. Small authenticated request succeeds
-    4. OpenDART status in response payload is '000' (OK)
-    5. Response identity matches requested query
+    4. OpenDART status in response payload is '000' (OK) or '013' (Authenticated No Data)
+    5. Correct OpenDART 013 vs 000 semantics (Section 7)
     """
     preflight_result: dict[str, Any] = {
-        "schema": "opendart_preflight_v01_fix03_correction_2",
+        "schema": "opendart_preflight_v01_fix03_correction_3",
+        "canonical_run_id": canonical_run_id,
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "credential_present": False,
         "credential_source": "PROJECT_ENVIRONMENT_OR_DOTENV",
         "credential_value": "REDACTED",
         "network_reachable": False,
-        "authenticated_request_success": False,
+        "authentication_valid": False,
+        "probe_response_status": "",
         "opendart_status": "",
         "opendart_message": "",
-        "response_identity_valid": False,
+        "response_identity_status": "UNCHECKED",
         "verdict": "FAIL",
         "error_reason": "",
     }
@@ -68,7 +71,7 @@ def run_opendart_preflight(
         preflight_result["error_reason"] = "OPENDART_CREDENTIAL_MISSING"
         if output_dir:
             output_dir.mkdir(parents=True, exist_ok=True)
-            p = output_dir / "opendart_preflight_v01_fix03_correction_2.json"
+            p = output_dir / "opendart_preflight_v01_fix03_correction_3.json"
             p.write_text(json.dumps(preflight_result, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
         return preflight_result
 
@@ -99,10 +102,15 @@ def run_opendart_preflight(
             preflight_result["opendart_status"] = status_code
             preflight_result["opendart_message"] = msg
 
-            # 000 is OK, 013 is No data found (which is also valid authentication)
-            if status_code in ["000", "013"]:
-                preflight_result["authenticated_request_success"] = True
-                preflight_result["response_identity_valid"] = True
+            if status_code == "000":
+                preflight_result["authentication_valid"] = True
+                preflight_result["probe_response_status"] = "AUTHENTICATED_WITH_DATA"
+                preflight_result["response_identity_status"] = "VALID"
+                preflight_result["verdict"] = "READY"
+            elif status_code == "013":
+                preflight_result["authentication_valid"] = True
+                preflight_result["probe_response_status"] = "AUTHENTICATED_NO_DATA"
+                preflight_result["response_identity_status"] = "NOT_APPLICABLE"
                 preflight_result["verdict"] = "READY"
             elif status_code == "010":
                 preflight_result["error_reason"] = "OPENDART_AUTH_FAILED: Invalid API Key"
@@ -118,7 +126,7 @@ def run_opendart_preflight(
 
     if output_dir:
         output_dir.mkdir(parents=True, exist_ok=True)
-        p = output_dir / "opendart_preflight_v01_fix03_correction_2.json"
+        p = output_dir / "opendart_preflight_v01_fix03_correction_3.json"
         p.write_text(json.dumps(preflight_result, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
     return preflight_result
@@ -129,7 +137,8 @@ if __name__ == "__main__":
     print("=== OpenDART Preflight Result ===")
     print("Credential Present:", res["credential_present"])
     print("Network Reachable:", res["network_reachable"])
-    print("Auth Request Success:", res["authenticated_request_success"])
+    print("Auth Valid:", res["authentication_valid"])
+    print("Probe Status:", res["probe_response_status"])
     print("OpenDART Status:", res["opendart_status"])
     print("Verdict:", res["verdict"])
     if res["error_reason"]:
