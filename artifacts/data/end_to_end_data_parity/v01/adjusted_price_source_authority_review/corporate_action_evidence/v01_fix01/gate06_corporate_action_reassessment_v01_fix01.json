@@ -1,0 +1,22 @@
+{
+  "schema": "gate06_corporate_action_reassessment_v01_fix01",
+  "directive_id": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX01",
+  "gate_06_pass": false,
+  "authority_valid_controls_count": 1,
+  "unique_control_count": 8,
+  "event_type_distribution": {
+    "STOCK_SPLIT": 1
+  },
+  "diversity_pass": false,
+  "official_document_valid_count": 1,
+  "event_sensitive_parity_match_count": 8,
+  "insufficient_window_count": 0,
+  "date_set_mismatch_count": 0,
+  "ohlc_mismatch_control_count": 0,
+  "comparator_error_count": 0,
+  "cohort_frozen_before_parity": true,
+  "cohort_sha256_before_parity": "258d484d3c3b508894159b0bc3bd2793b22ebb1c6fef8bb72e503e8b721f282c",
+  "gate_06_blockers": [
+    "Corporate action evidence insufficient: only 1/8 controls have genuine content-validated official disclosure documents (Section 1, 25, 46)."
+  ]
+}

@@ -1,6 +1,6 @@
-"""Unit and regression tests for Corporate Action Authority Evidence Acquisition and Gate 06.
+"""Unit and regression tests for Corporate Action Authority Evidence Acquisition FIX01.
 
-Directive: ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01 (Section 50-54)
+Directive: ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX01 (Section 53-62)
 """
 
 from __future__ import annotations
@@ -13,14 +13,15 @@ import pandas as pd
 
 from trend_scanner.data.adjusted_price_provider import normalize_ticker
 from trend_scanner.data.corporate_action_authority import (
-    DEFAULT_CORP_EVIDENCE_DIR,
+    DEFAULT_CORP_EVIDENCE_DIR_FIX01,
     PARENT_FIX03_CORRECTION_DIR,
-    START_HEAD_CORP_EVIDENCE,
+    START_HEAD_CORP_EVIDENCE_FIX01,
     AuthoritySourceTier,
     ClaimAdjudicationStatus,
     CorporateActionNetworkAccounting,
-    get_official_evidence_definitions,
-    run_corporate_action_evidence_acquisition,
+    OfficialEvidenceContentParser,
+    get_prior_claim_definitions,
+    run_corporate_action_evidence_acquisition_fix01,
     verify_parent_authority_freeze,
 )
 
@@ -32,78 +33,146 @@ def test_parent_authority_freeze_validation():
     assert len(res["mismatches"]) == 0
 
 
-def test_official_evidence_definitions_count_and_diversity():
-    defs = get_official_evidence_definitions()
-    assert len(defs) >= 8
-
-    tickers = {d["ticker"] for d in defs}
-    assert len(tickers) >= 8
-
-    event_types = {d["normalized_event_type"] for d in defs}
-    assert "STOCK_SPLIT" in event_types
-    assert "MERGER" in event_types
-    assert "RIGHTS_OFFERING" in event_types
-    assert "BONUS_ISSUE" in event_types
-
-
-def test_raw_evidence_manifest_hashes_match():
-    manifest_p = DEFAULT_CORP_EVIDENCE_DIR / "corporate_action_raw_evidence_manifest_v01.json"
-    assert manifest_p.exists()
-
-    data = json.loads(manifest_p.read_text(encoding="utf-8"))
-    artifacts = data.get("artifacts", {})
-    assert len(artifacts) >= 8
-
-    for fname, meta in artifacts.items():
-        fp = Path(meta["path"])
-        assert fp.exists(), f"Raw snapshot file {fp} missing on disk"
-        actual_sha = hashlib.sha256(fp.read_bytes()).hexdigest()
-        assert actual_sha == meta["sha256"], f"Raw SHA mismatch for {fname}"
+def test_dart_denial_page_rejected_blocked_page():
+    raw_denial = "<html><head><title>거부</title></head><body><p>검토중인 문서입니다. 조회할 수 없습니다.</p></body></html>".encode("utf-8")
+    parsed = OfficialEvidenceContentParser.parse_and_validate(
+        raw_content_bytes=raw_denial,
+        claimed_ticker="035720",
+        claimed_issuer="카카오",
+        claimed_event_type="STOCK_SPLIT",
+        claimed_anchor_type="EFFECTIVE_DATE",
+        claimed_anchor_date="2021-04-15",
+        claimed_window_start="2021-01-04",
+        claimed_window_end="2021-12-30",
+        source_id="DART_OFFICIAL_DISCLOSURE",
+        record_id="DART_RCP_20210225001089",
+    )
+    assert parsed["blocked_page_detected"] is True
+    assert parsed["document_valid"] is False
+    assert parsed["authority_valid"] is False
+    assert parsed["validation_reason"] == "BLOCKED_PAGE_DETECTED"
 
 
-def test_event_sensitive_parity_artifact_all_match():
-    parity_p = DEFAULT_CORP_EVIDENCE_DIR / "corporate_action_event_sensitive_parity_v01.csv"
-    assert parity_p.exists()
-
-    df = pd.read_csv(parity_p, dtype={"ticker": str})
-    assert len(df) >= 8
-    assert (df["parity_status"] == "MATCH").all()
-    assert (df["open_mismatch_count"] == 0).all()
-    assert (df["high_mismatch_count"] == 0).all()
-    assert (df["low_mismatch_count"] == 0).all()
-    assert (df["close_mismatch_count"] == 0).all()
-    assert (df["overlap_rows"] > 0).all()
-
-
-def test_gate_06_reassessment_passed():
-    gate06_p = DEFAULT_CORP_EVIDENCE_DIR / "gate06_corporate_action_reassessment_v01.json"
-    assert gate06_p.exists()
-
-    data = json.loads(gate06_p.read_text(encoding="utf-8"))
-    assert data["gate_06_pass"] is True
-    assert data["authority_valid_controls_count"] >= 8
-    assert data["event_type_diversity_satisfied"] is True
-    assert len(data["gate_06_blockers"]) == 0
+def test_wrong_issuer_rejected_wrong_document():
+    raw_wrong = "<html><head><title>교보악사자산운용/투자설명서/2018.07.26</title></head><body><h1>교보악사</h1></body></html>".encode("utf-8")
+    parsed = OfficialEvidenceContentParser.parse_and_validate(
+        raw_content_bytes=raw_wrong,
+        claimed_ticker="035420",
+        claimed_issuer="NAVER",
+        claimed_event_type="STOCK_SPLIT",
+        claimed_anchor_type="EFFECTIVE_DATE",
+        claimed_anchor_date="2018-10-12",
+        claimed_window_start="2018-01-02",
+        claimed_window_end="2018-12-28",
+        source_id="DART_OFFICIAL_DISCLOSURE",
+        record_id="DART_RCP_20180726000405",
+    )
+    assert parsed["blocked_page_detected"] is False
+    assert parsed["issuer_match"] is False
+    assert parsed["document_valid"] is False
+    assert parsed["authority_valid"] is False
+    assert "WRONG_DOCUMENT_ISSUER_MISMATCH" in parsed["validation_reason"]
 
 
-def test_final_formal_decision_approved_for_production():
-    dec_p = DEFAULT_CORP_EVIDENCE_DIR / "adjusted_price_source_authority_corporate_action_evidence_v01.json"
+def test_wrong_event_type_rejected():
+    raw_other_event = "<html><head><title>현대제철/감사보고서/2015.04.08</title></head><body><h1>현대제철</h1></body></html>".encode("utf-8")
+    parsed = OfficialEvidenceContentParser.parse_and_validate(
+        raw_content_bytes=raw_other_event,
+        claimed_ticker="004020",
+        claimed_issuer="현대제철",
+        claimed_event_type="MERGER",
+        claimed_anchor_type="MERGER_EFFECTIVE_DATE",
+        claimed_anchor_date="2015-07-01",
+        claimed_window_start="2015-01-02",
+        claimed_window_end="2015-12-30",
+        source_id="DART_OFFICIAL_DISCLOSURE",
+        record_id="DART_RCP_20150408000450",
+    )
+    assert parsed["blocked_page_detected"] is False
+    assert parsed["issuer_match"] is True
+    assert parsed["event_type_match"] is False
+    assert parsed["document_valid"] is False
+    assert parsed["authority_valid"] is False
+    assert "EVENT_TYPE_MISMATCH" in parsed["validation_reason"]
+
+
+def test_valid_json_record_accepted():
+    valid_json = json.dumps({
+        "ticker": "005930",
+        "event": "Samsung Electronics 50:1 split",
+        "dates": ["2018-04-27", "2018-05-04"],
+    }).encode("utf-8")
+    parsed = OfficialEvidenceContentParser.parse_and_validate(
+        raw_content_bytes=valid_json,
+        claimed_ticker="005930",
+        claimed_issuer="삼성전자",
+        claimed_event_type="STOCK_SPLIT",
+        claimed_anchor_type="EFFECTIVE_DATE",
+        claimed_anchor_date="2018-05-04",
+        claimed_window_start="2018-01-02",
+        claimed_window_end="2018-12-28",
+        source_id="DART_OFFICIAL_DISCLOSURE",
+        record_id="DART_RCP_20180323001340",
+    )
+    assert parsed["authority_valid"] is True
+    assert parsed["issuer_match"] is True
+    assert parsed["event_type_match"] is True
+    assert parsed["document_valid"] is True
+
+
+def test_raw_content_beats_filename(tmp_path):
+    fake_file = tmp_path / "035420_STOCK_SPLIT_fake.html"
+    fake_file.write_text("<html><head><title>교보악사자산운용/보고서/2018.07.26</title></head></html>", encoding="utf-8")
+
+    parsed = OfficialEvidenceContentParser.parse_and_validate(
+        raw_content_bytes=fake_file.read_bytes(),
+        claimed_ticker="035420",
+        claimed_issuer="NAVER",
+        claimed_event_type="STOCK_SPLIT",
+        claimed_anchor_type="EFFECTIVE_DATE",
+        claimed_anchor_date="2018-10-12",
+        claimed_window_start="2018-01-02",
+        claimed_window_end="2018-12-28",
+        source_id="DART_OFFICIAL_DISCLOSURE",
+        record_id="DART_RCP_20180726000405",
+    )
+    assert parsed["authority_valid"] is False
+
+
+def test_gate_06_fails_when_authority_valid_controls_lt_8():
+    dec_p = DEFAULT_CORP_EVIDENCE_DIR_FIX01 / "adjusted_price_source_authority_corporate_action_evidence_v01_fix01.json"
     assert dec_p.exists()
 
     data = json.loads(dec_p.read_text(encoding="utf-8"))
-    assert data["review_decision"] == "APPROVED_FOR_PRODUCTION_INTEGRATION"
-    assert data["production_integration_authorized"] is True
+    assert data["final_authority_valid_controls"] == 1
+    assert data["gate_06_result"] is False
+    assert data["review_decision"] == "CONDITIONAL_REVIEW_REQUIRED"
+    assert data["production_integration_authorized"] is False
     assert data["active_production_authority_changed"] is False
-    assert data["recommended_next_state"] == "ADJUSTED_PRICE_SOURCE_INTEGRATION_V01"
-    assert data["all_gates_passed"] is True
-    assert all(data["gate_results"].values())
+    assert data["recommended_next_state"] == "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX01"
 
 
-def test_corporate_action_evidence_manifest_integrity():
-    man_p = DEFAULT_CORP_EVIDENCE_DIR / "artifact_manifest.json"
-    assert man_p.exists()
+def test_event_sensitive_metrics_derived_from_actual_rows():
+    parity_p = DEFAULT_CORP_EVIDENCE_DIR_FIX01 / "corporate_action_event_sensitive_parity_v01_fix01.csv"
+    assert parity_p.exists()
 
-    data = json.loads(man_p.read_text(encoding="utf-8"))
+    df = pd.read_csv(parity_p, dtype={"ticker": str})
+    assert len(df) == 8
+
+    # Check that events at different dates have different pre/post rows (no static 100/overlap-100!)
+    row_005930 = df[df["ticker"] == "005930"].iloc[0]
+    row_035420 = df[df["ticker"] == "035420"].iloc[0]
+
+    # 005930 split is in May 2018; 035420 split is in Oct 2018
+    # Within the same 2018 year window, NAVER must have substantially more pre-event rows than Samsung!
+    assert int(row_035420["pre_event_candidate_rows"]) > int(row_005930["pre_event_candidate_rows"])
+
+
+def test_fix01_manifest_integrity():
+    manifest_p = DEFAULT_CORP_EVIDENCE_DIR_FIX01 / "artifact_manifest.json"
+    assert manifest_p.exists()
+
+    data = json.loads(manifest_p.read_text(encoding="utf-8"))
     artifacts = data.get("artifacts", {})
     assert len(artifacts) >= 10
 
@@ -112,22 +181,3 @@ def test_corporate_action_evidence_manifest_integrity():
         assert fp.exists(), f"Artifact {fp} missing on disk"
         actual_sha = hashlib.sha256(fp.read_bytes()).hexdigest()
         assert actual_sha == meta["sha256"], f"SHA mismatch for {fname}"
-
-
-def test_shuffled_evidence_pool_invariance():
-    defs1 = get_official_evidence_definitions()
-    defs2 = list(reversed(defs1))
-
-    tickers1 = sorted(d["ticker"] for d in defs1)
-    tickers2 = sorted(d["ticker"] for d in defs2)
-    assert tickers1 == tickers2
-
-
-def test_network_accounting_redacted_secrets():
-    net_p = DEFAULT_CORP_EVIDENCE_DIR / "corporate_action_evidence_network_accounting_v01.json"
-    assert net_p.exists()
-
-    raw_text = net_p.read_text(encoding="utf-8")
-    assert "crtfc_key" not in raw_text
-    assert "Authorization" not in raw_text
-    assert "secret" not in raw_text.lower()
