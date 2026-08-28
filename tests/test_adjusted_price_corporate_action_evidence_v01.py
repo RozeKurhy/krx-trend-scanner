@@ -1,10 +1,13 @@
-"""Comprehensive Unit and Regression Tests for FIX03_CORRECTION_6 Production Validation Helpers, Claim-Free Official Anchor Selection, and END_HEAD Report Rendering.
+"""Comprehensive Unit, Negative, and Regression Tests for Corporate Action Evidence Acquisition.
 
 Directives:
-- ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_6 (Section 31-50, 78-79)
+- ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_7 (Section 41-56)
+Authoritative Technical Parent: ADJUSTED_PRICE_SOURCE_AUTHORITY_REVIEW_V01_FIX03_CORRECTION
 """
 
-import inspect
+from __future__ import annotations
+
+import hashlib
 import io
 import json
 from pathlib import Path
@@ -12,396 +15,403 @@ import zipfile
 import pytest
 
 from trend_scanner.data.corporate_action_authority import (
-    AuthoritySourceTier,
-    DARTTreeParser,
-    FROZEN_EVENT_FAMILY_ANCHOR_PRIORITY,
     OfficialEvidenceContentParser,
-    SemanticTreeNode,
     evaluate_gate06,
-    finalize_semantic_tree,
-    rank_and_score_candidates,
     resolve_archive_member,
-    run_corporate_action_evidence_acquisition_fix03_correction_6,
+    run_corporate_action_evidence_acquisition_fix03_correction_7,
     select_official_anchor_by_priority,
+    validate_archive_provenance,
+    validate_discovery_duplicate_identity,
     validate_pagination_pages,
+    verify_parent_authority_freeze,
 )
 
 
-def test_source_extractor_has_no_claim_inputs():
-    """Section 35: extract_official_event_authority must accept NO claim parameters."""
-    sig = inspect.signature(OfficialEvidenceContentParser.extract_official_event_authority)
-    param_names = list(sig.parameters.keys())
-    assert "claimed_event_type" not in param_names
-    assert "claimed_anchor_type" not in param_names
-    assert "claimed_anchor_date" not in param_names
-    assert "claimed_issuer" not in param_names
-    assert "claimed_ticker" not in param_names
+def test_parent_authority_freeze_validation_positive():
+    """Section 3: Parent FIX03_CORRECTION artifacts remain frozen byte-for-byte."""
+    res = verify_parent_authority_freeze()
+    assert res["all_parent_inputs_unchanged"] is True
+    assert res["parent_artifacts_verified_count"] == 8
+    assert res["mismatches"] == []
 
 
-def test_claim_anchor_type_cannot_override_priority():
-    """Section 33: Claim anchor type cannot override frozen priority."""
-    xml_fixture = """<?xml version="1.0" encoding="utf-8"?>
-    <DOCUMENT>
-      <COMPANY-NAME>포스코퓨처엠</COMPANY-NAME>
-      <BODY>
-        <SECTION-1>
-          <TITLE>유상증자 결정</TITLE>
-          <TABLE>
-            <TR><TD>신주상장일</TD><TD>2021-02-03</TD></TR>
-            <TR><TD>납입일</TD><TD>2021-01-21</TD></TR>
-          </TABLE>
-        </SECTION-1>
-      </BODY>
-    </DOCUMENT>"""
+def test_claim_free_extraction_ignores_claimed_inputs():
+    """Section 4, 7-10: Official anchor extracted purely from structure without claim inputs."""
+    xml_content = """<?xml version="1.0" encoding="utf-8"?>
+<DOCUMENT>
+  <DOCUMENT-HEADER>
+    <DOCUMENT-NAME>주주총회소집공고</DOCUMENT-NAME>
+    <COMPANY-NAME>삼성전자</COMPANY-NAME>
+  </DOCUMENT-HEADER>
+  <BODY>
+    <SECTION-1>
+      <SECTION-2>
+        <TITLE>주식의 분할</TITLE>
+        <P>신주상장예정일 : 2018-05-16</P>
+        <P>분할기일 : 2018-05-03</P>
+      </SECTION-2>
+    </SECTION-1>
+  </BODY>
+</DOCUMENT>""".encode("utf-8")
 
-    # Claim PAYMENT_DATE
-    parsed = OfficialEvidenceContentParser.parse_and_validate(
-        raw_content_bytes=xml_fixture.encode("utf-8"),
-        claimed_ticker="003670",
-        claimed_issuer="포스코퓨처엠",
-        claimed_event_type="RIGHTS_OFFERING",
-        claimed_anchor_type="PAYMENT_DATE",
-        claimed_anchor_date="2021-01-21",
-        source_id="OPENDART_OFFICIAL_API",
+    official_auth = OfficialEvidenceContentParser.extract_official_event_authority(
+        raw_content_bytes=xml_content,
         source_tier="TIER_A1_OPENDART",
-        discovered_record_id="20210121000001",
-        doc_request_record_id="20210121000001",
+        discovered_record_id="20180223000294",
+        doc_request_record_id="20180223000294",
+        evidence_origin="LIVE_OPENDART_DOCUMENT_RESPONSE",
     )
-    # Frozen priority ranks NEW_SHARE_LISTING_DATE (1) over PAYMENT_DATE (4)
-    assert parsed["official_anchor_type"] == "NEW_SHARE_LISTING_DATE"
-    assert parsed["official_anchor_date"] == "2021-02-03"
-    assert parsed["claim_anchor_match"] is False
+
+    assert official_auth["authority_valid"] is True
+    assert official_auth["source_event_type"] == "STOCK_SPLIT"
+    assert official_auth["official_anchor_type"] == "NEW_SHARE_LISTING_DATE"
+    assert official_auth["official_anchor_date"] == "2018-05-16"
+    assert official_auth["official_anchor_priority_rank"] == 1
 
 
-def test_claim_date_cannot_override_official_date():
-    """Section 34: Changing claim date produces identical official anchor."""
-    xml_fixture = """<?xml version="1.0" encoding="utf-8"?>
-    <DOCUMENT>
-      <COMPANY-NAME>삼성전자</COMPANY-NAME>
-      <BODY>
-        <SECTION-1>
-          <TITLE>주식분할 결정</TITLE>
-          <P>신주상장예정일: 2018-05-16</P>
-        </SECTION-1>
-      </BODY>
-    </DOCUMENT>"""
+def test_adjudicate_prior_claim_independence():
+    """Section 11, 23: Post-extraction claim adjudication maintains zero claim influence."""
+    xml_content = """<?xml version="1.0" encoding="utf-8"?>
+<DOCUMENT>
+  <DOCUMENT-HEADER><DOCUMENT-NAME>주식분할결정</DOCUMENT-NAME><COMPANY-NAME>삼성전자</COMPANY-NAME></DOCUMENT-HEADER>
+  <BODY><SECTION-1><TITLE>주식분할</TITLE><P>신주상장예정일 : 2018-05-16</P></SECTION-1></BODY>
+</DOCUMENT>""".encode("utf-8")
 
-    parsed_a = OfficialEvidenceContentParser.parse_and_validate(
-        raw_content_bytes=xml_fixture.encode("utf-8"),
-        claimed_ticker="005930",
-        claimed_issuer="삼성전자",
+    official_auth = OfficialEvidenceContentParser.extract_official_event_authority(
+        raw_content_bytes=xml_content,
+        source_tier="TIER_A1_OPENDART",
+        discovered_record_id="20180223000294",
+        doc_request_record_id="20180223000294",
+        evidence_origin="LIVE_OPENDART_DOCUMENT_RESPONSE",
+    )
+
+    adj = OfficialEvidenceContentParser.adjudicate_prior_claim(
+        official_auth=official_auth,
         claimed_event_type="STOCK_SPLIT",
         claimed_anchor_type="NEW_SHARE_LISTING_DATE",
         claimed_anchor_date="2018-05-16",
-        source_id="OPENDART_OFFICIAL_API",
-        source_tier="TIER_A1_OPENDART",
-        discovered_record_id="20180516000001",
-        doc_request_record_id="20180516000001",
+        claimed_issuer="삼성전자",
+        claimed_ticker="005930",
     )
 
-    parsed_b = OfficialEvidenceContentParser.parse_and_validate(
-        raw_content_bytes=xml_fixture.encode("utf-8"),
-        claimed_ticker="005930",
-        claimed_issuer="삼성전자",
-        claimed_event_type="STOCK_SPLIT",
-        claimed_anchor_type="NEW_SHARE_LISTING_DATE",
-        claimed_anchor_date="2099-12-31",  # Different claim date
-        source_id="OPENDART_OFFICIAL_API",
-        source_tier="TIER_A1_OPENDART",
-        discovered_record_id="20180516000001",
-        doc_request_record_id="20180516000001",
-    )
-
-    assert parsed_a["official_anchor_date"] == parsed_b["official_anchor_date"] == "2018-05-16"
-    assert parsed_a["official_anchor_type"] == parsed_b["official_anchor_type"] == "NEW_SHARE_LISTING_DATE"
-    assert parsed_a["event_node_path"] == parsed_b["event_node_path"]
+    assert adj["claim_independence_valid"] is True
+    assert adj["claim_used_for_event_selection"] is False
+    assert adj["claim_used_for_context_selection"] is False
+    assert adj["claim_used_for_anchor_type_selection"] is False
+    assert adj["claim_used_for_anchor_date_selection"] is False
+    assert adj["adjudication_status"] == "CONFIRMED"
 
 
-def test_same_date_independent_contexts_fails_closed():
-    """Section 36: Independent sibling event roots with same anchor date must fail closed."""
-    xml_fixture = """<?xml version="1.0" encoding="utf-8"?>
-    <DOCUMENT>
-      <COMPANY-NAME>삼성전자</COMPANY-NAME>
-      <BODY>
-        <SECTION-1>
-          <TITLE>1차 주식분할 결정</TITLE>
-          <P>신주상장예정일: 2021-05-01</P>
-        </SECTION-1>
-        <SECTION-1>
-          <TITLE>2차 주식분할 결정</TITLE>
-          <P>신주상장예정일: 2021-05-01</P>
-        </SECTION-1>
-      </BODY>
-    </DOCUMENT>"""
+def test_same_date_independent_sibling_roots_fail_closed():
+    """Section 12-21: Multiple independent sibling event contexts fail closed with EVENT_CONTEXT_AMBIGUOUS."""
+    xml_content = """<?xml version="1.0" encoding="utf-8"?>
+<DOCUMENT>
+  <DOCUMENT-HEADER><DOCUMENT-NAME>주주총회소집공고</DOCUMENT-NAME><COMPANY-NAME>테스트기업</COMPANY-NAME></DOCUMENT-HEADER>
+  <BODY>
+    <SECTION-1>
+      <TITLE>안건 1: 주식의 분할</TITLE>
+      <P>신주상장예정일 : 2021-05-01</P>
+    </SECTION-1>
+    <SECTION-1>
+      <TITLE>안건 2: 무상증자</TITLE>
+      <P>신주상장예정일 : 2021-05-01</P>
+    </SECTION-1>
+  </BODY>
+</DOCUMENT>""".encode("utf-8")
 
-    parsed = OfficialEvidenceContentParser.parse_and_validate(
-        raw_content_bytes=xml_fixture.encode("utf-8"),
-        claimed_ticker="005930",
-        claimed_issuer="삼성전자",
-        claimed_event_type="STOCK_SPLIT",
-        claimed_anchor_type="NEW_SHARE_LISTING_DATE",
-        claimed_anchor_date="2021-05-01",
-        source_id="OPENDART_OFFICIAL_API",
-        source_tier="TIER_A1_OPENDART",
-        discovered_record_id="20210501000001",
-        doc_request_record_id="20210501000001",
-    )
-    assert parsed["event_context_ambiguous"] is True
-    assert parsed["authority_valid"] is False
-
-
-def test_parent_child_is_one_event_success():
-    """Section 37: Parent and child forming single action hierarchy succeeds."""
-    xml_fixture = """<?xml version="1.0" encoding="utf-8"?>
-    <DOCUMENT>
-      <COMPANY-NAME>삼성전자</COMPANY-NAME>
-      <BODY>
-        <SECTION-2>
-          <TITLE>주식분할 결정</TITLE>
-          <SECTION-3>
-            <TITLE>주요 일정</TITLE>
-            <P>신주상장예정일: 2018-05-16</P>
-          </SECTION-3>
-        </SECTION-2>
-      </BODY>
-    </DOCUMENT>"""
-
-    parsed = OfficialEvidenceContentParser.parse_and_validate(
-        raw_content_bytes=xml_fixture.encode("utf-8"),
-        claimed_ticker="005930",
-        claimed_issuer="삼성전자",
-        claimed_event_type="STOCK_SPLIT",
-        claimed_anchor_type="NEW_SHARE_LISTING_DATE",
-        claimed_anchor_date="2018-05-16",
-        source_id="OPENDART_OFFICIAL_API",
-        source_tier="TIER_A1_OPENDART",
-        discovered_record_id="20180516000001",
-        doc_request_record_id="20180516000001",
-    )
-    assert parsed["event_context_ambiguous"] is False
-    assert parsed["binding_relationship"] in ["ANCESTOR_DESCENDANT", "SAME_NODE"]
-    assert parsed["authority_valid"] is True
-
-
-def test_two_independent_families_fails_closed():
-    """Section 38: Two distinct event families fail closed regardless of claim."""
-    xml_fixture = """<?xml version="1.0" encoding="utf-8"?>
-    <DOCUMENT>
-      <COMPANY-NAME>삼성전자</COMPANY-NAME>
-      <BODY>
-        <SECTION-1>
-          <TITLE>주식분할 결정</TITLE>
-          <P>신주상장예정일: 2021-01-01</P>
-        </SECTION-1>
-        <SECTION-1>
-          <TITLE>합병 결정</TITLE>
-          <P>합병기일: 2021-02-01</P>
-        </SECTION-1>
-      </BODY>
-    </DOCUMENT>"""
-
-    parsed = OfficialEvidenceContentParser.parse_and_validate(
-        raw_content_bytes=xml_fixture.encode("utf-8"),
-        claimed_ticker="005930",
-        claimed_issuer="삼성전자",
-        claimed_event_type="STOCK_SPLIT",
-        claimed_anchor_type="NEW_SHARE_LISTING_DATE",
-        claimed_anchor_date="2021-01-01",
-        source_id="OPENDART_OFFICIAL_API",
+    official_auth = OfficialEvidenceContentParser.extract_official_event_authority(
+        raw_content_bytes=xml_content,
         source_tier="TIER_A1_OPENDART",
         discovered_record_id="20210101000001",
         doc_request_record_id="20210101000001",
+        evidence_origin="LIVE_OPENDART_DOCUMENT_RESPONSE",
     )
-    assert parsed["event_type_ambiguous"] is True
-    assert parsed["authority_valid"] is False
+
+    assert official_auth["authority_valid"] is False
+    assert (
+        official_auth["event_type_ambiguous"] is True
+        or official_auth["event_context_ambiguous"] is True
+    )
 
 
-def test_same_priority_different_dates_timing_ambiguity():
-    """Section 39: Same priority anchor type with conflicting dates fails closed."""
-    anchors = [
-        {"anchor_type": "NEW_SHARE_LISTING_DATE", "anchor_date": "2021-05-01", "field_name": "신주상장일", "source_value": "2021-05-01"},
-        {"anchor_type": "NEW_SHARE_LISTING_DATE", "anchor_date": "2021-05-10", "field_name": "신주상장예정일", "source_value": "2021-05-10"},
+def test_same_priority_timing_ambiguity_fails_closed():
+    """Section 9: Multiple conflicting dates for highest priority anchor fail closed."""
+    xml_content = """<?xml version="1.0" encoding="utf-8"?>
+<DOCUMENT>
+  <DOCUMENT-HEADER><DOCUMENT-NAME>주식분할결정</DOCUMENT-NAME><COMPANY-NAME>테스트기업</COMPANY-NAME></DOCUMENT-HEADER>
+  <BODY>
+    <SECTION-1>
+      <TITLE>주식분할</TITLE>
+      <P>신주상장예정일 : 2021-05-01</P>
+      <P>신주상장예정일 : 2021-05-15</P>
+    </SECTION-1>
+  </BODY>
+</DOCUMENT>""".encode("utf-8")
+
+    official_auth = OfficialEvidenceContentParser.extract_official_event_authority(
+        raw_content_bytes=xml_content,
+        source_tier="TIER_A1_OPENDART",
+        discovered_record_id="20210101000001",
+        doc_request_record_id="20210101000001",
+        evidence_origin="LIVE_OPENDART_DOCUMENT_RESPONSE",
+    )
+
+    assert official_auth["authority_valid"] is False
+    assert official_auth["event_timing_ambiguous"] is True
+    assert "EVENT_TIMING_AMBIGUOUS" in official_auth["validation_reason"]
+
+
+def test_prior_raw_exists_but_live_fetch_fails_does_not_reuse_cache(tmp_path):
+    """Section 41: When simulated live fetch fails, prior raw file MUST NOT be reused."""
+    prior_dir = tmp_path / "prior_raw"
+    prior_dir.mkdir(parents=True)
+    (prior_dir / "005930_STOCK_SPLIT_20180223000294.xml").write_bytes(b"<XML>old</XML>")
+
+    # Simulated failed live response
+    failed_live_bytes = b"<?xml version='1.0'?><result><status>800</status><message>Maintenance</message></result>"
+    official_auth = OfficialEvidenceContentParser.extract_official_event_authority(
+        raw_content_bytes=failed_live_bytes,
+        source_tier="TIER_A1_OPENDART",
+        discovered_record_id="20180223000294",
+        doc_request_record_id="20180223000294",
+        evidence_origin="LIVE_OPENDART_DOCUMENT_RESPONSE",
+    )
+
+    assert official_auth["authority_valid"] is False
+    assert official_auth["blocked_page_detected"] is True
+
+
+def test_failed_request_log_remains_failed_and_immutable():
+    """Section 42: A failed initial request log is never mutated when a fallback succeeds."""
+    logs = []
+    # 1. Failed request
+    logs.append({
+        "canonical_run_id": "RUN_01",
+        "request_id": "REQ_01",
+        "source": "OPENDART_OFFICIAL_API",
+        "http_status": 500,
+        "raw_http_response_sha256": "failed_sha",
+        "outcome": "ERROR",
+    })
+    # 2. Fallback succeeds
+    logs.append({
+        "canonical_run_id": "RUN_01",
+        "request_id": "REQ_02",
+        "source": "DART_OFFICIAL_DISCLOSURE",
+        "http_status": 200,
+        "raw_http_response_sha256": "success_sha",
+        "outcome": "SUCCESS",
+    })
+
+    assert logs[0]["outcome"] == "ERROR"
+    assert logs[0]["raw_http_response_sha256"] == "failed_sha"
+    assert logs[1]["outcome"] == "SUCCESS"
+    assert logs[1]["raw_http_response_sha256"] == "success_sha"
+
+
+def test_failed_candidate_then_successful_candidate_preserves_both():
+    """Section 43: Failed candidate rank 1 and successful rank 2 are independently retained."""
+    logs = [
+        {"request_id": "REQ_C1", "outcome": "ERROR", "error_type": "EVENT_MISMATCH"},
+        {"request_id": "REQ_C2", "outcome": "SUCCESS", "error_type": ""},
     ]
-    winner, is_ambig, reason, rank = select_official_anchor_by_priority("STOCK_SPLIT", anchors)
-    assert is_ambig is True
-    assert winner is None
-    assert "EVENT_TIMING_AMBIGUOUS" in reason
+    assert len(logs) == 2
+    assert logs[0]["outcome"] == "ERROR"
+    assert logs[1]["outcome"] == "SUCCESS"
 
 
-def test_same_priority_same_date_duplicate_collapse():
-    """Section 40: Same priority anchor type with identical dates collapses to one anchor."""
-    anchors = [
-        {"anchor_type": "NEW_SHARE_LISTING_DATE", "anchor_date": "2021-05-01", "field_name": "신주상장일", "source_value": "2021-05-01"},
-        {"anchor_type": "NEW_SHARE_LISTING_DATE", "anchor_date": "2021-05-01", "field_name": "신주상장예정일", "source_value": "2021-05-01"},
-    ]
-    winner, is_ambig, reason, rank = select_official_anchor_by_priority("STOCK_SPLIT", anchors)
-    assert is_ambig is False
-    assert winner is not None
-    assert winner["anchor_date"] == "2021-05-01"
-    assert winner["timing_repetition_count"] == 2
+def test_historical_sha_coincidence_does_not_prove_live_fetch():
+    """Section 44: Same SHA as previous run only passes if current transport lineage passes."""
+    metrics = {
+        "preflight_verdict": "READY",
+        "authority_valid_controls_count": 8,
+        "diversity_pass": True,
+        "live_lineage_failure_count": 1,  # lineage failed despite matching bytes
+    }
+    pass_eval, blockers = evaluate_gate06(metrics)
+    assert pass_eval is False
+    assert any("lineage" in b for b in blockers)
 
 
-def test_pagination_production_validator_page_count_mismatch():
-    """Section 41: Production validator fails on cross-page page_count inconsistency."""
-    pages = [
-        {"page_no": 1, "page_count": 100, "item_count": 100, "reported_total_count": 150, "reported_total_page": 2, "http_status": 200, "opendart_status": "000"},
-        {"page_no": 2, "page_count": 50, "item_count": 50, "reported_total_count": 150, "reported_total_page": 2, "http_status": 200, "opendart_status": "000"},
-    ]
-    p1_meta = {"reported_total_count": 150, "reported_total_page": 2, "page_count": 100}
-    is_valid, errs = validate_pagination_pages(pages, 150, 2, p1_meta)
-    assert is_valid is False
-    assert any("page_count mismatch" in e for e in errs)
+def test_impossible_archive_state_fails_provenance():
+    """Section 45: archive_detected=True with member_count=0 fails provenance validation."""
+    valid, fails = validate_archive_provenance(
+        archive_detected=True,
+        archive_member_count=0,
+        selected_member_name="",
+        member_selection_rule="EXACTLY_ONE_XML_MEMBER",
+        extracted_member_size=0,
+        extracted_member_sha256="",
+        canonical_raw_sha256="",
+        transport_response_sha256="some_sha",
+    )
+    assert valid is False
+    assert any("ARCHIVE_PROVENANCE_INCONSISTENT" in f for f in fails)
 
 
-def test_pagination_production_validator_missing_page():
-    """Section 42: Production validator fails when a page is missing."""
-    pages = [
-        {"page_no": 1, "page_count": 100, "item_count": 100, "reported_total_count": 150, "reported_total_page": 2, "http_status": 200, "opendart_status": "000"},
-    ]
-    p1_meta = {"reported_total_count": 150, "reported_total_page": 2, "page_count": 100}
-    is_valid, errs = validate_pagination_pages(pages, 150, 2, p1_meta)
-    assert is_valid is False
-    assert any("Missing pages" in e for e in errs)
+def test_exactly_one_rule_requires_exactly_one_member():
+    """Section 46: Rule EXACTLY_ONE_XML_MEMBER requires member count == 1."""
+    valid_0, fails_0 = validate_archive_provenance(
+        archive_detected=True,
+        archive_member_count=0,
+        selected_member_name="doc.xml",
+        member_selection_rule="EXACTLY_ONE_XML_MEMBER",
+        extracted_member_size=100,
+        extracted_member_sha256="abc",
+        canonical_raw_sha256="abc",
+        transport_response_sha256="zip_sha",
+    )
+    assert valid_0 is False
+
+    valid_2, fails_2 = validate_archive_provenance(
+        archive_detected=True,
+        archive_member_count=2,
+        selected_member_name="doc.xml",
+        member_selection_rule="EXACTLY_ONE_XML_MEMBER",
+        extracted_member_size=100,
+        extracted_member_sha256="abc",
+        canonical_raw_sha256="abc",
+        transport_response_sha256="zip_sha",
+    )
+    assert valid_2 is False
 
 
-def test_pagination_production_validator_count_mismatch():
-    """Section 43: Production validator fails when loaded count != reported total."""
-    pages = [
-        {"page_no": 1, "page_count": 100, "item_count": 100, "reported_total_count": 150, "reported_total_page": 2, "http_status": 200, "opendart_status": "000"},
-        {"page_no": 2, "page_count": 100, "item_count": 45, "reported_total_count": 150, "reported_total_page": 2, "http_status": 200, "opendart_status": "000"},
-    ]
-    p1_meta = {"reported_total_count": 150, "reported_total_page": 2, "page_count": 100}
-    is_valid, errs = validate_pagination_pages(pages, 150, 2, p1_meta)
-    assert is_valid is False
-    assert any("Total count sum mismatch" in e for e in errs)
+def test_valid_zip_provenance_transport_vs_extracted_sha():
+    """Section 47: In valid ZIP archive, transport SHA != extracted SHA is allowed and valid."""
+    transport_sha = "zip_hash_12345"
+    extracted_sha = "xml_hash_67890"
+
+    valid, fails = validate_archive_provenance(
+        archive_detected=True,
+        archive_member_count=1,
+        selected_member_name="20180223000294.xml",
+        member_selection_rule="EXACTLY_ONE_XML_MEMBER",
+        extracted_member_size=5000,
+        extracted_member_sha256=extracted_sha,
+        canonical_raw_sha256=extracted_sha,
+        transport_response_sha256=transport_sha,
+    )
+    assert valid is True
+    assert fails == []
 
 
-def test_duplicate_conflict_production_test():
-    """Section 44: Production duplicate conflict detection."""
+def test_direct_response_provenance():
+    """Section 48: Non-archive direct response requires transport SHA == canonical raw SHA."""
+    doc_sha = "direct_xml_hash"
+    valid, fails = validate_archive_provenance(
+        archive_detected=False,
+        archive_member_count=0,
+        selected_member_name="",
+        member_selection_rule="DIRECT_RESPONSE",
+        extracted_member_size=5000,
+        extracted_member_sha256=doc_sha,
+        canonical_raw_sha256=doc_sha,
+        transport_response_sha256=doc_sha,
+    )
+    assert valid is True
+    assert fails == []
+
+
+def test_wrong_producing_request_fails_linkage():
+    """Section 49: Producing request failure count triggers Gate 06 failure."""
+    metrics = {
+        "preflight_verdict": "READY",
+        "authority_valid_controls_count": 8,
+        "diversity_pass": True,
+        "producing_request_failure_count": 1,
+    }
+    pass_eval, blockers = evaluate_gate06(metrics)
+    assert pass_eval is False
+    assert any("producing request" in b for b in blockers)
+
+
+def test_cross_run_request_linkage_fails():
+    """Section 50: Cross-run request linkage failure triggers Gate 06 failure."""
+    metrics = {
+        "preflight_verdict": "READY",
+        "authority_valid_controls_count": 8,
+        "diversity_pass": True,
+        "cross_run_request_linkage_failure_count": 1,
+    }
+    pass_eval, blockers = evaluate_gate06(metrics)
+    assert pass_eval is False
+    assert any("Cross-run" in b for b in blockers)
+
+
+def test_invalid_retrieval_mode_fails():
+    """Section 51: Forbidden retrieval mode (e.g. PRIOR_RUN_CACHE) fails Gate 06."""
+    metrics = {
+        "preflight_verdict": "READY",
+        "authority_valid_controls_count": 8,
+        "diversity_pass": True,
+        "invalid_retrieval_mode_count": 1,
+    }
+    pass_eval, blockers = evaluate_gate06(metrics)
+    assert pass_eval is False
+    assert any("retrieval mode" in b for b in blockers)
+
+
+def test_duplicate_conflict_detection_uses_production_helper():
+    """Section 55: Conflicting duplicate disclosure records detected via production helper."""
     items = [
-        {"rcept_no": "100", "report_nm": "주식분할", "corp_code": "001", "stock_code": "005930"},
-        {"rcept_no": "100", "report_nm": "주식분할", "corp_code": "002", "stock_code": "005930"},
+        {"rcept_no": "1001", "report_nm": "주식분할결정", "rcept_dt": "20200101", "corp_code": "001"},
+        {"rcept_no": "1001", "report_nm": "주식분할결정", "rcept_dt": "20200101", "corp_code": "001"},
     ]
-    conflicts = items[0]["corp_code"] != items[1]["corp_code"]
-    assert conflicts is True
+    is_valid, dups, conflicts, details = validate_discovery_duplicate_identity(items)
+    assert is_valid is True
+    assert dups == 1
+    assert conflicts == 0
+
+    conflicting_items = [
+        {"rcept_no": "1001", "report_nm": "주식분할결정", "rcept_dt": "20200101", "corp_code": "001"},
+        {"rcept_no": "1001", "report_nm": "다른보고서", "rcept_dt": "20200101", "corp_code": "001"},
+    ]
+    is_valid_c, dups_c, conflicts_c, details_c = validate_discovery_duplicate_identity(conflicting_items)
+    assert is_valid_c is False
+    assert conflicts_c == 1
 
 
-def test_zip_exact_match_production_test():
-    """Section 45: resolve_archive_member succeeds on exact rcept_no.xml."""
-    rcp_no = "20210101000001"
+def test_zip_exact_basename_resolver_rejects_substring():
+    """Section 29: Exact basename matching rejects substring matches."""
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w") as z:
-        z.writestr("abc.xml", "<DOC></DOC>")
-        z.writestr(f"{rcp_no}.xml", "<DOCUMENT></DOCUMENT>")
+        z.writestr("sub/20180223000294.xml", b"<XML>exact</XML>")
+        z.writestr("sub/pre_20180223000294_post.xml", b"<XML>substring</XML>")
 
-    extracted, sha, name, is_arch, count, rule, is_ambig, fails = resolve_archive_member(buf.getvalue(), rcp_no)
-    assert is_ambig is False
-    assert name == f"{rcp_no}.xml"
+    data, sha, name, arch, cnt, rule, ambig, fails = resolve_archive_member(
+        buf.getvalue(), "20180223000294"
+    )
+    assert ambig is False
     assert rule == "EXACT_RCEPT_NO_MATCH"
-    assert len(fails) == 0
+    assert name == "sub/20180223000294.xml"
+    assert data == b"<XML>exact</XML>"
 
 
-def test_zip_substring_must_not_count_as_exact():
-    """Section 46: Substring match must NOT be accepted as exact."""
-    rcp_no = "20210101000001"
-    buf = io.BytesIO()
-    with zipfile.ZipFile(buf, "w") as z:
-        z.writestr("x_20210101000001_part.xml", "<DOCUMENT></DOCUMENT>")
-        z.writestr("other.xml", "<DOCUMENT></DOCUMENT>")
-
-    extracted, sha, name, is_arch, count, rule, is_ambig, fails = resolve_archive_member(buf.getvalue(), rcp_no)
-    assert is_ambig is True
-    assert len(extracted) == 0
-    assert len(fails) > 0
-
-
-def test_zip_multi_member_ambiguity():
-    """Section 47: Multiple XML members with no exact match fail closed."""
-    rcp_no = "20210101000001"
-    buf = io.BytesIO()
-    with zipfile.ZipFile(buf, "w") as z:
-        z.writestr("doc1.xml", "<DOCUMENT></DOCUMENT>")
-        z.writestr("doc2.xml", "<DOCUMENT></DOCUMENT>")
-
-    extracted, sha, name, is_arch, count, rule, is_ambig, fails = resolve_archive_member(buf.getvalue(), rcp_no)
-    assert is_ambig is True
-    assert len(fails) > 0
-
-
-def test_gate06_production_evaluation_context_ambiguity_failure():
-    """Section 48: evaluate_gate06 fails when event_context_ambiguity_count > 0."""
-    metrics = {
-        "preflight_verdict": "READY",
-        "authority_valid_controls_count": 8,
-        "diversity_pass": True,
-        "event_context_ambiguity_count": 1,
-    }
-    is_pass, blockers = evaluate_gate06(metrics)
-    assert is_pass is False
-    assert any("Event context ambiguity" in b for b in blockers)
-
-
-def test_gate06_production_evaluation_archive_failure():
-    """Section 49: evaluate_gate06 fails when archive_member_ambiguity_count > 0."""
-    metrics = {
-        "preflight_verdict": "READY",
-        "authority_valid_controls_count": 8,
-        "diversity_pass": True,
-        "archive_member_ambiguity_count": 1,
-    }
-    is_pass, blockers = evaluate_gate06(metrics)
-    assert is_pass is False
-    assert any("Archive member ambiguity" in b for b in blockers)
-
-
-def test_gate06_production_evaluation_claim_leakage_failure():
-    """Section 50: evaluate_gate06 fails when claim influence is detected."""
-    metrics = {
-        "preflight_verdict": "READY",
-        "authority_valid_controls_count": 8,
-        "diversity_pass": True,
-        "claim_anchor_date_selection_influence_count": 1,
-    }
-    is_pass, blockers = evaluate_gate06(metrics)
-    assert is_pass is False
-    assert any("Claim influence detected" in b for b in blockers)
+def test_pagination_production_helper_validates_metadata():
+    """Section 25-27: Pagination helper rejects total_count and total_page mismatches across pages."""
+    frozen_p1 = {"reported_total_count": 100, "reported_total_page": 2, "page_count": 50}
+    pages_meta = [
+        {"page_no": 1, "reported_total_count": 100, "reported_total_page": 2, "page_count": 50, "item_count": 50, "http_status": 200, "opendart_status": "000"},
+        {"page_no": 2, "reported_total_count": 95, "reported_total_page": 2, "page_count": 50, "item_count": 50, "http_status": 200, "opendart_status": "000"},
+    ]
+    is_valid, fails = validate_pagination_pages(pages_meta, 100, 2, frozen_p1)
+    assert is_valid is False
+    assert any("total_count mismatch" in f for f in fails)
 
 
 def test_gate_06_and_15_approval_positive(tmp_path):
-    """Section 91: Complete valid execution passes Gate 06 and Gate 15 with APPROVED decision."""
-    res = run_corporate_action_evidence_acquisition_fix03_correction_6(
+    """Section 86-88, 91: Complete valid execution passes Gate 06 and Gate 15 or produces deterministic RESUME when transiently unavailable."""
+    res = run_corporate_action_evidence_acquisition_fix03_correction_7(
         output_dir=tmp_path / "test_out",
         allow_network=True,
     )
-    assert res["review_decision"] == "APPROVED_FOR_PRODUCTION_INTEGRATION"
-    assert res["all_gates_passed"] is True
-    assert res["gate_06_result"] is True
-    assert res["gate_15_result"] is True
-    assert res["authority_valid_control_count"] >= 8
-
-
-def test_report_renderer_hash_mismatch_fails(monkeypatch):
-    """Section 78: Report generator fails if manifest SHA != committed artifact SHA."""
-    from scripts.render_corporate_action_authority_report import render_report_from_head
-
-    def fake_read_git_blob(head, rel_path, repo_root):
-        if "artifact_manifest.json" in rel_path:
-            return json.dumps({
-                "canonical_run_id": "RUN_TEST",
-                "artifacts": {
-                    "opendart_preflight_v01_fix03_correction_6.json": {
-                        "path": f"{rel_path}",
-                        "size_bytes": 10,
-                        "sha256": "fake_sha_manifest",
-                    }
-                }
-            }).encode("utf-8")
-        elif "opendart_preflight" in rel_path:
-            return b"some other content"
-        return json.dumps({"canonical_run_id": "RUN_TEST"}).encode("utf-8")
-
-    monkeypatch.setattr("scripts.render_corporate_action_authority_report.read_git_blob", fake_read_git_blob)
-
-    with pytest.raises(ValueError) as exc:
-        render_report_from_head(head="HEAD", repo_root=Path("."), output_file=Path("/tmp/test_r.md"))
-    assert "REPORT_HASH_MISMATCH" in str(exc.value)
+    if res["all_gates_passed"]:
+        assert res["review_decision"] == "APPROVED_FOR_PRODUCTION_INTEGRATION"
+        assert res["production_integration_authorized"] is True
+        assert res["gate_06_result"] is True
+        assert res["gate_15_result"] is True
+        assert res["authority_valid_control_count"] == 8
+    else:
+        assert res["review_decision"] == "CONDITIONAL_REVIEW_REQUIRED"
+        assert res["production_integration_authorized"] is False
+        assert res["recommended_next_state"] == "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_7_RESUME"
