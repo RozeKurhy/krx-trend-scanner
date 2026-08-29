@@ -17,7 +17,10 @@ import subprocess
 import sys
 from typing import Any
 
-from trend_scanner.data.corporate_action_authority import validate_full_regression_evidence
+from trend_scanner.data.corporate_action_authority import (
+    validate_full_regression_evidence,
+    validate_persisted_price_parity_evidence,
+)
 
 
 def read_git_blob(repo_root: Path, commit_head: str, relative_path: str) -> bytes:
@@ -102,7 +105,8 @@ def evaluate_report_truth_sync(
     binding_schema = str(binding.get("schema", ""))
     correction11_binding = binding_schema.endswith("correction_11")
     correction12_binding = binding_schema.endswith("correction_12")
-    current_binding = correction11_binding or correction12_binding
+    correction13_binding = binding_schema.endswith("correction_13")
+    current_binding = correction11_binding or correction12_binding or correction13_binding
     end_head = str(binding.get("end_head", ""))
     if not manifest:
         blockers.append("MANIFEST_MISSING")
@@ -225,6 +229,38 @@ def evaluate_report_truth_sync(
                 value is True for value in all_15.values()
             ):
                 blockers.append("DECISION_INTERNAL_INCONSISTENCY")
+
+    if correction13_binding:
+        c13_root = "artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/corporate_action_evidence/v01_fix03_correction_13"
+        cohort_rows = read_git_csv(repo_root, source_head, f"{c13_root}/corporate_action_review_cohort_v01_fix03_correction_13.csv")
+        price_rows = read_git_csv(repo_root, source_head, f"{c13_root}/corporate_action_event_price_rows_v01_fix03_correction_13.csv")
+        parity_rows = read_git_csv(repo_root, source_head, f"{c13_root}/corporate_action_event_sensitive_parity_v01_fix03_correction_13.csv")
+        reconciliation_rows = read_git_csv(repo_root, source_head, f"{c13_root}/corporate_action_date_reconciliation_v01_fix03_correction_13.csv")
+        c13_gate = read_git_json(repo_root, source_head, f"{c13_root}/gate06_corporate_action_reassessment_v01_fix03_correction_13.json")
+        c13_audit = read_git_json(repo_root, source_head, f"{c13_root}/gate06_metric_provenance_audit_v01_fix03_correction_13.json")
+        request_logs = c13_gate.get("request_logs") or decision.get("network_accounting", {}).get("request_logs", [])
+        persisted = validate_persisted_price_parity_evidence(
+            price_rows, parity_rows, reconciliation_rows, cohort_rows,
+            request_logs=request_logs, gate06_payload=c13_gate, decision_payload=decision,
+        )
+        blockers.extend(persisted.blockers)
+        if persisted.evaluation_status != "EVALUATED":
+            blockers.append("PRICE_EVIDENCE_NOT_EVALUATED")
+        if decision.get("review_decision") != "CONDITIONAL_REVIEW_REQUIRED":
+            blockers.append("DECISION_INTERNAL_INCONSISTENCY")
+        if decision.get("production_integration_authorized") is not False:
+            blockers.append("DECISION_INTERNAL_INCONSISTENCY")
+        if decision.get("recommended_next_state") != "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_13":
+            blockers.append("DECISION_INTERNAL_INCONSISTENCY")
+        if decision.get("gate_06_result") is not c13_gate.get("gate_06_pass"):
+            blockers.append("DECISION_INTERNAL_INCONSISTENCY")
+        if decision.get("all_gates_passed") is not False:
+            blockers.append("DECISION_INTERNAL_INCONSISTENCY")
+        if c13_audit.get("verdict") != "COMPLETE" or c13_audit.get("all_metrics_audited") is not True:
+            blockers.append("METRIC_AUDIT_INCOMPLETE")
+        rows_loaded = c13_audit.get("rows_loaded") if isinstance(c13_audit.get("rows_loaded"), dict) else {}
+        if rows_loaded.get("parity") != len(parity_rows) or rows_loaded.get("reconciliation") != len(reconciliation_rows):
+            blockers.append("METRIC_AUDIT_INCOMPLETE")
     return {
         "report_truth_sync": "PASS" if not blockers else "FAIL",
         "production_certification_valid": not blockers,
@@ -266,11 +302,14 @@ def derive_authority_closed(decision: dict[str, Any], truth_sync: dict[str, Any]
 
 def render_report(repo_root: Path, commit_head: str, output_file: Path) -> None:
     root = "artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/corporate_action_evidence"
+    fix13_rel = f"{root}/v01_fix03_correction_13"
     fix12_rel = f"{root}/v01_fix03_correction_12"
     fix11_rel = f"{root}/v01_fix03_correction_11"
     fix10_rel = f"{root}/v01_fix03_correction_10"
     fix9_rel = f"{root}/v01_fix03_correction_9"
-    if read_git_blob(repo_root, commit_head, f"{fix12_rel}/artifact_manifest.json"):
+    if read_git_blob(repo_root, commit_head, f"{fix13_rel}/artifact_manifest.json"):
+        base_rel, suffix = fix13_rel, "13"
+    elif read_git_blob(repo_root, commit_head, f"{fix12_rel}/artifact_manifest.json"):
         base_rel, suffix = fix12_rel, "12"
     elif read_git_blob(repo_root, commit_head, f"{fix11_rel}/artifact_manifest.json"):
         base_rel, suffix = fix11_rel, "11"
@@ -353,6 +392,14 @@ def render_report(repo_root: Path, commit_head: str, output_file: Path) -> None:
         f"- Active production authority changed: `{decision.get('active_production_authority_changed')}`",
         f"- Recommended next state: `{decision.get('recommended_next_state')}`",
     ]
+    if suffix == "13":
+        lines.extend([
+            "- Full Repository Pytest: `NOT EXECUTED` (forbidden during C13 review-candidate development)",
+            "- Live external calls: `0`; C13 canonical live artifacts: `NOT CREATED`",
+            "- FINAL_FIX_HEAD: `NOT DESIGNATED`; C13 END_HEAD: `NOT CREATED`",
+            f"- Persisted price evidence status: `{decision.get('persisted_price_evidence_status', 'NOT_RECORDED')}`",
+            f"- Persisted price rows Naver/PyKRX: `{decision.get('actual_candidate_price_row_count')}` / `{decision.get('actual_pykrx_price_row_count')}`",
+        ])
     if "CODE_TEST_BINDING_FAILURE" in truth["blockers"] or truth["report_truth_sync"] == "FAIL":
         lines.extend(["\n**CODE/TEST BINDING FAILURE — REPORT IS FAIL-CLOSED**\n", f"- Truth-sync blockers: `{truth['blockers']}`"])
     lines.extend([

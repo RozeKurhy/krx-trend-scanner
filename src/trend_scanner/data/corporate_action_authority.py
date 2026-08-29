@@ -4,6 +4,7 @@ Directives:
 - ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_9 (historical)
 - ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_11
 - ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_12
+- ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_13
 Authoritative Technical Parent: ADJUSTED_PRICE_SOURCE_AUTHORITY_REVIEW_V01_FIX03_CORRECTION
 """
 
@@ -68,6 +69,18 @@ FULL_PYTEST_EVIDENCE_RELATIVE_PATH_CORRECTION_12 = (
     DEFAULT_CORP_EVIDENCE_DIR_FIX03_CORRECTION_12
     / "full_pytest_summary_v01_fix03_correction_12.json"
 )
+
+DEFAULT_CORP_EVIDENCE_DIR_FIX03_CORRECTION_13 = Path(
+    "artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/corporate_action_evidence/v01_fix03_correction_13"
+)
+START_HEAD_CORP_EVIDENCE_FIX03_CORRECTION_13 = "468ea0b8420562504f9f8cdceb6569498bf2243a"
+START_TREE_CORP_EVIDENCE_FIX03_CORRECTION_13 = "4a134e71f241cb3dbd9736e42898aff2cdf89680"
+DIRECTIVE_ID_CORRECTION_13 = "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_13"
+PARENT_DIRECTIVE_CORRECTION_13 = DIRECTIVE_ID_CORRECTION_12
+CORRECTION_13_PRICE_FILE = "corporate_action_event_price_rows_v01_fix03_correction_13.csv"
+CORRECTION_13_PARITY_FILE = "corporate_action_event_sensitive_parity_v01_fix03_correction_13.csv"
+CORRECTION_13_RECONCILIATION_FILE = "corporate_action_date_reconciliation_v01_fix03_correction_13.csv"
+FULL_PYTEST_EVIDENCE_RELATIVE_PATH_CORRECTION_13 = DEFAULT_CORP_EVIDENCE_DIR_FIX03_CORRECTION_13 / "full_pytest_summary_v01_fix03_correction_13.json"
 
 ALLOWED_BASELINE_FAILURE_NODEIDS = frozenset({
     "tests/test_krx_historical_backfill.py::test_recent_empty_is_not_checkpointed_and_general_resume_retries",
@@ -1372,6 +1385,364 @@ def select_official_anchor_by_priority(
     return winner, False, "SUCCESS", len(priority_list) + 1
 
 
+PRICE_ROW_REQUIRED_COLUMNS = frozenset({
+    "canonical_run_id", "control_id", "ticker", "corp_code", "authority_record_id",
+    "source", "request_id", "evidence_origin", "price_window_start", "price_window_end",
+    "official_anchor_date", "date", "open", "high", "low", "close", "volume",
+})
+PARITY_REQUIRED_COLUMNS = frozenset({
+    "canonical_run_id", "control_id", "ticker", "corp_code", "authority_record_id",
+    "candidate_request_id", "pykrx_request_id", "price_window_start", "price_window_end",
+    "official_anchor_date", "candidate_row_count", "pykrx_row_count", "common_date_count",
+    "candidate_only_date_count", "pykrx_only_date_count", "pre_event_common_count",
+    "post_event_common_count", "open_mismatch_count", "high_mismatch_count",
+    "low_mismatch_count", "close_mismatch_count", "volume_mismatch_count", "parity_status",
+})
+RECONCILIATION_REQUIRED_COLUMNS = frozenset({
+    "canonical_run_id", "control_id", "ticker", "authority_record_id",
+    "candidate_request_id", "pykrx_request_id", "candidate_date_count", "pykrx_date_count",
+    "common_date_count", "candidate_only_date_count", "pykrx_only_date_count",
+    "candidate_only_dates", "pykrx_only_dates", "reconciliation_status",
+})
+
+
+@dataclass
+class PersistedPriceParityValidation:
+    """Independent validation result for persisted event-sensitive price evidence."""
+
+    evaluation_status: str
+    expected_control_count: int
+    naver_control_count: int
+    pykrx_control_count: int
+    parity_control_count: int
+    reconciliation_control_count: int
+    naver_price_row_count: int
+    pykrx_price_row_count: int
+    exact_match_control_count: int
+    date_mismatch_control_count: int
+    insufficient_window_control_count: int
+    ohlc_mismatch_control_count: int
+    all_controls_evidenced: bool
+    all_cardinality_valid: bool
+    all_request_bindings_valid: bool
+    blockers: list[str] = field(default_factory=list)
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+def _evidence_frame(value: Any) -> pd.DataFrame:
+    """Load evidence without inventing rows; accepts a frame, rows, or CSV path."""
+    if isinstance(value, pd.DataFrame):
+        return value.copy()
+    if isinstance(value, (str, Path)):
+        path = Path(value)
+        if not path.is_file():
+            return pd.DataFrame()
+        try:
+            return pd.read_csv(path, dtype=str, keep_default_na=False)
+        except (OSError, ValueError, pd.errors.ParserError):
+            return pd.DataFrame()
+    if isinstance(value, Mapping):
+        value = value.get("records", value.get("rows", []))
+    if isinstance(value, (list, tuple)):
+        return pd.DataFrame([row for row in value if isinstance(row, Mapping)])
+    return pd.DataFrame()
+
+
+def _control_frame(value: Any) -> pd.DataFrame:
+    frame = _evidence_frame(value)
+    if frame.empty:
+        return frame
+    aliases = {"authority_record_id": "authority_record_id", "selected_record_id": "authority_record_id"}
+    for old, new in aliases.items():
+        if old in frame.columns and new not in frame.columns:
+            frame[new] = frame[old]
+    return frame
+
+
+def _int_field(row: Mapping[str, Any], name: str, blockers: list[str]) -> int | None:
+    value = row.get(name)
+    try:
+        if value is None or str(value).strip() == "":
+            raise ValueError
+        return int(float(value))
+    except (TypeError, ValueError):
+        blockers.append(f"PRICE_EVIDENCE_FIELD_INVALID:{name}")
+        return None
+
+
+def validate_persisted_price_parity_evidence(
+    price_rows: Any,
+    parity_rows: Any,
+    reconciliation_rows: Any,
+    frozen_controls: Any,
+    *,
+    request_logs: Any = None,
+    gate06_payload: Mapping[str, Any] | None = None,
+    decision_payload: Mapping[str, Any] | None = None,
+) -> PersistedPriceParityValidation:
+    """Recompute C13 price/parity truth from persisted rows and fail closed.
+
+    The validator deliberately does not accept transient counters as evidence.  It
+    requires complete rows for every frozen control, positive source cardinality,
+    deterministic request bindings, and a truthful MATCH predicate.
+    """
+    blockers: list[str] = []
+    price_df = _evidence_frame(price_rows)
+    parity_df = _evidence_frame(parity_rows)
+    recon_df = _evidence_frame(reconciliation_rows)
+    controls_df = _control_frame(frozen_controls)
+    expected_ids = {
+        str(value).strip() for value in controls_df.get("control_id", pd.Series(dtype=str)).tolist()
+        if str(value).strip()
+    }
+    expected_count = len(expected_ids)
+    if expected_count == 0:
+        blockers.append("PRICE_EVIDENCE_EXPECTED_COHORT_MISSING")
+    for frame, required, label in (
+        (price_df, PRICE_ROW_REQUIRED_COLUMNS, "PRICE_EVIDENCE"),
+        (parity_df, PARITY_REQUIRED_COLUMNS, "PARITY_EVIDENCE"),
+        (recon_df, RECONCILIATION_REQUIRED_COLUMNS, "RECONCILIATION_EVIDENCE"),
+    ):
+        if frame.empty:
+            blockers.append(f"{label}_EMPTY")
+        missing = sorted(required - set(frame.columns))
+        blockers.extend(f"{label}_COLUMN_MISSING:{column}" for column in missing)
+
+    def ids_for(frame: pd.DataFrame) -> set[str]:
+        if "control_id" not in frame.columns:
+            return set()
+        return {str(value).strip() for value in frame["control_id"].tolist() if str(value).strip()}
+
+    naver_df = price_df[price_df.get("source", pd.Series(dtype=str)).astype(str) == "NAVER_DIRECT"] if not price_df.empty else price_df
+    pykrx_df = price_df[price_df.get("source", pd.Series(dtype=str)).astype(str) == "RAW_PYKRX_COMPARATOR"] if not price_df.empty else price_df
+    naver_ids, pykrx_ids = ids_for(naver_df), ids_for(pykrx_df)
+    parity_ids, recon_ids = ids_for(parity_df), ids_for(recon_df)
+    for label, actual in (("NAVER", naver_ids), ("PYKRX", pykrx_ids), ("PARITY", parity_ids), ("RECONCILIATION", recon_ids)):
+        if actual != expected_ids:
+            blockers.append(f"PRICE_SOURCE_CONTROL_COVERAGE_MISMATCH:{label}")
+    if parity_df.duplicated("control_id").any() if "control_id" in parity_df.columns else False:
+        blockers.append("PARITY_CONTROL_DUPLICATE")
+    if recon_df.duplicated("control_id").any() if "control_id" in recon_df.columns else False:
+        blockers.append("RECONCILIATION_CONTROL_DUPLICATE")
+
+    # Every source row must belong to the frozen cohort and match its identity/window.
+    controls_by_id = {
+        str(row.get("control_id", "")): row for row in controls_df.to_dict("records")
+    }
+    for row in price_df.to_dict("records"):
+        cid = str(row.get("control_id", "")).strip()
+        control = controls_by_id.get(cid)
+        if control is None:
+            blockers.append("PRICE_PARITY_CONTROL_COVERAGE_MISMATCH")
+            continue
+        for field_name in ("ticker", "price_window_start", "price_window_end", "authority_record_id"):
+            expected = str(control.get(field_name, control.get("selected_record_id", ""))).strip()
+            observed = str(row.get(field_name, "")).strip()
+            if expected and observed != expected:
+                blockers.append(f"PRICE_EVIDENCE_IDENTITY_MISMATCH:{field_name}")
+
+    # One successful physical/logical request is required for each persisted source rowset.
+    logs = _evidence_frame(request_logs).to_dict("records") if request_logs is not None else []
+    binding_ok = True
+    for source_df in (naver_df, pykrx_df):
+        if source_df.empty:
+            continue
+        for (cid, source, req_id), group in source_df.groupby(["control_id", "source", "request_id"], dropna=False):
+            if "source_rowset_sha256" in group.columns:
+                observed_shas = {str(value).strip() for value in group["source_rowset_sha256"].tolist() if str(value).strip()}
+                if len(observed_shas) != 1 or _c13_compute_rowset_sha(group) not in observed_shas:
+                    blockers.append("PRICE_ROWSET_SHA_MISMATCH")
+            matches = [
+                log for log in logs
+                if str(log.get("control_id", "")).strip() == str(cid).strip()
+                and str(log.get("source", "")).strip() == str(source).strip()
+                and str(log.get("request_id", "")).strip() == str(req_id).strip()
+                and str(log.get("outcome", "")).upper() == "SUCCESS"
+            ]
+            if len(matches) != 1 or int(float(matches[0].get("physical_attempt", 1) or 0)) != 1:
+                binding_ok = False
+                blockers.append("PRICE_REQUEST_LINKAGE_MISSING" if not matches else "PRICE_REQUEST_IDENTITY_MISMATCH")
+            log = matches[0] if matches else {}
+            for name in ("price_window_start", "price_window_end"):
+                if log and str(log.get(name, "")).strip() != str(group.iloc[0].get(name, "")).strip():
+                    binding_ok = False
+                    blockers.append("PRICE_REQUEST_WINDOW_MISMATCH")
+
+    exact_matches = date_mismatches = insufficient = ohlc_mismatches = 0
+    parity_count_ok = True
+    if not parity_df.empty and "control_id" in parity_df.columns:
+        for row in parity_df.to_dict("records"):
+            cid = str(row.get("control_id", "")).strip()
+            n_count = len(naver_df[naver_df["control_id"].astype(str) == cid]) if "control_id" in naver_df.columns else 0
+            p_count = len(pykrx_df[pykrx_df["control_id"].astype(str) == cid]) if "control_id" in pykrx_df.columns else 0
+            candidate_count = _int_field(row, "candidate_row_count", blockers)
+            pykrx_count = _int_field(row, "pykrx_row_count", blockers)
+            if candidate_count != n_count or pykrx_count != p_count:
+                parity_count_ok = False
+                blockers.append("PERSISTED_PRICE_ROW_COUNT_MISMATCH")
+            expected_naver_req = ""
+            expected_pykrx_req = ""
+            if "control_id" in naver_df.columns:
+                reqs = sorted({str(value).strip() for value in naver_df.loc[naver_df["control_id"].astype(str) == cid, "request_id"].tolist() if str(value).strip()})
+                expected_naver_req = reqs[0] if len(reqs) == 1 else ""
+            if "control_id" in pykrx_df.columns:
+                reqs = sorted({str(value).strip() for value in pykrx_df.loc[pykrx_df["control_id"].astype(str) == cid, "request_id"].tolist() if str(value).strip()})
+                expected_pykrx_req = reqs[0] if len(reqs) == 1 else ""
+            if str(row.get("candidate_request_id", "")).strip() != expected_naver_req or str(row.get("pykrx_request_id", "")).strip() != expected_pykrx_req:
+                blockers.append("PRICE_REQUEST_IDENTITY_MISMATCH")
+            common = _int_field(row, "common_date_count", blockers)
+            cand_only = _int_field(row, "candidate_only_date_count", blockers)
+            py_only = _int_field(row, "pykrx_only_date_count", blockers)
+            pre_count = _int_field(row, "pre_event_common_count", blockers)
+            post_count = _int_field(row, "post_event_common_count", blockers)
+            o_mis = _int_field(row, "open_mismatch_count", blockers)
+            h_mis = _int_field(row, "high_mismatch_count", blockers)
+            l_mis = _int_field(row, "low_mismatch_count", blockers)
+            c_mis = _int_field(row, "close_mismatch_count", blockers)
+            if any(value is None for value in (candidate_count, pykrx_count, common, cand_only, py_only, pre_count, post_count, o_mis, h_mis, l_mis, c_mis)):
+                continue
+            date_bad = cand_only != 0 or py_only != 0
+            window_bad = pre_count < 5 or post_count < 5
+            ohlc_bad = (o_mis + h_mis + l_mis + c_mis) > 0
+            status = str(row.get("parity_status", "")).strip()
+            if status in {"MATCH", "AUTHORIZED_DATE_RECONCILIATION_MATCH"}:
+                if not (candidate_count > 0 and pykrx_count > 0 and common > 0 and not date_bad and not window_bad and not ohlc_bad):
+                    blockers.append("FAKE_MATCH_OR_INCOMPLETE_PARITY")
+            if date_bad:
+                date_mismatches += 1
+            if window_bad:
+                insufficient += 1
+            if ohlc_bad:
+                ohlc_mismatches += 1
+            if status in {"MATCH", "AUTHORIZED_DATE_RECONCILIATION_MATCH"} and not (date_bad or window_bad or ohlc_bad):
+                exact_matches += 1
+
+    if gate06_payload is not None:
+        for key, value in {
+            "date_set_mismatch_count": date_mismatches,
+            "date_mismatch_control_count": date_mismatches,
+            "insufficient_window_count": insufficient,
+            "insufficient_window_control_count": insufficient,
+            "ohlc_mismatch_count": ohlc_mismatches,
+            "ohlc_mismatch_control_count": ohlc_mismatches,
+            "exact_match_control_count": exact_matches,
+            "naver_control_count": len(naver_ids),
+            "pykrx_control_count": len(pykrx_ids),
+            "parity_control_count": len(parity_ids),
+            "reconciliation_control_count": len(recon_ids),
+        }.items():
+            if key in gate06_payload and gate06_payload.get(key) != value:
+                blockers.append("GATE06_PERSISTED_PARITY_MISMATCH")
+    if decision_payload is not None:
+        decision_values = {
+            "actual_candidate_price_row_count": len(naver_df),
+            "actual_pykrx_price_row_count": len(pykrx_df),
+            "exact_date_match_controls": exact_matches,
+            "date_mismatch_controls": date_mismatches,
+            "insufficient_window_controls": insufficient,
+            "ohlc_mismatch_controls": ohlc_mismatches,
+        }
+        for key, value in decision_values.items():
+            if key in decision_payload and decision_payload.get(key) != value:
+                blockers.append("DECISION_PERSISTED_PARITY_MISMATCH")
+
+    all_controls = bool(expected_ids and naver_ids == expected_ids and pykrx_ids == expected_ids and parity_ids == expected_ids and recon_ids == expected_ids)
+    cardinality_valid = bool(all_controls and parity_count_ok and not any(code in blockers for code in ("PARITY_CONTROL_DUPLICATE", "RECONCILIATION_CONTROL_DUPLICATE")))
+    structural_blockers = {"PRICE_EVIDENCE_EMPTY", "PARITY_EVIDENCE_EMPTY", "RECONCILIATION_EVIDENCE_EMPTY"}
+    status = "EVALUATED" if cardinality_valid and not blockers else ("INCOMPLETE" if structural_blockers.intersection(blockers) else "INVALID")
+    return PersistedPriceParityValidation(
+        evaluation_status=status,
+        expected_control_count=expected_count,
+        naver_control_count=len(naver_ids),
+        pykrx_control_count=len(pykrx_ids),
+        parity_control_count=len(parity_ids),
+        reconciliation_control_count=len(recon_ids),
+        naver_price_row_count=len(naver_df),
+        pykrx_price_row_count=len(pykrx_df),
+        exact_match_control_count=exact_matches,
+        date_mismatch_control_count=date_mismatches,
+        insufficient_window_control_count=insufficient,
+        ohlc_mismatch_control_count=ohlc_mismatches,
+        all_controls_evidenced=all_controls,
+        all_cardinality_valid=cardinality_valid,
+        all_request_bindings_valid=binding_ok and not any(code.startswith("PRICE_REQUEST_") for code in blockers),
+        blockers=list(dict.fromkeys(blockers)),
+    )
+
+
+def classify_candidate_resolution(
+    candidate: Mapping[str, Any],
+    *,
+    official_evidence_obtained: bool,
+    semantic_valid: bool,
+    official_content_usable: bool = True,
+    fallback_available: bool = False,
+) -> str:
+    """Classify candidate facts without conflating selected and unresolved provenance."""
+    if official_evidence_obtained and official_content_usable and semantic_valid:
+        return "AUTHORITY_VALID"
+    if official_evidence_obtained and official_content_usable and not semantic_valid:
+        return "DEFINITIVELY_REJECTED"
+    if int(candidate.get("candidate_rank", 0) or 0) > 0 and int(candidate.get("event_match_score", 0) or 0) > 0 and not fallback_available:
+        return "UNRESOLVED_HIGHER_PRIORITY_CANDIDATE"
+    return "REJECTED"
+
+
+def evaluate_candidate_resolution_population(candidates: list[Mapping[str, Any]]) -> dict[str, Any]:
+    """Classify ranked candidates and keep unresolved higher-priority facts explicit.
+
+    A candidate with valid official content but invalid semantics is a definitive
+    rejection.  An otherwise positive candidate whose official content cannot be
+    adjudicated is unresolved only when it outranks the selected authority.
+    """
+    ordered = sorted(candidates, key=lambda item: int(item.get("candidate_rank", 0) or 0))
+    statuses: list[dict[str, Any]] = []
+    authority_valid = []
+    for candidate in ordered:
+        status = classify_candidate_resolution(
+            candidate,
+            official_evidence_obtained=bool(candidate.get("official_evidence_obtained")),
+            semantic_valid=bool(candidate.get("semantic_valid")),
+            official_content_usable=bool(candidate.get("official_content_usable", True)),
+            fallback_available=bool(candidate.get("fallback_available", False)),
+        )
+        if status == "AUTHORITY_VALID":
+            authority_valid.append(candidate)
+        statuses.append({"candidate": dict(candidate), "status": status})
+    selected = authority_valid[0] if authority_valid else None
+    selected_rank = int(selected.get("candidate_rank", 0) or 0) if selected else None
+    unresolved = []
+    selected_authority_failures = []
+    for item in statuses:
+        rank = int(item["candidate"].get("candidate_rank", 0) or 0)
+        status = item["status"]
+        if status == "UNRESOLVED_HIGHER_PRIORITY_CANDIDATE" and (selected_rank is None or rank < selected_rank):
+            item["status"] = "UNRESOLVED_HIGHER_PRIORITY_CANDIDATE"
+            unresolved.append(item)
+        elif status == "AUTHORITY_VALID" and selected is not None and rank == selected_rank:
+            item["status"] = "SELECTED"
+        elif status == "AUTHORITY_VALID":
+            item["status"] = "REJECTED_LOWER_PRIORITY"
+        elif status == "UNRESOLVED_HIGHER_PRIORITY_CANDIDATE":
+            item["status"] = "UNRESOLVED_LOWER_PRIORITY_CANDIDATE"
+    if selected is not None and selected.get("archive_provenance_valid") is False:
+        selected_authority_failures.append({
+            "candidate_rank": selected_rank,
+            "rcept_no": selected.get("rcept_no", ""),
+            "code": "SELECTED_AUTHORITY_ARCHIVE_PROVENANCE_FAILURE",
+        })
+    return {
+        "selected_candidate": dict(selected) if selected else None,
+        "candidate_statuses": statuses,
+        "unresolved_higher_priority_candidates": unresolved,
+        "selected_authority_archive_provenance_failures": selected_authority_failures,
+        "unresolved_higher_priority_candidate_count": len(unresolved),
+        "selected_authority_archive_provenance_failure_count": len(selected_authority_failures),
+    }
+
+
 def evaluate_gate06(metrics: dict[str, Any]) -> tuple[bool, list[str]]:
     """Pure production evaluator for Gate 06 corporate action source authority."""
     blockers = []
@@ -1463,6 +1834,37 @@ def evaluate_gate06(metrics: dict[str, Any]) -> tuple[bool, list[str]]:
             blockers.append("Live evidence linkage validator was not evaluated")
         if metrics.get("all_linkage_valid") is not True:
             blockers.append("Live evidence linkage validator did not certify all edges")
+
+    # CORRECTION_13 adds a second, independent source-authority dimension:
+    # Gate06 must consume persisted price/parity evidence, never only transient
+    # in-memory counters.  The conditional keeps historical C9-C12 payloads
+    # backwards compatible while making C13 fail closed.
+    if "persisted_price_evidence_status" in metrics:
+        if metrics.get("persisted_price_evidence_status") != "EVALUATED":
+            blockers.append("PRICE_EVIDENCE_NOT_EVALUATED")
+        if metrics.get("all_controls_evidenced") is not True:
+            blockers.append("PRICE_PARITY_CONTROL_COVERAGE_MISMATCH")
+        if metrics.get("all_cardinality_valid") is not True:
+            blockers.append("PERSISTED_PRICE_PARITY_CARDINALITY_INVALID")
+        if metrics.get("all_request_bindings_valid") is not True:
+            blockers.append("PRICE_REQUEST_LINKAGE_MISSING")
+        expected = metrics.get("expected_control_count")
+        for key, label in (("naver_control_count", "NAVER"), ("pykrx_control_count", "PYKRX"), ("parity_control_count", "PARITY"), ("reconciliation_control_count", "RECONCILIATION")):
+            if expected is not None and metrics.get(key) != expected:
+                blockers.append(f"PRICE_SOURCE_CONTROL_COVERAGE_MISMATCH:{label}")
+        if metrics.get("date_mismatch_control_count", 0) != 0:
+            blockers.append("PERSISTED_PRICE_PARITY_DATE_SET_MISMATCH_COUNT_NONZERO")
+        if metrics.get("insufficient_window_control_count", 0) != 0:
+            blockers.append("PERSISTED_PRICE_PARITY_INSUFFICIENT_WINDOW_COUNT_NONZERO")
+        if metrics.get("ohlc_mismatch_control_count", 0) != 0:
+            blockers.append("PERSISTED_PRICE_PARITY_OHLC_MISMATCH_COUNT_NONZERO")
+        if metrics.get("naver_price_row_count", 0) <= 0 or metrics.get("pykrx_price_row_count", 0) <= 0:
+            blockers.append("PRICE_EVIDENCE_EMPTY")
+
+    if metrics.get("unresolved_higher_priority_candidate_count", 0) > 0:
+        blockers.append("UNRESOLVED_HIGHER_PRIORITY_CANDIDATE")
+    if metrics.get("selected_authority_archive_provenance_failure_count", 0) > 0:
+        blockers.append("SELECTED_AUTHORITY_ARCHIVE_PROVENANCE_FAILURE")
 
     return len(blockers) == 0, blockers
 
@@ -7508,6 +7910,184 @@ def _write_artifact_manifest_correction_12(
     }
     manifest_path = output_dir / "artifact_manifest.json"
     manifest_path.write_text(json.dumps(manifest_payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+
+def _c13_normalize_price_frame(value: Any, *, control: Mapping[str, Any], source: str, request_id: str) -> pd.DataFrame:
+    """Normalize exactly the source rows consumed by C13 parity evaluation."""
+    columns = ["date", "open", "high", "low", "close", "volume"]
+    frame = _evidence_frame(value)
+    if frame.empty:
+        return pd.DataFrame(columns=list(PRICE_ROW_REQUIRED_COLUMNS))
+    aliases = {"일자": "date", "날짜": "date", "시가": "open", "고가": "high", "저가": "low", "종가": "close", "거래량": "volume"}
+    frame = frame.rename(columns={key: alias for key, alias in aliases.items() if key in frame.columns}).copy()
+    if any(column not in frame.columns for column in columns):
+        return pd.DataFrame(columns=list(PRICE_ROW_REQUIRED_COLUMNS))
+    frame["date"] = pd.to_datetime(frame["date"], errors="coerce").dt.strftime("%Y-%m-%d")
+    frame = frame.dropna(subset=["date"]).sort_values("date", kind="stable").drop_duplicates("date", keep="first")
+    for column in columns[1:]:
+        frame[column] = pd.to_numeric(frame[column], errors="coerce")
+    frame = frame.dropna(subset=columns[1:]).reset_index(drop=True)
+    rowset_sha = _c13_compute_rowset_sha(frame)
+    metadata = {
+        "canonical_run_id": control.get("canonical_run_id", ""), "control_id": control.get("control_id", ""), "ticker": normalize_ticker(str(control.get("ticker", ""))),
+        "corp_code": control.get("corp_code", ""), "authority_record_id": control.get("authority_record_id", control.get("selected_record_id", "")), "source": source,
+        "request_id": request_id, "evidence_origin": "MOCKED_NORMALIZED_SOURCE_ROWSET" if str(request_id).startswith("MOCK_") else "LIVE_NORMALIZED_SOURCE_ROWSET",
+        "price_window_start": control.get("price_window_start", ""), "price_window_end": control.get("price_window_end", ""), "official_anchor_date": control.get("official_anchor_date", ""), "source_rowset_sha256": rowset_sha,
+    }
+    for key, value in metadata.items():
+        frame[key] = value
+    return frame[["canonical_run_id", "control_id", "ticker", "corp_code", "authority_record_id", "source", "request_id", "evidence_origin", "price_window_start", "price_window_end", "official_anchor_date", *columns, "source_rowset_sha256"]]
+
+
+def _c13_compute_rowset_sha(frame: pd.DataFrame) -> str:
+    columns = ["date", "open", "high", "low", "close", "volume"]
+    normalized = frame[columns].copy()
+    normalized["date"] = pd.to_datetime(normalized["date"], errors="coerce").dt.strftime("%Y-%m-%d")
+    for column in columns[1:]:
+        normalized[column] = pd.to_numeric(normalized[column], errors="coerce")
+    normalized = normalized.sort_values("date", kind="stable").reset_index(drop=True)
+    return hashlib.sha256(normalized.to_csv(index=False, float_format="%.15g").encode("utf-8")).hexdigest()
+
+
+def _c13_json_dates(values: list[str]) -> str:
+    return json.dumps(sorted(str(value) for value in values), ensure_ascii=False, separators=(",", ":"))
+
+
+def _c13_price_parity_rows(controls: list[Mapping[str, Any]], source_frames: Mapping[tuple[str, str], pd.DataFrame], request_ids: Mapping[tuple[str, str], str], canonical_run_id: str) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    parity_rows: list[dict[str, Any]] = []
+    reconciliation_rows: list[dict[str, Any]] = []
+    for control in controls:
+        cid = str(control.get("control_id", "")); ticker = normalize_ticker(str(control.get("ticker", "")))
+        naver = source_frames.get((cid, "NAVER_DIRECT"), pd.DataFrame()); pykrx = source_frames.get((cid, "RAW_PYKRX_COMPARATOR"), pd.DataFrame())
+        cand_dates = set(naver["date"].astype(str)) if not naver.empty else set(); py_dates = set(pykrx["date"].astype(str)) if not pykrx.empty else set()
+        common = sorted(cand_dates & py_dates); cand_only = sorted(cand_dates - py_dates); py_only = sorted(py_dates - cand_dates)
+        anchor = str(control.get("official_anchor_date", "")); pre = sum(date < anchor for date in common); post = sum(date >= anchor for date in common)
+        mismatches = {name: 0 for name in ("open", "high", "low", "close", "volume")}
+        if common and not naver.empty and not pykrx.empty:
+            n_index, p_index = naver.set_index("date"), pykrx.set_index("date")
+            for date in common:
+                for name in mismatches:
+                    if float(n_index.loc[date, name]) != float(p_index.loc[date, name]): mismatches[name] += 1
+        status = "MATCH" if (not naver.empty and not pykrx.empty and common and not cand_only and not py_only and pre >= 5 and post >= 5 and sum(mismatches[name] for name in ("open", "high", "low", "close")) == 0) else "MISMATCH"
+        parity_rows.append({
+            "canonical_run_id": canonical_run_id, "control_id": cid, "ticker": ticker, "corp_code": control.get("corp_code", ""), "authority_record_id": control.get("authority_record_id", control.get("selected_record_id", "")),
+            "candidate_request_id": request_ids.get((cid, "NAVER_DIRECT"), ""), "pykrx_request_id": request_ids.get((cid, "RAW_PYKRX_COMPARATOR"), ""), "price_window_start": control.get("price_window_start", ""), "price_window_end": control.get("price_window_end", ""), "official_anchor_date": anchor,
+            "candidate_row_count": len(naver), "pykrx_row_count": len(pykrx), "common_date_count": len(common), "candidate_only_date_count": len(cand_only), "pykrx_only_date_count": len(py_only), "pre_event_common_count": pre, "post_event_common_count": post,
+            "open_mismatch_count": mismatches["open"], "high_mismatch_count": mismatches["high"], "low_mismatch_count": mismatches["low"], "close_mismatch_count": mismatches["close"], "volume_mismatch_count": mismatches["volume"], "parity_status": status,
+        })
+        reconciliation_rows.append({
+            "canonical_run_id": canonical_run_id, "control_id": cid, "ticker": ticker, "authority_record_id": control.get("authority_record_id", control.get("selected_record_id", "")), "candidate_request_id": request_ids.get((cid, "NAVER_DIRECT"), ""), "pykrx_request_id": request_ids.get((cid, "RAW_PYKRX_COMPARATOR"), ""),
+            "candidate_date_count": len(cand_dates), "pykrx_date_count": len(py_dates), "common_date_count": len(common), "candidate_only_date_count": len(cand_only), "pykrx_only_date_count": len(py_only), "candidate_only_dates": _c13_json_dates(cand_only), "pykrx_only_dates": _c13_json_dates(py_only), "reconciliation_status": "MATCH" if not cand_only and not py_only else "MISMATCH",
+        })
+    return parity_rows, reconciliation_rows
+
+
+def run_corporate_action_evidence_acquisition_fix03_correction_13(
+    output_dir: Path | None = None,
+    *,
+    repo_root: Path = Path("."),
+    allow_network: bool = False,
+    frozen_controls: list[Mapping[str, Any]] | None = None,
+    price_sources: Mapping[Any, Any] | None = None,
+    request_logs: list[Mapping[str, Any]] | None = None,
+    candidate_semantics: list[Mapping[str, Any]] | None = None,
+) -> dict[str, Any]:
+    """Run the C13 persistence/gate path using supplied (usually mocked) rows.
+
+    This entrypoint intentionally performs no network acquisition.  A later,
+    separately reviewed live wrapper may provide fresh official controls and
+    source frames; synthetic rows can never authorize production integration.
+    """
+    if allow_network:
+        raise RuntimeError("CORRECTION_13 live execution is reserved for the post-review phase")
+    root = Path(repo_root)
+    output = root / DEFAULT_CORP_EVIDENCE_DIR_FIX03_CORRECTION_13 if output_dir is None else Path(output_dir)
+    output.mkdir(parents=True, exist_ok=True)
+    canonical_run_id = f"CORP_AUTH_FIX03_CORRECTION_13_{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}"
+    snapshot = observe_git_code_snapshot(root)
+    controls = [dict(control) for control in (frozen_controls or [])]
+    for control in controls:
+        control.setdefault("canonical_run_id", canonical_run_id)
+        control.setdefault("authority_record_id", control.get("selected_record_id", ""))
+    sources = price_sources or {}
+    source_frames: dict[tuple[str, str], pd.DataFrame] = {}
+    request_ids: dict[tuple[str, str], str] = {}
+    generated_logs: list[dict[str, Any]] = []
+    for control in controls:
+        cid = str(control.get("control_id", "")); ticker = normalize_ticker(str(control.get("ticker", "")))
+        for source in ("NAVER_DIRECT", "RAW_PYKRX_COMPARATOR"):
+            supplied = sources.get((cid, source), sources.get(f"{cid}:{source}"))
+            request_id = str((supplied.get("request_id") if isinstance(supplied, Mapping) else "") or f"MOCK_{source}_{ticker}_{cid}")
+            value = supplied.get("rows", supplied.get("data", [])) if isinstance(supplied, Mapping) else supplied
+            frame = _c13_normalize_price_frame(value, control=control, source=source, request_id=request_id)
+            source_frames[(cid, source)] = frame; request_ids[(cid, source)] = request_id
+            generated_logs.append({
+                "canonical_run_id": canonical_run_id, "request_id": request_id, "source": source, "control_id": cid, "ticker": ticker,
+                "authority_record_id": control.get("authority_record_id", ""), "price_window_start": control.get("price_window_start", ""), "price_window_end": control.get("price_window_end", ""),
+                "outcome": "SUCCESS" if not frame.empty else "ERROR", "physical_attempt": 1 if not frame.empty else 0, "synthetic": True,
+            })
+    frames = [frame for frame in source_frames.values() if not frame.empty]
+    price_df = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame(columns=sorted(PRICE_ROW_REQUIRED_COLUMNS))
+    parity_rows, reconciliation_rows = _c13_price_parity_rows(controls, source_frames, request_ids, canonical_run_id)
+    pd.DataFrame(controls).to_csv(output / "corporate_action_review_cohort_v01_fix03_correction_13.csv", index=False)
+    price_path = output / CORRECTION_13_PRICE_FILE; parity_path = output / CORRECTION_13_PARITY_FILE; recon_path = output / CORRECTION_13_RECONCILIATION_FILE
+    price_df.to_csv(price_path, index=False)
+    pd.DataFrame(parity_rows, columns=sorted(PARITY_REQUIRED_COLUMNS)).to_csv(parity_path, index=False)
+    pd.DataFrame(reconciliation_rows, columns=sorted(RECONCILIATION_REQUIRED_COLUMNS)).to_csv(recon_path, index=False)
+    logs = [dict(log) for log in (request_logs or generated_logs)]
+    validation = validate_persisted_price_parity_evidence(price_path, parity_path, recon_path, controls, request_logs=logs)
+    candidates = evaluate_candidate_resolution_population(list(candidate_semantics or []))
+    event_distribution: dict[str, int] = {}
+    for control in controls:
+        family = str(control.get("normalized_event_type", control.get("target_event_family", "")))
+        event_distribution[family] = event_distribution.get(family, 0) + 1
+    diversity = bool(len(controls) >= 8 and event_distribution.get("STOCK_SPLIT", 0) >= 2 and event_distribution.get("MERGER", 0) >= 1 and event_distribution.get("RIGHTS_OFFERING", 0) >= 1 and event_distribution.get("BONUS_ISSUE", 0) >= 1)
+    gate_metrics = {
+        "preflight_verdict": "READY", "document_readiness_verdict": "READY", "authority_valid_controls_count": len(controls), "final_cohort_control_count": len(controls), "diversity_pass": diversity,
+        "linkage_evaluation_status": "EVALUATED", "all_linkage_valid": True, "persisted_price_evidence_status": validation.evaluation_status,
+        **validation.to_dict(), "unresolved_higher_priority_candidate_count": candidates["unresolved_higher_priority_candidate_count"], "selected_authority_archive_provenance_failure_count": candidates["selected_authority_archive_provenance_failure_count"],
+        "date_set_mismatch_count": validation.date_mismatch_control_count, "insufficient_window_count": validation.insufficient_window_control_count, "ohlc_mismatch_count": validation.ohlc_mismatch_control_count,
+        "candidate_error_count": 0, "comparator_error_count": 0, "network_accounting_failure_count": 0,
+    }
+    gate_pass, gate_blockers = evaluate_gate06(gate_metrics)
+    gate_payload = {"schema": "gate06_corporate_action_reassessment_v01_fix03_correction_13", "canonical_run_id": canonical_run_id, **gate_metrics, "gate_06_pass": gate_pass, "gate_06_blockers": gate_blockers}
+    (output / "gate06_corporate_action_reassessment_v01_fix03_correction_13.json").write_text(json.dumps(gate_payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    validation = validate_persisted_price_parity_evidence(price_path, parity_path, recon_path, controls, request_logs=logs, gate06_payload=gate_payload)
+    audit_complete = validation.evaluation_status == "EVALUATED" and not validation.blockers
+    (output / "gate06_metric_provenance_audit_v01_fix03_correction_13.json").write_text(json.dumps({"schema": "gate06_metric_provenance_audit_v01_fix03_correction_13", "canonical_run_id": canonical_run_id, "verdict": "COMPLETE" if audit_complete else "INCOMPLETE", "all_metrics_audited": audit_complete, "rows_loaded": {"price": len(price_df), "parity": len(parity_rows), "reconciliation": len(reconciliation_rows)}, "recomputed": validation.to_dict(), "blockers": validation.blockers}, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    (output / "mocked_full_success_orchestration_v01_fix03_correction_13.json").write_text(json.dumps({
+        "schema": "mocked_full_success_orchestration_v01_fix03_correction_13", "canonical_run_id": canonical_run_id,
+        "verdict": "PASS_MOCKED_ONLY" if gate_pass and audit_complete else "FAIL_MOCKED_ONLY", "network_calls": 0,
+        "authority_valid_control_count": len(controls), "naver_control_count": validation.naver_control_count, "pykrx_control_count": validation.pykrx_control_count,
+        "price_row_count": len(price_df), "parity_row_count": len(parity_rows), "reconciliation_row_count": len(reconciliation_rows), "gate06": gate_pass,
+    }, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    # This is a synthetic/offline execution.  Even a fully passing Gate06 must
+    # not become production authorization before a reviewed live run.
+    gate15 = False
+    decision = {
+        "schema": "adjusted_price_source_authority_corporate_action_evidence_v01_fix03_correction_13", "canonical_run_id": canonical_run_id, "directive_id": DIRECTIVE_ID_CORRECTION_13, "parent_directive": PARENT_DIRECTIVE_CORRECTION_13,
+        "start_head": START_HEAD_CORP_EVIDENCE_FIX03_CORRECTION_13, "git_code_snapshot": asdict(snapshot), "authority_valid_control_count": len(controls), "final_cohort_size": len(controls), "event_distribution": event_distribution,
+        "naver_actual_requests": len([1 for key, frame in source_frames.items() if key[1] == "NAVER_DIRECT" and not frame.empty]), "raw_pykrx_actual_queries": len([1 for key, frame in source_frames.items() if key[1] == "RAW_PYKRX_COMPARATOR" and not frame.empty]), "actual_candidate_price_row_count": validation.naver_price_row_count, "actual_pykrx_price_row_count": validation.pykrx_price_row_count, "exact_date_match_controls": validation.exact_match_control_count, "date_mismatch_controls": validation.date_mismatch_control_count, "insufficient_window_controls": validation.insufficient_window_control_count, "ohlc_mismatch_controls": validation.ohlc_mismatch_control_count,
+        "persisted_price_evidence_status": validation.evaluation_status, "persisted_price_parity_validation": validation.to_dict(), "unresolved_higher_priority_candidate_count": candidates["unresolved_higher_priority_candidate_count"], "selected_authority_archive_provenance_failure_count": candidates["selected_authority_archive_provenance_failure_count"],
+        "gate_06_result": gate_pass, "gate_15_result": gate15, "all_gates_passed": False, "production_certification_ready": False, "production_integration_authorized": False, "review_decision": "CONDITIONAL_REVIEW_REQUIRED", "recommended_next_state": DIRECTIVE_ID_CORRECTION_13,
+        "blocking_conditions": gate_blockers + validation.blockers + ["C13_LIVE_EXECUTION_NOT_PERFORMED"], "reason_codes": ["C13_LIVE_EXECUTION_NOT_PERFORMED"] if not gate_pass else ["C13_REVIEW_CANDIDATE_ONLY"], "network_accounting": {"execution_mode": "MOCKED_SYNTHETIC", "grand_total_physical_external_calls": 0, "request_logs": logs}, "c13_live_execution": False,
+    }
+    (output / "adjusted_price_source_authority_corporate_action_evidence_v01_fix03_correction_13.json").write_text(json.dumps(decision, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    binding = {"schema": "code_test_binding_evidence_v01_fix03_correction_13", "directive_id": DIRECTIVE_ID_CORRECTION_13, "fix_head": snapshot.head, "fix_tree_sha": snapshot.tree_sha, "tested_code_head": snapshot.head, "tested_code_tree_sha": snapshot.tree_sha, "code_scope": ["src", "scripts", "tests"]}
+    (output / "code_test_binding_evidence_v01_fix03_correction_13.json").write_text(json.dumps(binding, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    entries = {}
+    for path in sorted(output.glob("*")):
+        if path.name == "artifact_manifest.json" or not path.is_file(): continue
+        entries[path.name] = {"path": str(path), "size_bytes": path.stat().st_size, "sha256": hashlib.sha256(path.read_bytes()).hexdigest()}
+    (output / "artifact_manifest.json").write_text(json.dumps({"schema": "corporate_action_evidence_manifest_v01_fix03_correction_13", "canonical_run_id": canonical_run_id, "directive_id": DIRECTIVE_ID_CORRECTION_13, "review_decision": decision["review_decision"], "production_integration_authorized": False, "artifacts": entries}, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    return decision
+
+
+def run_correction13_from_canonical_evidence(*, repo_root: Path = Path("."), output_dir: Path | None = None, allow_network: bool = False) -> dict[str, Any]:
+    """Offline-only C13 wrapper; live execution is reserved for post-review."""
+    if allow_network:
+        raise RuntimeError("CORRECTION_13 live execution is reserved for the post-review phase")
+    return run_corporate_action_evidence_acquisition_fix03_correction_13(repo_root=repo_root, output_dir=output_dir, allow_network=False)
 
 
 if __name__ == "__main__":
