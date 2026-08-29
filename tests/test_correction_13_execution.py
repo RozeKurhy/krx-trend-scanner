@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 from pathlib import Path
+import hashlib
 import json
 import sys
 import types
@@ -128,6 +129,37 @@ def test_correction13_mocked_full_production_uses_live_capable_path(tmp_path, mo
     assert result["production_integration_authorized"] is True
     assert result["recommended_next_state"] == "ADJUSTED_PRICE_SOURCE_INTEGRATION_V01"
     assert len(pd.read_csv(tmp_path / "c13" / ca.CORRECTION_13_PRICE_FILE)) == 176
+
+
+def test_correction13_materialized_artifacts_have_immutable_summary_and_one_run_id(tmp_path, monkeypatch):
+    _clean_snapshot(monkeypatch)
+    _install_production_mocks(monkeypatch)
+    summary = _summary()
+    summary_path = tmp_path / ca.FULL_PYTEST_EVIDENCE_RELATIVE_PATH_CORRECTION_13
+    summary_path.parent.mkdir(parents=True, exist_ok=True)
+    summary_bytes = json.dumps(summary).encode()
+    summary_path.write_bytes(summary_bytes)
+    output = tmp_path / "c13"
+    result = ca.run_correction13_from_canonical_evidence(repo_root=tmp_path, output_dir=output, allow_network=True, parent_dir=Path.cwd() / ca.PARENT_FIX03_CORRECTION_DIR)
+    assert result["all_gates_passed"] is True
+    assert (output / "full_pytest_summary_v01_fix03_correction_13.json").read_bytes() == summary_bytes
+    certification = json.loads((output / "full_pytest_certification_v01_fix03_correction_13.json").read_text())
+    assert certification["source_summary_sha256"] == hashlib.sha256(summary_bytes).hexdigest()
+    assert certification["certification_valid"] is True
+    identity = ca.validate_canonical_run_identity_correction13(output, result["canonical_run_id"])
+    assert identity.all_identity_valid is True
+    assert json.loads((output / "live_evidence_linkage_validation_v01_fix03_correction_13.json").read_text())["all_linkage_valid"] is True
+    assert json.loads((output / "gate06_metric_provenance_audit_v01_fix03_correction_13.json").read_text())["verdict"] == "COMPLETE"
+
+
+def test_correction13_canonical_identity_validator_rejects_mixed_csv(tmp_path):
+    output = tmp_path / "c13"
+    output.mkdir()
+    (output / "evidence.json").write_text(json.dumps({"canonical_run_id": "RUN"}))
+    pd.DataFrame([{"canonical_run_id": "RUN"}, {"canonical_run_id": "WRONG"}]).to_csv(output / "evidence.csv", index=False)
+    result = ca.validate_canonical_run_identity_correction13(output, "RUN")
+    assert result.all_identity_valid is False
+    assert any(item["code"] == "CANONICAL_RUN_IDENTITY_MISMATCH" for item in result.mismatches)
 
 
 def test_correction13_ohlc_contradiction_rejects_actual_path(tmp_path, monkeypatch):

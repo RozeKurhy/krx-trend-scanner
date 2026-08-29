@@ -82,6 +82,8 @@ CORRECTION_13_PRICE_FILE = "corporate_action_event_price_rows_v01_fix03_correcti
 CORRECTION_13_PARITY_FILE = "corporate_action_event_sensitive_parity_v01_fix03_correction_13.csv"
 CORRECTION_13_RECONCILIATION_FILE = "corporate_action_date_reconciliation_v01_fix03_correction_13.csv"
 FULL_PYTEST_EVIDENCE_RELATIVE_PATH_CORRECTION_13 = DEFAULT_CORP_EVIDENCE_DIR_FIX03_CORRECTION_13 / "full_pytest_summary_v01_fix03_correction_13.json"
+FULL_PYTEST_CERTIFICATION_RELATIVE_PATH_CORRECTION_13 = DEFAULT_CORP_EVIDENCE_DIR_FIX03_CORRECTION_13 / "full_pytest_certification_v01_fix03_correction_13.json"
+FULL_PYTEST_CERTIFICATION_FILE_CORRECTION_13 = "full_pytest_certification_v01_fix03_correction_13.json"
 FULL_PYTEST_SCHEMAS = frozenset({
     "full_pytest_summary_v01_fix03_correction_12",
     "full_pytest_summary_v01_fix03_correction_13",
@@ -332,6 +334,101 @@ class FullRegressionCertification:
         return asdict(self)
 
 
+@dataclass(frozen=True)
+class CanonicalRunIdentityValidation:
+    """Evidence that every populated final-artifact run identity is coherent."""
+
+    expected_run_id: str
+    artifacts_checked: int
+    rows_checked: int
+    mismatches: list[dict[str, Any]] = field(default_factory=list)
+
+    @property
+    def all_identity_valid(self) -> bool:
+        return bool(self.expected_run_id and not self.mismatches)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "schema": "canonical_run_identity_validation_v01_fix03_correction_13",
+            "expected_run_id": self.expected_run_id,
+            "artifacts_checked": self.artifacts_checked,
+            "rows_checked": self.rows_checked,
+            "mismatches": self.mismatches,
+            "all_identity_valid": self.all_identity_valid,
+        }
+
+
+def validate_canonical_run_identity_correction13(
+    output_dir: Path,
+    expected_run_id: str,
+) -> CanonicalRunIdentityValidation:
+    """Validate the final C13 artifact set, including JSON and CSV rows.
+
+    This validator deliberately inspects the materialized representation rather
+    than trusting the stage runner's in-memory result.  Every populated
+    ``canonical_run_id`` must be present and equal to the one run identity.
+    """
+    root = Path(output_dir)
+    expected = str(expected_run_id or "").strip()
+    mismatches: list[dict[str, Any]] = []
+    artifacts_checked = 0
+    rows_checked = 0
+    if not expected:
+        mismatches.append({"code": "CANONICAL_RUN_ID_MISSING", "path": str(root)})
+    if not root.is_dir():
+        mismatches.append({"code": "CANONICAL_ARTIFACT_DIR_MISSING", "path": str(root)})
+        return CanonicalRunIdentityValidation(expected, 0, 0, mismatches)
+
+    def inspect_value(value: Any, path: str) -> None:
+        nonlocal rows_checked
+        if isinstance(value, Mapping):
+            for key, child in value.items():
+                if str(key) == "canonical_run_id":
+                    rows_checked += 1
+                    observed = str(child or "").strip()
+                    if not observed:
+                        mismatches.append({"code": "CANONICAL_RUN_ID_MISSING", "path": path})
+                    elif observed != expected:
+                        mismatches.append({"code": "CANONICAL_RUN_IDENTITY_MISMATCH", "path": path, "observed": observed, "expected": expected})
+                inspect_value(child, f"{path}.{key}")
+        elif isinstance(value, list):
+            for index, child in enumerate(value):
+                inspect_value(child, f"{path}[{index}]")
+
+    for path in sorted(root.rglob("*")):
+        if not path.is_file() or path.name == "artifact_manifest.json":
+            continue
+        artifacts_checked += 1
+        relative = str(path.relative_to(root))
+        if path.suffix.lower() == ".json":
+            try:
+                payload = json.loads(path.read_text(encoding="utf-8"))
+            except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+                continue
+            inspect_value(payload, relative)
+        elif path.suffix.lower() == ".csv":
+            try:
+                frame = pd.read_csv(path, dtype=str, keep_default_na=False)
+            except (OSError, UnicodeDecodeError, pd.errors.ParserError):
+                continue
+            if "canonical_run_id" in frame.columns:
+                for index, value in enumerate(frame["canonical_run_id"].tolist()):
+                    rows_checked += 1
+                    observed = str(value or "").strip()
+                    if not observed:
+                        mismatches.append({"code": "CANONICAL_RUN_ID_MISSING", "path": f"{relative}[{index}]"})
+                    elif observed != expected:
+                        mismatches.append({"code": "CANONICAL_RUN_IDENTITY_MISMATCH", "path": f"{relative}[{index}]", "observed": observed, "expected": expected})
+    unique_mismatches: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for item in mismatches:
+        marker = json.dumps(item, sort_keys=True, ensure_ascii=False)
+        if marker not in seen:
+            seen.add(marker)
+            unique_mismatches.append(item)
+    return CanonicalRunIdentityValidation(expected, artifacts_checked, rows_checked, unique_mismatches)
+
+
 def validate_full_regression_evidence(
     evidence: FullRegressionCertification | Mapping[str, Any] | None,
     *,
@@ -483,6 +580,27 @@ def production_certification_ready(
         and regression_certification.binding_valid
         and regression_certification.certification_valid
     )
+
+
+def build_full_pytest_certification_artifact(
+    summary_bytes: bytes,
+    certification: FullRegressionCertification,
+) -> dict[str, Any]:
+    """Build derived certification metadata without rewriting the source summary."""
+    return {
+        "schema": "full_pytest_certification_v01_fix03_correction_13",
+        "source_summary_sha256": hashlib.sha256(summary_bytes).hexdigest(),
+        "expected_fix_head": certification.expected_fix_head,
+        "expected_fix_tree_sha": certification.expected_fix_tree_sha,
+        "observed_test_head": certification.code_head_under_test,
+        "observed_test_tree": certification.code_tree_sha_under_test,
+        "binding_valid": certification.binding_valid,
+        "certification_valid": certification.certification_valid,
+        "evidence_status": certification.evidence_status,
+        "full_suite_completion": certification.full_suite_completion,
+        "new_regression_count": certification.new_regression_count,
+        "blockers": list(certification.blockers),
+    }
 
 
 def verify_parent_authority_freeze(parent_dir: Path = PARENT_FIX03_CORRECTION_DIR) -> dict[str, Any]:
@@ -1785,7 +1903,11 @@ def evaluate_gate06(metrics: dict[str, Any]) -> tuple[bool, list[str]]:
         blockers.append("Semantic hierarchy timing binding failed")
     if metrics.get("global_semantic_block_authority_count", 0) > 0:
         blockers.append("Forbidden global semantic block fallback used")
-    if metrics.get("archive_provenance_failure_count", 0) > 0:
+    # C13 separates selected-authority and unresolved-candidate provenance.
+    # The legacy aggregate is retained for historical C12 payloads only and
+    # cannot create a second blocker for a correctly classified rejection.
+    is_c13 = str(metrics.get("schema", "")).endswith("correction_13") or str(metrics.get("directive_id", "")).endswith("CORRECTION_13")
+    if metrics.get("archive_provenance_failure_count", 0) > 0 and not is_c13:
         blockers.append("Archive provenance failure detected")
     if metrics.get("archive_member_ambiguity_count", 0) > 0:
         blockers.append("Archive member ambiguity detected")
@@ -1855,6 +1977,8 @@ def evaluate_gate06(metrics: dict[str, Any]) -> tuple[bool, list[str]]:
         blockers.append("UNRESOLVED_HIGHER_PRIORITY_CANDIDATE")
     if metrics.get("selected_authority_archive_provenance_failure_count", 0) > 0:
         blockers.append("SELECTED_AUTHORITY_ARCHIVE_PROVENANCE_FAILURE")
+    if metrics.get("canonical_run_identity_valid") is False or metrics.get("canonical_run_identity_failure_count", 0) > 0:
+        blockers.append("CANONICAL_RUN_IDENTITY_MISMATCH")
 
     return len(blockers) == 0, blockers
 
@@ -8021,38 +8145,243 @@ def _write_c13_fail_closed(
     return decision
 
 
-def _copy_c12_artifacts_to_c13(stage: Path, output: Path) -> None:
+def _copy_c12_artifacts_to_c13(stage: Path, output: Path, canonical_run_id: str) -> None:
+    """Materialize a C12 stage as C13 and rebind every persisted representation.
+
+    This adapter is intentionally exhaustive: JSON values, CSV cells, nested
+    raw/discovery paths, schemas, and run IDs are all rewritten before any C13
+    validator is run.  The stage's artifact manifest is never copied because it
+    describes the pre-materialization representation.
+    """
     output.mkdir(parents=True, exist_ok=True)
-    for source in stage.iterdir():
-        if source.name == "artifact_manifest.json":
+    for child in output.iterdir():
+        if child.is_dir():
+            shutil.rmtree(child)
+        else:
+            child.unlink()
+    stage_run_id = ""
+    for candidate in stage.rglob("*.json"):
+        try:
+            payload = json.loads(candidate.read_text(encoding="utf-8"))
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError):
             continue
-        if source.is_dir():
-            target_dir = output / source.name.replace("correction_12", "correction_13")
-            if target_dir.exists():
-                shutil.rmtree(target_dir)
-            shutil.copytree(source, target_dir)
+        if isinstance(payload, Mapping) and str(payload.get("canonical_run_id") or "").strip():
+            stage_run_id = str(payload["canonical_run_id"]).strip()
+            break
+
+    def replace(value: Any) -> Any:
+        if isinstance(value, str):
+            result = value
+            if stage_run_id:
+                result = result.replace(stage_run_id, canonical_run_id)
+            result = result.replace("CORRECTION_12", "CORRECTION_13").replace("correction_12", "correction_13")
+            return result
+        if isinstance(value, list):
+            return [replace(item) for item in value]
+        if isinstance(value, dict):
+            return {key: replace(item) for key, item in value.items()}
+        return value
+
+    def target_for(source: Path) -> Path:
+        relative = source.relative_to(stage)
+        parts = [part.replace("CORRECTION_12", "CORRECTION_13").replace("correction_12", "correction_13") for part in relative.parts]
+        target = output.joinpath(*parts)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        return target
+
+    for source in sorted(stage.rglob("*")):
+        if not source.is_file() or source.name == "artifact_manifest.json":
             continue
-        if not source.is_file():
-            continue
-        target_name = source.name.replace("correction_12", "correction_13")
-        target = output / target_name
-        if source.suffix == ".json":
+        target = target_for(source)
+        if source.suffix.lower() == ".json":
             try:
                 payload = json.loads(source.read_text(encoding="utf-8"))
             except (OSError, UnicodeDecodeError, json.JSONDecodeError):
                 shutil.copyfile(source, target)
-                continue
-            def replace(value: Any) -> Any:
-                if isinstance(value, str):
-                    return value.replace("CORRECTION_12", "CORRECTION_13").replace("correction_12", "correction_13")
-                if isinstance(value, list):
-                    return [replace(item) for item in value]
-                if isinstance(value, dict):
-                    return {key: replace(item) for key, item in value.items()}
-                return value
-            target.write_text(json.dumps(replace(payload), indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+            else:
+                target.write_text(json.dumps(replace(payload), indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        elif source.suffix.lower() == ".csv":
+            try:
+                frame = pd.read_csv(source, dtype=object, keep_default_na=False)
+            except (OSError, UnicodeDecodeError, pd.errors.ParserError):
+                shutil.copyfile(source, target)
+            else:
+                for column in frame.columns:
+                    frame[column] = frame[column].map(replace)
+                frame.to_csv(target, index=False)
         else:
             shutil.copyfile(source, target)
+
+
+def _load_c13_candidate_evaluation(output: Path) -> dict[str, Any]:
+    """Rebuild candidate-resolution semantics from the final C13 CSVs."""
+    candidate_rows = _evidence_frame(output / "corporate_action_document_probe_audit_v01_fix03_correction_13.csv")
+    ranked_rows = _evidence_frame(output / "corporate_action_discovery_candidate_audit_v01_fix03_correction_13.csv")
+    score_by_candidate = {
+        (str(row.get("ticker", "")), str(row.get("rcept_no", ""))): row.get("event_match_score", 0)
+        for row in ranked_rows.to_dict("records")
+    }
+    candidate_groups: dict[str, list[dict[str, Any]]] = {}
+    for row in candidate_rows.to_dict("records"):
+        source = str(row.get("source", "")).strip()
+        status_code = str(row.get("http_status", "")).strip()
+        obtained = bool(source and status_code not in {"", "0", "500"})
+        semantic_valid = str(row.get("authority_valid", "")).lower() == "true"
+        score = score_by_candidate.get(
+            (str(row.get("ticker", "")), str(row.get("rcept_no", ""))),
+            row.get("event_match_score", 0),
+        )
+        archive_value = str(row.get("archive_provenance_valid", "")).strip().lower()
+        archive_valid = archive_value not in {"false", "0", "no"}
+        try:
+            rank = int(float(row.get("candidate_rank", 0) or 0))
+        except (TypeError, ValueError):
+            rank = 0
+        try:
+            score_value = int(float(score or 0))
+        except (TypeError, ValueError):
+            score_value = 0
+        fact = {
+            "candidate_rank": rank,
+            "event_match_score": score_value,
+            "official_evidence_obtained": obtained,
+            "semantic_valid": semantic_valid,
+            "official_content_usable": str(row.get("validation_reason", "")).strip() not in {"EMPTY_OR_UNUSABLE_DOCUMENT", "ARCHIVE_MEMBER_AMBIGUOUS"},
+            "fallback_available": source == "DART_OFFICIAL_DISCLOSURE",
+            "archive_provenance_valid": archive_valid,
+            "rcept_no": row.get("rcept_no", ""),
+        }
+        candidate_groups.setdefault(str(row.get("ticker", "")), []).append(fact)
+    evaluations = [evaluate_candidate_resolution_population(group) for group in candidate_groups.values()]
+    return {
+        "unresolved_higher_priority_candidate_count": sum(item["unresolved_higher_priority_candidate_count"] for item in evaluations),
+        "selected_authority_archive_provenance_failure_count": sum(item["selected_authority_archive_provenance_failure_count"] for item in evaluations),
+        "candidate_statuses": [status for item in evaluations for status in item["candidate_statuses"]],
+    }
+
+
+def _read_json_file(path: Path, default: Any = None) -> Any:
+    try:
+        return json.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+        return default
+
+
+def _load_c13_final_linkage_inputs(output: Path) -> dict[str, Any]:
+    network = _read_json_file(output / "corporate_action_evidence_network_accounting_v01_fix03_correction_13.json", {})
+    raw_manifest = _read_json_file(output / "corporate_action_raw_evidence_manifest_v01_fix03_correction_13.json", {})
+    authority_payload = _read_json_file(output / "corporate_action_authority_records_v01_fix03_correction_13.json", {})
+    return {
+        "discovery_records": _evidence_frame(output / "corporate_action_official_discovery_v01_fix03_correction_13.csv").to_dict("records"),
+        "document_records": _evidence_frame(output / "corporate_action_official_document_validation_v01_fix03_correction_13.csv").to_dict("records"),
+        "raw_manifest_entries": list(raw_manifest.get("artifacts", {}).values()) if isinstance(raw_manifest, Mapping) else [],
+        "authority_rows": authority_payload.get("records", []) if isinstance(authority_payload, Mapping) else [],
+        "request_logs": network.get("request_logs", []) if isinstance(network, Mapping) else [],
+        "price_request_logs": [
+            row for row in (network.get("request_logs", []) if isinstance(network, Mapping) else [])
+            if row.get("source") in {"NAVER_DIRECT", "RAW_PYKRX_COMPARATOR"}
+        ],
+        "accounting": network if isinstance(network, Mapping) else {},
+    }
+
+
+def recompute_c13_metric_values(
+    output: Path,
+    *,
+    validation: PersistedPriceParityValidation,
+    linkage: LiveEvidenceLinkageResult,
+    accounting: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Independently reproduce Gate06 production metrics from final evidence."""
+    cohort = _control_frame(output / "corporate_action_review_cohort_v01_fix03_correction_13.csv")
+    controls = {str(row.get("control_id", "")).strip() for row in cohort.to_dict("records") if str(row.get("control_id", "")).strip()}
+    distribution: dict[str, int] = {}
+    for row in cohort.to_dict("records"):
+        event = str(row.get("normalized_event_type", "")).strip()
+        if event:
+            distribution[event] = distribution.get(event, 0) + 1
+    authority_count = len(controls)
+    diversity_pass = bool(
+        authority_count >= 8
+        and distribution.get("STOCK_SPLIT", 0) >= 2
+        and distribution.get("MERGER", 0) >= 1
+        and distribution.get("RIGHTS_OFFERING", 0) >= 1
+        and distribution.get("BONUS_ISSUE", 0) >= 1
+    )
+    candidate_eval = _load_c13_candidate_evaluation(output)
+    values: dict[str, Any] = {
+        "authority_valid_controls_count": authority_count,
+        "final_cohort_control_count": authority_count,
+        "event_type_counts": distribution,
+        "diversity_pass": diversity_pass,
+        "unresolved_higher_priority_candidate_count": candidate_eval["unresolved_higher_priority_candidate_count"],
+        "selected_authority_archive_provenance_failure_count": candidate_eval["selected_authority_archive_provenance_failure_count"],
+        "naver_control_count": validation.naver_control_count,
+        "pykrx_control_count": validation.pykrx_control_count,
+        "parity_control_count": validation.parity_control_count,
+        "reconciliation_control_count": validation.reconciliation_control_count,
+        "naver_price_row_count": validation.naver_price_row_count,
+        "pykrx_price_row_count": validation.pykrx_price_row_count,
+        "exact_match_control_count": validation.exact_match_control_count,
+        "date_mismatch_control_count": validation.date_mismatch_control_count,
+        "insufficient_window_control_count": validation.insufficient_window_control_count,
+        "ohlc_mismatch_control_count": validation.ohlc_mismatch_control_count,
+        "all_controls_evidenced": validation.all_controls_evidenced,
+        "all_cardinality_valid": validation.all_cardinality_valid,
+        "all_request_bindings_valid": validation.all_request_bindings_valid,
+        "persisted_price_evidence_status": validation.evaluation_status,
+        **linkage.to_metrics(),
+        "network_accounting_failure_count": 0 if accounting.get("accounting_cross_invariant_pass") is True else 1,
+        "accounting_cross_invariant_pass": accounting.get("accounting_cross_invariant_pass"),
+    }
+    return values
+
+
+def audit_c13_metric_provenance(
+    output: Path,
+    *,
+    gate_payload: Mapping[str, Any],
+    decision_payload: Mapping[str, Any],
+    validation: PersistedPriceParityValidation,
+    linkage: LiveEvidenceLinkageResult,
+    accounting: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Compare independently recomputed metrics with Gate06 and decision claims."""
+    recomputed = recompute_c13_metric_values(output, validation=validation, linkage=linkage, accounting=accounting)
+    production_keys = (
+        "authority_valid_controls_count", "final_cohort_control_count", "diversity_pass",
+        "unresolved_higher_priority_candidate_count", "selected_authority_archive_provenance_failure_count",
+        "naver_control_count", "pykrx_control_count", "parity_control_count", "reconciliation_control_count",
+        "naver_price_row_count", "pykrx_price_row_count", "exact_match_control_count",
+        "date_mismatch_control_count", "insufficient_window_control_count", "ohlc_mismatch_control_count",
+        "all_controls_evidenced", "all_cardinality_valid", "all_request_bindings_valid",
+        "persisted_price_evidence_status", "all_linkage_valid", "network_accounting_failure_count",
+    )
+    mismatches: list[dict[str, Any]] = []
+    missing: list[str] = []
+    for key in production_keys:
+        expected = recomputed.get(key)
+        if key not in gate_payload:
+            missing.append(key)
+        elif gate_payload.get(key) != expected:
+            mismatches.append({"source": "gate06", "metric": key, "expected": expected, "observed": gate_payload.get(key)})
+        if key in decision_payload and decision_payload.get(key) != expected:
+            mismatches.append({"source": "decision", "metric": key, "expected": expected, "observed": decision_payload.get(key)})
+    blockers = ["METRIC_PROVENANCE_RECOMPUTATION_MISMATCH"] if mismatches else []
+    if missing:
+        blockers.append("METRIC_PROVENANCE_METRIC_MISSING")
+    complete = not mismatches and not missing
+    return {
+        "schema": "gate06_metric_provenance_audit_v01_fix03_correction_13",
+        "canonical_run_id": str(gate_payload.get("canonical_run_id", "")),
+        "verdict": "COMPLETE" if complete else "INCOMPLETE",
+        "all_metrics_audited": complete,
+        "recomputed_metrics": recomputed,
+        "production_significant_metrics": list(production_keys),
+        "missing_metrics": missing,
+        "mismatches": mismatches,
+        "blockers": blockers,
+    }
 
 
 def run_corporate_action_evidence_acquisition_fix03_correction_13(
@@ -8064,8 +8393,11 @@ def run_corporate_action_evidence_acquisition_fix03_correction_13(
 ) -> dict[str, Any]:
     """Run the single live-capable C13 orchestration using low-level adapters."""
     root = Path(repo_root)
+    canonical_run_id = f"CORP_AUTH_FIX03_CORRECTION_13_{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}"
     snapshot = observe_git_code_snapshot(root)
-    evidence = load_full_regression_evidence(root / FULL_PYTEST_EVIDENCE_RELATIVE_PATH_CORRECTION_13)
+    evidence_path = root / FULL_PYTEST_EVIDENCE_RELATIVE_PATH_CORRECTION_13
+    summary_bytes = evidence_path.read_bytes() if evidence_path.is_file() else b""
+    evidence = load_full_regression_evidence(evidence_path)
     certification = validate_full_regression_evidence(evidence, expected_fix_head=snapshot.head, expected_fix_tree_sha=snapshot.tree_sha)
     if snapshot.dirty:
         certification.blockers.append("CODE_SCOPE_WORKTREE_DIRTY")
@@ -8086,13 +8418,19 @@ def run_corporate_action_evidence_acquisition_fix03_correction_13(
             regression_evidence=certification,
             repo_root=root,
         )
-        _copy_c12_artifacts_to_c13(stage_output, output)
+        _copy_c12_artifacts_to_c13(stage_output, output, canonical_run_id)
     finally:
         shutil.rmtree(stage_root, ignore_errors=True)
 
     output.mkdir(parents=True, exist_ok=True)
-    (output / "full_pytest_summary_v01_fix03_correction_13.json").write_text(
-        json.dumps(certification.to_dict(), indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    # The canonical summary is immutable source evidence.  Preserve its exact
+    # bytes and emit derived certification metadata in a separate artifact.
+    summary_path = output / "full_pytest_summary_v01_fix03_correction_13.json"
+    if summary_bytes:
+        summary_path.write_bytes(summary_bytes)
+    certification_payload = build_full_pytest_certification_artifact(summary_bytes, certification)
+    (output / FULL_PYTEST_CERTIFICATION_FILE_CORRECTION_13).write_text(
+        json.dumps(certification_payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
     )
     cohort_path = output / "corporate_action_review_cohort_v01_fix03_correction_13.csv"
     price_path = output / CORRECTION_13_PRICE_FILE
@@ -8105,49 +8443,99 @@ def run_corporate_action_evidence_acquisition_fix03_correction_13(
     gate_payload = json.loads(gate_path.read_text(encoding="utf-8")) if gate_path.is_file() else {}
     validation = validate_persisted_price_parity_evidence(price_path, parity_path, recon_path, controls, request_logs=accounting_payload.get("request_logs", []))
 
-    candidate_rows = _evidence_frame(output / "corporate_action_document_probe_audit_v01_fix03_correction_13.csv")
-    ranked_rows = _evidence_frame(output / "corporate_action_discovery_candidate_audit_v01_fix03_correction_13.csv")
-    score_by_candidate = {(str(row.get("ticker", "")), str(row.get("rcept_no", ""))): row.get("event_match_score", 0) for row in ranked_rows.to_dict("records")}
-    candidate_facts: list[dict[str, Any]] = []
-    if not candidate_rows.empty:
-        for row in candidate_rows.to_dict("records"):
-            source = str(row.get("source", "")).strip()
-            obtained = bool(source and str(row.get("http_status", "")).strip() not in {"", "0", "500"})
-            semantic_valid = str(row.get("authority_valid", "")).lower() == "true"
-            score = score_by_candidate.get((str(row.get("ticker", "")), str(row.get("rcept_no", ""))), row.get("event_match_score", 0))
-            candidate_facts.append({"candidate_rank": int(float(row.get("candidate_rank", 0) or 0)), "event_match_score": int(float(score or 0)), "official_evidence_obtained": obtained, "semantic_valid": semantic_valid, "official_content_usable": bool(str(row.get("validation_reason", "")).strip() not in {"EMPTY_OR_UNUSABLE_DOCUMENT", "ARCHIVE_MEMBER_AMBIGUOUS"}), "fallback_available": source == "DART_OFFICIAL_DISCLOSURE"})
-    candidate_groups: dict[str, list[dict[str, Any]]] = {}
-    for fact, row in zip(candidate_facts, candidate_rows.to_dict("records")):
-        candidate_groups.setdefault(str(row.get("ticker", "")), []).append(fact)
-    grouped_evaluations = [evaluate_candidate_resolution_population(group) for group in candidate_groups.values()]
-    candidate_eval = {
-        "unresolved_higher_priority_candidate_count": sum(item["unresolved_higher_priority_candidate_count"] for item in grouped_evaluations),
-        "selected_authority_archive_provenance_failure_count": sum(item["selected_authority_archive_provenance_failure_count"] for item in grouped_evaluations),
+    identity_validation = validate_canonical_run_identity_correction13(output, canonical_run_id)
+    identity_payload = identity_validation.to_dict()
+    (output / "canonical_run_identity_validation_v01_fix03_correction_13.json").write_text(
+        json.dumps(identity_payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
+
+    final_inputs = _load_c13_final_linkage_inputs(output)
+    final_linkage = validate_live_evidence_linkage(
+        canonical_run_id=canonical_run_id,
+        discovery_records=final_inputs["discovery_records"],
+        document_records=final_inputs["document_records"],
+        raw_manifest_entries=final_inputs["raw_manifest_entries"],
+        authority_rows=final_inputs["authority_rows"],
+        request_logs=final_inputs["request_logs"],
+        price_request_logs=final_inputs["price_request_logs"],
+        artifact_paths={"raw": output / "raw"},
+        current_output_dir=output,
+        accounting_cross_invariant_pass=bool(final_inputs["accounting"].get("accounting_cross_invariant_pass", False)),
+        schema_suffix="13",
+    )
+    # The lineage flag is itself part of the final raw-manifest representation;
+    # update it, then rerun linkage so the emitted result validates the exact
+    # bytes that will be committed.
+    failed_record_ids = {
+        str(item.get("record_id") or item.get("authority_record_id") or item.get("document_id"))
+        for item in final_linkage.linkage_failures
+        if item.get("record_id") or item.get("authority_record_id") or item.get("document_id")
     }
+    raw_manifest_path = output / "corporate_action_raw_evidence_manifest_v01_fix03_correction_13.json"
+    raw_manifest = _read_json_file(raw_manifest_path, {})
+    if isinstance(raw_manifest, dict) and isinstance(raw_manifest.get("artifacts"), dict):
+        for item in raw_manifest["artifacts"].values():
+            if isinstance(item, dict):
+                record_id = _linkage_text(item, "official_record_id", "rcept_no", "authority_record_id")
+                item["live_lineage_valid"] = bool(record_id and record_id not in failed_record_ids and final_linkage.all_linkage_valid)
+        raw_manifest_path.write_text(json.dumps(raw_manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        final_inputs = _load_c13_final_linkage_inputs(output)
+        final_linkage = validate_live_evidence_linkage(
+            canonical_run_id=canonical_run_id,
+            discovery_records=final_inputs["discovery_records"],
+            document_records=final_inputs["document_records"],
+            raw_manifest_entries=final_inputs["raw_manifest_entries"],
+            authority_rows=final_inputs["authority_rows"],
+            request_logs=final_inputs["request_logs"],
+            price_request_logs=final_inputs["price_request_logs"],
+            artifact_paths={"raw": output / "raw"},
+            current_output_dir=output,
+            accounting_cross_invariant_pass=bool(final_inputs["accounting"].get("accounting_cross_invariant_pass", False)),
+            schema_suffix="13",
+        )
+    linkage_payload = final_linkage.to_dict()
+    linkage_payload.update({"directive_id": DIRECTIVE_ID_CORRECTION_13, "canonical_run_id": canonical_run_id})
+    (output / "live_evidence_linkage_validation_v01_fix03_correction_13.json").write_text(
+        json.dumps(linkage_payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
+
+    candidate_eval = _load_c13_candidate_evaluation(output)
 
     gate_metrics = dict(gate_payload)
     gate_metrics.update(validation.to_dict())
+    gate_metrics.update(final_linkage.to_metrics())
     gate_metrics["persisted_price_evidence_status"] = validation.evaluation_status
     gate_metrics["unresolved_higher_priority_candidate_count"] = candidate_eval["unresolved_higher_priority_candidate_count"]
     gate_metrics["selected_authority_archive_provenance_failure_count"] = candidate_eval["selected_authority_archive_provenance_failure_count"]
     gate_metrics["candidate_error_count"] = gate_metrics.get("candidate_error_count", 0)
     gate_metrics["comparator_error_count"] = gate_metrics.get("comparator_error_count", 0)
     gate_metrics["network_accounting_failure_count"] = 0 if accounting_payload.get("accounting_cross_invariant_pass", True) else 1
+    gate_metrics["canonical_run_identity_valid"] = identity_validation.all_identity_valid
+    if not identity_validation.all_identity_valid:
+        gate_metrics["canonical_run_identity_failure_count"] = len(identity_validation.mismatches)
+    else:
+        gate_metrics["canonical_run_identity_failure_count"] = 0
+    gate_metrics["schema"] = "gate06_corporate_action_reassessment_v01_fix03_correction_13"
+    gate_metrics["directive_id"] = DIRECTIVE_ID_CORRECTION_13
     gate_pass, gate_blockers = evaluate_gate06(gate_metrics)
     gate_payload.update(gate_metrics)
     gate_payload.update({"schema": "gate06_corporate_action_reassessment_v01_fix03_correction_13", "directive_id": DIRECTIVE_ID_CORRECTION_13, "gate_06_pass": gate_pass, "gate_06_blockers": gate_blockers})
     gate_path.write_text(json.dumps(gate_payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-    required_audit_metrics = (
-        "authority_valid_controls_count", "final_cohort_control_count", "diversity_pass",
-        "unresolved_higher_priority_candidate_count", "selected_authority_archive_provenance_failure_count",
-        "naver_control_count", "pykrx_control_count", "parity_control_count", "reconciliation_control_count",
-        "date_mismatch_control_count", "insufficient_window_control_count", "ohlc_mismatch_control_count",
-        "all_request_bindings_valid", "all_linkage_valid", "network_accounting_failure_count",
-        "persisted_price_evidence_status",
+    # Gate06 is now audited against independently recomputed final evidence,
+    # including authority, candidate, price, linkage, and network populations.
+    audit_payload = audit_c13_metric_provenance(
+        output,
+        gate_payload=gate_payload,
+        decision_payload={},
+        validation=validation,
+        linkage=final_linkage,
+        accounting=accounting_payload,
     )
-    missing_audit_metrics = [key for key in required_audit_metrics if key not in gate_metrics]
-    audit_complete = validation.evaluation_status == "EVALUATED" and not validation.blockers and not missing_audit_metrics
-    audit_payload = {"schema": "gate06_metric_provenance_audit_v01_fix03_correction_13", "canonical_run_id": gate_payload.get("canonical_run_id", ""), "verdict": "COMPLETE" if audit_complete else "INCOMPLETE", "all_metrics_audited": audit_complete, "rows_loaded": {"price": len(_evidence_frame(price_path)), "parity": len(_evidence_frame(parity_path)), "reconciliation": len(_evidence_frame(recon_path))}, "recomputed": validation.to_dict(), "production_significant_metrics": sorted(gate_metrics), "required_metrics": list(required_audit_metrics), "missing_metrics": missing_audit_metrics, "blockers": validation.blockers}
+    audit_complete = audit_payload["verdict"] == "COMPLETE"
+    audit_payload.update({
+        "rows_loaded": {"price": len(_evidence_frame(price_path)), "parity": len(_evidence_frame(parity_path)), "reconciliation": len(_evidence_frame(recon_path))},
+        "recomputed": validation.to_dict(),
+    })
     (output / "gate06_metric_provenance_audit_v01_fix03_correction_13.json").write_text(json.dumps(audit_payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
     inherited = stage_result.get("inherited_gate_results", {})
@@ -8162,12 +8550,43 @@ def run_corporate_action_evidence_acquisition_fix03_correction_13(
     else:
         decision_name, authorized, next_state = "CONDITIONAL_REVIEW_REQUIRED", False, DIRECTIVE_ID_CORRECTION_13
     decision = dict(stage_result)
-    decision.update({"schema": "adjusted_price_source_authority_corporate_action_evidence_v01_fix03_correction_13", "directive_id": DIRECTIVE_ID_CORRECTION_13, "parent_directive": PARENT_DIRECTIVE_CORRECTION_13, "start_head": START_HEAD_CORP_EVIDENCE_FIX03_CORRECTION_13, "git_code_snapshot": asdict(snapshot), "full_suite_completion": certification.full_suite_completion, "new_regression_count": certification.new_regression_count, "regression_certification": certification.to_dict(), "persisted_price_evidence_status": validation.evaluation_status, "persisted_price_parity_validation": validation.to_dict(), "actual_candidate_price_row_count": validation.naver_price_row_count, "actual_pykrx_price_row_count": validation.pykrx_price_row_count, "exact_date_match_controls": validation.exact_match_control_count, "date_mismatch_controls": validation.date_mismatch_control_count, "insufficient_window_controls": validation.insufficient_window_control_count, "ohlc_mismatch_controls": validation.ohlc_mismatch_control_count, "unresolved_higher_priority_candidate_count": candidate_eval["unresolved_higher_priority_candidate_count"], "selected_authority_archive_provenance_failure_count": candidate_eval["selected_authority_archive_provenance_failure_count"], "gate_06_result": bool(gate_pass and audit_complete), "gate_15_result": all_gates["gate_15_no_unresolved_conditions"], "all_15_gate_results": all_gates, "all_gates_passed": all_pass, "production_certification_ready": all_pass, "production_integration_authorized": authorized, "review_decision": decision_name, "recommended_next_state": next_state, "blocking_conditions": list(dict.fromkeys(gate_blockers + validation.blockers)), "reason_codes": ["CORPORATE_ACTION_PRICE_CONTRADICTION"] if decision_name.startswith("REJECTED") else (["ALL_15_SOURCE_AUTHORITY_REVIEW_GATES_PASSED_FIX03_CORRECTION_13"] if all_pass else ["C13_CERTIFICATION_UNRESOLVED"]), "network_accounting": accounting_payload, "c13_live_execution": bool(allow_network)})
+    decision.update({"canonical_run_id": canonical_run_id, "schema": "adjusted_price_source_authority_corporate_action_evidence_v01_fix03_correction_13", "directive_id": DIRECTIVE_ID_CORRECTION_13, "parent_directive": PARENT_DIRECTIVE_CORRECTION_13, "start_head": START_HEAD_CORP_EVIDENCE_FIX03_CORRECTION_13, "git_code_snapshot": asdict(snapshot), "full_suite_completion": certification.full_suite_completion, "new_regression_count": certification.new_regression_count, "regression_certification": certification.to_dict(), "persisted_price_evidence_status": validation.evaluation_status, "persisted_price_parity_validation": validation.to_dict(), "actual_candidate_price_row_count": validation.naver_price_row_count, "actual_pykrx_price_row_count": validation.pykrx_price_row_count, "exact_date_match_controls": validation.exact_match_control_count, "date_mismatch_controls": validation.date_mismatch_control_count, "insufficient_window_controls": validation.insufficient_window_control_count, "ohlc_mismatch_controls": validation.ohlc_mismatch_control_count, "unresolved_higher_priority_candidate_count": candidate_eval["unresolved_higher_priority_candidate_count"], "selected_authority_archive_provenance_failure_count": candidate_eval["selected_authority_archive_provenance_failure_count"], "gate_06_result": bool(gate_pass and audit_complete), "gate_15_result": all_gates["gate_15_no_unresolved_conditions"], "all_15_gate_results": all_gates, "all_gates_passed": all_pass, "production_certification_ready": all_pass, "production_integration_authorized": authorized, "review_decision": decision_name, "recommended_next_state": next_state, "blocking_conditions": list(dict.fromkeys(gate_blockers + validation.blockers)), "reason_codes": ["CORPORATE_ACTION_PRICE_CONTRADICTION"] if decision_name.startswith("REJECTED") else (["ALL_15_SOURCE_AUTHORITY_REVIEW_GATES_PASSED_FIX03_CORRECTION_13"] if all_pass else ["C13_CERTIFICATION_UNRESOLVED"]), "network_accounting": accounting_payload, "c13_live_execution": bool(allow_network)})
+    # Re-run the audit after decision construction so any production-significant
+    # values duplicated into the decision are also equality-bound to evidence.
+    audit_payload = audit_c13_metric_provenance(
+        output,
+        gate_payload=gate_payload,
+        decision_payload=decision,
+        validation=validation,
+        linkage=final_linkage,
+        accounting=accounting_payload,
+    )
+    audit_complete = audit_payload["verdict"] == "COMPLETE"
+    audit_payload.update({
+        "rows_loaded": {"price": len(_evidence_frame(price_path)), "parity": len(_evidence_frame(parity_path)), "reconciliation": len(_evidence_frame(recon_path))},
+        "recomputed": validation.to_dict(),
+    })
+    if not audit_complete:
+        gate_blockers = list(dict.fromkeys([*gate_blockers, *audit_payload.get("blockers", [])]))
+        gate_pass = False
+        gate_payload["gate_06_pass"] = False
+        gate_payload["gate_06_blockers"] = gate_blockers
+        gate_path.write_text(json.dumps(gate_payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        all_gates["gate_06_corporate_action_parity"] = False
+        all_gates["gate_15_no_unresolved_conditions"] = False
+        all_pass = False
+        decision.update({"gate_06_result": False, "gate_15_result": False, "all_15_gate_results": all_gates, "all_gates_passed": False, "production_certification_ready": False, "production_integration_authorized": False, "review_decision": "CONDITIONAL_REVIEW_REQUIRED", "recommended_next_state": DIRECTIVE_ID_CORRECTION_13, "blocking_conditions": gate_blockers})
     decision_path = output / "adjusted_price_source_authority_corporate_action_evidence_v01_fix03_correction_13.json"
     decision_path.write_text(json.dumps(decision, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    (output / "gate06_metric_provenance_audit_v01_fix03_correction_13.json").write_text(json.dumps(audit_payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     binding = {"schema": "code_test_binding_evidence_v01_fix03_correction_13", "directive_id": DIRECTIVE_ID_CORRECTION_13, "fix_head": snapshot.head, "fix_tree_sha": snapshot.tree_sha, "tested_code_head": certification.code_head_under_test, "tested_code_tree_sha": certification.code_tree_sha_under_test, "code_scope": ["src", "scripts", "tests"]}
     (output / "code_test_binding_evidence_v01_fix03_correction_13.json").write_text(json.dumps(binding, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-    entries = {p.name: {"path": str(p), "size_bytes": p.stat().st_size, "sha256": hashlib.sha256(p.read_bytes()).hexdigest()} for p in output.iterdir() if p.is_file() and p.name != "artifact_manifest.json"}
+    entries: dict[str, dict[str, Any]] = {}
+    for path in sorted(output.rglob("*")):
+        if not path.is_file() or path.name == "artifact_manifest.json":
+            continue
+        relative = str(path.relative_to(output))
+        entries[relative] = {"path": relative, "size_bytes": path.stat().st_size, "sha256": hashlib.sha256(path.read_bytes()).hexdigest()}
     (output / "artifact_manifest.json").write_text(json.dumps({"schema": "corporate_action_evidence_manifest_v01_fix03_correction_13", "canonical_run_id": decision.get("canonical_run_id", ""), "directive_id": DIRECTIVE_ID_CORRECTION_13, "review_decision": decision_name, "production_integration_authorized": authorized, "artifacts": entries}, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     return decision
 

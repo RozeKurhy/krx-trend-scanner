@@ -15,10 +15,14 @@ from collections.abc import Mapping
 from pathlib import Path
 import subprocess
 import sys
+import tempfile
 from typing import Any
 
 from trend_scanner.data.corporate_action_authority import (
+    audit_c13_metric_provenance,
+    validate_canonical_run_identity_correction13,
     validate_full_regression_evidence,
+    validate_live_evidence_linkage,
     validate_persisted_price_parity_evidence,
 )
 
@@ -248,6 +252,11 @@ def evaluate_report_truth_sync(
         reconciliation_rows = read_git_csv(repo_root, source_head, f"{c13_root}/corporate_action_date_reconciliation_v01_fix03_correction_13.csv")
         c13_gate = read_git_json(repo_root, source_head, f"{c13_root}/gate06_corporate_action_reassessment_v01_fix03_correction_13.json")
         c13_audit = read_git_json(repo_root, source_head, f"{c13_root}/gate06_metric_provenance_audit_v01_fix03_correction_13.json")
+        c13_link = read_git_json(repo_root, source_head, f"{c13_root}/live_evidence_linkage_validation_v01_fix03_correction_13.json")
+        c13_identity = read_git_json(repo_root, source_head, f"{c13_root}/canonical_run_identity_validation_v01_fix03_correction_13.json")
+        c13_certification = read_git_json(repo_root, source_head, f"{c13_root}/full_pytest_certification_v01_fix03_correction_13.json")
+        c13_raw_manifest = read_git_json(repo_root, source_head, f"{c13_root}/corporate_action_raw_evidence_manifest_v01_fix03_correction_13.json")
+        c13_authority = read_git_json(repo_root, source_head, f"{c13_root}/corporate_action_authority_records_v01_fix03_correction_13.json")
         request_logs = c13_gate.get("request_logs") or decision.get("network_accounting", {}).get("request_logs", [])
         persisted = validate_persisted_price_parity_evidence(
             price_rows, parity_rows, reconciliation_rows, cohort_rows,
@@ -256,6 +265,120 @@ def evaluate_report_truth_sync(
         blockers.extend(persisted.blockers)
         if persisted.evaluation_status != "EVALUATED":
             blockers.append("PRICE_EVIDENCE_NOT_EVALUATED")
+        if str(manifest.get("schema", "")).endswith("correction_13"):
+            expected_run_id = str(decision.get("canonical_run_id", "")).strip()
+            run_id_values: list[tuple[str, str]] = []
+
+            def collect_run_ids(value: Any, label: str) -> None:
+                if isinstance(value, Mapping):
+                    for key, child in value.items():
+                        if str(key) == "canonical_run_id":
+                            run_id_values.append((label, str(child or "").strip()))
+                        collect_run_ids(child, f"{label}.{key}")
+                elif isinstance(value, list):
+                    for index, child in enumerate(value):
+                        collect_run_ids(child, f"{label}[{index}]")
+
+            collect_run_ids(manifest, "artifact_manifest")
+            for label, payload in (("decision", decision), ("gate06", c13_gate), ("linkage", c13_link), ("identity", c13_identity), ("network", read_git_json(repo_root, source_head, f"{c13_root}/corporate_action_evidence_network_accounting_v01_fix03_correction_13.json")), ("raw_manifest", c13_raw_manifest), ("authority", c13_authority)):
+                collect_run_ids(payload, label)
+            for label, rows in (("cohort", cohort_rows), ("price", price_rows), ("parity", parity_rows), ("reconciliation", reconciliation_rows), ("discovery", read_git_csv(repo_root, source_head, f"{c13_root}/corporate_action_official_discovery_v01_fix03_correction_13.csv")), ("documents", read_git_csv(repo_root, source_head, f"{c13_root}/corporate_action_official_document_validation_v01_fix03_correction_13.csv"))):
+                collect_run_ids(rows, label)
+            if not expected_run_id:
+                blockers.append("CANONICAL_RUN_IDENTITY_MISMATCH")
+            for label, observed in run_id_values:
+                if not observed:
+                    blockers.append("CANONICAL_RUN_ID_MISSING")
+                elif observed != expected_run_id:
+                    blockers.append("CANONICAL_RUN_IDENTITY_MISMATCH")
+            if c13_identity.get("all_identity_valid") is not True or c13_identity.get("expected_run_id") != expected_run_id:
+                blockers.append("CANONICAL_RUN_IDENTITY_MISMATCH")
+
+            manifest_entries = manifest.get("artifacts") if isinstance(manifest.get("artifacts"), dict) else {}
+            for relative, metadata in manifest_entries.items():
+                if not isinstance(metadata, Mapping):
+                    blockers.append("ARTIFACT_MANIFEST_ENTRY_INVALID")
+                    continue
+                blob = read_git_blob(repo_root, source_head, f"{c13_root}/{relative}")
+                if not blob:
+                    blockers.append("ARTIFACT_MANIFEST_FILE_MISSING")
+                    continue
+                if metadata.get("sha256") != hashlib.sha256(blob).hexdigest() or metadata.get("size_bytes") != len(blob):
+                    blockers.append("ARTIFACT_MANIFEST_HASH_MISMATCH")
+
+            summary_bytes = read_git_blob(repo_root, source_head, f"{c13_root}/full_pytest_summary_v01_fix03_correction_13.json")
+            source_sha = hashlib.sha256(summary_bytes).hexdigest() if summary_bytes else ""
+            if not c13_certification:
+                blockers.append("PYTEST_CERTIFICATION_ARTIFACT_MISSING")
+            elif c13_certification.get("source_summary_sha256") != source_sha:
+                blockers.append("PYTEST_SUMMARY_SHA_MISMATCH")
+            elif c13_certification.get("certification_valid") is not True:
+                blockers.append("FULL_PYTEST_CERTIFICATION_INVALID")
+
+            # Re-run linkage against the final C13 rows/logs rather than
+            # accepting a stage validation result copied into Gate06.
+            raw_entries = list(c13_raw_manifest.get("artifacts", {}).values()) if isinstance(c13_raw_manifest.get("artifacts"), dict) else []
+            with tempfile.TemporaryDirectory(prefix="c13-render-linkage-") as linkage_dir_name:
+                linkage_dir = Path(linkage_dir_name)
+                raw_dir = linkage_dir / "raw"
+                raw_dir.mkdir()
+                for entry in raw_entries:
+                    raw_path = str(entry.get("path", entry.get("raw_path", ""))) if isinstance(entry, Mapping) else ""
+                    raw_name = Path(raw_path).name
+                    if raw_name:
+                        blob = read_git_blob(repo_root, source_head, f"{c13_root}/raw/{raw_name}")
+                        if blob:
+                            (raw_dir / raw_name).write_bytes(blob)
+                final_linkage = validate_live_evidence_linkage(
+                    canonical_run_id=expected_run_id,
+                    discovery_records=read_git_csv(repo_root, source_head, f"{c13_root}/corporate_action_official_discovery_v01_fix03_correction_13.csv"),
+                    document_records=read_git_csv(repo_root, source_head, f"{c13_root}/corporate_action_official_document_validation_v01_fix03_correction_13.csv"),
+                    raw_manifest_entries=raw_entries,
+                    authority_rows=c13_authority.get("records", []) if isinstance(c13_authority.get("records"), list) else [],
+                    request_logs=request_logs,
+                    price_request_logs=[row for row in request_logs if row.get("source") in {"NAVER_DIRECT", "RAW_PYKRX_COMPARATOR"}],
+                    artifact_paths={"raw": raw_dir},
+                    current_output_dir=linkage_dir,
+                    accounting_cross_invariant_pass=bool(read_git_json(repo_root, source_head, f"{c13_root}/corporate_action_evidence_network_accounting_v01_fix03_correction_13.json").get("accounting_cross_invariant_pass", False)),
+                    schema_suffix="13",
+                )
+            final_link_metrics = final_linkage.to_metrics()
+            for key in ("linkage_evaluation_status", "all_linkage_valid", "producing_request_failure_count", "cross_run_request_linkage_failure_count", "invalid_retrieval_mode_count", "record_identity_failure_count", "issuer_identity_failure_count", "candidate_linkage_failure_count", "pykrx_linkage_failure_count", "historical_raw_reuse_count", "physical_request_mutation_failure_count", "live_lineage_failure_count", "raw_orphan_file_count", "total_provenance_failure_count"):
+                if c13_link.get(key) != final_link_metrics.get(key):
+                    blockers.append("FINAL_LINKAGE_RECOMPUTATION_MISMATCH")
+            if not final_linkage.all_linkage_valid:
+                blockers.append("FINAL_C13_LINKAGE_INVALID")
+
+            # Materialize Git blobs in a temporary directory solely for an
+            # independent metric recomputation; no repository files are changed.
+            with tempfile.TemporaryDirectory(prefix="c13-render-audit-") as audit_dir_name:
+                audit_dir = Path(audit_dir_name)
+                known_files = {
+                    "corporate_action_review_cohort_v01_fix03_correction_13.csv": cohort_rows,
+                    "corporate_action_event_price_rows_v01_fix03_correction_13.csv": price_rows,
+                    "corporate_action_event_sensitive_parity_v01_fix03_correction_13.csv": parity_rows,
+                    "corporate_action_date_reconciliation_v01_fix03_correction_13.csv": reconciliation_rows,
+                    "corporate_action_document_probe_audit_v01_fix03_correction_13.csv": read_git_csv(repo_root, source_head, f"{c13_root}/corporate_action_document_probe_audit_v01_fix03_correction_13.csv"),
+                    "corporate_action_discovery_candidate_audit_v01_fix03_correction_13.csv": read_git_csv(repo_root, source_head, f"{c13_root}/corporate_action_discovery_candidate_audit_v01_fix03_correction_13.csv"),
+                }
+                for name, rows in known_files.items():
+                    target = audit_dir / name
+                    with target.open("w", encoding="utf-8", newline="") as handle:
+                        if rows:
+                            writer = csv.DictWriter(handle, fieldnames=list(rows[0].keys()))
+                            writer.writeheader(); writer.writerows(rows)
+                audit_result = audit_c13_metric_provenance(
+                    audit_dir,
+                    gate_payload=c13_gate,
+                    decision_payload=decision,
+                    validation=persisted,
+                    linkage=final_linkage,
+                    accounting=read_git_json(repo_root, source_head, f"{c13_root}/corporate_action_evidence_network_accounting_v01_fix03_correction_13.json"),
+                )
+                if audit_result.get("verdict") != "COMPLETE" or c13_audit.get("verdict") != "COMPLETE":
+                    blockers.append("METRIC_AUDIT_INCOMPLETE")
+                if c13_audit.get("recomputed_metrics") != audit_result.get("recomputed_metrics"):
+                    blockers.append("METRIC_PROVENANCE_RECOMPUTATION_MISMATCH")
         review_decision = decision.get("review_decision")
         authorized = decision.get("production_integration_authorized")
         terminal_next_states = {
