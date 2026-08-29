@@ -349,7 +349,9 @@ def production_certification_ready(
     """Return true only when validated regression evidence is bound and clean."""
     return bool(
         all_source_gates_pass
-        and regression_certification is not None
+        and isinstance(regression_certification, FullRegressionCertification)
+        and regression_certification.evidence_status == "VALID"
+        and not regression_certification.blockers
         and regression_certification.binding_valid
         and regression_certification.certification_valid
     )
