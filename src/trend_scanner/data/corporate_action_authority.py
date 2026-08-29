@@ -800,6 +800,11 @@ def validate_live_evidence_linkage(
                 result.producing_request_failures.append(
                     _linkage_failure("PRODUCING_REQUEST_SHA_MISMATCH", record_id=doc_id, request_id=request_id)
                 )
+            request_record_id = _linkage_text(request, "official_record_id", "authority_record_id", "rcept_no")
+            if request_record_id and doc_id and request_record_id != doc_id:
+                result.record_identity_failures.append(
+                    _linkage_failure("PRODUCING_REQUEST_RECORD_ID_MISMATCH", record_id=doc_id, request_id=request_id)
+                )
         retrieval_mode = _linkage_text(document, "retrieval_mode")
         if retrieval_mode not in ALLOWED_RETRIEVAL_MODES:
             result.invalid_retrieval_modes.append(
@@ -879,6 +884,12 @@ def validate_live_evidence_linkage(
                 result.record_identity_failures.append(
                     _linkage_failure("DISCOVERY_TICKER_MISMATCH", authority_record_id=authority_id)
                 )
+            discovery_corp_code = _linkage_text(discovery_row, "corp_code")
+            authority_corp_code = _linkage_text(authority, "corp_code")
+            if discovery_corp_code and authority_corp_code and discovery_corp_code != authority_corp_code:
+                result.record_identity_failures.append(
+                    _linkage_failure("DISCOVERY_CORP_CODE_MISMATCH", authority_record_id=authority_id)
+                )
             d_issuer = _linkage_text(discovery_row, "issuer_name", "issuer", "corp_name")
             a_issuer = _linkage_text(authority, "issuer_name", "issuer")
             if d_issuer and a_issuer and d_issuer != a_issuer:
@@ -917,10 +928,10 @@ def validate_live_evidence_linkage(
                     failures.append(_linkage_failure("PRICE_REQUEST_NOT_SUCCESS", source=source, authority_record_id=authority_id))
                 req_control = _linkage_text(request, "control_id")
                 auth_control = _linkage_text(authority, "control_id")
-                if req_control and auth_control and req_control != auth_control:
+                if not req_control or not auth_control or req_control != auth_control:
                     failures.append(_linkage_failure("PRICE_CONTROL_ID_MISMATCH", source=source, authority_record_id=authority_id))
                 req_authority_id = _linkage_text(request, "authority_record_id", "official_record_id")
-                if req_authority_id and req_authority_id != authority_id:
+                if not req_authority_id or not authority_id or req_authority_id != authority_id:
                     failures.append(_linkage_failure("PRICE_AUTHORITY_ID_MISMATCH", source=source, authority_record_id=authority_id))
                 if source == "RAW_PYKRX_COMPARATOR":
                     adjusted = _linkage_bool(request, "adjusted") or "adjusted=true" in _linkage_text(request, "sanitized_endpoint").lower()
