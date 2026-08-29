@@ -8116,7 +8116,14 @@ def run_corporate_action_evidence_acquisition_fix03_correction_13(
             semantic_valid = str(row.get("authority_valid", "")).lower() == "true"
             score = score_by_candidate.get((str(row.get("ticker", "")), str(row.get("rcept_no", ""))), row.get("event_match_score", 0))
             candidate_facts.append({"candidate_rank": int(float(row.get("candidate_rank", 0) or 0)), "event_match_score": int(float(score or 0)), "official_evidence_obtained": obtained, "semantic_valid": semantic_valid, "official_content_usable": bool(str(row.get("validation_reason", "")).strip() not in {"EMPTY_OR_UNUSABLE_DOCUMENT", "ARCHIVE_MEMBER_AMBIGUOUS"}), "fallback_available": source == "DART_OFFICIAL_DISCLOSURE"})
-    candidate_eval = evaluate_candidate_resolution_population(candidate_facts)
+    candidate_groups: dict[str, list[dict[str, Any]]] = {}
+    for fact, row in zip(candidate_facts, candidate_rows.to_dict("records")):
+        candidate_groups.setdefault(str(row.get("ticker", "")), []).append(fact)
+    grouped_evaluations = [evaluate_candidate_resolution_population(group) for group in candidate_groups.values()]
+    candidate_eval = {
+        "unresolved_higher_priority_candidate_count": sum(item["unresolved_higher_priority_candidate_count"] for item in grouped_evaluations),
+        "selected_authority_archive_provenance_failure_count": sum(item["selected_authority_archive_provenance_failure_count"] for item in grouped_evaluations),
+    }
 
     gate_metrics = dict(gate_payload)
     gate_metrics.update(validation.to_dict())

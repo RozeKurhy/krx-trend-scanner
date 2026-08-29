@@ -25,7 +25,7 @@ def _summary(head: str = "MOCK_FIX", tree: str = "MOCK_TREE", **updates: object)
     return value
 
 
-def _install_production_mocks(monkeypatch: pytest.MonkeyPatch, *, ohlc_delta: bool = False) -> None:
+def _install_production_mocks(monkeypatch: pytest.MonkeyPatch, *, ohlc_delta: bool = False, samsung_ranked: bool = False) -> None:
     targets = ca.get_official_discovery_search_targets()
     by_corp: dict[str, tuple[dict[str, object], str]] = {}
     by_record: dict[str, dict[str, object]] = {}
@@ -47,14 +47,30 @@ def _install_production_mocks(monkeypatch: pytest.MonkeyPatch, *, ohlc_delta: bo
         if url.endswith("/api/list.json"):
             target, record_id = by_corp[str(params["corp_code"])]
             labels = {"STOCK_SPLIT": "주식분할결정", "MERGER": "합병결정", "RIGHTS_OFFERING": "유상증자결정", "BONUS_ISSUE": "무상증자결정"}
-            return Response({"status": "000", "total_count": 1, "total_page": 1, "page_count": 100, "list": [{"rcept_no": record_id, "report_nm": labels[str(target["target_event_family"])], "rcept_dt": target["discovery_start"], "corp_code": target["corp_code"], "stock_code": target["ticker"], "corp_name": target["issuer_name"]}]})
+            items = [{"rcept_no": record_id, "report_nm": labels[str(target["target_event_family"])], "rcept_dt": target["discovery_start"], "corp_code": target["corp_code"], "stock_code": target["ticker"], "corp_name": target["issuer_name"]}]
+            if samsung_ranked and str(target["ticker"]) == "005930":
+                items = [
+                    {**items[0], "rcept_no": "99000000000003", "rcept_dt": "20180501"},
+                    {**items[0], "rcept_no": "99000000000002", "rcept_dt": "20180401"},
+                    {**items[0], "rcept_no": "99000000000001", "rcept_dt": "20180301"},
+                ]
+                by_record.update({item["rcept_no"]: target for item in items})
+            return Response({"status": "000", "total_count": len(items), "total_page": 1, "page_count": 100, "list": items})
         if url.endswith("/api/document.xml"):
-            target = by_record[str(params["rcept_no"])]
+            record_id = str(params["rcept_no"])
+            target = by_record[record_id]
+            if samsung_ranked and record_id == "99000000000002":
+                return Response(b"<status>800</status>", status_code=200)
             event_labels = {"STOCK_SPLIT": "주식분할", "MERGER": "회사합병", "RIGHTS_OFFERING": "유상증자", "BONUS_ISSUE": "무상증자"}
             timing_labels = {"STOCK_SPLIT": "신주상장예정일", "MERGER": "합병기일", "RIGHTS_OFFERING": "신주상장일", "BONUS_ISSUE": "신주배정기준일"}
+            event_label = event_labels[str(target["target_event_family"])]
+            timing_label = timing_labels[str(target["target_event_family"])]
+            if samsung_ranked and record_id == "99000000000003":
+                event_label = "합병"
+                timing_label = "합병기일"
             raw = (f"<DOCUMENT><DOCUMENT-HEADER><DOCUMENT-NAME>{event_labels[str(target['target_event_family'])]}결정</DOCUMENT-NAME>"
                    f"<COMPANY-NAME>{target['issuer_name']}</COMPANY-NAME></DOCUMENT-HEADER><BODY><SECTION-1>"
-                   f"<TITLE>{event_labels[str(target['target_event_family'])]}</TITLE><P>{timing_labels[str(target['target_event_family'])]} : {target['claimed_anchor_date']}</P>"
+                   f"<TITLE>{event_label}</TITLE><P>{timing_label} : {target['claimed_anchor_date']}</P>"
                    "</SECTION-1></BODY></DOCUMENT>").encode()
             return Response(raw)
         raise AssertionError(f"unexpected mocked URL: {url}")
@@ -123,6 +139,16 @@ def test_correction13_ohlc_contradiction_rejects_actual_path(tmp_path, monkeypat
     assert result["gate_06_result"] is False
     assert result["production_integration_authorized"] is False
     assert result["recommended_next_state"] == "ADJUSTED_PRICE_ALTERNATIVE_SOURCE_DISCOVERY_V01"
+
+
+def test_correction13_samsung_ranked_candidates_are_classified_in_runner(tmp_path, monkeypatch):
+    _clean_snapshot(monkeypatch)
+    _install_production_mocks(monkeypatch, samsung_ranked=True)
+    _write_c13_evidence(tmp_path, _summary())
+    result = ca.run_correction13_from_canonical_evidence(repo_root=tmp_path, output_dir=tmp_path / "conditional", allow_network=True, parent_dir=Path.cwd() / ca.PARENT_FIX03_CORRECTION_DIR)
+    assert result["review_decision"] == "CONDITIONAL_REVIEW_REQUIRED"
+    assert result["unresolved_higher_priority_candidate_count"] == 1
+    assert result["gate_06_result"] is False
 
 
 @pytest.mark.parametrize("summary", [None, _summary(schema="wrong"), _summary(head="OTHER"), _summary(tree="OTHER"), _summary(full_suite_completion=False), _summary(new_regression_count=1)])
