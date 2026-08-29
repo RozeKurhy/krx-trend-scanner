@@ -144,6 +144,8 @@ def evaluate_report_truth_sync(
     )
     if not required_decision:
         blockers.append("DECISION_FIELDS_INCOMPLETE")
+    if correction11_binding and decision.get("full_suite_completion") is not True:
+        blockers.append("FULL_PYTEST_INCOMPLETE")
     return {
         "report_truth_sync": "PASS" if not blockers else "FAIL",
         "production_certification_valid": not blockers,

@@ -3781,6 +3781,8 @@ def run_corporate_action_evidence_acquisition_fix03_correction_11(
     output_dir: Path = DEFAULT_CORP_EVIDENCE_DIR_FIX03_CORRECTION_11,
     parent_dir: Path = PARENT_FIX03_CORRECTION_DIR,
     allow_network: bool = True,
+    full_suite_completion: bool = False,
+    new_regression_count: int | None = None,
 ) -> dict[str, Any]:
     """Execute complete corporate action authority orchestration with strict readiness hard gating and corrected network accounting (Section 0-27)."""
     canonical_run_id = f"CORP_AUTH_FIX03_CORRECTION_11_{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}"
@@ -5235,6 +5237,8 @@ def run_corporate_action_evidence_acquisition_fix03_correction_11(
         "inherited_gate_results": inherited_gates,
         "all_15_gate_results": all_15_gates,
         "all_gates_passed": all_gates_pass,
+        "full_suite_completion": bool(full_suite_completion),
+        "new_regression_count": new_regression_count,
         "blocking_conditions": blocking_conditions,
         "reason_codes": reason_codes,
         "review_decision": review_decision,
@@ -5398,6 +5402,8 @@ def _terminate_on_readiness_or_preflight_failure_correction_11(
         "inherited_gate_results": inherited_gates,
         "all_15_gate_results": all_15_gates,
         "all_gates_passed": False,
+        "full_suite_completion": False,
+        "new_regression_count": None,
         "blocking_conditions": gate06_blockers,
         "reason_codes": [failure_reason],
         "review_decision": "CONDITIONAL_REVIEW_REQUIRED",

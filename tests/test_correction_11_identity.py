@@ -116,10 +116,11 @@ def test_correction11_binding_has_no_future_head(monkeypatch):
         "tested_code_tree_sha": "TREE", "code_scope": ["src", "scripts", "tests"],
     }
     truth = evaluate_report_truth_sync(Path("."), "END", {"schema": "manifest"},
-                                       {"all_gates_passed": True, "gate_06_result": True,
+                                        {"all_gates_passed": True, "gate_06_result": True,
                                         "gate_15_result": True,
                                         "production_integration_authorized": False,
-                                        "review_decision": "CONDITIONAL_REVIEW_REQUIRED"}, binding)
+                                        "review_decision": "CONDITIONAL_REVIEW_REQUIRED",
+                                        "full_suite_completion": True}, binding)
     assert truth["report_truth_sync"] == "PASS"
 
 def test_correction11_mocked_full_production_success(tmp_path, monkeypatch):
