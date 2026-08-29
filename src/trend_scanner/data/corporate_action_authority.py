@@ -863,6 +863,30 @@ def validate_live_evidence_linkage(
             result.historical_raw_reuse_failures.append(
                 _linkage_failure("HISTORICAL_RAW_REUSE", record_id=doc_id, path=path_text, retrieval_mode=retrieval_mode)
             )
+        if strict_identity:
+            matching_raw = [
+                raw for raw in raw_entries
+                if _linkage_text(raw, "canonical_run_id") == document_run
+                and _linkage_text(raw, "control_id") == _linkage_text(document, "control_id")
+                and _linkage_text(raw, "ticker") == _linkage_text(document, "ticker")
+                and _linkage_text(raw, "corp_code") == _linkage_text(document, "corp_code")
+                and _linkage_text(raw, "official_record_id", "rcept_no", "authority_record_id") == doc_id
+            ]
+            if not matching_raw:
+                result.live_lineage_failures.append(
+                    _linkage_failure("DOCUMENT_RAW_MANIFEST_NOT_LINKED", record_id=doc_id)
+                )
+            for raw in matching_raw:
+                doc_sha = _linkage_text(document, "sha256", "raw_sha", "raw_evidence_sha256")
+                raw_sha = _linkage_text(raw, "sha256", "raw_sha", "raw_evidence_sha256", "canonical_raw_sha256")
+                if not doc_sha or not raw_sha or doc_sha != raw_sha:
+                    result.record_identity_failures.append(
+                        _linkage_failure("DOCUMENT_RAW_SHA_MISMATCH", record_id=doc_id)
+                    )
+                if _linkage_text(raw, "producing_request_id", "request_id") != request_id:
+                    result.producing_request_failures.append(
+                        _linkage_failure("DOCUMENT_RAW_REQUEST_MISMATCH", record_id=doc_id, request_id=request_id)
+                    )
 
     # 2, 7. Discovery/document/authority identity and current-run lineage.
     for authority in authorities:

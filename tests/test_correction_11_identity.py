@@ -105,6 +105,16 @@ def test_correction11_offline_guard_isolated_paths(tmp_path, monkeypatch):
     assert not any("correction_9" in name or "correction_10" in name for name in names)
 
 
+def test_document_raw_manifest_edge_fails_closed(tmp_path):
+    bundle = _strict_bundle(tmp_path)
+    bundle["raw"] = [deepcopy(bundle["documents"][0])]
+    bundle["raw"][0]["sha256"] = "0" * 64
+    result = _validate(bundle)
+    assert result.to_metrics()["record_identity_failure_count"] > 0
+    assert any(item["code"] == "DOCUMENT_RAW_SHA_MISMATCH" for item in result.linkage_failures)
+    assert result.all_linkage_valid is False
+
+
 def test_correction11_binding_has_no_future_head(monkeypatch):
     import scripts.render_corporate_action_authority_report as report
     monkeypatch.setattr(report, "_git_exists", lambda *args, **kwargs: True)
