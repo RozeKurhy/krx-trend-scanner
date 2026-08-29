@@ -24,6 +24,7 @@ import re
 import shutil
 import subprocess
 import time
+import tempfile
 from typing import Any, Mapping
 import xml.etree.ElementTree as et
 import zipfile
@@ -81,6 +82,10 @@ CORRECTION_13_PRICE_FILE = "corporate_action_event_price_rows_v01_fix03_correcti
 CORRECTION_13_PARITY_FILE = "corporate_action_event_sensitive_parity_v01_fix03_correction_13.csv"
 CORRECTION_13_RECONCILIATION_FILE = "corporate_action_date_reconciliation_v01_fix03_correction_13.csv"
 FULL_PYTEST_EVIDENCE_RELATIVE_PATH_CORRECTION_13 = DEFAULT_CORP_EVIDENCE_DIR_FIX03_CORRECTION_13 / "full_pytest_summary_v01_fix03_correction_13.json"
+FULL_PYTEST_SCHEMAS = frozenset({
+    "full_pytest_summary_v01_fix03_correction_12",
+    "full_pytest_summary_v01_fix03_correction_13",
+})
 
 ALLOWED_BASELINE_FAILURE_NODEIDS = frozenset({
     "tests/test_krx_historical_backfill.py::test_recent_empty_is_not_checkpointed_and_general_resume_retries",
@@ -268,7 +273,7 @@ def observe_git_code_snapshot(repo_root: Path = Path(".")) -> GitCodeSnapshot:
 
 
 def load_full_regression_evidence(path: Path) -> dict[str, Any] | None:
-    """Load only a regular, canonical C12 pytest-summary JSON file.
+    """Load only a regular, canonical C12/C13 pytest-summary JSON file.
 
     Missing, malformed, non-object, or wrong-schema files return ``None`` so
     the caller enters the same fail-closed validation path as missing evidence.
@@ -283,7 +288,7 @@ def load_full_regression_evidence(path: Path) -> dict[str, Any] | None:
         return None
     if not isinstance(payload, dict):
         return None
-    if payload.get("schema") != "full_pytest_summary_v01_fix03_correction_12":
+    if payload.get("schema") not in FULL_PYTEST_SCHEMAS:
         return None
     return payload
 
@@ -353,7 +358,7 @@ def validate_full_regression_evidence(
     schema = str(raw.get("schema") or "")
     if not schema:
         blockers.append("PYTEST_SCHEMA_MISSING")
-    elif schema != "full_pytest_summary_v01_fix03_correction_12":
+    elif schema not in FULL_PYTEST_SCHEMAS:
         blockers.append("PYTEST_SCHEMA_MISMATCH")
 
     result_fields = ("passed", "failed", "skipped", "deselected", "warnings")
@@ -1482,194 +1487,179 @@ def validate_persisted_price_parity_evidence(
     gate06_payload: Mapping[str, Any] | None = None,
     decision_payload: Mapping[str, Any] | None = None,
 ) -> PersistedPriceParityValidation:
-    """Recompute C13 price/parity truth from persisted rows and fail closed.
-
-    The validator deliberately does not accept transient counters as evidence.  It
-    requires complete rows for every frozen control, positive source cardinality,
-    deterministic request bindings, and a truthful MATCH predicate.
-    """
+    """Recompute every C13 claim from persisted raw rows, then fail closed."""
     blockers: list[str] = []
     price_df = _evidence_frame(price_rows)
     parity_df = _evidence_frame(parity_rows)
     recon_df = _evidence_frame(reconciliation_rows)
     controls_df = _control_frame(frozen_controls)
-    expected_ids = {
-        str(value).strip() for value in controls_df.get("control_id", pd.Series(dtype=str)).tolist()
-        if str(value).strip()
-    }
+    expected_ids = {str(v).strip() for v in controls_df.get("control_id", pd.Series(dtype=str)).tolist() if str(v).strip()}
     expected_count = len(expected_ids)
     if expected_count == 0:
         blockers.append("PRICE_EVIDENCE_EXPECTED_COHORT_MISSING")
-    for frame, required, label in (
-        (price_df, PRICE_ROW_REQUIRED_COLUMNS, "PRICE_EVIDENCE"),
-        (parity_df, PARITY_REQUIRED_COLUMNS, "PARITY_EVIDENCE"),
-        (recon_df, RECONCILIATION_REQUIRED_COLUMNS, "RECONCILIATION_EVIDENCE"),
-    ):
+    for frame, required, label in ((price_df, PRICE_ROW_REQUIRED_COLUMNS, "PRICE_EVIDENCE"), (parity_df, PARITY_REQUIRED_COLUMNS, "PARITY_EVIDENCE"), (recon_df, RECONCILIATION_REQUIRED_COLUMNS, "RECONCILIATION_EVIDENCE")):
         if frame.empty:
             blockers.append(f"{label}_EMPTY")
-        missing = sorted(required - set(frame.columns))
-        blockers.extend(f"{label}_COLUMN_MISSING:{column}" for column in missing)
+        blockers.extend(f"{label}_COLUMN_MISSING:{c}" for c in sorted(required - set(frame.columns)))
 
     def ids_for(frame: pd.DataFrame) -> set[str]:
-        if "control_id" not in frame.columns:
-            return set()
-        return {str(value).strip() for value in frame["control_id"].tolist() if str(value).strip()}
+        return {str(v).strip() for v in frame.get("control_id", pd.Series(dtype=str)).tolist() if str(v).strip()}
 
-    naver_df = price_df[price_df.get("source", pd.Series(dtype=str)).astype(str) == "NAVER_DIRECT"] if not price_df.empty else price_df
-    pykrx_df = price_df[price_df.get("source", pd.Series(dtype=str)).astype(str) == "RAW_PYKRX_COMPARATOR"] if not price_df.empty else price_df
-    naver_ids, pykrx_ids = ids_for(naver_df), ids_for(pykrx_df)
-    parity_ids, recon_ids = ids_for(parity_df), ids_for(recon_df)
+    naver_df = price_df[price_df.get("source", pd.Series(index=price_df.index, dtype=str)).astype(str) == "NAVER_DIRECT"].copy() if not price_df.empty else price_df.copy()
+    pykrx_df = price_df[price_df.get("source", pd.Series(index=price_df.index, dtype=str)).astype(str) == "RAW_PYKRX_COMPARATOR"].copy() if not price_df.empty else price_df.copy()
+    naver_ids, pykrx_ids, parity_ids, recon_ids = ids_for(naver_df), ids_for(pykrx_df), ids_for(parity_df), ids_for(recon_df)
     for label, actual in (("NAVER", naver_ids), ("PYKRX", pykrx_ids), ("PARITY", parity_ids), ("RECONCILIATION", recon_ids)):
         if actual != expected_ids:
             blockers.append(f"PRICE_SOURCE_CONTROL_COVERAGE_MISMATCH:{label}")
-    if parity_df.duplicated("control_id").any() if "control_id" in parity_df.columns else False:
+    if "control_id" in parity_df and parity_df.duplicated("control_id").any():
         blockers.append("PARITY_CONTROL_DUPLICATE")
-    if recon_df.duplicated("control_id").any() if "control_id" in recon_df.columns else False:
+    if "control_id" in recon_df and recon_df.duplicated("control_id").any():
         blockers.append("RECONCILIATION_CONTROL_DUPLICATE")
 
-    # Every source row must belong to the frozen cohort and match its identity/window.
-    controls_by_id = {
-        str(row.get("control_id", "")): row for row in controls_df.to_dict("records")
-    }
-    for row in price_df.to_dict("records"):
-        cid = str(row.get("control_id", "")).strip()
-        control = controls_by_id.get(cid)
-        if control is None:
-            blockers.append("PRICE_PARITY_CONTROL_COVERAGE_MISMATCH")
+    controls_by_id = {str(row.get("control_id", "")).strip(): row for row in controls_df.to_dict("records")}
+    for source_name, source_df in (("NAVER_DIRECT", naver_df), ("RAW_PYKRX_COMPARATOR", pykrx_df)):
+        if "control_id" not in source_df:
             continue
-        for field_name in ("ticker", "price_window_start", "price_window_end", "authority_record_id"):
-            expected = str(control.get(field_name, control.get("selected_record_id", ""))).strip()
-            observed = str(row.get(field_name, "")).strip()
-            if expected and observed != expected:
-                blockers.append(f"PRICE_EVIDENCE_IDENTITY_MISMATCH:{field_name}")
+        for cid, group in source_df.groupby("control_id", dropna=False):
+            if group.duplicated("date").any() if "date" in group else False:
+                blockers.append("PRICE_DUPLICATE_DATE")
+            control = controls_by_id.get(str(cid).strip())
+            if control is None:
+                blockers.append("PRICE_PARITY_CONTROL_COVERAGE_MISMATCH")
+                continue
+            for field_name in ("ticker", "price_window_start", "price_window_end", "official_anchor_date", "authority_record_id"):
+                expected = str(control.get(field_name, control.get("selected_record_id", ""))).strip()
+                if expected and str(group[field_name].iloc[0] if field_name in group else "").strip() != expected:
+                    blockers.append(f"PRICE_EVIDENCE_IDENTITY_MISMATCH:{field_name}")
+            if "source_rowset_sha256" in group:
+                shas = {str(v).strip() for v in group["source_rowset_sha256"].tolist() if str(v).strip()}
+                try:
+                    computed_sha = _c13_compute_rowset_sha(group)
+                except (KeyError, TypeError, ValueError):
+                    computed_sha = ""
+                if len(shas) != 1 or not computed_sha or computed_sha not in shas:
+                    blockers.append("PRICE_ROWSET_SHA_MISMATCH")
 
-    # One successful physical/logical request is required for each persisted source rowset.
     logs = _evidence_frame(request_logs).to_dict("records") if request_logs is not None else []
     binding_ok = True
-    for source_df in (naver_df, pykrx_df):
-        if source_df.empty:
+    for source_name, source_df in (("NAVER_DIRECT", naver_df), ("RAW_PYKRX_COMPARATOR", pykrx_df)):
+        if source_df.empty or "control_id" not in source_df:
             continue
-        for (cid, source, req_id), group in source_df.groupby(["control_id", "source", "request_id"], dropna=False):
-            if "source_rowset_sha256" in group.columns:
-                observed_shas = {str(value).strip() for value in group["source_rowset_sha256"].tolist() if str(value).strip()}
-                if len(observed_shas) != 1 or _c13_compute_rowset_sha(group) not in observed_shas:
-                    blockers.append("PRICE_ROWSET_SHA_MISMATCH")
-            matches = [
-                log for log in logs
-                if str(log.get("control_id", "")).strip() == str(cid).strip()
-                and str(log.get("source", "")).strip() == str(source).strip()
-                and str(log.get("request_id", "")).strip() == str(req_id).strip()
-                and str(log.get("outcome", "")).upper() == "SUCCESS"
-            ]
-            if len(matches) != 1 or int(float(matches[0].get("physical_attempt", 1) or 0)) != 1:
+        for (cid, req_id), group in source_df.groupby(["control_id", "request_id"], dropna=False):
+            matches = [log for log in logs if str(log.get("control_id", "")).strip() == str(cid).strip() and str(log.get("source", "")).strip() == source_name and str(log.get("request_id", "")).strip() == str(req_id).strip() and str(log.get("outcome", "")).upper() == "SUCCESS"]
+            if len(matches) != 1 or int(float(matches[0].get("physical_attempt", 0) or 0)) != 1:
                 binding_ok = False
                 blockers.append("PRICE_REQUEST_LINKAGE_MISSING" if not matches else "PRICE_REQUEST_IDENTITY_MISMATCH")
-            log = matches[0] if matches else {}
-            for name in ("price_window_start", "price_window_end"):
-                if log and str(log.get(name, "")).strip() != str(group.iloc[0].get(name, "")).strip():
-                    binding_ok = False
-                    blockers.append("PRICE_REQUEST_WINDOW_MISMATCH")
+            if matches:
+                for name in ("price_window_start", "price_window_end"):
+                    if str(matches[0].get(name, "")).strip() != str(group[name].iloc[0]).strip():
+                        binding_ok = False
+                        blockers.append("PRICE_REQUEST_WINDOW_MISMATCH")
+
+    def raw_metrics(cid: str) -> dict[str, Any]:
+        n = naver_df[naver_df.get("control_id", pd.Series(index=naver_df.index, dtype=str)).astype(str) == cid]
+        p = pykrx_df[pykrx_df.get("control_id", pd.Series(index=pykrx_df.index, dtype=str)).astype(str) == cid]
+        ndates = {str(v).strip() for v in n.get("date", pd.Series(dtype=str)).tolist() if str(v).strip()}
+        pdates = {str(v).strip() for v in p.get("date", pd.Series(dtype=str)).tolist() if str(v).strip()}
+        common_dates = sorted(ndates & pdates)
+        candidate_only = sorted(ndates - pdates)
+        pykrx_only = sorted(pdates - ndates)
+        anchor = str(controls_by_id.get(cid, {}).get("official_anchor_date", ""))
+        mismatches = {name: 0 for name in ("open", "high", "low", "close", "volume")}
+        if common_dates and not n.empty and not p.empty:
+            ni, pi = n.set_index("date"), p.set_index("date")
+            for date in common_dates:
+                for name in mismatches:
+                    try:
+                        if float(ni.loc[date, name]) != float(pi.loc[date, name]):
+                            mismatches[name] += 1
+                    except (KeyError, TypeError, ValueError):
+                        blockers.append("PRICE_RAW_VALUE_INVALID")
+        pre = sum(date < anchor for date in common_dates)
+        post = sum(date >= anchor for date in common_dates)
+        date_bad = bool(candidate_only or pykrx_only)
+        window_bad = pre < 5 or post < 5
+        ohlc_bad = sum(mismatches[name] for name in ("open", "high", "low", "close")) > 0
+        expected_status = "MATCH" if (len(n) > 0 and len(p) > 0 and common_dates and not date_bad and not window_bad and not ohlc_bad) else "MISMATCH"
+        return {"candidate_row_count": len(n), "pykrx_row_count": len(p), "common_date_count": len(common_dates), "candidate_only_date_count": len(candidate_only), "pykrx_only_date_count": len(pykrx_only), "pre_event_common_count": pre, "post_event_common_count": post, **{f"{name}_mismatch_count": value for name, value in mismatches.items()}, "parity_status": expected_status, "candidate_date_count": len(ndates), "pykrx_date_count": len(pdates), "candidate_only_dates": _c13_json_dates(candidate_only), "pykrx_only_dates": _c13_json_dates(pykrx_only), "reconciliation_status": "MATCH" if not date_bad else "MISMATCH"}
 
     exact_matches = date_mismatches = insufficient = ohlc_mismatches = 0
     parity_count_ok = True
-    if not parity_df.empty and "control_id" in parity_df.columns:
-        for row in parity_df.to_dict("records"):
-            cid = str(row.get("control_id", "")).strip()
-            n_count = len(naver_df[naver_df["control_id"].astype(str) == cid]) if "control_id" in naver_df.columns else 0
-            p_count = len(pykrx_df[pykrx_df["control_id"].astype(str) == cid]) if "control_id" in pykrx_df.columns else 0
-            candidate_count = _int_field(row, "candidate_row_count", blockers)
-            pykrx_count = _int_field(row, "pykrx_row_count", blockers)
-            if candidate_count != n_count or pykrx_count != p_count:
-                parity_count_ok = False
-                blockers.append("PERSISTED_PRICE_ROW_COUNT_MISMATCH")
+    parity_by_id = {str(row.get("control_id", "")).strip(): row for row in parity_df.to_dict("records")}
+    recon_by_id = {str(row.get("control_id", "")).strip(): row for row in recon_df.to_dict("records")}
+    for cid in expected_ids:
+        metrics = raw_metrics(cid)
+        if metrics["candidate_row_count"] == 0 or metrics["pykrx_row_count"] == 0:
+            blockers.append("PRICE_SOURCE_EMPTY_FOR_CONTROL")
+        if metrics["candidate_only_date_count"] or metrics["pykrx_only_date_count"]:
+            date_mismatches += 1
+        if metrics["pre_event_common_count"] < 5 or metrics["post_event_common_count"] < 5:
+            insufficient += 1
+        if any(metrics[f"{name}_mismatch_count"] for name in ("open", "high", "low", "close")):
+            ohlc_mismatches += 1
+        if metrics["parity_status"] == "MATCH":
+            exact_matches += 1
+        prow = parity_by_id.get(cid)
+        rrow = recon_by_id.get(cid)
+        if prow is None:
+            blockers.append("PARITY_CONTROL_MISSING")
+        else:
             expected_naver_req = ""
             expected_pykrx_req = ""
-            if "control_id" in naver_df.columns:
-                reqs = sorted({str(value).strip() for value in naver_df.loc[naver_df["control_id"].astype(str) == cid, "request_id"].tolist() if str(value).strip()})
-                expected_naver_req = reqs[0] if len(reqs) == 1 else ""
-            if "control_id" in pykrx_df.columns:
-                reqs = sorted({str(value).strip() for value in pykrx_df.loc[pykrx_df["control_id"].astype(str) == cid, "request_id"].tolist() if str(value).strip()})
-                expected_pykrx_req = reqs[0] if len(reqs) == 1 else ""
-            if str(row.get("candidate_request_id", "")).strip() != expected_naver_req or str(row.get("pykrx_request_id", "")).strip() != expected_pykrx_req:
+            n_for_control = naver_df[naver_df.get("control_id", pd.Series(index=naver_df.index, dtype=str)).astype(str) == cid]
+            p_for_control = pykrx_df[pykrx_df.get("control_id", pd.Series(index=pykrx_df.index, dtype=str)).astype(str) == cid]
+            if not n_for_control.empty and "request_id" in n_for_control:
+                requests_for_control = {str(v).strip() for v in n_for_control["request_id"].tolist() if str(v).strip()}
+                expected_naver_req = next(iter(requests_for_control)) if len(requests_for_control) == 1 else ""
+            if not p_for_control.empty and "request_id" in p_for_control:
+                requests_for_control = {str(v).strip() for v in p_for_control["request_id"].tolist() if str(v).strip()}
+                expected_pykrx_req = next(iter(requests_for_control)) if len(requests_for_control) == 1 else ""
+            if str(prow.get("candidate_request_id", "")).strip() != expected_naver_req or str(prow.get("pykrx_request_id", "")).strip() != expected_pykrx_req:
+                parity_count_ok = False
                 blockers.append("PRICE_REQUEST_IDENTITY_MISMATCH")
-            common = _int_field(row, "common_date_count", blockers)
-            cand_only = _int_field(row, "candidate_only_date_count", blockers)
-            py_only = _int_field(row, "pykrx_only_date_count", blockers)
-            pre_count = _int_field(row, "pre_event_common_count", blockers)
-            post_count = _int_field(row, "post_event_common_count", blockers)
-            o_mis = _int_field(row, "open_mismatch_count", blockers)
-            h_mis = _int_field(row, "high_mismatch_count", blockers)
-            l_mis = _int_field(row, "low_mismatch_count", blockers)
-            c_mis = _int_field(row, "close_mismatch_count", blockers)
-            if any(value is None for value in (candidate_count, pykrx_count, common, cand_only, py_only, pre_count, post_count, o_mis, h_mis, l_mis, c_mis)):
-                continue
-            date_bad = cand_only != 0 or py_only != 0
-            window_bad = pre_count < 5 or post_count < 5
-            ohlc_bad = (o_mis + h_mis + l_mis + c_mis) > 0
-            status = str(row.get("parity_status", "")).strip()
-            if status in {"MATCH", "AUTHORIZED_DATE_RECONCILIATION_MATCH"}:
-                if not (candidate_count > 0 and pykrx_count > 0 and common > 0 and not date_bad and not window_bad and not ohlc_bad):
-                    blockers.append("FAKE_MATCH_OR_INCOMPLETE_PARITY")
-            if date_bad:
-                date_mismatches += 1
-            if window_bad:
-                insufficient += 1
-            if ohlc_bad:
-                ohlc_mismatches += 1
-            if status in {"MATCH", "AUTHORIZED_DATE_RECONCILIATION_MATCH"} and not (date_bad or window_bad or ohlc_bad):
-                exact_matches += 1
-
+            control = controls_by_id.get(cid, {})
+            for identity_field in ("ticker", "price_window_start", "price_window_end", "official_anchor_date", "authority_record_id"):
+                expected_identity = str(control.get(identity_field, control.get("selected_record_id", ""))).strip()
+                if expected_identity and str(prow.get(identity_field, "")).strip() != expected_identity:
+                    parity_count_ok = False
+                    blockers.append(f"PARITY_IDENTITY_MISMATCH:{identity_field}")
+            for field_name in ("candidate_row_count", "pykrx_row_count", "common_date_count", "candidate_only_date_count", "pykrx_only_date_count", "pre_event_common_count", "post_event_common_count", "open_mismatch_count", "high_mismatch_count", "low_mismatch_count", "close_mismatch_count", "volume_mismatch_count"):
+                observed = _int_field(prow, field_name, blockers)
+                if observed is not None and observed != metrics[field_name]:
+                    parity_count_ok = False
+                    blockers.append("PARITY_SUMMARY_RECOMPUTATION_MISMATCH")
+            for field_name in ("parity_status",):
+                if str(prow.get(field_name, "")).strip() != metrics[field_name]:
+                    parity_count_ok = False
+                    blockers.append("PARITY_SUMMARY_RECOMPUTATION_MISMATCH")
+        if rrow is None:
+            blockers.append("RECONCILIATION_CONTROL_MISSING")
+        else:
+            control = controls_by_id.get(cid, {})
+            for identity_field in ("ticker", "authority_record_id"):
+                expected_identity = str(control.get(identity_field, control.get("selected_record_id", ""))).strip()
+                if expected_identity and str(rrow.get(identity_field, "")).strip() != expected_identity:
+                    blockers.append(f"RECONCILIATION_IDENTITY_MISMATCH:{identity_field}")
+            for field_name in ("candidate_date_count", "pykrx_date_count", "common_date_count", "candidate_only_date_count", "pykrx_only_date_count"):
+                observed = _int_field(rrow, field_name, blockers)
+                if observed is not None and observed != metrics[field_name]:
+                    blockers.append("RECONCILIATION_RECOMPUTATION_MISMATCH")
+            for field_name in ("candidate_only_dates", "pykrx_only_dates", "reconciliation_status"):
+                if str(rrow.get(field_name, "")).strip() != str(metrics[field_name]).strip():
+                    blockers.append("RECONCILIATION_RECOMPUTATION_MISMATCH")
     if gate06_payload is not None:
-        for key, value in {
-            "date_set_mismatch_count": date_mismatches,
-            "date_mismatch_control_count": date_mismatches,
-            "insufficient_window_count": insufficient,
-            "insufficient_window_control_count": insufficient,
-            "ohlc_mismatch_count": ohlc_mismatches,
-            "ohlc_mismatch_control_count": ohlc_mismatches,
-            "exact_match_control_count": exact_matches,
-            "naver_control_count": len(naver_ids),
-            "pykrx_control_count": len(pykrx_ids),
-            "parity_control_count": len(parity_ids),
-            "reconciliation_control_count": len(recon_ids),
-        }.items():
+        for key, value in {"date_set_mismatch_count": date_mismatches, "date_mismatch_control_count": date_mismatches, "insufficient_window_count": insufficient, "insufficient_window_control_count": insufficient, "ohlc_mismatch_count": ohlc_mismatches, "ohlc_mismatch_control_count": ohlc_mismatches, "exact_match_control_count": exact_matches, "naver_control_count": len(naver_ids), "pykrx_control_count": len(pykrx_ids), "parity_control_count": len(parity_ids), "reconciliation_control_count": len(recon_ids)}.items():
             if key in gate06_payload and gate06_payload.get(key) != value:
                 blockers.append("GATE06_PERSISTED_PARITY_MISMATCH")
     if decision_payload is not None:
-        decision_values = {
-            "actual_candidate_price_row_count": len(naver_df),
-            "actual_pykrx_price_row_count": len(pykrx_df),
-            "exact_date_match_controls": exact_matches,
-            "date_mismatch_controls": date_mismatches,
-            "insufficient_window_controls": insufficient,
-            "ohlc_mismatch_controls": ohlc_mismatches,
-        }
-        for key, value in decision_values.items():
+        for key, value in {"actual_candidate_price_row_count": len(naver_df), "actual_pykrx_price_row_count": len(pykrx_df), "exact_date_match_controls": exact_matches, "date_mismatch_controls": date_mismatches, "insufficient_window_controls": insufficient, "ohlc_mismatch_controls": ohlc_mismatches}.items():
             if key in decision_payload and decision_payload.get(key) != value:
                 blockers.append("DECISION_PERSISTED_PARITY_MISMATCH")
-
     all_controls = bool(expected_ids and naver_ids == expected_ids and pykrx_ids == expected_ids and parity_ids == expected_ids and recon_ids == expected_ids)
-    cardinality_valid = bool(all_controls and parity_count_ok and not any(code in blockers for code in ("PARITY_CONTROL_DUPLICATE", "RECONCILIATION_CONTROL_DUPLICATE")))
+    cardinality_valid = bool(all_controls and parity_count_ok and not {"PARITY_CONTROL_DUPLICATE", "RECONCILIATION_CONTROL_DUPLICATE"}.intersection(blockers))
     structural_blockers = {"PRICE_EVIDENCE_EMPTY", "PARITY_EVIDENCE_EMPTY", "RECONCILIATION_EVIDENCE_EMPTY"}
     status = "EVALUATED" if cardinality_valid and not blockers else ("INCOMPLETE" if structural_blockers.intersection(blockers) else "INVALID")
-    return PersistedPriceParityValidation(
-        evaluation_status=status,
-        expected_control_count=expected_count,
-        naver_control_count=len(naver_ids),
-        pykrx_control_count=len(pykrx_ids),
-        parity_control_count=len(parity_ids),
-        reconciliation_control_count=len(recon_ids),
-        naver_price_row_count=len(naver_df),
-        pykrx_price_row_count=len(pykrx_df),
-        exact_match_control_count=exact_matches,
-        date_mismatch_control_count=date_mismatches,
-        insufficient_window_control_count=insufficient,
-        ohlc_mismatch_control_count=ohlc_mismatches,
-        all_controls_evidenced=all_controls,
-        all_cardinality_valid=cardinality_valid,
-        all_request_bindings_valid=binding_ok and not any(code.startswith("PRICE_REQUEST_") for code in blockers),
-        blockers=list(dict.fromkeys(blockers)),
-    )
+    return PersistedPriceParityValidation(status, expected_count, len(naver_ids), len(pykrx_ids), len(parity_ids), len(recon_ids), len(naver_df), len(pykrx_df), exact_matches, date_mismatches, insufficient, ohlc_mismatches, all_controls, cardinality_valid, binding_ok and not any(code.startswith("PRICE_REQUEST_") for code in blockers), list(dict.fromkeys(blockers)))
 
 
 def classify_candidate_resolution(
@@ -7261,6 +7251,8 @@ def run_corporate_action_evidence_acquisition_fix03_correction_12(
     ohlc_mismatch_count = 0
     candidate_error_count = 0
     comparator_error_count = 0
+    source_frames: dict[tuple[str, str], pd.DataFrame] = {}
+    price_request_ids: dict[tuple[str, str], str] = {}
 
     if final_cohort_rows:
         import pykrx.stock as pykrx_stock
@@ -7368,6 +7360,16 @@ def run_corporate_action_evidence_acquisition_fix03_correction_12(
                 "error_type": py_err,
             })
 
+            # Persist the exact normalized rows used by the parity calculation.
+            candidate_rows = _c13_normalize_price_frame(cand_df, control=c, source="NAVER_DIRECT", request_id=cand_req_id)
+            pykrx_rows = _c13_normalize_price_frame(py_df, control=c, source="RAW_PYKRX_COMPARATOR", request_id=py_query_id)
+            source_frames[(str(c["control_id"]), "NAVER_DIRECT")] = candidate_rows
+            source_frames[(str(c["control_id"]), "RAW_PYKRX_COMPARATOR")] = pykrx_rows
+            price_request_ids[(str(c["control_id"]), "NAVER_DIRECT")] = cand_req_id
+            price_request_ids[(str(c["control_id"]), "RAW_PYKRX_COMPARATOR")] = py_query_id
+            all_price_rows.extend(candidate_rows.to_dict("records"))
+            all_price_rows.extend(pykrx_rows.to_dict("records"))
+
             # Evaluate parity
             cand_dates = set(cand_df["date"].astype(str)) if not cand_df.empty else set()
             py_dates = set(py_df["date"].astype(str)) if not py_df.empty else set()
@@ -7397,13 +7399,22 @@ def run_corporate_action_evidence_acquisition_fix03_correction_12(
 
             parity_statuses.append("MATCH" if (o_mis + h_mis + l_mis + c_mis == 0 and len(cand_only) == 0 and len(py_only) == 0) else "MISMATCH")
 
-    price_df = pd.DataFrame(all_price_rows) if all_price_rows else pd.DataFrame(columns=["control_id", "ticker", "source", "evidence_origin", "request_id", "date", "open", "high", "low", "close", "volume"])
+    price_df = pd.DataFrame(all_price_rows) if all_price_rows else pd.DataFrame(columns=sorted(PRICE_ROW_REQUIRED_COLUMNS))
+    if source_frames:
+        computed_parity_rows, computed_reconciliation_rows = _c13_price_parity_rows(
+            final_cohort_rows,
+            source_frames,
+            price_request_ids,
+            canonical_run_id,
+        )
+        parity_rows = computed_parity_rows
+        reconciliation_rows = computed_reconciliation_rows
     (output_dir / "corporate_action_event_price_rows_v01_fix03_correction_12.csv").write_text(price_df.to_csv(index=False), encoding="utf-8")
 
-    parity_df = pd.DataFrame(parity_rows) if parity_rows else pd.DataFrame(columns=["control_id", "ticker", "parity_status"])
+    parity_df = pd.DataFrame(parity_rows) if parity_rows else pd.DataFrame(columns=sorted(PARITY_REQUIRED_COLUMNS))
     (output_dir / "corporate_action_event_sensitive_parity_v01_fix03_correction_12.csv").write_text(parity_df.to_csv(index=False), encoding="utf-8")
 
-    recon_df = pd.DataFrame(reconciliation_rows) if reconciliation_rows else pd.DataFrame(columns=["control_id", "ticker", "status"])
+    recon_df = pd.DataFrame(reconciliation_rows) if reconciliation_rows else pd.DataFrame(columns=sorted(RECONCILIATION_REQUIRED_COLUMNS))
     (output_dir / "corporate_action_date_reconciliation_v01_fix03_correction_12.csv").write_text(recon_df.to_csv(index=False), encoding="utf-8")
 
     # 8. Network Accounting & Linkage (Section 3, 4)
@@ -7982,117 +7993,186 @@ def _c13_price_parity_rows(controls: list[Mapping[str, Any]], source_frames: Map
     return parity_rows, reconciliation_rows
 
 
+def _write_c13_fail_closed(
+    output: Path,
+    snapshot: GitCodeSnapshot,
+    certification: FullRegressionCertification,
+    reason: str,
+) -> dict[str, Any]:
+    output.mkdir(parents=True, exist_ok=True)
+    run_id = f"CORP_AUTH_FIX03_CORRECTION_13_{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}"
+    decision = {
+        "schema": "adjusted_price_source_authority_corporate_action_evidence_v01_fix03_correction_13",
+        "canonical_run_id": run_id, "directive_id": DIRECTIVE_ID_CORRECTION_13,
+        "parent_directive": PARENT_DIRECTIVE_CORRECTION_13,
+        "start_head": START_HEAD_CORP_EVIDENCE_FIX03_CORRECTION_13,
+        "git_code_snapshot": asdict(snapshot), "full_suite_completion": certification.full_suite_completion,
+        "new_regression_count": certification.new_regression_count,
+        "regression_certification": certification.to_dict(), "gate_06_result": False,
+        "gate_15_result": False, "all_gates_passed": False,
+        "production_certification_ready": False, "production_integration_authorized": False,
+        "review_decision": "CONDITIONAL_REVIEW_REQUIRED",
+        "recommended_next_state": DIRECTIVE_ID_CORRECTION_13,
+        "blocking_conditions": [reason, *certification.blockers],
+        "reason_codes": [reason, *certification.blockers],
+        "network_accounting": {"execution_mode": "CERTIFICATION_HARD_STOP", "grand_total_physical_external_calls": 0, "request_logs": []},
+    }
+    (output / "adjusted_price_source_authority_corporate_action_evidence_v01_fix03_correction_13.json").write_text(json.dumps(decision, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    return decision
+
+
+def _copy_c12_artifacts_to_c13(stage: Path, output: Path) -> None:
+    output.mkdir(parents=True, exist_ok=True)
+    for source in stage.iterdir():
+        if source.name == "artifact_manifest.json":
+            continue
+        if source.is_dir():
+            target_dir = output / source.name.replace("correction_12", "correction_13")
+            if target_dir.exists():
+                shutil.rmtree(target_dir)
+            shutil.copytree(source, target_dir)
+            continue
+        if not source.is_file():
+            continue
+        target_name = source.name.replace("correction_12", "correction_13")
+        target = output / target_name
+        if source.suffix == ".json":
+            try:
+                payload = json.loads(source.read_text(encoding="utf-8"))
+            except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+                shutil.copyfile(source, target)
+                continue
+            def replace(value: Any) -> Any:
+                if isinstance(value, str):
+                    return value.replace("CORRECTION_12", "CORRECTION_13").replace("correction_12", "correction_13")
+                if isinstance(value, list):
+                    return [replace(item) for item in value]
+                if isinstance(value, dict):
+                    return {key: replace(item) for key, item in value.items()}
+                return value
+            target.write_text(json.dumps(replace(payload), indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        else:
+            shutil.copyfile(source, target)
+
+
 def run_corporate_action_evidence_acquisition_fix03_correction_13(
     output_dir: Path | None = None,
     *,
     repo_root: Path = Path("."),
-    allow_network: bool = False,
-    frozen_controls: list[Mapping[str, Any]] | None = None,
-    price_sources: Mapping[Any, Any] | None = None,
-    request_logs: list[Mapping[str, Any]] | None = None,
-    candidate_semantics: list[Mapping[str, Any]] | None = None,
+    allow_network: bool = True,
+    parent_dir: Path | None = None,
 ) -> dict[str, Any]:
-    """Run the C13 persistence/gate path using supplied (usually mocked) rows.
-
-    This entrypoint intentionally performs no network acquisition.  A later,
-    separately reviewed live wrapper may provide fresh official controls and
-    source frames; synthetic rows can never authorize production integration.
-    """
-    if allow_network:
-        raise RuntimeError("CORRECTION_13 live execution is reserved for the post-review phase")
+    """Run the single live-capable C13 orchestration using low-level adapters."""
     root = Path(repo_root)
-    output = root / DEFAULT_CORP_EVIDENCE_DIR_FIX03_CORRECTION_13 if output_dir is None else Path(output_dir)
-    output.mkdir(parents=True, exist_ok=True)
-    canonical_run_id = f"CORP_AUTH_FIX03_CORRECTION_13_{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}"
     snapshot = observe_git_code_snapshot(root)
-    controls = [dict(control) for control in (frozen_controls or [])]
-    for control in controls:
-        control.setdefault("canonical_run_id", canonical_run_id)
-        control.setdefault("authority_record_id", control.get("selected_record_id", ""))
-    sources = price_sources or {}
-    source_frames: dict[tuple[str, str], pd.DataFrame] = {}
-    request_ids: dict[tuple[str, str], str] = {}
-    generated_logs: list[dict[str, Any]] = []
-    for control in controls:
-        cid = str(control.get("control_id", "")); ticker = normalize_ticker(str(control.get("ticker", "")))
-        for source in ("NAVER_DIRECT", "RAW_PYKRX_COMPARATOR"):
-            supplied = sources.get((cid, source), sources.get(f"{cid}:{source}"))
-            request_id = str((supplied.get("request_id") if isinstance(supplied, Mapping) else "") or f"MOCK_{source}_{ticker}_{cid}")
-            value = supplied.get("rows", supplied.get("data", [])) if isinstance(supplied, Mapping) else supplied
-            frame = _c13_normalize_price_frame(value, control=control, source=source, request_id=request_id)
-            source_frames[(cid, source)] = frame; request_ids[(cid, source)] = request_id
-            generated_logs.append({
-                "canonical_run_id": canonical_run_id, "request_id": request_id, "source": source, "control_id": cid, "ticker": ticker,
-                "authority_record_id": control.get("authority_record_id", ""), "price_window_start": control.get("price_window_start", ""), "price_window_end": control.get("price_window_end", ""),
-                "outcome": "SUCCESS" if not frame.empty else "ERROR", "physical_attempt": 1 if not frame.empty else 0, "synthetic": True,
-            })
-    frames = [frame for frame in source_frames.values() if not frame.empty]
-    price_df = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame(columns=sorted(PRICE_ROW_REQUIRED_COLUMNS))
-    parity_rows, reconciliation_rows = _c13_price_parity_rows(controls, source_frames, request_ids, canonical_run_id)
-    pd.DataFrame(controls).to_csv(output / "corporate_action_review_cohort_v01_fix03_correction_13.csv", index=False)
-    price_path = output / CORRECTION_13_PRICE_FILE; parity_path = output / CORRECTION_13_PARITY_FILE; recon_path = output / CORRECTION_13_RECONCILIATION_FILE
-    price_df.to_csv(price_path, index=False)
-    pd.DataFrame(parity_rows, columns=sorted(PARITY_REQUIRED_COLUMNS)).to_csv(parity_path, index=False)
-    pd.DataFrame(reconciliation_rows, columns=sorted(RECONCILIATION_REQUIRED_COLUMNS)).to_csv(recon_path, index=False)
-    logs = [dict(log) for log in (request_logs or generated_logs)]
-    validation = validate_persisted_price_parity_evidence(price_path, parity_path, recon_path, controls, request_logs=logs)
-    candidates = evaluate_candidate_resolution_population(list(candidate_semantics or []))
-    event_distribution: dict[str, int] = {}
-    for control in controls:
-        family = str(control.get("normalized_event_type", control.get("target_event_family", "")))
-        event_distribution[family] = event_distribution.get(family, 0) + 1
-    diversity = bool(len(controls) >= 8 and event_distribution.get("STOCK_SPLIT", 0) >= 2 and event_distribution.get("MERGER", 0) >= 1 and event_distribution.get("RIGHTS_OFFERING", 0) >= 1 and event_distribution.get("BONUS_ISSUE", 0) >= 1)
-    gate_metrics = {
-        "preflight_verdict": "READY", "document_readiness_verdict": "READY", "authority_valid_controls_count": len(controls), "final_cohort_control_count": len(controls), "diversity_pass": diversity,
-        "linkage_evaluation_status": "EVALUATED", "all_linkage_valid": True, "persisted_price_evidence_status": validation.evaluation_status,
-        **validation.to_dict(), "unresolved_higher_priority_candidate_count": candidates["unresolved_higher_priority_candidate_count"], "selected_authority_archive_provenance_failure_count": candidates["selected_authority_archive_provenance_failure_count"],
-        "date_set_mismatch_count": validation.date_mismatch_control_count, "insufficient_window_count": validation.insufficient_window_control_count, "ohlc_mismatch_count": validation.ohlc_mismatch_control_count,
-        "candidate_error_count": 0, "comparator_error_count": 0, "network_accounting_failure_count": 0,
-    }
+    evidence = load_full_regression_evidence(root / FULL_PYTEST_EVIDENCE_RELATIVE_PATH_CORRECTION_13)
+    certification = validate_full_regression_evidence(evidence, expected_fix_head=snapshot.head, expected_fix_tree_sha=snapshot.tree_sha)
+    if snapshot.dirty:
+        certification.blockers.append("CODE_SCOPE_WORKTREE_DIRTY")
+        certification.blockers = list(dict.fromkeys(certification.blockers))
+        certification.evidence_status = "INVALID"
+        certification.certification_valid = False
+    output = root / DEFAULT_CORP_EVIDENCE_DIR_FIX03_CORRECTION_13 if output_dir is None else Path(output_dir)
+    if not certification.certification_valid:
+        return _write_c13_fail_closed(output, snapshot, certification, "PYTEST_EVIDENCE_INVALID")
+
+    stage_root = Path(tempfile.mkdtemp(prefix="c13-c12-acquisition-"))
+    stage_output = stage_root / "v01_fix03_correction_12"
+    try:
+        stage_result = run_corporate_action_evidence_acquisition_fix03_correction_12(
+            output_dir=stage_output,
+            parent_dir=parent_dir,
+            allow_network=allow_network,
+            regression_evidence=certification,
+            repo_root=root,
+        )
+        _copy_c12_artifacts_to_c13(stage_output, output)
+    finally:
+        shutil.rmtree(stage_root, ignore_errors=True)
+
+    output.mkdir(parents=True, exist_ok=True)
+    (output / "full_pytest_summary_v01_fix03_correction_13.json").write_text(
+        json.dumps(certification.to_dict(), indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
+    cohort_path = output / "corporate_action_review_cohort_v01_fix03_correction_13.csv"
+    price_path = output / CORRECTION_13_PRICE_FILE
+    parity_path = output / CORRECTION_13_PARITY_FILE
+    recon_path = output / CORRECTION_13_RECONCILIATION_FILE
+    controls = _evidence_frame(cohort_path)
+    accounting_path = output / "corporate_action_evidence_network_accounting_v01_fix03_correction_13.json"
+    accounting_payload = json.loads(accounting_path.read_text(encoding="utf-8")) if accounting_path.is_file() else {"request_logs": []}
+    gate_path = output / "gate06_corporate_action_reassessment_v01_fix03_correction_13.json"
+    gate_payload = json.loads(gate_path.read_text(encoding="utf-8")) if gate_path.is_file() else {}
+    validation = validate_persisted_price_parity_evidence(price_path, parity_path, recon_path, controls, request_logs=accounting_payload.get("request_logs", []))
+
+    candidate_rows = _evidence_frame(output / "corporate_action_document_probe_audit_v01_fix03_correction_13.csv")
+    ranked_rows = _evidence_frame(output / "corporate_action_discovery_candidate_audit_v01_fix03_correction_13.csv")
+    score_by_candidate = {(str(row.get("ticker", "")), str(row.get("rcept_no", ""))): row.get("event_match_score", 0) for row in ranked_rows.to_dict("records")}
+    candidate_facts: list[dict[str, Any]] = []
+    if not candidate_rows.empty:
+        for row in candidate_rows.to_dict("records"):
+            source = str(row.get("source", "")).strip()
+            obtained = bool(source and str(row.get("http_status", "")).strip() not in {"", "0", "500"})
+            semantic_valid = str(row.get("authority_valid", "")).lower() == "true"
+            score = score_by_candidate.get((str(row.get("ticker", "")), str(row.get("rcept_no", ""))), row.get("event_match_score", 0))
+            candidate_facts.append({"candidate_rank": int(float(row.get("candidate_rank", 0) or 0)), "event_match_score": int(float(score or 0)), "official_evidence_obtained": obtained, "semantic_valid": semantic_valid, "official_content_usable": bool(str(row.get("validation_reason", "")).strip() not in {"EMPTY_OR_UNUSABLE_DOCUMENT", "ARCHIVE_MEMBER_AMBIGUOUS"}), "fallback_available": source == "DART_OFFICIAL_DISCLOSURE"})
+    candidate_eval = evaluate_candidate_resolution_population(candidate_facts)
+
+    gate_metrics = dict(gate_payload)
+    gate_metrics.update(validation.to_dict())
+    gate_metrics["persisted_price_evidence_status"] = validation.evaluation_status
+    gate_metrics["unresolved_higher_priority_candidate_count"] = candidate_eval["unresolved_higher_priority_candidate_count"]
+    gate_metrics["selected_authority_archive_provenance_failure_count"] = candidate_eval["selected_authority_archive_provenance_failure_count"]
+    gate_metrics["candidate_error_count"] = gate_metrics.get("candidate_error_count", 0)
+    gate_metrics["comparator_error_count"] = gate_metrics.get("comparator_error_count", 0)
+    gate_metrics["network_accounting_failure_count"] = 0 if accounting_payload.get("accounting_cross_invariant_pass", True) else 1
     gate_pass, gate_blockers = evaluate_gate06(gate_metrics)
-    gate_payload = {"schema": "gate06_corporate_action_reassessment_v01_fix03_correction_13", "canonical_run_id": canonical_run_id, **gate_metrics, "gate_06_pass": gate_pass, "gate_06_blockers": gate_blockers}
-    (output / "gate06_corporate_action_reassessment_v01_fix03_correction_13.json").write_text(json.dumps(gate_payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-    validation = validate_persisted_price_parity_evidence(price_path, parity_path, recon_path, controls, request_logs=logs, gate06_payload=gate_payload)
-    audit_complete = validation.evaluation_status == "EVALUATED" and not validation.blockers
-    (output / "gate06_metric_provenance_audit_v01_fix03_correction_13.json").write_text(json.dumps({"schema": "gate06_metric_provenance_audit_v01_fix03_correction_13", "canonical_run_id": canonical_run_id, "verdict": "COMPLETE" if audit_complete else "INCOMPLETE", "all_metrics_audited": audit_complete, "rows_loaded": {"price": len(price_df), "parity": len(parity_rows), "reconciliation": len(reconciliation_rows)}, "recomputed": validation.to_dict(), "blockers": validation.blockers}, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-    (output / "mocked_full_success_orchestration_v01_fix03_correction_13.json").write_text(json.dumps({
-        "schema": "mocked_full_success_orchestration_v01_fix03_correction_13", "canonical_run_id": canonical_run_id,
-        "verdict": "PASS_MOCKED_ONLY" if gate_pass and audit_complete else "FAIL_MOCKED_ONLY", "network_calls": 0,
-        "authority_valid_control_count": len(controls), "naver_control_count": validation.naver_control_count, "pykrx_control_count": validation.pykrx_control_count,
-        "price_row_count": len(price_df), "parity_row_count": len(parity_rows), "reconciliation_row_count": len(reconciliation_rows), "gate06": gate_pass,
-    }, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-    # This is a synthetic/offline execution.  Even a fully passing Gate06 must
-    # not become production authorization before a reviewed live run.
-    gate15 = False
-    decision = {
-        "schema": "adjusted_price_source_authority_corporate_action_evidence_v01_fix03_correction_13", "canonical_run_id": canonical_run_id, "directive_id": DIRECTIVE_ID_CORRECTION_13, "parent_directive": PARENT_DIRECTIVE_CORRECTION_13,
-        "start_head": START_HEAD_CORP_EVIDENCE_FIX03_CORRECTION_13, "git_code_snapshot": asdict(snapshot), "authority_valid_control_count": len(controls), "final_cohort_size": len(controls), "event_distribution": event_distribution,
-        "naver_actual_requests": len([1 for key, frame in source_frames.items() if key[1] == "NAVER_DIRECT" and not frame.empty]), "raw_pykrx_actual_queries": len([1 for key, frame in source_frames.items() if key[1] == "RAW_PYKRX_COMPARATOR" and not frame.empty]), "actual_candidate_price_row_count": validation.naver_price_row_count, "actual_pykrx_price_row_count": validation.pykrx_price_row_count, "exact_date_match_controls": validation.exact_match_control_count, "date_mismatch_controls": validation.date_mismatch_control_count, "insufficient_window_controls": validation.insufficient_window_control_count, "ohlc_mismatch_controls": validation.ohlc_mismatch_control_count,
-        "persisted_price_evidence_status": validation.evaluation_status, "persisted_price_parity_validation": validation.to_dict(), "unresolved_higher_priority_candidate_count": candidates["unresolved_higher_priority_candidate_count"], "selected_authority_archive_provenance_failure_count": candidates["selected_authority_archive_provenance_failure_count"],
-        "gate_06_result": gate_pass, "gate_15_result": gate15, "all_gates_passed": False, "production_certification_ready": False, "production_integration_authorized": False, "review_decision": "CONDITIONAL_REVIEW_REQUIRED", "recommended_next_state": DIRECTIVE_ID_CORRECTION_13,
-        "blocking_conditions": gate_blockers + validation.blockers + ["C13_LIVE_EXECUTION_NOT_PERFORMED"], "reason_codes": ["C13_LIVE_EXECUTION_NOT_PERFORMED"] if not gate_pass else ["C13_REVIEW_CANDIDATE_ONLY"], "network_accounting": {"execution_mode": "MOCKED_SYNTHETIC", "grand_total_physical_external_calls": 0, "request_logs": logs}, "c13_live_execution": False,
-    }
-    (output / "adjusted_price_source_authority_corporate_action_evidence_v01_fix03_correction_13.json").write_text(json.dumps(decision, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-    binding = {"schema": "code_test_binding_evidence_v01_fix03_correction_13", "directive_id": DIRECTIVE_ID_CORRECTION_13, "fix_head": snapshot.head, "fix_tree_sha": snapshot.tree_sha, "tested_code_head": snapshot.head, "tested_code_tree_sha": snapshot.tree_sha, "code_scope": ["src", "scripts", "tests"]}
+    gate_payload.update(gate_metrics)
+    gate_payload.update({"schema": "gate06_corporate_action_reassessment_v01_fix03_correction_13", "directive_id": DIRECTIVE_ID_CORRECTION_13, "gate_06_pass": gate_pass, "gate_06_blockers": gate_blockers})
+    gate_path.write_text(json.dumps(gate_payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    required_audit_metrics = (
+        "authority_valid_controls_count", "final_cohort_control_count", "diversity_pass",
+        "unresolved_higher_priority_candidate_count", "selected_authority_archive_provenance_failure_count",
+        "naver_control_count", "pykrx_control_count", "parity_control_count", "reconciliation_control_count",
+        "date_mismatch_control_count", "insufficient_window_control_count", "ohlc_mismatch_control_count",
+        "all_request_bindings_valid", "all_linkage_valid", "network_accounting_failure_count",
+        "persisted_price_evidence_status",
+    )
+    missing_audit_metrics = [key for key in required_audit_metrics if key not in gate_metrics]
+    audit_complete = validation.evaluation_status == "EVALUATED" and not validation.blockers and not missing_audit_metrics
+    audit_payload = {"schema": "gate06_metric_provenance_audit_v01_fix03_correction_13", "canonical_run_id": gate_payload.get("canonical_run_id", ""), "verdict": "COMPLETE" if audit_complete else "INCOMPLETE", "all_metrics_audited": audit_complete, "rows_loaded": {"price": len(_evidence_frame(price_path)), "parity": len(_evidence_frame(parity_path)), "reconciliation": len(_evidence_frame(recon_path))}, "recomputed": validation.to_dict(), "production_significant_metrics": sorted(gate_metrics), "required_metrics": list(required_audit_metrics), "missing_metrics": missing_audit_metrics, "blockers": validation.blockers}
+    (output / "gate06_metric_provenance_audit_v01_fix03_correction_13.json").write_text(json.dumps(audit_payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+    inherited = stage_result.get("inherited_gate_results", {})
+    all_gates = {key: bool(value) for key, value in inherited.items()}
+    all_gates["gate_06_corporate_action_parity"] = bool(gate_pass and audit_complete)
+    all_gates["gate_15_no_unresolved_conditions"] = bool(gate_pass and audit_complete and certification.certification_valid and not candidate_eval["unresolved_higher_priority_candidate_count"] and not validation.blockers)
+    all_pass = all(all_gates.values()) if all_gates else False
+    if all_pass:
+        decision_name, authorized, next_state = "APPROVED_FOR_PRODUCTION_INTEGRATION", True, "ADJUSTED_PRICE_SOURCE_INTEGRATION_V01"
+    elif validation.ohlc_mismatch_control_count > 0:
+        decision_name, authorized, next_state = "REJECTED_AS_PRODUCTION_AUTHORITY", False, "ADJUSTED_PRICE_ALTERNATIVE_SOURCE_DISCOVERY_V01"
+    else:
+        decision_name, authorized, next_state = "CONDITIONAL_REVIEW_REQUIRED", False, DIRECTIVE_ID_CORRECTION_13
+    decision = dict(stage_result)
+    decision.update({"schema": "adjusted_price_source_authority_corporate_action_evidence_v01_fix03_correction_13", "directive_id": DIRECTIVE_ID_CORRECTION_13, "parent_directive": PARENT_DIRECTIVE_CORRECTION_13, "start_head": START_HEAD_CORP_EVIDENCE_FIX03_CORRECTION_13, "git_code_snapshot": asdict(snapshot), "full_suite_completion": certification.full_suite_completion, "new_regression_count": certification.new_regression_count, "regression_certification": certification.to_dict(), "persisted_price_evidence_status": validation.evaluation_status, "persisted_price_parity_validation": validation.to_dict(), "actual_candidate_price_row_count": validation.naver_price_row_count, "actual_pykrx_price_row_count": validation.pykrx_price_row_count, "exact_date_match_controls": validation.exact_match_control_count, "date_mismatch_controls": validation.date_mismatch_control_count, "insufficient_window_controls": validation.insufficient_window_control_count, "ohlc_mismatch_controls": validation.ohlc_mismatch_control_count, "unresolved_higher_priority_candidate_count": candidate_eval["unresolved_higher_priority_candidate_count"], "selected_authority_archive_provenance_failure_count": candidate_eval["selected_authority_archive_provenance_failure_count"], "gate_06_result": bool(gate_pass and audit_complete), "gate_15_result": all_gates["gate_15_no_unresolved_conditions"], "all_15_gate_results": all_gates, "all_gates_passed": all_pass, "production_certification_ready": all_pass, "production_integration_authorized": authorized, "review_decision": decision_name, "recommended_next_state": next_state, "blocking_conditions": list(dict.fromkeys(gate_blockers + validation.blockers)), "reason_codes": ["CORPORATE_ACTION_PRICE_CONTRADICTION"] if decision_name.startswith("REJECTED") else (["ALL_15_SOURCE_AUTHORITY_REVIEW_GATES_PASSED_FIX03_CORRECTION_13"] if all_pass else ["C13_CERTIFICATION_UNRESOLVED"]), "network_accounting": accounting_payload, "c13_live_execution": bool(allow_network)})
+    decision_path = output / "adjusted_price_source_authority_corporate_action_evidence_v01_fix03_correction_13.json"
+    decision_path.write_text(json.dumps(decision, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    binding = {"schema": "code_test_binding_evidence_v01_fix03_correction_13", "directive_id": DIRECTIVE_ID_CORRECTION_13, "fix_head": snapshot.head, "fix_tree_sha": snapshot.tree_sha, "tested_code_head": certification.code_head_under_test, "tested_code_tree_sha": certification.code_tree_sha_under_test, "code_scope": ["src", "scripts", "tests"]}
     (output / "code_test_binding_evidence_v01_fix03_correction_13.json").write_text(json.dumps(binding, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-    entries = {}
-    for path in sorted(output.glob("*")):
-        if path.name == "artifact_manifest.json" or not path.is_file(): continue
-        entries[path.name] = {"path": str(path), "size_bytes": path.stat().st_size, "sha256": hashlib.sha256(path.read_bytes()).hexdigest()}
-    (output / "artifact_manifest.json").write_text(json.dumps({"schema": "corporate_action_evidence_manifest_v01_fix03_correction_13", "canonical_run_id": canonical_run_id, "directive_id": DIRECTIVE_ID_CORRECTION_13, "review_decision": decision["review_decision"], "production_integration_authorized": False, "artifacts": entries}, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    entries = {p.name: {"path": str(p), "size_bytes": p.stat().st_size, "sha256": hashlib.sha256(p.read_bytes()).hexdigest()} for p in output.iterdir() if p.is_file() and p.name != "artifact_manifest.json"}
+    (output / "artifact_manifest.json").write_text(json.dumps({"schema": "corporate_action_evidence_manifest_v01_fix03_correction_13", "canonical_run_id": decision.get("canonical_run_id", ""), "directive_id": DIRECTIVE_ID_CORRECTION_13, "review_decision": decision_name, "production_integration_authorized": authorized, "artifacts": entries}, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     return decision
 
 
-def run_correction13_from_canonical_evidence(*, repo_root: Path = Path("."), output_dir: Path | None = None, allow_network: bool = False) -> dict[str, Any]:
-    """Offline-only C13 wrapper; live execution is reserved for post-review."""
-    if allow_network:
-        raise RuntimeError("CORRECTION_13 live execution is reserved for the post-review phase")
-    return run_corporate_action_evidence_acquisition_fix03_correction_13(repo_root=repo_root, output_dir=output_dir, allow_network=False)
+def run_correction13_from_canonical_evidence(*, repo_root: Path = Path("."), output_dir: Path | None = None, allow_network: bool = True, parent_dir: Path | None = None) -> dict[str, Any]:
+    """Certify C13 pytest evidence before entering the production acquisition path."""
+    return run_corporate_action_evidence_acquisition_fix03_correction_13(repo_root=Path(repo_root), output_dir=output_dir, allow_network=allow_network, parent_dir=parent_dir)
 
 
 if __name__ == "__main__":
-    result = run_correction12_from_canonical_evidence(repo_root=Path.cwd())
-    print("=== Corporate Action Evidence Acquisition FIX03_CORRECTION_12 Execution Summary ===")
+    result = run_correction13_from_canonical_evidence(repo_root=Path.cwd())
+    print("=== Corporate Action Evidence Acquisition FIX03_CORRECTION_13 Execution Summary ===")
     print("Review Decision:", result["review_decision"])
     print("All Gates Passed:", result["all_gates_passed"])
     print("Production Integration Authorized:", result["production_integration_authorized"])

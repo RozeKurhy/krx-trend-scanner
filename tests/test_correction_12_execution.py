@@ -319,7 +319,7 @@ def test_correction12_mocked_full_production_success(tmp_path, monkeypatch):
     assert {"canonical_run_id", "control_id", "ticker", "corp_code", "issuer_name", "authority_record_id", "producing_request_id", "raw_evidence_path", "raw_evidence_sha256"} <= set(captured["authority_rows"][0])
 
 
-def test_default_corporate_action_entrypoint_targets_correction12():
+def test_default_corporate_action_entrypoint_targets_correction13():
     source = Path(ca.__file__).read_text(encoding="utf-8")
     tree = ast.parse(source)
     main_nodes = [
@@ -335,7 +335,7 @@ def test_default_corporate_action_entrypoint_targets_correction12():
         if isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
     ]
     assert calls
-    assert calls[0].func.id == "run_correction12_from_canonical_evidence"
+    assert calls[0].func.id == "run_correction13_from_canonical_evidence"
     assert "CORRECTION_9" not in ast.unparse(main_nodes[0])
     assert "CORRECTION_10" not in ast.unparse(main_nodes[0])
     assert "CORRECTION_11" not in ast.unparse(main_nodes[0])

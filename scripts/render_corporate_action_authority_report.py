@@ -231,6 +231,16 @@ def evaluate_report_truth_sync(
                 blockers.append("DECISION_INTERNAL_INCONSISTENCY")
 
     if correction13_binding:
+        regression_certification = validate_full_regression_evidence(
+            pytest_evidence,
+            expected_fix_head=fix_head,
+            expected_fix_tree_sha=str(binding.get("fix_tree_sha", "")),
+        )
+        blockers.extend(regression_certification.blockers)
+        if decision.get("full_suite_completion") != regression_certification.full_suite_completion:
+            blockers.append("DECISION_PYTEST_COMPLETION_MISMATCH")
+        if decision.get("new_regression_count") != regression_certification.new_regression_count:
+            blockers.append("DECISION_PYTEST_REGRESSION_COUNT_MISMATCH")
         c13_root = "artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/corporate_action_evidence/v01_fix03_correction_13"
         cohort_rows = read_git_csv(repo_root, source_head, f"{c13_root}/corporate_action_review_cohort_v01_fix03_correction_13.csv")
         price_rows = read_git_csv(repo_root, source_head, f"{c13_root}/corporate_action_event_price_rows_v01_fix03_correction_13.csv")
@@ -246,18 +256,26 @@ def evaluate_report_truth_sync(
         blockers.extend(persisted.blockers)
         if persisted.evaluation_status != "EVALUATED":
             blockers.append("PRICE_EVIDENCE_NOT_EVALUATED")
-        if decision.get("review_decision") != "CONDITIONAL_REVIEW_REQUIRED":
+        review_decision = decision.get("review_decision")
+        authorized = decision.get("production_integration_authorized")
+        terminal_next_states = {
+            "APPROVED_FOR_PRODUCTION_INTEGRATION": "ADJUSTED_PRICE_SOURCE_INTEGRATION_V01",
+            "CONDITIONAL_REVIEW_REQUIRED": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_13",
+            "REJECTED_AS_PRODUCTION_AUTHORITY": "ADJUSTED_PRICE_ALTERNATIVE_SOURCE_DISCOVERY_V01",
+        }
+        if review_decision not in terminal_next_states or decision.get("recommended_next_state") != terminal_next_states.get(review_decision):
             blockers.append("DECISION_INTERNAL_INCONSISTENCY")
-        if decision.get("production_integration_authorized") is not False:
-            blockers.append("DECISION_INTERNAL_INCONSISTENCY")
-        if decision.get("recommended_next_state") != "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_13":
+        if review_decision == "APPROVED_FOR_PRODUCTION_INTEGRATION":
+            if authorized is not True or decision.get("all_gates_passed") is not True or decision.get("gate_06_result") is not True or decision.get("gate_15_result") is not True:
+                blockers.append("DECISION_INTERNAL_INCONSISTENCY")
+        elif authorized is not False or decision.get("all_gates_passed") is not False or decision.get("gate_06_result") is not False or decision.get("gate_15_result") is not False:
             blockers.append("DECISION_INTERNAL_INCONSISTENCY")
         if decision.get("gate_06_result") is not c13_gate.get("gate_06_pass"):
             blockers.append("DECISION_INTERNAL_INCONSISTENCY")
-        if decision.get("all_gates_passed") is not False:
-            blockers.append("DECISION_INTERNAL_INCONSISTENCY")
         if c13_audit.get("verdict") != "COMPLETE" or c13_audit.get("all_metrics_audited") is not True:
             blockers.append("METRIC_AUDIT_INCOMPLETE")
+        if regression_certification.certification_valid is not True:
+            blockers.append("FULL_PYTEST_CERTIFICATION_INVALID")
         rows_loaded = c13_audit.get("rows_loaded") if isinstance(c13_audit.get("rows_loaded"), dict) else {}
         if rows_loaded.get("parity") != len(parity_rows) or rows_loaded.get("reconciliation") != len(reconciliation_rows):
             blockers.append("METRIC_AUDIT_INCOMPLETE")
@@ -283,6 +301,8 @@ def evaluate_report_truth_sync(
 
 def derive_authority_closed(decision: dict[str, Any], truth_sync: dict[str, Any]) -> bool:
     """Derive closure solely from explicit approval gates and truth-sync evidence."""
+    schema = str(decision.get("schema", ""))
+    regression_required = schema.endswith("correction_12") or schema.endswith("correction_13")
     return bool(
         truth_sync.get("report_truth_sync") == "PASS"
         and decision.get("all_gates_passed") is True
@@ -291,7 +311,7 @@ def derive_authority_closed(decision: dict[str, Any], truth_sync: dict[str, Any]
         and decision.get("production_integration_authorized") is True
         and decision.get("review_decision") == "APPROVED_FOR_PRODUCTION_INTEGRATION"
         and (
-            not str(decision.get("schema", "")).endswith("correction_12")
+            not regression_required
             or (
                 decision.get("full_suite_completion") is True
                 and decision.get("new_regression_count") == 0
