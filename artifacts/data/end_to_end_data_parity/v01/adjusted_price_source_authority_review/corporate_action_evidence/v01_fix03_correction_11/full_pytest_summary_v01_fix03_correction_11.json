@@ -1,0 +1,18 @@
+{
+  "schema": "full_pytest_summary_v01_fix03_correction_11",
+  "canonical_run_id": "CORP_AUTH_FIX03_CORRECTION_11_20260829T023639Z",
+  "full_suite_completion": false,
+  "code_head_under_test": "d2ce6d72d08c942ddb55f7f0b421a88618a9003a",
+  "code_tree_sha_under_test": "e95182c0626ea02499058cd0a29501d7c09f38db",
+  "passed": null,
+  "failed": null,
+  "skipped": null,
+  "deselected": null,
+  "warnings": null,
+  "known_baseline_failures": [
+    "tests/test_krx_historical_backfill.py::test_recent_empty_is_not_checkpointed_and_general_resume_retries"
+  ],
+  "unexpected_failures": [],
+  "new_regression_count": null,
+  "completion_blocker": "Pattern A base_scan_result / pandas resample and separate long-running backtest fixture were interrupted after a single full-suite attempt."
+}
