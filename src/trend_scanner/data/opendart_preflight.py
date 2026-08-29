@@ -26,6 +26,10 @@ DEFAULT_CORP_EVIDENCE_DIR_FIX03_CORRECTION_9 = Path(
 DEFAULT_CORP_EVIDENCE_DIR = DEFAULT_CORP_EVIDENCE_DIR_FIX03_CORRECTION_9
 
 
+def _artifact_tag(correction_suffix: str) -> str:
+    return f"v01_fix03_correction_{correction_suffix}"
+
+
 class OpenDARTCredentialMissingError(RuntimeError):
     """Raised when OPENDART_API_KEY is not set or empty."""
 
@@ -71,16 +75,18 @@ def run_opendart_preflight(
     output_dir: Path = DEFAULT_CORP_EVIDENCE_DIR_FIX03_CORRECTION_9,
     allow_network: bool = True,
     canonical_run_id: str = "",
+    correction_suffix: str = "9",
 ) -> dict[str, Any]:
     """Execute OpenDART connectivity preflight with scrubbed provenance."""
-    run_id = canonical_run_id or f"PREFLIGHT_FIX03_CORRECTION_9_{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}"
+    tag = _artifact_tag(correction_suffix)
+    run_id = canonical_run_id or f"PREFLIGHT_FIX03_CORRECTION_{correction_suffix}_{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}"
     output_dir.mkdir(parents=True, exist_ok=True)
 
     try:
         api_key = get_opendart_api_key()
     except OpenDARTCredentialMissingError as exc:
         res = {
-            "schema": "opendart_preflight_v01_fix03_correction_9",
+            "schema": f"opendart_preflight_{tag}",
             "canonical_run_id": run_id,
             "checked_at": datetime.now(timezone.utc).isoformat(),
             "verdict": "FAIL",
@@ -91,14 +97,14 @@ def run_opendart_preflight(
             "sanitized_endpoint": "https://opendart.fss.or.kr/api/list.json",
             "error_reason": str(exc),
         }
-        (output_dir / "opendart_preflight_v01_fix03_correction_9.json").write_text(
+        (output_dir / f"opendart_preflight_{tag}.json").write_text(
             json.dumps(res, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
         )
         return res
 
     if not allow_network:
         res = {
-            "schema": "opendart_preflight_v01_fix03_correction_9",
+            "schema": f"opendart_preflight_{tag}",
             "canonical_run_id": run_id,
             "checked_at": datetime.now(timezone.utc).isoformat(),
             "verdict": "READY",
@@ -109,7 +115,7 @@ def run_opendart_preflight(
             "sanitized_endpoint": "https://opendart.fss.or.kr/api/list.json?corp_code=00126380",
             "error_reason": "",
         }
-        (output_dir / "opendart_preflight_v01_fix03_correction_9.json").write_text(
+        (output_dir / f"opendart_preflight_{tag}.json").write_text(
             json.dumps(res, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
         )
         return res
@@ -137,7 +143,7 @@ def run_opendart_preflight(
         err_msg = str(exc)
 
     res = {
-        "schema": "opendart_preflight_v01_fix03_correction_9",
+        "schema": f"opendart_preflight_{tag}",
         "canonical_run_id": run_id,
         "checked_at": datetime.now(timezone.utc).isoformat(),
         "verdict": "READY" if is_ready else "FAIL",
@@ -149,7 +155,7 @@ def run_opendart_preflight(
         "error_reason": err_msg,
     }
 
-    (output_dir / "opendart_preflight_v01_fix03_correction_9.json").write_text(
+    (output_dir / f"opendart_preflight_{tag}.json").write_text(
         json.dumps(res, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
     )
     return res
@@ -160,14 +166,16 @@ def run_document_endpoint_readiness_probe(
     allow_network: bool = True,
     canonical_run_id: str = "",
     probe_rcept_no: str = "20180223000294",
+    correction_suffix: str = "9",
 ) -> dict[str, Any]:
     """Execute operational readiness check on official-document endpoint."""
-    run_id = canonical_run_id or f"DOC_READY_FIX03_CORRECTION_9_{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}"
+    tag = _artifact_tag(correction_suffix)
+    run_id = canonical_run_id or f"DOC_READY_FIX03_CORRECTION_{correction_suffix}_{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}"
     output_dir.mkdir(parents=True, exist_ok=True)
 
     if not allow_network:
         res = {
-            "schema": "opendart_document_readiness_v01_fix03_correction_9",
+            "schema": f"opendart_document_readiness_{tag}",
             "canonical_run_id": run_id,
             "checked_at": datetime.now(timezone.utc).isoformat(),
             "verdict": "READY",
@@ -178,7 +186,7 @@ def run_document_endpoint_readiness_probe(
             "archive_structure_valid": True,
             "error_reason": "",
         }
-        (output_dir / "opendart_document_readiness_v01_fix03_correction_9.json").write_text(
+        (output_dir / f"opendart_document_readiness_{tag}.json").write_text(
             json.dumps(res, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
         )
         return res
@@ -187,7 +195,7 @@ def run_document_endpoint_readiness_probe(
         api_key = get_opendart_api_key()
     except Exception as exc:
         res = {
-            "schema": "opendart_document_readiness_v01_fix03_correction_9",
+            "schema": f"opendart_document_readiness_{tag}",
             "canonical_run_id": run_id,
             "checked_at": datetime.now(timezone.utc).isoformat(),
             "verdict": "FAIL",
@@ -198,7 +206,7 @@ def run_document_endpoint_readiness_probe(
             "archive_structure_valid": False,
             "error_reason": str(exc),
         }
-        (output_dir / "opendart_document_readiness_v01_fix03_correction_9.json").write_text(
+        (output_dir / f"opendart_document_readiness_{tag}.json").write_text(
             json.dumps(res, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
         )
         return res
@@ -229,7 +237,7 @@ def run_document_endpoint_readiness_probe(
         err_msg = str(exc)
 
     res = {
-        "schema": "opendart_document_readiness_v01_fix03_correction_9",
+        "schema": f"opendart_document_readiness_{tag}",
         "canonical_run_id": run_id,
         "checked_at": datetime.now(timezone.utc).isoformat(),
         "verdict": verdict,
@@ -241,7 +249,7 @@ def run_document_endpoint_readiness_probe(
         "error_reason": err_msg,
     }
 
-    (output_dir / "opendart_document_readiness_v01_fix03_correction_9.json").write_text(
+    (output_dir / f"opendart_document_readiness_{tag}.json").write_text(
         json.dumps(res, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
     )
     return res

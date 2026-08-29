@@ -95,6 +95,8 @@ def evaluate_report_truth_sync(
     """Fail closed unless the report source, code binding, and decision all agree."""
     blockers: list[str] = []
     fix_head = str(binding.get("fix_head", ""))
+    binding_schema = str(binding.get("schema", ""))
+    correction11_binding = binding_schema.endswith("correction_11")
     end_head = str(binding.get("end_head", ""))
     if not manifest:
         blockers.append("MANIFEST_MISSING")
@@ -104,20 +106,31 @@ def evaluate_report_truth_sync(
         blockers.append("FIX_HEAD_MISSING")
     if not _git_exists(repo_root, source_head):
         blockers.append("END_HEAD_MISSING")
-    if end_head != source_head:
+    if not correction11_binding and end_head != source_head:
         blockers.append("BINDING_END_HEAD_MISMATCH")
+    if correction11_binding and ("end_head" in binding or "end_tree_sha" in binding):
+        blockers.append("END_HEAD_SELF_REFERENCE_FORBIDDEN")
     actual_fix_tree = _git_tree_sha(repo_root, fix_head)
     actual_end_tree = _git_tree_sha(repo_root, source_head)
     if str(binding.get("fix_tree_sha", "")) != actual_fix_tree:
         blockers.append("FIX_TREE_SHA_MISMATCH")
-    if str(binding.get("end_tree_sha", "")) != actual_end_tree:
+    if not correction11_binding and str(binding.get("end_tree_sha", "")) != actual_end_tree:
         blockers.append("END_TREE_SHA_MISMATCH")
+    if correction11_binding:
+        tested_code_head = str(binding.get("tested_code_head", ""))
+        tested_code_tree_sha = str(binding.get("tested_code_tree_sha", ""))
+        if tested_code_head != fix_head:
+            blockers.append("TESTED_CODE_HEAD_MISMATCH")
+        if tested_code_tree_sha != actual_fix_tree:
+            blockers.append("TESTED_CODE_TREE_SHA_MISMATCH")
     if binding.get("code_scope") != ["src", "scripts", "tests"]:
         blockers.append("CODE_SCOPE_MISMATCH")
-    if binding.get("code_diff_paths") != []:
+    if not correction11_binding and binding.get("code_diff_paths") != []:
         blockers.append("CODE_DIFF_NOT_EMPTY")
-    if binding.get("production_code_equivalent") is not True:
+    if not correction11_binding and binding.get("production_code_equivalent") is not True:
         blockers.append("CODE_TEST_BINDING_FAILURE")
+    if correction11_binding and "production_code_equivalent" in binding:
+        blockers.append("SELF_DECLARED_CODE_EQUIVALENCE_FORBIDDEN")
     if fix_head and source_head and _git_exists(repo_root, fix_head) and _git_exists(repo_root, source_head):
         equiv, diff_paths = verify_code_equivalence_between_commits(repo_root, fix_head, source_head)
         if not equiv or diff_paths:
@@ -138,8 +151,9 @@ def evaluate_report_truth_sync(
             b in blockers
             for b in (
                 "FIX_HEAD_MISSING", "END_HEAD_MISSING", "BINDING_END_HEAD_MISMATCH",
-                "FIX_TREE_SHA_MISMATCH", "END_TREE_SHA_MISMATCH", "CODE_SCOPE_MISMATCH",
-                "CODE_DIFF_NOT_EMPTY", "CODE_TEST_BINDING_FAILURE", "CODE_DIFF_DETECTED",
+                "END_HEAD_SELF_REFERENCE_FORBIDDEN", "FIX_TREE_SHA_MISMATCH", "END_TREE_SHA_MISMATCH",
+                "TESTED_CODE_HEAD_MISMATCH", "TESTED_CODE_TREE_SHA_MISMATCH", "CODE_SCOPE_MISMATCH",
+                "CODE_DIFF_NOT_EMPTY", "CODE_TEST_BINDING_FAILURE", "SELF_DECLARED_CODE_EQUIVALENCE_FORBIDDEN", "CODE_DIFF_DETECTED",
             )
         ),
         "blockers": blockers,
@@ -164,10 +178,15 @@ def derive_authority_closed(decision: dict[str, Any], truth_sync: dict[str, Any]
 
 def render_report(repo_root: Path, commit_head: str, output_file: Path) -> None:
     root = "artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/corporate_action_evidence"
+    fix11_rel = f"{root}/v01_fix03_correction_11"
     fix10_rel = f"{root}/v01_fix03_correction_10"
     fix9_rel = f"{root}/v01_fix03_correction_9"
-    base_rel = fix10_rel if read_git_blob(repo_root, commit_head, f"{fix10_rel}/artifact_manifest.json") else fix9_rel
-    suffix = "10" if base_rel.endswith("_10") else "9"
+    if read_git_blob(repo_root, commit_head, f"{fix11_rel}/artifact_manifest.json"):
+        base_rel, suffix = fix11_rel, "11"
+    elif read_git_blob(repo_root, commit_head, f"{fix10_rel}/artifact_manifest.json"):
+        base_rel, suffix = fix10_rel, "10"
+    else:
+        base_rel, suffix = fix9_rel, "9"
     file_for = lambda stem: f"{base_rel}/{stem}_v01_fix03_correction_{suffix}.json"
 
     manifest_bytes = read_git_blob(repo_root, commit_head, f"{base_rel}/artifact_manifest.json")
@@ -187,6 +206,10 @@ def render_report(repo_root: Path, commit_head: str, output_file: Path) -> None:
     pytest_json = read_git_json(repo_root, commit_head, file_for("full_pytest_summary"))
     metric_audit = read_git_json(repo_root, commit_head, f"{base_rel}/gate06_metric_provenance_audit_v01_fix03_correction_{suffix}.json")
     mocked_success = read_git_json(repo_root, commit_head, f"{base_rel}/mocked_full_success_orchestration_v01_fix03_correction_{suffix}.json")
+    if pytest_json.get("full_suite_completion") is not True:
+        truth["blockers"].append("FULL_PYTEST_INCOMPLETE")
+        truth["report_truth_sync"] = "FAIL"
+        truth["production_certification_valid"] = False
 
     all_15_gates = decision.get("all_15_gate_results", {})
     passed_gates = sum(1 for value in all_15_gates.values() if value is True)
@@ -213,7 +236,7 @@ def render_report(repo_root: Path, commit_head: str, output_file: Path) -> None:
         f"- Code Equivalence Self-Verified: `{truth['code_equiv_self_verified']}`",
         "\n---\n",
         "## 2. Implementation / Test Verdict\n",
-        f"- Full pytest passed/failed/skipped: `{pytest_json.get('passed')}` / `{pytest_json.get('failed')}` / `{pytest_json.get('skipped')}`",
+        f"- Full pytest completion: `{pytest_json.get('full_suite_completion')}`; passed/failed/skipped: `{pytest_json.get('passed')}` / `{pytest_json.get('failed')}` / `{pytest_json.get('skipped')}`",
         f"- Known baseline failures: `{len(pytest_json.get('known_baseline_failures', []))}`",
         f"- New regressions: `{pytest_json.get('new_regression_count')}`",
         f"- Mocked full-success orchestration: `{mocked_success.get('verdict', 'NOT_RECORDED')}`",
