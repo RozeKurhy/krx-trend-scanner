@@ -162,6 +162,44 @@ def test_correction13_canonical_identity_validator_rejects_mixed_csv(tmp_path):
     assert any(item["code"] == "CANONICAL_RUN_IDENTITY_MISMATCH" for item in result.mismatches)
 
 
+def test_correction13_post_materialization_raw_path_mutation_fails_final_linkage(tmp_path, monkeypatch):
+    _clean_snapshot(monkeypatch)
+    _install_production_mocks(monkeypatch)
+    _write_c13_evidence(tmp_path, _summary())
+    output = tmp_path / "c13"
+    ca.run_correction13_from_canonical_evidence(repo_root=tmp_path, output_dir=output, allow_network=True, parent_dir=Path.cwd() / ca.PARENT_FIX03_CORRECTION_DIR)
+    manifest_path = output / "corporate_action_raw_evidence_manifest_v01_fix03_correction_13.json"
+    manifest = json.loads(manifest_path.read_text())
+    first = next(iter(manifest["artifacts"].values()))
+    first["path"] = "raw/does-not-exist.xml"
+    manifest_path.write_text(json.dumps(manifest))
+    inputs = ca._load_c13_final_linkage_inputs(output)
+    linkage = ca.validate_live_evidence_linkage(
+        canonical_run_id=manifest["canonical_run_id"],
+        discovery_records=inputs["discovery_records"], document_records=inputs["document_records"],
+        raw_manifest_entries=inputs["raw_manifest_entries"], authority_rows=inputs["authority_rows"],
+        request_logs=inputs["request_logs"], price_request_logs=inputs["price_request_logs"],
+        artifact_paths={"raw": output / "raw"}, current_output_dir=output,
+        accounting_cross_invariant_pass=True, schema_suffix="13",
+    )
+    assert linkage.all_linkage_valid is False
+    assert linkage.raw_orphan_failures
+
+
+def test_correction13_pytest_certification_hash_detects_summary_mutation(tmp_path, monkeypatch):
+    _clean_snapshot(monkeypatch)
+    _install_production_mocks(monkeypatch)
+    original = _summary()
+    _write_c13_evidence(tmp_path, original)
+    output = tmp_path / "c13"
+    ca.run_correction13_from_canonical_evidence(repo_root=tmp_path, output_dir=output, allow_network=True, parent_dir=Path.cwd() / ca.PARENT_FIX03_CORRECTION_DIR)
+    cert = json.loads((output / "full_pytest_certification_v01_fix03_correction_13.json").read_text())
+    summary_path = output / "full_pytest_summary_v01_fix03_correction_13.json"
+    before = summary_path.read_bytes()
+    summary_path.write_bytes(before + b"\n")
+    assert hashlib.sha256(summary_path.read_bytes()).hexdigest() != cert["source_summary_sha256"]
+
+
 def test_correction13_ohlc_contradiction_rejects_actual_path(tmp_path, monkeypatch):
     _clean_snapshot(monkeypatch)
     _install_production_mocks(monkeypatch, ohlc_delta=True)
