@@ -308,6 +308,8 @@ def evaluate_report_truth_sync(
 
             summary_bytes = read_git_blob(repo_root, source_head, f"{c13_root}/full_pytest_summary_v01_fix03_correction_13.json")
             source_sha = hashlib.sha256(summary_bytes).hexdigest() if summary_bytes else ""
+            if pytest_evidence.get("schema") != "full_pytest_summary_v01_fix03_correction_13":
+                blockers.append("PYTEST_SCHEMA_MISMATCH")
             if not c13_certification:
                 blockers.append("PYTEST_CERTIFICATION_ARTIFACT_MISSING")
             elif c13_certification.get("source_summary_sha256") != source_sha:

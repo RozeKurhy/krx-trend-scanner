@@ -8399,6 +8399,11 @@ def run_corporate_action_evidence_acquisition_fix03_correction_13(
     summary_bytes = evidence_path.read_bytes() if evidence_path.is_file() else b""
     evidence = load_full_regression_evidence(evidence_path)
     certification = validate_full_regression_evidence(evidence, expected_fix_head=snapshot.head, expected_fix_tree_sha=snapshot.tree_sha)
+    if isinstance(evidence, Mapping) and evidence.get("schema") != "full_pytest_summary_v01_fix03_correction_13":
+        certification.blockers.append("PYTEST_SCHEMA_MISMATCH")
+        certification.blockers = list(dict.fromkeys(certification.blockers))
+        certification.evidence_status = "INVALID"
+        certification.certification_valid = False
     if snapshot.dirty:
         certification.blockers.append("CODE_SCOPE_WORKTREE_DIRTY")
         certification.blockers = list(dict.fromkeys(certification.blockers))
