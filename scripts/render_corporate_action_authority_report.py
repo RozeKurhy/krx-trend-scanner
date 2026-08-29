@@ -97,6 +97,8 @@ def evaluate_report_truth_sync(
     fix_head = str(binding.get("fix_head", ""))
     binding_schema = str(binding.get("schema", ""))
     correction11_binding = binding_schema.endswith("correction_11")
+    correction12_binding = binding_schema.endswith("correction_12")
+    current_binding = correction11_binding or correction12_binding
     end_head = str(binding.get("end_head", ""))
     if not manifest:
         blockers.append("MANIFEST_MISSING")
@@ -106,17 +108,17 @@ def evaluate_report_truth_sync(
         blockers.append("FIX_HEAD_MISSING")
     if not _git_exists(repo_root, source_head):
         blockers.append("END_HEAD_MISSING")
-    if not correction11_binding and end_head != source_head:
+    if not current_binding and end_head != source_head:
         blockers.append("BINDING_END_HEAD_MISMATCH")
-    if correction11_binding and ("end_head" in binding or "end_tree_sha" in binding):
+    if current_binding and ("end_head" in binding or "end_tree_sha" in binding):
         blockers.append("END_HEAD_SELF_REFERENCE_FORBIDDEN")
     actual_fix_tree = _git_tree_sha(repo_root, fix_head)
     actual_end_tree = _git_tree_sha(repo_root, source_head)
     if str(binding.get("fix_tree_sha", "")) != actual_fix_tree:
         blockers.append("FIX_TREE_SHA_MISMATCH")
-    if not correction11_binding and str(binding.get("end_tree_sha", "")) != actual_end_tree:
+    if not current_binding and str(binding.get("end_tree_sha", "")) != actual_end_tree:
         blockers.append("END_TREE_SHA_MISMATCH")
-    if correction11_binding:
+    if current_binding:
         tested_code_head = str(binding.get("tested_code_head", ""))
         tested_code_tree_sha = str(binding.get("tested_code_tree_sha", ""))
         if tested_code_head != fix_head:
@@ -125,11 +127,11 @@ def evaluate_report_truth_sync(
             blockers.append("TESTED_CODE_TREE_SHA_MISMATCH")
     if binding.get("code_scope") != ["src", "scripts", "tests"]:
         blockers.append("CODE_SCOPE_MISMATCH")
-    if not correction11_binding and binding.get("code_diff_paths") != []:
+    if not current_binding and binding.get("code_diff_paths") != []:
         blockers.append("CODE_DIFF_NOT_EMPTY")
-    if not correction11_binding and binding.get("production_code_equivalent") is not True:
+    if not current_binding and binding.get("production_code_equivalent") is not True:
         blockers.append("CODE_TEST_BINDING_FAILURE")
-    if correction11_binding and "production_code_equivalent" in binding:
+    if current_binding and "production_code_equivalent" in binding:
         blockers.append("SELF_DECLARED_CODE_EQUIVALENCE_FORBIDDEN")
     if fix_head and source_head and _git_exists(repo_root, fix_head) and _git_exists(repo_root, source_head):
         equiv, diff_paths = verify_code_equivalence_between_commits(repo_root, fix_head, source_head)
@@ -144,8 +146,10 @@ def evaluate_report_truth_sync(
     )
     if not required_decision:
         blockers.append("DECISION_FIELDS_INCOMPLETE")
-    if correction11_binding and decision.get("full_suite_completion") is not True:
+    if current_binding and decision.get("full_suite_completion") is not True:
         blockers.append("FULL_PYTEST_INCOMPLETE")
+    if correction12_binding and decision.get("full_suite_completion") is True and decision.get("new_regression_count") != 0:
+        blockers.append("NEW_REGRESSION_DETECTED")
     return {
         "report_truth_sync": "PASS" if not blockers else "FAIL",
         "production_certification_valid": not blockers,
@@ -175,15 +179,25 @@ def derive_authority_closed(decision: dict[str, Any], truth_sync: dict[str, Any]
         and decision.get("gate_15_result") is True
         and decision.get("production_integration_authorized") is True
         and decision.get("review_decision") == "APPROVED_FOR_PRODUCTION_INTEGRATION"
+        and (
+            not str(decision.get("schema", "")).endswith("correction_12")
+            or (
+                decision.get("full_suite_completion") is True
+                and decision.get("new_regression_count") == 0
+            )
+        )
     )
 
 
 def render_report(repo_root: Path, commit_head: str, output_file: Path) -> None:
     root = "artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/corporate_action_evidence"
+    fix12_rel = f"{root}/v01_fix03_correction_12"
     fix11_rel = f"{root}/v01_fix03_correction_11"
     fix10_rel = f"{root}/v01_fix03_correction_10"
     fix9_rel = f"{root}/v01_fix03_correction_9"
-    if read_git_blob(repo_root, commit_head, f"{fix11_rel}/artifact_manifest.json"):
+    if read_git_blob(repo_root, commit_head, f"{fix12_rel}/artifact_manifest.json"):
+        base_rel, suffix = fix12_rel, "12"
+    elif read_git_blob(repo_root, commit_head, f"{fix11_rel}/artifact_manifest.json"):
         base_rel, suffix = fix11_rel, "11"
     elif read_git_blob(repo_root, commit_head, f"{fix10_rel}/artifact_manifest.json"):
         base_rel, suffix = fix10_rel, "10"
@@ -212,6 +226,7 @@ def render_report(repo_root: Path, commit_head: str, output_file: Path) -> None:
         truth["blockers"].append("FULL_PYTEST_INCOMPLETE")
         truth["report_truth_sync"] = "FAIL"
         truth["production_certification_valid"] = False
+    truth["blockers"] = list(dict.fromkeys(truth["blockers"]))
 
     all_15_gates = decision.get("all_15_gate_results", {})
     passed_gates = sum(1 for value in all_15_gates.values() if value is True)
