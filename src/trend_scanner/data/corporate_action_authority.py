@@ -468,6 +468,505 @@ def validate_pagination_pages(
     return len(inconsistencies) == 0, inconsistencies
 
 
+# ---------------------------------------------------------------------------
+# FIX03_CORRECTION_10: production linkage truth source
+# ---------------------------------------------------------------------------
+
+ALLOWED_RETRIEVAL_MODES = frozenset(
+    {"NEW_OPENDART_DOCUMENT_FETCH", "NEW_DART_VIEWER_FETCH"}
+)
+FORBIDDEN_RETRIEVAL_MODES = frozenset(
+    {
+        "PRIOR_RUN_RAW_REUSE",
+        "CACHED_OFFICIAL_RAW",
+        "SYNTHETIC_OFFICIAL_RAW",
+        "UNKNOWN",
+        "",
+    }
+)
+
+
+def _linkage_records(value: Any) -> list[dict[str, Any]]:
+    """Normalize list/dict artifact containers without inventing records."""
+    if value is None:
+        return []
+    if isinstance(value, dict):
+        if isinstance(value.get("records"), list):
+            return [r for r in value["records"] if isinstance(r, dict)]
+        if isinstance(value.get("entries"), list):
+            return [r for r in value["entries"] if isinstance(r, dict)]
+        if isinstance(value.get("artifacts"), dict):
+            return [r for r in value["artifacts"].values() if isinstance(r, dict)]
+        if isinstance(value.get("pages"), dict):
+            return [r for r in value["pages"].values() if isinstance(r, dict)]
+        return [r for r in value.values() if isinstance(r, dict)]
+    if isinstance(value, (list, tuple)):
+        return [r for r in value if isinstance(r, dict)]
+    return []
+
+
+def _linkage_value(record: dict[str, Any], *names: str) -> Any:
+    for name in names:
+        if name in record:
+            return record[name]
+    return ""
+
+
+def _linkage_text(record: dict[str, Any], *names: str) -> str:
+    value = _linkage_value(record, *names)
+    return "" if value is None else str(value).strip()
+
+
+def _linkage_bool(record: dict[str, Any], *names: str) -> bool:
+    value = _linkage_value(record, *names)
+    return value is True or (isinstance(value, str) and value.strip().lower() == "true")
+
+
+def _linkage_failure(code: str, **details: Any) -> dict[str, Any]:
+    return {"code": code, **details}
+
+
+@dataclass
+class LiveEvidenceLinkageResult:
+    """All live evidence linkage failures produced by one canonical run."""
+
+    canonical_run_id: str
+    linkage_evaluation_status: str
+    accounting_cross_invariant_pass: bool
+    producing_request_failures: list[dict[str, Any]] = field(default_factory=list)
+    live_lineage_failures: list[dict[str, Any]] = field(default_factory=list)
+    cross_run_request_linkage_failures: list[dict[str, Any]] = field(default_factory=list)
+    historical_raw_reuse_failures: list[dict[str, Any]] = field(default_factory=list)
+    invalid_retrieval_modes: list[dict[str, Any]] = field(default_factory=list)
+    physical_request_mutation_failures: list[dict[str, Any]] = field(default_factory=list)
+    record_identity_failures: list[dict[str, Any]] = field(default_factory=list)
+    issuer_identity_failures: list[dict[str, Any]] = field(default_factory=list)
+    candidate_linkage_failures: list[dict[str, Any]] = field(default_factory=list)
+    pykrx_linkage_failures: list[dict[str, Any]] = field(default_factory=list)
+    raw_orphan_failures: list[dict[str, Any]] = field(default_factory=list)
+
+    @property
+    def linkage_failures(self) -> list[dict[str, Any]]:
+        return [
+            *self.producing_request_failures,
+            *self.live_lineage_failures,
+            *self.cross_run_request_linkage_failures,
+            *self.historical_raw_reuse_failures,
+            *self.invalid_retrieval_modes,
+            *self.physical_request_mutation_failures,
+            *self.record_identity_failures,
+            *self.issuer_identity_failures,
+            *self.candidate_linkage_failures,
+            *self.pykrx_linkage_failures,
+            *self.raw_orphan_failures,
+        ]
+
+    @property
+    def total_linkage_failures(self) -> int:
+        return len(self.linkage_failures)
+
+    @property
+    def all_linkage_valid(self) -> bool:
+        return bool(
+            self.linkage_evaluation_status == "EVALUATED"
+            and self.total_linkage_failures == 0
+            and self.accounting_cross_invariant_pass
+        )
+
+    def to_metrics(self) -> dict[str, Any]:
+        return {
+            "linkage_evaluation_status": self.linkage_evaluation_status,
+            "accounting_cross_invariant_pass": self.accounting_cross_invariant_pass,
+            "producing_request_failure_count": len(self.producing_request_failures),
+            "cross_run_request_linkage_failure_count": len(self.cross_run_request_linkage_failures),
+            "invalid_retrieval_mode_count": len(self.invalid_retrieval_modes),
+            "record_identity_failure_count": len(self.record_identity_failures),
+            "issuer_identity_failure_count": len(self.issuer_identity_failures),
+            "candidate_linkage_failure_count": len(self.candidate_linkage_failures),
+            "pykrx_linkage_failure_count": len(self.pykrx_linkage_failures),
+            "historical_raw_reuse_count": len(self.historical_raw_reuse_failures),
+            "physical_request_mutation_failure_count": len(self.physical_request_mutation_failures),
+            "live_lineage_failure_count": len(self.live_lineage_failures),
+            "raw_orphan_file_count": len(self.raw_orphan_failures),
+            "total_provenance_failure_count": self.total_linkage_failures,
+            "all_linkage_valid": self.all_linkage_valid,
+        }
+
+    def to_dict(self) -> dict[str, Any]:
+        payload = {
+            "schema": "live_evidence_linkage_validation_v01_fix03_correction_10",
+            "canonical_run_id": self.canonical_run_id,
+            "linkage_evaluation_status": self.linkage_evaluation_status,
+            "accounting_cross_invariant_pass": self.accounting_cross_invariant_pass,
+            "discovery_pages_checked": 0,
+            "document_items_checked": 0,
+            "producing_request_failures": self.producing_request_failures,
+            "live_lineage_failures": self.live_lineage_failures,
+            "cross_run_request_linkage_failures": self.cross_run_request_linkage_failures,
+            "historical_raw_reuse_failures": self.historical_raw_reuse_failures,
+            "invalid_retrieval_modes": self.invalid_retrieval_modes,
+            "physical_request_mutation_failures": self.physical_request_mutation_failures,
+            "record_identity_failures": self.record_identity_failures,
+            "issuer_identity_failures": self.issuer_identity_failures,
+            "candidate_linkage_failures": self.candidate_linkage_failures,
+            "pykrx_linkage_failures": self.pykrx_linkage_failures,
+            "raw_orphan_failures": self.raw_orphan_failures,
+            "linkage_failures": self.linkage_failures,
+            "total_linkage_failures": self.total_linkage_failures,
+            "all_linkage_valid": self.all_linkage_valid,
+        }
+        payload.update(self.to_metrics())
+        return payload
+
+    as_dict = to_dict
+
+
+def _request_source_matches(document: dict[str, Any], request: dict[str, Any]) -> bool:
+    doc_source = _linkage_text(document, "source", "official_source", "authority_source_name")
+    req_source = _linkage_text(request, "source")
+    if not doc_source or not req_source:
+        return False
+    doc_upper, req_upper = doc_source.upper(), req_source.upper()
+    if "DART" in doc_upper and "DART" in req_upper:
+        return True
+    return doc_upper == req_upper or doc_upper in req_upper or req_upper in doc_upper
+
+
+def _request_hash_matches(document: dict[str, Any], request: dict[str, Any]) -> bool:
+    doc_sha = _linkage_text(document, "sha256", "raw_sha", "raw_evidence_sha256")
+    if not doc_sha:
+        return False
+    request_hashes = {
+        _linkage_text(request, name)
+        for name in (
+            "canonical_raw_sha256",
+            "extracted_member_sha256",
+            "transport_response_sha256",
+            "raw_http_response_sha256",
+        )
+    }
+    return doc_sha in {h for h in request_hashes if h}
+
+
+def _request_matches_control(request: dict[str, Any], authority: dict[str, Any]) -> bool:
+    req_ticker = _linkage_text(request, "ticker")
+    auth_ticker = _linkage_text(authority, "ticker")
+    req_start = _linkage_text(request, "price_window_start")
+    req_end = _linkage_text(request, "price_window_end")
+    auth_start = _linkage_text(authority, "price_window_start")
+    auth_end = _linkage_text(authority, "price_window_end")
+    return bool(
+        req_ticker
+        and auth_ticker
+        and req_ticker == auth_ticker
+        and req_start == auth_start
+        and req_end == auth_end
+    )
+
+
+def validate_live_evidence_linkage(
+    canonical_run_id: str,
+    discovery_records: Any,
+    document_records: Any,
+    raw_manifest_entries: Any = None,
+    authority_rows: Any = None,
+    request_logs: Any = None,
+    price_request_logs: Any = None,
+    artifact_paths: Any = None,
+    current_output_dir: Path | None = None,
+    accounting_cross_invariant_pass: bool | None = None,
+) -> LiveEvidenceLinkageResult:
+    """Validate every provenance edge used by Gate 06 from one shared truth source.
+
+    The function is deliberately data-only: tests can supply mocked records, while the
+    production orchestration passes its immutable request logs and canonical manifests.
+    Missing evidence never becomes a successful default.
+    """
+    discovery = _linkage_records(discovery_records)
+    documents = _linkage_records(document_records)
+    raw_entries = _linkage_records(raw_manifest_entries if raw_manifest_entries is not None else document_records)
+    authorities = _linkage_records(authority_rows)
+    requests_log = _linkage_records(request_logs)
+    price_logs = _linkage_records(price_request_logs)
+    if price_request_logs is None:
+        price_logs = [
+            r for r in requests_log
+            if _linkage_text(r, "source") in {"NAVER_DIRECT", "RAW_PYKRX_COMPARATOR"}
+        ]
+
+    result = LiveEvidenceLinkageResult(
+        canonical_run_id=str(canonical_run_id or ""),
+        linkage_evaluation_status="EVALUATED" if canonical_run_id else "NOT_EVALUATED_MISSING_RUN_ID",
+        accounting_cross_invariant_pass=bool(accounting_cross_invariant_pass is True),
+    )
+    request_by_id: dict[str, dict[str, Any]] = {}
+    request_groups: dict[str, list[dict[str, Any]]] = {}
+    for request in requests_log:
+        request_id = _linkage_text(request, "request_id")
+        if not request_id:
+            result.physical_request_mutation_failures.append(
+                _linkage_failure("MISSING_PHYSICAL_REQUEST_ID")
+            )
+            continue
+        request_groups.setdefault(request_id, []).append(request)
+        request_by_id.setdefault(request_id, request)
+        if _linkage_text(request, "canonical_run_id") != result.canonical_run_id:
+            result.cross_run_request_linkage_failures.append(
+                _linkage_failure("REQUEST_RUN_MISMATCH", request_id=request_id)
+            )
+    for request_id, grouped in request_groups.items():
+        if len(grouped) > 1:
+            result.physical_request_mutation_failures.append(
+                _linkage_failure("DUPLICATE_PHYSICAL_REQUEST_RECORD", request_id=request_id, count=len(grouped))
+            )
+        fingerprints = {
+            tuple(_linkage_text(r, key) for key in (
+                "canonical_run_id", "source", "outcome", "http_status",
+                "transport_response_size", "transport_response_sha256",
+                "raw_http_response_size", "raw_http_response_sha256",
+            ))
+            for r in grouped
+        }
+        if len(fingerprints) > 1:
+            result.physical_request_mutation_failures.append(
+                _linkage_failure("CONFLICTING_PHYSICAL_REQUEST_RECORD", request_id=request_id)
+            )
+
+    authority_by_control = {
+        (_linkage_text(row, "control_id"), _linkage_text(row, "ticker")): row
+        for row in authorities
+    }
+    authority_by_record_id = {
+        _linkage_text(row, "authority_record_id", "record_id", "rcept_no"): row
+        for row in authorities
+        if _linkage_text(row, "authority_record_id", "record_id", "rcept_no")
+    }
+    discovery_by_control = {
+        (_linkage_text(row, "control_id"), _linkage_text(row, "ticker")): row
+        for row in discovery
+        if _linkage_text(row, "control_id", "ticker")
+    }
+
+    for discovery_row in discovery:
+        discovery_run = _linkage_text(discovery_row, "canonical_run_id")
+        if discovery_run != result.canonical_run_id:
+            result.live_lineage_failures.append(
+                _linkage_failure("DISCOVERY_RECORD_RUN_MISMATCH", control_id=_linkage_text(discovery_row, "control_id"), observed=discovery_run)
+            )
+            if discovery_run:
+                result.cross_run_request_linkage_failures.append(
+                    _linkage_failure("DISCOVERY_RECORD_CROSS_RUN", control_id=_linkage_text(discovery_row, "control_id"), observed=discovery_run)
+                )
+        discovery_request_id = _linkage_text(discovery_row, "request_id", "producing_request_id")
+        if discovery_request_id:
+            discovery_request = request_by_id.get(discovery_request_id)
+            if discovery_request is None or _linkage_text(discovery_request, "outcome") != "SUCCESS":
+                result.live_lineage_failures.append(
+                    _linkage_failure("DISCOVERY_REQUEST_NOT_SUCCESS", request_id=discovery_request_id)
+                )
+
+    # 1-6. Document → producing request, run, retrieval mode, and raw reuse.
+    for document in documents:
+        doc_id = _linkage_text(document, "official_record_id", "rcept_no", "record_id", "authority_record_id")
+        request_id = _linkage_text(document, "producing_request_id", "request_id")
+        document_run = _linkage_text(document, "canonical_run_id")
+        if document_run != result.canonical_run_id:
+            result.live_lineage_failures.append(
+                _linkage_failure("DOCUMENT_RUN_MISMATCH", record_id=doc_id, observed=document_run)
+            )
+            if document_run and document_run != result.canonical_run_id:
+                result.cross_run_request_linkage_failures.append(
+                    _linkage_failure("DOCUMENT_CROSS_RUN", record_id=doc_id, observed=document_run)
+                )
+        request = request_by_id.get(request_id)
+        if not request_id or request is None:
+            result.producing_request_failures.append(
+                _linkage_failure("PRODUCING_REQUEST_NOT_FOUND", record_id=doc_id, request_id=request_id)
+            )
+        else:
+            if _linkage_text(request, "outcome") != "SUCCESS":
+                result.producing_request_failures.append(
+                    _linkage_failure("PRODUCING_REQUEST_NOT_SUCCESS", record_id=doc_id, request_id=request_id)
+                )
+            if _linkage_text(request, "canonical_run_id") != result.canonical_run_id:
+                result.cross_run_request_linkage_failures.append(
+                    _linkage_failure("PRODUCING_REQUEST_CROSS_RUN", record_id=doc_id, request_id=request_id)
+                )
+            if not _request_source_matches(document, request):
+                result.producing_request_failures.append(
+                    _linkage_failure("PRODUCING_REQUEST_SOURCE_MISMATCH", record_id=doc_id, request_id=request_id)
+                )
+            if not _request_hash_matches(document, request):
+                result.producing_request_failures.append(
+                    _linkage_failure("PRODUCING_REQUEST_SHA_MISMATCH", record_id=doc_id, request_id=request_id)
+                )
+        retrieval_mode = _linkage_text(document, "retrieval_mode")
+        if retrieval_mode not in ALLOWED_RETRIEVAL_MODES:
+            result.invalid_retrieval_modes.append(
+                _linkage_failure("INVALID_RETRIEVAL_MODE", record_id=doc_id, retrieval_mode=retrieval_mode)
+            )
+        path_text = _linkage_text(document, "path", "raw_path", "raw_evidence_path")
+        lower_path = path_text.lower()
+        current_dir_name = Path(current_output_dir).name if current_output_dir is not None else ""
+        current_fix = ""
+        if "v01_fix03_correction_9" in current_dir_name:
+            current_fix = "v01_fix03_correction_9"
+        elif "v01_fix03_correction_10" in current_dir_name:
+            current_fix = "v01_fix03_correction_10"
+        if (
+            retrieval_mode in FORBIDDEN_RETRIEVAL_MODES
+            or any(token in lower_path for token in ("historical", "synthetic", "cached"))
+            or (current_fix and "v01_fix03_correction" in lower_path and current_fix not in lower_path)
+        ):
+            result.historical_raw_reuse_failures.append(
+                _linkage_failure("HISTORICAL_RAW_REUSE", record_id=doc_id, path=path_text, retrieval_mode=retrieval_mode)
+            )
+
+    # 2, 7. Discovery/document/authority identity and current-run lineage.
+    for authority in authorities:
+        control_key = (_linkage_text(authority, "control_id"), _linkage_text(authority, "ticker"))
+        authority_id = _linkage_text(authority, "authority_record_id", "record_id", "rcept_no")
+        doc_matches = [
+            d for d in documents
+            if _linkage_text(d, "official_record_id", "rcept_no", "record_id", "authority_record_id") == authority_id
+            or (control_key[0] and (_linkage_text(d, "control_id"), _linkage_text(d, "ticker")) == control_key)
+        ]
+        discovery_row = discovery_by_control.get(control_key)
+        if not doc_matches:
+            result.live_lineage_failures.append(
+                _linkage_failure("AUTHORITY_DOCUMENT_NOT_LINKED", authority_record_id=authority_id)
+            )
+        for document in doc_matches:
+            doc_id = _linkage_text(document, "official_record_id", "rcept_no", "record_id", "authority_record_id")
+            if doc_id != authority_id:
+                result.record_identity_failures.append(
+                    _linkage_failure("DOCUMENT_AUTHORITY_RECORD_ID_MISMATCH", document_id=doc_id, authority_record_id=authority_id)
+                )
+            if _linkage_text(document, "canonical_run_id") != result.canonical_run_id:
+                result.live_lineage_failures.append(
+                    _linkage_failure("DOCUMENT_AUTHORITY_LINEAGE_RUN_MISMATCH", authority_record_id=authority_id)
+                )
+            if _linkage_text(document, "ticker") != _linkage_text(authority, "ticker"):
+                result.record_identity_failures.append(
+                    _linkage_failure("DOCUMENT_TICKER_MISMATCH", authority_record_id=authority_id)
+                )
+            if _linkage_text(document, "corp_code") and _linkage_text(authority, "corp_code") and _linkage_text(document, "corp_code") != _linkage_text(authority, "corp_code"):
+                result.record_identity_failures.append(
+                    _linkage_failure("DOCUMENT_CORP_CODE_MISMATCH", authority_record_id=authority_id)
+                )
+            doc_issuer = _linkage_text(document, "issuer", "issuer_name", "parsed_issuer")
+            auth_issuer = _linkage_text(authority, "issuer_name", "issuer")
+            if doc_issuer and auth_issuer and doc_issuer != auth_issuer:
+                result.issuer_identity_failures.append(
+                    _linkage_failure("DOCUMENT_ISSUER_MISMATCH", authority_record_id=authority_id)
+                )
+        if discovery_row is None:
+            result.live_lineage_failures.append(
+                _linkage_failure("AUTHORITY_DISCOVERY_NOT_LINKED", authority_record_id=authority_id)
+            )
+        else:
+            discovery_run = _linkage_text(discovery_row, "canonical_run_id")
+            if discovery_run != result.canonical_run_id:
+                result.live_lineage_failures.append(
+                    _linkage_failure("DISCOVERY_RUN_MISMATCH", control_id=control_key[0], observed=discovery_run)
+                )
+            selected_id = _linkage_text(discovery_row, "selected_record_id", "selected_rcept_no", "rcept_no")
+            if selected_id and selected_id != authority_id:
+                result.record_identity_failures.append(
+                    _linkage_failure("DISCOVERY_AUTHORITY_RECORD_ID_MISMATCH", selected_id=selected_id, authority_record_id=authority_id)
+                )
+            if _linkage_text(discovery_row, "ticker") != _linkage_text(authority, "ticker"):
+                result.record_identity_failures.append(
+                    _linkage_failure("DISCOVERY_TICKER_MISMATCH", authority_record_id=authority_id)
+                )
+            d_issuer = _linkage_text(discovery_row, "issuer_name", "issuer", "corp_name")
+            a_issuer = _linkage_text(authority, "issuer_name", "issuer")
+            if d_issuer and a_issuer and d_issuer != a_issuer:
+                result.issuer_identity_failures.append(
+                    _linkage_failure("DISCOVERY_ISSUER_MISMATCH", authority_record_id=authority_id)
+                )
+        authority_run = _linkage_text(authority, "canonical_run_id")
+        if authority_run != result.canonical_run_id:
+            result.live_lineage_failures.append(
+                _linkage_failure("AUTHORITY_RUN_MISMATCH", authority_record_id=authority_id, observed=authority_run)
+            )
+            if authority_run and authority_run != result.canonical_run_id:
+                result.cross_run_request_linkage_failures.append(
+                    _linkage_failure("AUTHORITY_CROSS_RUN", authority_record_id=authority_id, observed=authority_run)
+                )
+
+    # 8-9. Candidate and raw PyKRX requests must bind to the frozen cohort.
+    naver_logs = [r for r in price_logs if _linkage_text(r, "source") == "NAVER_DIRECT"]
+    pykrx_logs = [r for r in price_logs if _linkage_text(r, "source") == "RAW_PYKRX_COMPARATOR"]
+    for authority in authorities:
+        authority_id = _linkage_text(authority, "authority_record_id", "record_id", "rcept_no")
+        for source, logs, failures in (
+            ("NAVER_DIRECT", naver_logs, result.candidate_linkage_failures),
+            ("RAW_PYKRX_COMPARATOR", pykrx_logs, result.pykrx_linkage_failures),
+        ):
+            matches = [r for r in logs if _request_matches_control(r, authority)]
+            if not matches:
+                failures.append(
+                    _linkage_failure("PRICE_REQUEST_NOT_LINKED", source=source, authority_record_id=authority_id)
+                )
+                continue
+            for request in matches:
+                if _linkage_text(request, "canonical_run_id") != result.canonical_run_id:
+                    failures.append(_linkage_failure("PRICE_REQUEST_RUN_MISMATCH", source=source, authority_record_id=authority_id))
+                if _linkage_text(request, "outcome") != "SUCCESS":
+                    failures.append(_linkage_failure("PRICE_REQUEST_NOT_SUCCESS", source=source, authority_record_id=authority_id))
+                req_control = _linkage_text(request, "control_id")
+                auth_control = _linkage_text(authority, "control_id")
+                if req_control and auth_control and req_control != auth_control:
+                    failures.append(_linkage_failure("PRICE_CONTROL_ID_MISMATCH", source=source, authority_record_id=authority_id))
+                req_authority_id = _linkage_text(request, "authority_record_id", "official_record_id")
+                if req_authority_id and req_authority_id != authority_id:
+                    failures.append(_linkage_failure("PRICE_AUTHORITY_ID_MISMATCH", source=source, authority_record_id=authority_id))
+                if source == "RAW_PYKRX_COMPARATOR":
+                    adjusted = _linkage_bool(request, "adjusted") or "adjusted=true" in _linkage_text(request, "sanitized_endpoint").lower()
+                    if not adjusted:
+                        failures.append(_linkage_failure("PYKRX_ADJUSTED_FLAG_MISSING", authority_record_id=authority_id))
+
+    # 10. Bidirectional raw-file ↔ manifest validation.
+    manifest_paths: set[str] = set()
+    for entry in raw_entries:
+        path_text = _linkage_text(entry, "path", "raw_path", "raw_evidence_path")
+        if path_text:
+            manifest_paths.add(Path(path_text).name)
+        if not _linkage_text(entry, "producing_request_id", "request_id"):
+            result.raw_orphan_failures.append(_linkage_failure("RAW_MANIFEST_MISSING_PRODUCING_REQUEST", path=path_text))
+        if _linkage_text(entry, "canonical_run_id") != result.canonical_run_id:
+            result.raw_orphan_failures.append(_linkage_failure("RAW_MANIFEST_RUN_MISMATCH", path=path_text))
+        entry_id = _linkage_text(entry, "official_record_id", "rcept_no", "authority_record_id")
+        if entry_id and entry_id not in authority_by_record_id:
+            result.raw_orphan_failures.append(_linkage_failure("RAW_MANIFEST_AUTHORITY_NOT_FOUND", path=path_text, record_id=entry_id))
+
+    raw_root: Path | None = None
+    if current_output_dir is not None:
+        raw_root = Path(current_output_dir) / "raw"
+    if isinstance(artifact_paths, dict):
+        candidate_root = artifact_paths.get("raw") or artifact_paths.get("raw_dir")
+        if candidate_root:
+            raw_root = Path(candidate_root)
+    if raw_root is not None and raw_root.exists():
+        for raw_file in raw_root.rglob("*"):
+            if raw_file.is_file() and raw_file.name not in manifest_paths:
+                result.raw_orphan_failures.append(
+                    _linkage_failure("RAW_FILE_NOT_IN_MANIFEST", path=str(raw_file))
+                )
+        if manifest_paths:
+            on_disk = {p.name for p in raw_root.rglob("*") if p.is_file()}
+            for manifest_name in sorted(manifest_paths - on_disk):
+                result.raw_orphan_failures.append(
+                    _linkage_failure("RAW_MANIFEST_FILE_MISSING", path=manifest_name)
+                )
+
+    if not authorities and result.linkage_evaluation_status == "EVALUATED":
+        # An empty cohort is not a successful full-success evaluation.
+        result.linkage_evaluation_status = "NOT_EVALUATED_EMPTY_AUTHORITY_COHORT"
+    return result
+
+
 def select_official_anchor_by_priority(
     event_family: str,
     found_anchors: list[dict[str, Any]],
@@ -570,6 +1069,16 @@ def evaluate_gate06(metrics: dict[str, Any]) -> tuple[bool, list[str]]:
         blockers.append("Cross-run request linkage failure detected")
     if metrics.get("invalid_retrieval_mode_count", 0) > 0:
         blockers.append("Forbidden or invalid retrieval mode detected")
+    if metrics.get("record_identity_failure_count", 0) > 0:
+        blockers.append("Discovery/document/authority record identity failure detected")
+    if metrics.get("issuer_identity_failure_count", 0) > 0:
+        blockers.append("Issuer identity mismatch detected")
+    if metrics.get("candidate_linkage_failure_count", 0) > 0:
+        blockers.append("Candidate price linkage failure detected")
+    if metrics.get("pykrx_linkage_failure_count", 0) > 0:
+        blockers.append("PyKRX comparator linkage failure detected")
+    if metrics.get("raw_orphan_file_count", 0) > 0:
+        blockers.append("Raw canonical evidence orphan detected")
     if metrics.get("ohlc_mismatch_count", 0) > 0:
         blockers.append(f"OHLC mismatch in {metrics.get('ohlc_mismatch_count')} controls")
     if metrics.get("insufficient_window_count", 0) > 0:
@@ -580,6 +1089,11 @@ def evaluate_gate06(metrics: dict[str, Any]) -> tuple[bool, list[str]]:
         blockers.append("Network accounting cross-invariants failed")
     if metrics.get("total_provenance_failure_count", 0) > 0:
         blockers.append(f"Provenance linkage failures: {metrics.get('total_provenance_failure_count')}")
+    if "linkage_evaluation_status" in metrics:
+        if metrics.get("linkage_evaluation_status") != "EVALUATED":
+            blockers.append("Live evidence linkage validator was not evaluated")
+        if metrics.get("all_linkage_valid") is not True:
+            blockers.append("Live evidence linkage validator did not certify all edges")
 
     return len(blockers) == 0, blockers
 
@@ -633,6 +1147,10 @@ def acquire_current_official_document(
         archive_ambiguous,
         arch_fails,
     ) = resolve_archive_member(probe_http_bytes, rcept_no)
+    # Direct (non-archive) responses are already canonical bytes; preserve their
+    # SHA so the immutable request record can be linked to the raw manifest.
+    if extracted_bytes and not extracted_sha:
+        extracted_sha = hashlib.sha256(extracted_bytes).hexdigest()
 
     extracted_size = len(extracted_bytes)
     is_maintenance = bool(b"<status>800</status>" in probe_http_bytes or b"\xec\x8b\x9c\xec\x8a\xa4\xed\x85\x9c \xec\xa0\x90\xea\xb2\x80" in probe_http_bytes)
@@ -1540,6 +2058,19 @@ def run_corporate_action_evidence_acquisition_fix03_correction_9(
 
     accounting = CorporateActionNetworkAccounting()
 
+    # Explicit maintenance/offline guard for repository regression runs.  This
+    # short-circuits before credential resolution or any external client is built.
+    if os.environ.get("CORRECTION_10_OFFLINE_ONLY") == "1":
+        return _terminate_on_readiness_or_preflight_failure(
+            output_dir=output_dir,
+            parent_dir=parent_dir,
+            canonical_run_id=canonical_run_id,
+            preflight={"verdict": "FAIL", "reason": "CORRECTION_10_OFFLINE_ONLY"},
+            doc_readiness={"verdict": "NOT_EXECUTED", "schema": "opendart_document_readiness_v01_fix03_correction_9"},
+            accounting=accounting,
+            failure_reason="CORRECTION_10_OFFLINE_ONLY",
+        )
+
     # 1. Hard Gate: OpenDART Preflight (Section 4, 16)
     preflight = run_opendart_preflight(output_dir=output_dir, allow_network=allow_network, canonical_run_id=canonical_run_id)
     accounting.preflight_physical_calls = 1 if allow_network else 0
@@ -1652,15 +2183,6 @@ def run_corporate_action_evidence_acquisition_fix03_correction_9(
     archive_member_ambiguity_failures = []
     archive_transport_inconsistencies = []
     archive_member_inconsistencies = []
-    producing_request_failures = []
-    cross_run_request_linkage_failures = []
-    invalid_retrieval_modes = []
-    record_identity_failures = []
-    issuer_identity_failures = []
-    candidate_linkage_failures = []
-    pykrx_linkage_failures = []
-    historical_raw_reuse_failures = []
-    physical_request_mutation_failures = []
 
     dart_session = requests.Session()
     dart_session.headers.update({"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"})
@@ -2150,6 +2672,7 @@ def run_corporate_action_evidence_acquisition_fix03_correction_9(
         }
 
         discovery_rows.append({
+            "canonical_run_id": canonical_run_id,
             "control_id": cid,
             "ticker": t,
             "issuer_name": tgt["issuer_name"],
@@ -2250,11 +2773,6 @@ def run_corporate_action_evidence_acquisition_fix03_correction_9(
             invalid_binding_relationship_failures.append(t)
         if parsed["semantic_block_id"] == "SEM_BLOCK_GLOBAL_DOC":
             global_semantic_block_authority_failures.append(t)
-        if not parsed["record_identity_valid"]:
-            record_identity_failures.append(t)
-        if not parsed["issuer_identity_valid"]:
-            issuer_identity_failures.append(t)
-
         doc_validation_rows.append({
             "ticker": t,
             "issuer": tgt["issuer_name"],
@@ -2401,6 +2919,7 @@ def run_corporate_action_evidence_acquisition_fix03_correction_9(
             w_start = (anc_dt - timedelta(days=35)).strftime("%Y-%m-%d")
             w_end = (anc_dt + timedelta(days=35)).strftime("%Y-%m-%d")
             authority_records.append({
+                "canonical_run_id": canonical_run_id,
                 "control_id": cid,
                 "ticker": t,
                 "issuer_name": tgt["issuer_name"],
@@ -2536,9 +3055,11 @@ def run_corporate_action_evidence_acquisition_fix03_correction_9(
     final_cohort_rows = []
     for idx, ar in enumerate(authority_records, start=1):
         final_cohort_rows.append({
-            "control_id": ar["control_id"],
-            "ticker": ar["ticker"],
-            "issuer_name": ar["issuer_name"],
+            "canonical_run_id": canonical_run_id,
+                "control_id": ar["control_id"],
+                "ticker": ar["ticker"],
+                "issuer_name": ar["issuer_name"],
+                "corp_code": ar["corp_code"],
             "source_event_type": ar["source_event_type"],
             "normalized_event_type": ar["normalized_event_type"],
             "selected_source_event_context_id": ar.get("selected_source_event_context_id", ""),
@@ -2621,9 +3142,11 @@ def run_corporate_action_evidence_acquisition_fix03_correction_9(
                 "request_id": cand_req_id,
                 "source": "NAVER_DIRECT",
                 "purpose": "EVENT_SENSITIVE_CANDIDATE_PRICE_FETCH",
+                "control_id": c["control_id"],
                 "ticker": t,
                 "corp_code": c["corp_code"],
-                "official_record_id": "",
+                "official_record_id": c["authority_record_id"],
+                "authority_record_id": c["authority_record_id"],
                 "price_window_start": w_start,
                 "price_window_end": w_end,
                 "sanitized_endpoint": f"https://fchart.stock.naver.com/sise.nhn?symbol={t}&startTime={w_start}&endTime={w_end}",
@@ -2667,9 +3190,12 @@ def run_corporate_action_evidence_acquisition_fix03_correction_9(
                 "request_id": py_query_id,
                 "source": "RAW_PYKRX_COMPARATOR",
                 "purpose": "EVENT_SENSITIVE_RAW_COMPARATOR_PRICE_QUERY",
+                "control_id": c["control_id"],
                 "ticker": t,
                 "corp_code": c["corp_code"],
-                "official_record_id": "",
+                "official_record_id": c["authority_record_id"],
+                "authority_record_id": c["authority_record_id"],
+                "adjusted": True,
                 "price_window_start": w_start,
                 "price_window_end": w_end,
                 "sanitized_endpoint": f"pykrx.stock.get_market_ohlcv_by_date({w_start},{w_end},{t},adjusted=True)",
@@ -2731,19 +3257,42 @@ def run_corporate_action_evidence_acquisition_fix03_correction_9(
     net_dict["canonical_run_id"] = canonical_run_id
     net_path.write_text(json.dumps(net_dict, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
-    linkage_payload = {
-        "schema": "live_evidence_linkage_validation_v01_fix03_correction_9",
-        "canonical_run_id": canonical_run_id,
-        "directive_id": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_9",
+    linkage_result = validate_live_evidence_linkage(
+        canonical_run_id=canonical_run_id,
+        discovery_records=discovery_rows,
+        document_records=raw_manifest_entries,
+        raw_manifest_entries=raw_manifest_entries,
+        authority_rows=authority_records,
+        request_logs=accounting.request_logs,
+        price_request_logs=[
+            r for r in accounting.request_logs
+            if r.get("source") in {"NAVER_DIRECT", "RAW_PYKRX_COMPARATOR"}
+        ],
+        artifact_paths={"raw": raw_dir},
+        current_output_dir=output_dir,
+        accounting_cross_invariant_pass=accounting.accounting_cross_invariant_pass,
+    )
+    linkage_payload = linkage_result.to_dict()
+    linkage_payload.update({
+        "directive_id": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_10",
         "discovery_pages_checked": len(discovery_manifest_entries),
         "document_items_checked": len(raw_manifest_entries),
-        "linkage_evaluation_status": "EVALUATED",
-        "accounting_cross_invariant_pass": accounting.accounting_cross_invariant_pass,
-        "raw_orphan_file_count": 0,
-        "total_linkage_failures": 0,
-        "all_linkage_valid": True,
-        "linkage_failures": [],
+    })
+    # Back-propagate the validator's per-run truth to the manifest metadata;
+    # this field is never a default assertion of lineage validity.
+    failed_record_ids = {
+        str(item.get("record_id") or item.get("authority_record_id") or item.get("document_id"))
+        for item in linkage_result.linkage_failures
+        if item.get("record_id") or item.get("authority_record_id") or item.get("document_id")
     }
+    for manifest_entry in raw_manifest_entries.values():
+        manifest_record_id = _linkage_text(manifest_entry, "official_record_id", "rcept_no", "authority_record_id")
+        manifest_entry["live_lineage_valid"] = bool(manifest_record_id and manifest_record_id not in failed_record_ids and linkage_result.all_linkage_valid)
+    raw_man_path.write_text(json.dumps({
+        "schema": "corporate_action_raw_evidence_manifest_v01_fix03_correction_9",
+        "canonical_run_id": canonical_run_id,
+        "artifacts": raw_manifest_entries,
+    }, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     (output_dir / "live_evidence_linkage_validation_v01_fix03_correction_9.json").write_text(
         json.dumps(linkage_payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
     )
@@ -2780,9 +3329,9 @@ def run_corporate_action_evidence_acquisition_fix03_correction_9(
         "selected_record_invariance_failure_count": len(selected_record_invariance_failures),
         "source_event_classification_failure_count": len(source_event_classification_failures),
         "source_event_type_mismatch_count": len(source_event_type_mismatches),
-        "historical_raw_reuse_count": len(historical_raw_reuse_failures),
-        "physical_request_mutation_failure_count": len(physical_request_mutation_failures),
-        "live_lineage_failure_count": 0,
+        "historical_raw_reuse_count": len(linkage_result.historical_raw_reuse_failures),
+        "physical_request_mutation_failure_count": len(linkage_result.physical_request_mutation_failures),
+        "live_lineage_failure_count": len(linkage_result.live_lineage_failures),
         "claim_event_selection_influence_count": len(claim_event_influence_failures),
         "claim_context_selection_influence_count": len(claim_context_influence_failures),
         "claim_anchor_type_selection_influence_count": len(claim_anchor_type_influence_failures),
@@ -2797,14 +3346,14 @@ def run_corporate_action_evidence_acquisition_fix03_correction_9(
         "archive_member_ambiguity_count": len(archive_member_ambiguity_failures),
         "archive_transport_inconsistency_count": len(archive_transport_inconsistencies),
         "archive_member_inconsistency_count": len(archive_member_inconsistencies),
-        "producing_request_failure_count": len(producing_request_failures),
-        "cross_run_request_linkage_failure_count": len(cross_run_request_linkage_failures),
-        "invalid_retrieval_mode_count": len(invalid_retrieval_modes),
-        "record_identity_failure_count": len(record_identity_failures),
-        "issuer_identity_failure_count": len(issuer_identity_failures),
-        "candidate_linkage_failure_count": len(candidate_linkage_failures),
-        "pykrx_linkage_failure_count": len(pykrx_linkage_failures),
-        "raw_orphan_file_count": 0,
+        "producing_request_failure_count": len(linkage_result.producing_request_failures),
+        "cross_run_request_linkage_failure_count": len(linkage_result.cross_run_request_linkage_failures),
+        "invalid_retrieval_mode_count": len(linkage_result.invalid_retrieval_modes),
+        "record_identity_failure_count": len(linkage_result.record_identity_failures),
+        "issuer_identity_failure_count": len(linkage_result.issuer_identity_failures),
+        "candidate_linkage_failure_count": len(linkage_result.candidate_linkage_failures),
+        "pykrx_linkage_failure_count": len(linkage_result.pykrx_linkage_failures),
+        "raw_orphan_file_count": len(linkage_result.raw_orphan_failures),
         "date_set_mismatch_count": date_set_mismatch_count,
         "authorized_reconciliation_count": sum(1 for s in parity_statuses if s == "AUTHORIZED_DATE_RECONCILIATION_MATCH"),
         "insufficient_window_count": insufficient_window_count,
@@ -2813,7 +3362,9 @@ def run_corporate_action_evidence_acquisition_fix03_correction_9(
         "candidate_error_count": candidate_error_count,
         "comparator_error_count": comparator_error_count,
         "network_accounting_failure_count": 0 if accounting.accounting_cross_invariant_pass else 1,
-        "total_provenance_failure_count": 0,
+        "linkage_evaluation_status": linkage_result.linkage_evaluation_status,
+        "all_linkage_valid": linkage_result.all_linkage_valid,
+        "total_provenance_failure_count": linkage_result.total_linkage_failures,
         "cohort_frozen_before_price_fetch": True,
         "cohort_frozen_at": cohort_frozen_at,
         "cohort_sha256_before_price_fetch": cohort_sha,
@@ -2915,7 +3466,9 @@ def run_corporate_action_evidence_acquisition_fix03_correction_9(
         "ohlc_mismatch_controls": ohlc_mismatch_count,
         "candidate_errors": candidate_error_count,
         "comparator_errors": comparator_error_count,
-        "provenance_failures": 0,
+        "provenance_failures": linkage_result.total_linkage_failures,
+        "linkage_evaluation_status": linkage_result.linkage_evaluation_status,
+        "all_linkage_valid": linkage_result.all_linkage_valid,
         "gate_06_result": gate06_pass,
         "gate_15_result": all_15_gates["gate_15_no_unresolved_conditions"],
         "inherited_gate_results": inherited_gates,
@@ -2970,19 +3523,26 @@ def _terminate_on_readiness_or_preflight_failure(
         json.dumps(net_dict, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
     )
 
-    linkage_payload = {
-        "schema": "live_evidence_linkage_validation_v01_fix03_correction_9",
-        "canonical_run_id": canonical_run_id,
-        "directive_id": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_9",
+    linkage_result = validate_live_evidence_linkage(
+        canonical_run_id=canonical_run_id,
+        discovery_records=[],
+        document_records=[],
+        raw_manifest_entries=[],
+        authority_rows=[],
+        request_logs=accounting.request_logs,
+        current_output_dir=output_dir,
+        accounting_cross_invariant_pass=accounting.accounting_cross_invariant_pass,
+    )
+    linkage_result.linkage_evaluation_status = "NOT_EVALUATED_DUE_TO_READINESS_FAILURE"
+    linkage_result.live_lineage_failures.append(
+        _linkage_failure("DOWNSTREAM_ACQUISITION_NOT_EXECUTED", reason=failure_reason)
+    )
+    linkage_payload = linkage_result.to_dict()
+    linkage_payload.update({
+        "directive_id": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_10",
         "discovery_pages_checked": 0,
         "document_items_checked": 0,
-        "linkage_evaluation_status": "NOT_EVALUATED_DUE_TO_READINESS_FAILURE",
-        "accounting_cross_invariant_pass": accounting.accounting_cross_invariant_pass,
-        "raw_orphan_file_count": 0,
-        "total_linkage_failures": 0,
-        "all_linkage_valid": False,
-        "linkage_failures": [f"Downstream acquisition not executed: {failure_reason}"],
-    }
+    })
     (output_dir / "live_evidence_linkage_validation_v01_fix03_correction_9.json").write_text(
         json.dumps(linkage_payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
     )
@@ -3004,6 +3564,7 @@ def _terminate_on_readiness_or_preflight_failure(
         "gate_06_pass": False,
         "gate_06_blockers": gate06_blockers,
     }
+    gate06_payload.update(linkage_result.to_metrics())
     (output_dir / "gate06_corporate_action_reassessment_v01_fix03_correction_9.json").write_text(
         json.dumps(gate06_payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
     )
