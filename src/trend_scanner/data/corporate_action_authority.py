@@ -84,6 +84,7 @@ CORRECTION_13_RECONCILIATION_FILE = "corporate_action_date_reconciliation_v01_fi
 FULL_PYTEST_EVIDENCE_RELATIVE_PATH_CORRECTION_13 = DEFAULT_CORP_EVIDENCE_DIR_FIX03_CORRECTION_13 / "full_pytest_summary_v01_fix03_correction_13.json"
 FULL_PYTEST_CERTIFICATION_RELATIVE_PATH_CORRECTION_13 = DEFAULT_CORP_EVIDENCE_DIR_FIX03_CORRECTION_13 / "full_pytest_certification_v01_fix03_correction_13.json"
 FULL_PYTEST_CERTIFICATION_FILE_CORRECTION_13 = "full_pytest_certification_v01_fix03_correction_13.json"
+IMMUTABLE_C13_SOURCE_FILES = frozenset({"full_pytest_summary_v01_fix03_correction_13.json"})
 FULL_PYTEST_SCHEMAS = frozenset({
     "full_pytest_summary_v01_fix03_correction_12",
     "full_pytest_summary_v01_fix03_correction_13",
@@ -427,6 +428,158 @@ def validate_canonical_run_identity_correction13(
             seen.add(marker)
             unique_mismatches.append(item)
     return CanonicalRunIdentityValidation(expected, artifacts_checked, rows_checked, unique_mismatches)
+
+
+@dataclass(frozen=True)
+class C13NetworkAccountingValidation:
+    """Independent network-accounting recomputation from persisted request logs."""
+
+    recomputed_request_log_physical_entries: int
+    recomputed_downstream_calls: int
+    recomputed_price_calls: int
+    recomputed_evidence_calls: int
+    recomputed_grand_total: int
+    recomputed_official_discovery_calls: int
+    recomputed_document_probe_calls: int
+    recomputed_viewer_fallback_calls: int
+    recomputed_alternative_candidate_calls: int
+    persisted_downstream_calls: int | None
+    persisted_request_log_physical_entries: int | None
+    persisted_price_calls: int | None
+    persisted_evidence_calls: int | None
+    persisted_grand_total: int | None
+    persisted_total_physical_calls: int | None
+    all_network_accounting_valid: bool
+    blockers: list[str] = field(default_factory=list)
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+def _network_int(value: Any) -> int | None:
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float):
+        return int(value) if value.is_integer() else None
+    if isinstance(value, str):
+        candidate = value.strip()
+        if candidate and (candidate.isdigit() or (candidate.startswith("-") and candidate[1:].isdigit())):
+            return int(candidate)
+    return None
+
+
+def validate_c13_network_accounting(accounting: Mapping[str, Any] | None) -> C13NetworkAccountingValidation:
+    """Recompute C13 physical-call totals and compare all persisted aggregates."""
+    payload = accounting if isinstance(accounting, Mapping) else {}
+    logs = payload.get("request_logs")
+    blockers: list[str] = []
+    if not isinstance(logs, list):
+        logs = []
+        blockers.append("NETWORK_REQUEST_LOGS_MISSING")
+
+    counters = {
+        "official_discovery": 0,
+        "document_probe": 0,
+        "viewer_fallback": 0,
+        "alternative_candidate": 0,
+        "naver": 0,
+        "pykrx": 0,
+    }
+    physical_entries = 0
+    for index, record in enumerate(logs):
+        if not isinstance(record, Mapping):
+            blockers.append(f"NETWORK_REQUEST_LOG_INVALID:{index}")
+            continue
+        physical_attempt = _network_int(record.get("physical_attempt"))
+        if physical_attempt is None:
+            blockers.append(f"NETWORK_REQUEST_LOG_PHYSICAL_ATTEMPT_INVALID:{index}")
+            continue
+        if physical_attempt != 1:
+            continue
+        physical_entries += 1
+        source = str(record.get("source", "")).strip().upper()
+        purpose = str(record.get("purpose", "")).strip().upper()
+        if source == "NAVER_DIRECT":
+            counters["naver"] += 1
+        elif source == "RAW_PYKRX_COMPARATOR":
+            counters["pykrx"] += 1
+        elif "DISCOVERY" in purpose:
+            counters["official_discovery"] += 1
+        elif "DOCUMENT_PROBE" in purpose:
+            counters["document_probe"] += 1
+        elif "VIEWER_FALLBACK" in purpose:
+            counters["viewer_fallback"] += 1
+        elif "ALTERNATIVE" in purpose or "ALTERNATIVE" in source:
+            counters["alternative_candidate"] += 1
+        else:
+            blockers.append(f"NETWORK_REQUEST_LOG_UNCLASSIFIED:{index}")
+
+    evidence_calls = counters["official_discovery"] + counters["document_probe"] + counters["viewer_fallback"] + counters["alternative_candidate"]
+    price_calls = counters["naver"] + counters["pykrx"]
+    downstream_calls = evidence_calls + price_calls
+    preflight = _network_int(payload.get("preflight_physical_calls"))
+    readiness = _network_int(payload.get("readiness_physical_calls"))
+    if preflight is None:
+        blockers.append("NETWORK_ACCOUNTING_FIELD_MISSING:preflight_physical_calls")
+        preflight = 0
+    if readiness is None:
+        blockers.append("NETWORK_ACCOUNTING_FIELD_MISSING:readiness_physical_calls")
+        readiness = 0
+    if preflight < 0:
+        blockers.append("NETWORK_ACCOUNTING_FIELD_INVALID:preflight_physical_calls")
+    if readiness < 0:
+        blockers.append("NETWORK_ACCOUNTING_FIELD_INVALID:readiness_physical_calls")
+    grand_total = preflight + readiness + downstream_calls
+
+    persisted_values = {
+        "downstream_logged_physical_calls": _network_int(payload.get("downstream_logged_physical_calls")),
+        "request_log_physical_entries": _network_int(payload.get("request_log_physical_entries")),
+        "price_physical_calls": _network_int(payload.get("price_physical_calls")),
+        "evidence_acquisition_physical_calls": _network_int(payload.get("evidence_acquisition_physical_calls")),
+        "grand_total_physical_external_calls": _network_int(payload.get("grand_total_physical_external_calls")),
+        "total_physical_external_calls": _network_int(payload.get("total_physical_external_calls")),
+    }
+    recomputed_values = {
+        "downstream_logged_physical_calls": downstream_calls,
+        "request_log_physical_entries": physical_entries,
+        "price_physical_calls": price_calls,
+        "evidence_acquisition_physical_calls": evidence_calls,
+        "grand_total_physical_external_calls": grand_total,
+        "total_physical_external_calls": grand_total,
+    }
+    if downstream_calls != physical_entries:
+        blockers.append("NETWORK_ACCOUNTING_RECOMPUTATION_MISMATCH")
+    for key, expected in recomputed_values.items():
+        observed = persisted_values[key]
+        if observed is None:
+            blockers.append(f"NETWORK_ACCOUNTING_FIELD_MISSING:{key}")
+        elif observed != expected:
+            blockers.append("NETWORK_ACCOUNTING_RECOMPUTATION_MISMATCH")
+    persisted_bool = payload.get("accounting_cross_invariant_pass")
+    if persisted_bool is not None and persisted_bool is not (not blockers):
+        blockers.append("NETWORK_ACCOUNTING_RECOMPUTATION_MISMATCH")
+    blockers = list(dict.fromkeys(blockers))
+    return C13NetworkAccountingValidation(
+        recomputed_request_log_physical_entries=physical_entries,
+        recomputed_downstream_calls=downstream_calls,
+        recomputed_price_calls=price_calls,
+        recomputed_evidence_calls=evidence_calls,
+        recomputed_grand_total=grand_total,
+        recomputed_official_discovery_calls=counters["official_discovery"],
+        recomputed_document_probe_calls=counters["document_probe"],
+        recomputed_viewer_fallback_calls=counters["viewer_fallback"],
+        recomputed_alternative_candidate_calls=counters["alternative_candidate"],
+        persisted_downstream_calls=persisted_values["downstream_logged_physical_calls"],
+        persisted_request_log_physical_entries=persisted_values["request_log_physical_entries"],
+        persisted_price_calls=persisted_values["price_physical_calls"],
+        persisted_evidence_calls=persisted_values["evidence_acquisition_physical_calls"],
+        persisted_grand_total=persisted_values["grand_total_physical_external_calls"],
+        persisted_total_physical_calls=persisted_values["total_physical_external_calls"],
+        all_network_accounting_valid=not blockers,
+        blockers=blockers,
+    )
 
 
 def validate_full_regression_evidence(
@@ -1979,6 +2132,8 @@ def evaluate_gate06(metrics: dict[str, Any]) -> tuple[bool, list[str]]:
         blockers.append("SELECTED_AUTHORITY_ARCHIVE_PROVENANCE_FAILURE")
     if metrics.get("canonical_run_identity_valid") is False or metrics.get("canonical_run_identity_failure_count", 0) > 0:
         blockers.append("CANONICAL_RUN_IDENTITY_MISMATCH")
+    if metrics.get("canonical_pytest_summary_immutability_failure_count", 0) > 0 or metrics.get("canonical_pytest_summary_physically_unchanged") is False:
+        blockers.append("PYTEST_SUMMARY_PHYSICAL_IMMUTABILITY_FAILURE")
 
     return len(blockers) == 0, blockers
 
@@ -8155,6 +8310,8 @@ def _copy_c12_artifacts_to_c13(stage: Path, output: Path, canonical_run_id: str)
     """
     output.mkdir(parents=True, exist_ok=True)
     for child in output.iterdir():
+        if child.is_file() and child.name in IMMUTABLE_C13_SOURCE_FILES:
+            continue
         if child.is_dir():
             shutil.rmtree(child)
         else:
@@ -8267,6 +8424,20 @@ def _read_json_file(path: Path, default: Any = None) -> Any:
         return default
 
 
+def _file_immutability_fingerprint(path: Path) -> dict[str, Any]:
+    """Capture portable physical identity and bytes for immutable source checks."""
+    target = Path(path)
+    stat = target.stat()
+    raw = target.read_bytes()
+    return {
+        "inode": getattr(stat, "st_ino", None),
+        "mtime_ns": stat.st_mtime_ns,
+        "size_bytes": stat.st_size,
+        "sha256": hashlib.sha256(raw).hexdigest(),
+        "bytes": raw,
+    }
+
+
 def _load_c13_final_linkage_inputs(output: Path) -> dict[str, Any]:
     network = _read_json_file(output / "corporate_action_evidence_network_accounting_v01_fix03_correction_13.json", {})
     raw_manifest = _read_json_file(output / "corporate_action_raw_evidence_manifest_v01_fix03_correction_13.json", {})
@@ -8291,6 +8462,7 @@ def recompute_c13_metric_values(
     validation: PersistedPriceParityValidation,
     linkage: LiveEvidenceLinkageResult,
     accounting: Mapping[str, Any],
+    network_validation: C13NetworkAccountingValidation | None = None,
 ) -> dict[str, Any]:
     """Independently reproduce Gate06 production metrics from final evidence."""
     cohort = _control_frame(output / "corporate_action_review_cohort_v01_fix03_correction_13.csv")
@@ -8309,6 +8481,7 @@ def recompute_c13_metric_values(
         and distribution.get("BONUS_ISSUE", 0) >= 1
     )
     candidate_eval = _load_c13_candidate_evaluation(output)
+    network = network_validation or validate_c13_network_accounting(accounting)
     values: dict[str, Any] = {
         "authority_valid_controls_count": authority_count,
         "final_cohort_control_count": authority_count,
@@ -8331,8 +8504,18 @@ def recompute_c13_metric_values(
         "all_request_bindings_valid": validation.all_request_bindings_valid,
         "persisted_price_evidence_status": validation.evaluation_status,
         **linkage.to_metrics(),
-        "network_accounting_failure_count": 0 if accounting.get("accounting_cross_invariant_pass") is True else 1,
-        "accounting_cross_invariant_pass": accounting.get("accounting_cross_invariant_pass"),
+        "network_accounting_failure_count": 0 if network.all_network_accounting_valid else 1,
+        "accounting_cross_invariant_pass": network.all_network_accounting_valid,
+        "request_log_physical_entries": network.recomputed_request_log_physical_entries,
+        "downstream_logged_physical_calls": network.recomputed_downstream_calls,
+        "price_physical_calls": network.recomputed_price_calls,
+        "evidence_acquisition_physical_calls": network.recomputed_evidence_calls,
+        "grand_total_physical_external_calls": network.recomputed_grand_total,
+        "total_physical_external_calls": network.recomputed_grand_total,
+        "official_discovery_physical_attempts": network.recomputed_official_discovery_calls,
+        "official_document_probe_physical_attempts": network.recomputed_document_probe_calls,
+        "dart_viewer_fallback_physical_attempts": network.recomputed_viewer_fallback_calls,
+        "alternative_document_candidate_physical_attempts": network.recomputed_alternative_candidate_calls,
     }
     return values
 
@@ -8347,7 +8530,8 @@ def audit_c13_metric_provenance(
     accounting: Mapping[str, Any],
 ) -> dict[str, Any]:
     """Compare independently recomputed metrics with Gate06 and decision claims."""
-    recomputed = recompute_c13_metric_values(output, validation=validation, linkage=linkage, accounting=accounting)
+    network = validate_c13_network_accounting(accounting)
+    recomputed = recompute_c13_metric_values(output, validation=validation, linkage=linkage, accounting=accounting, network_validation=network)
     production_keys = (
         "authority_valid_controls_count", "final_cohort_control_count", "diversity_pass",
         "unresolved_higher_priority_candidate_count", "selected_authority_archive_provenance_failure_count",
@@ -8356,20 +8540,30 @@ def audit_c13_metric_provenance(
         "date_mismatch_control_count", "insufficient_window_control_count", "ohlc_mismatch_control_count",
         "all_controls_evidenced", "all_cardinality_valid", "all_request_bindings_valid",
         "persisted_price_evidence_status", "all_linkage_valid", "network_accounting_failure_count",
+        "request_log_physical_entries", "downstream_logged_physical_calls", "price_physical_calls",
+        "evidence_acquisition_physical_calls", "grand_total_physical_external_calls", "total_physical_external_calls",
     )
     mismatches: list[dict[str, Any]] = []
     missing: list[str] = []
+    network_keys = {
+        "request_log_physical_entries", "downstream_logged_physical_calls", "price_physical_calls",
+        "evidence_acquisition_physical_calls", "grand_total_physical_external_calls", "total_physical_external_calls",
+    }
     for key in production_keys:
         expected = recomputed.get(key)
-        if key not in gate_payload:
+        observed_source: Mapping[str, Any] = accounting if key in network_keys else gate_payload
+        if key not in observed_source:
             missing.append(key)
-        elif gate_payload.get(key) != expected:
-            mismatches.append({"source": "gate06", "metric": key, "expected": expected, "observed": gate_payload.get(key)})
-        if key in decision_payload and decision_payload.get(key) != expected:
-            mismatches.append({"source": "decision", "metric": key, "expected": expected, "observed": decision_payload.get(key)})
+        elif observed_source.get(key) != expected:
+            mismatches.append({"source": "network_accounting" if key in network_keys else "gate06", "metric": key, "expected": expected, "observed": observed_source.get(key)})
+        decision_source = decision_payload.get("network_accounting", {}) if key in network_keys and isinstance(decision_payload.get("network_accounting"), Mapping) else decision_payload
+        if key in decision_source and decision_source.get(key) != expected:
+            mismatches.append({"source": "decision", "metric": key, "expected": expected, "observed": decision_source.get(key)})
     blockers = ["METRIC_PROVENANCE_RECOMPUTATION_MISMATCH"] if mismatches else []
+    blockers.extend(network.blockers)
     if missing:
         blockers.append("METRIC_PROVENANCE_METRIC_MISSING")
+    blockers = list(dict.fromkeys(blockers))
     complete = not mismatches and not missing
     return {
         "schema": "gate06_metric_provenance_audit_v01_fix03_correction_13",
@@ -8380,6 +8574,7 @@ def audit_c13_metric_provenance(
         "production_significant_metrics": list(production_keys),
         "missing_metrics": missing,
         "mismatches": mismatches,
+        "network_accounting": network.to_dict(),
         "blockers": blockers,
     }
 
@@ -8397,6 +8592,7 @@ def run_corporate_action_evidence_acquisition_fix03_correction_13(
     snapshot = observe_git_code_snapshot(root)
     evidence_path = root / FULL_PYTEST_EVIDENCE_RELATIVE_PATH_CORRECTION_13
     summary_bytes = evidence_path.read_bytes() if evidence_path.is_file() else b""
+    summary_before = _file_immutability_fingerprint(evidence_path) if evidence_path.is_file() else None
     evidence = load_full_regression_evidence(evidence_path)
     certification = validate_full_regression_evidence(evidence, expected_fix_head=snapshot.head, expected_fix_tree_sha=snapshot.tree_sha)
     if isinstance(evidence, Mapping) and evidence.get("schema") != "full_pytest_summary_v01_fix03_correction_13":
@@ -8428,11 +8624,22 @@ def run_corporate_action_evidence_acquisition_fix03_correction_13(
         shutil.rmtree(stage_root, ignore_errors=True)
 
     output.mkdir(parents=True, exist_ok=True)
-    # The canonical summary is immutable source evidence.  Preserve its exact
-    # bytes and emit derived certification metadata in a separate artifact.
+    # The canonical summary is immutable source evidence.  In the canonical
+    # topology it already lives inside ``output`` and must never be rewritten;
+    # non-canonical test output receives a copy for report completeness.
     summary_path = output / "full_pytest_summary_v01_fix03_correction_13.json"
-    if summary_bytes:
+    canonical_topology = summary_before is not None and output.resolve() == evidence_path.parent.resolve()
+    if summary_bytes and not canonical_topology:
         summary_path.write_bytes(summary_bytes)
+    summary_after = _file_immutability_fingerprint(evidence_path) if summary_before is not None and evidence_path.is_file() else None
+    summary_unchanged = bool(
+        summary_before is not None
+        and summary_after is not None
+        and summary_before["mtime_ns"] == summary_after["mtime_ns"]
+        and summary_before["size_bytes"] == summary_after["size_bytes"]
+        and summary_before["sha256"] == summary_after["sha256"]
+        and summary_before["bytes"] == summary_after["bytes"]
+    )
     certification_payload = build_full_pytest_certification_artifact(summary_bytes, certification)
     (output / FULL_PYTEST_CERTIFICATION_FILE_CORRECTION_13).write_text(
         json.dumps(certification_payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
@@ -8444,6 +8651,7 @@ def run_corporate_action_evidence_acquisition_fix03_correction_13(
     controls = _evidence_frame(cohort_path)
     accounting_path = output / "corporate_action_evidence_network_accounting_v01_fix03_correction_13.json"
     accounting_payload = json.loads(accounting_path.read_text(encoding="utf-8")) if accounting_path.is_file() else {"request_logs": []}
+    network_validation = validate_c13_network_accounting(accounting_payload)
     gate_path = output / "gate06_corporate_action_reassessment_v01_fix03_correction_13.json"
     gate_payload = json.loads(gate_path.read_text(encoding="utf-8")) if gate_path.is_file() else {}
     validation = validate_persisted_price_parity_evidence(price_path, parity_path, recon_path, controls, request_logs=accounting_payload.get("request_logs", []))
@@ -8514,12 +8722,17 @@ def run_corporate_action_evidence_acquisition_fix03_correction_13(
     gate_metrics["selected_authority_archive_provenance_failure_count"] = candidate_eval["selected_authority_archive_provenance_failure_count"]
     gate_metrics["candidate_error_count"] = gate_metrics.get("candidate_error_count", 0)
     gate_metrics["comparator_error_count"] = gate_metrics.get("comparator_error_count", 0)
-    gate_metrics["network_accounting_failure_count"] = 0 if accounting_payload.get("accounting_cross_invariant_pass", True) else 1
+    gate_metrics["network_accounting_failure_count"] = 0 if network_validation.all_network_accounting_valid else 1
     gate_metrics["canonical_run_identity_valid"] = identity_validation.all_identity_valid
     if not identity_validation.all_identity_valid:
         gate_metrics["canonical_run_identity_failure_count"] = len(identity_validation.mismatches)
     else:
         gate_metrics["canonical_run_identity_failure_count"] = 0
+    gate_metrics["canonical_pytest_summary_physically_unchanged"] = summary_unchanged
+    if not summary_unchanged:
+        gate_metrics["canonical_pytest_summary_immutability_failure_count"] = 1
+    else:
+        gate_metrics["canonical_pytest_summary_immutability_failure_count"] = 0
     gate_metrics["schema"] = "gate06_corporate_action_reassessment_v01_fix03_correction_13"
     gate_metrics["directive_id"] = DIRECTIVE_ID_CORRECTION_13
     gate_pass, gate_blockers = evaluate_gate06(gate_metrics)
@@ -8555,7 +8768,7 @@ def run_corporate_action_evidence_acquisition_fix03_correction_13(
     else:
         decision_name, authorized, next_state = "CONDITIONAL_REVIEW_REQUIRED", False, DIRECTIVE_ID_CORRECTION_13
     decision = dict(stage_result)
-    decision.update({"canonical_run_id": canonical_run_id, "schema": "adjusted_price_source_authority_corporate_action_evidence_v01_fix03_correction_13", "directive_id": DIRECTIVE_ID_CORRECTION_13, "parent_directive": PARENT_DIRECTIVE_CORRECTION_13, "start_head": START_HEAD_CORP_EVIDENCE_FIX03_CORRECTION_13, "git_code_snapshot": asdict(snapshot), "full_suite_completion": certification.full_suite_completion, "new_regression_count": certification.new_regression_count, "regression_certification": certification.to_dict(), "persisted_price_evidence_status": validation.evaluation_status, "persisted_price_parity_validation": validation.to_dict(), "actual_candidate_price_row_count": validation.naver_price_row_count, "actual_pykrx_price_row_count": validation.pykrx_price_row_count, "exact_date_match_controls": validation.exact_match_control_count, "date_mismatch_controls": validation.date_mismatch_control_count, "insufficient_window_controls": validation.insufficient_window_control_count, "ohlc_mismatch_controls": validation.ohlc_mismatch_control_count, "unresolved_higher_priority_candidate_count": candidate_eval["unresolved_higher_priority_candidate_count"], "selected_authority_archive_provenance_failure_count": candidate_eval["selected_authority_archive_provenance_failure_count"], "gate_06_result": bool(gate_pass and audit_complete), "gate_15_result": all_gates["gate_15_no_unresolved_conditions"], "all_15_gate_results": all_gates, "all_gates_passed": all_pass, "production_certification_ready": all_pass, "production_integration_authorized": authorized, "review_decision": decision_name, "recommended_next_state": next_state, "blocking_conditions": list(dict.fromkeys(gate_blockers + validation.blockers)), "reason_codes": ["CORPORATE_ACTION_PRICE_CONTRADICTION"] if decision_name.startswith("REJECTED") else (["ALL_15_SOURCE_AUTHORITY_REVIEW_GATES_PASSED_FIX03_CORRECTION_13"] if all_pass else ["C13_CERTIFICATION_UNRESOLVED"]), "network_accounting": accounting_payload, "c13_live_execution": bool(allow_network)})
+    decision.update({"canonical_run_id": canonical_run_id, "schema": "adjusted_price_source_authority_corporate_action_evidence_v01_fix03_correction_13", "directive_id": DIRECTIVE_ID_CORRECTION_13, "parent_directive": PARENT_DIRECTIVE_CORRECTION_13, "start_head": START_HEAD_CORP_EVIDENCE_FIX03_CORRECTION_13, "git_code_snapshot": asdict(snapshot), "full_suite_completion": certification.full_suite_completion, "new_regression_count": certification.new_regression_count, "regression_certification": certification.to_dict(), "persisted_price_evidence_status": validation.evaluation_status, "persisted_price_parity_validation": validation.to_dict(), "actual_candidate_price_row_count": validation.naver_price_row_count, "actual_pykrx_price_row_count": validation.pykrx_price_row_count, "exact_date_match_controls": validation.exact_match_control_count, "date_mismatch_controls": validation.date_mismatch_control_count, "insufficient_window_controls": validation.insufficient_window_control_count, "ohlc_mismatch_controls": validation.ohlc_mismatch_control_count, "unresolved_higher_priority_candidate_count": candidate_eval["unresolved_higher_priority_candidate_count"], "selected_authority_archive_provenance_failure_count": candidate_eval["selected_authority_archive_provenance_failure_count"], "canonical_pytest_summary_physically_unchanged": summary_unchanged, "canonical_pytest_summary_physical_immutability": {"before": {k: v for k, v in (summary_before or {}).items() if k != "bytes"}, "after": {k: v for k, v in (summary_after or {}).items() if k != "bytes"}}, "gate_06_result": bool(gate_pass and audit_complete), "gate_15_result": all_gates["gate_15_no_unresolved_conditions"], "all_15_gate_results": all_gates, "all_gates_passed": all_pass, "production_certification_ready": all_pass, "production_integration_authorized": authorized, "review_decision": decision_name, "recommended_next_state": next_state, "blocking_conditions": list(dict.fromkeys(gate_blockers + validation.blockers)), "reason_codes": ["CORPORATE_ACTION_PRICE_CONTRADICTION"] if decision_name.startswith("REJECTED") else (["ALL_15_SOURCE_AUTHORITY_REVIEW_GATES_PASSED_FIX03_CORRECTION_13"] if all_pass else ["C13_CERTIFICATION_UNRESOLVED"]), "network_accounting": accounting_payload, "c13_live_execution": bool(allow_network)})
     # Re-run the audit after decision construction so any production-significant
     # values duplicated into the decision are also equality-bound to evidence.
     audit_payload = audit_c13_metric_provenance(
@@ -8592,7 +8805,7 @@ def run_corporate_action_evidence_acquisition_fix03_correction_13(
             continue
         relative = str(path.relative_to(output))
         entries[relative] = {"path": relative, "size_bytes": path.stat().st_size, "sha256": hashlib.sha256(path.read_bytes()).hexdigest()}
-    (output / "artifact_manifest.json").write_text(json.dumps({"schema": "corporate_action_evidence_manifest_v01_fix03_correction_13", "canonical_run_id": decision.get("canonical_run_id", ""), "directive_id": DIRECTIVE_ID_CORRECTION_13, "review_decision": decision_name, "production_integration_authorized": authorized, "artifacts": entries}, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    (output / "artifact_manifest.json").write_text(json.dumps({"schema": "corporate_action_evidence_manifest_v01_fix03_correction_13", "canonical_run_id": decision.get("canonical_run_id", ""), "directive_id": decision.get("directive_id", ""), "review_decision": decision.get("review_decision", ""), "production_integration_authorized": decision.get("production_integration_authorized", False), "artifacts": entries}, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     return decision
 
 

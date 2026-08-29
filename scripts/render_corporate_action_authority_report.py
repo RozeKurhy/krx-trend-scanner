@@ -267,6 +267,9 @@ def evaluate_report_truth_sync(
             blockers.append("PRICE_EVIDENCE_NOT_EVALUATED")
         if str(manifest.get("schema", "")).endswith("correction_13"):
             expected_run_id = str(decision.get("canonical_run_id", "")).strip()
+            for field_name in ("review_decision", "production_integration_authorized", "canonical_run_id", "directive_id"):
+                if manifest.get(field_name) != decision.get(field_name):
+                    blockers.append("MANIFEST_DECISION_STATE_MISMATCH")
             run_id_values: list[tuple[str, str]] = []
 
             def collect_run_ids(value: Any, label: str) -> None:

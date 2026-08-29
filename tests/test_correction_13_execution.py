@@ -200,6 +200,179 @@ def test_correction13_pytest_certification_hash_detects_summary_mutation(tmp_pat
     assert hashlib.sha256(summary_path.read_bytes()).hexdigest() != cert["source_summary_sha256"]
 
 
+def test_correction13_canonical_topology_preserves_summary_stat_and_bytes(tmp_path, monkeypatch):
+    _clean_snapshot(monkeypatch)
+    _install_production_mocks(monkeypatch)
+    _write_c13_evidence(tmp_path, _summary())
+    summary_path = tmp_path / ca.FULL_PYTEST_EVIDENCE_RELATIVE_PATH_CORRECTION_13
+    before_stat = summary_path.stat()
+    before_bytes = summary_path.read_bytes()
+    original_write_bytes = Path.write_bytes
+    original_unlink = Path.unlink
+
+    def guard_write(path: Path, data: bytes) -> int:
+        if path.resolve() == summary_path.resolve():
+            raise AssertionError("canonical pytest summary must never be written")
+        return original_write_bytes(path, data)
+
+    def guard_unlink(path: Path, *args: object, **kwargs: object) -> None:
+        if path.resolve() == summary_path.resolve():
+            raise AssertionError("canonical pytest summary must never be deleted")
+        return original_unlink(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "write_bytes", guard_write)
+    monkeypatch.setattr(Path, "unlink", guard_unlink)
+    result = ca.run_correction13_from_canonical_evidence(repo_root=tmp_path, output_dir=None, allow_network=True, parent_dir=Path.cwd() / ca.PARENT_FIX03_CORRECTION_DIR)
+    after_stat = summary_path.stat()
+    assert result["all_gates_passed"] is True
+    assert summary_path.read_bytes() == before_bytes
+    assert after_stat.st_mtime_ns == before_stat.st_mtime_ns
+    assert after_stat.st_size == before_stat.st_size
+    assert hashlib.sha256(summary_path.read_bytes()).hexdigest() == hashlib.sha256(before_bytes).hexdigest()
+
+
+def test_correction13_network_accounting_rejects_aggregate_and_log_drift(tmp_path, monkeypatch):
+    _clean_snapshot(monkeypatch)
+    _install_production_mocks(monkeypatch)
+    _write_c13_evidence(tmp_path, _summary())
+    output = tmp_path / "c13"
+    ca.run_correction13_from_canonical_evidence(repo_root=tmp_path, output_dir=output, allow_network=True, parent_dir=Path.cwd() / ca.PARENT_FIX03_CORRECTION_DIR)
+    network_path = output / "corporate_action_evidence_network_accounting_v01_fix03_correction_13.json"
+    network = json.loads(network_path.read_text())
+    valid = ca.validate_c13_network_accounting(network)
+    assert valid.all_network_accounting_valid is True
+    assert valid.recomputed_downstream_calls == valid.recomputed_evidence_calls + valid.recomputed_price_calls
+    assert valid.recomputed_request_log_physical_entries == valid.recomputed_downstream_calls
+    assert valid.recomputed_grand_total == (
+        network["preflight_physical_calls"]
+        + network["readiness_physical_calls"]
+        + valid.recomputed_downstream_calls
+    )
+    network["grand_total_physical_external_calls"] += 1
+    aggregate = ca.validate_c13_network_accounting(network)
+    assert aggregate.all_network_accounting_valid is False
+    assert "NETWORK_ACCOUNTING_RECOMPUTATION_MISMATCH" in aggregate.blockers
+    network["grand_total_physical_external_calls"] -= 1
+    network["request_logs"][0]["physical_attempt"] = 0
+    request_drift = ca.validate_c13_network_accounting(network)
+    assert request_drift.all_network_accounting_valid is False
+    assert "NETWORK_ACCOUNTING_RECOMPUTATION_MISMATCH" in request_drift.blockers
+
+
+def test_correction13_network_drift_marks_metric_audit_incomplete(tmp_path, monkeypatch):
+    _clean_snapshot(monkeypatch)
+    _install_production_mocks(monkeypatch)
+    _write_c13_evidence(tmp_path, _summary())
+    output = tmp_path / "c13"
+    result = ca.run_correction13_from_canonical_evidence(repo_root=tmp_path, output_dir=output, allow_network=True, parent_dir=Path.cwd() / ca.PARENT_FIX03_CORRECTION_DIR)
+    network_path = output / "corporate_action_evidence_network_accounting_v01_fix03_correction_13.json"
+    network = json.loads(network_path.read_text())
+    network["grand_total_physical_external_calls"] += 1
+    inputs = ca._load_c13_final_linkage_inputs(output)
+    controls = ca._control_frame(output / "corporate_action_review_cohort_v01_fix03_correction_13.csv")
+    validation = ca.validate_persisted_price_parity_evidence(
+        output / ca.CORRECTION_13_PRICE_FILE,
+        output / ca.CORRECTION_13_PARITY_FILE,
+        output / ca.CORRECTION_13_RECONCILIATION_FILE,
+        controls,
+        request_logs=network["request_logs"],
+    )
+    linkage = ca.validate_live_evidence_linkage(
+        canonical_run_id=result["canonical_run_id"],
+        discovery_records=inputs["discovery_records"],
+        document_records=inputs["document_records"],
+        raw_manifest_entries=inputs["raw_manifest_entries"],
+        authority_rows=inputs["authority_rows"],
+        request_logs=network["request_logs"],
+        price_request_logs=inputs["price_request_logs"],
+        artifact_paths={"raw": output / "raw"},
+        current_output_dir=output,
+        accounting_cross_invariant_pass=True,
+        schema_suffix="13",
+    )
+    gate_payload = json.loads((output / "gate06_corporate_action_reassessment_v01_fix03_correction_13.json").read_text())
+    audit = ca.audit_c13_metric_provenance(
+        output,
+        gate_payload=gate_payload,
+        decision_payload=result,
+        validation=validation,
+        linkage=linkage,
+        accounting=network,
+    )
+    assert audit["verdict"] == "INCOMPLETE"
+    assert "NETWORK_ACCOUNTING_RECOMPUTATION_MISMATCH" in audit["blockers"]
+
+
+def test_correction13_final_audit_downgrade_syncs_manifest_metadata(tmp_path, monkeypatch):
+    _clean_snapshot(monkeypatch)
+    _install_production_mocks(monkeypatch)
+    _write_c13_evidence(tmp_path, _summary())
+    monkeypatch.setattr(ca, "audit_c13_metric_provenance", lambda *args, **kwargs: {"verdict": "INCOMPLETE", "all_metrics_audited": False, "blockers": ["NETWORK_ACCOUNTING_RECOMPUTATION_MISMATCH"]})
+    output = tmp_path / "c13"
+    result = ca.run_correction13_from_canonical_evidence(repo_root=tmp_path, output_dir=output, allow_network=True, parent_dir=Path.cwd() / ca.PARENT_FIX03_CORRECTION_DIR)
+    manifest = json.loads((output / "artifact_manifest.json").read_text())
+    assert result["review_decision"] == "CONDITIONAL_REVIEW_REQUIRED"
+    assert result["production_integration_authorized"] is False
+    assert manifest["review_decision"] == result["review_decision"]
+    assert manifest["production_integration_authorized"] == result["production_integration_authorized"]
+    assert manifest["canonical_run_id"] == result["canonical_run_id"]
+    assert manifest["directive_id"] == result["directive_id"]
+
+
+def test_correction13_renderer_rejects_manifest_decision_mismatch(tmp_path, monkeypatch):
+    import scripts.render_corporate_action_authority_report as report
+
+    monkeypatch.setattr(report, "_git_exists", lambda *a, **k: True)
+    monkeypatch.setattr(report, "_git_tree_sha", lambda *a, **k: "TREE")
+    monkeypatch.setattr(report, "verify_code_equivalence_between_commits", lambda *a, **k: (True, []))
+    monkeypatch.setattr(report, "read_git_csv", lambda *a, **k: [])
+    monkeypatch.setattr(report, "read_git_json", lambda *a, **k: {"gate_06_pass": False} if "gate06_corporate_action" in k.get("path", "") else {"verdict": "INCOMPLETE", "all_metrics_audited": False} if "gate06_metric" in k.get("path", "") else {})
+    decision = {"schema": "adjusted_price_source_authority_corporate_action_evidence_v01_fix03_correction_13", "canonical_run_id": "RUN", "directive_id": "DIRECTIVE", "all_gates_passed": False, "gate_06_result": False, "gate_15_result": False, "production_integration_authorized": False, "review_decision": "CONDITIONAL_REVIEW_REQUIRED", "recommended_next_state": ca.DIRECTIVE_ID_CORRECTION_13, "full_suite_completion": True, "new_regression_count": 0}
+    binding = {"schema": "code_test_binding_evidence_v01_fix03_correction_13", "fix_head": "FIX", "fix_tree_sha": "TREE", "tested_code_head": "FIX", "tested_code_tree_sha": "TREE", "code_scope": ["src", "scripts", "tests"]}
+    manifest = {"schema": "corporate_action_evidence_manifest_v01_fix03_correction_13", "canonical_run_id": "RUN", "directive_id": "DIRECTIVE", "review_decision": "APPROVED_FOR_PRODUCTION_INTEGRATION", "production_integration_authorized": True}
+    truth = report.evaluate_report_truth_sync(tmp_path, "END", manifest, decision, binding, _summary(head="FIX", tree="TREE"))
+    assert truth["report_truth_sync"] == "FAIL"
+    assert "MANIFEST_DECISION_STATE_MISMATCH" in truth["blockers"]
+
+
+def test_correction13_renderer_rejects_network_metric_audit_failure(tmp_path, monkeypatch):
+    import scripts.render_corporate_action_authority_report as report
+
+    monkeypatch.setattr(report, "_git_exists", lambda *a, **k: True)
+    monkeypatch.setattr(report, "_git_tree_sha", lambda *a, **k: "TREE")
+    monkeypatch.setattr(report, "verify_code_equivalence_between_commits", lambda *a, **k: (True, []))
+    monkeypatch.setattr(report, "read_git_csv", lambda *a, **k: [])
+    monkeypatch.setattr(
+        report,
+        "read_git_json",
+        lambda *a, **k: (
+            {"gate_06_pass": False}
+            if "gate06_corporate_action" in k.get("path", "")
+            else {"verdict": "INCOMPLETE", "all_metrics_audited": False, "blockers": ["NETWORK_ACCOUNTING_RECOMPUTATION_MISMATCH"]}
+            if "gate06_metric" in k.get("path", "")
+            else {}
+        ),
+    )
+    decision = {
+        "schema": "adjusted_price_source_authority_corporate_action_evidence_v01_fix03_correction_13",
+        "canonical_run_id": "RUN", "directive_id": "DIRECTIVE", "all_gates_passed": False,
+        "gate_06_result": False, "gate_15_result": False,
+        "production_integration_authorized": False, "review_decision": "CONDITIONAL_REVIEW_REQUIRED",
+        "recommended_next_state": ca.DIRECTIVE_ID_CORRECTION_13, "full_suite_completion": True, "new_regression_count": 0,
+    }
+    binding = {
+        "schema": "code_test_binding_evidence_v01_fix03_correction_13", "fix_head": "FIX", "fix_tree_sha": "TREE",
+        "tested_code_head": "FIX", "tested_code_tree_sha": "TREE", "code_scope": ["src", "scripts", "tests"],
+    }
+    manifest = {
+        "schema": "corporate_action_evidence_manifest_v01_fix03_correction_13", "canonical_run_id": "RUN",
+        "directive_id": "DIRECTIVE", "review_decision": "CONDITIONAL_REVIEW_REQUIRED", "production_integration_authorized": False,
+    }
+    truth = report.evaluate_report_truth_sync(tmp_path, "END", manifest, decision, binding, _summary(head="FIX", tree="TREE"))
+    assert truth["report_truth_sync"] == "FAIL"
+    assert "METRIC_AUDIT_INCOMPLETE" in truth["blockers"]
+
+
 def test_correction13_ohlc_contradiction_rejects_actual_path(tmp_path, monkeypatch):
     _clean_snapshot(monkeypatch)
     _install_production_mocks(monkeypatch, ohlc_delta=True)
