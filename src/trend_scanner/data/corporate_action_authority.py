@@ -5016,6 +5016,8 @@ def run_corporate_action_evidence_acquisition_fix03_correction_11(
 
     net_path = output_dir / "corporate_action_evidence_network_accounting_v01_fix03_correction_11.json"
     net_dict = accounting.to_dict()
+    net_dict["schema"] = "corporate_action_evidence_network_accounting_v01_fix03_correction_11"
+    net_dict["directive_id"] = DIRECTIVE_ID_CORRECTION_11
     net_dict["canonical_run_id"] = canonical_run_id
     net_path.write_text(json.dumps(net_dict, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
@@ -5290,6 +5292,8 @@ def _terminate_on_readiness_or_preflight_failure_correction_11(
 
     accounting.compute_totals()
     net_dict = accounting.to_dict()
+    net_dict["schema"] = "corporate_action_evidence_network_accounting_v01_fix03_correction_11"
+    net_dict["directive_id"] = DIRECTIVE_ID_CORRECTION_11
     net_dict["canonical_run_id"] = canonical_run_id
     (output_dir / "corporate_action_evidence_network_accounting_v01_fix03_correction_11.json").write_text(
         json.dumps(net_dict, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
