@@ -3804,6 +3804,7 @@ def run_corporate_action_evidence_acquisition_fix03_correction_11(
     # Explicit maintenance/offline guard for repository regression runs.  This
     # short-circuits before credential resolution or any external client is built.
     if os.environ.get("CORRECTION_11_OFFLINE_ONLY") == "1":
+        accounting.execution_mode = "OFFLINE_IMPLEMENTATION_ONLY"
         return _terminate_on_readiness_or_preflight_failure_correction_11(
             output_dir=output_dir,
             parent_dir=parent_dir,
@@ -3845,6 +3846,11 @@ def run_corporate_action_evidence_acquisition_fix03_correction_11(
 
     # 3. Parent Freeze Validation (Section 2)
     parent_freeze = verify_parent_authority_freeze(parent_dir)
+    parent_freeze = {
+        **parent_freeze,
+        "schema": "parent_authority_freeze_validation_v01_fix03_correction_11",
+        "directive_id": DIRECTIVE_ID_CORRECTION_11,
+    }
     parent_freeze_path = output_dir / "parent_authority_freeze_validation_v01_fix03_correction_11.json"
     parent_freeze_path.write_text(json.dumps(parent_freeze, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
@@ -5259,6 +5265,11 @@ def _terminate_on_readiness_or_preflight_failure_correction_11(
 ) -> dict[str, Any]:
     """Strict Hard-Gate termination when preflight or readiness probe fails."""
     parent_freeze = verify_parent_authority_freeze(parent_dir)
+    parent_freeze = {
+        **parent_freeze,
+        "schema": "parent_authority_freeze_validation_v01_fix03_correction_11",
+        "directive_id": DIRECTIVE_ID_CORRECTION_11,
+    }
     (output_dir / "parent_authority_freeze_validation_v01_fix03_correction_11.json").write_text(
         json.dumps(parent_freeze, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
     )
