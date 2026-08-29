@@ -191,6 +191,7 @@ def evaluate_report_truth_sync(
             blockers.append("DECISION_INTERNAL_INCONSISTENCY")
         elif not source_prerequisites and (
             approved_shape
+            or (review_decision == "APPROVED_FOR_PRODUCTION_INTEGRATION" and production_authorized is not True)
             or production_authorized is True
             or (review_decision == "REJECTED_AS_PRODUCTION_AUTHORITY" and production_authorized is True)
             or (review_decision == "CONDITIONAL_REVIEW_REQUIRED" and production_authorized is not False)

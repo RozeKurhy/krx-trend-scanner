@@ -423,6 +423,19 @@ def test_renderer_internal_decision_contradiction_fails(monkeypatch):
     assert "DECISION_INTERNAL_INCONSISTENCY" in truth["blockers"]
 
 
+def test_renderer_approved_without_authorization_fails_when_certification_unresolved(monkeypatch):
+    truth = _renderer_truth_case(
+        monkeypatch,
+        pytest_evidence=_synthetic_pytest_evidence(completion=False, count=0),
+        decision_updates={"all_gates_passed": False, "gate_15_result": False,
+                           "production_integration_authorized": False,
+                           "review_decision": "APPROVED_FOR_PRODUCTION_INTEGRATION",
+                           "full_suite_completion": False},
+    )
+    assert truth["report_truth_sync"] == "FAIL"
+    assert "DECISION_INTERNAL_INCONSISTENCY" in truth["blockers"]
+
+
 def test_gate06_source_semantics_are_separate_from_regression_certification():
     gate06_pass, gate06_blockers = ca.evaluate_gate06({
         "preflight_verdict": "READY", "document_readiness_verdict": "READY",
