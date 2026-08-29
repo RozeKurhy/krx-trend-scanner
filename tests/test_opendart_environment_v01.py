@@ -1,7 +1,7 @@
 """Tests for OpenDART API key resolution, secret scrubbing, preflight connectivity, and document readiness probe.
 
 Directives:
-- ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_8 (Section 0, 4, 13)
+- ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_9 (Section 0, 16, 17)
 """
 
 from __future__ import annotations
@@ -44,10 +44,10 @@ def test_preflight_output_artifact_structure(tmp_path, monkeypatch):
 
     out = run_opendart_preflight(output_dir=tmp_path, allow_network=False)
     assert out["verdict"] == "READY"
-    assert out["schema"] == "opendart_preflight_v01_fix03_correction_8"
+    assert out["schema"] == "opendart_preflight_v01_fix03_correction_9"
     assert "mock_key_abc" not in out["sanitized_endpoint"]
 
-    p = tmp_path / "opendart_preflight_v01_fix03_correction_8.json"
+    p = tmp_path / "opendart_preflight_v01_fix03_correction_9.json"
     assert p.exists()
 
 
@@ -72,13 +72,13 @@ def test_no_synthetic_preflight_in_production(tmp_path, monkeypatch):
     out = run_opendart_preflight(output_dir=tmp_path, allow_network=False)
     assert out["verdict"] == "FAIL"
     assert out["credential_resolved"] is False
-    assert (tmp_path / "opendart_preflight_v01_fix03_correction_8.json").exists()
+    assert (tmp_path / "opendart_preflight_v01_fix03_correction_9.json").exists()
 
 
 def test_document_endpoint_readiness_probe_contract(tmp_path, monkeypatch):
-    """Section 4, 13: Document endpoint readiness probe produces valid structured artifact."""
+    """Section 16, 17: Document endpoint readiness probe produces valid structured artifact."""
     monkeypatch.setenv("OPENDART_API_KEY", "mock_key_abc")
     out = run_document_endpoint_readiness_probe(output_dir=tmp_path, allow_network=False)
-    assert out["schema"] == "opendart_document_readiness_v01_fix03_correction_8"
+    assert out["schema"] == "opendart_document_readiness_v01_fix03_correction_9"
     assert out["verdict"] == "READY"
-    assert (tmp_path / "opendart_document_readiness_v01_fix03_correction_8.json").exists()
+    assert (tmp_path / "opendart_document_readiness_v01_fix03_correction_9.json").exists()

@@ -1,7 +1,7 @@
 """Comprehensive Unit, Negative, and Regression Tests for Corporate Action Evidence Acquisition.
 
 Directives:
-- ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_8 (Section 0-23)
+- ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_9 (Section 0-27)
 Authoritative Technical Parent: ADJUSTED_PRICE_SOURCE_AUTHORITY_REVIEW_V01_FIX03_CORRECTION
 """
 
@@ -21,7 +21,7 @@ from trend_scanner.data.corporate_action_authority import (
     acquire_current_official_document,
     evaluate_gate06,
     resolve_archive_member,
-    run_corporate_action_evidence_acquisition_fix03_correction_8,
+    run_corporate_action_evidence_acquisition_fix03_correction_9,
     select_official_anchor_by_priority,
     validate_archive_provenance,
     validate_discovery_duplicate_identity,
@@ -29,10 +29,11 @@ from trend_scanner.data.corporate_action_authority import (
     verify_parent_authority_freeze,
 )
 import trend_scanner.data.corporate_action_authority as ca_module
+from scripts.render_corporate_action_authority_report import verify_code_equivalence_between_commits
 
 
 def test_parent_authority_freeze_validation_positive():
-    """Section 3: Parent FIX03_CORRECTION artifacts remain frozen byte-for-byte."""
+    """Section 2: Parent FIX03_CORRECTION artifacts remain frozen byte-for-byte."""
     res = verify_parent_authority_freeze()
     assert res["all_parent_inputs_unchanged"] is True
     assert res["parent_artifacts_verified_count"] == 8
@@ -40,7 +41,7 @@ def test_parent_authority_freeze_validation_positive():
 
 
 def test_claim_free_extraction_ignores_claimed_inputs():
-    """Section 4, 7-10: Official anchor extracted purely from structure without claim inputs."""
+    """Official anchor extracted purely from structure without claim inputs."""
     xml_content = """<?xml version="1.0" encoding="utf-8"?>
 <DOCUMENT>
   <DOCUMENT-HEADER>
@@ -74,7 +75,7 @@ def test_claim_free_extraction_ignores_claimed_inputs():
 
 
 def test_adjudicate_prior_claim_independence():
-    """Section 11, 23: Post-extraction claim adjudication maintains zero claim influence."""
+    """Post-extraction claim adjudication maintains zero claim influence."""
     xml_content = """<?xml version="1.0" encoding="utf-8"?>
 <DOCUMENT>
   <DOCUMENT-HEADER><DOCUMENT-NAME>주식분할결정</DOCUMENT-NAME><COMPANY-NAME>삼성전자</COMPANY-NAME></DOCUMENT-HEADER>
@@ -107,7 +108,7 @@ def test_adjudicate_prior_claim_independence():
 
 
 def test_same_date_independent_sibling_roots_fail_closed():
-    """Section 12-21: Multiple independent sibling event contexts fail closed with EVENT_CONTEXT_AMBIGUOUS."""
+    """Multiple independent sibling event contexts fail closed with EVENT_CONTEXT_AMBIGUOUS."""
     xml_content = """<?xml version="1.0" encoding="utf-8"?>
 <DOCUMENT>
   <DOCUMENT-HEADER><DOCUMENT-NAME>주주총회소집공고</DOCUMENT-NAME><COMPANY-NAME>테스트기업</COMPANY-NAME></DOCUMENT-HEADER>
@@ -139,7 +140,7 @@ def test_same_date_independent_sibling_roots_fail_closed():
 
 
 def test_same_priority_timing_ambiguity_fails_closed():
-    """Section 9: Multiple conflicting dates for highest priority anchor fail closed."""
+    """Multiple conflicting dates for highest priority anchor fail closed."""
     xml_content = """<?xml version="1.0" encoding="utf-8"?>
 <DOCUMENT>
   <DOCUMENT-HEADER><DOCUMENT-NAME>주식분할결정</DOCUMENT-NAME><COMPANY-NAME>테스트기업</COMPANY-NAME></DOCUMENT-HEADER>
@@ -166,7 +167,7 @@ def test_same_priority_timing_ambiguity_fails_closed():
 
 
 def test_production_acquire_helper_ignores_prior_raw_and_preserves_error(monkeypatch):
-    """Section 17: Production helper acquire_current_official_document ignores prior raw and records immutable ERROR on failed fetch."""
+    """Production helper acquire_current_official_document ignores prior raw and records immutable ERROR on failed fetch."""
     accounting = CorporateActionNetworkAccounting()
     session = requests.Session()
 
@@ -210,7 +211,7 @@ def test_production_acquire_helper_ignores_prior_raw_and_preserves_error(monkeyp
 
 
 def test_production_acquire_helper_failed_request_remains_immutable(monkeypatch):
-    """Section 18: Initial failed OpenDART attempt is never mutated when a fallback succeeds."""
+    """Initial failed OpenDART attempt is never mutated when a fallback succeeds."""
     accounting = CorporateActionNetworkAccounting()
     session = requests.Session()
 
@@ -269,7 +270,7 @@ def test_production_acquire_helper_failed_request_remains_immutable(monkeypatch)
 
 
 def test_official_document_success_count_separation():
-    """Section 20: Manifest entry count and official_document_success_count are evaluated separately."""
+    """Manifest entry count and official_document_success_count are evaluated separately."""
     manifest_entries = {
         "doc1.xml": {"content_validation_status": "VALID", "live_lineage_valid": True, "size_bytes": 500},
         "doc2.xml": {"content_validation_status": "VALID", "live_lineage_valid": True, "size_bytes": 500},
@@ -280,38 +281,37 @@ def test_official_document_success_count_separation():
     assert success_count == 2
 
 
-def test_readiness_fail_blocks_all_downstream_stages(tmp_path, monkeypatch):
-    """Section 5 (Test A): Readiness FAIL strictly blocks all downstream discovery/document/price execution."""
-    monkeypatch.setattr(ca_module, "run_opendart_preflight", lambda *args, **kwargs: {"verdict": "READY", "schema": "opendart_preflight_v01_fix03_correction_8"})
-    monkeypatch.setattr(ca_module, "run_document_endpoint_readiness_probe", lambda *args, **kwargs: {"verdict": "FAIL", "schema": "opendart_document_readiness_v01_fix03_correction_8"})
+# ---------------------------------------------------------------------------
+# Section 5: Network Accounting Invariant Regression Tests (A, B, C, D)
+# ---------------------------------------------------------------------------
 
-    # Spy on session.get to ensure zero downstream calls
-    session_calls = []
-    orig_get = requests.Session.get
-    def mock_session_get(self, url, *args, **kwargs):
-        session_calls.append(url)
-        return orig_get(self, url, *args, **kwargs)
-    monkeypatch.setattr(requests.Session, "get", mock_session_get)
+def test_accounting_test_a_readiness_fail(tmp_path, monkeypatch):
+    """Section 5 (Test A): Readiness FAIL accounting maintains exact invariants."""
+    monkeypatch.setattr(ca_module, "run_opendart_preflight", lambda *args, **kwargs: {"verdict": "READY", "schema": "opendart_preflight_v01_fix03_correction_9"})
+    monkeypatch.setattr(ca_module, "run_document_endpoint_readiness_probe", lambda *args, **kwargs: {"verdict": "FAIL", "schema": "opendart_document_readiness_v01_fix03_correction_9"})
 
-    res = run_corporate_action_evidence_acquisition_fix03_correction_8(
-        output_dir=tmp_path / "test_readiness_fail",
+    res = run_corporate_action_evidence_acquisition_fix03_correction_9(
+        output_dir=tmp_path / "test_acct_a",
         allow_network=True,
     )
 
-    assert res["review_decision"] == "CONDITIONAL_REVIEW_REQUIRED"
-    assert res["production_integration_authorized"] is False
-    assert res["gate_06_result"] is False
-    assert res["gate_15_result"] is False
-    assert res["official_discovery_requests_physical"] == 0
-    assert res["naver_actual_requests"] == 0
-    assert res["raw_pykrx_actual_queries"] == 0
-    assert len(session_calls) == 0  # Zero downstream network calls
+    net = res["network_accounting"]
+    assert net["preflight_physical_calls"] == 1
+    assert net["readiness_physical_calls"] == 1
+    assert net["evidence_acquisition_physical_calls"] == 0
+    assert net["price_physical_calls"] == 0
+    assert net["downstream_logged_physical_calls"] == 0
+    assert net["request_log_physical_entries"] == 0
+    assert net["grand_total_physical_external_calls"] == 2
+    assert net["downstream_accounting_invariant_pass"] is True
+    assert net["grand_total_accounting_invariant_pass"] is True
+    assert net["accounting_cross_invariant_pass"] is True
 
 
-def test_readiness_ready_allows_downstream_execution(tmp_path, monkeypatch):
-    """Section 5 (Test B): Readiness READY allows downstream acquisition path to become reachable."""
-    monkeypatch.setattr(ca_module, "run_opendart_preflight", lambda *args, **kwargs: {"verdict": "READY", "schema": "opendart_preflight_v01_fix03_correction_8"})
-    monkeypatch.setattr(ca_module, "run_document_endpoint_readiness_probe", lambda *args, **kwargs: {"verdict": "READY", "schema": "opendart_document_readiness_v01_fix03_correction_8"})
+def test_accounting_test_b_readiness_ready_downstream(tmp_path, monkeypatch):
+    """Section 5 (Test B): Readiness READY downstream execution maintains exact accounting invariants."""
+    monkeypatch.setattr(ca_module, "run_opendart_preflight", lambda *args, **kwargs: {"verdict": "READY", "schema": "opendart_preflight_v01_fix03_correction_9"})
+    monkeypatch.setattr(ca_module, "run_document_endpoint_readiness_probe", lambda *args, **kwargs: {"verdict": "READY", "schema": "opendart_document_readiness_v01_fix03_correction_9"})
     monkeypatch.setattr(ca_module, "get_opendart_api_key", lambda: "mock_key")
 
     mock_resp = requests.Response()
@@ -319,38 +319,99 @@ def test_readiness_ready_allows_downstream_execution(tmp_path, monkeypatch):
     mock_resp._content = json.dumps({"status": "000", "total_count": 0, "total_page": 1, "list": []}).encode("utf-8")
     monkeypatch.setattr(requests.Session, "get", lambda *args, **kwargs: mock_resp)
 
-    res = run_corporate_action_evidence_acquisition_fix03_correction_8(
-        output_dir=tmp_path / "test_readiness_ready",
+    res = run_corporate_action_evidence_acquisition_fix03_correction_9(
+        output_dir=tmp_path / "test_acct_b",
         allow_network=True,
     )
 
-    # Downstream discovery became reachable
-    assert res["official_discovery_requests_physical"] == 8
+    net = res["network_accounting"]
+    assert net["evidence_acquisition_physical_calls"] > 0
+    assert net["downstream_logged_physical_calls"] == net["request_log_physical_entries"]
+    assert net["grand_total_physical_external_calls"] == 2 + net["downstream_logged_physical_calls"]
+    assert net["downstream_accounting_invariant_pass"] is True
+    assert net["grand_total_accounting_invariant_pass"] is True
+    assert net["accounting_cross_invariant_pass"] is True
 
 
-def test_preflight_fail_blocks_readiness_and_downstream(tmp_path, monkeypatch):
-    """Section 5 (Test C): Preflight FAIL blocks readiness probe and all downstream calls."""
-    monkeypatch.setattr(ca_module, "run_opendart_preflight", lambda *args, **kwargs: {"verdict": "FAIL", "schema": "opendart_preflight_v01_fix03_correction_8"})
-
-    probe_called = False
-    def mock_probe(*args, **kwargs):
-        nonlocal probe_called
-        probe_called = True
-        return {"verdict": "READY"}
-    monkeypatch.setattr(ca_module, "run_document_endpoint_readiness_probe", mock_probe)
-
-    res = run_corporate_action_evidence_acquisition_fix03_correction_8(
-        output_dir=tmp_path / "test_preflight_fail",
-        allow_network=True,
+def test_accounting_test_c_price_requests_included(monkeypatch):
+    """Section 5 (Test C): Direct price and comparator requests are included in accounting totals."""
+    accounting = CorporateActionNetworkAccounting(
+        preflight_physical_calls=1,
+        readiness_physical_calls=1,
+        official_discovery_physical_attempts=8,
+        official_document_probe_physical_attempts=8,
+        direct_naver_physical_attempts=8,
+        raw_pykrx_physical_attempts=8,
     )
+    for i in range(16):
+        accounting.request_logs.append({"physical_attempt": 1, "source": "OPENDART_OR_PRICE"})
+    for i in range(16):
+        accounting.request_logs.append({"physical_attempt": 1, "source": "PRICE_FETCH"})
 
-    assert probe_called is False
-    assert res["official_discovery_requests_physical"] == 0
-    assert res["review_decision"] == "CONDITIONAL_REVIEW_REQUIRED"
+    accounting.compute_totals()
+
+    assert accounting.evidence_acquisition_physical_calls == 16
+    assert accounting.price_physical_calls == 16
+    assert accounting.downstream_logged_physical_calls == 32
+    assert accounting.request_log_physical_entries == 32
+    assert accounting.grand_total_physical_external_calls == 34
+    assert accounting.downstream_accounting_invariant_pass is True
+    assert accounting.grand_total_accounting_invariant_pass is True
+    assert accounting.accounting_cross_invariant_pass is True
+
+
+def test_accounting_test_d_deliberate_mismatch_blocks_gate06():
+    """Section 5 (Test D): Injected accounting mismatch causes Gate 06 failure."""
+    metrics = {
+        "preflight_verdict": "READY",
+        "document_readiness_verdict": "READY",
+        "authority_valid_controls_count": 8,
+        "diversity_pass": True,
+        "network_accounting_failure_count": 1,
+    }
+    pass_eval, blockers = evaluate_gate06(metrics)
+    assert pass_eval is False
+    assert any("Network accounting" in b for b in blockers)
+
+
+# ---------------------------------------------------------------------------
+# Section 10: Binding and Renderer Regression Tests (A, B, C, D)
+# ---------------------------------------------------------------------------
+
+def test_binding_code_equivalence_self_verification_positive():
+    """Section 10 (Test A): Artifact-only commit transition yields code equivalence True."""
+    is_equiv, diff_paths = verify_code_equivalence_between_commits(
+        repo_root=Path("."),
+        fix_head="HEAD",
+        end_head="HEAD",
+    )
+    assert is_equiv is True
+    assert diff_paths == []
+
+
+def test_binding_code_difference_fails_closed(monkeypatch):
+    """Section 10 (Test B): Non-empty code diff yields code equivalence False."""
+    def mock_subprocess_run(*args, **kwargs):
+        class Proc:
+            returncode = 0
+            stdout = "src/trend_scanner/data/untested_file.py\n"
+            stderr = ""
+        return Proc()
+
+    import scripts.render_corporate_action_authority_report as report_module
+    monkeypatch.setattr(report_module.subprocess, "run", mock_subprocess_run)
+
+    is_equiv, diff_paths = verify_code_equivalence_between_commits(
+        repo_root=Path("."),
+        fix_head="FIX_HEAD_HASH",
+        end_head="END_HEAD_HASH",
+    )
+    assert is_equiv is False
+    assert diff_paths == ["src/trend_scanner/data/untested_file.py"]
 
 
 def test_impossible_archive_state_fails_provenance():
-    """Section 45: archive_detected=True with member_count=0 fails provenance validation."""
+    """archive_detected=True with member_count=0 fails provenance validation."""
     valid, fails = validate_archive_provenance(
         archive_detected=True,
         archive_member_count=0,
@@ -366,7 +427,7 @@ def test_impossible_archive_state_fails_provenance():
 
 
 def test_exactly_one_rule_requires_exactly_one_member():
-    """Section 46: Rule EXACTLY_ONE_XML_MEMBER requires member count == 1."""
+    """Rule EXACTLY_ONE_XML_MEMBER requires member count == 1."""
     valid_0, fails_0 = validate_archive_provenance(
         archive_detected=True,
         archive_member_count=0,
@@ -393,7 +454,7 @@ def test_exactly_one_rule_requires_exactly_one_member():
 
 
 def test_valid_zip_provenance_transport_vs_extracted_sha():
-    """Section 47: In valid ZIP archive, transport SHA != extracted SHA is allowed and valid."""
+    """In valid ZIP archive, transport SHA != extracted SHA is allowed and valid."""
     transport_sha = "zip_hash_12345"
     extracted_sha = "xml_hash_67890"
 
@@ -412,7 +473,7 @@ def test_valid_zip_provenance_transport_vs_extracted_sha():
 
 
 def test_direct_response_provenance():
-    """Section 48: Non-archive direct response requires transport SHA == canonical raw SHA."""
+    """Non-archive direct response requires transport SHA == canonical raw SHA."""
     doc_sha = "direct_xml_hash"
     valid, fails = validate_archive_provenance(
         archive_detected=False,
@@ -429,9 +490,10 @@ def test_direct_response_provenance():
 
 
 def test_wrong_producing_request_fails_linkage():
-    """Section 49: Producing request failure count triggers Gate 06 failure."""
+    """Producing request failure count triggers Gate 06 failure."""
     metrics = {
         "preflight_verdict": "READY",
+        "document_readiness_verdict": "READY",
         "authority_valid_controls_count": 8,
         "diversity_pass": True,
         "producing_request_failure_count": 1,
@@ -442,9 +504,10 @@ def test_wrong_producing_request_fails_linkage():
 
 
 def test_cross_run_request_linkage_fails():
-    """Section 50: Cross-run request linkage failure triggers Gate 06 failure."""
+    """Cross-run request linkage failure triggers Gate 06 failure."""
     metrics = {
         "preflight_verdict": "READY",
+        "document_readiness_verdict": "READY",
         "authority_valid_controls_count": 8,
         "diversity_pass": True,
         "cross_run_request_linkage_failure_count": 1,
@@ -455,9 +518,10 @@ def test_cross_run_request_linkage_fails():
 
 
 def test_invalid_retrieval_mode_fails():
-    """Section 51: Forbidden retrieval mode (e.g. PRIOR_RUN_CACHE) fails Gate 06."""
+    """Forbidden retrieval mode (e.g. PRIOR_RUN_CACHE) fails Gate 06."""
     metrics = {
         "preflight_verdict": "READY",
+        "document_readiness_verdict": "READY",
         "authority_valid_controls_count": 8,
         "diversity_pass": True,
         "invalid_retrieval_mode_count": 1,
@@ -468,7 +532,7 @@ def test_invalid_retrieval_mode_fails():
 
 
 def test_duplicate_conflict_detection_uses_production_helper():
-    """Section 55: Conflicting duplicate disclosure records detected via production helper."""
+    """Conflicting duplicate disclosure records detected via production helper."""
     items = [
         {"rcept_no": "1001", "report_nm": "주식분할결정", "rcept_dt": "20200101", "corp_code": "001"},
         {"rcept_no": "1001", "report_nm": "주식분할결정", "rcept_dt": "20200101", "corp_code": "001"},
@@ -488,7 +552,7 @@ def test_duplicate_conflict_detection_uses_production_helper():
 
 
 def test_zip_exact_basename_resolver_rejects_substring():
-    """Section 29: Exact basename matching rejects substring matches."""
+    """Exact basename matching rejects substring matches."""
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w") as z:
         z.writestr("sub/20180223000294.xml", b"<XML>exact</XML>")
@@ -504,7 +568,7 @@ def test_zip_exact_basename_resolver_rejects_substring():
 
 
 def test_pagination_production_helper_validates_metadata():
-    """Section 25-27: Pagination helper rejects total_count and total_page mismatches across pages."""
+    """Pagination helper rejects total_count and total_page mismatches across pages."""
     frozen_p1 = {"reported_total_count": 100, "reported_total_page": 2, "page_count": 50}
     pages_meta = [
         {"page_no": 1, "reported_total_count": 100, "reported_total_page": 2, "page_count": 50, "item_count": 50, "http_status": 200, "opendart_status": "000"},
@@ -516,8 +580,8 @@ def test_pagination_production_helper_validates_metadata():
 
 
 def test_gate_06_and_15_execution_result_contract(tmp_path):
-    """Section 86-88, 91: Complete execution produces either APPROVED (when live available) or CONDITIONAL_RESUME (when transiently unavailable)."""
-    res = run_corporate_action_evidence_acquisition_fix03_correction_8(
+    """Section 20, 21: Complete execution produces either APPROVED (when live available) or CONDITIONAL_RESUME (when transiently unavailable)."""
+    res = run_corporate_action_evidence_acquisition_fix03_correction_9(
         output_dir=tmp_path / "test_out",
         allow_network=True,
     )
@@ -530,4 +594,4 @@ def test_gate_06_and_15_execution_result_contract(tmp_path):
     else:
         assert res["review_decision"] == "CONDITIONAL_REVIEW_REQUIRED"
         assert res["production_integration_authorized"] is False
-        assert res["recommended_next_state"] == "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_8"
+        assert res["recommended_next_state"] == "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_9"

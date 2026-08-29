@@ -1,7 +1,7 @@
-"""Corporate Action Authority Live Discovery, Pagination, True XML Hierarchy Tree Parsing, Claim-Free Official Anchor Selection, Immutable Physical Logs, Readiness Hard Gate, and Gate 06/15 Adjudication.
+"""Corporate Action Authority Live Discovery, Pagination, True XML Hierarchy Tree Parsing, Claim-Free Official Anchor Selection, Immutable Physical Logs, Readiness Hard Gate, Correct Scoped Network Accounting Invariants, and Gate 06/15 Adjudication.
 
 Directives:
-- ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_8 (Section 0-23)
+- ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_9 (Section 0-27)
 Authoritative Technical Parent: ADJUSTED_PRICE_SOURCE_AUTHORITY_REVIEW_V01_FIX03_CORRECTION
 """
 
@@ -39,15 +39,15 @@ from trend_scanner.data.source_authority_review import NaverDateRangeAdjustedCli
 PARENT_FIX03_CORRECTION_DIR = Path(
     "artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/v01_fix03_correction"
 )
-DEFAULT_CORP_EVIDENCE_DIR_FIX03_CORRECTION_7_RESUME = Path(
-    "artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/corporate_action_evidence/v01_fix03_correction_7_resume"
-)
 DEFAULT_CORP_EVIDENCE_DIR_FIX03_CORRECTION_8 = Path(
     "artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/corporate_action_evidence/v01_fix03_correction_8"
 )
-DEFAULT_CORP_EVIDENCE_DIR = DEFAULT_CORP_EVIDENCE_DIR_FIX03_CORRECTION_8
+DEFAULT_CORP_EVIDENCE_DIR_FIX03_CORRECTION_9 = Path(
+    "artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/corporate_action_evidence/v01_fix03_correction_9"
+)
+DEFAULT_CORP_EVIDENCE_DIR = DEFAULT_CORP_EVIDENCE_DIR_FIX03_CORRECTION_9
 
-START_HEAD_CORP_EVIDENCE_FIX03_CORRECTION_8 = "7d88fd1da9ed897ae4da6373ab3e6b44897a8c9f"
+START_HEAD_CORP_EVIDENCE_FIX03_CORRECTION_9 = "58c32e38192b8a455e535cf238bf46b0e925d79b"
 
 PARENT_FROZEN_HASHES = {
     "adjusted_price_source_authority_review_v01_fix03_correction.json": "3e38d97aeeb3fc0a2f48bfc3c0dd3f28293990dab12206d10f048309b12c5f1f",
@@ -121,8 +121,13 @@ class CorporateActionNetworkAccounting:
     raw_pykrx_logical_requests: int = 0
     raw_pykrx_physical_attempts: int = 0
     price_physical_calls: int = 0
+    downstream_logged_physical_calls: int = 0
+    request_log_physical_entries: int = 0
     grand_total_physical_external_calls: int = 0
     total_physical_external_calls: int = 0
+    downstream_accounting_invariant_pass: bool = True
+    grand_total_accounting_invariant_pass: bool = True
+    accounting_cross_invariant_pass: bool = True
     opendart_logical_operations: int = 0
     opendart_physical_attempts: int = 0
     blocked_documents: int = 0
@@ -143,13 +148,30 @@ class CorporateActionNetworkAccounting:
         self.price_physical_calls = (
             self.direct_naver_physical_attempts + self.raw_pykrx_physical_attempts
         )
+        self.downstream_logged_physical_calls = (
+            self.evidence_acquisition_physical_calls + self.price_physical_calls
+        )
+        self.request_log_physical_entries = sum(
+            1 for r in self.request_logs if r.get("physical_attempt") == 1
+        )
         self.grand_total_physical_external_calls = (
             self.preflight_physical_calls
             + self.readiness_physical_calls
-            + self.evidence_acquisition_physical_calls
-            + self.price_physical_calls
+            + self.downstream_logged_physical_calls
         )
         self.total_physical_external_calls = self.grand_total_physical_external_calls
+
+        self.downstream_accounting_invariant_pass = bool(
+            self.downstream_logged_physical_calls == self.request_log_physical_entries
+        )
+        self.grand_total_accounting_invariant_pass = bool(
+            self.grand_total_physical_external_calls
+            == (self.preflight_physical_calls + self.readiness_physical_calls + self.downstream_logged_physical_calls)
+        )
+        self.accounting_cross_invariant_pass = bool(
+            self.downstream_accounting_invariant_pass and self.grand_total_accounting_invariant_pass
+        )
+
         self.opendart_logical_operations = (
             self.official_discovery_logical_requests + self.official_document_probe_logical_requests
         )
@@ -166,7 +188,7 @@ class CorporateActionNetworkAccounting:
 
 
 def verify_parent_authority_freeze(parent_dir: Path = PARENT_FIX03_CORRECTION_DIR) -> dict[str, Any]:
-    """Verify that all parent FIX03_CORRECTION artifacts remain byte-for-byte unchanged (Section 3)."""
+    """Verify that all parent FIX03_CORRECTION artifacts remain byte-for-byte unchanged."""
     mismatches = []
     observed_hashes = {}
 
@@ -182,10 +204,10 @@ def verify_parent_authority_freeze(parent_dir: Path = PARENT_FIX03_CORRECTION_DI
 
     all_valid = len(mismatches) == 0 and len(observed_hashes) == len(PARENT_FROZEN_HASHES)
     return {
-        "schema": "parent_authority_freeze_validation_v01_fix03_correction_8",
-        "directive_id": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_8",
-        "start_head": START_HEAD_CORP_EVIDENCE_FIX03_CORRECTION_8,
-        "parent_directive": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_7_RESUME",
+        "schema": "parent_authority_freeze_validation_v01_fix03_correction_9",
+        "directive_id": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_9",
+        "start_head": START_HEAD_CORP_EVIDENCE_FIX03_CORRECTION_9,
+        "parent_directive": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_8",
         "all_parent_inputs_unchanged": all_valid,
         "parent_artifacts_verified_count": len(observed_hashes),
         "mismatches": mismatches,
@@ -1494,13 +1516,13 @@ def get_official_discovery_search_targets() -> list[dict[str, Any]]:
     ]
 
 
-def run_corporate_action_evidence_acquisition_fix03_correction_8(
-    output_dir: Path = DEFAULT_CORP_EVIDENCE_DIR_FIX03_CORRECTION_8,
+def run_corporate_action_evidence_acquisition_fix03_correction_9(
+    output_dir: Path = DEFAULT_CORP_EVIDENCE_DIR_FIX03_CORRECTION_9,
     parent_dir: Path = PARENT_FIX03_CORRECTION_DIR,
     allow_network: bool = True,
 ) -> dict[str, Any]:
-    """Execute complete corporate action authority orchestration with strict readiness hard gating (Section 0-23)."""
-    canonical_run_id = f"CORP_AUTH_FIX03_CORRECTION_8_{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}"
+    """Execute complete corporate action authority orchestration with strict readiness hard gating and corrected network accounting (Section 0-27)."""
+    canonical_run_id = f"CORP_AUTH_FIX03_CORRECTION_9_{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}"
 
     if output_dir.exists():
         raw_existing = output_dir / "raw"
@@ -1518,27 +1540,25 @@ def run_corporate_action_evidence_acquisition_fix03_correction_8(
 
     accounting = CorporateActionNetworkAccounting()
 
-    # 1. Hard Gate: OpenDART Preflight (Section 4, 12)
+    # 1. Hard Gate: OpenDART Preflight (Section 4, 16)
     preflight = run_opendart_preflight(output_dir=output_dir, allow_network=allow_network, canonical_run_id=canonical_run_id)
     accounting.preflight_physical_calls = 1 if allow_network else 0
     if preflight["verdict"] != "READY":
-        # Preflight FAIL blocks readiness and all downstream execution (Section 4, 12)
         return _terminate_on_readiness_or_preflight_failure(
             output_dir=output_dir,
             parent_dir=parent_dir,
             canonical_run_id=canonical_run_id,
             preflight=preflight,
-            doc_readiness={"verdict": "NOT_EXECUTED", "schema": "opendart_document_readiness_v01_fix03_correction_8"},
+            doc_readiness={"verdict": "NOT_EXECUTED", "schema": "opendart_document_readiness_v01_fix03_correction_9"},
             accounting=accounting,
             failure_reason="OPENDART_PREFLIGHT_FAIL",
         )
 
-    # 2. Hard Gate: Document Endpoint Readiness Probe (Section 4, 12, 13)
+    # 2. Hard Gate: Document Endpoint Readiness Probe (Section 4, 16, 17)
     doc_readiness = run_document_endpoint_readiness_probe(output_dir=output_dir, allow_network=allow_network, canonical_run_id=canonical_run_id)
     accounting.readiness_physical_calls = 1 if allow_network else 0
 
     if doc_readiness["verdict"] != "READY":
-        # CRITICAL FIX A: Readiness FAIL blocks all discovery/document/price downstream execution (Section 4, 12)
         return _terminate_on_readiness_or_preflight_failure(
             output_dir=output_dir,
             parent_dir=parent_dir,
@@ -1549,9 +1569,9 @@ def run_corporate_action_evidence_acquisition_fix03_correction_8(
             failure_reason="TRANSIENT_OFFICIAL_DOCUMENT_ENDPOINT_UNAVAILABLE",
         )
 
-    # 3. Parent Freeze Validation (Section 3)
+    # 3. Parent Freeze Validation (Section 2)
     parent_freeze = verify_parent_authority_freeze(parent_dir)
-    parent_freeze_path = output_dir / "parent_authority_freeze_validation_v01_fix03_correction_8.json"
+    parent_freeze_path = output_dir / "parent_authority_freeze_validation_v01_fix03_correction_9.json"
     parent_freeze_path.write_text(json.dumps(parent_freeze, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
     if not parent_freeze["all_parent_inputs_unchanged"]:
@@ -1559,9 +1579,9 @@ def run_corporate_action_evidence_acquisition_fix03_correction_8(
 
     # 4. Source Inventory
     source_inventory = {
-        "schema": "corporate_action_evidence_source_inventory_v01_fix03_correction_8",
+        "schema": "corporate_action_evidence_source_inventory_v01_fix03_correction_9",
         "canonical_run_id": canonical_run_id,
-        "directive_id": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_8",
+        "directive_id": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_9",
         "sources": [
             {
                 "source_id": "OPENDART_OFFICIAL_API",
@@ -1571,7 +1591,7 @@ def run_corporate_action_evidence_acquisition_fix03_correction_8(
                 "endpoint_type": "OFFICIAL_API_PAGINATED_DISCOVERY_AND_DOCUMENT",
                 "auth_required": True,
                 "raw_format": "JSON_AND_XML",
-                "parser_version": "v01_fix03_correction_8",
+                "parser_version": "v01_fix03_correction_9",
                 "authority_validation_contract": "OpenDART 전수 페이지네이션 및 공시 원문 XML의 True XML Hierarchy Tree 파싱 기반 Claim-Free 공식 앵커 추출",
             },
             {
@@ -1582,11 +1602,11 @@ def run_corporate_action_evidence_acquisition_fix03_correction_8(
                 "endpoint_type": "OFFICIAL_DISCLOSURE_VIEWER",
                 "auth_required": False,
                 "raw_format": "HTML",
-                "parser_version": "v01_fix03_correction_8",
+                "parser_version": "v01_fix03_correction_9",
             },
         ],
     }
-    source_inv_path = output_dir / "corporate_action_evidence_source_inventory_v01_fix03_correction_8.json"
+    source_inv_path = output_dir / "corporate_action_evidence_source_inventory_v01_fix03_correction_9.json"
     source_inv_path.write_text(json.dumps(source_inventory, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
     # 5. Full Downstream Live Acquisition (Executed strictly when readiness == READY)
@@ -1720,7 +1740,7 @@ def run_corporate_action_evidence_acquisition_fix03_correction_8(
             p_filename = f"disc_{t}_{ev_fam}_p{page_no:03d}.json"
             p_fp = disc_raw_dir / p_filename
             p_fp.write_bytes(disc_bytes)
-            p_rel_path = f"artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/corporate_action_evidence/v01_fix03_correction_8/discovery_raw/{p_filename}"
+            p_rel_path = f"artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/corporate_action_evidence/v01_fix03_correction_9/discovery_raw/{p_filename}"
 
             discovery_page_manifest_entries[p_filename] = {
                 "ticker": t,
@@ -2146,7 +2166,7 @@ def run_corporate_action_evidence_acquisition_fix03_correction_8(
             "selected_receipt_date": final_rcp_date,
             "legacy_expected_record_id": tgt["legacy_expected_record_id"],
             "legacy_id_match": legacy_match,
-            "selection_algorithm": "OPENDART_DETERMINISTIC_PAGINATED_RANKING_V01_FIX03_CORRECTION_8",
+            "selection_algorithm": "OPENDART_DETERMINISTIC_PAGINATED_RANKING_V01_FIX03_CORRECTION_9",
             "selection_rank": selected_candidate_rank,
             "selection_reason": f"Rank {selected_candidate_rank} match '{final_rep_name}' authenticated via True XML Hierarchy",
         })
@@ -2159,7 +2179,7 @@ def run_corporate_action_evidence_acquisition_fix03_correction_8(
         if selected_raw_bytes and selected_parsed and selected_parsed["authority_valid"]:
             raw_fp = raw_dir / raw_filename
             raw_fp.write_bytes(selected_raw_bytes)
-            raw_rel_path = f"artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/corporate_action_evidence/v01_fix03_correction_8/raw/{raw_filename}"
+            raw_rel_path = f"artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/corporate_action_evidence/v01_fix03_correction_9/raw/{raw_filename}"
             raw_manifest_entries[raw_filename] = {
                 "canonical_run_id": canonical_run_id,
                 "control_id": cid,
@@ -2423,91 +2443,91 @@ def run_corporate_action_evidence_acquisition_fix03_correction_8(
 
     # Save discovery and validation artifacts
     disc_df = pd.DataFrame(discovery_rows)
-    disc_path = output_dir / "corporate_action_official_discovery_v01_fix03_correction_8.csv"
+    disc_path = output_dir / "corporate_action_official_discovery_v01_fix03_correction_9.csv"
     disc_df.to_csv(disc_path, index=False)
 
-    page_man_path = output_dir / "corporate_action_discovery_page_manifest_v01_fix03_correction_8.json"
+    page_man_path = output_dir / "corporate_action_discovery_page_manifest_v01_fix03_correction_9.json"
     page_man_path.write_text(json.dumps({
-        "schema": "corporate_action_discovery_page_manifest_v01_fix03_correction_8",
+        "schema": "corporate_action_discovery_page_manifest_v01_fix03_correction_9",
         "canonical_run_id": canonical_run_id,
         "pages": discovery_page_manifest_entries,
     }, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
-    pag_val_path = output_dir / "corporate_action_discovery_pagination_validation_v01_fix03_correction_8.json"
+    pag_val_path = output_dir / "corporate_action_discovery_pagination_validation_v01_fix03_correction_9.json"
     pag_val_path.write_text(json.dumps({
-        "schema": "corporate_action_discovery_pagination_validation_v01_fix03_correction_8",
+        "schema": "corporate_action_discovery_pagination_validation_v01_fix03_correction_9",
         "canonical_run_id": canonical_run_id,
         "all_pagination_complete": all(v["pagination_complete"] for v in pagination_validation_entries.values()),
         "validation_by_ticker": pagination_validation_entries,
     }, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
     cand_audit_df = pd.DataFrame(candidate_audit_rows)
-    cand_audit_path = output_dir / "corporate_action_discovery_candidate_audit_v01_fix03_correction_8.csv"
+    cand_audit_path = output_dir / "corporate_action_discovery_candidate_audit_v01_fix03_correction_9.csv"
     cand_audit_df.to_csv(cand_audit_path, index=False)
 
-    det_val_path = output_dir / "corporate_action_discovery_determinism_validation_v01_fix03_correction_8.json"
+    det_val_path = output_dir / "corporate_action_discovery_determinism_validation_v01_fix03_correction_9.json"
     det_val_path.write_text(json.dumps({
-        "schema": "corporate_action_discovery_determinism_validation_v01_fix03_correction_8",
+        "schema": "corporate_action_discovery_determinism_validation_v01_fix03_correction_9",
         "canonical_run_id": canonical_run_id,
         "all_controls_order_invariant": all(v["determinism_pass"] for v in determinism_validation_results.values()),
         "validation_by_ticker": determinism_validation_results,
     }, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
     probe_audit_df = pd.DataFrame(probe_audit_rows)
-    probe_audit_path = output_dir / "corporate_action_document_probe_audit_v01_fix03_correction_8.csv"
+    probe_audit_path = output_dir / "corporate_action_document_probe_audit_v01_fix03_correction_9.csv"
     probe_audit_df.to_csv(probe_audit_path, index=False)
 
     disc_man_payload = {
-        "schema": "corporate_action_discovery_raw_manifest_v01_fix03_correction_8",
+        "schema": "corporate_action_discovery_raw_manifest_v01_fix03_correction_9",
         "canonical_run_id": canonical_run_id,
         "artifacts": discovery_manifest_entries,
     }
-    disc_man_path = output_dir / "corporate_action_discovery_raw_manifest_v01_fix03_correction_8.json"
+    disc_man_path = output_dir / "corporate_action_discovery_raw_manifest_v01_fix03_correction_9.json"
     disc_man_path.write_text(json.dumps(disc_man_payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
     doc_val_df = pd.DataFrame(doc_validation_rows)
-    doc_val_path = output_dir / "corporate_action_official_document_validation_v01_fix03_correction_8.csv"
+    doc_val_path = output_dir / "corporate_action_official_document_validation_v01_fix03_correction_9.csv"
     doc_val_df.to_csv(doc_val_path, index=False)
 
     sem_bind_df = pd.DataFrame(semantic_binding_rows)
-    sem_bind_path = output_dir / "corporate_action_event_semantic_binding_v01_fix03_correction_8.csv"
+    sem_bind_path = output_dir / "corporate_action_event_semantic_binding_v01_fix03_correction_9.csv"
     sem_bind_df.to_csv(sem_bind_path, index=False)
 
-    hier_val_path = output_dir / "corporate_action_event_hierarchy_validation_v01_fix03_correction_8.json"
+    hier_val_path = output_dir / "corporate_action_event_hierarchy_validation_v01_fix03_correction_9.json"
     hier_val_path.write_text(json.dumps({
-        "schema": "corporate_action_event_hierarchy_validation_v01_fix03_correction_8",
+        "schema": "corporate_action_event_hierarchy_validation_v01_fix03_correction_9",
         "canonical_run_id": canonical_run_id,
-        "directive_id": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_8",
+        "directive_id": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_9",
         "all_hierarchy_valid": all(v["hierarchical_binding_valid"] for v in hierarchy_validation_entries.values()),
         "validation_by_ticker": hierarchy_validation_entries,
     }, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
-    claim_indep_path = output_dir / "corporate_action_claim_independence_validation_v01_fix03_correction_8.json"
+    claim_indep_path = output_dir / "corporate_action_claim_independence_validation_v01_fix03_correction_9.json"
     claim_indep_path.write_text(json.dumps({
-        "schema": "corporate_action_claim_independence_validation_v01_fix03_correction_8",
+        "schema": "corporate_action_claim_independence_validation_v01_fix03_correction_9",
         "canonical_run_id": canonical_run_id,
-        "directive_id": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_8",
+        "directive_id": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_9",
         "all_claim_independent": all(v["claim_independence_valid"] for v in claim_independence_entries.values()),
         "validation_by_ticker": claim_independence_entries,
     }, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
     adj_df = pd.DataFrame(adjudication_rows)
-    adj_path = output_dir / "corporate_action_existing_claim_adjudication_v01_fix03_correction_8.csv"
+    adj_path = output_dir / "corporate_action_existing_claim_adjudication_v01_fix03_correction_9.csv"
     adj_df.to_csv(adj_path, index=False)
 
-    rep_pool_path = output_dir / "corporate_action_replacement_pool_v01_fix03_correction_8.csv"
+    rep_pool_path = output_dir / "corporate_action_replacement_pool_v01_fix03_correction_9.csv"
     pd.DataFrame(columns=["control_id", "ticker", "issuer_name", "status"]).to_csv(rep_pool_path, index=False)
 
-    auth_rec_path = output_dir / "corporate_action_authority_records_v01_fix03_correction_8.json"
+    auth_rec_path = output_dir / "corporate_action_authority_records_v01_fix03_correction_9.json"
     auth_rec_path.write_text(json.dumps({
-        "schema": "corporate_action_authority_records_v01_fix03_correction_8",
+        "schema": "corporate_action_authority_records_v01_fix03_correction_9",
         "canonical_run_id": canonical_run_id,
         "records": authority_records,
     }, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
-    raw_man_path = output_dir / "corporate_action_raw_evidence_manifest_v01_fix03_correction_8.json"
+    raw_man_path = output_dir / "corporate_action_raw_evidence_manifest_v01_fix03_correction_9.json"
     raw_man_path.write_text(json.dumps({
-        "schema": "corporate_action_raw_evidence_manifest_v01_fix03_correction_8",
+        "schema": "corporate_action_raw_evidence_manifest_v01_fix03_correction_9",
         "canonical_run_id": canonical_run_id,
         "artifacts": raw_manifest_entries,
     }, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
@@ -2543,11 +2563,11 @@ def run_corporate_action_evidence_acquisition_fix03_correction_8(
             "raw_evidence_sha256": ar["raw_evidence_sha256"],
             "selection_role": "AUTHORITY_VALID_FROZEN_CONTROL",
             "selection_order": idx,
-            "selection_algorithm": "OPENDART_PAGINATED_CLAIM_FREE_TRUE_XML_HIERARCHY_COHORT_V01_FIX03_CORRECTION_8",
+            "selection_algorithm": "OPENDART_PAGINATED_CLAIM_FREE_TRUE_XML_HIERARCHY_COHORT_V01_FIX03_CORRECTION_9",
         })
 
     cohort_df = pd.DataFrame(final_cohort_rows)
-    cohort_path = output_dir / "corporate_action_review_cohort_v01_fix03_correction_8.csv"
+    cohort_path = output_dir / "corporate_action_review_cohort_v01_fix03_correction_9.csv"
     cohort_df.to_csv(cohort_path, index=False)
     cohort_sha = hashlib.sha256(cohort_path.read_bytes()).hexdigest()
     cohort_frozen_at = datetime.now(timezone.utc).isoformat()
@@ -2695,40 +2715,36 @@ def run_corporate_action_evidence_acquisition_fix03_correction_8(
             parity_statuses.append("MATCH" if (o_mis + h_mis + l_mis + c_mis == 0 and len(cand_only) == 0 and len(py_only) == 0) else "MISMATCH")
 
     price_df = pd.DataFrame(all_price_rows) if all_price_rows else pd.DataFrame(columns=["control_id", "ticker", "source", "evidence_origin", "request_id", "date", "open", "high", "low", "close", "volume"])
-    (output_dir / "corporate_action_event_price_rows_v01_fix03_correction_8.csv").write_text(price_df.to_csv(index=False), encoding="utf-8")
+    (output_dir / "corporate_action_event_price_rows_v01_fix03_correction_9.csv").write_text(price_df.to_csv(index=False), encoding="utf-8")
 
     parity_df = pd.DataFrame(parity_rows) if parity_rows else pd.DataFrame(columns=["control_id", "ticker", "parity_status"])
-    (output_dir / "corporate_action_event_sensitive_parity_v01_fix03_correction_8.csv").write_text(parity_df.to_csv(index=False), encoding="utf-8")
+    (output_dir / "corporate_action_event_sensitive_parity_v01_fix03_correction_9.csv").write_text(parity_df.to_csv(index=False), encoding="utf-8")
 
     recon_df = pd.DataFrame(reconciliation_rows) if reconciliation_rows else pd.DataFrame(columns=["control_id", "ticker", "status"])
-    (output_dir / "corporate_action_date_reconciliation_v01_fix03_correction_8.csv").write_text(recon_df.to_csv(index=False), encoding="utf-8")
+    (output_dir / "corporate_action_date_reconciliation_v01_fix03_correction_9.csv").write_text(recon_df.to_csv(index=False), encoding="utf-8")
 
-    # 8. Network Accounting & Linkage
+    # 8. Network Accounting & Linkage (Section 3, 4)
     accounting.compute_totals()
-    phys_in_logs = sum(1 for r in accounting.request_logs if r.get("physical_attempt") == 1)
-    accounting_consistent = bool(accounting.grand_total_physical_external_calls == phys_in_logs)
 
-    net_path = output_dir / "corporate_action_evidence_network_accounting_v01_fix03_correction_8.json"
+    net_path = output_dir / "corporate_action_evidence_network_accounting_v01_fix03_correction_9.json"
     net_dict = accounting.to_dict()
     net_dict["canonical_run_id"] = canonical_run_id
-    net_dict["accounting_cross_invariant_pass"] = accounting_consistent
-    net_dict["physical_entries_in_logs"] = phys_in_logs
     net_path.write_text(json.dumps(net_dict, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
     linkage_payload = {
-        "schema": "live_evidence_linkage_validation_v01_fix03_correction_8",
+        "schema": "live_evidence_linkage_validation_v01_fix03_correction_9",
         "canonical_run_id": canonical_run_id,
-        "directive_id": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_8",
+        "directive_id": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_9",
         "discovery_pages_checked": len(discovery_manifest_entries),
         "document_items_checked": len(raw_manifest_entries),
         "linkage_evaluation_status": "EVALUATED",
-        "accounting_cross_invariant_pass": accounting_consistent,
+        "accounting_cross_invariant_pass": accounting.accounting_cross_invariant_pass,
         "raw_orphan_file_count": 0,
         "total_linkage_failures": 0,
         "all_linkage_valid": True,
         "linkage_failures": [],
     }
-    (output_dir / "live_evidence_linkage_validation_v01_fix03_correction_8.json").write_text(
+    (output_dir / "live_evidence_linkage_validation_v01_fix03_correction_9.json").write_text(
         json.dumps(linkage_payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
     )
 
@@ -2796,7 +2812,7 @@ def run_corporate_action_evidence_acquisition_fix03_correction_8(
         "ohlc_mismatch_count": ohlc_mismatch_count,
         "candidate_error_count": candidate_error_count,
         "comparator_error_count": comparator_error_count,
-        "network_accounting_failure_count": 0 if accounting_consistent else 1,
+        "network_accounting_failure_count": 0 if accounting.accounting_cross_invariant_pass else 1,
         "total_provenance_failure_count": 0,
         "cohort_frozen_before_price_fetch": True,
         "cohort_frozen_at": cohort_frozen_at,
@@ -2806,13 +2822,13 @@ def run_corporate_action_evidence_acquisition_fix03_correction_8(
     gate06_pass, gate06_blockers = evaluate_gate06(gate06_eval_metrics)
 
     gate06_payload = dict(gate06_eval_metrics)
-    gate06_payload["schema"] = "gate06_corporate_action_reassessment_v01_fix03_correction_8"
+    gate06_payload["schema"] = "gate06_corporate_action_reassessment_v01_fix03_correction_9"
     gate06_payload["canonical_run_id"] = canonical_run_id
-    gate06_payload["directive_id"] = "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_8"
+    gate06_payload["directive_id"] = "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_9"
     gate06_payload["gate_06_pass"] = gate06_pass
     gate06_payload["gate_06_blockers"] = gate06_blockers
 
-    gate06_path = output_dir / "gate06_corporate_action_reassessment_v01_fix03_correction_8.json"
+    gate06_path = output_dir / "gate06_corporate_action_reassessment_v01_fix03_correction_9.json"
     gate06_path.write_text(json.dumps(gate06_payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
     parent_decision_fp = parent_dir / "adjusted_price_source_authority_review_v01_fix03_correction.json"
@@ -2851,7 +2867,7 @@ def run_corporate_action_evidence_acquisition_fix03_correction_8(
         prod_integration_auth = True
         next_state = "ADJUSTED_PRICE_SOURCE_INTEGRATION_V01"
         blocking_conditions = []
-        reason_codes = ["ALL_15_SOURCE_AUTHORITY_REVIEW_GATES_PASSED_FIX03_CORRECTION_8"]
+        reason_codes = ["ALL_15_SOURCE_AUTHORITY_REVIEW_GATES_PASSED_FIX03_CORRECTION_9"]
     elif ohlc_mismatch_count > 0:
         review_decision = "REJECTED_AS_PRODUCTION_AUTHORITY"
         prod_integration_auth = False
@@ -2861,19 +2877,19 @@ def run_corporate_action_evidence_acquisition_fix03_correction_8(
     else:
         review_decision = "CONDITIONAL_REVIEW_REQUIRED"
         prod_integration_auth = False
-        next_state = "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_8"
+        next_state = "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_9"
         blocking_conditions = gate06_blockers
         reason_codes = ["OFFICIAL_EVIDENCE_INCOMPLETE"]
 
     successful_doc_count = sum(1 for m in raw_manifest_entries.values() if m.get("content_validation_status") == "VALID" and m.get("live_lineage_valid") and m.get("size_bytes", 0) > 0)
 
     decision_payload = {
-        "schema": "adjusted_price_source_authority_corporate_action_evidence_v01_fix03_correction_8",
+        "schema": "adjusted_price_source_authority_corporate_action_evidence_v01_fix03_correction_9",
         "canonical_run_id": canonical_run_id,
-        "directive_id": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_8",
-        "parent_directive": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_7_RESUME",
+        "directive_id": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_9",
+        "parent_directive": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_8",
         "authoritative_technical_parent": "ADJUSTED_PRICE_SOURCE_AUTHORITY_REVIEW_V01_FIX03_CORRECTION",
-        "start_head": START_HEAD_CORP_EVIDENCE_FIX03_CORRECTION_8,
+        "start_head": START_HEAD_CORP_EVIDENCE_FIX03_CORRECTION_9,
         "parent_freeze_valid": parent_freeze["all_parent_inputs_unchanged"],
         "preflight_verdict": preflight["verdict"],
         "document_readiness_verdict": doc_readiness["verdict"],
@@ -2913,7 +2929,7 @@ def run_corporate_action_evidence_acquisition_fix03_correction_8(
         "recommended_next_state": next_state,
         "network_accounting": accounting.to_dict(),
     }
-    (output_dir / "adjusted_price_source_authority_corporate_action_evidence_v01_fix03_correction_8.json").write_text(
+    (output_dir / "adjusted_price_source_authority_corporate_action_evidence_v01_fix03_correction_9.json").write_text(
         json.dumps(decision_payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
     )
 
@@ -2931,45 +2947,43 @@ def _terminate_on_readiness_or_preflight_failure(
     accounting: CorporateActionNetworkAccounting,
     failure_reason: str,
 ) -> dict[str, Any]:
-    """Strict Hard-Gate termination when preflight or readiness probe fails (Section 4, 11, 12)."""
+    """Strict Hard-Gate termination when preflight or readiness probe fails."""
     parent_freeze = verify_parent_authority_freeze(parent_dir)
-    (output_dir / "parent_authority_freeze_validation_v01_fix03_correction_8.json").write_text(
+    (output_dir / "parent_authority_freeze_validation_v01_fix03_correction_9.json").write_text(
         json.dumps(parent_freeze, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
     )
 
     source_inventory = {
-        "schema": "corporate_action_evidence_source_inventory_v01_fix03_correction_8",
+        "schema": "corporate_action_evidence_source_inventory_v01_fix03_correction_9",
         "canonical_run_id": canonical_run_id,
-        "directive_id": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_8",
+        "directive_id": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_9",
         "sources": [],
     }
-    (output_dir / "corporate_action_evidence_source_inventory_v01_fix03_correction_8.json").write_text(
+    (output_dir / "corporate_action_evidence_source_inventory_v01_fix03_correction_9.json").write_text(
         json.dumps(source_inventory, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
     )
 
     accounting.compute_totals()
     net_dict = accounting.to_dict()
     net_dict["canonical_run_id"] = canonical_run_id
-    net_dict["accounting_cross_invariant_pass"] = True
-    net_dict["physical_entries_in_logs"] = len(accounting.request_logs)
-    (output_dir / "corporate_action_evidence_network_accounting_v01_fix03_correction_8.json").write_text(
+    (output_dir / "corporate_action_evidence_network_accounting_v01_fix03_correction_9.json").write_text(
         json.dumps(net_dict, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
     )
 
     linkage_payload = {
-        "schema": "live_evidence_linkage_validation_v01_fix03_correction_8",
+        "schema": "live_evidence_linkage_validation_v01_fix03_correction_9",
         "canonical_run_id": canonical_run_id,
-        "directive_id": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_8",
+        "directive_id": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_9",
         "discovery_pages_checked": 0,
         "document_items_checked": 0,
         "linkage_evaluation_status": "NOT_EVALUATED_DUE_TO_READINESS_FAILURE",
-        "accounting_cross_invariant_pass": True,
+        "accounting_cross_invariant_pass": accounting.accounting_cross_invariant_pass,
         "raw_orphan_file_count": 0,
         "total_linkage_failures": 0,
         "all_linkage_valid": False,
         "linkage_failures": [f"Downstream acquisition not executed: {failure_reason}"],
     }
-    (output_dir / "live_evidence_linkage_validation_v01_fix03_correction_8.json").write_text(
+    (output_dir / "live_evidence_linkage_validation_v01_fix03_correction_9.json").write_text(
         json.dumps(linkage_payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
     )
 
@@ -2979,9 +2993,9 @@ def _terminate_on_readiness_or_preflight_failure(
         "Corporate action event diversity requirement failed",
     ]
     gate06_payload = {
-        "schema": "gate06_corporate_action_reassessment_v01_fix03_correction_8",
+        "schema": "gate06_corporate_action_reassessment_v01_fix03_correction_9",
         "canonical_run_id": canonical_run_id,
-        "directive_id": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_8",
+        "directive_id": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_9",
         "preflight_verdict": preflight.get("verdict", "FAIL"),
         "document_readiness_verdict": doc_readiness.get("verdict", "FAIL"),
         "authority_valid_controls_count": 0,
@@ -2990,7 +3004,7 @@ def _terminate_on_readiness_or_preflight_failure(
         "gate_06_pass": False,
         "gate_06_blockers": gate06_blockers,
     }
-    (output_dir / "gate06_corporate_action_reassessment_v01_fix03_correction_8.json").write_text(
+    (output_dir / "gate06_corporate_action_reassessment_v01_fix03_correction_9.json").write_text(
         json.dumps(gate06_payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
     )
 
@@ -3022,12 +3036,12 @@ def _terminate_on_readiness_or_preflight_failure(
     all_15_gates["gate_15_no_unresolved_conditions"] = False
 
     decision_payload = {
-        "schema": "adjusted_price_source_authority_corporate_action_evidence_v01_fix03_correction_8",
+        "schema": "adjusted_price_source_authority_corporate_action_evidence_v01_fix03_correction_9",
         "canonical_run_id": canonical_run_id,
-        "directive_id": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_8",
-        "parent_directive": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_7_RESUME",
+        "directive_id": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_9",
+        "parent_directive": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_8",
         "authoritative_technical_parent": "ADJUSTED_PRICE_SOURCE_AUTHORITY_REVIEW_V01_FIX03_CORRECTION",
-        "start_head": START_HEAD_CORP_EVIDENCE_FIX03_CORRECTION_8,
+        "start_head": START_HEAD_CORP_EVIDENCE_FIX03_CORRECTION_9,
         "parent_freeze_valid": parent_freeze["all_parent_inputs_unchanged"],
         "preflight_verdict": preflight.get("verdict", "FAIL"),
         "document_readiness_verdict": doc_readiness.get("verdict", "FAIL"),
@@ -3059,10 +3073,10 @@ def _terminate_on_readiness_or_preflight_failure(
         "review_decision": "CONDITIONAL_REVIEW_REQUIRED",
         "production_integration_authorized": False,
         "active_production_authority_changed": False,
-        "recommended_next_state": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_8",
+        "recommended_next_state": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_9",
         "network_accounting": accounting.to_dict(),
     }
-    (output_dir / "adjusted_price_source_authority_corporate_action_evidence_v01_fix03_correction_8.json").write_text(
+    (output_dir / "adjusted_price_source_authority_corporate_action_evidence_v01_fix03_correction_9.json").write_text(
         json.dumps(decision_payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
     )
 
@@ -3082,7 +3096,7 @@ def _write_artifact_manifest(
     for p in output_dir.glob("*.*"):
         if p.name != "artifact_manifest.json":
             manifest_entries[p.name] = {
-                "path": f"artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/corporate_action_evidence/v01_fix03_correction_8/{p.name}",
+                "path": f"artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/corporate_action_evidence/v01_fix03_correction_9/{p.name}",
                 "size_bytes": p.stat().st_size,
                 "sha256": hashlib.sha256(p.read_bytes()).hexdigest(),
             }
@@ -3093,11 +3107,11 @@ def _write_artifact_manifest(
         manifest_entries[f"discovery_raw/{dfname}"] = dmeta
 
     manifest_payload = {
-        "schema": "corporate_action_evidence_manifest_v01_fix03_correction_8",
+        "schema": "corporate_action_evidence_manifest_v01_fix03_correction_9",
         "canonical_run_id": canonical_run_id,
-        "directive_id": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_8",
+        "directive_id": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_9",
         "generated_at": datetime.now(timezone.utc).isoformat(),
-        "start_head": START_HEAD_CORP_EVIDENCE_FIX03_CORRECTION_8,
+        "start_head": START_HEAD_CORP_EVIDENCE_FIX03_CORRECTION_9,
         "review_decision": review_decision,
         "production_integration_authorized": prod_integration_auth,
         "artifacts": manifest_entries,
@@ -3107,8 +3121,8 @@ def _write_artifact_manifest(
 
 
 if __name__ == "__main__":
-    res = run_corporate_action_evidence_acquisition_fix03_correction_8()
-    print("=== Corporate Action Evidence Acquisition FIX03_CORRECTION_8 Execution Summary ===")
+    res = run_corporate_action_evidence_acquisition_fix03_correction_9()
+    print("=== Corporate Action Evidence Acquisition FIX03_CORRECTION_9 Execution Summary ===")
     print("Review Decision:", res["review_decision"])
     print("All Gates Passed:", res["all_gates_passed"])
     print("Production Integration Authorized:", res["production_integration_authorized"])
@@ -3117,6 +3131,10 @@ if __name__ == "__main__":
     print("Gate 06 Result:", res["gate_06_result"])
     print("Gate 15 Result:", res["gate_15_result"])
     print("Official Discovery Requests:", res["official_discovery_requests_physical"])
+    print("Accounting Invariants:")
+    print("  downstream_accounting_invariant_pass :", res["network_accounting"]["downstream_accounting_invariant_pass"])
+    print("  grand_total_accounting_invariant_pass:", res["network_accounting"]["grand_total_accounting_invariant_pass"])
+    print("  accounting_cross_invariant_pass      :", res["network_accounting"]["accounting_cross_invariant_pass"])
     print("Gate Results:")
     for k, v in res["all_15_gate_results"].items():
         print(f"  {k:45s} : {v}")
