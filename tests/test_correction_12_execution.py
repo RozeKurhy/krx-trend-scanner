@@ -20,6 +20,53 @@ import trend_scanner.data.opendart_preflight as preflight
 from scripts.render_corporate_action_authority_report import evaluate_report_truth_sync
 
 
+def _synthetic_pytest_evidence(
+    *, head: str = "MOCK_FIX", tree: str = "MOCK_TREE",
+    completion: bool = True, count: int | None = 0,
+) -> dict:
+    return {
+        "schema": "full_pytest_summary_v01_fix03_correction_12",
+        "full_suite_completion": completion,
+        "code_head_under_test": head,
+        "code_tree_sha_under_test": tree,
+        "passed": 10,
+        "failed": 0,
+        "skipped": 0,
+        "deselected": 0,
+        "warnings": 0,
+        "known_baseline_failures": [],
+        "unexpected_failures": [],
+        "new_regression_count": count,
+    }
+
+
+def _renderer_truth_case(monkeypatch, *, pytest_evidence=None, decision_updates=None):
+    import scripts.render_corporate_action_authority_report as report
+    monkeypatch.setattr(report, "_git_exists", lambda *args, **kwargs: True)
+    monkeypatch.setattr(report, "_git_tree_sha", lambda *args, **kwargs: "TREE")
+    monkeypatch.setattr(report, "verify_code_equivalence_between_commits", lambda *args, **kwargs: (True, []))
+    binding = {
+        "schema": "code_test_binding_evidence_v01_fix03_correction_12",
+        "fix_head": "FIX", "fix_tree_sha": "TREE", "tested_code_head": "FIX",
+        "tested_code_tree_sha": "TREE", "code_scope": ["src", "scripts", "tests"],
+    }
+    decision = {
+        "all_gates_passed": True,
+        "gate_06_result": True,
+        "gate_15_result": True,
+        "production_integration_authorized": True,
+        "review_decision": "APPROVED_FOR_PRODUCTION_INTEGRATION",
+        "recommended_next_state": "ADJUSTED_PRICE_SOURCE_INTEGRATION_V01",
+        "full_suite_completion": True,
+        "new_regression_count": 0,
+    }
+    if decision_updates:
+        decision.update(decision_updates)
+    return evaluate_report_truth_sync(
+        Path("."), "END", {"schema": "manifest"}, decision, binding, pytest_evidence
+    )
+
+
 def _strict_bundle(tmp_path: Path) -> dict:
     run_id = "RUN_FIX12_001"
     ticker = "005930"
@@ -107,7 +154,12 @@ def test_correction12_offline_guard_isolated_paths(tmp_path, monkeypatch):
     assert result["new_regression_count"] is None
     assert result["network_accounting"]["execution_mode"] == "OFFLINE_IMPLEMENTATION_ONLY"
     assert result["network_accounting"]["grand_total_physical_external_calls"] == 0
-    assert "FULL_REPOSITORY_REGRESSION_INCOMPLETE" in result["blocking_conditions"]
+    gate06 = json.loads(
+        (tmp_path / "v01_fix03_correction_12" / "gate06_corporate_action_reassessment_v01_fix03_correction_12.json")
+        .read_text(encoding="utf-8")
+    )
+    assert "FULL_REPOSITORY_REGRESSION_INCOMPLETE" not in gate06["gate_06_blockers"]
+    assert "PYTEST_EVIDENCE_MISSING" in result["blocking_conditions"]
     names = {p.name for p in (tmp_path / "v01_fix03_correction_12").iterdir()}
     assert names
     assert not any(
@@ -127,22 +179,7 @@ def test_document_raw_manifest_edge_fails_closed(tmp_path):
 
 
 def test_correction12_binding_has_no_future_head(monkeypatch):
-    import scripts.render_corporate_action_authority_report as report
-    monkeypatch.setattr(report, "_git_exists", lambda *args, **kwargs: True)
-    monkeypatch.setattr(report, "_git_tree_sha", lambda *args, **kwargs: "TREE")
-    monkeypatch.setattr(report, "verify_code_equivalence_between_commits", lambda *args, **kwargs: (True, []))
-    binding = {
-        "schema": "code_test_binding_evidence_v01_fix03_correction_12",
-        "fix_head": "FIX", "fix_tree_sha": "TREE", "tested_code_head": "FIX",
-        "tested_code_tree_sha": "TREE", "code_scope": ["src", "scripts", "tests"],
-    }
-    truth = evaluate_report_truth_sync(Path("."), "END", {"schema": "manifest"},
-                                        {"all_gates_passed": True, "gate_06_result": True,
-                                        "gate_15_result": True,
-                                        "production_integration_authorized": False,
-                                        "review_decision": "CONDITIONAL_REVIEW_REQUIRED",
-                                        "full_suite_completion": True,
-                                        "new_regression_count": 0}, binding)
+    truth = _renderer_truth_case(monkeypatch, pytest_evidence=_synthetic_pytest_evidence(head="FIX", tree="TREE"))
     assert truth["report_truth_sync"] == "PASS"
 
 def test_correction12_mocked_full_production_success(tmp_path, monkeypatch):
@@ -249,7 +286,8 @@ def test_correction12_mocked_full_production_success(tmp_path, monkeypatch):
 
     result = ca.run_corporate_action_evidence_acquisition_fix03_correction_12(
         output_dir=tmp_path / "v01_fix03_correction_12", allow_network=True,
-        full_suite_completion=True, new_regression_count=0,
+        regression_evidence=_synthetic_pytest_evidence(),
+        expected_fix_head="MOCK_FIX", expected_fix_tree_sha="MOCK_TREE",
     )
     assert result["authority_valid_control_count"] == 8
     assert result["gate_06_result"] is True
@@ -297,23 +335,102 @@ def test_default_corporate_action_entrypoint_targets_correction12():
 
 
 @pytest.mark.parametrize(
-    "all_source_gates_pass,full_suite_completion,new_regression_count,expected",
+    "evidence,expected",
     [
-        (True, False, None, False),
-        (True, True, 1, False),
-        (True, True, 0, True),
-        (True, None, None, False),
-        (False, True, 0, False),
+        (_synthetic_pytest_evidence(), True),
+        (_synthetic_pytest_evidence(completion=False), False),
+        (_synthetic_pytest_evidence(head="OTHER"), False),
+        (_synthetic_pytest_evidence(tree="OTHER"), False),
+        (_synthetic_pytest_evidence(count=1), False),
+        (None, False),
     ],
 )
-def test_correction12_production_authorization_predicate_is_fail_closed(
-    all_source_gates_pass, full_suite_completion, new_regression_count, expected
-):
+def test_correction12_production_authorization_predicate_is_fail_closed(evidence, expected):
+    validated = ca.validate_full_regression_evidence(
+        evidence, expected_fix_head="MOCK_FIX", expected_fix_tree_sha="MOCK_TREE"
+    )
     assert ca.production_certification_ready(
-        all_source_gates_pass=all_source_gates_pass,
-        full_suite_completion=full_suite_completion,
-        new_regression_count=new_regression_count,
+        all_source_gates_pass=True,
+        regression_certification=validated,
     ) is expected
+
+
+def test_correction12_runner_rejects_unvalidated_caller_assertions(tmp_path):
+    result = ca.run_corporate_action_evidence_acquisition_fix03_correction_12(
+        output_dir=tmp_path / "v01_fix03_correction_12", allow_network=False,
+        full_suite_completion=True, new_regression_count=0,
+    )
+    assert result["production_integration_authorized"] is False
+    assert "UNVALIDATED_CALLER_ASSERTION" in result["blocking_conditions"]
+
+
+def test_renderer_wrong_pytest_commit_fails(monkeypatch):
+    truth = _renderer_truth_case(monkeypatch, pytest_evidence=_synthetic_pytest_evidence(head="OLD"))
+    assert truth["report_truth_sync"] == "FAIL"
+    assert "PYTEST_FIX_HEAD_MISMATCH" in truth["blockers"]
+
+
+def test_renderer_wrong_pytest_tree_fails(monkeypatch):
+    truth = _renderer_truth_case(monkeypatch, pytest_evidence=_synthetic_pytest_evidence(tree="OLD"))
+    assert truth["report_truth_sync"] == "FAIL"
+    assert "PYTEST_FIX_TREE_MISMATCH" in truth["blockers"]
+
+
+def test_renderer_new_regression_fails_but_gate06_claim_is_not_rewritten(monkeypatch):
+    truth = _renderer_truth_case(monkeypatch, pytest_evidence=_synthetic_pytest_evidence(count=1))
+    assert truth["report_truth_sync"] == "FAIL"
+    assert "PYTEST_NEW_REGRESSION_DETECTED" in truth["blockers"]
+
+
+def test_renderer_decision_pytest_count_mismatch_fails(monkeypatch):
+    truth = _renderer_truth_case(
+        monkeypatch,
+        pytest_evidence=_synthetic_pytest_evidence(count=1),
+        decision_updates={"new_regression_count": 0, "gate_15_result": False,
+                           "all_gates_passed": False, "production_integration_authorized": False,
+                           "review_decision": "CONDITIONAL_REVIEW_REQUIRED"},
+    )
+    assert truth["report_truth_sync"] == "FAIL"
+    assert "DECISION_PYTEST_REGRESSION_COUNT_MISMATCH" in truth["blockers"]
+
+
+def test_renderer_decision_pytest_completion_mismatch_fails(monkeypatch):
+    truth = _renderer_truth_case(
+        monkeypatch,
+        pytest_evidence=_synthetic_pytest_evidence(completion=False, count=0),
+        decision_updates={"full_suite_completion": True, "gate_15_result": False,
+                           "all_gates_passed": False, "production_integration_authorized": False,
+                           "review_decision": "CONDITIONAL_REVIEW_REQUIRED"},
+    )
+    assert truth["report_truth_sync"] == "FAIL"
+    assert "DECISION_PYTEST_COMPLETION_MISMATCH" in truth["blockers"]
+
+
+def test_renderer_missing_pytest_evidence_fails(monkeypatch):
+    truth = _renderer_truth_case(monkeypatch)
+    assert truth["report_truth_sync"] == "FAIL"
+    assert "PYTEST_EVIDENCE_MISSING" in truth["blockers"]
+
+
+def test_renderer_internal_decision_contradiction_fails(monkeypatch):
+    truth = _renderer_truth_case(
+        monkeypatch,
+        pytest_evidence=_synthetic_pytest_evidence(head="FIX", tree="TREE"),
+        decision_updates={"production_integration_authorized": False,
+                           "review_decision": "CONDITIONAL_REVIEW_REQUIRED"},
+    )
+    assert truth["report_truth_sync"] == "FAIL"
+    assert "DECISION_INTERNAL_INCONSISTENCY" in truth["blockers"]
+
+
+def test_gate06_source_semantics_are_separate_from_regression_certification():
+    gate06_pass, gate06_blockers = ca.evaluate_gate06({
+        "preflight_verdict": "READY", "document_readiness_verdict": "READY",
+        "authority_valid_controls_count": 8, "diversity_pass": True,
+        "linkage_evaluation_status": "EVALUATED", "all_linkage_valid": True,
+    })
+    assert gate06_pass is True
+    assert not any("REGRESSION" in blocker for blocker in gate06_blockers)
 
 
 def test_correction12_preflight_readiness_identity_without_network(tmp_path, monkeypatch):

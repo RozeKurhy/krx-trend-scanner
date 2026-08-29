@@ -11,10 +11,13 @@ import csv
 import hashlib
 import io
 import json
+from collections.abc import Mapping
 from pathlib import Path
 import subprocess
 import sys
 from typing import Any
+
+from trend_scanner.data.corporate_action_authority import validate_full_regression_evidence
 
 
 def read_git_blob(repo_root: Path, commit_head: str, relative_path: str) -> bytes:
@@ -91,6 +94,7 @@ def evaluate_report_truth_sync(
     manifest: dict[str, Any],
     decision: dict[str, Any],
     binding: dict[str, Any],
+    pytest_evidence: Mapping[str, Any] | Any | None = None,
 ) -> dict[str, Any]:
     """Fail closed unless the report source, code binding, and decision all agree."""
     blockers: list[str] = []
@@ -148,8 +152,64 @@ def evaluate_report_truth_sync(
         blockers.append("DECISION_FIELDS_INCOMPLETE")
     if current_binding and decision.get("full_suite_completion") is not True:
         blockers.append("FULL_PYTEST_INCOMPLETE")
-    if correction12_binding and decision.get("full_suite_completion") is True and decision.get("new_regression_count") != 0:
-        blockers.append("NEW_REGRESSION_DETECTED")
+
+    if correction12_binding:
+        # The immutable pytest artifact, not the decision claim, is the
+        # certification source.  Bind it to the exact FIX commit and tree.
+        regression_certification = validate_full_regression_evidence(
+            pytest_evidence,
+            expected_fix_head=fix_head,
+            expected_fix_tree_sha=str(binding.get("fix_tree_sha", "")),
+        )
+        blockers.extend(regression_certification.blockers)
+
+        if isinstance(pytest_evidence, Mapping):
+            pytest_raw = dict(pytest_evidence)
+        elif hasattr(pytest_evidence, "to_dict"):
+            pytest_raw = pytest_evidence.to_dict()
+        else:
+            pytest_raw = {}
+        if "full_suite_completion" not in decision or decision.get("full_suite_completion") != pytest_raw.get("full_suite_completion"):
+            blockers.append("DECISION_PYTEST_COMPLETION_MISMATCH")
+        if "new_regression_count" not in decision or decision.get("new_regression_count") != pytest_raw.get("new_regression_count"):
+            blockers.append("DECISION_PYTEST_REGRESSION_COUNT_MISMATCH")
+
+        source_prerequisites = bool(
+            decision.get("all_gates_passed") is True
+            and decision.get("gate_06_result") is True
+            and decision.get("gate_15_result") is True
+            and regression_certification.certification_valid
+        )
+        review_decision = decision.get("review_decision")
+        production_authorized = decision.get("production_integration_authorized")
+        approved_shape = bool(
+            review_decision == "APPROVED_FOR_PRODUCTION_INTEGRATION"
+            and production_authorized is True
+            and decision.get("recommended_next_state") == "ADJUSTED_PRICE_SOURCE_INTEGRATION_V01"
+        )
+        if source_prerequisites and not approved_shape:
+            blockers.append("DECISION_INTERNAL_INCONSISTENCY")
+        elif not source_prerequisites and (
+            approved_shape
+            or production_authorized is True
+            or (review_decision == "REJECTED_AS_PRODUCTION_AUTHORITY" and production_authorized is True)
+            or (review_decision == "CONDITIONAL_REVIEW_REQUIRED" and production_authorized is not False)
+        ):
+            blockers.append("DECISION_INTERNAL_INCONSISTENCY")
+        if decision.get("all_gates_passed") is True and not (
+            decision.get("gate_06_result") is True and decision.get("gate_15_result") is True
+        ):
+            blockers.append("DECISION_INTERNAL_INCONSISTENCY")
+        all_15 = decision.get("all_15_gate_results")
+        if isinstance(all_15, dict):
+            if "gate_06_corporate_action_parity" in all_15 and all_15.get("gate_06_corporate_action_parity") is not decision.get("gate_06_result"):
+                blockers.append("DECISION_INTERNAL_INCONSISTENCY")
+            if "gate_15_no_unresolved_conditions" in all_15 and all_15.get("gate_15_no_unresolved_conditions") is not decision.get("gate_15_result"):
+                blockers.append("DECISION_INTERNAL_INCONSISTENCY")
+            if "all_gates_passed" in decision and decision.get("all_gates_passed") is not all(
+                value is True for value in all_15.values()
+            ):
+                blockers.append("DECISION_INTERNAL_INCONSISTENCY")
     return {
         "report_truth_sync": "PASS" if not blockers else "FAIL",
         "production_certification_valid": not blockers,
@@ -212,20 +272,16 @@ def render_report(repo_root: Path, commit_head: str, output_file: Path) -> None:
     decision = json.loads(dec_bytes.decode("utf-8")) if dec_bytes else {}
     dec_sha = hashlib.sha256(dec_bytes).hexdigest() if dec_bytes else ""
     binding = read_git_json(repo_root, commit_head, file_for("code_test_binding_evidence"))
-    truth = evaluate_report_truth_sync(repo_root, commit_head, manifest, decision, binding)
+    pytest_json = read_git_json(repo_root, commit_head, file_for("full_pytest_summary"))
+    truth = evaluate_report_truth_sync(repo_root, commit_head, manifest, decision, binding, pytest_json)
     freeze_json = read_git_json(repo_root, commit_head, file_for("parent_authority_freeze_validation"))
     net_json = read_git_json(repo_root, commit_head, file_for("corporate_action_evidence_network_accounting"))
     link_json = read_git_json(repo_root, commit_head, file_for("live_evidence_linkage_validation"))
     gate06_json = read_git_json(repo_root, commit_head, file_for("gate06_corporate_action_reassessment"))
     preflight_json = read_git_json(repo_root, commit_head, file_for("opendart_preflight"))
     doc_ready_json = read_git_json(repo_root, commit_head, file_for("opendart_document_readiness"))
-    pytest_json = read_git_json(repo_root, commit_head, file_for("full_pytest_summary"))
     metric_audit = read_git_json(repo_root, commit_head, f"{base_rel}/gate06_metric_provenance_audit_v01_fix03_correction_{suffix}.json")
     mocked_success = read_git_json(repo_root, commit_head, f"{base_rel}/mocked_full_success_orchestration_v01_fix03_correction_{suffix}.json")
-    if pytest_json.get("full_suite_completion") is not True:
-        truth["blockers"].append("FULL_PYTEST_INCOMPLETE")
-        truth["report_truth_sync"] = "FAIL"
-        truth["production_certification_valid"] = False
     truth["blockers"] = list(dict.fromkeys(truth["blockers"]))
 
     all_15_gates = decision.get("all_15_gate_results", {})

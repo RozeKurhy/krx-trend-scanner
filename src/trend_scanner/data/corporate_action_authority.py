@@ -22,7 +22,7 @@ import random
 import re
 import shutil
 import time
-from typing import Any
+from typing import Any, Mapping
 import xml.etree.ElementTree as et
 import zipfile
 
@@ -63,20 +63,6 @@ DEFAULT_CORP_EVIDENCE_DIR_FIX03_CORRECTION_12 = Path(
 START_HEAD_CORP_EVIDENCE_FIX03_CORRECTION_12 = "4f82d710015b94639da97ac07ff9c5ddd6509fc9"
 DIRECTIVE_ID_CORRECTION_12 = "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_12"
 PARENT_DIRECTIVE_CORRECTION_12 = "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_11"
-
-
-def production_certification_ready(
-    *,
-    all_source_gates_pass: bool,
-    full_suite_completion: bool | None,
-    new_regression_count: int | None,
-) -> bool:
-    """Return true only when source gates and final repository evidence are complete."""
-    return bool(
-        all_source_gates_pass
-        and full_suite_completion is True
-        and new_regression_count == 0
-    )
 
 
 PARENT_FROZEN_HASHES = {
@@ -215,6 +201,158 @@ class CorporateActionNetworkAccounting:
     def to_dict(self) -> dict[str, Any]:
         self.compute_totals()
         return asdict(self)
+
+
+@dataclass
+class FullRegressionCertification:
+    """Validated full-suite evidence bound to one exact code commit and tree."""
+
+    evidence_status: str
+    full_suite_completion: bool
+    new_regression_count: int | None
+    code_head_under_test: str
+    code_tree_sha_under_test: str
+    expected_fix_head: str
+    expected_fix_tree_sha: str
+    binding_valid: bool
+    certification_valid: bool
+    blockers: list[str] = field(default_factory=list)
+    schema: str = "full_pytest_summary_v01_fix03_correction_12"
+    passed: int | None = None
+    failed: int | None = None
+    skipped: int | None = None
+    deselected: int | None = None
+    warnings: int | None = None
+    known_baseline_failures: list[Any] = field(default_factory=list)
+    unexpected_failures: list[Any] = field(default_factory=list)
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+def validate_full_regression_evidence(
+    evidence: FullRegressionCertification | Mapping[str, Any] | None,
+    *,
+    expected_fix_head: str,
+    expected_fix_tree_sha: str,
+) -> FullRegressionCertification:
+    """Validate canonical full-pytest evidence before it can affect certification."""
+    blockers: list[str] = []
+    expected_head = str(expected_fix_head or "")
+    expected_tree = str(expected_fix_tree_sha or "")
+    if not expected_head:
+        blockers.append("EXPECTED_FIX_HEAD_MISSING")
+    if not expected_tree:
+        blockers.append("EXPECTED_FIX_TREE_MISSING")
+
+    if isinstance(evidence, FullRegressionCertification):
+        raw = evidence.to_dict()
+    elif isinstance(evidence, Mapping):
+        raw = dict(evidence)
+    else:
+        raw = {}
+        blockers.append("PYTEST_EVIDENCE_MISSING")
+
+    schema = str(raw.get("schema") or "")
+    if not schema:
+        blockers.append("PYTEST_SCHEMA_MISSING")
+    elif schema != "full_pytest_summary_v01_fix03_correction_12":
+        blockers.append("PYTEST_SCHEMA_MISMATCH")
+
+    result_fields = ("passed", "failed", "skipped", "deselected", "warnings")
+    result_values: dict[str, int | None] = {}
+    for field_name in result_fields:
+        value = raw.get(field_name)
+        if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+            blockers.append(f"PYTEST_{field_name.upper()}_MISSING")
+            result_values[field_name] = None
+        else:
+            result_values[field_name] = value
+    known_baseline_failures = raw.get("known_baseline_failures")
+    if not isinstance(known_baseline_failures, list):
+        blockers.append("PYTEST_KNOWN_BASELINE_FAILURES_MISSING")
+        known_baseline_failures = []
+    unexpected_failures = raw.get("unexpected_failures")
+    if not isinstance(unexpected_failures, list):
+        blockers.append("PYTEST_UNEXPECTED_FAILURES_MISSING")
+        unexpected_failures = []
+
+    completion = raw.get("full_suite_completion")
+    if not isinstance(completion, bool):
+        blockers.append("PYTEST_COMPLETION_MISSING")
+        completion_value = False
+    else:
+        completion_value = completion
+        if completion is not True:
+            blockers.append("FULL_PYTEST_INCOMPLETE")
+
+    tested_head = str(raw.get("code_head_under_test") or "")
+    tested_tree = str(raw.get("code_tree_sha_under_test") or "")
+    if not tested_head:
+        blockers.append("PYTEST_FIX_HEAD_MISSING")
+    elif expected_head and tested_head != expected_head:
+        blockers.append("PYTEST_FIX_HEAD_MISMATCH")
+    if not tested_tree:
+        blockers.append("PYTEST_FIX_TREE_MISSING")
+    elif expected_tree and tested_tree != expected_tree:
+        blockers.append("PYTEST_FIX_TREE_MISMATCH")
+
+    regression_count = raw.get("new_regression_count")
+    if regression_count is None or isinstance(regression_count, bool) or not isinstance(regression_count, int):
+        blockers.append("PYTEST_REGRESSION_COUNT_MISSING")
+        regression_value = None
+    else:
+        regression_value = regression_count
+        if regression_count != 0:
+            blockers.append("PYTEST_NEW_REGRESSION_DETECTED")
+
+    binding_valid = not any(
+        code in blockers
+        for code in (
+            "EXPECTED_FIX_HEAD_MISSING",
+            "EXPECTED_FIX_TREE_MISSING",
+            "PYTEST_FIX_HEAD_MISSING",
+            "PYTEST_FIX_TREE_MISSING",
+            "PYTEST_FIX_HEAD_MISMATCH",
+            "PYTEST_FIX_TREE_MISMATCH",
+        )
+    )
+    certification_valid = bool(binding_valid and completion_value is True and regression_value == 0 and not blockers)
+    status = "VALID" if certification_valid else ("MISSING" if not evidence else "INVALID")
+    return FullRegressionCertification(
+        evidence_status=status,
+        full_suite_completion=completion_value,
+        new_regression_count=regression_value,
+        code_head_under_test=tested_head,
+        code_tree_sha_under_test=tested_tree,
+        expected_fix_head=expected_head,
+        expected_fix_tree_sha=expected_tree,
+        binding_valid=binding_valid,
+        certification_valid=certification_valid,
+        blockers=list(dict.fromkeys(blockers)),
+        schema=schema or "full_pytest_summary_v01_fix03_correction_12",
+        passed=result_values["passed"],
+        failed=result_values["failed"],
+        skipped=result_values["skipped"],
+        deselected=result_values["deselected"],
+        warnings=result_values["warnings"],
+        known_baseline_failures=list(known_baseline_failures),
+        unexpected_failures=list(unexpected_failures),
+    )
+
+
+def production_certification_ready(
+    *,
+    all_source_gates_pass: bool,
+    regression_certification: FullRegressionCertification | None,
+) -> bool:
+    """Return true only when validated regression evidence is bound and clean."""
+    return bool(
+        all_source_gates_pass
+        and regression_certification is not None
+        and regression_certification.binding_valid
+        and regression_certification.certification_valid
+    )
 
 
 def verify_parent_authority_freeze(parent_dir: Path = PARENT_FIX03_CORRECTION_DIR) -> dict[str, Any]:
@@ -5491,7 +5629,10 @@ def run_corporate_action_evidence_acquisition_fix03_correction_12(
     output_dir: Path = DEFAULT_CORP_EVIDENCE_DIR_FIX03_CORRECTION_12,
     parent_dir: Path = PARENT_FIX03_CORRECTION_DIR,
     allow_network: bool = True,
-    full_suite_completion: bool = False,
+    regression_evidence: FullRegressionCertification | Mapping[str, Any] | None = None,
+    expected_fix_head: str = "",
+    expected_fix_tree_sha: str = "",
+    full_suite_completion: bool | None = None,
     new_regression_count: int | None = None,
 ) -> dict[str, Any]:
     """Execute complete corporate action authority orchestration with strict readiness hard gating and corrected network accounting (Section 0-27)."""
@@ -5512,6 +5653,16 @@ def run_corporate_action_evidence_acquisition_fix03_correction_12(
     disc_raw_dir.mkdir(parents=True, exist_ok=True)
 
     accounting = CorporateActionNetworkAccounting()
+    regression_certification = validate_full_regression_evidence(
+        regression_evidence,
+        expected_fix_head=expected_fix_head,
+        expected_fix_tree_sha=expected_fix_tree_sha,
+    )
+    if full_suite_completion is not None or new_regression_count is not None:
+        regression_certification.blockers.append("UNVALIDATED_CALLER_ASSERTION")
+        regression_certification.blockers = list(dict.fromkeys(regression_certification.blockers))
+        regression_certification.evidence_status = "INVALID"
+        regression_certification.certification_valid = False
 
     # Explicit maintenance/offline guard for repository regression runs.  This
     # short-circuits before credential resolution or any external client is built.
@@ -5525,6 +5676,19 @@ def run_corporate_action_evidence_acquisition_fix03_correction_12(
             doc_readiness={"verdict": "NOT_EXECUTED", "schema": "opendart_document_readiness_v01_fix03_correction_12"},
             accounting=accounting,
             failure_reason="CORRECTION_12_OFFLINE_ONLY",
+            regression_certification=regression_certification,
+        )
+
+    if not regression_certification.certification_valid:
+        return _terminate_on_readiness_or_preflight_failure_correction_12(
+            output_dir=output_dir,
+            parent_dir=parent_dir,
+            canonical_run_id=canonical_run_id,
+            preflight={"verdict": "NOT_EXECUTED", "reason": "REGRESSION_EVIDENCE_INVALID"},
+            doc_readiness={"verdict": "NOT_EXECUTED", "schema": "opendart_document_readiness_v01_fix03_correction_12"},
+            accounting=accounting,
+            failure_reason="SOURCE_ACQUISITION_NOT_EXECUTED",
+            regression_certification=regression_certification,
         )
 
     # 1. Hard Gate: OpenDART Preflight (Section 4, 16)
@@ -5539,6 +5703,7 @@ def run_corporate_action_evidence_acquisition_fix03_correction_12(
             doc_readiness={"verdict": "NOT_EXECUTED", "schema": "opendart_document_readiness_v01_fix03_correction_12"},
             accounting=accounting,
             failure_reason="OPENDART_PREFLIGHT_FAIL",
+            regression_certification=regression_certification,
         )
 
     # 2. Hard Gate: Document Endpoint Readiness Probe (Section 4, 16, 17)
@@ -5554,6 +5719,7 @@ def run_corporate_action_evidence_acquisition_fix03_correction_12(
             doc_readiness=doc_readiness,
             accounting=accounting,
             failure_reason="TRANSIENT_OFFICIAL_DOCUMENT_ENDPOINT_UNAVAILABLE",
+            regression_certification=regression_certification,
         )
 
     # 3. Parent Freeze Validation (Section 2)
@@ -6887,8 +7053,7 @@ def run_corporate_action_evidence_acquisition_fix03_correction_12(
     )
     production_certification_ready_flag = production_certification_ready(
         all_source_gates_pass=source_authority_gates_pass,
-        full_suite_completion=full_suite_completion,
-        new_regression_count=new_regression_count,
+        regression_certification=regression_certification,
     )
     all_15_gates["gate_15_no_unresolved_conditions"] = bool(
         source_authority_gates_pass and production_certification_ready_flag
@@ -6913,12 +7078,9 @@ def run_corporate_action_evidence_acquisition_fix03_correction_12(
         prod_integration_auth = False
         next_state = "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_12"
         blocking_conditions = list(gate06_blockers)
-        if source_authority_gates_pass and full_suite_completion is not True:
-            blocking_conditions.append("FULL_REPOSITORY_REGRESSION_INCOMPLETE")
-            reason_codes = ["FULL_REPOSITORY_REGRESSION_INCOMPLETE"]
-        elif source_authority_gates_pass and new_regression_count != 0:
-            blocking_conditions.append("FULL_REPOSITORY_NEW_REGRESSION")
-            reason_codes = ["FULL_REPOSITORY_NEW_REGRESSION"]
+        if source_authority_gates_pass and not regression_certification.certification_valid:
+            blocking_conditions.extend(regression_certification.blockers)
+            reason_codes = list(regression_certification.blockers) or ["REGRESSION_CERTIFICATION_INVALID"]
         else:
             reason_codes = ["OFFICIAL_EVIDENCE_INCOMPLETE"]
 
@@ -6965,8 +7127,9 @@ def run_corporate_action_evidence_acquisition_fix03_correction_12(
         "all_15_gate_results": all_15_gates,
         "all_gates_passed": all_gates_pass,
         "production_certification_ready": production_certification_ready_flag,
-        "full_suite_completion": bool(full_suite_completion),
-        "new_regression_count": new_regression_count,
+        "full_suite_completion": regression_certification.full_suite_completion,
+        "new_regression_count": regression_certification.new_regression_count,
+        "regression_certification": regression_certification.to_dict(),
         "blocking_conditions": blocking_conditions,
         "reason_codes": reason_codes,
         "review_decision": review_decision,
@@ -6994,8 +7157,15 @@ def _terminate_on_readiness_or_preflight_failure_correction_12(
     doc_readiness: dict[str, Any],
     accounting: CorporateActionNetworkAccounting,
     failure_reason: str,
+    regression_certification: FullRegressionCertification | None = None,
 ) -> dict[str, Any]:
     """Strict Hard-Gate termination when preflight or readiness probe fails."""
+    if regression_certification is None:
+        regression_certification = validate_full_regression_evidence(
+            None,
+            expected_fix_head="",
+            expected_fix_tree_sha="",
+        )
     parent_freeze = verify_parent_authority_freeze(parent_dir)
     parent_freeze = {
         **parent_freeze,
@@ -7054,8 +7224,8 @@ def _terminate_on_readiness_or_preflight_failure_correction_12(
         f"Readiness hard gate failed: {failure_reason}",
         "Official evidence deficit: 0/8 authority valid",
         "Corporate action event diversity requirement failed",
-        "FULL_REPOSITORY_REGRESSION_INCOMPLETE",
     ]
+    certification_blockers = list(regression_certification.blockers)
     gate06_payload = {
         "schema": "gate06_corporate_action_reassessment_v01_fix03_correction_12",
         "canonical_run_id": canonical_run_id,
@@ -7134,10 +7304,11 @@ def _terminate_on_readiness_or_preflight_failure_correction_12(
         "all_15_gate_results": all_15_gates,
         "all_gates_passed": False,
         "production_certification_ready": False,
-        "full_suite_completion": False,
-        "new_regression_count": None,
-        "blocking_conditions": gate06_blockers,
-        "reason_codes": [failure_reason],
+        "full_suite_completion": regression_certification.full_suite_completion,
+        "new_regression_count": regression_certification.new_regression_count,
+        "regression_certification": regression_certification.to_dict(),
+        "blocking_conditions": gate06_blockers + certification_blockers,
+        "reason_codes": [failure_reason] + certification_blockers,
         "review_decision": "CONDITIONAL_REVIEW_REQUIRED",
         "production_integration_authorized": False,
         "active_production_authority_changed": False,
