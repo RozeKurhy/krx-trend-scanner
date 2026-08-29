@@ -97,6 +97,8 @@ def run_opendart_preflight(
             "sanitized_endpoint": "https://opendart.fss.or.kr/api/list.json",
             "error_reason": str(exc),
         }
+        if str(correction_suffix) == "11":
+            res["directive_id"] = "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_11"
         (output_dir / f"opendart_preflight_{tag}.json").write_text(
             json.dumps(res, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
         )
@@ -115,6 +117,8 @@ def run_opendart_preflight(
             "sanitized_endpoint": "https://opendart.fss.or.kr/api/list.json?corp_code=00126380",
             "error_reason": "",
         }
+        if str(correction_suffix) == "11":
+            res["directive_id"] = "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_11"
         (output_dir / f"opendart_preflight_{tag}.json").write_text(
             json.dumps(res, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
         )
@@ -155,6 +159,8 @@ def run_opendart_preflight(
         "error_reason": err_msg,
     }
 
+    if str(correction_suffix) == "11":
+        res["directive_id"] = "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_11"
     (output_dir / f"opendart_preflight_{tag}.json").write_text(
         json.dumps(res, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
     )
@@ -186,6 +192,8 @@ def run_document_endpoint_readiness_probe(
             "archive_structure_valid": True,
             "error_reason": "",
         }
+        if str(correction_suffix) == "11":
+            res["directive_id"] = "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_11"
         (output_dir / f"opendart_document_readiness_{tag}.json").write_text(
             json.dumps(res, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
         )
@@ -206,6 +214,8 @@ def run_document_endpoint_readiness_probe(
             "archive_structure_valid": False,
             "error_reason": str(exc),
         }
+        if str(correction_suffix) == "11":
+            res["directive_id"] = "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_11"
         (output_dir / f"opendart_document_readiness_{tag}.json").write_text(
             json.dumps(res, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
         )
@@ -249,6 +259,8 @@ def run_document_endpoint_readiness_probe(
         "error_reason": err_msg,
     }
 
+    if str(correction_suffix) == "11":
+        res["directive_id"] = "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_11"
     (output_dir / f"opendart_document_readiness_{tag}.json").write_text(
         json.dumps(res, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
     )
