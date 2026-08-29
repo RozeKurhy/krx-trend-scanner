@@ -1,0 +1,23 @@
+{
+  "schema": "full_pytest_summary_v01_fix03_correction_10",
+  "directive_id": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_10",
+  "code_head_under_test": "5471e36624896973dc07d5753f15b686aadcaf95",
+  "code_tree_sha_under_test": "b3aae77560a26ab4fe064bee3fda00d033d1f07f",
+  "executed_at": "2026-08-29T10:18:00+09:00",
+  "execution_scope": "FULL_REPOSITORY_PYTEST_OFFLINE_WITH_NETWORK_INTEGRATION_FILES_EXCLUDED",
+  "focused_passed": 40,
+  "focused_deselected": 1,
+  "full_suite_completion": false,
+  "result": "INTERRUPTED_DUE_TO_HANG",
+  "new_regression_count": 0,
+  "known_baseline_failures": ["tests/test_krx_historical_backfill.py::test_recent_empty_is_not_checkpointed_and_general_resume_retries"],
+  "observed_hang": {
+    "test": "tests/test_pattern_a_foreign_flow_infrastructure.py::base_scan_result",
+    "location": "trend_scanner.data.resampler.to_weekly → pandas resample",
+    "approximate_point": "77%",
+    "action": "single run interrupted; no retry"
+  },
+  "excluded_network_integration_files": ["tests/test_adjusted_price_corporate_action_evidence_v01.py", "tests/test_opendart_environment_v01.py"],
+  "offline_network_calls": 0,
+  "evidence_classification": "LOCAL_OFFLINE_EXECUTION; no live OpenDART/Naver/PyKRX call"
+}
