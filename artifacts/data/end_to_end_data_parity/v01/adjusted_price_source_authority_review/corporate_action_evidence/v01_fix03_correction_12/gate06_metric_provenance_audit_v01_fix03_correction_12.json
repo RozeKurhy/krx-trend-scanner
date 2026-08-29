@@ -1,0 +1,121 @@
+{
+  "schema": "gate06_metric_provenance_audit_v01_fix03_correction_12",
+  "canonical_run_id": "CORP_AUTH_FIX03_CORRECTION_12_20260829T060104Z",
+  "directive_id": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_12",
+  "producer_function": "run_corporate_action_evidence_acquisition_fix03_correction_12 + validate_live_evidence_linkage().to_metrics",
+  "verdict": "COMPLETE",
+  "all_metrics_audited": true,
+  "hardcoded": false,
+  "default_pass": false,
+  "observed_gate06_pass": false,
+  "observed_gate06_blockers": [
+    "Archive provenance failure detected"
+  ],
+  "metrics": [
+    {
+      "metric_name": "authority_valid_controls_count",
+      "producer_function": "C12 authority extraction and validation",
+      "source_evidence": ["corporate_action_official_document_validation_v01_fix03_correction_12.csv", "corporate_action_authority_records_v01_fix03_correction_12.json"],
+      "failure_population_logic": "count rows with authority_valid=true",
+      "hardcoded": false,
+      "default_pass": false
+    },
+    {
+      "metric_name": "pagination_incomplete_control_count",
+      "producer_function": "C12 pagination validation",
+      "source_evidence": ["corporate_action_discovery_pagination_validation_v01_fix03_correction_12.json"],
+      "failure_population_logic": "count controls whose pagination_complete is false",
+      "hardcoded": false,
+      "default_pass": false
+    },
+    {
+      "metric_name": "archive_provenance_failure_count",
+      "producer_function": "validate_archive_provenance",
+      "source_evidence": ["corporate_action_raw_evidence_manifest_v01_fix03_correction_12.json", "corporate_action_document_probe_audit_v01_fix03_correction_12.csv"],
+      "failure_population_logic": "count archive transport/member invariant failures",
+      "hardcoded": false,
+      "default_pass": false
+    },
+    {
+      "metric_name": "semantic_binding_failure_count",
+      "producer_function": "C12 official hierarchy parser",
+      "source_evidence": ["corporate_action_event_hierarchy_validation_v01_fix03_correction_12.json", "corporate_action_official_document_validation_v01_fix03_correction_12.csv"],
+      "failure_population_logic": "count invalid event/timing ancestor-descendant bindings",
+      "hardcoded": false,
+      "default_pass": false
+    },
+    {
+      "metric_name": "candidate_linkage_failure_count",
+      "producer_function": "validate_live_evidence_linkage",
+      "source_evidence": ["live_evidence_linkage_validation_v01_fix03_correction_12.json", "corporate_action_event_sensitive_parity_v01_fix03_correction_12.csv"],
+      "failure_population_logic": "count missing or mismatched Naver candidate identity/window edges",
+      "hardcoded": false,
+      "default_pass": false
+    },
+    {
+      "metric_name": "pykrx_linkage_failure_count",
+      "producer_function": "validate_live_evidence_linkage",
+      "source_evidence": ["live_evidence_linkage_validation_v01_fix03_correction_12.json", "corporate_action_event_sensitive_parity_v01_fix03_correction_12.csv"],
+      "failure_population_logic": "count missing or mismatched adjusted=True comparator identity/window edges",
+      "hardcoded": false,
+      "default_pass": false
+    },
+    {
+      "metric_name": "date_set_mismatch_count",
+      "producer_function": "C12 event-sensitive parity comparator",
+      "source_evidence": ["corporate_action_event_sensitive_parity_v01_fix03_correction_12.csv", "corporate_action_date_reconciliation_v01_fix03_correction_12.csv"],
+      "failure_population_logic": "count controls with date-set reconciliation mismatch",
+      "hardcoded": false,
+      "default_pass": false
+    },
+    {
+      "metric_name": "ohlc_mismatch_count",
+      "producer_function": "C12 OHLC parity comparator",
+      "source_evidence": ["corporate_action_event_sensitive_parity_v01_fix03_correction_12.csv"],
+      "failure_population_logic": "count controls with required OHLC contradiction",
+      "hardcoded": false,
+      "default_pass": false
+    },
+    {
+      "metric_name": "producing_request_failure_count",
+      "producer_function": "LiveEvidenceLinkageResult.to_metrics",
+      "source_evidence": ["live_evidence_linkage_validation_v01_fix03_correction_12.json", "corporate_action_evidence_network_accounting_v01_fix03_correction_12.json"],
+      "failure_population_logic": "count missing/non-success/source/SHA producing request edges",
+      "hardcoded": false,
+      "default_pass": false
+    },
+    {
+      "metric_name": "historical_raw_reuse_count",
+      "producer_function": "validate_live_evidence_linkage",
+      "source_evidence": ["live_evidence_linkage_validation_v01_fix03_correction_12.json", "corporate_action_raw_evidence_manifest_v01_fix03_correction_12.json"],
+      "failure_population_logic": "count forbidden prior-run or historical raw edges",
+      "hardcoded": false,
+      "default_pass": false
+    },
+    {
+      "metric_name": "raw_orphan_file_count",
+      "producer_function": "validate_live_evidence_linkage",
+      "source_evidence": ["live_evidence_linkage_validation_v01_fix03_correction_12.json", "raw/ filesystem"],
+      "failure_population_logic": "count raw files absent from manifest and manifest paths absent on disk",
+      "hardcoded": false,
+      "default_pass": false
+    },
+    {
+      "metric_name": "network_accounting_failure_count",
+      "producer_function": "CorporateActionNetworkAccounting.to_dict",
+      "source_evidence": ["corporate_action_evidence_network_accounting_v01_fix03_correction_12.json"],
+      "failure_population_logic": "count failed downstream and grand-total accounting invariants",
+      "hardcoded": false,
+      "default_pass": false
+    },
+    {
+      "metric_name": "total_provenance_failure_count",
+      "producer_function": "LiveEvidenceLinkageResult.total_linkage_failures",
+      "source_evidence": ["live_evidence_linkage_validation_v01_fix03_correction_12.json"],
+      "failure_population_logic": "exact total of linkage failure populations",
+      "hardcoded": false,
+      "default_pass": false
+    }
+  ],
+  "other_gate06_metrics": "All remaining Gate06 metrics are sourced from their named parser, pagination, archive, authority, parity, linkage, or accounting outputs; no metric defaults to PASS."
+}
