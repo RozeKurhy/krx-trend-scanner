@@ -150,7 +150,7 @@ def evaluate_report_truth_sync(
     )
     if not required_decision:
         blockers.append("DECISION_FIELDS_INCOMPLETE")
-    if current_binding and decision.get("full_suite_completion") is not True:
+    if correction11_binding and decision.get("full_suite_completion") is not True:
         blockers.append("FULL_PYTEST_INCOMPLETE")
 
     if correction12_binding:
@@ -200,6 +200,20 @@ def evaluate_report_truth_sync(
         if decision.get("all_gates_passed") is True and not (
             decision.get("gate_06_result") is True and decision.get("gate_15_result") is True
         ):
+            blockers.append("DECISION_INTERNAL_INCONSISTENCY")
+        terminal_next_states = {
+            "APPROVED_FOR_PRODUCTION_INTEGRATION": "ADJUSTED_PRICE_SOURCE_INTEGRATION_V01",
+            "CONDITIONAL_REVIEW_REQUIRED": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_12",
+            "REJECTED_AS_PRODUCTION_AUTHORITY": "ADJUSTED_PRICE_ALTERNATIVE_SOURCE_DISCOVERY_V01",
+        }
+        if review_decision not in terminal_next_states:
+            blockers.append("DECISION_INTERNAL_INCONSISTENCY")
+        elif decision.get("recommended_next_state") != terminal_next_states[review_decision]:
+            blockers.append("DECISION_INTERNAL_INCONSISTENCY")
+        if review_decision in {
+            "CONDITIONAL_REVIEW_REQUIRED",
+            "REJECTED_AS_PRODUCTION_AUTHORITY",
+        } and production_authorized is not False:
             blockers.append("DECISION_INTERNAL_INCONSISTENCY")
         all_15 = decision.get("all_15_gate_results")
         if isinstance(all_15, dict):

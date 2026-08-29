@@ -21,6 +21,7 @@ from pathlib import Path
 import random
 import re
 import shutil
+import subprocess
 import time
 from typing import Any, Mapping
 import xml.etree.ElementTree as et
@@ -63,6 +64,14 @@ DEFAULT_CORP_EVIDENCE_DIR_FIX03_CORRECTION_12 = Path(
 START_HEAD_CORP_EVIDENCE_FIX03_CORRECTION_12 = "4f82d710015b94639da97ac07ff9c5ddd6509fc9"
 DIRECTIVE_ID_CORRECTION_12 = "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_12"
 PARENT_DIRECTIVE_CORRECTION_12 = "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_11"
+FULL_PYTEST_EVIDENCE_RELATIVE_PATH_CORRECTION_12 = (
+    DEFAULT_CORP_EVIDENCE_DIR_FIX03_CORRECTION_12
+    / "full_pytest_summary_v01_fix03_correction_12.json"
+)
+
+ALLOWED_BASELINE_FAILURE_NODEIDS = frozenset({
+    "tests/test_krx_historical_backfill.py::test_recent_empty_is_not_checkpointed_and_general_resume_retries",
+})
 
 
 PARENT_FROZEN_HASHES = {
@@ -203,6 +212,81 @@ class CorporateActionNetworkAccounting:
         return asdict(self)
 
 
+@dataclass(frozen=True)
+class GitCodeSnapshot:
+    """Observed Git identity for the code scope being certified."""
+
+    head: str
+    tree_sha: str
+    dirty: bool
+
+
+def observe_git_code_snapshot(repo_root: Path = Path(".")) -> GitCodeSnapshot:
+    """Observe HEAD, tree, and scoped worktree dirtiness from Git itself."""
+    root = Path(repo_root)
+
+    def _rev_parse(spec: str) -> str:
+        proc = subprocess.run(
+            ["git", "rev-parse", spec],
+            cwd=str(root),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+            text=True,
+        )
+        return proc.stdout.strip() if proc.returncode == 0 else ""
+
+    status_proc = subprocess.run(
+        ["git", "status", "--porcelain", "--", "src", "scripts", "tests"],
+        cwd=str(root),
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+        text=True,
+    )
+    # A failed status command is not clean: the observer could not establish
+    # that the scoped worktree is safe to certify.
+    dirty = status_proc.returncode != 0 or bool(status_proc.stdout.strip())
+    return GitCodeSnapshot(
+        head=_rev_parse("HEAD"),
+        tree_sha=_rev_parse("HEAD^{tree}"),
+        dirty=dirty,
+    )
+
+
+def load_full_regression_evidence(path: Path) -> dict[str, Any] | None:
+    """Load only a regular, canonical C12 pytest-summary JSON file.
+
+    Missing, malformed, non-object, or wrong-schema files return ``None`` so
+    the caller enters the same fail-closed validation path as missing evidence.
+    No synthetic fallback is ever generated here.
+    """
+    evidence_path = Path(path)
+    if not evidence_path.is_file():
+        return None
+    try:
+        payload = json.loads(evidence_path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+        return None
+    if not isinstance(payload, dict):
+        return None
+    if payload.get("schema") != "full_pytest_summary_v01_fix03_correction_12":
+        return None
+    return payload
+
+
+def _normalize_failure_nodeid(entry: Any) -> str:
+    """Normalize a pytest failure entry to its final node ID."""
+    if isinstance(entry, str):
+        return entry.strip()
+    if isinstance(entry, Mapping):
+        for key in ("nodeid", "node_id", "test_nodeid", "test_node_id"):
+            value = entry.get(key)
+            if isinstance(value, str) and value.strip():
+                return value.strip()
+    return ""
+
+
 @dataclass
 class FullRegressionCertification:
     """Validated full-suite evidence bound to one exact code commit and tree."""
@@ -277,6 +361,26 @@ def validate_full_regression_evidence(
         blockers.append("PYTEST_UNEXPECTED_FAILURES_MISSING")
         unexpected_failures = []
 
+    normalized_known_failures: list[str] = []
+    normalized_unexpected_failures: list[str] = []
+    for entry in known_baseline_failures:
+        nodeid = _normalize_failure_nodeid(entry)
+        if not nodeid:
+            blockers.append("PYTEST_FAILURE_NODEID_MISSING")
+        normalized_known_failures.append(nodeid)
+        if nodeid and nodeid not in ALLOWED_BASELINE_FAILURE_NODEIDS:
+            blockers.append("PYTEST_UNKNOWN_BASELINE_FAILURE")
+    for entry in unexpected_failures:
+        nodeid = _normalize_failure_nodeid(entry)
+        if not nodeid:
+            blockers.append("PYTEST_FAILURE_NODEID_MISSING")
+        normalized_unexpected_failures.append(nodeid)
+
+    if len(normalized_known_failures) != len(set(normalized_known_failures)) or len(normalized_unexpected_failures) != len(set(normalized_unexpected_failures)):
+        blockers.append("PYTEST_DUPLICATE_FAILURE_ENTRY")
+    if set(normalized_known_failures).intersection(normalized_unexpected_failures):
+        blockers.append("PYTEST_FAILURE_CLASSIFICATION_OVERLAP")
+
     completion = raw.get("full_suite_completion")
     if not isinstance(completion, bool):
         blockers.append("PYTEST_COMPLETION_MISSING")
@@ -305,6 +409,12 @@ def validate_full_regression_evidence(
         regression_value = regression_count
         if regression_count != 0:
             blockers.append("PYTEST_NEW_REGRESSION_DETECTED")
+
+    failed_count = result_values["failed"]
+    if failed_count is not None and failed_count != len(known_baseline_failures) + len(unexpected_failures):
+        blockers.append("PYTEST_FAILED_COUNT_MISMATCH")
+    if regression_value is not None and regression_value != len(unexpected_failures):
+        blockers.append("PYTEST_REGRESSION_COUNT_MISMATCH")
 
     binding_valid = not any(
         code in blockers
@@ -336,8 +446,8 @@ def validate_full_regression_evidence(
         skipped=result_values["skipped"],
         deselected=result_values["deselected"],
         warnings=result_values["warnings"],
-        known_baseline_failures=list(known_baseline_failures),
-        unexpected_failures=list(unexpected_failures),
+        known_baseline_failures=list(normalized_known_failures),
+        unexpected_failures=list(normalized_unexpected_failures),
     )
 
 
@@ -5628,17 +5738,18 @@ def _write_artifact_manifest_correction_11(
 
 
 def run_corporate_action_evidence_acquisition_fix03_correction_12(
-    output_dir: Path = DEFAULT_CORP_EVIDENCE_DIR_FIX03_CORRECTION_12,
-    parent_dir: Path = PARENT_FIX03_CORRECTION_DIR,
+    output_dir: Path | None = None,
+    parent_dir: Path | None = None,
     allow_network: bool = True,
     regression_evidence: FullRegressionCertification | Mapping[str, Any] | None = None,
-    expected_fix_head: str = "",
-    expected_fix_tree_sha: str = "",
-    full_suite_completion: bool | None = None,
-    new_regression_count: int | None = None,
+    repo_root: Path = Path("."),
 ) -> dict[str, Any]:
     """Execute complete corporate action authority orchestration with strict readiness hard gating and corrected network accounting (Section 0-27)."""
     canonical_run_id = f"CORP_AUTH_FIX03_CORRECTION_12_{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}"
+    root = Path(repo_root)
+    git_snapshot = observe_git_code_snapshot(root)
+    output_dir = root / DEFAULT_CORP_EVIDENCE_DIR_FIX03_CORRECTION_12 if output_dir is None else Path(output_dir)
+    parent_dir = root / PARENT_FIX03_CORRECTION_DIR if parent_dir is None else Path(parent_dir)
 
     if output_dir.exists():
         raw_existing = output_dir / "raw"
@@ -5657,11 +5768,11 @@ def run_corporate_action_evidence_acquisition_fix03_correction_12(
     accounting = CorporateActionNetworkAccounting()
     regression_certification = validate_full_regression_evidence(
         regression_evidence,
-        expected_fix_head=expected_fix_head,
-        expected_fix_tree_sha=expected_fix_tree_sha,
+        expected_fix_head=git_snapshot.head,
+        expected_fix_tree_sha=git_snapshot.tree_sha,
     )
-    if full_suite_completion is not None or new_regression_count is not None:
-        regression_certification.blockers.append("UNVALIDATED_CALLER_ASSERTION")
+    if git_snapshot.dirty:
+        regression_certification.blockers.append("CODE_SCOPE_WORKTREE_DIRTY")
         regression_certification.blockers = list(dict.fromkeys(regression_certification.blockers))
         regression_certification.evidence_status = "INVALID"
         regression_certification.certification_valid = False
@@ -5679,6 +5790,7 @@ def run_corporate_action_evidence_acquisition_fix03_correction_12(
             accounting=accounting,
             failure_reason="CORRECTION_12_OFFLINE_ONLY",
             regression_certification=regression_certification,
+            git_snapshot=git_snapshot,
         )
 
     if not regression_certification.certification_valid:
@@ -5691,6 +5803,7 @@ def run_corporate_action_evidence_acquisition_fix03_correction_12(
             accounting=accounting,
             failure_reason="SOURCE_ACQUISITION_NOT_EXECUTED",
             regression_certification=regression_certification,
+            git_snapshot=git_snapshot,
         )
 
     # 1. Hard Gate: OpenDART Preflight (Section 4, 16)
@@ -5706,6 +5819,7 @@ def run_corporate_action_evidence_acquisition_fix03_correction_12(
             accounting=accounting,
             failure_reason="OPENDART_PREFLIGHT_FAIL",
             regression_certification=regression_certification,
+            git_snapshot=git_snapshot,
         )
 
     # 2. Hard Gate: Document Endpoint Readiness Probe (Section 4, 16, 17)
@@ -5722,6 +5836,7 @@ def run_corporate_action_evidence_acquisition_fix03_correction_12(
             accounting=accounting,
             failure_reason="TRANSIENT_OFFICIAL_DOCUMENT_ENDPOINT_UNAVAILABLE",
             regression_certification=regression_certification,
+            git_snapshot=git_snapshot,
         )
 
     # 3. Parent Freeze Validation (Section 2)
@@ -7095,6 +7210,7 @@ def run_corporate_action_evidence_acquisition_fix03_correction_12(
         "parent_directive": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_11",
         "authoritative_technical_parent": "ADJUSTED_PRICE_SOURCE_AUTHORITY_REVIEW_V01_FIX03_CORRECTION",
         "start_head": START_HEAD_CORP_EVIDENCE_FIX03_CORRECTION_12,
+        "git_code_snapshot": asdict(git_snapshot),
         "parent_freeze_valid": parent_freeze["all_parent_inputs_unchanged"],
         "preflight_verdict": preflight["verdict"],
         "document_readiness_verdict": doc_readiness["verdict"],
@@ -7149,6 +7265,28 @@ def run_corporate_action_evidence_acquisition_fix03_correction_12(
     return decision_payload
 
 
+def run_correction12_from_canonical_evidence(
+    *,
+    repo_root: Path = Path("."),
+    output_dir: Path | None = None,
+    parent_dir: Path | None = None,
+    allow_network: bool = True,
+) -> dict[str, Any]:
+    """Run the single production C12 path using the immutable pytest summary."""
+    root = Path(repo_root)
+    evidence_path = root / FULL_PYTEST_EVIDENCE_RELATIVE_PATH_CORRECTION_12
+    regression_evidence = load_full_regression_evidence(evidence_path)
+    resolved_output = Path(output_dir) if output_dir is not None else root / DEFAULT_CORP_EVIDENCE_DIR_FIX03_CORRECTION_12
+    resolved_parent = Path(parent_dir) if parent_dir is not None else root / PARENT_FIX03_CORRECTION_DIR
+    return run_corporate_action_evidence_acquisition_fix03_correction_12(
+        output_dir=resolved_output,
+        parent_dir=resolved_parent,
+        allow_network=allow_network,
+        regression_evidence=regression_evidence,
+        repo_root=root,
+    )
+
+
 
 
 def _terminate_on_readiness_or_preflight_failure_correction_12(
@@ -7160,6 +7298,7 @@ def _terminate_on_readiness_or_preflight_failure_correction_12(
     accounting: CorporateActionNetworkAccounting,
     failure_reason: str,
     regression_certification: FullRegressionCertification | None = None,
+    git_snapshot: GitCodeSnapshot | None = None,
 ) -> dict[str, Any]:
     """Strict Hard-Gate termination when preflight or readiness probe fails."""
     if regression_certification is None:
@@ -7168,6 +7307,8 @@ def _terminate_on_readiness_or_preflight_failure_correction_12(
             expected_fix_head="",
             expected_fix_tree_sha="",
         )
+    if git_snapshot is None:
+        git_snapshot = observe_git_code_snapshot(Path("."))
     parent_freeze = verify_parent_authority_freeze(parent_dir)
     parent_freeze = {
         **parent_freeze,
@@ -7222,8 +7363,13 @@ def _terminate_on_readiness_or_preflight_failure_correction_12(
         json.dumps(linkage_payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
     )
 
+    gate_failure_reason = (
+        "SOURCE_ACQUISITION_NOT_EXECUTED"
+        if failure_reason in {"CODE_SCOPE_WORKTREE_DIRTY", "SOURCE_ACQUISITION_NOT_EXECUTED"}
+        else failure_reason
+    )
     gate06_blockers = [
-        f"Readiness hard gate failed: {failure_reason}",
+        f"Readiness hard gate failed: {gate_failure_reason}",
         "Official evidence deficit: 0/8 authority valid",
         "Corporate action event diversity requirement failed",
     ]
@@ -7279,6 +7425,7 @@ def _terminate_on_readiness_or_preflight_failure_correction_12(
         "parent_directive": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_11",
         "authoritative_technical_parent": "ADJUSTED_PRICE_SOURCE_AUTHORITY_REVIEW_V01_FIX03_CORRECTION",
         "start_head": START_HEAD_CORP_EVIDENCE_FIX03_CORRECTION_12,
+        "git_code_snapshot": asdict(git_snapshot),
         "parent_freeze_valid": parent_freeze["all_parent_inputs_unchanged"],
         "preflight_verdict": preflight.get("verdict", "FAIL"),
         "document_readiness_verdict": doc_readiness.get("verdict", "FAIL"),
@@ -7364,7 +7511,7 @@ def _write_artifact_manifest_correction_12(
 
 
 if __name__ == "__main__":
-    result = run_corporate_action_evidence_acquisition_fix03_correction_12()
+    result = run_correction12_from_canonical_evidence(repo_root=Path.cwd())
     print("=== Corporate Action Evidence Acquisition FIX03_CORRECTION_12 Execution Summary ===")
     print("Review Decision:", result["review_decision"])
     print("All Gates Passed:", result["all_gates_passed"])
