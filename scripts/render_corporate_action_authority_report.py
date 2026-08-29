@@ -314,6 +314,13 @@ def evaluate_report_truth_sync(
                 blockers.append("PYTEST_SUMMARY_SHA_MISMATCH")
             elif c13_certification.get("certification_valid") is not True:
                 blockers.append("FULL_PYTEST_CERTIFICATION_INVALID")
+            elif (
+                c13_certification.get("expected_fix_head") != fix_head
+                or c13_certification.get("expected_fix_tree_sha") != str(binding.get("fix_tree_sha", ""))
+                or c13_certification.get("observed_test_head") != regression_certification.code_head_under_test
+                or c13_certification.get("observed_test_tree") != regression_certification.code_tree_sha_under_test
+            ):
+                blockers.append("PYTEST_CERTIFICATION_BINDING_MISMATCH")
 
             # Re-run linkage against the final C13 rows/logs rather than
             # accepting a stage validation result copied into Gate06.
