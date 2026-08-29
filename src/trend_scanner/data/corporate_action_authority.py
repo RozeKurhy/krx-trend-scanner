@@ -33,6 +33,12 @@ import pandas as pd
 import requests
 
 from trend_scanner.data.adjusted_price_provider import normalize_ticker
+from trend_scanner.data.issuer_official_fallback import (
+    CANDIDATE_BOUND_FALLBACK_MODE,
+    TIER_B_ISSUER_OFFICIAL,
+    trust_registry_audit,
+    validate_candidate_bound_tier_b_fallback,
+)
 from trend_scanner.data.opendart_preflight import (
     OpenDARTCredentialMissingError,
     get_opendart_api_key,
@@ -93,6 +99,14 @@ FULL_PYTEST_SCHEMAS = frozenset({
 ALLOWED_BASELINE_FAILURE_NODEIDS = frozenset({
     "tests/test_krx_historical_backfill.py::test_recent_empty_is_not_checkpointed_and_general_resume_retries",
 })
+
+# Offline C13 Tier-B reassessment inputs are immutable evidence captured by
+# RESUME_3.  No function below performs a network request or consults secrets.
+C13_TIER_B_REASSESSMENT_EVIDENCE_ROOT = Path("/private/tmp/krx_c13_resume3_evidence")
+C13_TIER_B_REASSESSMENT_OUTPUT_ROOT = Path("/private/tmp/krx_c13_tier_b_candidate_bound_fallback_v01_evidence")
+C13_SAMSUNG_ISSUER_URL = "https://www.samsung.com/global/ir/reports-disclosures/public-disclosure-view.71206/"
+C13_SAMSUNG_ISSUER_RAW_SHA256 = "940b0ab6bfdfc3c179dc7f2d5c01e088af436b8c479ad4f4c0c7739dbca9a116"
+C13_TIER_B_CONTRACT_EVIDENCE_SHA256 = "13cb04f8d48450ff2c90b8108d80e05e214ae03d02b6c43ada698a33d9ca493d"
 
 
 PARENT_FROZEN_HASHES = {
@@ -1942,11 +1956,29 @@ def classify_candidate_resolution(
     fallback_available: bool = False,
 ) -> str:
     """Classify candidate facts without conflating selected and unresolved provenance."""
+    fallback_validation = candidate.get("fallback_validation")
+    fallback_valid = bool(
+        isinstance(fallback_validation, Mapping)
+        and fallback_validation.get("valid") is True
+        and isinstance(fallback_validation.get("provenance"), Mapping)
+        and fallback_validation["provenance"].get("content_authority_tier") == TIER_B_ISSUER_OFFICIAL
+        and fallback_validation["provenance"].get("authority_resolution_mode") == CANDIDATE_BOUND_FALLBACK_MODE
+        and candidate.get("identity_authority_tier") in {
+            AuthoritySourceTier.TIER_A1_OPENDART.value,
+            AuthoritySourceTier.TIER_A2_KRX_KIND.value,
+        }
+    )
+    # Tier-B is content-only.  A candidate cannot become authoritative merely
+    # because a caller marked its page as official or usable.
+    if fallback_valid:
+        return "AUTHORITY_VALID_FALLBACK"
+    if candidate.get("content_authority_tier") == TIER_B_ISSUER_OFFICIAL:
+        return "UNRESOLVED_HIGHER_PRIORITY_CANDIDATE"
     if official_evidence_obtained and official_content_usable and semantic_valid:
         return "AUTHORITY_VALID"
     if official_evidence_obtained and official_content_usable and not semantic_valid:
         return "DEFINITIVELY_REJECTED"
-    if int(candidate.get("candidate_rank", 0) or 0) > 0 and int(candidate.get("event_match_score", 0) or 0) > 0 and not fallback_available:
+    if int(candidate.get("candidate_rank", 0) or 0) > 0 and int(candidate.get("event_match_score", 0) or 0) > 0:
         return "UNRESOLVED_HIGHER_PRIORITY_CANDIDATE"
     return "REJECTED"
 
@@ -1969,7 +2001,7 @@ def evaluate_candidate_resolution_population(candidates: list[Mapping[str, Any]]
             official_content_usable=bool(candidate.get("official_content_usable", True)),
             fallback_available=bool(candidate.get("fallback_available", False)),
         )
-        if status == "AUTHORITY_VALID":
+        if status in {"AUTHORITY_VALID", "AUTHORITY_VALID_FALLBACK"}:
             authority_valid.append(candidate)
         statuses.append({"candidate": dict(candidate), "status": status})
     selected = authority_valid[0] if authority_valid else None
@@ -1982,9 +2014,9 @@ def evaluate_candidate_resolution_population(candidates: list[Mapping[str, Any]]
         if status == "UNRESOLVED_HIGHER_PRIORITY_CANDIDATE" and (selected_rank is None or rank < selected_rank):
             item["status"] = "UNRESOLVED_HIGHER_PRIORITY_CANDIDATE"
             unresolved.append(item)
-        elif status == "AUTHORITY_VALID" and selected is not None and rank == selected_rank:
+        elif status in {"AUTHORITY_VALID", "AUTHORITY_VALID_FALLBACK"} and selected is not None and rank == selected_rank:
             item["status"] = "SELECTED"
-        elif status == "AUTHORITY_VALID":
+        elif status in {"AUTHORITY_VALID", "AUTHORITY_VALID_FALLBACK"}:
             item["status"] = "REJECTED_LOWER_PRIORITY"
         elif status == "UNRESOLVED_HIGHER_PRIORITY_CANDIDATE":
             item["status"] = "UNRESOLVED_LOWER_PRIORITY_CANDIDATE"
@@ -2136,6 +2168,281 @@ def evaluate_gate06(metrics: dict[str, Any]) -> tuple[bool, list[str]]:
         blockers.append("PYTEST_SUMMARY_PHYSICAL_IMMUTABILITY_FAILURE")
 
     return len(blockers) == 0, blockers
+
+
+def evaluate_gate15(metrics: Mapping[str, Any]) -> tuple[bool, list[str]]:
+    """Evaluate unresolved-condition closure without source-specific branches."""
+    blockers: list[str] = []
+    if metrics.get("gate_06_pass") is not True:
+        blockers.append("GATE06_NOT_PASS")
+    if int(metrics.get("unresolved_higher_priority_candidate_count", 0) or 0) > 0:
+        blockers.append("UNRESOLVED_HIGHER_PRIORITY_CANDIDATE")
+    if int(metrics.get("selected_authority_archive_provenance_failure_count", 0) or 0) > 0:
+        blockers.append("SELECTED_AUTHORITY_ARCHIVE_PROVENANCE_FAILURE")
+    if metrics.get("fallback_contract_valid") is False:
+        blockers.append("TIER_B_FALLBACK_CONTRACT_INVALID")
+    if metrics.get("price_parity_verdict") not in (None, "MATCH"):
+        blockers.append("PRICE_EVIDENCE_CONTRADICTION")
+    return not blockers, blockers
+
+
+def _offline_evidence_sha256(path: Path) -> str:
+    """Hash one frozen local evidence file without any network or mutation."""
+    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
+def _recompute_samsung_price_parity_offline(price_path: Path, anchor_date: str) -> dict[str, Any]:
+    """Recompute Samsung parity from persisted rows; never fetches prices."""
+    frame = pd.read_csv(price_path, dtype=object, keep_default_na=False)
+    scoped = frame[frame["ticker"].astype(str) == "005930"].copy()
+    sources = {"NAVER_DIRECT", "RAW_PYKRX_COMPARATOR"}
+    source_frames = {source: scoped[scoped["source"] == source].copy() for source in sources}
+    source_dates = {source: set(item["date"].astype(str)) for source, item in source_frames.items()}
+    common = sorted(source_dates["NAVER_DIRECT"] & source_dates["RAW_PYKRX_COMPARATOR"])
+    naver_only = sorted(source_dates["NAVER_DIRECT"] - source_dates["RAW_PYKRX_COMPARATOR"])
+    pykrx_only = sorted(source_dates["RAW_PYKRX_COMPARATOR"] - source_dates["NAVER_DIRECT"])
+    mismatch_counts = {field: 0 for field in ("open", "high", "low", "close", "volume")}
+    if common:
+        naver = source_frames["NAVER_DIRECT"].set_index("date")
+        pykrx = source_frames["RAW_PYKRX_COMPARATOR"].set_index("date")
+        for day in common:
+            for field in mismatch_counts:
+                if float(naver.loc[day, field]) != float(pykrx.loc[day, field]):
+                    mismatch_counts[field] += 1
+    pre_count = sum(day < anchor_date for day in common)
+    post_count = sum(day >= anchor_date for day in common)
+    date_mismatch = len(naver_only) + len(pykrx_only)
+    ohlc_mismatch = sum(mismatch_counts[field] for field in ("open", "high", "low", "close"))
+    return {
+        "ticker": "005930",
+        "anchor_date": anchor_date,
+        "naver_rows": len(source_frames["NAVER_DIRECT"]),
+        "pykrx_rows": len(source_frames["RAW_PYKRX_COMPARATOR"]),
+        "common_date_count": len(common),
+        "naver_only_date_count": len(naver_only),
+        "pykrx_only_date_count": len(pykrx_only),
+        "pre_common_date_count": pre_count,
+        "post_common_date_count": post_count,
+        **{f"{field}_mismatch_count": value for field, value in mismatch_counts.items()},
+        "date_mismatch_count": date_mismatch,
+        "ohlc_mismatch_count": ohlc_mismatch,
+        "parity_verdict": "MATCH" if date_mismatch == 0 and ohlc_mismatch == 0 and pre_count >= 5 and post_count >= 5 else "MISMATCH",
+        "api_fetch_count": 0,
+    }
+
+
+def reassess_c13_tier_b_fallback_offline(
+    *,
+    evidence_root: Path = C13_TIER_B_REASSESSMENT_EVIDENCE_ROOT,
+    output_dir: Path = C13_TIER_B_REASSESSMENT_OUTPUT_ROOT,
+    implementation_fix_head: str,
+    implementation_fix_tree: str,
+    regression_certification: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Reassess C13 once from frozen local evidence, with no live calls."""
+    root = Path(evidence_root)
+    parent = root / "c13_live_artifacts"
+    supplemental = root / "unresolved_higher_priority_candidate_resolution_v01_fix01"
+    output = Path(output_dir)
+    output.mkdir(parents=True, exist_ok=True)
+    raw_path = supplemental / "issuer_official_raw" / "samsung_public_disclosure_71206.html"
+    contract_path = root / "authority_source_tier_contract_review_v01" / "authority_source_tier_contract_review_v01.json"
+    price_path = parent / CORRECTION_13_PRICE_FILE
+    candidate_path = parent / "corporate_action_discovery_candidate_audit_v01_fix03_correction_13.csv"
+    manifest_path = parent / "artifact_manifest.json"
+    required_paths = (raw_path, contract_path, price_path, candidate_path, manifest_path)
+    missing = [str(path) for path in required_paths if not path.is_file()]
+    if missing:
+        raise FileNotFoundError("FROZEN_EVIDENCE_INTEGRITY_FAILURE: " + ", ".join(missing))
+    raw_sha = _offline_evidence_sha256(raw_path)
+    contract_sha = _offline_evidence_sha256(contract_path)
+    if raw_sha != C13_SAMSUNG_ISSUER_RAW_SHA256 or contract_sha != C13_TIER_B_CONTRACT_EVIDENCE_SHA256:
+        raise ValueError("FROZEN_EVIDENCE_INTEGRITY_FAILURE")
+
+    parent_manifest = _read_json_file(manifest_path, {})
+    parent_entries = parent_manifest.get("artifacts", {}) if isinstance(parent_manifest, Mapping) else {}
+    manifest_failures: list[str] = []
+    if not isinstance(parent_entries, Mapping):
+        manifest_failures.append("artifacts")
+    else:
+        for relative, entry in parent_entries.items():
+            if not isinstance(entry, Mapping):
+                manifest_failures.append(str(relative))
+                continue
+            artifact = parent / str(entry.get("path") or relative)
+            expected = str(entry.get("sha256") or "")
+            if not artifact.is_file() or not expected or _offline_evidence_sha256(artifact) != expected:
+                manifest_failures.append(str(relative))
+    if manifest_failures:
+        raise ValueError("PARENT_CANONICAL_EVIDENCE_INTEGRITY_FAILURE")
+
+    parent_gate = _read_json_file(parent / "gate06_corporate_action_reassessment_v01_fix03_correction_13.json", {})
+    parent_decision = _read_json_file(parent / "adjusted_price_source_authority_corporate_action_evidence_v01_fix03_correction_13.json", {})
+    probe_frame = _evidence_frame(parent / "corporate_action_document_probe_audit_v01_fix03_correction_13.csv")
+    candidate_frame = pd.read_csv(candidate_path, dtype=object, keep_default_na=False)
+    cohort_frame = _evidence_frame(parent / "corporate_action_review_cohort_v01_fix03_correction_13.csv")
+    samsung_candidates = candidate_frame[candidate_frame["ticker"].astype(str) == "005930"]
+    target_rows = samsung_candidates[samsung_candidates["rcept_no"].astype(str) == "20180316800856"]
+    if len(target_rows) != 1:
+        raise ValueError("SAMSUNG_CANDIDATE_IDENTITY_NOT_UNIQUE")
+    target_row = target_rows.iloc[0].to_dict()
+    probe_rows = probe_frame[probe_frame["rcept_no"].astype(str) == "20180316800856"]
+    if len(probe_rows) != 1:
+        raise ValueError("SAMSUNG_A1_FAILURE_RECORD_NOT_UNIQUE")
+    probe_row = probe_rows.iloc[0].to_dict()
+    supplemental_log = _read_json_file(supplemental / "supplemental_request_log.json", {})
+    requests = list(supplemental_log.get("requests", [])) if isinstance(supplemental_log, Mapping) else []
+    issuer_success = next((item for item in requests if item.get("outcome") == "SUCCESS" and item.get("authority_tier") == TIER_B_ISSUER_OFFICIAL), {})
+    a2_attempted = any(item.get("authority_tier") == AuthoritySourceTier.TIER_A2_KRX_KIND.value and item.get("purpose") == "CANDIDATE_DISCLOSURE_VIEWER_RETRIEVAL" and str(item.get("target_rcept_no") or supplemental_log.get("target_rcept_no") or "20180316800856") == "20180316800856" for item in requests)
+    a2_usable = any(item.get("authority_tier") == AuthoritySourceTier.TIER_A2_KRX_KIND.value and item.get("outcome") == "SUCCESS" and int(item.get("response_size_bytes") or 0) > 0 for item in requests)
+    issuer_name = ""
+    if not cohort_frame.empty:
+        cohort_rows = cohort_frame[cohort_frame["ticker"].astype(str) == "005930"]
+        if len(cohort_rows) == 1:
+            issuer_name = str(cohort_rows.iloc[0].get("issuer_name") or "")
+    rank_value = int(float(target_row.get("candidate_rank") or 0))
+    candidate = {
+        "candidate_rank": rank_value,
+        "identity_candidate_rank": rank_value,
+        "candidate_rank_deterministic": samsung_candidates["candidate_rank"].astype(str).nunique() == len(samsung_candidates["candidate_rank"]),
+        "event_match_score": int(float(target_row.get("event_match_score") or 0)),
+        "rcept_no": str(target_row.get("rcept_no") or ""),
+        "identity_record_id": str(target_row.get("rcept_no") or ""),
+        "identity_authority_tier": AuthoritySourceTier.TIER_A1_OPENDART.value,
+        "ticker": "005930",
+        "issuer_name": issuer_name,
+        "report_nm": str(target_row.get("report_nm") or ""),
+        "rcept_dt": str(target_row.get("rcept_dt") or ""),
+        "event_family": "STOCK_SPLIT" if "주식분할" in str(target_row.get("report_nm") or "") else "",
+        "a1_body_usable": str(probe_row.get("validation_reason") or "") not in {"EMPTY_OR_UNUSABLE_DOCUMENT", "ARCHIVE_MEMBER_AMBIGUOUS"},
+        "a1_failure_persisted": bool(str(probe_row.get("validation_reason") or "") == "EMPTY_OR_UNUSABLE_DOCUMENT" and str(probe_row.get("transport_response_sha256") or "")),
+        "a1_transport_response_sha256": str(probe_row.get("transport_response_sha256") or ""),
+        "a2_candidate_specific_attempted": a2_attempted,
+        "a2_usable": a2_usable,
+    }
+    if candidate["a1_body_usable"]:
+        raise ValueError("A1_DOCUMENT_NOT_PROVEN_UNUSABLE")
+    fallback_validation = validate_candidate_bound_tier_b_fallback(
+        candidate,
+        raw_bytes=raw_path.read_bytes(),
+        source_url=str(issuer_success.get("url") or ""),
+        expected_sha256=C13_SAMSUNG_ISSUER_RAW_SHA256,
+        raw_path=raw_path,
+        retrieval_lineage={
+            "request_id": issuer_success.get("request_id", ""),
+            "retrieved_at": issuer_success.get("completed_at", ""),
+            "raw_path": str(raw_path),
+        },
+    )
+    population = _load_c13_candidate_evaluation(parent, fallback_by_record={candidate["rcept_no"]: fallback_validation})
+    samsung_selected = next(
+        (
+            item["candidate"]
+            for item in population["candidate_statuses"]
+            if str(item["candidate"].get("ticker")) == "005930" and item.get("status") == "SELECTED"
+        ),
+        {},
+    )
+    price_reassessment = _recompute_samsung_price_parity_offline(price_path, "2018-05-04")
+
+    controls = _control_frame(parent / "corporate_action_review_cohort_v01_fix03_correction_13.csv")
+    price_validation = validate_persisted_price_parity_evidence(
+        parent / CORRECTION_13_PRICE_FILE,
+        parent / CORRECTION_13_PARITY_FILE,
+        parent / CORRECTION_13_RECONCILIATION_FILE,
+        controls,
+        request_logs=list((_read_json_file(parent / "corporate_action_evidence_network_accounting_v01_fix03_correction_13.json", {}) or {}).get("request_logs", [])),
+    )
+    gate_metrics = dict(parent_gate)
+    gate_metrics.update(price_validation.to_dict())
+    gate_metrics.update({
+        "schema": "gate06_corporate_action_reassessment_v01_fix03_correction_13",
+        "unresolved_higher_priority_candidate_count": population["unresolved_higher_priority_candidate_count"],
+        "selected_authority_archive_provenance_failure_count": population["selected_authority_archive_provenance_failure_count"],
+    })
+    gate06_pass, gate06_blockers = evaluate_gate06(gate_metrics)
+    gate15_pass, gate15_blockers = evaluate_gate15({
+        "gate_06_pass": gate06_pass,
+        "unresolved_higher_priority_candidate_count": population["unresolved_higher_priority_candidate_count"],
+        "selected_authority_archive_provenance_failure_count": population["selected_authority_archive_provenance_failure_count"],
+        "fallback_contract_valid": fallback_validation.get("valid") is True,
+        "price_parity_verdict": price_reassessment["parity_verdict"],
+    })
+    inherited = parent_decision.get("inherited_gate_results", {}) if isinstance(parent_decision, Mapping) else {}
+    all_gates = {key: value is True for key, value in inherited.items()}
+    all_gates["gate_06_corporate_action_parity"] = gate06_pass
+    all_gates["gate_15_no_unresolved_conditions"] = gate15_pass
+    regression_valid = bool(regression_certification.get("certification_valid") is True and regression_certification.get("full_suite_completion") is True and not regression_certification.get("unexpected_failures") and not regression_certification.get("unexpected_errors") and int(regression_certification.get("new_regression_count", 0) or 0) == 0)
+    ready = bool(regression_valid and fallback_validation.get("valid") is True and price_reassessment["parity_verdict"] == "MATCH" and all(all_gates.values()))
+    status_rows: list[dict[str, Any]] = []
+    for item in population["candidate_statuses"]:
+        row = item["candidate"]
+        if str(row.get("ticker")) == "005930" and int(row.get("candidate_rank", 0) or 0) in {1, 2, 3}:
+            status_rows.append({
+                "ticker": row.get("ticker"),
+                "candidate_rank": row.get("candidate_rank"),
+                "rcept_no": row.get("rcept_no"),
+                "status": item.get("status"),
+                "resolution_mode": fallback_validation.get("provenance", {}).get("authority_resolution_mode", "") if row.get("rcept_no") == candidate["rcept_no"] else "",
+                "content_authority_tier": fallback_validation.get("provenance", {}).get("content_authority_tier", "") if row.get("rcept_no") == candidate["rcept_no"] else "",
+            })
+    implementation_identity = {
+        "schema": "implementation_fix_identity_v01_c13_tier_b_candidate_bound_fallback",
+        "implementation_fix_head": implementation_fix_head,
+        "implementation_fix_tree": implementation_fix_tree,
+        "parent_canonical_run_id": str(parent_gate.get("canonical_run_id") or ""),
+        "execution_mode": "OFFLINE_DETERMINISTIC_REASSESSMENT",
+        "external_network_calls": 0,
+    }
+    (output / "implementation_fix_identity.json").write_text(json.dumps(implementation_identity, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    (output / "implementation_regression_certification.json").write_text(json.dumps(dict(regression_certification), indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    (output / "issuer_official_trust_registry_audit.json").write_text(json.dumps({"schema": "issuer_official_trust_registry_audit_v01", "registry": trust_registry_audit()}, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    (output / "tier_b_fallback_contract_validation.json").write_text(json.dumps({"schema": "tier_b_fallback_contract_validation_v01", "candidate": candidate, "validation": fallback_validation, "supplemental_evidence_hashes": {"issuer_raw": raw_sha, "contract_review": contract_sha}}, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    (output / "dual_tier_provenance.json").write_text(json.dumps(fallback_validation.get("provenance", {}), indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    pd.DataFrame(status_rows).sort_values("candidate_rank").to_csv(output / "candidate_population_reassessment.csv", index=False)
+    anchor_payload = {
+        "ticker": "005930",
+        "disclosure_date": fallback_validation.get("parsed", {}).get("publication_date", ""),
+        "active_anchor_type": fallback_validation.get("parsed", {}).get("official_anchor_type", ""),
+        "active_anchor_date": fallback_validation.get("parsed", {}).get("official_anchor_date", ""),
+        "superseded_anchor_date": fallback_validation.get("parsed", {}).get("superseded_anchor_date", ""),
+        "selected_rcept_no": candidate["rcept_no"],
+        "selected_candidate_rank": rank_value,
+    }
+    (output / "samsung_anchor_reassessment.json").write_text(json.dumps(anchor_payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    pd.DataFrame([price_reassessment]).to_csv(output / "samsung_price_parity_reassessment.csv", index=False)
+    (output / "gate06_reassessment.json").write_text(json.dumps({"schema": "gate06_reassessment_v01_c13_tier_b_candidate_bound_fallback", "gate_06_pass": gate06_pass, "blockers": gate06_blockers, "metrics": gate_metrics}, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    (output / "gate15_reassessment.json").write_text(json.dumps({"schema": "gate15_reassessment_v01_c13_tier_b_candidate_bound_fallback", "gate_15_pass": gate15_pass, "blockers": gate15_blockers, "metrics": {"unresolved_higher_priority_candidate_count": population["unresolved_higher_priority_candidate_count"], "price_parity_verdict": price_reassessment["parity_verdict"]}}, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    result = {
+        "implementation_fix_head": implementation_fix_head,
+        "implementation_fix_tree": implementation_fix_tree,
+        "parent_canonical_run_id": implementation_identity["parent_canonical_run_id"],
+        "regression_certification_valid": regression_valid,
+        "fallback_contract_valid": bool(fallback_validation.get("valid")),
+        "selected_rcept_no": str(samsung_selected.get("rcept_no") or ""),
+        "selected_candidate_rank": samsung_selected.get("candidate_rank"),
+        "unresolved_higher_priority_candidate_count": population["unresolved_higher_priority_candidate_count"],
+        "active_anchor_date": anchor_payload["active_anchor_date"],
+        "superseded_anchor_date": anchor_payload["superseded_anchor_date"],
+        "samsung_price_parity": price_reassessment,
+        "gate06_pass": gate06_pass,
+        "gate15_pass": gate15_pass,
+        "all_gates": all_gates,
+        "recommended_next_state": "READY_FOR_AUTHORITY_CLOSURE_REASSESSMENT" if ready else "IMPLEMENTATION_REASSESSMENT_BLOCKED",
+        "external_network_calls": 0,
+    }
+    output_manifest = {
+        "schema": "offline_reassessment_manifest_v01_c13_tier_b_candidate_bound_fallback",
+        "execution_mode": "OFFLINE_DETERMINISTIC_REASSESSMENT",
+        "external_network_calls": 0,
+        "parent_canonical_run_id": implementation_identity["parent_canonical_run_id"],
+        "implementation_fix_head": implementation_fix_head,
+        "implementation_fix_tree": implementation_fix_tree,
+        "input_evidence_hashes": {"issuer_raw": raw_sha, "contract_review": contract_sha, "parent_price": _offline_evidence_sha256(price_path), "parent_candidate": _offline_evidence_sha256(candidate_path), "parent_manifest": _offline_evidence_sha256(manifest_path)},
+        "result": result,
+    }
+    (output / "offline_reassessment_manifest.json").write_text(json.dumps(output_manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    return result
 
 
 def acquire_current_official_document(
@@ -8370,7 +8677,11 @@ def _copy_c12_artifacts_to_c13(stage: Path, output: Path, canonical_run_id: str)
             shutil.copyfile(source, target)
 
 
-def _load_c13_candidate_evaluation(output: Path) -> dict[str, Any]:
+def _load_c13_candidate_evaluation(
+    output: Path,
+    *,
+    fallback_by_record: Mapping[str, Mapping[str, Any]] | None = None,
+) -> dict[str, Any]:
     """Rebuild candidate-resolution semantics from the final C13 CSVs."""
     candidate_rows = _evidence_frame(output / "corporate_action_document_probe_audit_v01_fix03_correction_13.csv")
     ranked_rows = _evidence_frame(output / "corporate_action_discovery_candidate_audit_v01_fix03_correction_13.csv")
@@ -8399,6 +8710,7 @@ def _load_c13_candidate_evaluation(output: Path) -> dict[str, Any]:
         except (TypeError, ValueError):
             score_value = 0
         fact = {
+            "ticker": str(row.get("ticker", "")),
             "candidate_rank": rank,
             "event_match_score": score_value,
             "official_evidence_obtained": obtained,
@@ -8408,9 +8720,21 @@ def _load_c13_candidate_evaluation(output: Path) -> dict[str, Any]:
             "archive_provenance_valid": archive_valid,
             "rcept_no": row.get("rcept_no", ""),
         }
+        fallback = (fallback_by_record or {}).get(str(row.get("rcept_no", "")))
+        if isinstance(fallback, Mapping):
+            fallback_provenance = fallback.get("provenance", {}) if isinstance(fallback.get("provenance"), Mapping) else {}
+            fact.update({
+                "identity_authority_tier": fallback.get("identity_authority_tier", fallback_provenance.get("identity_authority_tier", "")),
+                "identity_record_id": fallback.get("identity_record_id", fallback_provenance.get("identity_record_id", row.get("rcept_no", ""))),
+                "identity_candidate_rank": fallback.get("identity_candidate_rank", fallback_provenance.get("identity_candidate_rank", rank)),
+                "fallback_validation": dict(fallback),
+                "content_authority_tier": fallback_provenance.get("content_authority_tier", ""),
+            })
         candidate_groups.setdefault(str(row.get("ticker", "")), []).append(fact)
     evaluations = [evaluate_candidate_resolution_population(group) for group in candidate_groups.values()]
+    selected_candidates = [item["selected_candidate"] for item in evaluations if item.get("selected_candidate")]
     return {
+        "selected_candidate": selected_candidates[0] if len(selected_candidates) == 1 else None,
         "unresolved_higher_priority_candidate_count": sum(item["unresolved_higher_priority_candidate_count"] for item in evaluations),
         "selected_authority_archive_provenance_failure_count": sum(item["selected_authority_archive_provenance_failure_count"] for item in evaluations),
         "candidate_statuses": [status for item in evaluations for status in item["candidate_statuses"]],
