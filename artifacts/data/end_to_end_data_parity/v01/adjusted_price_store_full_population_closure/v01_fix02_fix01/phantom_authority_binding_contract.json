@@ -1,0 +1,29 @@
+{
+  "schema": "adjusted_price_store_full_population_fix02_fix01_phantom_binding_v01",
+  "provider_role": "report exact zero-OHL/positive-close source placeholder candidate and source facts only",
+  "matrix": [
+    {
+      "authority": "CONFIRMED_NONTRADING",
+      "source": "Naver exact phantom",
+      "classification": "CONFIRMED_NONTRADING",
+      "usable": 0,
+      "silent_missing": 0
+    },
+    {
+      "authority": "EXPECTED_TRADABLE",
+      "source": "Naver exact phantom",
+      "classification": "ADJUDICATED_SOURCE_NONUSABLE",
+      "usable": 0,
+      "silent_missing": 0
+    },
+    {
+      "authority": "UNRESOLVED_OR_INSUFFICIENT",
+      "source": "Naver exact phantom",
+      "classification": "UNRESOLVED_ACTIVITY_EVIDENCE",
+      "acquisition_status": "INSUFFICIENT_AUTHORITY",
+      "usable": 0,
+      "silent_missing": 0
+    }
+  ],
+  "naver_shape_alone_can_confirm_nontrading": false
+}

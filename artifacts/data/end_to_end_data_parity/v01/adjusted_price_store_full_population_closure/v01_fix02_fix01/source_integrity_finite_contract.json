@@ -1,0 +1,10 @@
+{
+  "schema": "adjusted_price_store_full_population_fix02_fix01_source_integrity_finite_v01",
+  "validator": "validate_source_integrity",
+  "nan": "REJECT MarketDataError",
+  "positive_infinity": "REJECT MarketDataError",
+  "negative_infinity": "REJECT MarketDataError",
+  "finite_relation_anomaly": "ACCEPT source truth; analytic view remains fail-closed",
+  "non_positive_store_ohlc": "REJECT at source-native store boundary",
+  "synthetic_repair_count": 0
+}
