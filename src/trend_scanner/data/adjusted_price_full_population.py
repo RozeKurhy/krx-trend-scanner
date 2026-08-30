@@ -23,7 +23,7 @@ import os
 from pathlib import Path
 import re
 import time
-from typing import Any, Callable, Mapping, Sequence
+from typing import Any, Callable, Mapping, Protocol, Sequence
 
 import pandas as pd
 
@@ -46,10 +46,11 @@ from trend_scanner.data.adjusted_price_pilot import (
 )
 from trend_scanner.data.adjusted_price_provider import (
     ADJUSTED_OHLC_COLUMNS,
-    AdjustedPriceDataProvider,
+    NaverDirectAdjustedPriceDataProvider,
     normalize_ticker,
     validate_adjusted_ohlc,
 )
+from trend_scanner.data.adjusted_price_source_authority import assert_current_descriptor
 from trend_scanner.data.adjusted_price_store import (
     AdjustedPriceStore,
     DEFAULT_ADJUSTED_PRICE_STORE_DIR,
@@ -127,6 +128,14 @@ class FullPopulationCheckpoint:
     in_progress_tickers: dict[str, dict[str, Any]]
 
 
+class AdjustedPriceProviderProtocol(Protocol):
+    source_descriptor: Any
+
+    def load_daily(self, ticker: str, start: str, end: str) -> pd.DataFrame: ...
+
+    def call_audit(self) -> dict[str, int]: ...
+
+
 def sanitize_error_message(msg: str | None) -> str | None:
     if not msg:
         return None
@@ -178,7 +187,7 @@ class FullPopulationRunner:
         population_path: Path = Path(DEFAULT_POPULATION_ARTIFACT_PATH),
         store_dir: Path = DEFAULT_ADJUSTED_PRICE_STORE_DIR,
         artifact_dir: Path = DEFAULT_FULL_POPULATION_DIR,
-        provider: AdjustedPriceDataProvider | None = None,
+        provider: AdjustedPriceProviderProtocol | None = None,
         max_retries: int = 2,
         retry_delay_seconds: float = 0.5,
         execution_id: str | None = None,
@@ -186,7 +195,7 @@ class FullPopulationRunner:
         self.population_path = population_path
         self.store = AdjustedPriceStore(store_dir)
         self.artifact_dir = Path(artifact_dir)
-        self.provider = provider
+        self.provider = provider if provider is not None else NaverDirectAdjustedPriceDataProvider()
         self.max_retries = max_retries
         self.retry_delay_seconds = retry_delay_seconds
         self.execution_id = execution_id or f"ADJUSTED_PRICE_STORE_FULL_POPULATION_V01_{int(time.time())}"
@@ -198,6 +207,13 @@ class FullPopulationRunner:
         self.closure_manifest_path = self.artifact_dir / "full_population_closure_manifest.json"
         self.resume_audit_path = self.artifact_dir / "full_population_resume_audit.json"
         self.failures_csv_path = self.artifact_dir / "full_population_failures.csv"
+
+    @staticmethod
+    def _validate_provider_authority(provider: AdjustedPriceProviderProtocol) -> None:
+        try:
+            assert_current_descriptor(provider.source_descriptor)
+        except (AttributeError, MarketDataError) as exc:
+            raise MarketDataError("PROVIDER_AUTHORITY_MISMATCH") from exc
 
     def load_population(self) -> list[dict[str, Any]]:
         records = load_historical_common_population(self.population_path)
@@ -300,7 +316,7 @@ class FullPopulationRunner:
                     expected_requested_start=req_start,
                     expected_requested_end=req_end,
                 )
-                if is_valid:
+                if is_valid and self.store.is_current_authority_snapshot(t):
                     already_complete.append(t)
                     continue
 
@@ -316,6 +332,7 @@ class FullPopulationRunner:
                         and len(df) == resolution.expected_tradable_count
                         and list(df.index.strftime("%Y-%m-%d")) == list(resolution.expected_tradable_dates)
                         and meta is not None
+                        and self.store.is_current_authority_snapshot(t)
                         and meta.get("requested_start") == req_start
                         and meta.get("requested_end") == req_end
                     ):
@@ -361,7 +378,7 @@ class FullPopulationRunner:
     def process_single_ticker(
         self,
         rec: dict[str, Any],
-        provider: AdjustedPriceDataProvider | None = None,
+        provider: AdjustedPriceProviderProtocol | None = None,
         cached_info: dict[str, Any] | None = None,
     ) -> TickerAcquisitionRecord:
         """Process acquisition, coverage resolution, storage and verification for a single ticker."""
@@ -379,14 +396,26 @@ class FullPopulationRunner:
         frame: pd.DataFrame = pd.DataFrame()
         actual_dates: list[str] = []
 
+        cache_is_current = False
         if cached_info is not None and "actual_dates" in cached_info:
+            cache_is_current, _ = verify_stored_ticker_integrity(
+                self.store,
+                ticker,
+                cached_info.get("stored_row_count", len(cached_info.get("actual_dates", []))),
+                cached_info.get("actual_dates", []),
+                expected_requested_start=req_start,
+                expected_requested_end=req_end,
+            )
+            cache_is_current = cache_is_current and self.store.is_current_authority_snapshot(ticker)
+        if cache_is_current:
             actual_dates = cached_info["actual_dates"]
             attempt_count = 0  # Reused from cache without network call
             retry_count = 0
             reused_without_network = True
         else:
             if provider is None:
-                provider = self.provider or AdjustedPriceDataProvider()
+                provider = self.provider
+            self._validate_provider_authority(provider)
 
             for attempt in range(1, self.max_retries + 2):
                 attempt_count = attempt
@@ -482,6 +511,7 @@ class FullPopulationRunner:
                 self.store.save_full(
                     ticker,
                     frame,
+                    source_descriptor=provider.source_descriptor if provider is not None else None,
                     metadata_context={"requested_start": req_start, "requested_end": req_end},
                 )
                 verified, v_err = verify_stored_ticker_integrity(
@@ -498,7 +528,7 @@ class FullPopulationRunner:
             except Exception as exc:
                 error_type = "STORE_WRITE_ERROR"
                 error_msg = sanitize_error_message(str(exc))
-        elif cached_info is not None and cached_info.get("post_write_verified"):
+        elif cache_is_current and cached_info is not None and cached_info.get("post_write_verified"):
             verified, v_err = verify_stored_ticker_integrity(
                 self.store, ticker, row_count, actual_dates
             )
@@ -565,7 +595,7 @@ class FullPopulationRunner:
 
     def run_acquisition(
         self,
-        provider: AdjustedPriceDataProvider | None = None,
+        provider: AdjustedPriceProviderProtocol | None = None,
         dry_run: bool = False,
         circuit_breaker_error_threshold: int = 20,
         circuit_breaker_empty_threshold: int = 20,
@@ -591,6 +621,9 @@ class FullPopulationRunner:
                 "status": "DRY_RUN_COMPLETED",
             }
 
+        active_provider = provider or self.provider
+        self._validate_provider_authority(active_provider)
+
         # Acquisition Loop
         start_time = time.time()
         for idx, rec in enumerate(population, start=1):
@@ -600,9 +633,14 @@ class FullPopulationRunner:
             if t in checkpoint.completed_tickers:
                 info = checkpoint.completed_tickers[t]
                 is_valid, _ = verify_stored_ticker_integrity(
-                    self.store, t, info.get("stored_row_count", 0), info.get("actual_dates", [])
+                    self.store,
+                    t,
+                    info.get("stored_row_count", 0),
+                    info.get("actual_dates", []),
+                    expected_requested_start=rec["first_common_date"],
+                    expected_requested_end=min(rec["last_common_date"], CANONICAL_CALENDAR_CUTOFF),
                 )
-                if is_valid:
+                if is_valid and self.store.is_current_authority_snapshot(t):
                     rec_obj = self.process_single_ticker(rec, cached_info=info)
                     records.append(rec_obj)
                     consecutive_errors = 0
@@ -612,10 +650,10 @@ class FullPopulationRunner:
                     continue
 
             # Query via provider with gentle rate-throttling to prevent KRX IP block
-            rec_obj = self.process_single_ticker(rec, provider=provider)
+            rec_obj = self.process_single_ticker(rec, provider=active_provider)
             records.append(rec_obj)
             if not rec_obj.reused_without_network:
-                time.sleep(0.25)  # Gentle delay between live PyKRX requests
+                time.sleep(0.25)  # Gentle delay between source requests
 
             if rec_obj.acquisition_status == AcquisitionStatus.COMPLETE.value:
                 consecutive_errors = 0

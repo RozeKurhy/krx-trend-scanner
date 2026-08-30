@@ -7,9 +7,20 @@ PyKRX for the unadjusted response used by the legacy composite provider.
 
 from __future__ import annotations
 
+from datetime import date, datetime
+import xml.etree.ElementTree as ET
+from typing import Any
+
 import pandas as pd
+import requests
 
 from trend_scanner.data.errors import MarketDataError
+from trend_scanner.data.adjusted_price_source_authority import (
+    AdjustedPriceSourceDescriptor,
+    CURRENT_SOURCE_DESCRIPTOR,
+    assert_current_descriptor,
+    load_adjusted_price_source_authority,
+)
 
 
 ADJUSTED_OHLC_COLUMNS = ("open", "high", "low", "close")
@@ -201,9 +212,171 @@ class AdjustedPriceDataProvider:
         return output.astype("float64")
 
 
+class NaverDirectAdjustedPriceDataProvider:
+    """Authoritative adjusted-OHLC provider backed by Naver's XML endpoint.
+
+    The provider deliberately performs one physical request for each logical
+    fetch. Retry policy belongs to the caller (the full-population runner).
+    """
+
+    endpoint = CURRENT_SOURCE_DESCRIPTOR.source_endpoint
+
+    def __init__(
+        self,
+        session: requests.Session | None = None,
+        timeout_seconds: float = 10.0,
+        authority_descriptor: AdjustedPriceSourceDescriptor | None = None,
+    ) -> None:
+        self.session = session if session is not None else requests.Session()
+        self.timeout_seconds = float(timeout_seconds)
+        if self.timeout_seconds <= 0:
+            raise ValueError("timeout_seconds must be positive")
+        # Validate the durable decision before the provider can make a call.
+        self.source_descriptor = authority_descriptor or load_adjusted_price_source_authority()
+        assert_current_descriptor(self.source_descriptor)
+        self._logical_fetch_count = 0
+        self._naver_http_call_count = 0
+        self._successful_fetch_count = 0
+        self._empty_fetch_count = 0
+        self._error_fetch_count = 0
+        self._pykrx_fallback_call_count = 0
+
+    @staticmethod
+    def _request_date(value: Any, field: str) -> tuple[str, pd.Timestamp]:
+        if isinstance(value, datetime):
+            timestamp = pd.Timestamp(value).tz_localize(None) if pd.Timestamp(value).tzinfo else pd.Timestamp(value)
+        elif isinstance(value, date):
+            timestamp = pd.Timestamp(value)
+        else:
+            try:
+                timestamp = pd.Timestamp(value)
+            except (TypeError, ValueError, OverflowError) as exc:
+                raise MarketDataError(f"{field}가 유효한 date-like 값이 아닙니다: {value!r}") from exc
+        if pd.isna(timestamp):
+            raise MarketDataError(f"{field}가 유효한 date-like 값이 아닙니다: {value!r}")
+        if timestamp.tzinfo is not None:
+            timestamp = timestamp.tz_localize(None)
+        return timestamp.strftime("%Y%m%d"), timestamp.normalize()
+
+    @property
+    def logical_fetch_count(self) -> int:
+        return self._logical_fetch_count
+
+    @property
+    def naver_http_call_count(self) -> int:
+        return self._naver_http_call_count
+
+    @property
+    def successful_fetch_count(self) -> int:
+        return self._successful_fetch_count
+
+    @property
+    def empty_fetch_count(self) -> int:
+        return self._empty_fetch_count
+
+    @property
+    def error_fetch_count(self) -> int:
+        return self._error_fetch_count
+
+    @property
+    def pykrx_fallback_call_count(self) -> int:
+        return self._pykrx_fallback_call_count
+
+    def call_audit(self) -> dict[str, int]:
+        return {
+            "logical_fetch_count": self.logical_fetch_count,
+            "naver_http_call_count": self.naver_http_call_count,
+            "successful_fetch_count": self.successful_fetch_count,
+            "empty_fetch_count": self.empty_fetch_count,
+            "error_fetch_count": self.error_fetch_count,
+            "pykrx_fallback_call_count": self.pykrx_fallback_call_count,
+        }
+
+    @staticmethod
+    def _empty() -> pd.DataFrame:
+        return _empty_adjusted_frame()
+
+    def _parse_response(self, payload: str, start: pd.Timestamp, end: pd.Timestamp) -> pd.DataFrame:
+        if not payload or not payload.strip():
+            return self._empty()
+        try:
+            root = ET.fromstring(payload)
+        except ET.ParseError as exc:
+            raise MarketDataError(f"Naver XML parse failure: {exc}") from exc
+        rows: list[tuple[pd.Timestamp, float, float, float, float]] = []
+        items = list(root.iter("item"))
+        if not items:
+            return self._empty()
+        for item in items:
+            data = item.attrib.get("data")
+            if data is None:
+                raise MarketDataError("Naver item에 data attribute가 없습니다.")
+            fields = data.split("|")
+            if len(fields) != 6:
+                raise MarketDataError(f"Naver item field count가 6이 아닙니다: {len(fields)}")
+            try:
+                day = pd.Timestamp(datetime.strptime(fields[0], "%Y%m%d"))
+                values = [float(fields[i]) for i in range(1, 5)]
+                float(fields[5])  # volume is validated but never emitted
+            except (TypeError, ValueError, OverflowError) as exc:
+                raise MarketDataError(f"Naver item numeric/date parse failure: {data!r}") from exc
+            if day < start or day > end:
+                raise MarketDataError(f"Naver response date is outside requested window: {fields[0]}")
+            if any(value <= 0 for value in values):
+                raise MarketDataError(f"Naver response contains non-positive OHLC: {data!r}")
+            open_, high, low, close = values
+            if high < max(open_, close) or low > min(open_, close) or high < low:
+                raise MarketDataError(f"Naver response OHLC relation is invalid: {data!r}")
+            rows.append((day, open_, high, low, close))
+        frame = pd.DataFrame(
+            [(day, open_, high, low, close) for day, open_, high, low, close in rows],
+            columns=["date", *ADJUSTED_OHLC_COLUMNS],
+        ).set_index("date")
+        if frame.index.has_duplicates:
+            raise MarketDataError("Naver response contains duplicate dates")
+        frame = frame.sort_index()
+        frame.index = pd.DatetimeIndex(frame.index).rename(None)
+        frame = frame[list(ADJUSTED_OHLC_COLUMNS)].astype("float64")
+        validate_adjusted_ohlc(frame)
+        return frame
+
+    def load_daily(self, ticker: str, start: Any, end: Any) -> pd.DataFrame:
+        normalized_ticker = normalize_ticker(ticker)
+        start_param, start_ts = self._request_date(start, "start")
+        end_param, end_ts = self._request_date(end, "end")
+        if start_ts > end_ts:
+            raise MarketDataError("start가 end보다 늦습니다.")
+        self._logical_fetch_count += 1
+        params = {
+            "symbol": normalized_ticker,
+            "timeframe": "day",
+            "requestType": 1,
+            "startTime": start_param,
+            "endTime": end_param,
+        }
+        self._naver_http_call_count += 1
+        try:
+            response = self.session.get(self.endpoint, params=params, timeout=self.timeout_seconds)
+            if getattr(response, "status_code", 200) >= 400:
+                raise MarketDataError(f"Naver HTTP failure: {response.status_code}")
+            frame = self._parse_response(getattr(response, "text", ""), start_ts, end_ts)
+        except MarketDataError:
+            self._error_fetch_count += 1
+            raise
+        except Exception as exc:
+            self._error_fetch_count += 1
+            raise MarketDataError(f"Naver adjusted-price request failed: {exc}") from exc
+        if frame.empty:
+            self._empty_fetch_count += 1
+        else:
+            self._successful_fetch_count += 1
+        return frame
+
+
 __all__ = [
     "ADJUSTED_OHLC_COLUMNS",
     "AdjustedPriceDataProvider",
+    "NaverDirectAdjustedPriceDataProvider",
     "normalize_ticker",
     "validate_adjusted_ohlc",
 ]

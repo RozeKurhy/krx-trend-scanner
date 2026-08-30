@@ -23,6 +23,7 @@ from trend_scanner.data.adjusted_price_pilot import (
     ExpectedCoverageResolution,
 )
 from trend_scanner.data.adjusted_price_store import AdjustedPriceStore
+from trend_scanner.data.adjusted_price_source_authority import CURRENT_SOURCE_DESCRIPTOR
 from trend_scanner.data.errors import MarketDataError
 from trend_scanner.universe.survivorship_safe_denominator_freeze import (
     DEFAULT_POPULATION_ARTIFACT_PATH,
@@ -36,6 +37,7 @@ class MockProvider:
         self.frames = frames_by_ticker or {}
         self.call_count = 0
         self.called_tickers: list[str] = []
+        self.source_descriptor = CURRENT_SOURCE_DESCRIPTOR
 
     def load_daily(self, ticker: str, start: str, end: str) -> pd.DataFrame:
         self.call_count += 1
@@ -202,6 +204,7 @@ def test_systemic_empty_circuit_breaker(tmp_path):
     class EmptyProvider:
         def __init__(self):
             self.calls = 0
+            self.source_descriptor = CURRENT_SOURCE_DESCRIPTOR
 
         def load_daily(self, ticker: str, start: str, end: str) -> pd.DataFrame:
             self.calls += 1
