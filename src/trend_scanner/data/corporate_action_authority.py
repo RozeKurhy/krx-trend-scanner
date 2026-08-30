@@ -2231,6 +2231,322 @@ def _recompute_samsung_price_parity_offline(price_rows: Any, anchor_date: str) -
     }
 
 
+REASSESSED_GATE14_PROVENANCE = "REASSESSED_GATE14_PROVENANCE"
+
+_C13_XML_ONLY_PROVENANCE_FIELDS = (
+    "selected_source_event_context_id",
+    "event_node_path",
+    "event_node_heading",
+    "timing_node_path",
+    "binding_relationship",
+    "lowest_common_ancestor_path",
+)
+
+_C13_AUTHORITY_PROVENANCE_FIELDS = (
+    "authority_record_id",
+    "authority_source_tier",
+    "authority_source_name",
+    "official_anchor_type",
+    "official_anchor_date",
+    "official_anchor_source_field",
+    "official_anchor_source_value",
+    "official_anchor_priority_rank",
+    "producing_request_id",
+    "retrieval_mode",
+    "raw_evidence_path",
+    "raw_evidence_sha256",
+)
+
+_C13_DUAL_TIER_PROVENANCE_FIELDS = (
+    "identity_authority_tier",
+    "identity_record_id",
+    "identity_candidate_rank",
+    "content_authority_tier",
+    "content_source_url",
+    "content_source_sha256",
+    "content_retrieval_request_id",
+    "content_producing_request_id",
+    "authority_resolution_mode",
+    "fallback_reason",
+    "superseded_anchor_date",
+    "active_anchor",
+    "active_anchor_source_value",
+    "superseded_anchor",
+    "candidate_discovery_algorithm",
+    "raw_evidence_origin",
+    "raw_evidence_size_bytes",
+)
+
+
+def _c13_normalize_provenance_date(value: Any) -> str:
+    """Normalize an ISO or English/Korean-style date for Gate14 checks."""
+    raw = re.sub(r"\s+", " ", str(value or "")).strip()
+    if not raw:
+        return ""
+    if re.fullmatch(r"\d{4}[-/.]\d{1,2}[-/.]\d{1,2}", raw):
+        year, month, day = re.split(r"[-/.]", raw)
+        try:
+            return datetime(int(year), int(month), int(day)).date().isoformat()
+        except ValueError:
+            return ""
+    month_names = {
+        "jan": 1, "january": 1, "feb": 2, "february": 2,
+        "mar": 3, "march": 3, "apr": 4, "april": 4,
+        "may": 5, "jun": 6, "june": 6, "jul": 7, "july": 7,
+        "aug": 8, "august": 8, "sep": 9, "september": 9,
+        "oct": 10, "october": 10, "nov": 11, "november": 11,
+        "dec": 12, "december": 12,
+    }
+    match = re.fullmatch(r"([A-Za-z]+)\s+(\d{1,2}),?\s+(\d{4})", raw)
+    if match:
+        month = month_names.get(match.group(1).lower())
+        if month:
+            try:
+                return datetime(int(match.group(3)), month, int(match.group(2))).date().isoformat()
+            except ValueError:
+                return ""
+    korean = re.fullmatch(r"(\d{4})\s*년\s*(\d{1,2})\s*월\s*(\d{1,2})", raw)
+    if korean:
+        try:
+            return datetime(int(korean.group(1)), int(korean.group(2)), int(korean.group(3))).date().isoformat()
+        except ValueError:
+            return ""
+    return ""
+
+
+def materialize_candidate_bound_fallback_control(
+    parent_control: Mapping[str, Any],
+    *,
+    candidate: Mapping[str, Any],
+    fallback_validation: Mapping[str, Any],
+    retrieval_lineage: Mapping[str, Any],
+    raw_path: str | Path,
+    raw_sha256: str,
+) -> dict[str, Any]:
+    """Build a fully self-consistent rank2/Tier-B control without row mutation.
+
+    Population identity fields are copied explicitly from the parent control,
+    while every authority-specific field is rebuilt from the selected
+    candidate, parsed issuer content and its frozen retrieval lineage.  XML
+    tree paths from a lower-priority OpenDART candidate are intentionally
+    cleared because issuer HTML does not provide that hierarchy.
+    """
+    if not isinstance(parent_control, Mapping):
+        raise ValueError("PARENT_CONTROL_REQUIRED")
+    if not isinstance(candidate, Mapping) or not isinstance(fallback_validation, Mapping):
+        raise ValueError("CANDIDATE_AND_FALLBACK_VALIDATION_REQUIRED")
+    provenance = fallback_validation.get("provenance")
+    parsed = fallback_validation.get("parsed")
+    if not isinstance(provenance, Mapping) or not isinstance(parsed, Mapping):
+        raise ValueError("FALLBACK_PROVENANCE_AND_PARSED_EVIDENCE_REQUIRED")
+    if fallback_validation.get("valid") is not True:
+        raise ValueError("TIER_B_FALLBACK_CONTRACT_INVALID")
+
+    identity_id = str(candidate.get("identity_record_id") or candidate.get("rcept_no") or "").strip()
+    authority_id = str(candidate.get("rcept_no") or "").strip()
+    identity_tier = str(candidate.get("identity_authority_tier") or provenance.get("identity_authority_tier") or "").strip()
+    content_tier = str(provenance.get("content_authority_tier") or "").strip()
+    resolution_mode = str(provenance.get("authority_resolution_mode") or "").strip()
+    request_id = str(
+        retrieval_lineage.get("request_id")
+        or retrieval_lineage.get("retrieval_id")
+        or retrieval_lineage.get("producing_request_id")
+        or provenance.get("content_retrieval_request_id")
+        or ""
+    ).strip()
+    source_url = str(provenance.get("content_source_url") or "").strip()
+    active_anchor = str(parsed.get("official_anchor_date") or "").strip()
+    active_anchor_type = str(parsed.get("official_anchor_type") or "").strip()
+    superseded_anchor = str(parsed.get("superseded_anchor_date") or "").strip()
+    actual_raw_sha = str(fallback_validation.get("raw_sha256") or raw_sha256 or "").strip()
+    if not identity_id or authority_id != identity_id:
+        raise ValueError("FALLBACK_IDENTITY_LINKAGE_INVALID")
+    if identity_tier not in {AuthoritySourceTier.TIER_A1_OPENDART.value, AuthoritySourceTier.TIER_A2_KRX_KIND.value}:
+        raise ValueError("FALLBACK_IDENTITY_TIER_INVALID")
+    if content_tier != TIER_B_ISSUER_OFFICIAL or resolution_mode != CANDIDATE_BOUND_FALLBACK_MODE:
+        raise ValueError("FALLBACK_CONTENT_CONTRACT_INVALID")
+    if not request_id or not active_anchor or not superseded_anchor or not actual_raw_sha:
+        raise ValueError("FALLBACK_PROVENANCE_INCOMPLETE")
+
+    # Copy only population identity/selection fields.  Authority-specific and
+    # XML-only fields are rebuilt below, never inherited from the parent row.
+    result: dict[str, Any] = {}
+    sensitive_tokens = (
+        "authority", "provenance", "anchor", "request", "raw_evidence",
+        "event_node", "timing_node", "binding_relationship", "lowest_common_ancestor",
+    )
+    for key, value in parent_control.items():
+        key_text = str(key)
+        key_lower = key_text.lower()
+        if key_text in _C13_AUTHORITY_PROVENANCE_FIELDS or key_text in _C13_XML_ONLY_PROVENANCE_FIELDS:
+            continue
+        if key_text in _C13_DUAL_TIER_PROVENANCE_FIELDS:
+            continue
+        if any(token in key_lower for token in sensitive_tokens):
+            continue
+        result[key_text] = value
+
+    result.update({
+        # Rebuilt authority provenance.
+        "authority_record_id": authority_id,
+        "authority_source_tier": content_tier,
+        "authority_source_name": "SAMSUNG_ISSUER_OFFICIAL",
+        "official_anchor_type": active_anchor_type,
+        "official_anchor_date": active_anchor,
+        "official_anchor_source_field": "Scheduled Listing Date of New Share Certificates",
+        "official_anchor_source_value": active_anchor,
+        "official_anchor_priority_rank": "1",
+        "producing_request_id": request_id,
+        "retrieval_mode": CANDIDATE_BOUND_FALLBACK_MODE,
+        "raw_evidence_path": str(raw_path),
+        "raw_evidence_sha256": actual_raw_sha,
+        # Issuer HTML has no XML tree semantics; do not fabricate or inherit.
+        **{field_name: "" for field_name in _C13_XML_ONLY_PROVENANCE_FIELDS},
+        # Explicit dual-tier/content lineage.
+        "identity_authority_tier": identity_tier,
+        "identity_record_id": identity_id,
+        "identity_candidate_rank": str(candidate.get("identity_candidate_rank") or candidate.get("candidate_rank") or ""),
+        "content_authority_tier": content_tier,
+        "content_source_url": source_url,
+        "content_source_sha256": actual_raw_sha,
+        "content_retrieval_request_id": request_id,
+        "content_producing_request_id": request_id,
+        "authority_resolution_mode": resolution_mode,
+        "fallback_reason": str(provenance.get("fallback_reason") or "A1_DOCUMENT_BODY_UNUSABLE_AND_A2_UNAVAILABLE"),
+        "superseded_anchor_date": superseded_anchor,
+        "active_anchor": active_anchor,
+        "active_anchor_source_value": active_anchor,
+        "superseded_anchor": superseded_anchor,
+        "candidate_discovery_algorithm": str(parent_control.get("selection_algorithm") or ""),
+        "raw_evidence_origin": "ISSUER_OFFICIAL_HTML",
+        "raw_evidence_size_bytes": str(fallback_validation.get("raw_size_bytes") or ""),
+    })
+    return result
+
+
+def evaluate_reassessed_gate14_provenance(
+    control: Mapping[str, Any],
+    *,
+    fallback_validation: Mapping[str, Any] | None = None,
+    retrieval_lineage: Mapping[str, Any] | None = None,
+    raw_path: str | Path | None = None,
+    raw_bytes: bytes | None = None,
+) -> dict[str, Any]:
+    """Evaluate Gate14 from the materialized control, fail-closed.
+
+    Gate14 is intentionally independent from the parent Gate14 value.  It
+    checks identity/content linkage, active-anchor provenance, producing
+    request, raw hash linkage and leakage of the stale rank3/MAY-16 claims.
+    """
+    row = dict(control) if isinstance(control, Mapping) else {}
+    blockers: list[str] = []
+    checks: dict[str, bool] = {}
+
+    authority_id = str(row.get("authority_record_id") or "").strip()
+    identity_id = str(row.get("identity_record_id") or "").strip()
+    selected_id = str(row.get("selected_record_id") or authority_id).strip()
+    identity_tier = str(row.get("identity_authority_tier") or "").strip()
+    content_tier = str(row.get("content_authority_tier") or row.get("authority_source_tier") or "").strip()
+    resolution_mode = str(row.get("authority_resolution_mode") or row.get("retrieval_mode") or "").strip()
+    content_request = str(row.get("content_producing_request_id") or row.get("content_retrieval_request_id") or "").strip()
+    producing_request = str(row.get("producing_request_id") or "").strip()
+    active_anchor = str(row.get("official_anchor_date") or row.get("active_anchor") or "").strip()
+    active_source_value = str(row.get("official_anchor_source_value") or row.get("active_anchor_source_value") or "").strip()
+    superseded_anchor = str(row.get("superseded_anchor_date") or row.get("superseded_anchor") or "").strip()
+    raw_hash = str(row.get("raw_evidence_sha256") or row.get("content_source_sha256") or "").strip()
+    raw_path_value = str(row.get("raw_evidence_path") or raw_path or "").strip()
+
+    checks["selected_authority_identity_valid"] = bool(authority_id and identity_id and authority_id == identity_id and selected_id == authority_id)
+    checks["identity_tier_valid"] = identity_tier in {AuthoritySourceTier.TIER_A1_OPENDART.value, AuthoritySourceTier.TIER_A2_KRX_KIND.value}
+    checks["content_tier_valid"] = content_tier == TIER_B_ISSUER_OFFICIAL
+    checks["identity_content_linkage_valid"] = bool(
+        row.get("content_authority_tier") == TIER_B_ISSUER_OFFICIAL
+        and str(row.get("content_source_sha256") or "").strip() == raw_hash
+        and content_request == producing_request
+    )
+    checks["selected_record_id_consistent"] = bool(authority_id == identity_id)
+    checks["active_anchor_consistent"] = bool(
+        _c13_normalize_provenance_date(active_anchor)
+        and _c13_normalize_provenance_date(active_source_value) == _c13_normalize_provenance_date(active_anchor)
+    )
+    checks["anchor_source_value_consistent"] = checks["active_anchor_consistent"]
+    expected_request = str((retrieval_lineage or {}).get("request_id") or (retrieval_lineage or {}).get("producing_request_id") or "").strip()
+    checks["producing_content_request_consistent"] = bool(content_request and producing_request and content_request == producing_request and (not expected_request or content_request == expected_request))
+    checks["retrieval_mode_consistent"] = resolution_mode == CANDIDATE_BOUND_FALLBACK_MODE
+    checks["raw_evidence_path_hash_consistent"] = bool(raw_path_value and raw_hash)
+    if raw_bytes is not None:
+        checks["raw_evidence_path_hash_consistent"] = checks["raw_evidence_path_hash_consistent"] and hashlib.sha256(raw_bytes).hexdigest() == raw_hash
+    elif raw_path_value:
+        candidate_path = Path(raw_path_value)
+        if candidate_path.is_file():
+            checks["raw_evidence_path_hash_consistent"] = checks["raw_evidence_path_hash_consistent"] and _offline_evidence_sha256(candidate_path) == raw_hash
+        else:
+            checks["raw_evidence_path_hash_consistent"] = False
+    checks["superseded_anchor_explicit"] = bool(superseded_anchor and _c13_normalize_provenance_date(superseded_anchor) != _c13_normalize_provenance_date(active_anchor))
+
+    sensitive_fields = set(_C13_AUTHORITY_PROVENANCE_FIELDS) | set(_C13_DUAL_TIER_PROVENANCE_FIELDS) | set(_C13_XML_ONLY_PROVENANCE_FIELDS)
+    stale_rank3_reference_count = sum(
+        str(value or "").count("20180223000294")
+        for key, value in row.items()
+        if str(key) in sensitive_fields and str(key) not in {"superseded_anchor_date", "superseded_anchor"}
+    )
+    stale_active_may16_reference_count = sum(
+        str(row.get(key) or "").count("2018-05-16") + str(row.get(key) or "").count("2018년 5월 16")
+        for key in ("official_anchor_date", "official_anchor_source_value", "active_anchor", "active_anchor_source_value")
+    )
+    checks["no_stale_rank3_authority_provenance"] = stale_rank3_reference_count == 0
+    checks["no_stale_active_may16_provenance"] = stale_active_may16_reference_count == 0
+    checks["fallback_contract_valid"] = bool(
+        isinstance(fallback_validation, Mapping)
+        and fallback_validation.get("valid") is True
+        and isinstance(fallback_validation.get("provenance"), Mapping)
+        and fallback_validation["provenance"].get("content_authority_tier") == TIER_B_ISSUER_OFFICIAL
+        and fallback_validation["provenance"].get("authority_resolution_mode") == CANDIDATE_BOUND_FALLBACK_MODE
+    )
+    checks["dual_tier_provenance_complete"] = bool(
+        identity_id and identity_tier and content_tier and content_request and producing_request
+        and raw_hash and raw_path_value and resolution_mode
+    )
+
+    check_labels = {
+        "selected_authority_identity_valid": "SELECTED_AUTHORITY_IDENTITY_INVALID",
+        "identity_tier_valid": "IDENTITY_AUTHORITY_TIER_INVALID",
+        "content_tier_valid": "CONTENT_AUTHORITY_TIER_INVALID",
+        "identity_content_linkage_valid": "IDENTITY_CONTENT_LINKAGE_INVALID",
+        "selected_record_id_consistent": "SELECTED_RECORD_ID_INCONSISTENT",
+        "active_anchor_consistent": "ACTIVE_ANCHOR_INCONSISTENT",
+        "anchor_source_value_consistent": "ANCHOR_SOURCE_VALUE_INCONSISTENT",
+        "producing_content_request_consistent": "CONTENT_PRODUCING_REQUEST_INVALID",
+        "retrieval_mode_consistent": "RETRIEVAL_MODE_INVALID",
+        "raw_evidence_path_hash_consistent": "RAW_EVIDENCE_PATH_HASH_INVALID",
+        "superseded_anchor_explicit": "SUPERSEDED_ANCHOR_NOT_EXPLICIT",
+        "no_stale_rank3_authority_provenance": "STALE_RANK3_PROVENANCE_LEAK",
+        "no_stale_active_may16_provenance": "STALE_ACTIVE_MAY16_PROVENANCE_LEAK",
+        "fallback_contract_valid": "TIER_B_FALLBACK_CONTRACT_INVALID",
+        "dual_tier_provenance_complete": "DUAL_TIER_PROVENANCE_INCOMPLETE",
+    }
+    blockers.extend(label for key, label in check_labels.items() if not checks.get(key, False))
+    blockers = list(dict.fromkeys(blockers))
+    return {
+        "schema": "gate14_reassessment_v01_c13_tier_b_candidate_bound_fallback",
+        "evaluation_type": REASSESSED_GATE14_PROVENANCE,
+        "gate_14_pass": not blockers,
+        "blockers": blockers,
+        "selected_rcept_no": authority_id,
+        "identity_authority_tier": identity_tier,
+        "content_authority_tier": content_tier,
+        "authority_resolution_mode": resolution_mode,
+        "content_producing_request_id": content_request,
+        "active_anchor": active_anchor,
+        "active_anchor_source_value": active_source_value,
+        "superseded_anchor": superseded_anchor,
+        "raw_sha256": raw_hash,
+        "stale_rank3_reference_count": stale_rank3_reference_count,
+        "stale_active_may16_reference_count": stale_active_may16_reference_count,
+        "checks": checks,
+    }
+
+
 def reassess_c13_tier_b_fallback_offline(
     *,
     evidence_root: Path,
@@ -2368,26 +2684,45 @@ def reassess_c13_tier_b_fallback_offline(
     if int(samsung_mask.sum()) != 1:
         raise ValueError("SAMSUNG_PARENT_CONTROL_NOT_UNIQUE")
 
-    # Build a derived control set.  The seven non-Samsung controls are copied
-    # byte-for-byte; only Samsung's selected record and active anchor move to
-    # the candidate-bound issuer-official content evidence.
+    # Build a derived control set.  The seven non-Samsung controls retain every
+    # parent column byte-for-byte; Samsung is fully materialized from the
+    # candidate-bound issuer-official content evidence instead of shallowly
+    # overwriting a rank3 row.
+    issuer_lineage = {
+        "request_id": issuer_success.get("request_id", ""),
+        "retrieved_at": issuer_success.get("completed_at", ""),
+        "raw_path": str(raw_path),
+    }
     reassessed_controls = parent_controls.copy()
     samsung_idx = reassessed_controls.index[samsung_mask][0]
-    reassessed_controls.loc[samsung_idx, "authority_record_id"] = candidate["rcept_no"]
-    reassessed_controls.loc[samsung_idx, "official_anchor_date"] = "2018-05-04"
-    if "authority_source_tier" in reassessed_controls.columns:
-        reassessed_controls.loc[samsung_idx, "authority_source_tier"] = TIER_B_ISSUER_OFFICIAL
-    if "authority_source_name" in reassessed_controls.columns:
-        reassessed_controls.loc[samsung_idx, "authority_source_name"] = "SAMSUNG_ISSUER_OFFICIAL"
-    if "raw_evidence_path" in reassessed_controls.columns:
-        reassessed_controls.loc[samsung_idx, "raw_evidence_path"] = str(raw_path)
-    if "raw_evidence_sha256" in reassessed_controls.columns:
-        reassessed_controls.loc[samsung_idx, "raw_evidence_sha256"] = raw_sha
+    # The materializer needs the actual parent row; construct it after the
+    # index is known and then append only its explicit dual-tier columns.
+    samsung_control = materialize_candidate_bound_fallback_control(
+        parent_controls.loc[samsung_idx].to_dict(),
+        candidate=candidate,
+        fallback_validation=fallback_validation,
+        retrieval_lineage=issuer_lineage,
+        raw_path=raw_path,
+        raw_sha256=raw_sha,
+    )
+    for field_name in samsung_control:
+        if field_name not in reassessed_controls.columns:
+            reassessed_controls[field_name] = ""
+    for field_name, value in samsung_control.items():
+        reassessed_controls.at[samsung_idx, field_name] = value
     non_samsung_parent = parent_controls.loc[~samsung_mask].reset_index(drop=True)
-    non_samsung_reassessed = reassessed_controls.loc[~samsung_mask].reset_index(drop=True)
+    non_samsung_reassessed = reassessed_controls.loc[~samsung_mask, parent_controls.columns].reset_index(drop=True)
     seven_control_drift = not non_samsung_parent.equals(non_samsung_reassessed)
     if seven_control_drift:
         raise ValueError("SEVEN_CONTROL_DRIFT")
+
+    reassessed_gate14 = evaluate_reassessed_gate14_provenance(
+        samsung_control,
+        fallback_validation=fallback_validation,
+        retrieval_lineage=issuer_lineage,
+        raw_path=raw_path,
+        raw_bytes=raw_path.read_bytes(),
+    )
 
     parent_price = _evidence_frame(price_path)
     if parent_price.empty:
@@ -2434,6 +2769,9 @@ def reassess_c13_tier_b_fallback_offline(
         "schema": "gate06_corporate_action_reassessment_v01_fix03_correction_13",
         "unresolved_higher_priority_candidate_count": population["unresolved_higher_priority_candidate_count"],
         "selected_authority_archive_provenance_failure_count": population["selected_authority_archive_provenance_failure_count"],
+        "reassessed_gate14_provenance_complete": bool(reassessed_gate14.get("gate_14_pass")),
+        "gate14_stale_rank3_reference_count": reassessed_gate14.get("stale_rank3_reference_count", 0),
+        "gate14_stale_active_may16_reference_count": reassessed_gate14.get("stale_active_may16_reference_count", 0),
         "reassessed_control_artifact": reassessed_controls_path.name,
         "reassessed_parity_artifact": reassessed_parity_path.name,
         "reassessed_reconciliation_artifact": reassessed_reconciliation_path.name,
@@ -2457,6 +2795,7 @@ def reassess_c13_tier_b_fallback_offline(
     inherited = parent_decision.get("inherited_gate_results", {}) if isinstance(parent_decision, Mapping) else {}
     all_gates = {key: value is True for key, value in inherited.items()}
     all_gates["gate_06_corporate_action_parity"] = gate06_pass
+    all_gates["gate_14_provenance_complete"] = bool(reassessed_gate14.get("gate_14_pass"))
     all_gates["gate_15_no_unresolved_conditions"] = gate15_pass
     regression_valid = bool(regression_certification.get("certification_valid") is True and regression_certification.get("full_suite_completion") is True and not regression_certification.get("unexpected_failures") and not regression_certification.get("unexpected_errors") and int(regression_certification.get("new_regression_count", 0) or 0) == 0)
     ready = bool(regression_valid and fallback_validation.get("valid") is True and price_reassessment["parity_verdict"] == "MATCH" and all(all_gates.values()))
@@ -2471,6 +2810,8 @@ def reassess_c13_tier_b_fallback_offline(
                 "status": item.get("status"),
                 "resolution_mode": fallback_validation.get("provenance", {}).get("authority_resolution_mode", "") if row.get("rcept_no") == candidate["rcept_no"] else "",
                 "content_authority_tier": fallback_validation.get("provenance", {}).get("content_authority_tier", "") if row.get("rcept_no") == candidate["rcept_no"] else "",
+                "identity_authority_tier": samsung_control.get("identity_authority_tier", "") if row.get("rcept_no") == candidate["rcept_no"] else "",
+                "content_producing_request_id": samsung_control.get("content_producing_request_id", "") if row.get("rcept_no") == candidate["rcept_no"] else "",
             })
     implementation_identity = {
         "schema": "implementation_fix_identity_v01_c13_tier_b_candidate_bound_fallback",
@@ -2484,7 +2825,28 @@ def reassess_c13_tier_b_fallback_offline(
     (output / "implementation_regression_certification.json").write_text(json.dumps(dict(regression_certification), indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     (output / "issuer_official_trust_registry_audit.json").write_text(json.dumps({"schema": "issuer_official_trust_registry_audit_v01", "registry": trust_registry_audit()}, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     (output / "tier_b_fallback_contract_validation.json").write_text(json.dumps({"schema": "tier_b_fallback_contract_validation_v01", "candidate": candidate, "validation": fallback_validation, "supplemental_evidence_hashes": {"issuer_raw": raw_sha, "contract_review": contract_sha}}, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-    (output / "dual_tier_provenance.json").write_text(json.dumps(fallback_validation.get("provenance", {}), indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    dual_tier_payload = {
+        field_name: samsung_control.get(field_name, "")
+        for field_name in (
+            "identity_authority_tier", "identity_record_id", "identity_candidate_rank",
+            "content_authority_tier", "content_source_url", "content_source_sha256",
+            "content_retrieval_request_id", "content_producing_request_id",
+            "authority_resolution_mode", "fallback_reason", "authority_record_id",
+            "official_anchor_type", "official_anchor_date", "official_anchor_source_field",
+            "official_anchor_source_value", "superseded_anchor_date", "raw_evidence_path",
+            "raw_evidence_sha256", "retrieval_mode",
+        )
+    }
+    (output / "dual_tier_provenance.json").write_text(json.dumps(dual_tier_payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    (output / "reassessed_provenance_audit.json").write_text(
+        json.dumps({
+            "schema": "reassessed_provenance_audit_v01_c13_tier_b_candidate_bound_fallback",
+            "evaluation_type": REASSESSED_GATE14_PROVENANCE,
+            "selected_control": samsung_control,
+            "gate14": reassessed_gate14,
+        }, indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
     pd.DataFrame(status_rows).sort_values("candidate_rank").to_csv(output / "candidate_population_reassessment.csv", index=False)
     anchor_payload = {
         "ticker": "005930",
@@ -2498,6 +2860,7 @@ def reassess_c13_tier_b_fallback_offline(
     (output / "samsung_anchor_reassessment.json").write_text(json.dumps(anchor_payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     pd.DataFrame([price_reassessment]).to_csv(output / "samsung_price_parity_reassessment.csv", index=False)
     (output / "gate06_reassessment.json").write_text(json.dumps({"schema": "gate06_reassessment_v01_c13_tier_b_candidate_bound_fallback", "gate_06_pass": gate06_pass, "blockers": gate06_blockers, "selected_rcept_no": candidate["rcept_no"], "active_anchor_date": "2018-05-04", "reassessed_parity_artifact_sha256": _offline_evidence_sha256(reassessed_parity_path), "reassessed_reconciliation_artifact_sha256": _offline_evidence_sha256(reassessed_reconciliation_path), "unresolved_count": population["unresolved_higher_priority_candidate_count"], "metrics": gate_metrics}, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    (output / "gate14_reassessment.json").write_text(json.dumps(reassessed_gate14, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     (output / "gate15_reassessment.json").write_text(json.dumps({"schema": "gate15_reassessment_v01_c13_tier_b_candidate_bound_fallback", "gate_15_pass": gate15_pass, "blockers": gate15_blockers, "metrics": {"gate06_result": gate06_pass, "gate06_input_artifact": reassessed_parity_path.name, "gate06_reconciliation_artifact": reassessed_reconciliation_path.name, "unresolved_higher_priority_candidate_count": population["unresolved_higher_priority_candidate_count"], "fallback_contract_valid": fallback_validation.get("valid") is True, "price_parity_verdict": price_reassessment["parity_verdict"]}}, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     parent_unchanged = all(
         path.is_file() and _offline_evidence_sha256(path) == expected
@@ -2529,9 +2892,11 @@ def reassess_c13_tier_b_fallback_offline(
         "parent_canonical_artifacts_unchanged": parent_unchanged,
         "supplemental_frozen_evidence_unchanged": supplemental_unchanged,
         "gate06_pass": gate06_pass,
+        "gate14_pass": bool(reassessed_gate14.get("gate_14_pass")),
+        "gate14_reassessment": reassessed_gate14,
         "gate15_pass": gate15_pass,
         "all_gates": all_gates,
-        "recommended_next_state": "READY_FOR_AUTHORITY_CLOSURE_REASSESSMENT" if ready else "IMPLEMENTATION_REASSESSMENT_BLOCKED",
+        "recommended_next_state": "IMPLEMENTATION_FIX02_ACCEPTED_READY_FOR_CLOSURE_REASSESSMENT_V02" if ready else "IMPLEMENTATION_FIX02_REASSESSMENT_BLOCKED",
         "external_network_calls": 0,
     }
     output_manifest = {

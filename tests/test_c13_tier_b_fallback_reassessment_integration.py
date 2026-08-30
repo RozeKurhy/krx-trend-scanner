@@ -159,8 +159,33 @@ def test_c13_reassessment_is_hermetic_and_binds_may04_gate_provenance(tmp_path, 
     assert result["samsung_price_parity"]["pre_common_date_count"] >= 5
     assert result["samsung_price_parity"]["post_common_date_count"] >= 5
     assert result["gate06_pass"] is True
+    assert result["gate14_pass"] is True
     assert result["gate15_pass"] is True
+    assert result["all_gates"]["gate_14_provenance_complete"] is True
+    assert result["recommended_next_state"] == "IMPLEMENTATION_FIX02_ACCEPTED_READY_FOR_CLOSURE_REASSESSMENT_V02"
     assert (tmp_path / "output" / "reassessed_corporate_action_controls.csv").is_file()
+    assert (tmp_path / "output" / "reassessed_provenance_audit.json").is_file()
+    gate14 = json.loads((tmp_path / "output" / "gate14_reassessment.json").read_text())
+    assert gate14["gate_14_pass"] is True
+    assert gate14["stale_rank3_reference_count"] == 0
+    assert gate14["stale_active_may16_reference_count"] == 0
+    controls = pd.read_csv(tmp_path / "output" / "reassessed_corporate_action_controls.csv", dtype=str, keep_default_na=False)
+    samsung = controls.loc[controls["ticker"].astype(str) == "005930"].iloc[0].to_dict()
+    assert samsung["authority_record_id"] == "20180316800856"
+    assert samsung["content_authority_tier"] == ca.TIER_B_ISSUER_OFFICIAL
+    assert samsung["content_producing_request_id"] == "REQ_ISSUER"
+    assert samsung["official_anchor_date"] == "2018-05-04"
+    assert samsung["official_anchor_source_value"] == "2018-05-04"
+    assert samsung["superseded_anchor_date"] == "2018-05-16"
+    assert samsung["selected_source_event_context_id"] == ""
+    assert samsung["event_node_path"] == ""
+    assert samsung["timing_node_path"] == ""
+    assert "20180223000294" not in " ".join(str(value) for key, value in samsung.items() if key in {
+        "authority_record_id", "authority_source_name", "producing_request_id", "raw_evidence_path",
+        "identity_record_id", "content_source_url", "content_retrieval_request_id",
+        "content_producing_request_id", "selected_source_event_context_id", "event_node_path",
+        "timing_node_path", "binding_relationship", "lowest_common_ancestor_path",
+    })
     gate = json.loads((tmp_path / "output" / "gate06_reassessment.json").read_text())
     assert gate["reassessed_parity_artifact_sha256"] == hashlib.sha256((tmp_path / "output" / "reassessed_event_sensitive_parity.csv").read_bytes()).hexdigest()
     assert gate["metrics"]["gate06_price_provenance"] == "REASSESSED_MAY-04_PARITY"

@@ -9,7 +9,9 @@ import pytest
 
 from trend_scanner.data.corporate_action_authority import (
     classify_candidate_resolution,
+    evaluate_reassessed_gate14_provenance,
     evaluate_candidate_resolution_population,
+    materialize_candidate_bound_fallback_control,
 )
 from trend_scanner.data.issuer_official_fallback import (
     CANDIDATE_BOUND_FALLBACK_MODE,
@@ -176,3 +178,107 @@ def test_invalid_fallback_stays_unresolved_and_direct_a1_contract_is_unchanged(r
     assert classify_candidate_resolution(
         {"candidate_rank": 1}, official_evidence_obtained=True, semantic_valid=True, official_content_usable=True
     ) == "AUTHORITY_VALID"
+
+
+def _parent_control() -> dict[str, object]:
+    return {
+        "canonical_run_id": "RUN_PARENT",
+        "control_id": "CORP_005930_STOCK_SPLIT",
+        "ticker": "005930",
+        "issuer_name": "삼성전자",
+        "corp_code": "00126380",
+        "source_event_type": "STOCK_SPLIT",
+        "normalized_event_type": "STOCK_SPLIT",
+        "selected_source_event_context_id": "20180223000294:STOCK_SPLIT:XML",
+        "event_node_path": "DOCUMENT[1]/BODY[1]/SECTION[1]",
+        "event_node_heading": "□ 정관의 변경",
+        "timing_node_path": "DOCUMENT[1]/BODY[1]/SECTION[1]/P[1]",
+        "binding_relationship": "ANCESTOR_DESCENDANT",
+        "lowest_common_ancestor_path": "DOCUMENT[1]/BODY[1]/SECTION[1]",
+        "official_anchor_type": "NEW_SHARE_LISTING_DATE",
+        "official_anchor_date": "2018-05-16",
+        "official_anchor_source_field": "신주상장예정일",
+        "official_anchor_source_value": "2018년 5월 16",
+        "official_anchor_priority_rank": "1",
+        "price_window_start": "2018-04-11",
+        "price_window_end": "2018-06-20",
+        "authority_source_tier": TIER_A1_OPENDART,
+        "authority_source_name": "OPENDART_OFFICIAL_API",
+        "authority_record_id": "20180223000294",
+        "producing_request_id": "REQ_DOC_PROBE_OPENDART_005930_20180223000294_R3",
+        "retrieval_mode": "NEW_OPENDART_DOCUMENT_FETCH",
+        "raw_evidence_path": "raw/rank3.xml",
+        "raw_evidence_sha256": "rank3-sha",
+        "selection_role": "AUTHORITY_VALID_FROZEN_CONTROL",
+        "selection_order": "1",
+        "selection_algorithm": "OPENDART_PAGINATED_CLAIM_FREE_TRUE_XML_HIERARCHY",
+    }
+
+
+def test_materialized_rank2_fallback_clears_rank3_xml_and_gate14_passes(raw: bytes):
+    fallback = _validate(raw)
+    control = materialize_candidate_bound_fallback_control(
+        _parent_control(),
+        candidate=_candidate(),
+        fallback_validation=fallback,
+        retrieval_lineage={
+            "request_id": "REQ_ISSUER_OFFICIAL_SAMSUNG_005930_20180316800856_FIX01_R1",
+            "retrieved_at": "2026-08-29T22:40:11Z",
+        },
+        raw_path=_raw_path(),
+        raw_sha256=RAW_SHA,
+    )
+    assert control["authority_record_id"] == "20180316800856"
+    assert control["identity_authority_tier"] == TIER_A1_OPENDART
+    assert control["content_authority_tier"] == TIER_B_ISSUER_OFFICIAL
+    assert control["authority_resolution_mode"] == CANDIDATE_BOUND_FALLBACK_MODE
+    assert control["official_anchor_date"] == "2018-05-04"
+    assert control["official_anchor_source_value"] == "2018-05-04"
+    assert control["superseded_anchor_date"] == "2018-05-16"
+    assert control["content_producing_request_id"] == "REQ_ISSUER_OFFICIAL_SAMSUNG_005930_20180316800856_FIX01_R1"
+    assert control["selected_source_event_context_id"] == ""
+    assert control["event_node_path"] == ""
+    assert "20180223000294" not in " ".join(str(control[key]) for key in control if key in {
+        "authority_record_id", "authority_source_name", "producing_request_id", "raw_evidence_path",
+        "identity_record_id", "content_source_url", "content_retrieval_request_id",
+        "content_producing_request_id", "selected_source_event_context_id", "event_node_path",
+        "timing_node_path", "binding_relationship", "lowest_common_ancestor_path",
+    })
+    gate14 = evaluate_reassessed_gate14_provenance(
+        control,
+        fallback_validation=fallback,
+        retrieval_lineage={"request_id": control["content_producing_request_id"]},
+        raw_path=_raw_path(),
+        raw_bytes=raw,
+    )
+    assert gate14["gate_14_pass"] is True
+    assert gate14["stale_rank3_reference_count"] == 0
+    assert gate14["stale_active_may16_reference_count"] == 0
+
+
+def test_reassessed_gate14_rejects_rank3_producing_request_leak(raw: bytes):
+    fallback = _validate(raw)
+    control = materialize_candidate_bound_fallback_control(
+        _parent_control(), candidate=_candidate(), fallback_validation=fallback,
+        retrieval_lineage={"request_id": "REQ_ISSUER_OFFICIAL_SAMSUNG_005930_20180316800856_FIX01_R1", "retrieved_at": "T"},
+        raw_path=_raw_path(), raw_sha256=RAW_SHA,
+    )
+    control["content_producing_request_id"] = "REQ_DOC_PROBE_OPENDART_005930_20180223000294_R3"
+    gate14 = evaluate_reassessed_gate14_provenance(control, fallback_validation=fallback, raw_path=_raw_path(), raw_bytes=raw)
+    assert gate14["gate_14_pass"] is False
+    assert gate14["stale_rank3_reference_count"] > 0
+    assert "STALE_RANK3_PROVENANCE_LEAK" in gate14["blockers"]
+
+
+def test_reassessed_gate14_rejects_active_may16_anchor_leak(raw: bytes):
+    fallback = _validate(raw)
+    control = materialize_candidate_bound_fallback_control(
+        _parent_control(), candidate=_candidate(), fallback_validation=fallback,
+        retrieval_lineage={"request_id": "REQ_ISSUER_OFFICIAL_SAMSUNG_005930_20180316800856_FIX01_R1", "retrieved_at": "T"},
+        raw_path=_raw_path(), raw_sha256=RAW_SHA,
+    )
+    control["official_anchor_source_value"] = "2018-05-16"
+    gate14 = evaluate_reassessed_gate14_provenance(control, fallback_validation=fallback, raw_path=_raw_path(), raw_bytes=raw)
+    assert gate14["gate_14_pass"] is False
+    assert gate14["stale_active_may16_reference_count"] > 0
+    assert "STALE_ACTIVE_MAY16_PROVENANCE_LEAK" in gate14["blockers"]
