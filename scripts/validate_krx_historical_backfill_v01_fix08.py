@@ -43,7 +43,6 @@ FROZEN_RUNTIME_PATHS = (
     "src/trend_scanner/data/krx_raw_stock_provider.py",
     "src/trend_scanner/data/krx_raw_stock_store.py",
     "src/trend_scanner/data/krx_historical_backfill.py",
-    "src/trend_scanner/data/source_contracts.py",
 )
 PILOT_ARTIFACTS = (
     "artifacts/data/krx_historical_backfill/v01/FIX07_live_pilot_summary.json",

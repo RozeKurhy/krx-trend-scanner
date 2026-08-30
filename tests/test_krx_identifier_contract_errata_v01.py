@@ -32,7 +32,7 @@ def test_short_code_shape_is_fail_closed(ticker):
 
 
 def test_errata_contract_namespace_is_declared_exactly():
-    assert ARCHITECTURE_VERSION == "KRX_PRODUCTION_DATA_ARCHITECTURE_V01_ERRATA01"
+    assert ARCHITECTURE_VERSION == "KRX_PRODUCTION_DATA_ARCHITECTURE_V01_ERRATA02"
     assert ENDPOINT_IDENTIFIER_CONTRACT["DAILY_TRADING"]["fields"]["ISU_CD"]["identifier_namespace"] == "KRX_SHORT_CODE"
     assert ENDPOINT_IDENTIFIER_CONTRACT["BASIC_INFO"]["fields"]["ISU_SRT_CD"]["identifier_namespace"] == "KRX_SHORT_CODE"
     by_key = {(item.owner_store, item.target_field): item for item in STORE_FIELD_PROVENANCE}
