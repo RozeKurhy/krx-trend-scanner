@@ -22,6 +22,7 @@ from trend_scanner.data.adjusted_price_store import (
     LEGACY_STORE_VERSION,
 )
 from trend_scanner.data.errors import MarketDataError
+from trend_scanner.data.source_contracts import ADJUSTED_PRICE_AUTHORITY_CONTRACT
 
 
 class Response:
@@ -59,14 +60,27 @@ def test_authority_loader_binds_exact_decision_sha():
     assert descriptor.authority_decision_sha256 == AUTHORITY_DECISION_SHA256
 
 
-def test_authority_loader_rejects_tampered_decision(tmp_path: Path):
-    source = Path("artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/authority_closure/v02/authority_closure_decision_v02.json")
+def test_offline_authority_evidence_binds_package_contract():
+    source = Path(__file__).resolve().parents[1] / "artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/authority_closure/v02/authority_closure_decision_v02.json"
     payload = json.loads(source.read_text(encoding="utf-8"))
-    payload["all_gates_passed"] = False
-    tampered = tmp_path / "decision.json"
-    tampered.write_text(json.dumps(payload), encoding="utf-8")
-    with pytest.raises(MarketDataError, match="decision SHA mismatch"):
-        load_adjusted_price_source_authority(tampered)
+    assert hashlib.sha256(source.read_bytes()).hexdigest() == AUTHORITY_DECISION_SHA256
+    assert payload["authority_closure"] == "CLOSED"
+    assert payload["review_decision"] == "APPROVED_FOR_PRODUCTION_INTEGRATION"
+    assert payload["production_integration_authorized"] is True
+    assert payload["all_gates_passed"] is True
+    assert payload["fix02_head"] == ADJUSTED_PRICE_AUTHORITY_CONTRACT["fix02_head"]
+    assert payload["fix02_tree"] == ADJUSTED_PRICE_AUTHORITY_CONTRACT["fix02_tree"]
+
+
+def test_runtime_authority_is_cwd_independent(monkeypatch, tmp_path: Path):
+    monkeypatch.chdir(tmp_path)
+    session = Session(_xml("20240102|100|110|90|105|123"))
+    provider = NaverDirectAdjustedPriceDataProvider(session=session)
+    frame = provider.load_daily("005930", "2024-01-02", "2024-01-02")
+    assert len(frame) == 1
+    assert provider.source_descriptor == CURRENT_SOURCE_DESCRIPTOR
+    with pytest.raises(MarketDataError, match="package-owned"):
+        load_adjusted_price_source_authority(decision_path=tmp_path / "inaccessible.json")
 
 
 def test_naver_positive_request_and_ohlc_only_output():

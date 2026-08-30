@@ -1,34 +1,31 @@
-"""Durable authority binding for the adjusted-price production source."""
+"""Package-owned adjusted-price authority contract adapter.
+
+Closure evidence is audited by offline tests and is never read by production
+runtime initialization.
+"""
 
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
-import hashlib
-import json
-from pathlib import Path
 from typing import Any, Mapping
 
 from trend_scanner.data.errors import MarketDataError
+from trend_scanner.data.source_contracts import ADJUSTED_PRICE_AUTHORITY_CONTRACT
 
 
-SOURCE_AUTHORITY_ID = "NAVER_DIRECT_DATE_RANGE_ADJUSTED_V1"
-SOURCE_NAME = "NAVER_DIRECT_DATE_RANGE_ADJUSTED"
-SOURCE_ENDPOINT = "https://fchart.stock.naver.com/sise.nhn"
-SOURCE_REQUEST_TYPE = 1
-SOURCE_TIMEFRAME = "day"
-SOURCE_SEMANTICS = "ADJUSTED_OHLC_ONLY"
-AUTHORITY_TYPE = "AUTHORITATIVE"
-CLOSURE_VERSION = "V02"
-CLOSURE_ARTIFACT_HEAD = "b5e785d92db7b24fadef21fd36602d305dd092de"
-CLOSURE_ARTIFACT_TREE = "65e6bb999f0fc83f1477912a127d53ed82cc7f77"
-FIX02_HEAD = "99ce7d0b8127f48af3b8b002c246a6c4b0a4395d"
-FIX02_TREE = "4dfacef5ffe750675f5fc224003c64504f620603"
-AUTHORITY_DECISION_SHA256 = "07d191f5e7cbf73a090945cd1751145bd131ca89e6e4d2cc948e2969fd943eba"
-DEFAULT_AUTHORITY_DECISION_PATH = Path(
-    "artifacts/data/end_to_end_data_parity/v01/"
-    "adjusted_price_source_authority_review/authority_closure/v02/"
-    "authority_closure_decision_v02.json"
-)
+SOURCE_AUTHORITY_ID = str(ADJUSTED_PRICE_AUTHORITY_CONTRACT["authority_id"])
+SOURCE_NAME = str(ADJUSTED_PRICE_AUTHORITY_CONTRACT["source_name"])
+SOURCE_ENDPOINT = str(ADJUSTED_PRICE_AUTHORITY_CONTRACT["source_endpoint"])
+SOURCE_REQUEST_TYPE = int(ADJUSTED_PRICE_AUTHORITY_CONTRACT["request_type"])
+SOURCE_TIMEFRAME = str(ADJUSTED_PRICE_AUTHORITY_CONTRACT["timeframe"])
+SOURCE_SEMANTICS = str(ADJUSTED_PRICE_AUTHORITY_CONTRACT["source_semantics"])
+AUTHORITY_TYPE = str(ADJUSTED_PRICE_AUTHORITY_CONTRACT["authority_type"])
+CLOSURE_VERSION = str(ADJUSTED_PRICE_AUTHORITY_CONTRACT["closure_version"])
+CLOSURE_ARTIFACT_HEAD = str(ADJUSTED_PRICE_AUTHORITY_CONTRACT["closure_artifact_head"])
+CLOSURE_ARTIFACT_TREE = str(ADJUSTED_PRICE_AUTHORITY_CONTRACT["closure_artifact_tree"])
+FIX02_HEAD = str(ADJUSTED_PRICE_AUTHORITY_CONTRACT["fix02_head"])
+FIX02_TREE = str(ADJUSTED_PRICE_AUTHORITY_CONTRACT["fix02_tree"])
+AUTHORITY_DECISION_SHA256 = str(ADJUSTED_PRICE_AUTHORITY_CONTRACT["authority_decision_sha256"])
 
 
 @dataclass(frozen=True)
@@ -51,54 +48,18 @@ class AdjustedPriceSourceDescriptor:
 CURRENT_SOURCE_DESCRIPTOR = AdjustedPriceSourceDescriptor()
 
 
-def _sha256(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
-
-
-def _default_path() -> Path:
-    candidates = [Path.cwd() / DEFAULT_AUTHORITY_DECISION_PATH]
-    # src/trend_scanner/data/<module> -> repository root
-    candidates.append(Path(__file__).resolve().parents[3] / DEFAULT_AUTHORITY_DECISION_PATH)
-    for candidate in candidates:
-        if candidate.exists():
-            return candidate
-    return candidates[0]
-
-
-def _fail(reason: str) -> MarketDataError:
-    return MarketDataError(f"SOURCE_AUTHORITY_INVALID: {reason}")
-
-
 def load_adjusted_price_source_authority(
-    decision_path: Path | str | None = None,
-    expected_sha256: str = AUTHORITY_DECISION_SHA256,
+    decision_path: Any = None, expected_sha256: str | None = None
 ) -> AdjustedPriceSourceDescriptor:
-    """Load and validate the immutable Closure V02 authority decision."""
+    """Return the immutable package contract without filesystem IO."""
 
-    path = Path(decision_path) if decision_path is not None else _default_path()
-    if not path.exists():
-        raise _fail(f"decision file missing: {path}")
-    try:
-        actual_sha = _sha256(path)
-        payload = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, ValueError, json.JSONDecodeError) as exc:
-        raise _fail(f"decision file unreadable: {path}") from exc
-    if actual_sha != expected_sha256:
-        raise _fail(f"decision SHA mismatch: {actual_sha}")
-    if not isinstance(payload, dict):
-        raise _fail("decision is not a JSON object")
-    required = {
-        "schema": "authority_closure_decision_v02",
-        "authority_closure": "CLOSED",
-        "review_decision": "APPROVED_FOR_PRODUCTION_INTEGRATION",
-        "production_integration_authorized": True,
-        "all_gates_passed": True,
-        "fix02_head": FIX02_HEAD,
-        "fix02_tree": FIX02_TREE,
-    }
-    for key, expected in required.items():
-        if payload.get(key) != expected:
-            raise _fail(f"decision field {key!r} is not bound to Closure V02")
+    if decision_path is not None or (
+        expected_sha256 is not None and expected_sha256 != AUTHORITY_DECISION_SHA256
+    ):
+        raise MarketDataError(
+            "SOURCE_AUTHORITY_INVALID: runtime authority is package-owned; "
+            "validate Closure evidence in an offline audit"
+        )
     return CURRENT_SOURCE_DESCRIPTOR
 
 
@@ -133,7 +94,6 @@ __all__ = [
     "CLOSURE_ARTIFACT_HEAD",
     "CLOSURE_ARTIFACT_TREE",
     "CLOSURE_VERSION",
-    "DEFAULT_AUTHORITY_DECISION_PATH",
     "SOURCE_AUTHORITY_ID",
     "SOURCE_ENDPOINT",
     "SOURCE_NAME",

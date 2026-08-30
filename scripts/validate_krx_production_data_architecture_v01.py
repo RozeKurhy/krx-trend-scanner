@@ -219,7 +219,11 @@ def _provenance_contract_error_counts() -> dict[str, int]:
             elif any(endpoint in endpoint_text for endpoint in ("/sto/stk_bydd_trd", "/sto/ksq_bydd_trd")) and item.source_field not in daily_fields:
                 nonexistent += 1
         elif origin == ProvenanceOrigin.REQUEST_PARAMETER.value:
-            if item.source_field is not None or not item.source_locator or "basDd" not in item.source_locator or item.source_semantics != "REQUESTED_SNAPSHOT_DATE":
+            if item.source_field is not None or not item.source_locator:
+                request_errors += 1
+            elif item.target_field == "as_of" and (
+                "basDd" not in item.source_locator or item.source_semantics != "REQUESTED_SNAPSHOT_DATE"
+            ):
                 request_errors += 1
         elif origin == ProvenanceOrigin.STATIC_MAPPING.value:
             if item.source_field is not None or not item.source_locator or "KRX_NATIVE_SECTOR_INDEX_MAP" not in item.source_locator:

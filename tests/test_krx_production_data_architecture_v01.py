@@ -7,6 +7,8 @@ from dataclasses import replace
 from pathlib import Path
 
 from trend_scanner.data.source_contracts import (
+    ADJUSTED_PRICE_AUTHORITY_CONTRACT,
+    ARCHITECTURE_VERSION,
     AUTHORITY_FIELDS,
     CONSUMER_COMPATIBILITY,
     DEPENDENCY_GRAPH,
@@ -25,6 +27,7 @@ from trend_scanner.data.source_contracts import (
     REPOSITORY_V2_CONTRACT,
     STORE_CONTRACTS,
     STORE_FIELD_PROVENANCE,
+    SCHEMA_VERSIONS,
     contract_bundle,
 )
 
@@ -64,6 +67,48 @@ def test_adjusted_and_raw_store_ownership_is_disjoint():
     assert set(adjusted.fields) == {"date", "ticker", "open", "high", "low", "close"}
     assert {"volume", "trading_value", "market_cap", "listed_shares"}.issubset(raw.fields)
     assert not {"volume", "trading_value", "market_cap", "listed_shares"}.intersection(adjusted.fields)
+
+
+def test_adjusted_price_authority_contract_is_package_owned_naver_v02():
+    contract = ADJUSTED_PRICE_AUTHORITY_CONTRACT
+    assert contract["authority_id"] == "NAVER_DIRECT_DATE_RANGE_ADJUSTED_V1"
+    assert contract["source_name"] == "NAVER_DIRECT_DATE_RANGE_ADJUSTED"
+    assert contract["source_endpoint"] == "https://fchart.stock.naver.com/sise.nhn"
+    assert contract["request_type"] == 1
+    assert contract["timeframe"] == "day"
+    assert contract["source_semantics"] == "ADJUSTED_OHLC_ONLY"
+    assert contract["authority_type"] == "AUTHORITATIVE"
+    assert contract["schema_version"] == "ADJUSTED_PRICE_V02"
+    assert contract["store_version"] == "ADJUSTED_PRICE_STORE_V02"
+    assert contract["closure_version"] == "V02"
+    assert contract["authority_decision_sha256"] == "07d191f5e7cbf73a090945cd1751145bd131ca89e6e4d2cc948e2969fd943eba"
+
+
+def test_adjusted_field_provenance_is_naver_positional_and_ticker_request_derived():
+    fields = {item.target_field: item for item in STORE_FIELD_PROVENANCE if item.owner_store == "AdjustedPriceStore"}
+    assert fields["date"].source_field == "item@data[0]"
+    assert fields["ticker"].source_field is None
+    assert fields["ticker"].provenance_origin == ProvenanceOrigin.REQUEST_PARAMETER
+    assert fields["ticker"].source_locator == "Naver request parameter symbol"
+    assert fields["open"].source_field == "item@data[1]"
+    assert fields["high"].source_field == "item@data[2]"
+    assert fields["low"].source_field == "item@data[3]"
+    assert fields["close"].source_field == "item@data[4]"
+    assert all(field.schema_version == "ADJUSTED_PRICE_V02" for field in fields.values())
+    assert all(field.authority_id == "NAVER_DIRECT_DATE_RANGE_ADJUSTED_V1" for field in fields.values())
+
+
+def test_adjusted_layer_and_store_are_current_naver_v02_partial_migration():
+    store = next(item for item in STORE_CONTRACTS if item.store_id == "AdjustedPriceStore")
+    layer = next(item for item in LAYER_REGISTRY if item.layer_id == "STOCK_ADJUSTED")
+    assert store.schema_version == "ADJUSTED_PRICE_V02"
+    assert "Current Naver V02 writes" in store.write_policy
+    assert "legacy V01 readable but non-current" in store.write_policy
+    assert SCHEMA_VERSIONS["AdjustedPriceStore"] == "ADJUSTED_PRICE_V02"
+    assert layer.authority == "Naver Direct Date-Range Adjusted"
+    assert layer.current_production_source == "NaverDirectAdjustedPriceDataProvider -> AdjustedPriceStore V02"
+    assert layer.migration_status == MigrationStatus.PARTIALLY_MIGRATED.value
+    assert layer.operational_status == OperationalStatus.ACTIVE.value
 
 
 def test_endpoint_identifier_semantics_are_qualified():
@@ -333,7 +378,7 @@ def test_daily_and_master_listed_shares_are_semantically_distinct():
 
 def test_operational_and_migration_status_are_separate():
     assert {item.value for item in OperationalStatus} == {layer.operational_status for layer in LAYER_REGISTRY} | {"NOT_IMPLEMENTED", "DEGRADED", "VALIDATION_ONLY"}
-    assert {item.value for item in MigrationStatus} == {layer.migration_status for layer in LAYER_REGISTRY} | {"PLANNED"}
+    assert {item.value for item in MigrationStatus} == {layer.migration_status for layer in LAYER_REGISTRY} | {"PLANNED", "LEGACY_COMPOSITE_NOT_SPLIT"}
     raw = next(layer for layer in LAYER_REGISTRY if layer.layer_id == "STOCK_RAW_KRX")
     assert raw.operational_status in {OperationalStatus.INACTIVE.value, OperationalStatus.NOT_IMPLEMENTED.value}
     assert raw.migration_status == MigrationStatus.VALIDATED_NOT_PRODUCTION_MIGRATED.value
@@ -425,7 +470,8 @@ def test_registered_store_and_layer_ids_are_unique():
 
 def test_contract_bundle_is_json_safe_and_network_free():
     bundle = contract_bundle()
-    assert bundle["architecture_version"] == "KRX_PRODUCTION_DATA_ARCHITECTURE_V01_ERRATA01"
+    assert bundle["architecture_version"] == ARCHITECTURE_VERSION == "KRX_PRODUCTION_DATA_ARCHITECTURE_V01_ERRATA02"
+    assert bundle["adjusted_price_authority_contract"] == ADJUSTED_PRICE_AUTHORITY_CONTRACT
     assert bundle["endpoint_identifier_contract"]["BASIC_INFO"]["fields"]["ISU_CD"]["semantic"] == "standard_code"
     source = Path(__file__).resolve().parents[1] / "src/trend_scanner/data/source_contracts.py"
     source_text = source.read_text(encoding="utf-8")

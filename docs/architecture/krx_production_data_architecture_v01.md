@@ -53,7 +53,7 @@ Machine-readable 원본은
 |                             | `/sto/ksq_bydd_trd`                       |
 | volume/trading_value        | KRX Open API raw                         |
 | market_cap/listed_shares    | KRX Open API raw daily                   |
-| adjusted OHLC               | PyKRX `adjusted=True`                   |
+| adjusted OHLC               | Naver direct date-range (`requestType=1`) |
 | adjusted volume              | NONE; 제공한다고 선언하지 않음           |
 | stock master raw facts     | KRX Basic Info + request basDd          |
 | stock master canonical market | `normalize_krx_market(raw_market)`    |
@@ -116,7 +116,7 @@ Native sector index response의 raw identity는
 | Store                         | 핵심 소유권                           |
 ---------------------------------------------------------------------
 | KRXRawStockStore              | unadjusted OHLC + raw ancillary       |
-| AdjustedPriceStore            | adjusted OHLC only                   |
+| AdjustedPriceStore            | adjusted OHLC only; schema `ADJUSTED_PRICE_V02` / store `ADJUSTED_PRICE_STORE_V02` |
 | StockMasterStore              | as_of 포함 PIT raw/canonical master; final asset_type 제외 |
 | InstrumentClassificationStore| PIT asset_type/applicability + provenance |
 | IndexStore                    | market/native-sector/taxonomy family; key=(family,index_code) |
@@ -211,6 +211,13 @@ schema에 존재해야 하며, request/mapping-derived field는 `source_field=nu
 TARGET ARCHITECTURE RULE:
 새 production Store/Repository는 `artifacts/`를 runtime source로 사용하지 않는다.
 
+현재 adjusted-price runtime authority는 package-owned
+`ADJUSTED_PRICE_AUTHORITY_CONTRACT`의 Naver direct date-range adjusted source다.
+`NaverDirectAdjustedPriceDataProvider`가 `AdjustedPriceStore V02`에 현재 authoritative
+write를 수행하며, Closure V02 파일은 offline audit evidence로만 사용한다. 기존
+`ADJUSTED_PRICE_V01`/PyKRX cache는 legacy compatibility 또는 validation comparator로
+읽을 수 있지만 current authority가 아니다.
+
 CURRENT LEGACY REALITY:
 일부 기존 analytics/report flows는 `artifacts/` 기반 data cache를 runtime에
 사용하며 `LEGACY_RUNTIME_DEPENDENCIES`에 migration debt로 등록한다. Dashboard는
@@ -233,7 +240,7 @@ last success/attempt/message를 공통으로 노출한다. quota observability�
 | SECTOR_INDEX_KRX           | MIGRATED                              |
 | MARKET_INDEX               | LEGACY_SOURCE                         |
 | STOCK_RAW_KRX              | VALIDATED_NOT_PRODUCTION_MIGRATED    |
-| STOCK_ADJUSTED_PYKRX       | LEGACY_COMPOSITE_NOT_SPLIT           |
+| STOCK_ADJUSTED             | PARTIALLY_MIGRATED                    |
 | STOCK_MASTER_KRX           | VALIDATED_NOT_PRODUCTION_MIGRATED    |
 | INSTRUMENT_CLASSIFICATION  | LEGACY_SOURCE                         |
 | FUNDAMENTALS_OPENDART      | CLOSED / AVAILABLE                   |
@@ -272,7 +279,7 @@ KRX/PyKRX/OpenDART 네트워크 요청을 수행하지 않는다.
 ----------------------------------------------------------------------
 
 `KRX_PRODUCTION_DATA_ARCHITECTURE_V01`
-→ `ADJUSTED_PRICE_STORE_V01`
+→ `ADJUSTED_PRICE_STORE_V02`
 → `CORPORATE_ACTION_DIRTY_REFRESH_V01`
 → `KRX_HISTORICAL_BACKFILL_V01`
 → `MARKET_DATA_REPOSITORY_V02`
@@ -286,7 +293,7 @@ KRX/PyKRX/OpenDART 네트워크 요청을 수행하지 않는다.
 ----------------------------------------------------------------------
 
 - ADR-01 KRX raw authority
-- ADR-02 PyKRX adjusted OHLC authority
+- ADR-02 historical PyKRX adjusted OHLC authority (legacy/comparator)
 - ADR-03 raw ancillary ownership
 - ADR-04 legacy composite cache classification
 - ADR-05 Repository join semantics
