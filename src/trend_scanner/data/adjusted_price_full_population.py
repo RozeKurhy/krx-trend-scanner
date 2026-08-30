@@ -566,7 +566,15 @@ class FullPopulationRunner:
         else:
             source_status = "SUCCESS"
 
-        if resolution.authority_status != AuthorityStatus.VALID.value:
+        all_phantom_terminal = row_count == 0 and raw_source_row_count > 0 and phantom_count == raw_source_row_count
+        all_source_nonusable_terminal = (
+            row_count == 0
+            and source_nonusable_count > 0
+            and source_nonusable_count == raw_source_row_count
+        )
+        if (all_phantom_terminal or all_source_nonusable_terminal) and expected_count == 0:
+            coverage_status = CoverageStatus.NO_EXPECTED_OBSERVATIONS.value
+        elif resolution.authority_status != AuthorityStatus.VALID.value:
             coverage_status = CoverageStatus.INSUFFICIENT_COVERAGE_AUTHORITY.value
         elif expected_count == 0 and row_count == 0:
             coverage_status = CoverageStatus.NO_EXPECTED_OBSERVATIONS.value
@@ -623,16 +631,16 @@ class FullPopulationRunner:
 
         # 4. Determine Final Acquisition Status
         terminal_state: str | None = None
-        if resolution.authority_status != AuthorityStatus.VALID.value:
+        if all_phantom_terminal:
+            terminal_state = "RAW_ROWS_PRESENT_ALL_PHANTOM"
+            acq_status = AcquisitionStatus.NO_USABLE_OBSERVATIONS.value
+        elif all_source_nonusable_terminal:
+            terminal_state = "RAW_ROWS_PRESENT_ALL_SOURCE_NONUSABLE"
+            acq_status = AcquisitionStatus.COMPLETE_WITH_ADJUDICATED_NONUSABLE.value
+        elif resolution.authority_status != AuthorityStatus.VALID.value:
             acq_status = AcquisitionStatus.INSUFFICIENT_AUTHORITY.value
         elif source_status == "ERROR":
             acq_status = AcquisitionStatus.ERROR.value
-        elif row_count == 0 and raw_source_row_count > 0 and phantom_count == raw_source_row_count:
-            terminal_state = "RAW_ROWS_PRESENT_ALL_PHANTOM"
-            acq_status = AcquisitionStatus.NO_USABLE_OBSERVATIONS.value
-        elif row_count == 0 and source_nonusable_count > 0 and source_nonusable_count == raw_source_row_count:
-            terminal_state = "RAW_ROWS_PRESENT_ALL_SOURCE_NONUSABLE"
-            acq_status = AcquisitionStatus.COMPLETE_WITH_ADJUDICATED_NONUSABLE.value
         elif source_status == "EMPTY":
             acq_status = AcquisitionStatus.EMPTY.value
         elif expected_count == 0 and not unexpected_set and (phantom_count or source_nonusable_count):

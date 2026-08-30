@@ -145,6 +145,29 @@ def test_naver_phantom_only_has_explicit_zero_usable_terminal_state(tmp_path, mo
     assert not (tmp_path / "store" / "005930.parquet").exists()
 
 
+def test_phantom_terminal_precedes_no_expected_authority(tmp_path, monkeypatch):
+    provider = NaverDirectAdjustedPriceDataProvider(
+        session=_Session(_xml("20240102|0|0|0|100|0"))
+    )
+    empty_authority = _resolution(nontradable=("2024-01-02",))
+    empty_authority = ExpectedCoverageResolution(
+        **{
+            **empty_authority.__dict__,
+            "authority_status": AuthorityStatus.NO_EXPECTED_OBSERVATIONS.value,
+            "expected_tradable_count": 0,
+            "expected_tradable_dates": (),
+        }
+    )
+    monkeypatch.setattr(
+        "trend_scanner.data.adjusted_price_full_population.resolve_expected_coverage",
+        lambda *args, **kwargs: empty_authority,
+    )
+    runner = FullPopulationRunner(store_dir=tmp_path / "store", artifact_dir=tmp_path / "artifacts")
+    result = runner.process_single_ticker(_record(), provider=provider)
+    assert result.acquisition_status == AcquisitionStatus.NO_USABLE_OBSERVATIONS.value
+    assert result.terminal_state == "RAW_ROWS_PRESENT_ALL_PHANTOM"
+
+
 def test_naver_activity_positive_zero_ohlc_is_adjudicated_nonusable():
     provider = NaverDirectAdjustedPriceDataProvider(
         session=_Session(_xml("20240102|0|0|0|100|10"))

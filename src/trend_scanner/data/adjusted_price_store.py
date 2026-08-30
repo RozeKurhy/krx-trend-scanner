@@ -157,6 +157,8 @@ def _normalise_frame(frame: pd.DataFrame) -> tuple[pd.DataFrame, str | None]:
         result[column] = numeric.astype("float64")
     if bool(result.attrs.get("source_native_adjusted", False)):
         validate_source_integrity(result)
+        if (result[list(ADJUSTED_OHLC_COLUMNS)] <= 0).any().any():
+            raise MarketDataError("source-native adjusted store에는 non-positive OHLC를 저장할 수 없습니다.")
     else:
         validate_adjusted_ohlc(result)
     return result[list(ADJUSTED_OHLC_COLUMNS)], ticker_value
@@ -188,6 +190,8 @@ def _physical_to_frame(
         frame[column] = pd.to_numeric(frame[column], errors="coerce").astype("float64")
     if source_native_adjusted:
         validate_source_integrity(frame)
+        if (frame[list(ADJUSTED_OHLC_COLUMNS)] <= 0).any().any():
+            raise MarketDataError("source-native adjusted store에 non-positive OHLC가 있습니다.")
     else:
         validate_adjusted_ohlc(frame)
     return frame
