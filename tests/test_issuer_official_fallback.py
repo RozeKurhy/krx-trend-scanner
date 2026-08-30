@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 import hashlib
+from pathlib import Path
 
 import pytest
 
@@ -20,14 +20,31 @@ from trend_scanner.data.issuer_official_fallback import (
 )
 
 
-RAW_PATH = Path("/private/tmp/krx_c13_resume3_evidence/unresolved_higher_priority_candidate_resolution_v01_fix01/issuer_official_raw/samsung_public_disclosure_71206.html")
-RAW_SHA = "940b0ab6bfdfc3c179dc7f2d5c01e088af436b8c479ad4f4c0c7739dbca9a116"
+SYNTHETIC_HTML = b"""<!doctype html>
+<html><head><title>issuer disclosure</title></head><body>
+Samsung Electronics Co., Ltd. KS005930
+Decision on Stock Split (Update) Mar 16, 2018
+Scheduled Listing Date of New Share Certificates May 4, 2018
+(originally May 16, 2018) updated details originally announced
+</body></html>
+"""
+RAW_SHA = hashlib.sha256(SYNTHETIC_HTML).hexdigest()
 URL = "https://www.samsung.com/global/ir/reports-disclosures/public-disclosure-view.71206/"
+RAW_FIXTURE_PATH: Path | None = None
 
 
 @pytest.fixture()
-def raw() -> bytes:
-    return RAW_PATH.read_bytes()
+def raw(tmp_path) -> bytes:
+    global RAW_FIXTURE_PATH
+    path = tmp_path / "samsung_public_disclosure.synthetic.html"
+    path.write_bytes(SYNTHETIC_HTML)
+    RAW_FIXTURE_PATH = path
+    return path.read_bytes()
+
+
+def _raw_path() -> Path:
+    assert RAW_FIXTURE_PATH is not None
+    return RAW_FIXTURE_PATH
 
 
 def _candidate(**updates: object) -> dict[str, object]:
@@ -60,8 +77,8 @@ def _validate(raw: bytes, **updates: object) -> dict[str, object]:
         raw_bytes=raw,
         source_url=URL,
         expected_sha256=RAW_SHA,
-        raw_path=RAW_PATH,
-        retrieval_lineage={"request_id": "REQ_ISSUER_OFFICIAL_SAMSUNG_005930_20180316800856_FIX01_R1", "retrieved_at": "2026-08-29T22:40:11Z", "raw_path": str(RAW_PATH)},
+        raw_path=_raw_path(),
+        retrieval_lineage={"request_id": "REQ_ISSUER_OFFICIAL_SAMSUNG_005930_20180316800856_FIX01_R1", "retrieved_at": "2026-08-29T22:40:11Z", "raw_path": str(_raw_path())},
     )
 
 
@@ -87,7 +104,7 @@ def test_parser_independently_extracts_update_and_superseded_anchor(raw: bytes):
     ],
 )
 def test_trust_registry_fails_closed_for_non_exact_urls(raw: bytes, url: str):
-    result = validate_candidate_bound_tier_b_fallback(_candidate(), raw_bytes=raw, source_url=url, expected_sha256=RAW_SHA, raw_path=RAW_PATH, retrieval_lineage={"request_id": "R", "retrieved_at": "T", "raw_path": str(RAW_PATH)})
+    result = validate_candidate_bound_tier_b_fallback(_candidate(), raw_bytes=raw, source_url=url, expected_sha256=RAW_SHA, raw_path=_raw_path(), retrieval_lineage={"request_id": "R", "retrieved_at": "T", "raw_path": str(_raw_path())})
     assert result["valid"] is False
     assert result["reason_codes"]
 
@@ -112,23 +129,23 @@ def test_candidate_linkage_and_preconditions_fail_closed(raw: bytes, updates: di
 
 
 def test_tier_b_cannot_create_candidate_without_a1_or_a2_identity(raw: bytes):
-    result = validate_candidate_bound_tier_b_fallback(_candidate(identity_authority_tier=TIER_B_ISSUER_OFFICIAL), raw_bytes=raw, source_url=URL, expected_sha256=RAW_SHA, raw_path=RAW_PATH, retrieval_lineage={"request_id": "R", "retrieved_at": "T", "raw_path": str(RAW_PATH)})
+    result = validate_candidate_bound_tier_b_fallback(_candidate(identity_authority_tier=TIER_B_ISSUER_OFFICIAL), raw_bytes=raw, source_url=URL, expected_sha256=RAW_SHA, raw_path=_raw_path(), retrieval_lineage={"request_id": "R", "retrieved_at": "T", "raw_path": str(_raw_path())})
     assert result["valid"] is False
     assert "A1_A2_IDENTITY_REQUIRED" in result["reason_codes"]
 
 
 def test_integrity_and_lineage_fail_closed(raw: bytes):
     assert "TIER_B_RAW_SHA256_MISMATCH" in _validate(raw + b"x")["reason_codes"]
-    assert "RETRIEVAL_LINEAGE_MISSING" in validate_candidate_bound_tier_b_fallback(_candidate(), raw_bytes=raw, source_url=URL, expected_sha256=RAW_SHA, raw_path=RAW_PATH, retrieval_lineage=None)["reason_codes"]
-    assert "TIER_B_RAW_EMPTY" in validate_candidate_bound_tier_b_fallback(_candidate(), raw_bytes=b"", source_url=URL, expected_sha256=hashlib.sha256(b"").hexdigest(), raw_path=RAW_PATH, retrieval_lineage={"request_id": "R", "retrieved_at": "T", "raw_path": str(RAW_PATH)})["reason_codes"]
+    assert "RETRIEVAL_LINEAGE_MISSING" in validate_candidate_bound_tier_b_fallback(_candidate(), raw_bytes=raw, source_url=URL, expected_sha256=RAW_SHA, raw_path=_raw_path(), retrieval_lineage=None)["reason_codes"]
+    assert "TIER_B_RAW_EMPTY" in validate_candidate_bound_tier_b_fallback(_candidate(), raw_bytes=b"", source_url=URL, expected_sha256=hashlib.sha256(b"").hexdigest(), raw_path=_raw_path(), retrieval_lineage={"request_id": "R", "retrieved_at": "T", "raw_path": str(_raw_path())})["reason_codes"]
 
 
 def test_blocked_page_and_caller_assertion_fail_closed(raw: bytes):
     blocked = raw.replace(b"Decision on Stock Split", b"Access Denied", 1)
-    result = validate_candidate_bound_tier_b_fallback(_candidate(), raw_bytes=blocked, source_url=URL, expected_sha256=hashlib.sha256(blocked).hexdigest(), raw_path=RAW_PATH, retrieval_lineage={"request_id": "R", "retrieved_at": "T", "raw_path": str(RAW_PATH)})
+    result = validate_candidate_bound_tier_b_fallback(_candidate(), raw_bytes=blocked, source_url=URL, expected_sha256=hashlib.sha256(blocked).hexdigest(), raw_path=_raw_path(), retrieval_lineage={"request_id": "R", "retrieved_at": "T", "raw_path": str(_raw_path())})
     assert result["valid"] is False
     assert "TIER_B_BLOCKED_PAGE" in result["reason_codes"]
-    asserted = validate_candidate_bound_tier_b_fallback(_candidate(official=True), raw_bytes=raw, source_url=URL, expected_sha256=RAW_SHA, raw_path=RAW_PATH, retrieval_lineage={"request_id": "R", "retrieved_at": "T", "raw_path": str(RAW_PATH)})
+    asserted = validate_candidate_bound_tier_b_fallback(_candidate(official=True), raw_bytes=raw, source_url=URL, expected_sha256=RAW_SHA, raw_path=_raw_path(), retrieval_lineage={"request_id": "R", "retrieved_at": "T", "raw_path": str(_raw_path())})
     assert "CALLER_ASSERTED_OFFICIAL_TRUST_FORBIDDEN" in asserted["reason_codes"]
 
 

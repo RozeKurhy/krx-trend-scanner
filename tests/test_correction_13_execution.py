@@ -417,11 +417,11 @@ def test_correction13_dirty_scope_stops_before_external_calls(tmp_path, monkeypa
 
 def _valid_persisted_bundle() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, list[dict[str, str]], list[dict[str, object]]]:
     controls = [{"control_id": "C1", "ticker": "005930", "corp_code": "CC", "authority_record_id": "R1", "price_window_start": "2020-01-01", "price_window_end": "2020-01-31", "official_anchor_date": "2020-01-16"}]
-    dates = pd.date_range("2020-01-10", periods=11).strftime("%Y-%m-%d")
+    dates = pd.date_range("2020-01-10", periods=12).strftime("%Y-%m-%d")
     frames: dict[tuple[str, str], pd.DataFrame] = {}
     logs: list[dict[str, object]] = []
     for source, req in (("NAVER_DIRECT", "N1"), ("RAW_PYKRX_COMPARATOR", "P1")):
-        frame = ca._c13_normalize_price_frame(pd.DataFrame({"date": dates, "open": [100] * 11, "high": [101] * 11, "low": [99] * 11, "close": [100] * 11, "volume": [1000] * 11}), control=controls[0], source=source, request_id=req)
+        frame = ca._c13_normalize_price_frame(pd.DataFrame({"date": dates, "open": [100] * len(dates), "high": [101] * len(dates), "low": [99] * len(dates), "close": [100] * len(dates), "volume": [1000] * len(dates)}), control=controls[0], source=source, request_id=req)
         frames[("C1", source)] = frame
         logs.append({"control_id": "C1", "source": source, "request_id": req, "outcome": "SUCCESS", "physical_attempt": 1, "price_window_start": "2020-01-01", "price_window_end": "2020-01-31"})
     parity, recon = ca._c13_price_parity_rows(controls, frames, {key: ("N1" if key[1] == "NAVER_DIRECT" else "P1") for key in frames}, "RUN")
@@ -511,7 +511,7 @@ def test_correction13_renderer_terminal_decision_matrix(tmp_path, monkeypatch, d
     }
     gate = {"gate_06_pass": gate06}
     audit = {"verdict": "COMPLETE", "all_metrics_audited": True, "rows_loaded": {"parity": 1, "reconciliation": 1}}
-    decision = {"schema": "adjusted_price_source_authority_corporate_action_evidence_v01_fix03_correction_13", "all_gates_passed": all_gates, "gate_06_result": gate06, "gate_15_result": gate15, "production_integration_authorized": authorized, "review_decision": decision_name, "recommended_next_state": next_state, "full_suite_completion": True, "new_regression_count": 0, "actual_candidate_price_row_count": 11, "actual_pykrx_price_row_count": 11, "exact_date_match_controls": 1, "date_mismatch_controls": 0, "insufficient_window_controls": 0, "ohlc_mismatch_controls": 0, "network_accounting": {"request_logs": logs}}
+    decision = {"schema": "adjusted_price_source_authority_corporate_action_evidence_v01_fix03_correction_13", "all_gates_passed": all_gates, "gate_06_result": gate06, "gate_15_result": gate15, "production_integration_authorized": authorized, "review_decision": decision_name, "recommended_next_state": next_state, "full_suite_completion": True, "new_regression_count": 0, "actual_candidate_price_row_count": len(price[price["source"] == "NAVER_DIRECT"]), "actual_pykrx_price_row_count": len(price[price["source"] == "RAW_PYKRX_COMPARATOR"]), "exact_date_match_controls": 1, "date_mismatch_controls": 0, "insufficient_window_controls": 0, "ohlc_mismatch_controls": 0, "network_accounting": {"request_logs": logs}}
     monkeypatch.setattr(report, "_git_exists", lambda *a, **k: True)
     monkeypatch.setattr(report, "_git_tree_sha", lambda *a, **k: "TREE")
     monkeypatch.setattr(report, "verify_code_equivalence_between_commits", lambda *a, **k: (True, []))

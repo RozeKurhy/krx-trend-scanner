@@ -102,8 +102,8 @@ ALLOWED_BASELINE_FAILURE_NODEIDS = frozenset({
 
 # Offline C13 Tier-B reassessment inputs are immutable evidence captured by
 # RESUME_3.  No function below performs a network request or consults secrets.
-C13_TIER_B_REASSESSMENT_EVIDENCE_ROOT = Path("/private/tmp/krx_c13_resume3_evidence")
-C13_TIER_B_REASSESSMENT_OUTPUT_ROOT = Path("/private/tmp/krx_c13_tier_b_candidate_bound_fallback_v01_evidence")
+# The evidence and output roots are caller-owned; no machine-specific default
+# path is part of the production contract.
 C13_SAMSUNG_ISSUER_URL = "https://www.samsung.com/global/ir/reports-disclosures/public-disclosure-view.71206/"
 C13_SAMSUNG_ISSUER_RAW_SHA256 = "940b0ab6bfdfc3c179dc7f2d5c01e088af436b8c479ad4f4c0c7739dbca9a116"
 C13_TIER_B_CONTRACT_EVIDENCE_SHA256 = "13cb04f8d48450ff2c90b8108d80e05e214ae03d02b6c43ada698a33d9ca493d"
@@ -1861,7 +1861,7 @@ def validate_persisted_price_parity_evidence(
                     except (KeyError, TypeError, ValueError):
                         blockers.append("PRICE_RAW_VALUE_INVALID")
         pre = sum(date < anchor for date in common_dates)
-        post = sum(date >= anchor for date in common_dates)
+        post = sum(date > anchor for date in common_dates)
         date_bad = bool(candidate_only or pykrx_only)
         window_bad = pre < 5 or post < 5
         ohlc_bad = sum(mismatches[name] for name in ("open", "high", "low", "close")) > 0
@@ -2191,9 +2191,9 @@ def _offline_evidence_sha256(path: Path) -> str:
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
-def _recompute_samsung_price_parity_offline(price_path: Path, anchor_date: str) -> dict[str, Any]:
+def _recompute_samsung_price_parity_offline(price_rows: Any, anchor_date: str) -> dict[str, Any]:
     """Recompute Samsung parity from persisted rows; never fetches prices."""
-    frame = pd.read_csv(price_path, dtype=object, keep_default_na=False)
+    frame = _evidence_frame(price_rows)
     scoped = frame[frame["ticker"].astype(str) == "005930"].copy()
     sources = {"NAVER_DIRECT", "RAW_PYKRX_COMPARATOR"}
     source_frames = {source: scoped[scoped["source"] == source].copy() for source in sources}
@@ -2210,7 +2210,7 @@ def _recompute_samsung_price_parity_offline(price_path: Path, anchor_date: str) 
                 if float(naver.loc[day, field]) != float(pykrx.loc[day, field]):
                     mismatch_counts[field] += 1
     pre_count = sum(day < anchor_date for day in common)
-    post_count = sum(day >= anchor_date for day in common)
+    post_count = sum(day > anchor_date for day in common)
     date_mismatch = len(naver_only) + len(pykrx_only)
     ohlc_mismatch = sum(mismatch_counts[field] for field in ("open", "high", "low", "close"))
     return {
@@ -2233,17 +2233,25 @@ def _recompute_samsung_price_parity_offline(price_path: Path, anchor_date: str) 
 
 def reassess_c13_tier_b_fallback_offline(
     *,
-    evidence_root: Path = C13_TIER_B_REASSESSMENT_EVIDENCE_ROOT,
-    output_dir: Path = C13_TIER_B_REASSESSMENT_OUTPUT_ROOT,
+    evidence_root: Path,
+    output_dir: Path,
     implementation_fix_head: str,
     implementation_fix_tree: str,
     regression_certification: Mapping[str, Any],
 ) -> dict[str, Any]:
-    """Reassess C13 once from frozen local evidence, with no live calls."""
+    """Reassess C13 once from caller-supplied frozen evidence, with no live calls.
+
+    ``evidence_root`` and ``output_dir`` are deliberately required so a clean
+    checkout cannot silently discover a prior user's temporary evidence.
+    """
+    if evidence_root is None or output_dir is None:
+        raise ValueError("FROZEN_EVIDENCE_ROOT_AND_OUTPUT_REQUIRED")
     root = Path(evidence_root)
     parent = root / "c13_live_artifacts"
     supplemental = root / "unresolved_higher_priority_candidate_resolution_v01_fix01"
     output = Path(output_dir)
+    if output.resolve() == root.resolve() or root.resolve() in output.resolve().parents:
+        raise ValueError("REASSESSMENT_OUTPUT_MUST_BE_OUTSIDE_EVIDENCE_ROOT")
     output.mkdir(parents=True, exist_ok=True)
     raw_path = supplemental / "issuer_official_raw" / "samsung_public_disclosure_71206.html"
     contract_path = root / "authority_source_tier_contract_review_v01" / "authority_source_tier_contract_review_v01.json"
@@ -2275,6 +2283,16 @@ def reassess_c13_tier_b_fallback_offline(
                 manifest_failures.append(str(relative))
     if manifest_failures:
         raise ValueError("PARENT_CANONICAL_EVIDENCE_INTEGRITY_FAILURE")
+
+    parent_fingerprints = {
+        str(relative): _offline_evidence_sha256(parent / str(entry.get("path") or relative))
+        for relative, entry in parent_entries.items()
+        if isinstance(entry, Mapping)
+    }
+    supplemental_fingerprints = {
+        "issuer_raw": _offline_evidence_sha256(raw_path),
+        "contract_review": _offline_evidence_sha256(contract_path),
+    }
 
     parent_gate = _read_json_file(parent / "gate06_corporate_action_reassessment_v01_fix03_correction_13.json", {})
     parent_decision = _read_json_file(parent / "adjusted_price_source_authority_corporate_action_evidence_v01_fix03_correction_13.json", {})
@@ -2343,22 +2361,90 @@ def reassess_c13_tier_b_fallback_offline(
         ),
         {},
     )
-    price_reassessment = _recompute_samsung_price_parity_offline(price_path, "2018-05-04")
+    parent_controls = _control_frame(parent / "corporate_action_review_cohort_v01_fix03_correction_13.csv")
+    if parent_controls.empty or "control_id" not in parent_controls:
+        raise ValueError("PARENT_CONTROL_EVIDENCE_EMPTY")
+    samsung_mask = parent_controls["ticker"].astype(str) == "005930"
+    if int(samsung_mask.sum()) != 1:
+        raise ValueError("SAMSUNG_PARENT_CONTROL_NOT_UNIQUE")
 
-    controls = _control_frame(parent / "corporate_action_review_cohort_v01_fix03_correction_13.csv")
-    price_validation = validate_persisted_price_parity_evidence(
-        parent / CORRECTION_13_PRICE_FILE,
-        parent / CORRECTION_13_PARITY_FILE,
-        parent / CORRECTION_13_RECONCILIATION_FILE,
-        controls,
-        request_logs=list((_read_json_file(parent / "corporate_action_evidence_network_accounting_v01_fix03_correction_13.json", {}) or {}).get("request_logs", [])),
+    # Build a derived control set.  The seven non-Samsung controls are copied
+    # byte-for-byte; only Samsung's selected record and active anchor move to
+    # the candidate-bound issuer-official content evidence.
+    reassessed_controls = parent_controls.copy()
+    samsung_idx = reassessed_controls.index[samsung_mask][0]
+    reassessed_controls.loc[samsung_idx, "authority_record_id"] = candidate["rcept_no"]
+    reassessed_controls.loc[samsung_idx, "official_anchor_date"] = "2018-05-04"
+    if "authority_source_tier" in reassessed_controls.columns:
+        reassessed_controls.loc[samsung_idx, "authority_source_tier"] = TIER_B_ISSUER_OFFICIAL
+    if "authority_source_name" in reassessed_controls.columns:
+        reassessed_controls.loc[samsung_idx, "authority_source_name"] = "SAMSUNG_ISSUER_OFFICIAL"
+    if "raw_evidence_path" in reassessed_controls.columns:
+        reassessed_controls.loc[samsung_idx, "raw_evidence_path"] = str(raw_path)
+    if "raw_evidence_sha256" in reassessed_controls.columns:
+        reassessed_controls.loc[samsung_idx, "raw_evidence_sha256"] = raw_sha
+    non_samsung_parent = parent_controls.loc[~samsung_mask].reset_index(drop=True)
+    non_samsung_reassessed = reassessed_controls.loc[~samsung_mask].reset_index(drop=True)
+    seven_control_drift = not non_samsung_parent.equals(non_samsung_reassessed)
+    if seven_control_drift:
+        raise ValueError("SEVEN_CONTROL_DRIFT")
+
+    parent_price = _evidence_frame(price_path)
+    if parent_price.empty:
+        raise ValueError("PARENT_PRICE_EVIDENCE_EMPTY")
+    reassessed_price = parent_price.copy()
+    reassessed_price.loc[reassessed_price["ticker"].astype(str) == "005930", "authority_record_id"] = candidate["rcept_no"]
+    reassessed_price.loc[reassessed_price["ticker"].astype(str) == "005930", "official_anchor_date"] = "2018-05-04"
+    source_frames: dict[tuple[str, str], pd.DataFrame] = {}
+    request_ids: dict[tuple[str, str], str] = {}
+    for control in reassessed_controls.to_dict("records"):
+        cid = str(control.get("control_id", ""))
+        for source in ("NAVER_DIRECT", "RAW_PYKRX_COMPARATOR"):
+            group = reassessed_price[(reassessed_price["control_id"].astype(str) == cid) & (reassessed_price["source"].astype(str) == source)].copy()
+            source_frames[(cid, source)] = group
+            request_ids[(cid, source)] = str(group["request_id"].iloc[0]) if not group.empty else ""
+    reassessed_parity_rows, reassessed_reconciliation_rows = _c13_price_parity_rows(
+        reassessed_controls.to_dict("records"), source_frames, request_ids,
+        str(parent_gate.get("canonical_run_id") or ""),
     )
+    reassessed_parity = pd.DataFrame(reassessed_parity_rows)
+    reassessed_reconciliation = pd.DataFrame(reassessed_reconciliation_rows)
+    price_request_logs = list((_read_json_file(parent / "corporate_action_evidence_network_accounting_v01_fix03_correction_13.json", {}) or {}).get("request_logs", []))
+    price_validation = validate_persisted_price_parity_evidence(
+        reassessed_price,
+        reassessed_parity,
+        reassessed_reconciliation,
+        reassessed_controls,
+        request_logs=price_request_logs,
+    )
+    price_reassessment = _recompute_samsung_price_parity_offline(reassessed_price, "2018-05-04")
+    if price_validation.evaluation_status != "EVALUATED":
+        raise ValueError("REASSESSED_PRICE_EVIDENCE_INVALID")
+
+    output.mkdir(parents=True, exist_ok=True)
+    reassessed_controls_path = output / "reassessed_corporate_action_controls.csv"
+    reassessed_parity_path = output / "reassessed_event_sensitive_parity.csv"
+    reassessed_reconciliation_path = output / "reassessed_date_reconciliation.csv"
+    reassessed_controls.to_csv(reassessed_controls_path, index=False)
+    reassessed_parity.to_csv(reassessed_parity_path, index=False)
+    reassessed_reconciliation.to_csv(reassessed_reconciliation_path, index=False)
     gate_metrics = dict(parent_gate)
     gate_metrics.update(price_validation.to_dict())
     gate_metrics.update({
         "schema": "gate06_corporate_action_reassessment_v01_fix03_correction_13",
         "unresolved_higher_priority_candidate_count": population["unresolved_higher_priority_candidate_count"],
         "selected_authority_archive_provenance_failure_count": population["selected_authority_archive_provenance_failure_count"],
+        "reassessed_control_artifact": reassessed_controls_path.name,
+        "reassessed_parity_artifact": reassessed_parity_path.name,
+        "reassessed_reconciliation_artifact": reassessed_reconciliation_path.name,
+        "reassessed_control_artifact_sha256": _offline_evidence_sha256(reassessed_controls_path),
+        "reassessed_parity_artifact_sha256": _offline_evidence_sha256(reassessed_parity_path),
+        "reassessed_reconciliation_artifact_sha256": _offline_evidence_sha256(reassessed_reconciliation_path),
+        "samsung_gate06_authority_record_id": candidate["rcept_no"],
+        "samsung_gate06_anchor_date": "2018-05-04",
+        "gate06_price_provenance": "REASSESSED_MAY-04_PARITY",
+        "gate06_reconciliation_provenance": "REASSESSED_MAY-04_RECONCILIATION",
+        "old_may16_samsung_canonical_price_metric_used": False,
     })
     gate06_pass, gate06_blockers = evaluate_gate06(gate_metrics)
     gate15_pass, gate15_blockers = evaluate_gate15({
@@ -2411,8 +2497,19 @@ def reassess_c13_tier_b_fallback_offline(
     }
     (output / "samsung_anchor_reassessment.json").write_text(json.dumps(anchor_payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     pd.DataFrame([price_reassessment]).to_csv(output / "samsung_price_parity_reassessment.csv", index=False)
-    (output / "gate06_reassessment.json").write_text(json.dumps({"schema": "gate06_reassessment_v01_c13_tier_b_candidate_bound_fallback", "gate_06_pass": gate06_pass, "blockers": gate06_blockers, "metrics": gate_metrics}, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-    (output / "gate15_reassessment.json").write_text(json.dumps({"schema": "gate15_reassessment_v01_c13_tier_b_candidate_bound_fallback", "gate_15_pass": gate15_pass, "blockers": gate15_blockers, "metrics": {"unresolved_higher_priority_candidate_count": population["unresolved_higher_priority_candidate_count"], "price_parity_verdict": price_reassessment["parity_verdict"]}}, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    (output / "gate06_reassessment.json").write_text(json.dumps({"schema": "gate06_reassessment_v01_c13_tier_b_candidate_bound_fallback", "gate_06_pass": gate06_pass, "blockers": gate06_blockers, "selected_rcept_no": candidate["rcept_no"], "active_anchor_date": "2018-05-04", "reassessed_parity_artifact_sha256": _offline_evidence_sha256(reassessed_parity_path), "reassessed_reconciliation_artifact_sha256": _offline_evidence_sha256(reassessed_reconciliation_path), "unresolved_count": population["unresolved_higher_priority_candidate_count"], "metrics": gate_metrics}, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    (output / "gate15_reassessment.json").write_text(json.dumps({"schema": "gate15_reassessment_v01_c13_tier_b_candidate_bound_fallback", "gate_15_pass": gate15_pass, "blockers": gate15_blockers, "metrics": {"gate06_result": gate06_pass, "gate06_input_artifact": reassessed_parity_path.name, "gate06_reconciliation_artifact": reassessed_reconciliation_path.name, "unresolved_higher_priority_candidate_count": population["unresolved_higher_priority_candidate_count"], "fallback_contract_valid": fallback_validation.get("valid") is True, "price_parity_verdict": price_reassessment["parity_verdict"]}}, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    parent_unchanged = all(
+        path.is_file() and _offline_evidence_sha256(path) == expected
+        for relative, expected in parent_fingerprints.items()
+        for path in [parent / relative]
+    )
+    supplemental_unchanged = (
+        _offline_evidence_sha256(raw_path) == supplemental_fingerprints["issuer_raw"]
+        and _offline_evidence_sha256(contract_path) == supplemental_fingerprints["contract_review"]
+    )
+    if not parent_unchanged or not supplemental_unchanged:
+        raise ValueError("FROZEN_EVIDENCE_MUTATED_DURING_REASSESSMENT")
     result = {
         "implementation_fix_head": implementation_fix_head,
         "implementation_fix_tree": implementation_fix_tree,
@@ -2425,6 +2522,12 @@ def reassess_c13_tier_b_fallback_offline(
         "active_anchor_date": anchor_payload["active_anchor_date"],
         "superseded_anchor_date": anchor_payload["superseded_anchor_date"],
         "samsung_price_parity": price_reassessment,
+        "reassessed_price_parity_validation": price_validation.to_dict(),
+        "reassessed_control_artifact": reassessed_controls_path.name,
+        "reassessed_parity_artifact": reassessed_parity_path.name,
+        "reassessed_reconciliation_artifact": reassessed_reconciliation_path.name,
+        "parent_canonical_artifacts_unchanged": parent_unchanged,
+        "supplemental_frozen_evidence_unchanged": supplemental_unchanged,
         "gate06_pass": gate06_pass,
         "gate15_pass": gate15_pass,
         "all_gates": all_gates,
@@ -2439,6 +2542,8 @@ def reassess_c13_tier_b_fallback_offline(
         "implementation_fix_head": implementation_fix_head,
         "implementation_fix_tree": implementation_fix_tree,
         "input_evidence_hashes": {"issuer_raw": raw_sha, "contract_review": contract_sha, "parent_price": _offline_evidence_sha256(price_path), "parent_candidate": _offline_evidence_sha256(candidate_path), "parent_manifest": _offline_evidence_sha256(manifest_path)},
+        "parent_evidence_root_identity": {"manifest_sha256": _offline_evidence_sha256(manifest_path), "parent_artifact_count": len(parent_fingerprints)},
+        "reassessed_artifact_hashes": {"controls": _offline_evidence_sha256(reassessed_controls_path), "parity": _offline_evidence_sha256(reassessed_parity_path), "reconciliation": _offline_evidence_sha256(reassessed_reconciliation_path)},
         "result": result,
     }
     (output / "offline_reassessment_manifest.json").write_text(json.dumps(output_manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
@@ -8558,7 +8663,7 @@ def _c13_price_parity_rows(controls: list[Mapping[str, Any]], source_frames: Map
         naver = source_frames.get((cid, "NAVER_DIRECT"), pd.DataFrame()); pykrx = source_frames.get((cid, "RAW_PYKRX_COMPARATOR"), pd.DataFrame())
         cand_dates = set(naver["date"].astype(str)) if not naver.empty else set(); py_dates = set(pykrx["date"].astype(str)) if not pykrx.empty else set()
         common = sorted(cand_dates & py_dates); cand_only = sorted(cand_dates - py_dates); py_only = sorted(py_dates - cand_dates)
-        anchor = str(control.get("official_anchor_date", "")); pre = sum(date < anchor for date in common); post = sum(date >= anchor for date in common)
+        anchor = str(control.get("official_anchor_date", "")); pre = sum(date < anchor for date in common); post = sum(date > anchor for date in common)
         mismatches = {name: 0 for name in ("open", "high", "low", "close", "volume")}
         if common and not naver.empty and not pykrx.empty:
             n_index, p_index = naver.set_index("date"), pykrx.set_index("date")
