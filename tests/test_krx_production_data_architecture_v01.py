@@ -76,6 +76,7 @@ def test_adjusted_price_authority_contract_is_package_owned_naver_v02():
     assert contract["source_endpoint"] == "https://fchart.stock.naver.com/sise.nhn"
     assert contract["request_type"] == 1
     assert contract["timeframe"] == "day"
+    assert contract["count"] == "5000"
     assert contract["source_semantics"] == "ADJUSTED_OHLC_ONLY"
     assert contract["authority_type"] == "AUTHORITATIVE"
     assert contract["schema_version"] == "ADJUSTED_PRICE_V02"

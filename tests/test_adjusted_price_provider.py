@@ -7,6 +7,7 @@ import pykrx.stock as pykrx_stock
 from trend_scanner.data.adjusted_price_provider import (
     ADJUSTED_OHLC_COLUMNS,
     AdjustedPriceDataProvider,
+    NaverDirectAdjustedPriceDataProvider,
     validate_adjusted_ohlc,
 )
 from trend_scanner.data.errors import MarketDataError
@@ -129,3 +130,20 @@ def test_validate_adjusted_ohlc_rejects_ancillary_columns():
     frame = _response().rename(columns={"시가": "open"})
     with pytest.raises(MarketDataError):
         validate_adjusted_ohlc(frame)
+
+
+def test_naver_provider_phantom_normalization_is_distinct_from_pykrx():
+    class Response:
+        status_code = 200
+        text = '<protocol><chartdata><item data="20180430|0|0|0|53000|0"/></chartdata></protocol>'
+
+    class Session:
+        def get(self, *args, **kwargs):
+            return Response()
+
+    provider = NaverDirectAdjustedPriceDataProvider(session=Session())
+    result = provider.load_daily("005930", "2018-04-11", "2018-06-20")
+
+    assert result.empty
+    assert provider.phantom_row_count == 1
+    assert provider.pykrx_fallback_call_count == 0

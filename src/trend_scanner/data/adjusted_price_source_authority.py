@@ -18,6 +18,7 @@ SOURCE_NAME = str(ADJUSTED_PRICE_AUTHORITY_CONTRACT["source_name"])
 SOURCE_ENDPOINT = str(ADJUSTED_PRICE_AUTHORITY_CONTRACT["source_endpoint"])
 SOURCE_REQUEST_TYPE = int(ADJUSTED_PRICE_AUTHORITY_CONTRACT["request_type"])
 SOURCE_TIMEFRAME = str(ADJUSTED_PRICE_AUTHORITY_CONTRACT["timeframe"])
+SOURCE_COUNT = str(ADJUSTED_PRICE_AUTHORITY_CONTRACT["count"])
 SOURCE_SEMANTICS = str(ADJUSTED_PRICE_AUTHORITY_CONTRACT["source_semantics"])
 AUTHORITY_TYPE = str(ADJUSTED_PRICE_AUTHORITY_CONTRACT["authority_type"])
 CLOSURE_VERSION = str(ADJUSTED_PRICE_AUTHORITY_CONTRACT["closure_version"])
@@ -34,6 +35,7 @@ class AdjustedPriceSourceDescriptor:
     source_name: str = SOURCE_NAME
     source_endpoint: str = SOURCE_ENDPOINT
     source_request_type: int = SOURCE_REQUEST_TYPE
+    count: str = SOURCE_COUNT
     source_semantics: str = SOURCE_SEMANTICS
     authority_type: str = AUTHORITY_TYPE
     closure_version: str = CLOSURE_VERSION
@@ -98,6 +100,7 @@ __all__ = [
     "SOURCE_ENDPOINT",
     "SOURCE_NAME",
     "SOURCE_REQUEST_TYPE",
+    "SOURCE_COUNT",
     "SOURCE_SEMANTICS",
     "FIX02_HEAD",
     "FIX02_TREE",

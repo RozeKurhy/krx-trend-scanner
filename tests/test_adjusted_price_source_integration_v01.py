@@ -44,7 +44,7 @@ class Session:
 
 
 def _xml(*items: str) -> str:
-    return "<chartdata>" + "".join(f'<item data="{item}"/>' for item in items) + "</chartdata>"
+    return "<protocol><chartdata>" + "".join(f'<item data="{item}"/>' for item in items) + "</chartdata></protocol>"
 
 
 def _frame() -> pd.DataFrame:
@@ -90,18 +90,19 @@ def test_naver_positive_request_and_ohlc_only_output():
     assert list(frame.columns) == ["open", "high", "low", "close"]
     assert frame.dtypes.tolist() == ["float64"] * 4
     assert session.calls[0][1]["params"] == {
-        "symbol": "005930", "timeframe": "day", "requestType": 1,
+        "symbol": "005930", "timeframe": "day", "count": "5000", "requestType": 1,
         "startTime": "20240102", "endTime": "20240103",
     }
     assert provider.call_audit() == {
         "logical_fetch_count": 1, "naver_http_call_count": 1,
         "successful_fetch_count": 1, "empty_fetch_count": 0,
         "error_fetch_count": 0, "pykrx_fallback_call_count": 0,
+        "phantom_row_count": 0,
     }
 
 
 def test_naver_alpha_and_empty_response():
-    session = Session("<chartdata></chartdata>")
+    session = Session(_xml())
     provider = NaverDirectAdjustedPriceDataProvider(session=session)
     frame = provider.load_daily("0001A0", "2024-01-02", "2024-01-03")
     assert frame.empty and list(frame.columns) == ["open", "high", "low", "close"]
@@ -109,9 +110,72 @@ def test_naver_alpha_and_empty_response():
     assert provider.empty_fetch_count == 1
 
 
+def test_naver_drops_exact_suspension_phantom_and_audits():
+    session = Session(
+        _xml(
+            "20180427|52000|54000|51800|53000|100",
+            "20180430|0|0|0|53000|0",
+            "20180504|53000|53900|51800|51900|39565391",
+        )
+    )
+    provider = NaverDirectAdjustedPriceDataProvider(session=session)
+
+    frame = provider.load_daily("005930", "2018-04-11", "2018-06-20")
+
+    assert list(frame.index.strftime("%Y-%m-%d")) == ["2018-04-27", "2018-05-04"]
+    assert len(frame) == 2
+    assert provider.phantom_row_count == 1
+    assert provider.call_audit()["phantom_row_count"] == 1
+    assert tuple(frame.columns) == ("open", "high", "low", "close")
+
+
 @pytest.mark.parametrize(
     "payload",
     [
+        _xml("20180430|0|0|0|0|0"),
+        _xml("20180430|0|53000|52000|52500|100"),
+        _xml("20180430|0|0|0|53000|100"),
+        _xml("20180430|-1|0|0|53000|0"),
+    ],
+)
+def test_naver_non_phantom_invalid_ohlc_remains_fail_closed(payload: str):
+    provider = NaverDirectAdjustedPriceDataProvider(session=Session(payload))
+
+    with pytest.raises(MarketDataError):
+        provider.load_daily("005930", "2018-04-11", "2018-06-20")
+
+    assert provider.phantom_row_count == 0
+    assert provider.pykrx_fallback_call_count == 0
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        '<chartdata><item data="20180430|52000|54000|51800|53000|100"/></chartdata>',
+        "<protocol></protocol>",
+    ],
+)
+def test_naver_wrong_root_or_missing_chartdata_fails_closed(payload: str):
+    provider = NaverDirectAdjustedPriceDataProvider(session=Session(payload))
+
+    with pytest.raises(MarketDataError):
+        provider.load_daily("005930", "2018-04-11", "2018-06-20")
+
+
+def test_naver_protocol_chartdata_empty_is_typed_empty():
+    provider = NaverDirectAdjustedPriceDataProvider(session=Session("<protocol><chartdata></chartdata></protocol>"))
+
+    frame = provider.load_daily("0001A0", "2024-01-02", "2024-01-03")
+
+    assert frame.empty
+    assert tuple(frame.columns) == ("open", "high", "low", "close")
+    assert provider.empty_fetch_count == 1
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        "",
         "<chartdata>",
         _xml("20240102|100|110|90|105"),
         _xml("20240102|100|110|90|105|1|extra"),

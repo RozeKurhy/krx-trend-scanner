@@ -8,6 +8,8 @@ PyKRX for the unadjusted response used by the legacy composite provider.
 from __future__ import annotations
 
 from datetime import date, datetime
+import math
+import re
 import xml.etree.ElementTree as ET
 from typing import Any
 
@@ -28,9 +30,8 @@ _PYKRX_COLUMNS = {"시가": "open", "고가": "high", "저가": "low", "종가":
 _FORBIDDEN_OUTPUT_COLUMNS = {"volume", "trading_value", "market_cap", "listed_shares"}
 
 
-import re
-
 _TICKER_RE = re.compile(r"^[0-9A-Z]{6}$")
+_NAVER_DATE_RE = re.compile(r"^\d{8}$")
 
 
 def normalize_ticker(ticker: str | int) -> str:
@@ -240,6 +241,7 @@ class NaverDirectAdjustedPriceDataProvider:
         self._empty_fetch_count = 0
         self._error_fetch_count = 0
         self._pykrx_fallback_call_count = 0
+        self._phantom_row_count = 0
 
     @staticmethod
     def _request_date(value: Any, field: str) -> tuple[str, pd.Timestamp]:
@@ -282,6 +284,12 @@ class NaverDirectAdjustedPriceDataProvider:
     def pykrx_fallback_call_count(self) -> int:
         return self._pykrx_fallback_call_count
 
+    @property
+    def phantom_row_count(self) -> int:
+        """Number of exact suspension placeholder rows removed so far."""
+
+        return self._phantom_row_count
+
     def call_audit(self) -> dict[str, int]:
         return {
             "logical_fetch_count": self.logical_fetch_count,
@@ -290,6 +298,7 @@ class NaverDirectAdjustedPriceDataProvider:
             "empty_fetch_count": self.empty_fetch_count,
             "error_fetch_count": self.error_fetch_count,
             "pykrx_fallback_call_count": self.pykrx_fallback_call_count,
+            "phantom_row_count": self.phantom_row_count,
         }
 
     @staticmethod
@@ -298,15 +307,24 @@ class NaverDirectAdjustedPriceDataProvider:
 
     def _parse_response(self, payload: str, start: pd.Timestamp, end: pd.Timestamp) -> pd.DataFrame:
         if not payload or not payload.strip():
-            return self._empty()
+            raise MarketDataError("Naver XML payload가 비어 있습니다.")
         try:
             root = ET.fromstring(payload)
         except ET.ParseError as exc:
             raise MarketDataError(f"Naver XML parse failure: {exc}") from exc
+        if root.tag != "protocol":
+            raise MarketDataError(f"Naver XML root가 protocol이 아닙니다: {root.tag!r}")
+        children = list(root)
+        if len(children) != 1 or children[0].tag != "chartdata":
+            raise MarketDataError("Naver XML protocol에 direct chartdata child가 정확히 하나 필요합니다.")
+        chartdata = children[0]
+        items = list(chartdata)
+        if any(item.tag != "item" for item in items):
+            raise MarketDataError("Naver XML chartdata에는 item child만 허용됩니다.")
         rows: list[tuple[pd.Timestamp, float, float, float, float]] = []
-        items = list(root.iter("item"))
         if not items:
             return self._empty()
+        seen_dates: set[pd.Timestamp] = set()
         for item in items:
             data = item.attrib.get("data")
             if data is None:
@@ -314,17 +332,27 @@ class NaverDirectAdjustedPriceDataProvider:
             fields = data.split("|")
             if len(fields) != 6:
                 raise MarketDataError(f"Naver item field count가 6이 아닙니다: {len(fields)}")
+            if not _NAVER_DATE_RE.fullmatch(fields[0]):
+                raise MarketDataError(f"Naver item date schema 오류: {fields[0]!r}")
             try:
                 day = pd.Timestamp(datetime.strptime(fields[0], "%Y%m%d"))
                 values = [float(fields[i]) for i in range(1, 5)]
-                float(fields[5])  # volume is validated but never emitted
+                volume = float(fields[5])  # volume is validated but never emitted
             except (TypeError, ValueError, OverflowError) as exc:
                 raise MarketDataError(f"Naver item numeric/date parse failure: {data!r}") from exc
+            if not all(math.isfinite(value) for value in (*values, volume)):
+                raise MarketDataError(f"Naver item numeric value가 finite하지 않습니다: {data!r}")
             if day < start or day > end:
                 raise MarketDataError(f"Naver response date is outside requested window: {fields[0]}")
+            if day in seen_dates:
+                raise MarketDataError("Naver response contains duplicate dates")
+            seen_dates.add(day)
+            open_, high, low, close = values
+            if open_ == 0 and high == 0 and low == 0 and close > 0 and volume == 0:
+                self._phantom_row_count += 1
+                continue
             if any(value <= 0 for value in values):
                 raise MarketDataError(f"Naver response contains non-positive OHLC: {data!r}")
-            open_, high, low, close = values
             if high < max(open_, close) or low > min(open_, close) or high < low:
                 raise MarketDataError(f"Naver response OHLC relation is invalid: {data!r}")
             rows.append((day, open_, high, low, close))
@@ -350,6 +378,7 @@ class NaverDirectAdjustedPriceDataProvider:
         params = {
             "symbol": normalized_ticker,
             "timeframe": "day",
+            "count": self.source_descriptor.count,
             "requestType": 1,
             "startTime": start_param,
             "endTime": end_param,

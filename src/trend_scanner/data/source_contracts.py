@@ -132,6 +132,7 @@ ADJUSTED_PRICE_AUTHORITY_CONTRACT: dict[str, Any] = {
     "source_endpoint": "https://fchart.stock.naver.com/sise.nhn",
     "request_type": 1,
     "timeframe": "day",
+    "count": "5000",
     "source_semantics": "ADJUSTED_OHLC_ONLY",
     "authority_type": AuthorityType.AUTHORITATIVE.value,
     "schema_version": "ADJUSTED_PRICE_V02",
