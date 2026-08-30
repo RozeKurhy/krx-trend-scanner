@@ -1,0 +1,67 @@
+{
+  "schema": "closure_v02_gate_summary_v01",
+  "directive_id": "C13_AUTHORITY_CLOSURE_REASSESSMENT_V02",
+  "historical_canonical": {
+    "source_file": "/private/tmp/krx_c13_resume3_evidence/c13_live_artifacts/adjusted_price_source_authority_corporate_action_evidence_v01_fix03_correction_13.json",
+    "source_sha256": "276a42b76720b8a188fbeaa7b3ce8556f530666cd9aa04a74fec3ce3b08aff3b",
+    "gate_06": "FAIL",
+    "gate_15": "FAIL",
+    "unresolved_higher_priority_candidate_count": 1,
+    "all_gates_passed": false,
+    "production_integration_authorized": false
+  },
+  "fix02_real_offline_reassessment": {
+    "source_manifest": "/private/tmp/krx_c13_fix02_regression_recertification_v01_fix01/real_offline_reassessment/offline_reassessment_manifest.json",
+    "source_manifest_sha256": "487f69ff85dc55ed50e902611bafd90ff01f23fbe827cce57e539315c6d134b3",
+    "gate06": "PASS",
+    "gate14": "PASS",
+    "gate15": "PASS",
+    "unresolved": 0,
+    "all_gates_passed": true,
+    "gate14_source": "REASSESSED_GATE14_PROVENANCE",
+    "gate06_price_provenance": "REASSESSED_MAY-04_PARITY",
+    "gate06_reconciliation_provenance": "REASSESSED_MAY-04_RECONCILIATION",
+    "old_may16_samsung_canonical_price_metric_used": false,
+    "seven_other_controls": {
+      "selection_drift_count": 0,
+      "anchor_drift_count": 0,
+      "authority_provenance_drift_count": 0,
+      "price_parity_drift_count": 0
+    },
+    "all_15_gates": {
+      "gate_01_candidate_contract_frozen": true,
+      "gate_02_long_lived_active_coverage": true,
+      "gate_03_current_common_controls": true,
+      "gate_04_historical_only_controls": true,
+      "gate_05_alpha_23_coverage": true,
+      "gate_07_exact_ohlc_overlap_parity": true,
+      "gate_08_date_boundary_semantics": true,
+      "gate_09_no_unexplained_missing_expected_rows": true,
+      "gate_10_no_lifecycle_or_future_leakage": true,
+      "gate_11_repeatability_stable": true,
+      "gate_12_failure_semantics_fail_closed": true,
+      "gate_13_parser_schema_valid": true,
+      "gate_14_provenance_complete": true,
+      "gate_06_corporate_action_parity": true,
+      "gate_15_no_unresolved_conditions": true
+    }
+  },
+  "current_closure_v02": {
+    "gate06": "PASS",
+    "gate14": "PASS",
+    "gate15": "PASS",
+    "unresolved": 0,
+    "all_gates_passed": true,
+    "authority_closure": "CLOSED",
+    "production_integration_authorized": true
+  },
+  "source_gate_artifacts": {
+    "gate06_file": "/private/tmp/krx_c13_fix02_regression_recertification_v01_fix01/real_offline_reassessment/gate06_reassessment.json",
+    "gate06_sha256": "1d5f205de62fcf9f0d4e77b55c0204d72558fd59b5555e2692125ed7b73fe738",
+    "gate14_file": "/private/tmp/krx_c13_fix02_regression_recertification_v01_fix01/real_offline_reassessment/gate14_reassessment.json",
+    "gate14_sha256": "d24b571057289ffbf27b339bf1bb6138344b14bc8635551ab422cbfb26110b6c",
+    "gate15_file": "/private/tmp/krx_c13_fix02_regression_recertification_v01_fix01/real_offline_reassessment/gate15_reassessment.json",
+    "gate15_sha256": "1f355f2dafce8e315ca997150f60a69ffec3cd5b31a58b31843eb26368ea9c64"
+  },
+  "external_network_calls": 0
+}

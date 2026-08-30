@@ -1,0 +1,31 @@
+{
+  "schema": "implementation_regression_certification_v01",
+  "directive_id": "C13_FIX02_REGRESSION_RECERTIFICATION_V01_FIX01",
+  "code_head_under_test": "99ce7d0b8127f48af3b8b002c246a6c4b0a4395d",
+  "code_tree_sha_under_test": "4dfacef5ffe750675f5fc224003c64504f620603",
+  "worktree_root": "/private/tmp/krx-c13-fix02-recert-fix01.mBMrH6",
+  "pytest_invocation_count": 1,
+  "pytest_command": "python -m pytest -q -p no:cacheprovider",
+  "full_suite_completion": true,
+  "pytest_process_exit_code": 1,
+  "duration_seconds": 1317.2,
+  "terminal_counts": {
+    "passed": 2175,
+    "failed": 1,
+    "errors": 0,
+    "skipped": 7,
+    "deselected": 5,
+    "warnings": 291100
+  },
+  "allowed_baseline_failures": [
+    "tests/test_krx_historical_backfill.py::test_recent_empty_is_not_checkpointed_and_general_resume_retries"
+  ],
+  "unexpected_failures": [],
+  "unexpected_errors": [],
+  "new_regression_count": 0,
+  "certification_valid": true,
+  "external_network_blocked": true,
+  "loopback_allowed": true,
+  "log_path": "/private/tmp/krx_c13_fix02_regression_recertification_v01_fix01/full_pytest_fix02_recertification_fix01.log",
+  "log_sha256": "7a0e813588cbf0515fb6fe8185c91488f15adf6b10d19242001b592f7beb8f72"
+}
