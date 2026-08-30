@@ -576,7 +576,13 @@ class FullPopulationRunner:
         # A phantom is only closed when independent authority accounts for its
         # date as either non-trading or tradable.  Unknown authority is a hard
         # failure rather than an inferred non-trading day.
+        authority_ready = resolution.authority_status in {
+            AuthorityStatus.VALID.value,
+            AuthorityStatus.NO_EXPECTED_OBSERVATIONS.value,
+        }
         unresolved_phantom_dates = phantom_dates - authority_nontrading_dates - authority_tradable_dates
+        if not authority_ready:
+            unresolved_phantom_dates = set(phantom_dates)
         authority_tradable_phantom_dates = phantom_dates.intersection(authority_tradable_dates)
         adjudicated_dates = (
             set(resolution.adjudicated_source_nonusable_dates)

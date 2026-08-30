@@ -170,8 +170,8 @@ def test_unresolved_authority_plus_phantom_fails_closed(tmp_path: Path, monkeypa
     provider = NaverDirectAdjustedPriceDataProvider(session=_Session(_xml("20240102|0|0|0|100|0")))
     unresolved = ExpectedCoverageResolution(
         **{
-            **_resolution().__dict__,
-            "authority_status": AuthorityStatus.INSUFFICIENT_AUTHORITY.value,
+            **_resolution("2024-01-02").__dict__,
+            "authority_status": AuthorityStatus.ERROR.value,
         }
     )
     monkeypatch.setattr(
