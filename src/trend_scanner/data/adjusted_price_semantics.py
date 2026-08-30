@@ -136,7 +136,8 @@ def validate_source_integrity(frame: pd.DataFrame) -> None:
     if not frame.index.is_unique:
         raise MarketDataError("수정주가 거래일 index에 중복이 있습니다.")
     numeric = frame[list(required)].apply(pd.to_numeric, errors="coerce")
-    if numeric.isna().any().any():
+    finite = numeric.apply(lambda column: column.map(_finite))
+    if not finite.all().all():
         raise MarketDataError("수정주가 source OHLC에 finite하지 않은 값이 있습니다.")
 
 

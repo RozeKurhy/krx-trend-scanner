@@ -25,6 +25,7 @@ from trend_scanner.data.adjusted_price_provider import NaverDirectAdjustedPriceD
 from trend_scanner.data.adjusted_price_semantics import (
     ClosureState,
     classify_source_row,
+    validate_source_integrity,
 )
 from trend_scanner.data.adjusted_price_source_authority import CURRENT_SOURCE_DESCRIPTOR
 from trend_scanner.data.adjusted_price_store import AdjustedPriceStore
@@ -113,6 +114,97 @@ def test_runner_closes_relation_anomaly_without_discarding_source_row(tmp_path: 
     assert runner.store.load_daily_source("005930").iloc[0]["high"] == 80
 
 
+def test_relation84_authority_suppresses_positive_naver_row_and_preserves_audit(tmp_path: Path, monkeypatch):
+    provider = NaverDirectAdjustedPriceDataProvider(
+        session=_Session(_xml("20240102|100|110|90|105|1", "20240103|101|111|91|106|1"))
+    )
+    monkeypatch.setattr(
+        "trend_scanner.data.adjusted_price_full_population.resolve_expected_coverage",
+        lambda *args, **kwargs: _resolution("2024-01-03", nontradable=("2024-01-02",)),
+    )
+    runner = FullPopulationRunner(store_dir=tmp_path / "store", artifact_dir=tmp_path / "artifacts")
+    result = runner.process_single_ticker(_record(), provider=provider)
+    assert result.acquisition_status == AcquisitionStatus.COMPLETE.value
+    assert result.confirmed_nontrading_count == 1
+    assert result.unexpected_source_date_count == 0
+    assert result.silent_missing_count == 0
+    assert result.authority_suppressed_source_dates == ("2024-01-02",)
+    assert [d.strftime("%Y-%m-%d") for d in runner.store.load_daily_source("005930").index] == ["2024-01-03"]
+    audit = [item for item in result.source_presence_audit if item["date"] == "2024-01-02"]
+    assert audit and audit[0]["classification"] == "NAVER_POSITIVE_NONTRADING_PLACEHOLDER"
+    assert audit[0]["source_row_present"] is True
+
+
+def test_authority_nontrading_plus_phantom_is_confirmed_nontrading(tmp_path: Path, monkeypatch):
+    provider = NaverDirectAdjustedPriceDataProvider(session=_Session(_xml("20240102|0|0|0|100|0")))
+    monkeypatch.setattr(
+        "trend_scanner.data.adjusted_price_full_population.resolve_expected_coverage",
+        lambda *args, **kwargs: _resolution(nontradable=("2024-01-02",)),
+    )
+    runner = FullPopulationRunner(store_dir=tmp_path / "store", artifact_dir=tmp_path / "artifacts")
+    result = runner.process_single_ticker(_record(), provider=provider)
+    assert result.acquisition_status == AcquisitionStatus.NO_USABLE_OBSERVATIONS.value
+    assert result.confirmed_nontrading_count == 1
+    assert result.adjudicated_source_nonusable_count == 0
+    assert result.unexpected_source_date_count == 0
+    assert result.silent_missing_count == 0
+
+
+def test_authority_tradable_plus_phantom_is_adjudicated_source_nonusable(tmp_path: Path, monkeypatch):
+    provider = NaverDirectAdjustedPriceDataProvider(session=_Session(_xml("20240102|0|0|0|100|0")))
+    monkeypatch.setattr(
+        "trend_scanner.data.adjusted_price_full_population.resolve_expected_coverage",
+        lambda *args, **kwargs: _resolution("2024-01-02"),
+    )
+    runner = FullPopulationRunner(store_dir=tmp_path / "store", artifact_dir=tmp_path / "artifacts")
+    result = runner.process_single_ticker(_record(), provider=provider)
+    assert result.acquisition_status == AcquisitionStatus.COMPLETE_WITH_ADJUDICATED_NONUSABLE.value
+    assert result.adjudicated_source_nonusable_count == 1
+    assert result.confirmed_nontrading_count == 0
+    assert result.unexpected_source_date_count == 0
+    assert result.silent_missing_count == 0
+    assert not (tmp_path / "store" / "005930.parquet").exists()
+
+
+def test_unresolved_authority_plus_phantom_fails_closed(tmp_path: Path, monkeypatch):
+    provider = NaverDirectAdjustedPriceDataProvider(session=_Session(_xml("20240102|0|0|0|100|0")))
+    unresolved = ExpectedCoverageResolution(
+        **{
+            **_resolution().__dict__,
+            "authority_status": AuthorityStatus.INSUFFICIENT_AUTHORITY.value,
+        }
+    )
+    monkeypatch.setattr(
+        "trend_scanner.data.adjusted_price_full_population.resolve_expected_coverage",
+        lambda *args, **kwargs: unresolved,
+    )
+    runner = FullPopulationRunner(store_dir=tmp_path / "store", artifact_dir=tmp_path / "artifacts")
+    result = runner.process_single_ticker(_record(), provider=provider)
+    assert result.acquisition_status == AcquisitionStatus.INSUFFICIENT_AUTHORITY.value
+    assert result.terminal_state == "UNRESOLVED_ACTIVITY_EVIDENCE"
+    assert result.confirmed_nontrading_count == 0
+    assert result.silent_missing_count == 0
+
+
+def test_store_date_set_has_no_authority_intersection(tmp_path: Path, monkeypatch):
+    provider = NaverDirectAdjustedPriceDataProvider(
+        session=_Session(_xml("20240101|100|110|90|105|1", "20240102|100|110|90|105|1", "20240103|0|0|0|100|0"))
+    )
+    monkeypatch.setattr(
+        "trend_scanner.data.adjusted_price_full_population.resolve_expected_coverage",
+        lambda *args, **kwargs: _resolution("2024-01-01", "2024-01-03", nontradable=("2024-01-02",)),
+    )
+    runner = FullPopulationRunner(store_dir=tmp_path / "store", artifact_dir=tmp_path / "artifacts")
+    rec = {**_record(), "first_common_date": "2024-01-01"}
+    result = runner.process_single_ticker(rec, provider=provider)
+    stored_dates = set(runner.store.load_daily_source("005930").index.strftime("%Y-%m-%d"))
+    assert stored_dates == {"2024-01-01"}
+    assert not stored_dates.intersection({"2024-01-02"})
+    assert not stored_dates.intersection(set(result.authority_suppressed_source_dates))
+    assert result.unexpected_source_date_count == 0
+    assert result.silent_missing_count == 0
+
+
 def test_source_native_relation_anomaly_is_stored_without_repair(tmp_path: Path):
     frame = pd.DataFrame(
         {"open": [100.0], "high": [80.0], "low": [90.0], "close": [105.0]},
@@ -138,11 +230,22 @@ def test_naver_phantom_only_has_explicit_zero_usable_terminal_state(tmp_path, mo
     )
     runner = FullPopulationRunner(store_dir=tmp_path / "store", artifact_dir=tmp_path / "artifacts")
     result = runner.process_single_ticker(_record(), provider=provider)
-    assert result.acquisition_status == AcquisitionStatus.NO_USABLE_OBSERVATIONS.value
+    assert result.acquisition_status == AcquisitionStatus.COMPLETE_WITH_ADJUDICATED_NONUSABLE.value
     assert result.terminal_state == "RAW_ROWS_PRESENT_ALL_PHANTOM"
     assert result.phantom_count == 2
     assert result.silent_missing_count == 0
     assert not (tmp_path / "store" / "005930.parquet").exists()
+
+
+def test_source_integrity_rejects_nan_and_infinities():
+    for column, value in (("open", float("inf")), ("low", float("-inf")), ("close", float("nan"))):
+        frame = pd.DataFrame(
+            {"open": [100.0], "high": [110.0], "low": [90.0], "close": [105.0]},
+            index=pd.to_datetime(["2024-01-02"]),
+        )
+        frame.loc[:, column] = value
+        with pytest.raises(MarketDataError):
+            validate_source_integrity(frame)
 
 
 def test_phantom_terminal_precedes_no_expected_authority(tmp_path, monkeypatch):

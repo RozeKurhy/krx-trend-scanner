@@ -133,6 +133,9 @@ class TickerAcquisitionRecord:
     phantom_count: int = 0
     analytic_invalid_ohlc_count: int = 0
     terminal_state: str | None = None
+    authority_suppressed_source_count: int = 0
+    authority_suppressed_source_dates: tuple[str, ...] = ()
+    source_presence_audit: tuple[dict[str, Any], ...] = ()
 
 
 @dataclass
@@ -462,6 +465,8 @@ class FullPopulationRunner:
         source_nonusable_count = 0
         raw_source_row_count = 0
         source_native_adjusted = False
+        source_row_audit: list[dict[str, Any]] = []
+        raw_frame = pd.DataFrame()
 
         cache_is_current = False
         if cached_info is not None and "actual_dates" in cached_info:
@@ -488,6 +493,7 @@ class FullPopulationRunner:
                 attempt_count = attempt
                 try:
                     frame = provider.load_daily(ticker, req_start, req_end)
+                    raw_frame = frame.copy()
                     actual_dates = [d.strftime("%Y-%m-%d") for d in frame.index]
                     source_native_adjusted = bool(frame.attrs.get("source_native_adjusted", False))
                     phantom_dates = set(str(d) for d in frame.attrs.get("phantom_dates", ()))
@@ -504,6 +510,7 @@ class FullPopulationRunner:
                             len(actual_dates) + phantom_count + source_nonusable_count,
                         )
                     )
+                    source_row_audit = [dict(entry) for entry in frame.attrs.get("source_row_audit", ())]
                     last_error = None
                     break
                 except Exception as exc:
@@ -535,14 +542,61 @@ class FullPopulationRunner:
             duplicate_count = len(actual_dates) - len(set(actual_dates))
             future_row_count = sum(1 for d in actual_dates if d > req_end)
 
-        # 2. Coverage Evaluation
+        # 2. Coverage Evaluation and independent authority reconciliation.
+        # The provider reports source facts only.  Market tradability comes
+        # from the independent expected-coverage authority.
+        authority_nontrading_dates = set(resolution.nontradable_dates)
+        authority_tradable_dates = set(resolution.expected_tradable_dates)
+        source_positive_dates = set(actual_dates)
+        source_dates = source_positive_dates | phantom_dates | source_nonusable_dates
+        authority_suppressed_dates = authority_nontrading_dates.intersection(source_dates)
+
+        # Preserve an auditable record for positive Naver rows that independent
+        # authority suppresses as non-trading before any store write.
+        if authority_suppressed_dates.intersection(source_positive_dates) and not raw_frame.empty:
+            for date_str in sorted(authority_suppressed_dates.intersection(source_positive_dates)):
+                ts = pd.Timestamp(date_str)
+                if ts in raw_frame.index:
+                    row = raw_frame.loc[ts]
+                    source_row_audit.append(
+                        {
+                            "ticker": ticker,
+                            "date": date_str,
+                            "classification": "NAVER_POSITIVE_NONTRADING_PLACEHOLDER",
+                            "reason": "independent authority confirms nontrading; source row suppressed",
+                            "source_authority": getattr(getattr(provider, "source_descriptor", None), "source_authority_id", "UNKNOWN"),
+                            "source_row_present": True,
+                            "open": float(row["open"]),
+                            "high": float(row["high"]),
+                            "low": float(row["low"]),
+                            "close": float(row["close"]),
+                        }
+                    )
+
+        # A phantom is only closed when independent authority accounts for its
+        # date as either non-trading or tradable.  Unknown authority is a hard
+        # failure rather than an inferred non-trading day.
+        unresolved_phantom_dates = phantom_dates - authority_nontrading_dates - authority_tradable_dates
+        authority_tradable_phantom_dates = phantom_dates.intersection(authority_tradable_dates)
+        adjudicated_dates = (
+            set(resolution.adjudicated_source_nonusable_dates)
+            | source_nonusable_dates
+            | authority_tradable_phantom_dates
+        ) - authority_nontrading_dates
+
+        # Remove authority-suppressed positive rows from the usable source
+        # frame.  Their presence remains in source_presence_audit above.
+        if authority_suppressed_dates.intersection(source_positive_dates) and not frame.empty:
+            suppressed_ts = pd.to_datetime(sorted(authority_suppressed_dates.intersection(source_positive_dates)))
+            frame = frame.loc[~frame.index.isin(suppressed_ts)].copy()
+            frame.attrs.update(raw_frame.attrs)
+            actual_dates = [d.strftime("%Y-%m-%d") for d in frame.index]
+            row_count = len(actual_dates)
+            first_actual = actual_dates[0] if actual_dates else None
+            last_actual = actual_dates[-1] if actual_dates else None
+
         exp_set = set(resolution.expected_tradable_dates)
-        # Source rows with an explicit adjudication are not silent gaps.  The
-        # same date can be present in the baseline authority and in the source
-        # response; closure accounting removes it from residual missing.
-        effective_nontrading_dates = set(resolution.nontradable_dates) | phantom_dates
-        adjudicated_dates = set(resolution.adjudicated_source_nonusable_dates) | source_nonusable_dates
-        exp_set -= effective_nontrading_dates
+        exp_set -= authority_nontrading_dates
         exp_set -= adjudicated_dates
         act_set = set(actual_dates)
         matched_set = exp_set.intersection(act_set)
@@ -553,26 +607,36 @@ class FullPopulationRunner:
         missing_count = len(missing_set)
         unexpected_count = len(unexpected_set)
         expected_count = len(exp_set)
-        confirmed_nontrading_count = len(effective_nontrading_dates.intersection(
-            set(resolution.expected_tradable_dates) | phantom_dates
-        ))
+        confirmed_nontrading_count = len(authority_nontrading_dates)
 
         if last_error is not None:
             source_status = "ERROR"
-        elif row_count == 0:
+        elif row_count == 0 and raw_source_row_count == 0:
             source_status = "EMPTY"
         elif invalid_ohlc_count > 0 or duplicate_count > 0 or future_row_count > 0:
             source_status = "SCHEMA_ANOMALY"
         else:
             source_status = "SUCCESS"
 
-        all_phantom_terminal = row_count == 0 and raw_source_row_count > 0 and phantom_count == raw_source_row_count
+        all_phantom_terminal = (
+            row_count == 0
+            and raw_source_row_count > 0
+            and phantom_count == raw_source_row_count
+            and not unresolved_phantom_dates
+        )
         all_source_nonusable_terminal = (
             row_count == 0
             and source_nonusable_count > 0
             and source_nonusable_count == raw_source_row_count
         )
-        if (all_phantom_terminal or all_source_nonusable_terminal) and expected_count == 0:
+        all_authority_suppressed_terminal = (
+            row_count == 0
+            and raw_source_row_count > 0
+            and len(authority_suppressed_dates) == raw_source_row_count
+        )
+        if unresolved_phantom_dates:
+            coverage_status = CoverageStatus.INSUFFICIENT_COVERAGE_AUTHORITY.value
+        elif (all_phantom_terminal or all_source_nonusable_terminal or all_authority_suppressed_terminal) and expected_count == 0:
             coverage_status = CoverageStatus.NO_EXPECTED_OBSERVATIONS.value
         elif resolution.authority_status != AuthorityStatus.VALID.value:
             coverage_status = CoverageStatus.INSUFFICIENT_COVERAGE_AUTHORITY.value
@@ -598,6 +662,11 @@ class FullPopulationRunner:
             and duplicate_count == 0
             and future_row_count == 0
         ):
+            forbidden_dates = set(actual_dates).intersection(authority_nontrading_dates | adjudicated_dates)
+            if forbidden_dates:
+                raise MarketDataError(
+                    "STORE_WRITE_AUTHORITY_INTERSECTION: " + ",".join(sorted(forbidden_dates))
+                )
             try:
                 self.store.save_full(
                     ticker,
@@ -631,12 +700,21 @@ class FullPopulationRunner:
 
         # 4. Determine Final Acquisition Status
         terminal_state: str | None = None
-        if all_phantom_terminal:
+        if unresolved_phantom_dates:
+            terminal_state = "UNRESOLVED_ACTIVITY_EVIDENCE"
+            acq_status = AcquisitionStatus.INSUFFICIENT_AUTHORITY.value
+        elif all_phantom_terminal:
             terminal_state = "RAW_ROWS_PRESENT_ALL_PHANTOM"
-            acq_status = AcquisitionStatus.NO_USABLE_OBSERVATIONS.value
+            if set(phantom_dates).issubset(authority_nontrading_dates):
+                acq_status = AcquisitionStatus.NO_USABLE_OBSERVATIONS.value
+            else:
+                acq_status = AcquisitionStatus.COMPLETE_WITH_ADJUDICATED_NONUSABLE.value
         elif all_source_nonusable_terminal:
             terminal_state = "RAW_ROWS_PRESENT_ALL_SOURCE_NONUSABLE"
             acq_status = AcquisitionStatus.COMPLETE_WITH_ADJUDICATED_NONUSABLE.value
+        elif all_authority_suppressed_terminal:
+            terminal_state = "RAW_ROWS_PRESENT_AUTHORITY_SUPPRESSED"
+            acq_status = AcquisitionStatus.NO_USABLE_OBSERVATIONS.value
         elif resolution.authority_status != AuthorityStatus.VALID.value:
             acq_status = AcquisitionStatus.INSUFFICIENT_AUTHORITY.value
         elif source_status == "ERROR":
@@ -700,6 +778,9 @@ class FullPopulationRunner:
             phantom_count=phantom_count,
             analytic_invalid_ohlc_count=analytic_invalid_ohlc_count,
             terminal_state=terminal_state,
+            authority_suppressed_source_count=len(authority_suppressed_dates),
+            authority_suppressed_source_dates=tuple(sorted(authority_suppressed_dates)),
+            source_presence_audit=tuple(source_row_audit),
         )
 
     def run_acquisition(
@@ -792,6 +873,9 @@ class FullPopulationRunner:
                     "unexpected_source_count": rec_obj.unexpected_source_date_count,
                     "authority_conflict_count": rec_obj.authority_conflict_count,
                     "phantom_count": rec_obj.phantom_count,
+                    "authority_suppressed_source_count": rec_obj.authority_suppressed_source_count,
+                    "authority_suppressed_source_dates": list(rec_obj.authority_suppressed_source_dates),
+                    "source_presence_audit": list(rec_obj.source_presence_audit),
                     "terminal_state": rec_obj.terminal_state,
                     "updated_at": rec_obj.updated_at,
                 }
@@ -811,6 +895,9 @@ class FullPopulationRunner:
                     "silent_missing_count": rec_obj.silent_missing_count,
                     "authority_conflict_count": rec_obj.authority_conflict_count,
                     "phantom_count": rec_obj.phantom_count,
+                    "authority_suppressed_source_count": rec_obj.authority_suppressed_source_count,
+                    "authority_suppressed_source_dates": list(rec_obj.authority_suppressed_source_dates),
+                    "source_presence_audit": list(rec_obj.source_presence_audit),
                     "terminal_state": rec_obj.terminal_state,
                     "error_type": rec_obj.error_type,
                     "error_message": rec_obj.error_message_sanitized,
@@ -908,6 +995,7 @@ class FullPopulationRunner:
         total_silent_missing = sum(r.silent_missing_count for r in records)
         total_authority_conflicts = sum(r.authority_conflict_count for r in records)
         total_phantom = sum(r.phantom_count for r in records)
+        total_authority_suppressed = sum(r.authority_suppressed_source_count for r in records)
 
         logical_queries = total_count
         new_live_queries = sum(1 for r in records if not r.reused_without_network)
@@ -1001,6 +1089,7 @@ class FullPopulationRunner:
                 "total_adjudicated_source_nonusable_dates": total_source_nonusable,
                 "total_authority_conflict_dates": total_authority_conflicts,
                 "total_phantom_rows": total_phantom,
+                "total_authority_suppressed_source_rows": total_authority_suppressed,
             },
             "data_quality_totals": {
                 "total_duplicates": total_duplicates,

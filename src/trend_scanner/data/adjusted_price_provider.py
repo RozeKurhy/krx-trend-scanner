@@ -21,6 +21,7 @@ from trend_scanner.data.adjusted_price_semantics import (
     ClosureState,
     analytic_candle_is_valid,
     classify_source_row,
+    is_zero_ohlc_phantom,
     validate_source_integrity,
 )
 from trend_scanner.data.adjusted_price_source_authority import (
@@ -345,8 +346,7 @@ class NaverDirectAdjustedPriceDataProvider:
         rows: list[tuple[pd.Timestamp, float, float, float, float]] = []
         phantom_dates: list[str] = []
         source_nonusable_dates: list[str] = []
-        if not items:
-            return self._empty()
+        source_row_audit: list[dict[str, Any]] = []
         seen_dates: set[pd.Timestamp] = set()
         for item in items:
             data = item.attrib.get("data")
@@ -371,14 +371,43 @@ class NaverDirectAdjustedPriceDataProvider:
                 raise MarketDataError("Naver response contains duplicate dates")
             seen_dates.add(day)
             open_, high, low, close = values
-            state = classify_source_row(open_, high, low, close, volume, 0.0)
-            if state == ClosureState.CONFIRMED_NONTRADING:
+            date_str = day.strftime("%Y-%m-%d")
+            if is_zero_ohlc_phantom(open_, high, low, close) and volume == 0.0:
                 self._phantom_row_count += 1
-                phantom_dates.append(day.strftime("%Y-%m-%d"))
+                phantom_dates.append(date_str)
+                source_row_audit.append(
+                    {
+                        "date": date_str,
+                        "classification": "NAVER_SOURCE_PLACEHOLDER_CANDIDATE",
+                        "reason": "exact zero-OHL positive-close shape with zero Naver volume; independent authority required",
+                        "source_authority": self.source_descriptor.source_authority_id,
+                        "source_row_present": True,
+                        "open": open_,
+                        "high": high,
+                        "low": low,
+                        "close": close,
+                        "volume": volume,
+                    }
+                )
                 continue
+            state = classify_source_row(open_, high, low, close, volume, volume)
             if state == ClosureState.ADJUDICATED_SOURCE_NONUSABLE:
                 self._source_nonusable_row_count += 1
-                source_nonusable_dates.append(day.strftime("%Y-%m-%d"))
+                source_nonusable_dates.append(date_str)
+                source_row_audit.append(
+                    {
+                        "date": date_str,
+                        "classification": "NAVER_SOURCE_NONUSABLE",
+                        "reason": "source row has non-positive OHLC or activity-positive zero-OHL shape",
+                        "source_authority": self.source_descriptor.source_authority_id,
+                        "source_row_present": True,
+                        "open": open_,
+                        "high": high,
+                        "low": low,
+                        "close": close,
+                        "volume": volume,
+                    }
+                )
                 continue
             rows.append((day, open_, high, low, close))
         frame = pd.DataFrame(
@@ -397,6 +426,7 @@ class NaverDirectAdjustedPriceDataProvider:
         frame.attrs["phantom_dates"] = tuple(phantom_dates)
         frame.attrs["source_nonusable_row_count"] = len(source_nonusable_dates)
         frame.attrs["source_nonusable_dates"] = tuple(source_nonusable_dates)
+        frame.attrs["source_row_audit"] = tuple(source_row_audit)
         self._phantom_dates.extend(phantom_dates)
         self._source_nonusable_dates.extend(source_nonusable_dates)
         valid = analytic_candle_is_valid(frame)
@@ -424,6 +454,10 @@ class NaverDirectAdjustedPriceDataProvider:
             if getattr(response, "status_code", 200) >= 400:
                 raise MarketDataError(f"Naver HTTP failure: {response.status_code}")
             frame = self._parse_response(getattr(response, "text", ""), start_ts, end_ts)
+            frame.attrs["source_row_audit"] = tuple(
+                {**entry, "ticker": normalized_ticker}
+                for entry in frame.attrs.get("source_row_audit", ())
+            )
         except MarketDataError:
             self._error_fetch_count += 1
             raise
