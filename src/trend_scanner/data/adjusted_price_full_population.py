@@ -50,7 +50,16 @@ from trend_scanner.data.adjusted_price_provider import (
     normalize_ticker,
     validate_adjusted_ohlc,
 )
-from trend_scanner.data.adjusted_price_source_authority import assert_current_descriptor
+from trend_scanner.data.adjusted_price_semantics import (
+    CLOSURE_ACCOUNTING_SCHEMA_VERSION,
+    ClosureState,
+    TRADABILITY_CONTRACT_VERSION,
+    analytic_candle_is_valid,
+)
+from trend_scanner.data.adjusted_price_source_authority import (
+    CURRENT_SOURCE_DESCRIPTOR,
+    assert_current_descriptor,
+)
 from trend_scanner.data.adjusted_price_store import (
     AdjustedPriceStore,
     DEFAULT_ADJUSTED_PRICE_STORE_DIR,
@@ -65,7 +74,8 @@ from trend_scanner.universe.survivorship_safe_denominator_freeze import (
 DEFAULT_FULL_POPULATION_DIR = Path(
     "artifacts/data/end_to_end_data_parity/v01/adjusted_price_store_full_population/v01"
 )
-CHECKPOINT_SCHEMA_VERSION = "full_population_checkpoint_v01"
+CHECKPOINT_SCHEMA_VERSION = "full_population_checkpoint_v02"
+SOURCE_PROVIDER_VERSION = "NaverDirectAdjustedPriceDataProvider_v02"
 
 
 class AcquisitionStatus(str, Enum):
@@ -74,6 +84,8 @@ class AcquisitionStatus(str, Enum):
     EMPTY = "EMPTY"
     ERROR = "ERROR"
     INSUFFICIENT_AUTHORITY = "INSUFFICIENT_AUTHORITY"
+    NO_USABLE_OBSERVATIONS = "NO_USABLE_OBSERVATIONS"
+    COMPLETE_WITH_ADJUDICATED_NONUSABLE = "COMPLETE_WITH_ADJUDICATED_NONUSABLE"
 
 
 @dataclass
@@ -113,6 +125,14 @@ class TickerAcquisitionRecord:
     error_type: str | None
     error_message_sanitized: str | None
     updated_at: str
+    usable_source_count: int = 0
+    confirmed_nontrading_count: int = 0
+    adjudicated_source_nonusable_count: int = 0
+    silent_missing_count: int = 0
+    authority_conflict_count: int = 0
+    phantom_count: int = 0
+    analytic_invalid_ohlc_count: int = 0
+    terminal_state: str | None = None
 
 
 @dataclass
@@ -126,6 +146,12 @@ class FullPopulationCheckpoint:
     calendar_cutoff_date: str
     completed_tickers: dict[str, dict[str, Any]]
     in_progress_tickers: dict[str, dict[str, Any]]
+    source_authority_id: str
+    source_provider_version: str
+    closure_accounting_schema_version: str
+    tradability_contract_version: str
+    store_schema_version: str
+    pit_authority_sha256: str
 
 
 class AdjustedPriceProviderProtocol(Protocol):
@@ -241,6 +267,25 @@ class FullPopulationRunner:
                     f"got '{data.get('schema')}'"
                 )
 
+            expected_compatibility = {
+                "source_authority_id": CURRENT_SOURCE_DESCRIPTOR.source_authority_id,
+                "source_provider_version": SOURCE_PROVIDER_VERSION,
+                "closure_accounting_schema_version": CLOSURE_ACCOUNTING_SCHEMA_VERSION,
+                "tradability_contract_version": TRADABILITY_CONTRACT_VERSION,
+                "store_schema_version": "ADJUSTED_PRICE_V02",
+                "pit_authority_sha256": "6b542ae05c9050dd30959d6f1b17306e4016f435a726ca7e0dff9e11008e4064",
+            }
+            mismatches = {
+                key: (data.get(key), expected)
+                for key, expected in expected_compatibility.items()
+                if data.get(key) != expected
+            }
+            if mismatches:
+                raise RuntimeError(
+                    "CHECKPOINT_COMPATIBILITY_MISMATCH: checkpoint semantic identity is stale: "
+                    + ", ".join(f"{key}={got!r} expected={expected!r}" for key, (got, expected) in mismatches.items())
+                )
+
             if (
                 data.get("population_count") != EXPECTED_POPULATION_COUNT
                 or data.get("population_sha256") != EXPECTED_POPULATION_SHA256
@@ -267,6 +312,12 @@ class FullPopulationRunner:
                 calendar_cutoff_date=data.get("calendar_cutoff_date", CANONICAL_CALENDAR_CUTOFF),
                 completed_tickers=data.get("completed_tickers", {}),
                 in_progress_tickers=data.get("in_progress_tickers", {}),
+                source_authority_id=data["source_authority_id"],
+                source_provider_version=data["source_provider_version"],
+                closure_accounting_schema_version=data["closure_accounting_schema_version"],
+                tradability_contract_version=data["tradability_contract_version"],
+                store_schema_version=data["store_schema_version"],
+                pit_authority_sha256=data["pit_authority_sha256"],
             )
 
         return FullPopulationCheckpoint(
@@ -279,6 +330,12 @@ class FullPopulationRunner:
             calendar_cutoff_date=CANONICAL_CALENDAR_CUTOFF,
             completed_tickers={},
             in_progress_tickers={},
+            source_authority_id=CURRENT_SOURCE_DESCRIPTOR.source_authority_id,
+            source_provider_version=SOURCE_PROVIDER_VERSION,
+            closure_accounting_schema_version=CLOSURE_ACCOUNTING_SCHEMA_VERSION,
+            tradability_contract_version=TRADABILITY_CONTRACT_VERSION,
+            store_schema_version="ADJUSTED_PRICE_V02",
+            pit_authority_sha256="6b542ae05c9050dd30959d6f1b17306e4016f435a726ca7e0dff9e11008e4064",
         )
 
     def save_checkpoint(self, checkpoint: FullPopulationCheckpoint) -> None:
@@ -346,7 +403,11 @@ class FullPopulationRunner:
                 st = checkpoint.in_progress_tickers[t].get("acquisition_status")
                 if st == AcquisitionStatus.PARTIAL.value:
                     existing_partial.append(t)
-                elif st == AcquisitionStatus.EMPTY.value:
+                elif st in {
+                    AcquisitionStatus.EMPTY.value,
+                    AcquisitionStatus.NO_USABLE_OBSERVATIONS.value,
+                    AcquisitionStatus.COMPLETE_WITH_ADJUDICATED_NONUSABLE.value,
+                }:
                     existing_empty.append(t)
                 elif st == AcquisitionStatus.ERROR.value:
                     existing_error.append(t)
@@ -395,6 +456,12 @@ class FullPopulationRunner:
         last_error: Exception | None = None
         frame: pd.DataFrame = pd.DataFrame()
         actual_dates: list[str] = []
+        phantom_dates: set[str] = set()
+        source_nonusable_dates: set[str] = set()
+        phantom_count = 0
+        source_nonusable_count = 0
+        raw_source_row_count = 0
+        source_native_adjusted = False
 
         cache_is_current = False
         if cached_info is not None and "actual_dates" in cached_info:
@@ -422,6 +489,21 @@ class FullPopulationRunner:
                 try:
                     frame = provider.load_daily(ticker, req_start, req_end)
                     actual_dates = [d.strftime("%Y-%m-%d") for d in frame.index]
+                    source_native_adjusted = bool(frame.attrs.get("source_native_adjusted", False))
+                    phantom_dates = set(str(d) for d in frame.attrs.get("phantom_dates", ()))
+                    source_nonusable_dates = set(
+                        str(d) for d in frame.attrs.get("source_nonusable_dates", ())
+                    )
+                    phantom_count = int(frame.attrs.get("phantom_row_count", len(phantom_dates)))
+                    source_nonusable_count = int(
+                        frame.attrs.get("source_nonusable_row_count", len(source_nonusable_dates))
+                    )
+                    raw_source_row_count = int(
+                        frame.attrs.get(
+                            "raw_source_row_count",
+                            len(actual_dates) + phantom_count + source_nonusable_count,
+                        )
+                    )
                     last_error = None
                     break
                 except Exception as exc:
@@ -437,6 +519,7 @@ class FullPopulationRunner:
         row_count = len(actual_dates)
         duplicate_count = 0
         invalid_ohlc_count = 0
+        analytic_invalid_ohlc_count = 0
         future_row_count = 0
         first_actual = actual_dates[0] if actual_dates else None
         last_actual = actual_dates[-1] if actual_dates else None
@@ -445,25 +528,22 @@ class FullPopulationRunner:
             duplicate_count = int(frame.index.duplicated().sum())
             req_end_ts = pd.Timestamp(req_end)
             future_row_count = int((frame.index > req_end_ts).sum())
-            relation_violations = (
-                (frame["high"] < frame["low"])
-                | (frame["high"] < frame["open"])
-                | (frame["high"] < frame["close"])
-                | (frame["low"] > frame["open"])
-                | (frame["low"] > frame["close"])
-                | (frame["open"] <= 0)
-                | (frame["high"] <= 0)
-                | (frame["low"] <= 0)
-                | (frame["close"] <= 0)
-                | frame[list(ADJUSTED_OHLC_COLUMNS)].isna().any(axis=1)
-            )
-            invalid_ohlc_count = int(relation_violations.sum())
+            analytic_valid = analytic_candle_is_valid(frame)
+            analytic_invalid_ohlc_count = int((~analytic_valid).sum())
+            invalid_ohlc_count = 0 if source_native_adjusted else analytic_invalid_ohlc_count
         elif cached_info is not None:
             duplicate_count = len(actual_dates) - len(set(actual_dates))
             future_row_count = sum(1 for d in actual_dates if d > req_end)
 
         # 2. Coverage Evaluation
         exp_set = set(resolution.expected_tradable_dates)
+        # Source rows with an explicit adjudication are not silent gaps.  The
+        # same date can be present in the baseline authority and in the source
+        # response; closure accounting removes it from residual missing.
+        effective_nontrading_dates = set(resolution.nontradable_dates) | phantom_dates
+        adjudicated_dates = set(resolution.adjudicated_source_nonusable_dates) | source_nonusable_dates
+        exp_set -= effective_nontrading_dates
+        exp_set -= adjudicated_dates
         act_set = set(actual_dates)
         matched_set = exp_set.intersection(act_set)
         missing_set = exp_set - act_set
@@ -472,7 +552,10 @@ class FullPopulationRunner:
         matched_count = len(matched_set)
         missing_count = len(missing_set)
         unexpected_count = len(unexpected_set)
-        expected_count = resolution.expected_tradable_count
+        expected_count = len(exp_set)
+        confirmed_nontrading_count = len(effective_nontrading_dates.intersection(
+            set(resolution.expected_tradable_dates) | phantom_dates
+        ))
 
         if last_error is not None:
             source_status = "ERROR"
@@ -539,12 +622,22 @@ class FullPopulationRunner:
                 stored_end = last_actual
 
         # 4. Determine Final Acquisition Status
+        terminal_state: str | None = None
         if resolution.authority_status != AuthorityStatus.VALID.value:
             acq_status = AcquisitionStatus.INSUFFICIENT_AUTHORITY.value
         elif source_status == "ERROR":
             acq_status = AcquisitionStatus.ERROR.value
+        elif row_count == 0 and raw_source_row_count > 0 and phantom_count == raw_source_row_count:
+            terminal_state = "RAW_ROWS_PRESENT_ALL_PHANTOM"
+            acq_status = AcquisitionStatus.NO_USABLE_OBSERVATIONS.value
+        elif row_count == 0 and source_nonusable_count > 0 and source_nonusable_count == raw_source_row_count:
+            terminal_state = "RAW_ROWS_PRESENT_ALL_SOURCE_NONUSABLE"
+            acq_status = AcquisitionStatus.COMPLETE_WITH_ADJUDICATED_NONUSABLE.value
         elif source_status == "EMPTY":
             acq_status = AcquisitionStatus.EMPTY.value
+        elif expected_count == 0 and not unexpected_set and (phantom_count or source_nonusable_count):
+            terminal_state = "ADJUDICATED_SOURCE_NONUSABLE"
+            acq_status = AcquisitionStatus.COMPLETE_WITH_ADJUDICATED_NONUSABLE.value
         elif (
             coverage_status == CoverageStatus.FULL_EXPECTED_COVERAGE.value
             and expected_count > 0
@@ -591,6 +684,14 @@ class FullPopulationRunner:
             error_type=error_type,
             error_message_sanitized=error_msg,
             updated_at=now_iso,
+            usable_source_count=row_count,
+            confirmed_nontrading_count=confirmed_nontrading_count,
+            adjudicated_source_nonusable_count=len(adjudicated_dates),
+            silent_missing_count=missing_count,
+            authority_conflict_count=len(resolution.authority_conflict_dates),
+            phantom_count=phantom_count,
+            analytic_invalid_ohlc_count=analytic_invalid_ohlc_count,
+            terminal_state=terminal_state,
         )
 
     def run_acquisition(
@@ -676,6 +777,14 @@ class FullPopulationRunner:
                     "post_write_verified": rec_obj.post_write_verified,
                     "actual_dates": actual_dates_list,
                     "source_execution_attempt_count": rec_obj.attempt_count,
+                    "usable_source_count": rec_obj.usable_source_count,
+                    "confirmed_nontrading_count": rec_obj.confirmed_nontrading_count,
+                    "adjudicated_source_nonusable_count": rec_obj.adjudicated_source_nonusable_count,
+                    "silent_missing_count": rec_obj.silent_missing_count,
+                    "unexpected_source_count": rec_obj.unexpected_source_date_count,
+                    "authority_conflict_count": rec_obj.authority_conflict_count,
+                    "phantom_count": rec_obj.phantom_count,
+                    "terminal_state": rec_obj.terminal_state,
                     "updated_at": rec_obj.updated_at,
                 }
                 if t in checkpoint.in_progress_tickers:
@@ -688,6 +797,13 @@ class FullPopulationRunner:
                     "coverage_status": rec_obj.coverage_status,
                     "missing_count": rec_obj.missing_expected_count,
                     "unexpected_count": rec_obj.unexpected_source_date_count,
+                    "usable_source_count": rec_obj.usable_source_count,
+                    "confirmed_nontrading_count": rec_obj.confirmed_nontrading_count,
+                    "adjudicated_source_nonusable_count": rec_obj.adjudicated_source_nonusable_count,
+                    "silent_missing_count": rec_obj.silent_missing_count,
+                    "authority_conflict_count": rec_obj.authority_conflict_count,
+                    "phantom_count": rec_obj.phantom_count,
+                    "terminal_state": rec_obj.terminal_state,
                     "error_type": rec_obj.error_type,
                     "error_message": rec_obj.error_message_sanitized,
                     "updated_at": rec_obj.updated_at,
@@ -776,7 +892,14 @@ class FullPopulationRunner:
         total_unexpected = sum(r.unexpected_source_date_count for r in records)
         total_duplicates = sum(r.duplicate_count for r in records)
         total_invalid_ohlc = sum(r.invalid_ohlc_count for r in records)
+        total_analytic_invalid_ohlc = sum(r.analytic_invalid_ohlc_count for r in records)
         total_future_rows = sum(r.future_row_count for r in records)
+        total_usable = sum(r.usable_source_count for r in records)
+        total_confirmed_nontrading = sum(r.confirmed_nontrading_count for r in records)
+        total_source_nonusable = sum(r.adjudicated_source_nonusable_count for r in records)
+        total_silent_missing = sum(r.silent_missing_count for r in records)
+        total_authority_conflicts = sum(r.authority_conflict_count for r in records)
+        total_phantom = sum(r.phantom_count for r in records)
 
         logical_queries = total_count
         new_live_queries = sum(1 for r in records if not r.reused_without_network)
@@ -840,6 +963,8 @@ class FullPopulationRunner:
                 "empty": empty_count,
                 "error": error_count,
                 "insufficient_authority": insufficient_auth_count,
+                "no_usable_observations": sum(1 for r in records if r.acquisition_status == AcquisitionStatus.NO_USABLE_OBSERVATIONS.value),
+                "complete_with_adjudicated_nonusable": sum(1 for r in records if r.acquisition_status == AcquisitionStatus.COMPLETE_WITH_ADJUDICATED_NONUSABLE.value),
             },
             "subgroup_breakdown": {
                 "alpha_23_census": {
@@ -862,11 +987,23 @@ class FullPopulationRunner:
                 "total_stored_rows": total_stored_rows,
                 "total_missing_expected_dates": total_missing,
                 "total_unexpected_source_dates": total_unexpected,
+                "total_silent_missing_dates": total_silent_missing,
+                "total_usable_source_rows": total_usable,
+                "total_confirmed_nontrading_dates": total_confirmed_nontrading,
+                "total_adjudicated_source_nonusable_dates": total_source_nonusable,
+                "total_authority_conflict_dates": total_authority_conflicts,
+                "total_phantom_rows": total_phantom,
             },
             "data_quality_totals": {
                 "total_duplicates": total_duplicates,
                 "total_invalid_ohlc": total_invalid_ohlc,
                 "total_future_rows": total_future_rows,
+                "total_analytic_invalid_ohlc": total_analytic_invalid_ohlc,
+            },
+            "closure_accounting": {
+                "schema_version": CLOSURE_ACCOUNTING_SCHEMA_VERSION,
+                "tradability_contract_version": TRADABILITY_CONTRACT_VERSION,
+                "states": [state.value for state in ClosureState],
             },
             "network_accounting": {
                 "population_records_processed": logical_queries,
@@ -893,8 +1030,8 @@ class FullPopulationRunner:
             "population_sha256": EXPECTED_POPULATION_SHA256,
             "pit_sha256": "6b542ae05c9050dd30959d6f1b17306e4016f435a726ca7e0dff9e11008e4064",
             "calendar_cutoff_date": CANONICAL_CALENDAR_CUTOFF,
-            "source_provider": "PyKRX (get_market_ohlcv_by_date, adjusted=True)",
-            "store_version": "ADJUSTED_PRICE_STORE_V01",
+            "source_provider": SOURCE_PROVIDER_VERSION,
+            "store_version": "ADJUSTED_PRICE_STORE_V02",
             "results_csv_sha256": results_sha,
             "summary_sha256": summary_sha,
         }

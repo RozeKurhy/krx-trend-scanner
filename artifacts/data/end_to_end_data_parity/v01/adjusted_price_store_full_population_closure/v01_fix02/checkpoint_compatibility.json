@@ -1,0 +1,15 @@
+{
+  "schema": "full_population_checkpoint_compatibility_v02",
+  "old_schema": "full_population_checkpoint_v01",
+  "new_schema": "full_population_checkpoint_v02",
+  "old_checkpoint_action": "CHECKPOINT_SCHEMA_MISMATCH; resume forbidden",
+  "required_identity": {
+    "source_authority_id": "ADJUSTED_PRICE_AUTHORITY_V02",
+    "source_provider_version": "NaverDirectAdjustedPriceDataProvider_v02",
+    "closure_accounting_schema_version": "adjusted_price_closure_accounting_v02",
+    "tradability_contract_version": "adjusted_price_tradability_v02",
+    "store_schema_version": "ADJUSTED_PRICE_V02",
+    "pit_authority_sha256": "6b542ae05c9050dd30959d6f1b17306e4016f435a726ca7e0dff9e11008e4064"
+  },
+  "migration_policy": "no implicit migration; brand-new checkpoint required for fresh closure run"
+}

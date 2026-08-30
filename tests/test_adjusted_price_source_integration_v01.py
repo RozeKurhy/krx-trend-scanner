@@ -138,14 +138,24 @@ def test_naver_drops_exact_suspension_phantom_and_audits():
         _xml("20180430|-1|0|0|53000|0"),
     ],
 )
-def test_naver_non_phantom_invalid_ohlc_remains_fail_closed(payload: str):
+def test_naver_nonpositive_rows_are_adjudicated_source_nonusable(payload: str):
     provider = NaverDirectAdjustedPriceDataProvider(session=Session(payload))
-
-    with pytest.raises(MarketDataError):
-        provider.load_daily("005930", "2018-04-11", "2018-06-20")
-
+    result = provider.load_daily("005930", "2018-04-11", "2018-06-20")
+    assert result.empty
     assert provider.phantom_row_count == 0
+    assert provider.source_nonusable_row_count == 1
     assert provider.pykrx_fallback_call_count == 0
+
+
+def test_naver_relation_anomaly_is_source_truth_and_analytic_invalid():
+    provider = NaverDirectAdjustedPriceDataProvider(
+        session=Session(_xml("20240102|100|80|90|105|1"))
+    )
+    result = provider.load_daily("005930", "2024-01-02", "2024-01-02")
+    assert len(result) == 1
+    assert result.attrs["source_native_adjusted"] is True
+    assert result.attrs["analytic_invalid_ohlc_count"] == 1
+    assert result.loc[pd.Timestamp("2024-01-02"), "high"] == 80
 
 
 @pytest.mark.parametrize(
@@ -180,7 +190,6 @@ def test_naver_protocol_chartdata_empty_is_typed_empty():
         _xml("20240102|100|110|90|105"),
         _xml("20240102|100|110|90|105|1|extra"),
         _xml("2024xx02|100|110|90|105|1"),
-        _xml("20240102|100|80|90|105|1"),
         _xml("20240102|100|110|90|105|1", "20240102|100|110|90|105|1"),
         _xml("20240104|100|110|90|105|1"),
     ],

@@ -31,6 +31,11 @@ from trend_scanner.data.adjusted_price_provider import (
     normalize_ticker,
     validate_adjusted_ohlc,
 )
+from trend_scanner.data.adjusted_price_semantics import (
+    ClosureState,
+    TRADABILITY_CONTRACT_VERSION,
+    classify_source_row,
+)
 from trend_scanner.universe.survivorship_safe_denominator_freeze import (
     DEFAULT_POPULATION_ARTIFACT_PATH,
     load_historical_common_population,
@@ -70,6 +75,10 @@ DEFAULT_ARTIFACT_DIR = Path(
 )
 DEFAULT_REUSE_DIR = DEFAULT_ARTIFACT_DIR / "reuse_verification"
 DEFAULT_SUSPENSION_AUTHORITY_PATH = DEFAULT_ARTIFACT_DIR / "historical_suspension_authority_v01.json"
+DEFAULT_SUSPENSION_ERRATA_PATH = Path(
+    "artifacts/data/end_to_end_data_parity/v01/adjusted_price_store_full_population_closure/"
+    "v01_tradability_and_nonpositive_reconciliation/suspension_authority_errata_v01.json"
+)
 DEFAULT_ACTUAL_SOURCE_DATES_PATH = DEFAULT_ARTIFACT_DIR / "pilot_actual_source_dates.json"
 DEFAULT_CLOSURE_MANIFEST_PATH = DEFAULT_ARTIFACT_DIR / "pilot_closure_manifest.json"
 
@@ -92,6 +101,40 @@ def load_historical_suspension_authority(
         halts_by_ticker.setdefault(t, set()).add(d)
 
     return halts_by_ticker, calc_sha
+
+
+def load_effective_historical_suspension_authority(
+    authority_path: Path = DEFAULT_SUSPENSION_AUTHORITY_PATH,
+    errata_path: Path = DEFAULT_SUSPENSION_ERRATA_PATH,
+) -> tuple[dict[str, set[str]], str, str, tuple[dict[str, Any], ...]]:
+    """Load immutable base suspension authority plus the approved errata overlay."""
+
+    halts_by_ticker, base_sha = load_historical_suspension_authority(authority_path)
+    if not errata_path.exists():
+        return halts_by_ticker, base_sha, "MISSING", ()
+    raw = errata_path.read_bytes()
+    errata_sha = hashlib.sha256(raw).hexdigest()
+    payload = json.loads(raw.decode("utf-8"))
+    if payload.get("schema") != "historical_suspension_authority_errata_v01":
+        raise RuntimeError("SUSPENSION_ERRATA_SCHEMA_MISMATCH")
+    declared_base_sha = payload.get("base_artifact_sha256")
+    if declared_base_sha and declared_base_sha != base_sha:
+        raise RuntimeError(
+            f"SUSPENSION_AUTHORITY_BASE_HASH_MISMATCH: {base_sha} != {declared_base_sha}"
+        )
+    records = tuple(payload.get("records", ()))
+    effective = {ticker: set(dates) for ticker, dates in halts_by_ticker.items()}
+    for item in records:
+        ticker = str(item.get("ticker", ""))
+        date = str(item.get("date", ""))
+        classification = str(item.get("effective_classification", ""))
+        if not ticker or not date:
+            continue
+        if classification == "VALID_OBSERVED_MARKET_ACTIVITY":
+            effective.setdefault(ticker, set()).discard(date)
+        elif classification in {"CONFIRMED_NONTRADING", "SUSPENSION_METADATA"}:
+            effective.setdefault(ticker, set()).add(date)
+    return effective, base_sha, errata_sha, records
 
 
 class PilotSampleGroup(str, Enum):
@@ -173,6 +216,10 @@ class ExpectedCoverageResolution:
     source_path: str
     error_type: str | None = None
     error_message_sanitized: str | None = None
+    confirmed_nontrading_dates: tuple[str, ...] = ()
+    adjudicated_source_nonusable_dates: tuple[str, ...] = ()
+    authority_conflict_dates: tuple[str, ...] = ()
+    tradability_contract_version: str = TRADABILITY_CONTRACT_VERSION
 
 
 @dataclass
@@ -213,9 +260,19 @@ class PilotResult:
     evidence_summary: str
 
 
-def is_nontradable_or_phantom_row(open_val: float, high_val: float, low_val: float, close_val: float) -> bool:
-    """Return True if row matches non-tradable trading halt or phantom pricing pattern."""
-    return open_val == 0.0 and high_val == 0.0 and low_val == 0.0 and close_val > 0.0
+def is_nontradable_or_phantom_row(
+    open_val: float,
+    high_val: float,
+    low_val: float,
+    close_val: float,
+    volume: float | None = None,
+    trading_value: float | None = None,
+) -> bool:
+    """Return true only when zero-OHL has explicit zero activity evidence."""
+
+    return classify_source_row(
+        open_val, high_val, low_val, close_val, volume, trading_value
+    ) == ClosureState.CONFIRMED_NONTRADING
 
 
 @functools.lru_cache(maxsize=4)
@@ -244,6 +301,7 @@ def resolve_expected_coverage(
     pit_path: Path = DEFAULT_PIT_PATH,
     historical_calendar_path: Path = DEFAULT_HISTORICAL_CALENDAR_PATH,
     suspension_authority_path: Path = DEFAULT_SUSPENSION_AUTHORITY_PATH,
+    suspension_errata_path: Path | None = DEFAULT_SUSPENSION_ERRATA_PATH,
 ) -> ExpectedCoverageResolution:
     """Resolve strictly independent, non-circular expected tradable dates.
 
@@ -256,7 +314,15 @@ def resolve_expected_coverage(
     raw_p = stocks_dir / f"{ticker}.parquet"
     if raw_p.exists():
         try:
-            df = pd.read_parquet(raw_p, columns=["open", "high", "low", "close"])
+            try:
+                df = pd.read_parquet(
+                    raw_p,
+                    columns=["open", "high", "low", "close", "volume", "trading_value"],
+                )
+                activity_evidence = True
+            except Exception:
+                df = pd.read_parquet(raw_p, columns=["open", "high", "low", "close"])
+                activity_evidence = False
             sliced = df.loc[query_start:query_end]
             # Check if sliced parquet actually covers the requested window endpoints
             covers_start = not sliced.empty and sliced.index.min() <= pd.Timestamp(query_start)
@@ -265,13 +331,47 @@ def resolve_expected_coverage(
             if covers_start and covers_end:
                 raw_dates = [d.strftime("%Y-%m-%d") for d in sliced.index]
                 nontradable: list[str] = []
+                source_nonusable: list[str] = []
                 tradable: list[str] = []
+                unresolved_activity: list[str] = []
 
                 for d_str, row in zip(raw_dates, sliced.itertuples(index=False)):
-                    if is_nontradable_or_phantom_row(row.open, row.high, row.low, row.close):
+                    volume = getattr(row, "volume", None)
+                    trading_value = getattr(row, "trading_value", None)
+                    state = classify_source_row(
+                        row.open, row.high, row.low, row.close,
+                        volume if activity_evidence else None,
+                        trading_value if activity_evidence else None,
+                    )
+                    if state == ClosureState.CONFIRMED_NONTRADING:
                         nontradable.append(d_str)
+                    elif state == ClosureState.ADJUDICATED_SOURCE_NONUSABLE:
+                        source_nonusable.append(d_str)
+                    elif state == ClosureState.UNRESOLVED_ACTIVITY_EVIDENCE:
+                        unresolved_activity.append(d_str)
                     else:
                         tradable.append(d_str)
+
+                if unresolved_activity:
+                    return ExpectedCoverageResolution(
+                        ticker=ticker,
+                        query_start=query_start,
+                        query_end=query_end,
+                        authority_status=AuthorityStatus.ERROR.value,
+                        authority_source="LOCAL_CANONICAL_STOCK_RAW",
+                        authority_quality=AuthorityQuality.OBSERVED_DATES_WITH_TRADABILITY.value,
+                        raw_observed_count=len(raw_dates),
+                        excluded_nontradable_count=len(nontradable) + len(source_nonusable),
+                        expected_tradable_count=0,
+                        expected_tradable_dates=(),
+                        nontradable_dates=tuple(nontradable),
+                        source_path=str(raw_p),
+                        error_type="UNRESOLVED_ACTIVITY_EVIDENCE",
+                        error_message_sanitized=(
+                            "zero-OHL rows lack both volume and trading_value: "
+                            + ",".join(unresolved_activity)
+                        ),
+                    )
 
                 status = AuthorityStatus.VALID.value if tradable else AuthorityStatus.NO_EXPECTED_OBSERVATIONS.value
                 return ExpectedCoverageResolution(
@@ -282,11 +382,12 @@ def resolve_expected_coverage(
                     authority_source="LOCAL_CANONICAL_STOCK_RAW",
                     authority_quality=AuthorityQuality.OBSERVED_DATES_WITH_TRADABILITY.value,
                     raw_observed_count=len(raw_dates),
-                    excluded_nontradable_count=len(nontradable),
+                    excluded_nontradable_count=len(nontradable) + len(source_nonusable),
                     expected_tradable_count=len(tradable),
                     expected_tradable_dates=tuple(tradable),
                     nontradable_dates=tuple(nontradable),
                     source_path=str(raw_p),
+                    adjudicated_source_nonusable_dates=tuple(source_nonusable),
                 )
         except Exception:
             pass
@@ -311,7 +412,13 @@ def resolve_expected_coverage(
             raw_candidate_dates = sorted(valid_dates)
 
             # Load canonical suspension authority artifact
-            halts_map, auth_sha = load_historical_suspension_authority(suspension_authority_path)
+            if suspension_errata_path is None:
+                halts_map, auth_sha = load_historical_suspension_authority(suspension_authority_path)
+                errata_records = ()
+            else:
+                halts_map, auth_sha, _errata_sha, errata_records = load_effective_historical_suspension_authority(
+                    suspension_authority_path, suspension_errata_path
+                )
             if ticker in halts_map:
                 known_halts = halts_map[ticker]
                 halt_dates_in_window = [d for d in raw_candidate_dates if d in known_halts]
@@ -331,6 +438,13 @@ def resolve_expected_coverage(
                     expected_tradable_dates=tuple(tradable_dates),
                     nontradable_dates=tuple(halt_dates_in_window),
                     source_path=f"{suspension_authority_path} (SHA256={auth_sha[:8]})",
+                    authority_conflict_dates=tuple(
+                        str(item["date"])
+                        for item in errata_records
+                        if str(item.get("ticker")) == ticker
+                        and str(item.get("conflict_class"))
+                        == ClosureState.SUSPENSION_METADATA_CONFLICT_WITH_OBSERVED_ACTIVITY.value
+                    ),
                 )
 
             # Pure PIT Calendar Approximation
@@ -509,7 +623,14 @@ def execute_single_pilot_query(
     3. Returns both PilotResult and the exact actual_dates list.
     """
     if resolution is None:
-        resolution = resolve_expected_coverage(sample.ticker, sample.query_start, sample.query_end)
+        # The bounded pilot's immutable canonical manifest predates FIX02's
+        # errata overlay; keep its reuse comparison bound to that manifest.
+        resolution = resolve_expected_coverage(
+            sample.ticker,
+            sample.query_start,
+            sample.query_end,
+            suspension_errata_path=None,
+        )
 
     attempt_count = 0
     last_error: Exception | None = None

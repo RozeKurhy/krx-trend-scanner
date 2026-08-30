@@ -155,7 +155,7 @@ def test_checkpoint_authority_mismatch_fails_closed(tmp_path):
 
     # 1. Tampered population count
     bad_ckpt = {
-        "schema": "full_population_checkpoint_v01",
+        "schema": "full_population_checkpoint_v02",
         "execution_id": "test",
         "started_at": "2026-08-27T00:00:00Z",
         "updated_at": "2026-08-27T00:00:00Z",
@@ -164,6 +164,12 @@ def test_checkpoint_authority_mismatch_fails_closed(tmp_path):
         "calendar_cutoff_date": CANONICAL_CALENDAR_CUTOFF,
         "completed_tickers": {},
         "in_progress_tickers": {},
+        "source_authority_id": CURRENT_SOURCE_DESCRIPTOR.source_authority_id,
+        "source_provider_version": "NaverDirectAdjustedPriceDataProvider_v02",
+        "closure_accounting_schema_version": "adjusted_price_closure_accounting_v02",
+        "tradability_contract_version": "adjusted_price_tradability_v02",
+        "store_schema_version": "ADJUSTED_PRICE_V02",
+        "pit_authority_sha256": "6b542ae05c9050dd30959d6f1b17306e4016f435a726ca7e0dff9e11008e4064",
     }
     (artifact_dir / "full_population_checkpoint.json").write_text(json.dumps(bad_ckpt), encoding="utf-8")
 

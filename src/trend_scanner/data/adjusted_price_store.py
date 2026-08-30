@@ -17,6 +17,7 @@ from trend_scanner.data.adjusted_price_provider import (
     ADJUSTED_OHLC_COLUMNS,
     normalize_ticker,
     validate_adjusted_ohlc,
+    validate_source_integrity,
 )
 from trend_scanner.data.adjusted_price_source_authority import (
     AdjustedPriceSourceDescriptor,
@@ -65,6 +66,10 @@ _RESERVED_METADATA_FIELDS = frozenset(
         "generated_at",
         "last_success_at",
         "content_sha256",
+        "source_native_adjusted",
+        "analytic_invalid_ohlc_count",
+        "phantom_row_count",
+        "source_nonusable_row_count",
     }
 )
 _METADATA_FIELDS = (
@@ -150,11 +155,19 @@ def _normalise_frame(frame: pd.DataFrame) -> tuple[pd.DataFrame, str | None]:
         if numeric.isna().any():
             raise MarketDataError(f"{column}에 숫자로 변환할 수 없는 값 또는 NaN이 있습니다.")
         result[column] = numeric.astype("float64")
-    validate_adjusted_ohlc(result)
+    if bool(result.attrs.get("source_native_adjusted", False)):
+        validate_source_integrity(result)
+    else:
+        validate_adjusted_ohlc(result)
     return result[list(ADJUSTED_OHLC_COLUMNS)], ticker_value
 
 
-def _physical_to_frame(physical: pd.DataFrame, expected_ticker: str) -> pd.DataFrame:
+def _physical_to_frame(
+    physical: pd.DataFrame,
+    expected_ticker: str,
+    *,
+    source_native_adjusted: bool = False,
+) -> pd.DataFrame:
     if tuple(physical.columns) != PHYSICAL_COLUMNS:
         raise MarketDataError(f"Parquet physical schema가 잘못되었습니다: {list(physical.columns)}")
     try:
@@ -173,7 +186,10 @@ def _physical_to_frame(physical: pd.DataFrame, expected_ticker: str) -> pd.DataF
     frame.index = dates.rename(None)
     for column in ADJUSTED_OHLC_COLUMNS:
         frame[column] = pd.to_numeric(frame[column], errors="coerce").astype("float64")
-    validate_adjusted_ohlc(frame)
+    if source_native_adjusted:
+        validate_source_integrity(frame)
+    else:
+        validate_adjusted_ohlc(frame)
     return frame
 
 
@@ -294,7 +310,11 @@ class AdjustedPriceStore:
             physical = pd.read_parquet(parquet_path)
         except Exception as exc:
             raise MarketDataError(f"Parquet를 읽을 수 없습니다: {parquet_path}") from exc
-        frame = _physical_to_frame(physical, normalized)
+        frame = _physical_to_frame(
+            physical,
+            normalized,
+            source_native_adjusted=bool(metadata.get("source_native_adjusted", False)),
+        )
         _validate_metadata(metadata, normalized, frame, digest)
         return frame, metadata
 
@@ -305,6 +325,18 @@ class AdjustedPriceStore:
         if end is not None:
             frame = frame.loc[:pd.Timestamp(end)]
         return frame.copy()
+
+    def load_daily_source(self, ticker: str, start: str | None = None, end: str | None = None) -> pd.DataFrame:
+        """Return source-authority rows, including relation-anomalous observations."""
+
+        return self.load_daily(ticker, start=start, end=end)
+
+    def load_daily_analytic(self, ticker: str, start: str | None = None, end: str | None = None) -> pd.DataFrame:
+        """Return only a physically valid analytic candle view (fail closed)."""
+
+        frame = self.load_daily(ticker, start=start, end=end)
+        validate_adjusted_ohlc(frame)
+        return frame
 
     def is_current_authority_snapshot(self, ticker: str) -> bool:
         """Return true only for a valid, current-authority V02 pair."""
@@ -390,6 +422,10 @@ class AdjustedPriceStore:
                 "generated_at": now,
                 "last_success_at": now,
                 "content_sha256": "",
+                "source_native_adjusted": bool(adjusted.attrs.get("source_native_adjusted", False)),
+                "analytic_invalid_ohlc_count": int(adjusted.attrs.get("analytic_invalid_ohlc_count", 0)),
+                "phantom_row_count": int(adjusted.attrs.get("phantom_row_count", 0)),
+                "source_nonusable_row_count": int(adjusted.attrs.get("source_nonusable_row_count", 0)),
             }
         )
         _assert_no_secret_metadata(metadata)
@@ -412,7 +448,11 @@ class AdjustedPriceStore:
         try:
             physical.to_parquet(temp_parquet, index=False)
             read_back = pd.read_parquet(temp_parquet)
-            roundtrip = _physical_to_frame(read_back, normalized)
+            roundtrip = _physical_to_frame(
+                read_back,
+                normalized,
+                source_native_adjusted=bool(adjusted.attrs.get("source_native_adjusted", False)),
+            )
             if len(roundtrip) != len(adjusted):
                 raise MarketDataError("Parquet read-back 행 수가 입력과 다릅니다.")
             digest = _sha256(temp_parquet)

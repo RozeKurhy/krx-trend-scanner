@@ -78,20 +78,28 @@ def test_provider_filters_phantom_holiday_rows(monkeypatch):
     assert (result[["open", "high", "low"]] == 0).sum().sum() == 0
 
 
-def test_provider_applies_only_one_won_high_correction(monkeypatch):
+def test_provider_does_not_call_activity_positive_zero_ohlc_nontrading(monkeypatch):
+    frame = _response(phantom=True)
+    frame.loc[frame.index[1], "거래량"] = 10
+    monkeypatch.setattr(pykrx_stock, "get_market_ohlcv_by_date", lambda *args, **kwargs: frame)
+    with pytest.raises(MarketDataError):
+        AdjustedPriceDataProvider().load_daily("005930", "2024-01-02", "2024-01-04")
+
+
+def test_provider_does_not_rewrite_one_won_high_relation(monkeypatch):
     frame = _response().copy()
     frame.loc[frame.index[0], "고가"] = 101
     monkeypatch.setattr(pykrx_stock, "get_market_ohlcv_by_date", lambda *args, **kwargs: frame)
-    result = AdjustedPriceDataProvider().load_daily("005930", "2024-01-02", "2024-01-03")
-    assert result.loc[frame.index[0], "high"] == 102
+    with pytest.raises(MarketDataError):
+        AdjustedPriceDataProvider().load_daily("005930", "2024-01-02", "2024-01-03")
 
 
-def test_provider_applies_only_one_won_low_correction(monkeypatch):
+def test_provider_does_not_rewrite_one_won_low_relation(monkeypatch):
     frame = _response().copy()
     frame.loc[frame.index[0], "저가"] = 101
     monkeypatch.setattr(pykrx_stock, "get_market_ohlcv_by_date", lambda *args, **kwargs: frame)
-    result = AdjustedPriceDataProvider().load_daily("005930", "2024-01-02", "2024-01-03")
-    assert result.loc[frame.index[0], "low"] == 100
+    with pytest.raises(MarketDataError):
+        AdjustedPriceDataProvider().load_daily("005930", "2024-01-02", "2024-01-03")
 
 
 def test_provider_rejects_two_won_relation_violation(monkeypatch):

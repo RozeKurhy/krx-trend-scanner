@@ -17,6 +17,12 @@ import pandas as pd
 import requests
 
 from trend_scanner.data.errors import MarketDataError
+from trend_scanner.data.adjusted_price_semantics import (
+    ClosureState,
+    analytic_candle_is_valid,
+    classify_source_row,
+    validate_source_integrity,
+)
 from trend_scanner.data.adjusted_price_source_authority import (
     AdjustedPriceSourceDescriptor,
     CURRENT_SOURCE_DESCRIPTOR,
@@ -203,9 +209,9 @@ class AdjustedPriceDataProvider:
             & (frame["high"] == 0)
             & (frame["low"] == 0)
             & (frame["close"] > 0)
+            & (frame["volume"] == 0)
         )
         frame = frame.loc[~phantom].sort_index()
-        frame = _correct_minor_rounding_violations(frame)
         output = frame[list(ADJUSTED_OHLC_COLUMNS)]
         if _FORBIDDEN_OUTPUT_COLUMNS.intersection(output.columns):
             raise MarketDataError("AdjustedPriceDataProvider가 ancillary column을 반환했습니다.")
@@ -242,6 +248,9 @@ class NaverDirectAdjustedPriceDataProvider:
         self._error_fetch_count = 0
         self._pykrx_fallback_call_count = 0
         self._phantom_row_count = 0
+        self._source_nonusable_row_count = 0
+        self._phantom_dates: list[str] = []
+        self._source_nonusable_dates: list[str] = []
 
     @staticmethod
     def _request_date(value: Any, field: str) -> tuple[str, pd.Timestamp]:
@@ -290,6 +299,18 @@ class NaverDirectAdjustedPriceDataProvider:
 
         return self._phantom_row_count
 
+    @property
+    def source_nonusable_row_count(self) -> int:
+        return self._source_nonusable_row_count
+
+    @property
+    def phantom_dates(self) -> tuple[str, ...]:
+        return tuple(self._phantom_dates)
+
+    @property
+    def source_nonusable_dates(self) -> tuple[str, ...]:
+        return tuple(self._source_nonusable_dates)
+
     def call_audit(self) -> dict[str, int]:
         return {
             "logical_fetch_count": self.logical_fetch_count,
@@ -322,6 +343,8 @@ class NaverDirectAdjustedPriceDataProvider:
         if any(item.tag != "item" for item in items):
             raise MarketDataError("Naver XML chartdata에는 item child만 허용됩니다.")
         rows: list[tuple[pd.Timestamp, float, float, float, float]] = []
+        phantom_dates: list[str] = []
+        source_nonusable_dates: list[str] = []
         if not items:
             return self._empty()
         seen_dates: set[pd.Timestamp] = set()
@@ -348,13 +371,15 @@ class NaverDirectAdjustedPriceDataProvider:
                 raise MarketDataError("Naver response contains duplicate dates")
             seen_dates.add(day)
             open_, high, low, close = values
-            if open_ == 0 and high == 0 and low == 0 and close > 0 and volume == 0:
+            state = classify_source_row(open_, high, low, close, volume, 0.0)
+            if state == ClosureState.CONFIRMED_NONTRADING:
                 self._phantom_row_count += 1
+                phantom_dates.append(day.strftime("%Y-%m-%d"))
                 continue
-            if any(value <= 0 for value in values):
-                raise MarketDataError(f"Naver response contains non-positive OHLC: {data!r}")
-            if high < max(open_, close) or low > min(open_, close) or high < low:
-                raise MarketDataError(f"Naver response OHLC relation is invalid: {data!r}")
+            if state == ClosureState.ADJUDICATED_SOURCE_NONUSABLE:
+                self._source_nonusable_row_count += 1
+                source_nonusable_dates.append(day.strftime("%Y-%m-%d"))
+                continue
             rows.append((day, open_, high, low, close))
         frame = pd.DataFrame(
             [(day, open_, high, low, close) for day, open_, high, low, close in rows],
@@ -365,7 +390,17 @@ class NaverDirectAdjustedPriceDataProvider:
         frame = frame.sort_index()
         frame.index = pd.DatetimeIndex(frame.index).rename(None)
         frame = frame[list(ADJUSTED_OHLC_COLUMNS)].astype("float64")
-        validate_adjusted_ohlc(frame)
+        validate_source_integrity(frame)
+        frame.attrs["source_native_adjusted"] = True
+        frame.attrs["raw_source_row_count"] = len(items)
+        frame.attrs["phantom_row_count"] = len(phantom_dates)
+        frame.attrs["phantom_dates"] = tuple(phantom_dates)
+        frame.attrs["source_nonusable_row_count"] = len(source_nonusable_dates)
+        frame.attrs["source_nonusable_dates"] = tuple(source_nonusable_dates)
+        self._phantom_dates.extend(phantom_dates)
+        self._source_nonusable_dates.extend(source_nonusable_dates)
+        valid = analytic_candle_is_valid(frame)
+        frame.attrs["analytic_invalid_ohlc_count"] = int((~valid).sum())
         return frame
 
     def load_daily(self, ticker: str, start: Any, end: Any) -> pd.DataFrame:
@@ -408,4 +443,5 @@ __all__ = [
     "NaverDirectAdjustedPriceDataProvider",
     "normalize_ticker",
     "validate_adjusted_ohlc",
+    "validate_source_integrity",
 ]
