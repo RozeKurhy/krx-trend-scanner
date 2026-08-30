@@ -1,0 +1,68 @@
+{
+  "schema": "tier_b_fallback_contract_validation_v01",
+  "candidate": {
+    "candidate_rank": 2,
+    "identity_candidate_rank": 2,
+    "candidate_rank_deterministic": true,
+    "event_match_score": 80,
+    "rcept_no": "20180316800856",
+    "identity_record_id": "20180316800856",
+    "identity_authority_tier": "TIER_A1_OPENDART",
+    "ticker": "005930",
+    "issuer_name": "삼성전자",
+    "report_nm": "[기재정정]주식분할결정",
+    "rcept_dt": "20180316",
+    "event_family": "STOCK_SPLIT",
+    "a1_body_usable": false,
+    "a1_failure_persisted": true,
+    "a1_transport_response_sha256": "03f4385d883fd756de28e791dde6f153baad5771898af36fcd2f07b479a84a8f",
+    "a2_candidate_specific_attempted": true,
+    "a2_usable": false
+  },
+  "validation": {
+    "valid": true,
+    "reason_codes": [],
+    "provenance": {
+      "identity_authority_tier": "TIER_A1_OPENDART",
+      "content_authority_tier": "TIER_B_ISSUER_OFFICIAL",
+      "identity_record_id": "20180316800856",
+      "identity_candidate_rank": 2,
+      "content_source_url": "https://www.samsung.com/global/ir/reports-disclosures/public-disclosure-view.71206/",
+      "content_source_sha256": "940b0ab6bfdfc3c179dc7f2d5c01e088af436b8c479ad4f4c0c7739dbca9a116",
+      "authority_resolution_mode": "CANDIDATE_BOUND_OFFICIAL_CONTENT_FALLBACK",
+      "fallback_reason": "A1_DOCUMENT_BODY_UNUSABLE_AND_A2_UNAVAILABLE"
+    },
+    "parsed": {
+      "parsed_issuer": "Samsung Electronics Co., Ltd.",
+      "issuer_candidates": [
+        "Samsung Electronics",
+        "Samsung Electronics Co., Ltd.",
+        "samsung electronics co., ltd."
+      ],
+      "parsed_ticker": "005930",
+      "ticker_candidates": [
+        "005930",
+        "005935"
+      ],
+      "report_title": "Decision on Stock Split (Update)",
+      "publication_date": "2018-03-16",
+      "event_family": "STOCK_SPLIT",
+      "update_semantics": "UPDATE",
+      "official_anchor_type": "NEW_SHARE_LISTING_DATE",
+      "official_anchor_date": "2018-05-04",
+      "superseded_anchor_date": "2018-05-16",
+      "chronology_valid": true,
+      "blocked_page_detected": false,
+      "body_usable": true,
+      "text_length": 5145
+    },
+    "raw_path": "/private/tmp/krx_c13_resume3_evidence/unresolved_higher_priority_candidate_resolution_v01_fix01/issuer_official_raw/samsung_public_disclosure_71206.html",
+    "raw_size_bytes": 133192,
+    "raw_sha256": "940b0ab6bfdfc3c179dc7f2d5c01e088af436b8c479ad4f4c0c7739dbca9a116",
+    "trusted_url": true
+  },
+  "supplemental_evidence_hashes": {
+    "issuer_raw": "940b0ab6bfdfc3c179dc7f2d5c01e088af436b8c479ad4f4c0c7739dbca9a116",
+    "contract_review": "13cb04f8d48450ff2c90b8108d80e05e214ae03d02b6c43ada698a33d9ca493d"
+  }
+}
