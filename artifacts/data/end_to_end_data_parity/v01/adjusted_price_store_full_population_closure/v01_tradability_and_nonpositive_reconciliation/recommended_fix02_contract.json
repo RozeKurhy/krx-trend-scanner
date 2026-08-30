@@ -1,0 +1,16 @@
+{
+  "activity_dimension": {
+    "ACTIVITY_NONE": "confirmed nontrading candidate",
+    "ACTIVITY_PRESENT": "activity present; not nontrading",
+    "ACTIVITY_VALUE_ONLY": "activity present; not nontrading",
+    "ACTIVITY_VOLUME_ONLY": "activity present; not nontrading"
+  },
+  "conflict_override": "Only when COMPLETE KRX raw provenance, stable PIT identity, physical candle, and V>0 and trading_value>0 are proven for the exact date; valid observed activity takes precedence for that date only.",
+  "frozen_artifact": "immutable; apply errata overlay",
+  "missing": "SILENT_MISSING fail-closed",
+  "nonpositive_14": "ADJUDICATED_SOURCE_NONUSABLE; no synthetic OHLC",
+  "raw_shape_dimension": "ZERO_OHL_POSITIVE_CLOSE",
+  "relation_84": "CONFIRMED_NONTRADING; preserve raw source",
+  "status": "READY_FOR_REVIEW",
+  "tradability_predicate": "O==0 AND H==0 AND L==0 AND C>0 AND V==0 AND trading_value==0"
+}
