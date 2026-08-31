@@ -1,6 +1,6 @@
 {
   "NEXT_STATE": "NEEDS_SPAC_PRELABEL_LIFECYCLE_CORRECTION_FIX01",
   "VERDICT": "CHANGES_REQUESTED",
-  "reason": "Corrected candidate and evidence pass the authority, identity, lifecycle, union, and 3,089-date gates. Full repository pytest has one allowed historical baseline assertion and then hangs in the unrelated pattern_a_foreign_flow_infrastructure base_scan_result fixture; live remote HEAD verification is unavailable because github.com DNS is blocked. No retry or production cutover was performed.",
+  "reason": "Corrected candidate and evidence pass the authority, identity, lifecycle, union, and 3,089-date gates. Full repository pytest has one allowed historical baseline assertion and then hangs in the unrelated pattern_a_foreign_flow_infrastructure base_scan_result fixture; the single run was stopped with Ctrl-C and not retried. Review commit d8a8d8a372c15a12220160ab79eb79eb793a99b3 was pushed and remote HEAD/tree were verified. No production cutover was performed.",
   "schema": "final_decision_v01"
 }
