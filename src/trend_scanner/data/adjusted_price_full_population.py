@@ -378,6 +378,10 @@ class FullPopulationRunner:
         max_retries: int = 2,
         retry_delay_seconds: float = 0.5,
         execution_id: str | None = None,
+        pit_path: Path = DEFAULT_PIT_PATH,
+        expected_population_count: int | None = None,
+        expected_population_sha256: str | None = None,
+        expected_pit_sha256: str | None = None,
     ) -> None:
         self.population_path = population_path
         self.store = AdjustedPriceStore(store_dir)
@@ -386,6 +390,12 @@ class FullPopulationRunner:
         self.max_retries = max_retries
         self.retry_delay_seconds = retry_delay_seconds
         self.execution_id = execution_id or f"ADJUSTED_PRICE_STORE_FULL_POPULATION_V01_{int(time.time())}"
+        # Authority is injectable for an explicit, immutable cutover.  The
+        # defaults preserve the certified pre-cutover behavior exactly.
+        self.pit_path = Path(pit_path)
+        self.expected_population_count = int(EXPECTED_POPULATION_COUNT if expected_population_count is None else expected_population_count)
+        self.expected_population_sha256 = str(EXPECTED_POPULATION_SHA256 if expected_population_sha256 is None else expected_population_sha256)
+        self.expected_pit_sha256 = str("6b542ae05c9050dd30959d6f1b17306e4016f435a726ca7e0dff9e11008e4064" if expected_pit_sha256 is None else expected_pit_sha256)
 
         self.checkpoint_path = self.artifact_dir / "full_population_checkpoint.json"
         self.manifest_path = self.artifact_dir / "full_population_manifest.json"
@@ -405,10 +415,10 @@ class FullPopulationRunner:
     def load_population(self) -> list[dict[str, Any]]:
         records = load_historical_common_population(self.population_path)
         calc_sha = population_manifest_sha256(records)
-        if len(records) != EXPECTED_POPULATION_COUNT or calc_sha != EXPECTED_POPULATION_SHA256:
+        if len(records) != self.expected_population_count or calc_sha != self.expected_population_sha256:
             raise RuntimeError(
-                f"FROZEN_POPULATION_MUTATION: count={len(records)} (expected {EXPECTED_POPULATION_COUNT}), "
-                f"sha256={calc_sha} (expected {EXPECTED_POPULATION_SHA256})"
+                f"FROZEN_POPULATION_MUTATION: count={len(records)} (expected {self.expected_population_count}), "
+                f"sha256={calc_sha} (expected {self.expected_population_sha256})"
             )
         return sorted(records, key=lambda x: x["ticker"])
 
@@ -434,7 +444,7 @@ class FullPopulationRunner:
                 "closure_accounting_schema_version": CLOSURE_ACCOUNTING_SCHEMA_VERSION,
                 "tradability_contract_version": TRADABILITY_CONTRACT_VERSION,
                 "store_schema_version": "ADJUSTED_PRICE_V02",
-                "pit_authority_sha256": "6b542ae05c9050dd30959d6f1b17306e4016f435a726ca7e0dff9e11008e4064",
+                "pit_authority_sha256": self.expected_pit_sha256,
             }
             mismatches = {
                 key: (data.get(key), expected)
@@ -448,13 +458,13 @@ class FullPopulationRunner:
                 )
 
             if (
-                data.get("population_count") != EXPECTED_POPULATION_COUNT
-                or data.get("population_sha256") != EXPECTED_POPULATION_SHA256
+                data.get("population_count") != self.expected_population_count
+                or data.get("population_sha256") != self.expected_population_sha256
             ):
                 raise RuntimeError(
                     f"CHECKPOINT_AUTHORITY_MISMATCH: Checkpoint population metadata "
                     f"(count={data.get('population_count')}, sha256={data.get('population_sha256')}) "
-                    f"does not match frozen authority (count={EXPECTED_POPULATION_COUNT}, sha256={EXPECTED_POPULATION_SHA256})"
+                    f"does not match frozen authority (count={self.expected_population_count}, sha256={self.expected_population_sha256})"
                 )
 
             if data.get("calendar_cutoff_date") != CANONICAL_CALENDAR_CUTOFF:
@@ -468,8 +478,8 @@ class FullPopulationRunner:
                 execution_id=data.get("execution_id", self.execution_id),
                 started_at=data.get("started_at", now_iso),
                 updated_at=now_iso,
-                population_count=data.get("population_count", EXPECTED_POPULATION_COUNT),
-                population_sha256=data.get("population_sha256", EXPECTED_POPULATION_SHA256),
+                population_count=data.get("population_count", self.expected_population_count),
+                population_sha256=data.get("population_sha256", self.expected_population_sha256),
                 calendar_cutoff_date=data.get("calendar_cutoff_date", CANONICAL_CALENDAR_CUTOFF),
                 completed_tickers=data.get("completed_tickers", {}),
                 in_progress_tickers=data.get("in_progress_tickers", {}),
@@ -487,7 +497,7 @@ class FullPopulationRunner:
             started_at=now_iso,
             updated_at=now_iso,
             population_count=len(population_records),
-            population_sha256=EXPECTED_POPULATION_SHA256,
+            population_sha256=self.expected_population_sha256,
             calendar_cutoff_date=CANONICAL_CALENDAR_CUTOFF,
             completed_tickers={},
             in_progress_tickers={},
@@ -496,7 +506,7 @@ class FullPopulationRunner:
             closure_accounting_schema_version=CLOSURE_ACCOUNTING_SCHEMA_VERSION,
             tradability_contract_version=TRADABILITY_CONTRACT_VERSION,
             store_schema_version="ADJUSTED_PRICE_V02",
-            pit_authority_sha256="6b542ae05c9050dd30959d6f1b17306e4016f435a726ca7e0dff9e11008e4064",
+            pit_authority_sha256=self.expected_pit_sha256,
         )
 
     def save_checkpoint(self, checkpoint: FullPopulationCheckpoint) -> None:
@@ -518,8 +528,12 @@ class FullPopulationRunner:
 
         ticker = str(rec["ticker"])
         status = str(info.get("acquisition_status"))
-        expected_start = str(rec["first_common_date"])
-        expected_end = min(str(rec["last_common_date"]), CANONICAL_CALENDAR_CUTOFF)
+        # A cutover may retain source-history rows that predate the corrected
+        # COMMON interval.  The checkpoint's requested bounds therefore bind
+        # physical-store verification; the population record still binds
+        # eligibility through the injected PIT authority.
+        expected_start = str(info.get("requested_start", rec["first_common_date"]))
+        expected_end = str(info.get("requested_end", min(str(rec["last_common_date"]), CANONICAL_CALENDAR_CUTOFF)))
         stored_count = int(info.get("stored_row_count", 0))
         actual_dates = list(info.get("actual_dates", []))
 
@@ -704,7 +718,7 @@ class FullPopulationRunner:
                 try:
                     df = self.store.load_daily(t)
                     meta = self.store.load_metadata(t)
-                    resolution = resolve_expected_coverage(t, req_start, req_end)
+                    resolution = resolve_expected_coverage(t, req_start, req_end, pit_path=self.pit_path)
                     if (
                         resolution.authority_status == AuthorityStatus.VALID.value
                         and not resolution.unresolved_authority_conflict_dates
@@ -771,7 +785,7 @@ class FullPopulationRunner:
         req_end = min(rec["last_common_date"], CANONICAL_CALENDAR_CUTOFF)
 
         # 1. Resolve strictly independent expected coverage
-        resolution = resolve_expected_coverage(ticker, req_start, req_end)
+        resolution = resolve_expected_coverage(ticker, req_start, req_end, pit_path=self.pit_path)
 
         attempt_count = 0
         retry_count = 0
@@ -1423,10 +1437,10 @@ class FullPopulationRunner:
             "execution_timestamp": now_iso,
             "duration_seconds": round(duration_seconds, 2),
             "frozen_authority": {
-                "population_count": EXPECTED_POPULATION_COUNT,
-                "population_manifest_sha256": EXPECTED_POPULATION_SHA256,
+                "population_count": self.expected_population_count,
+                "population_manifest_sha256": self.expected_population_sha256,
                 "pit_trading_dates_count": 4095,
-                "pit_manifest_sha256": "6b542ae05c9050dd30959d6f1b17306e4016f435a726ca7e0dff9e11008e4064",
+                "pit_manifest_sha256": self.expected_pit_sha256,
                 "calendar_cutoff_date": CANONICAL_CALENDAR_CUTOFF,
                 "calendar_row_count": EXPECTED_CALENDAR_ROW_COUNT,
             },
@@ -1519,9 +1533,9 @@ class FullPopulationRunner:
         manifest_payload = {
             "schema": "full_population_manifest_v01",
             "execution_id": self.execution_id,
-            "population_count": EXPECTED_POPULATION_COUNT,
-            "population_sha256": EXPECTED_POPULATION_SHA256,
-            "pit_sha256": "6b542ae05c9050dd30959d6f1b17306e4016f435a726ca7e0dff9e11008e4064",
+            "population_count": self.expected_population_count,
+            "population_sha256": self.expected_population_sha256,
+            "pit_sha256": self.expected_pit_sha256,
             "calendar_cutoff_date": CANONICAL_CALENDAR_CUTOFF,
             "source_provider": SOURCE_PROVIDER_VERSION,
             "store_version": "ADJUSTED_PRICE_STORE_V02",
@@ -1547,7 +1561,7 @@ class FullPopulationRunner:
         execution_audit_path.write_text(json.dumps(execution_audit_payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
         # 6. Resume Audit Record (Dedicated Zero-Call Idempotency Verification)
-        all_complete = (closure_complete_count == total_count == EXPECTED_POPULATION_COUNT)
+        all_complete = (closure_complete_count == total_count == self.expected_population_count)
         is_true_resume_pass = (all_complete and new_live_queries == 0 and physical_attempts == 0)
         resume_audit_payload = {
             "schema": "full_population_resume_audit_v01",
@@ -1574,8 +1588,8 @@ class FullPopulationRunner:
             "execution_id": self.execution_id,
             "final_verdict": verdict,
             "next_state": next_state,
-            "population_sha256": EXPECTED_POPULATION_SHA256,
-            "pit_sha256": "6b542ae05c9050dd30959d6f1b17306e4016f435a726ca7e0dff9e11008e4064",
+            "population_sha256": self.expected_population_sha256,
+            "pit_sha256": self.expected_pit_sha256,
             "calendar_cutoff_date": CANONICAL_CALENDAR_CUTOFF,
             "results_sha256": results_sha,
             "summary_sha256": summary_sha,

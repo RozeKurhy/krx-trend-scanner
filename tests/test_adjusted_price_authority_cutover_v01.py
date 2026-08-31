@@ -1,0 +1,96 @@
+"""Focused offline contracts for corrected adjusted-price authority cutover."""
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+import pytest
+
+from trend_scanner.data.adjusted_price_authority_cutover import (
+    DEFAULT_EFFECTIVE_DIR,
+    DEFAULT_OLD_PIT,
+    EXPECTED_EFFECTIVE_POPULATION_COUNT,
+    EXPECTED_EFFECTIVE_POPULATION_SHA256,
+    EXPECTED_EFFECTIVE_PIT_COUNT,
+    EXPECTED_EFFECTIVE_PIT_SHA256,
+    EffectiveAuthorityError,
+    classify_source_dates,
+    load_effective_authority,
+)
+from trend_scanner.data.adjusted_price_full_population import FullPopulationRunner
+
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+@pytest.fixture(scope="module")
+def authority():
+    return load_effective_authority(ROOT / DEFAULT_EFFECTIVE_DIR)
+
+
+def test_effective_authority_count_and_hash(authority):
+    assert authority.population_count == EXPECTED_EFFECTIVE_POPULATION_COUNT == 3149
+    assert authority.population_sha256 == EXPECTED_EFFECTIVE_POPULATION_SHA256
+    assert authority.pit_count == EXPECTED_EFFECTIVE_PIT_COUNT == 3173
+    assert authority.pit_sha256 == EXPECTED_EFFECTIVE_PIT_SHA256
+
+
+def test_effective_manifest_has_original_lineage(authority):
+    manifest = json.loads(authority.manifest_path.read_text(encoding="utf-8"))
+    assert manifest["original_population_sha256"].startswith("f14c3d46")
+    assert manifest["original_pit_sha256"].startswith("6b542ae0")
+
+
+def test_runner_accepts_explicit_effective_authority(authority):
+    runner = FullPopulationRunner(
+        population_path=authority.population_path,
+        pit_path=authority.pit_path,
+        expected_population_count=authority.population_count,
+        expected_population_sha256=authority.population_sha256,
+        expected_pit_sha256=authority.pit_sha256,
+        provider=object(),
+    )
+    assert len(runner.load_population()) == 3149
+
+
+def test_old_checkpoint_cannot_be_reused_with_effective_authority(authority, tmp_path):
+    old = ROOT / "artifacts/data/end_to_end_data_parity/v01/adjusted_price_store_full_population_closure/fresh_full_population_run_v01/full_population_checkpoint.json"
+    checkpoint = json.loads(old.read_text(encoding="utf-8"))
+    path = tmp_path / "full_population_checkpoint.json"
+    path.write_text(json.dumps(checkpoint), encoding="utf-8")
+    runner = FullPopulationRunner(
+        population_path=authority.population_path,
+        pit_path=authority.pit_path,
+        artifact_dir=tmp_path,
+        expected_population_count=authority.population_count,
+        expected_population_sha256=authority.population_sha256,
+        expected_pit_sha256=authority.pit_sha256,
+        provider=object(),
+    )
+    with pytest.raises(RuntimeError, match="CHECKPOINT_COMPATIBILITY_MISMATCH|CHECKPOINT_AUTHORITY_MISMATCH"):
+        runner.load_or_create_checkpoint(runner.load_population())
+
+
+def test_not_common_source_history_is_not_unexpected(authority):
+    old_pit = json.loads((ROOT / DEFAULT_OLD_PIT).read_text(encoding="utf-8"))["intervals"]
+    parts = classify_source_dates("123840", ["2013-09-23", "2013-09-24"], authority, old_pit)
+    assert "2013-09-23" in parts["source_history_outside_common_eligibility"]
+    assert parts["unexpected"] == []
+
+
+def test_unexplained_source_date_still_blocks(authority):
+    old_pit = json.loads((ROOT / DEFAULT_OLD_PIT).read_text(encoding="utf-8"))["intervals"]
+    parts = classify_source_dates("123840", ["2009-12-31"], authority, old_pit)
+    assert parts["unexpected"] == ["2009-12-31"]
+
+
+def test_removed_pure_spac_identities_are_absent(authority):
+    removed = {"121910", "121950", "122290", "122750", "123160", "123290", "123300", "123550", "123910", "124050", "126680", "128910", "380440"}
+    assert removed.isdisjoint({record["ticker"] for record in authority.population})
+
+
+def test_source_history_rows_remain_outside_eligibility(authority):
+    old_pit = json.loads((ROOT / DEFAULT_OLD_PIT).read_text(encoding="utf-8"))["intervals"]
+    parts = classify_source_dates("123840", ["2011-05-02"], authority, old_pit)
+    assert parts["source_history_outside_common_eligibility"] == ["2011-05-02"]
