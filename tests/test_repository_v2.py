@@ -18,6 +18,9 @@ from trend_scanner.data.repository_v2 import (
     MarketDataRepositoryV2,
     validate_repository_v2_daily,
 )
+from trend_scanner.data.repository_v2_session_authority import (
+    ADJUSTED_ANALYTICALLY_NONUSABLE_DATES,
+)
 
 
 DATES = pd.DatetimeIndex(["2024-01-02", "2024-01-03", "2024-01-04"])
@@ -504,7 +507,7 @@ def test_shared_date_placeholder_is_explicitly_excluded_from_analytic_view(tmp_p
     assert raw.loc[pd.Timestamp("2024-01-03"), "open"] == 0
 
 
-def test_known_adjusted_gap_is_explicitly_excluded(tmp_path):
+def test_000360_source_nonusable_row_is_explicitly_excluded(tmp_path):
     row = _projection_raw_row("2012-07-16", open=100, high=105, low=95, close=101, volume=41680, trading_value=138215850)
     # The fixture ticker is changed to the adjudicated 000360 identity.
     adjusted_store = AdjustedPriceStore(tmp_path / "adjusted_000360")
@@ -517,8 +520,19 @@ def test_known_adjusted_gap_is_explicitly_excluded(tmp_path):
     raw_store.save_snapshot("KOSPI", "2012-07-16", pd.DataFrame([row], columns=list(RAW_COLUMNS)), "fixture")
     daily = MarketDataRepositoryV2(adjusted_store, raw_store).get_daily("000360", "2012-07-15", "2012-07-16")
     assert list(daily.index) == [pd.Timestamp("2012-07-15")]
+    audit = daily.attrs["session_projection_audit"]
+    assert audit["adjusted_source_nonusable_dates"] == ["2012-07-16"]
+    assert audit["explicit_adjusted_source_nonusable_exclusion_count"] == 1
+    assert audit["known_adjusted_gap_dates"] == []
     raw = MarketDataRepositoryV2(adjusted_store, raw_store).get_raw_daily("000360", "2012-07-16", "2012-07-16")
     assert len(raw) == 1
+
+
+def test_frozen_adjusted_source_nonusable_authority_set_is_complete():
+    assert len(ADJUSTED_ANALYTICALLY_NONUSABLE_DATES) == 186
+    assert ("000360", "2012-07-16") in ADJUSTED_ANALYTICALLY_NONUSABLE_DATES
+    assert ("123410", "2011-05-18") in ADJUSTED_ANALYTICALLY_NONUSABLE_DATES
+    assert ("126700", "2011-09-15") in ADJUSTED_ANALYTICALLY_NONUSABLE_DATES
 
 
 def test_shared_date_normal_zero_volume_row_is_not_a_placeholder_conflict(tmp_path):

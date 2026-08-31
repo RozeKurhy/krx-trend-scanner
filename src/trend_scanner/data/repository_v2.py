@@ -15,6 +15,10 @@ from trend_scanner.data.adjusted_price_store import AdjustedPriceStore
 from trend_scanner.data.errors import MarketDataError
 from trend_scanner.data.krx_raw_stock_provider import RAW_COLUMNS, is_valid_krx_short_code
 from trend_scanner.data.krx_raw_stock_store import KrxRawStockStore
+from trend_scanner.data.repository_v2_session_authority import (
+    ADJUSTED_ANALYTICALLY_NONUSABLE_DATES,
+    SOURCE_CLOSURE_CHECKPOINT_SHA256,
+)
 
 
 DAILY_COLUMNS = (
@@ -48,13 +52,15 @@ NON_TRADING_PLACEHOLDER_FIELDS = (
     "trading_value == 0",
 )
 
-# This date was explicitly adjudicated by the adjusted-price closure.  It is
-# a valid raw KRX observation whose adjusted source row is intentionally
-# absent; it may therefore be excluded from the composed analytic view, but
-# must remain available through the lossless raw/source APIs.
-KNOWN_ADJUSTED_SOURCE_GAP_DATES: dict[tuple[str, str], str] = {
-    ("000360", "2012-07-16"): "VALID_OBSERVED_MARKET_ACTIVITY_WITH_ACCEPTED_ADJUSTED_CLOSURE_GAP",
-}
+# The closure's source_presence_audit records source rows that were present in
+# the adjusted-provider response but intentionally omitted from the canonical
+# usable adjusted store because their OHLC was analytically unusable.  The
+# exact pair set is frozen and hash-bound in repository_v2_session_authority;
+# no OHLC substitution or raw-data mutation is implied.
+ADJUSTED_SOURCE_NONUSABLE_AUTHORITY_SHA256 = SOURCE_CLOSURE_CHECKPOINT_SHA256
+# Retained as an explicit, empty extension point for a genuinely absent
+# adjusted-source row proven by a future closure lineage reconciliation.
+KNOWN_ADJUSTED_SOURCE_GAP_DATES: dict[tuple[str, str], str] = {}
 KNOWN_OUTSIDE_IDENTITY_LIFECYCLE_DATES: dict[tuple[str, str], str] = {
     ("123410", "2011-05-18"): "PIT/identity authority marks date outside ticker lifecycle",
     ("126700", "2011-09-15"): "PIT/identity authority marks date outside ticker lifecycle",
@@ -73,15 +79,19 @@ class _IndexedRawTickerReader:
 
     def __init__(self, store: KrxRawStockStore) -> None:
         self.store = store
-        self._locations: dict[str, list[tuple[str, str]]] = {}
+        self._locations: dict[str, list[tuple[str, str, tuple[int, ...]]]] = {}
+        self._partition_frames: dict[tuple[str, str], pd.DataFrame] = {}
         self._built = False
         self.stats = {
             "partition_files_opened": 0,
+            "partition_cache_hits": 0,
+            "ticker_frame_cache_hits": 0,
             "manifest_rows_scanned": 0,
             "index_lookups": 0,
             "ticker_rows_returned": 0,
             "full_store_scans": 0,
             "full_store_scans_per_ticker": 0,
+            "index_memory_bytes": 0,
         }
 
     @staticmethod
@@ -108,13 +118,25 @@ class _IndexedRawTickerReader:
             day = str(row["date"])
             frame = self.store.load_snapshot(market, day)
             self.stats["partition_files_opened"] += 1
+            # Keep the already integrity-validated frame for this ephemeral
+            # repository run.  Reopening the same partition per ticker would
+            # repeat file/content hashing millions of times on the canonical
+            # population and is not a production-scale access pattern.
+            self._partition_frames[(market, day)] = frame
+            self.stats["index_memory_bytes"] += int(frame.memory_usage(deep=True).sum())
             if frame.empty:
                 continue
-            for ticker, group in frame.groupby("ticker", sort=False):
+            # Store row positions rather than copying every ticker's rows into
+            # separate DataFrames.  This keeps index construction bounded by
+            # one validated partition copy while making each ticker lookup
+            # select only its own rows.
+            for ticker, positions in frame.groupby("ticker", sort=False).indices.items():
                 key = str(ticker)
-                self._locations.setdefault(key, []).append((market, day))
+                self._locations.setdefault(key, []).append(
+                    (market, day, tuple(int(position) for position in positions))
+                )
         for key in self._locations:
-            self._locations[key] = sorted(set(self._locations[key]), key=lambda item: item[1])
+            self._locations[key] = sorted(self._locations[key], key=lambda item: item[1])
         self._built = True
 
     def load_ticker(self, ticker: str, start: Any | None = None, end: Any | None = None) -> pd.DataFrame:
@@ -123,27 +145,25 @@ class _IndexedRawTickerReader:
         start_day = pd.Timestamp(start).normalize() if start is not None else None
         end_day = pd.Timestamp(end).normalize() if end is not None else None
         locations = self._locations.get(str(ticker), [])
+        if not locations:
+            return self._empty()
         rows: list[pd.DataFrame] = []
-        seen_dates: set[str] = set()
-        for market, day in locations:
+        for market, day, positions in locations:
             day_ts = pd.Timestamp(day)
             if start_day is not None and day_ts < start_day:
                 continue
             if end_day is not None and day_ts > end_day:
                 continue
-            frame = self.store.load_snapshot(market, day)
-            self.stats["partition_files_opened"] += 1
-            matched = frame.loc[frame["ticker"].astype(str) == str(ticker)].copy()
-            if matched.empty:
-                continue
-            normalized_day = day_ts.date().isoformat()
-            if normalized_day in seen_dates:
-                raise MarketDataError("CROSS_MARKET_TICKER_CONFLICT")
-            seen_dates.add(normalized_day)
-            rows.append(matched.loc[:, list(RAW_COLUMNS)])
+            frame = self._partition_frames[(market, day)]
+            self.stats["partition_cache_hits"] += 1
+            matched = frame.take(list(positions)).loc[:, list(RAW_COLUMNS)]
+            if not matched.empty:
+                rows.append(matched)
         if not rows:
             return self._empty()
         result = pd.concat(rows, ignore_index=True)
+        if result["date"].duplicated().any():
+            raise MarketDataError("CROSS_MARKET_TICKER_CONFLICT")
         self.stats["ticker_rows_returned"] += len(result)
         return result.sort_values(["date", "ticker"], kind="mergesort").reset_index(drop=True)
 
@@ -362,6 +382,7 @@ def _session_projection_evidence(
     rejected_raw_only_dates: list[pd.Timestamp] = []
     known_adjusted_gap_dates: list[pd.Timestamp] = []
     outside_identity_lifecycle_dates: list[pd.Timestamp] = []
+    adjusted_source_nonusable_dates: list[pd.Timestamp] = []
     for date in raw_only_dates:
         row = raw.loc[date]
         predicate_fields = _placeholder_predicate_fields(row)
@@ -372,21 +393,30 @@ def _session_projection_evidence(
             classification_reason = (
                 "all six NON_TRADING_PLACEHOLDER_V01 fields match"
             )
-        elif (str(raw.attrs.get("ticker", "")), date.date().isoformat()) in KNOWN_ADJUSTED_SOURCE_GAP_DATES:
-            known_adjusted_gap_dates.append(date)
-            classification = "KNOWN_ADJUSTED_SOURCE_GAP"
-            classification_reason = KNOWN_ADJUSTED_SOURCE_GAP_DATES[(str(raw.attrs.get("ticker", "")), date.date().isoformat())]
-        elif (str(raw.attrs.get("ticker", "")), date.date().isoformat()) in KNOWN_OUTSIDE_IDENTITY_LIFECYCLE_DATES:
-            outside_identity_lifecycle_dates.append(date)
-            classification = "OUTSIDE_IDENTITY_LIFECYCLE"
-            classification_reason = KNOWN_OUTSIDE_IDENTITY_LIFECYCLE_DATES[(str(raw.attrs.get("ticker", "")), date.date().isoformat())]
         else:
-            rejected_raw_only_dates.append(date)
-            mismatched_fields = [
-                field for field, matches in predicate_fields.items() if not matches
-            ]
-            classification = "UNCLASSIFIED_RAW_ONLY"
-            classification_reason = "predicate fields failed: " + ", ".join(mismatched_fields)
+            authority_key = (str(raw.attrs.get("ticker", "")), date.date().isoformat())
+            if authority_key in KNOWN_OUTSIDE_IDENTITY_LIFECYCLE_DATES:
+                outside_identity_lifecycle_dates.append(date)
+                classification = "OUTSIDE_IDENTITY_LIFECYCLE"
+                classification_reason = KNOWN_OUTSIDE_IDENTITY_LIFECYCLE_DATES[authority_key]
+            elif authority_key in ADJUSTED_ANALYTICALLY_NONUSABLE_DATES:
+                adjusted_source_nonusable_dates.append(date)
+                classification = "ADJUSTED_ANALYTICALLY_NONUSABLE"
+                classification_reason = (
+                    "adjusted provider source_presence_audit classified the exact row "
+                    "NAVER_SOURCE_NONUSABLE; source row is preserved only in closure evidence"
+                )
+            elif authority_key in KNOWN_ADJUSTED_SOURCE_GAP_DATES:
+                known_adjusted_gap_dates.append(date)
+                classification = "KNOWN_ADJUSTED_SOURCE_GAP"
+                classification_reason = KNOWN_ADJUSTED_SOURCE_GAP_DATES[authority_key]
+            else:
+                rejected_raw_only_dates.append(date)
+                mismatched_fields = [
+                    field for field, matches in predicate_fields.items() if not matches
+                ]
+                classification = "UNCLASSIFIED_RAW_ONLY"
+                classification_reason = "predicate fields failed: " + ", ".join(mismatched_fields)
         raw_only_row_details.append(
             {
                 "date": date.date().isoformat(),
@@ -443,7 +473,14 @@ def _session_projection_evidence(
     # substitution is performed.
     projected_adjusted = adjusted.drop(index=shared_placeholder_dates + adjusted_analytic_invalid_dates, errors="ignore")
     projected_raw = raw.copy()
-    excluded_raw_dates = accepted_placeholder_dates + shared_placeholder_dates + known_adjusted_gap_dates + outside_identity_lifecycle_dates + adjusted_analytic_invalid_dates
+    excluded_raw_dates = (
+        accepted_placeholder_dates
+        + shared_placeholder_dates
+        + known_adjusted_gap_dates
+        + outside_identity_lifecycle_dates
+        + adjusted_source_nonusable_dates
+        + adjusted_analytic_invalid_dates
+    )
     if excluded_raw_dates:
         projected_raw = projected_raw.drop(index=excluded_raw_dates, errors="ignore")
     projected_raw = projected_raw.sort_index()
@@ -475,6 +512,7 @@ def _session_projection_evidence(
         ],
         "known_adjusted_gap_dates": [date.date().isoformat() for date in known_adjusted_gap_dates],
         "outside_identity_lifecycle_dates": [date.date().isoformat() for date in outside_identity_lifecycle_dates],
+        "adjusted_source_nonusable_dates": [date.date().isoformat() for date in adjusted_source_nonusable_dates],
         "adjusted_analytic_invalid_dates": [date.date().isoformat() for date in adjusted_analytic_invalid_dates],
         "adjusted_analytic_invalid_count": len(adjusted_analytic_invalid_dates),
         "projected_adjusted": projected_adjusted,
@@ -485,6 +523,7 @@ def _session_projection_evidence(
         "explicit_placeholder_projection_count": len(accepted_placeholder_dates) + len(shared_placeholder_dates),
         "explicit_known_gap_exclusion_count": len(known_adjusted_gap_dates),
         "explicit_outside_identity_lifecycle_exclusion_count": len(outside_identity_lifecycle_dates),
+        "explicit_adjusted_source_nonusable_exclusion_count": len(adjusted_source_nonusable_dates),
         "explicit_analytic_invalid_exclusion_count": len(adjusted_analytic_invalid_dates),
         "silent_inner_drop_count": 0,
     }
@@ -610,11 +649,14 @@ class MarketDataRepositoryV2:
         if self._raw_index is None:
             return {
                 "partition_files_opened": 0,
+                "partition_cache_hits": 0,
+                "ticker_frame_cache_hits": 0,
                 "manifest_rows_scanned": 0,
                 "index_lookups": 0,
                 "ticker_rows_returned": 0,
                 "full_store_scans": 0,
                 "full_store_scans_per_ticker": 0,
+                "index_memory_bytes": 0,
             }
         return dict(self._raw_index.stats)
 
