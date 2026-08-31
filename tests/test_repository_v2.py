@@ -16,6 +16,7 @@ from trend_scanner.data.repository_v2 import (
     DAILY_COLUMNS,
     RAW_DAILY_COLUMNS,
     MarketDataRepositoryV2,
+    validate_repository_v2_daily,
 )
 
 
@@ -294,6 +295,29 @@ def test_zero_price_raw_row_composes_with_adjusted_ohlc(tmp_path):
     assert result.loc[pd.Timestamp("2024-01-02"), "close"] == 21.0
     assert result.loc[pd.Timestamp("2024-01-02"), "volume"] == 0
     assert result.loc[pd.Timestamp("2024-01-02"), "trading_value"] == 25
+
+
+def test_source_native_adjusted_relation_anomaly_is_preserved_in_v2_history_view(tmp_path):
+    adjusted = _adjusted_frame(pd.DatetimeIndex(["2024-01-02"]))
+    adjusted.loc[pd.Timestamp("2024-01-02"), "high"] = 1.0
+    adjusted.attrs.update(source_native_adjusted=True, analytic_invalid_ohlc_count=1)
+    adjusted_store = AdjustedPriceStore(tmp_path / "adjusted")
+    adjusted_store.save_full("005930", adjusted)
+
+    raw_store = KrxRawStockStore(tmp_path / "raw")
+    raw_store.save_snapshot(
+        "KOSPI",
+        "2024-01-02",
+        _raw_frame(pd.DatetimeIndex(["2024-01-02"])),
+        "fixture",
+    )
+    repo = MarketDataRepositoryV2(adjusted_store, raw_store)
+
+    result = repo.get_daily("005930", "2024-01-02", "2024-01-02")
+    assert result.loc[pd.Timestamp("2024-01-02"), "high"] == 1.0
+    with pytest.raises(MarketDataError, match="INVALID_REPOSITORY_V2_OUTPUT"):
+        validate_repository_v2_daily(result)
+    validate_repository_v2_daily(result, source_history=True)
 
 
 def test_positive_invalid_raw_ohlc_still_fails(tmp_path):

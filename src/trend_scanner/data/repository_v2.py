@@ -10,7 +10,6 @@ import pandas as pd
 from trend_scanner.data.adjusted_price_provider import (
     ADJUSTED_OHLC_COLUMNS,
     normalize_ticker,
-    validate_adjusted_ohlc,
 )
 from trend_scanner.data.adjusted_price_store import AdjustedPriceStore
 from trend_scanner.data.errors import MarketDataError
@@ -106,6 +105,20 @@ def _validate_ohlc_columns(frame: pd.DataFrame, columns: tuple[str, ...]) -> Non
     _validate_numeric(frame, columns)
 
 
+def _validate_source_history_ohlc(frame: pd.DataFrame) -> None:
+    """Validate source-history adjusted OHLC without rewriting source relations.
+
+    The adjusted store deliberately preserves source-native observations even
+    when a candle violates the analytic high/low relation.  Repository V2's
+    composed daily view is therefore a source-history view; analytic callers
+    must opt into ``AdjustedPriceStore.load_daily_analytic`` separately.
+    """
+
+    _validate_numeric(frame, ADJUSTED_OHLC_COLUMNS)
+    if (frame.loc[:, list(ADJUSTED_OHLC_COLUMNS)] <= 0).any().any():
+        raise MarketDataError("INVALID_REPOSITORY_V2_OUTPUT")
+
+
 def _validate_raw_ohlc_columns(frame: pd.DataFrame) -> None:
     """Apply the frozen raw authority relation only to all-positive rows."""
 
@@ -130,15 +143,27 @@ def _validate_raw_ohlc_columns(frame: pd.DataFrame) -> None:
         raise MarketDataError("INVALID_REPOSITORY_V2_OUTPUT")
 
 
-def validate_repository_v2_daily(frame: pd.DataFrame) -> None:
-    """Validate the exact composed daily schema without changing source values."""
+def validate_repository_v2_daily(
+    frame: pd.DataFrame,
+    *,
+    source_history: bool = False,
+) -> None:
+    """Validate the exact composed daily schema without changing source values.
+
+    ``source_history=True`` is the explicit V2 composition contract: adjusted
+    OHLC is preserved from the authoritative source-history store and is not
+    subjected to an analytic relation filter.
+    """
 
     if not isinstance(frame, pd.DataFrame) or tuple(frame.columns) != DAILY_COLUMNS:
         raise MarketDataError("INVALID_REPOSITORY_V2_OUTPUT")
     _validate_index(frame)
     if frame.empty:
         return
-    _validate_ohlc_columns(frame, ADJUSTED_OHLC_COLUMNS)
+    if source_history:
+        _validate_source_history_ohlc(frame.loc[:, list(ADJUSTED_OHLC_COLUMNS)])
+    else:
+        _validate_ohlc_columns(frame, ADJUSTED_OHLC_COLUMNS)
     _validate_numeric(frame, ("volume", "trading_value"))
     if (frame["volume"] < 0).any() or (frame["trading_value"] < 0).any():
         raise MarketDataError("INVALID_REPOSITORY_V2_OUTPUT")
@@ -355,7 +380,7 @@ class MarketDataRepositoryV2:
 
     def _load_adjusted(self, ticker: str, start: pd.Timestamp, end: pd.Timestamp) -> pd.DataFrame:
         try:
-            frame = self._adjusted_price_store.load_daily(
+            frame = self._adjusted_price_store.load_daily_source(
                 ticker,
                 start.strftime("%Y-%m-%d"),
                 end.strftime("%Y-%m-%d"),
@@ -373,7 +398,7 @@ class MarketDataRepositoryV2:
             index = index.tz_localize(None)
         result.index = index.normalize().rename(None)
         try:
-            validate_adjusted_ohlc(result)
+            _validate_source_history_ohlc(result)
         except MarketDataError as exc:
             raise MarketDataError("INVALID_REPOSITORY_V2_OUTPUT") from exc
         return result.loc[:, list(ADJUSTED_OHLC_COLUMNS)]
@@ -427,7 +452,7 @@ class MarketDataRepositoryV2:
             axis=1,
         )
         result = result.loc[:, list(DAILY_COLUMNS)]
-        validate_repository_v2_daily(result)
+        validate_repository_v2_daily(result, source_history=True)
         return result
 
     def get_raw_daily(self, ticker: str, start: str, end: str) -> pd.DataFrame:
