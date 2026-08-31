@@ -228,8 +228,8 @@ def main() -> int:
     write(OUT / "post_promotion_zero_call.json", {"schema": "post_promotion_zero_call_fix01_v01", "performed": False})
     write(OUT / "git_mutation_audit.json", {"schema": "git_mutation_audit_fix01_v01", "implementation_head": implementation_head, "broad_add_used": False, "unrelated_files_staged": False})
     write(OUT / "final_decision.json", {"schema": "final_decision_fix01_v01", "VERDICT": "BLOCK", "NEXT_STATE": "BLOCKED_FULL_REPOSITORY_REGRESSION", "CANONICAL_PROMOTION": "DENIED"})
-    manifest = {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(OUT.iterdir()) if p.is_file() and p.name not in {"artifact_manifest.json", "full_population_checkpoint.json"}}
-    write(OUT / "artifact_manifest.json", {"schema": "authority_cutover_fix01_artifact_manifest_v01", "files": manifest, "excludes": ["artifact_manifest.json", "full_population_checkpoint.json"]})
+    manifest = {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(OUT.iterdir()) if p.is_file() and p.suffix == ".json" and p.name not in {"artifact_manifest.json", "full_population_checkpoint.json"}}
+    write(OUT / "artifact_manifest.json", {"schema": "authority_cutover_fix01_artifact_manifest_v01", "files": manifest, "excludes": ["artifact_manifest.json", "full_population_checkpoint.json", "*.csv"]})
     print(json.dumps({"status": "FIX01_READY_FOR_REVIEW", "population": authority.population_count, "pit": authority.pit_count, "outside_common": len(outside_records), "candidate_deterministic": candidate_determinism["deterministic"]}, ensure_ascii=False))
     return 0
 
