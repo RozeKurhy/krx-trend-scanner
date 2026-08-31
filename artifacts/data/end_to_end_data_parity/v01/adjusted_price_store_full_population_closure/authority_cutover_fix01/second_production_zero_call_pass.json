@@ -1,0 +1,122 @@
+{
+  "physical_attempts": 0,
+  "provider_calls": 0,
+  "result": {
+    "execution_id": "ADJUSTED_PRICE_STORE_FULL_POPULATION_V01_1788163687",
+    "mode": "ACQUISITION",
+    "summary": {
+      "authority_conflict_totals": {
+        "total_authority_conflicts": 1,
+        "total_resolved_authority_conflicts": 1,
+        "total_unresolved_authority_conflicts": 0
+      },
+      "closure_accounting": {
+        "closure_complete_total": 3149,
+        "complete_with_adjudicated_nonusable": 4,
+        "failure_count": 0,
+        "no_usable_observations": 0,
+        "normal_complete": 3145,
+        "resolved_authority_conflict_count": 1,
+        "schema_version": "adjusted_price_closure_accounting_v02",
+        "states": [
+          "USABLE_ADJUSTED_OBSERVATION",
+          "CONFIRMED_NONTRADING",
+          "ADJUDICATED_SOURCE_NONUSABLE",
+          "SILENT_MISSING",
+          "UNEXPECTED_SOURCE_DATE",
+          "SUSPENSION_METADATA_CONFLICT_WITH_OBSERVED_ACTIVITY",
+          "UNRESOLVED_ACTIVITY_EVIDENCE"
+        ],
+        "total_authority_conflicts": 1,
+        "tradability_contract_version": "adjusted_price_tradability_v02",
+        "unresolved_authority_conflict_count": 0,
+        "unresolved_total": 0
+      },
+      "coverage_totals": {
+        "total_actual_source_rows": 8215731,
+        "total_adjudicated_source_nonusable_dates": 170123,
+        "total_authority_conflict_dates": 1,
+        "total_authority_suppressed_source_rows": 176,
+        "total_confirmed_nontrading_dates": 176,
+        "total_expected_rows": 8381282,
+        "total_missing_expected_dates": 0,
+        "total_phantom_rows": 170580,
+        "total_resolved_authority_conflict_dates": 1,
+        "total_silent_missing_dates": 0,
+        "total_stored_rows": 8215731,
+        "total_unexpected_source_dates": 0,
+        "total_unresolved_authority_conflict_dates": 0,
+        "total_usable_source_rows": 8215731
+      },
+      "data_quality_totals": {
+        "total_analytic_invalid_ohlc": 0,
+        "total_duplicates": 0,
+        "total_future_rows": 0,
+        "total_invalid_ohlc": 0
+      },
+      "duration_seconds": 41.74,
+      "execution_id": "ADJUSTED_PRICE_STORE_FULL_POPULATION_V01_1788163687",
+      "execution_timestamp": "2026-08-31T08:09:32.389455+00:00",
+      "final_verdict": "CHANGES_REQUESTED",
+      "frozen_authority": {
+        "calendar_cutoff_date": "2026-08-21",
+        "calendar_row_count": 3844,
+        "pit_manifest_sha256": "a1952956427c214c21aa2fa293366d9ef092b36ae5afb3b110fd1ae556ccb3b0",
+        "pit_trading_dates_count": 4095,
+        "population_count": 3149,
+        "population_manifest_sha256": "84c8b33ed3f5bf2c8b713193144e0da2997698d94f9adc4ac619b82de36cd49e"
+      },
+      "network_accounting": {
+        "krx_mdc_requests": 0,
+        "krx_open_api_requests": 0,
+        "new_live_ticker_queries": 0,
+        "opendart_requests": 0,
+        "physical_provider_attempts": 0,
+        "population_records_processed": 3149,
+        "retries": 0,
+        "reused_without_network": 3149
+      },
+      "next_state": "NEEDS_ADJUSTED_PRICE_PROVIDER_CAPABILITY_RECONCILIATION",
+      "preflight": {
+        "already_complete_count": 3149,
+        "authority_blocked_count": 0,
+        "existing_empty_count": 0,
+        "existing_error_count": 0,
+        "existing_partial_count": 0,
+        "needs_fetch_count": 0,
+        "population_count": 3149,
+        "reconciliation_sum": 3149
+      },
+      "schema": "adjusted_price_store_full_population_summary_v01",
+      "status": "FULL_POPULATION_COMPLETED",
+      "status_counts": {
+        "closure_complete_total": 3149,
+        "complete": 3149,
+        "complete_with_adjudicated_nonusable": 4,
+        "empty": 0,
+        "error": 0,
+        "insufficient_authority": 0,
+        "no_usable_observations": 0,
+        "normal_complete": 3145,
+        "partial": 0,
+        "population_total": 3149
+      },
+      "subgroup_breakdown": {
+        "alpha_23_census": {
+          "complete": 23,
+          "pass": true,
+          "total": 23
+        },
+        "current_common": {
+          "complete": 2557,
+          "total": 2557
+        },
+        "historical_only": {
+          "complete": 592,
+          "total": 592
+        }
+      }
+    }
+  },
+  "schema": "second_production_zero_call_pass_fix01_v01"
+}
