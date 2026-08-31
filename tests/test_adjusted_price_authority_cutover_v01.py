@@ -27,6 +27,7 @@ from trend_scanner.data.adjusted_price_full_population import (
 
 
 ROOT = Path(__file__).resolve().parents[1]
+FIX01_OUT = ROOT / "artifacts/data/end_to_end_data_parity/v01/adjusted_price_store_full_population_closure/authority_cutover_fix01"
 
 
 @pytest.fixture(scope="module")
@@ -140,3 +141,36 @@ def test_unknown_is_not_not_common_even_for_reused_ticker():
 
     parts = classify_source_dates("REUSED", ["2014-01-02"], ReusedTickerAuthority(), ())
     assert parts["unexpected"] == ["2014-01-02"]
+
+
+def test_exact_authority_reconciles_3089_and_additional_1615(authority):
+    assert len(authority.confirmed_non_common_dates) == 3089
+    assert len(authority.confirmed_non_common_intervals) == 10
+    census = json.loads((FIX01_OUT / "outside_common_4704_reconciliation.json").read_text(encoding="utf-8"))
+    assert census["old_current_outside_total"] == 4704
+    assert census["category_counts"]["ACCEPTED_SPAC_NON_COMMON"] == 3089
+    assert census["category_counts"]["OTHER_AUTHORITY_CONFIRMED_NON_COMMON"] == 1615
+    assert census["category_counts"]["UNRESOLVED"] == 0
+    assert census["sum_check"] is True
+
+
+def test_clean_room_candidates_are_measured_and_deterministic():
+    a = json.loads((FIX01_OUT / "candidate_a_integrity.json").read_text(encoding="utf-8"))
+    b = json.loads((FIX01_OUT / "candidate_b_integrity.json").read_text(encoding="utf-8"))
+    determinism = json.loads((FIX01_OUT / "candidate_determinism_comparison.json").read_text(encoding="utf-8"))
+    assert a["integrity_pass"] is True and b["integrity_pass"] is True
+    assert a["parquet_count"] == a["metadata_pair_count"] == 3145
+    assert a["zero_store_success_count"] == 4
+    assert a["unreadable_files"] == a["future_rows"] == a["source_invalid_ohlc_rows"] == 0
+    assert a["analytic_invalid_source_native_rows"] > 0
+    assert determinism["deterministic"] is True
+
+
+def test_actual_production_zero_network_passes_and_special_cases():
+    first = json.loads((FIX01_OUT / "first_production_zero_network_pass.json").read_text(encoding="utf-8"))
+    second = json.loads((FIX01_OUT / "second_production_zero_call_pass.json").read_text(encoding="utf-8"))
+    assert first["provider_calls"] == second["provider_calls"] == 0
+    assert first["result"]["summary"]["status_counts"]["closure_complete_total"] == 3149
+    assert second["result"]["summary"]["network_accounting"]["reused_without_network"] == 3149
+    assert json.loads((FIX01_OUT / "special_case_000610.json").read_text(encoding="utf-8"))["validator"] == "PASS"
+    assert json.loads((FIX01_OUT / "special_case_000360.json").read_text(encoding="utf-8"))["resolved_authority_conflict_count"] == 1
