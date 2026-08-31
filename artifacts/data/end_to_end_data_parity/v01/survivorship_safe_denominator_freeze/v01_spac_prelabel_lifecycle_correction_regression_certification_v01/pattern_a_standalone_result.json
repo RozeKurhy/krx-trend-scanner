@@ -1,0 +1,19 @@
+{
+  "schema": "pattern_a_standalone_result_v01",
+  "command": "caffeinate -i uv run pytest -vv -p no:cacheprovider tests/test_pattern_a_foreign_flow_infrastructure.py --durations=20",
+  "start_time": "2026-08-31 14:21:30 KST (approx)",
+  "end_time": "2026-08-31 14:24:38 KST (approx)",
+  "duration_seconds": 187.53,
+  "exit_code": 0,
+  "collected": 13,
+  "selected": 12,
+  "passed": 12,
+  "failed": 0,
+  "skipped": 0,
+  "deselected": 1,
+  "status": "PASS",
+  "slowest_setup_test": "test_oracle_missing_fail_closed_negative_test",
+  "slowest_setup_seconds": 183.22,
+  "warnings": 50327,
+  "network_requests": 0
+}

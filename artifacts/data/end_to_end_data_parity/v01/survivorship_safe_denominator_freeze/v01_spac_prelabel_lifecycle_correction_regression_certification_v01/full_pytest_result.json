@@ -1,0 +1,23 @@
+{
+  "schema": "full_pytest_result_v01",
+  "command": "caffeinate -i uv run pytest -q -p no:cacheprovider",
+  "start_time": "2026-08-31 14:24:46 KST",
+  "end_time": "2026-08-31 14:46:18 KST (approx)",
+  "duration_seconds": 1292.28,
+  "completed_to_100_percent": true,
+  "manual_interruption": false,
+  "exit_code": 1,
+  "collection_total": 2269,
+  "selected": 2264,
+  "deselected": 5,
+  "passed": 2257,
+  "failed": 1,
+  "skipped": 6,
+  "allowed_baseline_failure_count": 1,
+  "unexpected_failure_count": 0,
+  "allowed_baseline_failure": "tests/test_krx_historical_backfill.py::test_recent_empty_is_not_checkpointed_and_general_resume_retries",
+  "allowed_baseline_assertion": "expected recent_empty_unfinalized_count=1, actual=0",
+  "network_requests_observed": 0,
+  "retries": 0,
+  "status": "COMPLETED_ALLOWED_BASELINE_ONLY"
+}
