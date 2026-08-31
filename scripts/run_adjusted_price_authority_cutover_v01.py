@@ -107,6 +107,15 @@ def build_outside_common_census(authority, old_pit: list[dict], population: list
     return records, category_counts
 
 
+def serializable_run_result(result: dict) -> dict:
+    """Persist production runner output without embedding dataclass rows."""
+    return {
+        "execution_id": result.get("execution_id"),
+        "mode": result.get("mode"),
+        "summary": result.get("summary", {}),
+    }
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--implementation-head", default=None)
@@ -139,6 +148,10 @@ def main() -> int:
     second = second_runner.run_acquisition(provider=exploding_second)
     if exploding_first.calls or exploding_second.calls:
         raise RuntimeError("NETWORK_PROVIDER_MUST_NOT_BE_CALLED")
+    for result in (first, second):
+        status_counts = result.get("summary", {}).get("status_counts", {})
+        if status_counts.get("population_total") != EXPECTED_EFFECTIVE_POPULATION_COUNT or status_counts.get("closure_complete_total") != EXPECTED_EFFECTIVE_POPULATION_COUNT:
+            raise RuntimeError("PRODUCTION_CLOSURE_NOT_COMPLETE")
     candidate_a_integrity = scan_candidate_integrity(CANDIDATE_A, population)
     candidate_b_integrity = scan_candidate_integrity(CANDIDATE_B, population)
     if not candidate_a_integrity["integrity_pass"] or not candidate_b_integrity["integrity_pass"]:
@@ -178,8 +191,8 @@ def main() -> int:
     write(OUT / "candidate_b_integrity.json", candidate_b_integrity)
     write(OUT / "candidate_determinism_comparison.json", candidate_determinism)
     write(OUT / "candidate_source_immutability.json", {"schema": "candidate_source_immutability_fix01_v01", "source_rows_mutated": False, "old_staging_mutated": snapshot_tree(OLD_STAGING) != old_staging_guard, "candidate_a_build": candidate_a_build, "candidate_b_build": candidate_b_build})
-    write(OUT / "first_production_zero_network_pass.json", {"schema": "first_production_zero_network_pass_fix01_v01", "result": first, "provider_calls": exploding_first.calls, "physical_attempts": 0})
-    write(OUT / "second_production_zero_call_pass.json", {"schema": "second_production_zero_call_pass_fix01_v01", "result": second, "provider_calls": exploding_second.calls, "physical_attempts": 0})
+    write(OUT / "first_production_zero_network_pass.json", {"schema": "first_production_zero_network_pass_fix01_v01", "result": serializable_run_result(first), "provider_calls": exploding_first.calls, "physical_attempts": 0})
+    write(OUT / "second_production_zero_call_pass.json", {"schema": "second_production_zero_call_pass_fix01_v01", "result": serializable_run_result(second), "provider_calls": exploding_second.calls, "physical_attempts": 0})
     write(OUT / "first_second_semantic_comparison.json", {"schema": "first_second_semantic_comparison_fix01_v01", "equal": True, "first": first_summary, "second": second_summary})
     write(OUT / "special_case_000610.json", {"schema": "special_case_000610_fix01_v01", "status": "COMPLETE_WITH_ADJUDICATED_NONUSABLE", "terminal_state": "RAW_ROWS_PRESENT_ALL_PHANTOM", "stored_row_count": 0, "validator": "PASS"})
     write(OUT / "special_case_000360.json", {"schema": "special_case_000360_fix01_v01", "status": "COMPLETE", "authority_conflict_count": 1, "resolved_authority_conflict_count": 1, "unresolved_authority_conflict_count": 0, "terminal_state": "VALID_OBSERVED_MARKET_ACTIVITY"})
