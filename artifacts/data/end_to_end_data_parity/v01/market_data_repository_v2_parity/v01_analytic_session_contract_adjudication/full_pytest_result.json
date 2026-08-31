@@ -1,0 +1,19 @@
+{
+  "allowed_baseline": [
+    "tests/test_krx_historical_backfill.py::test_recent_empty_is_not_checkpointed_and_general_resume_retries"
+  ],
+  "command": "caffeinate -i env -u OPENDART_API_KEY -u KRX_ID -u KRX_PW PYTHONDONTWRITEBYTECODE=1 uv run pytest -q -p no:cacheprovider",
+  "completion": true,
+  "deselected": 5,
+  "duration_seconds": 1298.65,
+  "errors": 0,
+  "failed": 1,
+  "head_tested": "7a89b80aefa361b86812cd881d2947743aef587b",
+  "live_network_attempts": 0,
+  "passed": 2282,
+  "schema": "full_pytest_result_v02",
+  "skipped": 7,
+  "status": "PASS_WITH_AUTHORIZED_BASELINE_ONLY",
+  "tree_tested": "aa2a920266b018a87b6a055866387fa823c29dc6",
+  "unexpected_failures": []
+}

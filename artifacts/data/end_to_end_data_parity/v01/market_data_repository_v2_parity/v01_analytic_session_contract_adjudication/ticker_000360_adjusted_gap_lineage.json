@@ -1,0 +1,24 @@
+{
+  "adjusted_closure_status": "ACCEPT",
+  "adjusted_date_absent_explanation": "accepted source-closure gap; no adjusted fetch/reopen",
+  "category": "KNOWN_ADJUSTED_SOURCE_GAP",
+  "closure_terminal": "VALID_OBSERVED_MARKET_ACTIVITY",
+  "date": "2012-07-16",
+  "lineage": [
+    "artifacts/data/end_to_end_data_parity/v01/adjusted_price_store_full_population_closure/v01_tradability_and_nonpositive_reconciliation/suspension_conflict_000360_20120716.json",
+    "artifacts/data/end_to_end_data_parity/v01/adjusted_price_store_full_population_closure/authority_cutover_fix01/special_case_000360.json",
+    "artifacts/data/end_to_end_data_parity/v01/adjusted_price_store_full_population_closure/authority_cutover_fix01/canonical_post_promotion_identity.json",
+    "artifacts/data/end_to_end_data_parity/v01/adjusted_price_store_full_population_closure/authority_cutover_fix01/promotion_readiness.json"
+  ],
+  "raw_activity": {
+    "close": 3300,
+    "high": 3440,
+    "low": 3265,
+    "open": 3265,
+    "trading_value": 138215850,
+    "volume": 41680
+  },
+  "repository_behavior": "exclude from analytic get_daily with KNOWN_ADJUSTED_SOURCE_GAP; preserve raw row",
+  "schema": "ticker_000360_adjusted_gap_lineage_v01",
+  "ticker": "000360"
+}
