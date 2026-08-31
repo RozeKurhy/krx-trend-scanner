@@ -1,0 +1,16 @@
+{
+  "schema": "authority_conflict_contract_v01",
+  "authority_conflict_count_semantics": "total historical conflict records retained for audit",
+  "resolved_authority_conflict_count_semantics": "approved authority/errata adjudications",
+  "unresolved_authority_conflict_count_semantics": "conflicts without approved resolution; closure blockers",
+  "closure_gate": "unresolved_authority_conflict_count == 0",
+  "approved_exception": {
+    "ticker": "000360",
+    "date": "2012-07-16",
+    "conflict_class": "SUSPENSION_METADATA_CONFLICT_WITH_OBSERVED_ACTIVITY",
+    "effective_classification": "VALID_OBSERVED_MARKET_ACTIVITY",
+    "resolution_state": "RESOLVED"
+  },
+  "legacy_checkpoint_policy": "if unresolved counter is absent and total conflict count is nonzero, infer unresolved and reject reuse",
+  "errata_mutated": false
+}

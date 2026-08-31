@@ -1,0 +1,14 @@
+{
+  "schema": "resolved_vs_unresolved_conflict_census_v01",
+  "source": "FIX03 focused fixtures and resolver contract",
+  "total_authority_conflicts": 2,
+  "resolved_authority_conflicts": 1,
+  "unresolved_authority_conflicts": 1,
+  "resolved_examples": [
+    {"ticker": "000360", "date": "2012-07-16", "state": "RESOLVED"}
+  ],
+  "unresolved_examples": [
+    {"ticker": "000999", "date": "2012-07-16", "state": "UNRESOLVED"}
+  ],
+  "accounting_invariant": "total_authority_conflicts == resolved_authority_conflicts + unresolved_authority_conflicts"
+}
