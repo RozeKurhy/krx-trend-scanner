@@ -1196,7 +1196,7 @@ class FullPopulationRunner:
             rec_obj = self.process_single_ticker(rec, provider=active_provider)
             records.append(rec_obj)
             if not rec_obj.reused_without_network:
-                time.sleep(0.25)  # Gentle delay between source requests
+                time.sleep(0.50)  # Gentle delay between source requests
 
             if is_closure_success(rec_obj.acquisition_status):
                 consecutive_errors = 0

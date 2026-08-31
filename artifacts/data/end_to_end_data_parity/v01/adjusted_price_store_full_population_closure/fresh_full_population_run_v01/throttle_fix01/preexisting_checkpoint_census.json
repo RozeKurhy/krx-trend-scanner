@@ -1,0 +1,58 @@
+{
+  "schema": "throttle_fix01_checkpoint_reconciliation_v01",
+  "execution_id": "FRESH_FULL_POPULATION_RUN_V01_20260831T122021KST",
+  "checkpoint_path": "artifacts/data/end_to_end_data_parity/v01/adjusted_price_store_full_population_closure/fresh_full_population_run_v01/full_population_checkpoint.json",
+  "before": {
+    "sha256": "ee9dff6cfdad186c73df66f8b8fa973ecac81de2b72e0d2dc937ea7ae29bbacd",
+    "completed_count": 1490,
+    "in_progress_count": 0,
+    "store_only_tickers": [
+      "066900",
+      "066910",
+      "066930",
+      "066970",
+      "066980",
+      "067000",
+      "067010"
+    ]
+  },
+  "reconciled_verified_store_only": [
+    "066900",
+    "066910",
+    "066970",
+    "067000"
+  ],
+  "rejected_store_only": [
+    {
+      "ticker": "066930",
+      "reason": "STRICT_STORE_COVERAGE_OR_AUTHORITY_MISMATCH",
+      "row_count": 110,
+      "expected_count": 121,
+      "authority_status": "VALID",
+      "unresolved_conflicts": []
+    },
+    {
+      "ticker": "066980",
+      "reason": "STRICT_STORE_COVERAGE_OR_AUTHORITY_MISMATCH",
+      "row_count": 4065,
+      "expected_count": 4095,
+      "authority_status": "VALID",
+      "unresolved_conflicts": []
+    },
+    {
+      "ticker": "067010",
+      "reason": "STRICT_STORE_COVERAGE_OR_AUTHORITY_MISMATCH",
+      "row_count": 4094,
+      "expected_count": 4095,
+      "authority_status": "VALID",
+      "unresolved_conflicts": []
+    }
+  ],
+  "after": {
+    "sha256": "922070bd9c39169815acf134dba2f845572ba3c461547b3c79791533a48139cd",
+    "completed_count": 1494,
+    "in_progress_count": 0
+  },
+  "identity_unchanged": true,
+  "network_requests": 0
+}
