@@ -219,6 +219,8 @@ class ExpectedCoverageResolution:
     confirmed_nontrading_dates: tuple[str, ...] = ()
     adjudicated_source_nonusable_dates: tuple[str, ...] = ()
     authority_conflict_dates: tuple[str, ...] = ()
+    resolved_authority_conflict_dates: tuple[str, ...] = ()
+    unresolved_authority_conflict_dates: tuple[str, ...] = ()
     tradability_contract_version: str = TRADABILITY_CONTRACT_VERSION
 
 
@@ -425,6 +427,24 @@ def resolve_expected_coverage(
                 tradable_dates = [d for d in raw_candidate_dates if d not in known_halts]
 
                 status = AuthorityStatus.VALID.value if tradable_dates else AuthorityStatus.NO_EXPECTED_OBSERVATIONS.value
+                conflict_records = tuple(
+                    item
+                    for item in errata_records
+                    if str(item.get("ticker")) == ticker
+                    and str(item.get("date")) in raw_candidate_dates
+                    and str(item.get("conflict_class"))
+                    == ClosureState.SUSPENSION_METADATA_CONFLICT_WITH_OBSERVED_ACTIVITY.value
+                )
+                conflict_dates = tuple(str(item["date"]) for item in conflict_records)
+                resolved_conflict_dates = tuple(
+                    str(item["date"])
+                    for item in conflict_records
+                    if str(item.get("effective_classification"))
+                    == "VALID_OBSERVED_MARKET_ACTIVITY"
+                )
+                unresolved_conflict_dates = tuple(
+                    date for date in conflict_dates if date not in set(resolved_conflict_dates)
+                )
                 return ExpectedCoverageResolution(
                     ticker=ticker,
                     query_start=query_start,
@@ -438,13 +458,9 @@ def resolve_expected_coverage(
                     expected_tradable_dates=tuple(tradable_dates),
                     nontradable_dates=tuple(halt_dates_in_window),
                     source_path=f"{suspension_authority_path} (SHA256={auth_sha[:8]})",
-                    authority_conflict_dates=tuple(
-                        str(item["date"])
-                        for item in errata_records
-                        if str(item.get("ticker")) == ticker
-                        and str(item.get("conflict_class"))
-                        == ClosureState.SUSPENSION_METADATA_CONFLICT_WITH_OBSERVED_ACTIVITY.value
-                    ),
+                    authority_conflict_dates=conflict_dates,
+                    resolved_authority_conflict_dates=resolved_conflict_dates,
+                    unresolved_authority_conflict_dates=unresolved_conflict_dates,
                 )
 
             # Pure PIT Calendar Approximation

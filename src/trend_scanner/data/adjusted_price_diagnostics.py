@@ -928,13 +928,28 @@ def adjudicate_adjusted_price_full_population_state(
     provider_capability_status: str,
     quality_clean: bool = True,
     final_resume_passed: bool = False,
+    unresolved_authority_conflict_count: int = 0,
 ) -> dict[str, Any]:
     """BLOCKER D: Single canonical dynamic adjudicator consumed by manifests and summary."""
     all_complete = (complete_count == population_count and partial_count == 0 and empty_count == 0 and error_count == 0)
 
     reason_codes: list[str] = []
 
-    if all_complete and quality_clean and final_resume_passed:
+    if unresolved_authority_conflict_count < 0:
+        final_verdict = "CHANGES_REQUESTED"
+        next_state = "NEEDS_FIX02_FIX04"
+        prov_fix = False
+        src_review = False
+        resume_eligible = False
+        reason_codes.append("MALFORMED_UNRESOLVED_AUTHORITY_CONFLICT_COUNT")
+    elif unresolved_authority_conflict_count > 0:
+        final_verdict = "CHANGES_REQUESTED"
+        next_state = "NEEDS_FIX02_FIX04"
+        prov_fix = False
+        src_review = False
+        resume_eligible = False
+        reason_codes.append("UNRESOLVED_AUTHORITY_CONFLICTS_BLOCK_CLOSURE")
+    elif all_complete and quality_clean and final_resume_passed:
         final_verdict = "ACCEPT"
         next_state = "READY_FOR_MARKET_DATA_REPOSITORY_V02_PARITY"
         prov_fix = False

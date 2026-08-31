@@ -153,7 +153,18 @@ def validate_terminal_success_evidence(info: Mapping[str, Any]) -> tuple[bool, s
         "unexpected_source_count" if "unexpected_source_count" in info else "unexpected_count"
     )
     authority_conflict = _nonnegative_int("authority_conflict_count")
-    if None in {stored, usable, adjudicated, silent, unexpected, authority_conflict}:
+    resolved_authority_conflict = _nonnegative_int("resolved_authority_conflict_count")
+    unresolved_authority_conflict = _nonnegative_int("unresolved_authority_conflict_count")
+    if None in {
+        stored,
+        usable,
+        adjudicated,
+        silent,
+        unexpected,
+        authority_conflict,
+        resolved_authority_conflict,
+        unresolved_authority_conflict,
+    }:
         return False, "MALFORMED_TERMINAL_COUNTER"
     actual_dates = info.get("actual_dates", [])
     if not isinstance(actual_dates, (list, tuple)):
@@ -163,8 +174,46 @@ def validate_terminal_success_evidence(info: Mapping[str, Any]) -> tuple[bool, s
             return False, "MALFORMED_TERMINAL_COUNTER"
     assert stored is not None and usable is not None and adjudicated is not None
     assert silent is not None and unexpected is not None and authority_conflict is not None
+    assert resolved_authority_conflict is not None and unresolved_authority_conflict is not None
 
-    if silent != 0 or unexpected != 0 or authority_conflict != 0:
+    # ``authority_conflict_count`` is retained as the total audit count.  A
+    # pre-FIX03 checkpoint has no explicit unresolved counter, so its total is
+    # conservatively treated as unresolved and cannot be reused blindly.
+    legacy_conflict_counter = "unresolved_authority_conflict_count" not in info
+    if legacy_conflict_counter:
+        unresolved_authority_conflict = authority_conflict
+    if resolved_authority_conflict + unresolved_authority_conflict != authority_conflict:
+        return False, "AUTHORITY_CONFLICT_COUNTER_INCONSISTENT"
+
+    def _date_tuple(key: str) -> tuple[str, ...] | None:
+        value = info.get(key, ())
+        if not isinstance(value, (list, tuple)):
+            return None
+        dates = tuple(str(item) for item in value)
+        if any(not re.fullmatch(r"\d{4}-\d{2}-\d{2}", date) for date in dates):
+            return None
+        if len(set(dates)) != len(dates):
+            return None
+        return dates
+
+    resolved_dates = _date_tuple("resolved_authority_conflict_dates")
+    unresolved_dates = _date_tuple("unresolved_authority_conflict_dates")
+    if resolved_dates is None or unresolved_dates is None:
+        return False, "MALFORMED_AUTHORITY_CONFLICT_DATES"
+    if legacy_conflict_counter and authority_conflict > 0:
+        return False, "LEGACY_AUTHORITY_CONFLICT_EVIDENCE_AMBIGUOUS"
+    if (
+        "resolved_authority_conflict_dates" in info
+        and len(resolved_dates) != resolved_authority_conflict
+    ) or (
+        "unresolved_authority_conflict_dates" in info
+        and len(unresolved_dates) != unresolved_authority_conflict
+    ):
+        return False, "AUTHORITY_CONFLICT_DATE_COUNT_MISMATCH"
+    if set(resolved_dates).intersection(unresolved_dates):
+        return False, "AUTHORITY_CONFLICT_DATE_OVERLAP"
+
+    if silent != 0 or unexpected != 0 or unresolved_authority_conflict != 0:
         return False, "UNRESOLVED_TERMINAL_COUNTER"
 
     terminal_state = info.get("terminal_state")
@@ -235,6 +284,10 @@ class TickerAcquisitionRecord:
     adjudicated_source_nonusable_count: int = 0
     silent_missing_count: int = 0
     authority_conflict_count: int = 0
+    resolved_authority_conflict_count: int = 0
+    unresolved_authority_conflict_count: int = 0
+    resolved_authority_conflict_dates: tuple[str, ...] = ()
+    unresolved_authority_conflict_dates: tuple[str, ...] = ()
     phantom_count: int = 0
     analytic_invalid_ohlc_count: int = 0
     terminal_state: str | None = None
@@ -532,6 +585,10 @@ class FullPopulationRunner:
             "adjudicated_source_nonusable_count": rec_obj.adjudicated_source_nonusable_count,
             "silent_missing_count": rec_obj.silent_missing_count,
             "authority_conflict_count": rec_obj.authority_conflict_count,
+            "resolved_authority_conflict_count": rec_obj.resolved_authority_conflict_count,
+            "unresolved_authority_conflict_count": rec_obj.unresolved_authority_conflict_count,
+            "resolved_authority_conflict_dates": list(rec_obj.resolved_authority_conflict_dates),
+            "unresolved_authority_conflict_dates": list(rec_obj.unresolved_authority_conflict_dates),
             "phantom_count": rec_obj.phantom_count,
             "authority_suppressed_source_count": rec_obj.authority_suppressed_source_count,
             "authority_suppressed_source_dates": list(rec_obj.authority_suppressed_source_dates),
@@ -591,6 +648,23 @@ class FullPopulationRunner:
             adjudicated_source_nonusable_count=int(info.get("adjudicated_source_nonusable_count", 0)),
             silent_missing_count=int(info.get("silent_missing_count", info.get("missing_count", 0))),
             authority_conflict_count=int(info.get("authority_conflict_count", 0)),
+            resolved_authority_conflict_count=int(info.get("resolved_authority_conflict_count", 0)),
+            unresolved_authority_conflict_count=int(
+                info.get(
+                    "unresolved_authority_conflict_count",
+                    info.get("authority_conflict_count", 0),
+                )
+            ),
+            resolved_authority_conflict_dates=tuple(
+                str(item) for item in info.get("resolved_authority_conflict_dates", ())
+            ),
+            unresolved_authority_conflict_dates=tuple(
+                str(item)
+                for item in info.get(
+                    "unresolved_authority_conflict_dates",
+                    info.get("authority_conflict_dates", ()),
+                )
+            ),
             phantom_count=int(info.get("phantom_count", 0)),
             analytic_invalid_ohlc_count=int(info.get("analytic_invalid_ohlc_count", 0)),
             terminal_state=info.get("terminal_state"),
@@ -633,6 +707,7 @@ class FullPopulationRunner:
                     resolution = resolve_expected_coverage(t, req_start, req_end)
                     if (
                         resolution.authority_status == AuthorityStatus.VALID.value
+                        and not resolution.unresolved_authority_conflict_dates
                         and resolution.expected_tradable_count > 0
                         and len(df) == resolution.expected_tradable_count
                         and list(df.index.strftime("%Y-%m-%d")) == list(resolution.expected_tradable_dates)
@@ -792,6 +867,32 @@ class FullPopulationRunner:
         # from the independent expected-coverage authority.
         authority_nontrading_dates = set(resolution.nontradable_dates)
         authority_tradable_dates = set(resolution.expected_tradable_dates)
+        authority_conflict_dates = set(resolution.authority_conflict_dates)
+        resolved_authority_conflict_dates = set(
+            resolution.resolved_authority_conflict_dates
+        )
+        unresolved_authority_conflict_dates = set(
+            resolution.unresolved_authority_conflict_dates
+        )
+        # Older/custom resolution providers may only expose the historical
+        # conflict list.  Treat those conflicts as unresolved unless the
+        # resolver explicitly supplied a resolved/unresolved split.
+        if (
+            authority_conflict_dates
+            and not resolved_authority_conflict_dates
+            and not unresolved_authority_conflict_dates
+        ):
+            unresolved_authority_conflict_dates = set(authority_conflict_dates)
+        resolved_authority_conflict_dates.intersection_update(authority_conflict_dates)
+        unresolved_authority_conflict_dates.update(
+            authority_conflict_dates - resolved_authority_conflict_dates
+        )
+        resolved_authority_conflict_dates.difference_update(
+            unresolved_authority_conflict_dates
+        )
+        authority_conflict_dates.update(
+            resolved_authority_conflict_dates | unresolved_authority_conflict_dates
+        )
         source_positive_dates = set(actual_dates)
         source_dates = source_positive_dates | phantom_dates | source_nonusable_dates
         authority_suppressed_dates = authority_nontrading_dates.intersection(source_dates)
@@ -885,7 +986,7 @@ class FullPopulationRunner:
             and raw_source_row_count > 0
             and len(authority_suppressed_dates) == raw_source_row_count
         )
-        if unresolved_phantom_dates:
+        if unresolved_phantom_dates or unresolved_authority_conflict_dates:
             coverage_status = CoverageStatus.INSUFFICIENT_COVERAGE_AUTHORITY.value
         elif (all_phantom_terminal or all_source_nonusable_terminal or all_authority_suppressed_terminal) and expected_count == 0:
             coverage_status = CoverageStatus.NO_EXPECTED_OBSERVATIONS.value
@@ -951,7 +1052,10 @@ class FullPopulationRunner:
 
         # 4. Determine Final Acquisition Status
         terminal_state: str | None = None
-        if unresolved_phantom_dates:
+        if unresolved_authority_conflict_dates:
+            terminal_state = "UNRESOLVED_AUTHORITY_CONFLICT"
+            acq_status = AcquisitionStatus.INSUFFICIENT_AUTHORITY.value
+        elif unresolved_phantom_dates:
             terminal_state = "UNRESOLVED_ACTIVITY_EVIDENCE"
             acq_status = AcquisitionStatus.INSUFFICIENT_AUTHORITY.value
         elif all_phantom_terminal:
@@ -1025,7 +1129,11 @@ class FullPopulationRunner:
             confirmed_nontrading_count=confirmed_nontrading_count,
             adjudicated_source_nonusable_count=len(adjudicated_dates),
             silent_missing_count=missing_count,
-            authority_conflict_count=len(resolution.authority_conflict_dates),
+            authority_conflict_count=len(authority_conflict_dates),
+            resolved_authority_conflict_count=len(resolved_authority_conflict_dates),
+            unresolved_authority_conflict_count=len(unresolved_authority_conflict_dates),
+            resolved_authority_conflict_dates=tuple(sorted(resolved_authority_conflict_dates)),
+            unresolved_authority_conflict_dates=tuple(sorted(unresolved_authority_conflict_dates)),
             phantom_count=phantom_count,
             analytic_invalid_ohlc_count=analytic_invalid_ohlc_count,
             terminal_state=terminal_state,
@@ -1117,6 +1225,10 @@ class FullPopulationRunner:
                     "adjudicated_source_nonusable_count": rec_obj.adjudicated_source_nonusable_count,
                     "silent_missing_count": rec_obj.silent_missing_count,
                     "authority_conflict_count": rec_obj.authority_conflict_count,
+                    "resolved_authority_conflict_count": rec_obj.resolved_authority_conflict_count,
+                    "unresolved_authority_conflict_count": rec_obj.unresolved_authority_conflict_count,
+                    "resolved_authority_conflict_dates": list(rec_obj.resolved_authority_conflict_dates),
+                    "unresolved_authority_conflict_dates": list(rec_obj.unresolved_authority_conflict_dates),
                     "phantom_count": rec_obj.phantom_count,
                     "authority_suppressed_source_count": rec_obj.authority_suppressed_source_count,
                     "authority_suppressed_source_dates": list(rec_obj.authority_suppressed_source_dates),
@@ -1235,6 +1347,20 @@ class FullPopulationRunner:
         total_source_nonusable = sum(r.adjudicated_source_nonusable_count for r in records)
         total_silent_missing = sum(r.silent_missing_count for r in records)
         total_authority_conflicts = sum(r.authority_conflict_count for r in records)
+        total_resolved_authority_conflicts = sum(
+            r.resolved_authority_conflict_count for r in records
+        )
+        total_unresolved_authority_conflicts = sum(
+            r.unresolved_authority_conflict_count for r in records
+        )
+        if (
+            total_authority_conflicts
+            != total_resolved_authority_conflicts + total_unresolved_authority_conflicts
+        ):
+            raise RuntimeError(
+                "AUTHORITY_CONFLICT_ACCOUNTING_INVARIANT_FAILED: "
+                "total != resolved + unresolved"
+            )
         total_phantom = sum(r.phantom_count for r in records)
         total_authority_suppressed = sum(r.authority_suppressed_source_count for r in records)
 
@@ -1261,16 +1387,27 @@ class FullPopulationRunner:
         cap_status = auth_state.get("provider_capability_status", "UNKNOWN")
 
         quality_clean = (total_duplicates == 0 and total_invalid_ohlc == 0 and total_future_rows == 0)
-        adj = adjudicate_adjusted_price_full_population_state(
-            population_count=total_count,
-            complete_count=closure_complete_count,
-            partial_count=partial_count,
-            empty_count=empty_count,
-            error_count=error_count,
-            provider_capability_status=cap_status,
-            quality_clean=quality_clean,
-            final_resume_passed=False,
-        )
+        if total_unresolved_authority_conflicts > 0:
+            adj = {
+                "final_verdict": "CHANGES_REQUESTED",
+                "recommended_next_state": "NEEDS_FIX02_FIX04",
+                "provider_capability_status": cap_status,
+                "provider_fix_required": False,
+                "source_authority_review_required": False,
+                "residual_resume_eligible": False,
+                "reason_codes": ["UNRESOLVED_AUTHORITY_CONFLICTS_BLOCK_CLOSURE"],
+            }
+        else:
+            adj = adjudicate_adjusted_price_full_population_state(
+                population_count=total_count,
+                complete_count=closure_complete_count,
+                partial_count=partial_count,
+                empty_count=empty_count,
+                error_count=error_count,
+                provider_capability_status=cap_status,
+                quality_clean=quality_clean,
+                final_resume_passed=False,
+            )
         verdict = adj["final_verdict"]
         next_state = adj["recommended_next_state"]
 
@@ -1331,8 +1468,15 @@ class FullPopulationRunner:
                 "total_confirmed_nontrading_dates": total_confirmed_nontrading,
                 "total_adjudicated_source_nonusable_dates": total_source_nonusable,
                 "total_authority_conflict_dates": total_authority_conflicts,
+                "total_resolved_authority_conflict_dates": total_resolved_authority_conflicts,
+                "total_unresolved_authority_conflict_dates": total_unresolved_authority_conflicts,
                 "total_phantom_rows": total_phantom,
                 "total_authority_suppressed_source_rows": total_authority_suppressed,
+            },
+            "authority_conflict_totals": {
+                "total_authority_conflicts": total_authority_conflicts,
+                "total_resolved_authority_conflicts": total_resolved_authority_conflicts,
+                "total_unresolved_authority_conflicts": total_unresolved_authority_conflicts,
             },
             "data_quality_totals": {
                 "total_duplicates": total_duplicates,
@@ -1349,6 +1493,9 @@ class FullPopulationRunner:
                 "complete_with_adjudicated_nonusable": adjudicated_complete_count,
                 "closure_complete_total": closure_complete_count,
                 "unresolved_total": total_count - closure_complete_count,
+                "total_authority_conflicts": total_authority_conflicts,
+                "resolved_authority_conflict_count": total_resolved_authority_conflicts,
+                "unresolved_authority_conflict_count": total_unresolved_authority_conflicts,
                 "failure_count": total_count - closure_complete_count,
             },
             "network_accounting": {
@@ -1438,6 +1585,12 @@ class FullPopulationRunner:
             "normal_complete_count": normal_complete_count,
             "no_usable_observations_count": no_usable_count,
             "complete_with_adjudicated_nonusable_count": adjudicated_complete_count,
+            "total_authority_conflict_count": total_authority_conflicts,
+            "resolved_authority_conflict_count": total_resolved_authority_conflicts,
+            "unresolved_authority_conflict_count": total_unresolved_authority_conflicts,
+            "total_authority_conflicts": total_authority_conflicts,
+            "total_resolved_authority_conflicts": total_resolved_authority_conflicts,
+            "total_unresolved_authority_conflicts": total_unresolved_authority_conflicts,
         }
         self.closure_manifest_path.write_text(json.dumps(closure_payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
