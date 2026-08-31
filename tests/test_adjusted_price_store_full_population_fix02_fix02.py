@@ -14,8 +14,10 @@ from trend_scanner.data.adjusted_price_full_population import (
     CLOSURE_SUCCESS_STATUSES,
     FullPopulationRunner,
     TickerAcquisitionRecord,
+    compute_true_resume_pass,
     is_closure_success,
     validate_terminal_success_evidence,
+    validate_operational_artifact_invariants,
 )
 from trend_scanner.data.adjusted_price_pilot import (
     AuthorityQuality,
@@ -181,6 +183,105 @@ def test_closure_success_contract_is_exactly_three_statuses():
     )
 
 
+def test_true_resume_pass_requires_complete_population_and_zero_execution():
+    assert compute_true_resume_pass(
+        closure_complete_count=3149,
+        total_count=3149,
+        expected_population_count=3149,
+        new_live_queries=0,
+        physical_attempts=0,
+    ) is True
+    assert compute_true_resume_pass(
+        closure_complete_count=3148,
+        total_count=3149,
+        expected_population_count=3149,
+        new_live_queries=0,
+        physical_attempts=0,
+    ) is False
+    assert compute_true_resume_pass(
+        closure_complete_count=3149,
+        total_count=3149,
+        expected_population_count=3149,
+        new_live_queries=1,
+        physical_attempts=0,
+    ) is False
+    assert compute_true_resume_pass(
+        closure_complete_count=3149,
+        total_count=3149,
+        expected_population_count=3149,
+        new_live_queries=0,
+        physical_attempts=1,
+    ) is False
+
+
+@pytest.mark.parametrize(
+    ("complete_count", "new_live_queries", "physical_attempts"),
+    [(3148, 0, 0), (3149, 1, 0), (3149, 0, 1)],
+)
+def test_incomplete_or_nonzero_execution_never_adjudicates_accept(
+    complete_count: int, new_live_queries: int, physical_attempts: int
+):
+    from trend_scanner.data.adjusted_price_diagnostics import (
+        adjudicate_adjusted_price_full_population_state,
+    )
+
+    result = adjudicate_adjusted_price_full_population_state(
+        population_count=3149,
+        complete_count=complete_count,
+        partial_count=0 if complete_count == 3149 else 1,
+        empty_count=0,
+        error_count=0,
+        provider_capability_status="UNKNOWN",
+        quality_clean=True,
+        final_resume_passed=compute_true_resume_pass(
+            closure_complete_count=complete_count,
+            total_count=3149,
+            expected_population_count=3149,
+            new_live_queries=new_live_queries,
+            physical_attempts=physical_attempts,
+        ),
+    )
+    assert result["final_verdict"] == "CHANGES_REQUESTED"
+
+
+@pytest.mark.parametrize(
+    ("summary", "resume", "closure", "execution", "error"),
+    [
+        (
+            {"execution_id": "e", "final_verdict": "CHANGES_REQUESTED", "next_state": "x"},
+            {"execution_id": "e", "is_idempotent": True},
+            {"execution_id": "e", "final_verdict": "CHANGES_REQUESTED", "next_state": "x"},
+            {"execution_id": "e"},
+            "RESUME_VERDICT_INVARIANT_FAILED",
+        ),
+        (
+            {"execution_id": "e", "final_verdict": "ACCEPT", "next_state": "x"},
+            {"execution_id": "e", "is_idempotent": False},
+            {"execution_id": "e", "final_verdict": "CHANGES_REQUESTED", "next_state": "x"},
+            {"execution_id": "e"},
+            "SUMMARY_CLOSURE_VERDICT_MISMATCH",
+        ),
+        (
+            {"execution_id": "e", "final_verdict": "ACCEPT", "next_state": "x"},
+            {"execution_id": "e", "is_idempotent": False},
+            {"execution_id": "e", "final_verdict": "ACCEPT", "next_state": "y"},
+            {"execution_id": "e"},
+            "SUMMARY_CLOSURE_NEXT_STATE_MISMATCH",
+        ),
+        (
+            {"execution_id": "e", "final_verdict": "ACCEPT", "next_state": "x"},
+            {"execution_id": "e", "is_idempotent": False},
+            {"execution_id": "e", "final_verdict": "ACCEPT", "next_state": "x"},
+            {"execution_id": "other"},
+            "OPERATIONAL_EXECUTION_ID_MISMATCH",
+        ),
+    ],
+)
+def test_operational_artifact_invariants_fail_closed(summary, resume, closure, execution, error):
+    with pytest.raises(RuntimeError, match=error):
+        validate_operational_artifact_invariants(summary, resume, closure, execution)
+
+
 @pytest.mark.parametrize(
     "status",
     [
@@ -338,11 +439,19 @@ def test_mixed_population_closes_all_statuses_and_second_run_is_zero_call(
     assert all(record.reused_without_network for record in second["records"])
     assert all(record.attempt_count == 0 and record.retry_count == 0 for record in second["records"])
     assert second["summary"]["status_counts"]["closure_complete_total"] == 3
+    assert second["summary"]["final_verdict"] == "ACCEPT"
+    assert second["summary"]["next_state"] == "READY_FOR_MARKET_DATA_REPOSITORY_V02_PARITY"
     assert second["summary"]["network_accounting"]["physical_provider_attempts"] == 0
     resume_audit = json.loads(runner.resume_audit_path.read_text(encoding="utf-8"))
     assert resume_audit["verified_complete"] == 3
     assert resume_audit["is_idempotent"] is True
     assert resume_audit["eligibility"] == "PASS"
+    closure = json.loads(runner.closure_manifest_path.read_text(encoding="utf-8"))
+    summary = json.loads(runner.summary_path.read_text(encoding="utf-8"))
+    execution = json.loads((runner.artifact_dir / "full_population_execution_audit.json").read_text(encoding="utf-8"))
+    assert closure["final_verdict"] == summary["final_verdict"] == "ACCEPT"
+    assert closure["next_state"] == summary["next_state"]
+    assert {summary["execution_id"], resume_audit["execution_id"], closure["execution_id"], execution["execution_id"]} == {runner.execution_id}
 
 
 def test_completed_zero_store_status_with_unexpected_evidence_is_not_reused(

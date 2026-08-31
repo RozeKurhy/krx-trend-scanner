@@ -48,6 +48,8 @@ def test_effective_manifest_has_original_lineage(authority):
     assert manifest["original_pit_sha256"].startswith("6b542ae0")
     cutover = json.loads((authority.manifest_path.parent / "authority_cutover_manifest.json").read_text(encoding="utf-8"))
     assert cutover["implementation_head"] not in {"", "WORKTREE"}
+    assert len(cutover["implementation_head"]) == 40
+    assert all(char in "0123456789abcdef" for char in cutover["implementation_head"])
     assert all(not str(cutover[key]).startswith("/") for key in ("effective_population_path", "effective_pit_path", "correction_artifact_path"))
 
 

@@ -163,6 +163,43 @@ def is_closure_success(status: str | AcquisitionStatus) -> bool:
     return value in CLOSURE_SUCCESS_STATUSES
 
 
+def compute_true_resume_pass(
+    *,
+    closure_complete_count: int,
+    total_count: int,
+    expected_population_count: int,
+    new_live_queries: int,
+    physical_attempts: int,
+) -> bool:
+    """Return the single authoritative predicate for a zero-call full resume."""
+    return (
+        closure_complete_count == total_count == expected_population_count
+        and new_live_queries == 0
+        and physical_attempts == 0
+    )
+
+
+def validate_operational_artifact_invariants(
+    summary: Mapping[str, Any],
+    resume_audit: Mapping[str, Any],
+    closure_manifest: Mapping[str, Any],
+    execution_audit: Mapping[str, Any] | None = None,
+) -> None:
+    """Reject contradictory closure/resume evidence before it is persisted."""
+    if bool(resume_audit.get("is_idempotent")) and summary.get("final_verdict") != "ACCEPT":
+        raise RuntimeError("RESUME_VERDICT_INVARIANT_FAILED")
+    if summary.get("final_verdict") != closure_manifest.get("final_verdict"):
+        raise RuntimeError("SUMMARY_CLOSURE_VERDICT_MISMATCH")
+    if summary.get("next_state") != closure_manifest.get("next_state"):
+        raise RuntimeError("SUMMARY_CLOSURE_NEXT_STATE_MISMATCH")
+    payloads = [summary, resume_audit, closure_manifest]
+    if execution_audit is not None:
+        payloads.append(execution_audit)
+    execution_ids = [payload.get("execution_id") for payload in payloads]
+    if not all(execution_ids) or len({str(execution_id) for execution_id in execution_ids}) != 1:
+        raise RuntimeError("OPERATIONAL_EXECUTION_ID_MISMATCH")
+
+
 def validate_terminal_success_evidence(info: Mapping[str, Any]) -> tuple[bool, str | None]:
     """Validate status-specific checkpoint evidence before allowing a resume.
 
@@ -1423,6 +1460,13 @@ class FullPopulationRunner:
         physical_attempts = sum(r.attempt_count for r in records)
         total_retries = sum(r.retry_count for r in records)
         reused_count = sum(1 for r in records if r.reused_without_network)
+        is_true_resume_pass = compute_true_resume_pass(
+            closure_complete_count=closure_complete_count,
+            total_count=total_count,
+            expected_population_count=self.expected_population_count,
+            new_live_queries=new_live_queries,
+            physical_attempts=physical_attempts,
+        )
 
         failures = [r for r in records if not is_closure_success(r.acquisition_status)]
         if failures:
@@ -1460,10 +1504,12 @@ class FullPopulationRunner:
                 error_count=error_count,
                 provider_capability_status=cap_status,
                 quality_clean=quality_clean,
-                final_resume_passed=False,
+                final_resume_passed=is_true_resume_pass,
             )
         verdict = adj["final_verdict"]
         next_state = adj["recommended_next_state"]
+        if is_true_resume_pass and verdict != "ACCEPT":
+            raise RuntimeError("RESUME_VERDICT_INVARIANT_FAILED")
 
         now_iso = datetime.now(timezone.utc).isoformat()
 
@@ -1566,7 +1612,6 @@ class FullPopulationRunner:
         }
 
         summary_content = json.dumps(summary_payload, indent=2, ensure_ascii=False) + "\n"
-        self.summary_path.write_text(summary_content, encoding="utf-8")
         summary_sha = hashlib.sha256(summary_content.encode("utf-8")).hexdigest()
 
         # 4. Manifest
@@ -1582,7 +1627,6 @@ class FullPopulationRunner:
             "results_csv_sha256": results_sha,
             "summary_sha256": summary_sha,
         }
-        self.manifest_path.write_text(json.dumps(manifest_payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
         # 5. Execution Audit Record (Captures current live acquisition run stats)
         execution_audit_path = self.artifact_dir / "full_population_execution_audit.json"
@@ -1598,11 +1642,8 @@ class FullPopulationRunner:
             "reused_without_network": reused_count,
             "updated_at": now_iso,
         }
-        execution_audit_path.write_text(json.dumps(execution_audit_payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
         # 6. Resume Audit Record (Dedicated Zero-Call Idempotency Verification)
-        all_complete = (closure_complete_count == total_count == self.expected_population_count)
-        is_true_resume_pass = (all_complete and new_live_queries == 0 and physical_attempts == 0)
         resume_audit_payload = {
             "schema": "full_population_resume_audit_v01",
             "execution_id": self.execution_id,
@@ -1619,7 +1660,6 @@ class FullPopulationRunner:
             "updated_at": now_iso,
         }
         resume_audit_content = json.dumps(resume_audit_payload, indent=2, ensure_ascii=False) + "\n"
-        self.resume_audit_path.write_text(resume_audit_content, encoding="utf-8")
         resume_audit_sha = hashlib.sha256(resume_audit_content.encode("utf-8")).hexdigest()
 
         # 7. Closure Manifest
@@ -1646,6 +1686,17 @@ class FullPopulationRunner:
             "total_resolved_authority_conflicts": total_resolved_authority_conflicts,
             "total_unresolved_authority_conflicts": total_unresolved_authority_conflicts,
         }
+
+        validate_operational_artifact_invariants(
+            summary_payload,
+            resume_audit_payload,
+            closure_payload,
+            execution_audit_payload,
+        )
+        self.summary_path.write_text(summary_content, encoding="utf-8")
+        self.manifest_path.write_text(json.dumps(manifest_payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        execution_audit_path.write_text(json.dumps(execution_audit_payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        self.resume_audit_path.write_text(resume_audit_content, encoding="utf-8")
         self.closure_manifest_path.write_text(json.dumps(closure_payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
         return summary_payload
