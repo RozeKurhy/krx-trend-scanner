@@ -519,6 +519,11 @@ def scan_candidate_integrity(
     }
 
 
+def source_dates(path: Path) -> list[str]:
+    frame = pd.read_parquet(path, columns=["date"])
+    return sorted({pd.Timestamp(value).strftime("%Y-%m-%d") for value in frame["date"]})
+
+
 def classify_source_dates(
     ticker: str,
     dates: Sequence[str],
