@@ -378,7 +378,7 @@ class FullPopulationRunner:
         max_retries: int = 2,
         retry_delay_seconds: float = 0.5,
         execution_id: str | None = None,
-        pit_path: Path = DEFAULT_PIT_PATH,
+        pit_path: Path | None = None,
         expected_population_count: int | None = None,
         expected_population_sha256: str | None = None,
         expected_pit_sha256: str | None = None,
@@ -392,7 +392,7 @@ class FullPopulationRunner:
         self.execution_id = execution_id or f"ADJUSTED_PRICE_STORE_FULL_POPULATION_V01_{int(time.time())}"
         # Authority is injectable for an explicit, immutable cutover.  The
         # defaults preserve the certified pre-cutover behavior exactly.
-        self.pit_path = Path(pit_path)
+        self.pit_path = Path(DEFAULT_PIT_PATH if pit_path is None else pit_path)
         self.expected_population_count = int(EXPECTED_POPULATION_COUNT if expected_population_count is None else expected_population_count)
         self.expected_population_sha256 = str(EXPECTED_POPULATION_SHA256 if expected_population_sha256 is None else expected_population_sha256)
         self.expected_pit_sha256 = str("6b542ae05c9050dd30959d6f1b17306e4016f435a726ca7e0dff9e11008e4064" if expected_pit_sha256 is None else expected_pit_sha256)
