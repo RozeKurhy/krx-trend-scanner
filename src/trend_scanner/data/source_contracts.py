@@ -407,6 +407,21 @@ LEGACY_RUNTIME_DEPENDENCIES: tuple[dict[str, Any], ...] = (
         "migration_phase": "FASTCORE_CONTRACT_MIGRATION_V01",
         "classification": "LEGACY_RUNTIME_ARTIFACT_DEPENDENCY",
     },
+    {
+        "dependency_id": "ADJUSTED_PRICE_AUTHORITY_ACTIVATION_INPUT",
+        "consumer": ("adjusted_price_authority_cutover", "adjusted_price_full_population"),
+        "path_patterns": (
+            "artifacts/data/end_to_end_data_parity/v01/survivorship_safe_denominator_freeze/v01_spac_prelabel_lifecycle_correction_v01",
+            "artifacts/data/end_to_end_data_parity/v01/survivorship_safe_denominator_freeze/v01_spac_corrected_effective_authority",
+            "artifacts/data/end_to_end_data_parity/v01/survivorship_safe_denominator_freeze/v01/historical_common_population_v01.json",
+            "artifacts/data/end_to_end_data_parity/v01/survivorship_safe_denominator_freeze/v01/pit_common_denominator_v01.json",
+        ),
+        "purpose": "Commit-bound corrected adjusted-price authority activation inputs",
+        "current_source": "Frozen lifecycle correction and effective-authority manifests",
+        "migration_target": "AdjustedPriceStore production authority resolver",
+        "migration_phase": "ADJUSTED_PRICE_STORE_FULL_POPULATION_CLOSURE_V01",
+        "classification": "EXPLICIT_AUTHORITY_ACTIVATION_INPUT",
+    },
 )
 
 
