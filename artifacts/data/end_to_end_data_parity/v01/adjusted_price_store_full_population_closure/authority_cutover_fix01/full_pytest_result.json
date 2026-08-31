@@ -1,5 +1,22 @@
 {
   "network_policy": "offline_only",
   "schema": "full_pytest_result_fix01_v01",
-  "status": "PENDING_AUTHORITY_ACTIVATION_HEAD"
+  "status": "PASS_WITH_ALLOWED_EXISTING_BASELINE",
+  "head_tested": "54889d5",
+  "command": "caffeinate -i env -u OPENDART_API_KEY -u KRX_ID -u KRX_PW PYTHONDONTWRITEBYTECODE=1 uv run pytest -q -p no:cacheprovider",
+  "completed_100_percent": true,
+  "manual_interruption": false,
+  "passed": 2271,
+  "failed": 1,
+  "errors": 0,
+  "skipped": 6,
+  "deselected": 5,
+  "warnings": 291109,
+  "duration_seconds": 1286.57,
+  "allowed_existing_baseline": [
+    "tests/test_krx_historical_backfill.py::test_recent_empty_is_not_checkpointed_and_general_resume_retries"
+  ],
+  "unexpected_failures": 0,
+  "network_requests": 0,
+  "failure_classification": "The single failure is the pre-existing unrelated baseline; no FIX01 regression failed."
 }
