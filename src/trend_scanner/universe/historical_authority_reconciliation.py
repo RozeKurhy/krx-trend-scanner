@@ -795,6 +795,17 @@ SECURITY_TYPE_MAPPING: tuple[dict[str, Any], ...] = (
         "classification": CLASS_NOT_COMMON, "reason": "TIER_A_NON_COMMON_SECURITY_TYPE",
         "SECUGRP_NM": "any", "KIND_STKCERT_TP_NM": "구형우선주 | 신형우선주", "SECT_TP_NM_condition": "any",
     },
+    {
+        # Pre-label KRX Basic Info snapshots (most visibly before the
+        # 2011-04-29/2011-05-02 field transition) do not always populate
+        # SECT_TP_NM with the SPAC section.  ISU_NM/ISU_ABBRV are still
+        # official KRX issue-name fields in the same Tier-A-equivalent raw
+        # response.  The marker is deliberately constrained to the normal
+        # common-share security group; no ticker/date shortcut is involved.
+        "rule": "SECUGRP_NM=주권 and KIND_STKCERT_TP_NM=보통주 and official ISU_NM/ISU_ABBRV contains 기업인수목적|스팩|SPAC",
+        "classification": CLASS_NOT_COMMON, "reason": "TIER_A_EQUIVALENT_PRELABEL_SPAC_ISSUE_NAME",
+        "SECUGRP_NM": "주권", "KIND_STKCERT_TP_NM": "보통주", "SECT_TP_NM_condition": "official issue-name marker",
+    },
 )
 _COMMON_GROUPS = frozenset({"주권", "외국주권", "주식예탁증권", "주식예탁증서", "사회간접자본투융자회사", "투자회사"})
 # Dividend-centric asset-pooling vehicles excluded per the same principle as
@@ -803,6 +814,24 @@ _COMMON_GROUPS = frozenset({"주권", "외국주권", "주식예탁증권", "주
 # ticker-name or suffix heuristic, an official SECUGRP_NM value match.
 _DIVIDEND_FOCUSED_INVESTMENT_VEHICLE_GROUPS = frozenset({"부동산투자회사", "선박투자회사"})
 _PREFERRED_KINDS = frozenset({"구형우선주", "신형우선주"})
+
+
+def _is_official_spac_issue_name(row: Mapping[str, Any]) -> bool:
+    """Return whether KRX's official issue-name fields identify a SPAC.
+
+    This is intentionally an exact, bounded marker check over Tier-A-
+    equivalent KRX fields.  It is not a ticker/date heuristic and is only
+    considered after validating the ordinary common-share security shape.
+    """
+
+    names = [row.get("ISU_NM"), row.get("ISU_ABBRV")]
+    for value in names:
+        if not isinstance(value, str):
+            continue
+        upper = value.strip().upper()
+        if any(marker in upper for marker in ("기업인수목적", "스팩", "SPAC")):
+            return True
+    return False
 
 
 def classify_security_type(row: Mapping[str, Any]) -> dict[str, str]:
@@ -823,6 +852,8 @@ def classify_security_type(row: Mapping[str, Any]) -> dict[str, str]:
         return {"classification": CLASS_NOT_COMMON, "reason": "TIER_A_NON_COMMON_SECURITY_TYPE"}
     if kind in _PREFERRED_KINDS:
         return {"classification": CLASS_NOT_COMMON, "reason": "TIER_A_NON_COMMON_SECURITY_TYPE"}
+    if group == "주권" and kind == "보통주" and _is_official_spac_issue_name(row):
+        return {"classification": CLASS_NOT_COMMON, "reason": "TIER_A_EQUIVALENT_PRELABEL_SPAC_ISSUE_NAME"}
     if group in _COMMON_GROUPS and kind == "보통주":
         return {"classification": CLASS_COMMON, "reason": "TIER_A_COMMON_SECURITY_TYPE"}
     return {"classification": CLASS_UNRESOLVED, "reason": "UNKNOWN_SECURITY_TYPE_VALUE"}
@@ -973,6 +1004,10 @@ def _classify_observations(
         is_spac_obs = (
             str(obs.get("SECUGRP_NM", "")).strip() == "주권"
             and str(obs.get("SECT_TP_NM", "")).strip().startswith("SPAC")
+        ) or (
+            str(obs.get("SECUGRP_NM", "")).strip() == "주권"
+            and str(obs.get("KIND_STKCERT_TP_NM", "")).strip() == "보통주"
+            and _is_official_spac_issue_name(obs)
         )
         checked = classify_security_type(obs)
         classification = checked["classification"]
@@ -999,10 +1034,17 @@ def _classify_observations(
     return classified
 
 
-def build_pit_identity_timeline(snapshots: Iterable[Mapping[str, Any]]) -> dict[str, list[dict[str, Any]]]:
-    """Build ticker timelines while keeping effective date as derived metadata."""
+def _build_identity_aware_pit_timeline(
+    snapshots: Iterable[Mapping[str, Any]],
+) -> dict[tuple[str, str, str], list[dict[str, Any]]]:
+    """Build timelines keyed by ``(ticker, ISU_CD, market)``.
 
-    timeline: dict[str, list[dict[str, Any]]] = {}
+    A ticker can be reused by a different listed identity.  Keeping those
+    observations separate during chronological classification prevents a
+    SPAC state on one ISU_CD from contaminating another identity's lifecycle.
+    """
+
+    timeline: dict[tuple[str, str, str], list[dict[str, Any]]] = {}
     for snapshot in snapshots:
         effective_date = _normalise_date(snapshot.get("effective_date"))
         source = str(snapshot.get("effective_date_source", "REQUEST_BAS_DD"))
@@ -1019,10 +1061,28 @@ def build_pit_identity_timeline(snapshots: Iterable[Mapping[str, Any]]) -> dict[
             row["effective_date"] = effective_date
             row["effective_date_source"] = source
             row.pop("BAS_DD", None)
-            timeline.setdefault(ticker, []).append(row)
+            isu_cd = str(row.get("ISU_CD", "") or "").strip()
+            market = str(row.get("MKT_TP_NM", snapshot.get("market", "")) or "").strip()
+            timeline.setdefault((ticker, isu_cd, market), []).append(row)
     for rows in timeline.values():
         rows.sort(key=lambda row: (row["effective_date"], str(row.get("ISU_CD", ""))))
     return timeline
+
+
+def build_pit_identity_timeline(snapshots: Iterable[Mapping[str, Any]]) -> dict[str, list[dict[str, Any]]]:
+    """Build a backwards-compatible ticker view over identity-aware timelines.
+
+    Callers that need to classify lifecycles must use the private identity
+    keyed walk above; this public view retains the historical API shape used
+    by diagnostics and tests without discarding ISU_CD/market fields.
+    """
+
+    flattened: dict[str, list[dict[str, Any]]] = {}
+    for (ticker, _isu_cd, _market), rows in _build_identity_aware_pit_timeline(snapshots).items():
+        flattened.setdefault(ticker, []).extend(rows)
+    for rows in flattened.values():
+        rows.sort(key=lambda row: (row["effective_date"], str(row.get("ISU_CD", ""))))
+    return flattened
 
 
 def _intervalize(
@@ -1109,12 +1169,16 @@ def classify_full_universe(
     ``{ticker: [interval, ...]}`` for every ticker present in ``snapshots``.
     """
 
-    timeline = build_pit_identity_timeline(snapshots)
-    result: dict[str, list[dict[str, Any]]] = {}
-    for ticker, observations in timeline.items():
+    identity_timeline = _build_identity_aware_pit_timeline(snapshots)
+    timeline: dict[str, list[dict[str, Any]]] = {}
+    for (ticker, _isu_cd, _market), observations in identity_timeline.items():
         classified = _classify_observations(observations, supplemental_authority=supplemental_authority)
-        result[ticker] = _intervalize(classified, expected_dates, source_manifest_sha256=source_manifest_sha256)
-    return result
+        timeline.setdefault(ticker, []).extend(
+            _intervalize(classified, expected_dates, source_manifest_sha256=source_manifest_sha256)
+        )
+    for intervals in timeline.values():
+        intervals.sort(key=lambda iv: (iv["effective_from"], str(iv.get("ISU_CD", "")), iv.get("market", "")))
+    return timeline
 
 
 def reconcile_target_identities(
@@ -1133,12 +1197,21 @@ def reconcile_target_identities(
     """
 
     targets = canonical_target_identity_records(target_identities)
-    timeline = build_pit_identity_timeline(snapshots)
+    identity_timeline = _build_identity_aware_pit_timeline(snapshots)
+    by_ticker: dict[str, list[tuple[tuple[str, str, str], list[dict[str, Any]]]]] = {}
+    for key, observations in identity_timeline.items():
+        by_ticker.setdefault(key[0], []).append((key, observations))
     results: list[dict[str, Any]] = []
     for target in targets:
         ticker = target["ticker"]
-        observations = timeline.get(ticker, [])
-        classified = _classify_observations(observations, supplemental_authority=supplemental_authority)
+        identity_groups = by_ticker.get(ticker, [])
+        observations = [observation for _key, rows in identity_groups for observation in rows]
+        classified_groups = [
+            (key, _classify_observations(rows, supplemental_authority=supplemental_authority))
+            for key, rows in identity_groups
+        ]
+        classified = [observation for _key, rows in classified_groups for observation in rows]
+        classified.sort(key=lambda row: (row["effective_date"], str(row.get("ISU_CD", ""))))
         states: list[str] = []
         reasons: list[str] = []
         dates: list[str] = []
@@ -1191,7 +1264,12 @@ def reconcile_target_identities(
             final = HISTORICAL_NOT_COMMON
             reason = "TIER_A_NON_COMMON_SECURITY_TYPE"
 
-        intervals = _intervalize(classified, expected_dates, source_manifest_sha256=source_manifest_sha256)
+        intervals = [
+            interval
+            for _key, rows in classified_groups
+            for interval in _intervalize(rows, expected_dates, source_manifest_sha256=source_manifest_sha256)
+        ]
+        intervals.sort(key=lambda iv: (iv["effective_from"], str(iv.get("ISU_CD", "")), iv.get("market", "")))
         results.append(
             {
                 "target_ticker": ticker,

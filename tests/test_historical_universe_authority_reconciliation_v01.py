@@ -31,6 +31,7 @@ from trend_scanner.universe.historical_authority_reconciliation import (
     build_denominator_candidate,
     build_pit_identity_timeline,
     canonical_target_identity_records,
+    classify_full_universe,
     classify_security_type,
     derive_target_identities,
     evaluate_denominator_freeze_gate,
@@ -247,6 +248,56 @@ def test_classifier_non_common_and_unknown_are_explicit() -> None:
     assert classify_security_type(_row("005930", sector="SPAC(소속부없음)"))["classification"] == CLASS_NOT_COMMON
     unknown = classify_security_type(_row("005930", group="주권", kind="종류주권"))
     assert unknown == {"classification": CLASS_UNRESOLVED, "reason": "UNKNOWN_SECURITY_TYPE_VALUE"}
+
+
+def test_prelabel_official_issue_name_is_not_common_without_date_heuristic() -> None:
+    """KRX's official issue name is the Tier-A-equivalent authority used by
+    pre-label snapshots where SECT_TP_NM is blank; the result is independent
+    of whether the observation falls on the 2011 field-transition boundary."""
+
+    for day in ("2011-04-29", "2011-05-02"):
+        row = _row("122350", sector="")
+        row["ISU_NM"] = "현대드림투게더기업인수목적"
+        result = classify_security_type(row)
+        assert result == {
+            "classification": CLASS_NOT_COMMON,
+            "reason": "TIER_A_EQUIVALENT_PRELABEL_SPAC_ISSUE_NAME",
+        }, day
+
+
+def test_prelabel_spac_then_later_common_does_not_backdate_common() -> None:
+    row_spac = _row("122350", sector="")
+    row_spac["ISU_NM"] = "현대드림투게더기업인수목적"
+    result = classify_full_universe(
+        [
+            _snapshot("2010-03-19", row_spac),
+            _snapshot("2012-04-12", _row("122350", sector="벤처기업부")),
+        ],
+        expected_dates=["2010-03-19", "2012-04-12"],
+    )
+    intervals = result["122350"]
+    assert [(iv["effective_from"], iv["effective_to"], iv["classification"]) for iv in intervals] == [
+        ("2010-03-19", "2010-03-19", CLASS_NOT_COMMON),
+        ("2012-04-12", "2012-04-12", CLASS_COMMON),
+    ]
+
+
+def test_same_ticker_different_isu_cd_keeps_spac_identity_isolated() -> None:
+    old = _row("005930", isu_cd="OLD", sector="")
+    old["ISU_NM"] = "구기업인수목적"
+    new = _row("005930", isu_cd="NEW", sector="")
+    result = classify_full_universe(
+        [_snapshot("2020-01-02", old), _snapshot("2020-01-03", new)],
+        expected_dates=["2020-01-02", "2020-01-03"],
+    )
+    by_isu = {iv["ISU_CD"]: iv["classification"] for iv in result["005930"]}
+    assert by_isu == {"OLD": CLASS_NOT_COMMON, "NEW": CLASS_COMMON}
+
+
+def test_unknown_prelabel_candidate_fails_closed() -> None:
+    row = _row("005930", kind="종류주권")
+    row["ISU_NM"] = "알수없는기업인수목적"
+    assert classify_security_type(row)["classification"] == CLASS_UNRESOLVED
 
 
 def test_timeline_uses_derived_effective_date_and_does_not_add_basdd() -> None:
