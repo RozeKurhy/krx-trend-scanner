@@ -184,7 +184,7 @@ def validate_terminal_success_evidence(info: Mapping[str, Any]) -> tuple[bool, s
     # zero-store terminal or a mixed store + adjudicated result.
     if adjudicated <= 0:
         return False, "ADJUDICATED_TERMINAL_REQUIRES_ADJUDICATED_ROWS"
-    if terminal_state not in _ADJUDICATED_TERMINAL_STATES and stored == 0:
+    if terminal_state not in _ADJUDICATED_TERMINAL_STATES:
         return False, "ADJUDICATED_TERMINAL_STATE_UNAPPROVED"
     if stored == 0 and usable != 0:
         return False, "ZERO_STORE_ADJUDICATED_HAS_USABLE_ROWS"

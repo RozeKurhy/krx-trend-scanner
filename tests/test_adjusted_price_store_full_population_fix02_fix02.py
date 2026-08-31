@@ -277,6 +277,13 @@ def test_terminal_success_evidence_accepts_each_valid_shape(
             "stored_row_count": 0,
             "usable_source_count": 0,
         },
+        {
+            "acquisition_status": AcquisitionStatus.COMPLETE_WITH_ADJUDICATED_NONUSABLE.value,
+            "terminal_state": "ARBITRARY_UNVERIFIED_STATE",
+            "stored_row_count": 1,
+            "usable_source_count": 1,
+            "adjudicated_source_nonusable_count": 1,
+        },
     ],
 )
 def test_malformed_terminal_success_evidence_is_rejected(info: dict):
