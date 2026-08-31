@@ -88,6 +88,111 @@ class AcquisitionStatus(str, Enum):
     COMPLETE_WITH_ADJUDICATED_NONUSABLE = "COMPLETE_WITH_ADJUDICATED_NONUSABLE"
 
 
+# These are terminal closure outcomes.  A terminal outcome is a successful
+# population-closure result even when the source produced no rows to persist.
+# Keep this set as the single orchestration predicate used by checkpoints,
+# aggregates, failure artifacts and resume accounting.
+CLOSURE_SUCCESS_STATUSES = frozenset(
+    {
+        AcquisitionStatus.COMPLETE.value,
+        AcquisitionStatus.NO_USABLE_OBSERVATIONS.value,
+        AcquisitionStatus.COMPLETE_WITH_ADJUDICATED_NONUSABLE.value,
+    }
+)
+
+_NO_USABLE_TERMINAL_STATES = frozenset(
+    {
+        "RAW_ROWS_PRESENT_ALL_PHANTOM",
+        "RAW_ROWS_PRESENT_AUTHORITY_SUPPRESSED",
+        "NO_USABLE_OBSERVATIONS",
+    }
+)
+_ADJUDICATED_TERMINAL_STATES = frozenset(
+    {
+        "RAW_ROWS_PRESENT_ALL_PHANTOM",
+        "RAW_ROWS_PRESENT_ALL_SOURCE_NONUSABLE",
+        "ADJUDICATED_SOURCE_NONUSABLE",
+        "MIXED_USABLE_AND_ADJUDICATED",
+    }
+)
+
+
+def is_closure_success(status: str | AcquisitionStatus) -> bool:
+    """Return whether *status* is one of the three successful closure outcomes."""
+    value = status.value if isinstance(status, AcquisitionStatus) else str(status)
+    return value in CLOSURE_SUCCESS_STATUSES
+
+
+def validate_terminal_success_evidence(info: Mapping[str, Any]) -> tuple[bool, str | None]:
+    """Validate status-specific checkpoint evidence before allowing a resume.
+
+    Status alone is never trusted: zero-store terminal states must carry the
+    counters and approved terminal state that prove why no rows were written.
+    A normal COMPLETE must still be backed by a non-empty verified store; the
+    caller performs the physical store/date/authority checks.
+    """
+    status = str(info.get("acquisition_status", ""))
+    if not is_closure_success(status):
+        return False, "NOT_CLOSURE_SUCCESS"
+
+    def _nonnegative_int(key: str) -> int | None:
+        value = info.get(key, 0)
+        if isinstance(value, bool):
+            return None
+        try:
+            parsed = int(value)
+        except (TypeError, ValueError):
+            return None
+        return parsed if parsed >= 0 else None
+
+    stored = _nonnegative_int("stored_row_count")
+    usable = _nonnegative_int("usable_source_count")
+    adjudicated = _nonnegative_int("adjudicated_source_nonusable_count")
+    silent = _nonnegative_int("silent_missing_count")
+    unexpected = _nonnegative_int(
+        "unexpected_source_count" if "unexpected_source_count" in info else "unexpected_count"
+    )
+    authority_conflict = _nonnegative_int("authority_conflict_count")
+    if None in {stored, usable, adjudicated, silent, unexpected, authority_conflict}:
+        return False, "MALFORMED_TERMINAL_COUNTER"
+    actual_dates = info.get("actual_dates", [])
+    if not isinstance(actual_dates, (list, tuple)):
+        return False, "MALFORMED_TERMINAL_DATES"
+    for optional_counter in ("expected_count", "actual_row_count", "matched_count", "missing_count"):
+        if optional_counter in info and _nonnegative_int(optional_counter) is None:
+            return False, "MALFORMED_TERMINAL_COUNTER"
+    assert stored is not None and usable is not None and adjudicated is not None
+    assert silent is not None and unexpected is not None and authority_conflict is not None
+
+    if silent != 0 or unexpected != 0 or authority_conflict != 0:
+        return False, "UNRESOLVED_TERMINAL_COUNTER"
+
+    terminal_state = info.get("terminal_state")
+    if status == AcquisitionStatus.COMPLETE.value:
+        if stored <= 0 or usable <= 0:
+            return False, "COMPLETE_REQUIRES_STORED_USABLE_ROWS"
+        return True, None
+
+    if status == AcquisitionStatus.NO_USABLE_OBSERVATIONS.value:
+        if stored != 0 or usable != 0 or adjudicated != 0:
+            return False, "NO_USABLE_COUNTER_INCONSISTENT"
+        if terminal_state not in _NO_USABLE_TERMINAL_STATES:
+            return False, "NO_USABLE_TERMINAL_STATE_UNAPPROVED"
+        return True, None
+
+    # COMPLETE_WITH_ADJUDICATED_NONUSABLE permits either an all-adjudicated
+    # zero-store terminal or a mixed store + adjudicated result.
+    if adjudicated <= 0:
+        return False, "ADJUDICATED_TERMINAL_REQUIRES_ADJUDICATED_ROWS"
+    if terminal_state not in _ADJUDICATED_TERMINAL_STATES and stored == 0:
+        return False, "ADJUDICATED_TERMINAL_STATE_UNAPPROVED"
+    if stored == 0 and usable != 0:
+        return False, "ZERO_STORE_ADJUDICATED_HAS_USABLE_ROWS"
+    if stored > 0 and usable <= 0:
+        return False, "MIXED_ADJUDICATED_REQUIRES_USABLE_STORE"
+    return True, None
+
+
 @dataclass
 class TickerAcquisitionRecord:
     ticker: str
@@ -348,6 +453,152 @@ class FullPopulationRunner:
         temp_p.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
         os.replace(temp_p, self.checkpoint_path)
 
+    def _is_completed_checkpoint_reusable(
+        self,
+        rec: Mapping[str, Any],
+        info: Mapping[str, Any],
+    ) -> tuple[bool, str | None]:
+        """Validate a completed checkpoint entry without contacting a provider."""
+        valid_evidence, evidence_error = validate_terminal_success_evidence(info)
+        if not valid_evidence:
+            return False, evidence_error
+
+        ticker = str(rec["ticker"])
+        status = str(info.get("acquisition_status"))
+        expected_start = str(rec["first_common_date"])
+        expected_end = min(str(rec["last_common_date"]), CANONICAL_CALENDAR_CUTOFF)
+        stored_count = int(info.get("stored_row_count", 0))
+        actual_dates = list(info.get("actual_dates", []))
+
+        # The checkpoint identity is validated by load_or_create_checkpoint.
+        # If an entry carries per-record identity, reject stale values too.
+        if info.get("source_authority_id") not in (None, CURRENT_SOURCE_DESCRIPTOR.source_authority_id):
+            return False, "CHECKPOINT_SOURCE_AUTHORITY_MISMATCH"
+        if info.get("source_provider_version") not in (None, SOURCE_PROVIDER_VERSION):
+            return False, "CHECKPOINT_PROVIDER_VERSION_MISMATCH"
+
+        if status == AcquisitionStatus.COMPLETE.value or stored_count > 0:
+            verified, verify_error = verify_stored_ticker_integrity(
+                self.store,
+                ticker,
+                stored_count,
+                actual_dates,
+                expected_requested_start=expected_start,
+                expected_requested_end=expected_end,
+            )
+            if not verified:
+                return False, verify_error
+            if not self.store.is_current_authority_snapshot(ticker):
+                return False, "STORE_AUTHORITY_SNAPSHOT_STALE"
+            return True, None
+
+        # A zero-store terminal is valid only when the evidence validator has
+        # proved the adjudicated/non-trading outcome.  A physical store would
+        # contradict stored_row_count=0 and therefore forces a refetch.
+        if self.store.exists(ticker):
+            return False, "ZERO_STORE_TERMINAL_HAS_STORE"
+        return True, None
+
+    @staticmethod
+    def _checkpoint_entry_from_record(
+        rec_obj: TickerAcquisitionRecord,
+        actual_dates: Sequence[str] = (),
+    ) -> dict[str, Any]:
+        """Serialize complete terminal evidence for status-aware resumption."""
+        return {
+            "ticker": rec_obj.ticker,
+            "acquisition_status": rec_obj.acquisition_status,
+            "source_status": rec_obj.source_status,
+            "coverage_status": rec_obj.coverage_status,
+            "requested_start": rec_obj.requested_start,
+            "requested_end": rec_obj.requested_end,
+            "stored_row_count": rec_obj.stored_row_count,
+            "stored_start": rec_obj.stored_start,
+            "stored_end": rec_obj.stored_end,
+            "authority_source": rec_obj.authority_source,
+            "authority_quality": rec_obj.authority_quality,
+            "expected_count": rec_obj.expected_observation_count,
+            "actual_row_count": rec_obj.actual_source_row_count,
+            "matched_count": rec_obj.matched_expected_count,
+            "missing_count": rec_obj.missing_expected_count,
+            "unexpected_source_count": rec_obj.unexpected_source_date_count,
+            "first_actual_date": rec_obj.first_actual_date,
+            "last_actual_date": rec_obj.last_actual_date,
+            "post_write_verified": rec_obj.post_write_verified,
+            "actual_dates": list(actual_dates),
+            "source_execution_attempt_count": rec_obj.attempt_count,
+            "usable_source_count": rec_obj.usable_source_count,
+            "confirmed_nontrading_count": rec_obj.confirmed_nontrading_count,
+            "adjudicated_source_nonusable_count": rec_obj.adjudicated_source_nonusable_count,
+            "silent_missing_count": rec_obj.silent_missing_count,
+            "authority_conflict_count": rec_obj.authority_conflict_count,
+            "phantom_count": rec_obj.phantom_count,
+            "authority_suppressed_source_count": rec_obj.authority_suppressed_source_count,
+            "authority_suppressed_source_dates": list(rec_obj.authority_suppressed_source_dates),
+            "source_presence_audit": list(rec_obj.source_presence_audit),
+            "terminal_state": rec_obj.terminal_state,
+            "source_authority_id": CURRENT_SOURCE_DESCRIPTOR.source_authority_id,
+            "source_provider_version": SOURCE_PROVIDER_VERSION,
+            "updated_at": rec_obj.updated_at,
+        }
+
+    @staticmethod
+    def _record_from_checkpoint(
+        rec: Mapping[str, Any],
+        info: Mapping[str, Any],
+    ) -> TickerAcquisitionRecord:
+        """Rehydrate a terminal record without invoking provider or store writes."""
+        status = str(info["acquisition_status"])
+        actual_dates = tuple(str(d) for d in info.get("actual_dates", []))
+        return TickerAcquisitionRecord(
+            ticker=str(rec["ticker"]),
+            isu_cd=",".join(rec.get("isu_cd", [])),
+            market=",".join(rec.get("market", [])),
+            first_common_date=str(rec["first_common_date"]),
+            last_common_date=str(rec["last_common_date"]),
+            numeric_or_alpha=str(rec.get("numeric_or_alpha", "")),
+            currently_common=bool(rec.get("currently_common", False)),
+            historical_only=bool(rec.get("historical_only", False)),
+            requested_start=str(info.get("requested_start", rec["first_common_date"])),
+            requested_end=str(info.get("requested_end", min(str(rec["last_common_date"]), CANONICAL_CALENDAR_CUTOFF))),
+            authority_source=str(info.get("authority_source", "CHECKPOINT")),
+            authority_quality=str(info.get("authority_quality", "CHECKPOINT_VERIFIED")),
+            expected_observation_count=int(info.get("expected_count", 0)),
+            actual_source_row_count=int(info.get("actual_row_count", 0)),
+            matched_expected_count=int(info.get("matched_count", 0)),
+            missing_expected_count=int(info.get("missing_count", info.get("silent_missing_count", 0))),
+            unexpected_source_date_count=int(info.get("unexpected_source_count", info.get("unexpected_count", 0))),
+            first_actual_date=info.get("first_actual_date") or (actual_dates[0] if actual_dates else None),
+            last_actual_date=info.get("last_actual_date") or (actual_dates[-1] if actual_dates else None),
+            source_status=str(info.get("source_status", "SUCCESS")),
+            coverage_status=str(info.get("coverage_status", CoverageStatus.NO_EXPECTED_OBSERVATIONS.value)),
+            acquisition_status=status,
+            attempt_count=0,
+            retry_count=0,
+            reused_without_network=True,
+            stored_row_count=int(info.get("stored_row_count", 0)),
+            stored_start=info.get("stored_start"),
+            stored_end=info.get("stored_end"),
+            duplicate_count=int(info.get("duplicate_count", 0)),
+            invalid_ohlc_count=int(info.get("invalid_ohlc_count", 0)),
+            future_row_count=int(info.get("future_row_count", 0)),
+            post_write_verified=bool(info.get("post_write_verified", False)),
+            error_type=None,
+            error_message_sanitized=None,
+            updated_at=datetime.now(timezone.utc).isoformat(),
+            usable_source_count=int(info.get("usable_source_count", 0)),
+            confirmed_nontrading_count=int(info.get("confirmed_nontrading_count", 0)),
+            adjudicated_source_nonusable_count=int(info.get("adjudicated_source_nonusable_count", 0)),
+            silent_missing_count=int(info.get("silent_missing_count", info.get("missing_count", 0))),
+            authority_conflict_count=int(info.get("authority_conflict_count", 0)),
+            phantom_count=int(info.get("phantom_count", 0)),
+            analytic_invalid_ohlc_count=int(info.get("analytic_invalid_ohlc_count", 0)),
+            terminal_state=info.get("terminal_state"),
+            authority_suppressed_source_count=int(info.get("authority_suppressed_source_count", 0)),
+            authority_suppressed_source_dates=tuple(info.get("authority_suppressed_source_dates", ())),
+            source_presence_audit=tuple(info.get("source_presence_audit", ())),
+        )
+
     def dry_run_classify(self) -> dict[str, Any]:
         """Strictly classify all 3,162 identities without performing any network calls."""
         population = self.load_population()
@@ -365,18 +616,12 @@ class FullPopulationRunner:
             req_start = rec["first_common_date"]
             req_end = min(rec["last_common_date"], CANONICAL_CALENDAR_CUTOFF)
 
-            # 1. If recorded as COMPLETE in checkpoint, verify stored physical file + metadata bounds
+            # 1. If recorded as any closure-success status, validate terminal
+            # evidence and then verify only the store that the status requires.
             if t in checkpoint.completed_tickers:
                 info = checkpoint.completed_tickers[t]
-                is_valid, _ = verify_stored_ticker_integrity(
-                    self.store,
-                    t,
-                    info.get("stored_row_count", 0),
-                    info.get("actual_dates", []),
-                    expected_requested_start=req_start,
-                    expected_requested_end=req_end,
-                )
-                if is_valid and self.store.is_current_authority_snapshot(t):
+                is_valid, _ = self._is_completed_checkpoint_reusable(rec, info)
+                if is_valid:
                     already_complete.append(t)
                     continue
 
@@ -825,24 +1070,18 @@ class FullPopulationRunner:
         for idx, rec in enumerate(population, start=1):
             t = rec["ticker"]
 
-            # Resumability: if already complete and verified, reuse without network call
+            # Resumability: every closure-success status is reusable when its
+            # status-specific evidence and store/authority state are valid.
             if t in checkpoint.completed_tickers:
                 info = checkpoint.completed_tickers[t]
-                is_valid, _ = verify_stored_ticker_integrity(
-                    self.store,
-                    t,
-                    info.get("stored_row_count", 0),
-                    info.get("actual_dates", []),
-                    expected_requested_start=rec["first_common_date"],
-                    expected_requested_end=min(rec["last_common_date"], CANONICAL_CALENDAR_CUTOFF),
-                )
-                if is_valid and self.store.is_current_authority_snapshot(t):
-                    rec_obj = self.process_single_ticker(rec, cached_info=info)
+                is_valid, _ = self._is_completed_checkpoint_reusable(rec, info)
+                if is_valid:
+                    rec_obj = self._record_from_checkpoint(rec, info)
                     records.append(rec_obj)
                     consecutive_errors = 0
                     consecutive_empties = 0
                     if progress_callback:
-                        progress_callback(idx, total_population, t, "COMPLETE (REUSED)")
+                        progress_callback(idx, total_population, t, f"{rec_obj.acquisition_status} (REUSED)")
                     continue
 
             # Query via provider with gentle rate-throttling to prevent KRX IP block
@@ -851,7 +1090,7 @@ class FullPopulationRunner:
             if not rec_obj.reused_without_network:
                 time.sleep(0.25)  # Gentle delay between source requests
 
-            if rec_obj.acquisition_status == AcquisitionStatus.COMPLETE.value:
+            if is_closure_success(rec_obj.acquisition_status):
                 consecutive_errors = 0
                 consecutive_empties = 0
                 actual_dates_list = (
@@ -859,32 +1098,10 @@ class FullPopulationRunner:
                     if self.store.exists(t)
                     else []
                 )
-                checkpoint.completed_tickers[t] = {
-                    "ticker": t,
-                    "acquisition_status": rec_obj.acquisition_status,
-                    "requested_start": rec_obj.requested_start,
-                    "requested_end": rec_obj.requested_end,
-                    "stored_row_count": rec_obj.stored_row_count,
-                    "expected_count": rec_obj.expected_observation_count,
-                    "actual_row_count": rec_obj.actual_source_row_count,
-                    "first_actual_date": rec_obj.first_actual_date,
-                    "last_actual_date": rec_obj.last_actual_date,
-                    "post_write_verified": rec_obj.post_write_verified,
-                    "actual_dates": actual_dates_list,
-                    "source_execution_attempt_count": rec_obj.attempt_count,
-                    "usable_source_count": rec_obj.usable_source_count,
-                    "confirmed_nontrading_count": rec_obj.confirmed_nontrading_count,
-                    "adjudicated_source_nonusable_count": rec_obj.adjudicated_source_nonusable_count,
-                    "silent_missing_count": rec_obj.silent_missing_count,
-                    "unexpected_source_count": rec_obj.unexpected_source_date_count,
-                    "authority_conflict_count": rec_obj.authority_conflict_count,
-                    "phantom_count": rec_obj.phantom_count,
-                    "authority_suppressed_source_count": rec_obj.authority_suppressed_source_count,
-                    "authority_suppressed_source_dates": list(rec_obj.authority_suppressed_source_dates),
-                    "source_presence_audit": list(rec_obj.source_presence_audit),
-                    "terminal_state": rec_obj.terminal_state,
-                    "updated_at": rec_obj.updated_at,
-                }
+                checkpoint.completed_tickers[t] = self._checkpoint_entry_from_record(
+                    rec_obj,
+                    actual_dates_list,
+                )
                 if t in checkpoint.in_progress_tickers:
                     del checkpoint.in_progress_tickers[t]
             else:
@@ -970,20 +1187,38 @@ class FullPopulationRunner:
 
         # 2. Compute Aggregate Metrics
         total_count = len(records)
-        complete_count = sum(1 for r in records if r.acquisition_status == AcquisitionStatus.COMPLETE.value)
+        normal_complete_count = sum(
+            1 for r in records if r.acquisition_status == AcquisitionStatus.COMPLETE.value
+        )
+        no_usable_count = sum(
+            1 for r in records if r.acquisition_status == AcquisitionStatus.NO_USABLE_OBSERVATIONS.value
+        )
+        adjudicated_complete_count = sum(
+            1
+            for r in records
+            if r.acquisition_status == AcquisitionStatus.COMPLETE_WITH_ADJUDICATED_NONUSABLE.value
+        )
+        closure_complete_count = normal_complete_count + no_usable_count + adjudicated_complete_count
+        if closure_complete_count != sum(1 for r in records if is_closure_success(r.acquisition_status)):
+            raise RuntimeError("CLOSURE_ACCOUNTING_INVARIANT_FAILED: terminal status count mismatch")
+
+        # The canonical `complete` field is closure-complete (all three
+        # terminal success states).  `normal_complete` preserves the ordinary
+        # COMPLETE subset for consumers that need the finer breakdown.
+        complete_count = closure_complete_count
         partial_count = sum(1 for r in records if r.acquisition_status == AcquisitionStatus.PARTIAL.value)
         empty_count = sum(1 for r in records if r.acquisition_status == AcquisitionStatus.EMPTY.value)
         error_count = sum(1 for r in records if r.acquisition_status == AcquisitionStatus.ERROR.value)
         insufficient_auth_count = sum(1 for r in records if r.acquisition_status == AcquisitionStatus.INSUFFICIENT_AUTHORITY.value)
 
         alpha_records = [r for r in records if r.numeric_or_alpha == "alphanumeric"]
-        alpha_complete = sum(1 for r in alpha_records if r.acquisition_status == AcquisitionStatus.COMPLETE.value)
+        alpha_complete = sum(1 for r in alpha_records if is_closure_success(r.acquisition_status))
 
         current_common_records = [r for r in records if r.currently_common]
-        current_complete = sum(1 for r in current_common_records if r.acquisition_status == AcquisitionStatus.COMPLETE.value)
+        current_complete = sum(1 for r in current_common_records if is_closure_success(r.acquisition_status))
 
         historical_records = [r for r in records if r.historical_only]
-        historical_complete = sum(1 for r in historical_records if r.acquisition_status == AcquisitionStatus.COMPLETE.value)
+        historical_complete = sum(1 for r in historical_records if is_closure_success(r.acquisition_status))
 
         total_expected_rows = sum(r.expected_observation_count for r in records)
         total_actual_rows = sum(r.actual_source_row_count for r in records)
@@ -1009,7 +1244,7 @@ class FullPopulationRunner:
         total_retries = sum(r.retry_count for r in records)
         reused_count = sum(1 for r in records if r.reused_without_network)
 
-        failures = [r for r in records if r.acquisition_status != AcquisitionStatus.COMPLETE.value]
+        failures = [r for r in records if not is_closure_success(r.acquisition_status)]
         if failures:
             failures_df = pd.DataFrame([asdict(r) for r in failures])
             self.failures_csv_path.write_text(failures_df.to_csv(index=False), encoding="utf-8")
@@ -1028,7 +1263,7 @@ class FullPopulationRunner:
         quality_clean = (total_duplicates == 0 and total_invalid_ohlc == 0 and total_future_rows == 0)
         adj = adjudicate_adjusted_price_full_population_state(
             population_count=total_count,
-            complete_count=complete_count,
+            complete_count=closure_complete_count,
             partial_count=partial_count,
             empty_count=empty_count,
             error_count=error_count,
@@ -1061,12 +1296,14 @@ class FullPopulationRunner:
             "status_counts": {
                 "population_total": total_count,
                 "complete": complete_count,
+                "normal_complete": normal_complete_count,
                 "partial": partial_count,
                 "empty": empty_count,
                 "error": error_count,
                 "insufficient_authority": insufficient_auth_count,
-                "no_usable_observations": sum(1 for r in records if r.acquisition_status == AcquisitionStatus.NO_USABLE_OBSERVATIONS.value),
-                "complete_with_adjudicated_nonusable": sum(1 for r in records if r.acquisition_status == AcquisitionStatus.COMPLETE_WITH_ADJUDICATED_NONUSABLE.value),
+                "no_usable_observations": no_usable_count,
+                "complete_with_adjudicated_nonusable": adjudicated_complete_count,
+                "closure_complete_total": closure_complete_count,
             },
             "subgroup_breakdown": {
                 "alpha_23_census": {
@@ -1107,6 +1344,12 @@ class FullPopulationRunner:
                 "schema_version": CLOSURE_ACCOUNTING_SCHEMA_VERSION,
                 "tradability_contract_version": TRADABILITY_CONTRACT_VERSION,
                 "states": [state.value for state in ClosureState],
+                "normal_complete": normal_complete_count,
+                "no_usable_observations": no_usable_count,
+                "complete_with_adjudicated_nonusable": adjudicated_complete_count,
+                "closure_complete_total": closure_complete_count,
+                "unresolved_total": total_count - closure_complete_count,
+                "failure_count": total_count - closure_complete_count,
             },
             "network_accounting": {
                 "population_records_processed": logical_queries,
@@ -1146,8 +1389,8 @@ class FullPopulationRunner:
             "schema": "full_population_execution_audit_v01",
             "execution_id": self.execution_id,
             "population_total": total_count,
-            "verified_complete": complete_count,
-            "needs_fetch": total_count - complete_count,
+            "verified_complete": closure_complete_count,
+            "needs_fetch": total_count - closure_complete_count,
             "network_calls_performed": new_live_queries,
             "physical_attempts": physical_attempts,
             "retries": total_retries,
@@ -1157,14 +1400,14 @@ class FullPopulationRunner:
         execution_audit_path.write_text(json.dumps(execution_audit_payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
         # 6. Resume Audit Record (Dedicated Zero-Call Idempotency Verification)
-        all_complete = (complete_count == total_count == EXPECTED_POPULATION_COUNT)
+        all_complete = (closure_complete_count == total_count == EXPECTED_POPULATION_COUNT)
         is_true_resume_pass = (all_complete and new_live_queries == 0 and physical_attempts == 0)
         resume_audit_payload = {
             "schema": "full_population_resume_audit_v01",
             "execution_id": self.execution_id,
             "population_total": total_count,
-            "verified_complete": complete_count,
-            "needs_fetch": total_count - complete_count,
+            "verified_complete": closure_complete_count,
+            "needs_fetch": total_count - closure_complete_count,
             "network_calls_performed": new_live_queries if is_true_resume_pass else None,
             "physical_attempts": physical_attempts if is_true_resume_pass else None,
             "retries": total_retries if is_true_resume_pass else None,
@@ -1190,8 +1433,11 @@ class FullPopulationRunner:
             "results_sha256": results_sha,
             "summary_sha256": summary_sha,
             "resume_audit_sha256": resume_audit_sha,
-            "completed_count": complete_count,
-            "failure_count": total_count - complete_count,
+            "completed_count": closure_complete_count,
+            "failure_count": total_count - closure_complete_count,
+            "normal_complete_count": normal_complete_count,
+            "no_usable_observations_count": no_usable_count,
+            "complete_with_adjudicated_nonusable_count": adjudicated_complete_count,
         }
         self.closure_manifest_path.write_text(json.dumps(closure_payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
