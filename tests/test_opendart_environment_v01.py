@@ -52,7 +52,9 @@ def test_preflight_output_artifact_structure(tmp_path, monkeypatch):
 
 
 def test_preflight_live_network(tmp_path):
-    """Ensure live network preflight succeeds if key is provided in environment."""
+    """Live preflight is opt-in; the repository certification suite is offline."""
+    if os.environ.get("RUN_LIVE_OPENDART_TESTS") != "1":
+        pytest.skip("live OpenDART tests require RUN_LIVE_OPENDART_TESTS=1")
     key = os.environ.get("OPENDART_API_KEY")
     if not key:
         pytest.skip("OPENDART_API_KEY not set in environment")

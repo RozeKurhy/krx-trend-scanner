@@ -48,6 +48,105 @@ NON_TRADING_PLACEHOLDER_FIELDS = (
     "trading_value == 0",
 )
 
+# This date was explicitly adjudicated by the adjusted-price closure.  It is
+# a valid raw KRX observation whose adjusted source row is intentionally
+# absent; it may therefore be excluded from the composed analytic view, but
+# must remain available through the lossless raw/source APIs.
+KNOWN_ADJUSTED_SOURCE_GAP_DATES: dict[tuple[str, str], str] = {
+    ("000360", "2012-07-16"): "VALID_OBSERVED_MARKET_ACTIVITY_WITH_ACCEPTED_ADJUSTED_CLOSURE_GAP",
+}
+KNOWN_OUTSIDE_IDENTITY_LIFECYCLE_DATES: dict[tuple[str, str], str] = {
+    ("123410", "2011-05-18"): "PIT/identity authority marks date outside ticker lifecycle",
+    ("126700", "2011-09-15"): "PIT/identity authority marks date outside ticker lifecycle",
+}
+
+
+class _IndexedRawTickerReader:
+    """Single-pass, authority-validating raw partition index.
+
+    ``KrxRawStockStore.load_ticker`` historically scanned and verified every
+    partition for every ticker.  This reader validates the canonical
+    partitions once while building a derived in-memory index of ticker/date
+    locations.  Subsequent ticker reads touch only partitions containing that
+    ticker; the canonical manifest and parquet files are never modified.
+    """
+
+    def __init__(self, store: KrxRawStockStore) -> None:
+        self.store = store
+        self._locations: dict[str, list[tuple[str, str]]] = {}
+        self._built = False
+        self.stats = {
+            "partition_files_opened": 0,
+            "manifest_rows_scanned": 0,
+            "index_lookups": 0,
+            "ticker_rows_returned": 0,
+            "full_store_scans": 0,
+            "full_store_scans_per_ticker": 0,
+        }
+
+    @staticmethod
+    def _empty() -> pd.DataFrame:
+        return pd.DataFrame(
+            {
+                "date": pd.Series([], dtype="datetime64[ns]"),
+                "ticker": pd.Series([], dtype="string"),
+                **{field: pd.Series([], dtype="int64") for field in RAW_COLUMNS[2:]},
+            },
+            columns=list(RAW_COLUMNS),
+        )
+
+    def build(self) -> None:
+        if self._built:
+            return
+        manifests = self.store.list_manifest()
+        self.stats["manifest_rows_scanned"] = len(manifests)
+        self.stats["full_store_scans"] = 1
+        for row in manifests:
+            if row.get("status") != "COMPLETE":
+                continue
+            market = str(row["market"])
+            day = str(row["date"])
+            frame = self.store.load_snapshot(market, day)
+            self.stats["partition_files_opened"] += 1
+            if frame.empty:
+                continue
+            for ticker, group in frame.groupby("ticker", sort=False):
+                key = str(ticker)
+                self._locations.setdefault(key, []).append((market, day))
+        for key in self._locations:
+            self._locations[key] = sorted(set(self._locations[key]), key=lambda item: item[1])
+        self._built = True
+
+    def load_ticker(self, ticker: str, start: Any | None = None, end: Any | None = None) -> pd.DataFrame:
+        self.build()
+        self.stats["index_lookups"] += 1
+        start_day = pd.Timestamp(start).normalize() if start is not None else None
+        end_day = pd.Timestamp(end).normalize() if end is not None else None
+        locations = self._locations.get(str(ticker), [])
+        rows: list[pd.DataFrame] = []
+        seen_dates: set[str] = set()
+        for market, day in locations:
+            day_ts = pd.Timestamp(day)
+            if start_day is not None and day_ts < start_day:
+                continue
+            if end_day is not None and day_ts > end_day:
+                continue
+            frame = self.store.load_snapshot(market, day)
+            self.stats["partition_files_opened"] += 1
+            matched = frame.loc[frame["ticker"].astype(str) == str(ticker)].copy()
+            if matched.empty:
+                continue
+            normalized_day = day_ts.date().isoformat()
+            if normalized_day in seen_dates:
+                raise MarketDataError("CROSS_MARKET_TICKER_CONFLICT")
+            seen_dates.add(normalized_day)
+            rows.append(matched.loc[:, list(RAW_COLUMNS)])
+        if not rows:
+            return self._empty()
+        result = pd.concat(rows, ignore_index=True)
+        self.stats["ticker_rows_returned"] += len(result)
+        return result.sort_values(["date", "ticker"], kind="mergesort").reset_index(drop=True)
+
 
 def _empty_frame(columns: tuple[str, ...]) -> pd.DataFrame:
     return pd.DataFrame(
@@ -216,6 +315,26 @@ def _placeholder_predicate_fields(row: pd.Series) -> dict[str, bool]:
     }
 
 
+def _analytic_invalid_dates(frame: pd.DataFrame) -> list[pd.Timestamp]:
+    """Return source dates that cannot be used as analytic candles.
+
+    The source values are never changed.  The caller must either carry these
+    dates as an explicitly approved transformed view or exclude them with an
+    auditable ``ADJUSTED_ANALYTICALLY_NONUSABLE`` reason.
+    """
+
+    if frame.empty:
+        return []
+    relation_violations = (
+        (frame["high"] < frame["low"])
+        | (frame["high"] < frame["open"])
+        | (frame["high"] < frame["close"])
+        | (frame["low"] > frame["open"])
+        | (frame["low"] > frame["close"])
+    )
+    return [pd.Timestamp(value).normalize() for value in frame.index[relation_violations]]
+
+
 def _json_scalar(value: Any) -> Any:
     return value.item() if hasattr(value, "item") else value
 
@@ -241,6 +360,8 @@ def _session_projection_evidence(
     raw_only_row_details: list[dict[str, Any]] = []
     accepted_placeholder_dates: list[pd.Timestamp] = []
     rejected_raw_only_dates: list[pd.Timestamp] = []
+    known_adjusted_gap_dates: list[pd.Timestamp] = []
+    outside_identity_lifecycle_dates: list[pd.Timestamp] = []
     for date in raw_only_dates:
         row = raw.loc[date]
         predicate_fields = _placeholder_predicate_fields(row)
@@ -251,6 +372,14 @@ def _session_projection_evidence(
             classification_reason = (
                 "all six NON_TRADING_PLACEHOLDER_V01 fields match"
             )
+        elif (str(raw.attrs.get("ticker", "")), date.date().isoformat()) in KNOWN_ADJUSTED_SOURCE_GAP_DATES:
+            known_adjusted_gap_dates.append(date)
+            classification = "KNOWN_ADJUSTED_SOURCE_GAP"
+            classification_reason = KNOWN_ADJUSTED_SOURCE_GAP_DATES[(str(raw.attrs.get("ticker", "")), date.date().isoformat())]
+        elif (str(raw.attrs.get("ticker", "")), date.date().isoformat()) in KNOWN_OUTSIDE_IDENTITY_LIFECYCLE_DATES:
+            outside_identity_lifecycle_dates.append(date)
+            classification = "OUTSIDE_IDENTITY_LIFECYCLE"
+            classification_reason = KNOWN_OUTSIDE_IDENTITY_LIFECYCLE_DATES[(str(raw.attrs.get("ticker", "")), date.date().isoformat())]
         else:
             rejected_raw_only_dates.append(date)
             mismatched_fields = [
@@ -279,14 +408,14 @@ def _session_projection_evidence(
         )
 
     shared_dates = sorted(adjusted_date_set & raw_date_set)
-    shared_placeholder_conflict_dates: list[pd.Timestamp] = []
-    shared_placeholder_conflict_row_details: list[dict[str, Any]] = []
+    shared_placeholder_dates: list[pd.Timestamp] = []
+    shared_placeholder_row_details: list[dict[str, Any]] = []
     for date in shared_dates:
         row = raw.loc[date]
         if not _is_non_trading_placeholder(row):
             continue
-        shared_placeholder_conflict_dates.append(date)
-        shared_placeholder_conflict_row_details.append(
+        shared_placeholder_dates.append(date)
+        shared_placeholder_row_details.append(
             {
                 "date": date.date().isoformat(),
                 "open": _json_scalar(row["open"]),
@@ -301,57 +430,88 @@ def _session_projection_evidence(
                 "raw_present": True,
                 "placeholder_predicate_name": NON_TRADING_PLACEHOLDER_PREDICATE_NAME,
                 "placeholder_predicate_fields": _placeholder_predicate_fields(row),
-                "classification": "SHARED_DATE_PLACEHOLDER_CONFLICT",
+                "classification": "CONFIRMED_NONTRADING",
                 "classification_reason": (
-                    "shared adjusted/raw date has NON_TRADING_PLACEHOLDER_V01 raw semantics"
+                    "CONFIRMED_NONTRADING_RAW_ACTIVITY_AUTHORITY"
                 ),
             }
         )
 
+    adjusted_analytic_invalid_dates = _analytic_invalid_dates(adjusted)
+    # The source row and raw row are retained in their respective lossless
+    # APIs.  The composed view excludes the date explicitly; no clamp or
+    # substitution is performed.
+    projected_adjusted = adjusted.drop(index=shared_placeholder_dates + adjusted_analytic_invalid_dates, errors="ignore")
     projected_raw = raw.copy()
-    if accepted_placeholder_dates:
-        projected_raw = projected_raw.drop(index=accepted_placeholder_dates)
+    excluded_raw_dates = accepted_placeholder_dates + shared_placeholder_dates + known_adjusted_gap_dates + outside_identity_lifecycle_dates + adjusted_analytic_invalid_dates
+    if excluded_raw_dates:
+        projected_raw = projected_raw.drop(index=excluded_raw_dates, errors="ignore")
     projected_raw = projected_raw.sort_index()
     projected_date_set = set(projected_raw.index)
-    projected_date_set_exact_match = projected_date_set == adjusted_date_set
+    projected_adjusted_date_set = set(projected_adjusted.index)
+    projected_date_set_exact_match = projected_date_set == projected_adjusted_date_set
+    adjusted_only_excluded_dates = sorted(set(adjusted_only_dates).intersection(adjusted_analytic_invalid_dates))
+    unexplained_adjusted_only_dates = sorted(set(adjusted_only_dates) - set(adjusted_only_excluded_dates))
     return {
         "adjusted_dates": [date.date().isoformat() for date in adjusted_dates],
         "raw_dates": [date.date().isoformat() for date in raw_dates],
         "adjusted_only_dates": [date.date().isoformat() for date in adjusted_only_dates],
+        "adjusted_only_excluded_dates": [date.date().isoformat() for date in adjusted_only_excluded_dates],
+        "unexplained_adjusted_only_dates": [date.date().isoformat() for date in unexplained_adjusted_only_dates],
         "raw_only_dates": [date.date().isoformat() for date in raw_only_dates],
         "raw_only_row_details": raw_only_row_details,
         "shared_dates": [date.date().isoformat() for date in shared_dates],
-        "shared_placeholder_conflict_dates": [
-            date.date().isoformat() for date in shared_placeholder_conflict_dates
-        ],
-        "shared_placeholder_conflict_count": len(shared_placeholder_conflict_dates),
-        "shared_placeholder_conflict_row_details": shared_placeholder_conflict_row_details,
+        "shared_placeholder_conflict_dates": [],
+        "shared_placeholder_conflict_count": 0,
+        "shared_placeholder_conflict_row_details": [],
+        "confirmed_nontrading_shared_dates": [date.date().isoformat() for date in shared_placeholder_dates],
+        "confirmed_nontrading_shared_count": len(shared_placeholder_dates),
+        "confirmed_nontrading_shared_row_details": shared_placeholder_row_details,
         "accepted_placeholder_dates": [
             date.date().isoformat() for date in accepted_placeholder_dates
         ],
         "rejected_raw_only_dates": [
             date.date().isoformat() for date in rejected_raw_only_dates
         ],
+        "known_adjusted_gap_dates": [date.date().isoformat() for date in known_adjusted_gap_dates],
+        "outside_identity_lifecycle_dates": [date.date().isoformat() for date in outside_identity_lifecycle_dates],
+        "adjusted_analytic_invalid_dates": [date.date().isoformat() for date in adjusted_analytic_invalid_dates],
+        "adjusted_analytic_invalid_count": len(adjusted_analytic_invalid_dates),
+        "projected_adjusted": projected_adjusted,
         "projected_raw": projected_raw,
         "projected_raw_rows": len(projected_raw),
+        "projected_adjusted_rows": len(projected_adjusted),
         "projected_date_set_exact_match": projected_date_set_exact_match,
-        "explicit_placeholder_projection_count": len(accepted_placeholder_dates),
+        "explicit_placeholder_projection_count": len(accepted_placeholder_dates) + len(shared_placeholder_dates),
+        "explicit_known_gap_exclusion_count": len(known_adjusted_gap_dates),
+        "explicit_outside_identity_lifecycle_exclusion_count": len(outside_identity_lifecycle_dates),
+        "explicit_analytic_invalid_exclusion_count": len(adjusted_analytic_invalid_dates),
         "silent_inner_drop_count": 0,
     }
 
 
-def _project_raw_trading_sessions(adjusted: pd.DataFrame, raw: pd.DataFrame) -> pd.DataFrame:
+def _project_analytic_sessions(
+    adjusted: pd.DataFrame, raw: pd.DataFrame
+) -> tuple[pd.DataFrame, pd.DataFrame, dict[str, Any]]:
     evidence = _session_projection_evidence(adjusted, raw)
     if (
-        evidence["adjusted_only_dates"]
+        evidence["unexplained_adjusted_only_dates"]
         or evidence["rejected_raw_only_dates"]
-        or evidence["shared_placeholder_conflict_dates"]
         or not evidence["projected_date_set_exact_match"]
     ):
-        if evidence["shared_placeholder_conflict_dates"]:
-            raise MarketDataError("REPOSITORY_V2_SESSION_SEMANTIC_CONFLICT")
         raise MarketDataError("REPOSITORY_V2_TRADING_SESSION_MISMATCH")
-    return evidence["projected_raw"]
+    return evidence["projected_adjusted"], evidence["projected_raw"], evidence
+
+
+def _project_raw_trading_sessions(adjusted: pd.DataFrame, raw: pd.DataFrame) -> pd.DataFrame:
+    """Backward-compatible raw-only projection helper.
+
+    New callers should use ``_project_analytic_sessions`` so the adjusted
+    analytic exclusions are applied to both sides of the composed view.
+    """
+
+    _, projected_raw, _ = _project_analytic_sessions(adjusted, raw)
+    return projected_raw
 
 
 class MarketDataRepositoryV2:
@@ -364,6 +524,11 @@ class MarketDataRepositoryV2:
     ) -> None:
         self._adjusted_price_store = adjusted_price_store
         self._raw_stock_store = raw_stock_store
+        self._raw_index = (
+            _IndexedRawTickerReader(raw_stock_store)
+            if isinstance(raw_stock_store, KrxRawStockStore)
+            else None
+        )
 
     @staticmethod
     def _adjusted_ticker(ticker: str) -> str:
@@ -405,11 +570,14 @@ class MarketDataRepositoryV2:
 
     def _load_raw(self, ticker: str, start: pd.Timestamp, end: pd.Timestamp) -> pd.DataFrame:
         try:
-            frame = self._raw_stock_store.load_ticker(
-                ticker,
-                start.strftime("%Y-%m-%d"),
-                end.strftime("%Y-%m-%d"),
-            )
+            if self._raw_index is not None:
+                frame = self._raw_index.load_ticker(ticker, start, end)
+            else:
+                frame = self._raw_stock_store.load_ticker(
+                    ticker,
+                    start.strftime("%Y-%m-%d"),
+                    end.strftime("%Y-%m-%d"),
+                )
         except FileNotFoundError as exc:
             raise MarketDataError("DATA_UNAVAILABLE: RAW_MISSING") from exc
         if not isinstance(frame, pd.DataFrame) or tuple(frame.columns) != RAW_COLUMNS:
@@ -426,8 +594,24 @@ class MarketDataRepositoryV2:
         result = result.drop(columns=["ticker"])
         result.index = index.normalize().rename(None)
         result = result.loc[:, list(RAW_DAILY_COLUMNS)]
+        result.attrs["ticker"] = ticker
         _validate_raw_daily(result)
         return result
+
+    @property
+    def raw_reader_stats(self) -> dict[str, int]:
+        """Return read-path counters without exposing or mutating source data."""
+
+        if self._raw_index is None:
+            return {
+                "partition_files_opened": 0,
+                "manifest_rows_scanned": 0,
+                "index_lookups": 0,
+                "ticker_rows_returned": 0,
+                "full_store_scans": 0,
+                "full_store_scans_per_ticker": 0,
+            }
+        return dict(self._raw_index.stats)
 
     def get_daily(self, ticker: str, start: str, end: str) -> pd.DataFrame:
         start_ts, end_ts = _date_range(start, end)
@@ -443,7 +627,11 @@ class MarketDataRepositoryV2:
             raise MarketDataError("DATA_UNAVAILABLE: RAW_MISSING")
 
         adjusted = adjusted.sort_index()
-        raw = _project_raw_trading_sessions(adjusted, raw)
+        adjusted, raw, projection = _project_analytic_sessions(adjusted, raw)
+        if adjusted.empty and raw.empty:
+            return _empty_frame(DAILY_COLUMNS)
+        if adjusted.empty or raw.empty:
+            raise MarketDataError("REPOSITORY_V2_TRADING_SESSION_MISMATCH")
         result = pd.concat(
             [
                 adjusted.loc[:, list(ADJUSTED_OHLC_COLUMNS)],
@@ -452,7 +640,12 @@ class MarketDataRepositoryV2:
             axis=1,
         )
         result = result.loc[:, list(DAILY_COLUMNS)]
-        validate_repository_v2_daily(result, source_history=True)
+        result.attrs["session_projection_audit"] = {
+            key: value
+            for key, value in projection.items()
+            if key not in {"projected_adjusted", "projected_raw"}
+        }
+        validate_repository_v2_daily(result)
         return result
 
     def get_raw_daily(self, ticker: str, start: str, end: str) -> pd.DataFrame:

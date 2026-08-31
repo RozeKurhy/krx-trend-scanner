@@ -106,8 +106,12 @@ def _raw_view(frame: pd.DataFrame) -> pd.DataFrame:
             index=pd.DatetimeIndex([], name=None),
         )
     result = frame.loc[:, list(RAW_COLUMNS)].copy()
+    ticker_values = result["ticker"].astype(str).unique().tolist()
     result.index = pd.DatetimeIndex(pd.to_datetime(result.pop("date"))).normalize()
-    return result.drop(columns=["ticker"]).loc[:, list(RAW_DAILY_COLUMNS)]
+    output = result.drop(columns=["ticker"]).loc[:, list(RAW_DAILY_COLUMNS)]
+    if len(ticker_values) == 1:
+        output.attrs["ticker"] = ticker_values[0]
+    return output
 
 
 def _same_frame(left: pd.DataFrame, right: pd.DataFrame) -> bool:
@@ -622,21 +626,34 @@ def _composition_probe(
         projection_started = monotonic()
         projection = _session_projection_evidence(adjusted, raw_view)
         projection_elapsed = monotonic() - projection_started
+        projected_adjusted = projection["projected_adjusted"]
         projected_raw = projection["projected_raw"]
         record.update(
             {
                 key: projection[key]
                 for key in (
                     "adjusted_only_dates",
+                    "adjusted_only_excluded_dates",
+                    "unexplained_adjusted_only_dates",
                     "raw_only_dates",
                     "raw_only_row_details",
                     "shared_dates",
                     "shared_placeholder_conflict_dates",
                     "shared_placeholder_conflict_count",
                     "shared_placeholder_conflict_row_details",
+                    "confirmed_nontrading_shared_dates",
+                    "confirmed_nontrading_shared_count",
+                    "confirmed_nontrading_shared_row_details",
                     "accepted_placeholder_dates",
                     "rejected_raw_only_dates",
+                    "known_adjusted_gap_dates",
+                    "outside_identity_lifecycle_dates",
+                    "adjusted_analytic_invalid_dates",
+                    "adjusted_analytic_invalid_count",
                     "explicit_placeholder_projection_count",
+                    "explicit_known_gap_exclusion_count",
+                    "explicit_outside_identity_lifecycle_exclusion_count",
+                    "explicit_analytic_invalid_exclusion_count",
                     "silent_inner_drop_count",
                     "projected_raw_rows",
                     "projected_date_set_exact_match",
@@ -644,7 +661,7 @@ def _composition_probe(
             }
         )
         record["projection_elapsed_seconds"] = round(projection_elapsed, 6)
-        if projection["adjusted_only_dates"]:
+        if projection["unexplained_adjusted_only_dates"]:
             record["session_projection_blocker"] = "BLOCKED_ADJUSTED_SESSION_WITHOUT_RAW_FACTS"
         elif projection["shared_placeholder_conflict_dates"]:
             record["session_projection_blocker"] = "BLOCKED_SHARED_DATE_PLACEHOLDER_CONFLICT"
@@ -659,11 +676,11 @@ def _composition_probe(
                 "adjusted_rows": int(len(adjusted)),
                 "repository_rows": int(len(composed)),
                 "date_set_exact_match": (
-                    set(composed.index) == set(adjusted.index) == set(projected_raw.index)
+                    set(composed.index) == set(projected_adjusted.index) == set(projected_raw.index)
                 ),
                 "adjusted_ohlc_exact_match": _same_frame(
                     composed.loc[:, ["open", "high", "low", "close"]],
-                    adjusted,
+                    projected_adjusted,
                 ),
                 "raw_volume_exact_match": _same_frame(
                     composed.loc[:, ["volume"]],
