@@ -18,7 +18,12 @@ from trend_scanner.data.adjusted_price_authority_cutover import (
     classify_source_dates,
     load_effective_authority,
 )
-from trend_scanner.data.adjusted_price_full_population import FullPopulationRunner
+from trend_scanner.data.adjusted_price_full_population import (
+    FullPopulationRunner,
+    create_legacy_runner,
+    create_production_runner,
+    resolve_active_adjusted_price_authority,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -40,6 +45,9 @@ def test_effective_manifest_has_original_lineage(authority):
     manifest = json.loads(authority.manifest_path.read_text(encoding="utf-8"))
     assert manifest["original_population_sha256"].startswith("f14c3d46")
     assert manifest["original_pit_sha256"].startswith("6b542ae0")
+    cutover = json.loads((authority.manifest_path.parent / "authority_cutover_manifest.json").read_text(encoding="utf-8"))
+    assert cutover["implementation_head"] not in {"", "WORKTREE"}
+    assert all(not str(cutover[key]).startswith("/") for key in ("effective_population_path", "effective_pit_path", "correction_artifact_path"))
 
 
 def test_runner_accepts_explicit_effective_authority(authority):
@@ -52,6 +60,15 @@ def test_runner_accepts_explicit_effective_authority(authority):
         provider=object(),
     )
     assert len(runner.load_population()) == 3149
+
+
+def test_production_default_resolves_corrected_authority(authority):
+    resolved = resolve_active_adjusted_price_authority()
+    assert resolved.population_count == 3149
+    runner = create_production_runner(store_dir=ROOT / "data/market/adjusted/staging/authority_cutover_fix01_candidate_A/stocks", artifact_dir=ROOT / "artifacts/data/end_to_end_data_parity/v01/adjusted_price_store_full_population_closure/authority_cutover_fix01", provider=object())
+    assert runner.expected_population_count == 3149
+    assert runner.expected_pit_sha256 == authority.pit_sha256
+    assert create_legacy_runner(provider=object()).expected_population_count == 3162
 
 
 def test_old_checkpoint_cannot_be_reused_with_effective_authority(authority, tmp_path):
@@ -94,3 +111,32 @@ def test_source_history_rows_remain_outside_eligibility(authority):
     old_pit = json.loads((ROOT / DEFAULT_OLD_PIT).read_text(encoding="utf-8"))["intervals"]
     parts = classify_source_dates("123840", ["2011-05-02"], authority, old_pit)
     assert parts["source_history_outside_common_eligibility"] == ["2011-05-02"]
+
+
+def test_envelope_gap_alone_does_not_imply_not_common():
+    class SyntheticAuthority:
+        pit_intervals = ({"ticker": "T", "state": "COMMON", "effective_from": "2010-01-01", "effective_to": "2010-01-10"},)
+
+        def pit_common_dates(self, ticker, calendar_dates):
+            return {date for date in calendar_dates if date == "2010-01-01"}
+
+        def confirmed_non_common_evidence(self, ticker, date):
+            return None
+
+    parts = classify_source_dates("T", ["2010-01-01", "2010-01-05"], SyntheticAuthority(), ())
+    assert parts["common"] == ["2010-01-01"]
+    assert parts["unexpected"] == ["2010-01-05"]
+
+
+def test_unknown_is_not_not_common_even_for_reused_ticker():
+    class ReusedTickerAuthority:
+        pit_intervals = ()
+
+        def pit_common_dates(self, ticker, calendar_dates):
+            return set()
+
+        def confirmed_non_common_evidence(self, ticker, date):
+            return None
+
+    parts = classify_source_dates("REUSED", ["2014-01-02"], ReusedTickerAuthority(), ())
+    assert parts["unexpected"] == ["2014-01-02"]

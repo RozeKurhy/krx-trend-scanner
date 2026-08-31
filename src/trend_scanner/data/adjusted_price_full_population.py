@@ -78,6 +78,46 @@ CHECKPOINT_SCHEMA_VERSION = "full_population_checkpoint_v02"
 SOURCE_PROVIDER_VERSION = "NaverDirectAdjustedPriceDataProvider_v02"
 
 
+def resolve_active_adjusted_price_authority():
+    """Resolve the one corrected authority used by production-shaped runs."""
+    from trend_scanner.data.adjusted_price_authority_cutover import load_effective_authority
+
+    return load_effective_authority()
+
+
+def create_production_runner(
+    *,
+    store_dir: Path = DEFAULT_ADJUSTED_PRICE_STORE_DIR,
+    artifact_dir: Path = DEFAULT_FULL_POPULATION_DIR,
+    provider: AdjustedPriceProviderProtocol | None = None,
+    **kwargs: Any,
+):
+    """Construct a runner bound to the active corrected 3,149 authority.
+
+    The raw ``FullPopulationRunner`` constructor remains an explicitly
+    legacy-compatible primitive for historical replay tests.  Production
+    entrypoints must call this resolver so stale 3,162 defaults cannot be
+    selected accidentally.
+    """
+    authority = resolve_active_adjusted_price_authority()
+    return FullPopulationRunner(
+        population_path=authority.population_path,
+        pit_path=authority.pit_path,
+        expected_population_count=authority.population_count,
+        expected_population_sha256=authority.population_sha256,
+        expected_pit_sha256=authority.pit_sha256,
+        store_dir=Path(store_dir),
+        artifact_dir=Path(artifact_dir),
+        provider=provider,
+        **kwargs,
+    )
+
+
+def create_legacy_runner(**kwargs: Any):
+    """Explicitly opt into the historical 3,162 authority for replay/tests."""
+    return FullPopulationRunner(**kwargs)
+
+
 class AcquisitionStatus(str, Enum):
     COMPLETE = "COMPLETE"
     PARTIAL = "PARTIAL"
