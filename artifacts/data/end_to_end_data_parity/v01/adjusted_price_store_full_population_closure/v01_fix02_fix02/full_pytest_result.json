@@ -1,0 +1,21 @@
+{
+  "schema": "adjusted_price_fix02_fix02_full_pytest_result_v01",
+  "command": "caffeinate -i uv run pytest -q -p no:cacheprovider",
+  "passed": 2243,
+  "failed": 1,
+  "skipped": 6,
+  "deselected": 5,
+  "warnings": 291109,
+  "duration_seconds": 1278.29,
+  "duration_human": "21m 18.29s",
+  "known_baseline_failure": "tests/test_krx_historical_backfill.py::test_recent_empty_is_not_checkpointed_and_general_resume_retries",
+  "unexpected_failures": 0,
+  "execution_history": {
+    "prior_fix02_full_suite_runs": 2,
+    "prior_fix02_fix01_full_suite_runs": 3,
+    "fix02_fix02_full_suite_runs": 1,
+    "fix02_fix02_final_head_full_suite_runs": 1,
+    "fix02_fix02_final_head_rerun_count": 0
+  },
+  "status": "PASS_WITH_KNOWN_BASELINE_FAILURE"
+}

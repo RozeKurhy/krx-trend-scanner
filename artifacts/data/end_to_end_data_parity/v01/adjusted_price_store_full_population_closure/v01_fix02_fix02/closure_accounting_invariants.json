@@ -1,0 +1,11 @@
+{
+  "schema": "adjusted_price_closure_accounting_invariants_v01",
+  "normal_complete": "count(status == COMPLETE)",
+  "no_usable_observations": "count(status == NO_USABLE_OBSERVATIONS)",
+  "complete_with_adjudicated_nonusable": "count(status == COMPLETE_WITH_ADJUDICATED_NONUSABLE)",
+  "closure_complete_total": "normal_complete + no_usable_observations + complete_with_adjudicated_nonusable",
+  "population_identity": "population_total == closure_complete_total + unresolved_failure_total",
+  "failure_identity": "failure_count == population_total - closure_complete_total",
+  "implemented_in": "src/trend_scanner/data/adjusted_price_full_population.py",
+  "aggregate_status_field": "status_counts.closure_complete_total"
+}
