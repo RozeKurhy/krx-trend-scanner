@@ -1,7 +1,9 @@
 {
   "schema": "full_pytest_result_v01",
   "command": "time caffeinate -i uv run pytest -q -p no:cacheprovider",
-  "code_head": "b1717c400d410701268ac07ad717d8204be79e37",
+  "code_head": "7b0937ee9f8445271d8557ca47f696857ccbc05f",
+  "run_ordinal_within_fix02_fix03": 2,
+  "final_head_run": true,
   "result": "PASS_WITH_ALLOWED_BASELINE",
   "passed": 2252,
   "failed": 1,
@@ -12,7 +14,7 @@
     "tests/test_krx_historical_backfill.py::test_recent_empty_is_not_checkpointed_and_general_resume_retries"
   ],
   "unexpected_failures": 0,
-  "pytest_reported_duration_seconds": 1246.86,
-  "shell_wall_duration_seconds": 1244.15,
+  "pytest_reported_duration_seconds": 1279.56,
+  "shell_wall_duration_seconds": 1283.03,
   "reruns": 0
 }
