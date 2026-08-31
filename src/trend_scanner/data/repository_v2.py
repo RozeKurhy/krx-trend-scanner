@@ -529,6 +529,11 @@ class MarketDataRepositoryV2:
             if isinstance(raw_stock_store, KrxRawStockStore)
             else None
         )
+        # Build the authority-validating index outside the ticker query itself.
+        # A query therefore performs only indexed partition reads; the single
+        # full-store verification is an explicit run-initialization step.
+        if self._raw_index is not None:
+            self._raw_index.build()
 
     @staticmethod
     def _adjusted_ticker(ticker: str) -> str:
