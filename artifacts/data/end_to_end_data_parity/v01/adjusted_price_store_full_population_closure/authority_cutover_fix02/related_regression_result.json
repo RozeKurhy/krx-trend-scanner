@@ -1,0 +1,20 @@
+{
+  "schema": "adjusted_price_store_full_population_closure_fix02_related_regression_result_v01",
+  "network_requests": 0,
+  "runs": [
+    {
+      "command": ".venv/bin/python -m pytest -q -p no:cacheprovider tests/test_adjusted_price_store_full_population_fix02.py tests/test_adjusted_price_store_full_population_fix02_fix03.py tests/test_adjusted_price_store_full_population_v01.py tests/test_adjusted_price_store_full_population_throttle_fix01.py tests/test_adjusted_price_authority_cutover_v01.py -k \"not effective_manifest_has_original_lineage\"",
+      "passed": 71,
+      "failed": 0,
+      "deselected": 1,
+      "duration_seconds": 13.54
+    },
+    {
+      "command": ".venv/bin/python -m pytest -q -p no:cacheprovider tests/test_adjusted_price_authority_cutover_v01.py tests/test_adjusted_price_store_full_population_fix02_fix02.py tests/test_adjusted_price_store_full_population_fix02_fix03.py tests/test_adjusted_price_store_full_population_v01.py tests/test_adjusted_price_store_full_population_throttle_fix01.py",
+      "passed": 75,
+      "failed": 0,
+      "duration_seconds": 13.56
+    }
+  ],
+  "special_cases_000610_000360_unchanged": true
+}
