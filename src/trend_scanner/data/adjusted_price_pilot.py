@@ -421,30 +421,30 @@ def resolve_expected_coverage(
                 halts_map, auth_sha, _errata_sha, errata_records = load_effective_historical_suspension_authority(
                     suspension_authority_path, suspension_errata_path
                 )
+            conflict_records = tuple(
+                item
+                for item in errata_records
+                if str(item.get("ticker")) == ticker
+                and str(item.get("date")) in raw_candidate_dates
+                and str(item.get("conflict_class"))
+                == ClosureState.SUSPENSION_METADATA_CONFLICT_WITH_OBSERVED_ACTIVITY.value
+            )
+            conflict_dates = tuple(str(item["date"]) for item in conflict_records)
+            resolved_conflict_dates = tuple(
+                str(item["date"])
+                for item in conflict_records
+                if str(item.get("effective_classification"))
+                == "VALID_OBSERVED_MARKET_ACTIVITY"
+            )
+            unresolved_conflict_dates = tuple(
+                date for date in conflict_dates if date not in set(resolved_conflict_dates)
+            )
             if ticker in halts_map:
                 known_halts = halts_map[ticker]
                 halt_dates_in_window = [d for d in raw_candidate_dates if d in known_halts]
                 tradable_dates = [d for d in raw_candidate_dates if d not in known_halts]
 
                 status = AuthorityStatus.VALID.value if tradable_dates else AuthorityStatus.NO_EXPECTED_OBSERVATIONS.value
-                conflict_records = tuple(
-                    item
-                    for item in errata_records
-                    if str(item.get("ticker")) == ticker
-                    and str(item.get("date")) in raw_candidate_dates
-                    and str(item.get("conflict_class"))
-                    == ClosureState.SUSPENSION_METADATA_CONFLICT_WITH_OBSERVED_ACTIVITY.value
-                )
-                conflict_dates = tuple(str(item["date"]) for item in conflict_records)
-                resolved_conflict_dates = tuple(
-                    str(item["date"])
-                    for item in conflict_records
-                    if str(item.get("effective_classification"))
-                    == "VALID_OBSERVED_MARKET_ACTIVITY"
-                )
-                unresolved_conflict_dates = tuple(
-                    date for date in conflict_dates if date not in set(resolved_conflict_dates)
-                )
                 return ExpectedCoverageResolution(
                     ticker=ticker,
                     query_start=query_start,
@@ -478,6 +478,9 @@ def resolve_expected_coverage(
                 expected_tradable_dates=tuple(raw_candidate_dates),
                 nontradable_dates=(),
                 source_path=str(pit_path),
+                authority_conflict_dates=conflict_dates,
+                resolved_authority_conflict_dates=resolved_conflict_dates,
+                unresolved_authority_conflict_dates=unresolved_conflict_dates,
             )
         except Exception as exc:
             return ExpectedCoverageResolution(
