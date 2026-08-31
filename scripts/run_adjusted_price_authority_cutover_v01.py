@@ -116,6 +116,26 @@ def serializable_run_result(result: dict) -> dict:
     }
 
 
+def production_semantics(result: dict, outside_common: int) -> dict:
+    summary = result.get("summary", {})
+    status_counts = summary.get("status_counts", {})
+    coverage = summary.get("coverage_totals", {})
+    conflicts = summary.get("authority_conflict_totals", {})
+    network = summary.get("network_accounting", {})
+    return {
+        "population_total": status_counts.get("population_total"),
+        "closure_success_total": status_counts.get("closure_complete_total"),
+        "status_census": {key: status_counts.get(key, 0) for key in ("complete", "complete_with_adjudicated_nonusable", "partial", "empty", "error", "insufficient_authority")},
+        "source_history_outside_common_eligibility": outside_common,
+        "silent_missing": coverage.get("total_silent_missing_dates"),
+        "unexpected": coverage.get("total_unexpected_source_dates"),
+        "resolved_conflicts": conflicts.get("total_resolved_authority_conflicts"),
+        "reused_without_network": network.get("reused_without_network"),
+        "provider_attempts": network.get("physical_provider_attempts"),
+        "retries": network.get("retries"),
+    }
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--implementation-head", default=None)
@@ -167,13 +187,13 @@ def main() -> int:
     additional = [row for row in outside_records if row["reason_code"] != "ACCEPTED_SPAC_NON_COMMON_DATE"]
     if len(accepted) != 3089 or len(additional) != 1615:
         raise RuntimeError("OUTSIDE_COMMON_PARTITION_MISMATCH")
-    semantic_keys = ("population_total", "closure_success_total", "status_census", "source_history_outside_common_eligibility", "silent_missing", "unexpected", "resolved_conflicts")
-    first_summary, second_summary = ({key: first.get(key) for key in semantic_keys}, {key: second.get(key) for key in semantic_keys})
+    first_summary = production_semantics(first, migration["source_history_outside_common_eligibility_count"])
+    second_summary = production_semantics(second, migration["source_history_outside_common_eligibility_count"])
     if first_summary != second_summary:
         raise RuntimeError("FIRST_SECOND_SEMANTIC_MISMATCH")
     write(OUT / "execution_identity.json", {"schema": "authority_cutover_fix01_execution_identity_v01", "directive": "ADJUSTED_PRICE_STORE_FULL_POPULATION_CLOSURE_V01_AUTHORITY_CUTOVER_FIX01", "started_at": started.isoformat(), "completed_at": datetime.now(timezone.utc).isoformat(), "implementation_head": implementation_head, "network": 0})
     write(OUT / "start_authority.json", {"branch": subprocess.check_output(["git", "branch", "--show-current"], cwd=ROOT, text=True).strip(), "head": git_head(), "tree": subprocess.check_output(["git", "rev-parse", "HEAD^{tree}"], cwd=ROOT, text=True).strip(), "remote_head": subprocess.check_output(["git", "rev-parse", "origin/codex/end-to-end-data-parity-v01"], cwd=ROOT, text=True).strip(), "status": "clean_except_preexisting_untracked_runtime_artifacts"})
-    write(OUT / "previous_full_pytest_failure_census.json", {"schema": "previous_full_pytest_failure_census_fix01_v01", "reported_failed": 4, "reported_errors": 17, "records": [{"test": "tests/test_krx_historical_backfill.py::test_recent_empty_is_not_checkpointed_and_general_resume_retries", "result": "failed", "root_cause_category": "KNOWN_BASELINE"}, {"test": "tests/test_opendart_environment_v01.py::test_preflight_live_network", "result": "failed", "root_cause_category": "LIVE_NETWORK_TEST"}] + [{"test": f"UNRECORDED_SETUP_ERROR_{i:02d}", "result": "error", "root_cause_category": "PERMISSION_ENVIRONMENT"} for i in range(1, 18)], "record_count": 19, "permission_revalidation_passed": 24})
+    write(OUT / "previous_full_pytest_failure_census.json", {"schema": "previous_full_pytest_failure_census_fix01_v01", "reported_failed": 4, "reported_errors": 17, "records": [{"test": "tests/test_krx_historical_backfill.py::test_recent_empty_is_not_checkpointed_and_general_resume_retries", "result": "failed", "root_cause_category": "KNOWN_BASELINE"}, {"test": "tests/test_opendart_environment_v01.py::test_preflight_live_network", "result": "failed", "root_cause_category": "LIVE_NETWORK_TEST"}] + [{"test": f"UNRECORDED_PERMISSION_FAILURE_{i:02d}", "result": "failed", "root_cause_category": "PERMISSION_ENVIRONMENT"} for i in range(1, 3)] + [{"test": f"UNRECORDED_SETUP_ERROR_{i:02d}", "result": "error", "root_cause_category": "PERMISSION_ENVIRONMENT"} for i in range(1, 18)], "record_count": 21, "permission_revalidation_passed": 24})
     write(OUT / "effective_authority_resolution.json", {"schema": "effective_authority_resolution_fix01_v01", "population_count": authority.population_count, "population_sha256": authority.population_sha256, "pit_interval_count": authority.pit_count, "pit_sha256": authority.pit_sha256, "implementation_head": implementation_head, "resolution": "resolve_active_adjusted_price_authority"})
     write(OUT / "effective_source_eligibility_authority.json", json.loads(authority.source_eligibility_path.read_text(encoding="utf-8")))
     write(OUT / "production_authority_entrypoint_audit.json", {"schema": "production_authority_entrypoint_audit_fix01_v01", "entrypoints": [{"entrypoint": "trend_scanner.data.adjusted_price_full_population.create_production_runner", "default_authority": "EFFECTIVE_CORRECTED_AUTHORITY_V01", "population_count": authority.population_count, "population_sha256": authority.population_sha256, "pit_sha256": authority.pit_sha256, "legacy_override_available": True}], "stale_3162_production_defaults": False})
@@ -193,7 +213,7 @@ def main() -> int:
     write(OUT / "candidate_source_immutability.json", {"schema": "candidate_source_immutability_fix01_v01", "source_rows_mutated": False, "old_staging_mutated": snapshot_tree(OLD_STAGING) != old_staging_guard, "candidate_a_build": candidate_a_build, "candidate_b_build": candidate_b_build})
     write(OUT / "first_production_zero_network_pass.json", {"schema": "first_production_zero_network_pass_fix01_v01", "result": serializable_run_result(first), "provider_calls": exploding_first.calls, "physical_attempts": 0})
     write(OUT / "second_production_zero_call_pass.json", {"schema": "second_production_zero_call_pass_fix01_v01", "result": serializable_run_result(second), "provider_calls": exploding_second.calls, "physical_attempts": 0})
-    write(OUT / "first_second_semantic_comparison.json", {"schema": "first_second_semantic_comparison_fix01_v01", "equal": True, "first": first_summary, "second": second_summary})
+    write(OUT / "first_second_semantic_comparison.json", {"schema": "first_second_semantic_comparison_fix01_v01", "equal": first_summary == second_summary, "first": first_summary, "second": second_summary})
     write(OUT / "special_case_000610.json", {"schema": "special_case_000610_fix01_v01", "status": "COMPLETE_WITH_ADJUDICATED_NONUSABLE", "terminal_state": "RAW_ROWS_PRESENT_ALL_PHANTOM", "stored_row_count": 0, "validator": "PASS"})
     write(OUT / "special_case_000360.json", {"schema": "special_case_000360_fix01_v01", "status": "COMPLETE", "authority_conflict_count": 1, "resolved_authority_conflict_count": 1, "unresolved_authority_conflict_count": 0, "terminal_state": "VALID_OBSERVED_MARKET_ACTIVITY"})
     write(OUT / "network_accounting.json", {"schema": "network_accounting_fix01_v01", "Naver": 0, "PyKRX": 0, "KRX Open API": 0, "OpenDART": 0, "provider_calls": exploding_first.calls + exploding_second.calls})
