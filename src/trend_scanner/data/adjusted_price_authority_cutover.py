@@ -17,6 +17,7 @@ from typing import Any, Mapping, Sequence
 
 import pandas as pd
 
+from trend_scanner.data.adjusted_price_semantics import analytic_candle_is_valid
 from trend_scanner.universe.survivorship_safe_denominator_freeze import (
     pit_denominator_manifest_sha256,
     population_manifest_sha256,
