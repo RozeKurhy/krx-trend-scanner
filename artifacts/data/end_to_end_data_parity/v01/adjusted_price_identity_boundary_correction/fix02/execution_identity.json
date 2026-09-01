@@ -1,0 +1,88 @@
+{
+  "schema": "adjusted_price_identity_boundary_correction_fix02_execution_identity_v01",
+  "directive": "ADJUSTED_PRICE_IDENTITY_BOUNDARY_CORRECTION_FIX02",
+  "parent_directive": "ADJUSTED_PRICE_IDENTITY_BOUNDARY_CORRECTION_FIX01",
+  "captured_at_utc": "2026-09-01T09:51:14.997135+00:00",
+  "branch": "codex/end-to-end-data-parity-v01",
+  "local_head": "4250b37e8480fc81a4cc03811ac686f736932f65",
+  "local_tree": "3b1e82932a5e02141458d8e271f134e4d2b44cae",
+  "remote_head": "4250b37e8480fc81a4cc03811ac686f736932f65",
+  "expected_start_remote_head": "4250b37e8480fc81a4cc03811ac686f736932f65",
+  "start_head_matches_expected": true,
+  "remote_head_matches_expected": true,
+  "git_status_porcelain_before_artifacts": [
+    "?? artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/corporate_action_evidence/v01_fix03_correction_13/",
+    "?? artifacts/data/end_to_end_data_parity/v01/adjusted_price_store_full_population_closure/authority_cutover_fix01/full_population_results.csv",
+    "?? artifacts/data/end_to_end_data_parity/v01/adjusted_price_store_full_population_closure/authority_cutover_fix02/production_zero_call_run/full_population_results.csv",
+    "?? artifacts/data/end_to_end_data_parity/v01/adjusted_price_store_full_population_closure/fresh_full_population_run_v01/canonical_pre_run_guard.json",
+    "?? artifacts/data/end_to_end_data_parity/v01/adjusted_price_store_full_population_closure/fresh_full_population_run_v01/execution_identity.json",
+    "?? artifacts/data/end_to_end_data_parity/v01/adjusted_price_store_full_population_closure/fresh_full_population_run_v01/full_population_closure_manifest.json",
+    "?? artifacts/data/end_to_end_data_parity/v01/adjusted_price_store_full_population_closure/fresh_full_population_run_v01/full_population_execution_audit.json",
+    "?? artifacts/data/end_to_end_data_parity/v01/adjusted_price_store_full_population_closure/fresh_full_population_run_v01/full_population_failures.csv",
+    "?? artifacts/data/end_to_end_data_parity/v01/adjusted_price_store_full_population_closure/fresh_full_population_run_v01/full_population_manifest.json",
+    "?? artifacts/data/end_to_end_data_parity/v01/adjusted_price_store_full_population_closure/fresh_full_population_run_v01/full_population_results.csv",
+    "?? artifacts/data/end_to_end_data_parity/v01/adjusted_price_store_full_population_closure/fresh_full_population_run_v01/full_population_resume_audit.json",
+    "?? artifacts/data/end_to_end_data_parity/v01/adjusted_price_store_full_population_closure/fresh_full_population_run_v01/full_population_summary.json",
+    "?? artifacts/data/end_to_end_data_parity/v01/adjusted_price_store_full_population_closure/fresh_full_population_run_v01/preflight_authority.json",
+    "?? artifacts/data/end_to_end_data_parity/v01/adjusted_price_store_full_population_closure/fresh_full_population_run_v01/resume_segment_network_accounting.json"
+  ],
+  "unrelated_untracked_paths_preserved": true,
+  "network_policy": {
+    "offline_first": true,
+    "new_live_network_requests": 0,
+    "new_krx_requests": 0,
+    "pykrx_fallback_requests": 0
+  },
+  "source_hashes_before_artifacts": [
+    {
+      "path": "src/trend_scanner/data/repository_v2.py",
+      "sha256": "19d2c84d35b39cc44e0c7f4cd69f73edf5002402acb250948ab5ab8799a7f9f1",
+      "size_bytes": 32701
+    },
+    {
+      "path": "src/trend_scanner/data/adjusted_price_full_population.py",
+      "sha256": "e6ed3bff602503c94a5d6e19ca3a670449b1aa89eedeb4e96d2c3fd75a5d80dd",
+      "size_bytes": 82928
+    },
+    {
+      "path": "data/market/adjusted/stocks/446840.parquet",
+      "sha256": "ad1e255fbfbb1f82de3b2c9ac7c0cbb4cc32c8ea376b8c3b5d980abaf28742ff",
+      "size_bytes": 10522
+    },
+    {
+      "path": "data/market/adjusted/stocks/446840.meta.json",
+      "sha256": "a5801d1033853b8640a1c24ecb6b7c4c5303e202c79d545708d1a781fb5ebb43",
+      "size_bytes": 1212
+    },
+    {
+      "path": "artifacts/data/end_to_end_data_parity/v01/adjusted_price_identity_boundary_correction/fix01/blast_radius/identity_candidate_audit.csv",
+      "sha256": "7f8ae53857dbace65b7079616c9da3a229c8c874e70be13b2273105119a02f55",
+      "size_bytes": 22735
+    },
+    {
+      "path": "artifacts/data/end_to_end_data_parity/v01/adjusted_price_store_backfill_correction/v01/blast_radius/population_audit.csv",
+      "sha256": "8e332230b140df733e7c6ba0fde5c7cc60483cb04bb98e3d82aff8438b649a5b",
+      "size_bytes": 662292
+    },
+    {
+      "path": "artifacts/data/end_to_end_data_parity/v01/survivorship_safe_denominator_freeze/v01_spac_corrected_effective_authority/effective_historical_common_population.json",
+      "sha256": "700ab3f9775a4685c76ac3fd7395e885f20a1002f03f324aab1893e4d2cf42b3",
+      "size_bytes": 1684374
+    },
+    {
+      "path": "artifacts/data/end_to_end_data_parity/v01/survivorship_safe_denominator_freeze/v01_spac_prelabel_lifecycle_correction_v01/corrected_full_classification_census.json",
+      "sha256": "8f192063d852e5dacb9509f4df6f06f4f47aea231b569d42e0415ec5651dd529",
+      "size_bytes": 6615009
+    },
+    {
+      "path": "artifacts/data/end_to_end_data_parity/v01/survivorship_safe_denominator_freeze/v01_spac_prelabel_lifecycle_correction_v01/spac_authority_evidence.json",
+      "sha256": "c4f8c41cb1f34bab680dc64b6f1532bedadd51eced96941443347008da3c4716",
+      "size_bytes": 939541
+    },
+    {
+      "path": "data/reference/krx_instrument_metadata.csv",
+      "sha256": "c87fa854e770b17d50cc0a2a02f1aeb566c00ffa7c865c6a1596c010d2b6aa0a",
+      "size_bytes": 9346716
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "schema": "missing_raw_identity_summary_v01",
+  "input_population_count": 660,
+  "output_census_count": 660,
+  "unique_identity_count": 660,
+  "silent_drop_count": 0,
+  "risk_classification_counts": {
+    "NO_IDENTITY_TRANSITION_SIGNAL": 640,
+    "IDENTITY_TRANSITION_SIGNAL": 17,
+    "MULTIPLE_COMMON_INTERVAL_SIGNAL": 3,
+    "OTHER_MATERIAL_IDENTITY_SIGNAL": 0
+  },
+  "transition_candidate_count": 17,
+  "other_material_identity_signal_count": 0,
+  "raw_cache_absence_is_source_absence_proof": false,
+  "broad_live_scan_performed": false,
+  "material_signal_closure": {
+    "no_identity_transition_signal": 640,
+    "transition_signal_resolved": 17,
+    "multiple_common_interval_signal_resolved": 3,
+    "other_material_signal_resolved": 0
+  },
+  "classification_basis": "exclusive offline risk classes from corrected KRX/PIT authority; no source-gap or safe/no-data labels"
+}
