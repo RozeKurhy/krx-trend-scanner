@@ -1,0 +1,27 @@
+{
+  "date_policy": [
+    "exact as_of",
+    "exact session anchor",
+    "no fill",
+    "no nearest",
+    "no fallback"
+  ],
+  "formula": "((1 + stock_return) / (1 + sector_return)) - 1",
+  "horizons": {
+    "12m": 252,
+    "3m": 63,
+    "6m": 126
+  },
+  "returns": "close_end / close_anchor - 1",
+  "sector_rank_percentile": {
+    "decision": "BLOCKED_UNTIL_SECTOR_POPULATION_AUTHORITY",
+    "evidence": "cross_section.py exposes market-only columns",
+    "status": "NOT_IMPLEMENTED"
+  },
+  "status_taxonomy": [
+    "READY",
+    "PARTIAL",
+    "DATA_UNAVAILABLE",
+    "NOT_EVALUATED"
+  ]
+}

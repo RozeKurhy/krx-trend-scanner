@@ -1,0 +1,25 @@
+{
+  "fallbacks": {
+    "alternate_adjusted_price": false,
+    "nearest_or_fill": false,
+    "pykrx_price_fallback": false
+  },
+  "market_index": {
+    "source": "KRX_OPEN_API_MARKET_INDEX",
+    "store": "data/market/index/v01/market_index.parquet"
+  },
+  "sector_index": {
+    "source": "KRX_OPEN_API_SECTOR_INDEX",
+    "store": ".cache/krx_openapi/sector_rs_migration/v01/sector_index_daily.parquet"
+  },
+  "sector_mapping": {
+    "authority_status": "BLOCKED",
+    "source": "KRX_PYKRX_SECTOR_MAPPING",
+    "store": "artifacts/patterns/pattern_a/validation/relative_strength/source/sector_mapping_20260814.csv"
+  },
+  "stock": {
+    "composition": "MarketDataRepositoryV2",
+    "source": "NaverDirectAdjustedPriceDataProvider",
+    "store": "data/market/adjusted/stocks"
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "artifact_roots": [
+    "artifacts/patterns/pattern_a/validation/relative_strength/source",
+    "artifacts/data/krx_openapi/sector_rs_migration/v01",
+    ".cache/krx_openapi/sector_rs_migration/v01"
+  ],
+  "docs": [
+    "docs/architecture/artifacts/artifacts_information_architecture_audit_v01.md",
+    "docs/architecture/krx_index_migration_v01.md",
+    "docs/architecture/sector_rs_krx_migration_v01.md",
+    "docs/architecture/validation/phase12_sector_source_investigation.md",
+    "docs/architecture/validation/test_suite_performance_audit_v01.md",
+    "docs/patterns/pattern_a/validation/market_relative_strength_completion_v01.md",
+    "docs/patterns/pattern_a/validation/relative_strength_infrastructure_v01.md",
+    "docs/reporting/stock_report/contract_v03.md",
+    "docs/reporting/stock_report/schema_v03.json"
+  ],
+  "scanner": "src/trend_scanner/scanner/full_universe_scanner.py:906-959, 1236-1393",
+  "stock_report": "src/trend_scanner/reporting/relative_strength_report.py (Market RS fields only)",
+  "tests": [
+    "tests/test_krx_sector_index_migration_v01.py",
+    "tests/test_pattern_a_relative_strength_infrastructure.py",
+    "tests/test_relative_strength_cross_section_v01.py",
+    "tests/test_relative_strength_features.py",
+    "tests/test_stock_report_v03_relative_strength.py"
+  ]
+}
