@@ -1,0 +1,13 @@
+{
+  "status": "PASS_WITH_ACCEPTED_BASELINE_FAILURE",
+  "executed": true,
+  "network_requests": 0,
+  "passed": 2303,
+  "failed": 1,
+  "skipped": 7,
+  "deselected": 5,
+  "duration_seconds": 1418.60,
+  "command": "env -u OPENDART_API_KEY -u KRX_ID -u KRX_PW PYTHONDONTWRITEBYTECODE=1 ./.venv/bin/python -m pytest -q -p no:cacheprovider --durations=50",
+  "accepted_baseline_failure": "tests/test_krx_historical_backfill.py::test_recent_empty_is_not_checkpointed_and_general_resume_retries",
+  "unexpected_failures": []
+}
