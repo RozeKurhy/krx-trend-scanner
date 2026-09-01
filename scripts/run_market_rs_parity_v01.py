@@ -1,4 +1,4 @@
-"""Offline Market RS / Repository V2 parity evidence runner (FIX01).
+"""Offline Market RS / Repository V2 parity evidence runner (FIX02).
 
 The runner is intentionally read-only with respect to canonical data. It
 compares the frozen legacy baseline with Repository V2 on the same material
@@ -45,8 +45,9 @@ from trend_scanner.relative_strength.repository_adapter import (
 
 ROOT = Path(__file__).resolve().parents[1]
 AS_OF = "2026-08-14"
-START_HEAD = os.environ.get("MARKET_RS_START_HEAD", "0cf88a550b8d189dd6c5fa56fdb9ba6bb9b8540d")
-OUT = ROOT / "artifacts/data/end_to_end_data_parity/v01/market_rs_parity/v01_fix01"
+START_HEAD = os.environ.get("MARKET_RS_START_HEAD", "631e3969554008a33fb514b0e27878ae60c8c6c0")
+OUT = ROOT / "artifacts/data/end_to_end_data_parity/v01/market_rs_parity/v01_fix02"
+AUTHORITY_ADJUDICATION = OUT / "material_authority_adjudication.json"
 LEGACY_POPULATION = ROOT / "artifacts/patterns/pattern_a/validation/relative_strength/market_completion_v01/market_rs_universe_20260814.csv"
 LEGACY_CANDIDATES = ROOT / "artifacts/patterns/pattern_a/validation/relative_strength/market_completion_v01/market_rs_candidates_20260814.csv"
 LEGACY_INVESTABLE = ROOT / "artifacts/patterns/pattern_a/validation/relative_strength/market_completion_v01/market_rs_investable_candidates_20260814.csv"
@@ -97,6 +98,48 @@ def same(left: Any, right: Any, tolerance: float = 1e-9) -> bool:
     left_missing = left is None or (isinstance(left, float) and math.isnan(left)) or pd.isna(left)
     right_missing = right is None or (isinstance(right, float) and math.isnan(right)) or pd.isna(right)
     return bool(left_missing and right_missing) or str(left) == str(right)
+
+
+def _finite_field(result: Any, field: str) -> bool:
+    """Return true only when a calculated horizon field is finite."""
+
+    return finite(getattr(result, field, None))
+
+
+def derive_next_state(gates: dict[str, Any]) -> str:
+    """Route the machine-readable next state from the actual blocker class."""
+
+    if gates.get("repository_v2_defect_proven"):
+        return "NEEDS_REPOSITORY_V2_DEFECT_REVIEW"
+    if gates.get("source_authority_defect_proven"):
+        return "NEEDS_MARKET_DATA_SOURCE_AUTHORITY_REVIEW"
+    if int(gates.get("unresolved_input_difference_count", 0)) > 0:
+        return "NEEDS_MARKET_RS_AUTHORITY_ATTRIBUTION_FIX02"
+    if int(gates.get("unexpected_repository_error_count", 0)) > 0:
+        return "NEEDS_REPOSITORY_V2_DEFECT_REVIEW"
+    if any(
+        int(gates.get(key, 0)) > 0
+        for key in (
+            "formula_recalculation_mismatch_count",
+            "anchor_contract_mismatch_count",
+            "unexplained_market_rs_mismatch_count",
+            "unexplained_status_mismatch_count",
+            "independent_rank_recalculation_mismatch_count",
+            "independent_percentile_recalculation_mismatch_count",
+            "unexplained_rank_delta_rows",
+            "unexplained_percentile_delta_rows",
+            "candidate_lookup_unexplained_mismatch_count",
+            "investable_lookup_unexplained_mismatch_count",
+        )
+    ):
+        return "NEEDS_MARKET_RS_PARITY_FIX02"
+    if gates.get("current_run_executed") is not True:
+        return "NEEDS_MARKET_RS_PARITY_FIX02"
+    if gates.get("current_population_input_count") != gates.get("current_output_row_count"):
+        return "NEEDS_MARKET_RS_PARITY_FIX02"
+    if int(gates.get("current_silent_row_drop_count", 0)) != 0:
+        return "NEEDS_MARKET_RS_PARITY_FIX02"
+    return "SECTOR_RS_PARITY_V01"
 
 
 def normalise_index(path: Path, as_of: str | None = None) -> pd.DataFrame:
@@ -189,7 +232,14 @@ def _authority_record(ticker: str, date: str, classification: str, reason: str) 
     return {"ticker": ticker, "date": date, "legacy_value": None, "repository_value": None, "classification": classification, "authority_artifact_path": path, "authority_record_key": key, "authority_reason": authority_reason, "source_closure_checkpoint_sha256": SOURCE_CLOSURE_CHECKPOINT_SHA256}
 
 
-def material_input_comparison(ticker: str, legacy: pd.DataFrame | None, repository: pd.DataFrame | None, material_dates: dict[str, str | None], repository_reason: str | None) -> tuple[str, list[dict[str, Any]], list[dict[str, Any]]]:
+def material_input_comparison(
+    ticker: str,
+    legacy: pd.DataFrame | None,
+    repository: pd.DataFrame | None,
+    material_dates: dict[str, str | None],
+    repository_reason: str | None,
+    authority_map: dict[tuple[str, str], dict[str, Any]] | None = None,
+) -> tuple[str, list[dict[str, Any]], list[dict[str, Any]]]:
     left = frame_signature(legacy, material_dates)["material_observations"]
     right = frame_signature(repository, material_dates)["material_observations"]
     differences: list[dict[str, Any]] = []
@@ -202,7 +252,13 @@ def material_input_comparison(ticker: str, legacy: pd.DataFrame | None, reposito
             continue
         difference = {"ticker": ticker, "horizon": horizon, "date": date, "legacy_value": lobs["close"], "repository_value": robs["close"], "legacy_present": lobs["present"], "repository_present": robs["present"]}
         differences.append(difference)
-        if not lobs["present"] and robs["present"]:
+        authority_item = (authority_map or {}).get((ticker, date))
+        if authority_item is not None:
+            attribution = dict(authority_item.get("authority_evidence") or {})
+            attribution["classification"] = authority_item.get("final_classification", "UNRESOLVED")
+            attribution["ticker"] = ticker
+            attribution["date"] = date
+        elif not lobs["present"] and robs["present"]:
             attribution = _authority_record(ticker, date, "LEGACY_CACHE_DEFECT", "legacy material observation absent")
         elif lobs["present"] and not robs["present"] and (ticker, date) in ADJUSTED_ANALYTICALLY_NONUSABLE_DATES:
             attribution = _authority_record(ticker, date, "APPROVED_SOURCE_NONUSABLE_EXCLUSION", "source row is analytically non-usable")
@@ -340,6 +396,14 @@ def main() -> int:
     raw_before = aggregate_identity(RAW_ROOT)
     legacy_cache = ParquetCache(ROOT / "data/raw/stocks")
     repository = MarketDataRepositoryV2(AdjustedPriceStore(ADJUSTED_ROOT), KrxRawStockStore(RAW_ROOT))
+    authority_map: dict[tuple[str, str], dict[str, Any]] = {}
+    if AUTHORITY_ADJUDICATION.exists():
+        authority_payload = json.loads(AUTHORITY_ADJUDICATION.read_text(encoding="utf-8"))
+        authority_map = {
+            (str(item["ticker"]).zfill(6), str(item["date"])): item
+            for item in authority_payload.get("pairs", [])
+            if item.get("final_classification")
+        }
 
     rows: list[dict[str, Any]] = []
     input_counts: dict[str, int] = {}
@@ -368,7 +432,7 @@ def main() -> int:
         repository_reason = resolved.reason if resolved is not None else None
         legacy_result = compute_relative_strength_features(ticker, AS_OF, legacy_full, legacy_benchmark, market)
         repository_result = compute_relative_strength_features(ticker, AS_OF, repository_input, canonical_historical, market)
-        classification, material_differences, attributions = material_input_comparison(ticker, legacy_window, repository_input, material_dates, repository_reason)
+        classification, material_differences, attributions = material_input_comparison(ticker, legacy_window, repository_input, material_dates, repository_reason, authority_map)
         input_counts[classification] = input_counts.get(classification, 0) + 1
         level_diff = [field for field in LEVEL_FIELDS if not same(getattr(legacy_result, field), getattr(repository_result, field), 1e-8)]
         anchor_diff = [field for field in ANCHOR_FIELDS if not same(getattr(legacy_result, field), getattr(repository_result, field))]
@@ -444,7 +508,11 @@ def main() -> int:
             ticker, market = str(item["ticker"]).zfill(6), str(item["market"]).upper(); code = "1001" if market == "KOSPI" else "2001" if market == "KOSDAQ" else None
             try:
                 resolved = resolve_market_rs_repository_input(repository, ticker=ticker, as_of=resolved_current_as_of, market_code=code, market_index_df=current_index)
-                result = compute_relative_strength_features(ticker, resolved_current_as_of, resolved.stock_df, current_index, market); status = _status_value(result); reason = resolved.reason
+                result = compute_relative_strength_features(ticker, resolved_current_as_of, resolved.stock_df, current_index, market)
+                status = _status_value(result); reason = resolved.reason
+                valid_3m = _finite_field(result, "market_rs_3m")
+                valid_6m = _finite_field(result, "market_rs_6m")
+                valid_12m = _finite_field(result, "market_rs_12m")
             except Exception as exc:
                 current_unexpected_errors += 1
                 current_error_census.append({
@@ -455,7 +523,9 @@ def main() -> int:
                     "error": str(exc),
                 })
                 status = "ERROR"; reason = f"{type(exc).__name__}: {exc}"
-            current_rows.append({"ticker": ticker, "market": market, "status": status, "valid_3m": status in {"READY", "PARTIAL"}, "valid_6m": status == "READY", "valid_12m": status == "READY", "reason": reason})
+                valid_3m = valid_6m = valid_12m = False
+                result = None
+            current_rows.append({"ticker": ticker, "market": market, "status": status, "valid_3m": valid_3m, "valid_6m": valid_6m, "valid_12m": valid_12m, "market_rs_3m": None if result is None else getattr(result, "market_rs_3m", None), "market_rs_6m": None if result is None else getattr(result, "market_rs_6m", None), "market_rs_12m": None if result is None else getattr(result, "market_rs_12m", None), "reason": reason})
     current_status_counts = pd.Series([row["status"] for row in current_rows], dtype="string").value_counts().to_dict() if current_rows else {}
 
     edge_cases: dict[str, Any] = {"zero_store": {}, "representative": {}}
@@ -492,13 +562,13 @@ def main() -> int:
     write_json("repository_exception_accounting.json", {"expected_data_unavailable_count": int(expected_data_unavailable_count), "unexpected_repository_error_count": int(unexpected_repository_error_count + current_unexpected_errors), "unexpected_errors": repository_error_census + current_error_census, "expected_error_taxonomy": sorted(EXPECTED_REPOSITORY_DATA_UNAVAILABLE_ERRORS)})
     write_json("git_mutation_audit.json", {"canonical_data_mutated": adjusted_before["aggregate_sha256"] != adjusted_after["aggregate_sha256"] or raw_before["aggregate_sha256"] != raw_after["aggregate_sha256"] or canonical_before != canonical_after, "canonical_source_mutation": False, "evidence_directory": str(OUT.relative_to(ROOT))})
     start_identity = git_identity(START_HEAD) if subprocess.call(["git", "cat-file", "-e", f"{START_HEAD}^{{commit}}"], cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) == 0 else {"head": START_HEAD, "tree": None}
-    write_json("execution_identity.json", {"directive": "MARKET_RS_PARITY_V01_FIX01", "start_head": START_HEAD, "start_tree": start_identity["tree"], "final_code_head": final_code_identity["head"], "final_code_tree": final_code_identity["tree"], "tested_code_head": final_code_identity["head"], "tested_code_tree": final_code_identity["tree"], "evidence_base_head": final_code_identity["head"], "identity_scope": "FIX01 offline parity/current-readiness evidence", "offline_only": True})
+    write_json("execution_identity.json", {"directive": "MARKET_RS_AUTHORITY_ATTRIBUTION_FIX02", "start_head": START_HEAD, "start_tree": start_identity["tree"], "final_code_head": final_code_identity["head"], "final_code_tree": final_code_identity["tree"], "tested_code_head": final_code_identity["head"], "tested_code_tree": final_code_identity["tree"], "evidence_base_head": final_code_identity["head"], "identity_scope": "FIX02 offline parity/current-readiness evidence", "offline_only": True})
     write_json("focused_test_result.json", {"status": "PENDING_EXECUTION", "network_requests": 0})
     write_json("related_regression_result.json", {"status": "PENDING_EXECUTION", "network_requests": 0})
     write_json("full_pytest_result.json", {"status": "PENDING_FINAL_CODE_FREEZE", "executed": False, "network_requests": 0})
     write_json("pytest_duration_profile.json", {"status": "PENDING_FINAL_CODE_FREEZE", "executed": False})
 
-    gates = {"historical_population_identity_resolved": True, "unresolved_input_difference_count": unresolved_input_difference_count, "formula_recalculation_mismatch_count": formula_mismatch, "anchor_contract_mismatch_count": unexplained_anchor, "unexplained_market_rs_mismatch_count": unexplained_level, "unexplained_status_mismatch_count": unexplained_status, "independent_rank_recalculation_mismatch_count": independent_rank_mismatch, "independent_percentile_recalculation_mismatch_count": independent_percentile_mismatch, "unexplained_rank_delta_rows": unexplained_rank_delta_rows, "unexplained_percentile_delta_rows": unexplained_percentile_delta_rows, "candidate_lookup_unexplained_mismatch_count": candidate_lookup_mismatch + candidate_missing, "investable_lookup_unexplained_mismatch_count": investable_lookup_mismatch + investable_missing, "current_run_executed": resolved_current_as_of is not None, "current_population_input_count": len(population), "current_output_row_count": len(current_rows), "current_silent_row_drop_count": len(population) - len(current_rows), "unexpected_repository_error_count": unexpected_repository_error_count + current_unexpected_errors, "production_market_rs_legacy_stock_fallback": False, "production_market_rs_legacy_benchmark_fallback": False, "repository_v2_authoritative_stock_input": True, "canonical_market_index_authoritative_benchmark": True, "repository_reuse_preflight": "PASS", "adjusted_canonical_changed": adjusted_before["aggregate_sha256"] != adjusted_after["aggregate_sha256"], "raw_canonical_changed": raw_before["aggregate_sha256"] != raw_after["aggregate_sha256"], "market_index_canonical_changed": canonical_before != canonical_after, "live_network_requests": 0}
+    gates = {"historical_population_identity_resolved": True, "unresolved_input_difference_count": unresolved_input_difference_count, "formula_recalculation_mismatch_count": formula_mismatch, "anchor_contract_mismatch_count": unexplained_anchor, "unexplained_market_rs_mismatch_count": unexplained_level, "unexplained_status_mismatch_count": unexplained_status, "independent_rank_recalculation_mismatch_count": independent_rank_mismatch, "independent_percentile_recalculation_mismatch_count": independent_percentile_mismatch, "unexplained_rank_delta_rows": unexplained_rank_delta_rows, "unexplained_percentile_delta_rows": unexplained_percentile_delta_rows, "candidate_lookup_unexplained_mismatch_count": candidate_lookup_mismatch + candidate_missing, "investable_lookup_unexplained_mismatch_count": investable_lookup_mismatch + investable_missing, "current_run_executed": resolved_current_as_of is not None, "current_population_input_count": len(population), "current_output_row_count": len(current_rows), "current_silent_row_drop_count": len(population) - len(current_rows), "unexpected_repository_error_count": unexpected_repository_error_count + current_unexpected_errors, "production_market_rs_legacy_stock_fallback": False, "production_market_rs_legacy_benchmark_fallback": False, "repository_v2_authoritative_stock_input": True, "canonical_market_index_authoritative_benchmark": True, "repository_reuse_preflight": "PASS", "adjusted_canonical_changed": adjusted_before["aggregate_sha256"] != adjusted_after["aggregate_sha256"], "raw_canonical_changed": raw_before["aggregate_sha256"] != raw_after["aggregate_sha256"], "market_index_canonical_changed": canonical_before != canonical_after, "live_network_requests": 0, "repository_v2_defect_proven": False, "source_authority_defect_proven": False}
     # Boolean gates are not integers for acceptance purposes.  Population
     # cardinalities are recorded as evidence and are validated by their
     # dedicated equality/drop gates below; they must not become blockers merely
@@ -544,10 +614,11 @@ def main() -> int:
             blocking.append(key)
     if gates["live_network_requests"] != 0:
         blocking.append("live_network_requests")
-    write_json("final_decision.json", {"verdict": "ACCEPT" if not blocking else "CHANGES_REQUESTED", "market_rs_parity_v01": "CLOSED" if not blocking else "OPEN", "next_state": "SECTOR_RS_PARITY_V01" if not blocking else "NEEDS_MARKET_RS_PARITY_FIX01", "blocking_gates": blocking, "gates": gates, "full_pytest_pending": True})
+    next_state = derive_next_state(gates)
+    write_json("final_decision.json", {"verdict": "ACCEPT" if not blocking else "CHANGES_REQUESTED", "market_rs_parity_v01": "CLOSED" if not blocking else "OPEN", "next_state": next_state, "blocking_gates": blocking, "gates": gates, "full_pytest_pending": True})
     manifest_names = sorted(path.name for path in OUT.glob("*.json") if path.name != "artifact_manifest.json")
     write_json("artifact_manifest.json", {"directory": str(OUT.relative_to(ROOT)), "artifact_count": len(manifest_names) + 1, "files": manifest_names + ["artifact_manifest.json"], "complete_population": True, "required_full_pytest_artifact_pending": True})
-    print(json.dumps({"verdict": "ACCEPT" if not blocking else "CHANGES_REQUESTED", "blocking_gates": blocking, "population": len(rows), "elapsed_seconds": round(elapsed, 3)}, ensure_ascii=False, indent=2))
+    print(json.dumps({"verdict": "ACCEPT" if not blocking else "CHANGES_REQUESTED", "next_state": next_state, "blocking_gates": blocking, "population": len(rows), "elapsed_seconds": round(elapsed, 3)}, ensure_ascii=False, indent=2))
     return 0 if not blocking else 1
 
 
