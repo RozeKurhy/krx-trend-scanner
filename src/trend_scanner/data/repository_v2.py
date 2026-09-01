@@ -66,6 +66,20 @@ KNOWN_ADJUSTED_SOURCE_GAP_DATES: dict[tuple[str, str], str] = {}
 KNOWN_OUTSIDE_IDENTITY_LIFECYCLE_DATES: dict[tuple[str, str], str] = {
     ("123410", "2011-05-18"): "PIT/identity authority marks date outside ticker lifecycle",
     ("126700", "2011-09-15"): "PIT/identity authority marks date outside ticker lifecycle",
+    # Ticker 446840 retained its short code while moving from the Kiwoom No.8
+    # SPAC identity to the Gitsn common-stock identity.  KRX/PIT authority
+    # marks 2025-08-14 as the first eligible common-identity date; the nine
+    # earlier source rows remain available through the lossless source API but
+    # must not enter the composed analytic view for the post-boundary identity.
+    ("446840", "2025-08-01"): "KRX/PIT identity authority: pre-boundary Kiwoom No.8 SPAC row",
+    ("446840", "2025-08-04"): "KRX/PIT identity authority: pre-boundary Kiwoom No.8 SPAC row",
+    ("446840", "2025-08-05"): "KRX/PIT identity authority: pre-boundary Kiwoom No.8 SPAC row",
+    ("446840", "2025-08-06"): "KRX/PIT identity authority: pre-boundary Kiwoom No.8 SPAC row",
+    ("446840", "2025-08-07"): "KRX/PIT identity authority: pre-boundary Kiwoom No.8 SPAC row",
+    ("446840", "2025-08-08"): "KRX/PIT identity authority: pre-boundary Kiwoom No.8 SPAC row",
+    ("446840", "2025-08-11"): "KRX/PIT identity authority: pre-boundary Kiwoom No.8 SPAC row",
+    ("446840", "2025-08-12"): "KRX/PIT identity authority: pre-boundary Kiwoom No.8 SPAC row",
+    ("446840", "2025-08-13"): "KRX/PIT identity authority: pre-boundary Kiwoom No.8 SPAC row",
 }
 
 
