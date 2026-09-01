@@ -1,0 +1,8 @@
+{
+  "command": "env -u OPENDART_API_KEY -u KRX_ID -u KRX_PW PYTHONDONTWRITEBYTECODE=1 ./.venv/bin/python -m pytest -q -p no:cacheprovider tests/test_repository_v2.py tests/test_correction_12_execution.py tests/test_opendart_environment_v01.py tests/test_market_data_repository_v02_validation.py tests/test_adjusted_price_store_full_population_fix02.py tests/test_adjusted_price_store_full_population_fix02_fix02.py tests/test_adjusted_price_store_full_population_fix02_fix03.py tests/test_adjusted_price_authority_cutover_v01.py",
+  "network_requests": 0,
+  "passed": 182,
+  "schema": "related_regression_result_fix01_v01",
+  "skipped": 1,
+  "status": "PASS"
+}
