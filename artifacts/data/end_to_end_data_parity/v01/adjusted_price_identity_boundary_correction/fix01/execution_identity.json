@@ -1,0 +1,75 @@
+{
+  "schema": "adjusted_price_identity_boundary_correction_execution_identity_v01",
+  "directive": "ADJUSTED_PRICE_IDENTITY_BOUNDARY_CORRECTION_FIX01",
+  "parent_directive": "ADJUSTED_PRICE_STORE_BACKFILL_CORRECTION_V01",
+  "captured_at_utc": "2026-09-01T08:34:43.345465+00:00",
+  "branch": "codex/end-to-end-data-parity-v01",
+  "local_head": "8297475e6f1a37b8e2b70145e43c895267b69aef",
+  "local_tree": "63818dfdb7ff3314ce74e963139e850edce258df",
+  "remote_head": "8297475e6f1a37b8e2b70145e43c895267b69aef",
+  "expected_start_remote_head": "8297475e6f1a37b8e2b70145e43c895267b69aef",
+  "git_status_porcelain": [
+    "?? artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/corporate_action_evidence/v01_fix03_correction_13/",
+    "?? artifacts/data/end_to_end_data_parity/v01/adjusted_price_store_full_population_closure/authority_cutover_fix01/full_population_results.csv",
+    "?? artifacts/data/end_to_end_data_parity/v01/adjusted_price_store_full_population_closure/authority_cutover_fix02/production_zero_call_run/full_population_results.csv",
+    "?? artifacts/data/end_to_end_data_parity/v01/adjusted_price_store_full_population_closure/fresh_full_population_run_v01/canonical_pre_run_guard.json",
+    "?? artifacts/data/end_to_end_data_parity/v01/adjusted_price_store_full_population_closure/fresh_full_population_run_v01/execution_identity.json",
+    "?? artifacts/data/end_to_end_data_parity/v01/adjusted_price_store_full_population_closure/fresh_full_population_run_v01/full_population_closure_manifest.json",
+    "?? artifacts/data/end_to_end_data_parity/v01/adjusted_price_store_full_population_closure/fresh_full_population_run_v01/full_population_execution_audit.json",
+    "?? artifacts/data/end_to_end_data_parity/v01/adjusted_price_store_full_population_closure/fresh_full_population_run_v01/full_population_failures.csv",
+    "?? artifacts/data/end_to_end_data_parity/v01/adjusted_price_store_full_population_closure/fresh_full_population_run_v01/full_population_manifest.json",
+    "?? artifacts/data/end_to_end_data_parity/v01/adjusted_price_store_full_population_closure/fresh_full_population_run_v01/full_population_results.csv",
+    "?? artifacts/data/end_to_end_data_parity/v01/adjusted_price_store_full_population_closure/fresh_full_population_run_v01/full_population_resume_audit.json",
+    "?? artifacts/data/end_to_end_data_parity/v01/adjusted_price_store_full_population_closure/fresh_full_population_run_v01/full_population_summary.json",
+    "?? artifacts/data/end_to_end_data_parity/v01/adjusted_price_store_full_population_closure/fresh_full_population_run_v01/preflight_authority.json",
+    "?? artifacts/data/end_to_end_data_parity/v01/adjusted_price_store_full_population_closure/fresh_full_population_run_v01/resume_segment_network_accounting.json"
+  ],
+  "before_hashes": {
+    "repository_v2.py": {
+      "path": "src/trend_scanner/data/repository_v2.py",
+      "sha256": "aa78ff429f95b15230b5da9469b03dd07738a7b8b2f9c0d43ddcec5862d11501",
+      "size_bytes": 31458
+    },
+    "adjusted_price_full_population.py": {
+      "path": "src/trend_scanner/data/adjusted_price_full_population.py",
+      "sha256": "e6ed3bff602503c94a5d6e19ca3a670449b1aa89eedeb4e96d2c3fd75a5d80dd",
+      "size_bytes": 82928
+    },
+    "446840.parquet": {
+      "path": "data/market/adjusted/stocks/446840.parquet",
+      "sha256": "d2aefde74ea2aa49e4316e18c4f5a87b71a3d826b4a57fb5f13f775055fc11b1",
+      "size_bytes": 10841
+    },
+    "446840.meta.json": {
+      "path": "data/market/adjusted/stocks/446840.meta.json",
+      "sha256": "d890910f4e746845d726b33329301e2810561ab06e9a6516c3726b916a84044e",
+      "size_bytes": 1212
+    }
+  },
+  "relevant_pit_authorities": [
+    "artifacts/data/end_to_end_data_parity/v01/survivorship_safe_denominator_freeze/v01_spac_prelabel_lifecycle_correction_v01/spac_authority_evidence.json",
+    "artifacts/data/end_to_end_data_parity/v01/survivorship_safe_denominator_freeze/v01_spac_corrected_effective_authority/effective_historical_common_population.json",
+    "artifacts/data/end_to_end_data_parity/v01/survivorship_safe_denominator_freeze/v01_spac_corrected_effective_authority/effective_pit_common_denominator.json",
+    "data/reference/krx_instrument_metadata.csv"
+  ],
+  "network_policy": {
+    "new_live_network_requests_before_final_full_pytest": 0,
+    "pykrx_fallback": 0,
+    "source_evidence_reused": true
+  },
+  "canonical_after_hashes": {
+    "446840.parquet": "ad1e255fbfbb1f82de3b2c9ac7c0cbb4cc32c8ea376b8c3b5d980abaf28742ff",
+    "446840.meta.json": "a5801d1033853b8640a1c24ecb6b7c4c5303e202c79d545708d1a781fb5ebb43"
+  },
+  "focused_tests_passed": 21,
+  "related_tests_passed": 130,
+  "market_rs_target_status": "PASS",
+  "full_pytest_status": "PASS_WITH_ACCEPTED_BASELINE_FAILURE",
+  "final_code_head": "ea9574fb7c4064bc1213f0ec3ddfb23641882f7c",
+  "final_code_tree": "4614aa443169e5f86b45ac01ef67b5696759eb76",
+  "code_commits": [
+    "3edf831",
+    "ea9574f"
+  ],
+  "final_code_frozen": true
+}

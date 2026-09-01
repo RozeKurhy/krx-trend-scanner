@@ -1,0 +1,34 @@
+{
+  "schema": "git_mutation_audit_v01",
+  "start_head": "8297475e6f1a37b8e2b70145e43c895267b69aef",
+  "start_tree": "63818dfdb7ff3314ce74e963139e850edce258df",
+  "canonical_data_mutated": true,
+  "production_files_planned": [
+    "src/trend_scanner/data/repository_v2.py"
+  ],
+  "test_files_planned": [
+    "tests/test_adjusted_price_store_backfill_correction_v01.py",
+    "tests/test_market_rs_authority_attribution_fix02.py",
+    "tests/test_adjusted_price_identity_boundary_correction_fix01.py"
+  ],
+  "unrelated_untracked_paths_not_staged": true,
+  "canonical_after_hashes": {
+    "446840.parquet": "ad1e255fbfbb1f82de3b2c9ac7c0cbb4cc32c8ea376b8c3b5d980abaf28742ff",
+    "446840.meta.json": "a5801d1033853b8640a1c24ecb6b7c4c5303e202c79d545708d1a781fb5ebb43"
+  },
+  "changed_paths": [
+    "src/trend_scanner/data/repository_v2.py",
+    "tests/test_adjusted_price_store_backfill_correction_v01.py",
+    "tests/test_market_rs_authority_attribution_fix02.py",
+    "tests/test_adjusted_price_identity_boundary_correction_fix01.py",
+    "data/market/adjusted/stocks/446840.parquet",
+    "data/market/adjusted/stocks/446840.meta.json"
+  ],
+  "full_pytest_executed_once": true,
+  "full_pytest_failure_allowed_baseline": true,
+  "production_test_commit": "3edf831",
+  "canonical_commit": "ea9574f",
+  "final_code_head": "ea9574fb7c4064bc1213f0ec3ddfb23641882f7c",
+  "final_code_tree": "4614aa443169e5f86b45ac01ef67b5696759eb76",
+  "remote_verification_pending": true
+}

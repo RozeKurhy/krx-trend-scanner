@@ -1,0 +1,144 @@
+{
+  "schema": "market_rs_historical_parity_v01",
+  "status": "PASS",
+  "as_of": "2026-08-14",
+  "population_input_count": 2528,
+  "population_output_count": 2528,
+  "unresolved_input_difference_count": 0,
+  "classification_counts": {
+    "EXACT_MATCH": 2339,
+    "APPROVED_NONTRADING_EXCLUSION": 119,
+    "APPROVED_ADJUSTED_PRICE_AUTHORITY_DELTA": 31,
+    "LEGACY_CACHE_DEFECT": 38,
+    "APPROVED_IDENTITY_LIFECYCLE_DELTA": 1
+  },
+  "gates": {
+    "historical_population_identity_resolved": true,
+    "unresolved_input_difference_count": 0,
+    "formula_recalculation_mismatch_count": 0,
+    "anchor_contract_mismatch_count": 0,
+    "unexplained_market_rs_mismatch_count": 0,
+    "unexplained_status_mismatch_count": 0,
+    "independent_rank_recalculation_mismatch_count": 0,
+    "independent_percentile_recalculation_mismatch_count": 0,
+    "unexplained_rank_delta_rows": 0,
+    "unexplained_percentile_delta_rows": 0,
+    "candidate_lookup_unexplained_mismatch_count": 0,
+    "investable_lookup_unexplained_mismatch_count": 0,
+    "current_run_executed": true,
+    "current_population_input_count": 2528,
+    "current_output_row_count": 2528,
+    "current_silent_row_drop_count": 0,
+    "unexpected_repository_error_count": 0,
+    "production_market_rs_legacy_stock_fallback": false,
+    "production_market_rs_legacy_benchmark_fallback": false,
+    "repository_v2_authoritative_stock_input": true,
+    "canonical_market_index_authoritative_benchmark": true,
+    "repository_reuse_preflight": "PASS",
+    "adjusted_canonical_changed": false,
+    "raw_canonical_changed": false,
+    "market_index_canonical_changed": false,
+    "live_network_requests": 0,
+    "repository_v2_defect_proven": false,
+    "source_authority_defect_proven": false
+  },
+  "446840": {
+    "ticker": "446840",
+    "market": "KOSDAQ",
+    "benchmark_code": "2001",
+    "comparison_start": "2025-08-01",
+    "comparison_end": "2026-08-14",
+    "legacy_as_of_present": true,
+    "repository_as_of_present": true,
+    "legacy_as_of_close": 3595.0,
+    "repository_as_of_close": 3595.0,
+    "anchor_date_3m": "2026-05-14",
+    "anchor_date_6m": "2026-02-06",
+    "anchor_date_12m": "2025-08-01",
+    "legacy_input": {
+      "present": true,
+      "row_count": 253,
+      "first_date": "2025-08-01",
+      "last_date": "2026-08-14",
+      "material_observations": {
+        "as_of": {
+          "date": "2026-08-14",
+          "present": true,
+          "close": 3595.0
+        },
+        "3m": {
+          "date": "2026-05-14",
+          "present": true,
+          "close": 6506.0
+        },
+        "6m": {
+          "date": "2026-02-06",
+          "present": true,
+          "close": 8202.0
+        },
+        "12m": {
+          "date": "2025-08-01",
+          "present": true,
+          "close": 10835.0
+        }
+      }
+    },
+    "repository_input": {
+      "present": true,
+      "row_count": 229,
+      "first_date": "2025-08-14",
+      "last_date": "2026-08-14",
+      "material_observations": {
+        "as_of": {
+          "date": "2026-08-14",
+          "present": true,
+          "close": 3595.0
+        },
+        "3m": {
+          "date": "2026-05-14",
+          "present": true,
+          "close": 6506.0
+        },
+        "6m": {
+          "date": "2026-02-06",
+          "present": true,
+          "close": 8202.0
+        },
+        "12m": {
+          "date": "2025-08-01",
+          "present": false,
+          "close": null
+        }
+      }
+    },
+    "input_classification": "APPROVED_IDENTITY_LIFECYCLE_DELTA",
+    "material_differences": [
+      {
+        "ticker": "446840",
+        "horizon": "12m",
+        "date": "2025-08-01",
+        "legacy_value": 10835.0,
+        "repository_value": null,
+        "legacy_present": true,
+        "repository_present": false
+      }
+    ],
+    "authority_attributions": [
+      {
+        "ticker": "446840",
+        "date": "2025-08-01",
+        "authority_source": "Repository V2 identity lifecycle authority",
+        "authority_artifact_path": "src/trend_scanner/data/repository_v2.py",
+        "authority_record_identifier": "KNOWN_OUTSIDE_IDENTITY_LIFECYCLE_DATES['446840', '2025-08-01']",
+        "authority_reason": "pre-boundary Kiwoom No.8 SPAC row is outside the post-boundary Gitsn analytic identity; source truth is preserved separately",
+        "identity_boundary_date": "2025-08-14",
+        "source_row_preserved": true,
+        "classification": "APPROVED_IDENTITY_LIFECYCLE_DELTA",
+        "legacy_value": 10835.0,
+        "repository_value": null
+      }
+    ]
+  },
+  "source_run_directory": "artifacts/data/end_to_end_data_parity/v01/adjusted_price_identity_boundary_correction/fix01/validation/market_rs_parity_run",
+  "live_network_requests": 0
+}
