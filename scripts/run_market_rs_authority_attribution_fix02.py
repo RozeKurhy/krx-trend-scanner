@@ -227,7 +227,16 @@ def _probe(repository: MarketDataRepositoryV2, adjusted_store: AdjustedPriceStor
         "repository_composed_row_count": 0 if composed is None else len(composed),
         "repository_error": repository_error,
         "offending_rows": offending,
-        "root_cause": "ADJUSTED_SOURCE_GAP" if evidence["rejected_raw_only_dates"] and set(evidence["rejected_raw_only_dates"]) <= set(KNOWN_ADJUSTED_SOURCE_GAP_DATES) else "UNRESOLVED",
+        "root_cause": (
+            "ADJUSTED_SOURCE_GAP"
+            if evidence["known_adjusted_gap_dates"]
+            and set(evidence["known_adjusted_gap_dates"]) <= {
+                date for ticker, date in KNOWN_ADJUSTED_SOURCE_GAP_DATES if ticker == "446840"
+            }
+            and not evidence["rejected_raw_only_dates"]
+            and evidence["projected_date_set_exact_match"]
+            else "UNRESOLVED"
+        ),
     }
 
 
