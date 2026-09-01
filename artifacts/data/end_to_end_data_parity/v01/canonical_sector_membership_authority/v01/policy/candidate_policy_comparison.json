@@ -1,0 +1,29 @@
+{
+  "policies": [
+    {
+      "deterministic": true,
+      "name": "FIRST_ENCOUNTERED",
+      "preferred": false,
+      "reason": "iteration/code-order dependent economic meaning not justified"
+    },
+    {
+      "deterministic": true,
+      "name": "MOST_SPECIFIC_MEMBERSHIP",
+      "preferred": true,
+      "result": "no multiple leaf conflicts in observed current population"
+    },
+    {
+      "deterministic": true,
+      "frozen_as": "MOST_SPECIFIC_NATIVE_SECTOR_V01",
+      "name": "EXPLICIT_HIERARCHY_TABLE",
+      "preferred": true,
+      "result": "parents independently backed by exact subset sets"
+    },
+    {
+      "deterministic": true,
+      "name": "SMALLEST_CONSTITUENT_SET",
+      "preferred": false,
+      "reason": "size-only heuristic; used as corroboration, not authority"
+    }
+  ]
+}
