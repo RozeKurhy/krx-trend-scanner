@@ -1,0 +1,14 @@
+{
+  "affected_mechanism_signature": "metadata.requested_start == population.first_common_date AND raw active date exists before that boundary; source proof is required before mutation",
+  "category": "REQUEST_WINDOW_DERIVATION_DEFECT",
+  "not_checkpoint_resume_defect": true,
+  "not_provider_fallback": true,
+  "not_store_write_truncation": true,
+  "schema": "acquisition_root_cause_v01",
+  "source_proof_count": 1,
+  "source_proof_tickers": [
+    "446840"
+  ],
+  "statement": "The production runner copied lifecycle first_common_date into the Naver request start. For 446840 that was 2025-08-14, while a separately recorded bounded Naver request covering 2025-08-01..14 returned valid adjusted rows on all nine preceding KRX sessions.",
+  "status": "PROVEN_FOR_446840"
+}

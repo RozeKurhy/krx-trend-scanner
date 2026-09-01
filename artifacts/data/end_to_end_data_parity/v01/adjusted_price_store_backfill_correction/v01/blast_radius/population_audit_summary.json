@@ -1,0 +1,24 @@
+{
+  "broad_issue_basis": "47 potential candidates (1.49%) are bounded; only 1 has independent source proof; no bulk mutation is authorized from raw-only evidence.",
+  "broad_systemic_issue": false,
+  "candidate_rule": "raw canonical cache contains at least one positive OHLC session strictly before lifecycle first_common_date AND adjusted metadata requested_start equals first_common_date; this is a potential signal only, not source proof",
+  "classification_counts": {
+    "EXPECTED_NO_DATA": 4,
+    "NO_LEADING_GAP": 3098,
+    "POTENTIAL_ACQUISITION_TRUNCATION": 46,
+    "PROVEN_ACQUISITION_TRUNCATION": 1
+  },
+  "input_population_count": 3149,
+  "missing_raw_authority_count": 660,
+  "offline_limitations": {
+    "missing_raw_is_not_source_absence_proof": true,
+    "raw_cache_missing_for_population_count": 660
+  },
+  "output_classification_count": 3149,
+  "population_authority_path": "artifacts/data/end_to_end_data_parity/v01/survivorship_safe_denominator_freeze/v01_spac_corrected_effective_authority/effective_historical_common_population.json",
+  "potential_candidate_count": 46,
+  "proven_affected_ticker_count": 1,
+  "proven_rule": "independent bounded Naver response contains the exact pre-boundary adjusted row",
+  "schema": "population_audit_summary_v01",
+  "unresolved_count": 0
+}

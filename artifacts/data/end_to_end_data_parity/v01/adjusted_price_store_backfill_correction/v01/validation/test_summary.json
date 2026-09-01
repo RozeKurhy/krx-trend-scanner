@@ -1,0 +1,46 @@
+{
+  "focused": {
+    "command": "caffeinate -i ./.venv/bin/pytest -q -p no:cacheprovider tests/test_adjusted_price_store_backfill_correction_v01.py tests/test_market_rs_authority_attribution_fix02.py tests/test_adjusted_price_source_integration_v01.py tests/test_repository_v2.py",
+    "passed": 77,
+    "failed": 0,
+    "duration_seconds": 1.61
+  },
+  "related_regression": {
+    "command": "caffeinate -i ./.venv/bin/pytest -q -p no:cacheprovider tests/test_adjusted_price_store_full_population_fix02.py tests/test_adjusted_price_store_full_population_fix02_fix02.py tests/test_adjusted_price_store_full_population_fix02_fix03.py tests/test_adjusted_price_store_full_population_v01.py tests/test_market_data_repository_v02_validation.py tests/test_market_rs_repository_adapter.py",
+    "passed": 111,
+    "failed": 0,
+    "duration_seconds": 12.39
+  },
+  "full_pytest": {
+    "command": "caffeinate -i ./.venv/bin/pytest -q -p no:cacheprovider --durations=50",
+    "executed_once": true,
+    "passed": 2308,
+    "failed": 1,
+    "skipped": 7,
+    "deselected": 5,
+    "warnings": 291109,
+    "duration_seconds": 1420.86,
+    "duration_human": "23:40",
+    "allowed_baseline_failure": "tests/test_krx_historical_backfill.py::test_recent_empty_is_not_checkpointed_and_general_resume_retries",
+    "new_failure_count": 0,
+    "result": "PASS_WITH_ALLOWED_BASELINE_FAILURE",
+    "output_artifact": "validation/pytest_durations_50.txt"
+  },
+  "market_rs_historical": {
+    "pass": true,
+    "duration_approximate": "about 8 minutes",
+    "network_requests": 0
+  },
+  "market_rs_current": {
+    "pass": true,
+    "duration_included_with_market_rs_run": true,
+    "network_requests": 0
+  },
+  "network_policy": {
+    "new_pykrx_requests": 0,
+    "new_krx_web_requests": 0,
+    "new_naver_requests": 0,
+    "prior_bounded_naver_response_reused": true
+  },
+  "schema": "test_summary_adjusted_price_store_backfill_correction_v01"
+}

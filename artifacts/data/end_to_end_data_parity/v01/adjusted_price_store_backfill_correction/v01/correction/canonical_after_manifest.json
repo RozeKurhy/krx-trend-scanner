@@ -1,0 +1,38 @@
+{
+  "adjusted_aggregate": {
+    "aggregate_sha256": "12eac8aac145c4e270555d8c6113124b4ee1a2a02d759ccfc4eb87da98a67598",
+    "file_count": 6290,
+    "root": "data/market/adjusted/stocks",
+    "total_bytes": 184116253
+  },
+  "captured_at_utc": "2026-09-01T07:25:49.379394+00:00",
+  "market_index": {
+    "path": "data/market/index/v01/market_index.parquet",
+    "sha256": "c95b6a581213eca1306f4fb321f71de4812d7414504a31ec4ecc1cf17b5bc1a8"
+  },
+  "market_index_unchanged": true,
+  "raw_aggregate": {
+    "aggregate_sha256": "56861252d04c248bd2e1b9930ebffab4bfc3dc9a7967c34e90186b7688604e1d",
+    "file_count": 8191,
+    "root": "data/market/raw/krx_stocks/v01",
+    "total_bytes": 554047770
+  },
+  "raw_unchanged": true,
+  "schema": "canonical_after_manifest_adjusted_price_store_backfill_correction_v01",
+  "ticker_446840": {
+    "actual_date_max": "2026-08-21",
+    "actual_date_min": "2025-08-01",
+    "date_max": "2026-08-21",
+    "date_min": "2025-08-01",
+    "file_size": 10841,
+    "metadata_path": "data/market/adjusted/stocks/446840.meta.json",
+    "metadata_sha256": "d890910f4e746845d726b33329301e2810561ab06e9a6516c3726b916a84044e",
+    "parquet_path": "data/market/adjusted/stocks/446840.parquet",
+    "parquet_sha256": "d2aefde74ea2aa49e4316e18c4f5a87b71a3d826b4a57fb5f13f775055fc11b1",
+    "requested_end": "2026-08-21",
+    "requested_start": "2025-08-01",
+    "row_count": 257,
+    "source_authority_id": "NAVER_DIRECT_DATE_RANGE_ADJUSTED_V1",
+    "source_semantics": "ADJUSTED_OHLC_ONLY"
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "directive": "ADJUSTED_PRICE_STORE_BACKFILL_CORRECTION_V01",
+  "branch": "codex/end-to-end-data-parity-v01",
+  "start_head": "04db71a35fe16173f84361aebf971972de8a3222",
+  "start_tree": "a718caeda6a06078489f757c693755764e295fe5",
+  "production_test_commit_scope": [
+    "src/trend_scanner/data/repository_v2.py",
+    "tests/test_market_rs_authority_attribution_fix02.py",
+    "tests/test_adjusted_price_store_backfill_correction_v01.py"
+  ],
+  "canonical_data_commit_scope": [
+    "data/market/adjusted/stocks/446840.parquet",
+    "data/market/adjusted/stocks/446840.meta.json"
+  ],
+  "evidence_commit_scope": "artifacts/data/end_to_end_data_parity/v01/adjusted_price_store_backfill_correction/v01/**",
+  "production_test_commit": {
+    "commit": "08b32330a2259eaaea015a2db93d0e14bfa6d42f",
+    "tree": "a0ee3d19a1abed1731e3049f830efee2160839ef",
+    "message": "fix: remove invalid adjusted source gap authority"
+  },
+  "pre_existing_untracked_paths_not_staged": [
+    "artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/corporate_action_evidence/v01_fix03_correction_13/",
+    "artifacts/data/end_to_end_data_parity/v01/adjusted_price_store_full_population_closure/authority_cutover_fix01/full_population_results.csv",
+    "artifacts/data/end_to_end_data_parity/v01/adjusted_price_store_full_population_closure/authority_cutover_fix02/production_zero_call_run/full_population_results.csv",
+    "artifacts/data/end_to_end_data_parity/v01/adjusted_price_store_full_population_closure/fresh_full_population_run_v01/"
+  ],
+  "forbidden_bulk_stage_commands_used": [],
+  "new_network_requests_this_directive": 0,
+  "canonical_mutation_gate": {
+    "root_cause_proven": true,
+    "blast_radius_classified": true,
+    "affected_tickers_exactly_enumerated": true,
+    "changed_existing_row_count": 0
+  },
+  "remote_verification": {
+    "pre_push_lookup": "NETWORK_LOOKUP_BLOCKED_IN_SANDBOX",
+    "post_push_required": true,
+    "remote_head_verified": false
+  },
+  "full_pytest": {
+    "executed_once": true,
+    "passed": 2308,
+    "allowed_baseline_failures": 1,
+    "new_failures": 0,
+    "skipped": 7,
+    "deselected": 5,
+    "duration_seconds": 1420.86
+  },
+  "schema": "git_mutation_audit_adjusted_price_store_backfill_correction_v01"
+}
