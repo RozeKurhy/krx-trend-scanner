@@ -34,8 +34,11 @@
   },
   "remote_verification": {
     "pre_push_lookup": "NETWORK_LOOKUP_BLOCKED_IN_SANDBOX",
-    "post_push_required": true,
-    "remote_head_verified": false
+    "post_push_required": false,
+    "remote_head_verified": true,
+    "verified_remote_head_before_metadata_commit": "2990a28f67b26a22ea88dc330b0ce855512b9a36",
+    "verified_remote_tree_before_metadata_commit": "fcf9e0f942f75877837875546be59a38a9992c11",
+    "metadata_only_follow_up_required": true
   },
   "full_pytest": {
     "executed_once": true,
