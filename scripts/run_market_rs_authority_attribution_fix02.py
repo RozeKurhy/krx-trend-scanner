@@ -19,6 +19,7 @@ from trend_scanner.data.index_store import IndexStore, MARKET_INDEX_FAMILY
 from trend_scanner.data.krx_raw_stock_store import KrxRawStockStore
 from trend_scanner.data.repository_v2 import (
     KNOWN_ADJUSTED_SOURCE_GAP_DATES,
+    KNOWN_OUTSIDE_IDENTITY_LIFECYCLE_DATES,
     MarketDataRepositoryV2,
     _project_analytic_sessions,
     _session_projection_evidence,
