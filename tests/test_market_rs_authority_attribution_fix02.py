@@ -176,29 +176,29 @@ def test_mixed_pair_authorities_do_not_become_ticker_level_unresolved() -> None:
     }
 
 
-def test_446840_exact_adjusted_gap_projects_without_raw_adjusted_substitution() -> None:
-    date = "2025-08-04"
-    assert ("446840", date) in KNOWN_ADJUSTED_SOURCE_GAP_DATES
+def test_446840_corrected_sessions_project_without_gap_authority_exclusion() -> None:
+    dates = [
+        "2025-08-01", "2025-08-04", "2025-08-05", "2025-08-06",
+        "2025-08-07", "2025-08-08", "2025-08-11", "2025-08-12",
+        "2025-08-13", "2025-08-14",
+    ]
+    assert KNOWN_ADJUSTED_SOURCE_GAP_DATES == {}
     adjusted = pd.DataFrame(
-        {"open": [40.0], "high": [42.0], "low": [39.0], "close": [41.0]},
-        index=pd.DatetimeIndex(["2025-08-14"]),
+        {"open": [40.0] * len(dates), "high": [42.0] * len(dates),
+         "low": [39.0] * len(dates), "close": [41.0] * len(dates)},
+        index=pd.DatetimeIndex(dates),
     )
-    raw = pd.DataFrame(
-        [
-            _raw_row(ticker="446840", date=date),
-            _raw_row(ticker="446840", date="2025-08-14"),
-        ]
-    ).set_index("date")
+    raw = pd.DataFrame([_raw_row(ticker="446840", date=date) for date in dates]).set_index("date")
     raw.attrs["ticker"] = "446840"
 
     projected_adjusted, projected_raw, evidence = _project_analytic_sessions(adjusted, raw)
 
-    assert evidence["known_adjusted_gap_dates"] == [date]
+    assert evidence["known_adjusted_gap_dates"] == []
     assert evidence["rejected_raw_only_dates"] == []
     assert evidence["projected_date_set_exact_match"] is True
-    assert list(projected_adjusted.index) == [pd.Timestamp("2025-08-14")]
-    assert list(projected_raw.index) == [pd.Timestamp("2025-08-14")]
-    assert projected_adjusted.loc[pd.Timestamp("2025-08-14"), "close"] == 41.0
+    assert list(projected_adjusted.index) == list(pd.DatetimeIndex(dates))
+    assert list(projected_raw.index) == list(pd.DatetimeIndex(dates))
+    assert projected_adjusted.loc[pd.Timestamp("2025-08-04"), "close"] == 41.0
 
 
 def test_unknown_raw_only_active_session_still_fails_closed() -> None:

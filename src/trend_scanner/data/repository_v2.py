@@ -58,20 +58,11 @@ NON_TRADING_PLACEHOLDER_FIELDS = (
 # exact pair set is frozen and hash-bound in repository_v2_session_authority;
 # no OHLC substitution or raw-data mutation is implied.
 ADJUSTED_SOURCE_NONUSABLE_AUTHORITY_SHA256 = SOURCE_CLOSURE_CHECKPOINT_SHA256
-# This remains an exact-pair authority map.  Entries are admitted only after
-# an offline source/physical-row reconciliation proves a bounded adjusted-source
-# leading gap; it is never a ticker-wide or ratio-based whitelist.
-KNOWN_ADJUSTED_SOURCE_GAP_DATES: dict[tuple[str, str], str] = {
-    ("446840", "2025-08-01"): "canonical adjusted source begins on 2025-08-14; exact raw-only session is excluded from the analytic view",
-    ("446840", "2025-08-04"): "canonical adjusted source begins on 2025-08-14; exact raw-only session is excluded from the analytic view",
-    ("446840", "2025-08-05"): "canonical adjusted source begins on 2025-08-14; exact raw-only session is excluded from the analytic view",
-    ("446840", "2025-08-06"): "canonical adjusted source begins on 2025-08-14; exact raw-only session is excluded from the analytic view",
-    ("446840", "2025-08-07"): "canonical adjusted source begins on 2025-08-14; exact raw-only session is excluded from the analytic view",
-    ("446840", "2025-08-08"): "canonical adjusted source begins on 2025-08-14; exact raw-only session is excluded from the analytic view",
-    ("446840", "2025-08-11"): "canonical adjusted source begins on 2025-08-14; exact raw-only session is excluded from the analytic view",
-    ("446840", "2025-08-12"): "canonical adjusted source begins on 2025-08-14; exact raw-only session is excluded from the analytic view",
-    ("446840", "2025-08-13"): "canonical adjusted source begins on 2025-08-14; exact raw-only session is excluded from the analytic view",
-}
+# No adjusted-source gap authority is currently admitted.  A raw-only active
+# session must remain unresolved until an independently bounded adjusted-source
+# response proves that the source is absent; canonical acquisition gaps are not
+# an authority by themselves.
+KNOWN_ADJUSTED_SOURCE_GAP_DATES: dict[tuple[str, str], str] = {}
 KNOWN_OUTSIDE_IDENTITY_LIFECYCLE_DATES: dict[tuple[str, str], str] = {
     ("123410", "2011-05-18"): "PIT/identity authority marks date outside ticker lifecycle",
     ("126700", "2011-09-15"): "PIT/identity authority marks date outside ticker lifecycle",
