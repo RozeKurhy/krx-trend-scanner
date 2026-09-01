@@ -1,0 +1,30 @@
+{
+  "delay_seconds": 3.0,
+  "execution_order": "CURRENT -> HISTORICAL -> CURRENT",
+  "forbidden_requests": [
+    "price",
+    "sector index",
+    "flow",
+    "fundamentals",
+    "unrelated"
+  ],
+  "hard_ceiling": 40,
+  "pair": [
+    {
+      "date": "2026-08-14",
+      "role": "positive_control",
+      "sector_code": "1009"
+    },
+    {
+      "date": "2025-08-01",
+      "role": "historical_control",
+      "sector_code": "1009"
+    },
+    {
+      "date": "2026-08-14",
+      "role": "positive_control_repeat",
+      "sector_code": "1009"
+    }
+  ],
+  "retry_policy": "no retry for identical HTML in sandwich"
+}

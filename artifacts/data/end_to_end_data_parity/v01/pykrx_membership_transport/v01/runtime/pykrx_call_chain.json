@@ -1,0 +1,25 @@
+{
+  "endpoint": "https://data.krx.co.kr/comm/bldAttendant/getJsonData.cmd",
+  "method": "POST",
+  "payload_contract": {
+    "bld": "dbms/MDC/STAT/standard/MDCSTAT00601",
+    "indIdx": "market group id first digit",
+    "indIdx2": "sector_code without first digit",
+    "trdDd": "YYYYMMDD"
+  },
+  "public": {
+    "line": 1281,
+    "source": "/Users/june/Documents/projects/krx-trend-scanner/.venv/lib/python3.13/site-packages/pykrx/stock/stock_api.py",
+    "symbol": "pykrx.stock.get_index_portfolio_deposit_file"
+  },
+  "underlying": {
+    "class": "pykrx.website.krx.market.core.지수구성종목",
+    "fetch_source": "/Users/june/Documents/projects/krx-trend-scanner/.venv/lib/python3.13/site-packages/pykrx/website/krx/market/core.py",
+    "http_base": "pykrx.website.comm.webio.Post.read -> KRX getJsonData.cmd"
+  },
+  "wrapper": {
+    "source": "/Users/june/Documents/projects/krx-trend-scanner/.venv/lib/python3.13/site-packages/pykrx/website/comm/util.py",
+    "symbol": "pykrx.website.krx.market.wrap.get_index_portfolio_deposit_file"
+  },
+  "wrapper_behavior": "dataframe_empty_handler catches JSONDecodeError and returns empty DataFrame"
+}
