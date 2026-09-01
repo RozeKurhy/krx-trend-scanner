@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import datetime
 from dataclasses import dataclass
+import hashlib
 from typing import Any
 
 import pandas as pd
@@ -109,6 +110,12 @@ class LifecycleStreamEngine:
     def __init__(self) -> None:
         self._event_cache: dict[str, dict[str, CanonicalLifecycleEventResult]] = {}
         self._timeline_by_ticker: dict[str, list[CanonicalLifecycleEventResult]] = {}
+        # A timeline is reusable only when the complete daily input is
+        # unchanged.  ParquetCache.load() returns a fresh DataFrame on every
+        # call, so object identity is not sufficient for mutation isolation.
+        self._timeline_input_fingerprint: dict[str, str] = {}
+        self._timeline_requested_date: dict[str, pd.Timestamp] = {}
+        self._target_snapshot_cache: dict[tuple[str, str, str], HistoricalSnapshot] = {}
         
         self.same_event_key_state_before_mismatches: int = 0
         self.same_event_key_termination_mismatches: int = 0
@@ -120,18 +127,44 @@ class LifecycleStreamEngine:
         self.lifecycle_off_by_one_errors: int = 0
         self.sequential_state_link_mismatch_count: int = 0
 
+    @staticmethod
+    def _daily_input_fingerprint(daily: pd.DataFrame) -> str:
+        """Return a deterministic content fingerprint for cache isolation.
+
+        The fingerprint covers both index and values, including missing
+        values.  It is intentionally computed before consulting any cached
+        lifecycle result so an in-memory mutation cannot be hidden by a stale
+        timeline.
+        """
+        if daily is None or daily.empty:
+            return "EMPTY"
+        hashed = pd.util.hash_pandas_object(daily, index=True)
+        return hashlib.sha256(hashed.to_numpy(dtype="uint64", copy=False).tobytes()).hexdigest()
+
     def replay_canonical_timeline(
         self,
         ticker: str,
         name: str,
         daily: pd.DataFrame,
         target_date: str | datetime.date,
+        *,
+        target_snapshot: HistoricalSnapshot | None = None,
     ) -> list[CanonicalLifecycleEventResult]:
         """Replay true sequential reducer over real historical snapshots up to target_date."""
         if daily is None or daily.empty:
             return []
 
-        target_snap = build_historical_snapshot(
+        input_fingerprint = self._daily_input_fingerprint(daily)
+        requested_date = pd.Timestamp(target_date)
+        cached_timeline = self._timeline_by_ticker.get(ticker)
+        if (
+            cached_timeline
+            and self._timeline_input_fingerprint.get(ticker) == input_fingerprint
+            and requested_date <= self._timeline_requested_date.get(ticker, requested_date)
+        ):
+            return cached_timeline
+
+        target_snap = target_snapshot or build_historical_snapshot(
             ticker=ticker,
             name=name,
             daily=daily,
@@ -198,6 +231,8 @@ class LifecycleStreamEngine:
             current_state_before = event_result.state_after
 
         self._timeline_by_ticker[ticker] = timeline
+        self._timeline_input_fingerprint[ticker] = input_fingerprint
+        self._timeline_requested_date[ticker] = requested_date
         return timeline
 
     def evaluate_request(
@@ -208,13 +243,18 @@ class LifecycleStreamEngine:
         requested_snapshot_date: str | datetime.date,
     ) -> CandidateRequestEvaluation:
         """Evaluate a historical snapshot request strictly by retrieving the target event from canonical sequential replay."""
-        snap = build_historical_snapshot(
-            ticker=ticker,
-            name=name,
-            daily=daily,
-            snapshot_date=requested_snapshot_date,
-            include_incomplete_periods=False,
-        )
+        input_fingerprint = self._daily_input_fingerprint(daily)
+        snapshot_key = (ticker, input_fingerprint, str(requested_snapshot_date))
+        snap = self._target_snapshot_cache.get(snapshot_key)
+        if snap is None:
+            snap = build_historical_snapshot(
+                ticker=ticker,
+                name=name,
+                daily=daily,
+                snapshot_date=requested_snapshot_date,
+                include_incomplete_periods=False,
+            )
+            self._target_snapshot_cache[snapshot_key] = snap
 
         monthly_as_of = str(snap.monthly.index[-1].date()) if (snap.monthly is not None and not snap.monthly.empty) else "NONE"
         weekly_as_of = str(snap.features.as_of) if hasattr(snap.features, "as_of") else str(snap.effective_as_of)
@@ -241,7 +281,13 @@ class LifecycleStreamEngine:
                 self.cross_ticker_event_reuses += 1
 
         # Replay canonical chronological timeline
-        timeline = self.replay_canonical_timeline(ticker, name, daily, requested_snapshot_date)
+        timeline = self.replay_canonical_timeline(
+            ticker,
+            name,
+            daily,
+            requested_snapshot_date,
+            target_snapshot=snap,
+        )
 
         if not timeline:
             res = classify_pattern_a_stage_v02_candidate(snap)
@@ -258,8 +304,20 @@ class LifecycleStreamEngine:
                 diagnostics=res.candidate_diagnostics,
             )
 
-        # Strictly return target event from sequential reducer timeline
-        event_result = timeline[-1]
+        # Strictly return the event matching this request's key.  A cached
+        # timeline may extend beyond the requested date (for example after a
+        # later request was evaluated first), so ``timeline[-1]`` is not
+        # necessarily the requested event.
+        event_result = self._event_cache.get(ticker, {}).get(event_key)
+        if event_result is None:
+            event_result = next(
+                (item for item in timeline if item.lifecycle_event_key == event_key),
+                None,
+            )
+        if event_result is None:
+            # Preserve the original fail-closed behavior for an unexpected
+            # timeline mismatch rather than returning a future event.
+            raise RuntimeError(f"Lifecycle event not found for requested snapshot: {ticker} {requested_snapshot_date}")
 
         return CandidateRequestEvaluation(
             ticker=ticker,

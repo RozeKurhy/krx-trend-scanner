@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import MISSING, fields
 from pathlib import Path
 import tempfile
 
@@ -21,19 +22,182 @@ _ARTIFACTS_DIR = _REPO_ROOT / "artifacts/patterns/pattern_a/production/flow"
 
 @pytest.fixture(scope="module")
 def base_scan_result():
-    """Run full universe scan once for module and reuse in negative tests."""
-    from trend_scanner.data.cache import ParquetCache
-    from trend_scanner.scanner.full_universe_scanner import scan_pattern_a_universe
+    """Load the immutable production scan once for validator negative tests.
 
-    cache_dir = _REPO_ROOT / "data" / "raw" / "stocks"
-    parquet_cache = ParquetCache(base_dir=cache_dir)
-    source_parquet = _REPO_ROOT / "artifacts/patterns/pattern_a/production/flow/source/foreign_flow_daily_20260814.parquet"
-    df_flow = pd.read_parquet(source_parquet) if source_parquet.exists() else pd.DataFrame()
-    return scan_pattern_a_universe(
-        cache=parquet_cache,
-        as_of=CANONICAL_AS_OF,
-        flow_df=df_flow,
-        enrich_flow_for_candidates=True,
+    The canonical scanner CSV contains the full 2,528-row structural result;
+    the canonical flow CSV contains the complete downstream fields for the
+    180 candidates.  Reconstructing the frozen result here keeps the negative
+    tests focused on validator fail-closed behavior instead of repeating the
+    multi-minute production scan.  The ``test_live_validation_runner`` below
+    still executes the real scanner path independently.
+    """
+    from trend_scanner.scanner.full_universe_scanner import (
+        PatternAUniverseScanResult,
+        PatternAUniverseScanRow,
+        PatternAUniverseScanSummary,
+        ScannerRowStatus,
+    )
+    from trend_scanner.filters.investability import InvestabilityStatus
+    from trend_scanner.patterns.pattern_a_evaluator import PatternACandidateState
+    from trend_scanner.patterns.pattern_a_feature_set import PatternAStage
+    from trend_scanner.universe.models import AssetType, FreshnessStatus, MarketType
+
+    scanner_csv = _REPO_ROOT / "artifacts/patterns/pattern_a/production/scanner/pattern_a_universe_scan_20260814.csv"
+    flow_csv = _REPO_ROOT / "artifacts/patterns/pattern_a/production/flow/pattern_a_foreign_flow_features_20260814.csv"
+    summary_json = _REPO_ROOT / "artifacts/patterns/pattern_a/production/scanner/pattern_a_universe_scan_20260814_summary.json"
+    if not scanner_csv.exists() or not flow_csv.exists() or not summary_json.exists():
+        pytest.fail("canonical scanner/flow artifacts required for immutable negative-test fixture")
+
+    scanner_df = pd.read_csv(scanner_csv, dtype={"ticker": str})
+    flow_df = pd.read_csv(flow_csv, dtype={"ticker": str})
+    scanner_df["ticker"] = scanner_df["ticker"].str.zfill(6)
+    flow_df["ticker"] = flow_df["ticker"].str.zfill(6)
+    flow_by_ticker = flow_df.set_index("ticker", drop=False)
+
+    def _value(row: pd.Series, name: str, default=None):
+        value = row.get(name, default)
+        return default if pd.isna(value) else value
+
+    def _optional_timestamp(value):
+        return None if value is None or pd.isna(value) else pd.Timestamp(value)
+
+    def _optional_float(value):
+        return None if value is None or pd.isna(value) else float(value)
+
+    def _bool(value, default=False):
+        if value is None or pd.isna(value):
+            return default
+        if isinstance(value, str):
+            return value.strip().lower() in {"true", "1", "yes"}
+        return bool(value)
+
+    def _tuple(value):
+        if value is None or pd.isna(value) or str(value).strip() == "":
+            return ()
+        return tuple(part for part in str(value).split(";") if part)
+
+    rows = []
+    for _, structural in scanner_df.iterrows():
+        ticker = structural["ticker"]
+        merged = structural.copy()
+        if ticker in flow_by_ticker.index:
+            flow_row = flow_by_ticker.loc[ticker]
+            for column, value in flow_row.items():
+                if column != "ticker":
+                    merged[column] = value
+
+        def _enum(enum_type, name, default):
+            raw = _value(merged, name, default.value if hasattr(default, "value") else default)
+            return enum_type(str(raw))
+
+        rows.append(
+            PatternAUniverseScanRow(
+                ticker=ticker,
+                name=str(_value(merged, "name", "")),
+                market=_enum(MarketType, "market", MarketType.UNKNOWN),
+                asset_type=_enum(AssetType, "asset_type", AssetType.COMMON),
+                requested_as_of=pd.Timestamp(_value(merged, "requested_as_of", CANONICAL_AS_OF)),
+                effective_as_of=_optional_timestamp(_value(merged, "effective_as_of")),
+                cache_present=_bool(_value(merged, "cache_present")),
+                cache_first_date=_optional_timestamp(_value(merged, "cache_first_date")),
+                cache_last_date=_optional_timestamp(_value(merged, "cache_last_date")),
+                daily_rows=int(_value(merged, "daily_rows", 0)),
+                completed_month_count=int(_value(merged, "completed_month_count", 0)),
+                freshness_status=_enum(FreshnessStatus, "freshness_status", FreshnessStatus.UNKNOWN),
+                staleness_trading_days=int(_value(merged, "staleness_trading_days", -1)),
+                quality_flags=_tuple(_value(merged, "quality_flags")),
+                quality_reason_codes=_tuple(_value(merged, "quality_reason_codes")),
+                raw_data_ready=_bool(_value(merged, "raw_data_ready")),
+                feature_ready=_bool(_value(merged, "feature_ready")),
+                score_ready=_bool(_value(merged, "score_ready")),
+                stage_ready=_bool(_value(merged, "stage_ready")),
+                evaluator_ready=_bool(_value(merged, "evaluator_ready")),
+                momentum_current_ready=_bool(_value(merged, "momentum_current_ready")),
+                momentum_1m_ready=_bool(_value(merged, "momentum_1m_ready")),
+                momentum_3m_ready=_bool(_value(merged, "momentum_3m_ready")),
+                momentum_6m_ready=_bool(_value(merged, "momentum_6m_ready")),
+                pattern_a_score=_optional_float(_value(merged, "pattern_a_score")),
+                official_stage=_enum(PatternAStage, "official_stage", PatternAStage.WEAK) if _value(merged, "official_stage") is not None else None,
+                candidate_state=_enum(PatternACandidateState, "candidate_state", PatternACandidateState.INSUFFICIENT_DATA),
+                evaluator_reason_codes=_tuple(_value(merged, "evaluator_reason_codes")),
+                base_score=_optional_float(_value(merged, "base_score")),
+                transition_score=_optional_float(_value(merged, "transition_score")),
+                core_score=_optional_float(_value(merged, "core_score")),
+                support_score=_optional_float(_value(merged, "support_score")),
+                confirmation_bonus=_optional_float(_value(merged, "confirmation_bonus")),
+                balanced_core_score=_optional_float(_value(merged, "balanced_core_score")),
+                alignment_bonus=_optional_float(_value(merged, "alignment_bonus")),
+                progressed_penalty=_optional_float(_value(merged, "progressed_penalty")),
+                score_delta_1m=_optional_float(_value(merged, "score_delta_1m")),
+                score_delta_3m=_optional_float(_value(merged, "score_delta_3m")),
+                score_delta_6m=_optional_float(_value(merged, "score_delta_6m")),
+                momentum_reason_codes_1m=_tuple(_value(merged, "momentum_reason_codes_1m")),
+                momentum_reason_codes_3m=_tuple(_value(merged, "momentum_reason_codes_3m")),
+                momentum_reason_codes_6m=_tuple(_value(merged, "momentum_reason_codes_6m")),
+                base_score_delta_1m=_optional_float(_value(merged, "base_score_delta_1m")),
+                base_score_delta_3m=_optional_float(_value(merged, "base_score_delta_3m")),
+                base_score_delta_6m=_optional_float(_value(merged, "base_score_delta_6m")),
+                transition_score_delta_1m=_optional_float(_value(merged, "transition_score_delta_1m")),
+                transition_score_delta_3m=_optional_float(_value(merged, "transition_score_delta_3m")),
+                transition_score_delta_6m=_optional_float(_value(merged, "transition_score_delta_6m")),
+                market_cap=_optional_float(_value(merged, "market_cap")),
+                market_cap_eok=_optional_float(_value(merged, "market_cap_eok")),
+                avg_trading_value_20d=_optional_float(_value(merged, "avg_trading_value_20d")),
+                avg_trading_value_20d_eok=_optional_float(_value(merged, "avg_trading_value_20d_eok")),
+                avg_trading_value_60d=_optional_float(_value(merged, "avg_trading_value_60d")),
+                avg_trading_value_60d_eok=_optional_float(_value(merged, "avg_trading_value_60d_eok")),
+                investability_status=_enum(InvestabilityStatus, "investability_status", InvestabilityStatus.DATA_UNAVAILABLE),
+                investability_reason=str(_value(merged, "investability_reason", "REQUIRED_METRIC_UNAVAILABLE")),
+                investability_ready=_bool(_value(merged, "investability_ready")),
+                market_cap_effective_date=_value(merged, "market_cap_effective_date"),
+                close_effective_date=_value(merged, "close_effective_date"),
+                tv20_last_observation_date=_value(merged, "tv20_last_observation_date"),
+                foreign_flow_data_status=str(_value(merged, "foreign_flow_data_status", "NOT_EVALUATED")),
+                foreign_flow_last_observation_date=_value(merged, "foreign_flow_last_observation_date"),
+                foreign_flow_first_observation_date=_value(merged, "foreign_flow_first_observation_date"),
+                foreign_flow_observation_count=int(_value(merged, "foreign_flow_observation_count", 0)),
+                foreign_net_buy_value_1d=_optional_float(_value(merged, "foreign_net_buy_value_1d")),
+                foreign_net_buy_value_5d=_optional_float(_value(merged, "foreign_net_buy_value_5d")),
+                foreign_net_buy_value_20d=_optional_float(_value(merged, "foreign_net_buy_value_20d")),
+                foreign_net_buy_value_60d=_optional_float(_value(merged, "foreign_net_buy_value_60d")),
+                foreign_flow_intensity_5d=_optional_float(_value(merged, "foreign_flow_intensity_5d")),
+                foreign_flow_intensity_20d=_optional_float(_value(merged, "foreign_flow_intensity_20d")),
+                foreign_flow_intensity_60d=_optional_float(_value(merged, "foreign_flow_intensity_60d")),
+                foreign_positive_days_5d=_optional_float(_value(merged, "foreign_positive_days_5d")),
+                foreign_positive_days_20d=_optional_float(_value(merged, "foreign_positive_days_20d")),
+                foreign_positive_days_60d=_optional_float(_value(merged, "foreign_positive_days_60d")),
+                foreign_positive_day_ratio_5d=_optional_float(_value(merged, "foreign_positive_day_ratio_5d")),
+                foreign_positive_day_ratio_20d=_optional_float(_value(merged, "foreign_positive_day_ratio_20d")),
+                foreign_positive_day_ratio_60d=_optional_float(_value(merged, "foreign_positive_day_ratio_60d")),
+                foreign_net_buy_avg_5d=_optional_float(_value(merged, "foreign_net_buy_avg_5d")),
+                foreign_net_buy_avg_20d=_optional_float(_value(merged, "foreign_net_buy_avg_20d")),
+                foreign_net_buy_avg_60d=_optional_float(_value(merged, "foreign_net_buy_avg_60d")),
+                row_status=_enum(ScannerRowStatus, "row_status", ScannerRowStatus.UNAVAILABLE),
+                error_type=_value(merged, "error_type"),
+                error_message=_value(merged, "error_message"),
+            )
+        )
+
+    summary_payload = json.loads(summary_json.read_text(encoding="utf-8"))
+    summary_kwargs = {}
+    for item in fields(PatternAUniverseScanSummary):
+        if item.name in summary_payload:
+            summary_kwargs[item.name] = summary_payload[item.name]
+        elif item.default is not MISSING:
+            summary_kwargs[item.name] = item.default
+        elif item.default_factory is not MISSING:  # type: ignore[comparison-overlap]
+            summary_kwargs[item.name] = item.default_factory()
+        elif item.name in {"investability_distribution", "score_distribution", "momentum_1m_distribution", "momentum_3m_distribution", "momentum_6m_distribution"}:
+            summary_kwargs[item.name] = {}
+        elif item.name.endswith("_count"):
+            summary_kwargs[item.name] = 0
+        else:
+            summary_kwargs[item.name] = {}
+    summary = PatternAUniverseScanSummary(**summary_kwargs)
+    return PatternAUniverseScanResult(
+        requested_as_of=pd.Timestamp(CANONICAL_AS_OF),
+        summary=summary,
+        rows=tuple(rows),
     )
 
 
@@ -314,4 +478,3 @@ def test_hard_gates_all_pass(flow_validation_summary: dict):
     for g_name, g_pass in gates.items():
         assert g_pass is True, f"Gate {g_name} failed!"
     assert flow_validation_summary["phase_11_status"] == "FLOW_INFRA_READY"
-

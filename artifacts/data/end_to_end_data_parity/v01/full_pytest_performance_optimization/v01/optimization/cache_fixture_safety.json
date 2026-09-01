@@ -1,0 +1,22 @@
+{
+  "schema": "cache_fixture_safety_v01",
+  "copy_on_read": true,
+  "scanner_cache_key_dimensions": [
+    "cache directory parquet names/size/mtime",
+    "default PIT universe/scanner/mcap/flow/index/sector artifact identities",
+    "as_of",
+    "reference_market_date",
+    "universe/filter arguments",
+    "DataFrame content fingerprints",
+    "explicit mapping/path arguments",
+    "enrichment flags"
+  ],
+  "scanner_custom_repository_policy": "cache disabled when market_rs_repository is caller-owned",
+  "lifecycle_key_dimensions": [
+    "ticker",
+    "full daily index/value fingerprint",
+    "requested snapshot date"
+  ],
+  "validation_is_cached": false,
+  "mutation_tests_masked": false
+}
