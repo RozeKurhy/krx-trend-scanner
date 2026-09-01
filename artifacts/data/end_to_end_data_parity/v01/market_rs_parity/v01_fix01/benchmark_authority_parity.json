@@ -1,0 +1,89 @@
+{
+  "historical_as_of": "2026-08-14",
+  "canonical_source": "data/market/index/v01/market_index.parquet",
+  "legacy_source": "artifacts/patterns/pattern_a/validation/relative_strength/source/market_index_daily_20260814.parquet",
+  "indices": {
+    "1001": {
+      "legacy_row_count": 638,
+      "canonical_row_count": 4091,
+      "legacy_date_min": "2024-01-02",
+      "legacy_date_max": "2026-08-14",
+      "canonical_date_min": "2010-01-04",
+      "canonical_date_max": "2026-08-14",
+      "date_set_difference_count": 3453,
+      "material_observations": {
+        "as_of": {
+          "date": "2026-08-14",
+          "legacy_present": true,
+          "canonical_present": true,
+          "legacy_close": 6977.94,
+          "canonical_close": 6977.94
+        },
+        "3m": {
+          "date": "2026-05-14",
+          "legacy_present": true,
+          "canonical_present": true,
+          "legacy_close": 7981.41,
+          "canonical_close": 7981.41
+        },
+        "6m": {
+          "date": "2026-02-06",
+          "legacy_present": true,
+          "canonical_present": true,
+          "legacy_close": 5089.14,
+          "canonical_close": 5089.14
+        },
+        "12m": {
+          "date": "2025-08-01",
+          "legacy_present": true,
+          "canonical_present": true,
+          "legacy_close": 3119.41,
+          "canonical_close": 3119.41
+        }
+      },
+      "material_observation_difference_count": 0,
+      "classification": "EXACT_MATCH_ON_MATERIAL_OBSERVATIONS"
+    },
+    "2001": {
+      "legacy_row_count": 638,
+      "canonical_row_count": 4091,
+      "legacy_date_min": "2024-01-02",
+      "legacy_date_max": "2026-08-14",
+      "canonical_date_min": "2010-01-04",
+      "canonical_date_max": "2026-08-14",
+      "date_set_difference_count": 3453,
+      "material_observations": {
+        "as_of": {
+          "date": "2026-08-14",
+          "legacy_present": true,
+          "canonical_present": true,
+          "legacy_close": 864.65,
+          "canonical_close": 864.65
+        },
+        "3m": {
+          "date": "2026-05-14",
+          "legacy_present": true,
+          "canonical_present": true,
+          "legacy_close": 1191.09,
+          "canonical_close": 1191.09
+        },
+        "6m": {
+          "date": "2026-02-06",
+          "legacy_present": true,
+          "canonical_present": true,
+          "legacy_close": 1080.77,
+          "canonical_close": 1080.77
+        },
+        "12m": {
+          "date": "2025-08-01",
+          "legacy_present": true,
+          "canonical_present": true,
+          "legacy_close": 772.79,
+          "canonical_close": 772.79
+        }
+      },
+      "material_observation_difference_count": 0,
+      "classification": "EXACT_MATCH_ON_MATERIAL_OBSERVATIONS"
+    }
+  }
+}

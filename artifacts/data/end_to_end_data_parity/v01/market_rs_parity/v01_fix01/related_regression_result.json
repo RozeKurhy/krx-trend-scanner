@@ -1,0 +1,11 @@
+{
+  "status": "PASS",
+  "executed": true,
+  "command": "env -u OPENDART_API_KEY -u KRX_ID -u KRX_PW PYTHONDONTWRITEBYTECODE=1 ./.venv/bin/python -m pytest -q -p no:cacheprovider tests/test_repository_v2.py tests/test_pattern_a_relative_strength_infrastructure.py tests/test_krx_market_index_migration_v01.py tests/test_stock_report_v03_relative_strength.py",
+  "passed": 141,
+  "failed": 0,
+  "skipped": 0,
+  "deselected": 1,
+  "duration_seconds": 136.26,
+  "network_requests": 0
+}
