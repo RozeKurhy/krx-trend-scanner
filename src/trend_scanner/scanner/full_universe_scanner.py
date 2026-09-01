@@ -26,12 +26,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field, replace
 from enum import Enum
-import hashlib
 import json
 import logging
 from pathlib import Path
 from typing import Any
-import copy
 
 import numpy as np
 import pandas as pd
@@ -96,139 +94,6 @@ logger = logging.getLogger(__name__)
 # ~1GB for every invocation.  A caller may still inject its own repository for
 # isolation or alternate stores.
 _DEFAULT_MARKET_RS_REPOSITORIES: dict[tuple[str, str], MarketDataRepositoryV2] = {}
-
-# Scanner output is an immutable tuple of frozen rows.  Reusing a completed
-# computation is therefore safe when (and only when) every input identity is
-# unchanged.  The cache is deliberately process-local: it never replaces the
-# validator, oracle comparison, or corruption/negative-test path that consumes
-# the result.
-_SCAN_RESULT_CACHE: dict[str, "PatternAUniverseScanResult"] = {}
-
-
-def _dataframe_fingerprint(frame: pd.DataFrame | None) -> str:
-    """Return a deterministic content identity for optional DataFrame inputs."""
-
-    if frame is None:
-        return "NONE"
-    if frame.empty:
-        return f"EMPTY:{tuple(frame.columns)}"
-    digest = hashlib.sha256()
-    digest.update(repr(tuple(frame.columns)).encode("utf-8"))
-    digest.update(repr(tuple(str(dtype) for dtype in frame.dtypes)).encode("utf-8"))
-    digest.update(pd.util.hash_pandas_object(frame, index=True).to_numpy(dtype="uint64", copy=False).tobytes())
-    return digest.hexdigest()
-
-
-def _directory_fingerprint(directory: Path) -> str:
-    """Fingerprint flat Parquet inputs so in-memory reuse cannot hide file mutation."""
-
-    if not directory.exists():
-        return "MISSING"
-    entries: list[tuple[str, int, int]] = []
-    for path in sorted(directory.glob("*.parquet")):
-        try:
-            stat = path.stat()
-        except OSError:
-            return "UNAVAILABLE"
-        entries.append((path.name, int(stat.st_size), int(stat.st_mtime_ns)))
-    return hashlib.sha256(repr(entries).encode("utf-8")).hexdigest()
-
-
-def _path_fingerprint(path: Path | str | None) -> str:
-    if path is None:
-        return "NONE"
-    candidate = Path(path)
-    try:
-        stat = candidate.stat()
-    except OSError:
-        return f"MISSING:{candidate}"
-    return f"{candidate.resolve()}:{stat.st_size}:{stat.st_mtime_ns}"
-
-
-def _scanner_cache_key(
-    *,
-    parquet_cache: ParquetCache,
-    as_of: str,
-    reference_market_date: str,
-    universe_securities: list[UniverseSecurity] | list[dict[str, Any]] | None,
-    target_tickers: list[str] | set[str] | None,
-    target_markets: list[MarketType | str] | set[MarketType | str] | None,
-    limit: int | None,
-    flow_df: pd.DataFrame | None,
-    flow_data_path: Path | str | None,
-    enrich_flow_for_candidates: bool,
-    market_index_df: pd.DataFrame | None,
-    market_index_path: Path | str | None,
-    sector_index_df: pd.DataFrame | None,
-    sector_index_path: Path | str | None,
-    sector_mapping: dict[str, tuple[str, str]] | None,
-    sector_mapping_path: Path | str | None,
-    enrich_rs_for_candidates: bool,
-    enrich_market_rs_cross_section: bool,
-    market_rs_repository: MarketDataRepositoryV2 | None,
-) -> str | None:
-    """Build a cache key, disabling reuse for caller-owned repository state."""
-
-    if market_rs_repository is not None:
-        return None
-    if universe_securities is None:
-        # The omitted arguments still resolve to repository-owned canonical
-        # files below.  Include their identities in the key so an in-process
-        # cache entry cannot survive a mutation of a default PIT artifact.
-        repo_root = Path(__file__).resolve().parent.parent.parent.parent
-        try:
-            as_of_token = pd.Timestamp(as_of).strftime("%Y%m%d")
-            ref_token = pd.Timestamp(reference_market_date).strftime("%Y%m%d")
-        except (TypeError, ValueError):
-            as_of_token = str(as_of).replace("-", "")
-            ref_token = str(reference_market_date).replace("-", "")
-        default_inputs: list[tuple[str, str]] = []
-        investability_dir = repo_root / "artifacts/patterns/pattern_a/production/investability"
-        scanner_dir = repo_root / "artifacts/patterns/pattern_a/production/scanner"
-        default_inputs.extend(
-            [
-                ("universe_primary", _path_fingerprint(investability_dir / f"pattern_a_investability_universe_{as_of_token}.csv")),
-                ("universe_reference", _path_fingerprint(investability_dir / f"pattern_a_investability_universe_{ref_token}.csv")),
-                ("scanner_primary", _path_fingerprint(scanner_dir / f"pattern_a_universe_scan_{as_of_token}.csv")),
-                ("scanner_reference", _path_fingerprint(scanner_dir / f"pattern_a_universe_scan_{ref_token}.csv")),
-                ("mcap", _path_fingerprint(investability_dir / "source" / f"krx_market_cap_{as_of_token}.csv")),
-                ("flow", _path_fingerprint(repo_root / "artifacts/patterns/pattern_a/production/flow/source" / f"foreign_flow_daily_{as_of_token}.parquet")),
-                ("market_index", _path_fingerprint(repo_root / "data/market/index/v01/market_index.parquet")),
-                ("market_index_meta", _path_fingerprint(repo_root / "data/market/index/v01/market_index.meta.json")),
-                ("sector_index", _path_fingerprint(repo_root / "artifacts/patterns/pattern_a/validation/relative_strength/source" / f"sector_index_daily_{as_of_token}.parquet")),
-            ]
-        )
-        universe_identity = {"default": default_inputs}
-    else:
-        universe_identity = []
-        for item in universe_securities:
-            if isinstance(item, UniverseSecurity):
-                universe_identity.append((item.ticker, item.name, str(item.market)))
-            else:
-                universe_identity.append((item.get("ticker"), item.get("name", ""), str(item.get("market", ""))))
-    payload = {
-        "cache_dir": str(parquet_cache.base_dir.resolve()),
-        "cache_files": _directory_fingerprint(parquet_cache.base_dir),
-        "as_of": as_of,
-        "reference_market_date": reference_market_date,
-        "universe": universe_identity,
-        "target_tickers": sorted(str(item) for item in target_tickers) if target_tickers is not None else None,
-        "target_markets": sorted(str(item) for item in target_markets) if target_markets is not None else None,
-        "limit": limit,
-        "flow_df": _dataframe_fingerprint(flow_df),
-        "flow_path": _path_fingerprint(flow_data_path),
-        "enrich_flow_for_candidates": enrich_flow_for_candidates,
-        "market_index_df": _dataframe_fingerprint(market_index_df),
-        "market_index_path": _path_fingerprint(market_index_path),
-        "sector_index_df": _dataframe_fingerprint(sector_index_df),
-        "sector_index_path": _path_fingerprint(sector_index_path),
-        "sector_mapping": sorted((str(k), tuple(str(vv) for vv in v)) for k, v in (sector_mapping or {}).items()),
-        "sector_mapping_path": _path_fingerprint(sector_mapping_path),
-        "enrich_rs_for_candidates": enrich_rs_for_candidates,
-        "enrich_market_rs_cross_section": enrich_market_rs_cross_section,
-    }
-    return hashlib.sha256(repr(payload).encode("utf-8")).hexdigest()
-
 
 def _default_market_rs_repository(repo_root: Path) -> MarketDataRepositoryV2:
     key = (
@@ -882,35 +747,6 @@ def scan_pattern_a_universe(
     ref_market_date = (
         str(reference_market_date).strip() if reference_market_date else req_as_of.strftime("%Y-%m-%d")
     )
-
-    scan_cache_key = _scanner_cache_key(
-        parquet_cache=parquet_cache,
-        as_of=as_of_str,
-        reference_market_date=ref_market_date,
-        universe_securities=universe_securities,
-        target_tickers=target_tickers,
-        target_markets=target_markets,
-        limit=limit,
-        flow_df=flow_df,
-        flow_data_path=flow_data_path,
-        enrich_flow_for_candidates=enrich_flow_for_candidates,
-        market_index_df=market_index_df,
-        market_index_path=market_index_path,
-        sector_index_df=sector_index_df,
-        sector_index_path=sector_index_path,
-        sector_mapping=sector_mapping,
-        sector_mapping_path=sector_mapping_path,
-        enrich_rs_for_candidates=enrich_rs_for_candidates,
-        enrich_market_rs_cross_section=enrich_market_rs_cross_section,
-        market_rs_repository=market_rs_repository,
-    )
-    if scan_cache_key is not None:
-        cached_result = _SCAN_RESULT_CACHE.get(scan_cache_key)
-        if cached_result is not None:
-            # Rows are frozen and the summary is treated as immutable by the
-            # scanner contract, but return a defensive copy so a caller's
-            # diagnostic mutation cannot contaminate later validation.
-            return copy.deepcopy(cached_result)
 
     # 2. Authoritative Universe 로딩 및 COMMON 종목 필터링
     repo_root = Path(__file__).resolve().parent.parent.parent.parent
@@ -1806,11 +1642,8 @@ def scan_pattern_a_universe(
         momentum_6m_distribution=mom_6m_dist,
     )
 
-    result = PatternAUniverseScanResult(
+    return PatternAUniverseScanResult(
         requested_as_of=req_as_of,
         summary=summary,
         rows=tuple(rows),
     )
-    if scan_cache_key is not None:
-        _SCAN_RESULT_CACHE[scan_cache_key] = result
-    return result

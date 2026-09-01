@@ -1,0 +1,26 @@
+{
+  "schema": "mutation_isolation_proof_v01_fix01",
+  "status": "PASS",
+  "proofs": [
+    {
+      "scope": "foreign-flow validator negatives",
+      "result": "13 passed, 1 deselected",
+      "evidence": "Real module fixture; validator monkeypatch returns deepcopy; ticker/investability/intensity mutations remain fail-closed."
+    },
+    {
+      "scope": "lifecycle/preseal",
+      "result": "10 passed",
+      "evidence": "Full daily fingerprint invalidation, event-key retrieval, request-order and corruption tests."
+    },
+    {
+      "scope": "scanner cache",
+      "result": "REMOVED",
+      "evidence": "No _SCAN_RESULT_CACHE symbol; no stale cache path."
+    },
+    {
+      "scope": "scanner/repository/RS",
+      "result": "17 + 72 passed",
+      "evidence": "Full scanner and Repository/RS adapter related suites."
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "schema": "rejected_v01_reference_v01",
+  "parent_directive": "FULL_PYTEST_PERFORMANCE_OPTIMIZATION_V01",
+  "parent_verdict": "CHANGES_REQUESTED",
+  "reference_full_pytest_seconds": 1197.19,
+  "reference_full_pytest_human": "19:57",
+  "reference_status": "REJECTED_NON_EQUIVALENT_PERFORMANCE_REFERENCE",
+  "issues": [
+    "CRITICAL-01 real 2528-row production scan removed from default Full Pytest",
+    "CRITICAL-02 _SCAN_RESULT_CACHE invalidation not fully proven",
+    "MAJOR-01 apples-to-apples runtime not measured",
+    "MINOR-01 semantic audit too shallow"
+  ]
+}

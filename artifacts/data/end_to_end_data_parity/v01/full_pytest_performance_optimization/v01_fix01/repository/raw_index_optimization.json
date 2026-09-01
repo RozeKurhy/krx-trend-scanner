@@ -1,0 +1,8 @@
+{
+  "schema": "raw_index_optimization_v01",
+  "decision": "DEFERRED",
+  "existing_safe_optimization": "_DEFAULT_MARKET_RS_REPOSITORIES already reuses one immutable default repository per process",
+  "measured_bottleneck": "Eager full-store read/validation of 8190 parquet partitions (9,204,280 rows; 1.17GB index memory)",
+  "why_not_changed": "Further lazy/persistent index redesign would expand authority semantics and requires dedicated repository parity work; no production behavior change introduced in FIX01.",
+  "additional_safe_seconds_saved": 0
+}

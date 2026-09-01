@@ -1,0 +1,24 @@
+F............                                                            [100%]
+=================================== FAILURES ===================================
+_________________ test_real_production_scan_execution_contract _________________
+
+base_scan_result = PatternAUniverseScanResult(requested_as_of=Timestamp('2026-08-14 00:00:00'), summary=PatternAUniverseScanSummary(reque...te_6m=None, sector_anchor_date_12m=None, row_status=<ScannerRowStatus.OK: 'OK'>, error_type=None, error_message=None)))
+
+    def test_real_production_scan_execution_contract(base_scan_result):
+        """The default suite must execute the real 2,528-row scanner path."""
+        assert _REAL_PRODUCTION_SCAN_EXECUTION_COUNT == 1
+        assert base_scan_result.summary.official_common_total == 2528
+        assert base_scan_result.summary.rows_emitted == 2528
+        assert base_scan_result.summary.candidate_raw_count == 180
+>       assert base_scan_result.summary.investability_investable_count == 103
+E       AssertionError: assert 1081 == 103
+E        +  where 1081 = PatternAUniverseScanSummary(requested_as_of='2026-08-14', reference_market_date='2026-08-14', official_common_total=25...le_count=180, candidate_sector_rs_distribution={'READY': 0, 'PARTIAL': 0, 'DATA_UNAVAILABLE': 180, 'NOT_EVALUATED': 0}).investability_investable_count
+E        +    where PatternAUniverseScanSummary(requested_as_of='2026-08-14', reference_market_date='2026-08-14', official_common_total=25...le_count=180, candidate_sector_rs_distribution={'READY': 0, 'PARTIAL': 0, 'DATA_UNAVAILABLE': 180, 'NOT_EVALUATED': 0}) = PatternAUniverseScanResult(requested_as_of=Timestamp('2026-08-14 00:00:00'), summary=PatternAUniverseScanSummary(reque...te_6m=None, sector_anchor_date_12m=None, row_status=<ScannerRowStatus.OK: 'OK'>, error_type=None, error_message=None))).summary
+
+tests/test_pattern_a_foreign_flow_infrastructure.py:70: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_pattern_a_foreign_flow_infrastructure.py::test_real_production_scan_execution_contract
+1 failed, 12 passed, 1 deselected, 50327 warnings in 315.22s (0:05:15)
+real 319.34
+user 312.53
+sys 10.42

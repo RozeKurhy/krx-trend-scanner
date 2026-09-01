@@ -1,0 +1,39 @@
+{
+  "schema": "optimization_manifest_v01_fix01",
+  "directive": "FULL_PYTEST_PERFORMANCE_OPTIMIZATION_V01_FIX01",
+  "status": "FINAL_FULL_PYTEST_COMPLETE_PENDING_COMMIT_PUSH",
+  "accepted_optimizations": [
+    {
+      "id": "OPT-01",
+      "scope": "src/trend_scanner/validation/stage_v02/lifecycle_stream.py",
+      "description": "Full daily-input fingerprint gated snapshot/timeline reuse; event-key matching preserves chronological request semantics.",
+      "measured": "162.14s -> 137.15s focused primary; related module 148.48s total",
+      "validation": "preseal 10 passed"
+    },
+    {
+      "id": "OPT-02",
+      "scope": "tests/test_pattern_a_foreign_flow_infrastructure.py",
+      "description": "Restored real scan once per module fixture and shares only immutable result through deep copies; this is validation restoration, not a runtime reduction.",
+      "measured": "real production path restored; focused module 13 passed",
+      "validation": "candidate/population/error contract passed"
+    }
+  ],
+  "removed_risky_optimization": {
+    "id": "OPT-03",
+    "scope": "src/trend_scanner/scanner/full_universe_scanner.py",
+    "action": "REMOVE _SCAN_RESULT_CACHE",
+    "reason": "Incomplete invalidation coverage; stale result blast radius eliminated."
+  },
+  "deferred": [
+    "Repository raw-index redesign",
+    "secondary backtest path sharing"
+  ],
+  "prohibited_actions_confirmed": [
+    "no test deletion",
+    "no population/sample/date reduction",
+    "no assertion weakening",
+    "no new skip/xfail/deselect",
+    "no global warning suppression",
+    "no artifact reconstruction replacing production scan"
+  ]
+}
