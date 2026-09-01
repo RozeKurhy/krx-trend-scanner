@@ -36,6 +36,7 @@ import pandas as pd
 
 from trend_scanner.data.cache import ParquetCache
 from trend_scanner.data.adjusted_price_store import AdjustedPriceStore
+from trend_scanner.data.index_store import IndexStore, MARKET_INDEX_FAMILY
 from trend_scanner.data.krx_raw_stock_store import KrxRawStockStore
 from trend_scanner.data.repository_v2 import MarketDataRepositoryV2
 from trend_scanner.patterns.pattern_a_evaluator import (
@@ -888,9 +889,17 @@ def scan_pattern_a_universe(
             if p.exists():
                 market_index_df_loaded = pd.read_parquet(p) if p.suffix == ".parquet" else pd.read_csv(p)
         elif market_index_df_loaded is None:
-            def_p = repo_root / "artifacts/patterns/pattern_a/validation/relative_strength/source" / f"market_index_daily_{req_as_of.strftime('%Y%m%d')}.parquet"
-            if def_p.exists():
-                market_index_df_loaded = pd.read_parquet(def_p)
+            # Production Market RS benchmark authority is the verified
+            # canonical INDEX_STORE family.  The historical relative-strength
+            # artifact remains a legacy comparison input for parity evidence
+            # only and must never be selected implicitly by the scanner.
+            market_index_df_loaded = IndexStore(
+                repo_root / "data/market/index/v01"
+            ).load_family(
+                MARKET_INDEX_FAMILY,
+                end=req_as_of_str,
+                index_codes=("1001", "2001"),
+            )
     except Exception as exc:
         logger.warning("Failed loading market index source (%s): %s", market_index_path, exc)
         market_index_df_loaded = None

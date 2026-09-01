@@ -28,6 +28,26 @@ class MarketRSRepositoryInput:
     requested_end: str
 
 
+# Repository V2 deliberately exposes a small, stable set of data-unavailable
+# diagnostics.  Only these errors may be converted to a fail-closed RS input.
+# Integrity, schema, range, and programming errors must remain visible to the
+# caller so they cannot be misreported as ordinary missing market data.
+EXPECTED_REPOSITORY_DATA_UNAVAILABLE_ERRORS = frozenset(
+    {
+        "DATA_UNAVAILABLE: ADJUSTED_MISSING",
+        "DATA_UNAVAILABLE: RAW_MISSING",
+        "REPOSITORY_V2_EMPTY",
+    }
+)
+
+
+def _expected_data_unavailable_reason(exc: MarketDataError) -> str | None:
+    reason = str(exc)
+    if reason in EXPECTED_REPOSITORY_DATA_UNAVAILABLE_ERRORS:
+        return reason
+    return None
+
+
 def benchmark_anchor_start(
     market_index_df: pd.DataFrame,
     *,
@@ -71,8 +91,10 @@ def resolve_market_rs_repository_input(
 ) -> MarketRSRepositoryInput:
     """Load one stock series from the shared Repository V2 instance.
 
-    Any Repository V2 error becomes a DATA_UNAVAILABLE input.  In particular,
-    no legacy cache or adjusted/raw source is consulted here.
+    Only an explicitly enumerated Repository V2 data-unavailable diagnostic is
+    converted to a DATA_UNAVAILABLE input.  Integrity/schema/runtime errors
+    propagate to the scanner's explicit ERROR path; no legacy cache or
+    adjusted/raw source is consulted here.
     """
 
     if repository is None:
@@ -84,8 +106,11 @@ def resolve_market_rs_repository_input(
         return MarketRSRepositoryInput(None, "BENCHMARK_ANCHOR_UNAVAILABLE", None, str(as_of))
     try:
         daily = repository.get_daily(str(ticker).zfill(6), start, as_of)
-    except Exception as exc:
-        return MarketRSRepositoryInput(None, str(exc), start, str(as_of))
+    except MarketDataError as exc:
+        expected_reason = _expected_data_unavailable_reason(exc)
+        if expected_reason is not None:
+            return MarketRSRepositoryInput(None, expected_reason, start, str(as_of))
+        raise
     if not isinstance(daily, pd.DataFrame) or daily.empty:
         return MarketRSRepositoryInput(None, "REPOSITORY_V2_EMPTY", start, str(as_of))
     if "close" not in daily.columns:
@@ -102,6 +127,7 @@ def resolve_market_rs_repository_input(
 
 
 __all__ = [
+    "EXPECTED_REPOSITORY_DATA_UNAVAILABLE_ERRORS",
     "MarketRSRepositoryInput",
     "benchmark_anchor_start",
     "resolve_market_rs_repository_input",
