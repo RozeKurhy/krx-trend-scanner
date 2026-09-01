@@ -28,9 +28,9 @@ from trend_scanner.data.krx_raw_stock_store import KrxRawStockStore
 from trend_scanner.data.repository_v2 import MarketDataRepositoryV2
 from trend_scanner.data.repository_v2_session_authority import (
     ADJUSTED_ANALYTICALLY_NONUSABLE_DATES,
-    KNOWN_OUTSIDE_IDENTITY_LIFECYCLE_DATES,
     SOURCE_CLOSURE_CHECKPOINT_SHA256,
 )
+from trend_scanner.data.repository_v2 import KNOWN_OUTSIDE_IDENTITY_LIFECYCLE_DATES
 from trend_scanner.relative_strength.cross_section import (
     CROSS_SECTION_COLUMNS,
     attach_cross_sectional_rs,
