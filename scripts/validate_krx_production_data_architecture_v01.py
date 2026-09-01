@@ -124,6 +124,9 @@ RUNTIME_ARTIFACT_EXCLUDED_PATHS = {
     "src/trend_scanner/data/source_authority_review.py",
     "src/trend_scanner/data/corporate_action_authority.py",
     "src/trend_scanner/data/opendart_preflight.py",
+    # Repository V2 session-authority reconciliation binds to an immutable
+    # closure checkpoint as evidence, not as a mutable runtime data source.
+    "src/trend_scanner/data/repository_v2_session_authority.py",
 }
 RUNTIME_ARTIFACT_EXCLUDED_LITERAL_PATTERNS = ("artifacts/reporting/**",)
 
