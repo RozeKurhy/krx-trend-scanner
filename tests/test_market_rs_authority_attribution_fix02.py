@@ -138,6 +138,44 @@ def test_unproven_ratio_difference_remains_unresolved() -> None:
     assert evidence["authority_artifact_path"] == ""
 
 
+def test_mixed_pair_authorities_do_not_become_ticker_level_unresolved() -> None:
+    dates = ["2025-08-01", "2026-02-06", "2026-05-14"]
+    legacy = pd.DataFrame(
+        {"close": [2325.0, 1852.0, 1364.0]},
+        index=pd.DatetimeIndex(dates),
+    )
+    repository = pd.DataFrame(
+        {"close": [11625.0, 9260.0]},
+        index=pd.DatetimeIndex(dates[:2]),
+    )
+    material_dates = {"12m": dates[0], "6m": dates[1], "3m": dates[2]}
+    authority_map = {
+        ("006740", dates[0]): {
+            "final_classification": "APPROVED_ADJUSTED_PRICE_AUTHORITY_DELTA",
+            "authority_evidence": {"classification": "APPROVED_ADJUSTED_PRICE_AUTHORITY_DELTA"},
+        },
+        ("006740", dates[1]): {
+            "final_classification": "APPROVED_ADJUSTED_PRICE_AUTHORITY_DELTA",
+            "authority_evidence": {"classification": "APPROVED_ADJUSTED_PRICE_AUTHORITY_DELTA"},
+        },
+        ("006740", dates[2]): {
+            "final_classification": "APPROVED_NONTRADING_EXCLUSION",
+            "authority_evidence": {"classification": "APPROVED_NONTRADING_EXCLUSION"},
+        },
+    }
+
+    classification, differences, attributions = parity.material_input_comparison(
+        "006740", legacy, repository, material_dates, None, authority_map
+    )
+
+    assert classification == "APPROVED_ADJUSTED_PRICE_AUTHORITY_DELTA"
+    assert len(differences) == 3
+    assert {item["classification"] for item in attributions} == {
+        "APPROVED_ADJUSTED_PRICE_AUTHORITY_DELTA",
+        "APPROVED_NONTRADING_EXCLUSION",
+    }
+
+
 def test_446840_exact_adjusted_gap_projects_without_raw_adjusted_substitution() -> None:
     date = "2025-08-04"
     assert ("446840", date) in KNOWN_ADJUSTED_SOURCE_GAP_DATES

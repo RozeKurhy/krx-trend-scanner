@@ -232,6 +232,20 @@ def _authority_record(ticker: str, date: str, classification: str, reason: str) 
     return {"ticker": ticker, "date": date, "legacy_value": None, "repository_value": None, "classification": classification, "authority_artifact_path": path, "authority_record_key": key, "authority_reason": authority_reason, "source_closure_checkpoint_sha256": SOURCE_CLOSURE_CHECKPOINT_SHA256}
 
 
+_PAIR_CLASSIFICATION_PRIORITY = (
+    "REPOSITORY_V2_DEFECT",
+    "SOURCE_AUTHORITY_DEFECT",
+    "UNRESOLVED",
+    "LEGACY_CACHE_CORPORATE_ACTION_ADJUSTMENT_DEFECT",
+    "LEGACY_CACHE_DEFECT",
+    "APPROVED_ADJUSTED_PRICE_AUTHORITY_DELTA",
+    "APPROVED_ANALYTIC_SESSION_EXCLUSION",
+    "APPROVED_SOURCE_NONUSABLE_EXCLUSION",
+    "APPROVED_NONTRADING_EXCLUSION",
+    "APPROVED_IDENTITY_LIFECYCLE_DELTA",
+)
+
+
 def material_input_comparison(
     ticker: str,
     legacy: pd.DataFrame | None,
@@ -272,7 +286,19 @@ def material_input_comparison(
     if not differences:
         return "EXACT_MATCH", differences, attributions
     classifications = {item["classification"] for item in attributions}
-    return (next(iter(classifications)) if len(classifications) == 1 else "UNRESOLVED"), differences, attributions
+    if len(classifications) == 1:
+        return next(iter(classifications)), differences, attributions
+    # A ticker can legitimately contain multiple independently adjudicated
+    # material pairs (for example one non-trading placeholder and two adjusted
+    # authority deltas).  Keep the exact pair classifications in the authority
+    # records and use a deterministic allowed representative only for the
+    # ticker-level census label.  Unresolved/defect pairs retain priority.
+    representative = next(
+        classification
+        for classification in _PAIR_CLASSIFICATION_PRIORITY
+        if classification in classifications
+    )
+    return representative, differences, attributions
 
 
 def independent_formula(stock: pd.DataFrame | None, benchmark: pd.DataFrame, code: str, as_of: str) -> dict[str, Any]:
@@ -452,7 +478,12 @@ def main() -> int:
     unexplained_level = sum(bool(row["level_difference_fields"]) and row["input_classification"] == "EXACT_MATCH" for row in rows)
     unexplained_status = sum(row["legacy_status"] != row["repository_status"] and row["input_classification"] == "EXACT_MATCH" for row in rows)
     unexplained_anchor = sum(bool(row["anchor_difference_fields"]) and row["input_classification"] == "EXACT_MATCH" for row in rows)
-    unresolved_input_difference_count = sum(len(row["input_material_differences"]) for row in rows if row["input_classification"] == "UNRESOLVED")
+    unresolved_input_difference_count = sum(
+        1
+        for row in rows
+        for attribution in row["authority_attributions"]
+        if attribution.get("classification") == "UNRESOLVED"
+    )
 
     legacy_levels = pd.DataFrame([{"ticker": row["ticker"], "market": row["market"], **row["legacy_result"]} for row in rows])
     repository_levels = pd.DataFrame([{"ticker": row["ticker"], "market": row["market"], **row["repository_result"]} for row in rows])
