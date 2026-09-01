@@ -1,0 +1,74 @@
+{
+  "directive": "ADJUSTED_SOURCE_GAP_AUTHORITY_REVIEW_V01",
+  "search_roots": [
+    "artifacts/data",
+    "data/market",
+    "logs (absent)",
+    "reports (absent)"
+  ],
+  "searched_artifacts": [
+    "artifacts/data/end_to_end_data_parity/v01/market_rs_parity/v01_fix02/ticker_446840_session_probe_historical.json",
+    "artifacts/data/end_to_end_data_parity/v01/market_rs_parity/v01_fix02/ticker_446840_session_probe_current.json",
+    "artifacts/data/end_to_end_data_parity/v01/market_rs_parity/v01_fix02/ticker_446840_root_cause.json",
+    "artifacts/data/end_to_end_data_parity/v01/market_rs_parity/v01_fix02/authority_changes.json",
+    "artifacts/data/end_to_end_data_parity/v01/market_rs_parity/v01_fix02/material_authority_adjudication.json",
+    "artifacts/data/end_to_end_data_parity/v01/market_rs_parity/v01_fix02/legacy_vs_repository_input_census_20260814.json",
+    "artifacts/data/end_to_end_data_parity/v01/market_data_repository_v2_parity/v01_session_authority_reconciliation_fix01/repository_v2_full_population_runtime_census.json",
+    "artifacts/data/end_to_end_data_parity/v01/adjusted_price_store_full_population_closure/fresh_full_population_run_v01/full_population_checkpoint.json",
+    "artifacts/data/end_to_end_data_parity/v01/adjusted_price_store_full_population_closure/authority_cutover_fix02/production_zero_call_run/full_population_checkpoint.json",
+    "data/market/adjusted/stocks/446840.meta.json",
+    "data/market/adjusted/staging/**/446840.meta.json",
+    "artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_integration/v01/live_evidence/*request.json"
+  ],
+  "matching_artifacts": [
+    {
+      "path": "artifacts/data/end_to_end_data_parity/v01/market_rs_parity/v01_fix02/ticker_446840_session_probe_historical.json",
+      "matching_requested_start": "2025-08-01",
+      "matching_requested_end": "2026-08-14",
+      "source_authority_id": null,
+      "request_parameters": null,
+      "response_sha256": null,
+      "usable_authority_record": false,
+      "reason": "physical session comparison only; no actual Naver request/response provenance"
+    },
+    {
+      "path": "artifacts/data/end_to_end_data_parity/v01/market_rs_parity/v01_fix02/ticker_446840_session_probe_current.json",
+      "matching_requested_start": "2025-08-07",
+      "matching_requested_end": "2026-08-21",
+      "source_authority_id": null,
+      "request_parameters": null,
+      "response_sha256": null,
+      "usable_authority_record": false,
+      "reason": "physical session comparison only; does not cover 2025-08-01 through 2025-08-06"
+    },
+    {
+      "path": "data/market/adjusted/stocks/446840.meta.json",
+      "matching_requested_start": "2025-08-14",
+      "matching_requested_end": "2026-08-21",
+      "source_authority_id": "NAVER_DIRECT_DATE_RANGE_ADJUSTED_V1",
+      "request_parameters": null,
+      "response_sha256": null,
+      "usable_authority_record": false,
+      "reason": "canonical request begins after all nine target dates"
+    },
+    {
+      "path": "data/market/adjusted/staging/**/446840.meta.json",
+      "matching_requested_start": "2025-08-14",
+      "matching_requested_end": "2026-08-21",
+      "source_authority_id": "NAVER_DIRECT_DATE_RANGE_ADJUSTED_V1",
+      "request_parameters": null,
+      "response_sha256": null,
+      "usable_authority_record": false,
+      "reason": "all staging copies mirror the late canonical request"
+    }
+  ],
+  "matching_requested_start_values": ["2025-08-01", "2025-08-07", "2025-08-14"],
+  "matching_request_ranges": [
+    "2025-08-01..2026-08-14 (probe artifact only)",
+    "2025-08-07..2026-08-21 (probe artifact only)",
+    "2025-08-14..2026-08-21 (canonical metadata and staging copies)"
+  ],
+  "usable_authority_records": [],
+  "offline_provenance_sufficient": false,
+  "reason": "No offline artifact binds an actual NAVER_DIRECT_DATE_RANGE_ADJUSTED_V1 request covering 2025-08-01..2025-08-13 to a raw response hash and target-date census. Stage B was therefore required."
+}
