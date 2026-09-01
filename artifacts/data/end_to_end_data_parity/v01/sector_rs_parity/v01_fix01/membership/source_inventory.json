@@ -1,0 +1,58 @@
+{
+  "blockers": [
+    "AMBIGUOUS_SECTOR_MEMBERSHIP_AUTHORITY",
+    "PYKRX_HISTORICAL_MEMBERSHIP_NOT_RELIABLE"
+  ],
+  "decision": "Use PyKRX membership endpoint only; do not use PyKRX price or adjusted-price fallback.",
+  "sources": [
+    {
+      "authority": "NOT_PIT_SAFE",
+      "name": "IndexPriceDataProvider.build_sector_mapping",
+      "path": "src/trend_scanner/data/index_price_provider.py:252-379",
+      "role": "legacy ticker-to-sector CSV builder"
+    },
+    {
+      "authority": "OBSERVED_CURRENT_AND_PARTIAL_HISTORICAL; BLOCKED",
+      "name": "PyKRX get_index_portfolio_deposit_file",
+      "path": ".venv/lib/python3.13/site-packages/pykrx/stock/stock_api.py:1281",
+      "role": "bounded membership acquisition source"
+    },
+    {
+      "authority": "NOT_FULL_COMMON",
+      "market_counts": {
+        "KOSDAQ": 0,
+        "KOSPI": 764
+      },
+      "name": "legacy sector_mapping_20260814.csv",
+      "path": "artifacts/patterns/pattern_a/validation/relative_strength/source/sector_mapping_20260814.csv",
+      "role": "validation mapping",
+      "rows": 764
+    },
+    {
+      "authority": "NOT_PRODUCTION",
+      "name": "kosdaq_rs_validation_membership.csv",
+      "path": "artifacts/data/krx_openapi/sector_rs_migration/v01/kosdaq_rs_validation_membership.csv",
+      "role": "bounded validation sample",
+      "rows": 6
+    },
+    {
+      "authority": "NOT_TICKER_MEMBERSHIP",
+      "name": "production_sector_mapping_contract.json",
+      "path": "artifacts/data/krx_openapi/sector_rs_migration/v01/production_sector_mapping_contract.json",
+      "role": "sector-code to index identity"
+    },
+    {
+      "authority": "FUTURE_STORE_NOT_IMPLEMENTED",
+      "name": "SECTOR_MEMBERSHIP contract",
+      "path": "src/trend_scanner/data/source_contracts.py:239-270",
+      "role": "target layer; current PyKRX source"
+    },
+    {
+      "authority": "SECTOR_INDEX_ONLY",
+      "name": "sector_rs_krx_migration_v01.md",
+      "path": "docs/architecture/sector_rs_krx_migration_v01.md",
+      "role": "benchmark migration contract"
+    }
+  ],
+  "status": "BLOCKED"
+}
