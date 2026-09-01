@@ -437,6 +437,7 @@ def main() -> int:
     common_dates = sorted(set(canonical[canonical["index_code"].astype(str) == "1001"]["date"].astype(str)) & set(canonical[canonical["index_code"].astype(str) == "2001"]["date"].astype(str)))
     resolved_current_as_of = common_dates[-1] if common_dates else None
     current_rows: list[dict[str, Any]] = []; current_unexpected_errors = 0
+    current_error_census: list[dict[str, Any]] = []
     if resolved_current_as_of is not None:
         current_index = canonical[canonical["date"].astype(str) <= resolved_current_as_of].copy()
         for item in population.to_dict("records"):
@@ -445,7 +446,15 @@ def main() -> int:
                 resolved = resolve_market_rs_repository_input(repository, ticker=ticker, as_of=resolved_current_as_of, market_code=code, market_index_df=current_index)
                 result = compute_relative_strength_features(ticker, resolved_current_as_of, resolved.stock_df, current_index, market); status = _status_value(result); reason = resolved.reason
             except Exception as exc:
-                current_unexpected_errors += 1; status = "ERROR"; reason = f"{type(exc).__name__}: {exc}"
+                current_unexpected_errors += 1
+                current_error_census.append({
+                    "phase": "current_readiness",
+                    "ticker": ticker,
+                    "as_of": resolved_current_as_of,
+                    "error_type": type(exc).__name__,
+                    "error": str(exc),
+                })
+                status = "ERROR"; reason = f"{type(exc).__name__}: {exc}"
             current_rows.append({"ticker": ticker, "market": market, "status": status, "valid_3m": status in {"READY", "PARTIAL"}, "valid_6m": status == "READY", "valid_12m": status == "READY", "reason": reason})
     current_status_counts = pd.Series([row["status"] for row in current_rows], dtype="string").value_counts().to_dict() if current_rows else {}
 
@@ -480,7 +489,7 @@ def main() -> int:
     write_json("no_lookahead_audit.json", {"future_rows_used": False, "exact_as_of_filter": True, "benchmark_future_rows_excluded": True, "stock_future_rows_excluded": True, "current_run_as_of": resolved_current_as_of})
     write_json("canonical_guard_before_after.json", {"adjusted_aggregate_before": adjusted_before, "adjusted_aggregate_after": adjusted_after, "raw_aggregate_before": raw_before, "raw_aggregate_after": raw_after, "market_index_sha256_before": canonical_before, "market_index_sha256_after": canonical_after, "adjusted_canonical_changed": adjusted_before["aggregate_sha256"] != adjusted_after["aggregate_sha256"], "raw_canonical_changed": raw_before["aggregate_sha256"] != raw_after["aggregate_sha256"], "market_index_canonical_changed": canonical_before != canonical_after})
     write_json("network_accounting.json", {"offline_only": True, "live_network_requests": 0, "pykrx_calls": 0, "krx_open_api_calls": 0, "opendart_calls": 0, "naver_calls": 0})
-    write_json("repository_exception_accounting.json", {"expected_data_unavailable_count": int(expected_data_unavailable_count), "unexpected_repository_error_count": int(unexpected_repository_error_count + current_unexpected_errors), "unexpected_errors": repository_error_census, "expected_error_taxonomy": sorted(EXPECTED_REPOSITORY_DATA_UNAVAILABLE_ERRORS)})
+    write_json("repository_exception_accounting.json", {"expected_data_unavailable_count": int(expected_data_unavailable_count), "unexpected_repository_error_count": int(unexpected_repository_error_count + current_unexpected_errors), "unexpected_errors": repository_error_census + current_error_census, "expected_error_taxonomy": sorted(EXPECTED_REPOSITORY_DATA_UNAVAILABLE_ERRORS)})
     write_json("git_mutation_audit.json", {"canonical_data_mutated": adjusted_before["aggregate_sha256"] != adjusted_after["aggregate_sha256"] or raw_before["aggregate_sha256"] != raw_after["aggregate_sha256"] or canonical_before != canonical_after, "canonical_source_mutation": False, "evidence_directory": str(OUT.relative_to(ROOT))})
     start_identity = git_identity(START_HEAD) if subprocess.call(["git", "cat-file", "-e", f"{START_HEAD}^{{commit}}"], cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) == 0 else {"head": START_HEAD, "tree": None}
     write_json("execution_identity.json", {"directive": "MARKET_RS_PARITY_V01_FIX01", "start_head": START_HEAD, "start_tree": start_identity["tree"], "final_code_head": final_code_identity["head"], "final_code_tree": final_code_identity["tree"], "tested_code_head": final_code_identity["head"], "tested_code_tree": final_code_identity["tree"], "evidence_base_head": final_code_identity["head"], "identity_scope": "FIX01 offline parity/current-readiness evidence", "offline_only": True})
@@ -490,7 +499,51 @@ def main() -> int:
     write_json("pytest_duration_profile.json", {"status": "PENDING_FINAL_CODE_FREEZE", "executed": False})
 
     gates = {"historical_population_identity_resolved": True, "unresolved_input_difference_count": unresolved_input_difference_count, "formula_recalculation_mismatch_count": formula_mismatch, "anchor_contract_mismatch_count": unexplained_anchor, "unexplained_market_rs_mismatch_count": unexplained_level, "unexplained_status_mismatch_count": unexplained_status, "independent_rank_recalculation_mismatch_count": independent_rank_mismatch, "independent_percentile_recalculation_mismatch_count": independent_percentile_mismatch, "unexplained_rank_delta_rows": unexplained_rank_delta_rows, "unexplained_percentile_delta_rows": unexplained_percentile_delta_rows, "candidate_lookup_unexplained_mismatch_count": candidate_lookup_mismatch + candidate_missing, "investable_lookup_unexplained_mismatch_count": investable_lookup_mismatch + investable_missing, "current_run_executed": resolved_current_as_of is not None, "current_population_input_count": len(population), "current_output_row_count": len(current_rows), "current_silent_row_drop_count": len(population) - len(current_rows), "unexpected_repository_error_count": unexpected_repository_error_count + current_unexpected_errors, "production_market_rs_legacy_stock_fallback": False, "production_market_rs_legacy_benchmark_fallback": False, "repository_v2_authoritative_stock_input": True, "canonical_market_index_authoritative_benchmark": True, "repository_reuse_preflight": "PASS", "adjusted_canonical_changed": adjusted_before["aggregate_sha256"] != adjusted_after["aggregate_sha256"], "raw_canonical_changed": raw_before["aggregate_sha256"] != raw_after["aggregate_sha256"], "market_index_canonical_changed": canonical_before != canonical_after, "live_network_requests": 0}
-    blocking = [key for key, value in gates.items() if value is False or (isinstance(value, int) and value != 0)]
+    # Boolean gates are not integers for acceptance purposes.  Population
+    # cardinalities are recorded as evidence and are validated by their
+    # dedicated equality/drop gates below; they must not become blockers merely
+    # because the population is non-empty.
+    blocking = []
+    if gates["historical_population_identity_resolved"] is not True:
+        blocking.append("historical_population_identity_resolved")
+    for key in (
+        "unresolved_input_difference_count",
+        "formula_recalculation_mismatch_count",
+        "anchor_contract_mismatch_count",
+        "unexplained_market_rs_mismatch_count",
+        "unexplained_status_mismatch_count",
+        "independent_rank_recalculation_mismatch_count",
+        "independent_percentile_recalculation_mismatch_count",
+        "unexplained_rank_delta_rows",
+        "unexplained_percentile_delta_rows",
+        "candidate_lookup_unexplained_mismatch_count",
+        "investable_lookup_unexplained_mismatch_count",
+        "current_silent_row_drop_count",
+        "unexpected_repository_error_count",
+    ):
+        if gates[key] != 0:
+            blocking.append(key)
+    if not gates["current_run_executed"]:
+        blocking.append("current_run_executed")
+    if gates["current_population_input_count"] != gates["current_output_row_count"]:
+        blocking.append("current_population_output_count_mismatch")
+    for key in (
+        "production_market_rs_legacy_stock_fallback",
+        "production_market_rs_legacy_benchmark_fallback",
+        "repository_v2_authoritative_stock_input",
+        "canonical_market_index_authoritative_benchmark",
+    ):
+        if gates[key] is not False and key.startswith("production_"):
+            blocking.append(key)
+        elif gates[key] is not True and not key.startswith("production_"):
+            blocking.append(key)
+    if gates["repository_reuse_preflight"] != "PASS":
+        blocking.append("repository_reuse_preflight")
+    for key in ("adjusted_canonical_changed", "raw_canonical_changed", "market_index_canonical_changed"):
+        if gates[key] is not False:
+            blocking.append(key)
+    if gates["live_network_requests"] != 0:
+        blocking.append("live_network_requests")
     write_json("final_decision.json", {"verdict": "ACCEPT" if not blocking else "CHANGES_REQUESTED", "market_rs_parity_v01": "CLOSED" if not blocking else "OPEN", "next_state": "SECTOR_RS_PARITY_V01" if not blocking else "NEEDS_MARKET_RS_PARITY_FIX01", "blocking_gates": blocking, "gates": gates, "full_pytest_pending": True})
     manifest_names = sorted(path.name for path in OUT.glob("*.json") if path.name != "artifact_manifest.json")
     write_json("artifact_manifest.json", {"directory": str(OUT.relative_to(ROOT)), "artifact_count": len(manifest_names) + 1, "files": manifest_names + ["artifact_manifest.json"], "complete_population": True, "required_full_pytest_artifact_pending": True})
