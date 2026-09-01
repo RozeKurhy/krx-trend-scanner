@@ -12,6 +12,9 @@ import pandas as pd
 
 from trend_scanner.scanner.full_universe_scanner import scan_pattern_a_universe
 from trend_scanner.data.cache import ParquetCache
+from trend_scanner.data.adjusted_price_store import AdjustedPriceStore
+from trend_scanner.data.krx_raw_stock_store import KrxRawStockStore
+from trend_scanner.data.repository_v2 import MarketDataRepositoryV2
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -112,6 +115,10 @@ def main() -> int:
     scanner_result = scan_pattern_a_universe(
         cache=ParquetCache(ROOT / "data/raw/stocks"),
         as_of=AS_OF,
+        market_rs_repository=MarketDataRepositoryV2(
+            AdjustedPriceStore(ROOT / "data/market/adjusted/stocks"),
+            KrxRawStockStore(ROOT / "data/market/raw/krx_stocks/v01"),
+        ),
         enrich_market_rs_cross_section=True,
     )
     scanner = scanner_result.to_dataframe()

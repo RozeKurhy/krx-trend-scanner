@@ -35,6 +35,9 @@ import numpy as np
 import pandas as pd
 
 from trend_scanner.data.cache import ParquetCache
+from trend_scanner.data.adjusted_price_store import AdjustedPriceStore
+from trend_scanner.data.krx_raw_stock_store import KrxRawStockStore
+from trend_scanner.data.repository_v2 import MarketDataRepositoryV2
 from trend_scanner.patterns.pattern_a_evaluator import (
     PatternACandidateState,
     PatternAEvaluationResult,
@@ -64,6 +67,9 @@ from trend_scanner.relative_strength.cross_section import (
     CROSS_SECTION_COLUMNS,
     compute_market_rs_cross_section,
 )
+from trend_scanner.relative_strength.repository_adapter import (
+    resolve_market_rs_repository_input,
+)
 from trend_scanner.universe.asset_classifier import classify_asset_type
 from trend_scanner.universe.krx_universe import (
     get_latest_market_trading_date,
@@ -80,6 +86,28 @@ from trend_scanner.validation.historical_snapshot import build_historical_snapsh
 from trend_scanner.validation.pattern_a_investability_audit import load_canonical_mcap_snapshot
 
 logger = logging.getLogger(__name__)
+
+# Building the Repository V2 raw partition index is intentionally a run-scoped
+# operation.  Scanner calls made in one process (including test suites and
+# batch report generation) reuse the same immutable index instead of allocating
+# ~1GB for every invocation.  A caller may still inject its own repository for
+# isolation or alternate stores.
+_DEFAULT_MARKET_RS_REPOSITORIES: dict[tuple[str, str], MarketDataRepositoryV2] = {}
+
+
+def _default_market_rs_repository(repo_root: Path) -> MarketDataRepositoryV2:
+    key = (
+        str((repo_root / "data/market/adjusted/stocks").resolve()),
+        str((repo_root / "data/market/raw/krx_stocks/v01").resolve()),
+    )
+    repository = _DEFAULT_MARKET_RS_REPOSITORIES.get(key)
+    if repository is None:
+        repository = MarketDataRepositoryV2(
+            AdjustedPriceStore(key[0]),
+            KrxRawStockStore(key[1]),
+        )
+        _DEFAULT_MARKET_RS_REPOSITORIES[key] = repository
+    return repository
 
 
 def _relative_strength_row_updates(result: RelativeStrengthFeatureResult) -> dict[str, Any]:
@@ -255,6 +283,7 @@ class PatternAUniverseScanRow:
     market_benchmark_name: str | None = None
     market_benchmark_code: str | None = None
     market_benchmark_last_observation_date: str | None = None
+    market_rs_input_reason: str | None = None
     stock_return_3m: float | None = None
     stock_return_6m: float | None = None
     stock_return_12m: float | None = None
@@ -386,6 +415,7 @@ class PatternAUniverseScanRow:
             "market_benchmark_name": self.market_benchmark_name,
             "market_benchmark_code": self.market_benchmark_code,
             "market_benchmark_last_observation_date": self.market_benchmark_last_observation_date,
+            "market_rs_input_reason": self.market_rs_input_reason,
             "stock_return_3m": self.stock_return_3m,
             "stock_return_6m": self.stock_return_6m,
             "stock_return_12m": self.stock_return_12m,
@@ -671,6 +701,7 @@ def scan_pattern_a_universe(
     sector_mapping_path: Path | str | None = None,
     enrich_rs_for_candidates: bool = True,
     enrich_market_rs_cross_section: bool = False,
+    market_rs_repository: MarketDataRepositoryV2 | None = None,
 ) -> PatternAUniverseScanResult:
     """Official KRX COMMON Universe를 대상으로 Pattern A 스캔을 수행한다.
 
@@ -695,6 +726,8 @@ def scan_pattern_a_universe(
         enrich_market_rs_cross_section: 공식 COMMON 전체를 기준으로 Market RS
             improvement/rank/percentile을 계산해 모든 scanner row에 연결할지 여부.
             명시적으로 활성화한 Full COMMON 실행에서만 사용하며, 기존 기본값은 유지한다.
+        market_rs_repository: 공유 Repository V2 인스턴스. Market RS가 활성화되면
+            이 인스턴스만 사용하며, 생략 시 canonical local stores로 한 번 생성한다.
 
     Returns:
         PatternAUniverseScanResult: 통합 결과 객체
@@ -928,6 +961,19 @@ def scan_pattern_a_universe(
                 "enrich_market_rs_cross_section requires the local market index reference"
             )
 
+    # Market RS has one and only one production stock-input authority.  Build
+    # the repository once per scan and never fall back to ``ParquetCache`` for
+    # the RS calculation.  Pattern A itself continues to use the legacy cache
+    # until its separately scoped migration phase.
+    rs_requested = bool(enrich_market_rs_cross_section or enrich_rs_for_candidates)
+    if (
+        rs_requested
+        and market_rs_repository is None
+        and market_index_df_loaded is not None
+        and not market_index_df_loaded.empty
+    ):
+        market_rs_repository = _default_market_rs_repository(repo_root)
+
     # 3. Ticker별 순차 평가 (One Cache Load -> One daily_as_of Slice -> Shared Context)
     rows: list[PatternAUniverseScanRow] = []
 
@@ -1030,16 +1076,25 @@ def scan_pattern_a_universe(
                     row_status=ScannerRowStatus.UNAVAILABLE,
                 )
                 if enrich_market_rs_cross_section:
+                    market_code = "1001" if market == MarketType.KOSPI else "2001" if market == MarketType.KOSDAQ else None
+                    repository_input = resolve_market_rs_repository_input(
+                        market_rs_repository,
+                        ticker=ticker,
+                        as_of=req_as_of_str,
+                        market_code=market_code,
+                        market_index_df=market_index_df_loaded,
+                    )
                     unavailable_rs = compute_relative_strength_features(
                         ticker=ticker,
                         as_of=req_as_of_str,
-                        stock_df=None,
+                        stock_df=repository_input.stock_df,
                         market_index_df=market_index_df_loaded,
                         market=market,
                         sector_index_df=sector_index_df_loaded,
                         sector_mapping=sector_map_loaded,
                     )
                     row = replace(row, **_relative_strength_row_updates(unavailable_rs))
+                    row = replace(row, market_rs_input_reason=repository_input.reason)
                 rows.append(row)
                 continue
 
@@ -1107,6 +1162,7 @@ def scan_pattern_a_universe(
             trans_d_6m = momentum_res.horizon_6m.transition_score_delta
 
             # 3.6.1 Downstream Foreign Flow Confirmation Feature (Phase 11)
+            market_rs_input_reason: str | None = None
             if (
                 cand_state == PatternACandidateState.CANDIDATE
                 and enrich_flow_for_candidates
@@ -1154,10 +1210,19 @@ def scan_pattern_a_universe(
                 and market_index_df_loaded is not None
                 and not market_index_df_loaded.empty
             ):
+                market_code = "1001" if market == MarketType.KOSPI else "2001" if market == MarketType.KOSDAQ else None
+                repository_input = resolve_market_rs_repository_input(
+                    market_rs_repository,
+                    ticker=ticker,
+                    as_of=req_as_of_str,
+                    market_code=market_code,
+                    market_index_df=market_index_df_loaded,
+                )
+                market_rs_input_reason = repository_input.reason
                 rs_res: RelativeStrengthFeatureResult = compute_relative_strength_features(
                     ticker=ticker,
                     as_of=req_as_of_str,
-                    stock_df=daily_as_of if (has_raw_cache and not daily_as_of.empty) else None,
+                    stock_df=repository_input.stock_df,
                     market_index_df=market_index_df_loaded,
                     market=market,
                     sector_index_df=sector_index_df_loaded,
@@ -1293,6 +1358,7 @@ def scan_pattern_a_universe(
                 market_benchmark_name=rs_res.market_benchmark_name,
                 market_benchmark_code=rs_res.market_benchmark_code,
                 market_benchmark_last_observation_date=rs_res.market_benchmark_last_observation_date,
+                market_rs_input_reason=market_rs_input_reason,
                 stock_return_3m=rs_res.stock_return_3m,
                 stock_return_6m=rs_res.stock_return_6m,
                 stock_return_12m=rs_res.stock_return_12m,
