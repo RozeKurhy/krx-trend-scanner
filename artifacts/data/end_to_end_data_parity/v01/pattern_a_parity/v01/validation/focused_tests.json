@@ -1,0 +1,14 @@
+{
+  "network_request_count": 0,
+  "commands": [
+    "PYTHONWARNINGS=ignore PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src .venv/bin/pytest -q -p no:cacheprovider -m \\\"not slow\\\" tests/test_pattern_a.py tests/test_pattern_a_score.py tests/test_pattern_a_stage.py tests/test_pattern_a_evaluator.py tests/test_pattern_a_score_momentum.py tests/test_full_universe_scanner.py tests/test_pattern_a_investability_integration.py tests/test_pattern_a_relative_strength_infrastructure.py tests/test_pattern_a_foreign_flow_infrastructure.py tests/test_pattern_a_investability_audit.py tests/test_pattern_a_investability_threshold_design.py tests/test_pattern_a_parity_v01.py",
+    "PYTHONWARNINGS=ignore PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src .venv/bin/pytest -q -p no:cacheprovider tests/test_pattern_a_final_production_closure.py"
+  ],
+  "passed": 167,
+  "failed": 0,
+  "deselected": 2,
+  "elapsed_seconds": 333.31,
+  "new_parity_tests": 3,
+  "closure_tests": 9,
+  "status": "PASS"
+}

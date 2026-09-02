@@ -1,0 +1,42 @@
+{
+  "daily_price_input": {
+    "current_source": "data/raw/stocks/*.parquet via ParquetCache",
+    "target_source": "Repository V2",
+    "migration_status": "DEFERRED"
+  },
+  "weekly_monthly_snapshot": {
+    "current_source": "build_historical_snapshot derived from daily ParquetCache",
+    "target_source": "Repository V2-derived PIT snapshot",
+    "migration_status": "DEFERRED"
+  },
+  "universe_input": {
+    "current_source": "artifacts/patterns/pattern_a/production/investability/pattern_a_investability_universe_20260814.csv",
+    "target_source": "official KRX COMMON universe store",
+    "migration_status": "FROZEN_CURRENT"
+  },
+  "market_cap_input": {
+    "current_source": "canonical 2026-08-14 market-cap snapshot",
+    "target_source": "Repository V2 PIT market-cap store",
+    "migration_status": "DEFERRED"
+  },
+  "investability_input": {
+    "current_source": "evaluate_investability over canonical mcap + daily cache",
+    "target_source": "Repository V2-backed metrics",
+    "migration_status": "DEFERRED"
+  },
+  "foreign_flow_input": {
+    "current_source": "local foreign_flow_daily_20260814.parquet",
+    "target_source": "validated flow store",
+    "migration_status": "DEFERRED"
+  },
+  "market_rs_input": {
+    "current_source": ".cache/krx_openapi/market_index_migration/v01/market_index_staging.parquet",
+    "target_source": "validated market-index store",
+    "migration_status": "CLOSED_PREVIOUS_PHASE"
+  },
+  "sector_rs_input": {
+    "current_source": ".cache/krx_openapi/sector_rs_migration/v01/sector_index_daily.parquet + frozen membership store",
+    "target_source": "validated sector authority",
+    "migration_status": "CLOSED_PREVIOUS_PHASE"
+  }
+}
