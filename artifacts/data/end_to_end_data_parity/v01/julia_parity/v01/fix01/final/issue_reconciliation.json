@@ -1,0 +1,22 @@
+{
+  "issues": [
+    {
+      "severity": "MAJOR",
+      "classification": "REMOTE_VERIFICATION_PENDING",
+      "detail": "Diagnostic and FIX01 commits are local; push was blocked by external-transfer safety review."
+    }
+  ],
+  "legacy_current_deltas_are_not_parity_failures": true,
+  "hard_gates": {
+    "legacy_artifacts_unchanged": true,
+    "current_deterministic": true,
+    "loss_guard_isolation": true,
+    "common_entry_identity": true,
+    "provenance": true,
+    "delta_explained": true,
+    "canary_005930": true,
+    "offline": true
+  },
+  "local_acceptance_gates_pass": true,
+  "remote_verification": "PENDING"
+}
