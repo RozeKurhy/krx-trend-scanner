@@ -1,0 +1,16 @@
+{
+  "assertions": {
+    "common_rows_and_unique_tickers": true,
+    "deterministic_full_pipeline": true,
+    "no_block_or_http_error": true,
+    "no_pykrx_or_krx_web_requests": true,
+    "raw_sector_ticker_pairs_unique": true,
+    "request_audit_response_count_present": true,
+    "request_interval_policy": true
+  },
+  "network_requests": 0,
+  "pytest_command": "./.venv/bin/python -m pytest -q /private/tmp/test_naver_parity_v01.py -p no:cacheprovider",
+  "pytest_result": "6 passed (offline fixture assertions)",
+  "result": "PASS",
+  "status": "PASS"
+}
