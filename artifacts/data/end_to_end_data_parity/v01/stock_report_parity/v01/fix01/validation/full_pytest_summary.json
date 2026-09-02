@@ -1,0 +1,20 @@
+{
+  "directive": "STOCK_REPORT_PARITY_V01_FIX01",
+  "full_pytest_runs": 1,
+  "command": "caffeinate -i .venv/bin/pytest -q -p no:cacheprovider",
+  "result": "ALLOWED_BASELINE_ONLY",
+  "passed": 2362,
+  "skipped": 7,
+  "deselected": 5,
+  "failed": 1,
+  "errors": 0,
+  "duration_seconds": 1402.75,
+  "allowed_baseline_failures": [
+    "tests/test_krx_historical_backfill.py::test_recent_empty_is_not_checkpointed_and_general_resume_retries"
+  ],
+  "new_unexpected_failures": 0,
+  "new_unexpected_errors": 0,
+  "network_blocker": null,
+  "network_policy": "No new live KRX/PyKRX/OpenDART request was initiated; no network-related failure appeared in the run log.",
+  "log_path": "/tmp/krx_fix01_full_pytest.log"
+}

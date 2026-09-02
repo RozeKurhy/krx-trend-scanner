@@ -1,0 +1,33 @@
+{
+  "all_extra_rows_date_future": true,
+  "behavioral_drift": false,
+  "calculation_lookahead": false,
+  "calculation_max_date_used": "2026-08-14",
+  "canonical_cache_last_date": "2026-08-14",
+  "canonical_daily_rows_count": 1222,
+  "classification": "EXPECTED_POST_FREEZE_CACHE_STATE_METADATA_DELTA",
+  "columns": [
+    "ticker",
+    "date",
+    "open",
+    "high",
+    "low",
+    "close",
+    "volume",
+    "trading_value"
+  ],
+  "current_cache_first_date": "2021-08-17",
+  "current_cache_last_date": "2026-08-21",
+  "current_full_daily_row_count": 1226,
+  "current_full_row_count": 1226,
+  "current_rows_gt_as_of": 4,
+  "current_rows_le_as_of": 1222,
+  "hard_gates": {
+    "current_rows_le_as_of_equals_canonical": true,
+    "extra_rows_future_only": true,
+    "pre_or_on_as_of_extra_rows": 0
+  },
+  "pre_or_on_as_of_extra_row_count": 0,
+  "requested_as_of": "2026-08-14",
+  "ticker": "021240"
+}

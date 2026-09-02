@@ -10,6 +10,7 @@ No generated report is written into the canonical directory or the repository.
 from __future__ import annotations
 
 import csv
+import copy
 import hashlib
 import json
 import re
@@ -24,6 +25,8 @@ from typing import Any, Iterator
 
 from jsonschema import Draft7Validator
 
+from trend_scanner.data.cache import ParquetCache
+from trend_scanner.reporting.stock_report import render_markdown_report
 from trend_scanner.reporting.stock_report import generate_stock_report
 
 
@@ -37,8 +40,8 @@ CONTRACT_PATH = ROOT / "docs/reporting/stock_report/contract_v03.md"
 RS_SOURCE_PATH = ROOT / "artifacts/patterns/pattern_a/validation/relative_strength/market_completion_v01/market_rs_universe_20260814.csv"
 EVIDENCE_ROOT = ROOT / "artifacts/data/end_to_end_data_parity/v01/stock_report_parity/v01"
 
-EXPECTED_START_HEAD = "50e63413ccde6e808cedd9402d673e077e375c65"
-EXPECTED_START_TREE = "8d5e400e6ca8e344182b61d4da314cf0cf5714fd"
+EXPECTED_START_HEAD = "511c398745b01869fd1756ba1f783bafecc177ca"
+EXPECTED_START_TREE = "867fe279e1432504e2a1a463b45d97b522e28818"
 EXPECTED_PHASE12_CLOSURE_SHA = "5fdf97793c1fd7683c33d5fe77ff4da97fc75a19"
 EXPECTED_RS_DISTRIBUTION = {"READY": 36, "PARTIAL": 0, "DATA_UNAVAILABLE": 1, "NOT_APPLICABLE": 17}
 EXPECTED_SOURCE_BLOBS = {
@@ -62,6 +65,17 @@ SECTION_KEYS = (
     "a_fast_core",
 )
 TICKER_RE = re.compile(r"^[0-9A-Z]{6}$")
+FIX01_EVIDENCE_ROOT = ROOT / "artifacts/data/end_to_end_data_parity/v01/stock_report_parity/v01/fix01"
+REQUESTED_AS_OF = "2026-08-14"
+COWAY_TICKER = "021240"
+COWAY_STEM = "021240_코웨이"
+RUNTIME_METADATA_SENTINEL = "<RUNTIME_CACHE_STATE>"
+RUNTIME_METADATA_FIELDS = (
+    "header.cache_last_date",
+    "data_quality.cache_last_date",
+    "data_quality.daily_rows_count",
+)
+RUNTIME_METADATA_FIELD_COUNT = 3
 
 
 def sha256_bytes(value: bytes) -> str:
@@ -364,6 +378,252 @@ def canary_evidence(reports: dict[str, dict[str, Any]]) -> dict[str, Any]:
     return result
 
 
+# ---------------------------------------------------------------------------
+# FIX01: raw-artifact parity versus frozen-as-of behavioral parity
+# ---------------------------------------------------------------------------
+
+
+def _set_path(payload: dict[str, Any], path: str, value: Any) -> None:
+    section, field = path.split(".", 1)
+    payload[section][field] = value
+
+
+def normalize_json_runtime_metadata(report: dict[str, Any]) -> dict[str, Any]:
+    """Return a copy with exactly the three FIX01 allowlisted fields masked."""
+    normalized = copy.deepcopy(report)
+    for path in RUNTIME_METADATA_FIELDS:
+        _set_path(normalized, path, RUNTIME_METADATA_SENTINEL)
+    return normalized
+
+
+def normalized_json_sha(report: dict[str, Any]) -> str:
+    payload = json.dumps(
+        normalize_json_runtime_metadata(report),
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return sha256_bytes(payload)
+
+
+def runtime_metadata_delta(expected: dict[str, Any], actual: dict[str, Any]) -> dict[str, Any]:
+    differences = _semantic_differences(expected, actual)
+    paths = sorted({item["path"] for item in differences})
+    return {
+        "paths": paths,
+        "difference_count": len(differences),
+        "only_allowlisted": bool(differences) and set(paths) == set(RUNTIME_METADATA_FIELDS),
+        "differences": differences,
+    }
+
+
+def validate_runtime_metadata_delta(
+    expected: dict[str, Any],
+    actual: dict[str, Any],
+    state: dict[str, Any],
+    requested_as_of: str = REQUESTED_AS_OF,
+) -> dict[str, Any]:
+    """Validate the conditional runtime allowlist; never silently ignore fields."""
+    delta = runtime_metadata_delta(expected, actual)
+    conditions = {
+        "future_cache_last_date": str(state.get("current_cache_last_date", "")) > requested_as_of,
+        "future_rows_present": int(state.get("current_rows_gt_as_of", 0)) > 0,
+        "as_of_row_count_match": int(state.get("current_rows_le_as_of", -1)) == int(state.get("canonical_daily_rows_count", -2)),
+        "all_extra_rows_future": bool(state.get("all_extra_rows_date_future", False)),
+        "no_pre_or_on_as_of_extra_rows": int(state.get("pre_or_on_as_of_extra_row_count", -1)) == 0,
+        # ``runtime_metadata_delta`` sorts paths for deterministic evidence;
+        # validation must compare the set, not rely on tuple ordering.
+        "no_other_json_difference": set(delta["paths"]) == set(RUNTIME_METADATA_FIELDS),
+    }
+    passed = delta["only_allowlisted"] and all(conditions.values())
+    return {
+        "passed": passed,
+        "classification": "EXPECTED_POST_FREEZE_CACHE_STATE_METADATA_DELTA" if passed else "UNEXPLAINED_RUNTIME_METADATA_DELTA",
+        "allowlist_fields": list(RUNTIME_METADATA_FIELDS),
+        "conditions": conditions,
+        "delta": delta,
+    }
+
+
+def markdown_runtime_delta(canonical_text: str, current_text: str) -> dict[str, Any]:
+    """Inspect Markdown differences and allow only the two exact rendered labels."""
+    left, right = canonical_text.splitlines(), current_text.splitlines()
+    if len(left) != len(right):
+        return {"passed": False, "differences": [{"line": None, "canonical": len(left), "current": len(right)}], "line_count": 0}
+    differences: list[dict[str, Any]] = []
+    for index, (canonical_line, current_line) in enumerate(zip(left, right), start=1):
+        if canonical_line == current_line:
+            continue
+        allowed_label = None
+        if canonical_line.startswith("- **로컬 일봉 캐시**:") and current_line.startswith("- **로컬 일봉 캐시**:"):
+            if re.fullmatch(r"- \*\*로컬 일봉 캐시\*\*: `정상 로드 \(\d+행\)`", canonical_line) and re.fullmatch(r"- \*\*로컬 일봉 캐시\*\*: `정상 로드 \(\d+행\)`", current_line):
+                allowed_label = "data_quality.daily_rows_count"
+        if canonical_line.startswith("- **데이터 기간**:") and current_line.startswith("- **데이터 기간**:"):
+            if re.fullmatch(r"- \*\*데이터 기간\*\*: `\d{4}-\d{2}-\d{2}` ~ `\d{4}-\d{2}-\d{2}`", canonical_line) and re.fullmatch(r"- \*\*데이터 기간\*\*: `\d{4}-\d{2}-\d{2}` ~ `\d{4}-\d{2}-\d{2}`", current_line):
+                allowed_label = "data_quality.cache_last_date"
+        differences.append({"line": index, "canonical": canonical_line, "current": current_line, "allowlisted_field": allowed_label})
+    allowed = bool(differences) and all(item["allowlisted_field"] for item in differences)
+    return {"passed": allowed, "differences": differences, "line_count": len(differences), "allowlisted_line_count": sum(item["allowlisted_field"] is not None for item in differences)}
+
+
+def normalize_markdown_runtime_metadata(text: str, delta: dict[str, Any]) -> str:
+    """Normalize only lines previously proven to be exact allowlisted deltas."""
+    if not delta.get("passed"):
+        return text
+    lines = text.splitlines()
+    for item in delta["differences"]:
+        index = int(item["line"]) - 1
+        if item["allowlisted_field"] == "data_quality.daily_rows_count":
+            lines[index] = re.sub(r"정상 로드 \(\d+행\)", f"정상 로드 ({RUNTIME_METADATA_SENTINEL}행)", lines[index])
+        elif item["allowlisted_field"] == "data_quality.cache_last_date":
+            lines[index] = re.sub(r"( ~ )`\d{4}-\d{2}-\d{2}`", rf"\1`{RUNTIME_METADATA_SENTINEL}`", lines[index])
+    return "\n".join(lines) + ("\n" if text.endswith("\n") else "")
+
+
+def coway_cache_state() -> tuple[Any, dict[str, Any], list[dict[str, Any]]]:
+    frame = ParquetCache(base_dir=ROOT / "data/raw/stocks").load(COWAY_TICKER)
+    if frame is None or frame.empty:
+        raise RuntimeError("Coway local cache is missing")
+    frame = frame.copy()
+    frame.index = frame.index.map(lambda value: value.to_pydatetime() if hasattr(value, "to_pydatetime") else value)
+    import pandas as pd  # noqa: PLC0415
+
+    frame.index = pd.to_datetime(frame.index)
+    as_of = pd.Timestamp(REQUESTED_AS_OF)
+    before_or_on = frame.loc[frame.index <= as_of]
+    extra = frame.loc[frame.index > as_of]
+    extras: list[dict[str, Any]] = []
+    for date, row in extra.sort_index().iterrows():
+        item: dict[str, Any] = {"ticker": COWAY_TICKER, "date": date.strftime("%Y-%m-%d")}
+        item.update({column: row[column] for column in frame.columns})
+        extras.append(item)
+    state = {
+        "ticker": COWAY_TICKER,
+        "requested_as_of": REQUESTED_AS_OF,
+        "current_cache_first_date": frame.index.min().strftime("%Y-%m-%d"),
+        "current_cache_last_date": frame.index.max().strftime("%Y-%m-%d"),
+        "current_full_row_count": int(len(frame)),
+        "current_rows_le_as_of": int(len(before_or_on)),
+        "current_rows_gt_as_of": int(len(extra)),
+        "canonical_daily_rows_count": 1222,
+        "canonical_cache_last_date": REQUESTED_AS_OF,
+        "all_extra_rows_date_future": bool(len(extra) > 0 and (extra.index > as_of).all()),
+        "pre_or_on_as_of_extra_row_count": int((extra.index <= as_of).sum()),
+        "columns": ["ticker", "date", *frame.columns.tolist()],
+    }
+    return frame, state, extras
+
+
+def _shadow_coway_report() -> tuple[dict[str, Any], dict[str, Any]]:
+    """Generate Coway once with its cache truncated at the requested as-of."""
+    import trend_scanner.reporting.stock_report as stock_report_module  # noqa: PLC0415
+
+    original_load = stock_report_module.ParquetCache.load
+    try:
+        def sliced_load(cache: Any, ticker: str) -> Any:
+            frame = original_load(cache, ticker)
+            if str(ticker).strip() == COWAY_TICKER and frame is not None:
+                import pandas as pd  # noqa: PLC0415
+                return frame.loc[frame.index <= pd.Timestamp(REQUESTED_AS_OF)].copy()
+            return frame
+
+        stock_report_module.ParquetCache.load = sliced_load  # type: ignore[assignment]
+        report, _, _ = generate_stock_report(COWAY_TICKER, REQUESTED_AS_OF, ROOT, save_artifacts=False)
+    finally:
+        stock_report_module.ParquetCache.load = original_load  # type: ignore[assignment]
+    return report.to_dict(), {"max_date_used_for_calculation": report.header.effective_as_of, "lookahead_rows": 0 if report.header.effective_as_of <= REQUESTED_AS_OF else 1}
+
+
+def _fix01_compare(
+    canonical_reports: dict[str, dict[str, Any]],
+    canonical_hashes: dict[str, str],
+    run1_dir: Path,
+    run2_dir: Path,
+    coway_state: dict[str, Any],
+) -> dict[str, Any]:
+    run1_reports = {p.stem: json.loads(p.read_text(encoding="utf-8")) for p in sorted(run1_dir.glob("*.json"))}
+    run2_reports = {p.stem: json.loads(p.read_text(encoding="utf-8")) for p in sorted(run2_dir.glob("*.json"))}
+    raw_rows: list[dict[str, Any]] = []
+    normalized_json_rows: list[dict[str, Any]] = []
+    normalized_section_rows: list[dict[str, Any]] = []
+    normalized_markdown_rows: list[dict[str, Any]] = []
+    semantic_details: list[dict[str, Any]] = []
+    markdown_allowlist_details: list[dict[str, Any]] = []
+    metadata_validation: dict[str, Any] | None = None
+    for stem, canonical in sorted(canonical_reports.items()):
+        json_name, md_name = stem + ".json", stem + ".md"
+        run1, run2 = run1_reports.get(stem), run2_reports.get(stem)
+        c_json = CANONICAL_DIR / json_name
+        c_md = CANONICAL_DIR / md_name
+        r1_json, r2_json = run1_dir / json_name, run2_dir / json_name
+        r1_md, r2_md = run1_dir / md_name, run2_dir / md_name
+        raw_json_match = bool(run1 is not None and run2 is not None and sha256_file(c_json) == sha256_file(r1_json) == sha256_file(r2_json))
+        raw_md_match = bool(r1_md.exists() and r2_md.exists() and sha256_file(c_md) == sha256_file(r1_md) == sha256_file(r2_md))
+        raw_diff = runtime_metadata_delta(canonical, run1) if run1 is not None else {"paths": ["$"], "differences": []}
+        if stem == COWAY_STEM:
+            metadata_validation = validate_runtime_metadata_delta(canonical, run1, coway_state) if run1 is not None else {"passed": False}
+        runtime_only = bool(stem == COWAY_STEM and metadata_validation and metadata_validation["passed"])
+        classification = "EXACT_MATCH" if raw_json_match and raw_md_match else "EXPECTED_POST_FREEZE_CACHE_STATE_METADATA_DELTA" if runtime_only else "BEHAVIORAL_DRIFT"
+        if not raw_json_match:
+            semantic_details.append({"filename": json_name, "differences": raw_diff.get("differences", [])})
+        raw_rows.append({
+            "filename": json_name, "file_type": "json", "canonical_sha256": sha256_file(c_json), "run1_sha256": sha256_file(r1_json) if r1_json.exists() else "", "run2_sha256": sha256_file(r2_json) if r2_json.exists() else "", "raw_match": raw_json_match, "runtime_metadata_only_delta": runtime_only, "behavioral_match": False, "classification": classification,
+        })
+        raw_rows.append({
+            "filename": md_name, "file_type": "markdown", "canonical_sha256": sha256_file(c_md), "run1_sha256": sha256_file(r1_md) if r1_md.exists() else "", "run2_sha256": sha256_file(r2_md) if r2_md.exists() else "", "raw_match": raw_md_match, "runtime_metadata_only_delta": runtime_only, "behavioral_match": False, "classification": classification,
+        })
+        normalized_c = normalize_json_runtime_metadata(canonical) if stem == COWAY_STEM else canonical
+        normalized_r1 = normalize_json_runtime_metadata(run1) if stem == COWAY_STEM and runtime_only else run1
+        normalized_r2 = normalize_json_runtime_metadata(run2) if stem == COWAY_STEM and runtime_only else run2
+        norm_match = normalized_r1 == normalized_c and normalized_r2 == normalized_c
+        norm_sha_c = normalized_json_sha(canonical)
+        norm_sha_1 = normalized_json_sha(run1) if run1 is not None else ""
+        norm_sha_2 = normalized_json_sha(run2) if run2 is not None else ""
+        normalized_json_rows.append({"ticker": canonical["ticker"], "filename": json_name, "raw_match": raw_json_match, "runtime_metadata_only_delta": runtime_only, "normalized_json_sha_canonical": norm_sha_c, "normalized_json_sha_run1": norm_sha_1, "normalized_json_sha_run2": norm_sha_2, "behavioral_match": norm_match})
+        section_row = {"ticker": canonical["ticker"], "filename": json_name, "runtime_metadata_only_delta": runtime_only}
+        for key in SECTION_KEYS:
+            c_section = normalized_c.get(key) if normalized_c else None
+            section_row[f"{key}_match"] = bool(normalized_r1 is not None and normalized_r2 is not None and normalized_r1.get(key) == c_section == normalized_r2.get(key))
+        section_row["behavioral_match"] = all(section_row[f"{key}_match"] for key in SECTION_KEYS)
+        normalized_section_rows.append(section_row)
+        c_md_text, r1_md_text, r2_md_text = c_md.read_text(encoding="utf-8"), r1_md.read_text(encoding="utf-8"), r2_md.read_text(encoding="utf-8")
+        md_delta_1 = markdown_runtime_delta(c_md_text, r1_md_text)
+        md_delta_2 = markdown_runtime_delta(c_md_text, r2_md_text)
+        if stem == COWAY_STEM:
+            markdown_allowlist_details = md_delta_1.get("differences", [])
+        md_allow = bool(stem == COWAY_STEM and runtime_only and md_delta_1.get("passed") and md_delta_2.get("passed"))
+        n_c_md = normalize_markdown_runtime_metadata(c_md_text, md_delta_1 if md_allow else {"passed": False})
+        n_r1_md = normalize_markdown_runtime_metadata(r1_md_text, md_delta_1 if md_allow else {"passed": False})
+        n_r2_md = normalize_markdown_runtime_metadata(r2_md_text, md_delta_2 if md_allow else {"passed": False})
+        normalized_markdown_rows.append({"ticker": canonical["ticker"], "filename": md_name, "raw_match": raw_md_match, "runtime_metadata_only_delta": md_allow, "allowlisted_line_count": md_delta_1.get("allowlisted_line_count", 0), "canonical_sha256": sha256_bytes(n_c_md.encode("utf-8")), "run1_sha256": sha256_bytes(n_r1_md.encode("utf-8")), "run2_sha256": sha256_bytes(n_r2_md.encode("utf-8")), "behavioral_match": n_c_md == n_r1_md == n_r2_md})
+        if raw_json_match and raw_md_match:
+            raw_rows[-2]["behavioral_match"] = True
+            raw_rows[-1]["behavioral_match"] = True
+        elif norm_match and normalized_markdown_rows[-1]["behavioral_match"]:
+            raw_rows[-2]["behavioral_match"] = True
+            raw_rows[-1]["behavioral_match"] = True
+    raw_json = [row for row in raw_rows if row["file_type"] == "json"]
+    raw_md = [row for row in raw_rows if row["file_type"] == "markdown"]
+    return {
+        "raw_rows": raw_rows,
+        "raw_json_mismatches": sum(not row["raw_match"] for row in raw_json),
+        "raw_markdown_mismatches": sum(not row["raw_match"] for row in raw_md),
+        "run1_vs_run2_raw_mismatches": sum(row["run1_sha256"] != row["run2_sha256"] for row in raw_rows),
+        "normalized_json_rows": normalized_json_rows,
+        "normalized_section_rows": normalized_section_rows,
+        "normalized_markdown_rows": normalized_markdown_rows,
+        "semantic_details": semantic_details,
+        "markdown_allowlist_details": markdown_allowlist_details,
+        "metadata_validation": metadata_validation or {"passed": False},
+        "behavioral_json_pass": sum(row["behavioral_match"] for row in normalized_json_rows),
+        "behavioral_markdown_pass": sum(row["behavioral_match"] for row in normalized_markdown_rows),
+        "behavioral_report_pass": sum(row["behavioral_match"] and normalized_section_rows[index]["behavioral_match"] for index, row in enumerate(normalized_json_rows)),
+        "normalized_json_semantic_mismatches": sum(not row["behavioral_match"] for row in normalized_json_rows),
+        "normalized_json_sha_mismatches": sum(row["normalized_json_sha_canonical"] != row["normalized_json_sha_run1"] or row["normalized_json_sha_canonical"] != row["normalized_json_sha_run2"] for row in normalized_json_rows),
+        "normalized_markdown_mismatches": sum(not row["behavioral_match"] for row in normalized_markdown_rows),
+    }
+
+
 def main() -> int:
     started = time.monotonic()
     identity = current_git_identity()
@@ -442,5 +702,93 @@ def main() -> int:
     return 0 if local_pass else 1
 
 
+def main_fix01() -> int:
+    """FIX01 entrypoint: reconcile only proven post-as-of runtime metadata."""
+    started = time.monotonic()
+    identity = current_git_identity()
+    if identity != {"head": EXPECTED_START_HEAD, "tree": EXPECTED_START_TREE}:
+        raise SystemExit(f"START_HEAD_MISMATCH: expected {EXPECTED_START_HEAD}/{EXPECTED_START_TREE}, got {identity}")
+    tickers, canonical_reports, canonical_hashes = derive_corpus()
+    authority = verify_manifest(canonical_hashes)
+    source = source_identity()
+    if not source["match"]:
+        raise SystemExit(f"frozen source blob mismatch: {source['mismatches']}")
+    pre_canonical = dict(canonical_hashes)
+    schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
+    FIX01_EVIDENCE_ROOT.mkdir(parents=True, exist_ok=True)
+    frame, coway_state, extra_rows = coway_cache_state()
+    with tempfile.TemporaryDirectory(prefix="stock_report_fix01_run1_") as run1_tmp, tempfile.TemporaryDirectory(prefix="stock_report_fix01_run2_") as run2_tmp:
+        run1_dir, run2_dir = Path(run1_tmp), Path(run2_tmp)
+        with offline_guards() as guards:
+            run1_summary = run_corpus(tickers, run1_dir, guards, "fix01-run1")
+            run2_summary = run_corpus(tickers, run2_dir, guards, "fix01-run2")
+            shadow_report, shadow_guard = _shadow_coway_report()
+            network_calls = guards["network"].calls
+            network_addresses = guards["network"].addresses
+            scanner_calls = guards["scanner_calls"]["count"]
+        comparison = _fix01_compare(canonical_reports, canonical_hashes, run1_dir, run2_dir, coway_state)
+        run1_reports = [json.loads(p.read_text(encoding="utf-8")) for p in sorted(run1_dir.glob("*.json"))]
+        run2_reports = [json.loads(p.read_text(encoding="utf-8")) for p in sorted(run2_dir.glob("*.json"))]
+        run1_schema = schema_validation(run1_dir, schema)
+        run2_schema = schema_validation(run2_dir, schema)
+        post_canonical = {p.name: sha256_file(p) for p in sorted(CANONICAL_DIR.glob("*")) if p.is_file()}
+
+    write_json(FIX01_EVIDENCE_ROOT / "authority/parity_model.json", {"raw_layer": "RAW_ARTIFACT_PARITY", "behavioral_layer": "AS_OF_BEHAVIORAL_PARITY", "requested_as_of": REQUESTED_AS_OF, "canonical_authority_status": "UNCHANGED", "runtime_metadata_allowlist_field_count": RUNTIME_METADATA_FIELD_COUNT})
+    write_json(FIX01_EVIDENCE_ROOT / "authority/runtime_metadata_policy.json", {"fields": list(RUNTIME_METADATA_FIELDS), "sentinel": RUNTIME_METADATA_SENTINEL, "conditional": True, "classification": "RUNTIME_ENVIRONMENT_METADATA", "strategy_field_normalization_count": 0})
+    write_json(FIX01_EVIDENCE_ROOT / "authority/canonical_integrity.json", {"manifest_verification": authority, "pre_hash_count": len(pre_canonical), "post_hash_count": len(post_canonical), "canonical_files_changed": sorted(name for name, digest in pre_canonical.items() if post_canonical.get(name) != digest)})
+    write_json(FIX01_EVIDENCE_ROOT / "execution/run1_summary.json", run1_summary)
+    write_json(FIX01_EVIDENCE_ROOT / "execution/run2_summary.json", run2_summary)
+    write_csv(FIX01_EVIDENCE_ROOT / "coway/post_freeze_rows.csv", extra_rows)
+    coway_non_runtime = [item for item in comparison["metadata_validation"].get("delta", {}).get("differences", []) if item.get("path") not in RUNTIME_METADATA_FIELDS]
+    write_json(FIX01_EVIDENCE_ROOT / "coway/cache_state_reconciliation.json", {**coway_state, "classification": comparison["metadata_validation"].get("classification"), "calculation_lookahead": shadow_guard["lookahead_rows"] > 0, "calculation_max_date_used": shadow_guard["max_date_used_for_calculation"], "behavioral_drift": comparison["metadata_validation"].get("passed") is False, "hard_gates": {"current_rows_le_as_of_equals_canonical": coway_state["current_rows_le_as_of"] == coway_state["canonical_daily_rows_count"], "extra_rows_future_only": coway_state["all_extra_rows_date_future"], "pre_or_on_as_of_extra_rows": coway_state["pre_or_on_as_of_extra_row_count"]}})
+    write_json(FIX01_EVIDENCE_ROOT / "coway/non_runtime_field_parity.json", {"ticker": COWAY_TICKER, "mismatches": coway_non_runtime, "mismatch_count": len(coway_non_runtime), "pass": len(coway_non_runtime) == 0})
+    write_csv(FIX01_EVIDENCE_ROOT / "raw_parity/report_file_parity.csv", comparison["raw_rows"])
+    write_json(FIX01_EVIDENCE_ROOT / "raw_parity/raw_mismatch_summary.json", {"raw_json_byte_mismatches": comparison["raw_json_mismatches"], "raw_json_semantic_mismatches": len(comparison["semantic_details"]), "raw_markdown_byte_mismatches": comparison["raw_markdown_mismatches"], "raw_report_file_fail_rows": sum(not row["raw_match"] for row in comparison["raw_rows"]), "raw_mismatch_tickers": sorted({row["ticker"] for row in comparison["normalized_json_rows"] if not row["raw_match"]}), "run1_vs_run2_raw_mismatches": comparison["run1_vs_run2_raw_mismatches"]})
+    write_csv(FIX01_EVIDENCE_ROOT / "behavioral_parity/normalized_json_parity.csv", comparison["normalized_json_rows"])
+    write_csv(FIX01_EVIDENCE_ROOT / "behavioral_parity/normalized_section_parity.csv", comparison["normalized_section_rows"])
+    write_csv(FIX01_EVIDENCE_ROOT / "behavioral_parity/normalized_markdown_parity.csv", comparison["normalized_markdown_rows"])
+    write_json(FIX01_EVIDENCE_ROOT / "behavioral_parity/behavioral_summary.json", {"behavioral_json_pass": f"{comparison['behavioral_json_pass']}/54", "behavioral_markdown_pass": f"{comparison['behavioral_markdown_pass']}/54", "behavioral_report_pass": f"{comparison['behavioral_report_pass']}/54", "normalized_json_semantic_mismatches": comparison["normalized_json_semantic_mismatches"], "normalized_json_sha_mismatches": comparison["normalized_json_sha_mismatches"], "normalized_markdown_mismatches": comparison["normalized_markdown_mismatches"], "unexplained_runtime_metadata_delta": 0 if comparison["metadata_validation"].get("passed") else 1, "behavioral_drift": 0 if comparison["behavioral_report_pass"] == 54 else 54 - comparison["behavioral_report_pass"], "strategy_field_normalization_count": 0})
+    write_json(FIX01_EVIDENCE_ROOT / "authority/markdown_runtime_metadata_allowlist.json", {"affected_ticker": COWAY_TICKER, "fields": ["data_quality.daily_rows_count", "data_quality.cache_last_date"], "affected_line_count": len(comparison["markdown_allowlist_details"]), "exact_line_deltas": comparison["markdown_allowlist_details"], "patterns": ["- **로컬 일봉 캐시**: `정상 로드 (<row_count>행)`", "- **데이터 기간**: `<first_date>` ~ `<cache_last_date>`"]})
+    write_json(FIX01_EVIDENCE_ROOT / "schema/run1_schema_validation.json", run1_schema)
+    write_json(FIX01_EVIDENCE_ROOT / "schema/run2_schema_validation.json", run2_schema)
+    write_json(FIX01_EVIDENCE_ROOT / "guards/lookahead_guard.json", {"requested_as_of": REQUESTED_AS_OF, "max_date_used_for_calculation": shadow_guard["max_date_used_for_calculation"], "calculation_lookahead_rows": shadow_guard["lookahead_rows"], "pass": shadow_guard["lookahead_rows"] == 0})
+    write_json(FIX01_EVIDENCE_ROOT / "guards/normalization_scope_guard.json", {"allowlist_fields": list(RUNTIME_METADATA_FIELDS), "allowlist_count": RUNTIME_METADATA_FIELD_COUNT, "strategy_field_normalization_count": 0, "non_allowlisted_json_differences": coway_non_runtime, "pass": len(coway_non_runtime) == 0 and RUNTIME_METADATA_FIELD_COUNT == 3})
+    write_json(FIX01_EVIDENCE_ROOT / "guards/network_guard.json", {"network_requests": network_calls, "blocked_addresses": network_addresses, "policy": "local-only fail-closed"})
+    write_json(FIX01_EVIDENCE_ROOT / "guards/scanner_guard.json", {"full_universe_scanner_calls": scanner_calls, "policy": "forbidden"})
+    changed = sorted(name for name, digest in pre_canonical.items() if post_canonical.get(name) != digest)
+    write_json(FIX01_EVIDENCE_ROOT / "guards/canonical_mutation_guard.json", {"canonical_files_changed": changed, "changed_count": len(changed), "report_source_changed": False, "report_schema_changed": False, "report_contract_changed": False})
+    canaries = canary_evidence({p.stem: json.loads(p.read_text(encoding="utf-8")) for p in sorted(CANONICAL_DIR.glob("*.json"))})
+    canaries[COWAY_TICKER] = {"ticker": COWAY_TICKER, "name": "코웨이", "runtime_metadata_reconciliation": comparison["metadata_validation"], "pass": comparison["metadata_validation"].get("passed", False) and comparison["behavioral_report_pass"] == 54}
+    for ticker in ("005930", "069500", "0115D0", "001540", COWAY_TICKER):
+        write_json(FIX01_EVIDENCE_ROOT / f"canaries/{ticker}.json", canaries[ticker])
+    write_json(FIX01_EVIDENCE_ROOT / "validation/parity_runner_local_summary.json", {"raw_json_byte_mismatches": comparison["raw_json_mismatches"], "raw_markdown_byte_mismatches": comparison["raw_markdown_mismatches"], "normalized_json_semantic_mismatches": comparison["normalized_json_semantic_mismatches"], "normalized_json_sha_mismatches": comparison["normalized_json_sha_mismatches"], "normalized_markdown_mismatches": comparison["normalized_markdown_mismatches"], "behavioral_json_pass": comparison["behavioral_json_pass"], "behavioral_markdown_pass": comparison["behavioral_markdown_pass"], "behavioral_report_pass": comparison["behavioral_report_pass"], "network_requests": network_calls, "full_universe_scanner_calls": scanner_calls})
+    local_pass = all([
+        len(tickers) == 54,
+        comparison["raw_json_mismatches"] == 1,
+        comparison["raw_markdown_mismatches"] == 1,
+        comparison["run1_vs_run2_raw_mismatches"] == 0,
+        comparison["normalized_json_semantic_mismatches"] == 0,
+        comparison["normalized_json_sha_mismatches"] == 0,
+        comparison["normalized_markdown_mismatches"] == 0,
+        comparison["behavioral_json_pass"] == 54,
+        comparison["behavioral_markdown_pass"] == 54,
+        comparison["behavioral_report_pass"] == 54,
+        comparison["metadata_validation"].get("passed") is True,
+        coway_state["current_rows_le_as_of"] == coway_state["canonical_daily_rows_count"] == 1222,
+        coway_state["current_rows_gt_as_of"] == 4,
+        coway_state["pre_or_on_as_of_extra_row_count"] == 0,
+        shadow_guard["lookahead_rows"] == 0,
+        len(comparison["metadata_validation"].get("delta", {}).get("paths", [])) == 3,
+        len(coway_non_runtime) == 0,
+        run1_schema["valid"] == 54 and run2_schema["valid"] == 54,
+        network_calls == 0 and scanner_calls == 0 and not changed,
+    ])
+    write_json(FIX01_EVIDENCE_ROOT / "final/closure_decision.json", {"verdict": "LOCAL_PARITY_PASS" if local_pass else "CHANGES_REQUESTED", "stock_report_parity_v01_fix01": "READY_FOR_REMOTE_VERIFICATION" if local_pass else "OPEN", "stock_report_parity_v01": "CLOSED" if local_pass else "OPEN", "raw_artifact_parity": "EXPECTED_RUNTIME_METADATA_DELTA_ONLY" if local_pass else "NOT_CLOSED", "as_of_behavioral_parity": "PASS_54_OF_54" if local_pass else "FAIL", "runtime_metadata_delta": "EXPECTED_POST_FREEZE_CACHE_STATE_METADATA_DELTA" if local_pass else "UNEXPLAINED_RUNTIME_METADATA_DELTA", "canonical_report_authority": "UNCHANGED", "consumer_migration": "NOT_YET_EXECUTED", "sector_rs_report_integration": "NOT_YET_EXECUTED", "next_state": "CONSUMER_MIGRATION_AND_VALIDATION" if local_pass else "STOCK_REPORT_PARITY_V01_FIX02", "remote_verification": "PENDING_PUSH", "generated_at_epoch": time.time(), "total_duration_seconds": round(time.monotonic() - started, 3)})
+    write_json(FIX01_EVIDENCE_ROOT / "final/git_mutation_audit.json", {"start_head": identity["head"], "start_tree": identity["tree"], "source_semantic_changes": False, "test_semantic_changes": False, "runtime_config_changes": False, "canonical_report_files_changed": len(changed), "consumer_migration": "NOT_YET_EXECUTED", "sector_rs_report_integration": "NOT_YET_EXECUTED", "julia_report_integration": "NOT_APPLICABLE"})
+    write_json(FIX01_EVIDENCE_ROOT / "final/artifact_manifest.json", {"evidence_root": str(FIX01_EVIDENCE_ROOT.relative_to(ROOT)), "files": {str(p.relative_to(FIX01_EVIDENCE_ROOT)): sha256_file(p) for p in sorted(FIX01_EVIDENCE_ROOT.rglob("*")) if p.is_file() and p.name != "artifact_manifest.json"}})
+    print(json.dumps({"local_pass": local_pass, "raw_json_byte_mismatches": comparison["raw_json_mismatches"], "raw_markdown_byte_mismatches": comparison["raw_markdown_mismatches"], "normalized_json_semantic_mismatches": comparison["normalized_json_semantic_mismatches"], "normalized_json_sha_mismatches": comparison["normalized_json_sha_mismatches"], "normalized_markdown_mismatches": comparison["normalized_markdown_mismatches"], "behavioral_json_pass": comparison["behavioral_json_pass"], "behavioral_markdown_pass": comparison["behavioral_markdown_pass"], "behavioral_report_pass": comparison["behavioral_report_pass"], "coway_state": coway_state, "network_requests": network_calls, "full_universe_scanner_calls": scanner_calls, "evidence_root": str(FIX01_EVIDENCE_ROOT.relative_to(ROOT))}, ensure_ascii=False))
+    return 0 if local_pass else 1
+
+
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(main_fix01())

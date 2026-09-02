@@ -1,0 +1,48 @@
+{
+  "name": "코웨이",
+  "pass": true,
+  "runtime_metadata_reconciliation": {
+    "allowlist_fields": [
+      "header.cache_last_date",
+      "data_quality.cache_last_date",
+      "data_quality.daily_rows_count"
+    ],
+    "classification": "EXPECTED_POST_FREEZE_CACHE_STATE_METADATA_DELTA",
+    "conditions": {
+      "all_extra_rows_future": true,
+      "as_of_row_count_match": true,
+      "future_cache_last_date": true,
+      "future_rows_present": true,
+      "no_other_json_difference": true,
+      "no_pre_or_on_as_of_extra_rows": true
+    },
+    "delta": {
+      "difference_count": 3,
+      "differences": [
+        {
+          "actual": "2026-08-21",
+          "expected": "2026-08-14",
+          "path": "data_quality.cache_last_date"
+        },
+        {
+          "actual": 1226,
+          "expected": 1222,
+          "path": "data_quality.daily_rows_count"
+        },
+        {
+          "actual": "2026-08-21",
+          "expected": "2026-08-14",
+          "path": "header.cache_last_date"
+        }
+      ],
+      "only_allowlisted": true,
+      "paths": [
+        "data_quality.cache_last_date",
+        "data_quality.daily_rows_count",
+        "header.cache_last_date"
+      ]
+    },
+    "passed": true
+  },
+  "ticker": "021240"
+}

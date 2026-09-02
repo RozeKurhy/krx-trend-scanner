@@ -1,0 +1,39 @@
+{
+  "directive": "STOCK_REPORT_PARITY_V01_FIX01",
+  "network_policy": "local-only; no live KRX/PyKRX/OpenDART requests",
+  "runs": [
+    {
+      "command": ".venv/bin/pytest -q -p no:cacheprovider tests/test_stock_report_parity_v01.py",
+      "result": "PASS",
+      "passed": 17,
+      "failed": 0,
+      "errors": 0,
+      "duration_seconds": 10.04,
+      "warnings": 2031
+    },
+    {
+      "command": ".venv/bin/pytest -q -p no:cacheprovider tests/test_stock_report_parity_v01.py tests/test_stock_report.py tests/test_a_fast_core_stock_report.py tests/test_pattern_a_fast_stock_report.py tests/test_pattern_a_fast_weekly_close.py tests/test_stock_report_v03_relative_strength.py",
+      "result": "PASS",
+      "passed": 106,
+      "failed": 0,
+      "errors": 0,
+      "duration_seconds": 194.60,
+      "warnings": "suppressed with PYTHONWARNINGS=ignore"
+    }
+  ],
+  "focused_unexpected_failures": 0,
+  "focused_errors": 0,
+  "mocked_production_success_negative_coverage": {
+    "success": "54-report parity runner under fail-closed network/scanner guards",
+    "negative_cases": [
+      "current_snapshot.pattern_a_score",
+      "a_fast_core.canonical_position",
+      "relative_strength.market_rs_3m",
+      "header.cache_first_date",
+      "an as-of-or-earlier extra row",
+      "as-of row-count mismatch",
+      "pre-freeze cache date condition"
+    ],
+    "result": "PASS"
+  }
+}
