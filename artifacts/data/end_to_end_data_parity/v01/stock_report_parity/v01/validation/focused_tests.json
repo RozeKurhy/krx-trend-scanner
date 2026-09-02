@@ -1,0 +1,14 @@
+{
+  "command": "PYTHONDONTWRITEBYTECODE=1 PYTHONWARNINGS=ignore KRX_ID= KRX_PW= caffeinate -i .venv/bin/pytest -q -p no:cacheprovider tests/test_stock_report.py tests/test_stock_report_v03_relative_strength.py tests/test_a_fast_core_stock_report.py tests/test_pattern_a_fast_stock_report.py tests/test_pattern_a_fast_weekly_close.py tests/test_relative_strength_cross_section_v01.py tests/test_pattern_a_relative_strength_infrastructure.py tests/test_stock_report_parity_v01.py",
+  "status": "PASS",
+  "exit_code": 0,
+  "passed": 129,
+  "failed": 0,
+  "errors": 0,
+  "skipped": 0,
+  "deselected": 1,
+  "duration_seconds": 314.15,
+  "unexpected_failures": 0,
+  "unexpected_errors": 0,
+  "network_policy": "local-only"
+}

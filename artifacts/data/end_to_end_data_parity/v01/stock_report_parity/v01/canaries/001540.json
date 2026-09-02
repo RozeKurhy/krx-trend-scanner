@@ -1,0 +1,46 @@
+{
+  "checks": {
+    "asset_type": true,
+    "name": true,
+    "ticker_identity": true
+  },
+  "pass": true,
+  "snapshot": {
+    "a_fast_core": {
+      "canonical_position": "OPEN",
+      "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02"
+    },
+    "asset_type": "COMMON",
+    "market": "KOSDAQ",
+    "name": "안국약품",
+    "relative_strength": {
+      "all_market_rs_percentile_12m": 90.70567986230637,
+      "all_market_rs_percentile_3m": 96.90546841882154,
+      "all_market_rs_percentile_6m": 96.00340136054422,
+      "all_market_rs_rank_12m": 217.0,
+      "all_market_rs_rank_3m": 74.0,
+      "all_market_rs_rank_6m": 95.0,
+      "applicability": "APPLICABLE",
+      "benchmark_code": "2001",
+      "benchmark_last_observation_date": "2026-08-14",
+      "benchmark_name": "코스닥",
+      "data_status": "READY",
+      "explanation": "기간별 시장 상대강도가 엇갈리는 혼조 흐름입니다.",
+      "market_anchor_date_12m": "2025-08-01",
+      "market_anchor_date_3m": "2026-05-14",
+      "market_anchor_date_6m": "2026-02-06",
+      "market_rs_12m": 0.3767169910994814,
+      "market_rs_3m": 0.5976763464305517,
+      "market_rs_6m": 0.7603474430887258,
+      "market_rs_acceleration_3_6_12m": -0.5463015486474185,
+      "market_rs_delta_3m_vs_6m": -0.16267109665817414,
+      "market_rs_delta_6m_vs_12m": 0.3836304519892444,
+      "phase12_closure_sha": "5fdf97793c1fd7683c33d5fe77ff4da97fc75a19",
+      "source_artifact": "artifacts/patterns/pattern_a/validation/relative_strength/market_completion_v01/market_rs_universe_20260814.csv",
+      "source_as_of": "2026-08-14",
+      "source_sha256": "4199d6168006bdae7c4fa2288f553e513d7e6715a8e329b927d7649f08541bb1"
+    },
+    "report_status": "READY",
+    "ticker": "001540"
+  }
+}

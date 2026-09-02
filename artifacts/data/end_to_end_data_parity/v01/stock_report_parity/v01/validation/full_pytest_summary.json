@@ -1,0 +1,19 @@
+{
+  "command": "caffeinate -i .venv/bin/pytest -q -p no:cacheprovider",
+  "status": "PASS_WITH_ALLOWED_HISTORICAL_BASELINE",
+  "pytest_execution_count": 1,
+  "exit_code": 1,
+  "passed": 2349,
+  "failed": 1,
+  "errors": 0,
+  "skipped": 7,
+  "deselected": 5,
+  "duration_seconds": 1409.36,
+  "allowed_baseline_failures": [
+    "tests/test_krx_historical_backfill.py::test_recent_empty_is_not_checkpointed_and_general_resume_retries"
+  ],
+  "new_unexpected_failures": 0,
+  "new_unexpected_errors": 0,
+  "network_policy": "local-only",
+  "notes": "The one failure is the exact historical baseline explicitly allowed by STOCK_REPORT_PARITY_V01; no parity-source files were changed after the run."
+}
