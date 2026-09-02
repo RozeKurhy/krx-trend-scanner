@@ -66,7 +66,14 @@ from trend_scanner.relative_strength.relative_strength import (
 )
 from trend_scanner.relative_strength.cross_section import (
     CROSS_SECTION_COLUMNS,
+    SECTOR_CROSS_SECTION_COLUMNS,
     compute_market_rs_cross_section,
+    compute_sector_rs_cross_section,
+)
+from trend_scanner.data.sector_membership import (
+    SNAPSHOT_EFFECTIVE_DATE,
+    SectorMembershipSnapshotUnavailable,
+    load_sector_mapping_exact_snapshot,
 )
 from trend_scanner.relative_strength.repository_adapter import (
     resolve_market_rs_repository_input,
@@ -131,6 +138,7 @@ def _relative_strength_row_updates(result: RelativeStrengthFeatureResult) -> dic
         "market_anchor_date_6m": result.market_anchor_date_6m,
         "market_anchor_date_12m": result.market_anchor_date_12m,
         "sector_rs_data_status": result.sector_rs_data_status.value,
+        "sector_rs_input_reason": result.sector_rs_input_reason,
         "sector_name": result.sector_name,
         "sector_code": result.sector_code,
         "sector_benchmark_code": result.sector_benchmark_code,
@@ -308,6 +316,7 @@ class PatternAUniverseScanRow:
     all_market_rs_percentile_12m: float | None = None
 
     sector_rs_data_status: str = "NOT_EVALUATED"
+    sector_rs_input_reason: str | None = None
     sector_name: str | None = None
     sector_code: str | None = None
     sector_benchmark_code: str | None = None
@@ -321,6 +330,13 @@ class PatternAUniverseScanRow:
     sector_anchor_date_3m: str | None = None
     sector_anchor_date_6m: str | None = None
     sector_anchor_date_12m: str | None = None
+    all_sector_rs_rank_3m: float | None = None
+    all_sector_rs_rank_6m: float | None = None
+    all_sector_rs_rank_12m: float | None = None
+    all_sector_rs_percentile_3m: float | None = None
+    all_sector_rs_percentile_6m: float | None = None
+    all_sector_rs_percentile_12m: float | None = None
+    sector_cross_section_enriched: bool = False
 
     # 9. Row Execution Status & Error Provenance
     row_status: ScannerRowStatus = ScannerRowStatus.UNAVAILABLE
@@ -336,7 +352,7 @@ class PatternAUniverseScanRow:
                 return d.strftime("%Y-%m-%d")
             return str(d)
 
-        return {
+        payload = {
             "ticker": self.ticker,
             "name": self.name,
             "market": self.market.value,
@@ -438,6 +454,7 @@ class PatternAUniverseScanRow:
             "all_market_rs_percentile_6m": self.all_market_rs_percentile_6m,
             "all_market_rs_percentile_12m": self.all_market_rs_percentile_12m,
             "sector_rs_data_status": self.sector_rs_data_status,
+            "sector_rs_input_reason": self.sector_rs_input_reason,
             "sector_name": self.sector_name,
             "sector_code": self.sector_code,
             "sector_benchmark_code": self.sector_benchmark_code,
@@ -461,6 +478,16 @@ class PatternAUniverseScanRow:
             "error_type": self.error_type,
             "error_message": self.error_message,
         }
+        if self.sector_cross_section_enriched:
+            payload.update({
+                "all_sector_rs_rank_3m": self.all_sector_rs_rank_3m,
+                "all_sector_rs_rank_6m": self.all_sector_rs_rank_6m,
+                "all_sector_rs_rank_12m": self.all_sector_rs_rank_12m,
+                "all_sector_rs_percentile_3m": self.all_sector_rs_percentile_3m,
+                "all_sector_rs_percentile_6m": self.all_sector_rs_percentile_6m,
+                "all_sector_rs_percentile_12m": self.all_sector_rs_percentile_12m,
+            })
+        return payload
 
 
 def _calc_stats(values: list[float]) -> dict[str, Any]:
@@ -701,6 +728,9 @@ def scan_pattern_a_universe(
     sector_mapping_path: Path | str | None = None,
     enrich_rs_for_candidates: bool = True,
     enrich_market_rs_cross_section: bool = False,
+    enrich_sector_rs_cross_section: bool = False,
+    require_exact_sector_snapshot: bool | None = None,
+    sector_mapping_snapshot_date: str | None = None,
     market_rs_repository: MarketDataRepositoryV2 | None = None,
 ) -> PatternAUniverseScanResult:
     """Official KRX COMMON Universe를 대상으로 Pattern A 스캔을 수행한다.
@@ -726,6 +756,11 @@ def scan_pattern_a_universe(
         enrich_market_rs_cross_section: 공식 COMMON 전체를 기준으로 Market RS
             improvement/rank/percentile을 계산해 모든 scanner row에 연결할지 여부.
             명시적으로 활성화한 Full COMMON 실행에서만 사용하며, 기존 기본값은 유지한다.
+        enrich_sector_rs_cross_section: frozen current-only Sector RS를 전체 COMMON에
+            계산하고 전체 population rank/percentile을 연결할지 여부.
+        require_exact_sector_snapshot: Sector RS membership에 exact snapshot을 강제한다.
+            생략하면 ``enrich_sector_rs_cross_section`` 활성화 시 자동으로 강제한다.
+        sector_mapping_snapshot_date: 주입 mapping의 authoritative snapshot 날짜.
         market_rs_repository: 공유 Repository V2 인스턴스. Market RS가 활성화되면
             이 인스턴스만 사용하며, 생략 시 canonical local stores로 한 번 생성한다.
 
@@ -856,6 +891,9 @@ def scan_pattern_a_universe(
     # 3.0 Market Cap PIT Snapshot 로드 (반드시 requested as_of 기준)
     repo_root = Path(__file__).resolve().parent.parent.parent.parent
     req_as_of_str = req_as_of.strftime("%Y-%m-%d")
+    exact_sector_snapshot = (
+        enrich_sector_rs_cross_section if require_exact_sector_snapshot is None else require_exact_sector_snapshot
+    )
     try:
         df_mcap_snap, _ = load_canonical_mcap_snapshot(repo_root=repo_root, as_of=req_as_of_str)
         mcap_dict = {
@@ -910,22 +948,42 @@ def scan_pattern_a_universe(
             if p.exists():
                 sector_index_df_loaded = pd.read_parquet(p) if p.suffix == ".parquet" else pd.read_csv(p)
         elif sector_index_df_loaded is None:
-            def_p = repo_root / "artifacts/patterns/pattern_a/validation/relative_strength/source" / f"sector_index_daily_{req_as_of.strftime('%Y%m%d')}.parquet"
+            def_p = repo_root / ".cache/krx_openapi/sector_rs_migration/v01/sector_index_daily.parquet"
             if def_p.exists():
                 sector_index_df_loaded = pd.read_parquet(def_p)
     except Exception as exc:
         logger.warning("Failed loading sector index source (%s): %s", sector_index_path, exc)
         sector_index_df_loaded = None
 
-    sector_map_loaded: dict[str, tuple[str, str]] | None = None
+    sector_map_loaded: dict[str, tuple[str, str, str, str]] | None = None
+    loaded_sector_snapshot_date: str | None = sector_mapping_snapshot_date
     try:
-        if sector_mapping is not None:
+        if exact_sector_snapshot and sector_mapping_path is None and sector_mapping is None:
+            try:
+                sector_map_loaded = load_sector_mapping_exact_snapshot(
+                    req_as_of_str,
+                    repo_root=repo_root,
+                )
+                loaded_sector_snapshot_date = SNAPSHOT_EFFECTIVE_DATE
+            except SectorMembershipSnapshotUnavailable as exc:
+                logger.warning("Exact frozen sector membership unavailable: %s", exc)
+                sector_map_loaded = None
+                loaded_sector_snapshot_date = None
+        elif exact_sector_snapshot and sector_mapping_path is not None:
+            sector_map_loaded = load_sector_mapping_exact_snapshot(
+                req_as_of_str,
+                path=sector_mapping_path,
+                repo_root=repo_root,
+            )
+            loaded_sector_snapshot_date = SNAPSHOT_EFFECTIVE_DATE
+        elif sector_mapping is not None:
             valid_map = {}
             for k, v in sector_mapping.items():
                 if isinstance(v, (tuple, list)) and len(v) >= 3:
                     sc, sn, eff = v[0], v[1], str(v[2]).strip()
-                    if eff <= req_as_of_str:
-                        valid_map[str(k).zfill(6)] = (str(sc), str(sn), eff)
+                    if eff <= req_as_of_str and sc is not None and not pd.isna(sc):
+                        status = str(v[3]).strip().upper() if len(v) >= 4 else "MAPPED"
+                        valid_map[str(k).zfill(6)] = (str(sc), str(sn), eff, status)
                 # Provenance-less 2-tuples are strictly rejected in production evaluation
             sector_map_loaded = valid_map if valid_map else None
         elif sector_mapping_path is not None:
@@ -969,11 +1027,28 @@ def scan_pattern_a_universe(
                 "enrich_market_rs_cross_section requires the local market index reference"
             )
 
+    if enrich_sector_rs_cross_section:
+        if target_tickers is not None or target_markets is not None or limit is not None:
+            raise ValueError(
+                "enrich_sector_rs_cross_section requires an unfiltered Full COMMON scan "
+                "so percentiles cannot be recomputed from a subset"
+            )
+        if sector_index_df_loaded is None or sector_index_df_loaded.empty:
+            raise ValueError(
+                "enrich_sector_rs_cross_section requires the local sector index reference"
+            )
+        if official_common_total != 2528:
+            raise ValueError(
+                "enrich_sector_rs_cross_section requires the frozen COMMON population of 2528"
+            )
+
     # Market RS has one and only one production stock-input authority.  Build
     # the repository once per scan and never fall back to ``ParquetCache`` for
     # the RS calculation.  Pattern A itself continues to use the legacy cache
     # until its separately scoped migration phase.
-    rs_requested = bool(enrich_market_rs_cross_section or enrich_rs_for_candidates)
+    rs_requested = bool(
+        enrich_market_rs_cross_section or enrich_sector_rs_cross_section or enrich_rs_for_candidates
+    )
     if (
         rs_requested
         and market_rs_repository is None
@@ -1083,7 +1158,7 @@ def scan_pattern_a_universe(
                     tv20_last_observation_date=inv_eval.tv20_last_observation_date,
                     row_status=ScannerRowStatus.UNAVAILABLE,
                 )
-                if enrich_market_rs_cross_section:
+                if enrich_market_rs_cross_section or enrich_sector_rs_cross_section:
                     market_code = "1001" if market == MarketType.KOSPI else "2001" if market == MarketType.KOSDAQ else None
                     repository_input = resolve_market_rs_repository_input(
                         market_rs_repository,
@@ -1100,6 +1175,8 @@ def scan_pattern_a_universe(
                         market=market,
                         sector_index_df=sector_index_df_loaded,
                         sector_mapping=sector_map_loaded,
+                        require_exact_sector_snapshot=exact_sector_snapshot,
+                        sector_snapshot_effective_date=loaded_sector_snapshot_date,
                     )
                     row = replace(row, **_relative_strength_row_updates(unavailable_rs))
                     row = replace(row, market_rs_input_reason=repository_input.reason)
@@ -1212,7 +1289,7 @@ def scan_pattern_a_universe(
             # 3.6.2 Downstream Relative Strength Confirmation Feature (Phase 12)
             if (
                 (
-                    enrich_market_rs_cross_section
+                    (enrich_market_rs_cross_section or enrich_sector_rs_cross_section)
                     or (cand_state == PatternACandidateState.CANDIDATE and enrich_rs_for_candidates)
                 )
                 and market_index_df_loaded is not None
@@ -1235,6 +1312,8 @@ def scan_pattern_a_universe(
                     market=market,
                     sector_index_df=sector_index_df_loaded,
                     sector_mapping=sector_map_loaded,
+                    require_exact_sector_snapshot=exact_sector_snapshot,
+                    sector_snapshot_effective_date=loaded_sector_snapshot_date,
                 )
             else:
                 rs_res = RelativeStrengthFeatureResult(
@@ -1257,6 +1336,7 @@ def scan_pattern_a_universe(
                     market_anchor_date_6m=None,
                     market_anchor_date_12m=None,
                     sector_rs_data_status=RelativeStrengthDataStatus.NOT_EVALUATED,
+                    sector_rs_input_reason=None,
                     sector_name=None,
                     sector_code=None,
                     sector_benchmark_code=None,
@@ -1380,6 +1460,7 @@ def scan_pattern_a_universe(
                 market_anchor_date_6m=rs_res.market_anchor_date_6m,
                 market_anchor_date_12m=rs_res.market_anchor_date_12m,
                 sector_rs_data_status=rs_res.sector_rs_data_status.value,
+                sector_rs_input_reason=rs_res.sector_rs_input_reason,
                 sector_name=rs_res.sector_name,
                 sector_code=rs_res.sector_code,
                 sector_benchmark_code=rs_res.sector_benchmark_code,
@@ -1472,6 +1553,25 @@ def scan_pattern_a_universe(
                 for column in CROSS_SECTION_COLUMNS
             }
             enriched_rows.append(replace(row, **cross_section_updates))
+        rows = enriched_rows
+
+    if enrich_sector_rs_cross_section:
+        reference = compute_sector_rs_cross_section(
+            pd.DataFrame([row.to_dict() for row in rows])
+        )
+        reference_by_ticker = reference.drop_duplicates("ticker").set_index("ticker")
+        if len(reference_by_ticker) != len(rows):
+            raise ValueError("Duplicate or missing ticker in operational Sector RS reference")
+        enriched_rows = []
+        for row in rows:
+            if row.ticker not in reference_by_ticker.index:
+                raise ValueError(f"Operational Sector RS reference missing ticker: {row.ticker}")
+            reference_row = reference_by_ticker.loc[row.ticker]
+            cross_section_updates = {
+                column: _cross_section_value(reference_row[column])
+                for column in SECTOR_CROSS_SECTION_COLUMNS
+            }
+            enriched_rows.append(replace(row, **cross_section_updates, sector_cross_section_enriched=True))
         rows = enriched_rows
 
     # 4. 종합 통계 및 분포 산출

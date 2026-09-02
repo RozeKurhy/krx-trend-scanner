@@ -1,0 +1,74 @@
+{
+  "status": "COMPLETED_WITH_BASELINE_AND_ENVIRONMENT_BLOCKERS",
+  "executed": true,
+  "command": "caffeinate -i .venv/bin/pytest -q -p no:cacheprovider",
+  "elapsed_seconds": 1406.74,
+  "passed": 2306,
+  "failed": 3,
+  "error_count": 17,
+  "skipped": 7,
+  "deselected": 5,
+  "warnings": 278383,
+  "network_request_count": 0,
+  "failures": [
+    {
+      "nodeid": "tests/test_krx_historical_backfill.py::test_recent_empty_is_not_checkpointed_and_general_resume_retries",
+      "classification": "KNOWN_ALLOWED_BASELINE",
+      "detail": "Pre-existing backfill resume assertion failure; unrelated to Sector RS changes."
+    },
+    {
+      "nodeid": "tests/test_stage_v03_research_consistency.py::test_research_artifact_deterministic_regeneration",
+      "classification": "ENVIRONMENT_PERMISSION_BLOCKER",
+      "detail": "Failed in sandboxed full run but passed in the permission-approved targeted rerun; unrelated to Sector RS changes."
+    },
+    {
+      "nodeid": "tests/test_stage_v04_multi_year_research.py::test_deterministic_regeneration",
+      "classification": "ENVIRONMENT_PERMISSION_BLOCKER",
+      "detail": "Failed in sandboxed full run but passed in the permission-approved targeted rerun; unrelated to Sector RS changes."
+    }
+  ],
+  "errors": {
+    "count": 17,
+    "classification": "ENVIRONMENT_PERMISSION_BLOCKER",
+    "nodeids": [
+      "tests/test_pattern_a_investability_audit.py::test_gate1_no_lookahead_and_dates",
+      "tests/test_pattern_a_investability_audit.py::test_gate2_universe_identity",
+      "tests/test_pattern_a_investability_audit.py::test_gate3_candidate_identity",
+      "tests/test_pattern_a_investability_audit.py::test_gate4_stage_split",
+      "tests/test_pattern_a_investability_audit.py::test_gate5_human42_identity",
+      "tests/test_pattern_a_investability_audit.py::test_gate6_market_cap_pit_provenance_and_snapshot",
+      "tests/test_pattern_a_investability_audit.py::test_gate7_candidate_market_cap_coverage",
+      "tests/test_pattern_a_investability_audit.py::test_gate8_candidate_metric_availability_policy",
+      "tests/test_pattern_a_investability_audit.py::test_gate9_early_and_human42_full_coverage",
+      "tests/test_pattern_a_investability_audit.py::test_gate10_disk_artifact_consistency",
+      "tests/test_pattern_a_investability_threshold_design.py::test_gate2_cohort_identity",
+      "tests/test_pattern_a_investability_threshold_design.py::test_gate3_scorecard_arithmetic",
+      "tests/test_pattern_a_investability_threshold_design.py::test_gate4_mcap_1000_evaluation",
+      "tests/test_pattern_a_investability_threshold_design.py::test_gate5_and_6_recommended_scenario_consistency",
+      "tests/test_pattern_a_investability_threshold_design.py::test_gate7_missing_stale_policy",
+      "tests/test_pattern_a_investability_threshold_design.py::test_gate8_document_artifact_consistency",
+      "tests/test_pattern_a_investability_threshold_design.py::test_gate9_and_final_status"
+    ],
+    "detail": "PermissionError while writing existing artifacts/patterns/pattern_a/production/investability/pattern_a_investability_universe_20260814.csv; permission-approved targeted rerun passed."
+  },
+  "permission_approved_followup": {
+    "tests": [
+      "tests/test_pattern_a_investability_audit.py",
+      "tests/test_pattern_a_investability_threshold_design.py"
+    ],
+    "passed": 22,
+    "failed": 0,
+    "elapsed_seconds": 6.07
+  },
+  "permission_approved_stage_followup": {
+    "tests": [
+      "tests/test_stage_v03_research_consistency.py::test_research_artifact_deterministic_regeneration",
+      "tests/test_stage_v04_multi_year_research.py::test_deterministic_regeneration"
+    ],
+    "passed": 2,
+    "failed": 0,
+    "elapsed_seconds": 55.93
+  },
+  "unexpected_new_failures": 0,
+  "rerun": false
+}

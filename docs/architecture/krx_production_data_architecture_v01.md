@@ -36,7 +36,7 @@ Architect 승인 전에는 `CLOSED`로 선언하지 않는다.
 - 기존 stock cache rewrite/move/delete/bulk rename
 - custom corporate-action adjustment engine
 - market index source 전환
-- ticker→sector membership source 전환
+- current Sector RS용 KRX frozen canonical membership snapshot materialization
 - Pattern A, FastCore, Julia, RS formula 변경
 - HTML/dashboard UI 구현
 
@@ -60,7 +60,7 @@ Machine-readable 원본은
 | instrument asset type      | InstrumentMetadataResolver/formal product-master classification |
 | native sector index         | raw index + frozen canonical mapping    |
 | market index                | 현재 PyKRX legacy, 목표 KRX Open API    |
-| ticker→sector membership    | 현재 PyKRX PDF, 향후 별도 PIT phase     |
+| ticker→sector membership    | KRX frozen canonical 2026-08-14 exact snapshot |
 | fundamentals                | OpenDART                               |
 | foreign/institution flow    | 기존 production source                  |
 ---------------------------------------------------------------------
@@ -254,6 +254,16 @@ target store를 별도 기록한다. `STOCK_MASTER_KRX`의 current source는 현
 동결 artifact authority이며, KRX Basic Info는 validated/target 계약이다.
 `STOCK_MASTER_KRX`는 raw/canonical master 경계만 담당하고, asset type authority는
 `INSTRUMENT_CLASSIFICATION` layer로 분리한다.
+
+Sector RS membership authority
+----------------------------------------------------------------------
+현재 Sector RS production path의 membership은
+`data/market/sector_membership/v01/sector_membership_20260814.parquet`에
+materialize된 KRX frozen canonical snapshot이다. `effective_date`는
+`2026-08-14`와 정확히 일치해야 하며, 이 snapshot을 historical date에
+back-apply하거나 future date에 carry-forward하지 않는다. historical membership은
+deferred 상태다. Naver taxonomy와 live PyKRX membership은 KRX native authority가
+아니므로 이 경로에서 사용하지 않는다.
 
 10. Foreign Flow lineage와 production diff guard
 ----------------------------------------------------------------------

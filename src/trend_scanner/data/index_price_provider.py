@@ -352,6 +352,21 @@ class IndexPriceDataProvider:
             df = df[df["date"] <= formatted_asof].copy()
         return df
 
+    def load_sector_index_history_exact(self, as_of: str) -> pd.DataFrame:
+        """Load local sector history with an exact as-of observation contract.
+
+        The normal loader intentionally preserves the legacy ``<=`` history
+        semantics.  Sector RS current-only callers can use this explicit
+        helper to fail closed when the benchmark has no exact observation.
+        """
+
+        clean_asof = str(as_of).replace("-", "")
+        formatted_asof = f"{clean_asof[:4]}-{clean_asof[4:6]}-{clean_asof[6:8]}"
+        frame = self.load_sector_index_history(formatted_asof)
+        if frame.empty or not (frame["date"].astype(str) == formatted_asof).any():
+            return pd.DataFrame(columns=list(_STANDARD_INDEX_COLUMNS))
+        return frame
+
     def load_sector_mapping(self, as_of: str | None = None) -> dict[str, tuple[str, str, str]]:
         """Ticker -> (sector_code, sector_name, effective_date) 딕셔너리를 반환한다.
 

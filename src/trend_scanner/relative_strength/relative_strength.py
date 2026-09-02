@@ -79,6 +79,7 @@ class RelativeStrengthFeatureResult:
 
     # 2. Sector Relative Strength (Secondary Axis)
     sector_rs_data_status: RelativeStrengthDataStatus
+    sector_rs_input_reason: str | None
     sector_name: str | None
     sector_code: str | None
     sector_benchmark_code: str | None
@@ -121,6 +122,7 @@ class RelativeStrengthFeatureResult:
             "market_anchor_date_6m": self.market_anchor_date_6m,
             "market_anchor_date_12m": self.market_anchor_date_12m,
             "sector_rs_data_status": self.sector_rs_data_status.value,
+            "sector_rs_input_reason": self.sector_rs_input_reason,
             "sector_name": self.sector_name,
             "sector_code": self.sector_code,
             "sector_benchmark_code": self.sector_benchmark_code,
@@ -144,6 +146,8 @@ def _unavailable_rs_result(
     market_benchmark_code: str | None = None,
     sector_name: str | None = None,
     sector_code: str | None = None,
+    sector_status: RelativeStrengthDataStatus = RelativeStrengthDataStatus.DATA_UNAVAILABLE,
+    sector_reason: str | None = None,
 ) -> RelativeStrengthFeatureResult:
     """데이터 부재 시 반환하는 기본 불능 결과."""
     return RelativeStrengthFeatureResult(
@@ -165,7 +169,8 @@ def _unavailable_rs_result(
         market_anchor_date_3m=None,
         market_anchor_date_6m=None,
         market_anchor_date_12m=None,
-        sector_rs_data_status=RelativeStrengthDataStatus.DATA_UNAVAILABLE,
+        sector_rs_data_status=sector_status,
+        sector_rs_input_reason=sector_reason,
         sector_name=sector_name,
         sector_code=sector_code,
         sector_benchmark_code=sector_code,
@@ -190,6 +195,8 @@ def compute_relative_strength_features(
     market: MarketType | str = MarketType.KOSPI,
     sector_index_df: pd.DataFrame | None = None,
     sector_mapping: dict[str, tuple[str, str, str]] | None = None,
+    require_exact_sector_snapshot: bool = False,
+    sector_snapshot_effective_date: str | None = None,
 ) -> RelativeStrengthFeatureResult:
     """단일 종목에 대해 PIT 원칙에 따라 시장 및 업종 상대강도(RS) 피처를 계산한다.
 
@@ -201,6 +208,9 @@ def compute_relative_strength_features(
         market: 종목의 시장 (KOSPI 또는 KOSDAQ).
         sector_index_df: 업종 지수 DataFrame (columns: ['date', 'index_code', 'close']).
         sector_mapping: Ticker -> (sector_code, sector_name, effective_date) 딕셔너리.
+        require_exact_sector_snapshot: current-only production path에서 exact
+            frozen membership snapshot을 강제할지 여부.
+        sector_snapshot_effective_date: sector_mapping의 authoritative snapshot 날짜.
 
     Returns:
         RelativeStrengthFeatureResult 객체.
@@ -221,19 +231,53 @@ def compute_relative_strength_features(
         target_mkt_code = None
         target_mkt_name = None
 
-    # Resolve Sector Mapping Info if available (Strict PIT provenance: requires effective_date)
+    # Resolve Sector Mapping Info.  The legacy path retains PIT ``<=`` semantics;
+    # the current-only production path requires an explicit exact snapshot.
     s_code = None
     s_name = None
+    sector_input_reason: str | None = None
+    sector_snapshot_ok = True
+    sector_resolution_status = "MAPPED"
+    if require_exact_sector_snapshot:
+        sector_snapshot_ok = (
+            sector_snapshot_effective_date is not None
+            and str(sector_snapshot_effective_date)[:10] == formatted_asof
+            and formatted_asof == "2026-08-14"
+            and sector_mapping is not None
+        )
+        if not sector_snapshot_ok:
+            sector_input_reason = "SECTOR_MEMBERSHIP_SNAPSHOT_UNAVAILABLE"
     if sector_mapping and ticker_z in sector_mapping:
         val = sector_mapping[ticker_z]
         if isinstance(val, (tuple, list)) and len(val) >= 3:
             sc, sn, eff_dt = val[0], val[1], str(val[2]).strip()
-            # Strict PIT check: reject if mapping effective date is in the future relative to as_of
-            if eff_dt <= formatted_asof:
+            sector_resolution_status = str(val[3]).strip().upper() if len(val) >= 4 else "MAPPED"
+            if require_exact_sector_snapshot:
+                if sector_snapshot_ok and eff_dt == formatted_asof:
+                    if sector_resolution_status == "UNMAPPED" or sc is None or pd.isna(sc):
+                        sector_input_reason = "SECTOR_MEMBERSHIP_UNMAPPED"
+                    else:
+                        s_code, s_name = str(sc), None if sn is None or pd.isna(sn) else str(sn)
+                elif sector_snapshot_ok:
+                    sector_input_reason = "SECTOR_MEMBERSHIP_SNAPSHOT_UNAVAILABLE"
+            elif eff_dt <= formatted_asof and sc is not None and not pd.isna(sc):
                 s_code, s_name = str(sc), str(sn)
-        # Provenance-less 2-tuples are strictly rejected (s_code and s_name remain None -> DATA_UNAVAILABLE)
+        # Provenance-less 2-tuples are strictly rejected (s_code and s_name remain None).
+    elif require_exact_sector_snapshot and sector_snapshot_ok:
+        sector_input_reason = "SECTOR_MEMBERSHIP_UNMAPPED"
 
     if stock_df is None or stock_df.empty or market_index_df is None or market_index_df.empty:
+        if (
+            require_exact_sector_snapshot
+            and sector_input_reason is None
+            and s_code is not None
+        ):
+            sector_input_reason = "STOCK_ASOF_UNAVAILABLE"
+        unavailable_status = (
+            RelativeStrengthDataStatus.NOT_EVALUATED
+            if sector_input_reason == "SECTOR_MEMBERSHIP_SNAPSHOT_UNAVAILABLE"
+            else RelativeStrengthDataStatus.DATA_UNAVAILABLE
+        )
         return _unavailable_rs_result(
             ticker_z,
             formatted_asof,
@@ -241,6 +285,8 @@ def compute_relative_strength_features(
             market_benchmark_code=target_mkt_code,
             sector_name=s_name,
             sector_code=s_code,
+            sector_status=unavailable_status,
+            sector_reason=sector_input_reason,
         )
 
     if target_mkt_code is None:
@@ -256,6 +302,8 @@ def compute_relative_strength_features(
             market_benchmark_code=target_mkt_code,
             sector_name=s_name,
             sector_code=s_code,
+            sector_status=(RelativeStrengthDataStatus.NOT_EVALUATED if sector_input_reason == "SECTOR_MEMBERSHIP_SNAPSHOT_UNAVAILABLE" else RelativeStrengthDataStatus.DATA_UNAVAILABLE),
+            sector_reason=sector_input_reason,
         )
 
     df_mkt["date"] = df_mkt["date"].astype(str)
@@ -269,6 +317,8 @@ def compute_relative_strength_features(
             market_benchmark_code=target_mkt_code,
             sector_name=s_name,
             sector_code=s_code,
+            sector_status=(RelativeStrengthDataStatus.NOT_EVALUATED if sector_input_reason == "SECTOR_MEMBERSHIP_SNAPSHOT_UNAVAILABLE" else RelativeStrengthDataStatus.DATA_UNAVAILABLE),
+            sector_reason=sector_input_reason,
         )
 
     if df_mkt.duplicated(subset=["date"]).any():
@@ -286,6 +336,8 @@ def compute_relative_strength_features(
             market_benchmark_code=target_mkt_code,
             sector_name=s_name,
             sector_code=s_code,
+            sector_status=(RelativeStrengthDataStatus.NOT_EVALUATED if sector_input_reason == "SECTOR_MEMBERSHIP_SNAPSHOT_UNAVAILABLE" else RelativeStrengthDataStatus.DATA_UNAVAILABLE),
+            sector_reason=sector_input_reason,
         )
 
     # 3. Extract and Filter Stock Price Series
@@ -301,6 +353,8 @@ def compute_relative_strength_features(
             market_benchmark_code=target_mkt_code,
             sector_name=s_name,
             sector_code=s_code,
+            sector_status=(RelativeStrengthDataStatus.NOT_EVALUATED if sector_input_reason == "SECTOR_MEMBERSHIP_SNAPSHOT_UNAVAILABLE" else RelativeStrengthDataStatus.DATA_UNAVAILABLE),
+            sector_reason=sector_input_reason,
         )
 
     s_df["date_str"] = s_df.index.strftime("%Y-%m-%d")
@@ -311,6 +365,8 @@ def compute_relative_strength_features(
 
     # Stock exact as_of observation must exist
     if formatted_asof not in s_map or pd.isna(s_map[formatted_asof]) or s_map[formatted_asof] <= 0:
+        if require_exact_sector_snapshot and sector_input_reason is None and s_code is not None:
+            sector_input_reason = "STOCK_ASOF_UNAVAILABLE"
         return _unavailable_rs_result(
             ticker_z,
             formatted_asof,
@@ -318,6 +374,8 @@ def compute_relative_strength_features(
             market_benchmark_code=target_mkt_code,
             sector_name=s_name,
             sector_code=s_code,
+            sector_status=(RelativeStrengthDataStatus.NOT_EVALUATED if sector_input_reason == "SECTOR_MEMBERSHIP_SNAPSHOT_UNAVAILABLE" else RelativeStrengthDataStatus.DATA_UNAVAILABLE),
+            sector_reason=sector_input_reason,
         )
 
     stock_end_close = float(s_map[formatted_asof])
@@ -369,6 +427,7 @@ def compute_relative_strength_features(
 
     # 5. Compute Sector Relative Strength (Independent Secondary Axis)
     sec_status = RelativeStrengthDataStatus.DATA_UNAVAILABLE
+    sec_reason = sector_input_reason
     sec_name = None
     sec_code = None
     sec_bench_code = None
@@ -383,7 +442,11 @@ def compute_relative_strength_features(
     sec_anc_6m = None
     sec_anc_12m = None
 
-    if (
+    if sector_input_reason == "SECTOR_MEMBERSHIP_SNAPSHOT_UNAVAILABLE":
+        sec_status = RelativeStrengthDataStatus.NOT_EVALUATED
+    elif sector_input_reason == "SECTOR_MEMBERSHIP_UNMAPPED":
+        sec_status = RelativeStrengthDataStatus.DATA_UNAVAILABLE
+    elif (
         sector_mapping is not None
         and ticker_z in sector_mapping
         and s_code is not None
@@ -415,10 +478,25 @@ def compute_relative_strength_features(
 
                     if sec_rs_3m is None:
                         sec_status = RelativeStrengthDataStatus.DATA_UNAVAILABLE
+                        sec_reason = "SECTOR_3M_ANCHOR_UNAVAILABLE"
                     elif sec_rs_6m is not None and sec_rs_12m is not None:
                         sec_status = RelativeStrengthDataStatus.READY
+                        sec_reason = "READY_INPUT"
                     else:
                         sec_status = RelativeStrengthDataStatus.PARTIAL
+                        sec_reason = (
+                            "SECTOR_6M_ANCHOR_UNAVAILABLE"
+                            if sec_rs_6m is None
+                            else "SECTOR_12M_ANCHOR_UNAVAILABLE"
+                        )
+                else:
+                    sec_reason = "SECTOR_BENCHMARK_ASOF_UNAVAILABLE"
+            else:
+                sec_reason = "SECTOR_BENCHMARK_ASOF_UNAVAILABLE"
+        else:
+            sec_reason = "SECTOR_BENCHMARK_ASOF_UNAVAILABLE"
+    elif s_code is not None and sector_input_reason is None:
+        sec_reason = "SECTOR_BENCHMARK_ASOF_UNAVAILABLE"
 
     return RelativeStrengthFeatureResult(
         ticker=ticker_z,
@@ -440,6 +518,7 @@ def compute_relative_strength_features(
         market_anchor_date_6m=m_anc_6m,
         market_anchor_date_12m=m_anc_12m,
         sector_rs_data_status=sec_status,
+        sector_rs_input_reason=sec_reason,
         sector_name=sec_name,
         sector_code=sec_code,
         sector_benchmark_code=sec_bench_code,

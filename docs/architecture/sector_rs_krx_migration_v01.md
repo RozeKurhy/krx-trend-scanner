@@ -7,8 +7,9 @@ SECTOR_RS_KRX_MIGRATION_V01
 목적
 ----------------------------------------------------------------------
 Sector Relative Strength가 사용하는 native 46개 업종지수 가격 source를
-PyKRX에서 KRX Open API로 교체한다. RS 공식, sector_code, ticker→sector
-membership, RelativeStrengthFeatureResult와 Market RS source는 변경하지 않는다.
+PyKRX에서 KRX Open API로 교체하고, current membership은 KRX frozen canonical
+2026-08-14 exact snapshot으로 고정한다. Historical membership은 deferred이며,
+Naver membership fallback과 live PyKRX membership은 금지한다.
 
 Production contract
 ----------------------------------------------------------------------
@@ -28,6 +29,16 @@ normalized 46-sector Parquet cache
         ↓
 `compute_relative_strength_features()`
 
+Current membership flow
+----------------------------------------------------------------------
+KRX frozen canonical resolution policy
+        ↓ (exact effective_date=2026-08-14)
+`SectorMembershipStore` (2528 COMMON, 2496 mapped, 32 explicit UNMAPPED)
+        ↓
+`load_sector_mapping_exact_snapshot()`
+        ↓
+`compute_relative_strength_features(require_exact_sector_snapshot=True)`
+
 Market RS는 기존 market index cache/source를 계속 사용한다.
 KRX `/idx/krx_dd_trd` branded taxonomy는 native Sector RS에 사용하지 않는다.
 
@@ -41,6 +52,15 @@ Cache invariants
 - API 200 + 빈 OutBlock은 양 시장 모두 빈 경우에만 non-trading date로 취급한다.
 - 한 시장만 성공하면 production cache를 갱신하지 않는다.
 - 초기 cache는 최소 270 complete trading sessions를 요구한다.
+
+Membership invariants
+----------------------------------------------------------------------
+- exact snapshot date는 `2026-08-14` 하나뿐이다.
+- 2026-08-14 이외의 as_of에서는 Sector RS를 `NOT_EVALUATED`로 반환한다.
+- 32개 unmapped COMMON은 삭제하지 않고 `DATA_UNAVAILABLE` /
+  `SECTOR_MEMBERSHIP_UNMAPPED`로 보존한다.
+- Sector RS cross-section은 전체 COMMON valid 값만으로 계산하며 candidate subset을
+  분모로 사용하지 않는다.
 
 Incremental update
 ----------------------------------------------------------------------
