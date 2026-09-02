@@ -1,0 +1,9 @@
+{
+  "test": "tests/test_stage_v03_research_consistency.py::test_research_artifact_deterministic_regeneration",
+  "failure_type": "ENVIRONMENT_WRITE_PERMISSION",
+  "actual": "PermissionError: Operation not permitted writing artifacts/patterns/pattern_a/validation/stage_v03_research/hypothesis_separation_audit.csv",
+  "expected": "2 deterministic regeneration calls complete",
+  "root_cause": "Unprivileged sandbox write restriction outside configured writable roots",
+  "related_to_fastcore_fix": false,
+  "escalated_targeted_result": "PASS"
+}

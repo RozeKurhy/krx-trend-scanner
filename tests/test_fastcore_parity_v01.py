@@ -11,6 +11,7 @@ from scripts.run_fastcore_parity_v01 import (
     TRADE_COLUMNS,
     compare_trades,
     metrics_parity,
+    trade_level_parity_rows,
 )
 
 
@@ -57,14 +58,23 @@ def test_trade_comparator_is_exact_and_fail_closed():
     assert result["numeric_mismatches"] == 1
 
 
-def test_metrics_surface_frozen_reentry_contract_inconsistency():
+def test_metrics_and_trade_rows_match_reconciled_frozen_contract():
     authority_path = ROOT / "artifacts/patterns/pattern_a_fast/production/core_v02_reentry/trades.csv"
     contract_path = ROOT / "artifacts/patterns/pattern_a_fast/production/strategy_v02/pattern_a_fast_final_strategy_v02.json"
+    production_path = ROOT / "artifacts/data/end_to_end_data_parity/v01/fastcore_parity/v01/fix01/production/production_fastcore_trades_20260814.csv"
+    parity_path = ROOT / "artifacts/data/end_to_end_data_parity/v01/fastcore_parity/v01/fix01/parity/trade_level_parity.csv"
     authority = pd.read_csv(authority_path, dtype={"ticker": str})
+    production = pd.read_csv(production_path, dtype={"ticker": str})
     contract = json.loads(contract_path.read_text(encoding="utf-8"))
-    result = metrics_parity(authority, authority.copy(), contract)
+    result = metrics_parity(authority, production, contract)
     assert result["authority_vs_production_mismatches"] == 0
     assert result["reentry_production"]["ge_100_count"] == 18
-    assert result["reentry_frozen_expected"]["ge_100_count"] == 17
-    assert result["reentry_cohort_metric_mismatches"] == 1
-    assert result["aggregate_metric_mismatches"] == 1
+    assert result["reentry_frozen_expected"]["ge_100_count"] == 18
+    assert result["reentry_cohort_metric_mismatches"] == 0
+    assert result["aggregate_metric_mismatches"] == 0
+    rows = trade_level_parity_rows(authority, production)
+    persisted = pd.read_csv(parity_path, dtype={"ticker": str})
+    assert len(rows) == 783
+    assert len(persisted) == 783
+    assert rows["overall_match"].all()
+    assert persisted["overall_match"].all()

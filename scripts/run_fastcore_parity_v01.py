@@ -258,6 +258,73 @@ def compare_trades(authority: pd.DataFrame, production: pd.DataFrame) -> dict[st
     }
 
 
+def trade_level_parity_rows(authority: pd.DataFrame, production: pd.DataFrame) -> pd.DataFrame:
+    """Return one explicit pass/fail row for every authority/production trade key."""
+    authority = _prepare(authority)
+    production = _prepare(production)
+    auth_index = {
+        (canonical(row.ticker, "ticker"), canonical(row.trade_sequence, "trade_sequence")): row
+        for row in authority.itertuples()
+    }
+    prod_index = {
+        (canonical(row.ticker, "ticker"), canonical(row.trade_sequence, "trade_sequence")): row
+        for row in production.itertuples()
+    }
+    rows: list[dict[str, Any]] = []
+    for key in sorted(set(auth_index) | set(prod_index)):
+        left, right = auth_index.get(key), prod_index.get(key)
+        structural_mismatch_count = 0
+        numeric_mismatch_count = 0
+        max_numeric_abs_error = 0.0
+        if left is None or right is None:
+            structural_mismatch_count = len(STRUCTURAL_COLUMNS)
+            numeric_mismatch_count = len(NUMERIC_COLUMNS)
+        else:
+            for column in STRUCTURAL_COLUMNS:
+                structural_mismatch_count += int(
+                    canonical(getattr(left, column), column)
+                    != canonical(getattr(right, column), column)
+                )
+            for column in NUMERIC_COLUMNS:
+                a = canonical(getattr(left, column), column)
+                b = canonical(getattr(right, column), column)
+                if a == b:
+                    continue
+                numeric_mismatch_count += 1
+                try:
+                    max_numeric_abs_error = max(
+                        max_numeric_abs_error, abs(float(Decimal(a) - Decimal(b)))
+                    )
+                except (InvalidOperation, ValueError):
+                    max_numeric_abs_error = float("inf")
+        trade_id = (
+            canonical(getattr(left, "trade_id"), "trade_id")
+            if left is not None
+            else canonical(getattr(right, "trade_id"), "trade_id")
+        )
+        rows.append(
+            {
+                "ticker": key[0],
+                "trade_sequence": key[1],
+                "trade_id": trade_id,
+                "structural_match": structural_mismatch_count == 0,
+                "numeric_match": numeric_mismatch_count == 0,
+                "overall_match": structural_mismatch_count == 0 and numeric_mismatch_count == 0,
+                "structural_mismatch_count": structural_mismatch_count,
+                "numeric_mismatch_count": numeric_mismatch_count,
+                "max_numeric_abs_error": max_numeric_abs_error,
+            }
+        )
+    return pd.DataFrame(
+        rows,
+        columns=[
+            "ticker", "trade_sequence", "trade_id", "structural_match", "numeric_match",
+            "overall_match", "structural_mismatch_count", "numeric_mismatch_count",
+            "max_numeric_abs_error",
+        ],
+    )
+
+
 def distribution(df: pd.DataFrame, column: str) -> dict[str, int]:
     return {canonical(key, column): int(value) for key, value in df[column].value_counts(dropna=False).items()}
 
