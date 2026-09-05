@@ -1,0 +1,42 @@
+{
+  "comparison_mode": {
+    "fastcore": "legacy resample path vs PrecomputedTickerContext path",
+    "julia": "legacy resample path vs PrecomputedTickerContext path",
+    "pattern_a": "legacy evaluate_pattern_a_fast without context vs PrecomputedTickerContext",
+    "stock_report": "same Repository V2 production replay (context not used by report consumer)",
+    "volatile_fields_excluded": [
+      "execution_id",
+      "runtime",
+      "runtime_seconds",
+      "temporary_path",
+      "timestamp"
+    ]
+  },
+  "comparison_rows": [
+    {
+      "fastcore_delta": 0,
+      "julia_delta": 0,
+      "pattern_a_week_count": 3,
+      "ticker": "000020"
+    },
+    {
+      "fastcore_delta": 0,
+      "julia_delta": 0,
+      "pattern_a_week_count": 3,
+      "ticker": "000040"
+    }
+  ],
+  "fastcore_semantic_delta_count": 0,
+  "frozen_as_of": "2026-08-14",
+  "julia_semantic_delta_count": 0,
+  "pass": true,
+  "pattern_a_comparison_count": 6,
+  "pattern_a_semantic_delta_count": 0,
+  "probe_history_rows": 180,
+  "probe_ticker_count": 2,
+  "probe_tickers": [
+    "000020",
+    "000040"
+  ],
+  "stock_report_semantic_delta_count": 0
+}

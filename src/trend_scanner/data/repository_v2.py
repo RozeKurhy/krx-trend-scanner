@@ -19,6 +19,11 @@ from trend_scanner.data.repository_v2_session_authority import (
     ADJUSTED_ANALYTICALLY_NONUSABLE_DATES,
     SOURCE_CLOSURE_CHECKPOINT_SHA256,
 )
+from trend_scanner.data.repository_v2_instrument_contract import (
+    SUPPORTED_INSTRUMENT_TYPES,
+    RepositoryV2InstrumentContract,
+    repository_v2_contract_for,
+)
 
 
 DAILY_COLUMNS = (
@@ -96,6 +101,10 @@ class _IndexedRawTickerReader:
     def __init__(self, store: KrxRawStockStore) -> None:
         self.store = store
         self._locations: dict[str, list[tuple[str, str, tuple[int, ...]]]] = {}
+        # Retain one validated partition copy for indexed reads.  OHLC values
+        # are downcast to int32 during build (without value loss under the
+        # KRX contract) to keep the full raw evidence below the consumer
+        # shadow's memory ceiling.
         self._partition_frames: dict[tuple[str, str], pd.DataFrame] = {}
         self._built = False
         self.stats = {
@@ -134,12 +143,14 @@ class _IndexedRawTickerReader:
             day = str(row["date"])
             frame = self.store.load_snapshot(market, day)
             self.stats["partition_files_opened"] += 1
-            # Keep the already integrity-validated frame for this ephemeral
-            # repository run.  Reopening the same partition per ticker would
-            # repeat file/content hashing millions of times on the canonical
-            # population and is not a production-scale access pattern.
-            self._partition_frames[(market, day)] = frame
-            self.stats["index_memory_bytes"] += int(frame.memory_usage(deep=True).sum())
+            compact = frame.loc[:, list(RAW_COLUMNS)].copy()
+            # KRX OHLC values are bounded well below int32 for this contract;
+            # retain exact integer values while halving the four price-column
+            # footprint in the long-lived index.
+            for column in ("open", "high", "low", "close"):
+                compact[column] = compact[column].astype("int32")
+            self._partition_frames[(market, day)] = compact
+            self.stats["index_memory_bytes"] += int(compact.memory_usage(deep=True).sum())
             if frame.empty:
                 continue
             # Store row positions rather than copying every ticker's rows into
@@ -182,7 +193,6 @@ class _IndexedRawTickerReader:
             raise MarketDataError("CROSS_MARKET_TICKER_CONFLICT")
         self.stats["ticker_rows_returned"] += len(result)
         return result.sort_values(["date", "ticker"], kind="mergesort").reset_index(drop=True)
-
 
 def _empty_frame(columns: tuple[str, ...]) -> pd.DataFrame:
     return pd.DataFrame(
@@ -579,6 +589,7 @@ class MarketDataRepositoryV2:
     ) -> None:
         self._adjusted_price_store = adjusted_price_store
         self._raw_stock_store = raw_stock_store
+        self._query_audit: dict[str, dict[str, Any]] = {}
         self._raw_index = (
             _IndexedRawTickerReader(raw_stock_store)
             if isinstance(raw_stock_store, KrxRawStockStore)
@@ -589,6 +600,22 @@ class MarketDataRepositoryV2:
         # full-store verification is an explicit run-initialization step.
         if self._raw_index is not None:
             self._raw_index.build()
+
+    @staticmethod
+    def contract_for(instrument_type: str) -> RepositoryV2InstrumentContract:
+        """Return the shared authority contract for a formally classified type.
+
+        This is metadata/contract lookup only; it never selects a consumer
+        path, reads a legacy cache, or performs network I/O.
+        """
+
+        return repository_v2_contract_for(instrument_type)
+
+    @property
+    def supported_instrument_types(self) -> tuple[str, ...]:
+        """Instrument types supported by the one composed V2 interface."""
+
+        return SUPPORTED_INSTRUMENT_TYPES
 
     @staticmethod
     def _adjusted_ticker(ticker: str) -> str:
@@ -676,7 +703,33 @@ class MarketDataRepositoryV2:
             }
         return dict(self._raw_index.stats)
 
+    @property
+    def query_audit(self) -> dict[str, dict[str, Any]]:
+        """Return compact per-ticker query accounting for offline evidence."""
+
+        return {ticker: dict(audit) for ticker, audit in self._query_audit.items()}
+
     def get_daily(self, ticker: str, start: str, end: str) -> pd.DataFrame:
+        key = str(ticker).zfill(6)
+        try:
+            result = self._get_daily(key, start, end)
+        except MarketDataError as exc:
+            self._query_audit[key] = {
+                "status": "EXPLICIT_DATA_UNAVAILABLE" if (
+                    str(exc).startswith("DATA_UNAVAILABLE")
+                    or str(exc) in {"REPOSITORY_V2_EMPTY", "REPOSITORY_V2_TRADING_SESSION_MISMATCH"}
+                ) else "ERROR",
+                "reason": str(exc),
+            }
+            raise
+        self._query_audit[key] = {
+            "status": "PROCESSED" if result is not None and not result.empty else "EXPLICIT_DATA_UNAVAILABLE",
+            "reason": None if result is not None and not result.empty else "REPOSITORY_V2_EMPTY",
+            "rows": int(len(result)) if result is not None else 0,
+        }
+        return result
+
+    def _get_daily(self, ticker: str, start: str, end: str) -> pd.DataFrame:
         start_ts, end_ts = _date_range(start, end)
         adjusted_ticker = self._adjusted_ticker(ticker)
         adjusted = self._load_adjusted(adjusted_ticker, start_ts, end_ts)
@@ -708,7 +761,17 @@ class MarketDataRepositoryV2:
             for key, value in projection.items()
             if key not in {"projected_adjusted", "projected_raw"}
         }
-        validate_repository_v2_daily(result)
+        # Validation uses pandas column-wise ``apply``.  Pandas deep-copies
+        # DataFrame.attrs for each temporary Series, so validating while the
+        # full row-level session audit is attached causes an O(rows * audit)
+        # metadata-copy blow-up.  Keep the audit on the returned authority
+        # frame, but validate an attrs-free view and restore it afterwards.
+        result_attrs = result.attrs
+        result.attrs = {}
+        try:
+            validate_repository_v2_daily(result)
+        finally:
+            result.attrs = result_attrs
         return result
 
     def get_raw_daily(self, ticker: str, start: str, end: str) -> pd.DataFrame:
@@ -737,6 +800,8 @@ __all__ = [
     "ANCILLARY_COLUMNS",
     "DAILY_COLUMNS",
     "MarketDataRepositoryV2",
+    "SUPPORTED_INSTRUMENT_TYPES",
+    "RepositoryV2InstrumentContract",
     "RAW_DAILY_COLUMNS",
     "validate_repository_v2_daily",
 ]

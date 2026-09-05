@@ -29,7 +29,7 @@ from enum import Enum
 import json
 import logging
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 import numpy as np
 import pandas as pd
@@ -39,6 +39,12 @@ from trend_scanner.data.adjusted_price_store import AdjustedPriceStore
 from trend_scanner.data.index_store import IndexStore, MARKET_INDEX_FAMILY
 from trend_scanner.data.krx_raw_stock_store import KrxRawStockStore
 from trend_scanner.data.repository_v2 import MarketDataRepositoryV2
+from trend_scanner.data.repository_v2_loader import RepositoryV2DailyLoader
+from trend_scanner.backtest.snapshot_context import (
+    PrecomputedTickerContext,
+    build_historical_snapshot_from_context,
+    build_precomputed_ticker_context,
+)
 from trend_scanner.patterns.pattern_a_evaluator import (
     PatternACandidateState,
     PatternAEvaluationResult,
@@ -732,6 +738,8 @@ def scan_pattern_a_universe(
     require_exact_sector_snapshot: bool | None = None,
     sector_mapping_snapshot_date: str | None = None,
     market_rs_repository: MarketDataRepositoryV2 | None = None,
+    repository: MarketDataRepositoryV2 | None = None,
+    progress_callback: Callable[[int, int, str], None] | None = None,
 ) -> PatternAUniverseScanResult:
     """Official KRX COMMON Universe를 대상으로 Pattern A 스캔을 수행한다.
 
@@ -763,13 +771,17 @@ def scan_pattern_a_universe(
         sector_mapping_snapshot_date: 주입 mapping의 authoritative snapshot 날짜.
         market_rs_repository: 공유 Repository V2 인스턴스. Market RS가 활성화되면
             이 인스턴스만 사용하며, 생략 시 canonical local stores로 한 번 생성한다.
+        repository: production daily-price authority.  When supplied, all
+            Pattern A consumer input is loaded through Repository V2 and no
+            legacy cache path is consulted.
+        progress_callback: optional evidence-only callback invoked after each
+            target ticker is accounted. It receives ``(completed, total,
+            ticker)`` and does not alter scanner semantics.
 
     Returns:
         PatternAUniverseScanResult: 통합 결과 객체
     """
     # 1. Cache 및 As-Of 결정
-    parquet_cache = cache if isinstance(cache, ParquetCache) else ParquetCache(base_dir=cache)
-
     if as_of is None:
         if reference_market_date is not None:
             as_of_str = str(reference_market_date).strip()
@@ -779,6 +791,14 @@ def scan_pattern_a_universe(
         as_of_str = str(as_of).strip()
 
     req_as_of = pd.Timestamp(as_of_str)
+    repository_loader: RepositoryV2DailyLoader | None = None
+    if repository is not None:
+        repository_loader = RepositoryV2DailyLoader(repository, end=req_as_of)
+        parquet_cache = None
+    else:
+        # Explicit cache injection remains available to isolated historical
+        # fixtures. Production callers pass ``repository`` above.
+        parquet_cache = cache if isinstance(cache, ParquetCache) else ParquetCache(base_dir=cache)
     ref_market_date = (
         str(reference_market_date).strip() if reference_market_date else req_as_of.strftime("%Y-%m-%d")
     )
@@ -1042,20 +1062,18 @@ def scan_pattern_a_universe(
                 "enrich_sector_rs_cross_section requires the frozen COMMON population of 2528"
             )
 
-    # Market RS has one and only one production stock-input authority.  Build
-    # the repository once per scan and never fall back to ``ParquetCache`` for
-    # the RS calculation.  Pattern A itself continues to use the legacy cache
-    # until its separately scoped migration phase.
+    # Market RS and Pattern A daily inputs share one production Repository V2
+    # instance.  The optional legacy cache branch above is retained only for
+    # isolated historical fixtures; production entrypoints always provide the
+    # repository explicitly.
     rs_requested = bool(
         enrich_market_rs_cross_section or enrich_sector_rs_cross_section or enrich_rs_for_candidates
     )
-    if (
-        rs_requested
-        and market_rs_repository is None
-        and market_index_df_loaded is not None
-        and not market_index_df_loaded.empty
-    ):
-        market_rs_repository = _default_market_rs_repository(repo_root)
+    if rs_requested and market_rs_repository is None:
+        if repository is not None:
+            market_rs_repository = repository
+        elif market_index_df_loaded is not None and not market_index_df_loaded.empty:
+            market_rs_repository = _default_market_rs_repository(repo_root)
 
     # 3. Ticker별 순차 평가 (One Cache Load -> One daily_as_of Slice -> Shared Context)
     rows: list[PatternAUniverseScanRow] = []
@@ -1063,7 +1081,11 @@ def scan_pattern_a_universe(
     for ticker, name, market in scan_targets:
         try:
             # 3.1 1회 단일 캐시 로드 및 물리적 캐시 메타데이터
-            raw_daily = parquet_cache.load(ticker)
+            raw_daily = (
+                repository_loader.load(ticker)
+                if repository_loader is not None
+                else parquet_cache.load(ticker)  # type: ignore[union-attr]
+            )
             has_raw_cache = raw_daily is not None and not raw_daily.empty
             cache_first_raw = raw_daily.index.min() if has_raw_cache else None
             cache_last_raw = raw_daily.index.max() if has_raw_cache else None
@@ -1074,6 +1096,15 @@ def scan_pattern_a_universe(
                 daily_as_of = raw_daily.loc[raw_daily.index <= req_as_of]
             else:
                 daily_as_of = pd.DataFrame()
+
+            # Build one cutoff-safe context for this ticker.  The context
+            # reuses the exact frozen resampling/feature functions while
+            # avoiding seven full-history resamples inside score momentum.
+            ticker_context: PrecomputedTickerContext | None = (
+                build_precomputed_ticker_context(ticker, name, daily_as_of)
+                if has_raw_cache and not daily_as_of.empty
+                else None
+            )
 
             # 3.3 Data Quality & Freshness 감사 (daily_as_of 컨텍스트 사용)
             quality_record = audit_ticker_quality(
@@ -1181,16 +1212,25 @@ def scan_pattern_a_universe(
                     row = replace(row, **_relative_strength_row_updates(unavailable_rs))
                     row = replace(row, market_rs_input_reason=repository_input.reason)
                 rows.append(row)
+                if progress_callback is not None:
+                    progress_callback(len(rows), scan_target_count, ticker)
                 continue
 
             # 3.5 Single Snapshot 구축 (HistoricalSnapshot 생성 및 Frozen Component 직결)
-            snapshot: HistoricalSnapshot = build_historical_snapshot(
-                ticker=ticker,
-                name=name,
-                daily=daily_as_of,
-                snapshot_date=req_as_of,
-                include_incomplete_periods=False,
-            )
+            if ticker_context is None:
+                snapshot = build_historical_snapshot(
+                    ticker=ticker,
+                    name=name,
+                    daily=daily_as_of,
+                    snapshot_date=req_as_of,
+                    include_incomplete_periods=False,
+                )
+            else:
+                snapshot = build_historical_snapshot_from_context(
+                    ticker_context,
+                    snapshot_date=req_as_of,
+                    include_incomplete_periods=False,
+                )
 
             eval_res: PatternAEvaluationResult = evaluate_pattern_a(snapshot)
 
@@ -1214,6 +1254,7 @@ def scan_pattern_a_universe(
                 name=name,
                 daily=daily_as_of,
                 as_of=req_as_of,
+                context=ticker_context,
             )
 
             current_obs = next(
@@ -1477,6 +1518,8 @@ def scan_pattern_a_universe(
                 row_status=row_status,
             )
             rows.append(row)
+            if progress_callback is not None:
+                progress_callback(len(rows), scan_target_count, ticker)
 
         except Exception as exc:
             logger.exception("Scanner error on ticker %s (%s): %s", ticker, name, exc)
@@ -1532,6 +1575,8 @@ def scan_pattern_a_universe(
                 error_message=str(exc),
             )
             rows.append(row)
+            if progress_callback is not None:
+                progress_callback(len(rows), scan_target_count, ticker)
 
     # 3.8 Optional operational Phase 12 enrichment. The reference is built once
     # from every row in the unfiltered COMMON scan, then looked up by ticker.

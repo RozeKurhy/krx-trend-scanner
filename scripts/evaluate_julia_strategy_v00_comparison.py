@@ -15,7 +15,7 @@ Mandate:
 
 from __future__ import annotations
 
-from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import ThreadPoolExecutor
 import json
 import logging
 import math
@@ -26,8 +26,10 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from trend_scanner.data.cache import ParquetCache
+from trend_scanner.data.repository_v2_loader import RepositoryV2DailyLoader, build_repository_v2
 from trend_scanner.data.resampler import to_weekly
+from trend_scanner.backtest.feature_cache import FastSnapshotCache, MonthlySnapshotCache
+from trend_scanner.backtest.snapshot_context import build_precomputed_ticker_context
 from trend_scanner.filters.investability import (
     MIN_AVG_TRADING_VALUE_20D_KRW,
     MIN_MARKET_CAP_KRW,
@@ -72,10 +74,24 @@ PATH_DIVERGENCE_CSV = OUT_DIR / "strategy_path_divergence.csv"
 SUPERSEDES_COMMIT = "22a7c6cfe0c12ead7fea21a8a7a053ad77fabc4c"
 
 
-def _worker_simulation(args: tuple[str, str, str, dict, dict, HistoricalMarketCapRegistry]) -> tuple[list[dict], list[dict], list[dict]]:
+def _worker_simulation(
+    args: tuple[str, str, str, dict, dict, HistoricalMarketCapRegistry],
+    loader: RepositoryV2DailyLoader,
+) -> tuple[list[dict], list[dict], list[dict]]:
     ticker, name, market, score_contract, stage_contract, registry = args
-    cache = ParquetCache(base_dir=ROOT / "data/raw/stocks")
-    daily = cache.load(ticker)
+    daily = loader.load(ticker)
+    snapshot_context = (
+        build_precomputed_ticker_context(ticker, name, daily)
+        if daily is not None and not daily.empty
+        else None
+    )
+    # Keep the caches ticker-local: all consumers below use the same immutable
+    # daily/context/contracts for this worker, while a shared cache across
+    # concurrent tickers would need a lock and could accidentally mix semantic
+    # inputs.  The audit and both strategy passes therefore share one FAST
+    # result per (ticker, completed week), and one monthly snapshot per month.
+    fast_snapshot_cache = FastSnapshotCache()
+    monthly_snapshot_cache = MonthlySnapshotCache()
 
     # Collect Investability Audit records for potential signals
     audit_records = []
@@ -88,7 +104,17 @@ def _worker_simulation(args: tuple[str, str, str, dict, dict, HistoricalMarketCa
             if fut.empty or fut.index[0] < EVALUATION_START_DATE:
                 continue
             try:
-                res = evaluate_pattern_a_fast(ticker, name, daily_scoped[daily_scoped.index <= w], w, score_contract, stage_contract)
+                res = fast_snapshot_cache.get(
+                    ticker,
+                    name,
+                    daily_scoped,
+                    w,
+                    score_contract,
+                    stage_contract,
+                    context=snapshot_context,
+                )
+                if res is None:
+                    continue
                 is_trigger = (res["fast_machine_stage"] == "TRIGGER" and res["fast_machine_stage_status"] == "READY")
                 is_permitted = (res["fast_monthly_permission_state"] == "PERMITTED_REGIME")
                 is_non_extreme = (res["fast_daily_risk_state"] in {"NORMAL", "ELEVATED"})
@@ -135,6 +161,9 @@ def _worker_simulation(args: tuple[str, str, str, dict, dict, HistoricalMarketCa
         market_cap_registry=registry,
         start_date=EVALUATION_START_DATE,
         cutoff_date=EVALUATION_END_DATE,
+        fast_snapshot_cache=fast_snapshot_cache,
+        monthly_snapshot_cache=monthly_snapshot_cache,
+        snapshot_context=snapshot_context,
     )
 
     # 2. Julia V00 2022+ (Loss Guard OFF) with Strict PIT Investability
@@ -149,6 +178,9 @@ def _worker_simulation(args: tuple[str, str, str, dict, dict, HistoricalMarketCa
         market_cap_registry=registry,
         start_date=EVALUATION_START_DATE,
         cutoff_date=EVALUATION_END_DATE,
+        fast_snapshot_cache=fast_snapshot_cache,
+        monthly_snapshot_cache=monthly_snapshot_cache,
+        snapshot_context=snapshot_context,
     )
 
     return [r.to_dict() for r in baseline_records], [r.to_dict() for r in julia_records], audit_records
@@ -298,13 +330,19 @@ def run_controlled_comparison() -> None:
         for _, row in df_univ.iterrows()
     ]
 
+    # Production input path: one immutable Repository V2 index shared by all
+    # worker threads.  A process pool would duplicate the raw index and
+    # silently reintroduce per-worker legacy loading overhead.
+    repository = build_repository_v2(ROOT, end=EVALUATION_END_DATE)
+    loader = RepositoryV2DailyLoader(repository, end=EVALUATION_END_DATE)
+
     t0 = time.perf_counter()
     all_baseline_trades: list[dict] = []
     all_julia_trades: list[dict] = []
     all_audit_records: list[dict] = []
 
-    with ProcessPoolExecutor(max_workers=8) as executor:
-        results = list(executor.map(_worker_simulation, tasks))
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        results = list(executor.map(lambda task: _worker_simulation(task, loader), tasks))
 
     for b_trades, j_trades, audits in results:
         all_baseline_trades.extend(b_trades)
@@ -355,6 +393,9 @@ def run_controlled_comparison() -> None:
         "investability_data_unavailable_count": data_unavail_count,
         "available_dates_sample": available_dates,
         "missing_dates_sample": missing_dates[:15],
+        "REPOSITORY_INSTANCE_COUNT": 1,
+        "REPOSITORY_FULL_INDEX_BUILD_COUNT": repository.raw_reader_stats.get("full_store_scans", 0),
+        "STOCK_REPORT_TICKER_COUNT": 0,
     }
     with open(PIT_AUDIT_JSON, "w", encoding="utf-8") as f:
         json.dump(pit_audit_summary, f, indent=2, ensure_ascii=False)

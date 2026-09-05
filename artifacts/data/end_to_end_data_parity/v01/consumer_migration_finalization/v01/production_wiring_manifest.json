@@ -1,0 +1,48 @@
+{
+  "consumers": [
+    {
+      "as_of_propagation": true,
+      "consumer": "Pattern A scanner/evaluator",
+      "fallback_present": false,
+      "final_source": "MarketDataRepositoryV2",
+      "legacy_source": "ParquetCache (legacy compatibility only)",
+      "production_path": "scripts/run_pattern_a_universe_scanner.py -> scan_pattern_a_universe(repository=...)",
+      "repository_contract": "AdjustedPriceStore + KrxRawStockStore",
+      "strategy_semantics_changed": false
+    },
+    {
+      "as_of_propagation": true,
+      "consumer": "FastCore",
+      "fallback_present": false,
+      "final_source": "MarketDataRepositoryV2",
+      "legacy_source": "per-worker ParquetCache",
+      "production_path": "scripts/evaluate_pattern_a_fast_core_v02_reentry.py -> RepositoryV2DailyLoader",
+      "repository_contract": "AdjustedPriceStore + KrxRawStockStore",
+      "strategy_semantics_changed": false
+    },
+    {
+      "as_of_propagation": true,
+      "consumer": "Julia",
+      "fallback_present": false,
+      "final_source": "MarketDataRepositoryV2",
+      "legacy_source": "per-worker ParquetCache",
+      "production_path": "scripts/evaluate_julia_strategy_v00_comparison.py -> RepositoryV2DailyLoader",
+      "repository_contract": "AdjustedPriceStore + KrxRawStockStore",
+      "strategy_semantics_changed": false
+    },
+    {
+      "as_of_propagation": true,
+      "consumer": "Stock Report",
+      "fallback_present": false,
+      "final_source": "MarketDataRepositoryV2",
+      "legacy_source": "ParquetCache (explicit fixture compatibility only)",
+      "production_path": "src/trend_scanner/reporting/stock_report.py::main -> generate_stock_report(repository=...)",
+      "repository_contract": "AdjustedPriceStore + KrxRawStockStore",
+      "strategy_semantics_changed": false
+    }
+  ],
+  "frozen_as_of": "2026-08-14",
+  "legacy_production_price_fallback_count": 0,
+  "strategy_etf_universe_expanded": false,
+  "strategy_thresholds_changed": false
+}

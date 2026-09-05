@@ -13,7 +13,7 @@ import logging
 from pathlib import Path
 import sys
 
-from trend_scanner.data.cache import ParquetCache
+from trend_scanner.data.repository_v2_loader import build_repository_v2
 from trend_scanner.scanner import scan_pattern_a_universe
 
 logging.basicConfig(
@@ -71,11 +71,6 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
 
-    cache_path = Path(args.cache_dir)
-    if not cache_path.exists():
-        logger.error("Cache directory does not exist: %s", cache_path)
-        sys.exit(1)
-
     markets = [args.market] if args.market else None
 
     logger.info("==================================================")
@@ -86,15 +81,16 @@ def main() -> None:
     logger.info("  Limit:      %s", args.limit or "None (Full COMMON)")
     logger.info("==================================================")
 
-    cache = ParquetCache(base_dir=cache_path)
+    repository = build_repository_v2(Path(__file__).resolve().parents[1], end=args.as_of)
 
     result = scan_pattern_a_universe(
-        cache=cache,
+        cache=Path(args.cache_dir),
         as_of=args.as_of,
         reference_market_date=args.as_of,
         target_markets=markets,
         target_tickers=args.tickers,
         limit=args.limit,
+        repository=repository,
     )
 
     summary = result.summary

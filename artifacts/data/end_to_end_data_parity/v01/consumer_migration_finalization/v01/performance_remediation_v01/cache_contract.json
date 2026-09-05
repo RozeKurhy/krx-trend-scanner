@@ -1,0 +1,31 @@
+{
+  "schema_version": "BACKTEST_PERFORMANCE_REMEDIATION_V01",
+  "frozen_as_of": "2026-08-14",
+  "fast_cache_key_fields": [
+    "ticker",
+    "reference_date",
+    "cache_scope"
+  ],
+  "monthly_cache_key_fields": [
+    "ticker",
+    "reference_month",
+    "cache_scope"
+  ],
+  "cache_scope_fields": [
+    "score_contract_sha256",
+    "stage_contract_sha256",
+    "repository_v2_source_identity",
+    "adjusted_raw_authority",
+    "include_incomplete_periods"
+  ],
+  "fast_cache_semantic_justification": "The in-memory key is compact because each Julia worker owns a fresh cache pair for one ticker, fixed score/stage contracts, one Repository V2 daily/context input, completed-week semantics, and include_incomplete_periods=false. Persistent reuse additionally validates contract, implementation, source-data, and runtime fingerprints before loading.",
+  "monthly_cache_semantic_justification": "Monthly snapshots are always requested with the same ticker-local Repository V2 context and include_incomplete_periods=false. A different requested month is a different key; a different scope requires a new cache instance.",
+  "strategy_specific_inputs_excluded": [
+    "enable_loss_guard",
+    "sensitivity_mode",
+    "market_cap_threshold"
+  ],
+  "exclusion_justification": "These inputs do not affect evaluate_pattern_a_fast or the monthly Pattern A snapshot; eligibility remains downstream and is evaluated independently per strategy path.",
+  "cache_ownership": "ticker-local worker pair; no cross-ticker mutable cache sharing",
+  "stale_cache_policy": "PersistentFeatureCacheStore rejects version/source/runtime mismatch as a cold start"
+}

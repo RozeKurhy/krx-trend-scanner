@@ -1,0 +1,146 @@
+{
+  "artifact_candidate_consistency": {
+    "run2_artifact_asof_match": true,
+    "run2_artifact_candidate_match": true,
+    "run2_artifact_config_match": true
+  },
+  "candidate_head": "87923e109731cff1a0af29d339770beb0f8bea18",
+  "candidate_worktree_dirty_before_run": true,
+  "code_fingerprint_after": "d23267656e9f7760d6a6e25c2a70ad9f3f308bcc",
+  "code_fingerprint_before": "d23267656e9f7760d6a6e25c2a70ad9f3f308bcc",
+  "code_unchanged_during_run": true,
+  "config": {
+    "score_contract_sha256": "be0dc21c3764aeb147a3565e65850fc179ecc91e5700e8221932f12ce28ae501",
+    "stage_contract_sha256": "231cb43e2830017a72a9e8ba8d29296749f8a323e211266035d80cf841b70cf7"
+  },
+  "consumers": {
+    "fastcore": {
+      "artifact": "shadow/performance_remediation_v01/run2/run2_fastcore.json",
+      "complete": true,
+      "output_sha256": "82ab9cc8f9a93178a361c51d15d579ac13589e03fc1d4ade7cd44bbe78dacaf5",
+      "output_sha256_matches_run1": true,
+      "population_count": 1081,
+      "rows_after_frozen_as_of": 0,
+      "runtime_seconds": 5372.5609,
+      "trade_count": 2696
+    },
+    "julia": {
+      "artifact": "shadow/performance_remediation_v01/run2/run2_julia.json",
+      "audit_count": 8064,
+      "baseline_trade_count": 815,
+      "complete": true,
+      "julia_trade_count": 617,
+      "output_sha256": "91fbeb7b4d64ed65f66513e3b646054aada09e564af45bbf5332e59369f39f3f",
+      "output_sha256_matches_run1": true,
+      "population_count": 2528,
+      "rows_after_frozen_as_of": 0,
+      "runtime_seconds": 6685.5456
+    },
+    "pattern_a": {
+      "artifact": "shadow/performance_remediation_v01/run2/run2_pattern_a.json",
+      "complete": true,
+      "output_sha256": "a366e76526ff70692108e8f6a78b5580a259faad65c34edbbc5bd4d46e8ff22f",
+      "output_sha256_matches_run1": true,
+      "population_count": 2528,
+      "row_status_distribution": {
+        "ERROR": 0,
+        "OK": 1925,
+        "PARTIAL": 50,
+        "UNAVAILABLE": 553
+      },
+      "row_status_total": 2528,
+      "row_status_total_matches_population": true,
+      "rows_after_frozen_as_of": 0,
+      "runtime_seconds": 1956.1708
+    },
+    "stock_report": {
+      "artifact": "shadow/performance_remediation_v01/run2/run2_stock_report.json",
+      "common_count": 37,
+      "complete": true,
+      "etf_count": 17,
+      "output_sha256": "8b0f55fbffa29922d2106485e3109f453071f827652d5c4895a68dcb9ae3514d",
+      "output_sha256_matches_run1": true,
+      "report_count": 54,
+      "rows_after_frozen_as_of": 0,
+      "rows_artifact": "shadow/performance_remediation_v01/run2/run2_stock_report_rows.json",
+      "runtime_seconds": 320.5456,
+      "warning_count": 39727
+    }
+  },
+  "correctness": {
+    "all_consumer_artifacts_complete": true,
+    "fastcore_unexplained_delta_count": 0,
+    "julia_unexplained_delta_count": 0,
+    "network_calls": 0,
+    "pass": true,
+    "pattern_a_unexplained_delta_count": 0,
+    "production_strategy_code_changed": false,
+    "rows_after_frozen_as_of_used": 0,
+    "silent_drop_count": 0,
+    "stock_report_unexplained_delta_count": 0,
+    "unexplained_delta_count": 0,
+    "unexplained_session_mismatch": 0
+  },
+  "execution_policy": {
+    "additional_optimization": "NOT_RUN",
+    "commit": "NOT_RUN",
+    "determinism": "NOT_RUN",
+    "final_fix_head": "NOT_CREATED",
+    "full_repository_pytest": "NOT_RUN",
+    "push": "NOT_RUN",
+    "run2": "COMPLETE",
+    "stop_after_run2": true
+  },
+  "final_shadow_run2": "PASS",
+  "frozen_as_of": "2026-08-14",
+  "network_authority": {
+    "legacy_etf_promotion_used": false,
+    "live_api_used": false,
+    "network_calls": 0,
+    "new_krx_api_requests": 0,
+    "new_naver_requests": 0,
+    "pykrx_used": false,
+    "repository_authority": "MarketDataRepositoryV2",
+    "scraping_used": false
+  },
+  "next_state": "RUN2_EXTERNAL_REVIEW",
+  "performance": {
+    "julia_seconds_per_ticker": 2.6446,
+    "run1_reference_fastcore_seconds": 5668.5655,
+    "run1_reference_julia_seconds": 7134.254,
+    "run1_reference_pattern_a_seconds": 2066.8469,
+    "run1_reference_stock_report_seconds": 337.0711,
+    "run2_fastcore_seconds": 5372.5609,
+    "run2_julia_seconds": 6685.5456,
+    "run2_pattern_a_seconds": 1956.1708,
+    "run2_stock_report_seconds": 320.5456,
+    "run2_total_compute_seconds": 14335.295,
+    "run2_total_wall_clock_seconds": 14335.3222
+  },
+  "population": {
+    "expected_fastcore_population": 1081,
+    "expected_julia_population": 2528,
+    "expected_pattern_a_population": 2528,
+    "expected_stock_report_population": 54,
+    "universe_path": "artifacts/patterns/pattern_a/production/investability/pattern_a_investability_universe_20260814.csv",
+    "universe_sha256": "1aca764fc56d3416b9f10ce418a0deaca5174cb8c32997acfd2df1000987e4c8"
+  },
+  "run": "run2",
+  "run1_artifacts_preserved": true,
+  "run2_correctness_result": "PASS",
+  "schema_version": "CONSUMER_MIGRATION_FINALIZATION_V01_RUN2_SUMMARY",
+  "session_mismatch_accounting": {
+    "accounted_population": 2528,
+    "artifact": "validation/session_mismatch_accounting_run2.json",
+    "expected_population": 2528,
+    "explicit_data_unavailable_count": 106,
+    "network_calls": 0,
+    "pass": true,
+    "processed_ticker_count": 2422,
+    "session_mismatch_ticker_count": 106,
+    "session_mismatch_ticker_count_matches_run1": true,
+    "silent_drop_count": 0,
+    "unexplained_session_mismatch": 0
+  },
+  "verdict": "RUN2_PASS"
+}

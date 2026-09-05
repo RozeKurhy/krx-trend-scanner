@@ -1,0 +1,191 @@
+{
+  "consumers": {
+    "fastcore": {
+      "complete": true,
+      "output_sha256": "82ab9cc8f9a93178a361c51d15d579ac13589e03fc1d4ade7cd44bbe78dacaf5",
+      "population_count": 1081,
+      "rows_after_frozen_as_of": 0,
+      "runtime_seconds": 5372.5609,
+      "trade_count": 2696
+    },
+    "julia": {
+      "audit_count": 8064,
+      "baseline_trade_count": 815,
+      "complete": true,
+      "julia_trade_count": 617,
+      "output_sha256": "91fbeb7b4d64ed65f66513e3b646054aada09e564af45bbf5332e59369f39f3f",
+      "population_count": 2528,
+      "rows_after_frozen_as_of": 0,
+      "runtime_seconds": 6685.5456
+    },
+    "pattern_a": {
+      "complete": true,
+      "output_sha256": "a366e76526ff70692108e8f6a78b5580a259faad65c34edbbc5bd4d46e8ff22f",
+      "population": {
+        "cache_missing_count": 106,
+        "cache_present_count": 2422,
+        "candidate_data_unavailable_count": 4,
+        "candidate_filtered_liquidity_count": 30,
+        "candidate_filtered_market_cap_count": 40,
+        "candidate_flow_data_unavailable_count": 4,
+        "candidate_flow_distribution": {
+          "DATA_UNAVAILABLE": 4,
+          "NOT_EVALUATED": 0,
+          "PARTIAL": 0,
+          "READY": 170
+        },
+        "candidate_flow_partial_count": 0,
+        "candidate_flow_ready_count": 170,
+        "candidate_investability_distribution": {
+          "DATA_UNAVAILABLE": 4,
+          "FILTERED_LIQUIDITY": 30,
+          "FILTERED_MARKET_CAP": 40,
+          "INVESTABLE": 100
+        },
+        "candidate_investable_count": 100,
+        "candidate_market_rs_data_unavailable_count": 4,
+        "candidate_market_rs_distribution": {
+          "DATA_UNAVAILABLE": 4,
+          "NOT_EVALUATED": 0,
+          "PARTIAL": 0,
+          "READY": 170
+        },
+        "candidate_market_rs_partial_count": 0,
+        "candidate_market_rs_ready_count": 170,
+        "candidate_raw_count": 174,
+        "candidate_sector_rs_data_unavailable_count": 85,
+        "candidate_sector_rs_distribution": {
+          "DATA_UNAVAILABLE": 85,
+          "NOT_EVALUATED": 0,
+          "PARTIAL": 0,
+          "READY": 89
+        },
+        "candidate_sector_rs_partial_count": 0,
+        "candidate_sector_rs_ready_count": 89,
+        "candidate_state_distribution": {
+          "blocked": 1280,
+          "candidate": 174,
+          "insufficient_data": 553,
+          "late": 403,
+          "watch": 118
+        },
+        "evaluator_ready_count": 1975,
+        "feature_ready_count": 2139,
+        "flow_data_unavailable_count": 4,
+        "flow_not_evaluated_count": 2354,
+        "flow_partial_count": 0,
+        "flow_ready_count": 170,
+        "investability_data_unavailable_count": 226,
+        "investability_distribution": {
+          "DATA_UNAVAILABLE": 226,
+          "FILTERED_LIQUIDITY": 171,
+          "FILTERED_MARKET_CAP": 1062,
+          "INVESTABLE": 1069
+        },
+        "investability_filtered_liquidity_count": 171,
+        "investability_filtered_market_cap_count": 1062,
+        "investability_investable_count": 1069,
+        "market_rs_data_unavailable_count": 4,
+        "market_rs_not_evaluated_count": 2354,
+        "market_rs_partial_count": 0,
+        "market_rs_ready_count": 170,
+        "momentum_1m_distribution": {
+          "count": 2133,
+          "max": 35.1557,
+          "mean": -4.452,
+          "median": 0.0,
+          "min": -62.4335,
+          "q25": -8.7912,
+          "q75": 0.0,
+          "std": 9.8524
+        },
+        "momentum_1m_ready_count": 2133,
+        "momentum_3m_distribution": {
+          "count": 2111,
+          "max": 64.5146,
+          "mean": -12.4938,
+          "median": -5.703,
+          "min": -100.0,
+          "q25": -24.4568,
+          "q75": 0.0,
+          "std": 21.2082
+        },
+        "momentum_3m_ready_count": 2111,
+        "momentum_6m_distribution": {
+          "count": 2087,
+          "max": 76.6107,
+          "mean": -12.9862,
+          "median": -3.7384,
+          "min": -100.0,
+          "q25": -30.0228,
+          "q75": 0.0,
+          "std": 27.3993
+        },
+        "momentum_6m_ready_count": 2087,
+        "momentum_current_ready_count": 2140,
+        "official_common_total": 2528,
+        "raw_ready_count": 2422,
+        "reference_market_date": "2026-08-14",
+        "requested_as_of": "2026-08-14",
+        "row_status_distribution": {
+          "ERROR": 0,
+          "OK": 1925,
+          "PARTIAL": 50,
+          "UNAVAILABLE": 553
+        },
+        "rows_emitted": 2528,
+        "scan_target_count": 2528,
+        "scanner_error_count": 0,
+        "score_distribution": {
+          "count": 2139,
+          "max": 100.0,
+          "mean": 20.6808,
+          "median": 3.0864,
+          "min": 0.0,
+          "q25": 0.0,
+          "q75": 40.7349,
+          "std": 26.2108
+        },
+        "score_ready_count": 2139,
+        "sector_rs_data_unavailable_count": 85,
+        "sector_rs_not_evaluated_count": 2354,
+        "sector_rs_partial_count": 0,
+        "sector_rs_ready_count": 89,
+        "stage_distribution": {
+          "UNAVAILABLE": 553,
+          "base": 118,
+          "early_trend": 11,
+          "progressed": 403,
+          "transition": 163,
+          "weak": 1280
+        },
+        "stage_ready_count": 1975
+      },
+      "population_count": 2528,
+      "rows_after_frozen_as_of": 0,
+      "runtime_seconds": 1956.1708
+    },
+    "stock_report": {
+      "common_count": 37,
+      "complete": true,
+      "etf_count": 17,
+      "output_sha256": "8b0f55fbffa29922d2106485e3109f453071f827652d5c4895a68dcb9ae3514d",
+      "report_count": 54,
+      "rows_after_frozen_as_of": 0,
+      "runtime_seconds": 320.5456,
+      "warning_count": 39727,
+      "warning_summary": {
+        "DeprecationWarning|/Users/june/Documents/projects/krx-trend-scanner/.venv/lib/python3.13/site-packages/pandas/core/resample.py": 23175,
+        "FutureWarning|/Users/june/Documents/projects/krx-trend-scanner/src/trend_scanner/features/moving_average.py": 5700,
+        "FutureWarning|/Users/june/Documents/projects/krx-trend-scanner/src/trend_scanner/research/pattern_a_fast_monthly_features.py": 302,
+        "FutureWarning|/Users/june/Documents/projects/krx-trend-scanner/src/trend_scanner/research/pattern_a_fast_weekly_features.py": 10550
+      }
+    }
+  },
+  "final_shadow_pass": true,
+  "frozen_as_of": "2026-08-14",
+  "population_hash": "d86e0c69fafc0f7c372623cde3d97388fb05998b7d2a4072bde217a17e568597",
+  "run": "run2",
+  "runtime_seconds": 14335.295,
+  "unexplained_delta_count": 0
+}

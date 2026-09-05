@@ -41,6 +41,24 @@ from trend_scanner.validation.historical_snapshot import build_historical_snapsh
 _FAILED = object()
 _FAILED_MARKER = "__FAST_SNAPSHOT_EVALUATION_FAILED__"
 
+# The dictionary key is intentionally compact, but it is not the complete
+# semantic identity by itself.  A cache instance is valid only within one
+# fixed scope (contracts, Repository V2 source, context construction, and
+# incomplete-period policy).  PersistentFeatureCacheStore validates that
+# scope before loading; the Julia worker owns a fresh pair per ticker and
+# therefore cannot mix daily/context inputs between tickers.  Any caller that
+# needs a different scope must create a new cache pair rather than reusing an
+# existing instance.
+FAST_CACHE_KEY_FIELDS = ("ticker", "reference_date", "cache_scope")
+MONTHLY_CACHE_KEY_FIELDS = ("ticker", "reference_month", "cache_scope")
+CACHE_SCOPE_FIELDS = (
+    "score_contract_sha256",
+    "stage_contract_sha256",
+    "repository_v2_source_identity",
+    "adjusted_raw_authority",
+    "include_incomplete_periods",
+)
+
 
 class FastSnapshotCache:
     """Memoizes ``evaluate_pattern_a_fast`` results by ``(ticker, week)``."""

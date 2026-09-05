@@ -16,6 +16,9 @@ import numpy as np
 import pandas as pd
 
 from trend_scanner.data.cache import ParquetCache
+from trend_scanner.data.adjusted_price_store import AdjustedPriceStore
+from trend_scanner.data.repository_v2 import MarketDataRepositoryV2
+from trend_scanner.data.repository_v2_loader import RepositoryV2DailyLoader, build_repository_v2
 from trend_scanner.filters.investability import evaluate_investability
 from trend_scanner.flow.foreign_flow import (
     FlowDataStatus,
@@ -631,6 +634,7 @@ def generate_stock_report(
     repo_root: Path | str | None = None,
     save_artifacts: bool = True,
     output_dir: Path | str | None = None,
+    repository: MarketDataRepositoryV2 | None = None,
 ) -> tuple[StockReport, Path | None, Path | None]:
     """단일 종목의 Stock Report v0.2를 생성하고 선택적으로 JSON/MD 아티팩트를 저장한다."""
     root_path = Path(repo_root) if repo_root else Path(__file__).resolve().parent.parent.parent.parent
@@ -646,8 +650,14 @@ def generate_stock_report(
     ref_market_date = canonical_as_of
 
     # 2. 로컬 Universe 및 종목 메타데이터 로드 (Formal Authority, Zero-Network)
-    cache = ParquetCache(base_dir=root_path / "data/raw/stocks")
-    daily = cache.load(clean_ticker)
+    price_source = "MarketDataRepositoryV2" if repository is not None else "local parquet cache"
+    if repository is not None:
+        daily = RepositoryV2DailyLoader(repository, end=canonical_as_of).load(clean_ticker)
+    else:
+        # Explicit legacy cache mode is retained for isolated historical test
+        # fixtures. Production entrypoints pass a Repository V2 instance.
+        cache = ParquetCache(base_dir=root_path / "data/raw/stocks")
+        daily = cache.load(clean_ticker)
     has_cache = daily is not None and not daily.empty
 
     inst_meta = resolve_instrument_metadata(ticker=clean_ticker, as_of=canonical_as_of, repo_root=root_path)
@@ -795,7 +805,7 @@ def generate_stock_report(
     full_monthly_history: list[MonthlyObservation] = []
     if not daily_slice.empty:
         stock_first_date = daily_slice.index.min()
-        market_month_ends = _get_reference_market_month_ends(cache, req_as_of_ts)
+        market_month_ends = _get_reference_market_month_ends(None, req_as_of_ts)
 
         if not market_month_ends:
             quality_status = "MARKET_CALENDAR_UNAVAILABLE"
@@ -1120,7 +1130,7 @@ def generate_stock_report(
     )
 
     provenance = ProvenanceSection(
-        stock_price_source="local parquet cache",
+        stock_price_source=price_source,
         score_contract="pattern_a_score_v0.2",
         stage_contract="pattern_a_stage_v0.1",
         investability_contract="phase10",
@@ -1181,10 +1191,20 @@ def main() -> None:
     parser.add_argument("--output-dir", default=None, help="Custom output directory")
     args = parser.parse_args()
 
+    root = Path(__file__).resolve().parents[3]
+    if args.as_of:
+        report_end = args.as_of
+    else:
+        latest = AdjustedPriceStore(root / "data/market/adjusted/stocks").latest_date("005930")
+        report_end = latest.strftime("%Y-%m-%d") if latest is not None else "2026-08-14"
+    repository = build_repository_v2(root, end=report_end)
+
     report, jp, mp = generate_stock_report(
         ticker=args.ticker,
-        as_of=args.as_of,
+        as_of=report_end,
+        repo_root=root,
         output_dir=args.output_dir,
+        repository=repository,
     )
 
     print(f"Successfully generated stock report v{report.report_version} for {report.name} ({report.ticker})!")

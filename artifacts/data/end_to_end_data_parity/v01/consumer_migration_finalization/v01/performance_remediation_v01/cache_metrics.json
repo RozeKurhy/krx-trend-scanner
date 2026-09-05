@@ -1,0 +1,33 @@
+{
+  "schema_version": "BACKTEST_PERFORMANCE_REMEDIATION_V01",
+  "frozen_as_of": "2026-08-14",
+  "sample_size": 20,
+  "sample_composition": {
+    "eligible_current_fastcore_filter": 10,
+    "ineligible_current_fastcore_filter": 10
+  },
+  "network_calls": 0,
+  "post_optimization": {
+    "fast_evaluation_count": 4432,
+    "fast_cache_hit_count": 7402,
+    "fast_cache_hit_ratio": 0.625486,
+    "fast_evaluation_count_per_ticker": 221.6,
+    "monthly_evaluation_count": 329,
+    "monthly_cache_hit_count": 370,
+    "monthly_evaluation_count_per_ticker": 16.45,
+    "resample_total": 495,
+    "resample_count_per_ticker": 24.75,
+    "resample_breakdown": {
+      "snapshot_context_to_weekly": 20,
+      "snapshot_context_to_monthly": 455,
+      "audit_to_weekly": 20
+    }
+  },
+  "pre_optimization_reference": {
+    "fast_evaluation_count_per_ticker": 636.75,
+    "resample_count_per_ticker": 629.3,
+    "source": "prior bounded Julia profile"
+  },
+  "duplicate_fast_calculation_resolved": true,
+  "duplicate_resample_resolved": true
+}

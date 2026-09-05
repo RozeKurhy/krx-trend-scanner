@@ -21,6 +21,10 @@ from typing import Any
 import pandas as pd
 
 from trend_scanner.data.resampler import to_monthly
+from trend_scanner.backtest.snapshot_context import (
+    PrecomputedTickerContext,
+    build_historical_snapshot_from_context,
+)
 from trend_scanner.patterns.pattern_a_score import PatternAResult, score_pattern_a
 from trend_scanner.validation.historical_snapshot import (
     _drop_incomplete_current_month,
@@ -130,8 +134,16 @@ def compute_pattern_a_score_momentum(
     name: str,
     daily: pd.DataFrame,
     as_of: str | pd.Timestamp,
+    *,
+    context: PrecomputedTickerContext | None = None,
 ) -> PatternAScoreMomentumResult:
-    """특정 as_of 시점 기준으로 정확한 Calendar 1M, 3M, 6M Pattern A Score Momentum을 계산한다."""
+    """특정 as_of 시점 기준으로 정확한 Calendar 1M, 3M, 6M Pattern A Score Momentum을 계산한다.
+
+    ``context`` is an optional, semantics-preserving precomputed ticker view.
+    When supplied by a production batch consumer, it reuses the already
+    validated weekly/monthly buckets for the seven historical observations;
+    the legacy per-call path remains the default for isolated callers/tests.
+    """
     clean_ticker = str(ticker).strip().zfill(6)
     clean_name = str(name).strip()
     req_ts = pd.Timestamp(as_of)
@@ -192,7 +204,10 @@ def compute_pattern_a_score_momentum(
 
     # 2. 완성 월봉(Completed Monthly Bars) 목록 추출 (NaN 빈 행 제외)
     # [Major 1]: req_ts를 전달하여 HistoricalSnapshot과 동일한 completed month contract 유지
-    raw_monthly = to_monthly(sliced_daily)
+    if context is None:
+        raw_monthly = to_monthly(sliced_daily)
+    else:
+        raw_monthly = context.monthly_up_to(req_ts)
     valid_monthly = raw_monthly.dropna(subset=["close"])
     completed_monthly = _drop_incomplete_current_month(valid_monthly, req_ts)
 
@@ -275,13 +290,20 @@ def compute_pattern_a_score_momentum(
 
         # 데이터가 존재하는 경우 HistoricalSnapshot & Score 계산 시도
         try:
-            snapshot = build_historical_snapshot(
-                ticker=clean_ticker,
-                name=clean_name,
-                daily=sliced_daily,
-                snapshot_date=anchor_str,
-                include_incomplete_periods=False,
-            )
+            if context is None:
+                snapshot = build_historical_snapshot(
+                    ticker=clean_ticker,
+                    name=clean_name,
+                    daily=sliced_daily,
+                    snapshot_date=anchor_str,
+                    include_incomplete_periods=False,
+                )
+            else:
+                snapshot = build_historical_snapshot_from_context(
+                    context,
+                    snapshot_date=anchor_str,
+                    include_incomplete_periods=False,
+                )
             score_res = score_pattern_a(snapshot.features)
             if score_res.pattern_a_score is None:
                 # 히스토리 부족으로 인한 점수 미산출인지 확인

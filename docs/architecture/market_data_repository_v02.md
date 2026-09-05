@@ -16,6 +16,27 @@ read-only composition layer에서 결합한다. Repository V2는 authority가 �
 * volume/trading_value: KrxRawStockStore, KRX_OPEN_API_STOCK_DAILY, RAW
 * market_cap/listed_shares: KrxRawStockStore의 raw ancillary만 제공
 
+공식 supported instrument contract
+---------------------------------
+Repository V2는 formally classified `COMMON`과 `ETF`를 동일한 composed
+interface로 지원한다. ETF 여부는 `InstrumentMetadataResolver`의 PIT formal
+product-master classification으로만 결정하며 ticker 모양/이름/17종 allowlist를
+사용하지 않는다.
+
+* COMMON adjusted authority: `AdjustedPriceStore` / Naver direct adjusted V02
+* COMMON raw authority: `KrxRawStockStore` / KRX Open API stock daily
+* ETF adjusted authority: `AdjustedPriceStore` / Naver direct adjusted V02
+* ETF raw authority: `KrxRawStockStore` / KRX Open API ETF daily (`/etp/etf_bydd_trd`)
+* ETF volume/trading_value는 ETF raw source field를 그대로 보존한다. adjusted
+  OHLC로 재구성하거나 trading_value를 계산하지 않는다.
+* 두 instrument type 모두 exact source date range, explicit session projection,
+  PIT lifecycle semantics를 사용한다. forward-fill/backfill/consumer-specific
+  bypass는 금지한다.
+
+ETF source access가 인증/활용 승인되지 않은 경우 Repository V2는 성공을
+가장하지 않고 `DATA_UNAVAILABLE: RAW_MISSING`으로 fail-closed한다. 레거시
+`data/raw/stocks` ETF cache는 이 계약의 source authority가 아니다.
+
 Ticker domain
 -------------
 * adjusted API: 기존 SIX_DIGIT_TICKER numeric domain 유지

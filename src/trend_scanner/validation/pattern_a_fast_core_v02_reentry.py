@@ -22,6 +22,11 @@ import numpy as np
 import pandas as pd
 
 from trend_scanner.data.cache import ParquetCache
+from trend_scanner.backtest.snapshot_context import (
+    PrecomputedTickerContext,
+    build_historical_snapshot_from_context,
+    build_precomputed_ticker_context,
+)
 from trend_scanner.data.resampler import to_monthly, to_weekly
 from trend_scanner.patterns.pattern_a_evaluator import evaluate_pattern_a
 from trend_scanner.patterns.pattern_a_fast_evaluator import evaluate_pattern_a_fast
@@ -89,6 +94,8 @@ def simulate_ticker_core_v02_reentry(
     score_contract: dict,
     stage_contract: dict,
     cutoff_date: pd.Timestamp = DATA_CUTOFF,
+    snapshot_context: PrecomputedTickerContext | None = None,
+    use_precomputed_context: bool = True,
 ) -> list[V02TradeRecord]:
     if daily is None or daily.empty:
         return []
@@ -100,16 +107,30 @@ def simulate_ticker_core_v02_reentry(
     if not required_cols.issubset(daily.columns) or len(daily) < 60:
         return []
 
-    weekly_bars = to_weekly(daily)
-    valid_weeks = [
-        w for w in weekly_bars.index
-        if daily[daily.index <= w].index.max().normalize() == w.normalize()
-    ]
+    # Build the cutoff-safe context once per ticker.  Every weekly FAST
+    # evaluation and monthly lifecycle snapshot can then reuse the same
+    # precomputed resampling without changing any strategy semantics.  The
+    # explicit legacy branch is retained solely for FIX01 semantic-equivalence
+    # evidence; production callers leave ``use_precomputed_context=True``.
+    if use_precomputed_context:
+        snapshot_context = snapshot_context or build_precomputed_ticker_context(ticker, name, daily)
+        weekly_bars = snapshot_context.weekly_up_to(cutoff_date)
+        valid_weeks = [
+            w for w in weekly_bars.index
+            if daily[daily.index <= w].index.max().normalize() == w.normalize()
+        ]
+        monthly_bars = snapshot_context.monthly_up_to(cutoff_date)
+    else:
+        snapshot_context = None
+        weekly_bars = to_weekly(daily)
+        valid_weeks = [
+            w for w in weekly_bars.index
+            if daily[daily.index <= w].index.max().normalize() == w.normalize()
+        ]
+        monthly_bars = to_monthly(daily)
 
     if not valid_weeks:
         return []
-
-    monthly_bars = to_monthly(daily)
 
     trades: list[V02TradeRecord] = []
     trade_seq = 0
@@ -125,7 +146,25 @@ def simulate_ticker_core_v02_reentry(
         candidate_weeks = [w for w in valid_weeks if w >= cur_search_date]
         for w in candidate_weeks:
             try:
-                res = evaluate_pattern_a_fast(ticker, name, daily[daily.index <= w], w, score_contract, stage_contract)
+                if use_precomputed_context:
+                    res = evaluate_pattern_a_fast(
+                        ticker,
+                        name,
+                        daily,
+                        w,
+                        score_contract,
+                        stage_contract,
+                        context=snapshot_context,
+                    )
+                else:
+                    res = evaluate_pattern_a_fast(
+                        ticker,
+                        name,
+                        daily[daily.index <= w],
+                        w,
+                        score_contract,
+                        stage_contract,
+                    )
                 is_trigger = (res["fast_machine_stage"] == "TRIGGER" and res["fast_machine_stage_status"] == "READY")
                 is_permitted = (res["fast_monthly_permission_state"] == "PERMITTED_REGIME")
                 is_non_extreme = (res["fast_daily_risk_state"] in {"NORMAL", "ELEVATED"})
@@ -171,7 +210,20 @@ def simulate_ticker_core_v02_reentry(
         monthly_snapshots: list[dict[str, Any]] = []
         for m in m_dates:
             try:
-                snap = build_historical_snapshot(ticker, name, daily[daily.index <= m], m, include_incomplete_periods=False)
+                if use_precomputed_context:
+                    snap = build_historical_snapshot_from_context(
+                        snapshot_context,
+                        m,
+                        include_incomplete_periods=False,
+                    )
+                else:
+                    snap = build_historical_snapshot(
+                        ticker,
+                        name,
+                        daily[daily.index <= m],
+                        m,
+                        include_incomplete_periods=False,
+                    )
                 eval_res = evaluate_pattern_a(snap)
                 st = eval_res.stage.value.upper() if eval_res.stage else "UNAVAILABLE"
                 sc = float(round(eval_res.score, 2)) if eval_res.score is not None else None
