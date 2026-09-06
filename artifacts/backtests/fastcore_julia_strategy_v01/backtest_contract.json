@@ -1,0 +1,22 @@
+{
+  "directive": "MAIN_MERGE_AND_FASTCORE_JULIA_STRATEGY_BACKTEST_V01",
+  "step": "STEP_1_PURE_STRATEGY_COMPARISON",
+  "requested_backtest_end": "2026-09-04",
+  "common_universe_count": 2555,
+  "common_universe_source": "artifacts/patterns/pattern_a/production/scanner/pattern_a_universe_scan_20260904.csv",
+  "entry_filter": {
+    "market_cap_threshold_krw": 300000000000.0,
+    "avg_trading_value_20d_threshold_krw": 300000000.0,
+    "close_threshold_krw": 5000.0,
+    "entry_only": true,
+    "reevaluated_on_reentry": true
+  },
+  "strategy_difference": "loss_guard_enabled boolean only (FastCore=True, Julia=False)",
+  "other_strategy_difference_count": 0,
+  "transaction_cost": "NOT_APPLIED",
+  "slippage": "NOT_APPLIED",
+  "network_requests": 0,
+  "first_actual_entry_date": "2013-01-02",
+  "last_signal_date": "2026-08-21",
+  "last_execution_date": "2026-08-24"
+}

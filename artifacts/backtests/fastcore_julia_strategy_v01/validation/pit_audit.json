@@ -1,0 +1,25 @@
+{
+  "pit_discipline": "Every entry decision reads daily/raw_panel rows with index <= signal date only; no future-indexed lookups in the engine.",
+  "no_lookahead_verified_by": "tests/test_fastcore_julia_strategy_backtest_v01.py::test_no_lookahead_entry_filter",
+  "network_requests_made": 0,
+  "invariant_check": {
+    "comparable_pairs": 662,
+    "entry_fields_compared": [
+      "entry_execution_date",
+      "entry_open",
+      "entry_market_cap",
+      "entry_avg_trading_value_20d",
+      "entry_signal_close",
+      "entry_market_cap_pass",
+      "entry_trading_value_pass",
+      "entry_close_pass",
+      "entry_pattern_a_stage",
+      "fast_stage",
+      "fast_status",
+      "monthly_permission_state",
+      "daily_risk",
+      "fast_score",
+      "fast_score_state"
+    ]
+  }
+}
