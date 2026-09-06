@@ -120,8 +120,8 @@ CLOSED고 Production 승격 여부는 별도"임을 한 토큰으로 강조하�
 | | **Julia Realistic Backtest** | **NEXT** | 동일 기준의 Julia 전략 백테스트 |
 | | OpenDART Fundamentals | HOLD | 설계/구현 문서는 `docs/fundamentals/`에 보존, 신규 착수는 FastCore/Julia 이후 |
 | | KRX Open API Validation | COMPLETE | 서비스 API 승인 완료, 현재 production data path (Repository V2) |
-| | **Julia Strategy V00 Official PIT** | **INCOMPLETE / BLOCKED_BY_KRX_DATA** | 117/215 확보, 98개 기준일 누락 |
-| | **Market Cap Threshold Research** | **AFTER_OFFICIAL_JULIA_PIT** | Official PIT 100% 이후 strategy path 재생성 연구 |
+| | Julia Strategy V00 Official PIT (구 proxy 연구) | HISTORICAL / SUPERSEDED | Loss Guard on/off 비교용 구 proxy 연구, 117/215만 확보된 채 종료. 현재 우선순위인 FastCore/Julia Realistic Backtest로 대체됨 |
+| | Market Cap Threshold Research (구 proxy 연구 후속) | HISTORICAL / SUPERSEDED | 위 구 proxy 연구에 종속되어 있던 후속 계획, 현재 재개 대상 아님 |
 | **Longer-term** | Phase 14~18. Pattern B ~ F | PLANNED | 장기 파이프라인 |
 | | Phase 19. Market Leader Score | PLANNED | 종합 스코어링 체계 |
 | | Phase 20~21. Operational Dashboard | PLANNED | 최종 운영 시스템 |
@@ -141,16 +141,14 @@ CLOSED고 Production 승격 여부는 별도"임을 한 토큰으로 강조하�
        ↓
 5. OpenDART Fundamentals = HOLD (신규 착수는 위 3개 이후)
        ↓
-6. Julia Official PIT 100% = BLOCKED_BY_KRX_DATA
+6. Sector RS = DEFERRED / FUTURE_EXTENSION
        ↓
-7. Market Cap Threshold Research = AFTER_OFFICIAL_JULIA_PIT
+7. Web Report Viewer = FUTURE
        ↓
-8. Sector RS = DEFERRED / FUTURE_EXTENSION
-       ↓
-9. Web Report Viewer = FUTURE
-       ↓
-10. Phase 14~18 Pattern B ~ F & Longer-term = LONGER-TERM
+8. Phase 14~18 Pattern B ~ F & Longer-term = LONGER-TERM
 ```
+
+> **Historical / superseded (현재 우선순위 아님)**: Julia Strategy V00 Official PIT 비교 연구(구 loss-guard on/off proxy 연구, 117/215에서 종료)와 그 후속인 Market Cap Threshold Research는 현재 위 순서를 막는 prerequisite가 아니다. 현재 우선순위는 위 FastCore/Julia Realistic Backtest(2, 3)이며, 이 구 proxy 연구는 재개 예정 없이 역사적 기록으로만 남긴다. 상세 내용은 아래 "Julia Strategy V00" 섹션 참고.
 
 ---
 
@@ -425,7 +423,9 @@ Fundamentals Score, Pattern A Score와의 합산, 매매 signal, PER/PBR, valuat
 
 ---
 
-## Julia Strategy V00 — INCOMPLETE / BLOCKED_BY_KRX_DATA
+## Julia Strategy V00 — HISTORICAL / SUPERSEDED (구 proxy 연구, 현재 우선순위 아님)
+
+> 이 섹션은 역사적 기록이다. 현재 전략 검증 우선순위는 FastCore/Julia Realistic Backtest(NEXT)이며, 이 구 loss-guard on/off proxy 연구는 재개 예정이 없다.
 
 목적: A FAST Core V2의 핵심 보호 규칙인 pre-PROGRESSED $-15\%$ Loss Guard가 회고적 수익률 분포와 대규모 손실 프로필에 미치는 영향을 독립적으로 비교 검증.
 
@@ -458,7 +458,9 @@ KRX Open API 기반 데이터 계층 전환은 서비스 API 승인 대기 상�
 
 현재는 migration 완료나 production 전환으로 표시하지 않는다. OpenDART Fundamentals의 작은 작업 단위가 진행 중 승인되면, 해당 단위를 마친 뒤 KRX validation을 우선 재개할 수 있다.
 
-## Market Cap Threshold Research — AFTER_OFFICIAL_JULIA_PIT
+## Market Cap Threshold Research (구 proxy 연구 후속) — HISTORICAL / SUPERSEDED
+
+> 이 섹션은 위 Julia Strategy V00 구 proxy 연구에 종속되어 있던 계획이며, 현재 재개 대상이 아니다.
 
 Julia Official PIT가 100% 완료된 뒤 A FAST Core V2와 Julia를 대상으로 각 threshold에서 strategy path를 다시 생성하는 연구.
 
@@ -527,10 +529,10 @@ CLI / Web 대시보드, 관심종목 워크플로우, 실시간 알림 등 최�
 17. Julia Realistic Backtest — **NEXT**
 18. OpenDART Fundamentals — **HOLD**
 19. KRX Open API Validation — **COMPLETE**
-20. Julia Strategy V00 Official PIT — **INCOMPLETE / BLOCKED_BY_KRX_DATA**
-21. Market Cap Threshold Research — **AFTER_OFFICIAL_JULIA_PIT**
-22. Sector RS — **DEFERRED / FUTURE_EXTENSION**
-23. Web Report Viewer — **PLANNED / FUTURE**
+20. Sector RS — **DEFERRED / FUTURE_EXTENSION**
+21. Web Report Viewer — **PLANNED / FUTURE**
+22. (Historical / superseded, not in current order) Julia Strategy V00 Official PIT — 구 proxy 연구, HISTORICAL / SUPERSEDED
+23. (Historical / superseded, not in current order) Market Cap Threshold Research — 구 proxy 연구 후속, HISTORICAL / SUPERSEDED
 
 ---
 
