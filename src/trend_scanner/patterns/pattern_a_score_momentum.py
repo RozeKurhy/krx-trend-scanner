@@ -20,6 +20,7 @@ from typing import Any
 
 import pandas as pd
 
+from trend_scanner.data.market_calendar import MarketCalendarAuthority
 from trend_scanner.data.resampler import to_monthly
 from trend_scanner.backtest.snapshot_context import (
     PrecomputedTickerContext,
@@ -136,6 +137,7 @@ def compute_pattern_a_score_momentum(
     as_of: str | pd.Timestamp,
     *,
     context: PrecomputedTickerContext | None = None,
+    market_calendar: MarketCalendarAuthority | None = None,
 ) -> PatternAScoreMomentumResult:
     """특정 as_of 시점 기준으로 정확한 Calendar 1M, 3M, 6M Pattern A Score Momentum을 계산한다.
 
@@ -143,6 +145,10 @@ def compute_pattern_a_score_momentum(
     When supplied by a production batch consumer, it reuses the already
     validated weekly/monthly buckets for the seven historical observations;
     the legacy per-call path remains the default for isolated callers/tests.
+
+    ``market_calendar`` is forwarded to every completed-period check this function performs
+    (PRODUCTION_REGENERATION_INFRASTRUCTURE_FIX_V01 section 1); omitting it falls back to the
+    default canonical calendar authority, exactly as before this parameter existed.
     """
     clean_ticker = str(ticker).strip().zfill(6)
     clean_name = str(name).strip()
@@ -209,7 +215,7 @@ def compute_pattern_a_score_momentum(
     else:
         raw_monthly = context.monthly_up_to(req_ts)
     valid_monthly = raw_monthly.dropna(subset=["close"])
-    completed_monthly = _drop_incomplete_current_month(valid_monthly, req_ts)
+    completed_monthly = _drop_incomplete_current_month(valid_monthly, req_ts, market_calendar=market_calendar)
 
     if completed_monthly.empty:
         dummy_anchor = req_ts
@@ -297,12 +303,14 @@ def compute_pattern_a_score_momentum(
                     daily=sliced_daily,
                     snapshot_date=anchor_str,
                     include_incomplete_periods=False,
+                    market_calendar=market_calendar,
                 )
             else:
                 snapshot = build_historical_snapshot_from_context(
                     context,
                     snapshot_date=anchor_str,
                     include_incomplete_periods=False,
+                    market_calendar=market_calendar,
                 )
             score_res = score_pattern_a(snapshot.features)
             if score_res.pattern_a_score is None:

@@ -83,7 +83,19 @@ def load_canonical_mcap_snapshot(
     as_of: str = "2026-08-14",
     source_dir: Path | None = None,
 ) -> tuple[pd.DataFrame, str]:
-    """Load or fetch Point-In-Time market cap snapshot."""
+    """Load or build a Point-In-Time market cap snapshot. Zero-network by design
+    (PRODUCTION_REGENERATION_INFRASTRUCTURE_FIX_V01 section 2).
+
+    When the local cache CSV for ``as_of`` is absent, this builds it from the already-acquired
+    ``KrxRawStockStore`` raw daily snapshot (KOSPI+KOSDAQ), which already carries
+    ``market_cap``/``listed_shares`` columns as part of the rolling market-data authority --
+    this NEVER calls PyKRX. A previous version of this function silently called
+    ``pykrx.stock.get_market_cap_by_ticker()`` on a cache miss, which made a documented
+    zero-network production entrypoint (``scan_pattern_a_universe``) silently perform a live
+    ~2874-ticker network fetch; that fallback has been removed entirely, not merely disabled.
+    If no local raw snapshot exists for ``as_of`` either, returns an empty DataFrame and ""
+    (never attempts network I/O) -- callers must treat this as
+    LOCAL_MCAP_SOURCE_MISSING, not silently substitute another date's data."""
     src_dir = source_dir or (repo_root / "artifacts/patterns/pattern_a/production/investability/source")
     src_dir.mkdir(parents=True, exist_ok=True)
     source_file = src_dir / f"krx_market_cap_{as_of.replace('-', '')}.csv"
@@ -94,29 +106,24 @@ def load_canonical_mcap_snapshot(
         sha256 = hashlib.sha256(source_file.read_bytes()).hexdigest()
         return df, sha256
 
-    # Fetch from pykrx if not cached
-    from dotenv import load_dotenv
-    from pykrx import stock
-
-    load_dotenv()
-
     try:
-        as_of_clean = as_of.replace("-", "")
-        df_raw = stock.get_market_cap_by_ticker(as_of_clean)
-        if df_raw is None or df_raw.empty or "종가" not in df_raw.columns:
-            return pd.DataFrame(), ""
-        df_raw.index.name = "ticker"
-        df_reset = df_raw.reset_index()
-        df_reset["ticker"] = df_reset["ticker"].astype(str).str.zfill(6)
-        df_reset["effective_date"] = as_of
+        from trend_scanner.data.krx_raw_stock_store import DEFAULT_RAW_STOCK_ROOT, KrxRawStockStore
 
-        df_canon = df_reset.rename(columns={
-            "종가": "close",
-            "시가총액": "market_cap",
-            "거래량": "volume",
-            "거래대금": "trading_value",
-            "상장주식수": "shares_outstanding",
-        })
+        raw_store = KrxRawStockStore(repo_root / DEFAULT_RAW_STOCK_ROOT)
+        frames = []
+        for market in ("KOSPI", "KOSDAQ"):
+            snap = raw_store.load_snapshot(market, as_of)
+            if snap is not None and not snap.empty:
+                frames.append(snap)
+        if not frames:
+            return pd.DataFrame(), ""
+
+        combined = pd.concat(frames, ignore_index=True)
+        df_canon = combined.rename(columns={"listed_shares": "shares_outstanding"})[
+            ["ticker", "close", "market_cap", "volume", "trading_value", "shares_outstanding"]
+        ].copy()
+        df_canon["ticker"] = df_canon["ticker"].astype(str).str.zfill(6)
+        df_canon["effective_date"] = as_of
 
         df_canon.to_csv(source_file, index=False)
         sha256 = hashlib.sha256(source_file.read_bytes()).hexdigest()

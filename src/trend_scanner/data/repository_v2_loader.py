@@ -109,11 +109,44 @@ class RepositoryV2DailyLoader:
 
 
 def build_repository_v2(repo_root: Path | str, *, end: str | pd.Timestamp = "2026-08-14") -> MarketDataRepositoryV2:
-    """Build one run-scoped Repository V2 instance from canonical stores."""
+    """Build one run-scoped Repository V2 instance from canonical stores.
+
+    HISTORICAL_FROZEN_MODE: never applies a rolling-authority boundary. This is the correct,
+    unchanged entrypoint for E2E/closure/evaluation callers whose ``end`` is always a fixed,
+    already-certified date (directive ROLLING_MARKET_DATA_AUTHORITY_FINALIZATION_V01 section 8) --
+    it must keep behaving exactly as it always has. Genuine live/production callers (an ``end`` that
+    can be "today" or a caller-supplied as-of) must use :func:`build_production_repository_v2` instead,
+    which enforces the boundary unconditionally rather than as an opt-in.
+    """
     root = Path(repo_root)
     return MarketDataRepositoryV2(
         AdjustedPriceStore(root / "data/market/adjusted/stocks"),
         KrxRawStockStore(root / "data/market/raw/krx_stocks/v01"),
+    )
+
+
+def build_production_repository_v2(repo_root: Path | str, *, end: str | pd.Timestamp = "2026-08-14") -> MarketDataRepositoryV2:
+    """Build one run-scoped Repository V2 instance for PRODUCTION_ROLLING_MODE consumers.
+
+    Unlike :func:`build_repository_v2`, the rolling-authority boundary here is not a parameter a
+    caller can omit -- every repository this factory returns is wired to
+    ``rolling_market_data_refresh.DEFAULT_ROLLING_AUTHORITY_DIR`` unconditionally (directive section 7:
+    "production mode에서는 boundary가 opt-in이면 안 된다"). A missing/tampered/wrong-version manifest
+    surfaces as ``RollingAuthorityError`` the first time a consumer actually reads through it
+    (``get_daily``/``get_raw_daily``) -- fail-closed, never a silent full-store read.
+
+    Use this for any consumer whose ``end``/as-of can be a live or caller-supplied date: Stock Report
+    generation, the Pattern A production scanner CLI, and the Market RS default production repository.
+    E2E/closure/evaluation scripts whose ``end`` is always a fixed, already-certified historical date
+    must keep using :func:`build_repository_v2` unchanged.
+    """
+    from trend_scanner.data.rolling_market_data_refresh import DEFAULT_ROLLING_AUTHORITY_DIR
+
+    root = Path(repo_root)
+    return MarketDataRepositoryV2(
+        AdjustedPriceStore(root / "data/market/adjusted/stocks"),
+        KrxRawStockStore(root / "data/market/raw/krx_stocks/v01"),
+        rolling_authority_dir=root / DEFAULT_ROLLING_AUTHORITY_DIR,
     )
 
 
@@ -129,4 +162,4 @@ def repository_v2_provenance(frame: pd.DataFrame | None) -> dict[str, Any]:
     }
 
 
-__all__ = ["RepositoryV2DailyLoader", "build_repository_v2", "repository_v2_provenance"]
+__all__ = ["RepositoryV2DailyLoader", "build_repository_v2", "build_production_repository_v2", "repository_v2_provenance"]

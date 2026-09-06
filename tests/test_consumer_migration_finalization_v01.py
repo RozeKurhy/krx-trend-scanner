@@ -84,7 +84,10 @@ def test_production_entrypoints_expose_repository_v2_path() -> None:
     report_fn = next(node for node in ast.walk(report) if isinstance(node, ast.FunctionDef) and node.name == "generate_stock_report")
     assert any(arg.arg == "repository" for arg in scanner_fn.args.args)
     assert any(arg.arg == "repository" for arg in report_fn.args.args)
-    assert "build_repository_v2" in (ROOT / "scripts/run_pattern_a_universe_scanner.py").read_text(encoding="utf-8")
+    # ROLLING_MARKET_DATA_AUTHORITY_FINALIZATION_V01 BLOCKER-1: this CLI's --as-of is caller-supplied
+    # and can be a live date, so it now goes through build_production_repository_v2 (unconditional
+    # rolling-authority boundary enforcement) instead of the opt-in build_repository_v2.
+    assert "build_production_repository_v2" in (ROOT / "scripts/run_pattern_a_universe_scanner.py").read_text(encoding="utf-8")
     assert "RepositoryV2DailyLoader" in (ROOT / "scripts/evaluate_pattern_a_fast_core_v02_reentry.py").read_text(encoding="utf-8")
     assert "RepositoryV2DailyLoader" in (ROOT / "scripts/evaluate_julia_strategy_v00_comparison.py").read_text(encoding="utf-8")
 

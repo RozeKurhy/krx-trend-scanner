@@ -29,6 +29,7 @@ from trend_scanner.universe.models import (
     UniverseQualitySummary,
     UniverseSecurity,
 )
+from trend_scanner.data.market_calendar import MarketCalendarAuthority
 from trend_scanner.validation.historical_snapshot import (
     _drop_incomplete_current_month,
     build_historical_snapshot,
@@ -53,11 +54,18 @@ def audit_ticker_quality(
     reference_market_date: str | pd.Timestamp | None = None,
     metadata_source: str = "OFFICIAL_KRX",
     min_history_months: int = MIN_HISTORY_MONTHS,
+    market_calendar: MarketCalendarAuthority | None = None,
 ) -> TickerQualityRecord:
     """단일 종목에 대해 데이터 품질 및 Evaluator 준비도를 감사한다.
 
     Score 낮음, Stage WEAK, Candidate State BLOCKED 등은 투자 판단 신호이므로
     Universe 제외 사유(Hard exclusion)로 삼지 않는다.
+
+    ``market_calendar``는 완성 월봉 판정(completed month)에 사용되는 모든 내부 호출에
+    그대로 전달된다 (PRODUCTION_REGENERATION_INFRASTRUCTURE_FIX_V01 section 1). 생략하면
+    기존처럼 canonical(frozen) calendar authority로 fallback한다 -- 단, 그 authority의
+    max observed trading date를 넘는 as-of 조회는 예외를 던지고, 이 함수는 그 예외를
+    조용히 삼켜 history_months=0으로 처리해 왔다 (INSUFFICIENT_HISTORY 오탐의 원인이었음).
     """
     clean_ticker = str(ticker).strip().zfill(6)
     clean_name = str(name).strip()
@@ -184,7 +192,9 @@ def audit_ticker_quality(
         try:
             raw_monthly = to_monthly(daily)
             if last_date_ts is not None:
-                monthly_completed_df = _drop_incomplete_current_month(raw_monthly, last_date_ts)
+                monthly_completed_df = _drop_incomplete_current_month(
+                    raw_monthly, last_date_ts, market_calendar=market_calendar
+                )
             else:
                 monthly_completed_df = raw_monthly
         except Exception:
@@ -240,6 +250,7 @@ def audit_ticker_quality(
                 daily=daily,
                 snapshot_date=last_date_str,
                 include_incomplete_periods=False,
+                market_calendar=market_calendar,
             )
 
             # Feature Readiness: required anchors(range_36m, ma24_slope) 확인

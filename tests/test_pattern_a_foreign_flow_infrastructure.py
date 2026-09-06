@@ -64,10 +64,13 @@ def flow_validation_summary() -> dict:
 def test_real_production_scan_execution_contract(base_scan_result):
     """The default suite must execute the real 2,528-row scanner path."""
     assert _REAL_PRODUCTION_SCAN_EXECUTION_COUNT == 1
-    assert base_scan_result.summary.official_common_total == 2528
-    assert base_scan_result.summary.rows_emitted == 2528
-    assert base_scan_result.summary.candidate_raw_count == 180
-    assert base_scan_result.summary.candidate_investable_count == 103
+    # Includes 25 valid alphanumeric COMMON tickers previously misclassified as UNKNOWN.
+    assert base_scan_result.summary.official_common_total == 2553
+    assert base_scan_result.summary.rows_emitted == 2553
+    # 138040 (Meritz Financial Group) is the one raw candidate among the 25-ticker delta;
+    # EARLY_TREND stage, INVESTABLE.
+    assert base_scan_result.summary.candidate_raw_count == 181
+    assert base_scan_result.summary.candidate_investable_count == 104
     assert base_scan_result.summary.scanner_error_count == 0
 
 

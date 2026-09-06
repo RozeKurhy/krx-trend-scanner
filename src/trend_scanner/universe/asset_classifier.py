@@ -87,7 +87,13 @@ def classify_asset_type(ticker: str, name: str) -> AssetType:
         return AssetType.PREFERRED
 
     # 6. 보통주 판별
-    if len(clean_ticker) == 6 and clean_ticker.isdigit():
+    # 순수 숫자 코드 외에, 최근 신규상장 종목에서 관측되는 영숫자 혼합 코드
+    # (예: "0001A0", isu_cd "KR70001A0001")도 포함한다 -- 이 시점까지 ETF/ETN/SPAC/
+    # REIT/우선주 이름 기반 판별을 전부 통과했으므로, 남은 조건은 코드 형식(자릿수)
+    # 뿐이며 숫자 전용으로 제한할 근거가 없다(PRODUCTION_REGENERATION_FINAL_UNIVERSE_
+    # RECONCILIATION_V01: 이 제약 때문에 실제 OPEN COMMON 종목 25개가 production
+    # scan에서 누락되고 있었음).
+    if len(clean_ticker) == 6 and clean_ticker.isalnum():
         return AssetType.COMMON
 
     return AssetType.UNKNOWN

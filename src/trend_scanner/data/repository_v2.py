@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -586,10 +587,22 @@ class MarketDataRepositoryV2:
         self,
         adjusted_price_store: AdjustedPriceStore,
         raw_stock_store: KrxRawStockStore,
+        *,
+        rolling_authority_dir: Any = None,
     ) -> None:
         self._adjusted_price_store = adjusted_price_store
         self._raw_stock_store = raw_stock_store
         self._query_audit: dict[str, dict[str, Any]] = {}
+        # Opt-in only: every existing caller (E2E frozen-AS_OF harness, historical
+        # replay, tests) omits this and gets byte-identical behavior to before this
+        # parameter existed. When a caller explicitly opts into rolling production
+        # mode by supplying a directory, every read is clamped to the rolling
+        # authority manifest's certified_through -- and a missing/invalid/tampered/
+        # wrong-version manifest fails the read closed (RollingAuthorityError
+        # propagates; it is not a MarketDataError, so it is never mistaken for a
+        # DATA_UNAVAILABLE case and silently swallowed by a consumer's except
+        # MarketDataError handler).
+        self._rolling_authority_dir = None if rolling_authority_dir is None else Path(rolling_authority_dir)
         self._raw_index = (
             _IndexedRawTickerReader(raw_stock_store)
             if isinstance(raw_stock_store, KrxRawStockStore)
@@ -709,7 +722,96 @@ class MarketDataRepositoryV2:
 
         return {ticker: dict(audit) for ticker, audit in self._query_audit.items()}
 
+    def _clamp_to_certified_boundary(self, end: str) -> str:
+        """Rolling production mode only (directive ROLLING_MARKET_DATA_AUTHORITY_FIX_V01 section 24).
+
+        A no-op when ``rolling_authority_dir`` was not supplied at construction time -- every existing
+        E2E/historical/test call site is unaffected. When it was supplied, the rolling authority
+        manifest is the sole source of truth for how far production data may be read; a missing,
+        invalid, tampered, or wrong-version manifest raises RollingAuthorityError and the read fails
+        closed rather than silently falling back to the caller's requested end date.
+        """
+        if self._rolling_authority_dir is None:
+            return end
+        from trend_scanner.data.rolling_market_data_refresh import load_rolling_authority
+
+        manifest = load_rolling_authority(self._rolling_authority_dir)
+        return min(str(end)[:10], manifest.certified_through)
+
+    def _clamp_to_identity_bounds(self, ticker: str, start: str, end: str) -> tuple[str, str]:
+        """Rolling production mode only (directive COMMON_ADJUSTED_PHANTOM_ROW_REMEDIATION_V01
+        section 8-13): the lower-bound counterpart to :meth:`_clamp_to_certified_boundary`.
+
+        A no-op when ``rolling_authority_dir`` was not supplied (every existing E2E/historical/test
+        call site is unaffected -- section 9) OR when ``ticker`` has no record at all in the merged
+        rolling PIT (an instrument type this PIT does not classify, e.g. ETF -- section 23 covers ETF
+        via its own separate full-scan, not this per-read COMMON-identity clamp).
+
+        When ``ticker`` DOES have PIT records, resolution must succeed exactly once
+        (``resolve_current_identity``, isu_cd-aware -- never a ticker-only earliest-interval shortcut,
+        section 16). Ambiguous or unresolvable identity fails the read closed with
+        ``RollingAuthorityError`` (section 10/17) rather than silently choosing one or falling back to
+        the caller's requested bounds.
+
+        Directive ROLLING_AUTHORITY_HARDENING_V01 section 9-13: the manifest and merged PIT/calendar
+        are validated for coherence (digest/frontier/schema-version agreement, fail-closed on any
+        mismatch) on every call here, and the intervals map is built from that freshly-read payload --
+        deliberately NOT through ``adjusted_price_pilot``'s ``lru_cache``'d reader, which is keyed on
+        this stable production path and would otherwise risk serving a stale cached mapping alongside
+        freshly-validated metadata (e.g. a tampered-then-restored file, or a republish mid-process).
+        """
+        if self._rolling_authority_dir is None:
+            return str(start)[:10], str(end)[:10]
+        from trend_scanner.data.rolling_market_data_refresh import (
+            RollingAuthorityError,
+            load_rolling_authority,
+            resolve_current_identity,
+            validate_merged_authority_coherence,
+        )
+
+        manifest = load_rolling_authority(self._rolling_authority_dir)
+        pit_payload, _cal_payload = validate_merged_authority_coherence(manifest, self._rolling_authority_dir)
+        intervals_by_ticker: dict[str, list[dict[str, Any]]] = {}
+        for iv in pit_payload.get("intervals", []):
+            t = iv.get("ticker")
+            if t:
+                intervals_by_ticker.setdefault(t, []).append(iv)
+        normalized = str(ticker).zfill(6)
+        if normalized not in intervals_by_ticker:
+            # Not a COMMON identity this PIT classifies at all (e.g. an ETF instrument type) --
+            # section 23 applies its own separate ETF full-scan; this per-read clamp does not apply.
+            return str(start)[:10], str(end)[:10]
+
+        clamp_as_of = str(end)[:10]
+        resolution = resolve_current_identity(normalized, clamp_as_of, intervals_by_ticker)
+        if resolution.status == "AMBIGUOUS":
+            raise RollingAuthorityError(
+                f"IDENTITY_AMBIGUITY_FAIL_CLOSED: ticker={normalized} as_of={clamp_as_of} "
+                f"candidates={resolution.candidate_intervals}"
+            )
+        if resolution.status == "NO_OPEN_IDENTITY":
+            raise RollingAuthorityError(
+                f"IDENTITY_MISSING_AUTHORITY_FAIL_CLOSED: ticker={normalized} as_of={clamp_as_of} "
+                f"candidates={resolution.candidate_intervals}"
+            )
+        interval = resolution.interval
+        clamped_start = max(str(start)[:10], str(interval["effective_from"]))
+        clamped_end = min(str(end)[:10], str(interval["effective_to"]))
+        if clamped_start > clamped_end:
+            # A real, live edge case for a very recently listed identity: its own
+            # effective_from is already later than the currently certified boundary (the
+            # certified_through clamp has not yet caught up to this new listing). This is not a
+            # malformed request -- it correctly means "no visible rows for this identity in the
+            # currently certified window yet" -- so it must surface as the same
+            # DATA_UNAVAILABLE classification an ordinary missing-store case uses (caught by
+            # RepositoryV2DailyLoader's EXPECTED_DATA_UNAVAILABLE handling), never as the generic
+            # REPOSITORY_V2_INVALID_RANGE a truly malformed caller-supplied range would raise.
+            raise MarketDataError("DATA_UNAVAILABLE: ADJUSTED_MISSING")
+        return clamped_start, clamped_end
+
     def get_daily(self, ticker: str, start: str, end: str) -> pd.DataFrame:
+        end = self._clamp_to_certified_boundary(end)
+        start, end = self._clamp_to_identity_bounds(ticker, start, end)
         key = str(ticker).zfill(6)
         try:
             result = self._get_daily(key, start, end)
@@ -775,6 +877,7 @@ class MarketDataRepositoryV2:
         return result
 
     def get_raw_daily(self, ticker: str, start: str, end: str) -> pd.DataFrame:
+        end = self._clamp_to_certified_boundary(end)
         start_ts, end_ts = _date_range(start, end)
         return self._load_raw(self._raw_ticker(ticker), start_ts, end_ts)
 

@@ -38,6 +38,7 @@ from trend_scanner.data.cache import ParquetCache
 from trend_scanner.data.adjusted_price_store import AdjustedPriceStore
 from trend_scanner.data.index_store import IndexStore, MARKET_INDEX_FAMILY
 from trend_scanner.data.krx_raw_stock_store import KrxRawStockStore
+from trend_scanner.data.market_calendar import MarketCalendarAuthority, load_rolling_production_market_calendar
 from trend_scanner.data.repository_v2 import MarketDataRepositoryV2
 from trend_scanner.data.repository_v2_loader import RepositoryV2DailyLoader
 from trend_scanner.backtest.snapshot_context import (
@@ -109,6 +110,11 @@ logger = logging.getLogger(__name__)
 _DEFAULT_MARKET_RS_REPOSITORIES: dict[tuple[str, str], MarketDataRepositoryV2] = {}
 
 def _default_market_rs_repository(repo_root: Path) -> MarketDataRepositoryV2:
+    # PRODUCTION_ROLLING_MODE (directive ROLLING_MARKET_DATA_AUTHORITY_FINALIZATION_V01 section 7):
+    # this repository backs live Market RS feature calculation, so the rolling certified boundary
+    # must be enforced unconditionally, never opt-in.
+    from trend_scanner.data.rolling_market_data_refresh import DEFAULT_ROLLING_AUTHORITY_DIR
+
     key = (
         str((repo_root / "data/market/adjusted/stocks").resolve()),
         str((repo_root / "data/market/raw/krx_stocks/v01").resolve()),
@@ -118,9 +124,96 @@ def _default_market_rs_repository(repo_root: Path) -> MarketDataRepositoryV2:
         repository = MarketDataRepositoryV2(
             AdjustedPriceStore(key[0]),
             KrxRawStockStore(key[1]),
+            rolling_authority_dir=repo_root / DEFAULT_ROLLING_AUTHORITY_DIR,
         )
         _DEFAULT_MARKET_RS_REPOSITORIES[key] = repository
     return repository
+
+
+def _default_production_market_calendar(repo_root: Path) -> MarketCalendarAuthority | None:
+    """PRODUCTION_REGENERATION_INFRASTRUCTURE_FIX_V01 section 1: wire the production scanner's
+    per-ticker completed-period calendar to the rolling authority's calendar (shared with Stock
+    Report via :func:`load_rolling_production_market_calendar`) instead of implicitly falling
+    through to the frozen ``data/reference/krx_trading_calendar.parquet`` default (max observed
+    trading date 2026-08-21), which made every ticker fail with ``MarketCalendarUnavailableError``
+    for any as-of date past that boundary."""
+    return load_rolling_production_market_calendar(repo_root)
+
+
+def _default_offline_universe(repo_root: Path, as_of: str) -> list[UniverseSecurity] | None:
+    """PRODUCTION_REGENERATION_INFRASTRUCTURE_FIX_V01 section 3: default universe source when no
+    canonical dated CSV exists and no explicit ``universe_securities`` was supplied. Builds the
+    COMMON universe from the rolling authority's merged PIT (currently-open COMMON identities as
+    of ``as_of``) with names resolved from the rolling Basic Info snapshot -- zero network, never
+    falls through to the live-PyKRX ``load_krx_equity_universe``. Returns ``None`` if the rolling
+    PIT artifact (or a usable Basic Info name source) is unavailable, so callers can fall back to
+    their own prior behavior (e.g. isolated historical test fixtures predating the rolling
+    authority)."""
+    from trend_scanner.data.rolling_market_data_refresh import DEFAULT_MERGED_PIT_PATH
+
+    pit_path = repo_root / DEFAULT_MERGED_PIT_PATH
+    if not pit_path.exists():
+        return None
+
+    pit = json.loads(pit_path.read_text(encoding="utf-8"))
+    common_active = [
+        iv
+        for iv in pit.get("intervals", [])
+        if iv.get("state") == "COMMON" and iv.get("effective_from", "") <= as_of <= iv.get("effective_to", "")
+    ]
+    if not common_active:
+        return None
+
+    basic_info_root = repo_root / "data/reference/source/history/krx_instrument_master/v01/rolling/basic_info"
+    as_of_clean = as_of.replace("-", "")
+    snapshot_dir = basic_info_root / as_of_clean[:4] / as_of_clean
+    if not snapshot_dir.exists():
+        all_dirs = sorted(
+            (p for p in basic_info_root.glob("*/*") if p.is_dir()),
+            key=lambda p: p.name,
+        )
+        if not all_dirs:
+            return None
+        # PRODUCTION_SCANNER_STALE_ARTIFACT_FIX_V01: as-of가 rolling Basic Info archive의
+        # 첫 snapshot보다 이른 경우(예: 2026-08-14, 첫 snapshot은 2026-08-24부터 존재) 과거
+        # snapshot이 하나도 없다. 여기서 None을 반환하면 호출부의 유일한 남은 fallback이
+        # 이제 live PyKRX(load_krx_equity_universe)뿐이라 production default가 네트워크를
+        # 타게 된다(PyKRX 금지 원칙 위반). 종목명은 거의 바뀌지 않으므로, 과거 snapshot이
+        # 없을 때는 best-effort로 가장 이른(미래) 가용 snapshot을 이름 소스로 사용한다 --
+        # 이는 오직 종목명 표시용이며, universe 멤버십/state는 여전히 merged PIT의
+        # as-of 기준 interval에서만 결정되므로 point-in-time 정확성에는 영향 없다.
+        past_dirs = [p for p in all_dirs if p.name <= as_of_clean]
+        snapshot_dir = past_dirs[-1] if past_dirs else all_dirs[0]
+
+    name_by_isu: dict[str, str] = {}
+    for market_file in ("KOSPI.json", "KOSDAQ.json"):
+        market_path = snapshot_dir / market_file
+        if not market_path.exists():
+            continue
+        data = json.loads(market_path.read_text(encoding="utf-8"))
+        for row in data.get("OutBlock_1", []):
+            isu_cd = row.get("ISU_CD")
+            name = row.get("ISU_ABBRV") or row.get("ISU_NM")
+            if isu_cd and name:
+                name_by_isu[isu_cd] = name
+    if not name_by_isu:
+        return None
+
+    universe: list[UniverseSecurity] = []
+    for iv in common_active:
+        try:
+            market = MarketType(iv["market"])
+        except ValueError:
+            continue
+        universe.append(
+            UniverseSecurity(
+                ticker=iv["ticker"],
+                name=name_by_isu.get(iv["isu_cd"], iv["ticker"]),
+                market=market,
+                metadata_source="ROLLING_AUTHORITY_MERGED_PIT_V01",
+            )
+        )
+    return universe or None
 
 
 def _relative_strength_row_updates(result: RelativeStrengthFeatureResult) -> dict[str, Any]:
@@ -805,41 +898,18 @@ def scan_pattern_a_universe(
 
     # 2. Authoritative Universe 로딩 및 COMMON 종목 필터링
     repo_root = Path(__file__).resolve().parent.parent.parent.parent
+    production_market_calendar = _default_production_market_calendar(repo_root)
     if universe_securities is None:
-        req_clean = req_as_of.strftime("%Y%m%d")
-        ref_clean = ref_market_date.replace("-", "")
-        canonical_univ_csv = repo_root / "artifacts/patterns/pattern_a/production/investability" / f"pattern_a_investability_universe_{req_clean}.csv"
-        if not canonical_univ_csv.exists():
-            canonical_univ_csv = repo_root / "artifacts/patterns/pattern_a/production/investability" / f"pattern_a_investability_universe_{ref_clean}.csv"
-
-        canonical_scan_csv = repo_root / "artifacts/patterns/pattern_a/production/scanner" / f"pattern_a_universe_scan_{req_clean}.csv"
-        if not canonical_scan_csv.exists():
-            canonical_scan_csv = repo_root / "artifacts/patterns/pattern_a/production/scanner" / f"pattern_a_universe_scan_{ref_clean}.csv"
-
-        if canonical_univ_csv.exists():
-            df_univ = pd.read_csv(canonical_univ_csv)
-            raw_univ = [
-                UniverseSecurity(
-                    ticker=str(row["ticker"]).zfill(6),
-                    name=str(row["name"]),
-                    market=MarketType(str(row["market"]).upper()),
-                    metadata_source="OFFICIAL_KRX",
-                )
-                for _, row in df_univ.iterrows()
-            ]
-        elif canonical_scan_csv.exists():
-            df_univ = pd.read_csv(canonical_scan_csv)
-            raw_univ = [
-                UniverseSecurity(
-                    ticker=str(row["ticker"]).zfill(6),
-                    name=str(row["name"]),
-                    market=MarketType(str(row["market"]).upper()),
-                    metadata_source="OFFICIAL_KRX",
-                )
-                for _, row in df_univ.iterrows()
-            ]
-        else:
-            raw_univ = load_krx_equity_universe(as_of=ref_market_date)
+        # PRODUCTION_SCANNER_STALE_ARTIFACT_FIX_V01: 기존 scan/investability CSV를 기본
+        # universe input으로 자동 재사용하던 fallback을 제거했다. 그 fallback은 코드
+        # 수정(예: classify_asset_type()의 티커 형식 판별 변경) 후 재실행해도 이전 실행이
+        # 남긴 산출물을 그대로 읽어들여 최신 universe가 반영되지 않는 문제를 반복적으로
+        # 일으켰다(--limit 스모크 테스트 산출물이 "전체 스캔"에 재사용된 사고, 그리고
+        # classify_asset_type() 수정 검증 재스캔이 수정 전 결과를 그대로 재사용한 사고).
+        # Production default는 항상 local offline authority(merged PIT -> as-of OPEN
+        # COMMON -> rolling Basic Info -> asset classification)를 사용한다.
+        offline_univ = _default_offline_universe(repo_root, ref_market_date)
+        raw_univ = offline_univ if offline_univ is not None else load_krx_equity_universe(as_of=ref_market_date)
     else:
         raw_univ = universe_securities
 
@@ -1113,6 +1183,7 @@ def scan_pattern_a_universe(
                 market=market,
                 daily=daily_as_of if not daily_as_of.empty else None,
                 reference_market_date=ref_market_date,
+                market_calendar=production_market_calendar,
             )
 
             cache_present = quality_record.cache_present
@@ -1224,12 +1295,14 @@ def scan_pattern_a_universe(
                     daily=daily_as_of,
                     snapshot_date=req_as_of,
                     include_incomplete_periods=False,
+                    market_calendar=production_market_calendar,
                 )
             else:
                 snapshot = build_historical_snapshot_from_context(
                     ticker_context,
                     snapshot_date=req_as_of,
                     include_incomplete_periods=False,
+                    market_calendar=production_market_calendar,
                 )
 
             eval_res: PatternAEvaluationResult = evaluate_pattern_a(snapshot)
@@ -1255,6 +1328,7 @@ def scan_pattern_a_universe(
                 daily=daily_as_of,
                 as_of=req_as_of,
                 context=ticker_context,
+                market_calendar=production_market_calendar,
             )
 
             current_obs = next(

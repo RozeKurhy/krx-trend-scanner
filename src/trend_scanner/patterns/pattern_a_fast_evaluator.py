@@ -35,6 +35,7 @@ from trend_scanner.backtest.snapshot_context import (
     PrecomputedTickerContext,
     build_historical_snapshot_from_context,
 )
+from trend_scanner.data.market_calendar import MarketCalendarAuthority
 from trend_scanner.validation.historical_snapshot import build_historical_snapshot
 
 
@@ -178,6 +179,7 @@ def evaluate_pattern_a_fast(
     score: dict,
     stage: dict,
     context: PrecomputedTickerContext | None = None,
+    market_calendar: MarketCalendarAuthority | None = None,
 ) -> dict:
     """단일 (ticker, weekly_date) 시점의 Pattern A FAST + 참고용 Pattern A 결과를 반환한다.
 
@@ -193,12 +195,20 @@ def evaluate_pattern_a_fast(
     구성하며, Feature/Pattern A/FAST 산식은 전혀 변경되지 않는다 -- 대량
     parity test(tests/test_backtest_performance_engine_v01_snapshot_context.py)로
     두 경로의 동일성을 증명했다.
+
+    ``market_calendar``는 완성 월봉 판정(completed month)에 사용되는 내부
+    ``build_historical_snapshot``/``build_historical_snapshot_from_context`` 호출에
+    그대로 전달된다. 생략하면 canonical(frozen) calendar authority로 fallback한다.
     """
     if context is not None:
-        snapshot = build_historical_snapshot_from_context(context, weekly_date, include_incomplete_periods=False)
+        snapshot = build_historical_snapshot_from_context(
+            context, weekly_date, include_incomplete_periods=False, market_calendar=market_calendar
+        )
         daily_up_to = context.slice_daily_up_to(weekly_date)
     else:
-        snapshot = build_historical_snapshot(ticker, name, daily, weekly_date, include_incomplete_periods=False)
+        snapshot = build_historical_snapshot(
+            ticker, name, daily, weekly_date, include_incomplete_periods=False, market_calendar=market_calendar
+        )
         daily_up_to = daily[daily.index <= weekly_date]
     if snapshot.weekly_as_of != weekly_date:
         raise ValueError(f"incomplete weekly date passed to evaluator: {ticker} {weekly_date}")

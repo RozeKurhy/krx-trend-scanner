@@ -329,3 +329,48 @@ def get_reference_market_month_ends(
     """요청 시점까지의 실제 KRX 시장 월말 거래일 목록을 반환한다."""
     cal = calendar or get_canonical_market_calendar()
     return cal.get_month_ends(requested_as_of)
+
+
+_ROLLING_PRODUCTION_CALENDAR_CACHE: dict[str, MarketCalendarAuthority] = {}
+
+
+def load_rolling_production_market_calendar(repo_root: Path) -> MarketCalendarAuthority | None:
+    """PRODUCTION_REGENERATION_INFRASTRUCTURE_FIX_V01 section 1: build a
+    :class:`MarketCalendarAuthority` from the rolling authority's ``merged_trading_calendar.json``
+    (frontier extends to the current certified production boundary), instead of the frozen
+    ``DEFAULT_CALENDAR_PATH`` artifact (max observed trading date 2026-08-21). Shared by every
+    production consumer of this calendar (Pattern A production scanner, Stock Report) so a single
+    as-of-date extension only has to happen in one place.
+
+    Returns ``None`` when the rolling merged calendar artifact does not exist (e.g. isolated
+    historical test fixtures predating the rolling authority), so callers can fall back to their
+    own prior default (``calendar=None`` -> :func:`get_canonical_market_calendar`)."""
+    from trend_scanner.data.rolling_market_data_refresh import DEFAULT_MERGED_CALENDAR_PATH
+
+    calendar_path = repo_root / DEFAULT_MERGED_CALENDAR_PATH
+    if not calendar_path.exists():
+        return None
+    key = str(calendar_path.resolve())
+    cached = _ROLLING_PRODUCTION_CALENDAR_CACHE.get(key)
+    if cached is not None:
+        return cached
+
+    payload = json.loads(calendar_path.read_text(encoding="utf-8"))
+    trading_dates = pd.DatetimeIndex(pd.to_datetime(payload["trading_dates"])).normalize().sort_values()
+    if len(trading_dates) == 0:
+        return None
+    current_year_month = (trading_dates[-1].year, trading_dates[-1].month)
+    frame = pd.DataFrame({"dt": trading_dates}, index=trading_dates)
+    monthly_groups = frame.groupby([frame.index.year, frame.index.month])
+    completed_month_ends = [
+        group.index.max()
+        for (year, month), group in monthly_groups
+        if (year, month) != current_year_month
+    ]
+    calendar = MarketCalendarAuthority(
+        trading_dates=trading_dates,
+        completed_month_ends=completed_month_ends,
+        source_name="ROLLING_AUTHORITY_MERGED_CALENDAR_V01",
+    )
+    _ROLLING_PRODUCTION_CALENDAR_CACHE[key] = calendar
+    return calendar
