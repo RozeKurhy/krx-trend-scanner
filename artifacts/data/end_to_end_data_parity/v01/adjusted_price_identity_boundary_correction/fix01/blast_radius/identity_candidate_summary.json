@@ -1,0 +1,24 @@
+{
+  "schema": "identity_candidate_summary_v01",
+  "population_total": 3149,
+  "candidate_input_count": 46,
+  "candidate_output_count": 46,
+  "silent_drop_count": 0,
+  "classification_counts": {
+    "IDENTITY_BOUNDARY_EXPECTED": 24,
+    "TRUE_ACQUISITION_TRUNCATION": 0,
+    "LEGITIMATE_SOURCE_GAP": 0,
+    "NO_ACTION_REQUIRED": 22,
+    "UNRESOLVED": 0
+  },
+  "sum": 46,
+  "missing_raw_cache_identities": 660,
+  "missing_raw_overlap_with_46": 0,
+  "missing_raw_overlap_method": "candidate_tickers.json raw_first_valid_trading_date is populated for all 46; no live scan performed",
+  "unresolved_count": 0,
+  "missing_raw_lifecycle_transition_count": 17,
+  "missing_raw_common_interval_gt_one_count": 3,
+  "missing_raw_population_materially_unidentified": true,
+  "blast_radius_closed": false,
+  "blast_radius_blocker": "660 identities have no local raw cache; 17 have lifecycle transitions but no raw source rows for independent same-mechanism adjudication; broad live scan not authorized"
+}

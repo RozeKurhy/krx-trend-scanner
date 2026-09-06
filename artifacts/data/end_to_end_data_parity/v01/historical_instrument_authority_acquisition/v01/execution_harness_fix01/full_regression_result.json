@@ -1,0 +1,21 @@
+{
+  "status": "PASS_WITH_KNOWN_UNRELATED_FAILURE",
+  "command": ".venv/bin/pytest -q -p no:cacheprovider",
+  "duration_seconds": 1329.47,
+  "duration_human": "22m09s",
+  "passed": 1827,
+  "failed": 1,
+  "errors": 0,
+  "skipped": 6,
+  "deselected": 5,
+  "warnings": 289638,
+  "permission_errors": 0,
+  "network_policy": "KRX Open API/MDC/PyKRX/OpenDART requests 0",
+  "known_unrelated_failure": {
+    "node": "tests/test_krx_historical_backfill.py::test_recent_empty_is_not_checkpointed_and_general_resume_retries",
+    "assertion": "recent_empty_unfinalized_count expected 1, observed 0",
+    "causal_scope": "existing price historical backfill behavior; FIX01 does not modify this code"
+  },
+  "new_fix01_tests": "passed",
+  "sandbox_revalidation": "not required for this run; executed with approved local file-write permission"
+}

@@ -1,0 +1,23 @@
+{
+  "schema": "adjusted_population_preflight_fix01_diff_guard_v01",
+  "baseline_head": "631894394b92b919edbb6550ed420a488b2e7b92",
+  "allowed_change_scope": [
+    "artifacts/data/end_to_end_data_parity/v01/adjusted_population_preflight/fix01/**",
+    "r.md"
+  ],
+  "forbidden_change_scope": [
+    "production provider implementation",
+    "normalize_ticker",
+    "AdjustedPriceStore production data",
+    "consumer switch",
+    "PyKRX/KRX/OpenDART execution",
+    "previous alphanumeric_ticker_classification.json"
+  ],
+  "invariants": {
+    "provider_policy": "D_NUMERIC_ONLY_CONSUMER_BY_DESIGN",
+    "alpha_classification": "existing 81/81 artifact preserved",
+    "legacy_2506_role": "LEGACY_BACKTEST_PARITY_UNIVERSE only",
+    "main_merge": false
+  },
+  "result": "PASS_IF_ONLY_FIX01_ARTIFACTS_AND_RMD_CHANGE"
+}

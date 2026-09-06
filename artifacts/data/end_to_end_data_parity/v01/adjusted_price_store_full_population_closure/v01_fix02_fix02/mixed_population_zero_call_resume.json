@@ -1,0 +1,27 @@
+{
+  "schema": "adjusted_price_mixed_population_zero_call_resume_v01",
+  "population": [
+    {"ticker": "000001", "first_run_status": "COMPLETE", "store_required": true},
+    {"ticker": "000610", "first_run_status": "NO_USABLE_OBSERVATIONS", "store_required": false},
+    {"ticker": "000003", "first_run_status": "COMPLETE_WITH_ADJUDICATED_NONUSABLE", "store_required": false}
+  ],
+  "first_run": {
+    "population_total": 3,
+    "completed_tickers": 3,
+    "in_progress_tickers": 0,
+    "failure_count": 0,
+    "network_calls": 3,
+    "physical_attempts": 3,
+    "retries": 0
+  },
+  "second_run": {
+    "population_total": 3,
+    "closure_complete_total": 3,
+    "network_calls": 0,
+    "physical_attempts": 0,
+    "retries": 0,
+    "reused_without_network": 3,
+    "resume_is_idempotent": true,
+    "resume_eligibility": "PASS"
+  }
+}

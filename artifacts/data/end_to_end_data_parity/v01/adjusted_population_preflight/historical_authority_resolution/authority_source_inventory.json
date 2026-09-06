@@ -1,0 +1,99 @@
+{
+  "schema": "adjusted_population_historical_authority_source_inventory_v01",
+  "generated_offline": true,
+  "inventory_scope": "local repository/filesystem only; no KRX/PyKRX/OpenDART fetch",
+  "target_period": ["2010-01-04", "2026-08-21"],
+  "sources": [
+    {
+      "path": "data/reference/krx_instrument_metadata.parquet",
+      "authority": "KRX Market Data Center authenticated formal source artifact",
+      "effective_as_of": "2026-08-21",
+      "coverage_period": "rows 2020-03-27..2026-08-21; formal verified snapshot only 2026-08-21",
+      "row_count": 77193,
+      "ticker_count": 4821,
+      "security_type_available": true,
+      "market_available": true,
+      "listing_delisting_fields": false,
+      "provenance": "manifest upstream KRX MDC; historical rows marked LEGACY_UNVERIFIED",
+      "immutable_in_repo": true,
+      "historical_authority_tier": "TIER_C_ONLY",
+      "current_authority_tier": "TIER_A_CURRENT_ONLY_NOT_HISTORICAL_PIT",
+      "limitation": "No authoritative 2010-2019 PIT security-type snapshots."
+    },
+    {
+      "path": "data/reference/source/krx_instrument_metadata_source_snapshot_2026-08-21.json",
+      "authority": "KRX MDC authenticated source response snapshot",
+      "effective_as_of": "2026-08-21",
+      "coverage_period": "current snapshot only",
+      "row_count": {"equity": 2873, "etf": 1161, "etn": 373, "delisted": 4164},
+      "security_type_available": {"equity": true, "etf": true, "etn": true, "delisted": false},
+      "market_available": {"equity": true, "delisted": true},
+      "listing_delisting_fields": {"equity_listing_date": true, "delisted_date": false, "delisted_full_code": true},
+      "provenance": "source_observation_date=2026-08-21; manifest SHA256=cdb3a9f11b989b9ba60668266ad0bb8b6c6f1ae1ff303177342fe06623659fef",
+      "immutable_in_repo": true,
+      "historical_authority_tier": "TIER_B_LIFECYCLE_ONLY_FOR_DELISTED; TIER_A_CURRENT_ONLY_FOR_EQUITY",
+      "limitation": "Delisted response proves lifecycle presence, not historical COMMON/non-COMMON type or delisting date."
+    },
+    {
+      "path": "data/market/raw/krx_stocks/v01",
+      "authority": "raw market response observation",
+      "effective_as_of": "2010-01-04..2026-08-21",
+      "coverage_period": "full observed price history",
+      "row_count": 9204280,
+      "ticker_count": 3673,
+      "partition_file_count": 8190,
+      "security_type_available": false,
+      "market_available": true,
+      "listing_delisting_fields": false,
+      "provenance": "raw OHLC/ancillary observation only",
+      "immutable_in_repo": false,
+      "historical_authority_tier": "TIER_D_INFERENCE_ONLY",
+      "limitation": "Raw presence does not prove COMMON or strategy eligibility."
+    },
+    {
+      "path": "data/raw/stocks",
+      "authority": "legacy composite cache",
+      "effective_as_of": "historical cache; no independent PIT master provenance",
+      "coverage_period": "legacy stock price cache",
+      "file_count": 2506,
+      "security_type_available": false,
+      "market_available": false,
+      "listing_delisting_fields": false,
+      "provenance": "legacy consumer/backtest cache",
+      "immutable_in_repo": false,
+      "historical_authority_tier": "TIER_C_LEGACY_PARITY_ONLY",
+      "limitation": "Parity universe only; not survivorship-safe authority."
+    },
+    {
+      "path": "artifacts/performance/backtest_engine_v01/final_full_run_sha256_manifest.json",
+      "authority": "backtest result manifest",
+      "effective_as_of": "legacy run",
+      "coverage_period": "legacy 2506 identity universe",
+      "full_universe_size": 2506,
+      "security_type_available": false,
+      "provenance": "final_full_run_sha256_manifest.json; no historical security-type lineage",
+      "immutable_in_repo": true,
+      "historical_authority_tier": "TIER_C_LEGACY_PARITY_ONLY"
+    },
+    {
+      "path": "artifacts/data/architecture/krx_production_data/v01/errata/krx_identifier_contract_errata_v01.json",
+      "authority": "identifier contract/errata evidence",
+      "effective_as_of": "contract date only",
+      "security_type_available": false,
+      "listing_delisting_fields": false,
+      "provenance": "identifier semantics and normalization contract",
+      "immutable_in_repo": true,
+      "historical_authority_tier": "TIER_D_CONTRACT_ONLY",
+      "limitation": "Does not establish historical instrument type or legal identity timeline."
+    }
+  ],
+  "source_inventory_result": {
+    "total_sources": 6,
+    "tier_a_historical_pit_sources": 0,
+    "tier_b_lifecycle_sources": 1,
+    "tier_c_historical_or_legacy_sources": 3,
+    "tier_d_observation_or_contract_sources": 2,
+    "authoritative_historical_security_type_source_present": false,
+    "status": "BLOCKED_HISTORICAL_AUTHORITY_SOURCE_MISSING"
+  }
+}

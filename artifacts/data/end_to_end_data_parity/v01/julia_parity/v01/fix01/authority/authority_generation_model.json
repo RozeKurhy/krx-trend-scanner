@@ -1,0 +1,28 @@
+{
+  "legacy": {
+    "generation": "JULIA_LEGACY_SPARSE_PIT_CHECKPOINT_V00",
+    "pit_available_dates": 13,
+    "pit_missing_dates": 202,
+    "pit_coverage": 6.05,
+    "baseline_trades": 157,
+    "julia_trades": 152,
+    "status": "LEGACY_SUPERSEDED_INCOMPLETE_CHECKPOINT",
+    "mutability": "IMMUTABLE",
+    "role": "HISTORICAL_DIAGNOSTIC_ONLY",
+    "current_parity_authority": false
+  },
+  "current": {
+    "generation": "JULIA_CURRENT_PIT_CHECKPOINT_117_V01",
+    "pit_required_dates": 215,
+    "pit_available_dates": 117,
+    "pit_missing_dates": 98,
+    "pit_coverage": 54.42,
+    "status": "NON_AUTHORITATIVE_INCOMPLETE_PIT_BEHAVIORAL_CHECKPOINT",
+    "current_behavioral_parity_authority": true,
+    "production_approved": false,
+    "performance_authoritative": false
+  },
+  "mixed_generation_authority": false,
+  "reconciliation": "PIT_INPUT_BOUNDARY_EXPANSION",
+  "explanation": "Legacy trades were sealed with the 13 UI-date boundary; current execution uses the frozen 117-date manifest."
+}

@@ -1,0 +1,11 @@
+{
+  "schema": "provider_root_cause_probe_summary_v01",
+  "probe_count": 22,
+  "total_queries_executed": 154,
+  "old_window_empty_count": 21,
+  "pre_2014_chunk_empty_count": 21,
+  "chunking_recovers_pre_2014": false,
+  "root_cause_verdict": "TRUE_SOURCE_GAP",
+  "verdict_rationale": "Narrowing the query window or chunking historical requests does NOT return pre-2014-06-09 adjusted data for long-listed common stocks (e.g. 005930, 000660, 005380). The unauthenticated PyKRX/Naver endpoint strictly omits adjusted OHLC prior to June 2014 across all request shapes.",
+  "next_state_recommendation": "NEEDS_ADJUSTED_PRICE_SOURCE_AUTHORITY_REVIEW"
+}

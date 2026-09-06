@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from types import SimpleNamespace
+
+import scripts.validate_krx_historical_backfill_v01_fix08 as validator
 
 from scripts.validate_krx_historical_backfill_v01_fix08 import (
     FIX07_PILOT_VALIDATION_HEAD,
@@ -126,6 +128,41 @@ def test_pilot_gate_rejects_self_consistent_but_wrong_head():
 
 def test_samsung_gate_rejects_wrong_validation_head():
     assert samsung_gate(_samsung("wrong")) is False
+
+
+def test_adjusted_contract_only_delta_does_not_invalidate_raw_runtime_guard(monkeypatch):
+    observed = {}
+    monkeypatch.setattr(validator, "git_head", lambda: "synthetic-adjusted-head")
+
+    def fake_run(args, **kwargs):
+        observed["args"] = args
+        return SimpleNamespace(returncode=0)
+
+    monkeypatch.setattr(validator.subprocess, "run", fake_run)
+    assert validator.production_runtime_compatible() is True
+    frozen = tuple(observed["args"][observed["args"].index("--") + 1 :])
+    assert "src/trend_scanner/data/source_contracts.py" not in frozen
+    assert set(frozen) == {
+        "src/trend_scanner/data/krx_openapi_client.py",
+        "src/trend_scanner/data/krx_openapi_quota.py",
+        "src/trend_scanner/data/krx_raw_stock_provider.py",
+        "src/trend_scanner/data/krx_raw_stock_store.py",
+        "src/trend_scanner/data/krx_historical_backfill.py",
+    }
+
+
+def test_raw_runtime_delta_still_invalidates_compatibility_guard(monkeypatch):
+    observed = {}
+    monkeypatch.setattr(validator, "git_head", lambda: "synthetic-raw-head")
+
+    def fake_run(args, **kwargs):
+        observed["args"] = args
+        return SimpleNamespace(returncode=1)
+
+    monkeypatch.setattr(validator.subprocess, "run", fake_run)
+    assert validator.production_runtime_compatible() is False
+    frozen = tuple(observed["args"][observed["args"].index("--") + 1 :])
+    assert "src/trend_scanner/data/krx_historical_backfill.py" in frozen
 
 
 def test_repair_gate_accepts_execution_head_with_artifact_only_delta():

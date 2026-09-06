@@ -20,6 +20,15 @@ build/
 !/artifacts/shared/
 !/artifacts/strategies/
 !/artifacts/performance/
+!/artifacts/data/
+/artifacts/data/*
+!/artifacts/data/end_to_end_data_parity/
+artifacts/data/**/full_population_checkpoint.json
 
 # KRX_ID/KRX_PW 등 credential — 실제 값은 .env에만, 커밋 금지
 .env
+
+# KRX historical Basic Info raw acquisition (8190 files, ~2.6GB) — production
+# authoritative dataset, local filesystem only. checkpoint.json /
+# acquisition_final_summary.json in the same v01/ dir stay Git-tracked.
+data/reference/source/history/krx_instrument_master/v01/basic_info/

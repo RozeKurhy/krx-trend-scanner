@@ -1,0 +1,11 @@
+{
+  "normal_lifecycle_transition_is_not_a_conflict": true,
+  "precedence": [
+    "A: identity collision (overlapping ISU_CD same date) -> UNRESOLVED/IDENTITY_COLLISION",
+    "A2: true same-date-and-identity contradiction -> UNRESOLVED/SAME_DATE_CONTRADICTORY_CLASSIFICATION",
+    "B: any unmapped/invalid official state observed -> UNRESOLVED",
+    "C: resolved COMMON interval exists (>=1) -> HISTORICAL_COMMON_REQUIRED, regardless of other-date NOT_COMMON",
+    "D: all resolved intervals NOT_COMMON -> HISTORICAL_NOT_COMMON",
+    "E: no observation -> HISTORICAL_AUTHORITY_UNRESOLVED/PIT_COVERAGE_GAP"
+  ]
+}

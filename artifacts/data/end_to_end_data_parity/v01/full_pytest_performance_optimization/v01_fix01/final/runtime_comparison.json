@@ -1,0 +1,20 @@
+{
+  "schema": "runtime_comparison_v01_fix01",
+  "original_baseline_seconds": 1426.69,
+  "rejected_v01_reference_seconds": 1197.19,
+  "final_equivalent_full_pytest_seconds": 1362.16,
+  "seconds_saved_vs_original": 64.53,
+  "percent_reduction_vs_original": 4.52,
+  "speedup_ratio_vs_original": 1.0474,
+  "original_baseline_human": "23:46",
+  "final_human": "22:42",
+  "rejected_reference_human": "19:57",
+  "measurement_basis": "/usr/bin/time -p real",
+  "full_pytest_runs": {
+    "original_baseline_reference": 1,
+    "rejected_v01_reference": 1,
+    "fix01_final": 1,
+    "fix01_cleanup_rerun": 1
+  },
+  "authoritative_run": "fix01_cleanup_rerun"
+}

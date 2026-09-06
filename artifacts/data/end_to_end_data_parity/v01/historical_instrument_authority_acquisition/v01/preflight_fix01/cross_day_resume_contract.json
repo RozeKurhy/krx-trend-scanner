@@ -1,0 +1,11 @@
+{
+  "work_id": "KRX_HISTORICAL_INSTRUMENT_AUTHORITY_ACQUISITION_V01_FIX01",
+  "status": "FROZEN_FOR_IMPLEMENTATION",
+  "before_run": ["read authoritative KST usage", "compute safe_remaining", "load checkpoint", "validate completed raw/hash/schema/identity"],
+  "during_run": ["gate before every attempt", "record global and endpoint counters", "stop at soft limit", "persist PAUSED_QUOTA checkpoint"],
+  "quota_pause": {"status": "PAUSED_QUOTA", "network_after_gate": 0, "pending_pairs_preserved": true},
+  "next_day_resume": ["read new KST usage", "do not carry prior usage into new day", "skip only verified COMPLETE pairs", "retry pending/retryable pairs"],
+  "audit_history": "retain prior quota-day attempt records",
+  "retry": {"max_attempts": 2, "max_retries": 1, "backoff_seconds": [2], "retry_consumes_quota": true},
+  "one_day_completion": false
+}

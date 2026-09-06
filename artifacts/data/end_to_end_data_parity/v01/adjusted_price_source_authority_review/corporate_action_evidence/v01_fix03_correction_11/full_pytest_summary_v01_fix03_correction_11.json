@@ -1,0 +1,19 @@
+{
+  "schema": "full_pytest_summary_v01_fix03_correction_11",
+  "directive_id": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_11",
+  "canonical_run_id": "CORP_AUTH_FIX03_CORRECTION_11_20260829T023639Z",
+  "full_suite_completion": false,
+  "code_head_under_test": "aa9b3f02567a595374133d37b38973cf2a67a684",
+  "code_tree_sha_under_test": "3a39fb15d9446dec91c49131837335435fa1e292",
+  "passed": null,
+  "failed": null,
+  "skipped": null,
+  "deselected": null,
+  "warnings": null,
+  "known_baseline_failures": [
+    "tests/test_krx_historical_backfill.py::test_recent_empty_is_not_checkpointed_and_general_resume_retries"
+  ],
+  "unexpected_failures": [],
+  "new_regression_count": null,
+  "completion_blocker": "Pattern A base_scan_result / pandas resample and separate long-running backtest fixture were interrupted after a single full-suite attempt."
+}

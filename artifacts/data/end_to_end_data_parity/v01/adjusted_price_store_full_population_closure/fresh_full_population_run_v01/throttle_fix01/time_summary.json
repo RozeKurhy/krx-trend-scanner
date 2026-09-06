@@ -1,0 +1,49 @@
+{
+  "schema": "fresh_full_population_throttle_fix01_time_summary_v01",
+  "timezone": "Asia/Seoul",
+  "start_time": "2026-08-31T12:21:30+09:00 (checkpoint started_at 03:21:30Z)",
+  "segment_a": {
+    "throttle_seconds": 0.25,
+    "processed_or_attempted_tickers": 1497,
+    "checkpointed_before_stop": 1490,
+    "staging_only_at_stop": 7,
+    "offline_reconciled_valid": 4,
+    "left_for_refetch": 3,
+    "elapsed_seconds": 665.72,
+    "stop_time": "2026-08-31T12:32:35+09:00",
+    "note": "count reconstructed from checkpoint/staging because operator interrupt occurred before first-pass audit artifact was written"
+  },
+  "throttle_fix_and_certification": {
+    "code_change_seconds": "brief; one-line source edit",
+    "focused_test_seconds": 0.57,
+    "related_regression_seconds": 4.29,
+    "checkpoint_dry_run_seconds": "~25",
+    "evidence_commit_push_seconds": "~2m",
+    "full_repository_pytest": "0s / not run"
+  },
+  "segment_b": {
+    "throttle_seconds": 0.5,
+    "reused_without_network": 1494,
+    "new_tickers_attempted": 1668,
+    "naver_successful_requests": 1668,
+    "retries": 0,
+    "elapsed_seconds": 1277.39,
+    "elapsed_human": "~21m17s",
+    "completed_at": "2026-08-31T13:04:29+09:00"
+  },
+  "zero_call_final_resume": {
+    "status": "NOT_RUN",
+    "reason": "closure gate failed at 3152/3162"
+  },
+  "canonical_promotion": {
+    "status": "NOT_RUN",
+    "reason": "closure gate failed; promotion not authorized"
+  },
+  "overall_elapsed_seconds": "~2580s from first-run start to segment-B completion (~43m; excludes any idle/reporting overhead)",
+  "delay_causes_ranked": [
+    "1668 sequential Naver requests with mandated 0.50s inter-ticker pacing plus response/serialization latency",
+    "first segment interruption/reconciliation and full checkpoint dry-run verification",
+    "10 source-vs-PIT authority closure blockers prevented zero-call pass/promotion"
+  ],
+  "captured_at": "2026-08-31T04:07:15.534231+00:00"
+}

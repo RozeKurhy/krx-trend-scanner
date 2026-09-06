@@ -1,0 +1,146 @@
+{
+  "active_terminal_classifications": [
+    "ADJUSTED_ANALYTICALLY_NONUSABLE"
+  ],
+  "adjusted_closure_evidence": {
+    "adjusted_store_metadata_path": "data/market/adjusted/stocks/000360.meta.json",
+    "adjusted_store_metadata_sha256": "5a33f209d51cd29b0b35107ae1502cf74bb89a067189d4dd2ca2098e96aaf85f",
+    "canonical_usable_adjusted_observation_present": false,
+    "closure_checkpoint_path": "artifacts/data/end_to_end_data_parity/v01/adjusted_price_store_full_population_closure/authority_cutover_fix01/full_population_checkpoint.json",
+    "closure_checkpoint_sha256": "32cafe722c4ab868d6e93979077fbde777c5abd98d5fdc90d64488e7c87f4e51",
+    "closure_version": "V02",
+    "source_classification": "NAVER_SOURCE_NONUSABLE",
+    "source_row_present": true
+  },
+  "adjusted_metadata_sha256": "5a33f209d51cd29b0b35107ae1502cf74bb89a067189d4dd2ca2098e96aaf85f",
+  "adjusted_source_classification": "NAVER_SOURCE_NONUSABLE",
+  "adjusted_source_evidence": {
+    "classification": "NAVER_SOURCE_NONUSABLE",
+    "close": 6610.0,
+    "date": "2012-07-16",
+    "high": 0.0,
+    "low": 0.0,
+    "open": 0.0,
+    "reason": "source row has non-positive OHLC or activity-positive zero-OHL shape",
+    "source_authority": "NAVER_DIRECT_DATE_RANGE_ADJUSTED_V1",
+    "source_row_present": true,
+    "ticker": "000360",
+    "volume": 41680.0
+  },
+  "adjusted_source_presence": {
+    "classification": "NAVER_SOURCE_NONUSABLE",
+    "close": 6610.0,
+    "date": "2012-07-16",
+    "high": 0.0,
+    "low": 0.0,
+    "open": 0.0,
+    "reason": "source row has non-positive OHLC or activity-positive zero-OHL shape",
+    "source_authority": "NAVER_DIRECT_DATE_RANGE_ADJUSTED_V1",
+    "source_row_present": true,
+    "ticker": "000360",
+    "volume": 41680.0
+  },
+  "adjusted_source_presence_status": "PRESENT_BUT_NAVER_SOURCE_NONUSABLE",
+  "adjusted_source_row_present": true,
+  "canonical_adjusted_observation_present": false,
+  "canonical_usable_adjusted_observation_present": false,
+  "closure_checkpoint_sha256": "32cafe722c4ab868d6e93979077fbde777c5abd98d5fdc90d64488e7c87f4e51",
+  "closure_lineage": [
+    "artifacts/data/end_to_end_data_parity/v01/adjusted_price_store_full_population_closure/authority_cutover_fix01/full_population_checkpoint.json",
+    "artifacts/data/end_to_end_data_parity/v01/adjusted_price_store_full_population_closure/authority_cutover_fix01/full_population_closure_manifest.json",
+    "data/market/adjusted/stocks/000360.meta.json"
+  ],
+  "current_classification": "ADJUSTED_ANALYTICALLY_NONUSABLE",
+  "date": "2012-07-16",
+  "final_adjudication": {
+    "final_category": "ADJUSTED_ANALYTICALLY_NONUSABLE",
+    "known_adjusted_source_gap": false,
+    "raw_to_adjusted_substitution": false,
+    "reason": "Adjusted source row is present but analytically unusable; raw KRX observation remains lossless and is not substituted into adjusted OHLC.",
+    "status": "CURRENT",
+    "terminal_classification": "ADJUSTED_ANALYTICALLY_NONUSABLE"
+  },
+  "final_category": "ADJUSTED_ANALYTICALLY_NONUSABLE",
+  "frozen_authority_changed": false,
+  "identity_evidence": {
+    "authority_source": "TIER_A_KRX_OPEN_API_BASIC_INFO",
+    "date": "2012-07-16",
+    "first_common_date": "2010-01-04",
+    "historical_only": true,
+    "identity_state": "IN_LIFECYCLE",
+    "included_in_population": true,
+    "isu_cd": [
+      "KR7000360008"
+    ],
+    "last_common_date": "2015-04-14",
+    "market": [
+      "KOSPI"
+    ],
+    "pit_interval_matches": [
+      {
+        "classification_reason": "TIER_A_COMMON_SECURITY_TYPE",
+        "effective_from": "2010-01-04",
+        "effective_to": "2015-04-14",
+        "isu_cd": "KR7000360008",
+        "market": "KOSPI",
+        "state": "COMMON",
+        "ticker": "000360"
+      }
+    ],
+    "pit_state": "COMMON",
+    "ticker": "000360"
+  },
+  "identity_state": "IN_LIFECYCLE",
+  "known_adjusted_source_gap": false,
+  "pit_evidence": {
+    "authority_source": "TIER_A_KRX_OPEN_API_BASIC_INFO",
+    "common_interval_count": 1,
+    "currently_common": false,
+    "first_common_date": "2010-01-04",
+    "historical_only": true,
+    "included_in_population": true,
+    "isu_cd": [
+      "KR7000360008"
+    ],
+    "last_common_date": "2015-04-14",
+    "lifecycle_transition_present": false,
+    "market": [
+      "KOSPI"
+    ],
+    "numeric_or_alpha": "numeric",
+    "supplemental_authority_used": false,
+    "ticker": "000360"
+  },
+  "pit_state": "COMMON",
+  "previous_adjudication": {
+    "classification": "KNOWN_ADJUSTED_SOURCE_GAP",
+    "reason": "Historical label from the prior execution; superseded after exact closure source_presence_audit reconciliation.",
+    "status": "SUPERSEDED"
+  },
+  "raw_observation": {
+    "close": 3300,
+    "date": "2012-07-16",
+    "high": 3440,
+    "listed_shares": 11825295,
+    "low": 3265,
+    "market": "KOSPI",
+    "market_cap": 39023473500,
+    "open": 3265,
+    "raw_observation_present": true,
+    "ticker": "000360",
+    "trading_value": 138215850,
+    "volume": 41680
+  },
+  "raw_observation_present": true,
+  "raw_to_adjusted_substitution": false,
+  "reasoning": [
+    "PIT identity and historical population include 000360 on 2012-07-16.",
+    "The immutable KRX raw partition contains positive-volume and positive-trading-value activity.",
+    "The adjusted provider response recorded the exact row as NAVER_SOURCE_NONUSABLE; the canonical usable adjusted parquet therefore has no row for this date.",
+    "The current Repository disposition is ADJUSTED_ANALYTICALLY_NONUSABLE.",
+    "No adjusted OHLC is synthesized or substituted; the raw observation remains available through lossless APIs."
+  ],
+  "schema": "exact_000360_20120716_closure_lineage_reconciliation_fix01_v01",
+  "terminal_classification": "ADJUSTED_ANALYTICALLY_NONUSABLE",
+  "ticker": "000360"
+}

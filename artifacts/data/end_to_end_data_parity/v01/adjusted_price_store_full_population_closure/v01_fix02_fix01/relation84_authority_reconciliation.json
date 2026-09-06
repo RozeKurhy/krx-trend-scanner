@@ -1,0 +1,17 @@
+{
+  "schema": "adjusted_price_store_full_population_fix02_fix01_relation84_v01",
+  "authority_nontrading_date": "2024-01-02",
+  "naver_positive_source_row": {
+    "present": true,
+    "ohlc": {"open": 100.0, "high": 110.0, "low": 90.0, "close": 105.0},
+    "classification": "NAVER_POSITIVE_NONTRADING_PLACEHOLDER"
+  },
+  "old_behavior": "positive Naver row remained usable or became unexpected after shape-only handling",
+  "new_behavior": "independent authority suppresses the row before store write",
+  "usable_count_for_case": 0,
+  "confirmed_nontrading_count": 1,
+  "unexpected_source_date_count": 0,
+  "silent_missing_count": 0,
+  "store_result": "date excluded from usable snapshot",
+  "audit_result": "source row presence, OHLC, ticker, authority and reason retained"
+}

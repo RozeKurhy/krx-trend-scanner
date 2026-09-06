@@ -7,6 +7,7 @@ import pykrx.stock as pykrx_stock
 from trend_scanner.data.adjusted_price_provider import (
     ADJUSTED_OHLC_COLUMNS,
     AdjustedPriceDataProvider,
+    NaverDirectAdjustedPriceDataProvider,
     validate_adjusted_ohlc,
 )
 from trend_scanner.data.errors import MarketDataError
@@ -77,20 +78,28 @@ def test_provider_filters_phantom_holiday_rows(monkeypatch):
     assert (result[["open", "high", "low"]] == 0).sum().sum() == 0
 
 
-def test_provider_applies_only_one_won_high_correction(monkeypatch):
+def test_provider_does_not_call_activity_positive_zero_ohlc_nontrading(monkeypatch):
+    frame = _response(phantom=True)
+    frame.loc[frame.index[1], "거래량"] = 10
+    monkeypatch.setattr(pykrx_stock, "get_market_ohlcv_by_date", lambda *args, **kwargs: frame)
+    with pytest.raises(MarketDataError):
+        AdjustedPriceDataProvider().load_daily("005930", "2024-01-02", "2024-01-04")
+
+
+def test_provider_does_not_rewrite_one_won_high_relation(monkeypatch):
     frame = _response().copy()
     frame.loc[frame.index[0], "고가"] = 101
     monkeypatch.setattr(pykrx_stock, "get_market_ohlcv_by_date", lambda *args, **kwargs: frame)
-    result = AdjustedPriceDataProvider().load_daily("005930", "2024-01-02", "2024-01-03")
-    assert result.loc[frame.index[0], "high"] == 102
+    with pytest.raises(MarketDataError):
+        AdjustedPriceDataProvider().load_daily("005930", "2024-01-02", "2024-01-03")
 
 
-def test_provider_applies_only_one_won_low_correction(monkeypatch):
+def test_provider_does_not_rewrite_one_won_low_relation(monkeypatch):
     frame = _response().copy()
     frame.loc[frame.index[0], "저가"] = 101
     monkeypatch.setattr(pykrx_stock, "get_market_ohlcv_by_date", lambda *args, **kwargs: frame)
-    result = AdjustedPriceDataProvider().load_daily("005930", "2024-01-02", "2024-01-03")
-    assert result.loc[frame.index[0], "low"] == 100
+    with pytest.raises(MarketDataError):
+        AdjustedPriceDataProvider().load_daily("005930", "2024-01-02", "2024-01-03")
 
 
 def test_provider_rejects_two_won_relation_violation(monkeypatch):
@@ -129,3 +138,20 @@ def test_validate_adjusted_ohlc_rejects_ancillary_columns():
     frame = _response().rename(columns={"시가": "open"})
     with pytest.raises(MarketDataError):
         validate_adjusted_ohlc(frame)
+
+
+def test_naver_provider_phantom_normalization_is_distinct_from_pykrx():
+    class Response:
+        status_code = 200
+        text = '<protocol><chartdata><item data="20180430|0|0|0|53000|0"/></chartdata></protocol>'
+
+    class Session:
+        def get(self, *args, **kwargs):
+            return Response()
+
+    provider = NaverDirectAdjustedPriceDataProvider(session=Session())
+    result = provider.load_daily("005930", "2018-04-11", "2018-06-20")
+
+    assert result.empty
+    assert provider.phantom_row_count == 1
+    assert provider.pykrx_fallback_call_count == 0

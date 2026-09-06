@@ -1,0 +1,28 @@
+{
+  "effective_aggregate_counts": {
+    "baseline_pit_expected_dates": 8387083,
+    "effective_confirmed_nontrading_suspension_records": 176,
+    "effective_full_population_authority_expected_dates": 8386907,
+    "existing_full_population_authority_expected_dates": 8386906,
+    "historical_suspension_records": 177,
+    "raw_predicate_added_back_dates": 45,
+    "raw_predicate_current_expected_dates": 8172893,
+    "raw_predicate_revised_expected_dates": 8172938,
+    "resolved_activity_conflict_records": 1,
+    "silent_missing_dates": 0
+  },
+  "invariant": "baseline dates are explicitly accounted; silent missing is fail-closed",
+  "nonpositive_14_adjudicated_source_nonusable": 14,
+  "relation_84_confirmed_nontrading": 84,
+  "source_authority": "CLOSED",
+  "source_reselection": false,
+  "states": [
+    "USABLE_ADJUSTED_OBSERVATION",
+    "CONFIRMED_NONTRADING",
+    "ADJUDICATED_SOURCE_NONUSABLE",
+    "SILENT_MISSING",
+    "UNEXPECTED_SOURCE_DATE",
+    "SUSPENSION_METADATA_CONFLICT_WITH_OBSERVED_ACTIVITY"
+  ],
+  "taxonomy_rule": "Raw shape and activity are independent dimensions; source-nonusable is not converted into synthetic OHLC."
+}

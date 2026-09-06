@@ -1,0 +1,43 @@
+{
+  "directive": "ADJUSTED_SOURCE_GAP_AUTHORITY_REVIEW_V01",
+  "verification_start_utc": "2026-09-01T06:53:15Z",
+  "canonical_targets": {
+    "adjusted_parquet": "data/market/adjusted/stocks/446840.parquet",
+    "adjusted_metadata": "data/market/adjusted/stocks/446840.meta.json"
+  },
+  "ticker_446840_adjusted_parquet_sha256_before": "ad1e255fbfbb1f82de3b2c9ac7c0cbb4cc32c8ea376b8c3b5d980abaf28742ff",
+  "ticker_446840_adjusted_metadata_sha256_before": "0b7784da729b0b3591d782f669525eba632ebf4f42af065307353f238df10318",
+  "adjusted_aggregate_before": {
+    "root": "data/market/adjusted/stocks",
+    "file_count": 6290,
+    "total_bytes": 184115934,
+    "aggregate_sha256": "a73174789de29842381ae5d074b738a43862b4ec4e6d667ef24f18e904930d88"
+  },
+  "raw_aggregate_before": {
+    "root": "data/market/raw/krx_stocks/v01",
+    "file_count": 8191,
+    "total_bytes": 554047770,
+    "aggregate_sha256": "56861252d04c248bd2e1b9930ebffab4bfc3dc9a7967c34e90186b7688604e1d"
+  },
+  "market_index_sha256_before": "c95b6a581213eca1306f4fb321f71de4812d7414504a31ec4ecc1cf17b5bc1a8",
+  "verification_completed_utc": "2026-09-01T06:54:22.782160+00:00",
+  "verification_write_target": "artifact-owned only; canonical adjusted/raw/index stores are read-only",
+  "ticker_446840_adjusted_parquet_sha256_after": "ad1e255fbfbb1f82de3b2c9ac7c0cbb4cc32c8ea376b8c3b5d980abaf28742ff",
+  "ticker_446840_adjusted_metadata_sha256_after": "0b7784da729b0b3591d782f669525eba632ebf4f42af065307353f238df10318",
+  "adjusted_aggregate_after": {
+    "root": "data/market/adjusted/stocks",
+    "file_count": 6290,
+    "total_bytes": 184115934,
+    "aggregate_sha256": "a73174789de29842381ae5d074b738a43862b4ec4e6d667ef24f18e904930d88"
+  },
+  "raw_aggregate_after": {
+    "root": "data/market/raw/krx_stocks/v01",
+    "file_count": 8191,
+    "total_bytes": 554047770,
+    "aggregate_sha256": "56861252d04c248bd2e1b9930ebffab4bfc3dc9a7967c34e90186b7688604e1d"
+  },
+  "market_index_sha256_after": "c95b6a581213eca1306f4fb321f71de4812d7414504a31ec4ecc1cf17b5bc1a8",
+  "canonical_adjusted_changed": false,
+  "canonical_raw_changed": false,
+  "market_index_changed": false
+}

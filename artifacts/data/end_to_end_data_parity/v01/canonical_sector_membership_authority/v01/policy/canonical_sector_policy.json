@@ -1,0 +1,229 @@
+{
+  "aggregate_parent_relationships": [
+    {
+      "children": [
+        {
+          "child_count": 18,
+          "code": "1024",
+          "name": "증권"
+        },
+        {
+          "child_count": 11,
+          "code": "1025",
+          "name": "보험"
+        }
+      ],
+      "market": "KOSPI",
+      "parent_code": "1021",
+      "parent_count": 110,
+      "parent_name": "금융",
+      "relationship": "EXACT_SUBSET"
+    },
+    {
+      "children": [
+        {
+          "child_count": 37,
+          "code": "1005",
+          "name": "음식료·담배"
+        },
+        {
+          "child_count": 27,
+          "code": "1006",
+          "name": "섬유·의류"
+        },
+        {
+          "child_count": 18,
+          "code": "1007",
+          "name": "종이·목재"
+        },
+        {
+          "child_count": 103,
+          "code": "1008",
+          "name": "화학"
+        },
+        {
+          "child_count": 49,
+          "code": "1009",
+          "name": "제약"
+        },
+        {
+          "child_count": 21,
+          "code": "1010",
+          "name": "비금속"
+        },
+        {
+          "child_count": 60,
+          "code": "1011",
+          "name": "금속"
+        },
+        {
+          "child_count": 32,
+          "code": "1012",
+          "name": "기계·장비"
+        },
+        {
+          "child_count": 69,
+          "code": "1013",
+          "name": "전기전자"
+        },
+        {
+          "child_count": 8,
+          "code": "1014",
+          "name": "의료·정밀기기"
+        },
+        {
+          "child_count": 61,
+          "code": "1015",
+          "name": "운송장비·부품"
+        }
+      ],
+      "market": "KOSPI",
+      "parent_code": "1027",
+      "parent_count": 493,
+      "parent_name": "제조",
+      "relationship": "EXACT_SUBSET"
+    },
+    {
+      "children": [
+        {
+          "child_count": 48,
+          "code": "2056",
+          "name": "음식료·담배"
+        },
+        {
+          "child_count": 22,
+          "code": "2058",
+          "name": "섬유·의류"
+        },
+        {
+          "child_count": 9,
+          "code": "2062",
+          "name": "종이·목재"
+        },
+        {
+          "child_count": 2,
+          "code": "2063",
+          "name": "출판·매체복제"
+        },
+        {
+          "child_count": 126,
+          "code": "2065",
+          "name": "화학"
+        },
+        {
+          "child_count": 130,
+          "code": "2066",
+          "name": "제약"
+        },
+        {
+          "child_count": 15,
+          "code": "2067",
+          "name": "비금속"
+        },
+        {
+          "child_count": 75,
+          "code": "2068",
+          "name": "금속"
+        },
+        {
+          "child_count": 183,
+          "code": "2070",
+          "name": "기계·장비"
+        },
+        {
+          "child_count": 316,
+          "code": "2072",
+          "name": "전기전자"
+        },
+        {
+          "child_count": 99,
+          "code": "2074",
+          "name": "의료·정밀기기"
+        },
+        {
+          "child_count": 77,
+          "code": "2075",
+          "name": "운송장비·부품"
+        },
+        {
+          "child_count": 15,
+          "code": "2077",
+          "name": "기타제조"
+        }
+      ],
+      "market": "KOSDAQ",
+      "parent_code": "2024",
+      "parent_count": 1117,
+      "parent_name": "제조",
+      "relationship": "EXACT_SUBSET"
+    }
+  ],
+  "aggregate_sector_codes": [
+    "1021",
+    "1027",
+    "2024"
+  ],
+  "deterministic": true,
+  "identity_rule": "446840 pre-2025-08-14 SPAC rows remain analytically ineligible despite ticker continuity.",
+  "iteration_order_dependency": false,
+  "leaf_sector_codes": [
+    "1005",
+    "1006",
+    "1007",
+    "1008",
+    "1009",
+    "1010",
+    "1011",
+    "1012",
+    "1013",
+    "1014",
+    "1015",
+    "1016",
+    "1017",
+    "1018",
+    "1019",
+    "1020",
+    "1024",
+    "1025",
+    "1026",
+    "1045",
+    "1046",
+    "1047",
+    "2012",
+    "2026",
+    "2027",
+    "2029",
+    "2031",
+    "2037",
+    "2056",
+    "2058",
+    "2062",
+    "2063",
+    "2065",
+    "2066",
+    "2067",
+    "2068",
+    "2070",
+    "2072",
+    "2074",
+    "2075",
+    "2077",
+    "2114",
+    "2118"
+  ],
+  "pit_rule": "Exact effective_date only; no nearest/current backfill or unobserved interval inference.",
+  "policy_description": "Select the unique leaf native KRX sector after removing evidence-backed exact-subset aggregate parents; retain a sole aggregate-only membership; fail closed on multiple leaves.",
+  "policy_name": "MOST_SPECIFIC_NATIVE_SECTOR_V01",
+  "policy_version": "V01",
+  "resolution_algorithm": [
+    "exact PIT memberships",
+    "economic identity eligibility before policy",
+    "market mismatch rejected",
+    "remove exact-subset aggregate parents",
+    "one leaf -> canonical",
+    "zero leaves -> aggregate-only",
+    "more than one leaf -> fail closed"
+  ],
+  "tie_rule": "No size tie-break is used; equal-level leaf conflict is unresolved and rejected.",
+  "unmapped_rule": "No native membership is explicit NOT_IN_NATIVE_SECTOR_INDEX; source-error rows are never coerced to unmapped."
+}

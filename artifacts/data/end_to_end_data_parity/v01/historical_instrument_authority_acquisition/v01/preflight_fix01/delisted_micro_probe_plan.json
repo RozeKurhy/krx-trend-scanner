@@ -1,0 +1,15 @@
+{
+  "work_id": "KRX_HISTORICAL_INSTRUMENT_AUTHORITY_ACQUISITION_V01_FIX01",
+  "logical_case_limit": 4,
+  "cases": [
+    {"case": "KOSPI_BROAD", "market": "STK", "date_range": ["2022-07-01", "2022-07-31"], "isuCd": "ALL", "isuCd2": "ALL"},
+    {"case": "KOSPI_FILTER_002270", "market": "STK", "date_range": ["2022-07-01", "2022-07-31"], "isuCd": "KR7002270007", "isuCd2": "002270"},
+    {"case": "KOSDAQ_BROAD", "market": "KSQ", "date_range": ["2026-08-01", "2026-08-21"], "isuCd": "ALL", "isuCd2": "ALL"},
+    {"case": "KOSDAQ_FILTER_299900", "market": "KSQ", "date_range": ["2026-08-01", "2026-08-21"], "isuCd": "KR7299900001", "isuCd2": "299900"}
+  ],
+  "endpoint": "/comm/bldAttendant/getJsonData.cmd",
+  "bld": "dbms/MDC/STAT/issue/MDCSTAT23801",
+  "additional_contract": "page HTML confirms locale, mktId, strtDd, endDd, isuCd, isuCd2; finder-selected filter uses full_code in isuCd and short code in isuCd2",
+  "network_ceiling": 15,
+  "status": "PLAN_EXECUTED"
+}

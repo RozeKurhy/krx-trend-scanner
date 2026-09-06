@@ -1,0 +1,23 @@
+{
+  "schema": "adjusted_price_store_full_population_fix02_fix01_full_pytest_v01",
+  "command": "uv run pytest -q -p no:cacheprovider",
+  "executed_final_head_exactly_once": true,
+  "passed": 2224,
+  "failed": 1,
+  "skipped": 6,
+  "deselected": 5,
+  "known_baseline_failures": [
+    {
+      "test": "tests/test_krx_historical_backfill.py::test_recent_empty_is_not_checkpointed_and_general_resume_retries",
+      "reason": "unchanged pre-existing historical backfill checkpoint behavior; no FIX02_FIX01 path touched"
+    }
+  ],
+  "unexpected_failures": [],
+  "duration_seconds": 1250.65,
+  "network_blocker": false,
+  "rerun_count_on_final_head": 0,
+  "pre_final_validation_runs": [
+    {"passed": 2224, "failed": 1, "duration_seconds": 1283.51},
+    {"passed": 2224, "failed": 1, "duration_seconds": 1287.0}
+  ]
+}

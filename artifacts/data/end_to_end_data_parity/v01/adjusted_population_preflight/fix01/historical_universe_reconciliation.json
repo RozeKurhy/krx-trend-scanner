@@ -1,0 +1,26 @@
+{
+  "schema": "adjusted_population_preflight_fix01_historical_universe_reconciliation_v01",
+  "generated_offline": true,
+  "network_requests": {"pykrx": 0, "krx_open_api": 0, "opendart": 0},
+  "window": ["2010-01-04", "2026-08-21"],
+  "raw_historical_universe": {"total": 3673, "numeric": 3592, "alphanumeric": 81},
+  "current_verified_common": {"count": 2557, "definition": "effective_date=2026-08-21, KOSPI/KOSDAQ, asset_type=COMMON"},
+  "historical_only": {"total": 1116, "numeric": 1058, "alphanumeric": 58},
+  "numeric_historical_only_classification": {
+    "HISTORICAL_COMMON_REQUIRED": 218,
+    "HISTORICAL_NOT_COMMON": 285,
+    "HISTORICAL_CLASSIFICATION_UNKNOWN": 555,
+    "reconciliation": "218 + 285 + 555 = 1058"
+  },
+  "prior_legacy_denominator": {
+    "count": 2560,
+    "definition": "current verified COMMON union legacy 2506 artifact COMMON subset",
+    "legacy_common_subset_count": 2489,
+    "known_historical_common_already_present": 3,
+    "known_historical_common_missing": 215,
+    "unknown_missing_or_unresolved": 555
+  },
+  "answer_to_missing_common_question": "YES. At least 215 historical COMMON identities are outside the prior denominator; a further 555 numeric historical-only identities have no authoritative common/non-common classification, so absence cannot be proven.",
+  "denominator_status": "PROVISIONAL_NOT_FROZEN",
+  "live_pilot_authorization": "BLOCKED_HISTORICAL_UNIVERSE_AUTHORITY"
+}

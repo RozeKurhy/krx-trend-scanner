@@ -33,6 +33,7 @@ from trend_scanner.reporting.models import (
     AFastCoreTradeHistoryItem,
 )
 from trend_scanner.universe.models import AssetType
+from trend_scanner.data.market_calendar import MarketCalendarAuthority
 from trend_scanner.validation.historical_snapshot import build_historical_snapshot
 from trend_scanner.validation.pattern_a_fast_core_v02_reentry import simulate_ticker_core_v02_reentry
 
@@ -57,6 +58,7 @@ def build_a_fast_core_section(
     is_common_stock: bool | None = None,
     *,
     metadata_provenance_mode: str,
+    market_calendar: MarketCalendarAuthority | None = None,
 ) -> AFastCoreSection:
     """단일 종목에 대해 requested_as_of 시점의 A FAST Core V2 전략 상태 섹션을 생성한다.
 
@@ -94,6 +96,7 @@ def build_a_fast_core_section(
         investability_result=investability_result,
         is_common_stock=is_common_stock,
         metadata_trusted=(metadata_provenance_mode != "DATA_UNAVAILABLE"),
+        market_calendar=market_calendar,
     )
     section.metadata_provenance_mode = metadata_provenance_mode
     return section
@@ -114,6 +117,7 @@ def _build_a_fast_core_section_impl(
     is_common_stock: bool | None = None,
     *,
     metadata_trusted: bool,
+    market_calendar: MarketCalendarAuthority | None = None,
 ) -> AFastCoreSection:
     as_of_str = requested_as_of.strftime("%Y-%m-%d")
 
@@ -304,7 +308,7 @@ def _build_a_fast_core_section_impl(
 
         # Reconstruct current Pattern A score on requested_as_of
         try:
-            cur_snap = build_historical_snapshot(ticker, name, daily_as_of, requested_as_of, include_incomplete_periods=False)
+            cur_snap = build_historical_snapshot(ticker, name, daily_as_of, requested_as_of, include_incomplete_periods=False, market_calendar=market_calendar)
             cur_eval = evaluate_pattern_a(cur_snap)
             cur_pa_score = float(round(cur_eval.score, 2)) if cur_eval.score is not None else None
         except Exception:
@@ -322,7 +326,7 @@ def _build_a_fast_core_section_impl(
             prog_m_dates = [m for m in monthly_bars.index if f_prog_d and m >= pd.Timestamp(f_prog_d) and m <= requested_as_of]
             for m in prog_m_dates:
                 try:
-                    m_snap = build_historical_snapshot(ticker, name, daily_as_of[daily_as_of.index <= m], m, include_incomplete_periods=False)
+                    m_snap = build_historical_snapshot(ticker, name, daily_as_of[daily_as_of.index <= m], m, include_incomplete_periods=False, market_calendar=market_calendar)
                     m_eval = evaluate_pattern_a(m_snap)
                     if m_eval.score is not None:
                         sc = float(round(m_eval.score, 2))
@@ -485,7 +489,8 @@ def _build_a_fast_core_section_impl(
             latest_w = valid_weeks[-1]
             try:
                 fast_res = evaluate_pattern_a_fast(
-                    ticker, name, daily_as_of[daily_as_of.index <= latest_w], latest_w, score_contract, stage_contract
+                    ticker, name, daily_as_of[daily_as_of.index <= latest_w], latest_w, score_contract, stage_contract,
+                    market_calendar=market_calendar,
                 )
             except Exception as exc:
                 logger.error("evaluate_pattern_a_fast failed for %s on %s: %s", ticker, latest_w, exc)

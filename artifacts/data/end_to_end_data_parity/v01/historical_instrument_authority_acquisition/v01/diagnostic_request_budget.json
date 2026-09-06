@@ -1,0 +1,12 @@
+{
+  "work_id": "KRX_HISTORICAL_INSTRUMENT_AUTHORITY_ACQUISITION_V01",
+  "logical_diagnostics_ceiling": 10,
+  "absolute_external_request_ceiling": 20,
+  "planned_for_discovery": 8,
+  "actual_logical_diagnostics": 8,
+  "actual_retries": 0,
+  "price_endpoint_calls": 0,
+  "breakdown": {"official_page_contract_reads": 6, "unauthenticated_delisted_probe": 1, "krx_open_api_basic_info": 6, "authenticated_mdc_delisted_probe": 1, "krx_login_bootstrap": 3},
+  "status": "PASS_WITHIN_CEILING",
+  "note": "Counts are logical HTTP requests; no bulk historical ingestion was run. KRX login bootstrap is included and credentials are not recorded."
+}

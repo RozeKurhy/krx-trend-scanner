@@ -17,16 +17,29 @@ from trend_scanner.data.adjusted_price_provider import (
     ADJUSTED_OHLC_COLUMNS,
     normalize_ticker,
     validate_adjusted_ohlc,
+    validate_source_integrity,
+)
+from trend_scanner.data.adjusted_price_source_authority import (
+    AdjustedPriceSourceDescriptor,
+    CURRENT_SOURCE_DESCRIPTOR,
+    assert_current_descriptor,
+    descriptor_from,
 )
 from trend_scanner.data.errors import MarketDataError
 
 
 DEFAULT_ADJUSTED_PRICE_STORE_DIR = Path("data/market/adjusted/stocks")
 PHYSICAL_COLUMNS = ("date", "ticker", "open", "high", "low", "close")
-SCHEMA_VERSION = "ADJUSTED_PRICE_V01"
-STORE_VERSION = "ADJUSTED_PRICE_STORE_V01"
-SOURCE_NAME = "PYKRX_ADJUSTED_PRICE"
-SOURCE_ENDPOINT = "pykrx.stock.get_market_ohlcv_by_date(adjusted=True)"
+SCHEMA_VERSION = "ADJUSTED_PRICE_V02"
+STORE_VERSION = "ADJUSTED_PRICE_STORE_V02"
+LEGACY_SCHEMA_VERSION = "ADJUSTED_PRICE_V01"
+LEGACY_STORE_VERSION = "ADJUSTED_PRICE_STORE_V01"
+LEGACY_SOURCE_NAME = "PYKRX_ADJUSTED_PRICE"
+LEGACY_SOURCE_ENDPOINT = "pykrx.stock.get_market_ohlcv_by_date(adjusted=True)"
+SOURCE_AUTHORITY_ID = CURRENT_SOURCE_DESCRIPTOR.source_authority_id
+SOURCE_NAME = CURRENT_SOURCE_DESCRIPTOR.source_name
+SOURCE_ENDPOINT = CURRENT_SOURCE_DESCRIPTOR.source_endpoint
+SOURCE_REQUEST_TYPE = CURRENT_SOURCE_DESCRIPTOR.source_request_type
 SOURCE_SEMANTICS = "ADJUSTED_OHLC_ONLY"
 AUTHORITY_TYPE = "AUTHORITATIVE"
 _SECRET_MARKERS = ("KRX_OPEN_API_AUTH_KEY", "KRX_ID", "KRX_PW")
@@ -36,10 +49,16 @@ _RESERVED_METADATA_FIELDS = frozenset(
         "schema_version",
         "store_version",
         "ticker",
+        "source_authority_id",
         "source_name",
         "source_endpoint",
+        "source_request_type",
         "source_semantics",
         "authority_type",
+        "authority_closure_version",
+        "authority_closure_artifact_head",
+        "authority_closure_artifact_tree",
+        "authority_decision_sha256",
         "actual_date_min",
         "actual_date_max",
         "row_count",
@@ -47,6 +66,10 @@ _RESERVED_METADATA_FIELDS = frozenset(
         "generated_at",
         "last_success_at",
         "content_sha256",
+        "source_native_adjusted",
+        "analytic_invalid_ohlc_count",
+        "phantom_row_count",
+        "source_nonusable_row_count",
     }
 )
 _METADATA_FIELDS = (
@@ -66,6 +89,18 @@ _METADATA_FIELDS = (
     "generated_at",
     "last_success_at",
     "content_sha256",
+)
+_V02_METADATA_FIELDS = (
+    "schema_version", "store_version", "ticker", "source_authority_id", "source_name",
+    "source_endpoint", "source_request_type", "source_semantics", "authority_type",
+    "authority_closure_version", "authority_closure_artifact_head", "authority_closure_artifact_tree",
+    "authority_decision_sha256", "requested_start", "requested_end", "actual_date_min",
+    "actual_date_max", "row_count", "ticker_count", "generated_at", "last_success_at", "content_sha256",
+)
+_V01_METADATA_FIELDS = (
+    "schema_version", "store_version", "ticker", "source_name", "source_endpoint", "source_semantics",
+    "authority_type", "requested_start", "requested_end", "actual_date_min", "actual_date_max",
+    "row_count", "ticker_count", "generated_at", "last_success_at", "content_sha256",
 )
 
 
@@ -120,11 +155,21 @@ def _normalise_frame(frame: pd.DataFrame) -> tuple[pd.DataFrame, str | None]:
         if numeric.isna().any():
             raise MarketDataError(f"{column}에 숫자로 변환할 수 없는 값 또는 NaN이 있습니다.")
         result[column] = numeric.astype("float64")
-    validate_adjusted_ohlc(result)
+    if bool(result.attrs.get("source_native_adjusted", False)):
+        validate_source_integrity(result)
+        if (result[list(ADJUSTED_OHLC_COLUMNS)] <= 0).any().any():
+            raise MarketDataError("source-native adjusted store에는 non-positive OHLC를 저장할 수 없습니다.")
+    else:
+        validate_adjusted_ohlc(result)
     return result[list(ADJUSTED_OHLC_COLUMNS)], ticker_value
 
 
-def _physical_to_frame(physical: pd.DataFrame, expected_ticker: str) -> pd.DataFrame:
+def _physical_to_frame(
+    physical: pd.DataFrame,
+    expected_ticker: str,
+    *,
+    source_native_adjusted: bool = False,
+) -> pd.DataFrame:
     if tuple(physical.columns) != PHYSICAL_COLUMNS:
         raise MarketDataError(f"Parquet physical schema가 잘못되었습니다: {list(physical.columns)}")
     try:
@@ -143,7 +188,12 @@ def _physical_to_frame(physical: pd.DataFrame, expected_ticker: str) -> pd.DataF
     frame.index = dates.rename(None)
     for column in ADJUSTED_OHLC_COLUMNS:
         frame[column] = pd.to_numeric(frame[column], errors="coerce").astype("float64")
-    validate_adjusted_ohlc(frame)
+    if source_native_adjusted:
+        validate_source_integrity(frame)
+        if (frame[list(ADJUSTED_OHLC_COLUMNS)] <= 0).any().any():
+            raise MarketDataError("source-native adjusted store에 non-positive OHLC가 있습니다.")
+    else:
+        validate_adjusted_ohlc(frame)
     return frame
 
 
@@ -153,19 +203,44 @@ def _assert_no_secret_metadata(metadata: Mapping[str, Any]) -> None:
         raise MarketDataError("metadata에 credential marker를 기록할 수 없습니다.")
 
 
+def _descriptor_from_metadata(metadata: Mapping[str, Any]) -> AdjustedPriceSourceDescriptor:
+    return AdjustedPriceSourceDescriptor(
+        source_authority_id=metadata["source_authority_id"],
+        source_name=metadata["source_name"],
+        source_endpoint=metadata["source_endpoint"],
+        source_request_type=int(metadata["source_request_type"]),
+        source_semantics=metadata["source_semantics"],
+        authority_type=metadata["authority_type"],
+        closure_version=metadata["authority_closure_version"],
+        closure_artifact_head=metadata["authority_closure_artifact_head"],
+        closure_artifact_tree=metadata["authority_closure_artifact_tree"],
+        authority_decision_sha256=metadata["authority_decision_sha256"],
+    )
+
+
 def _validate_metadata(metadata: Mapping[str, Any], ticker: str, frame: pd.DataFrame, digest: str) -> None:
-    missing = [field for field in _METADATA_FIELDS if field not in metadata]
+    schema = metadata.get("schema_version")
+    fields = _V02_METADATA_FIELDS if schema == SCHEMA_VERSION else _V01_METADATA_FIELDS
+    missing = [field for field in fields if field not in metadata]
     if missing:
         raise MarketDataError(f"metadata 필드가 부족합니다: {missing}")
     _assert_no_secret_metadata(metadata)
-    if metadata["schema_version"] != SCHEMA_VERSION or metadata["store_version"] != STORE_VERSION:
+    if schema == SCHEMA_VERSION:
+        if metadata["store_version"] != STORE_VERSION:
+            raise MarketDataError("metadata schema/store version이 일치하지 않습니다.")
+        try:
+            assert_current_descriptor(_descriptor_from_metadata(metadata))
+        except MarketDataError as exc:
+            raise MarketDataError("metadata source authority binding/source_endpoint가 현재 Closure V02와 다릅니다.") from exc
+    elif schema == LEGACY_SCHEMA_VERSION and metadata["store_version"] == LEGACY_STORE_VERSION:
+        if metadata["source_name"] != LEGACY_SOURCE_NAME or metadata["source_endpoint"] != LEGACY_SOURCE_ENDPOINT:
+            raise MarketDataError("legacy metadata source_endpoint/source provenance가 PyKRX 계약과 다릅니다.")
+    else:
         raise MarketDataError("metadata schema/store version이 일치하지 않습니다.")
     if normalize_ticker(metadata["ticker"]) != ticker:
         raise MarketDataError("metadata ticker가 요청 ticker와 일치하지 않습니다.")
-    if metadata["source_name"] != SOURCE_NAME or metadata["source_semantics"] != SOURCE_SEMANTICS:
+    if metadata["source_semantics"] != SOURCE_SEMANTICS:
         raise MarketDataError("metadata source provenance가 AdjustedPriceStore 계약과 다릅니다.")
-    if metadata["source_endpoint"] != SOURCE_ENDPOINT:
-        raise MarketDataError("metadata source_endpoint가 AdjustedPriceStore 계약과 다릅니다.")
     if metadata["authority_type"] != AUTHORITY_TYPE:
         raise MarketDataError("metadata authority_type이 AUTHORITATIVE가 아닙니다.")
     if int(metadata["ticker_count"]) != 1 or int(metadata["row_count"]) != len(frame):
@@ -193,8 +268,14 @@ def _validate_metadata(metadata: Mapping[str, Any], ticker: str, frame: pd.DataF
 class AdjustedPriceStore:
     """Ticker-scoped full-replacement store for adjusted OHLC history."""
 
-    def __init__(self, base_dir: Path | str = DEFAULT_ADJUSTED_PRICE_STORE_DIR) -> None:
+    def __init__(
+        self,
+        base_dir: Path | str = DEFAULT_ADJUSTED_PRICE_STORE_DIR,
+        authority_descriptor: AdjustedPriceSourceDescriptor | None = None,
+    ) -> None:
         self.base_dir = Path(base_dir)
+        self.authority_descriptor = authority_descriptor or CURRENT_SOURCE_DESCRIPTOR
+        assert_current_descriptor(self.authority_descriptor)
 
     def _parquet_path(self, ticker: str) -> Path:
         return self.base_dir / f"{normalize_ticker(ticker)}.parquet"
@@ -233,7 +314,11 @@ class AdjustedPriceStore:
             physical = pd.read_parquet(parquet_path)
         except Exception as exc:
             raise MarketDataError(f"Parquet를 읽을 수 없습니다: {parquet_path}") from exc
-        frame = _physical_to_frame(physical, normalized)
+        frame = _physical_to_frame(
+            physical,
+            normalized,
+            source_native_adjusted=bool(metadata.get("source_native_adjusted", False)),
+        )
         _validate_metadata(metadata, normalized, frame, digest)
         return frame, metadata
 
@@ -245,7 +330,40 @@ class AdjustedPriceStore:
             frame = frame.loc[:pd.Timestamp(end)]
         return frame.copy()
 
-    def save_full(self, ticker: str, frame: pd.DataFrame, metadata_context: Mapping[str, Any] | None = None) -> None:
+    def load_daily_source(self, ticker: str, start: str | None = None, end: str | None = None) -> pd.DataFrame:
+        """Return source-authority rows, including relation-anomalous observations."""
+
+        return self.load_daily(ticker, start=start, end=end)
+
+    def load_daily_analytic(self, ticker: str, start: str | None = None, end: str | None = None) -> pd.DataFrame:
+        """Return only a physically valid analytic candle view (fail closed)."""
+
+        frame = self.load_daily(ticker, start=start, end=end)
+        validate_adjusted_ohlc(frame)
+        return frame
+
+    def is_current_authority_snapshot(self, ticker: str) -> bool:
+        """Return true only for a valid, current-authority V02 pair."""
+
+        try:
+            _, metadata = self._read_pair(ticker)
+        except (FileNotFoundError, MarketDataError, OSError):
+            return False
+        if metadata.get("schema_version") != SCHEMA_VERSION:
+            return False
+        try:
+            assert_current_descriptor(_descriptor_from_metadata(metadata))
+        except (KeyError, MarketDataError):
+            return False
+        return True
+
+    def save_full(
+        self,
+        ticker: str,
+        frame: pd.DataFrame,
+        metadata_context: Mapping[str, Any] | None = None,
+        source_descriptor: AdjustedPriceSourceDescriptor | Mapping[str, Any] | None = None,
+    ) -> None:
         normalized = normalize_ticker(ticker)
         adjusted, input_ticker = _normalise_frame(frame)
         if input_ticker is not None and input_ticker != normalized:
@@ -277,24 +395,43 @@ class AdjustedPriceStore:
             raise MarketDataError("requested_start가 requested_end보다 늦습니다.")
         if _iso_date(adjusted.index.min()) < requested_start or _iso_date(adjusted.index.max()) > requested_end:
             raise MarketDataError("requested bounds가 입력 frame 범위를 포함하지 않습니다.")
+        # New writes are V02 and always carry Store-owned authority fields.
+        # Callers may provide the producing descriptor explicitly; omission
+        # uses the only production descriptor and cannot inject metadata.
+        descriptor = self.authority_descriptor if source_descriptor is None else descriptor_from(source_descriptor)
+        assert_current_descriptor(descriptor)
         metadata = {
             "schema_version": SCHEMA_VERSION,
             "store_version": STORE_VERSION,
             "ticker": normalized,
-            "source_name": SOURCE_NAME,
-            "source_endpoint": SOURCE_ENDPOINT,
-            "source_semantics": SOURCE_SEMANTICS,
-            "authority_type": AUTHORITY_TYPE,
-            "requested_start": requested_start,
-            "requested_end": requested_end,
-            "actual_date_min": _iso_date(adjusted.index.min()),
-            "actual_date_max": _iso_date(adjusted.index.max()),
-            "row_count": int(len(adjusted)),
-            "ticker_count": 1,
-            "generated_at": now,
-            "last_success_at": now,
-            "content_sha256": "",
+            "source_authority_id": descriptor.source_authority_id,
+            "source_name": descriptor.source_name,
+            "source_endpoint": descriptor.source_endpoint,
+            "source_request_type": descriptor.source_request_type,
+            "source_semantics": descriptor.source_semantics,
+            "authority_type": descriptor.authority_type,
+            "authority_closure_version": descriptor.closure_version,
+            "authority_closure_artifact_head": descriptor.closure_artifact_head,
+            "authority_closure_artifact_tree": descriptor.closure_artifact_tree,
+            "authority_decision_sha256": descriptor.authority_decision_sha256,
         }
+        metadata.update(
+            {
+                "requested_start": requested_start,
+                "requested_end": requested_end,
+                "actual_date_min": _iso_date(adjusted.index.min()),
+                "actual_date_max": _iso_date(adjusted.index.max()),
+                "row_count": int(len(adjusted)),
+                "ticker_count": 1,
+                "generated_at": now,
+                "last_success_at": now,
+                "content_sha256": "",
+                "source_native_adjusted": bool(adjusted.attrs.get("source_native_adjusted", False)),
+                "analytic_invalid_ohlc_count": int(adjusted.attrs.get("analytic_invalid_ohlc_count", 0)),
+                "phantom_row_count": int(adjusted.attrs.get("phantom_row_count", 0)),
+                "source_nonusable_row_count": int(adjusted.attrs.get("source_nonusable_row_count", 0)),
+            }
+        )
         _assert_no_secret_metadata(metadata)
 
         physical = pd.DataFrame(
@@ -315,7 +452,11 @@ class AdjustedPriceStore:
         try:
             physical.to_parquet(temp_parquet, index=False)
             read_back = pd.read_parquet(temp_parquet)
-            roundtrip = _physical_to_frame(read_back, normalized)
+            roundtrip = _physical_to_frame(
+                read_back,
+                normalized,
+                source_native_adjusted=bool(adjusted.attrs.get("source_native_adjusted", False)),
+            )
             if len(roundtrip) != len(adjusted):
                 raise MarketDataError("Parquet read-back 행 수가 입력과 다릅니다.")
             digest = _sha256(temp_parquet)
@@ -379,4 +520,8 @@ __all__ = [
     "SOURCE_SEMANTICS",
     "STORE_VERSION",
     "AdjustedPriceStore",
+    "LEGACY_SCHEMA_VERSION",
+    "LEGACY_STORE_VERSION",
+    "SOURCE_AUTHORITY_ID",
+    "SOURCE_REQUEST_TYPE",
 ]

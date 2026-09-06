@@ -1,0 +1,18 @@
+{
+  "pilot_executed": false,
+  "purpose": "Measure support/availability/schema/latency/empty/retry/checkpoint/save-load behavior; not a mini-backfill.",
+  "cohort_count": 7,
+  "cohort": [
+    {"ticker": "005930", "category": "NUMERIC_CURRENT_HIGH_LIQUIDITY", "window": ["2026-07-01", "2026-08-21"], "reason": "Current numeric control."},
+    {"ticker": "000660", "category": "NUMERIC_LONG_HISTORY", "window": ["2010-01-04", "2010-03-31"], "reason": "Old-history coverage boundary."},
+    {"ticker": "068270", "category": "CORPORATE_ACTION_KNOWN", "window": ["2018-04-01", "2018-06-30"], "reason": "Existing dirty/parity cohort."},
+    {"ticker": "0001A0", "category": "ALPHANUMERIC_PENDING_PILOT_RECENT_LISTING", "window": ["2026-01-30", "2026-02-28"], "reason": "Raw observed 2026-01-30~2026-08-21; listing-boundary behavior."},
+    {"ticker": "002270", "category": "DELISTED_HISTORICAL_ONLY", "window": ["2022-06-24", "2022-07-19"], "reason": "Backtest-required delisted boundary; raw history ends 2022-07-19."},
+    {"ticker": "0004Y0", "category": "ALPHANUMERIC_NOT_APPLICABLE_SPAC", "window": ["2026-07-01", "2026-08-21"], "reason": "Representative non-common instrument; no consumer migration."},
+    {"ticker": "00781K", "category": "ALPHANUMERIC_NON_CONSUMER_FORMAL_UNKNOWN", "window": ["2026-07-01", "2026-08-21"], "reason": "Formal asset type UNKNOWN; fail closed outside adjusted denominator."}
+  ],
+  "window_count": 7,
+  "category_coverage": ["numeric", "corporate_action", "long_history", "recent_listing", "delisted_historical", "alphanumeric_pending", "alphanumeric_not_applicable", "alphanumeric_non_consumer"],
+  "storage": "temp/pilot namespace only; never production completeness.",
+  "network_budget_ref": "pilot_request_budget.json"
+}

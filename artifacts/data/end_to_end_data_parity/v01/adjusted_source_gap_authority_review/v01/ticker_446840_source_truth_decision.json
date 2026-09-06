@@ -1,0 +1,22 @@
+{
+  "directive": "ADJUSTED_SOURCE_GAP_AUTHORITY_REVIEW_V01",
+  "ticker": "446840",
+  "source_truth_decision": "CANONICAL_ACQUISITION_INCOMPLETE",
+  "adjusted_source_gap_authority": "REJECTED",
+  "canonical_adjusted_store": "INCOMPLETE_FOR_446840",
+  "primary_evidence": [
+    "NaverDirectAdjustedPriceDataProvider single bounded request",
+    "request window 2025-08-01..2025-08-14",
+    "response SHA256 195fffc5b9284f76f30bb850a007b0e2fce2cd3d32e66fe282e613586e05e395",
+    "10 valid provider rows including every target date 2025-08-01..2025-08-13"
+  ],
+  "secondary_evidence": [
+    "all nine KRX raw sessions exist",
+    "canonical adjusted parquet has no rows before 2025-08-14",
+    "existing Repository gap map contains the same nine pairs"
+  ],
+  "repository_authority_map_used_as_primary_proof": false,
+  "canonical_correction_required": true,
+  "market_rs_closure_allowed": false,
+  "next_state": "NEEDS_ADJUSTED_PRICE_STORE_BACKFILL_CORRECTION"
+}

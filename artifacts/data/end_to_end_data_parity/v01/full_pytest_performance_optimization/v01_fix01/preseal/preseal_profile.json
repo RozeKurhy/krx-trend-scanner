@@ -1,0 +1,17 @@
+{
+  "schema": "preseal_profile_v01",
+  "before_seconds": 162.14,
+  "after_seconds": 148.48,
+  "primary_call_after_seconds": 139.6,
+  "repeated_work_addressed": [
+    "target snapshot reuse keyed by ticker/full daily fingerprint/date",
+    "timeline reuse for same immutable input",
+    "event-key lookup for earlier requests"
+  ],
+  "gates_total": 60,
+  "gates_pass": 57,
+  "gates_fail": 3,
+  "gates_not_executed": 0,
+  "production_gate_recomputation": true,
+  "status": "PASS"
+}

@@ -1,0 +1,31 @@
+{
+  "base_artifact": "/Users/june/Documents/projects/krx-trend-scanner/artifacts/data/end_to_end_data_parity/v01/adjusted_price_store_bounded_live_pilot/v01/historical_suspension_authority_v01.json",
+  "base_artifact_mutated": false,
+  "base_artifact_sha256": "185075a56fc98c37d84380247d5b009d005f602f0315a233813bec899f7cbb50",
+  "records": [
+    {
+      "conflict_class": "SUSPENSION_METADATA_CONFLICT_WITH_OBSERVED_ACTIVITY",
+      "date": "2012-07-16",
+      "effective_classification": "VALID_OBSERVED_MARKET_ACTIVITY",
+      "historical_identity": {
+        "ISU_ABBRV": "삼환기업",
+        "ISU_CD": "KR7000360008",
+        "ISU_ENG_NM": "SamwhanCorporation",
+        "ISU_NM": "삼환기업보통주",
+        "ISU_SRT_CD": "000360",
+        "KIND_STKCERT_TP_NM": "보통주",
+        "LIST_DD": "19730903",
+        "LIST_SHRS": "11825295",
+        "MKT_TP_NM": "KOSPI",
+        "PARVAL": "5000",
+        "SECT_TP_NM": "",
+        "SECUGRP_NM": "주권"
+      },
+      "original_classification": "NONTRADING / SUSPENSION_METADATA",
+      "precedence": "VALID_OBSERVED_MARKET_ACTIVITY > SUSPENSION_METADATA for this exact date",
+      "reason": "Frozen evidence_note identifies Samick Instruments, but 000360 is Samwhan Corporation and the COMPLETE KRX raw row is physically valid with positive activity.",
+      "ticker": "000360"
+    }
+  ],
+  "schema": "historical_suspension_authority_errata_v01"
+}

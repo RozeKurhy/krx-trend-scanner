@@ -1,0 +1,35 @@
+{
+  "schema": "focused_test_summary_v01_fix01",
+  "status": "PASS",
+  "runs": [
+    {
+      "scope": "foreign-flow real production scan + negatives",
+      "result": "13 passed, 1 deselected",
+      "real_seconds": 320.87,
+      "warnings": 50327
+    },
+    {
+      "scope": "full_universe_scanner.py",
+      "result": "17 passed",
+      "real_seconds": 125.66,
+      "warnings": 1125
+    },
+    {
+      "scope": "repository_v2 + market_data_repository_v02_validation + market_rs_repository_adapter",
+      "result": "72 passed",
+      "real_seconds": 1.78
+    },
+    {
+      "scope": "stage_v02_preseal_validation.py",
+      "result": "10 passed",
+      "real_seconds": 148.48,
+      "warnings": 51335
+    },
+    {
+      "scope": "foreign_flow_features.py + pattern_a_score_momentum.py",
+      "result": "23 passed",
+      "real_seconds": 1.48,
+      "warnings": 270
+    }
+  ]
+}

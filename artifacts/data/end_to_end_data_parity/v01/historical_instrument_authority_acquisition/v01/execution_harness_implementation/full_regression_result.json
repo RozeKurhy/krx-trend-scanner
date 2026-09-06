@@ -1,0 +1,38 @@
+{
+  "status": "BLOCKED_REGRESSION",
+  "command": ".venv/bin/pytest -q -p no:cacheprovider",
+  "duration_seconds": 1298.09,
+  "duration_human": "21m38s",
+  "passed": 1788,
+  "failed": 3,
+  "errors": 17,
+  "skipped": 6,
+  "deselected": 5,
+  "warnings": 289245,
+  "network_policy": "no new KRX/PyKRX/OpenDART request initiated by this work",
+  "permission_revalidation": {
+    "command_scope": "3 failed nodes + test_pattern_a_investability_audit.py + test_pattern_a_investability_threshold_design.py",
+    "duration_seconds": 67.76,
+    "passed": 24,
+    "failed": 1,
+    "errors": 0,
+    "result": "permission errors cleared; one pre-existing behavioral failure remains"
+  },
+  "permission_errors": "17 setup errors were caused by sandbox denial while existing tests wrote artifacts/patterns/pattern_a/production/investability/*.csv; elevated revalidation cleared them",
+  "remaining_failures": [
+    {
+      "node": "tests/test_krx_historical_backfill.py::test_recent_empty_is_not_checkpointed_and_general_resume_retries",
+      "assertion": "recent_empty_unfinalized_count expected 1, observed 0",
+      "scope": "pre-existing historical backfill behavior; outside this phase"
+    },
+    {
+      "node": "tests/test_stage_v03_research_consistency.py::test_research_artifact_deterministic_regeneration",
+      "scope": "existing stage-v03 artifact consistency; no failure after elevated subset rerun"
+    },
+    {
+      "node": "tests/test_stage_v04_multi_year_research.py::test_deterministic_regeneration",
+      "scope": "existing stage-v04 artifact consistency; no failure after elevated subset rerun"
+    }
+  ],
+  "rs_or_pykrx_retry": "not performed"
+}

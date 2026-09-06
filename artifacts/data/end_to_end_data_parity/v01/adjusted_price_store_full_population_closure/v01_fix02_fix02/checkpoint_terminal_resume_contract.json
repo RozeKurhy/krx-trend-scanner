@@ -1,0 +1,22 @@
+{
+  "schema": "adjusted_price_checkpoint_terminal_resume_contract_v01",
+  "checkpoint_schema": "full_population_checkpoint_v02",
+  "placement": {
+    "closure_success": "completed_tickers",
+    "non_success": "in_progress_tickers"
+  },
+  "complete": {
+    "store_required": true,
+    "checks": ["store_pair", "stored_dates", "requested_bounds", "current_authority_snapshot"]
+  },
+  "no_usable_observations": {
+    "zero_store_allowed": true,
+    "checks": ["terminal_state_allowlist", "stored_row_count_zero", "usable_source_count_zero", "adjudicated_count_zero", "silent_missing_zero", "unexpected_zero", "authority_conflict_zero"]
+  },
+  "complete_with_adjudicated_nonusable": {
+    "zero_store_allowed_when_all_source_rows_adjudicated": true,
+    "mixed_store_allowed": true,
+    "checks": ["approved_terminal_state", "adjudicated_count_positive", "unresolved_counters_zero", "usable_store_verified_when_present"]
+  },
+  "status_alone_trusted": false
+}

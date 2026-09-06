@@ -1,0 +1,48 @@
+{
+  "schema": "fix06_authority_boundary_manifest_v01",
+  "directive_id": "ADJUSTED_PRICE_STORE_FULL_POPULATION_V01_FIX06_CORRECTION_4",
+  "START_HEAD": "d1fa9ed0bc218083df8f6e214224a554e02ca5de",
+  "population_sha256": "f14c3d46e5305571b311c4d120d9a2f1eba1644e7f059cde4e59eabab42d1aff",
+  "pit_sha256": "6b542ae05c9050dd30959d6f1b17306e4016f435a726ca7e0dff9e11008e4064",
+  "calendar_cutoff": "2026-08-21",
+  "frozen_authority_id": "PYKRX_ADJUSTED_V1_PUBLIC_CONTRACT",
+  "frozen_authority_entrypoint": "pykrx.stock.get_market_ohlcv_by_date(..., adjusted=True)",
+  "pykrx_version": "1.2.8",
+  "pykrx_count_limit_confirmed": true,
+  "pykrx_long_history_recovery_status": "NOT_RECOVERABLE_UNDER_CURRENT_FROZEN_PYKRX_CONTRACT",
+  "broader_backend_capability_claim": "DISPROVED_OVERLY_BROAD_CLAIM_CANDIDATE_IDENTIFIED",
+  "broader_backend_candidate_identified": true,
+  "candidate_probe_executed": true,
+  "candidate_id": "NAVER_DIRECT_DATE_RANGE_ADJUSTED_CANDIDATE",
+  "candidate_pre_2014_recovery": true,
+  "candidate_overlap_parity": true,
+  "candidate_production_authorized": false,
+  "current_production_authority_sufficient": false,
+  "provider_capability_status": "NOT_RECOVERABLE_WITHIN_FROZEN_AUTHORITY",
+  "partial_root_cause_counts": {
+    "PROVIDER_PAGINATION_OR_COUNT_LIMIT": 1032,
+    "MIXED": 372,
+    "PROVIDER_DATA_GAP": 478
+  },
+  "error_root_cause_counts": {
+    "CURRENT_COMMON_INVALID_OHLC": 257,
+    "TRANSIENT_PROVIDER_EMPTY": 4,
+    "HISTORICAL_ONLY_INVALID_OHLC": 150,
+    "PROVIDER_NETWORK_ERROR": 1,
+    "DELISTED_SYMBOL_UNSUPPORTED": 1
+  },
+  "empty_root_cause_counts": {
+    "TRANSIENT_PROVIDER_EMPTY": 4
+  },
+  "empty_root_causes_by_ticker": {
+    "000610": "TRANSIENT_PROVIDER_EMPTY",
+    "015940": "TRANSIENT_PROVIDER_EMPTY",
+    "037510": "TRANSIENT_PROVIDER_EMPTY",
+    "045820": "TRANSIENT_PROVIDER_EMPTY"
+  },
+  "recommended_next_state": "NEEDS_ADJUSTED_PRICE_SOURCE_AUTHORITY_REVIEW",
+  "reason_codes": [
+    "CURRENT_FROZEN_PYKRX_AUTHORITY_INSUFFICIENT"
+  ],
+  "updated_at": "2026-08-28T01:16:16.436758+00:00"
+}

@@ -1,0 +1,28 @@
+{
+  "schema": "adjusted_price_store_full_population_fix02_implementation_v01",
+  "changed_production_paths": [
+    "src/trend_scanner/data/adjusted_price_semantics.py",
+    "src/trend_scanner/data/adjusted_price_provider.py",
+    "src/trend_scanner/data/adjusted_price_pilot.py",
+    "src/trend_scanner/data/adjusted_price_store.py",
+    "src/trend_scanner/data/adjusted_price_full_population.py"
+  ],
+  "changed_test_paths": [
+    "tests/test_adjusted_price_store_full_population_fix02.py",
+    "tests/test_adjusted_price_provider.py",
+    "tests/test_adjusted_price_source_integration_v01.py",
+    "tests/test_adjusted_price_store_full_population_v01.py"
+  ],
+  "old_behavior": [
+    "source relation anomalies were rejected before closure reconciliation",
+    "one-won OHLC relation anomalies were rewritten",
+    "zero-OHL shape alone was sufficient to infer non-trading",
+    "checkpoint compatibility covered only population and cutoff"
+  ],
+  "new_behavior": [
+    "source-integrity and analytic-candle validation are separate",
+    "source-native finite rows are retained without OHLC repair",
+    "activity-aware closure states are persisted and resumed",
+    "checkpoint semantic identity is version-gated"
+  ]
+}

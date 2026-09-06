@@ -1,0 +1,61 @@
+{
+  "schema": "authority_closure_artifact_finalization_v02",
+  "directive_id": "C13_AUTHORITY_CLOSURE_ARTIFACT_FINALIZATION_V02",
+  "parent_directive": "C13_AUTHORITY_CLOSURE_REASSESSMENT_V02",
+  "created_at": "2026-08-30T13:12:45.043375+09:00",
+  "start_head": "99ce7d0b8127f48af3b8b002c246a6c4b0a4395d",
+  "start_tree": "4dfacef5ffe750675f5fc224003c64504f620603",
+  "remote_start_head": "99ce7d0b8127f48af3b8b002c246a6c4b0a4395d",
+  "fix02_head": "99ce7d0b8127f48af3b8b002c246a6c4b0a4395d",
+  "fix02_tree": "4dfacef5ffe750675f5fc224003c64504f620603",
+  "source_closure_namespace": "/private/tmp/krx_c13_authority_closure_reassessment_v02",
+  "source_regression_namespace": "/private/tmp/krx_c13_fix02_regression_recertification_v01_fix01",
+  "source_reassessment_namespace": "/private/tmp/krx_c13_fix02_regression_recertification_v01_fix01/real_offline_reassessment",
+  "durable_closure_namespace": "/Users/june/Documents/projects/krx-trend-scanner/artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/authority_closure/v02",
+  "closure_source_artifact_count": 7,
+  "regression_source_artifact_count": 1,
+  "reassessment_source_artifact_count": 14,
+  "source_artifacts_byte_identical": true,
+  "byte_mismatch_count": 0,
+  "tests_executed": 0,
+  "offline_reassessment_executed": 0,
+  "external_network_calls": 0,
+  "authority_closure": "CLOSED",
+  "review_decision": "APPROVED_FOR_PRODUCTION_INTEGRATION",
+  "production_integration_authorized": true,
+  "all_gates_passed": true,
+  "recommended_next_state": "ADJUSTED_PRICE_SOURCE_INTEGRATION_V01",
+  "historical_canonical_state_preserved": {
+    "gate06": "FAIL",
+    "gate15": "FAIL",
+    "unresolved": 1
+  },
+  "closure_v01_preserved": true,
+  "closure_v01_production_authorization_status": "SUPERSEDED",
+  "source_integration_executed": false,
+  "code_authority": {
+    "head": "99ce7d0b8127f48af3b8b002c246a6c4b0a4395d",
+    "tree": "4dfacef5ffe750675f5fc224003c64504f620603"
+  },
+  "pytest_log_policy": "OPTION_B_METADATA_ONLY",
+  "pytest_log_source_path": "/private/tmp/krx_c13_fix02_regression_recertification_v01_fix01/full_pytest_fix02_recertification_fix01.log",
+  "pytest_log_sha256": "7a0e813588cbf0515fb6fe8185c91488f15adf6b10d19242001b592f7beb8f72",
+  "pytest_duration_seconds": 1317.2,
+  "pytest_terminal_counts": {
+    "passed": 2175,
+    "failed": 1,
+    "errors": 0,
+    "skipped": 7,
+    "deselected": 5,
+    "warnings": 291100
+  },
+  "allowed_baseline_failures": [
+    "tests/test_krx_historical_backfill.py::test_recent_empty_is_not_checkpointed_and_general_resume_retries"
+  ],
+  "pytest_rerun_this_directive": 0,
+  "raw_pytest_log_copied": false,
+  "copy_policy": "EXPLICIT_ALLOWLIST_BYTE_FOR_BYTE_ONLY",
+  "unapproved_paths_changed": 0,
+  "end_head_recorded_in_r_md_after_commit": true,
+  "commit_count_required": 1
+}

@@ -1,0 +1,96 @@
+{
+  "work_id": "END_TO_END_DATA_PARITY_V01",
+  "stage": "STAGE_1_FOUNDATION_READINESS",
+  "start_head": "7090959e6fc2bc9b597084573e87733f6d7513ca",
+  "branch": "codex/end-to-end-data-parity-v01",
+  "network_policy": {
+    "krx_open_api": 0,
+    "pykrx_live": 0,
+    "opendart": 0
+  },
+  "krx_raw_stock_store": {
+    "path": "data/market/raw/krx_stocks/v01",
+    "manifest_path": "data/market/raw/krx_stocks/v01/manifest.sqlite3",
+    "authority": "KRX_OPEN_API_STOCK_DAILY",
+    "manifest_rows": 8680,
+    "candidate_dates": 4340,
+    "complete_partitions": 8190,
+    "no_data_partitions": 490,
+    "failed_partitions": 0,
+    "rows": 9204280,
+    "unique_tickers": 3673,
+    "alphanumeric_tickers": 81,
+    "date_min": "2010-01-04",
+    "date_max": "2026-08-21",
+    "markets": ["KOSPI", "KOSDAQ"],
+    "schema": ["date", "ticker", "open", "high", "low", "close", "volume", "trading_value", "market_cap", "listed_shares"]
+  },
+  "adjusted_price_store": {
+    "implementation": "src/trend_scanner/data/adjusted_price_store.py",
+    "path": "data/market/adjusted/stocks",
+    "production_exists": false,
+    "production_parquet_count": 0,
+    "production_metadata_count": 0,
+    "production_rows": 0,
+    "production_ticker_count": 0,
+    "production_date_range": null,
+    "schema": ["date", "ticker", "open", "high", "low", "close"],
+    "source_name": "PYKRX_ADJUSTED_PRICE",
+    "source_endpoint": "pykrx.stock.get_market_ohlcv_by_date(adjusted=True)",
+    "authority_type": "AUTHORITATIVE",
+    "population_status": "INCOMPLETE"
+  },
+  "legacy_composite_cache": {
+    "path": "data/raw/stocks",
+    "files": 2506,
+    "rows": 2926889,
+    "ticker_count": 2506,
+    "date_min": "2011-01-03",
+    "date_max": "2026-08-14",
+    "authority": "LEGACY_COMPOSITE_STOCK_CACHE",
+    "adjusted_true_provenance": false,
+    "production_adjusted_usable": false,
+    "reason": "No per-row PyKRX adjusted=True provenance or AdjustedPriceStore sidecar; architecture labels this legacy source RAW_UNADJUSTED."
+  },
+  "market_data_repository_v2": {
+    "implementation": "src/trend_scanner/data/repository_v2.py",
+    "status": "IMPLEMENTED_READ_ONLY_NOT_PRODUCTION_CONSUMER_READY",
+    "adjusted_ohlc_source": "AdjustedPriceStore (PYKRX_ADJUSTED_PRICE)",
+    "volume_source": "KrxRawStockStore (KRX_OPEN_API_STOCK_DAILY)",
+    "trading_value_source": "KrxRawStockStore (KRX_OPEN_API_STOCK_DAILY)",
+    "missing_semantics": "Fail closed with DATA_UNAVAILABLE: ADJUSTED_MISSING or RAW_MISSING",
+    "join_semantics": "Adjusted-date anchored composition with explicit raw-only placeholder projection; no silent inner join",
+    "fill_semantics": "No generic fill; only frozen NON_TRADING_PLACEHOLDER_V01 projection"
+  },
+  "market_index": {
+    "path": "data/market/index/v01/market_index.parquet",
+    "production": true,
+    "rows": 8190,
+    "dates": 4095,
+    "codes": ["1001", "2001"],
+    "date_min": "2010-01-04",
+    "date_max": "2026-08-21",
+    "integrity": "PASS",
+    "content_sha256": "c95b6a581213eca1306f4fb321f71de4812d7414504a31ec4ecc1cf17b5bc1a8"
+  },
+  "sector_index": {
+    "path": ".cache/krx_openapi/sector_rs_migration/v01/sector_index_daily.parquet",
+    "authority": "KRX_OPEN_API_SECTOR_INDEX",
+    "rows": 13754,
+    "codes": 46,
+    "trading_dates": 299,
+    "date_min": "2025-06-02",
+    "date_max": "2026-08-21",
+    "readiness": "CURRENT_BOUNDED_CACHE_ONLY_NOT_FULL_HISTORICAL"
+  },
+  "consumers": {
+    "full_universe_scanner": "LEGACY_PARQUET_CACHE:data/raw/stocks; no V2 wiring",
+    "market_rs": "LEGACY_PARQUET_CACHE plus market-index artifact; no V2 wiring",
+    "sector_rs": "Bounded KRX sector cache/artifact; no V2 wiring",
+    "pattern_a": "DEFERRED; legacy cache path",
+    "fastcore": "DEFERRED; legacy ParquetCache path",
+    "julia": "DEFERRED; legacy ParquetCache path",
+    "stock_report": "LEGACY_PARQUET_CACHE:data/raw/stocks; no V2 wiring"
+  },
+  "stage_1_status": "BLOCKED_ADJUSTED_STORE_POPULATION_REQUIRES_EXTERNAL_FETCH"
+}

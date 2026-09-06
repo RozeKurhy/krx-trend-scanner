@@ -1,0 +1,39 @@
+{
+  "schema": "canonical_before_after_v01",
+  "ticker": "446840",
+  "source_authority_id": "NAVER_DIRECT_DATE_RANGE_ADJUSTED_V1",
+  "before": {
+    "date_min": "2025-08-01",
+    "date_max": "2026-08-21",
+    "requested_start": "2025-08-01",
+    "requested_end": "2026-08-21",
+    "row_count": 257,
+    "parquet_sha256": "d2aefde74ea2aa49e4316e18c4f5a87b71a3d826b4a57fb5f13f775055fc11b1",
+    "metadata_sha256": "d890910f4e746845d726b33329301e2810561ab06e9a6516c3726b916a84044e"
+  },
+  "after": {
+    "date_min": "2025-08-14",
+    "date_max": "2026-08-21",
+    "requested_start": "2025-08-14",
+    "requested_end": "2026-08-21",
+    "row_count": 248,
+    "parquet_sha256": "ad1e255fbfbb1f82de3b2c9ac7c0cbb4cc32c8ea376b8c3b5d980abaf28742ff",
+    "metadata_sha256": "a5801d1033853b8640a1c24ecb6b7c4c5303e202c79d545708d1a781fb5ebb43"
+  },
+  "removed_pre_identity_rows": [
+    "2025-08-01",
+    "2025-08-04",
+    "2025-08-05",
+    "2025-08-06",
+    "2025-08-07",
+    "2025-08-08",
+    "2025-08-11",
+    "2025-08-12",
+    "2025-08-13"
+  ],
+  "added_true_truncation_rows": [],
+  "changed_existing_overlap_values": 0,
+  "deleted_valid_same_identity_rows": 0,
+  "canonical_semantics": "identity_safe_analytic_source_history",
+  "source_truth_evidence_preserved": true
+}

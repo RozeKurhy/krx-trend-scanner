@@ -22,6 +22,7 @@ from pathlib import Path
 import pandas as pd
 
 from trend_scanner.data.resampler import to_weekly
+from trend_scanner.data.market_calendar import MarketCalendarAuthority
 from trend_scanner.patterns.pattern_a_fast_evaluator import evaluate_pattern_a_fast
 from trend_scanner.reporting.models import (
     PatternAFastCurrentSignal,
@@ -112,6 +113,7 @@ def build_pattern_a_fast_section(
     daily_slice: pd.DataFrame,
     as_of: pd.Timestamp,
     root_path: Path,
+    market_calendar: MarketCalendarAuthority | None = None,
 ) -> PatternAFastSection:
     """Pattern A FAST Weekly History section을 생성한다.
 
@@ -142,7 +144,7 @@ def build_pattern_a_fast_section(
         # 완료된 주봉만 evaluator에 전달하므로 evaluate_pattern_a_fast의 유일한 raise
         # 경로(미완료 weekly date)는 여기서 발생하지 않는다. 그 외 예외는 데이터
         # 부족이 아닌 programming error이므로 여기서 숨기지 않고 그대로 전파한다.
-        point = evaluate_pattern_a_fast(ticker, name, daily_sorted, week_label, score, stage)
+        point = evaluate_pattern_a_fast(ticker, name, daily_sorted, week_label, score, stage, market_calendar=market_calendar)
         # 가격은 FAST evaluator의 output이 아니라 report observation metadata다.
         # week_daily의 마지막 행이 곧 completed-week 판정에 쓰인 그 거래일이므로
         # 그 행의 close를 그대로 사용한다(월말/평균/최신가 대체 금지, fail-closed).

@@ -1,0 +1,27 @@
+{
+  "status": "PASS",
+  "network_requests": 0,
+  "runs": [
+    {
+      "command": "env -u OPENDART_API_KEY -u KRX_ID -u KRX_PW PYTHONDONTWRITEBYTECODE=1 ./.venv/bin/python -m pytest -q -p no:cacheprovider tests/test_market_rs_authority_attribution_fix02.py tests/test_market_rs_repository_adapter.py tests/test_relative_strength_features.py tests/test_relative_strength_cross_section_v01.py tests/test_full_universe_scanner.py",
+      "passed": 55,
+      "failed": 0,
+      "duration_seconds": 120.69
+    },
+    {
+      "command": "env -u OPENDART_API_KEY -u KRX_ID -u KRX_PW PYTHONDONTWRITEBYTECODE=1 ./.venv/bin/python -m pytest -q -p no:cacheprovider tests/test_market_rs_authority_attribution_fix02.py",
+      "passed": 9,
+      "failed": 0,
+      "duration_seconds": 0.35,
+      "reason": "post-probe-verdict-fix"
+    },
+    {
+      "command": "env -u OPENDART_API_KEY -u KRX_ID -u KRX_PW PYTHONDONTWRITEBYTECODE=1 ./.venv/bin/python -m pytest -q -p no:cacheprovider tests/test_market_rs_authority_attribution_fix02.py",
+      "passed": 10,
+      "failed": 0,
+      "duration_seconds": 0.32,
+      "reason": "post-pair-aggregation-fix"
+    }
+  ],
+  "final_run_passed": 10
+}

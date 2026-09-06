@@ -1,0 +1,27 @@
+{
+  "schema": "issue_resolution_matrix_v01",
+  "directive": "FULL_PYTEST_PERFORMANCE_OPTIMIZATION_V01_FIX01",
+  "status": "RESOLVED",
+  "issues": [
+    {
+      "id": "CRITICAL-01",
+      "status": "RESOLVED",
+      "resolution": "Non-slow module-scoped base_scan_result executes scan_pattern_a_universe against data/raw/stocks and production flow parquet; artifact reconstruction removed."
+    },
+    {
+      "id": "CRITICAL-02",
+      "status": "RESOLVED",
+      "resolution": "_SCAN_RESULT_CACHE removed; no final-result stale cache path remains."
+    },
+    {
+      "id": "MAJOR-01",
+      "status": "RESOLVED",
+      "resolution": "Baseline-equivalent Full Pytest executed once after fixes; apples-to-apples result recorded in final/full_pytest_result.json."
+    },
+    {
+      "id": "MINOR-01",
+      "status": "RESOLVED",
+      "resolution": "Detailed execution-path and assertion-equivalence CSV audits added."
+    }
+  ]
+}

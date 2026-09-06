@@ -1,0 +1,14 @@
+{
+  "schema": "fresh_full_population_throttle_change_v01",
+  "production_file": "src/trend_scanner/data/adjusted_price_full_population.py",
+  "change": "inter-ticker time.sleep constant",
+  "old_seconds": 0.25,
+  "new_seconds": 0.5,
+  "retry_delay_unchanged": true,
+  "provider_timeout_unchanged": true,
+  "request_parameters_unchanged": true,
+  "concurrency_unchanged": true,
+  "semantic_checkpoint_fields_unchanged": true,
+  "diff_scope": "exactly one production line changed; no other production semantics",
+  "captured_at": "2026-08-31T03:40:58.259576+00:00"
+}

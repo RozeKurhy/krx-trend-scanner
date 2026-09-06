@@ -1,0 +1,278 @@
+{
+  "schema_version": "RUN1_RUN2_DETERMINISM_V01",
+  "candidate_identity": {
+    "run1_candidate_head": "87923e109731cff1a0af29d339770beb0f8bea18",
+    "run2_candidate_head": "87923e109731cff1a0af29d339770beb0f8bea18",
+    "candidate_head_match": true,
+    "run1_frozen_as_of": "2026-08-14",
+    "run2_frozen_as_of": "2026-08-14",
+    "asof_match": true,
+    "run1_universe_sha256": "1aca764fc56d3416b9f10ce418a0deaca5174cb8c32997acfd2df1000987e4c8",
+    "run2_universe_sha256": "1aca764fc56d3416b9f10ce418a0deaca5174cb8c32997acfd2df1000987e4c8",
+    "universe_match": true,
+    "run1_score_contract_sha256": "be0dc21c3764aeb147a3565e65850fc179ecc91e5700e8221932f12ce28ae501",
+    "run2_score_contract_sha256": "be0dc21c3764aeb147a3565e65850fc179ecc91e5700e8221932f12ce28ae501",
+    "score_contract_match": true,
+    "run1_stage_contract_sha256": "231cb43e2830017a72a9e8ba8d29296749f8a323e211266035d80cf841b70cf7",
+    "run2_stage_contract_sha256": "231cb43e2830017a72a9e8ba8d29296749f8a323e211266035d80cf841b70cf7",
+    "stage_contract_match": true,
+    "run1_repository_authority": "MarketDataRepositoryV2",
+    "run2_repository_authority": "MarketDataRepositoryV2",
+    "authority_match": true,
+    "note": "candidate_tree (git tree of the last COMMIT) is constant regardless of the dirty worktree's actual diff and is not used as candidate-identity evidence here. HEAD is identical for both runs. However, the dirty worktree's validation/orchestration harness script (scripts/run_consumer_migration_finalization_v01.py) is NOT identical between RUN1 and RUN2: it carries the Pattern A temporal-metric allowlist fix, applied and externally ACCEPTed after RUN1 and before RUN2. RUN1_RUN2_CANDIDATE_MATCH below therefore must not be read as full-worktree identity -- see the decomposed fields for the precise scope of what matched and what did not."
+  },
+  "RUN1_RUN2_CANDIDATE_MATCH": true,
+  "RUN1_RUN2_ASOF_MATCH": true,
+  "RUN1_RUN2_CONFIG_MATCH": true,
+  "RUN1_RUN2_AUTHORITY_MATCH": true,
+  "consumer_output_hashes": {
+    "pattern_a": {
+      "run1": "a366e76526ff70692108e8f6a78b5580a259faad65c34edbbc5bd4d46e8ff22f",
+      "run2": "a366e76526ff70692108e8f6a78b5580a259faad65c34edbbc5bd4d46e8ff22f",
+      "match": true
+    },
+    "fastcore": {
+      "run1": "82ab9cc8f9a93178a361c51d15d579ac13589e03fc1d4ade7cd44bbe78dacaf5",
+      "run2": "82ab9cc8f9a93178a361c51d15d579ac13589e03fc1d4ade7cd44bbe78dacaf5",
+      "match": true
+    },
+    "julia": {
+      "run1": "91fbeb7b4d64ed65f66513e3b646054aada09e564af45bbf5332e59369f39f3f",
+      "run2": "91fbeb7b4d64ed65f66513e3b646054aada09e564af45bbf5332e59369f39f3f",
+      "match": true
+    },
+    "stock_report": {
+      "run1": "8b0f55fbffa29922d2106485e3109f453071f827652d5c4895a68dcb9ae3514d",
+      "run2": "8b0f55fbffa29922d2106485e3109f453071f827652d5c4895a68dcb9ae3514d",
+      "match": true
+    }
+  },
+  "CONSUMER_OUTPUT_SHA256_MATCH_COUNT": "4/4",
+  "PATTERN_A_OUTPUT_SHA256_MATCH": true,
+  "FASTCORE_OUTPUT_SHA256_MATCH": true,
+  "JULIA_OUTPUT_SHA256_MATCH": true,
+  "STOCK_REPORT_OUTPUT_SHA256_MATCH": true,
+  "population_accounting": {
+    "pattern_a": {
+      "run1_expected_processed": [
+        2528,
+        2528
+      ],
+      "run2_expected_processed": [
+        2528,
+        2528
+      ],
+      "run1_row_status_distribution": {
+        "ERROR": 0,
+        "OK": 1925,
+        "PARTIAL": 50,
+        "UNAVAILABLE": 553
+      },
+      "run2_row_status_distribution": {
+        "ERROR": 0,
+        "OK": 1925,
+        "PARTIAL": 50,
+        "UNAVAILABLE": 553
+      },
+      "population_match": true,
+      "row_status_distribution_match": true
+    },
+    "fastcore": {
+      "run1_expected_processed": [
+        1081,
+        1081
+      ],
+      "run2_expected_processed": [
+        1081,
+        1081
+      ],
+      "run1_trade_count": 2696,
+      "run2_trade_count": 2696,
+      "population_match": true,
+      "trade_row_count_match": true
+    },
+    "julia": {
+      "run1_expected_processed": [
+        2528,
+        2528
+      ],
+      "run2_expected_processed": [
+        2528,
+        2528
+      ],
+      "run1_baseline_trade_count": 815,
+      "run2_baseline_trade_count": 815,
+      "run1_julia_trade_count": 617,
+      "run2_julia_trade_count": 617,
+      "run1_audit_count": 8064,
+      "run2_audit_count": 8064,
+      "population_match": true,
+      "baseline_trade_count_match": true,
+      "trade_count_match": true,
+      "audit_count_match": true
+    },
+    "stock_report": {
+      "run1_expected_processed": [
+        54,
+        54
+      ],
+      "run2_expected_processed": [
+        54,
+        54
+      ],
+      "run1_common_etf": [
+        37,
+        17
+      ],
+      "run2_common_etf": [
+        37,
+        17
+      ],
+      "population_match": true,
+      "common_count_match": true,
+      "etf_count_match": true
+    }
+  },
+  "PATTERN_A_POPULATION_MATCH": true,
+  "PATTERN_A_ROW_STATUS_DISTRIBUTION_MATCH": true,
+  "FASTCORE_POPULATION_MATCH": true,
+  "FASTCORE_TRADE_ROW_COUNT_MATCH": true,
+  "JULIA_POPULATION_MATCH": true,
+  "JULIA_BASELINE_TRADE_COUNT_MATCH": true,
+  "JULIA_TRADE_COUNT_MATCH": true,
+  "JULIA_AUDIT_COUNT_MATCH": true,
+  "STOCK_REPORT_POPULATION_MATCH": true,
+  "STOCK_REPORT_COMMON_COUNT_MATCH": true,
+  "STOCK_REPORT_ETF_COUNT_MATCH": true,
+  "semantic_row_comparison": {
+    "pattern_a": {
+      "status": "NOT_AVAILABLE_FROM_PERSISTED_ARTIFACT",
+      "reason": "run{1,2}_pattern_a.json persists only aggregate population stats and an output_sha256 digest of the row list, not the raw rows themselves.",
+      "primary_evidence_used": "Matching SHA256 digests computed over the canonical stable serialization (_digest(): sorted keys, stable separators) provide strong cryptographic evidence that the underlying semantic row lists are identical. This is not treated as an absolute mathematical proof of row-level identity in the way a persisted, directly diffed row-by-row comparison would be -- it is the strongest evidence available given what is actually persisted for this consumer, and is accepted as primary determinism evidence per directive section 10/14 precisely because no raw row artifact exists to compare directly.",
+      "semantic_delta_count": 0
+    },
+    "fastcore": {
+      "status": "NOT_AVAILABLE_FROM_PERSISTED_ARTIFACT",
+      "reason": "run{1,2}_fastcore.json persists only aggregate counts and an output_sha256 digest of the trade-record list, not the raw records.",
+      "primary_evidence_used": "Matching SHA256 digests computed over the canonical stable serialization (_digest(): sorted keys, stable separators) provide strong cryptographic evidence that the underlying semantic row lists are identical. This is not treated as an absolute mathematical proof of row-level identity in the way a persisted, directly diffed row-by-row comparison would be -- it is the strongest evidence available given what is actually persisted for this consumer, and is accepted as primary determinism evidence per directive section 10/14 precisely because no raw row artifact exists to compare directly.",
+      "semantic_delta_count": 0
+    },
+    "julia": {
+      "status": "NOT_AVAILABLE_FROM_PERSISTED_ARTIFACT",
+      "reason": "run{1,2}_julia.json persists only aggregate counts and an output_sha256 digest of {baseline, julia, audits}, not the raw records.",
+      "primary_evidence_used": "Matching SHA256 digests computed over the canonical stable serialization (_digest(): sorted keys, stable separators) provide strong cryptographic evidence that the underlying semantic row lists are identical. This is not treated as an absolute mathematical proof of row-level identity in the way a persisted, directly diffed row-by-row comparison would be -- it is the strongest evidence available given what is actually persisted for this consumer, and is accepted as primary determinism evidence per directive section 10/14 precisely because no raw row artifact exists to compare directly.",
+      "semantic_delta_count": 0
+    },
+    "stock_report": {
+      "status": "AVAILABLE_AND_COMPARED",
+      "row_count_run1": 54,
+      "row_count_run2": 54,
+      "ticker_set_match": true,
+      "semantic_delta_count": 0
+    }
+  },
+  "PATTERN_A_SEMANTIC_DELTA_COUNT": 0,
+  "FASTCORE_SEMANTIC_DELTA_COUNT": 0,
+  "JULIA_SEMANTIC_DELTA_COUNT": 0,
+  "STOCK_REPORT_SEMANTIC_DELTA_COUNT": 0,
+  "session_mismatch_determinism": {
+    "run1": {
+      "expected_population": 2528,
+      "accounted_population": 2528,
+      "processed_ticker_count": 2422,
+      "explicit_data_unavailable_count": 106,
+      "session_mismatch_ticker_count": 106,
+      "unexplained_session_mismatch": 0,
+      "silent_drop_count": 0
+    },
+    "run2": {
+      "expected_population": 2528,
+      "accounted_population": 2528,
+      "processed_ticker_count": 2422,
+      "explicit_data_unavailable_count": 106,
+      "session_mismatch_ticker_count": 106,
+      "unexplained_session_mismatch": 0,
+      "silent_drop_count": 0
+    },
+    "ticker_set_identical": true,
+    "ticker_set_diff_count": 0
+  },
+  "SESSION_MISMATCH_COUNT_MATCH": true,
+  "SESSION_MISMATCH_TICKER_SET_MATCH": true,
+  "ACCOUNTED_POPULATION_MATCH": true,
+  "PROCESSED_TICKER_COUNT_MATCH": true,
+  "UNEXPLAINED_SESSION_MISMATCH_RUN1": 0,
+  "UNEXPLAINED_SESSION_MISMATCH_RUN2": 0,
+  "RUN1_ROWS_AFTER_FROZEN_AS_OF_USED": 0,
+  "RUN1_ROWS_AFTER_FROZEN_AS_OF_RAW_ARTIFACT_PRE_FIX": 2528,
+  "RUN2_ROWS_AFTER_FROZEN_AS_OF_USED": 0,
+  "TEMPORAL_GATE_MATCH": true,
+  "network_authority": {
+    "run1": {
+      "repository_authority": "MarketDataRepositoryV2",
+      "new_krx_api_requests": 0,
+      "new_naver_requests": 0,
+      "network_calls": 0,
+      "pykrx_used": false,
+      "scraping_used": false,
+      "legacy_etf_promotion_used": false,
+      "live_api_used": false
+    },
+    "run2": {
+      "legacy_etf_promotion_used": false,
+      "live_api_used": false,
+      "network_calls": 0,
+      "new_krx_api_requests": 0,
+      "new_naver_requests": 0,
+      "pykrx_used": false,
+      "repository_authority": "MarketDataRepositoryV2",
+      "scraping_used": false
+    }
+  },
+  "RUN1_NETWORK_AUTHORITY_PASS": true,
+  "RUN2_NETWORK_AUTHORITY_PASS": true,
+  "RUN1_RUN2_AUTHORITY_BEHAVIOR_MATCH": true,
+  "operational_metadata_differences": {
+    "run1_execution_shape": "Partial/retried: initial Pattern A calculation completed, followed by an artifact-write failure, then a bounded Pattern-A-only retry (run1_pattern_a_fix01.json) whose temporal metric was corrected and folded back into run1_summary.json. FastCore/Julia/StockReport ran once each in the original RUN1 pass.",
+    "run2_execution_shape": "Single clean, uninterrupted _run_shadow('run2', ...) invocation covering all 4 consumers in canonical order with no retry.",
+    "runtime_seconds": {
+      "pattern_a": [
+        2066.8469,
+        1956.1708
+      ],
+      "fastcore": [
+        5668.5655,
+        5372.5609
+      ],
+      "julia": [
+        7134.254,
+        6685.5456
+      ],
+      "stock_report": [
+        337.0711,
+        320.5456
+      ]
+    },
+    "retry_metadata_difference": "RUN1 carries pattern_a_retry_runtime_seconds / pattern_a_first_successful_calculation_seconds in its performance block; RUN2 has no equivalent retry fields since it never retried.",
+    "path_mtime_timestamp_differences": "Expected and untracked: distinct run1/ vs run2/ artifact subdirectories, distinct file mtimes (RUN1 written 2026-09-04, RUN2 written 2026-09-05)."
+  },
+  "OPERATIONAL_METADATA_DIFF_COUNT": 4,
+  "RUNTIME_VARIANCE_ACCEPTED_AS_OPERATIONAL": true,
+  "formal_determinism_result": "PASS",
+  "RUN1_RUN2_DETERMINISM": "PASS",
+  "RUN1_RUN2_FULL_WORKTREE_MATCH": false,
+  "RUN1_RUN2_CONSUMER_CODE_MATCH": true,
+  "RUN1_RUN2_STRATEGY_CODE_MATCH": true,
+  "RUN1_RUN2_REPOSITORY_CODE_MATCH": true,
+  "RUN1_RUN2_VALIDATION_HARNESS_MATCH": false,
+  "VALIDATION_HARNESS_DIFFERENCE": "PATTERN_A_TEMPORAL_METRIC_ALLOWLIST_FIX",
+  "VALIDATION_HARNESS_CHANGE_AFFECTS_CONSUMER_OUTPUT": false,
+  "RUN1_RUN2_CONSUMER_SEMANTIC_CANDIDATE_MATCH": true,
+  "determinism_external_review_minor_correction": {
+    "issue": "RUN1_RUN2_CANDIDATE_MATCH=true was worded broadly enough to be read as asserting full dirty-worktree identity between RUN1 and RUN2. That is false: the validation/orchestration harness script differs (temporal-metric allowlist fix, ACCEPTed between RUN1 and RUN2).",
+    "previous_broad_field": "RUN1_RUN2_CANDIDATE_MATCH=true (retained below, scope now qualified by candidate_identity.note and the decomposed fields)",
+    "corrected_full_worktree_field": "RUN1_RUN2_FULL_WORKTREE_MATCH=false",
+    "resolution": "Decomposed candidate identity into: (a) consumer/strategy/repository source code under src/ -- unchanged between RUN1 and RUN2, hence RUN1_RUN2_CONSUMER_CODE_MATCH / STRATEGY_CODE_MATCH / REPOSITORY_CODE_MATCH = true; (b) the validation/orchestration harness -- changed (temporal-metric allowlist fix), hence RUN1_RUN2_VALIDATION_HARNESS_MATCH = false, but this change runs strictly after each consumer already produced its rows and does not affect any consumer's output, hence VALIDATION_HARNESS_CHANGE_AFFECTS_CONSUMER_OUTPUT = false. The semantically-relevant candidate identity for determinism purposes -- the code that actually produces consumer output -- is therefore captured by RUN1_RUN2_CONSUMER_SEMANTIC_CANDIDATE_MATCH = true, which is the correct basis for RUN1_RUN2_DETERMINISM=PASS, not the overly-broad full-worktree identity claim.",
+    "determinism_verdict_unchanged": true
+  }
+}

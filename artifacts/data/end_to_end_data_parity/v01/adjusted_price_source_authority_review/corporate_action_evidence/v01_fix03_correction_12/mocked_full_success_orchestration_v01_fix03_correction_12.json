@@ -1,0 +1,32 @@
+{
+  "schema": "mocked_full_success_orchestration_v01_fix03_correction_12",
+  "canonical_run_id": "MOCKED_FIX12_TEST",
+  "directive_id": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_12",
+  "execution_mode": "OFFLINE_MOCKED_PRODUCTION_ORCHESTRATION",
+  "network_calls": 0,
+  "stages": [
+    "preflight READY (mocked)",
+    "readiness READY (mocked)",
+    "8 discovery",
+    "8 documents",
+    "8 authority-valid",
+    "frozen cohort",
+    "8 Naver",
+    "8 PyKRX",
+    "exact parity",
+    "linkage validator",
+    "Gate06 PASS",
+    "Gate15 PASS"
+  ],
+  "authority_valid_control_count": 8,
+  "naver_physical_attempts": 8,
+  "pykrx_physical_attempts": 8,
+  "parity_status": "MATCH",
+  "linkage_counts_all_zero": true,
+  "accounting_cross_invariant_pass": true,
+  "gate_06_pass": true,
+  "gate_15_pass": true,
+  "verdict": "PASS_MOCKED_ONLY",
+  "live_execution_not_executed": true,
+  "source_test": "tests/test_correction_12_execution.py::test_correction12_mocked_full_production_success"
+}

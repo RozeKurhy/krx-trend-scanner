@@ -1,0 +1,371 @@
+........................................................................ [  3%]
+........................................................................ [  6%]
+........................................................................ [  9%]
+........................................................................ [ 12%]
+........................................................................ [ 15%]
+........................................................................ [ 18%]
+........................................................................ [ 21%]
+........................................................................ [ 24%]
+........................................................................ [ 27%]
+........................................................................ [ 31%]
+........................................................................ [ 34%]
+........................................................................ [ 37%]
+...............................................................F........ [ 40%]
+........................................................................ [ 43%]
+........................................................................ [ 46%]
+........................................................................ [ 49%]
+........................................................................ [ 52%]
+........................................................................ [ 55%]
+......................s......................................s.......... [ 58%]
+........................................................................ [ 62%]
+........................................................................ [ 65%]
+........................................................................ [ 68%]
+........................................................................ [ 71%]
+........................................................................ [ 74%]
+........................................................................ [ 77%]
+........................................................................ [ 80%]
+........................................................................ [ 83%]
+........................................................................ [ 86%]
+........................................................................ [ 89%]
+........................................................................ [ 93%]
+...................sssss................................................ [ 96%]
+........................................................................ [ 99%]
+..................                                                       [100%]
+=================================== FAILURES ===================================
+_______ test_recent_empty_is_not_checkpointed_and_general_resume_retries _______
+
+tmp_path = PosixPath('/private/var/folders/gc/z332p011725457d90yqf3s4w0000gn/T/pytest-of-june/pytest-1071/test_recent_empty_is_not_check0')
+
+    def test_recent_empty_is_not_checkpointed_and_general_resume_retries(tmp_path):
+        provider = _Provider("both-empty")
+        runner, _ = _runner(tmp_path, provider)
+        first = runner.run("2026-08-24", "2026-08-24", max_task_attempts=2)
+>       assert first["recent_empty_unfinalized_count"] == 1
+E       assert 0 == 1
+
+tests/test_krx_historical_backfill.py:439: AssertionError
+=============================== warnings summary ===============================
+src/trend_scanner/reporting/pattern_a_fast_report.py:41
+  /Users/june/Documents/projects/krx-trend-scanner/src/trend_scanner/reporting/pattern_a_fast_report.py:41: DeprecationWarning: The 'generic' unit for NumPy timedelta is deprecated, and will raise an error in the future. This includes implicit conversion of bare integers (e.g. `+ 1`).Please use a specific unit instead.
+    WEEKLY_HISTORY_LOOKBACK = pd.Timedelta(days=52 * 7)
+
+tests/test_a_fast_core_stock_report.py: 19517 warnings
+tests/test_backtest_performance_engine_v01.py: 2080 warnings
+tests/test_backtest_performance_engine_v01_phase4_1.py: 20850 warnings
+tests/test_backtest_performance_engine_v01_phase4_2.py: 22662 warnings
+tests/test_backtest_performance_engine_v01_phase4_3.py: 5291 warnings
+tests/test_backtest_performance_engine_v01_snapshot_context.py: 14136 warnings
+tests/test_cache_population.py: 34 warnings
+tests/test_full_universe_scanner.py: 965 warnings
+tests/test_historical_snapshot.py: 51 warnings
+tests/test_julia_strategy_v00.py: 3008 warnings
+tests/test_krx_historical_market_cap_backfill.py: 44 warnings
+tests/test_negative_control_analysis.py: 2 warnings
+tests/test_oos2_validate.py: 64 warnings
+tests/test_pattern_a_evaluator.py: 24 warnings
+tests/test_pattern_a_fast_core_v02_reentry.py: 5422 warnings
+tests/test_pattern_a_fast_evaluator_parity.py: 319 warnings
+tests/test_pattern_a_fast_ground_truth.py: 229 warnings
+tests/test_pattern_a_fast_large_cap40_entry_v01.py: 81 warnings
+tests/test_pattern_a_fast_lead_time_failure_analysis.py: 80 warnings
+tests/test_pattern_a_fast_monthly_feature_research.py: 16 warnings
+tests/test_pattern_a_fast_stock_report.py: 5851 warnings
+tests/test_pattern_a_fast_trading_policy_entry_v01.py: 7592 warnings
+tests/test_pattern_a_fast_weekly_close.py: 1888 warnings
+tests/test_pattern_a_fast_weekly_feature_research.py: 14 warnings
+tests/test_pattern_a_final_production_closure.py: 170 warnings
+tests/test_pattern_a_investability_integration.py: 20 warnings
+tests/test_pattern_a_relative_strength_infrastructure.py: 100 warnings
+tests/test_pattern_a_score_momentum.py: 270 warnings
+tests/test_pattern_a_stage.py: 276 warnings
+tests/test_pattern_a_stage_manifest.py: 112 warnings
+tests/test_pattern_a_stage_oos_v01_manifest.py: 70 warnings
+tests/test_pattern_a_stage_oos_v01_validation.py: 150 warnings
+tests/test_resampler.py: 4 warnings
+tests/test_stage_v02_comparator_parity.py: 324 warnings
+tests/test_stage_v02_preseal_validation.py: 44628 warnings
+tests/test_stage_v03_research_consistency.py: 14766 warnings
+tests/test_stage_v04_multi_year_research.py: 468 warnings
+tests/test_stock_report.py: 7576 warnings
+tests/test_stock_report_v03_relative_strength.py: 1624 warnings
+tests/test_universe_quality.py: 26 warnings
+  /Users/june/Documents/projects/krx-trend-scanner/.venv/lib/python3.13/site-packages/pandas/core/resample.py:2359: DeprecationWarning: The 'generic' unit for NumPy timedelta is deprecated, and will raise an error in the future. This includes implicit conversion of bare integers (e.g. `+ 1`).Please use a specific unit instead.
+    + Timedelta(days=1, unit=edges_dti.unit).as_unit(edges_dti.unit)
+
+tests/test_a_fast_core_stock_report.py: 2177 warnings
+tests/test_backtest_performance_engine_v01_phase4_1.py: 1092 warnings
+tests/test_backtest_performance_engine_v01_phase4_2.py: 6573 warnings
+tests/test_backtest_performance_engine_v01_phase4_3.py: 1879 warnings
+tests/test_backtest_performance_engine_v01_snapshot_context.py: 1798 warnings
+tests/test_feature_report.py: 2 warnings
+tests/test_full_universe_scanner.py: 96 warnings
+tests/test_historical_snapshot.py: 3 warnings
+tests/test_julia_strategy_v00.py: 316 warnings
+tests/test_oos2_validate.py: 2 warnings
+tests/test_pattern_a_fast_core_v02_reentry.py: 465 warnings
+tests/test_pattern_a_fast_ground_truth.py: 4 warnings
+tests/test_pattern_a_fast_monthly_feature_research.py: 1 warning
+tests/test_pattern_a_fast_stock_report.py: 828 warnings
+tests/test_pattern_a_fast_trading_policy_entry_v01.py: 348 warnings
+tests/test_pattern_a_fast_weekly_close.py: 357 warnings
+tests/test_pattern_a_final_production_closure.py: 2 warnings
+tests/test_pattern_a_stage_oos_v01_manifest.py: 1 warning
+tests/test_pattern_a_stage_oos_v01_validation.py: 4 warnings
+tests/test_stage_v02_comparator_parity.py: 4 warnings
+tests/test_stage_v02_preseal_validation.py: 6707 warnings
+tests/test_stage_v03_research_consistency.py: 1808 warnings
+tests/test_stage_v04_multi_year_research.py: 2 warnings
+tests/test_stock_report.py: 1112 warnings
+tests/test_stock_report_v03_relative_strength.py: 114 warnings
+  /Users/june/Documents/projects/krx-trend-scanner/src/trend_scanner/features/moving_average.py:23: FutureWarning: The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+    return series.pct_change(periods)
+
+tests/test_a_fast_core_stock_report.py: 1994 warnings
+tests/test_backtest_performance_engine_v01.py: 815 warnings
+tests/test_backtest_performance_engine_v01_phase4_1.py: 8920 warnings
+tests/test_backtest_performance_engine_v01_phase4_2.py: 5582 warnings
+tests/test_backtest_performance_engine_v01_phase4_3.py: 117 warnings
+tests/test_backtest_performance_engine_v01_snapshot_context.py: 504 warnings
+tests/test_julia_strategy_v00.py: 470 warnings
+tests/test_pattern_a_fast_core_v02_reentry.py: 834 warnings
+tests/test_pattern_a_fast_evaluator_parity.py: 52 warnings
+tests/test_pattern_a_fast_large_cap40_entry_v01.py: 20 warnings
+tests/test_pattern_a_fast_lead_time_failure_analysis.py: 12 warnings
+tests/test_pattern_a_fast_stock_report.py: 294 warnings
+tests/test_pattern_a_fast_trading_policy_entry_v01.py: 898 warnings
+tests/test_stock_report.py: 294 warnings
+tests/test_stock_report_v03_relative_strength.py: 290 warnings
+  /Users/june/Documents/projects/krx-trend-scanner/src/trend_scanner/research/pattern_a_fast_weekly_features.py:641: FutureWarning: The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+    weekly_return = close.pct_change()
+
+tests/test_a_fast_core_stock_report.py: 30 warnings
+  /Users/june/Documents/projects/krx-trend-scanner/src/trend_scanner/research/pattern_a_fast_daily_features.py:718: RuntimeWarning: overflow encountered in scalar subtract
+    abs(low.iloc[-1] - prev_close),
+
+tests/test_a_fast_core_stock_report.py: 23 warnings
+  /Users/june/Documents/projects/krx-trend-scanner/src/trend_scanner/research/pattern_a_fast_daily_features.py:696: RuntimeWarning: overflow encountered in scalar subtract
+    return float((low.iloc[-1] - low.iloc[-1 - k]) / k / close.iloc[-1])
+
+tests/test_a_fast_core_stock_report.py::test_stock_report_0115d0_alphanumeric_ticker_and_etf_metadata
+tests/test_a_fast_core_stock_report.py::test_stock_report_0115d0_alphanumeric_ticker_and_etf_metadata
+tests/test_a_fast_core_stock_report.py::test_stock_report_0115d0_alphanumeric_ticker_and_etf_metadata
+tests/test_a_fast_core_stock_report.py::test_stock_report_0115d0_alphanumeric_ticker_and_etf_metadata
+tests/test_a_fast_core_stock_report.py::test_stock_report_0115d0_alphanumeric_ticker_and_etf_metadata
+tests/test_a_fast_core_stock_report.py::test_stock_report_0115d0_alphanumeric_ticker_and_etf_metadata
+  /Users/june/Documents/projects/krx-trend-scanner/src/trend_scanner/research/pattern_a_fast_daily_features.py:717: RuntimeWarning: overflow encountered in scalar subtract
+    abs(high.iloc[-1] - prev_close),
+
+tests/test_a_fast_core_stock_report.py: 19 warnings
+  /Users/june/Documents/projects/krx-trend-scanner/src/trend_scanner/research/pattern_a_fast_daily_features.py:772: RuntimeWarning: overflow encountered in scalar subtract
+    out["daily_body_pct"] = float(abs(close.iloc[-1] - open_.iloc[-1]) / close.iloc[-1])
+
+tests/test_a_fast_core_stock_report.py: 23 warnings
+  /Users/june/Documents/projects/krx-trend-scanner/src/trend_scanner/research/pattern_a_fast_weekly_features.py:604: RuntimeWarning: overflow encountered in scalar subtract
+    return float((low.iloc[-1] - low.iloc[-1 - k]) / k / close.iloc[-1])
+
+tests/test_adjusted_price_corporate_action_evidence_v01.py::test_gate_06_and_15_execution_result_contract
+tests/test_adjusted_price_corporate_action_evidence_v01.py::test_gate_06_and_15_execution_result_contract
+tests/test_adjusted_price_corporate_action_evidence_v01.py::test_gate_06_and_15_execution_result_contract
+tests/test_adjusted_price_corporate_action_evidence_v01.py::test_gate_06_and_15_execution_result_contract
+tests/test_adjusted_price_corporate_action_evidence_v01.py::test_gate_06_and_15_execution_result_contract
+tests/test_adjusted_price_corporate_action_evidence_v01.py::test_gate_06_and_15_execution_result_contract
+tests/test_adjusted_price_corporate_action_evidence_v01.py::test_gate_06_and_15_execution_result_contract
+tests/test_adjusted_price_corporate_action_evidence_v01.py::test_gate_06_and_15_execution_result_contract
+  /Users/june/Documents/projects/krx-trend-scanner/.venv/lib/python3.13/site-packages/pykrx/website/naver/wrap.py:17: DeprecationWarning: The 'generic' unit for NumPy timedelta is deprecated, and will raise an error in the future. This includes implicit conversion of bare integers (e.g. `+ 1`).Please use a specific unit instead.
+    elapsed = today - strtd + pd.Timedelta(days=2)
+
+tests/test_backtest_performance_engine_v01_phase4_1.py::test_pre_window_pruning_reduces_fast_evaluation_count[005930]
+tests/test_backtest_performance_engine_v01_phase4_1.py::test_pre_window_pruning_reduces_fast_evaluation_count[000660]
+tests/test_backtest_performance_engine_v01_phase4_1.py::test_pre_window_pruning_reduces_fast_evaluation_count[068270]
+tests/test_backtest_performance_engine_v01_phase4_1.py::test_pre_window_pruning_reduces_fast_evaluation_count[035420]
+  /Users/june/Documents/projects/krx-trend-scanner/tests/test_backtest_performance_engine_v01_phase4_1.py:104: DeprecationWarning: The 'generic' unit for NumPy timedelta is deprecated, and will raise an error in the future. This includes implicit conversion of bare integers (e.g. `+ 1`).Please use a specific unit instead.
+    if daily.index.min() < EVALUATION_START_DATE - pd.Timedelta(days=180):
+
+tests/test_backtest_performance_engine_v01_snapshot_context.py: 400 warnings
+  /Users/june/Documents/projects/krx-trend-scanner/tests/test_backtest_performance_engine_v01_snapshot_context.py:78: DeprecationWarning: The 'generic' unit for NumPy timedelta is deprecated, and will raise an error in the future. This includes implicit conversion of bare integers (e.g. `+ 1`).Please use a specific unit instead.
+    dates.extend([d + pd.Timedelta(days=1) for d in dates[:50]])
+
+tests/test_backtest_performance_engine_v01_snapshot_context.py: 47 warnings
+  /Users/june/Documents/projects/krx-trend-scanner/tests/test_backtest_performance_engine_v01_snapshot_context.py:198: DeprecationWarning: The 'generic' unit for NumPy timedelta is deprecated, and will raise an error in the future. This includes implicit conversion of bare integers (e.g. `+ 1`).Please use a specific unit instead.
+    sundays = [d + pd.Timedelta(days=(6 - d.weekday()) % 7) for d in candidates]
+
+tests/test_backtest_performance_engine_v01_snapshot_context.py::test_snapshot_context_matches_legacy_before_ticker_history_starts
+  /Users/june/Documents/projects/krx-trend-scanner/tests/test_backtest_performance_engine_v01_snapshot_context.py:247: DeprecationWarning: The 'generic' unit for NumPy timedelta is deprecated, and will raise an error in the future. This includes implicit conversion of bare integers (e.g. `+ 1`).Please use a specific unit instead.
+    snapshot_date = daily.index[0] - pd.Timedelta(days=30)
+
+tests/test_cache_population.py::test_existing_cache_incremental_update
+tests/test_cache_population.py::test_empty_response
+  /Users/june/Documents/projects/krx-trend-scanner/src/trend_scanner/universe/cache_population.py:263: DeprecationWarning: The 'generic' unit for NumPy timedelta is deprecated, and will raise an error in the future. This includes implicit conversion of bare integers (e.g. `+ 1`).Please use a specific unit instead.
+    overlap_ts = cached.index.max() - pd.Timedelta(days=overlap_days)
+
+tests/test_historical_snapshot.py::test_non_trading_snapshot_date_uses_last_trading_day
+  /Users/june/Documents/projects/krx-trend-scanner/tests/test_historical_snapshot.py:75: DeprecationWarning: The 'generic' unit for NumPy timedelta is deprecated, and will raise an error in the future. This includes implicit conversion of bare integers (e.g. `+ 1`).Please use a specific unit instead.
+    saturday = friday + pd.Timedelta(days=1)
+
+tests/test_historical_snapshot.py::test_snapshot_before_any_data_returns_empty_result_without_error
+  /Users/june/Documents/projects/krx-trend-scanner/tests/test_historical_snapshot.py:99: DeprecationWarning: The 'generic' unit for NumPy timedelta is deprecated, and will raise an error in the future. This includes implicit conversion of bare integers (e.g. `+ 1`).Please use a specific unit instead.
+    snapshot_date = daily.index[0] - pd.Timedelta(days=10)
+
+tests/test_historical_snapshot.py::test_monthly_as_of_and_weekly_as_of_none_when_no_data
+  /Users/june/Documents/projects/krx-trend-scanner/tests/test_historical_snapshot.py:224: DeprecationWarning: The 'generic' unit for NumPy timedelta is deprecated, and will raise an error in the future. This includes implicit conversion of bare integers (e.g. `+ 1`).Please use a specific unit instead.
+    snapshot_date = daily.index[0] - pd.Timedelta(days=10)
+
+tests/test_krx_market_index_migration_v01.py::test_runner_remaining_two_fetches_one_whole_date
+  /Users/june/Documents/projects/krx-trend-scanner/scripts/migrate_market_index_krx_v01.py:725: FutureWarning: The behavior of DataFrame concatenation with empty or all-NA entries is deprecated. In a future version, this will no longer exclude empty or all-NA columns when determining the result dtypes. To retain the old behavior, exclude the relevant entries before the concat operation.
+    existing = pd.concat([existing, frame], ignore_index=True)
+
+tests/test_outcome_audit.py: 36 warnings
+  /Users/june/Documents/projects/krx-trend-scanner/src/trend_scanner/validation/outcome_audit.py:79: DeprecationWarning: The 'generic' unit for NumPy timedelta is deprecated, and will raise an error in the future. This includes implicit conversion of bare integers (e.g. `+ 1`).Please use a specific unit instead.
+    return base_date + pd.Timedelta(days=months * _DAYS_PER_MONTH)
+
+tests/test_outcome_audit.py::test_compute_outcome_max_and_end_returns_match_independent_slice
+tests/test_outcome_audit.py::test_compute_outcome_max_and_end_returns_match_independent_slice
+tests/test_outcome_audit.py::test_compute_outcome_max_and_end_returns_match_independent_slice
+  /Users/june/Documents/projects/krx-trend-scanner/tests/test_outcome_audit.py:44: DeprecationWarning: The 'generic' unit for NumPy timedelta is deprecated, and will raise an error in the future. This includes implicit conversion of bare integers (e.g. `+ 1`).Please use a specific unit instead.
+    window_end = base_date + pd.Timedelta(days=months * 30.4375)
+
+tests/test_outcome_audit.py::test_compute_outcome_max_and_end_returns_match_independent_slice
+tests/test_outcome_audit.py::test_compute_outcome_max_and_end_returns_match_independent_slice
+  /Users/june/Documents/projects/krx-trend-scanner/tests/test_outcome_audit.py:52: DeprecationWarning: The 'generic' unit for NumPy timedelta is deprecated, and will raise an error in the future. This includes implicit conversion of bare integers (e.g. `+ 1`).Please use a specific unit instead.
+    window_end = base_date + pd.Timedelta(days=months * 30.4375)
+
+tests/test_outcome_audit.py::test_compute_outcome_max_and_end_returns_match_independent_slice
+  /Users/june/Documents/projects/krx-trend-scanner/tests/test_outcome_audit.py:60: DeprecationWarning: The 'generic' unit for NumPy timedelta is deprecated, and will raise an error in the future. This includes implicit conversion of bare integers (e.g. `+ 1`).Please use a specific unit instead.
+    window_end_12m = base_date + pd.Timedelta(days=12 * 30.4375)
+
+tests/test_outcome_audit.py::test_compute_outcome_before_any_data_returns_all_nan
+  /Users/june/Documents/projects/krx-trend-scanner/tests/test_outcome_audit.py:106: DeprecationWarning: The 'generic' unit for NumPy timedelta is deprecated, and will raise an error in the future. This includes implicit conversion of bare integers (e.g. `+ 1`).Please use a specific unit instead.
+    requested = daily.index[0] - pd.Timedelta(days=10)
+
+tests/test_pattern_a_fast_daily_timing_feature_research.py::test_future_daily_row_append_does_not_change_reference_day_features
+  /Users/june/Documents/projects/krx-trend-scanner/tests/test_pattern_a_fast_daily_timing_feature_research.py:293: DeprecationWarning: The 'generic' unit for NumPy timedelta is deprecated, and will raise an error in the future. This includes implicit conversion of bare integers (e.g. `+ 1`).Please use a specific unit instead.
+    future_idx = pd.bdate_range(start=daily.index.max() + pd.Timedelta(days=1), periods=60)
+
+tests/test_pattern_a_fast_ground_truth.py::test_build_chart_slices_no_future_leakage
+  /Users/june/Documents/projects/krx-trend-scanner/tests/test_pattern_a_fast_ground_truth.py:86: DeprecationWarning: The 'generic' unit for NumPy timedelta is deprecated, and will raise an error in the future. This includes implicit conversion of bare integers (e.g. `+ 1`).Please use a specific unit instead.
+    outcome_end = min(ref + pd.Timedelta(weeks=26), daily.index.max())
+
+tests/test_pattern_a_fast_ground_truth.py::test_build_chart_slices_no_future_leakage
+tests/test_pattern_a_fast_ground_truth.py::test_build_chart_slices_daily_pit_excludes_future_rows_even_if_present
+  /Users/june/Documents/projects/krx-trend-scanner/src/trend_scanner/validation/pattern_a_fast_ground_truth.py:372: DeprecationWarning: The 'generic' unit for NumPy timedelta is deprecated, and will raise an error in the future. This includes implicit conversion of bare integers (e.g. `+ 1`).Please use a specific unit instead.
+    daily_pit_start = reference_date - pd.Timedelta(days=daily_pit_window_days)
+
+tests/test_pattern_a_fast_ground_truth.py::test_build_chart_slices_daily_pit_excludes_future_rows_even_if_present
+  /Users/june/Documents/projects/krx-trend-scanner/tests/test_pattern_a_fast_ground_truth.py:98: DeprecationWarning: The 'generic' unit for NumPy timedelta is deprecated, and will raise an error in the future. This includes implicit conversion of bare integers (e.g. `+ 1`).Please use a specific unit instead.
+    slices = build_chart_slices(daily, ref, ref + pd.Timedelta(weeks=4))
+
+tests/test_pattern_a_fast_ground_truth.py::test_find_base_reference_before_entry_enforces_min_lead_weeks
+tests/test_pattern_a_fast_ground_truth.py::test_find_base_reference_before_entry_reference_is_not_inside_episode
+  /Users/june/Documents/projects/krx-trend-scanner/src/trend_scanner/validation/pattern_a_fast_ground_truth.py:236: DeprecationWarning: The 'generic' unit for NumPy timedelta is deprecated, and will raise an error in the future. This includes implicit conversion of bare integers (e.g. `+ 1`).Please use a specific unit instead.
+    search_start = entry_boundary - pd.Timedelta(weeks=min_lead_weeks)
+
+tests/test_pattern_a_fast_ground_truth.py::test_find_base_reference_before_entry_enforces_min_lead_weeks
+tests/test_pattern_a_fast_ground_truth.py::test_find_base_reference_before_entry_reference_is_not_inside_episode
+  /Users/june/Documents/projects/krx-trend-scanner/src/trend_scanner/validation/pattern_a_fast_ground_truth.py:237: DeprecationWarning: The 'generic' unit for NumPy timedelta is deprecated, and will raise an error in the future. This includes implicit conversion of bare integers (e.g. `+ 1`).Please use a specific unit instead.
+    search_floor = entry_boundary - pd.Timedelta(weeks=max_lookback_weeks)
+
+tests/test_pattern_a_fast_monthly_feature_research.py::test_no_future_daily_row_influence
+  /Users/june/Documents/projects/krx-trend-scanner/tests/test_pattern_a_fast_monthly_feature_research.py:72: DeprecationWarning: The 'generic' unit for NumPy timedelta is deprecated, and will raise an error in the future. This includes implicit conversion of bare integers (e.g. `+ 1`).Please use a specific unit instead.
+    future_idx = pd.bdate_range(start=daily.index.max() + pd.Timedelta(days=1), periods=120)
+
+tests/test_pattern_a_fast_monthly_feature_research.py::test_incomplete_future_monthly_period_does_not_affect_features
+  /Users/june/Documents/projects/krx-trend-scanner/tests/test_pattern_a_fast_monthly_feature_research.py:110: DeprecationWarning: The 'generic' unit for NumPy timedelta is deprecated, and will raise an error in the future. This includes implicit conversion of bare integers (e.g. `+ 1`).Please use a specific unit instead.
+    partial_future_idx = pd.bdate_range(start=ref + pd.Timedelta(days=1), periods=4)
+
+tests/test_pattern_a_fast_trading_policy_entry_v01.py: 106 warnings
+  /Users/june/Documents/projects/krx-trend-scanner/src/trend_scanner/research/pattern_a_fast_monthly_features.py:454: FutureWarning: The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+    monthly_return = close.pct_change()
+
+tests/test_pattern_a_fast_weekly_feature_research.py::test_future_daily_row_append_does_not_change_reference_week_features
+  /Users/june/Documents/projects/krx-trend-scanner/tests/test_pattern_a_fast_weekly_feature_research.py:337: DeprecationWarning: The 'generic' unit for NumPy timedelta is deprecated, and will raise an error in the future. This includes implicit conversion of bare integers (e.g. `+ 1`).Please use a specific unit instead.
+    future_idx = pd.bdate_range(start=daily.index.max() + pd.Timedelta(days=1), periods=120)
+
+tests/test_pattern_a_fast_weekly_feature_research.py::test_incomplete_future_week_does_not_affect_features
+  /Users/june/Documents/projects/krx-trend-scanner/tests/test_pattern_a_fast_weekly_feature_research.py:372: DeprecationWarning: The 'generic' unit for NumPy timedelta is deprecated, and will raise an error in the future. This includes implicit conversion of bare integers (e.g. `+ 1`).Please use a specific unit instead.
+    partial_idx = pd.bdate_range(start=ref + pd.Timedelta(days=1), periods=2)  # 같은 주 남은 거래일
+
+tests/test_pattern_a_foreign_flow_infrastructure.py::test_candidate_ticker_swap_negative_test
+  /Users/june/Documents/projects/krx-trend-scanner/tests/test_pattern_a_foreign_flow_infrastructure.py:332: FutureWarning: Setting an item of incompatible dtype is deprecated and will raise an error in a future version of pandas. Value '999999' has dtype incompatible with int64, please explicitly cast to a compatible dtype first.
+    df.loc[0, "ticker"] = "999999"
+
+tests/test_pattern_a_investability_audit.py::test_fail_closed_negative_cases_in_isolated_tmp
+  /Users/june/Documents/projects/krx-trend-scanner/.venv/lib/python3.13/site-packages/pykrx/website/krx/market/wrap.py:249: FutureWarning: Downcasting behavior in `replace` is deprecated and will be removed in a future version. To retain the old behavior, explicitly call `result.infer_objects(copy=False)`. To opt-in to the future behavior, set `pd.set_option('future.no_silent_downcasting', True)`
+    df = df.replace("", 0)
+
+tests/test_pykrx_provider.py::test_dtype_conversion_failure_raises_market_data_error[\uc2dc\uac00-abc]
+  /Users/june/Documents/projects/krx-trend-scanner/tests/test_pykrx_provider.py:340: FutureWarning: Setting an item of incompatible dtype is deprecated and will raise an error in a future version of pandas. Value 'abc' has dtype incompatible with int64, please explicitly cast to a compatible dtype first.
+    broken.loc[broken.index[0], column] = bad_value
+
+tests/test_repository.py::test_cache_hit_within_stable_range_skips_provider
+tests/test_repository.py::test_incremental_update_fetches_overlap_window_only
+tests/test_repository.py::test_new_api_value_overrides_cached_value_on_same_date
+tests/test_repository.py::test_requested_period_is_sliced_from_wider_cache
+  /Users/june/Documents/projects/krx-trend-scanner/src/trend_scanner/data/repository.py:60: DeprecationWarning: The 'generic' unit for NumPy timedelta is deprecated, and will raise an error in the future. This includes implicit conversion of bare integers (e.g. `+ 1`).Please use a specific unit instead.
+    refresh_from = cached_max - pd.Timedelta(days=self._overlap_days)
+
+tests/test_repository.py::test_incremental_update_fetches_overlap_window_only
+  /Users/june/Documents/projects/krx-trend-scanner/tests/test_repository.py:79: DeprecationWarning: The 'generic' unit for NumPy timedelta is deprecated, and will raise an error in the future. This includes implicit conversion of bare integers (e.g. `+ 1`).Please use a specific unit instead.
+    seed.index.max() - pd.Timedelta(days=DEFAULT_OVERLAP_DAYS)
+
+tests/test_repository.py::test_new_api_value_overrides_cached_value_on_same_date
+  /Users/june/Documents/projects/krx-trend-scanner/tests/test_repository.py:96: DeprecationWarning: The 'generic' unit for NumPy timedelta is deprecated, and will raise an error in the future. This includes implicit conversion of bare integers (e.g. `+ 1`).Please use a specific unit instead.
+    overlap_date = seed.index.max() - pd.Timedelta(days=DEFAULT_OVERLAP_DAYS)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+============================= slowest 50 durations =============================
+139.60s call     tests/test_stage_v02_preseal_validation.py::test_preseal_gate_matrix_execution
+115.92s call     tests/test_full_universe_scanner.py::test_official_common_only_scanned_and_excluded_assets
+56.10s call     tests/test_stage_v03_research_consistency.py::test_research_artifact_deterministic_regeneration
+42.12s call     tests/test_backtest_performance_engine_v01_phase4_3.py::test_workers1_default_never_calls_parallel_runner
+37.97s call     tests/test_backtest_performance_engine_v01_phase4_2.py::test_realistic_benchmark_records_market_cap_query_evidence
+37.87s call     tests/test_backtest_performance_engine_v01_phase4_2.py::test_realistic_benchmark_small_sample_has_nonzero_trade_counts
+26.21s call     tests/test_a_fast_core_stock_report.py::test_a_fast_core_trade_history_matches_official_v02
+21.67s call     tests/test_pattern_a_fast_trading_policy_entry_v01.py::test_06_pit_interception_execution_path_no_future_bars
+21.42s setup    tests/test_pattern_a_fast_trading_policy_entry_v01.py::test_07_next_trading_day_open_rule_maintained
+19.65s call     tests/test_backtest_performance_engine_v01_phase4_3.py::test_legacy_sequential_vs_workers2_four_path_and_cache_parity
+19.49s setup    tests/test_backtest_performance_engine_v01_phase4_3.py::test_workers1_workers2_baseline_primary_parity
+16.03s call     tests/test_pattern_a_fast_stock_report.py::test_pattern_a_and_fast_stage_combinations_are_not_errors
+14.61s call     tests/test_backtest_performance_engine_v01_phase4_3.py::test_parallel_output_deterministic_ordering
+13.94s call     tests/test_backtest_performance_engine_v01_phase4_2.py::test_workers1_workers2_baseline_and_julia_parity
+13.92s call     tests/test_backtest_performance_engine_v01_phase4_2.py::test_workers1_workers2_aggregate_parity
+13.23s call     tests/test_stock_report.py::test_stock_report_candidate_state_contract_weak_and_progressed
+12.16s call     tests/test_backtest_performance_engine_v01_phase4_1.py::test_pre_window_pruning_reduces_fast_evaluation_count[035420]
+12.16s call     tests/test_backtest_performance_engine_v01_phase4_1.py::test_pre_window_pruning_produces_identical_trades_julia[035420]
+12.11s call     tests/test_backtest_performance_engine_v01_phase4_1.py::test_pre_window_pruning_reduces_fast_evaluation_count[068270]
+12.07s call     tests/test_backtest_performance_engine_v01_phase4_1.py::test_pre_window_pruning_produces_identical_trades_julia[005930]
+12.06s call     tests/test_backtest_performance_engine_v01_phase4_1.py::test_pre_window_pruning_produces_identical_trades_julia[068270]
+12.01s call     tests/test_backtest_performance_engine_v01_phase4_1.py::test_pre_window_pruning_produces_identical_trades_baseline[068270]
+12.00s call     tests/test_backtest_performance_engine_v01_phase4_1.py::test_pre_window_pruning_reduces_fast_evaluation_count[005930]
+12.00s call     tests/test_backtest_performance_engine_v01_phase4_1.py::test_pre_window_pruning_produces_identical_trades_baseline[035420]
+12.00s call     tests/test_backtest_performance_engine_v01_phase4_1.py::test_pre_window_pruning_reduces_fast_evaluation_count[000660]
+11.95s call     tests/test_backtest_performance_engine_v01_phase4_1.py::test_pre_window_pruning_produces_identical_trades_baseline[005930]
+11.93s call     tests/test_backtest_performance_engine_v01_phase4_1.py::test_pre_window_pruning_produces_identical_trades_baseline[000660]
+11.92s call     tests/test_backtest_performance_engine_v01_phase4_1.py::test_pre_window_pruning_produces_identical_trades_julia[000660]
+10.79s call     tests/test_pattern_a_fast_core_v02_reentry.py::test_v02_exit4_then_reentry
+10.37s call     tests/test_stock_report_v03_relative_strength.py::test_celltrion_markdown_uses_percentage_points_for_changes
+10.26s call     tests/test_backtest_performance_engine_v01_phase4_2.py::test_parallel_output_deterministic_ordering
+10.00s call     tests/test_stage_v02_preseal_validation.py::test_corruption_lifecycle_request_order_permutation
+9.96s call     tests/test_backtest_performance_engine_v01.py::test_simulate_ticker_strategy_min_market_cap_krw_override_changes_eligibility
+9.86s call     tests/test_a_fast_core_stock_report.py::test_trusted_formal_common_metadata_remains_applicable
+9.55s setup    tests/test_a_fast_core_stock_report.py::test_stock_report_v03_contract
+9.46s call     tests/test_a_fast_core_stock_report.py::test_stock_report_market_cap_effective_date_pit
+9.21s call     tests/test_a_fast_core_stock_report.py::test_stock_report_138040_is_applicable_common_stock
+8.85s call     tests/test_pattern_a_fast_core_v02_reentry.py::test_v02_exit3_then_reentry
+8.82s call     tests/test_a_fast_core_stock_report.py::test_a_fast_core_uses_requested_as_of_only
+8.18s call     tests/test_pattern_a_fast_core_v02_reentry.py::test_v02_multiple_reentries
+7.49s call     tests/test_backtest_performance_engine_v01_phase4_3.py::test_parallel_generated_persistent_cache_is_warm_hit_in_new_process
+6.80s call     tests/test_backtest_performance_engine_v01_phase4_2.py::test_pruning_on_off_baseline_parity_with_real_registry[035420]
+6.58s call     tests/test_backtest_performance_engine_v01_phase4_2.py::test_pruning_on_off_baseline_parity_with_real_registry[000660]
+6.45s call     tests/test_backtest_performance_engine_v01_snapshot_context.py::test_snapshot_context_matches_legacy_across_dense_real_history[True-035420]
+6.36s call     tests/test_backtest_performance_engine_v01_snapshot_context.py::test_snapshot_context_matches_legacy_across_dense_real_history[False-035420]
+6.36s call     tests/test_backtest_performance_engine_v01_snapshot_context.py::test_snapshot_context_matches_legacy_across_dense_real_history[True-005930]
+6.35s call     tests/test_backtest_performance_engine_v01_snapshot_context.py::test_snapshot_context_matches_legacy_across_dense_real_history[True-000660]
+6.33s call     tests/test_backtest_performance_engine_v01_snapshot_context.py::test_snapshot_context_matches_legacy_across_dense_real_history[True-068270]
+6.33s call     tests/test_backtest_performance_engine_v01_snapshot_context.py::test_snapshot_context_matches_legacy_across_dense_real_history[False-000660]
+6.32s call     tests/test_backtest_performance_engine_v01_snapshot_context.py::test_snapshot_context_matches_legacy_across_dense_real_history[False-005930]
+=========================== short test summary info ============================
+FAILED tests/test_krx_historical_backfill.py::test_recent_empty_is_not_checkpointed_and_general_resume_retries
+1 failed, 2314 passed, 7 skipped, 5 deselected, 228334 warnings in 1191.97s (0:19:51)
+real 1197.19
+user 1213.11
+sys 30.40

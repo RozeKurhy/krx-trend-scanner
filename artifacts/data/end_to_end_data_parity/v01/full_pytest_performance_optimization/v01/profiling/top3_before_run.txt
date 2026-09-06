@@ -1,0 +1,17 @@
+
+SETUP    S tmp_path_factory
+        SETUP    F tmp_path (fixtures used: tmp_path_factory)
+        SETUP    F mock_scanner_env (fixtures used: tmp_path)
+        tests/test_full_universe_scanner.py::test_official_common_only_scanned_and_excluded_assets (fixtures used: mock_scanner_env, request, tmp_path, tmp_path_factory) .
+        TEARDOWN F mock_scanner_env
+        TEARDOWN F tmp_path
+TEARDOWN S tmp_path_factory
+============================= slowest 10 durations =============================
+113.37s call     tests/test_full_universe_scanner.py::test_official_common_only_scanned_and_excluded_assets
+0.04s setup    tests/test_full_universe_scanner.py::test_official_common_only_scanned_and_excluded_assets
+
+(1 durations < 0.005s hidden.  Use -vv to show these durations.)
+1 passed, 64 warnings in 113.90s (0:01:53)
+real 117.81
+user 115.77
+sys 6.21

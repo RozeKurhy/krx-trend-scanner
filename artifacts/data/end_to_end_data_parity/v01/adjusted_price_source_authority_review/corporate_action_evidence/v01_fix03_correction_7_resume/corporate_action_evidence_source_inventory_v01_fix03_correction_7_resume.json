@@ -1,0 +1,28 @@
+{
+  "schema": "corporate_action_evidence_source_inventory_v01_fix03_correction_7_resume",
+  "canonical_run_id": "CORP_AUTH_FIX03_CORRECTION_7_RESUME_20260828T213721Z",
+  "directive_id": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_7_RESUME",
+  "sources": [
+    {
+      "source_id": "OPENDART_OFFICIAL_API",
+      "source_tier": "TIER_A1_OPENDART",
+      "source_name": "금융감독원 전자공시시스템 (OpenDART) 정식 API",
+      "base_domain": "opendart.fss.or.kr",
+      "endpoint_type": "OFFICIAL_API_PAGINATED_DISCOVERY_AND_DOCUMENT",
+      "auth_required": true,
+      "raw_format": "JSON_AND_XML",
+      "parser_version": "v01_fix03_correction_7_resume",
+      "authority_validation_contract": "OpenDART 전수 페이지네이션 및 공시 원문 XML의 True XML Hierarchy Tree 파싱 기반 Claim-Free 공식 앵커 추출"
+    },
+    {
+      "source_id": "DART_OFFICIAL_DISCLOSURE",
+      "source_tier": "TIER_A1_OPENDART",
+      "source_name": "금융감독원 전자공시시스템 (DART) 공시원문 뷰어",
+      "base_domain": "dart.fss.or.kr",
+      "endpoint_type": "OFFICIAL_DISCLOSURE_VIEWER",
+      "auth_required": false,
+      "raw_format": "HTML",
+      "parser_version": "v01_fix03_correction_7_resume"
+    }
+  ]
+}

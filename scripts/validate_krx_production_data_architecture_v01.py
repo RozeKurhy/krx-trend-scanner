@@ -118,6 +118,15 @@ def _tracked_source_files() -> list[Path]:
 RUNTIME_ARTIFACT_EXCLUDED_PATHS = {
     "src/trend_scanner/data/source_contracts.py",
     "src/trend_scanner/review/candidate_review.py",
+    "src/trend_scanner/data/adjusted_price_pilot.py",
+    "src/trend_scanner/data/adjusted_price_full_population.py",
+    "src/trend_scanner/data/adjusted_price_diagnostics.py",
+    "src/trend_scanner/data/source_authority_review.py",
+    "src/trend_scanner/data/corporate_action_authority.py",
+    "src/trend_scanner/data/opendart_preflight.py",
+    # Repository V2 session-authority reconciliation binds to an immutable
+    # closure checkpoint as evidence, not as a mutable runtime data source.
+    "src/trend_scanner/data/repository_v2_session_authority.py",
 }
 RUNTIME_ARTIFACT_EXCLUDED_LITERAL_PATTERNS = ("artifacts/reporting/**",)
 
@@ -213,7 +222,11 @@ def _provenance_contract_error_counts() -> dict[str, int]:
             elif any(endpoint in endpoint_text for endpoint in ("/sto/stk_bydd_trd", "/sto/ksq_bydd_trd")) and item.source_field not in daily_fields:
                 nonexistent += 1
         elif origin == ProvenanceOrigin.REQUEST_PARAMETER.value:
-            if item.source_field is not None or not item.source_locator or "basDd" not in item.source_locator or item.source_semantics != "REQUESTED_SNAPSHOT_DATE":
+            if item.source_field is not None or not item.source_locator:
+                request_errors += 1
+            elif item.target_field == "as_of" and (
+                "basDd" not in item.source_locator or item.source_semantics != "REQUESTED_SNAPSHOT_DATE"
+            ):
                 request_errors += 1
         elif origin == ProvenanceOrigin.STATIC_MAPPING.value:
             if item.source_field is not None or not item.source_locator or "KRX_NATIVE_SECTOR_INDEX_MAP" not in item.source_locator:

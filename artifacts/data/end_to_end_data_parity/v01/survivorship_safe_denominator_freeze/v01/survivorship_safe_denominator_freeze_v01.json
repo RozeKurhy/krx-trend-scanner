@@ -1,0 +1,82 @@
+{
+  "schema": "survivorship_safe_denominator_freeze_v01",
+  "status": "CLOSED_AND_FROZEN",
+  "authority_version": "SURVIVORSHIP_SAFE_DENOMINATOR_FREEZE_V01",
+  "authority_checkpoint_sha256": "44bda08cd1f3583c826c0041bb18d537d599fd3b38216287774c7dd96fe47fab",
+  "supplemental_authority": {
+    "directory": "data/reference/source/history/krx_instrument_master/v01/supplemental_authority",
+    "record_count": 128
+  },
+  "trading_calendar": {
+    "trading_dates_sha256": "2bb2357a06a2cec7b8fba4e6ea40d964b6d52d88d93960f1a3fea7b2b89d204b",
+    "period_start": "2010-01-04",
+    "period_end": "2026-08-21",
+    "trading_date_count": 4095
+  },
+  "population": {
+    "total": 3162,
+    "numeric": 3139,
+    "alpha": 23,
+    "kospi": 982,
+    "kosdaq": 2202,
+    "currently_common": 2557,
+    "historical_only": 605,
+    "in_frozen_target_common": 605,
+    "outside_frozen_target_common": 2557,
+    "lifecycle_transition_identity_count": 139,
+    "population_manifest_sha256": "f14c3d46e5305571b311c4d120d9a2f1eba1644e7f059cde4e59eabab42d1aff"
+  },
+  "pit": {
+    "trading_date_coverage": 4095,
+    "interval_record_count": 3196,
+    "first_date": "2010-01-04",
+    "last_date": "2026-08-21",
+    "min_daily_count": 1717,
+    "max_daily_count": 2564,
+    "median_daily_count": 1997,
+    "market_breakdown": {
+      "KOSDAQ": {
+        "min": 985,
+        "max": 1748,
+        "median": 1230
+      },
+      "KOSPI": {
+        "min": 721,
+        "max": 826,
+        "median": 767
+      }
+    },
+    "discontinuity_count": 0,
+    "pit_common_denominator_sha256": "6b542ae05c9050dd30959d6f1b17306e4016f435a726ca7e0dff9e11008e4064"
+  },
+  "historical_only_reconciliation": {
+    "HISTORICAL_COMMON_REQUIRED": 605,
+    "HISTORICAL_NOT_COMMON": 511,
+    "HISTORICAL_AUTHORITY_UNRESOLVED": 0
+  },
+  "gates": {
+    "population_pit_union_invariant": {
+      "gate": "POPULATION_PIT_UNION_INVARIANT",
+      "population_identity_count": 3162,
+      "pit_identity_count": 3162,
+      "missing_in_population": [],
+      "population_never_pit_common": [],
+      "status": "PASS"
+    },
+    "identity_gate": {
+      "gate": "PIT_IDENTITY_OVERLAP_GATE",
+      "overlap_count": 0,
+      "overlaps": [],
+      "status": "PASS"
+    },
+    "lifecycle_gate": {
+      "gate": "LIFECYCLE_BOUNDARY_GATE",
+      "violation_count": 0,
+      "violations": [],
+      "status": "PASS"
+    }
+  },
+  "created_from_head": "6989e859e20dbd4176151c2dd84c232d50a0b820",
+  "population_artifact_path": "artifacts/data/end_to_end_data_parity/v01/survivorship_safe_denominator_freeze/v01/historical_common_population_v01.json",
+  "pit_artifact_path": "artifacts/data/end_to_end_data_parity/v01/survivorship_safe_denominator_freeze/v01/pit_common_denominator_v01.json"
+}

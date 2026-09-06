@@ -1,0 +1,27 @@
+{
+  "schema": "spac_prelabel_lifecycle_correction_regression_mutation_guard_v01",
+  "checkpoint": {
+    "path": "artifacts/data/end_to_end_data_parity/v01/adjusted_price_store_full_population_closure/fresh_full_population_run_v01/full_population_checkpoint.json",
+    "file_count": 1,
+    "bytes": 268504266,
+    "sha256": "09dcfc5bd12e334a379a23acf8f9a45ec0b8550b77ab01da22a7bbe98d4a7f02",
+    "mutated": false
+  },
+  "fresh_staging": {
+    "path": "data/market/adjusted/staging/fresh_full_population_run_v01/stocks",
+    "file_count": 6316,
+    "bytes": 184254002,
+    "aggregate_sha256": "d4d071c36389d0e1f5598dee033a0bd88fb66b41942cbb1fa1343c72986f38bd",
+    "mutated": false
+  },
+  "canonical_adjusted_store": {
+    "path": "data/market/adjusted/stocks",
+    "file_count": 5500,
+    "bytes": 129274065,
+    "aggregate_sha256": "2bffdc9233da337be336ed83441b66fe3482517af539294146f143911091dd5e",
+    "mutated": false
+  },
+  "source_code_mutated": false,
+  "test_code_mutated": false,
+  "all_guards_pass": true
+}

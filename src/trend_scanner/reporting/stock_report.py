@@ -16,6 +16,12 @@ import numpy as np
 import pandas as pd
 
 from trend_scanner.data.cache import ParquetCache
+from trend_scanner.data.adjusted_price_store import AdjustedPriceStore
+from trend_scanner.data.repository_v2 import MarketDataRepositoryV2
+from trend_scanner.data.repository_v2_loader import (
+    RepositoryV2DailyLoader,
+    build_production_repository_v2,
+)
 from trend_scanner.filters.investability import evaluate_investability
 from trend_scanner.flow.foreign_flow import (
     FlowDataStatus,
@@ -49,6 +55,7 @@ from trend_scanner.reporting.models import (
 from trend_scanner.reporting.pattern_a_fast_report import build_pattern_a_fast_section
 from trend_scanner.reporting.relative_strength_report import load_relative_strength_section
 from trend_scanner.data.market_calendar import get_reference_market_month_ends as _get_ref_market_month_ends
+from trend_scanner.data.market_calendar import load_rolling_production_market_calendar
 from trend_scanner.universe.asset_classifier import AssetType
 from trend_scanner.universe.instrument_metadata import resolve_instrument_metadata
 from trend_scanner.validation.historical_snapshot import build_historical_snapshot
@@ -91,9 +98,16 @@ def _resolve_latest_local_as_of(repo_root: Path) -> str:
     raise RuntimeError("Unable to resolve latest local reference market date: no local market reference data found.")
 
 
-def _get_reference_market_month_ends(cache: ParquetCache | None, requested_as_of: pd.Timestamp) -> list[pd.Timestamp]:
-    """Canonical KRX Market Calendar Authority로부터 표준 시장 월말 거래일 목록을 추출한다."""
-    return _get_ref_market_month_ends(requested_as_of=requested_as_of)
+def _get_reference_market_month_ends(
+    cache: ParquetCache | None, requested_as_of: pd.Timestamp, repo_root: Path | None = None
+) -> list[pd.Timestamp]:
+    """Canonical KRX Market Calendar Authority로부터 표준 시장 월말 거래일 목록을 추출한다.
+
+    ``repo_root``가 주어지면 rolling authority의 merged calendar를 우선 사용한다
+    (PRODUCTION_REGENERATION_INFRASTRUCTURE_FIX_V01 section 1) -- 없으면 기존 frozen
+    canonical calendar로 그대로 fallback한다."""
+    calendar = load_rolling_production_market_calendar(repo_root) if repo_root is not None else None
+    return _get_ref_market_month_ends(calendar=calendar, requested_as_of=requested_as_of)
 
 
 def _determine_flow_state_and_explanation(
@@ -631,10 +645,12 @@ def generate_stock_report(
     repo_root: Path | str | None = None,
     save_artifacts: bool = True,
     output_dir: Path | str | None = None,
+    repository: MarketDataRepositoryV2 | None = None,
 ) -> tuple[StockReport, Path | None, Path | None]:
     """단일 종목의 Stock Report v0.2를 생성하고 선택적으로 JSON/MD 아티팩트를 저장한다."""
     root_path = Path(repo_root) if repo_root else Path(__file__).resolve().parent.parent.parent.parent
     clean_ticker = _format_ticker(ticker)
+    production_market_calendar = load_rolling_production_market_calendar(root_path)
 
     # 1. As-Of 및 Reference Market Date 결정
     if as_of is None:
@@ -646,8 +662,14 @@ def generate_stock_report(
     ref_market_date = canonical_as_of
 
     # 2. 로컬 Universe 및 종목 메타데이터 로드 (Formal Authority, Zero-Network)
-    cache = ParquetCache(base_dir=root_path / "data/raw/stocks")
-    daily = cache.load(clean_ticker)
+    price_source = "MarketDataRepositoryV2" if repository is not None else "local parquet cache"
+    if repository is not None:
+        daily = RepositoryV2DailyLoader(repository, end=canonical_as_of).load(clean_ticker)
+    else:
+        # Explicit legacy cache mode is retained for isolated historical test
+        # fixtures. Production entrypoints pass a Repository V2 instance.
+        cache = ParquetCache(base_dir=root_path / "data/raw/stocks")
+        daily = cache.load(clean_ticker)
     has_cache = daily is not None and not daily.empty
 
     inst_meta = resolve_instrument_metadata(ticker=clean_ticker, as_of=canonical_as_of, repo_root=root_path)
@@ -753,6 +775,7 @@ def generate_stock_report(
                 daily=daily_slice,
                 snapshot_date=canonical_as_of,
                 include_incomplete_periods=False,
+                market_calendar=production_market_calendar,
             )
             cur_eval = evaluate_pattern_a(cur_snap)
             cur_score = round(cur_eval.score, 2) if cur_eval.score is not None else None
@@ -795,7 +818,7 @@ def generate_stock_report(
     full_monthly_history: list[MonthlyObservation] = []
     if not daily_slice.empty:
         stock_first_date = daily_slice.index.min()
-        market_month_ends = _get_reference_market_month_ends(cache, req_as_of_ts)
+        market_month_ends = _get_reference_market_month_ends(None, req_as_of_ts, repo_root=root_path)
 
         if not market_month_ends:
             quality_status = "MARKET_CALENDAR_UNAVAILABLE"
@@ -828,6 +851,7 @@ def generate_stock_report(
                         daily=d_sub,
                         snapshot_date=me_str,
                         include_incomplete_periods=False,
+                        market_calendar=production_market_calendar,
                     )
                     sub_eval = evaluate_pattern_a(sub_snap)
                     s_val = round(sub_eval.score, 2) if sub_eval.score is not None else None
@@ -1017,6 +1041,7 @@ def generate_stock_report(
         daily_slice=daily_slice,
         as_of=req_as_of_ts,
         root_path=root_path,
+        market_calendar=production_market_calendar,
     )
 
     # 8c. A FAST Core V2 Strategy Section (v0.2 Core Innovation)
@@ -1039,6 +1064,7 @@ def generate_stock_report(
         investability_result=inv_eval,
         is_common_stock=is_common,
         metadata_provenance_mode=metadata_provenance_mode,
+        market_calendar=production_market_calendar,
     )
     # Preserve the frozen report-artifact provenance while keeping the model's
     # default pointed at the canonical strategy document.
@@ -1120,7 +1146,7 @@ def generate_stock_report(
     )
 
     provenance = ProvenanceSection(
-        stock_price_source="local parquet cache",
+        stock_price_source=price_source,
         score_contract="pattern_a_score_v0.2",
         stage_contract="pattern_a_stage_v0.1",
         investability_contract="phase10",
@@ -1181,10 +1207,23 @@ def main() -> None:
     parser.add_argument("--output-dir", default=None, help="Custom output directory")
     args = parser.parse_args()
 
+    root = Path(__file__).resolve().parents[3]
+    if args.as_of:
+        report_end = args.as_of
+    else:
+        latest = AdjustedPriceStore(root / "data/market/adjusted/stocks").latest_date("005930")
+        report_end = latest.strftime("%Y-%m-%d") if latest is not None else "2026-08-14"
+    # PRODUCTION_ROLLING_MODE (directive ROLLING_MARKET_DATA_AUTHORITY_FINALIZATION_V01 section 8):
+    # report_end can be "latest local available date" -- a live, moving target -- so the rolling
+    # certified boundary must be enforced unconditionally, never opt-in.
+    repository = build_production_repository_v2(root, end=report_end)
+
     report, jp, mp = generate_stock_report(
         ticker=args.ticker,
-        as_of=args.as_of,
+        as_of=report_end,
+        repo_root=root,
         output_dir=args.output_dir,
+        repository=repository,
     )
 
     print(f"Successfully generated stock report v{report.report_version} for {report.name} ({report.ticker})!")

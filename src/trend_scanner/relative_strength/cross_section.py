@@ -32,6 +32,18 @@ PERCENTILE_COLUMNS = (
 )
 CROSS_SECTION_COLUMNS = IMPROVEMENT_COLUMNS + RANK_COLUMNS + PERCENTILE_COLUMNS
 
+SECTOR_RANK_COLUMNS = (
+    "all_sector_rs_rank_3m",
+    "all_sector_rs_rank_6m",
+    "all_sector_rs_rank_12m",
+)
+SECTOR_PERCENTILE_COLUMNS = (
+    "all_sector_rs_percentile_3m",
+    "all_sector_rs_percentile_6m",
+    "all_sector_rs_percentile_12m",
+)
+SECTOR_CROSS_SECTION_COLUMNS = SECTOR_RANK_COLUMNS + SECTOR_PERCENTILE_COLUMNS
+
 
 def _rows_to_frame(rows: pd.DataFrame | Iterable[Any]) -> pd.DataFrame:
     if isinstance(rows, pd.DataFrame):
@@ -144,6 +156,48 @@ def attach_cross_sectional_rs(
     reference = all_market_reference.drop_duplicates("ticker").set_index("ticker")
     result = scan_rows.copy()
     for column in CROSS_SECTION_COLUMNS:
+        if column not in reference.columns:
+            raise ValueError(f"Reference is missing cross-sectional column: {column}")
+        result[column] = result["ticker"].map(reference[column])
+    return result
+
+
+def compute_sector_rs_cross_section(rows: pd.DataFrame | Iterable[Any]) -> pd.DataFrame:
+    """Compute all-COMMON Sector RS ranks and percentiles.
+
+    Sector RS is already normalized against each security's native sector
+    benchmark, so this final cross-section is over the complete COMMON input,
+    not within-sector or candidate subsets.  Missing and non-finite values are
+    excluded independently for each horizon.
+    """
+
+    result = _rows_to_frame(rows)
+    if result.empty:
+        for column in SECTOR_CROSS_SECTION_COLUMNS:
+            result[column] = pd.Series(index=result.index, dtype="float64")
+        return result
+    for horizon in ("3m", "6m", "12m"):
+        ranks, percentiles = _rank_and_percentile(_numeric(result, f"sector_rs_{horizon}"))
+        result[f"all_sector_rs_rank_{horizon}"] = ranks
+        result[f"all_sector_rs_percentile_{horizon}"] = percentiles
+    if {"market", "ticker"}.issubset(result.columns):
+        result = result.sort_values(["market", "ticker"], kind="mergesort").reset_index(drop=True)
+    elif "ticker" in result.columns:
+        result = result.sort_values(["ticker"], kind="mergesort").reset_index(drop=True)
+    return result
+
+
+def attach_sector_cross_sectional_rs(
+    scan_rows: pd.DataFrame,
+    all_sector_reference: pd.DataFrame,
+) -> pd.DataFrame:
+    """Attach a full-COMMON Sector RS reference to scanner rows by ticker."""
+
+    if "ticker" not in scan_rows.columns or "ticker" not in all_sector_reference.columns:
+        raise ValueError("Both scanner rows and reference rows require a ticker column")
+    reference = all_sector_reference.drop_duplicates("ticker").set_index("ticker")
+    result = scan_rows.copy()
+    for column in SECTOR_CROSS_SECTION_COLUMNS:
         if column not in reference.columns:
             raise ValueError(f"Reference is missing cross-sectional column: {column}")
         result[column] = result["ticker"].map(reference[column])

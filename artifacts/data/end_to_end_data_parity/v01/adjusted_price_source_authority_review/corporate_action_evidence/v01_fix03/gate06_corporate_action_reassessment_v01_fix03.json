@@ -1,0 +1,25 @@
+{
+  "schema": "gate06_corporate_action_reassessment_v01_fix03",
+  "directive_id": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03",
+  "gate_06_pass": false,
+  "authority_valid_controls_count": 0,
+  "authority_invalid_controls_count": 8,
+  "unique_control_count": 8,
+  "event_distribution": {},
+  "diversity_pass": false,
+  "raw_provenance_valid_count": 8,
+  "record_identity_valid_count": 4,
+  "event_timing_valid_count": 0,
+  "row_level_parity_control_count": 8,
+  "parity_match_count": 4,
+  "insufficient_window_count": 0,
+  "date_set_mismatch_count": 0,
+  "ohlc_mismatch_control_count": 0,
+  "comparator_error_count": 1,
+  "cohort_frozen_before_price_fetch": true,
+  "cohort_frozen_at": "2026-08-28T04:40:50.576140+00:00",
+  "cohort_sha256_before_price_fetch": "c62631cf6417054a650c2e13e7d436fcac058ea335df762c162fc10335d41888",
+  "gate_06_blockers": [
+    "Official corporate action evidence deficit: only 0/8 controls have genuine content-authenticated official disclosure documents (Section 1, 12, 66, 99)."
+  ]
+}

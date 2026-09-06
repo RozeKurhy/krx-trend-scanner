@@ -35,7 +35,7 @@ from typing import Callable
 
 import pandas as pd
 
-from trend_scanner.data.market_calendar import MarketCalendarAuthority
+from trend_scanner.data.market_calendar import MarketCalendarAuthority, is_completed_market_month
 from trend_scanner.data.resampler import to_monthly, to_weekly
 from trend_scanner.validation.feature_report import build_feature_row
 from trend_scanner.validation.historical_snapshot import (
@@ -167,6 +167,7 @@ def _reconstruct_period_frame(
     daily: pd.DataFrame,
     effective_as_of: pd.Timestamp,
     resample_fn: Callable[[pd.DataFrame], pd.DataFrame],
+    skip_incomplete_tail: bool = False,
 ) -> pd.DataFrame:
     """Reconstructs the weekly/monthly frame equivalent to
     ``resample_fn(daily[daily.index <= effective_as_of])`` by reusing
@@ -176,6 +177,14 @@ def _reconstruct_period_frame(
     safe_part = full_frame.iloc[:safe_upto]
 
     if safe_upto >= len(labels):
+        return safe_part
+
+    # When the caller will immediately drop an incomplete tail bucket, do not
+    # resample that bucket just to throw it away.  This is exact for the
+    # weekly path (the label is necessarily after ``effective_as_of``), and
+    # callers must only set it for the monthly path after applying the same
+    # calendar/request-date condition as ``_drop_incomplete_current_month``.
+    if skip_incomplete_tail:
         return safe_part
 
     prev_boundary = labels[safe_upto - 1] if safe_upto > 0 else None
@@ -214,8 +223,43 @@ def build_historical_snapshot_from_context(
         weekly = context.full_weekly.iloc[0:0]
         monthly = context.full_monthly.iloc[0:0]
     else:
-        weekly = _reconstruct_period_frame(context.full_weekly, context.weekly_labels, context.daily, effective_as_of, to_weekly)
-        monthly = _reconstruct_period_frame(context.full_monthly, context.monthly_labels, context.daily, effective_as_of, to_monthly)
+        # ``_drop_incomplete_weekly`` always removes the one tail bucket whose
+        # calendar label is after the last observed daily date.  Avoid its
+        # resample entirely; completed buckets remain byte-for-byte identical.
+        weekly = _reconstruct_period_frame(
+            context.full_weekly,
+            context.weekly_labels,
+            context.daily,
+            effective_as_of,
+            to_weekly,
+            skip_incomplete_tail=not include_incomplete_periods,
+        )
+
+        # Monthly completion is market-calendar based.  A ticker can be
+        # halted before month-end while the market month is already complete;
+        # in that case the tail must be reconstructed and retained.  Skip
+        # only when the exact legacy drop helper would remove the tail.
+        monthly_safe_upto = bisect.bisect_right(context.monthly_labels, effective_as_of)
+        monthly_tail_label = (
+            context.monthly_labels[monthly_safe_upto]
+            if monthly_safe_upto < len(context.monthly_labels)
+            else None
+        )
+        monthly_tail_is_incomplete = bool(
+            not include_incomplete_periods
+            and monthly_tail_label is not None
+            and monthly_tail_label.year == requested.year
+            and monthly_tail_label.month == requested.month
+            and not is_completed_market_month(requested, calendar=market_calendar)
+        )
+        monthly = _reconstruct_period_frame(
+            context.full_monthly,
+            context.monthly_labels,
+            context.daily,
+            effective_as_of,
+            to_monthly,
+            skip_incomplete_tail=monthly_tail_is_incomplete,
+        )
 
     if not include_incomplete_periods:
         monthly = _drop_incomplete_current_month(monthly, requested, market_calendar=market_calendar)

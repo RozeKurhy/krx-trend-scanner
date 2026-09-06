@@ -1,0 +1,26 @@
+{
+  "affected_line_count": 2,
+  "affected_ticker": "021240",
+  "exact_line_deltas": [
+    {
+      "allowlisted_field": "data_quality.daily_rows_count",
+      "canonical": "- **로컬 일봉 캐시**: `정상 로드 (1222행)`",
+      "current": "- **로컬 일봉 캐시**: `정상 로드 (1226행)`",
+      "line": 314
+    },
+    {
+      "allowlisted_field": "data_quality.cache_last_date",
+      "canonical": "- **데이터 기간**: `2021-08-17` ~ `2026-08-14`",
+      "current": "- **데이터 기간**: `2021-08-17` ~ `2026-08-21`",
+      "line": 315
+    }
+  ],
+  "fields": [
+    "data_quality.daily_rows_count",
+    "data_quality.cache_last_date"
+  ],
+  "patterns": [
+    "- **로컬 일봉 캐시**: `정상 로드 (<row_count>행)`",
+    "- **데이터 기간**: `<first_date>` ~ `<cache_last_date>`"
+  ]
+}

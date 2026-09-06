@@ -1,0 +1,51 @@
+{
+  "schema": "fresh_full_population_post_resume_closure_gate_v01",
+  "execution_id": "FRESH_FULL_POPULATION_RUN_V01_20260831T122021KST",
+  "population_total": 3162,
+  "closure_complete_total": 3152,
+  "required_closure_complete_total": 3162,
+  "status_counts": {
+    "population_total": 3162,
+    "complete": 3152,
+    "normal_complete": 3148,
+    "partial": 1,
+    "empty": 0,
+    "error": 0,
+    "insufficient_authority": 9,
+    "no_usable_observations": 0,
+    "complete_with_adjudicated_nonusable": 4,
+    "closure_complete_total": 3152
+  },
+  "coverage_totals": {
+    "total_expected_rows": 8216690,
+    "total_actual_source_rows": 8219779,
+    "total_stored_rows": 8219779,
+    "total_missing_expected_dates": 0,
+    "total_unexpected_source_dates": 3089,
+    "total_silent_missing_dates": 0,
+    "total_usable_source_rows": 8219779,
+    "total_confirmed_nontrading_dates": 176,
+    "total_adjudicated_source_nonusable_dates": 170219,
+    "total_authority_conflict_dates": 1,
+    "total_resolved_authority_conflict_dates": 1,
+    "total_unresolved_authority_conflict_dates": 0,
+    "total_phantom_rows": 170676,
+    "total_authority_suppressed_source_rows": 176
+  },
+  "quality_totals": {
+    "total_duplicates": 0,
+    "total_invalid_ohlc": 0,
+    "total_future_rows": 0,
+    "total_analytic_invalid_ohlc": 29398
+  },
+  "gate_pass": false,
+  "failed_gates": [
+    "closure_complete_total!=population_total",
+    "insufficient_authority_count=9",
+    "partial_count=1",
+    "zero_call_final_resume_not_eligible",
+    "canonical_promotion_not_authorized"
+  ],
+  "full_repository_pytest": "NOT_RUN_BY_DIRECTIVE",
+  "captured_at": "2026-08-31T04:07:15.534231+00:00"
+}

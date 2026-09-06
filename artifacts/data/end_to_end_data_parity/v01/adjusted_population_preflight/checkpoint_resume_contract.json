@@ -1,0 +1,8 @@
+{
+  "operational_manifest_fields": ["ticker", "requested_start", "requested_end", "status", "attempt_count", "last_error", "actual_date_min", "actual_date_max", "row_count", "content_sha256", "completed_at"],
+  "terminal_statuses": ["COMPLETE", "NO_HISTORY", "NOT_APPLICABLE", "UNSUPPORTED", "FAILED_RETRYABLE", "FAILED_PERMANENT"],
+  "manifest_authority_separation": "Operational request log is separate from production authority; production completeness requires valid pair plus terminal manifest state.",
+  "checkpoint_timing": "After response, normalized-frame, metadata, hash, and pair-integrity PASS.",
+  "resume": "Skip only revalidated COMPLETE/NO_HISTORY/NOT_APPLICABLE/UNSUPPORTED records; retry FAILED_RETRYABLE within bounded budget; never resume partial temp files.",
+  "partial_publication": "Pilot pair in temp/pilot namespace; production path remains empty and consumers disabled."
+}

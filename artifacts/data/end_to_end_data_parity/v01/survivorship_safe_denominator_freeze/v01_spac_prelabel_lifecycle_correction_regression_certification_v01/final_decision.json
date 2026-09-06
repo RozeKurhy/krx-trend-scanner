@@ -1,0 +1,6 @@
+{
+  "schema": "final_decision_v01",
+  "VERDICT": "ACCEPT",
+  "NEXT_STATE": "READY_FOR_ADJUSTED_PRICE_FRESH_RUN_AUTHORITY_CUTOVER",
+  "reason": "Pattern A standalone completed with 12/12 selected tests passing. Full repository pytest completed to 100% without interruption; the only failure is the pre-accepted historical-backfill baseline assertion, with zero unexpected failures. Network accounting is zero for Naver, KRX, OpenDART, and all external requests. Existing fresh staging/checkpoint/canonical stores and accepted SPAC population/PIT candidates were not mutated. This certifies the regression phase only; authority cutover and adjusted-price fresh run remain a separate next directive."
+}

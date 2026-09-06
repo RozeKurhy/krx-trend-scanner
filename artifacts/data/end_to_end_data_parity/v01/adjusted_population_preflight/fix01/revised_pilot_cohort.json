@@ -1,0 +1,20 @@
+{
+  "schema": "adjusted_population_preflight_fix01_revised_pilot_cohort_v01",
+  "pilot_executed": false,
+  "purpose": "Bounded diagnostic pilot design only; no requests or writes in FIX01.",
+  "cohort_count": 9,
+  "cohort": [
+    {"ticker": "005930", "category": "NUMERIC_CURRENT_CONTROL", "window": ["2026-07-01", "2026-08-21"], "path": "production_numeric_provider"},
+    {"ticker": "000660", "category": "NUMERIC_LONG_HISTORY", "window": ["2010-01-04", "2010-03-31"], "path": "production_numeric_provider"},
+    {"ticker": "068270", "category": "NUMERIC_CORPORATE_ACTION", "window": ["2018-04-01", "2018-06-30"], "path": "production_numeric_provider"},
+    {"ticker": "002270", "category": "NUMERIC_DELISTED_HISTORICAL", "window": ["2022-06-24", "2022-07-19"], "path": "production_numeric_provider"},
+    {"ticker": "0001A0", "category": "ALPHA_COMMON_KOSDAQ", "window": ["2026-07-01", "2026-08-21"], "path": "direct_alpha_diagnostic"},
+    {"ticker": "0120G0", "category": "ALPHA_COMMON_KOSPI", "window": ["2026-07-01", "2026-08-21"], "path": "direct_alpha_diagnostic"},
+    {"ticker": "0004V0", "category": "ALPHA_COMMON_KOSDAQ", "window": ["2026-07-01", "2026-08-21"], "path": "direct_alpha_diagnostic"},
+    {"ticker": "0004Y0", "category": "ALPHA_SPAC_NOT_APPLICABLE", "window": ["2026-07-01", "2026-08-21"], "path": "direct_alpha_diagnostic_non_consumer"},
+    {"ticker": "00781K", "category": "ALPHA_FORMAL_UNKNOWN_NON_CONSUMER", "window": ["2026-07-01", "2026-08-21"], "path": "direct_alpha_diagnostic_non_consumer"}
+  ],
+  "common_alpha_expansion": {"previous_common_alpha_count": 23, "proposed_common_alpha_cases": 3},
+  "storage": "temp/pilot namespace only; never production completeness",
+  "execution_status": "NOT_AUTHORIZED_UNTIL_SURVIVORSHIP_GATE_PASS"
+}

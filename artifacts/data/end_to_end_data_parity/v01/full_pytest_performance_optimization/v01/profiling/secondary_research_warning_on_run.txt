@@ -1,0 +1,19 @@
+.                                                                        [100%]
+=============================== warnings summary ===============================
+tests/test_stage_v03_research_consistency.py: 14766 warnings
+  /Users/june/Documents/projects/krx-trend-scanner/.venv/lib/python3.13/site-packages/pandas/core/resample.py:2359: DeprecationWarning: The 'generic' unit for NumPy timedelta is deprecated, and will raise an error in the future. This includes implicit conversion of bare integers (e.g. `+ 1`).Please use a specific unit instead.
+    + Timedelta(days=1, unit=edges_dti.unit).as_unit(edges_dti.unit)
+
+tests/test_stage_v03_research_consistency.py: 1808 warnings
+  /Users/june/Documents/projects/krx-trend-scanner/src/trend_scanner/features/moving_average.py:23: FutureWarning: The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+    return series.pct_change(periods)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+============================= slowest 10 durations =============================
+53.89s call     tests/test_stage_v03_research_consistency.py::test_research_artifact_deterministic_regeneration
+
+(2 durations < 0.005s hidden.  Use -vv to show these durations.)
+1 passed, 16574 warnings in 54.12s
+real 54.28
+user 53.86
+sys 0.39

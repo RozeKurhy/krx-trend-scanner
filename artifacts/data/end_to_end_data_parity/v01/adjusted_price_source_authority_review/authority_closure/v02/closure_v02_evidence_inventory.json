@@ -1,0 +1,325 @@
+{
+  "schema": "closure_v02_evidence_inventory_v01",
+  "directive_id": "C13_AUTHORITY_CLOSURE_REASSESSMENT_V02",
+  "parent_directive": "C13_FIX02_REGRESSION_RECERTIFICATION_V01_FIX01",
+  "execution_type": "EVIDENCE_ONLY_AUTHORITY_CLOSURE_REASSESSMENT",
+  "created_at": "2026-08-30T13:01:04.698397+09:00",
+  "namespace": "/private/tmp/krx_c13_authority_closure_reassessment_v02",
+  "fix02_head": "99ce7d0b8127f48af3b8b002c246a6c4b0a4395d",
+  "fix02_tree": "4dfacef5ffe750675f5fc224003c64504f620603",
+  "source_exists_all": true,
+  "source_artifact_hashes_verified": true,
+  "entry_count": 44,
+  "entries": [
+    {
+      "source_path": "/private/tmp/krx_c13_fix02_regression_recertification_v01_fix01/fix02_full_regression_certification.json",
+      "filename": "fix02_full_regression_certification.json",
+      "sha256": "1a2bd20ea4e17869ad381966342b60aeb8759b5308490e695a7b7edf8a8f93bb",
+      "size_bytes": 1215,
+      "evidence_role": "accepted_fix02_regression_certification"
+    },
+    {
+      "source_path": "/private/tmp/krx_c13_fix02_regression_recertification_v01_fix01/full_pytest_fix02_recertification_fix01.log",
+      "filename": "full_pytest_fix02_recertification_fix01.log",
+      "sha256": "7a0e813588cbf0515fb6fe8185c91488f15adf6b10d19242001b592f7beb8f72",
+      "size_bytes": 27673,
+      "evidence_role": "accepted_fix02_pytest_log"
+    },
+    {
+      "source_path": "/private/tmp/krx_c13_fix02_regression_recertification_v01_fix01/fix02_regression_recertification_preflight.json",
+      "filename": "fix02_regression_recertification_preflight.json",
+      "sha256": "cc5bf20d4fc233eac482ddf1fd9e16ac7caa1a8ba73a57797ad0922327a23eaf",
+      "size_bytes": 3089,
+      "evidence_role": "accepted_fix02_preflight"
+    },
+    {
+      "source_path": "/private/tmp/krx_c13_fix02_regression_recertification_v01_fix01/source_parquet_manifest.csv",
+      "filename": "source_parquet_manifest.csv",
+      "sha256": "cf848da61ee65b53e7c2580f07e43349ef0b82848624c0c682b78f56806c9b99",
+      "size_bytes": 215596,
+      "evidence_role": "accepted_source_cache_manifest"
+    },
+    {
+      "source_path": "/private/tmp/krx_c13_fix02_regression_recertification_v01_fix01/destination_parquet_manifest.csv",
+      "filename": "destination_parquet_manifest.csv",
+      "sha256": "cf848da61ee65b53e7c2580f07e43349ef0b82848624c0c682b78f56806c9b99",
+      "size_bytes": 215596,
+      "evidence_role": "accepted_destination_cache_manifest"
+    },
+    {
+      "source_path": "/private/tmp/krx_c13_fix02_regression_recertification_v01_fix01/real_offline_reassessment/implementation_fix_identity.json",
+      "filename": "implementation_fix_identity.json",
+      "sha256": "67225de791e74a657b1644e3aafa86aaef7cf50b86b76479599ef92c86120dcc",
+      "size_bytes": 400,
+      "evidence_role": "accepted_reassessment_identity"
+    },
+    {
+      "source_path": "/private/tmp/krx_c13_fix02_regression_recertification_v01_fix01/real_offline_reassessment/implementation_regression_certification.json",
+      "filename": "implementation_regression_certification.json",
+      "sha256": "1a2bd20ea4e17869ad381966342b60aeb8759b5308490e695a7b7edf8a8f93bb",
+      "size_bytes": 1215,
+      "evidence_role": "accepted_reassessment_regression_binding"
+    },
+    {
+      "source_path": "/private/tmp/krx_c13_fix02_regression_recertification_v01_fix01/real_offline_reassessment/candidate_population_reassessment.csv",
+      "filename": "candidate_population_reassessment.csv",
+      "sha256": "b7d23e0784e9e13d5734bcf6abc4dd21e54893535e6307dde8dec2225a5bddef",
+      "size_bytes": 406,
+      "evidence_role": "accepted_reassessment_candidate_population"
+    },
+    {
+      "source_path": "/private/tmp/krx_c13_fix02_regression_recertification_v01_fix01/real_offline_reassessment/reassessed_corporate_action_controls.csv",
+      "filename": "reassessed_corporate_action_controls.csv",
+      "sha256": "368662f2373635fd2d71166daa92cd9fc5ede48a57396843e5fd167cd0983eca",
+      "size_bytes": 8956,
+      "evidence_role": "accepted_reassessment_controls"
+    },
+    {
+      "source_path": "/private/tmp/krx_c13_fix02_regression_recertification_v01_fix01/real_offline_reassessment/dual_tier_provenance.json",
+      "filename": "dual_tier_provenance.json",
+      "sha256": "f9ad4b5fed0f4e94856a1772a1418719f5e7a8405a655055d225f72d39054e52",
+      "size_bytes": 1373,
+      "evidence_role": "accepted_dual_tier_provenance"
+    },
+    {
+      "source_path": "/private/tmp/krx_c13_fix02_regression_recertification_v01_fix01/real_offline_reassessment/reassessed_provenance_audit.json",
+      "filename": "reassessed_provenance_audit.json",
+      "sha256": "1e64bd658e5874ed03b33ebac47bc881fc06eb20169932fb890211a5a9ae29a3",
+      "size_bytes": 4412,
+      "evidence_role": "accepted_reassessment_provenance_audit"
+    },
+    {
+      "source_path": "/private/tmp/krx_c13_fix02_regression_recertification_v01_fix01/real_offline_reassessment/gate06_reassessment.json",
+      "filename": "gate06_reassessment.json",
+      "sha256": "1d5f205de62fcf9f0d4e77b55c0204d72558fd59b5555e2692125ed7b73fe738",
+      "size_bytes": 5213,
+      "evidence_role": "accepted_gate06_reassessment"
+    },
+    {
+      "source_path": "/private/tmp/krx_c13_fix02_regression_recertification_v01_fix01/real_offline_reassessment/gate14_reassessment.json",
+      "filename": "gate14_reassessment.json",
+      "sha256": "d24b571057289ffbf27b339bf1bb6138344b14bc8635551ab422cbfb26110b6c",
+      "size_bytes": 1418,
+      "evidence_role": "accepted_gate14_reassessment"
+    },
+    {
+      "source_path": "/private/tmp/krx_c13_fix02_regression_recertification_v01_fix01/real_offline_reassessment/gate15_reassessment.json",
+      "filename": "gate15_reassessment.json",
+      "sha256": "1f355f2dafce8e315ca997150f60a69ffec3cd5b31a58b31843eb26368ea9c64",
+      "size_bytes": 439,
+      "evidence_role": "accepted_gate15_reassessment"
+    },
+    {
+      "source_path": "/private/tmp/krx_c13_fix02_regression_recertification_v01_fix01/real_offline_reassessment/reassessed_event_sensitive_parity.csv",
+      "filename": "reassessed_event_sensitive_parity.csv",
+      "sha256": "7da03cb20023f0534ad519183307444eb749f4cbf5efd9cc4f9994b95e6f6f08",
+      "size_bytes": 2551,
+      "evidence_role": "accepted_reassessment_price_parity"
+    },
+    {
+      "source_path": "/private/tmp/krx_c13_fix02_regression_recertification_v01_fix01/real_offline_reassessment/reassessed_date_reconciliation.csv",
+      "filename": "reassessed_date_reconciliation.csv",
+      "sha256": "69ea3ebda340cfe4c10face15396e9c74db22cb275ccf6d7f2e1a5b78a30d0d6",
+      "size_bytes": 1967,
+      "evidence_role": "accepted_reassessment_date_reconciliation"
+    },
+    {
+      "source_path": "/private/tmp/krx_c13_fix02_regression_recertification_v01_fix01/real_offline_reassessment/samsung_anchor_reassessment.json",
+      "filename": "samsung_anchor_reassessment.json",
+      "sha256": "35cc5bf96bacd33bff73fba73d82e0d8596275455d16561acd0ad27319fa45fc",
+      "size_bytes": 263,
+      "evidence_role": "accepted_samsung_anchor"
+    },
+    {
+      "source_path": "/private/tmp/krx_c13_fix02_regression_recertification_v01_fix01/real_offline_reassessment/samsung_price_parity_reassessment.csv",
+      "filename": "samsung_price_parity_reassessment.csv",
+      "sha256": "780ea761204c4b7d82b035d3b043a27c4737e2e1df32622f0cd56c560aec8d5e",
+      "size_bytes": 380,
+      "evidence_role": "accepted_samsung_price_parity"
+    },
+    {
+      "source_path": "/private/tmp/krx_c13_fix02_regression_recertification_v01_fix01/real_offline_reassessment/offline_reassessment_manifest.json",
+      "filename": "offline_reassessment_manifest.json",
+      "sha256": "487f69ff85dc55ed50e902611bafd90ff01f23fbe827cce57e539315c6d134b3",
+      "size_bytes": 5994,
+      "evidence_role": "accepted_reassessment_manifest"
+    },
+    {
+      "source_path": "/private/tmp/krx_c13_fix02_regression_recertification_v01_fix01/real_offline_reassessment/issuer_official_trust_registry_audit.json",
+      "filename": "issuer_official_trust_registry_audit.json",
+      "sha256": "bd2d87e57f0579ffb4ca772780c4b7c5f4b8e51e040eb91cdeb9d09117ea1355",
+      "size_bytes": 420,
+      "evidence_role": "accepted_issuer_trust_registry_audit"
+    },
+    {
+      "source_path": "/private/tmp/krx_c13_fix02_regression_recertification_v01_fix01/real_offline_reassessment/tier_b_fallback_contract_validation.json",
+      "filename": "tier_b_fallback_contract_validation.json",
+      "sha256": "bbaa23f852d5b87b468f9a08b11ad8217f9b4abd09416db1098fa212552e801b",
+      "size_bytes": 2705,
+      "evidence_role": "accepted_fallback_contract_validation"
+    },
+    {
+      "source_path": "/private/tmp/krx_c13_resume3_evidence/c13_live_artifacts/adjusted_price_source_authority_corporate_action_evidence_v01_fix03_correction_13.json",
+      "filename": "adjusted_price_source_authority_corporate_action_evidence_v01_fix03_correction_13.json",
+      "sha256": "276a42b76720b8a188fbeaa7b3ce8556f530666cd9aa04a74fec3ce3b08aff3b",
+      "size_bytes": 52013,
+      "evidence_role": "historical_or_immutable_reference"
+    },
+    {
+      "source_path": "/private/tmp/krx_c13_resume3_evidence/c13_live_artifacts/artifact_manifest.json",
+      "filename": "artifact_manifest.json",
+      "sha256": "abd11cc6087acab0917e06661d7808095a57e63b19e35beb8df0cb3247282d58",
+      "size_bytes": 13342,
+      "evidence_role": "historical_or_immutable_reference"
+    },
+    {
+      "source_path": "/private/tmp/krx_c13_resume3_evidence/authority_source_tier_contract_review_v01/authority_source_tier_contract_review_v01.json",
+      "filename": "authority_source_tier_contract_review_v01.json",
+      "sha256": "13cb04f8d48450ff2c90b8108d80e05e214ae03d02b6c43ada698a33d9ca493d",
+      "size_bytes": 8529,
+      "evidence_role": "historical_or_immutable_reference"
+    },
+    {
+      "source_path": "/private/tmp/krx_c13_resume3_evidence/unresolved_higher_priority_candidate_resolution_v01_fix01/issuer_official_raw/samsung_public_disclosure_71206.html",
+      "filename": "samsung_public_disclosure_71206.html",
+      "sha256": "940b0ab6bfdfc3c179dc7f2d5c01e088af436b8c479ad4f4c0c7739dbca9a116",
+      "size_bytes": 133192,
+      "evidence_role": "historical_or_immutable_reference"
+    },
+    {
+      "source_path": "/Users/june/Documents/projects/krx-trend-scanner/artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/authority_closure/v01/artifact_manifest.json",
+      "filename": "artifact_manifest.json",
+      "sha256": "d22c43f2f2ccdc85ec9fac1c7c13134a1915e3965e0fc442bef5aff84a47b378",
+      "size_bytes": 10923,
+      "evidence_role": "historical_or_immutable_reference"
+    },
+    {
+      "source_path": "/Users/june/Documents/projects/krx-trend-scanner/artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/authority_closure/v01/authority_closure_artifact_finalization_v01.json",
+      "filename": "authority_closure_artifact_finalization_v01.json",
+      "sha256": "b5c8b381141f8d7e1e988131bf8affb8efa4716200ed0e5ccb0b5933749be3fd",
+      "size_bytes": 1743,
+      "evidence_role": "historical_or_immutable_reference"
+    },
+    {
+      "source_path": "/Users/june/Documents/projects/krx-trend-scanner/artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/authority_closure/v01/authority_closure_decision.json",
+      "filename": "authority_closure_decision.json",
+      "sha256": "3dc096a08d562e1685bc759db64f66aca20bc3e10b42f0f5014d72e9a53206cb",
+      "size_bytes": 439,
+      "evidence_role": "historical_or_immutable_reference"
+    },
+    {
+      "source_path": "/Users/june/Documents/projects/krx-trend-scanner/artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/authority_closure/v01/candidate_population_reassessment.csv",
+      "filename": "candidate_population_reassessment.csv",
+      "sha256": "ce904eb7b52f78e2d89fc7cea04ed8d38fb15bf6e0dd04c80f94423f58784afb",
+      "size_bytes": 273,
+      "evidence_role": "accepted_reassessment_candidate_population"
+    },
+    {
+      "source_path": "/Users/june/Documents/projects/krx-trend-scanner/artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/authority_closure/v01/closure_reassessment_result.json",
+      "filename": "closure_reassessment_result.json",
+      "sha256": "46a884bf44b06c4cc03d77f9d78ea653bad5ceae00e84ea8486bd3e4dcf8b3d8",
+      "size_bytes": 3203,
+      "evidence_role": "historical_or_immutable_reference"
+    },
+    {
+      "source_path": "/Users/june/Documents/projects/krx-trend-scanner/artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/authority_closure/v01/dual_tier_provenance.json",
+      "filename": "dual_tier_provenance.json",
+      "sha256": "74d1e6dde9ac09c5714f3259eb4d0830b8cfde1f6b06a4b6d972d78a86b94881",
+      "size_bytes": 531,
+      "evidence_role": "accepted_dual_tier_provenance"
+    },
+    {
+      "source_path": "/Users/june/Documents/projects/krx-trend-scanner/artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/authority_closure/v01/gate06_reassessment.json",
+      "filename": "gate06_reassessment.json",
+      "sha256": "c6bc868adced7fd1d1fd6b33a57fa3c237025e6c83b92bcec370dff93c3065fb",
+      "size_bytes": 5065,
+      "evidence_role": "accepted_gate06_reassessment"
+    },
+    {
+      "source_path": "/Users/june/Documents/projects/krx-trend-scanner/artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/authority_closure/v01/gate15_reassessment.json",
+      "filename": "gate15_reassessment.json",
+      "sha256": "1f355f2dafce8e315ca997150f60a69ffec3cd5b31a58b31843eb26368ea9c64",
+      "size_bytes": 439,
+      "evidence_role": "accepted_gate15_reassessment"
+    },
+    {
+      "source_path": "/Users/june/Documents/projects/krx-trend-scanner/artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/authority_closure/v01/implementation_fix_identity.json",
+      "filename": "implementation_fix_identity.json",
+      "sha256": "a39aff170cfd4dceea0a5e2483c18707b6107de3935fff1877f64fef0466bfa6",
+      "size_bytes": 400,
+      "evidence_role": "accepted_reassessment_identity"
+    },
+    {
+      "source_path": "/Users/june/Documents/projects/krx-trend-scanner/artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/authority_closure/v01/implementation_regression_certification.json",
+      "filename": "implementation_regression_certification.json",
+      "sha256": "25d9095c3775648351bdc5b554c4c339c810a0a1cdcaa616c8607c05fb3c3215",
+      "size_bytes": 897,
+      "evidence_role": "accepted_reassessment_regression_binding"
+    },
+    {
+      "source_path": "/Users/june/Documents/projects/krx-trend-scanner/artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/authority_closure/v01/issuer_official_trust_registry_audit.json",
+      "filename": "issuer_official_trust_registry_audit.json",
+      "sha256": "bd2d87e57f0579ffb4ca772780c4b7c5f4b8e51e040eb91cdeb9d09117ea1355",
+      "size_bytes": 420,
+      "evidence_role": "accepted_issuer_trust_registry_audit"
+    },
+    {
+      "source_path": "/Users/june/Documents/projects/krx-trend-scanner/artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/authority_closure/v01/offline_reassessment_manifest.json",
+      "filename": "offline_reassessment_manifest.json",
+      "sha256": "4e5f01bba66b86d2cdafe5b9e119e5fd0cf9d81a9436f6403e3f96cc9aeafba6",
+      "size_bytes": 4625,
+      "evidence_role": "accepted_reassessment_manifest"
+    },
+    {
+      "source_path": "/Users/june/Documents/projects/krx-trend-scanner/artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/authority_closure/v01/reassessed_corporate_action_controls.csv",
+      "filename": "reassessed_corporate_action_controls.csv",
+      "sha256": "3caf499dc4a6a3f2684e30fc62fa5495b8b0977bda2c47570eba69e37f9e1e16",
+      "size_bytes": 8239,
+      "evidence_role": "accepted_reassessment_controls"
+    },
+    {
+      "source_path": "/Users/june/Documents/projects/krx-trend-scanner/artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/authority_closure/v01/reassessed_date_reconciliation.csv",
+      "filename": "reassessed_date_reconciliation.csv",
+      "sha256": "69ea3ebda340cfe4c10face15396e9c74db22cb275ccf6d7f2e1a5b78a30d0d6",
+      "size_bytes": 1967,
+      "evidence_role": "accepted_reassessment_date_reconciliation"
+    },
+    {
+      "source_path": "/Users/june/Documents/projects/krx-trend-scanner/artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/authority_closure/v01/reassessed_event_sensitive_parity.csv",
+      "filename": "reassessed_event_sensitive_parity.csv",
+      "sha256": "7da03cb20023f0534ad519183307444eb749f4cbf5efd9cc4f9994b95e6f6f08",
+      "size_bytes": 2551,
+      "evidence_role": "accepted_reassessment_price_parity"
+    },
+    {
+      "source_path": "/Users/june/Documents/projects/krx-trend-scanner/artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/authority_closure/v01/regression_certification_preflight.json",
+      "filename": "regression_certification_preflight.json",
+      "sha256": "23894cc5b20a256e50d2a831482b71300d39e2de2b0a7a2c4772e1a5c566d184",
+      "size_bytes": 2221,
+      "evidence_role": "historical_or_immutable_reference"
+    },
+    {
+      "source_path": "/Users/june/Documents/projects/krx-trend-scanner/artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/authority_closure/v01/samsung_anchor_reassessment.json",
+      "filename": "samsung_anchor_reassessment.json",
+      "sha256": "35cc5bf96bacd33bff73fba73d82e0d8596275455d16561acd0ad27319fa45fc",
+      "size_bytes": 263,
+      "evidence_role": "accepted_samsung_anchor"
+    },
+    {
+      "source_path": "/Users/june/Documents/projects/krx-trend-scanner/artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/authority_closure/v01/samsung_price_parity_reassessment.csv",
+      "filename": "samsung_price_parity_reassessment.csv",
+      "sha256": "780ea761204c4b7d82b035d3b043a27c4737e2e1df32622f0cd56c560aec8d5e",
+      "size_bytes": 380,
+      "evidence_role": "accepted_samsung_price_parity"
+    },
+    {
+      "source_path": "/Users/june/Documents/projects/krx-trend-scanner/artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/authority_closure/v01/tier_b_fallback_contract_validation.json",
+      "filename": "tier_b_fallback_contract_validation.json",
+      "sha256": "bbaa23f852d5b87b468f9a08b11ad8217f9b4abd09416db1098fa212552e801b",
+      "size_bytes": 2705,
+      "evidence_role": "accepted_fallback_contract_validation"
+    }
+  ],
+  "external_network_calls": 0,
+  "source_integration_executed": false
+}

@@ -1,0 +1,49 @@
+{
+  "checks": {
+    "asset_type": true,
+    "name": true,
+    "numeric_nulls": true,
+    "rs_applicability": true,
+    "rs_status": true,
+    "ticker_identity": true
+  },
+  "pass": true,
+  "snapshot": {
+    "a_fast_core": {
+      "canonical_position": "NOT_APPLICABLE",
+      "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02"
+    },
+    "asset_type": "ETF",
+    "market": "KOSPI",
+    "name": "KODEX 200",
+    "relative_strength": {
+      "all_market_rs_percentile_12m": null,
+      "all_market_rs_percentile_3m": null,
+      "all_market_rs_percentile_6m": null,
+      "all_market_rs_rank_12m": null,
+      "all_market_rs_rank_3m": null,
+      "all_market_rs_rank_6m": null,
+      "applicability": "NOT_APPLICABLE",
+      "benchmark_code": null,
+      "benchmark_last_observation_date": null,
+      "benchmark_name": null,
+      "data_status": "NOT_EVALUATED",
+      "explanation": "Phase12 Market RS는 KOSPI/KOSDAQ 보통주(COMMON)를 대상으로 정의되어 이 종목에는 적용되지 않습니다.",
+      "market_anchor_date_12m": null,
+      "market_anchor_date_3m": null,
+      "market_anchor_date_6m": null,
+      "market_rs_12m": null,
+      "market_rs_3m": null,
+      "market_rs_6m": null,
+      "market_rs_acceleration_3_6_12m": null,
+      "market_rs_delta_3m_vs_6m": null,
+      "market_rs_delta_6m_vs_12m": null,
+      "phase12_closure_sha": "5fdf97793c1fd7683c33d5fe77ff4da97fc75a19",
+      "source_artifact": null,
+      "source_as_of": null,
+      "source_sha256": null
+    },
+    "report_status": "PARTIAL",
+    "ticker": "069500"
+  }
+}

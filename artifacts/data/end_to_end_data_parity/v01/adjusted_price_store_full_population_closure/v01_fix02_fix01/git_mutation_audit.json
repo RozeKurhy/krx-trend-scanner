@@ -1,0 +1,30 @@
+{
+  "schema": "adjusted_price_store_full_population_fix02_fix01_git_mutation_audit_v01",
+  "branch": "codex/end-to-end-data-parity-v01",
+  "start_head": "54a47969ce8364d50b574c5186c5553cfbe75261",
+  "start_tree": "de7500618700c773057812e9c3481a9381b31e49",
+  "changed_paths": [
+    "src/trend_scanner/data/adjusted_price_full_population.py",
+    "src/trend_scanner/data/adjusted_price_provider.py",
+    "src/trend_scanner/data/adjusted_price_semantics.py",
+    "tests/test_adjusted_price_store_full_population_fix02.py"
+  ],
+  "staged_paths": [
+    "src/trend_scanner/data/adjusted_price_full_population.py",
+    "src/trend_scanner/data/adjusted_price_provider.py",
+    "src/trend_scanner/data/adjusted_price_semantics.py",
+    "tests/test_adjusted_price_store_full_population_fix02.py"
+  ],
+  "commit_sequence": [
+    {"sha": "5be6c6d6bbf13da7fe78d062d8185c162403096d", "purpose": "FIX02_FIX01 initial implementation"},
+    {"sha": "0a438a3e4aa7c9778ef8bf98560a2bf6cb886705", "purpose": "durable evidence package"},
+    {"sha": "6e97e28b200d7bf650130d2e7722d2a609a6478c", "purpose": "authority-status fail-closed final code correction"}
+  ],
+  "final_corrected_code_head": "6e97e28b200d7bf650130d2e7722d2a609a6478c",
+  "final_corrected_code_tree": "b5f92f0a28f01984b9883a11f5ea1a55a2f11241",
+  "remote_verified_code_head": "6e97e28b200d7bf650130d2e7722d2a609a6478c",
+  "forbidden_broad_git_add_used": false,
+  "unrelated_preserved_paths": [
+    "artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/corporate_action_evidence/v01_fix03_correction_13/"
+  ]
+}

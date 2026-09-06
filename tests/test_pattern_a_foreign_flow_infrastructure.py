@@ -17,11 +17,18 @@ from trend_scanner.validation.pattern_a_foreign_flow_infrastructure import (
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 _ARTIFACTS_DIR = _REPO_ROOT / "artifacts/patterns/pattern_a/production/flow"
+_REAL_PRODUCTION_SCAN_EXECUTION_COUNT = 0
 
 
 @pytest.fixture(scope="module")
 def base_scan_result():
-    """Run full universe scan once for module and reuse in negative tests."""
+    """Run the real 2,528-row production scan once for this module.
+
+    The result is shared read-only by validator negative tests; each mutation
+    test still creates an independent copy before exercising fail-closed logic.
+    This fixture is intentionally not marked slow so the default Full Pytest
+    workload retains the real production scan path.
+    """
     from trend_scanner.data.cache import ParquetCache
     from trend_scanner.scanner.full_universe_scanner import scan_pattern_a_universe
 
@@ -29,12 +36,15 @@ def base_scan_result():
     parquet_cache = ParquetCache(base_dir=cache_dir)
     source_parquet = _REPO_ROOT / "artifacts/patterns/pattern_a/production/flow/source/foreign_flow_daily_20260814.parquet"
     df_flow = pd.read_parquet(source_parquet) if source_parquet.exists() else pd.DataFrame()
-    return scan_pattern_a_universe(
+    global _REAL_PRODUCTION_SCAN_EXECUTION_COUNT
+    result = scan_pattern_a_universe(
         cache=parquet_cache,
         as_of=CANONICAL_AS_OF,
         flow_df=df_flow,
         enrich_flow_for_candidates=True,
     )
+    _REAL_PRODUCTION_SCAN_EXECUTION_COUNT += 1
+    return result
 
 
 @pytest.fixture(scope="module")
@@ -49,6 +59,19 @@ def flow_validation_summary() -> dict:
         output_dir=_ARTIFACTS_DIR,
         write_artifacts=True,
     )
+
+
+def test_real_production_scan_execution_contract(base_scan_result):
+    """The default suite must execute the real 2,528-row scanner path."""
+    assert _REAL_PRODUCTION_SCAN_EXECUTION_COUNT == 1
+    # Includes 25 valid alphanumeric COMMON tickers previously misclassified as UNKNOWN.
+    assert base_scan_result.summary.official_common_total == 2553
+    assert base_scan_result.summary.rows_emitted == 2553
+    # 138040 (Meritz Financial Group) is the one raw candidate among the 25-ticker delta;
+    # EARLY_TREND stage, INVESTABLE.
+    assert base_scan_result.summary.candidate_raw_count == 181
+    assert base_scan_result.summary.candidate_investable_count == 104
+    assert base_scan_result.summary.scanner_error_count == 0
 
 
 def test_foreign_flow_source_integrity(flow_validation_summary: dict):
@@ -314,4 +337,3 @@ def test_hard_gates_all_pass(flow_validation_summary: dict):
     for g_name, g_pass in gates.items():
         assert g_pass is True, f"Gate {g_name} failed!"
     assert flow_validation_summary["phase_11_status"] == "FLOW_INFRA_READY"
-

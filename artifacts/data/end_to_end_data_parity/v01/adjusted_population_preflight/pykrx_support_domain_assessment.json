@@ -1,0 +1,15 @@
+{
+  "authority": "src/trend_scanner/data/adjusted_price_provider.py and docs/architecture/adjusted_price_store_v01.md",
+  "offline_only": true,
+  "live_calls_performed": 0,
+  "known_numeric_support_evidence": ["artifacts/data/adjusted_price_store/v01/provider_legacy_parity.csv (3 numeric tickers)", "artifacts/data/adjusted_price_store/v01/adjusted_price_store_v01_summary.json (historical adjusted_true smoke, 4 logical calls)", "tests/test_adjusted_price_provider.py"],
+  "known_alphanumeric_support_evidence": [],
+  "known_failure_evidence": ["normalize_ticker() rejects non-digit ticker before provider request; this proves current consumer contract rejection, not PyKRX server support behavior."],
+  "identifier_errata": "KRX_IDENTIFIER_CONTRACT_ERRATA_V01: D_NUMERIC_ONLY_CONSUMER_BY_DESIGN; requires_change=false",
+  "numeric_domain": "KNOWN_LOCAL_CONSUMER_DOMAIN",
+  "alphanumeric_domain": "UNKNOWN_REQUIRES_PILOT",
+  "unsupported_count": 0,
+  "pilot_verification_required": true,
+  "provider_source_change_required_now": false,
+  "conclusion": "Do not infer PyKRX alphanumeric support or failure from the numeric-only local normalizer; use bounded pilot evidence later."
+}

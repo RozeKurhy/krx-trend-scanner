@@ -1,0 +1,18 @@
+{
+  "schema": "repository_semantic_parity_v01",
+  "status": "PASS",
+  "test_scope": "tests/test_repository_v2.py + tests/test_market_data_repository_v02_validation.py + tests/test_market_rs_repository_adapter.py",
+  "result": "72 passed",
+  "cases": [
+    "known valid ticker",
+    "known missing ticker",
+    "raw-only authority",
+    "OUTSIDE_IDENTITY_LIFECYCLE",
+    "ADJUSTED_ANALYTICALLY_NONUSABLE",
+    "446840",
+    "000360"
+  ],
+  "raw_substitution": false,
+  "pykrx_fallback": false,
+  "source_gap_fabrication": false
+}

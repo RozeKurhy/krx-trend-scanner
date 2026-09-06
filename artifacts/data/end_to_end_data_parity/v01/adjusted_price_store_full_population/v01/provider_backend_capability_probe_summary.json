@@ -1,0 +1,12 @@
+{
+  "schema": "provider_backend_capability_probe_summary_v02",
+  "directive_id": "ADJUSTED_PRICE_STORE_FULL_POPULATION_V01_FIX06_CORRECTION_2",
+  "probe_targets_count": 9,
+  "total_probes_executed": 45,
+  "current_frozen_authority_id": "PYKRX_ADJUSTED_V1_PUBLIC_CONTRACT",
+  "pykrx_count_limit_confirmed": true,
+  "long_history_recovery_succeeded": false,
+  "provider_capability_verdict": "NOT_RECOVERABLE_WITHIN_FROZEN_AUTHORITY",
+  "authority_scope_verdict": "NOT_RECOVERABLE_UNDER_CURRENT_FROZEN_PYKRX_CONTRACT",
+  "verdict_rationale": "The current frozen production contract pykrx.stock.get_market_ohlcv_by_date(..., adjusted=True) uses a count-bounded requestType=0 path capped at ~3,000 observations, making pre-2014 observations for active long-lived common stocks unrecoverable under this authority."
+}

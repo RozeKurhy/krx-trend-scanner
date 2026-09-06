@@ -1,0 +1,55 @@
+{
+  "mismatches": [
+    {
+      "canonical_sha256": "07b7e28a12459adce73746b78115530cc0ca382e9f5c8a9a1d3da21740bb8768",
+      "canonical_vs_run1": "MISMATCH",
+      "canonical_vs_run2": "MISMATCH",
+      "file_type": "json",
+      "filename": "021240_코웨이.json",
+      "overall_match": "MISMATCH",
+      "run1_sha256": "2141fd0f44d3e00e329c20f48e72fbb52d51bcb016556886a535368a28afb71b",
+      "run1_vs_run2": "MATCH",
+      "run2_sha256": "2141fd0f44d3e00e329c20f48e72fbb52d51bcb016556886a535368a28afb71b"
+    }
+  ],
+  "semantic_details": [
+    {
+      "differences": [
+        {
+          "actual": "2026-08-21",
+          "expected": "2026-08-14",
+          "path": "data_quality.cache_last_date"
+        },
+        {
+          "actual": 1226,
+          "expected": 1222,
+          "path": "data_quality.daily_rows_count"
+        },
+        {
+          "actual": "2026-08-21",
+          "expected": "2026-08-14",
+          "path": "header.cache_last_date"
+        },
+        {
+          "actual": "2026-08-21",
+          "expected": "2026-08-14",
+          "path": "data_quality.cache_last_date",
+          "run": "run2"
+        },
+        {
+          "actual": 1226,
+          "expected": 1222,
+          "path": "data_quality.daily_rows_count",
+          "run": "run2"
+        },
+        {
+          "actual": "2026-08-21",
+          "expected": "2026-08-14",
+          "path": "header.cache_last_date",
+          "run": "run2"
+        }
+      ],
+      "filename": "021240_코웨이.json"
+    }
+  ]
+}

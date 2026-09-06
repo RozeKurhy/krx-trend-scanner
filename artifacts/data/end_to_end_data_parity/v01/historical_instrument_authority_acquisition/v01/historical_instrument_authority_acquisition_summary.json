@@ -1,0 +1,21 @@
+{
+  "work_id": "KRX_HISTORICAL_INSTRUMENT_AUTHORITY_ACQUISITION_V01",
+  "start_head": "72d1aeb44a083f3470bcdf2c5856796b6c51bc0a",
+  "branch": "codex/end-to-end-data-parity-v01",
+  "primary_source": "KRX_OPEN_API_BASIC_INFO",
+  "supplemental_source": "KRX_MDC_DELISTED_STATUS",
+  "target_period": ["2010-01-04", "2026-08-21"],
+  "target_identity_count": {"numeric": 1058, "alphanumeric": 58, "total": 1116},
+  "source_discovery": "official KRX source identified; basic-info PIT date parameter observed at start/interior/end; delisted lifecycle field contract documented and live payload requires a follow-up contract validation",
+  "historical_coverage": "CAPABILITY_PASS_PENDING_EXECUTION",
+  "delisted_coverage": "PARTIAL_LIFECYCLE_CAPABILITY",
+  "identity_reuse": "PROVISIONAL_PASS_WITH_COVERAGE_LIMITATION",
+  "acquisition_contract": "FROZEN_FOR_SEPARATE_APPROVAL",
+  "pit_storage_contract": "FROZEN",
+  "conflict_policy": "FROZEN_FAIL_CLOSED",
+  "network": {"krx_metadata_or_master": 17, "krx_price": 0, "pykrx_price": 0, "opendart": 0, "retries": 0},
+  "production_writes": 0,
+  "canonical_evidence_sha256": "f40bb61f2070b75c867c3c55884cf4748acbd0e8a1d8ff36a142c49f524dbbbc",
+  "status": "READY_FOR_HISTORICAL_INSTRUMENT_AUTHORITY_ACQUISITION",
+  "live_adjusted_pilot": "NOT AUTHORIZED"
+}

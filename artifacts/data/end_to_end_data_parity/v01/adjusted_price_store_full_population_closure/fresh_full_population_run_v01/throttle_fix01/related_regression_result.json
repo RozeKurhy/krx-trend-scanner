@@ -1,0 +1,17 @@
+{
+  "schema": "fresh_full_population_throttle_fix01_related_regression_v01",
+  "command": "uv run pytest -q -p no:cacheprovider tests/test_adjusted_price_store_full_population_v01.py tests/test_adjusted_price_store_full_population_fix02.py tests/test_adjusted_price_store_full_population_fix02_fix02.py tests/test_adjusted_price_store_full_population_fix02_fix03.py tests/test_adjusted_price_store_full_population_throttle_fix01.py",
+  "result": "PASS",
+  "passed": 69,
+  "failed": 0,
+  "duration_seconds": 4.29,
+  "unexpected_failures": 0,
+  "full_repository_pytest": "NOT_RUN_BY_DIRECTIVE",
+  "network_requests": {
+    "naver": 0,
+    "pykrx": 0,
+    "krx_open_api": 0,
+    "opendart": 0
+  },
+  "captured_at": "2026-08-31T03:40:58.259576+00:00"
+}

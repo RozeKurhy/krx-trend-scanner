@@ -1,0 +1,14 @@
+{
+  "schema": "real_production_scan_execution_proof_v01",
+  "default_full_pytest_includes_real_scan": true,
+  "production_scan_execution_count": 1,
+  "population_input": 2528,
+  "population_output": 2528,
+  "candidate_count": 180,
+  "investable_count": 103,
+  "scanner_error_count": 0,
+  "execution_path": "tests/test_pattern_a_foreign_flow_infrastructure.py::base_scan_result -> ParquetCache(data/raw/stocks) -> scan_pattern_a_universe(as_of=2026-08-14, production foreign-flow parquet, enrich_flow_for_candidates=True)",
+  "artifact_reconstruction_used_as_replacement": false,
+  "focused_proof_result": "13 passed, 1 deselected; real 320.87s",
+  "default_full_pytest_contract": "tests/test_real_production_scan_execution_contract passed; module fixture count asserted exactly 1."
+}

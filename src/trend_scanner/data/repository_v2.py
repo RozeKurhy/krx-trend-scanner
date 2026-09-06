@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -10,12 +11,20 @@ import pandas as pd
 from trend_scanner.data.adjusted_price_provider import (
     ADJUSTED_OHLC_COLUMNS,
     normalize_ticker,
-    validate_adjusted_ohlc,
 )
 from trend_scanner.data.adjusted_price_store import AdjustedPriceStore
 from trend_scanner.data.errors import MarketDataError
 from trend_scanner.data.krx_raw_stock_provider import RAW_COLUMNS, is_valid_krx_short_code
 from trend_scanner.data.krx_raw_stock_store import KrxRawStockStore
+from trend_scanner.data.repository_v2_session_authority import (
+    ADJUSTED_ANALYTICALLY_NONUSABLE_DATES,
+    SOURCE_CLOSURE_CHECKPOINT_SHA256,
+)
+from trend_scanner.data.repository_v2_instrument_contract import (
+    SUPPORTED_INSTRUMENT_TYPES,
+    RepositoryV2InstrumentContract,
+    repository_v2_contract_for,
+)
 
 
 DAILY_COLUMNS = (
@@ -49,6 +58,142 @@ NON_TRADING_PLACEHOLDER_FIELDS = (
     "trading_value == 0",
 )
 
+# The closure's source_presence_audit records source rows that were present in
+# the adjusted-provider response but intentionally omitted from the canonical
+# usable adjusted store because their OHLC was analytically unusable.  The
+# exact pair set is frozen and hash-bound in repository_v2_session_authority;
+# no OHLC substitution or raw-data mutation is implied.
+ADJUSTED_SOURCE_NONUSABLE_AUTHORITY_SHA256 = SOURCE_CLOSURE_CHECKPOINT_SHA256
+# No adjusted-source gap authority is currently admitted.  A raw-only active
+# session must remain unresolved until an independently bounded adjusted-source
+# response proves that the source is absent; canonical acquisition gaps are not
+# an authority by themselves.
+KNOWN_ADJUSTED_SOURCE_GAP_DATES: dict[tuple[str, str], str] = {}
+KNOWN_OUTSIDE_IDENTITY_LIFECYCLE_DATES: dict[tuple[str, str], str] = {
+    ("123410", "2011-05-18"): "PIT/identity authority marks date outside ticker lifecycle",
+    ("126700", "2011-09-15"): "PIT/identity authority marks date outside ticker lifecycle",
+    # Ticker 446840 retained its short code while moving from the Kiwoom No.8
+    # SPAC identity to the Gitsn common-stock identity.  KRX/PIT authority
+    # marks 2025-08-14 as the first eligible common-identity date; the nine
+    # earlier source rows remain available through the lossless source API but
+    # must not enter the composed analytic view for the post-boundary identity.
+    ("446840", "2025-08-01"): "KRX/PIT identity authority: pre-boundary Kiwoom No.8 SPAC row",
+    ("446840", "2025-08-04"): "KRX/PIT identity authority: pre-boundary Kiwoom No.8 SPAC row",
+    ("446840", "2025-08-05"): "KRX/PIT identity authority: pre-boundary Kiwoom No.8 SPAC row",
+    ("446840", "2025-08-06"): "KRX/PIT identity authority: pre-boundary Kiwoom No.8 SPAC row",
+    ("446840", "2025-08-07"): "KRX/PIT identity authority: pre-boundary Kiwoom No.8 SPAC row",
+    ("446840", "2025-08-08"): "KRX/PIT identity authority: pre-boundary Kiwoom No.8 SPAC row",
+    ("446840", "2025-08-11"): "KRX/PIT identity authority: pre-boundary Kiwoom No.8 SPAC row",
+    ("446840", "2025-08-12"): "KRX/PIT identity authority: pre-boundary Kiwoom No.8 SPAC row",
+    ("446840", "2025-08-13"): "KRX/PIT identity authority: pre-boundary Kiwoom No.8 SPAC row",
+}
+
+
+class _IndexedRawTickerReader:
+    """Single-pass, authority-validating raw partition index.
+
+    ``KrxRawStockStore.load_ticker`` historically scanned and verified every
+    partition for every ticker.  This reader validates the canonical
+    partitions once while building a derived in-memory index of ticker/date
+    locations.  Subsequent ticker reads touch only partitions containing that
+    ticker; the canonical manifest and parquet files are never modified.
+    """
+
+    def __init__(self, store: KrxRawStockStore) -> None:
+        self.store = store
+        self._locations: dict[str, list[tuple[str, str, tuple[int, ...]]]] = {}
+        # Retain one validated partition copy for indexed reads.  OHLC values
+        # are downcast to int32 during build (without value loss under the
+        # KRX contract) to keep the full raw evidence below the consumer
+        # shadow's memory ceiling.
+        self._partition_frames: dict[tuple[str, str], pd.DataFrame] = {}
+        self._built = False
+        self.stats = {
+            "partition_files_opened": 0,
+            "partition_cache_hits": 0,
+            "ticker_frame_cache_hits": 0,
+            "manifest_rows_scanned": 0,
+            "index_lookups": 0,
+            "ticker_rows_returned": 0,
+            "full_store_scans": 0,
+            "full_store_scans_per_ticker": 0,
+            "index_memory_bytes": 0,
+        }
+
+    @staticmethod
+    def _empty() -> pd.DataFrame:
+        return pd.DataFrame(
+            {
+                "date": pd.Series([], dtype="datetime64[ns]"),
+                "ticker": pd.Series([], dtype="string"),
+                **{field: pd.Series([], dtype="int64") for field in RAW_COLUMNS[2:]},
+            },
+            columns=list(RAW_COLUMNS),
+        )
+
+    def build(self) -> None:
+        if self._built:
+            return
+        manifests = self.store.list_manifest()
+        self.stats["manifest_rows_scanned"] = len(manifests)
+        self.stats["full_store_scans"] = 1
+        for row in manifests:
+            if row.get("status") != "COMPLETE":
+                continue
+            market = str(row["market"])
+            day = str(row["date"])
+            frame = self.store.load_snapshot(market, day)
+            self.stats["partition_files_opened"] += 1
+            compact = frame.loc[:, list(RAW_COLUMNS)].copy()
+            # KRX OHLC values are bounded well below int32 for this contract;
+            # retain exact integer values while halving the four price-column
+            # footprint in the long-lived index.
+            for column in ("open", "high", "low", "close"):
+                compact[column] = compact[column].astype("int32")
+            self._partition_frames[(market, day)] = compact
+            self.stats["index_memory_bytes"] += int(compact.memory_usage(deep=True).sum())
+            if frame.empty:
+                continue
+            # Store row positions rather than copying every ticker's rows into
+            # separate DataFrames.  This keeps index construction bounded by
+            # one validated partition copy while making each ticker lookup
+            # select only its own rows.
+            for ticker, positions in frame.groupby("ticker", sort=False).indices.items():
+                key = str(ticker)
+                self._locations.setdefault(key, []).append(
+                    (market, day, tuple(int(position) for position in positions))
+                )
+        for key in self._locations:
+            self._locations[key] = sorted(self._locations[key], key=lambda item: item[1])
+        self._built = True
+
+    def load_ticker(self, ticker: str, start: Any | None = None, end: Any | None = None) -> pd.DataFrame:
+        self.build()
+        self.stats["index_lookups"] += 1
+        start_day = pd.Timestamp(start).normalize() if start is not None else None
+        end_day = pd.Timestamp(end).normalize() if end is not None else None
+        locations = self._locations.get(str(ticker), [])
+        if not locations:
+            return self._empty()
+        rows: list[pd.DataFrame] = []
+        for market, day, positions in locations:
+            day_ts = pd.Timestamp(day)
+            if start_day is not None and day_ts < start_day:
+                continue
+            if end_day is not None and day_ts > end_day:
+                continue
+            frame = self._partition_frames[(market, day)]
+            self.stats["partition_cache_hits"] += 1
+            matched = frame.take(list(positions)).loc[:, list(RAW_COLUMNS)]
+            if not matched.empty:
+                rows.append(matched)
+        if not rows:
+            return self._empty()
+        result = pd.concat(rows, ignore_index=True)
+        if result["date"].duplicated().any():
+            raise MarketDataError("CROSS_MARKET_TICKER_CONFLICT")
+        self.stats["ticker_rows_returned"] += len(result)
+        return result.sort_values(["date", "ticker"], kind="mergesort").reset_index(drop=True)
 
 def _empty_frame(columns: tuple[str, ...]) -> pd.DataFrame:
     return pd.DataFrame(
@@ -106,6 +251,20 @@ def _validate_ohlc_columns(frame: pd.DataFrame, columns: tuple[str, ...]) -> Non
     _validate_numeric(frame, columns)
 
 
+def _validate_source_history_ohlc(frame: pd.DataFrame) -> None:
+    """Validate source-history adjusted OHLC without rewriting source relations.
+
+    The adjusted store deliberately preserves source-native observations even
+    when a candle violates the analytic high/low relation.  Repository V2's
+    composed daily view is therefore a source-history view; analytic callers
+    must opt into ``AdjustedPriceStore.load_daily_analytic`` separately.
+    """
+
+    _validate_numeric(frame, ADJUSTED_OHLC_COLUMNS)
+    if (frame.loc[:, list(ADJUSTED_OHLC_COLUMNS)] <= 0).any().any():
+        raise MarketDataError("INVALID_REPOSITORY_V2_OUTPUT")
+
+
 def _validate_raw_ohlc_columns(frame: pd.DataFrame) -> None:
     """Apply the frozen raw authority relation only to all-positive rows."""
 
@@ -130,15 +289,27 @@ def _validate_raw_ohlc_columns(frame: pd.DataFrame) -> None:
         raise MarketDataError("INVALID_REPOSITORY_V2_OUTPUT")
 
 
-def validate_repository_v2_daily(frame: pd.DataFrame) -> None:
-    """Validate the exact composed daily schema without changing source values."""
+def validate_repository_v2_daily(
+    frame: pd.DataFrame,
+    *,
+    source_history: bool = False,
+) -> None:
+    """Validate the exact composed daily schema without changing source values.
+
+    ``source_history=True`` is the explicit V2 composition contract: adjusted
+    OHLC is preserved from the authoritative source-history store and is not
+    subjected to an analytic relation filter.
+    """
 
     if not isinstance(frame, pd.DataFrame) or tuple(frame.columns) != DAILY_COLUMNS:
         raise MarketDataError("INVALID_REPOSITORY_V2_OUTPUT")
     _validate_index(frame)
     if frame.empty:
         return
-    _validate_ohlc_columns(frame, ADJUSTED_OHLC_COLUMNS)
+    if source_history:
+        _validate_source_history_ohlc(frame.loc[:, list(ADJUSTED_OHLC_COLUMNS)])
+    else:
+        _validate_ohlc_columns(frame, ADJUSTED_OHLC_COLUMNS)
     _validate_numeric(frame, ("volume", "trading_value"))
     if (frame["volume"] < 0).any() or (frame["trading_value"] < 0).any():
         raise MarketDataError("INVALID_REPOSITORY_V2_OUTPUT")
@@ -191,6 +362,26 @@ def _placeholder_predicate_fields(row: pd.Series) -> dict[str, bool]:
     }
 
 
+def _analytic_invalid_dates(frame: pd.DataFrame) -> list[pd.Timestamp]:
+    """Return source dates that cannot be used as analytic candles.
+
+    The source values are never changed.  The caller must either carry these
+    dates as an explicitly approved transformed view or exclude them with an
+    auditable ``ADJUSTED_ANALYTICALLY_NONUSABLE`` reason.
+    """
+
+    if frame.empty:
+        return []
+    relation_violations = (
+        (frame["high"] < frame["low"])
+        | (frame["high"] < frame["open"])
+        | (frame["high"] < frame["close"])
+        | (frame["low"] > frame["open"])
+        | (frame["low"] > frame["close"])
+    )
+    return [pd.Timestamp(value).normalize() for value in frame.index[relation_violations]]
+
+
 def _json_scalar(value: Any) -> Any:
     return value.item() if hasattr(value, "item") else value
 
@@ -216,6 +407,9 @@ def _session_projection_evidence(
     raw_only_row_details: list[dict[str, Any]] = []
     accepted_placeholder_dates: list[pd.Timestamp] = []
     rejected_raw_only_dates: list[pd.Timestamp] = []
+    known_adjusted_gap_dates: list[pd.Timestamp] = []
+    outside_identity_lifecycle_dates: list[pd.Timestamp] = []
+    adjusted_source_nonusable_dates: list[pd.Timestamp] = []
     for date in raw_only_dates:
         row = raw.loc[date]
         predicate_fields = _placeholder_predicate_fields(row)
@@ -227,12 +421,29 @@ def _session_projection_evidence(
                 "all six NON_TRADING_PLACEHOLDER_V01 fields match"
             )
         else:
-            rejected_raw_only_dates.append(date)
-            mismatched_fields = [
-                field for field, matches in predicate_fields.items() if not matches
-            ]
-            classification = "UNCLASSIFIED_RAW_ONLY"
-            classification_reason = "predicate fields failed: " + ", ".join(mismatched_fields)
+            authority_key = (str(raw.attrs.get("ticker", "")), date.date().isoformat())
+            if authority_key in KNOWN_OUTSIDE_IDENTITY_LIFECYCLE_DATES:
+                outside_identity_lifecycle_dates.append(date)
+                classification = "OUTSIDE_IDENTITY_LIFECYCLE"
+                classification_reason = KNOWN_OUTSIDE_IDENTITY_LIFECYCLE_DATES[authority_key]
+            elif authority_key in ADJUSTED_ANALYTICALLY_NONUSABLE_DATES:
+                adjusted_source_nonusable_dates.append(date)
+                classification = "ADJUSTED_ANALYTICALLY_NONUSABLE"
+                classification_reason = (
+                    "adjusted provider source_presence_audit classified the exact row "
+                    "NAVER_SOURCE_NONUSABLE; source row is preserved only in closure evidence"
+                )
+            elif authority_key in KNOWN_ADJUSTED_SOURCE_GAP_DATES:
+                known_adjusted_gap_dates.append(date)
+                classification = "KNOWN_ADJUSTED_SOURCE_GAP"
+                classification_reason = KNOWN_ADJUSTED_SOURCE_GAP_DATES[authority_key]
+            else:
+                rejected_raw_only_dates.append(date)
+                mismatched_fields = [
+                    field for field, matches in predicate_fields.items() if not matches
+                ]
+                classification = "UNCLASSIFIED_RAW_ONLY"
+                classification_reason = "predicate fields failed: " + ", ".join(mismatched_fields)
         raw_only_row_details.append(
             {
                 "date": date.date().isoformat(),
@@ -254,14 +465,14 @@ def _session_projection_evidence(
         )
 
     shared_dates = sorted(adjusted_date_set & raw_date_set)
-    shared_placeholder_conflict_dates: list[pd.Timestamp] = []
-    shared_placeholder_conflict_row_details: list[dict[str, Any]] = []
+    shared_placeholder_dates: list[pd.Timestamp] = []
+    shared_placeholder_row_details: list[dict[str, Any]] = []
     for date in shared_dates:
         row = raw.loc[date]
         if not _is_non_trading_placeholder(row):
             continue
-        shared_placeholder_conflict_dates.append(date)
-        shared_placeholder_conflict_row_details.append(
+        shared_placeholder_dates.append(date)
+        shared_placeholder_row_details.append(
             {
                 "date": date.date().isoformat(),
                 "open": _json_scalar(row["open"]),
@@ -276,57 +487,97 @@ def _session_projection_evidence(
                 "raw_present": True,
                 "placeholder_predicate_name": NON_TRADING_PLACEHOLDER_PREDICATE_NAME,
                 "placeholder_predicate_fields": _placeholder_predicate_fields(row),
-                "classification": "SHARED_DATE_PLACEHOLDER_CONFLICT",
+                "classification": "CONFIRMED_NONTRADING",
                 "classification_reason": (
-                    "shared adjusted/raw date has NON_TRADING_PLACEHOLDER_V01 raw semantics"
+                    "CONFIRMED_NONTRADING_RAW_ACTIVITY_AUTHORITY"
                 ),
             }
         )
 
+    adjusted_analytic_invalid_dates = _analytic_invalid_dates(adjusted)
+    # The source row and raw row are retained in their respective lossless
+    # APIs.  The composed view excludes the date explicitly; no clamp or
+    # substitution is performed.
+    projected_adjusted = adjusted.drop(index=shared_placeholder_dates + adjusted_analytic_invalid_dates, errors="ignore")
     projected_raw = raw.copy()
-    if accepted_placeholder_dates:
-        projected_raw = projected_raw.drop(index=accepted_placeholder_dates)
+    excluded_raw_dates = (
+        accepted_placeholder_dates
+        + shared_placeholder_dates
+        + known_adjusted_gap_dates
+        + outside_identity_lifecycle_dates
+        + adjusted_source_nonusable_dates
+        + adjusted_analytic_invalid_dates
+    )
+    if excluded_raw_dates:
+        projected_raw = projected_raw.drop(index=excluded_raw_dates, errors="ignore")
     projected_raw = projected_raw.sort_index()
     projected_date_set = set(projected_raw.index)
-    projected_date_set_exact_match = projected_date_set == adjusted_date_set
+    projected_adjusted_date_set = set(projected_adjusted.index)
+    projected_date_set_exact_match = projected_date_set == projected_adjusted_date_set
+    adjusted_only_excluded_dates = sorted(set(adjusted_only_dates).intersection(adjusted_analytic_invalid_dates))
+    unexplained_adjusted_only_dates = sorted(set(adjusted_only_dates) - set(adjusted_only_excluded_dates))
     return {
         "adjusted_dates": [date.date().isoformat() for date in adjusted_dates],
         "raw_dates": [date.date().isoformat() for date in raw_dates],
         "adjusted_only_dates": [date.date().isoformat() for date in adjusted_only_dates],
+        "adjusted_only_excluded_dates": [date.date().isoformat() for date in adjusted_only_excluded_dates],
+        "unexplained_adjusted_only_dates": [date.date().isoformat() for date in unexplained_adjusted_only_dates],
         "raw_only_dates": [date.date().isoformat() for date in raw_only_dates],
         "raw_only_row_details": raw_only_row_details,
         "shared_dates": [date.date().isoformat() for date in shared_dates],
-        "shared_placeholder_conflict_dates": [
-            date.date().isoformat() for date in shared_placeholder_conflict_dates
-        ],
-        "shared_placeholder_conflict_count": len(shared_placeholder_conflict_dates),
-        "shared_placeholder_conflict_row_details": shared_placeholder_conflict_row_details,
+        "shared_placeholder_conflict_dates": [],
+        "shared_placeholder_conflict_count": 0,
+        "shared_placeholder_conflict_row_details": [],
+        "confirmed_nontrading_shared_dates": [date.date().isoformat() for date in shared_placeholder_dates],
+        "confirmed_nontrading_shared_count": len(shared_placeholder_dates),
+        "confirmed_nontrading_shared_row_details": shared_placeholder_row_details,
         "accepted_placeholder_dates": [
             date.date().isoformat() for date in accepted_placeholder_dates
         ],
         "rejected_raw_only_dates": [
             date.date().isoformat() for date in rejected_raw_only_dates
         ],
+        "known_adjusted_gap_dates": [date.date().isoformat() for date in known_adjusted_gap_dates],
+        "outside_identity_lifecycle_dates": [date.date().isoformat() for date in outside_identity_lifecycle_dates],
+        "adjusted_source_nonusable_dates": [date.date().isoformat() for date in adjusted_source_nonusable_dates],
+        "adjusted_analytic_invalid_dates": [date.date().isoformat() for date in adjusted_analytic_invalid_dates],
+        "adjusted_analytic_invalid_count": len(adjusted_analytic_invalid_dates),
+        "projected_adjusted": projected_adjusted,
         "projected_raw": projected_raw,
         "projected_raw_rows": len(projected_raw),
+        "projected_adjusted_rows": len(projected_adjusted),
         "projected_date_set_exact_match": projected_date_set_exact_match,
-        "explicit_placeholder_projection_count": len(accepted_placeholder_dates),
+        "explicit_placeholder_projection_count": len(accepted_placeholder_dates) + len(shared_placeholder_dates),
+        "explicit_known_gap_exclusion_count": len(known_adjusted_gap_dates),
+        "explicit_outside_identity_lifecycle_exclusion_count": len(outside_identity_lifecycle_dates),
+        "explicit_adjusted_source_nonusable_exclusion_count": len(adjusted_source_nonusable_dates),
+        "explicit_analytic_invalid_exclusion_count": len(adjusted_analytic_invalid_dates),
         "silent_inner_drop_count": 0,
     }
 
 
-def _project_raw_trading_sessions(adjusted: pd.DataFrame, raw: pd.DataFrame) -> pd.DataFrame:
+def _project_analytic_sessions(
+    adjusted: pd.DataFrame, raw: pd.DataFrame
+) -> tuple[pd.DataFrame, pd.DataFrame, dict[str, Any]]:
     evidence = _session_projection_evidence(adjusted, raw)
     if (
-        evidence["adjusted_only_dates"]
+        evidence["unexplained_adjusted_only_dates"]
         or evidence["rejected_raw_only_dates"]
-        or evidence["shared_placeholder_conflict_dates"]
         or not evidence["projected_date_set_exact_match"]
     ):
-        if evidence["shared_placeholder_conflict_dates"]:
-            raise MarketDataError("REPOSITORY_V2_SESSION_SEMANTIC_CONFLICT")
         raise MarketDataError("REPOSITORY_V2_TRADING_SESSION_MISMATCH")
-    return evidence["projected_raw"]
+    return evidence["projected_adjusted"], evidence["projected_raw"], evidence
+
+
+def _project_raw_trading_sessions(adjusted: pd.DataFrame, raw: pd.DataFrame) -> pd.DataFrame:
+    """Backward-compatible raw-only projection helper.
+
+    New callers should use ``_project_analytic_sessions`` so the adjusted
+    analytic exclusions are applied to both sides of the composed view.
+    """
+
+    _, projected_raw, _ = _project_analytic_sessions(adjusted, raw)
+    return projected_raw
 
 
 class MarketDataRepositoryV2:
@@ -336,9 +587,48 @@ class MarketDataRepositoryV2:
         self,
         adjusted_price_store: AdjustedPriceStore,
         raw_stock_store: KrxRawStockStore,
+        *,
+        rolling_authority_dir: Any = None,
     ) -> None:
         self._adjusted_price_store = adjusted_price_store
         self._raw_stock_store = raw_stock_store
+        self._query_audit: dict[str, dict[str, Any]] = {}
+        # Opt-in only: every existing caller (E2E frozen-AS_OF harness, historical
+        # replay, tests) omits this and gets byte-identical behavior to before this
+        # parameter existed. When a caller explicitly opts into rolling production
+        # mode by supplying a directory, every read is clamped to the rolling
+        # authority manifest's certified_through -- and a missing/invalid/tampered/
+        # wrong-version manifest fails the read closed (RollingAuthorityError
+        # propagates; it is not a MarketDataError, so it is never mistaken for a
+        # DATA_UNAVAILABLE case and silently swallowed by a consumer's except
+        # MarketDataError handler).
+        self._rolling_authority_dir = None if rolling_authority_dir is None else Path(rolling_authority_dir)
+        self._raw_index = (
+            _IndexedRawTickerReader(raw_stock_store)
+            if isinstance(raw_stock_store, KrxRawStockStore)
+            else None
+        )
+        # Build the authority-validating index outside the ticker query itself.
+        # A query therefore performs only indexed partition reads; the single
+        # full-store verification is an explicit run-initialization step.
+        if self._raw_index is not None:
+            self._raw_index.build()
+
+    @staticmethod
+    def contract_for(instrument_type: str) -> RepositoryV2InstrumentContract:
+        """Return the shared authority contract for a formally classified type.
+
+        This is metadata/contract lookup only; it never selects a consumer
+        path, reads a legacy cache, or performs network I/O.
+        """
+
+        return repository_v2_contract_for(instrument_type)
+
+    @property
+    def supported_instrument_types(self) -> tuple[str, ...]:
+        """Instrument types supported by the one composed V2 interface."""
+
+        return SUPPORTED_INSTRUMENT_TYPES
 
     @staticmethod
     def _adjusted_ticker(ticker: str) -> str:
@@ -355,7 +645,7 @@ class MarketDataRepositoryV2:
 
     def _load_adjusted(self, ticker: str, start: pd.Timestamp, end: pd.Timestamp) -> pd.DataFrame:
         try:
-            frame = self._adjusted_price_store.load_daily(
+            frame = self._adjusted_price_store.load_daily_source(
                 ticker,
                 start.strftime("%Y-%m-%d"),
                 end.strftime("%Y-%m-%d"),
@@ -373,18 +663,21 @@ class MarketDataRepositoryV2:
             index = index.tz_localize(None)
         result.index = index.normalize().rename(None)
         try:
-            validate_adjusted_ohlc(result)
+            _validate_source_history_ohlc(result)
         except MarketDataError as exc:
             raise MarketDataError("INVALID_REPOSITORY_V2_OUTPUT") from exc
         return result.loc[:, list(ADJUSTED_OHLC_COLUMNS)]
 
     def _load_raw(self, ticker: str, start: pd.Timestamp, end: pd.Timestamp) -> pd.DataFrame:
         try:
-            frame = self._raw_stock_store.load_ticker(
-                ticker,
-                start.strftime("%Y-%m-%d"),
-                end.strftime("%Y-%m-%d"),
-            )
+            if self._raw_index is not None:
+                frame = self._raw_index.load_ticker(ticker, start, end)
+            else:
+                frame = self._raw_stock_store.load_ticker(
+                    ticker,
+                    start.strftime("%Y-%m-%d"),
+                    end.strftime("%Y-%m-%d"),
+                )
         except FileNotFoundError as exc:
             raise MarketDataError("DATA_UNAVAILABLE: RAW_MISSING") from exc
         if not isinstance(frame, pd.DataFrame) or tuple(frame.columns) != RAW_COLUMNS:
@@ -401,10 +694,144 @@ class MarketDataRepositoryV2:
         result = result.drop(columns=["ticker"])
         result.index = index.normalize().rename(None)
         result = result.loc[:, list(RAW_DAILY_COLUMNS)]
+        result.attrs["ticker"] = ticker
         _validate_raw_daily(result)
         return result
 
+    @property
+    def raw_reader_stats(self) -> dict[str, int]:
+        """Return read-path counters without exposing or mutating source data."""
+
+        if self._raw_index is None:
+            return {
+                "partition_files_opened": 0,
+                "partition_cache_hits": 0,
+                "ticker_frame_cache_hits": 0,
+                "manifest_rows_scanned": 0,
+                "index_lookups": 0,
+                "ticker_rows_returned": 0,
+                "full_store_scans": 0,
+                "full_store_scans_per_ticker": 0,
+                "index_memory_bytes": 0,
+            }
+        return dict(self._raw_index.stats)
+
+    @property
+    def query_audit(self) -> dict[str, dict[str, Any]]:
+        """Return compact per-ticker query accounting for offline evidence."""
+
+        return {ticker: dict(audit) for ticker, audit in self._query_audit.items()}
+
+    def _clamp_to_certified_boundary(self, end: str) -> str:
+        """Rolling production mode only (directive ROLLING_MARKET_DATA_AUTHORITY_FIX_V01 section 24).
+
+        A no-op when ``rolling_authority_dir`` was not supplied at construction time -- every existing
+        E2E/historical/test call site is unaffected. When it was supplied, the rolling authority
+        manifest is the sole source of truth for how far production data may be read; a missing,
+        invalid, tampered, or wrong-version manifest raises RollingAuthorityError and the read fails
+        closed rather than silently falling back to the caller's requested end date.
+        """
+        if self._rolling_authority_dir is None:
+            return end
+        from trend_scanner.data.rolling_market_data_refresh import load_rolling_authority
+
+        manifest = load_rolling_authority(self._rolling_authority_dir)
+        return min(str(end)[:10], manifest.certified_through)
+
+    def _clamp_to_identity_bounds(self, ticker: str, start: str, end: str) -> tuple[str, str]:
+        """Rolling production mode only (directive COMMON_ADJUSTED_PHANTOM_ROW_REMEDIATION_V01
+        section 8-13): the lower-bound counterpart to :meth:`_clamp_to_certified_boundary`.
+
+        A no-op when ``rolling_authority_dir`` was not supplied (every existing E2E/historical/test
+        call site is unaffected -- section 9) OR when ``ticker`` has no record at all in the merged
+        rolling PIT (an instrument type this PIT does not classify, e.g. ETF -- section 23 covers ETF
+        via its own separate full-scan, not this per-read COMMON-identity clamp).
+
+        When ``ticker`` DOES have PIT records, resolution must succeed exactly once
+        (``resolve_current_identity``, isu_cd-aware -- never a ticker-only earliest-interval shortcut,
+        section 16). Ambiguous or unresolvable identity fails the read closed with
+        ``RollingAuthorityError`` (section 10/17) rather than silently choosing one or falling back to
+        the caller's requested bounds.
+
+        Directive ROLLING_AUTHORITY_HARDENING_V01 section 9-13: the manifest and merged PIT/calendar
+        are validated for coherence (digest/frontier/schema-version agreement, fail-closed on any
+        mismatch) on every call here, and the intervals map is built from that freshly-read payload --
+        deliberately NOT through ``adjusted_price_pilot``'s ``lru_cache``'d reader, which is keyed on
+        this stable production path and would otherwise risk serving a stale cached mapping alongside
+        freshly-validated metadata (e.g. a tampered-then-restored file, or a republish mid-process).
+        """
+        if self._rolling_authority_dir is None:
+            return str(start)[:10], str(end)[:10]
+        from trend_scanner.data.rolling_market_data_refresh import (
+            RollingAuthorityError,
+            load_rolling_authority,
+            resolve_current_identity,
+            validate_merged_authority_coherence,
+        )
+
+        manifest = load_rolling_authority(self._rolling_authority_dir)
+        pit_payload, _cal_payload = validate_merged_authority_coherence(manifest, self._rolling_authority_dir)
+        intervals_by_ticker: dict[str, list[dict[str, Any]]] = {}
+        for iv in pit_payload.get("intervals", []):
+            t = iv.get("ticker")
+            if t:
+                intervals_by_ticker.setdefault(t, []).append(iv)
+        normalized = str(ticker).zfill(6)
+        if normalized not in intervals_by_ticker:
+            # Not a COMMON identity this PIT classifies at all (e.g. an ETF instrument type) --
+            # section 23 applies its own separate ETF full-scan; this per-read clamp does not apply.
+            return str(start)[:10], str(end)[:10]
+
+        clamp_as_of = str(end)[:10]
+        resolution = resolve_current_identity(normalized, clamp_as_of, intervals_by_ticker)
+        if resolution.status == "AMBIGUOUS":
+            raise RollingAuthorityError(
+                f"IDENTITY_AMBIGUITY_FAIL_CLOSED: ticker={normalized} as_of={clamp_as_of} "
+                f"candidates={resolution.candidate_intervals}"
+            )
+        if resolution.status == "NO_OPEN_IDENTITY":
+            raise RollingAuthorityError(
+                f"IDENTITY_MISSING_AUTHORITY_FAIL_CLOSED: ticker={normalized} as_of={clamp_as_of} "
+                f"candidates={resolution.candidate_intervals}"
+            )
+        interval = resolution.interval
+        clamped_start = max(str(start)[:10], str(interval["effective_from"]))
+        clamped_end = min(str(end)[:10], str(interval["effective_to"]))
+        if clamped_start > clamped_end:
+            # A real, live edge case for a very recently listed identity: its own
+            # effective_from is already later than the currently certified boundary (the
+            # certified_through clamp has not yet caught up to this new listing). This is not a
+            # malformed request -- it correctly means "no visible rows for this identity in the
+            # currently certified window yet" -- so it must surface as the same
+            # DATA_UNAVAILABLE classification an ordinary missing-store case uses (caught by
+            # RepositoryV2DailyLoader's EXPECTED_DATA_UNAVAILABLE handling), never as the generic
+            # REPOSITORY_V2_INVALID_RANGE a truly malformed caller-supplied range would raise.
+            raise MarketDataError("DATA_UNAVAILABLE: ADJUSTED_MISSING")
+        return clamped_start, clamped_end
+
     def get_daily(self, ticker: str, start: str, end: str) -> pd.DataFrame:
+        end = self._clamp_to_certified_boundary(end)
+        start, end = self._clamp_to_identity_bounds(ticker, start, end)
+        key = str(ticker).zfill(6)
+        try:
+            result = self._get_daily(key, start, end)
+        except MarketDataError as exc:
+            self._query_audit[key] = {
+                "status": "EXPLICIT_DATA_UNAVAILABLE" if (
+                    str(exc).startswith("DATA_UNAVAILABLE")
+                    or str(exc) in {"REPOSITORY_V2_EMPTY", "REPOSITORY_V2_TRADING_SESSION_MISMATCH"}
+                ) else "ERROR",
+                "reason": str(exc),
+            }
+            raise
+        self._query_audit[key] = {
+            "status": "PROCESSED" if result is not None and not result.empty else "EXPLICIT_DATA_UNAVAILABLE",
+            "reason": None if result is not None and not result.empty else "REPOSITORY_V2_EMPTY",
+            "rows": int(len(result)) if result is not None else 0,
+        }
+        return result
+
+    def _get_daily(self, ticker: str, start: str, end: str) -> pd.DataFrame:
         start_ts, end_ts = _date_range(start, end)
         adjusted_ticker = self._adjusted_ticker(ticker)
         adjusted = self._load_adjusted(adjusted_ticker, start_ts, end_ts)
@@ -418,7 +845,11 @@ class MarketDataRepositoryV2:
             raise MarketDataError("DATA_UNAVAILABLE: RAW_MISSING")
 
         adjusted = adjusted.sort_index()
-        raw = _project_raw_trading_sessions(adjusted, raw)
+        adjusted, raw, projection = _project_analytic_sessions(adjusted, raw)
+        if adjusted.empty and raw.empty:
+            return _empty_frame(DAILY_COLUMNS)
+        if adjusted.empty or raw.empty:
+            raise MarketDataError("REPOSITORY_V2_TRADING_SESSION_MISMATCH")
         result = pd.concat(
             [
                 adjusted.loc[:, list(ADJUSTED_OHLC_COLUMNS)],
@@ -427,10 +858,26 @@ class MarketDataRepositoryV2:
             axis=1,
         )
         result = result.loc[:, list(DAILY_COLUMNS)]
-        validate_repository_v2_daily(result)
+        result.attrs["session_projection_audit"] = {
+            key: value
+            for key, value in projection.items()
+            if key not in {"projected_adjusted", "projected_raw"}
+        }
+        # Validation uses pandas column-wise ``apply``.  Pandas deep-copies
+        # DataFrame.attrs for each temporary Series, so validating while the
+        # full row-level session audit is attached causes an O(rows * audit)
+        # metadata-copy blow-up.  Keep the audit on the returned authority
+        # frame, but validate an attrs-free view and restore it afterwards.
+        result_attrs = result.attrs
+        result.attrs = {}
+        try:
+            validate_repository_v2_daily(result)
+        finally:
+            result.attrs = result_attrs
         return result
 
     def get_raw_daily(self, ticker: str, start: str, end: str) -> pd.DataFrame:
+        end = self._clamp_to_certified_boundary(end)
         start_ts, end_ts = _date_range(start, end)
         return self._load_raw(self._raw_ticker(ticker), start_ts, end_ts)
 
@@ -456,6 +903,8 @@ __all__ = [
     "ANCILLARY_COLUMNS",
     "DAILY_COLUMNS",
     "MarketDataRepositoryV2",
+    "SUPPORTED_INSTRUMENT_TYPES",
+    "RepositoryV2InstrumentContract",
     "RAW_DAILY_COLUMNS",
     "validate_repository_v2_daily",
 ]

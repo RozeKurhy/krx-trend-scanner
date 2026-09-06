@@ -1,0 +1,9 @@
+{
+  "schema": "adjusted_price_source_integrity_contract_v02",
+  "source_validator": "validate_source_integrity",
+  "analytic_validator": "validate_adjusted_ohlc / analytic_candle_is_valid",
+  "source_integrity_accepts": "finite, ordered, unique source rows even when physical OHLC relation is anomalous",
+  "source_integrity_rejects": "non-finite values, malformed schema, duplicate or unordered dates",
+  "analytic_anomaly_policy": "retain source-native value, count analytic_invalid_ohlc_count, fail analytic view closed",
+  "synthetic_repair_count": 0
+}

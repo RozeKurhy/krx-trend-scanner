@@ -1,0 +1,9 @@
+{
+  "schema": "scanner_cache_decision_v01",
+  "classification": "REMOVE_CACHE",
+  "symbol": "_SCAN_RESULT_CACHE",
+  "present_after_fix": false,
+  "stale_result_risk": "ELIMINATED_BY_REMOVAL",
+  "reason": "The final-result cache had a broad downstream blast radius and incomplete mutation coverage; lower-level repository reuse remains separately governed by existing immutable repository/index behavior.",
+  "production_semantics_changed": false
+}

@@ -11,7 +11,7 @@ Strict Execution Invariants:
 
 from __future__ import annotations
 
-from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import ThreadPoolExecutor
 import json
 import logging
 import math
@@ -22,7 +22,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from trend_scanner.data.cache import ParquetCache
+from trend_scanner.data.repository_v2_loader import RepositoryV2DailyLoader, build_repository_v2
 from trend_scanner.validation.pattern_a_fast_core_v02_reentry import (
     DATA_CUTOFF,
     V02TradeRecord,
@@ -52,10 +52,9 @@ OUT_COMP_MD = OUT_DIR / "comparison_vs_v01.md"
 CALENDAR_AUTHORITY_COMMIT = "88d54d85bdee1f2121bec9b27a250cbc1cb9f98f"
 
 
-def _worker_task(args: tuple[str, str, str, dict, dict]) -> list[dict]:
+def _worker_task(args: tuple[str, str, str, dict, dict], loader: RepositoryV2DailyLoader) -> list[dict]:
     ticker, name, market, score_contract, stage_contract = args
-    cache = ParquetCache(base_dir=ROOT / "data/raw/stocks")
-    daily = cache.load(ticker)
+    daily = loader.load(ticker)
 
     records = simulate_ticker_core_v02_reentry(
         ticker=ticker,
@@ -74,6 +73,8 @@ def run_evaluation() -> None:
 
     score_contract = json.loads(SCORE_CONTRACT_PATH.read_text(encoding="utf-8"))
     stage_contract = json.loads(STAGE_CONTRACT_PATH.read_text(encoding="utf-8"))
+    repository = build_repository_v2(ROOT, end=DATA_CUTOFF)
+    loader = RepositoryV2DailyLoader(repository, end=DATA_CUTOFF)
 
     df_univ = pd.read_csv(UNIVERSE_PATH, dtype={"ticker": str})
     df_univ["ticker"] = df_univ["ticker"].str.zfill(6)
@@ -97,8 +98,10 @@ def run_evaluation() -> None:
     ]
 
     t0 = time.perf_counter()
-    with ProcessPoolExecutor(max_workers=8) as executor:
-        nested_results = list(executor.map(_worker_task, tasks))
+    # Threads share the one immutable Repository V2 index.  A process pool
+    # would rebuild and revalidate the ~1GB raw index once per worker.
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        nested_results = list(executor.map(lambda task: _worker_task(task, loader), tasks))
 
     flat_trades: list[dict] = []
     for t_list in nested_results:
@@ -115,6 +118,9 @@ def run_evaluation() -> None:
 
     # Analyze evaluation metrics
     eval_data = _analyze_results(df_trades, df_ticker_summary, total_common_count, investable_count)
+    eval_data["REPOSITORY_INSTANCE_COUNT"] = 1
+    eval_data["REPOSITORY_FULL_INDEX_BUILD_COUNT"] = repository.raw_reader_stats.get("full_store_scans", 0)
+    eval_data["STOCK_REPORT_TICKER_COUNT"] = 0
     OUT_EVAL_JSON.write_text(json.dumps(eval_data, indent=2, ensure_ascii=False), encoding="utf-8")
 
     # Save dedicated reentry summary JSON

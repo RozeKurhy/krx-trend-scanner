@@ -1,0 +1,36 @@
+{
+  "work_id": "KRX_HISTORICAL_INSTRUMENT_AUTHORITY_ACQUISITION_V01",
+  "rows": [
+    {
+      "source": "KRX_OPEN_API_BASIC_INFO",
+      "capability": "AUTHORITATIVE_PIT_COMPLETE_AFTER_ACQUISITION",
+      "observed_dates": ["2010-01-04", "2018-04-27", "2026-08-21"],
+      "observed_records": {"2010-01-04": {"KOSPI": 925, "KOSDAQ": 1036}, "2018-04-27": {"KOSPI": 892, "KOSDAQ": 1272}, "2026-08-21": {"KOSPI": 942, "KOSDAQ": 1822}},
+      "pit_semantics": "requested basDd is the snapshot effective date; preserve it externally because rows have no BAS_DD field",
+      "security_type": "observed",
+      "identity": "ISU_CD and ISU_SRT_CD observed",
+      "market": "MKT_TP_NM observed",
+      "listing_date": "LIST_DD observed",
+      "delisting_date": "not provided; supplemental source required",
+      "fitness": "YES_PENDING_FULL_DATE_ACQUISITION"
+    },
+    {
+      "source": "KRX_MDC_DELISTED_STATUS",
+      "capability": "LIFECYCLE_ONLY",
+      "pit_semantics": "event date range and last-trading-date context; not a full dated security master",
+      "security_type": "documented, live row sample not confirmed",
+      "identity": "ISU_CD documented",
+      "market": "MKT_NM documented",
+      "listing_date": "LIST_DD documented",
+      "delisting_date": "DELIST_DD documented",
+      "fitness": "SUPPLEMENTAL_PARTIAL"
+    },
+    {
+      "source": "KRX_MDC_CURRENT_FORMAL_UNIVERSE",
+      "capability": "CURRENT_ONLY",
+      "pit_semantics": "current observation date only",
+      "fitness": "NO_FOR_HISTORICAL"
+    }
+  ],
+  "overall": "READY_FOR_HISTORICAL_INSTRUMENT_AUTHORITY_ACQUISITION"
+}

@@ -1,0 +1,36 @@
+{
+  "schema_version": "BACKTEST_PERFORMANCE_REMEDIATION_V01",
+  "frozen_as_of": "2026-08-14",
+  "sample_size": 20,
+  "sample_composition": {
+    "eligible_current_fastcore_filter": 10,
+    "ineligible_current_fastcore_filter": 10
+  },
+  "network_calls": 0,
+  "before": {
+    "cache_mode": "no_cache",
+    "elapsed_seconds": 132.0226,
+    "avg_seconds_per_ticker": 6.6011,
+    "fast_evaluation_count_per_ticker": 591.7,
+    "fast_cache_hit_ratio": 0.0,
+    "monthly_evaluation_count_per_ticker": 34.95,
+    "resample_count_per_ticker": 629.3,
+    "resample_count_source": "pre-optimization profile"
+  },
+  "after": {
+    "cache_mode": "ticker_local_fast_and_monthly_cache_plus_safe_incomplete_tail_skip",
+    "elapsed_seconds": 64.3364,
+    "avg_seconds_per_ticker": 3.2168,
+    "fast_evaluation_count_per_ticker": 221.6,
+    "fast_cache_hit_ratio": 0.625486,
+    "monthly_evaluation_count_per_ticker": 16.45,
+    "resample_count_per_ticker": 24.75
+  },
+  "speedup_ratio": 2.052,
+  "semantic_delta_count": 0,
+  "trade_and_audit_output_delta_count": 0,
+  "strategy_semantics_changed": false,
+  "julia_universe_changed": false,
+  "historical_pit_semantics_changed": false,
+  "status": "BOUNDED_PASS_FINAL_SHADOW_PENDING_EXPLICIT_APPROVAL"
+}

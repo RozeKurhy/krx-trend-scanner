@@ -1,0 +1,31 @@
+{
+  "verdict": "CHANGES_REQUESTED",
+  "julia_parity_v01": "OPEN",
+  "julia_parity": "OPEN",
+  "julia_strategy": "JULIA_STRATEGY_V00",
+  "julia_behavior": "PARITY_MISMATCH",
+  "julia_production_status": "NOT_APPROVED",
+  "julia_pit_status": "INVALID_INCOMPLETE_PIT_COVERAGE",
+  "performance_interpretation": "SUPPRESSED",
+  "current_default_strategy": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+  "consumer_migration": "NOT_YET_EXECUTED",
+  "next_state": "JULIA_PARITY_V01_FIX01",
+  "issue_classification": [
+    "CHECKPOINT_INPUT_DRIFT",
+    "BASELINE_COMPARATOR_DRIFT",
+    "INVESTABILITY_DRIFT",
+    "PIT_PROVENANCE_DRIFT"
+  ],
+  "hard_gates": {
+    "julia_exact": false,
+    "baseline_exact": false,
+    "distribution": false,
+    "loss_guard": true,
+    "common_entry": false,
+    "metrics": false,
+    "canaries": false,
+    "deterministic": true,
+    "offline": true,
+    "pit_frozen": true
+  }
+}

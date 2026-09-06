@@ -1,0 +1,19 @@
+{
+  "schema": "fresh_full_population_throttle_fix01_test_result_v01",
+  "command": "uv run pytest -q -p no:cacheprovider tests/test_adjusted_price_store_full_population_throttle_fix01.py",
+  "result": "PASS",
+  "passed": 1,
+  "failed": 0,
+  "duration_seconds": 0.57,
+  "network_requests": {
+    "naver": 0,
+    "pykrx": 0,
+    "krx_open_api": 0,
+    "opendart": 0
+  },
+  "assertions": [
+    "newly fetched ticker calls provider once and sleeps 0.50s",
+    "reused completed ticker makes zero provider calls and no additional 0.50s sleep"
+  ],
+  "captured_at": "2026-08-31T03:40:58.259576+00:00"
+}

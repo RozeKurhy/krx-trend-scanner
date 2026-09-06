@@ -1,0 +1,14 @@
+{
+  "status": "PASS",
+  "fields": {
+    "ISU_CD": {"key_required": true, "non_blank_required": true},
+    "ISU_SRT_CD": {"key_required": true, "non_blank_required": true},
+    "MKT_TP_NM": {"key_required": true, "non_blank_required": true},
+    "LIST_DD": {"key_required": true, "non_blank_required": true},
+    "SECUGRP_NM": {"key_required": true, "non_blank_required": true},
+    "KIND_STKCERT_TP_NM": {"key_required": true, "non_blank_required": true},
+    "SECT_TP_NM": {"key_required": true, "non_blank_required": false, "blank_policy": "preserve raw blank; classification PARTIAL"}
+  },
+  "inference_of_blank_values": false,
+  "extra_raw_fields": "preserved by raw payload archive"
+}

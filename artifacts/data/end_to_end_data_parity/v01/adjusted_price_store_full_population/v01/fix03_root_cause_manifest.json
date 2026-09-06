@@ -1,0 +1,30 @@
+{
+  "schema": "fix03_root_cause_manifest_v01",
+  "directive_id": "ADJUSTED_PRICE_STORE_FULL_POPULATION_V01_FIX03",
+  "START_HEAD": "825e33f60f6a4848aa75e338bd012936ab1a0a1e",
+  "population_sha256": "f14c3d46e5305571b311c4d120d9a2f1eba1644e7f059cde4e59eabab42d1aff",
+  "pit_sha256": "6b542ae05c9050dd30959d6f1b17306e4016f435a726ca7e0dff9e11008e4064",
+  "calendar_cutoff": "2026-08-21",
+  "baseline_complete": 867,
+  "baseline_partial": 1882,
+  "baseline_empty": 4,
+  "baseline_error": 409,
+  "count_limit_probe_results_sha256": "bfbc6bd627f9ae387b9db6049aea3a1276f181064e11c9abce80e79193f952c8",
+  "count_limit_probe_summary_sha256": "dc617141941b855b5db5f4e18bcb0326f0fb2a8243974679c0620368d0d7c1cd",
+  "error_taxonomy_sha256": "ebb05b7105af9be5db0021aa9425920e0bf7d4ace8414e8634248bf98919a84e",
+  "error_taxonomy_summary_sha256": "8ad0ba363f7a575a48e4604abd62b6fb4786a97139d708c7d0c2329378709756",
+  "current_common_error_probe_sha256": "58b4f85ba093c634aecfbb270007b5cf62981d353ae915a6853a9c10e97e1b8d",
+  "current_common_error_probe_summary_sha256": "3418d8a951b0b8a03ff79304d6345b3d113d3f8d3fe08ab594b0f208b8dce5ac",
+  "dominant_root_cause": "PROVIDER_PAGINATION_OR_COUNT_LIMIT",
+  "secondary_root_causes": [
+    "CURRENT_COMMON_INVALID_OHLC",
+    "DELISTED_SYMBOL_UNSUPPORTED",
+    "TRUE_SOURCE_GAP"
+  ],
+  "root_cause_confidence": "HIGH_EMPIRICALLY_VERIFIED",
+  "provider_fix_required": true,
+  "source_authority_review_required": false,
+  "residual_resume_eligible": false,
+  "recommended_next_state": "NEEDS_ADJUSTED_PRICE_STORE_PIPELINE_FIX",
+  "updated_at": "2026-08-27T22:24:45.786304+00:00"
+}

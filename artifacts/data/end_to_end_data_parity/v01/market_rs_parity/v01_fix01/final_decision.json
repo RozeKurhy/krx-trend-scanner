@@ -1,0 +1,38 @@
+{
+  "verdict": "CHANGES_REQUESTED",
+  "market_rs_parity_v01": "OPEN",
+  "next_state": "NEEDS_MARKET_RS_PARITY_FIX01",
+  "blocking_gates": [
+    "unresolved_input_difference_count",
+    "unexpected_repository_error_count"
+  ],
+  "gates": {
+    "historical_population_identity_resolved": true,
+    "unresolved_input_difference_count": 234,
+    "formula_recalculation_mismatch_count": 0,
+    "anchor_contract_mismatch_count": 0,
+    "unexplained_market_rs_mismatch_count": 0,
+    "unexplained_status_mismatch_count": 0,
+    "independent_rank_recalculation_mismatch_count": 0,
+    "independent_percentile_recalculation_mismatch_count": 0,
+    "unexplained_rank_delta_rows": 0,
+    "unexplained_percentile_delta_rows": 0,
+    "candidate_lookup_unexplained_mismatch_count": 0,
+    "investable_lookup_unexplained_mismatch_count": 0,
+    "current_run_executed": true,
+    "current_population_input_count": 2528,
+    "current_output_row_count": 2528,
+    "current_silent_row_drop_count": 0,
+    "unexpected_repository_error_count": 2,
+    "production_market_rs_legacy_stock_fallback": false,
+    "production_market_rs_legacy_benchmark_fallback": false,
+    "repository_v2_authoritative_stock_input": true,
+    "canonical_market_index_authoritative_benchmark": true,
+    "repository_reuse_preflight": "PASS",
+    "adjusted_canonical_changed": false,
+    "raw_canonical_changed": false,
+    "market_index_canonical_changed": false,
+    "live_network_requests": 0
+  },
+  "full_pytest_pending": true
+}

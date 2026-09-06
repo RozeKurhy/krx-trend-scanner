@@ -1,0 +1,15 @@
+{
+  "independent": true,
+  "production_calculator_called": false,
+  "inputs": [
+    "MarketDataRepositoryV2",
+    "/Users/june/Documents/projects/krx-trend-scanner/data/market/sector_membership/v01/sector_membership_20260814.parquet",
+    ".cache/krx_openapi/sector_rs_migration/v01/sector_index_daily.parquet"
+  ],
+  "formula": "((1+stock_return)/(1+sector_return))-1",
+  "horizons_sessions": {
+    "3m": 63,
+    "6m": 126,
+    "12m": 252
+  }
+}

@@ -419,3 +419,256 @@ Historical effective_date row의 formal provenance가 실제 검증 가능한가
 - 향후 과거 시점 formal snapshot을 실제로 확보할 방법을 찾으면, Option A(과거
   시점도 실제로 formal 재검증)로 이 정책 자체를 갱신할 수 있다 — 아직 그런
   API를 발견하지 못했다(Option B로 §9.1을 도입해 대응함).
+
+
+## 18. Historical Universe Reconciliation — 별도 모듈, 별도 SECURITY_TYPE_MAPPING
+
+**주의: 이 섹션은 `InstrumentMetadataResolver`(§1-17, live 현재 시점 전용)가 아니라
+별도 모듈인 `trend_scanner.universe.historical_authority_reconciliation`
+(`SECURITY_TYPE_MAPPING`)의 정책을 기록한다.** 두 모듈은 같은 KRX Basic Info
+공식 필드(SECUGRP_NM/KIND_STKCERT_TP_NM/SECT_TP_NM)를 사용하지만 독립적으로
+유지된다 — 이 섹션의 규칙 변경이 §6의 live mapping을 바꾸지 않으며 그 반대도
+마찬가지다.
+
+`HISTORICAL_UNIVERSE_AUTHORITY_UNRESOLVED_RESOLUTION_V01`에서 production
+Basic Info 8190쌍 실데이터로 처음 발견된 4개 classification gap을 다음과 같이
+해소했다 (frozen target 1,116 기준):
+
+### 18.1 SPAC 이력 + 후속 관리종목 — chronological exception (122건 중 8건 해소)
+
+기존 규칙(FIX01 Minor): 이 identity 이력 어딘가에 SPAC 관측이 있고 현재
+`보통주+관리종목(소속부없음)`이면 UNKNOWN. 이 규칙이 실 데이터에서 122건에
+발동했으나, 그중 114건은 SPAC 종료 후 단 한 번도 명확한 non-SPAC COMMON
+구간이 관측되지 않은 채 바로 관리종목 상태로 전환된 사례였고, 8건만
+SPAC → (수년~10년의) 명확한 COMMON 구간 → 관리종목의 구조였다.
+
+개정 규칙(`_classify_observations`): SPAC 이력이 있어도, 그 이후 chronological
+순서상 명확한 non-SPAC COMMON 관측이 한 번이라도 확인되면 그 identity는
+"COMMON lineage 확정"으로 간주하고, 그 이후의 관리종목 관측은 더 이상
+SPAC-이력 예외로 fail-close하지 않는다(정상 COMMON으로 해소). 반대로 SPAC 이후
+COMMON 확정 전에 나타나는 관리종목 관측은 계속 fail-closed UNKNOWN이다.
+임의 시간 임계값(N년 등)은 사용하지 않는다 — 오직 명시적 lifecycle 순서만
+사용한다.
+
+- 8건: COMMON lineage 확정 → HISTORICAL_COMMON_REQUIRED로 해소.
+- 114건: 명시적 COMMON 구간 없음 → 계속 HISTORICAL_AUTHORITY_UNRESOLVED.
+
+### 18.2 선박투자회사 (Ship Investment Company) — NOT_COMMON (49건)
+
+SECUGRP_NM="선박투자회사"는 §6의 live mapping 카탈로그(주권/부동산투자회사/
+외국주권/주식예탁증권/사회간접자본투융자회사/투자회사)에 없는 값이다 — 현재
+live universe에 선박투자회사 종목이 전혀 없어 한 번도 관측되지 못했을 뿐,
+historical raw에는 2010~2023년 사이 49건이 존재한다(전부 단일 상태,
+identity 충돌 없음).
+
+`docs/patterns/pattern_a/validation/universe_quality_v01.md` §2.1이 이미
+부동산투자회사(REIT)를 "배당 중심 구조로 일반 추세 스캐너 대상에서 제외"라는
+명시적 원칙으로 배제한다. 선박투자회사법 역시 특정 자산(선박)을 보유하며
+용선료 수익 대부분을 배당으로 분배하도록 강제하는 특별법 기반 pooled
+investment vehicle로, REIT와 동일한 배당 중심 구조 원칙에 해당한다. 이름이나
+ticker 추정이 아니라 이 기존 원칙의 직접 적용이다.
+
+`_DIVIDEND_FOCUSED_INVESTMENT_VEHICLE_GROUPS = {부동산투자회사, 선박투자회사}`
+→ HISTORICAL_NOT_COMMON.
+
+### 18.3 종류주권 — 정책 유지, UNKNOWN 그대로 (14건, 미해소)
+
+§6.1(Fix Round 08 Major 1)이 이미 정확히 이 값(KIND_STKCERT_TP_NM="종류주권")에
+대해 이름 substring heuristic(`"우선주" in isu_nm`)을 의도적으로 제거하고
+UNKNOWN + `UNMAPPED_FORMAL_CATEGORY`로 fail-close하기로 결정한 전례가 있다.
+historical reconciliation에서도 동일한 근거(공식 필드만으로는 종류주권 내부의
+실제 우선주/기타 클래스 구분이 불가능함)로 이 값을 매핑하지 않고 UNKNOWN으로
+유지한다 — §6.1의 이미 검토된 정책과의 일관성이 이유이며, 새 heuristic이
+아니다. 14건 전부 다른 구간에 COMMON 이력이 없어 lifecycle 규칙으로도
+구제되지 않는다.
+
+### 18.4 주식예탁증서 — 주식예탁증권의 구 명칭 (5건 전부 해소)
+
+950010/950100/950110 세 종목 모두 SECUGRP_NM이 2014-03-03에 "주식예탁증서"에서
+"주식예탁증권"으로 정확히 동일한 날짜에 전환되며(동일 ISU_CD, 동일 ISU_ABBRV),
+2014-03-03 이전에 상장폐지된 나머지 2건(950030/950070)은 "주식예탁증서"만
+관측된다. 이는 KRX 공식 용어 개정(2014-03-03 cutover)이지 별도 카테고리가
+아니라는 명확한 증거다 — fuzzy 문자열 매칭이 아니라 exact value 추가.
+
+`_COMMON_GROUPS`에 "주식예탁증서" 추가 → 5건 전부 HISTORICAL_COMMON_REQUIRED.
+
+### 18.5 결과 요약
+
+| gap | 건수 | 해소 | 근거 |
+|---|---|---|---|
+| SPAC 이력+관리종목 | 122 | 8 COMMON / 114 UNRESOLVED 유지 | chronological lifecycle (§8.1) |
+| 선박투자회사 | 49 | 49 NOT_COMMON | REIT 배당중심구조 원칙 적용 (§18.2) |
+| 종류주권 | 14 | 0 (UNRESOLVED 유지) | §6.1 기존 fail-closed 정책과 일관성 |
+| 주식예탁증서 | 5 | 5 COMMON | KRX 용어 개정 확인 (§18.4) |
+
+숫자를 0으로 맞추기 위한 조정은 없었다 — 종류주권 14건과 SPAC 114건은 근거
+부족으로 계속 UNRESOLVED다.
+
+## 19. Supplemental Authority Layer — KRX Basic Info 만으로 부족한 residual 해소
+
+`HISTORICAL_UNIVERSE_RESIDUAL_AUTHORITY_RESOLUTION_V01`에서 §18의 잔여
+128건(SPAC 114 + 종류주권 14)을 KRX Basic Info 외부의 공식 source(OpenDART
+공시, KRX 공식 종목명 필드)로 개별 조사하여 해소했다.
+
+**Primary authority(KRX PIT Basic Info)는 절대 수정하지 않는다.** 대신 별도
+supplemental authority layer를 두어, 개별적으로 조사된 identity에 한해서만
+분류를 override한다.
+
+### 19.1 구조
+
+- 위치: `data/reference/source/history/krx_instrument_master/v01/supplemental_authority/`
+  - `spac_residual_resolution_v01.json` (114 records)
+  - `preferred_class_residual_resolution_v01.json` (14 records)
+- 각 record는 `(target_ticker, isu_cd)`로 identity를 특정하고, `authority_source`
+  (OpenDART 등), `official_document_id`(DART rcept_no), `authority_date`,
+  `evidence_summary`, `decision`(`COMMON`/`NOT_COMMON`/`INSUFFICIENT`),
+  `decision_reason_code`를 기록한다.
+- `load_supplemental_authority_records()`가 이 디렉터리를 `(ticker, isu_cd) ->
+  record` lookup으로 로드한다. 디렉터리가 없거나 record가 없으면 빈 lookup —
+  묵시적 해소는 절대 없다(fail-closed 기본값).
+- `_classify_observations()`가 두 지점에서만 이 lookup을 참조한다:
+  1. SPAC-이력 관리종목 예외(§18.1)가 발동한 관측 — `(ticker, isu_cd)` 일치하는
+     record가 있으면 그 record의 `decision`으로 override.
+  2. `UNKNOWN_SECURITY_TYPE_VALUE`로 남은 관측(종류주권 등) — 동일하게 override.
+- 다른 모든 관측(다른 identity, 다른 gap)은 이 layer의 영향을 전혀 받지 않는다
+  — record가 없는 identity는 기존 §18 규칙 그대로 통과한다.
+- `decision`이 `INSUFFICIENT`이거나 인식되지 않는 값이면 classification은
+  바뀌지 않고 `classification_reason`만 `SUPPLEMENTAL_AUTHORITY_STILL_INSUFFICIENT`
+  (또는 record의 값)로 갱신된다 — "조사했지만 근거 불충분"이라는 사실 자체를
+  추적 가능하게 남긴다.
+
+### 19.2 SPAC 114건 결과 (OpenDART 공시 기반)
+
+DART corpCode 레지스트리로 114개 ticker 전부 corp_code를 식별(stock_code exact
+match, 100% 매칭)한 뒤 각 corp의 공시 목록을 조회했다.
+
+| 결과 | 건수 | 근거 |
+|---|---|---|
+| NOT_COMMON (해산 확정) | 110 | DART "주요사항보고서(해산사유발생)" 등 공식 해산 공시 — SPAC이 법정 기한 내 합병을 완료하지 못하고 해산 |
+| NOT_COMMON (합병 소멸) | 1 | 거래정지 사유 "SPAC 소멸합병" + 이후 공시 완전 중단 + DART corp_name 미변경 — 이 identity 자체는 합병으로 소멸되어 독립적 common lineage로 이어지지 않음 |
+| INSUFFICIENT (UNRESOLVED 유지) | 3 | 465320(합병 결정 후 철회, 기업 존속 중), 471050/472220(합병/해산 관련 공시 자체가 없음, 존속 중) — 확정적 결론을 내릴 공식 근거 없음 |
+
+114건 전부 최소 1건 이상의 공식 DART 공시를 확인했다(공시가 전혀 없는 경우도
+"공시 없음"이라는 사실 자체가 조회 결과다). 합병 완료(Q1=YES) + 공식 common
+lineage 확정(Q2=YES) 사례는 0건이었다 — 114건 중 어느 것도 COMMON으로
+승격되지 않았다. "SPAC은 대부분 합병했을 것"이라는 추정이 아니라 실제 조회
+결과가 반대(대부분 해산)임을 보여준다.
+
+### 19.3 종류주권 14건 결과 (KRX 공식 종목명 + DART 사업보고서)
+
+14건 전부 KRX Basic Info의 `ISU_NM`(공식 전체 종목명, ticker suffix가 아닌
+KRX가 직접 부여하는 정식 명칭)이 "OOO우선주" 형태임을 확인했다. 이는 §20에서
+금지하는 ticker suffix(K/5/7/우/우B/신형) 추정이 아니라 KRX가 공식적으로
+발행하는 종목명 필드 자체다.
+
+12건은 발행사의 DART 사업보고서 "주식의 총수 현황"이 `보통주`/`우선주`를 별도
+항목으로 명시했다(예: 삼성물산 FY2025 — 보통주 169,976,544주 / 우선주
+1,467,590주). SK/DL이앤씨 2건은 이 보고서의 항목명이 다르게 표기되어(의결권
+있는/없는 주식, 보통주식/기타주식) 추가로 DART 배당사항(alotMatter)의
+`stock_knd`별 배당 라인을 확인해 우선주 계열로 재확인했다(예: SK 보통주
+8,000원/우선주 8,050원).
+
+14건 전부 → HISTORICAL_NOT_COMMON.
+
+### 19.4 결과 요약
+
+| gap | 건수 | 해소 | 근거 |
+|---|---|---|---|
+| SPAC 잔여 114 | 114 | 111 NOT_COMMON / 3 UNRESOLVED 유지 | DART 해산/합병소멸 공시 (§19.2) |
+| 종류주권 14 | 14 | 14 NOT_COMMON | KRX ISU_NM + DART 사업보고서/배당사항 (§19.3) |
+
+재실행 후 `HISTORICAL_AUTHORITY_UNRESOLVED = 3`(465320/471050/472220) —
+공식 근거가 존재하지 않는 case만 UNRESOLVED로 남았고, 숫자를 0으로 맞추기
+위한 조정은 없었다.
+
+### 19.5 Interval 병합과 reason 보존
+
+`_intervalize()`의 구간 병합 키에 `classification_reason`을 추가했다(기존에는
+`classification` 값만 비교). 이유: supplemental override로 인해 같은
+`classification`(예: NOT_COMMON)이지만 reason이 다른(예: 원래 SPAC 구간의
+`TIER_A_NON_COMMON_SECURITY_TYPE` vs override된 관리종목 구간의
+`SUPPLEMENTAL_AUTHORITY_SPAC_DISSOLUTION_CONFIRMED`) 두 관측이 달력상
+인접하면, reason을 구간 병합 키에서 빼는 기존 로직은 이 둘을 하나의 구간으로
+합쳐 supplemental 근거를 결과물에서 지워버렸다(§33 traceability 위반). 이
+수정은 순수 표현/추적성 수정이며 어떤 ticker의 최종 classification도 바꾸지
+않는다.
+
+## 20. AS-OF-Cutoff SPAC Semantics — "아직 해산 안 됨" ≠ "근거 부족"
+
+`HISTORICAL_UNIVERSE_FINAL_RESIDUAL_SPAC_RESOLUTION_V01`에서 §19의 잔여
+3건(465320/471050/472220)이 계속 UNRESOLVED로 남아있던 원인은 evidence
+부족이 아니라 **잘못 설정된 판정 기준**이었다 — "공식 해산/합병완료 확정
+evidence가 있어야만 결론을 낼 수 있다"는 암묵적 전제 자체가 project
+denominator semantics와 맞지 않았다.
+
+### 20.1 핵심 원칙: ACTIVE SPAC은 POSITIVE NOT_COMMON EVIDENCE다
+
+`HISTORICAL_NOT_COMMON`은 "결국 그 종목이 사라졌다/해산됐다"는 terminal
+label이 아니다. 의미는: **해당 historical interval에서 일반 common-stock
+strategy denominator 대상이 아니다**. 이 project의 기존 policy상 SPAC은
+common-stock denominator에서 제외된다(§18.1 참조 — SPAC 자체 관측은 이미
+row-level에서 `TIER_A_NON_COMMON_SECURITY_TYPE`로 NOT_COMMON). 따라서:
+
+- "이 identity가 frozen cutoff(2026-08-21)까지 공식적으로 SPAC 상태를
+  유지했다"는 사실 자체가 NOT_COMMON의 **적극적 근거**다.
+- "아직 해산/합병완료 공시가 없다"는 이 판정을 막는 장애물이 아니다 —
+  오히려 "아직 common-equity로 전환되지 않았다"는 것을 보강한다.
+- 반대로 COMMON으로 승격하려면 반드시 explicit한 공식 merger-completion +
+  common-equity lineage 확인이 필요하다(§18.1 원칙 그대로 유지, 완화 없음).
+- 미래(cutoff 이후) event는 과거 cutoff 판정에 소급 적용하지 않는다 — 판정은
+  항상 "AS-OF 2026-08-21 기준 이 identity가 무엇이었는가"에 대한 답이다.
+
+### 20.2 3건 최종 판정
+
+| ticker | 상태(cutoff 기준) | 핵심 근거 | 최종 |
+|---|---|---|---|
+| 465320 (교보15호스팩) | 합병 결정 → 공식 철회(2026-07-31), SPAC 정체성 유지 | 반기보고서(2026.06, 2026-08-14 제출) 등 cutoff 이전 문서 전부 SPAC corp_name 유지, COMMON 전환 없음 | `SUPPLEMENTAL_AUTHORITY_MERGER_WITHDRAWN_SPAC_IDENTITY_PRESERVED` → NOT_COMMON |
+| 471050 (대신밸런스제17호스팩) | 상장폐지 사유발생 거래정지(2026-08-19) + 청산 관련 안내(2026-08-21), 정식 해산보고서는 cutoff까지 미제출 | 법인 청산 절차 완료 여부와 security denominator 판정은 별개 질문(§10) — 절차 개시 + SPAC 정체성 유지 + COMMON 전환 없음으로 충분 | `SUPPLEMENTAL_AUTHORITY_SPAC_TERMINATION_IN_PROGRESS_NO_COMMON_TRANSITION` → NOT_COMMON |
+| 472220 (신영스팩10호) | 합병/해산 이벤트 자체 없음, cutoff까지 활동 중인 평범한 SPAC | 반기보고서(2026.06, 2026-08-10 제출)까지 SPAC corp_name 유지, COMMON 전환 없음 | `SUPPLEMENTAL_AUTHORITY_ACTIVE_SPAC_AT_HISTORICAL_CUTOFF` → NOT_COMMON |
+
+3건 모두 cutoff(2026-08-21) **이전** 날짜의 공식 DART 문서만 근거로 사용했다
+— cutoff 이후 발간된 문서(예: 471050/472220의 2026-08-22 이후 "상장폐지
+우려 예고")는 미래 정보 소급 적용을 막기 위해 evidence에서 명시적으로
+제외했다.
+
+**주의 (interval 경계 vs authority_date는 서로 다른 것을 가리킨다):**
+재실행된 `preflight_summary.json`에서 이 3건의 interval 경계일(예: 471050의
+2026-07-20, 472220의 2026-07-30)은 supplemental record의 `authority_date`/
+`event_effective_date`(예: 471050 2026-08-19, 472220 2026-08-10)와 다르다.
+이는 모순이 아니다 — interval 경계는 primary KRX Basic Info의
+`SECT_TP_NM`이 SPAC 소속부에서 관리종목(소속부없음)으로 실제 전환된 날짜(1차
+authority가 결정)이고, `authority_date`는 그 관리종목 상태를 NOT_COMMON으로
+판정하는 데 사용한 supplemental 문서의 발간일(2차 authority가 결정)이다. 두
+날짜는 서로 다른 질문에 답하며 일치할 필요가 없다.
+
+### 20.3 Future Event Leakage 방지
+
+이 semantic 수정은 코드 로직 변경이 아니라 **판정 기준(record 작성 원칙)의
+수정**이다 — `_classify_observations`/`_apply_supplemental_authority`는
+그대로이며, supplemental record의 `decision` 값 해석 방식도 동일하다.
+resolver 자체는 날짜 기반 cutoff 로직을 갖고 있지 않다 — 각 record는 그것이
+attach된 특정 관측(observation)만 override하며, 그 관측 자체의
+`effective_date`가 이미 raw archive의 frozen 범위(≤2026-08-21) 안에
+있다. 만약 향후 raw archive가 확장되어 2026-08-21 이후 관측이 추가되고 그
+관측이 실제로 genuine COMMON shape(관리종목이 아닌 정상 보통주)라면, 그
+관측은 row-level `classify_security_type()`에서 직접 COMMON으로 판정되며
+이번 supplemental record의 영향을 받지 않는다 — 즉 과거의 NOT_COMMON
+판정이 미래의 진짜 COMMON 관측을 막지 않는다(regression test로 고정,
+`test_future_merger_completion_after_cutoff_does_not_leak_backward`).
+
+### 20.4 Population Universe vs Point-In-Time Denominator (다음 단계 계약)
+
+다음 단계(`SURVIVORSHIP_SAFE_DENOMINATOR_FREEZE_V01`)를 위해 명시적으로
+구분해야 하는 두 개념:
+
+- **A. Population universe**: historical 기간 중 COMMON interval이 한 번이라도
+  존재한 identity 전체 (예: AdjustedPriceStore population target에 사용).
+- **B. Point-In-Time denominator**: 특정 date에 실제 COMMON 상태인 identity
+  집합만(survivorship-safe backtest denominator에 사용).
+
+예: 어떤 ticker가 2013~2015년 COMMON, 2016~2018년 NOT_COMMON이라면, population
+universe에는 포함되지만 2016~2018 기간의 PIT denominator에는 포함되면 안
+된다. 이번 라운드는 freeze 자체를 실행하지 않지만, 이 원칙을 다음 단계
+설계에 명시적으로 전달한다 — 단순 ticker-level 목록만으로 freeze하면
+lifecycle transition이 있는 identity(§18.1의 8건 COMMON-lineage SPAC 포함)의
+PIT semantics가 깨진다.

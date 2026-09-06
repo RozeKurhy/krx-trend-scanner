@@ -1,0 +1,10 @@
+{
+  "schema": "related_regression_result_fix01_v01",
+  "status": "PASS",
+  "command": "PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q -p no:cacheprovider tests/test_adjusted_price_authority_cutover_v01.py tests/test_adjusted_price_store_full_population_v01.py tests/test_adjusted_price_store_full_population_fix02.py tests/test_adjusted_price_store_full_population_fix02_fix02.py tests/test_adjusted_price_store_full_population_fix02_fix03.py tests/test_adjusted_price_store_full_population_throttle_fix01.py tests/test_survivorship_safe_denominator_freeze_v01.py tests/test_historical_universe_authority_reconciliation_v01.py tests/test_adjusted_price_source_authority_review_v01.py tests/test_adjusted_price_source_integration_v01.py",
+  "implementation_head": "3b968c2",
+  "passed": 239,
+  "failed": 0,
+  "duration_seconds": 24.09,
+  "network_requests": 0
+}

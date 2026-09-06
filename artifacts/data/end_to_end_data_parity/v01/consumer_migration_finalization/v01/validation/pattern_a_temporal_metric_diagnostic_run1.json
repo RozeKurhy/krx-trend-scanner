@@ -1,0 +1,25 @@
+{
+  "schema_version": "CONSUMER_MIGRATION_FINALIZATION_V01_PATTERN_A_TEMPORAL_METRIC_DIAGNOSTIC",
+  "run": "run1",
+  "frozen_as_of": "2026-08-14",
+  "artifact_reported_rows_after_frozen_as_of": 2528,
+  "scanner_rows": 2528,
+  "scanner_error_count": 0,
+  "metric_rule": "'date' in str(key).lower() and value not in (None, '') and str(value)[:10] > AS_OF",
+  "metric_source": "scripts/run_consumer_migration_finalization_v01.py:202-206",
+  "non_temporal_key_matching_rule": "candidate_state",
+  "non_temporal_key_source": "src/trend_scanner/scanner/full_universe_scanner.py:386",
+  "candidate_state_non_empty_rows": 2528,
+  "likely_false_positive": true,
+  "effective_as_of_contract": "Pattern A scanner receives repository loader end=2026-08-14 and daily_as_of is truncated before context construction.",
+  "evidence_from_payload": {
+    "requested_as_of": "2026-08-14",
+    "reference_market_date": "2026-08-14",
+    "rows_emitted": 2528,
+    "cache_present_count": 2422,
+    "cache_missing_count": 106,
+    "scanner_error_count": 0
+  },
+  "interpretation": "The artifact metric is not a valid proof of lookahead because candidate_state contains the substring 'date' and its state values lexicographically exceed the ISO date. No production code was changed in this run; metric contract correction is required before RUN1_PASS can be asserted.",
+  "requires_follow_up": true
+}

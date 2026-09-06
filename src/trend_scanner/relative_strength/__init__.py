@@ -8,6 +8,11 @@ from trend_scanner.relative_strength.relative_strength import (
     RelativeStrengthFeatureResult,
     compute_relative_strength_features,
 )
+from trend_scanner.relative_strength.repository_adapter import (
+    MarketRSRepositoryInput,
+    benchmark_anchor_start,
+    resolve_market_rs_repository_input,
+)
 
 __all__ = [
     "RelativeStrengthDataStatus",
@@ -16,4 +21,7 @@ __all__ = [
     "HORIZON_SESSIONS_3M",
     "HORIZON_SESSIONS_6M",
     "HORIZON_SESSIONS_12M",
+    "MarketRSRepositoryInput",
+    "benchmark_anchor_start",
+    "resolve_market_rs_repository_input",
 ]

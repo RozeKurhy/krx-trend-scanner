@@ -1,0 +1,21 @@
+{
+  "schema": "adjusted_price_terminal_success_contract_v01",
+  "closure_success_statuses": [
+    "COMPLETE",
+    "NO_USABLE_OBSERVATIONS",
+    "COMPLETE_WITH_ADJUDICATED_NONUSABLE"
+  ],
+  "non_success_statuses": [
+    "PARTIAL",
+    "EMPTY",
+    "ERROR",
+    "INSUFFICIENT_AUTHORITY"
+  ],
+  "canonical_helper": "is_closure_success",
+  "canonical_constant": "CLOSURE_SUCCESS_STATUSES",
+  "unresolved_counters_required_zero": [
+    "silent_missing_count",
+    "unexpected_source_count",
+    "authority_conflict_count"
+  ]
+}

@@ -1,0 +1,235 @@
+{
+  "schema": "artifact_manifest_adjusted_price_store_backfill_correction_v01",
+  "root": "artifacts/data/end_to_end_data_parity/v01/adjusted_price_store_backfill_correction/v01",
+  "file_count_excluding_manifest": 45,
+  "required_artifacts_present": true,
+  "missing_required_artifacts": [],
+  "files": [
+    {
+      "path": "blast_radius/affected_tickers.json",
+      "sha256": "d8179e11a28991f62c28ad8abb82527e22f374e37e90aa9b190b4b910f5de0ff",
+      "size_bytes": 567
+    },
+    {
+      "path": "blast_radius/candidate_tickers.json",
+      "sha256": "e7a27b9a5e1984de59c86d10e982b23b90635bbe850bcf64691840280446e548",
+      "size_bytes": 282311
+    },
+    {
+      "path": "blast_radius/population_audit.csv",
+      "sha256": "8e332230b140df733e7c6ba0fde5c7cc60483cb04bb98e3d82aff8438b649a5b",
+      "size_bytes": 662292
+    },
+    {
+      "path": "blast_radius/population_audit_summary.json",
+      "sha256": "a8995f7cad5aefe7fa5398cef59cfd113479439cdcfaa120664c71de8a4f23bf",
+      "size_bytes": 1299
+    },
+    {
+      "path": "correction/canonical_after_manifest.json",
+      "sha256": "45b57c798240de93fb1ebf5b6fde7dfb04d8b0477ca048026e53274e009b35af",
+      "size_bytes": 1509
+    },
+    {
+      "path": "correction/canonical_before_manifest.json",
+      "sha256": "b532949d5e30d4f08204a5c5856ce0c61fe35d76a4fde7b85dacf8d10a27a17d",
+      "size_bytes": 1586
+    },
+    {
+      "path": "correction/corrected_rows.json",
+      "sha256": "f0d7c342e149225a31ac863e183bcfaa9286d531db764750171d4cea452fc8a2",
+      "size_bytes": 2143
+    },
+    {
+      "path": "correction/corrected_tickers.json",
+      "sha256": "7458313af604d725523913508347e8c9135bd17d39b9d95dc65c3d72efa24404",
+      "size_bytes": 370
+    },
+    {
+      "path": "correction/mutation_reconciliation.json",
+      "sha256": "051edd950d36d86c035f5027dc0869403b1aae06ce7cd80544337ae530578aac",
+      "size_bytes": 1129
+    },
+    {
+      "path": "correction/repository_authority_cleanup.json",
+      "sha256": "d4bcc19c6d1912400111a085161c62998fd82950a3339ee0d0e5beeca4ec4514",
+      "size_bytes": 750
+    },
+    {
+      "path": "execution_identity.json",
+      "sha256": "89994dc309c6cef43583d04f274c1f6505944c7a9daa1906886cf7e9d043076c",
+      "size_bytes": 3136
+    },
+    {
+      "path": "final_decision.json",
+      "sha256": "b0da51e1e4b5bda121f47b2097f97b3c595312b0d8f2275df1e9b0c16808ea42",
+      "size_bytes": 2263
+    },
+    {
+      "path": "git/git_mutation_audit.json",
+      "sha256": "f9fda131d2f411fc5b9379de929eb8b1d636bcb4525051316a3122549cdcf622",
+      "size_bytes": 2506
+    },
+    {
+      "path": "git/staged_files.json",
+      "sha256": "ed16be06dbff63076d57428d7e1ea32906bc8baaf94ccdd91d192420fa1c8932",
+      "size_bytes": 751
+    },
+    {
+      "path": "root_cause/acquisition_root_cause.json",
+      "sha256": "2d965152760a28884109844a2a75cf5818a764b6737ee6ff48596a8fc14f6a7b",
+      "size_bytes": 772
+    },
+    {
+      "path": "root_cause/ticker_446840_acquisition_trace.json",
+      "sha256": "dc3bf7d05bcfb6a8f2843619fd8d3e43b995e662e082b2155a73a564cbe1a188",
+      "size_bytes": 3877
+    },
+    {
+      "path": "source_verification/live_request_manifest.json",
+      "sha256": "b0897217cdc1cb2336883a780e2c79a168e54f5e1f0bf281d2e9c569d933d8eb",
+      "size_bytes": 2796
+    },
+    {
+      "path": "source_verification/network_accounting.json",
+      "sha256": "99cc3b1034cb5536138ef05f4bd9dc8679b34c68e5934710834165c0d6e2148c",
+      "size_bytes": 615
+    },
+    {
+      "path": "validation/adjusted_store_validation.json",
+      "sha256": "a5eca029c6d59a1840126ed666c12eee42cc7961c2f266d651aedb6477359c51",
+      "size_bytes": 480
+    },
+    {
+      "path": "validation/market_rs_current_readiness.json",
+      "sha256": "d54e6dfb4bf9f850aa3f88f2019a179be9f0ef48918d3251d3b3c36f7648eb11",
+      "size_bytes": 543
+    },
+    {
+      "path": "validation/market_rs_historical_parity.json",
+      "sha256": "cadbb23557b241565edcc3a6f9f80f43a8d661d358dbcd6a5528ea5513905f49",
+      "size_bytes": 1550
+    },
+    {
+      "path": "validation/market_rs_parity/benchmark_authority_parity.json",
+      "sha256": "94d099a190c6e48ba41f5143b3180f9ac3a190b13195e5126f08319dbadfa2c7",
+      "size_bytes": 2757
+    },
+    {
+      "path": "validation/market_rs_parity/canonical_guard_before_after.json",
+      "sha256": "b95dedf3e790398369e38adb4fc7512f5677572bd0062794527b222e30a7942d",
+      "size_bytes": 5063932
+    },
+    {
+      "path": "validation/market_rs_parity/historical_population_identity_20260814.json",
+      "sha256": "ee9b093d8cd5d540a3e63b0d1deefac91c9f312daa7487f8c61c2c3836027edf",
+      "size_bytes": 392
+    },
+    {
+      "path": "validation/market_rs_parity/legacy_vs_repository_input_census_20260814.json",
+      "sha256": "f71849a036444dde34e8c5ceb021b01866bb4b9dd42d3430eee0552ce880abe0",
+      "size_bytes": 5356735
+    },
+    {
+      "path": "validation/market_rs_parity/legacy_vs_repository_input_summary_20260814.json",
+      "sha256": "1a6128444c8ab687e3a34b489a65ff02af9d2cac92f9a608aa1a5d20e302e2d1",
+      "size_bytes": 355
+    },
+    {
+      "path": "validation/market_rs_parity/market_rs_anchor_parity_20260814.json",
+      "sha256": "4708803c1f42a2fd02ebba072717a955792db8cc96d3d4a817903cc852b62ba4",
+      "size_bytes": 165
+    },
+    {
+      "path": "validation/market_rs_parity/market_rs_candidate_investable_lookup_parity_20260814.json",
+      "sha256": "db0221a5152570673166eda2c2cc259f2ea00c4b449f2564551b975910c1d744",
+      "size_bytes": 341
+    },
+    {
+      "path": "validation/market_rs_parity/market_rs_consumer_inventory.json",
+      "sha256": "b0a273efe1ed43ee1d49266d68bae3f05a847580ab21a82a1420b43d203fd4cf",
+      "size_bytes": 586
+    },
+    {
+      "path": "validation/market_rs_parity/market_rs_contract_freeze.json",
+      "sha256": "affed22bab562e3bd2a6ffb658fe576c9b207d7be95ddd8c810fa1c7a3e9d3eb",
+      "size_bytes": 450
+    },
+    {
+      "path": "validation/market_rs_parity/market_rs_cross_section_parity_20260814.json",
+      "sha256": "88b647b16cea8bba51f1b1dc0c3d2f7ea6e32f4257d92b0ef89a701245d5a980",
+      "size_bytes": 1656850
+    },
+    {
+      "path": "validation/market_rs_parity/market_rs_current_readiness.json",
+      "sha256": "ec0ccd46cccecf8ba77c721e5f2b1b44650d1a768dfbc0d8f9229b91fbb0bb7e",
+      "size_bytes": 791099
+    },
+    {
+      "path": "validation/market_rs_parity/market_rs_formula_recalculation_20260814.json",
+      "sha256": "889db59d50f52840db4d912a22add9316da5f47dec7259672026d5a3cf75830c",
+      "size_bytes": 107
+    },
+    {
+      "path": "validation/market_rs_parity/market_rs_level_parity_20260814.json",
+      "sha256": "71d5778751a3d0058bd6c9fddc551c0c80f8e3d286d64a4d3a3ddf7f05948061",
+      "size_bytes": 297872
+    },
+    {
+      "path": "validation/market_rs_parity/market_rs_level_parity_summary_20260814.json",
+      "sha256": "fa47c6699e3a206689775dfbcb1768908f6920a1c736869b3ea13ad4478a8a49",
+      "size_bytes": 341
+    },
+    {
+      "path": "validation/market_rs_parity/market_rs_performance.json",
+      "sha256": "314df93ad0d40654a3f131a39f81f029628d784307852482c304202d0ac1f20b",
+      "size_bytes": 240
+    },
+    {
+      "path": "validation/market_rs_parity/market_rs_rank_percentile_recalculation_20260814.json",
+      "sha256": "e95bb3aa7a44ec6d9b374cb7d8cdad29623d180276ab7de74bb52f0a7f15ebe5",
+      "size_bytes": 293514
+    },
+    {
+      "path": "validation/market_rs_parity/market_rs_repository_edge_cases.json",
+      "sha256": "2fc5d859ce3c8b63517ee413d5de7042faf4d1f5d52e3c62da91fc6887e630ec",
+      "size_bytes": 738
+    },
+    {
+      "path": "validation/market_rs_parity/network_accounting.json",
+      "sha256": "6e22ee4c05a08cd8204f6c61b54066b2945631c7504bace37243b2b65c8c353c",
+      "size_bytes": 147
+    },
+    {
+      "path": "validation/market_rs_parity/no_lookahead_audit.json",
+      "sha256": "b5f91c69755c5a11147d30462efb2e0359c0a5df15a8400fb5fff51e0ce19d20",
+      "size_bytes": 179
+    },
+    {
+      "path": "validation/market_rs_parity/repository_exception_accounting.json",
+      "sha256": "2a8e277e08514d21b4864207155214c4ac8df51d106e8d8340b3c3b4a0f553a6",
+      "size_bytes": 254
+    },
+    {
+      "path": "validation/market_rs_parity/repository_reuse_preflight.json",
+      "sha256": "30d5a31088eb045748256823d60f4105223915cc8d982a535e96ef344aca9ce9",
+      "size_bytes": 328
+    },
+    {
+      "path": "validation/pytest_durations_50.txt",
+      "sha256": "1bd3da2a5639a9f8e1892b50520af33e606f8bec34d819365cdfb801860d564e",
+      "size_bytes": 35984
+    },
+    {
+      "path": "validation/test_summary.json",
+      "sha256": "5ecf482bfd173ec470c020922d97172e7b3e55d794fa1ebff2bd97d1d98a7be6",
+      "size_bytes": 1924
+    },
+    {
+      "path": "validation/ticker_446840_regression.json",
+      "sha256": "f14d67f5ff16ecc3a18861bb68f2083ba72c8b8e7b59a42ee049e1dcfdcb44ca",
+      "size_bytes": 855
+    }
+  ],
+  "last_updated_for": "remote_verification_metadata_follow_up"
+}

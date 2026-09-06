@@ -1,0 +1,55 @@
+{
+  "schema": "fix05_root_cause_manifest_v01",
+  "directive_id": "ADJUSTED_PRICE_STORE_FULL_POPULATION_V01_FIX05",
+  "START_HEAD": "84beb6135c880d4070e7d6e536777c3c22897a71",
+  "population_sha256": "f14c3d46e5305571b311c4d120d9a2f1eba1644e7f059cde4e59eabab42d1aff",
+  "pit_sha256": "6b542ae05c9050dd30959d6f1b17306e4016f435a726ca7e0dff9e11008e4064",
+  "calendar_cutoff": "2026-08-21",
+  "provider_count_limit_confirmed": true,
+  "static_capability_inspection_complete": true,
+  "supported_retrieval_mechanisms": [
+    "symbol",
+    "timeframe",
+    "count",
+    "requestType=0"
+  ],
+  "tested_retrieval_mechanisms": [
+    "PyKRX get_market_ohlcv_by_date(fromdate, todate, adjusted=True)",
+    "Direct Naver Sise(symbol, count, timeframe, requestType=0)"
+  ],
+  "supported_retrieval_mechanisms_exhausted": true,
+  "long_history_recovery_attempted": true,
+  "long_history_recovery_succeeded": false,
+  "provider_capability_status": "NOT_RECOVERABLE_WITHIN_FROZEN_AUTHORITY",
+  "dominant_root_cause": "PROVIDER_PAGINATION_OR_COUNT_LIMIT",
+  "capability_confidence": "HIGH_EMPIRICALLY_VERIFIED",
+  "partial_root_cause_counts": {
+    "PROVIDER_PAGINATION_OR_COUNT_LIMIT": 1032,
+    "MIXED": 372,
+    "PROVIDER_DATA_GAP": 478
+  },
+  "partial_root_cause_confidence_counts": {
+    "HIGH": 928,
+    "MEDIUM": 912,
+    "LOW": 42
+  },
+  "error_root_cause_counts": {
+    "CURRENT_COMMON_INVALID_OHLC": 257,
+    "DELISTED_SYMBOL_UNSUPPORTED": 5,
+    "HISTORICAL_ONLY_INVALID_OHLC": 150,
+    "PROVIDER_NETWORK_ERROR": 1
+  },
+  "empty_root_cause_counts": {
+    "DELISTED_SYMBOL_UNSUPPORTED": 4
+  },
+  "ohlc_repeat_probe_status": "CONFIRMED_PERSISTENT_PROVIDER_ANOMALY",
+  "network_reconciliation_status": "RECONCILED_TRANSIENT_SOCKET_ERROR",
+  "provider_fix_required": false,
+  "source_authority_review_required": true,
+  "residual_resume_eligible": false,
+  "recommended_next_state": "NEEDS_ADJUSTED_PRICE_SOURCE_AUTHORITY_REVIEW",
+  "reason_codes": [
+    "FROZEN_AUTHORITY_EXHAUSTED_SOURCE_REVIEW_REQUIRED"
+  ],
+  "updated_at": "2026-08-27T23:54:41.143651+00:00"
+}

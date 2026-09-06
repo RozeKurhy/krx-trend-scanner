@@ -1,0 +1,20 @@
+{
+  "schema": "adjusted_population_preflight_fix01_timeout_enforcement_contract_v01",
+  "hard_timeout_seconds": 30,
+  "required_mechanism": "subprocess_or_process_isolation",
+  "recommended_implementation": {
+    "worker": "one multiprocessing spawn worker per external attempt",
+    "parent_action": "start worker, join(30), inspect result queue",
+    "timeout_action": "if worker remains alive, terminate/kill, join, mark TIMEOUT",
+    "cleanup": "remove IPC/temp state and do not checkpoint partial output"
+  },
+  "explicitly_not_sufficient": [
+    "thread join timeout with a still-running network call",
+    "future.cancel() after the request has entered blocking I/O",
+    "soft elapsed-time logging without terminating the worker"
+  ],
+  "attempt_accounting": "A timed-out worker consumes the attempt budget; it may retry once under retry_contract.json.",
+  "observability": ["ticker", "attempt_index", "started_at", "finished_at", "elapsed_seconds", "terminal_status"],
+  "execution_in_fix01": false,
+  "network_requests_in_fix01": 0
+}

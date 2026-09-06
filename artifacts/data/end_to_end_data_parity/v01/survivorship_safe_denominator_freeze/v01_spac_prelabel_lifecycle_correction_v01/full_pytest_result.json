@@ -1,0 +1,16 @@
+{
+  "schema": "full_pytest_result_v01",
+  "command": "caffeinate -i uv run pytest -q -p no:cacheprovider",
+  "status": "BLOCKED_HANG",
+  "exit_code": 130,
+  "collection_total": 2269,
+  "deselected": 5,
+  "progress_at_interrupt": "approximately 79%",
+  "allowed_baseline_failure_count": 1,
+  "allowed_baseline_failure": "tests/test_krx_historical_backfill.py::test_recent_empty_is_not_checkpointed_and_general_resume_retries (assertion mismatch: expected recent_empty_unfinalized_count=1, got 0)",
+  "hang_location": "tests/test_pattern_a_foreign_flow_infrastructure.py module fixture base_scan_result -> scan_pattern_a_universe -> pandas resample; no output for >2 minutes before Ctrl-C",
+  "unexpected_failures": 0,
+  "retries": 0,
+  "network_requests_observed": 0,
+  "note": "Single full-suite attempt stopped at the documented hang; no test was retried. Final pass count was not emitted because pytest was interrupted."
+}

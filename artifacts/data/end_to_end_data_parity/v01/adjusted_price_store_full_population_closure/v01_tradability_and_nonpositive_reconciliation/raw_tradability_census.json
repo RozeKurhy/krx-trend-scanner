@@ -1,0 +1,85 @@
+{
+  "candidate_confirmed_nontrading_predicate": "open==0 AND high==0 AND low==0 AND close>0 AND volume==0 AND trading_value==0",
+  "candidate_semantics": "Only Class A is independently confirmed nontrading; B/C/D are not automatically nontrading.",
+  "coverage": [
+    "2010-01-04",
+    "2026-08-21"
+  ],
+  "current_predicate": {
+    "date_set_sha256": "2bb2357a06a2cec7b8fba4e6ea40d964b6d52d88d93960f1a3fea7b2b89d204b",
+    "first_date": "2010-01-04",
+    "last_date": "2026-08-21",
+    "predicate": "open==0 AND high==0 AND low==0 AND close>0",
+    "row_set_sha256": "59276d5451869b7661272a21866582e1e13f38398306731c96c0006933440b36",
+    "ticker_set_sha256": "b6ab0fb006a617b14f6f4ae40ac5ef7ac12fd5d64425179a359a43b0605daef9",
+    "total_rows": 283194,
+    "unique_dates": 4095,
+    "unique_tickers": 2136
+  },
+  "four_way_activity": {
+    "CLASS_A_V0_TV0": 283069,
+    "CLASS_B_V0_TV_POSITIVE": 0,
+    "CLASS_C_V_POSITIVE_TV0": 0,
+    "CLASS_D_V_POSITIVE_TV_POSITIVE": 125,
+    "INVALID_ACTIVITY_EVIDENCE": 0
+  },
+  "four_way_activity_explicit": {
+    "ACTIVITY_NONE": 283069,
+    "ACTIVITY_PRESENT": 125
+  },
+  "full_population_intersection": {
+    "class_a": 214145,
+    "class_b": 0,
+    "class_c": 0,
+    "class_d": 45,
+    "predicate_rows_inside_population_lifecycle": 214190,
+    "predicate_unique_dates": 4095,
+    "predicate_unique_tickers": 1682
+  },
+  "historical_suspension_authority_reconciliation": {
+    "activity_conflict_count": 1,
+    "authority_record_count": 177,
+    "conflicts": [
+      {
+        "activity_class": "CLASS_D_V_POSITIVE_TV_POSITIVE",
+        "close": 3300,
+        "date": "2012-07-16",
+        "high": 3440,
+        "low": 3265,
+        "open": 3265,
+        "ticker": "000360",
+        "trading_value": 138215850,
+        "volume": 41680
+      }
+    ],
+    "raw_rows_matched": 177
+  },
+  "invalid_activity_evidence": 0,
+  "physical_relation_census": {
+    "definition": "The zero-OHL predicate is intentionally a raw-shape dimension; it is not an OHLC physical-validity claim.",
+    "physical_valid_ohlc_not_claimed_for_predicate_rows": true,
+    "zero_ohl_positive_close_rows": 283194,
+    "zero_ohl_rows_with_activity_none": 283069,
+    "zero_ohl_rows_with_activity_present": 125
+  },
+  "semantics": "UNADJUSTED_RAW",
+  "snapshot_count": 8190,
+  "taxonomy": {
+    "activity_dimension": [
+      "ACTIVITY_NONE",
+      "ACTIVITY_VOLUME_ONLY",
+      "ACTIVITY_VALUE_ONLY",
+      "ACTIVITY_PRESENT"
+    ],
+    "class_d_not_nontrading": true,
+    "legacy_labels_are_qualified_only": true,
+    "raw_shape_dimension": "ZERO_OHL_POSITIVE_CLOSE"
+  },
+  "total_raw_rows": 9204280,
+  "trading_value_quality": {
+    "invalid_activity_rows": 0,
+    "negative": 0,
+    "null_or_nonfinite": 0,
+    "schema_consistent": true
+  }
+}

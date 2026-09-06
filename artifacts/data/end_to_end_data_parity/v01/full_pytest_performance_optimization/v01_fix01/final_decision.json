@@ -1,0 +1,27 @@
+{
+  "schema": "full_pytest_performance_optimization_fix01_final_decision_v01",
+  "decision": "ACCEPT",
+  "critical_01": "RESOLVED",
+  "critical_02": "RESOLVED",
+  "major_01": "RESOLVED",
+  "minor_01": "RESOLVED",
+  "validation_equivalence": "PASS",
+  "final_result": {
+    "passed": 2315,
+    "allowed_failures": 1,
+    "unexpected_failures": 0,
+    "skipped": 7,
+    "deselected": 5,
+    "real_seconds": 1362.16
+  },
+  "runtime_reduction": {
+    "seconds_saved_vs_original": 64.53,
+    "percent": 4.52
+  },
+  "conditional_below_20_percent": true,
+  "remaining_bottleneck": "Repository V2 eager raw index (~112.5s; 8190 partitions, 1.17GB index memory) documented and deferred because safe redesign would expand authority semantics.",
+  "superseded_final_run_seconds": 1384.58,
+  "final_code_head": "950517a08ae833152eb56fabfcc0ffa444055b97",
+  "final_code_tree": "70935464d6e6e4657cf6058e51330acb8bf5c4af",
+  "remote_verification": "PASS"
+}

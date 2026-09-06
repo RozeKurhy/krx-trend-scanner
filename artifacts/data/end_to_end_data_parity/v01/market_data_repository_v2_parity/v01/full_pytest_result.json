@@ -1,0 +1,17 @@
+{
+  "command": "caffeinate -i .venv/bin/python -m pytest -q -p no:cacheprovider",
+  "deselected": 5,
+  "duration_seconds": 1336.89,
+  "errors": 17,
+  "failed": 4,
+  "failure_classes": {
+    "historical_backfill_expectation_mismatch": 1,
+    "live_opendart_preflight_failure": 1,
+    "permission_errors_writing_existing_artifacts": 17,
+    "stage_research_determinism_mismatch": 2
+  },
+  "network_note": "Full suite included one existing live OpenDART preflight test; no repository V2/Naver/PyKRX/KRX requests were run in parity census. No retry performed.",
+  "passed": 2260,
+  "skipped": 6,
+  "status": "BLOCKED_BASELINE_AND_ENVIRONMENT"
+}

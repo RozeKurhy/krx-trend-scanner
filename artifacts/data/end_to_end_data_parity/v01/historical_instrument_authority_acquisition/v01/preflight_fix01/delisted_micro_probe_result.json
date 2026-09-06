@@ -1,0 +1,12 @@
+{
+  "work_id": "KRX_HISTORICAL_INSTRUMENT_AUTHORITY_ACQUISITION_V01_FIX01",
+  "authenticated": true,
+  "cases": [
+    {"case": "KOSPI_BROAD", "http_status": 200, "rows": 14, "top_level_keys": ["CURRENT_DATETIME", "output"], "field_count": 15},
+    {"case": "KOSPI_FILTER_002270", "http_status": 200, "rows": 1, "target": {"ISU_CD": "002270", "MKT_NM": "KOSPI", "SECUGRP_NM": "주권", "KIND_STKCERT_TP_NM": "보통주", "LIST_DD": "1973/05/09", "DELIST_DD": "2022/07/20"}, "local_raw_last_observed": "2022-07-19", "local_market": "KOSPI", "comparison": "PASS"},
+    {"case": "KOSDAQ_BROAD", "http_status": 200, "rows": 5, "top_level_keys": ["CURRENT_DATETIME", "output"], "field_count": 15},
+    {"case": "KOSDAQ_FILTER_299900", "http_status": 200, "rows": 1, "target": {"ISU_CD": "299900", "MKT_NM": "KOSDAQ", "SECUGRP_NM": "주권", "KIND_STKCERT_TP_NM": "보통주", "LIST_DD": "2018/12/20", "DELIST_DD": "2026/08/18"}, "local_raw_last_observed": "2026-08-14", "local_market": "KOSDAQ", "comparison": "PASS"}
+  ],
+  "non_empty_pass": true,
+  "status": "PASS"
+}

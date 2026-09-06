@@ -1,0 +1,30 @@
+{
+  "as_of": "2026-08-14",
+  "population_input_count": 2528,
+  "population_output_count": 2528,
+  "input_output_reconciliation_pass": true,
+  "observed_market_rs_mismatch_count": 139,
+  "observed_status_mismatch_count": 138,
+  "observed_anchor_mismatch_count": 36,
+  "approved_input_difference_count": 188,
+  "unresolved_input_difference_count": 0,
+  "formula_unexplained_mismatch_count": 0,
+  "anchor_contract_unexplained_mismatch_count": 0,
+  "rank_unexplained_mismatch_count": 0,
+  "percentile_unexplained_mismatch_count": 0,
+  "lookup_unexplained_mismatch_count": 0,
+  "unexpected_repository_error_count": 0,
+  "unresolved_material_observation_count": 0,
+  "approved_difference_authority": "APPROVED_CANONICAL_ADJUSTED_BACKFILL_CORRECTION",
+  "pass": true,
+  "source_artifacts": {
+    "level_summary": "validation/market_rs_parity/market_rs_level_parity_summary_20260814.json",
+    "formula": "validation/market_rs_parity/market_rs_formula_recalculation_20260814.json",
+    "anchor": "validation/market_rs_parity/market_rs_anchor_parity_20260814.json",
+    "cross_section": "validation/market_rs_parity/market_rs_cross_section_parity_20260814.json",
+    "rank_percentile": "validation/market_rs_parity/market_rs_rank_percentile_recalculation_20260814.json",
+    "exception_accounting": "validation/market_rs_parity/repository_exception_accounting.json",
+    "input_census": "validation/market_rs_parity/legacy_vs_repository_input_census_20260814.json"
+  },
+  "schema": "market_rs_historical_parity_adjusted_price_store_backfill_correction_v01"
+}

@@ -1,0 +1,18 @@
+{
+  "analytic_invalid_source_rows": "ADJUSTED_ANALYTICALLY_NONUSABLE; no clamp or raw substitution",
+  "decision": "CONSUMER_FACING_ANALYTIC_COMPOSED_VIEW",
+  "exact_placeholder": "CONFIRMED_NONTRADING and excluded from get_daily with explicit audit reason",
+  "pit_behavior": "eligibility authority only; never deletes source history",
+  "raw_apis_lossless": [
+    "get_raw_daily",
+    "get_daily_ancillary",
+    "get_stock_snapshot"
+  ],
+  "raw_only_active_without_authority": "BLOCK",
+  "raw_only_exact_placeholder": "projected as CONFIRMED_NONTRADING",
+  "remaining_next_state": "NEEDS_REPOSITORY_SESSION_AUTHORITY_RECONCILIATION_FIX01",
+  "schema": "repository_v2_analytic_session_contract_adjudication_v01",
+  "session_rule": "usable adjusted source OHLC + valid KRX raw activity/ancillary semantics",
+  "source_history_api": "AdjustedPriceStore.load_daily_source",
+  "status": "CONTRACT_COMPLETE_WITH_REMAINING_UNRESOLVED_ACTIVE_GAPS"
+}

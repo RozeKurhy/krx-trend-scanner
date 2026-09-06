@@ -1,0 +1,20 @@
+{
+  "work_id": "KRX_HISTORICAL_INSTRUMENT_AUTHORITY_ACQUISITION_V01_FIX01",
+  "storage": ".cache/krx_openapi/quota.sqlite3",
+  "snapshot_time_kst": "2026-08-26T12:31:55+09:00",
+  "quota_usage_date_kst": "2026-08-26",
+  "current_global_usage": 6878,
+  "endpoint_usage": {
+    "kospi_dd_trd": 3439,
+    "kosdaq_dd_trd": 3439,
+    "stk_isu_base_info": 0,
+    "ksq_isu_base_info": 0
+  },
+  "global_hard_limit": 10000,
+  "safety_reserve": 500,
+  "project_daily_soft_limit": 9500,
+  "safe_remaining": 2622,
+  "execution_re_read_required": true,
+  "note": "Local SQLite is the project canonical attempt authority, not an official KRX usage API. The observed runtime default reserve is 0; the execution runner must use reserve=500 explicitly.",
+  "status": "PASS_WITH_EXECUTION_CONFIG_GAP"
+}

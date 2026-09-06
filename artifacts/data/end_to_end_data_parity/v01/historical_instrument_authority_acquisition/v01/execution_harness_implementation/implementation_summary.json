@@ -1,0 +1,18 @@
+{
+  "work_id": "KRX_HISTORICAL_INSTRUMENT_AUTHORITY_ACQUISITION_V01",
+  "phase": "EXECUTION_HARNESS_IMPLEMENTATION",
+  "status": "BLOCKED_ACQUISITION_EXECUTION_READINESS",
+  "implementation_status": "PASS",
+  "live_execution": "NOT_RUN",
+  "network_policy": "ZERO_EXTERNAL_NETWORK_REQUESTS",
+  "target_contract": {"validated_trading_dates": 4095, "markets": 2, "primary_pairs": 8190},
+  "current_calendar_gate": {"observed_dates": 3840, "expected_dates": 4095, "status": "BLOCKED_FAIL_CLOSED"},
+  "source_files": [
+    "src/trend_scanner/data/krx_historical_instrument_acquisition.py",
+    "src/trend_scanner/data/krx_quota_reconciliation.py",
+    "scripts/run_krx_historical_instrument_acquisition_v01.py"
+  ],
+  "test_file": "tests/test_krx_historical_instrument_acquisition_v01.py",
+  "raw_archive_namespace": "data/reference/source/history/krx_instrument_master/v01/basic_info",
+  "consumer_switch": "NOT_CHANGED"
+}

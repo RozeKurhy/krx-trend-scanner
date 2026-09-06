@@ -1,0 +1,130 @@
+{
+  "date_interpretation": "discrete date member in a halt_dates set; no announcement/effective/resumption field is present",
+  "derivation_rule": "ZERO_OHL_POSITIVE_CLOSE_OR_CORPORATE_ACTION_HALT",
+  "generation_code_or_path": {
+    "generator_path_found": false,
+    "note": "Git history shows the artifact introduction; no tracked generator for this exact 177-date artifact was found. The frozen record carries source_ref, derivation_rule, and evidence_note.",
+    "tracked_loader_or_consumer_refs": [
+      "tests/test_adjusted_price_store_bounded_live_pilot_v01.py",
+      "src/trend_scanner/data/adjusted_price_diagnostics.py",
+      "src/trend_scanner/data/adjusted_price_full_population.py",
+      "src/trend_scanner/data/adjusted_price_pilot.py",
+      "src/trend_scanner/data/source_authority_review.py"
+    ]
+  },
+  "git_history": [
+    "bb758d116c9ac5323a644b9a3add577aee0fa955\t2026-08-27T18:22:07+09:00\tdata: finalize adjusted price pilot closure metadata",
+    "6a04d535251725a13046e4b1eec9d507d307a2f5\t2026-08-27T17:44:05+09:00\tdata: finalize adjusted price pilot provenance",
+    "f3d18e32b18ce2bc34a4741b994ef4782962f539\t2026-08-27T17:30:01+09:00\tdata: regenerate canonical adjusted price pilot closure evidence"
+  ],
+  "identity_validation": [
+    {
+      "date": "2012-07-13",
+      "file_sha256": "a0429782e297bc247c49369ae68fc25161829228b15db13121b0077e073c0736",
+      "identity": {
+        "ISU_ABBRV": "삼환기업",
+        "ISU_CD": "KR7000360008",
+        "ISU_ENG_NM": "SamwhanCorporation",
+        "ISU_NM": "삼환기업보통주",
+        "ISU_SRT_CD": "000360",
+        "KIND_STKCERT_TP_NM": "보통주",
+        "LIST_DD": "19730903",
+        "LIST_SHRS": "11825295",
+        "MKT_TP_NM": "KOSPI",
+        "PARVAL": "5000",
+        "SECT_TP_NM": "",
+        "SECUGRP_NM": "주권"
+      },
+      "path": "/Users/june/Documents/projects/krx-trend-scanner/data/reference/source/history/krx_instrument_master/v01/basic_info/2012/20120713/KOSPI.json"
+    },
+    {
+      "date": "2012-07-16",
+      "file_sha256": "03cb544e7adafc1fd01529de934228a3ddb607e1508f42a0c70940802f23a021",
+      "identity": {
+        "ISU_ABBRV": "삼환기업",
+        "ISU_CD": "KR7000360008",
+        "ISU_ENG_NM": "SamwhanCorporation",
+        "ISU_NM": "삼환기업보통주",
+        "ISU_SRT_CD": "000360",
+        "KIND_STKCERT_TP_NM": "보통주",
+        "LIST_DD": "19730903",
+        "LIST_SHRS": "11825295",
+        "MKT_TP_NM": "KOSPI",
+        "PARVAL": "5000",
+        "SECT_TP_NM": "",
+        "SECUGRP_NM": "주권"
+      },
+      "path": "/Users/june/Documents/projects/krx-trend-scanner/data/reference/source/history/krx_instrument_master/v01/basic_info/2012/20120716/KOSPI.json"
+    },
+    {
+      "date": "2012-07-17",
+      "file_sha256": "4c08cb6984f7a04ae30863e11e3c322b140d5912fdf05a9d6917feb930c01dcd",
+      "identity": {
+        "ISU_ABBRV": "삼환기업",
+        "ISU_CD": "KR7000360008",
+        "ISU_ENG_NM": "SamwhanCorporation",
+        "ISU_NM": "삼환기업보통주",
+        "ISU_SRT_CD": "000360",
+        "KIND_STKCERT_TP_NM": "보통주",
+        "LIST_DD": "19730903",
+        "LIST_SHRS": "11825295",
+        "MKT_TP_NM": "KOSPI",
+        "PARVAL": "5000",
+        "SECT_TP_NM": "",
+        "SECUGRP_NM": "주권"
+      },
+      "path": "/Users/june/Documents/projects/krx-trend-scanner/data/reference/source/history/krx_instrument_master/v01/basic_info/2012/20120717/KOSPI.json"
+    }
+  ],
+  "interval_logic": {
+    "announcement_date_semantics": "not represented",
+    "boundary_evidence": "resolver compares effective_from <= date <= effective_to and excludes exact halt_dates_in_window; frozen record is not an interval",
+    "end_inclusive": true,
+    "implementation_path": "src/trend_scanner/data/adjusted_price_pilot.py",
+    "resumption_date_included_if_listed": true,
+    "start_inclusive": true
+  },
+  "provider": "KRX raw archive / local frozen derivation",
+  "raw_source_ref": "KRX_RAW_KOSPI_2010_2023",
+  "samick_metadata_candidates": [
+    {
+      "abbrv": "삼익악기",
+      "english": "SamickMusicalInstruments",
+      "isu_cd": "KR7002450005",
+      "market": "KOSPI",
+      "ticker": "002450"
+    },
+    {
+      "abbrv": "삼익THK",
+      "english": "SAMICK THK",
+      "isu_cd": "KR7004380002",
+      "market": "KOSPI",
+      "ticker": "004380"
+    },
+    {
+      "abbrv": "삼익제약",
+      "english": "SAMIK PHARM. Co., LTD.",
+      "isu_cd": "KR7014950000",
+      "market": "KOSDAQ",
+      "ticker": "014950"
+    },
+    {
+      "abbrv": "스튜디오삼익",
+      "english": "Studio Samick Co.,Ltd.",
+      "isu_cd": "KR7415380005",
+      "market": "KOSDAQ",
+      "ticker": "415380"
+    }
+  ],
+  "source_artifact": "/Users/june/Documents/projects/krx-trend-scanner/artifacts/data/end_to_end_data_parity/v01/adjusted_price_store_bounded_live_pilot/v01/historical_suspension_authority_v01.json",
+  "source_artifact_sha256": "185075a56fc98c37d84380247d5b009d005f602f0315a233813bec899f7cbb50",
+  "source_record_fields": [
+    "authority_type",
+    "date",
+    "derivation_rule",
+    "evidence_note",
+    "reason",
+    "source_ref",
+    "ticker"
+  ]
+}

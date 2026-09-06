@@ -1,0 +1,12 @@
+{
+  "schema": "adjusted_price_suspension_errata_consumption_v01",
+  "base_authority_path": "artifacts/data/end_to_end_data_parity/v01/adjusted_price_store_bounded_live_pilot/v01/historical_suspension_authority_v01.json",
+  "errata_path": "artifacts/data/end_to_end_data_parity/v01/adjusted_price_store_full_population_closure/v01_tradability_and_nonpositive_reconciliation/suspension_authority_errata_v01.json",
+  "base_authority_mutated": false,
+  "errata_schema": "historical_suspension_authority_errata_v01",
+  "conflict_class": "SUSPENSION_METADATA_CONFLICT_WITH_OBSERVED_ACTIVITY",
+  "ticker": "000360",
+  "date": "2012-07-16",
+  "effective_classification": "VALID_OBSERVED_MARKET_ACTIVITY",
+  "precedence": "observed activity > suspension metadata for exact date"
+}

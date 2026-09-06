@@ -1,0 +1,32 @@
+{
+  "schema": "full_pytest_performance_optimization_final_decision_v01",
+  "decision": "ACCEPT",
+  "baseline_full_pytest": {
+    "seconds": 1426.69,
+    "passed": 2314,
+    "allowed_failures": 1,
+    "skipped": 7,
+    "deselected": 5
+  },
+  "optimized_full_pytest": {
+    "seconds": 1197.19,
+    "passed": 2314,
+    "allowed_failures": 1,
+    "skipped": 7,
+    "deselected": 5,
+    "unexpected_failures": 0
+  },
+  "runtime_reduction": {
+    "seconds_saved": 229.5,
+    "percent": 16.09,
+    "speedup_ratio": 1.1917
+  },
+  "validation_equivalence": "PASS",
+  "remote_verification": "PASS",
+  "reason": "All original nodeids retained; semantic/negative/corruption checks pass; full suite has exactly the allowed baseline failure and measurable runtime reduction.",
+  "final_code_head": "f886c709f7aee33dc32588f9908877749e5efa3d",
+  "final_code_tree": "efa8dc2486cbe79161e30c3d7912d24038e42ab1",
+  "final_remote_head": "f886c709f7aee33dc32588f9908877749e5efa3d",
+  "remote_head_verified": true,
+  "evidence_commit_required": true
+}

@@ -1,0 +1,29 @@
+{
+  "schema": "fresh_full_population_checkpoint_compatibility_v01",
+  "checkpoint_schema": "full_population_checkpoint_v02",
+  "expected_checkpoint_schema": "full_population_checkpoint_v02",
+  "identity_fields": {
+    "execution_id": "FRESH_FULL_POPULATION_RUN_V01_20260831T122021KST",
+    "population_count": 3162,
+    "population_sha256": "f14c3d46e5305571b311c4d120d9a2f1eba1644e7f059cde4e59eabab42d1aff",
+    "calendar_cutoff_date": "2026-08-21",
+    "source_authority_id": "NAVER_DIRECT_DATE_RANGE_ADJUSTED_V1",
+    "source_provider_version": "NaverDirectAdjustedPriceDataProvider_v02",
+    "closure_accounting_schema_version": "adjusted_price_closure_accounting_v02",
+    "tradability_contract_version": "adjusted_price_tradability_v02",
+    "store_schema_version": "ADJUSTED_PRICE_V02",
+    "pit_authority_sha256": "6b542ae05c9050dd30959d6f1b17306e4016f435a726ca7e0dff9e11008e4064"
+  },
+  "all_required_identity_unchanged": true,
+  "reusable_checkpoint_entries": 1494,
+  "staging_only_verified_entries_reconciled": 4,
+  "staging_only_rejected_for_refetch": 3,
+  "in_progress_count": 0,
+  "dry_run_preflight": {
+    "already_complete_count": 1494,
+    "needs_fetch_count": 1668,
+    "reconciliation_sum": 3162,
+    "network_requests": 0
+  },
+  "captured_at": "2026-08-31T03:40:58.259576+00:00"
+}

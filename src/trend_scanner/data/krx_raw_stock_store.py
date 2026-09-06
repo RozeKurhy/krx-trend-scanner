@@ -27,6 +27,21 @@ from trend_scanner.data.krx_raw_stock_provider import (
 )
 
 
+def _normalize_store_market(market: str) -> str:
+    """Normalize markets supported by the shared raw partition store.
+
+    The stock provider remains limited to KOSPI/KOSDAQ.  ETF snapshots use
+    the same lossless partition schema and manifest, but a distinct official
+    KRX Open API route; accepting ETF here must not make the stock provider
+    silently call a stock endpoint.
+    """
+
+    value = str(market).strip().upper()
+    if value == "ETF":
+        return value
+    return normalize_market(value)
+
+
 DEFAULT_RAW_STOCK_ROOT = Path("data/market/raw/krx_stocks/v01")
 MANIFEST_FILENAME = "manifest.sqlite3"
 STATUSES = ("COMPLETE", "NO_DATA", "FAILED")
@@ -112,12 +127,12 @@ class KrxRawStockStore:
             )
 
     def _partition_path(self, market: str, bas_dd: Any) -> Path:
-        normalized_market = normalize_market(market)
+        normalized_market = _normalize_store_market(market)
         day = normalize_bas_dd(bas_dd)
         return self.root / f"market={normalized_market}" / f"year={day[:4]}" / f"{day}.parquet"
 
     def _manifest_row(self, market: str, bas_dd: Any) -> dict[str, Any] | None:
-        normalized_market = normalize_market(market)
+        normalized_market = _normalize_store_market(market)
         day = normalize_bas_dd(bas_dd)
         with self._connect() as connection:
             row = connection.execute(
@@ -134,7 +149,7 @@ class KrxRawStockStore:
         params: tuple[Any, ...] = ()
         if market is not None:
             query += " WHERE market=?"
-            params = (normalize_market(market),)
+            params = (_normalize_store_market(market),)
         query += " ORDER BY date, market"
         with self._connect() as connection:
             return [dict(row) for row in connection.execute(query, params).fetchall()]
@@ -165,7 +180,7 @@ class KrxRawStockStore:
 
     def verify_snapshot(self, market: str, bas_dd: Any) -> dict[str, Any]:
         row = self._manifest_row(market, bas_dd)
-        normalized_market = normalize_market(market)
+        normalized_market = _normalize_store_market(market)
         day = normalize_bas_dd(bas_dd)
         if row is None:
             return {"market": normalized_market, "date": day, "exists": False, "valid": False, "status": None, "errors": ["MISSING_MANIFEST"]}
@@ -203,7 +218,7 @@ class KrxRawStockStore:
         frame: pd.DataFrame,
         source_endpoint: str,
     ) -> RawSnapshotSaveResult:
-        normalized_market = normalize_market(market)
+        normalized_market = _normalize_store_market(market)
         day = normalize_bas_dd(bas_dd)
         source_endpoint = str(source_endpoint).strip()
         if not source_endpoint:
@@ -275,7 +290,7 @@ class KrxRawStockStore:
         return RawSnapshotSaveResult(normalized_market, day, status, "SAVED", file_path_value, len(normalized), content_sha if status == "COMPLETE" else None, file_sha)
 
     def save_failure(self, market: str, bas_dd: Any, source_endpoint: str, error_code: str, error_message: str = "") -> None:
-        normalized_market = normalize_market(market)
+        normalized_market = _normalize_store_market(market)
         day = normalize_bas_dd(bas_dd)
         existing = self._manifest_row(normalized_market, day)
         if existing is not None and existing["status"] == "COMPLETE":
@@ -311,7 +326,7 @@ class KrxRawStockStore:
         return row is not None and row["status"] in {"COMPLETE", "NO_DATA"}
 
     def load_snapshot(self, market: str, bas_dd: Any) -> pd.DataFrame:
-        normalized_market = normalize_market(market)
+        normalized_market = _normalize_store_market(market)
         day = normalize_bas_dd(bas_dd)
         row = self._manifest_row(normalized_market, day)
         if row is None:
@@ -334,7 +349,7 @@ class KrxRawStockStore:
         if start_day and end_day and start_day > end_day:
             raise MarketDataError("RAW_TICKER_INVALID_RANGE")
         by_date: dict[str, tuple[str, dict[str, Any]]] = {}
-        for market in ("KOSPI", "KOSDAQ"):
+        for market in ("KOSPI", "KOSDAQ", "ETF"):
             for day in self.list_dates(market):
                 if start_day and day < start_day or end_day and day > end_day:
                     continue

@@ -1,0 +1,135 @@
+{
+  "fields": {
+    "exit_type": {
+      "authority": {
+        "LOSS_GUARD_CLOSE_LE_NEG_15": 411,
+        "EXIT4_SCORE_DRAWDOWN_GE_15": 243,
+        "NO_EXIT_BEFORE_CUTOFF": 51,
+        "NO_PROGRESSED_BEFORE_CUTOFF": 44,
+        "EXIT3_PROGRESSED_TO_WEAK": 15,
+        "EXIT3_PROGRESSED_TO_TRANSITION": 11,
+        "EXIT3_PROGRESSED_TO_EARLY_TREND": 6,
+        "EXIT3_PROGRESSED_TO_BASE": 2
+      },
+      "production": {
+        "LOSS_GUARD_CLOSE_LE_NEG_15": 411,
+        "EXIT4_SCORE_DRAWDOWN_GE_15": 243,
+        "NO_EXIT_BEFORE_CUTOFF": 51,
+        "NO_PROGRESSED_BEFORE_CUTOFF": 44,
+        "EXIT3_PROGRESSED_TO_WEAK": 15,
+        "EXIT3_PROGRESSED_TO_TRANSITION": 11,
+        "EXIT3_PROGRESSED_TO_EARLY_TREND": 6,
+        "EXIT3_PROGRESSED_TO_BASE": 2
+      },
+      "match": true
+    },
+    "trade_status": {
+      "authority": {
+        "REALIZED": 688,
+        "OPEN_AT_CUTOFF": 95
+      },
+      "production": {
+        "REALIZED": 688,
+        "OPEN_AT_CUTOFF": 95
+      },
+      "match": true
+    },
+    "lifecycle_class": {
+      "authority": {
+        "NORMAL_EARLY_TREND_HANDOFF": 403,
+        "NEVER_PROGRESSED": 241,
+        "PROGRESSED_WITHOUT_DIRECT_HANDOFF": 98,
+        "SKIPPED_EARLY_TREND_HANDOFF": 41
+      },
+      "production": {
+        "NORMAL_EARLY_TREND_HANDOFF": 403,
+        "NEVER_PROGRESSED": 241,
+        "PROGRESSED_WITHOUT_DIRECT_HANDOFF": 98,
+        "SKIPPED_EARLY_TREND_HANDOFF": 41
+      },
+      "match": true
+    },
+    "loss_guard_triggered": {
+      "authority": {
+        "true": 411,
+        "false": 372
+      },
+      "production": {
+        "true": 411,
+        "false": 372
+      },
+      "match": true
+    },
+    "trade_sequence": {
+      "authority": {
+        "1": 551,
+        "2": 151,
+        "3": 48,
+        "4": 25,
+        "5": 8
+      },
+      "production": {
+        "1": 551,
+        "2": 151,
+        "3": 48,
+        "4": 25,
+        "5": 8
+      },
+      "match": true
+    },
+    "entry_pattern_a_stage": {
+      "authority": {
+        "TRANSITION": 670,
+        "EARLY_TREND": 113
+      },
+      "production": {
+        "TRANSITION": 670,
+        "EARLY_TREND": 113
+      },
+      "match": true
+    },
+    "monthly_regime": {
+      "authority": {
+        "PERMITTED_REGIME": 783
+      },
+      "production": {
+        "PERMITTED_REGIME": 783
+      },
+      "match": true
+    },
+    "daily_risk": {
+      "authority": {
+        "NORMAL": 548,
+        "ELEVATED": 235
+      },
+      "production": {
+        "NORMAL": 548,
+        "ELEVATED": 235
+      },
+      "match": true
+    },
+    "fast_score_state": {
+      "authority": {
+        "READY": 493,
+        "PARTIAL": 290
+      },
+      "production": {
+        "READY": 493,
+        "PARTIAL": 290
+      },
+      "match": true
+    },
+    "market": {
+      "authority": {
+        "KOSPI": 481,
+        "KOSDAQ": 302
+      },
+      "production": {
+        "KOSPI": 481,
+        "KOSDAQ": 302
+      },
+      "match": true
+    }
+  },
+  "distribution_mismatches": 0
+}

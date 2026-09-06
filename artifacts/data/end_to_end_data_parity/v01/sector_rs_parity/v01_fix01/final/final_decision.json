@@ -1,0 +1,16 @@
+{
+  "blocking_conditions": [
+    "AMBIGUOUS_SECTOR_MEMBERSHIP_AUTHORITY",
+    "PYKRX_HISTORICAL_MEMBERSHIP_NOT_RELIABLE"
+  ],
+  "code_changes": [],
+  "critical_issues": [
+    "Current exact-date membership assigns 1,614 COMMON tickers to multiple native sectors; no canonical disambiguation rule exists.",
+    "Historical snapshots returned swallowed JSONDecodeError for 120 of 230 bounded requests; exact PIT history is not reliable."
+  ],
+  "full_pytest": "NOT_RUN",
+  "next_state": "AMBIGUOUS_SECTOR_MEMBERSHIP_AUTHORITY",
+  "parent_state": "SECTOR_RS_PARITY_V01=OPEN",
+  "state": "SECTOR_RS_PARITY_V01_FIX01=BLOCKED",
+  "verdict": "STOP"
+}

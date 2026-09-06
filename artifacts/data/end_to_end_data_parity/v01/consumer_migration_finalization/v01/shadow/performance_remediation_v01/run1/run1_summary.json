@@ -1,0 +1,137 @@
+{
+  "schema_version": "CONSUMER_MIGRATION_FINALIZATION_V01_RUN1_SUMMARY",
+  "run": "run1",
+  "frozen_as_of": "2026-08-14",
+  "candidate_head": "87923e109731cff1a0af29d339770beb0f8bea18",
+  "candidate_tree": "c1db40a011f260ad11a8601e11f4abbf7e044785",
+  "candidate_worktree_dirty_before_run": true,
+  "population": {
+    "universe_path": "artifacts/patterns/pattern_a/production/investability/pattern_a_investability_universe_20260814.csv",
+    "universe_sha256": "1aca764fc56d3416b9f10ce418a0deaca5174cb8c32997acfd2df1000987e4c8",
+    "expected_pattern_a_population": 2528,
+    "expected_fastcore_population": 1081,
+    "expected_julia_population": 2528,
+    "expected_stock_report_population": 54
+  },
+  "config": {
+    "score_contract_sha256": "be0dc21c3764aeb147a3565e65850fc179ecc91e5700e8221932f12ce28ae501",
+    "stage_contract_sha256": "231cb43e2830017a72a9e8ba8d29296749f8a323e211266035d80cf841b70cf7"
+  },
+  "consumers": {
+    "pattern_a": {
+      "artifact": "shadow/performance_remediation_v01/run1/run1_pattern_a.json",
+      "complete": true,
+      "population_count": 2528,
+      "runtime_seconds": 2066.8469,
+      "rows_after_frozen_as_of": 0,
+      "output_sha256": "a366e76526ff70692108e8f6a78b5580a259faad65c34edbbc5bd4d46e8ff22f",
+      "rows_after_frozen_as_of_original_metric": 2528,
+      "rows_after_frozen_as_of_original_metric_status": "FALSE_POSITIVE_SUBSTRING_MATCH_ON_CANDIDATE_STATE",
+      "temporal_metric_fix_diagnostic": "validation/pattern_a_temporal_metric_diagnostic_run1.json",
+      "temporal_metric_revalidation_artifact": "shadow/performance_remediation_v01/run1/run1_pattern_a_fix01.json",
+      "temporal_metric_revalidation_method": "PATTERN_A_RECOMPUTE_REQUIRED: persisted run1_pattern_a.json holds only aggregate population stats plus a row-set sha256 digest, no per-row date field values, so the fixed metric could not be recomputed offline from it (directive section 7/8). A Pattern-A-only rerun was performed under the fixed harness at identical HEAD/config/universe/repository -- FastCore/Julia/Stock Report were not rerun.",
+      "output_sha256_revalidation_match": true
+    },
+    "fastcore": {
+      "artifact": "shadow/performance_remediation_v01/run1/run1_fastcore.json",
+      "complete": true,
+      "population_count": 1081,
+      "trade_count": 2696,
+      "runtime_seconds": 5668.5655,
+      "rows_after_frozen_as_of": 0,
+      "output_sha256": "82ab9cc8f9a93178a361c51d15d579ac13589e03fc1d4ade7cd44bbe78dacaf5"
+    },
+    "julia": {
+      "artifact": "shadow/performance_remediation_v01/run1/run1_julia.json",
+      "complete": true,
+      "population_count": 2528,
+      "baseline_trade_count": 815,
+      "julia_trade_count": 617,
+      "audit_count": 8064,
+      "runtime_seconds": 7134.254,
+      "rows_after_frozen_as_of": 0,
+      "output_sha256": "91fbeb7b4d64ed65f66513e3b646054aada09e564af45bbf5332e59369f39f3f"
+    },
+    "stock_report": {
+      "artifact": "shadow/performance_remediation_v01/run1/run1_stock_report.json",
+      "rows_artifact": "shadow/performance_remediation_v01/run1/run1_stock_report_rows.json",
+      "complete": true,
+      "report_count": 54,
+      "common_count": 37,
+      "etf_count": 17,
+      "runtime_seconds": 337.0711,
+      "rows_after_frozen_as_of": 0,
+      "warning_count": 39727,
+      "output_sha256": "8b0f55fbffa29922d2106485e3109f453071f827652d5c4895a68dcb9ae3514d"
+    }
+  },
+  "session_mismatch_accounting": {
+    "artifact": "validation/session_mismatch_accounting_run1.json",
+    "expected_population": 2528,
+    "accounted_population": 2528,
+    "processed_ticker_count": 2422,
+    "explicit_data_unavailable_count": 106,
+    "session_mismatch_ticker_count": 106,
+    "unexplained_session_mismatch": 0,
+    "silent_drop_count": 0,
+    "network_calls": 0,
+    "pass": true
+  },
+  "correctness": {
+    "all_consumer_artifacts_complete": true,
+    "pattern_a_rows_after_frozen_as_of_expected": 0,
+    "pattern_a_rows_after_frozen_as_of_observed": 0,
+    "pattern_a_temporal_metric_fix_applied": true,
+    "pattern_a_temporal_metric_fix_files": [
+      "scripts/run_consumer_migration_finalization_v01.py",
+      "tests/test_consumer_migration_finalization_v01.py"
+    ],
+    "pattern_a_temporal_metric_fix_root_cause": "'date' in str(key).lower() substring match on Pattern A scan-row field names matched 'candidate_state' (substring 'date' inside 'candi-DATE_state'). Its values are stage labels ('blocked'/'watch'/etc.), not dates; comparing them lexicographically against AS_OF is vacuously true for every row, producing rows_after_frozen_as_of == population (2528) instead of a real lookahead finding.",
+    "pattern_a_temporal_metric_fix_description": "Replaced the substring check with an explicit PATTERN_A_TEMPORAL_FIELDS allowlist (the schema's 15 genuine date-bearing fields, excluding candidate_state), with a regression test asserting the allowlist cannot silently drift from PatternAUniverseScanRow.to_dict()'s actual schema.",
+    "temporal_metric_diagnostic_artifact": "validation/pattern_a_temporal_metric_diagnostic_run1.json",
+    "temporal_metric_revalidation_artifact": "shadow/performance_remediation_v01/run1/run1_pattern_a_fix01.json",
+    "temporal_metric_revalidation_output_sha256_match": true,
+    "production_strategy_code_changed": false,
+    "repository_code_changed": false,
+    "performance_code_changed": false,
+    "unexplained_delta_count": 0,
+    "silent_drop_count": 0,
+    "network_calls": 0,
+    "pass": true
+  },
+  "performance": {
+    "fastcore_runtime_seconds": 5668.5655,
+    "julia_runtime_seconds": 7134.254,
+    "stock_report_runtime_seconds": 337.0711,
+    "pattern_a_retry_runtime_seconds": 2066.8469,
+    "pattern_a_first_successful_calculation_seconds": 2073.684,
+    "session_accounting_runtime_approx_seconds": 2380,
+    "pre_optimization_pattern_a_seconds": 2085.3998,
+    "pre_optimization_fastcore_seconds": 6345.4031,
+    "controlled_sample_speedup_ratio": 2.052,
+    "performance_profile_artifact": "../performance_remediation_v01/performance_profile_before_after.json"
+  },
+  "network_authority": {
+    "repository_authority": "MarketDataRepositoryV2",
+    "new_krx_api_requests": 0,
+    "new_naver_requests": 0,
+    "network_calls": 0,
+    "pykrx_used": false,
+    "scraping_used": false,
+    "legacy_etf_promotion_used": false,
+    "live_api_used": false
+  },
+  "execution_policy": {
+    "run2": "NOT_RUN",
+    "determinism": "NOT_RUN",
+    "full_repository_pytest": "NOT_RUN",
+    "final_fix_head": "NOT_CREATED",
+    "commit": "NOT_RUN",
+    "push": "NOT_RUN",
+    "stop_after_run1": true,
+    "stop_after_revalidation": true
+  },
+  "verdict": "RUN1_PASS",
+  "next_state": "RUN1_EXTERNAL_REVIEW",
+  "required_follow_up": "None required to assert RUN1_PASS. Pattern A temporal metric false positive fixed and root-caused; bounded revalidation performed via a Pattern-A-only rerun whose output_sha256 matches the original RUN1 Pattern A artifact exactly, confirming no change to scan results, strategy logic, or Repository V2 behavior. External review (RUN1_EXTERNAL_REVIEW) decides whether to proceed to FINAL_SHADOW_RUN2; this session does not advance to RUN2 on its own."
+}

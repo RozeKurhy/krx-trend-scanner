@@ -1,0 +1,37 @@
+{
+  "legacy": {
+    "class": "MarketDataRepository",
+    "public_methods": [
+      "get_daily"
+    ],
+    "responsibility": [
+      "provider fetch",
+      "cache read/write",
+      "overlap refresh",
+      "merge",
+      "validation"
+    ]
+  },
+  "surface_unknown_count": 0,
+  "v2": {
+    "class": "MarketDataRepositoryV2",
+    "private_helpers": [
+      "date_range",
+      "ticker normalization",
+      "source-history validation",
+      "raw validation",
+      "explicit placeholder projection"
+    ],
+    "public_methods": [
+      "get_daily",
+      "get_raw_daily",
+      "get_daily_ancillary",
+      "get_stock_snapshot"
+    ],
+    "responsibility": [
+      "read-only adjusted/raw composition",
+      "fail-closed session reconciliation",
+      "raw ancillary access"
+    ]
+  }
+}

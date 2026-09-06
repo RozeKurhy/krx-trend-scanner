@@ -1,0 +1,35 @@
+{
+  "schema": "prior_market_rs_evidence_integrity_v01",
+  "status": "PASS",
+  "checked_files": [
+    {
+      "path": "src/trend_scanner/data/repository_v2.py",
+      "expected_sha256": "19d2c84d35b39cc44e0c7f4cd69f73edf5002402acb250948ab5ab8799a7f9f1",
+      "actual_sha256": "19d2c84d35b39cc44e0c7f4cd69f73edf5002402acb250948ab5ab8799a7f9f1",
+      "unchanged": true
+    },
+    {
+      "path": "src/trend_scanner/data/adjusted_price_full_population.py",
+      "expected_sha256": "e6ed3bff602503c94a5d6e19ca3a670449b1aa89eedeb4e96d2c3fd75a5d80dd",
+      "actual_sha256": "e6ed3bff602503c94a5d6e19ca3a670449b1aa89eedeb4e96d2c3fd75a5d80dd",
+      "unchanged": true
+    },
+    {
+      "path": "data/market/adjusted/stocks/446840.parquet",
+      "expected_sha256": "ad1e255fbfbb1f82de3b2c9ac7c0cbb4cc32c8ea376b8c3b5d980abaf28742ff",
+      "actual_sha256": "ad1e255fbfbb1f82de3b2c9ac7c0cbb4cc32c8ea376b8c3b5d980abaf28742ff",
+      "unchanged": true
+    },
+    {
+      "path": "data/market/adjusted/stocks/446840.meta.json",
+      "expected_sha256": "a5801d1033853b8640a1c24ecb6b7c4c5303e202c79d545708d1a781fb5ebb43",
+      "actual_sha256": "a5801d1033853b8640a1c24ecb6b7c4c5303e202c79d545708d1a781fb5ebb43",
+      "unchanged": true
+    }
+  ],
+  "fix01_market_rs_historical_artifact": "artifacts/data/end_to_end_data_parity/v01/adjusted_price_identity_boundary_correction/fix01/validation/market_rs_historical_parity.json",
+  "fix01_market_rs_current_artifact": "artifacts/data/end_to_end_data_parity/v01/adjusted_price_identity_boundary_correction/fix01/validation/market_rs_current_readiness.json",
+  "inherited_without_rerun": true,
+  "market_rs_rerun_required": false,
+  "network_requests": 0
+}

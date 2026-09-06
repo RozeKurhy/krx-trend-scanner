@@ -1,0 +1,40 @@
+{
+  "activity_present_row_set_sha256": "762a4843e8bf7cfa8e5acd692e8dbcd9333a16bd28fd2a33321e285d500d0e06",
+  "added_back_dates_file": "full_population_added_back_dates.csv",
+  "added_back_dates_sorted_sha256": "175aeb2a9b60c9bedade807436187994798ad5b13d820461985c6fed36863cf3",
+  "affected_date_count": 45,
+  "affected_ticker_count": 43,
+  "baseline_expected_count": 8387083,
+  "candidate_confirmed_excluded_count": 214145,
+  "candidate_expected_count": 8172938,
+  "class_a_count": 283069,
+  "class_b_count": 0,
+  "class_c_count": 0,
+  "class_d_count": 125,
+  "current_excluded_count": 214190,
+  "current_expected_count": 8172893,
+  "difference_added_back_count": 45,
+  "frozen_population": {
+    "alpha": 23,
+    "calendar_cutoff": "2026-08-21",
+    "numeric": 3139,
+    "semantic_sha256": "f14c3d46e5305571b311c4d120d9a2f1eba1644e7f059cde4e59eabab42d1aff",
+    "total": 3162
+  },
+  "invalid_activity_count": 0,
+  "predicate_scope_global": {
+    "date_set_sha256": "2bb2357a06a2cec7b8fba4e6ea40d964b6d52d88d93960f1a3fea7b2b89d204b",
+    "row_set_sha256": "59276d5451869b7661272a21866582e1e13f38398306731c96c0006933440b36",
+    "rows": 283194,
+    "ticker_set_sha256": "b6ab0fb006a617b14f6f4ae40ac5ef7ac12fd5d64425179a359a43b0605daef9",
+    "unique_dates": 4095,
+    "unique_tickers": 2136
+  },
+  "predicate_scope_inside_frozen_population": {
+    "definition": "ticker in the 3,162-record frozen population; not a global raw census",
+    "unique_tickers": 1729
+  },
+  "raw_observed_count_in_lifecycle": 8387083,
+  "silent_missing_count": 0,
+  "simulation_authority": "KRX raw + PIT/lifecycle + trading calendar only; no Naver feedback"
+}

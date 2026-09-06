@@ -1,0 +1,64 @@
+{
+  "adjudication": "OBSERVED_MARKET_ACTIVITY_CORRECT",
+  "conflict_class": "SUSPENSION_METADATA_CONFLICT_WITH_OBSERVED_ACTIVITY",
+  "date": "2012-07-16",
+  "frozen_artifact_mutated": false,
+  "frozen_authority_file": "/Users/june/Documents/projects/krx-trend-scanner/artifacts/data/end_to_end_data_parity/v01/adjusted_price_store_bounded_live_pilot/v01/historical_suspension_authority_v01.json",
+  "frozen_authority_sha256": "185075a56fc98c37d84380247d5b009d005f602f0315a233813bec899f7cbb50",
+  "frozen_record": {
+    "authority_type": "LOCAL_KRX_HISTORICAL_RAW",
+    "date": "2012-07-16",
+    "derivation_rule": "ZERO_OHL_POSITIVE_CLOSE_OR_CORPORATE_ACTION_HALT",
+    "evidence_note": "Samick Instruments capital reduction trading halt (6 dates) + delisting liquidation/suspension (65 dates) prior to delisting on 2015-04-14 (total 71 dates)",
+    "reason": "CAPITAL_REDUCTION_AND_DELISTING_LIQUIDATION",
+    "source_ref": "KRX_RAW_KOSPI_2010_2023",
+    "ticker": "000360"
+  },
+  "historical_identity": {
+    "ISU_ABBRV": "삼환기업",
+    "ISU_CD": "KR7000360008",
+    "ISU_ENG_NM": "SamwhanCorporation",
+    "ISU_NM": "삼환기업보통주",
+    "ISU_SRT_CD": "000360",
+    "KIND_STKCERT_TP_NM": "보통주",
+    "LIST_DD": "19730903",
+    "LIST_SHRS": "11825295",
+    "MKT_TP_NM": "KOSPI",
+    "PARVAL": "5000",
+    "SECT_TP_NM": "",
+    "SECUGRP_NM": "주권"
+  },
+  "precedence": "VALID_OBSERVED_MARKET_ACTIVITY > SUSPENSION_METADATA for this date only",
+  "raw_observation": {
+    "close": 3300,
+    "date": "2012-07-16",
+    "file_path": "/Users/june/Documents/projects/krx-trend-scanner/data/market/raw/krx_stocks/v01/market=KOSPI/year=2012/2012-07-16.parquet",
+    "file_sha256": "96425c6e69ceb21e4f462617f2887dcb4e126e06437fdd50d5fa59d8c6c9a9b9",
+    "high": 3440,
+    "low": 3265,
+    "manifest": {
+      "content_sha256": "be3c4a406a7b2b843a8720f09b31142c551cf93d625875b216c7228d8ac40051",
+      "date": "2012-07-16",
+      "file_path": "market=KOSPI/year=2012/2012-07-16.parquet",
+      "file_sha256": "96425c6e69ceb21e4f462617f2887dcb4e126e06437fdd50d5fa59d8c6c9a9b9",
+      "market": "KOSPI",
+      "row_count": 933,
+      "schema_version": "KRX_RAW_STOCK_V01",
+      "source_endpoint": "/sto/stk_bydd_trd",
+      "status": "COMPLETE"
+    },
+    "market": "KOSPI",
+    "open": 3265,
+    "suspension_authority_present": true,
+    "ticker": "000360",
+    "trading_value": 138215850,
+    "volume": 41680
+  },
+  "reasoning": [
+    "The frozen evidence_note names Samick Instruments, while PIT identity for ticker 000360 is 삼환기업 / Samwhan Corporation with stable ISU_CD KR7000360008 across adjacent dates.",
+    "The KRX raw file is a COMPLETE manifest row from /sto/stk_bydd_trd and contains one physical candle with positive volume and trading_value.",
+    "The authority record stores a derived date set, not a source event type or interval endpoint; it cannot override this valid observed activity without matching corporate-action evidence."
+  ],
+  "suspension_class": "SUSPENSION_METADATA_RECORD_INVALID_OR_MISINTERPRETED",
+  "ticker": "000360"
+}

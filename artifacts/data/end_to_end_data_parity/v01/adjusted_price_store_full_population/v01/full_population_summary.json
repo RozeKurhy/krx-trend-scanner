@@ -1,0 +1,72 @@
+{
+  "schema": "adjusted_price_store_full_population_summary_v01",
+  "execution_id": "ADJUSTED_PRICE_STORE_FULL_POPULATION_V01_1787876537",
+  "status": "FULL_POPULATION_COMPLETED",
+  "final_verdict": "CHANGES_REQUESTED",
+  "next_state": "NEEDS_ADJUSTED_PRICE_SOURCE_AUTHORITY_REVIEW",
+  "execution_timestamp": "2026-08-28T00:22:28.546884+00:00",
+  "duration_seconds": 1504.14,
+  "frozen_authority": {
+    "population_count": 3162,
+    "population_manifest_sha256": "f14c3d46e5305571b311c4d120d9a2f1eba1644e7f059cde4e59eabab42d1aff",
+    "pit_trading_dates_count": 4095,
+    "pit_manifest_sha256": "6b542ae05c9050dd30959d6f1b17306e4016f435a726ca7e0dff9e11008e4064",
+    "calendar_cutoff_date": "2026-08-21",
+    "calendar_row_count": 3844
+  },
+  "status_counts": {
+    "population_total": 3162,
+    "complete": 867,
+    "partial": 1882,
+    "empty": 4,
+    "error": 409,
+    "insufficient_authority": 0
+  },
+  "subgroup_breakdown": {
+    "alpha_23_census": {
+      "total": 23,
+      "complete": 23,
+      "pass": true
+    },
+    "current_common": {
+      "total": 2557,
+      "complete": 858
+    },
+    "historical_only": {
+      "total": 605,
+      "complete": 9
+    }
+  },
+  "coverage_totals": {
+    "total_expected_rows": 8386906,
+    "total_actual_source_rows": 5697725,
+    "total_stored_rows": 5697725,
+    "total_missing_expected_dates": 2689181,
+    "total_unexpected_source_dates": 0
+  },
+  "data_quality_totals": {
+    "total_duplicates": 0,
+    "total_invalid_ohlc": 0,
+    "total_future_rows": 0
+  },
+  "network_accounting": {
+    "population_records_processed": 3162,
+    "new_live_ticker_queries": 3101,
+    "physical_provider_attempts": 3513,
+    "retries": 412,
+    "reused_without_network": 61,
+    "krx_open_api_requests": 0,
+    "opendart_requests": 0,
+    "krx_mdc_requests": 0
+  },
+  "preflight": {
+    "population_count": 3162,
+    "already_complete_count": 867,
+    "needs_fetch_count": 0,
+    "existing_partial_count": 1882,
+    "existing_empty_count": 4,
+    "existing_error_count": 409,
+    "authority_blocked_count": 0,
+    "reconciliation_sum": 3162
+  }
+}

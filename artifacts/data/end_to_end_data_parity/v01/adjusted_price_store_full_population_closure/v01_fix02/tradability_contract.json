@@ -1,0 +1,14 @@
+{
+  "schema": "adjusted_price_tradability_contract_v02",
+  "zero_ohlc": "O=H=L=0 and C>0 is confirmed non-trading only with volume=0 and trading_value=0",
+  "activity_positive": "volume>0 or trading_value>0 is never automatically confirmed non-trading",
+  "missing_activity": "zero-OHL without activity evidence is unresolved and fails closed",
+  "states": [
+    "USABLE_ADJUSTED_OBSERVATION",
+    "CONFIRMED_NONTRADING",
+    "ADJUDICATED_SOURCE_NONUSABLE",
+    "SILENT_MISSING",
+    "UNEXPECTED_SOURCE_DATE",
+    "SUSPENSION_METADATA_CONFLICT_WITH_OBSERVED_ACTIVITY"
+  ]
+}

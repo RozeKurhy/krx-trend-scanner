@@ -1,0 +1,46 @@
+{
+  "schema": "adjusted_population_historical_numeric_authority_classification_v01",
+  "generated_offline": true,
+  "target_period": ["2010-01-04", "2026-08-21"],
+  "target_cohort": "RAW_HISTORICAL_UNIVERSE minus CURRENT_COMMON, numeric",
+  "total": 1058,
+  "previous_classification": {
+    "HISTORICAL_COMMON_REQUIRED": 218,
+    "HISTORICAL_NOT_COMMON": 285,
+    "HISTORICAL_CLASSIFICATION_UNKNOWN": 555
+  },
+  "final_authority_classification": {
+    "HISTORICAL_COMMON_REQUIRED": 0,
+    "HISTORICAL_NOT_COMMON": 0,
+    "HISTORICAL_AUTHORITY_UNRESOLVED": 1058,
+    "reconciliation": "0 + 0 + 1058 = 1058"
+  },
+  "authority_tier_summary": {
+    "TIER_A_HISTORICAL_PIT": 0,
+    "TIER_B_ONLY_LIFECYCLE": 555,
+    "TIER_B_PLUS_TIER_C": 350,
+    "TIER_C_ONLY": 153,
+    "TIER_D_ONLY": 0,
+    "weak_only_final_decisions": 0,
+    "authority_unresolved": 1058
+  },
+  "detail_codebook": {
+    "historical_security_type_codes": {"F": "source_security_type field exists only in current formal 2026-08-21 row; not historical PIT", "NO_PIT_FIELD": "no local historical formal security-type field"},
+    "historical_asset_type_codes": {"C": "legacy COMMON evidence", "P": "legacy PREFERRED evidence", "S": "legacy SPAC evidence", "R": "legacy REIT evidence", "U": "legacy UNKNOWN evidence", "NO_METADATA": "no metadata row"},
+    "authority_source_codes": {"M": "historical/local metadata row", "D": "official delisted lifecycle snapshot"},
+    "authority_tier_codes": {"B": "lifecycle corroboration only", "C": "legacy/unverified historical metadata only"}
+  },
+  "detail_files": [
+    "common_candidate_a.json",
+    "common_candidate_b.json",
+    "not_common_candidate_a.json",
+    "not_common_candidate_b.json",
+    "unresolved_a1.json",
+    "unresolved_a2.json",
+    "unresolved_b1.json",
+    "unresolved_b2.json"
+  ],
+  "canonical_classification_sha256": "84e11588b399b0cd9fcca11ec85ba30d83bd535d8f78ec5ffae6e5d248c549a6",
+  "policy": "Current formal snapshot is not backdated. Historical rows with LEGACY_UNVERIFIED provenance do not close a final decision. Raw presence and legacy membership are not authority.",
+  "status": "BLOCKED_HISTORICAL_AUTHORITY_SOURCE_MISSING"
+}

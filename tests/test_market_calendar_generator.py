@@ -157,8 +157,8 @@ def test_current_canonical_artifact_reproducibility():
     cal = get_canonical_market_calendar()
 
     assert cal.min_date == pd.Timestamp("2011-01-03")
-    assert cal.max_observed_trading_date == pd.Timestamp("2026-08-14")
-    assert len(cal.trading_dates) == 3840
+    assert cal.max_observed_trading_date == pd.Timestamp("2026-08-21")
+    assert len(cal.trading_dates) == 3844
 
     meta = cal.metadata
     assert meta["last_completed_market_month"] == "2026-07"
@@ -167,6 +167,20 @@ def test_current_canonical_artifact_reproducibility():
     assert meta["terminal_partial_month"] == "2026-08"
 
     assert cal.is_completed_month("2026-07-31") is True
-    assert cal.is_completed_month("2026-08-14") is False
+    assert cal.is_completed_month("2026-08-21") is False
     assert cal.get_actual_month_end(2026, 8) is None
     assert cal.get_actual_month_end(2026, 7) == pd.Timestamp("2026-07-31")
+
+
+def test_calendar_stale_downgrade_guard_raises_error(tmp_path):
+    """Section 28: 이미 2026-08-21인 캘린더를 2026-08-14로 덮어쓰려 할 때 ValueError 발생 검증."""
+    from scripts.build_krx_trading_calendar import build_krx_trading_calendar_from_dates
+    cal = get_canonical_market_calendar()
+    dates = cal.trading_dates
+
+    # 1. First build with 2026-08-21 in tmp_path
+    build_krx_trading_calendar_from_dates(dates, cutoff_date="2026-08-21", last_completed_market_month_end="2026-07-31", output_dir=tmp_path)
+
+    # 2. Attempt to overwrite with stale 2026-08-14 without allow_downgrade
+    with pytest.raises(ValueError, match="Refusing stale calendar downgrade"):
+        build_krx_trading_calendar_from_dates(dates, cutoff_date="2026-08-14", last_completed_market_month_end="2026-07-31", output_dir=tmp_path)

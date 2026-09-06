@@ -1,0 +1,15 @@
+{
+  "path": "artifacts/patterns/pattern_a/production/investability/",
+  "file": "pattern_a_investability_universe_20260814.csv",
+  "owner": "june:staff",
+  "directory_mode": "drwxr-xr-x",
+  "file_mode": "-rw-r--r--",
+  "macos_flags": 0,
+  "extended_attributes": [
+    "com.apple.provenance"
+  ],
+  "unprivileged_write_probe": "FAIL_OPERATION_NOT_PERMITTED",
+  "escalated_write_probe": "PASS",
+  "root_cause": "Codex sandbox writable roots excluded this repository; no ACL/immutable flag defect was found.",
+  "fix": "Run affected artifact-generating tests with approved repository write permission; tests were not weakened."
+}

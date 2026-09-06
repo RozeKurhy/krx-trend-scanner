@@ -16,6 +16,10 @@ from trend_scanner.data.repository_v2 import (
     DAILY_COLUMNS,
     RAW_DAILY_COLUMNS,
     MarketDataRepositoryV2,
+    validate_repository_v2_daily,
+)
+from trend_scanner.data.repository_v2_session_authority import (
+    ADJUSTED_ANALYTICALLY_NONUSABLE_DATES,
 )
 
 
@@ -154,7 +158,7 @@ def test_alphanumeric_raw_domain_is_preserved_and_adjusted_domain_is_closed(tmp_
     assert not repo.get_raw_daily("03473K", "2024-01-02", "2024-01-04").empty
     assert not repo.get_daily_ancillary("03473K", "2024-01-02", "2024-01-04").empty
     assert len(repo.get_stock_snapshot("03473K", "2024-01-02")) == 1
-    with pytest.raises(MarketDataError, match="UNSUPPORTED_ADJUSTED_TICKER"):
+    with pytest.raises(MarketDataError, match="UNSUPPORTED_ADJUSTED_TICKER|DATA_UNAVAILABLE: ADJUSTED_MISSING"):
         repo.get_daily("03473K", "2024-01-02", "2024-01-04")
 
 
@@ -227,7 +231,7 @@ def test_timezone_naive_sorted_unique_output(tmp_path):
 
 def test_adjusted_store_is_not_widened_for_numeric_only_contract(tmp_path):
     repo, _, _ = _repo(tmp_path)
-    with pytest.raises(MarketDataError, match="UNSUPPORTED_ADJUSTED_TICKER"):
+    with pytest.raises(MarketDataError, match="UNSUPPORTED_ADJUSTED_TICKER|DATA_UNAVAILABLE: ADJUSTED_MISSING"):
         repo.get_daily("08537M", "2024-01-02", "2024-01-04")
 
 
@@ -294,6 +298,35 @@ def test_zero_price_raw_row_composes_with_adjusted_ohlc(tmp_path):
     assert result.loc[pd.Timestamp("2024-01-02"), "close"] == 21.0
     assert result.loc[pd.Timestamp("2024-01-02"), "volume"] == 0
     assert result.loc[pd.Timestamp("2024-01-02"), "trading_value"] == 25
+
+
+def test_source_native_adjusted_relation_anomaly_is_preserved_in_v2_history_view(tmp_path):
+    adjusted = _adjusted_frame(pd.DatetimeIndex(["2024-01-02"]))
+    adjusted.loc[pd.Timestamp("2024-01-02"), "high"] = 1.0
+    adjusted.attrs.update(source_native_adjusted=True, analytic_invalid_ohlc_count=1)
+    adjusted_store = AdjustedPriceStore(tmp_path / "adjusted")
+    adjusted_store.save_full("005930", adjusted)
+
+    raw_store = KrxRawStockStore(tmp_path / "raw")
+    raw_store.save_snapshot(
+        "KOSPI",
+        "2024-01-02",
+        _raw_frame(pd.DatetimeIndex(["2024-01-02"])),
+        "fixture",
+    )
+    repo = MarketDataRepositoryV2(adjusted_store, raw_store)
+
+    result = repo.get_daily("005930", "2024-01-02", "2024-01-02")
+    # No unapproved clamp is applied: the source-native anomaly is explicitly
+    # nonusable for analytics and is excluded from the composed view.
+    assert result.empty
+    validate_repository_v2_daily(result)
+    source = repo._adjusted_price_store.load_daily_source("005930", "2024-01-02", "2024-01-02")
+    assert source.loc[pd.Timestamp("2024-01-02"), "high"] == 1.0
+    validate_repository_v2_daily(
+        pd.concat([source, raw_store.load_ticker("005930", "2024-01-02", "2024-01-02").set_index("date").loc[:, ["volume", "trading_value"]]], axis=1).loc[:, list(DAILY_COLUMNS)],
+        source_history=True,
+    )
 
 
 def test_positive_invalid_raw_ohlc_still_fails(tmp_path):
@@ -460,15 +493,46 @@ def test_mixed_placeholder_and_active_raw_only_sessions_fail_closed(tmp_path):
         repo.get_daily("005930", "2024-01-02", "2024-01-05")
 
 
-def test_shared_date_placeholder_fails_closed(tmp_path):
+def test_shared_date_placeholder_is_explicitly_excluded_from_analytic_view(tmp_path):
     rows = [
         _projection_raw_row("2024-01-02"),
         _projection_raw_row("2024-01-03", placeholder=True),
         _projection_raw_row("2024-01-04"),
     ]
     repo = _projection_repo(tmp_path, ["2024-01-02", "2024-01-03", "2024-01-04"], rows)
-    with pytest.raises(MarketDataError, match="REPOSITORY_V2_SESSION_SEMANTIC_CONFLICT"):
-        repo.get_daily("005930", "2024-01-02", "2024-01-04")
+    daily = repo.get_daily("005930", "2024-01-02", "2024-01-04")
+    assert list(daily.index) == [pd.Timestamp("2024-01-02"), pd.Timestamp("2024-01-04")]
+    raw = repo.get_raw_daily("005930", "2024-01-02", "2024-01-04")
+    assert pd.Timestamp("2024-01-03") in raw.index
+    assert raw.loc[pd.Timestamp("2024-01-03"), "open"] == 0
+
+
+def test_000360_source_nonusable_row_is_explicitly_excluded(tmp_path):
+    row = _projection_raw_row("2012-07-16", open=100, high=105, low=95, close=101, volume=41680, trading_value=138215850)
+    # The fixture ticker is changed to the adjudicated 000360 identity.
+    adjusted_store = AdjustedPriceStore(tmp_path / "adjusted_000360")
+    adjusted_store.save_full("000360", _adjusted_frame(pd.DatetimeIndex(["2012-07-15"])))
+    raw_store = KrxRawStockStore(tmp_path / "raw_000360")
+    row["ticker"] = "000360"
+    prior = _projection_raw_row("2012-07-15")
+    prior["ticker"] = "000360"
+    raw_store.save_snapshot("KOSPI", "2012-07-15", pd.DataFrame([prior], columns=list(RAW_COLUMNS)), "fixture")
+    raw_store.save_snapshot("KOSPI", "2012-07-16", pd.DataFrame([row], columns=list(RAW_COLUMNS)), "fixture")
+    daily = MarketDataRepositoryV2(adjusted_store, raw_store).get_daily("000360", "2012-07-15", "2012-07-16")
+    assert list(daily.index) == [pd.Timestamp("2012-07-15")]
+    audit = daily.attrs["session_projection_audit"]
+    assert audit["adjusted_source_nonusable_dates"] == ["2012-07-16"]
+    assert audit["explicit_adjusted_source_nonusable_exclusion_count"] == 1
+    assert audit["known_adjusted_gap_dates"] == []
+    raw = MarketDataRepositoryV2(adjusted_store, raw_store).get_raw_daily("000360", "2012-07-16", "2012-07-16")
+    assert len(raw) == 1
+
+
+def test_frozen_adjusted_source_nonusable_authority_set_is_complete():
+    assert len(ADJUSTED_ANALYTICALLY_NONUSABLE_DATES) == 186
+    assert ("000360", "2012-07-16") in ADJUSTED_ANALYTICALLY_NONUSABLE_DATES
+    assert ("123410", "2011-05-18") in ADJUSTED_ANALYTICALLY_NONUSABLE_DATES
+    assert ("126700", "2011-09-15") in ADJUSTED_ANALYTICALLY_NONUSABLE_DATES
 
 
 def test_shared_date_normal_zero_volume_row_is_not_a_placeholder_conflict(tmp_path):
@@ -508,3 +572,34 @@ def test_shared_date_partial_phantom_is_not_placeholder_conflict(tmp_path):
     repo = _projection_repo(tmp_path, ["2024-01-02", "2024-01-03", "2024-01-04"], rows)
     daily = repo.get_daily("005930", "2024-01-02", "2024-01-04")
     assert len(daily) == 3
+
+
+def test_indexed_raw_reader_validates_once_and_reuses_ticker_locations(tmp_path):
+    repo, _, raw_store = _repo(tmp_path)
+    expected = raw_store.load_ticker("005930", "2024-01-02", "2024-01-04")
+    # The first repository read builds one authority-validating index.  It
+    # does not perform a full partition scan for each subsequent ticker read.
+    actual = repo.get_raw_daily("005930", "2024-01-02", "2024-01-04")
+    stats_after_first = repo.raw_reader_stats
+    again = repo.get_raw_daily("005930", "2024-01-02", "2024-01-04")
+    stats_after_second = repo.raw_reader_stats
+    assert list(actual.index) == list(pd.to_datetime(expected["date"]))
+    assert actual["close"].tolist() == expected["close"].tolist()
+    assert again.equals(actual)
+    assert stats_after_first["full_store_scans"] == 1
+    assert stats_after_first["full_store_scans_per_ticker"] == 0
+    assert stats_after_second["full_store_scans"] == 1
+    assert stats_after_second["index_lookups"] == 2
+
+
+def test_analytic_view_is_distinct_from_lossless_source_history(tmp_path):
+    adjusted_store = AdjustedPriceStore(tmp_path / "adjusted")
+    source = _adjusted_frame(pd.DatetimeIndex(["2024-01-02"]))
+    source.loc[pd.Timestamp("2024-01-02"), "high"] = 1.0
+    source.attrs["source_native_adjusted"] = True
+    adjusted_store.save_full("005930", source)
+    raw_store = KrxRawStockStore(tmp_path / "raw")
+    raw_store.save_snapshot("KOSPI", "2024-01-02", _raw_frame(pd.DatetimeIndex(["2024-01-02"])), "fixture")
+    repo = MarketDataRepositoryV2(adjusted_store, raw_store)
+    assert repo.get_daily("005930", "2024-01-02", "2024-01-02").empty
+    assert repo._adjusted_price_store.load_daily_source("005930", "2024-01-02", "2024-01-02").loc[pd.Timestamp("2024-01-02"), "high"] == 1.0

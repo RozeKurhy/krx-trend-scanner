@@ -1,0 +1,16 @@
+{
+  "performed": true,
+  "schema": "canonical_promotion_audit_fix01_v01",
+  "method": "rename old canonical to rollback backup, then rename verified Candidate A inner stocks directory into canonical",
+  "candidate": "data/market/adjusted/staging/authority_cutover_fix01_candidate_A/stocks",
+  "canonical": "data/market/adjusted/stocks",
+  "rollback_backup": "data/market/adjusted/stocks_pre_authority_cutover_fix01_backup",
+  "pre_promotion_guard": {
+    "file_count": 5500,
+    "bytes": 129274065,
+    "aggregate_sha256": "2bffdc9233da337be336ed83441b66fe3482517af539294146f143911091dd5e",
+    "unchanged_before_swap": true
+  },
+  "initial_nested_root_attempt": "ROLLED_BACK_BEFORE_VALIDATION",
+  "rollback_integrity": "old canonical restored and re-backed up byte-for-byte before corrected swap"
+}

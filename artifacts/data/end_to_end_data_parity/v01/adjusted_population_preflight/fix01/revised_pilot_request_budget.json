@@ -1,0 +1,26 @@
+{
+  "schema": "adjusted_population_preflight_fix01_revised_pilot_request_budget_v01",
+  "pilot_executed": false,
+  "logical_case_count": 9,
+  "path_split": {
+    "numeric_production_provider_cases": 4,
+    "alpha_common_direct_diagnostic_cases": 3,
+    "alpha_non_consumer_direct_diagnostic_cases": 2
+  },
+  "max_attempts_per_case": 2,
+  "max_retries_per_case": 1,
+  "backoff_seconds": [2],
+  "timeout_seconds_per_attempt": 30,
+  "absolute_external_attempt_ceiling": 18,
+  "retryable_classes": ["TIMEOUT", "TRANSIENT_TRANSPORT", "RATE_LIMIT"],
+  "non_retryable_classes": ["INVALID_IDENTITY", "SCHEMA_FAILURE", "UNEXPECTED_EMPTY", "UNSUPPORTED", "NO_HISTORY"],
+  "empty_semantics": {
+    "raw_expected_dates_gt_zero": "empty response => UNEXPECTED_EMPTY; no retry",
+    "raw_expected_dates_zero": "NO_HISTORY; terminal; no retry"
+  },
+  "adjusted_false_calls": 0,
+  "krx_open_api_calls": 0,
+  "opendart_calls": 0,
+  "production_writes": 0,
+  "ceiling_breach_policy": "abort and publish no partial production artifact"
+}

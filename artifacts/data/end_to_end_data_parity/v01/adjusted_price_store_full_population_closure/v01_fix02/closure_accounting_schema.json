@@ -1,0 +1,20 @@
+{
+  "schema": "adjusted_price_closure_accounting_v02",
+  "tradability_contract_version": "adjusted_price_tradability_v02",
+  "record_counters": [
+    "usable_source_count",
+    "confirmed_nontrading_count",
+    "adjudicated_source_nonusable_count",
+    "silent_missing_count",
+    "unexpected_source_date_count",
+    "authority_conflict_count",
+    "phantom_count",
+    "analytic_invalid_ohlc_count"
+  ],
+  "terminal_states": [
+    "RAW_ROWS_PRESENT_ALL_PHANTOM",
+    "RAW_ROWS_PRESENT_ALL_SOURCE_NONUSABLE",
+    "ADJUDICATED_SOURCE_NONUSABLE"
+  ],
+  "fail_closed_states": ["SILENT_MISSING", "UNEXPECTED_SOURCE_DATE"]
+}

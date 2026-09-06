@@ -1,0 +1,45 @@
+{
+  "schema": "optimization_manifest_v01",
+  "directive": "FULL_PYTEST_PERFORMANCE_OPTIMIZATION_V01",
+  "accepted_optimizations": [
+    {
+      "id": "OPT-01",
+      "scope": "tests/test_pattern_a_foreign_flow_infrastructure.py",
+      "description": "Negative validator tests reuse committed immutable 2528-row scanner plus 180-row flow canonical artifacts; each test still deep-copies/mutates its own result and the live validation runner remains production-backed.",
+      "before_seconds": 328.22,
+      "after_seconds": 1.99,
+      "measured_seconds_saved": 326.23,
+      "semantic_change": "NONE"
+    },
+    {
+      "id": "OPT-02",
+      "scope": "src/trend_scanner/validation/stage_v02/lifecycle_stream.py",
+      "description": "Cache target snapshots and complete timelines by full daily-input fingerprint; retrieve requested event by event key to preserve request-order independence and prevent future-event leakage.",
+      "before_seconds": 162.14,
+      "after_seconds": 137.15,
+      "measured_seconds_saved": 24.99,
+      "semantic_change": "NONE"
+    },
+    {
+      "id": "OPT-03",
+      "scope": "src/trend_scanner/scanner/full_universe_scanner.py",
+      "description": "Process-local scan-result cache keyed by cache/default artifact identities and explicit inputs, disabled for caller-owned MarketDataRepositoryV2, with defensive copy-on-read.",
+      "before_seconds": null,
+      "after_seconds": null,
+      "measured_seconds_saved": null,
+      "semantic_change": "NONE",
+      "note": "Safety optimization; no standalone primary-target saving claimed."
+    }
+  ],
+  "reverted_experiment": {
+    "name": "current_snapshot momentum hook",
+    "reason": "Failed completed-period parity by 0.0004; fully reverted before final validation."
+  },
+  "prohibited_actions_confirmed": [
+    "no test deletion",
+    "no skip/xfail/deselect increase",
+    "no population/date/sample reduction",
+    "no global warning suppression",
+    "no live API request"
+  ]
+}

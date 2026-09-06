@@ -1,0 +1,72 @@
+{
+  "schema": "adjusted_price_identity_boundary_correction_fix02_final_decision_v01",
+  "directive": "ADJUSTED_PRICE_IDENTITY_BOUNDARY_CORRECTION_FIX02",
+  "captured_at_utc": "2026-09-01T09:51:15.313511+00:00",
+  "critical": 0,
+  "major": 0,
+  "minor": 0,
+  "total_issues": 0,
+  "blocking_issues": 0,
+  "blocking_issue_count": 0,
+  "verdict": "ACCEPT",
+  "ambiguous_22_input_count": 22,
+  "ambiguous_22_resolved_count": 22,
+  "ambiguous_22_unresolved_count": 0,
+  "missing_raw_identity_count": 660,
+  "missing_raw_transition_count": 17,
+  "missing_raw_other_material_count": 0,
+  "transition_17_resolved_count": 17,
+  "transition_17_unresolved_count": 0,
+  "true_acquisition_truncation_count": 0,
+  "canonical_correction_count": 0,
+  "production_code_changed": false,
+  "tests_changed": false,
+  "canonical_data_changed": false,
+  "market_rs_rerun_required": false,
+  "market_rs_evidence_inherited": true,
+  "market_rs_historical_status": "PASS_INHERITED",
+  "market_rs_current_status": "PASS_INHERITED",
+  "full_pytest_rerun_required": false,
+  "full_pytest_evidence_inherited": true,
+  "full_pytest_status": "PASS_WITH_ACCEPTED_BASELINE_FAILURE_INHERITED",
+  "pipeline_repair_required": false,
+  "pipeline_repair_reason": "No A-E authority-model deficiency proven; missing raw alone is not source absence or pipeline defect.",
+  "market_rs_parity_v01": "CLOSED",
+  "adjusted_price_identity_boundary_correction_fix01": "CLOSED",
+  "adjusted_price_identity_boundary_correction_fix02": "CLOSED",
+  "adjusted_price_store_backfill_correction_v01": "CLOSED",
+  "next_state": "FULL_PYTEST_PERFORMANCE_OPTIMIZATION_V01",
+  "accepted_446840": {
+    "identity_boundary_status": "IDENTITY_SAFE_REQUEST_BOUNDARY",
+    "canonical_date_min": "2025-08-14",
+    "canonical_row_count": 248,
+    "market_rs_status": "PARTIAL"
+  },
+  "blast_radius": {
+    "ambiguous_22": {
+      "IDENTITY_BOUNDARY_EXPECTED": 0,
+      "SAME_IDENTITY_PRE_COMMON_HISTORY": 22,
+      "TRUE_ACQUISITION_TRUNCATION": 0,
+      "LEGITIMATE_SOURCE_GAP": 0,
+      "FALSE_POSITIVE_CONFIRMED": 0,
+      "UNRESOLVED": 0
+    },
+    "missing_raw_risk_classes": {
+      "NO_IDENTITY_TRANSITION_SIGNAL": 640,
+      "IDENTITY_TRANSITION_SIGNAL": 17,
+      "MULTIPLE_COMMON_INTERVAL_SIGNAL": 3,
+      "OTHER_MATERIAL_IDENTITY_SIGNAL": 0
+    },
+    "transition_17": {
+      "IDENTITY_BOUNDARY_EXPECTED": 17,
+      "TRUE_ACQUISITION_TRUNCATION": 0,
+      "OTHER_PROVEN_STATE": 0,
+      "UNRESOLVED": 0
+    },
+    "multiple_interval_signals_resolved": 3
+  },
+  "network": {
+    "new_live_requests": 0,
+    "pykrx_fallback_requests": 0
+  }
+}

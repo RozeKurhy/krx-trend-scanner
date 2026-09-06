@@ -1,0 +1,104 @@
+{
+  "independent_proof": {
+    "all_nine_target_dates_returned": true,
+    "prior_naver_response_path": "artifacts/data/end_to_end_data_parity/v01/adjusted_source_gap_authority_review/v01/live_verification/ticker_446840_naver_verification_response.xml",
+    "requested_end": "2025-08-14",
+    "requested_start": "2025-08-01",
+    "returned_rows": 10,
+    "returned_target_dates": [
+      "2025-08-01",
+      "2025-08-04",
+      "2025-08-05",
+      "2025-08-06",
+      "2025-08-07",
+      "2025-08-08",
+      "2025-08-11",
+      "2025-08-12",
+      "2025-08-13"
+    ]
+  },
+  "layers": [
+    {
+      "decision": "first_common_date=min(common_intervals.effective_from)",
+      "derived": {
+        "common_interval_count": 1,
+        "first_common_date": "2025-08-14",
+        "last_common_date": "2026-08-21"
+      },
+      "file": "src/trend_scanner/universe/survivorship_safe_denominator_freeze.py",
+      "function": "derive_population_and_pit_records",
+      "input_identity": {
+        "isu_cd": [
+          "KR7446840001"
+        ],
+        "market": [
+          "KOSDAQ"
+        ],
+        "ticker": "446840"
+      },
+      "layer": "population/lifecycle_input"
+    },
+    {
+      "decision": "req_start=rec[\"first_common_date\"]",
+      "derived": "2025-08-14",
+      "file": "src/trend_scanner/data/adjusted_price_full_population.py",
+      "function": "FullPopulationRunner.process_single_ticker",
+      "layer": "requested_start_derivation"
+    },
+    {
+      "decision": "req_end=min(rec[\"last_common_date\"],CANONICAL_CALENDAR_CUTOFF)",
+      "derived": "2026-08-21",
+      "file": "src/trend_scanner/data/adjusted_price_full_population.py",
+      "function": "FullPopulationRunner.process_single_ticker",
+      "layer": "requested_end_derivation"
+    },
+    {
+      "decision": "calls process_single_ticker for non-reusable entries; checkpoint reuse validates the same requested bounds",
+      "file": "src/trend_scanner/data/adjusted_price_full_population.py",
+      "function": "FullPopulationRunner.run_acquisition",
+      "layer": "scheduler",
+      "output": "one bounded provider fetch for 446840 in original run"
+    },
+    {
+      "decision": "one request with startTime/endTime derived from req_start/req_end; no fallback",
+      "file": "src/trend_scanner/data/adjusted_price_provider.py",
+      "function": "NaverDirectAdjustedPriceDataProvider.load_daily",
+      "layer": "provider_call",
+      "original_request": {
+        "count": "5000",
+        "endTime": "20260821",
+        "requestType": 1,
+        "startTime": "20250814",
+        "symbol": "446840",
+        "timeframe": "day"
+      }
+    },
+    {
+      "decision": "accept only response rows inside requested bounds, validate source integrity, emit adjusted OHLC only",
+      "effect": "rows before 2025-08-14 could not be returned because request window excluded them",
+      "file": "src/trend_scanner/data/adjusted_price_provider.py",
+      "function": "NaverDirectAdjustedPriceDataProvider._parse_response",
+      "layer": "normalization"
+    },
+    {
+      "decision": "store.save_full(frame,metadata_context={requested_start:req_start,requested_end:req_end})",
+      "file": "src/trend_scanner/data/adjusted_price_full_population.py",
+      "function": "FullPopulationRunner.process_single_ticker",
+      "layer": "canonical_writer",
+      "output": "248 rows, actual_date_min=2025-08-14"
+    },
+    {
+      "decision": "persists caller requested bounds and physical actual bounds",
+      "file": "src/trend_scanner/data/adjusted_price_store.py",
+      "function": "AdjustedPriceStore.save_full",
+      "layer": "metadata_writer",
+      "output": {
+        "actual_date_min": "2025-08-14",
+        "requested_start": "2025-08-14"
+      }
+    }
+  ],
+  "root_cause_category": "REQUEST_WINDOW_DERIVATION_DEFECT",
+  "schema": "ticker_446840_acquisition_trace_v01",
+  "ticker": "446840"
+}
