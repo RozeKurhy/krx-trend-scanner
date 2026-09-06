@@ -629,7 +629,15 @@ def _post_stop_metrics(
     jl_record: Any | None,
     daily: pd.DataFrame | None,
 ) -> dict[str, Any]:
-    """Compute Julia's path strictly after the actual FastCore stop boundary."""
+    """Compute Julia's path inside its actual holding-period boundary.
+
+    The FastCore stop execution session is included because Julia remains in
+    the position during that session.  For a realized Julia trade, the path
+    ends at the trading session immediately before Julia's exit execution;
+    for an open-at-cutoff trade it ends at the cutoff date.  A missing daily
+    path is represented as unavailable rather than being filled with Julia's
+    whole-trade MFE/MAE.
+    """
     metrics: dict[str, Any] = {
         "julia_unrealized_return_at_fastcore_stop_signal": None,
         "julia_unrealized_return_at_fastcore_stop_execution": None,
@@ -638,7 +646,7 @@ def _post_stop_metrics(
         "post_stop_worst_additional_drawdown": None,
         "post_stop_max_recovery": None,
         "first_recovery_above_entry_date": None,
-        "recovered_above_entry": False,
+        "recovered_above_entry": None,
     }
     if jl_record is None:
         return metrics
@@ -648,21 +656,25 @@ def _post_stop_metrics(
     except (TypeError, ValueError):
         return metrics
     if entry_open <= 0 or daily is None or daily.empty:
-        # A no-path unit test still gets the conservative legacy fields below;
-        # it must never be treated as a post-stop observation.
-        mfe = _record_value(jl_record, "mfe")
-        if mfe is not None:
-            metrics["post_stop_max_return"] = float(mfe)
+        # Whole-trade MFE/MAE are retained separately as legacy fields by the
+        # caller.  They are never promoted to post-stop metrics.
         return metrics
 
     frame = daily.copy()
     frame.index = pd.DatetimeIndex(pd.to_datetime(frame.index, errors="coerce")).normalize()
     frame = frame.loc[~frame.index.isna()].sort_index()
 
-    signal_date = _record_value(fc_record, "loss_guard_signal_date")
-    execution_date = _record_value(fc_record, "loss_guard_execution_date")
-    signal_day = pd.Timestamp(signal_date).normalize() if signal_date else None
-    execution_day = pd.Timestamp(execution_date).normalize() if execution_date else None
+    def _day(value: Any) -> pd.Timestamp | None:
+        if value is None or (isinstance(value, float) and pd.isna(value)):
+            return None
+        try:
+            parsed = pd.Timestamp(value).normalize()
+        except (TypeError, ValueError, OverflowError):
+            return None
+        return None if pd.isna(parsed) else parsed
+
+    signal_day = _day(_record_value(fc_record, "loss_guard_signal_date"))
+    execution_day = _day(_record_value(fc_record, "loss_guard_execution_date"))
     if signal_day is not None:
         row = frame.loc[frame.index == signal_day]
         if not row.empty:
@@ -676,12 +688,31 @@ def _post_stop_metrics(
                 (float(row.iloc[-1]["open"]) / entry_open - 1.0) * 100, 2
             )
 
-    # The stop execution session itself is the boundary.  All path metrics
-    # below use strictly later sessions, so pre-stop MFE/MAE cannot leak in.
+    # The stop execution session itself is included.  It is the first session
+    # in which Julia is still holding the position; OHLC is session-level, so
+    # the inclusion is intentionally documented as an approximation.
     boundary = execution_day or signal_day
     if boundary is None:
         return metrics
-    path = frame.loc[frame.index > boundary]
+
+    path = frame.loc[frame.index >= boundary]
+    julia_status = str(_record_value(jl_record, "trade_status", "")).upper()
+    if julia_status == "REALIZED":
+        # Julia sells at the exit execution open.  Do not use any later
+        # session's high/low/close in the counterfactual path.
+        exit_execution_day = _day(_record_value(jl_record, "exit_execution_date"))
+        if exit_execution_day is None:
+            return metrics
+        path = path.loc[path.index < exit_execution_day]
+    elif julia_status == "OPEN_AT_CUTOFF":
+        cutoff_day = _day(_record_value(jl_record, "cutoff_date"))
+        if cutoff_day is None:
+            return metrics
+        path = path.loc[path.index <= cutoff_day]
+    else:
+        # An unknown/legacy status cannot establish a safe end boundary.
+        return metrics
+
     if path.empty:
         return metrics
     low_returns = (path["low"].astype(float) / entry_open - 1.0) * 100
@@ -689,18 +720,23 @@ def _post_stop_metrics(
     min_return = float(low_returns.min())
     max_return = float(high_returns.max())
     stop_realized = _record_value(fc_record, "loss_guard_realized_return")
-    stop_realized = float(stop_realized) if stop_realized is not None else 0.0
+    try:
+        stop_realized = float(stop_realized) if stop_realized is not None else None
+    except (TypeError, ValueError):
+        stop_realized = None
     metrics.update(
         post_stop_min_return=round(min_return, 2),
         post_stop_max_return=round(max_return, 2),
-        post_stop_worst_additional_drawdown=round(min_return - stop_realized, 2),
-        post_stop_max_recovery=round(max_return - stop_realized, 2),
+        post_stop_worst_additional_drawdown=(round(min_return - stop_realized, 2) if stop_realized is not None else None),
+        post_stop_max_recovery=(round(max_return - stop_realized, 2) if stop_realized is not None else None),
     )
     close_returns = (path["close"].astype(float) / entry_open - 1.0) * 100
     recovered = close_returns[close_returns > 0]
     if not recovered.empty:
         metrics["first_recovery_above_entry_date"] = recovered.index[0].strftime("%Y-%m-%d")
         metrics["recovered_above_entry"] = True
+    else:
+        metrics["recovered_above_entry"] = False
     return metrics
 
 
@@ -728,7 +764,7 @@ def build_loss_cut_counterfactual_rows(
         julia_mae = _record_value(jl_row, "mae") if jl_row is not None else None
         # If a caller supplies no daily path (e.g. a pure dataframe audit),
         # retain the Julia whole-trade values in dedicated legacy columns only;
-        # post-stop columns remain None/False and are never mislabeled.
+        # post-stop columns remain unavailable and are never mislabeled.
         rows.append({
             "ticker": _record_value(fc_row, "ticker"),
             "isu_cd": _record_value(fc_row, "isu_cd"),
@@ -750,8 +786,10 @@ def build_loss_cut_counterfactual_rows(
             "julia_terminal_return": julia_terminal,
             "julia_mfe_legacy": julia_mfe,
             "julia_mae_legacy": julia_mae,
-            "julia_recovered_above_entry": bool(metrics["recovered_above_entry"]),
-            "julia_eventually_positive": bool(julia_terminal is not None and float(julia_terminal) > 0),
+            # Unpairable rows deliberately carry no Julia outcome semantics;
+            # aggregate metrics must use the pairable subset as denominator.
+            "julia_recovered_above_entry": metrics["recovered_above_entry"] if jl_row is not None else None,
+            "julia_eventually_positive": (bool(julia_terminal is not None and float(julia_terminal) > 0) if jl_row is not None else None),
             "julia_trade_status": _record_value(jl_row, "trade_status") if jl_row is not None else None,
         })
     return rows

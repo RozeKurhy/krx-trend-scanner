@@ -22,7 +22,11 @@ from trend_scanner.backtest.fastcore_julia_strategy_v01 import (
     pit_common_for_identity,
     simulate_ticker_strategy_v01,
 )
-from trend_scanner.backtest.raw_investability_panel import evaluate_entry_filter
+from trend_scanner.backtest.raw_investability_panel import (
+    evaluate_entry_filter,
+    recompute_identity_scoped_avg_trading_value_20d,
+)
+from scripts.run_fastcore_julia_strategy_backtest_v01 import _loss_cut_aggregate_summary
 
 ROOT = Path(__file__).resolve().parent.parent
 SCORE_CONTRACT_PATH = ROOT / "artifacts/patterns/pattern_a_fast/production/contract_prototype/pattern_a_fast_score_prototype_v01.json"
@@ -244,6 +248,19 @@ def test_identity_lifecycle_lookback_shortage_is_fail_closed(contracts):
     assert result == []
 
 
+def test_identity_scoped_20d_average_does_not_seed_successor_lifecycle():
+    """A successor identity starts a fresh 20-observation window."""
+    dates = pd.bdate_range("2020-01-01", periods=40)
+    frame = pd.DataFrame(
+        {"trading_value": [100.0] * 19 + [1_000.0] * 21},
+        index=dates,
+    )
+    successor = frame.iloc[19:].copy()
+    scoped = recompute_identity_scoped_avg_trading_value_20d(successor)
+    assert scoped["avg_trading_value_20d"].iloc[:19].isna().all()
+    assert scoped["avg_trading_value_20d"].iloc[19] == pytest.approx(1_000.0)
+
+
 def test_pit_gate_blocks_entry_after_effective_to(contracts):
     score_contract, stage_contract = contracts
     daily = _make_synthetic_daily(n_days=900, base_days=500)
@@ -312,6 +329,63 @@ def test_counterfactual_post_stop_metrics_exclude_pre_stop_path():
     assert row["post_stop_max_return"] == 20.0
     assert row["first_recovery_above_entry_date"] == "2020-01-06"
     assert row["recovered_above_entry"] is True
+
+
+def test_counterfactual_post_stop_path_stops_before_julia_exit_execution():
+    fc = [_trade_dict(seq=1, signal="2020-01-03", execution="2020-01-04")]
+    jl = [_trade_dict(seq=1, signal="2020-01-03", execution="2020-01-04", exit_type="EXIT3", terminal=5.0)]
+    fc[0]["loss_guard_signal_date"] = "2020-01-03"
+    fc[0]["loss_guard_execution_date"] = "2020-01-04"
+    jl[0]["exit_execution_date"] = "2020-01-06"
+    daily = pd.DataFrame(
+        {
+            "open": [100, 83, 82, 110, 200, 50],
+            "high": [101, 84, 90, 120, 220, 60],
+            "low": [99, 82, 80, 108, 180, 40],
+            "close": [100, 83, 85, 115, 210, 45],
+        },
+        index=pd.to_datetime(["2020-01-03", "2020-01-04", "2020-01-05", "2020-01-06", "2020-01-07", "2020-01-08"]),
+    )
+    row = build_loss_cut_counterfactual_rows(fc, jl, daily)[0]
+    # Jan 6 is Julia's exit execution and Jan 7/8 are strictly post-exit;
+    # neither their rally nor their decline may affect the counterfactual.
+    assert row["post_stop_max_return"] == -10.0
+    assert row["post_stop_min_return"] == -20.0
+    assert row["first_recovery_above_entry_date"] is None
+    assert row["recovered_above_entry"] is False
+
+
+def test_counterfactual_daily_none_does_not_promote_legacy_mfe_mae():
+    fc = [_trade_dict(seq=1, signal="2020-01-03", execution="2020-01-04")]
+    jl = [_trade_dict(seq=1, signal="2020-01-03", execution="2020-01-04", exit_type="EXIT3", terminal=5.0, mfe=99.0, mae=-44.0)]
+    row = build_loss_cut_counterfactual_rows(fc, jl, None)[0]
+    assert row["post_stop_min_return"] is None
+    assert row["post_stop_max_return"] is None
+    assert row["post_stop_worst_additional_drawdown"] is None
+    assert row["post_stop_max_recovery"] is None
+    assert row["julia_mfe_legacy"] == 99.0
+    assert row["julia_mae_legacy"] == -44.0
+
+
+def test_counterfactual_aggregate_uses_pairable_denominator_and_opposite_directions():
+    counterfactual = pd.DataFrame(
+        [
+            {"pairable": True, "pair_class": "PAIRED_FIRST_ENTRY", "fastcore_realized_return": -17.0, "julia_terminal_return": 20.0, "recovered_above_entry": True},
+            {"pairable": True, "pair_class": "PAIRED_SHARED_REENTRY", "fastcore_realized_return": -17.0, "julia_terminal_return": -45.0, "recovered_above_entry": False},
+            {"pairable": False, "pair_class": "UNPAIRABLE_FASTCORE_ONLY_REENTRY", "fastcore_realized_return": -17.0, "julia_terminal_return": None, "recovered_above_entry": None},
+        ]
+    )
+    summary = _loss_cut_aggregate_summary(counterfactual)
+    assert summary["total_loss_cuts"] == 3
+    assert summary["pairable_loss_cuts"] == 2
+    assert summary["julia_metric_denominator_pairable"] == 2
+    assert summary["julia_eventually_positive_count"] == 1
+    assert summary["recovered_above_entry_count"] == 1
+    assert summary["never_recovered_count"] == 1
+    assert summary["julia_terminal_better_count"] == 1
+    assert summary["deeper_loss_avoided_count"] == 1
+    assert summary["julia_terminal_better_rate"] == 50.0
+    assert summary["deeper_loss_avoided_rate"] == 50.0
 
 
 # ---------------------------------------------------------------------------

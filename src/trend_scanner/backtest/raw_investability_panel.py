@@ -18,6 +18,7 @@ series is O(dates) instead.
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Mapping, Sequence
 
 import pandas as pd
 
@@ -27,21 +28,46 @@ RAW_MARKETS = ("KOSPI", "KOSDAQ")
 AVG_TRADING_VALUE_WINDOW = 20
 
 
+def recompute_identity_scoped_avg_trading_value_20d(panel: pd.DataFrame) -> pd.DataFrame:
+    """Recompute the 20-observation average after an identity clip.
+
+    ``build_raw_investability_panel`` is intentionally built once per ticker
+    for efficiency, but a ticker can be reused by multiple ISU identities.
+    Callers therefore *must* clip the panel to one identity lifecycle before
+    invoking this helper.  The rolling window is reset at the clipped frame's
+    first observation, so a predecessor identity can never seed a successor's
+    average.
+    """
+    result = panel.copy()
+    if "trading_value" not in result.columns:
+        result["avg_trading_value_20d"] = pd.Series(index=result.index, dtype="float64")
+        return result
+    result["avg_trading_value_20d"] = (
+        pd.to_numeric(result["trading_value"], errors="coerce")
+        .rolling(window=AVG_TRADING_VALUE_WINDOW, min_periods=AVG_TRADING_VALUE_WINDOW)
+        .mean()
+    )
+    return result
+
+
 def build_raw_investability_panel(
     tickers: set[str],
     *,
     end: str | pd.Timestamp,
     raw_root: Path | str = DEFAULT_RAW_STOCK_ROOT,
+    identity_intervals: Mapping[tuple[str, str, str], Sequence[tuple[str, str]]] | None = None,
 ) -> dict[str, pd.DataFrame]:
     """Return ``{ticker: DataFrame(index=date, columns=[close, market_cap,
     trading_value, avg_trading_value_20d])}`` built from raw KRX snapshots.
 
-    Only dates ``<= end`` are read. ``avg_trading_value_20d`` at date ``t``
-    uses only that ticker's own trading-day history up to and including
-    ``t`` (a trailing rolling mean over its own observed dates), so it is
-    PIT-safe by construction -- it never needs a day that has not
-    happened yet, and a ticker's halted/missing days do not silently
-    borrow future days to fill the window.
+    Only dates ``<= end`` are read.  When ``identity_intervals`` is supplied,
+    the 20D average is computed separately inside each exact
+    ``(ticker, isu_cd, market)`` lifecycle; a successor identity therefore
+    starts with 19 unavailable observations even when the ticker was active
+    before the transition.  Without the optional authority map the helper
+    retains the ticker-scoped behavior for standalone callers, while the
+    backtest runner always supplies the map and recomputes after its final
+    lifecycle clip as a defensive invariant.
     """
     store = KrxRawStockStore(raw_root)
     end_day = pd.Timestamp(end).strftime("%Y-%m-%d")
@@ -76,9 +102,36 @@ def build_raw_investability_panel(
     panels: dict[str, pd.DataFrame] = {}
     for ticker, group in long_df.groupby("ticker", sort=False):
         g = group.set_index("date").sort_index()
-        g["avg_trading_value_20d"] = (
-            g["trading_value"].rolling(window=AVG_TRADING_VALUE_WINDOW, min_periods=AVG_TRADING_VALUE_WINDOW).mean()
-        )
+        if identity_intervals is None:
+            g = recompute_identity_scoped_avg_trading_value_20d(g)
+        elif g.index.has_duplicates:
+            # A same-day cross-market collision cannot be attributed to an
+            # identity without a market discriminator.  Keep the raw rows so
+            # the worker can fail closed, but do not synthesize a rolling
+            # value from ambiguous observations.
+            g["avg_trading_value_20d"] = pd.Series(index=g.index, dtype="float64")
+        else:
+            # Assign each raw date to exactly one authority lifecycle before
+            # rolling.  Overlapping authority intervals remain unavailable;
+            # the exact PIT gate will reject them downstream.
+            avg = pd.Series(index=g.index, dtype="float64")
+            ownership = pd.Series(0, index=g.index, dtype="int64")
+            masks: list[pd.Series] = []
+            for (key_ticker, _isu_cd, _market), ranges in identity_intervals.items():
+                if str(key_ticker) != str(ticker):
+                    continue
+                for start, stop in ranges:
+                    mask = (g.index >= pd.Timestamp(start)) & (g.index <= pd.Timestamp(stop))
+                    if mask.any():
+                        masks.append(pd.Series(mask, index=g.index))
+                        ownership.loc[mask] += 1
+            for mask in masks:
+                owned = mask & ownership.eq(1)
+                if not owned.any():
+                    continue
+                scoped = recompute_identity_scoped_avg_trading_value_20d(g.loc[owned])
+                avg.loc[owned] = scoped["avg_trading_value_20d"].to_numpy()
+            g["avg_trading_value_20d"] = avg
         panels[str(ticker)] = g.loc[:, ["close", "market_cap", "trading_value", "avg_trading_value_20d"]]
 
     return panels

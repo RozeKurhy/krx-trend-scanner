@@ -29,7 +29,10 @@ from trend_scanner.backtest.fastcore_julia_strategy_v01 import (
     pit_common_for_identity,
     simulate_ticker_strategy_v01,
 )
-from trend_scanner.backtest.raw_investability_panel import build_raw_investability_panel
+from trend_scanner.backtest.raw_investability_panel import (
+    build_raw_investability_panel,
+    recompute_identity_scoped_avg_trading_value_20d,
+)
 from trend_scanner.backtest.snapshot_context import build_precomputed_ticker_context
 from trend_scanner.data.repository_v2_loader import RepositoryV2DailyLoader, build_repository_v2
 from trend_scanner.data.adjusted_price_authority_cutover import load_effective_authority
@@ -116,6 +119,11 @@ def _worker_task(args: tuple[str, str, str, str, str, str]) -> tuple[str, str, s
             # A same-day cross-market collision cannot be assigned to this
             # identity without an authoritative market discriminator.
             return ticker, isu_cd, market, [], [], []
+        # The panel is built once per ticker, so its convenience rolling
+        # column may include observations from a predecessor identity.  Reset
+        # the window only after this task's exact lifecycle clip; no prior
+        # identity observation can seed the new identity's first 19 rows.
+        raw_panel = recompute_identity_scoped_avg_trading_value_20d(raw_panel)
     if not _ticker_ever_investable(raw_panel):
         # This ticker never simultaneously clears the market-cap / 20D avg
         # trading value / close entry-only thresholds at any point in its
@@ -191,7 +199,11 @@ def run_backtest(
     _LOADER = RepositoryV2DailyLoader(repository, end=BACKTEST_END)
 
     t0 = time.perf_counter()
-    _RAW_PANELS = build_raw_investability_panel(tickers, end=BACKTEST_END)
+    _RAW_PANELS = build_raw_investability_panel(
+        tickers,
+        end=BACKTEST_END,
+        identity_intervals=_PIT_INTERVALS,
+    )
     logger.info("Raw investability panel built for %d tickers in %.1fs", len(_RAW_PANELS), time.perf_counter() - t0)
 
     tasks = [
@@ -300,9 +312,18 @@ def run_backtest(
 
     pit_audit = {
         "pit_authority": "EFFECTIVE_CORRECTED_AUTHORITY_V01",
+        "authority": "EFFECTIVE_CORRECTED_AUTHORITY_V01",
+        "authority_sha256": authority.pit_sha256,
+        "population_count": authority.population_count,
+        "pit_interval_count": authority.pit_count,
+        "coverage_start": PIT_UNIVERSE_START.strftime("%Y-%m-%d"),
+        "coverage_end": PIT_UNIVERSE_END.strftime("%Y-%m-%d"),
+        "current_survivor_universe_used": False,
         "pit_common_gate_implemented": True,
         "identity_key": "ticker|isu_cd|market",
         "identity_lifecycle_clipping_implemented": True,
+        "identity_lifecycle_clipping": True,
+        "raw_20d_trading_value_identity_isolated": True,
         "entry_signal_information_date": True,
         "entry_filter_raw_date_le_information_date": True,
         "network_requests_made": 0,
@@ -520,18 +541,31 @@ def _loss_cut_aggregate_summary(counterfactual: pd.DataFrame) -> dict[str, Any]:
             "pairable_loss_cuts": 0,
             "unpairable_loss_cuts": 0,
             "pair_coverage_rate": 0.0,
+            "julia_metric_denominator_pairable": 0,
         }
     total = len(counterfactual)
-    pairable = int(counterfactual["pairable"].sum())
-    def _rate(n: int) -> float:
-        return round(float(n / total * 100), 2) if total else 0.0
+    pairable = int(counterfactual["pairable"].astype(bool).sum())
+    pair_df = counterfactual.loc[counterfactual["pairable"].astype(bool)].copy()
+
+    def _rate(n: int, denominator: int = pairable) -> float:
+        return round(float(n / denominator * 100), 2) if denominator else 0.0
+
     fc_returns = pd.to_numeric(counterfactual["fastcore_realized_return"], errors="coerce")
-    terminal = pd.to_numeric(counterfactual["julia_terminal_return"], errors="coerce")
+    pair_fc_returns = pd.to_numeric(pair_df["fastcore_realized_return"], errors="coerce")
+    terminal = pd.to_numeric(pair_df["julia_terminal_return"], errors="coerce")
+    recovered = pair_df["recovered_above_entry"] if "recovered_above_entry" in pair_df else pd.Series(dtype=bool)
+    recovered_true = int((recovered == True).sum())  # noqa: E712 - explicit tri-state check
+    recovered_false = int((recovered == False).sum())  # noqa: E712 - explicit tri-state check
+    julia_positive = int((terminal > 0).sum())
+    julia_better = int((terminal > pair_fc_returns).sum())
+    deeper_loss_avoided = int((terminal < pair_fc_returns).sum())
+    fastcore_better = int((pair_fc_returns > terminal).sum())
     return {
         "total_loss_cuts": total,
         "pairable_loss_cuts": pairable,
         "unpairable_loss_cuts": int(total - pairable),
-        "pair_coverage_rate": _rate(pairable),
+        "pair_coverage_rate": _rate(pairable, total),
+        "julia_metric_denominator_pairable": pairable,
         "first_entry_pair_count": int((counterfactual["pair_class"] == "PAIRED_FIRST_ENTRY").sum()),
         "shared_reentry_pair_count": int((counterfactual["pair_class"] == "PAIRED_SHARED_REENTRY").sum()),
         "fastcore_realized_loss_mean": round(float(fc_returns.mean()), 2) if fc_returns.notna().any() else None,
@@ -540,17 +574,21 @@ def _loss_cut_aggregate_summary(counterfactual: pd.DataFrame) -> dict[str, Any]:
         "fastcore_le_neg_20": int((fc_returns <= -20).sum()),
         "fastcore_le_neg_25": int((fc_returns <= -25).sum()),
         "fastcore_le_neg_30": int((fc_returns <= -30).sum()),
-        "julia_eventually_positive_count": int((terminal > 0).sum()),
-        "julia_eventually_positive_rate": _rate(int((terminal > 0).sum())),
-        "recovered_above_entry_count": int(counterfactual["recovered_above_entry"].sum()),
-        "recovered_above_entry_rate": _rate(int(counterfactual["recovered_above_entry"].sum())),
-        "never_recovered_count": int((~counterfactual["recovered_above_entry"]).sum()),
-        "deeper_loss_avoided_count": int((terminal > fc_returns).sum()),
-        "deeper_loss_avoided_rate": _rate(int((terminal > fc_returns).sum())),
-        "julia_terminal_better_count": int((terminal > fc_returns).sum()),
-        "julia_terminal_better_rate": _rate(int((terminal > fc_returns).sum())),
-        "fastcore_better_count": int((fc_returns > terminal).sum()),
-        "fastcore_better_rate": _rate(int((fc_returns > terminal).sum())),
+        "julia_eventually_positive_count": julia_positive,
+        "julia_eventually_positive_rate": _rate(julia_positive),
+        "recovered_above_entry_count": recovered_true,
+        "recovered_above_entry_rate": _rate(recovered_true),
+        "never_recovered_count": recovered_false,
+        "never_recovered_rate": _rate(recovered_false),
+        # Opposite directions are intentionally distinct: Julia better means
+        # terminal > FastCore loss-cut return, while FastCore avoided a deeper
+        # loss means terminal < FastCore loss-cut return.
+        "deeper_loss_avoided_count": deeper_loss_avoided,
+        "deeper_loss_avoided_rate": _rate(deeper_loss_avoided),
+        "julia_terminal_better_count": julia_better,
+        "julia_terminal_better_rate": _rate(julia_better),
+        "fastcore_better_count": fastcore_better,
+        "fastcore_better_rate": _rate(fastcore_better),
         "mean_julia_counterfactual_terminal_return": round(float(terminal.mean()), 2) if terminal.notna().any() else None,
         "median_julia_counterfactual_terminal_return": round(float(terminal.median()), 2) if terminal.notna().any() else None,
     }
