@@ -14,7 +14,7 @@
     "effective_as_of": "2026-09-04",
     "cache_present": true,
     "cache_last_date": "2026-09-04",
-    "report_status": "PARTIAL",
+    "report_status": "READY",
     "asset_type": "COMMON"
   },
   "summary": {
@@ -23,11 +23,11 @@
       "패스트 코어 V2: HOLD_PROGRESSED · 현재 5번째 전략 포지션 보유 중",
       "현재 Pattern A Score는 0.00점(Stage: PROGRESSED, Candidate: NO)입니다.",
       "시가총액 133009.1억원, 20일 평균 거래대금 1701.05억원으로 Phase 10 Investability 기준을 충족합니다.",
-      "외국인 수급: 외국인 수급 데이터가 준비되지 않아 수급 분석을 제공할 수 없습니다.",
+      "외국인 수급: 외국인 수급이 기간별로 엇갈리는 혼조세 흐름입니다 (5일 순매수 강도: -1.15%).",
       "시장 상대강도: 해당 기준일의 전체 시장 RS 기준 snapshot이 없어 시장 상대강도 백분위 분석을 제공할 수 없습니다.",
       "거래대금 추세: 최근 거래대금이 특정 방향성 없이 기간별로 혼조세를 나타내고 있습니다. (5일: 3041.58억원, 20일: 1701.05억원, 60일: 2553.91억원)"
     ],
-    "combined_narrative": "현재 LG이노텍은(는) Pattern A Score 0.00점, PROGRESSED 단계이며 Phase 10 Investability 조건(시총 1,000억 이상 및 20일 거래대금 3억 이상)을 충족(INVESTABLE)했습니다. 최근 12개월 동안 WEAK(0.00점)에서 PROGRESSED(0.00점)로 국면 이동이 관찰되었습니다. 외국인 수급은 FLOW_UNAVAILABLE 상태로, 외국인 수급 데이터가 준비되지 않아 수급 분석을 제공할 수 없습니다. 거래대금은 TRADING_VALUE_MIXED 상태로, 최근 거래대금이 특정 방향성 없이 기간별로 혼조세를 나타내고 있습니다. (5일: 3041.58억원, 20일: 1701.05억원, 60일: 2553.91억원) 시장 상대강도는 해당 기준일의 전체 시장 RS 기준 snapshot이 없어 시장 상대강도 백분위 분석을 제공할 수 없습니다.",
+    "combined_narrative": "현재 LG이노텍은(는) Pattern A Score 0.00점, PROGRESSED 단계이며 Phase 10 Investability 조건(시총 1,000억 이상 및 20일 거래대금 3억 이상)을 충족(INVESTABLE)했습니다. 최근 12개월 동안 WEAK(0.00점)에서 PROGRESSED(0.00점)로 국면 이동이 관찰되었습니다. 외국인 수급은 FLOW_MIXED 상태로, 외국인 수급이 기간별로 엇갈리는 혼조세 흐름입니다 (5일 순매수 강도: -1.15%). 거래대금은 TRADING_VALUE_MIXED 상태로, 최근 거래대금이 특정 방향성 없이 기간별로 혼조세를 나타내고 있습니다. (5일: 3041.58억원, 20일: 1701.05억원, 60일: 2553.91억원) 시장 상대강도는 해당 기준일의 전체 시장 RS 기준 snapshot이 없어 시장 상대강도 백분위 분석을 제공할 수 없습니다.",
     "strategy_headline": "패스트 코어 V2 전략 포지션은 PROGRESSED 구간에 있습니다. 초기 Loss Guard는 비활성화되었으며 Exit3 / Exit4 기준으로 추세 종료 여부를 관찰합니다."
   },
   "current_snapshot": {
@@ -2141,19 +2141,19 @@
     "pattern_a_available_observation_count": 165
   },
   "foreign_flow": {
-    "data_status": "DATA_UNAVAILABLE",
-    "flow_state": "FLOW_UNAVAILABLE",
-    "explanation": "외국인 수급 데이터가 준비되지 않아 수급 분석을 제공할 수 없습니다.",
-    "foreign_net_buy_value_1d_krw": null,
-    "foreign_net_buy_value_5d_krw": null,
-    "foreign_net_buy_value_20d_krw": null,
-    "foreign_net_buy_value_60d_krw": null,
-    "foreign_flow_intensity_5d": null,
-    "foreign_flow_intensity_20d": null,
-    "foreign_flow_intensity_60d": null,
-    "foreign_positive_days_5d": null,
-    "foreign_positive_days_20d": null,
-    "foreign_positive_days_60d": null
+    "data_status": "READY",
+    "flow_state": "FLOW_MIXED",
+    "explanation": "외국인 수급이 기간별로 엇갈리는 혼조세 흐름입니다 (5일 순매수 강도: -1.15%).",
+    "foreign_net_buy_value_1d_krw": 8630261500.0,
+    "foreign_net_buy_value_5d_krw": -17523886500.0,
+    "foreign_net_buy_value_20d_krw": -63593750500.0,
+    "foreign_net_buy_value_60d_krw": 708864328500.0,
+    "foreign_flow_intensity_5d": -0.0115,
+    "foreign_flow_intensity_20d": -0.0187,
+    "foreign_flow_intensity_60d": 0.0463,
+    "foreign_positive_days_5d": 4,
+    "foreign_positive_days_20d": 12,
+    "foreign_positive_days_60d": 41
   },
   "relative_strength": {
     "applicability": "DATA_UNAVAILABLE",

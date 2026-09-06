@@ -14,7 +14,7 @@
     "effective_as_of": "2026-09-04",
     "cache_present": true,
     "cache_last_date": "2026-09-04",
-    "report_status": "PARTIAL",
+    "report_status": "READY",
     "asset_type": "COMMON"
   },
   "summary": {
@@ -23,11 +23,11 @@
       "패스트 코어 V2: HOLD_PRE_PROGRESSED · 현재 5번째 전략 포지션 보유 중 (Loss Guard 활성)",
       "현재 Pattern A Score는 87.72점(Stage: EARLY_TREND, Candidate: YES)입니다.",
       "20일 평균 거래대금 2.04억원(기준 3.0억원 미달)으로 Phase 10 Investability 유동성 요건을 충족하지 못했습니다.",
-      "외국인 수급: 외국인 수급 데이터가 준비되지 않아 수급 분석을 제공할 수 없습니다.",
+      "외국인 수급: 외국인 수급이 기간별로 엇갈리는 혼조세 흐름입니다 (5일 순매수 강도: -4.41%).",
       "시장 상대강도: 해당 기준일의 전체 시장 RS 기준 snapshot이 없어 시장 상대강도 백분위 분석을 제공할 수 없습니다.",
       "거래대금 추세: 최근 거래대금이 지속 감소(둔화)하는 흐름입니다. 5일 평균 거래대금(1.32억원)이 20일 평균(2.04억원) 및 60일 평균(3.09억원)을 밑돌고 있습니다."
     ],
-    "combined_narrative": "현재 솔본은(는) Pattern A Score 87.72점, EARLY_TREND 단계이며 20일 평균 거래대금 기준 미달(FILTERED_LIQUIDITY, 2.04억원 < 3.0억원)로 투자 대상에서 제외되었습니다. 최근 12개월 동안 BASE(55.79점)에서 EARLY_TREND(87.61점)로 국면 이동이 관찰되었습니다. 외국인 수급은 FLOW_UNAVAILABLE 상태로, 외국인 수급 데이터가 준비되지 않아 수급 분석을 제공할 수 없습니다. 거래대금은 TRADING_VALUE_WEAKENING 상태로, 최근 거래대금이 지속 감소(둔화)하는 흐름입니다. 5일 평균 거래대금(1.32억원)이 20일 평균(2.04억원) 및 60일 평균(3.09억원)을 밑돌고 있습니다. 시장 상대강도는 해당 기준일의 전체 시장 RS 기준 snapshot이 없어 시장 상대강도 백분위 분석을 제공할 수 없습니다.",
+    "combined_narrative": "현재 솔본은(는) Pattern A Score 87.72점, EARLY_TREND 단계이며 20일 평균 거래대금 기준 미달(FILTERED_LIQUIDITY, 2.04억원 < 3.0억원)로 투자 대상에서 제외되었습니다. 최근 12개월 동안 BASE(55.79점)에서 EARLY_TREND(87.61점)로 국면 이동이 관찰되었습니다. 외국인 수급은 FLOW_MIXED 상태로, 외국인 수급이 기간별로 엇갈리는 혼조세 흐름입니다 (5일 순매수 강도: -4.41%). 거래대금은 TRADING_VALUE_WEAKENING 상태로, 최근 거래대금이 지속 감소(둔화)하는 흐름입니다. 5일 평균 거래대금(1.32억원)이 20일 평균(2.04억원) 및 60일 평균(3.09억원)을 밑돌고 있습니다. 시장 상대강도는 해당 기준일의 전체 시장 RS 기준 snapshot이 없어 시장 상대강도 백분위 분석을 제공할 수 없습니다.",
     "strategy_headline": "패스트 코어 V2 전략 포지션을 보유 중이며 아직 PROGRESSED 이전입니다. Pre-PROGRESSED Loss Guard(-15%)가 활성화되어 있습니다."
   },
   "current_snapshot": {
@@ -2261,19 +2261,19 @@
     "pattern_a_available_observation_count": 165
   },
   "foreign_flow": {
-    "data_status": "DATA_UNAVAILABLE",
-    "flow_state": "FLOW_UNAVAILABLE",
-    "explanation": "외국인 수급 데이터가 준비되지 않아 수급 분석을 제공할 수 없습니다.",
-    "foreign_net_buy_value_1d_krw": null,
-    "foreign_net_buy_value_5d_krw": null,
-    "foreign_net_buy_value_20d_krw": null,
-    "foreign_net_buy_value_60d_krw": null,
-    "foreign_flow_intensity_5d": null,
-    "foreign_flow_intensity_20d": null,
-    "foreign_flow_intensity_60d": null,
-    "foreign_positive_days_5d": null,
-    "foreign_positive_days_20d": null,
-    "foreign_positive_days_60d": null
+    "data_status": "READY",
+    "flow_state": "FLOW_MIXED",
+    "explanation": "외국인 수급이 기간별로 엇갈리는 혼조세 흐름입니다 (5일 순매수 강도: -4.41%).",
+    "foreign_net_buy_value_1d_krw": -4160550.0,
+    "foreign_net_buy_value_5d_krw": -29211540.0,
+    "foreign_net_buy_value_20d_krw": -34484629.0,
+    "foreign_net_buy_value_60d_krw": 223860983.0,
+    "foreign_flow_intensity_5d": -0.0441,
+    "foreign_flow_intensity_20d": -0.0084,
+    "foreign_flow_intensity_60d": 0.0121,
+    "foreign_positive_days_5d": 2,
+    "foreign_positive_days_20d": 9,
+    "foreign_positive_days_60d": 26
   },
   "relative_strength": {
     "applicability": "DATA_UNAVAILABLE",

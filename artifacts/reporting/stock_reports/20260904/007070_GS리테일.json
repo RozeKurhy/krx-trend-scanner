@@ -14,7 +14,7 @@
     "effective_as_of": "2026-09-04",
     "cache_present": true,
     "cache_last_date": "2026-09-04",
-    "report_status": "PARTIAL",
+    "report_status": "READY",
     "asset_type": "COMMON"
   },
   "summary": {
@@ -23,11 +23,11 @@
       "패스트 코어 V2: HOLD_PRE_PROGRESSED · 현재 6번째 전략 포지션 보유 중 (Loss Guard 활성)",
       "현재 Pattern A Score는 78.14점(Stage: PROGRESSED, Candidate: NO)입니다.",
       "시가총액 21236.3억원, 20일 평균 거래대금 51.67억원으로 Phase 10 Investability 기준을 충족합니다.",
-      "외국인 수급: 외국인 수급 데이터가 준비되지 않아 수급 분석을 제공할 수 없습니다.",
+      "외국인 수급: 최근 5일과 20일 외국인 수급은 순매수로 개선되었으나 60일 누적으로는 아직 순매도 상태로, 단기 수급 반등 및 회복 국면입니다 (5일 순매수 강도: +9.62%).",
       "시장 상대강도: 해당 기준일의 전체 시장 RS 기준 snapshot이 없어 시장 상대강도 백분위 분석을 제공할 수 없습니다.",
       "거래대금 추세: 최근 거래대금이 특정 방향성 없이 기간별로 혼조세를 나타내고 있습니다. (5일: 41.26억원, 20일: 51.67억원, 60일: 49.68억원)"
     ],
-    "combined_narrative": "현재 GS리테일은(는) Pattern A Score 78.14점, PROGRESSED 단계이며 Phase 10 Investability 조건(시총 1,000억 이상 및 20일 거래대금 3억 이상)을 충족(INVESTABLE)했습니다. 최근 12개월 동안 TRANSITION(45.17점)에서 PROGRESSED(78.02점)로 국면 이동이 관찰되었습니다. 외국인 수급은 FLOW_UNAVAILABLE 상태로, 외국인 수급 데이터가 준비되지 않아 수급 분석을 제공할 수 없습니다. 거래대금은 TRADING_VALUE_MIXED 상태로, 최근 거래대금이 특정 방향성 없이 기간별로 혼조세를 나타내고 있습니다. (5일: 41.26억원, 20일: 51.67억원, 60일: 49.68억원) 시장 상대강도는 해당 기준일의 전체 시장 RS 기준 snapshot이 없어 시장 상대강도 백분위 분석을 제공할 수 없습니다.",
+    "combined_narrative": "현재 GS리테일은(는) Pattern A Score 78.14점, PROGRESSED 단계이며 Phase 10 Investability 조건(시총 1,000억 이상 및 20일 거래대금 3억 이상)을 충족(INVESTABLE)했습니다. 최근 12개월 동안 TRANSITION(45.17점)에서 PROGRESSED(78.02점)로 국면 이동이 관찰되었습니다. 외국인 수급은 FLOW_RECENT_RECOVERY 상태로, 최근 5일과 20일 외국인 수급은 순매수로 개선되었으나 60일 누적으로는 아직 순매도 상태로, 단기 수급 반등 및 회복 국면입니다 (5일 순매수 강도: +9.62%). 거래대금은 TRADING_VALUE_MIXED 상태로, 최근 거래대금이 특정 방향성 없이 기간별로 혼조세를 나타내고 있습니다. (5일: 41.26억원, 20일: 51.67억원, 60일: 49.68억원) 시장 상대강도는 해당 기준일의 전체 시장 RS 기준 snapshot이 없어 시장 상대강도 백분위 분석을 제공할 수 없습니다.",
     "strategy_headline": "패스트 코어 V2 전략 포지션을 보유 중이며 아직 PROGRESSED 이전입니다. Pre-PROGRESSED Loss Guard(-15%)가 활성화되어 있습니다."
   },
   "current_snapshot": {
@@ -2024,19 +2024,19 @@
     "pattern_a_available_observation_count": 140
   },
   "foreign_flow": {
-    "data_status": "DATA_UNAVAILABLE",
-    "flow_state": "FLOW_UNAVAILABLE",
-    "explanation": "외국인 수급 데이터가 준비되지 않아 수급 분석을 제공할 수 없습니다.",
-    "foreign_net_buy_value_1d_krw": null,
-    "foreign_net_buy_value_5d_krw": null,
-    "foreign_net_buy_value_20d_krw": null,
-    "foreign_net_buy_value_60d_krw": null,
-    "foreign_flow_intensity_5d": null,
-    "foreign_flow_intensity_20d": null,
-    "foreign_flow_intensity_60d": null,
-    "foreign_positive_days_5d": null,
-    "foreign_positive_days_20d": null,
-    "foreign_positive_days_60d": null
+    "data_status": "READY",
+    "flow_state": "FLOW_RECENT_RECOVERY",
+    "explanation": "최근 5일과 20일 외국인 수급은 순매수로 개선되었으나 60일 누적으로는 아직 순매도 상태로, 단기 수급 반등 및 회복 국면입니다 (5일 순매수 강도: +9.62%).",
+    "foreign_net_buy_value_1d_krw": 1389407950.0,
+    "foreign_net_buy_value_5d_krw": 1985811375.0,
+    "foreign_net_buy_value_20d_krw": 5673551700.0,
+    "foreign_net_buy_value_60d_krw": -11769469750.0,
+    "foreign_flow_intensity_5d": 0.0962,
+    "foreign_flow_intensity_20d": 0.0549,
+    "foreign_flow_intensity_60d": -0.0395,
+    "foreign_positive_days_5d": 4,
+    "foreign_positive_days_20d": 14,
+    "foreign_positive_days_60d": 25
   },
   "relative_strength": {
     "applicability": "DATA_UNAVAILABLE",
