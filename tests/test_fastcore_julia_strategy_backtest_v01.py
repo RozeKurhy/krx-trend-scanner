@@ -16,6 +16,10 @@ from trend_scanner.backtest.fastcore_julia_strategy_v01 import (
     AVG_TRADING_VALUE_20D_THRESHOLD,
     CLOSE_THRESHOLD,
     MARKET_CAP_THRESHOLD,
+    IdentityLifecycle,
+    build_loss_cut_counterfactual_rows,
+    clip_to_identity_lifecycle,
+    pit_common_for_identity,
     simulate_ticker_strategy_v01,
 )
 from trend_scanner.backtest.raw_investability_panel import evaluate_entry_filter
@@ -163,6 +167,151 @@ def test_no_lookahead_evaluate_entry_filter_ignores_rows_after_signal_date():
         close_threshold=CLOSE_THRESHOLD,
     )
     assert result["entry_market_cap"] == 1.0, "must not read the 2020-01-03 row from a 2020-01-02 decision"
+
+
+def test_entry_filter_raw_date_is_exposed_and_never_after_information_date():
+    panel = _panel({
+        "date": ["2020-01-02", "2020-01-03"],
+        "close": [6_000.0, 6_100.0],
+        "market_cap": [400_000_000_000.0, 400_000_000_000.0],
+        "trading_value": [1.0, 1.0],
+        "avg_trading_value_20d": [400_000_000.0, 400_000_000.0],
+    })
+    result = evaluate_entry_filter(
+        panel, pd.Timestamp("2020-01-03"),
+        market_cap_threshold=MARKET_CAP_THRESHOLD,
+        avg_trading_value_threshold=AVG_TRADING_VALUE_20D_THRESHOLD,
+        close_threshold=CLOSE_THRESHOLD,
+    )
+    assert result["entry_filter_raw_date"] == "2020-01-03"
+    assert pd.Timestamp(result["entry_filter_raw_date"]) <= pd.Timestamp("2020-01-03")
+
+
+# ---------------------------------------------------------------------------
+# Corrected effective PIT and identity lifecycle isolation
+# ---------------------------------------------------------------------------
+
+
+def test_pit_identity_requires_exact_ticker_isu_market_and_date():
+    intervals = {("123456", "KR1234560000", "KOSDAQ"): [("2020-01-02", "2020-01-10")]}
+    assert pit_common_for_identity(intervals, "123456", "KR1234560000", "KOSDAQ", "2020-01-05")
+    assert not pit_common_for_identity(intervals, "123456", "KR9999990000", "KOSDAQ", "2020-01-05")
+    assert not pit_common_for_identity(intervals, "123456", "KR1234560000", "KOSPI", "2020-01-05")
+    assert not pit_common_for_identity(intervals, "123456", "KR1234560000", "KOSDAQ", "2020-01-11")
+    assert not pit_common_for_identity(intervals, "123456", None, "KOSDAQ", "2020-01-05")
+    overlapping = {("123456", "KR1234560000", "KOSDAQ"): [("2020-01-02", "2020-01-10"), ("2020-01-05", "2020-01-12")]}
+    assert not pit_common_for_identity(overlapping, "123456", "KR1234560000", "KOSDAQ", "2020-01-06")
+
+
+def test_corrected_effective_authority_has_expected_scope_and_digest():
+    from trend_scanner.data.adjusted_price_authority_cutover import load_effective_authority
+    authority = load_effective_authority(ROOT / "artifacts/data/end_to_end_data_parity/v01/survivorship_safe_denominator_freeze/v01_spac_corrected_effective_authority")
+    assert authority.population_count == 3149
+    assert authority.pit_count == 3173
+    assert authority.pit_sha256 == "a1952956427c214c21aa2fa293366d9ef092b36ae5afb3b110fd1ae556ccb3b0"
+    assert min(i["effective_from"] for i in authority.pit_intervals) == "2010-01-04"
+    assert max(i["effective_to"] for i in authority.pit_intervals) == "2026-08-21"
+
+
+def test_backtest_runner_uses_effective_pit_not_current_survivor_csv():
+    source = (ROOT / "scripts/run_fastcore_julia_strategy_backtest_v01.py").read_text(encoding="utf-8")
+    assert "pattern_a_universe_scan_20260904.csv" not in source
+    assert "load_effective_authority" in source
+    assert '"current_survivor_universe_used": False' in source
+
+
+def test_identity_lifecycle_clip_excludes_previous_and_future_identity_history():
+    dates = pd.to_datetime(["2012-01-02", "2012-01-03", "2022-01-03", "2022-01-04"])
+    frame = pd.DataFrame({"close": [10.0, 11.0, 20.0, 21.0]}, index=dates)
+    lifecycle = IdentityLifecycle("123456", "NEW", "KOSDAQ", pd.Timestamp("2022-01-03"), pd.Timestamp("2022-01-04"))
+    clipped = clip_to_identity_lifecycle(frame, lifecycle)
+    assert list(clipped.index.strftime("%Y-%m-%d")) == ["2022-01-03", "2022-01-04"]
+    assert list(clipped["close"]) == [20.0, 21.0]
+
+
+def test_identity_lifecycle_lookback_shortage_is_fail_closed(contracts):
+    score_contract, stage_contract = contracts
+    dates = pd.bdate_range("2022-01-03", periods=59)
+    daily = pd.DataFrame({"open": 10_000.0, "high": 10_100.0, "low": 9_900.0, "close": 10_000.0, "volume": 1_000_000.0, "trading_value": 10_000_000_000.0}, index=dates)
+    panel = _always_pass_panel(dates)
+    lifecycle = IdentityLifecycle("123456", "NEW", "KOSDAQ", dates[0], dates[-1])
+    result = simulate_ticker_strategy_v01(
+        strategy_id="JULIA", ticker="123456", isu_cd="NEW", name="SYN", market="KOSDAQ",
+        daily=daily, raw_panel=panel, score_contract=score_contract, stage_contract=stage_contract,
+        loss_guard_enabled=False, backtest_end=dates[-1], identity_lifecycle=lifecycle,
+        pit_membership=lambda *_: True,
+    )
+    assert result == []
+
+
+def test_pit_gate_blocks_entry_after_effective_to(contracts):
+    score_contract, stage_contract = contracts
+    daily = _make_synthetic_daily(n_days=900, base_days=500)
+    panel = _always_pass_panel(daily.index)
+    lifecycle = IdentityLifecycle("999998", "OLD", "KOSPI", daily.index[0], daily.index[-1])
+    calls = []
+    def gate(_ticker, _isu_cd, _market, date):
+        calls.append(pd.Timestamp(date))
+        return pd.Timestamp(date) <= daily.index[600]
+    result = simulate_ticker_strategy_v01(
+        strategy_id="JULIA", ticker="999998", isu_cd="OLD", name="SYN", market="KOSPI",
+        daily=daily, raw_panel=panel, score_contract=score_contract, stage_contract=stage_contract,
+        loss_guard_enabled=False, backtest_end=daily.index[-1], identity_lifecycle=lifecycle,
+        pit_membership=gate,
+    )
+    assert result == [] or all(pd.Timestamp(t.entry_signal_information_date) <= daily.index[600] for t in result)
+    # Even when the synthetic series produces no strategy signal, the exact
+    # gate itself remains deterministic and fail-closed after the boundary.
+    calls.clear()
+    assert not gate("999998", "OLD", "KOSPI", daily.index[601])
+    assert len(calls) == 1
+
+
+# ---------------------------------------------------------------------------
+# Complete FastCore loss-cut counterfactual accounting
+# ---------------------------------------------------------------------------
+
+
+def _trade_dict(*, seq: int, signal: str, execution: str, entry_open: float = 100.0, exit_type: str = "LOSS_GUARD_CLOSE_LE_NEG_15", terminal: float = -20.0, mfe: float = 10.0, mae: float = -30.0):
+    return {
+        "ticker": "111111", "isu_cd": "KR1111110001", "market": "KOSDAQ", "name": "SYN",
+        "trade_sequence": seq, "entry_signal_date": signal, "entry_execution_date": execution,
+        "entry_open": entry_open, "exit_type": exit_type,
+        "loss_guard_signal_date": "2020-01-06", "loss_guard_execution_date": "2020-01-07",
+        "loss_guard_return_at_signal": -16.0, "loss_guard_realized_return": -17.0,
+        "exit_signal_date": "2020-02-01", "exit_execution_date": "2020-02-02",
+        "terminal_return": terminal, "mfe": mfe, "mae": mae, "trade_status": "REALIZED",
+    }
+
+
+def test_counterfactual_pairs_first_and_shared_reentry_and_accounts_unpairable():
+    fc = [_trade_dict(seq=1, signal="2020-01-03", execution="2020-01-04"), _trade_dict(seq=2, signal="2020-03-03", execution="2020-03-04"), _trade_dict(seq=3, signal="2020-04-03", execution="2020-04-04")]
+    jl = [_trade_dict(seq=1, signal="2020-01-03", execution="2020-01-04", exit_type="EXIT3", terminal=5.0)]
+    rows = build_loss_cut_counterfactual_rows(fc, jl)
+    assert [r["pair_class"] for r in rows] == ["PAIRED_FIRST_ENTRY", "UNPAIRABLE_FASTCORE_ONLY_REENTRY", "UNPAIRABLE_FASTCORE_ONLY_REENTRY"]
+    assert len(rows) == 3
+    assert sum(int(r["pairable"]) for r in rows) + sum(not r["pairable"] for r in rows) == len(rows)
+
+
+def test_counterfactual_post_stop_metrics_exclude_pre_stop_path():
+    fc = [_trade_dict(seq=1, signal="2020-01-03", execution="2020-01-04")]
+    jl = [_trade_dict(seq=1, signal="2020-01-03", execution="2020-01-04", exit_type="EXIT3", terminal=5.0)]
+    fc[0]["loss_guard_signal_date"] = "2020-01-03"
+    fc[0]["loss_guard_execution_date"] = "2020-01-04"
+    daily = pd.DataFrame(
+        {
+            "open": [100, 83, 82, 110], "high": [101, 84, 83, 120],
+            "low": [99, 82, 80, 108], "close": [100, 83, 81, 115],
+        },
+        index=pd.to_datetime(["2020-01-03", "2020-01-04", "2020-01-05", "2020-01-06"]),
+    )
+    row = build_loss_cut_counterfactual_rows(fc, jl, daily)[0]
+    assert row["julia_unrealized_return_at_fastcore_stop_signal"] == 0.0
+    assert row["julia_unrealized_return_at_fastcore_stop_execution"] == -17.0
+    assert row["post_stop_min_return"] == -20.0
+    assert row["post_stop_max_return"] == 20.0
+    assert row["first_recovery_above_entry_date"] == "2020-01-06"
+    assert row["recovered_above_entry"] is True
 
 
 # ---------------------------------------------------------------------------

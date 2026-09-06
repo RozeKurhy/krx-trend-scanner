@@ -66,9 +66,12 @@ def build_raw_investability_panel(
 
     long_df = pd.concat(frames, ignore_index=True)
     long_df["date"] = pd.to_datetime(long_df["date"])
-    long_df = long_df.sort_values(["ticker", "date"]).drop_duplicates(
-        subset=["ticker", "date"], keep="first"
-    )
+    long_df = long_df.sort_values(["ticker", "date"])
+    # Preserve same-day cross-market collisions instead of silently selecting
+    # one row.  The identity-scoped runner detects the duplicate index and
+    # fails that (ticker, ISU_CD, market) task closed.
+    if not long_df.duplicated(subset=["ticker", "date"], keep=False).any():
+        long_df = long_df.drop_duplicates(subset=["ticker", "date"], keep="first")
 
     panels: dict[str, pd.DataFrame] = {}
     for ticker, group in long_df.groupby("ticker", sort=False):
@@ -98,6 +101,7 @@ def evaluate_entry_filter(
         "entry_market_cap": None,
         "entry_avg_trading_value_20d": None,
         "entry_signal_close": None,
+        "entry_filter_raw_date": None,
         "entry_market_cap_pass": False,
         "entry_trading_value_pass": False,
         "entry_close_pass": False,
@@ -113,6 +117,7 @@ def evaluate_entry_filter(
     # label that isn't itself a KRX raw trading day), this falls back to
     # the latest one before it, never one after it.
     last = row.iloc[-1]
+    raw_date = row.index[-1]
     mkt_cap = last["market_cap"]
     avg_tv = last["avg_trading_value_20d"]
     close = last["close"]
@@ -125,6 +130,7 @@ def evaluate_entry_filter(
         entry_market_cap=None if pd.isna(mkt_cap) else float(mkt_cap),
         entry_avg_trading_value_20d=None if pd.isna(avg_tv) else float(avg_tv),
         entry_signal_close=None if pd.isna(close) else float(close),
+        entry_filter_raw_date=pd.Timestamp(raw_date).strftime("%Y-%m-%d"),
         entry_market_cap_pass=mkt_cap_pass,
         entry_trading_value_pass=tv_pass,
         entry_close_pass=close_pass,

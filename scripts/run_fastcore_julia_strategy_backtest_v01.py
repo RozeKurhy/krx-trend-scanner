@@ -24,11 +24,15 @@ from trend_scanner.backtest.fastcore_julia_strategy_v01 import (
     AVG_TRADING_VALUE_20D_THRESHOLD,
     CLOSE_THRESHOLD,
     MARKET_CAP_THRESHOLD,
+    IdentityLifecycle,
+    build_loss_cut_counterfactual_rows,
+    pit_common_for_identity,
     simulate_ticker_strategy_v01,
 )
 from trend_scanner.backtest.raw_investability_panel import build_raw_investability_panel
 from trend_scanner.backtest.snapshot_context import build_precomputed_ticker_context
 from trend_scanner.data.repository_v2_loader import RepositoryV2DailyLoader, build_repository_v2
+from trend_scanner.data.adjusted_price_authority_cutover import load_effective_authority
 from trend_scanner.validation.pattern_a_fast_core_v02_reentry import calculate_distribution_stats
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -36,12 +40,14 @@ logger = logging.getLogger(__name__)
 
 ROOT = Path(__file__).resolve().parent.parent
 
-UNIVERSE_PATH = ROOT / "artifacts/patterns/pattern_a/production/scanner/pattern_a_universe_scan_20260904.csv"
-MERGED_PIT_PATH = ROOT / "data/market/rolling_authority/merged_pit_intervals.json"
+EFFECTIVE_PIT_PATH = ROOT / "artifacts/data/end_to_end_data_parity/v01/survivorship_safe_denominator_freeze/v01_spac_corrected_effective_authority/effective_pit_common_denominator.json"
 SCORE_CONTRACT_PATH = ROOT / "artifacts/patterns/pattern_a_fast/production/contract_prototype/pattern_a_fast_score_prototype_v01.json"
 STAGE_CONTRACT_PATH = ROOT / "artifacts/patterns/pattern_a_fast/production/contract_prototype/pattern_a_fast_stage_prototype_v01.json"
 
-BACKTEST_END = pd.Timestamp("2026-09-04")
+REQUESTED_BACKTEST_END = pd.Timestamp("2026-09-04")
+PIT_UNIVERSE_START = pd.Timestamp("2010-01-04")
+PIT_UNIVERSE_END = pd.Timestamp("2026-08-21")
+BACKTEST_END = PIT_UNIVERSE_END
 
 OUT_DIR = ROOT / "artifacts/backtests/fastcore_julia_strategy_v01"
 
@@ -57,15 +63,18 @@ def _ticker_ever_investable(raw_panel: pd.DataFrame | None) -> bool:
     return bool(mask.any())
 
 
-def _load_isu_cd_map() -> dict[str, str]:
-    data = json.loads(MERGED_PIT_PATH.read_text(encoding="utf-8"))
-    mapping: dict[str, str] = {}
-    for interval in data.get("intervals", []):
-        ticker = interval.get("ticker")
-        isu_cd = interval.get("isu_cd")
-        if ticker and isu_cd:
-            mapping[str(ticker)] = str(isu_cd)
-    return mapping
+def _load_pit_intervals() -> tuple[Any, dict[tuple[str, str, str], list[tuple[str, str]]]]:
+    """Load the explicit corrected PIT authority and build an identity index."""
+    authority = load_effective_authority(EFFECTIVE_PIT_PATH.parent)
+    intervals: dict[tuple[str, str, str], list[tuple[str, str]]] = {}
+    for item in authority.pit_intervals:
+        if item.get("state") != "COMMON":
+            continue
+        key = (str(item.get("ticker")), str(item.get("isu_cd")), str(item.get("market")))
+        intervals.setdefault(key, []).append((str(item["effective_from"]), str(item["effective_to"])))
+    for values in intervals.values():
+        values.sort()
+    return authority, intervals
 
 
 # Module-level globals populated once in the parent process before the
@@ -75,18 +84,38 @@ def _load_isu_cd_map() -> dict[str, str]:
 # for the whole run, never once per worker.
 _LOADER: RepositoryV2DailyLoader | None = None
 _RAW_PANELS: dict[str, pd.DataFrame] = {}
-_ISU_CD_MAP: dict[str, str] = {}
+_PIT_INTERVALS: dict[tuple[str, str, str], list[tuple[str, str]]] = {}
 _SCORE_CONTRACT: dict = {}
 _STAGE_CONTRACT: dict = {}
 
 
-def _worker_task(args: tuple[str, str, str]) -> tuple[str, list[dict], list[dict]]:
-    ticker, name, market = args
+def _pit_membership(ticker: str, isu_cd: str | None, market: str, date: pd.Timestamp) -> bool:
+    return pit_common_for_identity(_PIT_INTERVALS, ticker, isu_cd, market, date)
+
+
+def _worker_task(args: tuple[str, str, str, str, str, str]) -> tuple[str, str, str, list[dict], list[dict], list[dict]]:
+    ticker, isu_cd, market, name, effective_from, effective_to = args
+    lifecycle = IdentityLifecycle(
+        ticker=ticker,
+        isu_cd=isu_cd,
+        market=market,
+        effective_from=pd.Timestamp(effective_from),
+        effective_to=pd.Timestamp(effective_to),
+    )
     daily = _LOADER.load(ticker)
     if daily is None or daily.empty:
-        return ticker, [], []
+        return ticker, isu_cd, market, [], [], []
+    daily = daily[(daily.index >= lifecycle.effective_from) & (daily.index <= lifecycle.effective_to)].copy()
+    if daily.empty:
+        return ticker, isu_cd, market, [], [], []
 
     raw_panel = _RAW_PANELS.get(ticker)
+    if raw_panel is not None:
+        raw_panel = raw_panel[(raw_panel.index >= lifecycle.effective_from) & (raw_panel.index <= lifecycle.effective_to)].copy()
+        if raw_panel.index.duplicated().any():
+            # A same-day cross-market collision cannot be assigned to this
+            # identity without an authoritative market discriminator.
+            return ticker, isu_cd, market, [], [], []
     if not _ticker_ever_investable(raw_panel):
         # This ticker never simultaneously clears the market-cap / 20D avg
         # trading value / close entry-only thresholds at any point in its
@@ -96,11 +125,9 @@ def _worker_task(args: tuple[str, str, str]) -> tuple[str, list[dict], list[dict
         # a pure performance shortcut, not a semantics change: the result
         # is identical to running the full simulation and discarding an
         # all-empty trade list.
-        return ticker, [], []
+        return ticker, isu_cd, market, [], [], []
 
     snapshot_context = build_precomputed_ticker_context(ticker, name, daily)
-    isu_cd = _ISU_CD_MAP.get(ticker)
-
     fastcore_trades = simulate_ticker_strategy_v01(
         strategy_id="FASTCORE",
         ticker=ticker, isu_cd=isu_cd, name=name, market=market,
@@ -108,6 +135,8 @@ def _worker_task(args: tuple[str, str, str]) -> tuple[str, list[dict], list[dict
         score_contract=_SCORE_CONTRACT, stage_contract=_STAGE_CONTRACT,
         loss_guard_enabled=True, backtest_end=BACKTEST_END,
         snapshot_context=snapshot_context,
+        identity_lifecycle=lifecycle,
+        pit_membership=_pit_membership,
     )
     julia_trades = simulate_ticker_strategy_v01(
         strategy_id="JULIA",
@@ -116,26 +145,47 @@ def _worker_task(args: tuple[str, str, str]) -> tuple[str, list[dict], list[dict
         score_contract=_SCORE_CONTRACT, stage_contract=_STAGE_CONTRACT,
         loss_guard_enabled=False, backtest_end=BACKTEST_END,
         snapshot_context=snapshot_context,
+        identity_lifecycle=lifecycle,
+        pit_membership=_pit_membership,
     )
-    return ticker, [t.to_dict() for t in fastcore_trades], [t.to_dict() for t in julia_trades]
+    counterfactual = build_loss_cut_counterfactual_rows(fastcore_trades, julia_trades, daily)
+    return (
+        ticker,
+        isu_cd,
+        market,
+        [t.to_dict() for t in fastcore_trades],
+        [t.to_dict() for t in julia_trades],
+        counterfactual,
+    )
 
 
-def run_backtest() -> None:
-    OUT_DIR.mkdir(parents=True, exist_ok=True)
-    (OUT_DIR / "validation").mkdir(parents=True, exist_ok=True)
+def run_backtest(
+    *,
+    sample_intervals: list[dict[str, Any]] | None = None,
+    output_dir: Path | None = None,
+) -> dict[str, Any]:
+    """Run the corrected engine; Phase 2 callers pass a bounded sample."""
+    out_dir = Path(output_dir or OUT_DIR)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    (out_dir / "validation").mkdir(parents=True, exist_ok=True)
 
-    global _LOADER, _RAW_PANELS, _ISU_CD_MAP, _SCORE_CONTRACT, _STAGE_CONTRACT
-
+    global _LOADER, _RAW_PANELS, _PIT_INTERVALS, _SCORE_CONTRACT, _STAGE_CONTRACT
     _SCORE_CONTRACT = json.loads(SCORE_CONTRACT_PATH.read_text(encoding="utf-8"))
     _STAGE_CONTRACT = json.loads(STAGE_CONTRACT_PATH.read_text(encoding="utf-8"))
-    _ISU_CD_MAP = _load_isu_cd_map()
+    authority, _PIT_INTERVALS = _load_pit_intervals()
 
-    df_univ = pd.read_csv(UNIVERSE_PATH, dtype={"ticker": str})
-    df_univ["ticker"] = df_univ["ticker"].str.zfill(6)
-    df_univ = df_univ[df_univ["asset_type"] == "COMMON"].reset_index(drop=True)
-    common_universe_count = len(df_univ)
-    tickers = set(df_univ["ticker"].tolist())
-    logger.info("COMMON universe: %d tickers", common_universe_count)
+    # The population is derived exclusively from corrected effective PIT.  A
+    # current scanner CSV is intentionally not read or used as a denominator.
+    identity_intervals = [
+        dict(item) for item in authority.pit_intervals
+        if item.get("state") == "COMMON"
+        and str(item.get("effective_from")) <= PIT_UNIVERSE_END.strftime("%Y-%m-%d")
+    ]
+    if sample_intervals is not None:
+        identity_intervals = sample_intervals
+    common_universe_count = authority.population_count
+    tickers = {str(item["ticker"]) for item in identity_intervals}
+    logger.info("Effective PIT population: %d identities; %d interval tasks", common_universe_count, len(identity_intervals))
 
     repository = build_repository_v2(ROOT, end=BACKTEST_END)
     _LOADER = RepositoryV2DailyLoader(repository, end=BACKTEST_END)
@@ -143,65 +193,75 @@ def run_backtest() -> None:
     t0 = time.perf_counter()
     _RAW_PANELS = build_raw_investability_panel(tickers, end=BACKTEST_END)
     logger.info("Raw investability panel built for %d tickers in %.1fs", len(_RAW_PANELS), time.perf_counter() - t0)
-    ever_investable = sum(1 for p in _RAW_PANELS.values() if _ticker_ever_investable(p))
-    logger.info("%d/%d tickers ever clear the entry filter at some point in history (need full simulation)", ever_investable, common_universe_count)
 
-    tasks = [(row["ticker"], str(row["name"]), str(row["market"])) for _, row in df_univ.iterrows()]
+    tasks = [
+        (
+            str(item["ticker"]), str(item["isu_cd"]), str(item["market"]),
+            str(item.get("ticker") or item["ticker"]),
+            str(item["effective_from"]), str(item["effective_to"]),
+        )
+        for item in identity_intervals
+    ]
 
-    # fork (not the macOS/py3.8+ default "spawn") so every worker process
-    # inherits the already-built Repository V2 index, raw investability
-    # panel, and contracts via copy-on-write at fork time -- zero
-    # per-worker rebuild cost, unlike a spawn-based pool which would
-    # re-import and re-build all of this from scratch in every worker.
     fork_ctx = multiprocessing.get_context("fork")
     t1 = time.perf_counter()
     fastcore_trades: list[dict] = []
     julia_trades: list[dict] = []
+    counterfactual_rows: list[dict] = []
     completed = 0
-    with ProcessPoolExecutor(max_workers=8, mp_context=fork_ctx) as executor:
-        futures = [executor.submit(_worker_task, task) for task in tasks]
-        for future in as_completed(futures):
-            ticker, fc, jl = future.result()
-            fastcore_trades.extend(fc)
-            julia_trades.extend(jl)
-            completed += 1
-            if completed % 200 == 0:
-                logger.info("Progress: %d/%d tickers processed (%.1fs elapsed)", completed, len(tasks), time.perf_counter() - t1)
-    logger.info("Simulated %d tickers x 2 strategies in %.1fs", len(tasks), time.perf_counter() - t1)
+    if tasks:
+        with ProcessPoolExecutor(max_workers=min(8, len(tasks)), mp_context=fork_ctx) as executor:
+            futures = [executor.submit(_worker_task, task) for task in tasks]
+            for future in as_completed(futures):
+                ticker, isu_cd, market, fc, jl, cf = future.result()
+                fastcore_trades.extend(fc)
+                julia_trades.extend(jl)
+                counterfactual_rows.extend(cf)
+                completed += 1
+                if completed % 20 == 0 or completed == len(tasks):
+                    logger.info("Progress: %d/%d identity intervals (%.1fs elapsed)", completed, len(tasks), time.perf_counter() - t1)
+    logger.info("Simulated %d identity intervals x 2 strategies in %.1fs", len(tasks), time.perf_counter() - t1)
 
     df_fc = pd.DataFrame(fastcore_trades)
     df_jl = pd.DataFrame(julia_trades)
-    df_fc.to_csv(OUT_DIR / "fastcore_trades.csv", index=False)
-    df_jl.to_csv(OUT_DIR / "julia_trades.csv", index=False)
-    logger.info("FastCore trades: %d, Julia trades: %d", len(df_fc), len(df_jl))
+    df_fc.to_csv(out_dir / "fastcore_trades.csv", index=False)
+    df_jl.to_csv(out_dir / "julia_trades.csv", index=False)
 
     other_diff_count, invariant_detail = _verify_strategy_invariant(df_fc, df_jl)
-
     fc_summary = _summarize_strategy(df_fc, "FASTCORE")
     jl_summary = _summarize_strategy(df_jl, "JULIA")
-    (OUT_DIR / "fastcore_summary.json").write_text(json.dumps(fc_summary, indent=2, ensure_ascii=False), encoding="utf-8")
-    (OUT_DIR / "julia_summary.json").write_text(json.dumps(jl_summary, indent=2, ensure_ascii=False), encoding="utf-8")
+    (out_dir / "fastcore_summary.json").write_text(json.dumps(fc_summary, indent=2, ensure_ascii=False), encoding="utf-8")
+    (out_dir / "julia_summary.json").write_text(json.dumps(jl_summary, indent=2, ensure_ascii=False), encoding="utf-8")
 
     loss_cut_analysis = _fastcore_loss_cut_analysis(df_fc)
-    loss_cut_analysis.to_csv(OUT_DIR / "fastcore_loss_guard_analysis.csv", index=False)
-
+    loss_cut_analysis.to_csv(out_dir / "fastcore_loss_guard_analysis.csv", index=False)
     paired = _paired_entry_comparison(df_fc, df_jl)
-    paired.to_csv(OUT_DIR / "paired_entry_comparison.csv", index=False)
-
-    counterfactual = _loss_cut_counterfactual(df_fc, df_jl)
-    counterfactual.to_csv(OUT_DIR / "fastcore_loss_guard_counterfactual.csv", index=False)
-
+    paired.to_csv(out_dir / "paired_entry_comparison.csv", index=False)
+    counterfactual = pd.DataFrame(counterfactual_rows)
+    counterfactual.to_csv(out_dir / "fastcore_loss_guard_counterfactual.csv", index=False)
     best_worst = _best_worst_trades(df_fc, df_jl)
-    best_worst.to_csv(OUT_DIR / "best_worst_trades.csv", index=False)
+    best_worst.to_csv(out_dir / "best_worst_trades.csv", index=False)
 
     dates_info = _date_range_info(df_fc, df_jl)
-
     contract = {
-        "directive": "MAIN_MERGE_AND_FASTCORE_JULIA_STRATEGY_BACKTEST_V01",
-        "step": "STEP_1_PURE_STRATEGY_COMPARISON",
-        "requested_backtest_end": "2026-09-04",
+        "directive": "FASTCORE_JULIA_STRATEGY_BACKTEST_V01_FIX01",
+        "step": "PHASE_2_IMPLEMENTATION_BOUNDED_SAMPLE" if sample_intervals is not None else "PHASE_3_FULL_RUN",
+        "requested_backtest_end": REQUESTED_BACKTEST_END.strftime("%Y-%m-%d"),
+        "pit_universe_authority_start": PIT_UNIVERSE_START.strftime("%Y-%m-%d"),
+        "pit_universe_authority_end": PIT_UNIVERSE_END.strftime("%Y-%m-%d"),
+        "effective_backtest_end": BACKTEST_END.strftime("%Y-%m-%d"),
+        "end_truncation_reason": "HISTORICAL_PIT_UNIVERSE_AUTHORITY_BOUNDARY",
+        "REQUESTED_BACKTEST_END": REQUESTED_BACKTEST_END.strftime("%Y-%m-%d"),
+        "PIT_UNIVERSE_AUTHORITY_START": PIT_UNIVERSE_START.strftime("%Y-%m-%d"),
+        "PIT_UNIVERSE_AUTHORITY_END": PIT_UNIVERSE_END.strftime("%Y-%m-%d"),
+        "EFFECTIVE_BACKTEST_END": BACKTEST_END.strftime("%Y-%m-%d"),
+        "END_TRUNCATION_REASON": "HISTORICAL_PIT_UNIVERSE_AUTHORITY_BOUNDARY",
         "common_universe_count": common_universe_count,
-        "common_universe_source": str(UNIVERSE_PATH.relative_to(ROOT)),
+        "identity_interval_task_count": len(identity_intervals),
+        "common_universe_source": str(EFFECTIVE_PIT_PATH.relative_to(ROOT)),
+        "authority": "EFFECTIVE_CORRECTED_AUTHORITY_V01",
+        "authority_sha256": authority.pit_sha256,
+        "current_survivor_universe_used": False,
         "entry_filter": {
             "market_cap_threshold_krw": MARKET_CAP_THRESHOLD,
             "avg_trading_value_20d_threshold_krw": AVG_TRADING_VALUE_20D_THRESHOLD,
@@ -211,12 +271,13 @@ def run_backtest() -> None:
         },
         "strategy_difference": "loss_guard_enabled boolean only (FastCore=True, Julia=False)",
         "other_strategy_difference_count": other_diff_count,
+        "counterfactual_summary": _loss_cut_aggregate_summary(counterfactual),
         "transaction_cost": "NOT_APPLIED",
         "slippage": "NOT_APPLIED",
         "network_requests": 0,
         **dates_info,
     }
-    (OUT_DIR / "backtest_contract.json").write_text(json.dumps(contract, indent=2, ensure_ascii=False), encoding="utf-8")
+    (out_dir / "backtest_contract.json").write_text(json.dumps(contract, indent=2, ensure_ascii=False), encoding="utf-8")
 
     comparison_summary = {
         "shared_entry_count": int((paired["comparison_class"] == "SHARED_ENTRY").sum()) if not paired.empty else 0,
@@ -225,27 +286,29 @@ def run_backtest() -> None:
         "shared_reentry_count": int((paired["comparison_class"] == "SHARED_REENTRY").sum()) if not paired.empty else 0,
         "unpaired_after_divergence_count": int((paired["comparison_class"] == "UNPAIRED_AFTER_STRATEGY_DIVERGENCE").sum()) if not paired.empty else 0,
         "loss_cut_counterfactual_rows": int(len(counterfactual)),
-        "fastcore_mean_return": fc_summary["return_metrics"]["terminal_return_stats"]["mean"],
-        "julia_mean_return": jl_summary["return_metrics"]["terminal_return_stats"]["mean"],
-        "fastcore_median_return": fc_summary["return_metrics"]["terminal_return_stats"]["median"],
-        "julia_median_return": jl_summary["return_metrics"]["terminal_return_stats"]["median"],
-        "fastcore_le_neg_20_rate": fc_summary["risk_metrics"]["le_neg_20_rate"],
-        "julia_le_neg_20_rate": jl_summary["risk_metrics"]["le_neg_20_rate"],
-        "fastcore_ge_50_rate": fc_summary["upside_metrics"]["ge_50_rate"],
-        "julia_ge_50_rate": jl_summary["upside_metrics"]["ge_50_rate"],
+        "fastcore_mean_return": fc_summary.get("return_metrics", {}).get("terminal_return_stats", {}).get("mean"),
+        "julia_mean_return": jl_summary.get("return_metrics", {}).get("terminal_return_stats", {}).get("mean"),
+        "fastcore_median_return": fc_summary.get("return_metrics", {}).get("terminal_return_stats", {}).get("median"),
+        "julia_median_return": jl_summary.get("return_metrics", {}).get("terminal_return_stats", {}).get("median"),
+        "fastcore_le_neg_20_rate": fc_summary.get("risk_metrics", {}).get("le_neg_20_rate"),
+        "julia_le_neg_20_rate": jl_summary.get("risk_metrics", {}).get("le_neg_20_rate"),
+        "fastcore_ge_50_rate": fc_summary.get("upside_metrics", {}).get("ge_50_rate"),
+        "julia_ge_50_rate": jl_summary.get("upside_metrics", {}).get("ge_50_rate"),
+        "counterfactual_summary": _loss_cut_aggregate_summary(counterfactual),
     }
-    (OUT_DIR / "strategy_comparison_summary.json").write_text(
-        json.dumps(comparison_summary, indent=2, ensure_ascii=False), encoding="utf-8"
-    )
+    (out_dir / "strategy_comparison_summary.json").write_text(json.dumps(comparison_summary, indent=2, ensure_ascii=False), encoding="utf-8")
 
     pit_audit = {
-        "pit_discipline": "Every entry decision reads daily/raw_panel rows with index <= signal date only; no future-indexed lookups in the engine.",
-        "no_lookahead_verified_by": "tests/test_fastcore_julia_strategy_backtest_v01.py::test_no_lookahead_entry_filter",
+        "pit_authority": "EFFECTIVE_CORRECTED_AUTHORITY_V01",
+        "pit_common_gate_implemented": True,
+        "identity_key": "ticker|isu_cd|market",
+        "identity_lifecycle_clipping_implemented": True,
+        "entry_signal_information_date": True,
+        "entry_filter_raw_date_le_information_date": True,
         "network_requests_made": 0,
         "invariant_check": invariant_detail,
     }
-    (OUT_DIR / "validation/pit_audit.json").write_text(json.dumps(pit_audit, indent=2, ensure_ascii=False), encoding="utf-8")
-
+    (out_dir / "validation/pit_audit.json").write_text(json.dumps(pit_audit, indent=2, ensure_ascii=False), encoding="utf-8")
     entry_filter_audit = {
         "market_cap_threshold_krw": MARKET_CAP_THRESHOLD,
         "avg_trading_value_20d_threshold_krw": AVG_TRADING_VALUE_20D_THRESHOLD,
@@ -253,14 +316,17 @@ def run_backtest() -> None:
         "entry_only_confirmed": True,
         "verified_by": "tests/test_fastcore_julia_strategy_backtest_v01.py::test_entry_filter_never_exits",
     }
-    (OUT_DIR / "validation/entry_filter_audit.json").write_text(
-        json.dumps(entry_filter_audit, indent=2, ensure_ascii=False), encoding="utf-8"
-    )
-
+    (out_dir / "validation/entry_filter_audit.json").write_text(json.dumps(entry_filter_audit, indent=2, ensure_ascii=False), encoding="utf-8")
     summary_md = _generate_summary_md(contract, fc_summary, jl_summary, comparison_summary, dates_info)
-    (OUT_DIR / "backtest_summary.md").write_text(summary_md, encoding="utf-8")
-
-    logger.info("Backtest artifacts written to %s", OUT_DIR)
+    (out_dir / "backtest_summary.md").write_text(summary_md, encoding="utf-8")
+    logger.info("Backtest artifacts written to %s", out_dir)
+    return {
+        "contract": contract,
+        "comparison_summary": comparison_summary,
+        "counterfactual": counterfactual,
+        "fastcore_trades": df_fc,
+        "julia_trades": df_jl,
+    }
 
 
 def _verify_strategy_invariant(df_fc: pd.DataFrame, df_jl: pd.DataFrame) -> tuple[int, dict[str, Any]]:
@@ -276,19 +342,21 @@ def _verify_strategy_invariant(df_fc: pd.DataFrame, df_jl: pd.DataFrame) -> tupl
         "entry_pattern_a_stage", "fast_stage", "fast_status", "monthly_permission_state", "daily_risk",
         "fast_score", "fast_score_state",
     ]
-    fc_first = df_fc[df_fc["trade_sequence"] == 1].set_index("ticker")
-    jl_first = df_jl[df_jl["trade_sequence"] == 1].set_index("ticker")
-    common = fc_first.index.intersection(jl_first.index)
+    key_cols = ["ticker", "isu_cd", "market", "entry_signal_date", "entry_execution_date", "entry_open"]
+    fc_rows = {tuple(row[col] for col in key_cols): row for _, row in df_fc.iterrows()}
+    jl_rows = {tuple(row[col] for col in key_cols): row for _, row in df_jl.iterrows()}
+    common = set(fc_rows).intersection(jl_rows)
 
     mismatches = 0
-    for t in common:
+    for key in common:
+        fc_row, jl_row = fc_rows[key], jl_rows[key]
         for col in entry_cols:
-            a, b = fc_first.loc[t, col], jl_first.loc[t, col]
+            a, b = fc_row[col], jl_row[col]
             if pd.isna(a) and pd.isna(b):
                 continue
             if a != b:
                 mismatches += 1
-    return int(mismatches), {"comparable_pairs": int(len(common)), "entry_fields_compared": entry_cols}
+    return int(mismatches), {"comparable_pairs": int(len(common)), "entry_fields_compared": entry_cols, "comparison_key": key_cols}
 
 
 def _summarize_strategy(df: pd.DataFrame, strategy_id: str) -> dict[str, Any]:
@@ -296,17 +364,23 @@ def _summarize_strategy(df: pd.DataFrame, strategy_id: str) -> dict[str, Any]:
         return {"strategy_id": strategy_id, "total_trades": 0}
 
     n_total = len(df)
+    identity_cols = ["ticker", "isu_cd", "market"]
     unique_tickers = df["ticker"].nunique()
-    ticker_counts = df.groupby("ticker").size()
-    reentered_tickers = int((ticker_counts >= 2).sum())
+    identity_counts = df.groupby(identity_cols, dropna=False).size()
+    reentered_tickers = int((identity_counts >= 2).sum())
     first_entries = int((df["trade_sequence"] == 1).sum())
     reentry_trades = int(n_total - first_entries)
     loss_cut_count = int((df["exit_type"] == "LOSS_GUARD_CLOSE_LE_NEG_15").sum())
     loss_cut_reentry_count = 0
     if loss_cut_count:
-        lc_tickers_seq = df[df["exit_type"] == "LOSS_GUARD_CLOSE_LE_NEG_15"][["ticker", "trade_sequence"]]
+        lc_tickers_seq = df[df["exit_type"] == "LOSS_GUARD_CLOSE_LE_NEG_15"][identity_cols + ["trade_sequence"]]
         for _, row in lc_tickers_seq.iterrows():
-            nxt = df[(df["ticker"] == row["ticker"]) & (df["trade_sequence"] == row["trade_sequence"] + 1)]
+            nxt = df[
+                (df["ticker"] == row["ticker"])
+                & (df["isu_cd"] == row["isu_cd"])
+                & (df["market"] == row["market"])
+                & (df["trade_sequence"] == row["trade_sequence"] + 1)
+            ]
             if not nxt.empty:
                 loss_cut_reentry_count += 1
 
@@ -378,7 +452,12 @@ def _fastcore_loss_cut_analysis(df_fc: pd.DataFrame) -> pd.DataFrame:
     lc["gap_beyond_trigger"] = lc["loss_guard_realized_return"] < -15.0
     rows = []
     for _, row in lc.iterrows():
-        nxt = df_fc[(df_fc["ticker"] == row["ticker"]) & (df_fc["trade_sequence"] == row["trade_sequence"] + 1)]
+        nxt = df_fc[
+            (df_fc["ticker"] == row["ticker"])
+            & (df_fc["isu_cd"] == row.get("isu_cd"))
+            & (df_fc["market"] == row.get("market"))
+            & (df_fc["trade_sequence"] == row["trade_sequence"] + 1)
+        ]
         reentered = not nxt.empty
         reentry_return = float(nxt.iloc[0]["terminal_return"]) if reentered else None
         rows.append({
@@ -398,15 +477,18 @@ def _paired_entry_comparison(df_fc: pd.DataFrame, df_jl: pd.DataFrame) -> pd.Dat
     if df_fc.empty and df_jl.empty:
         return pd.DataFrame()
 
-    fc_keys = set(zip(df_fc["ticker"], df_fc["entry_signal_date"])) if not df_fc.empty else set()
-    jl_keys = set(zip(df_jl["ticker"], df_jl["entry_signal_date"])) if not df_jl.empty else set()
+    key_cols = ("ticker", "isu_cd", "market", "entry_signal_date")
+    fc_keys = set(zip(*(df_fc[col] for col in key_cols))) if not df_fc.empty else set()
+    jl_keys = set(zip(*(df_jl[col] for col in key_cols))) if not df_jl.empty else set()
 
-    fc_first_keys = set(zip(df_fc[df_fc["trade_sequence"] == 1]["ticker"], df_fc[df_fc["trade_sequence"] == 1]["entry_signal_date"])) if not df_fc.empty else set()
+    fc_first = df_fc[df_fc["trade_sequence"] == 1] if not df_fc.empty else df_fc
+    fc_first_keys = set(zip(*(fc_first[col] for col in key_cols))) if not fc_first.empty else set()
 
     rows = []
-    for ticker, sig_date in sorted(fc_keys | jl_keys):
-        in_fc, in_jl = (ticker, sig_date) in fc_keys, (ticker, sig_date) in jl_keys
-        is_first = (ticker, sig_date) in fc_first_keys
+    for ticker, isu_cd, market, sig_date in sorted(fc_keys | jl_keys):
+        key = (ticker, isu_cd, market, sig_date)
+        in_fc, in_jl = key in fc_keys, key in jl_keys
+        is_first = key in fc_first_keys
         if in_fc and in_jl:
             cls = "SHARED_ENTRY" if is_first else "SHARED_REENTRY"
         elif in_fc and not in_jl:
@@ -415,43 +497,63 @@ def _paired_entry_comparison(df_fc: pd.DataFrame, df_jl: pd.DataFrame) -> pd.Dat
             cls = "JULIA_ONLY_ENTRY" if is_first else "UNPAIRED_AFTER_STRATEGY_DIVERGENCE"
         else:
             cls = "UNPAIRED_AFTER_STRATEGY_DIVERGENCE"
-        rows.append({"ticker": ticker, "entry_signal_date": sig_date, "comparison_class": cls})
+        rows.append({"ticker": ticker, "isu_cd": isu_cd, "market": market, "entry_signal_date": sig_date, "comparison_class": cls})
     return pd.DataFrame(rows)
 
 
 def _loss_cut_counterfactual(df_fc: pd.DataFrame, df_jl: pd.DataFrame) -> pd.DataFrame:
-    if df_fc.empty or df_jl.empty:
+    if df_fc.empty:
         return pd.DataFrame()
-    lc = df_fc[(df_fc["exit_type"] == "LOSS_GUARD_CLOSE_LE_NEG_15") & (df_fc["trade_sequence"] == 1)]
-    if lc.empty:
-        return pd.DataFrame()
+    return pd.DataFrame(
+        build_loss_cut_counterfactual_rows(
+            df_fc.to_dict("records"),
+            df_jl.to_dict("records") if not df_jl.empty else [],
+            None,
+        )
+    )
 
-    rows = []
-    for _, fc_row in lc.iterrows():
-        jl_match = df_jl[
-            (df_jl["ticker"] == fc_row["ticker"])
-            & (df_jl["entry_signal_date"] == fc_row["entry_signal_date"])
-            & (df_jl["trade_sequence"] == 1)
-        ]
-        if jl_match.empty:
-            continue
-        jl_row = jl_match.iloc[0]
-        rows.append({
-            "ticker": fc_row["ticker"], "name": fc_row["name"],
-            "shared_entry_date": fc_row["entry_signal_date"], "shared_entry_price": fc_row["entry_open"],
-            "fastcore_loss_cut_signal_date": fc_row["loss_guard_signal_date"],
-            "fastcore_loss_cut_execution_date": fc_row["loss_guard_execution_date"],
-            "fastcore_realized_return": fc_row["loss_guard_realized_return"],
-            "julia_exit_type": jl_row["exit_type"],
-            "julia_exit_execution_date": jl_row["exit_execution_date"],
-            "julia_terminal_return": jl_row["terminal_return"],
-            "julia_mfe": jl_row["mfe"],
-            "julia_mae": jl_row["mae"],
-            "julia_recovered_above_entry": bool(jl_row["mfe"] > 0),
-            "julia_eventually_positive": bool(jl_row["terminal_return"] > 0),
-            "julia_trade_status": jl_row["trade_status"],
-        })
-    return pd.DataFrame(rows)
+
+def _loss_cut_aggregate_summary(counterfactual: pd.DataFrame) -> dict[str, Any]:
+    if counterfactual.empty:
+        return {
+            "total_loss_cuts": 0,
+            "pairable_loss_cuts": 0,
+            "unpairable_loss_cuts": 0,
+            "pair_coverage_rate": 0.0,
+        }
+    total = len(counterfactual)
+    pairable = int(counterfactual["pairable"].sum())
+    def _rate(n: int) -> float:
+        return round(float(n / total * 100), 2) if total else 0.0
+    fc_returns = pd.to_numeric(counterfactual["fastcore_realized_return"], errors="coerce")
+    terminal = pd.to_numeric(counterfactual["julia_terminal_return"], errors="coerce")
+    return {
+        "total_loss_cuts": total,
+        "pairable_loss_cuts": pairable,
+        "unpairable_loss_cuts": int(total - pairable),
+        "pair_coverage_rate": _rate(pairable),
+        "first_entry_pair_count": int((counterfactual["pair_class"] == "PAIRED_FIRST_ENTRY").sum()),
+        "shared_reentry_pair_count": int((counterfactual["pair_class"] == "PAIRED_SHARED_REENTRY").sum()),
+        "fastcore_realized_loss_mean": round(float(fc_returns.mean()), 2) if fc_returns.notna().any() else None,
+        "fastcore_realized_loss_median": round(float(fc_returns.median()), 2) if fc_returns.notna().any() else None,
+        "fastcore_le_neg_15": int((fc_returns <= -15).sum()),
+        "fastcore_le_neg_20": int((fc_returns <= -20).sum()),
+        "fastcore_le_neg_25": int((fc_returns <= -25).sum()),
+        "fastcore_le_neg_30": int((fc_returns <= -30).sum()),
+        "julia_eventually_positive_count": int((terminal > 0).sum()),
+        "julia_eventually_positive_rate": _rate(int((terminal > 0).sum())),
+        "recovered_above_entry_count": int(counterfactual["recovered_above_entry"].sum()),
+        "recovered_above_entry_rate": _rate(int(counterfactual["recovered_above_entry"].sum())),
+        "never_recovered_count": int((~counterfactual["recovered_above_entry"]).sum()),
+        "deeper_loss_avoided_count": int((terminal > fc_returns).sum()),
+        "deeper_loss_avoided_rate": _rate(int((terminal > fc_returns).sum())),
+        "julia_terminal_better_count": int((terminal > fc_returns).sum()),
+        "julia_terminal_better_rate": _rate(int((terminal > fc_returns).sum())),
+        "fastcore_better_count": int((fc_returns > terminal).sum()),
+        "fastcore_better_rate": _rate(int((fc_returns > terminal).sum())),
+        "mean_julia_counterfactual_terminal_return": round(float(terminal.mean()), 2) if terminal.notna().any() else None,
+        "median_julia_counterfactual_terminal_return": round(float(terminal.median()), 2) if terminal.notna().any() else None,
+    }
 
 
 def _best_worst_trades(df_fc: pd.DataFrame, df_jl: pd.DataFrame, n: int = 20) -> pd.DataFrame:

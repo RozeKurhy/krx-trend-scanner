@@ -28,7 +28,7 @@ start year; B5/B7: real official KRX MKTCAP with no gaps papered over).
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
-from typing import Any
+from typing import Any, Callable, Mapping, Sequence
 
 import pandas as pd
 
@@ -47,6 +47,65 @@ CLOSE_THRESHOLD = 5_000.0
 
 LOSS_GUARD_THRESHOLD = -0.15
 EXIT4_DRAWDOWN_POINTS = 15.0
+
+
+@dataclass(frozen=True)
+class IdentityLifecycle:
+    """One non-overlapping COMMON lifecycle segment for one KRX identity."""
+
+    ticker: str
+    isu_cd: str
+    market: str
+    effective_from: pd.Timestamp
+    effective_to: pd.Timestamp
+
+    def contains(self, value: pd.Timestamp | str) -> bool:
+        try:
+            day = pd.Timestamp(value).normalize()
+        except (TypeError, ValueError, OverflowError):
+            return False
+        return self.effective_from <= day <= self.effective_to
+
+
+def clip_to_identity_lifecycle(
+    frame: pd.DataFrame | None,
+    lifecycle: IdentityLifecycle,
+) -> pd.DataFrame | None:
+    """Clip a daily/raw frame to one identity segment, fail-closed on bad data."""
+    if frame is None:
+        return None
+    if frame.empty:
+        return frame.copy()
+    result = frame.copy()
+    dates = pd.DatetimeIndex(pd.to_datetime(result.index, errors="coerce")).normalize()
+    if dates.isna().any():
+        return result.iloc[0:0].copy()
+    result.index = dates
+    return result.loc[(dates >= lifecycle.effective_from) & (dates <= lifecycle.effective_to)].copy()
+
+
+def pit_common_for_identity(
+    intervals: Mapping[tuple[str, str, str], Sequence[tuple[str, str]]],
+    ticker: str,
+    isu_cd: str | None,
+    market: str,
+    value: pd.Timestamp | str,
+) -> bool:
+    """Exact date membership; ticker-only or nearest-date fallback is forbidden."""
+    if not isu_cd:
+        return False
+    try:
+        day = pd.Timestamp(value).strftime("%Y-%m-%d")
+    except (TypeError, ValueError, OverflowError):
+        return False
+    matches = [
+        str(start) <= day <= str(end)
+        for start, end in intervals.get((str(ticker), str(isu_cd), str(market)), ())
+    ]
+    # Overlapping lifecycle segments are ambiguous even when the key matches;
+    # callers must fail closed rather than choose whichever interval appears
+    # first in the authority payload.
+    return sum(matches) == 1
 
 
 @dataclass
@@ -107,6 +166,13 @@ class StrategyTradeRecord:
     cutoff_valuation_price: float | None = None
     mark_to_cutoff_return: float | None = None
 
+    # Phase 2 PIT/date-semantics metadata.  Kept optional for compatibility
+    # with existing callers that construct/read the V01 record directly.
+    entry_signal_information_date: str | None = None
+    entry_filter_raw_date: str | None = None
+    identity_effective_from: str | None = None
+    identity_effective_to: str | None = None
+
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
@@ -125,6 +191,8 @@ def simulate_ticker_strategy_v01(
     loss_guard_enabled: bool,
     backtest_end: pd.Timestamp,
     snapshot_context: PrecomputedTickerContext | None = None,
+    identity_lifecycle: IdentityLifecycle | None = None,
+    pit_membership: Callable[[str, str | None, str, pd.Timestamp], bool] | None = None,
 ) -> list[StrategyTradeRecord]:
     """Run ONE strategy (FastCore if ``loss_guard_enabled=True``, Julia if
     ``False``) for one ticker through ``backtest_end``. PIT-safe: every
@@ -135,13 +203,25 @@ def simulate_ticker_strategy_v01(
         return []
 
     daily = daily.sort_index()
+    if identity_lifecycle is not None:
+        if (
+            str(ticker) != identity_lifecycle.ticker
+            or str(isu_cd or "") != identity_lifecycle.isu_cd
+            or str(market) != identity_lifecycle.market
+        ):
+            return []
+        daily = clip_to_identity_lifecycle(daily, identity_lifecycle)
+        raw_panel = clip_to_identity_lifecycle(raw_panel, identity_lifecycle)
     daily = daily[daily.index <= backtest_end]
 
     required_cols = {"open", "high", "low", "close"}
     if not required_cols.issubset(daily.columns) or len(daily) < 60:
         return []
 
-    snapshot_context = snapshot_context or build_precomputed_ticker_context(ticker, name, daily)
+    if snapshot_context is None or not snapshot_context.daily.index.equals(daily.index):
+        # A context built from a broader ticker history would reintroduce a
+        # reused-ticker lifecycle leak even when ``daily`` itself is clipped.
+        snapshot_context = build_precomputed_ticker_context(ticker, name, daily)
     weekly_bars = snapshot_context.weekly_up_to(backtest_end)
     valid_weeks = [
         w for w in weekly_bars.index
@@ -151,6 +231,13 @@ def simulate_ticker_strategy_v01(
 
     if not valid_weeks:
         return []
+
+    def _pit_ok(value: pd.Timestamp | str) -> bool:
+        if pit_membership is not None:
+            return bool(pit_membership(ticker, isu_cd, market, pd.Timestamp(value).normalize()))
+        if identity_lifecycle is not None:
+            return identity_lifecycle.contains(value)
+        return True
 
     trades: list[StrategyTradeRecord] = []
     trade_seq = 0
@@ -183,6 +270,9 @@ def simulate_ticker_strategy_v01(
                 # candidate signal date. A week that fails the filter is
                 # simply not a valid entry; the search continues to later
                 # weeks (this is never treated as an exit trigger).
+                entry_signal_information_date = daily[daily.index <= w].index.max() if not daily[daily.index <= w].empty else None
+                if entry_signal_information_date is None or not _pit_ok(entry_signal_information_date):
+                    continue
                 filt = evaluate_entry_filter(
                     raw_panel, w,
                     market_cap_threshold=MARKET_CAP_THRESHOLD,
@@ -192,9 +282,25 @@ def simulate_ticker_strategy_v01(
                 if not filt["entry_filter_pass"]:
                     continue
 
+                entry_filter_raw_date = filt.get("entry_filter_raw_date")
+                if (
+                    entry_filter_raw_date is None
+                    or pd.Timestamp(entry_filter_raw_date) > pd.Timestamp(entry_signal_information_date)
+                    or not _pit_ok(entry_filter_raw_date)
+                ):
+                    continue
+
+                fut_daily = daily[(daily.index > w) & (daily.index <= backtest_end)]
+                if fut_daily.empty:
+                    continue
+                entry_exec_candidate = fut_daily.index[0]
+                if not _pit_ok(entry_exec_candidate):
+                    continue
+
                 found_signal_w = w
                 found_signal_res = res
                 found_filter = filt
+                found_filter["entry_signal_information_date"] = pd.Timestamp(entry_signal_information_date).strftime("%Y-%m-%d")
                 break
             except Exception:
                 continue
@@ -208,6 +314,11 @@ def simulate_ticker_strategy_v01(
 
         entry_exec_date = fut_daily.index[0]
         entry_open_price = float(fut_daily.iloc[0]["open"])
+        if not _pit_ok(entry_exec_date):
+            # This is defensive because the candidate loop already checked it;
+            # never create an entry outside its exact identity lifecycle.
+            cur_search_date = entry_exec_date
+            continue
 
         trade_seq += 1
         trade_id = f"{strategy_id}_{ticker}_{trade_seq:02d}"
@@ -412,6 +523,10 @@ def simulate_ticker_strategy_v01(
             cutoff_date=backtest_end.strftime("%Y-%m-%d") if outcome["trade_status"] == "OPEN_AT_CUTOFF" else None,
             cutoff_valuation_price=outcome.get("cutoff_close"),
             mark_to_cutoff_return=outcome.get("mark_to_cutoff_ret"),
+            entry_signal_information_date=found_filter.get("entry_signal_information_date"),
+            entry_filter_raw_date=found_filter.get("entry_filter_raw_date"),
+            identity_effective_from=(identity_lifecycle.effective_from.strftime("%Y-%m-%d") if identity_lifecycle else None),
+            identity_effective_to=(identity_lifecycle.effective_to.strftime("%Y-%m-%d") if identity_lifecycle else None),
         )
         trades.append(record)
 
@@ -486,3 +601,157 @@ def _calc_trade_outcome(
         "cutoff_close": cutoff_close,
         "mark_to_cutoff_ret": mark_to_cutoff_ret,
     }
+
+
+def _record_value(record: Any, name: str, default: Any = None) -> Any:
+    if isinstance(record, Mapping):
+        return record.get(name, default)
+    return getattr(record, name, default)
+
+
+def _counterfactual_key(record: Any) -> tuple[str, str, str, str, float | None]:
+    raw_open = _record_value(record, "entry_open")
+    try:
+        entry_open = round(float(raw_open), 6) if raw_open is not None else None
+    except (TypeError, ValueError):
+        entry_open = None
+    return (
+        str(_record_value(record, "ticker", "")),
+        str(_record_value(record, "isu_cd", "") or ""),
+        str(_record_value(record, "entry_signal_date", "")),
+        str(_record_value(record, "entry_execution_date", "")),
+        entry_open,
+    )
+
+
+def _post_stop_metrics(
+    fc_record: Any,
+    jl_record: Any | None,
+    daily: pd.DataFrame | None,
+) -> dict[str, Any]:
+    """Compute Julia's path strictly after the actual FastCore stop boundary."""
+    metrics: dict[str, Any] = {
+        "julia_unrealized_return_at_fastcore_stop_signal": None,
+        "julia_unrealized_return_at_fastcore_stop_execution": None,
+        "post_stop_min_return": None,
+        "post_stop_max_return": None,
+        "post_stop_worst_additional_drawdown": None,
+        "post_stop_max_recovery": None,
+        "first_recovery_above_entry_date": None,
+        "recovered_above_entry": False,
+    }
+    if jl_record is None:
+        return metrics
+    entry_open = _record_value(fc_record, "entry_open")
+    try:
+        entry_open = float(entry_open)
+    except (TypeError, ValueError):
+        return metrics
+    if entry_open <= 0 or daily is None or daily.empty:
+        # A no-path unit test still gets the conservative legacy fields below;
+        # it must never be treated as a post-stop observation.
+        mfe = _record_value(jl_record, "mfe")
+        if mfe is not None:
+            metrics["post_stop_max_return"] = float(mfe)
+        return metrics
+
+    frame = daily.copy()
+    frame.index = pd.DatetimeIndex(pd.to_datetime(frame.index, errors="coerce")).normalize()
+    frame = frame.loc[~frame.index.isna()].sort_index()
+
+    signal_date = _record_value(fc_record, "loss_guard_signal_date")
+    execution_date = _record_value(fc_record, "loss_guard_execution_date")
+    signal_day = pd.Timestamp(signal_date).normalize() if signal_date else None
+    execution_day = pd.Timestamp(execution_date).normalize() if execution_date else None
+    if signal_day is not None:
+        row = frame.loc[frame.index == signal_day]
+        if not row.empty:
+            metrics["julia_unrealized_return_at_fastcore_stop_signal"] = round(
+                (float(row.iloc[-1]["close"]) / entry_open - 1.0) * 100, 2
+            )
+    if execution_day is not None:
+        row = frame.loc[frame.index == execution_day]
+        if not row.empty:
+            metrics["julia_unrealized_return_at_fastcore_stop_execution"] = round(
+                (float(row.iloc[-1]["open"]) / entry_open - 1.0) * 100, 2
+            )
+
+    # The stop execution session itself is the boundary.  All path metrics
+    # below use strictly later sessions, so pre-stop MFE/MAE cannot leak in.
+    boundary = execution_day or signal_day
+    if boundary is None:
+        return metrics
+    path = frame.loc[frame.index > boundary]
+    if path.empty:
+        return metrics
+    low_returns = (path["low"].astype(float) / entry_open - 1.0) * 100
+    high_returns = (path["high"].astype(float) / entry_open - 1.0) * 100
+    min_return = float(low_returns.min())
+    max_return = float(high_returns.max())
+    stop_realized = _record_value(fc_record, "loss_guard_realized_return")
+    stop_realized = float(stop_realized) if stop_realized is not None else 0.0
+    metrics.update(
+        post_stop_min_return=round(min_return, 2),
+        post_stop_max_return=round(max_return, 2),
+        post_stop_worst_additional_drawdown=round(min_return - stop_realized, 2),
+        post_stop_max_recovery=round(max_return - stop_realized, 2),
+    )
+    close_returns = (path["close"].astype(float) / entry_open - 1.0) * 100
+    recovered = close_returns[close_returns > 0]
+    if not recovered.empty:
+        metrics["first_recovery_above_entry_date"] = recovered.index[0].strftime("%Y-%m-%d")
+        metrics["recovered_above_entry"] = True
+    return metrics
+
+
+def build_loss_cut_counterfactual_rows(
+    fastcore_records: Sequence[Any],
+    julia_records: Sequence[Any],
+    daily: pd.DataFrame | None = None,
+) -> list[dict[str, Any]]:
+    """Pair every FastCore loss cut and account for unpairable rows explicitly."""
+    julia_by_key = {_counterfactual_key(record): record for record in julia_records}
+    rows: list[dict[str, Any]] = []
+    for fc_row in fastcore_records:
+        if _record_value(fc_row, "exit_type") != "LOSS_GUARD_CLOSE_LE_NEG_15":
+            continue
+        key = _counterfactual_key(fc_row)
+        jl_row = julia_by_key.get(key)
+        sequence = int(_record_value(fc_row, "trade_sequence", 0) or 0)
+        if jl_row is not None:
+            pair_class = "PAIRED_FIRST_ENTRY" if sequence == 1 else "PAIRED_SHARED_REENTRY"
+        else:
+            pair_class = "UNPAIRABLE_OTHER" if sequence == 1 else "UNPAIRABLE_FASTCORE_ONLY_REENTRY"
+        metrics = _post_stop_metrics(fc_row, jl_row, daily)
+        julia_terminal = _record_value(jl_row, "terminal_return") if jl_row is not None else None
+        julia_mfe = _record_value(jl_row, "mfe") if jl_row is not None else None
+        julia_mae = _record_value(jl_row, "mae") if jl_row is not None else None
+        # If a caller supplies no daily path (e.g. a pure dataframe audit),
+        # retain the Julia whole-trade values in dedicated legacy columns only;
+        # post-stop columns remain None/False and are never mislabeled.
+        rows.append({
+            "ticker": _record_value(fc_row, "ticker"),
+            "isu_cd": _record_value(fc_row, "isu_cd"),
+            "market": _record_value(fc_row, "market"),
+            "name": _record_value(fc_row, "name"),
+            "trade_sequence": sequence,
+            "pair_class": pair_class,
+            "pairable": jl_row is not None,
+            "shared_entry_date": _record_value(fc_row, "entry_signal_date"),
+            "shared_entry_price": _record_value(fc_row, "entry_open"),
+            "fastcore_loss_cut_signal_date": _record_value(fc_row, "loss_guard_signal_date"),
+            "fastcore_loss_cut_execution_date": _record_value(fc_row, "loss_guard_execution_date"),
+            "fastcore_loss_cut_signal_return": _record_value(fc_row, "loss_guard_return_at_signal"),
+            "fastcore_realized_return": _record_value(fc_row, "loss_guard_realized_return"),
+            **metrics,
+            "julia_exit_type": _record_value(jl_row, "exit_type") if jl_row is not None else None,
+            "julia_exit_signal_date": _record_value(jl_row, "exit_signal_date") if jl_row is not None else None,
+            "julia_exit_execution_date": _record_value(jl_row, "exit_execution_date") if jl_row is not None else None,
+            "julia_terminal_return": julia_terminal,
+            "julia_mfe_legacy": julia_mfe,
+            "julia_mae_legacy": julia_mae,
+            "julia_recovered_above_entry": bool(metrics["recovered_above_entry"]),
+            "julia_eventually_positive": bool(julia_terminal is not None and float(julia_terminal) > 0),
+            "julia_trade_status": _record_value(jl_row, "trade_status") if jl_row is not None else None,
+        })
+    return rows
