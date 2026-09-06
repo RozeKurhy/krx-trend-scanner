@@ -158,7 +158,7 @@ Sample 60개 구성 / `sample_id` / `reference_date` / `source_cohort` /
 `scripts/generate_pattern_a_fast_ground_truth_charts.py`) / ground truth
 helper(`src/trend_scanner/validation/pattern_a_fast_ground_truth.py`) /
 tests / Pattern A production logic(`src/trend_scanner/patterns/`) /
-Phase 12(`docs/roadmap.md`).
+Phase 12(`ROADMAP.md`).
 
 --------------------------------------------------------------------------------
 11. Next Step

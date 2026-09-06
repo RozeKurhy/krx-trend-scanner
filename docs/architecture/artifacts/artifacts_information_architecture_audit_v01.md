@@ -364,7 +364,7 @@ stock_reports/
 | script input path | `scripts/compare_pattern_a_fast_corrected_baseline.py`, `scripts/inspect_v02_evidence.py` 등 | 다수 |
 | documentation link | `docs/patterns/pattern_a_fast/strategy/versions.md`, `final_v01.md`, `final_v02.md`, `docs/patterns/pattern_a/validation/*`, `docs/architecture/validation/test_suite_performance_audit_v01.md` 등 | 15개 이상 |
 | manifest/seal path | `investable_oos`/`oos` 내부의 manifest/seal JSON이 자기 자신의 다른 파일(assets, charts)을 상대경로로 참조 | 다수(파일 내부 필드) |
-| informational/comment only | `docs/roadmap.md`(scanner 언급) | 소수 |
+| informational/comment only | `ROADMAP.md`(scanner 언급) | 소수 |
 
 **가장 중요한 발견**: `research/pattern_a_fast_score_prototype_v01.json`과
 `stage_prototype_v01.json`은 유일하게 **production runtime dependency +

@@ -29,7 +29,7 @@ README.md
 
 ## Roadmap
 
-[roadmap.md](roadmap.md)
+[ROADMAP.md](../ROADMAP.md)
 
 ## 문서 작성 규칙 / Naming Convention
 

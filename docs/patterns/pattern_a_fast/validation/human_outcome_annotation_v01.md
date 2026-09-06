@@ -214,7 +214,7 @@ Base PIT checkpoint commit `9263fcf`의 worksheet와 현재 worksheet를
 `src/trend_scanner/validation/pattern_a_fast_ground_truth.py` / Pattern A
 production code(`src/trend_scanner/patterns/`) / Phase 10 Investability
 logic(`src/trend_scanner/filters/investability.py`) / Phase
-12(`docs/roadmap.md`). Pattern A Fast Feature/Threshold/Score/Classifier
+12(`ROADMAP.md`). Pattern A Fast Feature/Threshold/Score/Classifier
 코드도 추가하지 않았다.
 
 --------------------------------------------------------------------------------

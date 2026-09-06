@@ -1,3 +1,5 @@
+README.md
+
 # krx-trend-scanner
 
 코스피와 코스닥 상장 보통주(`AssetType.COMMON`)를 대상으로 **대세 상승 초입 가능성이 있는 종목을 구조적으로 탐색하고, 투자 가능성·수급·시장 상대강도·전략 상태를 함께 평가하는 의사결정 지원 시스템**입니다.
@@ -27,7 +29,7 @@
 ### 1. Pattern A: 장기 베이스 수렴 및 초기 추세 전환형 (Frozen Production)
 * **Score v0.2**: 24개월 이평선 기울기(`ma24_slope`) 중심의 조화평균(Harmonic Mean) 결합, Alignment Bonus 및 이격 과열에 대한 Progressed Penalty 적용 (0~100점).
 * **Stage Classifier v0.1**: 주가 사이클 위치를 나타내는 5단계 라이프사이클 (`WEAK` ➔ `BASE` ➔ `TRANSITION` ➔ `EARLY_TREND` ➔ `PROGRESSED`).
-* **Candidate State**: `CANDIDATE` (180종목), `WATCH`, `LATE`, `BLOCKED`, `INSUFFICIENT_DATA`.
+* **Candidate State**: `CANDIDATE` (2026-09-04 기준 raw candidate 256개), `WATCH`, `LATE`, `BLOCKED`, `INSUFFICIENT_DATA`.
 * **Score Momentum v0.1**: 정확한 Calendar 1M, 3M, 6M 시점 간의 Raw & Component Delta 측정.
 * **공식 상태**: **`CLOSED / PRODUCTION / FROZEN`** (`KEEP_CURRENT_PRODUCTION`, [Final Closure: `05d03e1`](docs/patterns/pattern_a/validation/final_production_closure.md))
 
@@ -45,7 +47,7 @@
 ### 1. Phase 10 Investability & Tradability Filter (Closed)
 * **목적**: 비투자성·극저유동성 종목을 사전에 분리하는 독립 downstream filter.
 * **기준**: 시가총액 $\ge \text{1,000억원}$ & 20일 평균 거래대금 $\ge \text{3억원}$ (별도 종가 하드 필터 미도입).
-* **분류**: `INVESTABLE` (103개), `FILTERED_MARKET_CAP` (42개), `FILTERED_LIQUIDITY` (31개), `DATA_UNAVAILABLE` (4개).
+* **분류**: `INVESTABLE`, `FILTERED_MARKET_CAP`, `FILTERED_LIQUIDITY`, `DATA_UNAVAILABLE` (2026-09-04 기준 `INVESTABLE` 133개 — 세부 분포는 production summary 산출물 참고).
 
 ### 2. Phase 11 Foreign Flow Confirmation Infrastructure (Closed)
 * **목적**: 외국인 수급 데이터를 독립된 확인 축(Confirmation Axis)으로 제공.
@@ -62,13 +64,13 @@
 * **분석 위치**: RS는 현재 Pattern A Score나 필터에 합산되지 않는 독립 Context / Analysis feature입니다.
 * **Sector RS**: **`DEFERRED / FUTURE_EXTENSION`** (Market RS와 별도 범위).
 
-### 4. KRX Open API Validation (Waiting)
-* **현재 상태**: **`WAITING_FOR_SERVICE_APPROVAL`**
-* KRX Open API 기반 데이터 계층 전환을 준비 중이며, 필요한 서비스 API 승인 전에는 migration 완료로 간주하지 않습니다.
+### 4. KRX Open API Validation (Complete)
+* **현재 상태**: **`COMPLETE`**
+* 서비스 API 승인이 완료되어 KRX Open API 기반 데이터 계층(Repository V2 / local rolling market-data authority)이 현재 production data path입니다.
 
-### 5. OpenDART Fundamentals (Next / Planned)
+### 5. OpenDART Fundamentals (Hold)
 * **다음 개발 영역**: OpenDART 기반 매출, 영업이익, 당기순이익, 수익성, 성장률, 실적 추세 및 공시일 기준 PIT 처리.
-* **현재 상태**: **`NEXT / PLANNED`**. Fundamentals Score, Pattern A Score와의 합산, valuation score 및 매매 signal은 아직 확정하지 않았습니다.
+* **현재 상태**: **`HOLD`**. 설계/구현 문서는 [`docs/fundamentals/`](docs/fundamentals/README.md)에 보존되어 있으나, 현재 최우선순위는 FastCore/Julia realistic backtest입니다. Fundamentals Score, Pattern A Score와의 합산, valuation score 및 매매 signal은 아직 확정하지 않았습니다.
 
 ---
 
@@ -117,20 +119,20 @@ Pattern A의 장기 베이스와 Pattern A FAST의 주봉 타이밍, Investabili
 ```text
 krx-trend-scanner/
 ├── src/trend_scanner/              # 핵심 엔진 소스코드
-│   ├── data/                       # 데이터 수집, Parquet 캐시, PIT 스냅샷 검증
+│   ├── data/                       # Repository V2, rolling market-data authority, Parquet 캐시, PIT 스냅샷 검증
 │   ├── features/                   # 이평선, 피벗, 변동성, 레인지 등 정량 피처
 │   ├── patterns/                   # Pattern A 스코어링, 스테이지, 모멘텀, Evaluator
 │   ├── filters/                    # Phase 10 Investability 필터
 │   ├── flow/                       # Phase 11 Foreign Flow 수급 지표
 │   ├── relative_strength/          # Phase 12 Market RS (CLOSED)
 │   ├── reporting/                  # Stock Report v0.3 생성기
-│   ├── scanner/                    # 2,528개 전종목 Full Universe Scanner
+│   ├── scanner/                    # COMMON production universe(2026-09-04 기준 2,555개) Full Universe Scanner
 │   ├── universe/                   # 유니버스 데이터 품질 감사
 │   └── validation/                 # 각 단계별 검증 파이프라인 및 클로저 감사
 │
+├── ROADMAP.md                      # 전체 프로젝트 개발 로드맵 (COMPLETED/CURRENT/NEXT/HOLD)
 ├── docs/                           # 설계 및 검증 문서 (Single Source of Truth)
 │   ├── README.md                   # Documentation Authority Index
-│   ├── roadmap.md                  # 전체 프로젝트 개발 로드맵
 │   ├── architecture/               # 시스템 아키텍처 및 공용 데이터 설계
 │   ├── patterns/
 │   │   ├── pattern_a/              # Pattern A 공식 규격 및 검증 보고서
@@ -192,40 +194,15 @@ print(f"Markdown: {md_path}")
 
 ---
 
-## 🗺️ 개발 로드맵 및 현재 작업 순서
+## 🗺️ 현재 상태 및 다음 단계
 
-```text
-[README/Roadmap Documentation Closure] (CURRENT)
-       ↓
-[OpenDART Fundamentals] (NEXT / PLANNED)
-       ↓
-[KRX Open API Validation] (WAITING_FOR_SERVICE_APPROVAL)
-       ↓
-[Julia Official PIT 100%] (BLOCKED_BY_KRX_DATA)
-       ↓
-[Market Cap Threshold Research] (AFTER_OFFICIAL_JULIA_PIT)
-       ↓
-[Sector RS] (FUTURE_EXTENSION)
-       ↓
-[Web Report Viewer] (FUTURE)
-```
+**Production 기준일**: 2026-09-04 (`production certified boundary`)
 
-1. **Phase 1~9: Pattern A Core Engine** — **`CLOSED / FROZEN`** (`05d03e1`)
-2. **Phase 10: Investability Filter** — **`CLOSED`** (시총 $\ge \text{1,000억}$, 20D 거래대금 $\ge \text{3억}$)
-3. **Phase 11: Foreign Flow Infrastructure** — **`CLOSED`** (`71237c0`, 독립 확인 축)
-4. **Phase 13: Pattern A FAST Research** — **`RESEARCH_CLOSED / PRODUCTION_HOLD`** (조기 신호)
-5. **Post-Phase 13: A FAST Core Strategy V1/V2 Finalization** — **`CLOSED / DECISION_SUPPORT`**
-6. **Stock Report v0.3 Integration** — **`CLOSED / DECISION_SUPPORT`** (Phase 12 Market RS integrated)
-7. **Engineering IA Reorganization (Docs & Artifacts)** — **`CLOSED`**
-8. **README & Roadmap Refresh** — **`CLOSED`**
-9. **README / Roadmap Documentation Closure** — **`CURRENT`**
-10. **OpenDART Fundamentals** — **`NEXT / PLANNED`** (KRX API 승인과 독립적으로 착수 가능)
-11. **KRX Open API Validation** — **`WAITING_FOR_SERVICE_APPROVAL`**
-12. **Julia Strategy V00 Official PIT** — **`INCOMPLETE / BLOCKED_BY_KRX_DATA`** (117/215, 98개 기준일 누락)
-13. **Market Cap Threshold Research** — **`AFTER_OFFICIAL_JULIA_PIT`**
-14. **Sector RS** — **`DEFERRED / FUTURE_EXTENSION`**
-15. **Web Report Viewer** — **`PLANNED / FUTURE`**
-16. **Phase 14~18: Pattern B ~ F** — **`PLANNED`**
-17. **Phase 19~21: Market Leader Score & Operational Dashboard** — **`PLANNED`**
+* **COMPLETED**: Repository V2 / production data migration, market data refresh & price validation through 2026-09-04, Pattern A production regeneration (COMMON universe 2,555), Stock Report regeneration (54/54), branch/main integration cleanup
+* **CURRENT**: Documentation / artifact consolidation (이 문서 포함)
+* **NEXT**: FastCore realistic backtest → Julia realistic backtest → strategy robustness comparison (현실적 실행조건에서 반복 가능한 robust strategy 탐색이 목표)
+* **HOLD**: 신규 Pattern 개발, OpenDART Fundamentals 신규 착수, deferred Group B 작업, 불필요한 추가 market-data hardening
 
-자세한 로드맵과 세부 실행 계획은 [docs/roadmap.md](docs/roadmap.md)를 참고하세요.
+**알려진 현재 한계** (2026-09-04 production scan 기준): Foreign Flow는 대부분 `NOT_EVALUATED`이며, Market RS의 candidate 단위 production 통합은 아직 완전히 적용되지 않은 부분이 있습니다.
+
+전체 Phase 이력과 세부 실행 계획은 [ROADMAP.md](ROADMAP.md)를 참고하세요.
