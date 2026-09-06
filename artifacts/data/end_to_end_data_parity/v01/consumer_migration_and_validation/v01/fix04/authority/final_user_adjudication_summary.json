@@ -1,0 +1,149 @@
+{
+  "DECISIONS": [
+    {
+      "baseline_tickers": 2528,
+      "behavior_changed_tickers": 279,
+      "canonical_cause_summary": {
+        "KNOWN_AUTHORITY_GAP": 47,
+        "MULTIPLE_CANONICAL_INPUT_EFFECTS": 365,
+        "NON_TRADING_SESSION_PROJECTION": 12,
+        "OHLC_AUTHORITY_CHANGE": 12,
+        "RAW_VOLUME_AUTHORITY_CHANGE": 406
+      },
+      "decision_required": true,
+      "final_candidate_changed_tickers": 261,
+      "gate_or_stage_changed_tickers": 18,
+      "multi_field_non_decision_tickers": 9,
+      "non_behavior_changed_tickers": 563,
+      "other_behavior_changed_tickers": 0,
+      "output_changed_tickers": 842,
+      "ranking_changed_tickers": 0,
+      "score_only_tickers": 361,
+      "subject": "Pattern A canonical behavior"
+    },
+    {
+      "baseline_trade_rows": 783,
+      "behavior_changed_tickers": 6,
+      "canonical_cause_summary": {
+        "ANALYTIC_SESSION_EXCLUSION": 1,
+        "KNOWN_AUTHORITY_GAP": 2,
+        "MULTIPLE_CANONICAL_INPUT_EFFECTS": 82,
+        "RAW_VOLUME_AUTHORITY_CHANGE": 241
+      },
+      "canonical_trade_rows": 781,
+      "decision_required": true,
+      "entry_changed_trades": 1,
+      "exit_changed_trades": 4,
+      "matched_trades_with_behavior_change": 5,
+      "membership_changes": {
+        "added_trades": 0,
+        "removed_trade_details": [
+          {
+            "canonical_cause": "KNOWN_AUTHORITY_GAP",
+            "canonical_entry": null,
+            "canonical_exit": null,
+            "legacy_entry": {
+              "entry_execution_date": "2025-08-11",
+              "entry_open": 38600.0,
+              "entry_signal_date": "2025-08-08"
+            },
+            "legacy_exit": {
+              "exit_execution_date": "2025-08-22",
+              "exit_price": 30950.0,
+              "exit_signal_date": "2025-08-21"
+            },
+            "ticker": "107640",
+            "trade_id": "107640_01"
+          },
+          {
+            "canonical_cause": "KNOWN_AUTHORITY_GAP",
+            "canonical_entry": null,
+            "canonical_exit": null,
+            "legacy_entry": {
+              "entry_execution_date": "2026-02-23",
+              "entry_open": 12510.0,
+              "entry_signal_date": "2026-02-20"
+            },
+            "legacy_exit": {
+              "exit_execution_date": "2026-02-27",
+              "exit_price": 10500.0,
+              "exit_signal_date": "2026-02-26"
+            },
+            "ticker": "176750",
+            "trade_id": "176750_01"
+          }
+        ],
+        "removed_trades": 2
+      },
+      "non_behavior_changed_tickers": 320,
+      "price_only_changed_trades": 0,
+      "signal_changed_trades": 4,
+      "subject": "FastCore canonical behavior",
+      "trade_added": 0,
+      "trade_removed": 2
+    },
+    {
+      "baseline_trade_rows": 152,
+      "behavior_changed_tickers": 20,
+      "canonical_cause_summary": {
+        "ANALYTIC_SESSION_EXCLUSION": 1,
+        "MULTIPLE_CANONICAL_INPUT_EFFECTS": 24,
+        "OHLC_AUTHORITY_CHANGE": 1,
+        "RAW_VOLUME_AUTHORITY_CHANGE": 60
+      },
+      "canonical_trade_rows": 153,
+      "decision_required": true,
+      "entry_changed_trades": 21,
+      "exit_changed_trades": 3,
+      "matched_trades_with_behavior_change": 21,
+      "membership_changes": {
+        "added_trade_details": [
+          {
+            "canonical_cause": "RAW_VOLUME_AUTHORITY_CHANGE",
+            "canonical_entry": {
+              "entry_execution_date": "2024-06-03",
+              "entry_open": 467000.0,
+              "entry_signal_date": "2024-05-31"
+            },
+            "canonical_exit": {
+              "exit_execution_date": null,
+              "exit_price": null,
+              "exit_signal_date": null
+            },
+            "legacy_entry": null,
+            "legacy_exit": null,
+            "ticker": "004370",
+            "trade_id": "004370_02"
+          }
+        ],
+        "added_trades": 1,
+        "removed_trades": 0
+      },
+      "non_behavior_changed_tickers": 66,
+      "price_only_changed_trades": 0,
+      "signal_changed_trades": 6,
+      "subject": "Julia canonical behavior",
+      "trade_added": 1,
+      "trade_removed": 0
+    },
+    {
+      "affected_consumers": [
+        "Stock Report"
+      ],
+      "available_options": [
+        "A. Repository V2 ETF support extension",
+        "B. ETF-specific canonical price path",
+        "C. explicit unsupported policy"
+      ],
+      "canonical_problem": "V2 adjusted/raw authority absent",
+      "cross_consumer_mapping_rows": 0,
+      "decision_required": true,
+      "relation_case": "CASE_B",
+      "stock_report_affected_tickers": 17,
+      "subject": "ETF_CANONICAL_PRICE_AUTHORITY",
+      "unique_affected_tickers": 17
+    }
+  ],
+  "DECISION_COUNT": 4,
+  "USER_ADJUDICATION_REQUIRED": true
+}

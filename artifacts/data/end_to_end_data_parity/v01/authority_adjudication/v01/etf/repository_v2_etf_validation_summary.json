@@ -1,0 +1,31 @@
+{
+  "validation_version": "ETF_REPOSITORY_V2_VALIDATION_V01",
+  "acceptance_tickers": 17,
+  "acceptance_pass": 17,
+  "repository_fetch_success": true,
+  "adjusted_ohlc_available": true,
+  "required_raw_fields_available": true,
+  "duplicate_date_count_total": 0,
+  "chronological_order_valid": true,
+  "analytic_session_policy_respected": true,
+  "stock_report_targeted_generation": {
+    "attempted": 17,
+    "canonical_repository_input_validation_pass": 17,
+    "targeted_functional_validation_pass": true,
+    "report_generated_count": 17,
+    "report_full_count": 0,
+    "report_partial_count": 16,
+    "report_data_unavailable_count": 1,
+    "report_failed_count": 0,
+    "unsupported_architecture_errors": 0,
+    "production_report_wiring_executed": false,
+    "production_report_wiring_deferred_to_consumer_migration": true,
+    "production_wiring_safety_pass": true,
+    "reason": "functional validation is independent of the required PRODUCTION_WIRING_CHANGED=false safety gate"
+  },
+  "legacy_fallback_used": false,
+  "consumer_specific_bypass": false,
+  "strategy_universe_expansion": false,
+  "raw_authority": "KRX Open API /etp/etf_bydd_trd",
+  "adjusted_authority": "AdjustedPriceStore/NAVER_DIRECT_DATE_RANGE_ADJUSTED_V1"
+}

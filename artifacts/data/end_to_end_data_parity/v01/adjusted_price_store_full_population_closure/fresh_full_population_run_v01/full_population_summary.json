@@ -1,0 +1,113 @@
+{
+  "schema": "adjusted_price_store_full_population_summary_v01",
+  "execution_id": "FRESH_FULL_POPULATION_RUN_V01_20260831T122021KST",
+  "status": "FULL_POPULATION_COMPLETED",
+  "final_verdict": "CHANGES_REQUESTED",
+  "next_state": "NEEDS_ADJUSTED_PRICE_PROVIDER_CAPABILITY_RECONCILIATION",
+  "execution_timestamp": "2026-08-31T04:04:29.789462+00:00",
+  "duration_seconds": 1256.11,
+  "frozen_authority": {
+    "population_count": 3162,
+    "population_manifest_sha256": "f14c3d46e5305571b311c4d120d9a2f1eba1644e7f059cde4e59eabab42d1aff",
+    "pit_trading_dates_count": 4095,
+    "pit_manifest_sha256": "6b542ae05c9050dd30959d6f1b17306e4016f435a726ca7e0dff9e11008e4064",
+    "calendar_cutoff_date": "2026-08-21",
+    "calendar_row_count": 3844
+  },
+  "status_counts": {
+    "population_total": 3162,
+    "complete": 3152,
+    "normal_complete": 3148,
+    "partial": 1,
+    "empty": 0,
+    "error": 0,
+    "insufficient_authority": 9,
+    "no_usable_observations": 0,
+    "complete_with_adjudicated_nonusable": 4,
+    "closure_complete_total": 3152
+  },
+  "subgroup_breakdown": {
+    "alpha_23_census": {
+      "total": 23,
+      "complete": 23,
+      "pass": true
+    },
+    "current_common": {
+      "total": 2557,
+      "complete": 2547
+    },
+    "historical_only": {
+      "total": 605,
+      "complete": 605
+    }
+  },
+  "coverage_totals": {
+    "total_expected_rows": 8216690,
+    "total_actual_source_rows": 8219779,
+    "total_stored_rows": 8219779,
+    "total_missing_expected_dates": 0,
+    "total_unexpected_source_dates": 3089,
+    "total_silent_missing_dates": 0,
+    "total_usable_source_rows": 8219779,
+    "total_confirmed_nontrading_dates": 176,
+    "total_adjudicated_source_nonusable_dates": 170219,
+    "total_authority_conflict_dates": 1,
+    "total_resolved_authority_conflict_dates": 1,
+    "total_unresolved_authority_conflict_dates": 0,
+    "total_phantom_rows": 170676,
+    "total_authority_suppressed_source_rows": 176
+  },
+  "authority_conflict_totals": {
+    "total_authority_conflicts": 1,
+    "total_resolved_authority_conflicts": 1,
+    "total_unresolved_authority_conflicts": 0
+  },
+  "data_quality_totals": {
+    "total_duplicates": 0,
+    "total_invalid_ohlc": 0,
+    "total_future_rows": 0,
+    "total_analytic_invalid_ohlc": 29398
+  },
+  "closure_accounting": {
+    "schema_version": "adjusted_price_closure_accounting_v02",
+    "tradability_contract_version": "adjusted_price_tradability_v02",
+    "states": [
+      "USABLE_ADJUSTED_OBSERVATION",
+      "CONFIRMED_NONTRADING",
+      "ADJUDICATED_SOURCE_NONUSABLE",
+      "SILENT_MISSING",
+      "UNEXPECTED_SOURCE_DATE",
+      "SUSPENSION_METADATA_CONFLICT_WITH_OBSERVED_ACTIVITY",
+      "UNRESOLVED_ACTIVITY_EVIDENCE"
+    ],
+    "normal_complete": 3148,
+    "no_usable_observations": 0,
+    "complete_with_adjudicated_nonusable": 4,
+    "closure_complete_total": 3152,
+    "unresolved_total": 10,
+    "total_authority_conflicts": 1,
+    "resolved_authority_conflict_count": 1,
+    "unresolved_authority_conflict_count": 0,
+    "failure_count": 10
+  },
+  "network_accounting": {
+    "population_records_processed": 3162,
+    "new_live_ticker_queries": 1668,
+    "physical_provider_attempts": 1668,
+    "retries": 0,
+    "reused_without_network": 1494,
+    "krx_open_api_requests": 0,
+    "opendart_requests": 0,
+    "krx_mdc_requests": 0
+  },
+  "preflight": {
+    "population_count": 3162,
+    "already_complete_count": 1494,
+    "needs_fetch_count": 1668,
+    "existing_partial_count": 0,
+    "existing_empty_count": 0,
+    "existing_error_count": 0,
+    "authority_blocked_count": 0,
+    "reconciliation_sum": 3162
+  }
+}

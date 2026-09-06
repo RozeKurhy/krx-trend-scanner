@@ -1,0 +1,51 @@
+{
+  "schema": "fresh_full_population_resume_segment_network_accounting_v01",
+  "execution_id": "FRESH_FULL_POPULATION_RUN_V01_20260831T122021KST",
+  "segment": "B",
+  "throttle_seconds": 0.5,
+  "status": "COMPLETED",
+  "stats": {
+    "reused": 1494,
+    "new": 1668,
+    "statuses": {
+      "COMPLETE": 3148,
+      "COMPLETE_WITH_ADJUDICATED_NONUSABLE": 4,
+      "INSUFFICIENT_AUTHORITY": 9,
+      "PARTIAL": 1
+    },
+    "last_ticker": "950260"
+  },
+  "provider_audit": {
+    "logical_fetch_count": 1668,
+    "naver_http_call_count": 1668,
+    "successful_fetch_count": 1668,
+    "empty_fetch_count": 0,
+    "error_fetch_count": 0,
+    "pykrx_fallback_call_count": 0,
+    "phantom_row_count": 81473
+  },
+  "duration_seconds": 1277.39,
+  "status_counts": {
+    "population_total": 3162,
+    "complete": 3152,
+    "normal_complete": 3148,
+    "partial": 1,
+    "empty": 0,
+    "error": 0,
+    "insufficient_authority": 9,
+    "no_usable_observations": 0,
+    "complete_with_adjudicated_nonusable": 4,
+    "closure_complete_total": 3152
+  },
+  "network_accounting": {
+    "population_records_processed": 3162,
+    "new_live_ticker_queries": 1668,
+    "physical_provider_attempts": 1668,
+    "retries": 0,
+    "reused_without_network": 1494,
+    "krx_open_api_requests": 0,
+    "opendart_requests": 0,
+    "krx_mdc_requests": 0
+  },
+  "captured_at": "2026-08-31T04:04:29.841512+00:00"
+}

@@ -1,0 +1,26 @@
+{
+  "status": "BLOCKED",
+  "full_pytest_runs": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "stage": "FastCore",
+      "reason": "universe CSV numeric coercion was missing",
+      "action": "fixed before retry"
+    },
+    {
+      "attempt": 2,
+      "stage": "FastCore",
+      "reason": "pandas resample propagated session-audit attrs and exceeded practical runtime",
+      "action": "stopped"
+    },
+    {
+      "attempt": 3,
+      "stage": "Julia",
+      "reason": "weekly resampling/feature evaluation exceeded practical runtime",
+      "action": "stopped"
+    }
+  ],
+  "network_requests": 0,
+  "retry_policy": "no further full-sweep retry until FIX02 runtime plan is approved"
+}

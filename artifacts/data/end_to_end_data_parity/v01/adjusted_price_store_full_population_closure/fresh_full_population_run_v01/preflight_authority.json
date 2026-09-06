@@ -1,0 +1,34 @@
+{
+  "schema": "fresh_full_population_preflight_authority_v01",
+  "execution_id": "FRESH_FULL_POPULATION_RUN_V01_20260831T122021KST",
+  "population": {
+    "count": 3162,
+    "semantic_sha256": "f14c3d46e5305571b311c4d120d9a2f1eba1644e7f059cde4e59eabab42d1aff",
+    "physical_sha256": "2fb1776c7dfdf3a478159f25c1ec0269e3632c2ee705d97f6818b58485987674",
+    "numeric": 3139,
+    "alphanumeric": 23,
+    "current_common": 2557,
+    "historical_only": 605,
+    "ticker_schema": "^[0-9A-Z]{6}$"
+  },
+  "pit": {
+    "date_count": 4095,
+    "semantic_sha256": "6b542ae05c9050dd30959d6f1b17306e4016f435a726ca7e0dff9e11008e4064",
+    "physical_sha256": "f99af654b30ff380a5590a9711af467851547559b94480ba4d0ec58ac78de300"
+  },
+  "calendar_cutoff": "2026-08-21",
+  "historical_calendar_rows": 3844,
+  "source_authority": {
+    "id": "NAVER_DIRECT_DATE_RANGE_ADJUSTED_V1",
+    "provider": "NaverDirectAdjustedPriceDataProvider",
+    "request_type": 1,
+    "timeframe": "day",
+    "count": "5000",
+    "pykrx_production_fallback": false
+  },
+  "checkpoint_schema": "full_population_checkpoint_v02",
+  "staging_store_new_and_empty": true,
+  "checkpoint_new_and_empty": true,
+  "canonical_untouched_before_network": true,
+  "preflight_status": "PASS"
+}

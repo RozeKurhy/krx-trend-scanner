@@ -1,0 +1,14 @@
+{
+  "decision_id": "AUTHORITY_ADJUDICATION_FREEZE_V01",
+  "subject": "Pattern A, FastCore, Julia, ETF Repository V2",
+  "status": "FROZEN",
+  "approved_by": "user",
+  "approved_at": "2026-09-03",
+  "source_evidence_version": "CONSUMER_MIGRATION_AND_VALIDATION_V01_FIX07",
+  "decisions": [
+    {"decision_id": "PATTERN_A_CANONICAL_BEHAVIOR", "subject": "Pattern A", "decision": "ACCEPT_CANONICAL_V2_BEHAVIOR", "implementation_implication": "Use MarketDataRepositoryV2 canonical input; do not preserve legacy output.", "prohibited_interpretations": ["legacy behavior retention patch", "ticker-specific output override"]},
+    {"decision_id": "FASTCORE_CANONICAL_BEHAVIOR", "subject": "FastCore", "decision": "ACCEPT_CANONICAL_V2_BEHAVIOR", "implementation_implication": "Re-evaluate only the two technical-gap trades after source remediation.", "prohibited_interpretations": ["trade restoration assumption", "strategy rule change"]},
+    {"decision_id": "JULIA_CANONICAL_BEHAVIOR", "subject": "Julia", "decision": "ACCEPT_CANONICAL_V2_BEHAVIOR", "implementation_implication": "Use canonical input without legacy parity override.", "prohibited_interpretations": ["legacy behavior retention patch", "strategy override"]},
+    {"decision_id": "ETF_CANONICAL_PRICE_AUTHORITY", "subject": "ETF", "decision": "REPOSITORY_V2_ETF_SUPPORT_EXTENSION", "implementation_implication": "Support ETF through the shared Repository V2 adjusted/raw interface.", "prohibited_interpretations": ["legacy ETF fallback", "Stock Report-only ETF path", "unsupported ETF hard-code"]}
+  ]
+}

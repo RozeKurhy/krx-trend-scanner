@@ -1,0 +1,22 @@
+{
+  "COMPLIANT_LEGACY_RETENTION_PATH": "NONE",
+  "CONSTRAINTS": {
+    "NO_CANONICAL_STORE_MUTATION": true,
+    "NO_LEGACY_FALLBACK": true,
+    "NO_SOURCE_TRUTH_DOWNGRADE": true,
+    "NO_STRATEGY_SEMANTIC_CHANGE": true,
+    "NO_TICKER_SPECIFIC_OVERRIDE": true
+  },
+  "EVIDENCE": [
+    "docs/architecture/market_data_repository_v02.md",
+    "docs/architecture/adjusted_price_store_v01.md",
+    "src/trend_scanner/data/source_contracts.py"
+  ],
+  "LEGACY_BEHAVIOR_RETENTION_IMPLEMENTABLE": false,
+  "OBSERVATIONS": {
+    "current_legacy_state_documented": true,
+    "explicit_retention_switch": false,
+    "target_migration_documented": true
+  },
+  "REASON": "현재 legacy cache 사용은 migration 전 상태일 뿐 post-adjudication 선택 경로가 아니다. 선택 가능한 retention을 만들려면 prohibited fallback, override 또는 dual-authority path가 필요하다."
+}

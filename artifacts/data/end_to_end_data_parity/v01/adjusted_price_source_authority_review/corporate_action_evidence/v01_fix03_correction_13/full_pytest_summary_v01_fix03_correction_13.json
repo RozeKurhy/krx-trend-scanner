@@ -1,0 +1,22 @@
+{
+  "schema": "full_pytest_summary_v01_fix03_correction_13",
+  "full_suite_completion": true,
+  "code_head_under_test": "9450d5d681516048cbe9fc743c086bf8c67251b6",
+  "code_tree_sha_under_test": "4f61066464995a71b262ec3ce93e39dc0679d430",
+  "passed": 2133,
+  "failed": 4,
+  "skipped": 6,
+  "deselected": 5,
+  "warnings": 290708,
+  "known_baseline_failures": [
+    "tests/test_krx_historical_backfill.py::test_recent_empty_is_not_checkpointed_and_general_resume_retries"
+  ],
+  "unexpected_failures": [
+    "tests/test_opendart_environment_v01.py::test_preflight_live_network",
+    "tests/test_stage_v03_research_consistency.py::test_research_artifact_deterministic_regeneration",
+    "tests/test_stage_v04_multi_year_research.py::test_deterministic_regeneration"
+  ],
+  "new_regression_count": 3,
+  "error_count": 17,
+  "execution_seconds": 1301.9
+}

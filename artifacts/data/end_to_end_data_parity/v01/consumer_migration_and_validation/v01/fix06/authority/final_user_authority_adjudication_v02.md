@@ -1,0 +1,102 @@
+final_user_authority_adjudication_v02.md
+========================================
+
+USER_DECISION_REQUIRED=true
+USER_DECISION_COUNT=4
+COUNT_RULE=READY_FOR_USER_ADJUDICATION + ARCHITECTURE_DECISION_REQUIRED only
+
+DECISION_1
+decision_id=PATTERN_A_CANONICAL_BEHAVIOR
+subject=Pattern A canonical behavior
+status=READY_FOR_USER_ADJUDICATION
+consumer=Pattern A
+total_behavior_changed_tickers=279
+technical_fix_required_tickers=4
+no_user_decision_required_tickers=38
+user_adjudication_eligible_tickers=237
+affected_trades=0
+technical_fix_required_trades=0
+no_user_decision_required_trades=0
+user_adjudication_eligible_trades=0
+technical_interpretation=COMMON gap 정책을 상속한 4개 technical ticker와 legacy-missing 38개 no-user ticker를 제외한 237개만 사용자 정책 대상이다.
+available_options=ACCEPT_CANONICAL_V2_BEHAVIOR | RETAIN_FROZEN_LEGACY_BEHAVIOR
+
+DECISION_2
+decision_id=FASTCORE_CANONICAL_BEHAVIOR
+subject=FastCore canonical behavior
+status=READY_FOR_USER_ADJUDICATION
+consumer=FastCore
+total_behavior_changed_tickers=7
+technical_fix_required_tickers=2
+no_user_decision_required_tickers=0
+user_adjudication_eligible_tickers=5
+affected_trades=7
+technical_fix_required_trades=2
+no_user_decision_required_trades=0
+user_adjudication_eligible_trades=5
+technical_interpretation=107640_01/176750_01은 canonical V2 coverage defect로 technical-fix-first이며, 나머지 5개 trade만 정책 대상이다.
+available_options=ACCEPT_CANONICAL_V2_BEHAVIOR | RETAIN_FROZEN_LEGACY_BEHAVIOR
+
+DECISION_3
+decision_id=JULIA_CANONICAL_BEHAVIOR
+subject=Julia canonical behavior
+status=READY_FOR_USER_ADJUDICATION
+consumer=Julia
+total_behavior_changed_tickers=21
+technical_fix_required_tickers=0
+no_user_decision_required_tickers=0
+user_adjudication_eligible_tickers=21
+affected_trades=22
+technical_fix_required_trades=0
+no_user_decision_required_trades=0
+user_adjudication_eligible_trades=22
+technical_interpretation=024110 trade-only row를 포함한 Julia final universe 21개 ticker/22개 trade가 모두 정책 대상이다.
+available_options=ACCEPT_CANONICAL_V2_BEHAVIOR | RETAIN_FROZEN_LEGACY_BEHAVIOR
+
+DECISION_4
+decision_id=COMMON_CANONICAL_GAP_TECHNICAL
+subject=COMMON_STOCK_CANONICAL_AUTHORITY_GAP technical
+status=TECHNICAL_FIX_REQUIRED_FIRST
+consumer=Pattern A / FastCore
+total_behavior_changed_tickers=5
+technical_fix_required_tickers=5
+no_user_decision_required_tickers=0
+user_adjudication_eligible_tickers=0
+affected_trades=2
+technical_fix_required_trades=2
+no_user_decision_required_trades=0
+user_adjudication_eligible_trades=0
+technical_interpretation=canonical V2 missing/partial 5개는 기술 보정 후에만 재판정한다.
+available_options=NONE
+
+DECISION_5
+decision_id=COMMON_CANONICAL_GAP_NO_USER
+subject=COMMON_STOCK_CANONICAL_AUTHORITY_GAP legacy
+status=NO_USER_DECISION_REQUIRED
+consumer=Pattern A
+total_behavior_changed_tickers=42
+technical_fix_required_tickers=0
+no_user_decision_required_tickers=42
+user_adjudication_eligible_tickers=0
+affected_trades=0
+technical_fix_required_trades=0
+no_user_decision_required_trades=0
+user_adjudication_eligible_trades=0
+technical_interpretation=legacy-missing 42개는 canonical authority가 존재하므로 사용자 정책 선택을 묻지 않는다.
+available_options=NONE
+
+DECISION_6
+decision_id=ETF_CANONICAL_PRICE_AUTHORITY
+subject=ETF_CANONICAL_PRICE_AUTHORITY
+status=ARCHITECTURE_DECISION_REQUIRED
+consumer=Stock Report
+total_behavior_changed_tickers=17
+technical_fix_required_tickers=0
+no_user_decision_required_tickers=0
+user_adjudication_eligible_tickers=0
+affected_trades=0
+technical_fix_required_trades=0
+no_user_decision_required_trades=0
+user_adjudication_eligible_trades=0
+technical_interpretation=COMMON 47개와 겹치지 않는 ETF 17개는 별도 architecture 결정이 필요하다.
+available_options=A. Repository V2 ETF support extension | B. ETF-specific canonical price path | C. explicit unsupported policy

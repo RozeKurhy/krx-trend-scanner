@@ -1,0 +1,30 @@
+{
+  "authoritative_decision": "RESOLVED_FROZEN_JULIA_AUTHORITY_152; 194 retained as non-authoritative diagnostic checkpoint",
+  "authority_adjudication_required": false,
+  "fix01_current_baseline_checkpoint": {
+    "exists": true,
+    "path": "artifacts/data/end_to_end_data_parity/v01/julia_parity/v01/fix01/execution/current_baseline_trades.csv",
+    "rows": 194,
+    "sha256": "cb262113601f9cda693a77fcf4d2279b9c36181919a8a55a8567bfff48b044da"
+  },
+  "fix01_current_julia_checkpoint": {
+    "exists": true,
+    "path": "artifacts/data/end_to_end_data_parity/v01/julia_parity/v01/fix01/execution/current_julia_trades.csv",
+    "rows": 169,
+    "sha256": "9fc31a57728943045001035a5cc16f1c024388cc8765a3d3cdb161c2785eef9b"
+  },
+  "frozen_julia_authority": {
+    "exists": true,
+    "path": "artifacts/strategies/julia/v00/julia_v00_2022_trades.csv",
+    "rows": 152,
+    "sha256": "4af8cd49bac85b3facfe8c08d35c628bce07dcf3e5297fa5487408b9277888fc"
+  },
+  "frozen_legacy_baseline": {
+    "exists": true,
+    "path": "artifacts/strategies/julia/v00/baseline_a_fast_core_v2_2022_trades.csv",
+    "rows": 157,
+    "sha256": "ef92c634b4b00c20ee194a35be182185945b4eb0a037116ff9997f7681c9b10f"
+  },
+  "why_152": "152 is the immutable frozen Julia V00 CSV used by the strategy contract and the suppressed legacy comparative report.",
+  "why_194": "194 is the FIX01 current 117-date PIT execution checkpoint; its closure artifact marks it NON_AUTHORITATIVE_INCOMPLETE_PIT_BEHAVIORAL_CHECKPOINT and production is NOT_APPROVED."
+}

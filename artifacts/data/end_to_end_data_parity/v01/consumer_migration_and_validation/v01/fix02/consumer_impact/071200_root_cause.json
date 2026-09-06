@@ -1,0 +1,78 @@
+{
+  "input_fields": {
+    "count": 1020,
+    "fields": {
+      "volume": 1020
+    },
+    "first": [
+      {
+        "absolute_difference": 2284.0,
+        "authority_classification": "LEGACY_RAW_ANCILLARY_DRIFT",
+        "consumer_relevance": "CONSUMER_DEPENDENT_RAW_FIELD",
+        "date": "2021-08-17",
+        "field": "volume",
+        "legacy_value": 148688.0,
+        "relative_difference": 0.015361024426988055,
+        "ticker": "071200",
+        "v2_value": 150972.0
+      }
+    ]
+  },
+  "input_row_set": {
+    "classifications": {
+      "KNOWN_NON_TRADING_SESSION_PROJECTION": 64
+    },
+    "legacy_only": 64,
+    "v2_only": 0
+  },
+  "report_output_changed": true,
+  "report_semantic_difference_paths": [
+    "a_fast_core.action_reason",
+    "a_fast_core.current_trade.first_progressed_date",
+    "a_fast_core.current_trade.first_progressed_effective_trading_date",
+    "a_fast_core.current_trade.lifecycle_class",
+    "a_fast_core.interpretation",
+    "a_fast_core.protection_state.current_pattern_a_score",
+    "a_fast_core.protection_state.exit3_state",
+    "a_fast_core.protection_state.exit4_state",
+    "a_fast_core.protection_state.first_progressed_date",
+    "a_fast_core.protection_state.first_progressed_effective_trading_date",
+    "a_fast_core.protection_state.lifecycle_class",
+    "a_fast_core.protection_state.loss_guard_state",
+    "a_fast_core.protection_state.loss_guard_threshold_pct",
+    "a_fast_core.protection_state.phase",
+    "a_fast_core.protection_state.progressed_hwm_score",
+    "a_fast_core.protection_state.score_drawdown_from_hwm_pt",
+    "a_fast_core.strategy_state",
+    "a_fast_core.trade_history[list]",
+    "current_snapshot.candidate_state",
+    "current_snapshot.is_candidate",
+    "current_snapshot.official_stage",
+    "current_snapshot.pattern_a_score",
+    "data_quality.quality_status",
+    "foreign_flow.flow_state",
+    "header.report_status",
+    "monthly_history.full_monthly_history[list]",
+    "monthly_history.pattern_a_available_observation_count",
+    "monthly_history.recent_12m_history[list]",
+    "monthly_history.score_trend.change_12m",
+    "monthly_history.score_trend.change_1m",
+    "monthly_history.score_trend.change_3m",
+    "monthly_history.score_trend.change_6m",
+    "monthly_history.score_trend.current_score",
+    "monthly_history.score_trend.score_1m_ago",
+    "monthly_history.score_trend.score_3m_ago",
+    "monthly_history.score_trend.score_6m_ago",
+    "monthly_history.stage_transitions[list]",
+    "pattern_a_fast.observation_count",
+    "pattern_a_fast.weekly_history[list]",
+    "summary.bullet_points[list]",
+    "summary.combined_narrative",
+    "summary.headline",
+    "summary.strategy_headline",
+    "trading_value_flow.trading_value_state"
+  ],
+  "root_cause": "canonical analytic-session exclusion and/or canonical raw ancillary authority delta; no unexplained input drift",
+  "ticker": "071200",
+  "unexplained_output_drift": false
+}

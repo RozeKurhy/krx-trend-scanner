@@ -1,0 +1,39 @@
+{
+  "input_fields": {
+    "count": 1,
+    "fields": {
+      "volume": 1
+    },
+    "first": [
+      {
+        "absolute_difference": 52.0,
+        "authority_classification": "LEGACY_RAW_ANCILLARY_DRIFT",
+        "consumer_relevance": "CONSUMER_DEPENDENT_RAW_FIELD",
+        "date": "2016-06-30",
+        "field": "volume",
+        "legacy_value": 194754.0,
+        "relative_difference": 0.0002670035018536205,
+        "ticker": "003550",
+        "v2_value": 194806.0
+      }
+    ]
+  },
+  "input_row_set": {
+    "classifications": {
+      "CANONICAL_ANALYTIC_SESSION_EXCLUSION": 57
+    },
+    "legacy_only": 57,
+    "v2_only": 0
+  },
+  "report_output_changed": true,
+  "report_semantic_difference_paths": [
+    "foreign_flow.flow_state",
+    "header.report_status",
+    "monthly_history.full_monthly_history[list]",
+    "monthly_history.pattern_a_available_observation_count",
+    "trading_value_flow.trading_value_state"
+  ],
+  "root_cause": "canonical analytic-session exclusion and/or canonical raw ancillary authority delta; no unexplained input drift",
+  "ticker": "003550",
+  "unexplained_output_drift": false
+}

@@ -1,0 +1,58 @@
+final_user_authority_adjudication_v03.md
+========================================
+
+USER_DECISION_REQUIRED=true
+USER_DECISION_COUNT=4
+USER_DECISION_COUNT_MACHINE_DERIVED=true
+LEGACY_BEHAVIOR_RETENTION_IMPLEMENTABLE=false
+FINAL_BEHAVIOR_OPTIONS=ACCEPT_CANONICAL_V2_BEHAVIOR | HOLD_PRODUCTION_MIGRATION_AND_REQUIRE_FURTHER_ADJUDICATION
+
+DECISION_1
+decision_id=PATTERN_A_CANONICAL_BEHAVIOR
+subject=Pattern A canonical behavior
+status=READY_FOR_USER_ADJUDICATION
+consumer=Pattern A
+total_behavior_changed_tickers=279
+user_eligible_with_technical_defect=0
+available_options=ACCEPT_CANONICAL_V2_BEHAVIOR | HOLD_PRODUCTION_MIGRATION_AND_REQUIRE_FURTHER_ADJUDICATION
+
+DECISION_2
+decision_id=FASTCORE_CANONICAL_BEHAVIOR
+subject=FastCore canonical behavior
+status=READY_FOR_USER_ADJUDICATION
+consumer=FastCore
+final_behavior_changed_tickers=7
+user_eligible_with_technical_defect=0
+available_options=ACCEPT_CANONICAL_V2_BEHAVIOR | HOLD_PRODUCTION_MIGRATION_AND_REQUIRE_FURTHER_ADJUDICATION
+
+DECISION_3
+decision_id=JULIA_CANONICAL_BEHAVIOR
+subject=Julia canonical behavior
+status=READY_FOR_USER_ADJUDICATION
+consumer=Julia
+final_behavior_changed_tickers=21
+user_eligible_with_technical_defect=0
+available_options=ACCEPT_CANONICAL_V2_BEHAVIOR | HOLD_PRODUCTION_MIGRATION_AND_REQUIRE_FURTHER_ADJUDICATION
+
+DECISION_4
+decision_id=COMMON_CANONICAL_GAP_TECHNICAL
+subject=COMMON_STOCK_CANONICAL_AUTHORITY_GAP technical
+status=TECHNICAL_FIX_REQUIRED_FIRST
+consumer=Pattern A / FastCore
+total_technical_gap_tickers=5
+available_options=NONE
+
+DECISION_5
+decision_id=COMMON_CANONICAL_GAP_NO_USER
+subject=COMMON_STOCK_CANONICAL_AUTHORITY_GAP legacy
+status=NO_USER_DECISION_REQUIRED
+consumer=Pattern A
+available_options=NONE
+
+DECISION_6
+decision_id=ETF_CANONICAL_PRICE_AUTHORITY
+subject=ETF_CANONICAL_PRICE_AUTHORITY
+status=ARCHITECTURE_DECISION_REQUIRED
+consumer=Stock Report
+unique_tickers=17
+available_options=A. Repository V2 ETF support extension | B. ETF-specific canonical price path | C. explicit unsupported policy

@@ -1,0 +1,157 @@
+{
+  "DECISIONS": [
+    {
+      "affected_tickers": 279,
+      "affected_trades": 0,
+      "architecture_decision_required": false,
+      "available_options": [
+        "ACCEPT_CANONICAL_V2_BEHAVIOR",
+        "RETAIN_FROZEN_LEGACY_BEHAVIOR"
+      ],
+      "behavior_change": {
+        "final_candidate_changed_tickers": 261,
+        "gate_or_stage_changed_tickers": 18
+      },
+      "canonical_cause": {
+        "ANALYTIC_SESSION": 0,
+        "KNOWN_AUTHORITY_GAP": 42,
+        "MULTIPLE_EFFECTS": 234,
+        "NON_TRADING_SESSION": 2,
+        "OHLC": 1,
+        "RAW_VOLUME": 0
+      },
+      "consumer": "Pattern A",
+      "status": "READY_FOR_USER_ADJUDICATION",
+      "subject": "Pattern A canonical behavior",
+      "technical_fix_required": {
+        "count": 4,
+        "tickers": [
+          "107640",
+          "176750",
+          "221800",
+          "448900"
+        ]
+      },
+      "technical_interpretation": "4 behavior tickers depend on missing canonical V2 history and are technical-fix-first; the remaining 275 behavior tickers are eligible for a canonical-vs-legacy policy decision.",
+      "user_policy_decision_required": true
+    },
+    {
+      "affected_tickers": 6,
+      "affected_trades": 7,
+      "architecture_decision_required": false,
+      "available_options": [
+        "ACCEPT_CANONICAL_V2_BEHAVIOR",
+        "RETAIN_FROZEN_LEGACY_BEHAVIOR"
+      ],
+      "behavior_change": {
+        "matched_behavior_changed_trades": 5,
+        "membership_removed_trades": 2
+      },
+      "canonical_cause": {
+        "ANALYTIC_SESSION": 0,
+        "KNOWN_AUTHORITY_GAP": 2,
+        "MULTIPLE_EFFECTS": 4,
+        "OHLC": 0,
+        "RAW_VOLUME": 0
+      },
+      "consumer": "FastCore",
+      "status": "READY_FOR_USER_ADJUDICATION",
+      "subject": "FastCore canonical behavior",
+      "technical_fix_required": {
+        "count": 2,
+        "trades": [
+          "107640_01",
+          "176750_01"
+        ]
+      },
+      "technical_interpretation": "2 removed trades are canonical V2 coverage defects; 5 matched trade rows remain policy-eligible semantic impact.",
+      "user_policy_decision_required": true
+    },
+    {
+      "affected_tickers": 20,
+      "affected_trades": 22,
+      "architecture_decision_required": false,
+      "available_options": [
+        "ACCEPT_CANONICAL_V2_BEHAVIOR",
+        "RETAIN_FROZEN_LEGACY_BEHAVIOR"
+      ],
+      "behavior_change": {
+        "matched_behavior_changed_trades": 21,
+        "membership_added_trades": 1
+      },
+      "canonical_cause": {
+        "ANALYTIC_SESSION": 0,
+        "KNOWN_AUTHORITY_GAP": 0,
+        "MULTIPLE_EFFECTS": 7,
+        "OHLC": 1,
+        "RAW_VOLUME": 12
+      },
+      "consumer": "Julia",
+      "status": "READY_FOR_USER_ADJUDICATION",
+      "subject": "Julia canonical behavior",
+      "technical_fix_required": {
+        "count": 0
+      },
+      "technical_interpretation": "All 21 matched trade changes and the 004370_02 addition have resolved canonical causes.",
+      "user_policy_decision_required": true
+    },
+    {
+      "affected_tickers": 47,
+      "affected_trades": 2,
+      "architecture_decision_required": false,
+      "available_options": [],
+      "behavior_change": {
+        "canonical_missing": 5,
+        "legacy_missing": 42
+      },
+      "canonical_cause": "KNOWN_AUTHORITY_GAP",
+      "consumer": "Pattern A / FastCore",
+      "status": "TECHNICAL_FIX_REQUIRED_FIRST",
+      "subject": "COMMON_STOCK_CANONICAL_AUTHORITY_GAP",
+      "technical_fix_required": {
+        "count": 5,
+        "tickers": [
+          "107640",
+          "176750",
+          "221800",
+          "303360",
+          "448900"
+        ]
+      },
+      "technical_interpretation": "42 are legacy-missing/partial with canonical history available; 5 are canonical V2-missing/partial and must be fixed before behavior policy adjudication.",
+      "user_policy_decision_required": false
+    },
+    {
+      "affected_tickers": 17,
+      "affected_trades": 0,
+      "architecture_decision_required": true,
+      "available_options": [
+        "A. Repository V2 ETF support extension",
+        "B. ETF-specific canonical price path",
+        "C. explicit unsupported policy"
+      ],
+      "behavior_change": {
+        "authority_gap_tickers": 17
+      },
+      "canonical_cause": "KNOWN_AUTHORITY_GAP",
+      "consumer": "Stock Report",
+      "status": "ARCHITECTURE_DECISION_REQUIRED",
+      "subject": "ETF_CANONICAL_PRICE_AUTHORITY",
+      "technical_fix_required": {
+        "count": 0
+      },
+      "technical_interpretation": "ETF 17 are disjoint from the 47 COMMON gap tickers and lack V2 adjusted/raw authority.",
+      "user_policy_decision_required": true
+    }
+  ],
+  "USER_DECISION_COUNT": 3,
+  "USER_DECISION_REQUIRED": true,
+  "technical_fix_required_first_items": [
+    "COMMON_STOCK_CANONICAL_AUTHORITY_GAP"
+  ],
+  "user_adjudication_items": [
+    "Pattern A canonical behavior",
+    "FastCore canonical behavior",
+    "Julia canonical behavior"
+  ]
+}
