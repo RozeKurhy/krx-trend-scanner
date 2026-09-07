@@ -9,7 +9,7 @@ canonical observations explicit for downstream consumers.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date, datetime
 from typing import Any, Iterable, Mapping, Sequence
 
@@ -42,14 +42,21 @@ class CoverageMetadata(dict):
 
 
 QUARTER_PERIODS = ("Q1", "Q2", "Q3", "Q4")
-REQUIRED_SOURCE_METRICS = (
+QUARTER_REQUIRED_METRICS = (
     "revenue",
     "operating_income",
     "net_income",
     "operating_cash_flow",
+)
+ANNUAL_REQUIRED_METRICS = (
+    "revenue",
+    "operating_income",
+    "net_income",
     "equity",
     "liabilities",
 )
+OPTIONAL_ANNUAL_METRICS = ("operating_cash_flow",)
+REQUIRED_SOURCE_METRICS = tuple(dict.fromkeys(QUARTER_REQUIRED_METRICS + ANNUAL_REQUIRED_METRICS))
 _STATUS_PRIORITY = {
     PERIOD_AMBIGUOUS: 50,
     BASIS_MISMATCH: 40,
@@ -166,6 +173,7 @@ class MultiPeriodCoverageSlot:
     reason: str | None = None
     observation_count: int = 0
     metrics: tuple[str, ...] = ()
+    missing_metrics: tuple[str, ...] = ()
 
     @property
     def ready(self) -> bool:
@@ -180,6 +188,7 @@ class MultiPeriodCoverageSlot:
             "reason": self.reason,
             "observation_count": self.observation_count,
             "metrics": list(self.metrics),
+            "missing_metrics": list(self.missing_metrics),
         }
 
 
@@ -382,37 +391,67 @@ class MultiPeriodFundamentalsProvider:
         years = _normalise_years(fiscal_years, cutoff)
         # A year is built at most once.  This keeps comparison history from
         # re-running the same provider pipeline when callers pass duplicates.
-        builds = tuple(
-            self.periodization_provider.build(
+        builds: list[PeriodizationBuild] = []
+        built_years: list[str] = []
+
+        def build_year(year: str) -> None:
+            if year in built_years:
+                return
+            builds.append(self.periodization_provider.build(
                 str(ticker), year, cutoff_text, company=company,
                 company_metadata=company_metadata, force_refresh=force_refresh,
-            )
-            for year in years
-        )
-        observations = tuple(
-            item
-            for build in builds
-            for item in build.result.observations
-        )
+            ))
+            built_years.append(year)
+
+        for year in years:
+            build_year(year)
+
+        builds_tuple = tuple(builds)
+        observations = tuple(item for build in builds_tuple for item in build.result.observations)
         family = ""
-        if builds:
-            family = _family_text(getattr(builds[0], "company_family", "UNKNOWN"))
+        if builds_tuple:
+            family = _family_text(getattr(builds_tuple[0], "company_family", "UNKNOWN"))
         if family == "UNKNOWN":
             family = ""
         if not family:
             family = _family_text((company_metadata or company or {}).get("company_family"))
         resolved_corp_code = next(
-            (str(item.corp_code) for build in builds for item in build.facts if item.corp_code),
-            next((str(getattr(build, "corp_code")) for build in builds if getattr(build, "corp_code", None)), None),
+            (str(item.corp_code) for build in builds_tuple for item in build.facts if item.corp_code),
+            next((str(getattr(build, "corp_code")) for build in builds_tuple if getattr(build, "corp_code", None)), None),
         )
-        return build_multi_period_result(
+        initial = build_multi_period_result(
             ticker=str(ticker),
             requested_as_of=cutoff_text,
             observations=observations,
             company_family=family or None,
             corp_code=resolved_corp_code,
-            periodization_builds=builds,
+            periodization_builds=builds_tuple,
         )
+        latest_fy = _year(initial.latest_fy)
+        additional_years: list[str] = []
+        if latest_fy is not None:
+            required_years = tuple(range(latest_fy - 5, latest_fy + 1))
+            additional_years = [str(year) for year in required_years if str(year) not in built_years]
+            for year in additional_years:
+                build_year(year)
+        final_builds = tuple(builds)
+        final_observations = tuple(item for build in final_builds for item in build.result.observations)
+        final = build_multi_period_result(
+            ticker=str(ticker),
+            requested_as_of=cutoff_text,
+            observations=final_observations,
+            company_family=family or None,
+            corp_code=resolved_corp_code,
+            periodization_builds=final_builds,
+        )
+        plan_diagnostic = {
+            "type": "ANNUAL_WINDOW_BUILD_PLAN",
+            "initial_requested_years": list(years),
+            "latest_available_fy": initial.latest_fy,
+            "additional_historical_fy_builds": additional_years,
+            "built_years": list(built_years),
+        }
+        return replace(final, diagnostics=final.diagnostics + (plan_diagnostic,))
 
 
 def build_multi_period_result(
@@ -576,10 +615,17 @@ def _slot_for_quarter(
 ) -> MultiPeriodCoverageSlot:
     values = tuple(items)
     status, reason = _observation_status(values)
+    metrics = tuple(sorted({str(item.metric) for item in values}))
+    missing_metrics = tuple(sorted(set(QUARTER_REQUIRED_METRICS) - set(metrics)))
+    if missing_metrics:
+        reason = "REQUIRED_METRIC_MISSING" if status == READY else \
+            f"{reason};REQUIRED_METRIC_MISSING" if reason else "REQUIRED_METRIC_MISSING"
+        if status == READY:
+            status = DATA_UNAVAILABLE
     return MultiPeriodCoverageSlot(
         identity=_quarter_label(identity), fiscal_year=str(identity[0]),
         fiscal_period=f"Q{identity[1]}", status=status, reason=reason,
-        observation_count=len(values), metrics=tuple(sorted({str(item.metric) for item in values})),
+        observation_count=len(values), metrics=metrics, missing_metrics=missing_metrics,
     )
 
 
@@ -589,10 +635,17 @@ def _slot_for_annual(
 ) -> MultiPeriodCoverageSlot:
     values = tuple(items)
     status, reason = _observation_status(values)
+    metrics = tuple(sorted({str(item.metric) for item in values}))
+    missing_metrics = tuple(sorted(set(ANNUAL_REQUIRED_METRICS) - set(metrics)))
+    if missing_metrics:
+        reason = "REQUIRED_METRIC_MISSING" if status == READY else \
+            f"{reason};REQUIRED_METRIC_MISSING" if reason else "REQUIRED_METRIC_MISSING"
+        if status == READY:
+            status = DATA_UNAVAILABLE
     return MultiPeriodCoverageSlot(
         identity=str(year), fiscal_year=str(year), fiscal_period="FY",
         status=status, reason=reason, observation_count=len(values),
-        metrics=tuple(sorted({str(item.metric) for item in values})),
+        metrics=metrics, missing_metrics=missing_metrics,
     )
 
 
@@ -601,12 +654,11 @@ def _metric_gap_diagnostics(
 ) -> list[Mapping[str, Any]]:
     diagnostics: list[Mapping[str, Any]] = []
     for slot in slots:
-        missing = sorted(set(REQUIRED_SOURCE_METRICS) - set(slot.metrics))
-        if missing and slot.status == READY:
+        if slot.missing_metrics:
             diagnostics.append({
                 "type": "CANONICAL_METRIC_MISSING",
                 "identity": slot.identity,
-                "missing_metrics": missing,
+                "missing_metrics": list(slot.missing_metrics),
             })
     return diagnostics
 
@@ -699,6 +751,9 @@ __all__ = [
     "MultiPeriodFundamentalsResult",
     "MultiPeriodFundamentalsProvider",
     "MultiPeriodProvider",
+    "QUARTER_REQUIRED_METRICS",
+    "ANNUAL_REQUIRED_METRICS",
+    "OPTIONAL_ANNUAL_METRICS",
     "REQUIRED_SOURCE_METRICS",
     "build_multi_period_result",
     "build_multi_period_fundamentals",

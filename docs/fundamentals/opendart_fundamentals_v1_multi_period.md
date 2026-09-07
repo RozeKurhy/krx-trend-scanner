@@ -32,6 +32,8 @@ Boundary 계약
 ----------------------------------------------------------------------
 
 - 기본 연도 범위는 requested_as_of의 연도부터 과거 5년까지 6FY다.
+- 초기 연도 범위에서 최신 PIT-usable FY를 찾은 뒤, 그 FY를 끝점으로 6FY를
+  다시 anchor한다. 필요한 과거 FY만 추가 build하며 year당 build는 한 번이다.
 - 분기 비교 슬롯은 16개(12Q 표시 + 전년 동기 비교 4Q)다.
 - 연간 비교 슬롯은 6FY(5Y 표시 + 비교 1FY)다.
 - `quarters`/`annuals`는 슬롯에 포함된 flat canonical observations이며,
@@ -43,6 +45,11 @@ Boundary 계약
 - 동일 window 내 metric의 `fs_div_used` 또는 currency가 섞이면
   `basis_consistent`/`currency_consistent`가 false가 되고 comparison/display
   readiness가 false가 된다.
+- 분기 slot은 `revenue`, `operating_income`, `net_income`,
+  `operating_cash_flow`가 모두 canonical READY여야 한다. 연간 slot은
+  `revenue`, `operating_income`, `net_income`, `equity`, `liabilities`가
+  필요하며 annual OCF는 optional이다. required metric 누락은
+  `DATA_UNAVAILABLE`/`REQUIRED_METRIC_MISSING`으로 남는다.
 - FINANCIAL company family는 general-company series를
   `NOT_APPLICABLE`로 유지하며 금융 전용 metric을 만들지 않는다.
 

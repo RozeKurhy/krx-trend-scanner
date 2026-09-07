@@ -75,6 +75,50 @@ def test_missing_quarter_is_preserved_without_silent_compression():
     assert [item.identity for item in result.quarter_slots].count("2023Q2") == 1
 
 
+def test_required_quarter_metric_missing_blocks_slot_and_windows():
+    rows = [
+        item for item in _canonical()
+        if not (item.fiscal_year == "2023" and item.fiscal_period == "Q2"
+                and item.metric == "operating_cash_flow")
+    ]
+    result = build_multi_period_result(
+        ticker="TEST", requested_as_of="2024-12-31", observations=rows
+    )
+    slot = next(item for item in result.quarter_slots if item.identity == "2023Q2")
+    assert slot.status == "DATA_UNAVAILABLE"
+    assert slot.reason == "REQUIRED_METRIC_MISSING"
+    assert slot.missing_metrics == ("operating_cash_flow",)
+    assert result.has_16q_comparison_window is False
+    assert result.has_12q_display_window is False
+    assert any(item["missing_metrics"] == ["operating_cash_flow"] for item in result.diagnostics)
+
+
+def test_required_annual_metric_missing_blocks_year_but_optional_ocf_does_not():
+    rows = [
+        item for item in _canonical()
+        if not (item.fiscal_year == "2022" and item.fiscal_period == "FY"
+                and item.metric == "liabilities")
+    ]
+    result = build_multi_period_result(
+        ticker="TEST", requested_as_of="2024-12-31", observations=rows
+    )
+    year = next(item for item in result.annual_slots if item.identity == "2022")
+    assert year.status == "DATA_UNAVAILABLE"
+    assert year.missing_metrics == ("liabilities",)
+    assert result.has_6fy_comparison_window is False
+    assert result.has_5y_display_window is False
+
+    optional_rows = [
+        item for item in _canonical()
+        if not (item.fiscal_period == "FY" and item.metric == "operating_cash_flow")
+    ]
+    optional_result = build_multi_period_result(
+        ticker="TEST", requested_as_of="2024-12-31", observations=optional_rows
+    )
+    assert all(item.status == "READY" for item in optional_result.annual_slots)
+    assert optional_result.has_6fy_comparison_window is True
+
+
 def test_ambiguous_and_future_observations_fail_closed():
     result = build_multi_period_result(
         ticker="TEST", requested_as_of="2024-12-31",
@@ -129,3 +173,49 @@ def test_provider_builds_each_requested_year_once_and_reuses_periodization_autho
     assert calls == ["2024", "2023"]
     assert result.corp_code == "00000001"
     assert result.requested_as_of == "2024-12-31"
+
+
+def test_provider_anchors_annual_window_to_latest_available_fy_and_builds_only_missing_history():
+    calls: list[str] = []
+
+    class AnnualStub:
+        def build(self, ticker, fiscal_year, requested_as_of, **kwargs):
+            calls.append(str(fiscal_year))
+            rows = ()
+            if str(fiscal_year) in {"2020", "2021", "2022", "2023", "2024", "2025"}:
+                rows = tuple(_obs(int(fiscal_year), "FY", metric) for metric in METRICS)
+            return SimpleNamespace(
+                company_family="NON_FINANCIAL", facts=rows,
+                result=PeriodizationResult(rows), skipped_anchors=(), fiscal_year=str(fiscal_year),
+            )
+
+    provider = MultiPeriodFundamentalsProvider(AnnualStub())
+    result = provider.build(
+        "TEST", "2026-09-07", fiscal_years=("2021", "2022", "2023", "2024", "2025", "2026")
+    )
+    assert calls == ["2021", "2022", "2023", "2024", "2025", "2026", "2020"]
+    assert result.latest_fy == "2025"
+    assert result.annual_slots[0].identity == "2020"
+    assert result.has_6fy_comparison_window is True
+    assert result.has_5y_display_window is True
+
+
+def test_provider_does_not_add_older_history_when_current_fy_is_available():
+    calls: list[str] = []
+
+    class CurrentStub:
+        def build(self, ticker, fiscal_year, requested_as_of, **kwargs):
+            calls.append(str(fiscal_year))
+            rows = tuple(_obs(int(fiscal_year), "FY", metric) for metric in METRICS) \
+                if str(fiscal_year) == "2026" else ()
+            return SimpleNamespace(
+                company_family="NON_FINANCIAL", facts=rows,
+                result=PeriodizationResult(rows), skipped_anchors=(), fiscal_year=str(fiscal_year),
+            )
+
+    provider = MultiPeriodFundamentalsProvider(CurrentStub())
+    result = provider.build(
+        "TEST", "2026-12-31", fiscal_years=("2021", "2022", "2023", "2024", "2025", "2026")
+    )
+    assert calls == ["2021", "2022", "2023", "2024", "2025", "2026"]
+    assert result.latest_fy == "2026"
