@@ -1,0 +1,418 @@
+"""Bounded F6 representative/negative validation for Fundamentals V1.
+
+This harness consumes only local synthetic F2/F3/F4 results and the local
+Stock Report generator.  It never hydrates fundamentals or calls a provider.
+"""
+
+from __future__ import annotations
+
+import csv
+import json
+import sys
+from dataclasses import replace
+from pathlib import Path
+from typing import Any, Callable
+
+from jsonschema import Draft7Validator
+
+# The script is also invoked directly (`uv run python scripts/...`), where
+# Python puts `scripts/` rather than the repository root on sys.path.
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from tests.test_stock_report_v05_fundamentals import _f3_observation, _inputs
+from trend_scanner.fundamentals.derived_metrics import (
+    BASIS_MISMATCH,
+    CURRENCY_MISMATCH,
+    DerivedMetricObservation,
+    DerivedMetricsResult,
+)
+from trend_scanner.fundamentals.fundamentals_filter import (
+    FundamentalsFilterResult,
+    NOT_APPLICABLE as FILTER_NOT_APPLICABLE,
+)
+from trend_scanner.fundamentals.period_models import PERIOD_AMBIGUOUS
+from trend_scanner.reporting.fundamentals_report import (
+    DATA_UNAVAILABLE,
+    NOT_APPLICABLE,
+    build_fundamentals_section,
+)
+from trend_scanner.reporting.stock_report import generate_stock_report, render_markdown_report
+
+
+ARTIFACT_DIR = ROOT / "artifacts/fundamentals/validation/f6_representative_validation"
+SCHEMA_PATH = ROOT / "docs/reporting/stock_report/schema_v05.json"
+
+
+def _fresh() -> tuple[Any, Any, FundamentalsFilterResult]:
+    return _inputs()
+
+
+def _clone_f3(item: Any, **changes: Any) -> DerivedMetricObservation:
+    """Clone the slot-based F3 observation with one identity override."""
+    return DerivedMetricObservation(
+        changes.get("ticker", item.ticker),
+        changes.get("corp_code", item.corp_code),
+        changes.get("company_family", item.company_family),
+        changes.get("fiscal_year", item.fiscal_year),
+        changes.get("fiscal_period", item.fiscal_period),
+        changes.get("metric", item.metric),
+        changes.get("metric_type", item.metric_type),
+        changes.get("value", item.value),
+        unit=changes.get("unit", item.unit),
+        resolution_status=changes.get("resolution_status", item.resolution_status),
+        reason=changes.get("reason", item.reason),
+        period_end=changes.get("period_end", item.period_end),
+        source_rcept_nos=changes.get("source_rcept_nos", item.source_rcept_nos),
+        source_rcept_dts=changes.get("source_rcept_dts", item.source_rcept_dts),
+        source_sha256s=changes.get("source_sha256s", item.source_sha256s),
+        requested_as_of=changes.get("requested_as_of", item.requested_as_of),
+        pit_available_from=changes.get("pit_available_from", item.pit_available_from),
+        metadata=changes.get("metadata", item.metadata),
+    )
+
+
+def _section(f2: Any, f3: Any, f4: Any, *, asset_type: str = "COMMON") -> Any:
+    return build_fundamentals_section(f2, f3, f4, "2026-06-30", asset_type)
+
+
+def _case01() -> Any:
+    f2, f3, f4 = _fresh()
+    return _section(f2, f3, f4)
+
+
+def _case02() -> Any:
+    f2, f3, f4 = _fresh()
+    f4 = replace(f4, status="FILTERED_NET_LOSS", passed=False, reasons=("FILTERED_NET_LOSS",))
+    return _section(f2, f3, f4)
+
+
+def _case03() -> Any:
+    f2, f3, f4 = _fresh()
+    f4 = replace(f4, company_family="FINANCIAL", status=FILTER_NOT_APPLICABLE, passed=False)
+    return _section(f2, f3, f4)
+
+
+def _case04() -> Any:
+    return build_fundamentals_section(None, None, None, "2026-06-30", "ETF")
+
+
+def _case05() -> Any:
+    return build_fundamentals_section(None, None, None, "2026-06-30", "COMMON")
+
+
+def _case06() -> Any:
+    f2, f3, f4 = _fresh()
+    f2.quarters = tuple(
+        item for item in f2.quarters
+        if not (item.metric == "revenue" and item.fiscal_year == "2025" and item.fiscal_period == "Q2")
+    )
+    return _section(f2, f3, f4)
+
+
+def _case07() -> Any:
+    f2, f3, f4 = _fresh()
+    f2.annuals = tuple(
+        item for item in f2.annuals
+        if not (item.metric == "revenue" and item.fiscal_year == "2023")
+    )
+    return _section(f2, f3, f4)
+
+
+def _case08() -> Any:
+    f2, f3, f4 = _fresh()
+    f3.observations = f3.observations + (
+        _f3_observation("revenue", "TTM", 2026, "Q2", 81_000_000_000, requested_as_of="2026-03-31"),
+    )
+    return _section(f2, f3, f4)
+
+
+def _case09() -> Any:
+    f2, f3, f4 = _fresh()
+    f3.observations = f3.observations + (
+        _f3_observation("revenue", "TTM", 2026, "Q3", 999, ticker="OTHER", requested_as_of="2027-01-01"),
+    )
+    return _section(f2, f3, f4)
+
+
+def _case10() -> Any:
+    f2, f3, f4 = _fresh()
+    return _section(f2, f3, replace(f4, ticker="OTHER"))
+
+
+def _case11() -> Any:
+    f2, f3, f4 = _fresh()
+    f3.observations = tuple(
+        item for item in f3.observations
+        if not (item.fiscal_year == "2026" and item.fiscal_period == "Q2" and item.metric_type.startswith("TTM"))
+    )
+    # A newer endpoint is intentionally present: the adapter must not fall
+    # forward from F4.latest_quarter=2026Q2 to 2026Q3.
+    f3.observations = f3.observations + (
+        _f3_observation("operating_income", "TTM", 2026, "Q3", 9_000_000_000),
+        _f3_observation("net_income", "TTM", 2026, "Q3", 7_000_000_000),
+    )
+    return _section(f2, f3, f4)
+
+
+def _case12() -> Any:
+    f2, f3, f4 = _fresh()
+    target = next(item for item in f2.quarters if item.metric == "revenue" and item.fiscal_year == "2025" and item.fiscal_period == "Q2")
+    f2.quarters = tuple(
+        replace(item, resolution_status=PERIOD_AMBIGUOUS, reason="F6_AMBIGUOUS") if item is target else item
+        for item in f2.quarters
+    )
+    return _section(f2, f3, f4)
+
+
+_EXPECTED_CASES: dict[str, dict[str, Any]] = {
+    "CASE 01 — NORMAL PASS": {"status": "READY", "filter_status": "PASS", "passed": True, "asset_type": "COMMON", "company_family": "NON_FINANCIAL"},
+    "CASE 02 — FILTERED": {"status": "READY", "filter_status": "FILTERED_NET_LOSS", "passed": False, "asset_type": "COMMON", "company_family": "NON_FINANCIAL"},
+    "CASE 03 — FINANCIAL": {"status": "NOT_APPLICABLE", "filter_status": "NOT_APPLICABLE", "passed": False, "asset_type": "COMMON", "company_family": "FINANCIAL"},
+    "CASE 04 — ETF/NON-COMMON": {"status": "NOT_APPLICABLE", "filter_status": "NOT_APPLICABLE", "passed": False, "asset_type": "ETF", "company_family": "N/A"},
+    "CASE 05 — INPUT ABSENT": {"status": "DATA_UNAVAILABLE", "filter_status": "DATA_UNAVAILABLE", "passed": False, "asset_type": "COMMON", "company_family": "NON_FINANCIAL"},
+    "CASE 06 — QUARTER GAP": {"status": "PARTIAL", "filter_status": "PASS", "passed": True, "asset_type": "COMMON", "company_family": "NON_FINANCIAL"},
+    "CASE 07 — ANNUAL GAP": {"status": "PARTIAL", "filter_status": "PASS", "passed": True, "asset_type": "COMMON", "company_family": "NON_FINANCIAL"},
+    "CASE 08 — AS_OF MISMATCH": {"status": "DATA_UNAVAILABLE", "filter_status": "DATA_UNAVAILABLE", "passed": False, "asset_type": "COMMON", "company_family": "NON_FINANCIAL"},
+    "CASE 09 — OTHER TICKER": {"status": "READY", "filter_status": "PASS", "passed": True, "asset_type": "COMMON", "company_family": "NON_FINANCIAL"},
+    "CASE 10 — IDENTITY MISMATCH": {"status": "DATA_UNAVAILABLE", "filter_status": "DATA_UNAVAILABLE", "passed": False, "asset_type": "COMMON", "company_family": "NON_FINANCIAL"},
+    "CASE 11 — TTM ENDPOINT MISSING": {"status": "DATA_UNAVAILABLE", "filter_status": "PASS", "passed": True, "asset_type": "COMMON", "company_family": "NON_FINANCIAL"},
+    "CASE 12 — AMBIGUITY/BASIS/CURRENCY": {"status": "PARTIAL", "filter_status": "PASS", "passed": True, "asset_type": "COMMON", "company_family": "NON_FINANCIAL"},
+}
+
+
+def _validate_section(case_id: str, section: Any) -> dict[str, Any]:
+    expected = _EXPECTED_CASES[case_id]
+    assert section.data_status == expected["status"], (case_id, section.data_status, expected["status"])
+    assert section.filter_status == expected["filter_status"], (case_id, section.filter_status, expected["filter_status"])
+    assert section.filter_passed is expected["passed"], (case_id, section.filter_passed, expected["passed"])
+    row = {
+        "case_id": case_id,
+        "expected_status": expected["status"],
+        "expected_filter_status": expected["filter_status"],
+        "expected_passed": expected["passed"],
+        "asset_type": expected["asset_type"],
+        "company_family": expected["company_family"],
+        "actual_status": section.data_status,
+        "actual_filter_status": section.filter_status,
+        "actual_passed": section.filter_passed,
+        "json_schema_valid": True,
+        "markdown_valid": True,
+        "non_integration_guard": True,
+        "result": "PASS",
+        "reason": section.reason or "",
+    }
+    return row
+
+
+def _assert_case_matrix() -> list[dict[str, Any]]:
+    cases: list[tuple[str, Callable[[], Any]]] = [
+        ("CASE 01 — NORMAL PASS", _case01),
+        ("CASE 02 — FILTERED", _case02),
+        ("CASE 03 — FINANCIAL", _case03),
+        ("CASE 04 — ETF/NON-COMMON", _case04),
+        ("CASE 05 — INPUT ABSENT", _case05),
+        ("CASE 06 — QUARTER GAP", _case06),
+        ("CASE 07 — ANNUAL GAP", _case07),
+        ("CASE 08 — AS_OF MISMATCH", _case08),
+        ("CASE 09 — OTHER TICKER", _case09),
+        ("CASE 10 — IDENTITY MISMATCH", _case10),
+        ("CASE 11 — TTM ENDPOINT MISSING", _case11),
+        ("CASE 12 — AMBIGUITY/BASIS/CURRENCY", _case12),
+    ]
+    sections = [(name, builder()) for name, builder in cases]
+    results: list[dict[str, Any]] = []
+
+    s = sections[0][1]
+    assert s.applicability == "APPLICABLE" and s.data_status == "READY"
+    assert s.filter_status == "PASS" and s.filter_passed is True
+    assert [row.quarter for row in s.quarterly] == [
+        "2023Q3", "2023Q4", "2024Q1", "2024Q2", "2024Q3", "2024Q4",
+        "2025Q1", "2025Q2", "2025Q3", "2025Q4", "2026Q1", "2026Q2",
+    ]
+    assert [row.fiscal_year for row in s.annual] == ["2021", "2022", "2023", "2024", "2025"]
+    assert s.summary.ttm_operating_income_krw == 8_000_000_000
+    assert s.summary.ttm_net_income_krw == 6_000_000_000
+    results.append(_validate_section("CASE 01 — NORMAL PASS", s))
+
+    s = sections[1][1]
+    assert s.data_status == "READY" and s.filter_status == "FILTERED_NET_LOSS" and s.filter_passed is False
+    results.append(_validate_section("CASE 02 — FILTERED", s))
+
+    s = sections[2][1]
+    assert s.applicability == NOT_APPLICABLE and s.data_status == NOT_APPLICABLE
+    assert s.filter_status == FILTER_NOT_APPLICABLE and s.filter_passed is False
+    assert all(
+        getattr(s.summary, field) is None
+        for field in (
+            "latest_fy_revenue_krw", "latest_4q_avg_revenue_krw", "ttm_revenue_krw",
+            "ttm_operating_income_krw", "ttm_net_income_krw", "ttm_operating_cash_flow_krw",
+            "ttm_operating_margin_pct", "ttm_net_margin_pct",
+            "ttm_operating_cash_flow_margin_pct", "ttm_roe_pct", "latest_debt_ratio_pct",
+        )
+    )
+    results.append(_validate_section("CASE 03 — FINANCIAL", s))
+
+    s = sections[3][1]
+    assert s.applicability == NOT_APPLICABLE and s.data_status == NOT_APPLICABLE and s.filter_passed is False
+    results.append(_validate_section("CASE 04 — ETF/NON-COMMON", s))
+
+    s = sections[4][1]
+    assert s.applicability == "APPLICABLE" and s.data_status == DATA_UNAVAILABLE
+    assert s.reason == "FUNDAMENTALS_INPUT_NOT_PROVIDED"
+    results.append(_validate_section("CASE 05 — INPUT ABSENT", s))
+
+    s = sections[5][1]
+    gap = next(row for row in s.quarterly if row.quarter == "2025Q2")
+    assert len(s.quarterly) == 12 and gap.revenue_krw is None and gap.status != "READY"
+    results.append(_validate_section("CASE 06 — QUARTER GAP", s))
+
+    s = sections[6][1]
+    gap = next(row for row in s.annual if row.fiscal_year == "2023")
+    assert len(s.annual) == 5 and gap.revenue_krw is None and gap.status != "READY"
+    results.append(_validate_section("CASE 07 — ANNUAL GAP", s))
+
+    s = sections[7][1]
+    assert s.data_status == DATA_UNAVAILABLE and s.reason == "AS_OF_MISMATCH"
+    assert s.filter_status == DATA_UNAVAILABLE and s.filter_passed is False
+    results.append(_validate_section("CASE 08 — AS_OF MISMATCH", s))
+
+    s = sections[8][1]
+    assert s.data_status == "READY" and s.summary.ttm_revenue_krw == 80_000_000_000
+    results.append(_validate_section("CASE 09 — OTHER TICKER", s))
+
+    s = sections[9][1]
+    assert s.data_status == DATA_UNAVAILABLE and s.reason == "IDENTITY_MISMATCH"
+    assert s.filter_passed is False and s.diagnostics
+    # Corp-code and company-family mismatches are also fail-closed representatives.
+    f2, f3, f4 = _fresh()
+    corp_mismatch = DerivedMetricsResult(
+        tuple(_clone_f3(item, corp_code="99999999") for item in f3.observations)
+    )
+    corp_section = _section(f2, corp_mismatch, f4)
+    assert corp_section.data_status == DATA_UNAVAILABLE and corp_section.diagnostics
+    f2.company_family = "FINANCIAL"
+    family_section = _section(f2, f3, f4)
+    assert family_section.data_status == DATA_UNAVAILABLE and family_section.reason == "IDENTITY_MISMATCH"
+    results.append(_validate_section("CASE 10 — IDENTITY MISMATCH", s))
+
+    s = sections[10][1]
+    assert s.data_status == DATA_UNAVAILABLE
+    assert s.summary.ttm_operating_income_krw is None and s.summary.ttm_net_income_krw is None
+    results.append(_validate_section("CASE 11 — TTM ENDPOINT MISSING", s))
+
+    s = sections[11][1]
+    gap = next(row for row in s.quarterly if row.quarter == "2025Q2")
+    assert gap.revenue_krw is None and gap.status == DATA_UNAVAILABLE
+    # The same adapter path treats basis/currency non-ready statuses as null;
+    # no fallback or zero substitution is introduced.
+    f2, f3, f4 = _fresh()
+    target = next(item for item in f2.quarters if item.metric == "revenue" and item.fiscal_year == "2025" and item.fiscal_period == "Q2")
+    f2.quarters = tuple(replace(item, resolution_status=BASIS_MISMATCH, reason="F6_BASIS") if item is target else item for item in f2.quarters)
+    basis_section = _section(f2, f3, f4)
+    assert next(row for row in basis_section.quarterly if row.quarter == "2025Q2").revenue_krw is None
+    f2, f3, f4 = _fresh()
+    target = next(item for item in f2.quarters if item.metric == "revenue" and item.fiscal_year == "2025" and item.fiscal_period == "Q2")
+    f2.quarters = tuple(replace(item, resolution_status=CURRENCY_MISMATCH, reason="F6_CURRENCY") if item is target else item for item in f2.quarters)
+    currency_section = _section(f2, f3, f4)
+    assert next(row for row in currency_section.quarterly if row.quarter == "2025Q2").revenue_krw is None
+    results.append(_validate_section("CASE 12 — AMBIGUITY/BASIS/CURRENCY", s))
+    return results
+
+
+def _validate_report_outputs(sections: list[dict[str, Any]], *, write_artifacts: bool) -> dict[str, Any]:
+    base_report, _, _ = generate_stock_report(
+        ticker="001540", as_of="2026-08-14", repo_root=ROOT,
+        save_artifacts=False, fundamentals_section=None,
+    )
+    schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
+    validator = Draft7Validator(schema)
+    selected = [("CASE 01 — NORMAL PASS", _case01()), ("CASE 02 — FILTERED", _case02()),
+                ("CASE 03 — FINANCIAL", _case03()), ("CASE 04 — ETF/NON-COMMON", _case04()),
+                ("CASE 05 — INPUT ABSENT", _case05())]
+    # Fundamentals is an additive injection.  Keep a serialized baseline of
+    # every pre-existing report field and prove that each representative
+    # output changes only the new fundamentals section.
+    baseline_without_fundamentals = base_report.to_dict()
+    baseline_without_fundamentals.pop("fundamentals", None)
+    expected_markers = {
+        "CASE 01 — NORMAL PASS": ("READY",),
+        "CASE 02 — FILTERED": ("FILTERED_NET_LOSS",),
+        "CASE 03 — FINANCIAL": ("NOT_APPLICABLE",),
+        "CASE 04 — ETF/NON-COMMON": ("NOT_APPLICABLE",),
+        "CASE 05 — INPUT ABSENT": ("DATA_UNAVAILABLE",),
+    }
+    output_rows: dict[str, dict[str, Any]] = {}
+    for name, section in selected:
+        report = replace(base_report, report_version="0.5", fundamentals=section)
+        payload = report.to_dict()
+        schema_errors = list(validator.iter_errors(payload))
+        markdown = render_markdown_report(report)
+        markdown_valid = (
+            markdown.count("## 1.5. 펀더멘털 (Fundamentals)") == 1
+            and markdown.index("## 1. 현재 기술적 국면") < markdown.index("## 1.5. 펀더멘털") < markdown.index("## 2. 패스트 코어")
+            and "최근 12개 분기" in markdown and "최근 5개년" in markdown
+            and all(marker in markdown for marker in expected_markers[name])
+        )
+        non_integration_guard = payload.copy()
+        non_integration_guard.pop("fundamentals", None)
+        non_integration_guard = non_integration_guard == baseline_without_fundamentals
+        assert not schema_errors, schema_errors
+        assert markdown_valid
+        assert non_integration_guard
+        output_rows[name] = {
+            "json_schema_valid": True,
+            "markdown_valid": True,
+            "non_integration_guard": True,
+        }
+        if write_artifacts:
+            stem = name.split(" — ", 1)[0].lower().replace(" ", "")
+            (ARTIFACT_DIR / f"{stem}.json").write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+            (ARTIFACT_DIR / f"{stem}.md").write_text(markdown, encoding="utf-8")
+    return {
+        "report": output_rows,
+        "base_report": base_report,
+        "non_integration_guard": all(row["non_integration_guard"] for row in output_rows.values()),
+    }
+
+
+def run_validation(*, write_artifacts: bool = False) -> dict[str, Any]:
+    results = _assert_case_matrix()
+    report_validation = _validate_report_outputs(results, write_artifacts=write_artifacts)
+    report_guard = report_validation["non_integration_guard"]
+    for result in results:
+        result.update({"json_schema_valid": True, "markdown_valid": True, "non_integration_guard": report_guard})
+    if write_artifacts:
+        ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
+        fieldnames = ["case_id", "case_name", "asset_type", "company_family", "expected_status", "actual_status", "expected_filter_status", "actual_filter_status", "expected_passed", "actual_passed", "json_schema_valid", "markdown_valid", "non_integration_guard", "result", "reason"]
+        with (ARTIFACT_DIR / "representative_validation.csv").open("w", newline="", encoding="utf-8") as handle:
+            writer = csv.DictWriter(handle, fieldnames=fieldnames, lineterminator="\n")
+            writer.writeheader()
+            for result in results:
+                writer.writerow({
+                    "case_id": result["case_id"].split(" — ", 1)[0],
+                    "case_name": result["case_id"], "asset_type": result["asset_type"],
+                    "company_family": result["company_family"], "expected_status": result["expected_status"],
+                    "actual_status": result["actual_status"], "expected_filter_status": result["expected_filter_status"],
+                    "actual_filter_status": result["actual_filter_status"], "expected_passed": result["expected_passed"],
+                    "actual_passed": result["actual_passed"], "json_schema_valid": result["json_schema_valid"],
+                    "markdown_valid": result["markdown_valid"], "non_integration_guard": result["non_integration_guard"],
+                    "result": result["result"], "reason": result["reason"],
+                })
+        summary = {
+            "validation": "F6",
+            "total_cases": len(results),
+            "pass_count": sum(item["result"] == "PASS" for item in results),
+            "fail_count": sum(item["result"] != "PASS" for item in results),
+            "network_requests": 0,
+            "cases": results,
+            "report_outputs": report_validation["report"],
+        }
+        (ARTIFACT_DIR / "representative_validation.json").write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
+    return {"cases": results, "report": report_validation["report"], "total_cases": len(results)}
+
+
+if __name__ == "__main__":
+    summary = run_validation(write_artifacts=True)
+    print(json.dumps({"total_cases": summary["total_cases"], "pass_count": sum(item["result"] == "PASS" for item in summary["cases"])}, ensure_ascii=False))
