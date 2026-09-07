@@ -12,7 +12,7 @@
 > **안국약품(001540)는 현재 Pattern A TRANSITION 단계이며 투자 적격 상태는 INVESTABLE입니다.**
 >
 > - 패스트 코어 V2: HOLD_PRE_PROGRESSED · 현재 2번째 전략 포지션 보유 중 (Loss Guard 활성)
-> - 펀더멘털: Filter FILTERED_NET_LOSS, 최근 FY 매출 800.0억원, TTM 영업이익 80.0억원, TTM 순이익 60.0억원.
+> - 펀더멘털: Filter FILTERED_NET_LOSS, 최근 FY 매출 800.0억원, TTM 영업이익 80.0억원, TTM 순이익 -10.0억원.
 > - 현재 Pattern A Score는 98.02점(Stage: TRANSITION, Candidate: YES)입니다.
 > - 시가총액 1010.8억원, 20일 평균 거래대금 11.43억원으로 Phase 10 Investability 기준을 충족합니다.
 > - 외국인 수급: 외국인 수급 데이터가 준비되지 않아 수급 분석을 제공할 수 없습니다.
@@ -53,9 +53,9 @@
 | 최근 4분기 평균 매출 | 200.0억원 |
 | TTM 매출 | 800.0억원 |
 | TTM 영업이익 | 80.0억원 |
-| TTM 순이익 | 60.0억원 |
+| TTM 순이익 | -10.0억원 |
 | TTM 영업현금흐름 | 100.0억원 |
-| TTM 영업이익률 / 순이익률 / OCF 마진 | 10.00% / 7.50% / 12.50% |
+| TTM 영업이익률 / 순이익률 / OCF 마진 | 10.00% / -1.25% / 12.50% |
 | TTM ROE / 최신 부채비율 | 8.50% / 40.00% |
 
 ### 최근 12개 분기 (Latest 12 Quarters)

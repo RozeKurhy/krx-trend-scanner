@@ -40,5 +40,21 @@ def test_f6_representative_and_negative_matrix_passes_without_artifact_writes():
     assert "FUNDAMENTALS_INPUT_NOT_PROVIDED" not in report_outputs["CASE 02 — FILTERED"]["summary_bullet"]
     assert "Filter PASS" in report_outputs["CASE 01 — NORMAL PASS"]["summary_bullet"]
     assert "Filter FILTERED_NET_LOSS" in report_outputs["CASE 02 — FILTERED"]["summary_bullet"]
+    assert "60.0억원" in report_outputs["CASE 01 — NORMAL PASS"]["summary_bullet"]
+    assert "-10.0억원" in report_outputs["CASE 02 — FILTERED"]["summary_bullet"]
+    assert "60.0억원" not in report_outputs["CASE 02 — FILTERED"]["summary_bullet"]
     for item in report_outputs.values():
         assert item["report_requested_as_of"] == item["fundamentals_requested_as_of"] == "2026-06-30"
+
+    f4 = summary["f4"]
+    assert f4["CASE 01 — NORMAL PASS"] == {
+        "actual_f4_status": "PASS",
+        "actual_f4_passed": True,
+        "actual_f4_ttm_net_income": 6_000_000_000,
+        "actual_f4_company_family": "NON_FINANCIAL",
+    }
+    assert f4["CASE 02 — FILTERED"]["actual_f4_status"] == "FILTERED_NET_LOSS"
+    assert f4["CASE 02 — FILTERED"]["actual_f4_passed"] is False
+    assert f4["CASE 02 — FILTERED"]["actual_f4_ttm_net_income"] == -1_000_000_000
+    assert f4["CASE 03 — FINANCIAL"]["actual_f4_status"] == "NOT_APPLICABLE"
+    assert f4["CASE 03 — FINANCIAL"]["actual_f4_company_family"] == "FINANCIAL"

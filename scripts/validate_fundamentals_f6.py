@@ -29,8 +29,11 @@ from trend_scanner.fundamentals.derived_metrics import (
     DerivedMetricsResult,
 )
 from trend_scanner.fundamentals.fundamentals_filter import (
+    FILTERED_NET_LOSS,
+    FundamentalsFilter,
     FundamentalsFilterResult,
     NOT_APPLICABLE as FILTER_NOT_APPLICABLE,
+    PASS as FILTER_PASS,
 )
 from trend_scanner.fundamentals.period_models import PERIOD_AMBIGUOUS
 from trend_scanner.reporting.fundamentals_report import (
@@ -43,6 +46,7 @@ from trend_scanner.reporting.stock_report import generate_stock_report, render_m
 
 ARTIFACT_DIR = ROOT / "artifacts/fundamentals/validation/f6_representative_validation"
 SCHEMA_PATH = ROOT / "docs/reporting/stock_report/schema_v05.json"
+AS_OF = "2026-06-30"
 
 
 def _fresh() -> tuple[Any, Any, FundamentalsFilterResult]:
@@ -74,32 +78,73 @@ def _clone_f3(item: Any, **changes: Any) -> DerivedMetricObservation:
 
 
 def _section(f2: Any, f3: Any, f4: Any, *, asset_type: str = "COMMON") -> Any:
-    return build_fundamentals_section(f2, f3, f4, "2026-06-30", asset_type)
+    return build_fundamentals_section(f2, f3, f4, AS_OF, asset_type)
+
+
+def _evaluate_f4(f2: Any, f3: Any) -> FundamentalsFilterResult:
+    """Run the production F4 evaluator over the local synthetic F2/F3 inputs."""
+    return FundamentalsFilter().evaluate(f2, f3, requested_as_of=AS_OF)
+
+
+def _normal_f4_inputs() -> tuple[Any, Any, FundamentalsFilterResult]:
+    f2, f3, _ = _fresh()
+    return f2, f3, _evaluate_f4(f2, f3)
+
+
+def _filtered_f4_inputs() -> tuple[Any, Any, FundamentalsFilterResult]:
+    f2, f3, _ = _fresh()
+    # Change only the target F3 observations.  F4 must derive the filtered
+    # status and its numeric evidence itself; no F4 result mutation is allowed.
+    f3.observations = tuple(
+        _clone_f3(item, value=-1_000_000_000)
+        if item.metric == "net_income" and item.metric_type == "TTM" and item.fiscal_year == "2026" and item.fiscal_period == "Q2"
+        else _clone_f3(item, value=-1.25)
+        if item.metric == "net_income" and item.metric_type == "TTM_NET_MARGIN" and item.fiscal_year == "2026" and item.fiscal_period == "Q2"
+        else item
+        for item in f3.observations
+    )
+    return f2, f3, _evaluate_f4(f2, f3)
+
+
+def _financial_f4_inputs() -> tuple[Any, Any, FundamentalsFilterResult]:
+    f2, f3, _ = _fresh()
+    f2.company_family = "FINANCIAL"
+    f2.quarters = tuple(replace(item, company_family="FINANCIAL") for item in f2.quarters)
+    f2.annuals = tuple(replace(item, company_family="FINANCIAL") for item in f2.annuals)
+    f3.observations = tuple(_clone_f3(item, company_family="FINANCIAL") for item in f3.observations)
+    return f2, f3, _evaluate_f4(f2, f3)
+
+
+def _f4_evidence(result: FundamentalsFilterResult) -> dict[str, Any]:
+    return {
+        "actual_f4_status": result.status,
+        "actual_f4_passed": result.passed,
+        "actual_f4_ttm_net_income": result.ttm_net_income,
+        "actual_f4_company_family": result.company_family,
+    }
 
 
 def _case01() -> Any:
-    f2, f3, f4 = _fresh()
+    f2, f3, f4 = _normal_f4_inputs()
     return _section(f2, f3, f4)
 
 
 def _case02() -> Any:
-    f2, f3, f4 = _fresh()
-    f4 = replace(f4, status="FILTERED_NET_LOSS", passed=False, reasons=("FILTERED_NET_LOSS",))
+    f2, f3, f4 = _filtered_f4_inputs()
     return _section(f2, f3, f4)
 
 
 def _case03() -> Any:
-    f2, f3, f4 = _fresh()
-    f4 = replace(f4, company_family="FINANCIAL", status=FILTER_NOT_APPLICABLE, passed=False)
+    f2, f3, f4 = _financial_f4_inputs()
     return _section(f2, f3, f4)
 
 
 def _case04() -> Any:
-    return build_fundamentals_section(None, None, None, "2026-06-30", "ETF")
+    return build_fundamentals_section(None, None, None, AS_OF, "ETF")
 
 
 def _case05() -> Any:
-    return build_fundamentals_section(None, None, None, "2026-06-30", "COMMON")
+    return build_fundamentals_section(None, None, None, AS_OF, "COMMON")
 
 
 def _case06() -> Any:
@@ -197,6 +242,10 @@ def _validate_section(case_id: str, section: Any) -> dict[str, Any]:
         "actual_status": section.data_status,
         "actual_filter_status": section.filter_status,
         "actual_passed": section.filter_passed,
+        "actual_f4_status": None,
+        "actual_f4_passed": None,
+        "actual_f4_ttm_net_income": None,
+        "actual_f4_company_family": None,
         # Report-level validation is populated only for the five selected
         # representative outputs below.  The remaining matrix cases are
         # section-only and must not be reported as if a report was rendered.
@@ -211,7 +260,7 @@ def _validate_section(case_id: str, section: Any) -> dict[str, Any]:
     return row
 
 
-def _assert_case_matrix() -> list[dict[str, Any]]:
+def _assert_case_matrix(f4_results: dict[str, FundamentalsFilterResult]) -> list[dict[str, Any]]:
     cases: list[tuple[str, Callable[[], Any]]] = [
         ("CASE 01 — NORMAL PASS", _case01),
         ("CASE 02 — FILTERED", _case02),
@@ -232,6 +281,9 @@ def _assert_case_matrix() -> list[dict[str, Any]]:
     s = sections[0][1]
     assert s.applicability == "APPLICABLE" and s.data_status == "READY"
     assert s.filter_status == "PASS" and s.filter_passed is True
+    f4 = f4_results["CASE 01 — NORMAL PASS"]
+    assert f4.status == FILTER_PASS and f4.passed is True
+    assert f4.ttm_net_income == 6_000_000_000
     assert [row.quarter for row in s.quarterly] == [
         "2023Q3", "2023Q4", "2024Q1", "2024Q2", "2024Q3", "2024Q4",
         "2025Q1", "2025Q2", "2025Q3", "2025Q4", "2026Q1", "2026Q2",
@@ -243,11 +295,18 @@ def _assert_case_matrix() -> list[dict[str, Any]]:
 
     s = sections[1][1]
     assert s.data_status == "READY" and s.filter_status == "FILTERED_NET_LOSS" and s.filter_passed is False
+    f4 = f4_results["CASE 02 — FILTERED"]
+    assert f4.status == FILTERED_NET_LOSS and f4.passed is False
+    assert f4.ttm_net_income == -1_000_000_000 and f4.ttm_net_income <= 0
+    assert s.summary.ttm_net_income_krw == -1_000_000_000 and s.summary.ttm_net_income_krw <= 0
     results.append(_validate_section("CASE 02 — FILTERED", s))
 
     s = sections[2][1]
     assert s.applicability == NOT_APPLICABLE and s.data_status == NOT_APPLICABLE
     assert s.filter_status == FILTER_NOT_APPLICABLE and s.filter_passed is False
+    f4 = f4_results["CASE 03 — FINANCIAL"]
+    assert f4.company_family == "FINANCIAL"
+    assert f4.status == FILTER_NOT_APPLICABLE and f4.passed is False
     assert all(
         getattr(s.summary, field) is None
         for field in (
@@ -323,10 +382,20 @@ def _assert_case_matrix() -> list[dict[str, Any]]:
     currency_section = _section(f2, f3, f4)
     assert next(row for row in currency_section.quarterly if row.quarter == "2025Q2").revenue_krw is None
     results.append(_validate_section("CASE 12 — AMBIGUITY/BASIS/CURRENCY", s))
+    for case_id in (
+        "CASE 01 — NORMAL PASS", "CASE 02 — FILTERED", "CASE 03 — FINANCIAL",
+    ):
+        results_by_id = next(item for item in results if item["case_id"] == case_id)
+        results_by_id.update(_f4_evidence(f4_results[case_id]))
     return results
 
 
-def _validate_report_outputs(sections: list[dict[str, Any]], *, write_artifacts: bool) -> dict[str, Any]:
+def _validate_report_outputs(
+    sections: list[dict[str, Any]],
+    f4_results: dict[str, FundamentalsFilterResult],
+    *,
+    write_artifacts: bool,
+) -> dict[str, Any]:
     base_report, _, _ = generate_stock_report(
         ticker="001540", as_of="2026-06-30", repo_root=ROOT,
         save_artifacts=False, fundamentals_section=None,
@@ -375,15 +444,20 @@ def _validate_report_outputs(sections: list[dict[str, Any]], *, write_artifacts:
         summary_fundamentals_consistent = len(summary_bullets) == 1 and all(
             marker in summary_bullets[0] for marker in expected_summary[name]
         )
-        if name == "CASE 01 — NORMAL PASS":
+        if name in {"CASE 01 — NORMAL PASS", "CASE 02 — FILTERED"}:
             value = section.summary.latest_fy_revenue_krw
             value_marker = f"{float(value) / 100_000_000:,.1f}억원"
             summary_fundamentals_consistent = summary_fundamentals_consistent and value_marker in summary_bullets[0]
+            ni_value = f4_results[name].ttm_net_income
+            ni_marker = f"{float(ni_value) / 100_000_000:,.1f}억원"
+            summary_fundamentals_consistent = summary_fundamentals_consistent and ni_marker in summary_bullets[0]
+        if name == "CASE 01 — NORMAL PASS":
             assert "DATA_UNAVAILABLE" not in summary_bullets[0]
             assert "FUNDAMENTALS_INPUT_NOT_PROVIDED" not in summary_bullets[0]
         elif name == "CASE 02 — FILTERED":
             assert "Filter PASS" not in summary_bullets[0]
             assert "FUNDAMENTALS_INPUT_NOT_PROVIDED" not in summary_bullets[0]
+            assert "60.0억원" not in summary_bullets[0]
         as_of_consistent = (
             report.requested_as_of == section.requested_as_of
             and report.header.requested_as_of == section.requested_as_of
@@ -422,6 +496,8 @@ def _validate_report_outputs(sections: list[dict[str, Any]], *, write_artifacts:
             "report_requested_as_of": report.requested_as_of,
             "fundamentals_requested_as_of": section.requested_as_of,
         }
+        if name in f4_results:
+            output_rows[name].update(_f4_evidence(f4_results[name]))
         if write_artifacts:
             stem = name.split(" — ", 1)[0].lower().replace(" ", "")
             (ARTIFACT_DIR / f"{stem}.json").write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -434,8 +510,13 @@ def _validate_report_outputs(sections: list[dict[str, Any]], *, write_artifacts:
 
 
 def run_validation(*, write_artifacts: bool = False) -> dict[str, Any]:
-    results = _assert_case_matrix()
-    report_validation = _validate_report_outputs(results, write_artifacts=write_artifacts)
+    f4_results = {
+        "CASE 01 — NORMAL PASS": _normal_f4_inputs()[2],
+        "CASE 02 — FILTERED": _filtered_f4_inputs()[2],
+        "CASE 03 — FINANCIAL": _financial_f4_inputs()[2],
+    }
+    results = _assert_case_matrix(f4_results)
+    report_validation = _validate_report_outputs(results, f4_results, write_artifacts=write_artifacts)
     report_outputs = report_validation["report"]
     for result in results:
         output = report_outputs.get(result["case_id"])
@@ -443,7 +524,7 @@ def run_validation(*, write_artifacts: bool = False) -> dict[str, Any]:
             result.update(output)
     if write_artifacts:
         ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
-        fieldnames = ["case_id", "case_name", "asset_type", "company_family", "expected_status", "actual_status", "expected_filter_status", "actual_filter_status", "expected_passed", "actual_passed", "json_schema_valid", "markdown_valid", "summary_fundamentals_consistent", "as_of_consistent", "non_integration_guard", "result", "reason"]
+        fieldnames = ["case_id", "case_name", "asset_type", "company_family", "expected_status", "actual_status", "expected_filter_status", "actual_filter_status", "expected_passed", "actual_passed", "actual_f4_status", "actual_f4_passed", "actual_f4_ttm_net_income", "actual_f4_company_family", "json_schema_valid", "markdown_valid", "summary_fundamentals_consistent", "as_of_consistent", "non_integration_guard", "result", "reason"]
         with (ARTIFACT_DIR / "representative_validation.csv").open("w", newline="", encoding="utf-8") as handle:
             writer = csv.DictWriter(handle, fieldnames=fieldnames, lineterminator="\n")
             writer.writeheader()
@@ -455,6 +536,10 @@ def run_validation(*, write_artifacts: bool = False) -> dict[str, Any]:
                     "actual_status": result["actual_status"], "expected_filter_status": result["expected_filter_status"],
                     "actual_filter_status": result["actual_filter_status"], "expected_passed": result["expected_passed"],
                     "actual_passed": result["actual_passed"], "json_schema_valid": result["json_schema_valid"],
+                    "actual_f4_status": result["actual_f4_status"],
+                    "actual_f4_passed": result["actual_f4_passed"],
+                    "actual_f4_ttm_net_income": result["actual_f4_ttm_net_income"],
+                    "actual_f4_company_family": result["actual_f4_company_family"],
                     "markdown_valid": result["markdown_valid"],
                     "summary_fundamentals_consistent": result["summary_fundamentals_consistent"],
                     "as_of_consistent": result["as_of_consistent"],
@@ -469,9 +554,17 @@ def run_validation(*, write_artifacts: bool = False) -> dict[str, Any]:
             "network_requests": 0,
             "cases": results,
             "report_outputs": report_validation["report"],
+            "f4_representatives": {
+                case_id: _f4_evidence(f4_results[case_id]) for case_id in f4_results
+            },
         }
         (ARTIFACT_DIR / "representative_validation.json").write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
-    return {"cases": results, "report": report_validation["report"], "total_cases": len(results)}
+    return {
+        "cases": results,
+        "report": report_validation["report"],
+        "f4": {case_id: _f4_evidence(result) for case_id, result in f4_results.items()},
+        "total_cases": len(results),
+    }
 
 
 if __name__ == "__main__":
