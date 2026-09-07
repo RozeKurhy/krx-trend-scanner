@@ -197,9 +197,14 @@ def _validate_section(case_id: str, section: Any) -> dict[str, Any]:
         "actual_status": section.data_status,
         "actual_filter_status": section.filter_status,
         "actual_passed": section.filter_passed,
-        "json_schema_valid": True,
-        "markdown_valid": True,
-        "non_integration_guard": True,
+        # Report-level validation is populated only for the five selected
+        # representative outputs below.  The remaining matrix cases are
+        # section-only and must not be reported as if a report was rendered.
+        "json_schema_valid": None,
+        "markdown_valid": None,
+        "summary_fundamentals_consistent": None,
+        "as_of_consistent": None,
+        "non_integration_guard": None,
         "result": "PASS",
         "reason": section.reason or "",
     }
@@ -323,7 +328,7 @@ def _assert_case_matrix() -> list[dict[str, Any]]:
 
 def _validate_report_outputs(sections: list[dict[str, Any]], *, write_artifacts: bool) -> dict[str, Any]:
     base_report, _, _ = generate_stock_report(
-        ticker="001540", as_of="2026-08-14", repo_root=ROOT,
+        ticker="001540", as_of="2026-06-30", repo_root=ROOT,
         save_artifacts=False, fundamentals_section=None,
     )
     schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
@@ -331,11 +336,15 @@ def _validate_report_outputs(sections: list[dict[str, Any]], *, write_artifacts:
     selected = [("CASE 01 — NORMAL PASS", _case01()), ("CASE 02 — FILTERED", _case02()),
                 ("CASE 03 — FINANCIAL", _case03()), ("CASE 04 — ETF/NON-COMMON", _case04()),
                 ("CASE 05 — INPUT ABSENT", _case05())]
-    # Fundamentals is an additive injection.  Keep a serialized baseline of
-    # every pre-existing report field and prove that each representative
-    # output changes only the new fundamentals section.
-    baseline_without_fundamentals = base_report.to_dict()
-    baseline_without_fundamentals.pop("fundamentals", None)
+    # Fundamentals is an additive injection.  Keep direct references to the
+    # production-relevant pre-existing sections and compare them individually;
+    # a broad recursive diff would incorrectly treat the intentional summary
+    # bullet and report fundamentals section as regressions.
+    non_integration_fields = (
+        "current_snapshot", "monthly_history", "pattern_a_fast", "a_fast_core",
+        "foreign_flow", "relative_strength", "sector_relative_strength",
+        "trading_value_flow",
+    )
     expected_markers = {
         "CASE 01 — NORMAL PASS": ("READY",),
         "CASE 02 — FILTERED": ("FILTERED_NET_LOSS",),
@@ -343,28 +352,75 @@ def _validate_report_outputs(sections: list[dict[str, Any]], *, write_artifacts:
         "CASE 04 — ETF/NON-COMMON": ("NOT_APPLICABLE",),
         "CASE 05 — INPUT ABSENT": ("DATA_UNAVAILABLE",),
     }
+    expected_summary = {
+        "CASE 01 — NORMAL PASS": ("Filter PASS",),
+        "CASE 02 — FILTERED": ("Filter FILTERED_NET_LOSS",),
+        "CASE 03 — FINANCIAL": ("NOT_APPLICABLE",),
+        "CASE 04 — ETF/NON-COMMON": ("NOT_APPLICABLE",),
+        "CASE 05 — INPUT ABSENT": ("DATA_UNAVAILABLE", "FUNDAMENTALS_INPUT_NOT_PROVIDED"),
+    }
     output_rows: dict[str, dict[str, Any]] = {}
     for name, section in selected:
-        report = replace(base_report, report_version="0.5", fundamentals=section)
+        # This is the actual F5 integration path under test.  Do not assemble
+        # a StockReport with dataclasses.replace, which bypasses generator
+        # summary construction and v0.5 serialization behavior.
+        report, _, _ = generate_stock_report(
+            ticker="001540", as_of="2026-06-30", repo_root=ROOT,
+            save_artifacts=False, fundamentals_section=section,
+        )
         payload = report.to_dict()
         schema_errors = list(validator.iter_errors(payload))
         markdown = render_markdown_report(report)
+        summary_bullets = [bullet for bullet in report.summary.bullet_points if bullet.startswith("펀더멘털:")]
+        summary_fundamentals_consistent = len(summary_bullets) == 1 and all(
+            marker in summary_bullets[0] for marker in expected_summary[name]
+        )
+        if name == "CASE 01 — NORMAL PASS":
+            value = section.summary.latest_fy_revenue_krw
+            value_marker = f"{float(value) / 100_000_000:,.1f}억원"
+            summary_fundamentals_consistent = summary_fundamentals_consistent and value_marker in summary_bullets[0]
+            assert "DATA_UNAVAILABLE" not in summary_bullets[0]
+            assert "FUNDAMENTALS_INPUT_NOT_PROVIDED" not in summary_bullets[0]
+        elif name == "CASE 02 — FILTERED":
+            assert "Filter PASS" not in summary_bullets[0]
+            assert "FUNDAMENTALS_INPUT_NOT_PROVIDED" not in summary_bullets[0]
+        as_of_consistent = (
+            report.requested_as_of == section.requested_as_of
+            and report.header.requested_as_of == section.requested_as_of
+            and payload["fundamentals"]["requested_as_of"] == payload["requested_as_of"]
+        )
         markdown_valid = (
             markdown.count("## 1.5. 펀더멘털 (Fundamentals)") == 1
             and markdown.index("## 1. 현재 기술적 국면") < markdown.index("## 1.5. 펀더멘털") < markdown.index("## 2. 패스트 코어")
             and "최근 12개 분기" in markdown and "최근 5개년" in markdown
             and all(marker in markdown for marker in expected_markers[name])
+            and summary_fundamentals_consistent
         )
-        non_integration_guard = payload.copy()
-        non_integration_guard.pop("fundamentals", None)
-        non_integration_guard = non_integration_guard == baseline_without_fundamentals
+        non_integration_checks = {
+            "header.report_status": report.header.report_status == base_report.header.report_status,
+            **{field: getattr(report, field) == getattr(base_report, field) for field in non_integration_fields},
+            "candidate_state": report.current_snapshot.candidate_state == base_report.current_snapshot.candidate_state,
+            "investability_state": report.current_snapshot.investability_status == base_report.current_snapshot.investability_status,
+            "strategy_state": report.a_fast_core.strategy_state == base_report.a_fast_core.strategy_state,
+            "canonical_position": report.a_fast_core.canonical_position == base_report.a_fast_core.canonical_position,
+            "action": report.a_fast_core.action == base_report.a_fast_core.action,
+        }
+        non_integration_guard = all(non_integration_checks.values())
         assert not schema_errors, schema_errors
+        assert report.report_version == "0.5"
+        assert summary_fundamentals_consistent
+        assert as_of_consistent
         assert markdown_valid
         assert non_integration_guard
         output_rows[name] = {
             "json_schema_valid": True,
             "markdown_valid": True,
+            "summary_fundamentals_consistent": True,
+            "as_of_consistent": True,
             "non_integration_guard": True,
+            "summary_bullet": summary_bullets[0],
+            "report_requested_as_of": report.requested_as_of,
+            "fundamentals_requested_as_of": section.requested_as_of,
         }
         if write_artifacts:
             stem = name.split(" — ", 1)[0].lower().replace(" ", "")
@@ -380,12 +436,14 @@ def _validate_report_outputs(sections: list[dict[str, Any]], *, write_artifacts:
 def run_validation(*, write_artifacts: bool = False) -> dict[str, Any]:
     results = _assert_case_matrix()
     report_validation = _validate_report_outputs(results, write_artifacts=write_artifacts)
-    report_guard = report_validation["non_integration_guard"]
+    report_outputs = report_validation["report"]
     for result in results:
-        result.update({"json_schema_valid": True, "markdown_valid": True, "non_integration_guard": report_guard})
+        output = report_outputs.get(result["case_id"])
+        if output is not None:
+            result.update(output)
     if write_artifacts:
         ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
-        fieldnames = ["case_id", "case_name", "asset_type", "company_family", "expected_status", "actual_status", "expected_filter_status", "actual_filter_status", "expected_passed", "actual_passed", "json_schema_valid", "markdown_valid", "non_integration_guard", "result", "reason"]
+        fieldnames = ["case_id", "case_name", "asset_type", "company_family", "expected_status", "actual_status", "expected_filter_status", "actual_filter_status", "expected_passed", "actual_passed", "json_schema_valid", "markdown_valid", "summary_fundamentals_consistent", "as_of_consistent", "non_integration_guard", "result", "reason"]
         with (ARTIFACT_DIR / "representative_validation.csv").open("w", newline="", encoding="utf-8") as handle:
             writer = csv.DictWriter(handle, fieldnames=fieldnames, lineterminator="\n")
             writer.writeheader()
@@ -397,7 +455,10 @@ def run_validation(*, write_artifacts: bool = False) -> dict[str, Any]:
                     "actual_status": result["actual_status"], "expected_filter_status": result["expected_filter_status"],
                     "actual_filter_status": result["actual_filter_status"], "expected_passed": result["expected_passed"],
                     "actual_passed": result["actual_passed"], "json_schema_valid": result["json_schema_valid"],
-                    "markdown_valid": result["markdown_valid"], "non_integration_guard": result["non_integration_guard"],
+                    "markdown_valid": result["markdown_valid"],
+                    "summary_fundamentals_consistent": result["summary_fundamentals_consistent"],
+                    "as_of_consistent": result["as_of_consistent"],
+                    "non_integration_guard": result["non_integration_guard"],
                     "result": result["result"], "reason": result["reason"],
                 })
         summary = {

@@ -17,9 +17,14 @@
       "actual_passed": true,
       "json_schema_valid": true,
       "markdown_valid": true,
+      "summary_fundamentals_consistent": true,
+      "as_of_consistent": true,
       "non_integration_guard": true,
       "result": "PASS",
-      "reason": ""
+      "reason": "",
+      "summary_bullet": "펀더멘털: Filter PASS, 최근 FY 매출 800.0억원, TTM 영업이익 80.0억원, TTM 순이익 60.0억원.",
+      "report_requested_as_of": "2026-06-30",
+      "fundamentals_requested_as_of": "2026-06-30"
     },
     {
       "case_id": "CASE 02 — FILTERED",
@@ -33,9 +38,14 @@
       "actual_passed": false,
       "json_schema_valid": true,
       "markdown_valid": true,
+      "summary_fundamentals_consistent": true,
+      "as_of_consistent": true,
       "non_integration_guard": true,
       "result": "PASS",
-      "reason": ""
+      "reason": "",
+      "summary_bullet": "펀더멘털: Filter FILTERED_NET_LOSS, 최근 FY 매출 800.0억원, TTM 영업이익 80.0억원, TTM 순이익 60.0억원.",
+      "report_requested_as_of": "2026-06-30",
+      "fundamentals_requested_as_of": "2026-06-30"
     },
     {
       "case_id": "CASE 03 — FINANCIAL",
@@ -49,9 +59,14 @@
       "actual_passed": false,
       "json_schema_valid": true,
       "markdown_valid": true,
+      "summary_fundamentals_consistent": true,
+      "as_of_consistent": true,
       "non_integration_guard": true,
       "result": "PASS",
-      "reason": "FINANCIAL_COMPANY"
+      "reason": "FINANCIAL_COMPANY",
+      "summary_bullet": "펀더멘털: NOT_APPLICABLE (일반기업 Fundamentals V1 적용 대상 아님)",
+      "report_requested_as_of": "2026-06-30",
+      "fundamentals_requested_as_of": "2026-06-30"
     },
     {
       "case_id": "CASE 04 — ETF/NON-COMMON",
@@ -65,9 +80,14 @@
       "actual_passed": false,
       "json_schema_valid": true,
       "markdown_valid": true,
+      "summary_fundamentals_consistent": true,
+      "as_of_consistent": true,
       "non_integration_guard": true,
       "result": "PASS",
-      "reason": "ASSET_TYPE_NOT_APPLICABLE"
+      "reason": "ASSET_TYPE_NOT_APPLICABLE",
+      "summary_bullet": "펀더멘털: NOT_APPLICABLE (일반기업 Fundamentals V1 적용 대상 아님)",
+      "report_requested_as_of": "2026-06-30",
+      "fundamentals_requested_as_of": "2026-06-30"
     },
     {
       "case_id": "CASE 05 — INPUT ABSENT",
@@ -81,9 +101,14 @@
       "actual_passed": false,
       "json_schema_valid": true,
       "markdown_valid": true,
+      "summary_fundamentals_consistent": true,
+      "as_of_consistent": true,
       "non_integration_guard": true,
       "result": "PASS",
-      "reason": "FUNDAMENTALS_INPUT_NOT_PROVIDED"
+      "reason": "FUNDAMENTALS_INPUT_NOT_PROVIDED",
+      "summary_bullet": "펀더멘털: DATA_UNAVAILABLE (FUNDAMENTALS_INPUT_NOT_PROVIDED)",
+      "report_requested_as_of": "2026-06-30",
+      "fundamentals_requested_as_of": "2026-06-30"
     },
     {
       "case_id": "CASE 06 — QUARTER GAP",
@@ -95,9 +120,11 @@
       "actual_status": "PARTIAL",
       "actual_filter_status": "PASS",
       "actual_passed": true,
-      "json_schema_valid": true,
-      "markdown_valid": true,
-      "non_integration_guard": true,
+      "json_schema_valid": null,
+      "markdown_valid": null,
+      "summary_fundamentals_consistent": null,
+      "as_of_consistent": null,
+      "non_integration_guard": null,
       "result": "PASS",
       "reason": "DERIVED_CONTEXT_PARTIAL"
     },
@@ -111,9 +138,11 @@
       "actual_status": "PARTIAL",
       "actual_filter_status": "PASS",
       "actual_passed": true,
-      "json_schema_valid": true,
-      "markdown_valid": true,
-      "non_integration_guard": true,
+      "json_schema_valid": null,
+      "markdown_valid": null,
+      "summary_fundamentals_consistent": null,
+      "as_of_consistent": null,
+      "non_integration_guard": null,
       "result": "PASS",
       "reason": "DERIVED_CONTEXT_PARTIAL"
     },
@@ -127,9 +156,11 @@
       "actual_status": "DATA_UNAVAILABLE",
       "actual_filter_status": "DATA_UNAVAILABLE",
       "actual_passed": false,
-      "json_schema_valid": true,
-      "markdown_valid": true,
-      "non_integration_guard": true,
+      "json_schema_valid": null,
+      "markdown_valid": null,
+      "summary_fundamentals_consistent": null,
+      "as_of_consistent": null,
+      "non_integration_guard": null,
       "result": "PASS",
       "reason": "AS_OF_MISMATCH"
     },
@@ -143,9 +174,11 @@
       "actual_status": "READY",
       "actual_filter_status": "PASS",
       "actual_passed": true,
-      "json_schema_valid": true,
-      "markdown_valid": true,
-      "non_integration_guard": true,
+      "json_schema_valid": null,
+      "markdown_valid": null,
+      "summary_fundamentals_consistent": null,
+      "as_of_consistent": null,
+      "non_integration_guard": null,
       "result": "PASS",
       "reason": ""
     },
@@ -159,9 +192,11 @@
       "actual_status": "DATA_UNAVAILABLE",
       "actual_filter_status": "DATA_UNAVAILABLE",
       "actual_passed": false,
-      "json_schema_valid": true,
-      "markdown_valid": true,
-      "non_integration_guard": true,
+      "json_schema_valid": null,
+      "markdown_valid": null,
+      "summary_fundamentals_consistent": null,
+      "as_of_consistent": null,
+      "non_integration_guard": null,
       "result": "PASS",
       "reason": "IDENTITY_MISMATCH"
     },
@@ -175,9 +210,11 @@
       "actual_status": "DATA_UNAVAILABLE",
       "actual_filter_status": "PASS",
       "actual_passed": true,
-      "json_schema_valid": true,
-      "markdown_valid": true,
-      "non_integration_guard": true,
+      "json_schema_valid": null,
+      "markdown_valid": null,
+      "summary_fundamentals_consistent": null,
+      "as_of_consistent": null,
+      "non_integration_guard": null,
       "result": "PASS",
       "reason": "F4_FILTER_OR_CORE_UNAVAILABLE"
     },
@@ -191,9 +228,11 @@
       "actual_status": "PARTIAL",
       "actual_filter_status": "PASS",
       "actual_passed": true,
-      "json_schema_valid": true,
-      "markdown_valid": true,
-      "non_integration_guard": true,
+      "json_schema_valid": null,
+      "markdown_valid": null,
+      "summary_fundamentals_consistent": null,
+      "as_of_consistent": null,
+      "non_integration_guard": null,
       "result": "PASS",
       "reason": "DERIVED_CONTEXT_PARTIAL"
     }
@@ -202,27 +241,52 @@
     "CASE 01 — NORMAL PASS": {
       "json_schema_valid": true,
       "markdown_valid": true,
-      "non_integration_guard": true
+      "summary_fundamentals_consistent": true,
+      "as_of_consistent": true,
+      "non_integration_guard": true,
+      "summary_bullet": "펀더멘털: Filter PASS, 최근 FY 매출 800.0억원, TTM 영업이익 80.0억원, TTM 순이익 60.0억원.",
+      "report_requested_as_of": "2026-06-30",
+      "fundamentals_requested_as_of": "2026-06-30"
     },
     "CASE 02 — FILTERED": {
       "json_schema_valid": true,
       "markdown_valid": true,
-      "non_integration_guard": true
+      "summary_fundamentals_consistent": true,
+      "as_of_consistent": true,
+      "non_integration_guard": true,
+      "summary_bullet": "펀더멘털: Filter FILTERED_NET_LOSS, 최근 FY 매출 800.0억원, TTM 영업이익 80.0억원, TTM 순이익 60.0억원.",
+      "report_requested_as_of": "2026-06-30",
+      "fundamentals_requested_as_of": "2026-06-30"
     },
     "CASE 03 — FINANCIAL": {
       "json_schema_valid": true,
       "markdown_valid": true,
-      "non_integration_guard": true
+      "summary_fundamentals_consistent": true,
+      "as_of_consistent": true,
+      "non_integration_guard": true,
+      "summary_bullet": "펀더멘털: NOT_APPLICABLE (일반기업 Fundamentals V1 적용 대상 아님)",
+      "report_requested_as_of": "2026-06-30",
+      "fundamentals_requested_as_of": "2026-06-30"
     },
     "CASE 04 — ETF/NON-COMMON": {
       "json_schema_valid": true,
       "markdown_valid": true,
-      "non_integration_guard": true
+      "summary_fundamentals_consistent": true,
+      "as_of_consistent": true,
+      "non_integration_guard": true,
+      "summary_bullet": "펀더멘털: NOT_APPLICABLE (일반기업 Fundamentals V1 적용 대상 아님)",
+      "report_requested_as_of": "2026-06-30",
+      "fundamentals_requested_as_of": "2026-06-30"
     },
     "CASE 05 — INPUT ABSENT": {
       "json_schema_valid": true,
       "markdown_valid": true,
-      "non_integration_guard": true
+      "summary_fundamentals_consistent": true,
+      "as_of_consistent": true,
+      "non_integration_guard": true,
+      "summary_bullet": "펀더멘털: DATA_UNAVAILABLE (FUNDAMENTALS_INPUT_NOT_PROVIDED)",
+      "report_requested_as_of": "2026-06-30",
+      "fundamentals_requested_as_of": "2026-06-30"
     }
   }
 }
