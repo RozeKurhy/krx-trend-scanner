@@ -32,8 +32,10 @@ Boundary 계약
 ----------------------------------------------------------------------
 
 - 기본 연도 범위는 requested_as_of의 연도부터 과거 5년까지 6FY다.
-- 초기 연도 범위에서 최신 PIT-usable FY를 찾은 뒤, 그 FY를 끝점으로 6FY를
-  다시 anchor한다. 필요한 과거 FY만 추가 build하며 year당 build는 한 번이다.
+- 초기 연도 범위에서 필수 지표가 모두 READY인 최신 V1-usable FY를 찾은 뒤,
+  그 FY를 끝점으로 6FY를 다시 anchor한다. 더 최신 FY가 일부 지표만 갖거나
+  모호하면 창을 앞으로 이동하지 않는다. 필요한 과거 FY만 추가 build하며
+  year당 build는 한 번이다.
 - 분기 비교 슬롯은 16개(12Q 표시 + 전년 동기 비교 4Q)다.
 - 연간 비교 슬롯은 6FY(5Y 표시 + 비교 1FY)다.
 - `quarters`/`annuals`는 슬롯에 포함된 flat canonical observations이며,
@@ -42,14 +44,16 @@ Boundary 계약
   `PERIOD_AMBIGUOUS`로 남는다. 중간 기간을 압축하지 않는다.
 - `pit_available_from` 또는 anchor receipt가 requested_as_of 이후인 source는
   제외되고 diagnostics에 기록된다. 미래 filing을 canonical 결과에 넣지 않는다.
-- 동일 window 내 metric의 `fs_div_used` 또는 currency가 섞이면
-  `basis_consistent`/`currency_consistent`가 false가 되고 comparison/display
-  readiness가 false가 된다.
 - 분기 slot은 `revenue`, `operating_income`, `net_income`,
   `operating_cash_flow`가 모두 canonical READY여야 한다. 연간 slot은
   `revenue`, `operating_income`, `net_income`, `equity`, `liabilities`가
   필요하며 annual OCF는 optional이다. required metric 누락은
   `DATA_UNAVAILABLE`/`REQUIRED_METRIC_MISSING`으로 남는다.
+- window-level `fs_div_used`/currency coherence는 각 window의 V1 required
+  metric만 readiness에 반영한다. required metric이 섞이면
+  `basis_consistent`/`currency_consistent`가 false가 되고 비교·표시 readiness가
+  false가 된다. optional metric의 불일치는 diagnostics에 남기지만 완전한
+  required window를 무효화하지 않는다.
 - FINANCIAL company family는 general-company series를
   `NOT_APPLICABLE`로 유지하며 금융 전용 metric을 만들지 않는다.
 

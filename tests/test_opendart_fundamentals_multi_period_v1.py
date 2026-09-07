@@ -90,7 +90,7 @@ def test_required_quarter_metric_missing_blocks_slot_and_windows():
     assert slot.missing_metrics == ("operating_cash_flow",)
     assert result.has_16q_comparison_window is False
     assert result.has_12q_display_window is False
-    assert any(item["missing_metrics"] == ["operating_cash_flow"] for item in result.diagnostics)
+    assert any(item.get("missing_metrics") == ["operating_cash_flow"] for item in result.diagnostics)
 
 
 def test_required_annual_metric_missing_blocks_year_but_optional_ocf_does_not():
@@ -219,3 +219,149 @@ def test_provider_does_not_add_older_history_when_current_fy_is_available():
     )
     assert calls == ["2021", "2022", "2023", "2024", "2025", "2026"]
     assert result.latest_fy == "2026"
+
+
+def _annual_rows(year: int, *, missing: str | None = None, status: str = "READY"):
+    return tuple(
+        _obs(year, "FY", metric, status=status)
+        for metric in METRICS
+        if metric != missing
+    )
+
+
+def test_provider_anchors_to_latest_usable_fy_when_latest_fy_is_incomplete():
+    calls: list[str] = []
+
+    class IncompleteLatestStub:
+        def build(self, ticker, fiscal_year, requested_as_of, **kwargs):
+            calls.append(str(fiscal_year))
+            year = int(fiscal_year)
+            if year == 2026:
+                rows = _annual_rows(year, missing="liabilities")
+            elif year == 2020 or 2021 <= year <= 2025:
+                rows = _annual_rows(year)
+            else:
+                rows = ()
+            return SimpleNamespace(
+                company_family="NON_FINANCIAL", facts=rows,
+                result=PeriodizationResult(rows), skipped_anchors=(), fiscal_year=str(fiscal_year),
+            )
+
+    result = MultiPeriodFundamentalsProvider(IncompleteLatestStub()).build(
+        "TEST", "2026-12-31", fiscal_years=("2021", "2022", "2023", "2024", "2025", "2026")
+    )
+    assert calls == ["2021", "2022", "2023", "2024", "2025", "2026", "2020"]
+    assert result.latest_fy == "2025"
+    assert [item.identity for item in result.annual_slots] == ["2020", "2021", "2022", "2023", "2024", "2025"]
+    anchor = next(item for item in result.diagnostics if item["type"] == "ANNUAL_FY_ANCHOR")
+    assert anchor["latest_available_fy"] == "2026"
+    assert anchor["latest_usable_fy"] == "2025"
+
+
+def test_provider_anchors_to_latest_usable_fy_when_latest_fy_is_ambiguous():
+    calls: list[str] = []
+
+    class AmbiguousLatestStub:
+        def build(self, ticker, fiscal_year, requested_as_of, **kwargs):
+            calls.append(str(fiscal_year))
+            year = int(fiscal_year)
+            rows = _annual_rows(year, status="PERIOD_AMBIGUOUS") if year == 2026 else _annual_rows(year)
+            return SimpleNamespace(
+                company_family="NON_FINANCIAL", facts=rows,
+                result=PeriodizationResult(rows), skipped_anchors=(), fiscal_year=str(fiscal_year),
+            )
+
+    result = MultiPeriodFundamentalsProvider(AmbiguousLatestStub()).build(
+        "TEST", "2026-12-31", fiscal_years=("2021", "2022", "2023", "2024", "2025", "2026")
+    )
+    assert calls == ["2021", "2022", "2023", "2024", "2025", "2026", "2020"]
+    assert result.latest_fy == "2025"
+    assert result.has_6fy_comparison_window is True
+
+
+def test_provider_does_not_backfill_when_no_usable_fy_exists():
+    calls: list[str] = []
+
+    class NoUsableFYStub:
+        def build(self, ticker, fiscal_year, requested_as_of, **kwargs):
+            calls.append(str(fiscal_year))
+            rows = (_obs(int(fiscal_year), "FY", "revenue"),)
+            return SimpleNamespace(
+                company_family="NON_FINANCIAL", facts=rows,
+                result=PeriodizationResult(rows), skipped_anchors=(), fiscal_year=str(fiscal_year),
+            )
+
+    result = MultiPeriodFundamentalsProvider(NoUsableFYStub()).build(
+        "TEST", "2026-12-31", fiscal_years=("2021", "2022", "2023", "2024", "2025", "2026")
+    )
+    assert calls == ["2021", "2022", "2023", "2024", "2025", "2026"]
+    assert result.latest_fy is None
+    assert result.has_6fy_comparison_window is False
+    anchor = next(item for item in result.diagnostics if item["type"] == "ANNUAL_FY_ANCHOR")
+    assert anchor["latest_available_fy"] == "2026"
+    assert anchor["latest_usable_fy"] is None
+
+
+def test_optional_annual_ocf_basis_mismatch_does_not_block_window():
+    rows = [
+        _obs(2022, "FY", "operating_cash_flow", basis="OFS")
+        if item.fiscal_year == "2022" and item.fiscal_period == "FY" and item.metric == "operating_cash_flow"
+        else item
+        for item in _canonical()
+    ]
+    result = build_multi_period_result(ticker="TEST", requested_as_of="2024-12-31", observations=rows)
+    assert result.has_6fy_comparison_window is True
+    assert result.annual_coverage["basis_consistent"] is True
+    assert any(item["type"] == "OPTIONAL_BASIS_MISMATCH" for item in result.diagnostics)
+
+
+def test_optional_annual_ocf_currency_mismatch_does_not_block_window():
+    rows = [
+        _obs(2022, "FY", "operating_cash_flow", currency="USD")
+        if item.fiscal_year == "2022" and item.fiscal_period == "FY" and item.metric == "operating_cash_flow"
+        else item
+        for item in _canonical()
+    ]
+    result = build_multi_period_result(ticker="TEST", requested_as_of="2024-12-31", observations=rows)
+    assert result.has_6fy_comparison_window is True
+    assert result.annual_coverage["currency_consistent"] is True
+    assert any(item["type"] == "OPTIONAL_CURRENCY_MISMATCH" for item in result.diagnostics)
+
+
+def test_optional_quarter_equity_basis_mismatch_does_not_block_window():
+    rows = [
+        _obs(2022, "Q1", "equity", basis="OFS")
+        if item.fiscal_year == "2022" and item.fiscal_period == "Q1" and item.metric == "equity"
+        else item
+        for item in _canonical()
+    ]
+    result = build_multi_period_result(ticker="TEST", requested_as_of="2024-12-31", observations=rows)
+    assert result.has_16q_comparison_window is True
+    assert result.quarter_coverage["basis_consistent"] is True
+    assert any(item["type"] == "OPTIONAL_BASIS_MISMATCH" and item["metric"] == "equity" for item in result.diagnostics)
+
+
+def test_optional_quarter_liabilities_currency_mismatch_does_not_block_window():
+    rows = [
+        _obs(2022, "Q1", "liabilities", currency="USD")
+        if item.fiscal_year == "2022" and item.fiscal_period == "Q1" and item.metric == "liabilities"
+        else item
+        for item in _canonical()
+    ]
+    result = build_multi_period_result(ticker="TEST", requested_as_of="2024-12-31", observations=rows)
+    assert result.has_16q_comparison_window is True
+    assert result.quarter_coverage["currency_consistent"] is True
+    assert any(item["type"] == "OPTIONAL_CURRENCY_MISMATCH" and item["metric"] == "liabilities" for item in result.diagnostics)
+
+
+def test_required_metric_mismatch_still_blocks_window():
+    rows = [
+        _obs(2022, "Q1", "net_income", currency="USD")
+        if item.fiscal_year == "2022" and item.fiscal_period == "Q1" and item.metric == "net_income"
+        else item
+        for item in _canonical()
+    ]
+    result = build_multi_period_result(ticker="TEST", requested_as_of="2024-12-31", observations=rows)
+    assert result.has_16q_comparison_window is False
+    assert result.quarter_coverage["currency_consistent"] is False
+    assert any(item["type"] == "CURRENCY_MISMATCH_WINDOW" and item["metric"] == "net_income" for item in result.diagnostics)

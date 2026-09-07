@@ -444,10 +444,15 @@ class MultiPeriodFundamentalsProvider:
             corp_code=resolved_corp_code,
             periodization_builds=final_builds,
         )
+        anchor_diagnostic = next(
+            (item for item in initial.diagnostics if item.get("type") == "ANNUAL_FY_ANCHOR"),
+            {},
+        )
         plan_diagnostic = {
             "type": "ANNUAL_WINDOW_BUILD_PLAN",
             "initial_requested_years": list(years),
-            "latest_available_fy": initial.latest_fy,
+            "latest_available_fy": anchor_diagnostic.get("latest_available_fy"),
+            "latest_usable_fy": initial.latest_fy,
             "additional_historical_fy_builds": additional_years,
             "built_years": list(built_years),
         }
@@ -522,7 +527,16 @@ def build_multi_period_result(
 
     quarter_end = max(quarter_groups) if quarter_groups else _as_of_quarter(cutoff)
     quarter_identities = _sequence_quarters(quarter_end, quarter_window)
-    annual_end = max(annual_groups) if annual_groups else cutoff.year
+    latest_available_fy = max(annual_groups) if annual_groups else None
+    usable_annual_years = tuple(
+        year for year, items in annual_groups.items()
+        if _slot_for_annual(year, items).status == READY
+    )
+    latest_usable_fy = max(usable_annual_years) if usable_annual_years else None
+    # Anchor the six-year comparison window to the latest FY that is fully
+    # V1-usable.  A newer FY with a partial/ambiguous required metric must not
+    # move the window forward and trigger a misleading historical backfill.
+    annual_end = latest_usable_fy if latest_usable_fy is not None else cutoff.year
     annual_years = tuple(range(annual_end - annual_window + 1, annual_end + 1))
     quarter_slots = tuple(
         _slot_for_quarter(identity, quarter_groups.get(identity, ()))
@@ -544,11 +558,20 @@ def build_multi_period_result(
         )
     )
     latest_quarter = _quarter_label(quarter_end) if quarter_groups else None
-    latest_fy = str(annual_end) if annual_groups else None
+    latest_fy = str(latest_usable_fy) if latest_usable_fy is not None else None
+    diagnostics.append({
+        "type": "ANNUAL_FY_ANCHOR",
+        "latest_available_fy": str(latest_available_fy) if latest_available_fy is not None else None,
+        "latest_usable_fy": latest_fy,
+    })
     diagnostics.extend(_metric_gap_diagnostics(quarter_slots))
     diagnostics.extend(_metric_gap_diagnostics(annual_slots))
-    quarter_basis_ok, quarter_currency_ok, quarter_coherence = _window_coherence(quarter_observations)
-    annual_basis_ok, annual_currency_ok, annual_coherence = _window_coherence(annual_observations)
+    quarter_basis_ok, quarter_currency_ok, quarter_coherence = _window_coherence(
+        quarter_observations, required_metrics=QUARTER_REQUIRED_METRICS,
+    )
+    annual_basis_ok, annual_currency_ok, annual_coherence = _window_coherence(
+        annual_observations, required_metrics=ANNUAL_REQUIRED_METRICS,
+    )
     diagnostics.extend(quarter_coherence)
     diagnostics.extend(annual_coherence)
     diagnostics.extend(_build_diagnostics(periodization_builds))
@@ -665,9 +688,11 @@ def _metric_gap_diagnostics(
 
 def _window_coherence(
     observations: Sequence[PeriodizedFinancialObservation],
+    required_metrics: Iterable[str] | None = None,
 ) -> tuple[bool, bool, list[Mapping[str, Any]]]:
     """Check cross-period basis/currency without recalculating any metric."""
 
+    required = {str(metric) for metric in (required_metrics or REQUIRED_SOURCE_METRICS)}
     by_metric: dict[str, list[PeriodizedFinancialObservation]] = {}
     for item in observations:
         if item.resolution_status == READY:
@@ -676,18 +701,23 @@ def _window_coherence(
     basis_ok = True
     currency_ok = True
     for metric, items in sorted(by_metric.items()):
+        is_required = metric in required
         bases = {item.fs_div_used for item in items}
         currencies = {item.currency for item in items}
         if len(bases) > 1:
-            basis_ok = False
+            if is_required:
+                basis_ok = False
             diagnostics.append({
-                "type": "BASIS_MISMATCH_WINDOW", "metric": metric,
+                "type": "BASIS_MISMATCH_WINDOW" if is_required else "OPTIONAL_BASIS_MISMATCH",
+                "metric": metric,
                 "values": sorted(str(value) for value in bases),
             })
         if len(currencies) > 1:
-            currency_ok = False
+            if is_required:
+                currency_ok = False
             diagnostics.append({
-                "type": "CURRENCY_MISMATCH_WINDOW", "metric": metric,
+                "type": "CURRENCY_MISMATCH_WINDOW" if is_required else "OPTIONAL_CURRENCY_MISMATCH",
+                "metric": metric,
                 "values": sorted(str(value) for value in currencies),
             })
     return basis_ok, currency_ok, diagnostics
