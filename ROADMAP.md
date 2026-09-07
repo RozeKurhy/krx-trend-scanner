@@ -24,15 +24,19 @@ ROADMAP.md
 
 **NEXT**
 - Post-report Branch Cleanup / Integration (현재 production report/data 이후 남은 branch 상태 최종 확인·정리)
-- FastCore realistic backtest (next-day execution, transaction cost, slippage, holding period, win rate, payoff ratio, MDD, trade count, market regime, benchmark comparison, parameter robustness 반영)
-- Julia realistic backtest (동일 기준)
-- Strategy robustness comparison — 목표는 "최대 backtest 수익률 parameter"가 아니라 **현실적 실행조건에서도 반복 가능한 robust strategy**를 찾는 것
+
+**PAUSED / RESUME_READY**
+- FastCore realistic backtest — 명시적 사용자 재개 후 시작 (next-day execution, transaction cost, slippage, holding period, win rate, payoff ratio, MDD, trade count, market regime, benchmark comparison, parameter robustness 반영)
+- Julia realistic backtest — 명시적 사용자 재개 후 시작 (동일 기준)
+
+**AFTER BACKTESTS**
+- Strategy robustness comparison — 두 realistic backtest 완료 후 진행; 목표는 "최대 backtest 수익률 parameter"가 아니라 **현실적 실행조건에서도 반복 가능한 robust strategy**를 찾는 것
 
 **HOLD**
 - New Pattern development (Pattern B~F 등)
 - Deferred Group B work (`codex/deferred-group-b-v01` 브랜치에 보존된 consumer-migration / authority-adjudication 관련 미완료 작업)
 - 추가적인 market-data hardening (새로운 concrete discrepancy가 없는 한 재검증하지 않음)
-- OpenDART Fundamentals 신규 착수 (기존 설계/구현 문서는 `docs/fundamentals/`에 보존되어 있으나, 현재 최우선순위는 FastCore/Julia backtest)
+- OpenDART Fundamentals 신규 착수 (기존 설계/구현 문서는 `docs/fundamentals/`에 보존되어 있으나, 현재는 `HOLD`이며 Post-report Branch Cleanup 완료와 명시적 backtest 재개·후속 우선순위 정리 전에는 신규 착수하지 않음)
 
 **알려진 현재 한계 (2026-09-04 production scan 기준, 과장하지 않고 그대로 기록)**
 - Foreign Flow: Scanner에는 candidate-gated 평가가 남아 있음. Stock Report target COMMON에서는 local authority를 직접 소비함
@@ -156,7 +160,7 @@ CLOSED고 Production 승격 여부는 별도"임을 한 토큰으로 강조하�
 8. Phase 14~18 Pattern B ~ F & Longer-term = LONGER-TERM
 ```
 
-> **Historical / superseded (현재 우선순위 아님)**: Julia Strategy V00 Official PIT 비교 연구(구 loss-guard on/off proxy 연구, 117/215에서 종료)와 그 후속인 Market Cap Threshold Research는 현재 위 순서를 막는 prerequisite가 아니다. 현재 우선순위는 위 FastCore/Julia Realistic Backtest(2, 3)이며, 이 구 proxy 연구는 재개 예정 없이 역사적 기록으로만 남긴다. 상세 내용은 아래 "Julia Strategy V00" 섹션 참고.
+> **Historical / superseded (현재 우선순위 아님)**: Julia Strategy V00 Official PIT 비교 연구(구 loss-guard on/off proxy 연구, 117/215에서 종료)와 그 후속인 Market Cap Threshold Research는 현재 위 순서를 막는 prerequisite가 아니다. 현재 realistic backtest 트랙은 FastCore와 Julia이며, 두 작업 모두 명시적 사용자 재개 전까지 `PAUSED / RESUME_READY` 상태다. 이 구 proxy 연구는 재개 예정 없이 역사적 기록으로만 남긴다. 상세 내용은 아래 "Julia Strategy V00" 섹션 참고.
 
 ---
 
