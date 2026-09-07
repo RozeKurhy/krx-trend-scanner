@@ -105,7 +105,9 @@ Pattern A의 장기 베이스와 Pattern A FAST의 주봉 타이밍, Investabili
   7. **시장 상대강도 (Market RS)**: 3M/6M/12M level, improvement delta, acceleration, 전체 시장 rank/percentile
   8. **거래대금 추이 (Trading Value Trend)**: 5D/20D/60D 평균 거래대금 및 단·중기 확장 상태/비율
   9. **데이터 품질 & Provenance**: 결측치 감사, exact as-of, Zero Network Requests, PIT 무결성 검증
-* **산출물 경로**: `artifacts/reporting/stock_reports/<YYYYMMDD>/`
+* **산출물 경로**:
+  * Markdown: `artifacts/reporting/stock_reports/<YYYYMMDD>/*.md`
+  * JSON: `artifacts/reporting/stock_reports/<YYYYMMDD>/json/*.json`
 * **생성 원칙**: local cache와 canonical artifact를 소비하며, report 생성 시 외부 네트워크 요청과 Full Universe Scanner 호출은 0회입니다.
 
 > **주의**: 리포트의 포지션 정보는 사용자의 실제 계좌 보유 내역이 아닌 **A FAST Core 전략의 공인 가상 포지션(Canonical Strategy Position)**입니다.

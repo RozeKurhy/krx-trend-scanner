@@ -1184,9 +1184,11 @@ def generate_stock_report(
         date_dir_name = canonical_as_of.replace("-", "")
         base_out = Path(output_dir) if output_dir else root_path / "artifacts/reporting/stock_reports" / date_dir_name
         base_out.mkdir(parents=True, exist_ok=True)
+        json_out = base_out / "json"
+        json_out.mkdir(parents=True, exist_ok=True)
 
         file_stem = f"{clean_ticker}_{report.header.name}" if report.header.name and report.header.name != clean_ticker else (f"{clean_ticker}_{name}" if name and name != clean_ticker else clean_ticker)
-        json_path = base_out / f"{file_stem}.json"
+        json_path = json_out / f"{file_stem}.json"
         md_path = base_out / f"{file_stem}.md"
 
         with open(json_path, "w", encoding="utf-8") as f:

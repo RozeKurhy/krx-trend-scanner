@@ -103,6 +103,15 @@ def current_git_identity() -> dict[str, str]:
     return {"head": git_value("rev-parse", "HEAD"), "tree": git_value("rev-parse", "HEAD^{tree}")}
 
 
+def _json_dir(directory: Path) -> Path:
+    candidate = directory / "json"
+    return candidate if candidate.is_dir() else directory
+
+
+def _json_paths(directory: Path) -> list[Path]:
+    return sorted(_json_dir(directory).glob("*.json"))
+
+
 def derive_corpus() -> tuple[list[str], dict[str, dict[str, Any]], dict[str, str]]:
     json_paths = sorted(CANONICAL_DIR.glob("*.json"))
     md_paths = sorted(CANONICAL_DIR.glob("*.md"))
@@ -220,7 +229,7 @@ def run_corpus(tickers: list[str], output_dir: Path, guard_state: dict[str, Any]
         )
         if index % 10 == 0:
             print(f"{run_name}: {index}/{len(tickers)}", flush=True)
-    json_count = len(list(output_dir.glob("*.json")))
+    json_count = len(_json_paths(output_dir))
     md_count = len(list(output_dir.glob("*.md")))
     return {
         "run": run_name,
@@ -263,8 +272,10 @@ def _semantic_differences(expected: Any, actual: Any, path: str = "") -> list[di
 
 def compare_corpus(canonical_hashes: dict[str, str], run1: Path, run2: Path, canonical_reports: dict[str, dict[str, Any]]) -> tuple[list[dict[str, str]], list[dict[str, Any]], list[dict[str, Any]]]:
     canonical_names = set(canonical_hashes)
-    run1_hashes = {p.name: sha256_file(p) for p in run1.iterdir() if p.is_file()}
-    run2_hashes = {p.name: sha256_file(p) for p in run2.iterdir() if p.is_file()}
+    run1_hashes = {p.name: sha256_file(p) for p in _json_paths(run1)}
+    run1_hashes.update({p.name: sha256_file(p) for p in run1.glob("*.md")})
+    run2_hashes = {p.name: sha256_file(p) for p in _json_paths(run2)}
+    run2_hashes.update({p.name: sha256_file(p) for p in run2.glob("*.md")})
     rows: list[dict[str, str]] = []
     for filename in sorted(canonical_names | set(run1_hashes) | set(run2_hashes)):
         typ = "json" if filename.endswith(".json") else "markdown" if filename.endswith(".md") else "other"
@@ -287,8 +298,10 @@ def compare_corpus(canonical_hashes: dict[str, str], run1: Path, run2: Path, can
     section_rows: list[dict[str, Any]] = []
     for stem, canonical in sorted(canonical_reports.items()):
         path = stem + ".json"
-        run1_report = json.loads((run1 / path).read_text(encoding="utf-8")) if (run1 / path).exists() else None
-        run2_report = json.loads((run2 / path).read_text(encoding="utf-8")) if (run2 / path).exists() else None
+        run1_path = _json_dir(run1) / path
+        run2_path = _json_dir(run2) / path
+        run1_report = json.loads(run1_path.read_text(encoding="utf-8")) if run1_path.exists() else None
+        run2_report = json.loads(run2_path.read_text(encoding="utf-8")) if run2_path.exists() else None
         differences = _semantic_differences(canonical, run1_report) if run1_report is not None else [{"path": "$", "expected": "report", "actual": "<missing run1>"}]
         if run2_report != canonical:
             differences.extend({"run": "run2", **item} for item in _semantic_differences(canonical, run2_report) if run2_report is not None)
@@ -317,14 +330,14 @@ def schema_validation(directory: Path, schema: dict[str, Any]) -> dict[str, Any]
     validator = Draft7Validator(schema)
     errors: list[dict[str, Any]] = []
     valid = 0
-    for path in sorted(directory.glob("*.json")):
+    for path in _json_paths(directory):
         report = json.loads(path.read_text(encoding="utf-8"))
         file_errors = sorted(validator.iter_errors(report), key=lambda e: list(e.path))
         if not file_errors:
             valid += 1
         for error in file_errors:
             errors.append({"filename": path.name, "path": list(error.path), "message": error.message})
-    return {"json_count": len(list(directory.glob("*.json"))), "valid": valid, "errors": errors, "valid_ratio": f"{valid}/54"}
+    return {"json_count": len(_json_paths(directory)), "valid": valid, "errors": errors, "valid_ratio": f"{valid}/54"}
 
 
 def rs_distribution(reports: list[dict[str, Any]]) -> dict[str, int]:
@@ -541,8 +554,8 @@ def _fix01_compare(
     run2_dir: Path,
     coway_state: dict[str, Any],
 ) -> dict[str, Any]:
-    run1_reports = {p.stem: json.loads(p.read_text(encoding="utf-8")) for p in sorted(run1_dir.glob("*.json"))}
-    run2_reports = {p.stem: json.loads(p.read_text(encoding="utf-8")) for p in sorted(run2_dir.glob("*.json"))}
+    run1_reports = {p.stem: json.loads(p.read_text(encoding="utf-8")) for p in _json_paths(run1_dir)}
+    run2_reports = {p.stem: json.loads(p.read_text(encoding="utf-8")) for p in _json_paths(run2_dir)}
     raw_rows: list[dict[str, Any]] = []
     normalized_json_rows: list[dict[str, Any]] = []
     normalized_section_rows: list[dict[str, Any]] = []
@@ -555,7 +568,7 @@ def _fix01_compare(
         run1, run2 = run1_reports.get(stem), run2_reports.get(stem)
         c_json = CANONICAL_DIR / json_name
         c_md = CANONICAL_DIR / md_name
-        r1_json, r2_json = run1_dir / json_name, run2_dir / json_name
+        r1_json, r2_json = _json_dir(run1_dir) / json_name, _json_dir(run2_dir) / json_name
         r1_md, r2_md = run1_dir / md_name, run2_dir / md_name
         raw_json_match = bool(run1 is not None and run2 is not None and sha256_file(c_json) == sha256_file(r1_json) == sha256_file(r2_json))
         raw_md_match = bool(r1_md.exists() and r2_md.exists() and sha256_file(c_md) == sha256_file(r1_md) == sha256_file(r2_md))
@@ -647,13 +660,13 @@ def main() -> int:
             scanner_calls = guards["scanner_calls"]["count"]
         rows, section_rows, semantic_mismatch_details = compare_corpus(canonical_hashes, run1_dir, run2_dir, canonical_reports)
         semantic_mismatch_names = [item["filename"] for item in semantic_mismatch_details]
-        run1_reports = [json.loads(p.read_text(encoding="utf-8")) for p in sorted(run1_dir.glob("*.json"))]
-        run2_reports = [json.loads(p.read_text(encoding="utf-8")) for p in sorted(run2_dir.glob("*.json"))]
+        run1_reports = [json.loads(p.read_text(encoding="utf-8")) for p in _json_paths(run1_dir)]
+        run2_reports = [json.loads(p.read_text(encoding="utf-8")) for p in _json_paths(run2_dir)]
         run1_schema = schema_validation(run1_dir, schema)
         run2_schema = schema_validation(run2_dir, schema)
         run1_unit_errors = markdown_unit_errors(run1_dir)
         run2_unit_errors = markdown_unit_errors(run2_dir)
-        canary = canary_evidence({p.stem: json.loads(p.read_text(encoding="utf-8")) for p in sorted(run1_dir.glob("*.json"))})
+        canary = canary_evidence({p.stem: json.loads(p.read_text(encoding="utf-8")) for p in _json_paths(run1_dir)})
         post_canonical = {p.name: sha256_file(p) for p in sorted(CANONICAL_DIR.glob("*")) if p.is_file()}
 
     write_json(EVIDENCE_ROOT / "authority/stock_report_authority.json", {"directive": "STOCK_REPORT_PARITY_V01", "as_of": "2026-08-14", "canonical_directory": str(CANONICAL_DIR.relative_to(ROOT)), "canonical_json": 54, "canonical_markdown": 54, "ticker_count": len(tickers), "tickers": tickers})
@@ -727,8 +740,8 @@ def main_fix01() -> int:
             network_addresses = guards["network"].addresses
             scanner_calls = guards["scanner_calls"]["count"]
         comparison = _fix01_compare(canonical_reports, canonical_hashes, run1_dir, run2_dir, coway_state)
-        run1_reports = [json.loads(p.read_text(encoding="utf-8")) for p in sorted(run1_dir.glob("*.json"))]
-        run2_reports = [json.loads(p.read_text(encoding="utf-8")) for p in sorted(run2_dir.glob("*.json"))]
+        run1_reports = [json.loads(p.read_text(encoding="utf-8")) for p in _json_paths(run1_dir)]
+        run2_reports = [json.loads(p.read_text(encoding="utf-8")) for p in _json_paths(run2_dir)]
         run1_schema = schema_validation(run1_dir, schema)
         run2_schema = schema_validation(run2_dir, schema)
         post_canonical = {p.name: sha256_file(p) for p in sorted(CANONICAL_DIR.glob("*")) if p.is_file()}
