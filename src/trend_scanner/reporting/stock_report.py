@@ -1,4 +1,4 @@
-"""Stock Report Generator Engine (Contract v0.3).
+"""Stock Report Generator Engine (Contract v0.4).
 
 로컬 Parquet 일봉 캐시와 정본 아티팩트만을 활용하여 단일 종목의 종합 분석 리포트를 생성하고
 A FAST Core V2 전략 상태를 포함한 JSON 및 GitHub Flavored Markdown 형식으로 출력한다.
@@ -46,6 +46,7 @@ from trend_scanner.reporting.models import (
     ReportStatus,
     ReportSummary,
     RelativeStrengthSection,
+    SectorRelativeStrengthSection,
     ScoreTrend,
     StageTransition,
     StockReport,
@@ -54,6 +55,7 @@ from trend_scanner.reporting.models import (
 )
 from trend_scanner.reporting.pattern_a_fast_report import build_pattern_a_fast_section
 from trend_scanner.reporting.relative_strength_report import load_relative_strength_section
+from trend_scanner.reporting.sector_relative_strength_report import build_sector_relative_strength_section
 from trend_scanner.data.market_calendar import get_reference_market_month_ends as _get_ref_market_month_ends
 from trend_scanner.data.market_calendar import load_rolling_production_market_calendar
 from trend_scanner.universe.asset_classifier import AssetType
@@ -202,6 +204,7 @@ def _generate_deterministic_narrative(
     recent_12m: list[MonthlyObservation],
     flow_section: ForeignFlowSection,
     relative_strength_section: RelativeStrengthSection,
+    sector_relative_strength_section: SectorRelativeStrengthSection,
     tv_section: TradingValueFlowSection,
 ) -> tuple[str, list[str], str]:
     if current_snapshot.investability_status == "INVESTABLE":
@@ -255,6 +258,7 @@ def _generate_deterministic_narrative(
         inv_bullet,
         f"외국인 수급: {flow_section.explanation}",
         f"시장 상대강도: {relative_strength_section.explanation}",
+        f"업종 상대강도: {sector_relative_strength_section.explanation}",
         f"거래대금 추세: {tv_section.explanation}",
     ]
 
@@ -277,10 +281,12 @@ def _generate_deterministic_narrative(
             f"외국인 수급은 {flow_section.flow_state.value} 상태로, {flow_section.explanation} "
             f"거래대금은 {tv_section.trading_value_state.value} 상태로, {tv_section.explanation}"
             f" 시장 상대강도는 {relative_strength_section.explanation}"
+            f" 업종 상대강도는 {sector_relative_strength_section.explanation}"
         )
     else:
         combined_narrative = (
             f"{headline} {traj_sentence} 시장 상대강도는 {relative_strength_section.explanation}"
+            f" 업종 상대강도는 {sector_relative_strength_section.explanation}"
         )
 
     return headline, bullet_points, combined_narrative
@@ -307,7 +313,7 @@ def _format_rs_position(value: float | None) -> str:
 
 
 def render_markdown_report(report: StockReport) -> str:
-    """StockReport JSON 객체를 사람이 읽기 쉬운 GitHub Flavored Markdown 보고서(v0.3)로 렌더링한다."""
+    """StockReport JSON 객체를 사람이 읽기 쉬운 GitHub Flavored Markdown 보고서(v0.4)로 렌더링한다."""
     cur = report.current_snapshot
     core = report.a_fast_core
     hist = report.monthly_history
@@ -588,6 +594,34 @@ def render_markdown_report(report: StockReport) -> str:
     md.append("---")
     md.append("")
 
+    # Section 7.6. Sector Relative Strength (independent context)
+    sector_rs = report.sector_relative_strength
+    md.append("## 7.6. 업종 상대강도 (Sector RS)")
+    md.append(f"- **적용 상태**: `{sector_rs.applicability}`")
+    md.append(f"- **데이터 상태**: `{sector_rs.data_status}`")
+    if sector_rs.input_reason:
+        md.append(f"- **입력 상태 사유**: `{sector_rs.input_reason}`")
+    if sector_rs.applicability == "APPLICABLE":
+        md.append(f"- **업종**: `{sector_rs.sector_name or 'N/A'}`")
+        md.append(f"- **업종 코드**: `{sector_rs.sector_code or 'N/A'}`")
+        md.append(f"- **Benchmark 기준일**: `{sector_rs.benchmark_last_observation_date or 'N/A'}`")
+        md.append("")
+        md.append("| 기간 | 업종 대비 RS | 업종 수익률 |")
+        md.append("|---|---:|---:|")
+        md.append(f"| 3개월 | {_format_rs_return(sector_rs.sector_rs_3m)} | {_format_rs_return(sector_rs.sector_return_3m)} |")
+        md.append(f"| 6개월 | {_format_rs_return(sector_rs.sector_rs_6m)} | {_format_rs_return(sector_rs.sector_return_6m)} |")
+        md.append(f"| 12개월 | {_format_rs_return(sector_rs.sector_rs_12m)} | {_format_rs_return(sector_rs.sector_return_12m)} |")
+    md.append(f"- **규칙 기반 해석**: {sector_rs.explanation}")
+    if sector_rs.source_as_of:
+        md.append(f"- **기준일**: `{sector_rs.source_as_of}`")
+    if sector_rs.membership_snapshot_date:
+        md.append(f"- **Membership snapshot**: `{sector_rs.membership_snapshot_date}` · `{sector_rs.membership_source}`")
+    if sector_rs.sector_index_source:
+        md.append(f"- **Sector index source**: `{sector_rs.sector_index_source}`")
+    md.append("")
+    md.append("---")
+    md.append("")
+
     # Section 8. 거래대금 추세 분석
     md.append("## 8. 거래대금 추세 분석 (Trading Value Flow)")
     md.append(f"- **거래대금 상태**: `{tv.trading_value_state.value}`")
@@ -647,7 +681,7 @@ def generate_stock_report(
     output_dir: Path | str | None = None,
     repository: MarketDataRepositoryV2 | None = None,
 ) -> tuple[StockReport, Path | None, Path | None]:
-    """단일 종목의 Stock Report v0.2를 생성하고 선택적으로 JSON/MD 아티팩트를 저장한다."""
+    """단일 종목의 Stock Report v0.4를 생성하고 선택적으로 JSON/MD 아티팩트를 저장한다."""
     root_path = Path(repo_root) if repo_root else Path(__file__).resolve().parent.parent.parent.parent
     clean_ticker = _format_ticker(ticker)
     production_market_calendar = load_rolling_production_market_calendar(root_path)
@@ -994,6 +1028,19 @@ def generate_stock_report(
         repo_root=root_path,
     )
 
+    # 7c. Sector Relative Strength (independent local Repository V2 calculation)
+    # The frozen 2026-08-14 membership is loaded inside the builder and carried
+    # forward with the existing engine's PIT semantics.  Market RS remains the
+    # exact-date authority CSV consumer above; the two sections are independent.
+    sector_relative_strength_section = build_sector_relative_strength_section(
+        ticker=clean_ticker,
+        requested_as_of=canonical_as_of,
+        asset_type=asset_type,
+        market=market,
+        stock_df=daily_slice,
+        repo_root=root_path,
+    )
+
     # 8. Trading Value Flow Section
     tv_5d_val: float | None = None
     tv_20d_val: float | None = None
@@ -1104,6 +1151,7 @@ def generate_stock_report(
         recent_12m=recent_12m_history,
         flow_section=foreign_flow_section,
         relative_strength_section=relative_strength_section,
+        sector_relative_strength_section=sector_relative_strength_section,
         tv_section=trading_value_section,
     )
 
@@ -1155,7 +1203,7 @@ def generate_stock_report(
     )
 
     report = StockReport(
-        report_version="0.3",
+        report_version="0.4",
         ticker=clean_ticker,
         name=name,
         market=market,
@@ -1169,6 +1217,7 @@ def generate_stock_report(
         monthly_history=monthly_section,
         foreign_flow=foreign_flow_section,
         relative_strength=relative_strength_section,
+        sector_relative_strength=sector_relative_strength_section,
         trading_value_flow=trading_value_section,
         data_quality=data_quality,
         provenance=provenance,
@@ -1202,8 +1251,8 @@ def generate_stock_report(
 
 
 def main() -> None:
-    """CLI entrypoint for stock report generation (v0.2)."""
-    parser = argparse.ArgumentParser(description="Generate Local Stock Report (Contract v0.2)")
+    """CLI entrypoint for stock report generation (v0.4)."""
+    parser = argparse.ArgumentParser(description="Generate Local Stock Report (Contract v0.4)")
     parser.add_argument("--ticker", required=True, help="6-digit stock ticker (e.g. 001540)")
     parser.add_argument("--as-of", default=None, help="As-Of date YYYY-MM-DD (defaults to latest local available date)")
     parser.add_argument("--output-dir", default=None, help="Custom output directory")

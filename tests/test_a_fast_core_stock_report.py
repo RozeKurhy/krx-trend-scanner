@@ -140,15 +140,15 @@ def test_human_contract_requires_metadata_provenance_mode():
     )
 
 
-def test_stock_report_v03_contract(report_005930_20260814):
-    """Stock Report v0.3 최상위 contract 및 a_fast_core/relative_strength 존재 검증."""
+def test_stock_report_v04_contract(report_005930_20260814):
+    """Stock Report v0.4 최상위 contract 및 additive Sector RS 존재 검증."""
     report = report_005930_20260814
-    assert report.report_version == "0.3"
+    assert report.report_version == "0.4"
     assert hasattr(report, "a_fast_core")
     assert isinstance(report.a_fast_core, AFastCoreSection)
 
     d = report.to_dict()
-    assert d["report_version"] == "0.3"
+    assert d["report_version"] == "0.4"
     assert d["market"] == "KOSPI"
     assert d["asset_type"] == "COMMON"
     assert "a_fast_core" in d
@@ -161,6 +161,7 @@ def test_stock_report_v03_contract(report_005930_20260814):
 
     assert "relative_strength" in d
     assert d["relative_strength"]["phase12_closure_sha"] == "5fdf97793c1fd7683c33d5fe77ff4da97fc75a19"
+    assert "sector_relative_strength" in d
 
 
 def test_stock_report_v02_archive_all_json_match_schema():
@@ -210,7 +211,7 @@ def test_stock_reports_canonical_structure_invariant():
 def test_a_fast_core_section_always_present_and_fail_closed():
     """데이터 부족 시에도 a_fast_core 섹션이 생략되지 않고 DATA_UNAVAILABLE로 fail-closed 되는지 검증."""
     report, _, _ = generate_stock_report(ticker="999999", as_of="2026-08-14", repo_root=REPO_ROOT, save_artifacts=False)
-    assert report.report_version == "0.3"
+    assert report.report_version == "0.4"
     assert report.a_fast_core is not None
     assert report.a_fast_core.applicability == "DATA_UNAVAILABLE"
     assert report.a_fast_core.strategy_state == "DATA_UNAVAILABLE"

@@ -1,8 +1,8 @@
-"""Stock Report Data Models (Contract v0.3).
+"""Stock Report Data Models (Contract v0.4).
 
 종목 리포트의 JSON 직렬화 및 구조 정의 데이터 클래스를 제공한다.
-v0.3에서는 Phase 12 Market Relative Strength(relative_strength) 섹션이 최상위
-필드로 추가된다.
+v0.4에서는 Phase 12 Market Relative Strength(relative_strength)와 독립적인
+Sector Relative Strength(sector_relative_strength) 섹션을 함께 제공한다.
 """
 
 from __future__ import annotations
@@ -163,6 +163,33 @@ class RelativeStrengthSection:
     source_artifact: str | None
     source_sha256: str | None
     phase12_closure_sha: str
+
+
+@dataclass
+class SectorRelativeStrengthSection:
+    """Sector RS context calculated on demand from frozen local authorities."""
+
+    applicability: str
+    data_status: str
+    input_reason: str | None
+    sector_name: str | None
+    sector_code: str | None
+    benchmark_code: str | None
+    benchmark_last_observation_date: str | None
+    sector_return_3m: float | None
+    sector_return_6m: float | None
+    sector_return_12m: float | None
+    sector_rs_3m: float | None
+    sector_rs_6m: float | None
+    sector_rs_12m: float | None
+    sector_anchor_date_3m: str | None
+    sector_anchor_date_6m: str | None
+    sector_anchor_date_12m: str | None
+    explanation: str
+    source_as_of: str | None
+    membership_snapshot_date: str | None
+    membership_source: str | None
+    sector_index_source: str | None
 
 
 @dataclass
@@ -382,6 +409,7 @@ class StockReport:
     monthly_history: MonthlyHistorySection
     foreign_flow: ForeignFlowSection
     relative_strength: RelativeStrengthSection
+    sector_relative_strength: SectorRelativeStrengthSection
     trading_value_flow: TradingValueFlowSection
     data_quality: DataQualitySection
     provenance: ProvenanceSection
