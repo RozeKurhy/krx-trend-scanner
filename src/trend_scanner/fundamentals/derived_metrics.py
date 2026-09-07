@@ -36,6 +36,12 @@ GROWTH_METRICS = {
     "net_income": "NET_INCOME_GROWTH",
     "operating_cash_flow": "OPERATING_CASH_FLOW_GROWTH",
 }
+ANNUAL_ROE = "ANNUAL_ROE"
+TTM_ROE = "TTM_ROE"
+DEBT_RATIO = "DEBT_RATIO"
+PERCENT = "PERCENT"
+INSTANT_METRICS = frozenset({"equity", "liabilities"})
+INSTANT_PERIODS = frozenset({"Q1_END", "H1_END", "Q3_END", "FY_END"})
 
 
 def _parse_date(value: Any) -> date | None:
@@ -203,10 +209,12 @@ class DerivedMetricsEngine:
     def __init__(self):
         self._requested_as_of: str | None = None
         self._requested_as_of_date: date | None = None
+        self._ttm_cache: dict[Any, dict[int, tuple[DerivedMetricObservation, tuple[PeriodizedFinancialObservation, ...]]]] = {}
 
     def derive(self, source: PeriodizationResult | Iterable[PeriodizedFinancialObservation],
                *, requested_as_of: Any = None) -> DerivedMetricsResult:
         self._requested_as_of, self._requested_as_of_date = _normalise_as_of(requested_as_of)
+        self._ttm_cache = {}
         observations = self._coerce(source)
         selected = self._select_periods(observations)
         output: list[DerivedMetricObservation] = []
@@ -222,6 +230,7 @@ class DerivedMetricsEngine:
             output.extend(self._margin_expansion_metrics(group_key, selected))
             output.extend(self._transition_metrics(group_key, periods))
             output.extend(self._trend_metrics(group_key, periods))
+        output.extend(self._capital_metrics(observations, selected))
         output.sort(key=lambda item: (item.ticker, item.metric, item.fiscal_year,
                                       item.fiscal_period, item.metric_type))
         return DerivedMetricsResult(output, diagnostics)
@@ -261,6 +270,8 @@ class DerivedMetricsEngine:
     def _coerce(source: Any) -> tuple[PeriodizedFinancialObservation, ...]:
         if isinstance(source, PeriodizationResult):
             values = source.observations
+        elif hasattr(source, "canonical_observations"):
+            values = source.canonical_observations
         elif hasattr(source, "result") and isinstance(source.result, PeriodizationResult):
             values = source.result.observations
         else:
@@ -433,6 +444,7 @@ class DerivedMetricsEngine:
                                              unit="VALUE", sources=source_items)
             ttm[index] = (ttm_item, tuple(source_items))
             output.append(ttm_item)
+        self._ttm_cache[group_key] = ttm
         for index, (current_ttm, current_sources) in sorted(ttm.items()):
             prior_entry = ttm.get(index - 4)
             current_obs = quarters[index]
@@ -465,6 +477,321 @@ class DerivedMetricsEngine:
                     group_key, current_obs, metric_type="TTM_YOY", value=value, unit="PERCENT",
                     sources=all_sources,
                 ))
+        return output
+
+    @staticmethod
+    def _instant_period(item: PeriodizedFinancialObservation) -> str | None:
+        """Return the canonical quarter-end label without changing source semantics."""
+
+        period = str(item.fiscal_period or "").upper().strip()
+        if period in INSTANT_PERIODS:
+            return period
+        if str(item.period_semantics or "").upper() != "INSTANT":
+            return None
+        return {"Q1": "Q1_END", "Q2": "H1_END", "Q3": "Q3_END", "Q4": "FY_END", "FY": "FY_END"}.get(period)
+
+    def _select_instant_snapshots(
+        self, observations: Iterable[PeriodizedFinancialObservation],
+    ) -> tuple[dict[tuple[str, str, str, str, str, str], PeriodizedFinancialObservation | None],
+               set[tuple[str, str, str, str, str, str]]]:
+        """Select one PIT candidate per instant metric/snapshot, fail-closed on ties."""
+
+        grouped: dict[tuple[str, str, str, str, str, str], list[PeriodizedFinancialObservation]] = defaultdict(list)
+        for item in observations:
+            if item.metric not in INSTANT_METRICS:
+                continue
+            period = self._instant_period(item)
+            if period is None:
+                continue
+            key = (str(item.ticker), str(item.corp_code), str(item.company_family),
+                   str(item.fiscal_year), period, str(item.metric))
+            grouped[key].append(item)
+
+        selected: dict[tuple[str, str, str, str, str, str], PeriodizedFinancialObservation | None] = {}
+        ambiguous: set[tuple[str, str, str, str, str, str]] = set()
+        for key, values in grouped.items():
+            ready = [item for item in values if self._ready(item)]
+            candidates = ready or values
+            latest_dt = max((_parse_date(item.anchor_rcept_dt) or date.min) for item in candidates)
+            latest = [item for item in candidates
+                      if (_parse_date(item.anchor_rcept_dt) or date.min) == latest_dt]
+            latest_identities = {
+                (item.anchor_rcept_no, item.value, item.currency, item.fs_div_used,
+                 item.resolution_status, item.source_rcept_nos, item.source_rcept_dts,
+                 item.source_sha256s)
+                for item in latest
+            }
+            if len(latest_identities) != 1:
+                selected[key] = None
+                ambiguous.add(key)
+            else:
+                selected[key] = latest[0]
+        return selected, ambiguous
+
+    @staticmethod
+    def _identity(group_key) -> tuple[str, str, str]:
+        return str(group_key[0]), str(group_key[1]), str(group_key[2])
+
+    @staticmethod
+    def _quarter_parts(index: int) -> tuple[int, int]:
+        year = (index - 1) // 4
+        return year, index - year * 4
+
+    @staticmethod
+    def _quarter_end_label(quarter: int) -> str:
+        return {1: "Q1_END", 2: "H1_END", 3: "Q3_END", 4: "FY_END"}[quarter]
+
+    @staticmethod
+    def _snapshot_key(identity: tuple[str, str, str], year: int, period: str, metric: str):
+        return (*identity, str(year), period, metric)
+
+    def _snapshot(
+        self,
+        snapshots: Mapping[tuple[str, str, str, str, str, str], PeriodizedFinancialObservation | None],
+        identity: tuple[str, str, str], year: int, period: str, metric: str,
+    ) -> PeriodizedFinancialObservation | None:
+        return snapshots.get(self._snapshot_key(identity, year, period, metric))
+
+    @staticmethod
+    def _source_anchor(sources: Iterable[PeriodizedFinancialObservation | None]) -> PeriodizedFinancialObservation | None:
+        return next((item for item in sources if item is not None), None)
+
+    def _capital_status(self, item: PeriodizedFinancialObservation | None, missing_reason: str,
+                        *, ambiguous: bool = False) -> tuple[str, str]:
+        if ambiguous:
+            return PERIOD_AMBIGUOUS, "AMBIGUOUS_SNAPSHOT"
+        if item is None:
+            return DATA_UNAVAILABLE, missing_reason
+        if item.resolution_status != READY or not self._ready(item):
+            return (item.resolution_status if item.resolution_status != READY else INPUT_NOT_READY,
+                    item.reason or "INPUT_NOT_READY")
+        return READY, ""
+
+    def _annual_roe_metrics(self, group_key, periods, snapshots, ambiguous):
+        output: list[DerivedMetricObservation] = []
+        identity = self._identity(group_key)
+        annuals = {int(year): item for (year, period), item in periods.items() if period == "FY"
+                   for year in [int(str(year)[:4])]}
+        for year, current in sorted(annuals.items()):
+            prior_key = self._snapshot_key(identity, year - 1, "FY_END", "equity")
+            current_key = self._snapshot_key(identity, year, "FY_END", "equity")
+            prior_equity = snapshots.get(prior_key)
+            current_equity = snapshots.get(current_key)
+            sources = (current, prior_equity, current_equity)
+            anchor = self._source_anchor(sources)
+            if anchor is None:
+                continue
+            if group_key[2] == "FINANCIAL":
+                output.append(self._period_context(
+                    group_key, anchor, metric_type=ANNUAL_ROE, value=None, unit=PERCENT,
+                    status=NOT_APPLICABLE, reason="FINANCIAL_COMPANY_ROE_NOT_APPLICABLE", sources=sources,
+                ))
+                continue
+            status, reason = self._capital_status(current, "MISSING_ANNUAL_NET_INCOME")
+            if status == READY:
+                status, reason = self._capital_status(
+                    prior_equity, "MISSING_PRIOR_FY_END_EQUITY",
+                    ambiguous=prior_key in ambiguous,
+                )
+            if status == READY:
+                status, reason = self._capital_status(
+                    current_equity, "MISSING_CURRENT_FY_END_EQUITY",
+                    ambiguous=current_key in ambiguous,
+                )
+            if status != READY:
+                output.append(self._period_context(
+                    group_key, anchor, metric_type=ANNUAL_ROE, value=None, unit=PERCENT,
+                    status=status, reason=reason, sources=sources,
+                    metadata={"numerator": "annual net_income", "begin_equity_period": f"{year - 1}FY_END",
+                              "end_equity_period": f"{year}FY_END"},
+                ))
+                continue
+            coherence_status, coherence_reason = self._coherence(sources)
+            if coherence_status != READY:
+                output.append(self._period_context(
+                    group_key, anchor, metric_type=ANNUAL_ROE, value=None, unit=PERCENT,
+                    status=coherence_status, reason=coherence_reason, sources=sources,
+                ))
+                continue
+            prior_value, current_value = _number(prior_equity.value), _number(current_equity.value)
+            average_equity = (prior_value + current_value) / 2
+            metadata = {"numerator": "annual net_income", "begin_equity_period": f"{year - 1}FY_END",
+                        "end_equity_period": f"{year}FY_END"}
+            if average_equity <= 0:
+                output.append(self._period_context(
+                    group_key, anchor, metric_type=ANNUAL_ROE, value=None, unit=PERCENT,
+                    status=UNDEFINED_BASE, reason="NON_POSITIVE_AVERAGE_EQUITY_BASE", sources=sources,
+                    metadata=metadata,
+                ))
+                continue
+            output.append(self._period_context(
+                group_key, anchor, metric_type=ANNUAL_ROE,
+                value=_number(current.value) / average_equity * 100, unit=PERCENT,
+                sources=sources, metadata=metadata,
+            ))
+        return output
+
+    def _ttm_roe_metrics(self, group_key, periods, snapshots, ambiguous):
+        output: list[DerivedMetricObservation] = []
+        identity = self._identity(group_key)
+        quarters = {
+            _quarter_index(year, period): item
+            for (year, period), item in periods.items() if period in QUARTERS
+        }
+        cached_ttm = self._ttm_cache.get(group_key, {})
+        for index, current in sorted(quarters.items()):
+            if current is None:
+                continue
+            source_window = tuple(quarters.get(index - offset) for offset in (3, 2, 1, 0))
+            begin_year, begin_quarter = self._quarter_parts(index - 4)
+            end_year, end_quarter = self._quarter_parts(index)
+            begin_period = self._quarter_end_label(begin_quarter)
+            end_period = self._quarter_end_label(end_quarter)
+            begin_key = self._snapshot_key(identity, begin_year, begin_period, "equity")
+            end_key = self._snapshot_key(identity, end_year, end_period, "equity")
+            begin_equity = snapshots.get(begin_key)
+            end_equity = snapshots.get(end_key)
+            sources = source_window + (begin_equity, end_equity)
+            # Anchor the derived observation to the endpoint quarter; the
+            # four source quarters remain in provenance below.
+            anchor = current
+            if anchor is None:
+                continue
+            metadata = {
+                "ttm_start": f"{source_window[0].fiscal_year}{source_window[0].fiscal_period}" if source_window[0] else None,
+                "ttm_end": f"{current.fiscal_year}{current.fiscal_period}",
+                "begin_equity_period": f"{begin_year}{begin_period}",
+                "end_equity_period": f"{end_year}{end_period}",
+            }
+            if group_key[2] == "FINANCIAL":
+                output.append(self._period_context(
+                    group_key, anchor, metric_type=TTM_ROE, value=None, unit=PERCENT,
+                    status=NOT_APPLICABLE, reason="FINANCIAL_COMPANY_ROE_NOT_APPLICABLE", sources=sources,
+                    metadata=metadata,
+                ))
+                continue
+            status, reason = self._capital_status(current, "MISSING_TTM_NET_INCOME")
+            if status == READY and any(item is None for item in source_window):
+                status, reason = DATA_UNAVAILABLE, "MISSING_FOUR_QUARTER_WINDOW"
+            if status == READY:
+                non_ready = next((item for item in source_window if not self._ready(item)), None)
+                if non_ready is not None:
+                    status, reason = self._capital_status(non_ready, "INPUT_NOT_READY")
+            if status == READY:
+                status, reason = self._capital_status(
+                    begin_equity, "MISSING_BEGINNING_EQUITY",
+                    ambiguous=begin_key in ambiguous,
+                )
+            if status == READY:
+                status, reason = self._capital_status(
+                    end_equity, "MISSING_ENDING_EQUITY",
+                    ambiguous=end_key in ambiguous,
+                )
+            if status != READY:
+                output.append(self._period_context(
+                    group_key, anchor, metric_type=TTM_ROE, value=None, unit=PERCENT,
+                    status=status, reason=reason, sources=sources, metadata=metadata,
+                ))
+                continue
+            coherence_status, coherence_reason = self._coherence(sources)
+            if coherence_status != READY:
+                output.append(self._period_context(
+                    group_key, anchor, metric_type=TTM_ROE, value=None, unit=PERCENT,
+                    status=coherence_status, reason=coherence_reason, sources=sources, metadata=metadata,
+                ))
+                continue
+            cached = cached_ttm.get(index)
+            ttm_value = cached[0].value if cached is not None else sum(_number(item.value) for item in source_window)
+            average_equity = (_number(begin_equity.value) + _number(end_equity.value)) / 2
+            if average_equity <= 0:
+                output.append(self._period_context(
+                    group_key, anchor, metric_type=TTM_ROE, value=None, unit=PERCENT,
+                    status=UNDEFINED_BASE, reason="NON_POSITIVE_AVERAGE_EQUITY_BASE", sources=sources,
+                    metadata=metadata,
+                ))
+                continue
+            output.append(self._period_context(
+                group_key, anchor, metric_type=TTM_ROE,
+                value=_number(ttm_value) / average_equity * 100, unit=PERCENT,
+                sources=sources, metadata=metadata,
+            ))
+        return output
+
+    def _debt_ratio_metrics(self, identity, family, snapshots, ambiguous):
+        output: list[DerivedMetricObservation] = []
+        keys = sorted({key[3:5] for key in snapshots
+                       if key[:3] == identity and key[5] in INSTANT_METRICS})
+        group_key = (*identity, "liabilities")
+        for year_text, period in keys:
+            year = int(year_text)
+            liabilities_key = self._snapshot_key(identity, year, period, "liabilities")
+            equity_key = self._snapshot_key(identity, year, period, "equity")
+            liabilities = snapshots.get(liabilities_key)
+            equity = snapshots.get(equity_key)
+            sources = (liabilities, equity)
+            anchor = self._source_anchor(sources)
+            if anchor is None:
+                continue
+            metadata = {"snapshot_period": f"{year}{period}"}
+            if family == "FINANCIAL":
+                output.append(self._period_context(
+                    group_key, anchor, metric_type=DEBT_RATIO, value=None, unit=PERCENT,
+                    status=NOT_APPLICABLE, reason="FINANCIAL_COMPANY_DEBT_RATIO_NOT_APPLICABLE",
+                    sources=sources, metadata=metadata,
+                ))
+                continue
+            status, reason = self._capital_status(
+                liabilities, "MISSING_LIABILITIES", ambiguous=liabilities_key in ambiguous,
+            )
+            if status == READY:
+                status, reason = self._capital_status(
+                    equity, "MISSING_EQUITY", ambiguous=equity_key in ambiguous,
+                )
+            if status != READY:
+                output.append(self._period_context(
+                    group_key, anchor, metric_type=DEBT_RATIO, value=None, unit=PERCENT,
+                    status=status, reason=reason, sources=sources, metadata=metadata,
+                ))
+                continue
+            coherence_status, coherence_reason = self._coherence(sources)
+            if coherence_status != READY:
+                output.append(self._period_context(
+                    group_key, anchor, metric_type=DEBT_RATIO, value=None, unit=PERCENT,
+                    status=coherence_status, reason=coherence_reason, sources=sources, metadata=metadata,
+                ))
+                continue
+            equity_value = _number(equity.value)
+            if equity_value <= 0:
+                output.append(self._period_context(
+                    group_key, anchor, metric_type=DEBT_RATIO, value=None, unit=PERCENT,
+                    status=UNDEFINED_BASE, reason="NON_POSITIVE_EQUITY_BASE", sources=sources, metadata=metadata,
+                ))
+                continue
+            output.append(self._period_context(
+                group_key, anchor, metric_type=DEBT_RATIO,
+                value=_number(liabilities.value) / equity_value * 100, unit=PERCENT,
+                sources=sources, metadata=metadata,
+            ))
+        return output
+
+    def _capital_metrics(self, observations, selected):
+        snapshots, ambiguous = self._select_instant_snapshots(observations)
+        output: list[DerivedMetricObservation] = []
+        net_income_groups = [key for key in selected if key[-1] == "net_income"]
+        identities: dict[tuple[str, str, str], str] = {}
+        for key in snapshots:
+            identity = key[:3]
+            identities.setdefault(identity, key[2])
+        for group_key in net_income_groups:
+            output.extend(self._annual_roe_metrics(
+                group_key, selected[group_key], snapshots, ambiguous,
+            ))
+            output.extend(self._ttm_roe_metrics(
+                group_key, selected[group_key], snapshots, ambiguous,
+            ))
+            identities.setdefault(self._identity(group_key), group_key[2])
+        for identity, family in sorted(identities.items()):
+            output.extend(self._debt_ratio_metrics(identity, family, snapshots, ambiguous))
         return output
 
     def _margin_metrics(self, group_key, selected):
