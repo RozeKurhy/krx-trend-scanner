@@ -1,0 +1,131 @@
+from __future__ import annotations
+
+from types import SimpleNamespace
+
+from trend_scanner.fundamentals.multi_period import (
+    MultiPeriodFundamentalsProvider,
+    build_multi_period_result,
+)
+from trend_scanner.fundamentals.period_models import PeriodizationResult, PeriodizedFinancialObservation
+
+
+METRICS = ("revenue", "operating_income", "net_income", "operating_cash_flow", "equity", "liabilities")
+
+
+def _obs(year: int, period: str, metric: str, *, status: str = "READY", family: str = "NON_FINANCIAL",
+         receipt: str | None = None, basis: str | None = "CFS",
+         currency: str | None = "KRW") -> PeriodizedFinancialObservation:
+    code = {"Q1": "11013", "Q2": "11012", "Q3": "11014", "Q4": "11011", "FY": "11011"}[period]
+    receipt = receipt or f"{year}-12-31"
+    return PeriodizedFinancialObservation(
+        ticker="TEST", corp_code="00000001", company_family=family,
+        fiscal_year=str(year), fiscal_year_start=f"{year}-01-01", fiscal_period=period,
+        period_semantics="FULL_YEAR" if period == "FY" else "STANDALONE_QUARTER",
+        period_start=f"{year}-01-01", period_end=f"{year}-12-31", metric=metric,
+        value=100, currency=currency, method="DIRECT_ONLY", anchor_report_type="ANNUAL",
+        anchor_reprt_code=code, anchor_rcept_no=f"{year}-{period}-{metric}",
+        anchor_rcept_dt=receipt, source_rcept_nos=(f"{year}-{period}-{metric}",),
+        source_rcept_dts=(receipt,), source_sha256s=(f"sha-{year}-{period}",),
+        resolution_status=status, pit_available_from=receipt, fs_div_used=basis,
+    )
+
+
+def _canonical(*, missing: tuple[int, int] | None = None, ambiguous: tuple[int, int] | None = None,
+               include_future: bool = False):
+    rows = []
+    for year in range(2021, 2025):
+        for quarter in range(1, 5):
+            if missing == (year, quarter):
+                continue
+            status = "PERIOD_AMBIGUOUS" if ambiguous == (year, quarter) else "READY"
+            for metric in METRICS:
+                rows.append(_obs(year, f"Q{quarter}", metric, status=status))
+    for year in range(2019, 2025):
+        for metric in METRICS:
+            rows.append(_obs(year, "FY", metric))
+    if include_future:
+        rows.append(_obs(2025, "Q1", "revenue", receipt="2025-05-15"))
+    return rows
+
+
+def test_16q_and_6fy_windows_are_explicit_and_display_windows_are_extractable():
+    result = build_multi_period_result(
+        ticker="TEST", requested_as_of="2024-12-31", observations=_canonical()
+    )
+    assert len(result.quarter_slots) == 16
+    assert len(result.annual_slots) == 6
+    assert result.has_16q_comparison_window is True
+    assert result.has_12q_display_window is True
+    assert result.has_6fy_comparison_window is True
+    assert result.has_5y_display_window is True
+    assert result.display_quarters[0].identity == "2022Q1"
+    assert result.display_annuals[0].identity == "2020"
+    assert result.quarter_coverage["quarter_requested_count"] == 16
+    assert result.annual_coverage["annual_requested_count"] == 6
+
+
+def test_missing_quarter_is_preserved_without_silent_compression():
+    result = build_multi_period_result(
+        ticker="TEST", requested_as_of="2024-12-31", observations=_canonical(missing=(2023, 2))
+    )
+    slot = next(item for item in result.quarter_slots if item.identity == "2023Q2")
+    assert slot.status == "DATA_UNAVAILABLE"
+    assert result.has_16q_comparison_window is False
+    assert len(result.quarter_slots) == 16
+    assert [item.identity for item in result.quarter_slots].count("2023Q2") == 1
+
+
+def test_ambiguous_and_future_observations_fail_closed():
+    result = build_multi_period_result(
+        ticker="TEST", requested_as_of="2024-12-31",
+        observations=_canonical(ambiguous=(2023, 2), include_future=True),
+    )
+    slot = next(item for item in result.quarter_slots if item.identity == "2023Q2")
+    assert slot.status == "PERIOD_AMBIGUOUS"
+    assert result.has_16q_comparison_window is False
+    assert any(item["type"] == "FUTURE_OR_UNAVAILABLE_SOURCE_EXCLUDED" for item in result.diagnostics)
+
+
+def test_basis_and_currency_mismatch_disable_comparison_window():
+    rows = _canonical()
+    rows[0] = _obs(2021, "Q1", "revenue", basis="OFS")
+    rows[1] = _obs(2021, "Q1", "operating_income", currency="USD")
+    result = build_multi_period_result(
+        ticker="TEST", requested_as_of="2024-12-31", observations=rows
+    )
+    assert result.has_16q_comparison_window is False
+    assert result.quarter_coverage["basis_consistent"] is False
+    assert result.quarter_coverage["currency_consistent"] is False
+    assert any(item["type"] == "BASIS_MISMATCH_WINDOW" for item in result.diagnostics)
+    assert any(item["type"] == "CURRENCY_MISMATCH_WINDOW" for item in result.diagnostics)
+
+
+def test_financial_family_keeps_general_series_not_applicable():
+    result = build_multi_period_result(
+        ticker="086790", requested_as_of="2024-12-31",
+        observations=[_obs(2024, "Q4", "net_income", family="FINANCIAL")],
+        company_family="FINANCIAL",
+    )
+    assert result.quarters == ()
+    assert result.annuals == ()
+    assert result.quarter_coverage["not_applicable"] is True
+    assert all(item.status == "NOT_APPLICABLE" for item in result.quarter_slots)
+
+
+def test_provider_builds_each_requested_year_once_and_reuses_periodization_authority():
+    calls: list[str] = []
+
+    class StubPeriodizationProvider:
+        def build(self, ticker, fiscal_year, requested_as_of, **kwargs):
+            calls.append(str(fiscal_year))
+            rows = tuple(_obs(int(fiscal_year), "Q1", metric) for metric in METRICS)
+            return SimpleNamespace(
+                company_family="NON_FINANCIAL", facts=rows,
+                result=PeriodizationResult(rows), skipped_anchors=(), fiscal_year=str(fiscal_year),
+            )
+
+    provider = MultiPeriodFundamentalsProvider(StubPeriodizationProvider())
+    result = provider.build("TEST", "2024-12-31", fiscal_years=["2024", "2024", "2023"])
+    assert calls == ["2024", "2023"]
+    assert result.corp_code == "00000001"
+    assert result.requested_as_of == "2024-12-31"

@@ -56,6 +56,16 @@ from .assessment import (
     assess_fundamentals,
 )
 from .assessment_provider import FundamentalsAssessmentProvider
+from .multi_period import (
+    CoverageMetadata,
+    MultiPeriodCoverageSlot,
+    MultiPeriodFundamentalsProvider,
+    MultiPeriodFundamentalsResult,
+    MultiPeriodProvider,
+    REQUIRED_SOURCE_METRICS,
+    build_multi_period_fundamentals,
+    build_multi_period_result,
+)
 
 __all__ = [
     "PIT_GRANULARITY",
@@ -117,4 +127,12 @@ __all__ = [
     "CURRENTNESS_RANGE_ONLY",
     "CURRENTNESS_STALE",
     "CURRENTNESS_VERIFIED",
+    "MultiPeriodCoverageSlot",
+    "MultiPeriodFundamentalsProvider",
+    "MultiPeriodFundamentalsResult",
+    "MultiPeriodProvider",
+    "CoverageMetadata",
+    "REQUIRED_SOURCE_METRICS",
+    "build_multi_period_fundamentals",
+    "build_multi_period_result",
 ]
