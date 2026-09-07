@@ -1,8 +1,8 @@
-"""Stock Report Data Models (Contract v0.4).
+"""Stock Report Data Models (Contract v0.5).
 
 종목 리포트의 JSON 직렬화 및 구조 정의 데이터 클래스를 제공한다.
-v0.4에서는 Phase 12 Market Relative Strength(relative_strength)와 독립적인
-Sector Relative Strength(sector_relative_strength) 섹션을 함께 제공한다.
+v0.5에서는 기존 v0.4 구조에 독립적인 Fundamentals(fundamentals) 섹션을
+additive로 제공한다. v0.4 historical artifacts의 구조는 변경하지 않는다.
 """
 
 from __future__ import annotations
@@ -215,6 +215,72 @@ class DataQualitySection:
 
 
 @dataclass
+class FundamentalsQuarterRow:
+    quarter: str
+    status: str
+    reason: str | None
+    revenue_krw: int | float | None
+    revenue_yoy_pct: int | float | None
+    operating_income_krw: int | float | None
+    operating_margin_pct: int | float | None
+    net_income_krw: int | float | None
+    net_margin_pct: int | float | None
+    operating_cash_flow_krw: int | float | None
+
+
+@dataclass
+class FundamentalsAnnualRow:
+    fiscal_year: str
+    status: str
+    reason: str | None
+    revenue_krw: int | float | None
+    revenue_yoy_pct: int | float | None
+    operating_income_krw: int | float | None
+    operating_margin_pct: int | float | None
+    net_income_krw: int | float | None
+    net_margin_pct: int | float | None
+    roe_pct: int | float | None
+    debt_ratio_pct: int | float | None
+
+
+@dataclass
+class FundamentalsSummary:
+    latest_fy: str | None = None
+    latest_quarter: str | None = None
+    latest_fy_revenue_krw: int | float | None = None
+    latest_4q_avg_revenue_krw: int | float | None = None
+    ttm_revenue_krw: int | float | None = None
+    ttm_operating_income_krw: int | float | None = None
+    ttm_net_income_krw: int | float | None = None
+    ttm_operating_cash_flow_krw: int | float | None = None
+    ttm_operating_margin_pct: int | float | None = None
+    ttm_net_margin_pct: int | float | None = None
+    ttm_operating_cash_flow_margin_pct: int | float | None = None
+    ttm_roe_pct: int | float | None = None
+    latest_debt_ratio_pct: int | float | None = None
+    filter_status: str = "DATA_UNAVAILABLE"
+    filter_passed: bool = False
+    filter_reasons: list[str] = field(default_factory=list)
+
+
+@dataclass
+class FundamentalsSection:
+    applicability: str
+    data_status: str
+    reason: str | None
+    requested_as_of: str | None
+    company_family: str | None
+    currency: str
+    filter_status: str
+    filter_passed: bool
+    filter_reasons: list[str]
+    summary: FundamentalsSummary
+    quarterly: list[FundamentalsQuarterRow] = field(default_factory=list)
+    annual: list[FundamentalsAnnualRow] = field(default_factory=list)
+    diagnostics: list[dict[str, Any]] = field(default_factory=list)
+
+
+@dataclass
 class ProvenanceSection:
     stock_price_source: str
     score_contract: str
@@ -416,6 +482,7 @@ class StockReport:
     pattern_a_fast: PatternAFastSection
     a_fast_core: AFastCoreSection
     asset_type: str = "COMMON"
+    fundamentals: FundamentalsSection | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """Convert report to JSON-serializable dictionary."""

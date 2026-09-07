@@ -1,7 +1,8 @@
-"""Stock Report Generator Engine (Contract v0.4).
+"""Stock Report Generator Engine (Contract v0.5).
 
 로컬 Parquet 일봉 캐시와 정본 아티팩트만을 활용하여 단일 종목의 종합 분석 리포트를 생성하고
-A FAST Core V2 전략 상태를 포함한 JSON 및 GitHub Flavored Markdown 형식으로 출력한다.
+A FAST Core V2 전략 상태와 선택적 Fundamentals context를 포함한 JSON 및 GitHub
+Flavored Markdown 형식으로 출력한다.
 """
 
 from __future__ import annotations
@@ -34,11 +35,16 @@ from trend_scanner.patterns.pattern_a_evaluator import (
 )
 from trend_scanner.patterns.pattern_a_feature_set import PatternAStage
 from trend_scanner.reporting.a_fast_core_report import build_a_fast_core_section
+from trend_scanner.reporting.fundamentals_report import (
+    build_fundamentals_section,
+    fundamentals_executive_bullet,
+)
 from trend_scanner.reporting.models import (
     CurrentSnapshot,
     DataQualitySection,
     FlowState,
     ForeignFlowSection,
+    FundamentalsSection,
     MonthlyHistorySection,
     MonthlyObservation,
     ProvenanceSection,
@@ -66,6 +72,11 @@ from trend_scanner.validation.historical_snapshot import build_historical_snapsh
 LEGACY_A_FAST_CORE_PROVENANCE_PATH = "docs/validation/pattern_a_fast_final_strategy_v02.md"
 
 logger = logging.getLogger(__name__)
+
+# Preserve the v0.4 API for callers that omit the new injection argument while
+# allowing an explicit ``None`` to request the v0.5 safe DATA_UNAVAILABLE
+# fundamentals section.  v0.4 artifacts and their schema remain untouched.
+_FUNDAMENTALS_UNSET = object()
 
 
 def _format_ticker(ticker: str) -> str:
@@ -312,6 +323,88 @@ def _format_rs_position(value: float | None) -> str:
     return f"상위 약 {max(0.0, 100.0 - value):.1f}%"
 
 
+def _format_fundamentals_krw(value: Any) -> str:
+    """Render KRW amounts in 억원 while keeping nulls explicitly N/A."""
+    if value is None:
+        return "N/A"
+    try:
+        return f"{float(value) / 100_000_000:,.1f}억원"
+    except (TypeError, ValueError):
+        return "N/A"
+
+
+def _format_fundamentals_pct(value: Any) -> str:
+    if value is None:
+        return "N/A"
+    try:
+        return f"{float(value):.2f}%"
+    except (TypeError, ValueError):
+        return "N/A"
+
+
+def _render_fundamentals_section(section: FundamentalsSection) -> list[str]:
+    """Render the additive v0.5 fundamentals block after Current Snapshot."""
+    summary = section.summary
+    lines = [
+        "## 1.5. 펀더멘털 (Fundamentals)",
+        f"- **적용성 (Applicability)**: `{section.applicability}`",
+        f"- **데이터 상태 (Data Status)**: `{section.data_status}`",
+        f"- **사유 (Reason)**: `{section.reason or 'N/A'}`",
+        f"- **기준일 (Requested As-Of)**: `{section.requested_as_of or 'N/A'}`",
+        f"- **회사 분류 (Company Family)**: `{section.company_family or 'N/A'}`",
+        f"- **Fundamentals Filter**: `{section.filter_status}`",
+        f"- **Filter Passed**: `{'YES' if section.filter_passed else 'NO'}`",
+    ]
+    if section.filter_reasons:
+        lines.append(f"- **Filter Reasons**: `{', '.join(str(reason) for reason in section.filter_reasons)}`")
+    else:
+        lines.append("- **Filter Reasons**: `N/A`")
+    lines.extend([
+        "",
+        "### 요약 (Summary)",
+        "| 항목 | 값 |",
+        "|---|---:|",
+        f"| 최신 FY / 최신 분기 | `{summary.latest_fy or 'N/A'}` / `{summary.latest_quarter or 'N/A'}` |",
+        f"| 최신 FY 매출 | {_format_fundamentals_krw(summary.latest_fy_revenue_krw)} |",
+        f"| 최근 4분기 평균 매출 | {_format_fundamentals_krw(summary.latest_4q_avg_revenue_krw)} |",
+        f"| TTM 매출 | {_format_fundamentals_krw(summary.ttm_revenue_krw)} |",
+        f"| TTM 영업이익 | {_format_fundamentals_krw(summary.ttm_operating_income_krw)} |",
+        f"| TTM 순이익 | {_format_fundamentals_krw(summary.ttm_net_income_krw)} |",
+        f"| TTM 영업현금흐름 | {_format_fundamentals_krw(summary.ttm_operating_cash_flow_krw)} |",
+        f"| TTM 영업이익률 / 순이익률 / OCF 마진 | {_format_fundamentals_pct(summary.ttm_operating_margin_pct)} / {_format_fundamentals_pct(summary.ttm_net_margin_pct)} / {_format_fundamentals_pct(summary.ttm_operating_cash_flow_margin_pct)} |",
+        f"| TTM ROE / 최신 부채비율 | {_format_fundamentals_pct(summary.ttm_roe_pct)} / {_format_fundamentals_pct(summary.latest_debt_ratio_pct)} |",
+        "",
+        "### 최근 12개 분기 (Latest 12 Quarters)",
+        "| 분기 | 상태 | 매출 | 매출 YoY | 영업이익 | 영업이익률 | 순이익 | 순이익률 | OCF |",
+        "|---|---|---:|---:|---:|---:|---:|---:|---:|",
+    ])
+    for row in section.quarterly:
+        lines.append(
+            f"| `{row.quarter}` | `{row.status}` | {_format_fundamentals_krw(row.revenue_krw)} | {_format_fundamentals_pct(row.revenue_yoy_pct)} | "
+            f"{_format_fundamentals_krw(row.operating_income_krw)} | {_format_fundamentals_pct(row.operating_margin_pct)} | "
+            f"{_format_fundamentals_krw(row.net_income_krw)} | {_format_fundamentals_pct(row.net_margin_pct)} | {_format_fundamentals_krw(row.operating_cash_flow_krw)} |"
+        )
+    lines.extend([
+        "",
+        "### 최근 5개년 (Latest 5 Fiscal Years)",
+        "| FY | 상태 | 매출 | 매출 YoY | 영업이익 | 영업이익률 | 순이익 | 순이익률 | ROE | 부채비율 |",
+        "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|",
+    ])
+    for row in section.annual:
+        lines.append(
+            f"| `{row.fiscal_year}` | `{row.status}` | {_format_fundamentals_krw(row.revenue_krw)} | {_format_fundamentals_pct(row.revenue_yoy_pct)} | "
+            f"{_format_fundamentals_krw(row.operating_income_krw)} | {_format_fundamentals_pct(row.operating_margin_pct)} | "
+            f"{_format_fundamentals_krw(row.net_income_krw)} | {_format_fundamentals_pct(row.net_margin_pct)} | "
+            f"{_format_fundamentals_pct(row.roe_pct)} | {_format_fundamentals_pct(row.debt_ratio_pct)} |"
+        )
+    if section.diagnostics:
+        lines.extend(["", "### 진단 (Diagnostics)"])
+        for item in section.diagnostics:
+            lines.append(f"- `{json.dumps(item, ensure_ascii=False, sort_keys=True)}`")
+    lines.extend(["", "---", ""])
+    return lines
+
+
 def render_markdown_report(report: StockReport) -> str:
     """StockReport JSON 객체를 사람이 읽기 쉬운 GitHub Flavored Markdown 보고서(v0.4)로 렌더링한다."""
     cur = report.current_snapshot
@@ -363,6 +456,9 @@ def render_markdown_report(report: StockReport) -> str:
     md.append("")
     md.append("---")
     md.append("")
+
+    if report.fundamentals is not None:
+        md.extend(_render_fundamentals_section(report.fundamentals))
 
     # Section 2. 패스트 코어 V2 전략 상태 (A FAST Core V2 Strategy State)
     seq_str = f"{core.current_trade.trade_sequence}번째 거래" if (core.current_trade and core.canonical_position == "OPEN") else ("N/A (FLAT)" if core.canonical_position == "FLAT" else "N/A")
@@ -680,8 +776,16 @@ def generate_stock_report(
     save_artifacts: bool = True,
     output_dir: Path | str | None = None,
     repository: MarketDataRepositoryV2 | None = None,
+    fundamentals_section: FundamentalsSection | None | object = _FUNDAMENTALS_UNSET,
 ) -> tuple[StockReport, Path | None, Path | None]:
-    """단일 종목의 Stock Report v0.4를 생성하고 선택적으로 JSON/MD 아티팩트를 저장한다."""
+    """단일 종목 리포트를 생성한다.
+
+    Fundamentals are an additive, pure injection.  The legacy omitted-call
+    path remains v0.4 for archived/regression callers; passing either a section
+    or explicit ``None`` opts into v0.5 (``None`` becomes a safe unavailable
+    section without any provider hydration).
+    """
+    emit_v05 = fundamentals_section is not _FUNDAMENTALS_UNSET
     root_path = Path(repo_root) if repo_root else Path(__file__).resolve().parent.parent.parent.parent
     clean_ticker = _format_ticker(ticker)
     production_market_calendar = load_rolling_production_market_calendar(root_path)
@@ -721,6 +825,13 @@ def generate_stock_report(
         is_common = inst_meta.asset_type == AssetType.COMMON.value and inst_meta.is_identified
     else:
         metadata_provenance_mode = "DATA_UNAVAILABLE"
+
+    if emit_v05 and fundamentals_section is None:
+        fundamentals_section = build_fundamentals_section(
+            None, None, None, requested_as_of=canonical_as_of, asset_type=asset_type,
+        )
+    if not emit_v05:
+        fundamentals_section = None
 
     # 3. Daily Slice 생성 (Lookahead 방지)
     if has_cache and daily is not None:
@@ -1175,6 +1286,9 @@ def generate_stock_report(
         strat_bullet = "패스트 코어 V2: 데이터 부족으로 판정 불가"
 
     bullet_points.insert(0, strat_bullet)
+    fundamentals_bullet = fundamentals_executive_bullet(fundamentals_section)
+    if fundamentals_bullet:
+        bullet_points.insert(1, fundamentals_bullet)
 
     summary = ReportSummary(
         headline=headline,
@@ -1203,7 +1317,7 @@ def generate_stock_report(
     )
 
     report = StockReport(
-        report_version="0.4",
+        report_version="0.5" if emit_v05 else "0.4",
         ticker=clean_ticker,
         name=name,
         market=market,
@@ -1222,6 +1336,7 @@ def generate_stock_report(
         data_quality=data_quality,
         provenance=provenance,
         asset_type=asset_type,
+        fundamentals=fundamentals_section,
     )
 
     # 10. Save Artifacts if requested (Default canonical output dir — production

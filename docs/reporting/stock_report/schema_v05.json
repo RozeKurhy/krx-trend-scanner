@@ -1,0 +1,88 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "StockReport_v0.5",
+  "type": "object",
+  "required": [
+    "report_version", "ticker", "name", "market", "asset_type",
+    "requested_as_of", "reference_market_date", "header", "summary",
+    "current_snapshot", "a_fast_core", "pattern_a_fast", "monthly_history",
+    "foreign_flow", "relative_strength", "sector_relative_strength",
+    "trading_value_flow", "data_quality", "provenance", "fundamentals"
+  ],
+  "properties": {
+    "report_version": {"type": "string", "enum": ["0.5"]},
+    "ticker": {"type": "string", "pattern": "^[0-9A-Z]{6}$"},
+    "name": {"type": "string"},
+    "market": {"type": "string", "enum": ["KOSPI", "KOSDAQ", "KONEX", "UNKNOWN"]},
+    "asset_type": {"type": "string", "enum": ["COMMON", "PREFERRED", "SPAC", "REIT", "ETF", "ETN", "OTHER", "UNKNOWN"]},
+    "requested_as_of": {"type": "string"},
+    "reference_market_date": {"type": "string"},
+    "fundamentals": {
+      "type": "object",
+      "required": [
+        "applicability", "data_status", "reason", "requested_as_of",
+        "company_family", "currency", "filter_status", "filter_passed",
+        "filter_reasons", "summary", "quarterly", "annual", "diagnostics"
+      ],
+      "properties": {
+        "applicability": {"type": "string", "enum": ["APPLICABLE", "NOT_APPLICABLE"]},
+        "data_status": {"type": "string", "enum": ["READY", "PARTIAL", "DATA_UNAVAILABLE", "NOT_APPLICABLE"]},
+        "reason": {"type": ["string", "null"]},
+        "requested_as_of": {"type": ["string", "null"]},
+        "company_family": {"type": ["string", "null"]},
+        "currency": {"type": "string", "enum": ["KRW"]},
+        "filter_status": {"type": "string"},
+        "filter_passed": {"type": "boolean"},
+        "filter_reasons": {"type": "array", "items": {"type": "string"}},
+        "summary": {"$ref": "#/definitions/fundamentalsSummary"},
+        "quarterly": {"type": "array", "items": {"$ref": "#/definitions/fundamentalsQuarterRow"}},
+        "annual": {"type": "array", "items": {"$ref": "#/definitions/fundamentalsAnnualRow"}},
+        "diagnostics": {"type": "array", "items": {"type": "object"}}
+      }
+    }
+  },
+  "definitions": {
+    "nullableNumber": {"type": ["number", "null"]},
+    "fundamentalsQuarterRow": {
+      "type": "object",
+      "required": ["quarter", "status", "reason", "revenue_krw", "revenue_yoy_pct", "operating_income_krw", "operating_margin_pct", "net_income_krw", "net_margin_pct", "operating_cash_flow_krw"],
+      "properties": {
+        "quarter": {"type": "string"}, "status": {"type": "string"}, "reason": {"type": ["string", "null"]},
+        "revenue_krw": {"$ref": "#/definitions/nullableNumber"}, "revenue_yoy_pct": {"$ref": "#/definitions/nullableNumber"},
+        "operating_income_krw": {"$ref": "#/definitions/nullableNumber"}, "operating_margin_pct": {"$ref": "#/definitions/nullableNumber"},
+        "net_income_krw": {"$ref": "#/definitions/nullableNumber"}, "net_margin_pct": {"$ref": "#/definitions/nullableNumber"},
+        "operating_cash_flow_krw": {"$ref": "#/definitions/nullableNumber"}
+      }
+    },
+    "fundamentalsAnnualRow": {
+      "type": "object",
+      "required": ["fiscal_year", "status", "reason", "revenue_krw", "revenue_yoy_pct", "operating_income_krw", "operating_margin_pct", "net_income_krw", "net_margin_pct", "roe_pct", "debt_ratio_pct"],
+      "properties": {
+        "fiscal_year": {"type": "string"}, "status": {"type": "string"}, "reason": {"type": ["string", "null"]},
+        "revenue_krw": {"$ref": "#/definitions/nullableNumber"}, "revenue_yoy_pct": {"$ref": "#/definitions/nullableNumber"},
+        "operating_income_krw": {"$ref": "#/definitions/nullableNumber"}, "operating_margin_pct": {"$ref": "#/definitions/nullableNumber"},
+        "net_income_krw": {"$ref": "#/definitions/nullableNumber"}, "net_margin_pct": {"$ref": "#/definitions/nullableNumber"},
+        "roe_pct": {"$ref": "#/definitions/nullableNumber"}, "debt_ratio_pct": {"$ref": "#/definitions/nullableNumber"}
+      }
+    },
+    "fundamentalsSummary": {
+      "type": "object",
+      "required": [
+        "latest_fy", "latest_quarter", "latest_fy_revenue_krw", "latest_4q_avg_revenue_krw",
+        "ttm_revenue_krw", "ttm_operating_income_krw", "ttm_net_income_krw", "ttm_operating_cash_flow_krw",
+        "ttm_operating_margin_pct", "ttm_net_margin_pct", "ttm_operating_cash_flow_margin_pct", "ttm_roe_pct",
+        "latest_debt_ratio_pct", "filter_status", "filter_passed", "filter_reasons"
+      ],
+      "properties": {
+        "latest_fy": {"type": ["string", "null"]}, "latest_quarter": {"type": ["string", "null"]},
+        "latest_fy_revenue_krw": {"$ref": "#/definitions/nullableNumber"}, "latest_4q_avg_revenue_krw": {"$ref": "#/definitions/nullableNumber"},
+        "ttm_revenue_krw": {"$ref": "#/definitions/nullableNumber"}, "ttm_operating_income_krw": {"$ref": "#/definitions/nullableNumber"},
+        "ttm_net_income_krw": {"$ref": "#/definitions/nullableNumber"}, "ttm_operating_cash_flow_krw": {"$ref": "#/definitions/nullableNumber"},
+        "ttm_operating_margin_pct": {"$ref": "#/definitions/nullableNumber"}, "ttm_net_margin_pct": {"$ref": "#/definitions/nullableNumber"},
+        "ttm_operating_cash_flow_margin_pct": {"$ref": "#/definitions/nullableNumber"}, "ttm_roe_pct": {"$ref": "#/definitions/nullableNumber"},
+        "latest_debt_ratio_pct": {"$ref": "#/definitions/nullableNumber"}, "filter_status": {"type": "string"},
+        "filter_passed": {"type": "boolean"}, "filter_reasons": {"type": "array", "items": {"type": "string"}}
+      }
+    }
+  }
+}
