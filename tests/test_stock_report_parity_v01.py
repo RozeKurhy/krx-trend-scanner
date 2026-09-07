@@ -69,7 +69,7 @@ def test_canaries_non_common_and_sector_julia_boundaries():
 
 
 def test_exact_phase12_source_identity_and_no_network_socket_is_used():
-    manifest = json.loads((ROOT / "artifacts/reporting/stock_reports/validation/v0.3/stock_report_v03_manifest_20260814.json").read_text(encoding="utf-8"))
+    manifest = json.loads((ROOT / "artifacts/reporting/stock_reports/archive/validation/v0.3/stock_report_v03_manifest_20260814.json").read_text(encoding="utf-8"))
     assert sha256_file(RS_SOURCE_PATH) == manifest["phase12_source"]["sha256"]
     assert manifest["phase12_source"]["closure_sha"] == EXPECTED_PHASE12_CLOSURE_SHA
     # A real executable call is made while the runner's fail-closed guard is

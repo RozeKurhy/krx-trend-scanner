@@ -193,7 +193,7 @@ def test_stock_reports_canonical_structure_invariant():
         "artifacts/reporting/stock_reports/v0.2/ 는 migration 이후 존재하면 안 된다"
     )
 
-    production_dir = REPO_ROOT / "artifacts/reporting/stock_reports/20260814"
+    production_dir = REPO_ROOT / "artifacts/reporting/stock_reports/archive/dated/20260814"
     archive_v02_dir = REPO_ROOT / "artifacts/reporting/stock_reports/archive/v0.2/20260814"
     archive_v01_dir = REPO_ROOT / "artifacts/reporting/stock_reports/archive/v0.1/20260814"
 

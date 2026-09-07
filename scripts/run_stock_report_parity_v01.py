@@ -31,10 +31,10 @@ from trend_scanner.reporting.stock_report import generate_stock_report
 
 
 ROOT = Path(__file__).resolve().parents[1]
-CANONICAL_DIR = ROOT / "artifacts/reporting/stock_reports/20260814"
-MANIFEST_PATH = ROOT / "artifacts/reporting/stock_reports/validation/v0.3/stock_report_v03_manifest_20260814.json"
-CLOSURE_MANIFEST_PATH = ROOT / "artifacts/reporting/stock_reports/validation/v0.3/stock_report_v03_closure_manifest_20260814.json"
-CLOSURE_SUMMARY_PATH = ROOT / "artifacts/reporting/stock_reports/validation/v0.3/stock_report_v03_closure_summary_20260814.json"
+CANONICAL_DIR = ROOT / "artifacts/reporting/stock_reports/archive/dated/20260814"
+MANIFEST_PATH = ROOT / "artifacts/reporting/stock_reports/archive/validation/v0.3/stock_report_v03_manifest_20260814.json"
+CLOSURE_MANIFEST_PATH = ROOT / "artifacts/reporting/stock_reports/archive/validation/v0.3/stock_report_v03_closure_manifest_20260814.json"
+CLOSURE_SUMMARY_PATH = ROOT / "artifacts/reporting/stock_reports/archive/validation/v0.3/stock_report_v03_closure_summary_20260814.json"
 SCHEMA_PATH = ROOT / "docs/reporting/stock_report/schema_v03.json"
 CONTRACT_PATH = ROOT / "docs/reporting/stock_report/contract_v03.md"
 RS_SOURCE_PATH = ROOT / "artifacts/patterns/pattern_a/validation/relative_strength/market_completion_v01/market_rs_universe_20260814.csv"

@@ -63,8 +63,14 @@ artifacts/
 │
 ├── reporting/
 │   └── stock_reports/                       # 종목별 리포트 산출물 (Pattern 독립 계층)
-│       ├── 20260814/                        # Current v0.2 리포트
-│       └── archive/v0.1/20260814/           # Superseded v0.1 리포트
+│       ├── 20260904/                        # Current production Stock Report
+│       └── archive/                         # Historical/validation artifacts
+│           ├── dated/20260814/
+│           ├── dated/20260821/
+│           ├── adhoc/20260814/
+│           ├── validation/v0.3/
+│           ├── v0.1/20260814/
+│           └── v0.2/20260814/
 │
 └── shared/
     └── cache_population/                    # 공용 데이터 인프라 (캐시 적재 로그/감사)
@@ -119,7 +125,7 @@ artifacts/
 
 ### F. Reporting Outputs (`reporting/`)
 - 최종 소비자용 리포트 산출물 계층으로 Pattern과 독립적으로 운영된다.
-- `reporting/stock_reports/20260814/` (Current v0.2), `reporting/stock_reports/archive/v0.1/20260814/` (v0.1 archive).
+- `reporting/stock_reports/20260904/` (Current production), `reporting/stock_reports/archive/` (dated, adhoc, validation, v0.1/v0.2 historical artifacts).
 
 ### G. Shared Infrastructure (`shared/`)
 - 특정 Pattern이나 전략에 종속되지 않는 공용 인프라 산출물 (`shared/cache_population/`).

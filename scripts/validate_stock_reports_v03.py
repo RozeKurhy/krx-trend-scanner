@@ -20,10 +20,10 @@ from trend_scanner.reporting.relative_strength_report import (
 
 ROOT = Path(__file__).resolve().parents[1]
 DATE = "20260814"
-PRODUCTION = ROOT / "artifacts/reporting/stock_reports" / DATE
+PRODUCTION = ROOT / "artifacts/reporting/stock_reports/archive/dated" / DATE
 ARCHIVE_V02 = ROOT / "artifacts/reporting/stock_reports/archive/v0.2" / DATE
 ARCHIVE_V01 = ROOT / "artifacts/reporting/stock_reports/archive/v0.1" / DATE
-VALIDATION = ROOT / "artifacts/reporting/stock_reports/validation/v0.3"
+VALIDATION = ROOT / "artifacts/reporting/stock_reports/archive/validation/v0.3"
 SCHEMA_PATH = ROOT / "docs/reporting/stock_report/schema_v03.json"
 RS_PATH = ROOT / RS_ARTIFACT_TEMPLATE.format(date=DATE)
 

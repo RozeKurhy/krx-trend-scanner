@@ -23,7 +23,7 @@ from trend_scanner.reporting.stock_report import (
 
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-REPORT_DIR = REPO_ROOT / "artifacts/reporting/stock_reports/20260814"
+REPORT_DIR = REPO_ROOT / "artifacts/reporting/stock_reports/archive/dated/20260814"
 RS_RELATIVE_PATH = RS_ARTIFACT_TEMPLATE.format(date="20260814")
 
 
