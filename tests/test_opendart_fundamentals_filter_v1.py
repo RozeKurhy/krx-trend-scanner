@@ -39,11 +39,14 @@ def _period_obs(
     receipt: str | None = "2026-07-20",
     basis: str = "CFS",
     currency: str = "KRW",
+    ticker: str = "TEST",
+    corp_code: str = "00000001",
+    family: str = "NON_FINANCIAL",
 ) -> PeriodizedFinancialObservation:
     semantics = "FULL_YEAR" if period == "FY" else "STANDALONE_QUARTER"
     anchor = f"{year}{period}{metric}"
     return PeriodizedFinancialObservation(
-        ticker="TEST", corp_code="00000001", company_family="NON_FINANCIAL",
+        ticker=ticker, corp_code=corp_code, company_family=family,
         fiscal_year=str(year), fiscal_year_start=f"{year}-01-01", fiscal_period=period,
         period_semantics=semantics, period_start=f"{year}-01-01", period_end=f"{year}-12-31",
         metric=metric, value=value, currency=currency, method="TEST",
@@ -57,9 +60,10 @@ def _period_obs(
 
 def _ttm(metric: str, value, *, year: int = 2026, period: str = "Q2",
          status: str = READY, reason: str | None = None,
-         requested_as_of: str | None = AS_OF) -> DerivedMetricObservation:
+         requested_as_of: str | None = AS_OF, ticker: str = "TEST",
+         corp_code: str = "00000001", family: str = "NON_FINANCIAL") -> DerivedMetricObservation:
     return DerivedMetricObservation(
-        "TEST", "00000001", "NON_FINANCIAL", str(year), period, metric, "TTM", value,
+        ticker, corp_code, family, str(year), period, metric, "TTM", value,
         resolution_status=status, reason=reason, period_end=f"{year}-06-30",
         source_rcept_nos=(f"{year}{period}{metric}",), requested_as_of=requested_as_of,
     )
@@ -68,18 +72,28 @@ def _ttm(metric: str, value, *, year: int = 2026, period: str = "Q2",
 def _f2(*, annual=60_000_000_000, quarters=(10_000_000_000,) * 4,
         latest_quarter: str | None = "2026Q2", latest_fy: str | None = "2025",
         annual_status: str = READY, quarter_periods=(
-            (2025, "Q3"), (2025, "Q4"), (2026, "Q1"), (2026, "Q2"),
+        (2025, "Q3"), (2025, "Q4"), (2026, "Q1"), (2026, "Q2"),
         ), quarter_statuses=None, requested_as_of: str = AS_OF,
-        family: str = "NON_FINANCIAL"):
+        family: str = "NON_FINANCIAL", ticker: str = "TEST", corp_code: str = "00000001",
+        annual_currency: str | None = "KRW", quarter_currencies=None,
+        annual_basis: str = "CFS", quarter_bases=None):
     if quarter_statuses is None:
         quarter_statuses = (READY,) * len(quarter_periods)
+    if quarter_currencies is None:
+        quarter_currencies = ("KRW",) * len(quarter_periods)
+    if quarter_bases is None:
+        quarter_bases = ("CFS",) * len(quarter_periods)
     quarter_rows = tuple(
-        _period_obs("revenue", year, period, quarters[index], status=quarter_statuses[index])
+        _period_obs("revenue", year, period, quarters[index], status=quarter_statuses[index],
+                    currency=quarter_currencies[index], basis=quarter_bases[index],
+                    ticker=ticker, corp_code=corp_code, family=family)
         for index, (year, period) in enumerate(quarter_periods)
     )
-    annual_rows = (_period_obs("revenue", 2025, "FY", annual, status=annual_status),)
+    annual_rows = (_period_obs("revenue", 2025, "FY", annual, status=annual_status,
+                               currency=annual_currency, basis=annual_basis,
+                               ticker=ticker, corp_code=corp_code, family=family),)
     return SimpleNamespace(
-        ticker="TEST", corp_code="00000001", company_family=family,
+        ticker=ticker, corp_code=corp_code, company_family=family,
         requested_as_of=requested_as_of, quarters=quarter_rows, annuals=annual_rows,
         quarter_slots=(SimpleNamespace(identity=latest_quarter, status=READY),) if latest_quarter else (),
         annual_slots=(SimpleNamespace(identity=latest_fy, status=annual_status),) if latest_fy else (),
@@ -89,13 +103,18 @@ def _f2(*, annual=60_000_000_000, quarters=(10_000_000_000,) * 4,
 
 def _f3(operating_income=1, net_income=1, *, oi_period="Q2", ni_period="Q2",
         oi_status=READY, ni_status=READY, oi_reason=None, ni_reason=None,
-        requested_as_of: str | None = AS_OF):
-    return DerivedMetricsResult((
+        requested_as_of: str | None = AS_OF, ticker: str = "TEST",
+        corp_code: str = "00000001", family: str = "NON_FINANCIAL", wrapper: bool = False):
+    result = DerivedMetricsResult((
         _ttm("operating_income", operating_income, period=oi_period,
-             status=oi_status, reason=oi_reason, requested_as_of=requested_as_of),
+             status=oi_status, reason=oi_reason, requested_as_of=requested_as_of,
+             ticker=ticker, corp_code=corp_code, family=family),
         _ttm("net_income", net_income, period=ni_period,
-             status=ni_status, reason=ni_reason, requested_as_of=requested_as_of),
+             status=ni_status, reason=ni_reason, requested_as_of=requested_as_of,
+             ticker=ticker, corp_code=corp_code, family=family),
     ))
+    return SimpleNamespace(ticker=ticker, corp_code=corp_code, company_family=family,
+                           requested_as_of=requested_as_of, result=result) if wrapper else result
 
 
 def evaluate(*, f2=None, f3=None, config=None):
@@ -124,6 +143,13 @@ def test_annual_revenue_boundary_is_inclusive(annual, expected):
     assert (FILTERED_ANNUAL_REVENUE in result.reasons) is (annual < 50_000_000_000)
 
 
+def test_annual_non_krw_revenue_fails_closed_before_threshold_evaluation():
+    result = evaluate(f2=_f2(annual=60_000_000_000, annual_currency="USD"))
+    assert result.status == DATA_UNAVAILABLE
+    assert result.annual_revenue is None
+    assert any(item.get("type") == "NON_KRW_REVENUE" for item in result.diagnostics)
+
+
 @pytest.mark.parametrize("quarters, expected", [
     ((9_999_999_999,) * 4, FILTERED_QUARTERLY_REVENUE),
     ((10_000_000_000,) * 4, PASS),
@@ -133,6 +159,32 @@ def test_quarterly_average_boundary_is_inclusive(quarters, expected):
     result = evaluate(f2=_f2(quarters=quarters))
     assert result.status == expected
     assert (FILTERED_QUARTERLY_REVENUE in result.reasons) is (quarters[0] < 10_000_000_000)
+
+
+def test_one_non_krw_quarter_blocks_average():
+    currencies = ("KRW", "KRW", "USD", "KRW")
+    result = evaluate(f2=_f2(quarter_currencies=currencies))
+    assert result.status == DATA_UNAVAILABLE
+    assert result.quarterly_avg_revenue is None
+
+
+def test_all_non_krw_quarters_are_not_accepted_as_a_coherent_window():
+    result = evaluate(f2=_f2(quarter_currencies=("USD",) * 4))
+    assert result.status == DATA_UNAVAILABLE
+    assert result.quarterly_avg_revenue is None
+
+
+def test_quarter_basis_mismatch_blocks_average():
+    result = evaluate(f2=_f2(quarter_bases=("CFS", "CFS", "OFS", "CFS")))
+    assert result.status == DATA_UNAVAILABLE
+    assert result.quarterly_avg_revenue is None
+    assert any(item.get("type") == "REVENUE_BASIS_MISMATCH" for item in result.diagnostics)
+
+
+def test_coherent_ofs_krw_quarters_are_evaluated_normally():
+    result = evaluate(f2=_f2(quarter_bases=("OFS",) * 4))
+    assert result.status == PASS
+    assert result.quarterly_avg_revenue == 10_000_000_000
 
 
 @pytest.mark.parametrize("oi, expected", [(-1, FILTERED_OPERATING_LOSS), (0, FILTERED_OPERATING_LOSS), (1, PASS)])
@@ -190,6 +242,50 @@ def test_ttm_endpoint_must_match_latest_quarter_revenue_endpoint():
     assert mismatch["endpoints"]["ttm_operating_income"] == "2026Q1"
 
 
+def test_different_ticker_cannot_supply_ttm_input():
+    result = evaluate(f3=_f3(ticker="OTHER"))
+    assert result.status == DATA_UNAVAILABLE
+    assert result.passed is False
+    assert any(item.get("type") == "IDENTITY_MISMATCH" for item in result.diagnostics)
+
+
+def test_mixed_f3_result_filters_to_target_and_ignores_newer_other_ticker():
+    target = _f3(ticker="AAA")
+    other = DerivedMetricsResult((
+        _ttm("operating_income", 999, year=2026, period="Q3", ticker="BBB"),
+        _ttm("net_income", 999, year=2026, period="Q3", ticker="BBB"),
+    ))
+    result = evaluate(f2=_f2(ticker="AAA"), f3=DerivedMetricsResult(target.observations + other.observations))
+    assert result.status == PASS
+    assert result.ttm_operating_income == 1
+    assert result.ttm_net_income == 1
+
+
+def test_target_ttm_absent_does_not_fallback_to_other_ticker():
+    result = evaluate(f3=_f3(ticker="BBB"))
+    assert result.status == DATA_UNAVAILABLE
+    assert result.ttm_operating_income is None
+    assert result.ttm_net_income is None
+
+
+def test_corp_code_mismatch_is_rejected_when_both_codes_exist():
+    result = evaluate(f2=_f2(corp_code="CORP-A"), f3=_f3(corp_code="CORP-B"))
+    assert result.status == DATA_UNAVAILABLE
+    assert any(item.get("reason") == "TTM_CORP_CODE_MISMATCH" for item in result.diagnostics)
+
+
+def test_company_family_mismatch_is_rejected():
+    result = evaluate(f2=_f2(family="NON_FINANCIAL"), f3=_f3(family="FINANCIAL"))
+    assert result.status == DATA_UNAVAILABLE
+    assert any(item.get("reason") == "TTM_COMPANY_FAMILY_MISMATCH" for item in result.diagnostics)
+
+
+def test_wrapper_identity_mismatch_is_rejected_before_ttm_selection():
+    result = evaluate(f3=_f3(ticker="OTHER", wrapper=True))
+    assert result.status == DATA_UNAVAILABLE
+    assert any(item.get("reason") == "F3_TICKER_MISMATCH" for item in result.diagnostics)
+
+
 @pytest.mark.parametrize("status", [PERIOD_AMBIGUOUS, BASIS_MISMATCH, CURRENCY_MISMATCH, INPUT_NOT_READY])
 def test_non_ready_ttm_status_is_preserved_in_diagnostics(status):
     result = evaluate(f3=_f3(oi_status=status, oi_reason="SOURCE_DIAGNOSTIC"))
@@ -224,6 +320,12 @@ def test_financial_company_is_not_applicable_and_never_passes():
     assert result.status == NOT_APPLICABLE
     assert result.passed is False
     assert result.annual_revenue is None
+
+
+def test_financial_company_short_circuits_before_f3_identity_validation():
+    result = evaluate(f2=_f2(family="FINANCIAL"), f3=_f3(family="NON_FINANCIAL", wrapper=True))
+    assert result.status == NOT_APPLICABLE
+    assert result.passed is False
 
 
 def test_config_controls_thresholds_and_positive_income_requirements():

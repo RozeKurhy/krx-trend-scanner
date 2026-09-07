@@ -53,6 +53,16 @@ def _as_of(value: Any) -> str | None:
         return str(value)
 
 
+def _identity_text(value: Any) -> str:
+    if value in (None, ""):
+        return ""
+    return str(getattr(value, "value", value)).strip()
+
+
+def _currency_text(value: Any) -> str:
+    return _identity_text(value).upper()
+
+
 def _year(value: Any) -> int | None:
     try:
         return int(str(value)[:4])
@@ -155,9 +165,10 @@ class FundamentalsFilter:
         *,
         requested_as_of: Any = None,
     ) -> FundamentalsFilterResult:
-        ticker = str(getattr(multi_period_result, "ticker", ""))
+        ticker = _identity_text(getattr(multi_period_result, "ticker", ""))
         family_value = getattr(multi_period_result, "company_family", "")
-        family = str(getattr(family_value, "value", family_value) or "")
+        family = _identity_text(family_value)
+        target_corp_code = _identity_text(getattr(multi_period_result, "corp_code", ""))
         raw_latest_fy = getattr(multi_period_result, "latest_fy", None)
         raw_latest_quarter = getattr(multi_period_result, "latest_quarter", None)
         latest_fy = str(raw_latest_fy) if raw_latest_fy not in (None, "") else None
@@ -185,11 +196,29 @@ class FundamentalsFilter:
                 latest_quarter, None, None, None, None, reasons, diagnostics,
             )
         resolved_as_of = explicit_as_of or f2_as_of or (None if f3_as_of is _AS_OF_MISMATCH else f3_as_of)
+        if not ticker:
+            diagnostics.append({
+                "type": "IDENTITY_MISMATCH", "required": True,
+                "status": DATA_UNAVAILABLE, "reason": "F2_TICKER_MISSING",
+            })
+            return self._result(
+                ticker, resolved_as_of, family, DATA_UNAVAILABLE, latest_fy, latest_quarter,
+                None, None, None, None, (DATA_UNAVAILABLE,), diagnostics,
+            )
         if family == "FINANCIAL":
             diagnostics.append({"type": "FINANCIAL_NOT_APPLICABLE"})
             return self._result(
                 ticker, resolved_as_of, family, NOT_APPLICABLE, latest_fy, latest_quarter,
                 None, None, None, None, (), diagnostics,
+            )
+        identity_diagnostics = self._wrapper_identity_diagnostics(
+            derived_metrics_result, ticker=ticker, corp_code=target_corp_code, family=family,
+        )
+        if identity_diagnostics:
+            diagnostics.extend(identity_diagnostics)
+            return self._result(
+                ticker, resolved_as_of, family, DATA_UNAVAILABLE, latest_fy, latest_quarter,
+                None, None, None, None, (DATA_UNAVAILABLE,), diagnostics,
             )
         if family != "NON_FINANCIAL":
             diagnostics.append({"type": "COMPANY_FAMILY_UNSUPPORTED", "company_family": family})
@@ -208,11 +237,17 @@ class FundamentalsFilter:
         ttm_oi = ttm_ni = None
         oi_item = ni_item = None
         if self.config.require_positive_ttm_operating_income:
-            oi_item, oi_diag = self._latest_ttm(derived_metrics_result, "operating_income")
+            oi_item, oi_diag = self._latest_ttm(
+                derived_metrics_result, "operating_income",
+                target_ticker=ticker, target_corp_code=target_corp_code, target_family=family,
+            )
             diagnostics.extend(oi_diag)
             ttm_oi = _number(getattr(oi_item, "value", None)) if oi_item else None
         if self.config.require_positive_ttm_net_income:
-            ni_item, ni_diag = self._latest_ttm(derived_metrics_result, "net_income")
+            ni_item, ni_diag = self._latest_ttm(
+                derived_metrics_result, "net_income",
+                target_ticker=ticker, target_corp_code=target_corp_code, target_family=family,
+            )
             diagnostics.extend(ni_diag)
             ttm_ni = _number(getattr(ni_item, "value", None)) if ni_item else None
 
@@ -270,7 +305,14 @@ class FundamentalsFilter:
         item, status, reason = self._latest_ready(candidates)
         if item is None:
             return None, [{"type": "ANNUAL_REVENUE_UNAVAILABLE", "required": True, "status": status, "reason": reason or status, "latest_fy": latest_fy}]
-        return _number(item.value), [{"type": "ANNUAL_REVENUE_SOURCE", "required": True, "status": READY, "fiscal_year": latest_fy}]
+        currency = _currency_text(getattr(item, "currency", None))
+        if currency != "KRW":
+            return None, [{
+                "type": "NON_KRW_REVENUE", "required": True,
+                "status": DATA_UNAVAILABLE, "reason": "NON_KRW_REVENUE",
+                "currency": currency or None, "fiscal_year": latest_fy,
+            }]
+        return _number(item.value), [{"type": "ANNUAL_REVENUE_SOURCE", "required": True, "status": READY, "fiscal_year": latest_fy, "currency": currency}]
 
     def _quarter_revenue(self, result: Any):
         raw_expected = getattr(result, "latest_quarter", None)
@@ -325,20 +367,89 @@ class FundamentalsFilter:
         if any(value is None for value in values):
             diagnostics.append({"type": "QUARTER_REVENUE_UNAVAILABLE", "required": True, "status": DATA_UNAVAILABLE, "reason": "QUARTER_VALUE_MISSING", "endpoint": expected})
             return _quarter_label(expected_index), tuple(), None, diagnostics
+        currencies = tuple(_currency_text(getattr(item, "currency", None)) for item in selected)
+        if any(currency != "KRW" for currency in currencies):
+            diagnostics.append({
+                "type": "NON_KRW_REVENUE", "required": True,
+                "status": DATA_UNAVAILABLE, "reason": "NON_KRW_REVENUE",
+                "endpoint": expected, "currencies": list(currencies),
+            })
+            return _quarter_label(expected_index), tuple(), None, diagnostics
+        bases = tuple(_identity_text(getattr(item, "fs_div_used", None)) for item in selected)
+        if any(not basis for basis in bases) or len(set(bases)) != 1:
+            diagnostics.append({
+                "type": "REVENUE_BASIS_MISMATCH", "required": True,
+                "status": DATA_UNAVAILABLE, "reason": "REVENUE_BASIS_MISMATCH",
+                "endpoint": expected, "fs_div_used": list(bases),
+            })
+            return _quarter_label(expected_index), tuple(), None, diagnostics
         diagnostics.append({"type": "QUARTER_REVENUE_SOURCE", "required": True, "status": READY, "endpoint": expected})
         return _quarter_label(expected_index), values, sum(values) / 4, diagnostics
 
-    def _latest_ttm(self, result: Any, metric: str):
+    def _latest_ttm(self, result: Any, metric: str, *, target_ticker: str,
+                    target_corp_code: str, target_family: str):
         source = result.result if hasattr(result, "result") and not hasattr(result, "observations") else result
-        candidates = [
+        all_candidates = [
             item for item in getattr(source, "observations", ())
             if str(getattr(item, "metric", "")) == metric
             and str(getattr(item, "metric_type", "")) == "TTM"
         ]
+        candidates = []
+        identity_mismatches: list[Mapping[str, Any]] = []
+        for item in all_candidates:
+            item_ticker = _identity_text(getattr(item, "ticker", ""))
+            item_corp_code = _identity_text(getattr(item, "corp_code", ""))
+            item_family = _identity_text(getattr(item, "company_family", ""))
+            if item_ticker != target_ticker:
+                identity_mismatches.append({
+                    "type": "IDENTITY_MISMATCH", "metric": metric,
+                    "required": True, "status": DATA_UNAVAILABLE,
+                    "reason": "TTM_TICKER_MISMATCH", "target_ticker": target_ticker,
+                    "observation_ticker": item_ticker or None,
+                })
+                continue
+            if target_corp_code and item_corp_code and item_corp_code != target_corp_code:
+                identity_mismatches.append({
+                    "type": "IDENTITY_MISMATCH", "metric": metric,
+                    "required": True, "status": DATA_UNAVAILABLE,
+                    "reason": "TTM_CORP_CODE_MISMATCH", "target_corp_code": target_corp_code,
+                    "observation_corp_code": item_corp_code,
+                })
+                continue
+            if target_family and item_family != target_family:
+                identity_mismatches.append({
+                    "type": "IDENTITY_MISMATCH", "metric": metric,
+                    "required": True, "status": DATA_UNAVAILABLE,
+                    "reason": "TTM_COMPANY_FAMILY_MISMATCH", "target_family": target_family,
+                    "observation_family": item_family,
+                })
+                continue
+            candidates.append(item)
+        if not candidates and identity_mismatches:
+            return None, identity_mismatches
         item, status, reason = self._latest_ready(candidates, endpoint=True)
         if item is None:
             return None, [{"type": "TTM_INPUT_UNAVAILABLE", "metric": metric, "required": True, "status": status, "reason": reason or status}]
         return item, [{"type": "TTM_INPUT_SOURCE", "metric": metric, "required": True, "status": READY, "endpoint": self._observation_endpoint(item)}]
+
+    @staticmethod
+    def _wrapper_identity_diagnostics(result: Any, *, ticker: str, corp_code: str, family: str):
+        if not hasattr(result, "result"):
+            return []
+        diagnostics: list[Mapping[str, Any]] = []
+        checks = (
+            ("ticker", ticker, _identity_text(getattr(result, "ticker", "")), "F3_TICKER_MISMATCH"),
+            ("corp_code", corp_code, _identity_text(getattr(result, "corp_code", "")), "F3_CORP_CODE_MISMATCH"),
+            ("company_family", family, _identity_text(getattr(result, "company_family", "")), "F3_COMPANY_FAMILY_MISMATCH"),
+        )
+        for field, expected, actual, reason in checks:
+            if actual and expected and actual != expected:
+                diagnostics.append({
+                    "type": "IDENTITY_MISMATCH", "required": True,
+                    "status": DATA_UNAVAILABLE, "reason": reason,
+                    "field": field, "target": expected, "f3": actual,
+                })
+        return diagnostics
 
     @staticmethod
     def _latest_ready(candidates: Iterable[Any], *, endpoint: bool = False):
