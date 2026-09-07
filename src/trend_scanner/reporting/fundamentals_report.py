@@ -29,6 +29,24 @@ def _text(value: Any) -> str:
     return str(getattr(value, "value", value)).strip()
 
 
+def _as_of_value(value: Any) -> str | None:
+    """Return a comparable ISO date without introducing a provider dependency."""
+    if value in (None, ""):
+        return None
+    if hasattr(value, "date") and not isinstance(value, str):
+        try:
+            value = value.date()
+        except (AttributeError, TypeError, ValueError):
+            pass
+    if hasattr(value, "isoformat") and not isinstance(value, str):
+        try:
+            return str(value.isoformat())[:10]
+        except (AttributeError, TypeError, ValueError):
+            pass
+    text = _text(value).replace("/", "-")
+    return text[:10] if text else None
+
+
 def _number(value: Any) -> int | float | None:
     if value in (None, "", "-", "—", "–") or isinstance(value, bool):
         return None
@@ -101,6 +119,31 @@ def _index_f2(
     if saw_mismatch and accepted == 0 and diagnostics is not None:
         diagnostics.append({"type": "IDENTITY_MISMATCH", "status": DATA_UNAVAILABLE, "reason": f"F2_{name.upper()}_TARGET_OBSERVATIONS_NOT_FOUND", "target_ticker": ticker})
     return {key: tuple(values) for key, values in index.items()}
+
+
+def _target_f3_as_ofs(
+    result: Any,
+    *,
+    ticker: str,
+    corp_code: str,
+    family: str,
+) -> tuple[str, ...]:
+    """Collect as-of values only from target F3 observations."""
+    values: set[str] = set()
+    for item in _observations(result):
+        item_ticker = _text(getattr(item, "ticker", ""))
+        item_corp = _text(getattr(item, "corp_code", ""))
+        item_family = _text(getattr(item, "company_family", ""))
+        if ticker and item_ticker != ticker:
+            continue
+        if corp_code and item_corp and item_corp != corp_code:
+            continue
+        if family and item_family and item_family != family:
+            continue
+        as_of = _as_of_value(getattr(item, "requested_as_of", None))
+        if as_of:
+            values.add(as_of)
+    return tuple(sorted(values))
 
 
 def _value(candidates: Iterable[Any], diagnostics: list[dict[str, Any]], *, label: str) -> int | float | None:
@@ -223,7 +266,10 @@ def build_fundamentals_section(
 ) -> FundamentalsSection:
     """Adapt already-built F2/F3/F4 outputs into a JSON-native report section."""
     asset = _text(asset_type) or "COMMON"
-    as_of = _text(requested_as_of) or _text(getattr(multi_period_result, "requested_as_of", "")) or _text(getattr(filter_result, "requested_as_of", "")) or None
+    explicit_as_of = _as_of_value(requested_as_of)
+    f2_as_of = _as_of_value(getattr(multi_period_result, "requested_as_of", None))
+    f4_as_of = _as_of_value(getattr(filter_result, "requested_as_of", None))
+    as_of = explicit_as_of or f2_as_of or f4_as_of
     if asset in _NON_COMMON_ASSET_TYPES:
         summary = _empty_summary(filter_result)
         return FundamentalsSection(asset == "COMMON" and "APPLICABLE" or "NOT_APPLICABLE", NOT_APPLICABLE, "ASSET_TYPE_NOT_APPLICABLE", as_of, _text(getattr(filter_result, "company_family", "")) or None, "KRW", NOT_APPLICABLE, False, [], summary)
@@ -259,6 +305,32 @@ def build_fundamentals_section(
         return FundamentalsSection(
             "NOT_APPLICABLE", NOT_APPLICABLE, "FINANCIAL_COMPANY", as_of,
             family, "KRW", filter_status, False, filter_reasons, summary,
+        )
+    f3_as_ofs = _target_f3_as_ofs(
+        derived_metrics_result,
+        ticker=ticker,
+        corp_code=_text(getattr(multi_period_result, "corp_code", "")),
+        family=family or "",
+    )
+    f3_as_of = f3_as_ofs[0] if len(f3_as_ofs) == 1 else None
+    known_as_ofs = {
+        value for value in (explicit_as_of, f2_as_of, f3_as_of, f4_as_of)
+        if value is not None
+    }
+    if len(f3_as_ofs) > 1 or len(known_as_ofs) > 1:
+        diagnostics.append({
+            "type": "AS_OF_MISMATCH", "status": DATA_UNAVAILABLE,
+            "f2_requested_as_of": f2_as_of, "f3_requested_as_of": f3_as_of,
+            "f3_requested_as_of_values": list(f3_as_ofs),
+            "f4_requested_as_of": f4_as_of, "requested_as_of": explicit_as_of,
+        })
+        summary = _empty_summary(filter_result, latest_fy=_text(getattr(filter_result, "latest_fy", "")) or None, latest_quarter=_text(getattr(filter_result, "latest_quarter", "")) or None)
+        summary.filter_status = DATA_UNAVAILABLE
+        summary.filter_passed = False
+        return FundamentalsSection(
+            "APPLICABLE", DATA_UNAVAILABLE, "AS_OF_MISMATCH", as_of, family,
+            "KRW", DATA_UNAVAILABLE, False, filter_reasons, summary,
+            diagnostics=diagnostics,
         )
     f2_family = _text(getattr(multi_period_result, "company_family", ""))
     if f2_family and family and f2_family != family:
@@ -299,18 +371,16 @@ def build_fundamentals_section(
         latest_fy_revenue_krw=_number(getattr(filter_result, "annual_revenue", None)),
         latest_4q_avg_revenue_krw=_number(getattr(filter_result, "quarterly_avg_revenue", None)),
         ttm_revenue_krw=None,
-        ttm_operating_income_krw=_number(getattr(filter_result, "ttm_operating_income", None)),
-        ttm_net_income_krw=_number(getattr(filter_result, "ttm_net_income", None)),
+        ttm_operating_income_krw=None,
+        ttm_net_income_krw=None,
         filter_status=filter_status, filter_passed=filter_passed, filter_reasons=filter_reasons,
     )
     endpoint_parts = _quarter_parts(latest_quarter or "")
     if endpoint_parts is not None:
         year, period = endpoint_parts
         summary.ttm_revenue_krw = _f3_value(derived_index, "revenue", "TTM", year, period, diagnostics)
-        if summary.ttm_operating_income_krw is None:
-            summary.ttm_operating_income_krw = _f3_value(derived_index, "operating_income", "TTM", year, period, diagnostics)
-        if summary.ttm_net_income_krw is None:
-            summary.ttm_net_income_krw = _f3_value(derived_index, "net_income", "TTM", year, period, diagnostics)
+        summary.ttm_operating_income_krw = _f3_value(derived_index, "operating_income", "TTM", year, period, diagnostics)
+        summary.ttm_net_income_krw = _f3_value(derived_index, "net_income", "TTM", year, period, diagnostics)
         summary.ttm_operating_cash_flow_krw = _f3_value(derived_index, "operating_cash_flow", "TTM", year, period, diagnostics)
         summary.ttm_operating_margin_pct = _f3_value(derived_index, "operating_income", "TTM_OPERATING_MARGIN", year, period, diagnostics)
         summary.ttm_net_margin_pct = _f3_value(derived_index, "net_income", "TTM_NET_MARGIN", year, period, diagnostics)

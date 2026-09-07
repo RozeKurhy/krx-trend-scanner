@@ -37,10 +37,10 @@ def _f2_observation(metric: str, year: int, period: str, value, *, semantics: st
     )
 
 
-def _f3_observation(metric: str, metric_type: str, year: int, period: str, value, *, ticker="TEST"):
+def _f3_observation(metric: str, metric_type: str, year: int, period: str, value, *, ticker="TEST", requested_as_of=AS_OF):
     return DerivedMetricObservation(
         ticker, "00000001", "NON_FINANCIAL", str(year), period, metric, metric_type, value,
-        requested_as_of=AS_OF, period_end="2026-06-30",
+        requested_as_of=requested_as_of, period_end="2026-06-30",
     )
 
 
@@ -176,7 +176,7 @@ def test_financial_f4_not_applicable_is_preserved():
 
 def test_summary_uses_target_endpoint_when_other_ticker_has_newer_metrics():
     f2, f3, f4 = _inputs()
-    other = _f3_observation("revenue", "TTM", 2026, "Q3", 999, ticker="OTHER")
+    other = _f3_observation("revenue", "TTM", 2026, "Q3", 999, ticker="OTHER", requested_as_of="2027-01-01")
     f3.observations = f3.observations + (other,)
     section = build_fundamentals_section(f2, f3, f4, AS_OF, "COMMON")
     assert section.summary.ttm_revenue_krw == 80_000_000_000
@@ -190,6 +190,32 @@ def test_executive_bullet_is_additive_context_only():
     assert bullet is not None
     assert "Filter PASS" in bullet
     assert "800.0억원" in bullet
+
+
+def test_as_of_mismatch_fails_closed_before_mixing_f2_f3_f4():
+    f2, f3, f4 = _inputs()
+    f3.observations = f3.observations + (
+        _f3_observation("revenue", "TTM", 2026, "Q2", 81_000_000_000, requested_as_of="2026-03-31"),
+    )
+    section = build_fundamentals_section(f2, f3, f4, AS_OF, "COMMON")
+    assert section.applicability == "APPLICABLE"
+    assert section.data_status == DATA_UNAVAILABLE
+    assert section.reason == "AS_OF_MISMATCH"
+    assert section.filter_status == DATA_UNAVAILABLE
+    assert section.filter_passed is False
+    assert section.summary.filter_status == DATA_UNAVAILABLE
+    mismatch = next(item for item in section.diagnostics if item["type"] == "AS_OF_MISMATCH")
+    assert mismatch["f2_requested_as_of"] == AS_OF
+    assert mismatch["f4_requested_as_of"] == AS_OF
+    assert set(mismatch["f3_requested_as_of_values"]) == {AS_OF, "2026-03-31"}
+
+
+def test_ttm_operating_income_and_net_income_use_f3_authority():
+    f2, f3, f4 = _inputs()
+    f4 = FundamentalsFilterResult(**{**f4.__dict__, "ttm_operating_income": 123, "ttm_net_income": 456})
+    section = build_fundamentals_section(f2, f3, f4, AS_OF, "COMMON")
+    assert section.summary.ttm_operating_income_krw == 8_000_000_000
+    assert section.summary.ttm_net_income_krw == 6_000_000_000
 
 
 def test_v05_generator_explicit_none_is_safe_and_schema_valid():
