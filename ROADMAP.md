@@ -18,16 +18,20 @@ ROADMAP.md
 - Stock Report v0.4 regeneration (158/158: COMMON 141 / ETF 17, report errors 0)
 - Documentation / artifact consolidation
 - Branch / main integration cleanup (Group B 정리 및 merged branch 정리 포함)
+- Post-report Branch Cleanup / Integration (remaining branches classified and preserved; no merge/delete)
 
 **CURRENT**
 - Production report/data state consolidated; 추가 코드·데이터 재생성은 진행하지 않음
 
 **NEXT**
-- Post-report Branch Cleanup / Integration (현재 production report/data 이후 남은 branch 상태 최종 확인·정리)
+- OpenDART Fundamentals (기능 구축 및 PIT-aware fundamentals 데이터 계층)
 
-**PAUSED / RESUME_READY**
-- FastCore realistic backtest — 명시적 사용자 재개 후 시작 (next-day execution, transaction cost, slippage, holding period, win rate, payoff ratio, MDD, trade count, market regime, benchmark comparison, parameter robustness 반영)
-- Julia realistic backtest — 명시적 사용자 재개 후 시작 (동일 기준)
+**AFTER FUNDAMENTALS CORE**
+- Fundamentals Filter / Stock Report Integration — OpenDART Fundamentals core 완료 후 진행
+
+**PAUSED / AFTER FUNDAMENTALS**
+- FastCore realistic backtest — Fundamentals filtering/report integration 완료 후 재개 (next-day execution, transaction cost, slippage, holding period, win rate, payoff ratio, MDD, trade count, market regime, benchmark comparison, parameter robustness 반영)
+- Julia realistic backtest — Fundamentals filtering/report integration 완료 후 재개 (동일 기준)
 
 **AFTER BACKTESTS**
 - Strategy robustness comparison — 두 realistic backtest 완료 후 진행; 목표는 "최대 backtest 수익률 parameter"가 아니라 **현실적 실행조건에서도 반복 가능한 robust strategy**를 찾는 것
@@ -36,7 +40,7 @@ ROADMAP.md
 - New Pattern development (Pattern B~F 등)
 - Deferred Group B work (`codex/deferred-group-b-v01` 브랜치에 보존된 consumer-migration / authority-adjudication 관련 미완료 작업)
 - 추가적인 market-data hardening (새로운 concrete discrepancy가 없는 한 재검증하지 않음)
-- OpenDART Fundamentals 신규 착수 (기존 설계/구현 문서는 `docs/fundamentals/`에 보존되어 있으나, 현재는 `HOLD`이며 Post-report Branch Cleanup 완료와 명시적 backtest 재개·후속 우선순위 정리 전에는 신규 착수하지 않음)
+- Deferred Group B 및 기타 명시적 보류 작업 외 신규 착수 없음
 
 **알려진 현재 한계 (2026-09-04 production scan 기준, 과장하지 않고 그대로 기록)**
 - Foreign Flow: Scanner에는 candidate-gated 평가가 남아 있음. Stock Report target COMMON에서는 local authority를 직접 소비함
@@ -126,11 +130,12 @@ CLOSED고 Production 승격 여부는 별도"임을 한 토큰으로 강조하�
 | **Project Management** | README & Roadmap Refresh | **CLOSED** | Refresh 및 Semantics 정합성 완료 |
 | | **Production Regeneration through 2026-09-04** | **CLOSED** | Repository V2 / rolling market-data authority, universe 2,555, Pattern A + Stock Report 재생성, branch/main integration cleanup 완료 |
 | | **Documentation / Artifact Consolidation** | **CLOSED** | README/ROADMAP/current-facing docs 및 production artifact 상태 정리 완료 |
-| | **Post-report Branch Cleanup / Integration** | **NEXT** | 2026-09-04 report/data 작업 이후 남은 branch 상태 최종 확인·정리 |
-| | **FastCore Realistic Backtest** | **PAUSED / RESUME_READY** | 명시적 사용자 재개 후 실행; next-day execution, cost, slippage 등 |
-| | **Julia Realistic Backtest** | **PAUSED / RESUME_READY** | 명시적 사용자 재개 후 실행; FastCore와 동일 기준 |
+| | **Post-report Branch Cleanup / Integration** | **CLOSED** | 남은 branch 분류·보존 완료; merge/delete 없음 |
+| | **OpenDART Fundamentals** | **NEXT** | 기능 구축 및 PIT-aware fundamentals 데이터 계층 |
+| | **Fundamentals Filter / Stock Report Integration** | **AFTER FUNDAMENTALS CORE** | OpenDART Fundamentals core 완료 후 진행 |
+| | **FastCore Realistic Backtest** | **PAUSED / AFTER FUNDAMENTALS** | Fundamentals filtering/report integration 완료 후 실행; next-day execution, cost, slippage 등 |
+| | **Julia Realistic Backtest** | **PAUSED / AFTER FUNDAMENTALS** | Fundamentals filtering/report integration 완료 후 실행; FastCore와 동일 기준 |
 | | **Strategy Robustness Comparison** | **AFTER BACKTESTS** | 두 realistic backtest 완료 후 비교 |
-| | OpenDART Fundamentals | HOLD | 설계/구현 문서는 `docs/fundamentals/`에 보존, 신규 착수는 FastCore/Julia 이후 |
 | | KRX Open API Validation | COMPLETE | 서비스 API 승인 완료, 현재 production data path (Repository V2) |
 | | Julia Strategy V00 Official PIT (구 proxy 연구) | HISTORICAL / SUPERSEDED | Loss Guard on/off 비교용 구 proxy 연구, 117/215만 확보된 채 종료. 현재 우선순위인 FastCore/Julia Realistic Backtest로 대체됨 |
 | | Market Cap Threshold Research (구 proxy 연구 후속) | HISTORICAL / SUPERSEDED | 위 구 proxy 연구에 종속되어 있던 후속 계획, 현재 재개 대상 아님 |
@@ -145,19 +150,21 @@ CLOSED고 Production 승격 여부는 별도"임을 한 토큰으로 강조하�
 ```text
 1. Documentation / Artifact Consolidation = CLOSED
        ↓
-2. Post-report Branch Cleanup / Integration = NEXT
+2. Post-report Branch Cleanup / Integration = CLOSED
        ↓
-3. FastCore Realistic Backtest = PAUSED / RESUME_READY AFTER EXPLICIT USER RESUME
+3. OpenDART Fundamentals = NEXT
        ↓
-4. Julia Realistic Backtest = PAUSED / RESUME_READY AFTER EXPLICIT USER RESUME
+4. Fundamentals Filter / Stock Report Integration = AFTER FUNDAMENTALS CORE
        ↓
-5. Strategy Robustness Comparison = AFTER BACKTESTS
+5. FastCore Realistic Backtest = PAUSED / AFTER FUNDAMENTALS
        ↓
-6. OpenDART Fundamentals = HOLD (신규 착수는 위 backtest 이후)
+6. Julia Realistic Backtest = PAUSED / AFTER FUNDAMENTALS
        ↓
-7. Web Report Viewer = FUTURE
+7. Strategy Robustness Comparison = AFTER BACKTESTS
        ↓
-8. Phase 14~18 Pattern B ~ F & Longer-term = LONGER-TERM
+8. Web Report Viewer = FUTURE
+       ↓
+9. Phase 14~18 Pattern B ~ F & Longer-term = LONGER-TERM
 ```
 
 > **Historical / superseded (현재 우선순위 아님)**: Julia Strategy V00 Official PIT 비교 연구(구 loss-guard on/off proxy 연구, 117/215에서 종료)와 그 후속인 Market Cap Threshold Research는 현재 위 순서를 막는 prerequisite가 아니다. 현재 realistic backtest 트랙은 FastCore와 Julia이며, 두 작업 모두 명시적 사용자 재개 전까지 `PAUSED / RESUME_READY` 상태다. 이 구 proxy 연구는 재개 예정 없이 역사적 기록으로만 남긴다. 상세 내용은 아래 "Julia Strategy V00" 섹션 참고.
@@ -382,7 +389,7 @@ Pattern A, Pattern A FAST, Investability 필터, 손절 및 청산 규칙을 결
   * 재진입이 금지된 단일 진입 기준 모델 (**`HISTORICAL_FROZEN_BASELINE`**, [V1 Contract](docs/patterns/pattern_a_fast/strategy/final_v01.md)).
 * **운용 정책**: 본 전략은 리포트를 통한 **투자 의사결정 지원(Decision Support)** 목적으로 사용되며, 자동 주문 실행(Automated Trading)용으로 승인되지 않았습니다.
 
-## OpenDART Fundamentals — HOLD (설계/구현 문서 보존, 신규 착수는 FastCore/Julia 이후)
+## OpenDART Fundamentals — NEXT (설계/구현 문서 보존)
 
 Pattern A, Investability, Foreign Flow, Market RS와 독립된 실적 분석 축을 추가하는 다음 개발 단계.
 
@@ -398,7 +405,7 @@ Pattern A, Investability, Foreign Flow, Market RS와 독립된 실적 분석 축
 Historical as-of report에서는 `disclosure / filing availability date <= as_of`인 실제 공시 데이터만 사용한다. 미래 공시 데이터가 과거 리포트에 유입되는 future filing leakage를 금지한다.
 
 ### 아직 확정하지 않는 항목
-Fundamentals Score, Pattern A Score와의 합산, 매매 signal, PER/PBR, valuation score 및 fundamental cutoff는 OpenDART Fundamentals 설계 단계에서 확정한다. 현재는 `HOLD`이며 OpenDART가 production 통합 완료된 상태가 아니다. 명시적 backtest 재개와 후속 우선순위 정리 전에는 신규 착수하지 않는다.
+Fundamentals Score, Pattern A Score와의 합산, 매매 signal, PER/PBR, valuation score 및 fundamental cutoff는 OpenDART Fundamentals 설계 단계에서 확정한다. OpenDART Fundamentals core는 현재 `NEXT`지만 아직 production 통합 완료된 상태가 아니다. 핵심 구축 완료 후 Fundamentals Filter / Stock Report Integration을 진행하고, 그 이후에 realistic backtest를 재개한다.
 
 ---
 
@@ -542,16 +549,17 @@ CLI / Web 대시보드, 관심종목 워크플로우, 실시간 알림 등 최�
 13. Documentation & Artifacts IA Reorganization — CLOSED (`a81e3bb`)
 14. Production Regeneration through 2026-09-04 (Repository V2, universe 2,555) — **CLOSED**
 15. Documentation / Artifact Consolidation — **CLOSED**
-16. Post-report Branch Cleanup / Integration — **NEXT**
-17. FastCore Realistic Backtest — **PAUSED / RESUME_READY AFTER EXPLICIT USER RESUME**
-18. Julia Realistic Backtest — **PAUSED / RESUME_READY AFTER EXPLICIT USER RESUME**
-19. Strategy Robustness Comparison — **AFTER BACKTESTS**
-20. OpenDART Fundamentals — **HOLD**
-21. KRX Open API Validation — **COMPLETE**
-22. Sector RS Stock Report v0.4 Integration — **CLOSED / ADDITIVE CONTEXT**
-23. Web Report Viewer — **PLANNED / FUTURE**
-24. (Historical / superseded, not in current order) Julia Strategy V00 Official PIT — 구 proxy 연구, HISTORICAL / SUPERSEDED
-25. (Historical / superseded, not in current order) Market Cap Threshold Research — 구 proxy 연구 후속, HISTORICAL / SUPERSEDED
+16. Post-report Branch Cleanup / Integration — **CLOSED**
+17. OpenDART Fundamentals — **NEXT**
+18. Fundamentals Filter / Stock Report Integration — **AFTER FUNDAMENTALS CORE**
+19. FastCore Realistic Backtest — **PAUSED / AFTER FUNDAMENTALS**
+20. Julia Realistic Backtest — **PAUSED / AFTER FUNDAMENTALS**
+21. Strategy Robustness Comparison — **AFTER BACKTESTS**
+22. KRX Open API Validation — **COMPLETE**
+23. Sector RS Stock Report v0.4 Integration — **CLOSED / ADDITIVE CONTEXT**
+24. Web Report Viewer — **PLANNED / FUTURE**
+25. (Historical / superseded, not in current order) Julia Strategy V00 Official PIT — 구 proxy 연구, HISTORICAL / SUPERSEDED
+26. (Historical / superseded, not in current order) Market Cap Threshold Research — 구 proxy 연구 후속, HISTORICAL / SUPERSEDED
 
 ---
 

@@ -68,9 +68,9 @@ README.md
 * **현재 상태**: **`COMPLETE`**
 * 서비스 API 승인이 완료되어 KRX Open API 기반 데이터 계층(Repository V2 / local rolling market-data authority)이 현재 production data path입니다.
 
-### 5. OpenDART Fundamentals (Hold)
+### 5. OpenDART Fundamentals (Next)
 * **다음 개발 영역**: OpenDART 기반 매출, 영업이익, 당기순이익, 수익성, 성장률, 실적 추세 및 공시일 기준 PIT 처리.
-* **현재 상태**: **`HOLD`**. 설계/구현 문서는 [`docs/fundamentals/`](docs/fundamentals/README.md)에 보존되어 있습니다. 현재 즉시 **`NEXT`**는 Post-report Branch Cleanup / Integration이며, FastCore/Julia realistic backtest는 branch cleanup 이후 명시적 사용자 재개 시 시작하는 **`PAUSED / RESUME_READY`** 상태입니다. OpenDART Fundamentals는 그 이후까지 **`HOLD`**이며, Fundamentals Score, Pattern A Score와의 합산, valuation score 및 매매 signal은 아직 확정하지 않았습니다.
+* **현재 상태**: **`NEXT`**. 설계/구현 문서는 [`docs/fundamentals/`](docs/fundamentals/README.md)에 보존되어 있습니다. Post-report Branch Cleanup / Integration이 완료되었으므로 OpenDART Fundamentals 기능 구축을 시작할 수 있습니다. Fundamentals filtering이 realistic backtest보다 선행하며, Fundamentals Score, Pattern A Score와의 합산, valuation score 및 매매 signal은 아직 확정하지 않았습니다.
 
 ---
 
@@ -202,13 +202,14 @@ print(f"Markdown: {md_path}")
 
 **Production 기준일**: 2026-09-04 (`production certified boundary`)
 
-* **COMPLETED**: Repository V2 / production data migration, market data refresh & price validation through 2026-09-04, Market RS full-COMMON authority (2,555: READY 2,338 / PARTIAL 65 / DATA_UNAVAILABLE 152), Pattern A production regeneration (COMMON universe 2,555), Stock Report v0.4 regeneration (158/158: COMMON 141 / ETF 17), documentation/artifact consolidation, branch/main integration cleanup
+* **COMPLETED**: Repository V2 / production data migration, market data refresh & price validation through 2026-09-04, Market RS full-COMMON authority (2,555: READY 2,338 / PARTIAL 65 / DATA_UNAVAILABLE 152), Pattern A production regeneration (COMMON universe 2,555), Stock Report v0.4 regeneration (158/158: COMMON 141 / ETF 17), documentation/artifact consolidation, branch/main integration cleanup, post-report branch cleanup / integration
 * **CURRENT**: Production report/data state consolidated; 추가 코드·데이터 재생성은 진행하지 않음
-* **NEXT**: Post-report Branch Cleanup / Integration
-* **PAUSED / RESUME_READY**: FastCore realistic backtest, Julia realistic backtest (branch cleanup 이후 명시적 사용자 재개 시 시작)
+* **NEXT**: OpenDART Fundamentals
+* **AFTER FUNDAMENTALS CORE**: Fundamentals Filter / Stock Report Integration
+* **PAUSED / AFTER FUNDAMENTALS**: FastCore realistic backtest, Julia realistic backtest (Fundamentals filtering/report integration 완료 후 재개)
 * **AFTER BACKTESTS**: Strategy robustness comparison (현실적 실행조건에서 반복 가능한 robust strategy 탐색이 목표)
-* **HOLD**: 신규 Pattern 개발, OpenDART Fundamentals 신규 착수, deferred Group B 작업, 불필요한 추가 market-data hardening
+* **HOLD**: 신규 Pattern 개발, deferred Group B 작업, 불필요한 추가 market-data hardening
 
-**알려진 현재 한계** (2026-09-04 기준): Scanner의 Foreign Flow와 Sector RS는 candidate-gated 평가가 남아 있지만, 현재 Stock Report target COMMON은 local authority를 직접 소비합니다. Stock Report Sector RS는 READY 139 / DATA_UNAVAILABLE 2 / NOT_EVALUATED 0이며, full-COMMON Sector RS rank/percentile authority는 아직 없습니다. FastCore/Julia realistic backtest는 명시적 사용자 재개 전까지 `PAUSED / RESUME_READY`입니다.
+**알려진 현재 한계** (2026-09-04 기준): Scanner의 Foreign Flow와 Sector RS는 candidate-gated 평가가 남아 있지만, 현재 Stock Report target COMMON은 local authority를 직접 소비합니다. Stock Report Sector RS는 READY 139 / DATA_UNAVAILABLE 2 / NOT_EVALUATED 0이며, full-COMMON Sector RS rank/percentile authority는 아직 없습니다. FastCore/Julia realistic backtest는 Fundamentals filtering/report integration 완료 전까지 `PAUSED / AFTER FUNDAMENTALS`입니다.
 
 전체 Phase 이력과 세부 실행 계획은 [ROADMAP.md](ROADMAP.md)를 참고하세요.
