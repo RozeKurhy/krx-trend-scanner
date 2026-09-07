@@ -486,4 +486,9 @@ class StockReport:
 
     def to_dict(self) -> dict[str, Any]:
         """Convert report to JSON-serializable dictionary."""
-        return asdict(self)
+        payload = asdict(self)
+        # Keep legacy v0.4 serialization byte-for-byte compatible when the
+        # additive section was not injected; v0.5 always carries the section.
+        if self.fundamentals is None:
+            payload.pop("fundamentals", None)
+        return payload
