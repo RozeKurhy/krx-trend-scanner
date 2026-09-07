@@ -10,15 +10,20 @@ ROADMAP.md
 **COMPLETED**
 - Repository V2 / production data migration (local rolling market-data authority, KRX Open API 기반)
 - Market data refresh through 2026-09-04 (production certified boundary = 2026-09-04)
+- Market Index 1001 / 2001 through 2026-09-04 (`aada5be24a5f158420f34cda0b7b404898a72714`)
 - Market-price validation
 - Pattern A production regeneration (COMMON production universe 2,555 / scan rows 2,555 / scanner_error_count 0)
-- Stock Report regeneration (54/54, report errors 0)
+- Market RS full-COMMON authority through 2026-09-04 (2,555: READY 2,338 / PARTIAL 65 / DATA_UNAVAILABLE 152 / NOT_EVALUATED 0)
+- Sector RS Stock Report v0.4 production context integration
+- Stock Report v0.4 regeneration (158/158: COMMON 141 / ETF 17, report errors 0)
+- Documentation / artifact consolidation
 - Branch / main integration cleanup (Group B 정리 및 merged branch 정리 포함)
 
 **CURRENT**
-- Documentation / artifact consolidation (이 문서 및 `README.md`, `docs/**`, `artifacts/**` 정리)
+- Production report/data state consolidated; 추가 코드·데이터 재생성은 진행하지 않음
 
 **NEXT**
+- Post-report Branch Cleanup / Integration (현재 production report/data 이후 남은 branch 상태 최종 확인·정리)
 - FastCore realistic backtest (next-day execution, transaction cost, slippage, holding period, win rate, payoff ratio, MDD, trade count, market regime, benchmark comparison, parameter robustness 반영)
 - Julia realistic backtest (동일 기준)
 - Strategy robustness comparison — 목표는 "최대 backtest 수익률 parameter"가 아니라 **현실적 실행조건에서도 반복 가능한 robust strategy**를 찾는 것
@@ -30,8 +35,9 @@ ROADMAP.md
 - OpenDART Fundamentals 신규 착수 (기존 설계/구현 문서는 `docs/fundamentals/`에 보존되어 있으나, 현재 최우선순위는 FastCore/Julia backtest)
 
 **알려진 현재 한계 (2026-09-04 production scan 기준, 과장하지 않고 그대로 기록)**
-- Foreign Flow: 대부분 `NOT_EVALUATED` — Phase 11 인프라 자체는 존재하나 매 스캔마다 전수 평가되지 않음
-- Market RS: candidate 단위 production 통합이 아직 완전히 적용되지 않은 부분이 있음
+- Foreign Flow: Scanner에는 candidate-gated 평가가 남아 있음. Stock Report target COMMON에서는 local authority를 직접 소비함
+- Sector RS: Scanner는 READY 248 / DATA_UNAVAILABLE 8 / NOT_EVALUATED 2,299이며 candidate gating으로 non-candidate가 평가되지 않음. Stock Report v0.4 target COMMON은 READY 139 / DATA_UNAVAILABLE 2 / NOT_EVALUATED 0, ETF 17은 NOT_APPLICABLE / NOT_EVALUATED
+- Sector RS full-COMMON rank/percentile authority는 아직 만들지 않음 (별도 향후 확장)
 - Repository 전체에 legacy/historical PyKRX 관련 코드가 남아 있음 — 다만 production scanner/report 경로의 silent PyKRX fallback은 제거된 상태
 
 ---
@@ -75,7 +81,7 @@ Phase만): `PRODUCTION` / `PRODUCTION_HOLD` / `EXPERIMENTAL` / `PRODUCTION_DECIS
 * Pattern A: `Lifecycle = CLOSED`, `Production = PRODUCTION`, `Qualifier = FROZEN`
 * Pattern A FAST: `Lifecycle = CLOSED`, `Production = PRODUCTION_HOLD`, `Usage = EXPERIMENTAL`
 * A FAST Core V2: `Lifecycle = CLOSED`, `Production = PRODUCTION_DECISION_SUPPORT`, `Qualifier = FROZEN`
-* Phase 12 Market RS: `Lifecycle = CLOSED`, Sector RS: `DEFERRED / FUTURE_EXTENSION`
+* Phase 12 Market RS: `Lifecycle = CLOSED`; Stock Report v0.4 Sector RS integration: `Lifecycle = CLOSED`, additive context
 
 문서 전반에서 초기 Pattern A 트랙(Phase 1~11)이 사용해온 `DONE`은 이
 문서 내에서 `CLOSED`와 동일한 의미(Phase lifecycle 완료)로 취급한다 —
@@ -104,20 +110,22 @@ CLOSED고 Production 승격 여부는 별도"임을 한 토큰으로 강조하�
 | | **Pattern A Final Production Closure** | **DONE / FROZEN** | **KEEP_CURRENT_PRODUCTION 확정 (`05d03e1`)** |
 | **Filters & Confirmation** | Phase 10 Investability Filter | CLOSED | 시총 $\ge \text{1,000억}$, 20D 유동성 $\ge \text{3억}$ (`75afa32`) |
 | | Phase 11 Foreign Flow Infrastructure | CLOSED | Foreign Flow 독립 confirmation axis (`71237c0`) |
-| | **Phase 12 Market Relative Strength** | **CLOSED** | 3M/6M/12M, delta, acceleration, all-market rank/percentile 및 Stock Report v0.3 통합 완료 (`5fdf977`) |
+| | **Phase 12 Market Relative Strength** | **CLOSED** | 3M/6M/12M, delta, acceleration, all-market rank/percentile authority 완료 (`5fdf977`); legacy v0.3 consumer closure는 historical로 보존하고 현재 consumer는 v0.4 |
 | **Pattern A FAST** | Phase 13 Signal Model Research | **RESEARCH_CLOSED / PRODUCTION_HOLD** | Score Separation `PASS`, Lead Time `INCONCLUSIVE` (`935f9be`) |
 | **A FAST Core Strategy** | A FAST Core Strategy V1 | CLOSED / FROZEN | 단일 진입 모델 (**`HISTORICAL_FROZEN_BASELINE`**) |
 | | **A FAST Core Strategy V2** | **CLOSED / FROZEN** | **Current Default Strategy (`PRODUCTION_DECISION_SUPPORT`)** |
-| **Reporting & Viewer** | **Stock Report v0.3** | **CLOSED** | Phase 12 Market RS production integration 완료 (`0e54ad5`) |
+| **Reporting & Viewer** | **Stock Report v0.4** | **CLOSED / PRODUCTION_DECISION_SUPPORT** | Market RS exact-date authority + Sector RS additive context, 2026-09-04 canonical 158건 (`59c5cab`, `8a1cccd`) |
 | | Web Report Viewer | PLANNED / FUTURE | Fundamentals 및 핵심 데이터 계층 이후 |
 | **Engineering Infrastructure** | Documentation IA Reorganization | CLOSED | Domain-first / Pattern-second 구조 확립 (`docs/README.md`) |
 | | Artifacts IA Reorganization | CLOSED | Authority & Lifecycle 분리 완료 (`a81e3bb`) |
 | | Test Suite Performance Audit | CLOSED | 실행 시간 단축 (~66분 ➔ ~11분44초) |
 | **Project Management** | README & Roadmap Refresh | **CLOSED** | Refresh 및 Semantics 정합성 완료 |
 | | **Production Regeneration through 2026-09-04** | **CLOSED** | Repository V2 / rolling market-data authority, universe 2,555, Pattern A + Stock Report 재생성, branch/main integration cleanup 완료 |
-| | **Documentation / Artifact Consolidation** | **CURRENT** | README/ROADMAP/docs/artifacts 정리 (이 작업) |
-| | **FastCore Realistic Backtest** | **NEXT** | 실행조건 반영 현실적 백테스트 (next-day execution, cost, slippage 등) |
-| | **Julia Realistic Backtest** | **NEXT** | 동일 기준의 Julia 전략 백테스트 |
+| | **Documentation / Artifact Consolidation** | **CLOSED** | README/ROADMAP/current-facing docs 및 production artifact 상태 정리 완료 |
+| | **Post-report Branch Cleanup / Integration** | **NEXT** | 2026-09-04 report/data 작업 이후 남은 branch 상태 최종 확인·정리 |
+| | **FastCore Realistic Backtest** | **PAUSED / RESUME_READY** | 명시적 사용자 재개 후 실행; next-day execution, cost, slippage 등 |
+| | **Julia Realistic Backtest** | **PAUSED / RESUME_READY** | 명시적 사용자 재개 후 실행; FastCore와 동일 기준 |
+| | **Strategy Robustness Comparison** | **AFTER BACKTESTS** | 두 realistic backtest 완료 후 비교 |
 | | OpenDART Fundamentals | HOLD | 설계/구현 문서는 `docs/fundamentals/`에 보존, 신규 착수는 FastCore/Julia 이후 |
 | | KRX Open API Validation | COMPLETE | 서비스 API 승인 완료, 현재 production data path (Repository V2) |
 | | Julia Strategy V00 Official PIT (구 proxy 연구) | HISTORICAL / SUPERSEDED | Loss Guard on/off 비교용 구 proxy 연구, 117/215만 확보된 채 종료. 현재 우선순위인 FastCore/Julia Realistic Backtest로 대체됨 |
@@ -131,17 +139,17 @@ CLOSED고 Production 승격 여부는 별도"임을 한 토큰으로 강조하�
 ## 공식 작업 우선순위 (Current Work Order)
 
 ```text
-1. Documentation / Artifact Consolidation = CURRENT
+1. Documentation / Artifact Consolidation = CLOSED
        ↓
-2. FastCore Realistic Backtest = NEXT
+2. Post-report Branch Cleanup / Integration = NEXT
        ↓
-3. Julia Realistic Backtest = NEXT
+3. FastCore Realistic Backtest = PAUSED / RESUME_READY AFTER EXPLICIT USER RESUME
        ↓
-4. Strategy Robustness Comparison = NEXT
+4. Julia Realistic Backtest = PAUSED / RESUME_READY AFTER EXPLICIT USER RESUME
        ↓
-5. OpenDART Fundamentals = HOLD (신규 착수는 위 3개 이후)
+5. Strategy Robustness Comparison = AFTER BACKTESTS
        ↓
-6. Sector RS = DEFERRED / FUTURE_EXTENSION
+6. OpenDART Fundamentals = HOLD (신규 착수는 위 backtest 이후)
        ↓
 7. Web Report Viewer = FUTURE
        ↓
@@ -309,7 +317,7 @@ Scanner CANDIDATE 180종목을 수동 차트 검토하고 Stage 연구 사이클
 
 ## Phase 12. Market Relative Strength — CLOSED
 
-목적: KOSPI와 KOSDAQ 전체 공식 COMMON universe를 기준으로 종목별 시장 상대강도(Market RS)를 산출하고, 이를 Stock Report v0.3에서 소비하는 분석 축으로 통합.
+목적: KOSPI와 KOSDAQ 전체 공식 COMMON universe를 기준으로 종목별 시장 상대강도(Market RS)를 산출하고, 이를 Stock Report consumer에 통합. Phase 12의 closure 기록은 Market RS authority 자체에 대한 historical record로 유지한다.
 
 ### 최종 상태
 * **Lifecycle**: **`CLOSED`**
@@ -322,14 +330,16 @@ Scanner CANDIDATE 180종목을 수동 차트 검토하고 Stage 연구 사이클
 * **Fail-closed 원칙**: exact as-of snapshot만 사용하고 nearest/future fallback을 사용하지 않음.
 
 ### Stock Report 통합
-* Stock Report v0.3이 Phase 12 snapshot을 consumer로 사용하며, report 생성마다 Full Universe Scanner를 호출하거나 RS를 재계산하지 않음.
+* Phase 12 closure 시점의 legacy report consumer 기록은 historical이며, 현재 production consumer는 Stock Report v0.4이다.
+* Stock Report는 report 생성마다 Full Universe Scanner를 호출하거나 Market RS를 재계산하지 않고 exact-date authority를 lookup한다.
 * Market RS level은 Markdown에서 `%`, improvement delta와 acceleration은 `%p`, JSON 원본 값은 decimal로 보존.
 * Phase 12 자체는 Pattern A Score나 Investability 필터에 합산되지 않는 독립 Context / Analysis feature.
-* **Stock Report v0.3 closure**: `0e54ad5e93e0817d690b944c5356b49f85dac639`
+* **Historical Stock Report v0.3 closure**: `0e54ad5e93e0817d690b944c5356b49f85dac639`
 
 ### Sector RS 상태
-* **`DEFERRED / FUTURE_EXTENSION`**
-* 공인 업종 매핑과 PIT-compatible 업종 benchmark가 확정되기 전까지 Sector RS는 구현 완료로 간주하지 않음.
+* Phase 12 closure 당시에는 **`DEFERRED / FUTURE_EXTENSION`**였으나, 이는 해당 시점의 historical 상태다.
+* 현재는 frozen 2026-08-14 membership, Repository V2, 2026-09-04까지의 local sector index를 사용하는 Stock Report v0.4 additive context integration으로 **`CLOSED`**다.
+* Stock Report target COMMON은 READY 139 / DATA_UNAVAILABLE 2 / NOT_EVALUATED 0이며, full-COMMON Sector RS rank/percentile authority는 만들지 않았다.
 
 ---
 
@@ -384,18 +394,19 @@ Pattern A, Investability, Foreign Flow, Market RS와 독립된 실적 분석 축
 Historical as-of report에서는 `disclosure / filing availability date <= as_of`인 실제 공시 데이터만 사용한다. 미래 공시 데이터가 과거 리포트에 유입되는 future filing leakage를 금지한다.
 
 ### 아직 확정하지 않는 항목
-Fundamentals Score, Pattern A Score와의 합산, 매매 signal, PER/PBR, valuation score 및 fundamental cutoff는 OpenDART Fundamentals 설계 단계에서 확정한다. 현재는 `NEXT / PLANNED`이며 OpenDART가 production 통합 완료된 상태가 아니다.
+Fundamentals Score, Pattern A Score와의 합산, 매매 signal, PER/PBR, valuation score 및 fundamental cutoff는 OpenDART Fundamentals 설계 단계에서 확정한다. 현재는 `HOLD`이며 OpenDART가 production 통합 완료된 상태가 아니다. 명시적 backtest 재개와 후속 우선순위 정리 전에는 신규 착수하지 않는다.
 
 ---
 
-## Stock Report v0.3 Integration — CLOSED
+## Stock Report v0.4 Integration — CLOSED
 
-단일 종목의 Pattern A, Investability, Foreign Flow, Market RS, 전략 상태 및 데이터 품질을 종합 진단하는 JSON/Markdown 리포트 엔진.
+단일 종목의 Pattern A, Investability, Foreign Flow, Market RS, Sector RS, 전략 상태 및 데이터 품질을 종합 진단하는 JSON/Markdown 리포트 엔진.
 
-* **공식 상태**: **`v0.3 CLOSED / PRODUCTION_DECISION_SUPPORT`** ([Stock Report v0.3 Contract](docs/reporting/stock_report/contract_v03.md))
+* **공식 상태**: **`v0.4 CLOSED / PRODUCTION_DECISION_SUPPORT`** ([Stock Report v0.4 Contract](docs/reporting/stock_report/contract_v04.md), [v0.4 Schema](docs/reporting/stock_report/schema_v04.json))
 * **Stock Report v0.2**: `artifacts/reporting/stock_reports/archive/v0.2/`에 historical archive로 보존.
-* **Stock Report v0.3**: `artifacts/reporting/stock_reports/<YYYYMMDD>/`에 current production contract으로 제공.
-* **리포트 구성 (9대 축)**:
+* **Stock Report v0.3**: historical contract/evidence로 보존하며 current production contract은 v0.4다.
+* **Stock Report v0.4**: `artifacts/reporting/stock_reports/<YYYYMMDD>/`에 current production contract으로 제공. 2026-09-04 canonical은 158건(COMMON 141 / ETF 17)이다.
+* **리포트 구성 (10대 축)**:
   1. Pattern A 진단 (Score v0.2, Stage Classifier, Candidate State, Score Momentum)
   2. Phase 10 Investability 판정 (시총 $\ge \text{1,000억}$, 20D 거래대금 $\ge \text{3억}$)
   3. A FAST Core V2 Canonical Strategy Position 및 Action
@@ -403,11 +414,13 @@ Fundamentals Score, Pattern A Score와의 합산, 매매 signal, PER/PBR, valuat
   5. Pattern A 월별 히스토리 추이 (Monthly History / Score Trend / Stage Transitions)
   6. Phase 11 Foreign Flow 수급 지표 및 Flow Intensity
   7. Phase 12 Market RS (3M/6M/12M, delta, acceleration, rank/percentile)
-  8. 거래대금 추이 (Trading Value Trend, 5D/20D/60D 평균 및 단·중기 상태)
-  9. 데이터 품질 및 PIT 무결성 감사 (Zero Network Requests)
-* **생성 원칙**: Local Parquet Cache와 canonical artifact만 사용하며 exact as-of lookup, Full Universe Scanner 미호출, 네트워크 요청 0건.
-* **Authority chain**: Initial v0.3 `6695f994`, FIX01 `2c96d69e`, FIX01 evidence `813309e`, final closure `0e54ad5`.
-* **Final Full Suite evidence**: `1078 passed`, `0 failed`, `0 errors`, `6 skipped`, `5 deselected`, `1267.16 sec`, exit code `0`.
+  8. Sector RS (3M/6M/12M, frozen membership/local index 기반 additive context)
+  9. 거래대금 추이 (Trading Value Trend, 5D/20D/60D 평균 및 단·중기 상태)
+  10. 데이터 품질 및 PIT 무결성 감사 (Zero Network Requests)
+* **생성 원칙**: Repository V2와 frozen/local authority를 사용하며 exact as-of lookup, Full Universe Scanner 미호출, 네트워크 요청 0건.
+* **Authority chain**: v0.4 implementation `59c5cab`, final production regeneration `8a1cccd`; historical v0.3 closure `0e54ad5`는 보존.
+* **Production artifact**: 2026-09-04 canonical v0.4 Markdown 158건 / JSON 158건, root JSON 0건.
+* **Full Repository pytest**: 이번 v0.4 regeneration 단계에서는 실행하지 않음. 이전 v0.3 full-suite evidence는 historical record다.
 
 ---
 
@@ -425,7 +438,7 @@ Fundamentals Score, Pattern A Score와의 합산, 매매 signal, PER/PBR, valuat
 
 ## Julia Strategy V00 — HISTORICAL / SUPERSEDED (구 proxy 연구, 현재 우선순위 아님)
 
-> 이 섹션은 역사적 기록이다. 현재 전략 검증 우선순위는 FastCore/Julia Realistic Backtest(NEXT)이며, 이 구 loss-guard on/off proxy 연구는 재개 예정이 없다.
+> 이 섹션은 역사적 기록이다. FastCore/Julia Realistic Backtest는 현재 `PAUSED / RESUME_READY`이며, 명시적 사용자 재개 전에는 시작하지 않는다. 이 구 loss-guard on/off proxy 연구는 재개 예정이 없다.
 
 목적: A FAST Core V2의 핵심 보호 규칙인 pre-PROGRESSED $-15\%$ Loss Guard가 회고적 수익률 분포와 대규모 손실 프로필에 미치는 영향을 독립적으로 비교 검증.
 
@@ -456,7 +469,7 @@ KRX Open API 기반 데이터 계층 전환은 서비스 API 승인 대기 상�
 6. Corporate-action adjusted-price semantics 검증
 7. `KRX_ONLY` vs `KRX_PLUS_KIS` architecture 결정
 
-현재는 migration 완료나 production 전환으로 표시하지 않는다. OpenDART Fundamentals의 작은 작업 단위가 진행 중 승인되면, 해당 단위를 마친 뒤 KRX validation을 우선 재개할 수 있다.
+승인 전 계획은 historical record로 남긴다. 현재는 Repository V2 / local rolling market-data authority가 production data path이며, KRX Open API Validation은 `COMPLETE`다. 이 상태를 되돌리거나 승인 대기를 current status로 표시하지 않는다.
 
 ## Market Cap Threshold Research (구 proxy 연구 후속) — HISTORICAL / SUPERSEDED
 
@@ -472,7 +485,7 @@ Julia Official PIT가 100% 완료된 뒤 A FAST Core V2와 Julia를 대상으로
 
 ## Web Report Viewer — PLANNED / FUTURE
 
-목적: Stock Report v0.3 산출물을 웹 브라우저에서 편리하게 조회/검색할 수 있는 뷰어 인터페이스 구축.
+목적: Stock Report v0.4 산출물을 웹 브라우저에서 편리하게 조회/검색할 수 있는 뷰어 인터페이스 구축.
 
 * **실행 의존성**: OpenDART Fundamentals $\rightarrow$ 핵심 데이터 계층 정리 $\rightarrow$ Web Report Viewer.
 * **현재 상태**: 즉시 구현 대상이 아니며, OpenDART Fundamentals 및 핵심 데이터 계층 이후의 미래 단계.
@@ -521,18 +534,20 @@ CLI / Web 대시보드, 관심종목 워크플로우, 실시간 알림 등 최�
 9. Phase 13 Pattern A Fast Research — DONE (`RESEARCH_CLOSED / PRODUCTION_HOLD`, `935f9be`)
 10. Post-Phase 13 A FAST Core Strategy V1/V2 Finalization — CLOSED
 11. Phase 12 Market Relative Strength — CLOSED (`5fdf977`)
-12. Stock Report v0.3 Integration — CLOSED (`0e54ad5`)
+12. Stock Report v0.4 Integration — CLOSED (`59c5cab`, `8a1cccd`; v0.3 closure는 historical)
 13. Documentation & Artifacts IA Reorganization — CLOSED (`a81e3bb`)
 14. Production Regeneration through 2026-09-04 (Repository V2, universe 2,555) — **CLOSED**
-15. Documentation / Artifact Consolidation — **CURRENT**
-16. FastCore Realistic Backtest — **NEXT**
-17. Julia Realistic Backtest — **NEXT**
-18. OpenDART Fundamentals — **HOLD**
-19. KRX Open API Validation — **COMPLETE**
-20. Sector RS — **DEFERRED / FUTURE_EXTENSION**
-21. Web Report Viewer — **PLANNED / FUTURE**
-22. (Historical / superseded, not in current order) Julia Strategy V00 Official PIT — 구 proxy 연구, HISTORICAL / SUPERSEDED
-23. (Historical / superseded, not in current order) Market Cap Threshold Research — 구 proxy 연구 후속, HISTORICAL / SUPERSEDED
+15. Documentation / Artifact Consolidation — **CLOSED**
+16. Post-report Branch Cleanup / Integration — **NEXT**
+17. FastCore Realistic Backtest — **PAUSED / RESUME_READY AFTER EXPLICIT USER RESUME**
+18. Julia Realistic Backtest — **PAUSED / RESUME_READY AFTER EXPLICIT USER RESUME**
+19. Strategy Robustness Comparison — **AFTER BACKTESTS**
+20. OpenDART Fundamentals — **HOLD**
+21. KRX Open API Validation — **COMPLETE**
+22. Sector RS Stock Report v0.4 Integration — **CLOSED / ADDITIVE CONTEXT**
+23. Web Report Viewer — **PLANNED / FUTURE**
+24. (Historical / superseded, not in current order) Julia Strategy V00 Official PIT — 구 proxy 연구, HISTORICAL / SUPERSEDED
+25. (Historical / superseded, not in current order) Market Cap Threshold Research — 구 proxy 연구 후속, HISTORICAL / SUPERSEDED
 
 ---
 

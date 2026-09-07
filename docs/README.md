@@ -20,7 +20,7 @@ README.md
 
 ## 현재 Reporting
 
-- **Stock Report** — Version 0.2, Production Integration `CLOSED` ([reporting/stock_report/README.md](reporting/stock_report/README.md))
+- **Stock Report** — Version 0.4, Production Integration `CLOSED`, Market/Sector RS additive context 포함 ([reporting/stock_report/README.md](reporting/stock_report/README.md))
 
 ## 현재 Strategy 상태
 

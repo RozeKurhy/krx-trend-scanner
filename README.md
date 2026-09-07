@@ -62,7 +62,7 @@ README.md
 * **범위**: KOSPI/KOSDAQ 전체 공식 COMMON universe를 권위 데이터로 사용하며, ETF·ETN·우선주·SPAC·REIT·KONEX 등은 제외합니다. Percentile은 `100 = strongest`, `0 = weakest`입니다.
 * **운영 원칙**: 후보 subset 재계산 없이 전체 시장 snapshot을 exact as-of로 lookup합니다. nearest/future fallback, 리포트별 Full Universe Scan, 네트워크 요청은 사용하지 않습니다.
 * **분석 위치**: RS는 현재 Pattern A Score나 필터에 합산되지 않는 독립 Context / Analysis feature입니다.
-* **Sector RS**: **`DEFERRED / FUTURE_EXTENSION`** (Market RS와 별도 범위).
+* **Sector RS**: **`CLOSED`** — Stock Report v0.4에 additive production context로 통합되었습니다. frozen 2026-08-14 membership와 2026-09-04까지의 local sector index를 사용하며, full-COMMON rank/percentile authority는 만들지 않았습니다.
 
 ### 4. KRX Open API Validation (Complete)
 * **현재 상태**: **`COMPLETE`**
@@ -90,12 +90,13 @@ Pattern A의 장기 베이스와 Pattern A FAST의 주봉 타이밍, Investabili
 
 ---
 
-## 📄 종목 분석 리포트 (Stock Report v0.3)
+## 📄 종목 분석 리포트 (Stock Report v0.4)
 
-단일 종목의 장기 패턴, 투자 적합성, 전략 상태, 수급, 시장 상대강도 및 히스토리 추이를 종합 진단하는 Markdown 및 JSON 리포트 생성기입니다.
+단일 종목의 장기 패턴, 투자 적합성, 전략 상태, 수급, 시장·업종 상대강도 및 히스토리 추이를 종합 진단하는 Markdown 및 JSON 리포트 생성기입니다.
 
-* **공식 상태**: **`v0.3 CLOSED / PRODUCTION_DECISION_SUPPORT`** ([v0.3 Contract](docs/reporting/stock_report/contract_v03.md))
-* **핵심 항목 (9대 축)**:
+* **공식 상태**: **`v0.4 CLOSED / PRODUCTION_DECISION_SUPPORT`** ([v0.4 Contract](docs/reporting/stock_report/contract_v04.md), [v0.4 Schema](docs/reporting/stock_report/schema_v04.json))
+* **현재 production 산출물**: 2026-09-04 canonical 158건 (COMMON 141 / ETF 17), 전부 `report_version = 0.4`
+* **핵심 항목 (10대 축)**:
   1. **Pattern A 진단**: Score v0.2, Stage Classifier, Candidate State, 1M/3M/6M Score Momentum
   2. **Investability 평가**: 시가총액($\ge \text{1,000억}$), 20D 거래대금($\ge \text{3억}$) 적합성 판정
   3. **A FAST Core V2 전략 상태**: Canonical Strategy Position (`OPEN` / `FLAT`) 및 Action (`ENTER_NEXT_OPEN`, `HOLD`, `EXIT_NEXT_OPEN`, `WAIT`)
@@ -103,8 +104,9 @@ Pattern A의 장기 베이스와 Pattern A FAST의 주봉 타이밍, Investabili
   5. **월별 히스토리 추이 (Monthly History)**: 과거 월별 Pattern A Score Trend, Stage Transitions, Recent 12M History
   6. **수급 현황 (Foreign Flow)**: 외국인 기간별(1D/5D/20D/60D) 순매수 및 Flow Intensity
   7. **시장 상대강도 (Market RS)**: 3M/6M/12M level, improvement delta, acceleration, 전체 시장 rank/percentile
-  8. **거래대금 추이 (Trading Value Trend)**: 5D/20D/60D 평균 거래대금 및 단·중기 확장 상태/비율
-  9. **데이터 품질 & Provenance**: 결측치 감사, exact as-of, Zero Network Requests, PIT 무결성 검증
+  8. **업종 상대강도 (Sector RS)**: frozen membership와 local sector index 기반 3M/6M/12M additive context
+  9. **거래대금 추이 (Trading Value Trend)**: 5D/20D/60D 평균 거래대금 및 단·중기 확장 상태/비율
+  10. **데이터 품질 & Provenance**: 결측치 감사, exact as-of, Zero Network Requests, PIT 무결성 검증
 * **산출물 경로**:
   * Markdown: `artifacts/reporting/stock_reports/<YYYYMMDD>/*.md`
   * JSON: `artifacts/reporting/stock_reports/<YYYYMMDD>/json/*.json`
@@ -127,7 +129,7 @@ krx-trend-scanner/
 │   ├── filters/                    # Phase 10 Investability 필터
 │   ├── flow/                       # Phase 11 Foreign Flow 수급 지표
 │   ├── relative_strength/          # Phase 12 Market RS (CLOSED)
-│   ├── reporting/                  # Stock Report v0.3 생성기
+│   ├── reporting/                  # Stock Report v0.4 (Market/Sector RS 통합) 생성기
 │   ├── scanner/                    # COMMON production universe(2026-09-04 기준 2,555개) Full Universe Scanner
 │   ├── universe/                   # 유니버스 데이터 품질 감사
 │   └── validation/                 # 각 단계별 검증 파이프라인 및 클로저 감사
@@ -200,11 +202,11 @@ print(f"Markdown: {md_path}")
 
 **Production 기준일**: 2026-09-04 (`production certified boundary`)
 
-* **COMPLETED**: Repository V2 / production data migration, market data refresh & price validation through 2026-09-04, Pattern A production regeneration (COMMON universe 2,555), Stock Report regeneration (54/54), branch/main integration cleanup
-* **CURRENT**: Documentation / artifact consolidation (이 문서 포함)
-* **NEXT**: FastCore realistic backtest → Julia realistic backtest → strategy robustness comparison (현실적 실행조건에서 반복 가능한 robust strategy 탐색이 목표)
+* **COMPLETED**: Repository V2 / production data migration, market data refresh & price validation through 2026-09-04, Market RS full-COMMON authority (2,555: READY 2,338 / PARTIAL 65 / DATA_UNAVAILABLE 152), Pattern A production regeneration (COMMON universe 2,555), Stock Report v0.4 regeneration (158/158: COMMON 141 / ETF 17), documentation/artifact consolidation, branch/main integration cleanup
+* **CURRENT**: Production report/data state consolidated; 추가 코드·데이터 재생성은 진행하지 않음
+* **NEXT**: Post-report Branch Cleanup / Integration → FastCore realistic backtest → Julia realistic backtest → strategy robustness comparison (현실적 실행조건에서 반복 가능한 robust strategy 탐색이 목표)
 * **HOLD**: 신규 Pattern 개발, OpenDART Fundamentals 신규 착수, deferred Group B 작업, 불필요한 추가 market-data hardening
 
-**알려진 현재 한계** (2026-09-04 production scan 기준): Foreign Flow는 대부분 `NOT_EVALUATED`이며, Market RS의 candidate 단위 production 통합은 아직 완전히 적용되지 않은 부분이 있습니다.
+**알려진 현재 한계** (2026-09-04 기준): Scanner의 Foreign Flow와 Sector RS는 candidate-gated 평가가 남아 있지만, 현재 Stock Report target COMMON은 local authority를 직접 소비합니다. Stock Report Sector RS는 READY 139 / DATA_UNAVAILABLE 2 / NOT_EVALUATED 0이며, full-COMMON Sector RS rank/percentile authority는 아직 없습니다. FastCore/Julia realistic backtest는 명시적 사용자 재개 전까지 `PAUSED / RESUME_READY`입니다.
 
 전체 Phase 이력과 세부 실행 계획은 [ROADMAP.md](ROADMAP.md)를 참고하세요.
