@@ -89,6 +89,39 @@ def test_missing_exact_sector_benchmark_is_data_unavailable():
     assert result.sector_rs_input_reason == "SECTOR_BENCHMARK_ASOF_UNAVAILABLE"
 
 
+def test_sector_rs_is_independent_of_stale_market_benchmark():
+    """A stale Market RS source must not suppress a fresh Sector RS result."""
+    as_of = "2026-09-04"
+    stock_dates = pd.date_range(end=as_of, periods=260, freq="B").strftime("%Y-%m-%d").tolist()
+    stock = pd.DataFrame({"close": [1000.0] * len(stock_dates)}, index=pd.to_datetime(stock_dates))
+    stale_market_dates = pd.date_range(end="2026-08-21", periods=260, freq="B").strftime("%Y-%m-%d").tolist()
+    market = pd.DataFrame({
+        "date": stale_market_dates,
+        "index_code": ["1001"] * len(stale_market_dates),
+        "close": [100.0] * len(stale_market_dates),
+    })
+    sector = pd.DataFrame({
+        "date": stock_dates,
+        "index_code": ["2074"] * len(stock_dates),
+        "close": [100.0] * len(stock_dates),
+    })
+
+    result = compute_relative_strength_features(
+        "005930",
+        as_of,
+        stock,
+        market,
+        sector_index_df=sector,
+        sector_mapping=_sector_mapping(),
+    )
+
+    assert result.market_rs_data_status == RelativeStrengthDataStatus.DATA_UNAVAILABLE
+    assert result.market_rs_3m is None
+    assert result.sector_rs_data_status == RelativeStrengthDataStatus.READY
+    assert result.sector_rs_input_reason == "READY_INPUT"
+    assert result.sector_benchmark_last_observation_date == as_of
+
+
 def test_duplicate_sector_benchmark_date_fails_closed():
     stock, market = _series()
     duplicate = market.copy()

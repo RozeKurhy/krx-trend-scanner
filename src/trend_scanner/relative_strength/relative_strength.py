@@ -266,7 +266,11 @@ def compute_relative_strength_features(
     elif require_exact_sector_snapshot and sector_snapshot_ok:
         sector_input_reason = "SECTOR_MEMBERSHIP_UNMAPPED"
 
-    if stock_df is None or stock_df.empty or market_index_df is None or market_index_df.empty:
+    # Sector RS is an independent secondary axis.  A stale/missing market
+    # benchmark must not prevent it from being evaluated when stock and sector
+    # inputs are available.  Stock availability remains a shared prerequisite
+    # because both axes use the same exact as-of stock close.
+    if stock_df is None or stock_df.empty:
         if (
             require_exact_sector_snapshot
             and sector_input_reason is None
@@ -289,56 +293,22 @@ def compute_relative_strength_features(
             sector_reason=sector_input_reason,
         )
 
-    if target_mkt_code is None:
-        return _unavailable_rs_result(ticker_z, formatted_asof)
+    # 2. Extract and filter the market benchmark when available.  Exact
+    # freshness remains mandatory for Market RS, but is no longer a gate for
+    # the independent Sector RS calculation below.
+    df_mkt = pd.DataFrame()
+    if market_index_df is not None and not market_index_df.empty and target_mkt_code is not None:
+        df_mkt = market_index_df[market_index_df["index_code"] == target_mkt_code].copy()
+        if not df_mkt.empty:
+            df_mkt["date"] = df_mkt["date"].astype(str)
+            df_mkt = df_mkt[df_mkt["date"] <= formatted_asof].copy()
+            if not df_mkt.empty:
+                if df_mkt.duplicated(subset=["date"]).any():
+                    raise MarketDataError(f"Duplicate date detected in market index {target_mkt_code}")
+                df_mkt = df_mkt.sort_values(by="date").reset_index(drop=True)
 
-    # 2. Extract and Filter Market Benchmark Series
-    df_mkt = market_index_df[market_index_df["index_code"] == target_mkt_code].copy()
-    if df_mkt.empty:
-        return _unavailable_rs_result(
-            ticker_z,
-            formatted_asof,
-            market_benchmark_name=target_mkt_name,
-            market_benchmark_code=target_mkt_code,
-            sector_name=s_name,
-            sector_code=s_code,
-            sector_status=(RelativeStrengthDataStatus.NOT_EVALUATED if sector_input_reason == "SECTOR_MEMBERSHIP_SNAPSHOT_UNAVAILABLE" else RelativeStrengthDataStatus.DATA_UNAVAILABLE),
-            sector_reason=sector_input_reason,
-        )
-
-    df_mkt["date"] = df_mkt["date"].astype(str)
-    # PIT Filter: date <= formatted_asof
-    df_mkt = df_mkt[df_mkt["date"] <= formatted_asof].copy()
-    if df_mkt.empty:
-        return _unavailable_rs_result(
-            ticker_z,
-            formatted_asof,
-            market_benchmark_name=target_mkt_name,
-            market_benchmark_code=target_mkt_code,
-            sector_name=s_name,
-            sector_code=s_code,
-            sector_status=(RelativeStrengthDataStatus.NOT_EVALUATED if sector_input_reason == "SECTOR_MEMBERSHIP_SNAPSHOT_UNAVAILABLE" else RelativeStrengthDataStatus.DATA_UNAVAILABLE),
-            sector_reason=sector_input_reason,
-        )
-
-    if df_mkt.duplicated(subset=["date"]).any():
-        raise MarketDataError(f"Duplicate date detected in market index {target_mkt_code}")
-
-    df_mkt = df_mkt.sort_values(by="date").reset_index(drop=True)
-    mkt_last_obs_date = df_mkt["date"].iloc[-1]
-
-    # Exact Freshness Contract on Market Benchmark
-    if mkt_last_obs_date != formatted_asof:
-        return _unavailable_rs_result(
-            ticker_z,
-            formatted_asof,
-            market_benchmark_name=target_mkt_name,
-            market_benchmark_code=target_mkt_code,
-            sector_name=s_name,
-            sector_code=s_code,
-            sector_status=(RelativeStrengthDataStatus.NOT_EVALUATED if sector_input_reason == "SECTOR_MEMBERSHIP_SNAPSHOT_UNAVAILABLE" else RelativeStrengthDataStatus.DATA_UNAVAILABLE),
-            sector_reason=sector_input_reason,
-        )
+    mkt_last_obs_date = df_mkt["date"].iloc[-1] if not df_mkt.empty else None
+    market_benchmark_fresh = bool(df_mkt is not None and not df_mkt.empty and mkt_last_obs_date == formatted_asof)
 
     # 3. Extract and Filter Stock Price Series
     s_df = stock_df.copy()
@@ -379,7 +349,6 @@ def compute_relative_strength_features(
         )
 
     stock_end_close = float(s_map[formatted_asof])
-    mkt_end_close = float(df_mkt["close"].iloc[-1])
 
     # 4. Compute Market RS for 3M, 6M, 12M Horizons
     mkt_obs_count = len(df_mkt)
@@ -412,18 +381,23 @@ def compute_relative_strength_features(
         rs_val = rel_ratio - 1.0
         return stock_ret, bench_ret, rs_val, anchor_date
 
-    # Market RS Horizons
-    s_ret_3m, m_ret_3m, m_rs_3m, m_anc_3m = _eval_horizon(HORIZON_SESSIONS_3M, df_mkt, mkt_end_close)
-    s_ret_6m, m_ret_6m, m_rs_6m, m_anc_6m = _eval_horizon(HORIZON_SESSIONS_6M, df_mkt, mkt_end_close)
-    s_ret_12m, m_ret_12m, m_rs_12m, m_anc_12m = _eval_horizon(HORIZON_SESSIONS_12M, df_mkt, mkt_end_close)
-
-    # Determine Market RS Data Status
-    if m_rs_3m is None:
-        market_rs_status = RelativeStrengthDataStatus.DATA_UNAVAILABLE
-    elif m_rs_6m is not None and m_rs_12m is not None:
-        market_rs_status = RelativeStrengthDataStatus.READY
-    else:
-        market_rs_status = RelativeStrengthDataStatus.PARTIAL
+    # Market RS remains fail-closed on a missing/stale exact benchmark.  Its
+    # fields are initialized independently so Sector RS can still proceed.
+    s_ret_3m = m_ret_3m = m_rs_3m = m_anc_3m = None
+    s_ret_6m = m_ret_6m = m_rs_6m = m_anc_6m = None
+    s_ret_12m = m_ret_12m = m_rs_12m = m_anc_12m = None
+    market_rs_status = RelativeStrengthDataStatus.DATA_UNAVAILABLE
+    if market_benchmark_fresh:
+        mkt_end_close = float(df_mkt["close"].iloc[-1])
+        s_ret_3m, m_ret_3m, m_rs_3m, m_anc_3m = _eval_horizon(HORIZON_SESSIONS_3M, df_mkt, mkt_end_close)
+        s_ret_6m, m_ret_6m, m_rs_6m, m_anc_6m = _eval_horizon(HORIZON_SESSIONS_6M, df_mkt, mkt_end_close)
+        s_ret_12m, m_ret_12m, m_rs_12m, m_anc_12m = _eval_horizon(HORIZON_SESSIONS_12M, df_mkt, mkt_end_close)
+        if m_rs_3m is None:
+            market_rs_status = RelativeStrengthDataStatus.DATA_UNAVAILABLE
+        elif m_rs_6m is not None and m_rs_12m is not None:
+            market_rs_status = RelativeStrengthDataStatus.READY
+        else:
+            market_rs_status = RelativeStrengthDataStatus.PARTIAL
 
     # 5. Compute Sector Relative Strength (Independent Secondary Axis)
     sec_status = RelativeStrengthDataStatus.DATA_UNAVAILABLE

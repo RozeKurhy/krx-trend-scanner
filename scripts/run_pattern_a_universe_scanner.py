@@ -14,6 +14,7 @@ from pathlib import Path
 import sys
 
 from trend_scanner.data.repository_v2_loader import build_production_repository_v2
+from trend_scanner.data.sector_membership import load_sector_mapping_exact_snapshot
 from trend_scanner.scanner import scan_pattern_a_universe
 
 logging.basicConfig(
@@ -84,7 +85,17 @@ def main() -> None:
     # PRODUCTION_ROLLING_MODE: --as-of is caller-supplied and can be a live date, so the rolling
     # certified boundary must be enforced unconditionally (directive
     # ROLLING_MARKET_DATA_AUTHORITY_FINALIZATION_V01 section 7).
-    repository = build_production_repository_v2(Path(__file__).resolve().parents[1], end=args.as_of)
+    repo_root = Path(__file__).resolve().parents[1]
+    repository = build_production_repository_v2(repo_root, end=args.as_of)
+
+    # Sector RS uses the approved frozen 2026-08-14 membership snapshot.  The
+    # mapping entries carry their effective date, so the scanner still applies
+    # strict PIT filtering for historical as-of values while allowing the
+    # current production path to use the snapshot for later local dates.
+    sector_mapping = load_sector_mapping_exact_snapshot(
+        "2026-08-14",
+        repo_root=repo_root,
+    )
 
     result = scan_pattern_a_universe(
         cache=Path(args.cache_dir),
@@ -94,6 +105,8 @@ def main() -> None:
         target_tickers=args.tickers,
         limit=args.limit,
         repository=repository,
+        sector_mapping=sector_mapping,
+        sector_mapping_snapshot_date="2026-08-14",
     )
 
     summary = result.summary
