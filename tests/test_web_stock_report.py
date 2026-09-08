@@ -189,16 +189,18 @@ def test_report_frontend_has_safe_states_and_relative_assets():
     css = (ROOT / "web/css/app.css").read_text(encoding="utf-8")
     favicon = (ROOT / "web/favicon.svg").read_text(encoding="utf-8")
 
-    assert 'href="./css/app.css?v=web-03a-polish-1"' in html
-    assert 'href="./css/app.css?v=web-03a-polish-1"' in index_html
+    assert 'href="./css/app.css?v=web-03a-final-1"' in html
+    assert 'href="./css/app.css?v=web-03a-final-1"' in index_html
     assert 'href="./favicon.svg"' in html
     assert 'href="./favicon.svg"' in index_html
     assert (ROOT / "web/favicon.svg").exists()
     assert '#9f1d2f' in favicon
-    assert 'src="./js/report.js?v=web-03a-polish-1"' in html
-    assert 'src="./js/app.js?v=web-03a-polish-1"' in index_html
-    assert html.count("web-03a-polish-1") == 2
-    assert index_html.count("web-03a-polish-1") == 2
+    assert 'src="./js/report.js?v=web-03a-final-1"' in html
+    assert 'src="./js/app.js?v=web-03a-final-1"' in index_html
+    assert html.count("web-03a-final-1") == 2
+    assert index_html.count("web-03a-final-1") == 2
+    assert "web-03a-polish-1" not in html
+    assert "web-03a-polish-1" not in index_html
     assert "web-03a-1" not in html
     assert "web-03a-1" not in index_html
     assert "web-02a-final-2" not in html
@@ -213,8 +215,12 @@ def test_report_frontend_has_safe_states_and_relative_assets():
     assert 'id="report-error"' in html
     assert 'id="naver-link"' in html
     assert 'id="naver-chart-link"' in html
+    assert 'id="dart-link"' in html
+    assert '전자공시 보기' in html
+    assert 'target="_blank" rel="noopener"' in html
     assert html.count('id="naver-link"') == 1
     assert html.count('id="naver-chart-link"') == 1
+    assert html.count('id="dart-link"') == 1
     assert "검색하여 쉽게 핵심 판단" in html
     assert "검색 안내" not in html
     assert 'id="report-request-button"' in html
@@ -262,6 +268,12 @@ def test_report_frontend_has_safe_states_and_relative_assets():
         assert round(100 - percentile, 1) == expected
     assert "네이버 증권에서 보기" in html
     assert "차트 바로가기" in html
+    assert "DART_SEARCH_URL" in js
+    assert "dart-link" in js
+    assert "report.identity.ticker" in js
+    assert "https://dart.fss.or.kr/html/search/SearchCompanyIR3_M.html" in js
+    assert "textCrpNM=" in js
+    assert "encodeURIComponent(ticker)" in js
     assert "F8" not in html and "WEB-02A" not in html
     assert "_market_strength_state" not in js
     assert "innerHTML" not in js

@@ -97,12 +97,13 @@ def test_strategy_page_is_connected_and_uses_one_release_cache_version():
     css = (ROOT / "web/css/app.css").read_text(encoding="utf-8")
 
     for html in (strategy_html, index_html, report_html):
-        assert 'href="./css/app.css?v=web-03a-polish-1"' in html
+        assert 'href="./css/app.css?v=web-03a-final-1"' in html
         assert "web-02a-final-2" not in html
         assert "web-03a-1" not in html
-    assert 'src="./js/strategy.js?v=web-03a-polish-1"' in strategy_html
-    assert 'src="./js/app.js?v=web-03a-polish-1"' in index_html
-    assert 'src="./js/report.js?v=web-03a-polish-1"' in report_html
+        assert "web-03a-polish-1" not in html
+    assert 'src="./js/strategy.js?v=web-03a-final-1"' in strategy_html
+    assert 'src="./js/app.js?v=web-03a-final-1"' in index_html
+    assert 'src="./js/report.js?v=web-03a-final-1"' in report_html
     assert 'href="./strategy.html"' in index_html
     assert 'href="./strategy.html"' in report_html
     assert 'class="nav-item is-active" href="./strategy.html"' in strategy_html
@@ -121,7 +122,13 @@ def test_strategy_page_is_connected_and_uses_one_release_cache_version():
     assert 'link.href = `./report.html?ticker=' in strategy_js
     assert 'const MONITOR_URL = "./data/strategy-monitor.json";' in strategy_js
     assert "function createPriceDateField" in strategy_js
+    assert "function createPositionField" in strategy_js
     assert '"strategy-item-position"' in strategy_js
+    assert '"strategy-item-position-main"' in strategy_js
+    assert '"strategy-item-position-sub"' in strategy_js
+    assert 'createField("현재 상태", "해당 없음", "strategy-item-position")' in strategy_js
+    assert 'createField("현재 상태", "확인 필요", "strategy-item-position")' in strategy_js
+    assert "positionLabel(item.canonical_position)} · ${stateLabel" not in strategy_js
     assert 'actionLabel(item.action, item.data_status)' in strategy_js
     assert "dataStatus === \"NOT_APPLICABLE\"" in strategy_js
     assert "dataStatus === \"CHECK_REQUIRED\"" in strategy_js
@@ -130,6 +137,7 @@ def test_strategy_page_is_connected_and_uses_one_release_cache_version():
     assert ".strategy-item-field.detail-value-positive .strategy-item-value" in css
     assert ".strategy-item-field.detail-value-negative .strategy-item-value" in css
     assert ".strategy-item-position .strategy-item-value" in css
+    assert ".strategy-item-position-value" in css
     assert ".strategy-item-price-date" in css
     assert "min-height: 108px" in css
     for raw in ("OPEN_AT_CUTOFF", "HOLD_PROGRESSED", "NOT_APPLICABLE", "ENTER_NEXT_OPEN", "TOP PICK", "AI 추천"):
@@ -152,6 +160,19 @@ def test_strategy_ui_polish_uses_representative_source_returns_and_split_dates()
     assert 'createField("진입가", "—")' in strategy_js
     assert "white-space: normal" in css
     assert "text-overflow: clip" in css
+
+
+def test_strategy_position_examples_keep_meaningful_two_line_values():
+    monitor = _load_monitor()
+    items = {item["ticker"]: item for item in monitor["items"]}
+
+    assert items["005930"]["canonical_position"] == "OPEN"
+    assert items["005930"]["strategy_state"] == "HOLD_PROGRESSED"
+    assert items["027410"]["canonical_position"] == "OPEN"
+    assert items["027410"]["strategy_state"] == "HOLD_PRE_PROGRESSED"
+    wait_item = next(item for item in monitor["items"] if item["strategy_state"] == "WAIT")
+    assert wait_item["canonical_position"] == "FLAT"
+    assert items["069500"]["canonical_position"] == "NOT_APPLICABLE"
 
 
 def test_strategy_monitor_json_matches_clean_exporter_projection():

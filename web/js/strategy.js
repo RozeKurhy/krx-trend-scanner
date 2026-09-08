@@ -170,6 +170,22 @@
     return field;
   }
 
+  function createPositionField(item) {
+    if (item.data_status === "NOT_APPLICABLE" || item.canonical_position === "NOT_APPLICABLE") {
+      return createField("현재 상태", "해당 없음", "strategy-item-position");
+    }
+    if (item.data_status === "CHECK_REQUIRED") {
+      return createField("현재 상태", "확인 필요", "strategy-item-position");
+    }
+    const field = createElement("span", "strategy-item-field strategy-item-position");
+    field.appendChild(createElement("small", "strategy-item-label", "현재 상태"));
+    const value = createElement("span", "strategy-item-value strategy-item-position-value");
+    value.appendChild(createElement("strong", "strategy-item-position-main", positionLabel(item.canonical_position)));
+    value.appendChild(createElement("span", "strategy-item-position-sub", stateLabel(item.strategy_state)));
+    field.appendChild(value);
+    return field;
+  }
+
   function createStrategyItem(item) {
     const link = createElement("a", "strategy-item");
     link.href = `./report.html?ticker=${encodeURIComponent(item.ticker)}`;
@@ -181,7 +197,7 @@
     identity.appendChild(createElement("span", "strategy-item-meta", `${item.ticker} · ${marketLabel(item.market)} · ${assetLabel(item.asset_type)}${sector}`));
 
     const action = createField("전략 판단", actionLabel(item.action, item.data_status), `strategy-item-action action-${item.bucket}`);
-    const position = createField("현재 상태", item.canonical_position === "NOT_APPLICABLE" ? "해당 없음" : `${positionLabel(item.canonical_position)} · ${stateLabel(item.strategy_state)}`, "strategy-item-position");
+    const position = createPositionField(item);
     const pattern = item.canonical_position === "NOT_APPLICABLE"
       ? createField("패턴", "해당 없음")
       : createField("패턴", `${stageLabel(item.pattern_stage)} · ${formatNumber(item.pattern_score, 2)}점`);

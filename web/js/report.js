@@ -3,6 +3,7 @@
 
   const INDEX_URL = "./data/stock-index.json";
   const STOCKS_PATH = "./data/stocks/";
+  const DART_SEARCH_URL = "https://dart.fss.or.kr/html/search/SearchCompanyIR3_M.html";
   const THEME_STORAGE_KEY = "krx-theme";
   const THEME_VALUES = new Set(["light", "dark"]);
   const SYSTEM_THEME_QUERY = "(prefers-color-scheme: dark)";
@@ -267,6 +268,10 @@
 
   function currentTicker() {
     return new URL(window.location.href).searchParams.get("ticker");
+  }
+
+  function dartSearchUrl(ticker) {
+    return `${DART_SEARCH_URL}?textCrpNM=${encodeURIComponent(ticker)}`;
   }
 
   function updateUrl(ticker) {
@@ -779,11 +784,18 @@
     renderTechnicalDetails(report);
     const naver = byId("naver-link");
     const naverChart = byId("naver-chart-link");
+    const dart = byId("dart-link");
     if (naver && report.external_links && typeof report.external_links.naver_finance === "string") {
       naver.href = report.external_links.naver_finance;
     }
     if (naverChart && report.external_links && typeof report.external_links.naver_chart === "string") {
       naverChart.href = report.external_links.naver_chart;
+    }
+    if (dart) {
+      const ticker = report.identity && typeof report.identity.ticker === "string" ? report.identity.ticker.trim() : "";
+      dart.hidden = !ticker;
+      if (ticker) dart.href = dartSearchUrl(ticker);
+      else dart.removeAttribute("href");
     }
   }
 

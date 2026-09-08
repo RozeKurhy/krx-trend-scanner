@@ -481,6 +481,9 @@ summary { cursor: pointer; color: var(--ink); font-size: 13px; font-weight: 750;
 .strategy-item-label { color: var(--ink-faint); font-size: 10px; }
 .strategy-item-value { overflow: hidden; color: var(--ink-soft); font-size: 12px; font-weight: 750; text-overflow: ellipsis; white-space: nowrap; }
 .strategy-item-position .strategy-item-value { overflow: visible; line-height: 1.35; text-overflow: clip; white-space: normal; }
+.strategy-item-position-value { display: flex; flex-direction: column; gap: 2px; }
+.strategy-item-position-main, .strategy-item-position-sub { display: block; }
+.strategy-item-position-sub { font-weight: 650; }
 .strategy-item-price-date { display: flex; flex-direction: column; gap: 2px; overflow: visible; line-height: 1.25; white-space: normal; }
 .strategy-item-date { color: var(--ink-faint); font-size: 10px; font-weight: 650; line-height: 1.25; }
 .strategy-item-action .strategy-item-value { color: var(--brand-red-dark); }
