@@ -52,7 +52,7 @@
     if (element) element.textContent = value == null || value === "" ? "—" : String(value);
   }
 
-  function marketLabel(value) { return MARKET_LABELS[value] || "시장 확인 필요"; }
+  function marketLabel(value) { return MARKET_LABELS[value] || "마켓 확인 필요"; }
   function assetLabel(value) { return ASSET_LABELS[value] || "자산 확인 필요"; }
   function actionLabel(value, dataStatus) {
     if (dataStatus === "NOT_APPLICABLE") return "해당 없음";

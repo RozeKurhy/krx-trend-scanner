@@ -120,8 +120,8 @@ def test_static_frontend_uses_relative_assets_and_required_dom():
     js = (ROOT / "web/js/app.js").read_text(encoding="utf-8")
     css = (ROOT / "web/css/app.css").read_text(encoding="utf-8")
 
-    assert 'href="./css/app.css?v=web-04c-1"' in html
-    assert 'src="./js/app.js?v=web-04c-1"' in html
+    assert 'href="./css/app.css?v=web-04d-1"' in html
+    assert 'src="./js/app.js?v=web-04d-1"' in html
     assert 'const HEALTH_URL = "./data/health.json";' in js
     assert 'href="/css/app.css"' not in html
     assert 'src="/js/app.js"' not in html
@@ -165,7 +165,7 @@ def test_static_frontend_uses_relative_assets_and_required_dom():
     nav = re.search(r"<nav class=\"primary-nav\".*?</nav>", html, flags=re.DOTALL)
     assert nav is not None
     nav_text = nav.group(0)
-    labels = ["데이터 현황", "시장 랭킹", "종목 리포트", "전략 운용", "전략 설명"]
+    labels = ["데이터 현황", "랭킹", "종목 리포트", "전략 운용", "전략 설명"]
     assert [nav_text.index(label) for label in labels] == sorted(nav_text.index(label) for label in labels)
     assert "분석" not in nav_text
     assert "백테스트" not in nav_text

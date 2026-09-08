@@ -20,7 +20,7 @@
       })();
     </script>
     <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="./css/app.css?v=web-04c-1">
+    <link rel="stylesheet" href="./css/app.css?v=web-04d-1">
   </head>
   <body>
     <a class="skip-link" href="#main-content">본문으로 건너뛰기</a>
@@ -36,7 +36,7 @@
         <div class="header-actions">
           <nav class="primary-nav" aria-label="주요 메뉴">
             <a class="nav-item" href="./index.html">데이터 현황</a>
-            <a class="nav-item" href="./market.html">시장 랭킹</a>
+            <a class="nav-item" href="./market.html">랭킹</a>
             <a class="nav-item is-active" href="./report.html" aria-current="page">종목 리포트</a>
             <a class="nav-item" href="./strategy.html">전략 운용</a>
             <span class="nav-item" aria-disabled="true">전략 설명 <small>준비 중</small></span>
@@ -112,7 +112,7 @@
 
         <div class="signal-grid" aria-label="핵심 신호">
           <article class="signal-card"><p class="signal-label">추세</p><p id="signal-trend" class="signal-value">—</p></article>
-          <article class="signal-card"><p class="signal-label">시장 강도</p><p id="signal-market" class="signal-value">—</p></article>
+          <article class="signal-card"><p class="signal-label">마켓 RS</p><p id="signal-market" class="signal-value">—</p></article>
           <article class="signal-card"><p class="signal-label">수급</p><p id="signal-flow" class="signal-value">—</p></article>
           <article class="signal-card"><p class="signal-label">펀더멘탈</p><p id="signal-fundamentals" class="signal-value">준비 중</p></article>
         </div>
@@ -123,8 +123,8 @@
             <button id="pattern-card" class="panel report-card report-card-button" type="button" aria-controls="report-detail-panel" aria-expanded="false" aria-label="패턴 점수 상세 정보 열기">
               <span class="report-card-heading">패턴 점수</span><span id="pattern-stepper" class="pattern-stepper" role="list" aria-label="패턴 단계"></span><span id="pattern-value" class="pattern-current">현재 단계 —</span><span id="pattern-detail" class="report-card-detail">—</span><span class="report-card-affordance" aria-hidden="true">상세 보기 ›</span>
             </button>
-            <button id="market-card" class="panel report-card report-card-button" type="button" aria-controls="report-detail-panel" aria-expanded="false" aria-label="시장 강도 상세 정보 열기">
-              <span class="report-card-heading">시장 강도</span><span id="market-value" class="report-card-value">—</span><span id="market-detail" class="report-card-detail">—</span><span class="report-card-affordance" aria-hidden="true">상세 보기 ›</span>
+            <button id="market-card" class="panel report-card report-card-button" type="button" aria-controls="report-detail-panel" aria-expanded="false" aria-label="마켓 RS 상세 정보 열기">
+              <span class="report-card-heading">마켓 RS</span><span id="market-value" class="report-card-value">—</span><span id="market-detail" class="report-card-detail">—</span><span class="report-card-affordance" aria-hidden="true">상세 보기 ›</span>
             </button>
           </div>
           <div id="top-detail-slot" class="report-detail-slot">
@@ -169,6 +169,6 @@
       <span>KRX Trend Scanner</span>
       <span>읽기 전용</span>
     </footer>
-    <script src="./js/report.js?v=web-04c-1" defer></script>
+    <script src="./js/report.js?v=web-04d-1" defer></script>
   </body>
 </html>

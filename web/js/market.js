@@ -67,7 +67,7 @@
     return value == null || value === "" || !Number.isFinite(Number(value)) ? "—" : `${formatNumber(value)}원`;
   }
 
-  function marketLabel(value) { return MARKET_LABELS[value] || "시장 확인 필요"; }
+  function marketLabel(value) { return MARKET_LABELS[value] || "마켓 확인 필요"; }
   function stageLabel(value) { return STAGE_LABELS[value] || "확인 필요"; }
   function flowLabel(value) { return FLOW_LABELS[value] || "정보 없음"; }
   function actionLabel(value) { return ACTION_LABELS[value] || "전략 판단 확인 필요"; }
@@ -204,7 +204,7 @@
     const sector = item.sector_name ? ` · ${item.sector_name}` : "";
     identity.appendChild(createElement("span", "market-ranking-meta", `${item.ticker} · ${marketLabel(item.market)}${sector}`));
 
-    const strength = createField("시장 강도", topPercentLabel(item[percentileField(activeHorizon)]), `최근 ${HORIZON_LABELS[activeHorizon]}`, "market-ranking-strength");
+    const strength = createField("마켓 RS", topPercentLabel(item[percentileField(activeHorizon)]), `최근 ${HORIZON_LABELS[activeHorizon]}`, "market-ranking-strength");
     const periodReturn = item[stockReturnField(activeHorizon)];
     const returnField = createField("기간 등락", formatReturn(periodReturn), `최근 ${HORIZON_LABELS[activeHorizon]}`, `market-ranking-period-return ${returnClass(periodReturn)}`);
     const pattern = createField("패턴", item.pattern_score == null ? stageLabel(item.pattern_stage) : `${stageLabel(item.pattern_stage)} · ${formatNumber(item.pattern_score, 2)}점`);
@@ -245,12 +245,12 @@
     const list = byId("market-ranking-list");
     while (list.firstChild) list.removeChild(list.firstChild);
     if (!items.length) {
-      list.appendChild(createElement("p", "market-ranking-empty", "조건에 맞는 시장 강도 랭킹 종목이 없습니다."));
+      list.appendChild(createElement("p", "market-ranking-empty", "조건에 맞는 마켓 RS 랭킹 종목이 없습니다."));
     } else {
       items.forEach((item) => list.appendChild(createRankingRow(item)));
     }
     const suffix = searchQuery.trim() ? ` · 검색 결과 ${items.length}종목` : ` · ${items.length}종목`;
-    setText("market-ranking-meta", `${HORIZON_LABELS[activeHorizon]} 시장 강도${suffix}`);
+    setText("market-ranking-meta", `${HORIZON_LABELS[activeHorizon]} 마켓 RS${suffix}`);
   }
 
   function validateRanking(value) {

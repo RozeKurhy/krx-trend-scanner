@@ -152,7 +152,7 @@ def build_market_ranking(
             "report_count": len(items),
         },
         "metric_scope": {
-            "label": "시장 강도는 전체 보통주 기준",
+            "label": "마켓 RS는 전체 보통주 기준",
         },
         "as_of": as_of,
         "eligible_counts": eligible_counts,

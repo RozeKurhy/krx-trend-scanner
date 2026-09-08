@@ -3,8 +3,8 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="KRX Trend Scanner의 시장 강도 랭킹">
-    <title>시장 랭킹 · KRX Trend Scanner</title>
+    <meta name="description" content="KRX Trend Scanner의 마켓 RS 랭킹">
+    <title>랭킹 · KRX Trend Scanner</title>
     <script>
       (() => {
         const saved = (() => {
@@ -20,7 +20,7 @@
       })();
     </script>
     <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="./css/app.css?v=web-04c-1">
+    <link rel="stylesheet" href="./css/app.css?v=web-04d-1">
   </head>
   <body>
     <a class="skip-link" href="#main-content">본문으로 건너뛰기</a>
@@ -36,7 +36,7 @@
         <div class="header-actions">
           <nav class="primary-nav" aria-label="주요 메뉴">
             <a class="nav-item" href="./index.html">데이터 현황</a>
-            <a class="nav-item is-active" href="./market.html" aria-current="page">시장 랭킹</a>
+            <a class="nav-item is-active" href="./market.html" aria-current="page">랭킹</a>
             <a class="nav-item" href="./report.html">종목 리포트</a>
             <a class="nav-item" href="./strategy.html">전략 운용</a>
             <span class="nav-item" aria-disabled="true">전략 설명 <small>준비 중</small></span>
@@ -56,25 +56,34 @@
 
     <main id="main-content" class="shell page-content">
       <section class="page-intro" aria-labelledby="page-title">
-        <h1 id="page-title">시장 랭킹</h1>
-        <p class="lede">시장 대비 강한 종목을 한눈에!</p>
+        <h1 id="page-title">랭킹</h1>
+        <p class="lede">마켓 RS가 높은 종목을 한눈에!</p>
       </section>
+
+      <nav class="ranking-tabs" aria-label="랭킹 종류">
+        <a class="ranking-tab is-active" href="./market.html" aria-current="page">마켓 RS</a>
+        <span class="ranking-tab" aria-disabled="true">섹터 RS <small>준비 중</small></span>
+        <span class="ranking-tab" aria-disabled="true">섹터 랭킹 <small>준비 중</small></span>
+        <span class="ranking-tab" aria-disabled="true">매출액 성장률 <small>준비 중</small></span>
+        <span class="ranking-tab" aria-disabled="true">영업이익 성장률 <small>준비 중</small></span>
+        <span class="ranking-tab" aria-disabled="true">순이익 성장률 <small>준비 중</small></span>
+      </nav>
 
       <section class="panel market-overview" aria-labelledby="market-overview-heading">
         <div class="panel-heading">
           <div>
-            <p class="eyebrow">시장 강도</p>
-            <h2 id="market-overview-heading">전체 시장 기준 강도 비교</h2>
+            <p class="eyebrow">마켓 RS</p>
+            <h2 id="market-overview-heading">전체 보통주 기준 마켓 RS 비교</h2>
           </div>
         </div>
         <p id="market-scope" class="market-scope">기준일 —</p>
-        <p id="market-metric-scope" class="panel-note">시장 강도는 전체 보통주 기준</p>
+        <p id="market-metric-scope" class="panel-note">마켓 RS는 전체 보통주 기준</p>
       </section>
 
       <section class="panel market-controls" aria-labelledby="market-controls-heading">
         <div class="market-controls-heading">
           <div>
-            <h2 id="market-controls-heading">시장 강도 랭킹</h2>
+            <h2 id="market-controls-heading">마켓 RS 랭킹</h2>
             <p id="market-ranking-meta" class="report-search-meta" role="status">랭킹 목록 불러오는 중</p>
           </div>
         </div>
@@ -85,7 +94,7 @@
           <button class="market-control" type="button" data-horizon="6m" aria-pressed="false">6개월</button>
           <button class="market-control" type="button" data-horizon="12m" aria-pressed="false">12개월</button>
         </div>
-        <div id="market-filters" class="market-control-group" role="group" aria-label="시장 필터">
+        <div id="market-filters" class="market-control-group" role="group" aria-label="거래소 필터">
           <button class="market-control is-active" type="button" data-market="ALL" aria-pressed="true">전체</button>
           <button class="market-control" type="button" data-market="KOSPI" aria-pressed="false">코스피</button>
           <button class="market-control" type="button" data-market="KOSDAQ" aria-pressed="false">코스닥</button>
@@ -94,12 +103,12 @@
         <input id="market-search" class="report-search-input" type="search" placeholder="종목명 또는 종목코드 검색" autocomplete="off">
       </section>
 
-      <section id="market-ranking-list" class="market-ranking-list" aria-live="polite" aria-label="시장 강도 랭킹"></section>
+      <section id="market-ranking-list" class="market-ranking-list" aria-live="polite" aria-label="마켓 RS 랭킹"></section>
 
       <section id="market-error" class="error-card" hidden aria-live="assertive" aria-labelledby="market-error-heading">
         <p class="eyebrow">데이터 불러오기 오류</p>
-        <h2 id="market-error-heading">시장 랭킹을 불러올 수 없습니다.</h2>
-        <p>시장 랭킹 데이터 파일을 확인해 주세요.</p>
+        <h2 id="market-error-heading">마켓 RS 랭킹을 불러올 수 없습니다.</h2>
+        <p>마켓 RS 랭킹 데이터 파일을 확인해 주세요.</p>
       </section>
     </main>
 
@@ -107,6 +116,6 @@
       <span>KRX Trend Scanner</span>
       <span>읽기 전용</span>
     </footer>
-    <script src="./js/market.js?v=web-04c-1" defer></script>
+    <script src="./js/market.js?v=web-04d-1" defer></script>
   </body>
 </html>

@@ -35,7 +35,7 @@ def test_market_ranking_schema_scope_and_generated_projection_match():
         "label": "현재 공개 리포트 기준",
         "report_count": 158,
     }
-    assert ranking["metric_scope"] == {"label": "시장 강도는 전체 보통주 기준"}
+    assert ranking["metric_scope"] == {"label": "마켓 RS는 전체 보통주 기준"}
     assert ranking["as_of"] == "2026-09-04"
     assert ranking["eligible_counts"] == {"2w": 141, "1m": 141, "3m": 141, "6m": 141, "12m": 141}
     assert len(ranking["items"]) == ranking["scope"]["report_count"]
@@ -110,10 +110,14 @@ def test_market_page_has_accessible_controls_and_release_contract():
     js = (ROOT / "web/js/market.js").read_text(encoding="utf-8")
     css = (ROOT / "web/css/app.css").read_text(encoding="utf-8")
 
-    assert '<title>시장 랭킹 · KRX Trend Scanner</title>' in html
-    assert '<a class="nav-item is-active" href="./market.html" aria-current="page">시장 랭킹</a>' in html
-    assert 'href="./css/app.css?v=web-04c-1"' in html
-    assert 'src="./js/market.js?v=web-04c-1"' in html
+    assert '<title>랭킹 · KRX Trend Scanner</title>' in html
+    assert '<a class="nav-item is-active" href="./market.html" aria-current="page">랭킹</a>' in html
+    assert 'href="./css/app.css?v=web-04d-1"' in html
+    assert 'src="./js/market.js?v=web-04d-1"' in html
+    assert '<nav class="ranking-tabs" aria-label="랭킹 종류">' in html
+    assert '<a class="ranking-tab is-active" href="./market.html" aria-current="page">마켓 RS</a>' in html
+    for label in ("섹터 RS", "섹터 랭킹", "매출액 성장률", "영업이익 성장률", "순이익 성장률"):
+        assert f'<span class="ranking-tab" aria-disabled="true">{label} <small>준비 중</small></span>' in html
     assert 'data-horizon="2w"' in html and 'data-horizon="1m"' in html
     assert 'data-horizon="3m"' in html and 'data-horizon="6m"' in html and 'data-horizon="12m"' in html
     assert 'data-market="ALL"' in html and 'data-market="KOSPI"' in html and 'data-market="KOSDAQ"' in html
@@ -134,6 +138,7 @@ def test_market_page_has_accessible_controls_and_release_contract():
     assert 'percent > 0 ? "+" : ""' in js
     assert 'activeMarket === "ALL" || item.market === activeMarket' in js
     assert '.market-ranking-row' in css
+    assert '.ranking-tabs' in css and '.ranking-tab[aria-disabled="true"]' in css
     assert '.market-control:focus-visible' in css
     assert '@media (max-width: 560px)' in css
 
@@ -142,13 +147,25 @@ def test_market_page_keeps_navigation_and_old_release_cache_out_of_all_pages():
     pages = [ROOT / "web/index.html", ROOT / "web/report.html", ROOT / "web/strategy.html", ROOT / "web/market.html"]
     for path in pages:
         html = path.read_text(encoding="utf-8")
-        assert "web-04c-1" in html
+        assert "web-04d-1" in html
         assert "web-03a-final-1" not in html
         assert 'href="./market.html"' in html
-        assert "시장 랭킹" in html
-    for path in pages:
-        html = path.read_text(encoding="utf-8")
-        assert "시장 랭킹 <small>준비 중</small>" not in html
+        assert "랭킹" in html
+        assert "시장 랭킹" not in html
+    assert "시장 강도" not in "\n".join(path.read_text(encoding="utf-8") for path in pages)
+
+
+def test_public_ranking_labels_use_market_rs_without_renaming_internal_fields():
+    public_paths = [
+        ROOT / "web/index.html", ROOT / "web/report.html", ROOT / "web/strategy.html", ROOT / "web/market.html",
+        ROOT / "web/js/app.js", ROOT / "web/js/report.js", ROOT / "web/js/strategy.js", ROOT / "web/js/market.js",
+    ]
+    public = "\n".join(path.read_text(encoding="utf-8") for path in public_paths)
+
+    for old_label in ("시장 랭킹", "시장 강도", "시장 대비", "시장 내 위치"):
+        assert old_label not in public
+    assert "마켓 RS" in public
+    assert "market_strength" in public
 
 
 def test_market_ranking_sort_and_filter_keep_canonical_percentiles():

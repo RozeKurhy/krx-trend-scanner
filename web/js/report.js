@@ -83,7 +83,7 @@
   };
   const DETAIL_BUTTON_LABELS = {
     pattern: "패턴 점수",
-    market: "시장 강도",
+    market: "마켓 RS",
     flow: "수급",
     strategy: "전략",
   };
@@ -240,8 +240,8 @@
   }
 
   function marketStrengthDetail(market) {
-    if (!market || market.applicability === "NOT_APPLICABLE") return "시장 대비 강도 적용 대상이 아닙니다.";
-    if (market.data_status !== "READY") return "시장 대비 강도 정보가 없습니다.";
+    if (!market || market.applicability === "NOT_APPLICABLE") return "마켓 RS 적용 대상이 아닙니다.";
+    if (market.data_status !== "READY") return "마켓 RS 정보가 없습니다.";
     const benchmark = market.benchmark_name || "시장";
     const asOf = formatDate(market.benchmark_last_observation_date);
     return `${benchmark} 기준 · 최근 관측일 ${asOf}`;
@@ -393,7 +393,7 @@
 
   function buildSummary(report) {
     const trend = `추세는 ${stageLabel(report.summary.trend_stage)} 상태입니다.`;
-    const market = `시장 대비 강도는 ${marketStrengthLabel(report.market_strength)}입니다.`;
+    const market = `마켓 RS는 ${marketStrengthLabel(report.market_strength)}입니다.`;
     const flow = `수급은 ${flowLabel(report.summary.flow_state)}입니다.`;
     return `${trend} ${market} ${flow}`;
   }
@@ -570,11 +570,11 @@
   function renderMarketDetail(report, container) {
     const market = report.market_strength;
     if (!market || market.applicability === "NOT_APPLICABLE") {
-      appendDetailEmpty(container, "이 종목에는 시장 대비 강도 정보가 적용되지 않습니다.");
+      appendDetailEmpty(container, "이 종목에는 마켓 RS 정보가 적용되지 않습니다.");
       return;
     }
     if (market.data_status !== "READY") {
-      appendDetailEmpty(container, "시장 대비 강도 정보가 없습니다.");
+      appendDetailEmpty(container, "마켓 RS 정보가 없습니다.");
       return;
     }
     const rows = [
@@ -584,7 +584,7 @@
       ["최근 6개월", { value: formatSignedRate(market.market_rs_6m), className: signedValueClass(market.market_rs_6m) }, topPercentLabel(market.percentile_6m)],
       ["최근 12개월", { value: formatSignedRate(market.market_rs_12m), className: signedValueClass(market.market_rs_12m) }, topPercentLabel(market.percentile_12m)],
     ];
-    container.appendChild(createDetailTable(["구간", "시장 대비 수익률", "시장 내 위치"], rows));
+    container.appendChild(createDetailTable(["구간", "마켓 대비 수익률", "마켓 내 위치"], rows));
     appendDetailNote(container, `${market.benchmark_name || "시장"} 기준 · 최근 관측일 ${formatDate(market.benchmark_last_observation_date)}`);
     if (market.explanation) appendDetailNote(container, market.explanation);
   }
@@ -743,8 +743,8 @@
     appendDetail(list, "전략 상태", report.strategy.state);
     appendDetail(list, "전략 행동", report.strategy.action);
     appendDetail(list, "수급 상태", details.flow_state);
-    appendDetail(list, "시장 강도 적용", details.market_strength_applicability);
-    appendDetail(list, "시장 강도 상태", details.market_strength_status);
+    appendDetail(list, "마켓 RS 적용", details.market_strength_applicability);
+    appendDetail(list, "마켓 RS 상태", details.market_strength_status);
     appendDetail(list, "거래대금 상태", details.trading_value_state);
     appendDetail(list, "가격 기준일", details.price_as_of);
     appendDetail(list, "가격 출처", details.price_source);

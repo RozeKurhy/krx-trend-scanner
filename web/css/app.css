@@ -190,6 +190,13 @@ summary:focus-visible {
 .nav-item.is-active { background: var(--primary-soft); color: var(--brand-red-dark); font-weight: 700; }
 .nav-item[aria-disabled="true"] { color: var(--ink-faint); }
 .nav-item small { margin-left: 3px; color: var(--ink-faint); font-size: 10px; font-weight: 500; }
+.ranking-tabs { display: flex; gap: 8px; overflow-x: auto; margin: 0 0 16px; padding: 1px 1px 12px; }
+.ranking-tab { flex: 0 0 auto; border: 1px solid var(--line-strong); padding: 9px 13px; color: var(--ink-soft); background: var(--surface); border-radius: 999px; font-size: 12px; font-weight: 750; line-height: 1.2; text-decoration: none; white-space: nowrap; }
+.ranking-tab:hover { border-color: var(--brand-red); color: var(--brand-red); }
+.ranking-tab:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+.ranking-tab.is-active { border-color: var(--brand-red); color: var(--brand-red); background: var(--primary-soft); }
+.ranking-tab[aria-disabled="true"] { color: var(--ink-faint); cursor: not-allowed; }
+.ranking-tab small { margin-left: 3px; color: var(--ink-faint); font-size: 10px; font-weight: 500; }
 
 .theme-toggle {
   display: inline-flex;
