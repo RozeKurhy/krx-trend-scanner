@@ -212,3 +212,81 @@ def test_quota_stop_does_not_create_data_unavailable():
     with pytest.raises(f7.QuotaBudgetExceeded):
         client._ensure_budget()
     assert not issubclass(f7.QuotaBudgetExceeded, f7.F7TerminalError)
+
+
+def _write_quota_checkpoint(path: Path, *, date: str, official: int, additional: int):
+    path.write_text(json.dumps({
+        "date": date,
+        "quota": {
+            "official_usage_before": official,
+            "additional_opendart_requests": additional,
+            "max_additional_requests_today": 39_000,
+        },
+        "request_accounting": {"counter_consistent": True},
+    }), encoding="utf-8")
+
+
+def test_same_day_quota_resume_preserves_prior_additional(tmp_path: Path):
+    checkpoint = tmp_path / "daily_quota_checkpoint.json"
+    _write_quota_checkpoint(checkpoint, date="2026-09-09", official=0, additional=12_000)
+    context = f7._load_remaining_quota_context(
+        checkpoint,
+        run_date="2026-09-09",
+        daily_usage_before_run=None,
+    )
+    assert context == {
+        "official_usage_before": 0,
+        "prior_additional_requests": 12_000,
+        "max_additional_requests": 39_000,
+    }
+
+
+def test_next_day_quota_reset_drops_previous_additional(tmp_path: Path):
+    checkpoint = tmp_path / "daily_quota_checkpoint.json"
+    _write_quota_checkpoint(checkpoint, date="2026-09-08", official=0, additional=8_000)
+    context = f7._load_remaining_quota_context(
+        checkpoint,
+        run_date="2026-09-09",
+        daily_usage_before_run=0,
+    )
+    assert context == {
+        "official_usage_before": 0,
+        "prior_additional_requests": 0,
+        "max_additional_requests": 39_000,
+    }
+
+
+def test_date_rollover_keeps_completed_output_reusable(tmp_path: Path):
+    output = tmp_path / "000020.json"
+    payload = {
+        "runner_version": f7.RUNNER_VERSION,
+        "ticker": "000020",
+        "requested_as_of": "2026-09-04",
+        "asset_type": "ETF",
+        "terminal_status": "NOT_APPLICABLE",
+    }
+    serialized = json.dumps(payload)
+    output.write_text(serialized, encoding="utf-8")
+    value = f7._load_existing(output, ticker="000020", requested_as_of="2026-09-04")
+    assert value == payload
+    assert output.read_text(encoding="utf-8") == serialized
+
+
+def test_dynamic_daily_baseline_calculates_available_budget(tmp_path: Path):
+    context = f7._load_remaining_quota_context(
+        tmp_path / "missing.json",
+        run_date="2026-09-09",
+        daily_usage_before_run=2_000,
+    )
+    assert context["official_usage_before"] == 2_000
+    assert context["prior_additional_requests"] == 0
+    assert context["max_additional_requests"] == 37_000
+
+
+def test_new_day_without_daily_usage_is_blocked_before_hydration(tmp_path: Path):
+    with pytest.raises(RuntimeError, match="daily_usage_before_run"):
+        f7._load_remaining_quota_context(
+            tmp_path / "missing.json",
+            run_date="2026-09-09",
+            daily_usage_before_run=None,
+        )
