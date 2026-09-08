@@ -19,6 +19,7 @@
         document.documentElement.dataset.theme = saved || system;
       })();
     </script>
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="./css/app.css">
   </head>
   <body>
@@ -68,19 +69,19 @@
         <p id="search-no-results" class="search-no-results" hidden>일치하는 종목이 없습니다.</p>
       </section>
 
-      <section id="report-empty" class="panel report-empty" aria-labelledby="empty-heading">
-        <h2 id="empty-heading">검색 안내</h2>
-        <p>종목명 또는 종목코드를 입력하면 리포트를 확인할 수 있습니다.</p>
-        <div id="recommendations-panel" class="recommendations-panel">
-          <h3>추천 종목</h3>
+      <section id="report-empty" class="report-empty" aria-labelledby="recommendations-heading">
+        <div id="recommendations-panel" class="panel recommendations-panel">
+          <h2 id="recommendations-heading">추천 종목</h2>
           <ul id="recommendations" class="search-results recommendation-list" aria-label="추천 종목"></ul>
         </div>
       </section>
 
       <section id="report-pending" class="panel report-pending" hidden aria-labelledby="pending-heading">
-        <p class="eyebrow">종목 리포트</p>
-        <h2 id="pending-heading">리포트 준비 중</h2>
-        <p id="pending-detail">현재 공개된 종목 리포트가 없습니다.</p>
+        <p class="eyebrow">선택 종목</p>
+        <h2 id="pending-heading">—</h2>
+        <p id="pending-identity" class="report-pending-identity">—</p>
+        <button id="report-request-button" class="report-request-button" type="button" hidden>리포트 요청</button>
+        <p id="report-request-status" class="report-request-status" role="status" hidden></p>
       </section>
 
       <section id="report-error" class="panel report-error" hidden aria-labelledby="report-error-heading">
@@ -91,9 +92,15 @@
 
       <section id="report-view" hidden aria-labelledby="report-name">
         <div class="report-identity">
-          <p class="eyebrow">선택 종목</p>
-          <h2 id="report-name" class="report-identity-name">—</h2>
-          <p id="report-identity" class="report-identity-meta">—</p>
+          <div class="report-identity-copy">
+            <p class="eyebrow">선택 종목</p>
+            <h2 id="report-name" class="report-identity-name">—</h2>
+            <p id="report-identity" class="report-identity-meta">—</p>
+          </div>
+          <div id="report-actions" class="report-actions" aria-label="종목 외부 링크">
+            <a id="naver-link" class="report-link" href="#" target="_blank" rel="noopener">네이버 증권에서 보기</a>
+            <a id="naver-chart-link" class="report-link" href="#" target="_blank" rel="noopener">차트 바로가기</a>
+          </div>
         </div>
 
         <article class="panel decision-card" aria-labelledby="decision-heading">
@@ -119,13 +126,15 @@
               <span class="report-card-heading">시장 강도</span><span id="market-value" class="report-card-value">—</span><span id="market-detail" class="report-card-detail">—</span>
             </button>
           </div>
-          <section id="report-detail-panel" class="panel report-detail-panel" hidden aria-labelledby="report-detail-title" aria-live="polite">
-            <div class="report-detail-header">
-              <div><p class="eyebrow">선택 상세</p><h3 id="report-detail-title">—</h3><p id="report-detail-subtitle" class="report-detail-subtitle">—</p></div>
-              <button id="report-detail-close" class="report-detail-close" type="button" aria-label="상세 정보 닫기">닫기</button>
-            </div>
-            <div id="report-detail-content" class="report-detail-content"></div>
-          </section>
+          <div id="top-detail-slot" class="report-detail-slot">
+            <section id="report-detail-panel" class="panel report-detail-panel" hidden aria-labelledby="report-detail-title" aria-live="polite">
+              <div class="report-detail-header">
+                <h3 id="report-detail-title">—</h3>
+                <button id="report-detail-close" class="report-detail-close" type="button" aria-label="상세 정보 닫기">닫기</button>
+              </div>
+              <div id="report-detail-content" class="report-detail-content"></div>
+            </section>
+          </div>
           <div class="report-card-row">
             <button id="flow-card" class="panel report-card report-card-button" type="button" aria-controls="report-detail-panel" aria-expanded="false" aria-label="수급 상세 정보 열기">
               <span class="report-card-heading">수급</span><span id="flow-value" class="report-card-value">—</span><span id="flow-detail" class="report-card-detail">—</span>
@@ -135,6 +144,7 @@
               <span class="report-card-heading">전략</span><span id="strategy-value" class="report-card-value">—</span><span id="strategy-detail" class="report-card-detail">—</span>
             </button>
           </div>
+          <div id="bottom-detail-slot" class="report-detail-slot"></div>
         </div>
 
         <section class="panel report-details" aria-labelledby="technical-heading">
@@ -142,10 +152,6 @@
             <summary id="technical-heading">상세 정보</summary>
             <dl id="technical-detail-list" class="report-detail-grid"></dl>
           </details>
-          <div class="external-links">
-            <a id="naver-link" class="report-link" href="#" target="_blank" rel="noopener">네이버 증권에서 보기</a>
-            <a id="naver-chart-link" class="report-link" href="#" target="_blank" rel="noopener">차트 바로가기</a>
-          </div>
         </section>
       </section>
 

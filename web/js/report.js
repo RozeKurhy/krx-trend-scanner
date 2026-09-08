@@ -178,11 +178,6 @@
     return value.slice(0, 10).replaceAll("-", ".");
   }
 
-  function formatRate(value) {
-    if (value == null || value === "" || !Number.isFinite(Number(value))) return "—";
-    return `${formatNumber(Number(value) * 100, 2)}%`;
-  }
-
   function formatSignedRate(value) {
     if (value == null || value === "" || !Number.isFinite(Number(value))) return "—";
     const number = Number(value) * 100;
@@ -355,7 +350,27 @@
     setHidden("report-pending", false);
     setHidden("report-view", true);
     setHidden("report-error", true);
-    setText("pending-detail", `${item.name}(${item.ticker})의 현재 공개된 종목 리포트가 없습니다.`);
+    setText("pending-heading", item.name);
+    setText("pending-identity", `${item.ticker} · ${marketLabel(item.market)}`);
+    const requestButton = byId("report-request-button");
+    if (requestButton) {
+      requestButton.hidden = false;
+      requestButton.dataset.ticker = item.ticker;
+      requestButton.dataset.name = item.name;
+      requestButton.dataset.market = item.market || "";
+    }
+    setHidden("report-request-status", true);
+  }
+
+  function reportRequest(ticker, name, market) {
+    const request = {
+      ticker: ticker || "",
+      name: name || "",
+      market: market || "",
+      page: window.location.href,
+    };
+    window.dispatchEvent(new CustomEvent("krx:report-request", { detail: request }));
+    return { status: "NOT_CONNECTED", request };
   }
 
   function showError(message) {
@@ -477,16 +492,16 @@
       return;
     }
     const rows = [
-      ["최근 3개월", formatRate(market.market_rs_3m), topPercentLabel(market.percentile_3m)],
-      ["최근 6개월", formatRate(market.market_rs_6m), topPercentLabel(market.percentile_6m)],
-      ["최근 12개월", formatRate(market.market_rs_12m), topPercentLabel(market.percentile_12m)],
+      ["최근 3개월", { value: formatSignedRate(market.market_rs_3m), className: signedValueClass(market.market_rs_3m) }, topPercentLabel(market.percentile_3m)],
+      ["최근 6개월", { value: formatSignedRate(market.market_rs_6m), className: signedValueClass(market.market_rs_6m) }, topPercentLabel(market.percentile_6m)],
+      ["최근 12개월", { value: formatSignedRate(market.market_rs_12m), className: signedValueClass(market.market_rs_12m) }, topPercentLabel(market.percentile_12m)],
     ];
     container.appendChild(createDetailTable(["구간", "시장 대비 수익률", "시장 내 위치"], rows));
     appendDetailNote(container, `${market.benchmark_name || "시장"} 기준 · 최근 관측일 ${formatDate(market.benchmark_last_observation_date)}`);
     if (market.explanation) appendDetailNote(container, market.explanation);
   }
 
-  function flowClass(value) {
+  function signedValueClass(value) {
     if (value == null || !Number.isFinite(Number(value)) || Number(value) === 0) return "";
     return Number(value) > 0 ? "detail-value-positive" : "detail-value-negative";
   }
@@ -498,10 +513,10 @@
       return;
     }
     const rows = [
-      ["1일", { value: formatKrwCompact(flow.net_buy_value_1d_krw), className: flowClass(flow.net_buy_value_1d_krw) }, "—", "—"],
-      ["5일", { value: formatKrwCompact(flow.net_buy_value_5d_krw), className: flowClass(flow.net_buy_value_5d_krw) }, { value: formatSignedRate(flow.intensity_5d), className: flowClass(flow.intensity_5d) }, flow.positive_days_5d == null ? "—" : `${formatNumber(flow.positive_days_5d)}일`],
-      ["20일", { value: formatKrwCompact(flow.net_buy_value_20d_krw), className: flowClass(flow.net_buy_value_20d_krw) }, { value: formatSignedRate(flow.intensity_20d), className: flowClass(flow.intensity_20d) }, flow.positive_days_20d == null ? "—" : `${formatNumber(flow.positive_days_20d)}일`],
-      ["60일", { value: formatKrwCompact(flow.net_buy_value_60d_krw), className: flowClass(flow.net_buy_value_60d_krw) }, { value: formatSignedRate(flow.intensity_60d), className: flowClass(flow.intensity_60d) }, flow.positive_days_60d == null ? "—" : `${formatNumber(flow.positive_days_60d)}일`],
+      ["1일", { value: formatKrwCompact(flow.net_buy_value_1d_krw), className: signedValueClass(flow.net_buy_value_1d_krw) }, "—", "—"],
+      ["5일", { value: formatKrwCompact(flow.net_buy_value_5d_krw), className: signedValueClass(flow.net_buy_value_5d_krw) }, { value: formatSignedRate(flow.intensity_5d), className: signedValueClass(flow.intensity_5d) }, flow.positive_days_5d == null ? "—" : `${formatNumber(flow.positive_days_5d)}일`],
+      ["20일", { value: formatKrwCompact(flow.net_buy_value_20d_krw), className: signedValueClass(flow.net_buy_value_20d_krw) }, { value: formatSignedRate(flow.intensity_20d), className: signedValueClass(flow.intensity_20d) }, flow.positive_days_20d == null ? "—" : `${formatNumber(flow.positive_days_20d)}일`],
+      ["60일", { value: formatKrwCompact(flow.net_buy_value_60d_krw), className: signedValueClass(flow.net_buy_value_60d_krw) }, { value: formatSignedRate(flow.intensity_60d), className: signedValueClass(flow.intensity_60d) }, flow.positive_days_60d == null ? "—" : `${formatNumber(flow.positive_days_60d)}일`],
     ];
     container.appendChild(createDetailTable(["기간", "외국인 누적 순매수", "순매수 강도", "양수 일수"], rows));
     if (flow.explanation) appendDetailNote(container, flow.explanation);
@@ -510,7 +525,7 @@
   function renderStrategyDetail(report, container) {
     const history = Array.isArray(report.strategy.history) ? report.strategy.history : [];
     if (!history.length) {
-      appendDetailEmpty(container, "표시할 canonical 전략 이력이 없습니다.");
+      appendDetailEmpty(container, "표시할 전략 이력이 없습니다.");
       return;
     }
     const rows = history.map((trade) => [
@@ -519,23 +534,28 @@
       formatPrice(trade.entry_open),
       formatDate(trade.exit_execution_date),
       formatPrice(trade.exit_price),
-      formatSignedPercentPoints(trade.return_pct),
+      { value: formatSignedPercentPoints(trade.return_pct), className: signedValueClass(trade.return_pct) },
       tradeStatusLabel(trade.trade_status),
       exitTypeLabel(trade.exit_type),
     ]);
     container.appendChild(createDetailTable(["회차", "진입일", "진입가", "청산일", "청산가", "수익률", "상태", "종료 사유"], rows, "strategy-history-table"));
-    appendDetailNote(container, "전략 이력은 기존 canonical strategy history를 표시하며, 이 화면에서 재계산하지 않습니다.", "strategy-disclaimer");
+    appendDetailNote(container, "과거 전략 이력은 과거 데이터에 전략 규칙을 적용한 결과이며 미래 수익을 의미하지 않습니다.", "strategy-disclaimer");
+  }
+
+  function positionDetailPanel(key) {
+    const panel = byId("report-detail-panel");
+    const slot = byId(key === "pattern" || key === "market" ? "top-detail-slot" : "bottom-detail-slot");
+    if (panel && slot) slot.appendChild(panel);
   }
 
   function renderDetail(key, report) {
     const panel = byId("report-detail-panel");
     const title = byId("report-detail-title");
-    const subtitle = byId("report-detail-subtitle");
     const content = byId("report-detail-content");
-    if (!panel || !title || !subtitle || !content) return;
+    if (!panel || !title || !content) return;
     while (content.firstChild) content.removeChild(content.firstChild);
+    positionDetailPanel(key);
     title.textContent = `${DETAIL_BUTTON_LABELS[key]} 상세`;
-    subtitle.textContent = `${report.identity.name}(${report.identity.ticker}) · 기준일 ${formatDate(report.technical_details.requested_as_of)}`;
     if (key === "pattern") renderPatternDetail(report, content);
     else if (key === "market") renderMarketDetail(report, content);
     else if (key === "flow") renderFlowDetail(report, content);
@@ -583,6 +603,16 @@
     });
     const close = byId("report-detail-close");
     if (close) close.addEventListener("click", closeDetail);
+    const requestButton = byId("report-request-button");
+    if (requestButton) {
+      requestButton.addEventListener("click", () => {
+        const result = reportRequest(requestButton.dataset.ticker, requestButton.dataset.name, requestButton.dataset.market);
+        if (result.status === "NOT_CONNECTED") {
+          setText("report-request-status", "리포트 요청 연결은 아직 준비되지 않았습니다.");
+          setHidden("report-request-status", false);
+        }
+      });
+    }
   }
 
   function appendDetail(list, name, value) {

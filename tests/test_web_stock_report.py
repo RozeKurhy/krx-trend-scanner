@@ -126,9 +126,19 @@ def test_interaction_detail_payload_preserves_authority_history(payload, exporte
             "candidate_state": item["candidate_state"],
             "data_available": item["data_available"],
         }
-        for item in source["monthly_history"]["recent_12m_history"][-12:]
+        for item in source["monthly_history"]["recent_12m_history"]
     ]
     assert compact["pattern"]["history_12m"] == expected_pattern
+    assert len(compact["pattern"]["history_12m"]) == source["monthly_history"]["recent_12m_observation_count"]
+    assert compact["pattern"]["history_12m"][0] == {
+        "as_of": "2025-08-29",
+        "close": 69700.0,
+        "score": 61.93,
+        "stage": "TRANSITION",
+        "candidate_state": "candidate",
+        "data_available": True,
+    }
+    assert compact["pattern"]["history_12m"][-1]["as_of"] == "2026-08-31"
 
     source_rs = source["relative_strength"]
     assert compact["market_strength"]["market_rs_3m"] == source_rs["market_rs_3m"]
@@ -174,10 +184,14 @@ def test_exporter_writes_index_and_one_json_per_available_report(tmp_path, expor
 
 def test_report_frontend_has_safe_states_and_relative_assets():
     html = (ROOT / "web/report.html").read_text(encoding="utf-8")
+    index_html = (ROOT / "web/index.html").read_text(encoding="utf-8")
     js = (ROOT / "web/js/report.js").read_text(encoding="utf-8")
     css = (ROOT / "web/css/app.css").read_text(encoding="utf-8")
 
     assert 'href="./css/app.css"' in html
+    assert 'href="./favicon.svg"' in html
+    assert 'href="./favicon.svg"' in index_html
+    assert (ROOT / "web/favicon.svg").exists()
     assert 'src="./js/report.js"' in html
     assert 'placeholder="종목명 또는 종목코드 검색"' in html
     assert 'id="report-empty"' in html
@@ -187,7 +201,15 @@ def test_report_frontend_has_safe_states_and_relative_assets():
     assert 'id="report-error"' in html
     assert 'id="naver-link"' in html
     assert 'id="naver-chart-link"' in html
+    assert html.count('id="naver-link"') == 1
+    assert html.count('id="naver-chart-link"') == 1
     assert "검색하여 쉽게 핵심 판단" in html
+    assert "검색 안내" not in html
+    assert 'id="report-request-button"' in html
+    assert "reportRequest" in js
+    assert "요청 연결은 아직 준비되지 않았습니다." in js
+    assert "요청 완료" not in js
+    assert "전송되었습니다" not in js
     assert "종목명 또는 종목코드</label>" not in html
     assert "종목 리포트</p>\n        <h1" not in html
     assert 'const INDEX_URL = "./data/stock-index.json";' in js
@@ -205,6 +227,8 @@ def test_report_frontend_has_safe_states_and_relative_assets():
     assert 'id="flow-card"' in html
     assert 'id="strategy-card"' in html
     assert 'id="report-detail-panel"' in html
+    assert 'id="top-detail-slot"' in html
+    assert 'id="bottom-detail-slot"' in html
     assert 'aria-expanded="false"' in html
     assert "history_12m" in js
     assert "percentile_6m" in js and "percentile_12m" in js
@@ -227,6 +251,22 @@ def test_report_frontend_has_safe_states_and_relative_assets():
     assert html.count('<p class="eyebrow">검색 안내</p>') == 0
     assert "가격 출처" in js
     assert "가격 authority" not in js
+    assert "report-detail-subtitle" not in html
+    assert "선택 상세" not in html
+    assert "canonical" not in js
+    assert "과거 전략 이력은 과거 데이터에 전략 규칙을 적용한 결과이며 미래 수익을 의미하지 않습니다." in js
+    assert "signedValueClass" in js
+    assert "--market-down-blue" in css
+    assert "history[-12:]" not in (ROOT / "scripts/export_stock_report_web.py").read_text(encoding="utf-8")
+
+
+def test_report_request_state_is_distinct_from_available_reports(payload):
+    index, _reports, _stats = payload
+    available = next(item for item in index["items"] if item["ticker"] == "005930")
+    unavailable = next(item for item in index["items"] if item["ticker"] == "211050")
+
+    assert available["report_available"] is True
+    assert unavailable["report_available"] is False
 
 
 def test_index_navigation_keeps_health_and_report_pages_connected():

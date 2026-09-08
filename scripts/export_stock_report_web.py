@@ -143,7 +143,7 @@ def _compact_monthly_history(monthly: dict[str, Any]) -> list[dict[str, Any]]:
             "candidate_state": observation.get("candidate_state"),
             "data_available": observation.get("data_available"),
         }
-        for observation in history[-12:]
+        for observation in history
         if isinstance(observation, dict)
     ]
 
