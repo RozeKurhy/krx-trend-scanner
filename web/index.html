@@ -4,7 +4,21 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="KRX Trend Scanner의 데이터 상태 대시보드">
-    <title>Data Health · KRX Trend Scanner</title>
+    <title>데이터 상태 · KRX Trend Scanner</title>
+    <script>
+      (() => {
+        const saved = (() => {
+          try {
+            const value = localStorage.getItem("krx-theme");
+            return value === "light" || value === "dark" ? value : null;
+          } catch (error) {
+            return null;
+          }
+        })();
+        const system = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        document.documentElement.dataset.theme = saved || system;
+      })();
+    </script>
     <link rel="stylesheet" href="./css/app.css">
   </head>
   <body>
@@ -15,29 +29,40 @@
           <span class="brand-mark" aria-hidden="true">K</span>
           <span>
             <span class="brand-name">KRX Trend Scanner</span>
-            <span class="brand-context">Research workspace</span>
+            <span class="brand-context">투자 분석 도구</span>
           </span>
         </a>
-        <nav class="primary-nav" aria-label="주요 메뉴">
-          <span class="nav-item is-active" aria-current="page">데이터 상태</span>
-          <span class="nav-item" aria-disabled="true">시장 랭킹 <small>준비 중</small></span>
-          <span class="nav-item" aria-disabled="true">종목 리포트 <small>준비 중</small></span>
-          <span class="nav-item" aria-disabled="true">전략 운용 <small>준비 중</small></span>
-          <span class="nav-item" aria-disabled="true">전략 설명 <small>준비 중</small></span>
-        </nav>
+        <div class="header-actions">
+          <nav class="primary-nav" aria-label="주요 메뉴">
+            <span class="nav-item is-active" aria-current="page">데이터 상태</span>
+            <span class="nav-item" aria-disabled="true">시장 랭킹 <small>준비 중</small></span>
+            <span class="nav-item" aria-disabled="true">종목 리포트 <small>준비 중</small></span>
+            <span class="nav-item" aria-disabled="true">전략 운용 <small>준비 중</small></span>
+            <span class="nav-item" aria-disabled="true">전략 설명 <small>준비 중</small></span>
+          </nav>
+          <button id="theme-toggle" class="theme-toggle" type="button" aria-label="어둡게 보기" title="어둡게 보기" aria-pressed="false">
+            <span id="theme-icon-sun" class="theme-icon" aria-hidden="true" hidden>
+              <svg viewBox="0 0 24 24" focusable="false"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"></path></svg>
+            </span>
+            <span id="theme-icon-moon" class="theme-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" focusable="false"><path d="M20.4 15.4A8.5 8.5 0 0 1 8.6 3.6 8.5 8.5 0 1 0 20.4 15.4Z"></path></svg>
+            </span>
+            <span id="theme-toggle-label">어둡게 보기</span>
+          </button>
+        </div>
       </div>
     </header>
 
     <main id="main-content" class="shell page-content">
       <section class="page-intro" aria-labelledby="page-title">
-        <p class="eyebrow">SYSTEM OVERVIEW</p>
-        <h1 id="page-title">Data Health</h1>
-        <p class="lede">현재 로컬 데이터 authority와 downstream 준비 상태를 한눈에 확인해.</p>
+        <p class="eyebrow">시스템 현황</p>
+        <h1 id="page-title">데이터 상태</h1>
+        <p class="lede">현재 데이터 기준과 후속 작업 준비 상태를 한눈에 확인해.</p>
       </section>
 
       <section class="overall-card" aria-labelledby="overall-heading">
         <div class="overall-copy">
-          <p class="eyebrow">CURRENT STATE</p>
+          <p class="eyebrow">현재 상태</p>
           <h2 id="overall-heading">전체 상태</h2>
           <p id="overall-detail" class="muted">상태 데이터를 불러오는 중이야.</p>
         </div>
@@ -52,21 +77,21 @@
           <p id="market-detail" class="metric-detail">—</p>
         </article>
         <article class="metric-card">
-          <div class="metric-heading"><span>Universe</span><span id="universe-status" class="status-dot" data-status="UNKNOWN">확인 중</span></div>
+          <div class="metric-heading"><span>전체 종목</span><span id="universe-status" class="status-dot" data-status="UNKNOWN">확인 중</span></div>
           <p id="universe-count" class="metric-value">—</p>
           <p class="metric-label">PIT 기준 종목 수</p>
           <p id="universe-detail" class="metric-detail">—</p>
         </article>
         <article class="metric-card metric-card-wide-mobile">
-          <div class="metric-heading"><span>Fundamentals</span><span id="fundamentals-status" class="status-dot" data-status="UNKNOWN">확인 중</span></div>
+          <div class="metric-heading"><span>펀더멘탈</span><span id="fundamentals-status" class="status-dot" data-status="UNKNOWN">확인 중</span></div>
           <p id="fundamentals-count" class="metric-value">—</p>
           <p class="metric-label">완료 / 전체</p>
           <p id="fundamentals-detail" class="metric-detail">—</p>
         </article>
         <article class="metric-card">
-          <div class="metric-heading"><span>Stock Reports</span><span id="reports-status" class="status-dot" data-status="UNKNOWN">확인 중</span></div>
+          <div class="metric-heading"><span>종목 리포트</span><span id="reports-status" class="status-dot" data-status="UNKNOWN">확인 중</span></div>
           <p id="reports-count" class="metric-value">—</p>
-          <p class="metric-label">기존 artifact</p>
+          <p class="metric-label">기존 리포트</p>
           <p id="reports-detail" class="metric-detail">—</p>
         </article>
       </section>
@@ -75,12 +100,12 @@
         <article class="panel progress-panel" aria-labelledby="progress-heading">
           <div class="panel-heading">
             <div>
-              <p class="eyebrow">FUNDAMENTALS</p>
+              <p class="eyebrow">펀더멘탈</p>
               <h2 id="progress-heading">수집 진행률</h2>
             </div>
             <p id="progress-percent" class="progress-percent">—</p>
           </div>
-          <div id="fundamentals-progress" class="progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-label="Fundamentals 수집 진행률">
+          <div id="fundamentals-progress" class="progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-label="펀더멘탈 수집 진행률">
             <span id="fundamentals-progress-fill" class="progress-fill"></span>
           </div>
           <div class="progress-meta">
@@ -93,8 +118,8 @@
         <article class="panel readiness-panel" aria-labelledby="readiness-heading">
           <div class="panel-heading">
             <div>
-              <p class="eyebrow">NEXT LAYER</p>
-              <h2 id="readiness-heading">Downstream readiness</h2>
+              <p class="eyebrow">다음 단계</p>
+              <h2 id="readiness-heading">후속 작업 준비 상태</h2>
             </div>
           </div>
           <ul id="readiness-list" class="readiness-list">
@@ -109,9 +134,9 @@
           <div class="basis-content">
             <dl class="basis-list">
               <div><dt>생성 시각</dt><dd id="generated-at">—</dd></div>
-              <div><dt>시장 authority</dt><dd id="market-source">—</dd></div>
-              <div><dt>Universe authority</dt><dd id="universe-source">—</dd></div>
-              <div><dt>Fundamentals authority</dt><dd id="fundamentals-source">—</dd></div>
+              <div><dt>시장 데이터 기준</dt><dd id="market-source">—</dd></div>
+              <div><dt>종목 기준 데이터</dt><dd id="universe-source">—</dd></div>
+              <div><dt>펀더멘탈 데이터</dt><dd id="fundamentals-source">—</dd></div>
             </dl>
             <p class="panel-note">이 화면은 커밋된 정적 JSON만 읽어. 원천 파일이나 비밀값을 브라우저로 보내지 않아.</p>
           </div>
@@ -119,7 +144,7 @@
       </section>
 
       <section id="load-error" class="error-card" hidden aria-live="assertive" aria-labelledby="error-heading">
-        <p class="eyebrow">DATA LOAD ERROR</p>
+        <p class="eyebrow">데이터 불러오기 오류</p>
         <h2 id="error-heading">데이터 상태를 불러올 수 없습니다.</h2>
         <p>정적 health.json을 확인해야 해.</p>
         <p class="status-pill status-check-required" data-status="CHECK_REQUIRED">확인 필요</p>
@@ -127,7 +152,7 @@
 
       <noscript>
         <section class="error-card" aria-labelledby="noscript-heading">
-          <p class="eyebrow">JAVASCRIPT REQUIRED</p>
+          <p class="eyebrow">자바스크립트 필요</p>
           <h2 id="noscript-heading">데이터 상태를 불러올 수 없습니다.</h2>
           <p>이 대시보드는 정적 health.json을 읽기 위해 JavaScript가 필요해.</p>
           <p class="status-pill status-check-required" data-status="CHECK_REQUIRED">확인 필요</p>
@@ -137,7 +162,7 @@
 
     <footer class="site-footer shell">
       <span>KRX Trend Scanner</span>
-      <span>Read-only static view</span>
+      <span>읽기 전용 화면</span>
     </footer>
     <script src="./js/app.js" defer></script>
   </body>

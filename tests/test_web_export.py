@@ -127,6 +127,13 @@ def test_static_frontend_uses_relative_assets_and_required_dom():
     assert 'src="/js/app.js"' not in html
     assert '"/data/health.json"' not in js
     assert 'if (typeof source === "string") return source;' in js
+    assert 'id="theme-toggle"' in html
+    assert 'id="theme-toggle" class="theme-toggle" type="button"' in html
+    assert 'aria-label="어둡게 보기"' in html
+    assert 'localStorage' in js
+    assert 'krx-theme' in html and 'krx-theme' in js
+    assert 'prefers-color-scheme: dark' in html and 'prefers-color-scheme: dark' in js
+    assert 'matchMedia' in js
     assert "데이터 상태를 불러올 수 없습니다." in html
     assert 'data-status="CHECK_REQUIRED"' in html
     for element_id in (
@@ -142,6 +149,19 @@ def test_static_frontend_uses_relative_assets_and_required_dom():
     assert "innerHTML" not in js
     assert "fetch(HEALTH_URL" in js
     assert "@media (max-width: 560px)" in css
+    assert '[data-theme="dark"]' in css
+    assert "color-scheme: dark" in css
+    assert "--brand-red" in css and "--market-up-red" in css
+    for old_label in (
+        "SYSTEM OVERVIEW",
+        "CURRENT STATE",
+        "Downstream readiness",
+        "Research workspace",
+        "Read-only static view",
+        "DATA LOAD ERROR",
+        "JAVASCRIPT REQUIRED",
+    ):
+        assert old_label not in html
     nav = re.search(r"<nav class=\"primary-nav\".*?</nav>", html, flags=re.DOTALL)
     assert nav is not None
     nav_text = nav.group(0)
@@ -149,6 +169,25 @@ def test_static_frontend_uses_relative_assets_and_required_dom():
     assert [nav_text.index(label) for label in labels] == sorted(nav_text.index(label) for label in labels)
     assert "분석" not in nav_text
     assert "백테스트" not in nav_text
+
+
+def test_theme_contract_supports_system_detection_manual_toggle_and_persistence():
+    html = (ROOT / "web/index.html").read_text(encoding="utf-8")
+    js = (ROOT / "web/js/app.js").read_text(encoding="utf-8")
+    css = (ROOT / "web/css/app.css").read_text(encoding="utf-8")
+
+    assert 'document.documentElement.dataset.theme = saved || system;' in html
+    assert 'localStorage.setItem(THEME_STORAGE_KEY, next)' in js
+    assert 'button.addEventListener("click"' in js
+    assert 'const next = resolved === "dark" ? "light" : "dark";' in js
+    assert 'const label = next === "dark" ? "어둡게 보기" : "밝게 보기";' in js
+    assert 'aria-pressed' in js
+    assert 'media.addEventListener("change", syncWithSystem)' in js
+    assert 'media.addListener(syncWithSystem)' in js
+    assert 'color-scheme: light' in css
+    assert 'color-scheme: dark' in css
+    assert "--primary-soft" in css
+    assert "--focus-ring" in css
 
 
 def test_pages_workflow_is_official_static_deploy_only():

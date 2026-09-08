@@ -1,4 +1,5 @@
-:root {
+:root,
+[data-theme="light"] {
   color-scheme: light;
   --canvas: #f7f8fa;
   --surface: #ffffff;
@@ -19,11 +20,47 @@
   --warning-bg: #fff0f1;
   --unknown: #606872;
   --unknown-bg: #eef0f2;
+  --progress-track: #eceff1;
+  --primary-soft: #f9e9eb;
+  --focus-ring: rgba(159, 29, 47, 0.32);
+  --error-border: #f0c4c8;
+  --skip-bg: #18191b;
+  --skip-text: #ffffff;
   --shadow: 0 10px 28px rgba(24, 25, 27, 0.05);
   --radius: 14px;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --canvas: #0f1012;
+  --surface: #17181b;
+  --surface-muted: #202227;
+  --ink: #f4f4f5;
+  --ink-soft: #b5b7be;
+  --ink-faint: #858892;
+  --line: #2a2d32;
+  --line-strong: #3b3f47;
+  --brand-red: #d64a3d;
+  --brand-red-dark: #f08a7f;
+  --market-up-red: #e15b50;
+  --normal: #52c68b;
+  --normal-bg: #173427;
+  --attention: #e4b562;
+  --attention-bg: #352d1a;
+  --warning: #ef7e87;
+  --warning-bg: #391e22;
+  --unknown: #b6bbc4;
+  --unknown-bg: #262a30;
+  --progress-track: #2a2d32;
+  --primary-soft: rgba(214, 74, 61, 0.16);
+  --focus-ring: rgba(214, 74, 61, 0.4);
+  --error-border: #71363d;
+  --skip-bg: #f4f4f5;
+  --skip-text: #17181b;
+  --shadow: 0 14px 30px rgba(0, 0, 0, 0.22);
 }
 
 * { box-sizing: border-box; }
@@ -42,10 +79,12 @@ a { color: inherit; }
 
 a:focus-visible,
 summary:focus-visible {
-  outline: 3px solid rgba(159, 29, 47, 0.32);
+  outline: 3px solid var(--focus-ring);
   outline-offset: 4px;
   border-radius: 5px;
 }
+
+[hidden] { display: none !important; }
 
 .shell {
   width: min(100% - 40px, 1220px);
@@ -58,8 +97,8 @@ summary:focus-visible {
   top: -60px;
   z-index: 5;
   padding: 8px 12px;
-  background: var(--ink);
-  color: #fff;
+  background: var(--skip-bg);
+  color: var(--skip-text);
   border-radius: 6px;
   text-decoration: none;
 }
@@ -67,7 +106,7 @@ summary:focus-visible {
 .skip-link:focus { top: 12px; }
 
 .site-header {
-  background: rgba(255, 255, 255, 0.96);
+  background: var(--surface);
   border-bottom: 1px solid var(--line);
 }
 
@@ -104,8 +143,17 @@ summary:focus-visible {
 .brand-name { font-size: 14px; font-weight: 700; letter-spacing: -0.015em; }
 .brand-context { color: var(--ink-faint); font-size: 11px; }
 
+.header-actions {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
 .primary-nav {
   display: flex;
+  min-width: 0;
   align-items: center;
   justify-content: flex-end;
   gap: 6px;
@@ -119,9 +167,53 @@ summary:focus-visible {
   border-radius: 7px;
 }
 
-.nav-item.is-active { background: #f9e9eb; color: var(--brand-red-dark); font-weight: 700; }
+.nav-item.is-active { background: var(--primary-soft); color: var(--brand-red-dark); font-weight: 700; }
 .nav-item[aria-disabled="true"] { color: var(--ink-faint); }
 .nav-item small { margin-left: 3px; color: var(--ink-faint); font-size: 10px; font-weight: 500; }
+
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  flex: 0 0 auto;
+  border: 1px solid var(--line);
+  padding: 7px 10px;
+  background: var(--surface);
+  color: var(--ink-soft);
+  border-radius: 7px;
+  font: inherit;
+  font-size: 11px;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.theme-toggle:hover {
+  background: var(--surface-muted);
+  border-color: var(--line-strong);
+  color: var(--ink);
+}
+
+.theme-toggle:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 3px;
+}
+
+.theme-icon {
+  display: inline-flex;
+  width: 15px;
+  height: 15px;
+}
+
+.theme-icon svg {
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.7;
+}
 
 .page-content { padding-block: 64px 48px; }
 
@@ -187,7 +279,7 @@ h2 { margin-bottom: 0; font-size: 18px; letter-spacing: -0.035em; line-height: 1
 .panel { padding: 24px; }
 .panel-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 26px; }
 .progress-percent { margin: 0; color: var(--brand-red); font-variant-numeric: tabular-nums; font-size: 30px; font-weight: 760; letter-spacing: -0.06em; }
-.progress-track { height: 12px; overflow: hidden; background: #eceff1; border-radius: 999px; }
+.progress-track { height: 12px; overflow: hidden; background: var(--progress-track); border-radius: 999px; }
 .progress-fill { display: block; width: 0; height: 100%; background: var(--brand-red); border-radius: inherit; transition: width 160ms ease-out; }
 .progress-meta { display: flex; justify-content: space-between; gap: 12px; margin-top: 11px; color: var(--ink-soft); font-size: 12px; font-variant-numeric: tabular-nums; }
 .panel-note { margin: 22px 0 0; font-size: 12px; }
@@ -206,7 +298,7 @@ summary { cursor: pointer; color: var(--ink); font-size: 13px; font-weight: 750;
 .basis-list dt { color: var(--ink-faint); font-size: 11px; }
 .basis-list dd { overflow-wrap: anywhere; margin: 3px 0 0; color: var(--ink-soft); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; }
 
-.error-card { padding: 24px; margin-top: 16px; border-color: #f0c4c8; }
+.error-card { padding: 24px; margin-top: 16px; border-color: var(--error-border); }
 .error-card h2 { margin-bottom: 8px; }
 .error-card p:not(.eyebrow):not(.status-pill) { color: var(--ink-soft); font-size: 13px; }
 .error-card .status-pill { margin-bottom: 0; }
@@ -215,7 +307,8 @@ summary { cursor: pointer; color: var(--ink); font-size: 13px; font-weight: 750;
 
 @media (max-width: 960px) {
   .header-inner { align-items: flex-start; flex-direction: column; gap: 14px; padding-block: 17px; }
-  .primary-nav { justify-content: flex-start; width: 100%; overflow-x: auto; padding-bottom: 2px; }
+  .header-actions { width: 100%; justify-content: space-between; }
+  .header-actions .primary-nav { flex: 1 1 auto; justify-content: flex-start; width: auto; overflow-x: auto; padding-bottom: 2px; }
   .metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .content-grid { grid-template-columns: 1fr; }
 }
