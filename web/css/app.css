@@ -457,7 +457,7 @@ summary { cursor: pointer; color: var(--ink); font-size: 13px; font-weight: 750;
 .strategy-option-name { font-size: 14px; font-weight: 800; }
 .strategy-option-detail { color: var(--ink-soft); font-size: 11px; }
 .strategy-scope { margin: 14px 0 0; color: var(--ink-soft); font-size: 12px; }
-.strategy-summary-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-bottom: 16px; }
+.strategy-summary-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-bottom: 16px; }
 .strategy-summary-card { display: flex; min-width: 0; min-height: 142px; flex-direction: column; align-items: flex-start; justify-content: space-between; border: 1px solid var(--line); padding: 20px; color: var(--ink); background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); font: inherit; text-align: left; cursor: pointer; transition: border-color 140ms ease, background 140ms ease, box-shadow 140ms ease, transform 140ms ease; }
 .strategy-summary-card:hover { border-color: var(--line-strong); transform: translateY(-1px); }
 .strategy-summary-card.is-active { border-color: var(--brand-red); background: var(--primary-soft); box-shadow: 0 0 0 2px var(--primary-soft); }

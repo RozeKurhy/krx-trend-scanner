@@ -89,14 +89,15 @@ def test_etf_is_not_in_action_counts_and_has_no_fake_trade():
     assert sum(monitor["counts"][key] for key in ("entry", "hold", "exit")) == 109
 
 
-def test_strategy_page_is_connected_and_uses_one_release_cache_version():
+def test_strategy_page_is_connected_and_uses_page_specific_cache_version():
     strategy_html = (ROOT / "web/strategy.html").read_text(encoding="utf-8")
     index_html = (ROOT / "web/index.html").read_text(encoding="utf-8")
     report_html = (ROOT / "web/report.html").read_text(encoding="utf-8")
     strategy_js = (ROOT / "web/js/strategy.js").read_text(encoding="utf-8")
     css = (ROOT / "web/css/app.css").read_text(encoding="utf-8")
 
-    for html in (strategy_html, index_html, report_html):
+    assert 'href="./css/app.css?v=web-strategy-summary-3col-1"' in strategy_html
+    for html in (index_html, report_html):
         assert 'href="./css/app.css?v=web-02c-toss-1"' in html
         assert "web-02a-final-2" not in html
         assert "web-03a-final-1" not in html
@@ -139,6 +140,9 @@ def test_strategy_page_is_connected_and_uses_one_release_cache_version():
     assert "dataStatus === \"CHECK_REQUIRED\"" in strategy_js
     assert "window.matchMedia" in strategy_js
     assert ".strategy-item" in css and ".strategy-summary-card" in css
+    assert ".strategy-summary-grid" in css
+    assert "grid-template-columns: repeat(3, minmax(0, 1fr))" in css
+    assert "grid-template-columns: repeat(2, minmax(0, 1fr))" in css
     assert ".strategy-item-field.detail-value-positive .strategy-item-value" in css
     assert ".strategy-item-field.detail-value-negative .strategy-item-value" in css
     assert ".strategy-item-position .strategy-item-value" in css
