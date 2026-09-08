@@ -37,7 +37,7 @@
     entry: "진입 조건을 충족한 종목",
     exit: "매도 조건을 충족한 종목",
     watch: "관찰 종목",
-    unavailable: "전략 데이터를 표시할 수 없는 종목",
+    unavailable: "기타",
   };
   const SECTION_IDS = { hold: "hold", entry: "entry", exit: "exit", watch: "watch", unavailable: "unavailable" };
   const FILTERS = new Set(["all", ...Object.keys(SECTION_IDS).filter((key) => key !== "unavailable")]);
@@ -54,7 +54,11 @@
 
   function marketLabel(value) { return MARKET_LABELS[value] || "시장 확인 필요"; }
   function assetLabel(value) { return ASSET_LABELS[value] || "자산 확인 필요"; }
-  function actionLabel(value) { return ACTION_LABELS[value] || "전략 데이터 없음"; }
+  function actionLabel(value, dataStatus) {
+    if (dataStatus === "NOT_APPLICABLE") return "해당 없음";
+    if (dataStatus === "CHECK_REQUIRED") return "확인 필요";
+    return ACTION_LABELS[value] || "전략 데이터 없음";
+  }
   function positionLabel(value) { return POSITION_LABELS[value] || "상태 확인 필요"; }
   function stateLabel(value) { return STATE_LABELS[value] || "상태 확인 필요"; }
   function stageLabel(value) { return STAGE_LABELS[value] || "확인 필요"; }
@@ -156,6 +160,16 @@
     return field;
   }
 
+  function createPriceDateField(label, price, date, className) {
+    const field = createElement("span", `strategy-item-field${className ? ` ${className}` : ""}`);
+    field.appendChild(createElement("small", "strategy-item-label", label));
+    const value = createElement("strong", "strategy-item-value strategy-item-price-date");
+    value.appendChild(createElement("span", "strategy-item-price", price));
+    if (date !== "—") value.appendChild(createElement("small", "strategy-item-date", date));
+    field.appendChild(value);
+    return field;
+  }
+
   function createStrategyItem(item) {
     const link = createElement("a", "strategy-item");
     link.href = `./report.html?ticker=${encodeURIComponent(item.ticker)}`;
@@ -166,14 +180,16 @@
     const sector = item.sector_name ? ` · ${item.sector_name}` : "";
     identity.appendChild(createElement("span", "strategy-item-meta", `${item.ticker} · ${marketLabel(item.market)} · ${assetLabel(item.asset_type)}${sector}`));
 
-    const action = createField("전략 판단", actionLabel(item.action), `strategy-item-action action-${item.bucket}`);
-    const position = createField("현재 상태", item.canonical_position === "NOT_APPLICABLE" ? "해당 없음" : `${positionLabel(item.canonical_position)} · ${stateLabel(item.strategy_state)}`);
+    const action = createField("전략 판단", actionLabel(item.action, item.data_status), `strategy-item-action action-${item.bucket}`);
+    const position = createField("현재 상태", item.canonical_position === "NOT_APPLICABLE" ? "해당 없음" : `${positionLabel(item.canonical_position)} · ${stateLabel(item.strategy_state)}`, "strategy-item-position");
     const pattern = item.canonical_position === "NOT_APPLICABLE"
       ? createField("패턴", "해당 없음")
       : createField("패턴", `${stageLabel(item.pattern_stage)} · ${formatNumber(item.pattern_score, 2)}점`);
-    const price = createField("현재가", `${formatPrice(item.latest_close)} · ${formatDate(item.latest_close_as_of)}`);
+    const price = createPriceDateField("현재가", formatPrice(item.latest_close), formatDate(item.latest_close_as_of));
     const trade = item.current_trade;
-    const entry = createField("진입가", trade ? `${formatPrice(trade.entry_open)} · ${formatDate(trade.entry_execution_date)}` : "—");
+    const entry = trade
+      ? createPriceDateField("진입가", formatPrice(trade.entry_open), formatDate(trade.entry_execution_date))
+      : createField("진입가", "—");
     const returnClass = trade && Number(trade.return_pct) > 0 ? "detail-value-positive" : trade && Number(trade.return_pct) < 0 ? "detail-value-negative" : "";
     const returnField = createField("수익률", trade ? formatReturn(trade.return_pct) : "—", returnClass);
     const arrow = createElement("span", "strategy-item-link", "리포트 보기 ›");

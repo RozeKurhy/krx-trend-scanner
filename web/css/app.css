@@ -470,7 +470,7 @@ summary { cursor: pointer; color: var(--ink); font-size: 13px; font-weight: 750;
 .strategy-section-heading .eyebrow { margin-bottom: 6px; }
 .strategy-section-count { flex: 0 0 auto; color: var(--ink-faint); font-variant-numeric: tabular-nums; font-size: 12px; }
 .strategy-item-list { display: grid; gap: 8px; }
-.strategy-item { display: grid; grid-template-columns: minmax(190px, 1.55fr) repeat(6, minmax(80px, 1fr)) auto; align-items: center; gap: 12px; min-width: 0; border: 1px solid var(--line); padding: 14px; color: var(--ink); background: var(--surface); border-radius: 9px; text-decoration: none; }
+.strategy-item { display: grid; grid-template-columns: minmax(190px, 1.55fr) repeat(6, minmax(80px, 1fr)) auto; align-items: center; gap: 12px; min-width: 0; min-height: 108px; border: 1px solid var(--line); padding: 16px; color: var(--ink); background: var(--surface); border-radius: 9px; text-decoration: none; }
 .strategy-item:hover { border-color: var(--line-strong); background: var(--surface-muted); }
 .strategy-item:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
 .strategy-item-identity, .strategy-item-field { min-width: 0; }
@@ -480,9 +480,12 @@ summary { cursor: pointer; color: var(--ink); font-size: 13px; font-weight: 750;
 .strategy-item-field { display: flex; flex-direction: column; gap: 4px; }
 .strategy-item-label { color: var(--ink-faint); font-size: 10px; }
 .strategy-item-value { overflow: hidden; color: var(--ink-soft); font-size: 12px; font-weight: 750; text-overflow: ellipsis; white-space: nowrap; }
+.strategy-item-position .strategy-item-value { overflow: visible; line-height: 1.35; text-overflow: clip; white-space: normal; }
+.strategy-item-price-date { display: flex; flex-direction: column; gap: 2px; overflow: visible; line-height: 1.25; white-space: normal; }
+.strategy-item-date { color: var(--ink-faint); font-size: 10px; font-weight: 650; line-height: 1.25; }
 .strategy-item-action .strategy-item-value { color: var(--brand-red-dark); }
-.strategy-item .detail-value-positive { color: var(--market-up-red); }
-.strategy-item .detail-value-negative { color: var(--market-down-blue); }
+.strategy-item-field.detail-value-positive .strategy-item-value { color: var(--market-up-red); }
+.strategy-item-field.detail-value-negative .strategy-item-value { color: var(--market-down-blue); }
 .strategy-item-link { flex: 0 0 auto; color: var(--brand-red-dark); font-size: 11px; font-weight: 800; white-space: nowrap; }
 .strategy-empty { margin: 0; color: var(--ink-soft); font-size: 13px; }
 

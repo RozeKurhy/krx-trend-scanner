@@ -97,17 +97,18 @@ def test_strategy_page_is_connected_and_uses_one_release_cache_version():
     css = (ROOT / "web/css/app.css").read_text(encoding="utf-8")
 
     for html in (strategy_html, index_html, report_html):
-        assert 'href="./css/app.css?v=web-03a-1"' in html
+        assert 'href="./css/app.css?v=web-03a-polish-1"' in html
         assert "web-02a-final-2" not in html
-    assert 'src="./js/strategy.js?v=web-03a-1"' in strategy_html
-    assert 'src="./js/app.js?v=web-03a-1"' in index_html
-    assert 'src="./js/report.js?v=web-03a-1"' in report_html
+        assert "web-03a-1" not in html
+    assert 'src="./js/strategy.js?v=web-03a-polish-1"' in strategy_html
+    assert 'src="./js/app.js?v=web-03a-polish-1"' in index_html
+    assert 'src="./js/report.js?v=web-03a-polish-1"' in report_html
     assert 'href="./strategy.html"' in index_html
     assert 'href="./strategy.html"' in report_html
     assert 'class="nav-item is-active" href="./strategy.html"' in strategy_html
 
     assert '<h1 id="page-title">전략 운용</h1>' in strategy_html
-    assert "전략 신호와 보유 상태를 한눈에 확인" in strategy_html
+    assert "전략 신호와 보유 상태를 한눈에!" in strategy_html
     assert "A FAST Core" in strategy_html
     assert "Julia" in strategy_html and 'id="julia-option"' in strategy_html and "disabled" in strategy_html
     assert "현재 공개 리포트 기준" in strategy_html
@@ -116,12 +117,41 @@ def test_strategy_page_is_connected_and_uses_one_release_cache_version():
     assert 'data-filter="entry"' in strategy_html
     assert 'data-filter="exit"' in strategy_html
     assert 'data-filter="watch"' in strategy_html
+    assert '<h2 id="unavailable-heading">기타</h2>' in strategy_html
     assert 'link.href = `./report.html?ticker=' in strategy_js
     assert 'const MONITOR_URL = "./data/strategy-monitor.json";' in strategy_js
+    assert "function createPriceDateField" in strategy_js
+    assert '"strategy-item-position"' in strategy_js
+    assert 'actionLabel(item.action, item.data_status)' in strategy_js
+    assert "dataStatus === \"NOT_APPLICABLE\"" in strategy_js
+    assert "dataStatus === \"CHECK_REQUIRED\"" in strategy_js
     assert "window.matchMedia" in strategy_js
     assert ".strategy-item" in css and ".strategy-summary-card" in css
+    assert ".strategy-item-field.detail-value-positive .strategy-item-value" in css
+    assert ".strategy-item-field.detail-value-negative .strategy-item-value" in css
+    assert ".strategy-item-position .strategy-item-value" in css
+    assert ".strategy-item-price-date" in css
+    assert "min-height: 108px" in css
     for raw in ("OPEN_AT_CUTOFF", "HOLD_PROGRESSED", "NOT_APPLICABLE", "ENTER_NEXT_OPEN", "TOP PICK", "AI 추천"):
         assert raw not in strategy_html
+
+
+def test_strategy_ui_polish_uses_representative_source_returns_and_split_dates():
+    monitor = _load_monitor()
+    positive = next(item for item in monitor["items"] if item["ticker"] == "005930")
+    negative = next(item for item in monitor["items"] if item["ticker"] == "027410")
+    strategy_js = (ROOT / "web/js/strategy.js").read_text(encoding="utf-8")
+    css = (ROOT / "web/css/app.css").read_text(encoding="utf-8")
+
+    assert positive["current_trade"]["return_pct"] == 273.54
+    assert negative["current_trade"]["return_pct"] == -6.39
+    assert 'const returnClass = trade && Number(trade.return_pct) > 0 ? "detail-value-positive"' in strategy_js
+    assert 'Number(trade.return_pct) < 0 ? "detail-value-negative"' in strategy_js
+    assert 'createPriceDateField("현재가"' in strategy_js
+    assert 'createPriceDateField("진입가"' in strategy_js
+    assert 'createField("진입가", "—")' in strategy_js
+    assert "white-space: normal" in css
+    assert "text-overflow: clip" in css
 
 
 def test_strategy_monitor_json_matches_clean_exporter_projection():
