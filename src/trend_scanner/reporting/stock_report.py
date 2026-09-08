@@ -170,6 +170,19 @@ def _determine_flow_state_and_explanation(
     return state, desc
 
 
+def _calculate_trading_value_window_averages(
+    trading_values: pd.Series | None,
+) -> dict[int, float | None]:
+    """Return local trading-value averages for the additive report windows."""
+    if trading_values is None:
+        return {window: None for window in (1, 5, 10, 20, 60)}
+    valid_values = trading_values.dropna()
+    return {
+        window: float(valid_values.tail(window).mean() / 1e8) if len(valid_values) >= window else None
+        for window in (1, 5, 10, 20, 60)
+    }
+
+
 def _determine_trading_value_state_and_explanation(
     tv_5d: float | None,
     tv_20d: float | None,
@@ -629,18 +642,24 @@ def render_markdown_report(report: StockReport) -> str:
     if flow.foreign_net_buy_value_5d_krw is not None:
         nb1 = f"{flow.foreign_net_buy_value_1d_krw / 1e8:+.2f}억원" if flow.foreign_net_buy_value_1d_krw is not None else "N/A"
         nb5 = f"{flow.foreign_net_buy_value_5d_krw / 1e8:+.2f}억원"
+        nb10 = f"{flow.foreign_net_buy_value_10d_krw / 1e8:+.2f}억원" if flow.foreign_net_buy_value_10d_krw is not None else "N/A"
         nb20 = f"{flow.foreign_net_buy_value_20d_krw / 1e8:+.2f}억원" if flow.foreign_net_buy_value_20d_krw is not None else "N/A"
         nb60 = f"{flow.foreign_net_buy_value_60d_krw / 1e8:+.2f}억원" if flow.foreign_net_buy_value_60d_krw is not None else "N/A"
+        i1 = f"{flow.foreign_flow_intensity_1d * 100:+.2f}%" if flow.foreign_flow_intensity_1d is not None else "N/A"
         i5 = f"{flow.foreign_flow_intensity_5d * 100:+.2f}%" if flow.foreign_flow_intensity_5d is not None else "N/A"
+        i10 = f"{flow.foreign_flow_intensity_10d * 100:+.2f}%" if flow.foreign_flow_intensity_10d is not None else "N/A"
         i20 = f"{flow.foreign_flow_intensity_20d * 100:+.2f}%" if flow.foreign_flow_intensity_20d is not None else "N/A"
         i60 = f"{flow.foreign_flow_intensity_60d * 100:+.2f}%" if flow.foreign_flow_intensity_60d is not None else "N/A"
+        p1 = f"{flow.foreign_positive_days_1d} / 1" if flow.foreign_positive_days_1d is not None else "N/A"
         p5 = f"{flow.foreign_positive_days_5d} / 5" if flow.foreign_positive_days_5d is not None else "N/A"
+        p10 = f"{flow.foreign_positive_days_10d} / 10" if flow.foreign_positive_days_10d is not None else "N/A"
         p20 = f"{flow.foreign_positive_days_20d} / 20" if flow.foreign_positive_days_20d is not None else "N/A"
         p60 = f"{flow.foreign_positive_days_60d} / 60" if flow.foreign_positive_days_60d is not None else "N/A"
         md.append("| 구간 | 순매수 금액 | 거래대금 대비 강도 | 양수 거래일 |")
         md.append("|---|---:|---:|---:|")
-        md.append(f"| 1D | {nb1} | N/A | N/A |")
+        md.append(f"| 1D | {nb1} | {i1} | {p1} |")
         md.append(f"| 5D | {nb5} | {i5} | {p5} |")
+        md.append(f"| 10D | {nb10} | {i10} | {p10} |")
         md.append(f"| 20D | {nb20} | {i20} | {p20} |")
         md.append(f"| 60D | {nb60} | {i60} | {p60} |")
     md.append("")
@@ -736,8 +755,17 @@ def render_markdown_report(report: StockReport) -> str:
     md.append("## 8. 거래대금 추세 분석 (Trading Value Flow)")
     md.append(f"- **거래대금 상태**: `{tv.trading_value_state.value}`")
     md.append(f"- **규칙 기반 해석**: {tv.explanation}")
-    if tv.avg_trading_value_5d_eok is not None:
-        md.append(f"- **5일 평균 거래대금**: `{tv.avg_trading_value_5d_eok:.2f}억원`")
+    if tv.avg_trading_value_1d_eok is not None:
+        md.append("| 구간 | 평균 거래대금 |")
+        md.append("|---|---:|")
+        for label, value in (
+            ("1D", tv.avg_trading_value_1d_eok),
+            ("5D", tv.avg_trading_value_5d_eok),
+            ("10D", tv.avg_trading_value_10d_eok),
+            ("20D", tv.avg_trading_value_20d_eok),
+            ("60D", tv.avg_trading_value_60d_eok),
+        ):
+            md.append(f"| {label} | {value:.2f}억원 |" if value is not None else f"| {label} | N/A |")
         md.append(f"- **20일 평균 거래대금**: `{tv.avg_trading_value_20d_eok:.2f}억원`" if tv.avg_trading_value_20d_eok is not None else "- **20일 평균 거래대금**: `N/A`")
         md.append(f"- **60일 평균 거래대금**: `{tv.avg_trading_value_60d_eok:.2f}억원`" if tv.avg_trading_value_60d_eok is not None else "- **60일 평균 거래대금**: `N/A`")
         r5_20 = f"{tv.ratio_5d_to_20d:.2f}배" if tv.ratio_5d_to_20d is not None else "N/A"
@@ -1134,14 +1162,24 @@ def generate_stock_report(
         explanation=flow_explanation,
         foreign_net_buy_value_1d_krw=flow_feat.foreign_net_buy_value_1d,
         foreign_net_buy_value_5d_krw=flow_feat.foreign_net_buy_value_5d,
+        foreign_net_buy_value_10d_krw=flow_feat.foreign_net_buy_value_10d,
         foreign_net_buy_value_20d_krw=flow_feat.foreign_net_buy_value_20d,
         foreign_net_buy_value_60d_krw=flow_feat.foreign_net_buy_value_60d,
+        foreign_flow_intensity_1d=round(flow_feat.foreign_flow_intensity_1d, 4) if flow_feat.foreign_flow_intensity_1d is not None else None,
         foreign_flow_intensity_5d=round(flow_feat.foreign_flow_intensity_5d, 4) if flow_feat.foreign_flow_intensity_5d is not None else None,
+        foreign_flow_intensity_10d=round(flow_feat.foreign_flow_intensity_10d, 4) if flow_feat.foreign_flow_intensity_10d is not None else None,
         foreign_flow_intensity_20d=round(flow_feat.foreign_flow_intensity_20d, 4) if flow_feat.foreign_flow_intensity_20d is not None else None,
         foreign_flow_intensity_60d=round(flow_feat.foreign_flow_intensity_60d, 4) if flow_feat.foreign_flow_intensity_60d is not None else None,
+        foreign_positive_days_1d=flow_feat.foreign_positive_days_1d,
         foreign_positive_days_5d=flow_feat.foreign_positive_days_5d,
+        foreign_positive_days_10d=flow_feat.foreign_positive_days_10d,
         foreign_positive_days_20d=flow_feat.foreign_positive_days_20d,
         foreign_positive_days_60d=flow_feat.foreign_positive_days_60d,
+        foreign_positive_day_ratio_1d=flow_feat.foreign_positive_day_ratio_1d,
+        foreign_positive_day_ratio_5d=flow_feat.foreign_positive_day_ratio_5d,
+        foreign_positive_day_ratio_10d=flow_feat.foreign_positive_day_ratio_10d,
+        foreign_positive_day_ratio_20d=flow_feat.foreign_positive_day_ratio_20d,
+        foreign_positive_day_ratio_60d=flow_feat.foreign_positive_day_ratio_60d,
     )
 
     # 7b. Phase 12 Market Relative Strength (exact local authority lookup)
@@ -1167,7 +1205,9 @@ def generate_stock_report(
     )
 
     # 8. Trading Value Flow Section
+    tv_1d_val: float | None = None
     tv_5d_val: float | None = None
+    tv_10d_val: float | None = None
     tv_20d_val: float | None = None
     tv_60d_val: float | None = None
     r_5_20: float | None = None
@@ -1175,13 +1215,12 @@ def generate_stock_report(
 
     if not daily_slice.empty and "trading_value" in daily_slice.columns:
         valid_tv = daily_slice["trading_value"].dropna()
-        n_obs = len(valid_tv)
-        if n_obs >= 5:
-            tv_5d_val = float(valid_tv.tail(5).mean() / 1e8)
-        if n_obs >= 20:
-            tv_20d_val = float(valid_tv.tail(20).mean() / 1e8)
-        if n_obs >= 60:
-            tv_60d_val = float(valid_tv.tail(60).mean() / 1e8)
+        window_averages = _calculate_trading_value_window_averages(valid_tv)
+        tv_1d_val = window_averages[1]
+        tv_5d_val = window_averages[5]
+        tv_10d_val = window_averages[10]
+        tv_20d_val = window_averages[20]
+        tv_60d_val = window_averages[60]
 
         if tv_5d_val is not None and tv_20d_val is not None and tv_20d_val > 0:
             r_5_20 = round(tv_5d_val / tv_20d_val, 2)
@@ -1204,6 +1243,8 @@ def generate_stock_report(
         avg_trading_value_60d_eok=round(tv_60d_val, 2) if tv_60d_val is not None else None,
         ratio_5d_to_20d=r_5_20,
         ratio_20d_to_60d=r_20_60,
+        avg_trading_value_1d_eok=round(tv_1d_val, 2) if tv_1d_val is not None else None,
+        avg_trading_value_10d_eok=round(tv_10d_val, 2) if tv_10d_val is not None else None,
     )
 
     # 8b. Pattern A FAST Weekly History (Phase 13)

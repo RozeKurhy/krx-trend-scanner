@@ -58,6 +58,10 @@ def test_signed_flow_arithmetic():
     res = compute_foreign_flow_features(ticker, as_of, flow_df)
     assert res.foreign_net_buy_value_1d == -30.0
     assert res.foreign_net_buy_value_5d == 220.0
+    assert res.foreign_net_buy_value_10d is None
+    assert res.foreign_flow_intensity_1d is None
+    assert res.foreign_positive_days_1d == 0
+    assert res.foreign_positive_day_ratio_1d == 0.0
     assert res.foreign_positive_days_5d == 2  # 100 and 200 (> 0)
     assert res.foreign_positive_day_ratio_5d == 0.4
 
@@ -83,6 +87,7 @@ def test_window_boundary_contracts():
     res_20 = compute_foreign_flow_features(ticker, "2026-07-20", flow_df_20)
     assert res_20.data_status == FlowDataStatus.READY
     assert res_20.foreign_net_buy_value_5d == 50.0
+    assert res_20.foreign_net_buy_value_10d == 100.0
     assert res_20.foreign_net_buy_value_20d == 200.0
     assert res_20.foreign_net_buy_value_60d is None
 
@@ -166,7 +171,21 @@ def test_trading_value_normalization():
 
     res = compute_foreign_flow_features(ticker, as_of, flow_df, price_df)
     assert res.foreign_flow_intensity_5d == pytest.approx(50.0 / 500.0, abs=1e-6)
+    assert res.foreign_flow_intensity_10d == pytest.approx(100.0 / 1000.0, abs=1e-6)
     assert res.foreign_flow_intensity_20d == pytest.approx(200.0 / 2000.0, abs=1e-6)
+
+
+def test_ten_day_window_and_insufficient_history_are_fail_closed():
+    ticker = "005930"
+    dates = pd.date_range("2026-08-03", periods=9, freq="B").strftime("%Y-%m-%d").tolist()
+    flow_df = _make_dummy_flow_df(ticker, dates, [10.0] * len(dates))
+    res = compute_foreign_flow_features(ticker, dates[-1], flow_df)
+
+    assert res.data_status == FlowDataStatus.PARTIAL
+    assert res.foreign_net_buy_value_5d == 50.0
+    assert res.foreign_net_buy_value_10d is None
+    assert res.foreign_flow_intensity_10d is None
+    assert res.foreign_positive_days_10d is None
 
 
 def test_trading_value_missing_returns_none_not_zero():
@@ -230,4 +249,3 @@ def test_provider_numeric_coercion_negative_test(monkeypatch):
     provider = ForeignFlowDataProvider()
     with pytest.raises(MarketDataError, match="Numeric coercion failure"):
         provider.fetch_date_batch("2026-08-14")
-

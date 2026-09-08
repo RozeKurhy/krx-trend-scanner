@@ -1,6 +1,6 @@
 """외국인 수급(Foreign Investor Flow) 확증 피처 계산 엔진.
 
-Point In Time(PIT) 원칙과 거래일 기준 Window(1D, 5D, 20D, 60D)를 준수하여
+Point In Time(PIT) 원칙과 거래일 기준 Window(1D, 5D, 10D, 20D, 60D)를 준수하여
 외국인 순매수 금액(KRW), 거래대금 대비 Flow Intensity, Positive Flow Day 피처를 계산한다.
 """
 
@@ -41,24 +41,33 @@ class ForeignFlowFeatureResult:
     # 1. Raw Window Net Buy Values (Signed KRW)
     foreign_net_buy_value_1d: float | None
     foreign_net_buy_value_5d: float | None
+    foreign_net_buy_value_10d: float | None
     foreign_net_buy_value_20d: float | None
     foreign_net_buy_value_60d: float | None
 
     # 2. Normalized Flow Intensity (Net Buy / Trading Value)
+    foreign_flow_intensity_1d: float | None
     foreign_flow_intensity_5d: float | None
+    foreign_flow_intensity_10d: float | None
     foreign_flow_intensity_20d: float | None
     foreign_flow_intensity_60d: float | None
 
     # 3. Positive Flow Days & Ratios
+    foreign_positive_days_1d: int | None
     foreign_positive_days_5d: int | None
+    foreign_positive_days_10d: int | None
     foreign_positive_days_20d: int | None
     foreign_positive_days_60d: int | None
+    foreign_positive_day_ratio_1d: float | None
     foreign_positive_day_ratio_5d: float | None
+    foreign_positive_day_ratio_10d: float | None
     foreign_positive_day_ratio_20d: float | None
     foreign_positive_day_ratio_60d: float | None
 
     # 4. Optional Diagnostics
+    foreign_net_buy_avg_1d: float | None = None
     foreign_net_buy_avg_5d: float | None = None
+    foreign_net_buy_avg_10d: float | None = None
     foreign_net_buy_avg_20d: float | None = None
     foreign_net_buy_avg_60d: float | None = None
 
@@ -73,18 +82,27 @@ class ForeignFlowFeatureResult:
             "foreign_flow_observation_count": self.foreign_flow_observation_count,
             "foreign_net_buy_value_1d": self.foreign_net_buy_value_1d,
             "foreign_net_buy_value_5d": self.foreign_net_buy_value_5d,
+            "foreign_net_buy_value_10d": self.foreign_net_buy_value_10d,
             "foreign_net_buy_value_20d": self.foreign_net_buy_value_20d,
             "foreign_net_buy_value_60d": self.foreign_net_buy_value_60d,
+            "foreign_flow_intensity_1d": self.foreign_flow_intensity_1d,
             "foreign_flow_intensity_5d": self.foreign_flow_intensity_5d,
+            "foreign_flow_intensity_10d": self.foreign_flow_intensity_10d,
             "foreign_flow_intensity_20d": self.foreign_flow_intensity_20d,
             "foreign_flow_intensity_60d": self.foreign_flow_intensity_60d,
+            "foreign_positive_days_1d": self.foreign_positive_days_1d,
             "foreign_positive_days_5d": self.foreign_positive_days_5d,
+            "foreign_positive_days_10d": self.foreign_positive_days_10d,
             "foreign_positive_days_20d": self.foreign_positive_days_20d,
             "foreign_positive_days_60d": self.foreign_positive_days_60d,
+            "foreign_positive_day_ratio_1d": self.foreign_positive_day_ratio_1d,
             "foreign_positive_day_ratio_5d": self.foreign_positive_day_ratio_5d,
+            "foreign_positive_day_ratio_10d": self.foreign_positive_day_ratio_10d,
             "foreign_positive_day_ratio_20d": self.foreign_positive_day_ratio_20d,
             "foreign_positive_day_ratio_60d": self.foreign_positive_day_ratio_60d,
+            "foreign_net_buy_avg_1d": self.foreign_net_buy_avg_1d,
             "foreign_net_buy_avg_5d": self.foreign_net_buy_avg_5d,
+            "foreign_net_buy_avg_10d": self.foreign_net_buy_avg_10d,
             "foreign_net_buy_avg_20d": self.foreign_net_buy_avg_20d,
             "foreign_net_buy_avg_60d": self.foreign_net_buy_avg_60d,
         }
@@ -101,18 +119,27 @@ def _unavailable_result(ticker: str, as_of: str) -> ForeignFlowFeatureResult:
         foreign_flow_observation_count=0,
         foreign_net_buy_value_1d=None,
         foreign_net_buy_value_5d=None,
+        foreign_net_buy_value_10d=None,
         foreign_net_buy_value_20d=None,
         foreign_net_buy_value_60d=None,
+        foreign_flow_intensity_1d=None,
         foreign_flow_intensity_5d=None,
+        foreign_flow_intensity_10d=None,
         foreign_flow_intensity_20d=None,
         foreign_flow_intensity_60d=None,
+        foreign_positive_days_1d=None,
         foreign_positive_days_5d=None,
+        foreign_positive_days_10d=None,
         foreign_positive_days_20d=None,
         foreign_positive_days_60d=None,
+        foreign_positive_day_ratio_1d=None,
         foreign_positive_day_ratio_5d=None,
+        foreign_positive_day_ratio_10d=None,
         foreign_positive_day_ratio_20d=None,
         foreign_positive_day_ratio_60d=None,
+        foreign_net_buy_avg_1d=None,
         foreign_net_buy_avg_5d=None,
+        foreign_net_buy_avg_10d=None,
         foreign_net_buy_avg_20d=None,
         foreign_net_buy_avg_60d=None,
     )
@@ -199,72 +226,30 @@ def compute_foreign_flow_features(
     else:
         data_status = FlowDataStatus.READY
 
-    # 7. Window Computations (1D, 5D, 20D, 60D)
+    # 7. Window Computations (1D, 5D, 10D, 20D, 60D)
     net_buys = df_t["foreign_net_buy_value"].to_numpy(dtype=float)
     trading_vals = df_t["trading_value"].to_numpy(dtype=float)
 
-    # 1D
-    net_buy_1d = float(net_buys[-1]) if obs_count >= 1 else None
-
-    # 5D
-    if obs_count >= 5:
-        w5_net = net_buys[-5:]
-        w5_tv = trading_vals[-5:]
-        net_buy_5d = float(np.sum(w5_net))
-        net_buy_avg_5d = float(np.mean(w5_net))
-        pos_days_5d = int(np.sum(w5_net > 0))
-        pos_ratio_5d = round(pos_days_5d / 5.0, 4)
-
-        if np.isnan(w5_tv).any() or np.sum(w5_tv) <= 0:
-            intensity_5d = None
+    def _window_features(window: int) -> tuple[float | None, float | None, float | None, int | None, float | None]:
+        if obs_count < window:
+            return None, None, None, None, None
+        window_net = net_buys[-window:]
+        window_tv = trading_vals[-window:]
+        net_value = float(np.sum(window_net))
+        average = float(np.mean(window_net))
+        positive_days = int(np.sum(window_net > 0))
+        positive_ratio = round(positive_days / float(window), 4)
+        if np.isnan(window_tv).any() or np.sum(window_tv) <= 0:
+            intensity = None
         else:
-            intensity_5d = float(np.sum(w5_net) / np.sum(w5_tv))
-    else:
-        net_buy_5d = None
-        net_buy_avg_5d = None
-        pos_days_5d = None
-        pos_ratio_5d = None
-        intensity_5d = None
+            intensity = float(np.sum(window_net) / np.sum(window_tv))
+        return net_value, average, intensity, positive_days, positive_ratio
 
-    # 20D
-    if obs_count >= 20:
-        w20_net = net_buys[-20:]
-        w20_tv = trading_vals[-20:]
-        net_buy_20d = float(np.sum(w20_net))
-        net_buy_avg_20d = float(np.mean(w20_net))
-        pos_days_20d = int(np.sum(w20_net > 0))
-        pos_ratio_20d = round(pos_days_20d / 20.0, 4)
-
-        if np.isnan(w20_tv).any() or np.sum(w20_tv) <= 0:
-            intensity_20d = None
-        else:
-            intensity_20d = float(np.sum(w20_net) / np.sum(w20_tv))
-    else:
-        net_buy_20d = None
-        net_buy_avg_20d = None
-        pos_days_20d = None
-        pos_ratio_20d = None
-        intensity_20d = None
-
-    # 60D
-    if obs_count >= 60:
-        w60_net = net_buys[-60:]
-        w60_tv = trading_vals[-60:]
-        net_buy_60d = float(np.sum(w60_net))
-        net_buy_avg_60d = float(np.mean(w60_net))
-        pos_days_60d = int(np.sum(w60_net > 0))
-        pos_ratio_60d = round(pos_days_60d / 60.0, 4)
-
-        if np.isnan(w60_tv).any() or np.sum(w60_tv) <= 0:
-            intensity_60d = None
-        else:
-            intensity_60d = float(np.sum(w60_net) / np.sum(w60_tv))
-    else:
-        net_buy_60d = None
-        net_buy_avg_60d = None
-        pos_days_60d = None
-        pos_ratio_60d = None
-        intensity_60d = None
+    net_buy_1d, net_buy_avg_1d, intensity_1d, pos_days_1d, pos_ratio_1d = _window_features(1)
+    net_buy_5d, net_buy_avg_5d, intensity_5d, pos_days_5d, pos_ratio_5d = _window_features(5)
+    net_buy_10d, net_buy_avg_10d, intensity_10d, pos_days_10d, pos_ratio_10d = _window_features(10)
+    net_buy_20d, net_buy_avg_20d, intensity_20d, pos_days_20d, pos_ratio_20d = _window_features(20)
+    net_buy_60d, net_buy_avg_60d, intensity_60d, pos_days_60d, pos_ratio_60d = _window_features(60)
 
     return ForeignFlowFeatureResult(
         ticker=ticker,
@@ -275,18 +260,27 @@ def compute_foreign_flow_features(
         foreign_flow_observation_count=obs_count,
         foreign_net_buy_value_1d=net_buy_1d,
         foreign_net_buy_value_5d=net_buy_5d,
+        foreign_net_buy_value_10d=net_buy_10d,
         foreign_net_buy_value_20d=net_buy_20d,
         foreign_net_buy_value_60d=net_buy_60d,
+        foreign_flow_intensity_1d=intensity_1d,
         foreign_flow_intensity_5d=intensity_5d,
+        foreign_flow_intensity_10d=intensity_10d,
         foreign_flow_intensity_20d=intensity_20d,
         foreign_flow_intensity_60d=intensity_60d,
+        foreign_positive_days_1d=pos_days_1d,
         foreign_positive_days_5d=pos_days_5d,
+        foreign_positive_days_10d=pos_days_10d,
         foreign_positive_days_20d=pos_days_20d,
         foreign_positive_days_60d=pos_days_60d,
+        foreign_positive_day_ratio_1d=pos_ratio_1d,
         foreign_positive_day_ratio_5d=pos_ratio_5d,
+        foreign_positive_day_ratio_10d=pos_ratio_10d,
         foreign_positive_day_ratio_20d=pos_ratio_20d,
         foreign_positive_day_ratio_60d=pos_ratio_60d,
+        foreign_net_buy_avg_1d=net_buy_avg_1d,
         foreign_net_buy_avg_5d=net_buy_avg_5d,
+        foreign_net_buy_avg_10d=net_buy_avg_10d,
         foreign_net_buy_avg_20d=net_buy_avg_20d,
         foreign_net_buy_avg_60d=net_buy_avg_60d,
     )

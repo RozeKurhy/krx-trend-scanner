@@ -378,18 +378,27 @@ class PatternAUniverseScanRow:
     foreign_flow_observation_count: int = 0
     foreign_net_buy_value_1d: float | None = None
     foreign_net_buy_value_5d: float | None = None
+    foreign_net_buy_value_10d: float | None = None
     foreign_net_buy_value_20d: float | None = None
     foreign_net_buy_value_60d: float | None = None
+    foreign_flow_intensity_1d: float | None = None
     foreign_flow_intensity_5d: float | None = None
+    foreign_flow_intensity_10d: float | None = None
     foreign_flow_intensity_20d: float | None = None
     foreign_flow_intensity_60d: float | None = None
+    foreign_positive_days_1d: int | None = None
     foreign_positive_days_5d: int | None = None
+    foreign_positive_days_10d: int | None = None
     foreign_positive_days_20d: int | None = None
     foreign_positive_days_60d: int | None = None
+    foreign_positive_day_ratio_1d: float | None = None
     foreign_positive_day_ratio_5d: float | None = None
+    foreign_positive_day_ratio_10d: float | None = None
     foreign_positive_day_ratio_20d: float | None = None
     foreign_positive_day_ratio_60d: float | None = None
     foreign_net_buy_avg_5d: float | None = None
+    foreign_net_buy_avg_1d: float | None = None
+    foreign_net_buy_avg_10d: float | None = None
     foreign_net_buy_avg_20d: float | None = None
     foreign_net_buy_avg_60d: float | None = None
 
@@ -532,18 +541,27 @@ class PatternAUniverseScanRow:
             "foreign_flow_observation_count": self.foreign_flow_observation_count,
             "foreign_net_buy_value_1d": self.foreign_net_buy_value_1d,
             "foreign_net_buy_value_5d": self.foreign_net_buy_value_5d,
+            "foreign_net_buy_value_10d": self.foreign_net_buy_value_10d,
             "foreign_net_buy_value_20d": self.foreign_net_buy_value_20d,
             "foreign_net_buy_value_60d": self.foreign_net_buy_value_60d,
+            "foreign_flow_intensity_1d": self.foreign_flow_intensity_1d,
             "foreign_flow_intensity_5d": self.foreign_flow_intensity_5d,
+            "foreign_flow_intensity_10d": self.foreign_flow_intensity_10d,
             "foreign_flow_intensity_20d": self.foreign_flow_intensity_20d,
             "foreign_flow_intensity_60d": self.foreign_flow_intensity_60d,
+            "foreign_positive_days_1d": self.foreign_positive_days_1d,
             "foreign_positive_days_5d": self.foreign_positive_days_5d,
+            "foreign_positive_days_10d": self.foreign_positive_days_10d,
             "foreign_positive_days_20d": self.foreign_positive_days_20d,
             "foreign_positive_days_60d": self.foreign_positive_days_60d,
+            "foreign_positive_day_ratio_1d": self.foreign_positive_day_ratio_1d,
             "foreign_positive_day_ratio_5d": self.foreign_positive_day_ratio_5d,
+            "foreign_positive_day_ratio_10d": self.foreign_positive_day_ratio_10d,
             "foreign_positive_day_ratio_20d": self.foreign_positive_day_ratio_20d,
             "foreign_positive_day_ratio_60d": self.foreign_positive_day_ratio_60d,
             "foreign_net_buy_avg_5d": self.foreign_net_buy_avg_5d,
+            "foreign_net_buy_avg_1d": self.foreign_net_buy_avg_1d,
+            "foreign_net_buy_avg_10d": self.foreign_net_buy_avg_10d,
             "foreign_net_buy_avg_20d": self.foreign_net_buy_avg_20d,
             "foreign_net_buy_avg_60d": self.foreign_net_buy_avg_60d,
             "market_rs_data_status": self.market_rs_data_status,
@@ -1417,18 +1435,27 @@ def scan_pattern_a_universe(
                     foreign_flow_observation_count=0,
                     foreign_net_buy_value_1d=None,
                     foreign_net_buy_value_5d=None,
+                    foreign_net_buy_value_10d=None,
                     foreign_net_buy_value_20d=None,
                     foreign_net_buy_value_60d=None,
+                    foreign_flow_intensity_1d=None,
                     foreign_flow_intensity_5d=None,
+                    foreign_flow_intensity_10d=None,
                     foreign_flow_intensity_20d=None,
                     foreign_flow_intensity_60d=None,
+                    foreign_positive_days_1d=None,
                     foreign_positive_days_5d=None,
+                    foreign_positive_days_10d=None,
                     foreign_positive_days_20d=None,
                     foreign_positive_days_60d=None,
+                    foreign_positive_day_ratio_1d=None,
                     foreign_positive_day_ratio_5d=None,
+                    foreign_positive_day_ratio_10d=None,
                     foreign_positive_day_ratio_20d=None,
                     foreign_positive_day_ratio_60d=None,
                     foreign_net_buy_avg_5d=None,
+                    foreign_net_buy_avg_1d=None,
+                    foreign_net_buy_avg_10d=None,
                     foreign_net_buy_avg_20d=None,
                     foreign_net_buy_avg_60d=None,
                 )
@@ -1583,18 +1610,27 @@ def scan_pattern_a_universe(
                 foreign_flow_observation_count=flow_res.foreign_flow_observation_count,
                 foreign_net_buy_value_1d=flow_res.foreign_net_buy_value_1d,
                 foreign_net_buy_value_5d=flow_res.foreign_net_buy_value_5d,
+                foreign_net_buy_value_10d=flow_res.foreign_net_buy_value_10d,
                 foreign_net_buy_value_20d=flow_res.foreign_net_buy_value_20d,
                 foreign_net_buy_value_60d=flow_res.foreign_net_buy_value_60d,
+                foreign_flow_intensity_1d=flow_res.foreign_flow_intensity_1d,
                 foreign_flow_intensity_5d=flow_res.foreign_flow_intensity_5d,
+                foreign_flow_intensity_10d=flow_res.foreign_flow_intensity_10d,
                 foreign_flow_intensity_20d=flow_res.foreign_flow_intensity_20d,
                 foreign_flow_intensity_60d=flow_res.foreign_flow_intensity_60d,
+                foreign_positive_days_1d=flow_res.foreign_positive_days_1d,
                 foreign_positive_days_5d=flow_res.foreign_positive_days_5d,
+                foreign_positive_days_10d=flow_res.foreign_positive_days_10d,
                 foreign_positive_days_20d=flow_res.foreign_positive_days_20d,
                 foreign_positive_days_60d=flow_res.foreign_positive_days_60d,
+                foreign_positive_day_ratio_1d=flow_res.foreign_positive_day_ratio_1d,
                 foreign_positive_day_ratio_5d=flow_res.foreign_positive_day_ratio_5d,
+                foreign_positive_day_ratio_10d=flow_res.foreign_positive_day_ratio_10d,
                 foreign_positive_day_ratio_20d=flow_res.foreign_positive_day_ratio_20d,
                 foreign_positive_day_ratio_60d=flow_res.foreign_positive_day_ratio_60d,
                 foreign_net_buy_avg_5d=flow_res.foreign_net_buy_avg_5d,
+                foreign_net_buy_avg_1d=flow_res.foreign_net_buy_avg_1d,
+                foreign_net_buy_avg_10d=flow_res.foreign_net_buy_avg_10d,
                 foreign_net_buy_avg_20d=flow_res.foreign_net_buy_avg_20d,
                 foreign_net_buy_avg_60d=flow_res.foreign_net_buy_avg_60d,
                 market_rs_data_status=rs_res.market_rs_data_status.value,

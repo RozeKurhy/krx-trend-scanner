@@ -132,6 +132,16 @@ class ForeignFlowSection:
     foreign_positive_days_5d: int | None
     foreign_positive_days_20d: int | None
     foreign_positive_days_60d: int | None
+    foreign_net_buy_value_10d_krw: float | None = None
+    foreign_flow_intensity_1d: float | None = None
+    foreign_flow_intensity_10d: float | None = None
+    foreign_positive_days_1d: int | None = None
+    foreign_positive_days_10d: int | None = None
+    foreign_positive_day_ratio_1d: float | None = None
+    foreign_positive_day_ratio_5d: float | None = None
+    foreign_positive_day_ratio_10d: float | None = None
+    foreign_positive_day_ratio_20d: float | None = None
+    foreign_positive_day_ratio_60d: float | None = None
 
 
 @dataclass
@@ -214,6 +224,8 @@ class TradingValueFlowSection:
     avg_trading_value_60d_eok: float | None
     ratio_5d_to_20d: float | None
     ratio_20d_to_60d: float | None
+    avg_trading_value_1d_eok: float | None = None
+    avg_trading_value_10d_eok: float | None = None
 
 
 @dataclass

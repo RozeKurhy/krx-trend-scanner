@@ -82,12 +82,14 @@
     NO_EXIT_BEFORE_CUTOFF: "기준일 현재 보유 중",
   };
   const DETAIL_BUTTON_LABELS = {
+    price: "가격·추세",
     pattern: "패턴 점수",
     market: "마켓 RS",
     flow: "수급",
     strategy: "전략",
   };
   const DETAIL_BUTTON_IDS = {
+    price: "price-card",
     pattern: "pattern-card",
     market: "market-card",
     flow: "flow-card",
@@ -589,6 +591,27 @@
     if (market.explanation) appendDetailNote(container, market.explanation);
   }
 
+  function renderPriceDetail(report, container) {
+    const price = report.price_trend;
+    if (!price) {
+      appendDetailEmpty(container, "가격·거래대금 정보가 없습니다.");
+      return;
+    }
+    const valueLabel = (value) => value == null || !Number.isFinite(Number(value))
+      ? "—"
+      : `${formatNumber(value, 2)}억원`;
+    const rows = [
+      ["1일", valueLabel(price.avg_trading_value_1d_eok)],
+      ["5일", valueLabel(price.avg_trading_value_5d_eok)],
+      ["10일", valueLabel(price.avg_trading_value_10d_eok)],
+      ["20일", valueLabel(price.avg_trading_value_20d_eok)],
+      ["60일", valueLabel(price.avg_trading_value_60d_eok)],
+    ];
+    container.appendChild(createDetailTable(["기간", "평균 거래대금"], rows));
+    appendDetailNote(container, `거래대금 상태: ${tradingValueLabel(price.trading_value_state)}`);
+    if (price.trading_value_explanation) appendDetailNote(container, price.trading_value_explanation);
+  }
+
   function signedValueClass(value) {
     if (value == null || !Number.isFinite(Number(value)) || Number(value) === 0) return "";
     return Number(value) > 0 ? "detail-value-positive" : "detail-value-negative";
@@ -601,8 +624,9 @@
       return;
     }
     const rows = [
-      ["1일", { value: formatKrwCompact(flow.net_buy_value_1d_krw), className: signedValueClass(flow.net_buy_value_1d_krw) }, "—", "—"],
+      ["1일", { value: formatKrwCompact(flow.net_buy_value_1d_krw), className: signedValueClass(flow.net_buy_value_1d_krw) }, { value: formatSignedRate(flow.intensity_1d), className: signedValueClass(flow.intensity_1d) }, flow.positive_days_1d == null ? "—" : `${formatNumber(flow.positive_days_1d)}일`],
       ["5일", { value: formatKrwCompact(flow.net_buy_value_5d_krw), className: signedValueClass(flow.net_buy_value_5d_krw) }, { value: formatSignedRate(flow.intensity_5d), className: signedValueClass(flow.intensity_5d) }, flow.positive_days_5d == null ? "—" : `${formatNumber(flow.positive_days_5d)}일`],
+      ["10일", { value: formatKrwCompact(flow.net_buy_value_10d_krw), className: signedValueClass(flow.net_buy_value_10d_krw) }, { value: formatSignedRate(flow.intensity_10d), className: signedValueClass(flow.intensity_10d) }, flow.positive_days_10d == null ? "—" : `${formatNumber(flow.positive_days_10d)}일`],
       ["20일", { value: formatKrwCompact(flow.net_buy_value_20d_krw), className: signedValueClass(flow.net_buy_value_20d_krw) }, { value: formatSignedRate(flow.intensity_20d), className: signedValueClass(flow.intensity_20d) }, flow.positive_days_20d == null ? "—" : `${formatNumber(flow.positive_days_20d)}일`],
       ["60일", { value: formatKrwCompact(flow.net_buy_value_60d_krw), className: signedValueClass(flow.net_buy_value_60d_krw) }, { value: formatSignedRate(flow.intensity_60d), className: signedValueClass(flow.intensity_60d) }, flow.positive_days_60d == null ? "—" : `${formatNumber(flow.positive_days_60d)}일`],
     ];
@@ -641,7 +665,7 @@
       if (selectedCard) selectedCard.insertAdjacentElement("afterend", panel);
       return;
     }
-    const slot = byId(key === "pattern" || key === "market" ? "top-detail-slot" : "bottom-detail-slot");
+    const slot = byId(key === "price" || key === "pattern" || key === "market" ? "top-detail-slot" : "bottom-detail-slot");
     if (panel && slot) slot.appendChild(panel);
   }
 
@@ -657,7 +681,8 @@
     while (content.firstChild) content.removeChild(content.firstChild);
     positionDetailPanel(key);
     title.textContent = `${DETAIL_BUTTON_LABELS[key]} 상세`;
-    if (key === "pattern") renderPatternDetail(report, content);
+    if (key === "price") renderPriceDetail(report, content);
+    else if (key === "pattern") renderPatternDetail(report, content);
     else if (key === "market") renderMarketDetail(report, content);
     else if (key === "flow") renderFlowDetail(report, content);
     else if (key === "strategy") renderStrategyDetail(report, content);

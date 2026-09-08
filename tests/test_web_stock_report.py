@@ -66,7 +66,7 @@ def test_compact_report_preserves_authority_values_without_raw_markdown(payload)
 def test_all_published_compact_reports_have_ticker_bound_toss_chart(payload):
     _index, reports, _stats = payload
 
-    assert len(reports) == 158
+    assert len(reports) == 276
     for ticker, report in reports.items():
         links = report["external_links"]
         assert links["naver_finance"] == f"https://finance.naver.com/item/main.naver?code={ticker}"
@@ -175,10 +175,20 @@ def test_interaction_detail_payload_preserves_authority_history(payload, exporte
     source_flow = source["foreign_flow"]
     assert compact["flow"]["net_buy_value_1d_krw"] == source_flow["foreign_net_buy_value_1d_krw"]
     assert compact["flow"]["net_buy_value_5d_krw"] == source_flow["foreign_net_buy_value_5d_krw"]
+    assert compact["flow"]["net_buy_value_10d_krw"] == source_flow["foreign_net_buy_value_10d_krw"]
     assert compact["flow"]["net_buy_value_20d_krw"] == source_flow["foreign_net_buy_value_20d_krw"]
     assert compact["flow"]["net_buy_value_60d_krw"] == source_flow["foreign_net_buy_value_60d_krw"]
+    assert compact["flow"]["positive_days_1d"] == source_flow["foreign_positive_days_1d"]
+    assert compact["flow"]["positive_days_10d"] == source_flow["foreign_positive_days_10d"]
     assert compact["flow"]["positive_days_20d"] == source_flow["foreign_positive_days_20d"]
+    assert compact["flow"]["intensity_1d"] == source_flow["foreign_flow_intensity_1d"]
     assert compact["flow"]["intensity_5d"] == source_flow["foreign_flow_intensity_5d"]
+    assert compact["flow"]["intensity_10d"] == source_flow["foreign_flow_intensity_10d"]
+
+    source_tv = source["trading_value_flow"]
+    for window in (1, 5, 10, 20, 60):
+        field = f"avg_trading_value_{window}d_eok"
+        assert compact["price_trend"][field] == source_tv[field]
 
     source_strategy = source["a_fast_core"]
     history = compact["strategy"]["history"]
@@ -215,15 +225,15 @@ def test_report_frontend_has_safe_states_and_relative_assets():
     css = (ROOT / "web/css/app.css").read_text(encoding="utf-8")
     favicon = (ROOT / "web/favicon.svg").read_text(encoding="utf-8")
 
-    assert 'href="./css/app.css?v=web-02c-toss-1"' in html
+    assert 'href="./css/app.css?v=web-02d-window-1"' in html
     assert 'href="./css/app.css?v=web-02c-toss-1"' in index_html
     assert 'href="./favicon.svg"' in html
     assert 'href="./favicon.svg"' in index_html
     assert (ROOT / "web/favicon.svg").exists()
     assert '#9f1d2f' in favicon
-    assert 'src="./js/report.js?v=web-02c-toss-1"' in html
+    assert 'src="./js/report.js?v=web-02d-window-1"' in html
     assert 'src="./js/app.js?v=web-02c-toss-1"' in index_html
-    assert html.count("web-02c-toss-1") == 2
+    assert html.count("web-02d-window-1") == 2
     assert index_html.count("web-02c-toss-1") == 2
     assert "web-03a-final-1" not in html
     assert "web-03a-final-1" not in index_html
@@ -269,10 +279,14 @@ def test_report_frontend_has_safe_states_and_relative_assets():
     assert 'setHidden("search-no-results", true);' in js
     assert "PATTERN_STEPS" in js
     assert 'id="pattern-card"' in html
+    assert 'id="price-card"' in html
     assert 'id="market-card"' in html
     assert 'id="flow-card"' in html
     assert 'id="strategy-card"' in html
-    assert html.count("상세 보기 ›") == 4
+    assert html.count("상세 보기 ›") == 5
+    assert "avg_trading_value_1d_eok" in js
+    assert "avg_trading_value_10d_eok" in js
+    assert "net_buy_value_10d_krw" in js
     assert "report-card-affordance" in js and "상세 닫기 ×" in js
     assert '.report-card-button { appearance: none; width: 100%; border-color: var(--line-strong); background: var(--surface);' in css
     assert 'const REPORT_MOBILE_QUERY = "(max-width: 560px)";' in js

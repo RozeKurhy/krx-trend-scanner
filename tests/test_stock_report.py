@@ -36,6 +36,7 @@ from trend_scanner.reporting.models import (
     TradingValueState,
 )
 from trend_scanner.reporting.stock_report import (
+    _calculate_trading_value_window_averages,
     _determine_trading_value_state_and_explanation,
     _get_reference_market_month_ends,
     _resolve_latest_local_as_of,
@@ -287,6 +288,16 @@ def test_stock_report_trading_value_arithmetic(report_001540_20260814: StockRepo
     assert tv.avg_trading_value_60d_eok == pytest.approx(22.12, abs=0.01)
     assert tv.ratio_5d_to_20d == pytest.approx(1.47, abs=0.01)
     assert tv.ratio_20d_to_60d == pytest.approx(0.63, abs=0.01)
+
+
+def test_trading_value_additive_windows_fail_closed_when_history_is_short():
+    values = pd.Series([100.0] * 9)
+    windows = _calculate_trading_value_window_averages(values)
+    assert windows[1] == pytest.approx(1e-6)
+    assert windows[5] == pytest.approx(1e-6)
+    assert windows[10] is None
+    assert windows[20] is None
+    assert windows[60] is None
 
 
 def test_stock_report_deterministic_output():
