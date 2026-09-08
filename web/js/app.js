@@ -100,6 +100,7 @@
     const sourcePath = (section, child) => {
       if (!section || !section.source) return "—";
       const source = child ? section.source[child] : section.source;
+      if (typeof source === "string") return source;
       return source && source.path ? source.path : "—";
     };
     setText("market-source", sourcePath(health.market_data));

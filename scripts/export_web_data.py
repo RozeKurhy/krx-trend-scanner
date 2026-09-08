@@ -11,26 +11,23 @@ from __future__ import annotations
 
 import argparse
 from collections import Counter
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 import json
 from pathlib import Path
 import os
+import re
 import tempfile
 from typing import Any, Iterable, Mapping
 
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_OUTPUT_DIR = ROOT / "web/data"
-SCAN_SUMMARY_PATH = ROOT / (
-    "artifacts/patterns/pattern_a/production/scanner/"
-    "pattern_a_universe_scan_20260904_summary.json"
-)
+SCANNER_DIR = ROOT / "artifacts/patterns/pattern_a/production/scanner"
+SCANNER_SUMMARY_PATTERN = "pattern_a_universe_scan_*_summary.json"
 MARKET_AUTHORITY_MANIFEST_PATH = ROOT / "data/market/rolling_authority/manifest.json"
 METADATA_PATH = ROOT / "data/reference/krx_instrument_metadata.parquet"
-FUNDAMENTALS_ROOT = ROOT / "artifacts/fundamentals/production/20260904"
-FUNDAMENTALS_TICKERS_DIR = FUNDAMENTALS_ROOT / "tickers"
-FUNDAMENTALS_CHECKPOINT_PATH = FUNDAMENTALS_ROOT / "daily_quota_checkpoint.json"
-STOCK_REPORTS_DIR = ROOT / "artifacts/reporting/stock_reports/20260904"
+FUNDAMENTALS_PRODUCTION_ROOT = ROOT / "artifacts/fundamentals/production"
+STOCK_REPORTS_ROOT = ROOT / "artifacts/reporting/stock_reports"
 
 VALID_STATUSES = {
     "NORMAL",
@@ -72,15 +69,67 @@ def _source(path: Path, *, as_of: str | None = None, generated_at: str | None = 
     return value
 
 
+def _resolve_scanner_summary() -> Path:
+    """Resolve the newest valid production summary by authority date.
+
+    There is no current-summary pointer in this repository, so candidates are
+    resolved from the production scanner directory.  Selection is deterministic
+    by the exact requested/reference date encoded in each valid summary, never
+    by filesystem modification time.
+    """
+
+    candidates: list[tuple[date, Path]] = []
+    pattern = re.compile(r"^pattern_a_universe_scan_(\d{8})_summary\.json$")
+    for path in sorted(SCANNER_DIR.glob(SCANNER_SUMMARY_PATTERN)):
+        match = pattern.fullmatch(path.name)
+        if match is None:
+            continue
+        try:
+            summary = _read_json(path)
+        except (OSError, UnicodeError, json.JSONDecodeError, ValueError):
+            continue
+        requested = str(summary.get("requested_as_of") or "")[:10]
+        reference = str(summary.get("reference_market_date") or "")[:10]
+        if not requested or requested != reference:
+            continue
+        try:
+            authority_date = date.fromisoformat(requested)
+        except ValueError:
+            continue
+        if authority_date.strftime("%Y%m%d") != match.group(1):
+            continue
+        candidates.append((authority_date, path))
+
+    if not candidates:
+        raise FileNotFoundError("no valid production scanner summary authority found")
+    return max(candidates, key=lambda item: (item[0], item[1].name))[1]
+
+
 def _load_as_of() -> tuple[str, str]:
     """Read the exact requested/reference date from the scanner authority."""
 
-    summary = _read_json(SCAN_SUMMARY_PATH)
+    summary = _read_json(_resolve_scanner_summary())
     requested = str(summary.get("requested_as_of") or "")[:10]
     reference = str(summary.get("reference_market_date") or "")[:10]
     if not requested or requested != reference:
         raise ValueError("scanner authority does not expose one exact as_of date")
     return requested, reference
+
+
+def _production_paths(requested_as_of: str) -> dict[str, Path]:
+    """Build all date-scoped downstream paths from the canonical as_of."""
+
+    try:
+        date_key = date.fromisoformat(requested_as_of).strftime("%Y%m%d")
+    except ValueError as exc:
+        raise ValueError("requested_as_of must be an ISO date") from exc
+    fundamentals_root = FUNDAMENTALS_PRODUCTION_ROOT / date_key
+    return {
+        "fundamentals_root": fundamentals_root,
+        "fundamentals_tickers": fundamentals_root / "tickers",
+        "fundamentals_checkpoint": fundamentals_root / "daily_quota_checkpoint.json",
+        "stock_reports": STOCK_REPORTS_ROOT / date_key,
+    }
 
 
 def _load_universe(requested_as_of: str) -> tuple[set[str], str, Counter[str]]:
@@ -133,6 +182,7 @@ def _load_universe(requested_as_of: str) -> tuple[set[str], str, Counter[str]]:
 def _valid_fundamentals_outputs(
     expected_tickers: Iterable[str],
     requested_as_of: str,
+    tickers_dir: Path,
 ) -> tuple[dict[str, dict[str, Any]], dict[str, int]]:
     """Recount valid F7 outputs without opening raw filings or cache data."""
 
@@ -144,10 +194,10 @@ def _valid_fundamentals_outputs(
     outside_universe_count = 0
     duplicate_payload_count = 0
 
-    if not FUNDAMENTALS_TICKERS_DIR.exists():
-        raise FileNotFoundError(f"F7 production output directory missing: {FUNDAMENTALS_TICKERS_DIR}")
+    if not tickers_dir.exists():
+        raise FileNotFoundError(f"F7 production output directory missing: {tickers_dir}")
 
-    for path in sorted(FUNDAMENTALS_TICKERS_DIR.glob("*.json")):
+    for path in sorted(tickers_dir.glob("*.json")):
         try:
             value = _read_json(path)
         except (OSError, UnicodeError, json.JSONDecodeError, ValueError):
@@ -184,14 +234,31 @@ def _valid_fundamentals_outputs(
     return valid, counts
 
 
-def _build_fundamentals(requested_as_of: str, universe_tickers: set[str]) -> dict[str, Any]:
-    valid, counts = _valid_fundamentals_outputs(universe_tickers, requested_as_of)
+def _fundamentals_status(*, completed: int, total: int, integrity_ok: bool) -> str:
+    if not integrity_ok:
+        return "CHECK_REQUIRED"
+    if completed < total:
+        return "UPDATING"
+    return "NORMAL"
+
+
+def _build_fundamentals(
+    requested_as_of: str,
+    universe_tickers: set[str],
+    paths: Mapping[str, Path],
+) -> dict[str, Any]:
+    valid, counts = _valid_fundamentals_outputs(
+        universe_tickers,
+        requested_as_of,
+        paths["fundamentals_tickers"],
+    )
     total = len(universe_tickers)
     completed = len(valid)
     remaining = total - completed
     percentage = round((completed / total) * 100, 1) if total else 0.0
 
-    checkpoint = _read_json(FUNDAMENTALS_CHECKPOINT_PATH)
+    checkpoint_path = paths["fundamentals_checkpoint"]
+    checkpoint = _read_json(checkpoint_path)
     run_status = str(checkpoint.get("status") or "UNKNOWN")
     output_integrity_ok = not any(
         counts[key] for key in (
@@ -200,12 +267,11 @@ def _build_fundamentals(requested_as_of: str, universe_tickers: set[str]) -> dic
             "duplicate_payload_count",
         )
     )
-    if not output_integrity_ok:
-        status = "CHECK_REQUIRED"
-    elif completed < total:
-        status = "UPDATING"
-    else:
-        status = "NORMAL"
+    status = _fundamentals_status(
+        completed=completed,
+        total=total,
+        integrity_ok=output_integrity_ok,
+    )
 
     return {
         "status": status,
@@ -224,9 +290,9 @@ def _build_fundamentals(requested_as_of: str, universe_tickers: set[str]) -> dic
             "duplicate_payload_count": counts["duplicate_payload_count"],
         },
         "source": {
-            "production_directory": _relative(FUNDAMENTALS_ROOT),
-            "checkpoint": _source(FUNDAMENTALS_CHECKPOINT_PATH, as_of=requested_as_of),
-            "outputs": _source(FUNDAMENTALS_TICKERS_DIR, as_of=requested_as_of),
+            "production_directory": _relative(paths["fundamentals_root"]),
+            "checkpoint": _source(checkpoint_path, as_of=requested_as_of),
+            "outputs": _source(paths["fundamentals_tickers"], as_of=requested_as_of),
         },
     }
 
@@ -261,17 +327,19 @@ def _build_universe(snapshot_date: str, tickers: set[str], asset_counts: Counter
     }
 
 
-def _count_stock_report_artifacts() -> int:
-    if not STOCK_REPORTS_DIR.exists():
+def _count_stock_report_artifacts(stock_reports_dir: Path) -> int:
+    if not stock_reports_dir.exists():
         return 0
-    return sum(1 for path in STOCK_REPORTS_DIR.glob("*.md") if path.is_file())
+    return sum(1 for path in stock_reports_dir.glob("*.md") if path.is_file())
 
 
 def _build_downstream_section(
-    name: str,
     fundamentals_status: str,
     *,
+    checkpoint_path: Path,
+    requested_as_of: str,
     existing_artifact_count: int | None = None,
+    stock_reports_dir: Path | None = None,
 ) -> dict[str, Any]:
     if fundamentals_status in {"UPDATING", "CHECK_REQUIRED"}:
         status = "WAITING" if fundamentals_status == "UPDATING" else "CHECK_REQUIRED"
@@ -286,11 +354,11 @@ def _build_downstream_section(
     value: dict[str, Any] = {
         "status": status,
         "reason": reason,
-        "source": _source(FUNDAMENTALS_CHECKPOINT_PATH),
+        "source": _source(checkpoint_path, as_of=requested_as_of),
     }
-    if existing_artifact_count is not None:
+    if existing_artifact_count is not None and stock_reports_dir is not None:
         value["existing_artifact_count"] = existing_artifact_count
-        value["artifact_source"] = _source(STOCK_REPORTS_DIR, as_of="2026-09-04")
+        value["artifact_source"] = _source(stock_reports_dir, as_of=requested_as_of)
     return value
 
 
@@ -329,17 +397,28 @@ def build_health(repo_root: Path = ROOT, *, generated_at: str | None = None) -> 
     if repo_root != ROOT:
         raise ValueError("WEB-01 exporter is bound to the repository root")
     requested_as_of, _ = _load_as_of()
+    paths = _production_paths(requested_as_of)
     universe_tickers, snapshot_date, asset_counts = _load_universe(requested_as_of)
-    fundamentals = _build_fundamentals(requested_as_of, universe_tickers)
+    fundamentals = _build_fundamentals(requested_as_of, universe_tickers, paths)
     market_data = _build_market_data(requested_as_of)
-    stock_report_count = _count_stock_report_artifacts()
+    stock_report_count = _count_stock_report_artifacts(paths["stock_reports"])
     stock_reports = _build_downstream_section(
-        "stock_reports",
         fundamentals["status"],
+        checkpoint_path=paths["fundamentals_checkpoint"],
+        requested_as_of=requested_as_of,
         existing_artifact_count=stock_report_count,
+        stock_reports_dir=paths["stock_reports"],
     )
-    analysis = _build_downstream_section("analysis", fundamentals["status"])
-    backtest = _build_downstream_section("backtest", fundamentals["status"])
+    analysis = _build_downstream_section(
+        fundamentals["status"],
+        checkpoint_path=paths["fundamentals_checkpoint"],
+        requested_as_of=requested_as_of,
+    )
+    backtest = _build_downstream_section(
+        fundamentals["status"],
+        checkpoint_path=paths["fundamentals_checkpoint"],
+        requested_as_of=requested_as_of,
+    )
     sections = {
         "market_data": market_data,
         "universe": _build_universe(snapshot_date, universe_tickers, asset_counts),

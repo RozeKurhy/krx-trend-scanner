@@ -41,17 +41,69 @@ def test_exporter_writes_valid_compact_public_health_json(tmp_path, exporter, he
         assert isinstance(loaded[section], dict)
 
 
-def test_health_uses_actual_current_authority_values(health):
-    assert health["market_data"]["latest_trading_date"] == "2026-09-04"
-    assert health["universe"]["count"] == 4407
+def test_health_uses_actual_resolved_authority_values(health, exporter):
+    requested_as_of, reference_market_date = exporter._load_as_of()
+    resolved_tickers, _, _ = exporter._load_universe(requested_as_of)
+    market_manifest = exporter._read_json(exporter.MARKET_AUTHORITY_MANIFEST_PATH)
+    certified_through = str(market_manifest["certified_through"])[:10]
+
+    assert health["market_data"]["latest_trading_date"] == certified_through
+    assert health["market_data"]["latest_trading_date"] == reference_market_date
+    assert health["universe"]["count"] == len(resolved_tickers)
+    assert health["fundamentals"]["requested_as_of"] == requested_as_of
     fundamentals = health["fundamentals"]
     assert fundamentals["completed"] == fundamentals["output_integrity"]["valid_output_count"]
     assert fundamentals["completed"] + fundamentals["remaining"] == fundamentals["total"]
     assert fundamentals["percentage"] == round(
         fundamentals["completed"] / fundamentals["total"] * 100, 1
     )
-    assert fundamentals["status"] == "UPDATING"
-    assert health["overall_status"] == "UPDATING"
+    expected_status = exporter._fundamentals_status(
+        completed=fundamentals["completed"],
+        total=fundamentals["total"],
+        integrity_ok=(
+            fundamentals["output_integrity"]["invalid_output_count"] == 0
+            and fundamentals["output_integrity"]["outside_universe_count"] == 0
+            and fundamentals["output_integrity"]["duplicate_payload_count"] == 0
+        ),
+    )
+    assert fundamentals["status"] == expected_status
+    expected_overall = exporter._overall_status(
+        {
+            key: health[key]
+            for key in ("market_data", "universe", "fundamentals", "stock_reports", "analysis", "backtest")
+        }
+    )
+    assert health["overall_status"] == expected_overall
+
+
+def test_date_key_drives_fundamentals_and_stock_report_paths(exporter, health):
+    requested_as_of, _ = exporter._load_as_of()
+    date_key = requested_as_of.replace("-", "")
+    paths = exporter._production_paths(requested_as_of)
+    summary_path = exporter._resolve_scanner_summary()
+
+    assert re.fullmatch(r"\d{4}-\d{2}-\d{2}", requested_as_of)
+    assert summary_path.name.endswith(f"{date_key}_summary.json")
+    assert paths["fundamentals_root"].name == date_key
+    assert paths["fundamentals_tickers"] == paths["fundamentals_root"] / "tickers"
+    assert paths["fundamentals_checkpoint"] == paths["fundamentals_root"] / "daily_quota_checkpoint.json"
+    assert paths["stock_reports"].name == date_key
+    assert health["fundamentals"]["source"]["production_directory"] == paths["fundamentals_root"].relative_to(exporter.ROOT).as_posix()
+    assert health["stock_reports"]["artifact_source"]["path"] == paths["stock_reports"].relative_to(exporter.ROOT).as_posix()
+    assert health["stock_reports"]["artifact_source"]["as_of"] == requested_as_of
+
+
+def test_fundamentals_status_rule_is_invariant(exporter):
+    assert exporter._fundamentals_status(completed=0, total=1, integrity_ok=False) == "CHECK_REQUIRED"
+    assert exporter._fundamentals_status(completed=0, total=1, integrity_ok=True) == "UPDATING"
+    assert exporter._fundamentals_status(completed=1, total=1, integrity_ok=True) == "NORMAL"
+
+
+def test_overall_status_uses_declared_priority(exporter):
+    priority = ["CHECK_REQUIRED", "UPDATING", "WAITING", "UNKNOWN", "NORMAL"]
+    for index, expected in enumerate(priority):
+        sections = {f"section_{n}": {"status": status} for n, status in enumerate(priority[index:])}
+        assert exporter._overall_status(sections) == expected
 
 
 def test_public_health_has_no_local_paths_or_secrets(health):
@@ -60,6 +112,7 @@ def test_public_health_has_no_local_paths_or_secrets(health):
         assert forbidden not in serialized
     assert "data/reference/krx_instrument_metadata.parquet" in serialized
     assert "/Users/june" not in serialized
+    assert isinstance(health["fundamentals"]["source"]["production_directory"], str)
 
 
 def test_static_frontend_uses_relative_assets_and_required_dom():
@@ -73,6 +126,7 @@ def test_static_frontend_uses_relative_assets_and_required_dom():
     assert 'href="/css/app.css"' not in html
     assert 'src="/js/app.js"' not in html
     assert '"/data/health.json"' not in js
+    assert 'if (typeof source === "string") return source;' in js
     assert "데이터 상태를 불러올 수 없습니다." in html
     assert 'data-status="CHECK_REQUIRED"' in html
     for element_id in (
@@ -88,6 +142,13 @@ def test_static_frontend_uses_relative_assets_and_required_dom():
     assert "innerHTML" not in js
     assert "fetch(HEALTH_URL" in js
     assert "@media (max-width: 560px)" in css
+    nav = re.search(r"<nav class=\"primary-nav\".*?</nav>", html, flags=re.DOTALL)
+    assert nav is not None
+    nav_text = nav.group(0)
+    labels = ["데이터 상태", "시장 랭킹", "종목 리포트", "전략 운용", "전략 설명"]
+    assert [nav_text.index(label) for label in labels] == sorted(nav_text.index(label) for label in labels)
+    assert "분석" not in nav_text
+    assert "백테스트" not in nav_text
 
 
 def test_pages_workflow_is_official_static_deploy_only():
