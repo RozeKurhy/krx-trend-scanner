@@ -39,7 +39,7 @@ def test_strategy_monitor_schema_and_source_count_are_consistent():
     assert monitor["scope"] == {
         "type": "PUBLISHED_REPORTS",
         "label": "현재 공개 리포트 기준",
-        "report_count": 158,
+        "report_count": 276,
     }
     assert monitor["as_of"] == "2026-09-04"
     assert monitor["scope"]["report_count"] == index["available_report_count"] == len(items)
@@ -85,8 +85,8 @@ def test_etf_is_not_in_action_counts_and_has_no_fake_trade():
     assert item["data_status"] == "NOT_APPLICABLE"
     assert item["bucket"] == "unavailable"
     assert item["current_trade"] is None
-    assert monitor["counts"]["unavailable"] == 17
-    assert sum(monitor["counts"][key] for key in ("entry", "hold", "exit")) == 107
+    assert monitor["counts"]["unavailable"] == 28
+    assert sum(monitor["counts"][key] for key in ("entry", "hold", "exit")) == 109
 
 
 def test_strategy_page_is_connected_and_uses_one_release_cache_version():

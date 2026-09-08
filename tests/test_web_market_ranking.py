@@ -33,11 +33,11 @@ def test_market_ranking_schema_scope_and_generated_projection_match():
     assert ranking["scope"] == {
         "type": "PUBLISHED_REPORTS",
         "label": "현재 공개 리포트 기준",
-        "report_count": 158,
+        "report_count": 276,
     }
     assert ranking["metric_scope"] == {"label": "마켓 RS는 전체 보통주 기준"}
     assert ranking["as_of"] == "2026-09-04"
-    assert ranking["eligible_counts"] == {"2w": 141, "1m": 141, "3m": 141, "6m": 141, "12m": 141}
+    assert ranking["eligible_counts"] == {"2w": 247, "1m": 247, "3m": 247, "6m": 247, "12m": 247}
     assert len(ranking["items"]) == ranking["scope"]["report_count"]
 
 
