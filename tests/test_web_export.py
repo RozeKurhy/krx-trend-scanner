@@ -134,7 +134,7 @@ def test_static_frontend_uses_relative_assets_and_required_dom():
     assert 'krx-theme' in html and 'krx-theme' in js
     assert 'prefers-color-scheme: dark' in html and 'prefers-color-scheme: dark' in js
     assert 'matchMedia' in js
-    assert "데이터 상태를 불러올 수 없습니다." in html
+    assert "데이터 현황을 불러올 수 없습니다." in html
     assert 'data-status="CHECK_REQUIRED"' in html
     for element_id in (
         "overall-status",
@@ -165,10 +165,32 @@ def test_static_frontend_uses_relative_assets_and_required_dom():
     nav = re.search(r"<nav class=\"primary-nav\".*?</nav>", html, flags=re.DOTALL)
     assert nav is not None
     nav_text = nav.group(0)
-    labels = ["데이터 상태", "시장 랭킹", "종목 리포트", "전략 운용", "전략 설명"]
+    labels = ["데이터 현황", "시장 랭킹", "종목 리포트", "전략 운용", "전략 설명"]
     assert [nav_text.index(label) for label in labels] == sorted(nav_text.index(label) for label in labels)
     assert "분석" not in nav_text
     assert "백테스트" not in nav_text
+
+
+def test_web_wording_is_neutral_and_keeps_the_existing_data_contract():
+    html = (ROOT / "web/index.html").read_text(encoding="utf-8")
+    js = (ROOT / "web/js/app.js").read_text(encoding="utf-8")
+
+    assert "데이터 현황" in html
+    assert "데이터 상태" not in html
+    assert "시스템 현황" not in html
+    assert "현재 상태" not in html
+    assert "다음 단계" not in html
+    assert "종목 현황" in html
+    assert "생성된 리포트" in html
+    assert "펀더멘탈 데이터 수집 중" in js
+    assert "읽기 전용" in html
+    assert "이 화면은 공개용 정적 데이터만 사용, 원천 데이터와 비공개 정보는 미포함." in html
+    for banned_phrase in ("중이야", "않아", "해야 해", "확인해야 해", "한눈에 확인해"):
+        assert banned_phrase not in html
+        assert banned_phrase not in js
+    assert 'setText("market-detail", `기준일 · ${statusDetail(market)}`);' in js
+    assert 'setText("universe-detail", `기준일 ${formatDate(universe.snapshot_date)} · ${statusDetail(universe)}`);' in js
+    assert 'setText("overall-detail", "데이터 파일 확인 필요");' in js
 
 
 def test_theme_contract_supports_system_detection_manual_toggle_and_persistence():

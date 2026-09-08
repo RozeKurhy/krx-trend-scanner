@@ -14,7 +14,7 @@
     COMPLETE: "완료",
   };
   const REASON_LABELS = {
-    "Fundamentals production coverage is not complete.": "펀더멘탈 데이터가 아직 모두 준비되지 않았어.",
+    "Fundamentals production coverage is not complete.": "펀더멘탈 데이터 수집 중",
   };
   const THEME_STORAGE_KEY = "krx-theme";
   const THEME_VALUES = new Set(["light", "dark"]);
@@ -196,12 +196,12 @@
     const market = health.market_data;
     setStatus(byId("market-status"), market.status);
     setText("market-date", formatDate(market.latest_trading_date));
-    setText("market-detail", `인증 기준일 · ${statusDetail(market)}`);
+    setText("market-detail", `기준일 · ${statusDetail(market)}`);
 
     const universe = health.universe;
     setStatus(byId("universe-status"), universe.status);
     setText("universe-count", formatNumber(universe.count));
-    setText("universe-detail", `PIT ${formatDate(universe.snapshot_date)} · ${statusDetail(universe)}`);
+    setText("universe-detail", `기준일 ${formatDate(universe.snapshot_date)} · ${statusDetail(universe)}`);
 
     const fundamentals = health.fundamentals;
     setStatus(byId("fundamentals-status"), fundamentals.status);
@@ -231,7 +231,7 @@
     const error = byId("load-error");
     if (error) error.hidden = false;
     setStatus(byId("overall-status"), "CHECK_REQUIRED");
-    setText("overall-detail", "정적 health.json을 확인해야 해.");
+    setText("overall-detail", "데이터 파일 확인 필요");
   }
 
   initTheme();
