@@ -33,13 +33,17 @@
     FLOW_RECENT_RECOVERY: "최근 회복",
     FLOW_UNAVAILABLE: "정보 없음",
   };
-  const MARKET_STRENGTH_LABELS = {
-    RECOVERING: "회복 흐름",
-    IMPROVING: "개선 흐름",
-    WEAKENING: "약화 흐름",
-    MIXED: "혼합 흐름",
-    UNAVAILABLE: "정보 없음",
+  const FUNDAMENTAL_LABELS = {
+    NOT_AVAILABLE: "준비 중",
+    NOT_APPLICABLE: "해당 없음",
   };
+  const PATTERN_STEPS = [
+    ["WEAK", "약세"],
+    ["BASE", "기반 형성"],
+    ["TRANSITION", "전환"],
+    ["EARLY_TREND", "상승 초기"],
+    ["PROGRESSED", "상승 진행"],
+  ];
   const TRADING_VALUE_LABELS = {
     TRADING_VALUE_EXPANDING: "증가 흐름",
     TRADING_VALUE_MIXED: "혼합 흐름",
@@ -159,10 +163,34 @@
   function actionLabel(value) { return label(ACTION_LABELS, value, "전략 판단 확인 필요"); }
   function stageLabel(value) { return label(STAGE_LABELS, value, "확인 필요"); }
   function flowLabel(value) { return label(FLOW_LABELS, value, "정보 없음"); }
-  function marketStrengthLabel(value) { return label(MARKET_STRENGTH_LABELS, value, "정보 없음"); }
   function tradingValueLabel(value) { return label(TRADING_VALUE_LABELS, value, "정보 없음"); }
   function strategyDetail(value) { return label(STRATEGY_STATE_DETAILS, value, "전략 상태 확인 필요"); }
   function flowDetail(value) { return label(FLOW_DETAILS, value, "수급 상태 확인 필요"); }
+
+  function marketStrengthLabel(market) {
+    if (!market || market.applicability === "NOT_APPLICABLE") return "해당 없음";
+    if (market.data_status !== "READY") return "정보 없음";
+    if (market.percentile_3m == null || !Number.isFinite(Number(market.percentile_3m))) return "정보 있음";
+    return `최근 3개월 ${formatNumber(market.percentile_3m, 1)} 백분위`;
+  }
+
+  function marketStrengthDetail(market) {
+    if (!market || market.applicability === "NOT_APPLICABLE") return "시장 대비 강도 적용 대상이 아닙니다.";
+    if (market.data_status !== "READY") return "시장 대비 강도 정보가 없습니다.";
+    const benchmark = market.benchmark_name || "시장";
+    const asOf = formatDate(market.benchmark_last_observation_date);
+    return `${benchmark} 기준 · 최근 관측일 ${asOf}`;
+  }
+
+  function fundamentalLabel(report) {
+    return label(FUNDAMENTAL_LABELS, report && report.fundamentals && report.fundamentals.status, "준비 중");
+  }
+
+  function fundamentalDetail(report) {
+    return report && report.fundamentals && report.fundamentals.status === "NOT_APPLICABLE"
+      ? "이 종목에는 적용되지 않습니다."
+      : "데이터 연결 전입니다.";
+  }
 
   function validateIndex(value) {
     return Boolean(value && typeof value === "object" && Array.isArray(value.items) && Number.isInteger(value.count));
@@ -187,11 +215,53 @@
     window.history.pushState({}, "", url);
   }
 
+  function createResultItem(item) {
+    const li = document.createElement("li");
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "search-result-button";
+    const copy = document.createElement("span");
+    copy.className = "search-result-copy";
+    const name = document.createElement("strong");
+    name.className = "search-result-name";
+    name.textContent = item.name;
+    const meta = document.createElement("span");
+    meta.className = "search-result-meta";
+    meta.textContent = `${item.ticker} · ${marketLabel(item.market)}`;
+    copy.append(name, meta);
+    const status = document.createElement("small");
+    status.className = "search-result-status";
+    status.textContent = item.report_available ? "리포트 보기" : "리포트 준비 중";
+    button.append(copy, status);
+    button.addEventListener("click", () => selectTicker(item.ticker));
+    li.appendChild(button);
+    return li;
+  }
+
+  function randomSample(items, count) {
+    const pool = items.slice();
+    for (let index = pool.length - 1; index > 0; index -= 1) {
+      const swapIndex = Math.floor(Math.random() * (index + 1));
+      [pool[index], pool[swapIndex]] = [pool[swapIndex], pool[index]];
+    }
+    return pool.slice(0, count);
+  }
+
+  function renderRecommendations() {
+    const recommendations = byId("recommendations");
+    if (!recommendations || !indexData) return;
+    while (recommendations.firstChild) recommendations.removeChild(recommendations.firstChild);
+    const available = indexData.items.filter((item) => item.report_available === true);
+    randomSample(available, 5).forEach((item) => recommendations.appendChild(createResultItem(item)));
+  }
+
   function renderSearchResults(query) {
     const results = byId("search-results");
     if (!results || !indexData) return;
     while (results.firstChild) results.removeChild(results.firstChild);
     const normalized = String(query || "").trim().toLocaleLowerCase("ko-KR");
+    setHidden("recommendations-panel", Boolean(normalized));
+    setHidden("search-no-results", false);
     if (!normalized) {
       results.hidden = true;
       searchMatches = [];
@@ -201,29 +271,9 @@
       String(item.ticker).toLocaleLowerCase("ko-KR").includes(normalized) ||
       String(item.name).toLocaleLowerCase("ko-KR").includes(normalized)
     )).slice(0, 12);
-    searchMatches.forEach((item) => {
-      const li = document.createElement("li");
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "search-result-button";
-      const copy = document.createElement("span");
-      copy.className = "search-result-copy";
-      const name = document.createElement("strong");
-      name.className = "search-result-name";
-      name.textContent = item.name;
-      const meta = document.createElement("span");
-      meta.className = "search-result-meta";
-      meta.textContent = `${item.ticker} · ${marketLabel(item.market)}`;
-      copy.append(name, meta);
-      const status = document.createElement("small");
-      status.className = "search-result-status";
-      status.textContent = item.report_available ? "리포트 보기" : "리포트 준비 중";
-      button.append(copy, status);
-      button.addEventListener("click", () => selectTicker(item.ticker));
-      li.appendChild(button);
-      results.appendChild(li);
-    });
+    searchMatches.forEach((item) => results.appendChild(createResultItem(item)));
     results.hidden = searchMatches.length === 0;
+    setHidden("search-no-results", searchMatches.length !== 0);
   }
 
   function showEmpty() {
@@ -251,11 +301,26 @@
 
   function buildSummary(report) {
     const trend = `추세는 ${stageLabel(report.summary.trend_stage)} 상태입니다.`;
-    const market = report.summary.market_strength_state === "UNAVAILABLE"
-      ? "시장 대비 강도는 확인이 필요합니다."
-      : `시장 대비 강도는 ${marketStrengthLabel(report.summary.market_strength_state)}입니다.`;
+    const market = `시장 대비 강도는 ${marketStrengthLabel(report.market_strength)}입니다.`;
     const flow = `수급은 ${flowLabel(report.summary.flow_state)}입니다.`;
     return `${trend} ${market} ${flow}`;
+  }
+
+  function renderPatternStepper(currentStage) {
+    const stepper = byId("pattern-stepper");
+    if (!stepper) return;
+    while (stepper.firstChild) stepper.removeChild(stepper.firstChild);
+    PATTERN_STEPS.forEach(([code, text]) => {
+      const step = document.createElement("span");
+      step.className = "pattern-step";
+      step.setAttribute("role", "listitem");
+      step.textContent = text;
+      if (code === currentStage) {
+        step.classList.add("is-current");
+        step.setAttribute("aria-current", "step");
+      }
+      stepper.appendChild(step);
+    });
   }
 
   function appendDetail(list, name, value) {
@@ -282,8 +347,11 @@
     appendDetail(list, "전략 상태", report.strategy.state);
     appendDetail(list, "전략 행동", report.strategy.action);
     appendDetail(list, "수급 상태", details.flow_state);
-    appendDetail(list, "시장 강도 데이터", details.relative_strength_status);
+    appendDetail(list, "시장 강도 적용", details.market_strength_applicability);
+    appendDetail(list, "시장 강도 상태", details.market_strength_status);
     appendDetail(list, "거래대금 상태", details.trading_value_state);
+    appendDetail(list, "가격 기준일", details.price_as_of);
+    appendDetail(list, "가격 authority", details.price_source);
     appendDetail(list, "원본 리포트", details.source_report);
   }
 
@@ -299,22 +367,32 @@
     setText("decision-heading", actionLabel(report.decision.action));
     setText("decision-summary", buildSummary(report));
     setText("signal-trend", stageLabel(report.summary.trend_stage));
-    setText("signal-market", marketStrengthLabel(report.summary.market_strength_state));
+    setText("signal-market", marketStrengthLabel(report.market_strength));
     setText("signal-flow", flowLabel(report.summary.flow_state));
+    setText("signal-fundamentals", fundamentalLabel(report));
     setText("price-value", formatPrice(report.price_trend.latest_close));
-    setText("price-detail", `기준일 ${formatDate(report.price_trend.latest_close_as_of)} · 거래대금 ${tradingValueLabel(report.price_trend.trading_value_state)}`);
-    setText("pattern-value", stageLabel(report.pattern.official_stage));
-    setText("pattern-detail", report.pattern.score == null ? "점수 확인 필요" : `Pattern A 점수 ${formatNumber(report.pattern.score, 2)}점`);
-    setText("market-value", marketStrengthLabel(report.market_strength.state));
-    setText("market-detail", `${report.market_strength.benchmark_name || "시장"} 대비 ${marketStrengthLabel(report.market_strength.state)}입니다.`);
+    setText("price-detail", report.price_trend.latest_close == null
+      ? "가격 정보 없음"
+      : `기준일 ${formatDate(report.price_trend.latest_close_as_of)} · 거래대금 ${tradingValueLabel(report.price_trend.trading_value_state)}`);
+    renderPatternStepper(report.pattern.official_stage);
+    setText("pattern-value", `현재 단계 ${stageLabel(report.pattern.official_stage)}`);
+    setText("pattern-detail", report.pattern.score == null ? "패턴 점수 확인 필요" : `패턴 점수 ${formatNumber(report.pattern.score, 2)}점`);
+    setText("market-value", marketStrengthLabel(report.market_strength));
+    setText("market-detail", marketStrengthDetail(report.market_strength));
     setText("flow-value", flowLabel(report.flow.state));
     setText("flow-detail", flowDetail(report.flow.state));
+    setText("fundamentals-value", fundamentalLabel(report));
+    setText("fundamentals-detail", fundamentalDetail(report));
     setText("strategy-value", actionLabel(report.strategy.action));
     setText("strategy-detail", strategyDetail(report.strategy.state));
     renderTechnicalDetails(report);
     const naver = byId("naver-link");
+    const naverChart = byId("naver-chart-link");
     if (naver && report.external_links && typeof report.external_links.naver_finance === "string") {
       naver.href = report.external_links.naver_finance;
+    }
+    if (naverChart && report.external_links && typeof report.external_links.naver_chart === "string") {
+      naverChart.href = report.external_links.naver_chart;
     }
   }
 
@@ -355,6 +433,7 @@
     if (!validateIndex(value)) throw new Error("stock index schema is incomplete");
     indexData = value;
     setText("search-meta", `전체 ${formatNumber(value.count)}개 종목 · 리포트 ${formatNumber(value.available_report_count)}개`);
+    renderRecommendations();
     const ticker = currentTicker();
     if (!ticker) {
       showEmpty();

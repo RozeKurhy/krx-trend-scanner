@@ -15,12 +15,14 @@ import json
 from pathlib import Path
 import re
 import tempfile
-from typing import Any, Iterable
+from functools import lru_cache
+from typing import Any
 
 
 ROOT = Path(__file__).resolve().parents[1]
 METADATA_PATH = ROOT / "data/reference/krx_instrument_metadata.csv"
 STOCK_REPORTS_ROOT = ROOT / "artifacts/reporting/stock_reports"
+ADJUSTED_STOCK_ROOT = ROOT / "data/market/adjusted/stocks"
 DEFAULT_OUTPUT_DIR = ROOT / "web/data"
 DATE_DIR_PATTERN = re.compile(r"^(\d{8})$")
 
@@ -101,26 +103,31 @@ def _load_universe(requested_as_of: str) -> tuple[list[dict[str, str]], str]:
     return current, snapshot_date
 
 
-def _latest_monthly_observation(report: dict[str, Any]) -> dict[str, Any] | None:
-    history = report.get("monthly_history") or {}
-    observations = history.get("recent_12m_history") or history.get("full_monthly_history") or []
-    for observation in reversed(observations):
-        if isinstance(observation, dict) and observation.get("close") is not None:
-            return observation
-    return None
+@lru_cache(maxsize=None)
+def _load_exact_daily_close(ticker: str, as_of: str) -> dict[str, Any] | None:
+    """Read one exact-date close from the local adjusted market authority."""
+    if not ticker or not as_of:
+        return None
+    path = ADJUSTED_STOCK_ROOT / f"{ticker}.parquet"
+    if not path.exists():
+        return None
+    try:
+        import pandas as pd
 
-
-def _market_strength_state(relative_strength: dict[str, Any]) -> str:
-    if relative_strength.get("data_status") != "READY":
-        return "UNAVAILABLE"
-    explanation = str(relative_strength.get("explanation") or "")
-    if "회복" in explanation:
-        return "RECOVERING"
-    if "약화" in explanation or "낮아지" in explanation:
-        return "WEAKENING"
-    if "개선" in explanation:
-        return "IMPROVING"
-    return "MIXED"
+        daily = pd.read_parquet(path, columns=["date", "close"])
+        if "date" not in daily or "close" not in daily:
+            return None
+        dates = pd.to_datetime(daily["date"], errors="coerce").dt.strftime("%Y-%m-%d")
+        matches = daily.loc[dates == as_of, "close"].dropna()
+    except (ImportError, OSError, ValueError, KeyError):
+        return None
+    if len(matches) != 1:
+        return None
+    return {
+        "value": float(matches.iloc[0]),
+        "as_of": as_of,
+        "source": _relative(path),
+    }
 
 
 def _compact_report(report: dict[str, Any], source_path: Path) -> dict[str, Any]:
@@ -132,15 +139,19 @@ def _compact_report(report: dict[str, Any], source_path: Path) -> dict[str, Any]
     flow = report.get("foreign_flow") or {}
     trading_value = report.get("trading_value_flow") or {}
     strategy = report.get("a_fast_core") or {}
-    latest = _latest_monthly_observation(report)
+    ticker = str(report.get("ticker") or header.get("ticker") or "").upper()
+    asset_type = str(report.get("asset_type") or header.get("asset_type") or "UNKNOWN").upper()
+    reference_market_date = str(report.get("reference_market_date") or "")[:10]
+    daily_close = _load_exact_daily_close(ticker, reference_market_date)
+    fundamentals_status = "NOT_AVAILABLE" if asset_type == "COMMON" else "NOT_APPLICABLE"
 
     return {
         "schema_version": 1,
         "identity": {
-            "ticker": str(report.get("ticker") or header.get("ticker") or "").upper(),
+            "ticker": ticker,
             "name": str(report.get("name") or header.get("name") or ""),
             "market": str(report.get("market") or header.get("market") or "").upper(),
-            "asset_type": str(report.get("asset_type") or header.get("asset_type") or "UNKNOWN").upper(),
+            "asset_type": asset_type,
         },
         "availability": {
             "report_available": True,
@@ -155,12 +166,13 @@ def _compact_report(report: dict[str, Any], source_path: Path) -> dict[str, Any]
         },
         "summary": {
             "trend_stage": snapshot.get("official_stage"),
-            "market_strength_state": _market_strength_state(relative_strength),
             "flow_state": flow.get("flow_state"),
         },
         "price_trend": {
-            "latest_close": latest.get("close") if latest else None,
-            "latest_close_as_of": latest.get("as_of") if latest else None,
+            "latest_close": daily_close["value"] if daily_close else None,
+            "latest_close_as_of": daily_close["as_of"] if daily_close else None,
+            "price_status": "AVAILABLE" if daily_close else "UNAVAILABLE",
+            "price_source": daily_close["source"] if daily_close else None,
             "score_trend": monthly.get("score_trend") or {},
             "trading_value_state": trading_value.get("trading_value_state"),
             "trading_value_explanation": trading_value.get("explanation"),
@@ -171,9 +183,10 @@ def _compact_report(report: dict[str, Any], source_path: Path) -> dict[str, Any]
             "score": snapshot.get("pattern_a_score"),
         },
         "market_strength": {
+            "applicability": relative_strength.get("applicability"),
             "data_status": relative_strength.get("data_status"),
-            "state": _market_strength_state(relative_strength),
             "benchmark_name": relative_strength.get("benchmark_name"),
+            "benchmark_last_observation_date": relative_strength.get("benchmark_last_observation_date"),
             "market_rs_3m": relative_strength.get("market_rs_3m"),
             "market_rs_6m": relative_strength.get("market_rs_6m"),
             "market_rs_12m": relative_strength.get("market_rs_12m"),
@@ -190,8 +203,7 @@ def _compact_report(report: dict[str, Any], source_path: Path) -> dict[str, Any]
             "explanation": flow.get("explanation"),
         },
         "fundamentals": {
-            "status": "NOT_AVAILABLE",
-            "reason": "F8 production fundamentals are not connected in WEB-02A.",
+            "status": fundamentals_status,
         },
         "strategy": {
             "action": strategy.get("action"),
@@ -202,7 +214,7 @@ def _compact_report(report: dict[str, Any], source_path: Path) -> dict[str, Any]
         },
         "technical_details": {
             "requested_as_of": report.get("requested_as_of"),
-            "reference_market_date": report.get("reference_market_date"),
+            "reference_market_date": reference_market_date,
             "report_version": report.get("report_version"),
             "report_status": header.get("report_status"),
             "asset_type": report.get("asset_type"),
@@ -212,14 +224,20 @@ def _compact_report(report: dict[str, Any], source_path: Path) -> dict[str, Any]
             "pattern_score": snapshot.get("pattern_a_score"),
             "candidate_state": snapshot.get("candidate_state"),
             "flow_state": flow.get("flow_state"),
+            "market_strength_applicability": relative_strength.get("applicability"),
+            "market_strength_status": relative_strength.get("data_status"),
             "relative_strength_status": relative_strength.get("data_status"),
             "trading_value_state": trading_value.get("trading_value_state"),
+            "price_as_of": daily_close["as_of"] if daily_close else None,
+            "price_status": "AVAILABLE" if daily_close else "UNAVAILABLE",
+            "price_source": daily_close["source"] if daily_close else None,
             "sector_name": sector_strength.get("sector_name"),
             "data_quality": report.get("data_quality") or {},
             "source_report": _relative(source_path),
         },
         "external_links": {
-            "naver_finance": f"https://finance.naver.com/item/main.naver?code={report.get('ticker')}"
+            "naver_finance": f"https://finance.naver.com/item/main.naver?code={ticker}",
+            "naver_chart": f"https://finance.naver.com/item/fchart.naver?code={ticker}",
         },
     }
 
@@ -231,7 +249,6 @@ def build_web_payload(repo_root: Path = ROOT) -> tuple[dict[str, Any], dict[str,
     universe, snapshot_date = _load_universe(requested_as_of)
     source_json_dir = report_dir / "json"
     reports: dict[str, dict[str, Any]] = {}
-    source_paths: dict[str, Path] = {}
     for path in sorted(source_json_dir.glob("*.json")):
         report = _read_json(path)
         ticker = str(report.get("ticker") or "").strip().upper()
@@ -240,7 +257,6 @@ def build_web_payload(repo_root: Path = ROOT) -> tuple[dict[str, Any], dict[str,
         if str(report.get("requested_as_of") or "")[:10] != requested_as_of:
             raise ValueError(f"Stock Report date mismatch: {path}")
         reports[ticker] = _compact_report(report, path)
-        source_paths[ticker] = path
 
     report_tickers = set(reports)
     items = [
