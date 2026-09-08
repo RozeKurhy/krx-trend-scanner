@@ -189,16 +189,18 @@ def test_report_frontend_has_safe_states_and_relative_assets():
     css = (ROOT / "web/css/app.css").read_text(encoding="utf-8")
     favicon = (ROOT / "web/favicon.svg").read_text(encoding="utf-8")
 
-    assert 'href="./css/app.css?v=web-02a-final-1"' in html
-    assert 'href="./css/app.css?v=web-02a-final-1"' in index_html
+    assert 'href="./css/app.css?v=web-02a-final-2"' in html
+    assert 'href="./css/app.css?v=web-02a-final-2"' in index_html
     assert 'href="./favicon.svg"' in html
     assert 'href="./favicon.svg"' in index_html
     assert (ROOT / "web/favicon.svg").exists()
     assert '#9f1d2f' in favicon
-    assert 'src="./js/report.js?v=web-02a-final-1"' in html
-    assert 'src="./js/app.js?v=web-02a-final-1"' in index_html
-    assert html.count("web-02a-final-1") == 2
-    assert index_html.count("web-02a-final-1") == 2
+    assert 'src="./js/report.js?v=web-02a-final-2"' in html
+    assert 'src="./js/app.js?v=web-02a-final-2"' in index_html
+    assert html.count("web-02a-final-2") == 2
+    assert index_html.count("web-02a-final-2") == 2
+    assert "web-02a-final-1" not in html
+    assert "web-02a-final-1" not in index_html
     assert 'placeholder="종목명 또는 종목코드 검색"' in html
     assert 'id="report-empty"' in html
     assert 'id="recommendations"' in html
@@ -236,6 +238,10 @@ def test_report_frontend_has_safe_states_and_relative_assets():
     assert 'id="strategy-card"' in html
     assert html.count("상세 보기 ›") == 4
     assert "report-card-affordance" in js and "상세 닫기 ×" in js
+    assert '.report-card-button { appearance: none; width: 100%; border-color: var(--line-strong); background: var(--surface);' in css
+    assert 'const REPORT_MOBILE_QUERY = "(max-width: 560px)";' in js
+    assert 'selectedCard.insertAdjacentElement("afterend", panel)' in js
+    assert "window.addEventListener(\"resize\", repositionActiveDetail);" in js
     assert 'id="report-detail-panel"' in html
     assert 'id="top-detail-slot"' in html
     assert 'id="bottom-detail-slot"' in html

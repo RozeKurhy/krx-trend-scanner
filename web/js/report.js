@@ -6,6 +6,7 @@
   const THEME_STORAGE_KEY = "krx-theme";
   const THEME_VALUES = new Set(["light", "dark"]);
   const SYSTEM_THEME_QUERY = "(prefers-color-scheme: dark)";
+  const REPORT_MOBILE_QUERY = "(max-width: 560px)";
   const MARKET_LABELS = { KOSPI: "코스피", KOSDAQ: "코스닥", KONEX: "코넥스" };
   const ASSET_LABELS = { COMMON: "보통주", ETF: "ETF" };
   const ACTION_LABELS = {
@@ -619,10 +620,23 @@
     appendDetailNote(container, "과거 전략 이력은 과거 데이터에 전략 규칙을 적용한 결과이며 미래 수익을 의미하지 않습니다.", "strategy-disclaimer");
   }
 
+  function isMobileLayout() {
+    return Boolean(window.matchMedia && window.matchMedia(REPORT_MOBILE_QUERY).matches);
+  }
+
   function positionDetailPanel(key) {
     const panel = byId("report-detail-panel");
+    if (panel && isMobileLayout()) {
+      const selectedCard = byId(DETAIL_BUTTON_IDS[key]);
+      if (selectedCard) selectedCard.insertAdjacentElement("afterend", panel);
+      return;
+    }
     const slot = byId(key === "pattern" || key === "market" ? "top-detail-slot" : "bottom-detail-slot");
     if (panel && slot) slot.appendChild(panel);
+  }
+
+  function repositionActiveDetail() {
+    if (activeDetailKey) positionDetailPanel(activeDetailKey);
   }
 
   function renderDetail(key, report) {
@@ -682,6 +696,7 @@
     });
     const close = byId("report-detail-close");
     if (close) close.addEventListener("click", closeDetail);
+    window.addEventListener("resize", repositionActiveDetail);
     const requestButton = byId("report-request-button");
     if (requestButton) {
       requestButton.addEventListener("click", () => {
