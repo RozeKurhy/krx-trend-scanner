@@ -97,12 +97,12 @@ def test_strategy_page_is_connected_and_uses_one_release_cache_version():
     css = (ROOT / "web/css/app.css").read_text(encoding="utf-8")
 
     for html in (strategy_html, index_html, report_html):
-        assert 'href="./css/app.css?v=web-04d-1"' in html
+        assert 'href="./css/app.css?v=web-02c-toss-1"' in html
         assert "web-02a-final-2" not in html
         assert "web-03a-final-1" not in html
-    assert 'src="./js/strategy.js?v=web-04d-1"' in strategy_html
-    assert 'src="./js/app.js?v=web-04d-1"' in index_html
-    assert 'src="./js/report.js?v=web-04d-1"' in report_html
+    assert 'src="./js/strategy.js?v=web-02c-toss-1"' in strategy_html
+    assert 'src="./js/app.js?v=web-02c-toss-1"' in index_html
+    assert 'src="./js/report.js?v=web-02c-toss-1"' in report_html
     assert 'href="./strategy.html"' in index_html
     assert 'href="./strategy.html"' in report_html
     assert 'class="nav-item is-active" href="./strategy.html"' in strategy_html

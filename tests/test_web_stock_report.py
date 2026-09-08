@@ -1,4 +1,4 @@
-"""Focused WEB-02A validation for the local Stock Report web foundation."""
+"""Focused WEB-02C validation for the local Stock Report web foundation."""
 
 from __future__ import annotations
 
@@ -54,12 +54,24 @@ def test_compact_report_preserves_authority_values_without_raw_markdown(payload)
     assert report["decision"]["action"] in {"HOLD", "WAIT", "ENTER_NEXT_OPEN", "NONE", "WATCH", "ENTRY", "EXIT"}
     assert report["fundamentals"]["status"] == "NOT_AVAILABLE"
     assert report["external_links"]["naver_finance"] == "https://finance.naver.com/item/main.naver?code=005930"
-    assert report["external_links"]["naver_chart"] == "https://finance.naver.com/item/fchart.naver?code=005930"
+    assert report["external_links"]["toss_chart"] == "https://www.tossinvest.com/stocks/A005930/order"
+    assert "naver_chart" not in report["external_links"]
     assert "summary_text" not in report
     assert "body" not in report
     assert "market_strength_state" not in report["summary"]
     assert "state" not in report["market_strength"]
     assert "/Users/" not in json.dumps(report, ensure_ascii=False)
+
+
+def test_all_published_compact_reports_have_ticker_bound_toss_chart(payload):
+    _index, reports, _stats = payload
+
+    assert len(reports) == 158
+    for ticker, report in reports.items():
+        links = report["external_links"]
+        assert links["naver_finance"] == f"https://finance.naver.com/item/main.naver?code={ticker}"
+        assert links["toss_chart"] == f"https://www.tossinvest.com/stocks/A{ticker}/order"
+        assert "naver_chart" not in links
 
 
 def test_fundamentals_status_is_derived_from_asset_type(payload, exporter):
@@ -191,6 +203,8 @@ def test_exporter_writes_index_and_one_json_per_available_report(tmp_path, expor
     sample = json.loads((stock_dir / f"{sample_ticker}.json").read_text(encoding="utf-8"))
     assert sample["schema_version"] == 1
     assert sample["identity"]["ticker"] == sample_ticker
+    assert sample["external_links"]["toss_chart"] == f"https://www.tossinvest.com/stocks/A{sample_ticker}/order"
+    assert "naver_chart" not in sample["external_links"]
     assert sample["technical_details"]["source_report"].startswith("artifacts/reporting/stock_reports/")
 
 
@@ -201,16 +215,16 @@ def test_report_frontend_has_safe_states_and_relative_assets():
     css = (ROOT / "web/css/app.css").read_text(encoding="utf-8")
     favicon = (ROOT / "web/favicon.svg").read_text(encoding="utf-8")
 
-    assert 'href="./css/app.css?v=web-04d-1"' in html
-    assert 'href="./css/app.css?v=web-04d-1"' in index_html
+    assert 'href="./css/app.css?v=web-02c-toss-1"' in html
+    assert 'href="./css/app.css?v=web-02c-toss-1"' in index_html
     assert 'href="./favicon.svg"' in html
     assert 'href="./favicon.svg"' in index_html
     assert (ROOT / "web/favicon.svg").exists()
     assert '#9f1d2f' in favicon
-    assert 'src="./js/report.js?v=web-04d-1"' in html
-    assert 'src="./js/app.js?v=web-04d-1"' in index_html
-    assert html.count("web-04d-1") == 2
-    assert index_html.count("web-04d-1") == 2
+    assert 'src="./js/report.js?v=web-02c-toss-1"' in html
+    assert 'src="./js/app.js?v=web-02c-toss-1"' in index_html
+    assert html.count("web-02c-toss-1") == 2
+    assert index_html.count("web-02c-toss-1") == 2
     assert "web-03a-final-1" not in html
     assert "web-03a-final-1" not in index_html
     assert "web-02a-final-2" not in html
@@ -228,6 +242,10 @@ def test_report_frontend_has_safe_states_and_relative_assets():
     assert 'id="dart-link"' in html
     assert '전자공시 보기' in html
     assert 'target="_blank" rel="noopener"' in html
+    assert "차트 보기" in html
+    assert "차트 바로가기" not in html
+    assert "toss_chart" in js
+    assert "naver_chart" not in js
     assert html.count('id="naver-link"') == 1
     assert html.count('id="naver-chart-link"') == 1
     assert html.count('id="dart-link"') == 1
@@ -277,7 +295,6 @@ def test_report_frontend_has_safe_states_and_relative_assets():
     for percentile, expected in ((92.51, 7.5), (76.6, 23.4), (99.20, 0.8)):
         assert round(100 - percentile, 1) == expected
     assert "네이버 증권에서 보기" in html
-    assert "차트 바로가기" in html
     assert "DART_SEARCH_URL" in js
     assert "dart-link" in js
     assert "report.identity.ticker" in js

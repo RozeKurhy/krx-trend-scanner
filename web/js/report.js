@@ -793,8 +793,12 @@
     if (naver && report.external_links && typeof report.external_links.naver_finance === "string") {
       naver.href = report.external_links.naver_finance;
     }
-    if (naverChart && report.external_links && typeof report.external_links.naver_chart === "string") {
-      naverChart.href = report.external_links.naver_chart;
+    if (naverChart) {
+      const tossChart = report.external_links && report.external_links.toss_chart;
+      const validTossChart = typeof tossChart === "string" && /^https:\/\/www\.tossinvest\.com\/stocks\/A[0-9A-Z]+\/order$/.test(tossChart);
+      naverChart.hidden = !validTossChart;
+      if (validTossChart) naverChart.href = tossChart;
+      else naverChart.removeAttribute("href");
     }
     if (dart) {
       const ticker = report.identity && typeof report.identity.ticker === "string" ? report.identity.ticker.trim() : "";

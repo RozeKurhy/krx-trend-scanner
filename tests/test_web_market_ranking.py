@@ -112,8 +112,8 @@ def test_market_page_has_accessible_controls_and_release_contract():
 
     assert '<title>랭킹 · KRX Trend Scanner</title>' in html
     assert '<a class="nav-item is-active" href="./market.html" aria-current="page">랭킹</a>' in html
-    assert 'href="./css/app.css?v=web-04d-1"' in html
-    assert 'src="./js/market.js?v=web-04d-1"' in html
+    assert 'href="./css/app.css?v=web-02c-toss-1"' in html
+    assert 'src="./js/market.js?v=web-02c-toss-1"' in html
     assert '<nav class="ranking-tabs" aria-label="랭킹 종류">' in html
     assert '<a class="ranking-tab is-active" href="./market.html" aria-current="page">마켓 RS</a>' in html
     for label in ("섹터 RS", "섹터 랭킹", "매출액 성장률", "영업이익 성장률", "순이익 성장률"):
@@ -147,7 +147,7 @@ def test_market_page_keeps_navigation_and_old_release_cache_out_of_all_pages():
     pages = [ROOT / "web/index.html", ROOT / "web/report.html", ROOT / "web/strategy.html", ROOT / "web/market.html"]
     for path in pages:
         html = path.read_text(encoding="utf-8")
-        assert "web-04d-1" in html
+        assert "web-02c-toss-1" in html
         assert "web-03a-final-1" not in html
         assert 'href="./market.html"' in html
         assert "랭킹" in html
