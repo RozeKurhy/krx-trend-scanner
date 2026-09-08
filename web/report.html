@@ -69,7 +69,6 @@
       </section>
 
       <section id="report-empty" class="panel report-empty" aria-labelledby="empty-heading">
-        <p class="eyebrow">검색 안내</p>
         <h2 id="empty-heading">검색 안내</h2>
         <p>종목명 또는 종목코드를 입력하면 리포트를 확인할 수 있습니다.</p>
         <div id="recommendations-panel" class="recommendations-panel">
@@ -111,12 +110,31 @@
         </div>
 
         <div class="report-card-grid" aria-label="종목 핵심 정보">
-          <article class="panel report-card"><p class="report-card-heading">가격·추세</p><p id="price-value" class="report-card-value">—</p><p id="price-detail" class="report-card-detail">—</p></article>
-          <article class="panel report-card"><p class="report-card-heading">패턴</p><div id="pattern-stepper" class="pattern-stepper" role="list" aria-label="패턴 단계"></div><p id="pattern-value" class="pattern-current">현재 단계 —</p><p id="pattern-detail" class="report-card-detail">—</p></article>
-          <article class="panel report-card"><p class="report-card-heading">시장 강도</p><p id="market-value" class="report-card-value">—</p><p id="market-detail" class="report-card-detail">—</p></article>
-          <article class="panel report-card"><p class="report-card-heading">수급</p><p id="flow-value" class="report-card-value">—</p><p id="flow-detail" class="report-card-detail">—</p></article>
-          <article class="panel report-card"><p class="report-card-heading">펀더멘탈</p><p id="fundamentals-value" class="report-card-value">준비 중</p><p id="fundamentals-detail" class="report-card-detail">데이터 연결 전</p></article>
-          <article class="panel report-card"><p class="report-card-heading">전략</p><p id="strategy-value" class="report-card-value">—</p><p id="strategy-detail" class="report-card-detail">—</p></article>
+          <div class="report-card-row">
+            <article class="panel report-card"><p class="report-card-heading">가격·추세</p><p id="price-value" class="report-card-value">—</p><p id="price-detail" class="report-card-detail">—</p></article>
+            <button id="pattern-card" class="panel report-card report-card-button" type="button" aria-controls="report-detail-panel" aria-expanded="false" aria-label="패턴 점수 상세 정보 열기">
+              <span class="report-card-heading">패턴 점수</span><span id="pattern-stepper" class="pattern-stepper" role="list" aria-label="패턴 단계"></span><span id="pattern-value" class="pattern-current">현재 단계 —</span><span id="pattern-detail" class="report-card-detail">—</span>
+            </button>
+            <button id="market-card" class="panel report-card report-card-button" type="button" aria-controls="report-detail-panel" aria-expanded="false" aria-label="시장 강도 상세 정보 열기">
+              <span class="report-card-heading">시장 강도</span><span id="market-value" class="report-card-value">—</span><span id="market-detail" class="report-card-detail">—</span>
+            </button>
+          </div>
+          <section id="report-detail-panel" class="panel report-detail-panel" hidden aria-labelledby="report-detail-title" aria-live="polite">
+            <div class="report-detail-header">
+              <div><p class="eyebrow">선택 상세</p><h3 id="report-detail-title">—</h3><p id="report-detail-subtitle" class="report-detail-subtitle">—</p></div>
+              <button id="report-detail-close" class="report-detail-close" type="button" aria-label="상세 정보 닫기">닫기</button>
+            </div>
+            <div id="report-detail-content" class="report-detail-content"></div>
+          </section>
+          <div class="report-card-row">
+            <button id="flow-card" class="panel report-card report-card-button" type="button" aria-controls="report-detail-panel" aria-expanded="false" aria-label="수급 상세 정보 열기">
+              <span class="report-card-heading">수급</span><span id="flow-value" class="report-card-value">—</span><span id="flow-detail" class="report-card-detail">—</span>
+            </button>
+            <article class="panel report-card"><p class="report-card-heading">펀더멘탈</p><p id="fundamentals-value" class="report-card-value">준비 중</p><p id="fundamentals-detail" class="report-card-detail">데이터 연결 전</p></article>
+            <button id="strategy-card" class="panel report-card report-card-button" type="button" aria-controls="report-detail-panel" aria-expanded="false" aria-label="전략 상세 정보 열기">
+              <span class="report-card-heading">전략</span><span id="strategy-value" class="report-card-value">—</span><span id="strategy-detail" class="report-card-detail">—</span>
+            </button>
+          </div>
         </div>
 
         <section class="panel report-details" aria-labelledby="technical-heading">

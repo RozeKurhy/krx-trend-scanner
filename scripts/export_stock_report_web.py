@@ -130,6 +130,50 @@ def _load_exact_daily_close(ticker: str, as_of: str) -> dict[str, Any] | None:
     }
 
 
+def _compact_monthly_history(monthly: dict[str, Any]) -> list[dict[str, Any]]:
+    history = monthly.get("recent_12m_history") or []
+    if not isinstance(history, list):
+        return []
+    return [
+        {
+            "as_of": observation.get("as_of"),
+            "close": observation.get("close"),
+            "score": observation.get("score"),
+            "stage": observation.get("stage"),
+            "candidate_state": observation.get("candidate_state"),
+            "data_available": observation.get("data_available"),
+        }
+        for observation in history[-12:]
+        if isinstance(observation, dict)
+    ]
+
+
+def _compact_trade_history(strategy: dict[str, Any]) -> list[dict[str, Any]]:
+    history = strategy.get("trade_history") or []
+    if not isinstance(history, list):
+        return []
+    fields = (
+        "trade_id",
+        "trade_sequence",
+        "entry_signal_date",
+        "entry_execution_date",
+        "entry_open",
+        "entry_pattern_a_stage",
+        "exit_type",
+        "exit_signal_date",
+        "exit_execution_date",
+        "exit_price",
+        "trade_status",
+        "return_pct",
+        "lifecycle_class",
+    )
+    return [
+        {field: trade.get(field) for field in fields}
+        for trade in history
+        if isinstance(trade, dict)
+    ]
+
+
 def _compact_report(report: dict[str, Any], source_path: Path) -> dict[str, Any]:
     header = report.get("header") or {}
     snapshot = report.get("current_snapshot") or {}
@@ -181,6 +225,7 @@ def _compact_report(report: dict[str, Any], source_path: Path) -> dict[str, Any]
             "official_stage": snapshot.get("official_stage"),
             "candidate_state": snapshot.get("candidate_state"),
             "score": snapshot.get("pattern_a_score"),
+            "history_12m": _compact_monthly_history(monthly),
         },
         "market_strength": {
             "applicability": relative_strength.get("applicability"),
@@ -191,15 +236,23 @@ def _compact_report(report: dict[str, Any], source_path: Path) -> dict[str, Any]
             "market_rs_6m": relative_strength.get("market_rs_6m"),
             "market_rs_12m": relative_strength.get("market_rs_12m"),
             "percentile_3m": relative_strength.get("all_market_rs_percentile_3m"),
+            "percentile_6m": relative_strength.get("all_market_rs_percentile_6m"),
+            "percentile_12m": relative_strength.get("all_market_rs_percentile_12m"),
             "explanation": relative_strength.get("explanation"),
         },
         "flow": {
             "data_status": flow.get("data_status"),
             "state": flow.get("flow_state"),
+            "net_buy_value_1d_krw": flow.get("foreign_net_buy_value_1d_krw"),
             "net_buy_value_5d_krw": flow.get("foreign_net_buy_value_5d_krw"),
             "net_buy_value_20d_krw": flow.get("foreign_net_buy_value_20d_krw"),
             "net_buy_value_60d_krw": flow.get("foreign_net_buy_value_60d_krw"),
+            "intensity_5d": flow.get("foreign_flow_intensity_5d"),
+            "intensity_20d": flow.get("foreign_flow_intensity_20d"),
+            "intensity_60d": flow.get("foreign_flow_intensity_60d"),
+            "positive_days_5d": flow.get("foreign_positive_days_5d"),
             "positive_days_20d": flow.get("foreign_positive_days_20d"),
+            "positive_days_60d": flow.get("foreign_positive_days_60d"),
             "explanation": flow.get("explanation"),
         },
         "fundamentals": {
@@ -211,6 +264,7 @@ def _compact_report(report: dict[str, Any], source_path: Path) -> dict[str, Any]
             "position": strategy.get("canonical_position"),
             "reason": strategy.get("action_reason"),
             "interpretation": strategy.get("interpretation"),
+            "history": _compact_trade_history(strategy),
         },
         "technical_details": {
             "requested_as_of": report.get("requested_as_of"),

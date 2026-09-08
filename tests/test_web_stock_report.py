@@ -108,6 +108,51 @@ def test_rs_is_display_mapping_only_and_not_recomputed(payload, exporter):
     assert compact["market_strength"]["percentile_3m"] == source_rs["all_market_rs_percentile_3m"]
 
 
+def test_interaction_detail_payload_preserves_authority_history(payload, exporter):
+    _index, reports, _stats = payload
+    report_dir, _requested_as_of = exporter._resolve_report_directory()
+    source = next(
+        json.loads(path.read_text(encoding="utf-8"))
+        for path in (report_dir / "json").glob("005930_*.json")
+    )
+    compact = reports["005930"]
+
+    expected_pattern = [
+        {
+            "as_of": item["as_of"],
+            "close": item["close"],
+            "score": item["score"],
+            "stage": item["stage"],
+            "candidate_state": item["candidate_state"],
+            "data_available": item["data_available"],
+        }
+        for item in source["monthly_history"]["recent_12m_history"][-12:]
+    ]
+    assert compact["pattern"]["history_12m"] == expected_pattern
+
+    source_rs = source["relative_strength"]
+    assert compact["market_strength"]["market_rs_3m"] == source_rs["market_rs_3m"]
+    assert compact["market_strength"]["market_rs_6m"] == source_rs["market_rs_6m"]
+    assert compact["market_strength"]["market_rs_12m"] == source_rs["market_rs_12m"]
+    assert compact["market_strength"]["percentile_3m"] == source_rs["all_market_rs_percentile_3m"]
+    assert compact["market_strength"]["percentile_6m"] == source_rs["all_market_rs_percentile_6m"]
+    assert compact["market_strength"]["percentile_12m"] == source_rs["all_market_rs_percentile_12m"]
+
+    source_flow = source["foreign_flow"]
+    assert compact["flow"]["net_buy_value_1d_krw"] == source_flow["foreign_net_buy_value_1d_krw"]
+    assert compact["flow"]["net_buy_value_5d_krw"] == source_flow["foreign_net_buy_value_5d_krw"]
+    assert compact["flow"]["net_buy_value_20d_krw"] == source_flow["foreign_net_buy_value_20d_krw"]
+    assert compact["flow"]["net_buy_value_60d_krw"] == source_flow["foreign_net_buy_value_60d_krw"]
+    assert compact["flow"]["positive_days_20d"] == source_flow["foreign_positive_days_20d"]
+    assert compact["flow"]["intensity_5d"] == source_flow["foreign_flow_intensity_5d"]
+
+    source_strategy = source["a_fast_core"]
+    history = compact["strategy"]["history"]
+    assert len(history) == len(source_strategy["trade_history"]) == 6
+    assert history[-1]["trade_status"] == "OPEN_AT_CUTOFF"
+    assert history[-1]["trade_id"] == source_strategy["trade_history"][-1]["trade_id"]
+
+
 def test_exporter_writes_index_and_one_json_per_available_report(tmp_path, exporter):
     report_dir, requested_as_of = exporter._resolve_report_directory()
     universe, _snapshot_date = exporter._load_universe(requested_as_of)
@@ -153,7 +198,21 @@ def test_report_frontend_has_safe_states_and_relative_assets():
     assert "일치하는 종목이 없습니다." in html
     assert "Math.random" in js
     assert "report_available === true" in js
+    assert 'setHidden("search-no-results", true);' in js
     assert "PATTERN_STEPS" in js
+    assert 'id="pattern-card"' in html
+    assert 'id="market-card"' in html
+    assert 'id="flow-card"' in html
+    assert 'id="strategy-card"' in html
+    assert 'id="report-detail-panel"' in html
+    assert 'aria-expanded="false"' in html
+    assert "history_12m" in js
+    assert "percentile_6m" in js and "percentile_12m" in js
+    assert "formatKrwCompact" in js
+    assert "strategy.history" in js
+    assert "100 - Number(value)" in js
+    for percentile, expected in ((92.51, 7.5), (76.6, 23.4), (99.20, 0.8)):
+        assert round(100 - percentile, 1) == expected
     assert "네이버 증권에서 보기" in html
     assert "차트 바로가기" in html
     assert "F8" not in html and "WEB-02A" not in html
@@ -161,8 +220,13 @@ def test_report_frontend_has_safe_states_and_relative_assets():
     assert "innerHTML" not in js
     assert "href=\"./report.html\"" in html
     assert ".report-card-grid" in css
+    assert ".report-card-row" in css
+    assert ".pattern-arrow" in css
     assert ".pattern-stepper" in css
     assert "@media (max-width: 560px)" in css
+    assert html.count('<p class="eyebrow">검색 안내</p>') == 0
+    assert "가격 출처" in js
+    assert "가격 authority" not in js
 
 
 def test_index_navigation_keeps_health_and_report_pages_connected():

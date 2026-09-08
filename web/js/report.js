@@ -69,11 +69,35 @@
     FLOW_RECENT_RECOVERY: "최근 외국인 수급은 회복 흐름입니다.",
     FLOW_UNAVAILABLE: "최근 외국인 수급 정보가 없습니다.",
   };
+  const TRADE_STATUS_LABELS = {
+    REALIZED: "청산 완료",
+    OPEN_AT_CUTOFF: "보유 중",
+  };
+  const EXIT_TYPE_LABELS = {
+    LOSS_GUARD_CLOSE_LE_NEG_15: "손실 제한",
+    EXIT3_PROGRESSED_TO_TRANSITION: "상승 진행 → 전환",
+    EXIT4_SCORE_DRAWDOWN_GE_15: "패턴 점수 하락",
+    NO_EXIT_BEFORE_CUTOFF: "기준일 현재 보유 중",
+  };
+  const DETAIL_BUTTON_LABELS = {
+    pattern: "패턴 점수",
+    market: "시장 강도",
+    flow: "수급",
+    strategy: "전략",
+  };
+  const DETAIL_BUTTON_IDS = {
+    pattern: "pattern-card",
+    market: "market-card",
+    flow: "flow-card",
+    strategy: "strategy-card",
+  };
 
   const byId = (id) => document.getElementById(id);
   const numberFormat = new Intl.NumberFormat("ko-KR");
   let indexData = null;
   let searchMatches = [];
+  let currentReport = null;
+  let activeDetailKey = null;
 
   function readStoredTheme() {
     try {
@@ -154,6 +178,45 @@
     return value.slice(0, 10).replaceAll("-", ".");
   }
 
+  function formatRate(value) {
+    if (value == null || value === "" || !Number.isFinite(Number(value))) return "—";
+    return `${formatNumber(Number(value) * 100, 2)}%`;
+  }
+
+  function formatSignedRate(value) {
+    if (value == null || value === "" || !Number.isFinite(Number(value))) return "—";
+    const number = Number(value) * 100;
+    const sign = number > 0 ? "+" : number < 0 ? "−" : "";
+    return `${sign}${formatNumber(Math.abs(number), 2)}%`;
+  }
+
+  function formatSignedPercentPoints(value) {
+    if (value == null || value === "" || !Number.isFinite(Number(value))) return "—";
+    const number = Number(value);
+    const sign = number > 0 ? "+" : number < 0 ? "−" : "";
+    return `${sign}${formatNumber(Math.abs(number), 2)}%`;
+  }
+
+  function formatKrwCompact(value) {
+    if (value == null || value === "" || !Number.isFinite(Number(value))) return "—";
+    const number = Number(value);
+    const sign = number > 0 ? "+" : number < 0 ? "−" : "";
+    const absolute = Math.abs(number);
+    if (absolute >= 1e12) return `${sign}${formatNumber(absolute / 1e12, 2)}조원`;
+    if (absolute >= 1e8) return `${sign}${formatNumber(absolute / 1e8, 1)}억원`;
+    return `${sign}${formatNumber(absolute)}원`;
+  }
+
+  function topPercentFromPercentile(value) {
+    if (value == null || value === "" || !Number.isFinite(Number(value))) return null;
+    return Math.max(0, Math.min(100, 100 - Number(value)));
+  }
+
+  function topPercentLabel(value) {
+    const topPercent = topPercentFromPercentile(value);
+    return topPercent == null ? "정보 있음" : `상위 ${formatNumber(topPercent, 1)}%`;
+  }
+
   function label(map, value, fallback) {
     return Object.prototype.hasOwnProperty.call(map, value) ? map[value] : (fallback || "정보 없음");
   }
@@ -166,12 +229,14 @@
   function tradingValueLabel(value) { return label(TRADING_VALUE_LABELS, value, "정보 없음"); }
   function strategyDetail(value) { return label(STRATEGY_STATE_DETAILS, value, "전략 상태 확인 필요"); }
   function flowDetail(value) { return label(FLOW_DETAILS, value, "수급 상태 확인 필요"); }
+  function tradeStatusLabel(value) { return label(TRADE_STATUS_LABELS, value, "상태 확인 필요"); }
+  function exitTypeLabel(value) { return label(EXIT_TYPE_LABELS, value, "종료 기준 확인 필요"); }
 
   function marketStrengthLabel(market) {
     if (!market || market.applicability === "NOT_APPLICABLE") return "해당 없음";
     if (market.data_status !== "READY") return "정보 없음";
     if (market.percentile_3m == null || !Number.isFinite(Number(market.percentile_3m))) return "정보 있음";
-    return `최근 3개월 ${formatNumber(market.percentile_3m, 1)} 백분위`;
+    return `최근 3개월 ${topPercentLabel(market.percentile_3m)}`;
   }
 
   function marketStrengthDetail(market) {
@@ -261,7 +326,7 @@
     while (results.firstChild) results.removeChild(results.firstChild);
     const normalized = String(query || "").trim().toLocaleLowerCase("ko-KR");
     setHidden("recommendations-panel", Boolean(normalized));
-    setHidden("search-no-results", false);
+    setHidden("search-no-results", true);
     if (!normalized) {
       results.hidden = true;
       searchMatches = [];
@@ -277,6 +342,7 @@
   }
 
   function showEmpty() {
+    resetDetailPanel();
     setHidden("report-empty", false);
     setHidden("report-pending", true);
     setHidden("report-view", true);
@@ -284,6 +350,7 @@
   }
 
   function showPending(item) {
+    resetDetailPanel();
     setHidden("report-empty", true);
     setHidden("report-pending", false);
     setHidden("report-view", true);
@@ -292,6 +359,7 @@
   }
 
   function showError(message) {
+    resetDetailPanel();
     setHidden("report-empty", true);
     setHidden("report-pending", true);
     setHidden("report-view", true);
@@ -310,7 +378,7 @@
     const stepper = byId("pattern-stepper");
     if (!stepper) return;
     while (stepper.firstChild) stepper.removeChild(stepper.firstChild);
-    PATTERN_STEPS.forEach(([code, text]) => {
+    PATTERN_STEPS.forEach(([code, text], index) => {
       const step = document.createElement("span");
       step.className = "pattern-step";
       step.setAttribute("role", "listitem");
@@ -320,7 +388,201 @@
         step.setAttribute("aria-current", "step");
       }
       stepper.appendChild(step);
+      if (index < PATTERN_STEPS.length - 1) {
+        const arrow = document.createElement("span");
+        arrow.className = "pattern-arrow";
+        arrow.setAttribute("aria-hidden", "true");
+        arrow.textContent = "→";
+        stepper.appendChild(arrow);
+      }
     });
+  }
+
+  function appendTableCell(row, value, className) {
+    const cell = document.createElement("td");
+    cell.textContent = value == null || value === "" ? "—" : String(value);
+    if (className) cell.className = className;
+    row.appendChild(cell);
+  }
+
+  function createDetailTable(headers, rows, className) {
+    const wrapper = document.createElement("div");
+    wrapper.className = "detail-table-wrap";
+    const table = document.createElement("table");
+    table.className = `detail-table${className ? ` ${className}` : ""}`;
+    const thead = document.createElement("thead");
+    const headerRow = document.createElement("tr");
+    headers.forEach((header) => {
+      const cell = document.createElement("th");
+      cell.scope = "col";
+      cell.textContent = header;
+      headerRow.appendChild(cell);
+    });
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
+    const tbody = document.createElement("tbody");
+    rows.forEach((values) => {
+      const row = document.createElement("tr");
+      values.forEach((value) => {
+        if (value && typeof value === "object" && !Array.isArray(value)) {
+          appendTableCell(row, value.value, value.className);
+        } else {
+          appendTableCell(row, value);
+        }
+      });
+      tbody.appendChild(row);
+    });
+    table.appendChild(tbody);
+    wrapper.appendChild(table);
+    return wrapper;
+  }
+
+  function appendDetailNote(container, text, className) {
+    const note = document.createElement("p");
+    note.className = className || "detail-note";
+    note.textContent = text;
+    container.appendChild(note);
+  }
+
+  function appendDetailEmpty(container, text) {
+    const empty = document.createElement("p");
+    empty.className = "detail-empty";
+    empty.textContent = text || "표시할 상세 데이터가 없습니다.";
+    container.appendChild(empty);
+  }
+
+  function renderPatternDetail(report, container) {
+    const history = Array.isArray(report.pattern.history_12m) ? report.pattern.history_12m : [];
+    if (!history.length) {
+      appendDetailEmpty(container, "최근 12개월 패턴 이력이 없습니다.");
+      return;
+    }
+    const rows = history.map((observation) => [
+      formatDate(observation.as_of),
+      observation.data_available === false ? "정보 없음" : formatPrice(observation.close),
+      observation.score == null ? "—" : `${formatNumber(observation.score, 2)}점`,
+      stageLabel(observation.stage),
+    ]);
+    container.appendChild(createDetailTable(["기준일", "종가", "패턴 점수", "단계"], rows));
+  }
+
+  function renderMarketDetail(report, container) {
+    const market = report.market_strength;
+    if (!market || market.applicability === "NOT_APPLICABLE") {
+      appendDetailEmpty(container, "이 종목에는 시장 대비 강도 정보가 적용되지 않습니다.");
+      return;
+    }
+    if (market.data_status !== "READY") {
+      appendDetailEmpty(container, "시장 대비 강도 정보가 없습니다.");
+      return;
+    }
+    const rows = [
+      ["최근 3개월", formatRate(market.market_rs_3m), topPercentLabel(market.percentile_3m)],
+      ["최근 6개월", formatRate(market.market_rs_6m), topPercentLabel(market.percentile_6m)],
+      ["최근 12개월", formatRate(market.market_rs_12m), topPercentLabel(market.percentile_12m)],
+    ];
+    container.appendChild(createDetailTable(["구간", "시장 대비 수익률", "시장 내 위치"], rows));
+    appendDetailNote(container, `${market.benchmark_name || "시장"} 기준 · 최근 관측일 ${formatDate(market.benchmark_last_observation_date)}`);
+    if (market.explanation) appendDetailNote(container, market.explanation);
+  }
+
+  function flowClass(value) {
+    if (value == null || !Number.isFinite(Number(value)) || Number(value) === 0) return "";
+    return Number(value) > 0 ? "detail-value-positive" : "detail-value-negative";
+  }
+
+  function renderFlowDetail(report, container) {
+    const flow = report.flow;
+    if (!flow || flow.data_status !== "READY") {
+      appendDetailEmpty(container, "최근 외국인 수급 정보가 없습니다.");
+      return;
+    }
+    const rows = [
+      ["1일", { value: formatKrwCompact(flow.net_buy_value_1d_krw), className: flowClass(flow.net_buy_value_1d_krw) }, "—", "—"],
+      ["5일", { value: formatKrwCompact(flow.net_buy_value_5d_krw), className: flowClass(flow.net_buy_value_5d_krw) }, { value: formatSignedRate(flow.intensity_5d), className: flowClass(flow.intensity_5d) }, flow.positive_days_5d == null ? "—" : `${formatNumber(flow.positive_days_5d)}일`],
+      ["20일", { value: formatKrwCompact(flow.net_buy_value_20d_krw), className: flowClass(flow.net_buy_value_20d_krw) }, { value: formatSignedRate(flow.intensity_20d), className: flowClass(flow.intensity_20d) }, flow.positive_days_20d == null ? "—" : `${formatNumber(flow.positive_days_20d)}일`],
+      ["60일", { value: formatKrwCompact(flow.net_buy_value_60d_krw), className: flowClass(flow.net_buy_value_60d_krw) }, { value: formatSignedRate(flow.intensity_60d), className: flowClass(flow.intensity_60d) }, flow.positive_days_60d == null ? "—" : `${formatNumber(flow.positive_days_60d)}일`],
+    ];
+    container.appendChild(createDetailTable(["기간", "외국인 누적 순매수", "순매수 강도", "양수 일수"], rows));
+    if (flow.explanation) appendDetailNote(container, flow.explanation);
+  }
+
+  function renderStrategyDetail(report, container) {
+    const history = Array.isArray(report.strategy.history) ? report.strategy.history : [];
+    if (!history.length) {
+      appendDetailEmpty(container, "표시할 canonical 전략 이력이 없습니다.");
+      return;
+    }
+    const rows = history.map((trade) => [
+      trade.trade_sequence == null ? "—" : `${formatNumber(trade.trade_sequence)}회`,
+      formatDate(trade.entry_execution_date || trade.entry_signal_date),
+      formatPrice(trade.entry_open),
+      formatDate(trade.exit_execution_date),
+      formatPrice(trade.exit_price),
+      formatSignedPercentPoints(trade.return_pct),
+      tradeStatusLabel(trade.trade_status),
+      exitTypeLabel(trade.exit_type),
+    ]);
+    container.appendChild(createDetailTable(["회차", "진입일", "진입가", "청산일", "청산가", "수익률", "상태", "종료 사유"], rows, "strategy-history-table"));
+    appendDetailNote(container, "전략 이력은 기존 canonical strategy history를 표시하며, 이 화면에서 재계산하지 않습니다.", "strategy-disclaimer");
+  }
+
+  function renderDetail(key, report) {
+    const panel = byId("report-detail-panel");
+    const title = byId("report-detail-title");
+    const subtitle = byId("report-detail-subtitle");
+    const content = byId("report-detail-content");
+    if (!panel || !title || !subtitle || !content) return;
+    while (content.firstChild) content.removeChild(content.firstChild);
+    title.textContent = `${DETAIL_BUTTON_LABELS[key]} 상세`;
+    subtitle.textContent = `${report.identity.name}(${report.identity.ticker}) · 기준일 ${formatDate(report.technical_details.requested_as_of)}`;
+    if (key === "pattern") renderPatternDetail(report, content);
+    else if (key === "market") renderMarketDetail(report, content);
+    else if (key === "flow") renderFlowDetail(report, content);
+    else if (key === "strategy") renderStrategyDetail(report, content);
+    panel.hidden = false;
+  }
+
+  function setDetailButtonStates() {
+    Object.entries(DETAIL_BUTTON_IDS).forEach(([key, id]) => {
+      const button = byId(id);
+      if (!button) return;
+      const selected = key === activeDetailKey;
+      button.classList.toggle("is-selected", selected);
+      button.setAttribute("aria-expanded", String(selected));
+      button.setAttribute("aria-label", `${DETAIL_BUTTON_LABELS[key]} 상세 정보 ${selected ? "닫기" : "열기"}`);
+    });
+  }
+
+  function closeDetail() {
+    activeDetailKey = null;
+    setHidden("report-detail-panel", true);
+    setDetailButtonStates();
+  }
+
+  function resetDetailPanel() {
+    currentReport = null;
+    closeDetail();
+  }
+
+  function toggleDetail(key) {
+    if (!currentReport) return;
+    if (activeDetailKey === key) {
+      closeDetail();
+      return;
+    }
+    activeDetailKey = key;
+    setDetailButtonStates();
+    renderDetail(key, currentReport);
+  }
+
+  function initDetailInteractions() {
+    Object.entries(DETAIL_BUTTON_IDS).forEach(([key, id]) => {
+      const button = byId(id);
+      if (button) button.addEventListener("click", () => toggleDetail(key));
+    });
+    const close = byId("report-detail-close");
+    if (close) close.addEventListener("click", closeDetail);
   }
 
   function appendDetail(list, name, value) {
@@ -351,11 +613,13 @@
     appendDetail(list, "시장 강도 상태", details.market_strength_status);
     appendDetail(list, "거래대금 상태", details.trading_value_state);
     appendDetail(list, "가격 기준일", details.price_as_of);
-    appendDetail(list, "가격 authority", details.price_source);
+    appendDetail(list, "가격 출처", details.price_source);
     appendDetail(list, "원본 리포트", details.source_report);
   }
 
   function renderReport(report) {
+    closeDetail();
+    currentReport = report;
     const identity = report.identity;
     const market = marketLabel(identity.market);
     setHidden("report-empty", true);
@@ -401,6 +665,7 @@
       showPending(item);
       return;
     }
+    closeDetail();
     try {
       const response = await fetch(`${STOCKS_PATH}${encodeURIComponent(item.ticker)}.json`, { cache: "no-store" });
       if (!response.ok) throw new Error("stock report request failed");
@@ -422,6 +687,7 @@
     if (input) input.value = item.name;
     const results = byId("search-results");
     if (results) results.hidden = true;
+    resetDetailPanel();
     updateUrl(item.ticker);
     loadSelected(item);
   }
@@ -450,6 +716,7 @@
   }
 
   initTheme();
+  initDetailInteractions();
   const input = byId("stock-search");
   if (input) {
     input.addEventListener("input", () => renderSearchResults(input.value));
