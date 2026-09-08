@@ -492,6 +492,34 @@ summary { cursor: pointer; color: var(--ink); font-size: 13px; font-weight: 750;
 .strategy-item-link { flex: 0 0 auto; color: var(--brand-red-dark); font-size: 11px; font-weight: 800; white-space: nowrap; }
 .strategy-empty { margin: 0; color: var(--ink-soft); font-size: 13px; }
 
+.market-overview, .market-controls { margin-bottom: 16px; }
+.market-overview .panel-heading { margin-bottom: 16px; }
+.market-scope { margin: 0; color: var(--ink-soft); font-size: 13px; }
+.market-controls-heading { margin-bottom: 14px; }
+.market-controls-heading h2 { margin-bottom: 6px; }
+.market-control-group { display: flex; gap: 7px; overflow-x: auto; padding: 1px 1px 12px; }
+.market-control { flex: 0 0 auto; border: 1px solid var(--line-strong); padding: 8px 12px; color: var(--ink-soft); background: var(--surface); border-radius: 999px; font: inherit; font-size: 12px; font-weight: 750; white-space: nowrap; cursor: pointer; }
+.market-control:hover { border-color: var(--brand-red); color: var(--brand-red); }
+.market-control:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+.market-control.is-active { border-color: var(--brand-red); color: var(--brand-red); background: var(--primary-soft); }
+.market-ranking-list { display: grid; gap: 8px; }
+.market-ranking-row { display: grid; grid-template-columns: minmax(190px, 1.7fr) repeat(5, minmax(86px, 1fr)) auto; align-items: center; gap: 12px; min-width: 0; min-height: 98px; border: 1px solid var(--line); padding: 16px; color: var(--ink); background: var(--surface); border-radius: 9px; text-decoration: none; }
+.market-ranking-row:hover { border-color: var(--line-strong); background: var(--surface-muted); }
+.market-ranking-row:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+.market-ranking-identity, .market-ranking-field { min-width: 0; }
+.market-ranking-identity { display: flex; flex-direction: column; gap: 4px; }
+.market-ranking-name { overflow: hidden; font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
+.market-ranking-meta { overflow: hidden; color: var(--ink-faint); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.market-ranking-field { display: flex; flex-direction: column; gap: 4px; }
+.market-ranking-label { color: var(--ink-faint); font-size: 10px; }
+.market-ranking-value { overflow-wrap: anywhere; color: var(--ink-soft); font-size: 12px; font-weight: 750; line-height: 1.3; }
+.market-ranking-strength .market-ranking-value { color: var(--brand-red-dark); font-size: 15px; }
+.market-ranking-detail { color: var(--ink-faint); font-size: 10px; line-height: 1.25; }
+.market-ranking-price .market-ranking-value { color: var(--ink); }
+.market-ranking-action .market-ranking-value { color: var(--brand-red-dark); }
+.market-ranking-report { flex: 0 0 auto; color: var(--brand-red-dark); font-size: 11px; font-weight: 800; white-space: nowrap; }
+.market-ranking-empty { margin: 0; padding: 24px; color: var(--ink-soft); background: var(--surface); border: 1px solid var(--line); border-radius: 9px; }
+
 @media (max-width: 960px) {
   .header-inner { align-items: flex-start; flex-direction: column; gap: 14px; padding-block: 17px; }
   .header-actions { width: 100%; justify-content: space-between; }
@@ -503,6 +531,9 @@ summary { cursor: pointer; color: var(--ink); font-size: 13px; font-weight: 750;
   .strategy-item { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .strategy-item-identity { grid-column: 1 / -1; }
   .strategy-item-link { justify-self: end; }
+  .market-ranking-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .market-ranking-identity { grid-column: 1 / -1; }
+  .market-ranking-report { justify-self: end; }
 }
 
 @media (max-width: 560px) {
@@ -521,6 +552,9 @@ summary { cursor: pointer; color: var(--ink); font-size: 13px; font-weight: 750;
   .strategy-item { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 16px; }
   .strategy-item-identity, .strategy-item-link { grid-column: 1 / -1; }
   .strategy-item-link { justify-self: start; }
+  .market-ranking-row { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 16px; }
+  .market-ranking-identity, .market-ranking-report { grid-column: 1 / -1; }
+  .market-ranking-report { justify-self: start; }
   .report-identity { align-items: flex-start; flex-direction: column; gap: 12px; }
   .report-actions { justify-content: flex-start; width: 100%; }
   .pattern-stepper { column-gap: 0; row-gap: 0; }

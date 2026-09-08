@@ -189,20 +189,18 @@ def test_report_frontend_has_safe_states_and_relative_assets():
     css = (ROOT / "web/css/app.css").read_text(encoding="utf-8")
     favicon = (ROOT / "web/favicon.svg").read_text(encoding="utf-8")
 
-    assert 'href="./css/app.css?v=web-03a-final-1"' in html
-    assert 'href="./css/app.css?v=web-03a-final-1"' in index_html
+    assert 'href="./css/app.css?v=web-04a-1"' in html
+    assert 'href="./css/app.css?v=web-04a-1"' in index_html
     assert 'href="./favicon.svg"' in html
     assert 'href="./favicon.svg"' in index_html
     assert (ROOT / "web/favicon.svg").exists()
     assert '#9f1d2f' in favicon
-    assert 'src="./js/report.js?v=web-03a-final-1"' in html
-    assert 'src="./js/app.js?v=web-03a-final-1"' in index_html
-    assert html.count("web-03a-final-1") == 2
-    assert index_html.count("web-03a-final-1") == 2
-    assert "web-03a-polish-1" not in html
-    assert "web-03a-polish-1" not in index_html
-    assert "web-03a-1" not in html
-    assert "web-03a-1" not in index_html
+    assert 'src="./js/report.js?v=web-04a-1"' in html
+    assert 'src="./js/app.js?v=web-04a-1"' in index_html
+    assert html.count("web-04a-1") == 2
+    assert index_html.count("web-04a-1") == 2
+    assert "web-03a-final-1" not in html
+    assert "web-03a-final-1" not in index_html
     assert "web-02a-final-2" not in html
     assert "web-02a-final-2" not in index_html
     assert 'placeholder="종목명 또는 종목코드 검색"' in html
