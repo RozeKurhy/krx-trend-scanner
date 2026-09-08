@@ -658,8 +658,22 @@ def render_markdown_report(report: StockReport) -> str:
             benchmark = f"{benchmark} ({rs.benchmark_code})"
         md.append(f"- **Benchmark**: `{benchmark}`")
         md.append("")
+        md.append(
+            f"- **최근 1개월 주요 시장 강도**: {_format_rs_position(rs.all_market_rs_percentile_1m)}"
+        )
+        md.append("")
         md.append("| 기간 | 시장 대비 RS | 시장 백분위 | 시장 내 위치 |")
         md.append("|---|---:|---:|---|")
+        md.append(
+            f"| 2주 | {_format_rs_return(rs.market_rs_2w)} | "
+            f"{_format_rs_percentile(rs.all_market_rs_percentile_2w)} | "
+            f"{_format_rs_position(rs.all_market_rs_percentile_2w)} |"
+        )
+        md.append(
+            f"| 1개월 | {_format_rs_return(rs.market_rs_1m)} | "
+            f"{_format_rs_percentile(rs.all_market_rs_percentile_1m)} | "
+            f"{_format_rs_position(rs.all_market_rs_percentile_1m)} |"
+        )
         md.append(
             f"| 3개월 | {_format_rs_return(rs.market_rs_3m)} | "
             f"{_format_rs_percentile(rs.all_market_rs_percentile_3m)} | "

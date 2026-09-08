@@ -21,11 +21,15 @@ IMPROVEMENT_COLUMNS = (
     "market_rs_acceleration_3_6_12m",
 )
 RANK_COLUMNS = (
+    "all_market_rs_rank_2w",
+    "all_market_rs_rank_1m",
     "all_market_rs_rank_3m",
     "all_market_rs_rank_6m",
     "all_market_rs_rank_12m",
 )
 PERCENTILE_COLUMNS = (
+    "all_market_rs_percentile_2w",
+    "all_market_rs_percentile_1m",
     "all_market_rs_percentile_3m",
     "all_market_rs_percentile_6m",
     "all_market_rs_percentile_12m",
@@ -107,6 +111,8 @@ def compute_market_rs_cross_section(rows: pd.DataFrame | Iterable[Any]) -> pd.Da
             result[column] = pd.Series(index=result.index, dtype="float64")
         return result
 
+    rs_2w = _numeric(result, "market_rs_2w")
+    rs_1m = _numeric(result, "market_rs_1m")
     rs_3m = _numeric(result, "market_rs_3m")
     rs_6m = _numeric(result, "market_rs_6m")
     rs_12m = _numeric(result, "market_rs_12m")
@@ -129,7 +135,13 @@ def compute_market_rs_cross_section(rows: pd.DataFrame | Iterable[Any]) -> pd.Da
     )
     result["market_rs_acceleration_3_6_12m"] = acceleration
 
-    for horizon, values in (("3m", rs_3m), ("6m", rs_6m), ("12m", rs_12m)):
+    for horizon, values in (
+        ("2w", rs_2w),
+        ("1m", rs_1m),
+        ("3m", rs_3m),
+        ("6m", rs_6m),
+        ("12m", rs_12m),
+    ):
         ranks, percentiles = _rank_and_percentile(values)
         result[f"all_market_rs_rank_{horizon}"] = ranks
         result[f"all_market_rs_percentile_{horizon}"] = percentiles

@@ -1,6 +1,7 @@
 """상대강도(Relative Strength) 확증 피처 계산 엔진.
 
-Point In Time(PIT) 원칙과 벤치마크 거래일 기준 Window(3M=63D, 6M=126D, 12M=252D)를 준수하여
+Point In Time(PIT) 원칙과 벤치마크 거래일 기준 Window(2W=10D, 1M=21D, 3M=63D,
+6M=126D, 12M=252D)를 준수하여
 대표 시장 지수(KOSPI 1001, KOSDAQ 2001) 및 업종 지수 대비 상대강도(Relative Price Ratio - 1) 피처를 계산한다.
 
 [핵심 정의]:
@@ -39,6 +40,8 @@ class RelativeStrengthDataStatus(str, Enum):
     NOT_EVALUATED = "NOT_EVALUATED"        # 스캐너에서 미평가된 비후보군 종목 상태
 
 
+HORIZON_SESSIONS_2W = 10
+HORIZON_SESSIONS_1M = 21
 HORIZON_SESSIONS_3M = 63
 HORIZON_SESSIONS_6M = 126
 HORIZON_SESSIONS_12M = 252
@@ -58,21 +61,29 @@ class RelativeStrengthFeatureResult:
     market_benchmark_last_observation_date: str | None
 
     # Stock Absolute Returns
+    stock_return_2w: float | None
+    stock_return_1m: float | None
     stock_return_3m: float | None
     stock_return_6m: float | None
     stock_return_12m: float | None
 
     # Market Benchmark Returns
+    market_return_2w: float | None
+    market_return_1m: float | None
     market_return_3m: float | None
     market_return_6m: float | None
     market_return_12m: float | None
 
     # Market Relative Strength (Relative Price Ratio - 1)
+    market_rs_2w: float | None
+    market_rs_1m: float | None
     market_rs_3m: float | None
     market_rs_6m: float | None
     market_rs_12m: float | None
 
     # Anchor Dates
+    market_anchor_date_2w: str | None
+    market_anchor_date_1m: str | None
     market_anchor_date_3m: str | None
     market_anchor_date_6m: str | None
     market_anchor_date_12m: str | None
@@ -109,15 +120,23 @@ class RelativeStrengthFeatureResult:
             "market_benchmark_name": self.market_benchmark_name,
             "market_benchmark_code": self.market_benchmark_code,
             "market_benchmark_last_observation_date": self.market_benchmark_last_observation_date,
+            "stock_return_2w": self.stock_return_2w,
+            "stock_return_1m": self.stock_return_1m,
             "stock_return_3m": self.stock_return_3m,
             "stock_return_6m": self.stock_return_6m,
             "stock_return_12m": self.stock_return_12m,
+            "market_return_2w": self.market_return_2w,
+            "market_return_1m": self.market_return_1m,
             "market_return_3m": self.market_return_3m,
             "market_return_6m": self.market_return_6m,
             "market_return_12m": self.market_return_12m,
+            "market_rs_2w": self.market_rs_2w,
+            "market_rs_1m": self.market_rs_1m,
             "market_rs_3m": self.market_rs_3m,
             "market_rs_6m": self.market_rs_6m,
             "market_rs_12m": self.market_rs_12m,
+            "market_anchor_date_2w": self.market_anchor_date_2w,
+            "market_anchor_date_1m": self.market_anchor_date_1m,
             "market_anchor_date_3m": self.market_anchor_date_3m,
             "market_anchor_date_6m": self.market_anchor_date_6m,
             "market_anchor_date_12m": self.market_anchor_date_12m,
@@ -157,15 +176,23 @@ def _unavailable_rs_result(
         market_benchmark_name=market_benchmark_name,
         market_benchmark_code=market_benchmark_code,
         market_benchmark_last_observation_date=None,
+        stock_return_2w=None,
+        stock_return_1m=None,
         stock_return_3m=None,
         stock_return_6m=None,
         stock_return_12m=None,
+        market_return_2w=None,
+        market_return_1m=None,
         market_return_3m=None,
         market_return_6m=None,
         market_return_12m=None,
+        market_rs_2w=None,
+        market_rs_1m=None,
         market_rs_3m=None,
         market_rs_6m=None,
         market_rs_12m=None,
+        market_anchor_date_2w=None,
+        market_anchor_date_1m=None,
         market_anchor_date_3m=None,
         market_anchor_date_6m=None,
         market_anchor_date_12m=None,
@@ -350,7 +377,7 @@ def compute_relative_strength_features(
 
     stock_end_close = float(s_map[formatted_asof])
 
-    # 4. Compute Market RS for 3M, 6M, 12M Horizons
+    # 4. Compute Market RS for 2W, 1M, 3M, 6M, 12M Horizons
     mkt_obs_count = len(df_mkt)
 
     def _eval_horizon(
@@ -383,12 +410,16 @@ def compute_relative_strength_features(
 
     # Market RS remains fail-closed on a missing/stale exact benchmark.  Its
     # fields are initialized independently so Sector RS can still proceed.
+    s_ret_2w = m_ret_2w = m_rs_2w = m_anc_2w = None
+    s_ret_1m = m_ret_1m = m_rs_1m = m_anc_1m = None
     s_ret_3m = m_ret_3m = m_rs_3m = m_anc_3m = None
     s_ret_6m = m_ret_6m = m_rs_6m = m_anc_6m = None
     s_ret_12m = m_ret_12m = m_rs_12m = m_anc_12m = None
     market_rs_status = RelativeStrengthDataStatus.DATA_UNAVAILABLE
     if market_benchmark_fresh:
         mkt_end_close = float(df_mkt["close"].iloc[-1])
+        s_ret_2w, m_ret_2w, m_rs_2w, m_anc_2w = _eval_horizon(HORIZON_SESSIONS_2W, df_mkt, mkt_end_close)
+        s_ret_1m, m_ret_1m, m_rs_1m, m_anc_1m = _eval_horizon(HORIZON_SESSIONS_1M, df_mkt, mkt_end_close)
         s_ret_3m, m_ret_3m, m_rs_3m, m_anc_3m = _eval_horizon(HORIZON_SESSIONS_3M, df_mkt, mkt_end_close)
         s_ret_6m, m_ret_6m, m_rs_6m, m_anc_6m = _eval_horizon(HORIZON_SESSIONS_6M, df_mkt, mkt_end_close)
         s_ret_12m, m_ret_12m, m_rs_12m, m_anc_12m = _eval_horizon(HORIZON_SESSIONS_12M, df_mkt, mkt_end_close)
@@ -479,15 +510,23 @@ def compute_relative_strength_features(
         market_benchmark_name=target_mkt_name,
         market_benchmark_code=target_mkt_code,
         market_benchmark_last_observation_date=mkt_last_obs_date,
+        stock_return_2w=s_ret_2w,
+        stock_return_1m=s_ret_1m,
         stock_return_3m=s_ret_3m,
         stock_return_6m=s_ret_6m,
         stock_return_12m=s_ret_12m,
+        market_return_2w=m_ret_2w,
+        market_return_1m=m_ret_1m,
         market_return_3m=m_ret_3m,
         market_return_6m=m_ret_6m,
         market_return_12m=m_ret_12m,
+        market_rs_2w=m_rs_2w,
+        market_rs_1m=m_rs_1m,
         market_rs_3m=m_rs_3m,
         market_rs_6m=m_rs_6m,
         market_rs_12m=m_rs_12m,
+        market_anchor_date_2w=m_anc_2w,
+        market_anchor_date_1m=m_anc_1m,
         market_anchor_date_3m=m_anc_3m,
         market_anchor_date_6m=m_anc_6m,
         market_anchor_date_12m=m_anc_12m,

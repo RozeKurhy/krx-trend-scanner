@@ -224,15 +224,23 @@ def _relative_strength_row_updates(result: RelativeStrengthFeatureResult) -> dic
         "market_benchmark_name": result.market_benchmark_name,
         "market_benchmark_code": result.market_benchmark_code,
         "market_benchmark_last_observation_date": result.market_benchmark_last_observation_date,
+        "stock_return_2w": result.stock_return_2w,
+        "stock_return_1m": result.stock_return_1m,
         "stock_return_3m": result.stock_return_3m,
         "stock_return_6m": result.stock_return_6m,
         "stock_return_12m": result.stock_return_12m,
+        "market_return_2w": result.market_return_2w,
+        "market_return_1m": result.market_return_1m,
         "market_return_3m": result.market_return_3m,
         "market_return_6m": result.market_return_6m,
         "market_return_12m": result.market_return_12m,
+        "market_rs_2w": result.market_rs_2w,
+        "market_rs_1m": result.market_rs_1m,
         "market_rs_3m": result.market_rs_3m,
         "market_rs_6m": result.market_rs_6m,
         "market_rs_12m": result.market_rs_12m,
+        "market_anchor_date_2w": result.market_anchor_date_2w,
+        "market_anchor_date_1m": result.market_anchor_date_1m,
         "market_anchor_date_3m": result.market_anchor_date_3m,
         "market_anchor_date_6m": result.market_anchor_date_6m,
         "market_anchor_date_12m": result.market_anchor_date_12m,
@@ -391,15 +399,23 @@ class PatternAUniverseScanRow:
     market_benchmark_code: str | None = None
     market_benchmark_last_observation_date: str | None = None
     market_rs_input_reason: str | None = None
+    stock_return_2w: float | None = None
+    stock_return_1m: float | None = None
     stock_return_3m: float | None = None
     stock_return_6m: float | None = None
     stock_return_12m: float | None = None
+    market_return_2w: float | None = None
+    market_return_1m: float | None = None
     market_return_3m: float | None = None
     market_return_6m: float | None = None
     market_return_12m: float | None = None
+    market_rs_2w: float | None = None
+    market_rs_1m: float | None = None
     market_rs_3m: float | None = None
     market_rs_6m: float | None = None
     market_rs_12m: float | None = None
+    market_anchor_date_2w: str | None = None
+    market_anchor_date_1m: str | None = None
     market_anchor_date_3m: str | None = None
     market_anchor_date_6m: str | None = None
     market_anchor_date_12m: str | None = None
@@ -407,9 +423,13 @@ class PatternAUniverseScanRow:
     market_rs_delta_3m_vs_6m: float | None = None
     market_rs_delta_6m_vs_12m: float | None = None
     market_rs_acceleration_3_6_12m: float | None = None
+    all_market_rs_rank_2w: float | None = None
+    all_market_rs_rank_1m: float | None = None
     all_market_rs_rank_3m: float | None = None
     all_market_rs_rank_6m: float | None = None
     all_market_rs_rank_12m: float | None = None
+    all_market_rs_percentile_2w: float | None = None
+    all_market_rs_percentile_1m: float | None = None
     all_market_rs_percentile_3m: float | None = None
     all_market_rs_percentile_6m: float | None = None
     all_market_rs_percentile_12m: float | None = None
@@ -531,24 +551,36 @@ class PatternAUniverseScanRow:
             "market_benchmark_code": self.market_benchmark_code,
             "market_benchmark_last_observation_date": self.market_benchmark_last_observation_date,
             "market_rs_input_reason": self.market_rs_input_reason,
+            "stock_return_2w": self.stock_return_2w,
+            "stock_return_1m": self.stock_return_1m,
             "stock_return_3m": self.stock_return_3m,
             "stock_return_6m": self.stock_return_6m,
             "stock_return_12m": self.stock_return_12m,
+            "market_return_2w": self.market_return_2w,
+            "market_return_1m": self.market_return_1m,
             "market_return_3m": self.market_return_3m,
             "market_return_6m": self.market_return_6m,
             "market_return_12m": self.market_return_12m,
+            "market_rs_2w": self.market_rs_2w,
+            "market_rs_1m": self.market_rs_1m,
             "market_rs_3m": self.market_rs_3m,
             "market_rs_6m": self.market_rs_6m,
             "market_rs_12m": self.market_rs_12m,
+            "market_anchor_date_2w": self.market_anchor_date_2w,
+            "market_anchor_date_1m": self.market_anchor_date_1m,
             "market_anchor_date_3m": self.market_anchor_date_3m,
             "market_anchor_date_6m": self.market_anchor_date_6m,
             "market_anchor_date_12m": self.market_anchor_date_12m,
             "market_rs_delta_3m_vs_6m": self.market_rs_delta_3m_vs_6m,
             "market_rs_delta_6m_vs_12m": self.market_rs_delta_6m_vs_12m,
             "market_rs_acceleration_3_6_12m": self.market_rs_acceleration_3_6_12m,
+            "all_market_rs_rank_2w": self.all_market_rs_rank_2w,
+            "all_market_rs_rank_1m": self.all_market_rs_rank_1m,
             "all_market_rs_rank_3m": self.all_market_rs_rank_3m,
             "all_market_rs_rank_6m": self.all_market_rs_rank_6m,
             "all_market_rs_rank_12m": self.all_market_rs_rank_12m,
+            "all_market_rs_percentile_2w": self.all_market_rs_percentile_2w,
+            "all_market_rs_percentile_1m": self.all_market_rs_percentile_1m,
             "all_market_rs_percentile_3m": self.all_market_rs_percentile_3m,
             "all_market_rs_percentile_6m": self.all_market_rs_percentile_6m,
             "all_market_rs_percentile_12m": self.all_market_rs_percentile_12m,
@@ -1438,15 +1470,23 @@ def scan_pattern_a_universe(
                     market_benchmark_name=None,
                     market_benchmark_code=None,
                     market_benchmark_last_observation_date=None,
+                    stock_return_2w=None,
+                    stock_return_1m=None,
                     stock_return_3m=None,
                     stock_return_6m=None,
                     stock_return_12m=None,
+                    market_return_2w=None,
+                    market_return_1m=None,
                     market_return_3m=None,
                     market_return_6m=None,
                     market_return_12m=None,
+                    market_rs_2w=None,
+                    market_rs_1m=None,
                     market_rs_3m=None,
                     market_rs_6m=None,
                     market_rs_12m=None,
+                    market_anchor_date_2w=None,
+                    market_anchor_date_1m=None,
                     market_anchor_date_3m=None,
                     market_anchor_date_6m=None,
                     market_anchor_date_12m=None,
@@ -1562,15 +1602,23 @@ def scan_pattern_a_universe(
                 market_benchmark_code=rs_res.market_benchmark_code,
                 market_benchmark_last_observation_date=rs_res.market_benchmark_last_observation_date,
                 market_rs_input_reason=market_rs_input_reason,
+                stock_return_2w=rs_res.stock_return_2w,
+                stock_return_1m=rs_res.stock_return_1m,
                 stock_return_3m=rs_res.stock_return_3m,
                 stock_return_6m=rs_res.stock_return_6m,
                 stock_return_12m=rs_res.stock_return_12m,
+                market_return_2w=rs_res.market_return_2w,
+                market_return_1m=rs_res.market_return_1m,
                 market_return_3m=rs_res.market_return_3m,
                 market_return_6m=rs_res.market_return_6m,
                 market_return_12m=rs_res.market_return_12m,
+                market_rs_2w=rs_res.market_rs_2w,
+                market_rs_1m=rs_res.market_rs_1m,
                 market_rs_3m=rs_res.market_rs_3m,
                 market_rs_6m=rs_res.market_rs_6m,
                 market_rs_12m=rs_res.market_rs_12m,
+                market_anchor_date_2w=rs_res.market_anchor_date_2w,
+                market_anchor_date_1m=rs_res.market_anchor_date_1m,
                 market_anchor_date_3m=rs_res.market_anchor_date_3m,
                 market_anchor_date_6m=rs_res.market_anchor_date_6m,
                 market_anchor_date_12m=rs_res.market_anchor_date_12m,

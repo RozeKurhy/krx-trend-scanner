@@ -366,6 +366,8 @@ def test_no_policy_ranking_or_decision_fields_exist(mock_scanner_env):
     cols = set(df.columns)
 
     allowed_analytics_fields = {
+        "all_market_rs_rank_2w",
+        "all_market_rs_rank_1m",
         "all_market_rs_rank_3m",
         "all_market_rs_rank_6m",
         "all_market_rs_rank_12m",

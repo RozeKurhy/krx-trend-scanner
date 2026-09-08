@@ -5,8 +5,8 @@
   const THEME_STORAGE_KEY = "krx-theme";
   const THEME_VALUES = new Set(["light", "dark"]);
   const SYSTEM_THEME_QUERY = "(prefers-color-scheme: dark)";
-  const HORIZONS = ["3m", "6m", "12m"];
-  const HORIZON_LABELS = { "3m": "3개월", "6m": "6개월", "12m": "12개월" };
+  const HORIZONS = ["2w", "1m", "3m", "6m", "12m"];
+  const HORIZON_LABELS = { "2w": "2주", "1m": "1개월", "3m": "3개월", "6m": "6개월", "12m": "12개월" };
   const MARKET_LABELS = { KOSPI: "코스피", KOSDAQ: "코스닥", KONEX: "코넥스" };
   const STAGE_LABELS = {
     WEAK: "약세",
@@ -37,7 +37,7 @@
   const byId = (id) => document.getElementById(id);
   const numberFormat = new Intl.NumberFormat("ko-KR");
   let ranking = null;
-  let activeHorizon = "3m";
+  let activeHorizon = "1m";
   let activeMarket = "ALL";
   let searchQuery = "";
 

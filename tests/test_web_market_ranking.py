@@ -37,7 +37,7 @@ def test_market_ranking_schema_scope_and_generated_projection_match():
     }
     assert ranking["metric_scope"] == {"label": "시장 강도는 전체 보통주 기준"}
     assert ranking["as_of"] == "2026-09-04"
-    assert ranking["eligible_counts"] == {"3m": 141, "6m": 141, "12m": 141}
+    assert ranking["eligible_counts"] == {"2w": 141, "1m": 141, "3m": 141, "6m": 141, "12m": 141}
     assert len(ranking["items"]) == ranking["scope"]["report_count"]
 
 
@@ -54,7 +54,7 @@ def test_market_ranking_uses_published_reports_and_preserves_identity():
         }
         assert {
             "ticker", "name", "market", "asset_type", "sector_name", "latest_close", "latest_close_as_of",
-            "percentile_3m", "percentile_6m", "percentile_12m", "market_strength_applicability",
+            "percentile_2w", "percentile_1m", "percentile_3m", "percentile_6m", "percentile_12m", "market_strength_applicability",
             "market_strength_status", "pattern_stage", "pattern_score", "flow_state", "flow_data_status",
             "strategy_action",
         } <= item.keys()
@@ -65,7 +65,7 @@ def test_market_strength_percentiles_are_canonical_and_raw_rs_is_not_projected()
     source = json.loads((ROOT / "web/data/stocks/005930.json").read_text(encoding="utf-8"))
     item = next(item for item in ranking["items"] if item["ticker"] == "005930")
 
-    for horizon in ("3m", "6m", "12m"):
+    for horizon in ("2w", "1m", "3m", "6m", "12m"):
         assert item[f"percentile_{horizon}"] == source["market_strength"][f"percentile_{horizon}"]
         assert 0 <= item[f"percentile_{horizon}"] <= 100
     assert item["market_strength_applicability"] == "APPLICABLE"
@@ -82,7 +82,7 @@ def test_eligibility_is_independent_per_horizon_and_excludes_etf():
     assert etf["asset_type"] == "ETF"
     assert etf["market_strength_applicability"] == "NOT_APPLICABLE"
     assert etf["market_strength_status"] == "NOT_EVALUATED"
-    for horizon in ("3m", "6m", "12m"):
+    for horizon in ("2w", "1m", "3m", "6m", "12m"):
         eligible = [
             item for item in ranking["items"]
             if item["asset_type"] == "COMMON"
@@ -101,8 +101,9 @@ def test_market_page_has_accessible_controls_and_release_contract():
 
     assert '<title>시장 랭킹 · KRX Trend Scanner</title>' in html
     assert '<a class="nav-item is-active" href="./market.html" aria-current="page">시장 랭킹</a>' in html
-    assert 'href="./css/app.css?v=web-04a-1"' in html
-    assert 'src="./js/market.js?v=web-04a-1"' in html
+    assert 'href="./css/app.css?v=web-04b-1"' in html
+    assert 'src="./js/market.js?v=web-04b-1"' in html
+    assert 'data-horizon="2w"' in html and 'data-horizon="1m"' in html
     assert 'data-horizon="3m"' in html and 'data-horizon="6m"' in html and 'data-horizon="12m"' in html
     assert 'data-market="ALL"' in html and 'data-market="KOSPI"' in html and 'data-market="KOSDAQ"' in html
     assert 'id="market-search"' in html
@@ -122,7 +123,7 @@ def test_market_page_keeps_navigation_and_old_release_cache_out_of_all_pages():
     pages = [ROOT / "web/index.html", ROOT / "web/report.html", ROOT / "web/strategy.html", ROOT / "web/market.html"]
     for path in pages:
         html = path.read_text(encoding="utf-8")
-        assert "web-04a-1" in html
+        assert "web-04b-1" in html
         assert "web-03a-final-1" not in html
         assert 'href="./market.html"' in html
         assert "시장 랭킹" in html
@@ -136,8 +137,9 @@ def test_market_ranking_sort_and_filter_keep_canonical_percentiles():
     js = (ROOT / "web/js/market.js").read_text(encoding="utf-8")
     eligible = [item for item in ranking["items"] if item["asset_type"] == "COMMON"]
 
-    expected = sorted(eligible, key=lambda item: (-item["percentile_3m"], item["name"], item["ticker"]))
-    assert expected[0]["percentile_3m"] >= expected[-1]["percentile_3m"]
+    expected = sorted(eligible, key=lambda item: (-item["percentile_1m"], item["name"], item["ticker"]))
+    assert expected[0]["percentile_1m"] >= expected[-1]["percentile_1m"]
+    assert 'activeHorizon = "1m"' in js
     assert "activeMarket === \"ALL\" || item.market === activeMarket" in js
     assert ".filter((item) => isEligible(item, activeHorizon))" in js
     assert ".sort((left, right) =>" in js

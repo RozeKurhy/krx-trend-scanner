@@ -143,18 +143,26 @@ class RelativeStrengthSection:
     benchmark_name: str | None
     benchmark_code: str | None
     benchmark_last_observation_date: str | None
+    market_rs_2w: float | None
+    market_rs_1m: float | None
     market_rs_3m: float | None
     market_rs_6m: float | None
     market_rs_12m: float | None
     market_rs_delta_3m_vs_6m: float | None
     market_rs_delta_6m_vs_12m: float | None
     market_rs_acceleration_3_6_12m: float | None
+    all_market_rs_rank_2w: float | None
+    all_market_rs_rank_1m: float | None
     all_market_rs_rank_3m: float | None
     all_market_rs_rank_6m: float | None
     all_market_rs_rank_12m: float | None
+    all_market_rs_percentile_2w: float | None
+    all_market_rs_percentile_1m: float | None
     all_market_rs_percentile_3m: float | None
     all_market_rs_percentile_6m: float | None
     all_market_rs_percentile_12m: float | None
+    market_anchor_date_2w: str | None
+    market_anchor_date_1m: str | None
     market_anchor_date_3m: str | None
     market_anchor_date_6m: str | None
     market_anchor_date_12m: str | None

@@ -8,6 +8,8 @@ import pytest
 
 from trend_scanner.data.errors import MarketDataError
 from trend_scanner.relative_strength.relative_strength import (
+    HORIZON_SESSIONS_2W,
+    HORIZON_SESSIONS_1M,
     HORIZON_SESSIONS_3M,
     HORIZON_SESSIONS_6M,
     HORIZON_SESSIONS_12M,
@@ -82,6 +84,14 @@ def test_relative_strength_arithmetic_basic():
     assert res.market_return_3m == pytest.approx(0.10, abs=1e-6)
     # Expected RS = (1 + 0.20) / (1 + 0.10) - 1 = 1.2 / 1.1 - 1 = 0.09090909...
     assert res.market_rs_3m == pytest.approx((1.2 / 1.1) - 1.0, abs=1e-6)
+    assert res.stock_return_2w == pytest.approx(0.20, abs=1e-6)
+    assert res.stock_return_1m == pytest.approx(0.20, abs=1e-6)
+    assert res.market_return_2w == pytest.approx(0.10, abs=1e-6)
+    assert res.market_return_1m == pytest.approx(0.10, abs=1e-6)
+    assert res.market_rs_2w == pytest.approx((1.2 / 1.1) - 1.0, abs=1e-6)
+    assert res.market_rs_1m == pytest.approx((1.2 / 1.1) - 1.0, abs=1e-6)
+    assert res.market_anchor_date_2w == dates[-(HORIZON_SESSIONS_2W + 1)]
+    assert res.market_anchor_date_1m == dates[-(HORIZON_SESSIONS_1M + 1)]
 
 
 def test_relative_strength_underperformance():

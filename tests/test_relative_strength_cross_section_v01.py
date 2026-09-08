@@ -18,6 +18,8 @@ def _rows(values: list[float | None], *, market: str = "KOSPI") -> pd.DataFrame:
             "ticker": [f"{i + 1:06d}" for i in range(len(values))],
             "name": [f"T{i + 1}" for i in range(len(values))],
             "market": [market] * len(values),
+            "market_rs_2w": values,
+            "market_rs_1m": values,
             "market_rs_3m": values,
             "market_rs_6m": values,
             "market_rs_12m": values,
@@ -62,6 +64,8 @@ def test_rank_and_percentile_strongest_to_weakest() -> None:
     result = compute_market_rs_cross_section(_rows([0.30, 0.20, 0.10])).set_index("ticker")
     assert list(result["all_market_rs_rank_3m"]) == [1.0, 2.0, 3.0]
     assert list(result["all_market_rs_percentile_3m"]) == [100.0, 50.0, 0.0]
+    assert list(result["all_market_rs_rank_2w"]) == [1.0, 2.0, 3.0]
+    assert list(result["all_market_rs_percentile_1m"]) == [100.0, 50.0, 0.0]
 
 
 def test_tie_uses_average_rank_and_equal_percentile() -> None:

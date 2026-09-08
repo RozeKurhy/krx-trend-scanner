@@ -66,6 +66,11 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="Limit number of stocks to scan (for testing)",
     )
+    parser.add_argument(
+        "--enrich-market-rs-cross-section",
+        action="store_true",
+        help="Compute Market RS ranks/percentiles over the complete COMMON scan population",
+    )
     return parser.parse_args()
 
 
@@ -80,6 +85,7 @@ def main() -> None:
     logger.info("  Cache Dir:  %s", args.cache_dir)
     logger.info("  Market:     %s", args.market or "ALL (KOSPI + KOSDAQ)")
     logger.info("  Limit:      %s", args.limit or "None (Full COMMON)")
+    logger.info("  Market RS Cross-Section: %s", args.enrich_market_rs_cross_section)
     logger.info("==================================================")
 
     # PRODUCTION_ROLLING_MODE: --as-of is caller-supplied and can be a live date, so the rolling
@@ -107,6 +113,7 @@ def main() -> None:
         repository=repository,
         sector_mapping=sector_mapping,
         sector_mapping_snapshot_date="2026-08-14",
+        enrich_market_rs_cross_section=args.enrich_market_rs_cross_section,
     )
 
     summary = result.summary

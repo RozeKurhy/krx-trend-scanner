@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_INDEX_PATH = ROOT / "web" / "data" / "stock-index.json"
 DEFAULT_STOCKS_DIR = ROOT / "web" / "data" / "stocks"
 DEFAULT_OUTPUT_PATH = ROOT / "web" / "data" / "market-ranking.json"
-HORIZONS = ("3m", "6m", "12m")
+HORIZONS = ("2w", "1m", "3m", "6m", "12m")
 PERCENTILE_FIELDS = {horizon: f"percentile_{horizon}" for horizon in HORIZONS}
 
 
@@ -79,6 +79,8 @@ def _project_item(index_item: dict[str, Any], report: dict[str, Any], path: Path
         "sector_name": technical_details.get("sector_name"),
         "latest_close": price_trend.get("latest_close"),
         "latest_close_as_of": price_trend.get("latest_close_as_of"),
+        "percentile_2w": market_strength.get("percentile_2w"),
+        "percentile_1m": market_strength.get("percentile_1m"),
         "percentile_3m": market_strength.get("percentile_3m"),
         "percentile_6m": market_strength.get("percentile_6m"),
         "percentile_12m": market_strength.get("percentile_12m"),

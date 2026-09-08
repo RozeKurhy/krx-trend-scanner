@@ -232,6 +232,9 @@
   function marketStrengthLabel(market) {
     if (!market || market.applicability === "NOT_APPLICABLE") return "해당 없음";
     if (market.data_status !== "READY") return "정보 없음";
+    if (market.percentile_1m != null && Number.isFinite(Number(market.percentile_1m))) {
+      return `최근 1개월 ${topPercentLabel(market.percentile_1m)}`;
+    }
     if (market.percentile_3m == null || !Number.isFinite(Number(market.percentile_3m))) return "정보 있음";
     return `최근 3개월 ${topPercentLabel(market.percentile_3m)}`;
   }
@@ -575,6 +578,8 @@
       return;
     }
     const rows = [
+      ["최근 2주", { value: formatSignedRate(market.market_rs_2w), className: signedValueClass(market.market_rs_2w) }, topPercentLabel(market.percentile_2w)],
+      ["최근 1개월", { value: formatSignedRate(market.market_rs_1m), className: signedValueClass(market.market_rs_1m) }, topPercentLabel(market.percentile_1m)],
       ["최근 3개월", { value: formatSignedRate(market.market_rs_3m), className: signedValueClass(market.market_rs_3m) }, topPercentLabel(market.percentile_3m)],
       ["최근 6개월", { value: formatSignedRate(market.market_rs_6m), className: signedValueClass(market.market_rs_6m) }, topPercentLabel(market.percentile_6m)],
       ["최근 12개월", { value: formatSignedRate(market.market_rs_12m), className: signedValueClass(market.market_rs_12m) }, topPercentLabel(market.percentile_12m)],
