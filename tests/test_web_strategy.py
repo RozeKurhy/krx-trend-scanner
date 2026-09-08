@@ -1,0 +1,129 @@
+"""Focused WEB-03A validation for the read-only strategy operations viewer."""
+
+from __future__ import annotations
+
+import importlib.util
+import json
+from collections import Counter
+from pathlib import Path
+
+
+ROOT = Path(__file__).resolve().parents[1]
+EXPORTER_PATH = ROOT / "scripts/export_strategy_monitor_web.py"
+MONITOR_PATH = ROOT / "web/data/strategy-monitor.json"
+
+
+def _load_exporter():
+    spec = importlib.util.spec_from_file_location("export_strategy_monitor_web", EXPORTER_PATH)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def _load_monitor() -> dict:
+    return json.loads(MONITOR_PATH.read_text(encoding="utf-8"))
+
+
+def test_strategy_monitor_schema_and_source_count_are_consistent():
+    monitor = _load_monitor()
+    index = json.loads((ROOT / "web/data/stock-index.json").read_text(encoding="utf-8"))
+    items = monitor["items"]
+
+    assert monitor["schema_version"] == 1
+    assert monitor["strategy"] == {
+        "id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+        "label": "A FAST Core",
+    }
+    assert monitor["source"]["type"] == "PUBLISHED_STOCK_REPORTS"
+    assert monitor["scope"] == {
+        "type": "PUBLISHED_REPORTS",
+        "label": "현재 공개 리포트 기준",
+        "report_count": 158,
+    }
+    assert monitor["as_of"] == "2026-09-04"
+    assert monitor["scope"]["report_count"] == index["available_report_count"] == len(items)
+    bucket_counts = Counter(item["bucket"] for item in items)
+    assert all(monitor["counts"][key] == bucket_counts.get(key, 0) for key in ("entry", "hold", "exit", "watch", "unavailable"))
+    assert sum(monitor["counts"].values()) == len(items)
+    assert {item["ticker"] for item in items} == {
+        item["ticker"] for item in index["items"] if item["report_available"] is True
+    }
+    for item in items:
+        assert {
+            "ticker", "name", "market", "asset_type", "sector_name", "action",
+            "strategy_state", "canonical_position", "pattern_stage", "pattern_score",
+            "latest_close", "latest_close_as_of", "report_status", "data_status",
+            "current_trade", "bucket",
+        } <= item.keys()
+
+
+def test_representative_common_open_trade_is_projected_without_recalculation():
+    monitor = _load_monitor()
+    item = next(item for item in monitor["items"] if item["ticker"] == "005930")
+
+    assert item["action"] == "HOLD"
+    assert item["strategy_state"] == "HOLD_PROGRESSED"
+    assert item["canonical_position"] == "OPEN"
+    assert item["bucket"] == "hold"
+    assert item["current_trade"] == {
+        "trade_sequence": 6,
+        "entry_execution_date": "2025-09-01",
+        "entry_open": 68400.0,
+        "return_pct": 273.54,
+        "trade_status": "OPEN_AT_CUTOFF",
+    }
+
+
+def test_etf_is_not_in_action_counts_and_has_no_fake_trade():
+    monitor = _load_monitor()
+    item = next(item for item in monitor["items"] if item["ticker"] == "069500")
+
+    assert item["asset_type"] == "ETF"
+    assert item["canonical_position"] == "NOT_APPLICABLE"
+    assert item["action"] == "NONE"
+    assert item["data_status"] == "NOT_APPLICABLE"
+    assert item["bucket"] == "unavailable"
+    assert item["current_trade"] is None
+    assert monitor["counts"]["unavailable"] == 17
+    assert sum(monitor["counts"][key] for key in ("entry", "hold", "exit")) == 107
+
+
+def test_strategy_page_is_connected_and_uses_one_release_cache_version():
+    strategy_html = (ROOT / "web/strategy.html").read_text(encoding="utf-8")
+    index_html = (ROOT / "web/index.html").read_text(encoding="utf-8")
+    report_html = (ROOT / "web/report.html").read_text(encoding="utf-8")
+    strategy_js = (ROOT / "web/js/strategy.js").read_text(encoding="utf-8")
+    css = (ROOT / "web/css/app.css").read_text(encoding="utf-8")
+
+    for html in (strategy_html, index_html, report_html):
+        assert 'href="./css/app.css?v=web-03a-1"' in html
+        assert "web-02a-final-2" not in html
+    assert 'src="./js/strategy.js?v=web-03a-1"' in strategy_html
+    assert 'src="./js/app.js?v=web-03a-1"' in index_html
+    assert 'src="./js/report.js?v=web-03a-1"' in report_html
+    assert 'href="./strategy.html"' in index_html
+    assert 'href="./strategy.html"' in report_html
+    assert 'class="nav-item is-active" href="./strategy.html"' in strategy_html
+
+    assert '<h1 id="page-title">전략 운용</h1>' in strategy_html
+    assert "전략 신호와 보유 상태를 한눈에 확인" in strategy_html
+    assert "A FAST Core" in strategy_html
+    assert "Julia" in strategy_html and 'id="julia-option"' in strategy_html and "disabled" in strategy_html
+    assert "현재 공개 리포트 기준" in strategy_html
+    assert 'id="strategy-search"' in strategy_html
+    assert 'data-filter="hold"' in strategy_html
+    assert 'data-filter="entry"' in strategy_html
+    assert 'data-filter="exit"' in strategy_html
+    assert 'data-filter="watch"' in strategy_html
+    assert 'link.href = `./report.html?ticker=' in strategy_js
+    assert 'const MONITOR_URL = "./data/strategy-monitor.json";' in strategy_js
+    assert "window.matchMedia" in strategy_js
+    assert ".strategy-item" in css and ".strategy-summary-card" in css
+    for raw in ("OPEN_AT_CUTOFF", "HOLD_PROGRESSED", "NOT_APPLICABLE", "ENTER_NEXT_OPEN", "TOP PICK", "AI 추천"):
+        assert raw not in strategy_html
+
+
+def test_strategy_monitor_json_matches_clean_exporter_projection():
+    exporter = _load_exporter()
+    assert _load_monitor() == exporter.build_strategy_monitor()
