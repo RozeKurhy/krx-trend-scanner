@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="KRX Trend Scanner의 종목 리포트">
+    <title>종목 리포트 · KRX Trend Scanner</title>
+    <script>
+      (() => {
+        const saved = (() => {
+          try {
+            const value = localStorage.getItem("krx-theme");
+            return value === "light" || value === "dark" ? value : null;
+          } catch (error) {
+            return null;
+          }
+        })();
+        const system = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        document.documentElement.dataset.theme = saved || system;
+      })();
+    </script>
+    <link rel="stylesheet" href="./css/app.css">
+  </head>
+  <body>
+    <a class="skip-link" href="#main-content">본문으로 건너뛰기</a>
+    <header class="site-header">
+      <div class="shell header-inner">
+        <a class="brand" href="./index.html" aria-label="KRX Trend Scanner 홈">
+          <span class="brand-mark" aria-hidden="true">K</span>
+          <span>
+            <span class="brand-name">KRX Trend Scanner</span>
+            <span class="brand-context">투자 분석 도구</span>
+          </span>
+        </a>
+        <div class="header-actions">
+          <nav class="primary-nav" aria-label="주요 메뉴">
+            <a class="nav-item" href="./index.html">데이터 현황</a>
+            <span class="nav-item" aria-disabled="true">시장 랭킹 <small>준비 중</small></span>
+            <a class="nav-item is-active" href="./report.html" aria-current="page">종목 리포트</a>
+            <span class="nav-item" aria-disabled="true">전략 운용 <small>준비 중</small></span>
+            <span class="nav-item" aria-disabled="true">전략 설명 <small>준비 중</small></span>
+          </nav>
+          <button id="theme-toggle" class="theme-toggle" type="button" aria-label="어둡게 보기" title="어둡게 보기" aria-pressed="false">
+            <span id="theme-icon-sun" class="theme-icon" aria-hidden="true" hidden>
+              <svg viewBox="0 0 24 24" focusable="false"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"></path></svg>
+            </span>
+            <span id="theme-icon-moon" class="theme-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" focusable="false"><path d="M20.4 15.4A8.5 8.5 0 0 1 8.6 3.6 8.5 8.5 0 1 0 20.4 15.4Z"></path></svg>
+            </span>
+            <span id="theme-toggle-label">어둡게 보기</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main id="main-content" class="shell page-content">
+      <section class="page-intro" aria-labelledby="page-title">
+        <p class="eyebrow">종목 리포트</p>
+        <h1 id="page-title">종목 리포트</h1>
+        <p class="lede">종목명 또는 종목코드를 검색해 핵심 판단을 확인하세요.</p>
+      </section>
+
+      <section class="panel report-search-panel" aria-labelledby="search-heading">
+        <h2 id="search-heading" class="report-search-label">종목 검색</h2>
+        <label class="report-search-label" for="stock-search">종목명 또는 종목코드</label>
+        <input id="stock-search" class="report-search-input" type="search" placeholder="종목명 또는 종목코드 검색" autocomplete="off" aria-controls="search-results">
+        <p id="search-meta" class="report-search-meta">종목 목록 불러오는 중</p>
+        <ul id="search-results" class="search-results" hidden aria-label="종목 검색 결과"></ul>
+      </section>
+
+      <section id="report-empty" class="panel report-empty" aria-labelledby="empty-heading">
+        <p class="eyebrow">선택 필요</p>
+        <h2 id="empty-heading">종목 리포트</h2>
+        <p>종목명 또는 종목코드를 검색해 주세요.</p>
+      </section>
+
+      <section id="report-pending" class="panel report-pending" hidden aria-labelledby="pending-heading">
+        <p class="eyebrow">종목 리포트</p>
+        <h2 id="pending-heading">리포트 준비 중</h2>
+        <p id="pending-detail">현재 공개된 종목 리포트가 없습니다.</p>
+      </section>
+
+      <section id="report-error" class="panel report-error" hidden aria-labelledby="report-error-heading">
+        <p class="eyebrow">데이터 확인 필요</p>
+        <h2 id="report-error-heading">종목 정보를 불러올 수 없습니다.</h2>
+        <p id="report-error-detail">데이터 파일을 확인해 주세요.</p>
+      </section>
+
+      <section id="report-view" hidden aria-labelledby="report-name">
+        <div class="report-identity">
+          <p class="eyebrow">선택 종목</p>
+          <h2 id="report-name" class="report-identity-name">—</h2>
+          <p id="report-identity" class="report-identity-meta">—</p>
+        </div>
+
+        <article class="panel decision-card" aria-labelledby="decision-heading">
+          <p class="eyebrow">현재 판단</p>
+          <h2 id="decision-heading" class="decision-status">—</h2>
+          <p id="decision-summary" class="decision-summary">—</p>
+        </article>
+
+        <div class="signal-grid" aria-label="핵심 신호">
+          <article class="signal-card"><p class="signal-label">추세</p><p id="signal-trend" class="signal-value">—</p></article>
+          <article class="signal-card"><p class="signal-label">시장 강도</p><p id="signal-market" class="signal-value">—</p></article>
+          <article class="signal-card"><p class="signal-label">수급</p><p id="signal-flow" class="signal-value">—</p></article>
+          <article class="signal-card"><p class="signal-label">펀더멘탈</p><p id="signal-fundamentals" class="signal-value">준비 중</p></article>
+        </div>
+
+        <div class="report-card-grid" aria-label="종목 핵심 정보">
+          <article class="panel report-card"><p class="report-card-heading">가격·추세</p><p id="price-value" class="report-card-value">—</p><p id="price-detail" class="report-card-detail">—</p></article>
+          <article class="panel report-card"><p class="report-card-heading">패턴</p><p id="pattern-value" class="report-card-value">—</p><p id="pattern-detail" class="report-card-detail">—</p></article>
+          <article class="panel report-card"><p class="report-card-heading">시장 강도</p><p id="market-value" class="report-card-value">—</p><p id="market-detail" class="report-card-detail">—</p></article>
+          <article class="panel report-card"><p class="report-card-heading">수급</p><p id="flow-value" class="report-card-value">—</p><p id="flow-detail" class="report-card-detail">—</p></article>
+          <article class="panel report-card"><p class="report-card-heading">펀더멘탈</p><p id="fundamentals-value" class="report-card-value">준비 중</p><p id="fundamentals-detail" class="report-card-detail">F8 최종 데이터 연결 전</p></article>
+          <article class="panel report-card"><p class="report-card-heading">전략</p><p id="strategy-value" class="report-card-value">—</p><p id="strategy-detail" class="report-card-detail">—</p></article>
+        </div>
+
+        <section class="panel report-details" aria-labelledby="technical-heading">
+          <details>
+            <summary id="technical-heading">상세 정보</summary>
+            <dl id="technical-detail-list" class="report-detail-grid"></dl>
+          </details>
+          <div class="external-links">
+            <a id="naver-link" class="report-link" href="#" target="_blank" rel="noopener">네이버 금융에서 보기</a>
+          </div>
+        </section>
+      </section>
+
+      <noscript>
+        <section class="error-card" aria-labelledby="noscript-heading">
+          <p class="eyebrow">자바스크립트 필요</p>
+          <h2 id="noscript-heading">종목 리포트를 불러올 수 없습니다.</h2>
+          <p class="status-pill status-check-required" data-status="CHECK_REQUIRED">확인 필요</p>
+        </section>
+      </noscript>
+    </main>
+
+    <footer class="site-footer shell">
+      <span>KRX Trend Scanner</span>
+      <span>읽기 전용</span>
+    </footer>
+    <script src="./js/report.js" defer></script>
+  </body>
+</html>
