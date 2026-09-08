@@ -110,6 +110,9 @@ def test_rs_is_display_mapping_only_and_not_recomputed(payload, exporter):
     assert compact["market_strength"]["market_rs_1m"] == source_rs["market_rs_1m"]
     assert compact["market_strength"]["percentile_2w"] == source_rs["all_market_rs_percentile_2w"]
     assert compact["market_strength"]["percentile_1m"] == source_rs["all_market_rs_percentile_1m"]
+    for horizon in ("2w", "1m", "3m", "6m", "12m"):
+        field = f"stock_return_{horizon}"
+        assert compact["market_strength"][field] == source_rs[field]
 
 
 def test_interaction_detail_payload_preserves_authority_history(payload, exporter):
@@ -153,6 +156,9 @@ def test_interaction_detail_payload_preserves_authority_history(payload, exporte
     assert compact["market_strength"]["percentile_3m"] == source_rs["all_market_rs_percentile_3m"]
     assert compact["market_strength"]["percentile_6m"] == source_rs["all_market_rs_percentile_6m"]
     assert compact["market_strength"]["percentile_12m"] == source_rs["all_market_rs_percentile_12m"]
+    for horizon in ("2w", "1m", "3m", "6m", "12m"):
+        field = f"stock_return_{horizon}"
+        assert compact["market_strength"][field] == source_rs[field]
 
     source_flow = source["foreign_flow"]
     assert compact["flow"]["net_buy_value_1d_krw"] == source_flow["foreign_net_buy_value_1d_krw"]
@@ -195,16 +201,16 @@ def test_report_frontend_has_safe_states_and_relative_assets():
     css = (ROOT / "web/css/app.css").read_text(encoding="utf-8")
     favicon = (ROOT / "web/favicon.svg").read_text(encoding="utf-8")
 
-    assert 'href="./css/app.css?v=web-04b-1"' in html
-    assert 'href="./css/app.css?v=web-04b-1"' in index_html
+    assert 'href="./css/app.css?v=web-04c-1"' in html
+    assert 'href="./css/app.css?v=web-04c-1"' in index_html
     assert 'href="./favicon.svg"' in html
     assert 'href="./favicon.svg"' in index_html
     assert (ROOT / "web/favicon.svg").exists()
     assert '#9f1d2f' in favicon
-    assert 'src="./js/report.js?v=web-04b-1"' in html
-    assert 'src="./js/app.js?v=web-04b-1"' in index_html
-    assert html.count("web-04b-1") == 2
-    assert index_html.count("web-04b-1") == 2
+    assert 'src="./js/report.js?v=web-04c-1"' in html
+    assert 'src="./js/app.js?v=web-04c-1"' in index_html
+    assert html.count("web-04c-1") == 2
+    assert index_html.count("web-04c-1") == 2
     assert "web-03a-final-1" not in html
     assert "web-03a-final-1" not in index_html
     assert "web-02a-final-2" not in html

@@ -18,6 +18,11 @@ RS_ARTIFACT_TEMPLATE = (
 )
 COMMON_MARKETS = {"KOSPI", "KOSDAQ"}
 RS_FIELDS = (
+    "stock_return_2w",
+    "stock_return_1m",
+    "stock_return_3m",
+    "stock_return_6m",
+    "stock_return_12m",
     "market_rs_2w",
     "market_rs_1m",
     "market_rs_3m",

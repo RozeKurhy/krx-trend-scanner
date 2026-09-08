@@ -143,6 +143,11 @@ class RelativeStrengthSection:
     benchmark_name: str | None
     benchmark_code: str | None
     benchmark_last_observation_date: str | None
+    stock_return_2w: float | None
+    stock_return_1m: float | None
+    stock_return_3m: float | None
+    stock_return_6m: float | None
+    stock_return_12m: float | None
     market_rs_2w: float | None
     market_rs_1m: float | None
     market_rs_3m: float | None

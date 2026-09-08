@@ -132,6 +132,7 @@
   }
 
   function percentileField(horizon) { return `percentile_${horizon}`; }
+  function stockReturnField(horizon) { return `stock_return_${horizon}`; }
 
   function isEligible(item, horizon) {
     return Boolean(
@@ -169,6 +170,18 @@
     return `상위 ${formatNumber(topPercent, 1)}%`;
   }
 
+  function formatReturn(value) {
+    if (value == null || value === "" || !Number.isFinite(Number(value))) return "—";
+    const percent = Number(value) * 100;
+    if (percent === 0) return "0.0%";
+    return `${percent > 0 ? "+" : ""}${percent.toFixed(1)}%`;
+  }
+
+  function returnClass(value) {
+    if (value == null || value === "" || !Number.isFinite(Number(value)) || Number(value) === 0) return "return-neutral";
+    return Number(value) > 0 ? "return-positive" : "return-negative";
+  }
+
   function createField(label, value, detail, className) {
     const field = createElement("span", `market-ranking-field${className ? ` ${className}` : ""}`);
     field.appendChild(createElement("small", "market-ranking-label", label));
@@ -192,13 +205,15 @@
     identity.appendChild(createElement("span", "market-ranking-meta", `${item.ticker} · ${marketLabel(item.market)}${sector}`));
 
     const strength = createField("시장 강도", topPercentLabel(item[percentileField(activeHorizon)]), `최근 ${HORIZON_LABELS[activeHorizon]}`, "market-ranking-strength");
+    const periodReturn = item[stockReturnField(activeHorizon)];
+    const returnField = createField("기간 등락", formatReturn(periodReturn), `최근 ${HORIZON_LABELS[activeHorizon]}`, `market-ranking-period-return ${returnClass(periodReturn)}`);
     const pattern = createField("패턴", item.pattern_score == null ? stageLabel(item.pattern_stage) : `${stageLabel(item.pattern_stage)} · ${formatNumber(item.pattern_score, 2)}점`);
     const flow = createField("수급", flowLabel(item.flow_state));
     const action = createField("전략 판단", actionLabel(item.strategy_action), null, "market-ranking-action");
     const price = createPriceField(item);
     const report = createElement("span", "market-ranking-report", "리포트 보기 ›");
 
-    link.append(identity, strength, pattern, flow, action, price, report);
+    link.append(identity, strength, returnField, pattern, flow, action, price, report);
     return link;
   }
 

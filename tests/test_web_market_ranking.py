@@ -1,4 +1,4 @@
-"""Focused WEB-04A validation for the static market-strength ranking projection."""
+"""Focused WEB-04C validation for the static market-strength ranking projection."""
 
 from __future__ import annotations
 
@@ -54,6 +54,7 @@ def test_market_ranking_uses_published_reports_and_preserves_identity():
         }
         assert {
             "ticker", "name", "market", "asset_type", "sector_name", "latest_close", "latest_close_as_of",
+            "stock_return_2w", "stock_return_1m", "stock_return_3m", "stock_return_6m", "stock_return_12m",
             "percentile_2w", "percentile_1m", "percentile_3m", "percentile_6m", "percentile_12m", "market_strength_applicability",
             "market_strength_status", "pattern_stage", "pattern_score", "flow_state", "flow_data_status",
             "strategy_action",
@@ -73,6 +74,16 @@ def test_market_strength_percentiles_are_canonical_and_raw_rs_is_not_projected()
     assert "market_rs_3m" not in json.dumps(ranking, ensure_ascii=False)
     assert "market_rs_6m" not in json.dumps(ranking, ensure_ascii=False)
     assert "market_rs_12m" not in json.dumps(ranking, ensure_ascii=False)
+
+
+def test_market_strength_returns_project_from_compact_stock_report_without_recalculation():
+    ranking = _load_ranking()
+    source = json.loads((ROOT / "web/data/stocks/005930.json").read_text(encoding="utf-8"))
+    item = next(item for item in ranking["items"] if item["ticker"] == "005930")
+
+    for horizon in ("2w", "1m", "3m", "6m", "12m"):
+        field = f"stock_return_{horizon}"
+        assert item[field] == source["market_strength"][field]
 
 
 def test_eligibility_is_independent_per_horizon_and_excludes_etf():
@@ -101,8 +112,8 @@ def test_market_page_has_accessible_controls_and_release_contract():
 
     assert '<title>시장 랭킹 · KRX Trend Scanner</title>' in html
     assert '<a class="nav-item is-active" href="./market.html" aria-current="page">시장 랭킹</a>' in html
-    assert 'href="./css/app.css?v=web-04b-1"' in html
-    assert 'src="./js/market.js?v=web-04b-1"' in html
+    assert 'href="./css/app.css?v=web-04c-1"' in html
+    assert 'src="./js/market.js?v=web-04c-1"' in html
     assert 'data-horizon="2w"' in html and 'data-horizon="1m"' in html
     assert 'data-horizon="3m"' in html and 'data-horizon="6m"' in html and 'data-horizon="12m"' in html
     assert 'data-market="ALL"' in html and 'data-market="KOSPI"' in html and 'data-market="KOSDAQ"' in html
@@ -114,6 +125,14 @@ def test_market_page_has_accessible_controls_and_release_contract():
     assert 'String(left.name || "").localeCompare(String(right.name || ""), "ko-KR")' in js
     assert 'String(left.ticker || "").localeCompare(String(right.ticker || ""))' in js
     assert '100 - percentile' in js
+    assert "function formatReturn(value)" in js
+    assert 'return "—";' in js
+    assert "return-positive" in js and "return-negative" in js and "return-neutral" in js
+    assert 'createField("기간 등락"' in js
+    assert "const periodReturn = item[stockReturnField(activeHorizon)];" in js
+    assert 'if (percent === 0) return "0.0%";' in js
+    assert 'percent > 0 ? "+" : ""' in js
+    assert 'activeMarket === "ALL" || item.market === activeMarket' in js
     assert '.market-ranking-row' in css
     assert '.market-control:focus-visible' in css
     assert '@media (max-width: 560px)' in css
@@ -123,7 +142,7 @@ def test_market_page_keeps_navigation_and_old_release_cache_out_of_all_pages():
     pages = [ROOT / "web/index.html", ROOT / "web/report.html", ROOT / "web/strategy.html", ROOT / "web/market.html"]
     for path in pages:
         html = path.read_text(encoding="utf-8")
-        assert "web-04b-1" in html
+        assert "web-04c-1" in html
         assert "web-03a-final-1" not in html
         assert 'href="./market.html"' in html
         assert "시장 랭킹" in html
@@ -145,3 +164,5 @@ def test_market_ranking_sort_and_filter_keep_canonical_percentiles():
     assert ".sort((left, right) =>" in js
     assert "pattern_score" in js
     assert "market_rs" not in js
+    assert "returnOrder" not in js
+    assert "stock_return_" in js

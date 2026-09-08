@@ -662,30 +662,30 @@ def render_markdown_report(report: StockReport) -> str:
             f"- **최근 1개월 주요 시장 강도**: {_format_rs_position(rs.all_market_rs_percentile_1m)}"
         )
         md.append("")
-        md.append("| 기간 | 시장 대비 RS | 시장 백분위 | 시장 내 위치 |")
-        md.append("|---|---:|---:|---|")
+        md.append("| 기간 | 종목 등락 | 시장 대비 RS | 시장 백분위 | 시장 내 위치 |")
+        md.append("|---|---:|---:|---:|---|")
         md.append(
-            f"| 2주 | {_format_rs_return(rs.market_rs_2w)} | "
+            f"| 2주 | {_format_rs_return(rs.stock_return_2w)} | {_format_rs_return(rs.market_rs_2w)} | "
             f"{_format_rs_percentile(rs.all_market_rs_percentile_2w)} | "
             f"{_format_rs_position(rs.all_market_rs_percentile_2w)} |"
         )
         md.append(
-            f"| 1개월 | {_format_rs_return(rs.market_rs_1m)} | "
+            f"| 1개월 | {_format_rs_return(rs.stock_return_1m)} | {_format_rs_return(rs.market_rs_1m)} | "
             f"{_format_rs_percentile(rs.all_market_rs_percentile_1m)} | "
             f"{_format_rs_position(rs.all_market_rs_percentile_1m)} |"
         )
         md.append(
-            f"| 3개월 | {_format_rs_return(rs.market_rs_3m)} | "
+            f"| 3개월 | {_format_rs_return(rs.stock_return_3m)} | {_format_rs_return(rs.market_rs_3m)} | "
             f"{_format_rs_percentile(rs.all_market_rs_percentile_3m)} | "
             f"{_format_rs_position(rs.all_market_rs_percentile_3m)} |"
         )
         md.append(
-            f"| 6개월 | {_format_rs_return(rs.market_rs_6m)} | "
+            f"| 6개월 | {_format_rs_return(rs.stock_return_6m)} | {_format_rs_return(rs.market_rs_6m)} | "
             f"{_format_rs_percentile(rs.all_market_rs_percentile_6m)} | "
             f"{_format_rs_position(rs.all_market_rs_percentile_6m)} |"
         )
         md.append(
-            f"| 12개월 | {_format_rs_return(rs.market_rs_12m)} | "
+            f"| 12개월 | {_format_rs_return(rs.stock_return_12m)} | {_format_rs_return(rs.market_rs_12m)} | "
             f"{_format_rs_percentile(rs.all_market_rs_percentile_12m)} | "
             f"{_format_rs_position(rs.all_market_rs_percentile_12m)} |"
         )
