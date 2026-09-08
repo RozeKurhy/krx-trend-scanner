@@ -187,15 +187,23 @@ def test_report_frontend_has_safe_states_and_relative_assets():
     index_html = (ROOT / "web/index.html").read_text(encoding="utf-8")
     js = (ROOT / "web/js/report.js").read_text(encoding="utf-8")
     css = (ROOT / "web/css/app.css").read_text(encoding="utf-8")
+    favicon = (ROOT / "web/favicon.svg").read_text(encoding="utf-8")
 
-    assert 'href="./css/app.css"' in html
+    assert 'href="./css/app.css?v=web-02a-final-1"' in html
+    assert 'href="./css/app.css?v=web-02a-final-1"' in index_html
     assert 'href="./favicon.svg"' in html
     assert 'href="./favicon.svg"' in index_html
     assert (ROOT / "web/favicon.svg").exists()
-    assert 'src="./js/report.js"' in html
+    assert '#9f1d2f' in favicon
+    assert 'src="./js/report.js?v=web-02a-final-1"' in html
+    assert 'src="./js/app.js?v=web-02a-final-1"' in index_html
+    assert html.count("web-02a-final-1") == 2
+    assert index_html.count("web-02a-final-1") == 2
     assert 'placeholder="종목명 또는 종목코드 검색"' in html
     assert 'id="report-empty"' in html
     assert 'id="recommendations"' in html
+    assert "둘러보기" in html
+    assert "추천 종목" not in html
     assert 'id="search-no-results"' in html
     assert 'id="report-pending"' in html
     assert 'id="report-error"' in html
@@ -226,11 +234,18 @@ def test_report_frontend_has_safe_states_and_relative_assets():
     assert 'id="market-card"' in html
     assert 'id="flow-card"' in html
     assert 'id="strategy-card"' in html
+    assert html.count("상세 보기 ›") == 4
+    assert "report-card-affordance" in js and "상세 닫기 ×" in js
     assert 'id="report-detail-panel"' in html
     assert 'id="top-detail-slot"' in html
     assert 'id="bottom-detail-slot"' in html
     assert 'aria-expanded="false"' in html
     assert "history_12m" in js
+    assert "pattern-score-chart" in js
+    assert 'id: "pattern-score-chart"' in js
+    assert 'role: "img"' in js
+    assert "최근 패턴 점수 추이" in js
+    assert "sector_name" in js
     assert "percentile_6m" in js and "percentile_12m" in js
     assert "formatKrwCompact" in js
     assert "strategy.history" in js
@@ -247,6 +262,10 @@ def test_report_frontend_has_safe_states_and_relative_assets():
     assert ".report-card-row" in css
     assert ".pattern-arrow" in css
     assert ".pattern-stepper" in css
+    assert ".pattern-step, .pattern-arrow" in css
+    assert ".report-card-affordance" in css
+    assert ".report-identity { display: flex; align-items: center;" in css
+    assert ".report-identity { align-items: flex-start; flex-direction: column;" in css
     assert "@media (max-width: 560px)" in css
     assert html.count('<p class="eyebrow">검색 안내</p>') == 0
     assert "가격 출처" in js

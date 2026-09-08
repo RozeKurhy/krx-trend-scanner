@@ -472,6 +472,10 @@
       appendDetailEmpty(container, "최근 12개월 패턴 이력이 없습니다.");
       return;
     }
+    const chart = document.createElement("div");
+    chart.className = "pattern-score-chart-wrap";
+    renderPatternScoreChart(history, chart);
+    container.appendChild(chart);
     const rows = history.map((observation) => [
       formatDate(observation.as_of),
       observation.data_available === false ? "정보 없음" : formatPrice(observation.close),
@@ -479,6 +483,79 @@
       stageLabel(observation.stage),
     ]);
     container.appendChild(createDetailTable(["기준일", "종가", "패턴 점수", "단계"], rows));
+  }
+
+  function renderPatternScoreChart(history, container) {
+    const SVG_NS = "http://www.w3.org/2000/svg";
+    const width = 720;
+    const height = 250;
+    const padding = { top: 16, right: 18, bottom: 38, left: 42 };
+    const chartWidth = width - padding.left - padding.right;
+    const chartHeight = height - padding.top - padding.bottom;
+    const points = history
+      .filter((observation) => observation && observation.score != null && Number.isFinite(Number(observation.score)))
+      .map((observation) => ({ asOf: observation.as_of, score: Number(observation.score) }));
+    const x = (index) => padding.left + (points.length <= 1 ? chartWidth / 2 : (index / (points.length - 1)) * chartWidth);
+    const y = (score) => padding.top + ((100 - Math.max(0, Math.min(100, score))) / 100) * chartHeight;
+    const createSvgElement = (tag, attributes) => {
+      const element = document.createElementNS(SVG_NS, tag);
+      Object.entries(attributes || {}).forEach(([name, value]) => element.setAttribute(name, String(value)));
+      return element;
+    };
+    const svg = createSvgElement("svg", {
+      id: "pattern-score-chart",
+      class: "pattern-score-chart",
+      viewBox: `0 0 ${width} ${height}`,
+      role: "img",
+      "aria-label": "최근 패턴 점수 추이",
+    });
+    [0, 50, 100].forEach((score) => {
+      const scoreY = y(score);
+      svg.appendChild(createSvgElement("line", {
+        class: "pattern-chart-grid",
+        x1: padding.left,
+        x2: width - padding.right,
+        y1: scoreY,
+        y2: scoreY,
+      }));
+      const label = createSvgElement("text", {
+        class: "pattern-chart-axis-label",
+        x: padding.left - 8,
+        y: scoreY + 4,
+        "text-anchor": "end",
+      });
+      label.textContent = `${score}`;
+      svg.appendChild(label);
+    });
+    if (points.length) {
+      const line = points.map((point, index) => `${index === 0 ? "M" : "L"}${x(index)} ${y(point.score)}`).join(" ");
+      svg.appendChild(createSvgElement("path", { class: "pattern-chart-line", d: line }));
+      points.forEach((point, index) => {
+        const circle = createSvgElement("circle", {
+          class: "pattern-chart-point",
+          cx: x(index),
+          cy: y(point.score),
+          r: 4,
+          tabindex: 0,
+          "aria-label": `${formatDate(point.asOf)} 패턴 점수 ${formatNumber(point.score, 2)}점`,
+        });
+        const title = createSvgElement("title");
+        title.textContent = `${formatDate(point.asOf)} · ${formatNumber(point.score, 2)}점`;
+        circle.appendChild(title);
+        svg.appendChild(circle);
+      });
+      points.forEach((point, index) => {
+        const date = createSvgElement("text", {
+          class: "pattern-chart-date",
+          x: x(index),
+          y: height - 12,
+          "text-anchor": "middle",
+        });
+        date.textContent = String(point.asOf || "").slice(2, 7).replace("-", ".");
+        svg.appendChild(date);
+      });
+    }
+    container.appendChild(svg);
   }
 
   function renderMarketDetail(report, container) {
@@ -571,6 +648,8 @@
       button.classList.toggle("is-selected", selected);
       button.setAttribute("aria-expanded", String(selected));
       button.setAttribute("aria-label", `${DETAIL_BUTTON_LABELS[key]} 상세 정보 ${selected ? "닫기" : "열기"}`);
+      const affordance = button.querySelector(".report-card-affordance");
+      if (affordance) affordance.textContent = selected ? "상세 닫기 ×" : "상세 보기 ›";
     });
   }
 
@@ -657,7 +736,10 @@
     setHidden("report-error", true);
     setHidden("report-view", false);
     setText("report-name", identity.name);
-    setText("report-identity", `${identity.ticker} · ${market} · ${assetLabel(identity.asset_type)}`);
+    const sector = report.technical_details && report.technical_details.sector_name;
+    const identityParts = [identity.ticker, market, assetLabel(identity.asset_type)];
+    if (sector && sector !== "UNKNOWN" && sector !== "None") identityParts.push(sector);
+    setText("report-identity", identityParts.join(" · "));
     setText("decision-heading", actionLabel(report.decision.action));
     setText("decision-summary", buildSummary(report));
     setText("signal-trend", stageLabel(report.summary.trend_stage));
