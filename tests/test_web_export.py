@@ -74,6 +74,10 @@ def test_health_uses_actual_resolved_authority_values(health, exporter):
         }
     )
     assert health["overall_status"] == expected_overall
+    report_artifact_count = len(list((ROOT / "artifacts/reporting/stock_reports/20260904").glob("*.md")))
+    stock_index = json.loads((ROOT / "web/data/stock-index.json").read_text(encoding="utf-8"))
+    assert health["stock_reports"]["existing_artifact_count"] == report_artifact_count
+    assert health["stock_reports"]["existing_artifact_count"] == stock_index["available_report_count"]
 
 
 def test_date_key_drives_fundamentals_and_stock_report_paths(exporter, health):

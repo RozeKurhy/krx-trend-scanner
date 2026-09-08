@@ -93,6 +93,12 @@
         <button class="strategy-summary-card" type="button" data-filter="exit" aria-pressed="false">
           <span class="strategy-summary-label">매도 조건 충족</span><strong id="summary-exit-count" class="strategy-summary-value">—</strong><span class="strategy-summary-hint">매도 신호</span>
         </button>
+        <button class="strategy-summary-card" type="button" data-filter="watch" aria-pressed="false">
+          <span class="strategy-summary-label">관찰 중</span><strong id="summary-watch-count" class="strategy-summary-value">—</strong><span class="strategy-summary-hint">관찰 상태</span>
+        </button>
+        <button class="strategy-summary-card" type="button" data-filter="unavailable" aria-pressed="false">
+          <span class="strategy-summary-label">기타</span><strong id="summary-unavailable-count" class="strategy-summary-value">—</strong><span class="strategy-summary-hint">전략 적용 제외</span>
+        </button>
       </section>
 
       <section class="panel strategy-controls" aria-labelledby="strategy-controls-heading">
@@ -110,6 +116,7 @@
           <button class="strategy-filter" type="button" data-filter="entry" aria-pressed="false">진입 조건 충족</button>
           <button class="strategy-filter" type="button" data-filter="exit" aria-pressed="false">매도 조건 충족</button>
           <button class="strategy-filter" type="button" data-filter="watch" aria-pressed="false">관찰 중</button>
+          <button class="strategy-filter" type="button" data-filter="unavailable" aria-pressed="false">기타</button>
         </div>
       </section>
 

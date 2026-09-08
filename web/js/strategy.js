@@ -40,7 +40,7 @@
     unavailable: "기타",
   };
   const SECTION_IDS = { hold: "hold", entry: "entry", exit: "exit", watch: "watch", unavailable: "unavailable" };
-  const FILTERS = new Set(["all", ...Object.keys(SECTION_IDS).filter((key) => key !== "unavailable")]);
+  const FILTERS = new Set(["all", ...Object.keys(SECTION_IDS)]);
 
   const byId = (id) => document.getElementById(id);
   let monitor = null;
@@ -269,6 +269,8 @@
     setText("summary-hold-count", counts.hold);
     setText("summary-entry-count", counts.entry);
     setText("summary-exit-count", counts.exit);
+    setText("summary-watch-count", counts.watch);
+    setText("summary-unavailable-count", counts.unavailable);
     setText("strategy-scope", `기준일 ${formatDate(monitor.as_of)} · ${monitor.scope.label} ${formatNumber(monitor.scope.report_count)}종목`);
   }
 

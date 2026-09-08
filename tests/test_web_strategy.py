@@ -117,7 +117,13 @@ def test_strategy_page_is_connected_and_uses_one_release_cache_version():
     assert 'data-filter="entry"' in strategy_html
     assert 'data-filter="exit"' in strategy_html
     assert 'data-filter="watch"' in strategy_html
+    assert 'data-filter="unavailable"' in strategy_html
+    assert 'id="summary-watch-count"' in strategy_html
+    assert 'id="summary-unavailable-count"' in strategy_html
     assert '<h2 id="unavailable-heading">기타</h2>' in strategy_html
+    assert 'setText("summary-watch-count", counts.watch)' in strategy_js
+    assert 'setText("summary-unavailable-count", counts.unavailable)' in strategy_js
+    assert 'const FILTERS = new Set(["all", ...Object.keys(SECTION_IDS)]);' in strategy_js
     assert 'link.href = `./report.html?ticker=' in strategy_js
     assert 'const MONITOR_URL = "./data/strategy-monitor.json";' in strategy_js
     assert "function createPriceDateField" in strategy_js
