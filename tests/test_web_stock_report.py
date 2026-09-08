@@ -262,6 +262,10 @@ def test_report_frontend_has_safe_states_and_relative_assets():
     assert ".report-card-row" in css
     assert ".pattern-arrow" in css
     assert ".pattern-stepper" in css
+    assert "flex-wrap: nowrap" in css
+    assert "column-gap: 0" in css
+    assert "margin-inline: 3px" in css
+    assert ".pattern-step { padding: 4px 5px;" in css
     assert ".pattern-step, .pattern-arrow" in css
     assert ".report-card-affordance" in css
     assert ".report-identity { display: flex; align-items: center;" in css

@@ -431,10 +431,10 @@ summary { cursor: pointer; color: var(--ink); font-size: 13px; font-weight: 750;
 .recommendations-panel { margin-top: 24px; padding-top: 19px; border-top: 1px solid var(--line); }
 .recommendations-panel h2 { margin: 0; font-size: 14px; letter-spacing: -0.025em; }
 .recommendation-list { margin-top: 12px; }
-.pattern-stepper { display: flex; flex-wrap: wrap; align-items: center; gap: 7px 10px; margin: 0 0 13px; }
+.pattern-stepper { display: flex; flex-wrap: nowrap; align-items: center; column-gap: 0; row-gap: 0; margin: 0 0 13px; }
 .pattern-step, .pattern-arrow { display: inline-flex; align-items: center; line-height: 1; }
-.pattern-step { padding: 4px 7px; border: 1px solid transparent; color: var(--ink-faint); font-size: 11px; white-space: nowrap; }
-.pattern-arrow { flex: 0 0 auto; padding: 4px 0; color: var(--line-strong); font-size: 12px; }
+.pattern-step { padding: 4px 5px; border: 1px solid transparent; color: var(--ink-faint); font-size: 11px; white-space: nowrap; }
+.pattern-arrow { flex: 0 0 auto; margin-inline: 3px; padding: 4px 0; color: var(--line-strong); font-size: 12px; }
 .pattern-step.is-current { color: var(--brand-red); background: var(--primary-soft); border-color: color-mix(in srgb, var(--brand-red) 35%, var(--line)); border-radius: 999px; font-weight: 800; }
 .pattern-current { margin: 0 0 8px; color: var(--ink); font-size: 13px; font-weight: 750; }
 
@@ -459,7 +459,7 @@ summary { cursor: pointer; color: var(--ink); font-size: 13px; font-weight: 750;
   .signal-grid, .report-card-row, .report-detail-grid { grid-template-columns: 1fr; }
   .report-identity { align-items: flex-start; flex-direction: column; gap: 12px; }
   .report-actions { justify-content: flex-start; width: 100%; }
-  .pattern-stepper { gap: 9px 14px; }
+  .pattern-stepper { column-gap: 0; row-gap: 0; }
   .search-result-button { align-items: flex-start; flex-direction: column; gap: 3px; }
   .site-footer { align-items: flex-start; flex-direction: column; gap: 4px; }
 }
