@@ -182,7 +182,15 @@ def test_web_wording_is_neutral_and_keeps_the_existing_data_contract():
     assert "다음 단계" not in html
     assert "종목 현황" in html
     assert "생성된 리포트" in html
-    assert "펀더멘탈 데이터 수집 중" in js
+    assert "펀더멘탈 데이터 준비 중" in js
+    assert "펀더멘탈 데이터 수집 중" not in html
+    assert "펀더멘탈 데이터 수집 중" not in js
+    assert "데이터 기준과 작업 상태를 한눈에!" in html
+    assert "데이터 기준과 후속 작업 준비 상태를 한눈에!" not in html
+    noscript = re.search(r"<noscript>.*?</noscript>", html, flags=re.DOTALL)
+    assert noscript is not None
+    assert "자바스크립트 필요" in noscript.group(0)
+    assert "JavaScript 필요" not in noscript.group(0)
     assert "읽기 전용" in html
     assert "이 화면은 공개용 정적 데이터만 사용, 원천 데이터와 비공개 정보는 미포함." in html
     for banned_phrase in ("중이야", "않아", "해야 해", "확인해야 해", "한눈에 확인해"):

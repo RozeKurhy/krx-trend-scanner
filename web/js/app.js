@@ -14,7 +14,7 @@
     COMPLETE: "완료",
   };
   const REASON_LABELS = {
-    "Fundamentals production coverage is not complete.": "펀더멘탈 데이터 수집 중",
+    "Fundamentals production coverage is not complete.": "펀더멘탈 데이터 준비 중",
   };
   const THEME_STORAGE_KEY = "krx-theme";
   const THEME_VALUES = new Set(["light", "dark"]);
