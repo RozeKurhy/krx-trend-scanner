@@ -171,3 +171,44 @@ def test_expected_filing_failure_becomes_one_terminal_result(tmp_path: Path):
     assert recorded["terminal_status"] == "DATA_UNAVAILABLE"
     assert recorded["f4_passed"] is False
     assert recorded["f5_ready"]["data_status"] == "DATA_UNAVAILABLE"
+
+
+def test_remaining_selection_skips_completed_without_market_filters():
+    universe = [
+        {"ticker": "000020", "market_cap": 1, "close": 1},
+        {"ticker": "000040", "market_cap": 999_000_000_000, "close": 99_000},
+        {"ticker": "000050", "market_cap": 2, "close": 2},
+    ]
+    selected = f7._select_remaining_rows(universe, {"000040"})
+    assert [row["ticker"] for row in selected] == ["000020", "000050"]
+
+
+def test_legacy_not_applicable_output_is_reusable(tmp_path: Path):
+    path = tmp_path / "499660.json"
+    path.write_text(json.dumps({
+        "runner_version": "F7-03-BOUNDED-FILING-PRELOAD-IDENTITY",
+        "ticker": "499660",
+        "requested_as_of": "2026-09-04",
+        "asset_type": "ETF",
+        "terminal_status": "NOT_APPLICABLE",
+        "f4_passed": False,
+        "api_request_count": 0,
+        "f5_ready": {"data_status": "NOT_APPLICABLE"},
+    }), encoding="utf-8")
+    value = f7._load_existing(path, ticker="499660", requested_as_of="2026-09-04")
+    assert value is not None
+    assert value["terminal_status"] == "NOT_APPLICABLE"
+
+
+def test_quota_stop_does_not_create_data_unavailable():
+    client = f7.QuotaBoundOpenDartClient(
+        "redacted-test-key",
+        max_additional_requests=1,
+        official_usage_before=11_000,
+        safety_daily_cap=39_000,
+    )
+    client.audit.append({"endpoint": "company.json"})
+    client.http_request_count = 1
+    with pytest.raises(f7.QuotaBudgetExceeded):
+        client._ensure_budget()
+    assert not issubclass(f7.QuotaBudgetExceeded, f7.F7TerminalError)

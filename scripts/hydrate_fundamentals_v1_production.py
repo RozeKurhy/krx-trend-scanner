@@ -104,11 +104,16 @@ NON_COMMON_ASSET_TYPES = {
     "ETF", "ETN", "PREFERRED", "SPAC", "REIT", "OTHER", "UNKNOWN",
 }
 RUNNER_VERSION = "F7-04-BOUNDED-FILING-PRELOAD-FINANCIAL-NA"
+LEGACY_REUSABLE_NOT_APPLICABLE_RUNNER_VERSIONS = {
+    "F7-03-BOUNDED-FILING-PRELOAD-IDENTITY",
+}
 INTERNAL_FY_LOOKBACK = 6
 TODAY_QUOTA_DATE = "2026-09-08"
 OFFICIAL_USAGE_BEFORE_PRIORITY = 11_000
 MAX_ADDITIONAL_OPENDART_REQUESTS = 28_000
 SAFETY_DAILY_CAP = 39_000
+REMAINING_MAX_ADDITIONAL_OPENDART_REQUESTS = 8_000
+REMAINING_SAFETY_DAILY_CAP = 39_000
 PRIORITY_MARKET_DATE = "2026-09-04"
 PRIORITY_MARKET_PATH = ROOT / "artifacts/patterns/pattern_a/production/investability/source/krx_market_cap_20260904.csv"
 KNOWN_TICKER_DATA_ERRORS = (
@@ -563,6 +568,30 @@ def _load_prior_quota_checkpoint(path: Path) -> dict[str, Any]:
     return value
 
 
+def _load_remaining_quota_budget(path: Path) -> tuple[int, int]:
+    """Load today's baseline and aggregate remaining-run request count."""
+
+    checkpoint = _load_prior_quota_checkpoint(path)
+    quota = checkpoint.get("quota")
+    try:
+        if isinstance(quota, Mapping):
+            baseline = int(quota["baseline_daily_total_estimate"])
+            prior_additional = int(quota["additional_opendart_requests"])
+        else:
+            baseline = int(checkpoint["estimated_daily_total_after_run"])
+            prior_additional = 0
+    except (KeyError, TypeError, ValueError) as exc:
+        raise RuntimeError("today's priority quota checkpoint has no usable daily baseline") from exc
+    if baseline < 0 or baseline >= REMAINING_SAFETY_DAILY_CAP:
+        raise RuntimeError("today's priority quota checkpoint exceeds the remaining-run safety boundary")
+    accounting = checkpoint.get("request_accounting")
+    if not isinstance(accounting, Mapping) or accounting.get("counter_consistent") is not True:
+        raise RuntimeError("today's priority quota checkpoint has inconsistent request accounting")
+    if prior_additional < 0 or prior_additional > REMAINING_MAX_ADDITIONAL_OPENDART_REQUESTS:
+        raise RuntimeError("today's remaining-run request count is outside the quota boundary")
+    return baseline, prior_additional
+
+
 def _load_completed_rows(universe: Iterable[Mapping[str, Any]], tickers_dir: Path, requested_as_of: str) -> list[dict[str, Any]]:
     completed: list[dict[str, Any]] = []
     for universe_row in universe:
@@ -897,6 +926,14 @@ def _record_failure(row: Mapping[str, Any], requested_as_of: str, error: F7Termi
     return record
 
 
+def _is_systematic_transport_failure(error: F7TerminalError) -> bool:
+    """Identify transport failures that must stop remaining hydration."""
+
+    return str(error.reason or "").startswith(
+        "OpenDartError:OpenDART JSON request failed:"
+    )
+
+
 def _load_existing(path: Path, *, ticker: str, requested_as_of: str) -> dict[str, Any] | None:
     if not path.exists():
         return None
@@ -906,13 +943,33 @@ def _load_existing(path: Path, *, ticker: str, requested_as_of: str) -> dict[str
         return None
     if not isinstance(value, dict):
         return None
-    if (
-        value.get("runner_version") != RUNNER_VERSION
-        or value.get("ticker") != ticker
-        or value.get("requested_as_of") != requested_as_of
-    ):
+    if value.get("ticker") != ticker or value.get("requested_as_of") != requested_as_of:
         return None
-    return value if value.get("terminal_status") in VALID_TERMINAL_STATUSES else None
+    if value.get("runner_version") == RUNNER_VERSION:
+        return value if value.get("terminal_status") in VALID_TERMINAL_STATUSES else None
+    legacy_not_applicable = (
+        value.get("runner_version") in LEGACY_REUSABLE_NOT_APPLICABLE_RUNNER_VERSIONS
+        and value.get("asset_type") in NON_COMMON_ASSET_TYPES
+        and value.get("terminal_status") == "NOT_APPLICABLE"
+        and value.get("f4_passed") is False
+        and int(value.get("api_request_count", 0) or 0) == 0
+        and isinstance(value.get("f5_ready"), Mapping)
+        and value["f5_ready"].get("data_status") == "NOT_APPLICABLE"
+    )
+    return value if legacy_not_applicable else None
+
+
+def _select_remaining_rows(
+    universe: Iterable[Mapping[str, Any]],
+    completed_tickers: Iterable[str],
+) -> list[dict[str, Any]]:
+    """Keep the authority's deterministic order while excluding valid outputs."""
+
+    completed = {str(ticker).strip().upper() for ticker in completed_tickers}
+    return [
+        dict(row) for row in universe
+        if str(row.get("ticker") or "").strip().upper() not in completed
+    ]
 
 
 def _write_index(path: Path, rows: Iterable[Mapping[str, Any]]) -> None:
@@ -1180,6 +1237,93 @@ def _daily_quota_checkpoint(
     }
 
 
+def _remaining_quota_checkpoint(
+    *,
+    completed_rows: list[dict[str, Any]],
+    universe: list[dict[str, Any]],
+    start_completed_tickers: set[str],
+    requested_as_of: str,
+    metadata_snapshot_date: str,
+    started_at: str,
+    completed_at: str,
+    client: QuotaBoundOpenDartClient,
+    stop_reason: str,
+    baseline_daily_total: int,
+) -> dict[str, Any]:
+    completed_tickers = {str(row.get("ticker")) for row in completed_rows}
+    newly_completed = sorted(completed_tickers - start_completed_tickers)
+    remaining_tickers = sorted(
+        str(row["ticker"]) for row in universe
+        if str(row["ticker"]) not in completed_tickers
+    )
+    summary = _summary(
+        completed_rows,
+        requested_as_of=requested_as_of,
+        metadata_snapshot_date=metadata_snapshot_date,
+        started_at=started_at,
+        completed_at=completed_at,
+        client=client,
+        pilot_count=None,
+    )
+    actual_additional = client.current_additional_requests
+    counter_consistent = client.http_request_count == len(client.audit)
+    return {
+        "work_id": "F7_REMAINING_DAILY_QUOTA_CONTROL_CHECKPOINT",
+        "runner_version": RUNNER_VERSION,
+        "date": TODAY_QUOTA_DATE,
+        "status": "IN_PROGRESS",
+        "requested_as_of": requested_as_of,
+        "metadata_snapshot_date": metadata_snapshot_date,
+        "stop_reason": stop_reason,
+        "start_completed": len(start_completed_tickers),
+        "start_remaining": len(universe) - len(start_completed_tickers),
+        "newly_completed_today": len(newly_completed),
+        "newly_completed_tickers": newly_completed,
+        "end_completed": len(completed_tickers),
+        "end_remaining": len(remaining_tickers),
+        "remaining_tickers": remaining_tickers,
+        "quota": {
+            "baseline_daily_total_estimate": baseline_daily_total,
+            "additional_opendart_requests": actual_additional,
+            "max_additional_requests_this_run": REMAINING_MAX_ADDITIONAL_OPENDART_REQUESTS,
+            "estimated_daily_total_after_run": client.estimated_daily_total,
+            "safety_daily_cap": REMAINING_SAFETY_DAILY_CAP,
+            "safety_margin": max(0, REMAINING_SAFETY_DAILY_CAP - client.estimated_daily_total),
+            "basis": "2026-09-08 priority checkpoint estimate plus this remaining invocation",
+        },
+        "terminal_status_summary_completed": summary["fundamentals_coverage"],
+        "data_coverage_completed": summary["data_coverage"],
+        "mapping_coverage_completed": summary["mapping_coverage"],
+        "result_counts": {
+            "mapping_failures": sum(
+                1 for row in completed_rows
+                if row.get("mapping_status") in {"CORP_CODE_MISSING", "IDENTITY_MISMATCH"}
+            ),
+            "transient_failures_current_invocation": sum(
+                1 for item in client.audit
+                if item.get("classification") in {"SERVICE", "RATE_LIMIT"}
+            ),
+        },
+        "request_accounting": {
+            "actual_http_request_count_current_invocation": client.http_request_count,
+            "audit_entry_count_current_invocation": len(client.audit),
+            "counter_consistent": counter_consistent,
+            "basis": "QuotaBoundOpenDartClient audit entry per OpenDART get_json/get_binary attempt",
+        },
+        "resume": {
+            "checkpoint_safe": (
+                len(completed_tickers) == len(completed_rows)
+                and all(row.get("terminal_status") in VALID_TERMINAL_STATUSES for row in completed_rows)
+                and counter_consistent
+            ),
+            "completed_tickers_reusable": len(completed_tickers) == len(completed_rows),
+            "remaining_only_resume_possible": True,
+        },
+        "run_started_at": started_at,
+        "run_completed_at": completed_at,
+    }
+
+
 def _choose_pilot(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     by_asset = {str(row["asset_type"]): row for row in rows if row["asset_type"] != "COMMON"}
     selected: list[dict[str, Any]] = []
@@ -1210,6 +1354,10 @@ def run(mode: str, *, env_file: Path) -> int:
     elif mode == "priority":
         priority_tickers, priority_info = _load_priority_tickers(universe)
         target_rows = [row for row in universe if row["ticker"] in priority_tickers]
+    elif mode == "remaining":
+        # The completed-output exclusion is applied after the real artifact
+        # recount below.  No market-cap or price authority is consulted here.
+        target_rows = universe
     else:
         target_rows = universe
     output_dir = OUTPUT_ROOT / requested_as_of.replace("-", "")
@@ -1223,10 +1371,23 @@ def run(mode: str, *, env_file: Path) -> int:
     quota_checkpoint_path = output_dir / "daily_quota_checkpoint.json"
     prior_quota_checkpoint = _load_prior_quota_checkpoint(quota_checkpoint_path) if mode == "priority" else {}
     prior_additional = int(prior_quota_checkpoint.get("actual_additional_requests", 0) or 0)
+    remaining_baseline: int | None = None
+    remaining_prior_additional = 0
     if mode == "priority":
         client: OpenDartClient = QuotaBoundOpenDartClient(
             api_key=secret,
             prior_additional_requests=prior_additional,
+        )
+    elif mode == "remaining":
+        remaining_baseline, remaining_prior_additional = _load_remaining_quota_budget(
+            quota_checkpoint_path
+        )
+        client = QuotaBoundOpenDartClient(
+            api_key=secret,
+            prior_additional_requests=remaining_prior_additional,
+            max_additional_requests=REMAINING_MAX_ADDITIONAL_OPENDART_REQUESTS,
+            official_usage_before=remaining_baseline,
+            safety_daily_cap=REMAINING_SAFETY_DAILY_CAP,
         )
     else:
         client = OpenDartClient(api_key=secret)
@@ -1257,6 +1418,18 @@ def run(mode: str, *, env_file: Path) -> int:
         str(row.get("ticker"))
         for row in _load_completed_rows(universe, tickers_dir, requested_as_of)
     }
+    if mode == "remaining":
+        target_rows = _select_remaining_rows(universe, preexisting_completed_tickers)
+        print(json.dumps({
+            "mode": mode,
+            "total_universe": len(universe),
+            "start_completed": len(preexisting_completed_tickers),
+            "start_remaining": len(target_rows),
+            "market_cap_filter": None,
+            "price_filter": None,
+            "quota_baseline_daily_total_estimate": remaining_baseline,
+            "max_additional_requests": REMAINING_MAX_ADDITIONAL_OPENDART_REQUESTS,
+        }, ensure_ascii=False), flush=True)
     stop_reason = "TARGET_SET_EXHAUSTED"
     for index, universe_row in enumerate(target_rows, start=1):
         ticker = str(universe_row["ticker"])
@@ -1291,6 +1464,16 @@ def run(mode: str, *, env_file: Path) -> int:
             stop_reason = "INTERRUPTED"
             break
         except F7TerminalError as exc:
+            if mode == "remaining" and _is_systematic_transport_failure(exc):
+                stop_reason = "REPEATED_HTTP_FAILURE"
+                print(json.dumps({
+                    "stop": stop_reason,
+                    "processed": len(rows),
+                    "target_total": len(target_rows),
+                    "actual_additional_requests": client.current_additional_requests,
+                    "estimated_daily_total": client.estimated_daily_total,
+                }, ensure_ascii=False), flush=True)
+                break
             result = _record_failure(universe_row, requested_as_of, exc)
         result["api_request_count"] = len(client.audit) - before_requests
         result["elapsed_seconds"] = round(time.monotonic() - started_monotonic, 3)
@@ -1339,6 +1522,40 @@ def run(mode: str, *, env_file: Path) -> int:
             "priority_remaining": checkpoint["universe"]["priority_remaining"],
             "actual_additional_requests": checkpoint["actual_additional_requests"],
             "estimated_daily_total": checkpoint["estimated_daily_total_after_run"],
+            "checkpoint": str(quota_checkpoint_path.relative_to(ROOT)),
+        }, ensure_ascii=False))
+        return 0
+
+    if mode == "remaining":
+        completed_rows = _load_completed_rows(universe, tickers_dir, requested_as_of)
+        _write_index(output_dir / "ticker_index.csv", completed_rows)
+        completed_at = _now()
+        assert isinstance(client, QuotaBoundOpenDartClient)
+        assert remaining_baseline is not None
+        checkpoint = _remaining_quota_checkpoint(
+            completed_rows=completed_rows,
+            universe=universe,
+            start_completed_tickers=preexisting_completed_tickers,
+            requested_as_of=requested_as_of,
+            metadata_snapshot_date=metadata_snapshot_date,
+            started_at=started,
+            completed_at=completed_at,
+            client=client,
+            stop_reason=stop_reason,
+            baseline_daily_total=remaining_baseline,
+        )
+        _write_json_checked(quota_checkpoint_path, checkpoint)
+        print(json.dumps({
+            "status": checkpoint["status"],
+            "mode": mode,
+            "stop_reason": stop_reason,
+            "requested_as_of": requested_as_of,
+            "start_completed": checkpoint["start_completed"],
+            "newly_completed": checkpoint["newly_completed_today"],
+            "end_completed": checkpoint["end_completed"],
+            "end_remaining": checkpoint["end_remaining"],
+            "additional_opendart_requests": checkpoint["quota"]["additional_opendart_requests"],
+            "estimated_daily_total": checkpoint["quota"]["estimated_daily_total_after_run"],
             "checkpoint": str(quota_checkpoint_path.relative_to(ROOT)),
         }, ensure_ascii=False))
         return 0
@@ -1393,10 +1610,18 @@ def main() -> int:
         action="store_true",
         help="Run today's 2026-09-04 market-cap/close priority batch with quota cap",
     )
+    group.add_argument(
+        "--remaining",
+        action="store_true",
+        help="Resume only unfinished production tickers with today's remaining quota cap",
+    )
     parser.add_argument("--env-file", type=Path, default=Path("/Users/june/Documents/projects/env.md"))
     args = parser.parse_args()
     try:
-        mode = "pilot" if args.pilot else "priority" if args.priority else "full"
+        mode = (
+            "pilot" if args.pilot else "priority" if args.priority
+            else "remaining" if args.remaining else "full"
+        )
         return run(mode, env_file=args.env_file)
     except Exception as exc:
         # Never echo exception text here: a transport-layer failure must not
