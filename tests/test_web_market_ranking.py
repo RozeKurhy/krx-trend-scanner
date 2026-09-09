@@ -33,11 +33,11 @@ def test_market_ranking_schema_scope_and_generated_projection_match():
     assert ranking["scope"] == {
         "type": "PUBLISHED_REPORTS",
         "label": "현재 공개 리포트 기준",
-        "report_count": 276,
+        "report_count": 553,
     }
     assert ranking["metric_scope"] == {"label": "마켓 RS는 전체 보통주 기준"}
     assert ranking["as_of"] == "2026-09-04"
-    assert ranking["eligible_counts"] == {"2w": 247, "1m": 247, "3m": 247, "6m": 247, "12m": 247}
+    assert ranking["eligible_counts"] == {"2w": 513, "1m": 513, "3m": 513, "6m": 513, "12m": 513}
     assert len(ranking["items"]) == ranking["scope"]["report_count"]
 
 
@@ -181,7 +181,12 @@ def test_public_ranking_labels_use_market_rs_without_renaming_internal_fields():
 def test_market_ranking_sort_and_filter_keep_canonical_percentiles():
     ranking = _load_ranking()
     js = (ROOT / "web/js/market.js").read_text(encoding="utf-8")
-    eligible = [item for item in ranking["items"] if item["asset_type"] == "COMMON"]
+    eligible = [
+        item for item in ranking["items"]
+        if item["asset_type"] == "COMMON"
+        and isinstance(item["percentile_1m"], (int, float))
+        and 0 <= item["percentile_1m"] <= 100
+    ]
 
     expected = sorted(eligible, key=lambda item: (-item["percentile_1m"], item["name"], item["ticker"]))
     assert expected[0]["percentile_1m"] >= expected[-1]["percentile_1m"]

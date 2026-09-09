@@ -66,7 +66,7 @@ def test_compact_report_preserves_authority_values_without_raw_markdown(payload)
 def test_all_published_compact_reports_have_ticker_bound_toss_chart(payload):
     _index, reports, _stats = payload
 
-    assert len(reports) == 276
+    assert len(reports) == 553
     for ticker, report in reports.items():
         links = report["external_links"]
         assert links["naver_finance"] == f"https://finance.naver.com/item/main.naver?code={ticker}"
@@ -347,7 +347,7 @@ def test_report_frontend_has_safe_states_and_relative_assets():
 def test_report_request_state_is_distinct_from_available_reports(payload):
     index, _reports, _stats = payload
     available = next(item for item in index["items"] if item["ticker"] == "005930")
-    unavailable = next(item for item in index["items"] if item["ticker"] == "211050")
+    unavailable = next(item for item in index["items"] if item["report_available"] is False)
 
     assert available["report_available"] is True
     assert unavailable["report_available"] is False

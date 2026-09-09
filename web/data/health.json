@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-08T22:47:54.632507Z",
-  "overall_status": "UPDATING",
+  "generated_at": "2026-09-09T21:19:05.170147Z",
+  "overall_status": "CHECK_REQUIRED",
   "market_data": {
     "status": "NORMAL",
     "latest_trading_date": "2026-09-04",
@@ -15,49 +15,49 @@
   },
   "universe": {
     "status": "NORMAL",
-    "count": 4407,
-    "snapshot_date": "2026-08-21",
+    "count": 4299,
+    "snapshot_date": "2026-09-04",
     "asset_type_counts": {
-      "COMMON": 2666,
+      "COMMON": 2557,
       "ETF": 1161,
       "ETN": 373,
       "PREFERRED": 101,
       "REIT": 23,
-      "SPAC": 68,
-      "UNKNOWN": 15
+      "SPAC": 65,
+      "UNKNOWN": 19
     },
     "source": {
       "path": "data/reference/krx_instrument_metadata.parquet",
-      "as_of": "2026-08-21"
+      "as_of": "2026-09-04"
     }
   },
   "fundamentals": {
-    "status": "UPDATING",
+    "status": "CHECK_REQUIRED",
     "run_status": "IN_PROGRESS",
     "requested_as_of": "2026-09-04",
-    "completed": 3710,
-    "total": 4407,
-    "remaining": 697,
-    "percentage": 84.2,
+    "completed": 3674,
+    "total": 4299,
+    "remaining": 625,
+    "percentage": 85.5,
     "terminal_status_counts": {
-      "DATA_UNAVAILABLE": 643,
+      "DATA_UNAVAILABLE": 610,
       "FILTERED_ANNUAL_REVENUE": 214,
       "FILTERED_NET_LOSS": 93,
       "FILTERED_OPERATING_LOSS": 200,
       "FILTERED_QUARTERLY_REVENUE": 3,
-      "NOT_APPLICABLE": 1873,
+      "NOT_APPLICABLE": 1870,
       "PASS": 684
     },
     "data_status_counts": {
-      "DATA_UNAVAILABLE": 643,
-      "NOT_APPLICABLE": 1873,
+      "DATA_UNAVAILABLE": 610,
+      "NOT_APPLICABLE": 1870,
       "PARTIAL": 1185,
       "READY": 9
     },
     "output_integrity": {
-      "valid_output_count": 3710,
+      "valid_output_count": 3674,
       "invalid_output_count": 0,
-      "outside_universe_count": 0,
+      "outside_universe_count": 36,
       "duplicate_payload_count": 0
     },
     "source": {
@@ -73,20 +73,20 @@
     }
   },
   "stock_reports": {
-    "status": "WAITING",
+    "status": "CHECK_REQUIRED",
     "reason": "Fundamentals production coverage is not complete.",
     "source": {
       "path": "artifacts/fundamentals/production/20260904/daily_quota_checkpoint.json",
       "as_of": "2026-09-04"
     },
-    "existing_artifact_count": 276,
+    "existing_artifact_count": 553,
     "artifact_source": {
       "path": "artifacts/reporting/stock_reports/20260904",
       "as_of": "2026-09-04"
     }
   },
   "analysis": {
-    "status": "WAITING",
+    "status": "CHECK_REQUIRED",
     "reason": "Fundamentals production coverage is not complete.",
     "source": {
       "path": "artifacts/fundamentals/production/20260904/daily_quota_checkpoint.json",
@@ -94,7 +94,7 @@
     }
   },
   "backtest": {
-    "status": "WAITING",
+    "status": "CHECK_REQUIRED",
     "reason": "Fundamentals production coverage is not complete.",
     "source": {
       "path": "artifacts/fundamentals/production/20260904/daily_quota_checkpoint.json",
