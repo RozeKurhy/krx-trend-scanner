@@ -1,6 +1,6 @@
 {
   "artifact_version": "5",
-  "generated_at": "2026-09-09T22:26:36.357945+00:00",
+  "generated_at": "2026-09-09T22:40:04.157183+00:00",
   "effective_date": "2026-09-04",
   "upstream_authority": "KRX Market Data Center (data.krx.co.kr), authenticated historical MDC screens plus local exact PIT Basic Info",
   "upstream_source_name": "KOSPI/KOSDAQ Basic Info PIT raw; KONEX 전종목 시세 MDCSTAT01501; ETF 전종목 시세 MDCSTAT04301 (historical product identity); ETN 전종목 시세 MDCSTAT06401 (historical product identity)",
@@ -8,7 +8,7 @@
   "retrieval_method": "authenticated HTTPS POST for historical KRX MDC screens; local raw KOSPI/KOSDAQ PIT payloads; build-time only",
   "source_snapshot_date": "2026-09-04",
   "source_snapshot_path": "data/reference/source/krx_instrument_metadata_source_snapshot_2026-09-04.json",
-  "source_snapshot_sha256": "dfae555ad7868d342cb262da3124308922f0da65430224d095f1c33b42633df4",
+  "source_snapshot_sha256": "e40777be27bbd979f28cc4490cbad3951e5a9a2a9928e4cc66a47a69c5f94e14",
   "artifact_csv_sha256": "8d42b56b11b7505981c67c46f712df304a89aad9ce996af3211d317b05aae9c6",
   "artifact_parquet_sha256": "37f50b33f935c2b4058e7c0bed182ddadf5e0ef36f0e35740f43e1d75c73ae81",
   "builder_script": "scripts/reconcile_krx_instrument_metadata_v02.py",
@@ -857,7 +857,7 @@
       },
       "records_key": "OutBlock_1",
       "response_rows": 108,
-      "response_server_timestamp": "2026.09.10 AM 07:26:32",
+      "response_server_timestamp": "2026.09.10 AM 07:39:59",
       "response_records_sha256": "14d39229297e19425ebfbf2cea9e781dbfcec334241c67a6e1965ff00230791b",
       "date_validation": {
         "target_date": "2026-09-04",
@@ -880,7 +880,7 @@
           },
           "records_key": "OutBlock_1",
           "response_rows": 108,
-          "response_server_timestamp": "2026.09.10 AM 07:26:32",
+          "response_server_timestamp": "2026.09.10 AM 07:39:59",
           "response_records_sha256": "c6148a3fdc6510d0c9deac77d68930d1899644ddb4c45ae0a2d95fde82b84301"
         }
       }
@@ -894,7 +894,7 @@
       },
       "records_key": "output",
       "response_rows": 1167,
-      "response_server_timestamp": "2026.09.10 AM 07:26:32",
+      "response_server_timestamp": "2026.09.10 AM 07:40:00",
       "response_records_sha256": "65a2ec1c11016253f2dfdbc956f7a7e02c6f8ce11e8bdab5ea0c93bdf7f725d8",
       "date_validation": {
         "target_date": "2026-09-04",
@@ -915,7 +915,7 @@
           },
           "records_key": "output",
           "response_rows": 1167,
-          "response_server_timestamp": "2026.09.10 AM 07:26:33",
+          "response_server_timestamp": "2026.09.10 AM 07:40:00",
           "response_records_sha256": "5c942b98fc7e589933475457a2efcae867de81925ba2623e4f4125dd75a0d8ae"
         }
       }
@@ -929,7 +929,7 @@
       },
       "records_key": "output",
       "response_rows": 375,
-      "response_server_timestamp": "2026.09.10 AM 07:26:33",
+      "response_server_timestamp": "2026.09.10 AM 07:40:00",
       "response_records_sha256": "a541fe4839328d4452495275599e7ae4b83f4e1137c3949961eb12e632298ccb",
       "date_validation": {
         "target_date": "2026-09-04",
@@ -950,7 +950,7 @@
           },
           "records_key": "output",
           "response_rows": 373,
-          "response_server_timestamp": "2026.09.10 AM 07:26:33",
+          "response_server_timestamp": "2026.09.10 AM 07:40:01",
           "response_records_sha256": "7d1a0f0c41ebc4a32d9d274c20cda0086a589df7c8e285d472387d90064e9e9d"
         }
       }
@@ -958,9 +958,10 @@
   },
   "removed_ticker_reconciliation": {
     "path": "artifacts/data/instrument_metadata_v02/removed_ticker_reconciliation_20260904.csv",
-    "count": 113,
+    "count": 114,
     "category_counts": {
       "DELISTED_OR_TERMINATED": 5,
+      "ETF_SOURCE_PREVIOUSLY_MISSING": 1,
       "STILL_LIVE_AND_RESTORED": 108
     },
     "unresolved_count": 0,
@@ -990,7 +991,7 @@
       "610111",
       "610112"
     ],
-    "removed_from_live_count": 113,
+    "removed_from_live_count": 114,
     "removed_from_live_tickers": [
       "0070X0",
       "0203K0",
@@ -1103,6 +1104,7 @@
       "456570",
       "471050",
       "476710",
+      "489010",
       "495810",
       "496320"
     ],

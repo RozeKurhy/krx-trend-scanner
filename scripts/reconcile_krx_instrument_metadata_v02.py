@@ -287,7 +287,11 @@ def reconcile_removed(
     current_live: set[str],
     prior_removed: list[str],
 ) -> list[dict[str, Any]]:
-    removed = sorted(set(prior_removed))
+    # Reconcile both the prior V01 manifest list and any additional actual
+    # 2026-08-21 -> 2026-09-04 baseline removals.  V01's list was produced
+    # against an incomplete 4,299-row authority, so it does not necessarily
+    # contain every removal exposed by the corrected exact snapshot.
+    removed = sorted(set(prior_removed) | (set(baseline["ticker"].astype(str)) - exact_tickers))
     output: list[dict[str, Any]] = []
     for current_ticker in removed:
         matches = baseline[baseline["ticker"].astype(str) == current_ticker]
