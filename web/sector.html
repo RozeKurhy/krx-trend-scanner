@@ -20,7 +20,7 @@
       })();
     </script>
     <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="./css/app.css?v=web-sector-rs-polish-1">
+    <link rel="stylesheet" href="./css/app.css?v=web-sector-rs-final-1">
   </head>
   <body>
     <a class="skip-link" href="#main-content">본문으로 건너뛰기</a>
@@ -57,7 +57,7 @@
     <main id="main-content" class="shell page-content">
       <section class="page-intro" aria-labelledby="page-title">
         <h1 id="page-title">섹터 RS</h1>
-        <p class="lede">같은 섹터 안에서 상대적으로 강한 종목을 비교해!</p>
+        <p class="lede">상대적으로 강한 종목을 한눈에!</p>
       </section>
 
       <nav class="ranking-tabs" aria-label="랭킹 종류">
@@ -71,9 +71,8 @@
 
       <section class="panel sector-controls" aria-labelledby="sector-controls-heading">
         <div class="sector-controls-heading">
-          <div>
-            <h2 id="sector-controls-heading">섹터 RS 랭킹</h2>
-          </div>
+          <h2 id="sector-controls-heading">섹터 RS 랭킹</h2>
+          <span id="sector-as-of" class="sector-as-of">기준일 —</span>
         </div>
         <div class="sector-primary-row">
           <div class="sector-select-wrap">
@@ -91,7 +90,6 @@
             <button class="market-control" type="button" data-horizon="12m" aria-pressed="false">12개월</button>
           </div>
         </div>
-        <p id="sector-scope" class="sector-summary" role="status">기준일 — · 구성 종목 — · 비교 가능 — · 1개월</p>
         <p id="sector-ranking-meta" class="visually-hidden" role="status" aria-live="polite">랭킹 목록 불러오는 중</p>
         <label class="visually-hidden" for="sector-search">종목명 또는 종목코드 검색</label>
         <input id="sector-search" class="report-search-input sector-search-input" type="search" placeholder="종목명 또는 종목코드 검색" autocomplete="off" aria-label="선택 섹터 내 종목명 또는 종목코드 검색" aria-controls="sector-ranking-list">
@@ -110,6 +108,6 @@
       <span>KRX Trend Scanner</span>
       <span>읽기 전용</span>
     </footer>
-    <script src="./js/sector.js?v=web-sector-rs-polish-1" defer></script>
+    <script src="./js/sector.js?v=web-sector-rs-final-1" defer></script>
   </body>
 </html>

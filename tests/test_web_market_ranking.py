@@ -110,7 +110,9 @@ def test_market_page_has_accessible_controls_and_release_contract():
     js = (ROOT / "web/js/market.js").read_text(encoding="utf-8")
     css = (ROOT / "web/css/app.css").read_text(encoding="utf-8")
 
-    assert '<title>랭킹 · KRX Trend Scanner</title>' in html
+    assert '<title>마켓 RS · KRX Trend Scanner</title>' in html
+    assert '<h1 id="page-title">마켓 RS</h1>' in html
+    assert '<p class="lede">상대적으로 강한 종목을 한눈에!</p>' in html
     assert '<a class="nav-item is-active" href="./market.html" aria-current="page">랭킹</a>' in html
     assert 'href="./css/app.css?v=web-sector-rs-fix01-1"' in html
     assert 'src="./js/market.js?v=web-02c-toss-1"' in html

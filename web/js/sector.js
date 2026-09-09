@@ -256,17 +256,14 @@
     });
   }
 
-  function renderSummary() {
-    const sector = sectorByKey();
-    if (!sector) return;
-    const eligible = sector[`eligible_count_${activeHorizon}`];
-    setText("sector-scope", `기준일 ${formatDate(payload.as_of)} · 구성 종목 ${formatNumber(sector.member_count)}개 · 비교 가능 ${formatNumber(eligible)}개 · ${HORIZON_LABELS[activeHorizon]}`);
+  function renderAsOf() {
+    setText("sector-as-of", `기준일 ${formatDate(payload.as_of)}`);
   }
 
   function renderRanking() {
     if (!payload) return;
     renderControls();
-    renderSummary();
+    renderAsOf();
     const items = rankedItems();
     const list = byId("sector-ranking-list");
     while (list.firstChild) list.removeChild(list.firstChild);
