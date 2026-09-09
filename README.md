@@ -62,7 +62,8 @@ README.md
 * **범위**: KOSPI/KOSDAQ 전체 공식 COMMON universe를 권위 데이터로 사용하며, ETF·ETN·우선주·SPAC·REIT·KONEX 등은 제외합니다. Percentile은 `100 = strongest`, `0 = weakest`입니다.
 * **운영 원칙**: 후보 subset 재계산 없이 전체 시장 snapshot을 exact as-of로 lookup합니다. nearest/future fallback, 리포트별 Full Universe Scan, 네트워크 요청은 사용하지 않습니다.
 * **분석 위치**: RS는 현재 Pattern A Score나 필터에 합산되지 않는 독립 Context / Analysis feature입니다.
-* **Sector RS**: **`CLOSED`** — Stock Report v0.4에 additive production context로 통합되었습니다. frozen 2026-08-14 membership와 2026-09-04까지의 local sector index를 사용하며, full-COMMON rank/percentile authority는 만들지 않았습니다.
+* **Sector RS**: **`CLOSED`** — Stock Report v0.4에 additive production context로 통합되었습니다. approved exact-date SectorMembershipStore snapshot(최신 2026-09-04)과 2026-09-04까지의 local sector index를 사용하며, full-COMMON rank/percentile authority는 만들지 않았습니다.
+* **Sector Membership source**: KRX Data Marketplace 공식 지수구성종목 CSV(수동 로그인 브라우저 다운로드, KOSPI 24 + KOSDAQ 22 native sectors, 46/46 publication gate)입니다. PyKRX membership acquisition/fallback은 사용하지 않습니다.
 
 ### 4. KRX Open API Validation (Complete)
 * **현재 상태**: **`COMPLETE`**
@@ -104,7 +105,7 @@ Pattern A의 장기 베이스와 Pattern A FAST의 주봉 타이밍, Investabili
   5. **월별 히스토리 추이 (Monthly History)**: 과거 월별 Pattern A Score Trend, Stage Transitions, Recent 12M History
   6. **수급 현황 (Foreign Flow)**: 외국인 기간별(1D/5D/20D/60D) 순매수 및 Flow Intensity
   7. **시장 상대강도 (Market RS)**: 3M/6M/12M level, improvement delta, acceleration, 전체 시장 rank/percentile
-  8. **업종 상대강도 (Sector RS)**: frozen membership와 local sector index 기반 3M/6M/12M additive context
+  8. **업종 상대강도 (Sector RS)**: approved exact-date SectorMembershipStore snapshot과 local sector index 기반 3M/6M/12M additive context
   9. **거래대금 추이 (Trading Value Trend)**: 5D/20D/60D 평균 거래대금 및 단·중기 확장 상태/비율
   10. **데이터 품질 & Provenance**: 결측치 감사, exact as-of, Zero Network Requests, PIT 무결성 검증
 * **산출물 경로**:

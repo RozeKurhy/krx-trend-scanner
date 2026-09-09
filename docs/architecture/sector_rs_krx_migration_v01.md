@@ -7,9 +7,10 @@ SECTOR_RS_KRX_MIGRATION_V01
 목적
 ----------------------------------------------------------------------
 Sector Relative Strength가 사용하는 native 46개 업종지수 가격 source를
-PyKRX에서 KRX Open API로 교체하고, current membership은 KRX frozen canonical
-2026-08-14 exact snapshot으로 고정한다. Historical membership은 deferred이며,
-Naver membership fallback과 live PyKRX membership은 금지한다.
+PyKRX에서 KRX Open API로 교체했다. Sector Membership은 KRX Data Marketplace
+공식 지수구성종목 CSV를 수동 로그인 브라우저로 내려받아 approved exact-date
+SectorMembershipStore snapshot으로 관리한다. Naver membership fallback과 live
+PyKRX membership은 금지한다.
 
 Production contract
 ----------------------------------------------------------------------
@@ -31,9 +32,14 @@ normalized 46-sector Parquet cache
 
 Current membership flow
 ----------------------------------------------------------------------
-KRX frozen canonical resolution policy
-        ↓ (exact effective_date=2026-08-14)
-`SectorMembershipStore` (2528 COMMON, 2496 mapped, 32 explicit UNMAPPED)
+KRX Data Marketplace official index constituents CSV
+        ↓ (manual login → 지수 → 주가지수 → 지수구성종목 → effective date)
+46-sector validation (KOSPI 24 + KOSDAQ 22)
+        ↓ MOST_SPECIFIC_NATIVE_SECTOR_V01 resolution
+`SectorMembershipStore` exact-date snapshots
+        ↓
+`2026-08-14` (2528 COMMON, 2496 resolved, 32 explicit UNMAPPED)
+`2026-09-04` (2562 COMMON, 2528 resolved, 34 explicit UNMAPPED)
         ↓
 `load_sector_mapping_exact_snapshot()`
         ↓
@@ -55,25 +61,41 @@ Cache invariants
 
 Membership invariants
 ----------------------------------------------------------------------
-- exact snapshot date는 `2026-08-14` 하나뿐이다.
-- 2026-08-14 이외의 as_of에서는 Sector RS를 `NOT_EVALUATED`로 반환한다.
-- 32개 unmapped COMMON은 삭제하지 않고 `DATA_UNAVAILABLE` /
-  `SECTOR_MEMBERSHIP_UNMAPPED`로 보존한다.
+- approved exact-date snapshot만 사용한다.
+- 현재 보유 snapshot은 `2026-08-14` historical approved snapshot과
+  `2026-09-04` current latest approved snapshot이다.
+- requested `as_of`와 exact match하는 snapshot이 없으면 fail closed하고
+  Sector RS를 `NOT_EVALUATED`로 반환한다.
+- 이전 snapshot을 자동 carry-forward하지 않고, 이후 snapshot을 backward apply하지 않는다.
+- unmapped COMMON은 삭제하지 않고 `DATA_UNAVAILABLE` /
+  `SECTOR_MEMBERSHIP_UNMAPPED`로 보존한다. (`2026-08-14`: 32개,
+  `2026-09-04`: 34개)
 - Sector RS cross-section은 전체 COMMON valid 값만으로 계산하며 candidate subset을
   분모로 사용하지 않는다.
 
-Incremental update
+Sector index cache incremental update
 ----------------------------------------------------------------------
 기존 cache가 있으면 target date의 KOSPI/KOSDAQ snapshot만 가져온다.
 두 snapshot 검증이 모두 끝난 뒤 임시 Parquet와 metadata를 atomic replace한다.
 동일 날짜 재실행은 해당 날짜를 deterministic replace하며 duplicate를 만들지 않는다.
 
-Provenance
+Current membership acquisition and provenance
 ----------------------------------------------------------------------
-cache metadata에는 source_name, fetch_mode, source_apis, mapping contract
-version/hash, date range, index/row counts, Parquet SHA-256을 기록한다.
-검증 결과는 `artifacts/data/krx_openapi/sector_rs_migration/v01/`에 저장하고,
-production cache 자체는 `.cache/` 아래에 둔다.
+- Source: `KRX Data Marketplace official index constituents`
+- UI path: 수동 로그인 → 지수 → 주가지수 → 지수구성종목 → 기준일 선택
+- Production acquisition: direct scripted HTTP 없이 공식 CSV 다운로드
+- Production publication gate: KOSPI 24 + KOSDAQ 22 = 46 / 46 required
+- CSV는 local source로 보존한 뒤 exact-date `SectorMembershipStore` snapshot을 생성한다.
+- Sector index cache metadata에는 source_name, fetch_mode, source_apis, mapping
+  contract version/hash, date range, index/row counts, Parquet SHA-256을 기록한다.
+- 검증 결과는 `artifacts/data/krx_openapi/sector_rs_migration/v01/`에 저장하고,
+  production cache 자체는 `.cache/` 아래에 둔다.
+
+Historical validation evidence (not current production acquisition)
+----------------------------------------------------------------------
+과거 parity/transport 검증에서 PyKRX membership probe를 사용했다는 기록은
+historical evidence로 보존한다. 해당 probe와 replay는 현재 production
+membership acquisition 또는 fallback 경로가 아니다.
 
 FIX01 validation contract
 ----------------------------------------------------------------------

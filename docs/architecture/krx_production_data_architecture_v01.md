@@ -36,7 +36,7 @@ Architect 승인 전에는 `CLOSED`로 선언하지 않는다.
 - 기존 stock cache rewrite/move/delete/bulk rename
 - custom corporate-action adjustment engine
 - market index source 전환
-- current Sector RS용 KRX frozen canonical membership snapshot materialization
+- 이미 승인된 exact-date SectorMembershipStore snapshot 변경/재생성
 - Pattern A, FastCore, Julia, RS formula 변경
 - HTML/dashboard UI 구현
 
@@ -58,11 +58,11 @@ Machine-readable 원본은
 | stock master raw facts     | KRX Basic Info + request basDd          |
 | stock master canonical market | `normalize_krx_market(raw_market)`    |
 | instrument asset type      | InstrumentMetadataResolver/formal product-master classification |
-| native sector index         | raw index + frozen canonical mapping    |
+| native sector index         | KRX Open API native sector index       |
 | market index                | 현재 PyKRX legacy, 목표 KRX Open API    |
-| ticker→sector membership    | KRX frozen canonical 2026-08-14 exact snapshot |
+| ticker→sector membership    | KRX Data Marketplace official index constituents CSV → exact-date SectorMembershipStore snapshots |
 | fundamentals                | OpenDART                               |
-| foreign/institution flow    | 기존 production source                  |
+| foreign/institution flow    | PyKRX Foreign Flow                      |
 ---------------------------------------------------------------------
 
 raw와 adjusted의 의미는 절대 합쳐서 하나의 authority로 표현하지 않는다.
@@ -258,12 +258,15 @@ target store를 별도 기록한다. `STOCK_MASTER_KRX`의 current source는 현
 Sector RS membership authority
 ----------------------------------------------------------------------
 현재 Sector RS production path의 membership은
-`data/market/sector_membership/v01/sector_membership_20260814.parquet`에
-materialize된 KRX frozen canonical snapshot이다. `effective_date`는
-`2026-08-14`와 정확히 일치해야 하며, 이 snapshot을 historical date에
-back-apply하거나 future date에 carry-forward하지 않는다. historical membership은
-deferred 상태다. Naver taxonomy와 live PyKRX membership은 KRX native authority가
-아니므로 이 경로에서 사용하지 않는다.
+KRX Data Marketplace 공식 지수구성종목 CSV를 수동 로그인 브라우저로 내려받아
+46-sector validation을 통과시킨 뒤 `SectorMembershipStore`에 exact-date snapshot으로
+materialize한 것이다. 현재 승인 snapshot은
+`data/market/sector_membership/v01/sector_membership_20260814.parquet`와
+`data/market/sector_membership/v01/sector_membership_20260904.parquet`다.
+요청 `as_of`는 snapshot의 `effective_date`와 정확히 일치해야 하며, 이전 snapshot을
+carry-forward하거나 이후 snapshot을 backward apply하지 않는다. Marketplace 실패 시
+PyKRX membership fallback도 수행하지 않는다. Naver taxonomy와 live PyKRX membership은
+현재 membership authority가 아니다.
 
 10. Foreign Flow lineage와 production diff guard
 ----------------------------------------------------------------------

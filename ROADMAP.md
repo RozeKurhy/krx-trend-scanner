@@ -44,7 +44,7 @@ ROADMAP.md
 
 **알려진 현재 한계 (2026-09-04 production scan 기준, 과장하지 않고 그대로 기록)**
 - Foreign Flow: Scanner에는 candidate-gated 평가가 남아 있음. Stock Report target COMMON에서는 local authority를 직접 소비함
-- Sector RS: Scanner는 READY 248 / DATA_UNAVAILABLE 8 / NOT_EVALUATED 2,299이며 candidate gating으로 non-candidate가 평가되지 않음. Stock Report v0.4 target COMMON은 READY 139 / DATA_UNAVAILABLE 2 / NOT_EVALUATED 0, ETF 17은 NOT_APPLICABLE / NOT_EVALUATED
+- Sector RS: Scanner는 READY 248 / DATA_UNAVAILABLE 8 / NOT_EVALUATED 2,299이며 candidate gating으로 non-candidate가 평가되지 않음. Stock Report v0.4 target COMMON은 READY 139 / DATA_UNAVAILABLE 2 / NOT_EVALUATED 0, ETF 17은 NOT_APPLICABLE / NOT_EVALUATED. Membership는 approved exact-date SectorMembershipStore snapshot(최신 2026-09-04)을 사용함
 - Sector RS full-COMMON rank/percentile authority는 아직 만들지 않음 (별도 향후 확장)
 - Repository 전체에 legacy/historical PyKRX 관련 코드가 남아 있음 — 다만 production scanner/report 경로의 silent PyKRX fallback은 제거된 상태
 
@@ -349,7 +349,7 @@ Scanner CANDIDATE 180종목을 수동 차트 검토하고 Stage 연구 사이클
 
 ### Sector RS 상태
 * Phase 12 closure 당시에는 **`DEFERRED / FUTURE_EXTENSION`**였으나, 이는 해당 시점의 historical 상태다.
-* 현재는 frozen 2026-08-14 membership, Repository V2, 2026-09-04까지의 local sector index를 사용하는 Stock Report v0.4 additive context integration으로 **`CLOSED`**다.
+* 현재는 KRX Data Marketplace 공식 지수구성종목 CSV에서 생성한 approved exact-date SectorMembershipStore snapshot(최신 2026-09-04), Repository V2, 2026-09-04까지의 local sector index를 사용하는 Stock Report v0.4 additive context integration으로 **`CLOSED`**다.
 * Stock Report target COMMON은 READY 139 / DATA_UNAVAILABLE 2 / NOT_EVALUATED 0이며, full-COMMON Sector RS rank/percentile authority는 만들지 않았다.
 
 ---
@@ -425,7 +425,7 @@ Fundamentals Score, Pattern A Score와의 합산, 매매 signal, PER/PBR, valuat
   5. Pattern A 월별 히스토리 추이 (Monthly History / Score Trend / Stage Transitions)
   6. Phase 11 Foreign Flow 수급 지표 및 Flow Intensity
   7. Phase 12 Market RS (3M/6M/12M, delta, acceleration, rank/percentile)
-  8. Sector RS (3M/6M/12M, frozen membership/local index 기반 additive context)
+  8. Sector RS (3M/6M/12M, approved exact-date SectorMembershipStore snapshot/local index 기반 additive context)
   9. 거래대금 추이 (Trading Value Trend, 5D/20D/60D 평균 및 단·중기 상태)
   10. 데이터 품질 및 PIT 무결성 감사 (Zero Network Requests)
 * **생성 원칙**: Repository V2와 frozen/local authority를 사용하며 exact as-of lookup, Full Universe Scanner 미호출, 네트워크 요청 0건.
