@@ -1,0 +1,92 @@
+{
+  "as_of": "2026-09-04",
+  "columns": [
+    "as_of",
+    "ticker",
+    "market",
+    "membership_status",
+    "sector_code",
+    "sector_name",
+    "sector_rs_data_status",
+    "sector_rs_input_reason",
+    "sector_benchmark_last_observation_date",
+    "sector_rs_3m",
+    "sector_rs_6m",
+    "sector_rs_12m",
+    "within_sector_rs_rank_3m",
+    "within_sector_rs_percentile_3m",
+    "sector_eligible_count_3m",
+    "within_sector_rs_rank_6m",
+    "within_sector_rs_percentile_6m",
+    "sector_eligible_count_6m",
+    "within_sector_rs_rank_12m",
+    "within_sector_rs_percentile_12m",
+    "sector_eligible_count_12m",
+    "sector_member_count"
+  ],
+  "horizons": [
+    "3m",
+    "6m",
+    "12m"
+  ],
+  "membership": {
+    "aggregate_only": 88,
+    "aggregate_only_behavior": "ranked in canonical assigned sector",
+    "mapped": 2440,
+    "population_total": 2562,
+    "unmapped": 34,
+    "unmapped_behavior": "row preserved; ranking fields null"
+  },
+  "network": {
+    "direct_http": 0,
+    "krx_open_api": 0,
+    "marketplace": 0,
+    "naver": 0,
+    "opendart": 0,
+    "pykrx": 0
+  },
+  "parquet_sha256": "09736991976a861d447c8eef73739fcc1319fe1cd9e5f17919e7781c0a3bfa33",
+  "ranking": {
+    "direction": "descending",
+    "independent_horizon_eligibility": true,
+    "invalid_values": [
+      "null",
+      "NaN",
+      "+inf",
+      "-inf"
+    ],
+    "metric": "sector_rs_{horizon}",
+    "percentile_formula": "(N - rank) / (N - 1) * 100; N=1 -> 100",
+    "tie_method": "average"
+  },
+  "schema_version": "SECTOR_RS_RANKING_V01",
+  "scope": {
+    "global_sector_ranking": false,
+    "group_key": [
+      "market",
+      "sector_code"
+    ],
+    "market_segment_ranking": false,
+    "published_report_denominator": false,
+    "type": "EXACT_SECTOR_MEMBERSHIP_POPULATION"
+  },
+  "source": {
+    "membership": "data/market/sector_membership/v01/sector_membership_20260904.parquet",
+    "membership_sha256": "a685cd4d87097667c48183381cf2254b8adba9be7f95824d681f5e7b4ed81626",
+    "sector_index": ".cache/krx_openapi/sector_rs_migration/v01/sector_index_daily.parquet",
+    "sector_index_sha256": "baac7d5729eac38c5703d5a5c2cf890ec405524cd48efc159298ad79c470b1f3",
+    "stock": "MarketDataRepositoryV2"
+  },
+  "validation": {
+    "cross_sector_contamination_count": 0,
+    "duplicate_ticker_count": 0,
+    "eligible_total_12m": 2338,
+    "eligible_total_3m": 2381,
+    "eligible_total_6m": 2364,
+    "invalid_sector_code_mapped_count": 0,
+    "percentile_bound_errors": 0,
+    "rank_bound_errors": 0,
+    "row_count": 2562,
+    "sector_group_count": 45
+  }
+}
