@@ -3,8 +3,8 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="KRX Trend Scanner의 마켓 RS 랭킹">
-    <title>마켓 RS · KRX Trend Scanner</title>
+    <meta name="description" content="KRX Trend Scanner의 외인 순매수 랭킹">
+    <title>외인 순매수 · KRX Trend Scanner</title>
     <script>
       (() => {
         const saved = (() => {
@@ -56,60 +56,50 @@
 
     <main id="main-content" class="shell page-content">
       <section class="page-intro" aria-labelledby="page-title">
-        <h1 id="page-title">마켓 RS</h1>
-        <p class="lede">상대적으로 강한 종목을 한눈에!</p>
+        <h1 id="page-title">외인 순매수</h1>
+        <p class="lede">외국인 누적 순매수대금으로 보는 종목 흐름</p>
       </section>
 
       <nav class="ranking-tabs" aria-label="랭킹 종류">
-        <a class="ranking-tab is-active" href="./market.html" aria-current="page">마켓 RS</a>
+        <a class="ranking-tab" href="./market.html">마켓 RS</a>
         <a class="ranking-tab" href="./sector.html">섹터 RS</a>
         <span class="ranking-tab" aria-disabled="true">섹터 랭킹 <small>준비 중</small></span>
-        <a class="ranking-tab" href="./foreign.html">외인 순매수</a>
+        <a class="ranking-tab is-active" href="./foreign.html" aria-current="page">외인 순매수</a>
         <span class="ranking-tab" aria-disabled="true">매출액 성장률 <small>준비 중</small></span>
         <span class="ranking-tab" aria-disabled="true">영업이익 성장률 <small>준비 중</small></span>
         <span class="ranking-tab" aria-disabled="true">순이익 성장률 <small>준비 중</small></span>
       </nav>
 
-      <section class="panel market-overview" aria-labelledby="market-overview-heading">
-        <div class="panel-heading">
+      <section class="panel foreign-controls" aria-labelledby="foreign-controls-heading">
+        <div class="foreign-controls-heading">
           <div>
-            <p class="eyebrow">마켓 RS</p>
-            <h2 id="market-overview-heading">전체 보통주 기준 마켓 RS 비교</h2>
+            <h2 id="foreign-controls-heading">외인 순매수 랭킹</h2>
+            <p id="foreign-ranking-meta" class="report-search-meta" role="status">랭킹 목록 불러오는 중</p>
           </div>
+          <span id="foreign-as-of" class="foreign-as-of">기준일 —</span>
         </div>
-        <p id="market-scope" class="market-scope">기준일 —</p>
-        <p id="market-metric-scope" class="panel-note">마켓 RS는 전체 보통주 기준</p>
-      </section>
-
-      <section class="panel market-controls" aria-labelledby="market-controls-heading">
-        <div class="market-controls-heading">
-          <div>
-            <h2 id="market-controls-heading">마켓 RS 랭킹</h2>
-            <p id="market-ranking-meta" class="report-search-meta" role="status">랭킹 목록 불러오는 중</p>
-          </div>
+        <div id="foreign-horizon-controls" class="market-control-group foreign-control-group" role="group" aria-label="랭킹 기간">
+          <button class="market-control" type="button" data-horizon="1d" aria-pressed="false">1일</button>
+          <button class="market-control" type="button" data-horizon="5d" aria-pressed="false">5일</button>
+          <button class="market-control" type="button" data-horizon="10d" aria-pressed="false">10일</button>
+          <button class="market-control is-active" type="button" data-horizon="20d" aria-pressed="true">20일</button>
+          <button class="market-control" type="button" data-horizon="60d" aria-pressed="false">60일</button>
         </div>
-        <div id="horizon-controls" class="market-control-group" role="group" aria-label="랭킹 기간">
-          <button class="market-control" type="button" data-horizon="2w" aria-pressed="false">2주</button>
-          <button class="market-control is-active" type="button" data-horizon="1m" aria-pressed="true">1개월</button>
-          <button class="market-control" type="button" data-horizon="3m" aria-pressed="false">3개월</button>
-          <button class="market-control" type="button" data-horizon="6m" aria-pressed="false">6개월</button>
-          <button class="market-control" type="button" data-horizon="12m" aria-pressed="false">12개월</button>
-        </div>
-        <div id="market-filters" class="market-control-group" role="group" aria-label="거래소 필터">
+        <div id="foreign-market-filters" class="market-control-group foreign-control-group" role="group" aria-label="거래소 필터">
           <button class="market-control is-active" type="button" data-market="ALL" aria-pressed="true">전체</button>
           <button class="market-control" type="button" data-market="KOSPI" aria-pressed="false">코스피</button>
           <button class="market-control" type="button" data-market="KOSDAQ" aria-pressed="false">코스닥</button>
         </div>
-        <label class="visually-hidden" for="market-search">종목명 또는 종목코드 검색</label>
-        <input id="market-search" class="report-search-input" type="search" placeholder="종목명 또는 종목코드 검색" autocomplete="off">
+        <label class="visually-hidden" for="foreign-search">종목명, 종목코드 또는 업종 검색</label>
+        <input id="foreign-search" class="report-search-input foreign-search-input" type="search" placeholder="종목명, 종목코드 또는 업종 검색" autocomplete="off" aria-controls="foreign-ranking-list">
       </section>
 
-      <section id="market-ranking-list" class="market-ranking-list" aria-live="polite" aria-label="마켓 RS 랭킹"></section>
+      <section id="foreign-ranking-list" class="foreign-ranking-list" aria-live="polite" aria-label="외인 순매수 랭킹"></section>
 
-      <section id="market-error" class="error-card" hidden aria-live="assertive" aria-labelledby="market-error-heading">
+      <section id="foreign-error" class="error-card" hidden aria-live="assertive" aria-labelledby="foreign-error-heading">
         <p class="eyebrow">데이터 불러오기 오류</p>
-        <h2 id="market-error-heading">마켓 RS 랭킹을 불러올 수 없습니다.</h2>
-        <p>마켓 RS 랭킹 데이터 파일을 확인해 주세요.</p>
+        <h2 id="foreign-error-heading">외인 순매수 랭킹을 불러올 수 없습니다.</h2>
+        <p>외인 순매수 랭킹 데이터 파일을 확인해 주세요.</p>
       </section>
     </main>
 
@@ -117,6 +107,6 @@
       <span>KRX Trend Scanner</span>
       <span>읽기 전용</span>
     </footer>
-    <script src="./js/market.js?v=web-02c-toss-1" defer></script>
+    <script src="./js/foreign.js?v=web-foreign-net-buy-1" defer></script>
   </body>
 </html>

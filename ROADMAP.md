@@ -15,13 +15,14 @@ ROADMAP.md
 - Pattern A production regeneration (COMMON production universe 2,555 / scan rows 2,555 / scanner_error_count 0)
 - Market RS full-COMMON authority through 2026-09-04 (2,555: READY 2,338 / PARTIAL 65 / DATA_UNAVAILABLE 152 / NOT_EVALUATED 0)
 - Sector RS Stock Report v0.4 production context integration
+- Foreign Net Buy Ranking Web V01 (KOSPI/KOSDAQ COMMON, 1D/5D/10D/20D/60D, zero external financial network calls)
 - Stock Report v0.4 regeneration (158/158: COMMON 141 / ETF 17, report errors 0)
 - Documentation / artifact consolidation
 - Branch / main integration cleanup (Group B 정리 및 merged branch 정리 포함)
 - Post-report Branch Cleanup / Integration (remaining branches classified and preserved; no merge/delete)
 
 **CURRENT**
-- Production report/data state consolidated; 추가 코드·데이터 재생성은 진행하지 않음
+- Production report/data state consolidated; Foreign Net Buy Ranking Web V01 released; 추가 코드·데이터 재생성은 진행하지 않음
 
 **NEXT**
 - OpenDART Fundamentals (기능 구축 및 PIT-aware fundamentals 데이터 계층)
@@ -123,6 +124,7 @@ CLOSED고 Production 승격 여부는 별도"임을 한 토큰으로 강조하�
 | **A FAST Core Strategy** | A FAST Core Strategy V1 | CLOSED / FROZEN | 단일 진입 모델 (**`HISTORICAL_FROZEN_BASELINE`**) |
 | | **A FAST Core Strategy V2** | **CLOSED / FROZEN** | **Current Default Strategy (`PRODUCTION_DECISION_SUPPORT`)** |
 | **Reporting & Viewer** | **Stock Report v0.4** | **CLOSED / PRODUCTION_DECISION_SUPPORT** | Market RS exact-date authority + Sector RS additive context, 2026-09-04 canonical 158건 (`59c5cab`, `8a1cccd`) |
+| | **Foreign Net Buy Ranking Web V01** | **CLOSED / READ_ONLY** | Local production flow source, KOSPI/KOSDAQ COMMON 2,557개, 1D/5D/10D/20D/60D 정적 ranking projection |
 | | Web Report Viewer | PLANNED / FUTURE | Fundamentals 및 핵심 데이터 계층 이후 |
 | **Engineering Infrastructure** | Documentation IA Reorganization | CLOSED | Domain-first / Pattern-second 구조 확립 (`docs/README.md`) |
 | | Artifacts IA Reorganization | CLOSED | Authority & Lifecycle 분리 완료 (`a81e3bb`) |

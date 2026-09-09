@@ -114,7 +114,7 @@ def test_market_page_has_accessible_controls_and_release_contract():
     assert '<h1 id="page-title">마켓 RS</h1>' in html
     assert '<p class="lede">상대적으로 강한 종목을 한눈에!</p>' in html
     assert '<a class="nav-item is-active" href="./market.html" aria-current="page">랭킹</a>' in html
-    assert 'href="./css/app.css?v=web-sector-rs-fix01-1"' in html
+    assert 'href="./css/app.css?v=web-foreign-net-buy-1"' in html
     assert 'src="./js/market.js?v=web-02c-toss-1"' in html
     assert '<nav class="ranking-tabs" aria-label="랭킹 종류">' in html
     assert '<a class="ranking-tab is-active" href="./market.html" aria-current="page">마켓 RS</a>' in html
@@ -151,7 +151,7 @@ def test_market_page_keeps_navigation_and_old_release_cache_out_of_all_pages():
         ROOT / "web/index.html": ("web-02c-toss-1", "app", "web-02c-toss-1"),
         ROOT / "web/report.html": ("web-02d-window-1", "report", "web-02d-window-1"),
         ROOT / "web/strategy.html": ("web-strategy-summary-3col-1", "strategy", "web-02c-toss-1"),
-        ROOT / "web/market.html": ("web-sector-rs-fix01-1", "market", "web-02c-toss-1"),
+        ROOT / "web/market.html": ("web-foreign-net-buy-1", "market", "web-02c-toss-1"),
     }
     pages = list(page_versions)
     for path, (css_version, script_name, js_version) in page_versions.items():

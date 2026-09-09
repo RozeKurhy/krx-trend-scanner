@@ -64,6 +64,7 @@ README.md
 * **분석 위치**: RS는 현재 Pattern A Score나 필터에 합산되지 않는 독립 Context / Analysis feature입니다.
 * **Sector RS**: **`CLOSED`** — Stock Report v0.4에 additive production context로 통합되었습니다. approved exact-date SectorMembershipStore snapshot(최신 2026-09-04)과 2026-09-04까지의 local sector index를 사용하며, full-COMMON rank/percentile authority는 만들지 않았습니다.
 * **Sector Membership source**: KRX Data Marketplace 공식 지수구성종목 CSV(수동 로그인 브라우저 다운로드, KOSPI 24 + KOSDAQ 22 native sectors, 46/46 publication gate)입니다. PyKRX membership acquisition/fallback은 사용하지 않습니다.
+* **Foreign Net Buy Ranking Web V01**: **`CLOSED`** — 2026-09-04 foreign-flow production source의 금액 기준 1D/5D/10D/20D/60D 누적 랭킹을 KOSPI/KOSDAQ COMMON 전체에 제공하며, exact-date Repository V2 현재가·기간 등락과 report availability를 함께 표시합니다. 네트워크 요청 없이 정적 payload를 사용합니다.
 
 ### 4. KRX Open API Validation (Complete)
 * **현재 상태**: **`COMPLETE`**

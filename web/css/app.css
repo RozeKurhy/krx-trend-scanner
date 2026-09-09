@@ -557,6 +557,34 @@ summary { cursor: pointer; color: var(--ink); font-size: 13px; font-weight: 750;
 .sector-ranking-report.is-disabled { color: var(--ink-faint); font-weight: 650; }
 .sector-ranking-empty { margin: 0; padding: 24px; color: var(--ink-soft); background: var(--surface); border: 1px solid var(--line); border-radius: 9px; }
 
+.foreign-controls { margin-bottom: 16px; }
+.foreign-controls-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin-bottom: 12px; }
+.foreign-controls-heading h2 { margin-bottom: 6px; }
+.foreign-as-of { color: var(--ink-soft); font-size: 12px; font-weight: 500; white-space: nowrap; }
+.foreign-control-group { padding-bottom: 10px; }
+.foreign-search-input { display: block; min-height: 46px; margin-top: 2px; padding-block: 10px; }
+.foreign-ranking-list { display: grid; gap: 8px; }
+.foreign-ranking-row { display: grid; grid-template-columns: minmax(190px, 1.7fr) repeat(3, minmax(100px, 1fr)) auto; align-items: center; gap: 12px; min-width: 0; min-height: 94px; border: 1px solid var(--line); padding: 15px 16px; color: var(--ink); background: var(--surface); border-radius: 9px; }
+.foreign-ranking-row:hover { border-color: var(--line-strong); background: var(--surface-muted); }
+.foreign-ranking-row:focus-within { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+.foreign-ranking-identity, .foreign-ranking-field { min-width: 0; }
+.foreign-ranking-identity { display: flex; flex-direction: column; gap: 4px; }
+.foreign-ranking-name { overflow: hidden; font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
+.foreign-ranking-meta { overflow: hidden; color: var(--ink-faint); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.foreign-ranking-field { display: flex; flex-direction: column; gap: 4px; }
+.foreign-ranking-label { color: var(--ink-faint); font-size: 10px; }
+.foreign-ranking-value { overflow-wrap: anywhere; color: var(--ink-soft); font-size: 12px; font-weight: 750; line-height: 1.3; }
+.foreign-ranking-flow .foreign-ranking-value { font-size: 15px; }
+.foreign-ranking-flow.return-positive .foreign-ranking-value { color: var(--market-up-red); }
+.foreign-ranking-flow.return-negative .foreign-ranking-value { color: var(--market-down-blue); }
+.foreign-ranking-return.return-positive .foreign-ranking-value { color: var(--market-up-red); }
+.foreign-ranking-return.return-negative .foreign-ranking-value { color: var(--market-down-blue); }
+.foreign-ranking-price .foreign-ranking-value { color: var(--ink); }
+.foreign-ranking-detail { color: var(--ink-faint); font-size: 10px; line-height: 1.25; }
+.foreign-ranking-report { flex: 0 0 auto; color: var(--brand-red-dark); font-size: 11px; font-weight: 800; white-space: nowrap; }
+.foreign-ranking-report.is-disabled { color: var(--ink-faint); font-weight: 650; }
+.foreign-ranking-empty { margin: 0; padding: 24px; color: var(--ink-soft); background: var(--surface); border: 1px solid var(--line); border-radius: 9px; }
+
 @media (max-width: 960px) {
   .header-inner { align-items: flex-start; flex-direction: column; gap: 14px; padding-block: 17px; }
   .header-actions { width: 100%; justify-content: space-between; }
@@ -574,6 +602,9 @@ summary { cursor: pointer; color: var(--ink); font-size: 13px; font-weight: 750;
   .sector-ranking-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .sector-ranking-row .market-ranking-identity { grid-column: 1 / -1; }
   .sector-ranking-report { justify-self: end; }
+  .foreign-ranking-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .foreign-ranking-identity { grid-column: 1 / -1; }
+  .foreign-ranking-report { justify-self: end; }
 }
 
 @media (max-width: 560px) {
@@ -602,6 +633,10 @@ summary { cursor: pointer; color: var(--ink); font-size: 13px; font-weight: 750;
   .sector-ranking-row { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 16px; }
   .sector-ranking-row .market-ranking-identity, .sector-ranking-row .sector-ranking-report { grid-column: 1 / -1; }
   .sector-ranking-report { justify-self: start; }
+  .foreign-controls-heading { align-items: flex-start; flex-direction: column; gap: 4px; }
+  .foreign-ranking-row { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 16px; }
+  .foreign-ranking-identity, .foreign-ranking-report { grid-column: 1 / -1; }
+  .foreign-ranking-report { justify-self: start; }
   .report-identity { align-items: flex-start; flex-direction: column; gap: 12px; }
   .report-actions { justify-content: flex-start; width: 100%; }
   .pattern-stepper { column-gap: 0; row-gap: 0; }
