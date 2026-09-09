@@ -142,3 +142,17 @@ def test_css_defines_regime_palette_and_mobile_layout():
     assert ".fear-chart-canvas" in css
     assert ".fear-regime-chip.is-current" in css
     assert re.search(r"@media \(max-width: 560px\).*?\.fear-regime-strip \{ grid-template-columns: repeat\(2", css, re.DOTALL)
+
+
+def test_fear_pages_use_new_fix02_asset_versions_and_visible_band_alpha():
+    index_html = (ROOT / "web/index.html").read_text(encoding="utf-8")
+    fear_html = (ROOT / "web/fear.html").read_text(encoding="utf-8")
+    fear_js = (ROOT / "web/js/fear.js").read_text(encoding="utf-8")
+    for html in (index_html, fear_html):
+        assert "web-fear-fix02-1" in html
+        assert "web-02c-toss-1" not in html
+    assert 'href="./css/app.css?v=web-fear-fix02-1"' in index_html
+    assert 'src="./js/app.js?v=web-fear-fix02-1"' in index_html
+    assert 'href="./css/app.css?v=web-fear-fix02-1"' in fear_html
+    assert 'src="./js/fear.js?v=web-fear-fix02-1"' in fear_html
+    assert 'ctx.globalAlpha = band.regime === "UNKNOWN" ? 0.08 : 0.32;' in fear_js

@@ -226,15 +226,15 @@ def test_report_frontend_has_safe_states_and_relative_assets():
     favicon = (ROOT / "web/favicon.svg").read_text(encoding="utf-8")
 
     assert 'href="./css/app.css?v=web-02d-window-1"' in html
-    assert 'href="./css/app.css?v=web-02c-toss-1"' in index_html
+    assert 'href="./css/app.css?v=web-fear-fix02-1"' in index_html
     assert 'href="./favicon.svg"' in html
     assert 'href="./favicon.svg"' in index_html
     assert (ROOT / "web/favicon.svg").exists()
     assert '#9f1d2f' in favicon
     assert 'src="./js/report.js?v=web-02d-window-1"' in html
-    assert 'src="./js/app.js?v=web-02c-toss-1"' in index_html
+    assert 'src="./js/app.js?v=web-fear-fix02-1"' in index_html
     assert html.count("web-02d-window-1") == 2
-    assert index_html.count("web-02c-toss-1") == 2
+    assert index_html.count("web-fear-fix02-1") == 2
     assert "web-03a-final-1" not in html
     assert "web-03a-final-1" not in index_html
     assert "web-02a-final-2" not in html

@@ -148,7 +148,7 @@ def test_market_page_has_accessible_controls_and_release_contract():
 
 def test_market_page_keeps_navigation_and_old_release_cache_out_of_all_pages():
     page_versions = {
-        ROOT / "web/index.html": ("web-02c-toss-1", "app", "web-02c-toss-1"),
+        ROOT / "web/index.html": ("web-fear-fix02-1", "app", "web-fear-fix02-1"),
         ROOT / "web/report.html": ("web-02d-window-1", "report", "web-02d-window-1"),
         ROOT / "web/strategy.html": ("web-strategy-summary-3col-1", "strategy", "web-02c-toss-1"),
         ROOT / "web/market.html": ("web-foreign-net-buy-1", "market", "web-02c-toss-1"),

@@ -316,7 +316,7 @@
       const endX = band.end === rows.length - 1
         ? geometry.left + geometry.plotWidth
         : (xFor(band.end, geometry, rows.length) + xFor(band.end + 1, geometry, rows.length)) / 2;
-      ctx.globalAlpha = band.regime === "UNKNOWN" ? 0.08 : 0.24;
+      ctx.globalAlpha = band.regime === "UNKNOWN" ? 0.08 : 0.32;
       ctx.fillStyle = band.regime === "UNKNOWN" ? fallback : cssVariable(REGIME_COLORS[band.regime], fallback);
       ctx.fillRect(startX, geometry.upperTop, Math.max(1, endX - startX), geometry.lowerBottom - geometry.upperTop);
     });
