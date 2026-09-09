@@ -1,47 +1,785 @@
 {
-  "artifact_version": "4",
-  "generated_at": "2026-09-09T21:18:26.935000+00:00",
+  "artifact_version": "5",
+  "generated_at": "2026-09-09T22:26:36.357945+00:00",
   "effective_date": "2026-09-04",
-  "upstream_authority": "KRX Market Data Center local repository authority",
-  "upstream_source_name": "전종목기본정보 local rolling KOSPI/KOSDAQ snapshot; existing formal ETF/ETN product-master classification retained",
+  "upstream_authority": "KRX Market Data Center (data.krx.co.kr), authenticated historical MDC screens plus local exact PIT Basic Info",
+  "upstream_source_name": "KOSPI/KOSDAQ Basic Info PIT raw; KONEX 전종목 시세 MDCSTAT01501; ETF 전종목 시세 MDCSTAT04301 (historical product identity); ETN 전종목 시세 MDCSTAT06401 (historical product identity)",
   "upstream_source_location": "https://data.krx.co.kr/comm/bldAttendant/getJsonData.cmd",
-  "retrieval_method": "offline local artifact reconstruction; no external provider call; runtime remains zero-network",
+  "retrieval_method": "authenticated HTTPS POST for historical KRX MDC screens; local raw KOSPI/KOSDAQ PIT payloads; build-time only",
   "source_snapshot_date": "2026-09-04",
   "source_snapshot_path": "data/reference/source/krx_instrument_metadata_source_snapshot_2026-09-04.json",
-  "source_snapshot_sha256": "35a84db803cb2df075eecef713a4a0c56fb7b2179877e4f1b1f4f1e906aa0bb8",
-  "artifact_csv_sha256": "601f0b0971cd39f20b7912b8b1be9e573e2a7f077d90f79e495dfa4d88133a3d",
-  "artifact_parquet_sha256": "fca130edf9e953557182c8730ddac770f640e86c38724acd0f3eea68ba204004",
-  "builder_script": "scripts/build_krx_instrument_metadata.py",
-  "mapping_version": "v4",
-  "row_count": 81492,
-  "ticker_count": 4826,
+  "source_snapshot_sha256": "dfae555ad7868d342cb262da3124308922f0da65430224d095f1c33b42633df4",
+  "artifact_csv_sha256": "8d42b56b11b7505981c67c46f712df304a89aad9ce996af3211d317b05aae9c6",
+  "artifact_parquet_sha256": "37f50b33f935c2b4058e7c0bed182ddadf5e0ef36f0e35740f43e1d75c73ae81",
+  "builder_script": "scripts/reconcile_krx_instrument_metadata_v02.py",
+  "mapping_version": "v04-exact-date-v02",
+  "row_count": 81608,
+  "ticker_count": 4835,
   "verified_snapshot_effective_date": "2026-09-04",
   "verified_snapshot_baseline_date": "2026-08-21",
-  "verified_row_count": 4299,
+  "verified_row_count": 4415,
   "asset_type_distribution_verified_rows": {
     "COMMON": 2557,
-    "ETF": 1161,
-    "ETN": 373,
+    "ETF": 1167,
+    "ETN": 375,
     "PREFERRED": 101,
     "REIT": 23,
     "SPAC": 65,
-    "UNKNOWN": 19
+    "UNKNOWN": 127
   },
-  "unknown_count_verified_rows": 19,
+  "unknown_count_verified_rows": 127,
   "unmapped_formal_category_count_verified_rows": 13,
-  "insufficient_formal_identity_count_verified_rows": 6,
+  "insufficient_formal_identity_count_verified_rows": 114,
   "insufficient_formal_identity_tickers": [
+    "0070X0",
+    "0203K0",
+    "052960",
+    "059180",
+    "066830",
+    "076340",
+    "086220",
+    "092590",
+    "093510",
+    "102950",
+    "103660",
+    "112190",
+    "114920",
+    "116100",
+    "121060",
+    "122830",
+    "136660",
+    "140610",
+    "140660",
+    "149010",
+    "162120",
+    "169670",
+    "176590",
+    "178600",
+    "179720",
+    "180060",
+    "185190",
+    "189350",
+    "191600",
+    "199150",
+    "199290",
+    "200580",
+    "202960",
+    "206950",
+    "207490",
+    "208850",
+    "208890",
+    "212310",
+    "215570",
+    "216400",
+    "217320",
+    "217880",
+    "217910",
+    "217950",
+    "222670",
+    "223220",
+    "224760",
+    "224810",
+    "227420",
+    "229500",
+    "232530",
+    "233250",
+    "233990",
+    "234070",
+    "236030",
+    "236340",
+    "238500",
+    "238540",
+    "243870",
+    "244880",
+    "245450",
+    "250030",
+    "251280",
+    "253610",
+    "254160",
+    "258050",
+    "260870",
+    "266170",
+    "266350",
+    "266470",
+    "267080",
+    "270210",
+    "276240",
+    "278990",
+    "279060",
+    "289170",
+    "296160",
+    "296520",
+    "299480",
+    "302920",
+    "311060",
+    "311960",
+    "317860",
+    "318660",
+    "322970",
+    "331660",
+    "332190",
+    "336040",
+    "337840",
     "340440",
+    "341170",
+    "346010",
+    "351020",
+    "354390",
+    "379390",
+    "390110",
+    "402420",
+    "403360",
+    "403810",
+    "413300",
+    "434190",
+    "446440",
+    "447690",
+    "448780",
+    "456190",
+    "456570",
     "465320",
     "469900",
     "472220",
     "472230",
-    "473050"
+    "473050",
+    "476710",
+    "495810",
+    "496320"
   ],
   "changed_tickers_vs_baseline_committed_value": [
     {
+      "ticker": "0070X0",
+      "name": "에스테크엠",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "0203K0",
+      "name": "송우인포텍",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "052960",
+      "name": "태양3C",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "059180",
+      "name": "엔더블유시",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "066830",
+      "name": "제노텍",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "076340",
+      "name": "지에이이노더스",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "086220",
+      "name": "광동헬스바이오",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "092590",
+      "name": "럭스피아",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "093510",
+      "name": "엔지브이아이",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "102950",
+      "name": "아하",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "103660",
+      "name": "씨앗",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "112190",
+      "name": "KC산업",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "114920",
+      "name": "대주이엔티",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "116100",
+      "name": "태양기계",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "121060",
+      "name": "유니포인트",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "122830",
+      "name": "원포유",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "136660",
+      "name": "큐엠씨",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "140610",
+      "name": "엔솔바이오사이언스",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "140660",
+      "name": "위월드",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "149010",
+      "name": "아이케이세미콘",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "162120",
+      "name": "루켄테크놀러지스",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "169670",
+      "name": "코스텍시스템",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "176590",
+      "name": "코나솔",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "178600",
+      "name": "대동고려삼",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "179720",
+      "name": "머니무브",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "180060",
+      "name": "탑선",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "185190",
+      "name": "수프로",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "189350",
+      "name": "코셋",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "191600",
+      "name": "블루탑",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "199150",
+      "name": "데이터스트림즈",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "199290",
+      "name": "바이오프로테크",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "200580",
+      "name": "메디쎄이",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "202960",
+      "name": "판도라티비",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "206950",
+      "name": "볼빅",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "207490",
+      "name": "에이펙스인텍",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "208850",
+      "name": "이비테크",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "208890",
+      "name": "미래엔에듀파트너",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "212310",
+      "name": "오건에코텍",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "215570",
+      "name": "크로넥스",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "216400",
+      "name": "인바이츠바이오코아",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "217320",
+      "name": "썬테크",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "217880",
+      "name": "틸론",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "217910",
+      "name": "에스제이켐",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "217950",
+      "name": "파마리서치바이오",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "222670",
+      "name": "플럼라인생명과학",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "223220",
+      "name": "로지스몬",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "224760",
+      "name": "엔에스컴퍼니",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "224810",
+      "name": "엄지하우스",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "227420",
+      "name": "도부",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "229500",
+      "name": "노브메타파마",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "232530",
+      "name": "이엠티",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "233250",
+      "name": "메디안디노스틱",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "233990",
+      "name": "질경이",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "234070",
+      "name": "에이원큐브텍",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "236030",
+      "name": "씨알푸드",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "236340",
+      "name": "메디젠휴먼케어",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "238500",
+      "name": "솔루믹스",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "238540",
+      "name": "나노솔루션",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "243870",
+      "name": "아이티센코어",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "244880",
+      "name": "나눔테크",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "245450",
+      "name": "씨앤에스링크",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "250030",
+      "name": "진코스텍",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "251280",
+      "name": "안지오랩",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "253610",
+      "name": "루트락",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "254160",
+      "name": "제이엠멀티",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "258050",
+      "name": "테크트랜스",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "260870",
+      "name": "SK시그넷",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "266170",
+      "name": "레드우즈",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "266350",
+      "name": "팡스카이",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "266470",
+      "name": "바이오인프라생명과학",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "267080",
+      "name": "세븐브로이맥주",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "270210",
+      "name": "에스알바이오텍",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "276240",
+      "name": "엘리비젼",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "278990",
+      "name": "EMB",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "279060",
+      "name": "이노벡스",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "289170",
+      "name": "바이오텐",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "296160",
+      "name": "프로젠",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "296520",
+      "name": "가이아코퍼레이션",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "299480",
+      "name": "지앤이헬스케어",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "302920",
+      "name": "더콘텐츠온",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "311060",
+      "name": "엘에이티",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "311960",
+      "name": "인터로이드",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "317860",
+      "name": "노드메이슨",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "318660",
+      "name": "타임기술",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "322970",
+      "name": "무진메디",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "331660",
+      "name": "한국미라클피플사",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "332190",
+      "name": "오션스바이오",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "336040",
+      "name": "타스컴",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "337840",
+      "name": "유엑스엔",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
       "ticker": "340440",
       "name": "세림B&G",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "341170",
+      "name": "퓨쳐메디신",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "346010",
+      "name": "타이드",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "351020",
+      "name": "미쥬",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "354390",
+      "name": "바스칸바이오제약",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "379390",
+      "name": "이성씨엔아이",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "390110",
+      "name": "애니메디솔루션",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "402420",
+      "name": "켈스",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "403360",
+      "name": "라피치",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "403810",
+      "name": "아이엘로보틱스",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "413300",
+      "name": "티엘엔지니어링",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "434190",
+      "name": "탈로스",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "446440",
+      "name": "에피바이오텍",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "447690",
+      "name": "아이오바이오",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "448780",
+      "name": "마이크로엔엑스",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "456190",
+      "name": "큐라켐",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "456570",
+      "name": "아이엠지티",
       "old_asset_type": "COMMON",
       "new_asset_type": "UNKNOWN"
     },
@@ -62,29 +800,195 @@
       "name": "유안타제15호스팩",
       "old_asset_type": "SPAC",
       "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "476710",
+      "name": "타조이엔터테인먼트",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "495810",
+      "name": "유비씨",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
+    },
+    {
+      "ticker": "496320",
+      "name": "본시스템즈",
+      "old_asset_type": "COMMON",
+      "new_asset_type": "UNKNOWN"
     }
   ],
   "historical_rows_marked_legacy_unverified": 77193,
   "zero_network_runtime": true,
-  "backdating_prevention": "2026-09-04 is the observed date encoded by the local official rolling Basic Info artifact; no runtime network lookup is used.",
+  "backdating_prevention": "Only the exact historical source rows carrying target-date request/path evidence are assigned effective_date=2026-09-04; current master responses are used only as reconciliation references.",
   "asset_type_history_rewrite": "NOT_PERFORMED",
   "historical_market_normalization": "PERFORMED",
   "historical_market_normalized_row_count": 696,
-  "pit_history_rewrite": "NOT_PERFORMED — historical asset_type values preserved; only legacy provenance is retained for prior snapshots.",
+  "pit_history_rewrite": "NOT_PERFORMED — historical asset_type values retained; provenance remains legacy-unverified.",
+  "exact_date_source_inventory": {
+    "kospi_equity": {
+      "source_path": "data/reference/source/history/krx_instrument_master/v01/rolling/basic_info/2026/20260904/KOSPI.json",
+      "official_source": "KRX MDC 전종목기본정보 local PIT raw payload",
+      "observation_date": "2026-09-04",
+      "request_reference": "repository PIT path 20260904",
+      "response_rows": 943,
+      "ticker_count": 943,
+      "records_sha256": "535a8724b49496b6243c015bc9ffaf1a2235249fa66269361d19fd38da1bd364"
+    },
+    "kosdaq_equity": {
+      "source_path": "data/reference/source/history/krx_instrument_master/v01/rolling/basic_info/2026/20260904/KOSDAQ.json",
+      "official_source": "KRX MDC 전종목기본정보 local PIT raw payload",
+      "observation_date": "2026-09-04",
+      "request_reference": "repository PIT path 20260904",
+      "response_rows": 1822,
+      "ticker_count": 1822,
+      "records_sha256": "9dba19380ff97370bdf4b3ad2ced47ba15b30a46fca466f9134fa068b7b2579f"
+    },
+    "konex_equity": {
+      "endpoint": "https://data.krx.co.kr/comm/bldAttendant/getJsonData.cmd",
+      "page": "MDCSTAT015.jsp",
+      "bld": "dbms/MDC/STAT/standard/MDCSTAT01501",
+      "request_params": {
+        "trdDd": "20260904",
+        "mktId": "KNX",
+        "segTpCd": "ALL"
+      },
+      "records_key": "OutBlock_1",
+      "response_rows": 108,
+      "response_server_timestamp": "2026.09.10 AM 07:26:32",
+      "response_records_sha256": "14d39229297e19425ebfbf2cea9e781dbfcec334241c67a6e1965ff00230791b",
+      "date_validation": {
+        "target_date": "2026-09-04",
+        "adjacent_date": "2026-09-03",
+        "target_rows": 108,
+        "adjacent_rows": 108,
+        "target_hash": "14d39229297e19425ebfbf2cea9e781dbfcec334241c67a6e1965ff00230791b",
+        "adjacent_hash": "c6148a3fdc6510d0c9deac77d68930d1899644ddb4c45ae0a2d95fde82b84301",
+        "hashes_differ": true,
+        "target_sample_close": "3,100",
+        "adjacent_sample_close": "3,000",
+        "adjacent_request": {
+          "endpoint": "https://data.krx.co.kr/comm/bldAttendant/getJsonData.cmd",
+          "page": "MDCSTAT015.jsp",
+          "bld": "dbms/MDC/STAT/standard/MDCSTAT01501",
+          "request_params": {
+            "trdDd": "20260903",
+            "mktId": "KNX",
+            "segTpCd": "ALL"
+          },
+          "records_key": "OutBlock_1",
+          "response_rows": 108,
+          "response_server_timestamp": "2026.09.10 AM 07:26:32",
+          "response_records_sha256": "c6148a3fdc6510d0c9deac77d68930d1899644ddb4c45ae0a2d95fde82b84301"
+        }
+      }
+    },
+    "etf_product_identity": {
+      "endpoint": "https://data.krx.co.kr/comm/bldAttendant/getJsonData.cmd",
+      "page": "MDCSTAT043.jsp",
+      "bld": "dbms/MDC/STAT/standard/MDCSTAT04301",
+      "request_params": {
+        "trdDd": "20260904"
+      },
+      "records_key": "output",
+      "response_rows": 1167,
+      "response_server_timestamp": "2026.09.10 AM 07:26:32",
+      "response_records_sha256": "65a2ec1c11016253f2dfdbc956f7a7e02c6f8ce11e8bdab5ea0c93bdf7f725d8",
+      "date_validation": {
+        "target_date": "2026-09-04",
+        "adjacent_date": "2026-09-03",
+        "target_rows": 1167,
+        "adjacent_rows": 1167,
+        "target_hash": "65a2ec1c11016253f2dfdbc956f7a7e02c6f8ce11e8bdab5ea0c93bdf7f725d8",
+        "adjacent_hash": "5c942b98fc7e589933475457a2efcae867de81925ba2623e4f4125dd75a0d8ae",
+        "hashes_differ": true,
+        "target_sample_close": "33,800",
+        "adjacent_sample_close": "33,210",
+        "adjacent_request": {
+          "endpoint": "https://data.krx.co.kr/comm/bldAttendant/getJsonData.cmd",
+          "page": "MDCSTAT043.jsp",
+          "bld": "dbms/MDC/STAT/standard/MDCSTAT04301",
+          "request_params": {
+            "trdDd": "20260903"
+          },
+          "records_key": "output",
+          "response_rows": 1167,
+          "response_server_timestamp": "2026.09.10 AM 07:26:33",
+          "response_records_sha256": "5c942b98fc7e589933475457a2efcae867de81925ba2623e4f4125dd75a0d8ae"
+        }
+      }
+    },
+    "etn_product_identity": {
+      "endpoint": "https://data.krx.co.kr/comm/bldAttendant/getJsonData.cmd",
+      "page": "MDCSTAT064.jsp",
+      "bld": "dbms/MDC/STAT/standard/MDCSTAT06401",
+      "request_params": {
+        "trdDd": "20260904"
+      },
+      "records_key": "output",
+      "response_rows": 375,
+      "response_server_timestamp": "2026.09.10 AM 07:26:33",
+      "response_records_sha256": "a541fe4839328d4452495275599e7ae4b83f4e1137c3949961eb12e632298ccb",
+      "date_validation": {
+        "target_date": "2026-09-04",
+        "adjacent_date": "2026-09-03",
+        "target_rows": 375,
+        "adjacent_rows": 373,
+        "target_hash": "a541fe4839328d4452495275599e7ae4b83f4e1137c3949961eb12e632298ccb",
+        "adjacent_hash": "7d1a0f0c41ebc4a32d9d274c20cda0086a589df7c8e285d472387d90064e9e9d",
+        "hashes_differ": true,
+        "target_sample_close": "9,840",
+        "adjacent_sample_close": "9,850",
+        "adjacent_request": {
+          "endpoint": "https://data.krx.co.kr/comm/bldAttendant/getJsonData.cmd",
+          "page": "MDCSTAT064.jsp",
+          "bld": "dbms/MDC/STAT/standard/MDCSTAT06401",
+          "request_params": {
+            "trdDd": "20260903"
+          },
+          "records_key": "output",
+          "response_rows": 373,
+          "response_server_timestamp": "2026.09.10 AM 07:26:33",
+          "response_records_sha256": "7d1a0f0c41ebc4a32d9d274c20cda0086a589df7c8e285d472387d90064e9e9d"
+        }
+      }
+    }
+  },
+  "removed_ticker_reconciliation": {
+    "path": "artifacts/data/instrument_metadata_v02/removed_ticker_reconciliation_20260904.csv",
+    "count": 113,
+    "category_counts": {
+      "DELISTED_OR_TERMINATED": 5,
+      "STILL_LIVE_AND_RESTORED": 108
+    },
+    "unresolved_count": 0,
+    "prior_v01_removed_count": 113
+  },
   "current_live_universe": {
-    "live_equity_count": 2765,
-    "live_etf_count": 1161,
-    "live_etn_count": 373,
-    "live_supported_unique_tickers": 4299,
-    "current_canonical_rows": 4299,
+    "live_equity_count": 2873,
+    "live_etf_count": 1167,
+    "live_etn_count": 375,
+    "live_supported_unique_tickers": 4415,
+    "current_canonical_rows": 4415,
     "baseline_ticker_count": 4407,
-    "new_listing_count": 5,
+    "new_listing_count": 14,
     "new_listing_tickers": [
       "0155E0",
       "0220W0",
       "0220WL",
+      "0229F0",
+      "0231Z0",
+      "0232A0",
+      "0233A0",
+      "0233J0",
+      "0233N0",
+      "0234N0",
       "386380",
-      "417030"
+      "417030",
+      "610111",
+      "610112"
     ],
     "removed_from_live_count": 113,
     "removed_from_live_tickers": [
@@ -202,9 +1106,21 @@
       "495810",
       "496320"
     ],
-    "common_ticker_count": 4294,
+    "common_ticker_count": 4401,
     "current_coverage_missing_count": 0,
     "baseline_name_copied_to_current": false,
     "baseline_market_copied_to_current": false
+  },
+  "current_delisted_reference": {
+    "endpoint": "https://data.krx.co.kr/comm/bldAttendant/getJsonData.cmd",
+    "bld": "dbms/comm/finder/finder_listdelisu",
+    "request_params": {
+      "locale": "ko_KR",
+      "mktsel": "ALL",
+      "searchText": "",
+      "typeNo": "0"
+    },
+    "response_rows": 4174,
+    "observation": "current reference only; not used for exact membership"
   }
 }

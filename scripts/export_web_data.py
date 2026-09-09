@@ -238,7 +238,10 @@ def _fundamentals_status(*, completed: int, total: int, integrity_ok: bool) -> s
     if not integrity_ok:
         return "CHECK_REQUIRED"
     if completed < total:
-        return "UPDATING"
+        # A bounded/in-progress production run is not a healthy completed
+        # state.  Keep the incomplete condition explicit for the public health
+        # contract while the checkpoint remains run_status=IN_PROGRESS.
+        return "CHECK_REQUIRED"
     return "NORMAL"
 
 

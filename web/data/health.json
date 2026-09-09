@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-09T21:19:05.170147Z",
+  "generated_at": "2026-09-09T22:30:51.155721Z",
   "overall_status": "CHECK_REQUIRED",
   "market_data": {
     "status": "NORMAL",
@@ -15,16 +15,16 @@
   },
   "universe": {
     "status": "NORMAL",
-    "count": 4299,
+    "count": 4415,
     "snapshot_date": "2026-09-04",
     "asset_type_counts": {
       "COMMON": 2557,
-      "ETF": 1161,
-      "ETN": 373,
+      "ETF": 1167,
+      "ETN": 375,
       "PREFERRED": 101,
       "REIT": 23,
       "SPAC": 65,
-      "UNKNOWN": 19
+      "UNKNOWN": 127
     },
     "source": {
       "path": "data/reference/krx_instrument_metadata.parquet",
@@ -35,12 +35,12 @@
     "status": "CHECK_REQUIRED",
     "run_status": "IN_PROGRESS",
     "requested_as_of": "2026-09-04",
-    "completed": 3674,
-    "total": 4299,
-    "remaining": 625,
-    "percentage": 85.5,
+    "completed": 3706,
+    "total": 4415,
+    "remaining": 709,
+    "percentage": 83.9,
     "terminal_status_counts": {
-      "DATA_UNAVAILABLE": 610,
+      "DATA_UNAVAILABLE": 642,
       "FILTERED_ANNUAL_REVENUE": 214,
       "FILTERED_NET_LOSS": 93,
       "FILTERED_OPERATING_LOSS": 200,
@@ -49,15 +49,15 @@
       "PASS": 684
     },
     "data_status_counts": {
-      "DATA_UNAVAILABLE": 610,
+      "DATA_UNAVAILABLE": 642,
       "NOT_APPLICABLE": 1870,
       "PARTIAL": 1185,
       "READY": 9
     },
     "output_integrity": {
-      "valid_output_count": 3674,
+      "valid_output_count": 3706,
       "invalid_output_count": 0,
-      "outside_universe_count": 36,
+      "outside_universe_count": 0,
       "duplicate_payload_count": 0
     },
     "source": {

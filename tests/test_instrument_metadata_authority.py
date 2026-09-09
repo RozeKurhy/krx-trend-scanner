@@ -388,6 +388,12 @@ _MANAGED_SECTION_SPACS = {
     "471050": "대신밸런스제17호기업인수목적",
     "472220": "신영해피투모로우제10호기업인수목적",
 }
+# The exact 2026-09-04 KRX source contains 465320 and 472220.  471050 is
+# absent from all five exact-date current source sections and must therefore
+# remain a historical-only lookup case rather than being fabricated into the
+# current snapshot.
+_MANAGED_SECTION_SPACS_IN_EXACT_SOURCE = {"465320", "472220"}
+_MANAGED_SECTION_SPACS_ABSENT_FROM_EXACT_SOURCE = {"471050"}
 
 
 def test_465320_not_misclassified_as_common():
@@ -421,9 +427,18 @@ def test_managed_section_spac_without_identity_evidence_fails_closed():
     fail closed되는지 검증 (w.md §4.10 test_managed_section_spac_without_identity_evidence_fails_closed)."""
     from trend_scanner.universe.instrument_metadata import resolve_instrument_metadata
 
+    df = pd.read_csv(CSV_PATH, dtype={"ticker": str}, low_memory=False)
+    exact_rows = df[(df.effective_date == VERIFIED_DATE) & df.ticker.isin(_MANAGED_SECTION_SPACS)]
+    assert set(exact_rows.ticker) == _MANAGED_SECTION_SPACS_IN_EXACT_SOURCE
     for ticker, name_hint in _MANAGED_SECTION_SPACS.items():
         meta = resolve_instrument_metadata(ticker, as_of=VERIFIED_DATE, repo_root=REPO_ROOT)
         assert meta.asset_type == "UNKNOWN", f"{ticker}({name_hint}) expected UNKNOWN, got {meta.asset_type}"
+        if ticker in _MANAGED_SECTION_SPACS_ABSENT_FROM_EXACT_SOURCE:
+            assert df[(df.ticker == ticker) & (df.effective_date == VERIFIED_DATE)].empty
+            assert meta.asset_type_source == "LEGACY_UNVERIFIED"
+            assert meta.classification_authority == "LEGACY_UNVERIFIED"
+            assert meta.is_trusted_for_production is False
+            continue
         assert meta.asset_type_source == "INSUFFICIENT_FORMAL_IDENTITY"
         assert meta.classification_authority == "FORMAL_SECURITY_TYPE"
         assert meta.is_trusted_for_production is False
@@ -435,7 +450,11 @@ def test_current_asset_type_does_not_use_isu_name_substrings():
     승격되지 않는다 (Fix Round 07 Major 3)."""
     df = pd.read_csv(CSV_PATH, dtype={"ticker": str}, low_memory=False)
     for ticker in _MANAGED_SECTION_SPACS:
-        row = df[(df.ticker == ticker) & (df.effective_date == VERIFIED_DATE)].iloc[0]
+        matches = df[(df.ticker == ticker) & (df.effective_date == VERIFIED_DATE)]
+        if ticker in _MANAGED_SECTION_SPACS_ABSENT_FROM_EXACT_SOURCE:
+            assert matches.empty
+            continue
+        row = matches.iloc[0]
         assert "ISU_NM=" in row["source_security_type"] and "기업인수목적" in row["source_security_type"], (
             f"{ticker}: 이 테스트는 ISU_NM에 '기업인수목적'이 포함된 케이스를 전제한다"
         )
@@ -449,7 +468,11 @@ def test_current_asset_type_does_not_use_english_name_substrings():
     의존하지 않는지 검증 (Fix Round 07 Major 3)."""
     df = pd.read_csv(CSV_PATH, dtype={"ticker": str}, low_memory=False)
     for ticker in _MANAGED_SECTION_SPACS:
-        row = df[(df.ticker == ticker) & (df.effective_date == VERIFIED_DATE)].iloc[0]
+        matches = df[(df.ticker == ticker) & (df.effective_date == VERIFIED_DATE)]
+        if ticker in _MANAGED_SECTION_SPACS_ABSENT_FROM_EXACT_SOURCE:
+            assert matches.empty
+            continue
+        row = matches.iloc[0]
         assert "ISU_ENG_NM=" in row["source_security_type"] and "Special Purpose Acquisition" in row["source_security_type"], (
             f"{ticker}: 이 테스트는 ISU_ENG_NM에 'Special Purpose Acquisition'이 포함된 케이스를 전제한다"
         )
@@ -477,7 +500,11 @@ def test_spac_formal_identity_source_is_name_independent():
         assert row["asset_type"] == "SPAC"
 
     for ticker in _MANAGED_SECTION_SPACS:
-        row = df[(df.ticker == ticker) & (df.effective_date == VERIFIED_DATE)].iloc[0]
+        matches = df[(df.ticker == ticker) & (df.effective_date == VERIFIED_DATE)]
+        if ticker in _MANAGED_SECTION_SPACS_ABSENT_FROM_EXACT_SOURCE:
+            assert matches.empty
+            continue
+        row = matches.iloc[0]
         assert "SECT_TP_NM=SPAC" not in row["source_security_type"]
         assert row["asset_type"] == "UNKNOWN"
 
@@ -488,7 +515,11 @@ def test_formal_spac_authority_precedes_common_share_type_mapping():
     fail closed됐는지 검증 (Fix Round 07 Major 3, 우선순위 재정의)."""
     df = pd.read_csv(CSV_PATH, dtype={"ticker": str}, low_memory=False)
     for ticker in _MANAGED_SECTION_SPACS:
-        row = df[(df.ticker == ticker) & (df.effective_date == VERIFIED_DATE)].iloc[0]
+        matches = df[(df.ticker == ticker) & (df.effective_date == VERIFIED_DATE)]
+        if ticker in _MANAGED_SECTION_SPACS_ABSENT_FROM_EXACT_SOURCE:
+            assert matches.empty
+            continue
+        row = matches.iloc[0]
         assert "KIND_STKCERT_TP_NM=보통주" in row["source_security_type"], (
             f"{ticker}: 이 테스트는 '보통주로 오분류될 수 있었던' 케이스를 전제하므로 "
             "KIND_STKCERT_TP_NM=보통주가 source에 있어야 한다"

@@ -82,9 +82,6 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from pykrx.website.comm.auth import build_krx_session, set_auth_session  # noqa: E402
-from pykrx.website.krx.market.core import 전종목기본정보, 상폐종목검색  # noqa: E402
-from pykrx.website.krx.etx.core import ETF_전종목기본종목, ETN_전종목기본종목  # noqa: E402
 from trend_scanner.universe.instrument_metadata import normalize_krx_market  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -118,6 +115,20 @@ MAPPING_VERSION = "v4"
 SOURCE_OBSERVATION_DATE = pd.Timestamp.now(tz="Asia/Seoul").strftime("%Y-%m-%d")
 
 
+def build_krx_session(*args, **kwargs):
+    """Lazy PyKRX auth import so importing this module never performs I/O."""
+    from pykrx.website.comm.auth import build_krx_session as _build_krx_session
+
+    return _build_krx_session(*args, **kwargs)
+
+
+def set_auth_session(*args, **kwargs):
+    """Lazy PyKRX auth-session setter for build-time live fetches."""
+    from pykrx.website.comm.auth import set_auth_session as _set_auth_session
+
+    return _set_auth_session(*args, **kwargs)
+
+
 def fetch_live_formal_universe() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """인증 세션으로 KRX MDC에서 실제 formal 분류/명칭 데이터를 조회한다.
     인증 세션이 유효하지 않으면 즉시 RuntimeError를 발생시키며 (silent snapshot fallback 없음),
@@ -127,6 +138,12 @@ def fetch_live_formal_universe() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFra
     if sess is None or not sess.is_authenticated:
         raise RuntimeError("KRX 인증 세션 생성 실패 — KRX_ID/KRX_PW(.env) 확인 필요.")
     set_auth_session(sess)
+
+    # Import PyKRX endpoint classes only after authentication succeeds.  This
+    # keeps local authority tests network-free while preserving live-builder
+    # behavior for the explicit build command.
+    from pykrx.website.krx.etx.core import ETF_전종목기본종목, ETN_전종목기본종목
+    from pykrx.website.krx.market.core import 전종목기본정보, 상폐종목검색
 
     df_kospi_kosdaq = 전종목기본정보().fetch(mktId="ALL", segTpCd="ALL")
     df_konex = 전종목기본정보().fetch(mktId="KNX", segTpCd="ALL")

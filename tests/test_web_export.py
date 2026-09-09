@@ -99,7 +99,7 @@ def test_date_key_drives_fundamentals_and_stock_report_paths(exporter, health):
 
 def test_fundamentals_status_rule_is_invariant(exporter):
     assert exporter._fundamentals_status(completed=0, total=1, integrity_ok=False) == "CHECK_REQUIRED"
-    assert exporter._fundamentals_status(completed=0, total=1, integrity_ok=True) == "UPDATING"
+    assert exporter._fundamentals_status(completed=0, total=1, integrity_ok=True) == "CHECK_REQUIRED"
     assert exporter._fundamentals_status(completed=1, total=1, integrity_ok=True) == "NORMAL"
 
 
