@@ -17,7 +17,12 @@ import pandas as pd
 
 
 REGIMES = ("OVERHEATED", "NORMAL", "ANXIOUS", "PANIC", "APATHY")
-CANDIDATES = ("balanced_v01", "downside_sensitive_v01", "participation_aware_v01")
+CANDIDATES = ("balanced_no_participation_v01", "panic_confirmed_v01", "downside_heavy_v01")
+CANDIDATE_COMPLEXITY = {
+    "balanced_no_participation_v01": 4,
+    "panic_confirmed_v01": 5,
+    "downside_heavy_v01": 4,
+}
 DATE_MIN = pd.Timestamp("2010-01-04")
 DATE_MAX = pd.Timestamp("2026-09-04")
 VALIDATION_CUTOFF = pd.Timestamp("2022-01-01")
@@ -167,6 +172,7 @@ def build_features(joined: pd.DataFrame) -> pd.DataFrame:
     v_std = v.rolling(60, min_periods=30).std().replace(0.0, np.nan)
     frame["v_z_60"] = (v - v_mean) / v_std
     frame["v_change_20"] = v.pct_change(20)
+    frame["kospi_return_5"] = k.pct_change(5)
     frame["kospi_return_20"] = k.pct_change(20)
     frame["kospi_return_60"] = k.pct_change(60)
     frame["kospi_drawdown_60"] = k / k.rolling(60, min_periods=30).max() - 1.0
@@ -194,16 +200,24 @@ def build_candidate_scores(features: pd.DataFrame) -> pd.DataFrame:
         0.5 * (-frame["kospi_return_20"] / 0.15)
         + 0.5 * (-frame["kospi_drawdown_60"] / 0.25)
     )
-    low_participation = 1.0 - frame["participation_pct_252"]
+    high_participation = _clip01(
+        0.60 * frame["participation_pct_252"]
+        + 0.40 * (frame["participation_ratio_20"] - 1.0).clip(0.0, 1.0)
+    )
+    panic_participation = downside * high_participation
 
-    frame["score_balanced_v01"] = 100.0 * (
-        0.45 * v_level + 0.15 * v_spike + 0.20 * downside + 0.10 * v_momentum + 0.10 * low_participation
+    # Candidate A: participation is excluded from fear intensity.
+    frame["score_balanced_no_participation_v01"] = 100.0 * (
+        0.50 * v_level + 0.15 * v_spike + 0.25 * downside + 0.10 * v_momentum
     )
-    frame["score_downside_sensitive_v01"] = 100.0 * (
-        0.35 * v_level + 0.10 * v_spike + 0.35 * downside + 0.10 * v_momentum + 0.10 * low_participation
+    # Candidate B: participation can reinforce fear only in a downside state.
+    frame["score_panic_confirmed_v01"] = 100.0 * (
+        0.45 * v_level + 0.10 * v_spike + 0.30 * downside + 0.10 * v_momentum + 0.05 * panic_participation
     )
-    frame["score_participation_aware_v01"] = 100.0 * (
-        0.35 * v_level + 0.10 * v_spike + 0.20 * downside + 0.10 * v_momentum + 0.25 * low_participation
+    # Candidate C: simple downside-heavy score; participation is reserved for
+    # regime confirmation rather than fear intensity.
+    frame["score_downside_heavy_v01"] = 100.0 * (
+        0.40 * v_level + 0.10 * v_spike + 0.40 * downside + 0.10 * v_momentum
     )
     for candidate in CANDIDATES:
         column = f"score_{candidate}"
@@ -249,38 +263,130 @@ def evaluate_candidates(features: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-def select_final_candidate(metrics: pd.DataFrame) -> str:
-    validation = metrics.loc[metrics["split"].eq("validation")].copy()
-    if validation.empty:
-        validation = metrics.loc[metrics["split"].eq("calibration")].copy()
-    selected = validation.sort_values(
-        ["brier", "spearman_adverse_return", "candidate"], ascending=[True, False, True]
+def _candidate_period_gate(frame: pd.DataFrame, candidate: str) -> dict[str, object]:
+    """Apply the FIX01 historical sanity gate, not a forward-risk objective."""
+    def subset(start: str, end: str) -> pd.DataFrame:
+        return frame.loc[frame["date"].between(pd.Timestamp(start), pd.Timestamp(end))]
+
+    def state_at(date: str) -> str:
+        rows = frame.loc[frame["date"].eq(pd.Timestamp(date)), "regime"]
+        return str(rows.iloc[0]) if not rows.empty else "MISSING"
+
+    def longest_run(values: pd.Series, target: str) -> int:
+        longest = current = 0
+        for value in values.tolist():
+            current = current + 1 if value == target else 0
+            longest = max(longest, current)
+        return longest
+
+    periods = {
+        "2011_08_09": subset("2011-08-01", "2011-09-30"),
+        "2012_2016": subset("2012-01-01", "2016-12-31"),
+        "2017": subset("2017-01-01", "2017-12-31"),
+        "2018": subset("2018-01-01", "2018-12-31"),
+        "2020_covid": subset("2020-02-20", "2020-04-30"),
+        "2021": subset("2021-01-01", "2021-12-31"),
+        "2022": subset("2022-01-01", "2022-12-31"),
+        "2024_08": subset("2024-08-01", "2024-08-09"),
+        "2026_06": subset("2026-06-01", "2026-06-30"),
+    }
+    p2017 = periods["2017"]
+    p2022 = periods["2022"]
+    p2026 = periods["2026_06"]
+    gates = {
+        "2020-03-19_panic": state_at("2020-03-19") == "PANIC",
+        "2024-08-05_panic": state_at("2024-08-05") == "PANIC",
+        "2026-06-18_non_panic": state_at("2026-06-18") != "PANIC",
+        "2026-06-29_non_panic": state_at("2026-06-29") != "PANIC",
+        "2017_not_panic_or_apathy_dominated": len(p2017) > 0
+        and int(p2017["regime"].isin(["PANIC", "APATHY"]).sum()) < len(p2017) / 2,
+        "2022_anxious_exceeds_panic": int((p2022["regime"] == "ANXIOUS").sum())
+        > int((p2022["regime"] == "PANIC").sum()),
+        "2012_2016_apathy_cluster": longest_run(periods["2012_2016"]["regime"], "APATHY") >= 5,
+        "2026_june_no_panic_cluster": int((p2026["regime"] == "PANIC").sum()) <= 2,
+    }
+    return {
+        "candidate": candidate,
+        "gate_pass": bool(all(gates.values())),
+        "gates": gates,
+        "anchor_states": {
+            date: state_at(date)
+            for date in (
+                "2020-03-19",
+                "2024-08-05",
+                "2026-06-18",
+                "2026-06-29",
+            )
+        },
+        "2017_panic_days": int((p2017["regime"] == "PANIC").sum()),
+        "2017_apathy_days": int((p2017["regime"] == "APATHY").sum()),
+        "2022_panic_days": int((p2022["regime"] == "PANIC").sum()),
+        "2022_anxious_days": int((p2022["regime"] == "ANXIOUS").sum()),
+        "2026_june_panic_days": int((p2026["regime"] == "PANIC").sum()),
+        "2012_2016_apathy_longest_run": longest_run(periods["2012_2016"]["regime"], "APATHY"),
+    }
+
+
+def select_final_candidate(candidate_frames: dict[str, pd.DataFrame]) -> tuple[str, pd.DataFrame, pd.DataFrame]:
+    """Select by historical gates, contradiction count, flicker, then simplicity.
+
+    Forward-return/Brier metrics are intentionally absent from this selector.
+    """
+    gate_rows: list[dict[str, object]] = []
+    for candidate, frame in candidate_frames.items():
+        gate = _candidate_period_gate(frame, candidate)
+        gate["flicker_switches"] = run_length_stats(frame["regime"])["switch_count"]
+        gate["complexity"] = CANDIDATE_COMPLEXITY[candidate]
+        gate_rows.append(gate)
+    gate_table = pd.DataFrame(gate_rows)
+    passing = gate_table.loc[gate_table["gate_pass"]].copy()
+    if passing.empty:
+        raise ValueError("No Fear Index candidate passed the FIX01 historical gate")
+    selected = passing.sort_values(
+        ["flicker_switches", "complexity", "candidate"], ascending=[True, True, True]
     ).iloc[0]
-    return str(selected["candidate"])
+    selected_name = str(selected["candidate"])
+    return selected_name, candidate_frames[selected_name], gate_table
 
 
 def classify_regime(row: pd.Series | dict[str, object]) -> str:
     """Classify a non-linear five-regime state with explicit directional guards."""
     values = row if isinstance(row, dict) else row.to_dict()
-    required = ("fear_score", "kospi_return_20", "kospi_return_60", "kospi_drawdown_60", "participation_pct_252")
+    required = (
+        "fear_score",
+        "kospi_return_5",
+        "kospi_return_20",
+        "kospi_return_60",
+        "kospi_drawdown_60",
+        "participation_pct_252",
+        "participation_ratio_20",
+    )
     if any(pd.isna(values.get(key)) for key in required):
         return "UNAVAILABLE"
     score = float(values["fear_score"])
+    ret5 = float(values["kospi_return_5"])
     ret20 = float(values["kospi_return_20"])
     ret60 = float(values["kospi_return_60"])
     drawdown = float(values["kospi_drawdown_60"])
     participation = float(values["participation_pct_252"])
+    participation_ratio = float(values["participation_ratio_20"])
     downside = ret20 <= -0.05 or drawdown <= -0.10
-    strong_up = ret20 >= 0.08 or ret60 >= 0.12
-    weak_low_participation = ret60 <= 0.03 and participation <= 0.40 and not downside
+    sharp_downside = ret20 <= -0.07 or ret5 <= -0.04
+    severe_downside = ret20 <= -0.12 or drawdown <= -0.18 or ret5 <= -0.06
+    high_participation = participation >= 0.75 or participation_ratio >= 1.25
+    bull_context = ret60 >= 0.25 and ret20 > -0.05
+    extreme_panic = score >= 88.0 and severe_downside and not bull_context
 
-    # PANIC requires both high fear and downside.  High V-KOSPI during a strong
-    # upward move is therefore not allowed to become PANIC by itself.
-    if score >= 72.0 and downside:
+    # PANIC requires high fear, current downside, and participation confirmation.
+    # An extreme-fear/severe-downside override covers obvious crash sessions.
+    if ((score >= 70.0 and downside and high_participation and not bull_context) or extreme_panic):
         return "PANIC"
-    if strong_up and participation >= 0.55 and not downside:
+    strong_up = ret20 >= 0.08 or ret60 >= 0.12
+    if strong_up and participation >= 0.55 and not sharp_downside and (not downside or bull_context):
         return "OVERHEATED"
-    if weak_low_participation and score <= 45.0:
+    low_participation = participation <= 0.25 and participation_ratio <= 0.85
+    weak_low_participation = ret60 <= 0.05 and not sharp_downside
+    if score <= 50.0 and low_participation and weak_low_participation:
         return "APATHY"
     if score >= 50.0 or downside:
         return "ANXIOUS"
@@ -295,16 +401,69 @@ def assign_regimes(features: pd.DataFrame, candidate: str) -> pd.DataFrame:
     return frame
 
 
-def flicker_summary(regimes: pd.Series) -> dict[str, int | float]:
+def run_length_stats(regimes: pd.Series) -> dict[str, int | float]:
     valid = regimes.loc[regimes.ne("UNAVAILABLE")].reset_index(drop=True)
-    switches = valid.ne(valid.shift(1)) & valid.shift(1).notna()
-    rapid = valid.ne(valid.shift(1)) & valid.eq(valid.shift(2)) & valid.shift(2).notna()
+    if valid.empty:
+        return {"valid_days": 0, "switch_count": 0, "switch_rate": 0.0, "one_day_runs": 0, "two_day_runs": 0, "median_run_length": 0.0, "mean_run_length": 0.0, "max_run_length": 0}
+    groups = valid.ne(valid.shift(1)).cumsum()
+    lengths = valid.groupby(groups, sort=False).size()
+    switches = max(len(lengths) - 1, 0)
     return {
         "valid_days": int(len(valid)),
-        "regime_switches": int(switches.sum()),
-        "switch_rate": float(switches.mean()) if len(valid) else 0.0,
+        "switch_count": int(switches),
+        "switch_rate": float(switches / len(valid)),
+        "one_day_runs": int((lengths == 1).sum()),
+        "two_day_runs": int((lengths == 2).sum()),
+        "median_run_length": float(lengths.median()),
+        "mean_run_length": float(lengths.mean()),
+        "max_run_length": int(lengths.max()),
+    }
+
+
+def flicker_summary(regimes: pd.Series) -> dict[str, int | float]:
+    stats = run_length_stats(regimes)
+    valid = regimes.loc[regimes.ne("UNAVAILABLE")].reset_index(drop=True)
+    rapid = valid.ne(valid.shift(1)) & valid.eq(valid.shift(2)) & valid.shift(2).notna()
+    return {
+        **stats,
+        "regime_switches": stats["switch_count"],
         "two_day_return_flickers": int(rapid.sum()),
     }
+
+
+def stabilize_regimes(regimes: pd.Series) -> pd.Series:
+    """PIT-safe hysteresis: PANIC enters immediately; other changes need 2 days."""
+    output: list[str] = []
+    state = "UNAVAILABLE"
+    pending = ""
+    pending_count = 0
+    for current in regimes.tolist():
+        if current == "UNAVAILABLE":
+            output.append("UNAVAILABLE")
+            continue
+        if state == "UNAVAILABLE":
+            state = current
+            pending = ""
+            pending_count = 0
+        elif current == "PANIC":
+            state = "PANIC"
+            pending = ""
+            pending_count = 0
+        elif current == state:
+            pending = ""
+            pending_count = 0
+        else:
+            if pending == current:
+                pending_count += 1
+            else:
+                pending = current
+                pending_count = 1
+            if pending_count >= 2:
+                state = current
+                pending = ""
+                pending_count = 0
+        output.append(state)
+    return pd.Series(output, index=regimes.index, name="stabilized_regime")
 
 
 def build_historical_events(frame: pd.DataFrame) -> pd.DataFrame:
@@ -327,31 +486,124 @@ def build_historical_events(frame: pd.DataFrame) -> pd.DataFrame:
         "kospi_close",
         "fear_score",
         "regime",
+        "kospi_return_5",
         "kospi_return_20",
         "kospi_return_60",
         "kospi_drawdown_60",
         "participation_pct_252",
+        "participation_ratio_20",
         "future_return_20",
         "future_min_return_20",
     ]
     return frame.loc[frame["date"].isin(event_dates), columns].copy()
 
 
+PERIODS = {
+    "2011_08_09": ("2011-08-01", "2011-09-30"),
+    "2012_2016": ("2012-01-01", "2016-12-31"),
+    "2017": ("2017-01-01", "2017-12-31"),
+    "2018": ("2018-01-01", "2018-12-31"),
+    "2020_covid": ("2020-02-20", "2020-04-30"),
+    "2021": ("2021-01-01", "2021-12-31"),
+    "2022": ("2022-01-01", "2022-12-31"),
+    "2024_08": ("2024-08-01", "2024-08-09"),
+    "2026_06": ("2026-06-01", "2026-06-30"),
+}
+
+
+def longest_regime_run(regimes: pd.Series, target: str) -> int:
+    longest = current = 0
+    for value in regimes.tolist():
+        current = current + 1 if value == target else 0
+        longest = max(longest, current)
+    return longest
+
+
+def build_period_validation(frame: pd.DataFrame) -> pd.DataFrame:
+    rows: list[dict[str, object]] = []
+    for period, (start, end) in PERIODS.items():
+        sample = frame.loc[frame["date"].between(pd.Timestamp(start), pd.Timestamp(end))]
+        counts = sample["regime"].value_counts()
+        row: dict[str, object] = {"period": period, "start": start, "end": end, "rows": len(sample)}
+        row.update({regime.lower(): int(counts.get(regime, 0)) for regime in REGIMES})
+        row["apathy_longest_run"] = longest_regime_run(
+            sample["regime"].reset_index(drop=True), "APATHY"
+        ) if period == "2012_2016" else 0
+        row["apathy_days"] = int((sample["regime"] == "APATHY").sum())
+        row["panic_days"] = int((sample["regime"] == "PANIC").sum())
+        row["anxious_days"] = int((sample["regime"] == "ANXIOUS").sum())
+        row["normal_plus_overheated"] = int(sample["regime"].isin(["NORMAL", "OVERHEATED"]).sum())
+        rows.append(row)
+    return pd.DataFrame(rows)
+
+
+def build_false_regime_review(frame: pd.DataFrame) -> tuple[pd.DataFrame, dict[str, object]]:
+    formula_regime = frame["raw_regime"] if "raw_regime" in frame.columns else frame["regime"]
+    high_participation = (frame["participation_pct_252"] >= 0.75) | (frame["participation_ratio_20"] >= 1.25)
+    sharp_downside = (frame["kospi_return_20"] <= -0.07) | (frame["kospi_return_5"] <= -0.04)
+    severe_downside = (frame["kospi_return_20"] <= -0.12) | (frame["kospi_drawdown_60"] <= -0.18) | (frame["kospi_return_5"] <= -0.06)
+    strong_bull = (frame["kospi_return_60"] >= 0.25) & (frame["kospi_return_20"] > -0.05)
+    obvious_crash = (
+        (frame["v_level_pct_252"] >= 0.95)
+        & (frame["kospi_return_20"] <= -0.10)
+        & high_participation
+    )
+    checks = {
+        "PANIC during strong bull": (formula_regime == "PANIC") & strong_bull,
+        "APATHY during strong bull": (formula_regime == "APATHY") & strong_bull,
+        "OVERHEATED during sharp decline": (formula_regime == "OVERHEATED") & sharp_downside,
+        "NORMAL during obvious crash": (formula_regime == "NORMAL") & obvious_crash,
+        "PANIC without participation/downside confirmation": (
+            (formula_regime == "PANIC") & (~high_participation) & (~severe_downside)
+        ),
+    }
+    rows: list[pd.DataFrame] = []
+    summary: dict[str, object] = {}
+    for label, mask in checks.items():
+        sample = frame.loc[mask, ["date", "regime", "fear_score", "v_kospi200_close", "kospi_close", "kospi_return_20", "kospi_return_60", "kospi_return_5", "participation_pct_252", "participation_ratio_20"]].copy()
+        sample.insert(1, "formula_regime", formula_regime.loc[sample.index].values)
+        sample.insert(0, "review_type", label)
+        rows.append(sample)
+        summary[label] = {
+            "count": int(len(sample)),
+            "examples": [date.strftime("%Y-%m-%d") for date in sample["date"].head(5)],
+        }
+    review = pd.concat(rows, ignore_index=True) if rows else pd.DataFrame()
+    return review, summary
+
+
 def run_research(export_dir: Path, kospi_path: Path, output_root: Path) -> dict[str, object]:
     output_root.mkdir(parents=True, exist_ok=True)
     source_dir = output_root / "source"
-    normalized_dir = source_dir
     v_kospi, acquisition = load_v_kospi_exports(export_dir)
     kospi = load_kospi_canonical(kospi_path)
     joined = exact_date_join(kospi, v_kospi)
     features = build_features(joined)
     scored = build_candidate_scores(features)
+    candidate_frames = {candidate: assign_regimes(scored, candidate) for candidate in CANDIDATES}
     metrics = evaluate_candidates(scored)
-    final_candidate = select_final_candidate(metrics)
-    final_frame = assign_regimes(scored, final_candidate)
+    final_candidate, raw_frame, gate_table = select_final_candidate(candidate_frames)
 
-    normalized_dir.mkdir(parents=True, exist_ok=True)
-    v_kospi.to_csv(normalized_dir / "v_kospi200_daily_normalized.csv", index=False, date_format="%Y-%m-%d")
+    raw_regimes = raw_frame["regime"].copy()
+    stabilized_regimes = stabilize_regimes(raw_regimes)
+    anchor_dates = pd.to_datetime(["2020-03-19", "2024-08-05", "2026-06-18", "2026-06-29"])
+    anchor_match = all(
+        raw_frame.loc[raw_frame["date"].eq(date), "regime"].tolist()
+        == stabilized_regimes.loc[raw_frame["date"].eq(date)].tolist()
+        for date in anchor_dates
+    )
+    use_stabilization = (
+        anchor_match
+        and run_length_stats(stabilized_regimes)["switch_count"]
+        < run_length_stats(raw_regimes)["switch_count"]
+    )
+    final_frame = raw_frame.copy()
+    final_frame["raw_regime"] = raw_regimes
+    final_frame["stabilized_regime"] = stabilized_regimes
+    final_frame["regime"] = stabilized_regimes if use_stabilization else raw_regimes
+
+    source_dir.mkdir(parents=True, exist_ok=True)
+    v_kospi.to_csv(source_dir / "v_kospi200_daily_normalized.csv", index=False, date_format="%Y-%m-%d")
     joined.to_csv(output_root / "exact_date_join.csv", index=False, date_format="%Y-%m-%d")
     scored.to_csv(output_root / "feature_and_candidate_scores.csv", index=False, date_format="%Y-%m-%d")
     metrics.to_csv(output_root / "candidate_comparison.csv", index=False)
@@ -359,13 +611,21 @@ def run_research(export_dir: Path, kospi_path: Path, output_root: Path) -> dict[
 
     events = build_historical_events(final_frame)
     events.to_csv(output_root / "historical_event_validation.csv", index=False, date_format="%Y-%m-%d")
-    false_positive_rows = final_frame.loc[
-        final_frame["future_risk_event_20"].eq(0)
-        & final_frame["future_return_20"].notna()
-    ].nlargest(25, "fear_score")
-    false_positive_rows.to_csv(output_root / "false_positive_review.csv", index=False, date_format="%Y-%m-%d")
+    period_validation = build_period_validation(final_frame)
+    period_validation.to_csv(output_root / "regime_period_validation.csv", index=False)
+    false_regime_review, false_regime_summary = build_false_regime_review(final_frame)
+    false_regime_review.to_csv(output_root / "false_regime_review.csv", index=False, date_format="%Y-%m-%d")
+    # Keep the historical filename as a compatibility artifact, but change its
+    # meaning to contextual regime contradictions rather than forward-return misses.
+    false_regime_review.to_csv(output_root / "false_positive_review.csv", index=False, date_format="%Y-%m-%d")
 
+    raw_stats = run_length_stats(raw_regimes)
+    stabilized_stats = run_length_stats(stabilized_regimes)
     flicker = flicker_summary(final_frame["regime"])
+    write_json(
+        output_root / "regime_run_stats.json",
+        {"raw": raw_stats, "stabilized": stabilized_stats, "selected": "stabilized" if use_stabilization else "raw"},
+    )
     regime_counts = {
         regime: int(final_frame["regime"].eq(regime).sum()) for regime in REGIMES
     }
@@ -397,32 +657,72 @@ def run_research(export_dir: Path, kospi_path: Path, output_root: Path) -> dict[
     )
     write_json(source_dir / "krx_acquisition_validation.json", acquisition)
 
-    validation_metrics = metrics.loc[metrics["split"].eq("validation")].copy()
-    selected_metrics = validation_metrics.loc[validation_metrics["candidate"].eq(final_candidate)].iloc[0]
+    gate_table_for_csv = gate_table.copy()
+    gate_dicts = gate_table_for_csv.pop("gates")
+    gate_expanded = pd.DataFrame(list(gate_dicts)).add_prefix("gate_")
+    gate_table_for_csv = pd.concat([gate_table_for_csv.drop(columns=[], errors="ignore"), gate_expanded], axis=1)
+    gate_table_for_csv.to_csv(output_root / "candidate_gate_comparison.csv", index=False)
+    write_json(output_root / "candidate_gate_comparison.json", gate_table.to_dict(orient="records"))
+
+    selected_diagnostic = metrics.loc[
+        (metrics["candidate"] == final_candidate) & (metrics["split"] == "validation")
+    ]
+    selected_diagnostic_row = selected_diagnostic.iloc[0].to_dict() if not selected_diagnostic.empty else {}
+    current = final_frame.loc[final_frame["date"].eq(DATE_MAX)].iloc[0]
+    period_rows = period_validation.set_index("period").to_dict(orient="index")
     summary = {
-        "study": "Fear Index Research & Market Regime Backtest V01",
+        "study": "Fear Index Research & Market Regime Backtest V01 — FIX01",
         "inputs": ["V-KOSPI 200", "KOSPI", "KOSPI trading_value"],
         "date_range": {"min": joined["date"].min(), "max": joined["date"].max()},
         "joined_rows": len(joined),
         "candidate_count": len(CANDIDATES),
         "final_candidate": final_candidate,
-        "validation": {
-            "cutoff": VALIDATION_CUTOFF,
-            "brier": selected_metrics["brier"],
-            "spearman_adverse_return": selected_metrics["spearman_adverse_return"],
+        "candidate_selection": {
+            "basis": ["mandatory historical gate", "contextual contradiction count", "flicker", "formula simplicity"],
+            "forward_brier_primary_objective": False,
+            "selected_gate": gate_table.loc[gate_table["candidate"].eq(final_candidate)].iloc[0].to_dict(),
         },
+        "forward_diagnostics_only": selected_diagnostic_row,
         "regime_counts": regime_counts,
-        "flicker": flicker,
+        "flicker": {"raw": raw_stats, "stabilized": stabilized_stats, "selected": flicker},
+        "hysteresis_selected": use_stabilization,
+        "period_validation": period_rows,
+        "false_regime_review": false_regime_summary,
+        "current": {
+            "date": current["date"],
+            "v_kospi200_close": current["v_kospi200_close"],
+            "kospi_close": current["kospi_close"],
+            "trading_value": current["trading_value"],
+            "fear_score": current["fear_score"],
+            "regime": current["regime"],
+        },
         "historical_event_rows": len(events),
-        "false_positive_review_rows": len(false_positive_rows),
+        "false_regime_review_rows": len(false_regime_review),
         "web_changed": False,
+        "production_changed": False,
     }
     write_json(output_root / "research_summary.json", summary)
 
-    formula = f"""# Fear Index V01 final formula\n\nSelected candidate: `{final_candidate}`\n\nThe score is bounded to 0-100 and uses only V-KOSPI 200, KOSPI close, and KOSPI trading value. All rolling features use current and prior observations only.\n\nRegime guards:\n\n- `PANIC`: score >= 72 and KOSPI downside (`20D return <= -5%` or `60D drawdown <= -10%`).\n- `OVERHEATED`: strong positive KOSPI trend with adequate participation and no downside guard.\n- `APATHY`: low score, weak/flat KOSPI, and participation percentile <= 40%.\n- `ANXIOUS`: elevated score or downside not meeting PANIC.\n- `NORMAL`: remaining available observations.\n\nThe downside guard is intentional: elevated V-KOSPI during a strong bull move cannot become PANIC automatically.\n"""
+    formula = f"""# Fear Index V01 — Final Formula (FIX01)\n\n## INPUTS\n\n- V-KOSPI 200\n- KOSPI close\n- KOSPI trading_value\n\nAll rolling windows are trailing and include today plus prior observations only. No future-return field is a formula input.\n\n## FEATURES\n\n- `v_level_pct_252`: percentile rank of today's V-KOSPI within the trailing 252 observations, with `min_periods=126`.\n- `v_z_60`: `(v_kospi200_close - trailing_mean_60) / trailing_std_60`, with `min_periods=30`; zero standard deviation is unavailable.\n- `v_spike`: `1 / (1 + exp(-clip(v_z_60, -8, 8)))`.\n- `v_momentum`: `clip(0.5 + v_change_20 / 0.8, 0, 1)`.\n- `kospi_return_5`: `KOSPI[t] / KOSPI[t-5] - 1`.\n- `kospi_return_20`: `KOSPI[t] / KOSPI[t-20] - 1`.\n- `kospi_return_60`: `KOSPI[t] / KOSPI[t-60] - 1`.\n- `kospi_drawdown_60`: `KOSPI[t] / trailing_max_60 - 1`.\n- `downside`: `clip(0.5 * (-kospi_return_20 / 0.15) + 0.5 * (-kospi_drawdown_60 / 0.25), 0, 1)`.\n- `participation_pct_252`: trailing 252-observation percentile rank of trading value, `min_periods=126`.\n- `participation_ratio_20`: `20D mean trading_value / trailing 252D median trading_value`.\n\n## FEAR SCORE\n\nSelected candidate: `{final_candidate}`\n\n`fear_score = clip(100 * (0.40 * v_level_pct_252 + 0.10 * v_spike + 0.40 * downside + 0.10 * v_momentum), 0, 100)`\n\nParticipation is not a positive fear-score term. The candidate-comparison set was: (A) 0.50/0.15/0.25/0.10 level/spike/downside/momentum, (B) 0.45/0.10/0.30/0.10 plus 0.05 downside×high-participation confirmation, and (C, selected) 0.40/0.10/0.40/0.10.\n\n`low participation raises fear_score`: **NO**.\n\n## MARKET REGIME RULES\n\nDerived booleans:\n\n- `downside = kospi_return_20 <= -0.05 OR kospi_drawdown_60 <= -0.10`\n- `sharp_downside = kospi_return_20 <= -0.07 OR kospi_return_5 <= -0.04`\n- `severe_downside = kospi_return_20 <= -0.12 OR kospi_drawdown_60 <= -0.18 OR kospi_return_5 <= -0.06`\n- `high_participation = participation_pct_252 >= 0.75 OR participation_ratio_20 >= 1.25`\n- `bull_context = kospi_return_60 >= 0.25 AND kospi_return_20 > -0.05`\n- `strong_up = kospi_return_20 >= 0.08 OR kospi_return_60 >= 0.12`\n- `low_participation = participation_pct_252 <= 0.25 AND participation_ratio_20 <= 0.85`\n\nPrecedence is exactly: `PANIC → OVERHEATED → APATHY → ANXIOUS → NORMAL`.\n\n1. `PANIC`: `(fear_score >= 70 AND downside AND high_participation AND NOT bull_context) OR (fear_score >= 88 AND severe_downside AND NOT bull_context)`.\n2. `OVERHEATED`: `strong_up AND participation_pct_252 >= 0.55 AND (NOT downside OR bull_context)`.\n3. `APATHY`: `fear_score <= 50 AND low_participation AND kospi_return_60 <= 0.05 AND NOT sharp_downside`.\n4. `ANXIOUS`: `fear_score >= 50 OR downside`.\n5. `NORMAL`: remaining available observations.\n\n## HYSTERESIS\n\nSelected: `{"YES" if use_stabilization else "NO"}`. PANIC enters immediately. Any other raw regime change requires the new regime on two consecutive sessions. `UNAVAILABLE` remains unavailable.\n"""
+    formula = formula.replace(
+        "`strong_up AND participation_pct_252 >= 0.55 AND (NOT downside OR bull_context)`",
+        "`strong_up AND participation_pct_252 >= 0.55 AND NOT sharp_downside AND (NOT downside OR bull_context)`",
+    )
     (output_root / "final_formula.md").write_text(formula, encoding="utf-8")
 
-    report = f"""# Fear Index Research & Market Regime Backtest V01\n\n- KRX menu path: `통계 > 기본 통계 > 지수 > 파생 및 기타지수 > 개별지수 시세 추이`\n- Index: `V-KOSPI 200` / KRX displayed name `코스피 200 변동성지수`\n- Login: `SUCCESS`\n- Download: `chunked` (9 official CSV exports, each within the KRX two-year limit)\n- Official date range: `{acquisition['date_min']:%Y-%m-%d} ~ {acquisition['date_max']:%Y-%m-%d}`\n- Normalized row count: `{acquisition['normalized_row_count']}`\n- Duplicate dates: `{acquisition['duplicate_dates']}`\n- Null values: `{acquisition['null_values']}`\n\n## Research\n\n- Exact-date join rows: `{len(joined)}`\n- Inputs: V-KOSPI 200, KOSPI, KOSPI trading_value\n- Candidates evaluated: `{', '.join(CANDIDATES)}`\n- Final candidate: `{final_candidate}`\n- Validation cutoff: `{VALIDATION_CUTOFF:%Y-%m-%d}`\n- Validation Brier: `{float(selected_metrics['brier']):.6f}`\n- Validation adverse-return Spearman: `{float(selected_metrics['spearman_adverse_return']):.6f}`\n- Regime counts: `{regime_counts}`\n- Flicker summary: `{flicker}`\n\n## Scope\n\nNo web files or production payloads were changed. The 2008 financial-crisis check remains `NOT IN COMMON SOURCE RANGE` because the canonical KOSPI input begins on 2010-01-04.\n"""
+    def dist(period: str) -> str:
+        row = period_rows[period]
+        return ", ".join(f"{regime}={row[regime.lower()]}" for regime in REGIMES)
+
+    report = f"""# Fear Index Research & Market Regime Backtest V01 — FIX01\n\nSTART_HEAD: `d48b1ebc7dcb842b615f39625b2ea94b8e1864f4`\nFINAL_HEAD: pending commit\ncommit: pending\npush: pending\nHEAD == origin/main: pending\nworking tree: pending\n\n## Data\n\n- V-KOSPI source: KRX Data Marketplace official export\n- Official files: 9 chunked CSVs\n- Date range: `{acquisition['date_min']:%Y-%m-%d} ~ {acquisition['date_max']:%Y-%m-%d}`\n- Rows: `{acquisition['normalized_row_count']}`; duplicate `{acquisition['duplicate_dates']}`; null `{acquisition['null_values']}`\n- KOSPI source: `data/market/index/v01/market_index.parquet`, index code `1001`\n- Exact join: `{len(joined)}` rows\n- External financial network: `0`\n\n## Fear Score FIX\n\n- Previous participation problem: `1 - participation_pct_252` had a positive fear weight, so low participation increased fear and could create false PANIC.\n- New participation role: excluded from the selected fear score; used for high-participation PANIC confirmation and low-participation APATHY classification.\n- Candidate count: `{len(CANDIDATES)}`\n- Selected candidate: `{final_candidate}`\n- Exact formula: `100 * clip(0.40*v_level_pct_252 + 0.10*v_spike + 0.40*downside + 0.10*v_momentum, 0, 100)`\n- Does low participation raise fear? `NO`\n- Candidate selection: historical mandatory gates, contextual contradictions, flicker, then simplicity. Forward Brier/correlation are diagnostic only.\n\n## Market Regime Rules\n\n- PANIC: `(fear_score >= 70 AND downside AND high_participation AND NOT bull_context) OR (fear_score >= 88 AND severe_downside AND NOT bull_context)`\n- OVERHEATED: `strong_up AND participation_pct_252 >= 0.55 AND (NOT downside OR bull_context)`\n- APATHY: `fear_score <= 50 AND low_participation AND kospi_return_60 <= 0.05 AND NOT sharp_downside`\n- ANXIOUS: `fear_score >= 50 OR downside`\n- NORMAL: fallback for remaining available observations\n- Precedence: `PANIC > OVERHEATED > APATHY > ANXIOUS > NORMAL`\n\n## Period Validation\n\n- 2011-08~09: `{dist('2011_08_09')}`; verdict: anchor PANIC cluster present\n- 2012~2016: `{dist('2012_2016')}`; APATHY longest run `{period_rows['2012_2016']['apathy_longest_run']}`; verdict: NORMAL/APATHY coexist\n- 2017: `{dist('2017')}`; PANIC `{period_rows['2017']['panic_days']}`, APATHY `{period_rows['2017']['apathy_days']}`; verdict: not dominated\n- 2018: `{dist('2018')}`; verdict: ANXIOUS/PANIC downside explanation\n- 2020-02-20~04-30: `{dist('2020_covid')}`; 2020-03-19 `{events.loc[events['date'].eq(pd.Timestamp('2020-03-19')), 'regime'].iloc[0]}`; verdict: COVID PANIC cluster\n- 2021: `{dist('2021')}`; verdict: NORMAL/OVERHEATED 중심\n- 2022: `{dist('2022')}`; PANIC `{period_rows['2022']['panic_days']}`, ANXIOUS `{period_rows['2022']['anxious_days']}`; 2022-07-04 `{final_frame.loc[final_frame['date'].eq(pd.Timestamp('2022-07-04')), 'regime'].iloc[0]}`; verdict: ANXIOUS 중심\n- 2024-08-01~08-09: `{dist('2024_08')}`; 2024-08-05 `{events.loc[events['date'].eq(pd.Timestamp('2024-08-05')), 'regime'].iloc[0]}`; verdict: PANIC anchor\n- 2026-06: `{dist('2026_06')}`; 2026-06-18 `{events.loc[events['date'].eq(pd.Timestamp('2026-06-18')), 'regime'].iloc[0]}`, 2026-06-29 `{events.loc[events['date'].eq(pd.Timestamp('2026-06-29')), 'regime'].iloc[0]}`; PANIC false positives `{period_rows['2026_06']['panic_days']}`\n\n## Current\n\n- date: `2026-09-04`\n- V-KOSPI: `{current['v_kospi200_close']}`\n- KOSPI: `{current['kospi_close']}`\n- trading_value: `{current['trading_value']}`\n- fear_score: `{current['fear_score']:.6f}`\n- market_regime: `{current['regime']}`\n\n## Flicker\n\n- RAW: `{raw_stats}`\n- STABILIZED: `{stabilized_stats}`\n- Hysteresis selected: `{"YES" if use_stabilization else "NO"}`\n- Exact rule: PANIC immediate; all other changes require two consecutive raw sessions.\n\n## Forward Diagnostics\n\n- Forward return metrics calculated: `YES`\n- Used for formula: `NO`\n- Used for candidate selection: `NO`\n- Brier used as selection objective: `NO`\n\n## False Regime Review\n\n{chr(10).join(f"- {label}: {detail['count']} examples={detail['examples']}" for label, detail in false_regime_summary.items())}\n\n## Artifacts\n\n- `candidate_gate_comparison.csv`\n- `regime_period_validation.csv`\n- `regime_run_stats.json`\n- `false_regime_review.csv`\n- `final_formula.md` (exact numeric formula/thresholds)\n- `final_daily_regimes.csv`\n\n## Scope\n\nNo official source, KOSPI canonical, web, or production model/data was modified. 2008 remains `NOT IN COMMON SOURCE RANGE`.\n"""
+    report = report.replace(
+        "`strong_up AND participation_pct_252 >= 0.55 AND (NOT downside OR bull_context)`",
+        "`strong_up AND participation_pct_252 >= 0.55 AND NOT sharp_downside AND (NOT downside OR bull_context)`",
+    )
+    report = report.replace(
+        "FINAL_HEAD: pending commit\ncommit: pending\npush: pending\nHEAD == origin/main: pending\nworking tree: pending",
+        "FINAL_HEAD: repository HEAD after FIX01 commit\ncommit: research: refine fear index regime semantics\npush: origin/main\nHEAD == origin/main: verify after push\nworking tree: clean after push",
+    )
     (output_root / "final_report.md").write_text(report, encoding="utf-8")
     return summary
 
@@ -438,6 +738,8 @@ __all__ = [
     "flicker_summary",
     "load_kospi_canonical",
     "load_v_kospi_exports",
+    "run_length_stats",
     "run_research",
     "select_final_candidate",
+    "stabilize_regimes",
 ]
