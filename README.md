@@ -57,7 +57,7 @@ README.md
 ### 3. Phase 12 Market Relative Strength (Closed)
 * **공식 상태**: **`CLOSED`**
 * **정의**: 종목 수익률을 해당 종목의 상장 시장 벤치마크와 비교하는 상대강도입니다. KOSPI 종목은 KOSPI, KOSDAQ 종목은 KOSDAQ을 비교 기준으로 사용하며 RSI와는 다른 개념입니다.
-* **기간**: `3M` / `6M` / `12M`
+* **기간**: `2W` / `1M` / `3M` / `6M` / `12M`
 * **제공 값**: Market RS level, 기간별 improvement delta, acceleration, 전체 COMMON 시장 기준 rank/percentile.
 * **범위**: KOSPI/KOSDAQ 전체 공식 COMMON universe를 권위 데이터로 사용하며, ETF·ETN·우선주·SPAC·REIT·KONEX 등은 제외합니다. Percentile은 `100 = strongest`, `0 = weakest`입니다.
 * **운영 원칙**: 후보 subset 재계산 없이 전체 시장 snapshot을 exact as-of로 lookup합니다. nearest/future fallback, 리포트별 Full Universe Scan, 네트워크 요청은 사용하지 않습니다.
@@ -104,8 +104,8 @@ Pattern A의 장기 베이스와 Pattern A FAST의 주봉 타이밍, Investabili
   4. **Pattern A FAST 조기 신호**: Early Signal Stage & Fast Score
   5. **월별 히스토리 추이 (Monthly History)**: 과거 월별 Pattern A Score Trend, Stage Transitions, Recent 12M History
   6. **수급 현황 (Foreign Flow)**: 외국인 기간별(1D/5D/20D/60D) 순매수 및 Flow Intensity
-  7. **시장 상대강도 (Market RS)**: 3M/6M/12M level, improvement delta, acceleration, 전체 시장 rank/percentile
-  8. **업종 상대강도 (Sector RS)**: approved exact-date SectorMembershipStore snapshot과 local sector index 기반 3M/6M/12M additive context
+  7. **시장 상대강도 (Market RS)**: 2W/1M/3M/6M/12M level, improvement delta, acceleration, 전체 시장 rank/percentile
+  8. **업종 상대강도 (Sector RS)**: approved exact-date SectorMembershipStore snapshot과 local sector index 기반 2W/1M/3M/6M/12M additive context
   9. **거래대금 추이 (Trading Value Trend)**: 5D/20D/60D 평균 거래대금 및 단·중기 확장 상태/비율
   10. **데이터 품질 & Provenance**: 결측치 감사, exact as-of, Zero Network Requests, PIT 무결성 검증
 * **산출물 경로**:

@@ -424,8 +424,8 @@ Fundamentals Score, Pattern A Score와의 합산, 매매 signal, PER/PBR, valuat
   4. Pattern A FAST Early Signal Stage & Fast Score
   5. Pattern A 월별 히스토리 추이 (Monthly History / Score Trend / Stage Transitions)
   6. Phase 11 Foreign Flow 수급 지표 및 Flow Intensity
-  7. Phase 12 Market RS (3M/6M/12M, delta, acceleration, rank/percentile)
-  8. Sector RS (3M/6M/12M, approved exact-date SectorMembershipStore snapshot/local index 기반 additive context)
+  7. Phase 12 Market RS (2W/1M/3M/6M/12M, delta, acceleration, rank/percentile)
+  8. Sector RS (2W/1M/3M/6M/12M, approved exact-date SectorMembershipStore snapshot/local index 기반 additive context)
   9. 거래대금 추이 (Trading Value Trend, 5D/20D/60D 평균 및 단·중기 상태)
   10. 데이터 품질 및 PIT 무결성 감사 (Zero Network Requests)
 * **생성 원칙**: Repository V2와 frozen/local authority를 사용하며 exact as-of lookup, Full Universe Scanner 미호출, 네트워크 요청 0건.

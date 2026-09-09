@@ -112,11 +112,12 @@ def test_market_page_has_accessible_controls_and_release_contract():
 
     assert '<title>랭킹 · KRX Trend Scanner</title>' in html
     assert '<a class="nav-item is-active" href="./market.html" aria-current="page">랭킹</a>' in html
-    assert 'href="./css/app.css?v=web-02c-toss-1"' in html
+    assert 'href="./css/app.css?v=web-sector-rs-1"' in html
     assert 'src="./js/market.js?v=web-02c-toss-1"' in html
     assert '<nav class="ranking-tabs" aria-label="랭킹 종류">' in html
     assert '<a class="ranking-tab is-active" href="./market.html" aria-current="page">마켓 RS</a>' in html
-    for label in ("섹터 RS", "섹터 랭킹", "매출액 성장률", "영업이익 성장률", "순이익 성장률"):
+    assert '<a class="ranking-tab" href="./sector.html">섹터 RS</a>' in html
+    for label in ("섹터 랭킹", "매출액 성장률", "영업이익 성장률", "순이익 성장률"):
         assert f'<span class="ranking-tab" aria-disabled="true">{label} <small>준비 중</small></span>' in html
     assert 'data-horizon="2w"' in html and 'data-horizon="1m"' in html
     assert 'data-horizon="3m"' in html and 'data-horizon="6m"' in html and 'data-horizon="12m"' in html
@@ -148,7 +149,7 @@ def test_market_page_keeps_navigation_and_old_release_cache_out_of_all_pages():
         ROOT / "web/index.html": ("web-02c-toss-1", "app", "web-02c-toss-1"),
         ROOT / "web/report.html": ("web-02d-window-1", "report", "web-02d-window-1"),
         ROOT / "web/strategy.html": ("web-strategy-summary-3col-1", "strategy", "web-02c-toss-1"),
-        ROOT / "web/market.html": ("web-02c-toss-1", "market", "web-02c-toss-1"),
+        ROOT / "web/market.html": ("web-sector-rs-1", "market", "web-02c-toss-1"),
     }
     pages = list(page_versions)
     for path, (css_version, script_name, js_version) in page_versions.items():
