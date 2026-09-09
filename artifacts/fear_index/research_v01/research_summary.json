@@ -1,0 +1,36 @@
+{
+  "study": "Fear Index Research & Market Regime Backtest V01",
+  "inputs": [
+    "V-KOSPI 200",
+    "KOSPI",
+    "KOSPI trading_value"
+  ],
+  "date_range": {
+    "min": "2010-01-04",
+    "max": "2026-09-04"
+  },
+  "joined_rows": 4105,
+  "candidate_count": 3,
+  "final_candidate": "downside_sensitive_v01",
+  "validation": {
+    "cutoff": "2022-01-01",
+    "brier": 0.21987468214188194,
+    "spearman_adverse_return": 0.05837103199017135
+  },
+  "regime_counts": {
+    "OVERHEATED": 409,
+    "NORMAL": 1953,
+    "ANXIOUS": 776,
+    "PANIC": 157,
+    "APATHY": 685
+  },
+  "flicker": {
+    "valid_days": 3980,
+    "regime_switches": 839,
+    "switch_rate": 0.2108040201005025,
+    "two_day_return_flickers": 269
+  },
+  "historical_event_rows": 9,
+  "false_positive_review_rows": 25,
+  "web_changed": false
+}
