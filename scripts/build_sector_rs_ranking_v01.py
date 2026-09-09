@@ -127,6 +127,8 @@ def _compute_rows(as_of: str, membership: pd.DataFrame, sector_index: pd.DataFra
                 "sector_rs_data_status": result.sector_rs_data_status.value,
                 "sector_rs_input_reason": result.sector_rs_input_reason,
                 "sector_benchmark_last_observation_date": result.sector_benchmark_last_observation_date,
+                "sector_rs_2w": result.sector_rs_2w,
+                "sector_rs_1m": result.sector_rs_1m,
                 "sector_rs_3m": result.sector_rs_3m,
                 "sector_rs_6m": result.sector_rs_6m,
                 "sector_rs_12m": result.sector_rs_12m,
@@ -168,9 +170,12 @@ def _validate_output(frame: pd.DataFrame, membership: pd.DataFrame, as_of: str) 
         "rank_bound_errors": rank_bound_errors,
         "percentile_bound_errors": percentile_bound_errors,
         "sector_group_count": sector_group_count,
-        "eligible_total_3m": int(frame["within_sector_rs_rank_3m"].notna().sum()),
-        "eligible_total_6m": int(frame["within_sector_rs_rank_6m"].notna().sum()),
-        "eligible_total_12m": int(frame["within_sector_rs_rank_12m"].notna().sum()),
+        **{
+            f"eligible_total_{horizon}": int(
+                frame[f"within_sector_rs_rank_{horizon}"].notna().sum()
+            )
+            for horizon in HORIZONS
+        },
         "cross_sector_contamination_count": 0,
     }
 

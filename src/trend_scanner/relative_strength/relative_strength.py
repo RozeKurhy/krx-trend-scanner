@@ -111,6 +111,15 @@ class RelativeStrengthFeatureResult:
     sector_anchor_date_6m: str | None
     sector_anchor_date_12m: str | None
 
+    # Additive short Sector RS horizons.  Defaults preserve compatibility for
+    # callers that construct the legacy result object directly.
+    sector_return_2w: float | None = None
+    sector_return_1m: float | None = None
+    sector_rs_2w: float | None = None
+    sector_rs_1m: float | None = None
+    sector_anchor_date_2w: str | None = None
+    sector_anchor_date_1m: str | None = None
+
     def to_dict(self) -> dict[str, Any]:
         """Dictionary 변환 (JSON / DataFrame 직렬화용)."""
         return {
@@ -155,6 +164,12 @@ class RelativeStrengthFeatureResult:
             "sector_anchor_date_3m": self.sector_anchor_date_3m,
             "sector_anchor_date_6m": self.sector_anchor_date_6m,
             "sector_anchor_date_12m": self.sector_anchor_date_12m,
+            "sector_return_2w": self.sector_return_2w,
+            "sector_return_1m": self.sector_return_1m,
+            "sector_rs_2w": self.sector_rs_2w,
+            "sector_rs_1m": self.sector_rs_1m,
+            "sector_anchor_date_2w": self.sector_anchor_date_2w,
+            "sector_anchor_date_1m": self.sector_anchor_date_1m,
         }
 
 
@@ -436,12 +451,18 @@ def compute_relative_strength_features(
     sec_code = None
     sec_bench_code = None
     sec_last_obs_date = None
+    sec_ret_2w = None
+    sec_ret_1m = None
     sec_ret_3m = None
     sec_ret_6m = None
     sec_ret_12m = None
+    sec_rs_2w = None
+    sec_rs_1m = None
     sec_rs_3m = None
     sec_rs_6m = None
     sec_rs_12m = None
+    sec_anc_2w = None
+    sec_anc_1m = None
     sec_anc_3m = None
     sec_anc_6m = None
     sec_anc_12m = None
@@ -475,7 +496,9 @@ def compute_relative_strength_features(
                 if sec_last_obs_date == formatted_asof:
                     sec_end_close = float(df_sec["close"].iloc[-1])
 
-                    # Compute Sector RS Horizons
+                    # Compute additive short and existing Sector RS horizons.
+                    _, sec_ret_2w, sec_rs_2w, sec_anc_2w = _eval_horizon(HORIZON_SESSIONS_2W, df_sec, sec_end_close)
+                    _, sec_ret_1m, sec_rs_1m, sec_anc_1m = _eval_horizon(HORIZON_SESSIONS_1M, df_sec, sec_end_close)
                     _, sec_ret_3m, sec_rs_3m, sec_anc_3m = _eval_horizon(HORIZON_SESSIONS_3M, df_sec, sec_end_close)
                     _, sec_ret_6m, sec_rs_6m, sec_anc_6m = _eval_horizon(HORIZON_SESSIONS_6M, df_sec, sec_end_close)
                     _, sec_ret_12m, sec_rs_12m, sec_anc_12m = _eval_horizon(HORIZON_SESSIONS_12M, df_sec, sec_end_close)
@@ -544,4 +567,10 @@ def compute_relative_strength_features(
         sector_anchor_date_3m=sec_anc_3m,
         sector_anchor_date_6m=sec_anc_6m,
         sector_anchor_date_12m=sec_anc_12m,
+        sector_return_2w=sec_ret_2w,
+        sector_return_1m=sec_ret_1m,
+        sector_rs_2w=sec_rs_2w,
+        sector_rs_1m=sec_rs_1m,
+        sector_anchor_date_2w=sec_anc_2w,
+        sector_anchor_date_1m=sec_anc_1m,
     )

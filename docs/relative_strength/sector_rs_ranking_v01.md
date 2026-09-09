@@ -40,13 +40,15 @@ Stock             → MarketDataRepositoryV2
 Sector RS         → existing compute_relative_strength_features()
 ```
 
-The sector benchmark must have an exact `2026-09-04` observation. No fallback is allowed. Sector RS formula and anchors are unchanged: 3M=`63`, 6M=`126`, 12M=`252` sessions.
+The sector benchmark must have an exact `2026-09-04` observation. No fallback is allowed. Sector RS formula and anchors are unchanged: 2W=`10`, 1M=`21`, 3M=`63`, 6M=`126`, 12M=`252` sessions.
 
 ## Metrics and eligibility
 
 Only these values are ranked:
 
 ```text
+sector_rs_2w
+sector_rs_1m
 sector_rs_3m
 sector_rs_6m
 sector_rs_12m
@@ -93,13 +95,13 @@ The core artifact is canonically stored by `market`, `sector_code`, and `ticker`
 
 ## Output fields
 
-Each population row contains the exact-date identity, Sector RS provenance/status, the three Sector RS values, and:
+Each population row contains the exact-date identity, Sector RS provenance/status, the five Sector RS values, and:
 
 ```text
-within_sector_rs_rank_3m/6m/12m
-within_sector_rs_percentile_3m/6m/12m
+within_sector_rs_rank_2w/1m/3m/6m/12m
+within_sector_rs_percentile_2w/1m/3m/6m/12m
 sector_member_count
-sector_eligible_count_3m/6m/12m
+sector_eligible_count_2w/1m/3m/6m/12m
 ```
 
 Existing `all_sector_rs_*` global fields are not used or changed by this authority.

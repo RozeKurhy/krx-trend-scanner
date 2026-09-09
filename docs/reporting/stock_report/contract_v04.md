@@ -43,8 +43,9 @@ v0.4는 Stock Report v0.3의 모든 필드와 의미를 유지하면서 최상�
 -----------------
 - KOSPI/KOSDAQ `COMMON`은 `APPLICABLE`이며 candidate 여부와 관계없이 직접
   Sector RS 평가를 시도한다.
-- `READY`: 3M/6M/12M 모두 산출 가능.
-- `PARTIAL`: 일부 horizon의 history가 부족.
+- `READY`: 기존 3M/6M/12M 기준 horizon이 모두 산출 가능.
+- `PARTIAL`: 기존 기준 horizon 일부의 history가 부족. 2W/1M은 additive
+  short horizon으로 각 필드가 독립적으로 null일 수 있다.
 - `DATA_UNAVAILABLE`: membership, 기준일 stock, benchmark 또는 anchor 입력이
   부족한 fail-closed 상태.
 - ETF·ETN·우선주 등 비대상 instrument는 `NOT_APPLICABLE`/
@@ -57,7 +58,7 @@ v0.4는 Stock Report v0.3의 모든 필드와 의미를 유지하면서 최상�
 - Markdown에서는 Market RS `## 7.5. 시장 상대강도 (RS)` 뒤, 거래대금 앞에
   `## 7.6. 업종 상대강도 (Sector RS)`를 표시한다.
 - Sector section은 적용 상태, 데이터 상태, 업종명/코드, benchmark 기준일,
-  3M/6M/12M RS와 업종 수익률, 규칙 기반 해석 및 provenance를 표시한다.
+  2W/1M/3M/6M/12M RS와 업종 수익률, 규칙 기반 해석 및 provenance를 표시한다.
 - Sector RS는 context/confirmation only이며 매매 추천이나 새로운 scoring을
   제공하지 않는다.
 

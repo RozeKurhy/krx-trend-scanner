@@ -58,7 +58,19 @@ def test_sector_builder_reuses_engine_and_requested_snapshot_provenance(syntheti
     assert section.sector_code == "2066"
     assert section.benchmark_code == "2066"
     assert section.benchmark_last_observation_date == sector["date"].iloc[-1]
-    assert all(getattr(section, field) is not None for field in ("sector_rs_3m", "sector_rs_6m", "sector_rs_12m"))
+    assert all(
+        getattr(section, field) is not None
+        for field in ("sector_rs_2w", "sector_rs_1m", "sector_rs_3m", "sector_rs_6m", "sector_rs_12m")
+    )
+    assert all(
+        getattr(section, field) is not None
+        for field in (
+            "sector_return_2w", "sector_return_1m", "sector_return_3m",
+            "sector_return_6m", "sector_return_12m",
+            "sector_anchor_date_2w", "sector_anchor_date_1m", "sector_anchor_date_3m",
+            "sector_anchor_date_6m", "sector_anchor_date_12m",
+        )
+    )
     assert section.membership_snapshot_date == "2026-09-04"
     assert section.membership_source == "data/market/sector_membership/v01/sector_membership_20260904.parquet"
     assert section.sector_index_source.endswith("sector_index_daily.parquet")
@@ -93,7 +105,10 @@ def test_sector_builder_unmapped_and_etf_fail_closed(synthetic_inputs):
     )
     assert etf.applicability == "NOT_APPLICABLE"
     assert etf.data_status == "NOT_EVALUATED"
-    assert all(getattr(etf, field) is None for field in ("sector_rs_3m", "sector_rs_6m", "sector_rs_12m"))
+    assert all(
+        getattr(etf, field) is None
+        for field in ("sector_rs_2w", "sector_rs_1m", "sector_rs_3m", "sector_rs_6m", "sector_rs_12m")
+    )
 
 
 def test_v04_generator_schema_and_markdown_additive_contract():

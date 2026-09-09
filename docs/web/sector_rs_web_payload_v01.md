@@ -25,6 +25,8 @@ snapshot is 2026-08-21.
 - `sector_key` is null for UNMAPPED rows; their ranking fields remain null.
 - `report_available` is only a clickability/file-availability indicator. It
   never changes ranking denominators or eligibility counts.
+- The supported horizons are `2w`, `1m`, `3m`, `6m`, and `12m`; all five raw
+  Sector RS and within-sector ranking fields are projected.
 - Raw `sector_rs_*`, `within_sector_rs_rank_*`, percentile, member-count, and
   eligible-count values are projected from the authority without rounding or
   reinterpretation.

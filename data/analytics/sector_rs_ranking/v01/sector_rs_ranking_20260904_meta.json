@@ -10,9 +10,17 @@
     "sector_rs_data_status",
     "sector_rs_input_reason",
     "sector_benchmark_last_observation_date",
+    "sector_rs_2w",
+    "sector_rs_1m",
     "sector_rs_3m",
     "sector_rs_6m",
     "sector_rs_12m",
+    "within_sector_rs_rank_2w",
+    "within_sector_rs_percentile_2w",
+    "sector_eligible_count_2w",
+    "within_sector_rs_rank_1m",
+    "within_sector_rs_percentile_1m",
+    "sector_eligible_count_1m",
     "within_sector_rs_rank_3m",
     "within_sector_rs_percentile_3m",
     "sector_eligible_count_3m",
@@ -25,6 +33,8 @@
     "sector_member_count"
   ],
   "horizons": [
+    "2w",
+    "1m",
     "3m",
     "6m",
     "12m"
@@ -45,7 +55,7 @@
     "opendart": 0,
     "pykrx": 0
   },
-  "parquet_sha256": "09736991976a861d447c8eef73739fcc1319fe1cd9e5f17919e7781c0a3bfa33",
+  "parquet_sha256": "fbdaca64966126fbf3afde93fdf13c10a713dbd3ab89174228c71eb78b396850",
   "ranking": {
     "direction": "descending",
     "independent_horizon_eligibility": true,
@@ -81,6 +91,8 @@
     "cross_sector_contamination_count": 0,
     "duplicate_ticker_count": 0,
     "eligible_total_12m": 2338,
+    "eligible_total_1m": 2371,
+    "eligible_total_2w": 2383,
     "eligible_total_3m": 2381,
     "eligible_total_6m": 2364,
     "invalid_sector_code_mapped_count": 0,

@@ -213,6 +213,12 @@ class SectorRelativeStrengthSection:
     membership_snapshot_date: str | None
     membership_source: str | None
     sector_index_source: str | None
+    sector_return_2w: float | None = None
+    sector_return_1m: float | None = None
+    sector_rs_2w: float | None = None
+    sector_rs_1m: float | None = None
+    sector_anchor_date_2w: str | None = None
+    sector_anchor_date_1m: str | None = None
 
 
 @dataclass

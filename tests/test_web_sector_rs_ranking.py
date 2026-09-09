@@ -15,7 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 EXPORTER_PATH = ROOT / "scripts/export_sector_rs_ranking_web.py"
 PAYLOAD_PATH = ROOT / "web/data/sector-rs-ranking.json"
 RANKING_PATH = ROOT / "data/analytics/sector_rs_ranking/v01/sector_rs_ranking_20260904.parquet"
-HORIZONS = ("3m", "6m", "12m")
+HORIZONS = ("2w", "1m", "3m", "6m", "12m")
 PARITY_FIELDS = (
     *(f"sector_rs_{horizon}" for horizon in HORIZONS),
     *(f"within_sector_rs_rank_{horizon}" for horizon in HORIZONS),
@@ -74,7 +74,7 @@ def test_population_scope_and_horizon_counts_are_conserved():
     payload = _load_payload()
     assert payload["schema_version"] == 1
     assert payload["as_of"] == "2026-09-04"
-    assert payload["horizons"] == ["3m", "6m", "12m"]
+    assert payload["horizons"] == ["2w", "1m", "3m", "6m", "12m"]
     assert payload["scope"] == {
         "type": "EXACT_SECTOR_MEMBERSHIP_POPULATION",
         "population_count": 2562,
@@ -88,7 +88,7 @@ def test_population_scope_and_horizon_counts_are_conserved():
         "group_key": ["market", "sector_code"],
         "label": "섹터 RS는 같은 섹터 구성종목끼리 비교",
     }
-    assert payload["eligible_counts"] == {"3m": 2381, "6m": 2364, "12m": 2338}
+    assert payload["eligible_counts"] == {"2w": 2383, "1m": 2371, "3m": 2381, "6m": 2364, "12m": 2338}
     assert len(payload["items"]) == 2562
     assert len(payload["sectors"]) == 45
     assert sum(item["membership_status"] == "MAPPED" for item in payload["items"]) == 2440
@@ -158,7 +158,7 @@ def test_unmapped_and_report_availability_preserve_separate_concerns():
     assert {item["ticker"] for item in payload["items"] if item["report_available"]} == ranking_tickers & report_tickers
     assert sum(item["report_available"] for item in payload["items"]) == 248
     assert payload["scope"]["population_count"] == 2562
-    assert payload["eligible_counts"] == {"3m": 2381, "6m": 2364, "12m": 2338}
+    assert payload["eligible_counts"] == {"2w": 2383, "1m": 2371, "3m": 2381, "6m": 2364, "12m": 2338}
 
 
 def test_payload_has_strict_json_numbers_only():

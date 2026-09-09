@@ -144,10 +144,17 @@ def test_market_page_has_accessible_controls_and_release_contract():
 
 
 def test_market_page_keeps_navigation_and_old_release_cache_out_of_all_pages():
-    pages = [ROOT / "web/index.html", ROOT / "web/report.html", ROOT / "web/strategy.html", ROOT / "web/market.html"]
-    for path in pages:
+    page_versions = {
+        ROOT / "web/index.html": ("web-02c-toss-1", "app", "web-02c-toss-1"),
+        ROOT / "web/report.html": ("web-02d-window-1", "report", "web-02d-window-1"),
+        ROOT / "web/strategy.html": ("web-strategy-summary-3col-1", "strategy", "web-02c-toss-1"),
+        ROOT / "web/market.html": ("web-02c-toss-1", "market", "web-02c-toss-1"),
+    }
+    pages = list(page_versions)
+    for path, (css_version, script_name, js_version) in page_versions.items():
         html = path.read_text(encoding="utf-8")
-        assert "web-02c-toss-1" in html
+        assert f"css/app.css?v={css_version}" in html
+        assert f"js/{script_name}.js?v={js_version}" in html
         assert "web-03a-final-1" not in html
         assert 'href="./market.html"' in html
         assert "랭킹" in html

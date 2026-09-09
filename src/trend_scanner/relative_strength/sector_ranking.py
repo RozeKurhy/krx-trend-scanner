@@ -15,7 +15,7 @@ import numpy as np
 import pandas as pd
 
 
-HORIZONS = ("3m", "6m", "12m")
+HORIZONS = ("2w", "1m", "3m", "6m", "12m")
 WITHIN_SECTOR_RANK_COLUMNS = tuple(f"within_sector_rs_rank_{horizon}" for horizon in HORIZONS)
 WITHIN_SECTOR_PERCENTILE_COLUMNS = tuple(
     f"within_sector_rs_percentile_{horizon}" for horizon in HORIZONS
@@ -64,7 +64,7 @@ def compute_within_sector_rs_ranking(
     """Rank Sector RS values independently inside each canonical sector group.
 
     The input must contain one row per exact membership population member and
-    the three ``sector_rs_*`` values.  Membership rows with ``MAPPED`` or
+    the five ``sector_rs_*`` values.  Membership rows with ``MAPPED`` or
     ``AGGREGATE_ONLY`` status and a complete ``(market, sector_code,
     sector_name)`` identity participate in their own group.  ``UNMAPPED`` rows
     remain in the returned frame with null ranking fields.

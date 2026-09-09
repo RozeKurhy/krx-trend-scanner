@@ -737,6 +737,8 @@ def render_markdown_report(report: StockReport) -> str:
         md.append("")
         md.append("| 기간 | 업종 대비 RS | 업종 수익률 |")
         md.append("|---|---:|---:|")
+        md.append(f"| 2주 | {_format_rs_return(sector_rs.sector_rs_2w)} | {_format_rs_return(sector_rs.sector_return_2w)} |")
+        md.append(f"| 1개월 | {_format_rs_return(sector_rs.sector_rs_1m)} | {_format_rs_return(sector_rs.sector_return_1m)} |")
         md.append(f"| 3개월 | {_format_rs_return(sector_rs.sector_rs_3m)} | {_format_rs_return(sector_rs.sector_return_3m)} |")
         md.append(f"| 6개월 | {_format_rs_return(sector_rs.sector_rs_6m)} | {_format_rs_return(sector_rs.sector_return_6m)} |")
         md.append(f"| 12개월 | {_format_rs_return(sector_rs.sector_rs_12m)} | {_format_rs_return(sector_rs.sector_return_12m)} |")
