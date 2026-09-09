@@ -9,7 +9,8 @@
     ],
     "asset_type": "COMMON",
     "label": "KOSPI·KOSDAQ 보통주",
-    "universe_snapshot_date": "2026-08-21"
+    "universe_snapshot_date": "2026-09-04",
+    "universe_authority_path": "artifacts/patterns/pattern_a/validation/relative_strength/market_completion_v01/market_rs_universe_20260904.csv"
   },
   "horizons": [
     "1d",
@@ -28,29 +29,33 @@
     "field": "foreign_net_buy_value"
   },
   "coverage": {
-    "target_common_universe_count": 2557,
-    "flow_covered_count": 2481,
-    "missing_flow_count": 76,
-    "source_extra_non_target_count": 234,
-    "eligible_counts": {
-      "1d": 2436,
-      "5d": 2426,
-      "10d": 2403,
-      "20d": 2368,
-      "60d": 2302
+    "target_common_universe_count": 2555,
+    "flow_covered_count": 2480,
+    "missing_flow_count": 75,
+    "source_extra_non_target_count": 235,
+    "target_market_counts": {
+      "KOSPI": 809,
+      "KOSDAQ": 1746
     },
-    "price_exact_resolved_count": 2439,
-    "price_exact_unresolved_count": 118,
-    "return_resolved_counts": {
+    "eligible_counts": {
       "1d": 2438,
-      "5d": 2428,
-      "10d": 2413,
-      "20d": 2399,
-      "60d": 2404
+      "5d": 2427,
+      "10d": 2402,
+      "20d": 2366,
+      "60d": 2300
+    },
+    "price_exact_resolved_count": 2441,
+    "price_exact_unresolved_count": 114,
+    "return_resolved_counts": {
+      "1d": 2439,
+      "5d": 2429,
+      "10d": 2411,
+      "20d": 2397,
+      "60d": 2402
     },
     "return_unresolved_counts": {
-      "1d": 119,
-      "5d": 129,
+      "1d": 116,
+      "5d": 126,
       "10d": 144,
       "20d": 158,
       "60d": 153
@@ -2619,7 +2624,7 @@
     },
     {
       "ticker": "002420",
-      "name": "세기상사",
+      "name": "우양피앤엘",
       "market": "KOSPI",
       "asset_type": "COMMON",
       "sector_name": "유통",
@@ -7639,7 +7644,7 @@
     },
     {
       "ticker": "009810",
-      "name": "플레이그램",
+      "name": "MDS스피어",
       "market": "KOSPI",
       "asset_type": "COMMON",
       "sector_name": "유통",
@@ -9878,6 +9883,26 @@
       "stock_return_60d": -0.2826923076923077
     },
     {
+      "ticker": "0155E0",
+      "name": "해치텍",
+      "market": "KOSDAQ",
+      "asset_type": "COMMON",
+      "sector_name": "전기전자",
+      "report_available": false,
+      "latest_close": 12560.0,
+      "latest_close_as_of": "2026-09-04",
+      "foreign_net_buy_1d": 354963870.0,
+      "stock_return_1d": 0.017828200972447306,
+      "foreign_net_buy_5d": 17163640.0,
+      "stock_return_5d": -0.1693121693121693,
+      "foreign_net_buy_10d": null,
+      "stock_return_10d": null,
+      "foreign_net_buy_20d": null,
+      "stock_return_20d": null,
+      "foreign_net_buy_60d": null,
+      "stock_return_60d": null
+    },
+    {
       "ticker": "0156T0",
       "name": "에이치엘지노믹스",
       "market": "KOSDAQ",
@@ -11534,6 +11559,26 @@
       "stock_return_10d": -0.06052076002814921,
       "foreign_net_buy_20d": -901085440.0,
       "stock_return_20d": -0.184981684981685,
+      "foreign_net_buy_60d": null,
+      "stock_return_60d": null
+    },
+    {
+      "ticker": "0220W0",
+      "name": "한화머시너리앤서비스홀딩스",
+      "market": "KOSPI",
+      "asset_type": "COMMON",
+      "sector_name": "금융",
+      "report_available": false,
+      "latest_close": 6710.0,
+      "latest_close_as_of": "2026-09-04",
+      "foreign_net_buy_1d": 4141989240.0,
+      "stock_return_1d": 0.08400646203554119,
+      "foreign_net_buy_5d": -10337003490.0,
+      "stock_return_5d": -0.0981182795698925,
+      "foreign_net_buy_10d": null,
+      "stock_return_10d": null,
+      "foreign_net_buy_20d": null,
+      "stock_return_20d": null,
       "foreign_net_buy_60d": null,
       "stock_return_60d": null
     },
@@ -24798,26 +24843,6 @@
       "stock_return_60d": -0.1876923076923077
     },
     {
-      "ticker": "082640",
-      "name": "동양생명",
-      "market": "KOSPI",
-      "asset_type": "COMMON",
-      "sector_name": null,
-      "report_available": false,
-      "latest_close": null,
-      "latest_close_as_of": null,
-      "foreign_net_buy_1d": null,
-      "stock_return_1d": null,
-      "foreign_net_buy_5d": null,
-      "stock_return_5d": null,
-      "foreign_net_buy_10d": null,
-      "stock_return_10d": null,
-      "foreign_net_buy_20d": null,
-      "stock_return_20d": null,
-      "foreign_net_buy_60d": null,
-      "stock_return_60d": null
-    },
-    {
       "ticker": "082660",
       "name": "코스나인",
       "market": "KOSDAQ",
@@ -27696,26 +27721,6 @@
       "stock_return_20d": 0.11149825783972123,
       "foreign_net_buy_60d": 30983884425.0,
       "stock_return_60d": 0.14954954954954958
-    },
-    {
-      "ticker": "096610",
-      "name": "알에프세미",
-      "market": "KOSDAQ",
-      "asset_type": "COMMON",
-      "sector_name": null,
-      "report_available": false,
-      "latest_close": null,
-      "latest_close_as_of": null,
-      "foreign_net_buy_1d": null,
-      "stock_return_1d": null,
-      "foreign_net_buy_5d": null,
-      "stock_return_5d": null,
-      "foreign_net_buy_10d": null,
-      "stock_return_10d": null,
-      "foreign_net_buy_20d": null,
-      "stock_return_20d": null,
-      "foreign_net_buy_60d": null,
-      "stock_return_60d": null
     },
     {
       "ticker": "096630",
@@ -30679,7 +30684,7 @@
     },
     {
       "ticker": "123010",
-      "name": "알엔티엑스",
+      "name": "MSDI",
       "market": "KOSDAQ",
       "asset_type": "COMMON",
       "sector_name": "전기전자",
@@ -33096,26 +33101,6 @@
       "stock_return_20d": 0.0,
       "foreign_net_buy_60d": -179567775.0,
       "stock_return_60d": -0.13752455795677798
-    },
-    {
-      "ticker": "159910",
-      "name": "에코글로우",
-      "market": "KOSDAQ",
-      "asset_type": "COMMON",
-      "sector_name": "화학",
-      "report_available": false,
-      "latest_close": 3185.0,
-      "latest_close_as_of": "2026-09-04",
-      "foreign_net_buy_1d": -345090.0,
-      "stock_return_1d": -0.003129890453834161,
-      "foreign_net_buy_5d": 17094180.0,
-      "stock_return_5d": -0.0015673981191222097,
-      "foreign_net_buy_10d": 17955915.0,
-      "stock_return_10d": 0.01594896331738438,
-      "foreign_net_buy_20d": 18730179.0,
-      "stock_return_20d": 0.01594896331738438,
-      "foreign_net_buy_60d": -12973135.0,
-      "stock_return_60d": 0.09638554216867479
     },
     {
       "ticker": "160190",
@@ -39818,26 +39803,6 @@
       "stock_return_60d": 0.3296032553407935
     },
     {
-      "ticker": "269620",
-      "name": "시스웍",
-      "market": "KOSDAQ",
-      "asset_type": "COMMON",
-      "sector_name": null,
-      "report_available": false,
-      "latest_close": null,
-      "latest_close_as_of": null,
-      "foreign_net_buy_1d": null,
-      "stock_return_1d": null,
-      "foreign_net_buy_5d": null,
-      "stock_return_5d": null,
-      "foreign_net_buy_10d": null,
-      "stock_return_10d": null,
-      "foreign_net_buy_20d": null,
-      "stock_return_20d": null,
-      "foreign_net_buy_60d": null,
-      "stock_return_60d": null
-    },
-    {
       "ticker": "270520",
       "name": "앱튼",
       "market": "KOSDAQ",
@@ -41236,26 +41201,6 @@
       "stock_return_20d": 0.10238907849829348,
       "foreign_net_buy_60d": -1604244979.0,
       "stock_return_60d": 0.27920792079207923
-    },
-    {
-      "ticker": "294090",
-      "name": "이오플로우",
-      "market": "KOSDAQ",
-      "asset_type": "COMMON",
-      "sector_name": "의료·정밀기기",
-      "report_available": false,
-      "latest_close": null,
-      "latest_close_as_of": null,
-      "foreign_net_buy_1d": null,
-      "stock_return_1d": null,
-      "foreign_net_buy_5d": null,
-      "stock_return_5d": null,
-      "foreign_net_buy_10d": null,
-      "stock_return_10d": null,
-      "foreign_net_buy_20d": null,
-      "stock_return_20d": null,
-      "foreign_net_buy_60d": null,
-      "stock_return_60d": null
     },
     {
       "ticker": "294140",
@@ -46238,6 +46183,26 @@
       "stock_return_60d": -0.21574803149606303
     },
     {
+      "ticker": "386380",
+      "name": "스카이랩스",
+      "market": "KOSDAQ",
+      "asset_type": "COMMON",
+      "sector_name": null,
+      "report_available": false,
+      "latest_close": 23500.0,
+      "latest_close_as_of": "2026-09-04",
+      "foreign_net_buy_1d": -3331981705.0,
+      "stock_return_1d": null,
+      "foreign_net_buy_5d": null,
+      "stock_return_5d": null,
+      "foreign_net_buy_10d": null,
+      "stock_return_10d": null,
+      "foreign_net_buy_20d": null,
+      "stock_return_20d": null,
+      "foreign_net_buy_60d": null,
+      "stock_return_60d": null
+    },
+    {
       "ticker": "387570",
       "name": "파인메딕스",
       "market": "KOSDAQ",
@@ -46719,7 +46684,7 @@
     },
     {
       "ticker": "396300",
-      "name": "세아메카닉스",
+      "name": "HT로보틱스",
       "market": "KOSDAQ",
       "asset_type": "COMMON",
       "sector_name": "금속",
@@ -47336,6 +47301,26 @@
       "stock_return_20d": 0.305050505050505,
       "foreign_net_buy_60d": -2394468553.0,
       "stock_return_60d": -0.20443349753694584
+    },
+    {
+      "ticker": "417030",
+      "name": "니어스랩",
+      "market": "KOSDAQ",
+      "asset_type": "COMMON",
+      "sector_name": "IT 서비스",
+      "report_available": false,
+      "latest_close": 31450.0,
+      "latest_close_as_of": "2026-09-04",
+      "foreign_net_buy_1d": 4779526550.0,
+      "stock_return_1d": 0.1605166051660516,
+      "foreign_net_buy_5d": 6464883550.0,
+      "stock_return_5d": 0.07890222984562612,
+      "foreign_net_buy_10d": 3957100475.0,
+      "stock_return_10d": null,
+      "foreign_net_buy_20d": null,
+      "stock_return_20d": null,
+      "foreign_net_buy_60d": null,
+      "stock_return_60d": null
     },
     {
       "ticker": "417180",
@@ -49096,26 +49081,6 @@
       "stock_return_20d": -0.09140518417462484,
       "foreign_net_buy_60d": 284720700.0,
       "stock_return_60d": -0.26893523600439073
-    },
-    {
-      "ticker": "458650",
-      "name": "성우",
-      "market": "KOSDAQ",
-      "asset_type": "COMMON",
-      "sector_name": "전기전자",
-      "report_available": false,
-      "latest_close": 7850.0,
-      "latest_close_as_of": "2026-09-04",
-      "foreign_net_buy_1d": 257210.0,
-      "stock_return_1d": 0.011597938144329856,
-      "foreign_net_buy_5d": -28584710.0,
-      "stock_return_5d": -0.02846534653465349,
-      "foreign_net_buy_10d": 35588390.0,
-      "stock_return_10d": 0.05369127516778516,
-      "foreign_net_buy_20d": -49681435.0,
-      "stock_return_20d": -0.03325123152709364,
-      "foreign_net_buy_60d": 438542995.0,
-      "stock_return_60d": -0.26635514018691586
     },
     {
       "ticker": "458870",

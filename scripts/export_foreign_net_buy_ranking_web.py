@@ -18,6 +18,7 @@ ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_INDEX_PATH = ROOT / "web" / "data" / "stock-index.json"
 DEFAULT_FLOW_PATH = ROOT / "artifacts" / "patterns" / "pattern_a" / "production" / "flow" / "source" / "foreign_flow_daily_20260904.parquet"
 DEFAULT_SECTOR_PATH = ROOT / "data" / "market" / "sector_membership" / "v01" / "sector_membership_20260904.parquet"
+DEFAULT_COMMON_AUTHORITY_PATH = ROOT / "artifacts" / "patterns" / "pattern_a" / "validation" / "relative_strength" / "market_completion_v01" / "market_rs_universe_20260904.csv"
 DEFAULT_OUTPUT_PATH = ROOT / "web" / "data" / "foreign-net-buy-ranking.json"
 AS_OF = "2026-09-04"
 HORIZONS = (1, 5, 10, 20, 60)
@@ -47,23 +48,39 @@ def _display_path(path: Path) -> str:
 def load_common_universe(
     index_path: Path = DEFAULT_INDEX_PATH,
     sector_path: Path = DEFAULT_SECTOR_PATH,
+    common_authority_path: Path = DEFAULT_COMMON_AUTHORITY_PATH,
+    as_of: str = AS_OF,
 ) -> tuple[list[dict[str, Any]], str | None]:
-    """Resolve the existing canonical common-stock projection and sector labels."""
+    """Resolve the exact production common-stock authority and sector labels."""
 
     index = _read_json(index_path)
     if index.get("schema_version") != 1 or not isinstance(index.get("items"), list):
         raise ValueError("stock-index schema is incomplete")
-    items = [
-        item
-        for item in index["items"]
-        if isinstance(item, dict)
-        and item.get("market") in {"KOSPI", "KOSDAQ"}
-        and item.get("asset_type") == "COMMON"
-    ]
-    if not items or len({item.get("ticker") for item in items}) != len(items):
-        raise ValueError("canonical common universe is empty or duplicated")
-    if any(not item.get("ticker") or not item.get("name") for item in items):
-        raise ValueError("canonical common universe has incomplete identity")
+    report_by_ticker: dict[str, bool] = {}
+    for item in index["items"]:
+        if not isinstance(item, dict) or not item.get("ticker"):
+            continue
+        ticker = str(item["ticker"])
+        if ticker in report_by_ticker:
+            raise ValueError("stock-index contains duplicate tickers")
+        report_by_ticker[ticker] = bool(item.get("report_available", False))
+
+    authority = pd.read_csv(common_authority_path, dtype=str)
+    required_authority = {"ticker", "name", "market"}
+    if not required_authority.issubset(authority.columns):
+        raise ValueError(
+            f"common authority schema is incomplete: {sorted(required_authority - set(authority.columns))}"
+        )
+    authority = authority.loc[authority["market"].isin({"KOSPI", "KOSDAQ"}), ["ticker", "name", "market"]].copy()
+    if authority.empty or authority[["ticker", "name", "market"]].isna().any().any():
+        raise ValueError("common authority is empty or has incomplete identity")
+    authority["ticker"] = authority["ticker"].astype(str).str.strip()
+    authority["name"] = authority["name"].astype(str).str.strip()
+    authority["market"] = authority["market"].astype(str).str.strip()
+    if authority["ticker"].eq("").any() or authority["name"].eq("").any():
+        raise ValueError("common authority has incomplete identity")
+    if authority["ticker"].duplicated().any():
+        raise ValueError("common authority contains duplicate tickers")
 
     membership = pd.read_parquet(sector_path)
     required = {"ticker", "sector_name"}
@@ -71,21 +88,24 @@ def load_common_universe(
         raise ValueError(f"sector membership schema is incomplete: {sorted(required - set(membership.columns))}")
     if membership["ticker"].duplicated().any():
         raise ValueError("sector membership contains duplicate tickers")
+    membership = membership.copy()
+    membership["ticker"] = membership["ticker"].astype(str)
     sectors = membership.set_index("ticker")["sector_name"].to_dict()
     projected = []
-    for item in sorted(items, key=lambda value: str(value["ticker"])):
-        sector_name = sectors.get(item["ticker"])
+    for item in authority.sort_values("ticker").to_dict("records"):
+        ticker = str(item["ticker"])
+        sector_name = sectors.get(ticker)
         projected.append(
             {
-                "ticker": str(item["ticker"]),
+                "ticker": ticker,
                 "name": str(item["name"]),
                 "market": str(item["market"]),
                 "asset_type": "COMMON",
                 "sector_name": None if pd.isna(sector_name) else str(sector_name),
-                "report_available": bool(item.get("report_available", False)),
+                "report_available": report_by_ticker.get(ticker, False),
             }
         )
-    return projected, index.get("universe_snapshot_date")
+    return projected, as_of
 
 
 def load_flow_source(path: Path = DEFAULT_FLOW_PATH) -> tuple[pd.DataFrame, dict[str, Any]]:
@@ -180,10 +200,11 @@ def build_foreign_net_buy_ranking(
     index_path: Path = DEFAULT_INDEX_PATH,
     flow_path: Path = DEFAULT_FLOW_PATH,
     sector_path: Path = DEFAULT_SECTOR_PATH,
+    common_authority_path: Path = DEFAULT_COMMON_AUTHORITY_PATH,
     repository: Any | None = None,
     as_of: str = AS_OF,
 ) -> dict[str, Any]:
-    universe, universe_snapshot_date = load_common_universe(index_path, sector_path)
+    universe, universe_snapshot_date = load_common_universe(index_path, sector_path, common_authority_path, as_of)
     flow, flow_meta = load_flow_source(flow_path)
     target_tickers = {item["ticker"] for item in universe}
     flow_values, source_dates, eligible_counts = _flow_values_by_horizon(flow, target_tickers, as_of)
@@ -225,6 +246,7 @@ def build_foreign_net_buy_ranking(
             "asset_type": "COMMON",
             "label": "KOSPI·KOSDAQ 보통주",
             "universe_snapshot_date": universe_snapshot_date,
+            "universe_authority_path": _display_path(common_authority_path),
         },
         "horizons": [f"{horizon}d" for horizon in HORIZONS],
         "source": {
@@ -241,6 +263,10 @@ def build_foreign_net_buy_ranking(
             "flow_covered_count": len(flow_covered_tickers),
             "missing_flow_count": len(target_tickers - source_tickers),
             "source_extra_non_target_count": len(source_tickers - target_tickers),
+            "target_market_counts": {
+                market: sum(item["market"] == market for item in universe)
+                for market in ("KOSPI", "KOSDAQ")
+            },
             "eligible_counts": {f"{horizon}d": eligible_counts[horizon] for horizon in HORIZONS},
             "price_exact_resolved_count": price_exact_resolved_count,
             "price_exact_unresolved_count": len(items) - price_exact_resolved_count,

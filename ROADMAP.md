@@ -124,7 +124,7 @@ CLOSED고 Production 승격 여부는 별도"임을 한 토큰으로 강조하�
 | **A FAST Core Strategy** | A FAST Core Strategy V1 | CLOSED / FROZEN | 단일 진입 모델 (**`HISTORICAL_FROZEN_BASELINE`**) |
 | | **A FAST Core Strategy V2** | **CLOSED / FROZEN** | **Current Default Strategy (`PRODUCTION_DECISION_SUPPORT`)** |
 | **Reporting & Viewer** | **Stock Report v0.4** | **CLOSED / PRODUCTION_DECISION_SUPPORT** | Market RS exact-date authority + Sector RS additive context, 2026-09-04 canonical 158건 (`59c5cab`, `8a1cccd`) |
-| | **Foreign Net Buy Ranking Web V01** | **CLOSED / READ_ONLY** | Local production flow source, KOSPI/KOSDAQ COMMON 2,557개, 1D/5D/10D/20D/60D 정적 ranking projection |
+| | **Foreign Net Buy Ranking Web V01** | **CLOSED / READ_ONLY** | Local production flow source, 2026-09-04 exact KOSPI/KOSDAQ COMMON 2,555개, 1D/5D/10D/20D/60D 정적 ranking projection |
 | | Web Report Viewer | PLANNED / FUTURE | Fundamentals 및 핵심 데이터 계층 이후 |
 | **Engineering Infrastructure** | Documentation IA Reorganization | CLOSED | Domain-first / Pattern-second 구조 확립 (`docs/README.md`) |
 | | Artifacts IA Reorganization | CLOSED | Authority & Lifecycle 분리 완료 (`a81e3bb`) |

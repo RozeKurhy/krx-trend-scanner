@@ -113,7 +113,7 @@
       value && value.schema_version === 1 && value.scope && value.scope.type === "KRX_COMMON_STOCKS" &&
       value.as_of === "2026-09-04" && Array.isArray(value.horizons) && HORIZONS.every((horizon) => value.horizons.includes(horizon)) &&
       value.coverage && Number.isInteger(value.coverage.target_common_universe_count) && Array.isArray(value.items) &&
-      value.items.every((item) => item && item.asset_type !== "ETF" && item.market && item.ticker && item.name)
+      value.items.every((item) => item && item.asset_type === "COMMON" && item.market && item.ticker && item.name)
     );
   }
 
@@ -123,10 +123,18 @@
     return [item.ticker, item.name, item.sector_name].some((value) => String(value || "").toLocaleLowerCase("ko-KR").includes(normalized));
   }
 
+  function validFlow(value) {
+    return (
+      value !== null &&
+      value !== "" &&
+      Number.isFinite(Number(value))
+    );
+  }
+
   function rankedItems() {
     const field = `foreign_net_buy_${activeHorizon}`;
     return (payload.items || [])
-      .filter((item) => Number.isFinite(Number(item[field])))
+      .filter((item) => validFlow(item[field]))
       .filter((item) => activeMarket === "ALL" || item.market === activeMarket)
       .filter(itemMatches)
       .slice()
