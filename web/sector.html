@@ -20,7 +20,7 @@
       })();
     </script>
     <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="./css/app.css?v=web-sector-rs-1">
+    <link rel="stylesheet" href="./css/app.css?v=web-sector-rs-fix01-1">
   </head>
   <body>
     <a class="skip-link" href="#main-content">본문으로 건너뛰기</a>
@@ -69,37 +69,27 @@
         <span class="ranking-tab" aria-disabled="true">순이익 성장률 <small>준비 중</small></span>
       </nav>
 
-      <section class="panel sector-overview" aria-labelledby="sector-overview-heading">
-        <div class="panel-heading">
-          <div>
-            <p class="eyebrow">선택 섹터</p>
-            <h2 id="sector-overview-heading"><span id="sector-selected-name">—</span></h2>
-          </div>
-        </div>
-        <p id="sector-scope" class="sector-scope">기준일 —</p>
-        <p id="sector-metric-scope" class="panel-note">섹터 RS는 같은 섹터 구성종목끼리 비교</p>
-      </section>
-
       <section class="panel sector-controls" aria-labelledby="sector-controls-heading">
         <div class="sector-controls-heading">
           <div>
             <h2 id="sector-controls-heading">섹터 RS 랭킹</h2>
-            <p id="sector-ranking-meta" class="report-search-meta" role="status">랭킹 목록 불러오는 중</p>
           </div>
         </div>
-        <div class="sector-select-row">
-          <label class="sector-select-label" for="sector-select">섹터 선택</label>
+        <div class="sector-primary-row">
+          <label class="visually-hidden" for="sector-select">섹터 선택</label>
           <select id="sector-select" class="sector-select" aria-label="섹터 선택" aria-controls="sector-ranking-list">
             <option value="">섹터 목록 불러오는 중</option>
           </select>
-        </div>
-        <div id="sector-horizon-controls" class="market-control-group" role="group" aria-label="랭킹 기간">
+          <div id="sector-horizon-controls" class="market-control-group sector-horizon-group" role="group" aria-label="랭킹 기간">
           <button class="market-control" type="button" data-horizon="2w" aria-pressed="false">2주</button>
           <button class="market-control is-active" type="button" data-horizon="1m" aria-pressed="true">1개월</button>
           <button class="market-control" type="button" data-horizon="3m" aria-pressed="false">3개월</button>
           <button class="market-control" type="button" data-horizon="6m" aria-pressed="false">6개월</button>
           <button class="market-control" type="button" data-horizon="12m" aria-pressed="false">12개월</button>
+          </div>
         </div>
+        <p id="sector-scope" class="sector-summary" role="status">기준일 — · 구성종목 — · 비교 가능 — · 같은 섹터 구성종목끼리 비교</p>
+        <p id="sector-ranking-meta" class="report-search-meta" role="status">랭킹 목록 불러오는 중</p>
         <label class="report-search-label" for="sector-search">종목명 또는 종목코드 검색</label>
         <input id="sector-search" class="report-search-input" type="search" placeholder="종목명 또는 종목코드 검색" autocomplete="off" aria-label="선택 섹터 내 종목명 또는 종목코드 검색" aria-controls="sector-ranking-list">
       </section>
@@ -117,6 +107,6 @@
       <span>KRX Trend Scanner</span>
       <span>읽기 전용</span>
     </footer>
-    <script src="./js/sector.js?v=web-sector-rs-1" defer></script>
+    <script src="./js/sector.js?v=web-sector-rs-fix01-1" defer></script>
   </body>
 </html>

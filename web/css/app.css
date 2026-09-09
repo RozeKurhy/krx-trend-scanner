@@ -529,22 +529,25 @@ summary { cursor: pointer; color: var(--ink); font-size: 13px; font-weight: 750;
 .market-ranking-report { flex: 0 0 auto; color: var(--brand-red-dark); font-size: 11px; font-weight: 800; white-space: nowrap; }
 .market-ranking-empty { margin: 0; padding: 24px; color: var(--ink-soft); background: var(--surface); border: 1px solid var(--line); border-radius: 9px; }
 
-.sector-overview, .sector-controls { margin-bottom: 16px; }
-.sector-overview .panel-heading { margin-bottom: 16px; }
-.sector-scope { margin: 0; color: var(--ink-soft); font-size: 13px; }
+.sector-controls { margin-bottom: 16px; }
 .sector-controls-heading { margin-bottom: 14px; }
 .sector-controls-heading h2 { margin-bottom: 6px; }
-.sector-select-row { display: grid; grid-template-columns: minmax(110px, 0.25fr) minmax(0, 1fr); align-items: center; gap: 12px; margin-bottom: 14px; }
-.sector-select-label { color: var(--ink-soft); font-size: 12px; font-weight: 750; }
-.sector-select { width: 100%; border: 1px solid var(--line-strong); padding: 10px 12px; color: var(--ink); background: var(--surface); border-radius: 9px; font: inherit; font-size: 13px; }
+.sector-primary-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.sector-select { flex: 1 1 280px; width: min(360px, 100%); max-width: 360px; border: 1px solid var(--line-strong); padding: 10px 12px; color: var(--ink); background: var(--surface); border-radius: 9px; font: inherit; font-size: 13px; }
 .sector-select:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; border-color: var(--brand-red); }
+.sector-horizon-group { flex: 0 0 auto; overflow: visible; padding: 0; }
+.sector-summary { margin: 13px 0 0; color: var(--ink-soft); font-size: 12px; }
+.sector-controls > .report-search-meta { margin-bottom: 16px; }
 .sector-ranking-list { display: grid; gap: 8px; }
-.sector-ranking-row { display: grid; grid-template-columns: minmax(190px, 1.65fr) repeat(3, minmax(100px, 1fr)) auto; align-items: center; gap: 12px; min-width: 0; min-height: 98px; border: 1px solid var(--line); padding: 16px; color: var(--ink); background: var(--surface); border-radius: 9px; }
+.sector-ranking-row { display: grid; grid-template-columns: minmax(190px, 1.55fr) repeat(4, minmax(92px, 1fr)) auto; align-items: center; gap: 12px; min-width: 0; min-height: 92px; border: 1px solid var(--line); padding: 14px 16px; color: var(--ink); background: var(--surface); border-radius: 9px; }
 .sector-ranking-row:hover { border-color: var(--line-strong); background: var(--surface-muted); }
 .sector-ranking-row:focus-within { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
-.sector-ranking-rank .market-ranking-value, .sector-ranking-percentile .market-ranking-value { color: var(--brand-red-dark); }
+.sector-ranking-position .market-ranking-value { color: var(--brand-red-dark); font-size: 14px; }
 .sector-ranking-rs.return-positive .market-ranking-value { color: var(--market-up-red); }
 .sector-ranking-rs.return-negative .market-ranking-value { color: var(--market-down-blue); }
+.sector-ranking-period-return.return-positive .market-ranking-value { color: var(--market-up-red); }
+.sector-ranking-period-return.return-negative .market-ranking-value { color: var(--market-down-blue); }
+.sector-ranking-price .market-ranking-value { color: var(--ink); }
 .sector-ranking-report { flex: 0 0 auto; color: var(--brand-red-dark); font-size: 11px; font-weight: 800; white-space: nowrap; }
 .sector-ranking-report.is-disabled { color: var(--ink-faint); font-weight: 650; }
 .sector-ranking-empty { margin: 0; padding: 24px; color: var(--ink-soft); background: var(--surface); border: 1px solid var(--line); border-radius: 9px; }
@@ -587,7 +590,9 @@ summary { cursor: pointer; color: var(--ink); font-size: 13px; font-weight: 750;
   .market-ranking-row { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 16px; }
   .market-ranking-identity, .market-ranking-report { grid-column: 1 / -1; }
   .market-ranking-report { justify-self: start; }
-  .sector-select-row { grid-template-columns: 1fr; gap: 7px; }
+  .sector-primary-row { align-items: stretch; flex-direction: column; gap: 10px; }
+  .sector-select { width: 100%; max-width: none; }
+  .sector-horizon-group { overflow-x: auto; padding: 1px 1px 12px; }
   .sector-ranking-row { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 16px; }
   .sector-ranking-row .market-ranking-identity, .sector-ranking-row .sector-ranking-report { grid-column: 1 / -1; }
   .sector-ranking-report { justify-self: start; }

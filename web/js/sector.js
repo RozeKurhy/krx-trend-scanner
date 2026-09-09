@@ -8,9 +8,13 @@
   const HORIZONS = ["2w", "1m", "3m", "6m", "12m"];
   const HORIZON_LABELS = { "2w": "2주", "1m": "1개월", "3m": "3개월", "6m": "6개월", "12m": "12개월" };
   const MARKET_LABELS = { KOSPI: "코스피", KOSDAQ: "코스닥" };
+  const DISPLAY_FIELDS = [
+    "latest_close",
+    "latest_close_as_of",
+    ...HORIZONS.flatMap((horizon) => [`sector_anchor_date_${horizon}`, `sector_stock_return_${horizon}`]),
+  ];
 
   const byId = (id) => document.getElementById(id);
-  const numberFormat = new Intl.NumberFormat("ko-KR");
   let payload = null;
   let activeSectorKey = null;
   let activeHorizon = "1m";
@@ -38,10 +42,33 @@
     return value.slice(0, 10).replaceAll("-", ".");
   }
 
+  function validRank(value) {
+    return (
+      value != null &&
+      value !== "" &&
+      Number.isFinite(Number(value)) &&
+      Number(value) >= 1
+    );
+  }
+
+  function validPercentile(value) {
+    return (
+      value != null &&
+      value !== "" &&
+      Number.isFinite(Number(value)) &&
+      Number(value) >= 0 &&
+      Number(value) <= 100
+    );
+  }
+
   function formatRank(value) {
-    if (!Number.isFinite(Number(value))) return "—";
+    if (!validRank(value)) return "—";
     const rank = Number(value);
     return Number.isInteger(rank) ? formatNumber(rank) : formatNumber(rank, 6);
+  }
+
+  function formatPrice(value) {
+    return value == null || value === "" || !Number.isFinite(Number(value)) ? "—" : `${formatNumber(value)}원`;
   }
 
   function marketLabel(value) { return MARKET_LABELS[value] || "마켓 확인 필요"; }
@@ -110,7 +137,7 @@
       value && value.schema_version === 1 &&
       Array.isArray(value.horizons) && HORIZONS.every((horizon) => value.horizons.includes(horizon)) &&
       Array.isArray(value.sectors) && value.sectors.length > 0 && value.sectors.every(validSector) &&
-      Array.isArray(value.items) &&
+      Array.isArray(value.items) && value.items.every((item) => item && typeof item === "object" && DISPLAY_FIELDS.every((field) => Object.prototype.hasOwnProperty.call(item, field))) &&
       value.metric_scope && value.metric_scope.type === "WITHIN_SECTOR" &&
       Array.isArray(value.metric_scope.group_key) &&
       JSON.stringify(value.metric_scope.group_key) === JSON.stringify(["market", "sector_code"])
@@ -134,6 +161,7 @@
   }
 
   function topPercentLabel(percentile) {
+    if (!validPercentile(percentile)) return "—";
     const topPercent = 100 - percentile;
     return `상위 ${formatNumber(topPercent, 1)}%`;
   }
@@ -148,7 +176,7 @@
     const rankField = `within_sector_rs_rank_${activeHorizon}`;
     return (payload.items || [])
       .filter((item) => item.sector_key === activeSectorKey)
-      .filter((item) => Number.isFinite(Number(item[rankField])))
+      .filter((item) => validRank(item[rankField]))
       .filter(itemMatches)
       .slice()
       .sort((left, right) => {
@@ -172,15 +200,18 @@
     const rankField = `within_sector_rs_rank_${activeHorizon}`;
     const percentileField = `within_sector_rs_percentile_${activeHorizon}`;
     const rsField = `sector_rs_${activeHorizon}`;
+    const stockReturnField = `sector_stock_return_${activeHorizon}`;
     const sector = sectorByKey();
     const row = createElement("article", "sector-ranking-row");
     const identity = createElement("div", "market-ranking-identity");
     identity.appendChild(createElement("strong", "market-ranking-name", item.name || item.ticker));
     identity.appendChild(createElement("span", "market-ranking-meta", `${item.ticker} · ${marketLabel(item.market)} · ${sector ? sector.sector_name : ""}`));
 
-    const rank = createField("섹터 내 순위", `${formatRank(item[rankField])}위`, `총 ${formatNumber(sector ? sector[`eligible_count_${activeHorizon}`] : null)}개 비교 가능`, "sector-ranking-rank");
-    const percentile = createField("상대 위치", topPercentLabel(item[percentileField]), `원본 백분위 ${formatNumber(item[percentileField], 1)}`, "sector-ranking-percentile");
+    const eligibleCount = sector ? sector[`eligible_count_${activeHorizon}`] : null;
+    const position = createField("섹터 순위", `${formatRank(item[rankField])} / ${formatNumber(eligibleCount)}`, topPercentLabel(item[percentileField]), "sector-ranking-position");
     const rs = createField("섹터 RS", formatReturn(item[rsField]), `최근 ${HORIZON_LABELS[activeHorizon]}`, `sector-ranking-rs ${returnClass(item[rsField])}`);
+    const periodReturn = createField("기간 등락", formatReturn(item[stockReturnField]), `최근 ${HORIZON_LABELS[activeHorizon]}`, `sector-ranking-period-return ${returnClass(item[stockReturnField])}`);
+    const price = createField("현재가", formatPrice(item.latest_close), formatDate(item.latest_close_as_of), "sector-ranking-price");
     const report = item.report_available
       ? createElement("a", "sector-ranking-report", "리포트 보기 ›")
       : createElement("span", "sector-ranking-report is-disabled", "리포트 준비 중");
@@ -189,20 +220,25 @@
       report.setAttribute("aria-label", `${item.name} ${item.ticker} 리포트 보기`);
     }
 
-    row.append(identity, rank, percentile, rs, report);
+    row.append(identity, position, rs, periodReturn, price, report);
     return row;
   }
 
   function renderSectorOptions() {
     const select = byId("sector-select");
     if (!select) return;
-    const options = payload.sectors.map((sector) => {
-      const option = createElement("option");
-      option.value = sector.sector_key;
-      option.textContent = `${marketLabel(sector.market)} · ${sector.sector_name}`;
-      return option;
+    const groups = ["KOSPI", "KOSDAQ"].map((market) => {
+      const group = createElement("optgroup");
+      group.label = marketLabel(market);
+      payload.sectors.filter((sector) => sector.market === market).forEach((sector) => {
+        const option = createElement("option");
+        option.value = sector.sector_key;
+        option.textContent = sector.sector_name;
+        group.appendChild(option);
+      });
+      return group;
     });
-    select.replaceChildren(...options);
+    select.replaceChildren(...groups);
     select.value = activeSectorKey;
   }
 
@@ -226,9 +262,7 @@
     const sector = sectorByKey();
     if (!sector) return;
     const eligible = sector[`eligible_count_${activeHorizon}`];
-    setText("sector-selected-name", `${marketLabel(sector.market)} · ${sector.sector_name}`);
-    setText("sector-scope", `기준일 ${formatDate(payload.as_of)} · 구성종목 ${formatNumber(sector.member_count)}개 · ${HORIZON_LABELS[activeHorizon]} 비교 가능 ${formatNumber(eligible)}개`);
-    setText("sector-metric-scope", payload.metric_scope.label || "섹터 RS는 같은 섹터 구성종목끼리 비교");
+    setText("sector-scope", `기준일 ${formatDate(payload.as_of)} · 구성종목 ${formatNumber(sector.member_count)}개 · ${HORIZON_LABELS[activeHorizon]} 비교 가능 ${formatNumber(eligible)}개 · ${payload.metric_scope.label || "같은 섹터 구성종목끼리 비교"}`);
   }
 
   function renderRanking() {

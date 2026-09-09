@@ -32,6 +32,7 @@ DEFAULT_OUTPUT_DIR = ROOT / "data/analytics/sector_rs_ranking/v01"
 SECTOR_INDEX_PATH = ROOT / ".cache/krx_openapi/sector_rs_migration/v01/sector_index_daily.parquet"
 SECTOR_INDEX_SOURCE = ".cache/krx_openapi/sector_rs_migration/v01/sector_index_daily.parquet"
 EMPTY_MARKET_INDEX = pd.DataFrame(columns=["date", "index_code", "close"])
+DISPLAY_HORIZONS = HORIZONS
 
 
 def _network_blocked(*args: Any, **kwargs: Any) -> None:
@@ -53,6 +54,47 @@ def _sha256(path: Path) -> str:
 
 def _normalise_as_of(value: str) -> str:
     return pd.Timestamp(value).strftime("%Y-%m-%d")
+
+
+def _exact_positive_close(stock: pd.DataFrame | None, date: str | None) -> float | None:
+    """Return only the exact positive RepositoryV2 close for ``date``."""
+
+    if stock is None or stock.empty or not date or "close" not in stock.columns:
+        return None
+    target = pd.Timestamp(date).normalize()
+    index = pd.DatetimeIndex(stock.index).normalize()
+    matches = stock.loc[index == target, "close"]
+    if len(matches) != 1:
+        return None
+    value = pd.to_numeric(matches.iloc[0], errors="coerce")
+    if pd.isna(value) or not np.isfinite(float(value)) or float(value) <= 0:
+        return None
+    return float(value)
+
+
+def _display_fields(
+    stock: pd.DataFrame | None,
+    as_of: str,
+    result: Any | None,
+) -> dict[str, Any]:
+    """Build additive exact-price and sector-anchor stock-return fields."""
+
+    latest_close = _exact_positive_close(stock, as_of)
+    fields: dict[str, Any] = {
+        "latest_close": latest_close,
+        "latest_close_as_of": as_of if latest_close is not None else None,
+    }
+    for horizon in DISPLAY_HORIZONS:
+        anchor = getattr(result, f"sector_anchor_date_{horizon}", None) if result is not None else None
+        anchor = None if anchor is None else str(anchor)[:10]
+        anchor_close = _exact_positive_close(stock, anchor)
+        fields[f"sector_anchor_date_{horizon}"] = anchor
+        fields[f"sector_stock_return_{horizon}"] = (
+            (latest_close / anchor_close) - 1.0
+            if latest_close is not None and anchor_close is not None
+            else None
+        )
+    return fields
 
 
 def _validate_sector_index(sector_index: pd.DataFrame, as_of: str) -> None:
@@ -80,9 +122,13 @@ def _empty_result_row(ticker: str, market: str, membership: pd.Series, as_of: st
         "sector_rs_data_status": "DATA_UNAVAILABLE",
         "sector_rs_input_reason": "SECTOR_MEMBERSHIP_UNMAPPED",
         "sector_benchmark_last_observation_date": None,
+        "latest_close": None,
+        "latest_close_as_of": None,
     }
     for horizon in HORIZONS:
         row[f"sector_rs_{horizon}"] = None
+        row[f"sector_anchor_date_{horizon}"] = None
+        row[f"sector_stock_return_{horizon}"] = None
     return row
 
 
@@ -100,11 +146,13 @@ def _compute_rows(as_of: str, membership: pd.DataFrame, sector_index: pd.DataFra
         ticker = str(member.ticker).zfill(6)
         market = str(member.market).upper()
         membership_row = membership.loc[membership["ticker"].eq(ticker)].iloc[0]
+        stock = loader.load(ticker)
         if str(member.resolution_status).upper() == "UNMAPPED":
-            rows.append(_empty_result_row(ticker, market, membership_row, as_of))
+            row = _empty_result_row(ticker, market, membership_row, as_of)
+            row.update(_display_fields(stock, as_of, None))
+            rows.append(row)
             continue
 
-        stock = loader.load(ticker)
         result = compute_relative_strength_features(
             ticker=ticker,
             as_of=as_of,
@@ -116,24 +164,24 @@ def _compute_rows(as_of: str, membership: pd.DataFrame, sector_index: pd.DataFra
             require_exact_sector_snapshot=True,
             sector_snapshot_effective_date=as_of,
         )
-        rows.append(
-            {
-                "as_of": as_of,
-                "ticker": ticker,
-                "market": market,
-                "membership_status": str(member.resolution_status),
-                "sector_code": None if pd.isna(member.sector_code) else str(member.sector_code),
-                "sector_name": None if pd.isna(member.sector_name) else str(member.sector_name),
-                "sector_rs_data_status": result.sector_rs_data_status.value,
-                "sector_rs_input_reason": result.sector_rs_input_reason,
-                "sector_benchmark_last_observation_date": result.sector_benchmark_last_observation_date,
-                "sector_rs_2w": result.sector_rs_2w,
-                "sector_rs_1m": result.sector_rs_1m,
-                "sector_rs_3m": result.sector_rs_3m,
-                "sector_rs_6m": result.sector_rs_6m,
-                "sector_rs_12m": result.sector_rs_12m,
-            }
-        )
+        row = {
+            "as_of": as_of,
+            "ticker": ticker,
+            "market": market,
+            "membership_status": str(member.resolution_status),
+            "sector_code": None if pd.isna(member.sector_code) else str(member.sector_code),
+            "sector_name": None if pd.isna(member.sector_name) else str(member.sector_name),
+            "sector_rs_data_status": result.sector_rs_data_status.value,
+            "sector_rs_input_reason": result.sector_rs_input_reason,
+            "sector_benchmark_last_observation_date": result.sector_benchmark_last_observation_date,
+            "sector_rs_2w": result.sector_rs_2w,
+            "sector_rs_1m": result.sector_rs_1m,
+            "sector_rs_3m": result.sector_rs_3m,
+            "sector_rs_6m": result.sector_rs_6m,
+            "sector_rs_12m": result.sector_rs_12m,
+        }
+        row.update(_display_fields(stock, as_of, result))
+        rows.append(row)
     return pd.DataFrame(rows)
 
 
@@ -161,6 +209,31 @@ def _validate_output(frame: pd.DataFrame, membership: pd.DataFrame, as_of: str) 
     if rank_bound_errors or percentile_bound_errors:
         raise ValueError("ranking bounds validation failed")
 
+    latest_close = pd.to_numeric(frame["latest_close"], errors="coerce")
+    latest_close_as_of = frame["latest_close_as_of"]
+    latest_close_as_of_mismatches = int(
+        ((latest_close.notna()) & latest_close_as_of.ne(as_of)).sum()
+        + ((latest_close.isna()) & latest_close_as_of.notna()).sum()
+    )
+    if latest_close.notna().any() and (
+        (~np.isfinite(latest_close.dropna())).any() or (latest_close.dropna() <= 0).any()
+    ):
+        raise ValueError("latest_close has invalid values")
+    if latest_close_as_of_mismatches:
+        raise ValueError("latest_close exact as-of validation failed")
+    sector_return_resolved: dict[str, int] = {}
+    for horizon in DISPLAY_HORIZONS:
+        returns = pd.to_numeric(frame[f"sector_stock_return_{horizon}"], errors="coerce")
+        anchors = frame[f"sector_anchor_date_{horizon}"]
+        if returns.notna().any() and not np.isfinite(returns.dropna()).all():
+            raise ValueError(f"sector stock return has invalid {horizon} values")
+        if ((returns.notna()) & anchors.isna()).any():
+            raise ValueError(f"sector stock return has no anchor: {horizon}")
+        anchor_dates = pd.to_datetime(anchors, errors="coerce")
+        if (anchor_dates.notna() & (anchor_dates > pd.Timestamp(as_of))).any():
+            raise ValueError(f"sector anchor is after as_of: {horizon}")
+        sector_return_resolved[horizon] = int(returns.notna().sum())
+
     group_mask = frame["sector_code"].notna()
     sector_group_count = int(frame.loc[group_mask, ["market", "sector_code"]].drop_duplicates().shape[0])
     return {
@@ -177,6 +250,13 @@ def _validate_output(frame: pd.DataFrame, membership: pd.DataFrame, as_of: str) 
             for horizon in HORIZONS
         },
         "cross_sector_contamination_count": 0,
+        "latest_close_resolved": int(latest_close.notna().sum()),
+        "latest_close_unresolved": int(latest_close.isna().sum()),
+        "latest_close_as_of_mismatches": latest_close_as_of_mismatches,
+        **{
+            f"sector_stock_return_{horizon}_resolved": count
+            for horizon, count in sector_return_resolved.items()
+        },
     }
 
 
@@ -213,6 +293,11 @@ def build_sector_rs_ranking(
             "sector_index": SECTOR_INDEX_SOURCE,
             "sector_index_sha256": _sha256(SECTOR_INDEX_PATH),
             "stock": "MarketDataRepositoryV2",
+            "display_price_return": {
+                "latest_close": "exact close at as_of; no nearest/future fallback",
+                "sector_stock_return": "(stock_close_as_of / stock_close_at_sector_anchor) - 1",
+                "as_of": as_of,
+            },
         },
         "scope": {
             "type": "EXACT_SECTOR_MEMBERSHIP_POPULATION",

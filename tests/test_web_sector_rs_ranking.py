@@ -9,6 +9,9 @@ import re
 from pathlib import Path
 
 import pandas as pd
+import pytest
+
+from trend_scanner.data.repository_v2_loader import RepositoryV2DailyLoader, build_repository_v2
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -22,6 +25,10 @@ PARITY_FIELDS = (
     *(f"within_sector_rs_percentile_{horizon}" for horizon in HORIZONS),
     "sector_member_count",
     *(f"sector_eligible_count_{horizon}" for horizon in HORIZONS),
+    "latest_close",
+    "latest_close_as_of",
+    *(f"sector_anchor_date_{horizon}" for horizon in HORIZONS),
+    *(f"sector_stock_return_{horizon}" for horizon in HORIZONS),
 )
 
 
@@ -159,6 +166,54 @@ def test_unmapped_and_report_availability_preserve_separate_concerns():
     assert sum(item["report_available"] for item in payload["items"]) == 248
     assert payload["scope"]["population_count"] == 2562
     assert payload["eligible_counts"] == {"2w": 2383, "1m": 2371, "3m": 2381, "6m": 2364, "12m": 2338}
+
+
+def test_price_and_sector_return_fields_are_exact_or_fail_closed():
+    payload = _load_payload()
+    assert sum(item["latest_close"] is not None for item in payload["items"]) == 2442
+    assert sum(item["latest_close"] is None for item in payload["items"]) == 120
+    for item in payload["items"]:
+        if item["latest_close"] is None:
+            assert item["latest_close_as_of"] is None
+        else:
+            assert item["latest_close"] > 0
+            assert item["latest_close_as_of"] == "2026-09-04"
+        for horizon in HORIZONS:
+            anchor = item[f"sector_anchor_date_{horizon}"]
+            stock_return = item[f"sector_stock_return_{horizon}"]
+            if stock_return is not None:
+                assert anchor is not None
+                assert math.isfinite(stock_return)
+            if anchor is not None:
+                assert anchor <= "2026-09-04"
+
+    assert all(
+        sum(item[f"sector_stock_return_{horizon}"] is not None for item in payload["items"])
+        == payload["eligible_counts"][horizon]
+        for horizon in HORIZONS
+    )
+
+
+def test_representative_sector_returns_match_repository_v2_anchor_closes():
+    payload = _load_payload()
+    by_ticker = {item["ticker"]: item for item in payload["items"]}
+    repo = build_repository_v2(ROOT, end="2026-09-04")
+    loader = RepositoryV2DailyLoader(repo, start="2025-01-01", end="2026-09-04")
+
+    for ticker in ("005930", "000660", "035420", "025980", "0007J0"):
+        item = by_ticker[ticker]
+        frame = loader.load(ticker)
+        assert frame is not None and not frame.empty
+        close_by_date = {index.strftime("%Y-%m-%d"): float(value) for index, value in frame["close"].items()}
+        end_close = close_by_date["2026-09-04"]
+        for horizon in HORIZONS:
+            anchor = item[f"sector_anchor_date_{horizon}"]
+            expected = None if anchor is None or anchor not in close_by_date else (end_close / close_by_date[anchor]) - 1.0
+            actual = item[f"sector_stock_return_{horizon}"]
+            if expected is None:
+                assert actual is None
+            else:
+                assert actual == pytest.approx(expected)
 
 
 def test_payload_has_strict_json_numbers_only():

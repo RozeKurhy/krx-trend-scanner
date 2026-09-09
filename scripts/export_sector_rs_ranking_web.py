@@ -22,6 +22,9 @@ HORIZONS = ("2w", "1m", "3m", "6m", "12m")
 RANK_COLUMNS = tuple(f"within_sector_rs_rank_{horizon}" for horizon in HORIZONS)
 PERCENTILE_COLUMNS = tuple(f"within_sector_rs_percentile_{horizon}" for horizon in HORIZONS)
 ELIGIBLE_COUNT_COLUMNS = tuple(f"sector_eligible_count_{horizon}" for horizon in HORIZONS)
+SECTOR_ANCHOR_COLUMNS = tuple(f"sector_anchor_date_{horizon}" for horizon in HORIZONS)
+SECTOR_STOCK_RETURN_COLUMNS = tuple(f"sector_stock_return_{horizon}" for horizon in HORIZONS)
+DISPLAY_COLUMNS = ("latest_close", "latest_close_as_of", *SECTOR_ANCHOR_COLUMNS, *SECTOR_STOCK_RETURN_COLUMNS)
 MEMBERSHIP_STATUSES = ("MAPPED", "AGGREGATE_ONLY", "UNMAPPED")
 EXPECTED_MARKETS = ("KOSPI", "KOSDAQ")
 
@@ -110,6 +113,7 @@ def _load_core(ranking_path: Path, meta_path: Path) -> tuple[pd.DataFrame, dict[
         *PERCENTILE_COLUMNS,
         "sector_member_count",
         *ELIGIBLE_COUNT_COLUMNS,
+        *DISPLAY_COLUMNS,
     }
     missing = sorted(required.difference(ranking.columns))
     if missing:
@@ -286,9 +290,13 @@ def _project_items(
             "sector_rs_data_status": _json_value(row.get("sector_rs_data_status")),
             "sector_rs_input_reason": _json_value(row.get("sector_rs_input_reason")),
             "sector_benchmark_last_observation_date": _normalise_date(row.get("sector_benchmark_last_observation_date")),
+            "latest_close": _json_value(row.get("latest_close")),
+            "latest_close_as_of": _normalise_date(row.get("latest_close_as_of")),
         }
         for horizon in HORIZONS:
             item[f"sector_rs_{horizon}"] = _json_value(row.get(f"sector_rs_{horizon}"))
+            item[f"sector_anchor_date_{horizon}"] = _normalise_date(row.get(f"sector_anchor_date_{horizon}"))
+            item[f"sector_stock_return_{horizon}"] = _json_value(row.get(f"sector_stock_return_{horizon}"))
         for column in RANK_COLUMNS + PERCENTILE_COLUMNS + ("sector_member_count",) + ELIGIBLE_COUNT_COLUMNS:
             item[column] = _json_value(row.get(column))
         items.append(item)
@@ -366,6 +374,34 @@ def _validate_payload(
         raise ValueError("payload ranking parity does not match authority")
     if name_unresolved or market_mismatches or report_set_mismatches:
         raise ValueError("payload identity or report availability validation failed")
+    latest_close_resolved = 0
+    latest_close_as_of_mismatches = 0
+    sector_stock_return_resolved = {horizon: 0 for horizon in HORIZONS}
+    for item in items:
+        latest_close = item["latest_close"]
+        latest_close_as_of = item["latest_close_as_of"]
+        if latest_close is None:
+            if latest_close_as_of is not None:
+                raise ValueError(f"unresolved latest close has an as-of date: {item['ticker']}")
+        else:
+            latest_close_resolved += 1
+            if not isinstance(latest_close, (int, float)) or not math.isfinite(float(latest_close)) or float(latest_close) <= 0:
+                raise ValueError(f"latest close is invalid: {item['ticker']}")
+            if latest_close_as_of != meta["as_of"]:
+                latest_close_as_of_mismatches += 1
+        for horizon in HORIZONS:
+            anchor = item[f"sector_anchor_date_{horizon}"]
+            stock_return = item[f"sector_stock_return_{horizon}"]
+            if stock_return is not None:
+                if anchor is None:
+                    raise ValueError(f"sector stock return has no anchor: {item['ticker']}:{horizon}")
+                if not isinstance(stock_return, (int, float)) or not math.isfinite(float(stock_return)):
+                    raise ValueError(f"sector stock return is invalid: {item['ticker']}:{horizon}")
+                sector_stock_return_resolved[horizon] += 1
+            if anchor is not None and anchor > meta["as_of"]:
+                raise ValueError(f"sector anchor is after as_of: {item['ticker']}:{horizon}")
+    if latest_close_as_of_mismatches:
+        raise ValueError("latest close exact as-of validation failed")
     return {
         **expected,
         "name_resolved": len(ranking) - name_unresolved,
@@ -378,6 +414,13 @@ def _validate_payload(
         "percentile_parity_mismatches": percentile_parity_mismatches,
         "sector_metadata_mismatches": 0,
         "invalid_json_number_count": 0,
+        "latest_close_resolved": latest_close_resolved,
+        "latest_close_unresolved": len(items) - latest_close_resolved,
+        "latest_close_as_of_mismatches": latest_close_as_of_mismatches,
+        **{
+            f"sector_stock_return_{horizon}_resolved": count
+            for horizon, count in sector_stock_return_resolved.items()
+        },
     }
 
 

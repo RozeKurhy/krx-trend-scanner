@@ -10,11 +10,23 @@
     "sector_rs_data_status",
     "sector_rs_input_reason",
     "sector_benchmark_last_observation_date",
+    "latest_close",
+    "latest_close_as_of",
     "sector_rs_2w",
+    "sector_anchor_date_2w",
+    "sector_stock_return_2w",
     "sector_rs_1m",
+    "sector_anchor_date_1m",
+    "sector_stock_return_1m",
     "sector_rs_3m",
+    "sector_anchor_date_3m",
+    "sector_stock_return_3m",
     "sector_rs_6m",
+    "sector_anchor_date_6m",
+    "sector_stock_return_6m",
     "sector_rs_12m",
+    "sector_anchor_date_12m",
+    "sector_stock_return_12m",
     "within_sector_rs_rank_2w",
     "within_sector_rs_percentile_2w",
     "sector_eligible_count_2w",
@@ -55,7 +67,7 @@
     "opendart": 0,
     "pykrx": 0
   },
-  "parquet_sha256": "fbdaca64966126fbf3afde93fdf13c10a713dbd3ab89174228c71eb78b396850",
+  "parquet_sha256": "da69f527e272cf672ace7545ddadb72d9fdbbb0939738395bce24c07d1239edc",
   "ranking": {
     "direction": "descending",
     "independent_horizon_eligibility": true,
@@ -81,6 +93,11 @@
     "type": "EXACT_SECTOR_MEMBERSHIP_POPULATION"
   },
   "source": {
+    "display_price_return": {
+      "as_of": "2026-09-04",
+      "latest_close": "exact close at as_of; no nearest/future fallback",
+      "sector_stock_return": "(stock_close_as_of / stock_close_at_sector_anchor) - 1"
+    },
     "membership": "data/market/sector_membership/v01/sector_membership_20260904.parquet",
     "membership_sha256": "a685cd4d87097667c48183381cf2254b8adba9be7f95824d681f5e7b4ed81626",
     "sector_index": ".cache/krx_openapi/sector_rs_migration/v01/sector_index_daily.parquet",
@@ -96,9 +113,17 @@
     "eligible_total_3m": 2381,
     "eligible_total_6m": 2364,
     "invalid_sector_code_mapped_count": 0,
+    "latest_close_as_of_mismatches": 0,
+    "latest_close_resolved": 2442,
+    "latest_close_unresolved": 120,
     "percentile_bound_errors": 0,
     "rank_bound_errors": 0,
     "row_count": 2562,
-    "sector_group_count": 45
+    "sector_group_count": 45,
+    "sector_stock_return_12m_resolved": 2338,
+    "sector_stock_return_1m_resolved": 2371,
+    "sector_stock_return_2w_resolved": 2383,
+    "sector_stock_return_3m_resolved": 2381,
+    "sector_stock_return_6m_resolved": 2364
   }
 }

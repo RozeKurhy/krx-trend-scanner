@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import math
+import subprocess
 from pathlib import Path
 
 
@@ -25,8 +26,8 @@ def _load_payload() -> dict:
 def test_sector_page_activates_only_sector_rs_and_exposes_accessible_controls():
     html = _read(SECTOR_PAGE)
 
-    assert 'href="./css/app.css?v=web-sector-rs-1"' in html
-    assert 'src="./js/sector.js?v=web-sector-rs-1"' in html
+    assert 'href="./css/app.css?v=web-sector-rs-fix01-1"' in html
+    assert 'src="./js/sector.js?v=web-sector-rs-fix01-1"' in html
     assert '<a class="ranking-tab" href="./market.html">마켓 RS</a>' in html
     assert '<a class="ranking-tab is-active" href="./sector.html" aria-current="page">섹터 RS</a>' in html
     assert '<span class="ranking-tab" aria-disabled="true">섹터 랭킹 <small>준비 중</small></span>' in html
@@ -34,6 +35,10 @@ def test_sector_page_activates_only_sector_rs_and_exposes_accessible_controls():
     assert 'for="sector-select"' in html
     assert 'id="sector-search"' in html
     assert 'id="sector-ranking-list"' in html
+    assert 'class="sector-primary-row"' in html
+    assert 'sector-horizon-group' in html
+    assert 'class="sector-summary"' in html
+    assert 'sector-overview' not in html
     assert 'aria-live="polite"' in html
     assert '섹터 RS 랭킹을 불러올 수 없습니다.' in html
     assert html.count('data-horizon=') == 5
@@ -55,15 +60,24 @@ def test_sector_script_uses_static_payload_and_payload_authority_for_rendering()
     assert 'value.metric_scope.type === "WITHIN_SECTOR"' in script
     assert 'JSON.stringify(value.metric_scope.group_key) === JSON.stringify(["market", "sector_code"])' in script
     assert 'option.value = sector.sector_key' in script
-    assert 'option.textContent = `${marketLabel(sector.market)} · ${sector.sector_name}`' in script
+    assert 'const DISPLAY_FIELDS = [' in script
+    assert 'function validRank(value)' in script
+    assert 'function validPercentile(value)' in script
+    assert '.filter((item) => validRank(item[rankField]))' in script
+    assert 'option.textContent = sector.sector_name' in script
+    assert 'group.label = marketLabel(market)' in script
     assert 'new URLSearchParams(window.location.search).get("sector")' in script
     assert 'payload.sectors[0].sector_key' in script
     assert 'item.sector_key === activeSectorKey' in script
-    assert 'Number.isFinite(Number(item[rankField]))' in script
     assert 'rankOrder = Number(left[rankField]) - Number(right[rankField])' in script
     assert 'const topPercent = 100 - percentile;' in script
     assert 'const rsField = `sector_rs_${activeHorizon}`' in script
     assert 'item.report_available' in script
+    assert 'const stockReturnField = `sector_stock_return_${activeHorizon}`' in script
+    assert 'formatPrice(item.latest_close)' in script
+    assert 'sector-ranking-position' in script
+    assert 'sector-ranking-period-return' in script
+    assert 'sector-ranking-price' in script
     assert './report.html?ticker=' in script
     assert 'market-ranking.json' not in script
     assert 'data-market' not in script
@@ -104,6 +118,39 @@ def test_sector_payload_report_availability_has_a_safe_non_link_branch():
     script = _read(SECTOR_SCRIPT)
     assert 'createElement("a", "sector-ranking-report", "리포트 보기 ›")' in script
     assert 'createElement("span", "sector-ranking-report is-disabled", "리포트 준비 중")' in script
+
+
+def test_sector_js_rank_helpers_use_real_javascript_null_semantics():
+    result = subprocess.run(
+        ["node", "-e", r'''
+const fs = require("fs");
+const source = fs.readFileSync("web/js/sector.js", "utf8");
+const rankSource = source.match(/function validRank\(value\) \{([\s\S]*?)\n  \}/)[0];
+const percentileSource = source.match(/function validPercentile\(value\) \{([\s\S]*?)\n  \}/)[0];
+const validRank = Function(`return (${rankSource});`)();
+const validPercentile = Function(`return (${percentileSource});`)();
+if (validRank(null) || validRank("") || validRank("not-a-number") || validRank(NaN) || !validRank(1) || !validRank(2.5)) process.exit(1);
+if (validPercentile(null) || validPercentile(101) || !validPercentile(0) || !validPercentile(100)) process.exit(2);
+'''],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr or result.stdout
+
+
+def test_default_sector_has_132_renderable_one_month_candidates():
+    payload = _load_payload()
+    selected = next(sector for sector in payload["sectors"] if sector["sector_key"] == "KOSDAQ:2012")
+    rows = [
+        item for item in payload["items"]
+        if item["sector_key"] == selected["sector_key"]
+        and item["within_sector_rs_rank_1m"] is not None
+        and float(item["within_sector_rs_rank_1m"]) >= 1
+    ]
+    assert selected["member_count"] == 144
+    assert selected["eligible_count_1m"] == 132
+    assert len(rows) == 132
 
 
 def test_sector_css_has_desktop_mobile_dark_mode_and_focus_support():
