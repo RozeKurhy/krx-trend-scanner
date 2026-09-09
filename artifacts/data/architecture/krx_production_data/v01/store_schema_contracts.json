@@ -154,27 +154,30 @@
       "write_policy": "Sector index migrated; market index remains legacy"
     },
     {
-      "description": "PIT ticker to sector membership",
+      "description": "Exact-date KRX canonical ticker to sector membership snapshots",
       "fields": [
-        "effective_date",
-        "as_of",
         "ticker",
+        "market",
+        "effective_date",
         "sector_code",
         "sector_name",
-        "market",
-        "source"
+        "resolution_status",
+        "policy_version",
+        "source_authority",
+        "source_artifact_sha256"
       ],
-      "ownership": "Membership is an independent PIT store",
+      "ownership": "Multiple approved exact-date snapshots; preserve prior snapshots",
       "pit_required": true,
       "required_fields": [
-        "effective_date",
         "ticker",
+        "market",
+        "effective_date",
         "sector_code",
-        "market"
+        "resolution_status"
       ],
-      "schema_version": "SECTOR_MEMBERSHIP_V01",
+      "schema_version": "SECTOR_MEMBERSHIP_STORE_V01",
       "store_id": "SectorMembershipStore",
-      "write_policy": "Future PIT membership phase; current PyKRX source remains"
+      "write_policy": "Append approved exact-date snapshots; preserve prior snapshots; no carry-forward/back-application"
     },
     {
       "description": "PIT reported fundamentals",

@@ -80,17 +80,17 @@
       "validated_source": "KRX Open API"
     },
     {
-      "authority": "PyKRX current source",
-      "current_production_source": "PyKRX get_index_portfolio_deposit_file",
-      "description": "Ticker to sector membership",
-      "freshness_policy": "Effective-date snapshot",
+      "authority": "KRX Data Marketplace official index constituents",
+      "current_production_source": "SectorMembershipStore exact-date Marketplace snapshots",
+      "description": "Ticker to sector membership exact-date snapshots",
+      "freshness_policy": "Approved exact effective-date snapshot",
       "layer_id": "SECTOR_MEMBERSHIP",
-      "migration_status": "LEGACY_SOURCE",
+      "migration_status": "MIGRATED",
       "operational_status": "ACTIVE",
       "pit_required": true,
       "storage_role": "SectorMembershipStore",
       "target_source": "SectorMembershipStore",
-      "validated_source": "PyKRX get_index_portfolio_deposit_file"
+      "validated_source": "KRX Data Marketplace official index constituents CSV"
     },
     {
       "authority": "KRX_PYKRX_FOREIGN_FLOW",
@@ -132,17 +132,17 @@
       "validated_source": "Existing analytics"
     },
     {
-      "authority": "Derived from KRX sector index",
-      "current_production_source": "Existing analytics",
+      "authority": "Derived from stock prices + exact-date SectorMembershipStore + KRX native sector index",
+      "current_production_source": "Exact-date SectorMembershipStore + KRX native sector index",
       "description": "Sector relative strength",
-      "freshness_policy": "As-of session",
+      "freshness_policy": "As-of session with exact-date membership snapshot",
       "layer_id": "SECTOR_RS",
       "migration_status": "MIGRATED",
       "operational_status": "ACTIVE",
       "pit_required": true,
       "storage_role": "Analytics output",
       "target_source": "Existing analytics",
-      "validated_source": "KRX sector index migration"
+      "validated_source": "Exact-date SectorMembershipStore + KRX native sector index"
     },
     {
       "authority": "Derived",

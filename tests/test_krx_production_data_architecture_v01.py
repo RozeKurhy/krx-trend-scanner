@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 from dataclasses import replace
 from pathlib import Path
 
@@ -467,6 +468,77 @@ def test_consumer_compatibility_matrix_is_complete():
 def test_registered_store_and_layer_ids_are_unique():
     assert len({item.store_id for item in STORE_CONTRACTS}) == len(STORE_CONTRACTS)
     assert len({item.layer_id for item in LAYER_REGISTRY}) == len(LAYER_REGISTRY)
+
+
+def test_sector_membership_contract_aligns_marketplace_exact_date_authority():
+    expected_authority = "KRX_DATA_MARKETPLACE_INDEX_CONSTITUENTS"
+    expected_source = "KRX Data Marketplace official index constituents"
+    fields = {
+        item.contract_id: item
+        for item in STORE_FIELD_PROVENANCE
+        if item.owner_store == "SectorMembershipStore"
+        and item.contract_id.startswith("membership.")
+    }
+    assert set(fields) == {
+        "membership.effective_date",
+        "membership.ticker",
+        "membership.sector_code",
+        "membership.market",
+        "membership.resolution_status",
+        "membership.policy_version",
+        "membership.source_authority",
+        "membership.source_artifact_sha256",
+    }
+    assert all(item.authority_id == expected_authority for item in fields.values())
+    assert all(item.source_name == expected_source for item in fields.values())
+    assert fields["membership.effective_date"].source_semantics == "EXACT_DATE_SECTOR_MEMBERSHIP_SNAPSHOT"
+
+    store = next(item for item in STORE_CONTRACTS if item.store_id == "SectorMembershipStore")
+    assert store.description == "Exact-date KRX canonical ticker to sector membership snapshots"
+    assert store.ownership == "Multiple approved exact-date snapshots; preserve prior snapshots"
+    assert "Append approved exact-date snapshots" in store.write_policy
+
+    layers = {item.layer_id: item for item in LAYER_REGISTRY}
+    membership = layers["SECTOR_MEMBERSHIP"]
+    assert membership.authority == expected_source
+    assert membership.current_production_source == "SectorMembershipStore exact-date Marketplace snapshots"
+    assert membership.validated_source == "KRX Data Marketplace official index constituents CSV"
+    assert membership.freshness_policy == "Approved exact effective-date snapshot"
+    sector_rs = layers["SECTOR_RS"]
+    assert "exact-date SectorMembershipStore" in sector_rs.authority
+    assert sector_rs.current_production_source == "Exact-date SectorMembershipStore + KRX native sector index"
+
+    root = Path(__file__).resolve().parents[1]
+    registry = json.loads((root / "artifacts/data/architecture/krx_production_data/v01/data_layer_registry.json").read_text(encoding="utf-8"))
+    registry_layers = {item["layer_id"]: item for item in registry["layers"]}
+    assert registry_layers["SECTOR_MEMBERSHIP"]["authority"] == expected_source
+    assert registry_layers["SECTOR_MEMBERSHIP"]["current_production_source"] == membership.current_production_source
+    assert registry_layers["SECTOR_RS"]["current_production_source"] == sector_rs.current_production_source
+
+    matrix = json.loads((root / "artifacts/data/architecture/krx_production_data/v01/data_authority_matrix.json").read_text(encoding="utf-8"))
+    matrix_fields = {
+        item["contract_id"]: item
+        for item in matrix["fields"]
+        if item.get("owner_store") == "SectorMembershipStore"
+        and item["contract_id"].startswith("membership.")
+    }
+    assert {item["authority_id"] for item in matrix_fields.values()} == {expected_authority}
+    assert {item["source_name"] for item in matrix_fields.values()} == {expected_source}
+
+    store_matrix = json.loads((root / "artifacts/data/architecture/krx_production_data/v01/store_field_provenance_matrix.json").read_text(encoding="utf-8"))
+    store_fields = {
+        item["contract_id"]: item
+        for item in store_matrix["fields"]
+        if item.get("owner_store") == "SectorMembershipStore"
+        and item["contract_id"].startswith("membership.")
+    }
+    assert {item["authority_id"] for item in store_fields.values()} == {expected_authority}
+
+    schema = json.loads((root / "artifacts/data/architecture/krx_production_data/v01/store_schema_contracts.json").read_text(encoding="utf-8"))
+    sector_store = next(item for item in schema["stores"] if item["store_id"] == "SectorMembershipStore")
+    assert sector_store["schema_version"] == "SECTOR_MEMBERSHIP_STORE_V01"
+    assert sector_store["ownership"] == store.ownership
+    assert sector_store["write_policy"] == store.write_policy
 
 
 def test_contract_bundle_is_json_safe_and_network_free():

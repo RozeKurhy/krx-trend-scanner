@@ -771,76 +771,148 @@
       "target_field": "close"
     },
     {
-      "authority_id": "PYKRX_SECTOR_MEMBERSHIP_CURRENT",
-      "authority_type": "LEGACY",
+      "authority_id": "KRX_DATA_MARKETPLACE_INDEX_CONSTITUENTS",
+      "authority_type": "AUTHORITATIVE",
       "contract_id": "membership.effective_date",
       "derivation_keys": [],
       "field_role": "TEMPORAL_KEY",
       "owner_store": "SectorMembershipStore",
-      "provenance_origin": "LEGACY_SOURCE",
-      "schema_version": "SECTOR_MEMBERSHIP_V01",
+      "provenance_origin": "PROVENANCE_METADATA",
+      "schema_version": "SECTOR_MEMBERSHIP_STORE_V01",
       "source_endpoints": [
-        "stock.get_index_portfolio_deposit_file"
+        "KRX Data Marketplace official index constituents CSV"
       ],
-      "source_field": "date",
+      "source_field": "effective_date",
       "source_locator": null,
-      "source_name": "PyKRX",
-      "source_semantics": "MEMBERSHIP_EFFECTIVE_DATE",
+      "source_name": "KRX Data Marketplace official index constituents",
+      "source_semantics": "EXACT_DATE_SECTOR_MEMBERSHIP_SNAPSHOT",
       "target_field": "effective_date"
     },
     {
-      "authority_id": "PYKRX_SECTOR_MEMBERSHIP_CURRENT",
-      "authority_type": "LEGACY",
+      "authority_id": "KRX_DATA_MARKETPLACE_INDEX_CONSTITUENTS",
+      "authority_type": "AUTHORITATIVE",
       "contract_id": "membership.ticker",
       "derivation_keys": [],
       "field_role": "IDENTITY_KEY",
       "owner_store": "SectorMembershipStore",
-      "provenance_origin": "LEGACY_SOURCE",
-      "schema_version": "SECTOR_MEMBERSHIP_V01",
+      "provenance_origin": "RESPONSE_FIELD",
+      "schema_version": "SECTOR_MEMBERSHIP_STORE_V01",
       "source_endpoints": [
-        "stock.get_index_portfolio_deposit_file"
+        "KRX Data Marketplace official index constituents CSV"
       ],
-      "source_field": "ticker",
+      "source_field": "종목코드",
       "source_locator": null,
-      "source_name": "PyKRX",
-      "source_semantics": "SIX_DIGIT_TICKER",
+      "source_name": "KRX Data Marketplace official index constituents",
+      "source_semantics": "KRX_TICKER",
       "target_field": "ticker"
     },
     {
-      "authority_id": "KRX_NATIVE_SECTOR_INDEX",
-      "authority_type": "DERIVED",
+      "authority_id": "KRX_DATA_MARKETPLACE_INDEX_CONSTITUENTS",
+      "authority_type": "AUTHORITATIVE",
       "contract_id": "membership.sector_code",
       "derivation_keys": [],
       "field_role": "AUTHORITATIVE_SOURCE",
       "owner_store": "SectorMembershipStore",
-      "provenance_origin": "STATIC_MAPPING",
-      "schema_version": "SECTOR_MEMBERSHIP_V01",
+      "provenance_origin": "PROVENANCE_METADATA",
+      "schema_version": "SECTOR_MEMBERSHIP_STORE_V01",
       "source_endpoints": [
-        "KRX_NATIVE_SECTOR_INDEX_MAP"
+        "KRX Data Marketplace official index constituents CSV"
       ],
-      "source_field": null,
-      "source_locator": "KRX_NATIVE_SECTOR_INDEX_MAP.sector_code",
-      "source_name": "KRX native sector mapping",
-      "source_semantics": "NATIVE_SECTOR_CODE",
+      "source_field": "sector_code",
+      "source_locator": null,
+      "source_name": "KRX Data Marketplace official index constituents",
+      "source_semantics": "CANONICAL_NATIVE_SECTOR_CODE",
       "target_field": "sector_code"
     },
     {
-      "authority_id": "KRX_NATIVE_SECTOR_INDEX",
-      "authority_type": "DERIVED",
+      "authority_id": "KRX_DATA_MARKETPLACE_INDEX_CONSTITUENTS",
+      "authority_type": "AUTHORITATIVE",
       "contract_id": "membership.market",
       "derivation_keys": [],
       "field_role": "AUTHORITATIVE_SOURCE",
       "owner_store": "SectorMembershipStore",
-      "provenance_origin": "STATIC_MAPPING",
-      "schema_version": "SECTOR_MEMBERSHIP_V01",
+      "provenance_origin": "PROVENANCE_METADATA",
+      "schema_version": "SECTOR_MEMBERSHIP_STORE_V01",
       "source_endpoints": [
-        "KRX_NATIVE_SECTOR_INDEX_MAP"
+        "KRX Data Marketplace official index constituents CSV"
       ],
-      "source_field": null,
-      "source_locator": "KRX_NATIVE_SECTOR_INDEX_MAP.market",
-      "source_name": "KRX native sector mapping",
+      "source_field": "market",
+      "source_locator": null,
+      "source_name": "KRX Data Marketplace official index constituents",
       "source_semantics": "MARKET_NAMESPACE",
       "target_field": "market"
+    },
+    {
+      "authority_id": "KRX_DATA_MARKETPLACE_INDEX_CONSTITUENTS",
+      "authority_type": "DERIVED",
+      "contract_id": "membership.resolution_status",
+      "derivation_keys": [],
+      "field_role": "STATE_METADATA",
+      "owner_store": "SectorMembershipStore",
+      "provenance_origin": "PROVENANCE_METADATA",
+      "schema_version": "SECTOR_MEMBERSHIP_STORE_V01",
+      "source_endpoints": [
+        "KRX Data Marketplace official index constituents CSV"
+      ],
+      "source_field": "resolution_status",
+      "source_locator": null,
+      "source_name": "KRX Data Marketplace official index constituents",
+      "source_semantics": "MAPPED_AGGREGATE_ONLY_UNMAPPED",
+      "target_field": "resolution_status"
+    },
+    {
+      "authority_id": "KRX_DATA_MARKETPLACE_INDEX_CONSTITUENTS",
+      "authority_type": "DERIVED",
+      "contract_id": "membership.policy_version",
+      "derivation_keys": [],
+      "field_role": "PROVENANCE_METADATA",
+      "owner_store": "SectorMembershipStore",
+      "provenance_origin": "PROVENANCE_METADATA",
+      "schema_version": "SECTOR_MEMBERSHIP_STORE_V01",
+      "source_endpoints": [
+        "KRX Data Marketplace official index constituents CSV"
+      ],
+      "source_field": "policy_version",
+      "source_locator": null,
+      "source_name": "KRX Data Marketplace official index constituents",
+      "source_semantics": "MOST_SPECIFIC_NATIVE_SECTOR_POLICY",
+      "target_field": "policy_version"
+    },
+    {
+      "authority_id": "KRX_DATA_MARKETPLACE_INDEX_CONSTITUENTS",
+      "authority_type": "DERIVED",
+      "contract_id": "membership.source_authority",
+      "derivation_keys": [],
+      "field_role": "PROVENANCE_METADATA",
+      "owner_store": "SectorMembershipStore",
+      "provenance_origin": "PROVENANCE_METADATA",
+      "schema_version": "SECTOR_MEMBERSHIP_STORE_V01",
+      "source_endpoints": [
+        "KRX Data Marketplace official index constituents CSV"
+      ],
+      "source_field": "source_authority",
+      "source_locator": null,
+      "source_name": "KRX Data Marketplace official index constituents",
+      "source_semantics": "SOURCE_AUTHORITY_IDENTIFIER",
+      "target_field": "source_authority"
+    },
+    {
+      "authority_id": "KRX_DATA_MARKETPLACE_INDEX_CONSTITUENTS",
+      "authority_type": "DERIVED",
+      "contract_id": "membership.source_artifact_sha256",
+      "derivation_keys": [],
+      "field_role": "PROVENANCE_METADATA",
+      "owner_store": "SectorMembershipStore",
+      "provenance_origin": "PROVENANCE_METADATA",
+      "schema_version": "SECTOR_MEMBERSHIP_STORE_V01",
+      "source_endpoints": [
+        "KRX Data Marketplace official index constituents CSV"
+      ],
+      "source_field": "source_artifact_sha256",
+      "source_locator": null,
+      "source_name": "KRX Data Marketplace official index constituents",
+      "source_semantics": "SOURCE_ARTIFACT_SHA256",
+      "target_field": "source_artifact_sha256"
     },
     {
       "authority_id": "OPENDART_FUNDAMENTALS",
