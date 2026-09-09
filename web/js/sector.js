@@ -227,18 +227,16 @@
   function renderSectorOptions() {
     const select = byId("sector-select");
     if (!select) return;
-    const groups = ["KOSPI", "KOSDAQ"].map((market) => {
-      const group = createElement("optgroup");
-      group.label = marketLabel(market);
-      payload.sectors.filter((sector) => sector.market === market).forEach((sector) => {
+    const options = ["KOSPI", "KOSDAQ"].flatMap((market) => payload.sectors
+      .filter((sector) => sector.market === market)
+      .map((sector) => {
         const option = createElement("option");
         option.value = sector.sector_key;
-        option.textContent = sector.sector_name;
-        group.appendChild(option);
-      });
-      return group;
-    });
-    select.replaceChildren(...groups);
+        option.textContent = `${marketLabel(sector.market)} · ${sector.sector_name}`;
+        return option;
+      })
+    );
+    select.replaceChildren(...options);
     select.value = activeSectorKey;
   }
 
@@ -262,7 +260,7 @@
     const sector = sectorByKey();
     if (!sector) return;
     const eligible = sector[`eligible_count_${activeHorizon}`];
-    setText("sector-scope", `기준일 ${formatDate(payload.as_of)} · 구성종목 ${formatNumber(sector.member_count)}개 · ${HORIZON_LABELS[activeHorizon]} 비교 가능 ${formatNumber(eligible)}개 · ${payload.metric_scope.label || "같은 섹터 구성종목끼리 비교"}`);
+    setText("sector-scope", `기준일 ${formatDate(payload.as_of)} · 구성 종목 ${formatNumber(sector.member_count)}개 · 비교 가능 ${formatNumber(eligible)}개 · ${HORIZON_LABELS[activeHorizon]}`);
   }
 
   function renderRanking() {

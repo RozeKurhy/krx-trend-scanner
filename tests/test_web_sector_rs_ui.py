@@ -26,8 +26,8 @@ def _load_payload() -> dict:
 def test_sector_page_activates_only_sector_rs_and_exposes_accessible_controls():
     html = _read(SECTOR_PAGE)
 
-    assert 'href="./css/app.css?v=web-sector-rs-fix01-1"' in html
-    assert 'src="./js/sector.js?v=web-sector-rs-fix01-1"' in html
+    assert 'href="./css/app.css?v=web-sector-rs-polish-1"' in html
+    assert 'src="./js/sector.js?v=web-sector-rs-polish-1"' in html
     assert '<a class="ranking-tab" href="./market.html">마켓 RS</a>' in html
     assert '<a class="ranking-tab is-active" href="./sector.html" aria-current="page">섹터 RS</a>' in html
     assert '<span class="ranking-tab" aria-disabled="true">섹터 랭킹 <small>준비 중</small></span>' in html
@@ -36,10 +36,17 @@ def test_sector_page_activates_only_sector_rs_and_exposes_accessible_controls():
     assert 'id="sector-search"' in html
     assert 'id="sector-ranking-list"' in html
     assert 'class="sector-primary-row"' in html
+    assert 'class="sector-select-wrap"' in html
+    assert 'class="sector-select-chevron"' in html
     assert 'sector-horizon-group' in html
     assert 'class="sector-summary"' in html
-    assert 'sector-overview' not in html
+    assert '기준일 — · 구성 종목 — · 비교 가능 — · 1개월' in html
+    assert 'class="visually-hidden" for="sector-search"' in html
+    assert '<label class="report-search-label"' not in html
+    assert 'id="sector-ranking-meta" class="visually-hidden"' in html
     assert 'aria-live="polite"' in html
+    assert '같은 섹터 구성종목끼리 비교' not in html
+    assert 'sector-overview' not in html
     assert '섹터 RS 랭킹을 불러올 수 없습니다.' in html
     assert html.count('data-horizon=') == 5
     assert 'data-horizon="2w"' in html
@@ -64,8 +71,10 @@ def test_sector_script_uses_static_payload_and_payload_authority_for_rendering()
     assert 'function validRank(value)' in script
     assert 'function validPercentile(value)' in script
     assert '.filter((item) => validRank(item[rankField]))' in script
-    assert 'option.textContent = sector.sector_name' in script
-    assert 'group.label = marketLabel(market)' in script
+    assert 'option.textContent = `${marketLabel(sector.market)} · ${sector.sector_name}`' in script
+    assert 'createElement("optgroup")' not in script
+    assert 'group.label = marketLabel(market)' not in script
+    assert '구성 종목 ${formatNumber(sector.member_count)}개 · 비교 가능 ${formatNumber(eligible)}개 · ${HORIZON_LABELS[activeHorizon]}' in script
     assert 'new URLSearchParams(window.location.search).get("sector")' in script
     assert 'payload.sectors[0].sector_key' in script
     assert 'item.sector_key === activeSectorKey' in script
@@ -156,8 +165,15 @@ def test_default_sector_has_132_renderable_one_month_candidates():
 def test_sector_css_has_desktop_mobile_dark_mode_and_focus_support():
     css = _read(SECTOR_CSS)
     assert ".sector-select" in css
+    assert ".sector-select-wrap" in css
+    assert ".sector-select-chevron" in css
+    assert "appearance: none" in css
+    assert "-webkit-appearance: none" in css
+    assert "pointer-events: none" in css
     assert ".sector-ranking-row" in css
     assert ".sector-ranking-report.is-disabled" in css
     assert ".sector-select:focus-visible" in css
+    assert ".sector-search-input" in css
+    assert ".sector-horizon-group .market-control" in css
     assert "@media (max-width: 560px)" in css
     assert '[data-theme="dark"]' in css
