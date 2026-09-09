@@ -32,11 +32,18 @@ def _series(as_of: str = SNAPSHOT_EFFECTIVE_DATE, periods: int = 260) -> tuple[p
 
 
 def _sector_mapping(ticker: str = "005930", code: str | None = "2074", status: str = "MAPPED"):
-    return {ticker: (code, "의료·정밀기기" if code else None, SNAPSHOT_EFFECTIVE_DATE, status)}
+    return {
+        ticker: (
+            code,
+            "의료·정밀기기" if code else None,
+            SNAPSHOT_EFFECTIVE_DATE,
+            status,
+        )
+    }
 
 
 def _compute(as_of: str, mapping, *, sector_index=None):
-    stock, market = _series(as_of if as_of == SNAPSHOT_EFFECTIVE_DATE else SNAPSHOT_EFFECTIVE_DATE)
+    stock, market = _series(as_of)
     sector = sector_index if sector_index is not None else market.copy()
     if sector_index is None:
         sector["index_code"] = "2074"
@@ -48,7 +55,7 @@ def _compute(as_of: str, mapping, *, sector_index=None):
         sector_index_df=sector,
         sector_mapping=mapping,
         require_exact_sector_snapshot=True,
-        sector_snapshot_effective_date=SNAPSHOT_EFFECTIVE_DATE,
+        sector_snapshot_effective_date=mapping["005930"][2],
     )
 
 
@@ -57,6 +64,16 @@ def test_exact_snapshot_allows_20260814_and_loader_preserves_population():
     assert len(mapping) == 2528
     assert sum(value[3] == "UNMAPPED" for value in mapping.values()) == 32
     result = _compute(SNAPSHOT_EFFECTIVE_DATE, _sector_mapping())
+    assert result.sector_rs_data_status in {RelativeStrengthDataStatus.READY, RelativeStrengthDataStatus.PARTIAL}
+    assert result.sector_rs_input_reason in {"READY_INPUT", "SECTOR_12M_ANCHOR_UNAVAILABLE"}
+
+
+def test_exact_snapshot_allows_20260904_with_matching_provenance():
+    effective_date = "2026-09-04"
+    mapping = {
+        "005930": ("2074", "의료·정밀기기", effective_date, "MAPPED"),
+    }
+    result = _compute(effective_date, mapping)
     assert result.sector_rs_data_status in {RelativeStrengthDataStatus.READY, RelativeStrengthDataStatus.PARTIAL}
     assert result.sector_rs_input_reason in {"READY_INPUT", "SECTOR_12M_ANCHOR_UNAVAILABLE"}
 
@@ -87,6 +104,28 @@ def test_missing_exact_sector_benchmark_is_data_unavailable():
     )
     assert result.sector_rs_data_status == RelativeStrengthDataStatus.DATA_UNAVAILABLE
     assert result.sector_rs_input_reason == "SECTOR_BENCHMARK_ASOF_UNAVAILABLE"
+
+
+def test_stale_sector_benchmark_does_not_fallback_from_20260904():
+    as_of = "2026-09-04"
+    stock, market = _series(as_of)
+    sector = market.copy()
+    sector["index_code"] = "2074"
+    sector = sector.iloc[:-1]
+    mapping = {"005930": ("2074", "의료·정밀기기", as_of, "MAPPED")}
+    result = compute_relative_strength_features(
+        "005930",
+        as_of,
+        stock,
+        market,
+        sector_index_df=sector,
+        sector_mapping=mapping,
+        require_exact_sector_snapshot=True,
+        sector_snapshot_effective_date=as_of,
+    )
+    assert result.sector_rs_data_status == RelativeStrengthDataStatus.DATA_UNAVAILABLE
+    assert result.sector_rs_input_reason == "SECTOR_BENCHMARK_ASOF_UNAVAILABLE"
+    assert result.sector_benchmark_last_observation_date == "2026-09-03"
 
 
 def test_sector_rs_is_independent_of_stale_market_benchmark():

@@ -78,7 +78,6 @@ from trend_scanner.relative_strength.cross_section import (
     compute_sector_rs_cross_section,
 )
 from trend_scanner.data.sector_membership import (
-    SNAPSHOT_EFFECTIVE_DATE,
     SectorMembershipSnapshotUnavailable,
     load_sector_mapping_exact_snapshot,
 )
@@ -1104,7 +1103,7 @@ def scan_pattern_a_universe(
                     req_as_of_str,
                     repo_root=repo_root,
                 )
-                loaded_sector_snapshot_date = SNAPSHOT_EFFECTIVE_DATE
+                loaded_sector_snapshot_date = req_as_of_str
             except SectorMembershipSnapshotUnavailable as exc:
                 logger.warning("Exact frozen sector membership unavailable: %s", exc)
                 sector_map_loaded = None
@@ -1115,7 +1114,7 @@ def scan_pattern_a_universe(
                 path=sector_mapping_path,
                 repo_root=repo_root,
             )
-            loaded_sector_snapshot_date = SNAPSHOT_EFFECTIVE_DATE
+            loaded_sector_snapshot_date = req_as_of_str
         elif sector_mapping is not None:
             valid_map = {}
             for k, v in sector_mapping.items():

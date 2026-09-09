@@ -1192,9 +1192,9 @@ def generate_stock_report(
     )
 
     # 7c. Sector Relative Strength (independent local Repository V2 calculation)
-    # The frozen 2026-08-14 membership is loaded inside the builder and carried
-    # forward with the existing engine's PIT semantics.  Market RS remains the
-    # exact-date authority CSV consumer above; the two sections are independent.
+    # The exact membership snapshot for the requested date is loaded inside the
+    # builder. Market RS remains the exact-date authority CSV consumer above;
+    # the two sections are independent.
     sector_relative_strength_section = build_sector_relative_strength_section(
         ticker=clean_ticker,
         requested_as_of=canonical_as_of,

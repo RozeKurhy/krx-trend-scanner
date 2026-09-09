@@ -35,11 +35,11 @@ def synthetic_inputs() -> tuple[pd.DataFrame, pd.DataFrame, dict[str, tuple[str,
             "close": 200.0 + pd.Series(range(len(dates)), dtype=float).to_numpy() * 0.5,
         }
     )
-    mapping = {"001540": ("2066", "제약", "2026-08-14", "MAPPED")}
+    mapping = {"001540": ("2066", "제약", "2026-09-04", "MAPPED")}
     return stock, sector, mapping
 
 
-def test_sector_builder_reuses_engine_and_frozen_provenance(synthetic_inputs):
+def test_sector_builder_reuses_engine_and_requested_snapshot_provenance(synthetic_inputs):
     stock, sector, mapping = synthetic_inputs
     section = build_sector_relative_strength_section(
         ticker="001540",
@@ -59,8 +59,8 @@ def test_sector_builder_reuses_engine_and_frozen_provenance(synthetic_inputs):
     assert section.benchmark_code == "2066"
     assert section.benchmark_last_observation_date == sector["date"].iloc[-1]
     assert all(getattr(section, field) is not None for field in ("sector_rs_3m", "sector_rs_6m", "sector_rs_12m"))
-    assert section.membership_snapshot_date == "2026-08-14"
-    assert section.membership_source.endswith("sector_membership_20260814.parquet")
+    assert section.membership_snapshot_date == "2026-09-04"
+    assert section.membership_source == "data/market/sector_membership/v01/sector_membership_20260904.parquet"
     assert section.sector_index_source.endswith("sector_index_daily.parquet")
 
 

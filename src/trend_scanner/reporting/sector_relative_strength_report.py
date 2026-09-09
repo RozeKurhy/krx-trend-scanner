@@ -1,9 +1,8 @@
 """Stock Report v0.4 Sector Relative Strength consumer.
 
 The report layer deliberately reuses the frozen relative-strength calculator.
-It loads the exact 2026-08-14 membership snapshot, carries that PIT mapping
-forward to the requested local date, and never performs network I/O or
-cross-sectional ranking.
+It loads the exact membership snapshot for the requested local date and never
+performs network I/O or cross-sectional ranking.
 """
 
 from __future__ import annotations
@@ -14,11 +13,9 @@ from typing import Any
 import pandas as pd
 
 from trend_scanner.data.sector_membership import (
-    DEFAULT_STORE_FILE,
-    DEFAULT_STORE_DIR,
-    SNAPSHOT_EFFECTIVE_DATE,
     SectorMembershipSnapshotUnavailable,
     load_sector_mapping_exact_snapshot,
+    sector_membership_path_for_date,
 )
 from trend_scanner.relative_strength.relative_strength import (
     RelativeStrengthDataStatus,
@@ -30,7 +27,6 @@ from trend_scanner.reporting.models import SectorRelativeStrengthSection
 
 
 SECTOR_INDEX_SOURCE = ".cache/krx_openapi/sector_rs_migration/v01/sector_index_daily.parquet"
-SECTOR_MEMBERSHIP_SOURCE = str(DEFAULT_STORE_DIR / DEFAULT_STORE_FILE)
 _EMPTY_MARKET_INDEX = pd.DataFrame(columns=["date", "index_code", "close"])
 
 
@@ -136,8 +132,8 @@ def build_sector_relative_strength_section(
             data_status=RelativeStrengthDataStatus.NOT_EVALUATED.value,
         )
 
-    membership_snapshot_date = SNAPSHOT_EFFECTIVE_DATE
-    membership_source = SECTOR_MEMBERSHIP_SOURCE
+    membership_snapshot_date = as_of
+    membership_source = str(sector_membership_path_for_date(as_of, repo_root).relative_to(repo_root))
     sector_index_source = SECTOR_INDEX_SOURCE
 
     # Production Stock Report input is explicitly the Repository V2 view.  A
@@ -157,7 +153,7 @@ def build_sector_relative_strength_section(
     if sector_mapping is None:
         try:
             sector_mapping = load_sector_mapping_exact_snapshot(
-                SNAPSHOT_EFFECTIVE_DATE,
+                as_of,
                 repo_root=repo_root,
             )
         except SectorMembershipSnapshotUnavailable:
@@ -258,7 +254,8 @@ def build_sector_relative_strength_section(
         market=market_str,
         sector_index_df=sector_index_df,
         sector_mapping=sector_mapping,
-        require_exact_sector_snapshot=False,
+        require_exact_sector_snapshot=True,
+        sector_snapshot_effective_date=as_of,
     )
     status = result.sector_rs_data_status.value
     reason = result.sector_rs_input_reason
@@ -295,4 +292,4 @@ def build_sector_relative_strength_section(
     )
 
 
-__all__ = ["build_sector_relative_strength_section", "SECTOR_INDEX_SOURCE", "SECTOR_MEMBERSHIP_SOURCE"]
+__all__ = ["build_sector_relative_strength_section", "SECTOR_INDEX_SOURCE"]

@@ -269,7 +269,6 @@ def compute_relative_strength_features(
         sector_snapshot_ok = (
             sector_snapshot_effective_date is not None
             and str(sector_snapshot_effective_date)[:10] == formatted_asof
-            and formatted_asof == "2026-08-14"
             and sector_mapping is not None
         )
         if not sector_snapshot_ok:
