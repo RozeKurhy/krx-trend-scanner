@@ -62,6 +62,25 @@ def test_instrument_metadata_manifest_matches_artifact():
     assert df["ticker"].nunique() == manifest["ticker_count"]
 
 
+def test_removed_ticker_reconciliation_separates_candidates_from_actual_removals():
+    """prior reconciliation 후보와 실제 baseline-to-target 제거 집합을 분리한다."""
+    manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
+    df = pd.read_csv(CSV_PATH, dtype={"ticker": str}, low_memory=False)
+    baseline_date = manifest["verified_snapshot_baseline_date"]
+    target_date = manifest["verified_snapshot_effective_date"]
+    baseline_tickers = set(df.loc[df["effective_date"].astype(str) == baseline_date, "ticker"].astype(str))
+    target_tickers = set(df.loc[df["effective_date"].astype(str) == target_date, "ticker"].astype(str))
+    actual_removed = sorted(baseline_tickers - target_tickers)
+
+    current_live = manifest["current_live_universe"]
+    reconciliation = manifest["removed_ticker_reconciliation"]
+    assert reconciliation["count"] == 114
+    assert reconciliation["count"] > len(actual_removed)
+    assert reconciliation["unresolved_count"] == 0
+    assert current_live["removed_from_live_count"] == len(actual_removed)
+    assert current_live["removed_from_live_tickers"] == actual_removed
+
+
 def test_manifest_csv_artifact_checksum_matches_file():
     """manifest의 artifact_csv_sha256이 실제 CSV 파일 bytes의 해시와 일치하는지 검증 (Fix Round 06 Major 2)."""
     manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))

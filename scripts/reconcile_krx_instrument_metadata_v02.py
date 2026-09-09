@@ -371,6 +371,8 @@ def main() -> int:
 
     exact_rows = build_exact_live_rows(kospi_rows, kosdaq_rows, konex_rows, etf_rows, etn_rows, history)
     exact_tickers = {row["ticker"] for row in exact_rows}
+    baseline_tickers = set(baseline["ticker"].astype(str))
+    actual_removed = sorted(baseline_tickers - exact_tickers)
     reconciliation = reconcile_removed(baseline, exact_tickers, current_delisted, current_live, prior_removed)
 
     historical = history[history["effective_date"].astype(str) != TARGET_DATE].copy()
@@ -477,11 +479,11 @@ def main() -> int:
             "live_supported_unique_tickers": len(exact_rows),
             "current_canonical_rows": len(exact_rows),
             "baseline_ticker_count": len(baseline),
-            "new_listing_count": len(exact_tickers - set(baseline["ticker"].astype(str))),
-            "new_listing_tickers": sorted(exact_tickers - set(baseline["ticker"].astype(str))),
-            "removed_from_live_count": len(reconciliation),
-            "removed_from_live_tickers": [row["ticker"] for row in reconciliation],
-            "common_ticker_count": len(exact_tickers & set(baseline["ticker"].astype(str))),
+            "new_listing_count": len(exact_tickers - baseline_tickers),
+            "new_listing_tickers": sorted(exact_tickers - baseline_tickers),
+            "removed_from_live_count": len(actual_removed),
+            "removed_from_live_tickers": actual_removed,
+            "common_ticker_count": len(exact_tickers & baseline_tickers),
             "current_coverage_missing_count": 0,
             "baseline_name_copied_to_current": False,
             "baseline_market_copied_to_current": False,
