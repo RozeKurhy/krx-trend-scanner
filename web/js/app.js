@@ -2,6 +2,7 @@
   "use strict";
 
   const HEALTH_URL = "./data/health.json";
+  const FEAR_INDEX_URL = "./data/fear-index.json";
   const STATUS_LABELS = {
     NORMAL: "정상",
     UPDATING: "업데이트 중",
@@ -20,6 +21,14 @@
   const THEME_VALUES = new Set(["light", "dark"]);
   const SYSTEM_THEME_QUERY = "(prefers-color-scheme: dark)";
   const REQUIRED_SECTIONS = ["market_data", "universe", "fundamentals", "stock_reports"];
+  const FEAR_REGIME_LABELS = {
+    OVERHEATED: "과열·흥분",
+    NORMAL: "정상·안정",
+    ANXIOUS: "불안",
+    PANIC: "공포·패닉",
+    APATHY: "침체·무관심",
+  };
+  const FEAR_REGIMES = Object.freeze(Object.keys(FEAR_REGIME_LABELS));
 
   const byId = (id) => document.getElementById(id);
   const numberFormat = new Intl.NumberFormat("ko-KR");
@@ -109,6 +118,16 @@
 
   function formatPercent(value) {
     return Number.isFinite(Number(value)) ? `${Number(value).toFixed(1)}%` : "—";
+  }
+
+  function validNumericValue(value) {
+    return value !== null && value !== undefined && value !== "" &&
+      !(typeof value === "string" && value.trim() === "") &&
+      typeof value !== "boolean" && Number.isFinite(Number(value));
+  }
+
+  function formatFearScore(value) {
+    return validNumericValue(value) ? `${Number(value).toFixed(1)} / 100` : "— / 100";
   }
 
   function formatDate(value) {
@@ -234,7 +253,66 @@
     setText("overall-detail", "데이터 파일 확인 필요");
   }
 
+  function validFearRegime(value) {
+    return FEAR_REGIMES.includes(value);
+  }
+
+  function validateFearIndex(value) {
+    return Boolean(
+      value && typeof value === "object" &&
+      value.schema_version === "FEAR_INDEX_WEB_V01" &&
+      value.model && typeof value.model === "object" &&
+      Array.isArray(value.items) && value.items.length > 0 &&
+      value.current && validNumericValue(value.current.fear_score) &&
+      validFearRegime(value.current.regime) &&
+      typeof value.current.date === "string" &&
+      typeof value.as_of === "string"
+    );
+  }
+
+  function renderFearRegimes(currentRegime) {
+    document.querySelectorAll(".fear-regime-chip").forEach((chip) => {
+      const active = validFearRegime(currentRegime) && chip.dataset.regime === currentRegime;
+      chip.classList.toggle("is-current", active);
+      if (active) chip.setAttribute("aria-current", "true");
+      else chip.removeAttribute("aria-current");
+    });
+  }
+
+  function renderFearIndex(payload) {
+    const current = payload.current;
+    setText("fear-card-score", formatFearScore(current.fear_score));
+    setText("fear-card-regime", FEAR_REGIME_LABELS[current.regime] || "확인 불가");
+    setText("fear-card-date", `기준일 ${formatDate(current.date)}`);
+    renderFearRegimes(current.regime);
+    const card = byId("fear-index-card");
+    if (card) card.classList.remove("is-unavailable");
+  }
+
+  function showFearIndexError() {
+    setText("fear-card-score", "— / 100");
+    setText("fear-card-regime", "확인 불가");
+    setText("fear-card-date", "기준일 확인 필요");
+    renderFearRegimes(null);
+    const card = byId("fear-index-card");
+    if (card) card.classList.add("is-unavailable");
+  }
+
+  function loadFearIndex() {
+    fetch(FEAR_INDEX_URL, { cache: "no-store" })
+      .then((response) => {
+        if (!response.ok) throw new Error("fear-index.json request failed");
+        return response.json();
+      })
+      .then((payload) => {
+        if (!validateFearIndex(payload)) throw new Error("fear-index.json schema is incomplete");
+        renderFearIndex(payload);
+      })
+      .catch(() => showFearIndexError());
+  }
+
   initTheme();
+  loadFearIndex();
 
   fetch(HEALTH_URL, { cache: "no-store" })
     .then((response) => {

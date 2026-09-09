@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="KRX Trend Scanner의 공포 지수와 시장 심리 흐름">
+    <title>공포 지수 · KRX Trend Scanner</title>
+    <script>
+      (() => {
+        const saved = (() => {
+          try {
+            const value = localStorage.getItem("krx-theme");
+            return value === "light" || value === "dark" ? value : null;
+          } catch (error) {
+            return null;
+          }
+        })();
+        const system = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        document.documentElement.dataset.theme = saved || system;
+      })();
+    </script>
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="./css/app.css?v=web-02c-toss-1">
+  </head>
+  <body>
+    <a class="skip-link" href="#main-content">본문으로 건너뛰기</a>
+    <header class="site-header">
+      <div class="shell header-inner">
+        <a class="brand" href="./index.html" aria-label="KRX Trend Scanner 홈">
+          <span class="brand-mark" aria-hidden="true">K</span>
+          <span>
+            <span class="brand-name">KRX Trend Scanner</span>
+            <span class="brand-context">투자 분석 도구</span>
+          </span>
+        </a>
+        <div class="header-actions">
+          <nav class="primary-nav" aria-label="주요 메뉴">
+            <a class="nav-item" href="./index.html">데이터 현황</a>
+            <a class="nav-item" href="./market.html">랭킹</a>
+            <a class="nav-item" href="./report.html">종목 리포트</a>
+            <a class="nav-item" href="./strategy.html">전략 운용</a>
+            <span class="nav-item" aria-disabled="true">전략 설명 <small>준비 중</small></span>
+          </nav>
+          <button id="theme-toggle" class="theme-toggle" type="button" aria-label="어둡게 보기" title="어둡게 보기" aria-pressed="false">
+            <span id="theme-icon-sun" class="theme-icon" aria-hidden="true" hidden>
+              <svg viewBox="0 0 24 24" focusable="false"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"></path></svg>
+            </span>
+            <span id="theme-icon-moon" class="theme-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" focusable="false"><path d="M20.4 15.4A8.5 8.5 0 0 1 8.6 3.6 8.5 8.5 0 1 0 20.4 15.4Z"></path></svg>
+            </span>
+            <span id="theme-toggle-label">어둡게 보기</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main id="main-content" class="shell page-content">
+      <section class="page-intro" aria-labelledby="page-title">
+        <p class="eyebrow">시장 심리</p>
+        <h1 id="page-title">공포 지수</h1>
+        <p class="lede">시장 심리의 흐름을 한눈에!</p>
+      </section>
+
+      <section class="panel fear-summary-panel" aria-labelledby="fear-summary-heading">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">현재 상태</p>
+            <h2 id="fear-summary-heading">오늘의 시장 심리</h2>
+          </div>
+          <p id="fear-current-date" class="fear-summary-as-of">기준일 확인 중</p>
+        </div>
+        <div class="fear-summary-grid">
+          <div class="fear-summary-item fear-summary-item-primary"><span>공포점수</span><strong id="fear-current-score">— / 100</strong></div>
+          <div class="fear-summary-item"><span>시장 상태</span><strong id="fear-current-regime">확인 중</strong></div>
+          <div class="fear-summary-item"><span>V-KOSPI</span><strong id="fear-current-vkospi">—</strong></div>
+          <div class="fear-summary-item"><span>KOSPI</span><strong id="fear-current-kospi">—</strong></div>
+          <div class="fear-summary-item"><span>거래대금</span><strong id="fear-current-trading-value">—</strong></div>
+          <div class="fear-summary-item"><span>기준일</span><strong id="fear-current-as-of">—</strong></div>
+        </div>
+      </section>
+
+      <section class="panel fear-regime-panel" aria-labelledby="fear-regime-heading">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">시장 상태</p>
+            <h2 id="fear-regime-heading">현재 시장 상태</h2>
+          </div>
+        </div>
+        <ul id="fear-regimes" class="fear-regime-strip" aria-label="시장 상태">
+          <li class="fear-regime-chip" data-regime="OVERHEATED">과열·흥분</li>
+          <li class="fear-regime-chip" data-regime="NORMAL">정상·안정</li>
+          <li class="fear-regime-chip" data-regime="ANXIOUS">불안</li>
+          <li class="fear-regime-chip" data-regime="PANIC">공포·패닉</li>
+          <li class="fear-regime-chip" data-regime="APATHY">침체·무관심</li>
+        </ul>
+      </section>
+
+      <section class="panel fear-chart-panel" aria-labelledby="fear-chart-heading">
+        <div class="panel-heading fear-chart-heading">
+          <div>
+            <p class="eyebrow">역사 흐름</p>
+            <h2 id="fear-chart-heading">KOSPI와 공포 지수</h2>
+          </div>
+          <p id="fear-chart-range" class="fear-chart-range-label">전체</p>
+        </div>
+        <p class="fear-chart-note">공포점수는 하방 공포의 강도이고, 시장 상태는 KOSPI 방향·V-KOSPI·거래대금을 함께 반영합니다. 두 값은 1:1로 대응하지 않을 수 있습니다.</p>
+        <div class="fear-chart-legend" aria-label="차트 범례">
+          <span><i class="fear-legend-swatch fear-legend-kospi" aria-hidden="true"></i>KOSPI</span>
+          <span><i class="fear-legend-swatch fear-legend-score" aria-hidden="true"></i>Fear Score · 0–100</span>
+          <span><i class="fear-legend-swatch fear-legend-trading" aria-hidden="true"></i>거래대금 · 조원</span>
+        </div>
+        <div class="fear-range-selector" role="group" aria-label="공포 지수 표시 기간">
+          <button class="fear-range-button is-active" type="button" data-fear-range="all" aria-pressed="true">전체</button>
+          <button class="fear-range-button" type="button" data-fear-range="5y" aria-pressed="false">5년</button>
+          <button class="fear-range-button" type="button" data-fear-range="3y" aria-pressed="false">3년</button>
+          <button class="fear-range-button" type="button" data-fear-range="1y" aria-pressed="false">1년</button>
+          <button class="fear-range-button" type="button" data-fear-range="6m" aria-pressed="false">6개월</button>
+        </div>
+        <div id="fear-chart-wrap" class="fear-chart-wrap">
+          <canvas id="fear-chart" class="fear-chart-canvas" role="img" tabindex="0" aria-label="KOSPI와 Fear Score의 역사 흐름, 하단 KOSPI 거래대금"></canvas>
+          <div id="fear-tooltip" class="fear-tooltip" role="status" aria-live="polite" hidden></div>
+        </div>
+        <p id="fear-chart-status" class="fear-chart-status" role="status">차트 데이터를 불러오는 중</p>
+      </section>
+
+      <section id="fear-error" class="error-card" hidden aria-live="assertive" aria-labelledby="fear-error-heading">
+        <p class="eyebrow">데이터 불러오기 오류</p>
+        <h2 id="fear-error-heading">공포 지수를 불러올 수 없습니다.</h2>
+        <p>정적 fear-index 파일을 확인해 주세요.</p>
+      </section>
+
+      <noscript>
+        <section class="error-card" aria-labelledby="fear-noscript-heading">
+          <p class="eyebrow">자바스크립트 필요</p>
+          <h2 id="fear-noscript-heading">공포 지수를 불러올 수 없습니다.</h2>
+        </section>
+      </noscript>
+    </main>
+
+    <footer class="site-footer shell">
+      <span>KRX Trend Scanner</span>
+      <span>읽기 전용</span>
+    </footer>
+    <script src="./js/fear.js?v=web-02c-toss-1" defer></script>
+  </body>
+</html>

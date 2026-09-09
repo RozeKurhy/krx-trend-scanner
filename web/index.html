@@ -68,6 +68,35 @@
         <p id="overall-status" class="status-pill status-unknown" data-status="UNKNOWN">확인 중</p>
       </section>
 
+      <a id="fear-index-card" class="fear-index-card" href="./fear.html" aria-labelledby="fear-card-title">
+        <div class="fear-card-heading">
+          <div>
+            <p class="eyebrow">시장 심리</p>
+            <h2 id="fear-card-title">공포 지수</h2>
+            <p class="fear-card-subtitle">지금 시장은 어떤 상태일까?</p>
+          </div>
+          <span class="fear-card-affordance">상세 보기 ›</span>
+        </div>
+        <div class="fear-card-summary">
+          <div>
+            <p class="fear-card-label">현재 공포 점수</p>
+            <p id="fear-card-score" class="fear-card-score">— / 100</p>
+          </div>
+          <div>
+            <p class="fear-card-label">현재 시장 상태</p>
+            <p id="fear-card-regime" class="fear-card-regime">확인 중</p>
+          </div>
+        </div>
+        <ul id="fear-card-regimes" class="fear-regime-strip" aria-label="시장 상태">
+          <li class="fear-regime-chip" data-regime="OVERHEATED">과열·흥분</li>
+          <li class="fear-regime-chip" data-regime="NORMAL">정상·안정</li>
+          <li class="fear-regime-chip" data-regime="ANXIOUS">불안</li>
+          <li class="fear-regime-chip" data-regime="PANIC">공포·패닉</li>
+          <li class="fear-regime-chip" data-regime="APATHY">침체·무관심</li>
+        </ul>
+        <p id="fear-card-date" class="fear-card-date">기준일 확인 중</p>
+      </a>
+
       <section class="metric-grid" aria-label="핵심 데이터 현황">
         <article class="metric-card">
           <div class="metric-heading"><span>시장 데이터</span><span id="market-status" class="status-dot" data-status="UNKNOWN">확인 중</span></div>
