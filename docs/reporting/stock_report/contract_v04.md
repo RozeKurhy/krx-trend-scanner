@@ -21,11 +21,18 @@ v0.4는 Stock Report v0.3의 모든 필드와 의미를 유지하면서 최상�
 데이터 권위와 시점
 ------------------
 - Stock 가격은 production 경로에서 `MarketDataRepositoryV2`를 사용한다.
-- Sector membership은 다음 동결 snapshot만 사용한다.
-  `data/market/sector_membership/v01/sector_membership_20260814.parquet`
-- membership snapshot 날짜는 `2026-08-14`이며, 요청 기준일이 이후인 경우
-  기존 engine의 `effective_date <= requested_as_of` PIT carry-forward semantics를
-  적용한다. exact loader 자체를 2026-09-04에 맞게 변경하지 않는다.
+- Sector membership은 `requested_as_of`와 정확히 일치하는
+  approved SectorMembershipStore exact-date snapshot만 사용한다.
+  예를 들어 `2026-08-14` 요청은
+  `data/market/sector_membership/v01/sector_membership_20260814.parquet`,
+  `2026-09-04` 요청은
+  `data/market/sector_membership/v01/sector_membership_20260904.parquet`를
+  사용한다.
+- snapshot의 `effective_date == requested_as_of`가 반드시 성립해야 한다.
+  이전 snapshot 재사용, 미래 snapshot의 소급 적용, nearest-date fallback은
+  허용하지 않는다. exact snapshot이 없으면
+  `SECTOR_MEMBERSHIP_SNAPSHOT_UNAVAILABLE`로 fail closed하고 Sector RS를
+  계산하지 않는다.
 - Sector index는 다음 로컬 cache만 사용한다.
   `.cache/krx_openapi/sector_rs_migration/v01/sector_index_daily.parquet`
 - Sector RS는 기존 `compute_relative_strength_features(...)`를 재사용하며
@@ -59,8 +66,10 @@ Provenance
 Sector section 내부에 다음을 기록한다.
 
 - `source_as_of`
-- `membership_snapshot_date = "2026-08-14"`
-- `membership_source`
+- `membership_snapshot_date`는 실제 사용한 exact membership snapshot의
+  `effective_date`와 같다.
+- `membership_source`는 실제 사용한 exact snapshot 파일 경로를 기록한다.
+  예: `data/market/sector_membership/v01/sector_membership_20260904.parquet`
 - `sector_index_source`
 - `input_reason` (fail-closed 사유가 있는 경우)
 
