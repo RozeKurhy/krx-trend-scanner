@@ -66,7 +66,7 @@ def test_fix02_keeps_raw_flow_and_uses_the_new_chart_contract():
     assert "Npay 증권" in html
     assert "차트</a>" in html
     assert "전자공시</a>" in html
-    assert "web-02d-window-10" in html
+    assert "web-02d-window-11" in html
     assert "Math.floor(absolute / 1e7)" in js
     assert "return `${sign}${formatNumber(absolute)}원`;" not in js
     assert "naver_chart" in js and "toss_chart" not in js
@@ -82,3 +82,50 @@ def test_fix02_amount_boundaries_are_integer_safe():
     assert "if (absolute === 0) return withUnit ? \"0억\" : \"0\";" in helper
     assert "if (absolute >= 1e8) return `${sign}${formatNumber(absolute / 1e8)}${withUnit ? \"억\" : \"\"}`;" in helper
     assert "formatKrwAsEok(value, { signed: true })" in js
+
+
+def test_fix02_fix01_formatters_follow_amount_contract():
+    import subprocess
+
+    result = subprocess.run(
+        ["node", "-e", r'''
+const fs = require("fs");
+const source = fs.readFileSync("web/js/report.js", "utf8");
+const numberSource = source.match(/function formatNumber\(value, maximumFractionDigits\) \{[\s\S]*?\n  \}/)[0];
+const krwSource = source.match(/function formatKrwAsEok\(value, options = \{\}\) \{[\s\S]*?\n  \}/)[0];
+const eokSource = source.match(/function formatEokAmount\(value\) \{[\s\S]*?\n  \}/)[0];
+const textSource = source.match(/function formatEokAmountsInText\(value\) \{[\s\S]*?\n  \}/)[0];
+const formatNumber = Function(`return (${numberSource});`)();
+const formatKrwAsEok = Function("formatNumber", `return (${krwSource});`)(formatNumber);
+const formatEokAmount = Function("formatNumber", `return (${eokSource});`)(formatNumber);
+const formatEokAmountsInText = Function("formatEokAmount", `return (${textSource});`)(formatEokAmount);
+const expected = new Map([
+  [0, "0억"],
+  [10000000, "0.1억"],
+  [23829500, "0.2억"],
+  [95000000, "0.9억"],
+  [99999999, "0.9억"],
+  [100000000, "1억"],
+  [150000000, "2억"],
+  [1000000000, "10억"],
+  [1000000000000, "10,000억"],
+  [3043800326500, "30,438억"],
+  [-23829500, "-0.2억"],
+  [-95000000, "-0.9억"],
+  [-3043800326500, "-30,438억"],
+]);
+for (const [value, expectedValue] of expected) {
+  if (formatKrwAsEok(value) !== expectedValue) process.exit(1);
+}
+if (formatKrwAsEok(23829500, { signed: true }) !== "+0.2억") process.exit(2);
+for (const [value, expectedValue] of [[24.15, "24억원"], [26.70, "27억원"], [35861.26, "35,861억원"]]) {
+  if (formatEokAmount(value) !== expectedValue) process.exit(3);
+}
+if (formatEokAmountsInText("5일 평균(24.15억원), 20일 평균(21.43억원), 60일 평균(26.70억원)") !== "5일 평균(24억원), 20일 평균(21억원), 60일 평균(27억원)") process.exit(4);
+if (source.includes("absolute >= 1e12")) process.exit(5);
+'''],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr or result.stdout

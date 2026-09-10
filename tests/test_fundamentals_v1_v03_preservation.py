@@ -96,7 +96,7 @@ def test_v03_web_fundamentals_layout_and_formatting_contract():
     js = (ROOT / "web/js/report.js").read_text(encoding="utf-8")
     css = (ROOT / "web/css/app.css").read_text(encoding="utf-8")
 
-    assert html.count("web-02d-window-10") == 2
+    assert html.count("web-02d-window-11") == 2
     assert "fundamentals-summary-grid" not in html
     assert html.index('<div class="report-card-row">') < html.index(
         '<div class="report-card-row report-card-row--secondary">'

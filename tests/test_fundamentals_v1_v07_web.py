@@ -36,7 +36,7 @@ def test_v07_fundamentals_trend_markup_and_data_contract():
     js = (ROOT / "web/js/report.js").read_text(encoding="utf-8")
     css = (ROOT / "web/css/app.css").read_text(encoding="utf-8")
 
-    assert 'src="./js/report.js?v=web-02d-window-10"' in html
+    assert 'src="./js/report.js?v=web-02d-window-11"' in html
     assert 'id="fundamentals-trend"' in html
     assert 'id="fundamentals-trend-heading">실적 추세</h4>' in html
     assert 'id="fundamentals-trend-quarterly"' in html

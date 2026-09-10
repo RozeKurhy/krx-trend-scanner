@@ -223,7 +223,6 @@
     const sign = number > 0 ? (signed ? "+" : "") : number < 0 ? "-" : "";
     const absolute = Math.abs(number);
     if (absolute === 0) return withUnit ? "0억" : "0";
-    if (absolute >= 1e12 && withUnit) return `${sign}${formatNumber(absolute / 1e12, 2)}조원`;
     if (absolute >= 1e8) return `${sign}${formatNumber(absolute / 1e8)}${withUnit ? "억" : ""}`;
     const truncatedTenths = Math.floor(absolute / 1e7);
     return `${sign}${formatNumber(truncatedTenths / 10, 1)}${withUnit ? "억" : ""}`;
@@ -231,6 +230,24 @@
 
   function formatKrwCompact(value) {
     return formatKrwAsEok(value, { signed: true });
+  }
+
+  function formatEokAmount(value) {
+    if (value == null || value === "" || !Number.isFinite(Number(value))) return "—";
+    const number = Number(value);
+    const sign = number < 0 ? "-" : "";
+    const absolute = Math.abs(number);
+    if (absolute === 0) return "0억원";
+    if (absolute >= 1) return `${sign}${formatNumber(absolute)}억원`;
+    const truncatedTenths = Math.floor(absolute * 10) / 10;
+    return `${sign}${formatNumber(truncatedTenths, 1)}억원`;
+  }
+
+  function formatEokAmountsInText(value) {
+    if (typeof value !== "string") return value;
+    return value.replace(/(-?[\d,]+(?:\.\d+)?)억원/g, (_match, rawValue) => (
+      formatEokAmount(rawValue.replaceAll(",", ""))
+    ));
   }
 
   function topPercentFromPercentile(value) {
@@ -991,19 +1008,16 @@
       appendDetailEmpty(container, "가격·거래대금 정보가 없습니다.");
       return;
     }
-    const valueLabel = (value) => value == null || !Number.isFinite(Number(value))
-      ? "—"
-      : `${formatNumber(value, 2)}억원`;
     const rows = [
-      ["1일", valueLabel(price.avg_trading_value_1d_eok)],
-      ["5일", valueLabel(price.avg_trading_value_5d_eok)],
-      ["10일", valueLabel(price.avg_trading_value_10d_eok)],
-      ["20일", valueLabel(price.avg_trading_value_20d_eok)],
-      ["60일", valueLabel(price.avg_trading_value_60d_eok)],
+      ["1일", formatEokAmount(price.avg_trading_value_1d_eok)],
+      ["5일", formatEokAmount(price.avg_trading_value_5d_eok)],
+      ["10일", formatEokAmount(price.avg_trading_value_10d_eok)],
+      ["20일", formatEokAmount(price.avg_trading_value_20d_eok)],
+      ["60일", formatEokAmount(price.avg_trading_value_60d_eok)],
     ];
     container.appendChild(createDetailTable(["기간", "평균 거래대금"], rows));
     appendDetailNote(container, `거래대금 상태: ${tradingValueLabel(price.trading_value_state)}`);
-    if (price.trading_value_explanation) appendDetailNote(container, price.trading_value_explanation);
+    if (price.trading_value_explanation) appendDetailNote(container, formatEokAmountsInText(price.trading_value_explanation));
   }
 
   function signedValueClass(value) {
