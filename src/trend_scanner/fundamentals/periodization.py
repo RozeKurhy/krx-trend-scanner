@@ -515,7 +515,13 @@ class PeriodizationEngine:
             else:
                 prior_selection = self._prior_cumulative_selection(group, code, anchor)
             prior = prior_selection.selected
-            if len(cumulative) > 1 or len(direct) > 1:
+            # A cumulative conflict does not make an independently reported
+            # standalone quarter ambiguous.  They are different economic
+            # scopes: the cumulative value can be unusable for deriving the
+            # quarter while a unique direct value remains deterministic.
+            # Conversely, multiple direct contexts still fail closed, and a
+            # cumulative-only conflict remains ambiguous below.
+            if len(direct) > 1:
                 observations.append(self._unavailable(anchor, fiscal_start, period_info[0], PERIOD_AMBIGUOUS,
                                                      "MULTIPLE_CURRENT_PERIOD_CONTEXTS"))
                 continue
@@ -553,7 +559,7 @@ class PeriodizationEngine:
                 observations.append(self._derived(anchor, fiscal_start, period_label, cumulative_candidate, prior,
                                                   derived_value, "DERIVED_DIFFERENCE"))
             else:
-                status = (PERIOD_AMBIGUOUS if prior_selection.status == PRIOR_AMBIGUOUS
+                status = (PERIOD_AMBIGUOUS if prior_selection.status == PRIOR_AMBIGUOUS or len(cumulative) > 1
                           else DERIVATION_UNAVAILABLE if cumulative_candidate is not None else DATA_UNAVAILABLE)
                 observations.append(self._unavailable(anchor, fiscal_start, period_label, status,
                                                      derived_reason or "STANDALONE_UNAVAILABLE"))

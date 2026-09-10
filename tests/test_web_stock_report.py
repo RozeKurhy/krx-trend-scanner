@@ -233,15 +233,15 @@ def test_report_frontend_has_safe_states_and_relative_assets():
     css = (ROOT / "web/css/app.css").read_text(encoding="utf-8")
     favicon = (ROOT / "web/favicon.svg").read_text(encoding="utf-8")
 
-    assert 'href="./css/app.css?v=web-02d-window-2"' in html
+    assert 'href="./css/app.css?v=web-02d-window-3"' in html
     assert 'href="./css/app.css?v=web-fear-fix02-1"' in index_html
     assert 'href="./favicon.svg"' in html
     assert 'href="./favicon.svg"' in index_html
     assert (ROOT / "web/favicon.svg").exists()
     assert '#9f1d2f' in favicon
-    assert 'src="./js/report.js?v=web-02d-window-2"' in html
+    assert 'src="./js/report.js?v=web-02d-window-3"' in html
     assert 'src="./js/app.js?v=web-fear-fix02-1"' in index_html
-    assert html.count("web-02d-window-2") == 2
+    assert html.count("web-02d-window-3") == 2
     assert index_html.count("web-fear-fix02-1") == 2
     assert "web-03a-final-1" not in html
     assert "web-03a-final-1" not in index_html
@@ -318,6 +318,12 @@ def test_report_frontend_has_safe_states_and_relative_assets():
     assert "renderFundamentalsDetail" in js
     assert "ttm_operating_cash_flow_krw" in js
     assert "fundamentals-summary-grid" in css
+    assert "operating_income_yoy_pct" in js
+    assert "fundamentals-table" in js and "fundamentals-table" in css
+    assert "fundamental-loss" in js and "fundamental-loss" in css
+    assert "펀더멘털 V1 적용 대상 아님" in js
+    assert "filter_status" in js
+    assert "position: sticky" in css
     assert "strategy.history" in js
     assert "100 - Number(value)" in js
     for percentile, expected in ((92.51, 7.5), (76.6, 23.4), (99.20, 0.8)):

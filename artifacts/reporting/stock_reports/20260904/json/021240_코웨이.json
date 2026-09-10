@@ -3053,6 +3053,7 @@
         "net_income_krw": 465486095093,
         "net_margin_pct": 12.703414915864574,
         "operating_income_krw": 640219263049,
+        "operating_income_yoy_pct": 5.570314946167152,
         "operating_margin_pct": 17.471995450295026,
         "reason": null,
         "revenue_krw": 3664259556788,
@@ -3066,6 +3067,7 @@
         "net_income_krw": 457795616474,
         "net_margin_pct": 11.871883799897608,
         "operating_income_krw": 677378551681,
+        "operating_income_yoy_pct": 5.8041503554628235,
         "operating_margin_pct": 17.566265741114826,
         "reason": null,
         "revenue_krw": 3856132895084,
@@ -3079,6 +3081,7 @@
         "net_income_krw": 471011104871,
         "net_margin_pct": 11.874669430425778,
         "operating_income_krw": 731255078054,
+        "operating_income_yoy_pct": 7.953680588099317,
         "operating_margin_pct": 18.43568491572965,
         "reason": null,
         "revenue_krw": 3966519721923,
@@ -3092,6 +3095,7 @@
         "net_income_krw": 565452186637,
         "net_margin_pct": 13.119108992308922,
         "operating_income_krw": null,
+        "operating_income_yoy_pct": null,
         "operating_margin_pct": null,
         "reason": "MULTIPLE_CURRENT_CUMULATIVE_CONTEXTS",
         "revenue_krw": 4310141694596,
@@ -3105,6 +3109,7 @@
         "net_income_krw": 617510076654,
         "net_margin_pct": 12.440855376122052,
         "operating_income_krw": 878651769382,
+        "operating_income_yoy_pct": null,
         "operating_margin_pct": 17.702026253702915,
         "reason": null,
         "revenue_krw": 4963566073111,
@@ -3149,6 +3154,12 @@
         "type": "METRIC_UNAVAILABLE"
       },
       {
+        "metric": "operating_income:QUARTERLY_YOY:2024Q1",
+        "reason": "MISSING_REQUIRED_INPUT",
+        "status": "DATA_UNAVAILABLE",
+        "type": "METRIC_UNAVAILABLE"
+      },
+      {
         "metric": "operating_income:OPERATING_MARGIN:2024Q1",
         "reason": "MISSING_REQUIRED_INPUT",
         "status": "DATA_UNAVAILABLE",
@@ -3161,39 +3172,21 @@
         "type": "METRIC_UNAVAILABLE"
       },
       {
-        "metric": "operating_income:2024Q2",
-        "reason": "MULTIPLE_CURRENT_PERIOD_CONTEXTS",
-        "status": "PERIOD_AMBIGUOUS",
-        "type": "METRIC_UNAVAILABLE"
-      },
-      {
         "metric": "operating_cash_flow:2024Q2",
         "reason": "PRIOR_PIT_MULTIPLE_FILINGS_ON_SAME_EOD",
         "status": "PERIOD_AMBIGUOUS",
         "type": "METRIC_UNAVAILABLE"
       },
       {
-        "metric": "operating_income:OPERATING_MARGIN:2024Q2",
-        "reason": "MARGIN_INPUT_UNAVAILABLE",
-        "status": "INPUT_NOT_READY",
-        "type": "METRIC_UNAVAILABLE"
-      },
-      {
-        "metric": "operating_income:2024Q3",
-        "reason": "MULTIPLE_CURRENT_PERIOD_CONTEXTS",
-        "status": "PERIOD_AMBIGUOUS",
-        "type": "METRIC_UNAVAILABLE"
-      },
-      {
-        "metric": "operating_income:OPERATING_MARGIN:2024Q3",
-        "reason": "MARGIN_INPUT_UNAVAILABLE",
-        "status": "INPUT_NOT_READY",
-        "type": "METRIC_UNAVAILABLE"
-      },
-      {
         "metric": "operating_income:2024Q4",
-        "reason": "MULTIPLE_CURRENT_PERIOD_CONTEXTS",
+        "reason": "PRIOR_PIT_MULTIPLE_CURRENT_CUMULATIVE_CONTEXTS",
         "status": "PERIOD_AMBIGUOUS",
+        "type": "METRIC_UNAVAILABLE"
+      },
+      {
+        "metric": "operating_income:QUARTERLY_YOY:2024Q4",
+        "reason": "CURRENT_OBSERVATION_UNAVAILABLE",
+        "status": "INPUT_NOT_READY",
         "type": "METRIC_UNAVAILABLE"
       },
       {
@@ -3209,14 +3202,38 @@
         "type": "METRIC_UNAVAILABLE"
       },
       {
+        "metric": "operating_income:QUARTERLY_YOY:2025Q1",
+        "reason": "MISSING_PRIOR_PERIOD",
+        "status": "DATA_UNAVAILABLE",
+        "type": "METRIC_UNAVAILABLE"
+      },
+      {
+        "metric": "operating_income:QUARTERLY_YOY:2025Q4",
+        "reason": "INPUT_NOT_READY",
+        "status": "INPUT_NOT_READY",
+        "type": "METRIC_UNAVAILABLE"
+      },
+      {
         "metric": "operating_income:2024FY",
         "reason": "MULTIPLE_CURRENT_CUMULATIVE_CONTEXTS",
         "status": "PERIOD_AMBIGUOUS",
         "type": "METRIC_UNAVAILABLE"
       },
       {
+        "metric": "operating_income:ANNUAL_YOY:2024FY",
+        "reason": "CURRENT_OBSERVATION_UNAVAILABLE",
+        "status": "INPUT_NOT_READY",
+        "type": "METRIC_UNAVAILABLE"
+      },
+      {
         "metric": "operating_income:OPERATING_MARGIN:2024FY",
         "reason": "MARGIN_INPUT_UNAVAILABLE",
+        "status": "INPUT_NOT_READY",
+        "type": "METRIC_UNAVAILABLE"
+      },
+      {
+        "metric": "operating_income:ANNUAL_YOY:2025FY",
+        "reason": "INPUT_NOT_READY",
         "status": "INPUT_NOT_READY",
         "type": "METRIC_UNAVAILABLE"
       },
@@ -3242,6 +3259,7 @@
         "net_margin_pct": 13.593027638633329,
         "operating_cash_flow_krw": 83128374594,
         "operating_income_krw": 195316364175,
+        "operating_income_yoy_pct": 18.331596818883302,
         "operating_margin_pct": 19.382899463399777,
         "quarter": "2023Q3",
         "reason": null,
@@ -3254,6 +3272,7 @@
         "net_margin_pct": 10.12303530543332,
         "operating_cash_flow_krw": 167414482442,
         "operating_income_krw": 166178845033,
+        "operating_income_yoy_pct": 1.542356669936143,
         "operating_margin_pct": 16.545362660454042,
         "quarter": "2023Q4",
         "reason": null,
@@ -3266,6 +3285,7 @@
         "net_margin_pct": null,
         "operating_cash_flow_krw": null,
         "operating_income_krw": null,
+        "operating_income_yoy_pct": null,
         "operating_margin_pct": null,
         "quarter": "2024Q1",
         "reason": "MISSING_QUARTER_OR_FISCAL_YEAR;REQUIRED_METRIC_MISSING",
@@ -3277,10 +3297,11 @@
         "net_income_krw": 154183926045,
         "net_margin_pct": 14.246489221340259,
         "operating_cash_flow_krw": null,
-        "operating_income_krw": null,
-        "operating_margin_pct": null,
+        "operating_income_krw": 211194775407,
+        "operating_income_yoy_pct": 8.767102727012619,
+        "operating_margin_pct": 19.51425267612566,
         "quarter": "2024Q2",
-        "reason": "MULTIPLE_CURRENT_PERIOD_CONTEXTS;PRIOR_PIT_MULTIPLE_FILINGS_ON_SAME_EOD",
+        "reason": "PRIOR_PIT_MULTIPLE_FILINGS_ON_SAME_EOD",
         "revenue_krw": 1082259100116,
         "revenue_yoy_pct": 7.562399904120147,
         "status": "PERIOD_AMBIGUOUS"
@@ -3289,22 +3310,24 @@
         "net_income_krw": 179481207251,
         "net_margin_pct": 16.311485389814848,
         "operating_cash_flow_krw": 92699427144,
-        "operating_income_krw": null,
-        "operating_margin_pct": null,
+        "operating_income_krw": 207051057484,
+        "operating_income_yoy_pct": 6.008044107602742,
+        "operating_margin_pct": 18.817069212003325,
         "quarter": "2024Q3",
-        "reason": "MULTIPLE_CURRENT_PERIOD_CONTEXTS",
+        "reason": null,
         "revenue_krw": 1100336376251,
         "revenue_yoy_pct": 9.195711515935827,
-        "status": "PERIOD_AMBIGUOUS"
+        "status": "READY"
       },
       {
         "net_income_krw": 104133879293,
         "net_margin_pct": 9.250499273879221,
         "operating_cash_flow_krw": 52859967210,
         "operating_income_krw": null,
+        "operating_income_yoy_pct": null,
         "operating_margin_pct": null,
         "quarter": "2024Q4",
-        "reason": "MULTIPLE_CURRENT_PERIOD_CONTEXTS",
+        "reason": "PRIOR_PIT_MULTIPLE_CURRENT_CUMULATIVE_CONTEXTS",
         "revenue_krw": 1125710907162,
         "revenue_yoy_pct": 12.079821027311672,
         "status": "PERIOD_AMBIGUOUS"
@@ -3314,6 +3337,7 @@
         "net_margin_pct": 11.816090785528182,
         "operating_cash_flow_krw": -6548364060,
         "operating_income_krw": 211244773596,
+        "operating_income_yoy_pct": null,
         "operating_margin_pct": 17.979514921556778,
         "quarter": "2025Q1",
         "reason": null,
@@ -3326,6 +3350,7 @@
         "net_margin_pct": 12.352851010180418,
         "operating_cash_flow_krw": -9273716524,
         "operating_income_krw": 242721142680,
+        "operating_income_yoy_pct": 14.927626506027226,
         "operating_margin_pct": 19.280802198323812,
         "quarter": "2025Q2",
         "reason": null,
@@ -3338,6 +3363,7 @@
         "net_margin_pct": 14.027529080839503,
         "operating_cash_flow_krw": 11617246418,
         "operating_income_krw": 243057379433,
+        "operating_income_yoy_pct": 17.390069090462102,
         "operating_margin_pct": 19.37637528531222,
         "quarter": "2025Q3",
         "reason": null,
@@ -3350,6 +3376,7 @@
         "net_margin_pct": 11.542693423817571,
         "operating_cash_flow_krw": 39748979205,
         "operating_income_krw": 181628473673,
+        "operating_income_yoy_pct": null,
         "operating_margin_pct": 14.241220986658872,
         "quarter": "2025Q4",
         "reason": null,
@@ -3362,6 +3389,7 @@
         "net_margin_pct": 13.688090991615326,
         "operating_cash_flow_krw": 6036109269,
         "operating_income_krw": 250934549708,
+        "operating_income_yoy_pct": 18.788524533111357,
         "operating_margin_pct": 18.87101259250743,
         "quarter": "2026Q1",
         "reason": null,
@@ -3374,6 +3402,7 @@
         "net_margin_pct": 12.36100370928769,
         "operating_cash_flow_krw": -60714650551,
         "operating_income_krw": 253206002831,
+        "operating_income_yoy_pct": 4.319714399508693,
         "operating_margin_pct": 17.556842010860624,
         "quarter": "2026Q2",
         "reason": null,

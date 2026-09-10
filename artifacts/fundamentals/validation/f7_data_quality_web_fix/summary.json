@@ -1,0 +1,67 @@
+{
+  "work_item": "FUNDAMENTALS_V1_DATA_QUALITY_WEB_FIX_V01",
+  "status": "PASS",
+  "requested_as_of": "2026-09-04",
+  "run_date": "2026-09-10",
+  "network": {
+    "opendart_live_requests": 0,
+    "local_cache_only_recompute": true,
+    "quota_checkpoint_prior_total": 18458,
+    "quota_checkpoint_after_total": 18458,
+    "quota_cap": 39000
+  },
+  "root_cause": {
+    "ticker": "021240",
+    "q1": {
+      "filing_registry": ["20240514001085", "20240514001464"],
+      "filing_registry_status": "AMBIGUOUS",
+      "xbrl_cache": "MISSING_FOR_BOTH_FILINGS",
+      "classification": "DATA_UNAVAILABLE_WITHOUT_LIVE_SOURCE",
+      "reason": "Q1 filing existence is proven, but neither local XBRL artifact is available; no value was fabricated."
+    },
+    "operating_income_alias_conflict": {
+      "basis": "CFS",
+      "q2_ytd_values": {
+        "dart_OperatingIncomeLoss": 404939351207,
+        "ifrs-full_ProfitLossFromOperatingActivities": 404939351000
+      },
+      "q2_ytd_scope": ["2024-01-01", "2024-06-30", 182],
+      "q3_ytd_values": {
+        "dart_OperatingIncomeLoss": 611990408691,
+        "ifrs-full_ProfitLossFromOperatingActivities": 611990409000
+      },
+      "fy_values": {
+        "dart_OperatingIncomeLoss": 795373861343,
+        "ifrs-full_ProfitLossFromOperatingActivities": 795373861000
+      },
+      "classification": "CONFLICTS_PRESERVED_PERIOD_AMBIGUOUS"
+    },
+    "rule_change": "A unique standalone quarter remains usable when only a different cumulative scope conflicts; multiple standalone contexts and cumulative-only conflicts remain PERIOD_AMBIGUOUS."
+  },
+  "affected": {
+    "targeted_f7_ticker_count": 29,
+    "affected_f7_ticker_count": 29,
+    "affected_published_report_count": 10,
+    "live_recompute_count": 0
+  },
+  "output_counts": {
+    "f7_tickers": 4415,
+    "f7_remaining": 0,
+    "f7_invalid": 0,
+    "f7_outside_universe": 0,
+    "stock_report_v05": 553,
+    "stock_report_schema_errors": 0,
+    "f7_ready_parity": 553,
+    "web_compact_reports": 553,
+    "web_fundamentals_public_parity": 553
+  },
+  "coway_after": {
+    "2024Q1": "DATA_UNAVAILABLE_LOCAL_XBRL_MISSING",
+    "2024Q2_operating_income_krw": 211194775407,
+    "2024Q2_operating_income_yoy_pct": 8.767102727012619,
+    "2024Q3_operating_income_krw": 207051057484,
+    "2024Q3_operating_income_yoy_pct": 6.008044107602742,
+    "2024Q4_operating_income": "PERIOD_AMBIGUOUS_PRIOR_CUMULATIVE_CONFLICT",
+    "2024FY_operating_income": "PERIOD_AMBIGUOUS_CONFLICT_PRESERVED"
+  }
+}

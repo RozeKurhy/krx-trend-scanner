@@ -388,25 +388,25 @@ def _render_fundamentals_section(section: FundamentalsSection) -> list[str]:
         f"| TTM ROE / 최신 부채비율 | {_format_fundamentals_pct(summary.ttm_roe_pct)} / {_format_fundamentals_pct(summary.latest_debt_ratio_pct)} |",
         "",
         "### 최근 12개 분기 (Latest 12 Quarters)",
-        "| 분기 | 상태 | 매출 | 매출 YoY | 영업이익 | 영업이익률 | 순이익 | 순이익률 | OCF |",
-        "|---|---|---:|---:|---:|---:|---:|---:|---:|",
+        "| 분기 | 상태 | 매출 | 매출 YoY | 영업이익 | 영업이익 YoY | 영업이익률 | 순이익 | 순이익률 | OCF |",
+        "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|",
     ])
     for row in section.quarterly:
         lines.append(
             f"| `{row.quarter}` | `{row.status}` | {_format_fundamentals_krw(row.revenue_krw)} | {_format_fundamentals_pct(row.revenue_yoy_pct)} | "
-            f"{_format_fundamentals_krw(row.operating_income_krw)} | {_format_fundamentals_pct(row.operating_margin_pct)} | "
+            f"{_format_fundamentals_krw(row.operating_income_krw)} | {_format_fundamentals_pct(row.operating_income_yoy_pct)} | {_format_fundamentals_pct(row.operating_margin_pct)} | "
             f"{_format_fundamentals_krw(row.net_income_krw)} | {_format_fundamentals_pct(row.net_margin_pct)} | {_format_fundamentals_krw(row.operating_cash_flow_krw)} |"
         )
     lines.extend([
         "",
         "### 최근 5개년 (Latest 5 Fiscal Years)",
-        "| FY | 상태 | 매출 | 매출 YoY | 영업이익 | 영업이익률 | 순이익 | 순이익률 | ROE | 부채비율 |",
-        "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|",
+        "| FY | 상태 | 매출 | 매출 YoY | 영업이익 | 영업이익 YoY | 영업이익률 | 순이익 | 순이익률 | ROE | 부채비율 |",
+        "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
     ])
     for row in section.annual:
         lines.append(
             f"| `{row.fiscal_year}` | `{row.status}` | {_format_fundamentals_krw(row.revenue_krw)} | {_format_fundamentals_pct(row.revenue_yoy_pct)} | "
-            f"{_format_fundamentals_krw(row.operating_income_krw)} | {_format_fundamentals_pct(row.operating_margin_pct)} | "
+            f"{_format_fundamentals_krw(row.operating_income_krw)} | {_format_fundamentals_pct(row.operating_income_yoy_pct)} | {_format_fundamentals_pct(row.operating_margin_pct)} | "
             f"{_format_fundamentals_krw(row.net_income_krw)} | {_format_fundamentals_pct(row.net_margin_pct)} | "
             f"{_format_fundamentals_pct(row.roe_pct)} | {_format_fundamentals_pct(row.debt_ratio_pct)} |"
         )

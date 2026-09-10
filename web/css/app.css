@@ -490,6 +490,7 @@ summary { cursor: pointer; color: var(--ink); font-size: 13px; font-weight: 750;
 .detail-empty { margin: 0; color: var(--ink-soft); font-size: 13px; }
 .detail-table td.detail-value-positive { color: var(--market-up-red); font-weight: 750; }
 .detail-table td.detail-value-negative { color: var(--market-down-blue); font-weight: 750; }
+.fundamental-loss { color: var(--market-up-red) !important; font-weight: 750; }
 .fundamentals-detail-panel { margin-bottom: 16px; }
 .fundamentals-detail-panel .report-detail-header { margin-bottom: 0; }
 .fundamentals-detail-panel .eyebrow { margin-bottom: 5px; }
@@ -500,6 +501,9 @@ summary { cursor: pointer; color: var(--ink); font-size: 13px; font-weight: 750;
 .fundamentals-periods { margin-top: 22px; }
 .fundamentals-period-heading { margin: 20px 0 10px; font-size: 14px; letter-spacing: -0.025em; }
 .fundamentals-period-heading:first-child { margin-top: 0; }
+.fundamentals-table { min-width: max-content; }
+.fundamentals-table th:first-child, .fundamentals-table td:first-child { position: sticky; left: 0; z-index: 1; min-width: 116px; background: var(--surface); box-shadow: 1px 0 0 var(--line); }
+.fundamentals-table th:first-child { z-index: 2; background: var(--surface-muted); }
 .pattern-score-chart-wrap { overflow: hidden; margin: 0 0 18px; }
 .pattern-score-chart { display: block; width: 100%; height: auto; min-width: 0; overflow: visible; }
 .pattern-chart-grid { stroke: var(--line); stroke-width: 1; }

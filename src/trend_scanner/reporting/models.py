@@ -253,6 +253,7 @@ class FundamentalsQuarterRow:
     revenue_krw: int | float | None
     revenue_yoy_pct: int | float | None
     operating_income_krw: int | float | None
+    operating_income_yoy_pct: int | float | None
     operating_margin_pct: int | float | None
     net_income_krw: int | float | None
     net_margin_pct: int | float | None
@@ -267,6 +268,7 @@ class FundamentalsAnnualRow:
     revenue_krw: int | float | None
     revenue_yoy_pct: int | float | None
     operating_income_krw: int | float | None
+    operating_income_yoy_pct: int | float | None
     operating_margin_pct: int | float | None
     net_income_krw: int | float | None
     net_margin_pct: int | float | None

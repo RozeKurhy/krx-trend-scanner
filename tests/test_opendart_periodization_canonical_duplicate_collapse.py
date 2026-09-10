@@ -5,6 +5,7 @@ from trend_scanner.fundamentals.periodization import (
     CUMULATIVE_YTD,
     PERIOD_AMBIGUOUS,
     READY,
+    STANDALONE_QUARTER,
     collapse_canonical_duplicate_periodization_facts,
     facts_from_xbrl_rows,
     periodize_facts,
@@ -73,3 +74,41 @@ def test_canonical_duplicate_is_ready_after_collapse_but_value_conflict_is_not()
     assert any(item.resolution_status == READY and item.fiscal_period == "Q1" for item in ready.observations)
     blocked = periodize_facts((_fact(), _fact(value=101)))
     assert any(item.resolution_status == PERIOD_AMBIGUOUS and item.fiscal_period == "Q1" for item in blocked.observations)
+
+
+def test_unique_standalone_quarter_survives_unresolvable_cumulative_conflict():
+    cumulative_a = _fact(
+        reprt_code="11012", report_type="H1", period_end="2025-06-30",
+        duration_days=181, value=100,
+    )
+    cumulative_b = _fact(
+        reprt_code="11012", report_type="H1", period_end="2025-06-30",
+        duration_days=181, value=101,
+    )
+    direct = _fact(
+        reprt_code="11012", report_type="H1", period_start="2025-04-01",
+        period_end="2025-06-30", duration_days=91, period_semantics=STANDALONE_QUARTER,
+        value=40,
+    )
+    result = periodize_facts((cumulative_a, cumulative_b, direct))
+    q2 = next(item for item in result.observations if item.fiscal_period == "Q2")
+    assert q2.resolution_status == READY
+    assert q2.value == 40
+    assert q2.method == "DIRECT_ONLY"
+
+
+def test_conflicting_standalone_quarter_contexts_remain_ambiguous():
+    direct_a = _fact(
+        reprt_code="11012", report_type="H1", period_start="2025-04-01",
+        period_end="2025-06-30", duration_days=91, period_semantics=STANDALONE_QUARTER,
+        value=40,
+    )
+    direct_b = _fact(
+        reprt_code="11012", report_type="H1", period_start="2025-04-01",
+        period_end="2025-06-30", duration_days=91, period_semantics=STANDALONE_QUARTER,
+        value=41,
+    )
+    result = periodize_facts((direct_a, direct_b))
+    q2 = next(item for item in result.observations if item.fiscal_period == "Q2")
+    assert q2.resolution_status == PERIOD_AMBIGUOUS
+    assert q2.value is None

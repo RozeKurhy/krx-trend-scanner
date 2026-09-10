@@ -204,6 +204,7 @@ def _annual_rows(multi_period_result: Any, f2_index: Mapping[tuple[str, str], tu
             revenue_krw=revenue,
             revenue_yoy_pct=_f3_value(derived_index, "revenue", "ANNUAL_YOY", year, "FY", diagnostics),
             operating_income_krw=op_income,
+            operating_income_yoy_pct=_f3_value(derived_index, "operating_income", "ANNUAL_YOY", year, "FY", diagnostics),
             operating_margin_pct=_f3_value(derived_index, "operating_income", "OPERATING_MARGIN", year, "FY", diagnostics),
             net_income_krw=net_income,
             net_margin_pct=_f3_value(derived_index, "net_income", "NET_MARGIN", year, "FY", diagnostics),
@@ -221,7 +222,12 @@ def _quarter_rows(multi_period_result: Any, f2_index: Mapping[tuple[str, str], t
         parts = _quarter_parts(identity)
         status, reason, _, _ = _slot(slot, identity=identity, kind="quarter")
         if parts is None:
-            rows.append(FundamentalsQuarterRow(identity, DATA_UNAVAILABLE, "INVALID_PERIOD_IDENTITY", None, None, None, None, None, None, None))
+            rows.append(FundamentalsQuarterRow(
+                quarter=identity, status=DATA_UNAVAILABLE, reason="INVALID_PERIOD_IDENTITY",
+                revenue_krw=None, revenue_yoy_pct=None, operating_income_krw=None,
+                operating_income_yoy_pct=None, operating_margin_pct=None,
+                net_income_krw=None, net_margin_pct=None, operating_cash_flow_krw=None,
+            ))
             continue
         year, period = parts
         revenue = _f2_value(f2_index, "revenue", year, period, diagnostics)
@@ -236,6 +242,7 @@ def _quarter_rows(multi_period_result: Any, f2_index: Mapping[tuple[str, str], t
             revenue_krw=revenue,
             revenue_yoy_pct=_f3_value(derived_index, "revenue", "QUARTERLY_YOY", year, period, diagnostics),
             operating_income_krw=op_income,
+            operating_income_yoy_pct=_f3_value(derived_index, "operating_income", "QUARTERLY_YOY", year, period, diagnostics),
             operating_margin_pct=_f3_value(derived_index, "operating_income", "OPERATING_MARGIN", year, period, diagnostics),
             net_income_krw=net_income,
             net_margin_pct=_f3_value(derived_index, "net_income", "NET_MARGIN", year, period, diagnostics),

@@ -74,12 +74,14 @@ def _inputs():
     for year, period in quarter_periods:
         derived.extend((
             _f3_observation("revenue", "QUARTERLY_YOY", year, period, 5.0),
+            _f3_observation("operating_income", "QUARTERLY_YOY", year, period, 12.0),
             _f3_observation("operating_income", "OPERATING_MARGIN", year, period, 10.0),
             _f3_observation("net_income", "NET_MARGIN", year, period, 7.5),
         ))
     for year in range(2020, 2026):
         derived.extend((
             _f3_observation("revenue", "ANNUAL_YOY", year, "FY", 6.0),
+            _f3_observation("operating_income", "ANNUAL_YOY", year, "FY", 14.0),
             _f3_observation("operating_income", "OPERATING_MARGIN", year, "FY", 10.0),
             _f3_observation("net_income", "NET_MARGIN", year, "FY", 7.5),
             _f3_observation("net_income", "ANNUAL_ROE", year, "FY", 8.0),
@@ -121,6 +123,8 @@ def test_complete_adapter_is_ready_with_exact_12q_and_5fy_windows():
     assert section.summary.ttm_operating_margin_pct == 10.0
     assert section.summary.ttm_roe_pct == 8.5
     assert section.summary.latest_debt_ratio_pct == 40.0
+    assert section.quarterly[0].operating_income_yoy_pct == 12.0
+    assert section.annual[0].operating_income_yoy_pct == 14.0
 
 
 def test_adapter_preserves_f4_status_and_reasons_without_recomputation():

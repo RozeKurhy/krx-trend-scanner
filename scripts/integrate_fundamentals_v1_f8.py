@@ -124,8 +124,14 @@ def _section_from_f5(value: Mapping[str, Any]) -> FundamentalsSection:
         raise F8IntegrationError("f5_ready summary must be an object")
     try:
         summary_model = FundamentalsSummary(**dict(summary))
-        quarterly = [FundamentalsQuarterRow(**dict(row)) for row in value["quarterly"]]
-        annual = [FundamentalsAnnualRow(**dict(row)) for row in value["annual"]]
+        quarterly = [
+            FundamentalsQuarterRow(**{**dict(row), "operating_income_yoy_pct": row.get("operating_income_yoy_pct")})
+            for row in value["quarterly"]
+        ]
+        annual = [
+            FundamentalsAnnualRow(**{**dict(row), "operating_income_yoy_pct": row.get("operating_income_yoy_pct")})
+            for row in value["annual"]
+        ]
     except (TypeError, ValueError) as exc:
         raise F8IntegrationError(f"invalid f5_ready nested structure: {exc}") from exc
     if not isinstance(value["filter_reasons"], list) or not isinstance(value["diagnostics"], list):
@@ -178,16 +184,28 @@ def load_integration_records(
         if ticker in seen:
             raise F8IntegrationError(f"duplicate Stock Report ticker: {ticker}")
         seen.add(ticker)
-        if baseline.get("report_version") != "0.4":
-            raise F8IntegrationError(f"F8 baseline must be v0.4: {json_path.name}")
+        md_path = report_dir / f"{json_path.stem}.md"
+        if not md_path.exists():
+            raise F8IntegrationError(f"Markdown counterpart missing: {md_path.name}")
+        source_markdown = md_path.read_text(encoding="utf-8")
+        if baseline.get("report_version") == "0.5":
+            existing_fundamentals = baseline.get("fundamentals")
+            if not isinstance(existing_fundamentals, Mapping):
+                raise F8IntegrationError(f"existing v0.5 Fundamentals missing: {json_path.name}")
+            existing_section = _section_from_f5(existing_fundamentals)
+            existing_bullet = fundamentals_executive_bullet(existing_section)
+            if not existing_bullet:
+                raise F8IntegrationError(f"existing v0.5 Fundamentals bullet missing: {json_path.name}")
+            baseline = _report_without_allowed_changes(baseline, existing_bullet)
+            baseline_markdown = _markdown_without_allowed_changes(source_markdown, existing_bullet)
+        elif baseline.get("report_version") == "0.4":
+            baseline_markdown = source_markdown
+        else:
+            raise F8IntegrationError(f"F8 baseline must be v0.4 or refreshable v0.5: {json_path.name}")
         if baseline.get("requested_as_of") != REQUESTED_AS_OF:
             raise F8IntegrationError(f"Stock Report requested_as_of mismatch: {json_path.name}")
         if baseline.get("reference_market_date") != REQUESTED_AS_OF:
             raise F8IntegrationError(f"Stock Report reference_market_date mismatch: {json_path.name}")
-
-        md_path = report_dir / f"{json_path.stem}.md"
-        if not md_path.exists():
-            raise F8IntegrationError(f"Markdown counterpart missing: {md_path.name}")
 
         f7_path = fundamentals_dir / f"{ticker}.json"
         if not f7_path.exists():
@@ -214,7 +232,7 @@ def load_integration_records(
             ticker=ticker,
             stem=json_path.stem,
             baseline_json=baseline,
-            baseline_markdown=md_path.read_text(encoding="utf-8"),
+            baseline_markdown=baseline_markdown,
             f7_json=f7,
             fundamentals=fundamentals,
         ))
