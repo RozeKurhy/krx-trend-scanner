@@ -9,6 +9,7 @@ fundamentals, or contact any external provider.
 from __future__ import annotations
 
 import argparse
+import copy
 import csv
 from datetime import date
 import json
@@ -25,6 +26,21 @@ STOCK_REPORTS_ROOT = ROOT / "artifacts/reporting/stock_reports"
 ADJUSTED_STOCK_ROOT = ROOT / "data/market/adjusted/stocks"
 DEFAULT_OUTPUT_DIR = ROOT / "web/data"
 DATE_DIR_PATTERN = re.compile(r"^(\d{8})$")
+EXPECTED_STOCK_REPORT_COUNT = 553
+FUNDAMENTALS_PUBLIC_FIELDS = (
+    "applicability",
+    "reason",
+    "requested_as_of",
+    "company_family",
+    "currency",
+    "filter_status",
+    "filter_passed",
+    "filter_reasons",
+    "summary",
+    "quarterly",
+    "annual",
+)
+VALID_FUNDAMENTALS_STATUSES = {"READY", "PARTIAL", "DATA_UNAVAILABLE", "NOT_APPLICABLE"}
 
 
 def _relative(path: Path) -> str:
@@ -174,6 +190,27 @@ def _compact_trade_history(strategy: dict[str, Any]) -> list[dict[str, Any]]:
     ]
 
 
+def _compact_fundamentals(source: Any) -> dict[str, Any]:
+    if not isinstance(source, dict):
+        raise ValueError("Stock Report fundamentals authority is missing")
+    data_status = source.get("data_status")
+    if data_status not in VALID_FUNDAMENTALS_STATUSES:
+        raise ValueError(f"invalid Stock Report fundamentals data_status: {data_status!r}")
+    missing = [field for field in FUNDAMENTALS_PUBLIC_FIELDS if field not in source]
+    if missing:
+        raise ValueError(f"Stock Report fundamentals fields missing: {missing}")
+    if not isinstance(source["filter_reasons"], list):
+        raise ValueError("Stock Report fundamentals filter_reasons must be an array")
+    if not isinstance(source["summary"], dict):
+        raise ValueError("Stock Report fundamentals summary must be an object")
+    if not isinstance(source["quarterly"], list) or not isinstance(source["annual"], list):
+        raise ValueError("Stock Report fundamentals periods must be arrays")
+    return {
+        "status": data_status,
+        **{field: copy.deepcopy(source[field]) for field in FUNDAMENTALS_PUBLIC_FIELDS},
+    }
+
+
 def _compact_report(report: dict[str, Any], source_path: Path) -> dict[str, Any]:
     header = report.get("header") or {}
     snapshot = report.get("current_snapshot") or {}
@@ -187,7 +224,7 @@ def _compact_report(report: dict[str, Any], source_path: Path) -> dict[str, Any]
     asset_type = str(report.get("asset_type") or header.get("asset_type") or "UNKNOWN").upper()
     reference_market_date = str(report.get("reference_market_date") or "")[:10]
     daily_close = _load_exact_daily_close(ticker, reference_market_date)
-    fundamentals_status = "NOT_AVAILABLE" if asset_type == "COMMON" else "NOT_APPLICABLE"
+    fundamentals = _compact_fundamentals(report.get("fundamentals"))
 
     return {
         "schema_version": 1,
@@ -274,9 +311,7 @@ def _compact_report(report: dict[str, Any], source_path: Path) -> dict[str, Any]
             "positive_days_60d": flow.get("foreign_positive_days_60d"),
             "explanation": flow.get("explanation"),
         },
-        "fundamentals": {
-            "status": fundamentals_status,
-        },
+        "fundamentals": fundamentals,
         "strategy": {
             "action": strategy.get("action"),
             "state": strategy.get("strategy_state"),
@@ -321,15 +356,29 @@ def build_web_payload(repo_root: Path = ROOT) -> tuple[dict[str, Any], dict[str,
     report_dir, requested_as_of = _resolve_report_directory()
     universe, snapshot_date = _load_universe(requested_as_of)
     source_json_dir = report_dir / "json"
+    source_json_paths = sorted(source_json_dir.glob("*.json"))
+    if len(source_json_paths) != EXPECTED_STOCK_REPORT_COUNT:
+        raise ValueError(
+            f"Stock Report source must contain {EXPECTED_STOCK_REPORT_COUNT} JSON files, "
+            f"got {len(source_json_paths)}"
+        )
     reports: dict[str, dict[str, Any]] = {}
-    for path in sorted(source_json_dir.glob("*.json")):
+    fundamentals_status_counts: dict[str, int] = {}
+    for path in source_json_paths:
         report = _read_json(path)
         ticker = str(report.get("ticker") or "").strip().upper()
         if not ticker or ticker in reports:
             raise ValueError(f"invalid or duplicate Stock Report ticker: {path}")
         if str(report.get("requested_as_of") or "")[:10] != requested_as_of:
             raise ValueError(f"Stock Report date mismatch: {path}")
+        if report.get("report_version") != "0.5":
+            raise ValueError(f"Stock Report v0.5 authority missing: {path}")
+        fundamentals_source = report.get("fundamentals")
+        if not isinstance(fundamentals_source, dict) or fundamentals_source.get("requested_as_of") != requested_as_of:
+            raise ValueError(f"Stock Report fundamentals date mismatch: {path}")
         reports[ticker] = _compact_report(report, path)
+        status = reports[ticker]["fundamentals"]["status"]
+        fundamentals_status_counts[status] = fundamentals_status_counts.get(status, 0) + 1
 
     report_tickers = set(reports)
     items = [
@@ -363,6 +412,8 @@ def build_web_payload(repo_root: Path = ROOT) -> tuple[dict[str, Any], dict[str,
         "unavailable_report_count": len(items) - len(reports),
         "source_report_directory": _relative(report_dir),
         "source_json_directory": _relative(source_json_dir),
+        "fundamentals_integrated_count": len(reports),
+        "fundamentals_status_counts": dict(sorted(fundamentals_status_counts.items())),
     }
     return index, reports, stats
 

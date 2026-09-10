@@ -52,7 +52,12 @@ def test_compact_report_preserves_authority_values_without_raw_markdown(payload)
     assert report["identity"]["ticker"] == "005930"
     assert report["identity"]["name"] == item["name"]
     assert report["decision"]["action"] in {"HOLD", "WAIT", "ENTER_NEXT_OPEN", "NONE", "WATCH", "ENTRY", "EXIT"}
-    assert report["fundamentals"]["status"] == "NOT_AVAILABLE"
+    source = json.loads(next((ROOT / "artifacts/reporting/stock_reports/20260904/json").glob("005930_*.json")).read_text(encoding="utf-8"))
+    assert report["fundamentals"]["status"] == source["fundamentals"]["data_status"]
+    assert report["fundamentals"]["summary"] == source["fundamentals"]["summary"]
+    assert report["fundamentals"]["quarterly"] == source["fundamentals"]["quarterly"]
+    assert report["fundamentals"]["annual"] == source["fundamentals"]["annual"]
+    assert "diagnostics" not in report["fundamentals"]
     assert report["external_links"]["naver_finance"] == "https://finance.naver.com/item/main.naver?code=005930"
     assert report["external_links"]["toss_chart"] == "https://www.tossinvest.com/stocks/A005930/order"
     assert "naver_chart" not in report["external_links"]
@@ -74,15 +79,18 @@ def test_all_published_compact_reports_have_ticker_bound_toss_chart(payload):
         assert "naver_chart" not in links
 
 
-def test_fundamentals_status_is_derived_from_asset_type(payload, exporter):
+def test_fundamentals_projection_preserves_source_status_and_applicability(payload, exporter):
     _index, reports, _stats = payload
     report_dir, _requested_as_of = exporter._resolve_report_directory()
     source_reports = [json.loads(path.read_text(encoding="utf-8")) for path in (report_dir / "json").glob("*.json")]
     common = next(source for source in source_reports if source["asset_type"] == "COMMON")
     non_common = next(source for source in source_reports if source["asset_type"] != "COMMON")
 
-    assert reports[common["ticker"]]["fundamentals"]["status"] == "NOT_AVAILABLE"
-    assert reports[non_common["ticker"]]["fundamentals"]["status"] == "NOT_APPLICABLE"
+    assert reports[common["ticker"]]["fundamentals"]["status"] == common["fundamentals"]["data_status"]
+    assert reports[common["ticker"]]["fundamentals"]["applicability"] == common["fundamentals"]["applicability"]
+    assert reports[non_common["ticker"]]["fundamentals"]["status"] == non_common["fundamentals"]["data_status"]
+    assert reports[non_common["ticker"]]["fundamentals"]["applicability"] == non_common["fundamentals"]["applicability"]
+    assert all("diagnostics" not in report["fundamentals"] for report in reports.values())
 
 
 def test_daily_price_uses_exact_local_authority_date_and_not_monthly_history(payload, exporter):
@@ -225,15 +233,15 @@ def test_report_frontend_has_safe_states_and_relative_assets():
     css = (ROOT / "web/css/app.css").read_text(encoding="utf-8")
     favicon = (ROOT / "web/favicon.svg").read_text(encoding="utf-8")
 
-    assert 'href="./css/app.css?v=web-02d-window-1"' in html
+    assert 'href="./css/app.css?v=web-02d-window-2"' in html
     assert 'href="./css/app.css?v=web-fear-fix02-1"' in index_html
     assert 'href="./favicon.svg"' in html
     assert 'href="./favicon.svg"' in index_html
     assert (ROOT / "web/favicon.svg").exists()
     assert '#9f1d2f' in favicon
-    assert 'src="./js/report.js?v=web-02d-window-1"' in html
+    assert 'src="./js/report.js?v=web-02d-window-2"' in html
     assert 'src="./js/app.js?v=web-fear-fix02-1"' in index_html
-    assert html.count("web-02d-window-1") == 2
+    assert html.count("web-02d-window-2") == 2
     assert index_html.count("web-fear-fix02-1") == 2
     assert "web-03a-final-1" not in html
     assert "web-03a-final-1" not in index_html
@@ -293,6 +301,9 @@ def test_report_frontend_has_safe_states_and_relative_assets():
     assert 'selectedCard.insertAdjacentElement("afterend", panel)' in js
     assert "window.addEventListener(\"resize\", repositionActiveDetail);" in js
     assert 'id="report-detail-panel"' in html
+    assert 'id="fundamentals-detail-panel"' in html
+    assert 'id="fundamentals-summary"' in html
+    assert 'id="fundamentals-periods"' in html
     assert 'id="top-detail-slot"' in html
     assert 'id="bottom-detail-slot"' in html
     assert 'aria-expanded="false"' in html
@@ -304,6 +315,9 @@ def test_report_frontend_has_safe_states_and_relative_assets():
     assert "sector_name" in js
     assert "percentile_6m" in js and "percentile_12m" in js
     assert "formatKrwCompact" in js
+    assert "renderFundamentalsDetail" in js
+    assert "ttm_operating_cash_flow_krw" in js
+    assert "fundamentals-summary-grid" in css
     assert "strategy.history" in js
     assert "100 - Number(value)" in js
     for percentile, expected in ((92.51, 7.5), (76.6, 23.4), (99.20, 0.8)):

@@ -67,6 +67,9 @@ def test_health_uses_actual_resolved_authority_values(health, exporter):
         ),
     )
     assert fundamentals["status"] == expected_status
+    assert fundamentals["status"] == "NORMAL"
+    assert fundamentals["run_status"] == "COMPLETE"
+    assert fundamentals["completed"] == fundamentals["total"] == 4415
     expected_overall = exporter._overall_status(
         {
             key: health[key]
@@ -78,6 +81,22 @@ def test_health_uses_actual_resolved_authority_values(health, exporter):
     stock_index = json.loads((ROOT / "web/data/stock-index.json").read_text(encoding="utf-8"))
     assert health["stock_reports"]["existing_artifact_count"] == report_artifact_count
     assert health["stock_reports"]["existing_artifact_count"] == stock_index["available_report_count"]
+    readiness = exporter._stock_report_readiness(
+        requested_as_of, ROOT / "artifacts/reporting/stock_reports/20260904"
+    )
+    assert readiness["ready"] is True
+    assert health["stock_reports"]["status"] == "NORMAL"
+    assert health["stock_reports"]["report_version"] == "0.5"
+    assert health["stock_reports"]["source_json_count"] == 553
+    assert health["stock_reports"]["source_markdown_count"] == 553
+    assert health["stock_reports"]["v05_count"] == 553
+    assert health["stock_reports"]["schema_errors"] == 0
+    assert health["stock_reports"]["fundamentals_integrated_count"] == 553
+    assert health["stock_reports"]["web_compact_count"] == 553
+    assert health["stock_reports"]["web_fundamentals_integrated_count"] == 553
+    assert health["stock_reports"]["web_index_available_report_count"] == 553
+    assert health["analysis"]["status"] == "UNKNOWN"
+    assert health["backtest"]["status"] == "UNKNOWN"
 
 
 def test_date_key_drives_fundamentals_and_stock_report_paths(exporter, health):

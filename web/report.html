@@ -20,7 +20,7 @@
       })();
     </script>
     <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="./css/app.css?v=web-02d-window-1">
+  <link rel="stylesheet" href="./css/app.css?v=web-02d-window-2">
   </head>
   <body>
     <a class="skip-link" href="#main-content">본문으로 건너뛰기</a>
@@ -142,13 +142,26 @@
             <button id="flow-card" class="panel report-card report-card-button" type="button" aria-controls="report-detail-panel" aria-expanded="false" aria-label="수급 상세 정보 열기">
               <span class="report-card-heading">수급</span><span id="flow-value" class="report-card-value">—</span><span id="flow-detail" class="report-card-detail">—</span><span class="report-card-affordance" aria-hidden="true">상세 보기 ›</span>
             </button>
-            <article class="panel report-card"><p class="report-card-heading">펀더멘탈</p><p id="fundamentals-value" class="report-card-value">준비 중</p><p id="fundamentals-detail" class="report-card-detail">데이터 연결 전</p></article>
+            <article class="panel report-card"><p class="report-card-heading">펀더멘탈</p><p id="fundamentals-value" class="report-card-value">—</p><p id="fundamentals-detail" class="report-card-detail">—</p></article>
             <button id="strategy-card" class="panel report-card report-card-button" type="button" aria-controls="report-detail-panel" aria-expanded="false" aria-label="전략 상세 정보 열기">
               <span class="report-card-heading">전략</span><span id="strategy-value" class="report-card-value">—</span><span id="strategy-detail" class="report-card-detail">—</span><span class="report-card-affordance" aria-hidden="true">상세 보기 ›</span>
             </button>
           </div>
           <div id="bottom-detail-slot" class="report-detail-slot"></div>
         </div>
+
+        <section id="fundamentals-detail-panel" class="panel fundamentals-detail-panel" hidden aria-labelledby="fundamentals-detail-heading">
+          <div class="report-detail-header">
+            <div>
+              <p class="eyebrow">펀더멘탈</p>
+              <h3 id="fundamentals-detail-heading">Fundamentals 상세</h3>
+            </div>
+            <p id="fundamentals-detail-status" class="status-pill status-unknown">—</p>
+          </div>
+          <p id="fundamentals-detail-reason" class="detail-note">—</p>
+          <div id="fundamentals-summary" class="fundamentals-summary-grid"></div>
+          <div id="fundamentals-periods" class="fundamentals-periods"></div>
+        </section>
 
         <section class="panel report-details" aria-labelledby="technical-heading">
           <details>
@@ -171,6 +184,6 @@
       <span>KRX Trend Scanner</span>
       <span>읽기 전용</span>
     </footer>
-    <script src="./js/report.js?v=web-02d-window-1" defer></script>
+    <script src="./js/report.js?v=web-02d-window-2" defer></script>
   </body>
 </html>

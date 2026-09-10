@@ -36,7 +36,16 @@
     FLOW_UNAVAILABLE: "정보 없음",
   };
   const FUNDAMENTAL_LABELS = {
+    READY: "데이터 충분",
+    PARTIAL: "일부 데이터",
+    DATA_UNAVAILABLE: "정보 부족",
+    NOT_APPLICABLE: "해당 없음",
     NOT_AVAILABLE: "준비 중",
+  };
+  const FUNDAMENTAL_ROW_LABELS = {
+    READY: "정상",
+    PARTIAL: "일부 데이터",
+    DATA_UNAVAILABLE: "정보 없음",
     NOT_APPLICABLE: "해당 없음",
   };
   const PATTERN_STEPS = [
@@ -254,9 +263,11 @@
   }
 
   function fundamentalDetail(report) {
-    return report && report.fundamentals && report.fundamentals.status === "NOT_APPLICABLE"
-      ? "이 종목에는 적용되지 않습니다."
-      : "데이터 연결 전입니다.";
+    const fundamentals = report && report.fundamentals;
+    if (!fundamentals) return "정보 없음";
+    if (fundamentals.status === "NOT_APPLICABLE") return "이 종목에는 적용되지 않습니다.";
+    if (fundamentals.status === "DATA_UNAVAILABLE") return fundamentals.reason || "필요한 재무 데이터가 없습니다.";
+    return `${fundamentals.company_family || "회사"} · 기준일 ${formatDate(fundamentals.requested_as_of)}`;
   }
 
   function validateIndex(value) {
@@ -267,7 +278,9 @@
     return Boolean(
       value && typeof value === "object" && value.identity && value.identity.ticker === ticker &&
       value.decision && value.summary && value.price_trend && value.pattern && value.market_strength &&
-      value.flow && value.fundamentals && value.strategy && value.technical_details
+      value.flow && value.fundamentals && typeof value.fundamentals.status === "string" &&
+      Array.isArray(value.fundamentals.quarterly) && Array.isArray(value.fundamentals.annual) &&
+      value.fundamentals.summary && value.strategy && value.technical_details
     );
   }
 
@@ -475,6 +488,108 @@
     empty.className = "detail-empty";
     empty.textContent = text || "표시할 상세 데이터가 없습니다.";
     container.appendChild(empty);
+  }
+
+  function formatFundamentalKrw(value) {
+    if (value == null || value === "" || !Number.isFinite(Number(value))) return "—";
+    const number = Number(value) / 1e8;
+    const sign = number > 0 ? "+" : number < 0 ? "−" : "";
+    return `${sign}${formatNumber(Math.abs(number), 1)}억원`;
+  }
+
+  function formatFundamentalPercent(value) {
+    if (value == null || value === "" || !Number.isFinite(Number(value))) return "—";
+    return `${formatNumber(value, 2)}%`;
+  }
+
+  function appendFundamentalMetric(container, labelText, value) {
+    const item = document.createElement("div");
+    item.className = "fundamental-metric";
+    const label = document.createElement("dt");
+    label.textContent = labelText;
+    const valueElement = document.createElement("dd");
+    valueElement.textContent = value == null || value === "" ? "—" : String(value);
+    item.append(label, valueElement);
+    container.appendChild(item);
+  }
+
+  function fundamentalRowStatus(value) {
+    return label(FUNDAMENTAL_ROW_LABELS, value, "확인 필요");
+  }
+
+  function renderFundamentalsDetail(report) {
+    const panel = byId("fundamentals-detail-panel");
+    const statusElement = byId("fundamentals-detail-status");
+    const reasonElement = byId("fundamentals-detail-reason");
+    const summaryElement = byId("fundamentals-summary");
+    const periodsElement = byId("fundamentals-periods");
+    const fundamentals = report && report.fundamentals;
+    if (!panel || !fundamentals || !summaryElement || !periodsElement) return;
+    while (summaryElement.firstChild) summaryElement.removeChild(summaryElement.firstChild);
+    while (periodsElement.firstChild) periodsElement.removeChild(periodsElement.firstChild);
+    if (statusElement) {
+      statusElement.textContent = fundamentalLabel(report);
+      const visualStatus = fundamentals.status === "READY" ? "NORMAL"
+        : fundamentals.status === "PARTIAL" ? "UPDATING"
+          : fundamentals.status === "DATA_UNAVAILABLE" ? "CHECK_REQUIRED" : "UNKNOWN";
+      statusElement.setAttribute("data-status", visualStatus);
+    }
+    if (reasonElement) reasonElement.textContent = fundamentalDetail(report);
+    const summary = fundamentals.summary || {};
+    [
+      ["최근 사업연도", summary.latest_fy],
+      ["최근 분기", summary.latest_quarter],
+      ["최근 사업연도 매출", formatFundamentalKrw(summary.latest_fy_revenue_krw)],
+      ["최근 4분기 평균 매출", formatFundamentalKrw(summary.latest_4q_avg_revenue_krw)],
+      ["TTM 매출", formatFundamentalKrw(summary.ttm_revenue_krw)],
+      ["TTM 영업이익", formatFundamentalKrw(summary.ttm_operating_income_krw)],
+      ["TTM 순이익", formatFundamentalKrw(summary.ttm_net_income_krw)],
+      ["TTM 영업현금흐름", formatFundamentalKrw(summary.ttm_operating_cash_flow_krw)],
+      ["TTM 영업이익률", formatFundamentalPercent(summary.ttm_operating_margin_pct)],
+      ["TTM 순이익률", formatFundamentalPercent(summary.ttm_net_margin_pct)],
+      ["TTM 영업현금흐름률", formatFundamentalPercent(summary.ttm_operating_cash_flow_margin_pct)],
+      ["TTM ROE", formatFundamentalPercent(summary.ttm_roe_pct)],
+      ["최근 부채비율", formatFundamentalPercent(summary.latest_debt_ratio_pct)],
+      ["필터 상태", summary.filter_status],
+    ].forEach(([labelText, value]) => appendFundamentalMetric(summaryElement, labelText, value));
+
+    const appendPeriodTable = (titleText, headers, rows) => {
+      const heading = document.createElement("h4");
+      heading.className = "fundamentals-period-heading";
+      heading.textContent = titleText;
+      periodsElement.appendChild(heading);
+      if (!rows.length) {
+        appendDetailEmpty(periodsElement, "표시할 기간 데이터가 없습니다.");
+        return;
+      }
+      periodsElement.appendChild(createDetailTable(headers, rows));
+    };
+    const quarterly = Array.isArray(fundamentals.quarterly) ? fundamentals.quarterly : [];
+    appendPeriodTable("최근 12개 분기", ["분기", "상태", "매출", "매출 YoY", "영업이익", "영업이익률", "순이익", "순이익률", "영업현금흐름"], quarterly.map((row) => [
+      row.quarter,
+      fundamentalRowStatus(row.status),
+      formatFundamentalKrw(row.revenue_krw),
+      formatFundamentalPercent(row.revenue_yoy_pct),
+      formatFundamentalKrw(row.operating_income_krw),
+      formatFundamentalPercent(row.operating_margin_pct),
+      formatFundamentalKrw(row.net_income_krw),
+      formatFundamentalPercent(row.net_margin_pct),
+      formatFundamentalKrw(row.operating_cash_flow_krw),
+    ]));
+    const annual = Array.isArray(fundamentals.annual) ? fundamentals.annual : [];
+    appendPeriodTable("최근 5개년", ["사업연도", "상태", "매출", "매출 YoY", "영업이익", "영업이익률", "순이익", "순이익률", "ROE", "부채비율"], annual.map((row) => [
+      row.fiscal_year,
+      fundamentalRowStatus(row.status),
+      formatFundamentalKrw(row.revenue_krw),
+      formatFundamentalPercent(row.revenue_yoy_pct),
+      formatFundamentalKrw(row.operating_income_krw),
+      formatFundamentalPercent(row.operating_margin_pct),
+      formatFundamentalKrw(row.net_income_krw),
+      formatFundamentalPercent(row.net_margin_pct),
+      formatFundamentalPercent(row.roe_pct),
+      formatFundamentalPercent(row.debt_ratio_pct),
+    ]));
+    panel.hidden = false;
   }
 
   function renderPatternDetail(report, container) {
@@ -711,6 +826,7 @@
   function resetDetailPanel() {
     currentReport = null;
     closeDetail();
+    setHidden("fundamentals-detail-panel", true);
   }
 
   function toggleDetail(key) {
@@ -809,6 +925,7 @@
     setText("flow-detail", flowDetail(report.flow.state));
     setText("fundamentals-value", fundamentalLabel(report));
     setText("fundamentals-detail", fundamentalDetail(report));
+    renderFundamentalsDetail(report);
     setText("strategy-value", actionLabel(report.strategy.action));
     setText("strategy-detail", strategyDetail(report.strategy.state));
     renderTechnicalDetails(report);

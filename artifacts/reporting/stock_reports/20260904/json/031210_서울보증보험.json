@@ -1,5 +1,5 @@
 {
-  "report_version": "0.4",
+  "report_version": "0.5",
   "ticker": "031210",
   "name": "서울보증보험",
   "market": "KOSPI",
@@ -21,6 +21,7 @@
     "headline": "서울보증보험(031210)는 현재 Pattern A UNAVAILABLE 단계이며 투자 적격 상태는 INVESTABLE입니다.",
     "bullet_points": [
       "패스트 코어 V2: 관망 · 현재 신규 진입 조건 미충족",
+      "펀더멘털: NOT_APPLICABLE (일반기업 Fundamentals V1 적용 대상 아님)",
       "현재 Pattern A Score는 산출 불가(Stage: UNAVAILABLE) 상태입니다.",
       "시가총액 30477.1억원, 20일 평균 거래대금 28.02억원으로 Phase 10 Investability 기준을 충족합니다.",
       "외국인 수급: 20일 및 60일 누적 기준 외국인 순매수 기조는 유지되고 있으나, 최근 5일은 순매도로 전환되어 단기 수급이 다소 둔화된 상태입니다 (5일 순매수 강도: -6.48%).",
@@ -1103,5 +1104,37 @@
     },
     "metadata_provenance_mode": "CURRENT_VERIFIED"
   },
-  "asset_type": "COMMON"
+  "asset_type": "COMMON",
+  "fundamentals": {
+    "annual": [],
+    "applicability": "NOT_APPLICABLE",
+    "company_family": "FINANCIAL",
+    "currency": "KRW",
+    "data_status": "NOT_APPLICABLE",
+    "diagnostics": [],
+    "filter_passed": false,
+    "filter_reasons": [],
+    "filter_status": "NOT_APPLICABLE",
+    "quarterly": [],
+    "reason": "FINANCIAL_COMPANY",
+    "requested_as_of": "2026-09-04",
+    "summary": {
+      "filter_passed": false,
+      "filter_reasons": [],
+      "filter_status": "NOT_APPLICABLE",
+      "latest_4q_avg_revenue_krw": null,
+      "latest_debt_ratio_pct": null,
+      "latest_fy": null,
+      "latest_fy_revenue_krw": null,
+      "latest_quarter": null,
+      "ttm_net_income_krw": null,
+      "ttm_net_margin_pct": null,
+      "ttm_operating_cash_flow_krw": null,
+      "ttm_operating_cash_flow_margin_pct": null,
+      "ttm_operating_income_krw": null,
+      "ttm_operating_margin_pct": null,
+      "ttm_revenue_krw": null,
+      "ttm_roe_pct": null
+    }
+  }
 }
