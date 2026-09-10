@@ -10,6 +10,7 @@ README.md
 |---|---|
 | [architecture/](architecture/README.md) | Pattern에 종속되지 않는 공용 infrastructure 문서 |
 | [patterns/](patterns/README.md) | Pattern별 spec / strategy / research / validation / prereg / archive |
+| [fundamentals/](fundamentals/README.md) | OpenDART/XBRL PIT-aware Fundamentals V1 authority 및 validation 문서 |
 | [reporting/](reporting/README.md) | Pattern과 독립된 상위 계층 — Stock Report |
 | [strategies/](strategies/README.md) | 여러 Pattern을 조합하거나 Pattern과 독립적인 매매 전략(향후 Julia 등) |
 
@@ -20,7 +21,9 @@ README.md
 
 ## 현재 Reporting
 
-- **Stock Report** — Version 0.4, Production Integration `CLOSED`, Market/Sector RS additive context 포함 ([reporting/stock_report/README.md](reporting/stock_report/README.md))
+- **Fundamentals V1** — `FINAL_CLOSED / PRODUCTION`, 일반 비금융 보통주·비금융 지주회사 지원, 금융회사 일반 V1은 `NOT_APPLICABLE` ([fundamentals/README.md](fundamentals/README.md))
+- **Stock Report** — Version 0.5, Production Integration `CLOSED`, Fundamentals 및 Market/Sector RS additive context 포함 ([reporting/stock_report/README.md](reporting/stock_report/README.md))
+- **Web Report Viewer** — `CLOSED / READ_ONLY`, 정적 canonical report 조회·검색 및 Fundamentals 표/차트 제공
 
 ## 현재 Strategy 상태
 
