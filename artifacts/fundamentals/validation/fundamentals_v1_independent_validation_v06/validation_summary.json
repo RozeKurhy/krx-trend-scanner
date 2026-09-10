@@ -1,0 +1,103 @@
+{
+  "work_id": "FUNDAMENTALS_V1_INDEPENDENT_VALIDATION_WEB_POLISH_V06",
+  "requested_as_of": "2026-09-04",
+  "run_date": "2026-09-10",
+  "method": {
+    "actual": "artifacts/reporting/stock_reports/20260904/json/*.json fundamentals values",
+    "expected": "independent XML parse of raw/local OpenDART XBRL zip selected from local filing registry",
+    "production_periodizer_imported": false,
+    "production_metric_resolver_imported": false,
+    "blind_pool_rule": "identity.asset_type == COMMON and fundamentals.applicability == APPLICABLE; no completeness/value filter",
+    "blind_seed": "20260910_03",
+    "direct_standalone_preferred": true,
+    "cumulative_derivation": "raw prior cumulative facts only",
+    "net_income_semantics": "ifrs-full:ProfitLoss consolidated total; external attributable-owner values are NOT_COMPARABLE_METRIC_SEMANTICS"
+  },
+  "regression": {
+    "sample_type": "REGRESSION",
+    "ticker_count": 13,
+    "tickers": [
+      "047050",
+      "207940",
+      "035420",
+      "034020",
+      "263750",
+      "307950",
+      "000660",
+      "042660",
+      "329180",
+      "161390",
+      "247540",
+      "011200",
+      "352820"
+    ],
+    "cell_count": 312,
+    "status_counts": {
+      "MATCH": 312
+    },
+    "metric_status_counts": {
+      "revenue": {
+        "MATCH": 104
+      },
+      "operating_income": {
+        "MATCH": 104
+      },
+      "net_income": {
+        "MATCH": 104
+      }
+    },
+    "direct_derived_difference_count": 12,
+    "wrong_sign_count": 0,
+    "mismatch_count": 0,
+    "source_missing_count": 0,
+    "our_missing_count": 0
+  },
+  "blind": {
+    "sample_type": "BLIND",
+    "ticker_count": 10,
+    "tickers": [
+      "001740",
+      "044450",
+      "232140",
+      "084370",
+      "128940",
+      "271560",
+      "005930",
+      "278470",
+      "014680",
+      "004370"
+    ],
+    "cell_count": 240,
+    "status_counts": {
+      "MATCH": 240
+    },
+    "metric_status_counts": {
+      "revenue": {
+        "MATCH": 80
+      },
+      "operating_income": {
+        "MATCH": 80
+      },
+      "net_income": {
+        "MATCH": 80
+      }
+    },
+    "direct_derived_difference_count": 0,
+    "wrong_sign_count": 0,
+    "mismatch_count": 0,
+    "source_missing_count": 0,
+    "our_missing_count": 0
+  },
+  "blind_pool_count": 432,
+  "blind_pool_excluded_regression_count": 13,
+  "raw_xbrl_network_calls": 0,
+  "open_dart_api_calls": 0,
+  "naver_collection_calls": 0,
+  "production_code_changed": false,
+  "artifacts": [
+    "independent_regression_13_tickers.csv",
+    "independent_blind_10_tickers.csv",
+    "validation_summary.json",
+    "external_sanity_evidence.md"
+  ]
+}

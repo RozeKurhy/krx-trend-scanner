@@ -15,7 +15,7 @@ def test_v04_web_heading_reason_and_cache_contract():
     html = (ROOT / "web/report.html").read_text(encoding="utf-8")
     js = (ROOT / "web/js/report.js").read_text(encoding="utf-8")
 
-    assert html.count("web-02d-window-7") == 2
+    assert html.count("web-02d-window-8") == 2
     assert 'id="fundamentals-detail-heading">펀더멘탈</h3>' in html
     assert 'id="fundamentals-detail-meta"' not in html
     assert "Fundamentals 상세" not in html
@@ -30,7 +30,7 @@ def test_v04_web_financial_loss_color_is_selective():
     body = _fundamentals_render_body()
 
     assert ".fundamental-loss" in css
-    assert "color: var(--brand-red)" in css
+    assert "color: var(--market-up-red)" in css
     loss_start = js.index("function fundamentalLossCell")
     loss_end = js.index("function fundamentalYoyCell", loss_start)
     loss_body = js[loss_start:loss_end]
@@ -76,6 +76,10 @@ def test_v04_web_table_structure_and_period_classes():
     assert '"영업현금흐름"' not in annual[annual.index('valueForRow:'):]
     assert '"매출 YoY": "—"' in annual
     assert '"영업이익 YoY": "—"' in annual
+    assert quarter.index('["매출"') < quarter.index('["영업이익"') < quarter.index('["영업이익률"') < quarter.index('["순이익"')
+    assert quarter.index('["순이익률"') < quarter.index('["영업현금흐름"') < quarter.index('["매출 YoY"') < quarter.index('["영업이익 YoY"')
+    assert annual.index('["매출"') < annual.index('["영업이익"') < annual.index('["영업이익률"') < annual.index('["순이익"')
+    assert annual.index('["순이익률"') < annual.index('["ROE"') < annual.index('["부채비율"') < annual.index('["매출 YoY"') < annual.index('["영업이익 YoY"')
     assert "fundamental-quarter-q${match[1]}" in js
     assert "fundamental-year-boundary" in js
     assert "fundamental-ttm" in css
@@ -96,3 +100,8 @@ def test_v04_web_amount_format_preserves_ascii_negative_and_small_unit():
     assert "억원" not in body
     assert "천만" in body
     assert 'const sign = number < 0 ? "-" : ""' in body
+    table_start = js.index("function formatFundamentalTableKrw")
+    table_end = js.index("function formatFundamentalPercent", table_start)
+    table_body = js[table_start:table_end]
+    assert "formatNumber(absolute / 1e8)" in table_body
+    assert "formatNumber(absolute / 1e7)}천만" in table_body

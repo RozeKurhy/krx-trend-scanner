@@ -215,17 +215,17 @@
     const market = health.market_data;
     setStatus(byId("market-status"), market.status);
     setText("market-date", formatDate(market.latest_trading_date));
-    setText("market-detail", `기준일 · ${statusDetail(market)}`);
+    setText("market-detail", `기준일 ${formatDate(market.latest_trading_date)}`);
 
     const universe = health.universe;
     setStatus(byId("universe-status"), universe.status);
     setText("universe-count", formatNumber(universe.count));
-    setText("universe-detail", `기준일 ${formatDate(universe.snapshot_date)} · ${statusDetail(universe)}`);
+    setText("universe-detail", `기준일 ${formatDate(universe.snapshot_date)}`);
 
     const fundamentals = health.fundamentals;
     setStatus(byId("fundamentals-status"), fundamentals.status);
     setText("fundamentals-count", `${formatNumber(fundamentals.completed)} / ${formatNumber(fundamentals.total)}`);
-    setText("fundamentals-detail", `${formatNumber(fundamentals.remaining)}개 남음 · ${statusDetail(fundamentals)}`);
+    setText("fundamentals-detail", "");
     setText("progress-percent", formatPercent(fundamentals.percentage));
     setText("progress-completed", `완료 ${formatNumber(fundamentals.completed)}`);
     setText("progress-remaining", `남음 ${formatNumber(fundamentals.remaining)}`);
@@ -239,7 +239,7 @@
     const reports = health.stock_reports;
     setStatus(byId("reports-status"), reports.status);
     setText("reports-count", formatNumber(reports.existing_artifact_count));
-    setText("reports-detail", reasonLabel(reports.reason) || statusDetail(reports));
+    setText("reports-detail", "");
 
     setText("generated-at", formatDateTime(health.generated_at));
     renderSources(health);

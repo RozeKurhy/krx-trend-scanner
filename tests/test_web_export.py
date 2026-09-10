@@ -219,8 +219,12 @@ def test_web_wording_is_neutral_and_keeps_the_existing_data_contract():
     for banned_phrase in ("중이야", "않아", "해야 해", "확인해야 해", "한눈에 확인해"):
         assert banned_phrase not in html
         assert banned_phrase not in js
-    assert 'setText("market-detail", `기준일 · ${statusDetail(market)}`);' in js
-    assert 'setText("universe-detail", `기준일 ${formatDate(universe.snapshot_date)} · ${statusDetail(universe)}`);' in js
+    assert 'setText("market-detail", `기준일 ${formatDate(market.latest_trading_date)}`);' in js
+    assert 'setText("universe-detail", `기준일 ${formatDate(universe.snapshot_date)}`);' in js
+    assert 'setText("fundamentals-detail", "");' in js
+    assert 'setText("reports-detail", "");' in js
+    assert "개 남음" not in js
+    assert "Stock Report v0.5 and Web Fundamentals artifacts are complete." not in js
     assert 'setText("overall-detail", "데이터 파일 확인 필요");' in js
 
 
