@@ -19,6 +19,7 @@ from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 PIT_GRANULARITY = "DAILY_EOD_KST"
 FINANCIAL_INDUSTRY_PREFIXES = ("64", "65", "66")
+HOLDING_INDUSTRY_CODE = "64992"
 _COMPANY_TEXT_FIELDS = (
     "corp_name", "stock_name", "name", "company_name", "corp_name_eng",
     "industry_name", "induty_name", "business_description", "description",
@@ -317,20 +318,27 @@ def classify_company_family(
         if industry_code:
             evidence.append(f"induty_code:{industry_code}")
         return {"company_family": CompanyFamily.FINANCIAL.value, "evidence": evidence, "status": "METADATA_CONFIDENT"}
+    # 64992 is the only holding-company industry code with a special branch.
+    # A bare code is not enough evidence: a real identity is required, and a
+    # financial identity was already handled above.  Other 649xx codes must
+    # never inherit this exception.
+    if industry_code == HOLDING_INDUSTRY_CODE:
+        if has_identity_text:
+            evidence.append(f"induty_code:{industry_code}")
+            evidence.append("holding_code_without_financial_identity")
+            return {"company_family": CompanyFamily.NON_FINANCIAL.value, "evidence": evidence, "status": "METADATA_REVIEWED"}
+        evidence.append(f"induty_code:{industry_code}")
+        return {"company_family": CompanyFamily.UNKNOWN.value, "evidence": evidence, "status": "MANUAL_REVIEW"}
+    # A three-digit legacy value such as 649 is not a complete industry code;
+    # use the identity marker below instead of treating it as a 64xx code.
+    if len(industry_code) >= 5 and industry_code.startswith(FINANCIAL_INDUSTRY_PREFIXES):
+        evidence.append(f"induty_code:{industry_code}")
+        return {"company_family": CompanyFamily.FINANCIAL.value, "evidence": evidence, "status": "CODE_CONFIDENT"}
     if holding_marker:
         evidence.append(f"non_financial_holding:{holding_marker}")
         if industry_code:
             evidence.append(f"induty_code:{industry_code}")
         return {"company_family": CompanyFamily.NON_FINANCIAL.value, "evidence": evidence, "status": "METADATA_CONFIDENT"}
-    if industry_code.startswith(FINANCIAL_INDUSTRY_PREFIXES):
-        # 64992 is also used by general holding companies.  Preserve the
-        # historical code-only fallback for fixtures, but do not let a real
-        # company identity be classified as financial from that code alone.
-        if industry_code.startswith("649") and has_identity_text:
-            evidence.append(f"non_financial_generic_code:{industry_code}")
-            return {"company_family": CompanyFamily.NON_FINANCIAL.value, "evidence": evidence, "status": "METADATA_REVIEWED"}
-        evidence.append(f"induty_code:{industry_code}")
-        return {"company_family": CompanyFamily.FINANCIAL.value, "evidence": evidence, "status": "CODE_CONFIDENT"}
     if industry_code:
         evidence.append(f"induty_code:{industry_code}")
         return {"company_family": CompanyFamily.NON_FINANCIAL.value, "evidence": evidence, "status": "FIXTURE_CONFIDENT"}

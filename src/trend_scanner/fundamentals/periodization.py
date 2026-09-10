@@ -149,7 +149,10 @@ def _precision_equivalent(facts: Iterable[PeriodizationFact]) -> bool:
         return False
     lower = max(interval[0] for interval in intervals if interval is not None)
     upper = min(interval[1] for interval in intervals if interval is not None)
-    return lower <= upper
+    # Treat a boundary touch as non-overlap.  XBRL decimal rounding intervals
+    # are half-open at the midpoint, so adjacent values such as 100 and 101
+    # with decimals=0 are not proven equivalent.
+    return lower < upper
 
 
 def _canonical_account_precedence(fact: PeriodizationFact) -> tuple[int, str, str]:
@@ -159,32 +162,6 @@ def _canonical_account_precedence(fact: PeriodizationFact) -> tuple[int, str, st
     except ValueError:
         order = len(ACCOUNT_TO_METRIC)
     return order, account_id, str(fact.raw_value or "")
-
-
-def _context_alias_equivalent(facts: Iterable[PeriodizationFact]) -> bool:
-    """Allow only same-context canonical account aliases to collapse."""
-
-    values = tuple(facts)
-    account_ids = {str(item.account_id or "") for item in values}
-    metrics = {metric_for_account_id(item.account_id) for item in values}
-    if len(values) < 2 or len(account_ids) < 2 or len(metrics) != 1:
-        return False
-    if None in metrics or any(
-        item.context_has_additional_dimensions or item.context_has_typed_dimensions
-        or item.typed_dimension_count
-        or item.additional_explicit_dimension_count
-        for item in values
-    ):
-        return False
-    fingerprints = {str(item.context_scope_fingerprint or "") for item in values}
-    if len(fingerprints) != 1 or "" in fingerprints:
-        return False
-    numbers = [_number(item.value) for item in values]
-    if any(number is None for number in numbers):
-        return False
-    if any((number < 0) != (numbers[0] < 0) for number in numbers):
-        return False
-    return max(numbers) - min(numbers) < 2000
 
 
 def collapse_canonical_duplicate_periodization_facts(
@@ -235,28 +212,16 @@ def collapse_canonical_duplicate_periodization_facts(
             precision_removed += len(group) - 1
         else:
             precision_collapsed.extend(group)
-    alias_groups_after_precision: dict[tuple[Any, ...], list[PeriodizationFact]] = defaultdict(list)
-    for fact in precision_collapsed:
-        alias_groups_after_precision[tuple(getattr(fact, field) for field in PRECISION_ALIAS_IDENTITY_FIELDS)].append(fact)
-    context_alias_groups = 0
-    context_alias_removed = 0
     true_conflicts = 0
-    context_collapsed: list[PeriodizationFact] = []
-    for group in alias_groups_after_precision.values():
-        if _context_alias_equivalent(group):
-            context_collapsed.append(min(group, key=_canonical_account_precedence))
-            context_alias_groups += 1
-            context_alias_removed += len(group) - 1
-        else:
-            context_collapsed.extend(group)
-            if len({str(fact.value) for fact in group}) > 1:
-                true_conflicts += 1
+    for group in alias_groups.values():
+        if len(group) > 1 and len({str(fact.value) for fact in group}) > 1 and not _precision_equivalent(group):
+            true_conflicts += 1
     if stats is not None:
         stats.update({
             "input_fact_count": len(values),
-            "output_fact_count": len(context_collapsed),
+            "output_fact_count": len(precision_collapsed),
             "group_count": len(duplicate_identities),
-            "removed_fact_count": len(values) - len(collapsed),
+            "removed_fact_count": len(values) - len(precision_collapsed),
         })
         if precision_groups or precision_removed or true_conflicts:
             stats.update({
@@ -264,12 +229,7 @@ def collapse_canonical_duplicate_periodization_facts(
                 "precision_equivalent_fact_removed_count": precision_removed,
                 "true_value_conflict_group_count": true_conflicts,
             })
-        if context_alias_groups:
-            stats.update({
-                "context_equivalent_group_count": context_alias_groups,
-                "context_equivalent_fact_removed_count": context_alias_removed,
-            })
-    return tuple(context_collapsed)
+    return tuple(precision_collapsed)
 
 
 def _parse_date(value: Any) -> date | None:

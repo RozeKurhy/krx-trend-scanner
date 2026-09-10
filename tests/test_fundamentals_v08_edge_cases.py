@@ -31,8 +31,8 @@ def test_general_holding_name_is_non_financial_but_financial_holding_is_financia
     ] == CompanyFamily.FINANCIAL.value
 
 
-def _fact(account_id: str, value: int, *, comparative: bool = False, fiscal_year: str = "2025"):
-    return PeriodizationFact(
+def _fact(account_id: str, value: int, *, comparative: bool = False, fiscal_year: str = "2025", **changes):
+    values = dict(
         ticker="000120", corp_code="001040", company_family="NON_FINANCIAL",
         fiscal_year=fiscal_year, fiscal_year_start=f"{fiscal_year}-01-01",
         metric="operating_income", value=value, currency="KRW", reprt_code="11013",
@@ -43,18 +43,28 @@ def _fact(account_id: str, value: int, *, comparative: bool = False, fiscal_year
         pit_available_from="2025-05-15", context_scope_fingerprint="scope",
         account_id=account_id, raw_value=str(value), decimals="0", precision="0",
     )
+    values.update(changes)
+    return PeriodizationFact(**values)
 
 
-def test_same_scope_operating_income_aliases_collapse_with_small_rounding_delta():
+def test_same_scope_operating_income_aliases_collapse_with_declared_precision_overlap():
     stats: dict[str, int] = {}
     facts = collapse_canonical_duplicate_periodization_facts(
-        (_fact("ifrs-full_ProfitLossFromOperatingActivities", 85366748000),
-         _fact("dart_OperatingIncomeLoss", 85366748157)),
+        (_fact("ifrs-full_ProfitLossFromOperatingActivities", 85366748000, decimals="-3", precision=None),
+         _fact("dart_OperatingIncomeLoss", 85366748157, decimals="-1", precision=None)),
         stats=stats,
     )
     assert len(facts) == 1
     assert facts[0].account_id == "dart_OperatingIncomeLoss"
-    assert stats["context_equivalent_fact_removed_count"] == 1
+    assert stats["precision_equivalent_fact_removed_count"] == 1
+
+
+def test_declared_precision_non_overlap_does_not_collapse():
+    facts = collapse_canonical_duplicate_periodization_facts(
+        (_fact("ifrs-full_ProfitLossFromOperatingActivities", 100, decimals="0", precision=None),
+         _fact("dart_OperatingIncomeLoss", 101, decimals="0", precision=None)),
+    )
+    assert len(facts) == 2
 
 
 def test_comparative_rows_are_rekeyed_only_in_opt_in_provider_mode():

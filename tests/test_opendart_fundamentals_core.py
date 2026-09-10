@@ -184,7 +184,7 @@ def test_provider_financial_family_marks_nonfinancial_metrics_not_applicable(tmp
     filing = RegisteredFiling(**{**filing.to_dict(), "ticker": "086790", "corp_code": "00547583"})
     provider = FinancialStatementProvider(corp, FixtureRegistry([filing]), XbrlRepository(FakeClient(xbrl_raw=raw), cache_dir=tmp_path))
     result = provider.normalize(ticker="086790", bsns_year="2025", reprt_code="11011", as_of="2026-04-01",
-                                company={"induty_code": "64992"})
+                                company={"induty_code": "64992", "corp_name": "하나금융지주"})
     by_metric = {item.metric: item for item in result.observations}
     assert by_metric["revenue"].resolution_status == "NOT_APPLICABLE"
     assert by_metric["operating_income"].resolution_status == "NOT_APPLICABLE"

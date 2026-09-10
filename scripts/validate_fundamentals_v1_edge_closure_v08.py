@@ -11,6 +11,8 @@ from collections import Counter
 from pathlib import Path
 from typing import Any
 
+from trend_scanner.fundamentals.opendart_contract import CompanyFamily, classify_company_family
+
 ROOT = Path(__file__).resolve().parents[1]
 REPORT_DIR = ROOT / "artifacts/reporting/stock_reports/20260904"
 PRODUCTION_DIR = ROOT / "artifacts/fundamentals/production/20260904/tickers"
@@ -18,16 +20,7 @@ OUTPUT_DIR = ROOT / "artifacts/fundamentals/validation/fundamentals_v1_edge_case
 REQUESTED_AS_OF = "2026-09-04"
 SEED = "20260910_04"
 EXCLUDED = {"000700", "000670", "000250", "000100", "000120", "001040", "000640", "000990", "000150", "000880"}
-HOLDING_MARKERS = ("홀딩", "홀딩스", "지주", "지주회사", "스퀘어")
-FINANCIAL_NAME_MARKERS = ("금융", "은행", "증권", "보험", "캐피탈", "카드", "신탁", "자산운용", "투자", "여신", "보증", "화재", "생명", "손해")
-AMBIGUOUS_HOLDING_TICKERS = {"055550"}
-MIGRATED_TICKERS = {
-    "000070", "000140", "000320", "000590", "000640", "001040", "001230", "001800",
-    "003030", "003380", "004150", "004990", "005440", "005740", "005810", "006200",
-    "006840", "007700", "009440", "009970", "010060", "0126Z0", "015860", "024720",
-    "036530", "060980", "072710", "078070", "084690", "096760", "107590", "192400",
-    "363280", "383800", "402340",
-}
+COMPANY_CACHE_DIR = ROOT / "data/cache/opendart/company"
 PRESERVED_BLOBS = {
     "strategy_monitor": "5712db9faa6dd07795254e2e730d96c0c90e554e",
     "market_ranking": "2fd12af2d9d8f4a81affabee9a9c83d1c898a6aa",
@@ -93,24 +86,29 @@ def company_family_audit() -> list[dict[str, Any]]:
         ticker = str(raw.get("ticker") or path.stem).upper()
         name = str(raw.get("name") or "")
         current = str(raw.get("company_family") or "")
-        is_holding = any(marker in name for marker in HOLDING_MARKERS)
-        financial_text = any(marker in name for marker in FINANCIAL_NAME_MARKERS)
-        included = current == "FINANCIAL" or ticker in MIGRATED_TICKERS
+        cache = {}
+        cache_path = COMPANY_CACHE_DIR / f"{ticker}.json"
+        if cache_path.exists():
+            try:
+                value = read_json(cache_path)
+                cache = value if isinstance(value, dict) else {}
+            except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+                cache = {}
+        decision = classify_company_family(cache or {"selected_fields": {"corp_name": name, "stock_name": name}})
+        recommended = str(decision.get("company_family") or CompanyFamily.UNKNOWN.value)
+        included = current in {CompanyFamily.FINANCIAL.value, CompanyFamily.NON_FINANCIAL.value} and recommended != CompanyFamily.UNKNOWN.value
         if not included:
             continue
-        if ticker in AMBIGUOUS_HOLDING_TICKERS:
-            recommended, status, reason = "MANUAL_REVIEW", "AMBIGUOUS", "FINANCIAL_HOLDING_IDENTITY_NOT_IN_LOCAL_CACHE"
-        elif ticker == "001040" or (is_holding and not financial_text):
-            recommended, status, reason = "NON_FINANCIAL", "MIGRATED_OR_REQUIRED", "GENERAL_HOLDING_OR_GENERIC_64992_CODE"
-        elif financial_text:
-            recommended, status, reason = "FINANCIAL", "ACTUAL_FINANCIAL", "FINANCIAL_NAME_MARKER"
-        else:
-            recommended, status, reason = "FINANCIAL", "RETAINED", "NO_CONTRADICTORY_LOCAL_EVIDENCE"
+        status = "MIGRATED_OR_REQUIRED" if current != recommended else (
+            "ACTUAL_FINANCIAL" if recommended == CompanyFamily.FINANCIAL.value else "RETAINED"
+        )
+        reason = ";".join(str(item) for item in decision.get("evidence") or ()) or str(decision.get("status") or "")
         rows.append({
             "ticker": ticker, "name": name, "current_company_family": current,
             "recommended_company_family": recommended, "audit_status": status,
-            "reason": reason, "local_metadata_status": "NOT_AVAILABLE_LOCAL_COMPANY_CACHE",
-            "industry_code": "", "evidence": "name_only_or_saved_production_identity",
+            "reason": reason, "local_metadata_status": "COMPANY_CACHE",
+            "industry_code": (cache.get("selected_fields") or {}).get("induty_code", ""),
+            "evidence": ";".join(str(item) for item in decision.get("evidence") or ()),
         })
     return rows
 

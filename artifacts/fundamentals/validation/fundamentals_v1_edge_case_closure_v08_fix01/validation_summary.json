@@ -1,0 +1,125 @@
+{
+  "acceptance": {
+    "status": "PASS",
+    "unexpected_our_missing_zero": true,
+    "unexplained_mismatch_zero": true,
+    "wrong_sign_zero": true
+  },
+  "affected_count": 78,
+  "artifact_files": [
+    "company_family_audit.csv",
+    "holding_company_rebuild_validation.csv",
+    "context_alias_validation.csv",
+    "final_blind_10_tickers.csv",
+    "validation_summary.json",
+    "external_sanity_evidence.md"
+  ],
+  "blind_cell_count": 240,
+  "blind_cell_status_counts": {
+    "MATCH": 0,
+    "MISMATCH": 0,
+    "NAVER_BASIS_OR_STALENESS": 26,
+    "NOT_COMPARABLE_METRIC_SEMANTICS": 0,
+    "OUR_MISSING": 0,
+    "ROUNDING_MATCH": 184,
+    "SOURCE_MISSING": 30,
+    "WRONG_SIGN": 0
+  },
+  "blind_pool_count": 436,
+  "blind_selected_tickers": [
+    "085660",
+    "035720",
+    "402340",
+    "006400",
+    "043260",
+    "006120",
+    "119850",
+    "272210",
+    "003620",
+    "032190"
+  ],
+  "blind_status_counts": {
+    "MATCH_ROUNDED_NAVER_UNIT": 184,
+    "NAVER_BASIS_OR_STALENESS": 26,
+    "SOURCE_MISSING": 30
+  },
+  "company_family_audit_count": 185,
+  "company_family_audit_status_counts": {
+    "FINANCIAL_HOLDING": 67,
+    "GENERAL_HOLDING_RETAINED": 82,
+    "RECLASSIFIED": 36
+  },
+  "context_alias_validation_rows": 2,
+  "exclusion_counts": {
+    "PRIOR_EXTERNAL_10": 10,
+    "V06_REGRESSION_AND_BLIND": 23,
+    "V08_BLIND_10": 10
+  },
+  "exclusion_total_unique": 43,
+  "external_naver_request_count": 20,
+  "external_naver_source": "https://navercomp.wisereport.co.kr/v3/company/cF3002.aspx",
+  "external_naver_validation": "EXECUTED_LIVE_PUBLIC_NAVER_SECURITIES",
+  "financial_holding_count": 67,
+  "general_holding_retained_count": 82,
+  "holding_company_affected_count": 78,
+  "holding_company_data_available_count": 74,
+  "holding_company_rebuilt_count": 74,
+  "holding_company_still_unavailable_count": 4,
+  "manual_review_count": 0,
+  "metadata_snapshot_date": "2026-09-04",
+  "network": {
+    "KRX": "NOT_USED",
+    "Naver": "USED_LIVE_PUBLIC_VALIDATION",
+    "OpenDART": "USED_TARGETED_ONLY",
+    "PyKRX": "NOT_USED"
+  },
+  "opendart": {
+    "actual_requests_current_run": 3261,
+    "estimated_daily_total": 21719,
+    "final_additional_requests": 21719,
+    "prior_additional_requests": 18458,
+    "request_counter_consistent": true,
+    "safety_daily_cap": 39000
+  },
+  "preflight": {
+    "affected_count": 78,
+    "company_cache_hit_count": 77,
+    "company_cache_miss_count": 1,
+    "estimated_request_basis": "company cache misses + one filing-registry page per missing year + up to four XBRL requests per missing year + known XBRL cache misses",
+    "estimated_request_count_upper_bound": 2491,
+    "filing_registry_cache_hit_count": 196,
+    "filing_registry_cache_miss_count": 1960,
+    "fully_local_ticker_count": 7,
+    "known_xbrl_cache_hit_count": 159,
+    "known_xbrl_cache_miss_count": 40,
+    "missing_registry_year_count": 490,
+    "source_missing_count": 1
+  },
+  "rebuild": {
+    "failure_count": 3,
+    "failures": [
+      {
+        "reason": "BinaryResponseInvalid:Empty binary response",
+        "ticker": "007700"
+      },
+      {
+        "reason": "BinaryResponseInvalid:Empty binary response",
+        "ticker": "009540"
+      },
+      {
+        "reason": "BinaryResponseInvalid:Empty binary response",
+        "ticker": "900340"
+      }
+    ],
+    "restored_or_retained_count": 74,
+    "source_or_mapping_gap_count": 4,
+    "target_count": 78
+  },
+  "requested_as_of": "2026-09-04",
+  "unexpected_our_missing_count": 0,
+  "unexplained_mismatch_count": 0,
+  "validation_run_date": "2026-09-10",
+  "validation_seed": "20260910_05",
+  "work_id": "FUNDAMENTALS_V1_EDGE_CASE_CLOSURE_V08_FIX01",
+  "wrong_sign_count": 0
+}

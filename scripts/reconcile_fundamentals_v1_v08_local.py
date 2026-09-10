@@ -35,6 +35,7 @@ from trend_scanner.fundamentals.periodization import (
     normalize_represented_comparative_fact,
 )
 from trend_scanner.fundamentals.periodization_provider import PeriodizationBuild
+from trend_scanner.fundamentals.opendart_contract import CompanyFamily, classify_company_family
 from trend_scanner.reporting.fundamentals_report import (
     build_fundamentals_section,
     fundamentals_executive_bullet,
@@ -48,22 +49,7 @@ REQUESTED_AS_OF = "2026-09-04"
 FUNDAMENTALS_DIR = ROOT / "artifacts/fundamentals/production/20260904/tickers"
 REPORT_DIR = ROOT / "artifacts/reporting/stock_reports/20260904"
 WEB_STOCK_DIR = ROOT / "web/data/stocks"
-HOLDING_MARKERS = ("홀딩", "홀딩스", "지주", "지주회사", "스퀘어")
-AMBIGUOUS_HOLDING_TICKERS = {"055550"}  # 신한지주; metadata cache is absent locally.
-ACTUAL_FINANCIAL_RESTORE_TICKERS = {
-    "071050", "086790", "138040", "138930", "139130", "175330", "316140",
-}
-MIGRATED_TICKERS = {
-    "000070", "000140", "000320", "000590", "000640", "001040", "001230", "001800",
-    "003030", "003380", "004150", "004990", "005440", "005740", "005810", "006200",
-    "006840", "007700", "009440", "009970", "010060", "0126Z0", "015860", "024720",
-    "036530", "060980", "072710", "078070", "084690", "096760", "107590", "192400",
-    "363280", "383800", "402340",
-}
-FINANCIAL_NAME_MARKERS = (
-    "금융", "은행", "증권", "보험", "캐피탈", "카드", "신탁", "자산운용",
-    "투자", "여신", "보증", "화재", "생명", "손해",
-)
+COMPANY_CACHE_DIR = ROOT / "data/cache/opendart/company"
 
 
 class _AsOfOnlyDerivedResult:
@@ -198,6 +184,24 @@ def _section_from_dict(value: dict[str, Any] | None):
     return _section_from_f5(value) if value else None
 
 
+def _company_family_decision(raw: dict[str, Any]) -> dict[str, Any]:
+    """Classify from the current company metadata cache, never from a ticker set."""
+
+    ticker = str(raw.get("ticker") or "").strip().upper()
+    cache_path = COMPANY_CACHE_DIR / f"{ticker}.json"
+    company: dict[str, Any] = {}
+    if cache_path.exists():
+        try:
+            value = json.loads(cache_path.read_text(encoding="utf-8"))
+            if isinstance(value, dict):
+                company = value
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+            company = {}
+    if not company:
+        company = {"selected_fields": {"corp_name": raw.get("name"), "stock_name": raw.get("name")}}
+    return classify_company_family(company)
+
+
 def _update_reports(ticker: str, section: dict[str, Any]) -> None:
     matches = sorted((REPORT_DIR / "json").glob(f"{ticker}_*.json"))
     if not matches:
@@ -249,16 +253,15 @@ def main() -> None:
     for path in sorted(FUNDAMENTALS_DIR.glob("*.json")):
         raw = _read_json(path)
         ticker = str(raw.get("ticker") or path.stem).upper()
-        name = str(raw.get("name") or "")
-        if ticker in ACTUAL_FINANCIAL_RESTORE_TICKERS:
-            family_overrides[ticker] = "FINANCIAL"
-        elif ticker in MIGRATED_TICKERS or ticker == "001040" or (
-            ticker not in AMBIGUOUS_HOLDING_TICKERS
-            and str(raw.get("company_family") or "") == "FINANCIAL"
-            and any(marker in name for marker in HOLDING_MARKERS)
-            and not any(marker in name for marker in FINANCIAL_NAME_MARKERS)
-        ):
-            family_overrides[ticker] = "NON_FINANCIAL"
+        current = str(raw.get("company_family") or "")
+        decision = _company_family_decision(raw)
+        family = str(decision.get("company_family") or CompanyFamily.UNKNOWN.value)
+        has_periodization = bool((raw.get("f2") or {}).get("periodization_builds"))
+        needs_rebuild = family == CompanyFamily.NON_FINANCIAL.value and (
+            current != family or not has_periodization
+        )
+        if family in {CompanyFamily.NON_FINANCIAL.value, CompanyFamily.FINANCIAL.value} and needs_rebuild:
+            family_overrides[ticker] = family
     for ticker in sorted(family_overrides):
         path = FUNDAMENTALS_DIR / f"{ticker}.json"
         raw = _read_json(path)
@@ -282,7 +285,7 @@ def main() -> None:
         path.write_text(json.dumps(raw, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         _update_reports(ticker, section)
         print(json.dumps({"ticker": ticker, "company_family": family, "data_status": section["data_status"], "f4_status": f4["status"]}, ensure_ascii=False))
-    _update_ticker_index(set(family_overrides) | {"000120", "000700", "000640"})
+    _update_ticker_index(set(family_overrides))
 
 
 if __name__ == "__main__":

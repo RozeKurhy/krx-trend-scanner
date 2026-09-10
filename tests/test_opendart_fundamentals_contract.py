@@ -108,9 +108,21 @@ def test_financial_family_marks_nonfinancial_metric_not_applicable():
 
 
 def test_financial_industry_prefixes_cover_finance_insurance_and_related_services():
-    for code in ("64992", "65110", "66110", "64000", "65000", "66000"):
+    for code in ("64911", "65110", "66110", "64000", "65000", "66000"):
         result = classify_company_family({"induty_code": code})
         assert result["company_family"] == CompanyFamily.FINANCIAL.value
+    assert classify_company_family({"induty_code": "64911", "corp_name": "일반홀딩스(주)"})["company_family"] == CompanyFamily.FINANCIAL.value
+
+
+def test_64992_requires_identity_and_distinguishes_general_holding():
+    assert classify_company_family({"induty_code": "64992"})["company_family"] == CompanyFamily.UNKNOWN.value
+    result = classify_company_family({"induty_code": "64992", "corp_name": "일반홀딩스(주)"})
+    assert result["company_family"] == CompanyFamily.NON_FINANCIAL.value
+
+
+def test_64992_financial_identity_remains_financial():
+    result = classify_company_family({"induty_code": "64992", "corp_name": "하나금융지주(주)"})
+    assert result["company_family"] == CompanyFamily.FINANCIAL.value
 
 
 def test_financial_industry_prefix_boundary_does_not_include_67():

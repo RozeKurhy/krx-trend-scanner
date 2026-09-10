@@ -423,6 +423,12 @@ def build_fundamentals_section(
         family=family or "",
     )
     diagnostics.extend(identity_diagnostics)
+    if any(item.get("type") == "IDENTITY_MISMATCH" for item in identity_diagnostics):
+        return FundamentalsSection(
+            "APPLICABLE", DATA_UNAVAILABLE, "IDENTITY_MISMATCH", as_of, family,
+            "KRW", DATA_UNAVAILABLE, False, filter_reasons,
+            _empty_summary(filter_result), diagnostics=diagnostics,
+        )
     quarterly = _quarter_rows(multi_period_result, f2_quarters, derived_index, diagnostics)
     annual = _annual_rows(multi_period_result, f2_annuals, derived_index, diagnostics)
 
@@ -467,9 +473,18 @@ def build_fundamentals_section(
         and summary.ttm_net_income_krw is not None
         and core_window_ready
     )
-    if filter_status == DATA_UNAVAILABLE or (not core_available and not quarterly and not annual):
+    ttm_endpoint_available = (
+        endpoint_parts is not None
+        and summary.ttm_revenue_krw is not None
+        and summary.ttm_operating_income_krw is not None
+        and summary.ttm_net_income_krw is not None
+    )
+    if filter_status == DATA_UNAVAILABLE or not ttm_endpoint_available:
         data_status = DATA_UNAVAILABLE
-        reason = "F4_FILTER_OR_CORE_UNAVAILABLE" if filter_status != DATA_UNAVAILABLE else "F4_DATA_UNAVAILABLE"
+        if filter_status == DATA_UNAVAILABLE:
+            reason = "F4_DATA_UNAVAILABLE"
+        else:
+            reason = "TTM_ENDPOINT_UNAVAILABLE"
     elif not core_available:
         data_status = PARTIAL
         reason = "DISPLAY_WINDOW_PARTIAL" if quarterly or annual else "F4_FILTER_OR_CORE_UNAVAILABLE"
