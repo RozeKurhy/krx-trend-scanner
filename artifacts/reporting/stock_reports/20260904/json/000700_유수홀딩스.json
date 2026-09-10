@@ -21,7 +21,7 @@
     "headline": "유수홀딩스(000700)는 현재 Pattern A EARLY_TREND 단계이나, 20일 평균 거래대금 기준 미달(FILTERED_LIQUIDITY)로 투자 대상에서 제외되었습니다.",
     "bullet_points": [
       "패스트 코어 V2: HOLD_PRE_PROGRESSED · 현재 4번째 전략 포지션 보유 중 (Loss Guard 활성)",
-      "펀더멘털: DATA_UNAVAILABLE (FUNDAMENTALS_INPUT_NOT_PROVIDED)",
+      "펀더멘털: Filter PASS, 최근 FY 매출 4,184.7억원, TTM 영업이익 307.7억원, TTM 순이익 355.0억원.",
       "현재 Pattern A Score는 86.10점(Stage: EARLY_TREND, Candidate: YES)입니다.",
       "20일 평균 거래대금 2.80억원(기준 3.0억원 미달)으로 Phase 10 Investability 유동성 요건을 충족하지 못했습니다.",
       "외국인 수급: 20일 및 60일 누적 기준 외국인 순매수 기조는 유지되고 있으나, 최근 5일은 순매도로 전환되어 단기 수급이 다소 둔화된 상태입니다 (5일 순매수 강도: -1.44%).",
@@ -3075,34 +3075,448 @@
   },
   "asset_type": "COMMON",
   "fundamentals": {
-    "annual": [],
+    "annual": [
+      {
+        "debt_ratio_pct": 22.953887400086263,
+        "fiscal_year": "2021",
+        "net_income_krw": 39167182400,
+        "net_margin_pct": null,
+        "operating_income_krw": 20347476590,
+        "operating_income_yoy_pct": null,
+        "operating_income_yoy_status": "UNAVAILABLE",
+        "operating_margin_pct": null,
+        "reason": "REQUIRED_METRIC_MISSING",
+        "revenue_krw": null,
+        "revenue_yoy_pct": null,
+        "roe_pct": null,
+        "status": "DATA_UNAVAILABLE"
+      },
+      {
+        "debt_ratio_pct": 17.783339835826425,
+        "fiscal_year": "2022",
+        "net_income_krw": 44118934136,
+        "net_margin_pct": null,
+        "operating_income_krw": 29646246718,
+        "operating_income_yoy_pct": 45.69986890939581,
+        "operating_income_yoy_status": "PERCENT",
+        "operating_margin_pct": null,
+        "reason": "REQUIRED_METRIC_MISSING",
+        "revenue_krw": null,
+        "revenue_yoy_pct": null,
+        "roe_pct": 10.335742486547993,
+        "status": "DATA_UNAVAILABLE"
+      },
+      {
+        "debt_ratio_pct": 15.258175439281827,
+        "fiscal_year": "2023",
+        "net_income_krw": 23263597963,
+        "net_margin_pct": 6.806737530370996,
+        "operating_income_krw": 21005544102,
+        "operating_income_yoy_pct": -29.14602545877659,
+        "operating_income_yoy_status": "PERCENT",
+        "operating_margin_pct": 6.146049532507841,
+        "reason": null,
+        "revenue_krw": 341773101419,
+        "revenue_yoy_pct": null,
+        "roe_pct": 5.215843550432651,
+        "status": "READY"
+      },
+      {
+        "debt_ratio_pct": 16.28601782444909,
+        "fiscal_year": "2024",
+        "net_income_krw": 31644811581,
+        "net_margin_pct": 7.260198100994781,
+        "operating_income_krw": 18315439948,
+        "operating_income_yoy_pct": -12.806638766114453,
+        "operating_income_yoy_status": "PERCENT",
+        "operating_margin_pct": 4.202070282168875,
+        "reason": null,
+        "revenue_krw": 435867054050,
+        "revenue_yoy_pct": 27.531117059924682,
+        "roe_pct": 7.3761064589135215,
+        "status": "READY"
+      },
+      {
+        "debt_ratio_pct": 16.384193068209886,
+        "fiscal_year": "2025",
+        "net_income_krw": 16752714426,
+        "net_margin_pct": 4.00328525645098,
+        "operating_income_krw": 21219524179,
+        "operating_income_yoy_pct": 15.85593487923351,
+        "operating_income_yoy_status": "PERCENT",
+        "operating_margin_pct": 5.07068921098887,
+        "reason": null,
+        "revenue_krw": 418474161915,
+        "revenue_yoy_pct": -3.990412207894197,
+        "roe_pct": 4.067049795282045,
+        "status": "READY"
+      }
+    ],
     "applicability": "APPLICABLE",
-    "company_family": null,
+    "company_family": "NON_FINANCIAL",
     "currency": "KRW",
-    "data_status": "DATA_UNAVAILABLE",
-    "diagnostics": [],
-    "filter_passed": false,
+    "data_status": "PARTIAL",
+    "diagnostics": [
+      {
+        "metric": "revenue:2023Q3",
+        "reason": "MISSING_REQUIRED_INPUT",
+        "status": "DATA_UNAVAILABLE",
+        "type": "METRIC_UNAVAILABLE"
+      },
+      {
+        "metric": "revenue:QUARTERLY_YOY:2023Q3",
+        "reason": "MISSING_REQUIRED_INPUT",
+        "status": "DATA_UNAVAILABLE",
+        "type": "METRIC_UNAVAILABLE"
+      },
+      {
+        "metric": "operating_income:OPERATING_MARGIN:2023Q3",
+        "reason": "MARGIN_INPUT_UNAVAILABLE",
+        "status": "INPUT_NOT_READY",
+        "type": "METRIC_UNAVAILABLE"
+      },
+      {
+        "metric": "net_income:NET_MARGIN:2023Q3",
+        "reason": "MARGIN_INPUT_UNAVAILABLE",
+        "status": "INPUT_NOT_READY",
+        "type": "METRIC_UNAVAILABLE"
+      },
+      {
+        "metric": "revenue:2023Q4",
+        "reason": "MISSING_PRIOR_CUMULATIVE",
+        "status": "DERIVATION_UNAVAILABLE",
+        "type": "METRIC_UNAVAILABLE"
+      },
+      {
+        "metric": "operating_income:QUARTERLY_YOY:2023Q4",
+        "reason": "NON_POSITIVE_OR_SIGN_TRANSITION_BASE",
+        "status": "UNDEFINED_BASE",
+        "type": "METRIC_UNAVAILABLE"
+      },
+      {
+        "metric": "revenue:QUARTERLY_YOY:2023Q4",
+        "reason": "CURRENT_OBSERVATION_UNAVAILABLE",
+        "status": "INPUT_NOT_READY",
+        "type": "METRIC_UNAVAILABLE"
+      },
+      {
+        "metric": "operating_income:OPERATING_MARGIN:2023Q4",
+        "reason": "MARGIN_INPUT_UNAVAILABLE",
+        "status": "INPUT_NOT_READY",
+        "type": "METRIC_UNAVAILABLE"
+      },
+      {
+        "metric": "net_income:NET_MARGIN:2023Q4",
+        "reason": "MARGIN_INPUT_UNAVAILABLE",
+        "status": "INPUT_NOT_READY",
+        "type": "METRIC_UNAVAILABLE"
+      },
+      {
+        "metric": "revenue:QUARTERLY_YOY:2024Q1",
+        "reason": "MISSING_PRIOR_PERIOD",
+        "status": "DATA_UNAVAILABLE",
+        "type": "METRIC_UNAVAILABLE"
+      },
+      {
+        "metric": "revenue:QUARTERLY_YOY:2024Q2",
+        "reason": "MISSING_PRIOR_PERIOD",
+        "status": "DATA_UNAVAILABLE",
+        "type": "METRIC_UNAVAILABLE"
+      },
+      {
+        "metric": "revenue:QUARTERLY_YOY:2024Q3",
+        "reason": "MISSING_PRIOR_PERIOD",
+        "status": "DATA_UNAVAILABLE",
+        "type": "METRIC_UNAVAILABLE"
+      },
+      {
+        "metric": "operating_income:QUARTERLY_YOY:2024Q4",
+        "reason": "NON_POSITIVE_OR_SIGN_TRANSITION_BASE",
+        "status": "UNDEFINED_BASE",
+        "type": "METRIC_UNAVAILABLE"
+      },
+      {
+        "metric": "revenue:QUARTERLY_YOY:2024Q4",
+        "reason": "INPUT_NOT_READY",
+        "status": "INPUT_NOT_READY",
+        "type": "METRIC_UNAVAILABLE"
+      },
+      {
+        "metric": "operating_income:QUARTERLY_YOY:2025Q4",
+        "reason": "NON_POSITIVE_OR_SIGN_TRANSITION_BASE",
+        "status": "UNDEFINED_BASE",
+        "type": "METRIC_UNAVAILABLE"
+      },
+      {
+        "metric": "revenue:2021FY",
+        "reason": "MISSING_REQUIRED_INPUT",
+        "status": "DATA_UNAVAILABLE",
+        "type": "METRIC_UNAVAILABLE"
+      },
+      {
+        "metric": "operating_income:ANNUAL_YOY:2021FY",
+        "reason": "MISSING_PRIOR_PERIOD",
+        "status": "DATA_UNAVAILABLE",
+        "type": "METRIC_UNAVAILABLE"
+      },
+      {
+        "metric": "revenue:ANNUAL_YOY:2021FY",
+        "reason": "MISSING_REQUIRED_INPUT",
+        "status": "DATA_UNAVAILABLE",
+        "type": "METRIC_UNAVAILABLE"
+      },
+      {
+        "metric": "operating_income:OPERATING_MARGIN:2021FY",
+        "reason": "MARGIN_INPUT_UNAVAILABLE",
+        "status": "INPUT_NOT_READY",
+        "type": "METRIC_UNAVAILABLE"
+      },
+      {
+        "metric": "net_income:NET_MARGIN:2021FY",
+        "reason": "MARGIN_INPUT_UNAVAILABLE",
+        "status": "INPUT_NOT_READY",
+        "type": "METRIC_UNAVAILABLE"
+      },
+      {
+        "metric": "net_income:ANNUAL_ROE:2021FY",
+        "reason": "MISSING_PRIOR_FY_END_EQUITY",
+        "status": "DATA_UNAVAILABLE",
+        "type": "METRIC_UNAVAILABLE"
+      },
+      {
+        "metric": "revenue:2022FY",
+        "reason": "MISSING_REQUIRED_INPUT",
+        "status": "DATA_UNAVAILABLE",
+        "type": "METRIC_UNAVAILABLE"
+      },
+      {
+        "metric": "revenue:ANNUAL_YOY:2022FY",
+        "reason": "MISSING_REQUIRED_INPUT",
+        "status": "DATA_UNAVAILABLE",
+        "type": "METRIC_UNAVAILABLE"
+      },
+      {
+        "metric": "operating_income:OPERATING_MARGIN:2022FY",
+        "reason": "MARGIN_INPUT_UNAVAILABLE",
+        "status": "INPUT_NOT_READY",
+        "type": "METRIC_UNAVAILABLE"
+      },
+      {
+        "metric": "net_income:NET_MARGIN:2022FY",
+        "reason": "MARGIN_INPUT_UNAVAILABLE",
+        "status": "INPUT_NOT_READY",
+        "type": "METRIC_UNAVAILABLE"
+      },
+      {
+        "metric": "revenue:ANNUAL_YOY:2023FY",
+        "reason": "MISSING_PRIOR_PERIOD",
+        "status": "DATA_UNAVAILABLE",
+        "type": "METRIC_UNAVAILABLE"
+      },
+      {
+        "metric": "net_income:TTM_ROE:2026Q2",
+        "reason": "MISSING_BEGINNING_EQUITY",
+        "status": "DATA_UNAVAILABLE",
+        "type": "METRIC_UNAVAILABLE"
+      },
+      {
+        "metric": "liabilities:DEBT_RATIO:2026H1_END",
+        "reason": "MISSING_REQUIRED_INPUT",
+        "status": "DATA_UNAVAILABLE",
+        "type": "METRIC_UNAVAILABLE"
+      }
+    ],
+    "filter_passed": true,
     "filter_reasons": [],
-    "filter_status": "DATA_UNAVAILABLE",
-    "quarterly": [],
-    "reason": "FUNDAMENTALS_INPUT_NOT_PROVIDED",
+    "filter_status": "PASS",
+    "quarterly": [
+      {
+        "net_income_krw": 10567058527,
+        "net_margin_pct": null,
+        "operating_cash_flow_krw": 3434504287,
+        "operating_income_krw": 8048684726,
+        "operating_income_yoy_pct": -26.382658332826185,
+        "operating_income_yoy_status": "PERCENT",
+        "operating_margin_pct": null,
+        "quarter": "2023Q3",
+        "reason": "REQUIRED_METRIC_MISSING",
+        "revenue_krw": null,
+        "revenue_yoy_pct": null,
+        "status": "DATA_UNAVAILABLE"
+      },
+      {
+        "net_income_krw": -1200967363,
+        "net_margin_pct": null,
+        "operating_cash_flow_krw": 2763229808,
+        "operating_income_krw": 2716068979,
+        "operating_income_yoy_pct": null,
+        "operating_income_yoy_status": "TURNED_TO_PROFIT",
+        "operating_margin_pct": null,
+        "quarter": "2023Q4",
+        "reason": "MISSING_PRIOR_CUMULATIVE",
+        "revenue_krw": null,
+        "revenue_yoy_pct": null,
+        "status": "DERIVATION_UNAVAILABLE"
+      },
+      {
+        "net_income_krw": 7601703952,
+        "net_margin_pct": 7.830774244250771,
+        "operating_cash_flow_krw": -7346728863,
+        "operating_income_krw": 5106919564,
+        "operating_income_yoy_pct": 14.664668788541455,
+        "operating_income_yoy_status": "PERCENT",
+        "operating_margin_pct": 5.260811844522037,
+        "quarter": "2024Q1",
+        "reason": null,
+        "revenue_krw": 97074742738,
+        "revenue_yoy_pct": null,
+        "status": "READY"
+      },
+      {
+        "net_income_krw": 9925536010,
+        "net_margin_pct": 9.566077477905257,
+        "operating_cash_flow_krw": 4435408626,
+        "operating_income_krw": 5930503719,
+        "operating_income_yoy_pct": 2.4796915139442515,
+        "operating_income_yoy_status": "PERCENT",
+        "operating_margin_pct": 5.715727392636729,
+        "quarter": "2024Q2",
+        "reason": null,
+        "revenue_krw": 103757637683,
+        "revenue_yoy_pct": null,
+        "status": "READY"
+      },
+      {
+        "net_income_krw": 3862863851,
+        "net_margin_pct": 3.109925455189816,
+        "operating_cash_flow_krw": -6818911262,
+        "operating_income_krw": 8886359019,
+        "operating_income_yoy_pct": 10.407592314978197,
+        "operating_income_yoy_status": "PERCENT",
+        "operating_margin_pct": 7.15425528393641,
+        "quarter": "2024Q3",
+        "reason": null,
+        "revenue_krw": 124210818126,
+        "revenue_yoy_pct": null,
+        "status": "READY"
+      },
+      {
+        "net_income_krw": 10254707768,
+        "net_margin_pct": 9.253159188025545,
+        "operating_cash_flow_krw": 14322552718,
+        "operating_income_krw": -1954420473,
+        "operating_income_yoy_pct": null,
+        "operating_income_yoy_status": "TURNED_TO_LOSS",
+        "operating_margin_pct": -1.7635377005513888,
+        "quarter": "2024Q4",
+        "reason": null,
+        "revenue_krw": 110823855503,
+        "revenue_yoy_pct": null,
+        "status": "READY"
+      },
+      {
+        "net_income_krw": 3935747329,
+        "net_margin_pct": 3.6550883905900653,
+        "operating_cash_flow_krw": 8759924652,
+        "operating_income_krw": 6503801026,
+        "operating_income_yoy_pct": 27.35272103847062,
+        "operating_income_yoy_status": "PERCENT",
+        "operating_margin_pct": 6.040013658824071,
+        "quarter": "2025Q1",
+        "reason": null,
+        "revenue_krw": 107678581430,
+        "revenue_yoy_pct": 10.923375527884986,
+        "status": "READY"
+      },
+      {
+        "net_income_krw": 1386258977,
+        "net_margin_pct": 1.3530824555465946,
+        "operating_cash_flow_krw": 4742820522,
+        "operating_income_krw": 6704764665,
+        "operating_income_yoy_pct": 13.055568003767403,
+        "operating_income_yoy_status": "PERCENT",
+        "operating_margin_pct": 6.544303472366435,
+        "quarter": "2025Q2",
+        "reason": null,
+        "revenue_krw": 102451921634,
+        "revenue_yoy_pct": -1.2584288522346851,
+        "status": "READY"
+      },
+      {
+        "net_income_krw": 12225010135,
+        "net_margin_pct": 11.628192736288382,
+        "operating_cash_flow_krw": 12784410792,
+        "operating_income_krw": 11163919542,
+        "operating_income_yoy_pct": 25.62985040476452,
+        "operating_income_yoy_status": "PERCENT",
+        "operating_margin_pct": 10.618903926724009,
+        "quarter": "2025Q3",
+        "reason": null,
+        "revenue_krw": 105132503496,
+        "revenue_yoy_pct": -15.359623998810534,
+        "status": "READY"
+      },
+      {
+        "net_income_krw": -794302015,
+        "net_margin_pct": -0.7695893067643299,
+        "operating_cash_flow_krw": 7848570639,
+        "operating_income_krw": -3152961054,
+        "operating_income_yoy_pct": null,
+        "operating_income_yoy_status": "LOSS_CONTINUED",
+        "operating_margin_pct": -3.054864605628365,
+        "quarter": "2025Q4",
+        "reason": null,
+        "revenue_krw": 103211155355,
+        "revenue_yoy_pct": -6.869189050902424,
+        "status": "READY"
+      },
+      {
+        "net_income_krw": 13434747865,
+        "net_margin_pct": 12.633363495604161,
+        "operating_cash_flow_krw": 4046120516,
+        "operating_income_krw": 9954921518,
+        "operating_income_yoy_pct": 53.063131516532955,
+        "operating_income_yoy_status": "PERCENT",
+        "operating_margin_pct": 9.361109219976086,
+        "quarter": "2026Q1",
+        "reason": null,
+        "revenue_krw": 106343396750,
+        "revenue_yoy_pct": -1.2399723903012045,
+        "status": "READY"
+      },
+      {
+        "net_income_krw": 10630444529,
+        "net_margin_pct": 8.729793931615607,
+        "operating_cash_flow_krw": 15561141111,
+        "operating_income_krw": 12806986769,
+        "operating_income_yoy_pct": 91.01321834388352,
+        "operating_income_yoy_status": "PERCENT",
+        "operating_margin_pct": 10.517185341901666,
+        "quarter": "2026Q2",
+        "reason": null,
+        "revenue_krw": 121771998426,
+        "revenue_yoy_pct": 18.857700747692352,
+        "status": "READY"
+      }
+    ],
+    "reason": "DISPLAY_WINDOW_PARTIAL",
     "requested_as_of": "2026-09-04",
     "summary": {
-      "filter_passed": false,
+      "filter_passed": true,
       "filter_reasons": [],
-      "filter_status": "DATA_UNAVAILABLE",
-      "latest_4q_avg_revenue_krw": null,
+      "filter_status": "PASS",
+      "latest_4q_avg_revenue_krw": 109114763506.75,
       "latest_debt_ratio_pct": null,
-      "latest_fy": null,
-      "latest_fy_revenue_krw": null,
-      "latest_quarter": null,
-      "ttm_net_income_krw": null,
-      "ttm_net_margin_pct": null,
-      "ttm_operating_cash_flow_krw": null,
-      "ttm_operating_cash_flow_margin_pct": null,
-      "ttm_operating_income_krw": null,
-      "ttm_operating_margin_pct": null,
-      "ttm_revenue_krw": null,
+      "latest_fy": "2025",
+      "latest_fy_revenue_krw": 418474161915,
+      "latest_quarter": "2026Q2",
+      "ttm_net_income_krw": 35495900514,
+      "ttm_net_margin_pct": 8.132698860636804,
+      "ttm_operating_cash_flow_krw": 40240243058,
+      "ttm_operating_cash_flow_margin_pct": 9.219706335960367,
+      "ttm_operating_income_krw": 30772866775,
+      "ttm_operating_margin_pct": 7.050573585557088,
+      "ttm_revenue_krw": 436459054027,
       "ttm_roe_pct": null
     }
   }

@@ -3111,56 +3111,8 @@
     "applicability": "APPLICABLE",
     "company_family": "NON_FINANCIAL",
     "currency": "KRW",
-    "data_status": "PARTIAL",
+    "data_status": "READY",
     "diagnostics": [
-      {
-        "metric": "operating_income:2024Q3",
-        "reason": "DIRECT_DERIVED_MISMATCH",
-        "status": "DIRECT_DERIVED_MISMATCH",
-        "type": "METRIC_UNAVAILABLE"
-      },
-      {
-        "metric": "net_income:2024Q3",
-        "reason": "DIRECT_DERIVED_MISMATCH",
-        "status": "DIRECT_DERIVED_MISMATCH",
-        "type": "METRIC_UNAVAILABLE"
-      },
-      {
-        "metric": "operating_income:QUARTERLY_YOY:2024Q3",
-        "reason": "CURRENT_OBSERVATION_UNAVAILABLE",
-        "status": "INPUT_NOT_READY",
-        "type": "METRIC_UNAVAILABLE"
-      },
-      {
-        "metric": "operating_income:OPERATING_MARGIN:2024Q3",
-        "reason": "MARGIN_INPUT_UNAVAILABLE",
-        "status": "INPUT_NOT_READY",
-        "type": "METRIC_UNAVAILABLE"
-      },
-      {
-        "metric": "net_income:NET_MARGIN:2024Q3",
-        "reason": "MARGIN_INPUT_UNAVAILABLE",
-        "status": "INPUT_NOT_READY",
-        "type": "METRIC_UNAVAILABLE"
-      },
-      {
-        "metric": "operating_income:QUARTERLY_YOY:2024Q3",
-        "reason": "CURRENT_OBSERVATION_UNAVAILABLE",
-        "status": "INPUT_NOT_READY",
-        "type": "METRIC_UNAVAILABLE"
-      },
-      {
-        "metric": "operating_income:QUARTERLY_YOY:2025Q3",
-        "reason": "INPUT_NOT_READY",
-        "status": "INPUT_NOT_READY",
-        "type": "METRIC_UNAVAILABLE"
-      },
-      {
-        "metric": "operating_income:QUARTERLY_YOY:2025Q3",
-        "reason": "INPUT_NOT_READY",
-        "status": "INPUT_NOT_READY",
-        "type": "METRIC_UNAVAILABLE"
-      },
       {
         "metric": "net_income:TTM_ROE:2026Q2",
         "reason": "MISSING_BEGINNING_EQUITY",
@@ -3235,18 +3187,18 @@
         "status": "READY"
       },
       {
-        "net_income_krw": null,
-        "net_margin_pct": null,
+        "net_income_krw": 28265358070,
+        "net_margin_pct": 7.884924143983827,
         "operating_cash_flow_krw": 22208603455,
-        "operating_income_krw": null,
-        "operating_income_yoy_pct": null,
-        "operating_income_yoy_status": "UNAVAILABLE",
-        "operating_margin_pct": null,
+        "operating_income_krw": 37275380416,
+        "operating_income_yoy_pct": 26.86843568951159,
+        "operating_income_yoy_status": "PERCENT",
+        "operating_margin_pct": 10.398366307280266,
         "quarter": "2024Q3",
-        "reason": "DIRECT_DERIVED_MISMATCH",
+        "reason": null,
         "revenue_krw": 358473430484,
         "revenue_yoy_pct": 5.155083488461733,
-        "status": "DIRECT_DERIVED_MISMATCH"
+        "status": "READY"
       },
       {
         "net_income_krw": -11514427845,
@@ -3295,8 +3247,8 @@
         "net_margin_pct": 11.487504958707529,
         "operating_cash_flow_krw": 57534730015,
         "operating_income_krw": 56892822788,
-        "operating_income_yoy_pct": null,
-        "operating_income_yoy_status": "UNAVAILABLE",
+        "operating_income_yoy_pct": 52.62841627118433,
+        "operating_income_yoy_status": "PERCENT",
         "operating_margin_pct": 13.814568928173324,
         "quarter": "2025Q3",
         "reason": null,
@@ -3347,7 +3299,7 @@
         "status": "READY"
       }
     ],
-    "reason": "DISPLAY_WINDOW_PARTIAL",
+    "reason": null,
     "requested_as_of": "2026-09-04",
     "summary": {
       "filter_passed": true,

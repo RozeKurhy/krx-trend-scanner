@@ -3070,38 +3070,8 @@
     "applicability": "APPLICABLE",
     "company_family": "NON_FINANCIAL",
     "currency": "KRW",
-    "data_status": "PARTIAL",
+    "data_status": "READY",
     "diagnostics": [
-      {
-        "metric": "revenue:2025Q2",
-        "reason": "DIRECT_DERIVED_MISMATCH",
-        "status": "DIRECT_DERIVED_MISMATCH",
-        "type": "METRIC_UNAVAILABLE"
-      },
-      {
-        "metric": "revenue:QUARTERLY_YOY:2025Q2",
-        "reason": "CURRENT_OBSERVATION_UNAVAILABLE",
-        "status": "INPUT_NOT_READY",
-        "type": "METRIC_UNAVAILABLE"
-      },
-      {
-        "metric": "operating_income:OPERATING_MARGIN:2025Q2",
-        "reason": "MARGIN_INPUT_UNAVAILABLE",
-        "status": "INPUT_NOT_READY",
-        "type": "METRIC_UNAVAILABLE"
-      },
-      {
-        "metric": "net_income:NET_MARGIN:2025Q2",
-        "reason": "MARGIN_INPUT_UNAVAILABLE",
-        "status": "INPUT_NOT_READY",
-        "type": "METRIC_UNAVAILABLE"
-      },
-      {
-        "metric": "revenue:QUARTERLY_YOY:2026Q2",
-        "reason": "INPUT_NOT_READY",
-        "status": "INPUT_NOT_READY",
-        "type": "METRIC_UNAVAILABLE"
-      },
       {
         "metric": "net_income:TTM_ROE:2026Q2",
         "reason": "MISSING_BEGINNING_EQUITY",
@@ -3219,17 +3189,17 @@
       },
       {
         "net_income_krw": 10090029110,
-        "net_margin_pct": null,
+        "net_margin_pct": 16.630472473686464,
         "operating_cash_flow_krw": 12466737009,
         "operating_income_krw": 13293171706,
         "operating_income_yoy_pct": 56.14866147596433,
         "operating_income_yoy_status": "PERCENT",
-        "operating_margin_pct": null,
+        "operating_margin_pct": 21.909919558658313,
         "quarter": "2025Q2",
-        "reason": "DIRECT_DERIVED_MISMATCH",
-        "revenue_krw": null,
-        "revenue_yoy_pct": null,
-        "status": "DIRECT_DERIVED_MISMATCH"
+        "reason": null,
+        "revenue_krw": 60671932959,
+        "revenue_yoy_pct": 42.95158343548852,
+        "status": "READY"
       },
       {
         "net_income_krw": 12675874090,
@@ -3284,11 +3254,11 @@
         "quarter": "2026Q2",
         "reason": null,
         "revenue_krw": 66414654618,
-        "revenue_yoy_pct": null,
+        "revenue_yoy_pct": 9.46520306659874,
         "status": "READY"
       }
     ],
-    "reason": "DISPLAY_WINDOW_PARTIAL",
+    "reason": null,
     "requested_as_of": "2026-09-04",
     "summary": {
       "filter_passed": true,

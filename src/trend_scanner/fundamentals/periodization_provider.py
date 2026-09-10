@@ -16,6 +16,7 @@ from typing import Any, Iterable, Mapping
 from .corp_code_repository import CorpCodeRepository
 from .filing_registry import FilingRegistry
 from .models import RegisteredFiling
+from .opendart_client import OpenDartError
 from .opendart_contract import CompanyFamily, REPORT_TYPE_BY_CODE, classify_company_family
 from .period_models import PeriodizationFact, PeriodizationResult
 from .periodization import (
@@ -150,7 +151,28 @@ class PeriodizationProvider:
                     "source_sha256": None,
                     "basis": None,
                 }
-            artifact = self.xbrl.fetch(filing, force_refresh=force_refresh)
+            try:
+                artifact = self.xbrl.fetch(filing, force_refresh=force_refresh)
+            except OpenDartError as exc:
+                # A cache miss with DART status 014 (and the deliberately
+                # cache-only empty-key boundary) is a source-level gap for
+                # this filing, not a reason to discard every later period of
+                # the company. Continue with the remaining PIT filings;
+                # service/rate-limit failures still fail closed and surface to
+                # the bounded runner.
+                classification = str(getattr(exc, "classification", "") or "").upper()
+                status = str(getattr(exc, "status", "") or "")
+                if classification in {"ACCESS/AUTH", "REQUEST"} or status in {"013", "014"}:
+                    return {
+                        "materialized": False,
+                        "reason": f"XBRL_SOURCE_UNAVAILABLE_{status or classification.replace('/', '_')}",
+                        "reprt_code": filing.reprt_code,
+                        "rcept_no": filing.rcept_no,
+                        "fact_count": 0,
+                        "source_sha256": None,
+                        "basis": None,
+                    }
+                raise
             context_rows = self.xbrl.period_context_rows(
                 artifact, bsns_year=fiscal_year, reprt_code=filing.reprt_code,
             )

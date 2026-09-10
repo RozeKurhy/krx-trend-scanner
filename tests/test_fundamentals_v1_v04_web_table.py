@@ -15,7 +15,7 @@ def test_v04_web_heading_reason_and_cache_contract():
     html = (ROOT / "web/report.html").read_text(encoding="utf-8")
     js = (ROOT / "web/js/report.js").read_text(encoding="utf-8")
 
-    assert html.count("web-02d-window-6") == 2
+    assert html.count("web-02d-window-7") == 2
     assert 'id="fundamentals-detail-heading">펀더멘탈</h3>' in html
     assert 'id="fundamentals-detail-meta"' not in html
     assert "Fundamentals 상세" not in html
@@ -36,14 +36,25 @@ def test_v04_web_financial_loss_color_is_selective():
     loss_body = js[loss_start:loss_end]
     assert "Number(value) < 0" in loss_body
     assert 'negativeClass: isLoss ? "fundamental-loss" : ""' in loss_body
+    yoy_start = js.index("function fundamentalYoyPercentCell")
+    yoy_end = js.index("function fundamentalYoyCell", yoy_start)
+    yoy_body = js[yoy_start:yoy_end]
+    assert "Number(value) < 0" in yoy_body
+    assert 'negativeClass: isNegative ? "fundamental-loss" : ""' in yoy_body
     assert "fundamentalLossCell(row.operating_income_krw" in body
     assert "fundamentalLossCell(row.net_income_krw" in body
     assert "fundamentalLossCell(row.operating_margin_pct" in body
     assert "fundamentalLossCell(row.net_margin_pct" in body
-    assert '"매출 YoY", (row) => fundamentalCell(row.revenue_yoy_pct' in body
+    assert '"매출 YoY", (row) => fundamentalYoyPercentCell(row.revenue_yoy_pct)' in body
     assert '"영업현금흐름", (row) => fundamentalCell(row.operating_cash_flow_krw' in body
     assert '"TURNED_TO_LOSS", "LOSS_CONTINUED"' in js
-    assert '"TURNED_TO_PROFIT"' not in js[js.index("function fundamentalYoyCell"):js.index("function sortedFundamentalRows")]
+    transition_start = js.index("function fundamentalYoyCell")
+    transition_end = js.index("function sortedFundamentalRows")
+    transition_body = js[transition_start:transition_end]
+    assert 'status === "TURNED_TO_PROFIT"' in transition_body
+    assert '"fundamental-profit-transition"' in transition_body
+    assert ".fundamental-profit-transition" in css
+    assert "var(--market-down-blue)" in css[css.index(".fundamental-profit-transition"):css.index(".fundamental-profit-transition") + 180]
 
 
 def test_v04_web_table_structure_and_period_classes():

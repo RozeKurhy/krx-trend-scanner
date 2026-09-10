@@ -21,7 +21,7 @@
     "headline": "이상네트웍스(080010)는 현재 Pattern A EARLY_TREND 단계이나, 시가총액 기준 미달(FILTERED_MARKET_CAP)로 투자 대상에서 제외되었습니다.",
     "bullet_points": [
       "패스트 코어 V2: HOLD_PROGRESSED · 현재 4번째 전략 포지션 보유 중",
-      "펀더멘털: DATA_UNAVAILABLE (F4_DATA_UNAVAILABLE)",
+      "펀더멘털: Filter PASS, 최근 FY 매출 1,037.8억원, TTM 영업이익 252.0억원, TTM 순이익 216.7억원.",
       "현재 Pattern A Score는 95.74점(Stage: EARLY_TREND, Candidate: YES)입니다.",
       "시가총액 719.9억원(기준 1,000억원 미달)으로 Phase 10 Investability 시가총액 요건을 충족하지 못했습니다.",
       "외국인 수급: 20일 및 60일 누적 기준 외국인 순매수 기조는 유지되고 있으나, 최근 5일은 순매도로 전환되어 단기 수급이 다소 둔화된 상태입니다 (5일 순매수 강도: -20.23%).",
@@ -3100,36 +3100,12 @@
     "applicability": "APPLICABLE",
     "company_family": "NON_FINANCIAL",
     "currency": "KRW",
-    "data_status": "DATA_UNAVAILABLE",
+    "data_status": "READY",
     "diagnostics": [
       {
-        "metric": "net_income:2026Q2",
-        "reason": "DIRECT_DERIVED_MISMATCH",
-        "status": "DIRECT_DERIVED_MISMATCH",
-        "type": "METRIC_UNAVAILABLE"
-      },
-      {
-        "metric": "net_income:NET_MARGIN:2026Q2",
-        "reason": "MARGIN_INPUT_UNAVAILABLE",
-        "status": "INPUT_NOT_READY",
-        "type": "METRIC_UNAVAILABLE"
-      },
-      {
-        "metric": "net_income:TTM:2026Q2",
-        "reason": "INPUT_NOT_READY",
-        "status": "INPUT_NOT_READY",
-        "type": "METRIC_UNAVAILABLE"
-      },
-      {
-        "metric": "net_income:TTM_NET_MARGIN:2026Q2",
-        "reason": "INPUT_NOT_READY",
-        "status": "INPUT_NOT_READY",
-        "type": "METRIC_UNAVAILABLE"
-      },
-      {
         "metric": "net_income:TTM_ROE:2026Q2",
-        "reason": "DIRECT_DERIVED_MISMATCH",
-        "status": "DIRECT_DERIVED_MISMATCH",
+        "reason": "MISSING_BEGINNING_EQUITY",
+        "status": "DATA_UNAVAILABLE",
         "type": "METRIC_UNAVAILABLE"
       },
       {
@@ -3139,11 +3115,9 @@
         "type": "METRIC_UNAVAILABLE"
       }
     ],
-    "filter_passed": false,
-    "filter_reasons": [
-      "DATA_UNAVAILABLE"
-    ],
-    "filter_status": "DATA_UNAVAILABLE",
+    "filter_passed": true,
+    "filter_reasons": [],
+    "filter_status": "PASS",
     "quarterly": [
       {
         "net_income_krw": 1874663230,
@@ -3300,35 +3274,33 @@
         "status": "READY"
       },
       {
-        "net_income_krw": null,
-        "net_margin_pct": null,
+        "net_income_krw": 8297844404,
+        "net_margin_pct": 28.8489417775648,
         "operating_cash_flow_krw": 13318823620,
         "operating_income_krw": 8982032878,
         "operating_income_yoy_pct": 5.95222150518436,
         "operating_income_yoy_status": "PERCENT",
         "operating_margin_pct": 31.227645509559597,
         "quarter": "2026Q2",
-        "reason": "DIRECT_DERIVED_MISMATCH",
+        "reason": null,
         "revenue_krw": 28763080698,
         "revenue_yoy_pct": 9.4702025308963,
-        "status": "DIRECT_DERIVED_MISMATCH"
+        "status": "READY"
       }
     ],
-    "reason": "F4_DATA_UNAVAILABLE",
+    "reason": null,
     "requested_as_of": "2026-09-04",
     "summary": {
-      "filter_passed": false,
-      "filter_reasons": [
-        "DATA_UNAVAILABLE"
-      ],
-      "filter_status": "DATA_UNAVAILABLE",
-      "latest_4q_avg_revenue_krw": null,
+      "filter_passed": true,
+      "filter_reasons": [],
+      "filter_status": "PASS",
+      "latest_4q_avg_revenue_krw": 27594785950.25,
       "latest_debt_ratio_pct": null,
       "latest_fy": "2025",
       "latest_fy_revenue_krw": 103782678478,
       "latest_quarter": "2026Q2",
-      "ttm_net_income_krw": null,
-      "ttm_net_margin_pct": null,
+      "ttm_net_income_krw": 21672912708,
+      "ttm_net_margin_pct": 19.634970848363885,
       "ttm_operating_cash_flow_krw": 29324239102,
       "ttm_operating_cash_flow_margin_pct": 26.5668296493294,
       "ttm_operating_income_krw": 25197050436,

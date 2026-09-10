@@ -21,7 +21,7 @@
     "headline": "코나아이(052400)는 현재 Pattern A PROGRESSED 단계이며 투자 적격 상태는 INVESTABLE입니다.",
     "bullet_points": [
       "패스트 코어 V2: 관망 · 현재 신규 진입 조건 미충족",
-      "펀더멘털: DATA_UNAVAILABLE (F4_DATA_UNAVAILABLE)",
+      "펀더멘털: Filter PASS, 최근 FY 매출 3,091.6억원, TTM 영업이익 1,051.9억원, TTM 순이익 958.6억원.",
       "현재 Pattern A Score는 1.98점(Stage: PROGRESSED, Candidate: NO)입니다.",
       "시가총액 5504.9억원, 20일 평균 거래대금 22.29억원으로 Phase 10 Investability 기준을 충족합니다.",
       "외국인 수급: 최근 5일, 20일, 60일 모두 외국인 누적 순매수가 플러스를 유지하며 중단기 전 구간에서 순매수 우위(매집) 기조입니다 (5일 순매수 강도: +5.34%).",
@@ -2991,30 +2991,12 @@
     "applicability": "APPLICABLE",
     "company_family": "NON_FINANCIAL",
     "currency": "KRW",
-    "data_status": "DATA_UNAVAILABLE",
+    "data_status": "READY",
     "diagnostics": [
       {
-        "metric": "revenue:2026Q2",
-        "reason": "DIRECT_DERIVED_MISMATCH",
-        "status": "DIRECT_DERIVED_MISMATCH",
-        "type": "METRIC_UNAVAILABLE"
-      },
-      {
-        "metric": "revenue:QUARTERLY_YOY:2026Q2",
-        "reason": "CURRENT_OBSERVATION_UNAVAILABLE",
-        "status": "INPUT_NOT_READY",
-        "type": "METRIC_UNAVAILABLE"
-      },
-      {
-        "metric": "operating_income:OPERATING_MARGIN:2026Q2",
-        "reason": "MARGIN_INPUT_UNAVAILABLE",
-        "status": "INPUT_NOT_READY",
-        "type": "METRIC_UNAVAILABLE"
-      },
-      {
-        "metric": "net_income:NET_MARGIN:2026Q2",
-        "reason": "MARGIN_INPUT_UNAVAILABLE",
-        "status": "INPUT_NOT_READY",
+        "metric": "operating_income:ANNUAL_YOY:2021FY",
+        "reason": "MISSING_PRIOR_PERIOD",
+        "status": "DATA_UNAVAILABLE",
         "type": "METRIC_UNAVAILABLE"
       },
       {
@@ -3024,45 +3006,9 @@
         "type": "METRIC_UNAVAILABLE"
       },
       {
-        "metric": "operating_income:ANNUAL_YOY:2021FY",
-        "reason": "MISSING_PRIOR_PERIOD",
-        "status": "DATA_UNAVAILABLE",
-        "type": "METRIC_UNAVAILABLE"
-      },
-      {
         "metric": "net_income:ANNUAL_ROE:2021FY",
         "reason": "MISSING_PRIOR_FY_END_EQUITY",
         "status": "DATA_UNAVAILABLE",
-        "type": "METRIC_UNAVAILABLE"
-      },
-      {
-        "metric": "operating_income:ANNUAL_YOY:2021FY",
-        "reason": "MISSING_PRIOR_PERIOD",
-        "status": "DATA_UNAVAILABLE",
-        "type": "METRIC_UNAVAILABLE"
-      },
-      {
-        "metric": "revenue:TTM:2026Q2",
-        "reason": "INPUT_NOT_READY",
-        "status": "INPUT_NOT_READY",
-        "type": "METRIC_UNAVAILABLE"
-      },
-      {
-        "metric": "operating_income:TTM_OPERATING_MARGIN:2026Q2",
-        "reason": "INPUT_NOT_READY",
-        "status": "INPUT_NOT_READY",
-        "type": "METRIC_UNAVAILABLE"
-      },
-      {
-        "metric": "net_income:TTM_NET_MARGIN:2026Q2",
-        "reason": "INPUT_NOT_READY",
-        "status": "INPUT_NOT_READY",
-        "type": "METRIC_UNAVAILABLE"
-      },
-      {
-        "metric": "operating_cash_flow:TTM_OPERATING_CASH_FLOW_MARGIN:2026Q2",
-        "reason": "INPUT_NOT_READY",
-        "status": "INPUT_NOT_READY",
         "type": "METRIC_UNAVAILABLE"
       },
       {
@@ -3078,11 +3024,9 @@
         "type": "METRIC_UNAVAILABLE"
       }
     ],
-    "filter_passed": false,
-    "filter_reasons": [
-      "DATA_UNAVAILABLE"
-    ],
-    "filter_status": "DATA_UNAVAILABLE",
+    "filter_passed": true,
+    "filter_reasons": [],
+    "filter_status": "PASS",
     "quarterly": [
       {
         "net_income_krw": 6972352005,
@@ -3240,39 +3184,37 @@
       },
       {
         "net_income_krw": 22480210791,
-        "net_margin_pct": null,
+        "net_margin_pct": 26.573496946878283,
         "operating_cash_flow_krw": 53653156447,
         "operating_income_krw": 21396277626,
         "operating_income_yoy_pct": 24.344063442141536,
         "operating_income_yoy_status": "PERCENT",
-        "operating_margin_pct": null,
+        "operating_margin_pct": 25.292196921778903,
         "quarter": "2026Q2",
-        "reason": "DIRECT_DERIVED_MISMATCH",
-        "revenue_krw": null,
-        "revenue_yoy_pct": null,
-        "status": "DIRECT_DERIVED_MISMATCH"
+        "reason": null,
+        "revenue_krw": 84596358680,
+        "revenue_yoy_pct": 25.86063253084159,
+        "status": "READY"
       }
     ],
-    "reason": "F4_DATA_UNAVAILABLE",
+    "reason": null,
     "requested_as_of": "2026-09-04",
     "summary": {
-      "filter_passed": false,
-      "filter_reasons": [
-        "DATA_UNAVAILABLE"
-      ],
-      "filter_status": "DATA_UNAVAILABLE",
-      "latest_4q_avg_revenue_krw": null,
+      "filter_passed": true,
+      "filter_reasons": [],
+      "filter_status": "PASS",
+      "latest_4q_avg_revenue_krw": 86297780143.75,
       "latest_debt_ratio_pct": null,
       "latest_fy": "2025",
       "latest_fy_revenue_krw": 309163673263,
       "latest_quarter": "2026Q2",
       "ttm_net_income_krw": 95859726972,
-      "ttm_net_margin_pct": null,
+      "ttm_net_margin_pct": 27.77004426195038,
       "ttm_operating_cash_flow_krw": 174470351807,
-      "ttm_operating_cash_flow_margin_pct": null,
+      "ttm_operating_cash_flow_margin_pct": 50.54311695978074,
       "ttm_operating_income_krw": 105185603728,
-      "ttm_operating_margin_pct": null,
-      "ttm_revenue_krw": null,
+      "ttm_operating_margin_pct": 30.471700301209292,
+      "ttm_revenue_krw": 345191120575,
       "ttm_roe_pct": null
     }
   }

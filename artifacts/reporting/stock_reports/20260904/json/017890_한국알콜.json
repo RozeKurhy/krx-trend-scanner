@@ -21,7 +21,7 @@
     "headline": "한국알콜(017890)는 현재 Pattern A EARLY_TREND 단계이며 투자 적격 상태는 INVESTABLE입니다.",
     "bullet_points": [
       "패스트 코어 V2: HOLD_PRE_PROGRESSED · 현재 6번째 전략 포지션 보유 중 (Loss Guard 활성)",
-      "펀더멘털: DATA_UNAVAILABLE (F4_DATA_UNAVAILABLE)",
+      "펀더멘털: Filter PASS, 최근 FY 매출 4,238.8억원, TTM 영업이익 438.2억원, TTM 순이익 482.8억원.",
       "현재 Pattern A Score는 90.22점(Stage: EARLY_TREND, Candidate: YES)입니다.",
       "시가총액 2979.1억원, 20일 평균 거래대금 14.94억원으로 Phase 10 Investability 기준을 충족합니다.",
       "외국인 수급: 최근 5일, 20일, 60일 모두 외국인 누적 순매수가 플러스를 유지하며 중단기 전 구간에서 순매수 우위(매집) 기조입니다 (5일 순매수 강도: +16.73%).",
@@ -3207,36 +3207,12 @@
     "applicability": "APPLICABLE",
     "company_family": "NON_FINANCIAL",
     "currency": "KRW",
-    "data_status": "DATA_UNAVAILABLE",
+    "data_status": "READY",
     "diagnostics": [
       {
-        "metric": "net_income:2026Q2",
-        "reason": "DIRECT_DERIVED_MISMATCH",
-        "status": "DIRECT_DERIVED_MISMATCH",
-        "type": "METRIC_UNAVAILABLE"
-      },
-      {
-        "metric": "net_income:NET_MARGIN:2026Q2",
-        "reason": "MARGIN_INPUT_UNAVAILABLE",
-        "status": "INPUT_NOT_READY",
-        "type": "METRIC_UNAVAILABLE"
-      },
-      {
-        "metric": "net_income:TTM:2026Q2",
-        "reason": "INPUT_NOT_READY",
-        "status": "INPUT_NOT_READY",
-        "type": "METRIC_UNAVAILABLE"
-      },
-      {
-        "metric": "net_income:TTM_NET_MARGIN:2026Q2",
-        "reason": "INPUT_NOT_READY",
-        "status": "INPUT_NOT_READY",
-        "type": "METRIC_UNAVAILABLE"
-      },
-      {
         "metric": "net_income:TTM_ROE:2026Q2",
-        "reason": "DIRECT_DERIVED_MISMATCH",
-        "status": "DIRECT_DERIVED_MISMATCH",
+        "reason": "MISSING_BEGINNING_EQUITY",
+        "status": "DATA_UNAVAILABLE",
         "type": "METRIC_UNAVAILABLE"
       },
       {
@@ -3246,11 +3222,9 @@
         "type": "METRIC_UNAVAILABLE"
       }
     ],
-    "filter_passed": false,
-    "filter_reasons": [
-      "DATA_UNAVAILABLE"
-    ],
-    "filter_status": "DATA_UNAVAILABLE",
+    "filter_passed": true,
+    "filter_reasons": [],
+    "filter_status": "PASS",
     "quarterly": [
       {
         "net_income_krw": 4023228029,
@@ -3407,35 +3381,33 @@
         "status": "READY"
       },
       {
-        "net_income_krw": null,
-        "net_margin_pct": null,
+        "net_income_krw": 17843089221,
+        "net_margin_pct": 13.869671196423598,
         "operating_cash_flow_krw": -3140779346,
         "operating_income_krw": 17230920987,
         "operating_income_yoy_pct": 84.54369900876564,
         "operating_income_yoy_status": "PERCENT",
         "operating_margin_pct": 13.393824664619983,
         "quarter": "2026Q2",
-        "reason": "DIRECT_DERIVED_MISMATCH",
+        "reason": null,
         "revenue_krw": 128648249611,
         "revenue_yoy_pct": 21.408879839734986,
-        "status": "DIRECT_DERIVED_MISMATCH"
+        "status": "READY"
       }
     ],
-    "reason": "F4_DATA_UNAVAILABLE",
+    "reason": null,
     "requested_as_of": "2026-09-04",
     "summary": {
-      "filter_passed": false,
-      "filter_reasons": [
-        "DATA_UNAVAILABLE"
-      ],
-      "filter_status": "DATA_UNAVAILABLE",
-      "latest_4q_avg_revenue_krw": null,
+      "filter_passed": true,
+      "filter_reasons": [],
+      "filter_status": "PASS",
+      "latest_4q_avg_revenue_krw": 111806064496.25,
       "latest_debt_ratio_pct": null,
       "latest_fy": "2025",
       "latest_fy_revenue_krw": 423883457380,
       "latest_quarter": "2026Q2",
-      "ttm_net_income_krw": null,
-      "ttm_net_margin_pct": null,
+      "ttm_net_income_krw": 48276380924,
+      "ttm_net_margin_pct": 10.79466957841522,
       "ttm_operating_cash_flow_krw": 29537830474,
       "ttm_operating_cash_flow_margin_pct": 6.604702215189477,
       "ttm_operating_income_krw": 43821808474,

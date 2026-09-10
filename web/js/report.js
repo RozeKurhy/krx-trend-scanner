@@ -540,16 +540,24 @@
     return fundamentalCell(value, formatter, { negativeClass: isLoss ? "fundamental-loss" : "" });
   }
 
+  function fundamentalYoyPercentCell(value) {
+    const isNegative = value != null && value !== "" && Number.isFinite(Number(value)) && Number(value) < 0;
+    return fundamentalCell(value, formatFundamentalPercent, { negativeClass: isNegative ? "fundamental-loss" : "" });
+  }
+
   function fundamentalYoyCell(row) {
     const status = String(row && row.operating_income_yoy_status || "UNAVAILABLE");
     const transition = FUNDAMENTAL_YOY_STATUS_LABELS[status];
     if (transition) {
+      const className = ["TURNED_TO_LOSS", "LOSS_CONTINUED"].includes(status)
+        ? "fundamental-loss"
+        : status === "TURNED_TO_PROFIT" ? "fundamental-profit-transition" : "";
       return {
         value: transition,
-        className: ["TURNED_TO_LOSS", "LOSS_CONTINUED"].includes(status) ? "fundamental-loss" : "",
+        className,
       };
     }
-    return fundamentalCell(row && row.operating_income_yoy_pct, formatFundamentalPercent);
+    return fundamentalYoyPercentCell(row && row.operating_income_yoy_pct);
   }
 
   function sortedFundamentalRows(rows, identityKey, limit) {
@@ -636,7 +644,7 @@
     const quarterly = Array.isArray(fundamentals.quarterly) ? fundamentals.quarterly : [];
     periodsElement.appendChild(renderFundamentalPeriodTable("최근 12개 분기", quarterly, "quarter", 12, [
       ["매출", (row) => fundamentalCell(row.revenue_krw, formatFundamentalKrw)],
-      ["매출 YoY", (row) => fundamentalCell(row.revenue_yoy_pct, formatFundamentalPercent)],
+      ["매출 YoY", (row) => fundamentalYoyPercentCell(row.revenue_yoy_pct)],
       ["영업이익", (row) => fundamentalLossCell(row.operating_income_krw, formatFundamentalKrw)],
       ["영업이익 YoY", fundamentalYoyCell],
       ["영업이익률", (row) => fundamentalLossCell(row.operating_margin_pct, formatFundamentalPercent)],
@@ -647,7 +655,7 @@
     const annual = Array.isArray(fundamentals.annual) ? fundamentals.annual : [];
     periodsElement.appendChild(renderFundamentalPeriodTable("최근 5개년", annual, "fiscal_year", 5, [
       ["매출", (row) => fundamentalCell(row.revenue_krw, formatFundamentalKrw)],
-      ["매출 YoY", (row) => fundamentalCell(row.revenue_yoy_pct, formatFundamentalPercent)],
+      ["매출 YoY", (row) => fundamentalYoyPercentCell(row.revenue_yoy_pct)],
       ["영업이익", (row) => fundamentalLossCell(row.operating_income_krw, formatFundamentalKrw)],
       ["영업이익 YoY", fundamentalYoyCell],
       ["영업이익률", (row) => fundamentalLossCell(row.operating_margin_pct, formatFundamentalPercent)],

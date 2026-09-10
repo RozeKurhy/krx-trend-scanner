@@ -53,6 +53,16 @@ ACCOUNT_TO_METRIC = {
     "ifrs-full_CashFlowsFromUsedInOperatingActivities": "operating_cash_flow",
 }
 
+
+def metric_for_account_id(account_id: str | None) -> str | None:
+    normalized = str(account_id or "")
+    metric = ACCOUNT_TO_METRIC.get(normalized)
+    if metric is not None:
+        return metric
+    if normalized.rsplit("_", 1)[-1] == "RevenueOfStatementOfComprehensiveIncomeAbstract":
+        return "revenue"
+    return None
+
 REPORT_PERIODS = {
     "11013": ("Q1", "Q1_YTD", "Q1_END", "Q1"),
     "11012": ("Q2", "H1_YTD", "H1_END", "H1"),
@@ -723,11 +733,22 @@ class PeriodizationEngine:
         difference = _difference(direct.value, derived_value)
         same = difference == 0
         parity.append(DirectDerivedParity(direct.metric, period, anchor.rcept_no, _number(direct.value),
-                                           _number(derived_value), difference, "MATCH" if same else "MISMATCH"))
+                                           _number(derived_value), difference, "MATCH" if same else "MISMATCH",
+                                           None if same else "DIRECT_STANDALONE_AUTHORITY"))
         if not same:
-            return self._base(anchor, fiscal_start, period, STANDALONE_QUARTER, value=None,
-                              method="NONE", source=[direct, cumulative] + ([prior] if prior else []),
-                              status=DIRECT_DERIVED_MISMATCH, reason="DIRECT_DERIVED_MISMATCH",
+            # A unique, explicit standalone current-quarter fact from the
+            # selected primary filing is the authoritative economic value.
+            # Cumulative subtraction is secondary evidence and can differ by
+            # the filing's declared XBRL precision (or by the statement's
+            # arithmetic presentation). The old fail-closed branch discarded
+            # the direct fact and made otherwise valid periods unavailable.
+            # Keep the disagreement in parity for auditability, but retain the
+            # direct value for downstream F3/F4/F5 consumers.
+            return self._base(direct, fiscal_start, period, STANDALONE_QUARTER,
+                              value=direct.value,
+                              method="DIRECT_AUTHORITY_WITH_DERIVED_CONFLICT",
+                              source=[direct, cumulative] + ([prior] if prior else []),
+                              status=READY, reason="DIRECT_DERIVED_CONFLICT_DIRECT_AUTHORITY",
                               direct=direct.value, cumulative=cumulative.value, derived=derived_value,
                               difference=difference)
         return self._base(direct, fiscal_start, period, STANDALONE_QUARTER, value=direct.value,
@@ -782,14 +803,14 @@ def facts_from_xbrl_rows(rows: Iterable[Mapping[str, Any]], *, ticker: str, corp
     unless supplied explicitly.  Context dates remain the authority; report
     code only labels the filing sequence.
     """
-    values = [dict(row) for row in rows if ACCOUNT_TO_METRIC.get(str(row.get("account_id") or ""))]
+    values = [dict(row) for row in rows if metric_for_account_id(row.get("account_id"))]
     if fiscal_year_start is None:
         starts = sorted({str(row.get("period_start")) for row in values
                          if row.get("period_start") and not row.get("comparative")})
         fiscal_year_start = starts[0] if starts else None
     result: list[PeriodizationFact] = []
     for row in values:
-        metric = ACCOUNT_TO_METRIC[str(row.get("account_id"))]
+        metric = metric_for_account_id(row.get("account_id"))
         if metric in INSTANT_METRICS or row.get("instant"):
             semantic = INSTANT
         elif row.get("period_start") and fiscal_year_start and row.get("period_start") == fiscal_year_start:

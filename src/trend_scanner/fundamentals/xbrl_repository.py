@@ -43,6 +43,31 @@ def _prefix(namespace: str) -> str:
     return namespace.rsplit("/", 1)[-1] or "xbrl"
 
 
+_CUSTOM_REVENUE_ACCOUNT_SUFFIXES = frozenset({
+    "RevenueOfStatementOfComprehensiveIncomeAbstract",
+})
+
+
+def _metric_for_account_id(account_id: str) -> str | None:
+    if account_id == "ifrs-full_Assets":
+        return "assets"
+    if account_id == "ifrs-full_Liabilities":
+        return "liabilities"
+    if account_id == "ifrs-full_Equity":
+        return "equity"
+    if account_id == "ifrs-full_Revenue":
+        return "revenue"
+    if account_id in {"dart_OperatingIncomeLoss", "ifrs-full_ProfitLossFromOperatingActivities"}:
+        return "operating_income"
+    if account_id == "ifrs-full_ProfitLoss":
+        return "net_income"
+    if account_id == "ifrs-full_CashFlowsFromUsedInOperatingActivities":
+        return "operating_cash_flow"
+    if account_id.rsplit("_", 1)[-1] in _CUSTOM_REVENUE_ACCOUNT_SUFFIXES:
+        return "revenue"
+    return None
+
+
 def _parse_date(value: Any) -> date | None:
     if value in (None, ""):
         return None
@@ -234,12 +259,6 @@ class XbrlRepository:
             item.get("id"): _context_info(item)
             for item in root if _local(item.tag) == "context" and item.get("id")
         }
-        target_ids = {
-            "ifrs-full_Assets", "ifrs-full_Liabilities", "ifrs-full_Equity", "ifrs-full_Revenue",
-            "dart_OperatingIncomeLoss", "ifrs-full_ProfitLoss",
-            "ifrs-full_ProfitLossFromOperatingActivities",
-            "ifrs-full_CashFlowsFromUsedInOperatingActivities",
-        }
         names = {
             "ifrs-full_Assets": "자산총계", "ifrs-full_Liabilities": "부채총계", "ifrs-full_Equity": "자본총계",
             "ifrs-full_Revenue": "매출액", "dart_OperatingIncomeLoss": "영업이익",
@@ -263,16 +282,17 @@ class XbrlRepository:
                 continue
             namespace = fact.tag.split("}", 1)[0].lstrip("{") if "}" in fact.tag else ""
             account_id = f"{_prefix(namespace)}_{_local(fact.tag)}"
-            if account_id not in target_ids:
+            metric = _metric_for_account_id(account_id)
+            if metric is None:
                 continue
             value = _numeric_value(fact.text)
-            family = "BALANCE_SHEET" if account_id in {"ifrs-full_Assets", "ifrs-full_Liabilities", "ifrs-full_Equity"} else (
-                "CASH_FLOW" if account_id == "ifrs-full_CashFlowsFromUsedInOperatingActivities" else "INCOME_STATEMENT"
+            family = "BALANCE_SHEET" if metric in {"assets", "liabilities", "equity"} else (
+                "CASH_FLOW" if metric == "operating_cash_flow" else "INCOME_STATEMENT"
             )
             raw_sj = "CF" if family == "CASH_FLOW" else ("BS" if family == "BALANCE_SHEET" else "CIS")
             rows.append({
                 "account_id": account_id,
-                "account_nm": names.get(account_id),
+                "account_nm": names.get(account_id, "매출액" if metric == "revenue" else None),
                 "sj_div": raw_sj,
                 "statement_family": family,
                 "account_detail": None,
@@ -319,12 +339,6 @@ class XbrlRepository:
             item.get("id"): _context_info(item)
             for item in root if _local(item.tag) == "context" and item.get("id")
         }
-        target_ids = {
-            "ifrs-full_Assets", "ifrs-full_Liabilities", "ifrs-full_Equity", "ifrs-full_Revenue",
-            "dart_OperatingIncomeLoss", "ifrs-full_ProfitLoss",
-            "ifrs-full_ProfitLossFromOperatingActivities",
-            "ifrs-full_CashFlowsFromUsedInOperatingActivities",
-        }
         names = {
             "ifrs-full_Assets": "자산총계", "ifrs-full_Liabilities": "부채총계", "ifrs-full_Equity": "자본총계",
             "ifrs-full_Revenue": "매출액", "dart_OperatingIncomeLoss": "영업이익",
@@ -352,16 +366,17 @@ class XbrlRepository:
                 continue
             namespace = fact.tag.split("}", 1)[0].lstrip("{") if "}" in fact.tag else ""
             account_id = f"{_prefix(namespace)}_{_local(fact.tag)}"
-            if account_id not in target_ids:
+            metric = _metric_for_account_id(account_id)
+            if metric is None:
                 continue
-            family = "BALANCE_SHEET" if account_id in {"ifrs-full_Assets", "ifrs-full_Liabilities", "ifrs-full_Equity"} else (
-                "CASH_FLOW" if account_id == "ifrs-full_CashFlowsFromUsedInOperatingActivities" else "INCOME_STATEMENT"
+            family = "BALANCE_SHEET" if metric in {"assets", "liabilities", "equity"} else (
+                "CASH_FLOW" if metric == "operating_cash_flow" else "INCOME_STATEMENT"
             )
             raw_sj = "CF" if family == "CASH_FLOW" else ("BS" if family == "BALANCE_SHEET" else "CIS")
             rows.append({
                 "ticker": artifact.ticker, "corp_code": artifact.corp_code, "bsns_year": str(bsns_year),
                 "reprt_code": str(reprt_code), "report_type": REPORT_TYPE_BY_CODE.get(str(reprt_code), "UNKNOWN"),
-                "account_id": account_id, "account_nm": names.get(account_id), "sj_div": raw_sj,
+                "account_id": account_id, "account_nm": names.get(account_id, "매출액" if metric == "revenue" else None), "sj_div": raw_sj,
                 "statement_family": family, "account_detail": None, "thstrm_amount": fact.text,
                 "raw_value": fact.text, "value": _numeric_value(fact.text), "currency": fact.get("unitRef"),
                 "unit_ref": fact.get("unitRef"), "decimals": fact.get("decimals"),

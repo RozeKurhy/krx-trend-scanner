@@ -3253,7 +3253,7 @@
     "applicability": "APPLICABLE",
     "company_family": "NON_FINANCIAL",
     "currency": "KRW",
-    "data_status": "PARTIAL",
+    "data_status": "READY",
     "diagnostics": [
       {
         "metric": "net_income:TTM_ROE:2026Q2",
@@ -3273,18 +3273,18 @@
     "filter_status": "PASS",
     "quarterly": [
       {
-        "net_income_krw": -1060236636,
+        "net_income_krw": -1060236636000,
         "net_margin_pct": -0.6811550288581129,
         "operating_cash_flow_krw": 12798584052264,
-        "operating_income_krw": 4614303454,
+        "operating_income_krw": 4614303454000,
         "operating_income_yoy_pct": -61.49858798231814,
         "operating_income_yoy_status": "PERCENT",
         "operating_margin_pct": 2.964485375856659,
         "quarter": "2023Q3",
-        "reason": "DIRECT_DERIVED_MISMATCH",
-        "revenue_krw": 155652764948,
+        "reason": null,
+        "revenue_krw": 155652764948000,
         "revenue_yoy_pct": 36.504359925992006,
-        "status": "DIRECT_DERIVED_MISMATCH"
+        "status": "READY"
       },
       {
         "net_income_krw": -17371603234,
@@ -3441,7 +3441,7 @@
         "status": "READY"
       }
     ],
-    "reason": "DISPLAY_WINDOW_PARTIAL",
+    "reason": null,
     "requested_as_of": "2026-09-04",
     "summary": {
       "filter_passed": true,

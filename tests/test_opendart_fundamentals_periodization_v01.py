@@ -10,7 +10,6 @@ from trend_scanner.fundamentals.period_models import (
     CUMULATIVE_YTD,
     DATA_UNAVAILABLE,
     DERIVATION_UNAVAILABLE,
-    DIRECT_DERIVED_MISMATCH,
     INSTANT,
     PERIOD_AMBIGUOUS,
     PERIODIZATION_UNSUPPORTED,
@@ -165,12 +164,16 @@ def test_missing_source_is_not_converted_to_zero():
     assert q2.value is None
 
 
-def test_direct_derived_mismatch_fails_closed_without_silent_selection():
+def test_direct_derived_conflict_keeps_authoritative_standalone_value():
     result = PeriodizationEngine().periodize([q1(), h1(), h1_direct(value=61)])
     q2 = _obs(result, "Q2")
-    assert q2.value is None
-    assert q2.resolution_status == DIRECT_DERIVED_MISMATCH
+    assert q2.value == 61
+    assert q2.resolution_status == "READY"
+    assert q2.method == "DIRECT_AUTHORITY_WITH_DERIVED_CONFLICT"
+    assert q2.reason == "DIRECT_DERIVED_CONFLICT_DIRECT_AUTHORITY"
     assert result.parity[0].difference == 1
+    assert result.parity[0].status == "MISMATCH"
+    assert result.parity[0].reason == "DIRECT_STANDALONE_AUTHORITY"
 
 
 def test_comparative_context_is_excluded():
@@ -329,3 +332,35 @@ def test_xbrl_context_extraction_keeps_actual_non_calendar_period_and_comparativ
                                  fs_div_used="CFS", source_sha256="fixture", fiscal_year_start="2024-10-01")
     periodized = PeriodizationEngine().periodize(facts)
     assert _obs(periodized, "Q1").value == 40
+
+
+def test_xbrl_custom_revenue_account_is_normalized_to_revenue(tmp_path):
+    xbrl = """<?xml version='1.0'?>
+<xbrl xmlns='http://www.xbrl.org/2003/instance'
+ xmlns:entity='http://example.test/entity'
+ xmlns:xbrldi='http://xbrl.org/2006/xbrldi'>
+<context id='current'><entity><identifier>00871833</identifier><segment><xbrldi:explicitMember dimension='ifrs-full:ConsolidatedAndSeparateFinancialStatementsAxis'>ifrs-full:ConsolidatedMember</xbrldi:explicitMember></segment></entity><period><startDate>2024-01-01</startDate><endDate>2024-03-31</endDate></period></context>
+<entity:RevenueOfStatementOfComprehensiveIncomeAbstract contextRef='current' unitRef='KRW'>123</entity:RevenueOfStatementOfComprehensiveIncomeAbstract>
+</xbrl>"""
+    raw_buffer = io.BytesIO()
+    with zipfile.ZipFile(raw_buffer, "w", zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr("entity.xbrl", xbrl)
+    raw = raw_buffer.getvalue()
+    repo = XbrlRepository(cache_dir=tmp_path)
+    filing = type("Filing", (), {"rcept_no": "CUSTOM", "reprt_code": "11013"})()
+    zip_path, _ = repo._paths(filing.rcept_no, filing.reprt_code)
+    zip_path.parent.mkdir(parents=True, exist_ok=True)
+    zip_path.write_bytes(raw)
+    artifact = RawXbrlArtifact(
+        corp_code="00871833", ticker="237690", rcept_no="CUSTOM", reprt_code="11013", rcept_dt="20250215",
+        retrieved_at="fixed", http_status=200, content_type="application/zip", byte_length=len(raw),
+        sha256="fixture", member_count=1, member_names=("entity.xbrl",), source_url_redacted="redacted",
+    )
+    rows = repo.period_context_rows(artifact, bsns_year="2024", reprt_code="11013")
+    assert len(rows) == 1
+    assert rows[0]["account_id"] == "entity_RevenueOfStatementOfComprehensiveIncomeAbstract"
+    facts = facts_from_xbrl_rows(rows, ticker="237690", corp_code="00871833",
+                                 company_family=CompanyFamily.NON_FINANCIAL.value, fiscal_year="2024",
+                                 reprt_code="11013", rcept_no="CUSTOM", rcept_dt="2025-02-15",
+                                 fs_div_used="CFS", source_sha256="fixture", fiscal_year_start="2024-01-01")
+    assert len(facts) == 1 and facts[0].metric == "revenue" and facts[0].value == 123
