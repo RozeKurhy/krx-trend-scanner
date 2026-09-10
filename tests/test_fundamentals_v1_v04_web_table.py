@@ -15,7 +15,7 @@ def test_v04_web_heading_reason_and_cache_contract():
     html = (ROOT / "web/report.html").read_text(encoding="utf-8")
     js = (ROOT / "web/js/report.js").read_text(encoding="utf-8")
 
-    assert html.count("web-02d-window-9") == 2
+    assert html.count("web-02d-window-10") == 2
     assert 'id="fundamentals-detail-heading">펀더멘탈</h3>' in html
     assert 'id="fundamentals-detail-meta"' not in html
     assert "Fundamentals 상세" not in html
@@ -98,10 +98,12 @@ def test_v04_web_amount_format_preserves_ascii_negative_and_small_unit():
     body = js[start:end]
 
     assert "억원" not in body
-    assert "천만" in body
-    assert 'const sign = number < 0 ? "-" : ""' in body
+    assert "formatKrwAsEok" in body
+    assert "천만" not in body
+    helper_start = js.index("function formatKrwAsEok")
+    helper_end = js.index("function formatKrwCompact", helper_start)
+    assert 'const sign = number > 0 ? (signed ? "+" : "") : number < 0 ? "-" : ""' in js[helper_start:helper_end]
     table_start = js.index("function formatFundamentalTableKrw")
     table_end = js.index("function formatFundamentalPercent", table_start)
     table_body = js[table_start:table_end]
-    assert "formatNumber(absolute / 1e8)" in table_body
-    assert "formatNumber(absolute / 1e7)}천만" in table_body
+    assert "formatKrwAsEok(value, { withUnit: false })" in table_body

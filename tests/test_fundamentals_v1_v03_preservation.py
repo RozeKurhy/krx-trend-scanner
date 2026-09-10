@@ -26,6 +26,8 @@ def _without_fundamentals(value: dict) -> dict:
             item for item in summary["bullet_points"]
             if not str(item).startswith("펀더멘털:")
         ]
+    # FIX02 intentionally changes only the external chart URL contract.
+    result.pop("external_links", None)
     return result
 
 
@@ -94,7 +96,7 @@ def test_v03_web_fundamentals_layout_and_formatting_contract():
     js = (ROOT / "web/js/report.js").read_text(encoding="utf-8")
     css = (ROOT / "web/css/app.css").read_text(encoding="utf-8")
 
-    assert html.count("web-02d-window-9") == 2
+    assert html.count("web-02d-window-10") == 2
     assert "fundamentals-summary-grid" not in html
     assert html.index('<div class="report-card-row">') < html.index(
         '<div class="report-card-row report-card-row--secondary">'
@@ -109,8 +111,10 @@ def test_v03_web_fundamentals_layout_and_formatting_contract():
     format_start = js.index("function formatFundamentalKrw")
     format_end = js.index("function formatFundamentalPercent", format_start)
     format_body = js[format_start:format_end]
-    assert "천만" in format_body
-    assert "억원" not in format_body
-    assert 'const sign = number < 0 ? "-" : ""' in format_body
+    assert "formatKrwAsEok" in format_body
+    assert "천만" not in format_body
+    helper_start = js.index("function formatKrwAsEok")
+    helper_end = js.index("function formatKrwCompact", helper_start)
+    assert 'const sign = number > 0 ? (signed ? "+" : "") : number < 0 ? "-" : ""' in js[helper_start:helper_end]
     assert ".fundamentals-table th { font-size: 10px; text-align: center; }" in css
     assert ".fundamentals-table td { text-align: right; }" in css

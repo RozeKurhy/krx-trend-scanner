@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from types import SimpleNamespace
 
 from trend_scanner.fundamentals.multi_period import (
@@ -128,6 +129,36 @@ def test_ambiguous_and_future_observations_fail_closed():
     assert slot.status == "PERIOD_AMBIGUOUS"
     assert result.has_16q_comparison_window is False
     assert any(item["type"] == "FUTURE_OR_UNAVAILABLE_SOURCE_EXCLUDED" for item in result.diagnostics)
+
+
+def test_latest_selection_does_not_merge_different_period_semantics():
+    rows = _canonical()
+    standalone = next(
+        item for item in rows
+        if item.fiscal_year == "2023" and item.fiscal_period == "Q2" and item.metric == "revenue"
+    )
+    rows.append(replace(
+        standalone,
+        value=999,
+        anchor_rcept_no="2024-Q2-revenue-cumulative",
+        anchor_rcept_dt="2024-06-30",
+        source_rcept_nos=("2024-Q2-revenue-cumulative",),
+        source_rcept_dts=("2024-06-30",),
+        period_semantics="CUMULATIVE_YTD",
+        period_start="2023-01-01",
+        pit_available_from="2024-06-30",
+    ))
+    result = build_multi_period_result(
+        ticker="TEST", requested_as_of="2024-12-31", observations=rows
+    )
+    slot = next(item for item in result.quarter_slots if item.identity == "2023Q2")
+    assert slot.status == "PERIOD_AMBIGUOUS"
+    assert "AUTHORITY_SIGNATURE_CONFLICT:revenue" in (slot.reason or "")
+    values = [
+        item.value for item in result.quarters
+        if item.fiscal_year == "2023" and item.fiscal_period == "Q2" and item.metric == "revenue"
+    ]
+    assert sorted(values) == [100, 999]
 
 
 def test_basis_and_currency_mismatch_disable_comparison_window():

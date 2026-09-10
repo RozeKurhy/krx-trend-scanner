@@ -215,14 +215,22 @@
     return `${sign}${formatNumber(Math.abs(number), 2)}%`;
   }
 
-  function formatKrwCompact(value) {
+  function formatKrwAsEok(value, options = {}) {
     if (value == null || value === "" || !Number.isFinite(Number(value))) return "—";
     const number = Number(value);
-    const sign = number > 0 ? "+" : number < 0 ? "−" : "";
+    const signed = options.signed === true;
+    const withUnit = options.withUnit !== false;
+    const sign = number > 0 ? (signed ? "+" : "") : number < 0 ? "-" : "";
     const absolute = Math.abs(number);
-    if (absolute >= 1e12) return `${sign}${formatNumber(absolute / 1e12, 2)}조원`;
-    if (absolute >= 1e8) return `${sign}${formatNumber(absolute / 1e8, 1)}억원`;
-    return `${sign}${formatNumber(absolute)}원`;
+    if (absolute === 0) return withUnit ? "0억" : "0";
+    if (absolute >= 1e12 && withUnit) return `${sign}${formatNumber(absolute / 1e12, 2)}조원`;
+    if (absolute >= 1e8) return `${sign}${formatNumber(absolute / 1e8)}${withUnit ? "억" : ""}`;
+    const truncatedTenths = Math.floor(absolute / 1e7);
+    return `${sign}${formatNumber(truncatedTenths / 10, 1)}${withUnit ? "억" : ""}`;
+  }
+
+  function formatKrwCompact(value) {
+    return formatKrwAsEok(value, { signed: true });
   }
 
   function topPercentFromPercentile(value) {
@@ -510,21 +518,11 @@
   }
 
   function formatFundamentalKrw(value) {
-    if (value == null || value === "" || !Number.isFinite(Number(value))) return "—";
-    const number = Number(value);
-    const sign = number < 0 ? "-" : "";
-    const absolute = Math.abs(number);
-    if (absolute >= 1e8) return `${sign}${formatNumber(absolute / 1e8, 1)}`;
-    return `${sign}${formatNumber(absolute / 1e7, 1)}천만`;
+    return formatKrwAsEok(value);
   }
 
   function formatFundamentalTableKrw(value) {
-    if (value == null || value === "" || !Number.isFinite(Number(value))) return "—";
-    const number = Number(value);
-    const sign = number < 0 ? "-" : "";
-    const absolute = Math.abs(number);
-    if (absolute >= 1e8) return `${sign}${formatNumber(absolute / 1e8)}`;
-    return `${sign}${formatNumber(absolute / 1e7)}천만`;
+    return formatKrwAsEok(value, { withUnit: false });
   }
 
   function formatFundamentalPercent(value) {
@@ -581,13 +579,8 @@
   }
 
   function fundamentalChartValueLabel(value) {
-    if (value == null || value === "" || !Number.isFinite(Number(value))) return "데이터 없음";
-    const number = Number(value);
-    const sign = number < 0 ? "-" : "";
-    const absolute = Math.abs(number);
-    return absolute >= 1e8
-      ? `${sign}${formatNumber(absolute / 1e8)}억원`
-      : `${sign}${formatNumber(absolute / 1e7)}천만원`;
+    const formatted = formatKrwAsEok(value);
+    return formatted === "—" ? "데이터 없음" : formatted;
   }
 
   function fundamentalTrendSvgElement(tag, attributes) {
@@ -835,7 +828,7 @@
       return;
     }
     const summary = fundamentals.summary || {};
-    unitElement.textContent = "단위: 억원 · 1억원 미만은 천만원 단위 표시";
+    unitElement.textContent = "단위: 억 · 1억원 미만은 소수점 1자리(버림)";
     renderFundamentalTrend(fundamentals);
 
     const quarterly = Array.isArray(fundamentals.quarterly) ? fundamentals.quarterly : [];
@@ -1223,10 +1216,10 @@
       naver.href = report.external_links.naver_finance;
     }
     if (naverChart) {
-      const tossChart = report.external_links && report.external_links.toss_chart;
-      const validTossChart = typeof tossChart === "string" && /^https:\/\/www\.tossinvest\.com\/stocks\/A[0-9A-Z]+\/order$/.test(tossChart);
-      naverChart.hidden = !validTossChart;
-      if (validTossChart) naverChart.href = tossChart;
+      const naverChartUrl = report.external_links && report.external_links.naver_chart;
+      const validNaverChart = typeof naverChartUrl === "string" && /^https:\/\/stock\.naver\.com\/fchart\/domestic\/stock\/[0-9A-Z]+$/.test(naverChartUrl);
+      naverChart.hidden = !validNaverChart;
+      if (validNaverChart) naverChart.href = naverChartUrl;
       else naverChart.removeAttribute("href");
     }
     if (dart) {

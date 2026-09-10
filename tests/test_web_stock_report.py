@@ -59,8 +59,8 @@ def test_compact_report_preserves_authority_values_without_raw_markdown(payload)
     assert report["fundamentals"]["annual"] == source["fundamentals"]["annual"]
     assert "diagnostics" not in report["fundamentals"]
     assert report["external_links"]["naver_finance"] == "https://finance.naver.com/item/main.naver?code=005930"
-    assert report["external_links"]["toss_chart"] == "https://www.tossinvest.com/stocks/A005930/order"
-    assert "naver_chart" not in report["external_links"]
+    assert report["external_links"]["naver_chart"] == "https://stock.naver.com/fchart/domestic/stock/005930"
+    assert "toss_chart" not in report["external_links"]
     assert "summary_text" not in report
     assert "body" not in report
     assert "market_strength_state" not in report["summary"]
@@ -68,15 +68,15 @@ def test_compact_report_preserves_authority_values_without_raw_markdown(payload)
     assert "/Users/" not in json.dumps(report, ensure_ascii=False)
 
 
-def test_all_published_compact_reports_have_ticker_bound_toss_chart(payload):
+def test_all_published_compact_reports_have_ticker_bound_naver_chart(payload):
     _index, reports, _stats = payload
 
     assert len(reports) == 553
     for ticker, report in reports.items():
         links = report["external_links"]
         assert links["naver_finance"] == f"https://finance.naver.com/item/main.naver?code={ticker}"
-        assert links["toss_chart"] == f"https://www.tossinvest.com/stocks/A{ticker}/order"
-        assert "naver_chart" not in links
+        assert links["naver_chart"] == f"https://stock.naver.com/fchart/domestic/stock/{ticker}"
+        assert "toss_chart" not in links
 
 
 def test_fundamentals_projection_preserves_source_status_and_applicability(payload, exporter):
@@ -221,8 +221,8 @@ def test_exporter_writes_index_and_one_json_per_available_report(tmp_path, expor
     sample = json.loads((stock_dir / f"{sample_ticker}.json").read_text(encoding="utf-8"))
     assert sample["schema_version"] == 1
     assert sample["identity"]["ticker"] == sample_ticker
-    assert sample["external_links"]["toss_chart"] == f"https://www.tossinvest.com/stocks/A{sample_ticker}/order"
-    assert "naver_chart" not in sample["external_links"]
+    assert sample["external_links"]["naver_chart"] == f"https://stock.naver.com/fchart/domestic/stock/{sample_ticker}"
+    assert "toss_chart" not in sample["external_links"]
     assert sample["technical_details"]["source_report"].startswith("artifacts/reporting/stock_reports/")
 
 
@@ -233,15 +233,15 @@ def test_report_frontend_has_safe_states_and_relative_assets():
     css = (ROOT / "web/css/app.css").read_text(encoding="utf-8")
     favicon = (ROOT / "web/favicon.svg").read_text(encoding="utf-8")
 
-    assert 'href="./css/app.css?v=web-02d-window-9"' in html
+    assert 'href="./css/app.css?v=web-02d-window-10"' in html
     assert 'href="./css/app.css?v=web-fear-fix02-1"' in index_html
     assert 'href="./favicon.svg"' in html
     assert 'href="./favicon.svg"' in index_html
     assert (ROOT / "web/favicon.svg").exists()
     assert '#9f1d2f' in favicon
-    assert 'src="./js/report.js?v=web-02d-window-9"' in html
+    assert 'src="./js/report.js?v=web-02d-window-10"' in html
     assert 'src="./js/app.js?v=web-fear-fix02-1"' in index_html
-    assert html.count("web-02d-window-9") == 2
+    assert html.count("web-02d-window-10") == 2
     assert index_html.count("web-fear-fix02-1") == 2
     assert "web-03a-final-1" not in html
     assert "web-03a-final-1" not in index_html
@@ -258,12 +258,12 @@ def test_report_frontend_has_safe_states_and_relative_assets():
     assert 'id="naver-link"' in html
     assert 'id="naver-chart-link"' in html
     assert 'id="dart-link"' in html
-    assert '전자공시 보기' in html
+    assert '전자공시' in html
     assert 'target="_blank" rel="noopener"' in html
-    assert "차트 보기" in html
+    assert "차트" in html
     assert "차트 바로가기" not in html
-    assert "toss_chart" in js
-    assert "naver_chart" not in js
+    assert "naver_chart" in js
+    assert "toss_chart" not in js
     assert html.count('id="naver-link"') == 1
     assert html.count('id="naver-chart-link"') == 1
     assert html.count('id="dart-link"') == 1
@@ -326,7 +326,7 @@ def test_report_frontend_has_safe_states_and_relative_assets():
     assert "fundamentals-table" in js and "fundamentals-table" in css
     assert "fundamental-loss" in js and "fundamental-loss" in css
     assert 'header: "TTM"' in js
-    assert "천만" in js
+    assert "formatKrwAsEok" in js
     assert "펀더멘털 V1 적용 대상 아님" in js
     assert "filter_status" in js
     assert "position: sticky" in css
@@ -334,7 +334,9 @@ def test_report_frontend_has_safe_states_and_relative_assets():
     assert "100 - Number(value)" in js
     for percentile, expected in ((92.51, 7.5), (76.6, 23.4), (99.20, 0.8)):
         assert round(100 - percentile, 1) == expected
-    assert "네이버 증권에서 보기" in html
+    assert "Npay 증권" in html
+    assert "차트</a>" in html
+    assert "전자공시</a>" in html
     assert "DART_SEARCH_URL" in js
     assert "dart-link" in js
     assert "report.identity.ticker" in js

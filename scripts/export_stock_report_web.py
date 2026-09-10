@@ -345,7 +345,7 @@ def _compact_report(report: dict[str, Any], source_path: Path) -> dict[str, Any]
         },
         "external_links": {
             "naver_finance": f"https://finance.naver.com/item/main.naver?code={ticker}",
-            "toss_chart": f"https://www.tossinvest.com/stocks/A{ticker}/order",
+            "naver_chart": f"https://stock.naver.com/fchart/domestic/stock/{ticker}",
         },
     }
 

@@ -153,6 +153,23 @@ def _pit_eligible(item: PeriodizedFinancialObservation, cutoff: date) -> bool:
 def _observation_status(items: Sequence[PeriodizedFinancialObservation]) -> tuple[str, str | None]:
     if not items:
         return DATA_UNAVAILABLE, "MISSING_QUARTER_OR_FISCAL_YEAR"
+    authority_conflicts: list[str] = []
+    by_metric: dict[str, set[tuple[str, str, str]]] = {}
+    for item in items:
+        if item.resolution_status != READY:
+            continue
+        metric = str(item.metric)
+        by_metric.setdefault(metric, set()).add(_authority_signature(item))
+    for metric, signatures in sorted(by_metric.items()):
+        if len(signatures) > 1:
+            rendered = ",".join(
+                "/".join(signature) for signature in sorted(signatures)
+            )
+            authority_conflicts.append(
+                f"AUTHORITY_SIGNATURE_CONFLICT:{metric}:{rendered}"
+            )
+    if authority_conflicts:
+        return PERIOD_AMBIGUOUS, ";".join(authority_conflicts)
     statuses = [str(item.resolution_status or DATA_UNAVAILABLE) for item in items]
     non_ready = [status for status in statuses if status != READY]
     if non_ready:
@@ -510,11 +527,12 @@ def build_multi_period_result(
     # above and therefore cannot see this future restatement.  A same-day tie
     # remains visible so the coverage slot fails closed instead of choosing a
     # winner by incidental list order.
-    authoritative_groups: dict[tuple[str, str, str, str, str, str], list[PeriodizedFinancialObservation]] = {}
+    authoritative_groups: dict[tuple[str, str, str, str, str, str, tuple[str, str, str]], list[PeriodizedFinancialObservation]] = {}
     for item in eligible:
         key = (
             str(item.ticker), str(item.corp_code), str(item.company_family),
             str(item.fiscal_year), str(item.fiscal_period), str(item.metric),
+            _authority_signature(item),
         )
         authoritative_groups.setdefault(key, []).append(item)
     latest_eligible: list[PeriodizedFinancialObservation] = []
@@ -650,6 +668,23 @@ def _sequence_quarters(end: tuple[int, int], count: int) -> tuple[tuple[int, int
 
 def _observation_sort_key(item: PeriodizedFinancialObservation) -> tuple[str, str, str, str]:
     return (str(item.metric), str(item.resolution_status), str(item.anchor_rcept_dt), str(item.anchor_rcept_no))
+
+
+def _authority_signature(item: PeriodizedFinancialObservation) -> tuple[str, str, str]:
+    """Return the comparable authority dimensions for one observation.
+
+    Annual ``FULL_YEAR`` and ``CUMULATIVE_YTD`` are economically equivalent
+    labels for a full-year flow.  Other semantic differences remain visible
+    so a standalone quarter cannot be replaced by a cumulative presentation,
+    and CFS/OFS or KRW/foreign-currency observations cannot be silently
+    selected as one series.
+    """
+
+    period = str(item.fiscal_period or "").upper()
+    semantic = str(item.period_semantics or "").upper()
+    if period in {"FY", "FY_END", "FULL_YEAR"} and semantic in {"FULL_YEAR", "CUMULATIVE_YTD"}:
+        semantic = "FULL_YEAR"
+    return semantic, str(item.fs_div_used or "").upper(), str(item.currency or "").upper()
 
 
 def _slot_for_quarter(

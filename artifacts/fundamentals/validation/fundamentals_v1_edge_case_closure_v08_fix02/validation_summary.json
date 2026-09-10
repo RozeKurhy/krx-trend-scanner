@@ -1,0 +1,85 @@
+{
+  "work_id": "FUNDAMENTALS_V1_EDGE_CASE_CLOSURE_V08_FIX02",
+  "requested_as_of": "2026-09-04",
+  "network_calls": 0,
+  "source_population": "artifacts/fundamentals/validation/fundamentals_v1_edge_case_closure_v08_fix01/final_blind_10_tickers.csv",
+  "cell_count": 26,
+  "status_counts": {
+    "EXTERNAL_SOURCE_STALE": 15,
+    "PRODUCTION_CORRECTED": 11
+  },
+  "production_corrected_count": 11,
+  "rounding_match_count": 0,
+  "metric_semantics_count": 0,
+  "external_stale_count": 15,
+  "source_missing_count": 0,
+  "source_ambiguous_count": 0,
+  "mismatch_count": 0,
+  "wrong_sign_count": 0,
+  "affected_ticker_count": 4,
+  "affected_tickers": [
+    "006400",
+    "035720",
+    "085660",
+    "272210"
+  ],
+  "annual_affected_count": 7,
+  "quarterly_affected_count": 4,
+  "f7_changed_count": 4,
+  "stock_report_json_changed_count": 4,
+  "stock_report_md_changed_count": 4,
+  "web_payload_changed_count": 553,
+  "web_payload_count": 553,
+  "export_stats": {
+    "requested_as_of": "2026-09-04",
+    "universe_snapshot_date": "2026-09-04",
+    "universe_count": 4415,
+    "available_report_count": 553,
+    "unavailable_report_count": 3862,
+    "source_report_directory": "artifacts/reporting/stock_reports/20260904",
+    "source_json_directory": "artifacts/reporting/stock_reports/20260904/json",
+    "fundamentals_integrated_count": 553,
+    "fundamentals_status_counts": {
+      "DATA_UNAVAILABLE": 38,
+      "NOT_APPLICABLE": 74,
+      "PARTIAL": 109,
+      "READY": 332
+    }
+  },
+  "regression": {
+    "yusu_000700_2023_fy_operating_income": 21985188591,
+    "cj_000120_2025_q1_operating_income": 85366748157
+  },
+  "strategy_ranking_sha256": {
+    "strategy-monitor": "5712db9faa6dd07795254e2e730d96c0c90e554e",
+    "market-ranking": "2fd12af2d9d8f4a81affabee9a9c83d1c898a6aa",
+    "sector-rs-ranking": "17237d63c0630ff8d322764999d6f31b8f52b173",
+    "foreign-net-buy-ranking": "1d514cd18b5d10743c75d92b91fe55341ee0cf71"
+  },
+  "representative_cases": {
+    "035720": {
+      "period": "2025Q2",
+      "metric": "operating_income",
+      "final_status": "PRODUCTION_CORRECTED",
+      "production_after": 203900072143,
+      "official_comparative_value": 203900072143,
+      "selected_authoritative_rcept": "20260819000055"
+    },
+    "085660": {
+      "period": "2024FY",
+      "metric": "net_income",
+      "final_status": "PRODUCTION_CORRECTED",
+      "production_after": -11259855670,
+      "official_comparative_value": -11259855670,
+      "selected_authoritative_rcept": "20260609000370"
+    },
+    "272210": {
+      "period": "2025Q2",
+      "metric": "net_income",
+      "final_status": "PRODUCTION_CORRECTED",
+      "production_after": 46376274861,
+      "official_comparative_value": 46376274861,
+      "selected_authoritative_rcept": "20260820000123"
+    }
+  }
+}
