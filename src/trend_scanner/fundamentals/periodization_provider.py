@@ -70,6 +70,9 @@ class PeriodizationBuild:
     skipped_anchors: tuple[Mapping[str, Any], ...] = ()
     canonical_duplicate_group_count: int = 0
     canonical_duplicate_fact_removed_count: int = 0
+    precision_equivalent_group_count: int = 0
+    precision_equivalent_fact_removed_count: int = 0
+    true_value_conflict_group_count: int = 0
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -84,6 +87,9 @@ class PeriodizationBuild:
             "skipped_anchors": [dict(item) for item in self.skipped_anchors],
             "canonical_duplicate_group_count": self.canonical_duplicate_group_count,
             "canonical_duplicate_fact_removed_count": self.canonical_duplicate_fact_removed_count,
+            "precision_equivalent_group_count": self.precision_equivalent_group_count,
+            "precision_equivalent_fact_removed_count": self.precision_equivalent_fact_removed_count,
+            "true_value_conflict_group_count": self.true_value_conflict_group_count,
         }
 
 
@@ -122,11 +128,16 @@ class PeriodizationProvider:
         materialized_keys: set[tuple[str, str]] = set()
         canonical_duplicate_group_count = 0
         canonical_duplicate_fact_removed_count = 0
+        precision_equivalent_group_count = 0
+        precision_equivalent_fact_removed_count = 0
+        true_value_conflict_group_count = 0
 
         def materialize(filing: RegisteredFiling) -> dict[str, Any]:
             """Materialize one filing exactly once for this provider build."""
 
             nonlocal canonical_duplicate_group_count, canonical_duplicate_fact_removed_count
+            nonlocal precision_equivalent_group_count, precision_equivalent_fact_removed_count
+            nonlocal true_value_conflict_group_count
 
             key = (str(filing.reprt_code), str(filing.rcept_no))
             if key in materialized_keys:
@@ -164,6 +175,9 @@ class PeriodizationProvider:
             )
             canonical_duplicate_group_count += int(collapse_stats.get("group_count", 0))
             canonical_duplicate_fact_removed_count += int(collapse_stats.get("removed_fact_count", 0))
+            precision_equivalent_group_count += int(collapse_stats.get("precision_equivalent_group_count", 0))
+            precision_equivalent_fact_removed_count += int(collapse_stats.get("precision_equivalent_fact_removed_count", 0))
+            true_value_conflict_group_count += int(collapse_stats.get("true_value_conflict_group_count", 0))
             if not new_facts:
                 return {
                     "materialized": False,
@@ -217,8 +231,10 @@ class PeriodizationProvider:
             # Keep every version eligible at the requested EOD.  The selected
             # row is the current snapshot; earlier rows are required to
             # reconstruct what a later anchor could have known at its receipt.
-            eligible = [row for row in rows if self._receipt(row.rcept_dt) is not None
-                        and self._receipt(row.rcept_dt) <= cutoff]
+            eligible = self._effective_same_day_versions(
+                [row for row in rows if self._receipt(row.rcept_dt) is not None
+                 and self._receipt(row.rcept_dt) <= cutoff]
+            )
             for filing in sorted(eligible, key=lambda item: (item.rcept_dt, item.rcept_no)):
                 materialization = materialize(filing)
                 if not materialization["materialized"]:
@@ -291,6 +307,9 @@ class PeriodizationProvider:
             result=result, anchor_selections=tuple(selections), skipped_anchors=tuple(skipped),
             canonical_duplicate_group_count=canonical_duplicate_group_count,
             canonical_duplicate_fact_removed_count=canonical_duplicate_fact_removed_count,
+            precision_equivalent_group_count=precision_equivalent_group_count,
+            precision_equivalent_fact_removed_count=precision_equivalent_fact_removed_count,
+            true_value_conflict_group_count=true_value_conflict_group_count,
         )
 
     def periodize(self, ticker: str, fiscal_year: str, requested_as_of: str | date, **kwargs: Any) -> PeriodizationResult:
@@ -311,6 +330,23 @@ class PeriodizationProvider:
             return []
         return sorted({row.rcept_no for row in rows
                        if cls._receipt(row.rcept_dt) is not None and cls._receipt(row.rcept_dt) <= cutoff})
+
+    @classmethod
+    def _effective_same_day_versions(cls, rows: Iterable[RegisteredFiling]) -> list[RegisteredFiling]:
+        """Keep the effective correction when a chain has same-day versions."""
+
+        grouped: dict[tuple[str, str], list[RegisteredFiling]] = {}
+        for row in rows:
+            key = (str(row.filing_chain_key or ""), str(cls._receipt(row.rcept_dt) or ""))
+            grouped.setdefault(key, []).append(row)
+        result: list[RegisteredFiling] = []
+        for group in grouped.values():
+            corrections = [row for row in group if row.correction_flag]
+            if corrections:
+                result.append(max(corrections, key=lambda row: row.rcept_no))
+            else:
+                result.extend(group)
+        return sorted(result, key=lambda item: (item.rcept_dt, item.rcept_no))
 
     @staticmethod
     def _canonical_prior_reason(status: str, reason: str | None) -> str | None:

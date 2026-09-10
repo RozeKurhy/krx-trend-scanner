@@ -59,6 +59,13 @@ class PeriodizationFact:
     explicit_dimension_count: int = 0
     typed_dimension_count: int = 0
     additional_explicit_dimension_count: int = 0
+    # Raw XBRL provenance is additive and appended for V02 compatibility.
+    account_id: str | None = None
+    raw_value: str | None = None
+    unit_ref: str | None = None
+    decimals: str | None = None
+    precision: str | None = None
+    context_ref: str | None = None
 
     @classmethod
     def from_mapping(cls, value: Mapping[str, Any]) -> "PeriodizationFact":
@@ -92,6 +99,12 @@ class PeriodizationFact:
         data.setdefault("explicit_dimension_count", int(data.get("explicit_dimension_count", 0) or 0))
         data.setdefault("typed_dimension_count", int(data.get("typed_dimension_count", 0) or 0))
         data.setdefault("additional_explicit_dimension_count", int(data.get("additional_explicit_dimension_count", 0) or 0))
+        data.setdefault("account_id", data.get("account_id"))
+        data.setdefault("raw_value", data.get("raw_value") or data.get("thstrm_amount"))
+        data.setdefault("unit_ref", data.get("unit_ref") or data.get("unitRef") or data.get("currency"))
+        data.setdefault("decimals", data.get("decimals"))
+        data.setdefault("precision", data.get("precision"))
+        data.setdefault("context_ref", data.get("context_ref") or data.get("contextRef"))
         allowed = {item.name for item in cls.__dataclass_fields__.values()}
         return cls(**{key: data[key] for key in allowed if key in data})
 
@@ -127,6 +140,12 @@ class PeriodizationFact:
             "explicit_dimension_count": self.explicit_dimension_count,
             "typed_dimension_count": self.typed_dimension_count,
             "additional_explicit_dimension_count": self.additional_explicit_dimension_count,
+            "account_id": self.account_id,
+            "raw_value": self.raw_value,
+            "unit_ref": self.unit_ref,
+            "decimals": self.decimals,
+            "precision": self.precision,
+            "context_ref": self.context_ref,
         }
 
 

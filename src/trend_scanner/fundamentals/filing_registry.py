@@ -140,6 +140,7 @@ def _to_contract(item: RegisteredFiling) -> FilingRecord:
         rcept_dt=item.rcept_dt,
         fs_div=item.fs_div,
         filing_chain_key=item.filing_chain_key,
+        correction_flag=item.correction_flag,
     )
 
 

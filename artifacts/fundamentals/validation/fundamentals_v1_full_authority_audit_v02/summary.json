@@ -1,0 +1,168 @@
+{
+  "external_sample_validation": {
+    "fail_count": 0,
+    "pass_count": 12,
+    "path": "artifacts/fundamentals/validation/fundamentals_v1_full_authority_audit_v02/external_sample_validation.csv",
+    "sample_count": 12
+  },
+  "f7_invariants": {
+    "completed": 4415,
+    "duplicate": 0,
+    "invalid": 0,
+    "outside_universe": 0,
+    "remaining": 0,
+    "total": 4415
+  },
+  "final_state": {
+    "data_status": {
+      "DATA_UNAVAILABLE": 918,
+      "NOT_APPLICABLE": 2012,
+      "PARTIAL": 519,
+      "READY": 966
+    },
+    "f3_status": {
+      "DATA_UNAVAILABLE": 918,
+      "NOT_APPLICABLE": 2012,
+      "PARTIAL": 519,
+      "READY": 966
+    },
+    "f4_status": {
+      "DATA_UNAVAILABLE": 918,
+      "FILTERED_ANNUAL_REVENUE": 374,
+      "FILTERED_NET_LOSS": 104,
+      "FILTERED_OPERATING_LOSS": 230,
+      "FILTERED_QUARTERLY_REVENUE": 7,
+      "NOT_APPLICABLE": 2012,
+      "PASS": 770
+    }
+  },
+  "local_audit": {
+    "ambiguity": {
+      "current_annual": 3,
+      "current_quarter": 20
+    },
+    "applicable_non_financial_common": 2399,
+    "filing_chain_buckets": {
+      "MULTIPLE_CORRECTION": 691,
+      "NO_FILING_IN_VALID_WINDOW": 9407,
+      "ORIGINAL_ONLY": 43533,
+      "ORIGINAL_PLUS_CORRECTION": 3945
+    },
+    "future_correction_or_filing_rejected": 0,
+    "non_applicable_or_excluded": 2016,
+    "precision": {
+      "canonical_duplicate_fact_removed_count": 71133,
+      "canonical_duplicate_group_count": 71127,
+      "precision_equivalent_fact_removed_count": 116,
+      "precision_equivalent_group_count": 116,
+      "true_value_conflict_group_count": 76
+    },
+    "registry_cache_missing": 0,
+    "required_filing_slots": 57576,
+    "required_years": [
+      "2021",
+      "2022",
+      "2023",
+      "2024",
+      "2025",
+      "2026"
+    ],
+    "selected_filing_count": 47887,
+    "selected_xbrl_cache_missing": 488,
+    "selected_xbrl_cache_present": 47399,
+    "selection_status": {
+      "AMBIGUOUS": 282,
+      "DATA_UNAVAILABLE": 9407,
+      "READY": 47887
+    },
+    "total_universe": 4415
+  },
+  "network": {
+    "local_audit_requests": 0
+  },
+  "opendart_quota": {
+    "actual_estimated_daily_total": 23491,
+    "actual_historical_attempts_total": 5033,
+    "expected_targeted_requests": 488,
+    "max_additional_requests": 20542,
+    "official_usage_before": 18458,
+    "projected_daily_total": 18946,
+    "safety_daily_cap": 39000,
+    "scope": "selected_filing_xbrl_cache_misses_only",
+    "within_safety_cap": true
+  },
+  "recovery_delta": {
+    "data_unavailable": -3,
+    "ready": 955
+  },
+  "representative_checks": {
+    "021240": {
+      "annual_count": 5,
+      "data_status": "READY",
+      "f4_status": "PASS",
+      "optional_debt_ratio_missing": true,
+      "optional_roe_missing": true,
+      "quarter_count": 12
+    },
+    "181710": {
+      "annual_count": 5,
+      "data_status": "READY",
+      "f4_status": "PASS",
+      "optional_debt_ratio_missing": true,
+      "optional_roe_missing": true,
+      "quarter_count": 12
+    }
+  },
+  "requested_as_of": "2026-09-04",
+  "source_fetch": {
+    "actual_http_requests_current_manifest": 492,
+    "failure_count_current_manifest": 488,
+    "failure_status_counts": {
+      "014": 488
+    },
+    "fetched_current_manifest": 4,
+    "historical_attempt_breakdown": {
+      "bulk_targeted_attempts": 4537,
+      "initial_escalated_retry_attempts": 3,
+      "initial_invalid_zip_attempt": 1,
+      "remaining_miss_retry_attempts": 492
+    },
+    "historical_attempts_total": 5033,
+    "quota": {
+      "counter_consistent": true,
+      "estimated_daily_total": 23491,
+      "max_additional_requests": 20542,
+      "official_usage_before": 18458,
+      "safety_daily_cap": 39000
+    },
+    "remaining_cache_misses": 488,
+    "remaining_miss_classification": "DART_SOURCE_UNAVAILABLE_STATUS_014",
+    "scope": "exact_selected_filing_cache_misses_only"
+  },
+  "start_state": {
+    "applicable_non_financial_common": 2431,
+    "captured_before_v02_recompute": true,
+    "data_status": {
+      "DATA_UNAVAILABLE": 915,
+      "NOT_APPLICABLE": 1980,
+      "PARTIAL": 1509,
+      "READY": 11
+    },
+    "f3_status": {
+      "DATA_UNAVAILABLE": 409,
+      "NOT_APPLICABLE": 1980,
+      "PARTIAL": 2026
+    },
+    "f4_status": {
+      "DATA_UNAVAILABLE": 914,
+      "FILTERED_ANNUAL_REVENUE": 385,
+      "FILTERED_NET_LOSS": 110,
+      "FILTERED_OPERATING_LOSS": 246,
+      "FILTERED_QUARTERLY_REVENUE": 8,
+      "NOT_APPLICABLE": 1980,
+      "PASS": 772
+    },
+    "total_universe": 4415
+  },
+  "work_id": "FUNDAMENTALS_V1_DATA_AUTHORITY_FULL_AUDIT_V02"
+}

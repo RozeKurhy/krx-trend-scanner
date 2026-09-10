@@ -1,0 +1,13 @@
+ticker,company,period,metric,source_kind,source_url,actual_value,reference_value,tolerance,absolute_delta,expected_status,actual_status,result
+021240,코웨이,2024Q1,PIT authority receipt,OFFICIAL_DART_RECEIPT,https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20240514001464,20240514001464,20240514001464,exact,0,READY,READY,PASS
+021240,코웨이,2024FY,operating_income_krw,OFFICIAL_IR,https://company.coway.com/newsroom/press/729,795373861343,795400000000,500000000,26138657.0,,,PASS
+021240,코웨이,2024Q4,operating_income_krw,OFFICIAL_IR,https://company.coway.com/newsroom/press/729,183383452652,183400000000,500000000,16547348.0,,,PASS
+181710,NHN,2024Q1,operating_income_krw,OFFICIAL_IR,https://www.nhn.com/ko_/ir/EarningsRelease/2025/4Q24_NHN_Earnings%20Release_FinaL_KOR.pdf,27286832997,27287000000,500000000,167003.0,PERCENT,PERCENT,PASS
+181710,NHN,2024Q2,operating_income_krw,OFFICIAL_IR,https://www.nhn.com/ko_/ir/EarningsRelease/2025/4Q24_NHN_Earnings%20Release_FinaL_KOR.pdf,28476733712,28477000000,500000000,266288.0,PERCENT,PERCENT,PASS
+181710,NHN,2024Q3,operating_income_krw,OFFICIAL_IR,https://www.nhn.com/ko_/ir/EarningsRelease/2025/4Q24_NHN_Earnings%20Release_FinaL_KOR.pdf,-113388627469,-113389000000,500000000,372531.0,TURNED_TO_LOSS,TURNED_TO_LOSS,PASS
+181710,NHN,2024Q4,operating_income_krw,OFFICIAL_IR,https://www.nhn.com/ko_/ir/EarningsRelease/2025/4Q24_NHN_Earnings%20Release_FinaL_KOR.pdf,25005413926,25005000000,500000000,413926.0,TURNED_TO_PROFIT,TURNED_TO_PROFIT,PASS
+181710,NHN,2024FY,operating_income_krw,OFFICIAL_IR,https://www.nhn.com/ko_/ir/EarningsRelease/2025/4Q24_NHN_Earnings%20Release_FinaL_KOR.pdf,-32619646834,-32620000000,500000000,353166.0,TURNED_TO_LOSS,TURNED_TO_LOSS,PASS
+005930,삼성전자,2025FY,revenue_krw,OFFICIAL_IR,https://www.samsung.com/sec/sustainability/digital-library/facts-figures/,333605938000000,333600000000000,500000000000,5938000000.0,,,PASS
+005930,삼성전자,2025FY,operating_income_krw,OFFICIAL_IR,https://www.samsung.com/sec/sustainability/digital-library/facts-figures/,43601051000000,43600000000000,100000000000,1051000000.0,,,PASS
+003070,코오롱글로벌,2024,precision equivalent alias collapse,LOCAL_AUTHORITY_ASSERT,https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20250318001458,6,>=1,exact,0,COLLAPSED,COLLAPSED,PASS
+000680,LS네트웍스,2021Q1,true value conflict preservation,LOCAL_AUTHORITY_ASSERT,https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20210514001476,2,>=2,exact,0,PRESERVED,PRESERVED,PASS

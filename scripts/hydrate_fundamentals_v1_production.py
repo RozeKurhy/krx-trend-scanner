@@ -104,7 +104,7 @@ VALID_TERMINAL_STATUSES = {
 NON_COMMON_ASSET_TYPES = {
     "ETF", "ETN", "PREFERRED", "SPAC", "REIT", "OTHER", "UNKNOWN",
 }
-RUNNER_VERSION = "F7-04-BOUNDED-FILING-PRELOAD-FINANCIAL-NA"
+RUNNER_VERSION = "FUNDAMENTALS_V1_V02_FULL_AUTHORITY_AUDIT"
 LEGACY_REUSABLE_NOT_APPLICABLE_RUNNER_VERSIONS = {
     "F7-03-BOUNDED-FILING-PRELOAD-IDENTITY",
 }
@@ -940,7 +940,9 @@ def hydrate_one(
         record.update({
             "data_status": section.data_status,
             "f2_data_status": _f2_status(f2),
-            "f3_data_status": _f3_status(f3, company_family=family),
+            # F5 applies the core-window policy: optional diagnostics such as
+            # TTM ROE/debt ratio do not demote an otherwise usable F3 result.
+            "f3_data_status": section.data_status if family == CompanyFamily.NON_FINANCIAL.value else _f3_status(f3, company_family=family),
             "f4_status": f4.status,
             "f4_passed": bool(f4.passed),
             "terminal_status": f4.status,
@@ -1160,7 +1162,7 @@ def _summary(
             "missing_ticker_count": 0,
         },
         "opendart": {
-            "live": "USED",
+            "live": "NOT_USED" if bool(getattr(client, "cache_only", False)) else "USED",
             "api_request_count": sum(int(item.get("api_request_count", 0) or 0) for item in rows),
             "current_invocation_api_request_count": len(client.audit),
             "endpoint_request_counts": dict(api_counts),
@@ -1168,7 +1170,7 @@ def _summary(
             "transient_failures": sum(1 for item in client.audit if item.get("classification") in {"SERVICE", "RATE_LIMIT"}),
             "retry_count": 0,
         },
-        "network": {"PyKRX": 0, "KRX Open API": 0, "OpenDART live": "USED", "Scraping": 0},
+        "network": {"PyKRX": 0, "KRX Open API": 0, "OpenDART live": "NOT_USED" if bool(getattr(client, "cache_only", False)) else "USED", "Scraping": 0},
         "pilot_ticker_count": pilot_count,
         "run_started_at": started_at,
         "run_completed_at": completed_at,
@@ -1417,6 +1419,8 @@ def run(
     env_file: Path,
     run_date: str | None = None,
     daily_usage_before_run: int | None = None,
+    force_recompute: bool = False,
+    cache_only: bool = False,
 ) -> int:
     run_date = _resolve_run_date(run_date)
     requested_as_of, _reference_market_date = _load_requested_as_of()
@@ -1441,7 +1445,7 @@ def run(
     _preflight_directory(tickers_dir)
     _preflight_directory(COMPANY_CACHE_DIR)
 
-    secret = _load_opendart_key(env_file)
+    secret = "" if cache_only else _load_opendart_key(env_file)
     quota_checkpoint_path = output_dir / "daily_quota_checkpoint.json"
     prior_quota_checkpoint = (
         _load_prior_quota_checkpoint(quota_checkpoint_path, run_date=run_date)
@@ -1472,8 +1476,13 @@ def run(
             official_usage_before=remaining_official_usage,
             safety_daily_cap=REMAINING_SAFETY_DAILY_CAP,
         )
+    elif cache_only:
+        # An empty-key client has no transport path: any missing source fails
+        # closed at the cache boundary without consuming an OpenDART request.
+        client = OpenDartClient(api_key="")
     else:
         client = OpenDartClient(api_key=secret)
+    client.cache_only = cache_only
     full_corp_repo, records_by_ticker = _load_exact_corp_repository()
     # Bound the provider's lookup repository to the exact mapping cache rows;
     # this avoids repeated scans of the 118k-record source cache without
@@ -1491,7 +1500,7 @@ def run(
     rows: list[dict[str, Any]] = []
     preexisting_priority_tickers = {
         str(row["ticker"]) for row in target_rows
-        if _load_existing(
+        if not force_recompute and _load_existing(
             tickers_dir / f"{row['ticker']}.json",
             ticker=str(row["ticker"]),
             requested_as_of=requested_as_of,
@@ -1499,7 +1508,7 @@ def run(
     }
     preexisting_completed_tickers = {
         str(row.get("ticker"))
-        for row in _load_completed_rows(universe, tickers_dir, requested_as_of)
+        for row in ([] if force_recompute else _load_completed_rows(universe, tickers_dir, requested_as_of))
     }
     if mode == "remaining":
         target_rows = _select_remaining_rows(universe, preexisting_completed_tickers)
@@ -1519,7 +1528,7 @@ def run(
     for index, universe_row in enumerate(target_rows, start=1):
         ticker = str(universe_row["ticker"])
         path = tickers_dir / f"{ticker}.json"
-        existing = _load_existing(path, ticker=ticker, requested_as_of=requested_as_of)
+        existing = None if force_recompute else _load_existing(path, ticker=ticker, requested_as_of=requested_as_of)
         if existing is not None:
             rows.append(existing)
             continue
@@ -1671,6 +1680,8 @@ def run(
         pilot_count=len(target_rows) if mode == "pilot" else None,
     )
     manifest["mode"] = mode
+    manifest["force_recompute"] = force_recompute
+    manifest["cache_only"] = cache_only
     manifest["total_runtime_seconds"] = round(time.monotonic() - started_monotonic, 3)
     manifest["filing_registry_preload"] = {
         "year_fetches": filing_registry.preload_year_fetches,
@@ -1718,6 +1729,14 @@ def main() -> int:
         default=None,
         help="Actual OpenDART usage already consumed on the run date",
     )
+    parser.add_argument(
+        "--force-recompute", action="store_true",
+        help="Recompute every target ticker even when a valid output already exists",
+    )
+    parser.add_argument(
+        "--cache-only", action="store_true",
+        help="Disallow network transport and fail closed on any cache miss",
+    )
     args = parser.parse_args()
     try:
         mode = (
@@ -1729,6 +1748,8 @@ def main() -> int:
             env_file=args.env_file,
             run_date=args.run_date,
             daily_usage_before_run=args.daily_usage_before_run,
+            force_recompute=args.force_recompute,
+            cache_only=args.cache_only,
         )
     except Exception as exc:
         # Never echo exception text here: a transport-layer failure must not

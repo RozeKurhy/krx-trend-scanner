@@ -45,22 +45,22 @@
     "nullableNumber": {"type": ["number", "null"]},
     "fundamentalsQuarterRow": {
       "type": "object",
-      "required": ["quarter", "status", "reason", "revenue_krw", "revenue_yoy_pct", "operating_income_krw", "operating_income_yoy_pct", "operating_margin_pct", "net_income_krw", "net_margin_pct", "operating_cash_flow_krw"],
+      "required": ["quarter", "status", "reason", "revenue_krw", "revenue_yoy_pct", "operating_income_krw", "operating_income_yoy_pct", "operating_income_yoy_status", "operating_margin_pct", "net_income_krw", "net_margin_pct", "operating_cash_flow_krw"],
       "properties": {
         "quarter": {"type": "string"}, "status": {"type": "string"}, "reason": {"type": ["string", "null"]},
         "revenue_krw": {"$ref": "#/definitions/nullableNumber"}, "revenue_yoy_pct": {"$ref": "#/definitions/nullableNumber"},
-        "operating_income_krw": {"$ref": "#/definitions/nullableNumber"}, "operating_income_yoy_pct": {"$ref": "#/definitions/nullableNumber"}, "operating_margin_pct": {"$ref": "#/definitions/nullableNumber"},
+        "operating_income_krw": {"$ref": "#/definitions/nullableNumber"}, "operating_income_yoy_pct": {"$ref": "#/definitions/nullableNumber"}, "operating_income_yoy_status": {"type": ["string", "null"]}, "operating_margin_pct": {"$ref": "#/definitions/nullableNumber"},
         "net_income_krw": {"$ref": "#/definitions/nullableNumber"}, "net_margin_pct": {"$ref": "#/definitions/nullableNumber"},
         "operating_cash_flow_krw": {"$ref": "#/definitions/nullableNumber"}
       }
     },
     "fundamentalsAnnualRow": {
       "type": "object",
-      "required": ["fiscal_year", "status", "reason", "revenue_krw", "revenue_yoy_pct", "operating_income_krw", "operating_income_yoy_pct", "operating_margin_pct", "net_income_krw", "net_margin_pct", "roe_pct", "debt_ratio_pct"],
+      "required": ["fiscal_year", "status", "reason", "revenue_krw", "revenue_yoy_pct", "operating_income_krw", "operating_income_yoy_pct", "operating_income_yoy_status", "operating_margin_pct", "net_income_krw", "net_margin_pct", "roe_pct", "debt_ratio_pct"],
       "properties": {
         "fiscal_year": {"type": "string"}, "status": {"type": "string"}, "reason": {"type": ["string", "null"]},
         "revenue_krw": {"$ref": "#/definitions/nullableNumber"}, "revenue_yoy_pct": {"$ref": "#/definitions/nullableNumber"},
-        "operating_income_krw": {"$ref": "#/definitions/nullableNumber"}, "operating_income_yoy_pct": {"$ref": "#/definitions/nullableNumber"}, "operating_margin_pct": {"$ref": "#/definitions/nullableNumber"},
+        "operating_income_krw": {"$ref": "#/definitions/nullableNumber"}, "operating_income_yoy_pct": {"$ref": "#/definitions/nullableNumber"}, "operating_income_yoy_status": {"type": ["string", "null"]}, "operating_margin_pct": {"$ref": "#/definitions/nullableNumber"},
         "net_income_krw": {"$ref": "#/definitions/nullableNumber"}, "net_margin_pct": {"$ref": "#/definitions/nullableNumber"},
         "roe_pct": {"$ref": "#/definitions/nullableNumber"}, "debt_ratio_pct": {"$ref": "#/definitions/nullableNumber"}
       }

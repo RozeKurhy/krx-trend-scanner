@@ -171,6 +171,46 @@ def _f2_value(index: Mapping[tuple[str, str, str], tuple[Any, ...]], metric: str
     return _value(index.get((_text(metric), _text(year), _text(period).upper()), ()), diagnostics, label=f"{metric}:{year}{period}")
 
 
+def _ready_number(candidates: Iterable[Any]) -> int | float | None:
+    for item in candidates:
+        if _text(getattr(item, "resolution_status", DATA_UNAVAILABLE)) == READY:
+            value = _number(getattr(item, "value", None))
+            if value is not None:
+                return value
+    return None
+
+
+def _operating_income_yoy_status(
+    f2_index: Mapping[tuple[str, str, str], tuple[Any, ...]],
+    year: str,
+    period: str,
+    yoy_pct: int | float | None,
+) -> str:
+    current = _ready_number(f2_index.get(("operating_income", _text(year), _text(period).upper()), ()))
+    try:
+        prior_year = str(int(year) - 1)
+    except (TypeError, ValueError):
+        return "UNAVAILABLE"
+    prior = _ready_number(f2_index.get(("operating_income", prior_year, _text(period).upper()), ()))
+    if current is None or prior is None:
+        return "UNAVAILABLE"
+    if current > 0 and prior > 0:
+        return "PERCENT" if yoy_pct is not None else "UNAVAILABLE"
+    if prior > 0 and current < 0:
+        return "TURNED_TO_LOSS"
+    if prior < 0 and current > 0:
+        return "TURNED_TO_PROFIT"
+    if prior < 0 and current < 0:
+        return "LOSS_CONTINUED"
+    if prior == 0 and current == 0:
+        return "ZERO_BASE"
+    if prior == 0:
+        return "ZERO_BASE"
+    if current == 0:
+        return "ZERO_CURRENT"
+    return "UNAVAILABLE"
+
+
 def _slot(slot: Any, *, identity: str, kind: str) -> tuple[str, str | None, str, str]:
     if slot is None:
         return DATA_UNAVAILABLE, "MISSING_PERIOD_SLOT", str(identity), kind
@@ -196,6 +236,9 @@ def _annual_rows(multi_period_result: Any, f2_index: Mapping[tuple[str, str], tu
         revenue = _f2_value(f2_index, "revenue", year, "FY", diagnostics)
         op_income = _f2_value(f2_index, "operating_income", year, "FY", diagnostics)
         net_income = _f2_value(f2_index, "net_income", year, "FY", diagnostics)
+        operating_income_yoy = _f3_value(
+            derived_index, "operating_income", "ANNUAL_YOY", year, "FY", diagnostics,
+        )
         if revenue is None or op_income is None or net_income is None:
             if status == READY:
                 status, reason = DATA_UNAVAILABLE, reason or "REQUIRED_METRIC_UNAVAILABLE"
@@ -204,12 +247,16 @@ def _annual_rows(multi_period_result: Any, f2_index: Mapping[tuple[str, str], tu
             revenue_krw=revenue,
             revenue_yoy_pct=_f3_value(derived_index, "revenue", "ANNUAL_YOY", year, "FY", diagnostics),
             operating_income_krw=op_income,
-            operating_income_yoy_pct=_f3_value(derived_index, "operating_income", "ANNUAL_YOY", year, "FY", diagnostics),
+            operating_income_yoy_pct=operating_income_yoy,
             operating_margin_pct=_f3_value(derived_index, "operating_income", "OPERATING_MARGIN", year, "FY", diagnostics),
             net_income_krw=net_income,
             net_margin_pct=_f3_value(derived_index, "net_income", "NET_MARGIN", year, "FY", diagnostics),
             roe_pct=_f3_value(derived_index, "net_income", "ANNUAL_ROE", year, "FY", diagnostics),
             debt_ratio_pct=_f3_value(derived_index, "liabilities", "DEBT_RATIO", year, "FY_END", diagnostics),
+            operating_income_yoy_status=_operating_income_yoy_status(
+                f2_index, year, "FY",
+                operating_income_yoy,
+            ),
         ))
     return rows
 
@@ -234,7 +281,10 @@ def _quarter_rows(multi_period_result: Any, f2_index: Mapping[tuple[str, str], t
         op_income = _f2_value(f2_index, "operating_income", year, period, diagnostics)
         net_income = _f2_value(f2_index, "net_income", year, period, diagnostics)
         ocf = _f2_value(f2_index, "operating_cash_flow", year, period, diagnostics)
-        if revenue is None or op_income is None or net_income is None or ocf is None:
+        operating_income_yoy = _f3_value(
+            derived_index, "operating_income", "QUARTERLY_YOY", year, period, diagnostics,
+        )
+        if revenue is None or op_income is None or net_income is None:
             if status == READY:
                 status, reason = DATA_UNAVAILABLE, reason or "REQUIRED_METRIC_UNAVAILABLE"
         rows.append(FundamentalsQuarterRow(
@@ -242,11 +292,15 @@ def _quarter_rows(multi_period_result: Any, f2_index: Mapping[tuple[str, str], t
             revenue_krw=revenue,
             revenue_yoy_pct=_f3_value(derived_index, "revenue", "QUARTERLY_YOY", year, period, diagnostics),
             operating_income_krw=op_income,
-            operating_income_yoy_pct=_f3_value(derived_index, "operating_income", "QUARTERLY_YOY", year, period, diagnostics),
+            operating_income_yoy_pct=operating_income_yoy,
             operating_margin_pct=_f3_value(derived_index, "operating_income", "OPERATING_MARGIN", year, period, diagnostics),
             net_income_krw=net_income,
             net_margin_pct=_f3_value(derived_index, "net_income", "NET_MARGIN", year, period, diagnostics),
             operating_cash_flow_krw=ocf,
+            operating_income_yoy_status=_operating_income_yoy_status(
+                f2_index, year, period,
+                operating_income_yoy,
+            ),
         ))
     return rows
 
@@ -397,20 +451,28 @@ def build_fundamentals_section(
         if snapshot:
             summary.latest_debt_ratio_pct = _f3_value(derived_index, "liabilities", "DEBT_RATIO", year, snapshot, diagnostics)
 
+    core_window_ready = (
+        len(quarterly) == 12 and len(annual) == 5
+        and all(
+            row.status == READY
+            and row.revenue_krw is not None
+            and row.operating_income_krw is not None
+            and row.net_income_krw is not None
+            for row in (*quarterly, *annual)
+        )
+    )
     core_available = (
-        summary.latest_fy_revenue_krw is not None
-        and summary.latest_4q_avg_revenue_krw is not None
-        and summary.ttm_revenue_krw is not None
+        summary.ttm_revenue_krw is not None
         and summary.ttm_operating_income_krw is not None
         and summary.ttm_net_income_krw is not None
-        and summary.ttm_operating_cash_flow_krw is not None
+        and core_window_ready
     )
-    if filter_status == DATA_UNAVAILABLE or not core_available:
+    if filter_status == DATA_UNAVAILABLE or (not core_available and not quarterly and not annual):
         data_status = DATA_UNAVAILABLE
         reason = "F4_FILTER_OR_CORE_UNAVAILABLE" if filter_status != DATA_UNAVAILABLE else "F4_DATA_UNAVAILABLE"
-    elif len(quarterly) != 12 or len(annual) != 5 or diagnostics:
+    elif not core_available:
         data_status = PARTIAL
-        reason = "DERIVED_CONTEXT_PARTIAL" if diagnostics else "DISPLAY_WINDOW_PARTIAL"
+        reason = "DISPLAY_WINDOW_PARTIAL" if quarterly or annual else "F4_FILTER_OR_CORE_UNAVAILABLE"
     else:
         data_status = READY
         reason = None

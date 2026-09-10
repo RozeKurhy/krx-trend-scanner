@@ -107,6 +107,7 @@ class FilingRecord:
     rcept_dt: str
     fs_div: str | None = None
     filing_chain_key: str | None = None
+    correction_flag: bool = False
 
     @classmethod
     def from_mapping(cls, row: Mapping[str, Any]) -> "FilingRecord":
@@ -124,6 +125,8 @@ class FilingRecord:
                 if (row.get("filing_chain_key") or row.get("chain_key"))
                 else None
             ),
+            correction_flag=str(row.get("correction_flag") or "").strip().lower()
+            in {"1", "true", "t", "yes", "y"},
         )
 
     @property
@@ -223,7 +226,29 @@ def select_pit_filing(
     chain = next(iter(groups.values()))
     max_date = max(item.parsed_date for item in chain if item.parsed_date is not None)
     same_day = [item for item in chain if item.parsed_date == max_date]
-    if len({item.rcept_no for item in same_day}) != 1:
+    same_day_receipts = {item.rcept_no for item in same_day}
+    if len(same_day_receipts) > 1:
+        corrections = [item for item in same_day if item.correction_flag]
+        if not corrections:
+            return FilingSelection(
+                status=FilingSelectionStatus.AMBIGUOUS.value,
+                selected=None,
+                eligible=eligible,
+                future=future,
+                availability=None,
+                reason="MULTIPLE_FILINGS_ON_SAME_DATE",
+            )
+        selected = max(corrections, key=lambda item: item.rcept_no)
+        availability = SAME_DAY_AVAILABILITY if selected.parsed_date == cutoff else "AVAILABLE"
+        return FilingSelection(
+            status=FilingSelectionStatus.READY.value,
+            selected=selected,
+            eligible=eligible,
+            future=future,
+            availability=availability,
+            reason="LATEST_EFFECTIVE_SAME_DAY_CORRECTION",
+        )
+    if len(same_day_receipts) != 1:
         return FilingSelection(
             status=FilingSelectionStatus.AMBIGUOUS.value,
             selected=None,

@@ -258,6 +258,7 @@ class FundamentalsQuarterRow:
     net_income_krw: int | float | None
     net_margin_pct: int | float | None
     operating_cash_flow_krw: int | float | None
+    operating_income_yoy_status: str | None = None
 
 
 @dataclass
@@ -274,6 +275,7 @@ class FundamentalsAnnualRow:
     net_margin_pct: int | float | None
     roe_pct: int | float | None
     debt_ratio_pct: int | float | None
+    operating_income_yoy_status: str | None = None
 
 
 @dataclass

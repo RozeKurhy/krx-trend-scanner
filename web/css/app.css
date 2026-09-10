@@ -463,6 +463,7 @@ summary { cursor: pointer; color: var(--ink); font-size: 13px; font-weight: 750;
 .signal-value { margin: 0; overflow-wrap: anywhere; font-size: 14px; font-weight: 750; }
 .report-card-grid { display: flex; flex-direction: column; gap: 16px; margin-bottom: 16px; }
 .report-card-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.report-card-row--secondary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .report-card { min-width: 0; min-height: 166px; }
 .report-card-button { appearance: none; width: 100%; border-color: var(--line-strong); background: var(--surface); color: inherit; font: inherit; text-align: left; cursor: pointer; transition: border-color 140ms ease, background 140ms ease, box-shadow 140ms ease, transform 140ms ease; }
 .report-card-button:hover { border-color: var(--line-strong); background: var(--surface); transform: translateY(-1px); }
@@ -490,7 +491,7 @@ summary { cursor: pointer; color: var(--ink); font-size: 13px; font-weight: 750;
 .detail-empty { margin: 0; color: var(--ink-soft); font-size: 13px; }
 .detail-table td.detail-value-positive { color: var(--market-up-red); font-weight: 750; }
 .detail-table td.detail-value-negative { color: var(--market-down-blue); font-weight: 750; }
-.fundamental-loss { color: var(--market-up-red) !important; font-weight: 750; }
+.fundamental-loss { color: var(--market-down-blue) !important; font-weight: 750; }
 .fundamentals-detail-panel { margin-bottom: 16px; }
 .fundamentals-detail-panel .report-detail-header { margin-bottom: 0; }
 .fundamentals-detail-panel .eyebrow { margin-bottom: 5px; }
@@ -501,7 +502,10 @@ summary { cursor: pointer; color: var(--ink); font-size: 13px; font-weight: 750;
 .fundamentals-periods { margin-top: 22px; }
 .fundamentals-period-heading { margin: 20px 0 10px; font-size: 14px; letter-spacing: -0.025em; }
 .fundamentals-period-heading:first-child { margin-top: 0; }
-.fundamentals-table { min-width: max-content; }
+.fundamentals-table { min-width: max-content; font-size: 11px; }
+.fundamentals-table th { font-size: 10px; text-align: right; }
+.fundamentals-table th:first-child, .fundamentals-table td:first-child { text-align: center; }
+.fundamentals-table td { text-align: right; }
 .fundamentals-table th:first-child, .fundamentals-table td:first-child { position: sticky; left: 0; z-index: 1; min-width: 116px; background: var(--surface); box-shadow: 1px 0 0 var(--line); }
 .fundamentals-table th:first-child { z-index: 2; background: var(--surface-muted); }
 .pattern-score-chart-wrap { overflow: hidden; margin: 0 0 18px; }

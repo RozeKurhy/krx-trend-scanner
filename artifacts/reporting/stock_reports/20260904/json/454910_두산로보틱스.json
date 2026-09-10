@@ -11,26 +11,26 @@
     "market": "KOSPI",
     "requested_as_of": "2026-09-04",
     "reference_market_date": "2026-09-04",
-    "effective_as_of": "2026-09-04",
+    "effective_as_of": "2026-08-14",
     "cache_present": true,
-    "cache_last_date": "2026-09-04",
+    "cache_last_date": "2026-08-14",
     "report_status": "DATA_UNAVAILABLE",
     "asset_type": "COMMON"
   },
   "summary": {
-    "headline": "두산로보틱스(454910)는 현재 Pattern A UNAVAILABLE 단계이며 투자 적격 상태는 INVESTABLE입니다.",
+    "headline": "두산로보틱스(454910)는 현재 Pattern A UNAVAILABLE 단계이며, 필수 데이터 부족(DATA_UNAVAILABLE)으로 투자 적격성을 판정할 수 없습니다.",
     "bullet_points": [
-      "패스트 코어 V2: 관망 · 현재 신규 진입 조건 미충족",
+      "패스트 코어 V2: 데이터 부족으로 판정 불가",
       "펀더멘털: Filter FILTERED_ANNUAL_REVENUE, 최근 FY 매출 329.8억원, TTM 영업이익 -582.0억원, TTM 순이익 -514.7억원.",
       "현재 Pattern A Score는 산출 불가(Stage: UNAVAILABLE) 상태입니다.",
-      "시가총액 44336.9억원, 20일 평균 거래대금 270.96억원으로 Phase 10 Investability 기준을 충족합니다.",
-      "외국인 수급: 외국인 수급이 기간별로 엇갈리는 혼조세 흐름입니다 (5일 순매수 강도: -3.73%).",
+      "필수 데이터 부족(REQUIRED_METRIC_UNAVAILABLE)으로 Phase 10 Investability 판정이 불가능합니다.",
+      "외국인 수급: 외국인 수급이 기간별로 엇갈리는 혼조세 흐름입니다.",
       "시장 상대강도: 기간별 시장 상대강도가 엇갈리는 혼조 흐름입니다.",
-      "업종 상대강도: 최근 3개월·6개월·12개월의 업종 대비 상대강도를 확인할 수 있습니다.",
-      "거래대금 추세: 최근 거래대금이 지속 감소(둔화)하는 흐름입니다. 5일 평균 거래대금(191.04억원)이 20일 평균(270.96억원) 및 60일 평균(472.85억원)을 밑돌고 있습니다."
+      "업종 상대강도: 기준일 종목 가격이 없어 업종 상대강도를 계산할 수 없습니다.",
+      "거래대금 추세: 최근 거래대금이 지속 감소(둔화)하는 흐름입니다. 5일 평균 거래대금(410.18억원)이 20일 평균(454.72억원) 및 60일 평균(1305.29억원)을 밑돌고 있습니다."
     ],
-    "combined_narrative": "두산로보틱스(454910)는 현재 Pattern A UNAVAILABLE 단계이며 투자 적격 상태는 INVESTABLE입니다. 최근 12개월 이력 중 유효한 기술적 국면 관측치가 제한적입니다. 시장 상대강도는 기간별 시장 상대강도가 엇갈리는 혼조 흐름입니다. 업종 상대강도는 최근 3개월·6개월·12개월의 업종 대비 상대강도를 확인할 수 있습니다.",
-    "strategy_headline": "패스트 코어 V2 관망(WAIT) 상태입니다. 진입 미충족 조건: PATTERN_A_STAGE_NOT_ELIGIBLE, FAST_NOT_TRIGGER_READY, MONTHLY_REGIME_NOT_PERMITTED."
+    "combined_narrative": "두산로보틱스(454910)는 현재 Pattern A UNAVAILABLE 단계이며, 필수 데이터 부족(DATA_UNAVAILABLE)으로 투자 적격성을 판정할 수 없습니다. 최근 12개월 이력 중 유효한 기술적 국면 관측치가 제한적입니다. 시장 상대강도는 기간별 시장 상대강도가 엇갈리는 혼조 흐름입니다. 업종 상대강도는 기준일 종목 가격이 없어 업종 상대강도를 계산할 수 없습니다.",
+    "strategy_headline": "투자 유동성 및 시가총액 데이터 결측으로 패스트 코어 V2 신규 진입 적격성을 판정할 수 없습니다."
   },
   "current_snapshot": {
     "pattern_a_score": null,
@@ -38,10 +38,10 @@
     "candidate_state": "insufficient_data",
     "is_candidate": false,
     "market_cap_eok": 44336.87,
-    "avg_trading_value_20d_eok": 270.96,
-    "investability_status": "INVESTABLE",
-    "investability_reason": "PASS_ALL_INVESTABILITY_FILTERS",
-    "is_investable": true,
+    "avg_trading_value_20d_eok": null,
+    "investability_status": "DATA_UNAVAILABLE",
+    "investability_reason": "REQUIRED_METRIC_UNAVAILABLE",
+    "is_investable": false,
     "market_cap_effective_date": "2026-09-04",
     "market_cap_source": "KRX_SOURCE_MARKET_CAP"
   },
@@ -177,8 +177,8 @@
         "stage": "UNAVAILABLE",
         "candidate_state": "insufficient_data",
         "data_available": false,
-        "close": 71000.0,
-        "reason": "INSUFFICIENT_LOOKBACK"
+        "close": null,
+        "reason": "NO_EXACT_MARKET_MONTH_END_OBSERVATION"
       }
     ],
     "full_monthly_history": [
@@ -494,8 +494,8 @@
         "stage": "UNAVAILABLE",
         "candidate_state": "insufficient_data",
         "data_available": false,
-        "close": 71000.0,
-        "reason": "INSUFFICIENT_LOOKBACK"
+        "close": null,
+        "reason": "NO_EXACT_MARKET_MONTH_END_OBSERVATION"
       }
     ],
     "first_pattern_a_available_as_of": null,
@@ -504,20 +504,20 @@
   "foreign_flow": {
     "data_status": "READY",
     "flow_state": "FLOW_MIXED",
-    "explanation": "외국인 수급이 기간별로 엇갈리는 혼조세 흐름입니다 (5일 순매수 강도: -3.73%).",
+    "explanation": "외국인 수급이 기간별로 엇갈리는 혼조세 흐름입니다.",
     "foreign_net_buy_value_1d_krw": 1833126600.0,
     "foreign_net_buy_value_5d_krw": -3560763850.0,
     "foreign_net_buy_value_20d_krw": 1743092450.0,
     "foreign_net_buy_value_60d_krw": -92073275950.0,
-    "foreign_flow_intensity_5d": -0.0373,
-    "foreign_flow_intensity_20d": 0.0032,
-    "foreign_flow_intensity_60d": -0.0325,
+    "foreign_flow_intensity_5d": null,
+    "foreign_flow_intensity_20d": null,
+    "foreign_flow_intensity_60d": null,
     "foreign_positive_days_5d": 2,
     "foreign_positive_days_20d": 8,
     "foreign_positive_days_60d": 23,
     "foreign_net_buy_value_10d_krw": -6944575000.0,
-    "foreign_flow_intensity_1d": 0.0726,
-    "foreign_flow_intensity_10d": -0.0366,
+    "foreign_flow_intensity_1d": null,
+    "foreign_flow_intensity_10d": null,
     "foreign_positive_days_1d": 1,
     "foreign_positive_days_10d": 4,
     "foreign_positive_day_ratio_1d": 1.0,
@@ -568,55 +568,55 @@
   },
   "sector_relative_strength": {
     "applicability": "APPLICABLE",
-    "data_status": "READY",
-    "input_reason": "READY_INPUT",
-    "sector_name": "기계·장비",
-    "sector_code": "1012",
-    "benchmark_code": "1012",
-    "benchmark_last_observation_date": "2026-09-04",
-    "sector_return_3m": -0.18749015577238815,
-    "sector_return_6m": -0.04224634101057656,
-    "sector_return_12m": 0.31317254174397036,
-    "sector_rs_3m": -0.39997437335357844,
-    "sector_rs_6m": -0.1139316172099516,
-    "sector_rs_12m": -0.13904801048061854,
-    "sector_anchor_date_3m": "2026-06-05",
-    "sector_anchor_date_6m": "2026-03-04",
-    "sector_anchor_date_12m": "2025-08-22",
-    "explanation": "최근 3개월·6개월·12개월의 업종 대비 상대강도를 확인할 수 있습니다.",
+    "data_status": "DATA_UNAVAILABLE",
+    "input_reason": "REPOSITORY_V2_UNAVAILABLE",
+    "sector_name": null,
+    "sector_code": null,
+    "benchmark_code": null,
+    "benchmark_last_observation_date": null,
+    "sector_return_3m": null,
+    "sector_return_6m": null,
+    "sector_return_12m": null,
+    "sector_rs_3m": null,
+    "sector_rs_6m": null,
+    "sector_rs_12m": null,
+    "sector_anchor_date_3m": null,
+    "sector_anchor_date_6m": null,
+    "sector_anchor_date_12m": null,
+    "explanation": "기준일 종목 가격이 없어 업종 상대강도를 계산할 수 없습니다.",
     "source_as_of": "2026-09-04",
     "membership_snapshot_date": "2026-09-04",
     "membership_source": "data/market/sector_membership/v01/sector_membership_20260904.parquet",
     "sector_index_source": ".cache/krx_openapi/sector_rs_migration/v01/sector_index_daily.parquet",
-    "sector_return_2w": 0.07693233125274235,
-    "sector_return_1m": 0.026385188682426675,
-    "sector_rs_2w": -0.10417856246437407,
-    "sector_rs_1m": -0.08710071842260814,
-    "sector_anchor_date_2w": "2026-08-21",
-    "sector_anchor_date_1m": "2026-08-05"
+    "sector_return_2w": null,
+    "sector_return_1m": null,
+    "sector_rs_2w": null,
+    "sector_rs_1m": null,
+    "sector_anchor_date_2w": null,
+    "sector_anchor_date_1m": null
   },
   "trading_value_flow": {
     "trading_value_state": "TRADING_VALUE_WEAKENING",
-    "explanation": "최근 거래대금이 지속 감소(둔화)하는 흐름입니다. 5일 평균 거래대금(191.04억원)이 20일 평균(270.96억원) 및 60일 평균(472.85억원)을 밑돌고 있습니다.",
-    "avg_trading_value_5d_eok": 191.04,
-    "avg_trading_value_20d_eok": 270.96,
-    "avg_trading_value_60d_eok": 472.85,
-    "ratio_5d_to_20d": 0.71,
-    "ratio_20d_to_60d": 0.57,
-    "avg_trading_value_1d_eok": 252.64,
-    "avg_trading_value_10d_eok": 189.83
+    "explanation": "최근 거래대금이 지속 감소(둔화)하는 흐름입니다. 5일 평균 거래대금(410.18억원)이 20일 평균(454.72억원) 및 60일 평균(1305.29억원)을 밑돌고 있습니다.",
+    "avg_trading_value_5d_eok": 410.18,
+    "avg_trading_value_20d_eok": 454.72,
+    "avg_trading_value_60d_eok": 1305.29,
+    "ratio_5d_to_20d": 0.9,
+    "ratio_20d_to_60d": 0.35,
+    "avg_trading_value_1d_eok": 492.94,
+    "avg_trading_value_10d_eok": 424.0
   },
   "data_quality": {
     "cache_present": true,
     "cache_first_date": "2023-10-05",
-    "cache_last_date": "2026-09-04",
-    "daily_rows_count": 711,
+    "cache_last_date": "2026-08-14",
+    "daily_rows_count": 697,
     "completed_month_count": 35,
     "quality_status": "INSUFFICIENT_LOOKBACK",
     "quality_flags": []
   },
   "provenance": {
-    "stock_price_source": "MarketDataRepositoryV2",
+    "stock_price_source": "local parquet cache",
     "score_contract": "pattern_a_score_v0.2",
     "stage_contract": "pattern_a_stage_v0.1",
     "investability_contract": "phase10",
@@ -629,13 +629,13 @@
     "contract": "HIERARCHICAL_V01",
     "lifecycle_status": "PHASE_13_RESEARCH_CLOSED / HIERARCHICAL_V01_PRODUCTION_HOLD",
     "current": {
-      "as_of": "2026-09-04",
-      "fast_score": 32.56,
+      "as_of": "2026-08-14",
+      "fast_score": 37.25,
       "score_availability": "PARTIAL",
       "fast_stage": "WATCH",
       "stage_availability": "READY",
       "monthly_regime": "EARLY_REGIME",
-      "daily_risk": "NORMAL",
+      "daily_risk": "ELEVATED",
       "interpretation": "FAST 기준 명확한 초기 상승 전환 구조가 아직 확인되지 않았습니다."
     },
     "weekly_history": [
@@ -1155,44 +1155,11 @@
         "monthly_regime": "EARLY_REGIME",
         "daily_risk": "ELEVATED",
         "interpretation": "FAST 기준 명확한 초기 상승 전환 구조가 아직 확인되지 않았습니다."
-      },
-      {
-        "week_ending": "2026-08-21",
-        "close": 70900.0,
-        "fast_score": 26.0,
-        "score_availability": "PARTIAL",
-        "fast_stage": "WATCH",
-        "stage_availability": "READY",
-        "monthly_regime": "EARLY_REGIME",
-        "daily_risk": "EXTREME",
-        "interpretation": "FAST 기준 명확한 초기 상승 전환 구조가 아직 확인되지 않았습니다."
-      },
-      {
-        "week_ending": "2026-08-28",
-        "close": 71600.0,
-        "fast_score": 32.56,
-        "score_availability": "PARTIAL",
-        "fast_stage": "WATCH",
-        "stage_availability": "READY",
-        "monthly_regime": "EARLY_REGIME",
-        "daily_risk": "NORMAL",
-        "interpretation": "FAST 기준 명확한 초기 상승 전환 구조가 아직 확인되지 않았습니다."
-      },
-      {
-        "week_ending": "2026-09-04",
-        "close": 68400.0,
-        "fast_score": 32.56,
-        "score_availability": "PARTIAL",
-        "fast_stage": "WATCH",
-        "stage_availability": "READY",
-        "monthly_regime": "EARLY_REGIME",
-        "daily_risk": "NORMAL",
-        "interpretation": "FAST 기준 명확한 초기 상승 전환 구조가 아직 확인되지 않았습니다."
       }
     ],
     "history_start_as_of": "2025-09-05",
-    "history_end_as_of": "2026-09-04",
-    "observation_count": 50
+    "history_end_as_of": "2026-08-14",
+    "observation_count": 47
   },
   "a_fast_core": {
     "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
@@ -1203,31 +1170,29 @@
     "fresh_oos_status": "NOT_EXECUTED",
     "as_of": "2026-09-04",
     "applicability": "APPLICABLE",
-    "strategy_state": "WAIT",
-    "canonical_position": "FLAT",
-    "action": "WAIT",
-    "action_reason": "ENTRY_CONDITIONS_NOT_MET",
+    "strategy_state": "DATA_UNAVAILABLE",
+    "canonical_position": "DATA_UNAVAILABLE",
+    "action": "NONE",
+    "action_reason": "INVESTABILITY_DATA_UNAVAILABLE",
     "execution_timing": null,
     "entry_conditions": {
       "instrument_eligible": true,
-      "investability_pass": true,
+      "investability_pass": false,
       "pattern_a_stage_eligible": false,
       "fast_trigger_ready": false,
       "monthly_regime_permitted": false,
-      "daily_risk_allowed": true,
-      "fast_score_status_allowed": true,
+      "daily_risk_allowed": false,
+      "fast_score_status_allowed": false,
       "no_open_position": true,
       "all_conditions_met": false,
-      "pattern_a_stage": "UNAVAILABLE",
-      "fast_stage": "WATCH READY",
-      "fast_stage_status": "READY",
-      "monthly_regime": "EARLY_REGIME",
-      "daily_risk": "NORMAL",
-      "fast_score_status": "PARTIAL",
+      "pattern_a_stage": null,
+      "fast_stage": null,
+      "fast_stage_status": null,
+      "monthly_regime": null,
+      "daily_risk": null,
+      "fast_score_status": null,
       "failed_conditions": [
-        "PATTERN_A_STAGE_NOT_ELIGIBLE",
-        "FAST_NOT_TRIGGER_READY",
-        "MONTHLY_REGIME_NOT_PERMITTED"
+        "INVESTABILITY_DATA_UNAVAILABLE"
       ]
     },
     "current_trade": null,
@@ -1244,7 +1209,7 @@
       "next_entry_sequence": 1
     },
     "trade_history": [],
-    "interpretation": "패스트 코어 V2 관망(WAIT) 상태입니다. 진입 미충족 조건: PATTERN_A_STAGE_NOT_ELIGIBLE, FAST_NOT_TRIGGER_READY, MONTHLY_REGIME_NOT_PERMITTED.",
+    "interpretation": "투자 유동성 및 시가총액 데이터 결측으로 패스트 코어 V2 신규 진입 적격성을 판정할 수 없습니다.",
     "provenance": {
       "strategy_contract": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
       "strategy_contract_path": "docs/validation/pattern_a_fast_final_strategy_v02.md",
@@ -1266,6 +1231,7 @@
         "net_margin_pct": null,
         "operating_income_krw": null,
         "operating_income_yoy_pct": null,
+        "operating_income_yoy_status": "UNAVAILABLE",
         "operating_margin_pct": null,
         "reason": "MISSING_QUARTER_OR_FISCAL_YEAR;REQUIRED_METRIC_MISSING",
         "revenue_krw": null,
@@ -1280,6 +1246,7 @@
         "net_margin_pct": null,
         "operating_income_krw": null,
         "operating_income_yoy_pct": null,
+        "operating_income_yoy_status": "UNAVAILABLE",
         "operating_margin_pct": null,
         "reason": "MISSING_QUARTER_OR_FISCAL_YEAR;REQUIRED_METRIC_MISSING",
         "revenue_krw": null,
@@ -1294,6 +1261,7 @@
         "net_margin_pct": -29.928404394678765,
         "operating_income_krw": -19167549522,
         "operating_income_yoy_pct": null,
+        "operating_income_yoy_status": "UNAVAILABLE",
         "operating_margin_pct": -36.13902292088513,
         "reason": null,
         "revenue_krw": 53038372299,
@@ -1308,6 +1276,7 @@
         "net_margin_pct": -78.07152535193418,
         "operating_income_krw": -41202116246,
         "operating_income_yoy_pct": null,
+        "operating_income_yoy_status": "LOSS_CONTINUED",
         "operating_margin_pct": -87.98241652693699,
         "reason": null,
         "revenue_krw": 46829943837,
@@ -1322,6 +1291,7 @@
         "net_margin_pct": -168.27816169297344,
         "operating_income_krw": -59472307590,
         "operating_income_yoy_pct": null,
+        "operating_income_yoy_status": "LOSS_CONTINUED",
         "operating_margin_pct": -180.3374898747332,
         "reason": null,
         "revenue_krw": 32978338354,
@@ -1348,7 +1318,31 @@
         "type": "METRIC_UNAVAILABLE"
       },
       {
+        "metric": "operating_income:QUARTERLY_YOY:2023Q3",
+        "reason": "MISSING_PRIOR_PERIOD",
+        "status": "DATA_UNAVAILABLE",
+        "type": "METRIC_UNAVAILABLE"
+      },
+      {
+        "metric": "operating_income:QUARTERLY_YOY:2023Q3",
+        "reason": "MISSING_PRIOR_PERIOD",
+        "status": "DATA_UNAVAILABLE",
+        "type": "METRIC_UNAVAILABLE"
+      },
+      {
         "metric": "revenue:QUARTERLY_YOY:2023Q4",
+        "reason": "MISSING_PRIOR_PERIOD",
+        "status": "DATA_UNAVAILABLE",
+        "type": "METRIC_UNAVAILABLE"
+      },
+      {
+        "metric": "operating_income:QUARTERLY_YOY:2023Q4",
+        "reason": "MISSING_PRIOR_PERIOD",
+        "status": "DATA_UNAVAILABLE",
+        "type": "METRIC_UNAVAILABLE"
+      },
+      {
+        "metric": "operating_income:QUARTERLY_YOY:2023Q4",
         "reason": "MISSING_PRIOR_PERIOD",
         "status": "DATA_UNAVAILABLE",
         "type": "METRIC_UNAVAILABLE"
@@ -1360,9 +1354,129 @@
         "type": "METRIC_UNAVAILABLE"
       },
       {
+        "metric": "operating_income:QUARTERLY_YOY:2024Q1",
+        "reason": "MISSING_PRIOR_PERIOD",
+        "status": "DATA_UNAVAILABLE",
+        "type": "METRIC_UNAVAILABLE"
+      },
+      {
+        "metric": "operating_income:QUARTERLY_YOY:2024Q1",
+        "reason": "MISSING_PRIOR_PERIOD",
+        "status": "DATA_UNAVAILABLE",
+        "type": "METRIC_UNAVAILABLE"
+      },
+      {
         "metric": "revenue:QUARTERLY_YOY:2024Q2",
         "reason": "MISSING_PRIOR_PERIOD",
         "status": "DATA_UNAVAILABLE",
+        "type": "METRIC_UNAVAILABLE"
+      },
+      {
+        "metric": "operating_income:QUARTERLY_YOY:2024Q2",
+        "reason": "MISSING_PRIOR_PERIOD",
+        "status": "DATA_UNAVAILABLE",
+        "type": "METRIC_UNAVAILABLE"
+      },
+      {
+        "metric": "operating_income:QUARTERLY_YOY:2024Q2",
+        "reason": "MISSING_PRIOR_PERIOD",
+        "status": "DATA_UNAVAILABLE",
+        "type": "METRIC_UNAVAILABLE"
+      },
+      {
+        "metric": "operating_income:QUARTERLY_YOY:2024Q3",
+        "reason": "NON_POSITIVE_OR_SIGN_TRANSITION_BASE",
+        "status": "UNDEFINED_BASE",
+        "type": "METRIC_UNAVAILABLE"
+      },
+      {
+        "metric": "operating_income:QUARTERLY_YOY:2024Q3",
+        "reason": "NON_POSITIVE_OR_SIGN_TRANSITION_BASE",
+        "status": "UNDEFINED_BASE",
+        "type": "METRIC_UNAVAILABLE"
+      },
+      {
+        "metric": "operating_income:QUARTERLY_YOY:2024Q4",
+        "reason": "NON_POSITIVE_OR_SIGN_TRANSITION_BASE",
+        "status": "UNDEFINED_BASE",
+        "type": "METRIC_UNAVAILABLE"
+      },
+      {
+        "metric": "operating_income:QUARTERLY_YOY:2024Q4",
+        "reason": "NON_POSITIVE_OR_SIGN_TRANSITION_BASE",
+        "status": "UNDEFINED_BASE",
+        "type": "METRIC_UNAVAILABLE"
+      },
+      {
+        "metric": "operating_income:QUARTERLY_YOY:2025Q1",
+        "reason": "NON_POSITIVE_OR_SIGN_TRANSITION_BASE",
+        "status": "UNDEFINED_BASE",
+        "type": "METRIC_UNAVAILABLE"
+      },
+      {
+        "metric": "operating_income:QUARTERLY_YOY:2025Q1",
+        "reason": "NON_POSITIVE_OR_SIGN_TRANSITION_BASE",
+        "status": "UNDEFINED_BASE",
+        "type": "METRIC_UNAVAILABLE"
+      },
+      {
+        "metric": "operating_income:QUARTERLY_YOY:2025Q2",
+        "reason": "NON_POSITIVE_OR_SIGN_TRANSITION_BASE",
+        "status": "UNDEFINED_BASE",
+        "type": "METRIC_UNAVAILABLE"
+      },
+      {
+        "metric": "operating_income:QUARTERLY_YOY:2025Q2",
+        "reason": "NON_POSITIVE_OR_SIGN_TRANSITION_BASE",
+        "status": "UNDEFINED_BASE",
+        "type": "METRIC_UNAVAILABLE"
+      },
+      {
+        "metric": "operating_income:QUARTERLY_YOY:2025Q3",
+        "reason": "NON_POSITIVE_OR_SIGN_TRANSITION_BASE",
+        "status": "UNDEFINED_BASE",
+        "type": "METRIC_UNAVAILABLE"
+      },
+      {
+        "metric": "operating_income:QUARTERLY_YOY:2025Q3",
+        "reason": "NON_POSITIVE_OR_SIGN_TRANSITION_BASE",
+        "status": "UNDEFINED_BASE",
+        "type": "METRIC_UNAVAILABLE"
+      },
+      {
+        "metric": "operating_income:QUARTERLY_YOY:2025Q4",
+        "reason": "NON_POSITIVE_OR_SIGN_TRANSITION_BASE",
+        "status": "UNDEFINED_BASE",
+        "type": "METRIC_UNAVAILABLE"
+      },
+      {
+        "metric": "operating_income:QUARTERLY_YOY:2025Q4",
+        "reason": "NON_POSITIVE_OR_SIGN_TRANSITION_BASE",
+        "status": "UNDEFINED_BASE",
+        "type": "METRIC_UNAVAILABLE"
+      },
+      {
+        "metric": "operating_income:QUARTERLY_YOY:2026Q1",
+        "reason": "NON_POSITIVE_OR_SIGN_TRANSITION_BASE",
+        "status": "UNDEFINED_BASE",
+        "type": "METRIC_UNAVAILABLE"
+      },
+      {
+        "metric": "operating_income:QUARTERLY_YOY:2026Q1",
+        "reason": "NON_POSITIVE_OR_SIGN_TRANSITION_BASE",
+        "status": "UNDEFINED_BASE",
+        "type": "METRIC_UNAVAILABLE"
+      },
+      {
+        "metric": "operating_income:QUARTERLY_YOY:2026Q2",
+        "reason": "NON_POSITIVE_OR_SIGN_TRANSITION_BASE",
+        "status": "UNDEFINED_BASE",
+        "type": "METRIC_UNAVAILABLE"
+      },
+      {
+        "metric": "operating_income:QUARTERLY_YOY:2026Q2",
+        "reason": "NON_POSITIVE_OR_SIGN_TRANSITION_BASE",
+        "status": "UNDEFINED_BASE",
         "type": "METRIC_UNAVAILABLE"
       },
       {
@@ -1385,6 +1499,12 @@
       },
       {
         "metric": "revenue:ANNUAL_YOY:2021FY",
+        "reason": "MISSING_REQUIRED_INPUT",
+        "status": "DATA_UNAVAILABLE",
+        "type": "METRIC_UNAVAILABLE"
+      },
+      {
+        "metric": "operating_income:ANNUAL_YOY:2021FY",
         "reason": "MISSING_REQUIRED_INPUT",
         "status": "DATA_UNAVAILABLE",
         "type": "METRIC_UNAVAILABLE"
@@ -1414,6 +1534,12 @@
         "type": "METRIC_UNAVAILABLE"
       },
       {
+        "metric": "operating_income:ANNUAL_YOY:2021FY",
+        "reason": "MISSING_REQUIRED_INPUT",
+        "status": "DATA_UNAVAILABLE",
+        "type": "METRIC_UNAVAILABLE"
+      },
+      {
         "metric": "revenue:2022FY",
         "reason": "MISSING_REQUIRED_INPUT",
         "status": "DATA_UNAVAILABLE",
@@ -1433,6 +1559,12 @@
       },
       {
         "metric": "revenue:ANNUAL_YOY:2022FY",
+        "reason": "MISSING_REQUIRED_INPUT",
+        "status": "DATA_UNAVAILABLE",
+        "type": "METRIC_UNAVAILABLE"
+      },
+      {
+        "metric": "operating_income:ANNUAL_YOY:2022FY",
         "reason": "MISSING_REQUIRED_INPUT",
         "status": "DATA_UNAVAILABLE",
         "type": "METRIC_UNAVAILABLE"
@@ -1462,7 +1594,19 @@
         "type": "METRIC_UNAVAILABLE"
       },
       {
+        "metric": "operating_income:ANNUAL_YOY:2022FY",
+        "reason": "MISSING_REQUIRED_INPUT",
+        "status": "DATA_UNAVAILABLE",
+        "type": "METRIC_UNAVAILABLE"
+      },
+      {
         "metric": "revenue:ANNUAL_YOY:2023FY",
+        "reason": "MISSING_PRIOR_PERIOD",
+        "status": "DATA_UNAVAILABLE",
+        "type": "METRIC_UNAVAILABLE"
+      },
+      {
+        "metric": "operating_income:ANNUAL_YOY:2023FY",
         "reason": "MISSING_PRIOR_PERIOD",
         "status": "DATA_UNAVAILABLE",
         "type": "METRIC_UNAVAILABLE"
@@ -1471,6 +1615,36 @@
         "metric": "net_income:ANNUAL_ROE:2023FY",
         "reason": "MISSING_PRIOR_FY_END_EQUITY",
         "status": "DATA_UNAVAILABLE",
+        "type": "METRIC_UNAVAILABLE"
+      },
+      {
+        "metric": "operating_income:ANNUAL_YOY:2023FY",
+        "reason": "MISSING_PRIOR_PERIOD",
+        "status": "DATA_UNAVAILABLE",
+        "type": "METRIC_UNAVAILABLE"
+      },
+      {
+        "metric": "operating_income:ANNUAL_YOY:2024FY",
+        "reason": "NON_POSITIVE_OR_SIGN_TRANSITION_BASE",
+        "status": "UNDEFINED_BASE",
+        "type": "METRIC_UNAVAILABLE"
+      },
+      {
+        "metric": "operating_income:ANNUAL_YOY:2024FY",
+        "reason": "NON_POSITIVE_OR_SIGN_TRANSITION_BASE",
+        "status": "UNDEFINED_BASE",
+        "type": "METRIC_UNAVAILABLE"
+      },
+      {
+        "metric": "operating_income:ANNUAL_YOY:2025FY",
+        "reason": "NON_POSITIVE_OR_SIGN_TRANSITION_BASE",
+        "status": "UNDEFINED_BASE",
+        "type": "METRIC_UNAVAILABLE"
+      },
+      {
+        "metric": "operating_income:ANNUAL_YOY:2025FY",
+        "reason": "NON_POSITIVE_OR_SIGN_TRANSITION_BASE",
+        "status": "UNDEFINED_BASE",
         "type": "METRIC_UNAVAILABLE"
       },
       {
@@ -1500,6 +1674,7 @@
         "operating_cash_flow_krw": null,
         "operating_income_krw": -6137359265,
         "operating_income_yoy_pct": null,
+        "operating_income_yoy_status": "UNAVAILABLE",
         "operating_margin_pct": -49.05644271847453,
         "quarter": "2023Q3",
         "reason": "MISSING_PRIOR_CUMULATIVE",
@@ -1513,6 +1688,7 @@
         "operating_cash_flow_krw": -13381535879,
         "operating_income_krw": -3097738074,
         "operating_income_yoy_pct": null,
+        "operating_income_yoy_status": "UNAVAILABLE",
         "operating_margin_pct": -18.355900651853673,
         "quarter": "2023Q4",
         "reason": null,
@@ -1526,6 +1702,7 @@
         "operating_cash_flow_krw": -8687752781,
         "operating_income_krw": -6885601862,
         "operating_income_yoy_pct": null,
+        "operating_income_yoy_status": "UNAVAILABLE",
         "operating_margin_pct": -63.276302996548225,
         "quarter": "2024Q1",
         "reason": null,
@@ -1539,6 +1716,7 @@
         "operating_cash_flow_krw": -9815709706,
         "operating_income_krw": -7870538654,
         "operating_income_yoy_pct": null,
+        "operating_income_yoy_status": "UNAVAILABLE",
         "operating_margin_pct": -54.56734868693269,
         "quarter": "2024Q2",
         "reason": null,
@@ -1552,6 +1730,7 @@
         "operating_cash_flow_krw": -9689251841,
         "operating_income_krw": -9588228365,
         "operating_income_yoy_pct": null,
+        "operating_income_yoy_status": "LOSS_CONTINUED",
         "operating_margin_pct": -95.55421402259871,
         "quarter": "2024Q3",
         "reason": null,
@@ -1565,6 +1744,7 @@
         "operating_cash_flow_krw": -15577739333,
         "operating_income_krw": -16857747365,
         "operating_income_yoy_pct": null,
+        "operating_income_yoy_status": "LOSS_CONTINUED",
         "operating_margin_pct": -146.71314588301496,
         "quarter": "2024Q4",
         "reason": null,
@@ -1578,6 +1758,7 @@
         "operating_cash_flow_krw": -8239060794,
         "operating_income_krw": -12106456584,
         "operating_income_yoy_pct": null,
+        "operating_income_yoy_status": "LOSS_CONTINUED",
         "operating_margin_pct": -229.31014422747592,
         "quarter": "2025Q1",
         "reason": null,
@@ -1591,6 +1772,7 @@
         "operating_cash_flow_krw": -2663548470,
         "operating_income_krw": -15650237991,
         "operating_income_yoy_pct": null,
+        "operating_income_yoy_status": "LOSS_CONTINUED",
         "operating_margin_pct": -345.3066774529506,
         "quarter": "2025Q2",
         "reason": null,
@@ -1604,6 +1786,7 @@
         "operating_cash_flow_krw": -1173393947,
         "operating_income_krw": -15265456197,
         "operating_income_yoy_pct": null,
+        "operating_income_yoy_status": "LOSS_CONTINUED",
         "operating_margin_pct": -150.17762549048317,
         "quarter": "2025Q3",
         "reason": null,
@@ -1617,6 +1800,7 @@
         "operating_cash_flow_krw": -5246512335,
         "operating_income_krw": -16450156818,
         "operating_income_yoy_pct": null,
+        "operating_income_yoy_status": "LOSS_CONTINUED",
         "operating_margin_pct": -126.5238958972001,
         "quarter": "2025Q4",
         "reason": null,
@@ -1630,6 +1814,7 @@
         "operating_cash_flow_krw": -10949913010,
         "operating_income_krw": -12069485926,
         "operating_income_yoy_pct": null,
+        "operating_income_yoy_status": "LOSS_CONTINUED",
         "operating_margin_pct": -78.91235525548106,
         "quarter": "2026Q1",
         "reason": null,
@@ -1643,6 +1828,7 @@
         "operating_cash_flow_krw": -7753300433,
         "operating_income_krw": -14417199907,
         "operating_income_yoy_pct": null,
+        "operating_income_yoy_status": "LOSS_CONTINUED",
         "operating_margin_pct": -81.5728430052558,
         "quarter": "2026Q2",
         "reason": null,
@@ -1651,7 +1837,7 @@
         "status": "READY"
       }
     ],
-    "reason": "DERIVED_CONTEXT_PARTIAL",
+    "reason": "DISPLAY_WINDOW_PARTIAL",
     "requested_as_of": "2026-09-04",
     "summary": {
       "filter_passed": false,

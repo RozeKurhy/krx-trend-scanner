@@ -9,6 +9,7 @@ from __future__ import annotations
 from collections import defaultdict
 from datetime import date
 from dataclasses import dataclass, replace
+from decimal import Decimal, InvalidOperation
 from typing import Any, Iterable, Mapping
 
 from .models import FinancialObservation
@@ -81,6 +82,10 @@ CANONICAL_DUPLICATE_IDENTITY_FIELDS = (
     "pit_available_from", "context_scope_fingerprint",
 )
 
+PRECISION_ALIAS_IDENTITY_FIELDS = tuple(
+    field for field in CANONICAL_DUPLICATE_IDENTITY_FIELDS if field != "value"
+)
+
 
 @dataclass(frozen=True)
 class CanonicalDuplicateCollapseStats:
@@ -96,6 +101,54 @@ def canonical_duplicate_identity(fact: PeriodizationFact) -> tuple[Any, ...]:
     """Return the canonical identity used for safe representation collapse."""
 
     return tuple(getattr(fact, field) for field in CANONICAL_DUPLICATE_IDENTITY_FIELDS)
+
+
+def _declared_value_interval(fact: PeriodizationFact) -> tuple[Decimal, Decimal] | None:
+    """Return the XBRL declared rounding interval for one numeric fact."""
+
+    if fact.value is None:
+        return None
+    try:
+        value = Decimal(str(fact.value))
+    except (InvalidOperation, ValueError):
+        return None
+    if not value.is_finite():
+        return None
+    declared = str(fact.decimals or fact.precision or "").strip().upper()
+    if not declared or declared in {"INF", "INFINITE"}:
+        return (value, value)
+    try:
+        declared_int = int(declared)
+    except ValueError:
+        return (value, value)
+    if fact.decimals not in (None, ""):
+        quantum = Decimal(10) ** (-declared_int)
+    else:
+        if value == 0:
+            quantum = Decimal(10) ** (1 - declared_int)
+        else:
+            exponent = value.copy_abs().adjusted()
+            quantum = Decimal(10) ** (exponent - declared_int + 1)
+    half = quantum / Decimal(2)
+    return value - half, value + half
+
+
+def _precision_equivalent(facts: Iterable[PeriodizationFact]) -> bool:
+    intervals = [_declared_value_interval(fact) for fact in facts]
+    if not intervals or any(interval is None for interval in intervals):
+        return False
+    lower = max(interval[0] for interval in intervals if interval is not None)
+    upper = min(interval[1] for interval in intervals if interval is not None)
+    return lower <= upper
+
+
+def _canonical_account_precedence(fact: PeriodizationFact) -> tuple[int, str, str]:
+    account_id = str(fact.account_id or "")
+    try:
+        order = tuple(ACCOUNT_TO_METRIC).index(account_id)
+    except ValueError:
+        order = len(ACCOUNT_TO_METRIC)
+    return order, account_id, str(fact.raw_value or "")
 
 
 def collapse_canonical_duplicate_periodization_facts(
@@ -122,14 +175,44 @@ def collapse_canonical_duplicate_periodization_facts(
             continue
         seen.add(identity)
         collapsed.append(fact)
+    # A second, narrower pass handles aliases that describe the same economic
+    # fact but were rounded at different declared precision.  Account IDs,
+    # raw text, decimals, and precision are deliberately excluded from this
+    # identity; period, basis, context fingerprint, currency, receipt, and
+    # every other provenance field remain part of it.  A value is collapsed
+    # only when every declared rounding interval has a common overlap.
+    alias_groups: dict[tuple[Any, ...], list[PeriodizationFact]] = defaultdict(list)
+    for fact in collapsed:
+        alias_groups[tuple(getattr(fact, field) for field in PRECISION_ALIAS_IDENTITY_FIELDS)].append(fact)
+    precision_groups = 0
+    precision_removed = 0
+    true_conflicts = 0
+    precision_collapsed: list[PeriodizationFact] = []
+    for group in alias_groups.values():
+        if len(group) == 1:
+            precision_collapsed.extend(group)
+            continue
+        unique_values = {str(fact.value) for fact in group}
+        if len(unique_values) > 1 and _precision_equivalent(group):
+            chosen = min(group, key=_canonical_account_precedence)
+            precision_collapsed.append(chosen)
+            precision_groups += 1
+            precision_removed += len(group) - 1
+        else:
+            precision_collapsed.extend(group)
+            if len(unique_values) > 1:
+                true_conflicts += 1
     if stats is not None:
         stats.update({
             "input_fact_count": len(values),
-            "output_fact_count": len(collapsed),
+            "output_fact_count": len(precision_collapsed),
             "group_count": len(duplicate_identities),
             "removed_fact_count": len(values) - len(collapsed),
+            "precision_equivalent_group_count": precision_groups,
+            "precision_equivalent_fact_removed_count": precision_removed,
+            "true_value_conflict_group_count": true_conflicts,
         })
-    return tuple(collapsed)
+    return tuple(precision_collapsed)
 
 
 def _parse_date(value: Any) -> date | None:
@@ -732,6 +815,12 @@ def facts_from_xbrl_rows(rows: Iterable[Mapping[str, Any]], *, ticker: str, corp
             explicit_dimension_count=int(row.get("explicit_dimension_count", 0) or 0),
             typed_dimension_count=int(row.get("typed_dimension_count", 0) or 0),
             additional_explicit_dimension_count=int(row.get("additional_explicit_dimension_count", 0) or 0),
+            account_id=str(row.get("account_id") or "") or None,
+            raw_value=row.get("raw_value") or row.get("thstrm_amount"),
+            unit_ref=row.get("unit_ref") or row.get("currency"),
+            decimals=str(row.get("decimals")) if row.get("decimals") not in (None, "") else None,
+            precision=str(row.get("precision")) if row.get("precision") not in (None, "") else None,
+            context_ref=str(row.get("context_ref") or "") or None,
         ))
     # Collapse only representation duplicates produced by the same filing's
     # canonical account mapping.  Genuine conflicts remain as separate facts
