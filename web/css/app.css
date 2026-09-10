@@ -32,6 +32,11 @@
   --regime-anxious-bg: #fff0bd;
   --regime-panic-bg: #f8d9df;
   --regime-apathy-bg: #dfeaf1;
+  --fundamental-quarter-q1-bg: #f4f8fc;
+  --fundamental-quarter-q2-bg: #f4faf6;
+  --fundamental-quarter-q3-bg: #fbfaf2;
+  --fundamental-quarter-q4-bg: #f7f4fa;
+  --fundamental-ttm-bg: #eef3f8;
   --fear-line: #4967b1;
   --skip-bg: #18191b;
   --skip-text: #ffffff;
@@ -75,6 +80,11 @@
   --regime-anxious-bg: #4a3c1b;
   --regime-panic-bg: #52272f;
   --regime-apathy-bg: #2d3b4a;
+  --fundamental-quarter-q1-bg: #1a2530;
+  --fundamental-quarter-q2-bg: #1d2a22;
+  --fundamental-quarter-q3-bg: #2c291d;
+  --fundamental-quarter-q4-bg: #272331;
+  --fundamental-ttm-bg: #22303d;
   --fear-line: #9db7f0;
   --skip-bg: #f4f4f5;
   --skip-text: #17181b;
@@ -491,11 +501,10 @@ summary { cursor: pointer; color: var(--ink); font-size: 13px; font-weight: 750;
 .detail-empty { margin: 0; color: var(--ink-soft); font-size: 13px; }
 .detail-table td.detail-value-positive { color: var(--market-up-red); font-weight: 750; }
 .detail-table td.detail-value-negative { color: var(--market-down-blue); font-weight: 750; }
-.fundamental-loss { color: var(--market-down-blue) !important; font-weight: 750; }
+.fundamental-loss { color: var(--brand-red) !important; font-weight: 750; }
 .fundamentals-detail-panel { margin-bottom: 16px; }
 .fundamentals-detail-panel .report-detail-header { margin-bottom: 0; }
 .fundamentals-detail-panel .eyebrow { margin-bottom: 5px; }
-.fundamentals-meta { margin: 14px 0 0; color: var(--ink-soft); font-size: 12px; }
 .fundamentals-unit-note { margin: 5px 0 0; color: var(--ink-faint); font-size: 11px; }
 .fundamentals-periods { margin-top: 22px; }
 .fundamentals-period-heading { margin: 20px 0 10px; font-size: 14px; letter-spacing: -0.025em; }
@@ -504,6 +513,14 @@ summary { cursor: pointer; color: var(--ink); font-size: 13px; font-weight: 750;
 .fundamentals-table th { font-size: 10px; text-align: center; }
 .fundamentals-table th:first-child, .fundamentals-table td:first-child { text-align: center; }
 .fundamentals-table td { text-align: right; }
+.fundamentals-table th, .fundamentals-table td { border-right: 1px solid var(--line); }
+.fundamentals-table th:last-child, .fundamentals-table td:last-child { border-right: 0; }
+.fundamentals-table .fundamental-quarter-q1 { background: var(--fundamental-quarter-q1-bg); }
+.fundamentals-table .fundamental-quarter-q2 { background: var(--fundamental-quarter-q2-bg); }
+.fundamentals-table .fundamental-quarter-q3 { background: var(--fundamental-quarter-q3-bg); }
+.fundamentals-table .fundamental-quarter-q4 { background: var(--fundamental-quarter-q4-bg); }
+.fundamentals-table .fundamental-ttm { background: var(--fundamental-ttm-bg); }
+.fundamentals-table .fundamental-year-boundary { border-left: 1px solid var(--line-strong); }
 .fundamentals-table th:first-child, .fundamentals-table td:first-child { position: sticky; left: 0; z-index: 1; min-width: 116px; background: var(--surface); box-shadow: 1px 0 0 var(--line); }
 .fundamentals-table th:first-child { z-index: 2; background: var(--surface-muted); }
 .pattern-score-chart-wrap { overflow: hidden; margin: 0 0 18px; }

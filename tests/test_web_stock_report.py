@@ -233,15 +233,15 @@ def test_report_frontend_has_safe_states_and_relative_assets():
     css = (ROOT / "web/css/app.css").read_text(encoding="utf-8")
     favicon = (ROOT / "web/favicon.svg").read_text(encoding="utf-8")
 
-    assert 'href="./css/app.css?v=web-02d-window-5"' in html
+    assert 'href="./css/app.css?v=web-02d-window-6"' in html
     assert 'href="./css/app.css?v=web-fear-fix02-1"' in index_html
     assert 'href="./favicon.svg"' in html
     assert 'href="./favicon.svg"' in index_html
     assert (ROOT / "web/favicon.svg").exists()
     assert '#9f1d2f' in favicon
-    assert 'src="./js/report.js?v=web-02d-window-5"' in html
+    assert 'src="./js/report.js?v=web-02d-window-6"' in html
     assert 'src="./js/app.js?v=web-fear-fix02-1"' in index_html
-    assert html.count("web-02d-window-5") == 2
+    assert html.count("web-02d-window-6") == 2
     assert index_html.count("web-fear-fix02-1") == 2
     assert "web-03a-final-1" not in html
     assert "web-03a-final-1" not in index_html
@@ -303,7 +303,9 @@ def test_report_frontend_has_safe_states_and_relative_assets():
     assert 'id="report-detail-panel"' in html
     assert 'id="fundamentals-detail-panel"' in html
     assert 'id="fundamentals-summary"' not in html
-    assert 'id="fundamentals-detail-meta"' in html
+    assert 'id="fundamentals-detail-meta"' not in html
+    assert 'id="fundamentals-detail-heading">펀더멘탈</h3>' in html
+    assert "Fundamentals 상세" not in html
     assert 'id="fundamentals-unit-note"' in html
     assert 'id="fundamentals-periods"' in html
     assert 'id="top-detail-slot"' in html
@@ -318,11 +320,11 @@ def test_report_frontend_has_safe_states_and_relative_assets():
     assert "percentile_6m" in js and "percentile_12m" in js
     assert "formatKrwCompact" in js
     assert "renderFundamentalsDetail" in js
-    assert "ttm_operating_cash_flow_krw" in js
+    assert "ttm_operating_cash_flow_krw" not in js
     assert "fundamentals-summary-grid" not in css
     assert "operating_income_yoy_pct" in js
     assert "fundamentals-table" in js and "fundamentals-table" in css
-    assert "detail-value-negative" in js and "detail-value-negative" in css
+    assert "fundamental-loss" in js and "fundamental-loss" in css
     assert 'header: "TTM"' in js
     assert "천만" in js
     assert "펀더멘털 V1 적용 대상 아님" in js
