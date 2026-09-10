@@ -1337,7 +1337,7 @@ def _remaining_quota_checkpoint(
         "work_id": "F7_REMAINING_DAILY_QUOTA_CONTROL_CHECKPOINT",
         "runner_version": RUNNER_VERSION,
         "date": run_date,
-        "status": "IN_PROGRESS",
+        "status": "COMPLETE" if not remaining_tickers else "IN_PROGRESS",
         "requested_as_of": requested_as_of,
         "metadata_snapshot_date": metadata_snapshot_date,
         "stop_reason": stop_reason,

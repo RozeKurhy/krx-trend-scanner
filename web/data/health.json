@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-09T22:30:51.155721Z",
-  "overall_status": "CHECK_REQUIRED",
+  "generated_at": "2026-09-10T01:04:06.452742Z",
+  "overall_status": "UNKNOWN",
   "market_data": {
     "status": "NORMAL",
     "latest_trading_date": "2026-09-04",
@@ -32,30 +32,30 @@
     }
   },
   "fundamentals": {
-    "status": "CHECK_REQUIRED",
-    "run_status": "IN_PROGRESS",
+    "status": "NORMAL",
+    "run_status": "COMPLETE",
     "requested_as_of": "2026-09-04",
-    "completed": 3706,
+    "completed": 4415,
     "total": 4415,
-    "remaining": 709,
-    "percentage": 83.9,
+    "remaining": 0,
+    "percentage": 100.0,
     "terminal_status_counts": {
-      "DATA_UNAVAILABLE": 642,
-      "FILTERED_ANNUAL_REVENUE": 214,
-      "FILTERED_NET_LOSS": 93,
-      "FILTERED_OPERATING_LOSS": 200,
-      "FILTERED_QUARTERLY_REVENUE": 3,
-      "NOT_APPLICABLE": 1870,
-      "PASS": 684
+      "DATA_UNAVAILABLE": 914,
+      "FILTERED_ANNUAL_REVENUE": 385,
+      "FILTERED_NET_LOSS": 110,
+      "FILTERED_OPERATING_LOSS": 246,
+      "FILTERED_QUARTERLY_REVENUE": 8,
+      "NOT_APPLICABLE": 1980,
+      "PASS": 772
     },
     "data_status_counts": {
-      "DATA_UNAVAILABLE": 642,
-      "NOT_APPLICABLE": 1870,
-      "PARTIAL": 1185,
-      "READY": 9
+      "DATA_UNAVAILABLE": 915,
+      "NOT_APPLICABLE": 1980,
+      "PARTIAL": 1509,
+      "READY": 11
     },
     "output_integrity": {
-      "valid_output_count": 3706,
+      "valid_output_count": 4415,
       "invalid_output_count": 0,
       "outside_universe_count": 0,
       "duplicate_payload_count": 0
@@ -73,8 +73,8 @@
     }
   },
   "stock_reports": {
-    "status": "CHECK_REQUIRED",
-    "reason": "Fundamentals production coverage is not complete.",
+    "status": "UNKNOWN",
+    "reason": "No WEB-01 readiness authority confirms downstream completion.",
     "source": {
       "path": "artifacts/fundamentals/production/20260904/daily_quota_checkpoint.json",
       "as_of": "2026-09-04"
@@ -86,16 +86,16 @@
     }
   },
   "analysis": {
-    "status": "CHECK_REQUIRED",
-    "reason": "Fundamentals production coverage is not complete.",
+    "status": "UNKNOWN",
+    "reason": "No WEB-01 readiness authority confirms downstream completion.",
     "source": {
       "path": "artifacts/fundamentals/production/20260904/daily_quota_checkpoint.json",
       "as_of": "2026-09-04"
     }
   },
   "backtest": {
-    "status": "CHECK_REQUIRED",
-    "reason": "Fundamentals production coverage is not complete.",
+    "status": "UNKNOWN",
+    "reason": "No WEB-01 readiness authority confirms downstream completion.",
     "source": {
       "path": "artifacts/fundamentals/production/20260904/daily_quota_checkpoint.json",
       "as_of": "2026-09-04"

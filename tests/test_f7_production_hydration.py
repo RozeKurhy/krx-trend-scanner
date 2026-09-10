@@ -226,6 +226,50 @@ def _write_quota_checkpoint(path: Path, *, date: str, official: int, additional:
     }), encoding="utf-8")
 
 
+@pytest.mark.parametrize(
+    ("universe", "completed_rows", "start_completed", "expected_status"),
+    [
+        (
+            [{"ticker": "000020", "asset_type": "ETF"}, {"ticker": "000040", "asset_type": "ETF"}],
+            [{"ticker": "000020", "asset_type": "ETF", "terminal_status": "NOT_APPLICABLE"}],
+            {"000020"},
+            "IN_PROGRESS",
+        ),
+        (
+            [{"ticker": "000020", "asset_type": "ETF"}],
+            [{"ticker": "000020", "asset_type": "ETF", "terminal_status": "NOT_APPLICABLE"}],
+            {"000020"},
+            "COMPLETE",
+        ),
+    ],
+)
+def test_remaining_checkpoint_status_reflects_end_remaining(
+    universe, completed_rows, start_completed, expected_status,
+):
+    client = SimpleNamespace(
+        audit=[],
+        http_request_count=0,
+        current_additional_requests=0,
+        estimated_daily_total=0,
+    )
+    checkpoint = f7._remaining_quota_checkpoint(
+        completed_rows=completed_rows,
+        universe=universe,
+        start_completed_tickers=start_completed,
+        run_date="2026-09-10",
+        official_usage_before=0,
+        max_additional_budget=39_000,
+        requested_as_of="2026-09-04",
+        metadata_snapshot_date="2026-09-04",
+        started_at="2026-09-10T00:00:00+09:00",
+        completed_at="2026-09-10T00:00:01+09:00",
+        client=client,
+        stop_reason="TARGET_SET_EXHAUSTED",
+    )
+    assert checkpoint["end_remaining"] == (0 if expected_status == "COMPLETE" else 1)
+    assert checkpoint["status"] == expected_status
+
+
 def test_same_day_quota_resume_preserves_prior_additional(tmp_path: Path):
     checkpoint = tmp_path / "daily_quota_checkpoint.json"
     _write_quota_checkpoint(checkpoint, date="2026-09-09", official=0, additional=12_000)
