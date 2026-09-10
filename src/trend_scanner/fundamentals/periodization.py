@@ -161,6 +161,32 @@ def _canonical_account_precedence(fact: PeriodizationFact) -> tuple[int, str, st
     return order, account_id, str(fact.raw_value or "")
 
 
+def _context_alias_equivalent(facts: Iterable[PeriodizationFact]) -> bool:
+    """Allow only same-context canonical account aliases to collapse."""
+
+    values = tuple(facts)
+    account_ids = {str(item.account_id or "") for item in values}
+    metrics = {metric_for_account_id(item.account_id) for item in values}
+    if len(values) < 2 or len(account_ids) < 2 or len(metrics) != 1:
+        return False
+    if None in metrics or any(
+        item.context_has_additional_dimensions or item.context_has_typed_dimensions
+        or item.typed_dimension_count
+        or item.additional_explicit_dimension_count
+        for item in values
+    ):
+        return False
+    fingerprints = {str(item.context_scope_fingerprint or "") for item in values}
+    if len(fingerprints) != 1 or "" in fingerprints:
+        return False
+    numbers = [_number(item.value) for item in values]
+    if any(number is None for number in numbers):
+        return False
+    if any((number < 0) != (numbers[0] < 0) for number in numbers):
+        return False
+    return max(numbers) - min(numbers) < 2000
+
+
 def collapse_canonical_duplicate_periodization_facts(
     facts: Iterable[PeriodizationFact],
     *,
@@ -196,7 +222,6 @@ def collapse_canonical_duplicate_periodization_facts(
         alias_groups[tuple(getattr(fact, field) for field in PRECISION_ALIAS_IDENTITY_FIELDS)].append(fact)
     precision_groups = 0
     precision_removed = 0
-    true_conflicts = 0
     precision_collapsed: list[PeriodizationFact] = []
     for group in alias_groups.values():
         if len(group) == 1:
@@ -210,19 +235,41 @@ def collapse_canonical_duplicate_periodization_facts(
             precision_removed += len(group) - 1
         else:
             precision_collapsed.extend(group)
-            if len(unique_values) > 1:
+    alias_groups_after_precision: dict[tuple[Any, ...], list[PeriodizationFact]] = defaultdict(list)
+    for fact in precision_collapsed:
+        alias_groups_after_precision[tuple(getattr(fact, field) for field in PRECISION_ALIAS_IDENTITY_FIELDS)].append(fact)
+    context_alias_groups = 0
+    context_alias_removed = 0
+    true_conflicts = 0
+    context_collapsed: list[PeriodizationFact] = []
+    for group in alias_groups_after_precision.values():
+        if _context_alias_equivalent(group):
+            context_collapsed.append(min(group, key=_canonical_account_precedence))
+            context_alias_groups += 1
+            context_alias_removed += len(group) - 1
+        else:
+            context_collapsed.extend(group)
+            if len({str(fact.value) for fact in group}) > 1:
                 true_conflicts += 1
     if stats is not None:
         stats.update({
             "input_fact_count": len(values),
-            "output_fact_count": len(precision_collapsed),
+            "output_fact_count": len(context_collapsed),
             "group_count": len(duplicate_identities),
             "removed_fact_count": len(values) - len(collapsed),
-            "precision_equivalent_group_count": precision_groups,
-            "precision_equivalent_fact_removed_count": precision_removed,
-            "true_value_conflict_group_count": true_conflicts,
         })
-    return tuple(precision_collapsed)
+        if precision_groups or precision_removed or true_conflicts:
+            stats.update({
+                "precision_equivalent_group_count": precision_groups,
+                "precision_equivalent_fact_removed_count": precision_removed,
+                "true_value_conflict_group_count": true_conflicts,
+            })
+        if context_alias_groups:
+            stats.update({
+                "context_equivalent_group_count": context_alias_groups,
+                "context_equivalent_fact_removed_count": context_alias_removed,
+            })
+    return tuple(context_collapsed)
 
 
 def _parse_date(value: Any) -> date | None:
@@ -361,8 +408,10 @@ class PeriodizationEngine:
         as_of: str | date | None = None,
         prior_pit_states: Mapping[tuple[str, str], Mapping[str, Any]] | None = None,
         current_pit_states: Mapping[str, Mapping[str, Any] | str] | None = None,
+        include_comparative_presentations: bool = False,
     ) -> PeriodizationResult:
-        facts = self._prepare(values, as_of=as_of)
+        facts = self._prepare(values, as_of=as_of,
+                              include_comparative_presentations=include_comparative_presentations)
         prior_pit_states = prior_pit_states or {}
         current_pit_states = current_pit_states or {}
         observations: list[PeriodizedFinancialObservation] = []
@@ -467,12 +516,15 @@ class PeriodizationEngine:
     def canonical_series(self, values: Iterable[PeriodizationFact | FinancialObservation | Mapping[str, Any]],
                          *, as_of: str | date | None = None,
                          prior_pit_states: Mapping[tuple[str, str], Mapping[str, Any]] | None = None,
-                         current_pit_states: Mapping[str, Mapping[str, Any] | str] | None = None) -> PeriodizationResult:
+                         current_pit_states: Mapping[str, Mapping[str, Any] | str] | None = None,
+                         include_comparative_presentations: bool = False) -> PeriodizationResult:
         return self.periodize(values, as_of=as_of, prior_pit_states=prior_pit_states,
-                              current_pit_states=current_pit_states)
+                              current_pit_states=current_pit_states,
+                              include_comparative_presentations=include_comparative_presentations)
 
     def _prepare(self, values: Iterable[PeriodizationFact | FinancialObservation | Mapping[str, Any]],
-                 *, as_of: str | date | None) -> tuple[PeriodizationFact, ...]:
+                 *, as_of: str | date | None,
+                 include_comparative_presentations: bool = False) -> tuple[PeriodizationFact, ...]:
         cutoff = _parse_date(as_of)
         if as_of is not None and cutoff is None:
             raise PeriodizationError(f"Invalid periodization as_of: {as_of!r}")
@@ -488,7 +540,7 @@ class PeriodizationEngine:
                 fact = PeriodizationFact.from_mapping(data)
             else:
                 fact = PeriodizationFact.from_mapping(raw)
-            if _is_comparative(fact):
+            if _is_comparative(fact) and not include_comparative_presentations:
                 continue
             receipt = _parse_date(fact.rcept_dt)
             if cutoff and receipt and receipt > cutoff:
@@ -778,17 +830,41 @@ class PeriodizationEngine:
 def periodize_facts(values: Iterable[PeriodizationFact | FinancialObservation | Mapping[str, Any]], *,
                     as_of: str | date | None = None,
                     prior_pit_states: Mapping[tuple[str, str], Mapping[str, Any]] | None = None,
-                    current_pit_states: Mapping[str, Mapping[str, Any] | str] | None = None) -> PeriodizationResult:
+                    current_pit_states: Mapping[str, Mapping[str, Any] | str] | None = None,
+                    include_comparative_presentations: bool = False) -> PeriodizationResult:
     return PeriodizationEngine().periodize(values, as_of=as_of, prior_pit_states=prior_pit_states,
-                                           current_pit_states=current_pit_states)
+                                           current_pit_states=current_pit_states,
+                                           include_comparative_presentations=include_comparative_presentations)
 
 
 def periodize_fiscal_year(values: Iterable[PeriodizationFact | FinancialObservation | Mapping[str, Any]], *,
                           as_of: str | date | None = None,
                           prior_pit_states: Mapping[tuple[str, str], Mapping[str, Any]] | None = None,
-                          current_pit_states: Mapping[str, Mapping[str, Any] | str] | None = None) -> PeriodizationResult:
+                          current_pit_states: Mapping[str, Mapping[str, Any] | str] | None = None,
+                          include_comparative_presentations: bool = False) -> PeriodizationResult:
     return periodize_facts(values, as_of=as_of, prior_pit_states=prior_pit_states,
-                           current_pit_states=current_pit_states)
+                           current_pit_states=current_pit_states,
+                           include_comparative_presentations=include_comparative_presentations)
+
+
+def normalize_represented_comparative_fact(fact: PeriodizationFact) -> PeriodizationFact:
+    """Map an official comparative presentation to the fiscal period it represents."""
+
+    if not fact.comparative:
+        return fact
+    end = _parse_date(fact.period_end) or _parse_date(fact.instant)
+    start = _parse_date(fact.period_start)
+    target_year = (end or start).year if (end or start) else None
+    if target_year is None or str(target_year) == str(fact.fiscal_year):
+        return fact
+    original_start = _parse_date(fact.fiscal_year_start)
+    target_start = date(target_year, original_start.month, original_start.day) if original_start else date(target_year, 1, 1)
+    duration = _duration_days(fact)
+    semantic = INSTANT if fact.metric in INSTANT_METRICS or fact.instant else (
+        CUMULATIVE_YTD if _standard_duration(fact.reprt_code, duration, CUMULATIVE_YTD) else STANDALONE_QUARTER
+    )
+    return replace(fact, fiscal_year=str(target_year), fiscal_year_start=target_start.isoformat(),
+                   period_semantics=semantic)
 
 
 def facts_from_xbrl_rows(rows: Iterable[Mapping[str, Any]], *, ticker: str, corp_code: str,
@@ -819,7 +895,7 @@ def facts_from_xbrl_rows(rows: Iterable[Mapping[str, Any]], *, ticker: str, corp
             semantic = STANDALONE_QUARTER
         else:
             semantic = "UNKNOWN"
-        result.append(PeriodizationFact(
+        result.append(normalize_represented_comparative_fact(PeriodizationFact(
             ticker=ticker, corp_code=corp_code, company_family=company_family, fiscal_year=str(fiscal_year),
             fiscal_year_start=fiscal_year_start, metric=metric, value=row.get("value"),
             currency=row.get("currency"), reprt_code=str(reprt_code),
@@ -842,7 +918,7 @@ def facts_from_xbrl_rows(rows: Iterable[Mapping[str, Any]], *, ticker: str, corp
             decimals=str(row.get("decimals")) if row.get("decimals") not in (None, "") else None,
             precision=str(row.get("precision")) if row.get("precision") not in (None, "") else None,
             context_ref=str(row.get("context_ref") or "") or None,
-        ))
+        )))
     # Collapse only representation duplicates produced by the same filing's
     # canonical account mapping.  Genuine conflicts remain as separate facts
     # and therefore continue to trigger the engine's fail-closed ambiguity.

@@ -504,6 +504,26 @@ def build_multi_period_result(
                 "pit_available_from": item.pit_available_from or item.anchor_rcept_dt,
             })
 
+    # A later filing may officially re-present an earlier fiscal period in its
+    # comparative column.  It is authoritative for the current snapshot only
+    # after its own PIT availability date; historical snapshots were filtered
+    # above and therefore cannot see this future restatement.  A same-day tie
+    # remains visible so the coverage slot fails closed instead of choosing a
+    # winner by incidental list order.
+    authoritative_groups: dict[tuple[str, str, str, str, str, str], list[PeriodizedFinancialObservation]] = {}
+    for item in eligible:
+        key = (
+            str(item.ticker), str(item.corp_code), str(item.company_family),
+            str(item.fiscal_year), str(item.fiscal_period), str(item.metric),
+        )
+        authoritative_groups.setdefault(key, []).append(item)
+    latest_eligible: list[PeriodizedFinancialObservation] = []
+    for items in authoritative_groups.values():
+        latest_date = max((_as_date(item.pit_available_from or item.anchor_rcept_dt) or date.min) for item in items)
+        latest = [item for item in items if (_as_date(item.pit_available_from or item.anchor_rcept_dt) or date.min) == latest_date]
+        latest_eligible.extend(sorted(latest, key=_observation_sort_key))
+    eligible = latest_eligible
+
     if family == CompanyFamily.FINANCIAL.value:
         return _financial_result(
             ticker=str(ticker), corp_code=resolved_corp_code, family=family,

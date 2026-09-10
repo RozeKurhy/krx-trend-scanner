@@ -74,6 +74,9 @@ class PeriodizationBuild:
     precision_equivalent_group_count: int = 0
     precision_equivalent_fact_removed_count: int = 0
     true_value_conflict_group_count: int = 0
+    # Appended to preserve positional compatibility with the V02 fields.
+    context_equivalent_group_count: int = 0
+    context_equivalent_fact_removed_count: int = 0
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -90,6 +93,8 @@ class PeriodizationBuild:
             "canonical_duplicate_fact_removed_count": self.canonical_duplicate_fact_removed_count,
             "precision_equivalent_group_count": self.precision_equivalent_group_count,
             "precision_equivalent_fact_removed_count": self.precision_equivalent_fact_removed_count,
+            "context_equivalent_group_count": self.context_equivalent_group_count,
+            "context_equivalent_fact_removed_count": self.context_equivalent_fact_removed_count,
             "true_value_conflict_group_count": self.true_value_conflict_group_count,
         }
 
@@ -131,6 +136,8 @@ class PeriodizationProvider:
         canonical_duplicate_fact_removed_count = 0
         precision_equivalent_group_count = 0
         precision_equivalent_fact_removed_count = 0
+        context_equivalent_group_count = 0
+        context_equivalent_fact_removed_count = 0
         true_value_conflict_group_count = 0
 
         def materialize(filing: RegisteredFiling) -> dict[str, Any]:
@@ -138,6 +145,7 @@ class PeriodizationProvider:
 
             nonlocal canonical_duplicate_group_count, canonical_duplicate_fact_removed_count
             nonlocal precision_equivalent_group_count, precision_equivalent_fact_removed_count
+            nonlocal context_equivalent_group_count, context_equivalent_fact_removed_count
             nonlocal true_value_conflict_group_count
 
             key = (str(filing.reprt_code), str(filing.rcept_no))
@@ -199,6 +207,8 @@ class PeriodizationProvider:
             canonical_duplicate_fact_removed_count += int(collapse_stats.get("removed_fact_count", 0))
             precision_equivalent_group_count += int(collapse_stats.get("precision_equivalent_group_count", 0))
             precision_equivalent_fact_removed_count += int(collapse_stats.get("precision_equivalent_fact_removed_count", 0))
+            context_equivalent_group_count += int(collapse_stats.get("context_equivalent_group_count", 0))
+            context_equivalent_fact_removed_count += int(collapse_stats.get("context_equivalent_fact_removed_count", 0))
             true_value_conflict_group_count += int(collapse_stats.get("true_value_conflict_group_count", 0))
             if not new_facts:
                 return {
@@ -322,6 +332,7 @@ class PeriodizationProvider:
         result = self.periodizer.periodize(
             facts, as_of=cutoff, prior_pit_states=prior_pit_states,
             current_pit_states=current_pit_states,
+            include_comparative_presentations=True,
         )
         return PeriodizationBuild(
             ticker=ticker, fiscal_year=fiscal_year, requested_as_of=cutoff_text,
@@ -331,6 +342,8 @@ class PeriodizationProvider:
             canonical_duplicate_fact_removed_count=canonical_duplicate_fact_removed_count,
             precision_equivalent_group_count=precision_equivalent_group_count,
             precision_equivalent_fact_removed_count=precision_equivalent_fact_removed_count,
+            context_equivalent_group_count=context_equivalent_group_count,
+            context_equivalent_fact_removed_count=context_equivalent_fact_removed_count,
             true_value_conflict_group_count=true_value_conflict_group_count,
         )
 

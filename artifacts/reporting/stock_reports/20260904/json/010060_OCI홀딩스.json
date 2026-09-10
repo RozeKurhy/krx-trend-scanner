@@ -21,7 +21,7 @@
     "headline": "OCI홀딩스(010060)는 현재 Pattern A PROGRESSED 단계이며 투자 적격 상태는 INVESTABLE입니다.",
     "bullet_points": [
       "패스트 코어 V2: 관망 · 현재 신규 진입 조건 미충족",
-      "펀더멘털: NOT_APPLICABLE (일반기업 Fundamentals V1 적용 대상 아님)",
+      "펀더멘털: DATA_UNAVAILABLE (F4_DATA_UNAVAILABLE)",
       "현재 Pattern A Score는 0.00점(Stage: PROGRESSED, Candidate: NO)입니다.",
       "시가총액 42474.8억원, 20일 평균 거래대금 860.12억원으로 Phase 10 Investability 기준을 충족합니다.",
       "외국인 수급: 최근 5일과 20일 외국인 수급은 순매수로 개선되었으나 60일 누적으로는 아직 순매도 상태로, 단기 수급 반등 및 회복 국면입니다 (5일 순매수 강도: +13.16%).",
@@ -2972,35 +2972,1131 @@
   },
   "asset_type": "COMMON",
   "fundamentals": {
-    "annual": [],
-    "applicability": "NOT_APPLICABLE",
-    "company_family": "FINANCIAL",
-    "currency": "KRW",
-    "data_status": "NOT_APPLICABLE",
-    "diagnostics": [],
-    "filter_passed": false,
-    "filter_reasons": [],
-    "filter_status": "NOT_APPLICABLE",
-    "quarterly": [],
-    "reason": "FINANCIAL_COMPANY",
+    "applicability": "APPLICABLE",
+    "data_status": "DATA_UNAVAILABLE",
+    "reason": "F4_DATA_UNAVAILABLE",
     "requested_as_of": "2026-09-04",
+    "company_family": "NON_FINANCIAL",
+    "currency": "KRW",
+    "filter_status": "DATA_UNAVAILABLE",
+    "filter_passed": false,
+    "filter_reasons": [
+      "DATA_UNAVAILABLE"
+    ],
     "summary": {
-      "filter_passed": false,
-      "filter_reasons": [],
-      "filter_status": "NOT_APPLICABLE",
-      "latest_4q_avg_revenue_krw": null,
-      "latest_debt_ratio_pct": null,
       "latest_fy": null,
-      "latest_fy_revenue_krw": null,
       "latest_quarter": null,
-      "ttm_net_income_krw": null,
-      "ttm_net_margin_pct": null,
-      "ttm_operating_cash_flow_krw": null,
-      "ttm_operating_cash_flow_margin_pct": null,
-      "ttm_operating_income_krw": null,
-      "ttm_operating_margin_pct": null,
+      "latest_fy_revenue_krw": null,
+      "latest_4q_avg_revenue_krw": null,
       "ttm_revenue_krw": null,
-      "ttm_roe_pct": null
-    }
+      "ttm_operating_income_krw": null,
+      "ttm_net_income_krw": null,
+      "ttm_operating_cash_flow_krw": null,
+      "ttm_operating_margin_pct": null,
+      "ttm_net_margin_pct": null,
+      "ttm_operating_cash_flow_margin_pct": null,
+      "ttm_roe_pct": null,
+      "latest_debt_ratio_pct": null,
+      "filter_status": "DATA_UNAVAILABLE",
+      "filter_passed": false,
+      "filter_reasons": [
+        "DATA_UNAVAILABLE"
+      ]
+    },
+    "quarterly": [
+      {
+        "quarter": "2023Q4",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_QUARTER_OR_FISCAL_YEAR;REQUIRED_METRIC_MISSING",
+        "revenue_krw": null,
+        "revenue_yoy_pct": null,
+        "operating_income_krw": null,
+        "operating_income_yoy_pct": null,
+        "operating_margin_pct": null,
+        "net_income_krw": null,
+        "net_margin_pct": null,
+        "operating_cash_flow_krw": null,
+        "operating_income_yoy_status": "UNAVAILABLE"
+      },
+      {
+        "quarter": "2024Q1",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_QUARTER_OR_FISCAL_YEAR;REQUIRED_METRIC_MISSING",
+        "revenue_krw": null,
+        "revenue_yoy_pct": null,
+        "operating_income_krw": null,
+        "operating_income_yoy_pct": null,
+        "operating_margin_pct": null,
+        "net_income_krw": null,
+        "net_margin_pct": null,
+        "operating_cash_flow_krw": null,
+        "operating_income_yoy_status": "UNAVAILABLE"
+      },
+      {
+        "quarter": "2024Q2",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_QUARTER_OR_FISCAL_YEAR;REQUIRED_METRIC_MISSING",
+        "revenue_krw": null,
+        "revenue_yoy_pct": null,
+        "operating_income_krw": null,
+        "operating_income_yoy_pct": null,
+        "operating_margin_pct": null,
+        "net_income_krw": null,
+        "net_margin_pct": null,
+        "operating_cash_flow_krw": null,
+        "operating_income_yoy_status": "UNAVAILABLE"
+      },
+      {
+        "quarter": "2024Q3",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_QUARTER_OR_FISCAL_YEAR;REQUIRED_METRIC_MISSING",
+        "revenue_krw": null,
+        "revenue_yoy_pct": null,
+        "operating_income_krw": null,
+        "operating_income_yoy_pct": null,
+        "operating_margin_pct": null,
+        "net_income_krw": null,
+        "net_margin_pct": null,
+        "operating_cash_flow_krw": null,
+        "operating_income_yoy_status": "UNAVAILABLE"
+      },
+      {
+        "quarter": "2024Q4",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_QUARTER_OR_FISCAL_YEAR;REQUIRED_METRIC_MISSING",
+        "revenue_krw": null,
+        "revenue_yoy_pct": null,
+        "operating_income_krw": null,
+        "operating_income_yoy_pct": null,
+        "operating_margin_pct": null,
+        "net_income_krw": null,
+        "net_margin_pct": null,
+        "operating_cash_flow_krw": null,
+        "operating_income_yoy_status": "UNAVAILABLE"
+      },
+      {
+        "quarter": "2025Q1",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_QUARTER_OR_FISCAL_YEAR;REQUIRED_METRIC_MISSING",
+        "revenue_krw": null,
+        "revenue_yoy_pct": null,
+        "operating_income_krw": null,
+        "operating_income_yoy_pct": null,
+        "operating_margin_pct": null,
+        "net_income_krw": null,
+        "net_margin_pct": null,
+        "operating_cash_flow_krw": null,
+        "operating_income_yoy_status": "UNAVAILABLE"
+      },
+      {
+        "quarter": "2025Q2",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_QUARTER_OR_FISCAL_YEAR;REQUIRED_METRIC_MISSING",
+        "revenue_krw": null,
+        "revenue_yoy_pct": null,
+        "operating_income_krw": null,
+        "operating_income_yoy_pct": null,
+        "operating_margin_pct": null,
+        "net_income_krw": null,
+        "net_margin_pct": null,
+        "operating_cash_flow_krw": null,
+        "operating_income_yoy_status": "UNAVAILABLE"
+      },
+      {
+        "quarter": "2025Q3",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_QUARTER_OR_FISCAL_YEAR;REQUIRED_METRIC_MISSING",
+        "revenue_krw": null,
+        "revenue_yoy_pct": null,
+        "operating_income_krw": null,
+        "operating_income_yoy_pct": null,
+        "operating_margin_pct": null,
+        "net_income_krw": null,
+        "net_margin_pct": null,
+        "operating_cash_flow_krw": null,
+        "operating_income_yoy_status": "UNAVAILABLE"
+      },
+      {
+        "quarter": "2025Q4",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_QUARTER_OR_FISCAL_YEAR;REQUIRED_METRIC_MISSING",
+        "revenue_krw": null,
+        "revenue_yoy_pct": null,
+        "operating_income_krw": null,
+        "operating_income_yoy_pct": null,
+        "operating_margin_pct": null,
+        "net_income_krw": null,
+        "net_margin_pct": null,
+        "operating_cash_flow_krw": null,
+        "operating_income_yoy_status": "UNAVAILABLE"
+      },
+      {
+        "quarter": "2026Q1",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_QUARTER_OR_FISCAL_YEAR;REQUIRED_METRIC_MISSING",
+        "revenue_krw": null,
+        "revenue_yoy_pct": null,
+        "operating_income_krw": null,
+        "operating_income_yoy_pct": null,
+        "operating_margin_pct": null,
+        "net_income_krw": null,
+        "net_margin_pct": null,
+        "operating_cash_flow_krw": null,
+        "operating_income_yoy_status": "UNAVAILABLE"
+      },
+      {
+        "quarter": "2026Q2",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_QUARTER_OR_FISCAL_YEAR;REQUIRED_METRIC_MISSING",
+        "revenue_krw": null,
+        "revenue_yoy_pct": null,
+        "operating_income_krw": null,
+        "operating_income_yoy_pct": null,
+        "operating_margin_pct": null,
+        "net_income_krw": null,
+        "net_margin_pct": null,
+        "operating_cash_flow_krw": null,
+        "operating_income_yoy_status": "UNAVAILABLE"
+      },
+      {
+        "quarter": "2026Q3",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_QUARTER_OR_FISCAL_YEAR;REQUIRED_METRIC_MISSING",
+        "revenue_krw": null,
+        "revenue_yoy_pct": null,
+        "operating_income_krw": null,
+        "operating_income_yoy_pct": null,
+        "operating_margin_pct": null,
+        "net_income_krw": null,
+        "net_margin_pct": null,
+        "operating_cash_flow_krw": null,
+        "operating_income_yoy_status": "UNAVAILABLE"
+      }
+    ],
+    "annual": [
+      {
+        "fiscal_year": "2022",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_QUARTER_OR_FISCAL_YEAR;REQUIRED_METRIC_MISSING",
+        "revenue_krw": null,
+        "revenue_yoy_pct": null,
+        "operating_income_krw": null,
+        "operating_income_yoy_pct": null,
+        "operating_margin_pct": null,
+        "net_income_krw": null,
+        "net_margin_pct": null,
+        "roe_pct": null,
+        "debt_ratio_pct": null,
+        "operating_income_yoy_status": "UNAVAILABLE"
+      },
+      {
+        "fiscal_year": "2023",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_QUARTER_OR_FISCAL_YEAR;REQUIRED_METRIC_MISSING",
+        "revenue_krw": null,
+        "revenue_yoy_pct": null,
+        "operating_income_krw": null,
+        "operating_income_yoy_pct": null,
+        "operating_margin_pct": null,
+        "net_income_krw": null,
+        "net_margin_pct": null,
+        "roe_pct": null,
+        "debt_ratio_pct": null,
+        "operating_income_yoy_status": "UNAVAILABLE"
+      },
+      {
+        "fiscal_year": "2024",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_QUARTER_OR_FISCAL_YEAR;REQUIRED_METRIC_MISSING",
+        "revenue_krw": null,
+        "revenue_yoy_pct": null,
+        "operating_income_krw": null,
+        "operating_income_yoy_pct": null,
+        "operating_margin_pct": null,
+        "net_income_krw": null,
+        "net_margin_pct": null,
+        "roe_pct": null,
+        "debt_ratio_pct": null,
+        "operating_income_yoy_status": "UNAVAILABLE"
+      },
+      {
+        "fiscal_year": "2025",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_QUARTER_OR_FISCAL_YEAR;REQUIRED_METRIC_MISSING",
+        "revenue_krw": null,
+        "revenue_yoy_pct": null,
+        "operating_income_krw": null,
+        "operating_income_yoy_pct": null,
+        "operating_margin_pct": null,
+        "net_income_krw": null,
+        "net_margin_pct": null,
+        "roe_pct": null,
+        "debt_ratio_pct": null,
+        "operating_income_yoy_status": "UNAVAILABLE"
+      },
+      {
+        "fiscal_year": "2026",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_QUARTER_OR_FISCAL_YEAR;REQUIRED_METRIC_MISSING",
+        "revenue_krw": null,
+        "revenue_yoy_pct": null,
+        "operating_income_krw": null,
+        "operating_income_yoy_pct": null,
+        "operating_margin_pct": null,
+        "net_income_krw": null,
+        "net_margin_pct": null,
+        "roe_pct": null,
+        "debt_ratio_pct": null,
+        "operating_income_yoy_status": "UNAVAILABLE"
+      }
+    ],
+    "diagnostics": [
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "revenue:2023Q4",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "operating_income:2023Q4",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "net_income:2023Q4",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "operating_cash_flow:2023Q4",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "operating_income:QUARTERLY_YOY:2023Q4",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "revenue:QUARTERLY_YOY:2023Q4",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "operating_income:OPERATING_MARGIN:2023Q4",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "net_income:NET_MARGIN:2023Q4",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "revenue:2024Q1",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "operating_income:2024Q1",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "net_income:2024Q1",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "operating_cash_flow:2024Q1",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "operating_income:QUARTERLY_YOY:2024Q1",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "revenue:QUARTERLY_YOY:2024Q1",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "operating_income:OPERATING_MARGIN:2024Q1",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "net_income:NET_MARGIN:2024Q1",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "revenue:2024Q2",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "operating_income:2024Q2",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "net_income:2024Q2",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "operating_cash_flow:2024Q2",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "operating_income:QUARTERLY_YOY:2024Q2",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "revenue:QUARTERLY_YOY:2024Q2",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "operating_income:OPERATING_MARGIN:2024Q2",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "net_income:NET_MARGIN:2024Q2",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "revenue:2024Q3",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "operating_income:2024Q3",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "net_income:2024Q3",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "operating_cash_flow:2024Q3",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "operating_income:QUARTERLY_YOY:2024Q3",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "revenue:QUARTERLY_YOY:2024Q3",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "operating_income:OPERATING_MARGIN:2024Q3",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "net_income:NET_MARGIN:2024Q3",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "revenue:2024Q4",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "operating_income:2024Q4",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "net_income:2024Q4",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "operating_cash_flow:2024Q4",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "operating_income:QUARTERLY_YOY:2024Q4",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "revenue:QUARTERLY_YOY:2024Q4",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "operating_income:OPERATING_MARGIN:2024Q4",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "net_income:NET_MARGIN:2024Q4",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "revenue:2025Q1",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "operating_income:2025Q1",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "net_income:2025Q1",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "operating_cash_flow:2025Q1",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "operating_income:QUARTERLY_YOY:2025Q1",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "revenue:QUARTERLY_YOY:2025Q1",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "operating_income:OPERATING_MARGIN:2025Q1",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "net_income:NET_MARGIN:2025Q1",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "revenue:2025Q2",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "operating_income:2025Q2",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "net_income:2025Q2",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "operating_cash_flow:2025Q2",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "operating_income:QUARTERLY_YOY:2025Q2",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "revenue:QUARTERLY_YOY:2025Q2",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "operating_income:OPERATING_MARGIN:2025Q2",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "net_income:NET_MARGIN:2025Q2",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "revenue:2025Q3",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "operating_income:2025Q3",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "net_income:2025Q3",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "operating_cash_flow:2025Q3",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "operating_income:QUARTERLY_YOY:2025Q3",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "revenue:QUARTERLY_YOY:2025Q3",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "operating_income:OPERATING_MARGIN:2025Q3",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "net_income:NET_MARGIN:2025Q3",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "revenue:2025Q4",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "operating_income:2025Q4",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "net_income:2025Q4",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "operating_cash_flow:2025Q4",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "operating_income:QUARTERLY_YOY:2025Q4",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "revenue:QUARTERLY_YOY:2025Q4",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "operating_income:OPERATING_MARGIN:2025Q4",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "net_income:NET_MARGIN:2025Q4",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "revenue:2026Q1",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "operating_income:2026Q1",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "net_income:2026Q1",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "operating_cash_flow:2026Q1",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "operating_income:QUARTERLY_YOY:2026Q1",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "revenue:QUARTERLY_YOY:2026Q1",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "operating_income:OPERATING_MARGIN:2026Q1",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "net_income:NET_MARGIN:2026Q1",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "revenue:2026Q2",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "operating_income:2026Q2",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "net_income:2026Q2",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "operating_cash_flow:2026Q2",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "operating_income:QUARTERLY_YOY:2026Q2",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "revenue:QUARTERLY_YOY:2026Q2",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "operating_income:OPERATING_MARGIN:2026Q2",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "net_income:NET_MARGIN:2026Q2",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "revenue:2026Q3",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "operating_income:2026Q3",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "net_income:2026Q3",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "operating_cash_flow:2026Q3",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "operating_income:QUARTERLY_YOY:2026Q3",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "revenue:QUARTERLY_YOY:2026Q3",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "operating_income:OPERATING_MARGIN:2026Q3",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "net_income:NET_MARGIN:2026Q3",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "revenue:2022FY",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "operating_income:2022FY",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "net_income:2022FY",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "operating_income:ANNUAL_YOY:2022FY",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "revenue:ANNUAL_YOY:2022FY",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "operating_income:OPERATING_MARGIN:2022FY",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "net_income:NET_MARGIN:2022FY",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "net_income:ANNUAL_ROE:2022FY",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "liabilities:DEBT_RATIO:2022FY_END",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "revenue:2023FY",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "operating_income:2023FY",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "net_income:2023FY",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "operating_income:ANNUAL_YOY:2023FY",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "revenue:ANNUAL_YOY:2023FY",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "operating_income:OPERATING_MARGIN:2023FY",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "net_income:NET_MARGIN:2023FY",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "net_income:ANNUAL_ROE:2023FY",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "liabilities:DEBT_RATIO:2023FY_END",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "revenue:2024FY",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "operating_income:2024FY",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "net_income:2024FY",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "operating_income:ANNUAL_YOY:2024FY",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "revenue:ANNUAL_YOY:2024FY",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "operating_income:OPERATING_MARGIN:2024FY",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "net_income:NET_MARGIN:2024FY",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "net_income:ANNUAL_ROE:2024FY",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "liabilities:DEBT_RATIO:2024FY_END",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "revenue:2025FY",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "operating_income:2025FY",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "net_income:2025FY",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "operating_income:ANNUAL_YOY:2025FY",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "revenue:ANNUAL_YOY:2025FY",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "operating_income:OPERATING_MARGIN:2025FY",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "net_income:NET_MARGIN:2025FY",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "net_income:ANNUAL_ROE:2025FY",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "liabilities:DEBT_RATIO:2025FY_END",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "revenue:2026FY",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "operating_income:2026FY",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "net_income:2026FY",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "operating_income:ANNUAL_YOY:2026FY",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "revenue:ANNUAL_YOY:2026FY",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "operating_income:OPERATING_MARGIN:2026FY",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "net_income:NET_MARGIN:2026FY",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "net_income:ANNUAL_ROE:2026FY",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      },
+      {
+        "type": "METRIC_UNAVAILABLE",
+        "metric": "liabilities:DEBT_RATIO:2026FY_END",
+        "status": "DATA_UNAVAILABLE",
+        "reason": "MISSING_REQUIRED_INPUT"
+      }
+    ]
   }
 }

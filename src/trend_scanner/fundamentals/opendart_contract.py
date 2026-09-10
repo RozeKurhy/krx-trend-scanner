@@ -19,6 +19,16 @@ from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 PIT_GRANULARITY = "DAILY_EOD_KST"
 FINANCIAL_INDUSTRY_PREFIXES = ("64", "65", "66")
+_COMPANY_TEXT_FIELDS = (
+    "corp_name", "stock_name", "name", "company_name", "corp_name_eng",
+    "industry_name", "induty_name", "business_description", "description",
+)
+_FINANCIAL_COMPANY_MARKERS = (
+    "금융", "은행", "증권", "보험", "캐피탈", "카드", "신탁", "자산운용",
+    "투자금융", "투자증권", "금융투자", "여신", "보증보험", "화재", "생명보험",
+    "손해보험", "금융지주",
+)
+_NON_FINANCIAL_HOLDING_MARKERS = ("홀딩", "홀딩스", "지주", "지주회사", "스퀘어")
 SAME_DAY_AVAILABILITY = "AVAILABLE_AT_EOD"
 REPORT_TYPE_BY_CODE = {
     "11013": "Q1",
@@ -294,11 +304,33 @@ def classify_company_family(
 
     company = company or {}
     fields = company.get("selected_fields") if isinstance(company.get("selected_fields"), Mapping) else company
-    industry_code = str((fields or {}).get("induty_code") or "").strip()
+    fields = fields or {}
+    industry_code = str(fields.get("induty_code") or "").strip()
     evidence: list[str] = []
+    text_values = [str(fields.get(key) or "").strip() for key in _COMPANY_TEXT_FIELDS]
+    company_text = " ".join(value for value in text_values if value)
+    has_identity_text = any(text_values[:4])
+    financial_marker = next((marker for marker in _FINANCIAL_COMPANY_MARKERS if marker in company_text), None)
+    holding_marker = next((marker for marker in _NON_FINANCIAL_HOLDING_MARKERS if marker in company_text), None)
+    if financial_marker:
+        evidence.append(f"company_text:{financial_marker}")
+        if industry_code:
+            evidence.append(f"induty_code:{industry_code}")
+        return {"company_family": CompanyFamily.FINANCIAL.value, "evidence": evidence, "status": "METADATA_CONFIDENT"}
+    if holding_marker:
+        evidence.append(f"non_financial_holding:{holding_marker}")
+        if industry_code:
+            evidence.append(f"induty_code:{industry_code}")
+        return {"company_family": CompanyFamily.NON_FINANCIAL.value, "evidence": evidence, "status": "METADATA_CONFIDENT"}
     if industry_code.startswith(FINANCIAL_INDUSTRY_PREFIXES):
+        # 64992 is also used by general holding companies.  Preserve the
+        # historical code-only fallback for fixtures, but do not let a real
+        # company identity be classified as financial from that code alone.
+        if industry_code.startswith("649") and has_identity_text:
+            evidence.append(f"non_financial_generic_code:{industry_code}")
+            return {"company_family": CompanyFamily.NON_FINANCIAL.value, "evidence": evidence, "status": "METADATA_REVIEWED"}
         evidence.append(f"induty_code:{industry_code}")
-        return {"company_family": CompanyFamily.FINANCIAL.value, "evidence": evidence, "status": "FIXTURE_CONFIDENT"}
+        return {"company_family": CompanyFamily.FINANCIAL.value, "evidence": evidence, "status": "CODE_CONFIDENT"}
     if industry_code:
         evidence.append(f"induty_code:{industry_code}")
         return {"company_family": CompanyFamily.NON_FINANCIAL.value, "evidence": evidence, "status": "FIXTURE_CONFIDENT"}
