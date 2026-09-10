@@ -36,7 +36,7 @@ README.md
 
 ## 문서 작성 규칙 / Naming Convention
 
-- 문서 분류는 1차 영역(architecture/patterns/reporting/strategies) → 2차 Pattern(pattern_a, pattern_a_fast, ...) → 3차 역할(spec/strategy/research/validation/prereg/archive) → 4차 구체적 문서명 순으로 좁힌다.
+- 문서 분류는 1차 영역(architecture/patterns/fundamentals/reporting/strategies) → 2차 Pattern(pattern_a, pattern_a_fast, ...) → 3차 역할(spec/strategy/research/validation/prereg/archive) → 4차 구체적 문서명 순으로 좁힌다.
 - 경로 자체가 Pattern/역할 정보를 제공하므로 파일명에서 같은 말을 반복하지 않는다(Pattern 폴더 안에서는 `pattern_a_`, `pattern_a_fast_` 접두사를 쓰지 않는다).
 - `prereg/` 폴더 안에서는 파일명 끝에 `_prereg`/`_preregistration`을 다시 붙이지 않는다.
 - 문서에 explicit version이 없으면 임의로 버전 번호를 만들지 않는다.

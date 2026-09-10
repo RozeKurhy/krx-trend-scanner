@@ -26,7 +26,6 @@ OpenDART/XBRL 기반 재무 기초 데이터의 current authority index와 구�
 ## Validation Closure
 
 - [Independent validation v0.6](../../artifacts/fundamentals/validation/fundamentals_v1_independent_validation_v06/validation_summary.json)
-- [Edge-case closure v0.8](../../artifacts/fundamentals/validation/fundamentals_v1_edge_case_closure_v08/validation_summary.json)
 - [FIX01 closure](../../artifacts/fundamentals/validation/fundamentals_v1_edge_case_closure_v08_fix01/validation_summary.json)
 - [FIX02 closure](../../artifacts/fundamentals/validation/fundamentals_v1_edge_case_closure_v08_fix02/validation_summary.json)
 
