@@ -120,6 +120,7 @@
   let searchMatches = [];
   let currentReport = null;
   let activeDetailKey = null;
+  let fundamentalTrendMode = "quarterly";
 
   function readStoredTheme() {
     try {
@@ -536,9 +537,10 @@
   }
 
   function fundamentalCell(value, formatter, options = {}) {
+    const isNegative = value != null && value !== "" && Number.isFinite(Number(value)) && Number(value) < 0;
     const cell = {
       value: formatter(value),
-      className: options.negativeClass || "",
+      className: options.negativeClass || (isNegative ? "fundamental-loss" : ""),
     };
     if (options.title) cell.title = options.title;
     return cell;
@@ -567,6 +569,189 @@
       };
     }
     return fundamentalYoyPercentCell(row && row.operating_income_yoy_pct);
+  }
+
+  function fundamentalTrendPeriodLabel(row, identityKey) {
+    const value = String(row && row[identityKey] || "");
+    if (identityKey === "quarter") {
+      const match = value.match(/^(\d{4})Q([1-4])$/);
+      return match ? `${match[1]} Q${match[2]}` : value;
+    }
+    return value;
+  }
+
+  function fundamentalChartValueLabel(value) {
+    if (value == null || value === "" || !Number.isFinite(Number(value))) return "데이터 없음";
+    const number = Number(value);
+    const sign = number < 0 ? "-" : "";
+    const absolute = Math.abs(number);
+    return absolute >= 1e8
+      ? `${sign}${formatNumber(absolute / 1e8)}억원`
+      : `${sign}${formatNumber(absolute / 1e7)}천만원`;
+  }
+
+  function fundamentalTrendSvgElement(tag, attributes) {
+    const element = document.createElementNS("http://www.w3.org/2000/svg", tag);
+    Object.entries(attributes || {}).forEach(([name, value]) => element.setAttribute(name, String(value)));
+    return element;
+  }
+
+  function renderFundamentalBarChart(rows, identityKey, metricKey, titleText, container) {
+    const width = 720;
+    const height = 220;
+    const padding = { top: 18, right: 12, bottom: 40, left: 48 };
+    const chartWidth = width - padding.left - padding.right;
+    const chartHeight = height - padding.top - padding.bottom;
+    const values = rows
+      .map((row) => row && row[metricKey])
+      .filter((value) => value != null && value !== "" && Number.isFinite(Number(value)))
+      .map(Number);
+    let minimum = Math.min(0, ...values);
+    let maximum = Math.max(0, ...values);
+    if (minimum === maximum) {
+      const spread = Math.max(Math.abs(maximum) * 0.1, 1e8);
+      minimum -= spread;
+      maximum += spread;
+    }
+    const y = (value) => padding.top + ((maximum - value) / (maximum - minimum)) * chartHeight;
+    const zeroY = y(0);
+    const slotWidth = rows.length ? chartWidth / rows.length : chartWidth;
+    const barWidth = Math.max(6, slotWidth * 0.58);
+    const modeLabel = identityKey === "quarter" ? "분기" : "연간";
+    const svg = fundamentalTrendSvgElement("svg", {
+      id: `fundamental-${metricKey.replace("_krw", "")}-chart`,
+      class: "fundamentals-chart-svg",
+      viewBox: `0 0 ${width} ${height}`,
+      role: "img",
+      "aria-label": `${modeLabel} ${titleText} 실적 추세`,
+    });
+    const tickValues = [maximum, (maximum + minimum) / 2, minimum];
+    tickValues.forEach((value, index) => {
+      const tickY = y(value);
+      svg.appendChild(fundamentalTrendSvgElement("line", {
+        class: value === 0 ? "fundamental-chart-zero-line" : "fundamental-chart-grid-line",
+        x1: padding.left,
+        x2: width - padding.right,
+        y1: tickY,
+        y2: tickY,
+      }));
+      const label = fundamentalTrendSvgElement("text", {
+        class: "fundamental-chart-axis-label",
+        x: padding.left - 7,
+        y: tickY + 4,
+        "text-anchor": "end",
+      });
+      label.textContent = formatNumber(value / 1e8);
+      svg.appendChild(label);
+    });
+    if (!tickValues.some((value) => value === 0)) {
+      svg.appendChild(fundamentalTrendSvgElement("line", {
+        class: "fundamental-chart-zero-line",
+        x1: padding.left,
+        x2: width - padding.right,
+        y1: zeroY,
+        y2: zeroY,
+      }));
+    }
+    rows.forEach((row, index) => {
+      const value = row && row[metricKey];
+      const periodLabel = fundamentalTrendPeriodLabel(row, identityKey);
+      const valueLabel = fundamentalChartValueLabel(value);
+      const x = padding.left + slotWidth * index + (slotWidth - barWidth) / 2;
+      const dateLabel = fundamentalTrendSvgElement("text", {
+        class: `fundamental-chart-axis-date${rows.length > 8 && index % 2 === 1 ? " fundamental-chart-axis-label-secondary" : ""}`,
+        x: x + barWidth / 2,
+        y: height - 13,
+        "text-anchor": "middle",
+      });
+      dateLabel.textContent = identityKey === "quarter" ? String(row && row[identityKey] || "").slice(2) : periodLabel;
+      svg.appendChild(dateLabel);
+      const ariaLabel = `${periodLabel} · ${titleText} ${valueLabel}`;
+      if (value == null || value === "" || !Number.isFinite(Number(value))) {
+        const missing = fundamentalTrendSvgElement("text", {
+          class: "fundamental-chart-missing",
+          x: x + barWidth / 2,
+          y: zeroY - 5,
+          "text-anchor": "middle",
+          tabindex: "0",
+          "aria-label": ariaLabel,
+        });
+        missing.textContent = "—";
+        const title = fundamentalTrendSvgElement("title");
+        title.textContent = ariaLabel;
+        missing.appendChild(title);
+        svg.appendChild(missing);
+        return;
+      }
+      const numericValue = Number(value);
+      const valueY = y(numericValue);
+      const rect = fundamentalTrendSvgElement("rect", {
+        class: metricKey === "operating_income" && numericValue < 0 ? "fundamental-chart-bar-negative" : "fundamental-chart-bar",
+        x,
+        y: Math.min(valueY, zeroY),
+        width: barWidth,
+        height: Math.max(1, Math.abs(valueY - zeroY)),
+        rx: 2,
+        tabindex: "0",
+        "aria-label": ariaLabel,
+      });
+      const title = fundamentalTrendSvgElement("title");
+      title.textContent = `${periodLabel}\n${titleText} ${valueLabel}`;
+      rect.appendChild(title);
+      svg.appendChild(rect);
+    });
+    container.appendChild(svg);
+  }
+
+  function setFundamentalTrendButtons() {
+    ["quarterly", "annual"].forEach((mode) => {
+      const button = byId(`fundamentals-trend-${mode}`);
+      if (!button) return;
+      const selected = mode === fundamentalTrendMode;
+      button.classList.toggle("is-active", selected);
+      button.setAttribute("aria-pressed", String(selected));
+    });
+  }
+
+  function renderFundamentalTrend(fundamentals) {
+    const section = byId("fundamentals-trend");
+    const charts = byId("fundamentals-trend-charts");
+    if (!section || !charts) return;
+    while (charts.firstChild) charts.removeChild(charts.firstChild);
+    setFundamentalTrendButtons();
+    const identityKey = fundamentalTrendMode === "annual" ? "fiscal_year" : "quarter";
+    const source = fundamentalTrendMode === "annual" ? fundamentals.annual : fundamentals.quarterly;
+    const rows = sortedFundamentalRows(Array.isArray(source) ? source : [], identityKey, fundamentalTrendMode === "annual" ? 5 : 12);
+    if (!rows.length) {
+      appendDetailEmpty(charts, "표시할 실적 추세 데이터가 없습니다.");
+      section.hidden = false;
+      return;
+    }
+    [["revenue_krw", "매출"], ["operating_income_krw", "영업이익"]].forEach(([metricKey, titleText]) => {
+      const card = document.createElement("article");
+      card.className = "fundamentals-chart-card";
+      const title = document.createElement("h5");
+      title.className = "fundamentals-chart-title";
+      title.textContent = titleText;
+      card.appendChild(title);
+      renderFundamentalBarChart(rows, identityKey, metricKey, titleText, card);
+      charts.appendChild(card);
+    });
+    section.hidden = false;
+  }
+
+  function setFundamentalTrendMode(mode) {
+    if (mode !== "quarterly" && mode !== "annual") return;
+    fundamentalTrendMode = mode;
+    if (currentReport && currentReport.fundamentals) renderFundamentalTrend(currentReport.fundamentals);
+    else setFundamentalTrendButtons();
+  }
+
+  function initFundamentalTrendInteractions() {
+    ["quarterly", "annual"].forEach((mode) => {
+      const button = byId(`fundamentals-trend-${mode}`);
+      if (button) button.addEventListener("click", () => setFundamentalTrendMode(mode));
+    });
   }
 
   function sortedFundamentalRows(rows, identityKey, limit) {
@@ -623,6 +808,7 @@
     const statusElement = byId("fundamentals-detail-status");
     const reasonElement = byId("fundamentals-detail-reason");
     const unitElement = byId("fundamentals-unit-note");
+    const trendElement = byId("fundamentals-trend");
     const periodsElement = byId("fundamentals-periods");
     const fundamentals = report && report.fundamentals;
     if (!panel || !fundamentals || !unitElement || !periodsElement) return;
@@ -643,12 +829,14 @@
     }
     if (fundamentals.filter_status === "NOT_APPLICABLE") {
       unitElement.hidden = true;
+      if (trendElement) trendElement.hidden = true;
       periodsElement.hidden = true;
       panel.hidden = false;
       return;
     }
     const summary = fundamentals.summary || {};
     unitElement.textContent = "단위: 억원 · 1억원 미만은 천만원 단위 표시";
+    renderFundamentalTrend(fundamentals);
 
     const quarterly = Array.isArray(fundamentals.quarterly) ? fundamentals.quarterly : [];
     periodsElement.appendChild(renderFundamentalPeriodTable("최근 12개 분기", quarterly, "quarter", 12, [
@@ -1023,6 +1211,7 @@
     setText("flow-detail", flowDetail(report.flow.state));
     setText("fundamentals-value", fundamentalLabel(report));
     setText("fundamentals-detail", fundamentalDetail(report));
+    fundamentalTrendMode = "quarterly";
     renderFundamentalsDetail(report);
     setText("strategy-value", actionLabel(report.strategy.action));
     setText("strategy-detail", strategyDetail(report.strategy.state));
@@ -1105,6 +1294,7 @@
 
   initTheme();
   initDetailInteractions();
+  initFundamentalTrendInteractions();
   const input = byId("stock-search");
   if (input) {
     input.addEventListener("input", () => renderSearchResults(input.value));

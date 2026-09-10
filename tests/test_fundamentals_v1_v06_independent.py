@@ -63,7 +63,7 @@ def test_v06_web_polish_contract():
     app_js = (ROOT / "web/js/app.js").read_text(encoding="utf-8")
     css = (ROOT / "web/css/app.css").read_text(encoding="utf-8")
 
-    assert report_html.count("web-02d-window-8") == 2
+    assert report_html.count("web-02d-window-9") == 2
     assert "function formatFundamentalTableKrw" in report_js
     assert "formatNumber(absolute / 1e8)" in report_js
     quarter = report_js[report_js.index('renderFundamentalPeriodTable("최근 12개 분기"'):report_js.index('const annual =', report_js.index('renderFundamentalPeriodTable("최근 12개 분기"'))]

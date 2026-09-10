@@ -20,7 +20,7 @@
       })();
     </script>
     <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./css/app.css?v=web-02d-window-8">
+  <link rel="stylesheet" href="./css/app.css?v=web-02d-window-9">
   </head>
   <body>
     <a class="skip-link" href="#main-content">본문으로 건너뛰기</a>
@@ -156,6 +156,17 @@
           </div>
           <p id="fundamentals-detail-reason" class="detail-note">—</p>
           <p id="fundamentals-unit-note" class="fundamentals-unit-note"></p>
+          <section id="fundamentals-trend" class="fundamentals-trend" aria-labelledby="fundamentals-trend-heading">
+            <div class="fundamentals-trend-heading">
+              <h4 id="fundamentals-trend-heading">실적 추세</h4>
+              <div id="fundamentals-trend-toggle" class="fundamentals-trend-toggle" role="group" aria-label="실적 추세 기간 선택">
+                <button id="fundamentals-trend-quarterly" class="fundamentals-trend-button is-active" type="button" data-mode="quarterly" aria-pressed="true">분기</button>
+                <button id="fundamentals-trend-annual" class="fundamentals-trend-button" type="button" data-mode="annual" aria-pressed="false">연간</button>
+              </div>
+            </div>
+            <p class="fundamentals-trend-unit">단위: 억원</p>
+            <div id="fundamentals-trend-charts" class="fundamentals-trend-charts"></div>
+          </section>
           <div id="fundamentals-periods" class="fundamentals-periods"></div>
         </section>
 
@@ -180,6 +191,6 @@
       <span>KRX Trend Scanner</span>
       <span>읽기 전용</span>
     </footer>
-    <script src="./js/report.js?v=web-02d-window-8" defer></script>
+    <script src="./js/report.js?v=web-02d-window-9" defer></script>
   </body>
 </html>
