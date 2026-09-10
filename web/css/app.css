@@ -495,15 +495,13 @@ summary { cursor: pointer; color: var(--ink); font-size: 13px; font-weight: 750;
 .fundamentals-detail-panel { margin-bottom: 16px; }
 .fundamentals-detail-panel .report-detail-header { margin-bottom: 0; }
 .fundamentals-detail-panel .eyebrow { margin-bottom: 5px; }
-.fundamentals-summary-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 18px; }
-.fundamental-metric { min-width: 0; padding: 12px; background: var(--surface-muted); border: 1px solid var(--line); border-radius: 8px; }
-.fundamental-metric dt { color: var(--ink-faint); font-size: 11px; }
-.fundamental-metric dd { overflow-wrap: anywhere; margin: 5px 0 0; color: var(--ink); font-size: 13px; font-weight: 750; font-variant-numeric: tabular-nums; }
+.fundamentals-meta { margin: 14px 0 0; color: var(--ink-soft); font-size: 12px; }
+.fundamentals-unit-note { margin: 5px 0 0; color: var(--ink-faint); font-size: 11px; }
 .fundamentals-periods { margin-top: 22px; }
 .fundamentals-period-heading { margin: 20px 0 10px; font-size: 14px; letter-spacing: -0.025em; }
 .fundamentals-period-heading:first-child { margin-top: 0; }
 .fundamentals-table { min-width: max-content; font-size: 11px; }
-.fundamentals-table th { font-size: 10px; text-align: right; }
+.fundamentals-table th { font-size: 10px; text-align: center; }
 .fundamentals-table th:first-child, .fundamentals-table td:first-child { text-align: center; }
 .fundamentals-table td { text-align: right; }
 .fundamentals-table th:first-child, .fundamentals-table td:first-child { position: sticky; left: 0; z-index: 1; min-width: 116px; background: var(--surface); box-shadow: 1px 0 0 var(--line); }
@@ -713,7 +711,7 @@ summary { cursor: pointer; color: var(--ink); font-size: 13px; font-weight: 750;
   .metric-value { margin-top: 21px; }
   .panel { padding: 20px; }
   .basis-list { grid-template-columns: 1fr; }
-  .signal-grid, .report-card-row, .report-detail-grid, .fundamentals-summary-grid { grid-template-columns: 1fr; }
+  .signal-grid, .report-card-row, .report-detail-grid { grid-template-columns: 1fr; }
   .strategy-summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
   .strategy-summary-card { min-height: 126px; padding: 16px; }
   .strategy-summary-value { font-size: 26px; }

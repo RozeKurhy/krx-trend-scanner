@@ -11,9 +11,9 @@
     "market": "KOSPI",
     "requested_as_of": "2026-09-04",
     "reference_market_date": "2026-09-04",
-    "effective_as_of": "2026-08-14",
+    "effective_as_of": "2026-09-04",
     "cache_present": true,
-    "cache_last_date": "2026-08-14",
+    "cache_last_date": "2026-09-04",
     "report_status": "DATA_UNAVAILABLE",
     "asset_type": "ETF"
   },
@@ -27,7 +27,7 @@
       "외국인 수급: 외국인 수급 데이터가 준비되지 않아 수급 분석을 제공할 수 없습니다.",
       "시장 상대강도: Phase12 Market RS는 KOSPI/KOSDAQ 보통주(COMMON)를 대상으로 정의되어 이 종목에는 적용되지 않습니다.",
       "업종 상대강도: Sector RS는 KOSPI/KOSDAQ COMMON 종목을 대상으로 하므로 이 종목에는 적용되지 않습니다.",
-      "거래대금 추세: 최근 거래대금이 지속 감소(둔화)하는 흐름입니다. 5일 평균 거래대금(117.19억원)이 20일 평균(215.05억원) 및 60일 평균(288.48억원)을 밑돌고 있습니다."
+      "거래대금 추세: 최근 거래대금이 지속 감소(둔화)하는 흐름입니다. 5일 평균 거래대금(85.40억원)이 20일 평균(107.20억원) 및 60일 평균(227.27억원)을 밑돌고 있습니다."
     ],
     "combined_narrative": "KODEX 조선TOP10(0115D0)는 현재 Pattern A UNAVAILABLE 단계이며, 필수 데이터 부족(DATA_UNAVAILABLE)으로 투자 적격성을 판정할 수 없습니다. 최근 12개월 이력 중 유효한 기술적 국면 관측치가 제한적입니다. 시장 상대강도는 Phase12 Market RS는 KOSPI/KOSDAQ 보통주(COMMON)를 대상으로 정의되어 이 종목에는 적용되지 않습니다. 업종 상대강도는 Sector RS는 KOSPI/KOSDAQ COMMON 종목을 대상으로 하므로 이 종목에는 적용되지 않습니다.",
     "strategy_headline": "보통주가 아닌 종목(ETF/ETN/우선주/스팩/리츠 등)으로 패스트 코어 V2 전략 적용 대상이 아닙니다."
@@ -38,7 +38,7 @@
     "candidate_state": "insufficient_data",
     "is_candidate": false,
     "market_cap_eok": null,
-    "avg_trading_value_20d_eok": null,
+    "avg_trading_value_20d_eok": 107.2,
     "investability_status": "DATA_UNAVAILABLE",
     "investability_reason": "REQUIRED_METRIC_UNAVAILABLE",
     "is_investable": false,
@@ -159,8 +159,8 @@
         "stage": "UNAVAILABLE",
         "candidate_state": "insufficient_data",
         "data_available": false,
-        "close": null,
-        "reason": "NO_EXACT_MARKET_MONTH_END_OBSERVATION"
+        "close": 7705.0,
+        "reason": "INSUFFICIENT_LOOKBACK"
       }
     ],
     "full_monthly_history": [
@@ -260,8 +260,8 @@
         "stage": "UNAVAILABLE",
         "candidate_state": "insufficient_data",
         "data_available": false,
-        "close": null,
-        "reason": "NO_EXACT_MARKET_MONTH_END_OBSERVATION"
+        "close": 7705.0,
+        "reason": "INSUFFICIENT_LOOKBACK"
       }
     ],
     "first_pattern_a_available_as_of": null,
@@ -353,36 +353,30 @@
     "source_as_of": null,
     "membership_snapshot_date": null,
     "membership_source": null,
-    "sector_index_source": null,
-    "sector_return_2w": null,
-    "sector_return_1m": null,
-    "sector_rs_2w": null,
-    "sector_rs_1m": null,
-    "sector_anchor_date_2w": null,
-    "sector_anchor_date_1m": null
+    "sector_index_source": null
   },
   "trading_value_flow": {
     "trading_value_state": "TRADING_VALUE_WEAKENING",
-    "explanation": "최근 거래대금이 지속 감소(둔화)하는 흐름입니다. 5일 평균 거래대금(117.19억원)이 20일 평균(215.05억원) 및 60일 평균(288.48억원)을 밑돌고 있습니다.",
-    "avg_trading_value_5d_eok": 117.19,
-    "avg_trading_value_20d_eok": 215.05,
-    "avg_trading_value_60d_eok": 288.48,
-    "ratio_5d_to_20d": 0.54,
-    "ratio_20d_to_60d": 0.75,
-    "avg_trading_value_1d_eok": 132.51,
-    "avg_trading_value_10d_eok": 138.9
+    "explanation": "최근 거래대금이 지속 감소(둔화)하는 흐름입니다. 5일 평균 거래대금(85.40억원)이 20일 평균(107.20억원) 및 60일 평균(227.27억원)을 밑돌고 있습니다.",
+    "avg_trading_value_5d_eok": 85.4,
+    "avg_trading_value_20d_eok": 107.2,
+    "avg_trading_value_60d_eok": 227.27,
+    "ratio_5d_to_20d": 0.8,
+    "ratio_20d_to_60d": 0.47,
+    "avg_trading_value_1d_eok": null,
+    "avg_trading_value_10d_eok": null
   },
   "data_quality": {
     "cache_present": true,
     "cache_first_date": "2025-10-28",
-    "cache_last_date": "2026-08-14",
-    "daily_rows_count": 197,
+    "cache_last_date": "2026-09-04",
+    "daily_rows_count": 211,
     "completed_month_count": 11,
     "quality_status": "INSUFFICIENT_LOOKBACK",
     "quality_flags": []
   },
   "provenance": {
-    "stock_price_source": "local parquet cache",
+    "stock_price_source": "MarketDataRepositoryV2",
     "score_contract": "pattern_a_score_v0.2",
     "stage_contract": "pattern_a_stage_v0.1",
     "investability_contract": "phase10",
@@ -395,13 +389,13 @@
     "contract": "HIERARCHICAL_V01",
     "lifecycle_status": "PHASE_13_RESEARCH_CLOSED / HIERARCHICAL_V01_PRODUCTION_HOLD",
     "current": {
-      "as_of": "2026-08-14",
+      "as_of": "2026-09-04",
       "fast_score": null,
       "score_availability": "UNAVAILABLE",
       "fast_stage": null,
       "stage_availability": "UNAVAILABLE",
       "monthly_regime": "UNAVAILABLE",
-      "daily_risk": "NORMAL",
+      "daily_risk": "ELEVATED",
       "interpretation": "FAST 평가에 필요한 데이터가 부족하여 국면을 판단할 수 없습니다."
     },
     "weekly_history": [
@@ -844,11 +838,44 @@
         "monthly_regime": "UNAVAILABLE",
         "daily_risk": "NORMAL",
         "interpretation": "FAST 평가에 필요한 데이터가 부족하여 국면을 판단할 수 없습니다."
+      },
+      {
+        "week_ending": "2026-08-21",
+        "close": 7580.0,
+        "fast_score": null,
+        "score_availability": "UNAVAILABLE",
+        "fast_stage": null,
+        "stage_availability": "UNAVAILABLE",
+        "monthly_regime": "UNAVAILABLE",
+        "daily_risk": "ELEVATED",
+        "interpretation": "FAST 평가에 필요한 데이터가 부족하여 국면을 판단할 수 없습니다."
+      },
+      {
+        "week_ending": "2026-08-28",
+        "close": 7800.0,
+        "fast_score": null,
+        "score_availability": "UNAVAILABLE",
+        "fast_stage": null,
+        "stage_availability": "UNAVAILABLE",
+        "monthly_regime": "UNAVAILABLE",
+        "daily_risk": "NORMAL",
+        "interpretation": "FAST 평가에 필요한 데이터가 부족하여 국면을 판단할 수 없습니다."
+      },
+      {
+        "week_ending": "2026-09-04",
+        "close": 7610.0,
+        "fast_score": null,
+        "score_availability": "UNAVAILABLE",
+        "fast_stage": null,
+        "stage_availability": "UNAVAILABLE",
+        "monthly_regime": "UNAVAILABLE",
+        "daily_risk": "ELEVATED",
+        "interpretation": "FAST 평가에 필요한 데이터가 부족하여 국면을 판단할 수 없습니다."
       }
     ],
     "history_start_as_of": "2025-10-31",
-    "history_end_as_of": "2026-08-14",
-    "observation_count": 40
+    "history_end_as_of": "2026-09-04",
+    "observation_count": 43
   },
   "a_fast_core": {
     "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",

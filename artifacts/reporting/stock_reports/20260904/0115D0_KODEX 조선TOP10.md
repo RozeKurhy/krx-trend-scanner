@@ -17,7 +17,7 @@
 > - 외국인 수급: 외국인 수급 데이터가 준비되지 않아 수급 분석을 제공할 수 없습니다.
 > - 시장 상대강도: Phase12 Market RS는 KOSPI/KOSDAQ 보통주(COMMON)를 대상으로 정의되어 이 종목에는 적용되지 않습니다.
 > - 업종 상대강도: Sector RS는 KOSPI/KOSDAQ COMMON 종목을 대상으로 하므로 이 종목에는 적용되지 않습니다.
-> - 거래대금 추세: 최근 거래대금이 지속 감소(둔화)하는 흐름입니다. 5일 평균 거래대금(117.19억원)이 20일 평균(215.05억원) 및 60일 평균(288.48억원)을 밑돌고 있습니다.
+> - 거래대금 추세: 최근 거래대금이 지속 감소(둔화)하는 흐름입니다. 5일 평균 거래대금(85.40억원)이 20일 평균(107.20억원) 및 60일 평균(227.27억원)을 밑돌고 있습니다.
 > - 펀더멘털: NOT_APPLICABLE (일반기업 Fundamentals V1 적용 대상 아님)
 
 KODEX 조선TOP10(0115D0)는 현재 Pattern A UNAVAILABLE 단계이며, 필수 데이터 부족(DATA_UNAVAILABLE)으로 투자 적격성을 판정할 수 없습니다. 최근 12개월 이력 중 유효한 기술적 국면 관측치가 제한적입니다. 시장 상대강도는 Phase12 Market RS는 KOSPI/KOSDAQ 보통주(COMMON)를 대상으로 정의되어 이 종목에는 적용되지 않습니다. 업종 상대강도는 Sector RS는 KOSPI/KOSDAQ COMMON 종목을 대상으로 하므로 이 종목에는 적용되지 않습니다.
@@ -29,7 +29,7 @@ KODEX 조선TOP10(0115D0)는 현재 Pattern A UNAVAILABLE 단계이며, 필수 �
 - **공식 국면 (Official Stage)**: `UNAVAILABLE`
 - **Candidate 판정**: `NO (insufficient_data)`
 - **시가총액**: `N/A`
-- **20일 평균 거래대금**: `N/A`
+- **20일 평균 거래대금**: `107.20억원`
 - **Investability 상태**: `DATA_UNAVAILABLE` (사유: `REQUIRED_METRIC_UNAVAILABLE`)
 - **최종 투자 가능 여부 (Is Investable)**: `NO`
 
@@ -100,7 +100,7 @@ KODEX 조선TOP10(0115D0)는 현재 Pattern A UNAVAILABLE 단계이며, 필수 �
 | 2026-05-29 | 10,325 | N/A | UNAVAILABLE | insufficient_data | False |
 | 2026-06-30 | 8,725 | N/A | UNAVAILABLE | insufficient_data | False |
 | 2026-07-31 | 7,835 | N/A | UNAVAILABLE | insufficient_data | False |
-| 2026-08-31 | N/A | N/A | UNAVAILABLE | insufficient_data | False |
+| 2026-08-31 | 7,705 | N/A | UNAVAILABLE | insufficient_data | False |
 
 ---
 
@@ -112,8 +112,8 @@ KODEX 조선TOP10(0115D0)는 현재 Pattern A UNAVAILABLE 단계이며, 필수 �
 ## 6. Pattern A FAST Weekly History (`Experimental / Early Signal`)
 - **Contract**: `HIERARCHICAL_V01` (`PHASE_13_RESEARCH_CLOSED / HIERARCHICAL_V01_PRODUCTION_HOLD`)
 - **History 시작 주**: `2025-10-31`
-- **History 종료 주**: `2026-08-14`
-- **총 주별 관측 개수**: `40주`
+- **History 종료 주**: `2026-09-04`
+- **총 주별 관측 개수**: `43주`
 
 | 기준 주 (Week Ending) | 종가 | FAST Score | Score Availability | FAST Stage | Stage Availability | Monthly Regime | Daily Risk |
 |---|---:|---:|---|---|---|---|---|
@@ -157,6 +157,9 @@ KODEX 조선TOP10(0115D0)는 현재 Pattern A UNAVAILABLE 단계이며, 필수 �
 | 2026-07-31 | 7,835 | N/A | UNAVAILABLE | N/A | UNAVAILABLE | UNAVAILABLE | ELEVATED |
 | 2026-08-07 | 8,200 | N/A | UNAVAILABLE | N/A | UNAVAILABLE | UNAVAILABLE | NORMAL |
 | 2026-08-14 | 8,410 | N/A | UNAVAILABLE | N/A | UNAVAILABLE | UNAVAILABLE | NORMAL |
+| 2026-08-21 | 7,580 | N/A | UNAVAILABLE | N/A | UNAVAILABLE | UNAVAILABLE | ELEVATED |
+| 2026-08-28 | 7,800 | N/A | UNAVAILABLE | N/A | UNAVAILABLE | UNAVAILABLE | NORMAL |
+| 2026-09-04 | 7,610 | N/A | UNAVAILABLE | N/A | UNAVAILABLE | UNAVAILABLE | ELEVATED |
 
 > Pattern A와 동일 timeline 표로 합치지 않습니다. Pattern A는 월 단위, Pattern A FAST는 주 단위가 각 모델의 핵심 시간축입니다. FAST Score가 `N/A`(UNAVAILABLE)인 경우 `0`이 아니라 데이터 부족을 의미합니다.
 
@@ -166,7 +169,6 @@ KODEX 조선TOP10(0115D0)는 현재 Pattern A UNAVAILABLE 단계이며, 필수 �
 - **수급 데이터 상태**: `DATA_UNAVAILABLE`
 - **수급 국면 판정**: `FLOW_UNAVAILABLE`
 - **규칙 기반 해석**: 외국인 수급 데이터가 준비되지 않아 수급 분석을 제공할 수 없습니다.
-
 
 ---
 
@@ -186,19 +188,18 @@ KODEX 조선TOP10(0115D0)는 현재 Pattern A UNAVAILABLE 단계이며, 필수 �
 
 ## 8. 거래대금 추세 분석 (Trading Value Flow)
 - **거래대금 상태**: `TRADING_VALUE_WEAKENING`
-- **규칙 기반 해석**: 최근 거래대금이 지속 감소(둔화)하는 흐름입니다. 5일 평균 거래대금(117.19억원)이 20일 평균(215.05억원) 및 60일 평균(288.48억원)을 밑돌고 있습니다.
+- **규칙 기반 해석**: 최근 거래대금이 지속 감소(둔화)하는 흐름입니다. 5일 평균 거래대금(85.40억원)이 20일 평균(107.20억원) 및 60일 평균(227.27억원)을 밑돌고 있습니다.
+
 | 구간 | 평균 거래대금 |
 |---|---:|
-| 1D | 132.51억원 |
-| 5D | 117.19억원 |
-| 10D | 138.90억원 |
-| 20D | 215.05억원 |
-| 60D | 288.48억원 |
-- **20일 평균 거래대금**: `215.05억원`
-- **60일 평균 거래대금**: `288.48억원`
-- **단기 확장 비율 (5D / 20D)**: `0.54배`
-- **중기 확장 비율 (20D / 60D)**: `0.75배`
+| 1D | N/A |
+| 5D | 85.40억원 |
+| 10D | N/A |
+| 20D | 107.20억원 |
+| 60D | 227.27억원 |
 
+- **단기 확장 비율 (5D / 20D)**: `0.80배`
+- **중기 확장 비율 (20D / 60D)**: `0.47배`
 ---
 
 ## 9. Pattern A 전체 월별 이력 (Full Monthly History)
@@ -219,13 +220,13 @@ KODEX 조선TOP10(0115D0)는 현재 Pattern A UNAVAILABLE 단계이며, 필수 �
 | 2026-05-29 | 10,325 | N/A | UNAVAILABLE | insufficient_data | False | INSUFFICIENT_LOOKBACK |
 | 2026-06-30 | 8,725 | N/A | UNAVAILABLE | insufficient_data | False | INSUFFICIENT_LOOKBACK |
 | 2026-07-31 | 7,835 | N/A | UNAVAILABLE | insufficient_data | False | INSUFFICIENT_LOOKBACK |
-| 2026-08-31 | N/A | N/A | UNAVAILABLE | insufficient_data | False | NO_EXACT_MARKET_MONTH_END_OBSERVATION |
+| 2026-08-31 | 7,705 | N/A | UNAVAILABLE | insufficient_data | False | INSUFFICIENT_LOOKBACK |
 
 ---
 
 ## 10. 데이터 품질 및 신원 (Data Quality & Provenance)
-- **로컬 일봉 캐시**: `정상 로드 (197행)`
-- **데이터 기간**: `2025-10-28` ~ `2026-08-14`
+- **로컬 일봉 캐시**: `정상 로드 (211행)`
+- **데이터 기간**: `2025-10-28` ~ `2026-09-04`
 - **완성 월봉 수**: `11개월`
 - **데이터 품질 상태**: `INSUFFICIENT_LOOKBACK`
 - **적용 계약**: Score(`pattern_a_score_v0.2`), Stage(`pattern_a_stage_v0.1`), Strategy(`PATTERN_A_FAST_FINAL_STRATEGY_V02`), Investability(`phase10`), Flow(`phase11`)

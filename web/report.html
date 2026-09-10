@@ -20,7 +20,7 @@
       })();
     </script>
     <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./css/app.css?v=web-02d-window-4">
+  <link rel="stylesheet" href="./css/app.css?v=web-02d-window-5">
   </head>
   <body>
     <a class="skip-link" href="#main-content">본문으로 건너뛰기</a>
@@ -118,7 +118,7 @@
         </div>
 
         <div class="report-card-grid" aria-label="종목 핵심 정보">
-          <div class="report-card-row report-card-row--secondary">
+          <div class="report-card-row">
             <button id="price-card" class="panel report-card report-card-button" type="button" aria-controls="report-detail-panel" aria-expanded="false" aria-label="가격·추세 상세 정보 열기">
               <span class="report-card-heading">가격·추세</span><span id="price-value" class="report-card-value">—</span><span id="price-detail" class="report-card-detail">—</span><span class="report-card-affordance" aria-hidden="true">상세 보기 ›</span>
             </button>
@@ -138,7 +138,7 @@
               <div id="report-detail-content" class="report-detail-content"></div>
             </section>
           </div>
-          <div class="report-card-row">
+          <div class="report-card-row report-card-row--secondary">
             <button id="flow-card" class="panel report-card report-card-button" type="button" aria-controls="report-detail-panel" aria-expanded="false" aria-label="수급 상세 정보 열기">
               <span class="report-card-heading">수급</span><span id="flow-value" class="report-card-value">—</span><span id="flow-detail" class="report-card-detail">—</span><span class="report-card-affordance" aria-hidden="true">상세 보기 ›</span>
             </button>
@@ -158,7 +158,8 @@
             <p id="fundamentals-detail-status" class="status-pill status-unknown">—</p>
           </div>
           <p id="fundamentals-detail-reason" class="detail-note">—</p>
-          <div id="fundamentals-summary" class="fundamentals-summary-grid"></div>
+          <p id="fundamentals-detail-meta" class="fundamentals-meta"></p>
+          <p id="fundamentals-unit-note" class="fundamentals-unit-note"></p>
           <div id="fundamentals-periods" class="fundamentals-periods"></div>
         </section>
 
@@ -183,6 +184,6 @@
       <span>KRX Trend Scanner</span>
       <span>읽기 전용</span>
     </footer>
-    <script src="./js/report.js?v=web-02d-window-4" defer></script>
+    <script src="./js/report.js?v=web-02d-window-5" defer></script>
   </body>
 </html>

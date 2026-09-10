@@ -82,8 +82,8 @@
     "foreign_positive_days_20d": 8,
     "foreign_positive_days_60d": 29,
     "foreign_net_buy_value_10d_krw": -47399947650.0,
-    "foreign_flow_intensity_1d": null,
-    "foreign_flow_intensity_10d": null,
+    "foreign_flow_intensity_1d": -0.0552,
+    "foreign_flow_intensity_10d": -0.1941,
     "foreign_positive_days_1d": 0,
     "foreign_positive_days_10d": 3,
     "foreign_positive_day_ratio_1d": 0.0,
@@ -153,13 +153,7 @@
     "source_as_of": null,
     "membership_snapshot_date": null,
     "membership_source": null,
-    "sector_index_source": null,
-    "sector_return_2w": null,
-    "sector_return_1m": null,
-    "sector_rs_2w": null,
-    "sector_rs_1m": null,
-    "sector_anchor_date_2w": null,
-    "sector_anchor_date_1m": null
+    "sector_index_source": null
   },
   "trading_value_flow": {
     "trading_value_state": "TRADING_VALUE_UNAVAILABLE",
@@ -169,8 +163,8 @@
     "avg_trading_value_60d_eok": null,
     "ratio_5d_to_20d": null,
     "ratio_20d_to_60d": null,
-    "avg_trading_value_1d_eok": null,
-    "avg_trading_value_10d_eok": null
+    "avg_trading_value_1d_eok": 132.72,
+    "avg_trading_value_10d_eok": 244.17
   },
   "data_quality": {
     "cache_present": false,
@@ -182,7 +176,7 @@
     "quality_flags": []
   },
   "provenance": {
-    "stock_price_source": "local parquet cache",
+    "stock_price_source": "MarketDataRepositoryV2",
     "score_contract": "pattern_a_score_v0.2",
     "stage_contract": "pattern_a_stage_v0.1",
     "investability_contract": "phase10",

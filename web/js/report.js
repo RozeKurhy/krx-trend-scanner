@@ -450,10 +450,11 @@
     });
   }
 
-  function appendTableCell(row, value, className) {
+  function appendTableCell(row, value, className, title) {
     const cell = document.createElement("td");
     cell.textContent = value == null || value === "" ? "—" : String(value);
     if (className) cell.className = className;
+    if (title) cell.title = title;
     row.appendChild(cell);
   }
 
@@ -477,7 +478,7 @@
       const row = document.createElement("tr");
       values.forEach((value) => {
         if (value && typeof value === "object" && !Array.isArray(value)) {
-          appendTableCell(row, value.value, value.className);
+          appendTableCell(row, value.value, value.className, value.title);
         } else {
           appendTableCell(row, value);
         }
@@ -505,9 +506,11 @@
 
   function formatFundamentalKrw(value) {
     if (value == null || value === "" || !Number.isFinite(Number(value))) return "—";
-    const number = Number(value) / 1e8;
-    const sign = number > 0 ? "+" : number < 0 ? "−" : "";
-    return `${sign}${formatNumber(Math.abs(number), 1)}억원`;
+    const number = Number(value);
+    const sign = number < 0 ? "-" : "";
+    const absolute = Math.abs(number);
+    if (absolute >= 1e8) return `${sign}${formatNumber(absolute / 1e8, 1)}`;
+    return `${sign}${formatNumber(absolute / 1e7, 1)}천만`;
   }
 
   function formatFundamentalPercent(value) {
@@ -515,29 +518,17 @@
     return `${formatNumber(value, 2)}%`;
   }
 
-  function appendFundamentalMetric(container, labelText, value, rawValue) {
-    const item = document.createElement("div");
-    item.className = "fundamental-metric";
-    const label = document.createElement("dt");
-    label.textContent = labelText;
-    const valueElement = document.createElement("dd");
-    if (Number.isFinite(Number(rawValue)) && Number(rawValue) < 0) {
-      valueElement.classList.add("detail-value-negative");
-    }
-    valueElement.textContent = value == null || value === "" ? "—" : String(value);
-    item.append(label, valueElement);
-    container.appendChild(item);
-  }
-
   function fundamentalRowStatus(value) {
     return label(FUNDAMENTAL_ROW_LABELS, value, "확인 필요");
   }
 
   function fundamentalCell(value, formatter, options = {}) {
-    return {
+    const cell = {
       value: formatter(value),
       className: Number.isFinite(Number(value)) && Number(value) < 0 ? "detail-value-negative" : "",
     };
+    if (options.title) cell.title = options.title;
+    return cell;
   }
 
   function fundamentalYoyCell(row) {
@@ -546,7 +537,7 @@
     if (transition) {
       return {
         value: transition,
-        className: status === "TURNED_TO_PROFIT" ? "detail-value-positive" : "detail-value-negative",
+        className: status === "TURNED_TO_PROFIT" ? "" : "detail-value-negative",
       };
     }
     return fundamentalCell(row && row.operating_income_yoy_pct, formatFundamentalPercent);
@@ -560,14 +551,14 @@
     }).slice(-limit);
   }
 
-  function renderFundamentalPeriodTable(titleText, rows, identityKey, limit, metricRows) {
+  function renderFundamentalPeriodTable(titleText, rows, identityKey, limit, metricRows, extraColumn = null) {
     const heading = document.createElement("h4");
     heading.className = "fundamentals-period-heading";
     heading.textContent = titleText;
     const tableRows = sortedFundamentalRows(rows, identityKey, limit);
     const periodsElement = document.createDocumentFragment();
     periodsElement.appendChild(heading);
-    if (!tableRows.length) {
+    if (!tableRows.length && !extraColumn) {
       const empty = document.createElement("p");
       empty.className = "detail-empty";
       empty.textContent = "표시할 기간 데이터가 없습니다.";
@@ -575,9 +566,11 @@
       return periodsElement;
     }
     const headers = ["주요재무정보", ...tableRows.map((row) => row[identityKey])];
+    if (extraColumn) headers.push(extraColumn.header);
     const rowsForTable = metricRows.map(([labelText, valueForRow]) => [
       labelText,
       ...tableRows.map((row) => valueForRow(row)),
+      ...(extraColumn ? [extraColumn.valueForRow(labelText)] : []),
     ]);
     periodsElement.appendChild(createDetailTable(headers, rowsForTable, "fundamentals-table"));
     return periodsElement;
@@ -587,13 +580,14 @@
     const panel = byId("fundamentals-detail-panel");
     const statusElement = byId("fundamentals-detail-status");
     const reasonElement = byId("fundamentals-detail-reason");
-    const summaryElement = byId("fundamentals-summary");
+    const metaElement = byId("fundamentals-detail-meta");
+    const unitElement = byId("fundamentals-unit-note");
     const periodsElement = byId("fundamentals-periods");
     const fundamentals = report && report.fundamentals;
-    if (!panel || !fundamentals || !summaryElement || !periodsElement) return;
-    while (summaryElement.firstChild) summaryElement.removeChild(summaryElement.firstChild);
+    if (!panel || !fundamentals || !metaElement || !unitElement || !periodsElement) return;
     while (periodsElement.firstChild) periodsElement.removeChild(periodsElement.firstChild);
-    summaryElement.hidden = false;
+    metaElement.hidden = false;
+    unitElement.hidden = false;
     periodsElement.hidden = false;
     if (statusElement) {
       statusElement.textContent = fundamentalLabel(report);
@@ -604,24 +598,15 @@
     }
     if (reasonElement) reasonElement.textContent = fundamentalDetail(report);
     if (fundamentals.filter_status === "NOT_APPLICABLE") {
-      summaryElement.hidden = true;
+      metaElement.hidden = true;
+      unitElement.hidden = true;
       periodsElement.hidden = true;
       panel.hidden = false;
       return;
     }
     const summary = fundamentals.summary || {};
-    [
-      ["최근 사업연도", summary.latest_fy, null],
-      ["최근 분기", summary.latest_quarter, null],
-      ["필터 상태", fundamentals.filter_status || summary.filter_status, null],
-      ["최근 부채비율", formatFundamentalPercent(summary.latest_debt_ratio_pct), summary.latest_debt_ratio_pct],
-      ["TTM 영업현금흐름", formatFundamentalKrw(summary.ttm_operating_cash_flow_krw), summary.ttm_operating_cash_flow_krw],
-      ["TTM 매출", formatFundamentalKrw(summary.ttm_revenue_krw), summary.ttm_revenue_krw],
-      ["TTM 영업이익", formatFundamentalKrw(summary.ttm_operating_income_krw), summary.ttm_operating_income_krw],
-      ["TTM 영업이익률", formatFundamentalPercent(summary.ttm_operating_margin_pct), summary.ttm_operating_margin_pct],
-      ["TTM 순이익", formatFundamentalKrw(summary.ttm_net_income_krw), summary.ttm_net_income_krw],
-      ["TTM 순이익률", formatFundamentalPercent(summary.ttm_net_margin_pct), summary.ttm_net_margin_pct],
-    ].forEach(([labelText, value, rawValue]) => appendFundamentalMetric(summaryElement, labelText, value, rawValue));
+    metaElement.textContent = `기준 ${formatDate(fundamentals.requested_as_of)} · 최근 FY ${summary.latest_fy || "—"} · 최근 분기 ${summary.latest_quarter || "—"} · Filter ${fundamentals.filter_status || summary.filter_status || "—"}`;
+    unitElement.textContent = "단위: 억원 · 1억원 미만은 천만원 단위 표시";
 
     const quarterly = Array.isArray(fundamentals.quarterly) ? fundamentals.quarterly : [];
     periodsElement.appendChild(renderFundamentalPeriodTable("최근 12개 분기", quarterly, "quarter", 12, [
@@ -643,9 +628,24 @@
       ["영업이익률", (row) => fundamentalCell(row.operating_margin_pct, formatFundamentalPercent)],
       ["순이익", (row) => fundamentalCell(row.net_income_krw, formatFundamentalKrw)],
       ["순이익률", (row) => fundamentalCell(row.net_margin_pct, formatFundamentalPercent)],
+      ["영업현금흐름", (row) => fundamentalCell(row.operating_cash_flow_krw, formatFundamentalKrw)],
       ["ROE", (row) => fundamentalCell(row.roe_pct, formatFundamentalPercent)],
       ["부채비율", (row) => fundamentalCell(row.debt_ratio_pct, formatFundamentalPercent)],
-    ]));
+    ], {
+      header: "TTM",
+      valueForRow: (labelText) => ({
+        "매출": fundamentalCell(summary.ttm_revenue_krw, formatFundamentalKrw),
+        "매출 YoY": "—",
+        "영업이익": fundamentalCell(summary.ttm_operating_income_krw, formatFundamentalKrw),
+        "영업이익 YoY": "—",
+        "영업이익률": fundamentalCell(summary.ttm_operating_margin_pct, formatFundamentalPercent),
+        "순이익": fundamentalCell(summary.ttm_net_income_krw, formatFundamentalKrw),
+        "순이익률": fundamentalCell(summary.ttm_net_margin_pct, formatFundamentalPercent),
+        "영업현금흐름": fundamentalCell(summary.ttm_operating_cash_flow_krw, formatFundamentalKrw),
+        "ROE": fundamentalCell(summary.ttm_roe_pct, formatFundamentalPercent),
+        "부채비율": fundamentalCell(summary.latest_debt_ratio_pct, formatFundamentalPercent, { title: "최근 기준" }),
+      }[labelText] || "—"),
+    }));
     panel.hidden = false;
   }
 
