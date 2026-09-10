@@ -99,7 +99,7 @@ Pattern A의 장기 베이스와 Pattern A FAST의 주봉 타이밍, Investabili
 단일 종목의 장기 패턴, 투자 적합성, 전략 상태, 수급, 시장·업종 상대강도 및 히스토리 추이를 종합 진단하는 Markdown 및 JSON 리포트 생성기입니다.
 
 * **공식 상태**: **`v0.5 CLOSED / PRODUCTION_DECISION_SUPPORT`** ([v0.5 Contract](docs/reporting/stock_report/contract_v05.md), [v0.5 Schema](docs/reporting/stock_report/schema_v05.json))
-* **현재 production 산출물**: 2026-09-04 canonical 553건 (COMMON 525 / ETF 26 / PREFERRED 2), 전부 `report_version = 0.5`
+* **현재 production 산출물**: 2026-09-04 canonical 1,836건 (COMMON 1,808 / ETF 26 / PREFERRED 2), 전부 `report_version = 0.5`. 연간 매출액 500억 이상 신규 대상 1,283건을 추가 반영했습니다.
 * **핵심 항목**:
   1. **Pattern A 진단**: Score v0.2, Stage Classifier, Candidate State, 1M/3M/6M Score Momentum
   2. **Investability 평가**: 시가총액($\ge \text{1,000억}$), 20D 거래대금($\ge \text{3억}$) 적합성 판정
@@ -208,7 +208,7 @@ print(f"Markdown: {md_path}")
 **Production 기준일**: 2026-09-04 (`production certified boundary`)
 
 * **COMPLETED**: Repository V2 / production data migration, market data refresh & price validation through 2026-09-04, Market RS full-COMMON authority, Pattern A production regeneration, OpenDART Fundamentals V1 및 Fundamentals Filter, Stock Report v0.5 integration, restated comparative/PIT closure, independent validation closure, Web Report Viewer `CLOSED / READ_ONLY`, documentation/artifact consolidation, branch/main integration cleanup
-* **현재 production 사실**: 전체 universe 4,415개, COMMON 2,557개, Stock Report 553건(COMMON 525 / ETF 26 / PREFERRED 2)
+* **현재 production 사실**: 전체 universe 4,415개, COMMON 2,557개, Stock Report 1,836건(COMMON 1,808 / ETF 26 / PREFERRED 2)
 * **CURRENT**: FastCore realistic backtest 조건과 Fundamentals filter 조건 정의. 조건이 고정되기 전에는 backtest를 실행하지 않음
 * **NEXT**: FastCore realistic backtest 및 baseline 비교 → Julia realistic backtest → strategy robustness comparison
 * **HOLD / FUTURE**: 금융회사 전용 Fundamentals 확장, full-COMMON Sector RS rank/percentile authority, Pattern B~F 및 기타 신규 Pattern

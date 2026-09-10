@@ -70,8 +70,9 @@ def test_compact_report_preserves_authority_values_without_raw_markdown(payload)
 
 def test_all_published_compact_reports_have_ticker_bound_naver_chart(payload):
     _index, reports, _stats = payload
+    source_count = len(list((ROOT / "artifacts/reporting/stock_reports/20260904/json").glob("*.json")))
 
-    assert len(reports) == 553
+    assert len(reports) == source_count
     for ticker, report in reports.items():
         links = report["external_links"]
         assert links["naver_finance"] == f"https://finance.naver.com/item/main.naver?code={ticker}"

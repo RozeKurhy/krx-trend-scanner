@@ -26,7 +26,6 @@ STOCK_REPORTS_ROOT = ROOT / "artifacts/reporting/stock_reports"
 ADJUSTED_STOCK_ROOT = ROOT / "data/market/adjusted/stocks"
 DEFAULT_OUTPUT_DIR = ROOT / "web/data"
 DATE_DIR_PATTERN = re.compile(r"^(\d{8})$")
-EXPECTED_STOCK_REPORT_COUNT = 553
 FUNDAMENTALS_PUBLIC_FIELDS = (
     "applicability",
     "reason",
@@ -357,9 +356,9 @@ def build_web_payload(repo_root: Path = ROOT) -> tuple[dict[str, Any], dict[str,
     universe, snapshot_date = _load_universe(requested_as_of)
     source_json_dir = report_dir / "json"
     source_json_paths = sorted(source_json_dir.glob("*.json"))
-    if len(source_json_paths) != EXPECTED_STOCK_REPORT_COUNT:
+    if not source_json_paths:
         raise ValueError(
-            f"Stock Report source must contain {EXPECTED_STOCK_REPORT_COUNT} JSON files, "
+            "Stock Report source must contain at least one JSON file, "
             f"got {len(source_json_paths)}"
         )
     reports: dict[str, dict[str, Any]] = {}

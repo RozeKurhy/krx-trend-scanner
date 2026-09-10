@@ -84,17 +84,18 @@ def test_health_uses_actual_resolved_authority_values(health, exporter):
     readiness = exporter._stock_report_readiness(
         requested_as_of, ROOT / "artifacts/reporting/stock_reports/20260904"
     )
+    expected_report_count = health["stock_reports"]["source_json_count"]
     assert readiness["ready"] is True
     assert health["stock_reports"]["status"] == "NORMAL"
     assert health["stock_reports"]["report_version"] == "0.5"
-    assert health["stock_reports"]["source_json_count"] == 553
-    assert health["stock_reports"]["source_markdown_count"] == 553
-    assert health["stock_reports"]["v05_count"] == 553
+    assert expected_report_count == report_artifact_count
+    assert health["stock_reports"]["source_markdown_count"] == expected_report_count
+    assert health["stock_reports"]["v05_count"] == expected_report_count
     assert health["stock_reports"]["schema_errors"] == 0
-    assert health["stock_reports"]["fundamentals_integrated_count"] == 553
-    assert health["stock_reports"]["web_compact_count"] == 553
-    assert health["stock_reports"]["web_fundamentals_integrated_count"] == 553
-    assert health["stock_reports"]["web_index_available_report_count"] == 553
+    assert health["stock_reports"]["fundamentals_integrated_count"] == expected_report_count
+    assert health["stock_reports"]["web_compact_count"] == expected_report_count
+    assert health["stock_reports"]["web_fundamentals_integrated_count"] == expected_report_count
+    assert health["stock_reports"]["web_index_available_report_count"] == expected_report_count
     assert health["analysis"]["status"] == "UNKNOWN"
     assert health["backtest"]["status"] == "UNKNOWN"
 

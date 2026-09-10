@@ -4,7 +4,7 @@ README.md
 
 - **Current Version**: 0.5 (`report_version="0.5"`, Fundamentals + Market/Sector RS additive context)
 - **Production Integration**: `CLOSED / PRODUCTION_DECISION_SUPPORT`
-- **Current Production Artifact**: 2026-09-04 canonical 553 reports (COMMON 525 / ETF 26 / PREFERRED 2)
+- **Current Production Artifact**: 2026-09-04 canonical 1,836 reports (COMMON 1,808 / ETF 26 / PREFERRED 2), including 1,283 newly generated reports for issuers with annual revenue ≥ 500억.
 - **JSON Contract**: [contract_v05.md](contract_v05.md)
 - **Machine Schema**: [schema_v05.json](schema_v05.json)
 - **Fundamentals**: 분기·연간, TTM/YoY, filter status 및 Web trend chart를 제공하며 PIT-aware OpenDART/XBRL authority를 사용한다.

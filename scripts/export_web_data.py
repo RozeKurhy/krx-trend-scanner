@@ -32,7 +32,6 @@ FUNDAMENTALS_PRODUCTION_ROOT = ROOT / "artifacts/fundamentals/production"
 STOCK_REPORTS_ROOT = ROOT / "artifacts/reporting/stock_reports"
 STOCK_REPORT_SCHEMA_PATH = ROOT / "docs/reporting/stock_report/schema_v05.json"
 WEB_STOCK_DATA_ROOT = ROOT / "web/data"
-EXPECTED_STOCK_REPORT_COUNT = 553
 VALID_FUNDAMENTALS_DATA_STATUSES = {"READY", "PARTIAL", "DATA_UNAVAILABLE", "NOT_APPLICABLE"}
 
 VALID_STATUSES = {
@@ -400,15 +399,16 @@ def _stock_report_readiness(requested_as_of: str, stock_reports_dir: Path) -> di
         except (OSError, UnicodeError, json.JSONDecodeError, ValueError):
             web_index = {}
     web_index_available_count = web_index.get("available_report_count")
+    expected_report_count = len(source_json_paths)
     ready = all((
-        len(source_json_paths) == EXPECTED_STOCK_REPORT_COUNT,
-        source_markdown_count == EXPECTED_STOCK_REPORT_COUNT,
-        v05_count == EXPECTED_STOCK_REPORT_COUNT,
-        fundamentals_integrated_count == EXPECTED_STOCK_REPORT_COUNT,
+        expected_report_count > 0,
+        source_markdown_count == expected_report_count,
+        v05_count == expected_report_count,
+        fundamentals_integrated_count == expected_report_count,
         schema_errors == 0,
-        len(web_paths) == EXPECTED_STOCK_REPORT_COUNT,
-        web_fundamentals_integrated_count == EXPECTED_STOCK_REPORT_COUNT,
-        web_index_available_count == EXPECTED_STOCK_REPORT_COUNT,
+        len(web_paths) == expected_report_count,
+        web_fundamentals_integrated_count == expected_report_count,
+        web_index_available_count == expected_report_count,
     ))
     return {
         "ready": ready,

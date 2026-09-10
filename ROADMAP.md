@@ -18,7 +18,7 @@ ROADMAP.md
 - Foreign Net Buy Ranking Web V01 (KOSPI/KOSDAQ COMMON, 1D/5D/10D/20D/60D, zero external financial network calls)
 - OpenDART Fundamentals V1 (`FINAL_CLOSED / PRODUCTION`) and Fundamentals Filter closure
 - Restated Comparative / PIT closure and independent fundamentals validation closure
-- Stock Report v0.5 regeneration (553/553: COMMON 525 / ETF 26 / PREFERRED 2, report errors 0)
+- Stock Report v0.5 regeneration (1,836/1,836: COMMON 1,808 / ETF 26 / PREFERRED 2, report errors 0; annual revenue ≥ 500억 신규 1,283건 포함)
 - Fundamentals integration into Stock Report and Web Report Viewer (`CLOSED / READ_ONLY`)
 - Documentation / artifact consolidation
 - Branch / main integration cleanup (Group B 정리 및 merged branch 정리 포함)
@@ -123,7 +123,7 @@ CLOSED고 Production 승격 여부는 별도"임을 한 토큰으로 강조하�
 | **Pattern A FAST** | Phase 13 Signal Model Research | **RESEARCH_CLOSED / PRODUCTION_HOLD** | Score Separation `PASS`, Lead Time `INCONCLUSIVE` (`935f9be`) |
 | **A FAST Core Strategy** | A FAST Core Strategy V1 | CLOSED / FROZEN | 단일 진입 모델 (**`HISTORICAL_FROZEN_BASELINE`**) |
 | | **A FAST Core Strategy V2** | **CLOSED / FROZEN** | **Current Default Strategy (`PRODUCTION_DECISION_SUPPORT`)** |
-| **Reporting & Viewer** | **Stock Report v0.5** | **CLOSED / PRODUCTION_DECISION_SUPPORT** | Fundamentals + Market RS exact-date authority + Sector RS additive context, 2026-09-04 canonical 553건 (`report_version = 0.5`) |
+| **Reporting & Viewer** | **Stock Report v0.5** | **CLOSED / PRODUCTION_DECISION_SUPPORT** | Fundamentals + Market RS exact-date authority + Sector RS additive context, 2026-09-04 canonical 1,836건 (`report_version = 0.5`) |
 | | **Foreign Net Buy Ranking Web V01** | **CLOSED / READ_ONLY** | Local production flow source, 2026-09-04 exact KOSPI/KOSDAQ COMMON 2,555개, 1D/5D/10D/20D/60D 정적 ranking projection |
 | | Web Report Viewer | **CLOSED / READ_ONLY** | 검색, 종목 리포트, Fundamentals 표/차트, Flow, Market/Sector RS, A FAST Core 및 외부 링크 |
 | **Engineering Infrastructure** | Documentation IA Reorganization | CLOSED | Domain-first / Pattern-second 구조 확립 (`docs/README.md`) |
@@ -412,7 +412,7 @@ Pattern A, Investability, Foreign Flow, Market RS와 독립된 실적 분석 축
 
 * **공식 상태**: **`v0.5 CLOSED / PRODUCTION_DECISION_SUPPORT`** ([Stock Report v0.5 Contract](docs/reporting/stock_report/contract_v05.md), [v0.5 Schema](docs/reporting/stock_report/schema_v05.json))
 * **Stock Report v0.2/v0.3/v0.4**: historical contract/evidence로 보존하며 current production contract은 v0.5다. v0.4는 v0.5의 historical predecessor다.
-* **Stock Report v0.5**: `artifacts/reporting/stock_reports/<YYYYMMDD>/`에 current production contract으로 제공. 2026-09-04 canonical은 553건(COMMON 525 / ETF 26 / PREFERRED 2)이다.
+* **Stock Report v0.5**: `artifacts/reporting/stock_reports/<YYYYMMDD>/`에 current production contract으로 제공. 2026-09-04 canonical은 1,836건(COMMON 1,808 / ETF 26 / PREFERRED 2)이며, 연간 매출액 500억 이상 신규 대상 1,283건을 포함한다.
 * **리포트 구성**:
   1. Pattern A 진단 (Score v0.2, Stage Classifier, Candidate State, Score Momentum)
   2. Phase 10 Investability 판정 (시총 $\ge \text{1,000억}$, 20D 거래대금 $\ge \text{3억}$)
@@ -426,7 +426,7 @@ Pattern A, Investability, Foreign Flow, Market RS와 독립된 실적 분석 축
   10. 거래대금 추이 및 데이터 품질/PIT 무결성 감사
 * **생성 원칙**: Repository V2와 frozen/local authority를 사용하며 exact as-of lookup, Full Universe Scanner 미호출, 네트워크 요청 0건.
 * **Web Report Viewer**: 현재 `CLOSED / READ_ONLY`로 검색, 리포트 조회, Fundamentals 표/차트, Flow, Market/Sector RS, A FAST Core 및 외부 링크를 제공한다.
-* **Production artifact**: 2026-09-04 canonical v0.5 Markdown 553건 / JSON 553건, root JSON 0건.
+* **Production artifact**: 2026-09-04 canonical v0.5 Markdown 1,836건 / JSON 1,836건, root JSON 0건.
 * **Authority chain**: v0.5 contract/schema가 current authority이며 v0.4 이하 contract/evidence는 historical record다.
 
 ---
@@ -557,6 +557,7 @@ CLI / Web 대시보드, 관심종목 워크플로우, 실시간 알림 등 최�
 25. Web Report Viewer — **CLOSED / READ_ONLY**
 26. (Historical / superseded, not in current order) Julia Strategy V00 Official PIT — 구 proxy 연구, HISTORICAL / SUPERSEDED
 27. (Historical / superseded, not in current order) Market Cap Threshold Research — 구 proxy 연구 후속, HISTORICAL / SUPERSEDED
+28. Annual Revenue ≥ 500억 Stock Report Expansion — **CLOSED** (신규 1,283건; canonical total 1,836건)
 
 ---
 

@@ -526,7 +526,7 @@ def render_markdown_report(report: StockReport) -> str:
             md.append(f"- **Pre-PROGRESSED Loss Guard**: `{prot.loss_guard_state}`" + (f" (기준: `{prot.loss_guard_threshold_pct}%` 이하 종가)" if prot.loss_guard_threshold_pct else ""))
             md.append(f"- **추세 청산 Exit 3 (Stage Transition)**: `{prot.exit3_state}`")
             md.append(f"- **추세 청산 Exit 4 (Score HWM -15pt)**: `{prot.exit4_state}`")
-            if prot.progressed_hwm_score is not None:
+            if all(value is not None for value in (prot.progressed_hwm_score, prot.current_pattern_a_score, prot.score_drawdown_from_hwm_pt)):
                 md.append(f"- **PROGRESSED Score HWM**: `{prot.progressed_hwm_score:.2f}점` (현재: `{prot.current_pattern_a_score:.2f}점`, 낙폭: `{prot.score_drawdown_from_hwm_pt:.2f}pt`)")
             md.append("")
 
