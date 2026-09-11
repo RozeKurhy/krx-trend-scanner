@@ -93,12 +93,13 @@ FUNDAMENTALS_COVERAGE_CANDIDATE_PATH = FUNDAMENTALS_COVERAGE_DIR / "fundamentals
 FUNDAMENTALS_COVERAGE_QUARTER_PATH = FUNDAMENTALS_COVERAGE_DIR / "fundamentals_coverage_by_quarter.csv"
 FUNDAMENTALS_COVERAGE_SUMMARY_PATH = FUNDAMENTALS_COVERAGE_DIR / "fundamentals_coverage_summary.json"
 FUNDAMENTALS_COVERAGE_CHECKPOINT_PATH = FUNDAMENTALS_COVERAGE_DIR / "coverage_checkpoint.json"
+FUNDAMENTALS_FAILURE_SUMMARY_PATH = FUNDAMENTALS_COVERAGE_DIR / "failure_reason_summary.json"
 BACKTEST_END = pd.Timestamp("2026-08-21")
 FUNDAMENTALS_HISTORY_START = pd.Timestamp("2015-01-01")
 MAX_WORKERS = 1
 CANDIDATE_BATCH_SIZE = 25
 FUNDAMENTALS_COVERAGE_BATCH_SIZE = 25
-FIX04_WORK_ID = "FASTCORE_SIMPLE_BACKTEST_WITH_FUNDAMENTALS_V01_FIX04_COVERAGE"
+FIX05_WORK_ID = "FASTCORE_SIMPLE_BACKTEST_WITH_FUNDAMENTALS_V01_FIX05_COVERAGE_FAILURE_CLASSIFICATION"
 FUNDAMENTALS_EVALUABLE = {
     PASS,
     FILTERED_ANNUAL_REVENUE,
@@ -532,45 +533,96 @@ def _quarter(value: str) -> str:
     return f"{dt.year}Q{((dt.month - 1) // 3) + 1}"
 
 
+def _bool_value(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+    return str(value).strip().lower() in {"1", "true", "yes"}
+
+
+EVALUATION_ERROR = "EVALUATION_ERROR"
+TRUE_DATA_UNAVAILABLE = "TRUE_DATA_UNAVAILABLE"
+EVALUABLE = "EVALUABLE"
+
+
+def _classification_from_values(
+    *,
+    status: Any,
+    company_family: Any,
+    evaluable: Any,
+    reason: Any = None,
+    explicit: Any = None,
+) -> str:
+    explicit_text = str(explicit or "").strip()
+    if explicit_text in {EVALUABLE, TRUE_DATA_UNAVAILABLE, EVALUATION_ERROR, "NOT_APPLICABLE"}:
+        return explicit_text
+    status_text = str(status or "").strip()
+    family_text = str(company_family or "").strip()
+    reason_text = str(reason or "").strip()
+    if family_text == CompanyFamily.FINANCIAL.value or status_text == NOT_APPLICABLE:
+        return "NOT_APPLICABLE"
+    if status_text in FUNDAMENTALS_EVALUABLE or _bool_value(evaluable):
+        return EVALUABLE
+    if "OpenDartError" in reason_text or "BinaryResponseInvalid" in reason_text:
+        return EVALUATION_ERROR
+    if status_text == EVALUATION_ERROR or family_text == CompanyFamily.UNKNOWN.value:
+        return EVALUATION_ERROR
+    if status_text == DATA_UNAVAILABLE:
+        return TRUE_DATA_UNAVAILABLE
+    return EVALUATION_ERROR
+
+
 def _coverage_rows(decisions: pd.DataFrame) -> pd.DataFrame:
     columns = [
         "quarter", "total_raw_candidates", "financial_candidates", "nonfinancial_candidates",
-        "evaluable_nonfinancial_candidates", "unavailable_nonfinancial_candidates",
-        "evaluable_rate", "qualifies_90_percent", "total_nonfinancial_candidates", "evaluable_count",
+        "coverage_eligible_candidates", "evaluable_nonfinancial_candidates",
+        "true_data_unavailable_nonfinancial_candidates", "evaluation_error_nonfinancial_candidates",
+        "unavailable_nonfinancial_candidates", "evaluable_rate", "qualifies_90_percent",
+        "total_nonfinancial_candidates", "evaluable_count",
     ]
     if decisions.empty:
         return pd.DataFrame(columns=columns)
     frame = decisions.copy()
     frame["quarter"] = frame["entry_signal_information_date"].map(_quarter)
     frame = frame[frame["quarter"].notna()].copy()
-    frame["_evaluable"] = frame["evaluable"].map(_bool_value)
+    frame["_classification"] = [
+        _classification_from_values(
+            status=row.get("fundamentals_status"),
+            company_family=row.get("company_family"),
+            evaluable=row.get("evaluable"),
+            reason=row.get("reason", row.get("reject_reason")),
+            explicit=row.get("failure_classification"),
+        )
+        for row in frame.to_dict("records")
+    ]
     rows: list[dict[str, Any]] = []
     for quarter, group in frame.groupby("quarter", sort=True):
         financial = int((group["company_family"] == CompanyFamily.FINANCIAL.value).sum())
         nonfinancial_mask = group["company_family"] == CompanyFamily.NON_FINANCIAL.value
         nonfinancial = int(nonfinancial_mask.sum())
-        evaluable = int((nonfinancial_mask & group["_evaluable"]).sum())
-        unavailable = nonfinancial - evaluable
-        rate = round(evaluable / nonfinancial * 100, 4) if nonfinancial else None
+        evaluable = int((nonfinancial_mask & (group["_classification"] == EVALUABLE)).sum())
+        true_unavailable = int((nonfinancial_mask & (group["_classification"] == TRUE_DATA_UNAVAILABLE)).sum())
+        evaluation_error = int((nonfinancial_mask & (group["_classification"] == EVALUATION_ERROR)).sum())
+        coverage_eligible = evaluable + true_unavailable
+        rate = round(evaluable / coverage_eligible * 100, 4) if coverage_eligible else None
         rows.append({
             "quarter": str(quarter),
             "total_raw_candidates": int(len(group)),
             "financial_candidates": financial,
             "nonfinancial_candidates": nonfinancial,
+            "coverage_eligible_candidates": coverage_eligible,
             "evaluable_nonfinancial_candidates": evaluable,
-            "unavailable_nonfinancial_candidates": unavailable,
+            "true_data_unavailable_nonfinancial_candidates": true_unavailable,
+            "evaluation_error_nonfinancial_candidates": evaluation_error,
+            "unavailable_nonfinancial_candidates": true_unavailable,
             "evaluable_rate": rate,
-            "qualifies_90_percent": bool(rate is not None and rate >= 90.0 and nonfinancial > 0),
+            "qualifies_90_percent": bool(
+                rate is not None and rate >= 90.0 and nonfinancial > 0
+                and coverage_eligible > 0 and evaluation_error == 0
+            ),
             "total_nonfinancial_candidates": nonfinancial,
             "evaluable_count": evaluable,
         })
     return pd.DataFrame(rows, columns=columns)
-
-
-def _bool_value(value: Any) -> bool:
-    if isinstance(value, bool):
-        return value
-    return str(value).strip().lower() in {"1", "true", "yes"}
 
 
 FUNDAMENTALS_COVERAGE_COLUMNS = [
@@ -578,6 +630,7 @@ FUNDAMENTALS_COVERAGE_COLUMNS = [
     "entry_signal_information_date", "quarter", "company_family", "fundamentals_as_of",
     "fundamentals_status", "filter_status", "evaluable", "reason", "latest_fy",
     "latest_quarter", "filing_references", "company_cache_hit", "evaluation_source",
+    "failure_classification", "failure_category",
 ]
 
 
@@ -585,6 +638,13 @@ def _coverage_candidate_row(row: Mapping[str, Any]) -> dict[str, Any]:
     information_date = _date_text(row.get("entry_signal_information_date"))
     status = str(row.get("fundamentals_status") or DATA_UNAVAILABLE)
     references = row.get("selected_filing_receipt_dates") or []
+    failure_classification = _classification_from_values(
+        status=status,
+        company_family=row.get("company_family"),
+        evaluable=row.get("evaluable"),
+        reason=row.get("reject_reason"),
+        explicit=row.get("failure_classification"),
+    )
     return {
         "candidate_id": str(row.get("candidate_id") or ""),
         "ticker": str(row.get("ticker") or ""),
@@ -605,6 +665,8 @@ def _coverage_candidate_row(row: Mapping[str, Any]) -> dict[str, Any]:
         "filing_references": json.dumps(references, ensure_ascii=False, separators=(",", ":")),
         "company_cache_hit": bool(row.get("company_cache_hit")),
         "evaluation_source": row.get("evaluation_source"),
+        "failure_classification": failure_classification,
+        "failure_category": row.get("failure_category") or row.get("reject_reason") or status,
     }
 
 
@@ -629,6 +691,37 @@ def _completed_coverage_ids() -> set[str]:
     return set(frame["candidate_id"].dropna().astype(str))
 
 
+def _normalise_existing_coverage(frame: pd.DataFrame) -> pd.DataFrame:
+    """Upgrade a FIX04 ledger without changing retained candidate decisions."""
+    if frame.empty:
+        return pd.DataFrame(columns=FUNDAMENTALS_COVERAGE_COLUMNS)
+    records: list[dict[str, Any]] = []
+    for item in frame.to_dict("records"):
+        row = dict(item)
+        row.setdefault("failure_classification", _classification_from_values(
+            status=row.get("fundamentals_status"),
+            company_family=row.get("company_family"),
+            evaluable=row.get("evaluable"),
+            reason=row.get("reason"),
+        ))
+        row.setdefault("failure_category", row.get("reason") or row.get("fundamentals_status"))
+        records.append({key: row.get(key) for key in FUNDAMENTALS_COVERAGE_COLUMNS})
+    return pd.DataFrame(records, columns=FUNDAMENTALS_COVERAGE_COLUMNS)
+
+
+def _prepare_existing_coverage() -> tuple[set[str], set[str]]:
+    """Retain valid rows and return completed IDs plus retry IDs."""
+    if not FUNDAMENTALS_COVERAGE_CANDIDATE_PATH.exists():
+        return set(), set()
+    existing = _normalise_existing_coverage(_load_or_empty_csv(FUNDAMENTALS_COVERAGE_CANDIDATE_PATH))
+    retry_mask = existing["failure_classification"].astype(str) == EVALUATION_ERROR
+    retry_ids = set(existing.loc[retry_mask, "candidate_id"].dropna().astype(str))
+    retained = existing.loc[~retry_mask].copy()
+    retained.to_csv(FUNDAMENTALS_COVERAGE_CANDIDATE_PATH, index=False, lineterminator="\n")
+    completed_ids = set(retained["candidate_id"].dropna().astype(str))
+    return completed_ids, retry_ids
+
+
 def _write_coverage_checkpoint(
     *,
     status: str,
@@ -637,7 +730,7 @@ def _write_coverage_checkpoint(
     client: OpenDartClient,
 ) -> None:
     _json_write(FUNDAMENTALS_COVERAGE_CHECKPOINT_PATH, {
-        "work_id": FIX04_WORK_ID,
+        "work_id": FIX05_WORK_ID,
         "status": status,
         "input_candidate_rows": int(input_candidate_rows),
         "completed_candidate_count": len(completed_ids),
@@ -686,7 +779,12 @@ def select_common_start(coverage: pd.DataFrame) -> tuple[str | None, dict[str, A
         sequence = _quarter_sequence(quarter)
         if not all(item in by_q for item in sequence):
             continue
-        if all(float(getattr(by_q[item], "evaluable_rate", 0) or 0) >= 90.0 and int(getattr(by_q[item], "total_nonfinancial_candidates", 0) or 0) > 0 for item in sequence):
+        if all(
+            float(getattr(by_q[item], "evaluable_rate", 0) or 0) >= 90.0
+            and int(getattr(by_q[item], "total_nonfinancial_candidates", 0) or 0) > 0
+            and int(getattr(by_q[item], "evaluation_error_nonfinancial_candidates", 0) or 0) == 0
+            for item in sequence
+        ):
             start = _first_trading_day_of_quarter(quarter)
             return start, {
                 "rule": "first quarter plus next three consecutive quarters each evaluable_rate >= 90%",
@@ -756,6 +854,23 @@ def _hydration_module() -> Any:
         return __import__("hydrate_fundamentals_v1_production", fromlist=["QuotaBoundOpenDartClient"])
 
 
+def _evaluation_error_category(exc: Exception, client: OpenDartClient | None, audit_start: int) -> str:
+    """Return a concrete, secret-free category for a pipeline exception."""
+    name = type(exc).__name__
+    if name == "F7TerminalError":
+        return f"{name}:{getattr(exc, 'reason', 'UNKNOWN')}"
+    latest = client.audit[audit_start:] if client is not None else []
+    evidence = latest[-1] if latest else {}
+    error_type = str(evidence.get("error_type") or "").strip()
+    classification = str(getattr(exc, "classification", None) or evidence.get("classification") or "").strip()
+    status = str(getattr(exc, "status", None) or evidence.get("status") or "").strip()
+    detail = error_type or classification or status or "UNKNOWN"
+    suffix = f":{detail}"
+    if status and status not in detail and classification and classification not in detail:
+        suffix += f":{status}"
+    return f"{name}{suffix}"
+
+
 def evaluate_one_candidate(
     candidate: Mapping[str, Any],
     *,
@@ -775,7 +890,9 @@ def evaluate_one_candidate(
         "ttm_operating_income": None, "ttm_net_income": None,
         "selected_filing_receipt_dates": [], "evaluation_source": "NETWORK" if live else "LOCAL_CACHE",
         "company_cache_hit": False, "latest_fy": None, "latest_quarter": None,
+        "failure_classification": TRUE_DATA_UNAVAILABLE, "failure_category": "DATA_UNAVAILABLE",
     })
+    audit_start = len(client.audit) if client is not None else 0
     try:
         record = corp_repo.get_record(ticker)
         corp_code = str(record.corp_code)
@@ -786,6 +903,10 @@ def evaluate_one_candidate(
             company, row["company_cache_hit"] = _load_company_live(client, ticker, corp_code)
         if company is None:
             row["reject_reason"] = "COMPANY_METADATA_UNAVAILABLE"
+            row["fundamentals_status"] = EVALUATION_ERROR
+            row["filter_status"] = EVALUATION_ERROR
+            row["failure_classification"] = EVALUATION_ERROR
+            row["failure_category"] = "COMPANY_METADATA_UNAVAILABLE"
             return row
         family_result = classify_company_family(company, ())
         family = str(family_result.get("company_family") or CompanyFamily.UNKNOWN.value)
@@ -800,6 +921,10 @@ def evaluate_one_candidate(
             row["selected_filing_receipt_dates"] = _selected_receipt_dates(f2)
         else:
             row["reject_reason"] = "COMPANY_FAMILY_UNKNOWN"
+            row["fundamentals_status"] = EVALUATION_ERROR
+            row["filter_status"] = EVALUATION_ERROR
+            row["failure_classification"] = EVALUATION_ERROR
+            row["failure_category"] = "UNKNOWN_COMPANY_FAMILY"
             return row
         f4_input = f3 if family == CompanyFamily.NON_FINANCIAL.value else type("AsOfOnly", (), {"requested_as_of": as_of, "observations": ()})()
         f4 = FundamentalsFilter().evaluate(f2, f4_input, requested_as_of=as_of)
@@ -816,6 +941,20 @@ def evaluate_one_candidate(
             "latest_fy": f4.latest_fy,
             "latest_quarter": f4.latest_quarter,
         })
+        if status in FUNDAMENTALS_EVALUABLE:
+            row["failure_classification"] = EVALUABLE
+            row["failure_category"] = status
+        elif status == DATA_UNAVAILABLE:
+            row["failure_classification"] = TRUE_DATA_UNAVAILABLE
+            row["failure_category"] = status
+        elif status == NOT_APPLICABLE:
+            row["failure_classification"] = "NOT_APPLICABLE"
+            row["failure_category"] = status
+        else:
+            row["fundamentals_status"] = EVALUATION_ERROR
+            row["filter_status"] = EVALUATION_ERROR
+            row["failure_classification"] = EVALUATION_ERROR
+            row["failure_category"] = f"UNEXPECTED_F4_STATUS:{status}"
         return row
     except Exception as exc:
         # A hard OpenDART quota stop must abort the run so the checkpoint
@@ -823,9 +962,33 @@ def evaluate_one_candidate(
         # DATA_UNAVAILABLE for the remaining candidates.
         if type(exc).__name__ == "QuotaBudgetExceeded":
             raise
+        # OpenDART's normal HTTP-200/status-013 registry response means the
+        # requested filing window has no data.  Preserve it as genuine PIT
+        # unavailability; transport, auth, service, and parser failures stay
+        # EVALUATION_ERROR below.
+        if (
+            type(exc).__name__ == "FilingRegistryApiError"
+            and str(getattr(exc, "status", "")) == "013"
+            and str(getattr(exc, "classification", "")) == "DATA_NOT_FOUND"
+            and int(getattr(exc, "http_status", 0) or 0) == 200
+        ):
+            row["fundamentals_status"] = DATA_UNAVAILABLE
+            row["filter_status"] = DATA_UNAVAILABLE
+            row["evaluable"] = False
+            row["gate_pass"] = False
+            row["failure_classification"] = TRUE_DATA_UNAVAILABLE
+            row["failure_category"] = "API_DATA_NOT_FOUND"
+            row["reject_reason"] = DATA_UNAVAILABLE
+            return row
         # Never persist exception text: OpenDART diagnostics are redacted at
         # the client boundary, but the ledger only needs a stable category.
-        row["reject_reason"] = f"{type(exc).__name__}:DATA_UNAVAILABLE"
+        row["fundamentals_status"] = EVALUATION_ERROR
+        row["filter_status"] = EVALUATION_ERROR
+        row["evaluable"] = False
+        row["gate_pass"] = False
+        row["failure_classification"] = EVALUATION_ERROR
+        row["failure_category"] = _evaluation_error_category(exc, client, audit_start)
+        row["reject_reason"] = row["failure_category"]
         return row
 
 
@@ -847,6 +1010,73 @@ def evaluate_candidates(candidates: pd.DataFrame, *, live: bool, client: OpenDar
     return frame.drop_duplicates("candidate_id", keep="last").sort_values("candidate_id", kind="mergesort").reset_index(drop=True)
 
 
+def _failure_reason_summary(decisions: pd.DataFrame) -> dict[str, Any]:
+    frame = _normalise_existing_coverage(decisions)
+    if frame.empty:
+        return {
+            "work_id": FIX05_WORK_ID,
+            "total_candidates": 0,
+            "data_unavailable_total": 0,
+            "true_data_unavailable_candidates": 0,
+            "evaluation_error_candidates": 0,
+            "category_counts": {},
+            "reason_counts": {},
+            "by_year": {},
+            "by_quarter": {},
+        }
+    frame["failure_classification"] = [
+        _classification_from_values(
+            status=row.get("fundamentals_status"),
+            company_family=row.get("company_family"),
+            evaluable=row.get("evaluable"),
+            reason=row.get("reason"),
+            explicit=row.get("failure_classification"),
+        )
+        for row in frame.to_dict("records")
+    ]
+    frame["failure_category"] = frame["failure_category"].fillna(frame["reason"]).fillna(frame["fundamentals_status"])
+    frame["year"] = frame["entry_signal_information_date"].astype(str).str[:4]
+    frame["quarter"] = frame["entry_signal_information_date"].map(_quarter)
+    failures = frame[frame["failure_classification"].isin({TRUE_DATA_UNAVAILABLE, EVALUATION_ERROR})]
+
+    def grouped_counts(key: str) -> dict[str, dict[str, int]]:
+        if failures.empty:
+            return {}
+        grouped = failures.groupby([key, "failure_classification"], dropna=False).size()
+        result: dict[str, dict[str, int]] = {}
+        for (group_key, classification), count in grouped.items():
+            result.setdefault(str(group_key), {})[str(classification)] = int(count)
+        return result
+
+    return {
+        "work_id": FIX05_WORK_ID,
+        "total_candidates": int(len(frame)),
+        "data_unavailable_total": int((frame["fundamentals_status"] == DATA_UNAVAILABLE).sum()),
+        "true_data_unavailable_candidates": int((frame["failure_classification"] == TRUE_DATA_UNAVAILABLE).sum()),
+        "evaluation_error_candidates": int((frame["failure_classification"] == EVALUATION_ERROR).sum()),
+        "evaluation_error_nonfinancial_candidates": int(
+            ((frame["company_family"] == CompanyFamily.NON_FINANCIAL.value)
+             & (frame["failure_classification"] == EVALUATION_ERROR)).sum()
+        ),
+        "category_counts": {
+            str(key): int(value)
+            for key, value in failures["failure_category"].fillna("UNKNOWN").value_counts().items()
+        },
+        "reason_counts": {
+            str(key): int(value)
+            for key, value in failures["reason"].fillna("<NA>").value_counts(dropna=False).items()
+        },
+        "by_year": grouped_counts("year"),
+        "by_quarter": grouped_counts("quarter"),
+    }
+
+
+def write_failure_reason_summary(decisions: pd.DataFrame) -> dict[str, Any]:
+    summary = _failure_reason_summary(decisions)
+    _json_write(FUNDAMENTALS_FAILURE_SUMMARY_PATH, summary)
+    return summary
+
+
 def write_coverage_artifacts(
     decisions: pd.DataFrame,
     authority: Any,
@@ -856,6 +1086,8 @@ def write_coverage_artifacts(
     execution_metrics: Mapping[str, Any] | None = None,
 ) -> tuple[pd.DataFrame, dict[str, Any]]:
     FUNDAMENTALS_COVERAGE_DIR.mkdir(parents=True, exist_ok=True)
+    decisions = _normalise_existing_coverage(decisions)
+    failure_summary = write_failure_reason_summary(decisions)
     coverage = _coverage_rows(decisions)
     coverage.to_csv(FUNDAMENTALS_COVERAGE_QUARTER_PATH, index=False, lineterminator="\n")
     evaluable = decisions[
@@ -867,8 +1099,14 @@ def write_coverage_artifacts(
     nonfinancial_mask = decisions["company_family"] == CompanyFamily.NON_FINANCIAL.value
     nonfinancial_count = int(nonfinancial_mask.sum())
     evaluable_count = int((nonfinancial_mask & decisions["evaluable"].map(_bool_value)).sum())
-    unavailable_count = nonfinancial_count - evaluable_count
-    overall_rate = round(evaluable_count / nonfinancial_count * 100, 4) if nonfinancial_count else None
+    true_unavailable_count = int(
+        (nonfinancial_mask & (decisions["failure_classification"] == TRUE_DATA_UNAVAILABLE)).sum()
+    )
+    evaluation_error_count = int(
+        (nonfinancial_mask & (decisions["failure_classification"] == EVALUATION_ERROR)).sum()
+    )
+    coverage_eligible_count = evaluable_count + true_unavailable_count
+    overall_rate = round(evaluable_count / coverage_eligible_count * 100, 4) if coverage_eligible_count else None
     date_match = bool(
         decisions.empty
         or (decisions["fundamentals_as_of"].astype(str) == decisions["entry_signal_information_date"].astype(str)).all()
@@ -883,19 +1121,30 @@ def write_coverage_artifacts(
         future_reference_count += sum(1 for value in references if pd.Timestamp(value) > as_of)
     metrics = dict(execution_metrics or {})
     network_calls = int(metrics.get("network_calls_current_invocation", len(client.audit)))
+    total_network_calls = int(metrics.get("network_calls_total_this_fix", network_calls))
     cache_hits = int(metrics.get("company_cache_hits", decisions["company_cache_hit"].map(_bool_value).sum()))
+    if evaluation_error_count:
+        start = None
+        start_reason = {
+            "reason": "EVALUATION_ERRORS_REMAIN",
+            "evaluation_error_nonfinancial_candidates": evaluation_error_count,
+        }
     summary = {
-        "work_id": FIX04_WORK_ID,
-        "status": "COMPLETE" if start else "BLOCKED",
+        "work_id": FIX05_WORK_ID,
+        "status": "COMPLETE" if start and evaluation_error_count == 0 else "BLOCKED",
         "input_candidate_rows": int(len(decisions)),
         "candidate_date_min": str(decisions["entry_signal_information_date"].min()) if not decisions.empty else None,
         "candidate_date_max": str(decisions["entry_signal_information_date"].max()) if not decisions.empty else None,
         "total_candidates": int(len(decisions)),
         "financial_candidates": financial_count,
         "nonfinancial_candidates": nonfinancial_count,
+        "coverage_eligible_nonfinancial_candidates": coverage_eligible_count,
         "evaluable_nonfinancial_candidates": evaluable_count,
-        "unavailable_nonfinancial_candidates": unavailable_count,
+        "true_data_unavailable_nonfinancial_candidates": true_unavailable_count,
+        "evaluation_error_nonfinancial_candidates": evaluation_error_count,
+        "unavailable_nonfinancial_candidates": true_unavailable_count,
         "data_unavailable_candidates": int((decisions["fundamentals_status"] == DATA_UNAVAILABLE).sum()),
+        "evaluation_error_candidates": int((decisions["failure_classification"] == EVALUATION_ERROR).sum()),
         "unknown_company_family_candidates": int(len(decisions) - financial_count - nonfinancial_count),
         "overall_evaluable_rate": overall_rate,
         "earliest_technically_evaluable_date": earliest,
@@ -904,10 +1153,13 @@ def write_coverage_artifacts(
         "four_quarter_rates": start_reason.get("coverage_rates", {}),
         "common_start_date": start,
         "selection_reason": dict(start_reason),
+        "failure_reason_summary_path": str(FUNDAMENTALS_FAILURE_SUMMARY_PATH.relative_to(ROOT)),
+        "failure_reason_summary": failure_summary,
         "future_filing_leakage_count": future_reference_count,
         "fundamentals_as_of_matches_signal_information_date": date_match,
         "opendart": {
             "network_calls_current_invocation": network_calls,
+            "network_calls_total_this_fix": total_network_calls,
             "company_cache_hits": cache_hits,
         },
         "krx_market_network_calls": 0,
@@ -934,9 +1186,10 @@ def run_coverage(*, env_file: Path) -> tuple[pd.DataFrame, pd.DataFrame, dict[st
     logger.info("Reusing existing raw candidate scan: %d rows", len(candidates))
 
     hydration = _hydration_module()
-    completed_ids = _completed_coverage_ids()
+    completed_ids, retry_ids = _prepare_existing_coverage()
     all_candidate_ids = set(candidates["candidate_id"].astype(str))
     already_complete = completed_ids == all_candidate_ids
+    logger.info("Coverage reuse: completed=%d, retry_required=%d", len(completed_ids), len(retry_ids))
     prior_summary = _read_json(FUNDAMENTALS_COVERAGE_SUMMARY_PATH, {}) or {}
     prior_checkpoint = _read_json(FUNDAMENTALS_COVERAGE_CHECKPOINT_PATH, {}) or {}
     if len(completed_ids) < len(candidates):
@@ -988,10 +1241,22 @@ def run_coverage(*, env_file: Path) -> tuple[pd.DataFrame, pd.DataFrame, dict[st
     decisions = _load_or_empty_csv(FUNDAMENTALS_COVERAGE_CANDIDATE_PATH)
     start, reason = select_common_start(_coverage_rows(decisions))
     prior_opendart = prior_summary.get("opendart", {}) if isinstance(prior_summary, dict) else {}
+    prior_fix_total = 0
+    if isinstance(prior_summary, dict) and prior_summary.get("work_id") == FIX05_WORK_ID:
+        prior_fix_total = int(prior_opendart.get(
+            "network_calls_total_this_fix",
+            prior_opendart.get("network_calls_current_invocation", 0),
+        ) or 0)
     execution_metrics = prior_opendart if already_complete and prior_opendart else None
     if execution_metrics is None and already_complete and prior_checkpoint:
         execution_metrics = {
             "network_calls_current_invocation": prior_checkpoint.get("opendart_network_calls_current_invocation", 0),
+            "network_calls_total_this_fix": prior_checkpoint.get("opendart_network_calls_current_invocation", 0),
+        }
+    if not already_complete:
+        execution_metrics = {
+            "network_calls_current_invocation": len(client.audit),
+            "network_calls_total_this_fix": prior_fix_total + len(client.audit),
         }
     write_coverage_artifacts(decisions, authority, start, reason, client, execution_metrics)
     return candidates, decisions, authority, intervals, tasks
@@ -1002,7 +1267,7 @@ def main() -> int:
     parser.add_argument("--env-file", type=Path, default=ROOT.parent / "env.md")
     args = parser.parse_args()
     _candidates, _decisions, _authority, _intervals, _tasks = run_coverage(env_file=args.env_file)
-    logger.info("FIX04 output: coverage artifacts written under %s", FUNDAMENTALS_COVERAGE_DIR)
+    logger.info("FIX05 output: coverage artifacts written under %s", FUNDAMENTALS_COVERAGE_DIR)
     return 0
 
 
