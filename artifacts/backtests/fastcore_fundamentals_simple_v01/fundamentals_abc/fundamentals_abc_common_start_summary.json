@@ -1,0 +1,117 @@
+{
+  "work_id": "FASTCORE_FUNDAMENTALS_ABC_OPENDART_CONNECTIVITY_AND_Q3_RECOVERY_V01",
+  "status": "COMPLETE",
+  "raw_candidate_count": 9754,
+  "raw_candidate_sha256": "6f79fdaf7a341ec81c1fff4f2034b29f690651c7a08f1569c8cda82367114591",
+  "original_common_start_date": "2021-04-01",
+  "connectivity_status": "OPENDART_CONNECTIVITY_PASS",
+  "connectivity_artifact": "artifacts/backtests/fastcore_fundamentals_simple_v01/fundamentals_abc/fundamentals_abc_opendart_connectivity.json",
+  "q3_recovery": {
+    "candidate_count": 150,
+    "pre_live_evaluable": 132,
+    "opendart_pending": 14,
+    "opendart_candidates_attempted": 14,
+    "opendart_recovered": 9,
+    "true_data_unavailable": 5,
+    "unresolved_not_needed": 0,
+    "evaluation_errors": 0,
+    "final_evaluable": 141,
+    "final_rate": 94.0
+  },
+  "initial_coverage": {
+    "2021Q2": {
+      "nonfinancial_candidate_count": 418,
+      "evaluable_count": 366,
+      "rate": 87.559809
+    },
+    "2021Q3": {
+      "nonfinancial_candidate_count": 150,
+      "evaluable_count": 117,
+      "rate": 78.0
+    },
+    "2021Q4": {
+      "nonfinancial_candidate_count": 46,
+      "evaluable_count": 42,
+      "rate": 91.304348
+    },
+    "2022Q1": {
+      "nonfinancial_candidate_count": 43,
+      "evaluable_count": 43,
+      "rate": 100.0
+    }
+  },
+  "final_quarter_coverage": [
+    {
+      "quarter": "2021Q2",
+      "nonfinancial_candidate_count": 418,
+      "initial_evaluable_count": 366,
+      "initial_unavailable_count": 52,
+      "recovered_from_existing_cache_count": 31,
+      "recovered_from_opendart_count": 0,
+      "final_evaluable_count": 397,
+      "true_data_unavailable_count": 10,
+      "evaluation_error_count": 0,
+      "final_evaluable_rate": 94.976077,
+      "qualifying_90pct": true
+    },
+    {
+      "quarter": "2021Q3",
+      "nonfinancial_candidate_count": 150,
+      "initial_evaluable_count": 117,
+      "initial_unavailable_count": 33,
+      "recovered_from_existing_cache_count": 15,
+      "recovered_from_opendart_count": 9,
+      "final_evaluable_count": 141,
+      "true_data_unavailable_count": 9,
+      "evaluation_error_count": 0,
+      "final_evaluable_rate": 94.0,
+      "qualifying_90pct": true
+    },
+    {
+      "quarter": "2021Q4",
+      "nonfinancial_candidate_count": 46,
+      "initial_evaluable_count": 42,
+      "initial_unavailable_count": 4,
+      "recovered_from_existing_cache_count": 3,
+      "recovered_from_opendart_count": 0,
+      "final_evaluable_count": 45,
+      "true_data_unavailable_count": 1,
+      "evaluation_error_count": 0,
+      "final_evaluable_rate": 97.826087,
+      "qualifying_90pct": true
+    },
+    {
+      "quarter": "2022Q1",
+      "nonfinancial_candidate_count": 43,
+      "initial_evaluable_count": 43,
+      "initial_unavailable_count": 0,
+      "recovered_from_existing_cache_count": 0,
+      "recovered_from_opendart_count": 0,
+      "final_evaluable_count": 43,
+      "true_data_unavailable_count": 0,
+      "evaluation_error_count": 0,
+      "final_evaluable_rate": 100.0,
+      "qualifying_90pct": true
+    }
+  ],
+  "first_qualifying_4_quarter_window": "2021Q2",
+  "ABC_COMMON_START_QUARTER": "2021Q2",
+  "ABC_COMMON_START_DATE": "2021-04-01",
+  "selected_abc_common_start_quarter": "2021Q2",
+  "selected_abc_common_start_date": "2021-04-01",
+  "selection_method": "FIRST_FOUR_CONSECUTIVE_QUARTERS_GE_90_EVALUABLE_ZERO_ERRORS",
+  "opendart_call_count": 19,
+  "recovery_opendart_call_count": 14,
+  "connectivity_opendart_call_count": 5,
+  "future_filing_leakage_count": 0,
+  "receipt_date_violations": 0,
+  "evaluation_error_count": 0,
+  "market_network_call_count": {
+    "KRX": 0,
+    "PyKRX": 0,
+    "Naver": 0,
+    "KRX_HTML": 0
+  },
+  "control_artifacts_read_only": true,
+  "return_backtest": "NOT_RUN"
+}

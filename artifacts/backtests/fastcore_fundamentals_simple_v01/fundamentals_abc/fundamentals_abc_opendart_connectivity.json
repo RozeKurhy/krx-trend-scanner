@@ -1,0 +1,61 @@
+{
+  "tested_at": "2026-09-11",
+  "dns": {
+    "status": "PASS",
+    "error": null,
+    "resolved_host_count": 1,
+    "transport_error_type": null
+  },
+  "https": {
+    "status": "PASS",
+    "http_status": 302,
+    "error": null
+  },
+  "json_endpoint": {
+    "endpoint": "company.json",
+    "http_status": 200,
+    "response_byte_length": 549,
+    "status": "000",
+    "classification": "PASS",
+    "error_type": null,
+    "json_parseable": true
+  },
+  "list_endpoint": {
+    "endpoint": "list.json",
+    "http_status": 200,
+    "response_byte_length": 23825,
+    "status": "000",
+    "classification": "PASS",
+    "error_type": null,
+    "json_parseable": true
+  },
+  "financial_json_diagnostic": {
+    "endpoint": "fnlttSinglAcntAll.json",
+    "http_status": 200,
+    "response_byte_length": 102362,
+    "status": "000",
+    "classification": "PASS",
+    "error_type": null,
+    "json_parseable": true,
+    "historical_authority": false
+  },
+  "corp_code_binary": {
+    "endpoint": "corpCode.xml",
+    "http_status": 200,
+    "response_byte_length": 3610733,
+    "valid_zip": true,
+    "error_type": null
+  },
+  "known_good_xbrl": {
+    "endpoint": "fnlttXbrl.xml",
+    "rcept_no": "20210517000579",
+    "reprt_code": "11013",
+    "http_status": 200,
+    "response_byte_length": 218986,
+    "valid_zip": true,
+    "error_type": null
+  },
+  "overall_connectivity_status": "OPENDART_CONNECTIVITY_PASS",
+  "opendart_call_count": 5,
+  "credential_in_artifact": false
+}
