@@ -88,10 +88,17 @@ OUT_DIR = ROOT / "artifacts/backtests/fastcore_fundamentals_simple_v01"
 RAW_CANDIDATE_DIR = OUT_DIR / "raw_candidates"
 RAW_CANDIDATE_PATH = RAW_CANDIDATE_DIR / "fastcore_raw_candidates.csv"
 RAW_CANDIDATE_CHECKPOINT_PATH = RAW_CANDIDATE_DIR / "scan_checkpoint.json"
+FUNDAMENTALS_COVERAGE_DIR = OUT_DIR / "fundamentals_coverage"
+FUNDAMENTALS_COVERAGE_CANDIDATE_PATH = FUNDAMENTALS_COVERAGE_DIR / "fundamentals_candidate_evaluability.csv"
+FUNDAMENTALS_COVERAGE_QUARTER_PATH = FUNDAMENTALS_COVERAGE_DIR / "fundamentals_coverage_by_quarter.csv"
+FUNDAMENTALS_COVERAGE_SUMMARY_PATH = FUNDAMENTALS_COVERAGE_DIR / "fundamentals_coverage_summary.json"
+FUNDAMENTALS_COVERAGE_CHECKPOINT_PATH = FUNDAMENTALS_COVERAGE_DIR / "coverage_checkpoint.json"
 BACKTEST_END = pd.Timestamp("2026-08-21")
 FUNDAMENTALS_HISTORY_START = pd.Timestamp("2015-01-01")
 MAX_WORKERS = 1
 CANDIDATE_BATCH_SIZE = 25
+FUNDAMENTALS_COVERAGE_BATCH_SIZE = 25
+FIX04_WORK_ID = "FASTCORE_SIMPLE_BACKTEST_WITH_FUNDAMENTALS_V01_FIX04_COVERAGE"
 FUNDAMENTALS_EVALUABLE = {
     PASS,
     FILTERED_ANNUAL_REVENUE,
@@ -526,31 +533,119 @@ def _quarter(value: str) -> str:
 
 
 def _coverage_rows(decisions: pd.DataFrame) -> pd.DataFrame:
+    columns = [
+        "quarter", "total_raw_candidates", "financial_candidates", "nonfinancial_candidates",
+        "evaluable_nonfinancial_candidates", "unavailable_nonfinancial_candidates",
+        "evaluable_rate", "qualifies_90_percent", "total_nonfinancial_candidates", "evaluable_count",
+    ]
     if decisions.empty:
-        return pd.DataFrame(columns=["quarter", "total_nonfinancial_candidates", "evaluable_count", "data_unavailable_count", "evaluable_rate"])
+        return pd.DataFrame(columns=columns)
     frame = decisions.copy()
-    frame["quarter"] = frame["fundamentals_as_of"].map(_quarter)
-    frame = frame[frame["company_family"] == CompanyFamily.NON_FINANCIAL.value].copy()
-    if frame.empty:
-        return pd.DataFrame(columns=["quarter", "total_nonfinancial_candidates", "evaluable_count", "data_unavailable_count", "evaluable_rate"])
-    status_order = [PASS, FILTERED_ANNUAL_REVENUE, FILTERED_QUARTERLY_REVENUE, FILTERED_OPERATING_LOSS, FILTERED_NET_LOSS]
-    grouped = frame.groupby("quarter", sort=True)
+    frame["quarter"] = frame["entry_signal_information_date"].map(_quarter)
+    frame = frame[frame["quarter"].notna()].copy()
+    frame["_evaluable"] = frame["evaluable"].map(_bool_value)
     rows: list[dict[str, Any]] = []
-    for q, group in grouped:
-        counts = group["fundamentals_status"].value_counts().to_dict()
-        total = len(group)
-        evaluable = int(group["evaluable"].astype(bool).sum())
-        row: dict[str, Any] = {
-            "quarter": q,
-            "total_nonfinancial_candidates": total,
+    for quarter, group in frame.groupby("quarter", sort=True):
+        financial = int((group["company_family"] == CompanyFamily.FINANCIAL.value).sum())
+        nonfinancial_mask = group["company_family"] == CompanyFamily.NON_FINANCIAL.value
+        nonfinancial = int(nonfinancial_mask.sum())
+        evaluable = int((nonfinancial_mask & group["_evaluable"]).sum())
+        unavailable = nonfinancial - evaluable
+        rate = round(evaluable / nonfinancial * 100, 4) if nonfinancial else None
+        rows.append({
+            "quarter": str(quarter),
+            "total_raw_candidates": int(len(group)),
+            "financial_candidates": financial,
+            "nonfinancial_candidates": nonfinancial,
+            "evaluable_nonfinancial_candidates": evaluable,
+            "unavailable_nonfinancial_candidates": unavailable,
+            "evaluable_rate": rate,
+            "qualifies_90_percent": bool(rate is not None and rate >= 90.0 and nonfinancial > 0),
+            "total_nonfinancial_candidates": nonfinancial,
             "evaluable_count": evaluable,
-            "data_unavailable_count": int(counts.get(DATA_UNAVAILABLE, 0)),
-            "evaluable_rate": round(evaluable / total * 100, 4) if total else None,
-        }
-        for status in status_order:
-            row[f"{status.lower()}_count"] = int(counts.get(status, 0))
-        rows.append(row)
-    return pd.DataFrame(rows)
+        })
+    return pd.DataFrame(rows, columns=columns)
+
+
+def _bool_value(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+    return str(value).strip().lower() in {"1", "true", "yes"}
+
+
+FUNDAMENTALS_COVERAGE_COLUMNS = [
+    "candidate_id", "ticker", "isu_cd", "market", "name", "candidate_signal_date",
+    "entry_signal_information_date", "quarter", "company_family", "fundamentals_as_of",
+    "fundamentals_status", "filter_status", "evaluable", "reason", "latest_fy",
+    "latest_quarter", "filing_references", "company_cache_hit", "evaluation_source",
+]
+
+
+def _coverage_candidate_row(row: Mapping[str, Any]) -> dict[str, Any]:
+    information_date = _date_text(row.get("entry_signal_information_date"))
+    status = str(row.get("fundamentals_status") or DATA_UNAVAILABLE)
+    references = row.get("selected_filing_receipt_dates") or []
+    return {
+        "candidate_id": str(row.get("candidate_id") or ""),
+        "ticker": str(row.get("ticker") or ""),
+        "isu_cd": str(row.get("isu_cd") or ""),
+        "market": str(row.get("market") or ""),
+        "name": str(row.get("name") or ""),
+        "candidate_signal_date": _date_text(row.get("candidate_signal_date")),
+        "entry_signal_information_date": information_date,
+        "quarter": _quarter(information_date) if information_date else None,
+        "company_family": row.get("company_family"),
+        "fundamentals_as_of": _date_text(row.get("fundamentals_as_of") or information_date),
+        "fundamentals_status": status,
+        "filter_status": status,
+        "evaluable": bool(row.get("evaluable")),
+        "reason": row.get("reject_reason"),
+        "latest_fy": row.get("latest_fy"),
+        "latest_quarter": row.get("latest_quarter"),
+        "filing_references": json.dumps(references, ensure_ascii=False, separators=(",", ":")),
+        "company_cache_hit": bool(row.get("company_cache_hit")),
+        "evaluation_source": row.get("evaluation_source"),
+    }
+
+
+def _append_coverage_rows(rows: Iterable[Mapping[str, Any]]) -> None:
+    rows = list(rows)
+    if not rows:
+        return
+    FUNDAMENTALS_COVERAGE_DIR.mkdir(parents=True, exist_ok=True)
+    write_header = not FUNDAMENTALS_COVERAGE_CANDIDATE_PATH.exists() or FUNDAMENTALS_COVERAGE_CANDIDATE_PATH.stat().st_size == 0
+    with FUNDAMENTALS_COVERAGE_CANDIDATE_PATH.open("a", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=FUNDAMENTALS_COVERAGE_COLUMNS, lineterminator="\n")
+        if write_header:
+            writer.writeheader()
+        for row in rows:
+            writer.writerow({key: row.get(key) for key in FUNDAMENTALS_COVERAGE_COLUMNS})
+
+
+def _completed_coverage_ids() -> set[str]:
+    if not FUNDAMENTALS_COVERAGE_CANDIDATE_PATH.exists():
+        return set()
+    frame = pd.read_csv(FUNDAMENTALS_COVERAGE_CANDIDATE_PATH, usecols=["candidate_id"], dtype={"candidate_id": str})
+    return set(frame["candidate_id"].dropna().astype(str))
+
+
+def _write_coverage_checkpoint(
+    *,
+    status: str,
+    input_candidate_rows: int,
+    completed_ids: set[str],
+    client: OpenDartClient,
+) -> None:
+    _json_write(FUNDAMENTALS_COVERAGE_CHECKPOINT_PATH, {
+        "work_id": FIX04_WORK_ID,
+        "status": status,
+        "input_candidate_rows": int(input_candidate_rows),
+        "completed_candidate_count": len(completed_ids),
+        "completed_candidate_ids": sorted(completed_ids),
+        "opendart_network_calls_current_invocation": len(client.audit),
+        "company_cache_hits_current_invocation": None,
+        "krx_market_network_calls": 0,
+    })
 
 
 def _first_trading_day_of_quarter(label: str) -> str | None:
@@ -643,27 +738,52 @@ def _bounded_f2(period_provider: PeriodizationProvider, ticker: str, as_of: str,
     )
 
 
+def _load_company_live(client: OpenDartClient, ticker: str, corp_code: str) -> tuple[dict[str, Any] | None, bool]:
+    hydration = _hydration_module()
+    company, cache_hit = hydration._load_company_metadata(
+        client, ticker, corp_code, "", COMPANY_CACHE_DIR,
+    )
+    return company, bool(cache_hit)
+
+
+def _hydration_module() -> Any:
+    """Load the sibling hydration module from both pytest and CLI entrypoints."""
+    try:
+        return __import__("scripts.hydrate_fundamentals_v1_production", fromlist=["QuotaBoundOpenDartClient"])
+    except ModuleNotFoundError as exc:
+        if exc.name != "scripts":
+            raise
+        return __import__("hydrate_fundamentals_v1_production", fromlist=["QuotaBoundOpenDartClient"])
+
+
 def evaluate_one_candidate(
     candidate: Mapping[str, Any],
     *,
     corp_repo: CorpCodeRepository,
     period_provider: PeriodizationProvider,
     live: bool,
+    client: OpenDartClient | None = None,
 ) -> dict[str, Any]:
     ticker = str(candidate["ticker"])
-    as_of = str(candidate["fundamentals_as_of"])
+    as_of = str(candidate["entry_signal_information_date"])
     row: dict[str, Any] = dict(candidate)
+    row["fundamentals_as_of"] = as_of
     row.update({
         "company_family": None, "corp_code": None, "fundamentals_status": DATA_UNAVAILABLE,
         "evaluable": False, "gate_pass": False, "reject_reason": "DATA_UNAVAILABLE",
         "annual_revenue": None, "four_quarter_avg_revenue": None,
         "ttm_operating_income": None, "ttm_net_income": None,
         "selected_filing_receipt_dates": [], "evaluation_source": "NETWORK" if live else "LOCAL_CACHE",
+        "company_cache_hit": False, "latest_fy": None, "latest_quarter": None,
     })
     try:
         record = corp_repo.get_record(ticker)
         corp_code = str(record.corp_code)
         company = _company(ticker, corp_code)
+        if company is not None:
+            row["company_cache_hit"] = True
+        elif live and client is not None:
+            company, row["company_cache_hit"] = _load_company_live(client, ticker, corp_code)
         if company is None:
             row["reject_reason"] = "COMPANY_METADATA_UNAVAILABLE"
             return row
@@ -693,9 +813,16 @@ def evaluate_one_candidate(
             "four_quarter_avg_revenue": f4.quarterly_avg_revenue,
             "ttm_operating_income": f4.ttm_operating_income,
             "ttm_net_income": f4.ttm_net_income,
+            "latest_fy": f4.latest_fy,
+            "latest_quarter": f4.latest_quarter,
         })
         return row
     except Exception as exc:
+        # A hard OpenDART quota stop must abort the run so the checkpoint
+        # remains resumable; it must never be converted into row-level
+        # DATA_UNAVAILABLE for the remaining candidates.
+        if type(exc).__name__ == "QuotaBudgetExceeded":
+            raise
         # Never persist exception text: OpenDART diagnostics are redacted at
         # the client boundary, but the ledger only needs a stable category.
         row["reject_reason"] = f"{type(exc).__name__}:DATA_UNAVAILABLE"
@@ -704,13 +831,14 @@ def evaluate_one_candidate(
 
 def evaluate_candidates(candidates: pd.DataFrame, *, live: bool, client: OpenDartClient | None = None) -> pd.DataFrame:
     corp_repo = CorpCodeRepository.from_cache(CORP_CACHE_PATH)
-    registry = (FilingRegistry(client=None, cache_dir=OPENDART_FILINGS_DIR) if not live else __import__("scripts.hydrate_fundamentals_v1_production", fromlist=["BoundedFilingRegistry"]).BoundedFilingRegistry(client, cache_dir=OPENDART_FILINGS_DIR))
+    hydration = _hydration_module() if live else None
+    registry = (FilingRegistry(client=None, cache_dir=OPENDART_FILINGS_DIR) if not live else hydration.BoundedFilingRegistry(client, cache_dir=OPENDART_FILINGS_DIR))
     xbrl = XbrlRepository(client if live else None, cache_dir=OPENDART_XBRL_DIR)
     provider = PeriodizationProvider(corp_repo, registry, xbrl)
     rows: list[dict[str, Any]] = []
     ordered = candidates.sort_values(["fundamentals_as_of", "ticker"], ascending=[False, True], kind="mergesort")
     for index, candidate in enumerate(ordered.to_dict("records"), start=1):
-        rows.append(evaluate_one_candidate(candidate, corp_repo=corp_repo, period_provider=provider, live=live))
+        rows.append(evaluate_one_candidate(candidate, corp_repo=corp_repo, period_provider=provider, live=live, client=client))
         if index % 50 == 0 or index == len(ordered):
             logger.info("Fundamentals candidate evaluation: %d/%d (%s)", index, len(ordered), "live" if live else "cache")
     frame = pd.DataFrame(rows)
@@ -719,56 +847,77 @@ def evaluate_candidates(candidates: pd.DataFrame, *, live: bool, client: OpenDar
     return frame.drop_duplicates("candidate_id", keep="last").sort_values("candidate_id", kind="mergesort").reset_index(drop=True)
 
 
-def write_coverage_artifacts(candidates: pd.DataFrame, decisions: pd.DataFrame, authority: Any, start: str | None, start_reason: Mapping[str, Any]) -> None:
-    OUT_DIR.mkdir(parents=True, exist_ok=True)
-    candidates.to_csv(RAW_CANDIDATE_PATH, index=False)
-    decisions.to_csv(OUT_DIR / "fundamentals_gate_decisions.csv", index=False)
+def write_coverage_artifacts(
+    decisions: pd.DataFrame,
+    authority: Any,
+    start: str | None,
+    start_reason: Mapping[str, Any],
+    client: OpenDartClient,
+    execution_metrics: Mapping[str, Any] | None = None,
+) -> tuple[pd.DataFrame, dict[str, Any]]:
+    FUNDAMENTALS_COVERAGE_DIR.mkdir(parents=True, exist_ok=True)
     coverage = _coverage_rows(decisions)
-    coverage.to_csv(OUT_DIR / "fundamentals_coverage_by_quarter.csv", index=False)
-    initial = coverage.head(4).to_dict("records")
+    coverage.to_csv(FUNDAMENTALS_COVERAGE_QUARTER_PATH, index=False, lineterminator="\n")
+    evaluable = decisions[
+        (decisions["company_family"] == CompanyFamily.NON_FINANCIAL.value)
+        & decisions["evaluable"].map(_bool_value)
+    ]
+    earliest = str(evaluable["entry_signal_information_date"].min()) if not evaluable.empty else None
+    financial_count = int((decisions["company_family"] == CompanyFamily.FINANCIAL.value).sum())
+    nonfinancial_mask = decisions["company_family"] == CompanyFamily.NON_FINANCIAL.value
+    nonfinancial_count = int(nonfinancial_mask.sum())
+    evaluable_count = int((nonfinancial_mask & decisions["evaluable"].map(_bool_value)).sum())
+    unavailable_count = nonfinancial_count - evaluable_count
+    overall_rate = round(evaluable_count / nonfinancial_count * 100, 4) if nonfinancial_count else None
+    date_match = bool(
+        decisions.empty
+        or (decisions["fundamentals_as_of"].astype(str) == decisions["entry_signal_information_date"].astype(str)).all()
+    )
+    future_reference_count = 0
+    for row in decisions.to_dict("records"):
+        as_of = pd.Timestamp(row["entry_signal_information_date"])
+        try:
+            references = json.loads(row.get("filing_references") or "[]")
+        except (TypeError, json.JSONDecodeError):
+            references = []
+        future_reference_count += sum(1 for value in references if pd.Timestamp(value) > as_of)
+    metrics = dict(execution_metrics or {})
+    network_calls = int(metrics.get("network_calls_current_invocation", len(client.audit)))
+    cache_hits = int(metrics.get("company_cache_hits", decisions["company_cache_hit"].map(_bool_value).sum()))
     summary = {
-        "status": "COVERAGE_READY" if start else "BLOCKED",
-        "earliest_technically_evaluable_date": str(candidates["fundamentals_as_of"].min()) if not candidates.empty else None,
+        "work_id": FIX04_WORK_ID,
+        "status": "COMPLETE" if start else "BLOCKED",
+        "input_candidate_rows": int(len(decisions)),
+        "candidate_date_min": str(decisions["entry_signal_information_date"].min()) if not decisions.empty else None,
+        "candidate_date_max": str(decisions["entry_signal_information_date"].max()) if not decisions.empty else None,
+        "total_candidates": int(len(decisions)),
+        "financial_candidates": financial_count,
+        "nonfinancial_candidates": nonfinancial_count,
+        "evaluable_nonfinancial_candidates": evaluable_count,
+        "unavailable_nonfinancial_candidates": unavailable_count,
+        "data_unavailable_candidates": int((decisions["fundamentals_status"] == DATA_UNAVAILABLE).sum()),
+        "unknown_company_family_candidates": int(len(decisions) - financial_count - nonfinancial_count),
+        "overall_evaluable_rate": overall_rate,
+        "earliest_technically_evaluable_date": earliest,
+        "selected_quarter": start_reason.get("selected_quarter"),
+        "four_quarter_sequence": start_reason.get("quarters", []),
+        "four_quarter_rates": start_reason.get("coverage_rates", {}),
         "common_start_date": start,
-        "common_start_selection_reason": dict(start_reason),
-        "initial_four_quarter_coverage": initial,
-        "candidate_count": int(len(candidates)),
-        "decision_count": int(len(decisions)),
-        "financial_excluded_from_denominator": True,
-        "future_filing_leakage_count": 0,
-        "fundamentals_as_of_matches_signal_information_date": bool(
-            decisions.empty or (decisions["fundamentals_as_of"] == decisions["entry_signal_information_date"]).all()
-        ),
-        "network_requests": None,
-    }
-    _json_write(OUT_DIR / "coverage_summary.json", summary)
-    contract = {
-        "work_id": "FASTCORE_SIMPLE_BACKTEST_WITH_FUNDAMENTALS_V01_FIX01",
+        "selection_reason": dict(start_reason),
+        "future_filing_leakage_count": future_reference_count,
+        "fundamentals_as_of_matches_signal_information_date": date_match,
+        "opendart": {
+            "network_calls_current_invocation": network_calls,
+            "company_cache_hits": cache_hits,
+        },
+        "krx_market_network_calls": 0,
         "authority": "EFFECTIVE_CORRECTED_AUTHORITY_V01",
         "authority_sha256": authority.pit_sha256,
-        "pit_population_count": authority.population_count,
         "pit_interval_count": authority.pit_count,
-        "earliest_technically_evaluable_date": summary["earliest_technically_evaluable_date"],
-        "common_start_date": start,
-        "common_start_selection_reason": dict(start_reason),
-        "backtest_end": BACKTEST_END.strftime("%Y-%m-%d"),
-        "fundamentals_history_start": FUNDAMENTALS_HISTORY_START.strftime("%Y-%m-%d"),
-        "entry_filter": {
-            "market_cap_threshold_krw": MARKET_CAP_THRESHOLD,
-            "avg_trading_value_20d_threshold_krw": AVG_TRADING_VALUE_20D_THRESHOLD,
-            "close_threshold_krw": CLOSE_THRESHOLD,
-            "entry_only": True,
-            "reevaluated_on_reentry": True,
-        },
-        "current_survivor_universe_used": False,
-        "identity_key": "ticker|isu_cd|market",
-        "identity_lifecycle_clipping": True,
-        "identity_scoped_20d_reset": True,
-        "market_network_requests": 0,
-        "coverage_scan_uses_returns": False,
-        "initial_four_quarter_coverage": initial,
+        "raw_candidate_artifact_unchanged": True,
     }
-    _json_write(OUT_DIR / "backtest_contract.json", contract)
+    _json_write(FUNDAMENTALS_COVERAGE_SUMMARY_PATH, summary)
+    return coverage, summary
 
 
 def _load_or_empty_csv(path: Path) -> pd.DataFrame:
@@ -777,31 +926,83 @@ def _load_or_empty_csv(path: Path) -> pd.DataFrame:
     return pd.read_csv(path, dtype={"ticker": str, "isu_cd": str, "candidate_id": str})
 
 
-def run_coverage() -> tuple[pd.DataFrame, pd.DataFrame, dict[str, Any], dict[tuple[str, str, str], list[tuple[str, str]]], list[dict[str, Any]]]:
+def run_coverage(*, env_file: Path) -> tuple[pd.DataFrame, pd.DataFrame, dict[str, Any], dict[tuple[str, str, str], list[tuple[str, str]]], list[dict[str, Any]]]:
     authority, intervals, tasks = _load_authority()
     candidates = _load_or_empty_csv(RAW_CANDIDATE_PATH)
-    if candidates.empty:
-        candidates = scan_raw_candidates(tasks, intervals)
+    if len(candidates) != 9754 or candidates["candidate_id"].duplicated().any():
+        raise RuntimeError("raw candidate artifact must contain exactly 9754 unique rows")
+    logger.info("Reusing existing raw candidate scan: %d rows", len(candidates))
+
+    hydration = _hydration_module()
+    completed_ids = _completed_coverage_ids()
+    all_candidate_ids = set(candidates["candidate_id"].astype(str))
+    already_complete = completed_ids == all_candidate_ids
+    prior_summary = _read_json(FUNDAMENTALS_COVERAGE_SUMMARY_PATH, {}) or {}
+    prior_checkpoint = _read_json(FUNDAMENTALS_COVERAGE_CHECKPOINT_PATH, {}) or {}
+    if len(completed_ids) < len(candidates):
+        secret = hydration._load_opendart_key(env_file)
+        client: OpenDartClient = hydration.QuotaBoundOpenDartClient(api_key=secret)
     else:
-        logger.info("Reusing existing raw candidate scan: %d rows", len(candidates))
-    decisions = _load_or_empty_csv(OUT_DIR / "fundamentals_gate_decisions.csv")
-    if decisions.empty or set(decisions.get("candidate_id", ())) != set(candidates.get("candidate_id", ())):
-        decisions = evaluate_candidates(candidates, live=False)
-    blocked = decisions[decisions["fundamentals_status"] == DATA_UNAVAILABLE] if not decisions.empty else decisions
-    if not blocked.empty:
-        logger.info("Cache-only Fundamentals gaps: %d; targeted 2015+ hydration is required", len(blocked))
+        client = hydration.QuotaBoundOpenDartClient(api_key="")
+    corp_repo = CorpCodeRepository.from_cache(CORP_CACHE_PATH)
+    registry = hydration.BoundedFilingRegistry(client, cache_dir=OPENDART_FILINGS_DIR)
+    xbrl = XbrlRepository(client, cache_dir=OPENDART_XBRL_DIR)
+    provider = PeriodizationProvider(corp_repo, registry, xbrl)
+    ordered = candidates.sort_values(
+        ["entry_signal_information_date", "ticker", "candidate_id"],
+        ascending=[False, True, True], kind="mergesort",
+    )
+    if not already_complete:
+        _write_coverage_checkpoint(
+            status="RUNNING", input_candidate_rows=len(candidates), completed_ids=completed_ids, client=client,
+        )
+    else:
+        logger.info("Coverage checkpoint already complete; replaying artifacts without network calls")
+    batch: list[dict[str, Any]] = []
+    for candidate in ordered.to_dict("records"):
+        candidate_id = str(candidate["candidate_id"])
+        if candidate_id in completed_ids:
+            continue
+        batch.append(evaluate_one_candidate(
+            candidate, corp_repo=corp_repo, period_provider=provider, live=True, client=client,
+        ))
+        if len(batch) >= FUNDAMENTALS_COVERAGE_BATCH_SIZE:
+            _append_coverage_rows(_coverage_candidate_row(row) for row in batch)
+            completed_ids.update(str(row["candidate_id"]) for row in batch)
+            batch.clear()
+            _write_coverage_checkpoint(
+                status="RUNNING", input_candidate_rows=len(candidates), completed_ids=completed_ids, client=client,
+            )
+            logger.info("Fundamentals coverage evaluation: %d/%d candidates", len(completed_ids), len(candidates))
+            gc.collect()
+    if batch:
+        _append_coverage_rows(_coverage_candidate_row(row) for row in batch)
+        completed_ids.update(str(row["candidate_id"]) for row in batch)
+        batch.clear()
+    if completed_ids != all_candidate_ids:
+        raise RuntimeError("coverage evaluation did not complete all raw candidates")
+    if not already_complete:
+        _write_coverage_checkpoint(
+            status="COMPLETE", input_candidate_rows=len(candidates), completed_ids=completed_ids, client=client,
+        )
+    decisions = _load_or_empty_csv(FUNDAMENTALS_COVERAGE_CANDIDATE_PATH)
     start, reason = select_common_start(_coverage_rows(decisions))
-    write_coverage_artifacts(candidates, decisions, authority, start, reason)
+    prior_opendart = prior_summary.get("opendart", {}) if isinstance(prior_summary, dict) else {}
+    execution_metrics = prior_opendart if already_complete and prior_opendart else None
+    if execution_metrics is None and already_complete and prior_checkpoint:
+        execution_metrics = {
+            "network_calls_current_invocation": prior_checkpoint.get("opendart_network_calls_current_invocation", 0),
+        }
+    write_coverage_artifacts(decisions, authority, start, reason, client, execution_metrics)
     return candidates, decisions, authority, intervals, tasks
 
 
 def main() -> int:
-    """Run only the FIX02 raw candidate scan; later coverage is out of scope."""
-    parser = argparse.ArgumentParser(description="Run the OOM-safe FastCore raw candidate scan")
-    parser.parse_args()
-    _authority, intervals, tasks = _load_authority()
-    candidates = scan_raw_candidates(tasks, intervals)
-    logger.info("FIX02 output: %d raw candidates at %s", len(candidates), RAW_CANDIDATE_PATH)
+    parser = argparse.ArgumentParser(description="Compute historical PIT Fundamentals coverage from existing FastCore candidates")
+    parser.add_argument("--env-file", type=Path, default=ROOT.parent / "env.md")
+    args = parser.parse_args()
+    _candidates, _decisions, _authority, _intervals, _tasks = run_coverage(env_file=args.env_file)
+    logger.info("FIX04 output: coverage artifacts written under %s", FUNDAMENTALS_COVERAGE_DIR)
     return 0
 
 
