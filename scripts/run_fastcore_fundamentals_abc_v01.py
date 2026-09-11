@@ -13,6 +13,7 @@ from contextlib import contextmanager
 from dataclasses import asdict
 import hashlib
 import json
+import gc
 from pathlib import Path
 import socket
 import time
@@ -558,6 +559,12 @@ def run_pipeline(*, require_preflight: bool = True) -> tuple[pd.DataFrame, pd.Da
             print(f"ABC fundamentals progress: {diagnostics['catalog_tickers']}/{len(tasks_by_ticker)} tickers, entries={len(entry_rows)}", flush=True)
 
     entry_frame = _entry_frame(entry_rows)
+    # Entry evaluation is complete. The simulation only needs the immutable
+    # quarter-event lists; retaining every canonical observation across all
+    # 691 tickers causes Repository V2 daily loads to compete for memory.
+    for catalog in catalogs.values():
+        catalog.observations.clear()
+    gc.collect()
     preflight = _preflight(all_candidates, entry_frame)
     if require_preflight and not preflight["pass"]:
         validation = {
@@ -588,7 +595,7 @@ def run_pipeline(*, require_preflight: bool = True) -> tuple[pd.DataFrame, pd.Da
         "fundamental_c_logic_violations": 0, "fundamental_same_open_ties": 0,
         "evaluation_errors": int(diagnostics["evaluation_errors"]), "network_calls": 0,
     }
-    for ticker in sorted(tasks_by_ticker):
+    for processed_ticker, ticker in enumerate(sorted(tasks_by_ticker), 1):
         daily = loader.load(str(ticker))
         if daily is None or daily.empty:
             raise RuntimeError(f"missing Repository V2 daily data for raw candidate ticker {ticker}")
@@ -606,7 +613,8 @@ def run_pipeline(*, require_preflight: bool = True) -> tuple[pd.DataFrame, pd.Da
                 signal = pd.Timestamp(context["signal_date"]).normalize()
                 cid = frozen_candidate_id(lifecycle.ticker, lifecycle.isu_cd, lifecycle.market, signal)
                 base_pass = cid in allowed_ids and COMMON_START_DATE <= signal <= SIGNAL_END_DATE
-                evaluation = evaluations.get((cid, str(context.get("signal_information_date"))))
+                information_key = pd.Timestamp(context.get("signal_information_date")).strftime("%Y-%m-%d")
+                evaluation = evaluations.get((cid, information_key))
                 abc_pass = bool(evaluation and evaluation.abc_entry_gate_pass)
                 if evaluation is not None:
                     source_dates = [value for value in evaluation.selected_source_receipt_dates.split("|") if value]
@@ -660,6 +668,13 @@ def run_pipeline(*, require_preflight: bool = True) -> tuple[pd.DataFrame, pd.Da
             records.extend(task_records)
             del raw_panel
         del daily
+        # Catalog observations are only needed while this ticker's tasks are
+        # simulated. Releasing them here prevents the bounded ABC run from
+        # retaining hundreds of ticker histories and exhausting memory before
+        # the Repository V2 loader reaches the end of the universe.
+        catalogs.pop(str(ticker), None)
+        if processed_ticker % 25 == 0:
+            gc.collect()
 
     validation["overlapping_positions"] = _overlap_count(records)
     trade_frame = _trade_frame(records, eval_by_trade_key)

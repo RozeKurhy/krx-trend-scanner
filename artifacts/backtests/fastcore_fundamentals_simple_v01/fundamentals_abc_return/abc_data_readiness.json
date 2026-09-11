@@ -1,0 +1,44 @@
+{
+  "status": "COMPLETE",
+  "raw_candidate_rows": 9754,
+  "raw_candidate_sha256": "6f79fdaf7a341ec81c1fff4f2034b29f690651c7a08f1569c8cda82367114591",
+  "candidate_classification_counts": {
+    "TRUE_DATA_UNAVAILABLE": 3854,
+    "ABC_ENTRY_FAIL_RULE": 3002,
+    "ABC_ENTRY_PASS": 1763,
+    "FINANCIAL_UNSUPPORTED": 1135
+  },
+  "local_cache_miss_pending_opendart": 0,
+  "evaluation_error_count": 0,
+  "exit_event_pending_source_count": 0,
+  "exit_event_evaluation_error_count": 0,
+  "future_filing_leakage_count": 0,
+  "receipt_date_violation_count": 0,
+  "final_return_network_calls": 0,
+  "final_return_network_by_source": {
+    "opendart": 0,
+    "krx": 0,
+    "pykrx": 0,
+    "naver": 0,
+    "krx_html": 0
+  },
+  "phase_a_network": {
+    "opendart_calls": 0,
+    "calls_by_endpoint": {},
+    "status_counts": {},
+    "registry_ticker_cache_hits": 649,
+    "registry_tickers_needing_refresh": 0,
+    "registry_tickers_total": 691,
+    "nonfinancial_tickers": 649,
+    "periodization_builds": 4213,
+    "xbrl_cache_hits": 18205,
+    "xbrl_live_fetches": 0,
+    "true_source_unavailable_xbrl": 239,
+    "targeted_missing_xbrl_recovery": 0
+  },
+  "cache_only_entry_diagnostics": {
+    "periodization_builds": 4213,
+    "catalog_tickers": 691,
+    "non_nonfinancial_tickers": 42
+  }
+}

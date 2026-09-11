@@ -1,0 +1,184 @@
+{
+  "work_id": "FASTCORE_FUNDAMENTALS_ABC_RETURN_BACKTEST_V01",
+  "status": "COMPLETE",
+  "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_FUNDAMENTALS_ABC_V01",
+  "common_start_date": "2021-04-01",
+  "signal_end_date": "2026-08-14",
+  "execution_support_end_date": "2026-08-21",
+  "raw_candidate_count": 9754,
+  "raw_candidate_sha256": "6f79fdaf7a341ec81c1fff4f2034b29f690651c7a08f1569c8cda82367114591",
+  "entry_funnel": {
+    "raw_fastcore_candidates": 9754,
+    "company_family_counts": {
+      "NON_FINANCIAL": 8619,
+      "FINANCIAL": 1135
+    },
+    "classification_counts": {
+      "TRUE_DATA_UNAVAILABLE": 3854,
+      "ABC_ENTRY_FAIL_RULE": 3002,
+      "ABC_ENTRY_PASS": 1763,
+      "FINANCIAL_UNSUPPORTED": 1135
+    },
+    "abc_evaluable_rows": 4765,
+    "abc_entry_pass_rows": 1763,
+    "abc_entry_fail_rows": 3002,
+    "rule_pass_counts": {
+      "annual_revenue_pass": 4696,
+      "annual_operating_income_pass": 4305,
+      "quarter_revenue_pass": 4667,
+      "quarter_operating_income_pass": 4262,
+      "revenue_growth_pass": 2672,
+      "operating_income_growth_pass": 2711
+    },
+    "failure_reason_counts": {
+      "ANNUAL_DATA_UNAVAILABLE": 3815,
+      "NOT_APPLICABLE": 1135,
+      "QUARTER_REVENUE_GROWTH_BELOW_MIN": 2130,
+      "OPERATING_INCOME_GROWTH_BELOW_MIN": 2091,
+      "QUARTER_OPERATING_INCOME_BELOW_MIN": 540,
+      "ANNUAL_OPERATING_INCOME_BELOW_MIN": 497,
+      "ANNUAL_REVENUE_BELOW_MIN": 106,
+      "QUARTER_REVENUE_BELOW_MIN": 135,
+      "PRIOR_YEAR_SAME_QUARTER_UNAVAILABLE": 27,
+      "QUARTER_DATA_UNAVAILABLE": 2,
+      "ANNUAL_BASIS_OR_CURRENCY_MISMATCH": 16
+    },
+    "executed_entries": 398,
+    "active_position_skips": 1365,
+    "same_open_skips": 0,
+    "first_entries": 269,
+    "reentries": 129
+  },
+  "trade_metrics": {
+    "total_trades": 398,
+    "unique_tickers": 268,
+    "first_entry_count": 269,
+    "reentry_count": 129,
+    "closed_trade_count": 375,
+    "open_at_cutoff_count": 23,
+    "positive_trade_count": 124,
+    "positive_trade_rate": 31.155779,
+    "mean_terminal_return": 5.06093,
+    "median_terminal_return": -14.345,
+    "mean_mfe": 32.52505,
+    "median_mfe": 12.055,
+    "mean_mae": -14.469447,
+    "median_mae": -16.05,
+    "mean_holding_trading_days": 107.125628,
+    "median_holding_trading_days": 61.5,
+    "loss_guard_trade_count": 239,
+    "loss_guard_rate": 60.050251,
+    "exit_type_counts": {
+      "EXIT3_PROGRESSED_TO_EARLY_TREND": 1,
+      "EXIT3_PROGRESSED_TO_TRANSITION": 6,
+      "EXIT3_PROGRESSED_TO_WEAK": 2,
+      "EXIT4_SCORE_DRAWDOWN_GE_15": 73,
+      "FUNDAMENTAL_A_OPERATING_LOSS": 33,
+      "FUNDAMENTAL_B_SHARP_DECLINE": 38,
+      "FUNDAMENTAL_C_TWO_CONSECUTIVE_DECLINES": 13,
+      "LOSS_GUARD_CLOSE_LE_NEG_15": 209,
+      "NO_EXIT_BEFORE_CUTOFF": 12,
+      "NO_PROGRESSED_BEFORE_CUTOFF": 11
+    },
+    "tail_counts": {
+      "terminal_return_le_neg_15_pct_points": 175,
+      "terminal_return_le_neg_20_pct_points": 13,
+      "terminal_return_le_neg_30_pct_points": 0,
+      "terminal_return_le_neg_40_pct_points": 0
+    },
+    "winner_counts": {
+      "terminal_return_ge_pos_30_pct_points": 56,
+      "terminal_return_ge_pos_50_pct_points": 44,
+      "terminal_return_ge_pos_100_pct_points": 14
+    }
+  },
+  "fundamental_exit_metrics": {
+    "fundamental_exit_a_count": 33,
+    "fundamental_exit_b_count": 47,
+    "fundamental_exit_c_count": 32,
+    "fundamental_triggered_count": 86,
+    "accelerated_count": 84,
+    "same_date_fastcore_fundamental_count": 0
+  },
+  "data_readiness": {
+    "status": "COMPLETE",
+    "raw_candidate_rows": 9754,
+    "raw_candidate_sha256": "6f79fdaf7a341ec81c1fff4f2034b29f690651c7a08f1569c8cda82367114591",
+    "candidate_classification_counts": {
+      "TRUE_DATA_UNAVAILABLE": 3854,
+      "ABC_ENTRY_FAIL_RULE": 3002,
+      "ABC_ENTRY_PASS": 1763,
+      "FINANCIAL_UNSUPPORTED": 1135
+    },
+    "local_cache_miss_pending_opendart": 0,
+    "evaluation_error_count": 0,
+    "exit_event_pending_source_count": 0,
+    "exit_event_evaluation_error_count": 0,
+    "future_filing_leakage_count": 0,
+    "receipt_date_violation_count": 0,
+    "final_return_network_calls": 0,
+    "final_return_network_by_source": {
+      "opendart": 0,
+      "krx": 0,
+      "pykrx": 0,
+      "naver": 0,
+      "krx_html": 0
+    },
+    "phase_a_network": {
+      "opendart_calls": 0,
+      "calls_by_endpoint": {},
+      "status_counts": {},
+      "registry_ticker_cache_hits": 649,
+      "registry_tickers_needing_refresh": 0,
+      "registry_tickers_total": 691,
+      "nonfinancial_tickers": 649,
+      "periodization_builds": 4213,
+      "xbrl_cache_hits": 18205,
+      "xbrl_live_fetches": 0,
+      "true_source_unavailable_xbrl": 239,
+      "targeted_missing_xbrl_recovery": 0
+    },
+    "cache_only_entry_diagnostics": {
+      "periodization_builds": 4213,
+      "catalog_tickers": 691,
+      "non_nonfinancial_tickers": 42
+    }
+  },
+  "network_call_counts": {
+    "final_socket_attempts": 0
+  },
+  "artifacts": {
+    "entry": "artifacts/backtests/fastcore_fundamentals_simple_v01/fundamentals_abc_return/abc_entry_candidate_audit.csv",
+    "exit_events": "artifacts/backtests/fastcore_fundamentals_simple_v01/fundamentals_abc_return/abc_fundamental_exit_events.csv",
+    "trades": "artifacts/backtests/fastcore_fundamentals_simple_v01/fundamentals_abc_return/abc_trades.csv",
+    "summary": "artifacts/backtests/fastcore_fundamentals_simple_v01/fundamentals_abc_return/abc_summary.json",
+    "comparison": "artifacts/backtests/fastcore_fundamentals_simple_v01/fundamentals_abc_return/abc_vs_control.json",
+    "readiness": "artifacts/backtests/fastcore_fundamentals_simple_v01/fundamentals_abc_return/abc_data_readiness.json"
+  },
+  "validation": {
+    "raw_candidate_hash_unchanged": true,
+    "control_artifacts_unchanged": true,
+    "pre_start_entry_violations": 0,
+    "post_end_signal_violations": 0,
+    "identity_violations": 0,
+    "execution_next_day_violations": 0,
+    "overlapping_positions": 0,
+    "pit_future_membership_fallback": 0,
+    "entry_gate_future_source_violations": 0,
+    "unsupported_candidate_gate_rejection_diagnostics": 487,
+    "entry_nonfinancial_violations": 0,
+    "fundamental_exit_data_unavailable_violations": 0,
+    "fundamental_b_and_logic_violations": 0,
+    "fundamental_c_logic_violations": 0,
+    "fundamental_same_open_ties": 0,
+    "evaluation_errors": 0,
+    "network_calls": 0
+  },
+  "scope_stop": {
+    "parameter_tuning": "NOT RUN",
+    "portfolio": "NOT RUN",
+    "cost_slippage": "NOT RUN",
+    "julia": "NOT RUN",
+    "main_merge": "NOT RUN"
+  }
+}
