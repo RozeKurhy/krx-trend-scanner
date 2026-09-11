@@ -178,6 +178,7 @@ def simulate_ticker_strategy_fundamentals_v01(
     identity_lifecycle: IdentityLifecycle | None = None,
     pit_membership: Callable[[str, str | None, str, pd.Timestamp], bool] | None = None,
     entry_gate: Callable[[pd.Timestamp, dict[str, Any]], Mapping[str, Any] | None] | None = None,
+    fundamental_exit_callback: Callable[[pd.Timestamp, pd.Timestamp, pd.DataFrame], Sequence[Mapping[str, Any]]] | None = None,
 ) -> list[StrategyTradeRecord]:
     """Run one corrected FastCore variant for one ticker through
     ``backtest_end``. ``loss_guard_enabled`` is retained as an explicit
@@ -491,11 +492,50 @@ def simulate_ticker_strategy_fundamentals_v01(
             e2_exit_type = "NO_PROGRESSED_BEFORE_CUTOFF"
 
         if loss_guard_triggered and loss_guard_sig_d is not None:
-            final_sig_d = loss_guard_sig_d
-            final_exit_type = "LOSS_GUARD_CLOSE_LE_NEG_15"
+            fastcore_sig_d = loss_guard_sig_d
+            fastcore_exit_type = "LOSS_GUARD_CLOSE_LE_NEG_15"
         else:
-            final_sig_d = e2_sig_d
-            final_exit_type = e2_exit_type or "NO_EXIT"
+            fastcore_sig_d = e2_sig_d
+            fastcore_exit_type = e2_exit_type or "NO_EXIT"
+
+        # Fundamentals exits are supplied by the bounded runner from the
+        # canonical PIT catalog. Compare executable dates, not information
+        # dates. A same-open tie deliberately keeps the FastCore primary exit.
+        selected_fundamental: Mapping[str, Any] | None = None
+        fundamental_exec_d: pd.Timestamp | None = None
+        if fundamental_exit_callback is not None:
+            fundamental_events = fundamental_exit_callback(found_signal_w, entry_exec_date, daily)
+            normalized_events: list[tuple[pd.Timestamp, Mapping[str, Any]]] = []
+            for event in fundamental_events:
+                information_value = event.get("fundamental_information_date") or event.get("information_date")
+                if information_value in (None, ""):
+                    continue
+                information_d = pd.Timestamp(information_value).normalize()
+                if information_d < entry_exec_date or information_d > backtest_end:
+                    continue
+                execution_rows = daily[(daily.index > information_d) & (daily.index <= backtest_end)]
+                if execution_rows.empty:
+                    continue
+                execution_d = execution_rows.index[0]
+                if execution_d <= entry_exec_date:
+                    continue
+                normalized_events.append((execution_d, event))
+            if normalized_events:
+                fundamental_exec_d, selected_fundamental = min(normalized_events, key=lambda item: item[0])
+
+        fastcore_exec_d: pd.Timestamp | None = None
+        if fastcore_sig_d is not None:
+            fastcore_rows = daily[(daily.index > fastcore_sig_d) & (daily.index <= backtest_end)]
+            if not fastcore_rows.empty:
+                fastcore_exec_d = fastcore_rows.index[0]
+
+        if selected_fundamental is not None and fundamental_exec_d is not None \
+                and (fastcore_exec_d is None or fundamental_exec_d < fastcore_exec_d):
+            final_sig_d = pd.Timestamp(selected_fundamental.get("fundamental_information_date")).normalize()
+            final_exit_type = str(selected_fundamental.get("fundamental_primary_trigger") or "FUNDAMENTAL_ABC")
+        else:
+            final_sig_d = fastcore_sig_d
+            final_exit_type = fastcore_exit_type
 
         outcome = _calc_trade_outcome(entry_exec_date, entry_open_price, final_sig_d, daily, backtest_end)
 
@@ -560,6 +600,10 @@ def simulate_ticker_strategy_fundamentals_v01(
             identity_effective_from=(identity_lifecycle.effective_from.strftime("%Y-%m-%d") if identity_lifecycle else None),
             identity_effective_to=(identity_lifecycle.effective_to.strftime("%Y-%m-%d") if identity_lifecycle else None),
         )
+        if selected_fundamental is not None and final_exit_type.startswith("FUNDAMENTAL_"):
+            fundamental_meta = dict(selected_fundamental)
+            fundamental_meta["fundamental_exit_accelerated"] = True
+            setattr(record, "_fundamental_exit_meta", fundamental_meta)
         trades.append(record)
 
         if outcome["trade_status"] == "REALIZED" and outcome["exit_exec_d"] is not None:

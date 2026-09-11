@@ -500,23 +500,21 @@ def verify_determinism() -> int:
     summary_keys = [key for key in replay_summary if key != "determinism"]
     summary_core_same = all(replay_summary.get(key) == expected_summary.get(key) for key in summary_keys)
     if not trade_content_same or not summary_core_same or replay_summary.get("status") != "COMPLETE":
-        expected_summary["status"] = "BLOCKED"
-        expected_summary["determinism"] = {
+        result = {
             "status": "FAIL",
             "trade_row_count_same": len(frame) == len(pd.read_csv(CONTROL_TRADES_PATH)),
             "trade_content_same": trade_content_same,
             "summary_core_same": summary_core_same,
         }
-        _json_write(CONTROL_SUMMARY_PATH, expected_summary)
+        print(f"CONTROL determinism: {json.dumps(result, ensure_ascii=False)}", flush=True)
         return 1
-    expected_summary["determinism"] = {
+    result = {
         "status": "PASS",
         "trade_row_count_same": True,
         "trade_content_same": True,
         "summary_core_same": True,
     }
-    _json_write(CONTROL_SUMMARY_PATH, expected_summary)
-    print("CONTROL determinism: PASS", flush=True)
+    print(f"CONTROL determinism: {json.dumps(result, ensure_ascii=False)}", flush=True)
     return 0
 
 
