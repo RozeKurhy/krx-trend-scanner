@@ -1,0 +1,39 @@
+{
+  "work_id": "FASTCORE_SIMPLE_BACKTEST_WITH_FUNDAMENTALS_V01_FIX02_OOM",
+  "status": "COMPLETE",
+  "backtest_end": "2026-08-21",
+  "total_pit_intervals": 3173,
+  "investability_prefiltered_identities": 1656,
+  "processed_identities": 3173,
+  "total_fastcore_raw_candidates": 9754,
+  "earliest_candidate_date": "2015-01-02",
+  "latest_candidate_date": "2026-08-14",
+  "candidate_output": "artifacts/backtests/fastcore_fundamentals_simple_v01/raw_candidates/fastcore_raw_candidates.csv",
+  "checkpoint_output": "artifacts/backtests/fastcore_fundamentals_simple_v01/raw_candidates/scan_checkpoint.json",
+  "focused_tests": {
+    "fix02_tests_passed": 5,
+    "focused_regression_tests_passed": 37,
+    "bounded_sample_deterministic": true,
+    "bounded_sample_candidate_counts": [7, 0, 0]
+  },
+  "memory": {
+    "max_workers": 1,
+    "candidate_batch_size": 25,
+    "peak_parent_rss_mb_observed": 4065.5,
+    "child_workers": 0,
+    "system_free_memory_observed": "84-85%",
+    "oom_recurred": false
+  },
+  "network": {
+    "krx_market_calls": 0,
+    "opendart_calls": 0
+  },
+  "artifact_validation": {
+    "required_columns_present": true,
+    "csv_rows_match_checkpoint": true,
+    "candidate_id_duplicates": 0,
+    "investability_pass_nontrue_rows": 0,
+    "future_raw_date_violations": 0,
+    "identity_range_violations": 0
+  }
+}
