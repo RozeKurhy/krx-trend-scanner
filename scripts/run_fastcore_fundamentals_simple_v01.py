@@ -564,14 +564,32 @@ def _first_trading_day_of_quarter(label: str) -> str | None:
     return dates[0].strftime("%Y-%m-%d")
 
 
+def _quarter_sequence(start_quarter: str, count: int = 4) -> list[str]:
+    """Return consecutive calendar quarters starting at ``start_quarter``."""
+    if (
+        len(start_quarter) != 6
+        or start_quarter[4] != "Q"
+        or not start_quarter[:4].isdigit()
+        or start_quarter[5] not in "1234"
+        or count < 0
+    ):
+        raise ValueError(f"invalid quarter sequence input: {start_quarter!r}")
+    year = int(start_quarter[:4])
+    quarter = int(start_quarter[5])
+    return [
+        f"{year + absolute // 4}Q{absolute % 4 + 1}"
+        for absolute in range(quarter - 1, quarter - 1 + count)
+    ]
+
+
 def select_common_start(coverage: pd.DataFrame) -> tuple[str | None, dict[str, Any]]:
     if coverage.empty:
         return None, {"reason": "NO_NON_FINANCIAL_CANDIDATES"}
     by_q = {str(row.quarter): row for row in coverage.itertuples(index=False)}
     ordered = sorted(by_q)
     for index, quarter in enumerate(ordered):
-        sequence = [f"{(pd.Timestamp(quarter[:4] + '-01-01') + pd.DateOffset(months=3 * offset)).year}Q{((pd.Timestamp(quarter[:4] + '-01-01') + pd.DateOffset(months=3 * offset)).month - 1) // 3 + 1}" for offset in range(4)]
-        if sequence != ordered[index:index + 4] and not all(item in by_q for item in sequence):
+        sequence = _quarter_sequence(quarter)
+        if not all(item in by_q for item in sequence):
             continue
         if all(float(getattr(by_q[item], "evaluable_rate", 0) or 0) >= 90.0 and int(getattr(by_q[item], "total_nonfinancial_candidates", 0) or 0) > 0 for item in sequence):
             start = _first_trading_day_of_quarter(quarter)
