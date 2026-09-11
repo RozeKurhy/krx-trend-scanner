@@ -48,6 +48,7 @@
       "terminal_return_ge_pos_200_pct_points": 3
     },
     "primary_loss_guard_exit_count": 209,
+    "independent_fastcore_loss_guard_trigger_count": 239,
     "counterfactual_loss_guard_trigger_count": 239,
     "exit3_count": 9,
     "exit3_base_count": 0,
@@ -56,8 +57,11 @@
     "exit3_weak_count": 2,
     "exit4_count": 73,
     "fundamental_exit_a_count": 33,
-    "fundamental_exit_b_count": 46,
-    "fundamental_exit_c_count": 31,
+    "fundamental_exit_b_count": 38,
+    "fundamental_exit_c_count": 13,
+    "fundamental_exit_a_flag_count": 33,
+    "fundamental_exit_b_flag_count": 47,
+    "fundamental_exit_c_flag_count": 32,
     "fundamental_exit_accelerated_count": 84,
     "no_exit_count": 12,
     "no_progressed_count": 11
@@ -108,6 +112,7 @@
       "terminal_return_ge_pos_200_pct_points": 3
     },
     "primary_loss_guard_exit_count": 0,
+    "independent_fastcore_loss_guard_trigger_count": 204,
     "counterfactual_loss_guard_trigger_count": 204,
     "exit3_count": 15,
     "exit3_base_count": 2,
@@ -116,8 +121,11 @@
     "exit3_weak_count": 3,
     "exit4_count": 88,
     "fundamental_exit_a_count": 61,
-    "fundamental_exit_b_count": 93,
-    "fundamental_exit_c_count": 73,
+    "fundamental_exit_b_count": 75,
+    "fundamental_exit_c_count": 35,
+    "fundamental_exit_a_flag_count": 61,
+    "fundamental_exit_b_flag_count": 93,
+    "fundamental_exit_c_flag_count": 73,
     "fundamental_exit_accelerated_count": 171,
     "no_exit_count": 19,
     "no_progressed_count": 52
@@ -158,15 +166,30 @@
       "ABC_NO_LOSS_GUARD": 61,
       "delta": 28.0
     },
+    "Fundamental_A_flag_count": {
+      "ABC_ON": 33,
+      "ABC_NO_LOSS_GUARD": 61,
+      "delta": 28.0
+    },
     "Fundamental_B": {
-      "ABC_ON": 46,
+      "ABC_ON": 38,
+      "ABC_NO_LOSS_GUARD": 75,
+      "delta": 37.0
+    },
+    "Fundamental_B_flag_count": {
+      "ABC_ON": 47,
       "ABC_NO_LOSS_GUARD": 93,
-      "delta": 47.0
+      "delta": 46.0
     },
     "Fundamental_C": {
-      "ABC_ON": 31,
+      "ABC_ON": 13,
+      "ABC_NO_LOSS_GUARD": 35,
+      "delta": 22.0
+    },
+    "Fundamental_C_flag_count": {
+      "ABC_ON": 32,
       "ABC_NO_LOSS_GUARD": 73,
-      "delta": 42.0
+      "delta": 41.0
     },
     "NO_EXIT": {
       "ABC_ON": 12,
@@ -197,6 +220,11 @@
       "ABC_ON": 84,
       "ABC_NO_LOSS_GUARD": 171,
       "delta": 87.0
+    },
+    "independent_fastcore_loss_guard_triggers": {
+      "ABC_ON": 239,
+      "ABC_NO_LOSS_GUARD": 204,
+      "delta": -35.0
     },
     "mean_holding_days": {
       "ABC_ON": 107.125628,
@@ -317,6 +345,41 @@
       "ABC_ON": 268,
       "ABC_NO_LOSS_GUARD": 268,
       "delta": 0.0
+    }
+  },
+  "loss_guard_diagnostics": {
+    "ABC_ON": {
+      "enabled": true,
+      "primary_loss_guard_exit_count": 209,
+      "independent_fastcore_loss_guard_trigger_count": 239,
+      "independent_path_ignores_actual_primary_exit": true,
+      "counterfactual_loss_guard_trigger_count_semantics": "INDEPENDENT_FASTCORE_PATH"
+    },
+    "ABC_NO_LOSS_GUARD": {
+      "enabled": false,
+      "primary_loss_guard_exit_count": 0,
+      "independent_fastcore_loss_guard_trigger_count": 204,
+      "independent_path_ignores_actual_primary_exit": true,
+      "counterfactual_loss_guard_trigger_count_semantics": "INDEPENDENT_FASTCORE_PATH",
+      "actionable_before_primary_exit_loss_guard_trigger_count": 178
+    }
+  },
+  "fundamental_flag_diagnostics": {
+    "ABC_ON": {
+      "fundamental_condition_flag_occurrence": {
+        "fundamental_exit_a_flag_count": 33,
+        "fundamental_exit_b_flag_count": 47,
+        "fundamental_exit_c_flag_count": 32
+      },
+      "definition": "Count of fundamental condition flags, independent of primary exit_type."
+    },
+    "ABC_NO_LOSS_GUARD": {
+      "fundamental_condition_flag_occurrence": {
+        "fundamental_exit_a_flag_count": 61,
+        "fundamental_exit_b_flag_count": 93,
+        "fundamental_exit_c_flag_count": 73
+      },
+      "definition": "Count of fundamental condition flags, independent of primary exit_type."
     }
   },
   "existing_ABC_artifacts_read_only": true,

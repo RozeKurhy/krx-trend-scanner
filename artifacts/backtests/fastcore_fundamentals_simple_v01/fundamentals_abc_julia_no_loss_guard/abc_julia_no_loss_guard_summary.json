@@ -85,6 +85,7 @@
       "terminal_return_ge_pos_200_pct_points": 3
     },
     "primary_loss_guard_exit_count": 0,
+    "independent_fastcore_loss_guard_trigger_count": 204,
     "counterfactual_loss_guard_trigger_count": 204,
     "exit3_count": 15,
     "exit3_base_count": 2,
@@ -93,8 +94,11 @@
     "exit3_weak_count": 3,
     "exit4_count": 88,
     "fundamental_exit_a_count": 61,
-    "fundamental_exit_b_count": 93,
-    "fundamental_exit_c_count": 73,
+    "fundamental_exit_b_count": 75,
+    "fundamental_exit_c_count": 35,
+    "fundamental_exit_a_flag_count": 61,
+    "fundamental_exit_b_flag_count": 93,
+    "fundamental_exit_c_flag_count": 73,
     "fundamental_exit_accelerated_count": 171,
     "no_exit_count": 19,
     "no_progressed_count": 52
@@ -102,12 +106,18 @@
   "loss_guard": {
     "enabled": false,
     "primary_loss_guard_exit_count": 0,
+    "independent_fastcore_loss_guard_trigger_count": 204,
+    "actionable_before_primary_exit_loss_guard_trigger_count": 178,
     "counterfactual_loss_guard_trigger_count": 204,
+    "counterfactual_loss_guard_trigger_count_semantics": "INDEPENDENT_FASTCORE_PATH",
+    "independent_path_ignores_actual_primary_exit": true,
     "disabled_execution_signal_count": 0
   },
   "baseline_loss_guard": {
+    "primary_loss_guard_exit_count": 209,
+    "independent_fastcore_loss_guard_trigger_count": 239,
     "counterfactual_loss_guard_trigger_count": 239,
-    "primary_loss_guard_exit_count": 209
+    "counterfactual_loss_guard_trigger_count_semantics": "INDEPENDENT_FASTCORE_PATH"
   },
   "tails": {
     "terminal_return_le_neg_15_pct_points": 111,
@@ -132,8 +142,8 @@
     "EXIT3_WEAK": 3,
     "EXIT4": 88,
     "Fundamental_A": 61,
-    "Fundamental_B": 93,
-    "Fundamental_C": 73,
+    "Fundamental_B": 75,
+    "Fundamental_C": 35,
     "fundamental_accelerated": 171,
     "NO_EXIT": 19,
     "NO_PROGRESSED": 52
@@ -174,15 +184,30 @@
       "ABC_NO_LOSS_GUARD": 61,
       "delta": 28.0
     },
+    "Fundamental_A_flag_count": {
+      "ABC_ON": 33,
+      "ABC_NO_LOSS_GUARD": 61,
+      "delta": 28.0
+    },
     "Fundamental_B": {
-      "ABC_ON": 46,
+      "ABC_ON": 38,
+      "ABC_NO_LOSS_GUARD": 75,
+      "delta": 37.0
+    },
+    "Fundamental_B_flag_count": {
+      "ABC_ON": 47,
       "ABC_NO_LOSS_GUARD": 93,
-      "delta": 47.0
+      "delta": 46.0
     },
     "Fundamental_C": {
-      "ABC_ON": 31,
+      "ABC_ON": 13,
+      "ABC_NO_LOSS_GUARD": 35,
+      "delta": 22.0
+    },
+    "Fundamental_C_flag_count": {
+      "ABC_ON": 32,
       "ABC_NO_LOSS_GUARD": 73,
-      "delta": 42.0
+      "delta": 41.0
     },
     "NO_EXIT": {
       "ABC_ON": 12,
@@ -213,6 +238,11 @@
       "ABC_ON": 84,
       "ABC_NO_LOSS_GUARD": 171,
       "delta": 87.0
+    },
+    "independent_fastcore_loss_guard_triggers": {
+      "ABC_ON": 239,
+      "ABC_NO_LOSS_GUARD": 204,
+      "delta": -35.0
     },
     "mean_holding_days": {
       "ABC_ON": 107.125628,
@@ -400,7 +430,11 @@
     "duplicate_trade_identity": 0,
     "entry_before_common_start": 0,
     "signal_after_cutoff": 0,
-    "network_leakage": 0
+    "network_leakage": 0,
+    "report_only_strategy_simulation": 0,
+    "report_only_frozen_artifact_mutation": 0,
+    "primary_exit_identity": 0,
+    "actionable_semantics_violations": 0
   },
   "network_call_counts": {
     "OpenDART": 0,
@@ -409,7 +443,7 @@
     "Naver": 0,
     "KRX_HTML": 0,
     "socket_attempts": 0,
-    "repository_v2_local_loads": 691
+    "repository_v2_local_loads": 0
   },
   "determinism": {
     "status": "PASS",
@@ -431,5 +465,48 @@
     "cost_slippage": "NOT RUN",
     "legacy_Julia": "NOT RUN",
     "main_merge": "NOT RUN"
+  },
+  "reporting_fix": {
+    "mode": "REPORT_ONLY_REPAIR",
+    "strategy_simulation": "NOT RUN",
+    "fundamentals_reassessment": "NOT RUN",
+    "opendart_hydration": "NOT RUN",
+    "market_data_reload": "NOT RUN",
+    "source_artifacts_read_only": true
+  },
+  "loss_guard_diagnostics": {
+    "enabled": false,
+    "primary_loss_guard_exit_count": 0,
+    "independent_fastcore_loss_guard_trigger_count": 204,
+    "independent_path_ignores_actual_primary_exit": true,
+    "counterfactual_loss_guard_trigger_count_semantics": "INDEPENDENT_FASTCORE_PATH",
+    "actionable_before_primary_exit_loss_guard_trigger_count": 178
+  },
+  "fundamental_flag_diagnostics": {
+    "ABC_ON": {
+      "fundamental_condition_flag_occurrence": {
+        "fundamental_exit_a_flag_count": 33,
+        "fundamental_exit_b_flag_count": 47,
+        "fundamental_exit_c_flag_count": 32
+      },
+      "definition": "Count of fundamental condition flags, independent of primary exit_type."
+    },
+    "ABC_NO_LOSS_GUARD": {
+      "fundamental_condition_flag_occurrence": {
+        "fundamental_exit_a_flag_count": 61,
+        "fundamental_exit_b_flag_count": 93,
+        "fundamental_exit_c_flag_count": 73
+      },
+      "definition": "Count of fundamental condition flags, independent of primary exit_type."
+    }
+  },
+  "counterfactual_loss_guard_trigger_count_semantics": "INDEPENDENT_FASTCORE_PATH",
+  "report_only_network_call_counts": {
+    "OpenDART": 0,
+    "KRX": 0,
+    "PyKRX": 0,
+    "Naver": 0,
+    "KRX_HTML": 0,
+    "socket_attempts": 0
   }
 }

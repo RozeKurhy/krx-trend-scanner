@@ -9,6 +9,7 @@ loss_guard_enabled=False. No source hydration or market-data refresh occurs.
 
 from __future__ import annotations
 
+import argparse
 from collections import Counter
 import gc
 import json
@@ -71,6 +72,13 @@ XBRL_DIR = ROOT / "data/cache/opendart/xbrl"
 STRATEGY_ID = "PATTERN_A_FAST_FINAL_STRATEGY_V02_FUNDAMENTALS_ABC_JULIA_NO_LOSS_GUARD_V01"
 SHORT_STRATEGY_ID = "ABC_JULIA_NO_LOSS_GUARD_V01"
 PRIMARY_LOSS_GUARD = "LOSS_GUARD_CLOSE_LE_NEG_15"
+PRIMARY_FUNDAMENTAL_EXIT_TYPES = {
+    "a": "FUNDAMENTAL_A_OPERATING_LOSS",
+    "b": "FUNDAMENTAL_B_SHARP_DECLINE",
+    "c": "FUNDAMENTAL_C_TWO_CONSECUTIVE_DECLINES",
+}
+INDEPENDENT_LOSS_GUARD_SEMANTICS = "INDEPENDENT_FASTCORE_PATH"
+REPORT_ONLY_MODE = "REPORT_ONLY_REPAIR"
 EXPECTED_ENTRY_COUNTS = {
     "ABC_ENTRY_PASS": 1_763,
     "ABC_ENTRY_FAIL_RULE": 3_002,
@@ -320,13 +328,91 @@ def _decorate_trade_frame(frame: pd.DataFrame, diagnostics: Mapping[str, Mapping
     return result
 
 
+def _bool_column(frame: pd.DataFrame, column: str) -> pd.Series:
+    values = frame.get(column, pd.Series(False, index=frame.index))
+    return values.fillna(False).map(_truth)
+
+
+def _primary_fundamental_counts(frame: pd.DataFrame) -> dict[str, int]:
+    exit_types = frame.get("exit_type", pd.Series(dtype=str)).fillna("").astype(str)
+    return {
+        key: int(exit_types.eq(exit_type).sum())
+        for key, exit_type in PRIMARY_FUNDAMENTAL_EXIT_TYPES.items()
+    }
+
+
+def _fundamental_flag_counts(frame: pd.DataFrame) -> dict[str, int]:
+    return {
+        key: int(_bool_column(frame, f"fundamental_exit_{key}").sum())
+        for key in PRIMARY_FUNDAMENTAL_EXIT_TYPES
+    }
+
+
+def actionable_loss_guard_trigger_count(
+    frame: pd.DataFrame,
+    support_end: pd.Timestamp = EXECUTION_SUPPORT_END_DATE,
+) -> int:
+    """Count independent guard executions still actionable before actual exit/cutoff."""
+    if frame.empty:
+        return 0
+    count = 0
+    for row in frame.to_dict(orient="records"):
+        if not _truth(row.get("counterfactual_loss_guard_triggered")):
+            continue
+        hypothetical_execution = pd.to_datetime(
+            row.get("counterfactual_loss_guard_execution_date"), errors="coerce"
+        )
+        if pd.isna(hypothetical_execution):
+            continue
+        if str(row.get("trade_status") or "") == "OPEN_AT_CUTOFF":
+            boundary = pd.Timestamp(support_end)
+        else:
+            boundary = pd.to_datetime(row.get("exit_execution_date"), errors="coerce")
+            if pd.isna(boundary):
+                continue
+        if hypothetical_execution.normalize() <= boundary.normalize():
+            count += 1
+    return count
+
+
+def _loss_guard_diagnostics(
+    frame: pd.DataFrame,
+    *,
+    primary_exit_count: int,
+    enabled: bool = False,
+    actionable_count: int | None = None,
+) -> dict[str, Any]:
+    independent_count = int(_bool_column(frame, "counterfactual_loss_guard_triggered").sum())
+    payload: dict[str, Any] = {
+        "enabled": bool(enabled),
+        "primary_loss_guard_exit_count": int(primary_exit_count),
+        "independent_fastcore_loss_guard_trigger_count": independent_count,
+        "independent_path_ignores_actual_primary_exit": True,
+        "counterfactual_loss_guard_trigger_count_semantics": INDEPENDENT_LOSS_GUARD_SEMANTICS,
+    }
+    if actionable_count is not None:
+        payload["actionable_before_primary_exit_loss_guard_trigger_count"] = int(actionable_count)
+    return payload
+
+
+def _fundamental_flag_diagnostics(frame: pd.DataFrame) -> dict[str, Any]:
+    return {
+        "fundamental_condition_flag_occurrence": {
+            f"fundamental_exit_{key}_flag_count": count
+            for key, count in _fundamental_flag_counts(frame).items()
+        },
+        "definition": "Count of fundamental condition flags, independent of primary exit_type.",
+    }
+
+
 def _extended_metrics(frame: pd.DataFrame) -> dict[str, Any]:
     metrics = base._trade_metrics(frame)
     terminal = pd.to_numeric(frame.get("terminal_return", pd.Series(dtype=float)), errors="coerce")
     metrics["primary_loss_guard_exit_count"] = int(frame["exit_type"].eq(PRIMARY_LOSS_GUARD).sum()) if not frame.empty else 0
-    metrics["counterfactual_loss_guard_trigger_count"] = int(
-        frame["counterfactual_loss_guard_triggered"].fillna(False).map(_truth).sum()
+    metrics["independent_fastcore_loss_guard_trigger_count"] = int(
+        _bool_column(frame, "counterfactual_loss_guard_triggered").sum()
     ) if not frame.empty else 0
+    metrics["counterfactual_loss_guard_trigger_count"] = metrics["independent_fastcore_loss_guard_trigger_count"]
     metrics["exit3_count"] = int(frame["exit_type"].astype(str).str.startswith("EXIT3_").sum()) if not frame.empty else 0
     for label, stage in (
         ("base", "BASE"),
@@ -338,9 +424,14 @@ def _extended_metrics(frame: pd.DataFrame) -> dict[str, Any]:
             frame["exit_type"].eq(f"EXIT3_PROGRESSED_TO_{stage}").sum()
         ) if not frame.empty else 0
     metrics["exit4_count"] = int(frame["exit_type"].eq("EXIT4_SCORE_DRAWDOWN_GE_15").sum()) if not frame.empty else 0
-    metrics["fundamental_exit_a_count"] = int(frame["fundamental_exit_a"].sum()) if not frame.empty else 0
-    metrics["fundamental_exit_b_count"] = int(frame["fundamental_exit_b"].sum()) if not frame.empty else 0
-    metrics["fundamental_exit_c_count"] = int(frame["fundamental_exit_c"].sum()) if not frame.empty else 0
+    primary_counts = _primary_fundamental_counts(frame)
+    flag_counts = _fundamental_flag_counts(frame)
+    metrics["fundamental_exit_a_count"] = primary_counts["a"]
+    metrics["fundamental_exit_b_count"] = primary_counts["b"]
+    metrics["fundamental_exit_c_count"] = primary_counts["c"]
+    metrics["fundamental_exit_a_flag_count"] = flag_counts["a"]
+    metrics["fundamental_exit_b_flag_count"] = flag_counts["b"]
+    metrics["fundamental_exit_c_flag_count"] = flag_counts["c"]
     metrics["fundamental_exit_accelerated_count"] = int(
         frame["fundamental_exit_accelerated"].fillna(False).map(_truth).sum()
     ) if not frame.empty else 0
@@ -376,6 +467,7 @@ def _metric_map(metrics: Mapping[str, Any]) -> dict[str, Any]:
         "mean_holding_days": metrics["mean_holding_trading_days"],
         "median_holding_days": metrics["median_holding_trading_days"],
         "primary_loss_guard_exits": metrics["primary_loss_guard_exit_count"],
+        "independent_fastcore_loss_guard_triggers": metrics["independent_fastcore_loss_guard_trigger_count"],
         "counterfactual_loss_guard_triggers": metrics["counterfactual_loss_guard_trigger_count"],
         "EXIT3": metrics["exit3_count"],
         "EXIT3_BASE": metrics["exit3_base_count"],
@@ -386,6 +478,9 @@ def _metric_map(metrics: Mapping[str, Any]) -> dict[str, Any]:
         "Fundamental_A": metrics["fundamental_exit_a_count"],
         "Fundamental_B": metrics["fundamental_exit_b_count"],
         "Fundamental_C": metrics["fundamental_exit_c_count"],
+        "Fundamental_A_flag_count": metrics["fundamental_exit_a_flag_count"],
+        "Fundamental_B_flag_count": metrics["fundamental_exit_b_flag_count"],
+        "Fundamental_C_flag_count": metrics["fundamental_exit_c_flag_count"],
         "fundamental_accelerated": metrics["fundamental_exit_accelerated_count"],
         "NO_EXIT": metrics["no_exit_count"],
         "NO_PROGRESSED": metrics["no_progressed_count"],
@@ -413,6 +508,22 @@ def _comparison(baseline: pd.DataFrame, experiment: pd.DataFrame) -> dict[str, A
         "ABC_ON": baseline_metrics,
         "ABC_NO_LOSS_GUARD": experiment_metrics,
         "metric_table": table,
+        "loss_guard_diagnostics": {
+            "ABC_ON": _loss_guard_diagnostics(
+                baseline,
+                primary_exit_count=baseline_metrics["primary_loss_guard_exit_count"],
+                enabled=True,
+            ),
+            "ABC_NO_LOSS_GUARD": _loss_guard_diagnostics(
+                experiment,
+                primary_exit_count=experiment_metrics["primary_loss_guard_exit_count"],
+                actionable_count=actionable_loss_guard_trigger_count(experiment),
+            ),
+        },
+        "fundamental_flag_diagnostics": {
+            "ABC_ON": _fundamental_flag_diagnostics(baseline),
+            "ABC_NO_LOSS_GUARD": _fundamental_flag_diagnostics(experiment),
+        },
         "existing_ABC_artifacts_read_only": True,
         "entry_authority_identical": True,
     }
@@ -851,6 +962,176 @@ def run_pipeline(audit: base.NetworkAudit) -> dict[str, Any]:
     }
 
 
+def _load_json(path: Path) -> dict[str, Any]:
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _report_only_frozen_paths() -> dict[Path, str]:
+    return {
+        TRADES_PATH: "2e295ac3b64b1c227a43852a929f0dfa368755aa1dc0b3eec0d6b06a950ed8ec",
+        COUNTERFACTUAL_PATH: "8318b93801a481be0325b7ddd5465feffed6c953e4904acc8b80ef9c4ddf6c0f",
+        BASELINE_TRADES_PATH: BASELINE_TRADES_SHA,
+        BASELINE_SUMMARY_PATH: BASELINE_SUMMARY_SHA,
+        RAW_PATH: RAW_SHA,
+        CONTROL_TRADES_PATH: CONTROL_TRADES_SHA,
+        CONTROL_SUMMARY_PATH: CONTROL_SUMMARY_SHA,
+    }
+
+
+def _assert_report_only_frozen_inputs() -> dict[Path, bytes]:
+    before: dict[Path, bytes] = {}
+    for path, expected_sha in _report_only_frozen_paths().items():
+        if sha256_file(path) != expected_sha:
+            raise RuntimeError(f"BLOCKED_FROZEN_ARTIFACT_SHA: {path}")
+        before[path] = path.read_bytes()
+    return before
+
+
+def _report_only_payloads() -> dict[str, Any]:
+    """Build corrected reports from committed CSV/JSON only; never simulate."""
+    frozen_before = _assert_report_only_frozen_inputs()
+    baseline = pd.read_csv(BASELINE_TRADES_PATH, dtype={"ticker": str, "isu_cd": str, "market": str})
+    experiment = pd.read_csv(TRADES_PATH, dtype={"ticker": str, "isu_cd": str, "market": str})
+    baseline_report = baseline.copy()
+    baseline_report["counterfactual_loss_guard_triggered"] = _bool_column(baseline, "loss_guard_triggered")
+    comparison = _comparison(baseline_report, experiment)
+    summary = _load_json(SUMMARY_PATH)
+
+    off_metrics = comparison["ABC_NO_LOSS_GUARD"]
+    on_metrics = comparison["ABC_ON"]
+    off_table = comparison["metric_table"]
+    off_diagnostics = comparison["loss_guard_diagnostics"]["ABC_NO_LOSS_GUARD"]
+    on_diagnostics = comparison["loss_guard_diagnostics"]["ABC_ON"]
+    summary["status"] = "COMPLETE"
+    summary["reporting_fix"] = {
+        "mode": REPORT_ONLY_MODE,
+        "strategy_simulation": "NOT RUN",
+        "fundamentals_reassessment": "NOT RUN",
+        "opendart_hydration": "NOT RUN",
+        "market_data_reload": "NOT RUN",
+        "source_artifacts_read_only": True,
+    }
+    summary["loss_guard_diagnostics"] = off_diagnostics
+    summary["loss_guard"] = {
+        "enabled": False,
+        "primary_loss_guard_exit_count": off_diagnostics["primary_loss_guard_exit_count"],
+        "independent_fastcore_loss_guard_trigger_count": off_diagnostics[
+            "independent_fastcore_loss_guard_trigger_count"
+        ],
+        "actionable_before_primary_exit_loss_guard_trigger_count": off_diagnostics[
+            "actionable_before_primary_exit_loss_guard_trigger_count"
+        ],
+        "counterfactual_loss_guard_trigger_count": off_diagnostics[
+            "independent_fastcore_loss_guard_trigger_count"
+        ],
+        "counterfactual_loss_guard_trigger_count_semantics": INDEPENDENT_LOSS_GUARD_SEMANTICS,
+        "independent_path_ignores_actual_primary_exit": True,
+        "disabled_execution_signal_count": 0,
+    }
+    summary["baseline_loss_guard"] = {
+        "primary_loss_guard_exit_count": on_diagnostics["primary_loss_guard_exit_count"],
+        "independent_fastcore_loss_guard_trigger_count": on_diagnostics[
+            "independent_fastcore_loss_guard_trigger_count"
+        ],
+        "counterfactual_loss_guard_trigger_count": on_diagnostics[
+            "independent_fastcore_loss_guard_trigger_count"
+        ],
+        "counterfactual_loss_guard_trigger_count_semantics": INDEPENDENT_LOSS_GUARD_SEMANTICS,
+    }
+    summary["trade_metrics"] = off_metrics
+    summary["exit_breakdown"] = {
+        "primary_loss_guard": off_metrics["primary_loss_guard_exit_count"],
+        "EXIT3": off_metrics["exit3_count"],
+        "EXIT3_BASE": off_metrics["exit3_base_count"],
+        "EXIT3_EARLY": off_metrics["exit3_early_count"],
+        "EXIT3_TRANSITION": off_metrics["exit3_transition_count"],
+        "EXIT3_WEAK": off_metrics["exit3_weak_count"],
+        "EXIT4": off_metrics["exit4_count"],
+        "Fundamental_A": off_metrics["fundamental_exit_a_count"],
+        "Fundamental_B": off_metrics["fundamental_exit_b_count"],
+        "Fundamental_C": off_metrics["fundamental_exit_c_count"],
+        "fundamental_accelerated": off_metrics["fundamental_exit_accelerated_count"],
+        "NO_EXIT": off_metrics["no_exit_count"],
+        "NO_PROGRESSED": off_metrics["no_progressed_count"],
+    }
+    summary["fundamental_flag_diagnostics"] = comparison["fundamental_flag_diagnostics"]
+    summary["counterfactual_loss_guard_trigger_count_semantics"] = INDEPENDENT_LOSS_GUARD_SEMANTICS
+    summary["abc_loss_guard_on_vs_off"] = comparison["metric_table"]
+    summary["network_call_counts"] = {
+        "OpenDART": 0,
+        "KRX": 0,
+        "PyKRX": 0,
+        "Naver": 0,
+        "KRX_HTML": 0,
+        "socket_attempts": 0,
+        "repository_v2_local_loads": 0,
+    }
+    summary["report_only_network_call_counts"] = {
+        "OpenDART": 0,
+        "KRX": 0,
+        "PyKRX": 0,
+        "Naver": 0,
+        "KRX_HTML": 0,
+        "socket_attempts": 0,
+    }
+    summary["determinism"] = {
+        "status": "PASS",
+        "no_loss_guard_trades_sha256": sha256_file(TRADES_PATH),
+        "counterfactual_sha256": sha256_file(COUNTERFACTUAL_PATH),
+        "entry_authority_sha256": summary.get("determinism", {}).get("entry_authority_sha256"),
+    }
+
+    validation = dict(summary.get("validation", {}))
+    validation.update({
+        "report_only_strategy_simulation": 0,
+        "report_only_frozen_artifact_mutation": 0,
+        "primary_exit_identity": 0,
+        "actionable_semantics_violations": 0,
+    })
+    if off_metrics["closed_trade_count"] != 274 or (
+        off_table["EXIT3"]["ABC_NO_LOSS_GUARD"]
+        + off_table["EXIT4"]["ABC_NO_LOSS_GUARD"]
+        + off_table["Fundamental_A"]["ABC_NO_LOSS_GUARD"]
+        + off_table["Fundamental_B"]["ABC_NO_LOSS_GUARD"]
+        + off_table["Fundamental_C"]["ABC_NO_LOSS_GUARD"]
+        != 274
+    ):
+        validation["primary_exit_identity"] = 1
+    if on_metrics["closed_trade_count"] != 375 or (
+        off_table["EXIT3"]["ABC_ON"]
+        + off_table["EXIT4"]["ABC_ON"]
+        + off_table["Fundamental_A"]["ABC_ON"]
+        + off_table["Fundamental_B"]["ABC_ON"]
+        + off_table["Fundamental_C"]["ABC_ON"]
+        + off_table["primary_loss_guard_exits"]["ABC_ON"]
+        != 375
+    ):
+        validation["primary_exit_identity"] = 1
+    summary["validation"] = validation
+
+    return {
+        "summary": summary,
+        "comparison": comparison,
+        "frozen_before": frozen_before,
+        "baseline": baseline,
+        "experiment": experiment,
+    }
+
+
+def write_report_only_outputs(payloads: Mapping[str, Any]) -> None:
+    _json_write(COMPARISON_PATH, payloads["comparison"])
+    _json_write(SUMMARY_PATH, payloads["summary"])
+    frozen_before = payloads["frozen_before"]
+    for path, before in frozen_before.items():
+        if path.read_bytes() != before:
+            raise RuntimeError(f"BLOCKED_REPORT_ONLY_FROZEN_MUTATION: {path}")
+    summary = payloads["summary"]
+    if summary["status"] != "COMPLETE" or any(
+        int(value) != 0 for value in summary["validation"].values()
+    ):
+        raise RuntimeError(f"BLOCKED_REPORT_ONLY_VALIDATION: {summary['validation']}")
+
+
 def write_outputs(result: Mapping[str, Any]) -> None:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     result["experiment"].to_csv(TRADES_PATH, index=False, lineterminator="\n")
@@ -870,8 +1151,37 @@ def write_outputs(result: Mapping[str, Any]) -> None:
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--repair-reporting-only",
+        action="store_true",
+        help="Rewrite diagnostic reports from frozen committed artifacts without simulation.",
+    )
+    args = parser.parse_args()
     audit = base.NetworkAudit()
     try:
+        if args.repair_reporting_only:
+            with base.network_guard(audit):
+                payloads = _report_only_payloads()
+            if audit.request_count != 0:
+                raise RuntimeError(f"BLOCKED_NETWORK_LEAKAGE: {audit.request_count}")
+            write_report_only_outputs(payloads)
+            print(json.dumps({
+                "status": payloads["summary"]["status"],
+                "mode": REPORT_ONLY_MODE,
+                "primary_loss_guard_exits": payloads["summary"]["loss_guard_diagnostics"][
+                    "primary_loss_guard_exit_count"
+                ],
+                "independent_fastcore_loss_guard_triggers": payloads["summary"][
+                    "loss_guard_diagnostics"
+                ]["independent_fastcore_loss_guard_trigger_count"],
+                "actionable_before_primary_exit_loss_guard_triggers": payloads["summary"][
+                    "loss_guard_diagnostics"
+                ]["actionable_before_primary_exit_loss_guard_trigger_count"],
+                "summary_sha256": sha256_file(SUMMARY_PATH),
+                "comparison_sha256": sha256_file(COMPARISON_PATH),
+            }, ensure_ascii=False))
+            return 0
         with base.network_guard(audit):
             result = run_pipeline(audit)
         if audit.request_count != 0:

@@ -186,8 +186,11 @@ def test_extended_metrics_count_fundamental_a_b_c_flags():
     frame = runner._decorate_trade_frame(frame, {})
     metrics = runner._extended_metrics(frame)
     assert metrics["fundamental_exit_a_count"] == 1
-    assert metrics["fundamental_exit_b_count"] == 1
-    assert metrics["fundamental_exit_c_count"] == 1
+    assert metrics["fundamental_exit_b_count"] == 0
+    assert metrics["fundamental_exit_c_count"] == 0
+    assert metrics["fundamental_exit_a_flag_count"] == 1
+    assert metrics["fundamental_exit_b_flag_count"] == 1
+    assert metrics["fundamental_exit_c_flag_count"] == 1
     assert metrics["fundamental_exit_accelerated_count"] == 1
 
 
@@ -300,3 +303,71 @@ def test_no_signal_carry_is_represented_by_frozen_candidate_gate():
     failed = authority[~authority["abc_entry_pass"].map(runner._truth)]
     assert len(failed) == 7991
     assert not failed["classification"].eq("ABC_ENTRY_PASS").any()
+
+
+def test_actionable_loss_guard_uses_execution_date_and_actual_exit_boundary():
+    closed_before = _record(
+        counterfactual_loss_guard_triggered=True,
+        counterfactual_loss_guard_execution_date="2022-01-31",
+        exit_execution_date="2022-02-01",
+    )
+    closed_same = _record(
+        trade_id="same",
+        counterfactual_loss_guard_triggered=True,
+        counterfactual_loss_guard_execution_date="2022-02-01",
+        exit_execution_date="2022-02-01",
+    )
+    closed_after = _record(
+        trade_id="after",
+        counterfactual_loss_guard_triggered=True,
+        counterfactual_loss_guard_execution_date="2022-02-02",
+        exit_execution_date="2022-02-01",
+    )
+    frame = pd.concat([closed_before, closed_same, closed_after], ignore_index=True)
+    assert runner.actionable_loss_guard_trigger_count(frame) == 2
+
+
+def test_actionable_loss_guard_open_trade_uses_support_boundary():
+    before = _record(
+        counterfactual_loss_guard_triggered=True,
+        counterfactual_loss_guard_execution_date="2026-08-21",
+        trade_status="OPEN_AT_CUTOFF",
+        exit_execution_date=None,
+    )
+    after = _record(
+        trade_id="after",
+        counterfactual_loss_guard_triggered=True,
+        counterfactual_loss_guard_execution_date="2026-08-22",
+        trade_status="OPEN_AT_CUTOFF",
+        exit_execution_date=None,
+    )
+    frame = pd.concat([before, after], ignore_index=True)
+    assert runner.actionable_loss_guard_trigger_count(frame) == 1
+
+
+def test_miwonsangsa_independent_trigger_is_not_actionable_after_primary_exit():
+    frame = pd.read_csv(runner.TRADES_PATH, dtype={"ticker": str})
+    row = frame[frame["ticker"].eq("002840")].iloc[0]
+    assert runner._truth(row["counterfactual_loss_guard_triggered"]) is True
+    assert row["exit_type"] == "FUNDAMENTAL_B_SHARP_DECLINE"
+    assert row["exit_execution_date"] == "2023-08-14"
+    assert row["counterfactual_loss_guard_execution_date"] == "2025-08-22"
+    assert runner.actionable_loss_guard_trigger_count(frame[frame["ticker"].eq("002840")]) == 0
+
+
+def test_report_only_payload_has_primary_counts_and_diagnostic_semantics():
+    payload = runner._report_only_payloads()
+    summary = payload["summary"]
+    comparison = payload["comparison"]
+    assert summary["loss_guard_diagnostics"]["primary_loss_guard_exit_count"] == 0
+    assert summary["loss_guard_diagnostics"]["independent_fastcore_loss_guard_trigger_count"] == 204
+    assert summary["loss_guard_diagnostics"]["actionable_before_primary_exit_loss_guard_trigger_count"] == 178
+    assert comparison["ABC_ON"]["fundamental_exit_a_count"] == 33
+    assert comparison["ABC_ON"]["fundamental_exit_b_count"] == 38
+    assert comparison["ABC_ON"]["fundamental_exit_c_count"] == 13
+    assert comparison["ABC_NO_LOSS_GUARD"]["fundamental_exit_a_count"] == 61
+    assert comparison["ABC_NO_LOSS_GUARD"]["fundamental_exit_b_count"] == 75
+    assert comparison["ABC_NO_LOSS_GUARD"]["fundamental_exit_c_count"] == 35
+    assert comparison["metric_table"]["Fundamental_B"]["delta"] == 37.0
+    assert comparison["metric_table"]["Fundamental_C"]["delta"] == 22.0
+    assert all(value == 0 for value in summary["validation"].values())
