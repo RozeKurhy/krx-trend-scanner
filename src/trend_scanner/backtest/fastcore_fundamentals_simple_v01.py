@@ -172,6 +172,8 @@ def simulate_ticker_strategy_fundamentals_v01(
     stage_contract: dict,
     loss_guard_enabled: bool,
     backtest_end: pd.Timestamp,
+    entry_eligible_from: pd.Timestamp | None = None,
+    allowed_signal_dates: set[pd.Timestamp] | frozenset[pd.Timestamp] | None = None,
     snapshot_context: PrecomputedTickerContext | None = None,
     identity_lifecycle: IdentityLifecycle | None = None,
     pit_membership: Callable[[str, str | None, str, pd.Timestamp], bool] | None = None,
@@ -207,9 +209,10 @@ def simulate_ticker_strategy_fundamentals_v01(
         # reused-ticker lifecycle leak even when ``daily`` itself is clipped.
         snapshot_context = build_precomputed_ticker_context(ticker, name, daily)
     weekly_bars = snapshot_context.weekly_up_to(backtest_end)
+    daily_dates = set(pd.DatetimeIndex(daily.index).normalize())
     valid_weeks = [
         w for w in weekly_bars.index
-        if daily[daily.index <= w].index.max().normalize() == w.normalize()
+        if pd.Timestamp(w).normalize() in daily_dates
     ]
     monthly_bars = snapshot_context.monthly_up_to(backtest_end)
 
@@ -225,14 +228,30 @@ def simulate_ticker_strategy_fundamentals_v01(
 
     trades: list[StrategyTradeRecord] = []
     trade_seq = 0
-    cur_search_date: pd.Timestamp | None = valid_weeks[0]
+    allowed_signals = None
+    if allowed_signal_dates is not None:
+        allowed_signals = {pd.Timestamp(value).normalize() for value in allowed_signal_dates}
+    eligible_from = None
+    if entry_eligible_from is not None:
+        eligible_from = pd.Timestamp(entry_eligible_from).normalize()
+    # Keep the complete historical ``daily`` frame above for indicator and
+    # Pattern A lookback, but begin the trade search at the common boundary so
+    # no pre-boundary position can be carried into the CONTROL run.
+    cur_search_date: pd.Timestamp | None = next(
+        (week for week in valid_weeks if eligible_from is None or week >= eligible_from),
+        None,
+    )
+    monthly_snapshot_cache: dict[pd.Timestamp, dict[str, Any]] = {}
 
     while cur_search_date is not None and cur_search_date <= backtest_end:
         found_signal_w: pd.Timestamp | None = None
         found_signal_res: dict | None = None
         found_filter: dict[str, Any] | None = None
 
-        candidate_weeks = [w for w in valid_weeks if w >= cur_search_date]
+        candidate_weeks = [
+            w for w in valid_weeks
+            if w >= cur_search_date and (allowed_signals is None or w.normalize() in allowed_signals)
+        ]
         for w in candidate_weeks:
             try:
                 res = evaluate_pattern_a_fast(
@@ -254,7 +273,8 @@ def simulate_ticker_strategy_fundamentals_v01(
                 # candidate signal date. A week that fails the filter is
                 # simply not a valid entry; the search continues to later
                 # weeks (this is never treated as an exit trigger).
-                entry_signal_information_date = daily[daily.index <= w].index.max() if not daily[daily.index <= w].empty else None
+                info_pos = daily.index.searchsorted(w, side="right") - 1
+                entry_signal_information_date = daily.index[info_pos] if info_pos >= 0 else None
                 if entry_signal_information_date is None or not _pit_ok(entry_signal_information_date):
                     continue
                 filt = evaluate_entry_filter(
@@ -274,7 +294,8 @@ def simulate_ticker_strategy_fundamentals_v01(
                 ):
                     continue
 
-                fut_daily = daily[(daily.index > w) & (daily.index <= backtest_end)]
+                entry_pos = daily.index.searchsorted(w, side="right")
+                fut_daily = daily.iloc[entry_pos:]
                 if fut_daily.empty:
                     continue
                 entry_exec_candidate = fut_daily.index[0]
@@ -307,7 +328,8 @@ def simulate_ticker_strategy_fundamentals_v01(
         if found_signal_w is None or found_signal_res is None or found_filter is None:
             break
 
-        fut_daily = daily[(daily.index > found_signal_w) & (daily.index <= backtest_end)]
+        entry_pos = daily.index.searchsorted(found_signal_w, side="right")
+        fut_daily = daily.iloc[entry_pos:]
         if fut_daily.empty:
             break
 
@@ -320,7 +342,8 @@ def simulate_ticker_strategy_fundamentals_v01(
             continue
 
         trade_seq += 1
-        trade_id = f"{strategy_id}_{ticker}_{trade_seq:02d}"
+        identity_token = str(isu_cd or "UNKNOWN")
+        trade_id = f"{strategy_id}_{ticker}_{identity_token}_{market}_{trade_seq:02d}"
 
         pa_stage_at_entry = (found_signal_res["pattern_a_stage"] or "").upper()
         fast_score = found_signal_res.get("fast_score")
@@ -331,14 +354,20 @@ def simulate_ticker_strategy_fundamentals_v01(
         m_dates = [m for m in monthly_bars.index if found_signal_w <= m <= backtest_end]
         monthly_snapshots: list[dict[str, Any]] = []
         for m in m_dates:
+            cached_snapshot = monthly_snapshot_cache.get(pd.Timestamp(m))
+            if cached_snapshot is not None:
+                monthly_snapshots.append(cached_snapshot)
+                continue
             try:
                 snap = build_historical_snapshot_from_context(snapshot_context, m, include_incomplete_periods=False)
                 eval_res = evaluate_pattern_a(snap)
                 st = eval_res.stage.value.upper() if eval_res.stage else "UNAVAILABLE"
                 sc = float(round(eval_res.score, 2)) if eval_res.score is not None else None
-                monthly_snapshots.append({"date": m, "stage": st, "score": sc})
+                cached_snapshot = {"date": m, "stage": st, "score": sc}
             except Exception:
-                monthly_snapshots.append({"date": m, "stage": "UNAVAILABLE", "score": None})
+                cached_snapshot = {"date": m, "stage": "UNAVAILABLE", "score": None}
+            monthly_snapshot_cache[pd.Timestamp(m)] = cached_snapshot
+            monthly_snapshots.append(cached_snapshot)
 
         first_early_trend_d = found_signal_w if pa_stage_at_entry == "EARLY_TREND" else None
         direct_handoff_observed = False
@@ -519,7 +548,11 @@ def simulate_ticker_strategy_fundamentals_v01(
             holding_trading_days=outcome["holding_days"],
             holding_weeks=outcome["holding_weeks"],
             trade_status=outcome["trade_status"],
-            cutoff_date=backtest_end.strftime("%Y-%m-%d") if outcome["trade_status"] == "OPEN_AT_CUTOFF" else None,
+            cutoff_date=(
+                min(pd.Timestamp(backtest_end), identity_lifecycle.effective_to).strftime("%Y-%m-%d")
+                if outcome["trade_status"] == "OPEN_AT_CUTOFF"
+                else None
+            ),
             cutoff_valuation_price=outcome.get("cutoff_close"),
             mark_to_cutoff_return=outcome.get("mark_to_cutoff_ret"),
             entry_signal_information_date=found_filter.get("entry_signal_information_date"),

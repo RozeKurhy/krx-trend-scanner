@@ -1,0 +1,93 @@
+{
+  "work_id": "FASTCORE_SIMPLE_BACKTEST_WITH_FUNDAMENTALS_V01_CONTROL",
+  "status": "COMPLETE",
+  "common_start_date": "2021-04-01",
+  "signal_end_date": "2026-08-14",
+  "execution_support_end_date": "2026-08-21",
+  "raw_candidate_count": 9754,
+  "raw_candidate_sha256": "6f79fdaf7a341ec81c1fff4f2034b29f690651c7a08f1569c8cda82367114591",
+  "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_CONTROL",
+  "loss_guard_enabled": true,
+  "fundamentals_gate": "OFF",
+  "experimental_investability_conditions": {
+    "market_cap_min_krw": 300000000000,
+    "avg_trading_value_20d_min_krw": 300000000,
+    "close_min_krw": 5000
+  },
+  "execution_semantics": "next local trading day open",
+  "reentry_semantics": "V2 re-entry after realized exit; no overlap or pyramiding",
+  "return_unit": "percentage_points",
+  "total_trades": 973,
+  "unique_tickers": 542,
+  "first_entry_count": 543,
+  "reentry_count": 430,
+  "closed_trade_count": 884,
+  "open_at_cutoff_count": 89,
+  "positive_trade_count": 297,
+  "negative_trade_count": 675,
+  "zero_trade_count": 1,
+  "positive_trade_rate": 30.524152,
+  "mean_terminal_return": 8.860421,
+  "median_terminal_return": -15.14,
+  "mean_mfe": 45.33184,
+  "median_mfe": 17.18,
+  "mean_mae": -16.049856,
+  "median_mae": -16.48,
+  "mean_holding_trading_days": 148.448099,
+  "median_holding_trading_days": 85.0,
+  "loss_guard_trade_count": 590,
+  "exit_type_counts": {
+    "EXIT3_PROGRESSED_TO_BASE": 4,
+    "EXIT3_PROGRESSED_TO_EARLY_TREND": 2,
+    "EXIT3_PROGRESSED_TO_TRANSITION": 19,
+    "EXIT3_PROGRESSED_TO_WEAK": 14,
+    "EXIT4_SCORE_DRAWDOWN_GE_15": 255,
+    "LOSS_GUARD_CLOSE_LE_NEG_15": 590,
+    "NO_EXIT_BEFORE_CUTOFF": 59,
+    "NO_PROGRESSED_BEFORE_CUTOFF": 30
+  },
+  "tail_counts": {
+    "terminal_return_le_neg_15_pct_points": 506,
+    "terminal_return_le_neg_20_pct_points": 52,
+    "terminal_return_le_neg_30_pct_points": 16,
+    "terminal_return_le_neg_40_pct_points": 7
+  },
+  "winner_counts": {
+    "terminal_return_ge_pos_30_pct_points": 196,
+    "terminal_return_ge_pos_50_pct_points": 160,
+    "terminal_return_ge_pos_100_pct_points": 57
+  },
+  "network_call_counts": {
+    "krx_open_api": 0,
+    "opendart": 0,
+    "pykrx": 0,
+    "naver": 0,
+    "krx_html": 0,
+    "socket_attempts": 0,
+    "repository_v2_local_loads": 691
+  },
+  "authority": {
+    "effective_pit_sha256": "a1952956427c214c21aa2fa293366d9ef092b36ae5afb3b110fd1ae556ccb3b0",
+    "effective_pit_interval_count": 3173
+  },
+  "validation": {
+    "pre_start_entry_violations": 0,
+    "post_end_signal_violations": 0,
+    "identity_violations": 0,
+    "execution_next_day_violations": 0,
+    "overlapping_positions": 0,
+    "pit_future_membership_fallback": 0,
+    "fundamentals_references": 0,
+    "network_calls": 0
+  },
+  "determinism": {
+    "status": "PASS",
+    "trade_row_count_same": true,
+    "trade_content_same": true,
+    "summary_core_same": true
+  },
+  "artifacts": {
+    "control_trades_csv": "artifacts/backtests/fastcore_fundamentals_simple_v01/control/control_trades.csv",
+    "control_summary_json": "artifacts/backtests/fastcore_fundamentals_simple_v01/control/control_summary.json"
+  }
+}
