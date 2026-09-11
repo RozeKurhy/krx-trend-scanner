@@ -1,0 +1,239 @@
+"""PIT raw investability panel (market cap / 20D avg trading value / close).
+
+Builds per-ticker daily time series of the three raw KRX fields the
+FastCore vs Julia STEP 1 backtest entry-only filter needs
+(``MKTCAP``, ``ACC_TRDVAL`` 20-trading-day rolling mean, ``TDD_CLSPRC``)
+directly from :class:`KrxRawStockStore`'s official local historical
+snapshots -- never from live PyKRX/KRX API/Naver/OpenDART, and never from
+the single as-of production investability snapshot (which only reflects
+one date, not the full PIT history a backtest needs).
+
+Built once per backtest run (one pass over every raw daily snapshot,
+not once per ticker) because :meth:`KrxRawStockStore.load_ticker` scans
+every date's manifest row per ticker -- O(dates x tickers) if called in a
+loop. Loading every whole-market snapshot once and pivoting to per-ticker
+series is O(dates) instead.
+"""
+
+from __future__ import annotations
+
+from array import array
+from pathlib import Path
+from typing import Iterator, Mapping, Sequence
+
+import pandas as pd
+
+from trend_scanner.data.krx_raw_stock_store import DEFAULT_RAW_STOCK_ROOT, KrxRawStockStore
+
+RAW_MARKETS = ("KOSPI", "KOSDAQ")
+AVG_TRADING_VALUE_WINDOW = 20
+
+
+def recompute_identity_scoped_avg_trading_value_20d(panel: pd.DataFrame) -> pd.DataFrame:
+    """Recompute the 20-observation average after an identity clip.
+
+    ``build_raw_investability_panel`` is intentionally built once per ticker
+    for efficiency, but a ticker can be reused by multiple ISU identities.
+    Callers therefore *must* clip the panel to one identity lifecycle before
+    invoking this helper.  The rolling window is reset at the clipped frame's
+    first observation, so a predecessor identity can never seed a successor's
+    average.
+    """
+    result = panel.copy()
+    if "trading_value" not in result.columns:
+        result["avg_trading_value_20d"] = pd.Series(index=result.index, dtype="float64")
+        return result
+    result["avg_trading_value_20d"] = (
+        pd.to_numeric(result["trading_value"], errors="coerce")
+        .rolling(window=AVG_TRADING_VALUE_WINDOW, min_periods=AVG_TRADING_VALUE_WINDOW)
+        .mean()
+    )
+    return result
+
+
+def iter_raw_investability_panels(
+    tickers: set[str],
+    *,
+    end: str | pd.Timestamp,
+    raw_root: Path | str = DEFAULT_RAW_STOCK_ROOT,
+    identity_intervals: Mapping[tuple[str, str, str], Sequence[tuple[str, str]]] | None = None,
+) -> Iterator[tuple[str, pd.DataFrame]]:
+    """Yield ``(ticker, DataFrame)`` panels built from raw KRX snapshots.
+
+    Only dates ``<= end`` are read.  When ``identity_intervals`` is supplied,
+    the 20D average is computed separately inside each exact
+    ``(ticker, isu_cd, market)`` lifecycle; a successor identity therefore
+    starts with 19 unavailable observations even when the ticker was active
+    before the transition.  Without the optional authority map the helper
+    retains the ticker-scoped behavior for standalone callers, while the
+    backtest runner always supplies the map and recomputes after its final
+    lifecycle clip as a defensive invariant.
+    """
+    store = KrxRawStockStore(raw_root)
+    end_day = pd.Timestamp(end).strftime("%Y-%m-%d")
+
+    # Keep only compact scalar columns in per-ticker accumulators.  The old
+    # implementation retained one DataFrame per daily snapshot and then a
+    # second concatenated long DataFrame, which made the peak proportional to
+    # both representations.  This loop releases each snapshot as soon as its
+    # five required scalar fields have been copied into the accumulator.
+    # ``array`` keeps the accumulator close to the eventual numeric parquet
+    # representation.  Python lists of millions of boxed scalar objects were
+    # the remaining hidden peak after removing the snapshot DataFrame list.
+    accumulators: dict[str, dict[str, array]] = {}
+    for market in RAW_MARKETS:
+        for day in store.list_dates(market):
+            if day > end_day:
+                continue
+            snap = store.load_snapshot(market, day)
+            if snap.empty:
+                continue
+            snap = snap[snap["ticker"].isin(tickers)]
+            if snap.empty:
+                continue
+
+            for observed_date, ticker, close, market_cap, trading_value in snap.loc[
+                :, ["date", "ticker", "close", "market_cap", "trading_value"]
+            ].itertuples(index=False, name=None):
+                key = str(ticker)
+                accumulator = accumulators.setdefault(
+                    key,
+                    {"date": array("q"), "close": array("d"), "market_cap": array("d"), "trading_value": array("d")},
+                )
+                accumulator["date"].append(pd.Timestamp(observed_date).value)
+                accumulator["close"].append(float(close) if pd.notna(close) else float("nan"))
+                accumulator["market_cap"].append(float(market_cap) if pd.notna(market_cap) else float("nan"))
+                accumulator["trading_value"].append(float(trading_value) if pd.notna(trading_value) else float("nan"))
+            del snap
+
+    if not accumulators:
+        return
+
+    for ticker in sorted(accumulators):
+        values = accumulators.pop(ticker)
+        group = pd.DataFrame(
+            {
+                "date": pd.to_datetime(values["date"]),
+                "close": values["close"],
+                "market_cap": values["market_cap"],
+                "trading_value": values["trading_value"],
+            }
+        ).sort_values("date", kind="mergesort")
+        # Preserve same-day cross-market collisions instead of silently
+        # selecting one row.  The identity-scoped runner detects the
+        # duplicate index and fails that task closed.
+        has_duplicate_date = group["date"].duplicated(keep=False).any()
+        if not has_duplicate_date:
+            group = group.drop_duplicates(subset=["date"], keep="first")
+        g = group.set_index("date").sort_index()
+        if identity_intervals is None:
+            g = recompute_identity_scoped_avg_trading_value_20d(g)
+        elif g.index.has_duplicates:
+            # A same-day cross-market collision cannot be attributed to an
+            # identity without a market discriminator.  Keep the raw rows so
+            # the worker can fail closed, but do not synthesize a rolling
+            # value from ambiguous observations.
+            g["avg_trading_value_20d"] = pd.Series(index=g.index, dtype="float64")
+        else:
+            # Assign each raw date to exactly one authority lifecycle before
+            # rolling.  Overlapping authority intervals remain unavailable;
+            # the exact PIT gate will reject them downstream.
+            avg = pd.Series(index=g.index, dtype="float64")
+            ownership = pd.Series(0, index=g.index, dtype="int64")
+            masks: list[pd.Series] = []
+            for (key_ticker, _isu_cd, _market), ranges in identity_intervals.items():
+                if str(key_ticker) != str(ticker):
+                    continue
+                for start, stop in ranges:
+                    mask = (g.index >= pd.Timestamp(start)) & (g.index <= pd.Timestamp(stop))
+                    if mask.any():
+                        masks.append(pd.Series(mask, index=g.index))
+                        ownership.loc[mask] += 1
+            for mask in masks:
+                owned = mask & ownership.eq(1)
+                if not owned.any():
+                    continue
+                scoped = recompute_identity_scoped_avg_trading_value_20d(g.loc[owned])
+                avg.loc[owned] = scoped["avg_trading_value_20d"].to_numpy()
+            g["avg_trading_value_20d"] = avg
+        yield str(ticker), g.loc[:, ["close", "market_cap", "trading_value", "avg_trading_value_20d"]]
+        del group, values, g
+
+
+def build_raw_investability_panel(
+    tickers: set[str],
+    *,
+    end: str | pd.Timestamp,
+    raw_root: Path | str = DEFAULT_RAW_STOCK_ROOT,
+    identity_intervals: Mapping[tuple[str, str, str], Sequence[tuple[str, str]]] | None = None,
+) -> dict[str, pd.DataFrame]:
+    """Materialize :func:`iter_raw_investability_panels` for compatibility.
+
+    Long-running runners should consume the iterator directly so one ticker's
+    panel can be released before the next identity is processed.
+    """
+    return dict(
+        iter_raw_investability_panels(
+            tickers,
+            end=end,
+            raw_root=raw_root,
+            identity_intervals=identity_intervals,
+        )
+    )
+
+    return panels
+
+
+def evaluate_entry_filter(
+    panel: pd.DataFrame | None,
+    signal_date: pd.Timestamp,
+    *,
+    market_cap_threshold: float,
+    avg_trading_value_threshold: float,
+    close_threshold: float,
+) -> dict[str, object]:
+    """Entry-only investability filter evaluated strictly as of ``signal_date``.
+
+    Never an exit condition -- callers must only call this at entry/re-entry
+    decision points, never to force a close on an open position.
+    """
+    result = {
+        "entry_market_cap": None,
+        "entry_avg_trading_value_20d": None,
+        "entry_signal_close": None,
+        "entry_filter_raw_date": None,
+        "entry_market_cap_pass": False,
+        "entry_trading_value_pass": False,
+        "entry_close_pass": False,
+        "entry_filter_pass": False,
+    }
+    if panel is None or panel.empty:
+        return result
+    row = panel[panel.index <= signal_date]
+    if row.empty:
+        return result
+    # Most recent PIT-valid raw observation at or before the signal date --
+    # if the signal date itself has no raw snapshot (e.g. a weekly-bar
+    # label that isn't itself a KRX raw trading day), this falls back to
+    # the latest one before it, never one after it.
+    last = row.iloc[-1]
+    raw_date = row.index[-1]
+    mkt_cap = last["market_cap"]
+    avg_tv = last["avg_trading_value_20d"]
+    close = last["close"]
+
+    mkt_cap_pass = bool(pd.notna(mkt_cap) and mkt_cap >= market_cap_threshold)
+    tv_pass = bool(pd.notna(avg_tv) and avg_tv >= avg_trading_value_threshold)
+    close_pass = bool(pd.notna(close) and close >= close_threshold)
+
+    result.update(
+        entry_market_cap=None if pd.isna(mkt_cap) else float(mkt_cap),
+        entry_avg_trading_value_20d=None if pd.isna(avg_tv) else float(avg_tv),
+        entry_signal_close=None if pd.isna(close) else float(close),
+        entry_filter_raw_date=pd.Timestamp(raw_date).strftime("%Y-%m-%d"),
+        entry_market_cap_pass=mkt_cap_pass,
+        entry_trading_value_pass=tv_pass,
+        entry_close_pass=close_pass,
+        entry_filter_pass=bool(mkt_cap_pass and tv_pass and close_pass),
+    )
+    return result

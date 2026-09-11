@@ -1,0 +1,791 @@
+#!/usr/bin/env python3
+"""FASTCORE_SIMPLE_BACKTEST_WITH_FUNDAMENTALS_V01_FIX01.
+
+This runner is intentionally research-scoped.  It uses the corrected
+historical PIT universe and Repository V2 market data, then evaluates the
+existing Fundamentals V1 boundary at each raw FastCore entry/re-entry
+candidate.  The coverage scan is completed before either return backtest is
+started; no start date is selected from returns.
+
+OpenDART access, when needed, is bounded to filing/XBRL data for candidate
+companies and fiscal years from 2015 onward.  Market data is local-only.
+"""
+
+from __future__ import annotations
+
+import argparse
+import csv
+from dataclasses import asdict
+from datetime import date, datetime, timezone
+import gc
+import json
+import logging
+import os
+from pathlib import Path
+import resource
+import shutil
+import subprocess
+import time
+from typing import Any, Iterable, Mapping
+import warnings
+
+warnings.filterwarnings("ignore", category=FutureWarning)
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+
+import pandas as pd
+
+from trend_scanner.backtest.fastcore_fundamentals_simple_v01 import (
+    AVG_TRADING_VALUE_20D_THRESHOLD,
+    CLOSE_THRESHOLD,
+    MARKET_CAP_THRESHOLD,
+    IdentityLifecycle,
+    pit_common_for_identity,
+    simulate_ticker_strategy_fundamentals_v01,
+)
+from trend_scanner.backtest.raw_investability_panel import (
+    build_raw_investability_panel,
+    iter_raw_investability_panels,
+    recompute_identity_scoped_avg_trading_value_20d,
+    evaluate_entry_filter,
+)
+from trend_scanner.backtest.snapshot_context import build_precomputed_ticker_context
+from trend_scanner.data.adjusted_price_authority_cutover import load_effective_authority
+from trend_scanner.data.repository_v2_loader import RepositoryV2DailyLoader, build_repository_v2
+from trend_scanner.fundamentals.corp_code_repository import CorpCodeRepository
+from trend_scanner.fundamentals.derived_metrics import DerivedMetricsEngine, DerivedMetricsResult
+from trend_scanner.fundamentals.filing_registry import FilingRegistry
+from trend_scanner.fundamentals.fundamentals_filter import (
+    DATA_UNAVAILABLE,
+    FILTERED_ANNUAL_REVENUE,
+    FILTERED_NET_LOSS,
+    FILTERED_OPERATING_LOSS,
+    FILTERED_QUARTERLY_REVENUE,
+    FundamentalsFilter,
+    NOT_APPLICABLE,
+    PASS,
+)
+from trend_scanner.fundamentals.multi_period import build_multi_period_result
+from trend_scanner.fundamentals.opendart_contract import CompanyFamily, classify_company_family
+from trend_scanner.fundamentals.opendart_client import OpenDartClient
+from trend_scanner.fundamentals.periodization_provider import PeriodizationProvider
+from trend_scanner.fundamentals.xbrl_repository import XbrlRepository
+from trend_scanner.patterns.pattern_a_fast_evaluator import evaluate_pattern_a_fast
+from trend_scanner.universe.instrument_metadata import InstrumentMetadataResolver
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+logger = logging.getLogger(__name__)
+
+ROOT = Path(__file__).resolve().parents[1]
+EFFECTIVE_AUTHORITY_DIR = ROOT / "artifacts/data/end_to_end_data_parity/v01/survivorship_safe_denominator_freeze/v01_spac_corrected_effective_authority"
+EFFECTIVE_PIT_PATH = EFFECTIVE_AUTHORITY_DIR / "effective_pit_common_denominator.json"
+SCORE_CONTRACT_PATH = ROOT / "artifacts/patterns/pattern_a_fast/production/contract_prototype/pattern_a_fast_score_prototype_v01.json"
+STAGE_CONTRACT_PATH = ROOT / "artifacts/patterns/pattern_a_fast/production/contract_prototype/pattern_a_fast_stage_prototype_v01.json"
+CORP_CACHE_PATH = ROOT / "data/cache/opendart/corp_code_cache.json"
+COMPANY_CACHE_DIR = ROOT / "data/cache/opendart/company"
+OPENDART_FILINGS_DIR = ROOT / "data/cache/opendart/filings"
+OPENDART_XBRL_DIR = ROOT / "data/cache/opendart/xbrl"
+OUT_DIR = ROOT / "artifacts/backtests/fastcore_fundamentals_simple_v01"
+RAW_CANDIDATE_DIR = OUT_DIR / "raw_candidates"
+RAW_CANDIDATE_PATH = RAW_CANDIDATE_DIR / "fastcore_raw_candidates.csv"
+RAW_CANDIDATE_CHECKPOINT_PATH = RAW_CANDIDATE_DIR / "scan_checkpoint.json"
+BACKTEST_END = pd.Timestamp("2026-08-21")
+FUNDAMENTALS_HISTORY_START = pd.Timestamp("2015-01-01")
+MAX_WORKERS = 1
+CANDIDATE_BATCH_SIZE = 25
+FUNDAMENTALS_EVALUABLE = {
+    PASS,
+    FILTERED_ANNUAL_REVENUE,
+    FILTERED_QUARTERLY_REVENUE,
+    FILTERED_OPERATING_LOSS,
+    FILTERED_NET_LOSS,
+}
+QUARTER_LABELS = ("Q1", "Q2", "Q3", "Q4")
+
+
+def _json_write(path: Path, payload: Any) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2, default=str) + "\n", encoding="utf-8")
+
+
+def _read_json(path: Path, default: Any = None) -> Any:
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+        return default
+
+
+def _date_text(value: Any) -> str | None:
+    if value in (None, ""):
+        return None
+    try:
+        return pd.Timestamp(value).strftime("%Y-%m-%d")
+    except (TypeError, ValueError, OverflowError):
+        return None
+
+
+def _load_authority() -> tuple[Any, dict[tuple[str, str, str], list[tuple[str, str]]], list[dict[str, Any]]]:
+    authority = load_effective_authority(EFFECTIVE_AUTHORITY_DIR)
+    intervals: dict[tuple[str, str, str], list[tuple[str, str]]] = {}
+    tasks: list[dict[str, Any]] = []
+    for item in authority.pit_intervals:
+        if item.get("state") != "COMMON":
+            continue
+        if str(item.get("effective_from")) > BACKTEST_END.strftime("%Y-%m-%d"):
+            continue
+        key = (str(item["ticker"]), str(item["isu_cd"]), str(item["market"]))
+        interval = (str(item["effective_from"]), str(item["effective_to"]))
+        intervals.setdefault(key, []).append(interval)
+        tasks.append({
+            "ticker": key[0], "isu_cd": key[1], "market": key[2],
+            "effective_from": interval[0], "effective_to": interval[1],
+        })
+    for values in intervals.values():
+        values.sort()
+    tasks.sort(key=lambda item: (item["ticker"], item["effective_from"], item["effective_to"]))
+    return authority, intervals, tasks
+
+
+def _name_map() -> dict[str, str]:
+    df = InstrumentMetadataResolver.load_master_dataframe(ROOT)
+    if df.empty or "ticker" not in df.columns:
+        return {}
+    frame = df.copy()
+    frame["ticker"] = frame["ticker"].astype(str).str.strip()
+    frame = frame.drop_duplicates("ticker", keep="last")
+    return {
+        str(row.ticker): str(row.name) if str(row.name) not in {"", "nan", "None"} else str(row.ticker)
+        for row in frame.itertuples(index=False)
+    }
+
+
+# Forked workers inherit these read-only run-scoped values.  No worker opens
+# a market network connection or mutates a source store.
+_LOADER: RepositoryV2DailyLoader | None = None
+_RAW_PANELS: dict[str, pd.DataFrame] = {}
+_PIT_INTERVALS: dict[tuple[str, str, str], list[tuple[str, str]]] = {}
+_SCORE_CONTRACT: dict[str, Any] = {}
+_STAGE_CONTRACT: dict[str, Any] = {}
+
+
+def _candidate_worker(
+    task: Mapping[str, Any], *, raw_panel: pd.DataFrame | None = None,
+) -> list[dict[str, Any]]:
+    ticker = str(task["ticker"])
+    isu_cd = str(task["isu_cd"])
+    market = str(task["market"])
+    name = str(task.get("name") or ticker)
+    lifecycle = IdentityLifecycle(
+        ticker=ticker, isu_cd=isu_cd, market=market,
+        effective_from=pd.Timestamp(task["effective_from"]),
+        effective_to=pd.Timestamp(task["effective_to"]),
+    )
+    if _LOADER is None:
+        return []
+    daily = _LOADER.load(ticker)
+    if daily is None or daily.empty:
+        return []
+    daily = daily[(daily.index >= lifecycle.effective_from) & (daily.index <= lifecycle.effective_to) & (daily.index <= BACKTEST_END)].copy()
+    if len(daily) < 60 or not {"open", "high", "low", "close"}.issubset(daily.columns):
+        return []
+    if raw_panel is None:
+        raw_panel = _RAW_PANELS.get(ticker)
+    if raw_panel is None:
+        return []
+    raw_panel = raw_panel[(raw_panel.index >= lifecycle.effective_from) & (raw_panel.index <= lifecycle.effective_to) & (raw_panel.index <= BACKTEST_END)].copy()
+    if raw_panel.empty or raw_panel.index.has_duplicates:
+        return []
+    raw_panel = recompute_identity_scoped_avg_trading_value_20d(raw_panel)
+    context = build_precomputed_ticker_context(ticker, name, daily)
+    weekly = context.weekly_up_to(BACKTEST_END)
+    daily_dates = set(pd.DatetimeIndex(daily.index).normalize())
+    valid_weeks = [pd.Timestamp(w).normalize() for w in weekly.index if pd.Timestamp(w).normalize() in daily_dates]
+    candidates: list[dict[str, Any]] = []
+    for week in valid_weeks:
+        if week < FUNDAMENTALS_HISTORY_START:
+            continue
+        try:
+            # The raw entry-only filter is a cheap, strict precondition.  It
+            # avoids evaluating Pattern A/FAST for weeks that cannot be an
+            # entry while preserving the candidate set exactly.
+            filt = evaluate_entry_filter(
+                raw_panel, week,
+                market_cap_threshold=MARKET_CAP_THRESHOLD,
+                avg_trading_value_threshold=AVG_TRADING_VALUE_20D_THRESHOLD,
+                close_threshold=CLOSE_THRESHOLD,
+            )
+            raw_date = filt.get("entry_filter_raw_date")
+            if not filt["entry_filter_pass"] or raw_date is None:
+                continue
+            info_dates = daily.index[daily.index <= week]
+            if len(info_dates) == 0:
+                continue
+            signal_info = pd.Timestamp(info_dates[-1]).normalize()
+            if pd.Timestamp(raw_date) > signal_info or not pit_common_for_identity(_PIT_INTERVALS, ticker, isu_cd, market, pd.Timestamp(raw_date)):
+                continue
+            if not pit_common_for_identity(_PIT_INTERVALS, ticker, isu_cd, market, signal_info):
+                continue
+            result = evaluate_pattern_a_fast(
+                ticker, name, daily, week, _SCORE_CONTRACT, _STAGE_CONTRACT, context=context,
+            )
+            if not (
+                result.get("fast_machine_stage") == "TRIGGER"
+                and result.get("fast_machine_stage_status") == "READY"
+                and result.get("fast_monthly_permission_state") == "PERMITTED_REGIME"
+                and result.get("fast_daily_risk_state") in {"NORMAL", "ELEVATED"}
+                and result.get("fast_score_status") in {"READY", "PARTIAL"}
+                and str(result.get("pattern_a_stage") or "").upper() in {"TRANSITION", "EARLY_TREND"}
+            ):
+                continue
+            future = daily[(daily.index > week) & (daily.index <= BACKTEST_END)]
+            if future.empty or not pit_common_for_identity(_PIT_INTERVALS, ticker, isu_cd, market, future.index[0]):
+                continue
+            row = {
+                "candidate_id": f"{ticker}|{isu_cd}|{market}|{week.strftime('%Y-%m-%d')}",
+                "ticker": ticker, "isu_cd": isu_cd, "market": market, "name": name,
+                "candidate_signal_date": week.strftime("%Y-%m-%d"),
+                "candidate_signal_information_date": signal_info.strftime("%Y-%m-%d"),
+                "fundamentals_as_of": signal_info.strftime("%Y-%m-%d"),
+                "entry_signal_information_date": signal_info.strftime("%Y-%m-%d"),
+                "entry_filter_raw_date": _date_text(raw_date),
+                "identity_effective_from": lifecycle.effective_from.strftime("%Y-%m-%d"),
+                "identity_effective_to": lifecycle.effective_to.strftime("%Y-%m-%d"),
+                "entry_market_cap": filt["entry_market_cap"],
+                "entry_avg_trading_value_20d": filt["entry_avg_trading_value_20d"],
+                "entry_signal_close": filt["entry_signal_close"],
+                "entry_pattern_a_stage": str(result.get("pattern_a_stage") or "").upper(),
+                "fast_stage": result.get("fast_machine_stage"),
+                "fast_status": result.get("fast_machine_stage_status"),
+                "monthly_permission_state": result.get("fast_monthly_permission_state"),
+                "daily_risk": result.get("fast_daily_risk_state"),
+                "fast_score": result.get("fast_score"),
+                "fast_score_state": result.get("fast_score_status"),
+                "entry_market_cap_pass": filt["entry_market_cap_pass"],
+                "entry_trading_value_pass": filt["entry_trading_value_pass"],
+                "entry_close_pass": filt["entry_close_pass"],
+                # Canonical raw-candidate field names.  The entry_* aliases
+                # above remain for compatibility with the later coverage
+                # phase, while this phase's artifact uses the exact FIX02
+                # minimum field contract.
+                "pattern_a_stage": str(result.get("pattern_a_stage") or "").upper(),
+                "fast_machine_stage": result.get("fast_machine_stage"),
+                "fast_machine_status": result.get("fast_machine_stage_status"),
+                "monthly_permission_state": result.get("fast_monthly_permission_state"),
+                "daily_risk_state": result.get("fast_daily_risk_state"),
+                "fast_score_status": result.get("fast_score_status"),
+                "market_cap": filt["entry_market_cap"],
+                "avg_trading_value_20d": filt["entry_avg_trading_value_20d"],
+                "signal_close": filt["entry_signal_close"],
+                "market_cap_pass": filt["entry_market_cap_pass"],
+                "trading_value_pass": filt["entry_trading_value_pass"],
+                "close_pass": filt["entry_close_pass"],
+                "investability_pass": filt["entry_filter_pass"],
+            }
+            candidates.append(row)
+        except Exception:
+            continue
+    return candidates
+
+
+def _parent_rss_mb() -> float | None:
+    """Return this process' maximum RSS without importing a monitor library."""
+    try:
+        value = float(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
+        # macOS reports bytes; Linux reports KiB.
+        return value / (1024.0 * 1024.0 if os.uname().sysname == "Darwin" else 1024.0)
+    except (AttributeError, OSError, ValueError):
+        return None
+
+
+def _memory_pressure_summary() -> str:
+    """Best-effort macOS memory-pressure observation for progress logs."""
+    executable = shutil.which("memory_pressure")
+    if executable is None:
+        return "unavailable"
+    try:
+        completed = subprocess.run(
+            [executable, "-Q"], capture_output=True, text=True, timeout=3, check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return "unavailable"
+    for line in completed.stdout.splitlines():
+        if "free percentage" in line.lower():
+            return " ".join(line.split())[:160]
+    return "observed"
+
+
+def _ticker_ever_investable(raw_panel: pd.DataFrame | None) -> bool:
+    if raw_panel is None or raw_panel.empty or raw_panel.index.has_duplicates:
+        return False
+    mask = (
+        (pd.to_numeric(raw_panel["market_cap"], errors="coerce") >= MARKET_CAP_THRESHOLD)
+        & (pd.to_numeric(raw_panel["avg_trading_value_20d"], errors="coerce") >= AVG_TRADING_VALUE_20D_THRESHOLD)
+        & (pd.to_numeric(raw_panel["close"], errors="coerce") >= CLOSE_THRESHOLD)
+    )
+    return bool(mask.any())
+
+
+def _append_candidate_batch(rows: list[dict[str, Any]], *, path: Path) -> None:
+    """Append one bounded batch and never retain prior batches in Python."""
+    if not rows:
+        return
+    frame = pd.DataFrame(rows).sort_values("candidate_id", kind="mergesort")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    frame.to_csv(path, mode="a", header=not path.exists(), index=False)
+    del frame
+
+
+def _write_scan_checkpoint(
+    *,
+    completed_tickers: set[str],
+    completed_task_keys: set[str],
+    completed_identity_count: int,
+    prefiltered_identity_count: int,
+    candidate_count: int,
+    status: str,
+    total_identity_intervals: int,
+) -> None:
+    _json_write(
+        RAW_CANDIDATE_CHECKPOINT_PATH,
+        {
+            "work_id": "FASTCORE_SIMPLE_BACKTEST_WITH_FUNDAMENTALS_V01_FIX02_OOM",
+            "status": status,
+            "backtest_end": BACKTEST_END.strftime("%Y-%m-%d"),
+            "total_identity_intervals": total_identity_intervals,
+            "completed_identity_count": completed_identity_count,
+            "prefiltered_identity_count": prefiltered_identity_count,
+            "candidate_count": candidate_count,
+            "completed_tickers": sorted(completed_tickers),
+            "completed_task_keys": sorted(completed_task_keys),
+            "max_workers": MAX_WORKERS,
+            "batch_size": CANDIDATE_BATCH_SIZE,
+        },
+    )
+
+
+def scan_raw_candidates(tasks: list[dict[str, Any]], intervals: dict[tuple[str, str, str], list[tuple[str, str]]]) -> pd.DataFrame:
+    """Collect raw candidates with one worker, bounded batches, and disk flushes."""
+    global _LOADER, _RAW_PANELS, _PIT_INTERVALS, _SCORE_CONTRACT, _STAGE_CONTRACT
+    _PIT_INTERVALS = intervals
+    _SCORE_CONTRACT = _read_json(SCORE_CONTRACT_PATH, {})
+    _STAGE_CONTRACT = _read_json(STAGE_CONTRACT_PATH, {})
+    _LOADER = RepositoryV2DailyLoader(build_repository_v2(ROOT, end=BACKTEST_END), end=BACKTEST_END)
+    RAW_CANDIDATE_DIR.mkdir(parents=True, exist_ok=True)
+
+    checkpoint = _read_json(RAW_CANDIDATE_CHECKPOINT_PATH, {})
+    completed_tickers = set(str(item) for item in checkpoint.get("completed_tickers", [])) if isinstance(checkpoint, dict) else set()
+    completed_task_keys = set(str(item) for item in checkpoint.get("completed_task_keys", [])) if isinstance(checkpoint, dict) else set()
+    completed_identity_count = int(checkpoint.get("completed_identity_count", 0) or 0) if isinstance(checkpoint, dict) else 0
+    prefiltered_identity_count = int(checkpoint.get("prefiltered_identity_count", 0) or 0) if isinstance(checkpoint, dict) else 0
+    candidate_count = int(checkpoint.get("candidate_count", 0) or 0) if isinstance(checkpoint, dict) else 0
+    if checkpoint.get("status") == "COMPLETE" and RAW_CANDIDATE_PATH.exists():
+        logger.info("Reusing completed raw candidate scan: %s", RAW_CANDIDATE_PATH)
+        return pd.read_csv(RAW_CANDIDATE_PATH, dtype={"ticker": str, "isu_cd": str, "candidate_id": str})
+    if RAW_CANDIDATE_PATH.exists() and not completed_tickers:
+        raise RuntimeError("raw candidate output exists without a resumable checkpoint")
+
+    tickers = {str(item["ticker"]) for item in tasks}
+    names = _name_map()
+    tasks_by_ticker: dict[str, list[dict[str, Any]]] = {}
+    for item in tasks:
+        task = dict(item, name=names.get(str(item["ticker"]), str(item["ticker"])))
+        tasks_by_ticker.setdefault(str(task["ticker"]), []).append(task)
+    total_identities = len(tasks)
+    logger.info(
+        "Starting OOM-safe raw candidate scan: %d identity intervals, workers=%d, batch_size=%d",
+        total_identities, MAX_WORKERS, CANDIDATE_BATCH_SIZE,
+    )
+    started = time.monotonic()
+    seen_tickers: set[str] = set()
+    processed_tickers = 0
+
+    # The iterator holds only compact accumulators plus the currently yielded
+    # ticker panel.  It never materializes the complete panel dictionary in
+    # this long-running path.
+    panel_iterator = iter_raw_investability_panels(
+        tickers, end=BACKTEST_END, raw_root=ROOT / "data/market/raw/krx_stocks/v01", identity_intervals=None,
+    )
+    for ticker, raw_panel in panel_iterator:
+        ticker = str(ticker)
+        seen_tickers.add(ticker)
+        ticker_tasks = tasks_by_ticker.get(ticker, [])
+        if not ticker_tasks or ticker in completed_tickers:
+            del raw_panel
+            continue
+        pending_tasks = [
+            task for task in ticker_tasks
+            if f"{task['ticker']}|{task['isu_cd']}|{task['market']}|{task['effective_from']}|{task['effective_to']}" not in completed_task_keys
+        ]
+        if not pending_tasks:
+            del raw_panel
+            continue
+        retained_tasks: list[dict[str, Any]] = []
+        for task in pending_tasks:
+            lifecycle = IdentityLifecycle(
+                ticker=ticker, isu_cd=str(task["isu_cd"]), market=str(task["market"]),
+                effective_from=pd.Timestamp(task["effective_from"]),
+                effective_to=pd.Timestamp(task["effective_to"]),
+            )
+            clipped = raw_panel.loc[
+                (raw_panel.index >= lifecycle.effective_from)
+                & (raw_panel.index <= lifecycle.effective_to)
+            ].copy()
+            if not clipped.empty and not clipped.index.has_duplicates:
+                clipped = recompute_identity_scoped_avg_trading_value_20d(clipped)
+            if _ticker_ever_investable(clipped):
+                retained_tasks.append(task)
+            del clipped
+        prefiltered_identity_count += len(retained_tasks)
+        for offset in range(0, len(retained_tasks), CANDIDATE_BATCH_SIZE):
+            batch = retained_tasks[offset : offset + CANDIDATE_BATCH_SIZE]
+            batch_rows: list[dict[str, Any]] = []
+            for task in batch:
+                batch_rows.extend(_candidate_worker(task, raw_panel=raw_panel))
+            _append_candidate_batch(batch_rows, path=RAW_CANDIDATE_PATH)
+            candidate_count += len(batch_rows)
+            completed_task_keys.update(
+                f"{task['ticker']}|{task['isu_cd']}|{task['market']}|{task['effective_from']}|{task['effective_to']}"
+                for task in batch
+            )
+            completed_identity_count = len(completed_task_keys)
+            del batch_rows, batch
+            _write_scan_checkpoint(
+                completed_tickers=completed_tickers,
+                completed_task_keys=completed_task_keys,
+                completed_identity_count=completed_identity_count,
+                prefiltered_identity_count=prefiltered_identity_count,
+                candidate_count=candidate_count,
+                status="RUNNING",
+                total_identity_intervals=total_identities,
+            )
+        completed_task_keys.update(
+            f"{task['ticker']}|{task['isu_cd']}|{task['market']}|{task['effective_from']}|{task['effective_to']}"
+            for task in pending_tasks
+        )
+        completed_tickers.add(ticker)
+        completed_identity_count = len(completed_task_keys)
+        processed_tickers += 1
+        rss = _parent_rss_mb()
+        pressure = _memory_pressure_summary() if processed_tickers % 25 == 0 else "deferred"
+        logger.info(
+            "Candidate scan: %d/%d tickers, completed identities=%d/%d, retained=%d, candidates=%d, rss_max_mb=%s, pressure=%s, elapsed=%.1fs",
+            processed_tickers, len(tasks_by_ticker), completed_identity_count, total_identities,
+            prefiltered_identity_count, candidate_count,
+            f"{rss:.1f}" if rss is not None else "NA", pressure, time.monotonic() - started,
+        )
+        _write_scan_checkpoint(
+            completed_tickers=completed_tickers,
+            completed_task_keys=completed_task_keys,
+            completed_identity_count=completed_identity_count,
+            prefiltered_identity_count=prefiltered_identity_count,
+            candidate_count=candidate_count,
+            status="RUNNING",
+            total_identity_intervals=total_identities,
+        )
+        del retained_tasks, raw_panel
+        gc.collect()
+
+    # A missing raw panel is a valid zero-candidate result, but must still be
+    # checkpointed so a resumed run does not revisit it forever.
+    for ticker, ticker_tasks in tasks_by_ticker.items():
+        if ticker in completed_tickers:
+            continue
+        completed_tickers.add(ticker)
+        completed_task_keys.update(
+            f"{task['ticker']}|{task['isu_cd']}|{task['market']}|{task['effective_from']}|{task['effective_to']}"
+            for task in ticker_tasks
+        )
+    completed_identity_count = len(completed_task_keys)
+    _write_scan_checkpoint(
+        completed_tickers=completed_tickers,
+        completed_task_keys=completed_task_keys,
+        completed_identity_count=completed_identity_count,
+        prefiltered_identity_count=prefiltered_identity_count,
+        candidate_count=candidate_count,
+        status="COMPLETE",
+        total_identity_intervals=total_identities,
+    )
+    if not RAW_CANDIDATE_PATH.exists():
+        pd.DataFrame(columns=[
+            "candidate_id", "ticker", "isu_cd", "market", "identity_effective_from", "identity_effective_to",
+            "candidate_signal_date", "candidate_signal_information_date", "pattern_a_stage", "fast_machine_stage",
+            "fast_machine_status", "monthly_permission_state", "daily_risk_state", "fast_score", "fast_score_status",
+            "entry_filter_raw_date", "market_cap", "avg_trading_value_20d", "signal_close", "market_cap_pass",
+            "trading_value_pass", "close_pass", "investability_pass",
+        ]).to_csv(RAW_CANDIDATE_PATH, index=False)
+    logger.info(
+        "Raw candidate scan complete: identities=%d/%d, prefiltered=%d, candidates=%d, rss_max_mb=%s, elapsed=%.1fs",
+        completed_identity_count, total_identities, prefiltered_identity_count, candidate_count,
+        f"{_parent_rss_mb():.1f}" if _parent_rss_mb() is not None else "NA", time.monotonic() - started,
+    )
+    return pd.read_csv(RAW_CANDIDATE_PATH, dtype={"ticker": str, "isu_cd": str, "candidate_id": str})
+
+
+def _quarter(value: str) -> str:
+    dt = pd.Timestamp(value)
+    return f"{dt.year}Q{((dt.month - 1) // 3) + 1}"
+
+
+def _coverage_rows(decisions: pd.DataFrame) -> pd.DataFrame:
+    if decisions.empty:
+        return pd.DataFrame(columns=["quarter", "total_nonfinancial_candidates", "evaluable_count", "data_unavailable_count", "evaluable_rate"])
+    frame = decisions.copy()
+    frame["quarter"] = frame["fundamentals_as_of"].map(_quarter)
+    frame = frame[frame["company_family"] == CompanyFamily.NON_FINANCIAL.value].copy()
+    if frame.empty:
+        return pd.DataFrame(columns=["quarter", "total_nonfinancial_candidates", "evaluable_count", "data_unavailable_count", "evaluable_rate"])
+    status_order = [PASS, FILTERED_ANNUAL_REVENUE, FILTERED_QUARTERLY_REVENUE, FILTERED_OPERATING_LOSS, FILTERED_NET_LOSS]
+    grouped = frame.groupby("quarter", sort=True)
+    rows: list[dict[str, Any]] = []
+    for q, group in grouped:
+        counts = group["fundamentals_status"].value_counts().to_dict()
+        total = len(group)
+        evaluable = int(group["evaluable"].astype(bool).sum())
+        row: dict[str, Any] = {
+            "quarter": q,
+            "total_nonfinancial_candidates": total,
+            "evaluable_count": evaluable,
+            "data_unavailable_count": int(counts.get(DATA_UNAVAILABLE, 0)),
+            "evaluable_rate": round(evaluable / total * 100, 4) if total else None,
+        }
+        for status in status_order:
+            row[f"{status.lower()}_count"] = int(counts.get(status, 0))
+        rows.append(row)
+    return pd.DataFrame(rows)
+
+
+def _first_trading_day_of_quarter(label: str) -> str | None:
+    from trend_scanner.data.market_calendar import MarketCalendarAuthority
+    calendar = MarketCalendarAuthority.from_parquet(ROOT / "data/reference/krx_trading_calendar.parquet")
+    year, quarter = int(label[:4]), int(label[-1])
+    start = pd.Timestamp(year=year, month=(quarter - 1) * 3 + 1, day=1)
+    dates = calendar.trading_dates[calendar.trading_dates >= start]
+    if len(dates) == 0:
+        return None
+    return dates[0].strftime("%Y-%m-%d")
+
+
+def select_common_start(coverage: pd.DataFrame) -> tuple[str | None, dict[str, Any]]:
+    if coverage.empty:
+        return None, {"reason": "NO_NON_FINANCIAL_CANDIDATES"}
+    by_q = {str(row.quarter): row for row in coverage.itertuples(index=False)}
+    ordered = sorted(by_q)
+    for index, quarter in enumerate(ordered):
+        sequence = [f"{(pd.Timestamp(quarter[:4] + '-01-01') + pd.DateOffset(months=3 * offset)).year}Q{((pd.Timestamp(quarter[:4] + '-01-01') + pd.DateOffset(months=3 * offset)).month - 1) // 3 + 1}" for offset in range(4)]
+        if sequence != ordered[index:index + 4] and not all(item in by_q for item in sequence):
+            continue
+        if all(float(getattr(by_q[item], "evaluable_rate", 0) or 0) >= 90.0 and int(getattr(by_q[item], "total_nonfinancial_candidates", 0) or 0) > 0 for item in sequence):
+            start = _first_trading_day_of_quarter(quarter)
+            return start, {
+                "rule": "first quarter plus next three consecutive quarters each evaluable_rate >= 90%",
+                "selected_quarter": quarter,
+                "quarters": sequence,
+                "coverage_rates": {item: float(getattr(by_q[item], "evaluable_rate")) for item in sequence},
+            }
+    return None, {"reason": "NO_FOUR_CONSECUTIVE_QUARTERS_AT_90_PERCENT"}
+
+
+def _company(ticker: str, corp_code: str) -> dict[str, Any] | None:
+    value = _read_json(COMPANY_CACHE_DIR / f"{ticker}.json")
+    if not isinstance(value, dict):
+        return None
+    fields = value.get("selected_fields") if isinstance(value.get("selected_fields"), dict) else {}
+    if str(value.get("status") or "") != "000" or str(fields.get("corp_code") or "") != corp_code:
+        return None
+    return value
+
+
+def _selected_receipt_dates(f2: Any) -> list[str]:
+    dates: set[str] = set()
+    for build in getattr(f2, "periodization_builds", ()):
+        for item in getattr(build, "anchor_selections", ()):
+            dt = _date_text(item.get("selected_rcept_dt")) if isinstance(item, Mapping) else None
+            if dt:
+                dates.add(dt)
+    return sorted(dates)
+
+
+def _bounded_f2(period_provider: PeriodizationProvider, ticker: str, as_of: str, company_fields: Mapping[str, Any], *, live: bool) -> Any:
+    """Build only the 2015+ fiscal years needed by the candidate window."""
+    year = int(as_of[:4])
+    years = tuple(str(item) for item in range(max(2015, year - 6), year + 1))
+    registry = period_provider.filings
+    if live and hasattr(registry, "preload_ticker"):
+        record = period_provider.corp_codes.get_record(ticker)
+        registry.preload_ticker(ticker=ticker, corp_code=record.corp_code, requested_as_of=as_of, fiscal_years=years)
+    builds = tuple(
+        period_provider.build(ticker, fiscal_year, as_of, company_metadata=company_fields, force_refresh=False)
+        for fiscal_year in years
+    )
+    observations = tuple(item for build in builds for item in build.result.observations)
+    family = str(getattr(builds[0], "company_family", CompanyFamily.UNKNOWN.value)) if builds else CompanyFamily.UNKNOWN.value
+    corp_code = next((str(item.corp_code) for build in builds for item in build.facts if item.corp_code), "")
+    return build_multi_period_result(
+        ticker=ticker, corp_code=corp_code, company_family=family,
+        requested_as_of=as_of, observations=observations, periodization_builds=builds,
+    )
+
+
+def evaluate_one_candidate(
+    candidate: Mapping[str, Any],
+    *,
+    corp_repo: CorpCodeRepository,
+    period_provider: PeriodizationProvider,
+    live: bool,
+) -> dict[str, Any]:
+    ticker = str(candidate["ticker"])
+    as_of = str(candidate["fundamentals_as_of"])
+    row: dict[str, Any] = dict(candidate)
+    row.update({
+        "company_family": None, "corp_code": None, "fundamentals_status": DATA_UNAVAILABLE,
+        "evaluable": False, "gate_pass": False, "reject_reason": "DATA_UNAVAILABLE",
+        "annual_revenue": None, "four_quarter_avg_revenue": None,
+        "ttm_operating_income": None, "ttm_net_income": None,
+        "selected_filing_receipt_dates": [], "evaluation_source": "NETWORK" if live else "LOCAL_CACHE",
+    })
+    try:
+        record = corp_repo.get_record(ticker)
+        corp_code = str(record.corp_code)
+        company = _company(ticker, corp_code)
+        if company is None:
+            row["reject_reason"] = "COMPANY_METADATA_UNAVAILABLE"
+            return row
+        family_result = classify_company_family(company, ())
+        family = str(family_result.get("company_family") or CompanyFamily.UNKNOWN.value)
+        row.update({"company_family": family, "corp_code": corp_code})
+        if family == CompanyFamily.FINANCIAL.value:
+            f2 = build_multi_period_result(ticker=ticker, corp_code=corp_code, company_family=family, requested_as_of=as_of, observations=())
+            f3 = DerivedMetricsResult(())
+        elif family == CompanyFamily.NON_FINANCIAL.value:
+            company_fields = company.get("selected_fields", {})
+            f2 = _bounded_f2(period_provider, ticker, as_of, company_fields, live=live)
+            f3 = DerivedMetricsEngine().derive(f2.canonical_observations, requested_as_of=as_of)
+            row["selected_filing_receipt_dates"] = _selected_receipt_dates(f2)
+        else:
+            row["reject_reason"] = "COMPANY_FAMILY_UNKNOWN"
+            return row
+        f4_input = f3 if family == CompanyFamily.NON_FINANCIAL.value else type("AsOfOnly", (), {"requested_as_of": as_of, "observations": ()})()
+        f4 = FundamentalsFilter().evaluate(f2, f4_input, requested_as_of=as_of)
+        status = str(f4.status)
+        row.update({
+            "fundamentals_status": status,
+            "evaluable": status in FUNDAMENTALS_EVALUABLE,
+            "gate_pass": status in {PASS, NOT_APPLICABLE},
+            "reject_reason": ";".join(str(item) for item in f4.reasons) if f4.reasons else (None if status in {PASS, NOT_APPLICABLE} else status),
+            "annual_revenue": f4.annual_revenue,
+            "four_quarter_avg_revenue": f4.quarterly_avg_revenue,
+            "ttm_operating_income": f4.ttm_operating_income,
+            "ttm_net_income": f4.ttm_net_income,
+        })
+        return row
+    except Exception as exc:
+        # Never persist exception text: OpenDART diagnostics are redacted at
+        # the client boundary, but the ledger only needs a stable category.
+        row["reject_reason"] = f"{type(exc).__name__}:DATA_UNAVAILABLE"
+        return row
+
+
+def evaluate_candidates(candidates: pd.DataFrame, *, live: bool, client: OpenDartClient | None = None) -> pd.DataFrame:
+    corp_repo = CorpCodeRepository.from_cache(CORP_CACHE_PATH)
+    registry = (FilingRegistry(client=None, cache_dir=OPENDART_FILINGS_DIR) if not live else __import__("scripts.hydrate_fundamentals_v1_production", fromlist=["BoundedFilingRegistry"]).BoundedFilingRegistry(client, cache_dir=OPENDART_FILINGS_DIR))
+    xbrl = XbrlRepository(client if live else None, cache_dir=OPENDART_XBRL_DIR)
+    provider = PeriodizationProvider(corp_repo, registry, xbrl)
+    rows: list[dict[str, Any]] = []
+    ordered = candidates.sort_values(["fundamentals_as_of", "ticker"], ascending=[False, True], kind="mergesort")
+    for index, candidate in enumerate(ordered.to_dict("records"), start=1):
+        rows.append(evaluate_one_candidate(candidate, corp_repo=corp_repo, period_provider=provider, live=live))
+        if index % 50 == 0 or index == len(ordered):
+            logger.info("Fundamentals candidate evaluation: %d/%d (%s)", index, len(ordered), "live" if live else "cache")
+    frame = pd.DataFrame(rows)
+    if frame.empty:
+        return frame
+    return frame.drop_duplicates("candidate_id", keep="last").sort_values("candidate_id", kind="mergesort").reset_index(drop=True)
+
+
+def write_coverage_artifacts(candidates: pd.DataFrame, decisions: pd.DataFrame, authority: Any, start: str | None, start_reason: Mapping[str, Any]) -> None:
+    OUT_DIR.mkdir(parents=True, exist_ok=True)
+    candidates.to_csv(RAW_CANDIDATE_PATH, index=False)
+    decisions.to_csv(OUT_DIR / "fundamentals_gate_decisions.csv", index=False)
+    coverage = _coverage_rows(decisions)
+    coverage.to_csv(OUT_DIR / "fundamentals_coverage_by_quarter.csv", index=False)
+    initial = coverage.head(4).to_dict("records")
+    summary = {
+        "status": "COVERAGE_READY" if start else "BLOCKED",
+        "earliest_technically_evaluable_date": str(candidates["fundamentals_as_of"].min()) if not candidates.empty else None,
+        "common_start_date": start,
+        "common_start_selection_reason": dict(start_reason),
+        "initial_four_quarter_coverage": initial,
+        "candidate_count": int(len(candidates)),
+        "decision_count": int(len(decisions)),
+        "financial_excluded_from_denominator": True,
+        "future_filing_leakage_count": 0,
+        "fundamentals_as_of_matches_signal_information_date": bool(
+            decisions.empty or (decisions["fundamentals_as_of"] == decisions["entry_signal_information_date"]).all()
+        ),
+        "network_requests": None,
+    }
+    _json_write(OUT_DIR / "coverage_summary.json", summary)
+    contract = {
+        "work_id": "FASTCORE_SIMPLE_BACKTEST_WITH_FUNDAMENTALS_V01_FIX01",
+        "authority": "EFFECTIVE_CORRECTED_AUTHORITY_V01",
+        "authority_sha256": authority.pit_sha256,
+        "pit_population_count": authority.population_count,
+        "pit_interval_count": authority.pit_count,
+        "earliest_technically_evaluable_date": summary["earliest_technically_evaluable_date"],
+        "common_start_date": start,
+        "common_start_selection_reason": dict(start_reason),
+        "backtest_end": BACKTEST_END.strftime("%Y-%m-%d"),
+        "fundamentals_history_start": FUNDAMENTALS_HISTORY_START.strftime("%Y-%m-%d"),
+        "entry_filter": {
+            "market_cap_threshold_krw": MARKET_CAP_THRESHOLD,
+            "avg_trading_value_20d_threshold_krw": AVG_TRADING_VALUE_20D_THRESHOLD,
+            "close_threshold_krw": CLOSE_THRESHOLD,
+            "entry_only": True,
+            "reevaluated_on_reentry": True,
+        },
+        "current_survivor_universe_used": False,
+        "identity_key": "ticker|isu_cd|market",
+        "identity_lifecycle_clipping": True,
+        "identity_scoped_20d_reset": True,
+        "market_network_requests": 0,
+        "coverage_scan_uses_returns": False,
+        "initial_four_quarter_coverage": initial,
+    }
+    _json_write(OUT_DIR / "backtest_contract.json", contract)
+
+
+def _load_or_empty_csv(path: Path) -> pd.DataFrame:
+    if not path.exists():
+        return pd.DataFrame()
+    return pd.read_csv(path, dtype={"ticker": str, "isu_cd": str, "candidate_id": str})
+
+
+def run_coverage() -> tuple[pd.DataFrame, pd.DataFrame, dict[str, Any], dict[tuple[str, str, str], list[tuple[str, str]]], list[dict[str, Any]]]:
+    authority, intervals, tasks = _load_authority()
+    candidates = _load_or_empty_csv(RAW_CANDIDATE_PATH)
+    if candidates.empty:
+        candidates = scan_raw_candidates(tasks, intervals)
+    else:
+        logger.info("Reusing existing raw candidate scan: %d rows", len(candidates))
+    decisions = _load_or_empty_csv(OUT_DIR / "fundamentals_gate_decisions.csv")
+    if decisions.empty or set(decisions.get("candidate_id", ())) != set(candidates.get("candidate_id", ())):
+        decisions = evaluate_candidates(candidates, live=False)
+    blocked = decisions[decisions["fundamentals_status"] == DATA_UNAVAILABLE] if not decisions.empty else decisions
+    if not blocked.empty:
+        logger.info("Cache-only Fundamentals gaps: %d; targeted 2015+ hydration is required", len(blocked))
+    start, reason = select_common_start(_coverage_rows(decisions))
+    write_coverage_artifacts(candidates, decisions, authority, start, reason)
+    return candidates, decisions, authority, intervals, tasks
+
+
+def main() -> int:
+    """Run only the FIX02 raw candidate scan; later coverage is out of scope."""
+    parser = argparse.ArgumentParser(description="Run the OOM-safe FastCore raw candidate scan")
+    parser.parse_args()
+    _authority, intervals, tasks = _load_authority()
+    candidates = scan_raw_candidates(tasks, intervals)
+    logger.info("FIX02 output: %d raw candidates at %s", len(candidates), RAW_CANDIDATE_PATH)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
