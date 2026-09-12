@@ -1,0 +1,91 @@
+{
+  "work_id": "FASTCORE_V3_SIMPLE_BACKTEST_V00",
+  "comparison": "FastCore V3 minus existing FastCore CONTROL",
+  "evaluation_contract": {
+    "evaluation_start": "2021-04-01",
+    "signal_cutoff": "2026-08-14",
+    "execution_support_end": "2026-08-21",
+    "final_valuation": "2026-08-21 CLOSE",
+    "baseline_artifact": "artifacts/backtests/fastcore_fundamentals_simple_v01/control/control_trades.csv",
+    "baseline_period_recorded_as": [
+      "2021-04-01",
+      "2026-08-14",
+      "2026-08-21"
+    ],
+    "baseline_contract_match": true
+  },
+  "existing_fastcore_baseline": {
+    "artifact": "artifacts/backtests/fastcore_fundamentals_simple_v01/control/control_trades.csv",
+    "summary_artifact": "artifacts/backtests/fastcore_fundamentals_simple_v01/control/control_summary.json",
+    "work_id": "FASTCORE_SIMPLE_BACKTEST_WITH_FUNDAMENTALS_V01_CONTROL",
+    "evaluation_start": "2021-04-01",
+    "signal_cutoff": "2026-08-14",
+    "execution_support_end": "2026-08-21",
+    "mcap_min_krw": 300000000000,
+    "liquidity_min_krw": 300000000,
+    "price_min_krw": 5000,
+    "metrics": {
+      "total_trades": 973,
+      "positive_rate": 30.524152,
+      "mean_return": 8.860421,
+      "median_return": -15.14,
+      "mean_mfe": 45.33184,
+      "median_mfe": 17.18,
+      "mean_mae": -16.049856,
+      "median_mae": -16.48,
+      "mean_holding_days": 148.448099,
+      "median_holding_days": 85.0,
+      "winner_ge_50": 160,
+      "winner_ge_100": 57,
+      "tail_le_20": 52,
+      "tail_le_30": 16,
+      "tail_le_40": 7
+    }
+  },
+  "fastcore_v3": {
+    "total_trades": 1578,
+    "positive_rate": 69.708492,
+    "mean_return": 6.394804,
+    "median_return": 8.41,
+    "mean_mfe": 43.255013,
+    "median_mfe": 28.67,
+    "mean_mae": -24.804582,
+    "median_mae": -16.735,
+    "mean_holding_days": 291.851711,
+    "median_holding_days": 118.0,
+    "winner_ge_50": 82,
+    "winner_ge_100": 29,
+    "tail_le_20": 303,
+    "tail_le_30": 251,
+    "tail_le_40": 208
+  },
+  "delta_v3_minus_baseline": {
+    "total_trades": 605.0,
+    "positive_rate": 39.18434,
+    "mean_return": -2.465617,
+    "median_return": 23.55,
+    "mean_mfe": -2.076827,
+    "median_mfe": 11.49,
+    "mean_mae": -8.754726,
+    "median_mae": -0.255,
+    "mean_holding_days": 143.403612,
+    "median_holding_days": 33.0,
+    "winner_ge_50": -78.0,
+    "winner_ge_100": -28.0,
+    "tail_le_20": 251.0,
+    "tail_le_30": 235.0,
+    "tail_le_40": 201.0
+  },
+  "interpretation_boundary": [
+    "V3 delta includes liquidity-filter removal and V0 exit replacement.",
+    "The existing CONTROL also records a 300B market-cap and 5,000 KRW price threshold; V3 uses the instructed 100B market-cap-only entry filter, so entry-population differences include that threshold change.",
+    "No separate A/B decomposition was run."
+  ],
+  "source_audit": {
+    "raw_fast_signal_candidates_before_mcap_gate": 9895,
+    "mcap_pass_count": 8530,
+    "mcap_below_100b_count": 1365,
+    "mcap_unavailable_count": 0
+  },
+  "network_requests": 0
+}

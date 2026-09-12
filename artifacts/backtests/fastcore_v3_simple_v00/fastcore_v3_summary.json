@@ -1,0 +1,163 @@
+{
+  "work_id": "FASTCORE_V3_SIMPLE_BACKTEST_V00",
+  "status": "COMPLETE",
+  "strategy_id": "FASTCORE_V3_SIMPLE_V00",
+  "evaluation_start": "2021-04-01",
+  "signal_cutoff": "2026-08-14",
+  "execution_support_end": "2026-08-21",
+  "final_valuation": "2026-08-21 CLOSE",
+  "entry_contract": {
+    "pattern_a_stage": [
+      "TRANSITION",
+      "EARLY_TREND"
+    ],
+    "weekly_fast_machine": "TRIGGER / READY",
+    "monthly_regime": "PERMITTED_REGIME",
+    "daily_risk": [
+      "NORMAL",
+      "ELEVATED"
+    ],
+    "fast_score_status": [
+      "READY",
+      "PARTIAL"
+    ],
+    "market_cap_min_krw": 100000000000.0,
+    "liquidity_filter_applied": false,
+    "price_filter_applied": false,
+    "fundamentals_filter_applied": false,
+    "pyramiding": "FORBIDDEN",
+    "cooldown": "NONE"
+  },
+  "exit_contract": {
+    "loss_guard": false,
+    "exit3": false,
+    "exit4": false,
+    "winner_mode_activation_mfe_pct": 20.0,
+    "soft_exit": "HWM drawdown reaches tier soft threshold AND FAST state SETUP/WATCH",
+    "hard_exit": "HWM drawdown reaches tier hard threshold regardless of FAST state",
+    "mfe_tiers": [
+      {
+        "label": "MFE_20_TO_50",
+        "lower_pct": 20.0,
+        "upper_exclusive_pct": 50.0,
+        "soft_drawdown_pct": -10.0,
+        "hard_drawdown_pct": -20.0
+      },
+      {
+        "label": "MFE_50_TO_100",
+        "lower_pct": 50.0,
+        "upper_exclusive_pct": 100.0,
+        "soft_drawdown_pct": -15.0,
+        "hard_drawdown_pct": -25.0
+      },
+      {
+        "label": "MFE_100_TO_200",
+        "lower_pct": 100.0,
+        "upper_exclusive_pct": 200.0,
+        "soft_drawdown_pct": -20.0,
+        "hard_drawdown_pct": -30.0
+      },
+      {
+        "label": "MFE_200_TO_400",
+        "lower_pct": 200.0,
+        "upper_exclusive_pct": 400.0,
+        "soft_drawdown_pct": -25.0,
+        "hard_drawdown_pct": -35.0
+      },
+      {
+        "label": "MFE_400_PLUS",
+        "lower_pct": 400.0,
+        "upper_exclusive_pct": null,
+        "soft_drawdown_pct": -30.0,
+        "hard_drawdown_pct": -40.0
+      }
+    ],
+    "same_open_exit_reentry": false
+  },
+  "observation_semantics": {
+    "hwm_price": "daily HIGH, updated after entry and before threshold check",
+    "mfe": "(running daily HIGH HWM / entry OPEN - 1) * 100",
+    "mae": "minimum daily LOW relative to entry OPEN through exit signal / cutoff",
+    "current_price_for_breach": "daily CLOSE",
+    "fast_observation": "latest completed weekly fast_machine_stage at or before the daily CLOSE",
+    "exit_signal": "end-of-day observation; no look-ahead",
+    "exit_execution": "next local trading day OPEN",
+    "open_at_cutoff": "mark to 2026-08-21 CLOSE without forced liquidation"
+  },
+  "total_trades": 1578,
+  "unique_tickers": 1061,
+  "first_entries": 1061,
+  "reentries": 517,
+  "closed_trades": 1190,
+  "open_at_cutoff": 388,
+  "positive_trades": 1100,
+  "positive_rate": 69.708492,
+  "return": {
+    "mean_terminal_return": 6.394804,
+    "median_terminal_return": 8.41
+  },
+  "mfe": {
+    "count": 1578,
+    "mean": 43.255013,
+    "median": 28.67
+  },
+  "mae": {
+    "count": 1578,
+    "mean": -24.804582,
+    "median": -16.735
+  },
+  "holding": {
+    "count": 1578,
+    "mean": 291.851711,
+    "median": 118.0
+  },
+  "exit_reason_counts": {
+    "SOFT_EXIT": 701,
+    "HARD_EXIT": 489,
+    "OPEN_AT_CUTOFF": 388
+  },
+  "tail_counts": {
+    "return_le_-15%": 327,
+    "return_le_-20%": 303,
+    "return_le_-30%": 251,
+    "return_le_-40%": 208,
+    "return_le_-50%": 153,
+    "return_le_-60%": 102
+  },
+  "winner_counts": {
+    "return_ge_+20%": 371,
+    "return_ge_+30%": 214,
+    "return_ge_+50%": 82,
+    "return_ge_+100%": 29,
+    "return_ge_+200%": 10,
+    "return_ge_+400%": 3
+  },
+  "scan": {
+    "work_id": "FASTCORE_V3_SIMPLE_BACKTEST_V00",
+    "evaluation_start": "2021-04-01",
+    "signal_cutoff": "2026-08-14",
+    "execution_support_end": "2026-08-21",
+    "final_valuation": "2026-08-21 CLOSE",
+    "strategy_valid_weekly_reference_date_count": 268,
+    "first_evaluated_weekly_date": "2021-04-02",
+    "last_evaluated_weekly_date": "2026-08-14",
+    "weekly_evaluation_error_count": 0,
+    "identity_intervals_processed": 2607,
+    "authority_interval_count": 2739,
+    "authority_pit_sha256": "a1952956427c214c21aa2fa293366d9ef092b36ae5afb3b110fd1ae556ccb3b0",
+    "authority_pit_interval_count": 3173,
+    "raw_market_cap_source": "data/market/raw/krx_stocks/v01",
+    "raw_fast_signal_candidates_before_mcap_gate": 9895,
+    "mcap_pass_count": 8530,
+    "mcap_below_100b_count": 1365,
+    "mcap_unavailable_count": 0,
+    "network_requests": 0
+  },
+  "simulation": {
+    "overlap_skips": 5181,
+    "no_execution_skips": 0
+  },
+  "network_requests": 0,
+  "production_strategy_modified": false,
+  "julia_executed": false
+}
