@@ -192,6 +192,23 @@ def test_entry_audit_has_no_signal_carry_or_unclassified_result():
     assert audit["signal_id"].notna().all()
 
 
+def test_partial_profit_residual_return_uses_partial_sale_price():
+    record = {
+        "ticker": "000001",
+        "entry_open": 100.0,
+        "partial_sale_price": 150.0,
+        "partial_sold_shares": 10,
+        "partial_execution_date": "2021-04-05",
+        "final_valuation_price": 200.0,
+    }
+    effect = runner._partial_effect(
+        [record], {"000001": _daily(start="2021-04-01", end="2021-04-30", prices=[200.0] * len(pd.bdate_range("2021-04-01", "2021-04-30")))},
+        pd.Timestamp("2021-04-30"),
+    )
+    assert effect["residual_additional_return_mean_pct"] == 33.333333
+    assert effect["residual_additional_return_mean_pct"] != 100.0
+
+
 def test_cash_blocked_first_signal_allows_later_fresh_signal():
     index = pd.bdate_range("2021-04-01", "2021-04-30")
     prices = [100.0] * len(index)

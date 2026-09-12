@@ -667,7 +667,7 @@ def _partial_effect(position_records: list[dict[str, Any]], daily_by_ticker: Map
         residual_200 += int(max_return >= 200.0)
         terminal_price = float(row.get("final_valuation_price") or partial_price)
         drag += shares_sold * (terminal_price - partial_price)
-        additional_returns.append(round((terminal_price / entry - 1.0) * 100.0, 6))
+        additional_returns.append(round((terminal_price / partial_price - 1.0) * 100.0, 6))
     return {
         "partial_profit_positions_count": len(partials),
         "partial_profit_transactions_count": len(partials),
