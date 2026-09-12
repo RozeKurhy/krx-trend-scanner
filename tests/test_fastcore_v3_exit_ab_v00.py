@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 from pathlib import Path
 
 import pandas as pd
@@ -12,7 +13,7 @@ from scripts import run_fastcore_v3_simple_v00 as v3
 
 
 ROOT = Path(__file__).resolve().parents[1]
-OUT = ROOT / "artifacts/backtests/fastcore_v3_exit_ab_v00"
+OUT = analysis.OUT_DIR
 
 
 def _matched() -> pd.DataFrame:
@@ -39,6 +40,49 @@ def test_ab_diagnostic_does_not_re_evaluate_entry_filters() -> None:
     assert summary["control_entry_filter_re_evaluated"] is False
     assert summary["independent_trade_replay"] is True
     assert summary["overlap_removal"] is False
+
+
+def test_fix01_separates_median_statistics() -> None:
+    summary = json.loads((OUT / "matched_control_entries_v2_vs_v0_summary.json").read_text())
+    overall = summary["matched_entry_summary"]
+    assert overall["median_terminal_return_difference_pp"] == 24.34
+    assert overall["median_paired_return_delta_pp"] == 10.23
+    assert overall["mean_terminal_return_difference_pp"] == -0.19408
+    assert overall["mean_paired_return_delta_pp"] == -0.19408
+
+
+def test_loss_guard_has_all_v2_v0_tail_fields() -> None:
+    frame = pd.read_csv(OUT / "v2_loss_guard_subset_diagnostics.csv")
+    for side in ("v2", "v0"):
+        for threshold in (20, 30, 40, 50, 60):
+            assert f"{side}_le_-{threshold}_count" in frame.columns
+            assert f"{side}_le_-{threshold}_rate_pct" in frame.columns
+
+
+def test_soft_hard_diagnostics_match_source_values() -> None:
+    frame = pd.read_csv(OUT / "v0_exit_reason_diagnostics.csv").set_index("group")
+    assert frame.loc["SOFT_EXIT", "v2_ge_50_count"] == 110
+    assert frame.loc["SOFT_EXIT", "v0_ge_50_count"] == 14
+    assert frame.loc["SOFT_EXIT", "v2_ge_100_count"] == 35
+    assert frame.loc["SOFT_EXIT", "v0_ge_100_count"] == 5
+    assert frame.loc["HARD_EXIT", "v2_ge_50_count"] == 49
+    assert frame.loc["HARD_EXIT", "v0_ge_50_count"] == 35
+    assert frame.loc["HARD_EXIT", "v2_ge_100_count"] == 22
+    assert frame.loc["HARD_EXIT", "v0_ge_100_count"] == 19
+    assert frame.loc["SOFT_EXIT", "mean_return_delta_pct"] == 1.853233
+    assert frame.loc["HARD_EXIT", "mean_return_delta_pct"] == 17.221398
+
+
+def test_existing_v3_artifact_and_network_audit_are_unchanged() -> None:
+    expected = {
+        "fastcore_v3_trades.csv": "0a3fedbd4cc44621fe1f4b5ee2ed91931e9bf48e7a114315c642fb85c9430cbb",
+        "fastcore_v3_summary.json": "e7dae73d6df208a7aca9591e790b00741379aa444bde07e782b4b902c87cf7c8",
+    }
+    for name, digest in expected.items():
+        actual = hashlib.sha256((analysis.V3_TRADES_PATH if name.endswith("trades.csv") else analysis.V3_SUMMARY_PATH).read_bytes()).hexdigest()
+        assert actual == digest
+    summary = json.loads((OUT / "matched_control_entries_v2_vs_v0_summary.json").read_text())
+    assert summary["network_requests"] == 0
 
 
 def test_v0_mfe_boundary_and_exit_contract() -> None:
@@ -89,6 +133,6 @@ def test_diagnostic_outputs_are_complete() -> None:
         "v2_loss_guard_subset_diagnostics.csv",
         "v0_exit_reason_diagnostics.csv",
         "v3_market_cap_bucket_diagnostics.csv",
-        "fastcore_v3_exit_ab_v00_report.md",
+        "fastcore_v3_exit_ab_v00_fix01_report.md",
     }
     assert {path.name for path in OUT.iterdir()} == expected

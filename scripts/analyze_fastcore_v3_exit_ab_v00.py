@@ -35,14 +35,15 @@ from trend_scanner.patterns.pattern_a_fast_evaluator import evaluate_pattern_a_f
 from trend_scanner.backtest.snapshot_context import build_precomputed_ticker_context
 
 
-OUT_DIR = ROOT / "artifacts/backtests/fastcore_v3_exit_ab_v00"
+SOURCE_OUT_DIR = ROOT / "artifacts/backtests/fastcore_v3_exit_ab_v00"
+OUT_DIR = ROOT / "artifacts/backtests/fastcore_v3_exit_ab_v00_fix01"
 MATCHED_PATH = OUT_DIR / "matched_control_entries_v2_vs_v0.csv"
 SUMMARY_PATH = OUT_DIR / "matched_control_entries_v2_vs_v0_summary.json"
 MFE_PATH = OUT_DIR / "v0_mfe_tier_diagnostics.csv"
 LOSS_GUARD_PATH = OUT_DIR / "v2_loss_guard_subset_diagnostics.csv"
 EXIT_PATH = OUT_DIR / "v0_exit_reason_diagnostics.csv"
 BUCKET_PATH = OUT_DIR / "v3_market_cap_bucket_diagnostics.csv"
-REPORT_PATH = OUT_DIR / "fastcore_v3_exit_ab_v00_report.md"
+REPORT_PATH = OUT_DIR / "fastcore_v3_exit_ab_v00_fix01_report.md"
 
 CONTROL_TRADES_PATH = ROOT / "artifacts/backtests/fastcore_fundamentals_simple_v01/control/control_trades.csv"
 CONTROL_SUMMARY_PATH = ROOT / "artifacts/backtests/fastcore_fundamentals_simple_v01/control/control_summary.json"
@@ -343,12 +344,22 @@ def _pair_stats(frame: pd.DataFrame, side: str) -> dict[str, Any]:
 def _comparison_stats(frame: pd.DataFrame) -> dict[str, Any]:
     output = {"v2": _pair_stats(frame, "v2"), "v0": _pair_stats(frame, "v0")}
     delta_mean, delta_median = _mean_median(frame, "return_delta_v0_minus_v2")
+    mean_terminal_difference = round(
+        float(output["v0"]["mean_terminal_return_pct"] - output["v2"]["mean_terminal_return_pct"]), 6
+    )
+    median_terminal_difference = round(
+        float(output["v0"]["median_terminal_return_pct"] - output["v2"]["median_terminal_return_pct"]), 6
+    )
     improved = int((frame["improved_worsened_same"] == "improved").sum())
     worsened = int((frame["improved_worsened_same"] == "worsened").sum())
     same = int((frame["improved_worsened_same"] == "same").sum())
     total = len(frame)
     output["delta_mean_pct"] = delta_mean
     output["delta_median_pct"] = delta_median
+    output["mean_terminal_return_difference_pp"] = mean_terminal_difference
+    output["median_terminal_return_difference_pp"] = median_terminal_difference
+    output["mean_paired_return_delta_pp"] = delta_mean
+    output["median_paired_return_delta_pp"] = delta_median
     output["improved_count"], output["improved_rate_pct"] = _count_rate(improved, total)
     output["worsened_count"], output["worsened_rate_pct"] = _count_rate(worsened, total)
     output["same_count"], output["same_rate_pct"] = _count_rate(same, total)
@@ -386,7 +397,7 @@ def _diagnostic_row(frame: pd.DataFrame, label: str, *, denominator: int | None 
         for prefix in ["v2", "v0"]:
             row[f"{prefix}_ge_{threshold}_count"] = v2[f"winner_ge_{threshold}_count"] if prefix == "v2" else v0[f"winner_ge_{threshold}_count"]
             row[f"{prefix}_ge_{threshold}_rate_pct"] = v2[f"winner_ge_{threshold}_rate_pct"] if prefix == "v2" else v0[f"winner_ge_{threshold}_rate_pct"]
-    for threshold in [20, 30, 40]:
+    for threshold in [20, 30, 40, 50, 60]:
         for prefix in ["v2", "v0"]:
             stats = v2 if prefix == "v2" else v0
             row[f"{prefix}_le_-{threshold}_count"] = stats[f"tail_le_-{threshold}_count"]
@@ -513,18 +524,19 @@ def build_report(summary: Mapping[str, Any], mfe: pd.DataFrame, loss_guard: pd.D
             f"- +{threshold}%: V2 {int(v2[f'winner_ge_{threshold}_count'])} ({_report_pct(v2[f'winner_ge_{threshold}_rate_pct'])}), "
             f"V0 {int(v0[f'winner_ge_{threshold}_count'])} ({_report_pct(v0[f'winner_ge_{threshold}_rate_pct'])})"
         )
-    return f"""# FastCore V3 Exit A/B + MCAP Bucket Diagnostic V00
+    return f"""# FastCore V3 Exit A/B Diagnostic FIX01
 
 ## 핵심 질문에 대한 숫자 답
 
 ### Q1. 동일한 973개 진입에서 V0가 V2보다 좋아졌는가?
 
-혼합 결과야. V0는 중앙수익률과 승률은 높였지만 평균 terminal return은 낮아졌어. 평균 delta는 **{_report_pct(delta)}**, 개선/악화/동일은 **{int(overall['improved_count'])}/{int(overall['worsened_count'])}/{int(overall['same_count'])}건**이야.
+혼합 결과야. V0는 중앙수익률과 승률은 높였지만 평균 terminal return은 낮아졌어. 평균 paired trade delta는 **{_report_pct(overall['mean_paired_return_delta_pp'])}**, 개선/악화/동일은 **{int(overall['improved_count'])}/{int(overall['worsened_count'])}/{int(overall['same_count'])}건**이야.
 
 ### Q2. 평균수익률 / 중앙수익률 / 승률 변화
 
-- 평균: V2 {_report_pct(v2['mean_terminal_return_pct'])} → V0 {_report_pct(v0['mean_terminal_return_pct'])} (delta {_report_pct(overall['delta_mean_pct'])})
-- 중앙: V2 {_report_pct(v2['median_terminal_return_pct'])} → V0 {_report_pct(v0['median_terminal_return_pct'])} (delta {_report_pct(overall['delta_median_pct'])})
+- 평균 terminal return: V2 {_report_pct(v2['mean_terminal_return_pct'])} → V0 {_report_pct(v0['mean_terminal_return_pct'])} (terminal return difference {_report_pct(overall['mean_terminal_return_difference_pp'])}; paired mean delta {_report_pct(overall['mean_paired_return_delta_pp'])})
+- 중앙 terminal return: V2 {_report_pct(v2['median_terminal_return_pct'])} → V0 {_report_pct(v0['median_terminal_return_pct'])} (terminal return difference {_report_pct(overall['median_terminal_return_difference_pp'])})
+- 중앙 paired trade delta: {_report_pct(overall['median_paired_return_delta_pp'])}
 - 승률: V2 {_report_pct(v2['positive_rate_pct'])} → V0 {_report_pct(v0['positive_rate_pct'])}
 
 ### Q3. Winner 보존
@@ -541,9 +553,14 @@ Loss Guard subset의 MFE<20% 구간은 **{int(below20['trade_count'])}건**이�
 
 전체 Loss Guard subset **{int(lg['trade_count'])}건 중 {int(lg['v0_profit_conversion_count'])}건 ({_report_pct(lg['v0_profit_conversion_rate_pct'])})**이 V2 비수익에서 V0 양의 수익으로 전환됐어. MFE<20% / MFE>=20%의 전환은 **{int(below20['v0_profit_conversion_count'])}건 ({_report_pct(below20['v0_profit_conversion_rate_pct'])}) / {int(ge20['v0_profit_conversion_count'])}건 ({_report_pct(ge20['v0_profit_conversion_rate_pct'])})**이야.
 
-### Q6. Soft와 Hard 중 winner 훼손이 큰 쪽
+### Q6. Soft와 Hard winner clipping 진단
 
-V0 mean giveback은 Soft **{_report_pct(soft['v0_mean_giveback_pp'])}**, Hard **{_report_pct(hard['v0_mean_giveback_pp'])}**야. V0 mean terminal return은 Soft {_report_pct(soft['v0_mean_terminal_return_pct'])}, Hard {_report_pct(hard['v0_mean_terminal_return_pct'])}이므로, giveback 기준으로 더 큰 쪽은 **{"Soft" if float(soft['v0_mean_giveback_pp'] or 0) > float(hard['v0_mean_giveback_pp'] or 0) else "Hard"}**야.
+Soft와 Hard는 MFE 분포가 다른 cohort라 absolute giveback만으로 winner 훼손 우선순위를 결론내리지 않아.
+
+- Soft: V2 mean/median return {_report_pct(soft['v2_mean_terminal_return_pct'])} / {_report_pct(soft['v2_median_terminal_return_pct'])} → V0 {_report_pct(soft['v0_mean_terminal_return_pct'])} / {_report_pct(soft['v0_median_terminal_return_pct'])}; paired mean/median delta {_report_pct(soft['mean_return_delta_pct'])} / {_report_pct(soft['median_return_delta_pct'])}; V2→V0 >=+50 **{int(soft['v2_ge_50_count'])}/{int(soft['v0_ge_50_count'])}건**, >=+100 **{int(soft['v2_ge_100_count'])}/{int(soft['v0_ge_100_count'])}건**.
+- Hard: V2 mean/median return {_report_pct(hard['v2_mean_terminal_return_pct'])} / {_report_pct(hard['v2_median_terminal_return_pct'])} → V0 {_report_pct(hard['v0_mean_terminal_return_pct'])} / {_report_pct(hard['v0_median_terminal_return_pct'])}; paired mean/median delta {_report_pct(hard['mean_return_delta_pct'])} / {_report_pct(hard['median_return_delta_pct'])}; V2→V0 >=+50 **{int(hard['v2_ge_50_count'])}/{int(hard['v0_ge_50_count'])}건**, >=+100 **{int(hard['v2_ge_100_count'])}/{int(hard['v0_ge_100_count'])}건**.
+- V0 mean/median MFE는 Soft {_report_pct(soft['v0_mean_mfe_pct'])} / {_report_pct(soft['v0_median_mfe_pct'])}, Hard {_report_pct(hard['v0_mean_mfe_pct'])} / {_report_pct(hard['v0_median_mfe_pct'])}; mean/median giveback은 Soft {_report_pct(soft['v0_mean_giveback_pp'])} / {_report_pct(soft['v0_median_giveback_pp'])}, Hard {_report_pct(hard['v0_mean_giveback_pp'])} / {_report_pct(hard['v0_median_giveback_pp'])}야.
+- Hard는 absolute giveback이 크지만 MFE 자체가 훨씬 높은 cohort이고 matched outcome 기준 V2 대비 평균 terminal return이 크게 개선됐어. Soft는 평균 terminal return이 소폭 개선됐지만 V2에서 >=+50/+100으로 끝난 거래가 V0에서는 각각 **{int(soft['v0_ge_50_count'])}/{int(soft['v0_ge_100_count'])}건**으로 줄어 winner clipping의 우선 추가 연구 대상이야. 이것은 Soft rule 수정 지시가 아니야.
 
 ### Q7. 현재 V3 내부 MCAP bucket 비교
 
@@ -554,7 +571,7 @@ V0 mean giveback은 Soft **{_report_pct(soft['v0_mean_giveback_pp'])}**, Hard **
 
 ### Q8. 다음 V1 연구의 우선 문제 분류
 
-데이터상 우선순위는 **1) MFE<20% loss control 문제, 2) Hard exit의 큰 giveback 문제, 3) small-cap universe 문제, 4) Soft exit 문제, 5) 복합 문제**로 분류해. 근거는 MFE<20% 구간의 deep-loss 증가, Hard exit의 mean giveback **{_report_pct(hard['v0_mean_giveback_pp'])}**, 그리고 bucket A/B의 평균수익률·tail 차이야. 이는 새 규칙 제안이 아니라 이번 matched-entry와 bucket 결과에서 관측된 진단 우선순위야.
+데이터상 다음 연구/진단 우선순위는 **1) MFE<20% loss control 문제, 2) Soft Exit winner clipping 문제, 3) small-cap universe 문제, 4) Hard Exit 추가 검토, 5) 복합 interaction 문제**로 분류해. 이는 전략 수정 우선순위가 아니야. Hard를 문제가 없다고 확정하지 않지만 현재 matched 결과에서 Soft보다 우선적인 문제라는 근거는 없어.
 
 ## 실험 계약
 
@@ -608,7 +625,7 @@ def run_analysis() -> dict[str, Any]:
     exits = build_exit_diagnostics(matched)
     buckets = build_bucket_diagnostics(v3_trades)
     summary: dict[str, Any] = {
-        "work_id": "FASTCORE_V3_EXIT_AB_V00",
+        "work_id": "FASTCORE_V3_EXIT_AB_V00_FIX01",
         "status": "COMPLETE",
         "evaluation_start": "2021-04-01",
         "signal_cutoff": "2026-08-14",
