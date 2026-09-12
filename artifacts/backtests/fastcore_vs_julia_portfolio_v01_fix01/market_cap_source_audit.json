@@ -1,0 +1,15 @@
+{
+  "raw_fast_signal_count_before_mcap_gate": 8208,
+  "source_counts": {
+    "ACTUAL_KRX": 3850,
+    "PROXY_ANCHOR_PRICE_RATIO": 4230,
+    "MCAP_UNAVAILABLE": 128
+  },
+  "status_counts": {
+    "PASS": 7009,
+    "REJECT_MCAP_BELOW_100B": 1071,
+    "REJECT_MCAP_UNAVAILABLE": 128
+  },
+  "proxy_semantics": "existing ProxyHistoricalMarketCapRegistry; strictly prior official anchor plus signal-date local adjusted close",
+  "future_anchor_used_for_resolution": false
+}

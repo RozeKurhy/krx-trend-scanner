@@ -47,25 +47,28 @@ from trend_scanner.backtest.fastcore_fundamentals_simple_v01 import (
 )
 from trend_scanner.backtest.snapshot_context import build_precomputed_ticker_context
 from trend_scanner.data.adjusted_price_authority_cutover import load_effective_authority
+from trend_scanner.backtest.context import TickerDataCache
 from trend_scanner.data.repository_v2_loader import RepositoryV2DailyLoader, build_repository_v2
 from trend_scanner.universe.instrument_metadata import InstrumentMetadataResolver
-from trend_scanner.validation.julia_strategy_v00 import HistoricalMarketCapRegistry
+from trend_scanner.validation.julia_proxy_market_cap_v01 import ProxyHistoricalMarketCapRegistry
 from trend_scanner.patterns.pattern_a_fast_evaluator import evaluate_pattern_a_fast
 
 
-OUT_DIR = ROOT / "artifacts/backtests/fastcore_vs_julia_portfolio_v01"
+OUT_DIR = ROOT / "artifacts/backtests/fastcore_vs_julia_portfolio_v01_fix01"
+V01_OUT_DIR = ROOT / "artifacts/backtests/fastcore_vs_julia_portfolio_v01"
 EFFECTIVE_AUTHORITY_DIR = ROOT / "artifacts/data/end_to_end_data_parity/v01/survivorship_safe_denominator_freeze/v01_spac_corrected_effective_authority"
 SCORE_CONTRACT_PATH = ROOT / "artifacts/patterns/pattern_a_fast/production/contract_prototype/pattern_a_fast_score_prototype_v01.json"
 STAGE_CONTRACT_PATH = ROOT / "artifacts/patterns/pattern_a_fast/production/contract_prototype/pattern_a_fast_stage_prototype_v01.json"
 MARKET_CAP_MANIFEST_PATH = ROOT / "artifacts/strategies/julia/v00/historical_market_cap_source_manifest.csv"
 
-START_DATE = pd.Timestamp("2021-04-01")
+START_DATE = pd.Timestamp("2022-02-04")
 SIGNAL_CUTOFF = pd.Timestamp("2026-08-14")
 SUPPORT_END = pd.Timestamp("2026-08-21")
 INITIAL_CAPITAL = 200_000_000.0
 POSITION_CAP = 5_000_000.0
 MARKET_CAP_THRESHOLD = 100_000_000_000.0
 
+WORK_ID = "FASTCORE_VS_JULIA_200M_PORTFOLIO_COMPARISON_V01_FIX01"
 FASTCORE_ID = "PATTERN_A_FAST_FINAL_STRATEGY_V02"
 JULIA_ID = "JULIA_STRATEGY_V00"
 
@@ -244,17 +247,84 @@ def _valid_fast_signal(result: Mapping[str, Any]) -> bool:
     )
 
 
-def _mcap_exact(registry: HistoricalMarketCapRegistry, ticker: str, date: pd.Timestamp) -> tuple[float | None, dict[str, Any] | None]:
-    return registry.get_market_cap_at_reference(str(ticker).zfill(6), date.strftime("%Y-%m-%d"))
+def _market_cap_source(meta: Mapping[str, Any] | None) -> str:
+    source = str((meta or {}).get("proxy_source_type") or (meta or {}).get("source_type") or "").strip()
+    if source == "ACTUAL_KRX":
+        return "ACTUAL_KRX"
+    if source in {"PROXY_ANCHOR_PRICE_RATIO", "ANCHOR_PRICE_RATIO_PROXY"}:
+        return "PROXY_ANCHOR_PRICE_RATIO"
+    return "MCAP_UNAVAILABLE"
 
 
-_SCAN_REGISTRY: HistoricalMarketCapRegistry | None = None
+def _market_cap_resolution(
+    registry: ProxyHistoricalMarketCapRegistry,
+    ticker: str,
+    date: pd.Timestamp,
+) -> dict[str, Any]:
+    """Resolve PIT market cap through the existing official/proxy registry.
+
+    The repository manifest does not list every weekly evaluator date.  The
+    existing registry intentionally requires missing dates to be declared in
+    its frozen missing-date set, so dates outside that manifest are added only
+    for this run-scoped lookup.  The registry's own strictly-prior-anchor
+    implementation remains the sole proxy calculation authority.
+    """
+    ticker_value = str(ticker).zfill(6)
+    date_value = pd.Timestamp(date).strftime("%Y-%m-%d")
+    official = date_value in registry.official_registry.available_dates
+    added_missing_date = date_value not in registry.missing_dates and not official
+    if added_missing_date:
+        registry.missing_dates.add(date_value)
+    try:
+        before = len(registry.get_all_audit_records())
+        market_cap, metadata = registry.get_market_cap_at_reference(ticker_value, date_value)
+        records = registry.get_all_audit_records()
+        if metadata is None and len(records) > before:
+            metadata = asdict(records[-1])
+    finally:
+        if added_missing_date:
+            registry.missing_dates.discard(date_value)
+    source = _market_cap_source(metadata)
+    return {
+        "market_cap": None if market_cap is None else float(market_cap),
+        "market_cap_source": source,
+        "anchor_date": (metadata or {}).get("anchor_date") or (date_value if source == "ACTUAL_KRX" else None),
+        "market_cap_source_file": (metadata or {}).get("source_file"),
+        "metadata": metadata,
+    }
+
+
+def _mcap_exact(registry: ProxyHistoricalMarketCapRegistry, ticker: str, date: pd.Timestamp) -> tuple[float | None, dict[str, Any] | None]:
+    resolution = _market_cap_resolution(registry, ticker, date)
+    metadata = dict(resolution["metadata"] or {})
+    metadata["market_cap_source"] = resolution["market_cap_source"]
+    metadata["anchor_date"] = resolution["anchor_date"]
+    metadata["source_file"] = resolution["market_cap_source_file"]
+    return resolution["market_cap"], metadata
+
+
+_SCAN_REGISTRY: ProxyHistoricalMarketCapRegistry | None = None
 _SCAN_SCORE_CONTRACT: dict[str, Any] = {}
 _SCAN_STAGE_CONTRACT: dict[str, Any] = {}
 _SCAN_NAMES: dict[str, str] = {}
 _SCAN_INTERVALS: dict[tuple[str, str, str], list[tuple[str, str]]] = {}
-_SCAN_AVAILABLE_MCAP_DATES: set[pd.Timestamp] = set()
 _SCAN_LOADER: RepositoryV2DailyLoader | None = None
+
+
+def _strategy_valid_week_dates(
+    weekly_index: Any,
+    clipped_dates: set[pd.Timestamp],
+    *,
+    start_date: pd.Timestamp = START_DATE,
+    end_date: pd.Timestamp = SIGNAL_CUTOFF,
+) -> list[pd.Timestamp]:
+    """Return completed strategy-reference weeks without mcap pre-filtering."""
+    return [
+        pd.Timestamp(value).normalize()
+        for value in weekly_index
+        if pd.Timestamp(value).normalize() in clipped_dates
+        and start_date <= pd.Timestamp(value).normalize() <= end_date
+    ]
 
 
 def _scan_ticker_group(item: tuple[str, list[dict[str, Any]]]) -> dict[str, Any]:
@@ -266,11 +336,16 @@ def _scan_ticker_group(item: tuple[str, list[dict[str, Any]]]) -> dict[str, Any]
         raise RuntimeError("BLOCKED_SCAN_WORKER_NOT_INITIALIZED")
     daily = loader.load(ticker)
     if daily is None or daily.empty:
-        return {"rows": [], "audit": [], "identity_count": 0, "load_count": 1}
+        return {
+            "rows": [], "audit": [], "identity_count": 0, "load_count": 1,
+            "evaluation_dates": [], "evaluation_error_count": 0,
+        }
     name = _SCAN_NAMES.get(ticker, ticker)
     rows: list[dict[str, Any]] = []
     audit_rows: list[dict[str, Any]] = []
     identity_count = 0
+    evaluation_dates: set[str] = set()
+    evaluation_error_count = 0
     for task in tasks:
         lifecycle = IdentityLifecycle(
             ticker=ticker,
@@ -284,29 +359,28 @@ def _scan_ticker_group(item: tuple[str, list[dict[str, Any]]]) -> dict[str, Any]
             continue
         context = build_precomputed_ticker_context(ticker, name, clipped)
         clipped_dates = set(pd.DatetimeIndex(clipped.index).normalize())
-        valid_weeks = [
-            pd.Timestamp(value).normalize()
-            for value in context.weekly_up_to(SUPPORT_END).index
-            if pd.Timestamp(value).normalize() in clipped_dates
-            and START_DATE <= pd.Timestamp(value).normalize() <= SIGNAL_CUTOFF
-            and pd.Timestamp(value).normalize() in _SCAN_AVAILABLE_MCAP_DATES
-        ]
+        valid_weeks = _strategy_valid_week_dates(
+            context.weekly_up_to(SUPPORT_END).index,
+            clipped_dates,
+        )
         identity_count += 1
         for week in valid_weeks:
+            evaluation_dates.add(week.strftime("%Y-%m-%d"))
             try:
                 result = evaluate_pattern_a_fast(
                     ticker, name, clipped, week, _SCAN_SCORE_CONTRACT, _SCAN_STAGE_CONTRACT, context=context,
                 )
             except Exception:
+                evaluation_error_count += 1
                 continue
             if not _valid_fast_signal(result):
                 continue
-            mcap, metadata = _mcap_exact(registry, ticker, week)
-            mcap_status = "PASS"
-            if mcap is None:
-                mcap_status = "REJECT_MCAP_UNAVAILABLE"
-            elif float(mcap) < MARKET_CAP_THRESHOLD:
-                mcap_status = "REJECT_MCAP_BELOW_100B"
+            resolution = _market_cap_resolution(registry, ticker, week)
+            mcap = resolution["market_cap"]
+            market_cap_source = resolution["market_cap_source"]
+            mcap_status = "PASS" if mcap is not None and mcap >= MARKET_CAP_THRESHOLD else (
+                "REJECT_MCAP_BELOW_100B" if mcap is not None else "REJECT_MCAP_UNAVAILABLE"
+            )
             candidate_id = frozen_candidate_id(ticker, lifecycle.isu_cd, lifecycle.market, week)
             audit_rows.append({
                 "audit_type": "FRESH_FAST_SIGNAL",
@@ -324,10 +398,18 @@ def _scan_ticker_group(item: tuple[str, list[dict[str, Any]]]) -> dict[str, Any]
                 "mcap": mcap,
                 "mcap_threshold": MARKET_CAP_THRESHOLD,
                 "mcap_status": mcap_status,
-                "mcap_source_file": metadata.get("source_file") if metadata else None,
+                "market_cap": mcap,
+                "market_cap_source": market_cap_source,
+                "market_cap_anchor_date": resolution["anchor_date"],
+                "mcap_source_file": resolution["market_cap_source_file"],
+                "raw_fast_signal_status": "RAW_FAST_SIGNAL",
+                "source": market_cap_source,
+                "anchor_date": resolution["anchor_date"],
+                "status": mcap_status,
                 "liquidity_filter_applied": False,
                 "price_filter_applied": False,
                 "fresh_signal_status": "FRESH_SIGNAL_MCAP_PASS" if mcap_status == "PASS" else mcap_status,
+                "final_status": "FRESH_SIGNAL_MCAP_PASS" if mcap_status == "PASS" else mcap_status,
             })
             if mcap_status != "PASS":
                 continue
@@ -349,7 +431,9 @@ def _scan_ticker_group(item: tuple[str, list[dict[str, Any]]]) -> dict[str, Any]
                 "monthly_permission_state": result.get("fast_monthly_permission_state"),
                 "daily_risk_state": result.get("fast_daily_risk_state"),
                 "market_cap": float(mcap),
-                "market_cap_source_file": metadata.get("source_file") if metadata else None,
+                "market_cap_source": market_cap_source,
+                "market_cap_anchor_date": resolution["anchor_date"],
+                "market_cap_source_file": resolution["market_cap_source_file"],
                 "entry_signal_information_date": week.strftime("%Y-%m-%d"),
                 "entry_filter_raw_date": week.strftime("%Y-%m-%d"),
                 "identity_effective_from": lifecycle.effective_from.strftime("%Y-%m-%d"),
@@ -358,27 +442,33 @@ def _scan_ticker_group(item: tuple[str, list[dict[str, Any]]]) -> dict[str, Any]
                 "price_filter_applied": False,
             })
         del clipped, context
-    return {"rows": rows, "audit": audit_rows, "identity_count": identity_count, "load_count": 1}
+    return {
+        "rows": rows,
+        "audit": audit_rows,
+        "identity_count": identity_count,
+        "load_count": 1,
+        "evaluation_dates": sorted(evaluation_dates),
+        "evaluation_error_count": evaluation_error_count,
+    }
 
 
 def load_fresh_signal_authority() -> tuple[pd.DataFrame, dict[str, Any], Callable[[str, Mapping[str, Any]], dict[str, Any]]]:
     """Build fresh signals from the frozen evaluator and PIT mcap authority."""
     authority, intervals, tasks = _load_authority()
-    registry = HistoricalMarketCapRegistry.load_from_repository(ROOT, enforce_integrity=True)
-    available_mcap_dates = {pd.Timestamp(value).normalize() for value in registry.available_dates}
+    proxy_price_cache = TickerDataCache(base_dir=ROOT / "data/raw/stocks")
+    registry = ProxyHistoricalMarketCapRegistry.load_from_repository(ROOT, cache=proxy_price_cache)
     score_contract = _json_read(SCORE_CONTRACT_PATH)
     stage_contract = _json_read(STAGE_CONTRACT_PATH)
     names = _name_map()
     repository = build_repository_v2(ROOT, end=SUPPORT_END)
     loader = RepositoryV2DailyLoader(repository, end=SUPPORT_END)
     global _SCAN_REGISTRY, _SCAN_SCORE_CONTRACT, _SCAN_STAGE_CONTRACT, _SCAN_NAMES
-    global _SCAN_INTERVALS, _SCAN_AVAILABLE_MCAP_DATES, _SCAN_LOADER
+    global _SCAN_INTERVALS, _SCAN_LOADER
     _SCAN_REGISTRY = registry
     _SCAN_SCORE_CONTRACT = score_contract
     _SCAN_STAGE_CONTRACT = stage_contract
     _SCAN_NAMES = names
     _SCAN_INTERVALS = intervals
-    _SCAN_AVAILABLE_MCAP_DATES = available_mcap_dates
     _SCAN_LOADER = loader
 
     tasks_by_ticker: dict[str, list[dict[str, Any]]] = defaultdict(list)
@@ -389,6 +479,8 @@ def load_fresh_signal_authority() -> tuple[pd.DataFrame, dict[str, Any], Callabl
     fast_signal_audit: list[dict[str, Any]] = []
     identity_count = 0
     worker_load_count = 0
+    evaluated_week_dates: set[str] = set()
+    evaluation_error_count = 0
     worker_count = min(4, max(1, len(groups)))
     try:
         multiprocessing_context = mp.get_context("fork")
@@ -400,6 +492,8 @@ def load_fresh_signal_authority() -> tuple[pd.DataFrame, dict[str, Any], Callabl
                 fast_signal_audit.extend(result["audit"])
                 identity_count += int(result["identity_count"])
                 worker_load_count += int(result["load_count"])
+                evaluated_week_dates.update(result["evaluation_dates"])
+                evaluation_error_count += int(result["evaluation_error_count"])
                 if completed % 100 == 0 or completed == len(futures):
                     print(f"fresh signal scan: {completed}/{len(futures)} ticker groups", flush=True)
     finally:
@@ -414,7 +508,8 @@ def load_fresh_signal_authority() -> tuple[pd.DataFrame, dict[str, Any], Callabl
             "signal_id", "candidate_id", "ticker", "isu_cd", "market", "name", "signal_date",
             "signal_information_date", "fast_score", "fast_score_status", "pattern_a_stage",
             "fast_machine_stage", "monthly_permission_state", "daily_risk_state", "market_cap",
-            "market_cap_source_file", "entry_signal_information_date", "entry_filter_raw_date",
+            "market_cap_source", "market_cap_anchor_date", "market_cap_source_file",
+            "entry_signal_information_date", "entry_filter_raw_date",
             "identity_effective_from", "identity_effective_to", "liquidity_filter_applied", "price_filter_applied",
         ])
 
@@ -521,19 +616,28 @@ def load_fresh_signal_authority() -> tuple[pd.DataFrame, dict[str, Any], Callabl
         return record
 
     meta = {
-        "work_id": "FASTCORE_VS_JULIA_200M_PORTFOLIO_COMPARISON_V01",
+        "work_id": WORK_ID,
         "fresh_signal_count": int(len(signals)),
         "fresh_signal_ticker_count": int(signals["ticker"].nunique()) if not signals.empty else 0,
         "fast_signal_candidates_before_mcap_gate": int(len(fast_signal_audit)),
         "mcap_pass_count": int(sum(row["mcap_status"] == "PASS" for row in fast_signal_audit)),
         "mcap_below_threshold_count": int(sum(row["mcap_status"] == "REJECT_MCAP_BELOW_100B" for row in fast_signal_audit)),
         "mcap_unavailable_count": int(sum(row["mcap_status"] == "REJECT_MCAP_UNAVAILABLE" for row in fast_signal_audit)),
+        "weekly_evaluation_start_date": min(evaluated_week_dates) if evaluated_week_dates else None,
+        "weekly_evaluation_end_date": max(evaluated_week_dates) if evaluated_week_dates else None,
+        "strategy_valid_weekly_reference_date_count": len(evaluated_week_dates),
+        "first_evaluated_weekly_date": min(evaluated_week_dates) if evaluated_week_dates else None,
+        "last_evaluated_weekly_date": max(evaluated_week_dates) if evaluated_week_dates else None,
+        "weekly_evaluation_error_count": evaluation_error_count,
         "identity_intervals_processed": identity_count,
         "authority_interval_count": len(tasks),
         "repository_v2_local_loads": int(worker_load_count + len(daily_by_ticker)),
         "market_cap_manifest_sha256": _sha256(MARKET_CAP_MANIFEST_PATH),
-        "market_cap_available_dates": sorted(registry.available_dates),
-        "mcap_authority_missing_week_evaluation": "FAIL_CLOSED_AND_NOT_EVALUATED",
+        "market_cap_official_available_date_count": len(registry.official_dates),
+        "market_cap_official_first_date": min(registry.official_dates) if registry.official_dates else None,
+        "market_cap_official_last_date": max(registry.official_dates) if registry.official_dates else None,
+        "mcap_authority_missing_week_evaluation": "PATTERN_EVALUATED_THEN_OFFICIAL_OR_PROXY_RESOLVED",
+        "proxy_price_cache": proxy_price_cache.diagnostics(),
         "daily_by_ticker": daily_by_ticker,
         "strategy_record_factory": strategy_record_for,
         "fresh_signal_audit": fast_signal_audit,
@@ -622,7 +726,9 @@ def _portfolio_audit_row(row: Mapping[str, Any], strategy_id: str, result: str, 
         "scheduled_execution_date": _iso(row.get("scheduled_execution_date")),
         "fast_score": row.get("fast_score"),
         "ranking": ranking if ranking is not None else row.get("ranking"),
+        "status": result,
         "execution_result": result,
+        "final_status": result,
     }
 
 
@@ -700,12 +806,14 @@ def _risk_metrics(curve: pd.DataFrame) -> dict[str, Any]:
     recovery = curve.iloc[trough_index + 1 :]
     recovered = recovery[recovery["equity"] >= peak_equity]
     recovery_date = str(recovered.iloc[0]["date"]) if not recovered.empty else None
+    recovery_index = int(recovered.index[0]) if not recovered.empty else None
     return {
         "mdd_pct": round(abs(float(trough["drawdown_pct"])), 6),
         "mdd_peak_date": str(prior.iloc[peak_index]["date"]),
         "mdd_trough_date": str(trough["date"]),
         "mdd_recovery_date": recovery_date,
-        "max_drawdown_duration_trading_days": int(trough_index - peak_index),
+        "mdd_peak_to_trough_trading_days": int(trough_index - peak_index),
+        "mdd_peak_to_recovery_trading_days": None if recovery_index is None else int(recovery_index - peak_index),
     }
 
 
@@ -714,7 +822,7 @@ def _annual_returns(curve: pd.DataFrame) -> dict[str, float | None]:
     frame["year"] = pd.to_datetime(frame["date"]).dt.year
     result: dict[str, float | None] = {}
     previous = INITIAL_CAPITAL
-    for year in range(2021, 2027):
+    for year in range(2022, 2027):
         group = frame[frame["year"].eq(year)]
         key = str(year) if year < 2026 else "2026_YTD"
         if group.empty:
@@ -737,7 +845,11 @@ def _summary(strategy_id: str, signals: pd.DataFrame, curve: pd.DataFrame, event
     result_counts = audits.get("execution_result", pd.Series(dtype=str))
     transaction_value = float(events["cash_delta"].abs().sum()) if not events.empty else 0.0
     return {
+        "work_id": WORK_ID,
         "strategy_id": strategy_id,
+        "period_start": START_DATE.strftime("%Y-%m-%d"),
+        "signal_cutoff": SIGNAL_CUTOFF.strftime("%Y-%m-%d"),
+        "final_valuation": f"{SUPPORT_END.strftime('%Y-%m-%d')} CLOSE",
         "initial_equity": round(INITIAL_CAPITAL, 6),
         "final_equity": round(final_equity, 6),
         "final_cash": round(float(curve.iloc[-1]["cash"]), 6),
@@ -940,7 +1052,72 @@ def run_portfolio(signals: pd.DataFrame, calendar: Mapping[str, Any], daily_by_t
     return {"events": event_frame, "entry_audit": audit_frame, "equity_curve": curve, "summary": summary}
 
 
-def _comparison(fast: Mapping[str, Any], julia: Mapping[str, Any], meta: Mapping[str, Any]) -> dict[str, Any]:
+def _market_cap_source_audit(fresh_signal_audit: list[Mapping[str, Any]]) -> dict[str, Any]:
+    source_counts = defaultdict(int)
+    status_counts = defaultdict(int)
+    for row in fresh_signal_audit:
+        source_counts[str(row.get("market_cap_source") or "MCAP_UNAVAILABLE")] += 1
+        status_counts[str(row.get("mcap_status") or "REJECT_MCAP_UNAVAILABLE")] += 1
+    return {
+        "raw_fast_signal_count_before_mcap_gate": int(len(fresh_signal_audit)),
+        "source_counts": {
+            "ACTUAL_KRX": int(source_counts["ACTUAL_KRX"]),
+            "PROXY_ANCHOR_PRICE_RATIO": int(source_counts["PROXY_ANCHOR_PRICE_RATIO"]),
+            "MCAP_UNAVAILABLE": int(source_counts["MCAP_UNAVAILABLE"]),
+        },
+        "status_counts": {
+            "PASS": int(status_counts["PASS"]),
+            "REJECT_MCAP_BELOW_100B": int(status_counts["REJECT_MCAP_BELOW_100B"]),
+            "REJECT_MCAP_UNAVAILABLE": int(status_counts["REJECT_MCAP_UNAVAILABLE"]),
+        },
+        "proxy_semantics": "existing ProxyHistoricalMarketCapRegistry; strictly prior official anchor plus signal-date local adjusted close",
+        "future_anchor_used_for_resolution": False,
+    }
+
+
+def _v01_impact(fast: Mapping[str, Any], julia: Mapping[str, Any]) -> dict[str, Any]:
+    def read(strategy: str) -> dict[str, Any]:
+        summary = _json_read(V01_OUT_DIR / f"{strategy}_summary.json")
+        return {
+            "final_equity": summary["final_equity"],
+            "total_return_pct": summary["total_return_pct"],
+            "CAGR_pct": summary["CAGR_pct"],
+            "mdd_pct": summary["mdd_pct"],
+            "executed_entry_count": summary["executed_entry_count"],
+            "cash_blocked_count": summary["cash_blocked_count"],
+            "fresh_signal_count": summary["fresh_signal_count"],
+        }
+
+    def fix(summary: Mapping[str, Any]) -> dict[str, Any]:
+        return {
+            "final_equity": summary["final_equity"],
+            "total_return_pct": summary["total_return_pct"],
+            "CAGR_pct": summary["CAGR_pct"],
+            "mdd_pct": summary["mdd_pct"],
+            "executed_entry_count": summary["executed_entry_count"],
+            "cash_blocked_count": summary["cash_blocked_count"],
+            "fresh_signal_count": summary["fresh_signal_count"],
+        }
+
+    result: dict[str, Any] = {
+        "comparison_note": "V01 and FIX01 have different portfolio starts; absolute performance comparison is diagnostic only.",
+        "fastcore": {"V01": read("fastcore"), "FIX01": fix(fast["summary"])},
+        "julia": {"V01": read("julia"), "FIX01": fix(julia["summary"])},
+    }
+    for strategy in ("fastcore", "julia"):
+        result[strategy]["delta_FIX01_minus_V01"] = {
+            key: round(float(result[strategy]["FIX01"][key]) - float(result[strategy]["V01"][key]), 6)
+            for key in result[strategy]["FIX01"]
+        }
+    return result
+
+
+def _comparison(
+    fast: Mapping[str, Any],
+    julia: Mapping[str, Any],
+    meta: Mapping[str, Any],
+    source_audit: Mapping[str, Any],
+) -> dict[str, Any]:
     f = fast["summary"]
     j = julia["summary"]
     fields = {
@@ -954,11 +1131,16 @@ def _comparison(fast: Mapping[str, Any], julia: Mapping[str, Any], meta: Mapping
         "average_concurrent_positions": "average_concurrent_positions",
         "max_concurrent_positions": "max_concurrent_positions",
         "executed_entry_count": "executed_entry_count",
+        "full_exit_count": "full_exit_count",
+        "open_positions_at_final_valuation": "open_positions_at_final_valuation",
         "cash_blocked_count": "cash_blocked_count",
+        "active_position_skip_count": "active_position_skip_count",
+        "same_open_reentry_skip_count": "same_open_reentry_skip_count",
+        "missing_execution_price_count": "missing_execution_price_count",
     }
     delta = {key: round(float(j[source]) - float(f[source]), 6) for key, source in fields.items()}
     return {
-        "work_id": "FASTCORE_VS_JULIA_200M_PORTFOLIO_COMPARISON_V01",
+        "work_id": WORK_ID,
         "comparison": "JULIA_MINUS_FASTCORE",
         "fresh_signal_candidate_invariant": True,
         "strategy_delta": "PRE_PROGRESSED_LOSS_GUARD_ON_VS_OFF",
@@ -978,8 +1160,11 @@ def _comparison(fast: Mapping[str, Any], julia: Mapping[str, Any], meta: Mapping
             "tax": 0,
             "slippage": 0,
             "network_requests": 0,
+            "mdd_duration_field": "mdd_peak_to_trough_trading_days",
+            "mcap_resolution": "official ACTUAL_KRX else existing ProxyHistoricalMarketCapRegistry else MCAP_UNAVAILABLE",
         },
         "signal_authority": {key: value for key, value in meta.items() if key not in {"daily_by_ticker", "strategy_record_factory", "fresh_signal_audit", "authority"}},
+        "market_cap_source_audit": source_audit,
         "fastcore": fast["summary"],
         "julia": julia["summary"],
         "julia_minus_fastcore": delta,
@@ -998,14 +1183,24 @@ def run_backtest() -> dict[str, Any]:
     with comparison_filter_override():
         fastcore = run_portfolio(signals, calendar, daily_by_ticker, FASTCORE_ID, factory)
         julia = run_portfolio(signals, calendar, daily_by_ticker, JULIA_ID, factory)
-    comparison = _comparison(fastcore, julia, meta)
+    source_audit = _market_cap_source_audit(meta["fresh_signal_audit"])
+    comparison = _comparison(fastcore, julia, meta, source_audit)
+    comparison["v01_impact"] = _v01_impact(fastcore, julia)
     candidate_frame = pd.DataFrame(meta["fresh_signal_audit"])
     audit = pd.concat(
         [candidate_frame, fastcore["entry_audit"], julia["entry_audit"]],
         ignore_index=True,
         sort=False,
     )
-    return {"signals": signals, "meta": meta, "fastcore": fastcore, "julia": julia, "comparison": comparison, "candidate_audit": audit}
+    return {
+        "signals": signals,
+        "meta": meta,
+        "fastcore": fastcore,
+        "julia": julia,
+        "comparison": comparison,
+        "candidate_audit": audit,
+        "market_cap_source_audit": source_audit,
+    }
 
 
 def write_outputs(result: Mapping[str, Any]) -> None:
@@ -1017,6 +1212,7 @@ def write_outputs(result: Mapping[str, Any]) -> None:
     _write_frame(OUT_DIR / "julia_equity_curve.csv", result["julia"]["equity_curve"])
     _json_write(OUT_DIR / "julia_summary.json", result["julia"]["summary"])
     _json_write(OUT_DIR / "fastcore_vs_julia_comparison.json", result["comparison"])
+    _json_write(OUT_DIR / "market_cap_source_audit.json", result["market_cap_source_audit"])
     _write_frame(OUT_DIR / "candidate_audit.csv", result["candidate_audit"])
 
 

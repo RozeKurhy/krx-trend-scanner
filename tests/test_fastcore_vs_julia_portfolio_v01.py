@@ -78,6 +78,9 @@ def test_fastcore_guard_on_and_julia_guard_off(monkeypatch):
 
 
 def test_cash_block_no_carry_and_same_open_proceeds_reuse(monkeypatch):
+    # The FIX01 production comparison starts on 2022-02-04; this synthetic
+    # V01 execution fixture intentionally remains in its 2021 test window.
+    monkeypatch.setattr(runner, "START_DATE", pd.Timestamp("2021-04-01"))
     monkeypatch.setattr(runner, "INITIAL_CAPITAL", 100.0)
     monkeypatch.setattr(runner, "POSITION_CAP", 100.0)
     dates = pd.bdate_range("2021-04-01", "2021-04-23")
