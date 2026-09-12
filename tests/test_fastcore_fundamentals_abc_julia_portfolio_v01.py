@@ -134,7 +134,9 @@ def test_daily_curve_marks_every_trading_day():
 
 def test_frozen_trade_authority_hash_and_count():
     assert hashlib.sha256(runner.FROZEN_TRADES_PATH.read_bytes()).hexdigest() == runner.FROZEN_TRADES_SHA
-    assert callable(runner.load_frozen_trade_signal_authority)
+    assert hashlib.sha256(runner.ABC_TRADES_PATH.read_bytes()).hexdigest() == runner.ABC_TRADES_SHA
+    assert hashlib.sha256(runner.RAW_PATH.read_bytes()).hexdigest() == runner.RAW_SHA
+    assert callable(runner.load_fresh_signal_authority)
 
 
 def test_existing_portfolio_artifacts_have_nonnegative_cash_and_contract_metrics():
@@ -148,7 +150,8 @@ def test_existing_portfolio_artifacts_have_nonnegative_cash_and_contract_metrics
         assert summary["minimum_cash"] >= 0
         assert summary["execution_contract"]["fractional_shares"] is False
     b = json.loads((out / "portfolio_b_summary.json").read_text())
-    assert b["total_partial_exits"] == 42
+    assert b["total_fresh_entry_candidates"] > 345
+    assert b["duplicate_weekly_candidate_skipped_count"] >= 0
 
 
 def test_realized_portfolio_events_preserve_cash_integer_and_lifecycle_integrity():
@@ -183,6 +186,71 @@ def test_entry_audit_has_no_signal_carry_or_unclassified_result():
     allowed = {
         "EXECUTED", "SKIP_ACTIVE_POSITION", "SKIP_INSUFFICIENT_CASH",
         "SKIP_SAME_OPEN_REENTRY", "SKIP_DUPLICATE_WEEKLY_CANDIDATE",
+        "SKIP_MISSING_EXECUTION_PRICE",
     }
     assert set(audit["execution_result"]) <= allowed
     assert audit["signal_id"].notna().all()
+
+
+def test_cash_blocked_first_signal_allows_later_fresh_signal():
+    index = pd.bdate_range("2021-04-01", "2021-04-30")
+    prices = [100.0] * len(index)
+    prices[index.get_loc(pd.Timestamp("2021-04-05"))] = 300_000_000.0
+    daily = _daily(start="2021-04-01", end="2021-04-30", prices=prices)
+    signals = pd.DataFrame([_signal("2021-04-02"), _signal("2021-04-09")])
+    result = runner.run_portfolio(
+        signals, runner._build_calendar({"000001": daily}), {"000001": daily}, runner.PORTFOLIO_A
+    )
+    audit = result["entry_audit"].sort_values("signal_date")
+    assert audit["execution_result"].tolist() == ["SKIP_INSUFFICIENT_CASH", "EXECUTED"]
+
+
+def test_cash_blocked_signal_is_not_carried_without_a_later_signal():
+    index = pd.bdate_range("2021-04-01", "2021-04-30")
+    prices = [300_000_000.0] * len(index)
+    daily = _daily(start="2021-04-01", end="2021-04-30", prices=prices)
+    result = runner.run_portfolio(
+        pd.DataFrame([_signal("2021-04-02")]),
+        runner._build_calendar({"000001": daily}),
+        {"000001": daily},
+        runner.PORTFOLIO_A,
+    )
+    assert result["events"].empty
+    assert result["entry_audit"]["execution_result"].tolist() == ["SKIP_INSUFFICIENT_CASH"]
+
+
+def test_later_fresh_signal_survives_baseline_active_suppression_when_first_executes():
+    daily = _daily()
+    signals = pd.DataFrame([_signal("2021-04-02"), _signal("2021-04-09")])
+    result = runner.run_portfolio(
+        signals, runner._build_calendar({"000001": daily}), {"000001": daily}, runner.PORTFOLIO_A
+    )
+    audit = result["entry_audit"].sort_values("signal_date")
+    assert audit["execution_result"].tolist() == ["EXECUTED", "SKIP_ACTIVE_POSITION"]
+    assert set(audit["signal_id"]) == {"000001-2021-04-02", "000001-2021-04-09"}
+
+
+def test_active_position_blocks_a_later_fresh_signal():
+    daily = _daily()
+    result = runner.run_portfolio(
+        pd.DataFrame([_signal("2021-04-02"), _signal("2021-04-09")]),
+        runner._build_calendar({"000001": daily}),
+        {"000001": daily},
+        runner.PORTFOLIO_A,
+    )
+    assert (result["entry_audit"]["execution_result"] == "SKIP_ACTIVE_POSITION").sum() == 1
+
+
+def test_same_open_full_exit_and_reentry_is_skipped():
+    daily = _daily(start="2021-04-01", end="2021-05-31")
+    first = _signal("2021-04-02", exit_signal_date="2021-04-16")
+    second = _signal("2021-04-12")
+    result = runner.run_portfolio(
+        pd.DataFrame([first, second]),
+        runner._build_calendar({"000001": daily}),
+        {"000001": daily},
+        runner.PORTFOLIO_A,
+    )
+    audit = result["entry_audit"].sort_values("signal_date")
+    assert audit["execution_result"].tolist() == ["EXECUTED", "SKIP_SAME_OPEN_REENTRY"]
+    assert result["events"]["event_type"].tolist() == ["ENTRY", "FULL_EXIT"]

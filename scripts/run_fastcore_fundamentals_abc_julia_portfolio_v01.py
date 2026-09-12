@@ -16,7 +16,7 @@ import json
 import math
 from pathlib import Path
 import sys
-from typing import Any, Iterable, Mapping
+from typing import Any, Callable, Iterable, Mapping
 
 import pandas as pd
 
@@ -55,6 +55,7 @@ OUT_DIR = ROOT / "artifacts/backtests/fastcore_fundamentals_abc_julia_portfolio_
 RAW_PATH = ROOT / "artifacts/backtests/fastcore_fundamentals_simple_v01/raw_candidates/fastcore_raw_candidates.csv"
 ENTRY_AUTHORITY_PATH = ROOT / "artifacts/backtests/fastcore_fundamentals_simple_v01/fundamentals_abc_return/abc_entry_candidate_audit.csv"
 FUNDAMENTAL_EVENT_PATH = ROOT / "artifacts/backtests/fastcore_fundamentals_simple_v01/fundamentals_abc_return/abc_fundamental_exit_events.csv"
+ABC_TRADES_PATH = ROOT / "artifacts/backtests/fastcore_fundamentals_simple_v01/fundamentals_abc_return/abc_trades.csv"
 FROZEN_TRADES_PATH = ROOT / "artifacts/backtests/fastcore_fundamentals_simple_v01/fundamentals_abc_julia_no_loss_guard/abc_julia_no_loss_guard_trades.csv"
 
 INITIAL_CAPITAL = 200_000_000
@@ -62,6 +63,7 @@ POSITION_CAP = 5_000_000
 SIGNAL_END = SIGNAL_END_DATE
 SUPPORT_END = EXECUTION_SUPPORT_END_DATE
 FROZEN_TRADES_SHA = "2e295ac3b64b1c227a43852a929f0dfa368755aa1dc0b3eec0d6b06a950ed8ec"
+ABC_TRADES_SHA = "fed6f87c8f77bab4a3fa60062af4177b00d6d1705036777cb81331c796f9a8d4"
 RAW_SHA = "6f79fdaf7a341ec81c1fff4f2034b29f690651c7a08f1569c8cda82367114591"
 STRATEGY_ID = "PATTERN_A_FAST_FINAL_STRATEGY_V02_FUNDAMENTALS_ABC_JULIA_NO_LOSS_GUARD_V01"
 PORTFOLIO_A = "PORTFOLIO_A_NO_PARTIAL_PROFIT"
@@ -119,6 +121,7 @@ def _safe_number(value: Any, default: float = 0.0) -> float:
 def _hash_authorities() -> dict[str, str]:
     paths = {
         "no_loss_guard_trades": FROZEN_TRADES_PATH,
+        "abc_trades": ABC_TRADES_PATH,
         "raw_candidates": RAW_PATH,
         "abc_entry_authority": ENTRY_AUTHORITY_PATH,
     }
@@ -128,6 +131,8 @@ def _hash_authorities() -> dict[str, str]:
 def _validate_frozen_authorities() -> None:
     if sha256_file(FROZEN_TRADES_PATH) != FROZEN_TRADES_SHA:
         raise RuntimeError("BLOCKED_FROZEN_STRATEGY_MUTATION")
+    if sha256_file(ABC_TRADES_PATH) != ABC_TRADES_SHA:
+        raise RuntimeError("BLOCKED_FROZEN_ABC_TRADES_MUTATION")
     if sha256_file(RAW_PATH) != RAW_SHA:
         raise RuntimeError("BLOCKED_FROZEN_RAW_MUTATION")
     validate_frozen_inputs()
@@ -319,60 +324,133 @@ def _build_calendar(daily_by_ticker: Mapping[str, pd.DataFrame]) -> dict[str, An
     }
 
 
-def load_frozen_trade_signal_authority() -> tuple[pd.DataFrame, dict[str, Any]]:
-    """Load the 345 frozen strategy signals without replaying the strategy."""
+def load_fresh_signal_authority() -> tuple[pd.DataFrame, dict[str, Any], Callable[[Mapping[str, Any]], dict[str, Any]]]:
+    """Load raw/ABC fresh signals and lazily build their exit lifecycles.
+
+    The completed No-Loss trade artifact remains a checksum-protected
+    reference, never an entry-candidate source. Every ABC-passing raw signal
+    is retained through portfolio dedupe/ranking. The strategy exit path is
+    calculated only when a candidate actually executes, which keeps the
+    cache-only correction bounded without changing the frozen strategy rules.
+    """
     _validate_frozen_authorities()
-    frozen = pd.read_csv(
-        FROZEN_TRADES_PATH,
-        dtype={"ticker": str, "isu_cd": str, "market": str, "trade_id": str},
-    )
-    if len(frozen) != 345 or frozen["trade_id"].nunique() != 345:
-        raise RuntimeError("BLOCKED_FROZEN_STRATEGY_SHAPE")
-    frozen["signal_date"] = pd.to_datetime(frozen["entry_signal_date"], errors="raise").dt.normalize()
-    frozen = frozen[
-        (frozen["signal_date"] >= COMMON_START_DATE)
-        & (frozen["signal_date"] <= SIGNAL_END)
-    ].copy()
-    if len(frozen) != 345:
-        raise RuntimeError("BLOCKED_FROZEN_STRATEGY_SIGNAL_WINDOW")
+    raw = pd.read_csv(RAW_PATH, dtype={"candidate_id": str, "ticker": str, "isu_cd": str, "market": str})
+    authority, _ = frozen_runner.load_entry_authority(raw)
+    fresh = _load_signal_authority(raw, authority)
     rows: list[dict[str, Any]] = []
-    for row in frozen.to_dict(orient="records"):
-        rows.append({
-            "signal_id": str(row["trade_id"]),
-            "ticker": str(row["ticker"]).zfill(6),
-            "isu_cd": str(row["isu_cd"]),
-            "market": str(row["market"]),
-            "name": str(row.get("name") or row["ticker"]),
-            "signal_date": pd.Timestamp(row["signal_date"]).strftime("%Y-%m-%d"),
-            "signal_information_date": str(row.get("entry_signal_information_date") or row["entry_signal_date"]),
-            "fast_score": float(row["fast_score"]),
-            "pattern_score": None,
-            "entry_open": float(row["entry_open"]),
-            "exit_signal_date": row.get("exit_signal_date"),
-            "exit_type": row.get("exit_type"),
-            "strategy_record": row,
+    for row in fresh.to_dict(orient="records"):
+        item = dict(row)
+        item.update({
+            "signal_id": str(row["candidate_id"]),
+            "signal_date": pd.Timestamp(row["candidate_signal_date"]).strftime("%Y-%m-%d"),
+            "signal_information_date": str(row["candidate_signal_information_date"]),
+            "pattern_score": row.get("pattern_a_score"),
         })
+        rows.append(item)
     signals = pd.DataFrame(rows).sort_values(["signal_date", "signal_id"], kind="mergesort").reset_index(drop=True)
-    # Build one run-scoped local repository for the frozen portfolio tickers.
-    # CandidateRawStore composes the same adjusted/raw authority while avoiding
-    # any per-ticker source refresh or network fallback.
-    repository = abc_return._candidate_repository(ROOT, signals[["ticker"]], SUPPORT_END)
+
+    event_map = _load_fundamental_events()
+    raw_tasks = _build_raw_task_map(raw)
+    authority_payload = load_effective_authority(EFFECTIVE_AUTHORITY_DIR)
+    intervals = _authority_intervals(authority_payload)
+    score_contract = _json_read(SCORE_CONTRACT_PATH)
+    stage_contract = _json_read(STAGE_CONTRACT_PATH)
+    repository = abc_return._candidate_repository(ROOT, raw, SUPPORT_END)
     loader = RepositoryV2DailyLoader(repository, end=SUPPORT_END)
     daily_by_ticker: dict[str, pd.DataFrame] = {}
-    for ticker in sorted(signals["ticker"].unique()):
+    for ticker in sorted(signals["ticker"].astype(str).str.zfill(6).unique()):
         daily = loader.load(ticker)
         if daily is None or daily.empty:
             raise RuntimeError(f"BLOCKED_DATA_GAP: {ticker}")
         daily_by_ticker[ticker] = daily
+
+    context_by_identity: dict[tuple[str, str, str, str, str], Any] = {}
+    record_cache: dict[str, dict[str, Any]] = {}
+
+    def strategy_record_for(candidate: Mapping[str, Any]) -> dict[str, Any]:
+        signal_id = str(candidate["signal_id"])
+        if signal_id in record_cache:
+            return record_cache[signal_id]
+        identity = _identity_key(candidate)
+        task_key = (
+            identity[0], identity[1], identity[2],
+            str(candidate["identity_effective_from"]), str(candidate["identity_effective_to"]),
+        )
+        task = raw_tasks.get(task_key)
+        if task is None:
+            raise RuntimeError(f"BLOCKED_SIGNAL_AUTHORITY_TASK_GAP: {task_key}")
+        ticker = identity[0]
+        daily = daily_by_ticker[ticker]
+        context = context_by_identity.get(task_key)
+        if context is None:
+            lifecycle = IdentityLifecycle(
+                ticker=identity[0], isu_cd=identity[1], market=identity[2],
+                effective_from=pd.Timestamp(task["effective_from"]),
+                effective_to=pd.Timestamp(task["effective_to"]),
+            )
+            clipped = clip_to_identity_lifecycle(daily, lifecycle)
+            context = build_precomputed_ticker_context(ticker, str(candidate.get("name") or ticker), clipped)
+            context_by_identity[task_key] = context
+        lifecycle = IdentityLifecycle(
+            ticker=identity[0], isu_cd=identity[1], market=identity[2],
+            effective_from=pd.Timestamp(task["effective_from"]),
+            effective_to=pd.Timestamp(task["effective_to"]),
+        )
+        candidate_id = str(candidate["candidate_id"])
+
+        def gate(_as_of: pd.Timestamp, context_values: dict[str, Any], *, candidate_id: str = candidate_id) -> dict[str, Any]:
+            signal_date = pd.Timestamp(context_values["signal_date"]).normalize()
+            return {
+                "gate_pass": frozen_candidate_id(identity[0], identity[1], identity[2], signal_date) == candidate_id,
+                "gate_id": "FROZEN_ABC_ENTRY_AUTHORITY",
+            }
+
+        def fundamental_callback(
+            _signal: pd.Timestamp,
+            _entry_exec: pd.Timestamp,
+            _identity_daily: pd.DataFrame,
+            *,
+            key: tuple[str, str, str] = identity,
+        ) -> list[Mapping[str, Any]]:
+            return event_map.get(key, [])
+
+        records = simulate_ticker_strategy_fundamentals_v01(
+            strategy_id=STRATEGY_ID,
+            ticker=identity[0], isu_cd=identity[1], name=str(candidate.get("name") or ticker),
+            market=identity[2], daily=daily, raw_panel=task["raw_panel"],
+            score_contract=score_contract, stage_contract=stage_contract,
+            loss_guard_enabled=False, backtest_end=SUPPORT_END,
+            entry_eligible_from=COMMON_START_DATE,
+            allowed_signal_dates={pd.Timestamp(candidate["candidate_signal_date"]).normalize()},
+            snapshot_context=context, identity_lifecycle=lifecycle,
+            pit_membership=lambda ticker_value, isu_value, market_value, value: pit_common_for_identity(
+                intervals, ticker_value, isu_value, market_value, value,
+            ),
+            entry_gate=gate, fundamental_exit_callback=fundamental_callback,
+        )
+        if len(records) != 1:
+            raise RuntimeError(f"BLOCKED_SIGNAL_EXIT_AUTHORITY_GAP: {signal_id}: {len(records)}")
+        record = records[0].to_dict()
+        if str(record["entry_signal_date"]) != str(candidate["signal_date"]):
+            raise RuntimeError(f"BLOCKED_SIGNAL_DATE_DRIFT: {signal_id}")
+        record_cache[signal_id] = record
+        return record
+
     return signals, {
-        "signal_authority_source": str(FROZEN_TRADES_PATH.relative_to(ROOT)),
-        "signal_authority_rows": len(signals),
+        "signal_authority_source": (
+            f"{RAW_PATH.relative_to(ROOT)} + {ENTRY_AUTHORITY_PATH.relative_to(ROOT)} "
+            "(classification=ABC_ENTRY_PASS)"
+        ),
+        "raw_candidate_rows": int(len(raw)),
+        "fresh_entry_signal_rows": int(len(signals)),
+        "fresh_entry_signal_tickers": int(signals["ticker"].nunique()),
+        "signal_authority_rows": int(len(signals)),
         "signal_authority_tickers": int(signals["ticker"].nunique()),
-        "strategy_simulation": "NOT RUN",
+        "strategy_simulation": "EXIT_LIFECYCLE_LAZY_PER_EXECUTED_FRESH_SIGNAL",
         "repository_v2_local_loads": int(loader.load_count),
         "authority_hashes": _hash_authorities(),
         "daily_by_ticker": daily_by_ticker,
-    }
+    }, strategy_record_for
 
 
 def _next_week_open(signal_date: Any, calendar: Mapping[str, Any]) -> pd.Timestamp | None:
@@ -426,7 +504,10 @@ def _event_row(
 
 
 def _price(daily_by_ticker: Mapping[str, pd.DataFrame], ticker: str, date: pd.Timestamp, column: str) -> float:
-    return _lookup_exact(daily_by_ticker[ticker], date, column)
+    try:
+        return _lookup_exact(daily_by_ticker[ticker], date, column)
+    except RuntimeError as exc:
+        raise RuntimeError(f"{ticker}: {exc}") from exc
 
 
 def _price_asof(daily_by_ticker: Mapping[str, pd.DataFrame], ticker: str, date: pd.Timestamp, column: str) -> float:
@@ -640,9 +721,16 @@ def _portfolio_summary(
         "total_entries": int(len(entries)),
         "total_full_exits": int(len(full_exits)),
         "total_partial_exits": int(len(partials)),
+        "total_fresh_entry_candidates": int(len(audits)),
         "cash_blocked_entry_count": int(len(cash_blocked)),
         "active_position_skipped_entry_count": int(len(active_skips)),
         "same_open_reentry_skipped_count": int(len(same_open_skips)),
+        "duplicate_weekly_candidate_skipped_count": int(
+            audits["execution_result"].eq("SKIP_DUPLICATE_WEEKLY_CANDIDATE").sum()
+        ),
+        "missing_execution_price_skipped_count": int(
+            audits["execution_result"].eq("SKIP_MISSING_EXECUTION_PRICE").sum()
+        ),
         "portfolio_turnover_krw": round(transaction_value, 6),
         "portfolio_turnover_ratio": round(transaction_value / INITIAL_CAPITAL, 6),
         "partial_profit_effect": _partial_effect(position_records, daily_by_ticker, SUPPORT_END),
@@ -655,7 +743,11 @@ def _portfolio_summary(
 
 
 def run_portfolio(
-    signals: pd.DataFrame, calendar: Mapping[str, Any], daily_by_ticker: Mapping[str, pd.DataFrame], portfolio: str,
+    signals: pd.DataFrame,
+    calendar: Mapping[str, Any],
+    daily_by_ticker: Mapping[str, pd.DataFrame],
+    portfolio: str,
+    strategy_record_factory: Callable[[Mapping[str, Any]], dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     selected, duplicates = _dedupe_and_rank_candidates(signals, calendar)
     positions: dict[tuple[str, str, str], Position] = {}
@@ -743,38 +835,46 @@ def run_portfolio(
             elif identity in positions:
                 result = "SKIP_ACTIVE_POSITION"
             else:
-                price = _price(daily_by_ticker, identity[0], batch, "open")
-                requested_cash = min(float(POSITION_CAP), cash)
-                shares = math.floor(requested_cash / price)
-                if shares <= 0:
-                    result = "SKIP_INSUFFICIENT_CASH"
+                try:
+                    price = _price(daily_by_ticker, identity[0], batch, "open")
+                except RuntimeError:
+                    result = "SKIP_MISSING_EXECUTION_PRICE"
                 else:
-                    cash_before = cash
-                    cost = shares * price
-                    cash -= cost
-                    strategy_record = candidate["strategy_record"]
-                    exit_signal = strategy_record.get("exit_signal_date")
-                    exit_exec = _next_week_open(exit_signal, calendar) if exit_signal else None
-                    if exit_exec is not None and exit_exec <= batch:
-                        exit_exec = None
-                    position = Position(
-                        signal_id=str(candidate["signal_id"]), ticker=identity[0], isu_cd=identity[1], market=identity[2],
-                        name=str(candidate["name"]), entry_signal_date=str(candidate["signal_date"]),
-                        entry_execution_date=batch.strftime("%Y-%m-%d"), entry_open=price, shares=shares,
-                        original_shares=shares, cost_basis=price, full_exit_signal_date=exit_signal,
-                        full_exit_execution_date=exit_exec.strftime("%Y-%m-%d") if exit_exec is not None else None,
-                        full_exit_type=str(strategy_record.get("exit_type") or "") or None,
-                    )
-                    positions[identity] = position
-                    open_prices[identity[0]] = price
-                    events.append(_event_row(
-                        portfolio=portfolio, date=batch, event_type="ENTRY", ticker=identity[0], name=position.name,
-                        signal_date=position.entry_signal_date, signal_type="ABC_FASTCORE_ENTRY", open_price=price,
-                        shares_before=0, shares_delta=shares, shares_after=shares,
-                        cash_before=cash_before, cash_delta=-cost, cash_after=cash,
-                        position_cost_basis=price, realized_pnl=0.0, realized_return=0.0,
-                        partial_profit_taken=False, portfolio_equity_after_execution=0.0,
-                    ))
+                    requested_cash = min(float(POSITION_CAP), cash)
+                    shares = math.floor(requested_cash / price)
+                    if shares <= 0:
+                        result = "SKIP_INSUFFICIENT_CASH"
+                    else:
+                        cash_before = cash
+                        cost = shares * price
+                        cash -= cost
+                        strategy_record = candidate.get("strategy_record")
+                        if strategy_record is None:
+                            if strategy_record_factory is None:
+                                raise RuntimeError(f"BLOCKED_SIGNAL_EXIT_AUTHORITY_GAP: {candidate.get('signal_id')}")
+                            strategy_record = strategy_record_factory(candidate)
+                        exit_signal = strategy_record.get("exit_signal_date")
+                        exit_exec = _next_week_open(exit_signal, calendar) if exit_signal else None
+                        if exit_exec is not None and exit_exec <= batch:
+                            exit_exec = None
+                        position = Position(
+                            signal_id=str(candidate["signal_id"]), ticker=identity[0], isu_cd=identity[1], market=identity[2],
+                            name=str(candidate["name"]), entry_signal_date=str(candidate["signal_date"]),
+                            entry_execution_date=batch.strftime("%Y-%m-%d"), entry_open=price, shares=shares,
+                            original_shares=shares, cost_basis=price, full_exit_signal_date=exit_signal,
+                            full_exit_execution_date=exit_exec.strftime("%Y-%m-%d") if exit_exec is not None else None,
+                            full_exit_type=str(strategy_record.get("exit_type") or "") or None,
+                        )
+                        positions[identity] = position
+                        open_prices[identity[0]] = price
+                        events.append(_event_row(
+                            portfolio=portfolio, date=batch, event_type="ENTRY", ticker=identity[0], name=position.name,
+                            signal_date=position.entry_signal_date, signal_type="ABC_FASTCORE_ENTRY", open_price=price,
+                            shares_before=0, shares_delta=shares, shares_after=shares,
+                            cash_before=cash_before, cash_delta=-cost, cash_after=cash,
+                            position_cost_basis=price, realized_pnl=0.0, realized_return=0.0,
+                            partial_profit_taken=False, portfolio_equity_after_execution=0.0,
+                        ))
             audits.append(_entry_audit_row(candidate, portfolio, candidate.get("ranking"), result))
 
         equity_after = _portfolio_equity_at_open(cash, positions, daily_by_ticker, batch)
@@ -855,11 +955,17 @@ def _write_frame(path: Path, frame: pd.DataFrame) -> None:
 
 
 def run_backtest() -> dict[str, Any]:
-    signal_authority, signal_meta = load_frozen_trade_signal_authority()
+    signal_authority, signal_meta, strategy_record_factory = load_fresh_signal_authority()
     daily_by_ticker = signal_meta.pop("daily_by_ticker")
     calendar = _build_calendar(daily_by_ticker)
-    portfolio_a = run_portfolio(signal_authority, calendar, daily_by_ticker, PORTFOLIO_A)
-    portfolio_b = run_portfolio(signal_authority, calendar, daily_by_ticker, PORTFOLIO_B)
+    portfolio_a = run_portfolio(
+        signal_authority, calendar, daily_by_ticker, PORTFOLIO_A,
+        strategy_record_factory=strategy_record_factory,
+    )
+    portfolio_b = run_portfolio(
+        signal_authority, calendar, daily_by_ticker, PORTFOLIO_B,
+        strategy_record_factory=strategy_record_factory,
+    )
     comparison = _comparison(portfolio_a, portfolio_b, signal_meta)
     return {
         "signal_authority": signal_authority,
