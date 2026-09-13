@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pandas as pd
 import pytest
+import requests
 
 from trend_scanner.data.adjusted_price_full_population import FullPopulationRunner
 from trend_scanner.data.adjusted_price_provider import NaverDirectAdjustedPriceDataProvider
@@ -98,7 +99,77 @@ def test_naver_positive_request_and_ohlc_only_output():
         "successful_fetch_count": 1, "empty_fetch_count": 0,
         "error_fetch_count": 0, "pykrx_fallback_call_count": 0,
         "phantom_row_count": 0,
+        "retry_attempted_count": 0, "retry_success_count": 0,
+        "retry_final_failure_count": 0,
     }
+
+
+def test_naver_read_timeout_retries_once_and_then_succeeds():
+    class RetrySession:
+        def __init__(self):
+            self.calls: list[tuple[str, dict]] = []
+            self.outcomes = [requests.exceptions.ReadTimeout("first timeout"), Response(_xml("20240102|100|110|90|105|1"))]
+
+        def get(self, url: str, **kwargs):
+            self.calls.append((url, kwargs))
+            outcome = self.outcomes.pop(0)
+            if isinstance(outcome, Exception):
+                raise outcome
+            return outcome
+
+    session = RetrySession()
+    provider = NaverDirectAdjustedPriceDataProvider(session=session)
+
+    frame = provider.load_daily("005930", "2024-01-02", "2024-01-02")
+
+    assert len(frame) == 1
+    assert len(session.calls) == 2
+    assert session.calls[0] == session.calls[1]
+    assert provider.call_audit()["retry_attempted_count"] == 1
+    assert provider.call_audit()["retry_success_count"] == 1
+    assert provider.call_audit()["retry_final_failure_count"] == 0
+
+
+def test_naver_read_timeout_retry_failure_remains_fail_closed():
+    class FailingRetrySession:
+        def __init__(self):
+            self.calls = 0
+
+        def get(self, *args, **kwargs):
+            self.calls += 1
+            raise requests.exceptions.ReadTimeout(f"timeout {self.calls}")
+
+    session = FailingRetrySession()
+    provider = NaverDirectAdjustedPriceDataProvider(session=session)
+
+    with pytest.raises(MarketDataError, match="timeout 2"):
+        provider.load_daily("005930", "2024-01-02", "2024-01-02")
+
+    assert session.calls == 2
+    assert provider.call_audit()["retry_attempted_count"] == 1
+    assert provider.call_audit()["retry_success_count"] == 0
+    assert provider.call_audit()["retry_final_failure_count"] == 1
+
+
+def test_naver_non_timeout_error_is_not_retried():
+    class FailingSession:
+        def __init__(self):
+            self.calls = 0
+
+        def get(self, *args, **kwargs):
+            self.calls += 1
+            raise MarketDataError("TEST_PROVIDER_FAILURE")
+
+    session = FailingSession()
+    provider = NaverDirectAdjustedPriceDataProvider(session=session)
+
+    with pytest.raises(MarketDataError, match="TEST_PROVIDER_FAILURE"):
+        provider.load_daily("005930", "2024-01-02", "2024-01-02")
+
+    assert session.calls == 1
+    assert provider.call_audit()["retry_attempted_count"] == 0
+    assert provider.call_audit()["retry_success_count"] == 0
+    assert provider.call_audit()["retry_final_failure_count"] == 0
 
 
 def test_naver_alpha_and_empty_response():

@@ -509,6 +509,15 @@ def _identity_matches_removed(
     return False
 
 
+def _retry_telemetry(provider: Any) -> dict[str, int]:
+    audit = provider.call_audit() if hasattr(provider, "call_audit") else {}
+    return {
+        "retry_attempted_count": int(audit.get("retry_attempted_count", 0)),
+        "retry_success_count": int(audit.get("retry_success_count", 0)),
+        "retry_final_failure_count": int(audit.get("retry_final_failure_count", 0)),
+    }
+
+
 def _load_authoritative_removed_identities(
     removed_identity_audit_path: Path | None = DEFAULT_REMOVED_IDENTITY_AUDIT_PATH,
     *,
@@ -2162,6 +2171,7 @@ class RollingEtfAdjustedUpdater:
             "updated": results,
             "failures": failures,
             "restatement_validation": restatement_validation,
+            "retry_telemetry": _retry_telemetry(self.provider),
             "new_boundary": new_boundary,
         }
 
@@ -2352,6 +2362,7 @@ class RollingAdjustedPriceUpdater:
             "skipped": skipped,
             "failures": failures,
             "restatement_validation": restatement_validation,
+            "retry_telemetry": _retry_telemetry(self.provider),
             "new_boundary": new_boundary,
         }
 

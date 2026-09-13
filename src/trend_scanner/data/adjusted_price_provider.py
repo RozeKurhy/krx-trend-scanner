@@ -223,8 +223,8 @@ class AdjustedPriceDataProvider:
 class NaverDirectAdjustedPriceDataProvider:
     """Authoritative adjusted-OHLC provider backed by Naver's XML endpoint.
 
-    The provider deliberately performs one physical request for each logical
-    fetch. Retry policy belongs to the caller (the full-population runner).
+    Each logical fetch performs one physical request, with at most one identical
+    retry when the Naver request raises ``requests.exceptions.ReadTimeout``.
     """
 
     endpoint = CURRENT_SOURCE_DESCRIPTOR.source_endpoint
@@ -250,6 +250,9 @@ class NaverDirectAdjustedPriceDataProvider:
         self._pykrx_fallback_call_count = 0
         self._phantom_row_count = 0
         self._source_nonusable_row_count = 0
+        self._retry_attempted_count = 0
+        self._retry_success_count = 0
+        self._retry_final_failure_count = 0
         self._phantom_dates: list[str] = []
         self._source_nonusable_dates: list[str] = []
 
@@ -321,6 +324,9 @@ class NaverDirectAdjustedPriceDataProvider:
             "error_fetch_count": self.error_fetch_count,
             "pykrx_fallback_call_count": self.pykrx_fallback_call_count,
             "phantom_row_count": self.phantom_row_count,
+            "retry_attempted_count": self._retry_attempted_count,
+            "retry_success_count": self._retry_success_count,
+            "retry_final_failure_count": self._retry_final_failure_count,
         }
 
     @staticmethod
@@ -433,6 +439,28 @@ class NaverDirectAdjustedPriceDataProvider:
         frame.attrs["analytic_invalid_ohlc_count"] = int((~valid).sum())
         return frame
 
+    def _request_with_read_timeout_retry(self, params: dict[str, Any]) -> tuple[Any, bool]:
+        """Make the exact Naver request, retrying one ReadTimeout once."""
+
+        retry_attempted = False
+        for attempt in range(2):
+            self._naver_http_call_count += 1
+            try:
+                response = self.session.get(self.endpoint, params=params, timeout=self.timeout_seconds)
+            except requests.exceptions.ReadTimeout:
+                if attempt == 0:
+                    self._retry_attempted_count += 1
+                    retry_attempted = True
+                    continue
+                self._retry_final_failure_count += 1
+                raise
+            except Exception:
+                if retry_attempted:
+                    self._retry_final_failure_count += 1
+                raise
+            return response, retry_attempted
+        raise AssertionError("ReadTimeout retry loop exhausted without a response or exception")
+
     def load_daily(self, ticker: str, start: Any, end: Any) -> pd.DataFrame:
         normalized_ticker = normalize_ticker(ticker)
         start_param, start_ts = self._request_date(start, "start")
@@ -448,9 +476,9 @@ class NaverDirectAdjustedPriceDataProvider:
             "startTime": start_param,
             "endTime": end_param,
         }
-        self._naver_http_call_count += 1
+        retry_attempted = False
         try:
-            response = self.session.get(self.endpoint, params=params, timeout=self.timeout_seconds)
+            response, retry_attempted = self._request_with_read_timeout_retry(params)
             if getattr(response, "status_code", 200) >= 400:
                 raise MarketDataError(f"Naver HTTP failure: {response.status_code}")
             frame = self._parse_response(getattr(response, "text", ""), start_ts, end_ts)
@@ -459,11 +487,17 @@ class NaverDirectAdjustedPriceDataProvider:
                 for entry in frame.attrs.get("source_row_audit", ())
             )
         except MarketDataError:
+            if retry_attempted:
+                self._retry_final_failure_count += 1
             self._error_fetch_count += 1
             raise
         except Exception as exc:
+            if retry_attempted:
+                self._retry_final_failure_count += 1
             self._error_fetch_count += 1
             raise MarketDataError(f"Naver adjusted-price request failed: {exc}") from exc
+        if retry_attempted:
+            self._retry_success_count += 1
         if frame.empty:
             self._empty_fetch_count += 1
         else:
