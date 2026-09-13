@@ -58,6 +58,7 @@ from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from html import unescape
 from html.parser import HTMLParser
+from itertools import combinations
 from pathlib import Path
 from typing import Any, Callable, Mapping, Sequence
 from urllib.parse import urljoin
@@ -909,16 +910,65 @@ class _KindReferenceLinkParser(HTMLParser):
     def __init__(self) -> None:
         super().__init__(convert_charrefs=True)
         self.references: list[str] = []
+        self.reference_titles: dict[str, str] = {}
+        self._anchor_depth = 0
+        self._anchor_values: list[str] = []
+        self._anchor_text: list[str] = []
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
-        if tag.lower() != "a":
+        lowered_tag = tag.lower()
+        if self._anchor_depth:
+            self._anchor_depth += 1
+        if lowered_tag != "a":
             return
-        values = [value for key, value in attrs if key.lower() in {"href", "onclick"} and value]
-        for value in values:
+        if self._anchor_depth > 1:
+            self._finish_anchor()
+        self._anchor_depth = 1
+        self._anchor_values = [
+            value for key, value in attrs
+            if key.lower() in {"href", "onclick"} and value
+        ]
+        self._anchor_text = [
+            value for key, value in attrs
+            if key.lower() in {"title", "aria-label"} and value
+        ]
+
+    def handle_endtag(self, tag: str) -> None:
+        if not self._anchor_depth:
+            return
+        if tag.lower() == "a":
+            self._finish_anchor()
+            self._anchor_depth = 0
+        else:
+            self._anchor_depth = max(1, self._anchor_depth - 1)
+
+    def handle_data(self, data: str) -> None:
+        if self._anchor_depth:
+            self._anchor_text.append(data)
+
+    def _finish_anchor(self) -> None:
+        title = re.sub(r"\s+", " ", unescape(" ".join(self._anchor_text))).strip()
+        for value in self._anchor_values:
             for match in re.findall(r"https?://kind\.krx\.co\.kr/[^'\"\s)]+|/external/[^'\"\s)]+", value):
                 reference = urljoin(KIND_DISCLOSURE_SEARCH_URL, unescape(match))
                 if "/external/" in reference and reference not in self.references:
                     self.references.append(reference)
+                if "/external/" in reference and title:
+                    self.reference_titles[reference] = title
+        self._anchor_values = []
+        self._anchor_text = []
+
+
+_KIND_CORPORATE_ACTION_KEYWORDS = (
+    "주식분할", "주식병합", "액면분할", "액면병합", "감자", "증자", "합병", "분할합병",
+    "stock split", "reverse split", "stock consolidation", "capital reduction",
+    "capital increase", "merger", "demerger",
+)
+
+
+def _kind_is_corporate_action_candidate(title: str) -> bool:
+    normalized = re.sub(r"\s+", "", str(title or "")).lower()
+    return any(keyword.replace(" ", "").lower() in normalized for keyword in _KIND_CORPORATE_ACTION_KEYWORDS)
 
 
 def _kind_reference_candidates(payload: str | bytes, *, limit: int = 5) -> list[str]:
@@ -927,9 +977,38 @@ def _kind_reference_candidates(payload: str | bytes, *, limit: int = 5) -> list[
     try:
         parser.feed(raw)
         parser.close()
+        if parser._anchor_depth:
+            parser._finish_anchor()
     except Exception:  # noqa: BLE001 -- no reference is safer than a partial URL
         return []
-    return parser.references[:limit]
+    return [
+        reference for reference in parser.references
+        if _kind_is_corporate_action_candidate(parser.reference_titles.get(reference, ""))
+    ][:limit]
+
+
+def _kind_search_window(
+    *,
+    current_boundary: str | None,
+    target_as_of: str | None,
+    historical_start: str | None,
+) -> tuple[str, str]:
+    """Return a bounded current-boundary lookback for ticker-scoped KIND search.
+
+    The adjusted-history authority can begin in 2010, but a rolling corporate-action lookup must
+    not turn that historical frontier into a market-wide 2010-to-now disclosure scrape. The
+    latest known boundary is the anchor and the twelve-month lookback is deliberately bounded.
+    """
+
+    anchor_raw = current_boundary or target_as_of
+    anchor = pd.Timestamp(anchor_raw) if anchor_raw else pd.Timestamp(datetime.now(timezone.utc).date())
+    end = pd.Timestamp(target_as_of or current_boundary or anchor).normalize()
+    start = (anchor.normalize() - pd.DateOffset(months=12)).normalize()
+    if historical_start:
+        start = max(start, pd.Timestamp(historical_start).normalize())
+    if start > end:
+        start = end
+    return start.date().isoformat(), end.date().isoformat()
 
 
 def parse_kind_corporate_action_evidence(
@@ -1028,7 +1107,7 @@ class KindCorporateActionEvidenceProvider:
         reference_resolver: Callable[[str], Sequence[str]] | None = None,
         session: requests.Session | None = None,
         timeout_seconds: float = 10.0,
-        max_references: int = 5,
+        max_references: int = 8,
     ) -> None:
         self.references_by_ticker = {
             str(ticker).zfill(6): ((refs,) if isinstance(refs, str) else tuple(refs))
@@ -1059,10 +1138,13 @@ class KindCorporateActionEvidenceProvider:
         records: list[dict[str, Any]] = []
         references = self.references_by_ticker.get(normalized_ticker, ())
         if not references and self.reference_resolver is not None:
-            references = tuple(self.reference_resolver(normalized_ticker))
+            references = tuple(self.reference_resolver(normalized_ticker))[: self.max_references]
         if not references:
-            start = historical_start or current_boundary or "2021-01-01"
-            end = target_as_of or current_boundary or "2099-12-31"
+            start, end = _kind_search_window(
+                current_boundary=current_boundary,
+                target_as_of=target_as_of,
+                historical_start=historical_start,
+            )
             try:
                 response = self.session.get(
                     KIND_DISCLOSURE_SEARCH_URL,
@@ -1080,6 +1162,7 @@ class KindCorporateActionEvidenceProvider:
                     references = tuple(_kind_reference_candidates(response.content, limit=self.max_references))
             except Exception:  # noqa: BLE001 -- this ticker fails closed; other tickers continue
                 references = ()
+        references = tuple(references)[: self.max_references]
         for reference in references:
             try:
                 response = self.session.get(reference, timeout=self.timeout_seconds)
@@ -1192,11 +1275,70 @@ def _evidence_dates(record: Mapping[str, Any]) -> list[pd.Timestamp]:
     return dates
 
 
+def _dedupe_factor_values(values: Sequence[float]) -> list[float]:
+    unique: list[float] = []
+    for value in values:
+        factor = float(value)
+        if factor <= 0 or any(abs(factor / prior - 1.0) <= 1e-9 for prior in unique):
+            continue
+        unique.append(factor)
+    return unique
+
+
+def _eligible_evidence_factor_entries(
+    records: Sequence[Mapping[str, Any]],
+    *,
+    historical_start: pd.Timestamp,
+    target_date: pd.Timestamp,
+) -> list[dict[str, Any]]:
+    """Keep factor evidence only when its own official event dates are in-window."""
+
+    entries: list[dict[str, Any]] = []
+    for record in records:
+        dates = sorted(set(_evidence_dates(record)))
+        if not dates or not all(historical_start <= date <= target_date for date in dates):
+            continue
+        for factor in _dedupe_factor_values(_evidence_factor_values(record)):
+            entries.append({"factor": factor, "event_dates": dates})
+    return entries
+
+
+def _bounded_factor_combinations(
+    entries: Sequence[Mapping[str, Any]],
+    *,
+    max_factors: int = 3,
+) -> list[dict[str, Any]]:
+    """Build direct/inverse combinations of at most three official factors."""
+
+    combinations_out: list[dict[str, Any]] = []
+    max_size = min(max_factors, len(entries))
+    for size in range(1, max_size + 1):
+        for selected in combinations(entries, size):
+            product = 1.0
+            component_factors: list[float] = []
+            event_dates: set[pd.Timestamp] = set()
+            for entry in selected:
+                factor = float(entry["factor"])
+                product *= factor
+                component_factors.append(factor)
+                event_dates.update(entry["event_dates"])
+            if product <= 0:
+                continue
+            for factor in (product, 1.0 / product):
+                combinations_out.append({
+                    "factor": float(factor),
+                    "component_factors": component_factors,
+                    "event_dates": sorted(event_dates),
+                })
+    return combinations_out
+
+
 def _validate_corporate_action_evidence(
     ticker: str,
     evidence: Any,
     *,
     factor_regime_centers: Sequence[float],
+    factor_regime_sequence: Sequence[float] | None = None,
     historical_start: pd.Timestamp,
     boundary: str,
     target_as_of: str | None = None,
@@ -1212,6 +1354,7 @@ def _validate_corporate_action_evidence(
         "corporate_action_time_supported": False,
         "corporate_action_factor_explained": False,
         "corporate_action_factor_date_matched": False,
+        "corporate_action_factor_order_supported": False,
         "corporate_action_evidence_ticker": ticker,
     }
     if not records:
@@ -1257,22 +1400,58 @@ def _validate_corporate_action_evidence(
             "corporate_action_evidence_reason": "CORPORATE_ACTION_TARGET_BEFORE_BOUNDARY",
             "approved": False,
         }
-    time_supported = any(historical_start <= event_date <= target_date for event_date in event_dates)
-    factors = [factor for record in valid_records for factor in _evidence_factor_values(record)]
-    factor_candidates = factors + [1.0 / factor for factor in factors if factor != 0]
-    ratio_supported = bool(factors)
-    factor_explained = bool(factor_candidates) and all(
-        any(abs(candidate / center - 1.0) <= 0.10 for candidate in factor_candidates)
-        for center in factor_regime_centers
+    eligible_entries = _eligible_evidence_factor_entries(
+        valid_records,
+        historical_start=historical_start,
+        target_date=target_date,
     )
+    time_supported = bool(eligible_entries)
+    factors = [float(entry["factor"]) for entry in eligible_entries]
+    ratio_supported = bool(factors)
+    factor_combinations = _bounded_factor_combinations(eligible_entries, max_factors=3)
+    factor_matches_by_center: dict[float, list[dict[str, Any]]] = {}
+    for center in factor_regime_centers:
+        factor_matches_by_center[float(center)] = [
+            item for item in factor_combinations
+            if abs(float(item["factor"]) / float(center) - 1.0) <= 0.10
+        ]
+    factor_explained = bool(factor_combinations) and all(factor_matches_by_center.values())
+    regime_sequence = [float(center) for center in (factor_regime_sequence or factor_regime_centers)]
+    ordered_matches: list[dict[str, Any]] = []
+    order_supported = factor_explained
+    if order_supported:
+        paths: list[tuple[pd.Timestamp | None, list[dict[str, Any]]]] = [(None, [])]
+        for center in regime_sequence:
+            next_paths: list[tuple[pd.Timestamp | None, list[dict[str, Any]]]] = []
+            for previous_anchor, path in paths:
+                for item in factor_matches_by_center.get(center, ()):
+                    anchor = max(item["event_dates"]) if item["event_dates"] else None
+                    if previous_anchor is not None and (anchor is None or anchor < previous_anchor):
+                        continue
+                    next_paths.append((anchor, [*path, item]))
+            paths = next_paths
+            if not paths:
+                order_supported = False
+                break
+        if order_supported:
+            ordered_matches = paths[0][1]
     details = {
         **base,
         "corporate_action_ratio_supported": ratio_supported,
         "corporate_action_time_supported": time_supported,
         "corporate_action_factor_explained": factor_explained,
-        "corporate_action_factor_date_matched": bool(factor_explained and time_supported),
+        "corporate_action_factor_date_matched": bool(factor_explained and time_supported and order_supported),
+        "corporate_action_factor_order_supported": order_supported,
         "corporate_action_event_dates": [date.date().isoformat() for date in event_dates],
         "corporate_action_observed_factors": factors,
+        "corporate_action_factor_combinations": [
+            {
+                "factor": float(item["factor"]),
+                "component_factors": [float(value) for value in item["component_factors"]],
+                "event_dates": [date.date().isoformat() for date in item["event_dates"]],
+            }
+            for item in ordered_matches
+        ],
         "corporate_action_timing_window": {
             "historical_start": historical_start.date().isoformat(),
             "current_boundary": boundary_date.date().isoformat(),
@@ -1285,6 +1464,8 @@ def _validate_corporate_action_evidence(
         return {**details, "corporate_action_evidence_reason": "CORPORATE_ACTION_RATIO_UNAVAILABLE", "approved": False}
     if not factor_explained:
         return {**details, "corporate_action_evidence_reason": "CORPORATE_ACTION_RATIO_DOES_NOT_EXPLAIN_RESTATEMENT", "approved": False}
+    if not order_supported:
+        return {**details, "corporate_action_evidence_reason": "CORPORATE_ACTION_FACTOR_ORDER_UNSUPPORTED", "approved": False}
     return {**details, "corporate_action_evidence_reason": "CORPORATE_ACTION_EVIDENCE_MATCHED", "approved": True}
 
 
@@ -1465,11 +1646,18 @@ def classify_adjusted_history_transition(
                 "provider_frame_match": provider_frame_match,
             }
 
+    factor_regime_centers = [float(pd.Series(cluster).median()) for cluster in clusters]
+    factor_regime_sequence: list[float] = []
+    for factor in row_factors.tolist():
+        center = min(factor_regime_centers, key=lambda value: abs(float(factor) / value - 1.0))
+        if not factor_regime_sequence or center != factor_regime_sequence[-1]:
+            factor_regime_sequence.append(center)
     shape_details = {
         "ticker": normalized_ticker,
         "changed_rows": changed_rows,
         "factor_regime_count": len(clusters),
-        "factor_regime_centers": [float(pd.Series(cluster).median()) for cluster in clusters],
+        "factor_regime_centers": factor_regime_centers,
+        "factor_regime_sequence": factor_regime_sequence,
         "provider_frame_match": provider_frame_match,
     }
     if provider_frame_match is not True:
@@ -1495,6 +1683,7 @@ def classify_adjusted_history_transition(
         normalized_ticker,
         corporate_action_evidence,
         factor_regime_centers=shape_details["factor_regime_centers"],
+        factor_regime_sequence=shape_details["factor_regime_sequence"],
         historical_start=before_history.index.min(),
         boundary=boundary,
         target_as_of=target_as_of,
