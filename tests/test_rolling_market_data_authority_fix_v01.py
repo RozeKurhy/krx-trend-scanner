@@ -9,6 +9,7 @@ import json
 import pytest
 
 from trend_scanner.data.rolling_market_data_refresh import (
+    DEFAULT_REMOVED_IDENTITY_AUDIT_PATH,
     InsufficientPitFrontierError,
     PopulationBootstrapAudit,
     RollingAuthorityError,
@@ -233,6 +234,61 @@ def test_current_branch_aggregate_closure_authority_explains_short_store(tmp_pat
     assert audit.unexplained_gap_count == 0
     assert audit.explained_gap_count == 1
     assert audit.records[0].reason == "CERTIFIED_BY_FULL_POPULATION_CLOSURE:AGGREGATE_COMPLETE"
+
+
+def test_future_common_ticker_is_not_removed_from_frozen_population_absence(tmp_path) -> None:
+    adjusted_dir = tmp_path / "adjusted"
+    adjusted_dir.mkdir()
+    _write_json(adjusted_dir / "AAA001.meta.json", _meta("2026-09-11"))
+
+    pit_path = tmp_path / "merged_pit.json"
+    _write_json(
+        pit_path,
+        _pit(
+            [
+                _interval("AAA001", "2026-09-01", "2026-09-11"),
+                _interval("AAA999", "2026-09-01", "2026-09-11"),
+            ]
+        ),
+    )
+    calendar_path = tmp_path / "merged_calendar.json"
+    _write_json(
+        calendar_path,
+        {
+            "trading_dates": [
+                "2026-09-01", "2026-09-02", "2026-09-03", "2026-09-04", "2026-09-07",
+                "2026-09-08", "2026-09-09", "2026-09-10", "2026-09-11",
+            ]
+        },
+    )
+    effective_population_path = tmp_path / "frozen_effective_population.json"
+    _write_json(
+        effective_population_path,
+        {"records": [{"ticker": "AAA001", "included_in_population": True}]},
+    )
+    zero_store_path = tmp_path / "zero_store.json"
+    _write_json(zero_store_path, {"tickers": []})
+
+    audit = audit_full_population_bootstrap(
+        adjusted_store_dir=adjusted_dir,
+        candidate_boundary="2026-09-11",
+        etf_acceptance_tickers=(),
+        pit_path=pit_path,
+        historical_calendar_path=calendar_path,
+        removed_identity_audit_path=DEFAULT_REMOVED_IDENTITY_AUDIT_PATH,
+        zero_store_contract_path=zero_store_path,
+        full_population_closure_results_path=None,
+        full_population_closure_summary_path=None,
+        effective_population_path=effective_population_path,
+        stocks_dir=tmp_path / "no_such_legacy_raw_cache",
+        suspension_authority_path=tmp_path / "no_such_suspension_authority.json",
+        suspension_errata_path=None,
+    )
+
+    future_record = next(record for record in audit.records if record.ticker == "AAA999")
+    assert future_record.category == "UNEXPLAINED_GAP"
+    assert future_record.reason == "NO_STORE_FILE_BUT_COVERAGE_EXPECTED"
+    assert future_record.reason != "INTENTIONAL_AUTHORITY_CORRECTION_REMOVED_IDENTITY"
 
 
 def test_real_production_full_population_bootstrap_audit_is_certified() -> None:

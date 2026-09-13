@@ -92,6 +92,7 @@ from trend_scanner.universe.historical_authority_reconciliation import (
 
 ROLLING_AUTHORITY_VERSION = "ROLLING_MARKET_DATA_V01"
 DEFAULT_ROLLING_AUTHORITY_DIR = Path("data/market/rolling_authority")
+FROZEN_FULL_POPULATION_CLOSURE_BOUNDARY = "2026-08-21"
 
 # BLOCKER B (directive section 14): closure artifacts already certified, by direct evidence, that
 # PIT COMMON population (3162 tickers) minus these 13 explicitly removed identities equals
@@ -660,7 +661,13 @@ def audit_full_population_bootstrap(
     removed_identities: set = set()
     if Path(removed_identity_audit_path).exists():
         removed_identities = set(_read_json(removed_identity_audit_path).get("removed_identities", []))
-    elif Path(removed_identity_audit_path) == DEFAULT_REMOVED_IDENTITY_AUDIT_PATH:
+    elif (
+        Path(removed_identity_audit_path).resolve() == DEFAULT_REMOVED_IDENTITY_AUDIT_PATH.resolve()
+        and Path(pit_path).resolve() == DEFAULT_PIT_PATH.resolve()
+        and effective_population_path is not None
+        and Path(effective_population_path).resolve() == DEFAULT_EFFECTIVE_POPULATION_PATH.resolve()
+        and candidate_boundary == FROZEN_FULL_POPULATION_CLOSURE_BOUNDARY
+    ):
         effective_tickers = _load_effective_population_tickers(effective_population_path)
         if effective_tickers:
             removed_identities = set(pit_tickers) - effective_tickers
@@ -3003,6 +3010,7 @@ def count_rows_after(dates: Sequence[str], target_as_of: str) -> int:
 __all__ = [
     "ROLLING_AUTHORITY_VERSION",
     "DEFAULT_ROLLING_AUTHORITY_DIR",
+    "FROZEN_FULL_POPULATION_CLOSURE_BOUNDARY",
     "DEFAULT_REMOVED_IDENTITY_AUDIT_PATH",
     "DEFAULT_ZERO_STORE_CONTRACT_PATH",
     "DEFAULT_FULL_POPULATION_CLOSURE_RESULTS_PATH",
