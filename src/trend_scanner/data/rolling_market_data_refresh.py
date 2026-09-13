@@ -61,7 +61,7 @@ from html.parser import HTMLParser
 from itertools import combinations
 from pathlib import Path
 from typing import Any, Callable, Mapping, Sequence
-from urllib.parse import urljoin
+from urllib.parse import parse_qs, urlencode, urljoin, urlparse
 
 import pandas as pd
 import requests
@@ -890,7 +890,7 @@ def _kind_ratio(text: str) -> float | None:
     # print an explicit ``n:m`` ratio. Restrict this fallback to the par-value phrase so dates and
     # share counts elsewhere in the document cannot become a false ratio.
     par_match = re.search(
-        r"액면(?:가액|금액)[^\d]{0,80}(\d[\d,]*)\s*원[^\d]{0,80}(\d[\d,]*)\s*원",
+        r"액면\s*가(?:액|금액)?[^\d]{0,80}(\d[\d,]*)\s*원[^\d]{0,80}(\d[\d,]*)\s*원",
         text,
     )
     if par_match:
@@ -902,6 +902,7 @@ def _kind_ratio(text: str) -> float | None:
 
 
 KIND_DISCLOSURE_SEARCH_URL = "https://kind.krx.co.kr/disclosure/details.do"
+KIND_VIEWER_URL = "https://kind.krx.co.kr/common/disclsviewer.do"
 
 
 class _KindReferenceLinkParser(HTMLParser):
@@ -955,6 +956,15 @@ class _KindReferenceLinkParser(HTMLParser):
                     self.references.append(reference)
                 if "/external/" in reference and title:
                     self.reference_titles[reference] = title
+            for acpt_no, doc_no in re.findall(
+                r"openDisclsViewer(?:WithDocNo)?\s*\(\s*['\"]([^'\"]+)['\"]\s*,\s*['\"]([^'\"]*)['\"]\s*\)",
+                value,
+            ):
+                reference = f"{KIND_VIEWER_URL}?{urlencode({'method': 'searchInitInfo', 'acptNo': acpt_no, 'docNo': doc_no})}"
+                if reference not in self.references:
+                    self.references.append(reference)
+                if title:
+                    self.reference_titles[reference] = title
         self._anchor_values = []
         self._anchor_text = []
 
@@ -985,6 +995,30 @@ def _kind_reference_candidates(payload: str | bytes, *, limit: int = 5) -> list[
         reference for reference in parser.references
         if _kind_is_corporate_action_candidate(parser.reference_titles.get(reference, ""))
     ][:limit]
+
+
+def _kind_viewer_document_numbers(payload: str | bytes) -> list[str]:
+    raw = payload.decode("utf-8", errors="replace") if isinstance(payload, bytes) else str(payload)
+    document_numbers: list[str] = []
+    for document_number in re.findall(
+        r"<option\b[^>]*\bvalue\s*=\s*['\"]([^|'\"]+)\|[YN]['\"]",
+        raw,
+        flags=re.IGNORECASE,
+    ):
+        if document_number and document_number not in document_numbers:
+            document_numbers.append(document_number)
+    return document_numbers
+
+
+def _kind_viewer_external_reference(payload: str | bytes) -> str:
+    raw = payload.decode("utf-8", errors="replace") if isinstance(payload, bytes) else str(payload)
+    match = re.search(
+        r"parent\.setPath\(\s*['\"][^'\"]*['\"]\s*,\s*['\"]([^'\"]+)['\"]",
+        raw,
+    )
+    if not match:
+        return ""
+    return urljoin(KIND_VIEWER_URL, unescape(match.group(1)))
 
 
 def _kind_search_window(
@@ -1145,17 +1179,42 @@ class KindCorporateActionEvidenceProvider:
                 target_as_of=target_as_of,
                 historical_start=historical_start,
             )
+            search_payload = {
+                "method": "searchDetailsSub",
+                "currentPageSize": str(self.max_references),
+                "pageIndex": "1",
+                "orderMode": "1",
+                "orderStat": "D",
+                "forward": "details_sub",
+                "repIsuSrtCd": f"A{normalized_ticker}",
+                "allRepIsuSrtCd": "",
+                "searchCodeType": "number",
+                "searchCorpName": "",
+                "oldSearchCorpName": "",
+                "business": "",
+                "marketType": "",
+                "kosdaqSegment": "",
+                "settlementMonth": "",
+                "securities": "",
+                "submitOblgNm": "",
+                "enterprise": "",
+                "fromDate": start,
+                "toDate": end,
+                "reportNmTemp": "",
+                "reportNmPop": "",
+                "lastReport": "",
+                "disclosureType": "",
+                "disTypevalue": "",
+                "reportNm": "",
+                "reportCd": "",
+            }
+            for disclosure_type in ("01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "13", "14", "20"):
+                search_payload[f"disclosureType{disclosure_type}"] = ""
+                search_payload[f"pDisclosureType{disclosure_type}"] = ""
             try:
-                response = self.session.get(
+                response = self.session.post(
                     KIND_DISCLOSURE_SEARCH_URL,
-                    params={
-                        "method": "searchDetailsMain",
-                        "repIsuSrtCd": f"A{normalized_ticker}",
-                        "searchFromDate": start,
-                        "searchToDate": end,
-                        "currentPageSize": str(self.max_references),
-                        "pageIndex": "1",
-                    },
+                    data=search_payload,
                     timeout=self.timeout_seconds,
                 )
                 if response.status_code == 200:
@@ -1165,14 +1224,56 @@ class KindCorporateActionEvidenceProvider:
         references = tuple(references)[: self.max_references]
         for reference in references:
             try:
-                response = self.session.get(reference, timeout=self.timeout_seconds)
-                if response.status_code != 200:
-                    continue
-                records.extend(parse_kind_corporate_action_evidence(response.content, normalized_ticker, reference))
+                payloads = self._fetch_reference_payloads(reference)
+                for payload, resolved_reference in payloads:
+                    records.extend(
+                        parse_kind_corporate_action_evidence(
+                            payload,
+                            normalized_ticker,
+                            resolved_reference,
+                        )
+                    )
             except Exception:  # noqa: BLE001 -- this ticker fails closed; other tickers continue
                 continue
         self._cache[cache_key] = records
         return list(records)
+
+    def _fetch_reference_payloads(self, reference: str) -> list[tuple[bytes, str]]:
+        """Resolve either a direct external document or a KIND viewer acceptance reference."""
+
+        if "/external/" in reference:
+            response = self.session.get(reference, timeout=self.timeout_seconds)
+            return [(response.content, reference)] if response.status_code == 200 else []
+
+        query = parse_qs(urlparse(reference).query, keep_blank_values=True)
+        acceptance_number = query.get("acptNo", [""])[0]
+        document_number = query.get("docNo", [""])[0]
+        if not acceptance_number:
+            return []
+        if not document_number:
+            response = self.session.get(reference, timeout=self.timeout_seconds)
+            if response.status_code != 200:
+                return []
+            document_numbers = _kind_viewer_document_numbers(response.content)
+        else:
+            document_numbers = [document_number]
+
+        payloads: list[tuple[bytes, str]] = []
+        for document_number in document_numbers[:1]:
+            response = self.session.post(
+                KIND_VIEWER_URL,
+                data={"method": "searchContents", "docNo": document_number},
+                timeout=self.timeout_seconds,
+            )
+            if response.status_code != 200:
+                continue
+            external_reference = _kind_viewer_external_reference(response.content)
+            if not external_reference:
+                continue
+            document_response = self.session.get(external_reference, timeout=self.timeout_seconds)
+            if document_response.status_code == 200:
+                payloads.append((document_response.content, external_reference))
+        return payloads
 
     def __call__(self, ticker: str) -> list[dict[str, Any]]:
         return self.lookup(ticker)

@@ -778,9 +778,13 @@ def test_kind_auto_resolver_finds_candidate_reference_and_reaches_validator() ->
 
         def get(self, url, timeout, params=None):
             self.calls.append((url, params))
+            return _Response("<body>주식병합 액면가액 100원에서 500원 효력발생일 2026.08.22</body>")
+
+        def post(self, url, timeout, data=None):
+            self.calls.append((url, data))
             if url == search_url:
                 return _Response(f'<a href="{document_url}">주식병합 결정</a>')
-            return _Response("<body>주식병합 액면가액 100원에서 500원 효력발생일 2026.08.22</body>")
+            raise AssertionError(f"unexpected POST {url}")
 
     before = _adjusted_frame("2026-08-03", "2026-08-21")
     candidate = _adjusted_frame("2026-08-03", "2026-08-24")
@@ -800,6 +804,8 @@ def test_kind_auto_resolver_finds_candidate_reference_and_reaches_validator() ->
 
     assert result["status"] == APPROVED_HISTORICAL_RESTATEMENT
     assert [url for url, _params in session.calls] == [search_url, document_url]
+    assert session.calls[0][1]["method"] == "searchDetailsSub"
+    assert session.calls[0][1]["forward"] == "details_sub"
     assert session.calls[0][1]["repIsuSrtCd"] == "A001000"
 
 
@@ -811,6 +817,9 @@ def test_kind_auto_resolver_no_result_fails_closed() -> None:
                 content = b"<body>no matching disclosure</body>"
 
             return _Response()
+
+        def post(self, url, timeout, data=None):
+            return self.get(url, timeout, data)
 
     before = _adjusted_frame("2026-08-03", "2026-08-21")
     candidate = _adjusted_frame("2026-08-03", "2026-08-24")
@@ -842,14 +851,18 @@ def test_kind_auto_search_is_bounded_and_filters_non_action_candidates() -> None
 
         def get(self, url, timeout, params=None):
             self.calls.append((url, params))
+            if url == action_url:
+                return _Response("<body>주식병합 액면가액 100원에서 500원 효력발생일 2026.08.22</body>")
+            return _Response("<body>must not fetch general disclosure</body>")
+
+        def post(self, url, timeout, data=None):
+            self.calls.append((url, data))
             if url == search_url:
                 return _Response(
                     f'<a href="{general_url}">사업보고서</a>'
                     f'<a href="{action_url}">주식병합 결정</a>'
                 )
-            if url == action_url:
-                return _Response("<body>주식병합 액면가액 100원에서 500원 효력발생일 2026.08.22</body>")
-            return _Response("<body>must not fetch general disclosure</body>")
+            raise AssertionError(f"unexpected POST {url}")
 
     session = _Session()
     provider = KindCorporateActionEvidenceProvider(session=session)
@@ -863,9 +876,69 @@ def test_kind_auto_search_is_bounded_and_filters_non_action_candidates() -> None
     assert len(records) == 1
     assert [url for url, _params in session.calls] == [search_url, action_url]
     search_params = session.calls[0][1]
-    assert search_params["searchFromDate"] == "2025-09-11"
-    assert search_params["searchToDate"] == "2026-09-18"
-    assert search_params["searchFromDate"] != "2010-01-04"
+    assert search_params["method"] == "searchDetailsSub"
+    assert search_params["fromDate"] == "2025-09-11"
+    assert search_params["toDate"] == "2026-09-18"
+    assert search_params["fromDate"] != "2010-01-04"
+
+
+def test_kind_search_response_resolves_acceptance_number_to_ticker_scoped_document() -> None:
+    search_url = "https://kind.krx.co.kr/disclosure/details.do"
+    viewer_url = "https://kind.krx.co.kr/common/disclsviewer.do"
+    acceptance_number = "20260910000535"
+    document_number = "20260910001191"
+    external_url = "https://kind.krx.co.kr/external/2026/09/10/000535/20260910001191/70795.htm"
+
+    class _Response:
+        def __init__(self, content: str) -> None:
+            self.status_code = 200
+            self.content = content.encode()
+
+    class _Session:
+        def __init__(self) -> None:
+            self.calls: list[tuple[str, dict | None]] = []
+
+        def post(self, url, timeout, data=None):
+            self.calls.append((url, data))
+            if url == search_url:
+                return _Response(
+                    f'<a href="#viewer" onclick="openDisclsViewer(\'{acceptance_number}\', \'\')" '
+                    "title='액면병합 기준가격안내'>액면병합 기준가격안내</a>"
+                )
+            if url == viewer_url and data["method"] == "searchContents":
+                return _Response(f"parent.setPath('', '{external_url}', '', '03', '13');")
+            raise AssertionError(f"unexpected POST {url} {data}")
+
+        def get(self, url, timeout, params=None):
+            self.calls.append((url, params))
+            if "searchInitInfo" in url:
+                return _Response(f"<option value='{document_number}|Y' selected='selected'>본문</option>")
+            if url == external_url:
+                return _Response(
+                    "<body>액면병합 액면가100원에서 500원으로 변경 효력발생일 2026-09-11</body>"
+                )
+            raise AssertionError(f"unexpected GET {url}")
+
+    session = _Session()
+    provider = KindCorporateActionEvidenceProvider(session=session)
+    records = provider.lookup(
+        "001000",
+        current_boundary="2026-09-11",
+        target_as_of="2026-09-14",
+        historical_start="2025-09-11",
+    )
+
+    assert len(records) == 1
+    assert records[0]["ticker"] == "001000"
+    assert records[0]["event_type"] == "STOCK_CONSOLIDATION"
+    assert records[0]["ratio"] == 5.0
+    assert records[0]["source_reference"] == external_url
+    expected_init_url = (
+        "https://kind.krx.co.kr/common/disclsviewer.do?method=searchInitInfo"
+        "&acptNo=20260910000535&docNo="
+    )
+    assert [url for url, _data in session.calls] == [search_url, expected_init_url, viewer_url, external_url]
+    assert session.calls[0][1]["method"] == "searchDetailsSub"
 
 
 def test_compound_adjusted_restatement_uses_at_most_three_official_factors() -> None:
