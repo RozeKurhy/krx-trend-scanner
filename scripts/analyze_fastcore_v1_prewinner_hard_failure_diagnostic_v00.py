@@ -38,9 +38,10 @@ from trend_scanner.data.repository_v2_loader import RepositoryV2DailyLoader
 
 V00_OUT_DIR = ROOT / "artifacts/backtests/fastcore_v1_prewinner_hard_failure_diagnostic_v00"
 FIX01_OUT_DIR = ROOT / "artifacts/backtests/fastcore_v1_prewinner_hard_failure_diagnostic_v00_fix01"
-# Keep the public output constant pointed at the new FIX01 destination so a
-# normal runner invocation cannot overwrite the completed V00 diagnostic.
-OUT_DIR = FIX01_OUT_DIR
+FIX02_OUT_DIR = ROOT / "artifacts/backtests/fastcore_v1_prewinner_hard_failure_diagnostic_v00_fix02"
+# Keep the public output constant pointed at the new FIX02 destination so a
+# normal runner invocation cannot overwrite the completed V00/FIX01 diagnostics.
+OUT_DIR = FIX02_OUT_DIR
 
 MATCHED_PATH = ROOT / "artifacts/backtests/fastcore_v3_exit_ab_v00_fix01/matched_control_entries_v2_vs_v0.csv"
 MATCHED_SUMMARY_PATH = ROOT / "artifacts/backtests/fastcore_v3_exit_ab_v00_fix01/matched_control_entries_v2_vs_v0_summary.json"
@@ -189,8 +190,8 @@ def _prewinner_path(row: Mapping[str, Any], daily_full: pd.DataFrame) -> dict[st
     hwm = entry_open
     first_mfe20_date: pd.Timestamp | None = None
     prewinner: list[dict[str, Any]] = []
-    signal_window = daily.loc[(daily.index >= entry_date) & (daily.index <= v3.SIGNAL_CUTOFF)]
-    for date, bar in signal_window.iterrows():
+    observation_window = daily.loc[(daily.index >= entry_date) & (daily.index <= v3.SUPPORT_END)]
+    for date, bar in observation_window.iterrows():
         date = _date(date)
         hwm = max(hwm, float(bar["high"]))
         running_mfe = (hwm / entry_open - 1.0) * 100.0
@@ -534,6 +535,15 @@ def build_report(
             for row in selected.to_dict("records")
         ]
 
+    def close_bin_counts(population: str, label: str) -> str:
+        selected = distribution[
+            (distribution["population"] == population)
+            & (distribution["metric"] == "prewinner_min_close_return_pct_5pct_bin")
+            & (distribution["stat"] == label)
+        ]
+        row = selected.iloc[0]
+        return f"{int(row['recovery_count'])}/{int(row['never_winner_count'])}"
+
     def impact_group_line(threshold: int, cohort: str) -> str:
         selected = impacts[
             (impacts["threshold_pct"] == threshold)
@@ -614,35 +624,134 @@ def build_report(
         "이번 FIX에서는 어떤 신규 threshold도 전략 parameter로 확정하지 않는다."
     )
 
+    fix01_summary = _read_json(FIX01_OUT_DIR / "prewinner_hard_failure_summary.json")
+    fix01_sweep = pd.read_csv(FIX01_OUT_DIR / "prewinner_threshold_sweep.csv")
+    fix01_30 = _row(fix01_sweep, -30)
+    fix01_improvement_count = int(fix01_summary["fixed_threshold_mean_improvement_count"])
+    horizon_impact = (
+        f"- RECOVERY: {fix01_summary['recovery_count']} → {len(recovery)} "
+        f"(delta {len(recovery) - int(fix01_summary['recovery_count']):+d})\n"
+        f"- NEVER_WINNER: {fix01_summary['never_winner_count']} → {len(never)} "
+        f"(delta {len(never) - int(fix01_summary['never_winner_count']):+d})\n"
+        f"- Loss Guard RECOVERY: {fix01_summary['loss_guard_recovery_count']} → "
+        f"{len(loss_guard[loss_guard['recovery_class'] == 'RECOVERY'])} "
+        f"(delta {len(loss_guard[loss_guard['recovery_class'] == 'RECOVERY']) - int(fix01_summary['loss_guard_recovery_count']):+d})\n"
+        f"- Loss Guard NEVER_WINNER: {fix01_summary['loss_guard_never_winner_count']} → "
+        f"{len(loss_guard[loss_guard['recovery_class'] == 'NEVER_WINNER'])} "
+        f"(delta {len(loss_guard[loss_guard['recovery_class'] == 'NEVER_WINNER']) - int(fix01_summary['loss_guard_never_winner_count']):+d})\n"
+        f"- -30% RECOVERY kill rate: {_fmt(fix01_30['recovery_killed_rate_pct'])} → "
+        f"{_fmt(threshold_30['recovery_killed_rate_pct'])} "
+        f"(delta {_fmt(threshold_30['recovery_killed_rate_pct'] - fix01_30['recovery_killed_rate_pct'])})\n"
+        f"- -30% failure capture rate: {_fmt(fix01_30['failed_trade_captured_rate_pct'])} → "
+        f"{_fmt(threshold_30['failed_trade_captured_rate_pct'])} "
+        f"(delta {_fmt(threshold_30['failed_trade_captured_rate_pct'] - fix01_30['failed_trade_captured_rate_pct'])})\n"
+        f"- -30% mean return: {_fmt(fix01_30['hypothetical_mean_terminal_return_pct'])} → "
+        f"{_fmt(threshold_30['hypothetical_mean_terminal_return_pct'])} "
+        f"(delta {_fmt(threshold_30['hypothetical_mean_terminal_return_pct'] - fix01_30['hypothetical_mean_terminal_return_pct'])})\n"
+        f"- fixed threshold mean improvement count: {fix01_improvement_count} → "
+        f"{fixed_threshold_mean_improvement_count} "
+        f"(delta {fixed_threshold_mean_improvement_count - fix01_improvement_count:+d})"
+    )
+    sweep_comparison_lines = []
+    for threshold in THRESHOLDS:
+        current = _row(sweep, threshold)
+        previous = _row(fix01_sweep, threshold)
+        sweep_comparison_lines.append(
+            f"| {threshold}% | {int(previous['recovery_killed_count'])} → {int(current['recovery_killed_count'])} | "
+            f"{int(previous['failed_trade_captured_count'])} → {int(current['failed_trade_captured_count'])} | "
+            f"{_fmt(previous['hypothetical_positive_rate_pct'])} → {_fmt(current['hypothetical_positive_rate_pct'])} | "
+            f"{_fmt(previous['hypothetical_mean_terminal_return_pct'])} → {_fmt(current['hypothetical_mean_terminal_return_pct'])} | "
+            f"{_fmt(previous['hypothetical_median_terminal_return_pct'])} → {_fmt(current['hypothetical_median_terminal_return_pct'])} | "
+            f"{_fmt(current['hypothetical_mean_holding_days'] - previous['hypothetical_mean_holding_days'], suffix='d')} |"
+        )
+
+    sweep_deltas = [
+        item for item in summary["fix01_comparison"]["threshold_sweep_deltas"]
+        if any(
+            item[field] != 0
+            for field in (
+                "recovery_breach_count_delta",
+                "recovery_killed_count_delta",
+                "failed_trade_captured_count_delta",
+                "hypothetical_positive_rate_delta_pp",
+                "hypothetical_mean_return_delta_pp",
+                "hypothetical_median_return_delta_pp",
+                "hypothetical_mean_holding_days_delta",
+            )
+        )
+    ]
+    changed_thresholds = ", ".join(f"{item['threshold_pct']}%" for item in sweep_deltas) or "없음"
+    fix02_core_questions = (
+        "### Q1. SIGNAL_CUTOFF → SUPPORT_END horizon 수정으로 분류가 몇 건 바뀌었는가?\n\n"
+        f"- RECOVERY: {fix01_summary['recovery_count']} → {len(recovery)}건 "
+        f"(delta {len(recovery) - int(fix01_summary['recovery_count']):+d}), "
+        f"NEVER_WINNER: {fix01_summary['never_winner_count']} → {len(never)}건 "
+        f"(delta {len(never) - int(fix01_summary['never_winner_count']):+d})야. "
+        f"Loss Guard는 RECOVERY {len(loss_guard[loss_guard['recovery_class'] == 'RECOVERY']) - int(fix01_summary['loss_guard_recovery_count']):+d}, "
+        f"NEVER_WINNER {len(loss_guard[loss_guard['recovery_class'] == 'NEVER_WINNER']) - int(fix01_summary['loss_guard_never_winner_count']):+d}건 변했어.\n\n"
+        "### Q2. threshold sweep 결과가 얼마나 변했는가?\n\n"
+        f"- {len(sweep_deltas)}/{len(THRESHOLDS)}개 threshold 행에서 변화가 있었어: "
+        f"{changed_thresholds}. "
+        "전체 threshold별 FIX01 → FIX02 수치는 아래 비교표와 CSV에 기록했어.\n\n"
+        "### Q3. 특히 -30%는 어떻게 변했는가?\n\n"
+        f"- recovery kill rate: {_fmt(fix01_30['recovery_killed_rate_pct'])} → {_fmt(threshold_30['recovery_killed_rate_pct'])} "
+        f"(delta {_fmt(threshold_30['recovery_killed_rate_pct'] - fix01_30['recovery_killed_rate_pct'])}), "
+        f"failure capture rate: {_fmt(fix01_30['failed_trade_captured_rate_pct'])} → {_fmt(threshold_30['failed_trade_captured_rate_pct'])} "
+        f"(delta {_fmt(threshold_30['failed_trade_captured_rate_pct'] - fix01_30['failed_trade_captured_rate_pct'])}), "
+        f"positive rate: {_fmt(fix01_30['hypothetical_positive_rate_pct'])} → {_fmt(threshold_30['hypothetical_positive_rate_pct'])} "
+        f"(delta {_fmt(threshold_30['hypothetical_positive_rate_pct'] - fix01_30['hypothetical_positive_rate_pct'])}), "
+        f"mean return: {_fmt(fix01_30['hypothetical_mean_terminal_return_pct'])} → {_fmt(threshold_30['hypothetical_mean_terminal_return_pct'])} "
+        f"(delta {_fmt(threshold_30['hypothetical_mean_terminal_return_pct'] - fix01_30['hypothetical_mean_terminal_return_pct'])})야.\n\n"
+        "### Q4. horizon correction 이후에도 fixed Hard Failure threshold를 식별할 수 없는가?\n\n"
+        f"- **{'아니오' if summary['hard_failure_threshold_identified'] else '예'}**. `hard_failure_threshold_identified={str(summary['hard_failure_threshold_identified']).lower()}`, "
+        f"candidate는 `{summary['hard_failure_candidate_threshold_pct']}`로 유지해.\n\n"
+        "### Q5. `fixed_threshold_mean_improvement_count`는 몇 개인가?\n\n"
+        f"- FIX01 {fix01_improvement_count}개 → FIX02 {fixed_threshold_mean_improvement_count}개 "
+        f"(delta {fixed_threshold_mean_improvement_count - fix01_improvement_count:+d})야.\n\n"
+        "### Q6. `-25~-30%`를 FAILURE ARMED 연구 참고 영역으로 유지할 수 있는가?\n\n"
+        f"- **{'유지할 수 있어' if fixed_threshold_mean_improvement_count == 0 else '자동으로 확정하지 않아'}**. "
+        "이번 horizon correction에서도 해당 구간을 Hard Exit나 strategy parameter로 확정하지 않고, "
+        "향후 FAILURE ARMED price-damage 연구 참고 영역으로만 유지해.\n\n"
+    )
+
     all_rec_close = stats("ALL_973", "RECOVERY", "prewinner_min_close_return_pct")
     all_nev_close = stats("ALL_973", "NEVER_WINNER", "prewinner_min_close_return_pct")
     lg_rec_close = stats("LOSS_GUARD_590", "RECOVERY", "prewinner_min_close_return_pct")
     lg_nev_close = stats("LOSS_GUARD_590", "NEVER_WINNER", "prewinner_min_close_return_pct")
     q3_lines = [
-        "- 전체 close bin에서 `-20% to > -25%`는 RECOVERY 56건/NEVER_WINNER 10건, "
-        "`-25% to > -30%`는 35건/20건, `-30% to > -35%`는 23건/17건이야.",
-        "- Loss Guard close bin에서는 같은 구간이 각각 55/9, 33/20, 23/17건이야.",
+        "- 전체 close bin에서 `-20% to > -25%`는 RECOVERY/NEVER_WINNER "
+        f"{close_bin_counts('ALL_973', '-20% to > -25%')}, `-25% to > -30%`는 "
+        f"{close_bin_counts('ALL_973', '-25% to > -30%')}, `-30% to > -35%`는 "
+        f"{close_bin_counts('ALL_973', '-30% to > -35%')}건이야.",
+        "- Loss Guard close bin에서는 같은 구간이 각각 "
+        f"{close_bin_counts('LOSS_GUARD_590', '-20% to > -25%')}, "
+        f"{close_bin_counts('LOSS_GUARD_590', '-25% to > -30%')}, "
+        f"{close_bin_counts('LOSS_GUARD_590', '-30% to > -35%')}건이야.",
         "- 따라서 분포 분리는 -20%~-30%부터 눈에 띄게 커지고, -60% 이하에서는 NEVER_WINNER가 지배적이지만 "
         "그 깊은 threshold는 recovery 보호와 failure capture를 함께 크게 잃어 고정 기준선 확정에는 부적합해."
     ]
-    return f"""# FASTCORE V1 PRE-WINNER HARD FAILURE DIAGNOSTIC V00 FIX01
+    return f"""# FASTCORE V1 PRE-WINNER HARD FAILURE DIAGNOSTIC V00 FIX02
 
-## 핵심 질문에 대한 숫자 답
+## FIX02 핵심 질문에 대한 숫자 답
+
+{fix02_core_questions}
+
+## 보조 분포 및 threshold 진단
 
 ### Q1. RECOVERY는 +20% 전 어디까지 하락했는가?
 
-- 전체 973건 중 RECOVERY는 **737건**이야.
+- 전체 973건 중 RECOVERY는 **{len(recovery)}건**이야.
 - CLOSE — {stats_line('ALL_973', 'RECOVERY', 'prewinner_min_close_return_pct')}.
 - LOW — {stats_line('ALL_973', 'RECOVERY', 'prewinner_min_low_return_pct')}.
-- Loss Guard 590건 중 RECOVERY 387건: CLOSE — {stats_line('LOSS_GUARD_590', 'RECOVERY', 'prewinner_min_close_return_pct')}.
+- Loss Guard 590건 중 RECOVERY {len(loss_guard[loss_guard['recovery_class'] == 'RECOVERY'])}건: CLOSE — {stats_line('LOSS_GUARD_590', 'RECOVERY', 'prewinner_min_close_return_pct')}.
 - Loss Guard RECOVERY LOW — {stats_line('LOSS_GUARD_590', 'RECOVERY', 'prewinner_min_low_return_pct')}.
 
 ### Q2. NEVER_WINNER는 어디까지 하락했는가?
 
-- 전체 973건 중 NEVER_WINNER는 **236건**이야.
+- 전체 973건 중 NEVER_WINNER는 **{len(never)}건**이야.
 - CLOSE — {stats_line('ALL_973', 'NEVER_WINNER', 'prewinner_min_close_return_pct')}.
 - LOW — {stats_line('ALL_973', 'NEVER_WINNER', 'prewinner_min_low_return_pct')}.
-- Loss Guard 590건 중 NEVER_WINNER 203건: CLOSE — {stats_line('LOSS_GUARD_590', 'NEVER_WINNER', 'prewinner_min_close_return_pct')}.
+- Loss Guard 590건 중 NEVER_WINNER {len(loss_guard[loss_guard['recovery_class'] == 'NEVER_WINNER'])}건: CLOSE — {stats_line('LOSS_GUARD_590', 'NEVER_WINNER', 'prewinner_min_close_return_pct')}.
 - Loss Guard NEVER_WINNER LOW — {stats_line('LOSS_GUARD_590', 'NEVER_WINNER', 'prewinner_min_low_return_pct')}.
 
 ### Q3. 두 분포가 가장 크게 갈라지는 구간
@@ -687,21 +796,33 @@ V0 baseline: positive rate **{_fmt(baseline['baseline_v0_positive_rate_pct'])}**
 |---:|---|---:|---:|---:|---:|---:|
 {chr(10).join(impact_group_line(threshold, cohort) for threshold in THRESHOLDS for cohort in ('RECOVERY', 'NEVER_WINNER'))}
 
+## FIX01 → FIX02 horizon correction impact
+
+관측 종료를 `SIGNAL_CUTOFF=2026-08-14`에서 실제 V0 exit observation과 같은 `SUPPORT_END=2026-08-21`로 확장했어. 신규 entry signal cutoff은 그대로야.
+
+{horizon_impact}
+
+| threshold | recovery killed FIX01 → FIX02 | failure captured FIX01 → FIX02 | positive rate FIX01 → FIX02 | mean FIX01 → FIX02 | median FIX01 → FIX02 | mean holding delta |
+|---:|---:|---:|---:|---:|---:|---:|
+{chr(10).join(sweep_comparison_lines)}
+
+Threshold별 전체 sweep과 trade-level impact의 FIX01 대비 상세값은 새 CSV에 기록했어. 이번 horizon correction은 계산 결과를 바꿀 수 있으므로 V00/FIX01 artifact를 덮어쓰지 않고 별도 경로에 저장했어.
+
 ## 정의 및 look-ahead 제한
 
 - 권위 source는 FIX01 matched-entry artifact의 973건이야. 기존 V0/FIX01 결과를 전략적으로 변경하지 않았어.
 - RECOVERY/NEVER_WINNER는 V0 path의 미래 MFE를 사용한 retrospective label이야. signal logic이나 진입 logic에 사용하지 않았어.
 - running MFE는 daily HIGH로 갱신하고, 첫 HIGH가 entry OPEN 대비 +20% 이상이 된 당일은 Pre-Winner 관측에서 제외했어. same-day ordering을 지켰어.
 - Hard Failure 후보 기준은 HWM drawdown이 아니라 `entry execution OPEN 대비 daily CLOSE return`이야.
-- threshold breach는 EOD signal 후보, 체결은 next local trading day OPEN이야. daily LOW는 보조 분포일 뿐 trigger 기준이 아니야.
+- threshold breach는 EOD signal 후보, 체결은 next local trading day OPEN이야. daily LOW는 보조 분포일 뿐 trigger 기준이 아니야. 관측과 execution support는 `SUPPORT_END=2026-08-21`에서 닫고 그 이후 session은 사용하지 않았어.
 - daily FAST 생성, 주간 FAST→일간 전환, V1 rule 구현은 하지 않았어.
 
 ## Loss Guard 590 subset
 
-- 전체 Loss Guard: `590건`
-- RECOVERY: `387건`, NEVER_WINNER: `203건`
-- RECOVERY V0 mean return: `+19.509845%`
-- NEVER_WINNER V0 mean return: `-39.556650%`
+- 전체 Loss Guard: `{len(loss_guard)}건`
+- RECOVERY: `{len(loss_guard[loss_guard['recovery_class'] == 'RECOVERY'])}건`, NEVER_WINNER: `{len(loss_guard[loss_guard['recovery_class'] == 'NEVER_WINNER'])}건`
+- RECOVERY V0 mean return: `{_fmt(loss_guard[loss_guard['recovery_class'] == 'RECOVERY']['v0_terminal_return'].mean())}`
+- NEVER_WINNER V0 mean return: `{_fmt(loss_guard[loss_guard['recovery_class'] == 'NEVER_WINNER']['v0_terminal_return'].mean())}`
 - Loss Guard subset의 상세 percentile, 5% bins, threshold별 impact는 각 CSV와 JSON에 기록했어.
 
 ## 산출물
@@ -711,13 +832,13 @@ V0 baseline: positive rate **{_fmt(baseline['baseline_v0_positive_rate_pct'])}**
 - `prewinner_threshold_sweep.csv`
 - `prewinner_threshold_trade_impacts.csv`
 - `prewinner_hard_failure_summary.json`
-- `fastcore_v1_prewinner_hard_failure_diagnostic_v00_fix01_report.md`
+- `fastcore_v1_prewinner_hard_failure_diagnostic_v00_fix02_report.md`
 
 상세 산출물 절대 경로: `{output_dir}`
 
 ## 실행 및 보호 범위
 
-- 실행 명령: `./.venv/bin/python scripts/analyze_fastcore_v1_prewinner_hard_failure_diagnostic_v00.py --run-fix01`
+- 실행 명령: `./.venv/bin/python scripts/analyze_fastcore_v1_prewinner_hard_failure_diagnostic_v00.py --run-fix02`
 - 기존 V0/FIX01 artifact overwrite: 없음
 - 기존 V3 1,578 trade 재생성: 없음
 - Production strategy 수정: 없음
@@ -727,7 +848,7 @@ V0 baseline: positive rate **{_fmt(baseline['baseline_v0_positive_rate_pct'])}**
 """
 
 
-def run_analysis(output_dir: Path = FIX01_OUT_DIR) -> dict[str, Any]:
+def run_analysis(output_dir: Path = FIX02_OUT_DIR) -> dict[str, Any]:
     matched = pd.read_csv(MATCHED_PATH)
     if len(matched) != 973:
         raise AssertionError(f"expected 973 matched source rows, got {len(matched)}")
@@ -763,40 +884,68 @@ def run_analysis(output_dir: Path = FIX01_OUT_DIR) -> dict[str, Any]:
     trade_diagnostics = build_trade_diagnostics(matched, daily_by_ticker)
     if len(trade_diagnostics) != 973:
         raise AssertionError("trade diagnostic row count mismatch")
-    if int((trade_diagnostics["recovery_class"] == "RECOVERY").sum()) != 737:
-        raise AssertionError("RECOVERY count changed")
-    if int((trade_diagnostics["recovery_class"] == "NEVER_WINNER").sum()) != 236:
-        raise AssertionError("NEVER_WINNER count changed")
+    recovery_count = int((trade_diagnostics["recovery_class"] == "RECOVERY").sum())
+    never_winner_count = int((trade_diagnostics["recovery_class"] == "NEVER_WINNER").sum())
+    if recovery_count + never_winner_count != 973:
+        raise AssertionError("recovery class partition changed")
     loss_guard = trade_diagnostics[trade_diagnostics["v2_exit_reason"] == LOSS_GUARD_REASON]
     if len(loss_guard) != 590:
         raise AssertionError("Loss Guard count changed")
-    if int((loss_guard["recovery_class"] == "RECOVERY").sum()) != 387:
-        raise AssertionError("Loss Guard RECOVERY count changed")
-    if int((loss_guard["recovery_class"] == "NEVER_WINNER").sum()) != 203:
-        raise AssertionError("Loss Guard NEVER_WINNER count changed")
+    loss_guard_recovery_count = int((loss_guard["recovery_class"] == "RECOVERY").sum())
+    loss_guard_never_winner_count = int((loss_guard["recovery_class"] == "NEVER_WINNER").sum())
+    if loss_guard_recovery_count + loss_guard_never_winner_count != 590:
+        raise AssertionError("Loss Guard recovery class partition changed")
     distribution = build_distribution(trade_diagnostics)
     sweep, impacts = build_sweep_and_impacts(matched, paths, daily_by_ticker)
     baseline_mean = float(sweep["baseline_v0_mean_terminal_return_pct"].iloc[0])
     fixed_threshold_mean_improvement_count = int(
         (pd.to_numeric(sweep["hypothetical_mean_terminal_return_pct"]) > baseline_mean).sum()
     )
-    if fixed_threshold_mean_improvement_count != 0:
-        raise AssertionError("fixed threshold unexpectedly improves V0 mean")
+    fix01_summary = _read_json(FIX01_OUT_DIR / "prewinner_hard_failure_summary.json")
+    fix01_sweep = pd.read_csv(FIX01_OUT_DIR / "prewinner_threshold_sweep.csv")
+    current_30 = _row(sweep, -30)
+    fix01_30 = _row(fix01_sweep, -30)
+    fix01_comparison = {
+        "recovery_count_delta": recovery_count - int(fix01_summary["recovery_count"]),
+        "never_winner_count_delta": never_winner_count - int(fix01_summary["never_winner_count"]),
+        "loss_guard_recovery_count_delta": loss_guard_recovery_count - int(fix01_summary["loss_guard_recovery_count"]),
+        "loss_guard_never_winner_count_delta": loss_guard_never_winner_count - int(fix01_summary["loss_guard_never_winner_count"]),
+        "minus_30_recovery_kill_rate_delta_pp": round(float(current_30["recovery_killed_rate_pct"] - fix01_30["recovery_killed_rate_pct"]), 6),
+        "minus_30_failure_capture_rate_delta_pp": round(float(current_30["failed_trade_captured_rate_pct"] - fix01_30["failed_trade_captured_rate_pct"]), 6),
+        "minus_30_mean_return_delta_pp": round(float(current_30["hypothetical_mean_terminal_return_pct"] - fix01_30["hypothetical_mean_terminal_return_pct"]), 6),
+        "fixed_threshold_mean_improvement_count_fix01": int(fix01_summary["fixed_threshold_mean_improvement_count"]),
+        "fixed_threshold_mean_improvement_count_fix02": fixed_threshold_mean_improvement_count,
+        "fixed_threshold_mean_improvement_count_delta": fixed_threshold_mean_improvement_count - int(fix01_summary["fixed_threshold_mean_improvement_count"]),
+        "threshold_sweep_deltas": [
+            {
+                "threshold_pct": threshold,
+                "recovery_breach_count_delta": int(_row(sweep, threshold)["recovery_breach_count"] - _row(fix01_sweep, threshold)["recovery_breach_count"]),
+                "recovery_killed_count_delta": int(_row(sweep, threshold)["recovery_killed_count"] - _row(fix01_sweep, threshold)["recovery_killed_count"]),
+                "failed_trade_captured_count_delta": int(_row(sweep, threshold)["failed_trade_captured_count"] - _row(fix01_sweep, threshold)["failed_trade_captured_count"]),
+                "hypothetical_positive_rate_delta_pp": round(float(_row(sweep, threshold)["hypothetical_positive_rate_pct"] - _row(fix01_sweep, threshold)["hypothetical_positive_rate_pct"]), 6),
+                "hypothetical_mean_return_delta_pp": round(float(_row(sweep, threshold)["hypothetical_mean_terminal_return_pct"] - _row(fix01_sweep, threshold)["hypothetical_mean_terminal_return_pct"]), 6),
+                "hypothetical_median_return_delta_pp": round(float(_row(sweep, threshold)["hypothetical_median_terminal_return_pct"] - _row(fix01_sweep, threshold)["hypothetical_median_terminal_return_pct"]), 6),
+                "hypothetical_mean_holding_days_delta": round(float(_row(sweep, threshold)["hypothetical_mean_holding_days"] - _row(fix01_sweep, threshold)["hypothetical_mean_holding_days"]), 6),
+            }
+            for threshold in THRESHOLDS
+        ],
+    }
     summary: dict[str, Any] = {
-        "work_id": "FASTCORE_V1_PREWINNER_HARD_FAILURE_DIAGNOSTIC_V00_FIX01",
+        "work_id": "FASTCORE_V1_PREWINNER_HARD_FAILURE_DIAGNOSTIC_V00_FIX02",
         "status": "COMPLETE",
         "evaluation_start": "2021-04-01",
         "signal_cutoff": "2026-08-14",
         "execution_support_end": "2026-08-21",
+        "prewinner_observation_end": "2026-08-21",
         "final_valuation": "2026-08-21 CLOSE",
         "source_matched_rows": len(matched),
         "source_loss_guard_rows": int((matched["v2_exit_reason"] == LOSS_GUARD_REASON).sum()),
-        "recovery_count": int((trade_diagnostics["recovery_class"] == "RECOVERY").sum()),
-        "never_winner_count": int((trade_diagnostics["recovery_class"] == "NEVER_WINNER").sum()),
-        "loss_guard_recovery_count": int((loss_guard["recovery_class"] == "RECOVERY").sum()),
-        "loss_guard_never_winner_count": int((loss_guard["recovery_class"] == "NEVER_WINNER").sum()),
+        "recovery_count": recovery_count,
+        "never_winner_count": never_winner_count,
+        "loss_guard_recovery_count": loss_guard_recovery_count,
+        "loss_guard_never_winner_count": loss_guard_never_winner_count,
         "thresholds_pct": list(THRESHOLDS),
-        "prewinner_definition": "entry execution date through the day before the first running daily-HIGH MFE >=20%; first +20% day excluded after HIGH/HWM update; a never-winner is observed through signal cutoff",
+        "prewinner_definition": "entry execution date through the day before the first running daily-HIGH MFE >=20%; first +20% day excluded after HIGH/HWM update; all matched V0 trades are observed through SUPPORT_END / the available identity-scoped V0 observation path",
         "trigger_definition": "entry execution OPEN-relative daily CLOSE return <= threshold",
         "execution_definition": "next local trading day OPEN",
         "retrospective_label_only": True,
@@ -812,14 +961,19 @@ def run_analysis(output_dir: Path = FIX01_OUT_DIR) -> dict[str, Any]:
         "fixed_threshold_mean_improvement_count": fixed_threshold_mean_improvement_count,
         "failure_armed_price_damage_research_region_pct": [-25, -30],
         "failure_armed_region_is_strategy_parameter": False,
-        "hard_failure_conclusion": "No tested fixed pre-winner CLOSE-loss threshold improved the V0 mean terminal return while preserving enough recovery trades. A fixed Hard Failure threshold is therefore not identified by this diagnostic.",
+        "hard_failure_conclusion": (
+            "No tested fixed pre-winner CLOSE-loss threshold improved the V0 mean terminal return while preserving enough recovery trades. A fixed Hard Failure threshold is therefore not identified by this diagnostic."
+            if fixed_threshold_mean_improvement_count == 0
+            else "At least one tested fixed pre-winner CLOSE-loss threshold improved the V0 mean terminal return in this horizon replay, but no automatic Hard Failure candidate is selected by this diagnostic."
+        ),
+        "fix01_comparison": fix01_comparison,
         "matched_v0_aggregate_invariant": {
             "trades": 973,
             "v0_positive_rate_pct": 70.914697,
             "v0_mean_terminal_return_pct": 8.666341,
-            "v0_mfe_lt_20_count": 236,
-            "loss_guard_recovery_count": 387,
-            "loss_guard_never_winner_count": 203,
+            "v0_mfe_lt_20_count": int((pd.to_numeric(matched["v0_mfe"]) < 20.0).sum()),
+            "loss_guard_recovery_count": loss_guard_recovery_count,
+            "loss_guard_never_winner_count": loss_guard_never_winner_count,
         },
         "source_artifacts": {
             "matched": str(MATCHED_PATH.relative_to(ROOT)),
@@ -834,7 +988,7 @@ def run_analysis(output_dir: Path = FIX01_OUT_DIR) -> dict[str, Any]:
     sweep_path = output_dir / "prewinner_threshold_sweep.csv"
     impact_path = output_dir / "prewinner_threshold_trade_impacts.csv"
     summary_path = output_dir / "prewinner_hard_failure_summary.json"
-    report_path = output_dir / "fastcore_v1_prewinner_hard_failure_diagnostic_v00_fix01_report.md"
+    report_path = output_dir / "fastcore_v1_prewinner_hard_failure_diagnostic_v00_fix02_report.md"
     output_dir.mkdir(parents=True, exist_ok=True)
     trade_diagnostics.to_csv(trade_path, index=False, lineterminator="\n")
     distribution.to_csv(distribution_path, index=False, lineterminator="\n")
@@ -847,16 +1001,16 @@ def run_analysis(output_dir: Path = FIX01_OUT_DIR) -> dict[str, Any]:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--run-fix01", action="store_true")
+    parser.add_argument("--run-fix02", action="store_true")
     args = parser.parse_args()
-    if not args.run_fix01:
-        parser.error("use --run-fix01 to execute the offline V00 FIX01 diagnostic")
+    if not args.run_fix02:
+        parser.error("use --run-fix02 to execute the offline V00 FIX02 diagnostic")
     audit = NetworkAudit()
     try:
         with network_guard(audit):
-            result = run_analysis(FIX01_OUT_DIR)
+            result = run_analysis(FIX02_OUT_DIR)
         result["summary"]["network_requests"] = audit.request_count
-        _write_json(FIX01_OUT_DIR / "prewinner_hard_failure_summary.json", result["summary"])
+        _write_json(FIX02_OUT_DIR / "prewinner_hard_failure_summary.json", result["summary"])
         print(json.dumps({
             "status": result["summary"]["status"],
             "source_matched_rows": result["summary"]["source_matched_rows"],
