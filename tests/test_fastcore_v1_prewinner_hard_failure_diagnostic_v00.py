@@ -1,4 +1,4 @@
-"""Focused regression tests for the V00 FIX02 observation-horizon correction."""
+"""Focused regression tests for the V00 FIX03 lifecycle execution correction."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from scripts import analyze_fastcore_v1_prewinner_hard_failure_diagnostic_v00 as
 
 
 ROOT = Path(__file__).resolve().parents[1]
-OUT = diagnostic.FIX02_OUT_DIR
+OUT = diagnostic.FIX03_OUT_DIR
 
 
 def _synthetic_row() -> dict[str, object]:
@@ -150,6 +150,43 @@ def test_support_end_breach_without_next_open_is_not_executable() -> None:
     assert impact["failed_trade_captured"] is False
 
 
+def test_identity_lifecycle_end_blocks_ticker_level_next_open() -> None:
+    row = _dated_row(entry_date="2026-08-19", effective_to="2026-08-20")
+    daily = _daily(
+        [
+            ("2026-08-19", 100.0, 100.0, 100.0, 100.0),
+            ("2026-08-20", 100.0, 100.0, 70.0, 70.0),
+            ("2026-08-21", 65.0, 70.0, 60.0, 66.0),
+        ]
+    )
+    path = diagnostic._prewinner_path(row, daily)
+    impact = diagnostic._threshold_impact(row, path, -30, daily)
+    assert impact["prewinner_breach"] is True
+    assert impact["prewinner_breach_date"] == "2026-08-20"
+    assert impact["next_local_open_available"] is False
+    assert impact["hard_failure_exit_date"] is None
+    assert impact["hard_failure_exit_return"] is None
+    assert impact["recovery_killed"] is False
+    assert impact["failed_trade_captured"] is False
+
+
+def test_identity_lifecycle_allows_next_open_inside_boundary() -> None:
+    row = _dated_row(entry_date="2026-08-19", effective_to="2026-08-21")
+    daily = _daily(
+        [
+            ("2026-08-19", 100.0, 100.0, 100.0, 100.0),
+            ("2026-08-20", 100.0, 100.0, 70.0, 70.0),
+            ("2026-08-21", 65.0, 70.0, 60.0, 66.0),
+        ]
+    )
+    path = diagnostic._prewinner_path(row, daily)
+    impact = diagnostic._threshold_impact(row, path, -30, daily)
+    assert impact["prewinner_breach"] is True
+    assert impact["next_local_open_available"] is True
+    assert impact["hard_failure_exit_date"] == "2026-08-21"
+    assert impact["hard_failure_exit_return"] == -35.0
+
+
 def test_no_observation_after_support_end() -> None:
     row = _dated_row(effective_to="2026-08-24")
     daily = _daily(
@@ -233,7 +270,7 @@ def test_retrospective_label_does_not_change_breach_or_execution() -> None:
 
 def test_corrected_conclusion_is_not_a_candidate_threshold() -> None:
     summary = json.loads((OUT / "prewinner_hard_failure_summary.json").read_text())
-    report = (OUT / "fastcore_v1_prewinner_hard_failure_diagnostic_v00_fix02_report.md").read_text()
+    report = (OUT / "fastcore_v1_prewinner_hard_failure_diagnostic_v00_fix03_report.md").read_text()
     assert summary["hard_failure_threshold_identified"] is False
     assert summary["hard_failure_candidate_threshold_pct"] is None
     assert summary["fixed_threshold_mean_improvement_count"] == sum(
@@ -247,7 +284,7 @@ def test_corrected_conclusion_is_not_a_candidate_threshold() -> None:
     assert "candidate_threshold_pct" not in summary
     assert "adjacent_candidate_thresholds_pct" not in summary
     assert "V1 backtest candidate threshold: -30%" not in report
-    assert "FIX01 → FIX02 horizon correction impact" in report
+    assert "FIX02 → FIX03 lifecycle execution boundary correction impact" in report
 
 
 def test_key_sweep_invariants_are_preserved() -> None:
@@ -262,30 +299,30 @@ def test_key_sweep_invariants_are_preserved() -> None:
     ]
 
 
-def test_fix02_reports_fix01_horizon_deltas() -> None:
+def test_fix03_reports_fix02_lifecycle_deltas() -> None:
     summary = json.loads((OUT / "prewinner_hard_failure_summary.json").read_text())
-    fix01 = json.loads((diagnostic.FIX01_OUT_DIR / "prewinner_hard_failure_summary.json").read_text())
-    comparison = summary["fix01_comparison"]
-    assert comparison["recovery_count_delta"] == summary["recovery_count"] - fix01["recovery_count"]
-    assert comparison["never_winner_count_delta"] == summary["never_winner_count"] - fix01["never_winner_count"]
-    assert comparison["loss_guard_recovery_count_delta"] == summary["loss_guard_recovery_count"] - fix01["loss_guard_recovery_count"]
-    assert comparison["loss_guard_never_winner_count_delta"] == summary["loss_guard_never_winner_count"] - fix01["loss_guard_never_winner_count"]
-    assert comparison["fixed_threshold_mean_improvement_count_delta"] == (
-        comparison["fixed_threshold_mean_improvement_count_fix02"]
-        - comparison["fixed_threshold_mean_improvement_count_fix01"]
-    )
+    fix02 = json.loads((diagnostic.FIX02_OUT_DIR / "prewinner_hard_failure_summary.json").read_text())
+    comparison = summary["fix02_comparison"]
+    assert comparison["recovery_count_delta"] == summary["recovery_count"] - fix02["recovery_count"]
+    assert comparison["never_winner_count_delta"] == summary["never_winner_count"] - fix02["never_winner_count"]
+    assert comparison["loss_guard_recovery_count_delta"] == summary["loss_guard_recovery_count"] - fix02["loss_guard_recovery_count"]
+    assert comparison["loss_guard_never_winner_count_delta"] == summary["loss_guard_never_winner_count"] - fix02["loss_guard_never_winner_count"]
+    assert comparison["fixed_threshold_mean_improvement_count_fix02"] == fix02["fixed_threshold_mean_improvement_count"]
+    assert comparison["fixed_threshold_mean_improvement_count_fix03"] == summary["fixed_threshold_mean_improvement_count"]
     assert len(comparison["threshold_sweep_deltas"]) == len(diagnostic.THRESHOLDS)
+    assert len(comparison["threshold_changed_execution_counts"]) == len(diagnostic.THRESHOLDS)
 
 
-def test_fix02_writes_a_distinct_artifact_set() -> None:
+def test_fix03_writes_a_distinct_artifact_set() -> None:
     expected = {
         "prewinner_trade_diagnostics.csv",
         "prewinner_drawdown_distribution.csv",
         "prewinner_threshold_sweep.csv",
         "prewinner_threshold_trade_impacts.csv",
         "prewinner_hard_failure_summary.json",
-        "fastcore_v1_prewinner_hard_failure_diagnostic_v00_fix02_report.md",
+        "fastcore_v1_prewinner_hard_failure_diagnostic_v00_fix03_report.md",
     }
     assert {path.name for path in OUT.iterdir()} == expected
     assert OUT != diagnostic.V00_OUT_DIR
     assert OUT != diagnostic.FIX01_OUT_DIR
+    assert OUT != diagnostic.FIX02_OUT_DIR

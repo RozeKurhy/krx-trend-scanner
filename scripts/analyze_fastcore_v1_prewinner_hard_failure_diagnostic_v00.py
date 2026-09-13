@@ -39,9 +39,10 @@ from trend_scanner.data.repository_v2_loader import RepositoryV2DailyLoader
 V00_OUT_DIR = ROOT / "artifacts/backtests/fastcore_v1_prewinner_hard_failure_diagnostic_v00"
 FIX01_OUT_DIR = ROOT / "artifacts/backtests/fastcore_v1_prewinner_hard_failure_diagnostic_v00_fix01"
 FIX02_OUT_DIR = ROOT / "artifacts/backtests/fastcore_v1_prewinner_hard_failure_diagnostic_v00_fix02"
-# Keep the public output constant pointed at the new FIX02 destination so a
-# normal runner invocation cannot overwrite the completed V00/FIX01 diagnostics.
-OUT_DIR = FIX02_OUT_DIR
+FIX03_OUT_DIR = ROOT / "artifacts/backtests/fastcore_v1_prewinner_hard_failure_diagnostic_v00_fix03"
+# Keep the public output constant pointed at the new FIX03 destination so a
+# normal runner invocation cannot overwrite the completed V00/FIX01/FIX02 diagnostics.
+OUT_DIR = FIX03_OUT_DIR
 
 MATCHED_PATH = ROOT / "artifacts/backtests/fastcore_v3_exit_ab_v00_fix01/matched_control_entries_v2_vs_v0.csv"
 MATCHED_SUMMARY_PATH = ROOT / "artifacts/backtests/fastcore_v3_exit_ab_v00_fix01/matched_control_entries_v2_vs_v0_summary.json"
@@ -382,18 +383,25 @@ def _aggregate_returns(frame: pd.DataFrame, returns: pd.Series, holding: pd.Seri
     return result
 
 
-def _threshold_impact(row: Mapping[str, Any], path: Mapping[str, Any], threshold: int, daily: pd.DataFrame) -> dict[str, Any]:
+def _threshold_impact(row: Mapping[str, Any], path: Mapping[str, Any], threshold: int, daily_full: pd.DataFrame) -> dict[str, Any]:
+    identity_daily = clip_to_identity_lifecycle(daily_full, _lifecycle(row))
+    if identity_daily is None or identity_daily.empty:
+        raise RuntimeError(f"empty identity-scoped daily path for {row['control_trade_id']}")
     observations = path["_prewinner_observations"]
     breach = next((item for item in observations if float(item["close_return"]) <= threshold), None)
     next_date = None
     hard_failure_return = None
     hard_failure_holding = None
     if breach is not None:
-        next_date = v3._next_session(daily, breach["date"])
+        if breach["date"] not in identity_daily.index:
+            raise AssertionError(f"breach outside identity lifecycle for {row['control_trade_id']}")
+        next_date = v3._next_session(identity_daily, breach["date"])
         if next_date is not None:
-            hard_failure_return = round((float(daily.loc[next_date, "open"]) / float(row["entry_open"]) - 1.0) * 100.0, 2)
+            if next_date > _lifecycle(row).effective_to:
+                raise AssertionError(f"next OPEN outside identity lifecycle for {row['control_trade_id']}")
+            hard_failure_return = round((float(identity_daily.loc[next_date, "open"]) / float(row["entry_open"]) - 1.0) * 100.0, 2)
             entry_date = _date(row["entry_execution_date"])
-            hard_failure_holding = int(len(daily.loc[(daily.index >= entry_date) & (daily.index <= next_date)]))
+            hard_failure_holding = int(len(identity_daily.loc[(identity_daily.index >= entry_date) & (identity_daily.index <= next_date)]))
     recovery = path["recovery_class"] == "RECOVERY"
     executable = breach is not None and next_date is not None
     return {
@@ -490,6 +498,134 @@ def _fmt(value: Any, suffix: str = "%") -> str:
 
 def _row(sweep: pd.DataFrame, threshold: int) -> pd.Series:
     return sweep[sweep["threshold_pct"] == threshold].iloc[0]
+
+
+def _build_fix02_comparison(
+    trades: pd.DataFrame,
+    impacts: pd.DataFrame,
+    sweep: pd.DataFrame,
+) -> dict[str, Any]:
+    """Compare lifecycle-scoped FIX03 execution results with frozen FIX02 outputs."""
+
+    fix02_summary = _read_json(FIX02_OUT_DIR / "prewinner_hard_failure_summary.json")
+    fix02_trades = pd.read_csv(FIX02_OUT_DIR / "prewinner_trade_diagnostics.csv")
+    fix02_impacts = pd.read_csv(FIX02_OUT_DIR / "prewinner_threshold_trade_impacts.csv")
+    fix02_sweep = pd.read_csv(FIX02_OUT_DIR / "prewinner_threshold_sweep.csv")
+
+    impact_key = ["threshold_pct", "control_trade_id"]
+    before = fix02_impacts.set_index(impact_key).sort_index()
+    after = impacts.set_index(impact_key).sort_index()
+    if not after.index.equals(before.index):
+        raise AssertionError("FIX02/FIX03 impact keys differ")
+
+    execution_fields = (
+        "next_local_open_available",
+        "hard_failure_exit_date",
+        "hard_failure_exit_return",
+        "hard_failure_holding_days",
+        "recovery_killed",
+        "failed_trade_captured",
+    )
+    execution_changed = pd.Series(False, index=after.index)
+    for field in execution_fields:
+        before_value = before[field].where(before[field].notna(), "__MISSING__")
+        after_value = after[field].where(after[field].notna(), "__MISSING__")
+        execution_changed |= after_value.ne(before_value)
+
+    changed = after.loc[execution_changed].reset_index()
+    changed_execution_records = []
+    for _, current in changed.iterrows():
+        key = (current["threshold_pct"], current["control_trade_id"])
+        previous = before.loc[key]
+        changed_execution_records.append({
+            "threshold_pct": int(current["threshold_pct"]),
+            "control_trade_id": str(current["control_trade_id"]),
+            "ticker": str(current["ticker"]).zfill(6),
+            "recovery_class": str(current["recovery_class"]),
+            "prewinner_breach_date": str(current["prewinner_breach_date"]),
+            "fix02_next_local_open_available": bool(previous["next_local_open_available"]),
+            "fix03_next_local_open_available": bool(current["next_local_open_available"]),
+            "fix02_hard_failure_exit_date": None if pd.isna(previous["hard_failure_exit_date"]) else str(previous["hard_failure_exit_date"]),
+            "fix03_hard_failure_exit_date": None if pd.isna(current["hard_failure_exit_date"]) else str(current["hard_failure_exit_date"]),
+            "cause": "identity_effective_to boundary excluded a next local OPEN outside the identity lifecycle",
+        })
+
+    trade_key = "control_trade_id"
+    before_classes = fix02_trades.set_index(trade_key)["recovery_class"].sort_index()
+    after_classes = trades.set_index(trade_key)["recovery_class"].sort_index()
+    if not after_classes.index.equals(before_classes.index):
+        raise AssertionError("FIX02/FIX03 trade diagnostic keys differ")
+    classification_changed = after_classes.ne(before_classes)
+
+    current_30 = _row(sweep, -30)
+    fix02_30 = _row(fix02_sweep, -30)
+    recovery_count = int((trades["recovery_class"] == "RECOVERY").sum())
+    never_winner_count = int((trades["recovery_class"] == "NEVER_WINNER").sum())
+    loss_guard = trades[trades["v2_exit_reason"] == LOSS_GUARD_REASON]
+    loss_guard_recovery_count = int((loss_guard["recovery_class"] == "RECOVERY").sum())
+    loss_guard_never_winner_count = int((loss_guard["recovery_class"] == "NEVER_WINNER").sum())
+    current_improvement_count = int(
+        pd.to_numeric(sweep["hypothetical_mean_terminal_return_pct"]).gt(
+            float(sweep["baseline_v0_mean_terminal_return_pct"].iloc[0])
+        ).sum()
+    )
+
+    changed_by_threshold = []
+    for threshold in THRESHOLDS:
+        subset = changed[changed["threshold_pct"] == threshold]
+        changed_by_threshold.append({
+            "threshold_pct": threshold,
+            "changed_execution_count": int(len(subset)),
+            "recovery_changed_execution_count": int((subset["recovery_class"] == "RECOVERY").sum()),
+            "never_winner_changed_execution_count": int((subset["recovery_class"] == "NEVER_WINNER").sum()),
+        })
+
+    return {
+        "reference_work_id": fix02_summary["work_id"],
+        "affected_trade_count": int(changed["control_trade_id"].nunique()),
+        "changed_execution_row_count": int(len(changed)),
+        "threshold_changed_execution_counts": changed_by_threshold,
+        "changed_execution_records": changed_execution_records,
+        "execution_change_cause": "next local OPEN is now searched only in the same identity-scoped daily path used for breach observation",
+        "recovery_classification_changed_count": int(classification_changed.sum()),
+        "recovery_count_delta": recovery_count - int(fix02_summary["recovery_count"]),
+        "never_winner_count_delta": never_winner_count - int(fix02_summary["never_winner_count"]),
+        "loss_guard_recovery_count_delta": loss_guard_recovery_count - int(fix02_summary["loss_guard_recovery_count"]),
+        "loss_guard_never_winner_count_delta": loss_guard_never_winner_count - int(fix02_summary["loss_guard_never_winner_count"]),
+        "minus_30": {
+            "recovery_killed_count_fix02": int(fix02_30["recovery_killed_count"]),
+            "recovery_killed_count_fix03": int(current_30["recovery_killed_count"]),
+            "recovery_killed_rate_pct_fix02": float(fix02_30["recovery_killed_rate_pct"]),
+            "recovery_killed_rate_pct_fix03": float(current_30["recovery_killed_rate_pct"]),
+            "failed_trade_captured_count_fix02": int(fix02_30["failed_trade_captured_count"]),
+            "failed_trade_captured_count_fix03": int(current_30["failed_trade_captured_count"]),
+            "failed_trade_captured_rate_pct_fix02": float(fix02_30["failed_trade_captured_rate_pct"]),
+            "failed_trade_captured_rate_pct_fix03": float(current_30["failed_trade_captured_rate_pct"]),
+            "hypothetical_positive_rate_pct_fix02": float(fix02_30["hypothetical_positive_rate_pct"]),
+            "hypothetical_positive_rate_pct_fix03": float(current_30["hypothetical_positive_rate_pct"]),
+            "hypothetical_mean_terminal_return_pct_fix02": float(fix02_30["hypothetical_mean_terminal_return_pct"]),
+            "hypothetical_mean_terminal_return_pct_fix03": float(current_30["hypothetical_mean_terminal_return_pct"]),
+            "hypothetical_median_terminal_return_pct_fix02": float(fix02_30["hypothetical_median_terminal_return_pct"]),
+            "hypothetical_median_terminal_return_pct_fix03": float(current_30["hypothetical_median_terminal_return_pct"]),
+            "hypothetical_mean_holding_days_fix02": float(fix02_30["hypothetical_mean_holding_days"]),
+            "hypothetical_mean_holding_days_fix03": float(current_30["hypothetical_mean_holding_days"]),
+        },
+        "fixed_threshold_mean_improvement_count_fix02": int(fix02_summary["fixed_threshold_mean_improvement_count"]),
+        "fixed_threshold_mean_improvement_count_fix03": current_improvement_count,
+        "threshold_sweep_deltas": [
+            {
+                "threshold_pct": threshold,
+                "recovery_breach_count_delta": int(_row(sweep, threshold)["recovery_breach_count"] - _row(fix02_sweep, threshold)["recovery_breach_count"]),
+                "recovery_killed_count_delta": int(_row(sweep, threshold)["recovery_killed_count"] - _row(fix02_sweep, threshold)["recovery_killed_count"]),
+                "failed_trade_captured_count_delta": int(_row(sweep, threshold)["failed_trade_captured_count"] - _row(fix02_sweep, threshold)["failed_trade_captured_count"]),
+                "hypothetical_positive_rate_delta_pp": round(float(_row(sweep, threshold)["hypothetical_positive_rate_pct"] - _row(fix02_sweep, threshold)["hypothetical_positive_rate_pct"]), 6),
+                "hypothetical_mean_return_delta_pp": round(float(_row(sweep, threshold)["hypothetical_mean_terminal_return_pct"] - _row(fix02_sweep, threshold)["hypothetical_mean_terminal_return_pct"]), 6),
+                "hypothetical_median_return_delta_pp": round(float(_row(sweep, threshold)["hypothetical_median_terminal_return_pct"] - _row(fix02_sweep, threshold)["hypothetical_median_terminal_return_pct"]), 6),
+                "hypothetical_mean_holding_days_delta": round(float(_row(sweep, threshold)["hypothetical_mean_holding_days"] - _row(fix02_sweep, threshold)["hypothetical_mean_holding_days"]), 6),
+            }
+            for threshold in THRESHOLDS
+        ],
+    }
 
 
 def build_report(
@@ -624,38 +760,37 @@ def build_report(
         "이번 FIX에서는 어떤 신규 threshold도 전략 parameter로 확정하지 않는다."
     )
 
-    fix01_summary = _read_json(FIX01_OUT_DIR / "prewinner_hard_failure_summary.json")
-    fix01_sweep = pd.read_csv(FIX01_OUT_DIR / "prewinner_threshold_sweep.csv")
-    fix01_30 = _row(fix01_sweep, -30)
-    fix01_improvement_count = int(fix01_summary["fixed_threshold_mean_improvement_count"])
-    horizon_impact = (
-        f"- RECOVERY: {fix01_summary['recovery_count']} → {len(recovery)} "
-        f"(delta {len(recovery) - int(fix01_summary['recovery_count']):+d})\n"
-        f"- NEVER_WINNER: {fix01_summary['never_winner_count']} → {len(never)} "
-        f"(delta {len(never) - int(fix01_summary['never_winner_count']):+d})\n"
-        f"- Loss Guard RECOVERY: {fix01_summary['loss_guard_recovery_count']} → "
+    fix02_summary = _read_json(FIX02_OUT_DIR / "prewinner_hard_failure_summary.json")
+    fix02_sweep = pd.read_csv(FIX02_OUT_DIR / "prewinner_threshold_sweep.csv")
+    fix02_30 = _row(fix02_sweep, -30)
+    fix02_improvement_count = int(fix02_summary["fixed_threshold_mean_improvement_count"])
+    comparison = summary["fix02_comparison"]
+    minus_30 = comparison["minus_30"]
+    lifecycle_impact = (
+        f"- lifecycle boundary correction으로 execution이 변경된 CONTROL trade: {comparison['affected_trade_count']}건 "
+        f"({comparison['changed_execution_row_count']} threshold-trade row)\n"
+        f"- RECOVERY classification delta: {comparison['recovery_count_delta']:+d}, NEVER_WINNER delta: {comparison['never_winner_count_delta']:+d}; "
+        f"classification 자체 변경: {comparison['recovery_classification_changed_count']}건\n"
+        f"- Loss Guard RECOVERY: {fix02_summary['loss_guard_recovery_count']} → "
         f"{len(loss_guard[loss_guard['recovery_class'] == 'RECOVERY'])} "
-        f"(delta {len(loss_guard[loss_guard['recovery_class'] == 'RECOVERY']) - int(fix01_summary['loss_guard_recovery_count']):+d})\n"
-        f"- Loss Guard NEVER_WINNER: {fix01_summary['loss_guard_never_winner_count']} → "
+        f"(delta {comparison['loss_guard_recovery_count_delta']:+d}), Loss Guard NEVER_WINNER: "
+        f"{fix02_summary['loss_guard_never_winner_count']} → "
         f"{len(loss_guard[loss_guard['recovery_class'] == 'NEVER_WINNER'])} "
-        f"(delta {len(loss_guard[loss_guard['recovery_class'] == 'NEVER_WINNER']) - int(fix01_summary['loss_guard_never_winner_count']):+d})\n"
-        f"- -30% RECOVERY kill rate: {_fmt(fix01_30['recovery_killed_rate_pct'])} → "
-        f"{_fmt(threshold_30['recovery_killed_rate_pct'])} "
-        f"(delta {_fmt(threshold_30['recovery_killed_rate_pct'] - fix01_30['recovery_killed_rate_pct'])})\n"
-        f"- -30% failure capture rate: {_fmt(fix01_30['failed_trade_captured_rate_pct'])} → "
-        f"{_fmt(threshold_30['failed_trade_captured_rate_pct'])} "
-        f"(delta {_fmt(threshold_30['failed_trade_captured_rate_pct'] - fix01_30['failed_trade_captured_rate_pct'])})\n"
-        f"- -30% mean return: {_fmt(fix01_30['hypothetical_mean_terminal_return_pct'])} → "
-        f"{_fmt(threshold_30['hypothetical_mean_terminal_return_pct'])} "
-        f"(delta {_fmt(threshold_30['hypothetical_mean_terminal_return_pct'] - fix01_30['hypothetical_mean_terminal_return_pct'])})\n"
-        f"- fixed threshold mean improvement count: {fix01_improvement_count} → "
-        f"{fixed_threshold_mean_improvement_count} "
-        f"(delta {fixed_threshold_mean_improvement_count - fix01_improvement_count:+d})"
+        f"(delta {comparison['loss_guard_never_winner_count_delta']:+d})\n"
+        f"- -30% RECOVERY kill: {minus_30['recovery_killed_count_fix02']} → {minus_30['recovery_killed_count_fix03']} "
+        f"({_fmt(minus_30['recovery_killed_rate_pct_fix02'])} → {_fmt(minus_30['recovery_killed_rate_pct_fix03'])}); "
+        f"failure capture: {minus_30['failed_trade_captured_count_fix02']} → {minus_30['failed_trade_captured_count_fix03']} "
+        f"({_fmt(minus_30['failed_trade_captured_rate_pct_fix02'])} → {_fmt(minus_30['failed_trade_captured_rate_pct_fix03'])})\n"
+        f"- -30% positive rate: {_fmt(minus_30['hypothetical_positive_rate_pct_fix02'])} → {_fmt(minus_30['hypothetical_positive_rate_pct_fix03'])}; "
+        f"mean: {_fmt(minus_30['hypothetical_mean_terminal_return_pct_fix02'])} → {_fmt(minus_30['hypothetical_mean_terminal_return_pct_fix03'])}; "
+        f"median: {_fmt(minus_30['hypothetical_median_terminal_return_pct_fix02'])} → {_fmt(minus_30['hypothetical_median_terminal_return_pct_fix03'])}; "
+        f"mean holding: {_fmt(minus_30['hypothetical_mean_holding_days_fix02'], suffix='d')} → {_fmt(minus_30['hypothetical_mean_holding_days_fix03'], suffix='d')}\n"
+        f"- fixed threshold mean improvement count: {fix02_improvement_count} → {fixed_threshold_mean_improvement_count}"
     )
     sweep_comparison_lines = []
     for threshold in THRESHOLDS:
         current = _row(sweep, threshold)
-        previous = _row(fix01_sweep, threshold)
+        previous = _row(fix02_sweep, threshold)
         sweep_comparison_lines.append(
             f"| {threshold}% | {int(previous['recovery_killed_count'])} → {int(current['recovery_killed_count'])} | "
             f"{int(previous['failed_trade_captured_count'])} → {int(current['failed_trade_captured_count'])} | "
@@ -666,7 +801,7 @@ def build_report(
         )
 
     sweep_deltas = [
-        item for item in summary["fix01_comparison"]["threshold_sweep_deltas"]
+        item for item in comparison["threshold_sweep_deltas"]
         if any(
             item[field] != 0
             for field in (
@@ -681,37 +816,57 @@ def build_report(
         )
     ]
     changed_thresholds = ", ".join(f"{item['threshold_pct']}%" for item in sweep_deltas) or "없음"
-    fix02_core_questions = (
-        "### Q1. SIGNAL_CUTOFF → SUPPORT_END horizon 수정으로 분류가 몇 건 바뀌었는가?\n\n"
-        f"- RECOVERY: {fix01_summary['recovery_count']} → {len(recovery)}건 "
-        f"(delta {len(recovery) - int(fix01_summary['recovery_count']):+d}), "
-        f"NEVER_WINNER: {fix01_summary['never_winner_count']} → {len(never)}건 "
-        f"(delta {len(never) - int(fix01_summary['never_winner_count']):+d})야. "
-        f"Loss Guard는 RECOVERY {len(loss_guard[loss_guard['recovery_class'] == 'RECOVERY']) - int(fix01_summary['loss_guard_recovery_count']):+d}, "
-        f"NEVER_WINNER {len(loss_guard[loss_guard['recovery_class'] == 'NEVER_WINNER']) - int(fix01_summary['loss_guard_never_winner_count']):+d}건 변했어.\n\n"
-        "### Q2. threshold sweep 결과가 얼마나 변했는가?\n\n"
-        f"- {len(sweep_deltas)}/{len(THRESHOLDS)}개 threshold 행에서 변화가 있었어: "
-        f"{changed_thresholds}. "
-        "전체 threshold별 FIX01 → FIX02 수치는 아래 비교표와 CSV에 기록했어.\n\n"
-        "### Q3. 특히 -30%는 어떻게 변했는가?\n\n"
-        f"- recovery kill rate: {_fmt(fix01_30['recovery_killed_rate_pct'])} → {_fmt(threshold_30['recovery_killed_rate_pct'])} "
-        f"(delta {_fmt(threshold_30['recovery_killed_rate_pct'] - fix01_30['recovery_killed_rate_pct'])}), "
-        f"failure capture rate: {_fmt(fix01_30['failed_trade_captured_rate_pct'])} → {_fmt(threshold_30['failed_trade_captured_rate_pct'])} "
-        f"(delta {_fmt(threshold_30['failed_trade_captured_rate_pct'] - fix01_30['failed_trade_captured_rate_pct'])}), "
-        f"positive rate: {_fmt(fix01_30['hypothetical_positive_rate_pct'])} → {_fmt(threshold_30['hypothetical_positive_rate_pct'])} "
-        f"(delta {_fmt(threshold_30['hypothetical_positive_rate_pct'] - fix01_30['hypothetical_positive_rate_pct'])}), "
-        f"mean return: {_fmt(fix01_30['hypothetical_mean_terminal_return_pct'])} → {_fmt(threshold_30['hypothetical_mean_terminal_return_pct'])} "
-        f"(delta {_fmt(threshold_30['hypothetical_mean_terminal_return_pct'] - fix01_30['hypothetical_mean_terminal_return_pct'])})야.\n\n"
-        "### Q4. horizon correction 이후에도 fixed Hard Failure threshold를 식별할 수 없는가?\n\n"
-        f"- **{'아니오' if summary['hard_failure_threshold_identified'] else '예'}**. `hard_failure_threshold_identified={str(summary['hard_failure_threshold_identified']).lower()}`, "
-        f"candidate는 `{summary['hard_failure_candidate_threshold_pct']}`로 유지해.\n\n"
-        "### Q5. `fixed_threshold_mean_improvement_count`는 몇 개인가?\n\n"
-        f"- FIX01 {fix01_improvement_count}개 → FIX02 {fixed_threshold_mean_improvement_count}개 "
-        f"(delta {fixed_threshold_mean_improvement_count - fix01_improvement_count:+d})야.\n\n"
-        "### Q6. `-25~-30%`를 FAILURE ARMED 연구 참고 영역으로 유지할 수 있는가?\n\n"
-        f"- **{'유지할 수 있어' if fixed_threshold_mean_improvement_count == 0 else '자동으로 확정하지 않아'}**. "
-        "이번 horizon correction에서도 해당 구간을 Hard Exit나 strategy parameter로 확정하지 않고, "
-        "향후 FAILURE ARMED price-damage 연구 참고 영역으로만 유지해.\n\n"
+    changed_execution_thresholds = ", ".join(
+        f"{item['threshold_pct']}%"
+        for item in comparison["threshold_changed_execution_counts"]
+        if item["changed_execution_count"]
+    ) or "없음"
+    execution_count_lines = [
+        f"| {item['threshold_pct']}% | {item['changed_execution_count']} | "
+        f"{item['recovery_changed_execution_count']} | {item['never_winner_changed_execution_count']} |"
+        for item in comparison["threshold_changed_execution_counts"]
+    ]
+    changed_execution_records = comparison["changed_execution_records"]
+    changed_execution_detail_lines = (
+        [
+            "| threshold | control trade | ticker | class | breach | FIX02 exit | FIX03 exit | cause |",
+            "|---:|---|---|---|---|---|---|---|",
+            *[
+                f"| {record['threshold_pct']}% | {record['control_trade_id']} | {record['ticker']} | "
+                f"{record['recovery_class']} | {record['prewinner_breach_date']} | "
+                f"{record['fix02_hard_failure_exit_date'] or 'unexecuted'} | "
+                f"{record['fix03_hard_failure_exit_date'] or 'unexecuted'} | identity lifecycle boundary |"
+                for record in changed_execution_records
+            ],
+        ]
+        if changed_execution_records
+        else ["- 변경된 execution record 없음."]
+    )
+    fix03_core_questions = (
+        "### Q1. lifecycle boundary correction으로 execution이 실제로 바뀌었는가?\n\n"
+        f"- CONTROL trade {comparison['affected_trade_count']}건, threshold-trade row {comparison['changed_execution_row_count']}건이 변경됐어. "
+        "breach 관측과 next OPEN 탐색을 모두 동일한 identity-scoped daily path에서 수행했어.\n\n"
+        "### Q2. threshold별 changed execution은 어디에 발생했는가?\n\n"
+        f"- execution 변화가 있는 threshold: {changed_execution_thresholds}. threshold sweep 수치 변화가 있는 구간: {changed_thresholds}. "
+        "상세 count는 아래 FIX02 → FIX03 비교표와 JSON에 기록했어.\n\n"
+        "### Q3. RECOVERY/NEVER_WINNER와 Loss Guard 분류가 바뀌었는가?\n\n"
+        f"- RECOVERY delta {comparison['recovery_count_delta']:+d}, NEVER_WINNER delta {comparison['never_winner_count_delta']:+d}, "
+        f"Loss Guard RECOVERY delta {comparison['loss_guard_recovery_count_delta']:+d}, "
+        f"Loss Guard NEVER_WINNER delta {comparison['loss_guard_never_winner_count_delta']:+d}야.\n\n"
+        "### Q4. -30% 핵심 지표는 어떻게 변했는가?\n\n"
+        f"- recovery kill {_fmt(minus_30['recovery_killed_rate_pct_fix02'])} → {_fmt(minus_30['recovery_killed_rate_pct_fix03'])}, "
+        f"failure capture {_fmt(minus_30['failed_trade_captured_rate_pct_fix02'])} → {_fmt(minus_30['failed_trade_captured_rate_pct_fix03'])}, "
+        f"positive rate {_fmt(minus_30['hypothetical_positive_rate_pct_fix02'])} → {_fmt(minus_30['hypothetical_positive_rate_pct_fix03'])}, "
+        f"mean {_fmt(minus_30['hypothetical_mean_terminal_return_pct_fix02'])} → {_fmt(minus_30['hypothetical_mean_terminal_return_pct_fix03'])}, "
+        f"median {_fmt(minus_30['hypothetical_median_terminal_return_pct_fix02'])} → {_fmt(minus_30['hypothetical_median_terminal_return_pct_fix03'])}, "
+        f"mean holding {_fmt(minus_30['hypothetical_mean_holding_days_fix02'], suffix='d')} → {_fmt(minus_30['hypothetical_mean_holding_days_fix03'], suffix='d')}야.\n\n"
+        "### Q5. fixed Hard Failure 결론은 변했는가?\n\n"
+        f"- **{'유지' if not summary['hard_failure_threshold_identified'] else '수치만 보고'}**. "
+        f"`hard_failure_threshold_identified={str(summary['hard_failure_threshold_identified']).lower()}`, "
+        f"candidate `{summary['hard_failure_candidate_threshold_pct']}`, V0 mean 개선 fixed threshold {fixed_threshold_mean_improvement_count}개야.\n\n"
+        "### Q6. FAILURE ARMED 참고 영역은 유지하는가?\n\n"
+        f"- **{'유지' if fixed_threshold_mean_improvement_count == 0 else '자동 확정하지 않음'}**. "
+        "`-25~-30%`는 Hard Exit나 strategy parameter가 아닌 FAILURE ARMED price-damage 연구 참고 영역으로만 남겨.\n\n"
     )
 
     all_rec_close = stats("ALL_973", "RECOVERY", "prewinner_min_close_return_pct")
@@ -730,11 +885,11 @@ def build_report(
         "- 따라서 분포 분리는 -20%~-30%부터 눈에 띄게 커지고, -60% 이하에서는 NEVER_WINNER가 지배적이지만 "
         "그 깊은 threshold는 recovery 보호와 failure capture를 함께 크게 잃어 고정 기준선 확정에는 부적합해."
     ]
-    return f"""# FASTCORE V1 PRE-WINNER HARD FAILURE DIAGNOSTIC V00 FIX02
+    return f"""# FASTCORE V1 PRE-WINNER HARD FAILURE DIAGNOSTIC V00 FIX03
 
-## FIX02 핵심 질문에 대한 숫자 답
+## FIX03 핵심 질문에 대한 숫자 답
 
-{fix02_core_questions}
+{fix03_core_questions}
 
 ## 보조 분포 및 threshold 진단
 
@@ -796,25 +951,35 @@ V0 baseline: positive rate **{_fmt(baseline['baseline_v0_positive_rate_pct'])}**
 |---:|---|---:|---:|---:|---:|---:|
 {chr(10).join(impact_group_line(threshold, cohort) for threshold in THRESHOLDS for cohort in ('RECOVERY', 'NEVER_WINNER'))}
 
-## FIX01 → FIX02 horizon correction impact
+## FIX02 → FIX03 lifecycle execution boundary correction impact
 
-관측 종료를 `SIGNAL_CUTOFF=2026-08-14`에서 실제 V0 exit observation과 같은 `SUPPORT_END=2026-08-21`로 확장했어. 신규 entry signal cutoff은 그대로야.
+threshold breach는 기존처럼 identity lifecycle 안에서 관측하고, 이제 next local OPEN도 같은 identity-scoped daily path에서만 탐색해. 따라서 `identity_effective_to`와 `SUPPORT_END` 중 먼저 종료되는 경계를 넘는 execution은 허용하지 않아.
 
-{horizon_impact}
+{lifecycle_impact}
 
-| threshold | recovery killed FIX01 → FIX02 | failure captured FIX01 → FIX02 | positive rate FIX01 → FIX02 | mean FIX01 → FIX02 | median FIX01 → FIX02 | mean holding delta |
+#### threshold별 changed execution count
+
+| threshold | changed execution | RECOVERY | NEVER_WINNER |
+|---:|---:|---:|---:|
+{chr(10).join(execution_count_lines)}
+
+#### 실제 changed execution record
+
+{chr(10).join(changed_execution_detail_lines)}
+
+| threshold | recovery killed FIX02 → FIX03 | failure captured FIX02 → FIX03 | positive rate FIX02 → FIX03 | mean FIX02 → FIX03 | median FIX02 → FIX03 | mean holding delta |
 |---:|---:|---:|---:|---:|---:|---:|
 {chr(10).join(sweep_comparison_lines)}
 
-Threshold별 전체 sweep과 trade-level impact의 FIX01 대비 상세값은 새 CSV에 기록했어. 이번 horizon correction은 계산 결과를 바꿀 수 있으므로 V00/FIX01 artifact를 덮어쓰지 않고 별도 경로에 저장했어.
+Threshold별 changed execution count와 실제 changed record는 summary JSON에 기록했어. 이번 lifecycle correction은 계산 결과를 바꿀 수 있으므로 V00/FIX01/FIX02 artifact를 덮어쓰지 않고 별도 경로에 저장했어.
 
 ## 정의 및 look-ahead 제한
 
-- 권위 source는 FIX01 matched-entry artifact의 973건이야. 기존 V0/FIX01 결과를 전략적으로 변경하지 않았어.
+- 권위 source는 FIX01 matched-entry artifact의 973건이야. 기존 V0/FIX01/FIX02 결과를 전략적으로 변경하지 않았어.
 - RECOVERY/NEVER_WINNER는 V0 path의 미래 MFE를 사용한 retrospective label이야. signal logic이나 진입 logic에 사용하지 않았어.
 - running MFE는 daily HIGH로 갱신하고, 첫 HIGH가 entry OPEN 대비 +20% 이상이 된 당일은 Pre-Winner 관측에서 제외했어. same-day ordering을 지켰어.
 - Hard Failure 후보 기준은 HWM drawdown이 아니라 `entry execution OPEN 대비 daily CLOSE return`이야.
-- threshold breach는 EOD signal 후보, 체결은 next local trading day OPEN이야. daily LOW는 보조 분포일 뿐 trigger 기준이 아니야. 관측과 execution support는 `SUPPORT_END=2026-08-21`에서 닫고 그 이후 session은 사용하지 않았어.
+- threshold breach는 EOD signal 후보, 체결은 동일 identity lifecycle 안의 next local trading day OPEN이야. daily LOW는 보조 분포일 뿐 trigger 기준이 아니야. 관측과 execution support는 `SUPPORT_END=2026-08-21` 및 `identity_effective_to` 중 먼저 닫히는 경계를 넘지 않아.
 - daily FAST 생성, 주간 FAST→일간 전환, V1 rule 구현은 하지 않았어.
 
 ## Loss Guard 590 subset
@@ -832,14 +997,14 @@ Threshold별 전체 sweep과 trade-level impact의 FIX01 대비 상세값은 새
 - `prewinner_threshold_sweep.csv`
 - `prewinner_threshold_trade_impacts.csv`
 - `prewinner_hard_failure_summary.json`
-- `fastcore_v1_prewinner_hard_failure_diagnostic_v00_fix02_report.md`
+- `fastcore_v1_prewinner_hard_failure_diagnostic_v00_fix03_report.md`
 
 상세 산출물 절대 경로: `{output_dir}`
 
 ## 실행 및 보호 범위
 
-- 실행 명령: `./.venv/bin/python scripts/analyze_fastcore_v1_prewinner_hard_failure_diagnostic_v00.py --run-fix02`
-- 기존 V0/FIX01 artifact overwrite: 없음
+- 실행 명령: `./.venv/bin/python scripts/analyze_fastcore_v1_prewinner_hard_failure_diagnostic_v00.py --run-fix03`
+- 기존 V0/FIX01/FIX02 artifact overwrite: 없음
 - 기존 V3 1,578 trade 재생성: 없음
 - Production strategy 수정: 없음
 - Julia/portfolio: 실행하지 않음
@@ -848,7 +1013,7 @@ Threshold별 전체 sweep과 trade-level impact의 FIX01 대비 상세값은 새
 """
 
 
-def run_analysis(output_dir: Path = FIX02_OUT_DIR) -> dict[str, Any]:
+def run_analysis(output_dir: Path = FIX03_OUT_DIR) -> dict[str, Any]:
     matched = pd.read_csv(MATCHED_PATH)
     if len(matched) != 973:
         raise AssertionError(f"expected 973 matched source rows, got {len(matched)}")
@@ -901,37 +1066,9 @@ def run_analysis(output_dir: Path = FIX02_OUT_DIR) -> dict[str, Any]:
     fixed_threshold_mean_improvement_count = int(
         (pd.to_numeric(sweep["hypothetical_mean_terminal_return_pct"]) > baseline_mean).sum()
     )
-    fix01_summary = _read_json(FIX01_OUT_DIR / "prewinner_hard_failure_summary.json")
-    fix01_sweep = pd.read_csv(FIX01_OUT_DIR / "prewinner_threshold_sweep.csv")
-    current_30 = _row(sweep, -30)
-    fix01_30 = _row(fix01_sweep, -30)
-    fix01_comparison = {
-        "recovery_count_delta": recovery_count - int(fix01_summary["recovery_count"]),
-        "never_winner_count_delta": never_winner_count - int(fix01_summary["never_winner_count"]),
-        "loss_guard_recovery_count_delta": loss_guard_recovery_count - int(fix01_summary["loss_guard_recovery_count"]),
-        "loss_guard_never_winner_count_delta": loss_guard_never_winner_count - int(fix01_summary["loss_guard_never_winner_count"]),
-        "minus_30_recovery_kill_rate_delta_pp": round(float(current_30["recovery_killed_rate_pct"] - fix01_30["recovery_killed_rate_pct"]), 6),
-        "minus_30_failure_capture_rate_delta_pp": round(float(current_30["failed_trade_captured_rate_pct"] - fix01_30["failed_trade_captured_rate_pct"]), 6),
-        "minus_30_mean_return_delta_pp": round(float(current_30["hypothetical_mean_terminal_return_pct"] - fix01_30["hypothetical_mean_terminal_return_pct"]), 6),
-        "fixed_threshold_mean_improvement_count_fix01": int(fix01_summary["fixed_threshold_mean_improvement_count"]),
-        "fixed_threshold_mean_improvement_count_fix02": fixed_threshold_mean_improvement_count,
-        "fixed_threshold_mean_improvement_count_delta": fixed_threshold_mean_improvement_count - int(fix01_summary["fixed_threshold_mean_improvement_count"]),
-        "threshold_sweep_deltas": [
-            {
-                "threshold_pct": threshold,
-                "recovery_breach_count_delta": int(_row(sweep, threshold)["recovery_breach_count"] - _row(fix01_sweep, threshold)["recovery_breach_count"]),
-                "recovery_killed_count_delta": int(_row(sweep, threshold)["recovery_killed_count"] - _row(fix01_sweep, threshold)["recovery_killed_count"]),
-                "failed_trade_captured_count_delta": int(_row(sweep, threshold)["failed_trade_captured_count"] - _row(fix01_sweep, threshold)["failed_trade_captured_count"]),
-                "hypothetical_positive_rate_delta_pp": round(float(_row(sweep, threshold)["hypothetical_positive_rate_pct"] - _row(fix01_sweep, threshold)["hypothetical_positive_rate_pct"]), 6),
-                "hypothetical_mean_return_delta_pp": round(float(_row(sweep, threshold)["hypothetical_mean_terminal_return_pct"] - _row(fix01_sweep, threshold)["hypothetical_mean_terminal_return_pct"]), 6),
-                "hypothetical_median_return_delta_pp": round(float(_row(sweep, threshold)["hypothetical_median_terminal_return_pct"] - _row(fix01_sweep, threshold)["hypothetical_median_terminal_return_pct"]), 6),
-                "hypothetical_mean_holding_days_delta": round(float(_row(sweep, threshold)["hypothetical_mean_holding_days"] - _row(fix01_sweep, threshold)["hypothetical_mean_holding_days"]), 6),
-            }
-            for threshold in THRESHOLDS
-        ],
-    }
+    fix02_comparison = _build_fix02_comparison(trade_diagnostics, impacts, sweep)
     summary: dict[str, Any] = {
-        "work_id": "FASTCORE_V1_PREWINNER_HARD_FAILURE_DIAGNOSTIC_V00_FIX02",
+        "work_id": "FASTCORE_V1_PREWINNER_HARD_FAILURE_DIAGNOSTIC_V00_FIX03",
         "status": "COMPLETE",
         "evaluation_start": "2021-04-01",
         "signal_cutoff": "2026-08-14",
@@ -947,7 +1084,7 @@ def run_analysis(output_dir: Path = FIX02_OUT_DIR) -> dict[str, Any]:
         "thresholds_pct": list(THRESHOLDS),
         "prewinner_definition": "entry execution date through the day before the first running daily-HIGH MFE >=20%; first +20% day excluded after HIGH/HWM update; all matched V0 trades are observed through SUPPORT_END / the available identity-scoped V0 observation path",
         "trigger_definition": "entry execution OPEN-relative daily CLOSE return <= threshold",
-        "execution_definition": "next local trading day OPEN",
+        "execution_definition": "next local trading day OPEN within the same identity lifecycle and SUPPORT_END boundary",
         "retrospective_label_only": True,
         "future_label_used_in_signal_logic": False,
         "daily_fast_created": False,
@@ -955,6 +1092,7 @@ def run_analysis(output_dir: Path = FIX02_OUT_DIR) -> dict[str, Any]:
         "network_requests": 0,
         "production_strategy_modified": False,
         "existing_v0_fix01_artifact_modified": False,
+        "existing_fix02_artifact_modified": False,
         "julia_executed": False,
         "hard_failure_threshold_identified": False,
         "hard_failure_candidate_threshold_pct": None,
@@ -966,7 +1104,7 @@ def run_analysis(output_dir: Path = FIX02_OUT_DIR) -> dict[str, Any]:
             if fixed_threshold_mean_improvement_count == 0
             else "At least one tested fixed pre-winner CLOSE-loss threshold improved the V0 mean terminal return in this horizon replay, but no automatic Hard Failure candidate is selected by this diagnostic."
         ),
-        "fix01_comparison": fix01_comparison,
+        "fix02_comparison": fix02_comparison,
         "matched_v0_aggregate_invariant": {
             "trades": 973,
             "v0_positive_rate_pct": 70.914697,
@@ -988,7 +1126,7 @@ def run_analysis(output_dir: Path = FIX02_OUT_DIR) -> dict[str, Any]:
     sweep_path = output_dir / "prewinner_threshold_sweep.csv"
     impact_path = output_dir / "prewinner_threshold_trade_impacts.csv"
     summary_path = output_dir / "prewinner_hard_failure_summary.json"
-    report_path = output_dir / "fastcore_v1_prewinner_hard_failure_diagnostic_v00_fix02_report.md"
+    report_path = output_dir / "fastcore_v1_prewinner_hard_failure_diagnostic_v00_fix03_report.md"
     output_dir.mkdir(parents=True, exist_ok=True)
     trade_diagnostics.to_csv(trade_path, index=False, lineterminator="\n")
     distribution.to_csv(distribution_path, index=False, lineterminator="\n")
@@ -1001,16 +1139,16 @@ def run_analysis(output_dir: Path = FIX02_OUT_DIR) -> dict[str, Any]:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--run-fix02", action="store_true")
+    parser.add_argument("--run-fix03", action="store_true")
     args = parser.parse_args()
-    if not args.run_fix02:
-        parser.error("use --run-fix02 to execute the offline V00 FIX02 diagnostic")
+    if not args.run_fix03:
+        parser.error("use --run-fix03 to execute the offline V00 FIX03 diagnostic")
     audit = NetworkAudit()
     try:
         with network_guard(audit):
-            result = run_analysis(FIX02_OUT_DIR)
+            result = run_analysis(FIX03_OUT_DIR)
         result["summary"]["network_requests"] = audit.request_count
-        _write_json(FIX02_OUT_DIR / "prewinner_hard_failure_summary.json", result["summary"])
+        _write_json(FIX03_OUT_DIR / "prewinner_hard_failure_summary.json", result["summary"])
         print(json.dumps({
             "status": result["summary"]["status"],
             "source_matched_rows": result["summary"]["source_matched_rows"],
