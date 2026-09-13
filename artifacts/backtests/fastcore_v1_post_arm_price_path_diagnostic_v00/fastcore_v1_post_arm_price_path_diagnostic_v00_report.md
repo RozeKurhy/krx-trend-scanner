@@ -1,0 +1,67 @@
+# FASTCORE V1 POST-ARM PRICE PATH DIAGNOSTIC V00 결과 보고서
+
+## 결론
+
+이번 작업은 새 backtest나 exit rule이 아니다. 기존 W25/W30에서 실제 발생한 FIRST ARM 이후 underlying identity-scoped V0 price path의 분포만 진단했다. `SECONDARY / TRADE-WEIGHTED BIAS POSSIBLE`인 전체 cycle 분석은 보조 결과이며, primary 결론은 trade당 first ARM 하나만 사용한다.
+
+최종 분류: `POST_ARM_DETERIORATION_SHOWS_WEAK_SEPARATION`. 새 deterioration threshold나 strategy parameter는 선택하지 않았다.
+
+## Q1–Q3. FIRST ARM → next usable FAST
+
+- FASTCORE_V1_W25_PREWINNER_ARMED_V00 / RECOVERY_FIRST_ARM: n=152, value n=152, mean/median/p25/p75=0.885996/0.579396/-1.900359/3.330882pp, improved/flat/worsened=57.236842%/0.000000%/42.763158%.
+- FASTCORE_V1_W25_PREWINNER_ARMED_V00 / NEVER_WINNER_FIRST_ARM: n=199, value n=198, mean/median/p25/p75=0.859967/0.639751/-1.687187/3.213023pp, improved/flat/worsened=55.555556%/0.505051%/43.939394%.
+- FASTCORE_V1_W25_PREWINNER_ARMED_V00 / LOSS_GUARD_RECOVERY_FIRST_ARM: n=141, value n=141, mean/median/p25/p75=0.985434/0.595947/-1.892786/3.710408pp, improved/flat/worsened=58.156028%/0.000000%/41.843972%.
+- FASTCORE_V1_W25_PREWINNER_ARMED_V00 / LOSS_GUARD_NEVER_WINNER_FIRST_ARM: n=184, value n=183, mean/median/p25/p75=0.898042/0.615385/-1.644272/3.265457pp, improved/flat/worsened=55.737705%/0.546448%/43.715847%.
+- FASTCORE_V1_W30_PREWINNER_ARMED_V00 / RECOVERY_FIRST_ARM: n=118, value n=118, mean/median/p25/p75=1.005273/0.464396/-1.179968/2.981542pp, improved/flat/worsened=55.084746%/0.847458%/44.067797%.
+- FASTCORE_V1_W30_PREWINNER_ARMED_V00 / NEVER_WINNER_FIRST_ARM: n=179, value n=179, mean/median/p25/p75=1.193324/0.728863/-0.839956/3.300637pp, improved/flat/worsened=59.776536%/4.469274%/35.754190%.
+- FASTCORE_V1_W30_PREWINNER_ARMED_V00 / LOSS_GUARD_RECOVERY_FIRST_ARM: n=109, value n=109, mean/median/p25/p75=1.06248/0.438596/-1.180556/2.987013pp, improved/flat/worsened=55.045872%/0.917431%/44.036697%.
+- FASTCORE_V1_W30_PREWINNER_ARMED_V00 / LOSS_GUARD_NEVER_WINNER_FIRST_ARM: n=164, value n=164, mean/median/p25/p75=1.213548/0.779775/-0.782404/3.309031pp, improved/flat/worsened=60.975610%/4.878049%/34.146341%.
+
+## Q4–Q8. Additional deterioration, long horizon, and weak-only subset
+
+- short additional CLOSE deterioration / FASTCORE_V1_W25_PREWINNER_ARMED_V00 / RECOVERY_FIRST_ARM: n=152/152, mean/median/p25/p75=1.757207/0.544787/0.0/2.693452pp.
+- short additional CLOSE deterioration / FASTCORE_V1_W25_PREWINNER_ARMED_V00 / NEVER_WINNER_FIRST_ARM: n=198/199, mean/median/p25/p75=1.728234/0.540396/0.0/2.946019pp.
+- short additional CLOSE deterioration / FASTCORE_V1_W25_PREWINNER_ARMED_V00 / LOSS_GUARD_RECOVERY_FIRST_ARM: n=141/141, mean/median/p25/p75=1.707654/0.346421/0.0/2.55201pp.
+- short additional CLOSE deterioration / FASTCORE_V1_W25_PREWINNER_ARMED_V00 / LOSS_GUARD_NEVER_WINNER_FIRST_ARM: n=183/184, mean/median/p25/p75=1.717392/0.454545/0.0/2.929565pp.
+- short additional CLOSE deterioration / FASTCORE_V1_W30_PREWINNER_ARMED_V00 / RECOVERY_FIRST_ARM: n=118/118, mean/median/p25/p75=1.451956/0.702163/0.0/2.306548pp.
+- short additional CLOSE deterioration / FASTCORE_V1_W30_PREWINNER_ARMED_V00 / NEVER_WINNER_FIRST_ARM: n=179/179, mean/median/p25/p75=1.281022/0.043478/0.0/2.10262pp.
+- short additional CLOSE deterioration / FASTCORE_V1_W30_PREWINNER_ARMED_V00 / LOSS_GUARD_RECOVERY_FIRST_ARM: n=109/109, mean/median/p25/p75=1.381218/0.595947/0.0/2.303114pp.
+- short additional CLOSE deterioration / FASTCORE_V1_W30_PREWINNER_ARMED_V00 / LOSS_GUARD_NEVER_WINNER_FIRST_ARM: n=164/164, mean/median/p25/p75=1.236287/0.0/0.0/1.770643pp.
+- long-horizon additional CLOSE deterioration / FASTCORE_V1_W25_PREWINNER_ARMED_V00 / RECOVERY_FIRST_ARM: n=151/152, mean/median/p25/p75=14.445447/11.625616/4.347041/21.445615pp.
+- long-horizon additional CLOSE deterioration / FASTCORE_V1_W25_PREWINNER_ARMED_V00 / NEVER_WINNER_FIRST_ARM: n=199/199, mean/median/p25/p75=25.912306/24.924698/11.541604/37.25983pp.
+- long-horizon additional CLOSE deterioration / FASTCORE_V1_W25_PREWINNER_ARMED_V00 / LOSS_GUARD_RECOVERY_FIRST_ARM: n=141/141, mean/median/p25/p75=14.05302/11.506173/4.157044/21.331195pp.
+- long-horizon additional CLOSE deterioration / FASTCORE_V1_W25_PREWINNER_ARMED_V00 / LOSS_GUARD_NEVER_WINNER_FIRST_ARM: n=184/184, mean/median/p25/p75=25.504029/24.626306/10.772313/36.160624pp.
+- long-horizon additional CLOSE deterioration / FASTCORE_V1_W30_PREWINNER_ARMED_V00 / RECOVERY_FIRST_ARM: n=117/118, mean/median/p25/p75=13.366843/10.933334/5.231689/19.786096pp.
+- long-horizon additional CLOSE deterioration / FASTCORE_V1_W30_PREWINNER_ARMED_V00 / NEVER_WINNER_FIRST_ARM: n=179/179, mean/median/p25/p75=23.857552/22.534435/11.388825/33.575021pp.
+- long-horizon additional CLOSE deterioration / FASTCORE_V1_W30_PREWINNER_ARMED_V00 / LOSS_GUARD_RECOVERY_FIRST_ARM: n=109/109, mean/median/p25/p75=12.954438/10.155083/4.945055/19.786096pp.
+- long-horizon additional CLOSE deterioration / FASTCORE_V1_W30_PREWINNER_ARMED_V00 / LOSS_GUARD_NEVER_WINNER_FIRST_ARM: n=164/164, mean/median/p25/p75=23.598198/22.406664/11.12969/32.660684pp.
+- weak-only FASTCORE_V1_W25_PREWINNER_ARMED_V00 / NEXT_FAST_WEAK_RECOVERY: n=152, delta mean/median=0.885996/0.579396pp, improved/worsened=57.236842%/42.763158%.
+- weak-only FASTCORE_V1_W25_PREWINNER_ARMED_V00 / NEXT_FAST_WEAK_NEVER_WINNER: n=198, delta mean/median=0.859967/0.639751pp, improved/worsened=55.555556%/43.939394%.
+- weak-only FASTCORE_V1_W30_PREWINNER_ARMED_V00 / NEXT_FAST_WEAK_RECOVERY: n=118, delta mean/median=1.005273/0.464396pp, improved/worsened=55.084746%/44.067797%.
+- weak-only FASTCORE_V1_W30_PREWINNER_ARMED_V00 / NEXT_FAST_WEAK_NEVER_WINNER: n=179, delta mean/median=1.193324/0.728863pp, improved/worsened=59.776536%/35.754190%.
+
+UNAVAILABLE은 usable next FAST에서 제외하고 count만 저장했다. next usable FAST가 없는 trade는 삭제하지 않고 missing count/rate로 남겼다.
+
+## Q9. Next usable FAST state
+
+- FASTCORE_V1_W25_PREWINNER_ARMED_V00 / RECOVERY_FIRST_ARM / WATCH: 88 (57.894737%).
+- FASTCORE_V1_W25_PREWINNER_ARMED_V00 / RECOVERY_FIRST_ARM / SETUP: 64 (42.105263%).
+- FASTCORE_V1_W25_PREWINNER_ARMED_V00 / NEVER_WINNER_FIRST_ARM / WATCH: 128 (64.321608%).
+- FASTCORE_V1_W25_PREWINNER_ARMED_V00 / NEVER_WINNER_FIRST_ARM / SETUP: 70 (35.175879%).
+- FASTCORE_V1_W25_PREWINNER_ARMED_V00 / NEVER_WINNER_FIRST_ARM / NO_NEXT_USABLE_FAST: 1 (0.502513%).
+- FASTCORE_V1_W30_PREWINNER_ARMED_V00 / RECOVERY_FIRST_ARM / WATCH: 89 (75.423729%).
+- FASTCORE_V1_W30_PREWINNER_ARMED_V00 / RECOVERY_FIRST_ARM / SETUP: 29 (24.576271%).
+- FASTCORE_V1_W30_PREWINNER_ARMED_V00 / NEVER_WINNER_FIRST_ARM / WATCH: 129 (72.067039%).
+- FASTCORE_V1_W30_PREWINNER_ARMED_V00 / NEVER_WINNER_FIRST_ARM / SETUP: 50 (27.932961%).
+
+## Q10. Secondary all observed ARM cycles
+
+secondary cycle rows: 1012. 이 결과는 동일 trade의 re-arm이 반복 포함될 수 있어 `SECONDARY / TRADE-WEIGHTED BIAS POSSIBLE`로만 해석한다.
+
+## 경계와 재현성
+
+RECOVERY horizon은 first MFE +20% 도달일 직전까지, NEVER_WINNER horizon은 identity lifecycle ∩ SUPPORT_END까지다. 기존 W25/W30 hypothetical exit로 underlying path를 truncate하지 않았다. 기존 artifact는 read-only이며 신규 산출물은 이 진단의 8개 파일이다.
+
+DESCRIPTIVE ONLY / NOT A STRATEGY PARAMETER: bins are fixed-width descriptive bins and do not select a rule.
+
+Network requests: 0. Production untouched. No new backtest, Julia, portfolio, daily FAST, optimization, or threshold selection.

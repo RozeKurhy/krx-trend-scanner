@@ -1,0 +1,78 @@
+{
+  "work_id": "FASTCORE_V1_POST_ARM_PRICE_PATH_DIAGNOSTIC_V00",
+  "status": "COMPLETE",
+  "evaluation_start": "2021-04-01",
+  "signal_cutoff": "2026-08-14",
+  "execution_support_end": "2026-08-21",
+  "final_valuation": "2026-08-21 CLOSE",
+  "primary_analysis": "FIRST_ARM_ONLY",
+  "secondary_analysis": "ALL_OBSERVED_ARM_CYCLES",
+  "secondary_warning": "SECONDARY / TRADE-WEIGHTED BIAS POSSIBLE",
+  "first_arm_counts": {
+    "FASTCORE_V1_W25_PREWINNER_ARMED_V00": 351,
+    "FASTCORE_V1_W30_PREWINNER_ARMED_V00": 297
+  },
+  "first_arm_recovery_counts": {
+    "FASTCORE_V1_W25_PREWINNER_ARMED_V00": {
+      "RECOVERY": 152,
+      "NEVER_WINNER": 199
+    },
+    "FASTCORE_V1_W30_PREWINNER_ARMED_V00": {
+      "RECOVERY": 118,
+      "NEVER_WINNER": 179
+    }
+  },
+  "state_domain": {
+    "observed_states": [
+      "EXTENDED",
+      "SETUP",
+      "TREND",
+      "TRIGGER",
+      "UNAVAILABLE",
+      "WATCH"
+    ],
+    "observed_counts": {
+      "EXTENDED": 13858,
+      "SETUP": 61410,
+      "TREND": 11190,
+      "TRIGGER": 12637,
+      "UNAVAILABLE": 1348,
+      "WATCH": 41247
+    },
+    "unknown_states": [],
+    "weekly_evaluation_error_count": 0
+  },
+  "state_classification": {
+    "weak": [
+      "SETUP",
+      "WATCH"
+    ],
+    "strong_recovered": [
+      "EXTENDED",
+      "TREND",
+      "TRIGGER"
+    ],
+    "unavailable": [
+      "UNAVAILABLE"
+    ]
+  },
+  "next_usable_fast_missing_count": 1,
+  "next_usable_fast_missing_rate_pct": 0.154321,
+  "unavailable_before_next_usable_total": 0,
+  "unavailable_before_next_usable_max": 0,
+  "secondary_cycle_rows": 1012,
+  "retrospective_labels_analysis_only": true,
+  "new_backtest": false,
+  "new_exit_simulation": false,
+  "threshold_selected": false,
+  "daily_fast_created": false,
+  "network_requests": 0,
+  "production_strategy_modified": false,
+  "existing_artifacts_modified": false,
+  "source_artifacts": {
+    "matched_v0_vs_v1w25_vs_v1w30": "artifacts/backtests/fastcore_v1_prewinner_failure_armed_ab_v00/matched_v0_vs_v1w25_vs_v1w30.csv",
+    "failure_armed_event_log": "artifacts/backtests/fastcore_v1_prewinner_failure_armed_ab_v00/failure_armed_event_log.csv",
+    "failure_armed_summary": "artifacts/backtests/fastcore_v1_prewinner_failure_armed_ab_v00/fastcore_v1_prewinner_failure_armed_ab_v00_summary.json"
+  },
+  "separation_conclusion": "POST_ARM_DETERIORATION_SHOWS_WEAK_SEPARATION"
+}
