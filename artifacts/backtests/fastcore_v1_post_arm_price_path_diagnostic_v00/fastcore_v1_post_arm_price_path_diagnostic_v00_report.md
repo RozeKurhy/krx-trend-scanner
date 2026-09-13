@@ -1,10 +1,10 @@
 # FASTCORE V1 POST-ARM PRICE PATH DIAGNOSTIC V00 결과 보고서
 
-FIX ID: `FASTCORE_V1_POST_ARM_PRICE_PATH_DIAGNOSTIC_V00_FIX01`.
+FIX ID: `FASTCORE_V1_POST_ARM_PRICE_PATH_DIAGNOSTIC_V00_FIX02`.
 
 ## 결론
 
-이번 작업은 새 backtest나 exit rule이 아니다. 기존 W25/W30에서 실제 발생한 FIRST ARM 이후 underlying identity-scoped V0 price path의 분포만 진단했다. `SECONDARY / TRADE-WEIGHTED BIAS POSSIBLE`인 전체 cycle 분석은 보조 결과이며, primary 결론은 trade당 first ARM 하나만 사용한다.
+이번 작업은 새 backtest나 exit rule이 아니다. 기존 W25/W30에서 실제 발생한 FIRST ARM 이후 underlying identity-scoped V0 price path의 분포만 진단했다. `SECONDARY / TRADE-WEIGHTED BIAS POSSIBLE`인 전체 cycle 분석은 보조 결과이며, primary 결론은 trade당 first ARM 하나만 사용한다. FIX02는 `--run` 재생성 시에도 FIX01 completed summary contract가 유지되도록 하는 재현성/계약 보정이다.
 
 SHORT horizon 결론: `POST_ARM_SHORT_HORIZON_SHOWS_NO_USEFUL_SEPARATION`.
 LONG horizon 결론: `POST_ARM_LONG_HORIZON_SHOWS_RETROSPECTIVE_SEPARATION`.

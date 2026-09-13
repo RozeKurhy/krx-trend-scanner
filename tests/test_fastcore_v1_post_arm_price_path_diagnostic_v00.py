@@ -148,6 +148,39 @@ def test_first_mfe20_uses_raw_boundary_not_display_rounding() -> None:
     assert "round(" not in inspect.getsource(diagnostic._first_mfe20_date)
 
 
+def test_full_run_parity_summary_is_derived_by_helper() -> None:
+    daily = _daily([
+        ("2021-01-04", 100, 100, 100, 100),
+        ("2021-01-05", 100, 120, 100, 100),
+    ])
+    matched = pd.DataFrame([{
+        "variant": "FASTCORE_V1_W25_PREWINNER_ARMED_V00",
+        "control_trade_id": "TEST_CONTROL_01",
+        "ticker": 1,
+        "isu_cd": "KR7000000001",
+        "market": "KOSPI",
+        "identity_effective_from": "2021-01-04",
+        "identity_effective_to": "2021-01-20",
+        "entry_execution_date": "2021-01-04",
+        "entry_open": 100.0,
+    }])
+    primary = pd.DataFrame([{
+        "variant": "FASTCORE_V1_W25_PREWINNER_ARMED_V00",
+        "control_trade_id": "TEST_CONTROL_01",
+        "first_mfe20_date": "2021-01-05",
+    }])
+    parity = diagnostic._mfe20_boundary_parity(primary, matched, {"000001": daily})
+    assert parity == {
+        "first_mfe20_boundary_parity_compared_count": 1,
+        "first_mfe20_boundary_parity_match_count": 1,
+        "first_mfe20_boundary_parity_mismatch_count": 0,
+        "first_mfe20_boundary_parity_mismatches": [],
+    }
+    source = inspect.getsource(diagnostic.run_analysis)
+    assert "summary.update(parity)" in source
+    assert "first_mfe20_boundary_parity_compared_count\": None" not in source
+
+
 def test_never_winner_uses_identity_end_and_does_not_truncate_after_virtual_exit() -> None:
     result = _diagnose(
         [
@@ -188,6 +221,7 @@ def test_primary_artifact_contract_if_present() -> None:
     assert {path.name for path in diagnostic.OUT_DIR.iterdir()} == expected
     summary = json.loads(diagnostic.SUMMARY_PATH.read_text(encoding="utf-8"))
     assert summary["status"] == "COMPLETE"
+    assert summary["fix_id"] == "FASTCORE_V1_POST_ARM_PRICE_PATH_DIAGNOSTIC_V00_FIX02"
     assert summary["first_arm_counts"] == diagnostic.EXPECTED_FIRST_ARM_COUNTS
     assert summary["state_domain"]["observed_counts"] == diagnostic.EXPECTED_STATE_COUNTS
     assert summary["state_domain"]["weekly_evaluation_error_count"] == 0

@@ -32,7 +32,7 @@ from trend_scanner.data.repository_v2_loader import RepositoryV2DailyLoader, bui
 
 
 WORK_ID = "FASTCORE_V1_POST_ARM_PRICE_PATH_DIAGNOSTIC_V00"
-FIX_ID = "FASTCORE_V1_POST_ARM_PRICE_PATH_DIAGNOSTIC_V00_FIX01"
+FIX_ID = "FASTCORE_V1_POST_ARM_PRICE_PATH_DIAGNOSTIC_V00_FIX02"
 SHORT_HORIZON_CONCLUSION = "POST_ARM_SHORT_HORIZON_SHOWS_NO_USEFUL_SEPARATION"
 LONG_HORIZON_CONCLUSION = "POST_ARM_LONG_HORIZON_SHOWS_RETROSPECTIVE_SEPARATION"
 OVERALL_CONCLUSION = "POST_ARM_IMMEDIATE_DETERIORATION_NOT_USEFUL_FOR_FAILURE_CONFIRM"
@@ -185,6 +185,46 @@ def _first_mfe20_date(daily: pd.DataFrame, entry_date: pd.Timestamp, entry_open:
         if running_mfe >= 20.0:
             return _date(date)
     return None
+
+
+def _mfe20_boundary_parity(
+    primary: pd.DataFrame, matched: pd.DataFrame,
+    daily_by_ticker: Mapping[str, pd.DataFrame],
+) -> dict[str, Any]:
+    """Independently recompute raw MFE +20 dates for a completed primary set."""
+    observed = primary[["variant", "control_trade_id", "first_mfe20_date"]].copy()
+    joined = matched.merge(
+        observed,
+        on=["variant", "control_trade_id"],
+        how="inner",
+        validate="one_to_one",
+        suffixes=("", "_observed"),
+    )
+    if len(joined) != len(primary):
+        raise AssertionError("primary rows do not join one-to-one for MFE20 boundary parity")
+    mismatches: list[dict[str, Any]] = []
+    for record in joined.to_dict("records"):
+        ticker = str(record["ticker"]).zfill(6)
+        daily = clip_to_identity_lifecycle(daily_by_ticker[ticker], v0_ab._lifecycle(record))
+        if daily is None or daily.empty:
+            raise RuntimeError(f"empty identity-scoped daily path for {record['control_trade_id']}")
+        observed_date = _date(record["first_mfe20_date"]) if pd.notna(record["first_mfe20_date"]) else None
+        raw_date = _first_mfe20_date(
+            daily, _date(record["entry_execution_date"]), float(record["entry_open"])
+        )
+        if observed_date != raw_date:
+            mismatches.append({
+                "control_trade_id": str(record["control_trade_id"]),
+                "variant": str(record["variant"]),
+                "observed_date": _text(observed_date),
+                "raw_v0_date": _text(raw_date),
+            })
+    return {
+        "first_mfe20_boundary_parity_compared_count": len(joined),
+        "first_mfe20_boundary_parity_match_count": len(joined) - len(mismatches),
+        "first_mfe20_boundary_parity_mismatch_count": len(mismatches),
+        "first_mfe20_boundary_parity_mismatches": mismatches,
+    }
 
 
 def _long_horizon(
@@ -758,6 +798,7 @@ def run_analysis() -> dict[str, Any]:
     state_dist = _state_rows(primary)
     summary: dict[str, Any] = {
         "work_id": WORK_ID,
+        "fix_id": FIX_ID,
         "status": "COMPLETE",
         "evaluation_start": "2021-04-01",
         "signal_cutoff": "2026-08-14",
@@ -787,16 +828,20 @@ def run_analysis() -> dict[str, Any]:
         "long_horizon_separation_conclusion": LONG_HORIZON_CONCLUSION,
         "separation_conclusion": OVERALL_CONCLUSION,
         "first_mfe20_boundary_semantics": RAW_MFE20_SEMANTICS,
-        "first_mfe20_boundary_parity_compared_count": None,
-        "first_mfe20_boundary_parity_match_count": None,
-        "first_mfe20_boundary_parity_mismatch_count": None,
-        "first_mfe20_boundary_parity_mismatches": [],
         "source_artifacts": {
             "matched_v0_vs_v1w25_vs_v1w30": str(ARMED_MATCHED_PATH.relative_to(ROOT)),
             "failure_armed_event_log": str(ARMED_EVENT_PATH.relative_to(ROOT)),
             "failure_armed_summary": str(ARMED_SUMMARY_PATH.relative_to(ROOT)),
         },
     }
+    parity = _mfe20_boundary_parity(primary, matched, daily_by_ticker)
+    expected_primary_count = sum(EXPECTED_FIRST_ARM_COUNTS.values())
+    if (
+        parity["first_mfe20_boundary_parity_compared_count"] != expected_primary_count
+        or parity["first_mfe20_boundary_parity_mismatch_count"] != 0
+    ):
+        raise RuntimeError(f"raw MFE20 boundary parity failed during full run: {parity}")
+    summary.update(parity)
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     primary.to_csv(TRADE_PATH, index=False, lineterminator="\n")
     next_dist.to_csv(NEXT_DIST_PATH, index=False, lineterminator="\n")
