@@ -1,0 +1,370 @@
+{
+  "work_id": "FASTCORE_V1_POST_ARM_WEEKLY_PERSISTENCE_DIAGNOSTIC_V00",
+  "status": "COMPLETE",
+  "evaluation_start": "2021-04-01",
+  "signal_cutoff": "2026-08-14",
+  "execution_support_end": "2026-08-21",
+  "final_valuation": "2026-08-21 CLOSE",
+  "primary_analysis": "FIRST_ARM_ONLY",
+  "primary_trade_count": 648,
+  "variant_counts": {
+    "FASTCORE_V1_W25_PREWINNER_ARMED_V00": 351,
+    "FASTCORE_V1_W30_PREWINNER_ARMED_V00": 297
+  },
+  "recovery_counts": {
+    "FASTCORE_V1_W25_PREWINNER_ARMED_V00": {
+      "NEVER_WINNER": 199,
+      "RECOVERY": 152
+    },
+    "FASTCORE_V1_W30_PREWINNER_ARMED_V00": {
+      "NEVER_WINNER": 179,
+      "RECOVERY": 118
+    }
+  },
+  "checkpoints": [
+    1,
+    2,
+    3,
+    4,
+    6,
+    8
+  ],
+  "weekly_observation_semantics": "COMPLETED_WEEKLY_FAST_INCLUDING_UNAVAILABLE",
+  "prewinner_censoring": true,
+  "first_mfe20_boundary_semantics": "RAW_RUNNING_MFE_GE_20",
+  "first_arm_source_row_duplication": 0,
+  "unknown_fast_state_count": 0,
+  "weekly_evaluation_error_count": 0,
+  "network_requests": 0,
+  "threshold_selected": false,
+  "strategy_rule_selected": false,
+  "new_backtest": false,
+  "new_exit_simulation": false,
+  "production_strategy_modified": false,
+  "source_artifacts_read_only": true,
+  "checkpoint_counts": [
+    {
+      "variant": "FASTCORE_V1_W25_PREWINNER_ARMED_V00",
+      "checkpoint": "WEEK_1",
+      "checkpoint_index": 1,
+      "recovery_class": "NEVER_WINNER",
+      "total_count": 199,
+      "eligible_count": 198,
+      "censored_count": 1,
+      "censor_reason_counts": {
+        "NONE": 198,
+        "NO_COMPLETED_WEEKLY_OBSERVATION": 1
+      }
+    },
+    {
+      "variant": "FASTCORE_V1_W25_PREWINNER_ARMED_V00",
+      "checkpoint": "WEEK_1",
+      "checkpoint_index": 1,
+      "recovery_class": "RECOVERY",
+      "total_count": 152,
+      "eligible_count": 151,
+      "censored_count": 1,
+      "censor_reason_counts": {
+        "NONE": 151,
+        "RECOVERY_ALREADY_REACHED_MFE20": 1
+      }
+    },
+    {
+      "variant": "FASTCORE_V1_W25_PREWINNER_ARMED_V00",
+      "checkpoint": "WEEK_2",
+      "checkpoint_index": 2,
+      "recovery_class": "NEVER_WINNER",
+      "total_count": 199,
+      "eligible_count": 198,
+      "censored_count": 1,
+      "censor_reason_counts": {
+        "NONE": 198,
+        "NO_COMPLETED_WEEKLY_OBSERVATION": 1
+      }
+    },
+    {
+      "variant": "FASTCORE_V1_W25_PREWINNER_ARMED_V00",
+      "checkpoint": "WEEK_2",
+      "checkpoint_index": 2,
+      "recovery_class": "RECOVERY",
+      "total_count": 152,
+      "eligible_count": 151,
+      "censored_count": 1,
+      "censor_reason_counts": {
+        "NONE": 151,
+        "RECOVERY_ALREADY_REACHED_MFE20": 1
+      }
+    },
+    {
+      "variant": "FASTCORE_V1_W25_PREWINNER_ARMED_V00",
+      "checkpoint": "WEEK_3",
+      "checkpoint_index": 3,
+      "recovery_class": "NEVER_WINNER",
+      "total_count": 199,
+      "eligible_count": 198,
+      "censored_count": 1,
+      "censor_reason_counts": {
+        "NONE": 198,
+        "NO_COMPLETED_WEEKLY_OBSERVATION": 1
+      }
+    },
+    {
+      "variant": "FASTCORE_V1_W25_PREWINNER_ARMED_V00",
+      "checkpoint": "WEEK_3",
+      "checkpoint_index": 3,
+      "recovery_class": "RECOVERY",
+      "total_count": 152,
+      "eligible_count": 151,
+      "censored_count": 1,
+      "censor_reason_counts": {
+        "NONE": 151,
+        "RECOVERY_ALREADY_REACHED_MFE20": 1
+      }
+    },
+    {
+      "variant": "FASTCORE_V1_W25_PREWINNER_ARMED_V00",
+      "checkpoint": "WEEK_4",
+      "checkpoint_index": 4,
+      "recovery_class": "NEVER_WINNER",
+      "total_count": 199,
+      "eligible_count": 196,
+      "censored_count": 3,
+      "censor_reason_counts": {
+        "NONE": 196,
+        "NO_COMPLETED_WEEKLY_OBSERVATION": 3
+      }
+    },
+    {
+      "variant": "FASTCORE_V1_W25_PREWINNER_ARMED_V00",
+      "checkpoint": "WEEK_4",
+      "checkpoint_index": 4,
+      "recovery_class": "RECOVERY",
+      "total_count": 152,
+      "eligible_count": 151,
+      "censored_count": 1,
+      "censor_reason_counts": {
+        "NONE": 151,
+        "RECOVERY_ALREADY_REACHED_MFE20": 1
+      }
+    },
+    {
+      "variant": "FASTCORE_V1_W25_PREWINNER_ARMED_V00",
+      "checkpoint": "WEEK_6",
+      "checkpoint_index": 6,
+      "recovery_class": "NEVER_WINNER",
+      "total_count": 199,
+      "eligible_count": 195,
+      "censored_count": 4,
+      "censor_reason_counts": {
+        "NONE": 195,
+        "NO_COMPLETED_WEEKLY_OBSERVATION": 4
+      }
+    },
+    {
+      "variant": "FASTCORE_V1_W25_PREWINNER_ARMED_V00",
+      "checkpoint": "WEEK_6",
+      "checkpoint_index": 6,
+      "recovery_class": "RECOVERY",
+      "total_count": 152,
+      "eligible_count": 148,
+      "censored_count": 4,
+      "censor_reason_counts": {
+        "NONE": 148,
+        "RECOVERY_ALREADY_REACHED_MFE20": 4
+      }
+    },
+    {
+      "variant": "FASTCORE_V1_W25_PREWINNER_ARMED_V00",
+      "checkpoint": "WEEK_8",
+      "checkpoint_index": 8,
+      "recovery_class": "NEVER_WINNER",
+      "total_count": 199,
+      "eligible_count": 179,
+      "censored_count": 20,
+      "censor_reason_counts": {
+        "NONE": 179,
+        "NO_COMPLETED_WEEKLY_OBSERVATION": 20
+      }
+    },
+    {
+      "variant": "FASTCORE_V1_W25_PREWINNER_ARMED_V00",
+      "checkpoint": "WEEK_8",
+      "checkpoint_index": 8,
+      "recovery_class": "RECOVERY",
+      "total_count": 152,
+      "eligible_count": 145,
+      "censored_count": 7,
+      "censor_reason_counts": {
+        "NONE": 145,
+        "RECOVERY_ALREADY_REACHED_MFE20": 7
+      }
+    },
+    {
+      "variant": "FASTCORE_V1_W30_PREWINNER_ARMED_V00",
+      "checkpoint": "WEEK_1",
+      "checkpoint_index": 1,
+      "recovery_class": "NEVER_WINNER",
+      "total_count": 179,
+      "eligible_count": 179,
+      "censored_count": 0,
+      "censor_reason_counts": {
+        "NONE": 179
+      }
+    },
+    {
+      "variant": "FASTCORE_V1_W30_PREWINNER_ARMED_V00",
+      "checkpoint": "WEEK_1",
+      "checkpoint_index": 1,
+      "recovery_class": "RECOVERY",
+      "total_count": 118,
+      "eligible_count": 117,
+      "censored_count": 1,
+      "censor_reason_counts": {
+        "NONE": 117,
+        "RECOVERY_ALREADY_REACHED_MFE20": 1
+      }
+    },
+    {
+      "variant": "FASTCORE_V1_W30_PREWINNER_ARMED_V00",
+      "checkpoint": "WEEK_2",
+      "checkpoint_index": 2,
+      "recovery_class": "NEVER_WINNER",
+      "total_count": 179,
+      "eligible_count": 179,
+      "censored_count": 0,
+      "censor_reason_counts": {
+        "NONE": 179
+      }
+    },
+    {
+      "variant": "FASTCORE_V1_W30_PREWINNER_ARMED_V00",
+      "checkpoint": "WEEK_2",
+      "checkpoint_index": 2,
+      "recovery_class": "RECOVERY",
+      "total_count": 118,
+      "eligible_count": 117,
+      "censored_count": 1,
+      "censor_reason_counts": {
+        "NONE": 117,
+        "RECOVERY_ALREADY_REACHED_MFE20": 1
+      }
+    },
+    {
+      "variant": "FASTCORE_V1_W30_PREWINNER_ARMED_V00",
+      "checkpoint": "WEEK_3",
+      "checkpoint_index": 3,
+      "recovery_class": "NEVER_WINNER",
+      "total_count": 179,
+      "eligible_count": 179,
+      "censored_count": 0,
+      "censor_reason_counts": {
+        "NONE": 179
+      }
+    },
+    {
+      "variant": "FASTCORE_V1_W30_PREWINNER_ARMED_V00",
+      "checkpoint": "WEEK_3",
+      "checkpoint_index": 3,
+      "recovery_class": "RECOVERY",
+      "total_count": 118,
+      "eligible_count": 117,
+      "censored_count": 1,
+      "censor_reason_counts": {
+        "NONE": 117,
+        "RECOVERY_ALREADY_REACHED_MFE20": 1
+      }
+    },
+    {
+      "variant": "FASTCORE_V1_W30_PREWINNER_ARMED_V00",
+      "checkpoint": "WEEK_4",
+      "checkpoint_index": 4,
+      "recovery_class": "NEVER_WINNER",
+      "total_count": 179,
+      "eligible_count": 175,
+      "censored_count": 4,
+      "censor_reason_counts": {
+        "NONE": 175,
+        "NO_COMPLETED_WEEKLY_OBSERVATION": 4
+      }
+    },
+    {
+      "variant": "FASTCORE_V1_W30_PREWINNER_ARMED_V00",
+      "checkpoint": "WEEK_4",
+      "checkpoint_index": 4,
+      "recovery_class": "RECOVERY",
+      "total_count": 118,
+      "eligible_count": 117,
+      "censored_count": 1,
+      "censor_reason_counts": {
+        "NONE": 117,
+        "RECOVERY_ALREADY_REACHED_MFE20": 1
+      }
+    },
+    {
+      "variant": "FASTCORE_V1_W30_PREWINNER_ARMED_V00",
+      "checkpoint": "WEEK_6",
+      "checkpoint_index": 6,
+      "recovery_class": "NEVER_WINNER",
+      "total_count": 179,
+      "eligible_count": 170,
+      "censored_count": 9,
+      "censor_reason_counts": {
+        "NONE": 170,
+        "NO_COMPLETED_WEEKLY_OBSERVATION": 9
+      }
+    },
+    {
+      "variant": "FASTCORE_V1_W30_PREWINNER_ARMED_V00",
+      "checkpoint": "WEEK_6",
+      "checkpoint_index": 6,
+      "recovery_class": "RECOVERY",
+      "total_count": 118,
+      "eligible_count": 116,
+      "censored_count": 2,
+      "censor_reason_counts": {
+        "NONE": 116,
+        "RECOVERY_ALREADY_REACHED_MFE20": 2
+      }
+    },
+    {
+      "variant": "FASTCORE_V1_W30_PREWINNER_ARMED_V00",
+      "checkpoint": "WEEK_8",
+      "checkpoint_index": 8,
+      "recovery_class": "NEVER_WINNER",
+      "total_count": 179,
+      "eligible_count": 160,
+      "censored_count": 19,
+      "censor_reason_counts": {
+        "NONE": 160,
+        "NO_COMPLETED_WEEKLY_OBSERVATION": 19
+      }
+    },
+    {
+      "variant": "FASTCORE_V1_W30_PREWINNER_ARMED_V00",
+      "checkpoint": "WEEK_8",
+      "checkpoint_index": 8,
+      "recovery_class": "RECOVERY",
+      "total_count": 118,
+      "eligible_count": 113,
+      "censored_count": 5,
+      "censor_reason_counts": {
+        "NONE": 113,
+        "RECOVERY_ALREADY_REACHED_MFE20": 5
+      }
+    }
+  ],
+  "first_mfe20_boundary_parity_compared_count": 648,
+  "first_mfe20_boundary_parity_match_count": 648,
+  "first_mfe20_boundary_parity_mismatch_count": 0,
+  "first_mfe20_boundary_parity_mismatches": [],
+  "earliest_descriptive_separation": "WEEK_4: both W25 and W30 show a directional price split, with NEVER_WINNER weaker on current CLOSE and worse on running-min CLOSE deterioration; WEEK_1 overlaps and WEEK_2–3 are not directionally consistent.",
+  "separation_persistence": "The price direction remains visible through WEEK_6 in both variants, while WEEK_8 still shows a price direction but the FAST split is not fully stable.",
+  "w25_w30_direction_agreement": "Price direction agrees from WEEK_4 through WEEK_6; FAST Weak rates are near-saturated and do not provide a stable cohort split. No variant winner is selected.",
+  "persistence_diagnostic_conclusion": "WEEK_4 is the earliest descriptive price separation and it persists through WEEK_6 across W25/W30, but distributions overlap materially and FAST persistence is near-saturated; WEEK_8 is less consistent. Persistence remains a candidate horizon for separate research, not an execution rule.",
+  "source_artifacts": {
+    "matched_v0_vs_v1w25_vs_v1w30": "artifacts/backtests/fastcore_v1_prewinner_failure_armed_ab_v00/matched_v0_vs_v1w25_vs_v1w30.csv",
+    "failure_armed_event_log": "artifacts/backtests/fastcore_v1_prewinner_failure_armed_ab_v00/failure_armed_event_log.csv",
+    "completed_post_arm_primary": "artifacts/backtests/fastcore_v1_post_arm_price_path_diagnostic_v00/first_arm_trade_diagnostics.csv",
+    "failure_armed_summary": "artifacts/backtests/fastcore_v1_prewinner_failure_armed_ab_v00/fastcore_v1_prewinner_failure_armed_ab_v00_summary.json"
+  }
+}
