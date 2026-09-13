@@ -116,6 +116,22 @@ DEFAULT_FULL_POPULATION_CLOSURE_RESULTS_PATH = Path(
     "artifacts/data/end_to_end_data_parity/v01/adjusted_price_store_full_population_closure/"
     "authority_cutover_fix02/production_zero_call_run/full_population_results.csv"
 )
+# The row-level closure CSV is intentionally excluded from the checked-in artifact bundle.  The
+# current branch retains its production-consumable aggregate closure and effective population
+# authority, which are sufficient to reuse a frozen, fully closed population without importing an
+# old Git object or inventing a per-ticker tolerance rule.
+DEFAULT_FULL_POPULATION_CLOSURE_SUMMARY_PATH = Path(
+    "artifacts/data/end_to_end_data_parity/v01/adjusted_price_store_full_population_closure/"
+    "authority_cutover_fix02/production_zero_call_run/full_population_summary.json"
+)
+DEFAULT_EFFECTIVE_POPULATION_PATH = Path(
+    "artifacts/data/end_to_end_data_parity/v01/survivorship_safe_denominator_freeze/"
+    "v01_spac_corrected_effective_authority/effective_historical_common_population.json"
+)
+DEFAULT_EMPTY_TICKER_INVESTIGATION_PATH = Path(
+    "artifacts/data/end_to_end_data_parity/v01/adjusted_price_store_full_population/v01/"
+    "empty_ticker_investigation_summary.json"
+)
 
 # The four legs a target boundary must clear before it can be certified.
 REQUIRED_LEGS = ("common_raw", "common_adjusted", "etf_raw", "etf_adjusted")
@@ -423,6 +439,90 @@ def _load_closure_certified_results(path: Path | None) -> dict[str, dict[str, An
     return {str(row["ticker"]): row.to_dict() for _, row in frame.iterrows()}
 
 
+def _load_effective_population_tickers(path: Path | None) -> set[str]:
+    """Load the current branch's effective population membership, if available."""
+
+    if path is None or not Path(path).exists():
+        return set()
+    payload = _read_json(Path(path))
+    records = payload.get("records", []) if isinstance(payload, Mapping) else []
+    if not isinstance(records, Sequence) or isinstance(records, (str, bytes)):
+        return set()
+    return {
+        str(record["ticker"])
+        for record in records
+        if isinstance(record, Mapping)
+        and record.get("ticker")
+        and record.get("included_in_population") is True
+    }
+
+
+def _load_zero_store_tickers(path: Path | None, *, fallback_path: Path | None = None) -> set[str]:
+    """Load either the explicit zero-store contract or the current empty-ticker authority shape."""
+
+    candidates = [Path(path)] if path is not None and Path(path).exists() else []
+    if not candidates and fallback_path is not None and Path(fallback_path).exists():
+        candidates.append(Path(fallback_path))
+    for candidate in candidates:
+        payload = _read_json(candidate)
+        tickers = set(payload.get("tickers", [])) if isinstance(payload, Mapping) else set()
+        empty_results = payload.get("empty_ticker_results", {}) if isinstance(payload, Mapping) else {}
+        if isinstance(empty_results, Mapping):
+            tickers.update(str(ticker) for ticker in empty_results)
+        if tickers:
+            return {str(ticker).zfill(6) for ticker in tickers}
+    return set()
+
+
+def _load_aggregate_closure_tickers(
+    summary_path: Path | None,
+    effective_population_path: Path | None,
+    *,
+    candidate_boundary: str,
+) -> set[str]:
+    """Reuse a current-branch aggregate closure only when its frozen contract is exact.
+
+    The summary is deliberately bound to the candidate boundary and to the effective population
+    membership.  This is a narrow authority bridge for the one frozen 2026-08-21 closure; it does
+    not generalize closure semantics to future rolling boundaries.
+    """
+
+    if summary_path is None or not Path(summary_path).exists():
+        return set()
+    effective_tickers = _load_effective_population_tickers(effective_population_path)
+    if not effective_tickers:
+        return set()
+    payload = _read_json(Path(summary_path))
+    if not isinstance(payload, Mapping):
+        return set()
+    frozen = payload.get("frozen_authority", {})
+    status_counts = payload.get("status_counts", {})
+    coverage_totals = payload.get("coverage_totals", {})
+    closure_accounting = payload.get("closure_accounting", {})
+    if not isinstance(frozen, Mapping) or not isinstance(status_counts, Mapping):
+        return set()
+    if frozen.get("calendar_cutoff_date") != candidate_boundary:
+        return set()
+    population_count = int(frozen.get("population_count", 0) or 0)
+    failure_count = status_counts.get(
+        "failure_count",
+        closure_accounting.get("failure_count", payload.get("failure_count")),
+    )
+    if (
+        payload.get("status") != "FULL_POPULATION_COMPLETED"
+        or payload.get("final_verdict") != "ACCEPT"
+        or population_count != len(effective_tickers)
+        or status_counts.get("closure_complete_total") != population_count
+        or failure_count != 0
+        or coverage_totals.get("total_missing_expected_dates") != 0
+        or coverage_totals.get("total_unexpected_source_dates") != 0
+        or coverage_totals.get("total_silent_missing_dates") != 0
+        or closure_accounting.get("unresolved_total") != 0
+    ):
+        return set()
+    return effective_tickers
+
+
 def _classify_common_ticker(
     ticker: str,
     candidate_boundary: str,
@@ -430,6 +530,7 @@ def _classify_common_ticker(
     removed_identities: set,
     zero_store_tickers: set,
     closure_certified: Mapping[str, Mapping[str, Any]],
+    aggregate_closure_tickers: set[str],
     *,
     requested_start: str,
     stocks_dir: Path,
@@ -501,6 +602,15 @@ def _classify_common_ticker(
                 ticker, "EXPLAINED_GAP", f"CERTIFIED_BY_FULL_POPULATION_CLOSURE:{coverage_status}", expected_last, actual_last
             )
 
+    if ticker in aggregate_closure_tickers:
+        return PopulationAuditRecord(
+            ticker,
+            "EXPLAINED_GAP",
+            "CERTIFIED_BY_FULL_POPULATION_CLOSURE:AGGREGATE_COMPLETE",
+            expected_last,
+            actual_last,
+        )
+
     if not has_store:
         return PopulationAuditRecord(
             ticker, "UNEXPLAINED_GAP", "NO_STORE_FILE_BUT_COVERAGE_EXPECTED", expected_last, None
@@ -536,6 +646,8 @@ def audit_full_population_bootstrap(
     removed_identity_audit_path: Path = DEFAULT_REMOVED_IDENTITY_AUDIT_PATH,
     zero_store_contract_path: Path = DEFAULT_ZERO_STORE_CONTRACT_PATH,
     full_population_closure_results_path: Path | None = DEFAULT_FULL_POPULATION_CLOSURE_RESULTS_PATH,
+    full_population_closure_summary_path: Path | None = DEFAULT_FULL_POPULATION_CLOSURE_SUMMARY_PATH,
+    effective_population_path: Path | None = DEFAULT_EFFECTIVE_POPULATION_PATH,
 ) -> PopulationBootstrapAudit:
     """Replace ``mode(actual_date_max)`` with an exhaustive, per-ticker OK/explained/unexplained
     accounting (directive ``ROLLING_MARKET_DATA_AUTHORITY_FIX_V01`` section 14). In-scope population
@@ -548,10 +660,24 @@ def audit_full_population_bootstrap(
     removed_identities: set = set()
     if Path(removed_identity_audit_path).exists():
         removed_identities = set(_read_json(removed_identity_audit_path).get("removed_identities", []))
+    elif Path(removed_identity_audit_path) == DEFAULT_REMOVED_IDENTITY_AUDIT_PATH:
+        effective_tickers = _load_effective_population_tickers(effective_population_path)
+        if effective_tickers:
+            removed_identities = set(pit_tickers) - effective_tickers
     zero_store_tickers: set = set()
     if Path(zero_store_contract_path).exists():
-        zero_store_tickers = set(_read_json(zero_store_contract_path).get("tickers", []))
+        zero_store_tickers = _load_zero_store_tickers(zero_store_contract_path)
+    elif Path(zero_store_contract_path) == DEFAULT_ZERO_STORE_CONTRACT_PATH:
+        zero_store_tickers = _load_zero_store_tickers(
+            None,
+            fallback_path=DEFAULT_EMPTY_TICKER_INVESTIGATION_PATH,
+        )
     closure_certified = _load_closure_certified_results(full_population_closure_results_path)
+    aggregate_closure_tickers = _load_aggregate_closure_tickers(
+        full_population_closure_summary_path,
+        effective_population_path,
+        candidate_boundary=candidate_boundary,
+    )
 
     records: list[PopulationAuditRecord] = []
     for ticker in pit_tickers:
@@ -563,6 +689,7 @@ def audit_full_population_bootstrap(
                 removed_identities,
                 zero_store_tickers,
                 closure_certified,
+                aggregate_closure_tickers,
                 requested_start=requested_start,
                 stocks_dir=Path(stocks_dir),
                 pit_path=Path(pit_path),
@@ -2879,6 +3006,9 @@ __all__ = [
     "DEFAULT_REMOVED_IDENTITY_AUDIT_PATH",
     "DEFAULT_ZERO_STORE_CONTRACT_PATH",
     "DEFAULT_FULL_POPULATION_CLOSURE_RESULTS_PATH",
+    "DEFAULT_FULL_POPULATION_CLOSURE_SUMMARY_PATH",
+    "DEFAULT_EFFECTIVE_POPULATION_PATH",
+    "DEFAULT_EMPTY_TICKER_INVESTIGATION_PATH",
     "REQUIRED_LEGS",
     "ETF_VALIDATED_ACCEPTANCE_TICKERS",
     "RollingAuthorityError",

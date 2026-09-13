@@ -193,6 +193,48 @@ def test_removed_identity_and_zero_store_and_closure_certified_are_explained_not
     assert audit.explained_gap_count == 3
 
 
+def test_current_branch_aggregate_closure_authority_explains_short_store(tmp_path) -> None:
+    adjusted_dir = tmp_path / "adjusted"
+    adjusted_dir.mkdir()
+    _write_json(adjusted_dir / "AAA003.meta.json", _meta("2026-08-19"))
+    kwargs = _base_audit_kwargs(
+        tmp_path,
+        [_interval("AAA003", "2026-08-17", "2026-08-21")],
+    )
+    effective_population_path = tmp_path / "effective_population.json"
+    _write_json(
+        effective_population_path,
+        {"records": [{"ticker": "AAA003", "included_in_population": True}]},
+    )
+    closure_summary_path = tmp_path / "full_population_summary.json"
+    _write_json(
+        closure_summary_path,
+        {
+            "status": "FULL_POPULATION_COMPLETED",
+            "final_verdict": "ACCEPT",
+            "frozen_authority": {"calendar_cutoff_date": "2026-08-21", "population_count": 1},
+            "status_counts": {"closure_complete_total": 1, "failure_count": 0},
+            "coverage_totals": {
+                "total_missing_expected_dates": 0,
+                "total_unexpected_source_dates": 0,
+                "total_silent_missing_dates": 0,
+            },
+            "closure_accounting": {"unresolved_total": 0},
+        },
+    )
+    audit = audit_full_population_bootstrap(
+        adjusted_store_dir=adjusted_dir,
+        candidate_boundary="2026-08-21",
+        etf_acceptance_tickers=(),
+        full_population_closure_summary_path=closure_summary_path,
+        effective_population_path=effective_population_path,
+        **kwargs,
+    )
+    assert audit.unexplained_gap_count == 0
+    assert audit.explained_gap_count == 1
+    assert audit.records[0].reason == "CERTIFIED_BY_FULL_POPULATION_CLOSURE:AGGREGATE_COMPLETE"
+
+
 def test_real_production_full_population_bootstrap_audit_is_certified() -> None:
     """Runs the audit against the actual production stores (read-only) -- the concrete BLOCKER B
     evidence: 3179 in-scope tickers (3162 PIT COMMON + 17 ETF), 0 unexplained gaps."""
