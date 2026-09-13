@@ -75,8 +75,8 @@ from trend_scanner.data.adjusted_price_pilot import (
 )
 from trend_scanner.data.adjusted_price_provider import (
     NaverDirectAdjustedPriceDataProvider,
-    validate_adjusted_ohlc,
 )
+from trend_scanner.data.adjusted_price_semantics import validate_source_integrity
 from trend_scanner.data.adjusted_price_store import AdjustedPriceStore
 from trend_scanner.data.krx_etf_raw_provider import ETF_ENDPOINT, KrxRawEtfSnapshotProvider
 from trend_scanner.data.krx_historical_backfill import KrxHistoricalBackfillRunner, candidate_dates
@@ -475,6 +475,80 @@ def _load_zero_store_tickers(path: Path | None, *, fallback_path: Path | None = 
     return set()
 
 
+def _load_authoritative_removed_identities(
+    removed_identity_audit_path: Path | None = DEFAULT_REMOVED_IDENTITY_AUDIT_PATH,
+    *,
+    effective_population_path: Path | None = DEFAULT_EFFECTIVE_POPULATION_PATH,
+) -> set[str]:
+    """Reuse the exact F8 removed-identity authority without deriving future deltas.
+
+    When the explicit audit artifact is unavailable, the frozen PIT and effective-population
+    artifacts are compared only to reconstruct the already-certified identity correction. The
+    returned set is then applied to any later live PIT; the live PIT is never used as the
+    right-hand side of a new population-delta calculation.
+    """
+
+    if removed_identity_audit_path is not None and Path(removed_identity_audit_path).exists():
+        payload = _read_json(Path(removed_identity_audit_path))
+        if isinstance(payload, Mapping):
+            return {str(ticker).zfill(6) for ticker in payload.get("removed_identities", [])}
+        return set()
+    if (
+        removed_identity_audit_path is not None
+        and Path(removed_identity_audit_path).resolve() == DEFAULT_REMOVED_IDENTITY_AUDIT_PATH.resolve()
+        and effective_population_path is not None
+        and Path(effective_population_path).resolve() == DEFAULT_EFFECTIVE_POPULATION_PATH.resolve()
+    ):
+        effective_tickers = _load_effective_population_tickers(effective_population_path)
+        if effective_tickers:
+            frozen_pit = _read_json(DEFAULT_PIT_PATH)
+            frozen_common = {
+                str(interval["ticker"]).zfill(6)
+                for interval in frozen_pit.get("intervals", [])
+                if interval.get("state") == "COMMON" and interval.get("ticker")
+            }
+            return frozen_common - {str(ticker).zfill(6) for ticker in effective_tickers}
+    return set()
+
+
+def load_effective_common_adjusted_population(
+    pit_path: Path,
+    *,
+    etf_acceptance_tickers: Sequence[str] = ETF_VALIDATED_ACCEPTANCE_TICKERS,
+    removed_identity_audit_path: Path | None = DEFAULT_REMOVED_IDENTITY_AUDIT_PATH,
+    zero_store_contract_path: Path | None = DEFAULT_ZERO_STORE_CONTRACT_PATH,
+    effective_population_path: Path | None = DEFAULT_EFFECTIVE_POPULATION_PATH,
+) -> list[str]:
+    """Build the live COMMON adjusted population from existing F8 authorities.
+
+    The live PIT supplies the current candidate universe, while removed identities and expected
+    zero-store identities come only from their existing authority artifacts. New COMMON identities
+    in the live PIT remain eligible automatically, and the fixed ETF acceptance scope is excluded.
+    """
+
+    payload = _read_json(Path(pit_path))
+    common_tickers = {
+        str(interval["ticker"]).zfill(6)
+        for interval in payload.get("intervals", [])
+        if interval.get("state") == "COMMON" and interval.get("ticker")
+    }
+    removed_identities = _load_authoritative_removed_identities(
+        removed_identity_audit_path,
+        effective_population_path=effective_population_path,
+    )
+    if zero_store_contract_path is not None and Path(zero_store_contract_path).exists():
+        zero_store_tickers = _load_zero_store_tickers(zero_store_contract_path)
+    elif zero_store_contract_path is not None and Path(zero_store_contract_path) == DEFAULT_ZERO_STORE_CONTRACT_PATH:
+        zero_store_tickers = _load_zero_store_tickers(
+            None,
+            fallback_path=DEFAULT_EMPTY_TICKER_INVESTIGATION_PATH,
+        )
+    else:
+        zero_store_tickers = set()
+    etf_tickers = {str(ticker).zfill(6) for ticker in etf_acceptance_tickers}
+    return sorted(common_tickers - removed_identities - zero_store_tickers - etf_tickers)
+
+
 def _load_aggregate_closure_tickers(
     summary_path: Path | None,
     effective_population_path: Path | None,
@@ -658,19 +732,10 @@ def audit_full_population_bootstrap(
     pit = _read_json(pit_path)
     pit_tickers = sorted({it["ticker"] for it in pit.get("intervals", []) if it.get("state") == "COMMON"})
 
-    removed_identities: set = set()
-    if Path(removed_identity_audit_path).exists():
-        removed_identities = set(_read_json(removed_identity_audit_path).get("removed_identities", []))
-    elif (
-        Path(removed_identity_audit_path).resolve() == DEFAULT_REMOVED_IDENTITY_AUDIT_PATH.resolve()
-        and Path(pit_path).resolve() == DEFAULT_PIT_PATH.resolve()
-        and effective_population_path is not None
-        and Path(effective_population_path).resolve() == DEFAULT_EFFECTIVE_POPULATION_PATH.resolve()
-        and candidate_boundary == FROZEN_FULL_POPULATION_CLOSURE_BOUNDARY
-    ):
-        effective_tickers = _load_effective_population_tickers(effective_population_path)
-        if effective_tickers:
-            removed_identities = set(pit_tickers) - effective_tickers
+    removed_identities = _load_authoritative_removed_identities(
+        removed_identity_audit_path,
+        effective_population_path=effective_population_path,
+    )
     zero_store_tickers: set = set()
     if Path(zero_store_contract_path).exists():
         zero_store_tickers = _load_zero_store_tickers(zero_store_contract_path)
@@ -1745,12 +1810,12 @@ def classify_adjusted_history_transition(
 
     normalized_ticker = str(ticker).zfill(6)
     try:
-        validate_adjusted_ohlc(candidate)
+        validate_source_integrity(candidate)
     except Exception as exc:  # noqa: BLE001 -- converted to a fail-closed classification
         return {
             "ticker": normalized_ticker,
             "status": REJECTED_HISTORICAL_RESTATEMENT,
-            "reason": "ADJUSTED_OHLC_INTEGRITY_FAILED",
+            "reason": "ADJUSTED_SOURCE_INTEGRITY_FAILED",
             "detail": type(exc).__name__,
             "changed_rows": 0,
             "provider_frame_match": provider_frame_match,
@@ -3029,6 +3094,7 @@ __all__ = [
     "PopulationAuditRecord",
     "PopulationBootstrapAudit",
     "audit_full_population_bootstrap",
+    "load_effective_common_adjusted_population",
     "bootstrap_rolling_authority_v2",
     "PitExtensionResult",
     "validate_pit_extension_survivorship_safety",

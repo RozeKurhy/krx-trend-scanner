@@ -603,6 +603,41 @@ def test_validated_adjusted_restatement_is_approved() -> None:
     assert result["factor_regime_count"] == 1
 
 
+def test_source_native_relation_anomaly_passes_prevalidation() -> None:
+    before = _adjusted_frame("2026-08-03", "2026-08-21")
+    candidate = _adjusted_frame("2026-08-03", "2026-08-24")
+    historical = candidate.index <= pd.Timestamp("2026-08-21")
+    candidate.loc[historical, ["open", "high", "low", "close"]] *= 5.0
+    candidate.loc[candidate.index > pd.Timestamp("2026-08-21"), "high"] = candidate.loc[
+        candidate.index > pd.Timestamp("2026-08-21"), "close"
+    ] - 1.0
+
+    result = classify_adjusted_history_transition(
+        "005930",
+        before,
+        candidate,
+        "2026-08-21",
+        provider_frame_match=True,
+        corporate_action_evidence=_corporate_action_evidence("005930", 5.0),
+    )
+
+    assert result["status"] == APPROVED_HISTORICAL_RESTATEMENT
+    assert result["reason"] == "CURRENT_PROVIDER_CONTIGUOUS_FACTOR_RESTATEMENT_WITH_CORPORATE_ACTION_EVIDENCE"
+
+
+def test_true_source_integrity_failure_is_rejected() -> None:
+    before = _adjusted_frame("2026-08-03", "2026-08-21")
+    candidate = _adjusted_frame("2026-08-03", "2026-08-24")
+    candidate.iloc[0, candidate.columns.get_loc("close")] = float("nan")
+
+    result = classify_adjusted_history_transition(
+        "005930", before, candidate, "2026-08-21", provider_frame_match=True
+    )
+
+    assert result["status"] == REJECTED_HISTORICAL_RESTATEMENT
+    assert result["reason"] == "ADJUSTED_SOURCE_INTEGRITY_FAILED"
+
+
 def test_piecewise_adjusted_restatement_is_approved() -> None:
     before = _adjusted_frame("2026-08-03", "2026-08-21")
     candidate = _adjusted_frame("2026-08-03", "2026-08-24")

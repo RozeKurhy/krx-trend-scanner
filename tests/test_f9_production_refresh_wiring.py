@@ -28,11 +28,37 @@ def test_common_population_builder_includes_new_pit_common_without_store(tmp_pat
         encoding="utf-8",
     )
 
-    tickers = refresh.load_common_adjusted_tickers_from_pit(pit_path)
+    removed_path = tmp_path / "removed_identities.json"
+    removed_path.write_text(json.dumps({"removed_identities": ["121910"]}), encoding="utf-8")
+    zero_path = tmp_path / "zero_store_contract.json"
+    zero_path.write_text(json.dumps({"tickers": ["000610"]}), encoding="utf-8")
+
+    tickers = refresh.load_effective_common_adjusted_population(
+        pit_path,
+        etf_acceptance_tickers=("069500",),
+        removed_identity_audit_path=removed_path,
+        zero_store_contract_path=zero_path,
+        effective_population_path=None,
+    )
 
     assert "999999" in tickers
     assert "005930" in tickers
+    assert "121910" not in tickers
+    assert "000610" not in tickers
     assert "069500" not in tickers
+
+
+def test_production_population_reuses_f8_removed_and_zero_authorities() -> None:
+    tickers = refresh.load_common_adjusted_tickers_from_pit(
+        ROOT / "data/market/rolling_authority/merged_pit_intervals.json",
+    )
+
+    assert {
+        "121910", "121950", "122290", "122750", "123160", "123290", "123300",
+        "123550", "123910", "124050", "126680", "128910", "380440",
+    }.isdisjoint(tickers)
+    assert {"000610", "015940", "037510", "045820"}.isdisjoint(tickers)
+    assert "386380" in tickers
 
 
 def test_population_audit_binds_supplied_live_pit_and_calendar(tmp_path, monkeypatch) -> None:

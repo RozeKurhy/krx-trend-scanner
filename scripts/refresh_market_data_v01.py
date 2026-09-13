@@ -38,6 +38,7 @@ from trend_scanner.data.rolling_market_data_refresh import (
     RollingRefreshCoordinator,
     audit_full_population_bootstrap,
     KindCorporateActionEvidenceProvider,
+    load_effective_common_adjusted_population,
     load_kind_corporate_action_references,
     load_rolling_authority,
 )
@@ -76,16 +77,12 @@ def load_common_adjusted_tickers_from_pit(
     *,
     etf_acceptance_tickers: tuple[str, ...] = ETF_VALIDATED_ACCEPTANCE_TICKERS,
 ) -> list[str]:
-    """Build the COMMON adjusted refresh population from the live PIT authority."""
+    """Build the effective COMMON adjusted population from live PIT plus F8 authority."""
 
-    payload = json.loads(Path(pit_path).read_text(encoding="utf-8"))
-    etf_tickers = {str(ticker).zfill(6) for ticker in etf_acceptance_tickers}
-    common_tickers = {
-        str(interval["ticker"]).zfill(6)
-        for interval in payload.get("intervals", [])
-        if interval.get("state") == "COMMON" and interval.get("ticker")
-    }
-    return sorted(common_tickers - etf_tickers)
+    return load_effective_common_adjusted_population(
+        pit_path,
+        etf_acceptance_tickers=etf_acceptance_tickers,
+    )
 
 
 def build_population_gap_audit(
