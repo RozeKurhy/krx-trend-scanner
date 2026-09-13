@@ -16,7 +16,9 @@ from __future__ import annotations
 import argparse
 import json
 import os
+from datetime import datetime, timezone
 from pathlib import Path
+from uuid import uuid4
 
 from trend_scanner.data.adjusted_price_provider import NaverDirectAdjustedPriceDataProvider
 from trend_scanner.data.adjusted_price_store import AdjustedPriceStore
@@ -43,6 +45,7 @@ from trend_scanner.data.rolling_market_data_refresh import (
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_ADJUSTED_ROOT = Path("data/market/adjusted/stocks")
+LIVE_RESULT_ARTIFACT_ROOT = ROOT / "artifacts/data/rolling_market_data_refresh/v01/live_runs"
 
 
 def _read_env_value(path: Path, name: str) -> str:
@@ -66,6 +69,64 @@ def load_auth_key() -> str:
         if value:
             return value
     return ""
+
+
+def load_common_adjusted_tickers_from_pit(
+    pit_path: Path,
+    *,
+    etf_acceptance_tickers: tuple[str, ...] = ETF_VALIDATED_ACCEPTANCE_TICKERS,
+) -> list[str]:
+    """Build the COMMON adjusted refresh population from the live PIT authority."""
+
+    payload = json.loads(Path(pit_path).read_text(encoding="utf-8"))
+    etf_tickers = {str(ticker).zfill(6) for ticker in etf_acceptance_tickers}
+    common_tickers = {
+        str(interval["ticker"]).zfill(6)
+        for interval in payload.get("intervals", [])
+        if interval.get("state") == "COMMON" and interval.get("ticker")
+    }
+    return sorted(common_tickers - etf_tickers)
+
+
+def build_population_gap_audit(
+    *,
+    adjusted_store_dir: Path,
+    candidate_boundary: str,
+    pit_path: Path,
+    historical_calendar_path: Path,
+):
+    """Bind the population audit to the same live PIT/calendar as the refresh."""
+
+    def audit() -> dict[str, object]:
+        return {
+            "candidate_boundary": candidate_boundary,
+            "unexplained_gap_count": audit_full_population_bootstrap(
+                adjusted_store_dir=adjusted_store_dir,
+                candidate_boundary=candidate_boundary,
+                pit_path=pit_path,
+                historical_calendar_path=historical_calendar_path,
+            ).unexplained_gap_count,
+        }
+
+    return audit
+
+
+def persist_live_result(result: dict[str, object], *, target_as_of: str, pit_path: Path, historical_calendar_path: Path) -> Path:
+    """Persist one coordinator result without introducing a separate logging framework."""
+
+    LIVE_RESULT_ARTIFACT_ROOT.mkdir(parents=True, exist_ok=True)
+    run_id = f"{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}_{uuid4().hex[:8]}"
+    artifact_path = LIVE_RESULT_ARTIFACT_ROOT / f"refresh_{run_id}.json"
+    payload = dict(result)
+    payload["execution"] = {
+        "entrypoint": "scripts/refresh_market_data_v01.py",
+        "target_as_of": target_as_of,
+        "pit_path": str(pit_path),
+        "historical_calendar_path": str(historical_calendar_path),
+    }
+    payload["result_artifact_path"] = str(artifact_path)
+    artifact_path.write_text(json.dumps(payload, ensure_ascii=False, sort_keys=True, indent=2, default=str) + "\n", encoding="utf-8")
+    return artifact_path
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -148,23 +209,33 @@ def main(argv: list[str] | None = None) -> int:
             historical_calendar_path=args.historical_calendar_path,
             corporate_action_evidence_lookup=corporate_action_evidence_lookup,
         ),
-        common_adjusted_tickers=[
-            p.name.removesuffix(".meta.json")
-            for p in Path(args.adjusted_root).glob("*.meta.json")
-            if p.name.removesuffix(".meta.json") not in ETF_VALIDATED_ACCEPTANCE_TICKERS
-        ],
+        common_adjusted_tickers=load_common_adjusted_tickers_from_pit(args.pit_path),
         authority_dir=args.authority_dir,
         raw_store=raw_store,
         adjusted_store=adjusted_store,
-        population_gap_audit=lambda: {
-            "candidate_boundary": args.target_as_of,
-            "unexplained_gap_count": audit_full_population_bootstrap(
-                adjusted_store_dir=args.adjusted_root,
-                candidate_boundary=args.target_as_of,
-            ).unexplained_gap_count,
-        },
+        population_gap_audit=build_population_gap_audit(
+            adjusted_store_dir=args.adjusted_root,
+            candidate_boundary=args.target_as_of,
+            pit_path=args.pit_path,
+            historical_calendar_path=args.historical_calendar_path,
+        ),
     )
-    result = coordinator.execute(args.target_as_of, dry_run=False)
+    try:
+        result = coordinator.execute(args.target_as_of, dry_run=False)
+    except Exception as exc:  # noqa: BLE001 -- preserve unexpected live-run evidence before exiting
+        result = {
+            "status": "FAILED",
+            "error": str(exc),
+            "error_type": type(exc).__name__,
+            "boundary_unchanged": True,
+        }
+    artifact_path = persist_live_result(
+        result,
+        target_as_of=args.target_as_of,
+        pit_path=args.pit_path,
+        historical_calendar_path=args.historical_calendar_path,
+    )
+    result["result_artifact_path"] = str(artifact_path)
     print(json.dumps(result, ensure_ascii=False, sort_keys=True, default=str))
     return 0 if result["status"] == "PROMOTED" else 1
 
