@@ -35,6 +35,7 @@ from trend_scanner.data.rolling_market_data_refresh import (
     RollingRawMarketUpdater,
     RollingRefreshCoordinator,
     audit_full_population_bootstrap,
+    load_corporate_action_evidence_index,
     load_rolling_authority,
 )
 
@@ -117,14 +118,24 @@ def main(argv: list[str] | None = None) -> int:
     client = KrxOpenApiClient(auth_key, max_requests=args.max_attempts, max_transient_retries=0, quota=quota)
     raw_store = KrxRawStockStore(args.raw_root)
     adjusted_store = AdjustedPriceStore(args.adjusted_root)
+    corporate_action_evidence = load_corporate_action_evidence_index(ROOT / "artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/authority_closure/v02/reassessed_corporate_action_controls.csv")
+    corporate_action_evidence_lookup = lambda ticker: corporate_action_evidence.get(str(ticker).zfill(6), [])
     coordinator = RollingRefreshCoordinator(
         raw_updater=RollingRawMarketUpdater(
             KrxHistoricalBackfillRunner(KrxRawStockSnapshotProvider(client), raw_store, quota), raw_store
         ),
         raw_etf_updater=RollingRawEtfUpdater(KrxRawEtfSnapshotProvider(client), raw_store),
-        etf_adjusted_updater=RollingEtfAdjustedUpdater(NaverDirectAdjustedPriceDataProvider(), adjusted_store),
+        etf_adjusted_updater=RollingEtfAdjustedUpdater(
+            NaverDirectAdjustedPriceDataProvider(),
+            adjusted_store,
+            corporate_action_evidence_lookup=corporate_action_evidence_lookup,
+        ),
         common_adjusted_updater=RollingAdjustedPriceUpdater(
-            NaverDirectAdjustedPriceDataProvider(), adjusted_store, pit_path=args.pit_path, historical_calendar_path=args.historical_calendar_path
+            NaverDirectAdjustedPriceDataProvider(),
+            adjusted_store,
+            pit_path=args.pit_path,
+            historical_calendar_path=args.historical_calendar_path,
+            corporate_action_evidence_lookup=corporate_action_evidence_lookup,
         ),
         common_adjusted_tickers=[
             p.name.removesuffix(".meta.json")

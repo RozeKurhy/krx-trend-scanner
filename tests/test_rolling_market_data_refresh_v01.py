@@ -24,6 +24,7 @@ from trend_scanner.data.rolling_market_data_refresh import (
     RollingAuthorityError,
     RollingAuthorityManifest,
     RollingEtfAdjustedUpdater,
+    RollingAdjustedPriceUpdater,
     RollingRawEtfUpdater,
     RollingRawMarketUpdater,
     RollingRefreshCoordinator,
@@ -71,6 +72,18 @@ def _adjusted_frame(start: str, end: str) -> pd.DataFrame:
         {"open": [100.0] * len(index), "high": [105.0] * len(index), "low": [95.0] * len(index), "close": [102.0] * len(index)},
         index=index,
     )
+
+
+def _corporate_action_evidence(ticker: str, factors, event_date: str = "2026-08-10") -> list[dict[str, object]]:
+    return [
+        {
+            "ticker": ticker,
+            "authority_valid": True,
+            "normalized_event_type": "STOCK_SPLIT",
+            "official_anchor_date": event_date,
+            "observed_factor": factors,
+        }
+    ]
 
 
 def _seed_adjusted_store(root: Path, tickers: list[str], *, start: str, end: str) -> AdjustedPriceStore:
@@ -230,7 +243,7 @@ def test_etf_adjusted_updater_never_expands_beyond_validated_scope() -> None:
             calls.append(ticker)
 
     updater = RollingEtfAdjustedUpdater(_StubProvider(), _StubStore())
-    result = updater.refresh("2026-08-21", "2026-08-24")
+    result = updater.refresh("2022-12-31", "2026-08-24")
     assert set(calls) == set(ETF_VALIDATED_ACCEPTANCE_TICKERS)
     assert result["new_boundary"] == "2026-08-24"
 
@@ -272,7 +285,12 @@ def test_common_adjusted_updater_succeeds_when_frontier_sufficient(tmp_path) -> 
         def load_daily(self, ticker, start, end):
             return _adjusted_frame(start, end)
 
-    store = AdjustedPriceStore(tmp_path / "adjusted")
+    store = _seed_adjusted_store(
+        tmp_path / "adjusted",
+        ["005930"],
+        start="2010-01-04",
+        end="2026-08-21",
+    )
     updater = RollingAdjustedPriceUpdater(_StubProvider(), store, pit_path=pit_path, historical_calendar_path=calendar_path)
     result = updater.refresh(["005930"], "2026-08-21", "2026-08-24")
     assert result["updated"] == ["005930"]
@@ -455,6 +473,28 @@ def test_coordinator_blocks_independent_unexplained_gap_audit(tmp_path) -> None:
     assert load_rolling_authority(tmp_path) == before
 
 
+def test_coordinator_fails_when_adjusted_validation_record_is_missing(tmp_path) -> None:
+    authority_dir = tmp_path / "authority"
+    write_rolling_authority(_manifest("2026-08-21"), authority_dir)
+    coordinator = RollingRefreshCoordinator(
+        raw_updater=_FakeRawUpdater("2026-09-04"),
+        raw_etf_updater=_FakeEtfRawUpdater("2026-09-04"),
+        etf_adjusted_updater=_FakeEtfAdjustedUpdater("2026-09-04"),
+        common_adjusted_updater=_FakeCommonAdjustedUpdater(),
+        common_adjusted_tickers=["005930"],
+        authority_dir=authority_dir,
+        raw_store=KrxRawStockStore(tmp_path / "raw"),
+        adjusted_store=AdjustedPriceStore(tmp_path / "adjusted"),
+    )
+
+    result = coordinator.execute("2026-09-04", dry_run=False)
+
+    assert result["status"] == "FAILED"
+    assert result["error"] == "PREVIOUS_CERTIFIED_HISTORY_MUTATION_DETECTED"
+    assert result["error_reason"] == "MISSING_ADJUSTED_RESTATEMENT_VALIDATION"
+    assert result["restatement_summary"]["validation_coverage_missing_tickers"] == ["005930"]
+
+
 def test_dry_run_never_writes(tmp_path) -> None:
     coordinator = _coordinator(tmp_path, common_adjusted_fails=False)
     before = (tmp_path / "manifest.json").read_bytes()
@@ -543,7 +583,12 @@ def test_validated_adjusted_restatement_is_approved() -> None:
     candidate.loc[historical, ["open", "high", "low", "close"]] *= 5.0
 
     result = classify_adjusted_history_transition(
-        "005930", before, candidate, "2026-08-21", provider_frame_match=True
+        "005930",
+        before,
+        candidate,
+        "2026-08-21",
+        provider_frame_match=True,
+        corporate_action_evidence=_corporate_action_evidence("005930", 5.0),
     )
 
     assert result["status"] == APPROVED_HISTORICAL_RESTATEMENT
@@ -560,11 +605,51 @@ def test_piecewise_adjusted_restatement_is_approved() -> None:
     candidate.loc[second_regime, ["open", "high", "low", "close"]] *= 10.0
 
     result = classify_adjusted_history_transition(
-        "002780", before, candidate, "2026-08-21", provider_frame_match=True
+        "002780",
+        before,
+        candidate,
+        "2026-08-21",
+        provider_frame_match=True,
+        corporate_action_evidence=_corporate_action_evidence("002780", [10.0, 100.0]),
     )
 
     assert result["status"] == APPROVED_HISTORICAL_RESTATEMENT
     assert result["factor_regime_count"] == 2
+
+
+def test_coherent_factor_change_without_corporate_action_evidence_is_rejected() -> None:
+    before = _adjusted_frame("2026-08-03", "2026-08-21")
+    candidate = _adjusted_frame("2026-08-03", "2026-08-24")
+    historical = candidate.index <= pd.Timestamp("2026-08-21")
+    candidate.loc[historical, ["open", "high", "low", "close"]] *= 5.0
+
+    result = classify_adjusted_history_transition(
+        "005930", before, candidate, "2026-08-21", provider_frame_match=True
+    )
+
+    assert result["status"] == REJECTED_HISTORICAL_RESTATEMENT
+    assert result["reason"] == "CORPORATE_ACTION_EVIDENCE_MISSING"
+    assert result["corporate_action_evidence_matched"] is False
+
+
+def test_corporate_action_evidence_with_unexplained_ratio_is_rejected() -> None:
+    before = _adjusted_frame("2026-08-03", "2026-08-21")
+    candidate = _adjusted_frame("2026-08-03", "2026-08-24")
+    historical = candidate.index <= pd.Timestamp("2026-08-21")
+    candidate.loc[historical, ["open", "high", "low", "close"]] *= 5.0
+
+    result = classify_adjusted_history_transition(
+        "005930",
+        before,
+        candidate,
+        "2026-08-21",
+        provider_frame_match=True,
+        corporate_action_evidence=_corporate_action_evidence("005930", 3.0),
+    )
+
+    assert result["status"] == REJECTED_HISTORICAL_RESTATEMENT
+    assert result["corporate_action_evidence_matched"] is True
+    assert result["reason"] == "CORPORATE_ACTION_RATIO_DOES_NOT_EXPLAIN_RESTATEMENT"
 
 
 def test_isolated_adjusted_history_mutation_is_rejected() -> None:
@@ -609,7 +694,12 @@ def test_coordinator_allows_validated_adjusted_restatement(tmp_path) -> None:
             historical = candidate.index <= pd.Timestamp(current_boundary)
             candidate.loc[historical, ["open", "high", "low", "close"]] *= 5.0
             transition = classify_adjusted_history_transition(
-                "005930", before, candidate, current_boundary, provider_frame_match=True
+                "005930",
+                before,
+                candidate,
+                current_boundary,
+                provider_frame_match=True,
+                corporate_action_evidence=_corporate_action_evidence("005930", 5.0),
             )
             adjusted_store.save_full(
                 "005930", candidate, {"requested_start": "2026-08-03", "requested_end": "2026-08-24"}
@@ -640,3 +730,70 @@ def test_coordinator_allows_validated_adjusted_restatement(tmp_path) -> None:
     assert result["restatement_summary"]["changed_adjusted_ticker_count"] == 1
     assert result["restatement_summary"]["approved_restatement_count"] == 1
     assert result["restatement_summary"]["rejected_unexplained_count"] == 0
+
+
+def test_rejected_candidate_does_not_overwrite_physical_adjusted_store(tmp_path) -> None:
+    calendar_path = tmp_path / "calendar.json"
+    calendar_path.write_text(json.dumps({"trading_dates": ["2026-08-21", "2026-08-24"]}))
+    pit_path = tmp_path / "pit.json"
+    pit_path.write_text(json.dumps({"intervals": [{"ticker": "005930", "state": "COMMON", "effective_from": "2010-01-04", "effective_to": "2026-08-24"}]}))
+    store = _seed_adjusted_store(tmp_path / "adjusted", ["005930"], start="2026-08-03", end="2026-08-21")
+    candidate = _adjusted_frame("2026-08-03", "2026-08-24")
+    candidate.loc[candidate.index <= pd.Timestamp("2026-08-21"), ["open", "high", "low", "close"]] *= 5.0
+
+    class _StubProvider:
+        def load_daily(self, ticker, start, end):
+            return candidate
+
+    parquet_path = tmp_path / "adjusted" / "005930.parquet"
+    metadata_path = tmp_path / "adjusted" / "005930.meta.json"
+    before_parquet = parquet_path.read_bytes()
+    before_metadata = metadata_path.read_bytes()
+    updater = RollingAdjustedPriceUpdater(
+        _StubProvider(), store, pit_path=pit_path, historical_calendar_path=calendar_path
+    )
+
+    result = updater.refresh(["005930"], "2026-08-21", "2026-08-24")
+
+    assert result["updated"] == []
+    assert result["restatement_validation"][0]["reason"] == "CORPORATE_ACTION_EVIDENCE_MISSING"
+    assert result["failures"][0]["error_type"] == REJECTED_HISTORICAL_RESTATEMENT
+    assert parquet_path.read_bytes() == before_parquet
+    assert metadata_path.read_bytes() == before_metadata
+
+
+def test_approved_candidate_reaches_save_full(tmp_path) -> None:
+    calendar_path = tmp_path / "calendar.json"
+    calendar_path.write_text(json.dumps({"trading_dates": ["2026-08-21", "2026-08-24"]}))
+    pit_path = tmp_path / "pit.json"
+    pit_path.write_text(json.dumps({"intervals": [{"ticker": "005930", "state": "COMMON", "effective_from": "2010-01-04", "effective_to": "2026-08-24"}]}))
+
+    class _CountingStore(AdjustedPriceStore):
+        save_calls = 0
+
+        def save_full(self, *args, **kwargs):
+            self.save_calls += 1
+            return super().save_full(*args, **kwargs)
+
+    store = _CountingStore(tmp_path / "adjusted")
+    store.save_full("005930", _adjusted_frame("2026-08-03", "2026-08-21"), {"requested_start": "2026-08-03", "requested_end": "2026-08-21"})
+    candidate = _adjusted_frame("2026-08-03", "2026-08-24")
+    candidate.loc[candidate.index <= pd.Timestamp("2026-08-21"), ["open", "high", "low", "close"]] *= 5.0
+
+    class _StubProvider:
+        def load_daily(self, ticker, start, end):
+            return candidate
+
+    updater = RollingAdjustedPriceUpdater(
+        _StubProvider(),
+        store,
+        pit_path=pit_path,
+        historical_calendar_path=calendar_path,
+        corporate_action_evidence_lookup=lambda ticker: _corporate_action_evidence(ticker, 5.0),
+    )
+
+    result = updater.refresh(["005930"], "2026-08-21", "2026-08-24")
+
+    assert result["updated"] == ["005930"]
+    assert result["restatement_validation"][0]["status"] == APPROVED_HISTORICAL_RESTATEMENT
+    assert store.save_calls == 2

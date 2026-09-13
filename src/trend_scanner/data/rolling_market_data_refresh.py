@@ -759,6 +759,180 @@ HISTORICAL_RESTATEMENT_UNCHANGED = "UNCHANGED"
 APPROVED_HISTORICAL_RESTATEMENT = "APPROVED_HISTORICAL_RESTATEMENT"
 REJECTED_HISTORICAL_RESTATEMENT = "REJECTED_HISTORICAL_RESTATEMENT"
 BLOCKED_UNEXPLAINED_GAPS_244 = "BLOCKED_UNEXPLAINED_GAPS_244"
+DEFAULT_CORPORATE_ACTION_EVIDENCE_PATH = Path(
+    "artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/"
+    "authority_closure/v02/reassessed_corporate_action_controls.csv"
+)
+
+
+def load_corporate_action_evidence_index(
+    path: Path | str = DEFAULT_CORPORATE_ACTION_EVIDENCE_PATH,
+) -> dict[str, list[dict[str, Any]]]:
+    """Load the repository's frozen corporate-action control/evidence artifact.
+
+    The rolling path deliberately consumes an existing authority artifact rather than discovering
+    new corporate actions.  A missing artifact is represented as an empty index so callers fail
+    closed at the ticker gate without touching an adjusted store.
+    """
+
+    evidence_path = Path(path)
+    if not evidence_path.is_file():
+        return {}
+    if evidence_path.suffix.lower() == ".csv":
+        frame = pd.read_csv(evidence_path, dtype=str, keep_default_na=False)
+        if "ticker" not in frame.columns:
+            return {}
+        rows = frame.to_dict("records")
+    elif evidence_path.suffix.lower() == ".json":
+        payload = json.loads(evidence_path.read_text(encoding="utf-8"))
+        rows = payload.get("records", []) if isinstance(payload, Mapping) else []
+    else:
+        return {}
+    index: dict[str, list[dict[str, Any]]] = {}
+    for row in rows:
+        if not isinstance(row, Mapping) or not row.get("ticker"):
+            continue
+        ticker = str(row["ticker"]).zfill(6)
+        index.setdefault(ticker, []).append(dict(row))
+    return index
+
+
+def _evidence_records(value: Any) -> list[dict[str, Any]]:
+    if value is None:
+        return []
+    if isinstance(value, Mapping):
+        if isinstance(value.get("records"), Sequence) and not isinstance(value.get("records"), (str, bytes)):
+            return [dict(item) for item in value["records"] if isinstance(item, Mapping)]
+        return [dict(value)]
+    if isinstance(value, Sequence) and not isinstance(value, (str, bytes)):
+        return [dict(item) for item in value if isinstance(item, Mapping)]
+    return []
+
+
+def _truthy_evidence_field(value: Any) -> bool:
+    return value is True or str(value).strip().lower() in {"true", "1", "yes", "confirmed", "valid"}
+
+
+def _positive_factor_values(value: Any) -> list[float]:
+    if value is None:
+        return []
+    if isinstance(value, Mapping):
+        values: list[float] = []
+        for item in value.values():
+            values.extend(_positive_factor_values(item))
+        return values
+    if isinstance(value, Sequence) and not isinstance(value, (str, bytes)):
+        values = []
+        for item in value:
+            values.extend(_positive_factor_values(item))
+        return values
+    text = str(value).strip()
+    if not text:
+        return []
+    if ":" in text:
+        numerator, denominator = (part.strip() for part in text.split(":", 1))
+        try:
+            value_float = float(numerator) / float(denominator)
+        except (TypeError, ValueError, ZeroDivisionError):
+            return []
+    else:
+        try:
+            value_float = float(text)
+        except (TypeError, ValueError):
+            return []
+    return [value_float] if pd.notna(value_float) and value_float > 0 else []
+
+
+def _evidence_factor_values(record: Mapping[str, Any]) -> list[float]:
+    fields = (
+        "observed_factor",
+        "adjustment_factor",
+        "factor",
+        "split_ratio",
+        "share_ratio",
+        "ratio",
+        "event_ratio",
+        "factor_regimes",
+    )
+    values: list[float] = []
+    for field_name in fields:
+        if field_name in record:
+            values.extend(_positive_factor_values(record[field_name]))
+    return values
+
+
+def _evidence_dates(record: Mapping[str, Any]) -> list[pd.Timestamp]:
+    dates: list[pd.Timestamp] = []
+    for field_name in ("event_date", "effective_date", "official_anchor_date", "event_reference"):
+        value = record.get(field_name)
+        if value in (None, ""):
+            continue
+        parsed = pd.to_datetime(value, errors="coerce")
+        if pd.notna(parsed):
+            dates.append(pd.Timestamp(parsed).normalize())
+    return dates
+
+
+def _validate_corporate_action_evidence(
+    ticker: str,
+    evidence: Any,
+    *,
+    factor_regime_centers: Sequence[float],
+    historical_start: pd.Timestamp,
+    boundary: str,
+) -> dict[str, Any]:
+    """Fail-closed gate binding a factor-shaped rewrite to existing action evidence."""
+
+    records = _evidence_records(evidence)
+    base = {
+        "corporate_action_evidence_matched": False,
+        "corporate_action_evidence_record_count": 0,
+        "corporate_action_ratio_supported": False,
+        "corporate_action_time_supported": False,
+        "corporate_action_factor_explained": False,
+        "corporate_action_evidence_ticker": ticker,
+    }
+    if not records:
+        return {**base, "corporate_action_evidence_reason": "CORPORATE_ACTION_EVIDENCE_MISSING", "approved": False}
+
+    valid_records = []
+    for record in records:
+        record_ticker = str(record.get("ticker", "")).zfill(6)
+        authority_valid = _truthy_evidence_field(record.get("authority_valid")) or (
+            record.get("selection_role") == "AUTHORITY_VALID_FROZEN_CONTROL"
+        )
+        if record_ticker == ticker and authority_valid:
+            valid_records.append(record)
+    base["corporate_action_evidence_record_count"] = len(valid_records)
+    base["corporate_action_evidence_matched"] = bool(valid_records)
+    if not valid_records:
+        return {**base, "corporate_action_evidence_reason": "CORPORATE_ACTION_EVIDENCE_TICKER_OR_AUTHORITY_MISMATCH", "approved": False}
+
+    event_dates = [event_date for record in valid_records for event_date in _evidence_dates(record)]
+    boundary_date = pd.Timestamp(boundary)
+    time_supported = any(historical_start <= event_date <= boundary_date for event_date in event_dates)
+    factors = [factor for record in valid_records for factor in _evidence_factor_values(record)]
+    factor_candidates = factors + [1.0 / factor for factor in factors if factor != 0]
+    ratio_supported = bool(factors)
+    factor_explained = bool(factor_candidates) and all(
+        any(abs(candidate / center - 1.0) <= 0.10 for candidate in factor_candidates)
+        for center in factor_regime_centers
+    )
+    details = {
+        **base,
+        "corporate_action_ratio_supported": ratio_supported,
+        "corporate_action_time_supported": time_supported,
+        "corporate_action_factor_explained": factor_explained,
+        "corporate_action_event_dates": [date.date().isoformat() for date in event_dates],
+        "corporate_action_observed_factors": factors,
+    }
+    if not time_supported:
+        return {**details, "corporate_action_evidence_reason": "CORPORATE_ACTION_EVENT_TIME_UNSUPPORTED", "approved": False}
+    if not ratio_supported:
+        return {**details, "corporate_action_evidence_reason": "CORPORATE_ACTION_RATIO_UNAVAILABLE", "approved": False}
+    if not factor_explained:
+        return {**details, "corporate_action_evidence_reason": "CORPORATE_ACTION_RATIO_DOES_NOT_EXPLAIN_RESTATEMENT", "approved": False}
+    return {**details, "corporate_action_evidence_reason": "CORPORATE_ACTION_EVIDENCE_MATCHED", "approved": True}
 
 
 def _normalise_adjusted_frame(frame: pd.DataFrame) -> pd.DataFrame:
@@ -777,14 +951,15 @@ def classify_adjusted_history_transition(
     *,
     provider_frame_match: bool | None = None,
     requested_start: str | None = None,
+    corporate_action_evidence: Any = None,
 ) -> dict[str, Any]:
     """Classify a candidate adjusted-history rewrite without mutating either frame.
 
     A corporate-action restatement is accepted only when the certified-date set is preserved,
-    the changed rows form a contiguous historical adjustment shape, and each contiguous factor
-    regime is internally coherent.  This deliberately rejects an isolated row edit or a
-    backdated/removed historical row.  ``provider_frame_match`` is supplied after the store
-    round-trip and binds the accepted result to the current official provider response.
+    the changed rows form a contiguous historical adjustment shape, each factor regime is
+    internally coherent, and an existing authoritative corporate-action record supplies a
+    matching ratio and historical event date. ``corporate_action_evidence`` is caller-supplied
+    frozen authority data; this function never discovers new events or performs network I/O.
     """
 
     normalized_ticker = str(ticker).zfill(6)
@@ -934,13 +1109,38 @@ def classify_adjusted_history_transition(
                 "provider_frame_match": provider_frame_match,
             }
 
-    return {
+    shape_details = {
         "ticker": normalized_ticker,
-        "status": APPROVED_HISTORICAL_RESTATEMENT,
-        "reason": "CURRENT_PROVIDER_CONTIGUOUS_FACTOR_RESTATEMENT",
         "changed_rows": changed_rows,
         "factor_regime_count": len(clusters),
+        "factor_regime_centers": [float(pd.Series(cluster).median()) for cluster in clusters],
         "provider_frame_match": provider_frame_match,
+    }
+    if provider_frame_match is not True:
+        return {
+            **shape_details,
+            "status": REJECTED_HISTORICAL_RESTATEMENT,
+            "reason": "CURRENT_PROVIDER_FRAME_NOT_BOUND",
+        }
+    evidence_gate = _validate_corporate_action_evidence(
+        normalized_ticker,
+        corporate_action_evidence,
+        factor_regime_centers=shape_details["factor_regime_centers"],
+        historical_start=before_history.index.min(),
+        boundary=boundary,
+    )
+    if not evidence_gate["approved"]:
+        return {
+            **shape_details,
+            **{key: value for key, value in evidence_gate.items() if key != "approved"},
+            "status": REJECTED_HISTORICAL_RESTATEMENT,
+            "reason": evidence_gate["corporate_action_evidence_reason"],
+        }
+    return {
+        **shape_details,
+        **{key: value for key, value in evidence_gate.items() if key != "approved"},
+        "status": APPROVED_HISTORICAL_RESTATEMENT,
+        "reason": "CURRENT_PROVIDER_CONTIGUOUS_FACTOR_RESTATEMENT_WITH_CORPORATE_ACTION_EVIDENCE",
     }
 
 
@@ -953,10 +1153,18 @@ class RollingEtfAdjustedUpdater:
     ``ETF_VALIDATED_ACCEPTANCE_TICKERS``; scope expansion is a separate, unapproved phase.
     """
 
-    def __init__(self, provider: NaverDirectAdjustedPriceDataProvider, store: AdjustedPriceStore, *, requested_start: str = "2023-01-02") -> None:
+    def __init__(
+        self,
+        provider: NaverDirectAdjustedPriceDataProvider,
+        store: AdjustedPriceStore,
+        *,
+        requested_start: str = "2023-01-02",
+        corporate_action_evidence_lookup: Callable[[str], Any] | None = None,
+    ) -> None:
         self.provider = provider
         self.store = store
         self.requested_start = requested_start
+        self.corporate_action_evidence_lookup = corporate_action_evidence_lookup
 
     def refresh(self, current_boundary: str, target_as_of: str) -> dict[str, Any]:
         results, failures, restatement_validation = [], [], []
@@ -967,19 +1175,37 @@ class RollingEtfAdjustedUpdater:
                     raise RuntimeError("EMPTY_ADJUSTED_AUTHORITY")
                 has_existing_store = hasattr(self.store, "exists") and self.store.exists(ticker)
                 before = self.store.load_daily(ticker) if has_existing_store else None
-                transition = classify_adjusted_history_transition(
-                    ticker, before, frame, current_boundary, requested_start=self.requested_start
+                evidence = (
+                    self.corporate_action_evidence_lookup(ticker)
+                    if self.corporate_action_evidence_lookup is not None
+                    else None
                 )
-                self.store.save_full(ticker, frame, metadata_context={"requested_start": self.requested_start, "requested_end": target_as_of})
-                if hasattr(self.store, "load_daily"):
-                    reloaded = self.store.load_daily(ticker)
-                    transition["provider_frame_match"] = bool(reloaded.equals(frame))
-                else:
-                    transition["provider_frame_match"] = None
-                if transition["provider_frame_match"] is False:
-                    transition["status"] = REJECTED_HISTORICAL_RESTATEMENT
-                    transition["reason"] = "PROVIDER_RESPONSE_STORE_MISMATCH"
+                transition = classify_adjusted_history_transition(
+                    ticker,
+                    before,
+                    frame,
+                    current_boundary,
+                    provider_frame_match=True,
+                    requested_start=self.requested_start,
+                    corporate_action_evidence=evidence,
+                )
                 restatement_validation.append(transition)
+                if transition["status"] == REJECTED_HISTORICAL_RESTATEMENT:
+                    failures.append(
+                        {
+                            "ticker": ticker,
+                            "error_type": REJECTED_HISTORICAL_RESTATEMENT,
+                            "reason": transition["reason"],
+                        }
+                    )
+                    continue
+                # The candidate is already the current official provider response.  Only an
+                # UNCHANGED or evidence-approved candidate may reach the physical store.
+                self.store.save_full(
+                    ticker,
+                    frame,
+                    metadata_context={"requested_start": self.requested_start, "requested_end": target_as_of},
+                )
                 results.append(ticker)
             except Exception as exc:  # noqa: BLE001 -- bounded, reported, not retried with a new source
                 failures.append({"ticker": ticker, "error_type": type(exc).__name__})
@@ -987,6 +1213,7 @@ class RollingEtfAdjustedUpdater:
         new_boundary = target_as_of if not failures and len(results) == len(ETF_VALIDATED_ACCEPTANCE_TICKERS) else current_boundary
         return {
             "leg": "etf_adjusted",
+            "expected_tickers": list(ETF_VALIDATED_ACCEPTANCE_TICKERS),
             "updated": results,
             "failures": failures,
             "restatement_validation": restatement_validation,
@@ -1009,11 +1236,13 @@ class RollingAdjustedPriceUpdater:
         *,
         pit_path: Path,
         historical_calendar_path: Path,
+        corporate_action_evidence_lookup: Callable[[str], Any] | None = None,
     ) -> None:
         self.provider = provider
         self.store = store
         self.pit_path = Path(pit_path)
         self.historical_calendar_path = Path(historical_calendar_path)
+        self.corporate_action_evidence_lookup = corporate_action_evidence_lookup
 
     def _frontier(self) -> str:
         calendar = json.loads(self.historical_calendar_path.read_text(encoding="utf-8"))
@@ -1130,21 +1359,37 @@ class RollingAdjustedPriceUpdater:
                     continue
                 has_existing_store = hasattr(self.store, "exists") and self.store.exists(ticker)
                 before = self.store.load_daily(ticker) if has_existing_store else None
+                evidence = (
+                    self.corporate_action_evidence_lookup(ticker)
+                    if self.corporate_action_evidence_lookup is not None
+                    else None
+                )
                 transition = classify_adjusted_history_transition(
-                    ticker, before, frame, current_boundary, requested_start=ticker_requested_start
+                    ticker,
+                    before,
+                    frame,
+                    current_boundary,
+                    provider_frame_match=True,
+                    requested_start=ticker_requested_start,
+                    corporate_action_evidence=evidence,
                 )
-                self.store.save_full(
-                    ticker, frame, metadata_context={"requested_start": ticker_requested_start, "requested_end": target_as_of}
-                )
-                if hasattr(self.store, "load_daily"):
-                    reloaded = self.store.load_daily(ticker)
-                    transition["provider_frame_match"] = bool(reloaded.equals(frame))
-                else:
-                    transition["provider_frame_match"] = None
-                if transition["provider_frame_match"] is False:
-                    transition["status"] = REJECTED_HISTORICAL_RESTATEMENT
-                    transition["reason"] = "PROVIDER_RESPONSE_STORE_MISMATCH"
                 restatement_validation.append(transition)
+                if transition["status"] == REJECTED_HISTORICAL_RESTATEMENT:
+                    failures.append(
+                        {
+                            "ticker": ticker,
+                            "error_type": REJECTED_HISTORICAL_RESTATEMENT,
+                            "reason": transition["reason"],
+                        }
+                    )
+                    continue
+                # The candidate is already the current official provider response.  Only an
+                # UNCHANGED or evidence-approved candidate may reach the physical store.
+                self.store.save_full(
+                    ticker,
+                    frame,
+                    metadata_context={"requested_start": ticker_requested_start, "requested_end": target_as_of},
+                )
                 results.append(ticker)
             except Exception as exc:  # noqa: BLE001
                 failures.append({"ticker": ticker, "error_type": type(exc).__name__})
@@ -1154,6 +1399,7 @@ class RollingAdjustedPriceUpdater:
         new_boundary = target_as_of if not failures and not skipped else current_boundary
         return {
             "leg": "common_adjusted",
+            "expected_tickers": [str(ticker).zfill(6) for ticker in tickers],
             "updated": results,
             "skipped": skipped,
             "failures": failures,
@@ -1672,7 +1918,10 @@ def _summarize_adjusted_restatement_validation(leg_results: Mapping[str, Mapping
     expected_tickers: set[str] = set()
     for leg in ("etf_adjusted", "common_adjusted"):
         result = leg_results.get(leg, {})
-        expected_tickers.update(str(ticker) for ticker in result.get("updated", ()))
+        expected_tickers.update(
+            str(ticker).zfill(6)
+            for ticker in result.get("expected_tickers", result.get("updated", ()))
+        )
         records.extend(dict(record) for record in result.get("restatement_validation", ()))
     by_ticker = {str(record.get("ticker")): record for record in records if record.get("ticker")}
     approved = [record for record in records if record.get("status") == APPROVED_HISTORICAL_RESTATEMENT]
@@ -1681,9 +1930,11 @@ def _summarize_adjusted_restatement_validation(leg_results: Mapping[str, Mapping
         APPROVED_HISTORICAL_RESTATEMENT,
         REJECTED_HISTORICAL_RESTATEMENT,
     }]
+    evidence_matched = [record for record in changed if record.get("corporate_action_evidence_matched") is True]
     missing = sorted(expected_tickers - set(by_ticker))
     return {
         "changed_adjusted_ticker_count": len(changed),
+        "corporate_action_evidence_matched_count": len(evidence_matched),
         "approved_restatement_count": len(approved),
         "rejected_unexplained_count": len(rejected),
         "validation_record_count": len(records),
@@ -1766,6 +2017,14 @@ class RollingRefreshCoordinator:
             }
 
         restatement_summary = _summarize_adjusted_restatement_validation(leg_results)
+        validation_required = pre_fingerprint is not None or any(
+            "restatement_validation" in leg_results.get(leg, {})
+            for leg in ("etf_adjusted", "common_adjusted")
+        )
+        validation_invalid = bool(
+            restatement_summary["rejected_unexplained_count"] > 0
+            or restatement_summary["validation_coverage_missing_tickers"]
+        )
         if pre_fingerprint is not None:
             post_fingerprint = history_fingerprint(self.raw_store, self.adjusted_store, guard_tickers, manifest.certified_through)
             if post_fingerprint["raw_history_sha256"] != pre_fingerprint["raw_history_sha256"]:
@@ -1783,9 +2042,8 @@ class RollingRefreshCoordinator:
             adjusted_changed = post_fingerprint["adjusted_history_sha256"] != pre_fingerprint["adjusted_history_sha256"]
             if adjusted_changed:
                 if (
-                    restatement_summary["rejected_unexplained_count"] > 0
+                    validation_invalid
                     or restatement_summary["approved_restatement_count"] == 0
-                    or restatement_summary["validation_coverage_missing_tickers"]
                 ):
                     return {
                         "status": "FAILED",
@@ -1798,7 +2056,7 @@ class RollingRefreshCoordinator:
                         "pre_fingerprint": pre_fingerprint,
                         "post_fingerprint": post_fingerprint,
                     }
-            elif restatement_summary["rejected_unexplained_count"] > 0:
+            elif validation_invalid:
                 return {
                     "status": "FAILED",
                     "certified_through": manifest.certified_through,
@@ -1806,10 +2064,28 @@ class RollingRefreshCoordinator:
                     "leg_results": leg_results,
                     "restatement_summary": restatement_summary,
                     "error": "PREVIOUS_CERTIFIED_HISTORY_MUTATION_DETECTED",
-                    "error_reason": "REJECTED_ADJUSTED_RESTATEMENT",
+                    "error_reason": (
+                        "REJECTED_ADJUSTED_RESTATEMENT"
+                        if restatement_summary["rejected_unexplained_count"] > 0
+                        else "MISSING_ADJUSTED_RESTATEMENT_VALIDATION"
+                    ),
                     "pre_fingerprint": pre_fingerprint,
                     "post_fingerprint": post_fingerprint,
                 }
+        elif validation_required and validation_invalid:
+            return {
+                "status": "FAILED",
+                "certified_through": manifest.certified_through,
+                "boundary_unchanged": True,
+                "leg_results": leg_results,
+                "restatement_summary": restatement_summary,
+                "error": "PREVIOUS_CERTIFIED_HISTORY_MUTATION_DETECTED",
+                "error_reason": (
+                    "REJECTED_ADJUSTED_RESTATEMENT"
+                    if restatement_summary["rejected_unexplained_count"] > 0
+                    else "MISSING_ADJUSTED_RESTATEMENT_VALIDATION"
+                ),
+            }
 
         gap_audit: dict[str, Any] | None = None
         if self.population_gap_audit is not None:
@@ -1963,6 +2239,8 @@ __all__ = [
     "HISTORICAL_RESTATEMENT_UNCHANGED",
     "APPROVED_HISTORICAL_RESTATEMENT",
     "REJECTED_HISTORICAL_RESTATEMENT",
+    "DEFAULT_CORPORATE_ACTION_EVIDENCE_PATH",
+    "load_corporate_action_evidence_index",
     "classify_adjusted_history_transition",
     "history_fingerprint",
     "count_rows_after",
