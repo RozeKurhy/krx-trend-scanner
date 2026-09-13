@@ -20,6 +20,7 @@ from trend_scanner.data.rolling_market_data_refresh import (
     ETF_VALIDATED_ACCEPTANCE_TICKERS,
     HISTORICAL_RESTATEMENT_UNCHANGED,
     InsufficientPitFrontierError,
+    KindCorporateActionEvidenceProvider,
     REJECTED_HISTORICAL_RESTATEMENT,
     RollingAuthorityError,
     RollingAuthorityManifest,
@@ -32,6 +33,7 @@ from trend_scanner.data.rolling_market_data_refresh import (
     classify_adjusted_history_transition,
     count_rows_after,
     history_fingerprint,
+    parse_kind_corporate_action_evidence,
     load_rolling_authority,
     write_rolling_authority,
 )
@@ -79,9 +81,14 @@ def _corporate_action_evidence(ticker: str, factors, event_date: str = "2026-08-
         {
             "ticker": ticker,
             "authority_valid": True,
+            "event_type": "STOCK_SPLIT",
             "normalized_event_type": "STOCK_SPLIT",
+            "event_date": event_date,
             "official_anchor_date": event_date,
+            "ratio": factors,
             "observed_factor": factors,
+            "official_source": "KIND_KRX",
+            "source_reference": f"https://kind.krx.co.kr/external/test/{ticker}",
         }
     ]
 
@@ -675,6 +682,107 @@ def test_forward_only_adjusted_extension_is_unchanged() -> None:
 
     assert result["status"] == HISTORICAL_RESTATEMENT_UNCHANGED
     assert result["reason"] == "NO_CERTIFIED_VALUE_CHANGE"
+
+
+def test_unchanged_candidate_does_not_lookup_corporate_action_evidence() -> None:
+    before = _adjusted_frame("2026-08-03", "2026-08-21")
+    candidate = _adjusted_frame("2026-08-03", "2026-08-24")
+    lookup_calls: list[str] = []
+
+    result = classify_adjusted_history_transition(
+        "005930",
+        before,
+        candidate,
+        "2026-08-21",
+        provider_frame_match=True,
+        corporate_action_evidence_lookup=lambda ticker: lookup_calls.append(ticker),
+    )
+
+    assert result["status"] == HISTORICAL_RESTATEMENT_UNCHANGED
+    assert lookup_calls == []
+
+
+def test_kind_parser_produces_production_evidence_schema_and_approves_restatement() -> None:
+    html = """
+    <html><body>
+      <h1>주식병합 결정</h1>
+      <p>액면가액 100원에서 500원으로 변경</p>
+      <p>효력발생일 2026.08.10</p>
+      <script>2026.09.01 noise must not become the event date</script>
+    </body></html>
+    """
+    evidence = parse_kind_corporate_action_evidence(
+        html,
+        "001000",
+        "https://kind.krx.co.kr/external/2026/07/23/000479/20260723001108/00591.htm",
+    )
+
+    assert len(evidence) == 1
+    record = evidence[0]
+    assert {
+        "ticker", "event_type", "event_date", "ratio", "official_source", "source_reference"
+    } <= record.keys()
+    assert record["ticker"] == "001000"
+    assert record["event_type"] == "STOCK_CONSOLIDATION"
+    assert record["event_date"] == "2026-08-10"
+    assert record["ratio"] == 5.0
+
+    before = _adjusted_frame("2026-08-03", "2026-08-21")
+    candidate = _adjusted_frame("2026-08-03", "2026-08-24")
+    candidate.loc[candidate.index <= pd.Timestamp("2026-08-21"), ["open", "high", "low", "close"]] *= 5.0
+    result = classify_adjusted_history_transition(
+        "001000", before, candidate, "2026-08-21", provider_frame_match=True,
+        corporate_action_evidence=evidence,
+    )
+    assert result["status"] == APPROVED_HISTORICAL_RESTATEMENT
+    assert result["corporate_action_factor_date_matched"] is True
+
+
+def test_kind_evidence_provider_fetches_only_configured_ticker_and_caches() -> None:
+    class _Response:
+        status_code = 200
+        content = "<body>주식병합 액면가액 100원에서 500원 효력발생일 2026.08.10</body>".encode()
+
+    class _Session:
+        def __init__(self) -> None:
+            self.calls: list[str] = []
+
+        def get(self, url, timeout):
+            self.calls.append(url)
+            return _Response()
+
+    session = _Session()
+    provider = KindCorporateActionEvidenceProvider(
+        {"001000": "https://kind.krx.co.kr/external/001000.htm"},
+        session=session,
+    )
+
+    first = provider("001000")
+    second = provider("001000")
+    assert len(first) == len(second) == 1
+    assert session.calls == ["https://kind.krx.co.kr/external/001000.htm"]
+    assert provider("002780") == []
+
+
+def test_production_entrypoint_does_not_use_legacy_frozen_control_csv() -> None:
+    source = (ROOT / "scripts/refresh_market_data_v01.py").read_text(encoding="utf-8")
+    assert "reassessed_corporate_action_controls.csv" not in source
+    assert "KindCorporateActionEvidenceProvider" in source
+
+
+def test_corporate_action_evidence_with_timing_mismatch_is_rejected() -> None:
+    before = _adjusted_frame("2026-08-03", "2026-08-21")
+    candidate = _adjusted_frame("2026-08-03", "2026-08-24")
+    candidate.loc[candidate.index <= pd.Timestamp("2026-08-21"), ["open", "high", "low", "close"]] *= 5.0
+
+    result = classify_adjusted_history_transition(
+        "005930", before, candidate, "2026-08-21", provider_frame_match=True,
+        corporate_action_evidence=_corporate_action_evidence("005930", 5.0, "2026-08-22"),
+    )
+
+    assert result["status"] == REJECTED_HISTORICAL_RESTATEMENT
+    assert result["reason"] == "CORPORATE_ACTION_EVENT_TIME_UNSUPPORTED"
+    assert result["corporate_action_factor_date_matched"] is False
 
 
 def test_coordinator_allows_validated_adjusted_restatement(tmp_path) -> None:

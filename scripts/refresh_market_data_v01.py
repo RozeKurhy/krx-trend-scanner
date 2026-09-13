@@ -35,7 +35,8 @@ from trend_scanner.data.rolling_market_data_refresh import (
     RollingRawMarketUpdater,
     RollingRefreshCoordinator,
     audit_full_population_bootstrap,
-    load_corporate_action_evidence_index,
+    KindCorporateActionEvidenceProvider,
+    load_kind_corporate_action_references,
     load_rolling_authority,
 )
 
@@ -79,6 +80,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--authority-dir", type=Path, default=DEFAULT_ROLLING_AUTHORITY_DIR)
     parser.add_argument("--max-attempts", type=int, default=200)
     parser.add_argument("--quota-db", type=Path, default=None)
+    parser.add_argument(
+        "--corporate-action-reference-manifest",
+        type=Path,
+        default=None,
+        help="optional per-ticker official KIND reference JSON for this refresh run; no market-wide search is performed",
+    )
     return parser
 
 
@@ -118,8 +125,12 @@ def main(argv: list[str] | None = None) -> int:
     client = KrxOpenApiClient(auth_key, max_requests=args.max_attempts, max_transient_retries=0, quota=quota)
     raw_store = KrxRawStockStore(args.raw_root)
     adjusted_store = AdjustedPriceStore(args.adjusted_root)
-    corporate_action_evidence = load_corporate_action_evidence_index(ROOT / "artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/authority_closure/v02/reassessed_corporate_action_controls.csv")
-    corporate_action_evidence_lookup = lambda ticker: corporate_action_evidence.get(str(ticker).zfill(6), [])
+    reference_map = (
+        load_kind_corporate_action_references(args.corporate_action_reference_manifest)
+        if args.corporate_action_reference_manifest is not None
+        else {}
+    )
+    corporate_action_evidence_lookup = KindCorporateActionEvidenceProvider(reference_map)
     coordinator = RollingRefreshCoordinator(
         raw_updater=RollingRawMarketUpdater(
             KrxHistoricalBackfillRunner(KrxRawStockSnapshotProvider(client), raw_store, quota), raw_store

@@ -56,10 +56,13 @@ import re
 import uuid
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
+from html import unescape
+from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any, Callable, Mapping, Sequence
 
 import pandas as pd
+import requests
 
 from trend_scanner.data.adjusted_price_pilot import (
     DEFAULT_HISTORICAL_CALENDAR_PATH,
@@ -768,11 +771,12 @@ DEFAULT_CORPORATE_ACTION_EVIDENCE_PATH = Path(
 def load_corporate_action_evidence_index(
     path: Path | str = DEFAULT_CORPORATE_ACTION_EVIDENCE_PATH,
 ) -> dict[str, list[dict[str, Any]]]:
-    """Load the repository's frozen corporate-action control/evidence artifact.
+    """Load an explicitly supplied evidence artifact for compatibility tooling.
 
-    The rolling path deliberately consumes an existing authority artifact rather than discovering
-    new corporate actions.  A missing artifact is represented as an empty index so callers fail
-    closed at the ticker gate without touching an adjusted store.
+    This loader remains available for offline/review callers, but the production rolling entrypoint
+    must not use the legacy frozen control CSV as its operational evidence source. A missing
+    artifact is represented as an empty index so callers fail closed at the ticker gate without
+    touching an adjusted store.
     """
 
     evidence_path = Path(path)
@@ -795,6 +799,227 @@ def load_corporate_action_evidence_index(
         ticker = str(row["ticker"]).zfill(6)
         index.setdefault(ticker, []).append(dict(row))
     return index
+
+
+class _KindVisibleTextParser(HTMLParser):
+    """Extract visible text from one candidate-bound official KIND document."""
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.parts: list[str] = []
+        self._ignored = 0
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag.lower() in {"script", "style", "noscript", "template"}:
+            self._ignored += 1
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag.lower() in {"script", "style", "noscript", "template"}:
+            self._ignored = max(0, self._ignored - 1)
+
+    def handle_data(self, data: str) -> None:
+        if not self._ignored:
+            self.parts.append(data)
+
+
+def _kind_visible_text(payload: str | bytes) -> str:
+    raw = payload.decode("utf-8", errors="replace") if isinstance(payload, bytes) else str(payload)
+    parser = _KindVisibleTextParser()
+    try:
+        parser.feed(raw)
+        parser.close()
+        raw = " ".join(parser.parts)
+    except Exception:  # noqa: BLE001 -- malformed official HTML fails closed below
+        raw = re.sub(r"<[^>]+>", " ", raw)
+    return re.sub(r"\s+", " ", unescape(raw)).strip()
+
+
+def _kind_normalise_date(raw: str) -> str:
+    value = re.sub(r"\s+", "", str(raw or "")).replace(".", "-").replace("/", "-")
+    korean = re.fullmatch(r"(20\d{2})년(\d{1,2})월(\d{1,2})일", value)
+    if korean:
+        value = f"{korean.group(1)}-{korean.group(2)}-{korean.group(3)}"
+    parsed = pd.to_datetime(value, errors="coerce")
+    return "" if pd.isna(parsed) else pd.Timestamp(parsed).date().isoformat()
+
+
+def _kind_dates(text: str) -> list[str]:
+    matches: list[str] = []
+    patterns = (
+        r"20\d{2}[./-]\d{1,2}[./-]\d{1,2}",
+        r"20\d{2}년\s*\d{1,2}월\s*\d{1,2}일",
+    )
+    for pattern in patterns:
+        for match in re.finditer(pattern, text):
+            normalised = _kind_normalise_date(match.group(0))
+            if normalised and normalised not in matches:
+                matches.append(normalised)
+    return matches
+
+
+def _kind_event_type(text: str) -> str:
+    lowered = text.lower()
+    if re.search(r"주식\s*(?:병합|합병)|액면\s*병합|reverse\s+stock\s+split|reverse\s+split|stock\s+consolidation", lowered):
+        return "STOCK_CONSOLIDATION"
+    if re.search(r"주식\s*분할|액면\s*분할|stock\s+split", lowered):
+        return "STOCK_SPLIT"
+    if re.search(r"감자|capital\s+reduction", lowered):
+        return "CAPITAL_REDUCTION"
+    if re.search(r"증자|capital\s+increase", lowered):
+        return "CAPITAL_INCREASE"
+    return ""
+
+
+def _kind_ratio(text: str) -> float | None:
+    ratio_patterns = (
+        r"(\d+(?:\.\d+)?)\s*[:：]\s*(\d+(?:\.\d+)?)",
+        r"(\d+(?:\.\d+)?)\s*[- ]?for[- ]?(\d+(?:\.\d+)?)",
+        r"(\d[\d,]*(?:\.\d+)?)\s*주\s*(?:를|대)\s*(\d[\d,]*(?:\.\d+)?)\s*주",
+    )
+    for pattern in ratio_patterns:
+        match = re.search(pattern, text, flags=re.IGNORECASE)
+        if match:
+            numerator = float(match.group(1).replace(",", ""))
+            denominator = float(match.group(2).replace(",", ""))
+            if numerator > 0 and denominator > 0:
+                return numerator / denominator
+
+    # KIND pages commonly explain an adjustment with old/new par values even when they do not
+    # print an explicit ``n:m`` ratio. Restrict this fallback to the par-value phrase so dates and
+    # share counts elsewhere in the document cannot become a false ratio.
+    par_match = re.search(
+        r"액면(?:가액|금액)[^\d]{0,80}(\d[\d,]*)\s*원[^\d]{0,80}(\d[\d,]*)\s*원",
+        text,
+    )
+    if par_match:
+        old_value = float(par_match.group(1).replace(",", ""))
+        new_value = float(par_match.group(2).replace(",", ""))
+        if old_value > 0 and new_value > 0:
+            return new_value / old_value
+    return None
+
+
+def parse_kind_corporate_action_evidence(
+    payload: str | bytes,
+    ticker: str,
+    source_reference: str,
+) -> list[dict[str, Any]]:
+    """Parse one official KIND document into the rolling gate's evidence schema.
+
+    The parser is intentionally document-scoped: it accepts already resolved official references
+    and never searches or scrapes a market-wide disclosure history. Empty/ambiguous documents
+    return no evidence and therefore cannot authorize a physical adjusted-store write.
+    """
+
+    normalized_ticker = str(ticker).zfill(6)
+    reference = str(source_reference or "").strip()
+    if not reference:
+        return []
+    text = _kind_visible_text(payload)
+    event_type = _kind_event_type(text)
+    dates = _kind_dates(text)
+    ratio = _kind_ratio(text)
+    if not event_type or not dates or ratio is None:
+        return []
+
+    effective_dates: list[str] = []
+    effective_markers = r"효력\s*발생|효력일|기준일|시행일|effective\s+date|effective"
+    for match in re.finditer(effective_markers, text, flags=re.IGNORECASE):
+        window_dates = _kind_dates(text[match.start() : match.start() + 140])
+        for event_date in window_dates:
+            if event_date not in effective_dates:
+                effective_dates.append(event_date)
+    chosen_date = effective_dates[0] if effective_dates else dates[0]
+    return [
+        {
+            "ticker": normalized_ticker,
+            "event_type": event_type,
+            "normalized_event_type": event_type,
+            "event_date": chosen_date,
+            "effective_date": chosen_date,
+            "ratio": ratio,
+            "observed_factor": ratio,
+            "official_source": "KIND_KRX",
+            "source_reference": reference,
+            "authority_valid": True,
+            "evidence_parser": "KIND_CORPORATE_ACTION_EVIDENCE_V01",
+        }
+    ]
+
+
+def load_kind_corporate_action_references(path: Path | str) -> dict[str, tuple[str, ...]]:
+    """Load per-ticker official KIND references for one refresh invocation.
+
+    This is a small run input, not a persistent corporate-action database. Accepted JSON forms are
+    ``{"005930": ["https://kind.krx.co.kr/..."]}`` and
+    ``{"records": [{"ticker": "005930", "source_reference": "..."}]}``.
+    """
+
+    reference_path = Path(path)
+    if not reference_path.is_file():
+        return {}
+    payload = json.loads(reference_path.read_text(encoding="utf-8"))
+    source: Mapping[str, Any]
+    if isinstance(payload, Mapping) and isinstance(payload.get("records"), Sequence):
+        source = {}
+        for item in payload["records"]:
+            if isinstance(item, Mapping) and item.get("ticker") and item.get("source_reference"):
+                source.setdefault(str(item["ticker"]).zfill(6), []).append(item["source_reference"])
+    elif isinstance(payload, Mapping):
+        source = payload
+    else:
+        return {}
+    result: dict[str, tuple[str, ...]] = {}
+    for ticker, refs in source.items():
+        if isinstance(refs, str):
+            refs = [refs]
+        if isinstance(refs, Sequence) and not isinstance(refs, (str, bytes)):
+            clean = tuple(str(ref).strip() for ref in refs if str(ref).strip())
+            if clean:
+                result[str(ticker).zfill(6)] = clean
+    return result
+
+
+class KindCorporateActionEvidenceProvider:
+    """Candidate-bound official KIND evidence lookup with an in-memory per-run cache."""
+
+    def __init__(
+        self,
+        references_by_ticker: Mapping[str, Sequence[str] | str] | None = None,
+        *,
+        reference_resolver: Callable[[str], Sequence[str]] | None = None,
+        session: requests.Session | None = None,
+        timeout_seconds: float = 10.0,
+    ) -> None:
+        self.references_by_ticker = {
+            str(ticker).zfill(6): ((refs,) if isinstance(refs, str) else tuple(refs))
+            for ticker, refs in (references_by_ticker or {}).items()
+        }
+        self.reference_resolver = reference_resolver
+        self.session = session if session is not None else requests.Session()
+        self.timeout_seconds = float(timeout_seconds)
+        if self.timeout_seconds <= 0:
+            raise ValueError("timeout_seconds must be positive")
+        self._cache: dict[str, list[dict[str, Any]]] = {}
+
+    def __call__(self, ticker: str) -> list[dict[str, Any]]:
+        normalized_ticker = str(ticker).zfill(6)
+        if normalized_ticker in self._cache:
+            return list(self._cache[normalized_ticker])
+        records: list[dict[str, Any]] = []
+        references = self.references_by_ticker.get(normalized_ticker, ())
+        if not references and self.reference_resolver is not None:
+            references = tuple(self.reference_resolver(normalized_ticker))
+        for reference in references:
+            try:
+                response = self.session.get(reference, timeout=self.timeout_seconds)
+                if response.status_code != 200:
+                    continue
+                records.extend(parse_kind_corporate_action_evidence(response.content, normalized_ticker, reference))
+            except Exception:  # noqa: BLE001 -- this ticker fails closed; other tickers continue
+                continue
+        self._cache[normalized_ticker] = records
+        return list(records)
 
 
 def _evidence_records(value: Any) -> list[dict[str, Any]]:
@@ -886,22 +1111,42 @@ def _validate_corporate_action_evidence(
     records = _evidence_records(evidence)
     base = {
         "corporate_action_evidence_matched": False,
+        "corporate_action_evidence_found": False,
         "corporate_action_evidence_record_count": 0,
         "corporate_action_ratio_supported": False,
         "corporate_action_time_supported": False,
         "corporate_action_factor_explained": False,
+        "corporate_action_factor_date_matched": False,
         "corporate_action_evidence_ticker": ticker,
     }
     if not records:
         return {**base, "corporate_action_evidence_reason": "CORPORATE_ACTION_EVIDENCE_MISSING", "approved": False}
+    base["corporate_action_evidence_found"] = True
 
     valid_records = []
     for record in records:
         record_ticker = str(record.get("ticker", "")).zfill(6)
-        authority_valid = _truthy_evidence_field(record.get("authority_valid")) or (
+        official_source = str(record.get("official_source") or record.get("source") or "").strip().upper()
+        source_reference = str(record.get("source_reference") or record.get("source_ref") or record.get("url") or "").strip()
+        event_type = str(
+            record.get("event_type")
+            or record.get("normalized_event_type")
+            or record.get("source_event_type")
+            or ""
+        ).strip()
+        source_valid = bool(official_source and source_reference and any(
+            marker in official_source for marker in ("KIND", "KRX", "DART", "OPENDART")
+        ))
+        event_type_valid = bool(event_type and event_type.upper() not in {"UNKNOWN", "UNSPECIFIED"})
+        authority_valid = (
+            _truthy_evidence_field(record.get("authority_valid"))
+            or _truthy_evidence_field(record.get("official_evidence_found"))
+            or _truthy_evidence_field(record.get("evidence_found"))
+            or (
             record.get("selection_role") == "AUTHORITY_VALID_FROZEN_CONTROL"
+            )
         )
-        if record_ticker == ticker and authority_valid:
+        if record_ticker == ticker and authority_valid and source_valid and event_type_valid:
             valid_records.append(record)
     base["corporate_action_evidence_record_count"] = len(valid_records)
     base["corporate_action_evidence_matched"] = bool(valid_records)
@@ -923,6 +1168,7 @@ def _validate_corporate_action_evidence(
         "corporate_action_ratio_supported": ratio_supported,
         "corporate_action_time_supported": time_supported,
         "corporate_action_factor_explained": factor_explained,
+        "corporate_action_factor_date_matched": bool(factor_explained and time_supported),
         "corporate_action_event_dates": [date.date().isoformat() for date in event_dates],
         "corporate_action_observed_factors": factors,
     }
@@ -952,6 +1198,7 @@ def classify_adjusted_history_transition(
     provider_frame_match: bool | None = None,
     requested_start: str | None = None,
     corporate_action_evidence: Any = None,
+    corporate_action_evidence_lookup: Callable[[str], Any] | None = None,
 ) -> dict[str, Any]:
     """Classify a candidate adjusted-history rewrite without mutating either frame.
 
@@ -959,7 +1206,8 @@ def classify_adjusted_history_transition(
     the changed rows form a contiguous historical adjustment shape, each factor regime is
     internally coherent, and an existing authoritative corporate-action record supplies a
     matching ratio and historical event date. ``corporate_action_evidence`` is caller-supplied
-    frozen authority data; this function never discovers new events or performs network I/O.
+    official evidence. When a lookup callback is supplied, it is invoked only after the candidate
+    has been proven to contain a coherent historical change; unchanged candidates never trigger it.
     """
 
     normalized_ticker = str(ticker).zfill(6)
@@ -1122,6 +1370,19 @@ def classify_adjusted_history_transition(
             "status": REJECTED_HISTORICAL_RESTATEMENT,
             "reason": "CURRENT_PROVIDER_FRAME_NOT_BOUND",
         }
+    if corporate_action_evidence is None and corporate_action_evidence_lookup is not None:
+        try:
+            corporate_action_evidence = corporate_action_evidence_lookup(normalized_ticker)
+        except Exception as exc:  # noqa: BLE001 -- a lookup failure must reject before any write
+            return {
+                **shape_details,
+                "corporate_action_evidence_matched": False,
+                "corporate_action_evidence_found": False,
+                "corporate_action_evidence_reason": "CORPORATE_ACTION_EVIDENCE_LOOKUP_FAILED",
+                "corporate_action_evidence_error_type": type(exc).__name__,
+                "status": REJECTED_HISTORICAL_RESTATEMENT,
+                "reason": "CORPORATE_ACTION_EVIDENCE_LOOKUP_FAILED",
+            }
     evidence_gate = _validate_corporate_action_evidence(
         normalized_ticker,
         corporate_action_evidence,
@@ -1175,11 +1436,6 @@ class RollingEtfAdjustedUpdater:
                     raise RuntimeError("EMPTY_ADJUSTED_AUTHORITY")
                 has_existing_store = hasattr(self.store, "exists") and self.store.exists(ticker)
                 before = self.store.load_daily(ticker) if has_existing_store else None
-                evidence = (
-                    self.corporate_action_evidence_lookup(ticker)
-                    if self.corporate_action_evidence_lookup is not None
-                    else None
-                )
                 transition = classify_adjusted_history_transition(
                     ticker,
                     before,
@@ -1187,7 +1443,7 @@ class RollingEtfAdjustedUpdater:
                     current_boundary,
                     provider_frame_match=True,
                     requested_start=self.requested_start,
-                    corporate_action_evidence=evidence,
+                    corporate_action_evidence_lookup=self.corporate_action_evidence_lookup,
                 )
                 restatement_validation.append(transition)
                 if transition["status"] == REJECTED_HISTORICAL_RESTATEMENT:
@@ -1359,11 +1615,6 @@ class RollingAdjustedPriceUpdater:
                     continue
                 has_existing_store = hasattr(self.store, "exists") and self.store.exists(ticker)
                 before = self.store.load_daily(ticker) if has_existing_store else None
-                evidence = (
-                    self.corporate_action_evidence_lookup(ticker)
-                    if self.corporate_action_evidence_lookup is not None
-                    else None
-                )
                 transition = classify_adjusted_history_transition(
                     ticker,
                     before,
@@ -1371,7 +1622,7 @@ class RollingAdjustedPriceUpdater:
                     current_boundary,
                     provider_frame_match=True,
                     requested_start=ticker_requested_start,
-                    corporate_action_evidence=evidence,
+                    corporate_action_evidence_lookup=self.corporate_action_evidence_lookup,
                 )
                 restatement_validation.append(transition)
                 if transition["status"] == REJECTED_HISTORICAL_RESTATEMENT:
@@ -1930,11 +2181,16 @@ def _summarize_adjusted_restatement_validation(leg_results: Mapping[str, Mapping
         APPROVED_HISTORICAL_RESTATEMENT,
         REJECTED_HISTORICAL_RESTATEMENT,
     }]
-    evidence_matched = [record for record in changed if record.get("corporate_action_evidence_matched") is True]
+    evidence_found = [record for record in changed if record.get("corporate_action_evidence_found") is True]
+    factor_date_matched = [record for record in changed if record.get("corporate_action_factor_date_matched") is True]
     missing = sorted(expected_tickers - set(by_ticker))
     return {
         "changed_adjusted_ticker_count": len(changed),
-        "corporate_action_evidence_matched_count": len(evidence_matched),
+        "corporate_action_evidence_found_count": len(evidence_found),
+        "corporate_action_factor_date_matched_count": len(factor_date_matched),
+        # Retain the V02 key as an alias for downstream reports; in V03 it means that the
+        # official evidence actually explains both the observed factor and its timing.
+        "corporate_action_evidence_matched_count": len(factor_date_matched),
         "approved_restatement_count": len(approved),
         "rejected_unexplained_count": len(rejected),
         "validation_record_count": len(records),
@@ -2241,6 +2497,9 @@ __all__ = [
     "REJECTED_HISTORICAL_RESTATEMENT",
     "DEFAULT_CORPORATE_ACTION_EVIDENCE_PATH",
     "load_corporate_action_evidence_index",
+    "parse_kind_corporate_action_evidence",
+    "load_kind_corporate_action_references",
+    "KindCorporateActionEvidenceProvider",
     "classify_adjusted_history_transition",
     "history_fingerprint",
     "count_rows_after",
