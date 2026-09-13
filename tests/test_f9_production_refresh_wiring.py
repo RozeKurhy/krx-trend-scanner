@@ -61,6 +61,112 @@ def test_production_population_reuses_f8_removed_and_zero_authorities() -> None:
     assert "386380" in tickers
 
 
+def test_frozen_removed_identity_is_excluded(tmp_path) -> None:
+    pit_path = tmp_path / "pit.json"
+    pit_path.write_text(
+        json.dumps(
+            {
+                "intervals": [
+                    {
+                        "ticker": "121910",
+                        "isu_cd": "KR7121910004",
+                        "market": "KOSPI",
+                        "state": "COMMON",
+                        "effective_from": "2010-03-03",
+                        "effective_to": "2012-10-12",
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    removed_path = tmp_path / "removed.json"
+    removed_path.write_text(
+        json.dumps(
+            {
+                "removed_identities": [
+                    {
+                        "ticker": "121910",
+                        "isu_cd": "KR7121910004",
+                        "market": "KOSPI",
+                        "effective_from": "2010-03-03",
+                        "effective_to": "2012-10-12",
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    tickers = refresh.load_effective_common_adjusted_population(
+        pit_path,
+        etf_acceptance_tickers=(),
+        removed_identity_audit_path=removed_path,
+        zero_store_contract_path=None,
+        effective_population_path=None,
+        identity_as_of="2026-09-11",
+    )
+
+    assert "121910" not in tickers
+
+
+def test_same_ticker_new_identity_remains_eligible(tmp_path) -> None:
+    pit_path = tmp_path / "pit.json"
+    pit_path.write_text(
+        json.dumps(
+            {
+                "intervals": [
+                    {
+                        "ticker": "121910",
+                        "isu_cd": "KR7121910004",
+                        "market": "KOSPI",
+                        "state": "COMMON",
+                        "effective_from": "2010-03-03",
+                        "effective_to": "2012-10-12",
+                    },
+                    {
+                        "ticker": "121910",
+                        "isu_cd": "KR7999990001",
+                        "market": "KOSDAQ",
+                        "state": "COMMON",
+                        "effective_from": "2026-09-08",
+                        "effective_to": "2026-09-11",
+                    },
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    removed_path = tmp_path / "removed.json"
+    removed_path.write_text(
+        json.dumps(
+            {
+                "removed_identities": [
+                    {
+                        "ticker": "121910",
+                        "isu_cd": "KR7121910004",
+                        "market": "KOSPI",
+                        "effective_from": "2010-03-03",
+                        "effective_to": "2012-10-12",
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    tickers = refresh.load_effective_common_adjusted_population(
+        pit_path,
+        etf_acceptance_tickers=(),
+        removed_identity_audit_path=removed_path,
+        zero_store_contract_path=None,
+        effective_population_path=None,
+        identity_as_of="2026-09-11",
+    )
+
+    assert "121910" in tickers
+
+
 def test_population_audit_binds_supplied_live_pit_and_calendar(tmp_path, monkeypatch) -> None:
     adjusted_dir = tmp_path / "adjusted"
     pit_path = tmp_path / "merged_pit.json"

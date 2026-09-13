@@ -13,6 +13,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
+from trend_scanner.data.errors import MarketDataError
 from trend_scanner.data.adjusted_price_store import AdjustedPriceStore
 from trend_scanner.data.krx_raw_stock_store import KrxRawStockStore
 from trend_scanner.data.rolling_market_data_refresh import (
@@ -1213,6 +1214,50 @@ def test_rejected_candidate_does_not_overwrite_physical_adjusted_store(tmp_path)
     assert result["failures"][0]["error_type"] == REJECTED_HISTORICAL_RESTATEMENT
     assert parquet_path.read_bytes() == before_parquet
     assert metadata_path.read_bytes() == before_metadata
+
+
+def test_common_market_data_error_message_is_preserved(tmp_path) -> None:
+    calendar_path = tmp_path / "calendar.json"
+    calendar_path.write_text(json.dumps({"trading_dates": ["2026-08-21", "2026-08-24"]}))
+    pit_path = tmp_path / "pit.json"
+    pit_path.write_text(
+        json.dumps(
+            {
+                "intervals": [
+                    {
+                        "ticker": "005930",
+                        "isu_cd": "KR7005930003",
+                        "market": "KOSPI",
+                        "state": "COMMON",
+                        "effective_from": "2010-01-04",
+                        "effective_to": "2026-08-24",
+                    }
+                ]
+            }
+        )
+    )
+
+    class _FailingProvider:
+        def load_daily(self, ticker, start, end):
+            raise MarketDataError("TEST_PROVIDER_FAILURE")
+
+    updater = RollingAdjustedPriceUpdater(
+        _FailingProvider(),
+        AdjustedPriceStore(tmp_path / "adjusted"),
+        pit_path=pit_path,
+        historical_calendar_path=calendar_path,
+    )
+
+    result = updater.refresh(["005930"], "2026-08-21", "2026-08-24")
+
+    assert result["updated"] == []
+    assert result["failures"] == [
+        {
+            "ticker": "005930",
+            "error_type": "MarketDataError",
+            "error_message": "TEST_PROVIDER_FAILURE",
+        }
+    ]
 
 
 def test_approved_candidate_reaches_save_full(tmp_path) -> None:

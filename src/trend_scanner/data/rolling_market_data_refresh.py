@@ -475,11 +475,45 @@ def _load_zero_store_tickers(path: Path | None, *, fallback_path: Path | None = 
     return set()
 
 
+def _identity_key(interval: Mapping[str, Any]) -> tuple[str, str | None, str | None, str | None]:
+    """Return the stable PIT identity fields used by the rolling resolver."""
+
+    ticker = str(interval.get("ticker", "")).zfill(6)
+    isu_cd = interval.get("isu_cd")
+    market = interval.get("market")
+    effective_from = interval.get("effective_from")
+    return (
+        ticker,
+        None if isu_cd is None else str(isu_cd),
+        None if market is None else str(market),
+        None if effective_from is None else str(effective_from),
+    )
+
+
+def _identity_matches_removed(
+    interval: Mapping[str, Any], removed_identities: set[tuple[str, str | None, str | None, str | None]]
+) -> bool:
+    """Match a live interval to a frozen removed identity without ticker-global exclusion."""
+
+    ticker, isu_cd, market, effective_from = _identity_key(interval)
+    for removed_ticker, removed_isu_cd, removed_market, removed_effective_from in removed_identities:
+        if ticker != removed_ticker or (
+            removed_effective_from is not None and effective_from != removed_effective_from
+        ):
+            continue
+        if removed_isu_cd is not None:
+            if isu_cd == removed_isu_cd:
+                return True
+        elif removed_market is None or market == removed_market:
+            return True
+    return False
+
+
 def _load_authoritative_removed_identities(
     removed_identity_audit_path: Path | None = DEFAULT_REMOVED_IDENTITY_AUDIT_PATH,
     *,
     effective_population_path: Path | None = DEFAULT_EFFECTIVE_POPULATION_PATH,
-) -> set[str]:
+) -> set[tuple[str, str | None, str | None, str | None]]:
     """Reuse the exact F8 removed-identity authority without deriving future deltas.
 
     When the explicit audit artifact is unavailable, the frozen PIT and effective-population
@@ -491,7 +525,27 @@ def _load_authoritative_removed_identities(
     if removed_identity_audit_path is not None and Path(removed_identity_audit_path).exists():
         payload = _read_json(Path(removed_identity_audit_path))
         if isinstance(payload, Mapping):
-            return {str(ticker).zfill(6) for ticker in payload.get("removed_identities", [])}
+            removed_records = payload.get("removed_identities", [])
+            if not isinstance(removed_records, Sequence) or isinstance(removed_records, (str, bytes)):
+                return set()
+            identity_records = [record for record in removed_records if isinstance(record, Mapping)]
+            legacy_tickers = {
+                str(record).zfill(6) for record in removed_records if not isinstance(record, Mapping) and record
+            }
+            identities = {
+                _identity_key(record)
+                for record in identity_records
+                if record.get("ticker")
+            }
+            if legacy_tickers and DEFAULT_PIT_PATH.exists():
+                frozen_pit = _read_json(DEFAULT_PIT_PATH)
+                identities.update(
+                    _identity_key(interval)
+                    for interval in frozen_pit.get("intervals", [])
+                    if interval.get("state") == "COMMON"
+                    and str(interval.get("ticker", "")).zfill(6) in legacy_tickers
+                )
+            return identities
         return set()
     if (
         removed_identity_audit_path is not None
@@ -502,12 +556,13 @@ def _load_authoritative_removed_identities(
         effective_tickers = _load_effective_population_tickers(effective_population_path)
         if effective_tickers:
             frozen_pit = _read_json(DEFAULT_PIT_PATH)
-            frozen_common = {
-                str(interval["ticker"]).zfill(6)
+            return {
+                _identity_key(interval)
                 for interval in frozen_pit.get("intervals", [])
-                if interval.get("state") == "COMMON" and interval.get("ticker")
+                if interval.get("state") == "COMMON"
+                and interval.get("ticker")
+                and str(interval["ticker"]).zfill(6) not in effective_tickers
             }
-            return frozen_common - {str(ticker).zfill(6) for ticker in effective_tickers}
     return set()
 
 
@@ -518,6 +573,7 @@ def load_effective_common_adjusted_population(
     removed_identity_audit_path: Path | None = DEFAULT_REMOVED_IDENTITY_AUDIT_PATH,
     zero_store_contract_path: Path | None = DEFAULT_ZERO_STORE_CONTRACT_PATH,
     effective_population_path: Path | None = DEFAULT_EFFECTIVE_POPULATION_PATH,
+    identity_as_of: str | None = None,
 ) -> list[str]:
     """Build the live COMMON adjusted population from existing F8 authorities.
 
@@ -527,15 +583,25 @@ def load_effective_common_adjusted_population(
     """
 
     payload = _read_json(Path(pit_path))
-    common_tickers = {
-        str(interval["ticker"]).zfill(6)
-        for interval in payload.get("intervals", [])
-        if interval.get("state") == "COMMON" and interval.get("ticker")
-    }
     removed_identities = _load_authoritative_removed_identities(
         removed_identity_audit_path,
         effective_population_path=effective_population_path,
     )
+    intervals_by_ticker: dict[str, list[dict[str, Any]]] = {}
+    for interval in payload.get("intervals", []):
+        ticker = str(interval.get("ticker", "")).zfill(6)
+        if ticker and interval.get("state") == "COMMON":
+            intervals_by_ticker.setdefault(ticker, []).append(dict(interval))
+    common_tickers: set[str] = set()
+    for ticker, intervals in intervals_by_ticker.items():
+        candidate_intervals: Sequence[Mapping[str, Any]] = intervals
+        if identity_as_of is not None:
+            resolution = resolve_current_identity(ticker, identity_as_of, intervals_by_ticker)
+            if resolution.status != "RESOLVED" or resolution.interval is None:
+                continue
+            candidate_intervals = (resolution.interval,)
+        if any(not _identity_matches_removed(interval, removed_identities) for interval in candidate_intervals):
+            common_tickers.add(ticker)
     if zero_store_contract_path is not None and Path(zero_store_contract_path).exists():
         zero_store_tickers = _load_zero_store_tickers(zero_store_contract_path)
     elif zero_store_contract_path is not None and Path(zero_store_contract_path) == DEFAULT_ZERO_STORE_CONTRACT_PATH:
@@ -546,7 +612,7 @@ def load_effective_common_adjusted_population(
     else:
         zero_store_tickers = set()
     etf_tickers = {str(ticker).zfill(6) for ticker in etf_acceptance_tickers}
-    return sorted(common_tickers - removed_identities - zero_store_tickers - etf_tickers)
+    return sorted(common_tickers - zero_store_tickers - etf_tickers)
 
 
 def _load_aggregate_closure_tickers(
@@ -602,11 +668,12 @@ def _classify_common_ticker(
     ticker: str,
     candidate_boundary: str,
     adjusted_store_dir: Path,
-    removed_identities: set,
+    removed_identities: set[tuple[str, str | None, str | None, str | None]],
     zero_store_tickers: set,
     closure_certified: Mapping[str, Mapping[str, Any]],
     aggregate_closure_tickers: set[str],
     *,
+    current_identity: Mapping[str, Any] | None,
     requested_start: str,
     stocks_dir: Path,
     pit_path: Path,
@@ -617,7 +684,7 @@ def _classify_common_ticker(
     # 1. Already-certified, already-closed authority correction: this identity is not part of the
     #    required population at all (directive section 14: cite the closure artifact's *semantics*,
     #    not just its verdict).
-    if ticker in removed_identities:
+    if current_identity is not None and _identity_matches_removed(current_identity, removed_identities):
         return PopulationAuditRecord(
             ticker, "EXPLAINED_GAP", "INTENTIONAL_AUTHORITY_CORRECTION_REMOVED_IDENTITY", None, None
         )
@@ -730,7 +797,12 @@ def audit_full_population_bootstrap(
     """
 
     pit = _read_json(pit_path)
-    pit_tickers = sorted({it["ticker"] for it in pit.get("intervals", []) if it.get("state") == "COMMON"})
+    intervals_by_ticker: dict[str, list[dict[str, Any]]] = {}
+    for interval in pit.get("intervals", []):
+        ticker = str(interval.get("ticker", "")).zfill(6)
+        if ticker and interval.get("state") == "COMMON":
+            intervals_by_ticker.setdefault(ticker, []).append(dict(interval))
+    pit_tickers = sorted(intervals_by_ticker)
 
     removed_identities = _load_authoritative_removed_identities(
         removed_identity_audit_path,
@@ -753,6 +825,7 @@ def audit_full_population_bootstrap(
 
     records: list[PopulationAuditRecord] = []
     for ticker in pit_tickers:
+        identity = resolve_current_identity(ticker, candidate_boundary, intervals_by_ticker)
         records.append(
             _classify_common_ticker(
                 ticker,
@@ -763,6 +836,7 @@ def audit_full_population_bootstrap(
                 closure_certified,
                 aggregate_closure_tickers,
                 requested_start=requested_start,
+                current_identity=identity.interval if identity.status == "RESOLVED" else None,
                 stocks_dir=Path(stocks_dir),
                 pit_path=Path(pit_path),
                 historical_calendar_path=Path(historical_calendar_path),
@@ -2077,7 +2151,9 @@ class RollingEtfAdjustedUpdater:
                 )
                 results.append(ticker)
             except Exception as exc:  # noqa: BLE001 -- bounded, reported, not retried with a new source
-                failures.append({"ticker": ticker, "error_type": type(exc).__name__})
+                failures.append(
+                    {"ticker": ticker, "error_type": type(exc).__name__, "error_message": str(exc)}
+                )
                 break
         new_boundary = target_as_of if not failures and len(results) == len(ETF_VALIDATED_ACCEPTANCE_TICKERS) else current_boundary
         return {
@@ -2262,7 +2338,9 @@ class RollingAdjustedPriceUpdater:
                 )
                 results.append(ticker)
             except Exception as exc:  # noqa: BLE001
-                failures.append({"ticker": ticker, "error_type": type(exc).__name__})
+                failures.append(
+                    {"ticker": ticker, "error_type": type(exc).__name__, "error_message": str(exc)}
+                )
         # The boundary only advances to target_as_of when every ticker actually reached it -- a
         # skip or failure means this leg did not fully cover target_as_of, so it must report the
         # unchanged current_boundary rather than let the coordinator assume full coverage.

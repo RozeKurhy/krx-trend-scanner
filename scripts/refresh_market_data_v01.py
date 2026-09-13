@@ -76,12 +76,14 @@ def load_common_adjusted_tickers_from_pit(
     pit_path: Path,
     *,
     etf_acceptance_tickers: tuple[str, ...] = ETF_VALIDATED_ACCEPTANCE_TICKERS,
+    identity_as_of: str | None = None,
 ) -> list[str]:
     """Build the effective COMMON adjusted population from live PIT plus F8 authority."""
 
     return load_effective_common_adjusted_population(
         pit_path,
         etf_acceptance_tickers=etf_acceptance_tickers,
+        identity_as_of=identity_as_of,
     )
 
 
@@ -206,7 +208,10 @@ def main(argv: list[str] | None = None) -> int:
             historical_calendar_path=args.historical_calendar_path,
             corporate_action_evidence_lookup=corporate_action_evidence_lookup,
         ),
-        common_adjusted_tickers=load_common_adjusted_tickers_from_pit(args.pit_path),
+        common_adjusted_tickers=load_common_adjusted_tickers_from_pit(
+            args.pit_path,
+            identity_as_of=args.target_as_of,
+        ),
         authority_dir=args.authority_dir,
         raw_store=raw_store,
         adjusted_store=adjusted_store,
