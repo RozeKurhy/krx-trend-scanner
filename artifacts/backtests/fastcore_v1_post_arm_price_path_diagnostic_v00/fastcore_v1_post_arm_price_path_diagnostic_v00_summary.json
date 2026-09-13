@@ -68,11 +68,25 @@
   "daily_fast_created": false,
   "network_requests": 0,
   "production_strategy_modified": false,
-  "existing_artifacts_modified": false,
+  "existing_artifacts_modified": true,
   "source_artifacts": {
     "matched_v0_vs_v1w25_vs_v1w30": "artifacts/backtests/fastcore_v1_prewinner_failure_armed_ab_v00/matched_v0_vs_v1w25_vs_v1w30.csv",
     "failure_armed_event_log": "artifacts/backtests/fastcore_v1_prewinner_failure_armed_ab_v00/failure_armed_event_log.csv",
     "failure_armed_summary": "artifacts/backtests/fastcore_v1_prewinner_failure_armed_ab_v00/fastcore_v1_prewinner_failure_armed_ab_v00_summary.json"
   },
-  "separation_conclusion": "POST_ARM_DETERIORATION_SHOWS_WEAK_SEPARATION"
+  "separation_conclusion": "POST_ARM_IMMEDIATE_DETERIORATION_NOT_USEFUL_FOR_FAILURE_CONFIRM",
+  "fix_id": "FASTCORE_V1_POST_ARM_PRICE_PATH_DIAGNOSTIC_V00_FIX01",
+  "short_horizon_separation_conclusion": "POST_ARM_SHORT_HORIZON_SHOWS_NO_USEFUL_SEPARATION",
+  "long_horizon_separation_conclusion": "POST_ARM_LONG_HORIZON_SHOWS_RETROSPECTIVE_SEPARATION",
+  "first_mfe20_boundary_semantics": "RAW_RUNNING_MFE_GE_20",
+  "first_mfe20_boundary_parity_compared_count": 648,
+  "first_mfe20_boundary_parity_match_count": 648,
+  "first_mfe20_boundary_parity_mismatch_count": 0,
+  "first_mfe20_boundary_parity_mismatches": [],
+  "short_horizon_values_unchanged": true,
+  "long_horizon_refreshed": true,
+  "long_horizon_values_unchanged": true,
+  "long_horizon_primary_rows_refreshed": 0,
+  "long_horizon_secondary_rows_refreshed": 0,
+  "source_artifacts_read_only": true
 }

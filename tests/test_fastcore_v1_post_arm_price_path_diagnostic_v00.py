@@ -136,6 +136,18 @@ def test_recovery_horizon_excludes_first_mfe20_day_but_keeps_prior_path() -> Non
     assert result["post_arm_long_additional_close_deterioration_pp"] == 13.0
 
 
+def test_first_mfe20_uses_raw_boundary_not_display_rounding() -> None:
+    below = _daily([
+        ("2021-01-04", 100, 119.996, 100, 100),
+    ])
+    exact = _daily([
+        ("2021-01-04", 100, 120.0, 100, 100),
+    ])
+    assert diagnostic._first_mfe20_date(below, pd.Timestamp("2021-01-04"), 100.0) is None
+    assert diagnostic._first_mfe20_date(exact, pd.Timestamp("2021-01-04"), 100.0) == pd.Timestamp("2021-01-04")
+    assert "round(" not in inspect.getsource(diagnostic._first_mfe20_date)
+
+
 def test_never_winner_uses_identity_end_and_does_not_truncate_after_virtual_exit() -> None:
     result = _diagnose(
         [
@@ -182,5 +194,16 @@ def test_primary_artifact_contract_if_present() -> None:
     assert summary["network_requests"] == 0
     assert summary["next_usable_fast_missing_count"] == 1
     assert summary["secondary_cycle_rows"] == 1012
+    assert summary["short_horizon_separation_conclusion"] == "POST_ARM_SHORT_HORIZON_SHOWS_NO_USEFUL_SEPARATION"
+    assert summary["long_horizon_separation_conclusion"] == "POST_ARM_LONG_HORIZON_SHOWS_RETROSPECTIVE_SEPARATION"
+    assert summary["separation_conclusion"] == "POST_ARM_IMMEDIATE_DETERIORATION_NOT_USEFUL_FOR_FAILURE_CONFIRM"
+    assert summary["first_mfe20_boundary_semantics"] == "RAW_RUNNING_MFE_GE_20"
+    assert summary["first_mfe20_boundary_parity_compared_count"] == 648
+    assert summary["first_mfe20_boundary_parity_match_count"] == 648
+    assert summary["first_mfe20_boundary_parity_mismatch_count"] == 0
+    assert summary["first_mfe20_boundary_parity_mismatches"] == []
+    assert summary["threshold_selected"] is False
+    assert summary["new_backtest"] is False
+    assert ">= 5.0" not in inspect.getsource(diagnostic)
     assert len(pd.read_csv(diagnostic.TRADE_PATH)) == 648
     assert len(pd.read_csv(diagnostic.CYCLE_PATH)) == 1012

@@ -1,10 +1,18 @@
 # FASTCORE V1 POST-ARM PRICE PATH DIAGNOSTIC V00 결과 보고서
 
+FIX ID: `FASTCORE_V1_POST_ARM_PRICE_PATH_DIAGNOSTIC_V00_FIX01`.
+
 ## 결론
 
 이번 작업은 새 backtest나 exit rule이 아니다. 기존 W25/W30에서 실제 발생한 FIRST ARM 이후 underlying identity-scoped V0 price path의 분포만 진단했다. `SECONDARY / TRADE-WEIGHTED BIAS POSSIBLE`인 전체 cycle 분석은 보조 결과이며, primary 결론은 trade당 first ARM 하나만 사용한다.
 
-최종 분류: `POST_ARM_DETERIORATION_SHOWS_WEAK_SEPARATION`. 새 deterioration threshold나 strategy parameter는 선택하지 않았다.
+SHORT horizon 결론: `POST_ARM_SHORT_HORIZON_SHOWS_NO_USEFUL_SEPARATION`.
+LONG horizon 결론: `POST_ARM_LONG_HORIZON_SHOWS_RETROSPECTIVE_SEPARATION`.
+OVERALL 결론: `POST_ARM_IMMEDIATE_DETERIORATION_NOT_USEFUL_FOR_FAILURE_CONFIRM`.
+ARM 후 다음 weekly FAST까지의 추가 하락폭을 FAILURE CONFIRM 조건으로 쓰는 아이디어는 현재 데이터에서 지지되지 않는다.
+Long horizon은 실패주가 결국 더 깊게 악화되는 경향을 보이지만, 언제부터 두 집단이 갈리기 시작하는지는 이 작업으로 결정하지 않는다.
+MFE +20 boundary semantics: `RAW_RUNNING_MFE_GE_20`; parity compared/matched/mismatched=648/648/0.
+새 deterioration threshold나 strategy parameter는 선택하지 않았다.
 
 ## Q1–Q3. FIRST ARM → next usable FAST
 
@@ -60,8 +68,10 @@ secondary cycle rows: 1012. 이 결과는 동일 trade의 re-arm이 반복 포�
 
 ## 경계와 재현성
 
-RECOVERY horizon은 first MFE +20% 도달일 직전까지, NEVER_WINNER horizon은 identity lifecycle ∩ SUPPORT_END까지다. 기존 W25/W30 hypothetical exit로 underlying path를 truncate하지 않았다. 기존 artifact는 read-only이며 신규 산출물은 이 진단의 8개 파일이다.
+RECOVERY horizon은 first MFE +20% 도달일 직전까지, NEVER_WINNER horizon은 identity lifecycle ∩ SUPPORT_END까지다. 기존 W25/W30 hypothetical exit로 underlying path를 truncate하지 않았다. source A/B artifact는 read-only로 사용했고, 이 진단의 기존 8개 output artifact 내용은 FIX01로 in-place 갱신했으며 구조는 유지했다.
 
 DESCRIPTIVE ONLY / NOT A STRATEGY PARAMETER: bins are fixed-width descriptive bins and do not select a rule.
+
+다음 연구 후보: ARM 후 몇 번째 completed weekly observation부터 RECOVERY와 NEVER_WINNER의 경로가 분리되는지 보는 `FASTCORE_V1_POST_ARM_WEEKLY_PERSISTENCE_DIAGNOSTIC_V00`. 이번 FIX01에서는 실행하지 않았다.
 
 Network requests: 0. Production untouched. No new backtest, Julia, portfolio, daily FAST, optimization, or threshold selection.

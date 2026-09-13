@@ -32,6 +32,11 @@ from trend_scanner.data.repository_v2_loader import RepositoryV2DailyLoader, bui
 
 
 WORK_ID = "FASTCORE_V1_POST_ARM_PRICE_PATH_DIAGNOSTIC_V00"
+FIX_ID = "FASTCORE_V1_POST_ARM_PRICE_PATH_DIAGNOSTIC_V00_FIX01"
+SHORT_HORIZON_CONCLUSION = "POST_ARM_SHORT_HORIZON_SHOWS_NO_USEFUL_SEPARATION"
+LONG_HORIZON_CONCLUSION = "POST_ARM_LONG_HORIZON_SHOWS_RETROSPECTIVE_SEPARATION"
+OVERALL_CONCLUSION = "POST_ARM_IMMEDIATE_DETERIORATION_NOT_USEFUL_FOR_FAILURE_CONFIRM"
+RAW_MFE20_SEMANTICS = "RAW_RUNNING_MFE_GE_20"
 OUT_DIR = ROOT / "artifacts/backtests/fastcore_v1_post_arm_price_path_diagnostic_v00"
 TRADE_PATH = OUT_DIR / "first_arm_trade_diagnostics.csv"
 NEXT_DIST_PATH = OUT_DIR / "first_arm_next_fast_distribution.csv"
@@ -155,13 +160,29 @@ def _with_arm_deltas(metrics: dict[str, Any], arm_return: float) -> dict[str, An
     return metrics
 
 
-def _first_mfe20_date(daily: pd.DataFrame, entry_date: pd.Timestamp, entry_open: float) -> pd.Timestamp | None:
+def _first_mfe20_date_legacy_rounded(
+    daily: pd.DataFrame, entry_date: pd.Timestamp, entry_open: float,
+) -> pd.Timestamp | None:
     hwm = entry_open
     for date, bar in daily.loc[daily.index >= entry_date].iterrows():
         hwm = max(hwm, float(bar["high"]))
-        # V0's stored MFE/tier contract rounds the percentage to two decimal
-        # places before applying the +20% boundary.
         if round((hwm / entry_open - 1.0) * 100.0, 2) >= 20.0:
+            return _date(date)
+    return None
+
+
+def _first_mfe20_date(daily: pd.DataFrame, entry_date: pd.Timestamp, entry_open: float) -> pd.Timestamp | None:
+    """Return the first date whose raw running MFE reaches +20%.
+
+    The boundary is intentionally evaluated without display rounding.  The
+    subtraction form keeps an exact mathematical +20% fixture (120 from a
+    100 entry) on the boundary while retaining a raw, non-rounded comparison.
+    """
+    hwm = entry_open
+    for date, bar in daily.loc[daily.index >= entry_date].iterrows():
+        hwm = max(hwm, float(bar["high"]))
+        running_mfe = ((hwm - entry_open) / entry_open) * 100.0
+        if running_mfe >= 20.0:
             return _date(date)
     return None
 
@@ -442,11 +463,18 @@ def _build_report(summary: Mapping[str, Any], next_dist: pd.DataFrame, long_dist
     lines = [
         "# FASTCORE V1 POST-ARM PRICE PATH DIAGNOSTIC V00 결과 보고서",
         "",
+        f"FIX ID: `{summary.get('fix_id', FIX_ID)}`.",
         "## 결론",
         "",
         "이번 작업은 새 backtest나 exit rule이 아니다. 기존 W25/W30에서 실제 발생한 FIRST ARM 이후 underlying identity-scoped V0 price path의 분포만 진단했다. `SECONDARY / TRADE-WEIGHTED BIAS POSSIBLE`인 전체 cycle 분석은 보조 결과이며, primary 결론은 trade당 first ARM 하나만 사용한다.",
         "",
-        f"최종 분류: `{summary['separation_conclusion']}`. 새 deterioration threshold나 strategy parameter는 선택하지 않았다.",
+        f"SHORT horizon 결론: `{summary['short_horizon_separation_conclusion']}`.",
+        f"LONG horizon 결론: `{summary['long_horizon_separation_conclusion']}`.",
+        f"OVERALL 결론: `{summary['separation_conclusion']}`.",
+        "ARM 후 다음 weekly FAST까지의 추가 하락폭을 FAILURE CONFIRM 조건으로 쓰는 아이디어는 현재 데이터에서 지지되지 않는다.",
+        "Long horizon은 실패주가 결국 더 깊게 악화되는 경향을 보이지만, 언제부터 두 집단이 갈리기 시작하는지는 이 작업으로 결정하지 않는다.",
+        f"MFE +20 boundary semantics: `{summary['first_mfe20_boundary_semantics']}`; parity compared/matched/mismatched={summary.get('first_mfe20_boundary_parity_compared_count')}/{summary.get('first_mfe20_boundary_parity_match_count')}/{summary.get('first_mfe20_boundary_parity_mismatch_count')}.",
+        "새 deterioration threshold나 strategy parameter는 선택하지 않았다.",
         "",
         "## Q1–Q3. FIRST ARM → next usable FAST",
         "",
@@ -491,14 +519,175 @@ def _build_report(summary: Mapping[str, Any], next_dist: pd.DataFrame, long_dist
         "",
         "## 경계와 재현성",
         "",
-        "RECOVERY horizon은 first MFE +20% 도달일 직전까지, NEVER_WINNER horizon은 identity lifecycle ∩ SUPPORT_END까지다. 기존 W25/W30 hypothetical exit로 underlying path를 truncate하지 않았다. 기존 artifact는 read-only이며 신규 산출물은 이 진단의 8개 파일이다.",
+        "RECOVERY horizon은 first MFE +20% 도달일 직전까지, NEVER_WINNER horizon은 identity lifecycle ∩ SUPPORT_END까지다. 기존 W25/W30 hypothetical exit로 underlying path를 truncate하지 않았다. source A/B artifact는 read-only로 사용했고, 이 진단의 기존 8개 output artifact 내용은 FIX01로 in-place 갱신했으며 구조는 유지했다.",
         "",
         "DESCRIPTIVE ONLY / NOT A STRATEGY PARAMETER: bins are fixed-width descriptive bins and do not select a rule.",
+        "",
+        "다음 연구 후보: ARM 후 몇 번째 completed weekly observation부터 RECOVERY와 NEVER_WINNER의 경로가 분리되는지 보는 `FASTCORE_V1_POST_ARM_WEEKLY_PERSISTENCE_DIAGNOSTIC_V00`. 이번 FIX01에서는 실행하지 않았다.",
         "",
         "Network requests: 0. Production untouched. No new backtest, Julia, portfolio, daily FAST, optimization, or threshold selection.",
         "",
     ])
     return "\n".join(lines)
+
+
+def _refresh_long_metrics(
+    target: pd.DataFrame, index: int, base: Mapping[str, Any], daily: pd.DataFrame,
+    arm_date: Any, arm_return: Any,
+) -> None:
+    long, _ = _long_horizon(
+        daily,
+        _date(base["entry_execution_date"]),
+        _date(arm_date),
+        float(base["entry_open"]),
+        float(arm_return),
+        str(base["recovery_class"]),
+        v0_ab._lifecycle(base).effective_to,
+    )
+    for field, value in long.items():
+        if field in target.columns:
+            target.at[index, field] = value
+
+
+def _refresh_fix01() -> dict[str, Any]:
+    """Apply FIX01 to the existing eight-file diagnostic artifact in place.
+
+    This path intentionally skips the expensive weekly FAST reconstruction.
+    It compares the frozen primary rows against raw daily V0 MFE semantics,
+    then refreshes only the affected primary and secondary long-horizon rows.
+    """
+    primary = pd.read_csv(TRADE_PATH)
+    matched = pd.read_csv(ARMED_MATCHED_PATH)
+    cycles = pd.read_csv(CYCLE_PATH)
+    next_dist = pd.read_csv(NEXT_DIST_PATH)
+    state_dist = pd.read_csv(STATE_DIST_PATH)
+    summary = json.loads(SUMMARY_PATH.read_text(encoding="utf-8"))
+    if len(primary) != 648 or len(cycles) != 1012:
+        raise AssertionError("FIX01 requires the frozen V00 primary/secondary row counts")
+
+    primary_keys = primary[["variant", "control_trade_id", "first_mfe20_date"]].copy()
+    base = matched.merge(
+        primary_keys,
+        on=["variant", "control_trade_id"],
+        how="inner",
+        validate="one_to_one",
+        suffixes=("", "_stored"),
+    )
+    if len(base) != len(primary):
+        raise AssertionError("FIX01 primary rows do not join one-to-one to the frozen matched artifact")
+
+    repository = build_repository_v2(ROOT, end=v3.SUPPORT_END)
+    loader = RepositoryV2DailyLoader(repository, end=v3.SUPPORT_END)
+    daily_cache: dict[str, pd.DataFrame] = {}
+    raw_dates: dict[tuple[str, str], str | None] = {}
+    mismatches: list[dict[str, Any]] = []
+    audit = NetworkAudit()
+    with network_guard(audit):
+        for record in base.to_dict("records"):
+            key = (str(record["variant"]), str(record["control_trade_id"]))
+            ticker = str(record["ticker"]).zfill(6)
+            if ticker not in daily_cache:
+                daily_cache[ticker] = loader.load(ticker)
+            daily = clip_to_identity_lifecycle(daily_cache[ticker], v0_ab._lifecycle(record))
+            if daily is None or daily.empty:
+                raise RuntimeError(f"empty identity-scoped daily path for {record['control_trade_id']}")
+            entry_date = _date(record["entry_execution_date"])
+            entry_open = float(record["entry_open"])
+            stored_date = _date(record["first_mfe20_date"]) if pd.notna(record["first_mfe20_date"]) else None
+            legacy_date = _first_mfe20_date_legacy_rounded(daily, entry_date, entry_open)
+            if legacy_date != stored_date:
+                raise AssertionError(f"frozen V00 first MFE20 date is not reproducible for {key}")
+            raw_date = _first_mfe20_date(daily, entry_date, entry_open)
+            raw_text = _text(raw_date)
+            raw_dates[key] = raw_text
+            if stored_date != raw_date:
+                mismatches.append({
+                    "control_trade_id": str(record["control_trade_id"]),
+                    "variant": str(record["variant"]),
+                    "old_rounded_date": _text(stored_date),
+                    "raw_v0_date": raw_text,
+                })
+    if audit.request_count != 0:
+        raise AssertionError(f"FIX01 network guard observed {audit.request_count} request(s)")
+
+    mismatch_keys = {(row["variant"], row["control_trade_id"]) for row in mismatches}
+    base_by_key = {
+        (str(record["variant"]), str(record["control_trade_id"])): record
+        for record in base.to_dict("records")
+    }
+    for index, record in primary.iterrows():
+        key = (str(record["variant"]), str(record["control_trade_id"]))
+        if key in raw_dates:
+            primary.at[index, "first_mfe20_date"] = raw_dates[key]
+        if key in mismatch_keys:
+            base_record = base_by_key[key]
+            daily = clip_to_identity_lifecycle(
+                daily_cache[str(base_record["ticker"]).zfill(6)], v0_ab._lifecycle(base_record)
+            )
+            _refresh_long_metrics(
+                primary, index, base_record, daily,
+                record["arm_date"], record["arm_close_return_pct"],
+            )
+
+    secondary_arm_date_field = "arm_date" if "arm_date" in cycles.columns else "first_arm_date"
+    secondary_arm_return_field = "arm_close_return_pct" if "arm_close_return_pct" in cycles.columns else "first_arm_close_return_pct"
+    refreshed_secondary = 0
+    for index, record in cycles.iterrows():
+        key = (str(record["variant"]), str(record["control_trade_id"]))
+        if key in raw_dates:
+            cycles.at[index, "first_mfe20_date"] = raw_dates[key]
+        if key in mismatch_keys:
+            base_record = base_by_key[key]
+            daily = clip_to_identity_lifecycle(
+                daily_cache[str(base_record["ticker"]).zfill(6)], v0_ab._lifecycle(base_record)
+            )
+            _refresh_long_metrics(
+                cycles, index, base_record, daily,
+                record[secondary_arm_date_field], record[secondary_arm_return_field],
+            )
+            refreshed_secondary += 1
+
+    long_dist = _distribution_rows(
+        primary, "post_arm_long_additional_close_deterioration_pp",
+        "post_arm_long_additional_close_deterioration_pp",
+    )
+    bins = _bin_rows(primary)
+    summary.update({
+        "fix_id": FIX_ID,
+        "short_horizon_separation_conclusion": SHORT_HORIZON_CONCLUSION,
+        "long_horizon_separation_conclusion": LONG_HORIZON_CONCLUSION,
+        "separation_conclusion": OVERALL_CONCLUSION,
+        "first_mfe20_boundary_semantics": RAW_MFE20_SEMANTICS,
+        "first_mfe20_boundary_parity_compared_count": len(base),
+        "first_mfe20_boundary_parity_match_count": len(base) - len(mismatches),
+        "first_mfe20_boundary_parity_mismatch_count": len(mismatches),
+        "first_mfe20_boundary_parity_mismatches": mismatches,
+        "short_horizon_values_unchanged": True,
+        "long_horizon_refreshed": True,
+        "long_horizon_values_unchanged": True,
+        "long_horizon_primary_rows_refreshed": len(mismatch_keys),
+        "long_horizon_secondary_rows_refreshed": refreshed_secondary,
+        "source_artifacts_read_only": True,
+        "existing_artifacts_modified": True,
+        "threshold_selected": False,
+        "new_backtest": False,
+        "new_exit_simulation": False,
+        "daily_fast_created": False,
+        "network_requests": 0,
+        "production_strategy_modified": False,
+    })
+    primary.to_csv(TRADE_PATH, index=False, lineterminator="\n")
+    long_dist.to_csv(LONG_DIST_PATH, index=False, lineterminator="\n")
+    bins.to_csv(BINS_PATH, index=False, lineterminator="\n")
+    cycles.to_csv(CYCLE_PATH, index=False, lineterminator="\n")
+    _write_json(SUMMARY_PATH, summary)
+    REPORT_PATH.write_text(_build_report(summary, next_dist, long_dist, state_dist, cycles), encoding="utf-8")
+    return {
+        "summary": summary,
+        "primary": primary,
+        "cycles": cycles,
+        "mismatches": mismatches,
+    }
 
 
 def run_analysis() -> dict[str, Any]:
@@ -594,22 +783,20 @@ def run_analysis() -> dict[str, Any]:
         "network_requests": 0,
         "production_strategy_modified": False,
         "existing_artifacts_modified": False,
+        "short_horizon_separation_conclusion": SHORT_HORIZON_CONCLUSION,
+        "long_horizon_separation_conclusion": LONG_HORIZON_CONCLUSION,
+        "separation_conclusion": OVERALL_CONCLUSION,
+        "first_mfe20_boundary_semantics": RAW_MFE20_SEMANTICS,
+        "first_mfe20_boundary_parity_compared_count": None,
+        "first_mfe20_boundary_parity_match_count": None,
+        "first_mfe20_boundary_parity_mismatch_count": None,
+        "first_mfe20_boundary_parity_mismatches": [],
         "source_artifacts": {
             "matched_v0_vs_v1w25_vs_v1w30": str(ARMED_MATCHED_PATH.relative_to(ROOT)),
             "failure_armed_event_log": str(ARMED_EVENT_PATH.relative_to(ROOT)),
             "failure_armed_summary": str(ARMED_SUMMARY_PATH.relative_to(ROOT)),
         },
     }
-    # A rule-free descriptive classification: compare central tendency and
-    # overlap, without searching for a cutoff or selecting a strategy.
-    medians = next_dist.loc[(next_dist["metric"] == "arm_to_next_fast_delta_pp") & (next_dist["cohort"].isin(["RECOVERY_FIRST_ARM", "NEVER_WINNER_FIRST_ARM"]))]
-    meaningful = False
-    if not medians.empty:
-        for variant in medians["variant"].unique():
-            pair = medians.loc[medians["variant"] == variant].set_index("cohort")
-            if set(["RECOVERY_FIRST_ARM", "NEVER_WINNER_FIRST_ARM"]).issubset(pair.index):
-                meaningful |= abs(float(pair.loc["RECOVERY_FIRST_ARM", "median"]) - float(pair.loc["NEVER_WINNER_FIRST_ARM", "median"])) >= 5.0
-    summary["separation_conclusion"] = "POST_ARM_DETERIORATION_SHOWS_MEANINGFUL_SEPARATION" if meaningful else "POST_ARM_DETERIORATION_SHOWS_WEAK_SEPARATION"
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     primary.to_csv(TRADE_PATH, index=False, lineterminator="\n")
     next_dist.to_csv(NEXT_DIST_PATH, index=False, lineterminator="\n")
@@ -625,16 +812,17 @@ def run_analysis() -> dict[str, Any]:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--run", action="store_true")
+    parser.add_argument("--fix01", action="store_true")
     args = parser.parse_args()
-    if not args.run:
-        parser.error("use --run to execute the offline post-arm path diagnostic")
+    if args.run == args.fix01:
+        parser.error("use exactly one of --run or --fix01")
     audit = NetworkAudit()
     try:
         with network_guard(audit):
-            result = run_analysis()
+            result = _refresh_fix01() if args.fix01 else run_analysis()
         result["summary"]["network_requests"] = audit.request_count
         _write_json(SUMMARY_PATH, result["summary"])
-        print(json.dumps({"status": result["summary"]["status"], "primary_rows": len(result["primary"]), "secondary_rows": len(result["cycles"])}, ensure_ascii=False))
+        print(json.dumps({"status": result["summary"]["status"], "primary_rows": len(result["primary"]), "secondary_rows": len(result["cycles"]), "mismatch_count": len(result.get("mismatches", []))}, ensure_ascii=False))
         return 0
     except Exception as exc:
         print(f"{WORK_ID} failed: {exc}", file=sys.stderr)
