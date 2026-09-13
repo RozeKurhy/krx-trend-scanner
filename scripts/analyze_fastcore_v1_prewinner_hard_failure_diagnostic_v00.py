@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Diagnostic study of pre-winner hard-failure candidate thresholds.
+"""Diagnostic study of pre-winner hard-failure thresholds.
 
 This script is deliberately not a V1 implementation.  It reads the
 authoritative FIX01 matched-entry artifact, reconstructs only the local daily
@@ -36,13 +36,11 @@ from trend_scanner.data.repository_v2 import MarketDataRepositoryV2
 from trend_scanner.data.repository_v2_loader import RepositoryV2DailyLoader
 
 
-OUT_DIR = ROOT / "artifacts/backtests/fastcore_v1_prewinner_hard_failure_diagnostic_v00"
-TRADE_PATH = OUT_DIR / "prewinner_trade_diagnostics.csv"
-DISTRIBUTION_PATH = OUT_DIR / "prewinner_drawdown_distribution.csv"
-SWEEP_PATH = OUT_DIR / "prewinner_threshold_sweep.csv"
-IMPACT_PATH = OUT_DIR / "prewinner_threshold_trade_impacts.csv"
-SUMMARY_PATH = OUT_DIR / "prewinner_hard_failure_summary.json"
-REPORT_PATH = OUT_DIR / "fastcore_v1_prewinner_hard_failure_diagnostic_v00_report.md"
+V00_OUT_DIR = ROOT / "artifacts/backtests/fastcore_v1_prewinner_hard_failure_diagnostic_v00"
+FIX01_OUT_DIR = ROOT / "artifacts/backtests/fastcore_v1_prewinner_hard_failure_diagnostic_v00_fix01"
+# Keep the public output constant pointed at the new FIX01 destination so a
+# normal runner invocation cannot overwrite the completed V00 diagnostic.
+OUT_DIR = FIX01_OUT_DIR
 
 MATCHED_PATH = ROOT / "artifacts/backtests/fastcore_v3_exit_ab_v00_fix01/matched_control_entries_v2_vs_v0.csv"
 MATCHED_SUMMARY_PATH = ROOT / "artifacts/backtests/fastcore_v3_exit_ab_v00_fix01/matched_control_entries_v2_vs_v0_summary.json"
@@ -493,9 +491,14 @@ def _row(sweep: pd.DataFrame, threshold: int) -> pd.Series:
     return sweep[sweep["threshold_pct"] == threshold].iloc[0]
 
 
-def build_report(summary: Mapping[str, Any], distribution: pd.DataFrame, sweep: pd.DataFrame) -> str:
-    trades = pd.read_csv(TRADE_PATH)
-    impacts = pd.read_csv(IMPACT_PATH)
+def build_report(
+    summary: Mapping[str, Any],
+    distribution: pd.DataFrame,
+    sweep: pd.DataFrame,
+    output_dir: Path,
+) -> str:
+    trades = pd.read_csv(output_dir / "prewinner_trade_diagnostics.csv")
+    impacts = pd.read_csv(output_dir / "prewinner_threshold_trade_impacts.csv")
     loss_guard = trades[trades["v2_exit_reason"] == LOSS_GUARD_REASON]
     recovery = trades[trades["recovery_class"] == "RECOVERY"]
     never = trades[trades["recovery_class"] == "NEVER_WINNER"]
@@ -584,16 +587,31 @@ def build_report(summary: Mapping[str, Any], distribution: pd.DataFrame, sweep: 
             f"{_fmt(item['delta_mean_terminal_return_pct'])} |"
         )
 
-    candidate = _row(sweep, -30)
     baseline = _row(sweep, -15)
+    threshold_30 = _row(sweep, -30)
+    lg30 = impacts[
+        (impacts["threshold_pct"] == -30)
+        & (impacts["v2_exit_reason"] == LOSS_GUARD_REASON)
+    ]
+    lg30_recovery = lg30[lg30["recovery_class"] == "RECOVERY"]
+    tested_threshold_count = len(THRESHOLDS)
+    baseline_mean = float(baseline["baseline_v0_mean_terminal_return_pct"])
+    fixed_threshold_mean_improvement_count = int(
+        (pd.to_numeric(sweep["hypothetical_mean_terminal_return_pct"]) > baseline_mean).sum()
+    )
     q6 = (
-        "**V1 backtest candidate threshold: -30%**. "
-        f"이 지점은 RECOVERY kill {int(candidate['recovery_killed_count'])}건/{_fmt(candidate['recovery_killed_rate_pct'])}, "
-        f"NEVER_WINNER capture {int(candidate['failed_trade_captured_count'])}건/{_fmt(candidate['failed_trade_captured_rate_pct'])}, "
-        f"hypothetical positive rate {_fmt(candidate['hypothetical_positive_rate_pct'])}, "
-        f"mean {_fmt(candidate['hypothetical_mean_terminal_return_pct'])}를 보인다. "
-        "-25%에서 더 깊어질 때의 capture 감소와 -35%에서의 mean 정체가 만나는 elbow로 선택한 분석 후보이며, "
-        "최대 평균수익률을 고른 것이 아니고 production threshold 확정도 아니다. 인접 후보는 -25%, -35%다."
+        "**현재 데이터만으로는 NO.** 단일 고정 Pre-Winner Hard Failure 기준선은 아직 확인되지 않았다. "
+        f"-30%는 전체 RECOVERY {int(threshold_30['recovery_killed_count'])}건/{_fmt(threshold_30['recovery_killed_rate_pct'])}를 제거하고, "
+        f"Loss Guard RECOVERY에서는 {int(lg30_recovery['recovery_killed'].sum())}건/"
+        f"{_fmt(lg30_recovery['recovery_killed'].mean() * 100.0)}를 제거한다. "
+        f"-30% hypothetical positive rate는 {_fmt(threshold_30['hypothetical_positive_rate_pct'])}, "
+        f"mean return은 {_fmt(threshold_30['hypothetical_mean_terminal_return_pct'])}이고, "
+        f"V0는 positive rate {_fmt(baseline['baseline_v0_positive_rate_pct'])}, "
+        f"mean {_fmt(baseline['baseline_v0_mean_terminal_return_pct'])}다. "
+        f"테스트한 fixed threshold {tested_threshold_count}개 중 V0 mean을 개선한 것은 "
+        f"{fixed_threshold_mean_improvement_count}개다. 따라서 -30%를 Hard Failure candidate로 채택하지 않는다. "
+        "-25~-30%는 즉시 Hard Exit 기준이 아니라 향후 FAILURE ARMED 설계에서 가격 훼손 영역으로 참고할 가치가 있을 뿐이며, "
+        "이번 FIX에서는 어떤 신규 threshold도 전략 parameter로 확정하지 않는다."
     )
 
     all_rec_close = stats("ALL_973", "RECOVERY", "prewinner_min_close_return_pct")
@@ -605,9 +623,9 @@ def build_report(summary: Mapping[str, Any], distribution: pd.DataFrame, sweep: 
         "`-25% to > -30%`는 35건/20건, `-30% to > -35%`는 23건/17건이야.",
         "- Loss Guard close bin에서는 같은 구간이 각각 55/9, 33/20, 23/17건이야.",
         "- 따라서 분포 분리는 -20%~-30%부터 눈에 띄게 커지고, -60% 이하에서는 NEVER_WINNER가 지배적이지만 "
-        "그 깊은 threshold는 recovery 보호와 capture를 함께 크게 잃어 후보 선정에는 부적합해."
+        "그 깊은 threshold는 recovery 보호와 failure capture를 함께 크게 잃어 고정 기준선 확정에는 부적합해."
     ]
-    return f"""# FASTCORE V1 PRE-WINNER HARD FAILURE DIAGNOSTIC V00
+    return f"""# FASTCORE V1 PRE-WINNER HARD FAILURE DIAGNOSTIC V00 FIX01
 
 ## 핵심 질문에 대한 숫자 답
 
@@ -657,7 +675,7 @@ V0 baseline: positive rate **{_fmt(baseline['baseline_v0_positive_rate_pct'])}**
 |---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
 {chr(10).join(q5_lines)}
 
-### Q6. V1 backtest candidate threshold
+### Q6. 단일 Pre-Winner Hard Failure 기준선을 정할 수 있는가?
 
 {q6}
 
@@ -693,13 +711,13 @@ V0 baseline: positive rate **{_fmt(baseline['baseline_v0_positive_rate_pct'])}**
 - `prewinner_threshold_sweep.csv`
 - `prewinner_threshold_trade_impacts.csv`
 - `prewinner_hard_failure_summary.json`
-- `fastcore_v1_prewinner_hard_failure_diagnostic_v00_report.md`
+- `fastcore_v1_prewinner_hard_failure_diagnostic_v00_fix01_report.md`
 
-상세 산출물 절대 경로: `{OUT_DIR}`
+상세 산출물 절대 경로: `{output_dir}`
 
 ## 실행 및 보호 범위
 
-- 실행 명령: `./.venv/bin/python scripts/analyze_fastcore_v1_prewinner_hard_failure_diagnostic_v00.py --run`
+- 실행 명령: `./.venv/bin/python scripts/analyze_fastcore_v1_prewinner_hard_failure_diagnostic_v00.py --run-fix01`
 - 기존 V0/FIX01 artifact overwrite: 없음
 - 기존 V3 1,578 trade 재생성: 없음
 - Production strategy 수정: 없음
@@ -709,7 +727,7 @@ V0 baseline: positive rate **{_fmt(baseline['baseline_v0_positive_rate_pct'])}**
 """
 
 
-def run_analysis() -> dict[str, Any]:
+def run_analysis(output_dir: Path = FIX01_OUT_DIR) -> dict[str, Any]:
     matched = pd.read_csv(MATCHED_PATH)
     if len(matched) != 973:
         raise AssertionError(f"expected 973 matched source rows, got {len(matched)}")
@@ -758,8 +776,14 @@ def run_analysis() -> dict[str, Any]:
         raise AssertionError("Loss Guard NEVER_WINNER count changed")
     distribution = build_distribution(trade_diagnostics)
     sweep, impacts = build_sweep_and_impacts(matched, paths, daily_by_ticker)
+    baseline_mean = float(sweep["baseline_v0_mean_terminal_return_pct"].iloc[0])
+    fixed_threshold_mean_improvement_count = int(
+        (pd.to_numeric(sweep["hypothetical_mean_terminal_return_pct"]) > baseline_mean).sum()
+    )
+    if fixed_threshold_mean_improvement_count != 0:
+        raise AssertionError("fixed threshold unexpectedly improves V0 mean")
     summary: dict[str, Any] = {
-        "work_id": "FASTCORE_V1_PREWINNER_HARD_FAILURE_DIAGNOSTIC_V00",
+        "work_id": "FASTCORE_V1_PREWINNER_HARD_FAILURE_DIAGNOSTIC_V00_FIX01",
         "status": "COMPLETE",
         "evaluation_start": "2021-04-01",
         "signal_cutoff": "2026-08-14",
@@ -783,9 +807,12 @@ def run_analysis() -> dict[str, Any]:
         "production_strategy_modified": False,
         "existing_v0_fix01_artifact_modified": False,
         "julia_executed": False,
-        "candidate_threshold_pct": -30,
-        "adjacent_candidate_thresholds_pct": [-25, -35],
-        "candidate_selection_basis": "stable/elbow balance of recovery kill, failed-trade capture, and aggregate impact; not maximum mean return and not a production threshold",
+        "hard_failure_threshold_identified": False,
+        "hard_failure_candidate_threshold_pct": None,
+        "fixed_threshold_mean_improvement_count": fixed_threshold_mean_improvement_count,
+        "failure_armed_price_damage_research_region_pct": [-25, -30],
+        "failure_armed_region_is_strategy_parameter": False,
+        "hard_failure_conclusion": "No tested fixed pre-winner CLOSE-loss threshold improved the V0 mean terminal return while preserving enough recovery trades. A fixed Hard Failure threshold is therefore not identified by this diagnostic.",
         "matched_v0_aggregate_invariant": {
             "trades": 973,
             "v0_positive_rate_pct": 70.914697,
@@ -802,28 +829,34 @@ def run_analysis() -> dict[str, Any]:
     }
     summary["distribution_records"] = json.loads(distribution.to_json(orient="records"))
     summary["threshold_sweep_records"] = json.loads(sweep.to_json(orient="records"))
-    OUT_DIR.mkdir(parents=True, exist_ok=True)
-    trade_diagnostics.to_csv(TRADE_PATH, index=False, lineterminator="\n")
-    distribution.to_csv(DISTRIBUTION_PATH, index=False, lineterminator="\n")
-    sweep.to_csv(SWEEP_PATH, index=False, lineterminator="\n")
-    impacts.to_csv(IMPACT_PATH, index=False, lineterminator="\n")
-    _write_json(SUMMARY_PATH, summary)
-    REPORT_PATH.write_text(build_report(summary, distribution, sweep), encoding="utf-8")
+    trade_path = output_dir / "prewinner_trade_diagnostics.csv"
+    distribution_path = output_dir / "prewinner_drawdown_distribution.csv"
+    sweep_path = output_dir / "prewinner_threshold_sweep.csv"
+    impact_path = output_dir / "prewinner_threshold_trade_impacts.csv"
+    summary_path = output_dir / "prewinner_hard_failure_summary.json"
+    report_path = output_dir / "fastcore_v1_prewinner_hard_failure_diagnostic_v00_fix01_report.md"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    trade_diagnostics.to_csv(trade_path, index=False, lineterminator="\n")
+    distribution.to_csv(distribution_path, index=False, lineterminator="\n")
+    sweep.to_csv(sweep_path, index=False, lineterminator="\n")
+    impacts.to_csv(impact_path, index=False, lineterminator="\n")
+    _write_json(summary_path, summary)
+    report_path.write_text(build_report(summary, distribution, sweep, output_dir), encoding="utf-8")
     return {"summary": summary, "trades": trade_diagnostics, "distribution": distribution, "sweep": sweep, "impacts": impacts}
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--run", action="store_true")
+    parser.add_argument("--run-fix01", action="store_true")
     args = parser.parse_args()
-    if not args.run:
-        parser.error("use --run to execute the offline pre-winner diagnostic")
+    if not args.run_fix01:
+        parser.error("use --run-fix01 to execute the offline V00 FIX01 diagnostic")
     audit = NetworkAudit()
     try:
         with network_guard(audit):
-            result = run_analysis()
+            result = run_analysis(FIX01_OUT_DIR)
         result["summary"]["network_requests"] = audit.request_count
-        _write_json(SUMMARY_PATH, result["summary"])
+        _write_json(FIX01_OUT_DIR / "prewinner_hard_failure_summary.json", result["summary"])
         print(json.dumps({
             "status": result["summary"]["status"],
             "source_matched_rows": result["summary"]["source_matched_rows"],
