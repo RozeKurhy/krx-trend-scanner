@@ -702,6 +702,22 @@ def _classify_common_ticker(
     has_store = meta_path.exists()
     actual_last = _read_json(meta_path).get("actual_date_max") if has_store else None
 
+    # A single-identity PIT row remains resolvable after its lifecycle ends so historical
+    # backtests can still use it.  That identity is not a rolling-boundary coverage obligation;
+    # keep it in the effective authority accounting, but do not compare its store against the
+    # candidate boundary after the identity's own effective_to date.
+    if (
+        current_identity is not None
+        and str(current_identity.get("effective_to", "")) < candidate_boundary
+    ):
+        return PopulationAuditRecord(
+            ticker,
+            "EXPLAINED_GAP",
+            "HISTORICAL_ONLY_IDENTITY_NOT_REQUIRED_AFTER_LIFECYCLE",
+            None,
+            actual_last,
+        )
+
     # 2. Already-certified explicit zero-store contract (DATA_UNAVAILABLE: ADJUSTED_MISSING is the
     #    contractually correct behavior for these tickers, not a gap to explain away).
     if ticker in zero_store_tickers:
@@ -811,7 +827,14 @@ def audit_full_population_bootstrap(
         ticker = str(interval.get("ticker", "")).zfill(6)
         if ticker and interval.get("state") == "COMMON":
             intervals_by_ticker.setdefault(ticker, []).append(dict(interval))
-    pit_tickers = sorted(intervals_by_ticker)
+    effective_common_tickers = load_effective_common_adjusted_population(
+        Path(pit_path),
+        etf_acceptance_tickers=etf_acceptance_tickers,
+        removed_identity_audit_path=removed_identity_audit_path,
+        zero_store_contract_path=zero_store_contract_path,
+        effective_population_path=effective_population_path,
+        identity_as_of=candidate_boundary,
+    )
 
     removed_identities = _load_authoritative_removed_identities(
         removed_identity_audit_path,
@@ -833,7 +856,7 @@ def audit_full_population_bootstrap(
     )
 
     records: list[PopulationAuditRecord] = []
-    for ticker in pit_tickers:
+    for ticker in effective_common_tickers:
         identity = resolve_current_identity(ticker, candidate_boundary, intervals_by_ticker)
         records.append(
             _classify_common_ticker(

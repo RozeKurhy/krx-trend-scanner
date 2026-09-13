@@ -168,7 +168,79 @@ def test_explained_lifecycle_gap_allowed(tmp_path) -> None:
 
     audit = audit_full_population_bootstrap(adjusted_store_dir=adjusted_dir, candidate_boundary="2026-08-21", etf_acceptance_tickers=(), **kwargs)
     assert audit.unexplained_gap_count == 0
-    assert audit.records[0].category == "OK"
+    assert audit.records[0].category == "EXPLAINED_GAP"
+    assert audit.records[0].reason == "HISTORICAL_ONLY_IDENTITY_NOT_REQUIRED_AFTER_LIFECYCLE"
+
+
+def test_historical_only_ticker_is_not_required_at_rolling_boundary(tmp_path) -> None:
+    adjusted_dir = tmp_path / "adjusted"
+    adjusted_dir.mkdir()
+    _write_json(adjusted_dir / "AAA002.meta.json", _meta("2026-08-21"))
+    kwargs = _base_audit_kwargs(
+        tmp_path,
+        [
+            _interval("AAA001", "2026-08-17", "2026-08-18"),
+            _interval("AAA002", "2026-08-17", "2026-08-21"),
+        ],
+    )
+
+    audit = audit_full_population_bootstrap(
+        adjusted_store_dir=adjusted_dir,
+        candidate_boundary="2026-08-21",
+        etf_acceptance_tickers=(),
+        **kwargs,
+    )
+
+    historical = next(record for record in audit.records if record.ticker == "AAA001")
+    current = next(record for record in audit.records if record.ticker == "AAA002")
+    assert historical.category == "EXPLAINED_GAP"
+    assert historical.reason == "HISTORICAL_ONLY_IDENTITY_NOT_REQUIRED_AFTER_LIFECYCLE"
+    assert historical.expected_last_date is None
+    assert current.category == "OK"
+    assert historical not in audit.unexplained()
+
+
+def test_current_effective_common_gap_still_blocks(tmp_path) -> None:
+    adjusted_dir = tmp_path / "adjusted"
+    adjusted_dir.mkdir()
+    _write_json(adjusted_dir / "AAA001.meta.json", _meta("2026-08-19"))
+    kwargs = _base_audit_kwargs(tmp_path, [_interval("AAA001", "2026-08-17", "2026-08-21")])
+
+    audit = audit_full_population_bootstrap(
+        adjusted_store_dir=adjusted_dir,
+        candidate_boundary="2026-08-21",
+        etf_acceptance_tickers=(),
+        **kwargs,
+    )
+
+    assert audit.unexplained_gap_count == 1
+    assert audit.unexplained()[0].reason == "ACTUAL_COVERAGE_SHORT_OF_EXPECTED"
+
+
+def test_reused_ticker_audits_current_identity_only(tmp_path) -> None:
+    adjusted_dir = tmp_path / "adjusted"
+    adjusted_dir.mkdir()
+    _write_json(adjusted_dir / "AAA001.meta.json", _meta("2026-08-20"))
+    kwargs = _base_audit_kwargs(
+        tmp_path,
+        [
+            _interval("AAA001", "2026-08-17", "2026-08-18", isu_cd="KR7000010001"),
+            _interval("AAA001", "2026-08-19", "2026-08-21", isu_cd="KR7999990001"),
+        ],
+    )
+
+    audit = audit_full_population_bootstrap(
+        adjusted_store_dir=adjusted_dir,
+        candidate_boundary="2026-08-21",
+        etf_acceptance_tickers=(),
+        **kwargs,
+    )
+
+    assert audit.unexplained_gap_count == 1
+    record = audit.unexplained()[0]
+    assert record.ticker == "AAA001"
+    assert record.reason == "ACTUAL_COVERAGE_SHORT_OF_EXPECTED"
+    assert record.expected_last_date == "2026-08-21"
 
 
 def test_removed_identity_and_zero_store_and_closure_certified_are_explained_not_unexplained(tmp_path) -> None:
@@ -185,13 +257,20 @@ def test_removed_identity_and_zero_store_and_closure_certified_are_explained_not
             _interval("AAA002", "2026-08-17", "2026-08-21"),
             _interval("AAA003", "2026-08-17", "2026-08-21"),
         ],
-        removed=("AAA001",),
+        removed=(
+            {
+                "ticker": "AAA001",
+                "isu_cd": "KRAAA0010000",
+                "market": "KOSPI",
+                "effective_from": "2026-08-17",
+            },
+        ),
         zero_store=("AAA002",),
         closure_csv_rows=[("AAA003", "2026-08-19", "FULL_EXPECTED_COVERAGE")],
     )
     audit = audit_full_population_bootstrap(adjusted_store_dir=adjusted_dir, candidate_boundary="2026-08-21", etf_acceptance_tickers=(), **kwargs)
     assert audit.unexplained_gap_count == 0
-    assert audit.explained_gap_count == 3
+    assert audit.explained_gap_count == 1
 
 
 def test_current_branch_aggregate_closure_authority_explains_short_store(tmp_path) -> None:
@@ -292,15 +371,14 @@ def test_future_common_ticker_is_not_removed_from_frozen_population_absence(tmp_
 
 
 def test_real_production_full_population_bootstrap_audit_is_certified() -> None:
-    """Runs the audit against the actual production stores (read-only) -- the concrete BLOCKER B
-    evidence: 3179 in-scope tickers (3162 PIT COMMON + 17 ETF), 0 unexplained gaps."""
+    """Runs the audit against the actual production stores (read-only) with the effective scope."""
     from pathlib import Path
 
     audit: PopulationBootstrapAudit = audit_full_population_bootstrap(
         adjusted_store_dir=Path("data/market/adjusted/stocks"),
         candidate_boundary="2026-08-21",
     )
-    assert audit.total_in_scope == 3179
+    assert audit.total_in_scope == 3162
     assert audit.unexplained_gap_count == 0
 
 

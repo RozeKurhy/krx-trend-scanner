@@ -175,6 +175,10 @@ def test_population_audit_binds_supplied_live_pit_and_calendar(tmp_path, monkeyp
 
     class _Audit:
         unexplained_gap_count = 0
+        total_in_scope = 0
+        ok_count = 0
+        explained_gap_count = 0
+        records = ()
 
     def fake_audit(**kwargs):
         seen.update(kwargs)
@@ -188,8 +192,39 @@ def test_population_audit_binds_supplied_live_pit_and_calendar(tmp_path, monkeyp
         historical_calendar_path=calendar_path,
     )
 
-    assert audit() == {"candidate_boundary": "2026-09-11", "unexplained_gap_count": 0}
+    assert audit() == {
+        "candidate_boundary": "2026-09-11",
+        "total_in_scope": 0,
+        "common_scope_count": 0,
+        "etf_scope_count": len(refresh.ETF_VALIDATED_ACCEPTANCE_TICKERS),
+        "ok_count": 0,
+        "explained_gap_count": 0,
+        "unexplained_gap_count": 0,
+        "reason_breakdown": {},
+        "unexplained_reason_breakdown": {},
+    }
     assert seen["adjusted_store_dir"] == adjusted_dir
     assert seen["candidate_boundary"] == "2026-09-11"
     assert seen["pit_path"] == pit_path
     assert seen["historical_calendar_path"] == calendar_path
+
+
+def test_production_refresh_and_rolling_audit_population_parity() -> None:
+    pit_path = ROOT / "data/market/rolling_authority/merged_pit_intervals.json"
+    refresh_scope = refresh.load_common_adjusted_tickers_from_pit(
+        pit_path,
+        identity_as_of="2026-09-11",
+    )
+    audit = refresh.audit_full_population_bootstrap(
+        adjusted_store_dir=ROOT / "data/market/adjusted/stocks",
+        candidate_boundary="2026-09-11",
+        etf_acceptance_tickers=refresh.ETF_VALIDATED_ACCEPTANCE_TICKERS,
+        pit_path=pit_path,
+        historical_calendar_path=ROOT / "data/market/rolling_authority/merged_trading_calendar.json",
+    )
+    etf_tickers = {str(ticker).zfill(6) for ticker in refresh.ETF_VALIDATED_ACCEPTANCE_TICKERS}
+    audit_common_scope = [record for record in audit.records if record.ticker not in etf_tickers]
+
+    assert len(refresh_scope) == 3154
+    assert len(audit_common_scope) == 3154
+    assert audit.total_in_scope == 3154 + len(etf_tickers)

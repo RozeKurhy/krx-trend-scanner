@@ -97,14 +97,30 @@ def build_population_gap_audit(
     """Bind the population audit to the same live PIT/calendar as the refresh."""
 
     def audit() -> dict[str, object]:
+        result = audit_full_population_bootstrap(
+            adjusted_store_dir=adjusted_store_dir,
+            candidate_boundary=candidate_boundary,
+            pit_path=pit_path,
+            historical_calendar_path=historical_calendar_path,
+        )
+        reason_breakdown: dict[str, int] = {}
+        unexplained_reason_breakdown: dict[str, int] = {}
+        for record in result.records:
+            reason_breakdown[record.reason] = reason_breakdown.get(record.reason, 0) + 1
+            if record.category == "UNEXPLAINED_GAP":
+                unexplained_reason_breakdown[record.reason] = unexplained_reason_breakdown.get(record.reason, 0) + 1
+        etf_tickers = {str(ticker).zfill(6) for ticker in ETF_VALIDATED_ACCEPTANCE_TICKERS}
+        common_scope_count = sum(record.ticker not in etf_tickers for record in result.records)
         return {
             "candidate_boundary": candidate_boundary,
-            "unexplained_gap_count": audit_full_population_bootstrap(
-                adjusted_store_dir=adjusted_store_dir,
-                candidate_boundary=candidate_boundary,
-                pit_path=pit_path,
-                historical_calendar_path=historical_calendar_path,
-            ).unexplained_gap_count,
+            "total_in_scope": result.total_in_scope,
+            "common_scope_count": common_scope_count,
+            "etf_scope_count": len(ETF_VALIDATED_ACCEPTANCE_TICKERS),
+            "ok_count": result.ok_count,
+            "explained_gap_count": result.explained_gap_count,
+            "unexplained_gap_count": result.unexplained_gap_count,
+            "reason_breakdown": dict(sorted(reason_breakdown.items())),
+            "unexplained_reason_breakdown": dict(sorted(unexplained_reason_breakdown.items())),
         }
 
     return audit
