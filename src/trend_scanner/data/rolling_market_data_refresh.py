@@ -60,6 +60,7 @@ from html import unescape
 from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any, Callable, Mapping, Sequence
+from urllib.parse import urljoin
 
 import pandas as pd
 import requests
@@ -899,6 +900,38 @@ def _kind_ratio(text: str) -> float | None:
     return None
 
 
+KIND_DISCLOSURE_SEARCH_URL = "https://kind.krx.co.kr/disclosure/details.do"
+
+
+class _KindReferenceLinkParser(HTMLParser):
+    """Collect a bounded set of official document links from one filtered KIND result page."""
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.references: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag.lower() != "a":
+            return
+        values = [value for key, value in attrs if key.lower() in {"href", "onclick"} and value]
+        for value in values:
+            for match in re.findall(r"https?://kind\.krx\.co\.kr/[^'\"\s)]+|/external/[^'\"\s)]+", value):
+                reference = urljoin(KIND_DISCLOSURE_SEARCH_URL, unescape(match))
+                if "/external/" in reference and reference not in self.references:
+                    self.references.append(reference)
+
+
+def _kind_reference_candidates(payload: str | bytes, *, limit: int = 5) -> list[str]:
+    raw = payload.decode("utf-8", errors="replace") if isinstance(payload, bytes) else str(payload)
+    parser = _KindReferenceLinkParser()
+    try:
+        parser.feed(raw)
+        parser.close()
+    except Exception:  # noqa: BLE001 -- no reference is safer than a partial URL
+        return []
+    return parser.references[:limit]
+
+
 def parse_kind_corporate_action_evidence(
     payload: str | bytes,
     ticker: str,
@@ -981,7 +1014,12 @@ def load_kind_corporate_action_references(path: Path | str) -> dict[str, tuple[s
 
 
 class KindCorporateActionEvidenceProvider:
-    """Candidate-bound official KIND evidence lookup with an in-memory per-run cache."""
+    """Candidate-bound official KIND evidence lookup with an in-memory per-run cache.
+
+    When no explicit reference is supplied, one ticker-filtered KIND disclosure query is made and
+    only a small number of official document links from that result are fetched. The provider never
+    performs a market-wide corporate-action search.
+    """
 
     def __init__(
         self,
@@ -990,6 +1028,7 @@ class KindCorporateActionEvidenceProvider:
         reference_resolver: Callable[[str], Sequence[str]] | None = None,
         session: requests.Session | None = None,
         timeout_seconds: float = 10.0,
+        max_references: int = 5,
     ) -> None:
         self.references_by_ticker = {
             str(ticker).zfill(6): ((refs,) if isinstance(refs, str) else tuple(refs))
@@ -1000,16 +1039,47 @@ class KindCorporateActionEvidenceProvider:
         self.timeout_seconds = float(timeout_seconds)
         if self.timeout_seconds <= 0:
             raise ValueError("timeout_seconds must be positive")
+        self.max_references = max(1, int(max_references))
         self._cache: dict[str, list[dict[str, Any]]] = {}
 
-    def __call__(self, ticker: str) -> list[dict[str, Any]]:
+    def lookup(
+        self,
+        ticker: str,
+        *,
+        current_boundary: str | None = None,
+        target_as_of: str | None = None,
+        historical_start: str | None = None,
+    ) -> list[dict[str, Any]]:
         normalized_ticker = str(ticker).zfill(6)
-        if normalized_ticker in self._cache:
-            return list(self._cache[normalized_ticker])
+        cache_key = normalized_ticker
+        if current_boundary or target_as_of or historical_start:
+            cache_key = "|".join((normalized_ticker, str(current_boundary or ""), str(target_as_of or ""), str(historical_start or "")))
+        if cache_key in self._cache:
+            return list(self._cache[cache_key])
         records: list[dict[str, Any]] = []
         references = self.references_by_ticker.get(normalized_ticker, ())
         if not references and self.reference_resolver is not None:
             references = tuple(self.reference_resolver(normalized_ticker))
+        if not references:
+            start = historical_start or current_boundary or "2021-01-01"
+            end = target_as_of or current_boundary or "2099-12-31"
+            try:
+                response = self.session.get(
+                    KIND_DISCLOSURE_SEARCH_URL,
+                    params={
+                        "method": "searchDetailsMain",
+                        "repIsuSrtCd": f"A{normalized_ticker}",
+                        "searchFromDate": start,
+                        "searchToDate": end,
+                        "currentPageSize": str(self.max_references),
+                        "pageIndex": "1",
+                    },
+                    timeout=self.timeout_seconds,
+                )
+                if response.status_code == 200:
+                    references = tuple(_kind_reference_candidates(response.content, limit=self.max_references))
+            except Exception:  # noqa: BLE001 -- this ticker fails closed; other tickers continue
+                references = ()
         for reference in references:
             try:
                 response = self.session.get(reference, timeout=self.timeout_seconds)
@@ -1018,8 +1088,32 @@ class KindCorporateActionEvidenceProvider:
                 records.extend(parse_kind_corporate_action_evidence(response.content, normalized_ticker, reference))
             except Exception:  # noqa: BLE001 -- this ticker fails closed; other tickers continue
                 continue
-        self._cache[normalized_ticker] = records
+        self._cache[cache_key] = records
         return list(records)
+
+    def __call__(self, ticker: str) -> list[dict[str, Any]]:
+        return self.lookup(ticker)
+
+
+def _bind_corporate_action_evidence_lookup(
+    lookup: Callable[[str], Any] | None,
+    *,
+    current_boundary: str,
+    target_as_of: str,
+    historical_start: str,
+) -> Callable[[str], Any] | None:
+    """Bind refresh-window context without invoking a lookup for unchanged candidates."""
+
+    if lookup is None:
+        return None
+    if isinstance(lookup, KindCorporateActionEvidenceProvider):
+        return lambda ticker: lookup.lookup(
+            ticker,
+            current_boundary=current_boundary,
+            target_as_of=target_as_of,
+            historical_start=historical_start,
+        )
+    return lookup
 
 
 def _evidence_records(value: Any) -> list[dict[str, Any]]:
@@ -1105,6 +1199,7 @@ def _validate_corporate_action_evidence(
     factor_regime_centers: Sequence[float],
     historical_start: pd.Timestamp,
     boundary: str,
+    target_as_of: str | None = None,
 ) -> dict[str, Any]:
     """Fail-closed gate binding a factor-shaped rewrite to existing action evidence."""
 
@@ -1143,7 +1238,7 @@ def _validate_corporate_action_evidence(
             or _truthy_evidence_field(record.get("official_evidence_found"))
             or _truthy_evidence_field(record.get("evidence_found"))
             or (
-            record.get("selection_role") == "AUTHORITY_VALID_FROZEN_CONTROL"
+                record.get("selection_role") == "AUTHORITY_VALID_FROZEN_CONTROL"
             )
         )
         if record_ticker == ticker and authority_valid and source_valid and event_type_valid:
@@ -1155,7 +1250,14 @@ def _validate_corporate_action_evidence(
 
     event_dates = [event_date for record in valid_records for event_date in _evidence_dates(record)]
     boundary_date = pd.Timestamp(boundary)
-    time_supported = any(historical_start <= event_date <= boundary_date for event_date in event_dates)
+    target_date = pd.Timestamp(target_as_of or boundary)
+    if target_date < boundary_date:
+        return {
+            **base,
+            "corporate_action_evidence_reason": "CORPORATE_ACTION_TARGET_BEFORE_BOUNDARY",
+            "approved": False,
+        }
+    time_supported = any(historical_start <= event_date <= target_date for event_date in event_dates)
     factors = [factor for record in valid_records for factor in _evidence_factor_values(record)]
     factor_candidates = factors + [1.0 / factor for factor in factors if factor != 0]
     ratio_supported = bool(factors)
@@ -1171,6 +1273,11 @@ def _validate_corporate_action_evidence(
         "corporate_action_factor_date_matched": bool(factor_explained and time_supported),
         "corporate_action_event_dates": [date.date().isoformat() for date in event_dates],
         "corporate_action_observed_factors": factors,
+        "corporate_action_timing_window": {
+            "historical_start": historical_start.date().isoformat(),
+            "current_boundary": boundary_date.date().isoformat(),
+            "target_as_of": target_date.date().isoformat(),
+        },
     }
     if not time_supported:
         return {**details, "corporate_action_evidence_reason": "CORPORATE_ACTION_EVENT_TIME_UNSUPPORTED", "approved": False}
@@ -1199,6 +1306,7 @@ def classify_adjusted_history_transition(
     requested_start: str | None = None,
     corporate_action_evidence: Any = None,
     corporate_action_evidence_lookup: Callable[[str], Any] | None = None,
+    target_as_of: str | None = None,
 ) -> dict[str, Any]:
     """Classify a candidate adjusted-history rewrite without mutating either frame.
 
@@ -1389,6 +1497,7 @@ def classify_adjusted_history_transition(
         factor_regime_centers=shape_details["factor_regime_centers"],
         historical_start=before_history.index.min(),
         boundary=boundary,
+        target_as_of=target_as_of,
     )
     if not evidence_gate["approved"]:
         return {
@@ -1443,7 +1552,13 @@ class RollingEtfAdjustedUpdater:
                     current_boundary,
                     provider_frame_match=True,
                     requested_start=self.requested_start,
-                    corporate_action_evidence_lookup=self.corporate_action_evidence_lookup,
+                    corporate_action_evidence_lookup=_bind_corporate_action_evidence_lookup(
+                        self.corporate_action_evidence_lookup,
+                        current_boundary=current_boundary,
+                        target_as_of=target_as_of,
+                        historical_start=self.requested_start,
+                    ),
+                    target_as_of=target_as_of,
                 )
                 restatement_validation.append(transition)
                 if transition["status"] == REJECTED_HISTORICAL_RESTATEMENT:
@@ -1622,7 +1737,13 @@ class RollingAdjustedPriceUpdater:
                     current_boundary,
                     provider_frame_match=True,
                     requested_start=ticker_requested_start,
-                    corporate_action_evidence_lookup=self.corporate_action_evidence_lookup,
+                    corporate_action_evidence_lookup=_bind_corporate_action_evidence_lookup(
+                        self.corporate_action_evidence_lookup,
+                        current_boundary=current_boundary,
+                        target_as_of=target_as_of,
+                        historical_start=ticker_requested_start,
+                    ),
+                    target_as_of=target_as_of,
                 )
                 restatement_validation.append(transition)
                 if transition["status"] == REJECTED_HISTORICAL_RESTATEMENT:

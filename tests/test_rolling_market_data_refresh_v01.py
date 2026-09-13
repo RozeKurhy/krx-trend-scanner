@@ -747,7 +747,7 @@ def test_kind_evidence_provider_fetches_only_configured_ticker_and_caches() -> N
         def __init__(self) -> None:
             self.calls: list[str] = []
 
-        def get(self, url, timeout):
+        def get(self, url, timeout, params=None):
             self.calls.append(url)
             return _Response()
 
@@ -761,7 +761,106 @@ def test_kind_evidence_provider_fetches_only_configured_ticker_and_caches() -> N
     second = provider("001000")
     assert len(first) == len(second) == 1
     assert session.calls == ["https://kind.krx.co.kr/external/001000.htm"]
-    assert provider("002780") == []
+
+
+def test_kind_auto_resolver_finds_candidate_reference_and_reaches_validator() -> None:
+    search_url = "https://kind.krx.co.kr/disclosure/details.do"
+    document_url = "https://kind.krx.co.kr/external/2026/07/23/000479/20260723001108/00591.htm"
+
+    class _Response:
+        def __init__(self, content: str) -> None:
+            self.status_code = 200
+            self.content = content.encode()
+
+    class _Session:
+        def __init__(self) -> None:
+            self.calls: list[tuple[str, dict | None]] = []
+
+        def get(self, url, timeout, params=None):
+            self.calls.append((url, params))
+            if url == search_url:
+                return _Response(f'<a href="{document_url}">주식병합 결정</a>')
+            return _Response("<body>주식병합 액면가액 100원에서 500원 효력발생일 2026.08.22</body>")
+
+    before = _adjusted_frame("2026-08-03", "2026-08-21")
+    candidate = _adjusted_frame("2026-08-03", "2026-08-24")
+    candidate.loc[candidate.index <= pd.Timestamp("2026-08-21"), ["open", "high", "low", "close"]] *= 5.0
+    session = _Session()
+    provider = KindCorporateActionEvidenceProvider(session=session)
+
+    result = classify_adjusted_history_transition(
+        "001000",
+        before,
+        candidate,
+        "2026-08-21",
+        target_as_of="2026-08-24",
+        provider_frame_match=True,
+        corporate_action_evidence_lookup=provider,
+    )
+
+    assert result["status"] == APPROVED_HISTORICAL_RESTATEMENT
+    assert [url for url, _params in session.calls] == [search_url, document_url]
+    assert session.calls[0][1]["repIsuSrtCd"] == "A001000"
+
+
+def test_kind_auto_resolver_no_result_fails_closed() -> None:
+    class _Session:
+        def get(self, url, timeout, params=None):
+            class _Response:
+                status_code = 200
+                content = b"<body>no matching disclosure</body>"
+
+            return _Response()
+
+    before = _adjusted_frame("2026-08-03", "2026-08-21")
+    candidate = _adjusted_frame("2026-08-03", "2026-08-24")
+    candidate.loc[candidate.index <= pd.Timestamp("2026-08-21"), ["open", "high", "low", "close"]] *= 5.0
+    provider = KindCorporateActionEvidenceProvider(session=_Session())
+
+    result = classify_adjusted_history_transition(
+        "002780", before, candidate, "2026-08-21", target_as_of="2026-08-24",
+        provider_frame_match=True, corporate_action_evidence_lookup=provider,
+    )
+
+    assert result["status"] == REJECTED_HISTORICAL_RESTATEMENT
+    assert result["reason"] == "CORPORATE_ACTION_EVIDENCE_MISSING"
+
+
+def test_common_updater_passes_refresh_window_to_kind_lookup(tmp_path) -> None:
+    calendar_path = tmp_path / "calendar.json"
+    calendar_path.write_text(json.dumps({"trading_dates": ["2026-08-21", "2026-08-24"]}))
+    pit_path = tmp_path / "pit.json"
+    pit_path.write_text(json.dumps({"intervals": [{"ticker": "005930", "state": "COMMON", "effective_from": "2010-01-04", "effective_to": "2026-08-24"}]}))
+    store = _seed_adjusted_store(tmp_path / "adjusted", ["005930"], start="2026-08-03", end="2026-08-21")
+    candidate = _adjusted_frame("2026-08-03", "2026-08-24")
+    candidate.loc[candidate.index <= pd.Timestamp("2026-08-21"), ["open", "high", "low", "close"]] *= 5.0
+
+    class _StubProvider:
+        def load_daily(self, ticker, start, end):
+            return candidate
+
+    class _WindowRecordingProvider(KindCorporateActionEvidenceProvider):
+        def __init__(self):
+            super().__init__()
+            self.windows: list[tuple[str, str, str, str]] = []
+
+        def lookup(self, ticker, *, current_boundary=None, target_as_of=None, historical_start=None):
+            self.windows.append((ticker, current_boundary, target_as_of, historical_start))
+            return _corporate_action_evidence(ticker, 5.0, "2026-08-22")
+
+    evidence_provider = _WindowRecordingProvider()
+    updater = RollingAdjustedPriceUpdater(
+        _StubProvider(),
+        store,
+        pit_path=pit_path,
+        historical_calendar_path=calendar_path,
+        corporate_action_evidence_lookup=evidence_provider,
+    )
+
+    result = updater.refresh(["005930"], "2026-08-21", "2026-08-24")
+
+    assert result["updated"] == ["005930"]
+    assert evidence_provider.windows == [("005930", "2026-08-21", "2026-08-24", "2010-01-04")]
 
 
 def test_production_entrypoint_does_not_use_legacy_frozen_control_csv() -> None:
@@ -770,19 +869,49 @@ def test_production_entrypoint_does_not_use_legacy_frozen_control_csv() -> None:
     assert "KindCorporateActionEvidenceProvider" in source
 
 
-def test_corporate_action_evidence_with_timing_mismatch_is_rejected() -> None:
+def test_corporate_action_event_inside_refresh_window_is_approved() -> None:
     before = _adjusted_frame("2026-08-03", "2026-08-21")
     candidate = _adjusted_frame("2026-08-03", "2026-08-24")
     candidate.loc[candidate.index <= pd.Timestamp("2026-08-21"), ["open", "high", "low", "close"]] *= 5.0
 
     result = classify_adjusted_history_transition(
         "005930", before, candidate, "2026-08-21", provider_frame_match=True,
+        target_as_of="2026-08-24",
         corporate_action_evidence=_corporate_action_evidence("005930", 5.0, "2026-08-22"),
+    )
+
+    assert result["status"] == APPROVED_HISTORICAL_RESTATEMENT
+    assert result["corporate_action_factor_date_matched"] is True
+
+
+def test_corporate_action_event_after_target_is_rejected() -> None:
+    before = _adjusted_frame("2026-08-03", "2026-08-21")
+    candidate = _adjusted_frame("2026-08-03", "2026-08-24")
+    candidate.loc[candidate.index <= pd.Timestamp("2026-08-21"), ["open", "high", "low", "close"]] *= 5.0
+
+    result = classify_adjusted_history_transition(
+        "005930", before, candidate, "2026-08-21", provider_frame_match=True,
+        target_as_of="2026-08-24",
+        corporate_action_evidence=_corporate_action_evidence("005930", 5.0, "2026-08-25"),
     )
 
     assert result["status"] == REJECTED_HISTORICAL_RESTATEMENT
     assert result["reason"] == "CORPORATE_ACTION_EVENT_TIME_UNSUPPORTED"
-    assert result["corporate_action_factor_date_matched"] is False
+
+
+def test_corporate_action_event_before_history_start_is_rejected() -> None:
+    before = _adjusted_frame("2026-08-03", "2026-08-21")
+    candidate = _adjusted_frame("2026-08-03", "2026-08-24")
+    candidate.loc[candidate.index <= pd.Timestamp("2026-08-21"), ["open", "high", "low", "close"]] *= 5.0
+
+    result = classify_adjusted_history_transition(
+        "005930", before, candidate, "2026-08-21", provider_frame_match=True,
+        target_as_of="2026-08-24",
+        corporate_action_evidence=_corporate_action_evidence("005930", 5.0, "2026-08-01"),
+    )
+
+    assert result["status"] == REJECTED_HISTORICAL_RESTATEMENT
+    assert result["reason"] == "CORPORATE_ACTION_EVENT_TIME_UNSUPPORTED"
 
 
 def test_coordinator_allows_validated_adjusted_restatement(tmp_path) -> None:

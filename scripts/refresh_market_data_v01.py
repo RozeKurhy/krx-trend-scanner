@@ -84,7 +84,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--corporate-action-reference-manifest",
         type=Path,
         default=None,
-        help="optional per-ticker official KIND reference JSON for this refresh run; no market-wide search is performed",
+        help="optional per-ticker official KIND reference JSON override; without it, changed tickers use a bounded KIND lookup",
     )
     return parser
 
