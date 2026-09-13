@@ -57,7 +57,7 @@ import uuid
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Mapping, Sequence
+from typing import Any, Callable, Mapping, Sequence
 
 import pandas as pd
 
@@ -68,7 +68,10 @@ from trend_scanner.data.adjusted_price_pilot import (
     DEFAULT_SUSPENSION_ERRATA_PATH,
     resolve_expected_coverage,
 )
-from trend_scanner.data.adjusted_price_provider import NaverDirectAdjustedPriceDataProvider
+from trend_scanner.data.adjusted_price_provider import (
+    NaverDirectAdjustedPriceDataProvider,
+    validate_adjusted_ohlc,
+)
 from trend_scanner.data.adjusted_price_store import AdjustedPriceStore
 from trend_scanner.data.krx_etf_raw_provider import ETF_ENDPOINT, KrxRawEtfSnapshotProvider
 from trend_scanner.data.krx_historical_backfill import KrxHistoricalBackfillRunner, candidate_dates
@@ -752,6 +755,195 @@ def _empty_etf_snapshot() -> pd.DataFrame:
     )
 
 
+HISTORICAL_RESTATEMENT_UNCHANGED = "UNCHANGED"
+APPROVED_HISTORICAL_RESTATEMENT = "APPROVED_HISTORICAL_RESTATEMENT"
+REJECTED_HISTORICAL_RESTATEMENT = "REJECTED_HISTORICAL_RESTATEMENT"
+BLOCKED_UNEXPLAINED_GAPS_244 = "BLOCKED_UNEXPLAINED_GAPS_244"
+
+
+def _normalise_adjusted_frame(frame: pd.DataFrame) -> pd.DataFrame:
+    """Return a comparable, sorted OHLC view without changing source values."""
+
+    result = frame.loc[:, ["open", "high", "low", "close"]].copy()
+    result.index = pd.DatetimeIndex(pd.to_datetime(result.index, errors="raise")).rename(None)
+    return result.sort_index()
+
+
+def classify_adjusted_history_transition(
+    ticker: str,
+    before: pd.DataFrame | None,
+    candidate: pd.DataFrame,
+    boundary: str,
+    *,
+    provider_frame_match: bool | None = None,
+    requested_start: str | None = None,
+) -> dict[str, Any]:
+    """Classify a candidate adjusted-history rewrite without mutating either frame.
+
+    A corporate-action restatement is accepted only when the certified-date set is preserved,
+    the changed rows form a contiguous historical adjustment shape, and each contiguous factor
+    regime is internally coherent.  This deliberately rejects an isolated row edit or a
+    backdated/removed historical row.  ``provider_frame_match`` is supplied after the store
+    round-trip and binds the accepted result to the current official provider response.
+    """
+
+    normalized_ticker = str(ticker).zfill(6)
+    try:
+        validate_adjusted_ohlc(candidate)
+    except Exception as exc:  # noqa: BLE001 -- converted to a fail-closed classification
+        return {
+            "ticker": normalized_ticker,
+            "status": REJECTED_HISTORICAL_RESTATEMENT,
+            "reason": "ADJUSTED_OHLC_INTEGRITY_FAILED",
+            "detail": type(exc).__name__,
+            "changed_rows": 0,
+            "provider_frame_match": provider_frame_match,
+        }
+
+    after = _normalise_adjusted_frame(candidate)
+    if requested_start is not None and not after.empty and after.index.min() < pd.Timestamp(requested_start):
+        return {
+            "ticker": normalized_ticker,
+            "status": REJECTED_HISTORICAL_RESTATEMENT,
+            "reason": "PROVIDER_RETURNED_ROW_BEFORE_REQUESTED_START",
+            "changed_rows": 0,
+            "provider_frame_match": provider_frame_match,
+        }
+    if before is None:
+        historical = after.loc[:pd.Timestamp(boundary)]
+        status = HISTORICAL_RESTATEMENT_UNCHANGED if historical.empty else REJECTED_HISTORICAL_RESTATEMENT
+        return {
+            "ticker": normalized_ticker,
+            "status": status,
+            "reason": "NO_CERTIFIED_HISTORY_BEFORE_BOUNDARY" if historical.empty else "NEW_CERTIFIED_HISTORY_ADDED",
+            "changed_rows": 0 if historical.empty else len(historical),
+            "provider_frame_match": provider_frame_match,
+        }
+
+    before_normalized = _normalise_adjusted_frame(before)
+    before_history = before_normalized.loc[:pd.Timestamp(boundary)]
+    after_history = after.loc[:pd.Timestamp(boundary)]
+    if not before_history.index.isin(after_history.index).all():
+        return {
+            "ticker": normalized_ticker,
+            "status": REJECTED_HISTORICAL_RESTATEMENT,
+            "reason": "CERTIFIED_DATE_REMOVED",
+            "changed_rows": 0,
+            "provider_frame_match": provider_frame_match,
+        }
+    if provider_frame_match is False:
+        return {
+            "ticker": normalized_ticker,
+            "status": REJECTED_HISTORICAL_RESTATEMENT,
+            "reason": "PROVIDER_RESPONSE_STORE_MISMATCH",
+            "changed_rows": 0,
+            "provider_frame_match": False,
+        }
+
+    if before_history.empty:
+        return {
+            "ticker": normalized_ticker,
+            "status": HISTORICAL_RESTATEMENT_UNCHANGED,
+            "reason": "NO_CERTIFIED_HISTORY_BEFORE_BOUNDARY",
+            "changed_rows": 0,
+            "provider_frame_match": provider_frame_match,
+        }
+
+    old_values = before_history.astype("float64")
+    new_values = after_history.loc[before_history.index].astype("float64")
+    changed_mask = (old_values != new_values).any(axis=1)
+    changed_positions = [index for index, changed in enumerate(changed_mask.tolist()) if changed]
+    changed_rows = len(changed_positions)
+    if changed_rows == 0:
+        return {
+            "ticker": normalized_ticker,
+            "status": HISTORICAL_RESTATEMENT_UNCHANGED,
+            "reason": "NO_CERTIFIED_VALUE_CHANGE",
+            "changed_rows": 0,
+            "provider_frame_match": provider_frame_match,
+        }
+    if changed_rows < 2:
+        return {
+            "ticker": normalized_ticker,
+            "status": REJECTED_HISTORICAL_RESTATEMENT,
+            "reason": "ISOLATED_CERTIFIED_ROW_CHANGE",
+            "changed_rows": changed_rows,
+            "provider_frame_match": provider_frame_match,
+        }
+
+    # A restatement should cover a historical run, not unrelated isolated dates.  A small
+    # allowance accommodates source rounding and a few non-changing rows at event boundaries.
+    span = changed_positions[-1] - changed_positions[0] + 1
+    gap_allowance = max(5, int(len(before_history) * 0.01))
+    if span - changed_rows > gap_allowance:
+        return {
+            "ticker": normalized_ticker,
+            "status": REJECTED_HISTORICAL_RESTATEMENT,
+            "reason": "NON_CONTIGUOUS_CERTIFIED_CHANGES",
+            "changed_rows": changed_rows,
+            "provider_frame_match": provider_frame_match,
+        }
+
+    ratios = new_values.loc[changed_mask] / old_values.loc[changed_mask]
+    row_factors = ratios.median(axis=1)
+    ordered = sorted(float(value) for value in row_factors.tolist() if value > 0)
+    clusters: list[list[float]] = []
+    for factor in ordered:
+        if not clusters:
+            clusters.append([factor])
+            continue
+        prior = clusters[-1][-1]
+        if abs(factor / prior - 1.0) <= 0.25:
+            clusters[-1].append(factor)
+        else:
+            clusters.append([factor])
+    if len(clusters) > 4 or any(len(cluster) < 2 for cluster in clusters):
+        return {
+            "ticker": normalized_ticker,
+            "status": REJECTED_HISTORICAL_RESTATEMENT,
+            "reason": "INCOHERENT_RESTATEMENT_FACTOR_REGIMES",
+            "changed_rows": changed_rows,
+            "factor_regime_count": len(clusters),
+            "provider_frame_match": provider_frame_match,
+        }
+
+    for cluster in clusters:
+        center = float(pd.Series(cluster).median())
+        if any(abs(value / center - 1.0) > 0.03 for value in cluster):
+            return {
+                "ticker": normalized_ticker,
+                "status": REJECTED_HISTORICAL_RESTATEMENT,
+                "reason": "INCOHERENT_RESTATEMENT_FACTOR",
+                "changed_rows": changed_rows,
+                "factor_regime_count": len(clusters),
+                "provider_frame_match": provider_frame_match,
+            }
+
+    # Every changed OHLC cell must agree with its row's factor within a rounding-tolerant bound.
+    factor_by_date = row_factors
+    for index in row_factors.index:
+        factor = float(factor_by_date.loc[index])
+        cell_ratios = ratios.loc[index]
+        if (cell_ratios.sub(factor).abs() / factor > 0.05).any():
+            return {
+                "ticker": normalized_ticker,
+                "status": REJECTED_HISTORICAL_RESTATEMENT,
+                "reason": "OHLC_FACTOR_INCONSISTENT",
+                "changed_rows": changed_rows,
+                "factor_regime_count": len(clusters),
+                "provider_frame_match": provider_frame_match,
+            }
+
+    return {
+        "ticker": normalized_ticker,
+        "status": APPROVED_HISTORICAL_RESTATEMENT,
+        "reason": "CURRENT_PROVIDER_CONTIGUOUS_FACTOR_RESTATEMENT",
+        "changed_rows": changed_rows,
+        "factor_regime_count": len(clusters),
+        "provider_frame_match": provider_frame_match,
+    }
+
+
 class RollingEtfAdjustedUpdater:
     """ETF adjusted-price rolling leg for the fixed 17-ticker validated scope.
 
@@ -767,19 +959,39 @@ class RollingEtfAdjustedUpdater:
         self.requested_start = requested_start
 
     def refresh(self, current_boundary: str, target_as_of: str) -> dict[str, Any]:
-        results, failures = [], []
+        results, failures, restatement_validation = [], [], []
         for ticker in ETF_VALIDATED_ACCEPTANCE_TICKERS:
             try:
                 frame = self.provider.load_daily(ticker, self.requested_start, target_as_of)
                 if frame.empty:
                     raise RuntimeError("EMPTY_ADJUSTED_AUTHORITY")
+                has_existing_store = hasattr(self.store, "exists") and self.store.exists(ticker)
+                before = self.store.load_daily(ticker) if has_existing_store else None
+                transition = classify_adjusted_history_transition(
+                    ticker, before, frame, current_boundary, requested_start=self.requested_start
+                )
                 self.store.save_full(ticker, frame, metadata_context={"requested_start": self.requested_start, "requested_end": target_as_of})
+                if hasattr(self.store, "load_daily"):
+                    reloaded = self.store.load_daily(ticker)
+                    transition["provider_frame_match"] = bool(reloaded.equals(frame))
+                else:
+                    transition["provider_frame_match"] = None
+                if transition["provider_frame_match"] is False:
+                    transition["status"] = REJECTED_HISTORICAL_RESTATEMENT
+                    transition["reason"] = "PROVIDER_RESPONSE_STORE_MISMATCH"
+                restatement_validation.append(transition)
                 results.append(ticker)
             except Exception as exc:  # noqa: BLE001 -- bounded, reported, not retried with a new source
                 failures.append({"ticker": ticker, "error_type": type(exc).__name__})
                 break
         new_boundary = target_as_of if not failures and len(results) == len(ETF_VALIDATED_ACCEPTANCE_TICKERS) else current_boundary
-        return {"leg": "etf_adjusted", "updated": results, "failures": failures, "new_boundary": new_boundary}
+        return {
+            "leg": "etf_adjusted",
+            "updated": results,
+            "failures": failures,
+            "restatement_validation": restatement_validation,
+            "new_boundary": new_boundary,
+        }
 
 
 class RollingAdjustedPriceUpdater:
@@ -894,7 +1106,7 @@ class RollingAdjustedPriceUpdater:
                 if t:
                     intervals_by_ticker.setdefault(t, []).append(iv)
 
-        results, failures, skipped = [], [], []
+        results, failures, skipped, restatement_validation = [], [], [], []
         for ticker in tickers:
             if requested_start is None:
                 identity = resolve_current_identity(ticker, target_as_of, intervals_by_ticker or {})
@@ -916,9 +1128,23 @@ class RollingAdjustedPriceUpdater:
                 if frame.empty:
                     skipped.append({"ticker": ticker, "reason": "EMPTY_ADJUSTED_AUTHORITY"})
                     continue
+                has_existing_store = hasattr(self.store, "exists") and self.store.exists(ticker)
+                before = self.store.load_daily(ticker) if has_existing_store else None
+                transition = classify_adjusted_history_transition(
+                    ticker, before, frame, current_boundary, requested_start=ticker_requested_start
+                )
                 self.store.save_full(
                     ticker, frame, metadata_context={"requested_start": ticker_requested_start, "requested_end": target_as_of}
                 )
+                if hasattr(self.store, "load_daily"):
+                    reloaded = self.store.load_daily(ticker)
+                    transition["provider_frame_match"] = bool(reloaded.equals(frame))
+                else:
+                    transition["provider_frame_match"] = None
+                if transition["provider_frame_match"] is False:
+                    transition["status"] = REJECTED_HISTORICAL_RESTATEMENT
+                    transition["reason"] = "PROVIDER_RESPONSE_STORE_MISMATCH"
+                restatement_validation.append(transition)
                 results.append(ticker)
             except Exception as exc:  # noqa: BLE001
                 failures.append({"ticker": ticker, "error_type": type(exc).__name__})
@@ -926,7 +1152,14 @@ class RollingAdjustedPriceUpdater:
         # skip or failure means this leg did not fully cover target_as_of, so it must report the
         # unchanged current_boundary rather than let the coordinator assume full coverage.
         new_boundary = target_as_of if not failures and not skipped else current_boundary
-        return {"leg": "common_adjusted", "updated": results, "skipped": skipped, "failures": failures, "new_boundary": new_boundary}
+        return {
+            "leg": "common_adjusted",
+            "updated": results,
+            "skipped": skipped,
+            "failures": failures,
+            "restatement_validation": restatement_validation,
+            "new_boundary": new_boundary,
+        }
 
 
 @dataclass(frozen=True)
@@ -1432,6 +1665,34 @@ def resolve_current_identity(
     return IdentityResolution(ticker, as_of, "AMBIGUOUS", None, all_candidates)
 
 
+def _summarize_adjusted_restatement_validation(leg_results: Mapping[str, Mapping[str, Any]]) -> dict[str, Any]:
+    """Aggregate ticker-level adjusted restatement decisions from the two adjusted legs."""
+
+    records: list[dict[str, Any]] = []
+    expected_tickers: set[str] = set()
+    for leg in ("etf_adjusted", "common_adjusted"):
+        result = leg_results.get(leg, {})
+        expected_tickers.update(str(ticker) for ticker in result.get("updated", ()))
+        records.extend(dict(record) for record in result.get("restatement_validation", ()))
+    by_ticker = {str(record.get("ticker")): record for record in records if record.get("ticker")}
+    approved = [record for record in records if record.get("status") == APPROVED_HISTORICAL_RESTATEMENT]
+    rejected = [record for record in records if record.get("status") == REJECTED_HISTORICAL_RESTATEMENT]
+    changed = [record for record in records if record.get("status") in {
+        APPROVED_HISTORICAL_RESTATEMENT,
+        REJECTED_HISTORICAL_RESTATEMENT,
+    }]
+    missing = sorted(expected_tickers - set(by_ticker))
+    return {
+        "changed_adjusted_ticker_count": len(changed),
+        "approved_restatement_count": len(approved),
+        "rejected_unexplained_count": len(rejected),
+        "validation_record_count": len(records),
+        "expected_updated_ticker_count": len(expected_tickers),
+        "validation_coverage_missing_tickers": missing,
+        "representative_examples": (approved + rejected)[:5],
+    }
+
+
 class RollingRefreshCoordinator:
     """Sequences all four legs and promotes the certified boundary atomically, only when every
     required leg reaches ``target_as_of``. A failed or blocked leg leaves the existing manifest file
@@ -1448,6 +1709,7 @@ class RollingRefreshCoordinator:
         authority_dir: Path = DEFAULT_ROLLING_AUTHORITY_DIR,
         raw_store: KrxRawStockStore | None = None,
         adjusted_store: AdjustedPriceStore | None = None,
+        population_gap_audit: Callable[[], Mapping[str, Any]] | None = None,
     ) -> None:
         self.raw_updater = raw_updater
         self.raw_etf_updater = raw_etf_updater
@@ -1460,6 +1722,7 @@ class RollingRefreshCoordinator:
         # leg updaters with no real stores) simply skip the guard rather than failing.
         self.raw_store = raw_store
         self.adjusted_store = adjusted_store
+        self.population_gap_audit = population_gap_audit
 
     def plan(self, target_as_of: str) -> dict[str, Any]:
         manifest = load_rolling_authority(self.authority_dir)
@@ -1502,6 +1765,83 @@ class RollingRefreshCoordinator:
                 "error": str(exc),
             }
 
+        restatement_summary = _summarize_adjusted_restatement_validation(leg_results)
+        if pre_fingerprint is not None:
+            post_fingerprint = history_fingerprint(self.raw_store, self.adjusted_store, guard_tickers, manifest.certified_through)
+            if post_fingerprint["raw_history_sha256"] != pre_fingerprint["raw_history_sha256"]:
+                return {
+                    "status": "FAILED",
+                    "certified_through": manifest.certified_through,
+                    "boundary_unchanged": True,
+                    "leg_results": leg_results,
+                    "restatement_summary": restatement_summary,
+                    "error": "PREVIOUS_CERTIFIED_HISTORY_MUTATION_DETECTED",
+                    "error_reason": "RAW_HISTORY_MUTATION",
+                    "pre_fingerprint": pre_fingerprint,
+                    "post_fingerprint": post_fingerprint,
+                }
+            adjusted_changed = post_fingerprint["adjusted_history_sha256"] != pre_fingerprint["adjusted_history_sha256"]
+            if adjusted_changed:
+                if (
+                    restatement_summary["rejected_unexplained_count"] > 0
+                    or restatement_summary["approved_restatement_count"] == 0
+                    or restatement_summary["validation_coverage_missing_tickers"]
+                ):
+                    return {
+                        "status": "FAILED",
+                        "certified_through": manifest.certified_through,
+                        "boundary_unchanged": True,
+                        "leg_results": leg_results,
+                        "restatement_summary": restatement_summary,
+                        "error": "PREVIOUS_CERTIFIED_HISTORY_MUTATION_DETECTED",
+                        "error_reason": "UNEXPLAINED_ADJUSTED_HISTORY_MUTATION",
+                        "pre_fingerprint": pre_fingerprint,
+                        "post_fingerprint": post_fingerprint,
+                    }
+            elif restatement_summary["rejected_unexplained_count"] > 0:
+                return {
+                    "status": "FAILED",
+                    "certified_through": manifest.certified_through,
+                    "boundary_unchanged": True,
+                    "leg_results": leg_results,
+                    "restatement_summary": restatement_summary,
+                    "error": "PREVIOUS_CERTIFIED_HISTORY_MUTATION_DETECTED",
+                    "error_reason": "REJECTED_ADJUSTED_RESTATEMENT",
+                    "pre_fingerprint": pre_fingerprint,
+                    "post_fingerprint": post_fingerprint,
+                }
+
+        gap_audit: dict[str, Any] | None = None
+        if self.population_gap_audit is not None:
+            try:
+                gap_audit = dict(self.population_gap_audit())
+                unexplained_gap_count = int(gap_audit.get("unexplained_gap_count", 0))
+            except Exception as exc:  # noqa: BLE001 -- an independent audit failure is fail-closed
+                return {
+                    "status": "FAILED",
+                    "certified_through": manifest.certified_through,
+                    "boundary_unchanged": True,
+                    "leg_results": leg_results,
+                    "restatement_summary": restatement_summary,
+                    "error": "POPULATION_GAP_AUDIT_FAILED",
+                    "error_detail": type(exc).__name__,
+                }
+            if unexplained_gap_count > 0:
+                blocker = (
+                    BLOCKED_UNEXPLAINED_GAPS_244
+                    if unexplained_gap_count == 244
+                    else f"BLOCKED_UNEXPLAINED_GAPS_{unexplained_gap_count}"
+                )
+                return {
+                    "status": "FAILED",
+                    "certified_through": manifest.certified_through,
+                    "boundary_unchanged": True,
+                    "leg_results": leg_results,
+                    "restatement_summary": restatement_summary,
+                    "gap_audit": gap_audit,
+                    "error": blocker,
+                }
+
         new_leg_boundaries = {
             "common_raw": leg_results["common_raw"]["new_boundary"],
             "etf_raw": leg_results["etf_raw"]["new_boundary"],
@@ -1516,20 +1856,9 @@ class RollingRefreshCoordinator:
                 "boundary_unchanged": True,
                 "leg_results": leg_results,
                 "new_leg_boundaries": new_leg_boundaries,
+                "restatement_summary": restatement_summary,
+                "gap_audit": gap_audit,
             }
-
-        if pre_fingerprint is not None:
-            post_fingerprint = history_fingerprint(self.raw_store, self.adjusted_store, guard_tickers, manifest.certified_through)
-            if post_fingerprint != pre_fingerprint:
-                return {
-                    "status": "FAILED",
-                    "certified_through": manifest.certified_through,
-                    "boundary_unchanged": True,
-                    "leg_results": leg_results,
-                    "error": "PREVIOUS_CERTIFIED_HISTORY_MUTATION_DETECTED",
-                    "pre_fingerprint": pre_fingerprint,
-                    "post_fingerprint": post_fingerprint,
-                }
 
         new_manifest = RollingAuthorityManifest(
             authority_version=manifest.authority_version,
@@ -1543,7 +1872,14 @@ class RollingRefreshCoordinator:
             generated_at=_iso_today_utc(),
         )
         write_rolling_authority(new_manifest, self.authority_dir)
-        return {"status": "PROMOTED", "certified_through": new_certified, "previous_boundary": manifest.certified_through, "leg_results": leg_results}
+        return {
+            "status": "PROMOTED",
+            "certified_through": new_certified,
+            "previous_boundary": manifest.certified_through,
+            "leg_results": leg_results,
+            "restatement_summary": restatement_summary,
+            "gap_audit": gap_audit,
+        }
 
 
 def history_fingerprint(raw_store: KrxRawStockStore, adjusted_store: AdjustedPriceStore, tickers: Sequence[str], boundary: str) -> dict[str, str]:
@@ -1623,6 +1959,11 @@ __all__ = [
     "RollingEtfAdjustedUpdater",
     "RollingAdjustedPriceUpdater",
     "RollingRefreshCoordinator",
+    "BLOCKED_UNEXPLAINED_GAPS_244",
+    "HISTORICAL_RESTATEMENT_UNCHANGED",
+    "APPROVED_HISTORICAL_RESTATEMENT",
+    "REJECTED_HISTORICAL_RESTATEMENT",
+    "classify_adjusted_history_transition",
     "history_fingerprint",
     "count_rows_after",
     "candidate_dates",

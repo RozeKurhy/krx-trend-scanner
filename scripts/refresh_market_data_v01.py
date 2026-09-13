@@ -34,6 +34,7 @@ from trend_scanner.data.rolling_market_data_refresh import (
     RollingRawEtfUpdater,
     RollingRawMarketUpdater,
     RollingRefreshCoordinator,
+    audit_full_population_bootstrap,
     load_rolling_authority,
 )
 
@@ -133,6 +134,13 @@ def main(argv: list[str] | None = None) -> int:
         authority_dir=args.authority_dir,
         raw_store=raw_store,
         adjusted_store=adjusted_store,
+        population_gap_audit=lambda: {
+            "candidate_boundary": args.target_as_of,
+            "unexplained_gap_count": audit_full_population_bootstrap(
+                adjusted_store_dir=args.adjusted_root,
+                candidate_boundary=args.target_as_of,
+            ).unexplained_gap_count,
+        },
     )
     result = coordinator.execute(args.target_as_of, dry_run=False)
     print(json.dumps(result, ensure_ascii=False, sort_keys=True, default=str))

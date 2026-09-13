@@ -16,8 +16,11 @@ import pytest
 from trend_scanner.data.adjusted_price_store import AdjustedPriceStore
 from trend_scanner.data.krx_raw_stock_store import KrxRawStockStore
 from trend_scanner.data.rolling_market_data_refresh import (
+    APPROVED_HISTORICAL_RESTATEMENT,
     ETF_VALIDATED_ACCEPTANCE_TICKERS,
+    HISTORICAL_RESTATEMENT_UNCHANGED,
     InsufficientPitFrontierError,
+    REJECTED_HISTORICAL_RESTATEMENT,
     RollingAuthorityError,
     RollingAuthorityManifest,
     RollingEtfAdjustedUpdater,
@@ -25,6 +28,7 @@ from trend_scanner.data.rolling_market_data_refresh import (
     RollingRawMarketUpdater,
     RollingRefreshCoordinator,
     bootstrap_rolling_authority,
+    classify_adjusted_history_transition,
     count_rows_after,
     history_fingerprint,
     load_rolling_authority,
@@ -330,7 +334,13 @@ class _FakeCommonAdjustedUpdater:
         return {"leg": "common_adjusted", "updated": list(tickers), "failures": [], "new_boundary": new_boundary}
 
 
-def _coordinator(tmp_path, *, common_adjusted_fails: bool, target_boundary: str = "2026-09-04") -> RollingRefreshCoordinator:
+def _coordinator(
+    tmp_path,
+    *,
+    common_adjusted_fails: bool,
+    target_boundary: str = "2026-09-04",
+    population_gap_audit=None,
+) -> RollingRefreshCoordinator:
     write_rolling_authority(_manifest("2026-08-21"), tmp_path)
     return RollingRefreshCoordinator(
         raw_updater=_FakeRawUpdater(target_boundary),
@@ -339,6 +349,7 @@ def _coordinator(tmp_path, *, common_adjusted_fails: bool, target_boundary: str 
         common_adjusted_updater=_FakeCommonAdjustedUpdater(fail=common_adjusted_fails),
         common_adjusted_tickers=["005930"],
         authority_dir=tmp_path,
+        population_gap_audit=population_gap_audit,
     )
 
 
@@ -425,6 +436,25 @@ def test_coordinator_aborts_promotion_when_pre_boundary_history_mutates(tmp_path
     assert after == before
 
 
+def test_coordinator_blocks_independent_unexplained_gap_audit(tmp_path) -> None:
+    coordinator = _coordinator(
+        tmp_path,
+        common_adjusted_fails=False,
+        population_gap_audit=lambda: {
+            "candidate_boundary": "2026-09-04",
+            "unexplained_gap_count": 244,
+        },
+    )
+
+    before = load_rolling_authority(tmp_path)
+    result = coordinator.execute("2026-09-04", dry_run=False)
+
+    assert result["status"] == "FAILED"
+    assert result["error"] == "BLOCKED_UNEXPLAINED_GAPS_244"
+    assert result["boundary_unchanged"] is True
+    assert load_rolling_authority(tmp_path) == before
+
+
 def test_dry_run_never_writes(tmp_path) -> None:
     coordinator = _coordinator(tmp_path, common_adjusted_fails=False)
     before = (tmp_path / "manifest.json").read_bytes()
@@ -504,3 +534,109 @@ def test_history_fingerprint_changes_if_pre_boundary_row_mutates(tmp_path) -> No
 
     after = history_fingerprint(raw_store, adjusted_store, tickers, "2026-08-21")
     assert after["adjusted_history_sha256"] != before["adjusted_history_sha256"]
+
+
+def test_validated_adjusted_restatement_is_approved() -> None:
+    before = _adjusted_frame("2026-08-03", "2026-08-21")
+    candidate = _adjusted_frame("2026-08-03", "2026-08-24")
+    historical = candidate.index <= pd.Timestamp("2026-08-21")
+    candidate.loc[historical, ["open", "high", "low", "close"]] *= 5.0
+
+    result = classify_adjusted_history_transition(
+        "005930", before, candidate, "2026-08-21", provider_frame_match=True
+    )
+
+    assert result["status"] == APPROVED_HISTORICAL_RESTATEMENT
+    assert result["changed_rows"] == len(before)
+    assert result["factor_regime_count"] == 1
+
+
+def test_piecewise_adjusted_restatement_is_approved() -> None:
+    before = _adjusted_frame("2026-08-03", "2026-08-21")
+    candidate = _adjusted_frame("2026-08-03", "2026-08-24")
+    first_regime = candidate.index <= pd.Timestamp("2026-08-10")
+    second_regime = (candidate.index > pd.Timestamp("2026-08-10")) & (candidate.index <= pd.Timestamp("2026-08-21"))
+    candidate.loc[first_regime, ["open", "high", "low", "close"]] *= 100.0
+    candidate.loc[second_regime, ["open", "high", "low", "close"]] *= 10.0
+
+    result = classify_adjusted_history_transition(
+        "002780", before, candidate, "2026-08-21", provider_frame_match=True
+    )
+
+    assert result["status"] == APPROVED_HISTORICAL_RESTATEMENT
+    assert result["factor_regime_count"] == 2
+
+
+def test_isolated_adjusted_history_mutation_is_rejected() -> None:
+    before = _adjusted_frame("2026-08-03", "2026-08-21")
+    candidate = before.copy()
+    candidate.iloc[3, candidate.columns.get_loc("close")] += 1.0
+
+    result = classify_adjusted_history_transition(
+        "005930", before, candidate, "2026-08-21", provider_frame_match=True
+    )
+
+    assert result["status"] == REJECTED_HISTORICAL_RESTATEMENT
+    assert result["reason"] == "ISOLATED_CERTIFIED_ROW_CHANGE"
+
+
+def test_forward_only_adjusted_extension_is_unchanged() -> None:
+    before = _adjusted_frame("2026-08-03", "2026-08-21")
+    candidate = _adjusted_frame("2026-08-03", "2026-08-24")
+
+    result = classify_adjusted_history_transition(
+        "005930", before, candidate, "2026-08-21", provider_frame_match=True
+    )
+
+    assert result["status"] == HISTORICAL_RESTATEMENT_UNCHANGED
+    assert result["reason"] == "NO_CERTIFIED_VALUE_CHANGE"
+
+
+def test_coordinator_allows_validated_adjusted_restatement(tmp_path) -> None:
+    write_rolling_authority(_manifest("2026-08-21"), tmp_path)
+    raw_store = _seed_raw_store(tmp_path / "raw", dates=["2026-08-21"])
+    adjusted_store = _seed_adjusted_store(
+        tmp_path / "adjusted",
+        ["005930", *ETF_VALIDATED_ACCEPTANCE_TICKERS],
+        start="2026-08-03",
+        end="2026-08-21",
+    )
+
+    class _ApprovedCommonAdjustedUpdater(_FakeCommonAdjustedUpdater):
+        def refresh(self, tickers, current_boundary, target_as_of):
+            before = adjusted_store.load_daily("005930")
+            candidate = _adjusted_frame("2026-08-03", "2026-08-24")
+            historical = candidate.index <= pd.Timestamp(current_boundary)
+            candidate.loc[historical, ["open", "high", "low", "close"]] *= 5.0
+            transition = classify_adjusted_history_transition(
+                "005930", before, candidate, current_boundary, provider_frame_match=True
+            )
+            adjusted_store.save_full(
+                "005930", candidate, {"requested_start": "2026-08-03", "requested_end": "2026-08-24"}
+            )
+            return {
+                "leg": "common_adjusted",
+                "updated": list(tickers),
+                "skipped": [],
+                "failures": [],
+                "restatement_validation": [transition],
+                "new_boundary": target_as_of,
+            }
+
+    coordinator = RollingRefreshCoordinator(
+        raw_updater=_FakeRawUpdater("2026-09-04"),
+        raw_etf_updater=_FakeEtfRawUpdater("2026-09-04"),
+        etf_adjusted_updater=_FakeEtfAdjustedUpdater("2026-09-04"),
+        common_adjusted_updater=_ApprovedCommonAdjustedUpdater(),
+        common_adjusted_tickers=["005930"],
+        authority_dir=tmp_path,
+        raw_store=raw_store,
+        adjusted_store=adjusted_store,
+    )
+
+    result = coordinator.execute("2026-09-04", dry_run=False)
+
+    assert result["status"] == "PROMOTED"
+    assert result["restatement_summary"]["changed_adjusted_ticker_count"] == 1
+    assert result["restatement_summary"]["approved_restatement_count"] == 1
+    assert result["restatement_summary"]["rejected_unexplained_count"] == 0
