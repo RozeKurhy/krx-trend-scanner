@@ -941,6 +941,20 @@ def test_kind_search_response_resolves_acceptance_number_to_ticker_scoped_docume
     assert session.calls[0][1]["method"] == "searchDetailsSub"
 
 
+def test_kind_parser_accepts_change_listing_par_value_arrow() -> None:
+    payload = "<body>변경상장(액면병합) 1주의 금액 : 1,000원 → 5,000원 변경상장일 2026년09월09일</body>"
+
+    records = parse_kind_corporate_action_evidence(
+        payload,
+        "001290",
+        "https://kind.krx.co.kr/external/change-listing.htm",
+    )
+
+    assert len(records) == 1
+    assert records[0]["event_type"] == "STOCK_CONSOLIDATION"
+    assert records[0]["ratio"] == 5.0
+
+
 def test_compound_adjusted_restatement_uses_at_most_three_official_factors() -> None:
     before = _adjusted_frame("2026-08-03", "2026-08-21")
     candidate = _adjusted_frame("2026-08-03", "2026-08-24")

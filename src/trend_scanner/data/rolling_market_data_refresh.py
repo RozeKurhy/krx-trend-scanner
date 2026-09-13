@@ -893,6 +893,15 @@ def _kind_ratio(text: str) -> float | None:
         r"액면\s*가(?:액|금액)?[^\d]{0,80}(\d[\d,]*)\s*원[^\d]{0,80}(\d[\d,]*)\s*원",
         text,
     )
+    if not par_match:
+        # KIND's change-listing notices commonly render the same par-value change as
+        # ``1주의 금액 : 1,000원 → 5,000원``. Keep the context anchor narrow so unrelated
+        # price/share-count arrows elsewhere in the document cannot become a ratio.
+        par_match = re.search(
+            r"1주의\s*(?:금액|액면\s*가(?:액|금액)?)\s*[:：]?\s*"
+            r"(\d[\d,]*)\s*원\s*(?:→|->|에서)\s*(\d[\d,]*)\s*원",
+            text,
+        )
     if par_match:
         old_value = float(par_match.group(1).replace(",", ""))
         new_value = float(par_match.group(2).replace(",", ""))
