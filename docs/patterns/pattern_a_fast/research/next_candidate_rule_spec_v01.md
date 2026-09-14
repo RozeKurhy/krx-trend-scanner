@@ -45,7 +45,8 @@ V2 진입을 유지하면서 다음 두 구간을 분리한다.
 진입은 `SAME_AS_V02`로 고정한다. 후보의 진입 조건과 실행 시점은 V2와 동일하다.
 
 - Pattern A 상태: `TRANSITION` 또는 `EARLY_TREND`
-- FAST 상태: `TRIGGER` 또는 `READY`
+- FAST Machine Stage: `TRIGGER`
+- FAST Machine Stage Status: `READY`
 - 월간 레짐: `PERMITTED_REGIME`
 - 일간 위험 상태: `NORMAL` 또는 `ELEVATED`
 - FAST Score: `READY` 또는 `PARTIAL`
