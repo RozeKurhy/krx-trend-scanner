@@ -93,6 +93,8 @@ def build_population_gap_audit(
     candidate_boundary: str,
     pit_path: Path,
     historical_calendar_path: Path,
+    production_raw_store: KrxRawStockStore | None = None,
+    production_raw_start: str | None = None,
 ):
     """Bind the population audit to the same live PIT/calendar as the refresh."""
 
@@ -102,6 +104,8 @@ def build_population_gap_audit(
             candidate_boundary=candidate_boundary,
             pit_path=pit_path,
             historical_calendar_path=historical_calendar_path,
+            production_raw_store=production_raw_store,
+            production_raw_start=production_raw_start,
         )
         reason_breakdown: dict[str, int] = {}
         unexplained_reason_breakdown: dict[str, int] = {}
@@ -236,6 +240,8 @@ def main(argv: list[str] | None = None) -> int:
             candidate_boundary=args.target_as_of,
             pit_path=args.pit_path,
             historical_calendar_path=args.historical_calendar_path,
+            production_raw_store=raw_store,
+            production_raw_start=load_rolling_authority(args.authority_dir).certified_through,
         ),
     )
     try:

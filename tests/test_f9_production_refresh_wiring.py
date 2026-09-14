@@ -4,6 +4,8 @@ import importlib.util
 import json
 from pathlib import Path
 
+from trend_scanner.data.rolling_market_data_refresh import resolve_current_identity
+
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT_PATH = ROOT / "scripts/refresh_market_data_v01.py"
@@ -167,6 +169,38 @@ def test_same_ticker_new_identity_remains_eligible(tmp_path) -> None:
     assert "121910" in tickers
 
 
+def test_historical_single_identity_is_excluded_from_rolling_refresh_population(tmp_path) -> None:
+    pit_path = tmp_path / "pit.json"
+    pit_path.write_text(
+        json.dumps(
+            {
+                "intervals": [
+                    {"ticker": "000001", "isu_cd": "KR7000000001", "market": "KOSPI", "state": "COMMON", "effective_from": "2020-01-01", "effective_to": "2026-09-10"},
+                    {"ticker": "000002", "isu_cd": "KR7000000002", "market": "KOSPI", "state": "COMMON", "effective_from": "2020-01-01", "effective_to": "2026-09-11"},
+                    {"ticker": "000003", "isu_cd": "KR7000000003", "market": "KOSPI", "state": "COMMON", "effective_from": "2026-09-12", "effective_to": "2026-09-20"},
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    intervals = {
+        ticker: [interval]
+        for interval in json.loads(pit_path.read_text(encoding="utf-8"))["intervals"]
+        for ticker in [interval["ticker"]]
+    }
+
+    historical_resolution = resolve_current_identity("000001", "2026-09-11", intervals)
+    assert historical_resolution.status == "RESOLVED"
+    assert refresh.load_effective_common_adjusted_population(
+        pit_path,
+        etf_acceptance_tickers=(),
+        removed_identity_audit_path=None,
+        zero_store_contract_path=None,
+        effective_population_path=None,
+        identity_as_of="2026-09-11",
+    ) == ["000002"]
+
+
 def test_population_audit_binds_supplied_live_pit_and_calendar(tmp_path, monkeypatch) -> None:
     adjusted_dir = tmp_path / "adjusted"
     pit_path = tmp_path / "merged_pit.json"
@@ -225,6 +259,5 @@ def test_production_refresh_and_rolling_audit_population_parity() -> None:
     etf_tickers = {str(ticker).zfill(6) for ticker in refresh.ETF_VALIDATED_ACCEPTANCE_TICKERS}
     audit_common_scope = [record for record in audit.records if record.ticker not in etf_tickers]
 
-    assert len(refresh_scope) == 3154
-    assert len(audit_common_scope) == 3154
-    assert audit.total_in_scope == 3154 + len(etf_tickers)
+    assert len(refresh_scope) == len(audit_common_scope)
+    assert audit.total_in_scope == len(refresh_scope) + len(etf_tickers)

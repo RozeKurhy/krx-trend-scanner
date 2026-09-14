@@ -6,10 +6,13 @@ from __future__ import annotations
 import hashlib
 import json
 
+import pandas as pd
 import pytest
 
+from trend_scanner.data.krx_raw_stock_provider import RAW_COLUMNS
 from trend_scanner.data.rolling_market_data_refresh import (
     DEFAULT_REMOVED_IDENTITY_AUDIT_PATH,
+    ETF_VALIDATED_ACCEPTANCE_TICKERS,
     InsufficientPitFrontierError,
     PopulationBootstrapAudit,
     RollingAuthorityError,
@@ -17,6 +20,7 @@ from trend_scanner.data.rolling_market_data_refresh import (
     bootstrap_rolling_authority,
     bootstrap_rolling_authority_v2,
     build_rolling_pit_extension,
+    load_effective_common_adjusted_population,
     merge_pit_extension_intervals,
     validate_pit_extension_survivorship_safety,
 )
@@ -124,6 +128,44 @@ class _FakeRawStore:
         return [{"market": market, "date": self._latest[market], "status": "COMPLETE"}]
 
 
+class _FakeProductionRawStore:
+    def __init__(self, frames_by_market_date) -> None:
+        self._frames = frames_by_market_date
+
+    def list_manifest(self, market=None):
+        markets = [market] if market is not None else sorted(self._frames)
+        return [
+            {"market": current_market, "date": day, "status": "COMPLETE"}
+            for current_market in markets
+            for day in sorted(self._frames.get(current_market, {}))
+        ]
+
+    def load_snapshot(self, market, day):
+        return self._frames[market][day].copy()
+
+
+def _raw_frame(day: str, ticker: str | None = None) -> pd.DataFrame:
+    if ticker is None:
+        return pd.DataFrame(columns=list(RAW_COLUMNS))
+    return pd.DataFrame(
+        [
+            {
+                "date": pd.Timestamp(day),
+                "ticker": ticker,
+                "open": 100,
+                "high": 110,
+                "low": 90,
+                "close": 105,
+                "volume": 1000,
+                "trading_value": 105000,
+                "market_cap": 1000000,
+                "listed_shares": 10000,
+            }
+        ],
+        columns=list(RAW_COLUMNS),
+    )
+
+
 def test_bootstrap_boundary_requires_full_population_authority(tmp_path) -> None:
     adjusted_dir = tmp_path / "adjusted"
     adjusted_dir.mkdir()
@@ -168,8 +210,7 @@ def test_explained_lifecycle_gap_allowed(tmp_path) -> None:
 
     audit = audit_full_population_bootstrap(adjusted_store_dir=adjusted_dir, candidate_boundary="2026-08-21", etf_acceptance_tickers=(), **kwargs)
     assert audit.unexplained_gap_count == 0
-    assert audit.records[0].category == "EXPLAINED_GAP"
-    assert audit.records[0].reason == "HISTORICAL_ONLY_IDENTITY_NOT_REQUIRED_AFTER_LIFECYCLE"
+    assert audit.records == ()
 
 
 def test_historical_only_ticker_is_not_required_at_rolling_boundary(tmp_path) -> None:
@@ -191,13 +232,9 @@ def test_historical_only_ticker_is_not_required_at_rolling_boundary(tmp_path) ->
         **kwargs,
     )
 
-    historical = next(record for record in audit.records if record.ticker == "AAA001")
     current = next(record for record in audit.records if record.ticker == "AAA002")
-    assert historical.category == "EXPLAINED_GAP"
-    assert historical.reason == "HISTORICAL_ONLY_IDENTITY_NOT_REQUIRED_AFTER_LIFECYCLE"
-    assert historical.expected_last_date is None
+    assert all(record.ticker != "AAA001" for record in audit.records)
     assert current.category == "OK"
-    assert historical not in audit.unexplained()
 
 
 def test_current_effective_common_gap_still_blocks(tmp_path) -> None:
@@ -241,6 +278,49 @@ def test_reused_ticker_audits_current_identity_only(tmp_path) -> None:
     assert record.ticker == "AAA001"
     assert record.reason == "ACTUAL_COVERAGE_SHORT_OF_EXPECTED"
     assert record.expected_last_date == "2026-08-21"
+
+
+def test_production_raw_no_trade_does_not_create_false_adjusted_gap(tmp_path) -> None:
+    adjusted_dir = tmp_path / "adjusted"
+    adjusted_dir.mkdir()
+    _write_json(adjusted_dir / "AAA001.meta.json", _meta("2026-08-20"))
+    kwargs = _base_audit_kwargs(tmp_path, [_interval("AAA001", "2026-08-17", "2026-08-21")])
+    raw_store = _FakeProductionRawStore(
+        {"KOSPI": {"2026-08-21": _raw_frame("2026-08-21")}, "KOSDAQ": {}}
+    )
+
+    audit = audit_full_population_bootstrap(
+        adjusted_store_dir=adjusted_dir,
+        candidate_boundary="2026-08-21",
+        etf_acceptance_tickers=(),
+        production_raw_store=raw_store,
+        production_raw_start="2026-08-21",
+        **kwargs,
+    )
+
+    assert audit.unexplained_gap_count == 0
+
+
+def test_production_raw_trade_with_adjusted_missing_still_blocks(tmp_path) -> None:
+    adjusted_dir = tmp_path / "adjusted"
+    adjusted_dir.mkdir()
+    _write_json(adjusted_dir / "AAA001.meta.json", _meta("2026-08-20"))
+    kwargs = _base_audit_kwargs(tmp_path, [_interval("AAA001", "2026-08-17", "2026-08-21")])
+    raw_store = _FakeProductionRawStore(
+        {"KOSPI": {"2026-08-21": _raw_frame("2026-08-21", "AAA001")}, "KOSDAQ": {}}
+    )
+
+    audit = audit_full_population_bootstrap(
+        adjusted_store_dir=adjusted_dir,
+        candidate_boundary="2026-08-21",
+        etf_acceptance_tickers=(),
+        production_raw_store=raw_store,
+        production_raw_start="2026-08-21",
+        **kwargs,
+    )
+
+    assert audit.unexplained_gap_count == 1
+    assert audit.unexplained()[0].reason == "ACTUAL_COVERAGE_SHORT_OF_EXPECTED"
 
 
 def test_removed_identity_and_zero_store_and_closure_certified_are_explained_not_unexplained(tmp_path) -> None:
@@ -378,7 +458,11 @@ def test_real_production_full_population_bootstrap_audit_is_certified() -> None:
         adjusted_store_dir=Path("data/market/adjusted/stocks"),
         candidate_boundary="2026-08-21",
     )
-    assert audit.total_in_scope == 3162
+    expected_common = load_effective_common_adjusted_population(
+        Path("data/market/rolling_authority/merged_pit_intervals.json"),
+        identity_as_of="2026-08-21",
+    )
+    assert audit.total_in_scope == len(expected_common) + len(ETF_VALIDATED_ACCEPTANCE_TICKERS)
     assert audit.unexplained_gap_count == 0
 
 

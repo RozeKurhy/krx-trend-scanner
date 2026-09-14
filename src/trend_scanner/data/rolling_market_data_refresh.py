@@ -76,7 +76,11 @@ from trend_scanner.data.adjusted_price_pilot import (
 from trend_scanner.data.adjusted_price_provider import (
     NaverDirectAdjustedPriceDataProvider,
 )
-from trend_scanner.data.adjusted_price_semantics import validate_source_integrity
+from trend_scanner.data.adjusted_price_semantics import (
+    ClosureState,
+    classify_source_row,
+    validate_source_integrity,
+)
 from trend_scanner.data.adjusted_price_store import AdjustedPriceStore
 from trend_scanner.data.krx_etf_raw_provider import ETF_ENDPOINT, KrxRawEtfSnapshotProvider
 from trend_scanner.data.krx_historical_backfill import KrxHistoricalBackfillRunner, candidate_dates
@@ -608,6 +612,12 @@ def load_effective_common_adjusted_population(
             resolution = resolve_current_identity(ticker, identity_as_of, intervals_by_ticker)
             if resolution.status != "RESOLVED" or resolution.interval is None:
                 continue
+            if not (
+                str(resolution.interval.get("effective_from", ""))
+                <= identity_as_of
+                <= str(resolution.interval.get("effective_to", ""))
+            ):
+                continue
             candidate_intervals = (resolution.interval,)
         if any(not _identity_matches_removed(interval, removed_identities) for interval in candidate_intervals):
             common_tickers.add(ticker)
@@ -673,6 +683,59 @@ def _load_aggregate_closure_tickers(
     return effective_tickers
 
 
+@dataclass(frozen=True)
+class ProductionRawCoverageAuthority:
+    """Recent KRX RAW coverage observed from the production partition store."""
+
+    start_date: str
+    end_date: str
+    covered_dates_by_market: Mapping[str, frozenset[str]]
+    observed_dates_by_market_ticker: Mapping[tuple[str, str], frozenset[str]]
+
+
+def _load_production_raw_coverage_authority(
+    raw_store: KrxRawStockStore,
+    *,
+    start_date: str,
+    end_date: str,
+) -> ProductionRawCoverageAuthority:
+    covered_dates_by_market: dict[str, frozenset[str]] = {}
+    observed_dates_by_market_ticker: dict[tuple[str, str], set[str]] = {}
+    for market in ("KOSPI", "KOSDAQ"):
+        covered_dates: set[str] = set()
+        for manifest_row in raw_store.list_manifest(market):
+            day = str(manifest_row["date"])
+            status = str(manifest_row["status"])
+            if not (start_date <= day <= end_date) or status not in {"COMPLETE", "NO_DATA"}:
+                continue
+            covered_dates.add(day)
+            if status != "COMPLETE":
+                continue
+            frame = raw_store.load_snapshot(market, day)
+            for row in frame.itertuples(index=False):
+                state = classify_source_row(
+                    row.open,
+                    row.high,
+                    row.low,
+                    row.close,
+                    row.volume,
+                    row.trading_value,
+                )
+                if state != ClosureState.USABLE_ADJUSTED_OBSERVATION:
+                    continue
+                ticker = str(row.ticker).zfill(6)
+                observed_dates_by_market_ticker.setdefault((market, ticker), set()).add(day)
+        covered_dates_by_market[market] = frozenset(covered_dates)
+    return ProductionRawCoverageAuthority(
+        start_date=start_date,
+        end_date=end_date,
+        covered_dates_by_market=covered_dates_by_market,
+        observed_dates_by_market_ticker={
+            key: frozenset(value) for key, value in observed_dates_by_market_ticker.items()
+        },
+    )
+
+
 def _classify_common_ticker(
     ticker: str,
     candidate_boundary: str,
@@ -689,6 +752,7 @@ def _classify_common_ticker(
     historical_calendar_path: Path,
     suspension_authority_path: Path,
     suspension_errata_path: Path | None,
+    production_raw_coverage: ProductionRawCoverageAuthority | None,
 ) -> PopulationAuditRecord:
     # 1. Already-certified, already-closed authority correction: this identity is not part of the
     #    required population at all (directive section 14: cite the closure artifact's *semantics*,
@@ -737,7 +801,21 @@ def _classify_common_ticker(
         suspension_authority_path=suspension_authority_path,
         suspension_errata_path=suspension_errata_path,
     )
-    expected_dates = resolution.expected_tradable_dates
+    expected_dates = set(resolution.expected_tradable_dates)
+    if production_raw_coverage is not None and current_identity is not None:
+        market = str(current_identity.get("market", "")).upper()
+        covered_dates = production_raw_coverage.covered_dates_by_market.get(market, frozenset())
+        recent_covered_dates = {
+            day
+            for day in covered_dates
+            if production_raw_coverage.start_date <= day <= production_raw_coverage.end_date
+        }
+        if recent_covered_dates:
+            observed_dates = production_raw_coverage.observed_dates_by_market_ticker.get(
+                (market, ticker), frozenset()
+            )
+            expected_dates.difference_update(recent_covered_dates)
+            expected_dates.update(observed_dates.intersection(recent_covered_dates))
     expected_last = max(expected_dates) if expected_dates else None
 
     if expected_last is None:
@@ -815,10 +893,14 @@ def audit_full_population_bootstrap(
     full_population_closure_results_path: Path | None = DEFAULT_FULL_POPULATION_CLOSURE_RESULTS_PATH,
     full_population_closure_summary_path: Path | None = DEFAULT_FULL_POPULATION_CLOSURE_SUMMARY_PATH,
     effective_population_path: Path | None = DEFAULT_EFFECTIVE_POPULATION_PATH,
+    production_raw_store: KrxRawStockStore | None = None,
+    production_raw_start: str | None = None,
 ) -> PopulationBootstrapAudit:
     """Replace ``mode(actual_date_max)`` with an exhaustive, per-ticker OK/explained/unexplained
-    accounting (directive ``ROLLING_MARKET_DATA_AUTHORITY_FIX_V01`` section 14). In-scope population
-    is every PIT COMMON ticker plus the fixed ETF acceptance scope -- nothing narrower, nothing wider.
+    accounting (directive ``ROLLING_MARKET_DATA_AUTHORITY_FIX_V01`` section 14). In-scope COMMON
+    population is the target-date effective refresh population plus the fixed ETF acceptance scope.
+    When supplied, the production KRX RAW store replaces the older expected-date authority only for
+    the bounded recent window; older history continues to use the existing PIT/suspension authority.
     """
 
     pit = _read_json(pit_path)
@@ -835,6 +917,13 @@ def audit_full_population_bootstrap(
         effective_population_path=effective_population_path,
         identity_as_of=candidate_boundary,
     )
+    production_raw_coverage = None
+    if production_raw_store is not None:
+        production_raw_coverage = _load_production_raw_coverage_authority(
+            production_raw_store,
+            start_date=production_raw_start or candidate_boundary,
+            end_date=candidate_boundary,
+        )
 
     removed_identities = _load_authoritative_removed_identities(
         removed_identity_audit_path,
@@ -874,6 +963,7 @@ def audit_full_population_bootstrap(
                 historical_calendar_path=Path(historical_calendar_path),
                 suspension_authority_path=Path(suspension_authority_path),
                 suspension_errata_path=Path(suspension_errata_path) if suspension_errata_path else None,
+                production_raw_coverage=production_raw_coverage,
             )
         )
     for ticker in etf_acceptance_tickers:
