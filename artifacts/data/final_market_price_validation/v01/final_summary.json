@@ -1,0 +1,149 @@
+{
+  "active_common_count": 2561,
+  "artifact_paths": {
+    "final_summary": "artifacts/data/final_market_price_validation/v01/final_summary.json",
+    "row_level_comparison": "artifacts/data/final_market_price_validation/v01/row_level_comparison.csv",
+    "sample_manifest": "artifacts/data/final_market_price_validation/v01/sample_manifest.json"
+  },
+  "direct_naver_fetch_count": 30,
+  "eligible_ticker_count": 2552,
+  "exact_matched_observations": 600,
+  "excluded_fewer_than_20": [
+    {
+      "date_count": 14,
+      "ticker": "0155E0"
+    },
+    {
+      "date_count": 14,
+      "ticker": "0220W0"
+    },
+    {
+      "date_count": 16,
+      "ticker": "282620"
+    },
+    {
+      "date_count": 6,
+      "ticker": "386380"
+    },
+    {
+      "date_count": 15,
+      "ticker": "417030"
+    },
+    {
+      "date_count": 14,
+      "ticker": "465320"
+    },
+    {
+      "date_count": 15,
+      "ticker": "472230"
+    },
+    {
+      "date_count": 15,
+      "ticker": "473050"
+    },
+    {
+      "date_count": 19,
+      "ticker": "950260"
+    }
+  ],
+  "final_verdict": "PASS",
+  "mismatch_list": [],
+  "mismatched_observations": 0,
+  "mismatched_scalar_fields": 0,
+  "missing_naver_dates": 0,
+  "naver_http_request_count": 30,
+  "naver_request_summary": {
+    "empty_fetch_count": 0,
+    "error_fetch_count": 0,
+    "logical_fetch_count": 30,
+    "naver_http_call_count": 30,
+    "phantom_row_count": 1043,
+    "pykrx_fallback_call_count": 0,
+    "retry_attempted_count": 0,
+    "retry_final_failure_count": 0,
+    "retry_success_count": 0,
+    "successful_fetch_count": 30
+  },
+  "production_adjusted_store_unchanged": true,
+  "production_fingerprints_after": {
+    "adjusted": {
+      "file_count": 6342,
+      "fingerprint_sha256": "bfb264fb4e81537c2455240f76572b0ff8141a24f1f3d88d89fdfd64a019597c",
+      "path": "/Users/june/Documents/projects/krx-trend-scanner/data/market/adjusted/stocks",
+      "total_bytes": 186015712
+    },
+    "index": {
+      "file_count": 2,
+      "fingerprint_sha256": "1936419591abcf2d11525033156c922cfd9ac1f14f4143caf0d1353531c15026",
+      "path": "/Users/june/Documents/projects/krx-trend-scanner/data/market/index/v01",
+      "total_bytes": 382565
+    },
+    "raw": {
+      "file_count": 11337,
+      "fingerprint_sha256": "7f08a81d0484e1336614e00e7246e0aac5ffac6e3e0df0ef41c02b51cbc58328",
+      "path": "/Users/june/Documents/projects/krx-trend-scanner/data/market/raw/krx_stocks/v01",
+      "total_bytes": 661375445
+    }
+  },
+  "production_fingerprints_before": {
+    "adjusted": {
+      "file_count": 6342,
+      "fingerprint_sha256": "bfb264fb4e81537c2455240f76572b0ff8141a24f1f3d88d89fdfd64a019597c",
+      "path": "/Users/june/Documents/projects/krx-trend-scanner/data/market/adjusted/stocks",
+      "total_bytes": 186015712
+    },
+    "index": {
+      "file_count": 2,
+      "fingerprint_sha256": "1936419591abcf2d11525033156c922cfd9ac1f14f4143caf0d1353531c15026",
+      "path": "/Users/june/Documents/projects/krx-trend-scanner/data/market/index/v01",
+      "total_bytes": 382565
+    },
+    "raw": {
+      "file_count": 11337,
+      "fingerprint_sha256": "7f08a81d0484e1336614e00e7246e0aac5ffac6e3e0df0ef41c02b51cbc58328",
+      "path": "/Users/june/Documents/projects/krx-trend-scanner/data/market/raw/krx_stocks/v01",
+      "total_bytes": 661375445
+    }
+  },
+  "production_index_store_unchanged": true,
+  "production_raw_store_unchanged": true,
+  "sampled_observation_count": 600,
+  "scalar_ohlc_comparison_count": 2400,
+  "seed": 20260914,
+  "selected_ticker_count": 30,
+  "selected_ticker_list": [
+    "178780",
+    "950170",
+    "248070",
+    "100590",
+    "403870",
+    "000120",
+    "102370",
+    "074430",
+    "334970",
+    "037560",
+    "357780",
+    "072770",
+    "005440",
+    "114840",
+    "031430",
+    "097800",
+    "049960",
+    "012160",
+    "010240",
+    "293780",
+    "101240",
+    "064820",
+    "254120",
+    "217500",
+    "002990",
+    "241560",
+    "009450",
+    "040610",
+    "300080",
+    "091120"
+  ],
+  "source_fetch_failure_tickers": [],
+  "source_fetch_failures": 0,
+  "target_as_of": "2026-09-11"
+}
