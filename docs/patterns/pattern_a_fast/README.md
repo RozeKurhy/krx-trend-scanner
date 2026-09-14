@@ -37,8 +37,8 @@ A FAST Core V3는 규칙이 동결된 후보일 뿐 공식 전략이나 기본 �
 
 ## 기준 문서
 
-- [Pattern A FAST 정의](specification/definition_v01.md)
-- [Pattern A FAST 생애주기 계약](specification/lifecycle_contract.md)
+- [Pattern A FAST 정의](specification/README.md)
+- [Pattern A FAST 생애주기 계약](specification/weekly_lifecycle.md)
 - [전략 안내](strategy/README.md)
 - [A FAST Core V1 — 역사적 기준선](strategy/version_01/README.md)
 - [A FAST Core V2 — 현재 기본 전략](strategy/version_02/README.md)

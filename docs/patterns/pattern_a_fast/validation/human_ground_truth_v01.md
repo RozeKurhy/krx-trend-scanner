@@ -46,8 +46,8 @@ Phase 13A에서 Pattern A Fast의 목적을, Phase 13B에서 Weekly Lifecycle St
 2. Authoritative Contracts
 --------------------------------------------------------------------------------
 다음 문서를 공식 계약으로 사용하며 이번 작업으로 수정하지 않는다:
-* [Pattern A FAST 정의](../specification/definition_v01.md) (Phase 13A, CLOSED)
-* [Pattern A FAST 생애주기 계약](../specification/lifecycle_contract.md) (Phase 13B) —
+* [Pattern A FAST 정의](../specification/README.md) (Phase 13A, CLOSED)
+* [Pattern A FAST 생애주기 계약](../specification/weekly_lifecycle.md) (Phase 13B) —
   Weekly Lifecycle Stage 5개(`WATCH`/`SETUP`/`TRIGGER`/`TREND`/`EXTENDED`)의
   의미를 그대로 사용한다.
 
