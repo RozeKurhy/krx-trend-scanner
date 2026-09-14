@@ -91,6 +91,7 @@ def build_population_gap_audit(
     *,
     adjusted_store_dir: Path,
     candidate_boundary: str,
+    baseline_boundary: str | None = None,
     pit_path: Path,
     historical_calendar_path: Path,
     production_raw_store: KrxRawStockStore | None = None,
@@ -102,6 +103,7 @@ def build_population_gap_audit(
         result = audit_full_population_bootstrap(
             adjusted_store_dir=adjusted_store_dir,
             candidate_boundary=candidate_boundary,
+            baseline_boundary=baseline_boundary,
             pit_path=pit_path,
             historical_calendar_path=historical_calendar_path,
             production_raw_store=production_raw_store,
@@ -115,7 +117,7 @@ def build_population_gap_audit(
                 unexplained_reason_breakdown[record.reason] = unexplained_reason_breakdown.get(record.reason, 0) + 1
         etf_tickers = {str(ticker).zfill(6) for ticker in ETF_VALIDATED_ACCEPTANCE_TICKERS}
         common_scope_count = sum(record.ticker not in etf_tickers for record in result.records)
-        return {
+        summary = {
             "candidate_boundary": candidate_boundary,
             "total_in_scope": result.total_in_scope,
             "common_scope_count": common_scope_count,
@@ -126,6 +128,26 @@ def build_population_gap_audit(
             "reason_breakdown": dict(sorted(reason_breakdown.items())),
             "unexplained_reason_breakdown": dict(sorted(unexplained_reason_breakdown.items())),
         }
+        if baseline_boundary is not None:
+            summary.update(
+                {
+                    "baseline_boundary": baseline_boundary,
+                    "audit_mode": "CERTIFIED_BOUNDARY_DELTA",
+                    "unexplained_records": [
+                        {
+                            "ticker": record.ticker,
+                            "market": record.market,
+                            "reason": record.reason,
+                            "raw_observed_delta_dates": list(record.delta_raw_dates),
+                            "adjusted_delta_dates": list(record.delta_adjusted_dates),
+                            "missing_delta_dates": list(record.missing_delta_dates),
+                        }
+                        for record in result.records
+                        if record.category == "UNEXPLAINED_GAP"
+                    ],
+                }
+            )
+        return summary
 
     return audit
 
@@ -204,6 +226,7 @@ def main(argv: list[str] | None = None) -> int:
     quota = LocalKrxOpenApiQuota(args.quota_db)
     client = KrxOpenApiClient(auth_key, max_requests=args.max_attempts, max_transient_retries=0, quota=quota)
     raw_store = KrxRawStockStore(args.raw_root)
+    current_manifest = load_rolling_authority(args.authority_dir)
     adjusted_store = AdjustedPriceStore(args.adjusted_root)
     reference_map = (
         load_kind_corporate_action_references(args.corporate_action_reference_manifest)
@@ -240,8 +263,9 @@ def main(argv: list[str] | None = None) -> int:
             candidate_boundary=args.target_as_of,
             pit_path=args.pit_path,
             historical_calendar_path=args.historical_calendar_path,
+            baseline_boundary=current_manifest.certified_through,
             production_raw_store=raw_store,
-            production_raw_start=load_rolling_authority(args.authority_dir).certified_through,
+            production_raw_start=current_manifest.certified_through,
         ),
     )
     try:

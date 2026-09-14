@@ -55,7 +55,7 @@ import os
 import re
 import uuid
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from html import unescape
 from html.parser import HTMLParser
 from itertools import combinations
@@ -396,6 +396,10 @@ class PopulationAuditRecord:
     reason: str
     expected_last_date: str | None
     actual_last_date: str | None
+    market: str | None = None
+    delta_raw_dates: tuple[str, ...] = ()
+    delta_adjusted_dates: tuple[str, ...] = ()
+    missing_delta_dates: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -865,6 +869,92 @@ def _classify_common_ticker(
     )
 
 
+def _classify_common_ticker_delta(
+    ticker: str,
+    candidate_boundary: str,
+    baseline_boundary: str,
+    adjusted_store: AdjustedPriceStore,
+    removed_identities: set[tuple[str, str | None, str | None, str | None]],
+    zero_store_tickers: set,
+    *,
+    current_identity: Mapping[str, Any] | None,
+    production_raw_coverage: ProductionRawCoverageAuthority | None,
+) -> PopulationAuditRecord:
+    """Audit only the exclusive certified-boundary delta for one active COMMON identity."""
+
+    if current_identity is not None and _identity_matches_removed(current_identity, removed_identities):
+        return PopulationAuditRecord(
+            ticker, "EXPLAINED_GAP", "INTENTIONAL_AUTHORITY_CORRECTION_REMOVED_IDENTITY", None, None
+        )
+
+    has_store = adjusted_store.exists(ticker)
+    if ticker in zero_store_tickers:
+        if not has_store:
+            return PopulationAuditRecord(ticker, "EXPLAINED_GAP", "CERTIFIED_EXPECTED_ZERO_STORE", None, None)
+        return PopulationAuditRecord(
+            ticker,
+            "UNEXPLAINED_GAP",
+            "STORE_PRESENT_BUT_ZERO_STORE_CONTRACT_REQUIRES_ABSENCE",
+            None,
+            None,
+        )
+
+    market = str((current_identity or {}).get("market", "")).upper() or None
+    if production_raw_coverage is None or market is None:
+        return PopulationAuditRecord(
+            ticker,
+            "UNEXPLAINED_GAP",
+            "PRODUCTION_RAW_COVERAGE_AUTHORITY_MISSING",
+            None,
+            None,
+            market=market,
+        )
+
+    raw_dates = tuple(sorted(
+        day
+        for day in production_raw_coverage.observed_dates_by_market_ticker.get((market, ticker), frozenset())
+        if baseline_boundary < day <= candidate_boundary
+    ))
+    adjusted_dates: tuple[str, ...] = ()
+    if has_store:
+        frame = adjusted_store.load_daily(
+            ticker,
+            start=(pd.Timestamp(baseline_boundary).date() + timedelta(days=1)).isoformat(),
+            end=candidate_boundary,
+        )
+        adjusted_dates = tuple(sorted(pd.Timestamp(date).date().isoformat() for date in frame.index))
+    missing_dates = tuple(sorted(set(raw_dates) - set(adjusted_dates)))
+    expected_last = raw_dates[-1] if raw_dates else None
+    actual_last = adjusted_dates[-1] if adjusted_dates else None
+    if missing_dates:
+        return PopulationAuditRecord(
+            ticker,
+            "UNEXPLAINED_GAP",
+            "RAW_AHEAD_OF_ADJUSTED_DELTA",
+            expected_last,
+            actual_last,
+            market=market,
+            delta_raw_dates=raw_dates,
+            delta_adjusted_dates=adjusted_dates,
+            missing_delta_dates=missing_dates,
+        )
+    reason = (
+        "NO_PRODUCTION_RAW_OBSERVATIONS_IN_DELTA"
+        if not raw_dates
+        else "RAW_AND_ADJUSTED_DELTA_COVERAGE_MATCH"
+    )
+    return PopulationAuditRecord(
+        ticker,
+        "OK",
+        reason,
+        expected_last,
+        actual_last,
+        market=market,
+        delta_raw_dates=raw_dates,
+        delta_adjusted_dates=adjusted_dates,
+    )
+
+
 def _classify_etf_ticker(ticker: str, candidate_boundary: str, adjusted_store_dir: Path) -> PopulationAuditRecord:
     meta_path = Path(adjusted_store_dir) / f"{ticker}.meta.json"
     if not meta_path.exists():
@@ -881,6 +971,7 @@ def audit_full_population_bootstrap(
     *,
     adjusted_store_dir: Path,
     candidate_boundary: str,
+    baseline_boundary: str | None = None,
     etf_acceptance_tickers: Sequence[str] = ETF_VALIDATED_ACCEPTANCE_TICKERS,
     requested_start: str = "2010-01-04",
     stocks_dir: Path = Path("data/raw/stocks"),
@@ -896,12 +987,16 @@ def audit_full_population_bootstrap(
     production_raw_store: KrxRawStockStore | None = None,
     production_raw_start: str | None = None,
 ) -> PopulationBootstrapAudit:
-    """Replace ``mode(actual_date_max)`` with an exhaustive, per-ticker OK/explained/unexplained
-    accounting (directive ``ROLLING_MARKET_DATA_AUTHORITY_FIX_V01`` section 14). In-scope COMMON
-    population is the target-date effective refresh population plus the fixed ETF acceptance scope.
-    When supplied, the production KRX RAW store replaces the older expected-date authority only for
-    the bounded recent window; older history continues to use the existing PIT/suspension authority.
+    """Audit the full population, or only the exclusive certified-boundary delta when requested.
+
+    ``baseline_boundary`` keeps the existing bootstrap audit available to historical callers while
+    allowing the rolling gate to compare exact production RAW and adjusted date sets only in
+    ``(baseline_boundary, candidate_boundary]``.  Previously certified history remains protected by
+    the coordinator's fingerprint and restatement guards.
     """
+
+    if baseline_boundary is not None and baseline_boundary >= candidate_boundary:
+        raise ValueError("baseline_boundary must be earlier than candidate_boundary")
 
     pit = _read_json(pit_path)
     intervals_by_ticker: dict[str, list[dict[str, Any]]] = {}
@@ -945,27 +1040,43 @@ def audit_full_population_bootstrap(
     )
 
     records: list[PopulationAuditRecord] = []
+    adjusted_store = AdjustedPriceStore(adjusted_store_dir) if baseline_boundary is not None else None
     for ticker in effective_common_tickers:
         identity = resolve_current_identity(ticker, candidate_boundary, intervals_by_ticker)
-        records.append(
-            _classify_common_ticker(
-                ticker,
-                candidate_boundary,
-                Path(adjusted_store_dir),
-                removed_identities,
-                zero_store_tickers,
-                closure_certified,
-                aggregate_closure_tickers,
-                requested_start=requested_start,
-                current_identity=identity.interval if identity.status == "RESOLVED" else None,
-                stocks_dir=Path(stocks_dir),
-                pit_path=Path(pit_path),
-                historical_calendar_path=Path(historical_calendar_path),
-                suspension_authority_path=Path(suspension_authority_path),
-                suspension_errata_path=Path(suspension_errata_path) if suspension_errata_path else None,
-                production_raw_coverage=production_raw_coverage,
+        current_identity = identity.interval if identity.status == "RESOLVED" else None
+        if baseline_boundary is not None:
+            records.append(
+                _classify_common_ticker_delta(
+                    ticker,
+                    candidate_boundary,
+                    baseline_boundary,
+                    adjusted_store,
+                    removed_identities,
+                    zero_store_tickers,
+                    current_identity=current_identity,
+                    production_raw_coverage=production_raw_coverage,
+                )
             )
-        )
+        else:
+            records.append(
+                _classify_common_ticker(
+                    ticker,
+                    candidate_boundary,
+                    Path(adjusted_store_dir),
+                    removed_identities,
+                    zero_store_tickers,
+                    closure_certified,
+                    aggregate_closure_tickers,
+                    requested_start=requested_start,
+                    current_identity=current_identity,
+                    stocks_dir=Path(stocks_dir),
+                    pit_path=Path(pit_path),
+                    historical_calendar_path=Path(historical_calendar_path),
+                    suspension_authority_path=Path(suspension_authority_path),
+                    suspension_errata_path=Path(suspension_errata_path) if suspension_errata_path else None,
+                    production_raw_coverage=production_raw_coverage,
+                )
+            )
     for ticker in etf_acceptance_tickers:
         records.append(_classify_etf_ticker(ticker, candidate_boundary, Path(adjusted_store_dir)))
 

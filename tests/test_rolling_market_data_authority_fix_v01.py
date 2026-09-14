@@ -9,6 +9,7 @@ import json
 import pandas as pd
 import pytest
 
+from trend_scanner.data.adjusted_price_store import AdjustedPriceStore
 from trend_scanner.data.krx_raw_stock_provider import RAW_COLUMNS
 from trend_scanner.data.rolling_market_data_refresh import (
     DEFAULT_REMOVED_IDENTITY_AUDIT_PATH,
@@ -57,6 +58,24 @@ def _calendar(dates) -> dict:
 
 def _meta(actual_date_max) -> dict:
     return {"actual_date_max": actual_date_max}
+
+
+def _save_adjusted_dates(adjusted_dir, ticker: str, dates: list[str]) -> None:
+    index = pd.DatetimeIndex(dates)
+    frame = pd.DataFrame(
+        {
+            "open": [100.0] * len(index),
+            "high": [110.0] * len(index),
+            "low": [90.0] * len(index),
+            "close": [105.0] * len(index),
+        },
+        index=index,
+    )
+    AdjustedPriceStore(adjusted_dir).save_full(
+        ticker,
+        frame,
+        {"requested_start": dates[0], "requested_end": dates[-1]},
+    )
 
 
 TRADING_DATES = ["2026-08-17", "2026-08-18", "2026-08-19", "2026-08-20", "2026-08-21"]
@@ -321,6 +340,146 @@ def test_production_raw_trade_with_adjusted_missing_still_blocks(tmp_path) -> No
 
     assert audit.unexplained_gap_count == 1
     assert audit.unexplained()[0].reason == "ACTUAL_COVERAGE_SHORT_OF_EXPECTED"
+
+
+def test_delta_audit_ignores_old_historical_shortfall_when_delta_matches(tmp_path) -> None:
+    adjusted_dir = tmp_path / "adjusted"
+    adjusted_dir.mkdir()
+    _save_adjusted_dates(adjusted_dir, "AAA001", ["2026-09-08", "2026-09-09", "2026-09-10", "2026-09-11"])
+    kwargs = _base_audit_kwargs(tmp_path, [_interval("AAA001", "2026-08-17", "2026-09-11")])
+    raw_store = _FakeProductionRawStore(
+        {
+            "KOSPI": {
+                day: _raw_frame(day, "AAA001")
+                for day in ("2026-09-08", "2026-09-09", "2026-09-10", "2026-09-11")
+            },
+            "KOSDAQ": {},
+        }
+    )
+
+    audit = audit_full_population_bootstrap(
+        adjusted_store_dir=adjusted_dir,
+        candidate_boundary="2026-09-11",
+        baseline_boundary="2026-09-04",
+        etf_acceptance_tickers=(),
+        production_raw_store=raw_store,
+        production_raw_start="2026-09-04",
+        **kwargs,
+    )
+
+    assert audit.unexplained_gap_count == 0
+    assert audit.records[0].reason == "RAW_AND_ADJUSTED_DELTA_COVERAGE_MATCH"
+
+
+def test_delta_audit_blocks_exact_new_raw_date_missing(tmp_path) -> None:
+    adjusted_dir = tmp_path / "adjusted"
+    adjusted_dir.mkdir()
+    _save_adjusted_dates(adjusted_dir, "AAA001", ["2026-09-08", "2026-09-09", "2026-09-11"])
+    kwargs = _base_audit_kwargs(tmp_path, [_interval("AAA001", "2026-08-17", "2026-09-11")])
+    raw_store = _FakeProductionRawStore(
+        {
+            "KOSPI": {
+                day: _raw_frame(day, "AAA001")
+                for day in ("2026-09-08", "2026-09-09", "2026-09-10", "2026-09-11")
+            },
+            "KOSDAQ": {},
+        }
+    )
+
+    audit = audit_full_population_bootstrap(
+        adjusted_store_dir=adjusted_dir,
+        candidate_boundary="2026-09-11",
+        baseline_boundary="2026-09-04",
+        etf_acceptance_tickers=(),
+        production_raw_store=raw_store,
+        production_raw_start="2026-09-04",
+        **kwargs,
+    )
+
+    record = audit.unexplained()[0]
+    assert record.reason == "RAW_AHEAD_OF_ADJUSTED_DELTA"
+    assert record.missing_delta_dates == ("2026-09-10",)
+
+
+def test_delta_audit_blocks_internal_missing_date_even_when_max_reaches_target(tmp_path) -> None:
+    adjusted_dir = tmp_path / "adjusted"
+    adjusted_dir.mkdir()
+    _save_adjusted_dates(adjusted_dir, "AAA001", ["2026-09-08", "2026-09-10", "2026-09-11"])
+    kwargs = _base_audit_kwargs(tmp_path, [_interval("AAA001", "2026-08-17", "2026-09-11")])
+    raw_store = _FakeProductionRawStore(
+        {
+            "KOSPI": {
+                day: _raw_frame(day, "AAA001")
+                for day in ("2026-09-08", "2026-09-09", "2026-09-10", "2026-09-11")
+            },
+            "KOSDAQ": {},
+        }
+    )
+
+    audit = audit_full_population_bootstrap(
+        adjusted_store_dir=adjusted_dir,
+        candidate_boundary="2026-09-11",
+        baseline_boundary="2026-09-04",
+        etf_acceptance_tickers=(),
+        production_raw_store=raw_store,
+        production_raw_start="2026-09-04",
+        **kwargs,
+    )
+
+    record = audit.unexplained()[0]
+    assert record.actual_last_date == "2026-09-11"
+    assert record.missing_delta_dates == ("2026-09-09",)
+
+
+def test_delta_audit_does_not_block_without_raw_observation(tmp_path) -> None:
+    adjusted_dir = tmp_path / "adjusted"
+    adjusted_dir.mkdir()
+    _save_adjusted_dates(adjusted_dir, "AAA001", ["2026-09-04"])
+    kwargs = _base_audit_kwargs(tmp_path, [_interval("AAA001", "2026-08-17", "2026-09-11")])
+    raw_store = _FakeProductionRawStore(
+        {
+            "KOSPI": {
+                day: _raw_frame(day)
+                for day in ("2026-09-08", "2026-09-09", "2026-09-10", "2026-09-11")
+            },
+            "KOSDAQ": {},
+        }
+    )
+
+    audit = audit_full_population_bootstrap(
+        adjusted_store_dir=adjusted_dir,
+        candidate_boundary="2026-09-11",
+        baseline_boundary="2026-09-04",
+        etf_acceptance_tickers=(),
+        production_raw_store=raw_store,
+        production_raw_start="2026-09-04",
+        **kwargs,
+    )
+
+    assert audit.unexplained_gap_count == 0
+    assert audit.records[0].reason == "NO_PRODUCTION_RAW_OBSERVATIONS_IN_DELTA"
+
+
+def test_delta_audit_baseline_is_exclusive(tmp_path) -> None:
+    adjusted_dir = tmp_path / "adjusted"
+    adjusted_dir.mkdir()
+    kwargs = _base_audit_kwargs(tmp_path, [_interval("AAA001", "2026-08-17", "2026-09-11")])
+    raw_store = _FakeProductionRawStore(
+        {"KOSPI": {"2026-09-04": _raw_frame("2026-09-04", "AAA001")}, "KOSDAQ": {}}
+    )
+
+    audit = audit_full_population_bootstrap(
+        adjusted_store_dir=adjusted_dir,
+        candidate_boundary="2026-09-11",
+        baseline_boundary="2026-09-04",
+        etf_acceptance_tickers=(),
+        production_raw_store=raw_store,
+        production_raw_start="2026-09-04",
+        **kwargs,
+    )
+
+    assert audit.unexplained_gap_count == 0
+    assert audit.records[0].delta_raw_dates == ()
 
 
 def test_removed_identity_and_zero_store_and_closure_certified_are_explained_not_unexplained(tmp_path) -> None:
