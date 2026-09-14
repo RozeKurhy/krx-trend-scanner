@@ -33,7 +33,7 @@ README.md
 `patterns/`에는 Pattern A와 Pattern A FAST가 있다. `A FAST Core V1/V2/V3`는
 Pattern A FAST와 강하게 결합되어 있으므로 현재 해당 패턴 아래에서 관리한다.
 여러 패턴을 조합하거나 특정 패턴과 독립적인 파생 전략은 `strategies/`에 둔다.
-예를 들어 Julia Strategy가 독립 전략으로 정리되면 이 영역에서 관리한다.
+Julia Strategy처럼 특정 패턴 폴더와 독립적으로 관리하는 전략은 이 영역에 둔다.
 
 ## 현재 사용 중인 패턴과 전략
 
