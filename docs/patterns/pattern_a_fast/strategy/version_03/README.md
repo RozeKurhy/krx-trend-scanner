@@ -1,44 +1,45 @@
-# Pattern A FAST Final Strategy V03 Candidate
+# A FAST Core V3 — 검증 대기 후보 전략
 
-## Frozen candidate identity
+> 규칙은 동결됐지만 아직 공식 전략이나 기본 전략이 아니야. 현재 기본 전략은
+> `A FAST Core V2`이며, V3는 동일 진입 코호트 비교 검증을 기다리고 있어.
 
-- Strategy ID: `PATTERN_A_FAST_FINAL_STRATEGY_V03`
-- Alias: `A FAST Core V3` / `패스트 코어 V3`
-- Exit contract: `WINNER_HWM_EXIT_V01`
-- Status: `FROZEN_CANDIDATE_AWAITING_MATCHED_AB`
-- Base strategy: `PATTERN_A_FAST_FINAL_STRATEGY_V02`
-- V2 production default remains unchanged: `PATTERN_A_FAST_FINAL_STRATEGY_V02` / `A FAST Core V2`
+## 후보 상태
 
-This document freezes a candidate contract only. It does not promote V3, alter
-production reports, or replace the V2 default. A matched-cohort V2 versus V3
-exit-only A/B evaluation is required before any promotion decision.
+- **전략 ID**: `PATTERN_A_FAST_FINAL_STRATEGY_V03`
+- **전략 이름**: `A FAST Core V3` / `패스트 코어 V3`
+- **청산 계약**: `WINNER_HWM_EXIT_V01`
+- **상태**: 규칙 동결 후 비교 검증 대기 (`FROZEN_CANDIDATE_AWAITING_MATCHED_AB`)
+- **기준 전략**: `PATTERN_A_FAST_FINAL_STRATEGY_V02`
+- **현재 기본 전략**: `PATTERN_A_FAST_FINAL_STRATEGY_V02` / `A FAST Core V2`
 
-## Entry contract
+이 문서는 후보 계약만 고정한다. V3를 공식 전략으로 승격하거나 실전 리포트를
+바꾸지 않으며, V2 기본 전략을 대체하지도 않아. 승격 여부를 판단하기 전에는
+V2와 V3를 동일 진입 코호트에서 청산 규칙만 비교하는 A/B 검증이 필요해.
 
-The entry contract is exactly the V2 contract (`SAME_AS_V02`):
+## 진입 규칙
 
-- Pattern A eligible stage: `TRANSITION` or `EARLY_TREND`.
-- FAST machine stage/status: `TRIGGER` / `READY`.
-- Monthly regime permission: `PERMITTED_REGIME`.
-- Daily risk permission: `NORMAL` or `ELEVATED`.
-- FAST score status: `READY` or `PARTIAL`.
-- Entry execution: `NEXT_LOCAL_TRADING_DAY_OPEN`.
+진입 계약은 V2와 정확히 같다 (`SAME_AS_V02`).
 
-No entry rule, universe filter, calendar semantic, or threshold is retuned in
-this candidate.
+- Pattern A 허용 국면: `TRANSITION` 또는 `EARLY_TREND`
+- FAST 상태: `TRIGGER` / `READY`
+- 월간 국면 허용: `PERMITTED_REGIME`
+- 일봉 위험 허용: `NORMAL` 또는 `ELEVATED`
+- FAST 점수 상태: `READY` 또는 `PARTIAL`
+- 진입 체결: `NEXT_LOCAL_TRADING_DAY_OPEN`
 
-## Winner HWM exit contract
+이 후보에서는 진입 규칙, 유니버스 필터, 캘린더 의미와 임계값을 재조정하지 않아.
 
-Before Winner mode, `running_raw_MFE < +20%`, the position is always held and
-there is no V3 exit. Winner mode activates inclusively at
-`running_raw_MFE >= +20%`.
+## Winner HWM 청산 규칙
 
-`running_raw_MFE = running_highest_HIGH / entry_open - 1`. The HWM is the
-highest completed daily `HIGH` since entry. Each completed daily EOD decision
-updates that HWM with the day's HIGH and compares the day's completed `CLOSE`
-against it. There is no intraday decision and no look-ahead.
+Winner 모드 전에는 `running_raw_MFE < +20%`인 동안 항상 보유하며 V3 청산은
+발생하지 않아. `running_raw_MFE >= +20%`부터 Winner 모드가 시작돼.
 
-| Running raw MFE range | Soft drawdown | Hard drawdown |
+`running_raw_MFE = running_highest_HIGH / entry_open - 1`이야. HWM은 진입 후
+완료된 일봉 `HIGH` 중 가장 높은 값이야. 매일 완료된 EOD 판단에서 그날의
+`HIGH`로 HWM을 갱신하고, 같은 날 완료된 `CLOSE`를 HWM과 비교해. 장중 판단과
+look-ahead는 없어.
+
+| 누적 raw MFE 구간 | Soft 하락폭 | Hard 하락폭 |
 | --- | ---: | ---: |
 | `+20% <= MFE < +50%` | `-10%` | `-20%` |
 | `+50% <= MFE < +100%` | `-15%` | `-25%` |
@@ -46,33 +47,39 @@ against it. There is no intraday decision and no look-ahead.
 | `+200% <= MFE < +400%` | `-25%` | `-35%` |
 | `MFE >= +400%` | `-30%` | `-40%` |
 
-Exact boundaries belong to the next band: `20/50/100/200/400` activate the
-corresponding lower-bound band.
+정확한 경계값은 다음 구간에 속해. 즉 `20/50/100/200/400`은 각 구간의
+하한으로 적용돼.
 
-- Soft exit requires the active HWM drawdown threshold and completed FAST
-  state `WATCH` or `SETUP`. It produces `SOFT EXIT SIGNAL` with no persistence
-  or confirmation step.
-- If the soft threshold is breached while FAST is not `WATCH`/`SETUP`, the
-  result is `HOLD`.
-- Hard exit is price-only: the active HWM drawdown threshold is sufficient and
-  FAST state is irrelevant. If Soft and Hard are simultaneous, `HARD` wins and
-  only one exit is executed.
-- A signal is generated at completed daily EOD and executes at the next local
-  trading day OPEN. If there is no supported next day, the position remains
-  `OPEN_AT_CUTOFF`.
+- Soft 청산은 해당 HWM 하락폭을 충족하고 완료된 FAST 상태가 `WATCH` 또는
+  `SETUP`일 때 발생해. `SOFT EXIT SIGNAL`을 만들며 지속 확인이나 추가 확인
+  단계는 없어.
+- FAST 상태가 `WATCH`/`SETUP`이 아닌 상태에서 Soft 기준을 넘으면 결과는
+  `HOLD`야.
+- Hard 청산은 가격만으로 판단해. 해당 HWM 하락폭을 충족하면 FAST 상태와
+  관계없이 청산하고, Soft와 Hard가 동시에 발생하면 `HARD`가 우선하며 한
+  번만 청산해.
+- 신호는 완료된 일봉 EOD에서 생성하고 다음 로컬 거래일 OPEN에 체결해.
+  지원되는 다음 거래일이 없으면 포지션은 `OPEN_AT_CUTOFF`로 남아.
 
-## Removed and excluded rules
+## 사용하지 않는 규칙
 
-V3 does not use the V2 fixed `-15%` Pre-PROGRESSED Loss Guard, V2 `EXIT3`
-stage-transition exit, V2 `EXIT4` 15-point score-HWM exit, `W25`, `W30`,
-`FAILURE_ARMED`, persistence exit, Peak Profit Floor, Soft Confirm, or any
-other Pre-Winner stop. V3 generates no recovery, cooldown, or re-entry; V2
-re-entry behavior is not modified.
+V3에는 다음 규칙을 사용하지 않아.
 
-## Capital trade-off
+- V2의 고정 `-15%` Pre-PROGRESSED Loss Guard
+- V2 `EXIT3` 국면 전이 청산
+- V2 `EXIT4` 15포인트 점수 HWM 청산
+- `W25`, `W30`, `FAILURE_ARMED`
+- persistence exit, Peak Profit Floor, Soft Confirm
+- 그 밖의 Pre-Winner 손절 규칙
 
-Pre-Winner에는 강제 청산이 없으므로 장기간 자본이 묶이거나 큰 미실현 손실이 발생할 수 있다.
+V3는 recovery, cooldown, re-entry를 생성하지 않아. V2의 재진입 동작도 변경하지
+않아.
 
-This candidate is not a backtest result. The next task is an exit-only
-matched-cohort A/B comparison with identical V2 entry points; the evaluator
-must not re-evaluate entry filters or generate strategy-specific re-entry.
+## 자본 운용상의 교환관계
+
+Pre-Winner 구간에는 강제 청산이 없어서 자본이 장기간 묶이거나 큰 미실현 손실이
+발생할 수 있어.
+
+이 문서는 백테스트 결과가 아니야. 다음 작업은 V2의 동일 진입 지점을 사용한
+청산 전용 matched-cohort A/B 비교이며, 평가자는 진입 필터를 다시 평가하거나
+전략별 재진입을 생성하면 안 돼.
