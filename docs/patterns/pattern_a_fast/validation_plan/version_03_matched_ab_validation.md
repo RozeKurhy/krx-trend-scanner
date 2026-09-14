@@ -303,21 +303,70 @@ Soft/Hard Threshold의 여러 조합을 돌리는 민감도 탐색은 수행하�
 
 ## 9. 공식 전략 채택 기준
 
-V3의 결과를 보기 전에 다음 최소 조건을 고정한다.
+V3의 결과를 보기 전에 다음 판정식을 고정한다.
 
-1. 비교 무결성 `PASS`
-2. V3가 전체 paired return 특성, 대형 Winner 보존 또는 MFE 대비 giveback 중
-   하나 이상에서 명확한 개선을 보임
-3. 다음 두 위험 영역이 동시에 모두 악화되지 않음
-   - 대형 손실: `<= -30%` 비율 증가 및 `<= -40%` 비율 증가
-   - 자본 묶임: 중앙값 보유 기간 증가 및 `OPEN_AT_CUTOFF` 비율 증가
+### 성과 개선 경로
 
-V3가 수익 또는 Winner 보존 개선 없이 위험만 증가시키면 공식 전략으로 채택하지
-않는다. 수익 개선이 있더라도 대형 손실 영역과 자본 묶임 영역이 동시에 명확히
-악화되면 공식 전략으로 채택하지 않는다.
+비교 무결성 `PASS`를 전제로 다음 A, B, C 경로 중 하나 이상이 `PASS`이면
+공식 전략 채택의 성과 개선 조건을 충족한다.
 
-혼합 결과는 실패 사례 검토 후 `보류` 또는 `수정 후 새 후보 재검증`으로 처리할
-수 있다. V3 규칙을 현재 후보 문서에서 직접 수정하지 않는다.
+#### A. 수익 개선 경로
+
+다음을 모두 만족하면 `return_improvement_path = PASS`이다.
+
+- `mean(V3 - V2 paired terminal return) > 0`
+- `median(V3 - V2 paired terminal return) >= 0`
+
+#### B. 대형 Winner 보존 경로
+
+다음을 모두 만족하면 `winner_preservation_path = PASS`이다.
+
+- `terminal return >= +50%` 거래 수에서 `V3 > V2`
+- `terminal return >= +100%` 거래 수에서 `V3 >= V2`
+
+#### C. Giveback 개선 경로
+
+Giveback은 다음과 같이 정의한다.
+
+```text
+giveback = MFE - terminal return
+```
+
+다음을 모두 만족하면 `giveback_improvement_path = PASS`이다.
+
+- `V3 median giveback < V2 median giveback`
+- `V3 mean giveback <= V2 mean giveback`
+
+통계적 유의성 검정과 별도 최소 개선폭 Threshold는 이번 후보 검증에서 새로
+만들지 않는다.
+
+### 위험 악화 판정
+
+#### 대형 손실 영역 악화
+
+다음을 모두 만족하면 `large_loss_area_worsened = true`이다.
+
+- `V3 terminal return <= -30%` 비율 `> V2`
+- `V3 terminal return <= -40%` 비율 `> V2`
+
+#### 자본 묶임 영역 악화
+
+다음을 모두 만족하면 `capital_lock_area_worsened = true`이다.
+
+- `V3 median holding period > V2`
+- `V3 OPEN_AT_CUTOFF 비율 > V2`
+
+#### 공식 전략 채택 금지
+
+다음 조건을 모두 만족하면 공식 전략으로 채택하지 않는다.
+
+- `large_loss_area_worsened = true`
+- `capital_lock_area_worsened = true`
+
+V3가 성과 개선 경로 A, B, C 중 어느 것도 `PASS`가 아니면서 위험만 증가시키는
+경우에도 공식 전략으로 채택하지 않는다. 혼합 결과는 실패 사례 검토 후 `보류`
+또는 `수정 후 새 후보 재검증`으로 처리할 수 있다. V3 규칙을 현재 후보 문서에서
+직접 수정하지 않는다.
 
 ## 10. 기본 전략 승격 기준
 
@@ -331,8 +380,13 @@ V3가 공식 전략으로 인정되는 것과 V2를 대체하는 것은 별도 �
 5. 대형 Winner 보존 또는 MFE 대비 giveback이 V2보다 개선
 6. 중앙값 보유 기간이 V2 이하
 7. `OPEN_AT_CUTOFF` 비율이 V2 이하
-8. 연도·시장·진입 유형 분해에서 특정 한 구간의 우연한 성과만으로 결과가
-   설명되지 않음
+8. 다음 강건성 분해 조건을 모두 만족
+   - 시장 분해: KOSPI의 mean paired return delta `>= 0` 및 KOSDAQ의 mean paired
+     return delta `>= 0`
+   - 진입 유형 분해: 최초 진입의 mean paired return delta `>= 0` 및 재진입의
+     mean paired return delta `>= 0`
+   - 진입 연도 분해: 거래가 존재하는 각 진입 연도의 mean paired return delta를
+     계산하고, 그중 절반 이상에서 mean paired return delta `>= 0`
 
 위 조건을 모두 만족하지 않으면 V3를 자동으로 기본 전략으로 승격하지 않는다.
 공식 전략으로는 의미가 있으나 V2보다 전체적으로 명확한 우위가 없다면 V2를
