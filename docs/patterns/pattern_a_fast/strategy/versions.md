@@ -16,8 +16,9 @@
 
 | 버전 | Formal Strategy ID | 한국어 공식 명칭 | 대표 Alias | 전략 성격 및 역할 | 동일 종목 재진입 (Re Entry) | 표본 거래 수 | 문서 및 계약 경로 |
 |:---:|:---|:---|:---|:---|:---:|:---:|:---|
-| **V1** | `PATTERN_A_FAST_FINAL_STRATEGY_V01` | 패턴A FAST 최종 전략 V01 | `A FAST Core V1`, `패스트 코어 V1` | **`HISTORICAL_FROZEN_BASELINE`** (역사적 동결 기준선) | `FIRST_QUALIFYING_ENTRY_PER_TICKER` (최초 1회 한정) | 551건 | [`pattern_a_fast_final_strategy_v01.md`](./final_v01.md)<br>[`pattern_a_fast_final_strategy_v01.json`](../../../../artifacts/patterns/pattern_a_fast/production/strategy_v01/pattern_a_fast_final_strategy_v01.json) |
-| **V2** | `PATTERN_A_FAST_FINAL_STRATEGY_V02` | 패턴A FAST 최종 전략 V02 | `A FAST Core V2`, `패스트 코어 V2` | **`FINAL_STRATEGY_FROZEN`** (현재 공식 사용 전략) | **`MULTIPLE_INDEPENDENT_ENTRIES_PER_TICKER`** (독립 재진입 허용) | 783건 | [`pattern_a_fast_final_strategy_v02.md`](./final_v02.md)<br>[`pattern_a_fast_final_strategy_v02.json`](../../../../artifacts/patterns/pattern_a_fast/production/strategy_v02/pattern_a_fast_final_strategy_v02.json) |
+| **V1** | `PATTERN_A_FAST_FINAL_STRATEGY_V01` | 패턴A FAST 최종 전략 V01 | `A FAST Core V1`, `패스트 코어 V1` | **`HISTORICAL_FROZEN_BASELINE`** (역사적 동결 기준선) | `FIRST_QUALIFYING_ENTRY_PER_TICKER` (최초 1회 한정) | 551건 | [`pattern_a_fast_final_strategy_v01.md`](./version_01/final.md)<br>[`pattern_a_fast_final_strategy_v01.json`](../../../../artifacts/patterns/pattern_a_fast/production/strategy_v01/pattern_a_fast_final_strategy_v01.json) |
+| **V2** | `PATTERN_A_FAST_FINAL_STRATEGY_V02` | 패턴A FAST 최종 전략 V02 | `A FAST Core V2`, `패스트 코어 V2` | **`FINAL_STRATEGY_FROZEN`** (현재 공식 사용 전략) | **`MULTIPLE_INDEPENDENT_ENTRIES_PER_TICKER`** (독립 재진입 허용) | 783건 | [`pattern_a_fast_final_strategy_v02.md`](./version_02/final.md)<br>[`pattern_a_fast_final_strategy_v02.json`](../../../../artifacts/patterns/pattern_a_fast/production/strategy_v02/pattern_a_fast_final_strategy_v02.json) |
+| **V3** | `PATTERN_A_FAST_FINAL_STRATEGY_V03` | 패턴A FAST 최종 전략 V03 후보 | `A FAST Core V3` | **`FROZEN_CANDIDATE_AWAITING_MATCHED_AB`** (V2와 동일 조건 비교 대기) | V2와 동일한 진입 조건, 후보 청산 규칙 | 미실행 | [`candidate.md`](./version_03/candidate.md) |
 
 ================================================================================
 3. V1 vs V2 Core Delta
@@ -39,4 +40,4 @@ V2는 V1의 모든 진입 조건, 손실가드(-15%), 추세 보유, 청산 메�
 ================================================================================
 5. Historical Preregistration Notice
 ================================================================================
-- 과거 작성된 [`docs/patterns/pattern_a_fast/prereg/fresh_oos_v03.md`](../prereg/fresh_oos_v03.md) 문서는 **`SUPERSEDED_HISTORICAL_PREREGISTRATION`** 상태이며, 현재의 `A FAST Core V02` 전략 계약과 일치하지 않으므로 V02의 Forward Validation에 재사용할 수 없습니다.
+- 과거 작성된 [`Fresh OOS V3 사전등록`](../archive/validation_plan/fresh_out_of_sample_v03.md) 문서는 **`SUPERSEDED_HISTORICAL_PREREGISTRATION`** 상태이며, 현재의 `A FAST Core V02` 전략 계약과 일치하지 않으므로 V02의 Forward Validation에 재사용할 수 없습니다.
