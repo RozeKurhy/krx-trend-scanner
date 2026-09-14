@@ -129,7 +129,9 @@
 
 ## 연구 상태
 
-- **전략 연구 상태**: 종료 (`FAST_CORE_STRATEGY_RESEARCH_STATUS: CLOSED`)
-- **현재 공식 전략**: `PATTERN_A_FAST_FINAL_STRATEGY_V02`
-- **다음 전략 연구**: 없음 (`NEXT_STRATEGY_RESEARCH: NONE_SCHEDULED`)
+- **V2 전략 확정**: 완료 (`FAST_CORE_STRATEGY_RESEARCH_STATUS: CLOSED`)
+- **현재 기본 전략**: `PATTERN_A_FAST_FINAL_STRATEGY_V02`
+- **현재 후보 전략**: `PATTERN_A_FAST_FINAL_STRATEGY_V03`
+- **V3 후보 상태**: 규칙 동결 후 동일 진입 코호트 V2 vs V3 A/B 검증 대기 (`FROZEN_CANDIDATE_AWAITING_MATCHED_AB`)
+- **V3의 공식·기본 전략 여부**: 아직 공식 전략이나 기본 전략이 아님
 - **보류 연구**: `PROGRESSED_DOWNSIDE_PROTECTION_PHASE2`
