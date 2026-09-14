@@ -1,13 +1,13 @@
 # Pattern A FAST
 
-Pattern A FAST는 Pattern A보다 상승 전환을 빠르게 탐지하기 위한 별도 패턴이야.
+Pattern A FAST는 Pattern A보다 상승 전환을 빠르게 탐지하기 위한 별도 패턴이다.
 이 폴더는 패턴의 의미와 생애주기, 관련 전략, 연구, 검증 계획과 결과를 역할별로
-정리해 둔 안내서야.
+정리한 안내서다.
 
 패턴은 “종목의 어떤 상태가 보이는가”를 판단하고, 전략은 “그 판단을 바탕으로
-무엇을 할 것인가”를 결정해. 따라서 Pattern A FAST와 A FAST Core는 서로 관련되어
-있지만 같은 개념은 아니야. Pattern A와의 관계는 [Pattern A 안내](../pattern_a/README.md)에서
-확인할 수 있어.
+무엇을 할 것인가”를 결정한다. 따라서 Pattern A FAST와 A FAST Core는 서로 관련되어
+있지만 같은 개념은 아니다. Pattern A와의 관계는 [Pattern A 안내](../pattern_a/README.md)에서
+확인할 수 있다.
 
 ## 현재 기준
 
@@ -21,8 +21,8 @@ Pattern A FAST는 Pattern A보다 상승 전환을 빠르게 탐지하기 위한
 | 자동매매 | 승인하지 않음 (`NOT_APPROVED`) |
 | V3 후보 | [A FAST Core V3 후보](strategy/version_03/README.md), V2와 동일 조건 비교 검증 대기 |
 
-A FAST Core V2가 현재 기본 전략이야. A FAST Core V1은 역사적 동결 기준선이고,
-A FAST Core V3는 규칙이 동결된 후보일 뿐 공식 전략이나 기본 전략이 아니야.
+A FAST Core V2가 현재 기본 전략이다. A FAST Core V1은 역사적 동결 기준선이고,
+A FAST Core V3는 규칙이 동결된 후보일 뿐 공식 전략이나 기본 전략이 아니다.
 
 ## 문서 구조
 
