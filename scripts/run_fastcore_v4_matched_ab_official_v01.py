@@ -3,13 +3,9 @@
 
 from __future__ import annotations
 
-from array import array
-from collections import defaultdict
-from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 import argparse
 import json
-import multiprocessing as mp
 import sys
 from typing import Any, Mapping
 
@@ -21,9 +17,6 @@ if str(ROOT) not in sys.path:
 
 from scripts import analyze_fastcore_v3_exit_ab_v00 as diagnostic
 from scripts import run_fastcore_v3_simple_v00 as v3
-from trend_scanner.data.adjusted_price_store import AdjustedPriceStore
-from trend_scanner.data.krx_raw_stock_store import KrxRawStockStore
-from trend_scanner.data import repository_v2 as repository_v2_module
 from trend_scanner.validation.pattern_a_fast_winner_hwm_exit_v01 import MFE_TIERS, mfe_tier
 
 
@@ -51,7 +44,6 @@ WORK_ID = "FASTCORE_V4_MATCHED_AB_OFFICIAL_V01"
 STRATEGY_ID = "PATTERN_A_FAST_FINAL_STRATEGY_V04"
 EXIT_CONTRACT_ID = "TWO_PHASE_PRICE_STRUCTURE_HWM_EXIT_V01"
 SUPPORT_END = pd.Timestamp("2026-08-21")
-CONTEXT_START = pd.Timestamp("2018-01-01")
 
 PRE_WINNER_BASELINE = {
     "trade_count": 236,
@@ -156,163 +148,6 @@ def validate_frozen_baselines(
         raise AssertionError("existing V3 >=100 tail baseline differs")
     if int(control_summary.get("total_trades", -1)) != EXPECTED_TRADES:
         raise AssertionError("CONTROL summary changed from frozen count")
-
-
-def _load_fast_daily_by_ticker(control: pd.DataFrame) -> dict[str, pd.DataFrame]:
-    """Compose the fixed CONTROL tickers with one local raw-store pass.
-
-    Repository V2 remains the authority for the adjusted/raw session
-    projection, but its general-purpose indexed raw reader retains every
-    raw partition in memory and then performs a per-ticker selection.  The
-    official CONTROL has a fixed, finite ticker set, so this runner builds a
-    compact in-memory raw panel in one pass and feeds the same projection
-    function.  No source files or production code are changed.
-    """
-    tickers = {str(value).zfill(6) for value in control["ticker"].unique()}
-    raw_root = ROOT / "data/market/raw/krx_stocks/v01"
-    store = KrxRawStockStore(raw_root)
-    numeric_fields = ("open", "high", "low", "close", "volume", "trading_value", "market_cap", "listed_shares")
-    physical_fields = ("date", "ticker", *numeric_fields)
-    accumulators: dict[str, dict[str, array]] = {}
-    for market in ("KOSPI", "KOSDAQ"):
-        for day in store.list_dates(market):
-            if day > EXPECTED_PERIOD[2]:
-                continue
-            snapshot = store.load_snapshot(market, day)
-            if snapshot.empty:
-                continue
-            snapshot = snapshot[snapshot["ticker"].isin(tickers)]
-            if snapshot.empty:
-                continue
-            for values in snapshot.loc[:, list(physical_fields)].itertuples(index=False, name=None):
-                observed_date, raw_ticker, *numeric = values
-                ticker = str(raw_ticker).zfill(6)
-                accumulator = accumulators.setdefault(
-                    ticker,
-                    {field: array("q") if field == "date" else array("d") for field in ("date", *numeric_fields)},
-                )
-                accumulator["date"].append(pd.Timestamp(observed_date).value)
-                for field, value in zip(numeric_fields, numeric, strict=True):
-                    accumulator[field].append(float(value) if pd.notna(value) else float("nan"))
-            del snapshot
-
-    adjusted_store = AdjustedPriceStore(ROOT / "data/market/adjusted/stocks")
-    daily_by_ticker: dict[str, pd.DataFrame] = {}
-    for ticker in sorted(tickers):
-        values = accumulators.get(ticker)
-        if values is None:
-            raise RuntimeError(f"missing local raw panel for CONTROL ticker {ticker}")
-        raw = pd.DataFrame(
-            {
-                "date": pd.to_datetime(values["date"]),
-                "open": values["open"],
-                "high": values["high"],
-                "low": values["low"],
-                "close": values["close"],
-                "volume": values["volume"],
-                "trading_value": values["trading_value"],
-                "market_cap": values["market_cap"],
-                "listed_shares": values["listed_shares"],
-            }
-        ).set_index("date").sort_index()
-        raw = raw.loc[raw.index >= CONTEXT_START]
-        if raw.index.has_duplicates:
-            raise AssertionError(f"raw cross-market ticker/date conflict for {ticker}")
-        adjusted = adjusted_store.load_daily_source(
-            ticker,
-            CONTEXT_START.strftime("%Y-%m-%d"),
-            EXPECTED_PERIOD[2],
-        )
-        try:
-            projected_adjusted, projected_raw, audit = repository_v2_module._project_analytic_sessions(adjusted, raw)
-        except Exception as exc:
-            evidence = repository_v2_module._session_projection_evidence(adjusted, raw)
-            if evidence["unexplained_adjusted_only_dates"] or not evidence["rejected_raw_only_dates"]:
-                raise RuntimeError(
-                    f"Repository V2 session composition failed for CONTROL ticker {ticker}: {exc}; "
-                    f"adjusted_only={evidence['unexplained_adjusted_only_dates'][:5]} "
-                    f"raw_only={evidence['rejected_raw_only_dates'][:5]} "
-                    f"adjusted_rows={len(adjusted)} raw_rows={len(raw)}"
-                ) from exc
-            # A current local raw snapshot can contain a date for which the
-            # adjusted analytic authority has no row.  Keep the adjusted
-            # session set authoritative and record this explicit raw-only
-            # reconciliation; never synthesize adjusted OHLC values.
-            raw = raw.loc[raw.index.intersection(adjusted.index)]
-            projected_adjusted, projected_raw, audit = repository_v2_module._project_analytic_sessions(adjusted, raw)
-            audit["explicit_raw_only_reconciliation_count"] = len(evidence["rejected_raw_only_dates"])
-            audit["explicit_raw_only_reconciliation_dates"] = evidence["rejected_raw_only_dates"]
-        if projected_adjusted.empty or projected_raw.empty:
-            raise RuntimeError(f"empty composed Repository V2 daily data for CONTROL ticker {ticker}")
-        daily = pd.concat(
-            [
-                projected_adjusted.loc[:, ["open", "high", "low", "close"]],
-                projected_raw.loc[:, ["volume", "trading_value"]],
-            ],
-            axis=1,
-        ).loc[:, list(repository_v2_module.DAILY_COLUMNS)]
-        repository_v2_module.validate_repository_v2_daily(daily)
-        daily.attrs["session_projection_audit"] = {
-            "explicit_raw_only_reconciliation_count": int(
-                audit.get("explicit_raw_only_reconciliation_count", 0) or 0
-            ),
-            "explicit_raw_only_reconciliation_dates": list(
-                audit.get("explicit_raw_only_reconciliation_dates", ())
-            ),
-            "projected_adjusted_rows": int(audit.get("projected_adjusted_rows", len(projected_adjusted))),
-            "projected_raw_rows": int(audit.get("projected_raw_rows", len(projected_raw))),
-        }
-        daily_by_ticker[ticker] = daily
-        del raw, adjusted, projected_adjusted, projected_raw, audit, values
-    return daily_by_ticker
-
-
-class _InMemoryDailyLoader:
-    """Small adapter that lets the existing PIT FAST state helper be reused."""
-
-    def __init__(self, daily_by_ticker: Mapping[str, pd.DataFrame]) -> None:
-        self.daily_by_ticker = daily_by_ticker
-
-    def load(self, ticker: str) -> pd.DataFrame | None:
-        return self.daily_by_ticker.get(str(ticker).zfill(6))
-
-
-_STATE_DAILY_BY_TICKER: Mapping[str, pd.DataFrame] = {}
-
-
-def _state_worker(item: tuple[str, list[dict[str, Any]]]) -> tuple[dict[str, list[tuple[pd.Timestamp, str]]], int]:
-    ticker, records = item
-    daily = _STATE_DAILY_BY_TICKER[str(ticker)]
-    subset = pd.DataFrame.from_records(records)
-    states, _loaded, errors = diagnostic._state_index(
-        subset,
-        _InMemoryDailyLoader({str(ticker): daily}),
-    )
-    return states, errors
-
-
-def _state_index_parallel(
-    control: pd.DataFrame,
-    daily_by_ticker: Mapping[str, pd.DataFrame],
-) -> tuple[dict[str, list[tuple[pd.Timestamp, str]]], int]:
-    """Run the unchanged PIT FAST state helper in ticker-sized fork tasks."""
-    global _STATE_DAILY_BY_TICKER
-    _STATE_DAILY_BY_TICKER = daily_by_ticker
-    groups = [
-        (str(ticker), group.to_dict("records"))
-        for ticker, group in control.groupby("ticker", sort=True)
-    ]
-    state_index: dict[str, list[tuple[pd.Timestamp, str]]] = {}
-    error_count = 0
-    context = mp.get_context("fork")
-    worker_count = min(4, max(1, len(groups)))
-    with ProcessPoolExecutor(max_workers=worker_count, mp_context=context) as pool:
-        futures = [pool.submit(_state_worker, item) for item in groups]
-        for future in as_completed(futures):
-            states, errors = future.result()
-            state_index.update(states)
-            error_count += int(errors)
-    return state_index, error_count
 
 
 EXPECTED_PRE_WINNER_COUNT = 236
@@ -957,7 +792,6 @@ def _build_report(summary: Mapping[str, Any], exit_reason: pd.DataFrame) -> str:
         f"- matched 거래: `{summary['integrity']['matched_rows']}` / 고유 종목: `{summary['integrity']['unique_tickers']}`",
         f"- entry signal / execution / open 일치: `{summary['integrity']['entry_signal_date_match_count']}` / `{summary['integrity']['entry_execution_date_match_count']}` / `{summary['integrity']['entry_open_match_count']}`",
         f"- 네트워크 요청: `{summary['network_requests']}`",
-        f"- adjusted analytic authority에 없는 raw-only 행 명시적 제외: `{summary['local_session_reconciliation']['raw_only_rows_explicitly_excluded']}`",
         "",
         "## V2 / V4 핵심 지표",
         "",
@@ -1023,12 +857,9 @@ def run_official() -> tuple[dict[str, Any], pd.DataFrame, pd.DataFrame, pd.DataF
         raise AssertionError("required V4 validation plan or README is missing")
 
     v3_reference = _load_v3_reference()
-    daily_by_ticker = _load_fast_daily_by_ticker(control)
-    raw_only_reconciliation_count = sum(
-        int(frame.attrs.get("session_projection_audit", {}).get("explicit_raw_only_reconciliation_count", 0) or 0)
-        for frame in daily_by_ticker.values()
-    )
-    states, state_errors = _state_index_parallel(control, daily_by_ticker)
+    repository = v3.build_repository_v2(ROOT, end=SUPPORT_END)
+    loader = v3.RepositoryV2DailyLoader(repository, end=SUPPORT_END)
+    states, daily_by_ticker, state_errors = diagnostic._state_index(control, loader)
     if state_errors != 0:
         raise AssertionError(f"weekly FAST state evaluation errors: {state_errors}")
     matched = build_matched(control, daily_by_ticker, states, v3_reference)
@@ -1074,10 +905,6 @@ def run_official() -> tuple[dict[str, Any], pd.DataFrame, pd.DataFrame, pd.DataF
         "control_unique_tickers": EXPECTED_UNIQUE_TICKERS,
         "integrity": integrity,
         "network_requests": 0,
-        "local_session_reconciliation": {
-            "raw_only_rows_explicitly_excluded": raw_only_reconciliation_count,
-            "basis": "adjusted analytic authority date set; no adjusted OHLC synthesized",
-        },
         "v2": v2_stats,
         "v4": v4_stats,
         "strategies": {"v2": v2_stats, "v4": v4_stats},
@@ -1120,7 +947,6 @@ def run_official() -> tuple[dict[str, Any], pd.DataFrame, pd.DataFrame, pd.DataF
             "V2 is reused from the fixed CONTROL authority; V3 is read-only diagnostic baseline and is not rerun.",
             "MDD is not evaluated because a common portfolio sizing/equity curve is not preregistered.",
             "No official adoption or default promotion decision is made in this lifecycle step.",
-            "Current local raw-only dates absent from adjusted analytic authority were explicitly excluded from the composed evaluation view; no adjusted prices were synthesized.",
         ],
     }
     return summary, matched, robustness, exit_reason, representative

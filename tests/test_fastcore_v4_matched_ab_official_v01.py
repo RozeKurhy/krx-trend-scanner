@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import pandas as pd
 import pytest
 
@@ -8,6 +10,7 @@ from scripts.run_fastcore_v4_matched_ab_official_v01 import (
     EXPECTED_TRADES,
     EXPECTED_UNIQUE_TICKERS,
     PRE_WINNER_BASELINE,
+    SUPPORT_END,
     WINNER_TAIL_BASELINE,
     build_representative_cases,
     evaluate_preregistered_criteria,
@@ -16,6 +19,38 @@ from scripts.run_fastcore_v4_matched_ab_official_v01 import (
     validate_matched_integrity,
     v4_exit_decision,
 )
+
+
+def test_official_runner_uses_canonical_repository_v2_without_fallbacks() -> None:
+    runner_path = Path(__file__).parents[1] / "scripts/run_fastcore_v4_matched_ab_official_v01.py"
+    source = runner_path.read_text(encoding="utf-8")
+
+    assert "repository = v3.build_repository_v2(ROOT, end=SUPPORT_END)" in source
+    assert "loader = v3.RepositoryV2DailyLoader(repository, end=SUPPORT_END)" in source
+    assert "states, daily_by_ticker, state_errors = diagnostic._state_index(control, loader)" in source
+    assert "CONTEXT_START" not in source
+    assert "AdjustedPriceStore" not in source
+    assert "KrxRawStockStore" not in source
+    assert "intersection(adjusted.index)" not in source
+    assert "_state_index_parallel" not in source
+
+
+def test_official_runner_preserves_frozen_contract_and_offline_guards() -> None:
+    runner_path = Path(__file__).parents[1] / "scripts/run_fastcore_v4_matched_ab_official_v01.py"
+    source = runner_path.read_text(encoding="utf-8")
+
+    assert SUPPORT_END == pd.Timestamp("2026-08-21")
+    assert EXPECTED_TRADES == 973
+    assert EXPECTED_UNIQUE_TICKERS == 542
+    assert EXPECTED_PRE_WINNER_COUNT == 236
+    assert EXPECTED_PRE_WINNER_COUNT + 737 == EXPECTED_TRADES
+    assert "end=SUPPORT_END" in source
+    assert "daily.index <= SUPPORT_END" in source
+    assert "diagnostic.network_guard(audit)" in source
+    assert "audit.request_count" in source
+    assert "entry_signal_date_match_count" in source
+    assert "entry_execution_date_match_count" in source
+    assert "entry_open_match_count" in source
 
 
 def test_full_path_cohort_and_winner_boundary() -> None:
