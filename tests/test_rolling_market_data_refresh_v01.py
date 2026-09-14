@@ -1116,6 +1116,70 @@ def test_corporate_action_event_after_target_is_rejected() -> None:
     assert result["reason"] == "CORPORATE_ACTION_EVENT_TIME_UNSUPPORTED"
 
 
+def test_corporate_action_event_after_target_through_observation_date_is_approved() -> None:
+    before = _adjusted_frame("2026-08-03", "2026-08-21")
+    candidate = _adjusted_frame("2026-08-03", "2026-08-24")
+    candidate.loc[candidate.index <= pd.Timestamp("2026-08-21"), ["open", "high", "low", "close"]] *= 5.0
+
+    result = classify_adjusted_history_transition(
+        "005930", before, candidate, "2026-08-21", provider_frame_match=True,
+        target_as_of="2026-08-24",
+        evidence_observation_date="2026-08-25",
+        corporate_action_evidence=_corporate_action_evidence("005930", 5.0, "2026-08-25"),
+    )
+
+    assert result["status"] == APPROVED_HISTORICAL_RESTATEMENT
+    assert result["corporate_action_timing_window"]["evidence_upper_bound"] == "2026-08-25"
+
+
+def test_corporate_action_event_after_observation_date_is_rejected() -> None:
+    before = _adjusted_frame("2026-08-03", "2026-08-21")
+    candidate = _adjusted_frame("2026-08-03", "2026-08-24")
+    candidate.loc[candidate.index <= pd.Timestamp("2026-08-21"), ["open", "high", "low", "close"]] *= 5.0
+
+    result = classify_adjusted_history_transition(
+        "005930", before, candidate, "2026-08-21", provider_frame_match=True,
+        target_as_of="2026-08-24",
+        evidence_observation_date="2026-08-25",
+        corporate_action_evidence=_corporate_action_evidence("005930", 5.0, "2026-08-26"),
+    )
+
+    assert result["status"] == REJECTED_HISTORICAL_RESTATEMENT
+    assert result["reason"] == "CORPORATE_ACTION_EVENT_TIME_UNSUPPORTED"
+
+
+def test_corporate_action_observation_date_does_not_relax_factor_match() -> None:
+    before = _adjusted_frame("2026-08-03", "2026-08-21")
+    candidate = _adjusted_frame("2026-08-03", "2026-08-24")
+    candidate.loc[candidate.index <= pd.Timestamp("2026-08-21"), ["open", "high", "low", "close"]] *= 5.0
+
+    result = classify_adjusted_history_transition(
+        "005930", before, candidate, "2026-08-21", provider_frame_match=True,
+        target_as_of="2026-08-24",
+        evidence_observation_date="2026-08-25",
+        corporate_action_evidence=_corporate_action_evidence("005930", 3.0, "2026-08-25"),
+    )
+
+    assert result["status"] == REJECTED_HISTORICAL_RESTATEMENT
+    assert result["reason"] == "CORPORATE_ACTION_RATIO_DOES_NOT_EXPLAIN_RESTATEMENT"
+
+
+def test_corporate_action_observation_date_does_not_relax_ticker_authority_match() -> None:
+    before = _adjusted_frame("2026-08-03", "2026-08-21")
+    candidate = _adjusted_frame("2026-08-03", "2026-08-24")
+    candidate.loc[candidate.index <= pd.Timestamp("2026-08-21"), ["open", "high", "low", "close"]] *= 5.0
+
+    result = classify_adjusted_history_transition(
+        "005930", before, candidate, "2026-08-21", provider_frame_match=True,
+        target_as_of="2026-08-24",
+        evidence_observation_date="2026-08-25",
+        corporate_action_evidence=_corporate_action_evidence("999999", 5.0, "2026-08-25"),
+    )
+
+    assert result["status"] == REJECTED_HISTORICAL_RESTATEMENT
+    assert result["reason"] == "CORPORATE_ACTION_EVIDENCE_TICKER_OR_AUTHORITY_MISMATCH"
+
+
 def test_corporate_action_event_before_history_start_is_rejected() -> None:
     before = _adjusted_frame("2026-08-03", "2026-08-21")
     candidate = _adjusted_frame("2026-08-03", "2026-08-24")

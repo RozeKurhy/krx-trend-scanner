@@ -1847,6 +1847,7 @@ def _validate_corporate_action_evidence(
     historical_start: pd.Timestamp,
     boundary: str,
     target_as_of: str | None = None,
+    evidence_observation_date: str | None = None,
 ) -> dict[str, Any]:
     """Fail-closed gate binding a factor-shaped rewrite to existing action evidence."""
 
@@ -1898,17 +1899,28 @@ def _validate_corporate_action_evidence(
 
     event_dates = [event_date for record in valid_records for event_date in _evidence_dates(record)]
     boundary_date = pd.Timestamp(boundary)
-    target_date = pd.Timestamp(target_as_of or boundary)
+    target_date = pd.Timestamp(target_as_of or boundary).normalize()
     if target_date < boundary_date:
         return {
             **base,
             "corporate_action_evidence_reason": "CORPORATE_ACTION_TARGET_BEFORE_BOUNDARY",
             "approved": False,
         }
+    observation_date = None
+    if evidence_observation_date:
+        parsed_observation_date = pd.to_datetime(evidence_observation_date, errors="coerce")
+        if pd.isna(parsed_observation_date):
+            return {
+                **base,
+                "corporate_action_evidence_reason": "CORPORATE_ACTION_EVENT_TIME_UNSUPPORTED",
+                "approved": False,
+            }
+        observation_date = pd.Timestamp(parsed_observation_date).normalize()
+    evidence_upper_bound = max(target_date, observation_date) if observation_date is not None else target_date
     eligible_entries = _eligible_evidence_factor_entries(
         valid_records,
         historical_start=historical_start,
-        target_date=target_date,
+        target_date=evidence_upper_bound,
     )
     time_supported = bool(eligible_entries)
     factors = [float(entry["factor"]) for entry in eligible_entries]
@@ -1961,6 +1973,8 @@ def _validate_corporate_action_evidence(
             "historical_start": historical_start.date().isoformat(),
             "current_boundary": boundary_date.date().isoformat(),
             "target_as_of": target_date.date().isoformat(),
+            "evidence_observation_date": observation_date.date().isoformat() if observation_date is not None else None,
+            "evidence_upper_bound": evidence_upper_bound.date().isoformat(),
         },
     }
     if not time_supported:
@@ -1993,6 +2007,7 @@ def classify_adjusted_history_transition(
     corporate_action_evidence: Any = None,
     corporate_action_evidence_lookup: Callable[[str], Any] | None = None,
     target_as_of: str | None = None,
+    evidence_observation_date: str | None = None,
 ) -> dict[str, Any]:
     """Classify a candidate adjusted-history rewrite without mutating either frame.
 
@@ -2192,6 +2207,7 @@ def classify_adjusted_history_transition(
         historical_start=before_history.index.min(),
         boundary=boundary,
         target_as_of=target_as_of,
+        evidence_observation_date=evidence_observation_date,
     )
     if not evidence_gate["approved"]:
         return {
@@ -2224,11 +2240,13 @@ class RollingEtfAdjustedUpdater:
         *,
         requested_start: str = "2023-01-02",
         corporate_action_evidence_lookup: Callable[[str], Any] | None = None,
+        evidence_observation_date: str | None = None,
     ) -> None:
         self.provider = provider
         self.store = store
         self.requested_start = requested_start
         self.corporate_action_evidence_lookup = corporate_action_evidence_lookup
+        self.evidence_observation_date = evidence_observation_date
 
     def refresh(self, current_boundary: str, target_as_of: str) -> dict[str, Any]:
         results, failures, restatement_validation = [], [], []
@@ -2253,6 +2271,9 @@ class RollingEtfAdjustedUpdater:
                         historical_start=self.requested_start,
                     ),
                     target_as_of=target_as_of,
+                    evidence_observation_date=(
+                        self.evidence_observation_date or datetime.now(timezone.utc).date().isoformat()
+                    ),
                 )
                 restatement_validation.append(transition)
                 if transition["status"] == REJECTED_HISTORICAL_RESTATEMENT:
@@ -2305,12 +2326,14 @@ class RollingAdjustedPriceUpdater:
         pit_path: Path,
         historical_calendar_path: Path,
         corporate_action_evidence_lookup: Callable[[str], Any] | None = None,
+        evidence_observation_date: str | None = None,
     ) -> None:
         self.provider = provider
         self.store = store
         self.pit_path = Path(pit_path)
         self.historical_calendar_path = Path(historical_calendar_path)
         self.corporate_action_evidence_lookup = corporate_action_evidence_lookup
+        self.evidence_observation_date = evidence_observation_date
 
     def _frontier(self) -> str:
         calendar = json.loads(self.historical_calendar_path.read_text(encoding="utf-8"))
@@ -2441,6 +2464,9 @@ class RollingAdjustedPriceUpdater:
                         historical_start=ticker_requested_start,
                     ),
                     target_as_of=target_as_of,
+                    evidence_observation_date=(
+                        self.evidence_observation_date or datetime.now(timezone.utc).date().isoformat()
+                    ),
                 )
                 restatement_validation.append(transition)
                 if transition["status"] == REJECTED_HISTORICAL_RESTATEMENT:
