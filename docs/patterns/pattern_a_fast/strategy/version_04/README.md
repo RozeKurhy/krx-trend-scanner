@@ -6,9 +6,10 @@
 - 전략 이름: `A FAST Core V4`
 - 한국어 통용명: `패스트 코어 V4`
 - 청산 계약: `TWO_PHASE_PRICE_STRUCTURE_HWM_EXIT_V01`
-- 상태: `FROZEN_CANDIDATE_AWAITING_VALIDATION_PLAN`
+- 상태: `FROZEN_CANDIDATE_AWAITING_MATCHED_AB`
 - 기준 전략: `PATTERN_A_FAST_FINAL_STRATEGY_V02`
 - 현재 기본 전략: `PATTERN_A_FAST_FINAL_STRATEGY_V02`
+- 검증 계획: [V4 동일 진입 matched A/B 검증 계획](../../validation_plan/version_04_matched_ab_validation.md)
 - 생애주기 단계: 후보 전략 동결
 
 V4는 검증 전 동결된 후보 전략이다. 아직 공식 전략도 기본 전략도 아니며, 현재 기본 전략은 계속 V2이다.
