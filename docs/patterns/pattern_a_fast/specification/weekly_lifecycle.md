@@ -195,7 +195,7 @@ Weekly Lifecycle Stage는 기본적으로 완료된 주봉 데이터만 사용�
 시점에 진행 중인 미완성 주봉을 완료된 주봉처럼 사용하지 않는다. 주중 급등·급락으로
 Stage가 일시적으로 왜곡되는 것을 막기 위해서다.
 
-즉 다음처럼 책임을 나눠.
+즉 다음과 같이 책임을 나눈다.
 
 - `Weekly Stage = Completed Weekly Structure`
 - `Daily Timing = as_of까지 완료된 Daily Data`
