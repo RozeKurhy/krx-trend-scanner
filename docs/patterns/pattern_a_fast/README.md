@@ -15,11 +15,11 @@ Pattern A FAST는 Pattern A보다 상승 전환을 빠르게 탐지하기 위한
 |---|---|
 | 패턴 | Pattern A FAST |
 | 목적 | Pattern A보다 빠른 상승 전환 탐지 |
-| 현재 기본 전략 | [A FAST Core V2](strategy/version_02/final.md) |
+| 현재 기본 전략 | [A FAST Core V2](strategy/version_02/README.md) |
 | 기본 전략 ID | `PATTERN_A_FAST_FINAL_STRATEGY_V02` |
 | 현재 상태 | 의사결정 지원 운영 (`PRODUCTION_DECISION_SUPPORT`) |
 | 자동매매 | 승인하지 않음 (`NOT_APPROVED`) |
-| V3 후보 | [A FAST Core V3 후보](strategy/version_03/candidate.md), V2와 동일 조건 비교 검증 대기 |
+| V3 후보 | [A FAST Core V3 후보](strategy/version_03/README.md), V2와 동일 조건 비교 검증 대기 |
 
 A FAST Core V2가 현재 기본 전략이야. A FAST Core V1은 역사적 동결 기준선이고,
 A FAST Core V3는 규칙이 동결된 후보일 뿐 공식 전략이나 기본 전략이 아니야.
@@ -39,10 +39,10 @@ A FAST Core V3는 규칙이 동결된 후보일 뿐 공식 전략이나 기본 �
 
 - [Pattern A FAST 정의](specification/definition_v01.md)
 - [Pattern A FAST 생애주기 계약](specification/lifecycle_contract.md)
-- [전략 버전 인덱스](strategy/versions.md)
-- [A FAST Core V1 — 역사적 기준선](strategy/version_01/final.md)
-- [A FAST Core V2 — 현재 기본 전략](strategy/version_02/final.md)
-- [A FAST Core V3 — 검증 대기 후보](strategy/version_03/candidate.md)
+- [전략 안내](strategy/README.md)
+- [A FAST Core V1 — 역사적 기준선](strategy/version_01/README.md)
+- [A FAST Core V2 — 현재 기본 전략](strategy/version_02/README.md)
+- [A FAST Core V3 — 검증 대기 후보](strategy/version_03/README.md)
 
 ## 공통 전략 절차
 

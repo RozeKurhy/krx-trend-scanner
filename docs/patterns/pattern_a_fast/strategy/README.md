@@ -1,14 +1,19 @@
-# Pattern A FAST Core Strategy Version Index & Provenance
+# Pattern A FAST 전략
 
 ================================================================================
 1. Overview & Strategy Identity
 ================================================================================
-본 문서는 `Pattern A FAST Core` (패스트 코어) 전략의 버전 체계, 공식 식별자 및 연구 상태를 안내하는 네비게이션 인덱스입니다.
+`Pattern A FAST Core`는 Pattern A FAST 패턴을 이용해 진입·보유·청산을 결정하는
+전략이야. 이 문서는 전략 버전과 현재 상태를 안내하는 GitHub 폴더 입구야.
 
-- **기본 통용 명칭 (`Default Alias`)**: `A FAST Core`, `패스트 코어`
-- **기본 참조 전략 (`Current Default Strategy`)**: **`PATTERN_A_FAST_FINAL_STRATEGY_V02` (V2)**
-- **연구 종료 상태 (`Research Status`)**: **`STRATEGY_FINALIZATION_CLOSED` (패스트 코어 전략 연구 완료)**
-- **운영 상태 (`Production Status`)**: **`PRODUCTION_HOLD` (운영 불변, 연구 전용)**
+- **기본 통용 명칭**: `A FAST Core`, `패스트 코어`
+- **현재 기본 전략**: **V2** — `PATTERN_A_FAST_FINAL_STRATEGY_V02`
+- **연구 상태**: 전략 연구 완료 (`STRATEGY_FINALIZATION_CLOSED`)
+- **운영 상태**: 의사결정 지원 운영 (`PRODUCTION_DECISION_SUPPORT`)
+
+V1은 역사적 기준 전략이고, V2는 현재 기본 전략이야. V3는 규칙 동결이 끝난
+후보 전략이지만 아직 공식 전략이나 기본 전략이 아니며, V2와 동일 조건 비교
+검증을 기다리고 있어.
 
 ================================================================================
 2. Strategy Version Matrix
@@ -16,9 +21,9 @@
 
 | 버전 | Formal Strategy ID | 한국어 공식 명칭 | 대표 Alias | 전략 성격 및 역할 | 동일 종목 재진입 (Re Entry) | 표본 거래 수 | 문서 및 계약 경로 |
 |:---:|:---|:---|:---|:---|:---:|:---:|:---|
-| **V1** | `PATTERN_A_FAST_FINAL_STRATEGY_V01` | 패턴A FAST 최종 전략 V01 | `A FAST Core V1`, `패스트 코어 V1` | **`HISTORICAL_FROZEN_BASELINE`** (역사적 동결 기준선) | `FIRST_QUALIFYING_ENTRY_PER_TICKER` (최초 1회 한정) | 551건 | [`pattern_a_fast_final_strategy_v01.md`](./version_01/final.md)<br>[`pattern_a_fast_final_strategy_v01.json`](../../../../artifacts/patterns/pattern_a_fast/production/strategy_v01/pattern_a_fast_final_strategy_v01.json) |
-| **V2** | `PATTERN_A_FAST_FINAL_STRATEGY_V02` | 패턴A FAST 최종 전략 V02 | `A FAST Core V2`, `패스트 코어 V2` | **`FINAL_STRATEGY_FROZEN`** (현재 공식 사용 전략) | **`MULTIPLE_INDEPENDENT_ENTRIES_PER_TICKER`** (독립 재진입 허용) | 783건 | [`pattern_a_fast_final_strategy_v02.md`](./version_02/final.md)<br>[`pattern_a_fast_final_strategy_v02.json`](../../../../artifacts/patterns/pattern_a_fast/production/strategy_v02/pattern_a_fast_final_strategy_v02.json) |
-| **V3** | `PATTERN_A_FAST_FINAL_STRATEGY_V03` | 패턴A FAST 최종 전략 V03 후보 | `A FAST Core V3` | **`FROZEN_CANDIDATE_AWAITING_MATCHED_AB`** (V2와 동일 조건 비교 대기) | V2와 동일한 진입 조건, 후보 청산 규칙 | 미실행 | [`candidate.md`](./version_03/candidate.md) |
+| **V1** | `PATTERN_A_FAST_FINAL_STRATEGY_V01` | 패턴A FAST 최종 전략 V01 | `A FAST Core V1`, `패스트 코어 V1` | 역사적 동결 기준선 (`HISTORICAL_FROZEN_BASELINE`) | `FIRST_QUALIFYING_ENTRY_PER_TICKER` (최초 1회 한정) | 551건 | [`V1 README`](./version_01/README.md)<br>[`V1 artifact`](../../../../artifacts/patterns/pattern_a_fast/production/strategy_v01/pattern_a_fast_final_strategy_v01.json) |
+| **V2** | `PATTERN_A_FAST_FINAL_STRATEGY_V02` | 패턴A FAST 최종 전략 V02 | `A FAST Core V2`, `패스트 코어 V2` | 현재 기본 전략 (`FINAL_STRATEGY_FROZEN`) | **`MULTIPLE_INDEPENDENT_ENTRIES_PER_TICKER`** (독립 재진입 허용) | 783건 | [`V2 README`](./version_02/README.md)<br>[`V2 artifact`](../../../../artifacts/patterns/pattern_a_fast/production/strategy_v02/pattern_a_fast_final_strategy_v02.json) |
+| **V3** | `PATTERN_A_FAST_FINAL_STRATEGY_V03` | 패턴A FAST 최종 전략 V03 후보 | `A FAST Core V3` | 비교 검증 대기 후보 (`FROZEN_CANDIDATE_AWAITING_MATCHED_AB`) | V2와 동일한 진입 조건, 후보 청산 규칙 | 미실행 | [`V3 README`](./version_03/README.md) |
 
 ================================================================================
 3. V1 vs V2 Core Delta
@@ -40,4 +45,9 @@ V2는 V1의 모든 진입 조건, 손실가드(-15%), 추세 보유, 청산 메�
 ================================================================================
 5. Historical Preregistration Notice
 ================================================================================
-- 과거 작성된 [`Fresh OOS V3 사전등록`](../archive/validation_plan/fresh_out_of_sample_v03.md) 문서는 **`SUPERSEDED_HISTORICAL_PREREGISTRATION`** 상태이며, 현재의 `A FAST Core V02` 전략 계약과 일치하지 않으므로 V02의 Forward Validation에 재사용할 수 없습니다.
+- 과거 작성된 [`Fresh OOS V3 사전등록`](../archive/validation_plan/fresh_out_of_sample_v03.md) 문서는 **`SUPERSEDED_HISTORICAL_PREREGISTRATION`** 상태이며, 현재의 `A FAST Core V02` 전략 계약과 일치하지 않으므로 V02의 Forward Validation에 재사용할 수 없어.
+
+## 공통 절차
+
+후보 전략의 검증, 공식 전략 채택과 기본 전략 승격은 프로젝트 공통 [전략
+생애주기와 채택 절차](../../../strategies/strategy_lifecycle.md)를 따른다.

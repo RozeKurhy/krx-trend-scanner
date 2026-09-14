@@ -87,7 +87,7 @@ Pattern A의 장기 베이스와 Pattern A FAST의 주봉 타이밍, Investabili
   * **손절 (Loss Guard)**: Pre-PROGRESSED 구간에서 entry_open 대비 일봉 종가 -15% 이하 도달 시 다음 로컬 거래일 시가 청산 (최초 PROGRESSED effective date 도달 이후 비활성화).
   * **청산 (Exit3 / Exit4)**: PROGRESSED에서 다른 유효 Pattern A Stage(WEAK/BASE/TRANSITION/EARLY_TREND)로 이탈 시 Exit3 청산, PROGRESSED 이후 Score HWM 대비 현재 Score가 15pt 이상 하락 시 Exit4 청산 (특수 Coverage lifecycle에서는 Exit3 비활성 및 Exit4만 적용).
   * **재진입 (Reentry)**: 포지션 청산(FLAT) 후 새로운 진입 조건 충족 시 동일 종목 독립 재진입 허용 (V1 대비 유일한 전략 변경점, No Cooldown / No Max Reentries, 피라미딩 및 중복 포지션 금지).
-  * **공식 상태**: **`FINAL_STRATEGY_FROZEN / PRODUCTION_DECISION_SUPPORT`** ([V2 Contract](docs/patterns/pattern_a_fast/strategy/final_v02.md))
+  * **공식 상태**: **`FINAL_STRATEGY_FROZEN / PRODUCTION_DECISION_SUPPORT`** ([V2 Contract](docs/patterns/pattern_a_fast/strategy/version_02/README.md))
 * **A FAST Core V1 (`PATTERN_A_FAST_FINAL_STRATEGY_V01`) — Historical Baseline**:
   * 재진입이 금지된 단일 진입 모델로, 영구 보존되는 과거 기준선 (**`HISTORICAL_FROZEN_BASELINE`**).
 * **운용 정책**: 본 전략은 **투자 의사결정 지원(Decision Support)** 목적으로 리포트에 제공되며, 자동 주문 실행(Automated Trading)용으로 승인된 상태가 아닙니다. 회고적 검증(Retrospective, 783 trades / 551 tickers) 기반이며 Fresh OOS 검증은 아직 수행되지 않았습니다.

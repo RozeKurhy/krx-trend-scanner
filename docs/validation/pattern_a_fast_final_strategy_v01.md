@@ -4,7 +4,7 @@ pattern_a_fast_final_strategy_v01.md
 
 LEGACY PATH / COMPATIBILITY ONLY.
 
-CANONICAL = [../patterns/pattern_a_fast/strategy/final_v01.md](../patterns/pattern_a_fast/strategy/final_v01.md)
+CANONICAL = [../patterns/pattern_a_fast/strategy/version_01/README.md](../patterns/pattern_a_fast/strategy/version_01/README.md)
 COMPATIBILITY ONLY = this path (docs/validation/pattern_a_fast_final_strategy_v01.md)
 
 This path is retained only for historical artifact provenance compatibility.
