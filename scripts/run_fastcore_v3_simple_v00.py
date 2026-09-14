@@ -41,6 +41,12 @@ from trend_scanner.data.adjusted_price_authority_cutover import load_effective_a
 from trend_scanner.data.repository_v2_loader import RepositoryV2DailyLoader, build_repository_v2
 from trend_scanner.patterns.pattern_a_fast_evaluator import evaluate_pattern_a_fast
 from trend_scanner.universe.instrument_metadata import InstrumentMetadataResolver
+from trend_scanner.validation.pattern_a_fast_winner_hwm_exit_v01 import (
+    MFE_TIERS,
+    WEAK_FAST_STATES,
+    exit_decision,
+    mfe_tier,
+)
 
 
 OUT_DIR = ROOT / "artifacts/backtests/fastcore_v3_simple_v00"
@@ -64,18 +70,6 @@ STRATEGY_ID = "FASTCORE_V3_SIMPLE_V00"
 LOSS_GUARD_ENABLED = False
 EXIT3_ENABLED = False
 EXIT4_ENABLED = False
-
-WEAK_FAST_STATES = frozenset({"SETUP", "WATCH"})
-
-# Inclusive lower bound, exclusive upper bound, soft drawdown, hard drawdown.
-MFE_TIERS: tuple[tuple[float, float | None, float, float, str], ...] = (
-    (20.0, 50.0, -10.0, -20.0, "MFE_20_TO_50"),
-    (50.0, 100.0, -15.0, -25.0, "MFE_50_TO_100"),
-    (100.0, 200.0, -20.0, -30.0, "MFE_100_TO_200"),
-    (200.0, 400.0, -25.0, -35.0, "MFE_200_TO_400"),
-    (400.0, None, -30.0, -40.0, "MFE_400_PLUS"),
-)
-
 
 class NetworkRequestBlocked(RuntimeError):
     """Raised if the offline runner attempts a socket connection."""
@@ -159,30 +153,6 @@ def valid_fast_signal(result: Mapping[str, Any]) -> bool:
 
 def market_cap_pass(value: float | None) -> bool:
     return value is not None and float(value) >= MARKET_CAP_THRESHOLD
-
-
-def mfe_tier(mfe_pct: float) -> tuple[float, float, str] | None:
-    """Return exact V0 soft/hard thresholds for the current MFE tier."""
-    for lower, upper, soft, hard, label in MFE_TIERS:
-        if mfe_pct >= lower and (upper is None or mfe_pct < upper):
-            return soft, hard, label
-    return None
-
-
-def exit_decision(*, mfe_pct: float, hwm_price: float, current_close: float, fast_state: str | None) -> tuple[str | None, float | None, float | None, str | None]:
-    """Evaluate one end-of-day price observation without looking ahead."""
-    tier = mfe_tier(mfe_pct)
-    if tier is None:
-        return None, None, None, None
-    soft, hard, label = tier
-    # Round only the comparison value so an exact -10%/-20% boundary is not
-    # lost to binary floating-point representation.
-    drawdown_pct = round((current_close / hwm_price - 1.0) * 100.0, 10)
-    if drawdown_pct <= hard:
-        return "HARD_EXIT", soft, hard, label
-    if drawdown_pct <= soft and fast_state in WEAK_FAST_STATES:
-        return "SOFT_EXIT", soft, hard, label
-    return None, soft, hard, label
 
 
 def latest_fast_state(state_rows: list[tuple[pd.Timestamp, str]], date: pd.Timestamp) -> str | None:

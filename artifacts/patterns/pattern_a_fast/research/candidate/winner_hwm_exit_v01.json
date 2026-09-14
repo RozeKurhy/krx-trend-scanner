@@ -1,0 +1,26 @@
+{
+  "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V03",
+  "base_strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+  "strategy_alias": ["A FAST Core V3", "패스트 코어 V3"],
+  "exit_contract_id": "WINNER_HWM_EXIT_V01",
+  "status": "FROZEN_CANDIDATE_AWAITING_MATCHED_AB",
+  "production_default_unchanged": true,
+  "entry_contract": "SAME_AS_V02",
+  "winner_threshold": {"metric": "running_raw_MFE_pct", "operator": ">=", "value": 20.0, "inclusive": true},
+  "hwm": {"price_field": "daily_high", "formula": "running_highest_HIGH / entry_open - 1", "breach_field": "daily_close", "observation": "completed_daily_EOD", "lookahead": false},
+  "bands": [
+    {"label": "MFE_20_TO_50", "lower_mfe_pct": 20.0, "upper_mfe_pct_exclusive": 50.0, "soft_drawdown_pct": -10.0, "hard_drawdown_pct": -20.0},
+    {"label": "MFE_50_TO_100", "lower_mfe_pct": 50.0, "upper_mfe_pct_exclusive": 100.0, "soft_drawdown_pct": -15.0, "hard_drawdown_pct": -25.0},
+    {"label": "MFE_100_TO_200", "lower_mfe_pct": 100.0, "upper_mfe_pct_exclusive": 200.0, "soft_drawdown_pct": -20.0, "hard_drawdown_pct": -30.0},
+    {"label": "MFE_200_TO_400", "lower_mfe_pct": 200.0, "upper_mfe_pct_exclusive": 400.0, "soft_drawdown_pct": -25.0, "hard_drawdown_pct": -35.0},
+    {"label": "MFE_400_PLUS", "lower_mfe_pct": 400.0, "upper_mfe_pct_exclusive": null, "soft_drawdown_pct": -30.0, "hard_drawdown_pct": -40.0}
+  ],
+  "soft_exit": {"drawdown_reaches_active_threshold": true, "fast_states": ["WATCH", "SETUP"], "signal": "SOFT_EXIT_SIGNAL", "confirmation_or_persistence": false, "nonweak_result": "HOLD"},
+  "hard_behavior": {"price_only": true, "fast_state_relevant": false, "simultaneous_soft_hard_precedence": "HARD"},
+  "signal_execution": {"signal": "COMPLETED_DAILY_EOD", "execution": "NEXT_LOCAL_TRADING_DAY_OPEN", "no_next_supported_day": "OPEN_AT_CUTOFF"},
+  "pre_winner_rule": "NO_EXIT",
+  "excluded_rules": ["FIXED_NEGATIVE_15_PCT_PRE_WINNER_GUARD", "V2_EXIT3_STAGE_TRANSITION", "V2_EXIT4_SCORE_HWM_15PT", "W25", "W30", "FAILURE_ARMED", "PERSISTENCE_EXIT", "PEAK_PROFIT_FLOOR", "SOFT_CONFIRM", "STRATEGY_GENERATED_REENTRY"],
+  "reentry": {"generated_by_v3": false, "v2_reentry_modified": false},
+  "next_ab_matched_cohort_requirement": {"required_before_promotion": true, "comparison": "V2_VS_V3_EXIT_ONLY", "entry_points": "IDENTICAL_V2_ENTRY_POINTS", "entry_filters_re_evaluated": false, "reentry_generated": false},
+  "capital_tradeoff": "Pre-Winner에는 강제 청산이 없으므로 장기간 자본이 묶이거나 큰 미실현 손실이 발생할 수 있다."
+}
