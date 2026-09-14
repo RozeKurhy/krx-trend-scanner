@@ -13,6 +13,7 @@ DATA_ROOT = ROOT / "data/raw/stocks"
 TICKERS = ("229200", "292190", "226490", "156080", "226980")
 RUNS = ("long_range", "same_window")
 STRATEGIES = ("V2", "V3", "V4", "Julia", "Buy & Hold")
+NO_LIQUIDITY_FILTER_TICKERS = {"156080", "226980"}
 REQUIRED_COLUMNS = ("open", "high", "low", "close", "volume", "trading_value")
 
 
@@ -48,6 +49,7 @@ def test_raw_authority_and_run_periods_are_complete() -> None:
             assert summary["status"] == "COMPLETE"
             assert summary["execution_support_end"] == "2026-08-21"
             assert summary["final_valuation"] == "2026-08-21 CLOSE"
+            assert summary["scan"]["liquidity_filter_applied"] is (ticker not in NO_LIQUIDITY_FILTER_TICKERS)
 
 
 def test_matched_entry_identity_and_counts() -> None:

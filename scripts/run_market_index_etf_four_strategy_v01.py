@@ -21,6 +21,7 @@ if str(ROOT) not in sys.path:
 
 from scripts import run_fastcore_v3_simple_v00 as v3
 from scripts import run_fastcore_v4_matched_ab_official_v01 as v4
+from trend_scanner.backtest import fastcore_fundamentals_simple_v01 as v2_engine
 from trend_scanner.backtest.fastcore_fundamentals_simple_v01 import simulate_ticker_strategy_fundamentals_v01
 from trend_scanner.backtest.raw_investability_panel import (
     evaluate_entry_filter,
@@ -29,6 +30,7 @@ from trend_scanner.backtest.raw_investability_panel import (
 from trend_scanner.backtest.snapshot_context import build_precomputed_ticker_context
 from trend_scanner.patterns.pattern_a_fast_evaluator import evaluate_pattern_a_fast
 from trend_scanner.validation.julia_strategy_v00 import simulate_ticker_strategy_2022
+from trend_scanner.validation import julia_strategy_v00 as julia_engine
 
 
 ETF_UNIVERSE = {
@@ -82,6 +84,38 @@ class NetworkRequestBlocked(RuntimeError):
 class NetworkAudit:
     def __init__(self) -> None:
         self.request_count = 0
+
+
+@contextmanager
+def liquidity_filter_override(apply_liquidity_filter: bool) -> Iterator[None]:
+    """Apply the requested research-only liquidity policy to frozen engines."""
+    if apply_liquidity_filter:
+        yield
+        return
+
+    original_v2_filter = v2_engine.evaluate_entry_filter
+    original_julia_investability = julia_engine.evaluate_investability
+
+    def no_liquidity_v2_filter(panel: pd.DataFrame | None, signal_date: pd.Timestamp, *, market_cap_threshold: float, avg_trading_value_threshold: float, close_threshold: float) -> dict[str, object]:
+        return original_v2_filter(
+            panel,
+            signal_date,
+            market_cap_threshold=market_cap_threshold,
+            avg_trading_value_threshold=0.0,
+            close_threshold=close_threshold,
+        )
+
+    def no_liquidity_julia_investability(*args: Any, **kwargs: Any) -> Any:
+        kwargs["min_avg_trading_value_20d_krw"] = 0.0
+        return original_julia_investability(*args, **kwargs)
+
+    v2_engine.evaluate_entry_filter = no_liquidity_v2_filter  # type: ignore[assignment]
+    julia_engine.evaluate_investability = no_liquidity_julia_investability  # type: ignore[assignment]
+    try:
+        yield
+    finally:
+        v2_engine.evaluate_entry_filter = original_v2_filter  # type: ignore[assignment]
+        julia_engine.evaluate_investability = original_julia_investability  # type: ignore[assignment]
 
 
 @contextmanager
@@ -192,6 +226,7 @@ def scan_common_entries(
     score_contract: dict[str, Any],
     stage_contract: dict[str, Any],
     run_start: pd.Timestamp,
+    apply_liquidity_filter: bool = True,
 ) -> tuple[list[dict[str, Any]], list[tuple[pd.Timestamp, str]], dict[str, Any]]:
     daily_dates = set(pd.DatetimeIndex(daily.index).normalize())
     weekly = context.weekly_up_to(SUPPORT_END)
@@ -215,7 +250,13 @@ def scan_common_entries(
         if week < run_start or week > SIGNAL_CUTOFF or not _valid_fast(result):
             continue
         raw_candidates += 1
-        filt = evaluate_entry_filter(panel, week, market_cap_threshold=0.0, avg_trading_value_threshold=MIN_AVG_TRADING_VALUE, close_threshold=MIN_CLOSE)
+        filt = evaluate_entry_filter(
+            panel,
+            week,
+            market_cap_threshold=0.0,
+            avg_trading_value_threshold=MIN_AVG_TRADING_VALUE if apply_liquidity_filter else 0.0,
+            close_threshold=MIN_CLOSE,
+        )
         if not bool(filt["entry_filter_pass"]):
             entry_filter_rejections.append({
                 "signal_date": week.strftime("%Y-%m-%d"),
@@ -270,7 +311,8 @@ def scan_common_entries(
         "entry_filter_rejections": entry_filter_rejections,
         "market_cap_gate": "BYPASSED_ETF_NO_HISTORICAL_MARKET_CAP_AUTHORITY",
         "price_filter_applied": True,
-        "liquidity_filter_applied": True,
+        "liquidity_filter_applied": apply_liquidity_filter,
+        "liquidity_filter_threshold_krw": MIN_AVG_TRADING_VALUE if apply_liquidity_filter else 0.0,
     }
 
 
@@ -504,12 +546,13 @@ def _run_report(summary: Mapping[str, Any]) -> str:
     return "\n".join(lines) + "\n"
 
 
-def run_one(ticker: str, name: str, daily: pd.DataFrame, data_meta: dict[str, Any], run: str, run_start: pd.Timestamp, score: dict[str, Any], stage: dict[str, Any]) -> tuple[dict[str, Any], pd.DataFrame, pd.DataFrame, dict[str, list[dict[str, Any]]]]:
+def run_one(ticker: str, name: str, daily: pd.DataFrame, data_meta: dict[str, Any], run: str, run_start: pd.Timestamp, score: dict[str, Any], stage: dict[str, Any], apply_liquidity_filter: bool = True) -> tuple[dict[str, Any], pd.DataFrame, pd.DataFrame, dict[str, list[dict[str, Any]]]]:
     context = build_precomputed_ticker_context(ticker, name, daily)
-    signals, states, scan_meta = scan_common_entries(ticker, name, daily, context, score, stage, run_start)
+    signals, states, scan_meta = scan_common_entries(ticker, name, daily, context, score, stage, run_start, apply_liquidity_filter=apply_liquidity_filter)
     panel = _raw_panel(daily)
-    sequential = simulate_sequential(ticker, name, run_start, signals, states, daily, context, panel, score, stage)
-    matched = simulate_matched(ticker, name, signals, states, daily, context, panel, score, stage)
+    with liquidity_filter_override(apply_liquidity_filter):
+        sequential = simulate_sequential(ticker, name, run_start, signals, states, daily, context, panel, score, stage)
+        matched = simulate_matched(ticker, name, signals, states, daily, context, panel, score, stage)
     for trade in [row for rows in sequential.values() for row in rows]:
         if trade.get("exit_signal_date") and trade.get("exit_execution_date") and _date(trade["exit_execution_date"]) <= _date(trade["exit_signal_date"]): raise AssertionError(f"{ticker}: exit execution ordering")
     curve_daily = daily.loc[daily.index >= run_start].copy()
@@ -517,7 +560,7 @@ def run_one(ticker: str, name: str, daily: pd.DataFrame, data_meta: dict[str, An
     metrics={s:curve_metrics(equity[equity.strategy==s].reset_index(drop=True)) for s in STRATEGIES+("Buy & Hold",)}
     for s in STRATEGIES: metrics[s]["trade_count"]=len(sequential[s]); metrics[s]["mean_trade_return_pct"]=trade_summary(sequential[s])["mean_return_pct"]; metrics[s]["median_trade_return_pct"]=trade_summary(sequential[s])["median_return_pct"]; metrics[s]["win_rate_pct"]=trade_summary(sequential[s])["win_rate_pct"]; metrics[s]["exit_reasons"]=trade_summary(sequential[s])["exit_reasons"]
     matched_summaries={s:trade_summary(matched[matched.strategy==s].to_dict("records")) for s in STRATEGIES}; sequential_summaries={s:trade_summary(sequential[s]) for s in STRATEGIES}
-    result={"status":"COMPLETE","run":run,"evaluation_start":run_start.strftime("%Y-%m-%d"),"signal_cutoff":SIGNAL_CUTOFF.strftime("%Y-%m-%d"),"execution_support_end":SUPPORT_END.strftime("%Y-%m-%d"),"final_valuation":"2026-08-21 CLOSE","common_entry_count":len(signals),"scan":scan_meta,"matched_rows":len(matched),"matched_identity":{"signal_date_match":True,"execution_date_match":True,"entry_open_match":True,"duplicate_entries":int(matched.duplicated(["strategy","entry_signal_date"]).sum())},"matched_summaries":matched_summaries,"paired_vs_v2":paired_vs_v2(matched),"sequential_summaries":sequential_summaries,"strategies":metrics,"cost_model":"GROSS / NO_COST_MODEL","network_requests":0,"executed_strategies":list(STRATEGIES)+["Buy & Hold"],"market_cap_gate":"BYPASSED_ETF_NO_HISTORICAL_MARKET_CAP_AUTHORITY"}
+    result={"status":"COMPLETE","run":run,"evaluation_start":run_start.strftime("%Y-%m-%d"),"signal_cutoff":SIGNAL_CUTOFF.strftime("%Y-%m-%d"),"execution_support_end":SUPPORT_END.strftime("%Y-%m-%d"),"final_valuation":"2026-08-21 CLOSE","common_entry_count":len(signals),"scan":scan_meta,"matched_rows":len(matched),"matched_identity":{"signal_date_match":True,"execution_date_match":True,"entry_open_match":True,"duplicate_entries":int(matched.duplicated(["strategy","entry_signal_date"]).sum())},"matched_summaries":matched_summaries,"paired_vs_v2":paired_vs_v2(matched),"sequential_summaries":sequential_summaries,"strategies":metrics,"cost_model":"GROSS / NO_COST_MODEL","network_requests":0,"executed_strategies":list(STRATEGIES)+["Buy & Hold"],"market_cap_gate":"BYPASSED_ETF_NO_HISTORICAL_MARKET_CAP_AUTHORITY","liquidity_filter_applied":apply_liquidity_filter}
     return result, matched, equity, sequential
 
 
@@ -562,15 +605,29 @@ def _compute_wins(aggregate: Mapping[str, Any], run: str) -> dict[str, Any]:
     return out
 
 
-def run_all() -> dict[str, Any]:
-    score,stage=_contracts(); aggregate={"work_id":"MARKET_INDEX_ETF_FIVE_UNIVERSE_FOUR_STRATEGY_BACKTEST_V01","status":"COMPLETE","starting_head":"ee94fa58c2d3d294d8cd5096c195f43502a15d8c","branch":"codex/fastcore-fundamentals-simple-backtest-v01","etfs":{},"wins":{}}
-    for ticker,name in ETF_UNIVERSE.items():
+def run_all(selected_tickers: Sequence[str] | None = None, apply_liquidity_filter: bool = True) -> dict[str, Any]:
+    selected = tuple(selected_tickers or ETF_UNIVERSE.keys())
+    unknown = sorted(set(selected) - set(ETF_UNIVERSE))
+    if unknown:
+        raise ValueError(f"unknown ETF ticker(s): {unknown}")
+    if set(selected) == set(ETF_UNIVERSE):
+        aggregate={"work_id":"MARKET_INDEX_ETF_FIVE_UNIVERSE_FOUR_STRATEGY_BACKTEST_V01","status":"COMPLETE","starting_head":"ee94fa58c2d3d294d8cd5096c195f43502a15d8c","branch":"codex/fastcore-fundamentals-simple-backtest-v01","etfs":{},"wins":{}}
+    elif AGGREGATE_SUMMARY_PATH.exists():
+        aggregate = _json_read(AGGREGATE_SUMMARY_PATH)
+        aggregate["status"] = "COMPLETE"
+        aggregate["etfs"] = {ticker: aggregate["etfs"][ticker] for ticker in ETF_UNIVERSE if ticker in aggregate.get("etfs", {})}
+    else:
+        raise FileNotFoundError(f"existing aggregate summary required for partial rerun: {AGGREGATE_SUMMARY_PATH}")
+    aggregate["last_rerun"] = {"tickers": list(selected), "liquidity_filter_applied": apply_liquidity_filter}
+    score,stage=_contracts()
+    for ticker in selected:
+        name = ETF_UNIVERSE[ticker]
         try:
             daily,data_meta=load_price_authority(ticker); item={"status":"COMPLETE","ticker":ticker,"name":name,"data":data_meta,"extension":EXTENSION_RECORDS[ticker],"runs":{}}
             context=build_precomputed_ticker_context(ticker,name,daily)
             for run in RUNS:
                 start=_date(daily.index.min()) if run=="long_range" else SAME_WINDOW_START
-                summary,matched,equity,sequential=run_one(ticker,name,daily,data_meta,run,start,score,stage); summary["ticker"]=ticker; summary["name"]=name; summary["data"]=data_meta; summary["extension"]=EXTENSION_RECORDS[ticker]; item["runs"][run]=summary; write_run_outputs(ticker,run,summary,matched,equity,sequential)
+                summary,matched,equity,sequential=run_one(ticker,name,daily,data_meta,run,start,score,stage,apply_liquidity_filter=apply_liquidity_filter); summary["ticker"]=ticker; summary["name"]=name; summary["data"]=data_meta; summary["extension"]=EXTENSION_RECORDS[ticker]; item["runs"][run]=summary; write_run_outputs(ticker,run,summary,matched,equity,sequential)
             item["report"]=_run_report(item); (OUT_ROOT/ticker).mkdir(parents=True,exist_ok=True); (OUT_ROOT/ticker/"report.md").write_text(item["report"],encoding="utf-8"); aggregate["etfs"][ticker]=item
         except Exception as exc:
             aggregate["status"]="PARTIAL_DATA_GAP"; item={"status":"BLOCKED_DATA_GAP","ticker":ticker,"name":name,"data":None,"extension":EXTENSION_RECORDS.get(ticker,{}),"runs":{run:{"status":"BLOCKED_DATA_GAP","reason":f"{type(exc).__name__}: {exc}"} for run in RUNS}}; aggregate["etfs"][ticker]=item; (OUT_ROOT/ticker).mkdir(parents=True,exist_ok=True); _json_write(OUT_ROOT/ticker/"long_range/summary.json",item["runs"]["long_range"]); _json_write(OUT_ROOT/ticker/"same_window/summary.json",item["runs"]["same_window"]); (OUT_ROOT/ticker/"report.md").write_text(f"# {ticker} {name}\n\n- status: `BLOCKED_DATA_GAP`\n- reason: `{item['runs']['long_range']['reason']}`\n",encoding="utf-8")
@@ -579,11 +636,11 @@ def run_all() -> dict[str, Any]:
 
 
 def main() -> int:
-    parser=argparse.ArgumentParser(); parser.add_argument("--run",action="store_true"); args=parser.parse_args()
+    parser=argparse.ArgumentParser(); parser.add_argument("--run",action="store_true"); parser.add_argument("--tickers", nargs="+", choices=sorted(ETF_UNIVERSE), default=None); parser.add_argument("--disable-liquidity-filter", action="store_true"); args=parser.parse_args()
     if not args.run: parser.error("use --run")
     audit=NetworkAudit()
     try:
-        with network_guard(audit): result=run_all()
+        with network_guard(audit): result=run_all(args.tickers, apply_liquidity_filter=not args.disable_liquidity_filter)
         result["network_requests"]=audit.request_count; _json_write(AGGREGATE_SUMMARY_PATH,result)
         if audit.request_count!=0: raise AssertionError(f"network requests={audit.request_count}")
         print(json.dumps({"status":result["status"],"etf_status":{t:{r:result["etfs"][t]["runs"][r]["status"] for r in RUNS} for t in ETF_UNIVERSE},"network_requests":audit.request_count},ensure_ascii=False),flush=True); return 0
