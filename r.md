@@ -68,7 +68,9 @@ The aggregate report answers the requested comparison questions without making a
 
 ## Git
 
-- Commit/push: pending final commit.
+- Research commit: `409ec0ca8e6e91b7bf4c866b42e7974d5837b4fd` (`feat(research): compare five market index ETFs across four strategies`)
+- Initial commit push: `SUCCESS` to `origin/codex/fastcore-fundamentals-simple-backtest-v01`
+- A follow-up documentation commit updates this report after the research commit.
 - Unrelated pre-existing worktree changes were preserved and excluded from staging.
 
 ## Time summary
