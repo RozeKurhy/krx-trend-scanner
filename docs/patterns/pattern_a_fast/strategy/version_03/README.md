@@ -11,6 +11,7 @@
 - **상태**: 규칙 동결 후 비교 검증 대기 (`FROZEN_CANDIDATE_AWAITING_MATCHED_AB`)
 - **기준 전략**: `PATTERN_A_FAST_FINAL_STRATEGY_V02`
 - **현재 기본 전략**: `PATTERN_A_FAST_FINAL_STRATEGY_V02` / `A FAST Core V2`
+- **검증 계획**: [동일 진입 matched A/B 검증 계획](../../validation_plan/version_03_matched_ab_validation.md)
 
 이 문서는 후보 계약만 고정한다. V3를 공식 전략으로 승격하거나 실전 리포트를
 바꾸지 않으며, V2 기본 전략을 대체하지도 않는다. 승격 여부를 판단하기 전에는
