@@ -451,7 +451,7 @@ def simulate_matched(ticker: str, name: str, signals: list[dict[str, Any]], stat
         v2_records = simulate_ticker_strategy_fundamentals_v01(**_v2_kwargs(ticker, name, daily, panel, context, score, stage, {signal_date}, signal_date))
         if len(v2_records) != 1: raise AssertionError(f"{ticker}: V2 matched rows={len(v2_records)} at {signal_date.date()}")
         rows.append(_normalise_engine_trade(v2_records[0], "V2", ticker, daily))
-        julia_records = simulate_ticker_strategy_2022(**_julia_kwargs(ticker, name, daily, context, score, stage, signal_date))
+        julia_records = simulate_ticker_strategy_2022(**_julia_kwargs(ticker, name, daily, context, score, stage, _date(signal["entry_execution_date"])))
         if not julia_records: raise AssertionError(f"{ticker}: Julia matched row missing at {signal_date.date()}")
         julia_row = _normalise_engine_trade(julia_records[0], "Julia", ticker, daily)
         if julia_row["entry_signal_date"] != signal["signal_date"]: raise AssertionError(f"{ticker}: Julia entry mismatch at {signal_date.date()}")
