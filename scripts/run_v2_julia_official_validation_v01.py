@@ -11,11 +11,13 @@ reported result axes without reviving the historical research runner's
 
 from __future__ import annotations
 
+from concurrent.futures import ProcessPoolExecutor
 from contextlib import contextmanager
 from dataclasses import dataclass
 import hashlib
 import json
 import math
+import multiprocessing as mp
 from pathlib import Path
 import resource
 import socket
@@ -408,13 +410,18 @@ def _exact_frame_value(frame: pd.DataFrame | None, date: pd.Timestamp, column: s
     if frame is None or frame.empty or column not in frame.columns:
         return None
     day = pd.Timestamp(date).normalize()
-    index = pd.DatetimeIndex(pd.to_datetime(frame.index, errors="coerce")).normalize()
+    index = frame.index
+    if not isinstance(index, pd.DatetimeIndex):
+        index = pd.DatetimeIndex(pd.to_datetime(index, errors="coerce")).normalize()
     if index.isna().any() or index.has_duplicates:
         return None
-    matches = frame.loc[index == day, column]
-    if len(matches) != 1:
+    try:
+        location = index.get_loc(day)
+    except KeyError:
         return None
-    value = pd.to_numeric(matches.iloc[0], errors="coerce")
+    if not isinstance(location, int):
+        return None
+    value = pd.to_numeric(frame[column].iloc[location], errors="coerce")
     return None if pd.isna(value) else float(value)
 
 
@@ -1548,6 +1555,202 @@ class OfficialValidationRunner:
         }
 
 
+_PARALLEL_RUNNER: OfficialValidationRunner | None = None
+
+
+def _diagnostic_delta(before: Mapping[str, Any], after: Mapping[str, Any]) -> dict[str, int]:
+    keys = set(before) | set(after)
+    return {
+        str(key): int(after.get(key, 0) or 0) - int(before.get(key, 0) or 0)
+        for key in keys
+    }
+
+
+def _run_identity_task_bundle(
+    official: OfficialValidationRunner,
+    task: IdentityTask,
+) -> dict[str, Any]:
+    """Run every strategy path for one lifecycle with one cache scope."""
+    before_counts = official.diagnostic_snapshot()
+    discovery_started = time.perf_counter()
+    signals = official.discover_matched_entry_signals(task)
+    discovery_seconds = time.perf_counter() - discovery_started
+
+    strategy_started = time.perf_counter()
+    pairs: list[dict[str, Any]] = []
+    for signal in signals:
+        official.diagnostic_counts["matched_v2_strategy_invocation_count"] += 1
+        base = official.run_identity_strategy(
+            task,
+            enable_loss_guard=True,
+            allowed_signal_dates={signal.signal_date},
+        )
+        official.diagnostic_counts["matched_julia_strategy_invocation_count"] += 1
+        julia = official.run_identity_strategy(
+            task,
+            enable_loss_guard=False,
+            allowed_signal_dates={signal.signal_date},
+        )
+        pairs.append({
+            "entry_key": signal.key(),
+            "signal": signal,
+            "base": base[0] if len(base) == 1 else None,
+            "julia": julia[0] if len(julia) == 1 else None,
+            "status": "PASS" if len(base) == len(julia) == 1 else "UNRESOLVED",
+        })
+    matched_strategy_seconds = time.perf_counter() - strategy_started
+
+    sequential_started = time.perf_counter()
+    official.diagnostic_counts["sequential_v2_strategy_invocation_count"] += 1
+    base_sequential = official.run_identity_strategy(task, enable_loss_guard=True)
+    official.diagnostic_counts["sequential_julia_strategy_invocation_count"] += 1
+    julia_sequential = official.run_identity_strategy(task, enable_loss_guard=False)
+    sequential_seconds = time.perf_counter() - sequential_started
+    after_counts = official.diagnostic_snapshot()
+    return {
+        "task": task,
+        "matched_signals": signals,
+        "matched_pairs": pairs,
+        "sequential": {
+            BASE_STRATEGY_ID: base_sequential,
+            JULIA_STRATEGY_ID: julia_sequential,
+        },
+        "timing": {
+            "matched_discovery_seconds": discovery_seconds,
+            "matched_strategy_seconds": matched_strategy_seconds,
+            "matched_entry_seconds": discovery_seconds + matched_strategy_seconds,
+            "sequential_seconds": sequential_seconds,
+        },
+        "diagnostic_counts": _diagnostic_delta(before_counts, after_counts),
+    }
+
+
+def _parallel_worker_chunk(tasks: tuple[IdentityTask, ...]) -> dict[str, Any]:
+    """Process one deterministic lifecycle chunk in an inherited runner."""
+    official = _PARALLEL_RUNNER
+    if official is None:
+        raise OfficialValidationError("PARALLEL_WORKER_RUNNER_UNAVAILABLE")
+    started = time.perf_counter()
+    usage_before = _resource_snapshot()
+    bundles = [_run_identity_task_bundle(official, task) for task in tasks]
+    usage_after = _resource_snapshot()
+    return {
+        "bundles": bundles,
+        "worker_seconds": time.perf_counter() - started,
+        "user_cpu_seconds": usage_after["user_cpu_seconds"] - usage_before["user_cpu_seconds"],
+        "system_cpu_seconds": usage_after["system_cpu_seconds"] - usage_before["system_cpu_seconds"],
+        "max_rss_mib": usage_after["max_rss_mib"],
+    }
+
+
+def run_parallel_lifecycle_sample(
+    official: OfficialValidationRunner,
+    tasks: Sequence[IdentityTask],
+    *,
+    workers: int,
+) -> dict[str, Any]:
+    """Run lifecycle bundles with the existing bounded process-pool pattern."""
+    if workers not in {2, 4, 6}:
+        raise OfficialValidationError(f"PARALLEL_WORKER_COUNT_UNSUPPORTED:{workers}")
+    if not tasks:
+        raise OfficialValidationError("PARALLEL_SAMPLE_HAS_NO_TASKS")
+    effective_workers = min(workers, len(tasks))
+    chunk_size = math.ceil(len(tasks) / effective_workers)
+    chunks = tuple(
+        tuple(tasks[offset : offset + chunk_size])
+        for offset in range(0, len(tasks), chunk_size)
+    )
+
+    global _PARALLEL_RUNNER
+    _PARALLEL_RUNNER = official
+    pool_started = time.perf_counter()
+    try:
+        try:
+            context = mp.get_context("fork")
+        except ValueError as exc:
+            raise OfficialValidationError("PARALLEL_FORK_CONTEXT_UNAVAILABLE") from exc
+        with ProcessPoolExecutor(
+            max_workers=effective_workers,
+            mp_context=context,
+        ) as executor:
+            chunk_results = tuple(executor.map(_parallel_worker_chunk, chunks))
+    finally:
+        _PARALLEL_RUNNER = None
+    pool_seconds = time.perf_counter() - pool_started
+
+    matched_pairs: list[dict[str, Any]] = []
+    candidate_signal_count = 0
+    sequential_result: dict[str, list[StrategyTradeRecord]] = {
+        BASE_STRATEGY_ID: [],
+        JULIA_STRATEGY_ID: [],
+    }
+    diagnostic_counts: dict[str, int] = {}
+    phase_work_seconds = {
+        "matched_discovery_seconds": 0.0,
+        "matched_strategy_seconds": 0.0,
+        "matched_entry_seconds": 0.0,
+        "sequential_seconds": 0.0,
+    }
+    phase_wall_seconds = {
+        "matched_discovery_seconds": 0.0,
+        "matched_strategy_seconds": 0.0,
+        "matched_entry_seconds": 0.0,
+        "sequential_seconds": 0.0,
+    }
+    for chunk_result in chunk_results:
+        chunk_timing = {key: 0.0 for key in phase_work_seconds}
+        for bundle in chunk_result["bundles"]:
+            candidate_signal_count += len(bundle["matched_signals"])
+            matched_pairs.extend(bundle["matched_pairs"])
+            for strategy_id, records in bundle["sequential"].items():
+                sequential_result[strategy_id].extend(records)
+            for key, value in bundle["timing"].items():
+                phase_work_seconds[key] += float(value)
+                chunk_timing[key] += float(value)
+            for key, value in bundle["diagnostic_counts"].items():
+                diagnostic_counts[key] = diagnostic_counts.get(key, 0) + int(value)
+        for key, value in chunk_timing.items():
+            phase_wall_seconds[key] = max(phase_wall_seconds[key], value)
+
+    worker_work_seconds = max(
+        (float(chunk_result["worker_seconds"]) for chunk_result in chunk_results),
+        default=0.0,
+    )
+    diagnostic_counts["candidate_matched_signal_count"] = candidate_signal_count
+    official.diagnostic_counts.update(diagnostic_counts)
+    official.diagnostic_seconds["matched_discovery_seconds"] = phase_wall_seconds[
+        "matched_discovery_seconds"
+    ]
+    official.diagnostic_seconds["matched_strategy_seconds"] = phase_wall_seconds[
+        "matched_strategy_seconds"
+    ]
+    return {
+        "matched_result": {
+            "axis": "Matched-entry",
+            "candidate_signal_count": candidate_signal_count,
+            "pairs": matched_pairs,
+        },
+        "sequential_result": sequential_result,
+        "diagnostic_counts": diagnostic_counts,
+        "timing": {
+            "pool_seconds": pool_seconds,
+            "worker_work_seconds": worker_work_seconds,
+            "worker_startup_aggregation_overhead_seconds": max(
+                0.0,
+                pool_seconds - worker_work_seconds,
+            ),
+            "phase_work_seconds": phase_work_seconds,
+            "phase_wall_seconds_estimate": phase_wall_seconds,
+            "effective_workers": effective_workers,
+        },
+        "resource": {
+            "user_cpu_seconds": sum(float(item["user_cpu_seconds"]) for item in chunk_results),
+            "system_cpu_seconds": sum(float(item["system_cpu_seconds"]) for item in chunk_results),
+            "max_rss_mib": max(float(item["max_rss_mib"]) for item in chunk_results),
+        },
+    }
+
+
 def _json_safe(value: Any) -> Any:
     """Convert result values to deterministic JSON/CSV-safe scalar structures."""
     if value is None or isinstance(value, (str, bool, int)):
@@ -2136,38 +2339,13 @@ def persist_official_results(
 
 
 def run_official(root: Path = ROOT) -> dict[str, Any]:
-    """Run Matched-entry, Sequential, and Portfolio exactly once under the frozen contract."""
+    """Fail closed until the bounded performance gate authorizes Full Run."""
     root = Path(root).resolve()
     with network_guard():
         preflight_result = preflight(root, write_contract=False)
         if preflight_result.get("status") != "READY":
             raise OfficialValidationError("OFFICIAL_PREFLIGHT_NOT_READY")
-        contract_path = root / CONTRACT_REL
-        contract_before = contract_path.read_bytes()
-        contract = _read_json(contract_path)
-        source_head = _git_head(root)
-        official = OfficialValidationRunner(root, contract)
-        print("official stage: Matched-entry", file=sys.stderr, flush=True)
-        matched_result = official.run_matched_entry()
-        print("official stage: Sequential", file=sys.stderr, flush=True)
-        sequential_result = official.run_sequential()
-        print("official stage: Realistic 200M Portfolio", file=sys.stderr, flush=True)
-        portfolio_result = official.run_realistic_portfolio(sequential_result)
-        benchmark_summary = _benchmark_summary(root)
-        if contract_path.read_bytes() != contract_before:
-            raise OfficialValidationError("FROZEN_EXECUTION_CONTRACT_CHANGED_DURING_RUN")
-    persisted = persist_official_results(
-        root,
-        contract,
-        matched_result,
-        sequential_result,
-        portfolio_result,
-        source_head=source_head,
-        benchmark_summary=benchmark_summary,
-    )
-    persisted["preflight"] = preflight_result
-    persisted["official_backtest_executed"] = True
-    return persisted
+        raise OfficialValidationError("OFFICIAL_FULL_RUN_BLOCKED_BY_PERFORMANCE_GATE")
 
 
 def _resource_snapshot() -> dict[str, float]:
@@ -2229,11 +2407,16 @@ def run_performance_sample(
     root: Path = ROOT,
     *,
     sample_size: int,
+    workers: int = 1,
     reuse_lifecycle_caches: bool = True,
     _return_parity_payload: bool = False,
 ) -> dict[str, Any] | tuple[dict[str, Any], dict[str, Any]]:
     """Measure one bounded sample without persisting official result artifacts."""
     root = Path(root).resolve()
+    if workers not in {1, 2, 4, 6}:
+        raise OfficialValidationError(f"PERFORMANCE_WORKER_COUNT_UNSUPPORTED:{workers}")
+    if workers > 1 and not reuse_lifecycle_caches:
+        raise OfficialValidationError("PARALLEL_SAMPLE_REQUIRES_LIFECYCLE_CACHE_REUSE")
     with network_guard():
         preflight_started = time.perf_counter()
         preflight_result = preflight(root, write_contract=False)
@@ -2260,13 +2443,26 @@ def run_performance_sample(
         for task in tasks:
             task_markets[task.market] = task_markets.get(task.market, 0) + 1
 
-        matched_started = time.perf_counter()
-        matched_result = official.run_matched_entry()
-        matched_seconds = time.perf_counter() - matched_started
+        parallel_result: dict[str, Any] | None = None
+        if workers == 1:
+            matched_started = time.perf_counter()
+            matched_result = official.run_matched_entry()
+            matched_seconds = time.perf_counter() - matched_started
 
-        sequential_started = time.perf_counter()
-        sequential_result = official.run_sequential()
-        sequential_seconds = time.perf_counter() - sequential_started
+            sequential_started = time.perf_counter()
+            sequential_result = official.run_sequential()
+            sequential_seconds = time.perf_counter() - sequential_started
+        else:
+            parallel_result = run_parallel_lifecycle_sample(
+                official,
+                tasks,
+                workers=workers,
+            )
+            matched_result = parallel_result["matched_result"]
+            sequential_result = parallel_result["sequential_result"]
+            parallel_phase_wall = parallel_result["timing"]["phase_wall_seconds_estimate"]
+            matched_seconds = float(parallel_phase_wall["matched_entry_seconds"])
+            sequential_seconds = float(parallel_phase_wall["sequential_seconds"])
 
         portfolio_started = time.perf_counter()
         portfolio_result = official.run_realistic_portfolio(sequential_result)
@@ -2296,6 +2492,28 @@ def run_performance_sample(
         if hasattr(official, "diagnostic_snapshot")
         else dict(official.diagnostic_counts)
     )
+    if parallel_result is not None:
+        diagnostic_counts.update(parallel_result["diagnostic_counts"])
+        parent_user_cpu = usage_after["user_cpu_seconds"] - usage_before["user_cpu_seconds"]
+        parent_system_cpu = usage_after["system_cpu_seconds"] - usage_before["system_cpu_seconds"]
+        resource_payload = {
+            "process_model": "fork_process_pool",
+            "workers": workers,
+            "user_cpu_seconds": parent_user_cpu + parallel_result["resource"]["user_cpu_seconds"],
+            "system_cpu_seconds": parent_system_cpu + parallel_result["resource"]["system_cpu_seconds"],
+            "max_rss_mib": max(
+                usage_after["max_rss_mib"],
+                parallel_result["resource"]["max_rss_mib"],
+            ),
+        }
+    else:
+        resource_payload = {
+            "process_model": "single_process",
+            "workers": 1,
+            "user_cpu_seconds": usage_after["user_cpu_seconds"] - usage_before["user_cpu_seconds"],
+            "system_cpu_seconds": usage_after["system_cpu_seconds"] - usage_before["system_cpu_seconds"],
+            "max_rss_mib": usage_after["max_rss_mib"],
+        }
     result = {
         "schema": "v2_julia_performance_sample_v01",
         "status": "COMPLETE",
@@ -2327,20 +2545,19 @@ def run_performance_sample(
             },
         },
         "unresolved_counts": unresolved_counts,
-        "resource": {
-            "process_model": "single_process",
-            "workers": 1,
-            "user_cpu_seconds": usage_after["user_cpu_seconds"] - usage_before["user_cpu_seconds"],
-            "system_cpu_seconds": usage_after["system_cpu_seconds"] - usage_before["system_cpu_seconds"],
-            "max_rss_mib": usage_after["max_rss_mib"],
-        },
+        "resource": resource_payload,
         "cache_observation": {
             "lifecycle_cache_reuse_enabled": reuse_lifecycle_caches,
             "fast_snapshot_cache_used": reuse_lifecycle_caches,
             "monthly_snapshot_cache_used": reuse_lifecycle_caches,
             "precomputed_ticker_context_used": True,
-            "runner_path": "lifecycle-scoped context/raw panel/FastSnapshotCache/MonthlySnapshotCache",
+            "runner_path": (
+                "lifecycle-scoped context/raw panel/FastSnapshotCache/MonthlySnapshotCache"
+                if workers == 1
+                else "bounded fork ProcessPoolExecutor lifecycle bundles with the same caches"
+            ),
         },
+        "parallel": None if parallel_result is None else parallel_result["timing"],
         "official_backtest_executed": False,
         "official_result_artifacts": _result_artifacts_present(root),
         "network_requests": 0,
@@ -2380,6 +2597,44 @@ def run_performance_parity_sample(root: Path = ROOT, *, sample_size: int) -> dic
         "checks": checks,
         "baseline": baseline,
         "optimized": optimized,
+        "official_backtest_executed": False,
+        "network_requests": 0,
+    }
+
+
+def run_parallel_performance_parity_sample(
+    root: Path = ROOT,
+    *,
+    sample_size: int,
+    workers: int,
+) -> dict[str, Any]:
+    """Compare the optimized workers=1 path with one bounded worker count."""
+    baseline, baseline_payload = run_performance_sample(
+        root,
+        sample_size=sample_size,
+        workers=1,
+        reuse_lifecycle_caches=True,
+        _return_parity_payload=True,
+    )
+    parallel, parallel_payload = run_performance_sample(
+        root,
+        sample_size=sample_size,
+        workers=workers,
+        reuse_lifecycle_caches=True,
+        _return_parity_payload=True,
+    )
+    checks = {
+        key: baseline_payload[key] == parallel_payload[key]
+        for key in baseline_payload
+    }
+    return {
+        "schema": "v2_julia_parallel_performance_parity_sample_v01",
+        "status": "PASS" if all(checks.values()) else "FAIL",
+        "sample_size": sample_size,
+        "workers": workers,
+        "checks": checks,
+        "workers_1": baseline,
+        "workers_parallel": parallel,
         "official_backtest_executed": False,
         "network_requests": 0,
     }
@@ -2427,9 +2682,21 @@ def main() -> int:
         help="compare uncached and lifecycle-cache sample outputs exactly",
     )
     parser.add_argument(
+        "--run-parallel-performance-parity-sample",
+        action="store_true",
+        help="compare optimized workers=1 output with a bounded parallel worker count",
+    )
+    parser.add_argument(
         "--sample-size",
         type=int,
         help="identity count for --run-performance-sample",
+    )
+    parser.add_argument(
+        "--workers",
+        type=int,
+        choices=(1, 2, 4, 6),
+        default=1,
+        help="bounded worker count for performance samples",
     )
     parser.add_argument(
         "--disable-lifecycle-reuse",
@@ -2444,19 +2711,26 @@ def main() -> int:
     args = parser.parse_args()
     if args.run_official and (
         args.preflight_only or args.write_contract or args.run_performance_sample
-        or args.run_performance_parity_sample
+        or args.run_performance_parity_sample or args.run_parallel_performance_parity_sample
     ):
         parser.error("--run-official cannot be combined with preflight, contract, or sample modes")
-    if (args.run_performance_sample or args.run_performance_parity_sample) and (args.preflight_only or args.write_contract):
+    sample_modes = (
+        args.run_performance_sample,
+        args.run_performance_parity_sample,
+        args.run_parallel_performance_parity_sample,
+    )
+    if any(sample_modes) and (args.preflight_only or args.write_contract):
         parser.error("performance sample modes cannot be combined with --preflight-only or --write-contract")
-    if args.run_performance_sample and args.run_performance_parity_sample:
+    if sum(bool(mode) for mode in sample_modes) > 1:
         parser.error("choose only one performance sample mode")
-    if args.sample_size is not None and not (args.run_performance_sample or args.run_performance_parity_sample):
+    if args.sample_size is not None and not any(sample_modes):
         parser.error("--sample-size requires a performance sample mode")
     if args.disable_lifecycle_reuse and not args.run_performance_sample:
         parser.error("--disable-lifecycle-reuse requires --run-performance-sample")
-    if (args.run_performance_sample or args.run_performance_parity_sample) and args.sample_size is None:
+    if any(sample_modes) and args.sample_size is None:
         parser.error("performance sample modes require --sample-size")
+    if args.run_parallel_performance_parity_sample and args.workers == 1:
+        parser.error("parallel parity requires --workers 2, 4, or 6")
     if args.run_official:
         result = run_official(ROOT)
         print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
@@ -2465,12 +2739,21 @@ def main() -> int:
         result = run_performance_sample(
             ROOT,
             sample_size=args.sample_size,
+            workers=args.workers,
             reuse_lifecycle_caches=not args.disable_lifecycle_reuse,
         )
         print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
         return 0
     if args.run_performance_parity_sample:
         result = run_performance_parity_sample(ROOT, sample_size=args.sample_size)
+        print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
+        return 0
+    if args.run_parallel_performance_parity_sample:
+        result = run_parallel_performance_parity_sample(
+            ROOT,
+            sample_size=args.sample_size,
+            workers=args.workers,
+        )
         print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
         return 0
     if not args.preflight_only and not args.write_contract:

@@ -501,6 +501,12 @@ def test_run_official_never_constructs_runner_before_preflight(monkeypatch, tmp_
         runner.run_official(tmp_path)
 
 
+def test_run_official_is_blocked_after_ready_preflight(monkeypatch, tmp_path):
+    monkeypatch.setattr(runner, "preflight", lambda *_args, **_kwargs: {"status": "READY"})
+    with pytest.raises(runner.OfficialValidationError, match="OFFICIAL_FULL_RUN_BLOCKED_BY_PERFORMANCE_GATE"):
+        runner.run_official(tmp_path)
+
+
 def test_performance_sample_does_not_persist_official_artifacts(monkeypatch, tmp_path):
     contract_path = tmp_path / runner.CONTRACT_REL
     contract_path.parent.mkdir(parents=True)
@@ -591,6 +597,34 @@ def test_performance_parity_sample_requires_each_frozen_axis_to_match(monkeypatc
         "unresolved_counts",
         "portfolio_output",
     }
+
+
+def test_parallel_performance_parity_compares_workers_one_to_selected_worker(monkeypatch, tmp_path):
+    payload = {
+        "matched_signal_keys": ["signal"],
+        "matched_v2_trades": ["v2"],
+        "matched_julia_trades": ["julia"],
+        "sequential_v2_trades": ["v2-sequential"],
+        "sequential_julia_trades": ["julia-sequential"],
+        "unresolved_counts": {"total": 0},
+        "portfolio_output": {"strategies": {}},
+    }
+    calls: list[dict[str, object]] = []
+
+    def fake_sample(*_args, workers, reuse_lifecycle_caches, _return_parity_payload, **_kwargs):
+        calls.append({"workers": workers, "reuse": reuse_lifecycle_caches})
+        assert _return_parity_payload is True
+        return {"workers": workers}, payload
+
+    monkeypatch.setattr(runner, "run_performance_sample", fake_sample)
+    result = runner.run_parallel_performance_parity_sample(
+        tmp_path,
+        sample_size=20,
+        workers=4,
+    )
+    assert result["status"] == "PASS"
+    assert result["workers"] == 4
+    assert calls == [{"workers": 1, "reuse": True}, {"workers": 4, "reuse": True}]
 
 
 def _portfolio_record(
