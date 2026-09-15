@@ -209,8 +209,8 @@ print(f"Markdown: {md_path}")
 
 * **COMPLETED**: Repository V2 / production data migration, market data refresh & price validation through 2026-09-04, Market RS full-COMMON authority, Pattern A production regeneration, OpenDART Fundamentals V1 및 Fundamentals Filter, Stock Report v0.5 integration, restated comparative/PIT closure, independent validation closure, Web Report Viewer `CLOSED / READ_ONLY`, documentation/artifact consolidation, branch/main integration cleanup
 * **현재 production 사실**: 전체 universe 4,415개, COMMON 2,557개, Stock Report 1,836건(COMMON 1,808 / ETF 26 / PREFERRED 2)
-* **CURRENT**: FastCore realistic backtest 조건과 Fundamentals filter 조건 정의. 조건이 고정되기 전에는 backtest를 실행하지 않음
-* **NEXT**: FastCore realistic backtest 및 baseline 비교 → Julia realistic backtest → strategy robustness comparison
+* **CURRENT**: 현실적 공통조건 확정 및 V2 ↔ Julia 공식 검증 Stage 4 완료/동결. 공식 평가기간은 `2021-01-01 ~ 2026-08-14`이며 Fundamentals는 이번 검증에서 제외함
+* **NEXT**: Stage 5 실행 전 runner/execution contract 연결 → V2 ↔ Julia 동일 진입·순차·현실적 2억 포트폴리오 비교 → strategy robustness comparison
 * **HOLD / FUTURE**: 금융회사 전용 Fundamentals 확장, full-COMMON Sector RS rank/percentile authority, Pattern B~F 및 기타 신규 Pattern
 
 **알려진 현재 한계** (2026-09-04 기준): Scanner의 Foreign Flow와 Sector RS는 candidate-gated 평가가 남아 있지만, Stock Report target COMMON은 local authority를 직접 소비합니다. full-COMMON Sector RS rank/percentile authority는 아직 없습니다. 금융회사의 일반 V1 fundamentals는 `NOT_APPLICABLE`이며 전용 확장은 미래 범위입니다.

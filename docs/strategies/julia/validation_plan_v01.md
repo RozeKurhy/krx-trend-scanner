@@ -1,6 +1,6 @@
 # Julia 공식 전략 검증 계획 V01
 
-> 상태: `검토 대기`
+> 상태: `STAGE_4_FROZEN`
 >
 > 이 문서는 Julia 후보 전략의 공식 검증을 실행하기 전에 비교 조건과 판정
 > 기준을 사전 고정하기 위한 초안이다. 이 문서를 작성하는 단계에서는
@@ -11,9 +11,10 @@
 |---|---|
 | 후보 전략 | `JULIA_STRATEGY_V00` |
 | 기준 전략 | `PATTERN_A_FAST_FINAL_STRATEGY_V02` |
-| 계획 단계 | 전략 생애주기 4단계: 검증 계획 확정 전 검토 |
-| 작성 기준 HEAD | `e2b8b9b67e231e8f4336b988814e62e178686f02` |
-| 공식 상태 | `검토 대기` / Stage 4 미완료 |
+| 계획 단계 | 전략 생애주기 4단계: 검증 계획 확정 완료 / 동결 |
+| 작성 기준 HEAD | `c613dab1297c34b9826f1e35067d2fc32971bd5b` |
+| 공통조건 확정 커밋 | `c613dab1297c34b9826f1e35067d2fc32971bd5b` |
+| 공식 상태 | `STAGE_4_FROZEN` / Stage 4 완료·동결 |
 | 결과 artifact | `artifacts/strategies/julia/official_validation_v01/` (사전 예약만 함) |
 
 ## A. 목적과 공식 질문
@@ -59,6 +60,10 @@
   않는다.
 - 과거 Julia V00 불완전 PIT 연구와 proxy 시가총액 연구의 성과 수치를
   공식 결과로 재사용하지 않는다.
+- 이번 공식 V2 ↔ Julia 검증에서는 Fundamentals Filter, fundamentals cutoff·
+  threshold·score, 매출·이익 기반 제외 및 펀더멘털 우선순위를 사용하지 않는다.
+  OpenDART Fundamentals V1과 production Fundamentals Filter 자체의 상태는
+  변경하지 않는다.
 
 ## C. 단일 변경점과 규칙 동결
 
@@ -198,28 +203,27 @@ Repository V2의 원천 기준 경로는 다음과 같다.
 
 ## F. 검증 기간
 
-### F.1 Stage 4 동결 후보 구간
+### F.1 Stage 4 동결 구간
 
 현재 branch의 Julia runner, production wiring의 동결 기준일 및 V2 공식
-비교 경계를 대조한 결과, 다음 구간을 Stage 4 동결 후보로 사용한다.
+비교 경계를 대조한 결과, 다음 구간을 Stage 4 공식 동결 구간으로 사용한다.
 
 | 역할 | 날짜 |
 |---|---|
-| Evaluation start | `2022-01-01` |
+| Evaluation start | `2021-01-01` |
 | Signal cutoff | `2026-08-14` |
 | Evaluation end | `2026-08-14` |
 | Execution support end | `2026-08-14` |
 | Final valuation | `2026-08-14` CLOSE |
 | 초기 포지션 | `FLAT` |
 
-근거는 현재 branch의 `src/trend_scanner/validation/julia_strategy_v00.py`
-및 V2 runner가 명시한 `2022-01-01` 시작과 `DATA_CUTOFF=2026-08-14`, 그리고
+근거는 사용자 승인으로 확정된 공식 비교기간과 `DATA_CUTOFF=2026-08-14`,
 동일 cutoff의 production wiring이다. ETF 또는 별도 200M portfolio 연구의
-지원 종료일을 이 계획의 평가 종료일로 복사하지 않는다. 2022년 이전
-일봉은 rolling feature와 signal lookback에 사용할 수 있지만, 평가 거래로
+지원 종료일을 이 계획의 평가 종료일로 복사하지 않는다. 2021년 이전
+데이터는 rolling feature와 signal lookback에 사용할 수 있지만, 평가 거래로
 포함하지 않는다.
 
-이 구간은 결과를 보기 전에 동결할 날짜 후보이다. 신호 cutoff 이후의 새
+이 구간은 결과를 보기 전에 동결한 공식 기간이다. 신호 cutoff 이후의 새
 신호는 포함하지 않으며, cutoff까지 지원되는 다음 거래일이 없는 신호는
 진입 거래로 만들지 않는다. Stage 4 동결 이후 결과를 보고 기간을 바꾸지
 않는다.
@@ -238,6 +242,8 @@ Repository V2의 원천 기준 경로는 다음과 같다.
 - re-entry, overlapping position, state reset 정책
 - exit execution 및 final valuation 규칙
 - 거래비용·슬리피지 모델
+- 현실적 포트폴리오의 `C0`, `q`, `N`, 현금·슬롯·매도대금 재사용 및 PIT
+  시가총액 우선순위
 
 이 중 하나라도 다르면 `ONE_DELTA_ONLY`를 통과하지 못한 것으로 분류하고
 공식 비교를 실행하지 않는다.
@@ -255,25 +261,51 @@ Repository V2의 원천 기준 경로는 다음과 같다.
 sequential 결과를 분리하고, 공통 entry 수·전략별 추가/누락 entry·open-at-
 cutoff를 각각 보고한다.
 
+### G.3 현실적 2억 포트폴리오 비교
+
+동일 진입 비교와 순차 비교에 더해, 두 전략을 현실적 공통조건의 별도
+포트폴리오 결과축으로 비교한다. 이 결과를 matched 또는 sequential의 단일
+수치로 합치지 않는다.
+
+- 초기자본 `C0`: `200,000,000 KRW`
+- 종목당 총 매수 현금예산 `q`: `5,000,000 KRW`
+- 최대 동시 보유 `N`: `40`
+- 종목별 최대 비중: 초기자본의 `2.5%`
+- 매수·매도 수수료: 각 `0.015%`
+- 매수·매도 슬리피지: 각 `0.10%` 방향 반영
+- 역사적 매도 거래세: 실제 매도 체결일·시장별 확정 세율
+- 부분 체결 없음, 같은 시가 매도대금 재사용 없음, 다음 평가 가능한 로컬
+  거래일 시가부터 재사용
+- 동일 시가 신규 신호가 현금·슬롯을 초과하면 신호 확정일 PIT 시가총액
+  내림차순, 동률 종목코드 오름차순
+- PIT 결측 시 현재값·미래값·nearest-date·proxy를 사용하지 않고
+  `UNRESOLVED`·fail-closed 의미론을 따른다.
+- KOSPI 지수 `1001`과 KOSDAQ 지수 `2001`을 시장별로 비교하며, 혼합 단일
+  benchmark는 만들지 않는다.
+
+세 결과축의 의미는 다음과 같이 고정한다.
+
+- `Matched-entry`: 같은 진입에서 Loss Guard ON/OFF의 순수 청산 규칙 효과
+- `Sequential`: 각 전략의 청산 차이가 이후 독립 재진입 경로에 미치는 효과
+- `Realistic portfolio`: 자본·슬롯·비용·보유기간·회전율을 포함한 운용 효과
+
 ## H. 사전 등록 지표
 
 모든 지표는 기준군·후보군·차이(`Julia - V2`)를 같은 정의로 산출한다.
 
 ### H.1 Return
 
-- 총 성과와 CAGR: FastCore realistic backtest에서 먼저 확정할 공통 실행조건을
-  동일하게 적용하되, 공식 Julia 기간과 Population/PIT 기준을 우선한다.
+- 총 성과와 CAGR: 확정된 현실적 공통 실행조건을 동일하게 적용하고, 공식
+  비교기간과 Population/PIT 기준을 사용한다.
 - 거래별 평균·중앙 terminal return
 - 양의 terminal return 비율
 - matched entry별 terminal return 차이
 
-Julia는 FastCore realistic backtest에서 앞으로 먼저 확정될 전략 중립적인
-공통 실행조건만 동일하게 적용한다. 여기에는 historical PIT 사용 방식,
-가격·시장 데이터 authority, 신호 이후 체결 시점 의미론, 거래비용·세금·
-슬리피지, 포트폴리오 자금배분·position sizing·동시 보유·현금 부족 처리,
-평가 종료, equity curve, 총수익률·CAGR·MDD·exposure·turnover 및 benchmark
-비교의 전략 중립적 산출 의미론이 포함될 수 있다. FastCore 조건이 아직
-확정되지 않았으므로 현재 단계에서 어느 항목의 값도 가정하지 않는다.
+Julia는 확정된 전략 중립 공통 실행조건을 V2와 동일하게 적용한다. 여기에는
+historical PIT 사용 방식, 가격·시장 데이터 authority, 신호 이후 체결 시점
+의미론, 거래비용·세금·슬리피지, 포트폴리오 자금배분·position sizing·동시
+보유·현금 부족 처리, 평가 종료, equity curve, 총수익률·CAGR·MDD·exposure·
+turnover 및 benchmark 비교의 전략 중립적 산출 의미론이 포함된다.
 
 Fundamentals Filter와 그 cutoff·threshold·score·종목 제외, FastCore 전용
 ranking·종목 선택, 새로운 시장 국면 제한, 진입·보유·청산·재진입 조건 및
@@ -281,13 +313,12 @@ ranking·종목 선택, 새로운 시장 국면 제한, 진입·보유·청산·
 않는다. Julia V00의 전략 차이는 계속 Pre-PROGRESSED Loss Guard ON/OFF
 하나로 제한한다.
 
-`scripts/run_fastcore_vs_julia_portfolio_v01.py` 및 그 200M 비교 계약은
-공식 실행계약이 아닌 구현 참고 자료로만 보존한다. 이벤트 처리, 현금·동시
-보유 구조, equity curve 및 turnover 계산 방식의 참고로 사용할 수 있으나,
-과거의 초기자본·position cap·`GROSS / NO_COST_MODEL` 값을 Julia 공식
-조건으로 승계하지 않는다. 기존 계약의 `mcap-only` gate와 proxy fallback도
-공식 Julia 검증에 사용하지 않는다. FastCore realistic 조건 확정 후 그
-확정값을 Stage 5 실행 계약에 연결한다.
+`scripts/run_fastcore_vs_julia_portfolio_v01.py` 및 과거 200M 비교 계약은
+공식 실행계약이 아닌 구현 참고 자료로만 보존한다. 현재 공식 조건은
+`realistic_backtest_common_conditions_v01.md`의 `C0=200,000,000 KRW`,
+`q=5,000,000 KRW`, `N=40`, 비용·세금·슬리피지 및 현금 처리 계약을
+사용한다. 과거 `GROSS / NO_COST_MODEL` 조건과 `mcap-only` gate, proxy
+fallback은 공식 Julia 검증에 사용하지 않는다.
 
 ### H.2 Risk
 
@@ -319,8 +350,7 @@ Pattern A/FastCore 공식 위험 보고에서 사용한 tail 경계이다. 새 �
 - 거래 수와 고유 ticker 수
 - 평균·중앙 보유기간
 - 일별 invested market value / equity 기반 exposure 비율
-- FastCore realistic 공통 실행조건에서 확정할 turnover 정의 및 initial
-  capital 대비 turnover ratio
+- 확정된 공통조건의 turnover 정의 및 initial capital 대비 turnover ratio
 - cutoff 시점 open position 수와 금액
 - guard 종료, Exit 3, Exit 4, cutoff open 등 exit type 분포
 
@@ -345,28 +375,23 @@ Julia V00을 사후 수정하지 않고 새 후보 ID와 새 검증 계획으로
 
 ## J. 필요한 최소 강건성 검증
 
-파라미터 sweep은 수행하지 않는다. 기존 공식 문서 검색 결과,
-`docs/strategies/strategy_lifecycle.md`는 필요한 강건성의 원칙만 정의하고,
-Julia 공식 검증에 적용할 사전 고정 최근 하위 구간·독립 시장 국면 분류·
-winner 제거 개수는 정의하지 않는다. V3 전용 validation plan의 구간과
-임계값도 Julia에 이식하지 않는다.
+파라미터 sweep, 새 threshold 탐색, 별도 market regime 모델, winner 제거
+실험은 수행하지 않는다. 이번 공식 검증의 강건성 범위는 다음으로 고정한다.
 
-따라서 이번 계획의 필수 강건성 범위는 다음으로 고정한다.
+1. **연도별**: 2021, 2022, 2023, 2024, 2025, 2026 YTD(`2026-08-14`까지)
+2. **시장별**: KOSPI / KOSDAQ
+3. **종목 집중도**: 동일 종목의 모든 독립 거래 손익을 합산한 누적 손익
+   기여 상위 10개 종목의 전체 손익 기여도
+4. **대형 수익 거래 집중도**: 개별 종료 거래 기준 수익 기여 상위 10개
+   거래의 총이익 기여도
+5. **대형 손실 거래 집중도**: 개별 종료 거래 기준 손실 기여가 가장 큰
+   10개 거래의 총손실 기여도
+6. **세 결과축 분리**: 동일 진입, 순차 운용, 현실적 포트폴리오 결과를
+   하나로 합치지 않고 각각 보고한다.
 
-1. **전체 동결 구간 재현성**: F.1의 단일 고정 구간에서 공통 진입 비교와
-   순차 운용 비교의 방향, 종목 식별 단위 및 집계 무결성을 재현한다.
-2. **종목 기여 집중도**: ticker별 누적 성과 기여 분포와 최대 단일 ticker
-   기여를 보고한다. 상위 기여 종목을 임의로 제거하지 않으며, pass/fail
-   숫자 기준도 만들지 않는다.
-3. **손실 tail 집중도**: 기존 `<= -20%`, `<= -30%` 경계를 사용하여
-   ticker·시장·신호 기간별 손실 집중을 보고한다. 새로운 tail threshold는
-   추가하지 않는다.
-4. **공통 진입·순차 운용 방향 분리**: 공통 진입에서의 guard 효과와 전략별
-   재진입 경로의 효과를 하나의 결과로 합치지 않고 각각 보고한다.
-
-최근 하위 구간 비교, 강세·약세·횡보 국면 분해, extreme winner 제거는
-적용 가능한 기존 공식 기준과 제외 개수가 없으므로 이번 필수 gate에서
-제외한다. 이를 결과를 본 뒤 임의로 추가하지 않는다.
+기존 tail-risk 진단의 `<= -20%`, `<= -30%`, MAE, winner bucket 및
+Loss Guard 회복 사례는 유지한다. 최근 하위 구간, 강세·약세·횡보 국면
+분해, extreme winner 제거는 추가하지 않는다.
 
 ## K. 사전 동결 판정 기준
 
@@ -451,7 +476,7 @@ Julia 전용 위험 허용 예외나 별도 사용자 결정 절차는 만들지
 
 ## M. 예정 산출물과 제출 경계
 
-Stage 4가 검토·동결되고 별도 실행 지시가 있을 때만 아래 artifact를
+Stage 4가 완료·동결되고 별도 실행 지시가 있을 때만 아래 artifact를
 정해진 폴더에 생성한다. 현재 작업에서는 폴더나 파일을 생성하지 않는다.
 
 `artifacts/strategies/julia/official_validation_v01/`
@@ -464,25 +489,23 @@ Stage 4가 검토·동결되고 별도 실행 지시가 있을 때만 아래 art
 5. `failure_and_big_loss_cases.csv`: 실패·큰 손실·winner 보존 사례
 6. `validation_report.md`: 결과, 제한, 강건성 및 사전 판정
 
-### 미확정 항목
+### Stage 4 확정 상태
 
-이번 보완으로 가격 기준 경로는 확정하고, 전략 중립적인 현실적 공통
-실행조건은 프로젝트 작업 순서에 따라 FastCore에서 먼저 확정하도록 정리한다.
+다음 항목은 Stage 4에서 최종 동결됐다.
 
-- 가격 기준 경로: `MarketDataRepositoryV2`로 확정하며 이전 방식 fallback은
-  사용하지 않는다.
-- 전략 중립적 현실적 공통 실행조건: FastCore realistic backtest에서
-  비용·세금·슬리피지, position sizing, 동시 보유·자금 배분 및 포트폴리오
-  총성과 집계 의미론을 먼저 확정한 뒤, Julia에 동일하게 연결한다. 현재
-  숫자를 미리 만들지 않는다. Fundamentals Filter와 FastCore 전용 전략
-  조건은 이 승계 범위에서 제외한다.
+- 공식 기간: `2021-01-01` ~ `2026-08-14`, final valuation은 `2026-08-14` CLOSE
+- 기준 전략: `PATTERN_A_FAST_FINAL_STRATEGY_V02`
+- 후보 전략: `JULIA_STRATEGY_V00`
+- 단일 전략 차이: Pre-PROGRESSED `-15% Loss Guard` ON/OFF
+- 데이터 authority: `MarketDataRepositoryV2`, historical Population/PIT,
+  `fail-closed` 결측 의미론
+- 비교축: `Matched-entry`, `Sequential`, `Realistic 200M Portfolio`
+- 현실적 공통조건: `realistic_backtest_common_conditions_v01.md`의 확정값
+- Fundamentals: 이번 공식 V2 ↔ Julia 검증 범위에서 제외. production 기능은
+  변경하지 않는다.
 
-### Stage 4 완료 전 남은 항목
-
-**FastCore realistic backtest의 전략 중립적 공통 실행조건 확정 및 Julia 계획 연결**
-
-이 조건이 확정되기 전에는 Julia 공식 실행계약을 동결하지 않는다. 과거
-200M `NO_COST_MODEL` 계약은 이 조건의 권위가 아니다.
+이 문서의 공식 상태는 `STAGE_4_FROZEN`이며, Stage 4는 완료·동결됐다. 이는
+Julia 공식 전략 채택이나 기본 전략 승격을 의미하지 않는다.
 
 ### Stage 5 실행 전 구현 조건
 
@@ -493,6 +516,10 @@ Stage 4가 검토·동결되고 별도 실행 지시가 있을 때만 아래 art
    수정하지 않는다. 이 항목은 Stage 4의 실행조건 미확정과 구분되는 Stage 5
    실행 전 구현 조건이다.
 
-위 항목이 남아 있으므로 이 문서의 상태는 `검토 대기`이며, Julia 생애주기
-4단계는 `미완료`이다. 검토가 끝나기 전에는 Stage 5 백테스트, 결과 생성,
-공식 채택, 기본 전략 승격을 시작하지 않는다.
+Stage 5 실행 전에는 runner가 survivorship-safe effective Population/PIT
+authority를 직접 소비하도록 연결하고, current-list broadcast와
+nearest-date fallback이 없음을 execution contract와 무결성 gate로 확인한다.
+이 항목은 Stage 4 미완료 사유가 아니다.
+
+Stage 5 연결과 별도 실행 지시 전에는 백테스트, 결과 생성, 공식 채택, 기본
+전략 승격을 시작하지 않는다.

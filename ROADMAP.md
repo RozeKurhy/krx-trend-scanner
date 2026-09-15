@@ -25,16 +25,20 @@ ROADMAP.md
 - Post-report Branch Cleanup / Integration (remaining branches classified and preserved; no merge/delete)
 
 **CURRENT**
-- FastCore realistic backtest 조건과 Fundamentals filter 조건 정의. 조건이 고정되기 전에는 backtest를 실행하지 않음
+- V2 ↔ Julia 공식 검증 Stage 4 완료 / 동결. Fundamentals는 이번 검증 범위에서 제외하고 production 상태는 유지함
 
 **NEXT**
-1. FastCore realistic backtest 조건 finalize
-2. Fundamentals filter 조건 finalize
-3. FastCore realistic backtest 및 baseline 비교
-4. Julia realistic backtest
-5. Strategy robustness comparison
+1. Stage 5 실행 전 runner·execution contract 연결
+2. V2 ↔ Julia 공식 백테스트: 동일 진입·순차·현실적 2억 포트폴리오
+3. Strategy robustness comparison
+4. 최종 전략 검토 및 Julia 공식 채택 여부 판단
 
-Fundamentals cutoff/threshold는 아직 임의로 확정하지 않으며, backtest에는 historical PIT, next-day execution, transaction cost, slippage, holding period, win rate, payoff ratio, MDD, trade count, market regime, benchmark comparison, parameter robustness를 명시적으로 포함한다.
+이번 V2 ↔ Julia 검증에서는 Fundamentals Filter, cutoff·threshold·score,
+매출·이익 기반 제외 및 펀더멘털 우선순위를 사용하지 않는다. Fundamentals
+production 기능 자체는 유지한다. 백테스트에는 historical PIT, next-day
+execution, transaction cost, slippage, holding period, win rate, payoff ratio,
+MDD, trade count, benchmark comparison, parameter robustness를 명시적으로
+포함한다.
 
 **HOLD**
 - New Pattern development (Pattern B~F 등)
@@ -135,9 +139,9 @@ CLOSED고 Production 승격 여부는 별도"임을 한 토큰으로 강조하�
 | | **Post-report Branch Cleanup / Integration** | **CLOSED** | 남은 branch 분류·보존 완료; merge/delete 없음 |
 | | **OpenDART Fundamentals V1** | **FINAL_CLOSED / PRODUCTION** | OpenDART/XBRL PIT-aware 분기·연간 fundamentals 계층 및 일반 V1 filter 상태 |
 | | **Fundamentals Filter / Stock Report Integration** | **CLOSED** | Stock Report v0.5 additive integration 및 filter status 제공 |
-| | **FastCore Realistic Backtest Conditions** | **CURRENT** | 현실적 실행조건과 Fundamentals filter 조건 정의 중; 조건 확정 전 backtest 실행 금지 |
-| | **FastCore Realistic Backtest** | **NEXT** | 조건 finalize 후 baseline 비교와 함께 실행 |
-| | **Julia Realistic Backtest** | **AFTER FASTCORE** | FastCore 조건·결과 확정 후 동일한 PIT/실행 기준으로 진행 |
+| | **V2 ↔ Julia Official Validation Stage 4** | **CLOSED / FROZEN** | `2021-01-01 ~ 2026-08-14`, 동일 진입·순차·현실적 2억 포트폴리오 3개 결과축 동결 |
+| | **Stage 5 Execution Preparation** | **NEXT** | survivorship-safe Population/PIT runner 및 execution contract 연결 |
+| | **V2 ↔ Julia Official Backtest** | **NEXT** | 동일 진입·순차·현실적 2억 포트폴리오 비교로 실행 |
 | | **Strategy Robustness Comparison** | **AFTER BACKTESTS** | 두 realistic backtest 완료 후 비교 |
 | | KRX Open API Validation | COMPLETE | 서비스 API 승인 완료, 현재 production data path (Repository V2) |
 | | Julia Strategy V00 Official PIT (구 proxy 연구) | HISTORICAL / SUPERSEDED | Loss Guard on/off 비교용 구 proxy 연구, 117/215만 확보된 채 종료. 현재 우선순위인 FastCore/Julia Realistic Backtest로 대체됨 |
@@ -155,11 +159,11 @@ CLOSED고 Production 승격 여부는 별도"임을 한 토큰으로 강조하�
        ↓
 2. Post-report Branch Cleanup / Integration = CLOSED
        ↓
-3. FastCore realistic backtest conditions / Fundamentals filter conditions definition = CURRENT
+3. V2 ↔ Julia official validation Stage 4 = CLOSED / FROZEN
        ↓
-4. FastCore Realistic Backtest + baseline comparison = NEXT
+4. Stage 5 runner / execution contract preparation = NEXT
        ↓
-5. Julia Realistic Backtest = AFTER FASTCORE
+5. V2 ↔ Julia official backtest (Matched-entry + Sequential + Realistic 200M) = NEXT
        ↓
 6. Strategy Robustness Comparison = AFTER BACKTESTS
        ↓
@@ -548,9 +552,9 @@ CLI / Web 대시보드, 관심종목 워크플로우, 실시간 알림 등 최�
 16. Post-report Branch Cleanup / Integration — **CLOSED**
 17. OpenDART Fundamentals V1 — **FINAL_CLOSED / PRODUCTION**
 18. Fundamentals Filter / Stock Report Integration — **CLOSED**
-19. FastCore realistic backtest conditions / Fundamentals filter conditions definition — **CURRENT**
-20. FastCore Realistic Backtest + baseline comparison — **NEXT**
-21. Julia Realistic Backtest — **AFTER FASTCORE**
+19. V2 ↔ Julia official validation Stage 4 — **CLOSED / FROZEN** (`2021-01-01 ~ 2026-08-14`; Fundamentals 제외)
+20. Stage 5 runner / execution contract preparation — **NEXT**
+21. V2 ↔ Julia Official Backtest (Matched-entry + Sequential + Realistic 200M Portfolio) — **NEXT**
 22. Strategy Robustness Comparison — **AFTER BACKTESTS**
 23. KRX Open API Validation — **COMPLETE**
 24. Sector RS Stock Report v0.5 Integration — **CLOSED / ADDITIVE CONTEXT**

@@ -7,9 +7,9 @@
 > 특정 후보 전략의 성과를 정의하는 문서가 아니다.
 >
 > 거래비용·세금·슬리피지·포트폴리오 자금 운용 등 사용자 승인 조건은 이
-> 문서에 확정한다. 이 확정은 FastCore 전체 Stage 4 완료를 의미하지 않으며,
-> 별도 실행계약 전에는 백테스트·결과 계산·외부 데이터 수집·코드 및 artifact
-> 변경을 수행하지 않는다.
+> 문서에 확정한다. 이 문서의 공통조건은 V2와 Julia의 현실적 포트폴리오
+> 비교에 동일하게 적용하며, 별도 실행계약 전에는 백테스트·결과 계산·외부
+> 데이터 수집·코드 및 artifact 변경을 수행하지 않는다.
 
 ## 1. 권위와 적용 범위
 
@@ -21,14 +21,15 @@ FastCore 현실적 백테스트의 전략 기준은 현재 동결된
 현재 작업 순서는 다음과 같다.
 
 1. 전략 중립 현실적 공통 실행조건 확정 — **완료**
-2. Fundamentals Filter 조건 별도 확정
-3. FastCore realistic backtest 및 baseline 비교
-4. Julia realistic backtest
+2. V2 ↔ Julia 공식 검증 Stage 4 — **완료 / 동결**
+3. Stage 5 실행 전 runner·execution contract 연결
+4. V2 ↔ Julia 공식 백테스트: 동일 진입·순차·현실적 2억 포트폴리오
+5. 강건성 검증 및 최종 전략 검토
 
-Fundamentals 조건은 이 문서의 범위가 아니며 별도 확정 전이다. 따라서 이
-문서의 공통조건 확정만으로 FastCore 전체 Stage 4를 완료 처리하지 않는다.
-다음 항목은 FastCore 또는
-Julia에 이 문서만으로 자동 적용하지 않는다.
+Fundamentals는 이번 V2 ↔ Julia 공식 검증의 비교 변수와 진입 필터에서
+제외한다. OpenDART Fundamentals V1과 production Fundamentals Filter 자체의
+상태는 변경하지 않는다. 다음 항목은 FastCore 또는 Julia에 이 문서만으로
+자동 적용하지 않는다.
 
 - Fundamentals Filter ON/OFF
 - fundamentals cutoff·threshold·score
@@ -279,7 +280,7 @@ Fear Index 및 regime 연구는 연구 자료로 확인되었으나, FastCore re
 
 ## 12. Julia와 공유할 전략 중립 공통조건
 
-FastCore realistic 조건이 확정되면 Julia에는 아래 전략 중립 실행환경만
+확정된 FastCore realistic 조건은 Julia에도 아래 전략 중립 실행환경으로
 동일하게 연결한다.
 
 공유 대상:
@@ -303,25 +304,24 @@ Julia V00의 단일 전략 변경점은 계속 Pre-PROGRESSED Loss Guard ON/OFF
 하나로 유지한다. 이 문서의 공통조건을 연결하는 과정에서 Julia의 전략
 규칙을 추가하거나 FastCore 전용 조건을 가져오지 않는다.
 
-## 13. 남은 범위와 문서 상태
+## 13. 문서 상태와 실행 경계
 
 이 문서의 전략 중립 현실적 공통 실행조건은 사용자 승인에 따라 모두
-확정됐다. 따라서 이 문서의 상태는 `확정`이며, 승인된 조건을 실제 실행에
-연결할 때도 별도 execution contract와 무결성 검토를 거친다.
+확정됐다. 문서 상태는 `확정`이며, V2 ↔ Julia 공식 검증 Stage 4도 별도 검증
+계획 문서에서 **완료 / 동결**로 기록한다.
 
-다음 범위는 이 문서에 포함하지 않으며 별도 확정 전이다.
+Fundamentals는 이번 공식 검증 범위에서 제외한다. Fundamentals production
+기능을 폐기하거나 관련 문서를 변경하는 의미가 아니며, 이번 비교의
+Fundamentals Filter·cutoff·threshold·score·종목 제외·ranking·entry gate에
+사용하지 않는다는 뜻이다.
 
-1. Fundamentals Filter의 cutoff·threshold·score·종목 제외 조건
-2. FastCore 전용 ranking·종목 선택·추가 전략 필터
-3. 실제 실행계약 생성과 백테스트 결과 artifact 생성
-
-Fundamentals 조건이 별도 확정되지 않았으므로 FastCore 전체 Stage 4는 아직
-완료하지 않는다. 다음 단계는 백테스트가 아니라 Fundamentals Filter 조건
-확정이다.
+실제 실행에는 Stage 5 실행 전 runner·execution contract 연결과 무결성
+검토가 필요하다. 실제 백테스트 결과 artifact는 그 이후 별도 실행에서
+생성한다.
 
 ## 14. 실행 금지와 제출 경계
 
 이번 문서 확정에서는 FastCore·Julia 백테스트, 샘플 실행, 성과 계산, pytest,
 외부 API·네트워크 데이터 수집, runner·portfolio engine·PIT loader 수정 및
-artifact 생성을 수행하지 않는다. Fundamentals Filter 조건 확정과 별도 리뷰를
-통과한 뒤에만 실행 계약과 결과 artifact를 만든다.
+artifact 생성을 수행하지 않는다. Stage 5 실행 전 연결과 별도 리뷰를 통과한
+뒤에만 실행 계약과 결과 artifact를 만든다.
