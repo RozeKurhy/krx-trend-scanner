@@ -15,6 +15,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 import hashlib
 import json
+import math
 from pathlib import Path
 import socket
 from typing import Any, Iterator, Mapping, Sequence
@@ -280,6 +281,63 @@ def _tax_rate(execution_date: pd.Timestamp | str, market: str) -> float:
     raise OfficialValidationError(f"SELL_TAX_DATE_OUTSIDE_SCHEDULE:{day.date()}")
 
 
+def _record_value(record: Any, field: str, default: Any = None) -> Any:
+    if isinstance(record, Mapping):
+        return record.get(field, default)
+    return getattr(record, field, default)
+
+
+def _record_date(record: Any, field: str) -> pd.Timestamp | None:
+    value = _record_value(record, field)
+    if value in (None, ""):
+        return None
+    try:
+        return pd.Timestamp(value).normalize()
+    except (TypeError, ValueError, OverflowError):
+        return None
+
+
+def _exact_frame_value(frame: pd.DataFrame | None, date: pd.Timestamp, column: str) -> float | None:
+    if frame is None or frame.empty or column not in frame.columns:
+        return None
+    day = pd.Timestamp(date).normalize()
+    index = pd.DatetimeIndex(pd.to_datetime(frame.index, errors="coerce")).normalize()
+    if index.isna().any() or index.has_duplicates:
+        return None
+    matches = frame.loc[index == day, column]
+    if len(matches) != 1:
+        return None
+    value = pd.to_numeric(matches.iloc[0], errors="coerce")
+    return None if pd.isna(value) else float(value)
+
+
+def _identity_key_from_record(record: Any) -> tuple[str, str, str]:
+    return (
+        str(_record_value(record, "ticker", "")),
+        str(_record_value(record, "isu_cd", "") or ""),
+        str(_record_value(record, "market", "")),
+    )
+
+
+def _normalise_portfolio_market_data(
+    market_data_by_identity: Mapping[Any, pd.DataFrame] | None,
+) -> dict[Any, pd.DataFrame]:
+    if market_data_by_identity is None:
+        return {}
+    normalized: dict[Any, pd.DataFrame] = {}
+    for key, frame in market_data_by_identity.items():
+        if frame is None or frame.empty:
+            normalized[key] = frame
+            continue
+        copy = frame.copy()
+        index = pd.DatetimeIndex(pd.to_datetime(copy.index, errors="coerce")).normalize()
+        if index.isna().any() or index.has_duplicates:
+            raise OfficialValidationError(f"PORTFOLIO_MARKET_DATA_DATE_AMBIGUOUS:{key}")
+        copy.index = index
+        normalized[key] = copy.sort_index()
+    return normalized
+
+
 def build_execution_contract(root: Path = ROOT) -> dict[str, Any]:
     """Build the portable, hash-bound contract without running a backtest."""
     root = Path(root).resolve()
@@ -417,6 +475,61 @@ def _walk_strings(value: Any) -> Iterator[str]:
             yield from _walk_strings(child)
 
 
+def _nested_value(payload: Mapping[str, Any], *keys: str) -> Any:
+    value: Any = payload
+    for key in keys:
+        if not isinstance(value, Mapping) or key not in value:
+            return None
+        value = value[key]
+    return value
+
+
+def _validate_contract_against_runner_constants(contract: Mapping[str, Any]) -> None:
+    checks = (
+        (("strategies", "base_strategy_id"), BASE_STRATEGY_ID),
+        (("strategies", "candidate_strategy_id"), JULIA_STRATEGY_ID),
+        (("strategies", "one_delta_only"), "PRE_PROGRESSED_LOSS_GUARD_ON_VS_OFF"),
+        (("strategies", "fundamentals_included"), False),
+        (("period", "evaluation_start"), START_DATE.strftime("%Y-%m-%d")),
+        (("period", "signal_cutoff"), SIGNAL_CUTOFF.strftime("%Y-%m-%d")),
+        (("period", "evaluation_end"), EVALUATION_END.strftime("%Y-%m-%d")),
+        (("period", "execution_support_end"), EXECUTION_SUPPORT_END.strftime("%Y-%m-%d")),
+        (("period", "final_valuation"), f"{FINAL_VALUATION_DATE:%Y-%m-%d} CLOSE"),
+        (("period", "initial_position"), "FLAT"),
+        (("investability", "market_cap_min_krw"), MARKET_CAP_THRESHOLD_KRW),
+        (("investability", "avg_trading_value_20d_min_krw"), AVG_TRADING_VALUE_20D_THRESHOLD_KRW),
+        (("investability", "price_filter"), "NONE"),
+        (("investability", "market_cap_semantics"), "EXACT_SIGNAL_CONFIRMATION_DATE_RAW_ANCILLARY"),
+        (("investability", "proxy_market_cap"), False),
+        (("investability", "nearest_date_fallback"), False),
+        (("investability", "current_or_future_market_cap"), False),
+        (("portfolio", "initial_capital_krw"), INITIAL_CAPITAL_KRW),
+        (("portfolio", "per_symbol_cash_budget_krw"), POSITION_CASH_BUDGET_KRW),
+        (("portfolio", "max_positions"), MAX_POSITIONS),
+        (("portfolio", "max_initial_capital_weight"), 0.025),
+        (("portfolio", "partial_fill"), False),
+        (("portfolio", "same_open_sale_proceeds_reusable"), False),
+        (("portfolio", "same_open_signal_order"), [
+            "signal_confirmation_date_pit_market_cap_desc",
+            "ticker_asc",
+        ]),
+        (("costs", "buy_commission_rate"), COMMISSION_RATE),
+        (("costs", "sell_commission_rate"), COMMISSION_RATE),
+        (("costs", "buy_slippage_rate"), SLIPPAGE_RATE),
+        (("costs", "sell_slippage_rate"), SLIPPAGE_RATE),
+        (("costs", "historical_sell_tax_schedule"), list(HISTORICAL_SELL_TAX_SCHEDULE)),
+        (("benchmarks", "KOSPI_COMMON"), BENCHMARK_CODES["KOSPI"]),
+        (("benchmarks", "KOSDAQ_COMMON"), BENCHMARK_CODES["KOSDAQ"]),
+        (("result_axes",), ["Matched-entry", "Sequential", "Realistic 200M Portfolio"]),
+    )
+    for path, expected in checks:
+        actual = _nested_value(contract, *path)
+        if actual != expected:
+            raise OfficialValidationError(
+                f"CONTRACT_RUNNER_CONSTANT_MISMATCH:{'.'.join(path)}"
+            )
+
+
 def validate_execution_contract(contract: Mapping[str, Any], root: Path = ROOT) -> dict[str, Any]:
     root = Path(root).resolve()
     if _contract_digest(contract) != contract.get("contract_sha256"):
@@ -427,10 +540,12 @@ def validate_execution_contract(contract: Mapping[str, Any], root: Path = ROOT) 
         "schema": "v2_julia_official_execution_contract_v01",
         "stage": "STAGE_5_EXECUTION_READY",
         "status": "READY_NOT_RUN",
+        "contract_state": "FROZEN_BEFORE_RESULTS",
     }
     for key, value in expected.items():
         if contract.get(key) != value:
             raise OfficialValidationError(f"EXECUTION_CONTRACT_{key.upper()}_MISMATCH")
+    _validate_contract_against_runner_constants(contract)
     period = contract["period"]
     if tuple(period[key] for key in ("evaluation_start", "signal_cutoff", "evaluation_end", "execution_support_end")) != (
         "2021-01-01", "2026-08-14", "2026-08-14", "2026-08-14"
@@ -442,11 +557,33 @@ def validate_execution_contract(contract: Mapping[str, Any], root: Path = ROOT) 
         raise OfficialValidationError("RESULT_AXES_MISMATCH")
     authority = load_effective_authority(root / EFFECTIVE_AUTHORITY_REL)
     authority_block = contract["population_pit_authority"]
-    if authority_block["population_sha256"] != authority.population_sha256 or authority_block["pit_sha256"] != authority.pit_sha256:
+    if (
+        authority_block["population_sha256"] != authority.population_sha256
+        or authority_block["pit_sha256"] != authority.pit_sha256
+        or authority_block["population_count"] != authority.population_count
+        or authority_block["pit_interval_count"] != authority.pit_count
+    ):
         raise OfficialValidationError("EFFECTIVE_AUTHORITY_HASH_MISMATCH")
-    for relative in (POPULATION_REL, PIT_REL, EFFECTIVE_MANIFEST_REL, AUTHORITY_CUTOVER_MANIFEST_REL, SOURCE_ELIGIBILITY_REL, STAGE4_PLAN_REL, COMMON_CONDITIONS_REL, SCORE_CONTRACT_REL, STAGE_CONTRACT_REL, INDEX_PARQUET_REL, INDEX_META_REL):
+    for relative in (
+        POPULATION_REL,
+        PIT_REL,
+        EFFECTIVE_MANIFEST_REL,
+        AUTHORITY_CUTOVER_MANIFEST_REL,
+        SOURCE_ELIGIBILITY_REL,
+        STAGE4_PLAN_REL,
+        COMMON_CONDITIONS_REL,
+        SCORE_CONTRACT_REL,
+        STAGE_CONTRACT_REL,
+        INDEX_PARQUET_REL,
+        INDEX_META_REL,
+    ):
         if not (root / relative).exists():
             raise OfficialValidationError(f"REQUIRED_AUTHORITY_MISSING:{relative}")
+    stage4_authority = contract["stage4_authority"]
+    if stage4_authority["validation_plan_sha256"] != sha256_file(root / STAGE4_PLAN_REL):
+        raise OfficialValidationError("STAGE4_VALIDATION_PLAN_SHA_MISMATCH")
+    if stage4_authority["common_conditions_sha256"] != sha256_file(root / COMMON_CONDITIONS_REL):
+        raise OfficialValidationError("STAGE4_COMMON_CONDITIONS_SHA_MISMATCH")
     benchmark = IndexStore(root / "data/market/index/v01").verify_family(MARKET_INDEX_FAMILY)
     if benchmark["index_codes"] != ["1001", "2001"]:
         raise OfficialValidationError("BENCHMARK_INDEX_CODES_MISMATCH")
@@ -463,13 +600,26 @@ def validate_execution_contract(contract: Mapping[str, Any], root: Path = ROOT) 
     }
 
 
-def preflight(root: Path = ROOT, *, write_contract: bool = True) -> dict[str, Any]:
+def _result_artifacts_present(root: Path) -> list[str]:
+    output_dir = root / OUTPUT_DIR_REL
+    return [
+        name
+        for name in (*OFFICIAL_RESULT_FILES, *SUPPORT_RESULT_FILES)
+        if (output_dir / name).exists()
+    ]
+
+
+def preflight(root: Path = ROOT, *, write_contract: bool = False) -> dict[str, Any]:
     """Validate all Stage 5 inputs without evaluating any ticker."""
     root = Path(root).resolve()
-    contract = build_execution_contract(root)
     contract_path = root / CONTRACT_REL
     if write_contract:
-        _write_json(contract_path, contract)
+        if contract_path.exists():
+            raise OfficialValidationError("FROZEN_EXECUTION_CONTRACT_OVERWRITE_FORBIDDEN")
+        _write_json(contract_path, build_execution_contract(root))
+    if not contract_path.exists():
+        raise OfficialValidationError("FROZEN_EXECUTION_CONTRACT_MISSING")
+    contract = _read_json(contract_path)
     validation = validate_execution_contract(contract, root)
     authority = load_effective_authority(root / EFFECTIVE_AUTHORITY_REL)
     identity_intervals = _identity_intervals(authority)
@@ -478,6 +628,11 @@ def preflight(root: Path = ROOT, *, write_contract: bool = True) -> dict[str, An
     raw_store = root / "data/market/raw/krx_stocks/v01"
     if not adjusted_store.is_dir() or not raw_store.is_dir():
         raise OfficialValidationError("REPOSITORY_V2_STORE_PATH_MISSING")
+    result_artifacts = _result_artifacts_present(root)
+    if result_artifacts:
+        raise OfficialValidationError(f"OFFICIAL_RESULT_ARTIFACT_PRESENT:{result_artifacts}")
+    if not callable(OfficialValidationRunner.run_realistic_portfolio):
+        raise OfficialValidationError("PORTFOLIO_ENGINE_NOT_CALLABLE")
     # Do not build the Repository V2 raw index during preflight.  Its
     # constructor validates every raw partition, which is an execution-time
     # authority load rather than a lightweight contract check.  The official
@@ -502,8 +657,10 @@ def preflight(root: Path = ROOT, *, write_contract: bool = True) -> dict[str, An
         "identity_key_count": len(identity_intervals),
         "identity_lifecycle_count": len(identity_tasks),
         "repository_v2": repository_wiring,
+        "portfolio_engine_callable": True,
         "loader_count": 0,
         "network_requests": 0,
+        "result_artifacts": [],
     }
 
 
@@ -681,30 +838,430 @@ class OfficialValidationRunner:
             result[JULIA_STRATEGY_ID].extend(self.run_identity_strategy(task, enable_loss_guard=False))
         return result
 
-    def run_realistic_portfolio(self, records_by_strategy: Mapping[str, Sequence[StrategyTradeRecord]]) -> dict[str, Any]:
-        """Return the portfolio execution hook without writing result files.
+    def run_realistic_portfolio(
+        self,
+        records_by_strategy: Mapping[str, Sequence[StrategyTradeRecord]],
+        *,
+        market_data_by_identity: Mapping[Any, pd.DataFrame] | None = None,
+    ) -> dict[str, Any]:
+        """Execute each strategy's frozen 200M portfolio in memory.
 
-        The next task supplies the records from the selected result axis and
-        requests persistence.  Keeping this method in the official runner
-        ensures the frozen C0/q/N, costs, tax mapping, and event ordering are
-        not reimplemented in the historical runner.
+        ``records_by_strategy`` must contain independent Sequential records.
+        Official execution loads exact Repository V2 daily frames when no
+        synthetic ``market_data_by_identity`` is supplied.  The method never
+        writes result artifacts; it returns the event ledger, daily equity, and
+        metrics needed by the next explicit official execution task.
         """
+        records_by_strategy = {
+            str(strategy_id): list(records)
+            for strategy_id, records in records_by_strategy.items()
+        }
+        frames = _normalise_portfolio_market_data(market_data_by_identity)
+        all_records = [record for records in records_by_strategy.values() for record in records]
+
+        # The official path obtains valuation/fill prices from Repository V2.
+        # Synthetic focused tests may pass exact-date frames directly.  The
+        # record fields remain an exact-date input fallback only for the small
+        # compatibility case where a test object has no loader or frame.
+        if market_data_by_identity is None and hasattr(self, "loader"):
+            tickers = sorted({str(_record_value(record, "ticker", "")) for record in all_records})
+            for ticker in tickers:
+                frame = self.loader.load(ticker)
+                if frame is not None:
+                    normalized = _normalise_portfolio_market_data({ticker: frame})
+                    frames[ticker] = normalized[ticker]
+
+        def frame_for(record: Any) -> pd.DataFrame | None:
+            identity = _identity_key_from_record(record)
+            ticker = identity[0]
+            return frames.get(identity, frames.get(ticker))
+
+        def exact_price(record: Any, day: pd.Timestamp, column: str) -> float | None:
+            frame = frame_for(record)
+            if frame is not None:
+                return _exact_frame_value(frame, day, column)
+            # This branch is limited to synthetic records without a supplied
+            # frame.  It is exact-date only and never searches another date.
+            if column == "open" and _record_date(record, "entry_execution_date") == day:
+                value = _record_value(record, "entry_open")
+                return None if value in (None, "") else float(value)
+            if column == "open" and _record_date(record, "exit_execution_date") == day:
+                value = _record_value(record, "exit_price")
+                return None if value in (None, "") else float(value)
+            if column == "close" and day == FINAL_VALUATION_DATE:
+                value = _record_value(record, "cutoff_valuation_price")
+                return None if value in (None, "") else float(value)
+            return None
+
+        portfolio_dates: set[pd.Timestamp] = {FINAL_VALUATION_DATE}
+        for record in all_records:
+            for field in ("entry_execution_date", "exit_execution_date", "cutoff_date"):
+                value = _record_date(record, field)
+                if value is not None and START_DATE <= value <= FINAL_VALUATION_DATE:
+                    portfolio_dates.add(value)
+        for frame in frames.values():
+            if frame is not None and not frame.empty:
+                portfolio_dates.update(
+                    day for day in pd.DatetimeIndex(frame.index).normalize()
+                    if START_DATE <= day <= FINAL_VALUATION_DATE
+                )
+        dates = tuple(sorted(portfolio_dates))
+        next_date = {day: dates[index + 1] for index, day in enumerate(dates[:-1])}
+
+        def event_base(record: Any, strategy_id: str, day: pd.Timestamp, event_type: str) -> dict[str, Any]:
+            return {
+                "strategy_id": strategy_id,
+                "ticker": str(_record_value(record, "ticker", "")),
+                "isu_cd": _record_value(record, "isu_cd"),
+                "market": str(_record_value(record, "market", "")),
+                "position_id": str(_record_value(record, "trade_id", "")),
+                "signal_date": _record_value(record, "entry_signal_date"),
+                "execution_date": day.strftime("%Y-%m-%d"),
+                "event_type": event_type,
+                "event_status": None,
+                "reference_open": None,
+                "slippage_adjusted_price": None,
+                "shares": 0,
+                "notional": 0.0,
+                "commission": 0.0,
+                "sell_tax": 0.0,
+                "cash_before": None,
+                "cash_after": None,
+                "pending_sale_proceeds": 0.0,
+                "entry_or_exit_reason": None,
+                "market_cap_at_signal": _record_value(record, "entry_market_cap"),
+                "unresolved_reason": None,
+                "open_at_cutoff": False,
+            }
+
+        strategy_results: dict[str, Any] = {}
+        for strategy_id, records in records_by_strategy.items():
+            entries_by_date: dict[pd.Timestamp, list[Any]] = {}
+            for record in records:
+                entry_date = _record_date(record, "entry_execution_date")
+                if entry_date is not None and START_DATE <= entry_date <= FINAL_VALUATION_DATE:
+                    entries_by_date.setdefault(entry_date, []).append(record)
+
+            cash = float(INITIAL_CAPITAL_KRW)
+            pending_by_date: dict[pd.Timestamp, float] = {}
+            terminal_pending = 0.0
+            positions: dict[str, dict[str, Any]] = {}
+            events: list[dict[str, Any]] = []
+            daily_equity: list[dict[str, Any]] = []
+            realized_returns: list[float] = []
+            holding_days: list[int] = []
+            total_commission = 0.0
+            total_sell_tax = 0.0
+            total_notional = 0.0
+            slippage_impact = 0.0
+            trade_count = 0
+            unresolved_count = 0
+            peak_equity = float(INITIAL_CAPITAL_KRW)
+            cash_conservation_pass = True
+
+            for day in dates:
+                released = pending_by_date.pop(day, 0.0)
+                cash += released
+                exited_today: set[str] = set()
+
+                # Existing positions always exit before any same-open entry.
+                for ticker, position in sorted(list(positions.items())):
+                    exit_date = position["exit_date"]
+                    if exit_date is None or exit_date != day:
+                        continue
+                    exited_today.add(ticker)
+                    record = position["record"]
+                    event = event_base(record, strategy_id, day, "EXIT")
+                    event["cash_before"] = cash
+                    reference_open = exact_price(record, day, "open")
+                    if reference_open is None:
+                        event.update(
+                            event_status="UNRESOLVED",
+                            entry_or_exit_reason="EXIT",
+                            unresolved_reason="MISSING_EXACT_EXIT_OPEN",
+                            open_at_cutoff=False,
+                            cash_after=cash,
+                            pending_sale_proceeds=sum(pending_by_date.values()) + terminal_pending,
+                        )
+                        events.append(event)
+                        unresolved_count += 1
+                        continue
+
+                    shares = int(position["shares"])
+                    fill_price = reference_open * (1.0 - SLIPPAGE_RATE)
+                    notional = fill_price * shares
+                    commission = notional * COMMISSION_RATE
+                    sell_tax = notional * _tax_rate(day, position["market"])
+                    proceeds = notional - commission - sell_tax
+                    cash_before = cash
+                    release_date = next_date.get(day)
+                    if release_date is None:
+                        terminal_pending += proceeds
+                    else:
+                        pending_by_date[release_date] = pending_by_date.get(release_date, 0.0) + proceeds
+                    del positions[ticker]
+                    total_commission += commission
+                    total_sell_tax += sell_tax
+                    total_notional += notional
+                    slippage_impact += abs(reference_open - fill_price) * shares
+                    realized_returns.append((proceeds - position["buy_cost"]) / position["buy_cost"])
+                    holding_days.append(max(0, int((day - position["entry_date"]).days)))
+                    event.update(
+                        event_status="EXECUTED",
+                        reference_open=reference_open,
+                        slippage_adjusted_price=fill_price,
+                        shares=shares,
+                        notional=notional,
+                        commission=commission,
+                        sell_tax=sell_tax,
+                        cash_before=cash_before,
+                        cash_after=cash,
+                        pending_sale_proceeds=sum(pending_by_date.values()) + terminal_pending,
+                        entry_or_exit_reason=str(_record_value(record, "exit_type", "EXIT")),
+                    )
+                    events.append(event)
+
+                candidates = sorted(
+                    entries_by_date.get(day, []),
+                    key=lambda record: (
+                        0 if _record_value(record, "entry_market_cap") is not None else 1,
+                        -float(_record_value(record, "entry_market_cap"))
+                        if _record_value(record, "entry_market_cap") is not None else 0.0,
+                        str(_record_value(record, "ticker", "")),
+                    ),
+                )
+                for record in candidates:
+                    ticker = str(_record_value(record, "ticker", ""))
+                    event = event_base(record, strategy_id, day, "ENTRY")
+                    event["cash_before"] = cash
+                    event["entry_or_exit_reason"] = "ENTRY"
+                    market_cap = _record_value(record, "entry_market_cap")
+                    if ticker in exited_today:
+                        event.update(
+                            event_status="SKIPPED_SAME_OPEN_EXIT_REENTRY",
+                            unresolved_reason="SAME_OPEN_EXIT_REENTRY_FORBIDDEN",
+                            cash_after=cash,
+                            pending_sale_proceeds=sum(pending_by_date.values()) + terminal_pending,
+                        )
+                        events.append(event)
+                        continue
+                    if ticker in positions:
+                        event.update(
+                            event_status="SKIPPED_DUPLICATE_HOLDING",
+                            unresolved_reason="DUPLICATE_HOLDING_FORBIDDEN",
+                            cash_after=cash,
+                            pending_sale_proceeds=sum(pending_by_date.values()) + terminal_pending,
+                        )
+                        events.append(event)
+                        continue
+                    if market_cap is None or pd.isna(market_cap):
+                        event.update(
+                            event_status="UNRESOLVED",
+                            unresolved_reason="MISSING_EXACT_SIGNAL_MARKET_CAP",
+                            cash_after=cash,
+                            pending_sale_proceeds=sum(pending_by_date.values()) + terminal_pending,
+                        )
+                        events.append(event)
+                        unresolved_count += 1
+                        continue
+                    if float(market_cap) < MARKET_CAP_THRESHOLD_KRW:
+                        event.update(
+                            event_status="UNRESOLVED",
+                            unresolved_reason="SIGNAL_MARKET_CAP_BELOW_CONTRACT_THRESHOLD",
+                            cash_after=cash,
+                            pending_sale_proceeds=sum(pending_by_date.values()) + terminal_pending,
+                        )
+                        events.append(event)
+                        unresolved_count += 1
+                        continue
+                    if len(positions) >= MAX_POSITIONS:
+                        event.update(
+                            event_status="SKIPPED_POSITION_LIMIT",
+                            unresolved_reason="NO_EMPTY_SLOT",
+                            cash_after=cash,
+                            pending_sale_proceeds=sum(pending_by_date.values()) + terminal_pending,
+                        )
+                        events.append(event)
+                        continue
+                    reference_open = exact_price(record, day, "open")
+                    if reference_open is None:
+                        event.update(
+                            event_status="UNRESOLVED",
+                            unresolved_reason="MISSING_EXACT_ENTRY_OPEN",
+                            cash_after=cash,
+                            pending_sale_proceeds=sum(pending_by_date.values()) + terminal_pending,
+                        )
+                        events.append(event)
+                        unresolved_count += 1
+                        continue
+                    fill_price = reference_open * (1.0 + SLIPPAGE_RATE)
+                    budget = min(POSITION_CASH_BUDGET_KRW, INITIAL_CAPITAL_KRW * 0.025)
+                    shares = int(math.floor((budget + 1e-9) / (fill_price * (1.0 + COMMISSION_RATE))))
+                    if shares <= 0:
+                        event.update(
+                            event_status="SKIPPED_ZERO_SHARES",
+                            unresolved_reason="MAX_INTEGER_SHARES_ZERO",
+                            cash_after=cash,
+                            pending_sale_proceeds=sum(pending_by_date.values()) + terminal_pending,
+                        )
+                        events.append(event)
+                        continue
+                    notional = fill_price * shares
+                    commission = notional * COMMISSION_RATE
+                    total_cost = notional + commission
+                    if total_cost > cash + 1e-6:
+                        event.update(
+                            event_status="SKIPPED_CASH_UNAVAILABLE",
+                            unresolved_reason="INSUFFICIENT_AVAILABLE_CASH",
+                            cash_after=cash,
+                            pending_sale_proceeds=sum(pending_by_date.values()) + terminal_pending,
+                        )
+                        events.append(event)
+                        continue
+                    cash_before = cash
+                    cash -= total_cost
+                    positions[ticker] = {
+                        "record": record,
+                        "ticker": ticker,
+                        "market": str(_record_value(record, "market", "")),
+                        "shares": shares,
+                        "entry_date": day,
+                        "entry_price": fill_price,
+                        "buy_cost": total_cost,
+                        "exit_date": _record_date(record, "exit_execution_date"),
+                    }
+                    total_commission += commission
+                    total_notional += notional
+                    slippage_impact += abs(fill_price - reference_open) * shares
+                    trade_count += 1
+                    event.update(
+                        event_status="EXECUTED",
+                        reference_open=reference_open,
+                        slippage_adjusted_price=fill_price,
+                        shares=shares,
+                        notional=notional,
+                        commission=commission,
+                        cash_before=cash_before,
+                        cash_after=cash,
+                        pending_sale_proceeds=sum(pending_by_date.values()) + terminal_pending,
+                    )
+                    events.append(event)
+
+                invested_value = 0.0
+                valuation_missing = False
+                for position in positions.values():
+                    close = exact_price(position["record"], day, "close")
+                    if close is None:
+                        valuation_missing = True
+                        continue
+                    invested_value += position["shares"] * close
+                pending_total = sum(pending_by_date.values()) + terminal_pending
+                equity = None if valuation_missing else cash + pending_total + invested_value
+                if equity is not None:
+                    peak_equity = max(peak_equity, equity)
+                    drawdown = equity / peak_equity - 1.0
+                    exposure = invested_value / equity if equity else 0.0
+                    cash_conservation_pass = cash_conservation_pass and abs(
+                        equity - (cash + pending_total + invested_value)
+                    ) <= 1e-6
+                else:
+                    drawdown = None
+                    exposure = None
+                daily_equity.append({
+                    "date": day.strftime("%Y-%m-%d"),
+                    "strategy_id": strategy_id,
+                    "cash": cash,
+                    "pending_sale_proceeds": pending_total,
+                    "invested_market_value": invested_value if not valuation_missing else None,
+                    "equity": equity,
+                    "exposure": exposure,
+                    "drawdown": drawdown,
+                })
+
+                if day == FINAL_VALUATION_DATE:
+                    for position in positions.values():
+                        event = event_base(position["record"], strategy_id, day, "VALUATION")
+                        event["event_status"] = "EXECUTED"
+                        event["entry_or_exit_reason"] = "OPEN_AT_CUTOFF_VALUATION"
+                        event["open_at_cutoff"] = True
+                        event["cash_before"] = cash
+                        event["cash_after"] = cash
+                        event["shares"] = int(position["shares"])
+                        close = exact_price(position["record"], day, "close")
+                        if close is None:
+                            event["event_status"] = "UNRESOLVED"
+                            event["unresolved_reason"] = "MISSING_EXACT_CUTOFF_CLOSE"
+                            unresolved_count += 1
+                        else:
+                            event["reference_open"] = close
+                            event["slippage_adjusted_price"] = close
+                            event["notional"] = close * position["shares"]
+                        event["pending_sale_proceeds"] = pending_total
+                        events.append(event)
+
+            final_rows = [row for row in daily_equity if row["date"] == FINAL_VALUATION_DATE.strftime("%Y-%m-%d")]
+            final_equity = final_rows[-1]["equity"] if final_rows and final_rows[-1]["equity"] is not None else None
+            total_return = (final_equity / INITIAL_CAPITAL_KRW - 1.0) if final_equity is not None else None
+            period_days = max(1, int((FINAL_VALUATION_DATE - START_DATE).days))
+            cagr = (
+                (1.0 + total_return) ** (365.25 / period_days) - 1.0
+                if total_return is not None and total_return > -1.0
+                else None
+            )
+            drawdowns = [row["drawdown"] for row in daily_equity if row["drawdown"] is not None]
+            exposures = [row["exposure"] for row in daily_equity if row["exposure"] is not None]
+            wins = [value for value in realized_returns if value > 0]
+            losses = [value for value in realized_returns if value < 0]
+            payoff_ratio = (
+                (sum(wins) / len(wins)) / abs(sum(losses) / len(losses))
+                if wins and losses and sum(losses) != 0
+                else None
+            )
+            strategy_results[strategy_id] = {
+                "status": "INCOMPLETE_REQUIRES_REVIEW" if unresolved_count else "PASS",
+                "event_ledger": events,
+                "daily_equity": daily_equity,
+                "metrics": {
+                    "total_return": total_return,
+                    "cagr": cagr,
+                    "mdd": min(drawdowns) if drawdowns else None,
+                    "exposure": sum(exposures) / len(exposures) if exposures else None,
+                    "turnover": total_notional / INITIAL_CAPITAL_KRW,
+                    "trade_count": trade_count,
+                    "holding_period_days": sum(holding_days) / len(holding_days) if holding_days else None,
+                    "win_rate": len(wins) / len(realized_returns) if realized_returns else None,
+                    "payoff_ratio": payoff_ratio,
+                    "open_at_cutoff": len(positions),
+                    "total_commission": total_commission,
+                    "total_sell_tax": total_sell_tax,
+                    "slippage_impact": slippage_impact,
+                    "unresolved_count": unresolved_count,
+                    "cash_conservation_pass": cash_conservation_pass,
+                },
+            }
+
         return {
             "axis": "Realistic 200M Portfolio",
             "ready": True,
-            "strategy_ids": sorted(str(key) for key in records_by_strategy),
+            "engine": "IN_MEMORY_FROZEN_PORTFOLIO_V01",
+            "strategy_ids": sorted(strategy_results),
             "initial_capital_krw": INITIAL_CAPITAL_KRW,
             "per_symbol_cash_budget_krw": POSITION_CASH_BUDGET_KRW,
             "max_positions": MAX_POSITIONS,
             "sell_tax_mapping": "execution_date_and_market",
             "same_open_sale_proceeds_reusable": False,
             "event_ledger_columns": [
-                "strategy_id", "identity", "signal_date", "execution_date", "reference_open",
+                "strategy_id", "ticker", "isu_cd", "market", "position_id", "signal_date",
+                "execution_date", "event_type", "event_status", "reference_open",
                 "slippage_adjusted_price", "shares", "notional", "commission", "sell_tax",
-                "cash_before", "cash_after", "entry_or_exit_reason", "position_id", "OPEN_AT_CUTOFF",
+                "cash_before", "cash_after", "pending_sale_proceeds", "entry_or_exit_reason",
+                "market_cap_at_signal", "unresolved_reason", "open_at_cutoff",
             ],
-            "daily_equity_columns": ["date", "strategy_id", "cash", "invested_market_value", "equity", "exposure", "drawdown"],
+            "daily_equity_columns": [
+                "date", "strategy_id", "cash", "invested_market_value", "equity", "exposure", "drawdown",
+            ],
             "records_received": {str(key): len(value) for key, value in records_by_strategy.items()},
+            "strategies": strategy_results,
             "result_artifacts_written": False,
         }
 
@@ -734,14 +1291,19 @@ def main() -> int:
     import argparse
 
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--preflight-only", action="store_true", help="write/validate the contract only")
+    parser.add_argument("--preflight-only", action="store_true", help="validate the frozen contract only")
+    parser.add_argument(
+        "--write-contract",
+        action="store_true",
+        help="development-only initial contract creation; refuses to overwrite an existing contract",
+    )
     args = parser.parse_args()
-    # No official execution flag exists in this preparation task.  Keeping the
-    # CLI preflight-only by construction prevents an accidental full run.
-    if not args.preflight_only:
-        print("Stage 5 preparation is preflight-only; pass --preflight-only explicitly.")
+    # No official execution flag exists in this preparation task.  The default
+    # path is a read-only validation of the committed frozen contract.
+    if not args.preflight_only and not args.write_contract:
+        print("Stage 5 preparation is preflight-only; validating the committed contract.")
     with network_guard():
-        result = preflight(ROOT, write_contract=True)
+        result = preflight(ROOT, write_contract=args.write_contract)
     print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
     return 0
 
