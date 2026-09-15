@@ -229,6 +229,9 @@ def _portfolio_record(
     exit_price: float | None = None,
     market_cap: float | None = 200_000_000_000.0,
     cutoff_close: float | None = 110.0,
+    cutoff_date: str = "2026-08-14",
+    identity_effective_from: str = "2021-01-01",
+    identity_effective_to: str = "2026-08-14",
 ) -> SimpleNamespace:
     return SimpleNamespace(
         strategy_id=runner.BASE_STRATEGY_ID,
@@ -245,7 +248,11 @@ def _portfolio_record(
         exit_execution_date=exit_date,
         exit_price=exit_price,
         cutoff_valuation_price=cutoff_close,
-        cutoff_date="2026-08-14",
+        cutoff_date=cutoff_date,
+        exit_signal_date="2021-01-03" if exit_date else None,
+        trade_status="REALIZED" if exit_date else "OPEN_AT_CUTOFF",
+        identity_effective_from=identity_effective_from,
+        identity_effective_to=identity_effective_to,
     )
 
 
@@ -388,6 +395,56 @@ def test_realistic_portfolio_returns_metrics_and_event_ledger_cash_fields():
     for event in result["event_ledger"]:
         assert "cash_before" in event and "cash_after" in event
         assert "pending_sale_proceeds" in event
+
+
+def test_exact_record_price_rejects_lifecycle_outside_date_even_when_ticker_frame_has_row():
+    record = _portfolio_record(
+        "REUSE",
+        cutoff_date="2023-06-30",
+        identity_effective_to="2023-06-30",
+    )
+    frame = _portfolio_frame(
+        ["2023-06-30", "2026-08-14"],
+        opens=[100.0, 999.0],
+        closes=[101.0, 999.0],
+    )
+    assert runner._exact_record_price(record, frame, pd.Timestamp("2023-06-30"), "close") == 101.0
+    assert runner._exact_record_price(record, frame, pd.Timestamp("2026-08-14"), "close") is None
+
+
+def test_reused_ticker_old_identity_is_unresolved_at_final_valuation():
+    old_identity = _portfolio_record(
+        "REUSE",
+        entry_date="2023-06-29",
+        cutoff_date="2023-06-30",
+        cutoff_close=999.0,
+        identity_effective_from="2023-01-01",
+        identity_effective_to="2023-06-30",
+    )
+    result = _run_synthetic_portfolio(
+        [old_identity],
+        ["2023-06-29", "2023-06-30", "2024-01-02", "2026-08-14"],
+    )
+    assert result["status"] == "INCOMPLETE_REQUIRES_REVIEW"
+    assert result["metrics"]["total_return"] is None
+    valuation = next(event for event in result["event_ledger"] if event["event_type"] == "VALUATION")
+    assert valuation["event_status"] == "UNRESOLVED"
+    assert valuation["unresolved_reason"] == "IDENTITY_LIFECYCLE_ENDED_BEFORE_FINAL_VALUATION"
+
+
+def test_portfolio_event_signal_date_uses_event_specific_signal_fields():
+    realized = _portfolio_record("SIGNAL", exit_date="2021-01-05", exit_price=105.0)
+    result = _run_synthetic_portfolio(realized and [realized], ["2021-01-04", "2021-01-05", "2026-08-14"])
+    events = result["event_ledger"]
+    entry = next(event for event in events if event["event_type"] == "ENTRY")
+    exit_event = next(event for event in events if event["event_type"] == "EXIT")
+    assert entry["signal_date"] == "2021-01-01"
+    assert exit_event["signal_date"] == "2021-01-03"
+
+    open_record = _portfolio_record("VALUATION")
+    open_result = _run_synthetic_portfolio(open_record and [open_record], ["2021-01-04", "2026-08-14"])
+    valuation = next(event for event in open_result["event_ledger"] if event["event_type"] == "VALUATION")
+    assert valuation["signal_date"] is None
 
 
 def test_frozen_preflight_reads_contract_without_overwriting(monkeypatch):

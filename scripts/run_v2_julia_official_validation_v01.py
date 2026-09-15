@@ -297,6 +297,15 @@ def _record_date(record: Any, field: str) -> pd.Timestamp | None:
         return None
 
 
+def _record_lifecycle_contains(record: Any, day: pd.Timestamp) -> bool:
+    effective_from = _record_date(record, "identity_effective_from")
+    effective_to = _record_date(record, "identity_effective_to")
+    if effective_from is None or effective_to is None or effective_from > effective_to:
+        return False
+    normalized = pd.Timestamp(day).normalize()
+    return effective_from <= normalized <= effective_to
+
+
 def _exact_frame_value(frame: pd.DataFrame | None, date: pd.Timestamp, column: str) -> float | None:
     if frame is None or frame.empty or column not in frame.columns:
         return None
@@ -309,6 +318,26 @@ def _exact_frame_value(frame: pd.DataFrame | None, date: pd.Timestamp, column: s
         return None
     value = pd.to_numeric(matches.iloc[0], errors="coerce")
     return None if pd.isna(value) else float(value)
+
+
+def _exact_record_price(record: Any, frame: pd.DataFrame | None, day: pd.Timestamp, column: str) -> float | None:
+    """Read one exact price only when the record identity owns the date."""
+    normalized = pd.Timestamp(day).normalize()
+    if not _record_lifecycle_contains(record, normalized):
+        return None
+    if frame is not None:
+        return _exact_frame_value(frame, normalized, column)
+    # Synthetic compatibility path remains exact-date and lifecycle-bound.
+    if column == "open" and _record_date(record, "entry_execution_date") == normalized:
+        value = _record_value(record, "entry_open")
+        return None if value in (None, "") else float(value)
+    if column == "open" and _record_date(record, "exit_execution_date") == normalized:
+        value = _record_value(record, "exit_price")
+        return None if value in (None, "") else float(value)
+    if column == "close" and normalized == FINAL_VALUATION_DATE:
+        value = _record_value(record, "cutoff_valuation_price")
+        return None if value in (None, "") else float(value)
+    return None
 
 
 def _identity_key_from_record(record: Any) -> tuple[str, str, str]:
@@ -877,21 +906,7 @@ class OfficialValidationRunner:
             return frames.get(identity, frames.get(ticker))
 
         def exact_price(record: Any, day: pd.Timestamp, column: str) -> float | None:
-            frame = frame_for(record)
-            if frame is not None:
-                return _exact_frame_value(frame, day, column)
-            # This branch is limited to synthetic records without a supplied
-            # frame.  It is exact-date only and never searches another date.
-            if column == "open" and _record_date(record, "entry_execution_date") == day:
-                value = _record_value(record, "entry_open")
-                return None if value in (None, "") else float(value)
-            if column == "open" and _record_date(record, "exit_execution_date") == day:
-                value = _record_value(record, "exit_price")
-                return None if value in (None, "") else float(value)
-            if column == "close" and day == FINAL_VALUATION_DATE:
-                value = _record_value(record, "cutoff_valuation_price")
-                return None if value in (None, "") else float(value)
-            return None
+            return _exact_record_price(record, frame_for(record), day, column)
 
         portfolio_dates: set[pd.Timestamp] = {FINAL_VALUATION_DATE}
         for record in all_records:
@@ -915,7 +930,13 @@ class OfficialValidationRunner:
                 "isu_cd": _record_value(record, "isu_cd"),
                 "market": str(_record_value(record, "market", "")),
                 "position_id": str(_record_value(record, "trade_id", "")),
-                "signal_date": _record_value(record, "entry_signal_date"),
+                "signal_date": (
+                    _record_value(record, "entry_signal_date")
+                    if event_type == "ENTRY"
+                    else _record_value(record, "exit_signal_date")
+                    if event_type == "EXIT"
+                    else None
+                ),
                 "execution_date": day.strftime("%Y-%m-%d"),
                 "event_type": event_type,
                 "event_status": None,
@@ -1190,7 +1211,19 @@ class OfficialValidationRunner:
                         close = exact_price(position["record"], day, "close")
                         if close is None:
                             event["event_status"] = "UNRESOLVED"
-                            event["unresolved_reason"] = "MISSING_EXACT_CUTOFF_CLOSE"
+                            lifecycle_ended = (
+                                _record_value(position["record"], "trade_status") == "OPEN_AT_CUTOFF"
+                                and _record_date(position["record"], "exit_execution_date") is None
+                                and (
+                                    _record_date(position["record"], "cutoff_date") is not None
+                                    and _record_date(position["record"], "cutoff_date") < FINAL_VALUATION_DATE
+                                )
+                            )
+                            event["unresolved_reason"] = (
+                                "IDENTITY_LIFECYCLE_ENDED_BEFORE_FINAL_VALUATION"
+                                if lifecycle_ended
+                                else "MISSING_EXACT_CUTOFF_CLOSE"
+                            )
                             unresolved_count += 1
                         else:
                             event["reference_open"] = close
