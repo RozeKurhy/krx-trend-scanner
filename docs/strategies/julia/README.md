@@ -45,7 +45,7 @@ Julia 연구 기록과 최신 ETF 비교 결과가 존재하지만, 이는 공�
   결측 기준일에 예상 시가총액을 사용한 연구 기록이며 공식 검증 근거가 아니다.
 - [최신 ETF V3·Julia 통합 비교](../../../artifacts/research/etf_v3_julia_integrated_comparison_v01/final_comparison.md):
   21개 ETF의 비교 증거를 정리한 별도 연구 문서이며 Julia 공식 검증 계획은 아니다.
-- 관련 결과 artifact: `artifacts/strategies/julia/v00/` 및
+- 관련 결과물: `artifacts/strategies/julia/v00/` 및
   `artifacts/strategies/julia/proxy_market_cap_v01/`
 
 과거 문서는 삭제하지 않는다. 현재 상태·공식 절차와 과거 연구 기록을 서로
