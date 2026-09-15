@@ -25,13 +25,12 @@ ROADMAP.md
 - Post-report Branch Cleanup / Integration (remaining branches classified and preserved; no merge/delete)
 
 **CURRENT**
-- V2 ↔ Julia 공식 검증 Stage 4 완료 / 동결. Fundamentals는 이번 검증 범위에서 제외하고 production 상태는 유지함
+- V2 ↔ Julia 공식 검증 Stage 4 완료 / 동결 및 Stage 5 실행 준비 완료. Fundamentals는 이번 검증 범위에서 제외하고 공식 결과는 아직 없음
 
 **NEXT**
-1. Stage 5 실행 전 runner·execution contract 연결
-2. V2 ↔ Julia 공식 백테스트: 동일 진입·순차·현실적 2억 포트폴리오
-3. Strategy robustness comparison
-4. 최종 전략 검토 및 Julia 공식 채택 여부 판단
+1. V2 ↔ Julia 공식 백테스트: 동일 진입·순차·현실적 2억 포트폴리오
+2. Strategy robustness comparison
+3. 최종 전략 검토 및 Julia 공식 채택 여부 판단
 
 이번 V2 ↔ Julia 검증에서는 Fundamentals Filter, cutoff·threshold·score,
 매출·이익 기반 제외 및 펀더멘털 우선순위를 사용하지 않는다. Fundamentals
@@ -140,7 +139,7 @@ CLOSED고 Production 승격 여부는 별도"임을 한 토큰으로 강조하�
 | | **OpenDART Fundamentals V1** | **FINAL_CLOSED / PRODUCTION** | OpenDART/XBRL PIT-aware 분기·연간 fundamentals 계층 및 일반 V1 filter 상태 |
 | | **Fundamentals Filter / Stock Report Integration** | **CLOSED** | Stock Report v0.5 additive integration 및 filter status 제공 |
 | | **V2 ↔ Julia Official Validation Stage 4** | **CLOSED / FROZEN** | `2021-01-01 ~ 2026-08-14`, 동일 진입·순차·현실적 2억 포트폴리오 3개 결과축 동결 |
-| | **Stage 5 Execution Preparation** | **NEXT** | survivorship-safe Population/PIT runner 및 execution contract 연결 |
+| | **Stage 5 Execution Preparation** | **CLOSED / READY** | survivorship-safe Population/PIT runner 및 execution contract 연결 완료; 공식 결과는 아직 없음 |
 | | **V2 ↔ Julia Official Backtest** | **NEXT** | 동일 진입·순차·현실적 2억 포트폴리오 비교로 실행 |
 | | **Strategy Robustness Comparison** | **AFTER BACKTESTS** | 두 realistic backtest 완료 후 비교 |
 | | KRX Open API Validation | COMPLETE | 서비스 API 승인 완료, 현재 production data path (Repository V2) |
@@ -161,7 +160,7 @@ CLOSED고 Production 승격 여부는 별도"임을 한 토큰으로 강조하�
        ↓
 3. V2 ↔ Julia official validation Stage 4 = CLOSED / FROZEN
        ↓
-4. Stage 5 runner / execution contract preparation = NEXT
+4. Stage 5 runner / execution contract preparation = CLOSED / READY
        ↓
 5. V2 ↔ Julia official backtest (Matched-entry + Sequential + Realistic 200M) = NEXT
        ↓
@@ -553,7 +552,7 @@ CLI / Web 대시보드, 관심종목 워크플로우, 실시간 알림 등 최�
 17. OpenDART Fundamentals V1 — **FINAL_CLOSED / PRODUCTION**
 18. Fundamentals Filter / Stock Report Integration — **CLOSED**
 19. V2 ↔ Julia official validation Stage 4 — **CLOSED / FROZEN** (`2021-01-01 ~ 2026-08-14`; Fundamentals 제외)
-20. Stage 5 runner / execution contract preparation — **NEXT**
+20. Stage 5 runner / execution contract preparation — **CLOSED / READY**
 21. V2 ↔ Julia Official Backtest (Matched-entry + Sequential + Realistic 200M Portfolio) — **NEXT**
 22. Strategy Robustness Comparison — **AFTER BACKTESTS**
 23. KRX Open API Validation — **COMPLETE**

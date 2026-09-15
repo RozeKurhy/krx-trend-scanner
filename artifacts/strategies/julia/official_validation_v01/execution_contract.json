@@ -1,0 +1,168 @@
+{
+  "benchmarks": {
+    "KOSDAQ_COMMON": "2001",
+    "KOSPI_COMMON": "1001",
+    "authority": "data/market/index/v01/market_index.parquet",
+    "content_sha256": "d67a07167719fe2acfcdfd4b664f05180d4a384a4c159b8f9a427bc96c4b1ace",
+    "index_store_family": "MARKET_INDEX",
+    "metadata_path": "data/market/index/v01/market_index.meta.json",
+    "mixed_single_benchmark": false
+  },
+  "contract_sha256": "afdc2461b0ddd92787e0f4dd46c290e6ab5dc6e9ff6eed0e8b75000a28b0c01c",
+  "contract_state": "FROZEN_BEFORE_RESULTS",
+  "costs": {
+    "buy_commission_rate": 0.00015,
+    "buy_slippage_rate": 0.001,
+    "historical_sell_tax_schedule": [
+      {
+        "KOSDAQ": 0.0023,
+        "KOSPI": 0.0023,
+        "end": "2022-12-31",
+        "start": "2021-01-01"
+      },
+      {
+        "KOSDAQ": 0.002,
+        "KOSPI": 0.002,
+        "end": "2023-12-31",
+        "start": "2023-01-01"
+      },
+      {
+        "KOSDAQ": 0.0018,
+        "KOSPI": 0.0018,
+        "end": "2024-12-31",
+        "start": "2024-01-01"
+      },
+      {
+        "KOSDAQ": 0.0015,
+        "KOSPI": 0.0015,
+        "end": "2025-12-31",
+        "start": "2025-01-01"
+      },
+      {
+        "KOSDAQ": 0.002,
+        "KOSPI": 0.002,
+        "end": null,
+        "start": "2026-01-01"
+      }
+    ],
+    "sell_commission_rate": 0.00015,
+    "sell_slippage_rate": 0.001,
+    "sell_tax_applies_to": "SELL_EXECUTION_NOTIONAL_ONLY"
+  },
+  "execution": {
+    "entry": "NEXT_LOCAL_TRADING_DAY_OPEN_AFTER_COMPLETED_SIGNAL",
+    "exit3_exit4": "NEXT_LOCAL_TRADING_DAY_OPEN_AFTER_COMPLETED_MONTHLY_SIGNAL",
+    "loss_guard": "COMPLETED_DAILY_CLOSE_THEN_NEXT_LOCAL_TRADING_DAY_OPEN",
+    "open_at_cutoff": true,
+    "overlap_and_pyramiding": false,
+    "same_open_exit_reentry": false
+  },
+  "investability": {
+    "avg_trading_value_20d_min_krw": 300000000.0,
+    "current_or_future_market_cap": false,
+    "market_cap_min_krw": 100000000000.0,
+    "market_cap_semantics": "EXACT_SIGNAL_CONFIRMATION_DATE_RAW_ANCILLARY",
+    "missing_semantics": "FAIL_CLOSED_UNRESOLVED",
+    "nearest_date_fallback": false,
+    "price_filter": "NONE",
+    "proxy_market_cap": false,
+    "trading_value_semantics": "IDENTITY_SCOPED_20_OBSERVATION_MEAN_THROUGH_SIGNAL_DATE"
+  },
+  "market_data": {
+    "adjusted_store_path": "data/market/adjusted/stocks",
+    "authority": "MarketDataRepositoryV2",
+    "factory": "trend_scanner.data.repository_v2_loader.build_repository_v2",
+    "fixed_cutoff": "2026-08-14",
+    "legacy_fallbacks": false,
+    "price_semantics": "ADJUSTED_OHLC_REPOSITORY_V2",
+    "raw_semantics": "RAW_VOLUME_TRADING_VALUE_MARKET_CAP_REPOSITORY_V2",
+    "raw_store_path": "data/market/raw/krx_stocks/v01"
+  },
+  "output": {
+    "directory": "artifacts/strategies/julia/official_validation_v01",
+    "execution_contract": "artifacts/strategies/julia/official_validation_v01/execution_contract.json",
+    "official_result_files": [
+      "aggregate_summary.json",
+      "matched_entry_comparison.csv",
+      "sequential_comparison.csv",
+      "failure_and_big_loss_cases.csv",
+      "validation_report.md"
+    ],
+    "support_result_files": [
+      "portfolio_event_ledger.csv",
+      "portfolio_daily_equity.csv"
+    ]
+  },
+  "period": {
+    "evaluation_end": "2026-08-14",
+    "evaluation_start": "2021-01-01",
+    "execution_support_end": "2026-08-14",
+    "final_valuation": "2026-08-14 CLOSE",
+    "initial_position": "FLAT",
+    "pre_start_data": "LOOKBACK_ONLY_NO_TRADES",
+    "signal_cutoff": "2026-08-14"
+  },
+  "population_pit_authority": {
+    "cutover_manifest_path": "artifacts/data/end_to_end_data_parity/v01/survivorship_safe_denominator_freeze/v01_spac_corrected_effective_authority/authority_cutover_manifest.json",
+    "effective_authority_dir": "artifacts/data/end_to_end_data_parity/v01/survivorship_safe_denominator_freeze/v01_spac_corrected_effective_authority",
+    "effective_manifest_path": "artifacts/data/end_to_end_data_parity/v01/survivorship_safe_denominator_freeze/v01_spac_corrected_effective_authority/effective_freeze_manifest.json",
+    "identity_key": [
+      "ticker",
+      "isu_cd",
+      "market"
+    ],
+    "membership_semantics": "EXACT_DATE_COMMON_INTERVAL_FAIL_CLOSED",
+    "pit_interval_count": 3173,
+    "pit_path": "artifacts/data/end_to_end_data_parity/v01/survivorship_safe_denominator_freeze/v01_spac_corrected_effective_authority/effective_pit_common_denominator.json",
+    "pit_sha256": "a1952956427c214c21aa2fa293366d9ef092b36ae5afb3b110fd1ae556ccb3b0",
+    "population_count": 3149,
+    "population_path": "artifacts/data/end_to_end_data_parity/v01/survivorship_safe_denominator_freeze/v01_spac_corrected_effective_authority/effective_historical_common_population.json",
+    "population_sha256": "84c8b33ed3f5bf2c8b713193144e0da2997698d94f9adc4ac619b82de36cd49e",
+    "source_eligibility_path": "artifacts/data/end_to_end_data_parity/v01/survivorship_safe_denominator_freeze/v01_spac_corrected_effective_authority/effective_source_eligibility_authority.json"
+  },
+  "portfolio": {
+    "initial_capital_krw": 200000000.0,
+    "max_initial_capital_weight": 0.025,
+    "max_positions": 40,
+    "partial_fill": false,
+    "per_symbol_cash_budget_krw": 5000000.0,
+    "sale_proceeds_reusable_from": "NEXT_EVALUABLE_LOCAL_TRADING_DAY_OPEN",
+    "same_open_sale_proceeds_reusable": false,
+    "same_open_signal_order": [
+      "signal_confirmation_date_pit_market_cap_desc",
+      "ticker_asc"
+    ]
+  },
+  "result_axes": [
+    "Matched-entry",
+    "Sequential",
+    "Realistic 200M Portfolio"
+  ],
+  "schema": "v2_julia_official_execution_contract_v01",
+  "stage": "STAGE_5_EXECUTION_READY",
+  "stage4_authority": {
+    "common_conditions_path": "docs/patterns/pattern_a_fast/validation_plan/realistic_backtest_common_conditions_v01.md",
+    "common_conditions_sha256": "d8fbc0e2ae013423d8983bff6ccbf9827b7a68c997b565ed30ac571a3fb2863a",
+    "validation_plan_path": "docs/strategies/julia/validation_plan_v01.md",
+    "validation_plan_sha256": "44f6ee1c24ce00b1e2c7ae53dbd31df5876ef00a96d8d69ea1d572969880dad2"
+  },
+  "status": "READY_NOT_RUN",
+  "strategies": {
+    "base_loss_guard": "ON (-15%)",
+    "base_strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+    "candidate_loss_guard": "OFF",
+    "candidate_status": "NOT_APPROVED",
+    "candidate_strategy_id": "JULIA_STRATEGY_V00",
+    "current_default_strategy": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+    "fundamentals_included": false,
+    "one_delta_only": "PRE_PROGRESSED_LOSS_GUARD_ON_VS_OFF"
+  },
+  "unresolved": {
+    "missing_required_evidence": "UNRESOLVED",
+    "nearest_date": false,
+    "run_status_if_unresolved_gt_zero": "INCOMPLETE_REQUIRES_REVIEW",
+    "silent_exclusion": false,
+    "zero_fill": false
+  },
+  "work_id": "V2_JULIA_OFFICIAL_VALIDATION_STAGE_5_V01"
+}

@@ -190,7 +190,7 @@ def evaluate_entry_filter(
     *,
     market_cap_threshold: float,
     avg_trading_value_threshold: float,
-    close_threshold: float,
+    close_threshold: float | None,
 ) -> dict[str, object]:
     """Entry-only investability filter evaluated strictly as of ``signal_date``.
 
@@ -224,7 +224,11 @@ def evaluate_entry_filter(
 
     mkt_cap_pass = bool(pd.notna(mkt_cap) and mkt_cap >= market_cap_threshold)
     tv_pass = bool(pd.notna(avg_tv) and avg_tv >= avg_trading_value_threshold)
-    close_pass = bool(pd.notna(close) and close >= close_threshold)
+    # ``None`` means that no price filter is applied.  The official runner
+    # still receives adjusted OHLC through Repository V2 for strategy
+    # evaluation, while investability remains limited to the approved PIT
+    # market-cap and trading-value conditions.
+    close_pass = True if close_threshold is None else bool(pd.notna(close) and close >= close_threshold)
 
     result.update(
         entry_market_cap=None if pd.isna(mkt_cap) else float(mkt_cap),

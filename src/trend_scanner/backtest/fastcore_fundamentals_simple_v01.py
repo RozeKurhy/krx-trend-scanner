@@ -31,6 +31,18 @@ LOSS_GUARD_THRESHOLD = -0.15
 EXIT4_DRAWDOWN_POINTS = 15.0
 
 
+def is_qualifying_fast_entry(result: Mapping[str, Any]) -> bool:
+    """Return the frozen V2 entry predicate without adding a new filter."""
+    return bool(
+        result.get("fast_machine_stage") == "TRIGGER"
+        and result.get("fast_machine_stage_status") == "READY"
+        and result.get("fast_monthly_permission_state") == "PERMITTED_REGIME"
+        and result.get("fast_daily_risk_state") in {"NORMAL", "ELEVATED"}
+        and result.get("fast_score_status") in {"READY", "PARTIAL"}
+        and str(result.get("pattern_a_stage") or "").upper() in {"TRANSITION", "EARLY_TREND"}
+    )
+
+
 @dataclass(frozen=True)
 class IdentityLifecycle:
     """One non-overlapping COMMON lifecycle segment for one KRX identity."""
@@ -179,6 +191,9 @@ def simulate_ticker_strategy_fundamentals_v01(
     pit_membership: Callable[[str, str | None, str, pd.Timestamp], bool] | None = None,
     entry_gate: Callable[[pd.Timestamp, dict[str, Any]], Mapping[str, Any] | None] | None = None,
     fundamental_exit_callback: Callable[[pd.Timestamp, pd.Timestamp, pd.DataFrame], Sequence[Mapping[str, Any]]] | None = None,
+    market_cap_threshold: float = MARKET_CAP_THRESHOLD,
+    avg_trading_value_threshold: float = AVG_TRADING_VALUE_20D_THRESHOLD,
+    close_threshold: float | None = CLOSE_THRESHOLD,
 ) -> list[StrategyTradeRecord]:
     """Run one corrected FastCore variant for one ticker through
     ``backtest_end``. ``loss_guard_enabled`` is retained as an explicit
@@ -258,17 +273,11 @@ def simulate_ticker_strategy_fundamentals_v01(
                 res = evaluate_pattern_a_fast(
                     ticker, name, daily, w, score_contract, stage_contract, context=snapshot_context,
                 )
-                is_trigger = (res["fast_machine_stage"] == "TRIGGER" and res["fast_machine_stage_status"] == "READY")
-                is_permitted = (res["fast_monthly_permission_state"] == "PERMITTED_REGIME")
-                is_non_extreme = (res["fast_daily_risk_state"] in {"NORMAL", "ELEVATED"})
-                is_score_ok = (res["fast_score_status"] in {"READY", "PARTIAL"})
-                is_fast = bool(is_trigger and is_permitted and is_non_extreme and is_score_ok)
+                if not is_qualifying_fast_entry(res):
+                    continue
 
                 raw_stage = res.get("pattern_a_stage")
                 pa_stage = str(raw_stage).upper() if (raw_stage is not None and not pd.isna(raw_stage)) else "UNAVAILABLE"
-
-                if not (is_fast and pa_stage in {"TRANSITION", "EARLY_TREND"}):
-                    continue
 
                 # Entry-only investability filter -- evaluated fresh at this
                 # candidate signal date. A week that fails the filter is
@@ -280,9 +289,9 @@ def simulate_ticker_strategy_fundamentals_v01(
                     continue
                 filt = evaluate_entry_filter(
                     raw_panel, w,
-                    market_cap_threshold=MARKET_CAP_THRESHOLD,
-                    avg_trading_value_threshold=AVG_TRADING_VALUE_20D_THRESHOLD,
-                    close_threshold=CLOSE_THRESHOLD,
+                    market_cap_threshold=market_cap_threshold,
+                    avg_trading_value_threshold=avg_trading_value_threshold,
+                    close_threshold=close_threshold,
                 )
                 if not filt["entry_filter_pass"]:
                     continue
