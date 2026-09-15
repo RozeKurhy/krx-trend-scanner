@@ -1,29 +1,52 @@
-# Julia Strategy Authority & Index
+# Julia 전략 문서
 
-본 디렉터리는 **`A FAST Core V2` (PATTERN_A_FAST_FINAL_STRATEGY_V02)**를 기반으로 한 탐색적 연구 변형 모델인 **`Julia Strategy`** 연구 산출물과 명세서를 관리합니다.
+이 디렉터리는 `A FAST Core V2` (`PATTERN_A_FAST_FINAL_STRATEGY_V02`)의 변형을
+탐색한 `Julia Strategy`의 현재 상태와 과거 연구 기록을 관리한다.
 
----
+## 현재 상태
 
-## 🌟 Julia Strategy 트랙 개요
+- 연구 분류: `EXPLORATORY_CANDIDATE` (후보 전략)
+- 공식 전략 여부: 미승인
+- 현재 기본 전략: `A FAST Core V2`
+- V2와의 핵심 차이: 사전 진행 단계의 -15% Loss Guard를 끈 변형이다.
+- 과거 연구의 실증 방식: `SAME_SAMPLE_RETROSPECTIVE`
 
-- **기본 전략 (Base Strategy)**: `PATTERN_A_FAST_FINAL_STRATEGY_V02`
-- **핵심 연구 질문**: *"Pre-PROGRESSED -15% Loss Guard를 제거했을 때, 대형 손실 방어 효과와 상승 기회 회수 간의 상충 관계는 어떠한가?"*
-- **연구 상태 (Classification)**: **`EXPLORATORY_CANDIDATE`**
-- **실증 방식 (Validation Type)**: **`SAME_SAMPLE_RETROSPECTIVE`**
-- **공식 기본 전략**: **`A FAST Core V2` 유지 (Julia는 프로덕션 미승인 상태)**
+Julia 연구 기록과 최신 ETF 비교 결과가 존재하지만, 이는 공식 전략 채택이나
+현재 공식 검증 완료를 뜻하지 않는다. 공식 검증·채택 절차는
+[전략 생애주기와 채택 절차](../strategy_lifecycle.md)를 기준으로 한다.
 
----
+## 전략 생애주기 단계
 
-## 📂 문서 인덱스
+| 단계 | 상태 | 근거와 범위 |
+|---:|---|---|
+| 1. 전략 아이디어 정의 | 완료 | Loss Guard 제거의 손실 방어·상승 기회 상충 관계가 연구 질문으로 기록됨 |
+| 2. 전략 규칙 명세화 | 일부 완료 | V2와의 변경점은 기록됐으나 현재 공식 검증용 전체 규칙 문서는 없음 |
+| 3. 후보 전략 동결 | 일부 완료 | 과거 계약에 `no_tuning`과 단일 변경점이 기록됐으나 현재 공식 검증용 동결 기록은 없음 |
+| 4. 검증 계획 확정 | 미완료 | 비교 대상·데이터·기간·동일 조건·지표·판정 기준을 사전 고정한 Julia 전용 계획을 찾지 못함 |
+| 5. 동일 조건 비교 백테스트 | 미완료 | 과거 실행은 공식 생애주기 완료로 소급하지 않음 |
+| 6. 핵심 성과 비교 | 미완료 | 과거 연구 수치는 참고 기록으로만 보존함 |
+| 7. 실패 사례 및 부작용 검증 | 미완료 | 현재 공식 검증 범위에서 수행하지 않음 |
+| 8. 강건성 검증 | 미완료 | 현재 공식 검증 범위에서 수행하지 않음 |
+| 9. 최종 전략 검토 | 미완료 | 공식 검토 기록 없음 |
+| 10. 공식 전략 채택 여부 결정 | 미완료 | Julia는 현재 미승인 상태 |
+| 11. 기본 전략 승격 여부 결정 | 미완료 | V2가 현재 기본 전략으로 유지됨 |
+| 12. 버전·문서·결과물 확정 | 미완료 | 공식 검증 버전으로 확정하지 않음 |
+| 13. 운영 환경 반영 | 미완료 | 프로덕션 반영 없음 |
+| 14. 사후 성과 확인 | 미완료 | 운영 전략이 아니므로 해당 단계에 진입하지 않음 |
 
-1. **[Julia Strategy V00 Report (2022+ Controlled Backtest)](v00.md)**
-   - 2022-01-01 ~ 2026-08-14 기간 동안 Baseline V2와 Julia V00의 100% 동일 조건 제어 비교 백테스트 결과
-   - Full Strategy Path, Common-Entry Paired Counterfactual, Loss Guard Recovery & Deep Loss 정량 분석
-2. **아티팩트 경로**: `artifacts/strategies/julia/v00/`
-   - `contract.json`: 불변 계약 메타데이터
-   - `baseline_a_fast_core_v2_2022_trades.csv`: Baseline 2022+ 거래 목록 (696건)
-   - `julia_v00_2022_trades.csv`: Julia V00 2022+ 거래 목록 (556건)
-   - `common_entry_pairs.csv`: 공통 진입 556개 페어 상세 비교
-   - `loss_guard_counterfactual.csv`: Baseline 손절 292건의 사후 추적 상세 테이블
-   - `strategy_comparison_summary.json` & `strategy_comparison_metrics.csv`
-   - `worst_losses.csv` & `big_winners.csv`
+현재 다음 공식 단계는 4단계 검증 계획 확정이다. 이번 작업에서는 그 계획을
+새로 작성하거나 검증을 시작하지 않는다.
+
+## 문서 인덱스
+
+- [V00 과거 연구 기록](v00.md): 공식 PIT 117/215개 기준일에서 중단된 불완전
+  PIT 백필 체크포인트. 성과 해석은 억제된 상태다.
+- [proxy_market_cap_v01 과거 비공식 연구](proxy_market_cap_v01.md): 98개
+  결측 기준일에 예상 시가총액을 사용한 연구 기록이며 공식 검증 근거가 아니다.
+- [최신 ETF V3·Julia 통합 비교](../../../artifacts/research/etf_v3_julia_integrated_comparison_v01/final_comparison.md):
+  21개 ETF의 비교 증거를 정리한 별도 연구 문서이며 Julia 공식 검증 계획은 아니다.
+- 관련 결과 artifact: `artifacts/strategies/julia/v00/` 및
+  `artifacts/strategies/julia/proxy_market_cap_v01/`
+
+과거 문서는 삭제하지 않는다. 현재 상태·공식 절차와 과거 연구 기록을 서로
+혼동하지 않도록 역할을 나누어 보존한다.
