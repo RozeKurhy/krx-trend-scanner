@@ -37,7 +37,7 @@ ROADMAP.md
 매출·이익 기반 제외 및 펀더멘털 우선순위를 사용하지 않는다. Fundamentals
 production 기능 자체는 유지한다. 백테스트에는 historical PIT, next-day
 execution, transaction cost, slippage, holding period, win rate, payoff ratio,
-MDD, trade count, benchmark comparison, parameter robustness를 명시적으로
+MDD, trade count, benchmark comparison, 연도·시장·집중도 강건성을 명시적으로
 포함한다.
 
 **HOLD**
