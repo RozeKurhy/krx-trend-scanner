@@ -139,6 +139,11 @@ SPAC, REIT, 우선주, 외국주권, 예탁증권 및 formal 분류 불능 유�
 이는 Julia 후보군을 유리하게 만들기 위한 새 필터가 아니라 V2 기준군의
 기존 투자적합성 조건이다. 양 전략에 동일하게 적용한다.
 
+FastCore 전용 `Fundamentals Filter`, fundamentals cutoff·threshold·score,
+펀더멘털 기반 종목 제외 및 FastCore 전용 종목 필터는 Julia V00에 자동으로
+승계하지 않는다. 이러한 조건을 추가하면 `Loss Guard` ON/OFF만 다른 Julia
+V00의 단일 변경점 동결을 깨뜨리므로, 이번 공식 검증에는 포함하지 않는다.
+
 ## E. 데이터 기준 경로와 시간 의미론
 
 ### E.1 가격 및 부가 데이터
@@ -262,11 +267,19 @@ cutoff를 각각 보고한다.
 - 양의 terminal return 비율
 - matched entry별 terminal return 차이
 
-Julia의 시장·데이터·체결·비용·슬리피지·포트폴리오 실행조건은
-FastCore realistic backtest에서 먼저 확정되는 공통 실행조건을 동일하게
-적용한다. FastCore 조건이 아직 확정되지 않았으므로 현재 단계에서 비용,
-세금, 슬리피지, position sizing, 초기자본 또는 포트폴리오 집계 숫자를
-가정하지 않는다.
+Julia는 FastCore realistic backtest에서 앞으로 먼저 확정될 전략 중립적인
+공통 실행조건만 동일하게 적용한다. 여기에는 historical PIT 사용 방식,
+가격·시장 데이터 authority, 신호 이후 체결 시점 의미론, 거래비용·세금·
+슬리피지, 포트폴리오 자금배분·position sizing·동시 보유·현금 부족 처리,
+평가 종료, equity curve, 총수익률·CAGR·MDD·exposure·turnover 및 benchmark
+비교의 전략 중립적 산출 의미론이 포함될 수 있다. FastCore 조건이 아직
+확정되지 않았으므로 현재 단계에서 어느 항목의 값도 가정하지 않는다.
+
+Fundamentals Filter와 그 cutoff·threshold·score·종목 제외, FastCore 전용
+ranking·종목 선택, 새로운 시장 국면 제한, 진입·보유·청산·재진입 조건 및
+전략 threshold는 위 공통 실행조건에 포함되지 않으며 Julia에 자동 승계하지
+않는다. Julia V00의 전략 차이는 계속 Pre-PROGRESSED Loss Guard ON/OFF
+하나로 제한한다.
 
 `scripts/run_fastcore_vs_julia_portfolio_v01.py` 및 그 200M 비교 계약은
 공식 실행계약이 아닌 구현 참고 자료로만 보존한다. 이벤트 처리, 현금·동시
@@ -358,8 +371,10 @@ winner 제거 개수는 정의하지 않는다. V3 전용 validation plan의 구
 ## K. 사전 동결 판정 기준
 
 판정 기준은 결과표를 보기 전에 동결한다. 단일 평균, 단일 winner, 단일
-ticker를 근거로 판정하지 않는다. V2 공식 최종화 문서의 risk-first 우선
-순서를 그대로 사용한다.
+ticker를 근거로 판정하지 않는다. 현재 V2 canonical authority인
+`docs/patterns/pattern_a_fast/strategy/version_02/README.md`의
+`LARGE_LOSS_MINIMIZATION` 우선 및 `PRESERVE_SUFFICIENT_UPSIDE` 차순위
+투자 원칙을 Julia에도 그대로 적용한다.
 
 1. `Return <= -30%` 발생률
 2. `Return <= -20%` 발생률
@@ -369,10 +384,11 @@ ticker를 근거로 판정하지 않는다. V2 공식 최종화 문서의 risk-f
 6. Terminal Return
 7. Winner Truncation 비용
 
-이 순서는 새 숫자 threshold가 아니라 기존 V2 공식 판단 기준
-(`docs/patterns/pattern_a_fast/validation_plan/strategy_finalization_v01.md`)
-의 우선순위이다. V2의 `LARGE_LOSS_MINIMIZATION`과 손실 규모 우선 원칙을
-유지한다.
+이 순서는 새 숫자 threshold가 아니다. 위험 판단은 V2 canonical authority의
+투자 원칙과 손실 규모 우선 원칙을 따르며, 과거
+`docs/patterns/pattern_a_fast/validation_plan/strategy_finalization_v01.md`는
+역사적 배경 자료로만 참고한다. 현재 V2 규칙 authority를 이 과거 문서로
+대체하지 않는다.
 
 ### K.1 채택 (`ADOPT`)
 
@@ -450,18 +466,20 @@ Stage 4가 검토·동결되고 별도 실행 지시가 있을 때만 아래 art
 
 ### 미확정 항목
 
-이번 보완으로 가격 기준 경로는 확정하고, 현실적 공통 실행조건은 프로젝트
-작업 순서에 따라 FastCore에서 먼저 확정하도록 정리한다.
+이번 보완으로 가격 기준 경로는 확정하고, 전략 중립적인 현실적 공통
+실행조건은 프로젝트 작업 순서에 따라 FastCore에서 먼저 확정하도록 정리한다.
 
 - 가격 기준 경로: `MarketDataRepositoryV2`로 확정하며 이전 방식 fallback은
   사용하지 않는다.
-- 현실적 공통 실행조건: FastCore realistic backtest에서 비용·세금·슬리피지,
-  position sizing, 동시 보유·자금 배분 및 포트폴리오 총성과 집계 의미론을
-  먼저 확정한 뒤, Julia에 동일하게 연결한다. 현재 숫자를 미리 만들지 않는다.
+- 전략 중립적 현실적 공통 실행조건: FastCore realistic backtest에서
+  비용·세금·슬리피지, position sizing, 동시 보유·자금 배분 및 포트폴리오
+  총성과 집계 의미론을 먼저 확정한 뒤, Julia에 동일하게 연결한다. 현재
+  숫자를 미리 만들지 않는다. Fundamentals Filter와 FastCore 전용 전략
+  조건은 이 승계 범위에서 제외한다.
 
 ### Stage 4 완료 전 남은 항목
 
-**FastCore realistic backtest 공통 실행조건 확정 및 Julia 계획 연결**
+**FastCore realistic backtest의 전략 중립적 공통 실행조건 확정 및 Julia 계획 연결**
 
 이 조건이 확정되기 전에는 Julia 공식 실행계약을 동결하지 않는다. 과거
 200M `NO_COST_MODEL` 계약은 이 조건의 권위가 아니다.
