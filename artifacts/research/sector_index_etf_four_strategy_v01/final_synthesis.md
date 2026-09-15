@@ -144,6 +144,17 @@ V4는 보조 비교자로 두고, 핵심 해석은 V2/V3/Julia에 집중한다.
 | SAME matched win-rate | 5 | 0 | 11 |
 | SAME matched mean MAE | 10 | 0 | 6 |
 
+### V2 기준 matched mean MAE 보완
+
+MAE는 덜 음수인 값이 우위다. 아래 평균은 각 ETF의 `matched_summaries.mean_mae_pct`를 16개 ETF 기준으로 단순 평균한 값이며, 우위/동률은 ETF 개수다.
+
+| 기간 | V2 평균 MAE | V3 평균 MAE | V3−V2 평균 | V3 우위 | V2 우위 | 동률 | Julia 평균 MAE | Julia−V2 평균 | Julia 우위 | V2 우위 | 동률 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| LONG RANGE | -13.172 | -17.164 | -3.993 | 3 | 13 | 0 | -20.840 | -7.669 | 0 | 15 | 1 |
+| SAME WINDOW | -12.097 | -13.718 | -1.621 | 6 | 8 | 2 | -15.627 | -3.530 | 0 | 13 | 3 |
+
+V2 기준 matched MAE에서는 두 기간 모두 V2가 더 덜 음수였다. V3는 SAME WINDOW에서 일부 섹터 우위를 보였지만, Julia는 V2보다 우세한 섹터가 없었다.
+
 해석은 다음과 같다.
 
 - 수익성: Julia는 LONG RANGE total/CAGR에서 V3보다 11 대 5로 우세하다. SAME WINDOW는 Julia 8, V3 7, tie 1로 차이가 좁다.
