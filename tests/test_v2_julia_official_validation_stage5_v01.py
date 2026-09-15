@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+from datetime import timedelta
 from types import SimpleNamespace
 
 import pandas as pd
@@ -29,6 +30,101 @@ def test_contract_preflight_is_ready_without_execution_or_results():
     assert result["result_artifacts_generated"] is False
     assert result["network_requests"] == 0
     assert result["contract_validation"]["status"] == "PASS"
+
+
+def test_performance_sample_selection_is_deterministic_balanced_and_nested():
+    tasks = tuple(
+        runner.IdentityTask(
+            ticker=f"{index:06d}",
+            isu_cd=f"ISU{index:06d}",
+            market="KOSPI" if index % 2 == 0 else "KOSDAQ",
+            effective_from=pd.Timestamp("2021-01-01"),
+            effective_to=pd.Timestamp("2021-01-01") + timedelta(days=1000 - index),
+        )
+        for index in range(60)
+    )
+    sample_20 = runner.select_performance_sample_tasks(tasks, 20)
+    sample_50 = runner.select_performance_sample_tasks(tasks, 50)
+    assert sample_20 == runner.select_performance_sample_tasks(tasks, 20)
+    assert set(sample_20).issubset(sample_50)
+    assert {task.market for task in sample_20} == {"KOSPI", "KOSDAQ"}
+    assert len(sample_20) == 20
+    assert len(sample_50) == 50
+
+
+def test_lifecycle_resources_are_reused_only_within_the_exact_identity(monkeypatch):
+    task = _task()
+    later_lifecycle = runner.IdentityTask(
+        ticker=task.ticker,
+        isu_cd=task.isu_cd,
+        market=task.market,
+        effective_from=pd.Timestamp("2021-05-01"),
+        effective_to=pd.Timestamp("2021-12-31"),
+    )
+    daily = pd.DataFrame(
+        {"open": [1.0, 2.0], "high": [1.0, 2.0], "low": [1.0, 2.0], "close": [1.0, 2.0]},
+        index=pd.DatetimeIndex(["2020-01-02", "2021-05-03"]),
+    )
+    instance = object.__new__(runner.OfficialValidationRunner)
+    instance.reuse_lifecycle_caches = True
+    instance.diagnostic_counts = {}
+    instance.load_identity_inputs = lambda _task: (daily, pd.DataFrame())
+    context_calls: list[object] = []
+    panel_calls: list[object] = []
+    monkeypatch.setattr(
+        runner,
+        "build_precomputed_ticker_context",
+        lambda *_args: context_calls.append(object()) or context_calls[-1],
+    )
+    monkeypatch.setattr(
+        runner,
+        "build_identity_raw_panel",
+        lambda *_args: panel_calls.append(object()) or panel_calls[-1],
+    )
+
+    assert instance._lifecycle_context(task) is instance._lifecycle_context(task)
+    assert instance._lifecycle_context(later_lifecycle) is not instance._lifecycle_context(task)
+    assert instance.identity_raw_panel(task) is instance.identity_raw_panel(task)
+    assert instance.identity_raw_panel(later_lifecycle) is not instance.identity_raw_panel(task)
+    assert instance._lifecycle_fast_snapshot_cache(task) is instance._lifecycle_fast_snapshot_cache(task)
+    assert instance._lifecycle_fast_snapshot_cache(later_lifecycle) is not instance._lifecycle_fast_snapshot_cache(task)
+    assert instance._lifecycle_monthly_snapshot_cache(task) is instance._lifecycle_monthly_snapshot_cache(task)
+    assert instance._lifecycle_monthly_snapshot_cache(later_lifecycle) is not instance._lifecycle_monthly_snapshot_cache(task)
+    assert len(context_calls) == 2
+    assert len(panel_calls) == 2
+
+
+def test_run_identity_strategy_forwards_shared_lifecycle_resources(monkeypatch):
+    task = _task()
+    daily = pd.DataFrame(
+        {"open": [1.0], "high": [1.0], "low": [1.0], "close": [1.0]},
+        index=pd.DatetimeIndex(["2021-01-04"]),
+    )
+    panel = pd.DataFrame()
+    context = object()
+    fast_cache = object()
+    monthly_cache = object()
+    captured: dict[str, object] = {}
+    instance = object.__new__(runner.OfficialValidationRunner)
+    instance.reuse_lifecycle_caches = True
+    instance.score_contract = {}
+    instance.stage_contract = {}
+    instance.intervals = {}
+    instance.load_identity_inputs = lambda _task: (daily, panel)
+    instance.identity_raw_panel = lambda _task: panel
+    instance._lifecycle_context = lambda _task: context
+    instance._lifecycle_fast_snapshot_cache = lambda _task: fast_cache
+    instance._lifecycle_monthly_snapshot_cache = lambda _task: monthly_cache
+    monkeypatch.setattr(
+        runner,
+        "simulate_ticker_strategy_fundamentals_v01",
+        lambda **kwargs: captured.update(kwargs) or [],
+    )
+
+    assert instance.run_identity_strategy(task, enable_loss_guard=True) == []
+    assert captured["snapshot_context"] is context
+    assert captured["fast_snapshot_cache"] is fast_cache
+    assert captured["monthly_snapshot_cache"] is monthly_cache
 
 
 def test_effective_authority_and_repository_v2_paths_are_contract_bound():
@@ -218,6 +314,283 @@ def test_contract_contains_required_event_and_equity_fields():
     ]
     assert contract["execution"]["open_at_cutoff"] is True
     assert contract["portfolio"]["partial_fill"] is False
+
+
+def _trade_record(
+    strategy_id: str,
+    ticker: str = "005930",
+    *,
+    terminal_return: float = 12.5,
+    trade_status: str = "REALIZED",
+    loss_guard_triggered: bool = False,
+) -> SimpleNamespace:
+    return SimpleNamespace(
+        strategy_id=strategy_id,
+        ticker=ticker,
+        isu_cd="KR7005930003",
+        name=ticker,
+        market="KOSPI",
+        trade_id=f"{strategy_id}-{ticker}",
+        trade_sequence=1,
+        entry_signal_date="2021-01-01",
+        entry_execution_date="2021-01-04",
+        entry_open=100.0,
+        entry_market_cap=200_000_000_000.0,
+        entry_avg_trading_value_20d=400_000_000.0,
+        exit_signal_date="2021-01-08" if trade_status == "REALIZED" else None,
+        exit_execution_date="2021-01-11" if trade_status == "REALIZED" else None,
+        exit_type="EXIT_3" if trade_status == "REALIZED" else "NO_EXIT_BEFORE_CUTOFF",
+        exit_price=112.5 if trade_status == "REALIZED" else None,
+        terminal_return=terminal_return,
+        mae=-4.0,
+        mfe=18.0,
+        holding_trading_days=6,
+        holding_weeks=1.2,
+        trade_status=trade_status,
+        cutoff_date="2026-08-14",
+        cutoff_valuation_price=112.5 if trade_status != "REALIZED" else None,
+        mark_to_cutoff_return=12.5 if trade_status != "REALIZED" else None,
+        identity_effective_from="2020-01-01",
+        identity_effective_to="2026-08-14",
+        loss_guard_triggered=loss_guard_triggered,
+    )
+
+
+def _persistence_portfolio_result() -> dict:
+    metrics = {
+        "total_return": 0.10,
+        "cagr": 0.02,
+        "mdd": -0.05,
+        "exposure": 0.25,
+        "turnover": 0.50,
+        "trade_count": 1,
+        "holding_period_days": 6.0,
+        "win_rate": 1.0,
+        "payoff_ratio": None,
+        "open_at_cutoff": 0,
+        "total_commission": 100.0,
+        "total_sell_tax": 200.0,
+        "slippage_impact": 300.0,
+        "unresolved_count": 0,
+        "cash_conservation_pass": True,
+    }
+    event = {
+        "strategy_id": runner.BASE_STRATEGY_ID,
+        "ticker": "005930",
+        "isu_cd": "KR7005930003",
+        "market": "KOSPI",
+        "position_id": "trade-1",
+        "signal_date": "2021-01-01",
+        "execution_date": "2021-01-04",
+        "event_type": "ENTRY",
+        "event_status": "EXECUTED",
+        "reference_open": 100.0,
+        "slippage_adjusted_price": 100.1,
+        "shares": 100,
+        "notional": 10010.0,
+        "commission": 1.5,
+        "sell_tax": 0.0,
+        "cash_before": 200_000_000.0,
+        "cash_after": 189_988_488.5,
+        "pending_sale_proceeds": 0.0,
+        "entry_or_exit_reason": "ENTRY",
+        "market_cap_at_signal": 200_000_000_000.0,
+        "unresolved_reason": None,
+        "open_at_cutoff": False,
+    }
+    daily = {
+        "date": "2026-08-14",
+        "strategy_id": runner.BASE_STRATEGY_ID,
+        "cash": 200_000_000.0,
+        "pending_sale_proceeds": 0.0,
+        "invested_market_value": 0.0,
+        "equity": 220_000_000.0,
+        "exposure": 0.0,
+        "drawdown": -0.05,
+    }
+    return {
+        "strategies": {
+            runner.BASE_STRATEGY_ID: {"metrics": metrics, "event_ledger": [event], "daily_equity": [daily]},
+            runner.JULIA_STRATEGY_ID: {
+                "metrics": dict(metrics),
+                "event_ledger": [],
+                "daily_equity": [dict(daily, strategy_id=runner.JULIA_STRATEGY_ID)],
+            },
+        }
+    }
+
+
+def test_result_serialization_is_scalar_and_uses_fixed_artifact_paths(tmp_path):
+    task = _task()
+    signal = runner.EntrySignal(
+        task,
+        pd.Timestamp("2021-01-01"),
+        pd.Timestamp("2021-01-04"),
+        200_000_000_000.0,
+        400_000_000.0,
+    )
+    base = _trade_record(runner.BASE_STRATEGY_ID, loss_guard_triggered=True)
+    julia = _trade_record(runner.JULIA_STRATEGY_ID)
+    persisted = runner.persist_official_results(
+        tmp_path,
+        runner.build_execution_contract(),
+        {"pairs": [{"signal": signal, "base": base, "julia": julia, "status": "PASS"}]},
+        {runner.BASE_STRATEGY_ID: [base], runner.JULIA_STRATEGY_ID: [julia]},
+        _persistence_portfolio_result(),
+        source_head="test-head",
+        benchmark_summary={
+            "KOSPI": {"index_code": "1001", "status": "PASS", "total_return_pct": 10.0},
+            "KOSDAQ": {"index_code": "2001", "status": "PASS", "total_return_pct": 20.0},
+        },
+    )
+    output_dir = tmp_path / runner.OUTPUT_DIR_REL
+    assert persisted["status"] == "COMPLETE"
+    assert persisted["counts"]["matched_entry_rows"] == 1
+    assert persisted["counts"]["sequential_rows"] == 2
+    assert set(persisted["result_artifacts"]) == set(runner.OFFICIAL_RESULT_FILES + runner.SUPPORT_RESULT_FILES)
+    matched = pd.read_csv(output_dir / "matched_entry_comparison.csv")
+    summary = runner._read_json(output_dir / "aggregate_summary.json")
+    assert matched.loc[0, "entry_identity_equal"]
+    assert matched.loc[0, "return_delta"] == pytest.approx(0.0)
+    assert summary["counts"]["portfolio_event_rows"] == 1
+    assert summary["counts"]["portfolio_daily_equity_rows"] == 2
+    assert "namespace(" not in (output_dir / "matched_entry_comparison.csv").read_text(encoding="utf-8")
+    assert (output_dir / "validation_report.md").exists()
+
+
+def test_unresolved_status_propagates_without_silent_exclusion(tmp_path):
+    task = _task()
+    signal = runner.EntrySignal(
+        task,
+        pd.Timestamp("2021-01-01"),
+        pd.Timestamp("2021-01-04"),
+        200_000_000_000.0,
+        400_000_000.0,
+    )
+    base = _trade_record(runner.BASE_STRATEGY_ID)
+    persisted = runner.persist_official_results(
+        tmp_path,
+        runner.build_execution_contract(),
+        {"pairs": [{"signal": signal, "base": base, "julia": None, "status": "UNRESOLVED"}]},
+        {runner.BASE_STRATEGY_ID: [base], runner.JULIA_STRATEGY_ID: []},
+        _persistence_portfolio_result(),
+        source_head="test-head",
+        benchmark_summary={
+            "KOSPI": {"index_code": "1001", "status": "PASS"},
+            "KOSDAQ": {"index_code": "2001", "status": "PASS"},
+        },
+    )
+    assert persisted["status"] == "INCOMPLETE_REQUIRES_REVIEW"
+    summary = runner._read_json(tmp_path / runner.OUTPUT_DIR_REL / "aggregate_summary.json")
+    assert summary["unresolved_count"] == 1
+    assert summary["unresolved_counts"]["matched_entry"] == 1
+    assert summary["matched_entry"]["unresolved_count"] == 1
+
+
+def test_run_official_never_constructs_runner_before_preflight(monkeypatch, tmp_path):
+    def fail_preflight(*_args, **_kwargs):
+        raise runner.OfficialValidationError("PREFLIGHT_BLOCKED")
+
+    monkeypatch.setattr(runner, "preflight", fail_preflight)
+    monkeypatch.setattr(
+        runner,
+        "OfficialValidationRunner",
+        lambda *_args, **_kwargs: pytest.fail("runner constructed before preflight"),
+    )
+    with pytest.raises(runner.OfficialValidationError, match="PREFLIGHT_BLOCKED"):
+        runner.run_official(tmp_path)
+
+
+def test_performance_sample_does_not_persist_official_artifacts(monkeypatch, tmp_path):
+    contract_path = tmp_path / runner.CONTRACT_REL
+    contract_path.parent.mkdir(parents=True)
+    contract_path.write_text('{"contract_sha256":"sample"}', encoding="utf-8")
+    tasks = (
+        runner.IdentityTask(
+            ticker="000001",
+            isu_cd="KR0000010001",
+            market="KOSPI",
+            effective_from=pd.Timestamp("2021-01-01"),
+            effective_to=pd.Timestamp("2026-08-14"),
+        ),
+        runner.IdentityTask(
+            ticker="200001",
+            isu_cd="KR2000010001",
+            market="KOSDAQ",
+            effective_from=pd.Timestamp("2021-01-01"),
+            effective_to=pd.Timestamp("2026-08-14"),
+        ),
+    )
+
+    class FakeRunner:
+        def __init__(self, _root, _contract, *, identity_limit, reuse_lifecycle_caches):
+            assert identity_limit == 2
+            assert reuse_lifecycle_caches is True
+            self.authority = object()
+            self.diagnostic_counts = {
+                "valid_week_count": 0,
+                "candidate_matched_signal_count": 0,
+                "matched_v2_strategy_invocation_count": 0,
+                "matched_julia_strategy_invocation_count": 0,
+                "sequential_v2_strategy_invocation_count": 2,
+                "sequential_julia_strategy_invocation_count": 2,
+            }
+            self.diagnostic_seconds = {
+                "matched_discovery_seconds": 0.0,
+                "matched_strategy_seconds": 0.0,
+            }
+
+        def identity_tasks(self):
+            return tasks
+
+        def run_matched_entry(self):
+            return {"candidate_signal_count": 0, "pairs": []}
+
+        def run_sequential(self):
+            return {runner.BASE_STRATEGY_ID: [], runner.JULIA_STRATEGY_ID: []}
+
+        def run_realistic_portfolio(self, _sequential):
+            return {"strategies": {}}
+
+    monkeypatch.setattr(runner, "preflight", lambda *_args, **_kwargs: {"status": "READY"})
+    monkeypatch.setattr(runner, "OfficialValidationRunner", FakeRunner)
+    monkeypatch.setattr(runner, "_identity_tasks", lambda _authority: tasks)
+
+    result = runner.run_performance_sample(tmp_path, sample_size=2)
+    assert result["status"] == "COMPLETE"
+    assert result["official_backtest_executed"] is False
+    assert result["official_result_artifacts"] == []
+    assert not (tmp_path / runner.OUTPUT_DIR_REL / "aggregate_summary.json").exists()
+
+
+def test_performance_parity_sample_requires_each_frozen_axis_to_match(monkeypatch, tmp_path):
+    payload = {
+        "matched_signal_keys": [("000001", "ISU", "KOSPI", "2021-01-01", "2021-01-04")],
+        "matched_v2_trades": [SimpleNamespace(trade_id="v2")],
+        "matched_julia_trades": [SimpleNamespace(trade_id="julia")],
+        "sequential_v2_trades": [SimpleNamespace(trade_id="v2-sequential")],
+        "sequential_julia_trades": [SimpleNamespace(trade_id="julia-sequential")],
+        "unresolved_counts": {"total": 0},
+        "portfolio_output": {"strategies": {}},
+    }
+
+    def fake_sample(*_args, reuse_lifecycle_caches, _return_parity_payload, **_kwargs):
+        assert _return_parity_payload is True
+        return {"reuse_lifecycle_caches": reuse_lifecycle_caches}, payload
+
+    monkeypatch.setattr(runner, "run_performance_sample", fake_sample)
+    result = runner.run_performance_parity_sample(tmp_path, sample_size=20)
+    assert result["status"] == "PASS"
+    assert all(result["checks"].values())
+    assert set(result["checks"]) == {
+        "matched_signal_keys",
+        "matched_v2_trades",
+        "matched_julia_trades",
+        "sequential_v2_trades",
+        "sequential_julia_trades",
+        "unresolved_counts",
+        "portfolio_output",
+    }
 
 
 def _portfolio_record(

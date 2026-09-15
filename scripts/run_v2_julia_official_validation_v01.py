@@ -17,7 +17,13 @@ import hashlib
 import json
 import math
 from pathlib import Path
+import resource
 import socket
+import subprocess
+import sys
+from datetime import date, datetime
+from statistics import mean, median
+import time
 from typing import Any, Iterator, Mapping, Sequence
 
 import pandas as pd
@@ -30,6 +36,7 @@ from trend_scanner.backtest.fastcore_fundamentals_simple_v01 import (
     pit_common_for_identity,
     simulate_ticker_strategy_fundamentals_v01,
 )
+from trend_scanner.backtest.feature_cache import FastSnapshotCache, MonthlySnapshotCache
 from trend_scanner.backtest.raw_investability_panel import (
     recompute_identity_scoped_avg_trading_value_20d,
 )
@@ -96,6 +103,42 @@ OFFICIAL_RESULT_FILES = (
     "validation_report.md",
 )
 SUPPORT_RESULT_FILES = ("portfolio_event_ledger.csv", "portfolio_daily_equity.csv")
+
+MATCHED_ENTRY_COLUMNS = (
+    "ticker", "isu_cd", "market", "signal_date", "entry_execution_date", "entry_open",
+    "entry_identity_equal", "entry_signal_date_equal", "entry_execution_date_equal",
+    "entry_open_equal", "investability_equal",
+    "v2_exit_type", "v2_exit_signal_date", "v2_exit_execution_date", "v2_exit_price",
+    "julia_exit_type", "julia_exit_signal_date", "julia_exit_execution_date", "julia_exit_price",
+    "v2_terminal_return", "julia_terminal_return", "return_delta",
+    "v2_mae", "julia_mae", "v2_mfe", "julia_mfe",
+    "v2_holding_period", "julia_holding_period",
+    "v2_open_at_cutoff", "julia_open_at_cutoff", "pair_status",
+)
+SEQUENTIAL_COLUMNS = (
+    "strategy_id", "ticker", "isu_cd", "market", "trade_id", "trade_sequence",
+    "entry_signal_date", "entry_execution_date", "entry_open", "entry_market_cap",
+    "entry_avg_trading_value_20d", "exit_signal_date", "exit_execution_date", "exit_type",
+    "exit_price", "terminal_return", "mae", "mfe", "holding_trading_days", "holding_weeks",
+    "trade_status", "cutoff_date", "cutoff_valuation_price", "mark_to_cutoff_return",
+    "open_at_cutoff", "identity_effective_from", "identity_effective_to", "loss_guard_triggered",
+)
+FAILURE_COLUMNS = (
+    "case_type", "strategy_id", "ticker", "isu_cd", "market", "trade_id",
+    "signal_date", "entry_execution_date", "exit_execution_date", "terminal_return", "mae",
+    "mfe", "loss_guard_triggered", "unresolved_reason", "case_status",
+)
+PORTFOLIO_EVENT_COLUMNS = (
+    "strategy_id", "ticker", "isu_cd", "market", "position_id", "signal_date",
+    "execution_date", "event_type", "event_status", "reference_open",
+    "slippage_adjusted_price", "shares", "notional", "commission", "sell_tax",
+    "cash_before", "cash_after", "pending_sale_proceeds", "entry_or_exit_reason",
+    "market_cap_at_signal", "unresolved_reason", "open_at_cutoff",
+)
+PORTFOLIO_EQUITY_COLUMNS = (
+    "date", "strategy_id", "cash", "pending_sale_proceeds", "invested_market_value",
+    "equity", "exposure", "drawdown",
+)
 
 HISTORICAL_SELL_TAX_SCHEDULE = (
     {"start": "2021-01-01", "end": "2022-12-31", "KOSPI": 0.0023, "KOSDAQ": 0.0023},
@@ -238,6 +281,61 @@ def _identity_tasks(authority: Any) -> tuple[IdentityTask, ...]:
                 )
             )
     return tuple(tasks)
+
+
+def select_performance_sample_tasks(
+    tasks: Sequence[IdentityTask],
+    sample_size: int,
+) -> tuple[IdentityTask, ...]:
+    """Select a deterministic, market-balanced nested performance sample.
+
+    The per-market order prefers longer lifecycle intervals so a sample does
+    not accidentally consist only of short-lived identities.  Round-robin
+    interleaving makes the first N identities a stable subset of larger N
+    samples while keeping both KOSPI and KOSDAQ represented.
+    """
+    if sample_size <= 0:
+        raise OfficialValidationError("PERFORMANCE_SAMPLE_SIZE_MUST_BE_POSITIVE")
+    if sample_size > len(tasks):
+        raise OfficialValidationError(
+            f"PERFORMANCE_SAMPLE_SIZE_EXCEEDS_IDENTITY_COUNT:{sample_size}>{len(tasks)}"
+        )
+    by_market: dict[str, list[IdentityTask]] = {}
+    for task in tasks:
+        by_market.setdefault(task.market, []).append(task)
+    required_markets = {"KOSPI", "KOSDAQ"}
+    if not required_markets.issubset(by_market):
+        raise OfficialValidationError("PERFORMANCE_SAMPLE_MARKET_BALANCE_UNAVAILABLE")
+    markets = tuple(sorted(by_market))
+    ordered = {
+        market: sorted(
+            rows,
+            key=lambda task: (
+                -(task.effective_to - task.effective_from).days,
+                task.ticker,
+                task.isu_cd,
+                task.effective_from,
+                task.effective_to,
+            ),
+        )
+        for market, rows in by_market.items()
+    }
+    cursors = {market: 0 for market in markets}
+    selected: list[IdentityTask] = []
+    while len(selected) < sample_size:
+        progressed = False
+        for market in markets:
+            cursor = cursors[market]
+            if cursor >= len(ordered[market]):
+                continue
+            selected.append(ordered[market][cursor])
+            cursors[market] += 1
+            progressed = True
+            if len(selected) == sample_size:
+                break
+        if not progressed:
+            raise OfficialValidationError("PERFORMANCE_SAMPLE_SELECTION_INCOMPLETE")
+    return tuple(selected)
 
 
 def _find_exact_raw_row(panel: pd.DataFrame, date: pd.Timestamp) -> pd.Series | None:
@@ -696,10 +794,19 @@ def preflight(root: Path = ROOT, *, write_contract: bool = False) -> dict[str, A
 class OfficialValidationRunner:
     """Run-scoped official inputs for the next explicit backtest task."""
 
-    def __init__(self, root: Path = ROOT, contract: Mapping[str, Any] | None = None) -> None:
+    def __init__(
+        self,
+        root: Path = ROOT,
+        contract: Mapping[str, Any] | None = None,
+        *,
+        identity_limit: int | None = None,
+        reuse_lifecycle_caches: bool = True,
+    ) -> None:
         self.root = Path(root).resolve()
         self.contract = dict(contract or _read_json(self.root / CONTRACT_REL))
         validate_execution_contract(self.contract, self.root)
+        self.identity_limit = identity_limit
+        self.reuse_lifecycle_caches = reuse_lifecycle_caches
         self.authority = load_effective_authority(self.root / EFFECTIVE_AUTHORITY_REL)
         self.intervals = _identity_intervals(self.authority)
         self.repository = build_repository_v2(self.root, end=EXECUTION_SUPPORT_END)
@@ -708,9 +815,113 @@ class OfficialValidationRunner:
         self.stage_contract = _read_json(self.root / STAGE_CONTRACT_REL)
         self._daily_cache: dict[str, pd.DataFrame] = {}
         self._ancillary_cache: dict[str, pd.DataFrame] = {}
+        self._lifecycle_daily_cache: dict[IdentityTask, pd.DataFrame] = {}
+        self._lifecycle_context_cache: dict[IdentityTask, Any] = {}
+        self._lifecycle_raw_panel_cache: dict[IdentityTask, pd.DataFrame] = {}
+        self._lifecycle_fast_snapshot_caches: dict[IdentityTask, FastSnapshotCache] = {}
+        self._lifecycle_monthly_snapshot_caches: dict[IdentityTask, MonthlySnapshotCache] = {}
+        self._all_identity_tasks: tuple[IdentityTask, ...] | None = None
+        self.diagnostic_counts: dict[str, int] = {
+            "valid_week_count": 0,
+            "candidate_matched_signal_count": 0,
+            "matched_v2_strategy_invocation_count": 0,
+            "matched_julia_strategy_invocation_count": 0,
+            "sequential_v2_strategy_invocation_count": 0,
+            "sequential_julia_strategy_invocation_count": 0,
+        }
+        self.diagnostic_seconds: dict[str, float] = {
+            "matched_discovery_seconds": 0.0,
+            "matched_strategy_seconds": 0.0,
+        }
+
+    def _ensure_diagnostics(self) -> None:
+        if not hasattr(self, "diagnostic_counts"):
+            self.diagnostic_counts = {
+                "valid_week_count": 0,
+                "candidate_matched_signal_count": 0,
+                "matched_v2_strategy_invocation_count": 0,
+                "matched_julia_strategy_invocation_count": 0,
+                "sequential_v2_strategy_invocation_count": 0,
+                "sequential_julia_strategy_invocation_count": 0,
+            }
+        if not hasattr(self, "diagnostic_seconds"):
+            self.diagnostic_seconds = {
+                "matched_discovery_seconds": 0.0,
+                "matched_strategy_seconds": 0.0,
+            }
+
+    def _ensure_lifecycle_caches(self) -> None:
+        if not hasattr(self, "reuse_lifecycle_caches"):
+            self.reuse_lifecycle_caches = True
+        if not hasattr(self, "_lifecycle_daily_cache"):
+            self._lifecycle_daily_cache = {}
+            self._lifecycle_context_cache = {}
+            self._lifecycle_raw_panel_cache = {}
+            self._lifecycle_fast_snapshot_caches = {}
+            self._lifecycle_monthly_snapshot_caches = {}
+
+    def _lifecycle_daily(self, task: IdentityTask) -> pd.DataFrame:
+        self._ensure_lifecycle_caches()
+        if self.reuse_lifecycle_caches and task in self._lifecycle_daily_cache:
+            return self._lifecycle_daily_cache[task]
+        daily, _ = self.load_identity_inputs(task)
+        clipped = clip_to_identity_lifecycle(daily, task.lifecycle())
+        if clipped is None:
+            raise OfficialValidationError(f"REPOSITORY_V2_DAILY_UNAVAILABLE:{task.key}")
+        if self.reuse_lifecycle_caches:
+            self._lifecycle_daily_cache[task] = clipped
+        return clipped
+
+    def _lifecycle_context(self, task: IdentityTask):
+        self._ensure_diagnostics()
+        self._ensure_lifecycle_caches()
+        if self.reuse_lifecycle_caches and task in self._lifecycle_context_cache:
+            return self._lifecycle_context_cache[task]
+        context = build_precomputed_ticker_context(task.ticker, task.ticker, self._lifecycle_daily(task))
+        self.diagnostic_counts["context_build_count"] = self.diagnostic_counts.get("context_build_count", 0) + 1
+        if self.reuse_lifecycle_caches:
+            self._lifecycle_context_cache[task] = context
+        return context
+
+    def _lifecycle_fast_snapshot_cache(self, task: IdentityTask) -> FastSnapshotCache | None:
+        self._ensure_lifecycle_caches()
+        if not self.reuse_lifecycle_caches:
+            return None
+        return self._lifecycle_fast_snapshot_caches.setdefault(task, FastSnapshotCache())
+
+    def _lifecycle_monthly_snapshot_cache(self, task: IdentityTask) -> MonthlySnapshotCache | None:
+        self._ensure_lifecycle_caches()
+        if not self.reuse_lifecycle_caches:
+            return None
+        return self._lifecycle_monthly_snapshot_caches.setdefault(task, MonthlySnapshotCache())
+
+    def diagnostic_snapshot(self) -> dict[str, int]:
+        self._ensure_diagnostics()
+        self._ensure_lifecycle_caches()
+        return {
+            **self.diagnostic_counts,
+            "fast_actual_evaluation_count": sum(
+                cache.evaluation_count for cache in self._lifecycle_fast_snapshot_caches.values()
+            ),
+            "fast_cache_hit_count": sum(
+                cache.cache_hit_count for cache in self._lifecycle_fast_snapshot_caches.values()
+            ),
+            "monthly_actual_evaluation_count": sum(
+                cache.evaluation_count for cache in self._lifecycle_monthly_snapshot_caches.values()
+            ),
+            "monthly_cache_hit_count": sum(
+                cache.cache_hit_count for cache in self._lifecycle_monthly_snapshot_caches.values()
+            ),
+            "context_build_count": int(self.diagnostic_counts.get("context_build_count", 0)),
+            "raw_panel_build_count": int(self.diagnostic_counts.get("raw_panel_build_count", 0)),
+        }
 
     def identity_tasks(self) -> tuple[IdentityTask, ...]:
-        return _identity_tasks(self.authority)
+        if self._all_identity_tasks is None:
+            self._all_identity_tasks = _identity_tasks(self.authority)
+        if self.identity_limit is None:
+            return self._all_identity_tasks
+        return select_performance_sample_tasks(self._all_identity_tasks, self.identity_limit)
 
     def load_identity_inputs(self, task: IdentityTask) -> tuple[pd.DataFrame, pd.DataFrame]:
         if task.ticker not in self._daily_cache:
@@ -725,8 +936,16 @@ class OfficialValidationRunner:
         return self._daily_cache[task.ticker], self._ancillary_cache[task.ticker]
 
     def identity_raw_panel(self, task: IdentityTask) -> pd.DataFrame:
+        self._ensure_diagnostics()
+        self._ensure_lifecycle_caches()
+        if self.reuse_lifecycle_caches and task in self._lifecycle_raw_panel_cache:
+            return self._lifecycle_raw_panel_cache[task]
         _, ancillary = self.load_identity_inputs(task)
-        return build_identity_raw_panel(ancillary, task)
+        panel = build_identity_raw_panel(ancillary, task)
+        self.diagnostic_counts["raw_panel_build_count"] = self.diagnostic_counts.get("raw_panel_build_count", 0) + 1
+        if self.reuse_lifecycle_caches:
+            self._lifecycle_raw_panel_cache[task] = panel
+        return panel
 
     def _entry_gate(self, task: IdentityTask, panel: pd.DataFrame):
         def gate(_as_of: pd.Timestamp, values: dict[str, Any]) -> dict[str, Any]:
@@ -766,6 +985,7 @@ class OfficialValidationRunner:
     ) -> list[StrategyTradeRecord]:
         daily, _ = self.load_identity_inputs(task)
         panel = self.identity_raw_panel(task)
+        context = self._lifecycle_context(task) if self.reuse_lifecycle_caches else None
         strategy_id = BASE_STRATEGY_ID if enable_loss_guard else JULIA_STRATEGY_ID
         return simulate_ticker_strategy_fundamentals_v01(
             strategy_id=strategy_id,
@@ -781,6 +1001,9 @@ class OfficialValidationRunner:
             backtest_end=EXECUTION_SUPPORT_END,
             entry_eligible_from=START_DATE,
             allowed_signal_dates=allowed_signal_dates,
+            snapshot_context=context,
+            fast_snapshot_cache=self._lifecycle_fast_snapshot_cache(task),
+            monthly_snapshot_cache=self._lifecycle_monthly_snapshot_cache(task),
             identity_lifecycle=task.lifecycle(),
             pit_membership=lambda ticker, isu_cd, market, value: pit_common_for_identity(
                 self.intervals, ticker, isu_cd, market, value
@@ -798,28 +1021,42 @@ class OfficialValidationRunner:
         This scan does not call either strategy lifecycle.  It therefore cannot
         collapse Matched-entry into a Sequential intersection.
         """
-        daily, _ = self.load_identity_inputs(task)
-        daily = clip_to_identity_lifecycle(daily, task.lifecycle())
+        self._ensure_diagnostics()
+        daily = self._lifecycle_daily(task)
         if daily is None or daily.empty:
             return ()
-        context = build_precomputed_ticker_context(task.ticker, task.ticker, daily)
+        context = self._lifecycle_context(task)
         weekly = context.weekly_up_to(EXECUTION_SUPPORT_END)
         daily_dates = set(pd.DatetimeIndex(daily.index).normalize())
         valid_weeks = [pd.Timestamp(w).normalize() for w in weekly.index if pd.Timestamp(w).normalize() in daily_dates]
+        valid_weeks = [week for week in valid_weeks if START_DATE <= week <= SIGNAL_CUTOFF]
+        self.diagnostic_counts["valid_week_count"] += len(valid_weeks)
         panel = self.identity_raw_panel(task)
+        fast_snapshot_cache = self._lifecycle_fast_snapshot_cache(task)
         signals: list[EntrySignal] = []
         for week in valid_weeks:
-            if not START_DATE <= week <= SIGNAL_CUTOFF:
-                continue
-            result = evaluate_pattern_a_fast(
-                task.ticker,
-                task.ticker,
-                daily,
-                week,
-                self.score_contract,
-                self.stage_contract,
-                context=context,
-            )
+            if fast_snapshot_cache is None:
+                result = evaluate_pattern_a_fast(
+                    task.ticker,
+                    task.ticker,
+                    daily,
+                    week,
+                    self.score_contract,
+                    self.stage_contract,
+                    context=context,
+                )
+            else:
+                result = fast_snapshot_cache.get(
+                    task.ticker,
+                    task.ticker,
+                    daily,
+                    week,
+                    self.score_contract,
+                    self.stage_contract,
+                    context=context,
+                )
+                if result is None:
+                    continue
             if not is_qualifying_fast_entry(result):
                 continue
             if not pit_common_for_identity(self.intervals, task.ticker, task.isu_cd, task.market, week):
@@ -838,18 +1075,26 @@ class OfficialValidationRunner:
             if execution_date > EXECUTION_SUPPORT_END or not pit_common_for_identity(self.intervals, task.ticker, task.isu_cd, task.market, execution_date):
                 continue
             signals.append(EntrySignal(task, week, execution_date, float(mcap), float(avg_value)))
+            self.diagnostic_counts["candidate_matched_signal_count"] += 1
         return tuple(signals)
 
     def run_matched_entry(self) -> dict[str, Any]:
         """Prepare matched pairs from an independent, strategy-neutral ledger."""
+        self._ensure_diagnostics()
         pairs: list[dict[str, Any]] = []
         signal_count = 0
         for task in self.identity_tasks():
+            discovery_started = time.perf_counter()
             signals = self.discover_matched_entry_signals(task)
+            self.diagnostic_seconds["matched_discovery_seconds"] += time.perf_counter() - discovery_started
             signal_count += len(signals)
             for signal in signals:
+                strategy_started = time.perf_counter()
+                self.diagnostic_counts["matched_v2_strategy_invocation_count"] += 1
                 base = self.run_identity_strategy(task, enable_loss_guard=True, allowed_signal_dates={signal.signal_date})
+                self.diagnostic_counts["matched_julia_strategy_invocation_count"] += 1
                 julia = self.run_identity_strategy(task, enable_loss_guard=False, allowed_signal_dates={signal.signal_date})
+                self.diagnostic_seconds["matched_strategy_seconds"] += time.perf_counter() - strategy_started
                 pairs.append({
                     "entry_key": signal.key(),
                     "signal": signal,
@@ -861,9 +1106,12 @@ class OfficialValidationRunner:
 
     def run_sequential(self) -> dict[str, list[StrategyTradeRecord]]:
         """Run each strategy's independent re-entry path; never intersect it."""
+        self._ensure_diagnostics()
         result = {BASE_STRATEGY_ID: [], JULIA_STRATEGY_ID: []}
         for task in self.identity_tasks():
+            self.diagnostic_counts["sequential_v2_strategy_invocation_count"] += 1
             result[BASE_STRATEGY_ID].extend(self.run_identity_strategy(task, enable_loss_guard=True))
+            self.diagnostic_counts["sequential_julia_strategy_invocation_count"] += 1
             result[JULIA_STRATEGY_ID].extend(self.run_identity_strategy(task, enable_loss_guard=False))
         return result
 
@@ -1291,12 +1539,850 @@ class OfficialValidationRunner:
                 "market_cap_at_signal", "unresolved_reason", "open_at_cutoff",
             ],
             "daily_equity_columns": [
-                "date", "strategy_id", "cash", "invested_market_value", "equity", "exposure", "drawdown",
+                "date", "strategy_id", "cash", "pending_sale_proceeds", "invested_market_value",
+                "equity", "exposure", "drawdown",
             ],
             "records_received": {str(key): len(value) for key, value in records_by_strategy.items()},
             "strategies": strategy_results,
             "result_artifacts_written": False,
         }
+
+
+def _json_safe(value: Any) -> Any:
+    """Convert result values to deterministic JSON/CSV-safe scalar structures."""
+    if value is None or isinstance(value, (str, bool, int)):
+        return value
+    if isinstance(value, float):
+        return value if math.isfinite(value) else None
+    if isinstance(value, (pd.Timestamp, datetime, date)):
+        return pd.Timestamp(value).strftime("%Y-%m-%d")
+    if isinstance(value, Mapping):
+        return {str(key): _json_safe(child) for key, child in value.items()}
+    if isinstance(value, (list, tuple, set)):
+        return [_json_safe(child) for child in value]
+    if hasattr(value, "to_dict") and callable(value.to_dict):
+        return _json_safe(value.to_dict())
+    if hasattr(value, "item") and callable(value.item):
+        try:
+            return _json_safe(value.item())
+        except (TypeError, ValueError):
+            pass
+    return str(value)
+
+
+def _safe_scalar(value: Any) -> Any:
+    safe = _json_safe(value)
+    return safe if not isinstance(safe, (Mapping, list)) else None
+
+
+def _mean_median(values: Sequence[float]) -> dict[str, float | None]:
+    finite = [float(value) for value in values if math.isfinite(float(value))]
+    return {
+        "mean": mean(finite) if finite else None,
+        "median": median(finite) if finite else None,
+    }
+
+
+def _trade_summary(records: Sequence[Any]) -> dict[str, Any]:
+    realized = [record for record in records if _record_value(record, "trade_status") == "REALIZED"]
+    open_at_cutoff = [record for record in records if _record_value(record, "trade_status") == "OPEN_AT_CUTOFF"]
+    returns = [
+        float(value)
+        for record in records
+        for value in [_record_value(record, "terminal_return")]
+        if isinstance(value, (int, float)) and math.isfinite(float(value))
+    ]
+    realized_returns = [
+        float(value)
+        for record in realized
+        for value in [_record_value(record, "terminal_return")]
+        if isinstance(value, (int, float)) and math.isfinite(float(value))
+    ]
+    maes = [
+        float(value)
+        for record in records
+        for value in [_record_value(record, "mae")]
+        if isinstance(value, (int, float)) and math.isfinite(float(value))
+    ]
+    mfes = [
+        float(value)
+        for record in records
+        for value in [_record_value(record, "mfe")]
+        if isinstance(value, (int, float)) and math.isfinite(float(value))
+    ]
+    holding_days = [
+        float(value)
+        for record in records
+        for value in [_record_value(record, "holding_trading_days")]
+        if isinstance(value, (int, float)) and math.isfinite(float(value))
+    ]
+    return_stats = _mean_median(returns)
+    mae_stats = _mean_median(maes)
+    mfe_stats = _mean_median(mfes)
+    holding_stats = _mean_median(holding_days)
+    return {
+        "trade_count": len(records),
+        "realized_count": len(realized),
+        "open_count": len(open_at_cutoff),
+        "mean_terminal_return": return_stats["mean"],
+        "median_terminal_return": return_stats["median"],
+        "win_rate": len([value for value in realized_returns if value > 0]) / len(realized_returns)
+        if realized_returns else None,
+        "mean_mae": mae_stats["mean"],
+        "median_mae": mae_stats["median"],
+        "deepest_mae": min(maes) if maes else None,
+        "mean_mfe": mfe_stats["mean"],
+        "median_mfe": mfe_stats["median"],
+        "mean_holding_period": holding_stats["mean"],
+        "median_holding_period": holding_stats["median"],
+        "negative_return_count": len([value for value in returns if value < 0]),
+        "return_le_minus_20_count": len([value for value in returns if value <= -20.0]),
+        "return_le_minus_30_count": len([value for value in returns if value <= -30.0]),
+    }
+
+
+def _signal_task_value(signal: Any, field: str, default: Any = None) -> Any:
+    task = _record_value(signal, "task")
+    return _record_value(task, field, default)
+
+
+def _matched_rows(result: Mapping[str, Any]) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for pair in result.get("pairs", ()):
+        signal = pair.get("signal")
+        base = pair.get("base")
+        julia = pair.get("julia")
+        base_identity = _identity_key_from_record(base) if base is not None else None
+        julia_identity = _identity_key_from_record(julia) if julia is not None else None
+        signal_identity = (
+            str(_signal_task_value(signal, "ticker", "")),
+            str(_signal_task_value(signal, "isu_cd", "") or ""),
+            str(_signal_task_value(signal, "market", "")),
+        )
+        base_entry_open = _safe_scalar(_record_value(base, "entry_open")) if base is not None else None
+        julia_entry_open = _safe_scalar(_record_value(julia, "entry_open")) if julia is not None else None
+        entry_open = base_entry_open if base_entry_open is not None else julia_entry_open
+        base_signal_date = _record_value(base, "entry_signal_date") if base is not None else None
+        julia_signal_date = _record_value(julia, "entry_signal_date") if julia is not None else None
+        base_execution_date = _record_value(base, "entry_execution_date") if base is not None else None
+        julia_execution_date = _record_value(julia, "entry_execution_date") if julia is not None else None
+        base_mcap = _record_value(base, "entry_market_cap") if base is not None else None
+        julia_mcap = _record_value(julia, "entry_market_cap") if julia is not None else None
+        base_avg_value = _record_value(base, "entry_avg_trading_value_20d") if base is not None else None
+        julia_avg_value = _record_value(julia, "entry_avg_trading_value_20d") if julia is not None else None
+        rows.append({
+            "ticker": signal_identity[0],
+            "isu_cd": signal_identity[1],
+            "market": signal_identity[2],
+            "signal_date": _safe_scalar(_record_value(signal, "signal_date")),
+            "entry_execution_date": _safe_scalar(_record_value(signal, "execution_date")),
+            "entry_open": entry_open,
+            "entry_identity_equal": base_identity == julia_identity == signal_identity,
+            "entry_signal_date_equal": (
+                base_signal_date is not None and base_signal_date == julia_signal_date
+                and base_signal_date == _record_value(signal, "signal_date")
+            ),
+            "entry_execution_date_equal": (
+                base_execution_date is not None and base_execution_date == julia_execution_date
+                and base_execution_date == _record_value(signal, "execution_date")
+            ),
+            "entry_open_equal": (
+                base_entry_open is not None and julia_entry_open is not None
+                and math.isclose(float(base_entry_open), float(julia_entry_open), rel_tol=0.0, abs_tol=1e-12)
+            ),
+            "investability_equal": (
+                base_mcap is not None and julia_mcap is not None
+                and float(base_mcap) == float(julia_mcap)
+                and base_avg_value is not None and julia_avg_value is not None
+                and float(base_avg_value) == float(julia_avg_value)
+            ),
+            "v2_exit_type": _safe_scalar(_record_value(base, "exit_type")),
+            "v2_exit_signal_date": _safe_scalar(_record_value(base, "exit_signal_date")),
+            "v2_exit_execution_date": _safe_scalar(_record_value(base, "exit_execution_date")),
+            "v2_exit_price": _safe_scalar(_record_value(base, "exit_price")),
+            "julia_exit_type": _safe_scalar(_record_value(julia, "exit_type")),
+            "julia_exit_signal_date": _safe_scalar(_record_value(julia, "exit_signal_date")),
+            "julia_exit_execution_date": _safe_scalar(_record_value(julia, "exit_execution_date")),
+            "julia_exit_price": _safe_scalar(_record_value(julia, "exit_price")),
+            "v2_terminal_return": _safe_scalar(_record_value(base, "terminal_return")),
+            "julia_terminal_return": _safe_scalar(_record_value(julia, "terminal_return")),
+            "return_delta": (
+                float(_record_value(julia, "terminal_return")) - float(_record_value(base, "terminal_return"))
+                if base is not None and julia is not None
+                and _record_value(base, "terminal_return") is not None
+                and _record_value(julia, "terminal_return") is not None
+                else None
+            ),
+            "v2_mae": _safe_scalar(_record_value(base, "mae")),
+            "julia_mae": _safe_scalar(_record_value(julia, "mae")),
+            "v2_mfe": _safe_scalar(_record_value(base, "mfe")),
+            "julia_mfe": _safe_scalar(_record_value(julia, "mfe")),
+            "v2_holding_period": _safe_scalar(_record_value(base, "holding_trading_days")),
+            "julia_holding_period": _safe_scalar(_record_value(julia, "holding_trading_days")),
+            "v2_open_at_cutoff": _record_value(base, "trade_status") == "OPEN_AT_CUTOFF",
+            "julia_open_at_cutoff": _record_value(julia, "trade_status") == "OPEN_AT_CUTOFF",
+            "pair_status": str(pair.get("status", "UNRESOLVED")),
+        })
+    return [{key: _safe_scalar(row.get(key)) for key in MATCHED_ENTRY_COLUMNS} for row in rows]
+
+
+def _sequential_rows(result: Mapping[str, Sequence[Any]]) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for strategy_id, records in result.items():
+        for record in records:
+            rows.append({
+                "strategy_id": str(_record_value(record, "strategy_id", strategy_id) or strategy_id),
+                "ticker": _safe_scalar(_record_value(record, "ticker")),
+                "isu_cd": _safe_scalar(_record_value(record, "isu_cd")),
+                "market": _safe_scalar(_record_value(record, "market")),
+                "trade_id": _safe_scalar(_record_value(record, "trade_id")),
+                "trade_sequence": _safe_scalar(_record_value(record, "trade_sequence")),
+                "entry_signal_date": _safe_scalar(_record_value(record, "entry_signal_date")),
+                "entry_execution_date": _safe_scalar(_record_value(record, "entry_execution_date")),
+                "entry_open": _safe_scalar(_record_value(record, "entry_open")),
+                "entry_market_cap": _safe_scalar(_record_value(record, "entry_market_cap")),
+                "entry_avg_trading_value_20d": _safe_scalar(_record_value(record, "entry_avg_trading_value_20d")),
+                "exit_signal_date": _safe_scalar(_record_value(record, "exit_signal_date")),
+                "exit_execution_date": _safe_scalar(_record_value(record, "exit_execution_date")),
+                "exit_type": _safe_scalar(_record_value(record, "exit_type")),
+                "exit_price": _safe_scalar(_record_value(record, "exit_price")),
+                "terminal_return": _safe_scalar(_record_value(record, "terminal_return")),
+                "mae": _safe_scalar(_record_value(record, "mae")),
+                "mfe": _safe_scalar(_record_value(record, "mfe")),
+                "holding_trading_days": _safe_scalar(_record_value(record, "holding_trading_days")),
+                "holding_weeks": _safe_scalar(_record_value(record, "holding_weeks")),
+                "trade_status": _safe_scalar(_record_value(record, "trade_status")),
+                "cutoff_date": _safe_scalar(_record_value(record, "cutoff_date")),
+                "cutoff_valuation_price": _safe_scalar(_record_value(record, "cutoff_valuation_price")),
+                "mark_to_cutoff_return": _safe_scalar(_record_value(record, "mark_to_cutoff_return")),
+                "open_at_cutoff": _record_value(record, "trade_status") == "OPEN_AT_CUTOFF",
+                "identity_effective_from": _safe_scalar(_record_value(record, "identity_effective_from")),
+                "identity_effective_to": _safe_scalar(_record_value(record, "identity_effective_to")),
+                "loss_guard_triggered": bool(_record_value(record, "loss_guard_triggered", False)),
+            })
+    return [{key: row.get(key) for key in SEQUENTIAL_COLUMNS} for row in rows]
+
+
+def _portfolio_rows(result: Mapping[str, Any]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    events: list[dict[str, Any]] = []
+    daily: list[dict[str, Any]] = []
+    for strategy_id, strategy_result in result.get("strategies", {}).items():
+        for event in strategy_result.get("event_ledger", ()):
+            events.append({key: _safe_scalar(event.get(key)) for key in PORTFOLIO_EVENT_COLUMNS})
+        for row in strategy_result.get("daily_equity", ()):
+            daily.append({key: _safe_scalar(row.get(key)) for key in PORTFOLIO_EQUITY_COLUMNS})
+    return events, daily
+
+
+def _benchmark_summary(root: Path) -> dict[str, Any]:
+    frame = IndexStore(root / "data/market/index/v01").load_family(
+        MARKET_INDEX_FAMILY,
+        start=START_DATE.strftime("%Y-%m-%d"),
+        end=FINAL_VALUATION_DATE.strftime("%Y-%m-%d"),
+        index_codes=list(BENCHMARK_CODES.values()),
+    )
+    result: dict[str, Any] = {}
+    for label, code in BENCHMARK_CODES.items():
+        subset = frame[frame["index_code"].astype(str) == code].sort_values("date")
+        closes = pd.to_numeric(subset["close"], errors="coerce") if not subset.empty else pd.Series(dtype="float64")
+        if subset.empty or closes.empty or closes.isna().any() or float(closes.iloc[0]) <= 0:
+            result[label] = {"index_code": code, "status": "UNRESOLVED"}
+            continue
+        start_close = float(closes.iloc[0])
+        end_close = float(closes.iloc[-1])
+        result[label] = {
+            "index_code": code,
+            "status": "PASS",
+            "period": {
+                "requested_start": START_DATE.strftime("%Y-%m-%d"),
+                "requested_end": FINAL_VALUATION_DATE.strftime("%Y-%m-%d"),
+                "first_available_date": str(subset.iloc[0]["date"]),
+                "last_available_date": str(subset.iloc[-1]["date"]),
+            },
+            "start_close": start_close,
+            "end_close": end_close,
+            "total_return_pct": (end_close / start_close - 1.0) * 100.0,
+        }
+    return result
+
+
+def _git_head(root: Path) -> str:
+    try:
+        return subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], cwd=root, text=True, stderr=subprocess.DEVNULL
+        ).strip()
+    except (OSError, subprocess.CalledProcessError):
+        return "UNKNOWN"
+
+
+def _write_csv(path: Path, rows: Sequence[Mapping[str, Any]], columns: Sequence[str]) -> None:
+    frame = pd.DataFrame(
+        [{column: _safe_scalar(row.get(column)) for column in columns} for row in rows],
+        columns=list(columns),
+    )
+    path.parent.mkdir(parents=True, exist_ok=True)
+    frame.to_csv(path, index=False, encoding="utf-8", lineterminator="\n", na_rep="")
+
+
+def _fmt(value: Any, *, percent: bool = False, digits: int = 2) -> str:
+    if value is None or not isinstance(value, (int, float)) or not math.isfinite(float(value)):
+        return "N/A"
+    number = float(value) * 100.0 if percent else float(value)
+    return f"{number:.{digits}f}{'%' if percent else ''}"
+
+
+def _failure_rows(
+    matched_result: Mapping[str, Any],
+    matched_rows: Sequence[Mapping[str, Any]],
+    sequential_rows: Sequence[Mapping[str, Any]],
+    portfolio_result: Mapping[str, Any],
+) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+
+    def add(case_type: str, row: Mapping[str, Any], *, strategy_id: Any = None, reason: Any = None) -> None:
+        rows.append({
+            "case_type": case_type,
+            "strategy_id": strategy_id if strategy_id is not None else row.get("strategy_id"),
+            "ticker": row.get("ticker"),
+            "isu_cd": row.get("isu_cd"),
+            "market": row.get("market"),
+            "trade_id": row.get("trade_id"),
+            "signal_date": row.get("signal_date", row.get("entry_signal_date")),
+            "entry_execution_date": row.get("entry_execution_date"),
+            "exit_execution_date": row.get("exit_execution_date"),
+            "terminal_return": row.get("terminal_return"),
+            "mae": row.get("mae"),
+            "mfe": row.get("mfe"),
+            "loss_guard_triggered": row.get("loss_guard_triggered"),
+            "unresolved_reason": reason if reason is not None else row.get("unresolved_reason"),
+            "case_status": row.get("trade_status", row.get("pair_status", "OBSERVED")),
+        })
+
+    for row in sequential_rows:
+        if row.get("strategy_id") != JULIA_STRATEGY_ID:
+            continue
+        terminal_return = row.get("terminal_return")
+        mae = row.get("mae")
+        if isinstance(terminal_return, (int, float)) and terminal_return <= -30.0:
+            add("JULIA_TERMINAL_RETURN_LE_MINUS_30_PCT", row)
+        if isinstance(terminal_return, (int, float)) and terminal_return <= -20.0:
+            add("JULIA_TERMINAL_RETURN_LE_MINUS_20_PCT", row)
+        if isinstance(mae, (int, float)) and mae < 0.0:
+            add("JULIA_NEGATIVE_MAE", row)
+
+    for pair, row in zip(matched_result.get("pairs", ()), matched_rows):
+        if row.get("pair_status") != "PASS":
+            add("UNRESOLVED_MATCHED_ENTRY", row, strategy_id="MATCHED_ENTRY", reason="PAIR_UNRESOLVED")
+        base = pair.get("base")
+        julia = pair.get("julia")
+        if base is not None and bool(_record_value(base, "loss_guard_triggered", False)):
+            continued = _record_value(julia, "terminal_return") if julia is not None else None
+            if continued is not None:
+                add(
+                    "MATCHED_V2_GUARD_JULIA_CONTINUED",
+                    {
+                        "ticker": row.get("ticker"),
+                        "isu_cd": row.get("isu_cd"),
+                        "market": row.get("market"),
+                        "signal_date": row.get("signal_date"),
+                        "entry_execution_date": row.get("entry_execution_date"),
+                        "terminal_return": continued,
+                        "mae": row.get("julia_mae"),
+                        "mfe": row.get("julia_mfe"),
+                        "loss_guard_triggered": True,
+                        "pair_status": row.get("pair_status"),
+                    },
+                    strategy_id=JULIA_STRATEGY_ID,
+                    reason="V2_LOSS_GUARD_TRIGGERED",
+                )
+
+    for strategy_id, strategy_result in portfolio_result.get("strategies", {}).items():
+        for event in strategy_result.get("event_ledger", ()):
+            if event.get("event_status") == "UNRESOLVED":
+                add(
+                    "UNRESOLVED_PORTFOLIO_EVENT",
+                    event,
+                    strategy_id=strategy_id,
+                    reason=event.get("unresolved_reason"),
+                )
+    return [{column: _safe_scalar(row.get(column)) for column in FAILURE_COLUMNS} for row in rows]
+
+
+def _validation_report(
+    summary: Mapping[str, Any],
+    matched_rows: Sequence[Mapping[str, Any]],
+    sequential_rows: Sequence[Mapping[str, Any]],
+) -> str:
+    matched = summary["matched_entry"]
+    sequential = summary["sequential"]
+    portfolio = summary["realistic_200m_portfolio"]
+    status = summary["status"]
+    lines = [
+        "# V2 ↔ Julia 공식 백테스트 V01 결과",
+        "",
+        f"- 실행 상태: `{status}`",
+        f"- Frozen execution contract SHA-256: `{summary['execution_contract_sha256']}`",
+        f"- Source HEAD: `{summary['source_head']}`",
+        f"- 평가 기간: `{START_DATE:%Y-%m-%d} ~ {FINAL_VALUATION_DATE:%Y-%m-%d}`",
+        f"- Population/PIT: `{summary['population_count']:,}` / `{summary['pit_interval_count']:,}`",
+        "",
+        "## Matched-entry",
+        "",
+        f"- pair count: `{matched['pair_count']:,}`; unresolved: `{matched['unresolved_count']:,}`",
+        f"- V2 평균/중앙 terminal return: `{_fmt(matched['V2']['mean_terminal_return'])}%` / `{_fmt(matched['V2']['median_terminal_return'])}%`",
+        f"- Julia 평균/중앙 terminal return: `{_fmt(matched['Julia']['mean_terminal_return'])}%` / `{_fmt(matched['Julia']['median_terminal_return'])}%`",
+        f"- 평균/중앙 return delta (Julia - V2): `{_fmt(matched['mean_return_delta'])}%` / `{_fmt(matched['median_return_delta'])}%`",
+        "",
+        "## Sequential",
+        "",
+        "| 전략 | 거래 수 | 실현 | cutoff open | 평균 return | 평균 MAE | 평균 보유일 |",
+        "|---|---:|---:|---:|---:|---:|---:|",
+    ]
+    for strategy_id in (BASE_STRATEGY_ID, JULIA_STRATEGY_ID):
+        item = sequential[strategy_id]
+        lines.append(
+            f"| {strategy_id} | {item['trade_count']:,} | {item['realized_count']:,} | "
+            f"{item['open_count']:,} | {_fmt(item['mean_terminal_return'])}% | "
+            f"{_fmt(item['mean_mae'])}% | {_fmt(item['mean_holding_period'])} |"
+        )
+    lines.extend([
+        "",
+        "## Realistic 200M Portfolio",
+        "",
+        "| 전략 | final equity | total return | CAGR | MDD | exposure | turnover | unresolved |",
+        "|---|---:|---:|---:|---:|---:|---:|---:|",
+    ])
+    for strategy_id in (BASE_STRATEGY_ID, JULIA_STRATEGY_ID):
+        item = portfolio[strategy_id]
+        lines.append(
+            f"| {strategy_id} | {_fmt(item['final_equity'])} | {_fmt(item['total_return'], percent=True)} | "
+            f"{_fmt(item['cagr'], percent=True)} | {_fmt(item['mdd'], percent=True)} | "
+            f"{_fmt(item['exposure'], percent=True)} | {_fmt(item['turnover'])} | {item['unresolved_count']:,} |"
+        )
+    lines.extend([
+        "",
+        "## Benchmark",
+        "",
+        f"- KOSPI `1001`: `{_fmt(summary['benchmarks']['KOSPI'].get('total_return_pct'))}%`",
+        f"- KOSDAQ `2001`: `{_fmt(summary['benchmarks']['KOSDAQ'].get('total_return_pct'))}%`",
+        "",
+        "## 확인 및 주의사항",
+        "",
+        f"- Matched-entry rows: `{len(matched_rows):,}`; Sequential rows: `{len(sequential_rows):,}`.",
+        f"- 전체 unresolved: `{summary['unresolved_count']:,}`.",
+        "- V2와 Julia의 차이는 frozen contract의 Pre-PROGRESSED Loss Guard ON/OFF로 제한했다.",
+        "- 이번 작업에서는 Julia 승인, 전략 선정, parameter tuning, robustness 추가 실험을 수행하지 않았다.",
+        "",
+        "## 다음 단계",
+        "",
+        "`Strategy Robustness Comparison`.",
+        "",
+    ])
+    return "\n".join(lines)
+
+
+def persist_official_results(
+    root: Path,
+    contract: Mapping[str, Any],
+    matched_result: Mapping[str, Any],
+    sequential_result: Mapping[str, Sequence[Any]],
+    portfolio_result: Mapping[str, Any],
+    *,
+    source_head: str,
+    benchmark_summary: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Persist one completed frozen run as scalar, auditable artifacts."""
+    root = Path(root).resolve()
+    output_dir = root / OUTPUT_DIR_REL
+    present = _result_artifacts_present(root)
+    if present:
+        raise OfficialValidationError(f"OFFICIAL_RESULT_ARTIFACT_PRESENT:{present}")
+    matched = _matched_rows(matched_result)
+    sequential = _sequential_rows(sequential_result)
+    events, daily = _portfolio_rows(portfolio_result)
+    failures = _failure_rows(matched_result, matched, sequential, portfolio_result)
+
+    matched_pairs = list(matched_result.get("pairs", ()))
+    v2_records = [pair["base"] for pair in matched_pairs if pair.get("base") is not None]
+    julia_records = [pair["julia"] for pair in matched_pairs if pair.get("julia") is not None]
+    matched_delta = [
+        float(row["return_delta"])
+        for row in matched
+        if isinstance(row.get("return_delta"), (int, float)) and math.isfinite(float(row["return_delta"]))
+    ]
+    v2_higher = sum(
+        1 for row in matched
+        if isinstance(row.get("v2_terminal_return"), (int, float))
+        and isinstance(row.get("julia_terminal_return"), (int, float))
+        and row["v2_terminal_return"] > row["julia_terminal_return"]
+    )
+    julia_higher = sum(
+        1 for row in matched
+        if isinstance(row.get("v2_terminal_return"), (int, float))
+        and isinstance(row.get("julia_terminal_return"), (int, float))
+        and row["julia_terminal_return"] > row["v2_terminal_return"]
+    )
+    compared_pairs = v2_higher + julia_higher + sum(
+        1 for row in matched
+        if isinstance(row.get("v2_terminal_return"), (int, float))
+        and isinstance(row.get("julia_terminal_return"), (int, float))
+        and row["v2_terminal_return"] == row["julia_terminal_return"]
+    )
+    matched_summary = {
+        "pair_count": len(matched_pairs),
+        "unresolved_count": sum(1 for row in matched if row.get("pair_status") != "PASS"),
+        "V2": _trade_summary(v2_records),
+        "Julia": _trade_summary(julia_records),
+        "v2_higher_return_count": v2_higher,
+        "julia_higher_return_count": julia_higher,
+        "tie_count": compared_pairs - v2_higher - julia_higher,
+        "compared_pair_count": compared_pairs,
+        "mean_return_delta": _mean_median(matched_delta)["mean"],
+        "median_return_delta": _mean_median(matched_delta)["median"],
+    }
+
+    sequential_summary: dict[str, Any] = {}
+    for strategy_id in (BASE_STRATEGY_ID, JULIA_STRATEGY_ID):
+        records = list(sequential_result.get(strategy_id, ()))
+        sequential_summary[strategy_id] = _trade_summary(records)
+        sequential_summary[strategy_id]["unresolved_count"] = sum(
+            1 for record in records
+            if _record_value(record, "trade_status") not in {"REALIZED", "OPEN_AT_CUTOFF"}
+        )
+
+    portfolio_summary: dict[str, Any] = {}
+    portfolio_unresolved = 0
+    cash_conservation_failures: list[str] = []
+    for strategy_id in (BASE_STRATEGY_ID, JULIA_STRATEGY_ID):
+        strategy_result = portfolio_result.get("strategies", {}).get(strategy_id, {})
+        metrics = dict(strategy_result.get("metrics", {}))
+        final_rows = [row for row in strategy_result.get("daily_equity", ()) if row.get("date") == FINAL_VALUATION_DATE.strftime("%Y-%m-%d")]
+        final_equity = final_rows[-1].get("equity") if final_rows else None
+        metrics["final_equity"] = final_equity
+        metrics["average_holding_period_days"] = metrics.get("holding_period_days")
+        portfolio_summary[strategy_id] = metrics
+        portfolio_unresolved += int(metrics.get("unresolved_count") or 0)
+        if metrics.get("cash_conservation_pass") is not True:
+            cash_conservation_failures.append(strategy_id)
+
+    sequential_unresolved = sum(int(item.get("unresolved_count") or 0) for item in sequential_summary.values())
+    matched_unresolved = int(matched_summary["unresolved_count"])
+    unresolved_count = matched_unresolved + sequential_unresolved + portfolio_unresolved
+    benchmark = dict(benchmark_summary or {})
+    benchmark_unresolved = sum(1 for item in benchmark.values() if item.get("status") != "PASS")
+    unresolved_count += benchmark_unresolved
+    integrity_issues = [
+        f"CASH_CONSERVATION_FAIL:{strategy_id}" for strategy_id in cash_conservation_failures
+    ]
+    if len(matched) != matched_summary["pair_count"]:
+        integrity_issues.append("MATCHED_ROW_COUNT_MISMATCH")
+    if len(sequential) != sum(item["trade_count"] for item in sequential_summary.values()):
+        integrity_issues.append("SEQUENTIAL_ROW_COUNT_MISMATCH")
+    status = "INCOMPLETE_REQUIRES_REVIEW" if unresolved_count or integrity_issues else "COMPLETE"
+    summary: dict[str, Any] = {
+        "schema": "v2_julia_official_aggregate_summary_v01",
+        "status": status,
+        "execution_contract_sha256": contract["contract_sha256"],
+        "source_head": source_head,
+        "period": {
+            "evaluation_start": START_DATE.strftime("%Y-%m-%d"),
+            "signal_cutoff": SIGNAL_CUTOFF.strftime("%Y-%m-%d"),
+            "evaluation_end": EVALUATION_END.strftime("%Y-%m-%d"),
+            "execution_support_end": EXECUTION_SUPPORT_END.strftime("%Y-%m-%d"),
+            "final_valuation": f"{FINAL_VALUATION_DATE:%Y-%m-%d} CLOSE",
+        },
+        "population_count": int(contract["population_pit_authority"]["population_count"]),
+        "pit_interval_count": int(contract["population_pit_authority"]["pit_interval_count"]),
+        "unresolved_count": unresolved_count,
+        "unresolved_counts": {
+            "matched_entry": matched_unresolved,
+            "sequential": sequential_unresolved,
+            "realistic_200m_portfolio": portfolio_unresolved,
+            "benchmark": benchmark_unresolved,
+        },
+        "integrity_issues": integrity_issues,
+        "matched_entry": matched_summary,
+        "sequential": sequential_summary,
+        "realistic_200m_portfolio": portfolio_summary,
+        "benchmarks": benchmark,
+        "counts": {
+            "matched_entry_rows": len(matched),
+            "sequential_rows": len(sequential),
+            "failure_and_big_loss_rows": len(failures),
+            "portfolio_event_rows": len(events),
+            "portfolio_daily_equity_rows": len(daily),
+        },
+        "artifacts": [*OFFICIAL_RESULT_FILES, *SUPPORT_RESULT_FILES],
+    }
+    output_dir.mkdir(parents=True, exist_ok=True)
+    _write_csv(output_dir / "matched_entry_comparison.csv", matched, MATCHED_ENTRY_COLUMNS)
+    _write_csv(output_dir / "sequential_comparison.csv", sequential, SEQUENTIAL_COLUMNS)
+    _write_csv(output_dir / "failure_and_big_loss_cases.csv", failures, FAILURE_COLUMNS)
+    _write_csv(output_dir / "portfolio_event_ledger.csv", events, PORTFOLIO_EVENT_COLUMNS)
+    _write_csv(output_dir / "portfolio_daily_equity.csv", daily, PORTFOLIO_EQUITY_COLUMNS)
+    (output_dir / "validation_report.md").write_text(
+        _validation_report(summary, matched, sequential), encoding="utf-8"
+    )
+    _write_json(output_dir / "aggregate_summary.json", summary)
+    return {
+        "status": status,
+        "contract_sha256": contract["contract_sha256"],
+        "source_head": source_head,
+        "unresolved_count": unresolved_count,
+        "integrity_issues": integrity_issues,
+        "counts": summary["counts"],
+        "result_artifacts": list(summary["artifacts"]),
+    }
+
+
+def run_official(root: Path = ROOT) -> dict[str, Any]:
+    """Run Matched-entry, Sequential, and Portfolio exactly once under the frozen contract."""
+    root = Path(root).resolve()
+    with network_guard():
+        preflight_result = preflight(root, write_contract=False)
+        if preflight_result.get("status") != "READY":
+            raise OfficialValidationError("OFFICIAL_PREFLIGHT_NOT_READY")
+        contract_path = root / CONTRACT_REL
+        contract_before = contract_path.read_bytes()
+        contract = _read_json(contract_path)
+        source_head = _git_head(root)
+        official = OfficialValidationRunner(root, contract)
+        print("official stage: Matched-entry", file=sys.stderr, flush=True)
+        matched_result = official.run_matched_entry()
+        print("official stage: Sequential", file=sys.stderr, flush=True)
+        sequential_result = official.run_sequential()
+        print("official stage: Realistic 200M Portfolio", file=sys.stderr, flush=True)
+        portfolio_result = official.run_realistic_portfolio(sequential_result)
+        benchmark_summary = _benchmark_summary(root)
+        if contract_path.read_bytes() != contract_before:
+            raise OfficialValidationError("FROZEN_EXECUTION_CONTRACT_CHANGED_DURING_RUN")
+    persisted = persist_official_results(
+        root,
+        contract,
+        matched_result,
+        sequential_result,
+        portfolio_result,
+        source_head=source_head,
+        benchmark_summary=benchmark_summary,
+    )
+    persisted["preflight"] = preflight_result
+    persisted["official_backtest_executed"] = True
+    return persisted
+
+
+def _resource_snapshot() -> dict[str, float]:
+    usage = resource.getrusage(resource.RUSAGE_SELF)
+    rss_divisor = 1024.0 * 1024.0 if sys.platform == "darwin" else 1024.0
+    return {
+        "user_cpu_seconds": float(usage.ru_utime),
+        "system_cpu_seconds": float(usage.ru_stime),
+        "max_rss_mib": float(usage.ru_maxrss) / rss_divisor,
+    }
+
+
+def _sample_unresolved_counts(
+    matched_result: Mapping[str, Any],
+    sequential_result: Mapping[str, Sequence[Any]],
+    portfolio_result: Mapping[str, Any],
+) -> dict[str, int]:
+    matched = sum(1 for pair in matched_result.get("pairs", ()) if pair.get("status") != "PASS")
+    sequential = sum(
+        1
+        for records in sequential_result.values()
+        for record in records
+        if _record_value(record, "trade_status") not in {"REALIZED", "OPEN_AT_CUTOFF"}
+    )
+    portfolio = sum(
+        int(strategy_result.get("metrics", {}).get("unresolved_count") or 0)
+        for strategy_result in portfolio_result.get("strategies", {}).values()
+    )
+    return {
+        "matched_entry": matched,
+        "sequential": sequential,
+        "realistic_200m_portfolio": portfolio,
+        "total": matched + sequential + portfolio,
+    }
+
+
+def _sample_parity_payload(
+    matched_result: Mapping[str, Any],
+    sequential_result: Mapping[str, Sequence[Any]],
+    portfolio_result: Mapping[str, Any],
+) -> dict[str, Any]:
+    matched_pairs = list(matched_result.get("pairs", ()))
+    return {
+        "matched_signal_keys": [pair.get("entry_key") for pair in matched_pairs],
+        "matched_v2_trades": [pair.get("base") for pair in matched_pairs],
+        "matched_julia_trades": [pair.get("julia") for pair in matched_pairs],
+        "sequential_v2_trades": list(sequential_result.get(BASE_STRATEGY_ID, ())),
+        "sequential_julia_trades": list(sequential_result.get(JULIA_STRATEGY_ID, ())),
+        "unresolved_counts": _sample_unresolved_counts(
+            matched_result,
+            sequential_result,
+            portfolio_result,
+        ),
+        "portfolio_output": portfolio_result,
+    }
+
+
+def run_performance_sample(
+    root: Path = ROOT,
+    *,
+    sample_size: int,
+    reuse_lifecycle_caches: bool = True,
+    _return_parity_payload: bool = False,
+) -> dict[str, Any] | tuple[dict[str, Any], dict[str, Any]]:
+    """Measure one bounded sample without persisting official result artifacts."""
+    root = Path(root).resolve()
+    with network_guard():
+        preflight_started = time.perf_counter()
+        preflight_result = preflight(root, write_contract=False)
+        preflight_seconds = time.perf_counter() - preflight_started
+        if preflight_result.get("status") != "READY":
+            raise OfficialValidationError("PERFORMANCE_SAMPLE_PREFLIGHT_NOT_READY")
+
+        contract_path = root / CONTRACT_REL
+        contract_before = contract_path.read_bytes()
+        contract = _read_json(contract_path)
+        usage_before = _resource_snapshot()
+        total_started = time.perf_counter()
+
+        runner_started = time.perf_counter()
+        official = OfficialValidationRunner(
+            root,
+            contract,
+            identity_limit=sample_size,
+            reuse_lifecycle_caches=reuse_lifecycle_caches,
+        )
+        runner_initialization_seconds = time.perf_counter() - runner_started
+        tasks = official.identity_tasks()
+        task_markets: dict[str, int] = {}
+        for task in tasks:
+            task_markets[task.market] = task_markets.get(task.market, 0) + 1
+
+        matched_started = time.perf_counter()
+        matched_result = official.run_matched_entry()
+        matched_seconds = time.perf_counter() - matched_started
+
+        sequential_started = time.perf_counter()
+        sequential_result = official.run_sequential()
+        sequential_seconds = time.perf_counter() - sequential_started
+
+        portfolio_started = time.perf_counter()
+        portfolio_result = official.run_realistic_portfolio(sequential_result)
+        portfolio_seconds = time.perf_counter() - portfolio_started
+
+        if contract_path.read_bytes() != contract_before:
+            raise OfficialValidationError("FROZEN_EXECUTION_CONTRACT_CHANGED_DURING_SAMPLE")
+        usage_after = _resource_snapshot()
+        total_seconds = time.perf_counter() - total_started
+
+    matched_pairs = list(matched_result.get("pairs", ()))
+    sequential_trade_counts = {
+        strategy_id: len(records)
+        for strategy_id, records in sequential_result.items()
+    }
+    portfolio_trade_counts = {
+        strategy_id: int(strategy_result.get("metrics", {}).get("trade_count") or 0)
+        for strategy_id, strategy_result in portfolio_result.get("strategies", {}).items()
+    }
+    unresolved_counts = _sample_unresolved_counts(
+        matched_result,
+        sequential_result,
+        portfolio_result,
+    )
+    diagnostic_counts = (
+        official.diagnostic_snapshot()
+        if hasattr(official, "diagnostic_snapshot")
+        else dict(official.diagnostic_counts)
+    )
+    result = {
+        "schema": "v2_julia_performance_sample_v01",
+        "status": "COMPLETE",
+        "sample_size_requested": sample_size,
+        "identity_count": len(tasks),
+        "market_counts": dict(sorted(task_markets.items())),
+        "population_identity_lifecycle_count": len(_identity_tasks(official.authority)),
+        "preflight_seconds": preflight_seconds,
+        "runner_initialization_seconds": runner_initialization_seconds,
+        "stages": {
+            "matched_entry_seconds": matched_seconds,
+            "matched_discovery_seconds": official.diagnostic_seconds["matched_discovery_seconds"],
+            "matched_strategy_seconds": official.diagnostic_seconds["matched_strategy_seconds"],
+            "sequential_seconds": sequential_seconds,
+            "realistic_200m_portfolio_seconds": portfolio_seconds,
+            "total_seconds": total_seconds,
+        },
+        "counts": {
+            **diagnostic_counts,
+            "candidate_matched_signal_count": int(matched_result.get("candidate_signal_count", 0)),
+            "matched_pair_count": len(matched_pairs),
+            "sequential_trade_counts": sequential_trade_counts,
+            "sequential_trade_count_total": sum(sequential_trade_counts.values()),
+            "portfolio_trade_counts": portfolio_trade_counts,
+            "portfolio_trade_count_total": sum(portfolio_trade_counts.values()),
+            "generated_trade_count": {
+                "sequential_records_total": sum(sequential_trade_counts.values()),
+                "portfolio_executed_positions_total": sum(portfolio_trade_counts.values()),
+            },
+        },
+        "unresolved_counts": unresolved_counts,
+        "resource": {
+            "process_model": "single_process",
+            "workers": 1,
+            "user_cpu_seconds": usage_after["user_cpu_seconds"] - usage_before["user_cpu_seconds"],
+            "system_cpu_seconds": usage_after["system_cpu_seconds"] - usage_before["system_cpu_seconds"],
+            "max_rss_mib": usage_after["max_rss_mib"],
+        },
+        "cache_observation": {
+            "lifecycle_cache_reuse_enabled": reuse_lifecycle_caches,
+            "fast_snapshot_cache_used": reuse_lifecycle_caches,
+            "monthly_snapshot_cache_used": reuse_lifecycle_caches,
+            "precomputed_ticker_context_used": True,
+            "runner_path": "lifecycle-scoped context/raw panel/FastSnapshotCache/MonthlySnapshotCache",
+        },
+        "official_backtest_executed": False,
+        "official_result_artifacts": _result_artifacts_present(root),
+        "network_requests": 0,
+        "execution_contract_sha256": contract["contract_sha256"],
+    }
+    if _return_parity_payload:
+        return result, _sample_parity_payload(
+            matched_result,
+            sequential_result,
+            portfolio_result,
+        )
+    return result
+
+
+def run_performance_parity_sample(root: Path = ROOT, *, sample_size: int) -> dict[str, Any]:
+    """Compare uncached and lifecycle-cache sample outputs for exact equality."""
+    baseline, baseline_payload = run_performance_sample(
+        root,
+        sample_size=sample_size,
+        reuse_lifecycle_caches=False,
+        _return_parity_payload=True,
+    )
+    optimized, optimized_payload = run_performance_sample(
+        root,
+        sample_size=sample_size,
+        reuse_lifecycle_caches=True,
+        _return_parity_payload=True,
+    )
+    checks = {
+        key: baseline_payload[key] == optimized_payload[key]
+        for key in baseline_payload
+    }
+    return {
+        "schema": "v2_julia_performance_parity_sample_v01",
+        "status": "PASS" if all(checks.values()) else "FAIL",
+        "sample_size": sample_size,
+        "checks": checks,
+        "baseline": baseline,
+        "optimized": optimized,
+        "official_backtest_executed": False,
+        "network_requests": 0,
+    }
 
 
 @contextmanager
@@ -1326,13 +2412,67 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--preflight-only", action="store_true", help="validate the frozen contract only")
     parser.add_argument(
+        "--run-official",
+        action="store_true",
+        help="run the one frozen official Matched-entry/Sequential/Portfolio validation",
+    )
+    parser.add_argument(
+        "--run-performance-sample",
+        action="store_true",
+        help="run one bounded N-identity performance sample without official artifacts",
+    )
+    parser.add_argument(
+        "--run-performance-parity-sample",
+        action="store_true",
+        help="compare uncached and lifecycle-cache sample outputs exactly",
+    )
+    parser.add_argument(
+        "--sample-size",
+        type=int,
+        help="identity count for --run-performance-sample",
+    )
+    parser.add_argument(
+        "--disable-lifecycle-reuse",
+        action="store_true",
+        help="performance-diagnostic baseline only; disable lifecycle-scoped cache reuse",
+    )
+    parser.add_argument(
         "--write-contract",
         action="store_true",
         help="development-only initial contract creation; refuses to overwrite an existing contract",
     )
     args = parser.parse_args()
-    # No official execution flag exists in this preparation task.  The default
-    # path is a read-only validation of the committed frozen contract.
+    if args.run_official and (
+        args.preflight_only or args.write_contract or args.run_performance_sample
+        or args.run_performance_parity_sample
+    ):
+        parser.error("--run-official cannot be combined with preflight, contract, or sample modes")
+    if (args.run_performance_sample or args.run_performance_parity_sample) and (args.preflight_only or args.write_contract):
+        parser.error("performance sample modes cannot be combined with --preflight-only or --write-contract")
+    if args.run_performance_sample and args.run_performance_parity_sample:
+        parser.error("choose only one performance sample mode")
+    if args.sample_size is not None and not (args.run_performance_sample or args.run_performance_parity_sample):
+        parser.error("--sample-size requires a performance sample mode")
+    if args.disable_lifecycle_reuse and not args.run_performance_sample:
+        parser.error("--disable-lifecycle-reuse requires --run-performance-sample")
+    if (args.run_performance_sample or args.run_performance_parity_sample) and args.sample_size is None:
+        parser.error("performance sample modes require --sample-size")
+    if args.run_official:
+        result = run_official(ROOT)
+        print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
+        return 0
+    if args.run_performance_sample:
+        result = run_performance_sample(
+            ROOT,
+            sample_size=args.sample_size,
+            reuse_lifecycle_caches=not args.disable_lifecycle_reuse,
+        )
+        print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
+        return 0
+    if args.run_performance_parity_sample:
+        result = run_performance_parity_sample(ROOT, sample_size=args.sample_size)
+        print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
+        return 0
     if not args.preflight_only and not args.write_contract:
         print("Stage 5 preparation is preflight-only; validating the committed contract.")
     with network_guard():

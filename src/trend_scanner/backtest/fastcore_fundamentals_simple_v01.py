@@ -15,6 +15,7 @@ from typing import Any, Callable, Mapping, Sequence
 import pandas as pd
 
 from trend_scanner.backtest.raw_investability_panel import evaluate_entry_filter
+from trend_scanner.backtest.feature_cache import FastSnapshotCache, MonthlySnapshotCache
 from trend_scanner.backtest.snapshot_context import (
     PrecomputedTickerContext,
     build_historical_snapshot_from_context,
@@ -187,6 +188,8 @@ def simulate_ticker_strategy_fundamentals_v01(
     entry_eligible_from: pd.Timestamp | None = None,
     allowed_signal_dates: set[pd.Timestamp] | frozenset[pd.Timestamp] | None = None,
     snapshot_context: PrecomputedTickerContext | None = None,
+    fast_snapshot_cache: FastSnapshotCache | None = None,
+    monthly_snapshot_cache: MonthlySnapshotCache | None = None,
     identity_lifecycle: IdentityLifecycle | None = None,
     pit_membership: Callable[[str, str | None, str, pd.Timestamp], bool] | None = None,
     entry_gate: Callable[[pd.Timestamp, dict[str, Any]], Mapping[str, Any] | None] | None = None,
@@ -257,7 +260,7 @@ def simulate_ticker_strategy_fundamentals_v01(
         (week for week in valid_weeks if eligible_from is None or week >= eligible_from),
         None,
     )
-    monthly_snapshot_cache: dict[pd.Timestamp, dict[str, Any]] = {}
+    local_monthly_snapshot_cache: dict[pd.Timestamp, dict[str, Any]] = {}
 
     while cur_search_date is not None and cur_search_date <= backtest_end:
         found_signal_w: pd.Timestamp | None = None
@@ -270,9 +273,22 @@ def simulate_ticker_strategy_fundamentals_v01(
         ]
         for w in candidate_weeks:
             try:
-                res = evaluate_pattern_a_fast(
-                    ticker, name, daily, w, score_contract, stage_contract, context=snapshot_context,
-                )
+                if fast_snapshot_cache is None:
+                    res = evaluate_pattern_a_fast(
+                        ticker, name, daily, w, score_contract, stage_contract, context=snapshot_context,
+                    )
+                else:
+                    res = fast_snapshot_cache.get(
+                        ticker,
+                        name,
+                        daily,
+                        w,
+                        score_contract,
+                        stage_contract,
+                        context=snapshot_context,
+                    )
+                    if res is None:
+                        continue
                 if not is_qualifying_fast_entry(res):
                     continue
 
@@ -364,19 +380,26 @@ def simulate_ticker_strategy_fundamentals_v01(
         m_dates = [m for m in monthly_bars.index if found_signal_w <= m <= backtest_end]
         monthly_snapshots: list[dict[str, Any]] = []
         for m in m_dates:
-            cached_snapshot = monthly_snapshot_cache.get(pd.Timestamp(m))
-            if cached_snapshot is not None:
-                monthly_snapshots.append(cached_snapshot)
-                continue
-            try:
-                snap = build_historical_snapshot_from_context(snapshot_context, m, include_incomplete_periods=False)
-                eval_res = evaluate_pattern_a(snap)
-                st = eval_res.stage.value.upper() if eval_res.stage else "UNAVAILABLE"
-                sc = float(round(eval_res.score, 2)) if eval_res.score is not None else None
-                cached_snapshot = {"date": m, "stage": st, "score": sc}
-            except Exception:
-                cached_snapshot = {"date": m, "stage": "UNAVAILABLE", "score": None}
-            monthly_snapshot_cache[pd.Timestamp(m)] = cached_snapshot
+            if monthly_snapshot_cache is None:
+                cached_snapshot = local_monthly_snapshot_cache.get(pd.Timestamp(m))
+                if cached_snapshot is None:
+                    try:
+                        snap = build_historical_snapshot_from_context(snapshot_context, m, include_incomplete_periods=False)
+                        eval_res = evaluate_pattern_a(snap)
+                        st = eval_res.stage.value.upper() if eval_res.stage else "UNAVAILABLE"
+                        sc = float(round(eval_res.score, 2)) if eval_res.score is not None else None
+                        cached_snapshot = {"date": m, "stage": st, "score": sc}
+                    except Exception:
+                        cached_snapshot = {"date": m, "stage": "UNAVAILABLE", "score": None}
+                    local_monthly_snapshot_cache[pd.Timestamp(m)] = cached_snapshot
+            else:
+                cached_snapshot = monthly_snapshot_cache.get(
+                    ticker,
+                    name,
+                    daily,
+                    pd.Timestamp(m),
+                    context=snapshot_context,
+                )
             monthly_snapshots.append(cached_snapshot)
 
         first_early_trend_d = found_signal_w if pa_stage_at_entry == "EARLY_TREND" else None
