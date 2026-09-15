@@ -256,32 +256,25 @@ cutoff를 각각 보고한다.
 
 ### H.1 Return
 
-- 총 성과와 CAGR: 아래의 기존 최근 200M portfolio 비교 계약의 집계 의미론을
-  사용하되, 공식 Julia 기간과 Population/PIT 기준을 우선한다.
+- 총 성과와 CAGR: FastCore realistic backtest에서 먼저 확정할 공통 실행조건을
+  동일하게 적용하되, 공식 Julia 기간과 Population/PIT 기준을 우선한다.
 - 거래별 평균·중앙 terminal return
 - 양의 terminal return 비율
 - matched entry별 terminal return 차이
 
-참조 계약은 `scripts/run_fastcore_vs_julia_portfolio_v01.py`의
-`FASTCORE_VS_JULIA_200M_PORTFOLIO_COMPARISON_V01_FIX01`이다. 이 계약에서
-재사용할 집계 규칙은 다음과 같다.
+Julia의 시장·데이터·체결·비용·슬리피지·포트폴리오 실행조건은
+FastCore realistic backtest에서 먼저 확정되는 공통 실행조건을 동일하게
+적용한다. FastCore 조건이 아직 확정되지 않았으므로 현재 단계에서 비용,
+세금, 슬리피지, position sizing, 초기자본 또는 포트폴리오 집계 숫자를
+가정하지 않는다.
 
-- 초기 자본 `200,000,000 KRW`
-- lifecycle별 position cap `5,000,000 KRW`
-- 정수 주식, 레버리지 없음, 피라미딩 없음
-- 같은 주간 batch에서 full exit를 entry보다 먼저 처리
-- 같은 open 재진입 금지, 현금 부족 주문은 이월하지 않음
-- 거래비용·수수료·세금·슬리피지 `0`; `GROSS / NO_COST_MODEL`
-- 일별 close로 보유분을 평가하여 equity curve를 만들고, 그 curve의 MDD,
-  exposure 및 turnover를 산출
-- CAGR은 고정된 시작 자본과 최종 equity 및 고정 구간의 calendar-day
-  연율화로 산출
-
-이 기존 계약의 별도 `mcap-only` 비교 gate와 proxy 시가총액 fallback은
-공식 Julia 검증에 재사용하지 않는다. 공식 검증은 D.3의 두 투자적합성
-조건과 E의 KRX PIT 원천을 양 전략에 적용한다. 기존 계약의 기간·집계
-규칙과 공식 검증의 기간·기준 경로가 충돌하는 항목은 계약을 혼합하지
-않고 Stage 5 실행 계약에 명시한다.
+`scripts/run_fastcore_vs_julia_portfolio_v01.py` 및 그 200M 비교 계약은
+공식 실행계약이 아닌 구현 참고 자료로만 보존한다. 이벤트 처리, 현금·동시
+보유 구조, equity curve 및 turnover 계산 방식의 참고로 사용할 수 있으나,
+과거의 초기자본·position cap·`GROSS / NO_COST_MODEL` 값을 Julia 공식
+조건으로 승계하지 않는다. 기존 계약의 `mcap-only` gate와 proxy fallback도
+공식 Julia 검증에 사용하지 않는다. FastCore realistic 조건 확정 후 그
+확정값을 Stage 5 실행 계약에 연결한다.
 
 ### H.2 Risk
 
@@ -313,8 +306,8 @@ Pattern A/FastCore 공식 위험 보고에서 사용한 tail 경계이다. 새 �
 - 거래 수와 고유 ticker 수
 - 평균·중앙 보유기간
 - 일별 invested market value / equity 기반 exposure 비율
-- 기존 portfolio 계약의 absolute cash delta 기반 turnover 및 initial capital
-  대비 turnover ratio
+- FastCore realistic 공통 실행조건에서 확정할 turnover 정의 및 initial
+  capital 대비 turnover ratio
 - cutoff 시점 open position 수와 금액
 - guard 종료, Exit 3, Exit 4, cutoff open 등 exit type 분포
 
@@ -393,8 +386,9 @@ ticker를 근거로 판정하지 않는다. V2 공식 최종화 문서의 risk-f
    winner 하나에만 의존하지 않는다.
 4. 위에 고정한 risk-first 우선순위로 `<= -20%`, `<= -30%`, MAE, MDD,
    open-at-cutoff 및 장기 자금 묶임을 검토한 결과를 함께 설명할 수 있다.
-5. 위험 악화와 상승 보존 사이의 trade-off에 대해 아래 사용자 결정이
-   사전에 존재하고, 그 결정에 비추어 Julia를 채택할 수 있다.
+5. 상승 여력 보존이 `Return <= -20%`, `Return <= -30%`, Deep MAE 또는
+   Worst MAE의 구조적 악화를 대가로 얻은 것이 아니며, 기존 V2의
+   risk-first mandate를 충족한다.
 
 새 숫자 threshold가 필요해지는 경우에는 `검토 필요`로 남기고 현 실행에서
 적용하지 않는다. 단일 수익률 지표만으로 채택하지 않으며, 단일 위험 지표
@@ -414,26 +408,17 @@ PIT 커버리지, 가격 기준 경로, 포트폴리오 집계, execution suppor
 
 ### K.4 폐기 (`DISCARD`)
 
-상승 여력 보존의 재현 가능한 개선이 없거나, 기존 risk-first 우선순위와
-사전 사용자 결정에 비추어 Julia의 추가 손실·MAE·MDD·open-at-cutoff·장기
-자금 묶임이 그 이익을 받아들이기 어렵게 만들 때 폐기한다. 단일 위험
-지표 하나만으로 자동 폐기하지 않으며, matched·sequential·강건성 결과를
-함께 확인한다. 폐기하더라도 V2 기본 전략은 별도 결정 전까지 유지한다.
+상승 여력 보존의 재현 가능한 개선이 없거나, 기존 V2 risk-first 우선순위에
+비추어 Julia의 `Return <= -20%`, `Return <= -30%`, Deep MAE 또는 Worst MAE가
+구조적으로 악화되면 폐기한다. MDD의 소폭 악화나 일반 손실 거래 수 증가만으로
+자동 폐기하지 않으며, 단일 위험 지표 하나만으로도 결정하지 않는다.
+matched·sequential·강건성 결과를 함께 확인한다. 폐기하더라도 V2 기본 전략은
+별도 정책 변경 전까지 유지한다.
 
-### K.5 사용자 결정 필요
-
-기존 V2 문서는 큰 손실 최소화를 상승 여력보다 우선하지만, Julia가 상승
-여력을 개선하는 대신 손실 빈도·MAE·MDD를 어느 정도까지 허용할지에 대한
-새 숫자 기준은 제공하지 않는다. 따라서 다음 상황은 결과를 본 뒤 임의로
-해석하지 않고 사용자 판단을 먼저 요구한다.
-
-> Julia가 `MFE`·winner 보존·guard 회복을 개선하지만 `<= -20%`, `<= -30%`,
-> MAE 또는 MDD 중 하나 이상을 악화시키는 경우, 그 위험 교환을 공식 전략
-> 채택에 허용할지 결정해야 한다.
-
-사용자 결정이 사전에 없으면 해당 결과는 `HOLD`로 처리한다. 이 결정은
-Loss Guard 임계값이나 다른 전략 규칙을 바꾸는 허가가 아니며, 채택 여부의
-판정 정책만 정한다.
+Julia 전용 위험 허용 예외나 별도 사용자 결정 절차는 만들지 않는다. 기존 V2
+`LARGE_LOSS_MINIMIZATION` 및 `PRESERVE_SUFFICIENT_UPSIDE` mandate를 변경하려면
+이 검증과 별도의 정책 변경이 필요하며, 현재 Julia 검증에서는 mandate 예외를
+적용하지 않는다.
 
 ## L. 과거 연구의 사용 한계
 
@@ -465,26 +450,30 @@ Stage 4가 검토·동결되고 별도 실행 지시가 있을 때만 아래 art
 
 ### 미확정 항목
 
-이번 보완으로 가격 기준 경로와 포트폴리오 집계 계약은 다음처럼 정리한다.
+이번 보완으로 가격 기준 경로는 확정하고, 현실적 공통 실행조건은 프로젝트
+작업 순서에 따라 FastCore에서 먼저 확정하도록 정리한다.
 
 - 가격 기준 경로: `MarketDataRepositoryV2`로 확정하며 이전 방식 fallback은
   사용하지 않는다.
-- 포트폴리오·비용·슬리피지·집계: 기존
-  `scripts/run_fastcore_vs_julia_portfolio_v01.py`의 200M 계약에서
-  자금·position cap·동시보유·valuation·turnover·`GROSS / NO_COST_MODEL`
-  의미론을 재사용한다. 그 계약의 mcap-only gate와 proxy fallback은
-  공식 Julia 기준에서 제외한다.
+- 현실적 공통 실행조건: FastCore realistic backtest에서 비용·세금·슬리피지,
+  position sizing, 동시 보유·자금 배분 및 포트폴리오 총성과 집계 의미론을
+  먼저 확정한 뒤, Julia에 동일하게 연결한다. 현재 숫자를 미리 만들지 않는다.
 
-Stage 5 실행 전에 해결해야 할 항목은 다음이다.
+### Stage 4 완료 전 남은 항목
+
+**FastCore realistic backtest 공통 실행조건 확정 및 Julia 계획 연결**
+
+이 조건이 확정되기 전에는 Julia 공식 실행계약을 동결하지 않는다. 과거
+200M `NO_COST_MODEL` 계약은 이 조건의 권위가 아니다.
+
+### Stage 5 실행 전 구현 조건
 
 1. **PIT runner 연결 구현**: 생존편향 방지 effective Population/PIT 기준
    경로는 확정되어 있다. 현재 Julia 비교 runner가 이를 직접 소비하도록
    연결하고, current-list broadcast나 nearest-date fallback이 없음을
    실행 contract와 무결성 gate로 확인해야 한다. 이번 작업에서는 runner를
-   수정하지 않는다.
-2. **위험 교환 사용자 결정**: Julia가 상승 여력을 개선하는 동시에 기존
-   risk-first 경계를 악화시키는 경우의 허용 여부를 결과 산출 전에 정해야
-   한다. 새 숫자 threshold를 임의로 만들지 않는다.
+   수정하지 않는다. 이 항목은 Stage 4의 실행조건 미확정과 구분되는 Stage 5
+   실행 전 구현 조건이다.
 
 위 항목이 남아 있으므로 이 문서의 상태는 `검토 대기`이며, Julia 생애주기
 4단계는 `미완료`이다. 검토가 끝나기 전에는 Stage 5 백테스트, 결과 생성,
