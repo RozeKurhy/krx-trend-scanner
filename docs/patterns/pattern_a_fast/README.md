@@ -24,6 +24,10 @@ Pattern A FAST는 Pattern A보다 상승 전환을 빠르게 탐지하기 위한
 A FAST Core V2가 현재 기본 전략이다. A FAST Core V1은 역사적 동결 기준선이고,
 A FAST Core V3는 규칙이 동결된 후보일 뿐 공식 전략이나 기본 전략이 아니다.
 
+- [FastCore 현실적 백테스트 공통 실행조건 V01](validation_plan/realistic_backtest_common_conditions_v01.md): 전략 중립 공통 실행조건 `검토 대기`
+- 아직 현실적 백테스트를 실행하지 않았다.
+- Fundamentals 조건은 별도 정의 대상이며 이 공통조건 문서에 포함하지 않는다.
+
 ## 문서 구조
 
 | 역할 | 위치 | 설명 |
