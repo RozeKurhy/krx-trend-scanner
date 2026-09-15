@@ -5,117 +5,21 @@
   "signal_cutoff": "2026-08-14",
   "execution_support_end": "2026-08-21",
   "final_valuation": "2026-08-21 CLOSE",
-  "common_entry_count": 0,
+  "common_entry_count": 12,
   "scan": {
     "weekly_reference_date_count": 620,
     "weekly_evaluation_error_count": 0,
     "raw_fast_signal_candidates": 12,
-    "common_entry_count": 0,
-    "entry_filter_rejection_count": 12,
-    "entry_filter_rejections": [
-      {
-        "signal_date": "2023-06-02",
-        "entry_avg_trading_value_20d": 366820226.75,
-        "entry_signal_close": 3570.0,
-        "failed_conditions": [
-          "entry_close"
-        ]
-      },
-      {
-        "signal_date": "2023-06-09",
-        "entry_avg_trading_value_20d": 408627439.75,
-        "entry_signal_close": 3640.0,
-        "failed_conditions": [
-          "entry_close"
-        ]
-      },
-      {
-        "signal_date": "2023-06-16",
-        "entry_avg_trading_value_20d": 468584288.75,
-        "entry_signal_close": 3595.0,
-        "failed_conditions": [
-          "entry_close"
-        ]
-      },
-      {
-        "signal_date": "2023-06-23",
-        "entry_avg_trading_value_20d": 455893222.25,
-        "entry_signal_close": 3565.0,
-        "failed_conditions": [
-          "entry_close"
-        ]
-      },
-      {
-        "signal_date": "2023-06-30",
-        "entry_avg_trading_value_20d": 476056618.5,
-        "entry_signal_close": 3455.0,
-        "failed_conditions": [
-          "entry_close"
-        ]
-      },
-      {
-        "signal_date": "2025-05-23",
-        "entry_avg_trading_value_20d": 1068720887.9,
-        "entry_signal_close": 3630.0,
-        "failed_conditions": [
-          "entry_close"
-        ]
-      },
-      {
-        "signal_date": "2025-05-30",
-        "entry_avg_trading_value_20d": 1958769398.1,
-        "entry_signal_close": 3865.0,
-        "failed_conditions": [
-          "entry_close"
-        ]
-      },
-      {
-        "signal_date": "2025-06-13",
-        "entry_avg_trading_value_20d": 3654804748.15,
-        "entry_signal_close": 4355.0,
-        "failed_conditions": [
-          "entry_close"
-        ]
-      },
-      {
-        "signal_date": "2025-06-20",
-        "entry_avg_trading_value_20d": 5552990320.5,
-        "entry_signal_close": 4370.0,
-        "failed_conditions": [
-          "entry_close"
-        ]
-      },
-      {
-        "signal_date": "2025-06-27",
-        "entry_avg_trading_value_20d": 6179795165.95,
-        "entry_signal_close": 4435.0,
-        "failed_conditions": [
-          "entry_close"
-        ]
-      },
-      {
-        "signal_date": "2025-08-08",
-        "entry_avg_trading_value_20d": 5072384652.1,
-        "entry_signal_close": 4255.0,
-        "failed_conditions": [
-          "entry_close"
-        ]
-      },
-      {
-        "signal_date": "2026-01-16",
-        "entry_avg_trading_value_20d": 2338266911.45,
-        "entry_signal_close": 4855.0,
-        "failed_conditions": [
-          "entry_close"
-        ]
-      }
-    ],
+    "common_entry_count": 12,
+    "entry_filter_rejection_count": 0,
+    "entry_filter_rejections": [],
     "market_cap_gate": "BYPASSED_ETF_NO_HISTORICAL_MARKET_CAP_AUTHORITY",
-    "price_filter_applied": true,
+    "price_filter_applied": false,
     "liquidity_filter_applied": false,
-    "liquidity_filter_threshold_krw": 0.0
+    "liquidity_filter_threshold_krw": 0.0,
+    "price_filter_threshold_krw": 0.0
   },
-  "matched_rows": 0,
+  "matched_rows": 48,
   "matched_identity": {
     "signal_date_match": true,
     "execution_date_match": true,
@@ -124,109 +28,187 @@
   },
   "matched_summaries": {
     "V2": {
-      "trade_count": 0,
-      "mean_return_pct": 0.0,
-      "median_return_pct": 0.0,
-      "win_rate_pct": 0.0,
-      "mean_mfe_pct": 0.0,
-      "mean_mae_pct": 0.0,
-      "mean_holding_days": 0.0,
-      "threshold_counts": {},
-      "exit_reasons": {}
+      "trade_count": 12,
+      "closed_trade_count": 12,
+      "open_at_cutoff_count": 0,
+      "mean_return_pct": 55.481667,
+      "median_return_pct": 38.3,
+      "win_rate_pct": 50.0,
+      "mean_mfe_pct": 77.849167,
+      "mean_mae_pct": -12.209167,
+      "mean_holding_days": 191.833333,
+      "threshold_counts": {
+        "le_neg_15_pct": 2,
+        "le_neg_30_pct": 0,
+        "le_neg_40_pct": 0,
+        "ge_pos_50_pct": 6,
+        "ge_pos_100_pct": 5
+      },
+      "exit_reasons": {
+        "LOSS_GUARD_CLOSE_LE_NEG_15": 6,
+        "EXIT4_SCORE_DRAWDOWN_GE_15": 6
+      }
     },
     "V3": {
-      "trade_count": 0,
-      "mean_return_pct": 0.0,
-      "median_return_pct": 0.0,
-      "win_rate_pct": 0.0,
-      "mean_mfe_pct": 0.0,
-      "mean_mae_pct": 0.0,
-      "mean_holding_days": 0.0,
-      "threshold_counts": {},
-      "exit_reasons": {}
+      "trade_count": 12,
+      "closed_trade_count": 12,
+      "open_at_cutoff_count": 0,
+      "mean_return_pct": 29.038333,
+      "median_return_pct": 16.12,
+      "win_rate_pct": 100.0,
+      "mean_mfe_pct": 63.766667,
+      "mean_mae_pct": -14.570833,
+      "mean_holding_days": 252.0,
+      "threshold_counts": {
+        "le_neg_15_pct": 0,
+        "le_neg_30_pct": 0,
+        "le_neg_40_pct": 0,
+        "ge_pos_50_pct": 4,
+        "ge_pos_100_pct": 0
+      },
+      "exit_reasons": {
+        "SOFT_EXIT": 7,
+        "HARD_EXIT": 5
+      }
     },
     "V4": {
-      "trade_count": 0,
-      "mean_return_pct": 0.0,
-      "median_return_pct": 0.0,
-      "win_rate_pct": 0.0,
-      "mean_mfe_pct": 0.0,
-      "mean_mae_pct": 0.0,
-      "mean_holding_days": 0.0,
-      "threshold_counts": {},
-      "exit_reasons": {}
+      "trade_count": 12,
+      "closed_trade_count": 12,
+      "open_at_cutoff_count": 0,
+      "mean_return_pct": 16.515,
+      "median_return_pct": 8.345,
+      "win_rate_pct": 58.333333,
+      "mean_mfe_pct": 59.334167,
+      "mean_mae_pct": -11.926667,
+      "mean_holding_days": 168.583333,
+      "threshold_counts": {
+        "le_neg_15_pct": 2,
+        "le_neg_30_pct": 0,
+        "le_neg_40_pct": 0,
+        "ge_pos_50_pct": 4,
+        "ge_pos_100_pct": 0
+      },
+      "exit_reasons": {
+        "PRE_WINNER_PRICE_STRUCTURE_FAILURE": 4,
+        "WINNER_HARD_EXIT": 6,
+        "WINNER_SOFT_WATCH_EXIT": 2
+      }
     },
     "Julia": {
-      "trade_count": 0,
-      "mean_return_pct": 0.0,
-      "median_return_pct": 0.0,
-      "win_rate_pct": 0.0,
-      "mean_mfe_pct": 0.0,
-      "mean_mae_pct": 0.0,
-      "mean_holding_days": 0.0,
-      "threshold_counts": {},
-      "exit_reasons": {}
+      "trade_count": 12,
+      "closed_trade_count": 12,
+      "open_at_cutoff_count": 0,
+      "mean_return_pct": 140.1575,
+      "median_return_pct": 151.345,
+      "win_rate_pct": 100.0,
+      "mean_mfe_pct": 156.839167,
+      "mean_mae_pct": -16.614167,
+      "mean_holding_days": 403.166667,
+      "threshold_counts": {
+        "le_neg_15_pct": 0,
+        "le_neg_30_pct": 0,
+        "le_neg_40_pct": 0,
+        "ge_pos_50_pct": 12,
+        "ge_pos_100_pct": 11
+      },
+      "exit_reasons": {
+        "EXIT4_SCORE_DRAWDOWN_GE_15": 12
+      }
     }
   },
   "paired_vs_v2": {
     "V3": {
-      "paired_count": 0,
-      "mean_delta_pct": null,
-      "median_delta_pct": null,
-      "improved_count": 0,
-      "worsened_count": 0,
+      "paired_count": 12,
+      "mean_delta_pct": -26.443333,
+      "median_delta_pct": -18.135,
+      "improved_count": 6,
+      "worsened_count": 6,
       "same_count": 0
     },
     "V4": {
-      "paired_count": 0,
-      "mean_delta_pct": null,
-      "median_delta_pct": null,
-      "improved_count": 0,
-      "worsened_count": 0,
-      "same_count": 0
+      "paired_count": 12,
+      "mean_delta_pct": -38.966667,
+      "median_delta_pct": -33.37,
+      "improved_count": 2,
+      "worsened_count": 8,
+      "same_count": 2
     },
     "Julia": {
-      "paired_count": 0,
-      "mean_delta_pct": null,
-      "median_delta_pct": null,
-      "improved_count": 0,
+      "paired_count": 12,
+      "mean_delta_pct": 84.675833,
+      "median_delta_pct": 63.61,
+      "improved_count": 6,
       "worsened_count": 0,
-      "same_count": 0
+      "same_count": 6
     }
   },
   "sequential_summaries": {
     "V2": {
-      "trade_count": 0,
-      "mean_return_pct": 0.0,
-      "median_return_pct": 0.0,
-      "win_rate_pct": 0.0,
-      "mean_mfe_pct": 0.0,
-      "mean_mae_pct": 0.0,
-      "mean_holding_days": 0.0,
-      "threshold_counts": {},
-      "exit_reasons": {}
+      "trade_count": 2,
+      "closed_trade_count": 2,
+      "open_at_cutoff_count": 0,
+      "mean_return_pct": 70.575,
+      "median_return_pct": 70.575,
+      "win_rate_pct": 50.0,
+      "mean_mfe_pct": 94.815,
+      "mean_mae_pct": -9.76,
+      "mean_holding_days": 259.5,
+      "threshold_counts": {
+        "le_neg_15_pct": 0,
+        "le_neg_30_pct": 0,
+        "le_neg_40_pct": 0,
+        "ge_pos_50_pct": 1,
+        "ge_pos_100_pct": 1
+      },
+      "exit_reasons": {
+        "LOSS_GUARD_CLOSE_LE_NEG_15": 1,
+        "EXIT4_SCORE_DRAWDOWN_GE_15": 1
+      }
     },
     "V3": {
-      "trade_count": 0,
-      "mean_return_pct": 0.0,
-      "median_return_pct": 0.0,
-      "win_rate_pct": 0.0,
-      "mean_mfe_pct": 0.0,
-      "mean_mae_pct": 0.0,
-      "mean_holding_days": 0.0,
-      "threshold_counts": {},
-      "exit_reasons": {}
+      "trade_count": 2,
+      "closed_trade_count": 2,
+      "open_at_cutoff_count": 0,
+      "mean_return_pct": 38.65,
+      "median_return_pct": 38.65,
+      "win_rate_pct": 100.0,
+      "mean_mfe_pct": 83.89,
+      "mean_mae_pct": -19.955,
+      "mean_holding_days": 354.0,
+      "threshold_counts": {
+        "le_neg_15_pct": 0,
+        "le_neg_30_pct": 0,
+        "le_neg_40_pct": 0,
+        "ge_pos_50_pct": 1,
+        "ge_pos_100_pct": 0
+      },
+      "exit_reasons": {
+        "SOFT_EXIT": 1,
+        "HARD_EXIT": 1
+      }
     },
     "V4": {
-      "trade_count": 0,
-      "mean_return_pct": 0.0,
-      "median_return_pct": 0.0,
-      "win_rate_pct": 0.0,
-      "mean_mfe_pct": 0.0,
-      "mean_mae_pct": 0.0,
-      "mean_holding_days": 0.0,
-      "threshold_counts": {},
-      "exit_reasons": {}
+      "trade_count": 3,
+      "closed_trade_count": 3,
+      "open_at_cutoff_count": 0,
+      "mean_return_pct": 4.636667,
+      "median_return_pct": 9.86,
+      "win_rate_pct": 66.666667,
+      "mean_mfe_pct": 29.786667,
+      "mean_mae_pct": -8.443333,
+      "mean_holding_days": 153.0,
+      "threshold_counts": {
+        "le_neg_15_pct": 1,
+        "le_neg_30_pct": 0,
+        "le_neg_40_pct": 0,
+        "ge_pos_50_pct": 0,
+        "ge_pos_100_pct": 0
+      },
+      "exit_reasons": {
+        "PRE_WINNER_PRICE_STRUCTURE_FAILURE": 1,
+        "WINNER_SOFT_WATCH_EXIT": 1,
+        "WINNER_HARD_EXIT": 1
+      }
     },
     "Julia": {
       "trade_count": 1,
@@ -252,40 +234,50 @@
   },
   "strategies": {
     "V2": {
-      "total_return_pct": 0.0,
-      "cagr_pct": 0.0,
-      "mdd_pct": 0.0,
-      "final_equity": 1.0,
-      "exposure_ratio_pct": 0.0,
-      "trade_count": 0,
-      "mean_trade_return_pct": 0.0,
-      "median_trade_return_pct": 0.0,
-      "win_rate_pct": 0.0,
-      "exit_reasons": {}
+      "total_return_pct": 119.932338,
+      "cagr_pct": 15.751593,
+      "mdd_pct": -26.380368,
+      "final_equity": 2.1993233793,
+      "exposure_ratio_pct": 39.137017,
+      "trade_count": 2,
+      "mean_trade_return_pct": 70.575,
+      "median_trade_return_pct": 70.575,
+      "win_rate_pct": 50.0,
+      "exit_reasons": {
+        "LOSS_GUARD_CLOSE_LE_NEG_15": 1,
+        "EXIT4_SCORE_DRAWDOWN_GE_15": 1
+      }
     },
     "V3": {
-      "total_return_pct": 0.0,
-      "cagr_pct": 0.0,
-      "mdd_pct": 0.0,
-      "final_equity": 1.0,
-      "exposure_ratio_pct": 0.0,
-      "trade_count": 0,
-      "mean_trade_return_pct": 0.0,
-      "median_trade_return_pct": 0.0,
-      "win_rate_pct": 0.0,
-      "exit_reasons": {}
+      "total_return_pct": 87.277005,
+      "cagr_pct": 12.349623,
+      "mdd_pct": -35.582822,
+      "final_equity": 1.8727700535,
+      "exposure_ratio_pct": 53.44436,
+      "trade_count": 2,
+      "mean_trade_return_pct": 38.65,
+      "median_trade_return_pct": 38.65,
+      "win_rate_pct": 100.0,
+      "exit_reasons": {
+        "SOFT_EXIT": 1,
+        "HARD_EXIT": 1
+      }
     },
     "V4": {
-      "total_return_pct": 0.0,
-      "cagr_pct": 0.0,
-      "mdd_pct": 0.0,
-      "final_equity": 1.0,
-      "exposure_ratio_pct": 0.0,
-      "trade_count": 0,
-      "mean_trade_return_pct": 0.0,
-      "median_trade_return_pct": 0.0,
-      "win_rate_pct": 0.0,
-      "exit_reasons": {}
+      "total_return_pct": 8.542266,
+      "cagr_pct": 1.532939,
+      "mdd_pct": -30.920245,
+      "final_equity": 1.0854226595,
+      "exposure_ratio_pct": 34.519304,
+      "trade_count": 3,
+      "mean_trade_return_pct": 4.636667,
+      "median_trade_return_pct": 9.86,
+      "win_rate_pct": 66.666667,
+      "exit_reasons": {
+        "PRE_WINNER_PRICE_STRUCTURE_FAILURE": 1,
+        "WINNER_SOFT_WATCH_EXIT": 1,
+        "WINNER_HARD_EXIT": 1
+      }
     },
     "Julia": {
       "total_return_pct": 163.776224,
@@ -345,47 +337,59 @@
     "distribution_reinvestment": false
   },
   "extension": {
-    "action": "EXTENDED",
-    "rows_added": 4,
-    "added_dates": [
-      "2026-08-18",
-      "2026-08-19",
-      "2026-08-20",
-      "2026-08-21"
-    ],
+    "action": "UNCHANGED_SUPPORT_ALREADY_PRESENT",
+    "rows_added": 0,
+    "added_dates": [],
     "phantom_rows_filtered": 0,
-    "source_overlap_rows": 3097,
+    "source_overlap_rows": 3101,
     "source_overlap_field_mismatches": 0,
     "source_rows_to_support": 3101,
     "source_period": "2014-01-02 ~ 2026-08-21"
   },
+  "common_eligible_signal_dates": [
+    "2023-06-02",
+    "2023-06-09",
+    "2023-06-16",
+    "2023-06-23",
+    "2023-06-30",
+    "2025-05-23",
+    "2025-05-30",
+    "2025-06-13",
+    "2025-06-20",
+    "2025-06-27",
+    "2025-08-08",
+    "2026-01-16"
+  ],
+  "common_eligible_signal_count": 12,
+  "price_filter_applied": false,
+  "price_filter_threshold_krw": 0.0,
   "v3_vs_julia": {
-    "paired_count": 0,
-    "mean_delta_pct_julia_minus_v3": null,
-    "median_delta_pct_julia_minus_v3": null,
-    "julia_better_count": 0,
+    "paired_count": 12,
+    "mean_delta_pct_julia_minus_v3": 111.119167,
+    "median_delta_pct_julia_minus_v3": 140.465,
+    "julia_better_count": 12,
     "v3_better_count": 0,
     "same_count": 0,
     "metric_comparison": {
       "mean_return_pct": {
-        "V3": 0.0,
-        "Julia": 0.0,
-        "winner": "tie"
+        "V3": 29.038333,
+        "Julia": 140.1575,
+        "winner": "Julia"
       },
       "median_return_pct": {
-        "V3": 0.0,
-        "Julia": 0.0,
-        "winner": "tie"
+        "V3": 16.12,
+        "Julia": 151.345,
+        "winner": "Julia"
       },
       "win_rate_pct": {
-        "V3": 0.0,
-        "Julia": 0.0,
+        "V3": 100.0,
+        "Julia": 100.0,
         "winner": "tie"
       },
       "mean_mae_pct": {
-        "V3": 0.0,
-        "Julia": 0.0,
-        "winner": "tie"
+        "V3": -14.570833,
+        "Julia": -16.614167,
+        "winner": "V3"
       }
     }
   }

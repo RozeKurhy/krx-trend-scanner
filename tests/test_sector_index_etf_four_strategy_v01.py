@@ -48,6 +48,10 @@ def test_all_sector_runs_are_complete_and_no_liquidity_filter() -> None:
             assert summary["status"] == "COMPLETE"
             assert summary["scan"]["liquidity_filter_applied"] is False
             assert summary["scan"]["liquidity_filter_threshold_krw"] == 0.0
+            assert summary["scan"]["price_filter_applied"] is False
+            assert summary["scan"]["price_filter_threshold_krw"] == 0.0
+            assert summary["price_filter_applied"] is False
+            assert summary["price_filter_threshold_krw"] == 0.0
             assert summary["execution_support_end"] == "2026-08-21"
             assert summary["final_valuation"] == "2026-08-21 CLOSE"
 
@@ -71,6 +75,25 @@ def test_matched_identity_and_v3_julia_comparison() -> None:
             assert direct["paired_count"] == summary["common_entry_count"]
             assert direct["julia_better_count"] + direct["v3_better_count"] + direct["same_count"] == direct["paired_count"]
             assert set(direct["metric_comparison"]) == {"mean_return_pct", "median_return_pct", "win_rate_pct", "mean_mae_pct"}
+
+
+def test_sequential_paths_stay_inside_common_signal_set_and_zero_entry_semantics() -> None:
+    for ticker in TICKERS:
+        for run in RUNS:
+            summary = _summary(ticker, run)
+            common_dates = set(summary["common_eligible_signal_dates"])
+            assert summary["common_eligible_signal_count"] == summary["common_entry_count"]
+            sequential = pd.read_csv(ARTIFACT_ROOT / ticker / run / "sequential_trades.csv")
+            matched = pd.read_csv(ARTIFACT_ROOT / ticker / run / "matched_trades.csv")
+            assert set(matched["entry_signal_date"].dropna().astype(str)) == common_dates
+            for strategy in ("V2", "V3", "V4", "Julia"):
+                actual_dates = set(
+                    sequential.loc[sequential["strategy"] == strategy, "entry_signal_date"].dropna().astype(str)
+                )
+                assert actual_dates <= common_dates
+                if not common_dates:
+                    assert actual_dates == set()
+                    assert len(matched) == 0
 
 
 def test_sequential_paths_have_no_overlap_and_valid_exit_support() -> None:
@@ -117,7 +140,10 @@ def test_daily_equity_reproduces_summary_metrics() -> None:
 @pytest.mark.parametrize("run", RUNS)
 def test_head_to_head_counts_cover_all_sector_etfs(run: str) -> None:
     head_to_head = _aggregate()["head_to_head"][run]
+    denominator = _aggregate()["comparison_counts"][run]
+    assert denominator["universe_count"] == len(TICKERS)
+    assert denominator["evaluable_count"] + denominator["n_a_zero_entry_count"] == len(TICKERS)
     expected_metrics = {"sequential_total_return", "sequential_cagr", "sequential_mdd", "matched_mean_return", "matched_median_return", "matched_win_rate", "matched_mean_mae"}
     assert set(head_to_head) == expected_metrics
     for counts in head_to_head.values():
-        assert counts["V3_win"] + counts["Julia_win"] + counts["tie"] == len(TICKERS)
+        assert counts["V3_win"] + counts["Julia_win"] + counts["tie"] == denominator["evaluable_count"]

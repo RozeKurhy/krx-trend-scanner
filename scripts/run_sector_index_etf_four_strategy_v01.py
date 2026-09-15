@@ -3,11 +3,12 @@
 
 from __future__ import annotations
 
+from contextlib import contextmanager
 from pathlib import Path
 import argparse
 import json
 import math
-from typing import Any, Mapping, Sequence
+from typing import Any, Iterator, Mapping, Sequence
 
 import pandas as pd
 import pyarrow.compute as pc
@@ -51,8 +52,9 @@ DATA_DIR = ROOT / "data/raw/stocks"
 OUT_ROOT = ROOT / "artifacts/research/sector_index_etf_four_strategy_v01"
 AGGREGATE_SUMMARY_PATH = OUT_ROOT / "aggregate_summary.json"
 AGGREGATE_REPORT_PATH = OUT_ROOT / "aggregate_report.md"
-STARTING_HEAD = "10374ec062138ccae8b055f787ffe36c5215a419"
+STARTING_HEAD = "3c3c5e4e83f254bd63171d6de1e00742cc8ccb20"
 BRANCH = "codex/fastcore-fundamentals-simple-backtest-v01"
+PRICE_FILTER_THRESHOLD = 0.0
 
 
 def _json_write(path: Path, payload: Mapping[str, Any]) -> None:
@@ -146,6 +148,72 @@ def prepare_authorities() -> dict[str, dict[str, Any]]:
     return records
 
 
+@contextmanager
+def _sector_filter_override(apply_liquidity_filter: bool) -> Iterator[None]:
+    """Disable both liquidity and price entry gates for this research run."""
+    if apply_liquidity_filter:
+        yield
+        return
+
+    original_v2_filter = base.v2_engine.evaluate_entry_filter
+    original_julia_investability = base.julia_engine.evaluate_investability
+
+    def no_entry_filters(
+        panel: pd.DataFrame | None,
+        signal_date: pd.Timestamp,
+        *,
+        market_cap_threshold: float,
+        avg_trading_value_threshold: float,
+        close_threshold: float,
+    ) -> dict[str, object]:
+        return original_v2_filter(
+            panel,
+            signal_date,
+            market_cap_threshold=market_cap_threshold,
+            avg_trading_value_threshold=0.0,
+            close_threshold=PRICE_FILTER_THRESHOLD,
+        )
+
+    def no_liquidity_julia_investability(*args: Any, **kwargs: Any) -> Any:
+        kwargs["min_avg_trading_value_20d_krw"] = 0.0
+        return original_julia_investability(*args, **kwargs)
+
+    base.v2_engine.evaluate_entry_filter = no_entry_filters  # type: ignore[assignment]
+    base.julia_engine.evaluate_investability = no_liquidity_julia_investability  # type: ignore[assignment]
+    try:
+        yield
+    finally:
+        base.v2_engine.evaluate_entry_filter = original_v2_filter  # type: ignore[assignment]
+        base.julia_engine.evaluate_investability = original_julia_investability  # type: ignore[assignment]
+
+
+@contextmanager
+def _julia_common_signal_gate(allowed_signal_dates: set[pd.Timestamp]) -> Iterator[None]:
+    """Make Julia's sequential scanner consume only the common signal set."""
+    original_evaluator = base.julia_engine.evaluate_pattern_a_fast
+
+    def gated_evaluator(*args: Any, **kwargs: Any) -> dict[str, Any]:
+        weekly_date = kwargs.get("weekly_date")
+        if weekly_date is None and len(args) >= 4:
+            weekly_date = args[3]
+        if weekly_date is None or _date(weekly_date) not in allowed_signal_dates:
+            return {
+                "fast_machine_stage": "UNAVAILABLE",
+                "fast_machine_stage_status": "NOT_READY",
+                "fast_monthly_permission_state": "NOT_PERMITTED",
+                "fast_daily_risk_state": "EXTREME",
+                "fast_score_status": "NOT_READY",
+                "pattern_a_stage": "UNAVAILABLE",
+            }
+        return original_evaluator(*args, **kwargs)
+
+    base.julia_engine.evaluate_pattern_a_fast = gated_evaluator  # type: ignore[assignment]
+    try:
+        yield
+    finally:
+        base.julia_engine.evaluate_pattern_a_fast = original_evaluator  # type: ignore[assignment]
+
+
 def _winner(v3: float, julia: float, *, higher_is_better: bool = True) -> str:
     if math.isclose(v3, julia, abs_tol=1e-9):
         return "tie"
@@ -178,6 +246,49 @@ def _direct_v3_julia(matched: pd.DataFrame, summary: Mapping[str, Any]) -> dict[
     }
 
 
+def _sector_wins(aggregate: Mapping[str, Any], run: str) -> dict[str, dict[str, int]]:
+    wins = {
+        "sequential_total": {strategy: 0 for strategy in ("V3", "V4", "Julia")},
+        "sequential_cagr": {strategy: 0 for strategy in ("V3", "V4", "Julia")},
+        "sequential_mdd": {strategy: 0 for strategy in ("V3", "V4", "Julia")},
+        "matched_mean": {strategy: 0 for strategy in ("V3", "V4", "Julia")},
+        "matched_median": {strategy: 0 for strategy in ("V3", "V4", "Julia")},
+        "matched_win_rate": {strategy: 0 for strategy in ("V3", "V4", "Julia")},
+    }
+    for ticker in SECTOR_ETFS:
+        summary = aggregate["etfs"][ticker]["runs"][run]
+        if summary["status"] != "COMPLETE" or summary["common_entry_count"] == 0:
+            continue
+        v2 = summary["strategies"]["V2"]
+        v2_matched = summary["matched_summaries"]["V2"]
+        for strategy in ("V3", "V4", "Julia"):
+            metrics = summary["strategies"][strategy]
+            matched = summary["matched_summaries"][strategy]
+            wins["sequential_total"][strategy] += int(metrics["total_return_pct"] > v2["total_return_pct"])
+            wins["sequential_cagr"][strategy] += int(metrics["cagr_pct"] > v2["cagr_pct"])
+            wins["sequential_mdd"][strategy] += int(metrics["mdd_pct"] > v2["mdd_pct"])
+            wins["matched_mean"][strategy] += int(matched["mean_return_pct"] > v2_matched["mean_return_pct"])
+            wins["matched_median"][strategy] += int(matched["median_return_pct"] > v2_matched["median_return_pct"])
+            wins["matched_win_rate"][strategy] += int(matched["win_rate_pct"] > v2_matched["win_rate_pct"])
+    return wins
+
+
+def _comparison_counts(aggregate: Mapping[str, Any]) -> dict[str, dict[str, int]]:
+    result: dict[str, dict[str, int]] = {}
+    for run in base.RUNS:
+        zero_entry = sum(
+            1
+            for ticker in SECTOR_ETFS
+            if aggregate["etfs"][ticker]["runs"][run].get("common_entry_count", 0) == 0
+        )
+        result[run] = {
+            "universe_count": len(SECTOR_ETFS),
+            "evaluable_count": len(SECTOR_ETFS) - zero_entry,
+            "n_a_zero_entry_count": zero_entry,
+        }
+    return result
+
+
 def _augment_results(aggregate: dict[str, Any]) -> dict[str, Any]:
     for ticker, item in aggregate["etfs"].items():
         if item.get("data") is None:
@@ -188,6 +299,25 @@ def _augment_results(aggregate: dict[str, Any]) -> dict[str, Any]:
                 continue
             matched_path = OUT_ROOT / ticker / run / "matched_trades.csv"
             matched = pd.read_csv(matched_path)
+            common_signal_dates = sorted(matched["entry_signal_date"].dropna().astype(str).unique().tolist())
+            common_signal_set = set(common_signal_dates)
+            sequential = pd.read_csv(OUT_ROOT / ticker / run / "sequential_trades.csv")
+            for strategy in base.STRATEGIES:
+                actual_dates = set(
+                    sequential.loc[sequential["strategy"] == strategy, "entry_signal_date"].dropna().astype(str)
+                )
+                if not actual_dates.issubset(common_signal_set):
+                    raise AssertionError(f"{ticker}/{run}/{strategy}: sequential entry outside common eligible signal set")
+                if not common_signal_set and actual_dates:
+                    raise AssertionError(f"{ticker}/{run}/{strategy}: zero-entry common set has sequential trades")
+            run_summary["common_eligible_signal_dates"] = common_signal_dates
+            run_summary["common_eligible_signal_count"] = len(common_signal_dates)
+            run_summary["price_filter_applied"] = False
+            run_summary["price_filter_threshold_krw"] = PRICE_FILTER_THRESHOLD
+            run_summary["scan"]["price_filter_applied"] = False
+            run_summary["scan"]["price_filter_threshold_krw"] = PRICE_FILTER_THRESHOLD
+            run_summary["scan"]["liquidity_filter_applied"] = False
+            run_summary["scan"]["liquidity_filter_threshold_krw"] = 0.0
             run_summary["v3_vs_julia"] = _direct_v3_julia(matched, run_summary)
             _json_write(OUT_ROOT / ticker / run / "summary.json", run_summary)
         item["report"] = _sector_report(item)
@@ -196,6 +326,10 @@ def _augment_results(aggregate: dict[str, Any]) -> dict[str, Any]:
     aggregate["starting_head"] = STARTING_HEAD
     aggregate["branch"] = BRANCH
     aggregate["liquidity_filter_applied"] = False
+    aggregate["price_filter_applied"] = False
+    aggregate["price_filter_threshold_krw"] = PRICE_FILTER_THRESHOLD
+    aggregate["comparison_counts"] = _comparison_counts(aggregate)
+    aggregate["wins"] = {run: _sector_wins(aggregate, run) for run in base.RUNS}
     aggregate["head_to_head"] = _head_to_head(aggregate)
     aggregate["status"] = "COMPLETE" if all(
         aggregate["etfs"][ticker]["status"] == "COMPLETE" for ticker in SECTOR_ETFS
@@ -222,7 +356,7 @@ def _head_to_head(aggregate: Mapping[str, Any]) -> dict[str, Any]:
             counts = {"V3_win": 0, "Julia_win": 0, "tie": 0}
             for ticker in SECTOR_ETFS:
                 run_summary = aggregate["etfs"][ticker]["runs"][run]
-                if run_summary["status"] != "COMPLETE":
+                if run_summary["status"] != "COMPLETE" or run_summary.get("common_entry_count", 0) == 0:
                     continue
                 v3 = float(run_summary[section]["V3"][field])
                 julia = float(run_summary[section]["Julia"][field])
@@ -240,6 +374,7 @@ def _sector_report(item: Mapping[str, Any]) -> str:
         f"- authority: `{item['data']['path']}`",
         f"- period: `{item['data']['used_start']} ~ {item['data']['used_end']}` / `{item['data']['rows_used_to_support']}` rows",
         "- liquidity filter: `OFF / threshold 0`",
+        "- price filter: `OFF / close threshold 0`",
         "- signal cutoff / support / final valuation: `2026-08-14` / `2026-08-21` / `2026-08-21 CLOSE`",
         "- cost model: `GROSS / NO_COST_MODEL`",
         "",
@@ -249,7 +384,7 @@ def _sector_report(item: Mapping[str, Any]) -> str:
         if summary["status"] != "COMPLETE":
             lines.extend([f"## {run}", "", f"- status: `{summary['status']}`", f"- reason: `{summary.get('reason', '')}`", ""])
             continue
-        lines.extend([f"## {run}", "", f"- common entries: `{summary['common_entry_count']}`", f"- matched identity: `{summary['matched_identity']}`", f"- paired vs V2: `{summary['paired_vs_v2']}`", f"- V3 vs Julia: `{summary['v3_vs_julia']}`", ""])
+        lines.extend([f"## {run}", "", f"- common eligible entries: `{summary['common_entry_count']}`", f"- sequential common-set enforcement: `True`", f"- matched identity: `{summary['matched_identity']}`", f"- paired vs V2: `{summary['paired_vs_v2']}`", f"- V3 vs Julia: `{summary['v3_vs_julia']}`", ""])
         rows = []
         for strategy in base.STRATEGIES + ("Buy & Hold",):
             metrics = summary["strategies"][strategy]
@@ -267,11 +402,12 @@ def _aggregate_report(aggregate: Mapping[str, Any]) -> str:
         f"- overall status: `{aggregate['status']}`",
         "- V2/V3/V4/Julia rules unchanged",
         "- liquidity filter: `OFF / threshold 0` for all 16 ETFs",
+        "- price filter: `OFF / close threshold 0` for all 16 ETFs",
         "- backtest network requests: `0`",
         "",
         "## ETF status",
         "",
-        "| ticker | ETF | long range | same window | period | rows | entries LR/SW |",
+        "| ticker | ETF | long range | same window | period | rows | common entries LR/SW |",
         "| --- | --- | --- | --- | --- | ---: | ---: |",
     ]
     for ticker, name in SECTOR_ETFS.items():
@@ -281,6 +417,10 @@ def _aggregate_report(aggregate: Mapping[str, Any]) -> str:
         rows = data.get("rows_used_to_support", "") if data else ""
         entries = f"{item['runs']['long_range'].get('common_entry_count', '-')} / {item['runs']['same_window'].get('common_entry_count', '-')}"
         lines.append(f"| {ticker} | {name} | {item['runs']['long_range']['status']} | {item['runs']['same_window']['status']} | {period} | {rows} | {entries} |")
+    lines.extend(["", "## Comparison denominator", "", "| run | universe_count | evaluable_count | n/a_zero_entry_count |", "| --- | ---: | ---: | ---: |"])
+    for run in base.RUNS:
+        counts = aggregate["comparison_counts"][run]
+        lines.append(f"| {run} | {counts['universe_count']} | {counts['evaluable_count']} | {counts['n_a_zero_entry_count']} |")
     for run in base.RUNS:
         lines.extend(["", f"## {run} sequential comparison", "", "| ticker | strategy | total | cagr | mdd | exposure | trades |", "| --- | --- | ---: | ---: | ---: | ---: | ---: |"])
         for ticker in SECTOR_ETFS:
@@ -324,6 +464,9 @@ def main() -> int:
     base.AGGREGATE_SUMMARY_PATH = AGGREGATE_SUMMARY_PATH
     base.AGGREGATE_REPORT_PATH = AGGREGATE_REPORT_PATH
     original_v2_kwargs = base._v2_kwargs
+    original_simulate_sequential = base.simulate_sequential
+    original_liquidity_override = base.liquidity_filter_override
+    original_min_close = base.MIN_CLOSE
 
     def sector_v2_kwargs(ticker: str, name: str, daily: pd.DataFrame, panel: pd.DataFrame, context: Any, score: dict[str, Any], stage: dict[str, Any], allowed: set[pd.Timestamp] | None, start: pd.Timestamp) -> dict[str, Any]:
         kwargs = original_v2_kwargs(ticker, name, daily, panel, context, score, stage, allowed, start)
@@ -337,6 +480,26 @@ def main() -> int:
         return kwargs
 
     base._v2_kwargs = sector_v2_kwargs
+
+    def sector_simulate_sequential(
+        ticker: str,
+        name: str,
+        run_start: pd.Timestamp,
+        signals: list[dict[str, Any]],
+        states: list[tuple[pd.Timestamp, str]],
+        daily: pd.DataFrame,
+        context: Any,
+        panel: pd.DataFrame,
+        score: dict[str, Any],
+        stage: dict[str, Any],
+    ) -> dict[str, list[dict[str, Any]]]:
+        allowed_signal_dates = {_date(row["signal_date"]) for row in signals}
+        with _julia_common_signal_gate(allowed_signal_dates):
+            return original_simulate_sequential(ticker, name, run_start, signals, states, daily, context, panel, score, stage)
+
+    base.simulate_sequential = sector_simulate_sequential
+    base.liquidity_filter_override = _sector_filter_override
+    base.MIN_CLOSE = PRICE_FILTER_THRESHOLD
     selected_tickers = tuple(args.tickers or SECTOR_ETFS)
     audit = base.NetworkAudit()
     try:
@@ -353,6 +516,11 @@ def main() -> int:
     except Exception as exc:
         print(f"SECTOR ETF BACKTEST BLOCKED: {type(exc).__name__}: {exc}", flush=True)
         return 1
+    finally:
+        base._v2_kwargs = original_v2_kwargs
+        base.simulate_sequential = original_simulate_sequential
+        base.liquidity_filter_override = original_liquidity_override
+        base.MIN_CLOSE = original_min_close
 
 
 if __name__ == "__main__":

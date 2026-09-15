@@ -14,9 +14,10 @@
     "entry_filter_rejection_count": 0,
     "entry_filter_rejections": [],
     "market_cap_gate": "BYPASSED_ETF_NO_HISTORICAL_MARKET_CAP_AUTHORITY",
-    "price_filter_applied": true,
+    "price_filter_applied": false,
     "liquidity_filter_applied": false,
-    "liquidity_filter_threshold_krw": 0.0
+    "liquidity_filter_threshold_krw": 0.0,
+    "price_filter_threshold_krw": 0.0
   },
   "matched_rows": 36,
   "matched_identity": {
@@ -336,20 +337,29 @@
     "distribution_reinvestment": false
   },
   "extension": {
-    "action": "EXTENDED",
-    "rows_added": 4,
-    "added_dates": [
-      "2026-08-18",
-      "2026-08-19",
-      "2026-08-20",
-      "2026-08-21"
-    ],
+    "action": "UNCHANGED_SUPPORT_ALREADY_PRESENT",
+    "rows_added": 0,
+    "added_dates": [],
     "phantom_rows_filtered": 0,
-    "source_overlap_rows": 3097,
+    "source_overlap_rows": 3101,
     "source_overlap_field_mismatches": 0,
     "source_rows_to_support": 3101,
     "source_period": "2014-01-02 ~ 2026-08-21"
   },
+  "common_eligible_signal_dates": [
+    "2023-04-28",
+    "2025-10-31",
+    "2025-11-07",
+    "2025-11-14",
+    "2025-12-05",
+    "2025-12-12",
+    "2026-02-20",
+    "2026-04-17",
+    "2026-04-24"
+  ],
+  "common_eligible_signal_count": 9,
+  "price_filter_applied": false,
+  "price_filter_threshold_krw": 0.0,
   "v3_vs_julia": {
     "paired_count": 9,
     "mean_delta_pct_julia_minus_v3": -11.571111,

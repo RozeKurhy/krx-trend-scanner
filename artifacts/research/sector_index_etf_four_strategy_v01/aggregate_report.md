@@ -3,11 +3,12 @@
 - overall status: `COMPLETE`
 - V2/V3/V4/Julia rules unchanged
 - liquidity filter: `OFF / threshold 0` for all 16 ETFs
+- price filter: `OFF / close threshold 0` for all 16 ETFs
 - backtest network requests: `0`
 
 ## ETF status
 
-| ticker | ETF | long range | same window | period | rows | entries LR/SW |
+| ticker | ETF | long range | same window | period | rows | common entries LR/SW |
 | --- | --- | --- | --- | --- | ---: | ---: |
 | 091160 | KODEX 반도체 | COMPLETE | COMPLETE | 2014-01-02 ~ 2026-08-21 | 3101 | 56 / 30 |
 | 102970 | KODEX 증권 | COMPLETE | COMPLETE | 2014-01-02 ~ 2026-08-21 | 3101 | 35 / 5 |
@@ -15,16 +16,23 @@
 | 091180 | KODEX 자동차 | COMPLETE | COMPLETE | 2014-01-02 ~ 2026-08-21 | 3101 | 19 / 16 |
 | 266420 | KODEX 헬스케어 | COMPLETE | COMPLETE | 2017-03-28 ~ 2026-08-21 | 2300 | 21 / 12 |
 | 140700 | KODEX 보험 | COMPLETE | COMPLETE | 2014-01-02 ~ 2026-08-21 | 3101 | 47 / 32 |
-| 117700 | KODEX 건설 | COMPLETE | COMPLETE | 2014-01-02 ~ 2026-08-21 | 3101 | 0 / 0 |
+| 117700 | KODEX 건설 | COMPLETE | COMPLETE | 2014-01-02 ~ 2026-08-21 | 3101 | 27 / 12 |
 | 266370 | KODEX IT | COMPLETE | COMPLETE | 2017-03-28 ~ 2026-08-21 | 2300 | 33 / 24 |
 | 363580 | KODEX 200IT TR | COMPLETE | COMPLETE | 2020-09-25 ~ 2026-08-21 | 1445 | 21 / 21 |
 | 266360 | KODEX K-콘텐츠 | COMPLETE | COMPLETE | 2017-03-28 ~ 2026-08-21 | 2304 | 5 / 3 |
 | 117460 | KODEX 에너지화학 | COMPLETE | COMPLETE | 2014-01-02 ~ 2026-08-21 | 3101 | 42 / 9 |
 | 117680 | KODEX 철강 | COMPLETE | COMPLETE | 2014-01-02 ~ 2026-08-21 | 3101 | 34 / 16 |
-| 102960 | KODEX 기계장비 | COMPLETE | COMPLETE | 2014-01-02 ~ 2026-08-21 | 3101 | 43 / 40 |
+| 102960 | KODEX 기계장비 | COMPLETE | COMPLETE | 2014-01-02 ~ 2026-08-21 | 3101 | 48 / 40 |
 | 266410 | KODEX 필수소비재 | COMPLETE | COMPLETE | 2017-03-28 ~ 2026-08-21 | 2304 | 25 / 20 |
-| 140710 | KODEX 운송 | COMPLETE | COMPLETE | 2014-01-02 ~ 2026-08-21 | 3101 | 23 / 23 |
+| 140710 | KODEX 운송 | COMPLETE | COMPLETE | 2014-01-02 ~ 2026-08-21 | 3101 | 47 / 23 |
 | 266390 | KODEX 경기소비재 | COMPLETE | COMPLETE | 2017-03-28 ~ 2026-08-21 | 2283 | 26 / 16 |
+
+## Comparison denominator
+
+| run | universe_count | evaluable_count | n/a_zero_entry_count |
+| --- | ---: | ---: | ---: |
+| long_range | 16 | 16 | 0 |
+| same_window | 16 | 16 | 0 |
 
 ## long_range sequential comparison
 
@@ -60,9 +68,9 @@
 | 140700 | V4 | 44.00201 | 2.928739 | -23.210832 | 39.72912 | 4 |
 | 140700 | Julia | 124.299065 | 6.603617 | -67.721823 | 74.846824 | 1 |
 | 140700 | Buy & Hold | 149.79351 | 7.515981 | -67.721823 | 100.0 |  |
-| 117700 | V2 | 0.0 | 0.0 | 0.0 | 0.0 | 0 |
-| 117700 | V3 | 0.0 | 0.0 | 0.0 | 0.0 | 0 |
-| 117700 | V4 | 0.0 | 0.0 | 0.0 | 0.0 | 0 |
+| 117700 | V2 | 140.844965 | 7.205933 | -34.401968 | 34.34376 | 4 |
+| 117700 | V3 | 139.764134 | 7.16777 | -36.166848 | 31.247985 | 4 |
+| 117700 | V4 | 31.674486 | 2.202119 | -30.920245 | 24.475975 | 5 |
 | 117700 | Julia | 213.881284 | 9.477424 | -64.036223 | 51.370526 | 2 |
 | 117700 | Buy & Hold | 73.67688 | 4.466796 | -65.508685 | 100.0 |  |
 | 266370 | V2 | 196.732733 | 12.268202 | -37.024754 | 24.695652 | 5 |
@@ -90,9 +98,9 @@
 | 117680 | V4 | 41.439583 | 2.782549 | -39.344413 | 35.31119 | 4 |
 | 117680 | Julia | 124.880962 | 6.625484 | -67.154255 | 61.270558 | 2 |
 | 117680 | Buy & Hold | 16.966068 | 1.248292 | -67.154255 | 100.0 |  |
-| 102960 | V2 | 148.961918 | 7.487603 | -39.657143 | 31.31248 | 3 |
-| 102960 | V3 | 164.299721 | 7.9975 | -29.227273 | 25.636891 | 3 |
-| 102960 | V4 | 146.611391 | 7.406917 | -39.818182 | 29.603354 | 3 |
+| 102960 | V2 | 182.751537 | 8.575986 | -39.657143 | 32.021928 | 3 |
+| 102960 | V3 | 200.171018 | 9.091046 | -29.227273 | 26.34634 | 3 |
+| 102960 | V4 | 180.081993 | 8.494483 | -39.818182 | 30.312802 | 3 |
 | 102960 | Julia | 216.016424 | 9.536192 | -39.657143 | 32.82812 | 2 |
 | 102960 | Buy & Hold | -26.639931 | -2.422514 | -87.167001 | 100.0 |  |
 | 266410 | V2 | 1.930686 | 0.203662 | -34.207202 | 30.989583 | 2 |
@@ -100,9 +108,9 @@
 | 266410 | V4 | -3.353346 | -0.362237 | -34.207202 | 30.902778 | 2 |
 | 266410 | Julia | -8.094262 | -0.894015 | -43.691149 | 58.159722 | 1 |
 | 266410 | Buy & Hold | -4.724793 | -0.513629 | -50.0 | 100.0 |  |
-| 140710 | V2 | -18.352044 | -1.592209 | -28.790469 | 11.99613 | 3 |
-| 140710 | V3 | 1.163511 | 0.091615 | -23.270847 | 18.413415 | 2 |
-| 140710 | V4 | -24.165585 | -2.165942 | -28.790469 | 10.287004 | 3 |
+| 140710 | V2 | 0.128833 | 0.010193 | -38.229872 | 24.8307 | 6 |
+| 140710 | V3 | 64.593574 | 4.023512 | -50.13369 | 52.531441 | 3 |
+| 140710 | V4 | -9.747089 | -0.808546 | -43.940568 | 27.926475 | 6 |
 | 140710 | Julia | 96.182327 | 5.47932 | -50.13369 | 50.20961 | 2 |
 | 140710 | Buy & Hold | 69.892473 | 4.284766 | -63.359528 | 100.0 |  |
 | 266390 | V2 | 20.926316 | 2.042175 | -46.071044 | 60.271572 | 1 |
@@ -126,24 +134,24 @@
     "Julia": 11
   },
   "sequential_mdd": {
-    "V3": 6,
-    "V4": 7,
+    "V3": 5,
+    "V4": 8,
     "Julia": 1
   },
   "matched_mean": {
     "V3": 11,
     "V4": 5,
-    "Julia": 14
+    "Julia": 15
   },
   "matched_median": {
     "V3": 9,
     "V4": 6,
-    "Julia": 11
+    "Julia": 12
   },
   "matched_win_rate": {
-    "V3": 14,
-    "V4": 10,
-    "Julia": 12
+    "V3": 15,
+    "V4": 11,
+    "Julia": 13
   }
 }
 ```
@@ -154,11 +162,11 @@
 | --- | ---: | ---: | ---: |
 | sequential_total_return | 5 | 11 | 0 |
 | sequential_cagr | 5 | 11 | 0 |
-| sequential_mdd | 7 | 6 | 3 |
-| matched_mean_return | 3 | 12 | 1 |
-| matched_median_return | 3 | 11 | 2 |
+| sequential_mdd | 6 | 6 | 4 |
+| matched_mean_return | 3 | 13 | 0 |
+| matched_median_return | 3 | 12 | 1 |
 | matched_win_rate | 5 | 0 | 11 |
-| matched_mean_mae | 11 | 0 | 5 |
+| matched_mean_mae | 12 | 0 | 4 |
 
 ## same_window sequential comparison
 
@@ -194,9 +202,9 @@
 | 140700 | V4 | 35.680485 | 5.826516 | -23.210832 | 71.006813 | 3 |
 | 140700 | Julia | 190.688872 | 21.901702 | -23.210832 | 95.306586 | 1 |
 | 140700 | Buy & Hold | 235.499208 | 25.188794 | -23.210832 | 100.0 |  |
-| 117700 | V2 | 0.0 | 0.0 | 0.0 | 0.0 | 0 |
-| 117700 | V3 | 0.0 | 0.0 | 0.0 | 0.0 | 0 |
-| 117700 | V4 | 0.0 | 0.0 | 0.0 | 0.0 | 0 |
+| 117700 | V2 | 119.932338 | 15.751593 | -26.380368 | 39.137017 | 2 |
+| 117700 | V3 | 87.277005 | 12.349623 | -35.582822 | 53.44436 | 2 |
+| 117700 | V4 | 8.542266 | 1.532939 | -30.920245 | 34.519304 | 3 |
 | 117700 | Julia | 163.776224 | 19.723395 | -35.582822 | 53.595761 | 1 |
 | 117700 | Buy & Hold | 83.382353 | 11.912272 | -47.482014 | 100.0 |  |
 | 266370 | V2 | 150.108776 | 18.546994 | -32.239688 | 27.252082 | 3 |
@@ -267,17 +275,17 @@
   "matched_mean": {
     "V3": 9,
     "V4": 5,
-    "Julia": 11
+    "Julia": 12
   },
   "matched_median": {
     "V3": 9,
     "V4": 7,
-    "Julia": 9
+    "Julia": 10
   },
   "matched_win_rate": {
-    "V3": 12,
-    "V4": 6,
-    "Julia": 8
+    "V3": 13,
+    "V4": 7,
+    "Julia": 9
   }
 }
 ```
@@ -288,17 +296,17 @@
 | --- | ---: | ---: | ---: |
 | sequential_total_return | 7 | 8 | 1 |
 | sequential_cagr | 7 | 8 | 1 |
-| sequential_mdd | 8 | 3 | 5 |
-| matched_mean_return | 5 | 9 | 2 |
-| matched_median_return | 6 | 8 | 2 |
+| sequential_mdd | 7 | 3 | 6 |
+| matched_mean_return | 5 | 10 | 1 |
+| matched_median_return | 6 | 9 | 1 |
 | matched_win_rate | 5 | 0 | 11 |
-| matched_mean_mae | 9 | 0 | 7 |
+| matched_mean_mae | 10 | 0 | 6 |
 
 ## Data-based answers
 
 1. Sector ETF V3/Julia vs V2 sequential total-return wins: LONG RANGE V3 `10`, Julia `11`; SAME WINDOW V3 `9`, Julia `8`.
 2. V3 vs Julia total/CAGR head-to-head: LONG RANGE `{'V3_win': 5, 'Julia_win': 11, 'tie': 0}` / `{'V3_win': 5, 'Julia_win': 11, 'tie': 0}`; SAME WINDOW `{'V3_win': 7, 'Julia_win': 8, 'tie': 1}` / `{'V3_win': 7, 'Julia_win': 8, 'tie': 1}`.
-3. Julia MDD stability is represented by the MDD head-to-head counts: LONG RANGE `{'V3_win': 7, 'Julia_win': 6, 'tie': 3}`, SAME WINDOW `{'V3_win': 8, 'Julia_win': 3, 'tie': 5}`.
+3. Julia MDD stability is represented by the MDD head-to-head counts: LONG RANGE `{'V3_win': 6, 'Julia_win': 6, 'tie': 4}`, SAME WINDOW `{'V3_win': 7, 'Julia_win': 3, 'tie': 6}`.
 4. Results are reported separately for semiconductors, automobiles, banks, healthcare, construction, and the other specified sectors in the ETF table above.
 5. Sector-specific V3/Julia strengths are represented by the per-ETF sequential and matched tables; no sector-specific rule or parameter was introduced.
 6. V4 total/CAGR wins vs V2 are LONG RANGE `7/7` and SAME WINDOW `4/4`.

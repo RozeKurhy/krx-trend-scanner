@@ -4,12 +4,14 @@
 - authority: `data/raw/stocks/117460.parquet`
 - period: `2014-01-02 ~ 2026-08-21` / `3101` rows
 - liquidity filter: `OFF / threshold 0`
+- price filter: `OFF / close threshold 0`
 - signal cutoff / support / final valuation: `2026-08-14` / `2026-08-21` / `2026-08-21 CLOSE`
 - cost model: `GROSS / NO_COST_MODEL`
 
 ## long_range
 
-- common entries: `42`
+- common eligible entries: `42`
+- sequential common-set enforcement: `True`
 - matched identity: `{'signal_date_match': True, 'execution_date_match': True, 'entry_open_match': True, 'duplicate_entries': 0}`
 - paired vs V2: `{'V3': {'paired_count': 42, 'mean_delta_pct': 14.007381, 'median_delta_pct': 18.89, 'improved_count': 26, 'worsened_count': 16, 'same_count': 0}, 'V4': {'paired_count': 42, 'mean_delta_pct': 5.476667, 'median_delta_pct': 0.79, 'improved_count': 21, 'worsened_count': 16, 'same_count': 5}, 'Julia': {'paired_count': 42, 'mean_delta_pct': 35.299524, 'median_delta_pct': 0.0, 'improved_count': 20, 'worsened_count': 2, 'same_count': 20}}`
 - V3 vs Julia: `{'paired_count': 42, 'mean_delta_pct_julia_minus_v3': 21.292143, 'median_delta_pct_julia_minus_v3': 10.345, 'julia_better_count': 36, 'v3_better_count': 6, 'same_count': 0, 'metric_comparison': {'mean_return_pct': {'V3': 17.981905, 'Julia': 39.274048, 'winner': 'Julia'}, 'median_return_pct': {'V3': 21.86, 'Julia': 38.4, 'winner': 'Julia'}, 'win_rate_pct': {'V3': 92.857143, 'Julia': 83.333333, 'winner': 'V3'}, 'mean_mae_pct': {'V3': -16.163095, 'Julia': -30.98619, 'winner': 'V3'}}}`
@@ -24,7 +26,8 @@
 
 ## same_window
 
-- common entries: `9`
+- common eligible entries: `9`
+- sequential common-set enforcement: `True`
 - matched identity: `{'signal_date_match': True, 'execution_date_match': True, 'entry_open_match': True, 'duplicate_entries': 0}`
 - paired vs V2: `{'V3': {'paired_count': 9, 'mean_delta_pct': 8.741111, 'median_delta_pct': 14.31, 'improved_count': 6, 'worsened_count': 3, 'same_count': 0}, 'V4': {'paired_count': 9, 'mean_delta_pct': 5.208889, 'median_delta_pct': 14.14, 'improved_count': 6, 'worsened_count': 3, 'same_count': 0}, 'Julia': {'paired_count': 9, 'mean_delta_pct': -2.83, 'median_delta_pct': 0.0, 'improved_count': 0, 'worsened_count': 2, 'same_count': 7}}`
 - V3 vs Julia: `{'paired_count': 9, 'mean_delta_pct_julia_minus_v3': -11.571111, 'median_delta_pct_julia_minus_v3': -14.31, 'julia_better_count': 3, 'v3_better_count': 6, 'same_count': 0, 'metric_comparison': {'mean_return_pct': {'V3': 0.063333, 'Julia': -11.507778, 'winner': 'V3'}, 'median_return_pct': {'V3': 8.75, 'Julia': -6.08, 'winner': 'V3'}, 'win_rate_pct': {'V3': 66.666667, 'Julia': 22.222222, 'winner': 'V3'}, 'mean_mae_pct': {'V3': -18.924444, 'Julia': -22.827778, 'winner': 'V3'}}}`
