@@ -12,7 +12,7 @@
 | 후보 전략 | `JULIA_STRATEGY_V00` |
 | 기준 전략 | `PATTERN_A_FAST_FINAL_STRATEGY_V02` |
 | 계획 단계 | 전략 생애주기 4단계: 검증 계획 확정 전 검토 |
-| 작성 기준 HEAD | `e9f13e7a905bc18c0fc94f05e3d24fc93480994c` |
+| 작성 기준 HEAD | `e2b8b9b67e231e8f4336b988814e62e178686f02` |
 | 공식 상태 | `검토 대기` / Stage 4 미완료 |
 | 결과 artifact | `artifacts/strategies/julia/official_validation_v01/` (사전 예약만 함) |
 
@@ -44,8 +44,8 @@
 
 두 전략은 현재 V2 공식 규칙 문서와 Julia V00 계약을 기준으로 비교한다.
 `docs/validation/pattern_a_fast_final_strategy_v02.md`는 과거 artifact
-호환을 위한 redirect stub이며 규칙 authority로 사용하지 않는다. 규칙
-authority는 다음 두 문서이다.
+호환을 위한 redirect stub이며 규칙 기준 문서로 사용하지 않는다. 규칙
+기준 문서는 다음 두 문서이다.
 
 - `docs/patterns/pattern_a_fast/strategy/version_02/README.md`
 - `artifacts/strategies/julia/v00/contract.json`
@@ -78,7 +78,7 @@ authority는 다음 두 문서이다.
 - 진입 체결: 신호 주간 다음 local trading day의 시가
 - PROGRESSED 이후 Exit 3 및 Exit 4
 - 재진입: 독립 진입 허용, 겹치는 포지션과 피라미딩 금지, 상태 전면 초기화
-- 신호·청산·평가 cutoff, 투자적합성, 데이터 결측 및 invariant 처리
+- 신호·청산·평가 cutoff, 투자적합성, 데이터 결측 및 불변 조건 처리
 
 V2의 `-15%` guard 조건, 익영업일 시가 체결, PROGRESSED HWM 기반
 `15.0pt` Exit 4는 기준군의 기존 규칙 그대로 사용한다. Julia 후보군은
@@ -89,34 +89,42 @@ V2의 `-15%` guard 조건, 익영업일 시가 체결, PROGRESSED HWM 기반
 
 ### D.1 연구 모집단
 
-공식 검증 대상은 KOSPI·KOSDAQ의 개별 보통주이다. 현재 V2가 사용하는
-공식 COMMON universe의 identity와 시장 구분을 그대로 재사용하며, 새로운
-종목 선정 필터나 연구자 임의 표본을 추가하지 않는다.
+공식 검증 대상은 KOSPI·KOSDAQ의 개별 보통주이다. 단일 현재 종목 목록을
+역사 전체에 방송하지 않고, survivorship-safe 동결의 두 계층을 분리하여
+사용한다.
 
-현재 V2의 확인 가능한 모집단 authority와 provenance는 다음과 같다.
+- `Population Universe`: 역사 구간에서 한 번이라도 `COMMON`이었던 모든
+  종목 식별 단위. 역사적 전체 후보 모집단의 기준이다.
+- `Point-In-Time Common Denominator`: 각 역사적 거래일에 실제로 `COMMON`이었던
+  종목 식별 단위. 날짜별 신호·투자적합성의 분모 기준이다.
 
-- KRX COMMON universe 결과: `artifacts/patterns/pattern_a/production/scanner/pattern_a_universe_scan_20260814.csv`
-- 해당 결과의 요약: `artifacts/patterns/pattern_a/production/scanner/pattern_a_universe_scan_20260814_summary.json`
-- 모집단 정의 문서: `docs/patterns/pattern_a/validation/full_universe_scanner_v01.md`
-- KRX live equity loader의 코드 경로: `src/trend_scanner/universe/krx_universe.py`
-- COMMON 분류 및 대상 생성 경로: `src/trend_scanner/universe/cache_population.py`
+두 기준 경로의 정확한 위치는 다음과 같다.
 
-현재 scanner 기록은 `AssetType.COMMON` KOSPI/KOSDAQ 전체를 대상으로 하며,
-2026-08-14 기록상 2,528 identity를 보존한다. 이 숫자는 실행 목표로
-맞추는 target count가 아니라 현재 authority의 sanity check로만 사용한다.
-실행 시 identity set, ticker 재사용 여부, 시장 및 보통주 분류를 먼저
-봉인하고 count가 다르면 원인을 기록한 뒤 진행 여부를 결정한다.
+- Population: `artifacts/data/end_to_end_data_parity/v01/survivorship_safe_denominator_freeze/v01_spac_corrected_effective_authority/effective_historical_common_population.json`
+- PIT denominator: `artifacts/data/end_to_end_data_parity/v01/survivorship_safe_denominator_freeze/v01_spac_corrected_effective_authority/effective_pit_common_denominator.json`
+- loader: `src/trend_scanner/universe/survivorship_safe_denominator_freeze.py`
+- 계약: `docs/architecture/survivorship_safe_denominator_freeze_v01.md`
+
+과거 scanner의 `artifacts/patterns/pattern_a/production/scanner/pattern_a_universe_scan_20260814.csv`와 요약 JSON은 현재 시점 scanner의 역사 기록으로만
+보존한다. 그 기록의 종목 수는 공식 historical denominator나 Stage 5의
+목표 처리 개수가 아니다.
+
+현재 비교 runner의 기존 입력 경로(`UNIVERSE_PATH`)는
+`artifacts/patterns/pattern_a/production/investability/pattern_a_investability_universe_20260814.csv`이다. 이 파일과 과거 scanner 기록은 실행
+출처 기록으로만 남길 수 있으며, 공식 Stage 5 실행에서는 위 Population/PIT
+기준 경로를 사용하여 종목 식별 단위와 날짜별 분모를 봉인한다. 새로운
+종목 선정 필터나 연구자 임의 표본은 추가하지 않는다.
 
 ### D.2 ETF·ETN 및 기타 유형
 
 ETF·ETN은 개별 보통주 검증 모집단에 포함하지 않는다. ETF·ETN 여부와
-보통주 여부는 ticker 모양이나 종목명 substring이 아니라 KRX formal
-instrument metadata의 `AssetType` 분류로 판단한다. 관련 authority는
+보통주 여부는 ticker 모양이나 종목명 substring이 아니라 KRX 공식
+instrument metadata의 `AssetType` 분류로 판단한다. 관련 기준 경로는
 `docs/architecture/instrument_metadata_authority.md`이며, 별도 ETF 연구의
 모집단을 이 계획에 섞지 않는다.
 
 SPAC, REIT, 우선주, 외국주권, 예탁증권 및 formal 분류 불능 유형도 동일한
-분류 authority로 제외하고, 분류 불능은 임의로 COMMON으로 복구하지 않는다.
+분류 기준으로 제외하고, 분류 불능은 임의로 COMMON으로 복구하지 않는다.
 
 ### D.3 투자적합성 필터
 
@@ -124,36 +132,42 @@ SPAC, REIT, 우선주, 외국주권, 예탁증권 및 formal 분류 불능 유�
 
 - Point-in-time 시가총액 `>= 100,000,000,000 KRW`
 - 20일 평균 거래대금 `>= 300,000,000 KRW`
-- historical market cap은 신호 기준일의 KRX PIT source를 사용한다.
+- historical market cap은 신호 기준일의 KRX PIT 원천 자료를 사용한다.
 - 기준일 자료가 없거나 무결성·권위 검증에 실패하면 `fail-closed`한다.
 - 현재 시가총액, 미래 시점 값, proxy 값으로 조용히 대체하지 않는다.
 
 이는 Julia 후보군을 유리하게 만들기 위한 새 필터가 아니라 V2 기준군의
 기존 투자적합성 조건이다. 양 전략에 동일하게 적용한다.
 
-## E. 데이터 authority와 시간 의미론
+## E. 데이터 기준 경로와 시간 의미론
 
-### E.1 가격 및 ancillary data
+### E.1 가격 및 부가 데이터
 
-실행 계약에서 기준군과 후보군은 같은 ticker별 일봉, 같은 날짜 집합,
-같은 OHLC 의미론을 받아야 한다. 현재 V2/Julia 함수의 확인 가능한 legacy
-입력 경로는 `ParquetCache`의 `data/raw/stocks/<ticker>.parquet`이며,
-기준 cutoff 이전으로 일봉을 자른 뒤 completed weekly/monthly snapshot을
-생성한다.
+공식 검증의 가격 데이터 기준 경로는 이미 production wiring에서
+`MarketDataRepositoryV2`로 확정되어 있다. 비교 runner의 연결은 다음과 같다.
 
-Repository V2의 정식 source authority는 다음처럼 문서화되어 있다.
+- Julia 실행 경로: `scripts/evaluate_julia_strategy_v00_comparison.py`
+  `-> RepositoryV2DailyLoader`
+- 기준군과 후보군: 모두 `MarketDataRepositoryV2` 사용
+- 이전 방식인 `data/raw/stocks`: 공식 검증 기준 경로로 사용하지 않음
+- 이전 방식 fallback: 없음
+- wiring 근거: `artifacts/data/end_to_end_data_parity/v01/consumer_migration_finalization/v01/production_wiring_manifest.json`
+
+Repository V2의 원천 기준 경로는 다음과 같다.
 
 - adjusted OHLC: `AdjustedPriceStore` / Naver direct adjusted V02
 - raw volume·trading value·market cap·listed shares: `KrxRawStockStore` /
   KRX Open API stock daily
-- authority 설명: `docs/architecture/market_data_repository_v02.md`
+- 기준 경로 설명: `docs/architecture/market_data_repository_v02.md`
 
-새 adjusted/Repository V2 경로를 쓸 경우에는 두 전략 모두 그 경로를
-사용한다. 한 전략만 새 경로로 바꾸거나 legacy cache와 섞지 않는다.
+두 전략에는 동일한 원천 자료, 날짜 집합, 거래일 투영 및 결측 의미론을
+적용한다. 한 전략만 다른 경로로 바꾸거나 이전 방식 cache를 섞지 않는다.
 
-### E.2 모집단·PIT authority
+### E.2 모집단·PIT 기준 경로
 
-생존편향 방지를 위한 상위 계약은 다음을 기준으로 확인한다.
+생존편향 방지를 위한 상위 계약은 다음을 기준으로 확인한다. 이 기준 경로
+자체는 확정되어 있으며, Stage 5 전에 runner가 이를 소비하도록 연결하는
+구현 조건만 남아 있다.
 
 - Population Universe: `artifacts/data/end_to_end_data_parity/v01/survivorship_safe_denominator_freeze/v01_spac_corrected_effective_authority/effective_historical_common_population.json`
 - PIT COMMON intervals: `artifacts/data/end_to_end_data_parity/v01/survivorship_safe_denominator_freeze/v01_spac_corrected_effective_authority/effective_pit_common_denominator.json`
@@ -162,7 +176,7 @@ Repository V2의 정식 source authority는 다음처럼 문서화되어 있다.
 - 계약: `docs/architecture/survivorship_safe_denominator_freeze_v01.md`
 
 역사적 날짜의 denominator는 현재 종목 목록을 과거 전체에 방송하지 않고
-정확한 trading date의 PIT COMMON identity를 사용한다. loader가 요구하는
+정확한 trading date의 PIT COMMON 종목 식별 단위를 사용한다. loader가 요구하는
 동결 calendar 밖 날짜, 비영업일, 누락 interval은 nearest-date fallback
 없이 `fail-closed`한다.
 
@@ -174,33 +188,36 @@ Repository V2의 정식 source authority는 다음처럼 문서화되어 있다.
   사용하지 않는다.
 - 결측 OHLC, 시장 데이터, metadata, PIT 시가총액은 보간·forward-fill·0-fill
   없이 unavailable 또는 fail-closed로 처리한다.
-- source date set mismatch, future row, duplicate row, SHA mismatch는 실행
+- 원천 날짜 집합 불일치, future row, duplicate row, SHA mismatch는 실행
   중단 또는 해당 사례 격리 사유로 기록한다.
 
 ## F. 검증 기간
 
-### F.1 사전 제안 구간
+### F.1 Stage 4 동결 후보 구간
 
-현재 branch의 V2/Julia controlled runner와 기존 기준 실행 경계를 기준으로
-다음 구간을 검토 대상으로 제안한다.
+현재 branch의 Julia runner, production wiring의 동결 기준일 및 V2 공식
+비교 경계를 대조한 결과, 다음 구간을 Stage 4 동결 후보로 사용한다.
 
 | 역할 | 날짜 |
 |---|---|
 | Evaluation start | `2022-01-01` |
 | Signal cutoff | `2026-08-14` |
+| Evaluation end | `2026-08-14` |
 | Execution support end | `2026-08-14` |
 | Final valuation | `2026-08-14` CLOSE |
 | 초기 포지션 | `FLAT` |
 
 근거는 현재 branch의 `src/trend_scanner/validation/julia_strategy_v00.py`
 및 V2 runner가 명시한 `2022-01-01` 시작과 `DATA_CUTOFF=2026-08-14`, 그리고
-동일 cutoff의 Pattern A 공식 snapshot이다. ETF 날짜나 ETF artifact의
-기간을 복사한 것이 아니다. 2022년 이전 일봉은 rolling feature와 signal
-lookback에 사용할 수 있지만, 평가 거래로 포함하지 않는다.
+동일 cutoff의 production wiring이다. ETF 또는 별도 200M portfolio 연구의
+지원 종료일을 이 계획의 평가 종료일로 복사하지 않는다. 2022년 이전
+일봉은 rolling feature와 signal lookback에 사용할 수 있지만, 평가 거래로
+포함하지 않는다.
 
-이 구간은 계획 초안의 사전 제안이며 Stage 4 검토에서 authority, 실행 지원
-날짜, 최종 평가 semantics를 확인한 뒤 동결한다. 동결 이후 결과를 보고
-기간을 바꾸지 않는다.
+이 구간은 결과를 보기 전에 동결할 날짜 후보이다. 신호 cutoff 이후의 새
+신호는 포함하지 않으며, cutoff까지 지원되는 다음 거래일이 없는 신호는
+진입 거래로 만들지 않는다. Stage 4 동결 이후 결과를 보고 기간을 바꾸지
+않는다.
 
 ## G. 동일 조건 비교 설계
 
@@ -209,8 +226,8 @@ lookback에 사용할 수 있지만, 평가 거래로 포함하지 않는다.
 다음 항목은 비교 두 군에서 byte-level 또는 의미론적으로 동일해야 한다.
 
 - identity universe와 시장·자산 유형 분류
-- price/volume/trading value source와 날짜 집합
-- historical PIT market cap source 및 investability threshold
+- 가격·거래량·거래대금 원천과 날짜 집합
+- historical PIT market cap 원천 및 투자적합성 threshold
 - entry signal, entry open, signal cutoff, execution support end
 - monthly/weekly completed-period semantics
 - re-entry, overlapping position, state reset 정책
@@ -239,15 +256,32 @@ cutoff를 각각 보고한다.
 
 ### H.1 Return
 
-- 총 성과와 CAGR: 고정된 portfolio aggregation 및 평가 구간을 기준으로
-  산출한다.
+- 총 성과와 CAGR: 아래의 기존 최근 200M portfolio 비교 계약의 집계 의미론을
+  사용하되, 공식 Julia 기간과 Population/PIT 기준을 우선한다.
 - 거래별 평균·중앙 terminal return
 - 양의 terminal return 비율
 - matched entry별 terminal return 차이
 
-총 성과와 CAGR은 실행 계약에서 고정한 position sizing, 동시 보유, 비용 및
-슬리피지를 적용한다. 해당 계약이 정해지지 않은 상태에서는 수치를 만들지
-않는다.
+참조 계약은 `scripts/run_fastcore_vs_julia_portfolio_v01.py`의
+`FASTCORE_VS_JULIA_200M_PORTFOLIO_COMPARISON_V01_FIX01`이다. 이 계약에서
+재사용할 집계 규칙은 다음과 같다.
+
+- 초기 자본 `200,000,000 KRW`
+- lifecycle별 position cap `5,000,000 KRW`
+- 정수 주식, 레버리지 없음, 피라미딩 없음
+- 같은 주간 batch에서 full exit를 entry보다 먼저 처리
+- 같은 open 재진입 금지, 현금 부족 주문은 이월하지 않음
+- 거래비용·수수료·세금·슬리피지 `0`; `GROSS / NO_COST_MODEL`
+- 일별 close로 보유분을 평가하여 equity curve를 만들고, 그 curve의 MDD,
+  exposure 및 turnover를 산출
+- CAGR은 고정된 시작 자본과 최종 equity 및 고정 구간의 calendar-day
+  연율화로 산출
+
+이 기존 계약의 별도 `mcap-only` 비교 gate와 proxy 시가총액 fallback은
+공식 Julia 검증에 재사용하지 않는다. 공식 검증은 D.3의 두 투자적합성
+조건과 E의 KRX PIT 원천을 양 전략에 적용한다. 기존 계약의 기간·집계
+규칙과 공식 검증의 기간·기준 경로가 충돌하는 항목은 계약을 혼합하지
+않고 Stage 5 실행 계약에 명시한다.
 
 ### H.2 Risk
 
@@ -278,8 +312,9 @@ Pattern A/FastCore 공식 위험 보고에서 사용한 tail 경계이다. 새 �
 
 - 거래 수와 고유 ticker 수
 - 평균·중앙 보유기간
-- 투자 노출 기간 및 exposure 비율
-- turnover 또는 동일한 notional 기준의 turnover equivalent
+- 일별 invested market value / equity 기반 exposure 비율
+- 기존 portfolio 계약의 absolute cash delta 기반 turnover 및 initial capital
+  대비 turnover ratio
 - cutoff 시점 open position 수와 금액
 - guard 종료, Exit 3, Exit 4, cutoff open 등 exit type 분포
 
@@ -304,59 +339,101 @@ Julia V00을 사후 수정하지 않고 새 후보 ID와 새 검증 계획으로
 
 ## J. 필요한 최소 강건성 검증
 
-파라미터 sweep은 수행하지 않는다. 결과를 보기 전에 다음 최소 점검만
-계획한다.
+파라미터 sweep은 수행하지 않는다. 기존 공식 문서 검색 결과,
+`docs/strategies/strategy_lifecycle.md`는 필요한 강건성의 원칙만 정의하고,
+Julia 공식 검증에 적용할 사전 고정 최근 하위 구간·독립 시장 국면 분류·
+winner 제거 개수는 정의하지 않는다. V3 전용 validation plan의 구간과
+임계값도 Julia에 이식하지 않는다.
 
-- 장기 전체 구간과 최근 하위 구간에서 방향이 같은지 확인한다.
-- 강세·약세·횡보 등 시장 국면별로 특정 한 국면에만 의존하는지 확인한다.
-- 소수의 극단 winner가 평균 개선을 전부 설명하는지 확인한다.
-- 손실 tail이 소수 ticker 또는 한 기간에 집중되는지 확인한다.
-- 한두 개의 대형 winner를 제외해도 결론 방향이 유지되는지 확인한다.
+따라서 이번 계획의 필수 강건성 범위는 다음으로 고정한다.
 
-불필요한 연도별 sweep, sector별 무한 세분화, threshold 민감도 탐색,
-파라미터 최적화는 제외한다. 이 검증의 질문은 guard on/off 비교이지
-새로운 규칙 탐색이 아니기 때문이다.
+1. **전체 동결 구간 재현성**: F.1의 단일 고정 구간에서 공통 진입 비교와
+   순차 운용 비교의 방향, 종목 식별 단위 및 집계 무결성을 재현한다.
+2. **종목 기여 집중도**: ticker별 누적 성과 기여 분포와 최대 단일 ticker
+   기여를 보고한다. 상위 기여 종목을 임의로 제거하지 않으며, pass/fail
+   숫자 기준도 만들지 않는다.
+3. **손실 tail 집중도**: 기존 `<= -20%`, `<= -30%` 경계를 사용하여
+   ticker·시장·신호 기간별 손실 집중을 보고한다. 새로운 tail threshold는
+   추가하지 않는다.
+4. **공통 진입·순차 운용 방향 분리**: 공통 진입에서의 guard 효과와 전략별
+   재진입 경로의 효과를 하나의 결과로 합치지 않고 각각 보고한다.
+
+최근 하위 구간 비교, 강세·약세·횡보 국면 분해, extreme winner 제거는
+적용 가능한 기존 공식 기준과 제외 개수가 없으므로 이번 필수 gate에서
+제외한다. 이를 결과를 본 뒤 임의로 추가하지 않는다.
 
 ## K. 사전 동결 판정 기준
 
 판정 기준은 결과표를 보기 전에 동결한다. 단일 평균, 단일 winner, 단일
-ticker를 근거로 판정하지 않는다.
+ticker를 근거로 판정하지 않는다. V2 공식 최종화 문서의 risk-first 우선
+순서를 그대로 사용한다.
+
+1. `Return <= -30%` 발생률
+2. `Return <= -20%` 발생률
+3. MAE deep tail 및 최악 MAE
+4. Adverse Excursion P75/P90
+5. Peak Giveback
+6. Terminal Return
+7. Winner Truncation 비용
+
+이 순서는 새 숫자 threshold가 아니라 기존 V2 공식 판단 기준
+(`docs/patterns/pattern_a_fast/validation_plan/strategy_finalization_v01.md`)
+의 우선순위이다. V2의 `LARGE_LOSS_MINIMIZATION`과 손실 규모 우선 원칙을
+유지한다.
 
 ### K.1 채택 (`ADOPT`)
 
 다음 조건을 모두 만족할 때만 Julia의 공식 전략 채택을 검토한다.
 
-1. matched와 sequential 비교에서 Loss Guard 제거가 핵심 질문의 상승 여력
-   보존 측면에서 일관되고 재현 가능한 개선을 보인다.
-2. 그 개선이 `MFE`, winner bucket, guard 회복 및 장기 추세 사례에서
-   확인되며, 극소수 extreme winner에만 의존하지 않는다.
-3. `<= -20%`, `<= -30%`, MAE, MDD, open-at-cutoff 및 capital lock-up의
-   증가가 전략 목적상 수용 불가한 수준이라는 hard failure를 만들지 않는다.
-4. 데이터 authority, PIT, lookahead, 동일 조건, 재현성 및 최소 강건성
-   점검에 미해결 hard failure가 없다.
+1. 데이터 기준 경로, PIT, 미래 정보 유입, 동일 조건, 재현성 및 강건성 gate에
+   중대한 실패가 없다.
+2. matched와 sequential 비교 모두에서 Loss Guard 제거가 핵심 질문의
+   상승 여력 보존 측면에서 재현 가능한 개선을 보인다.
+3. `MFE`, winner bucket, guard 회복 및 장기 추세 사례가 소수 extreme
+   winner 하나에만 의존하지 않는다.
+4. 위에 고정한 risk-first 우선순위로 `<= -20%`, `<= -30%`, MAE, MDD,
+   open-at-cutoff 및 장기 자금 묶임을 검토한 결과를 함께 설명할 수 있다.
+5. 위험 악화와 상승 보존 사이의 trade-off에 대해 아래 사용자 결정이
+   사전에 존재하고, 그 결정에 비추어 Julia를 채택할 수 있다.
 
-여기서 “수용 불가”는 사후 임의 숫자가 아니라 V2의 risk-first mandate,
-기존 공식 손실 경계 및 사례별 failure audit를 종합한 사전 판정이다. 새
-숫자 threshold가 필요해지는 경우에는 `검토 필요`로 남기고 현 실행에서
-적용하지 않는다.
+새 숫자 threshold가 필요해지는 경우에는 `검토 필요`로 남기고 현 실행에서
+적용하지 않는다. 단일 수익률 지표만으로 채택하지 않으며, 단일 위험 지표
+하나만으로 자동 폐기하지도 않는다.
 
 ### K.2 수정 후 재검증 (`REVISE_AND_RERUN`)
 
-아이디어 자체는 유망하지만 데이터 authority 불일치, 명확한 계약 결함,
+아이디어 자체는 유망하지만 데이터 기준 경로 불일치, 명확한 계약 결함,
 또는 사전에 정의한 특정 부작용을 해결하기 위해 규칙 변경이 필요할 때
 사용한다. V00을 덮어쓰지 않고 새 후보 ID, 새 단일 변경점, 새 계획을 만든다.
 
 ### K.3 보류 (`HOLD`)
 
-PIT 커버리지, price authority, portfolio aggregation, execution support,
+PIT 커버리지, 가격 기준 경로, 포트폴리오 집계, execution support,
 재현성 또는 강건성 증거가 완결되지 않거나 결과 방향이 혼재하여 공식
 채택·폐기를 정당화할 수 없을 때 보류한다.
 
 ### K.4 폐기 (`DISCARD`)
 
-상승 여력 보존의 재현 가능한 개선이 없거나, Julia의 추가 손실·MAE·MDD·
-open-at-cutoff·capital lock-up 위험이 그 이익을 일관되게 압도할 때 폐기한다.
-폐기하더라도 V2 기본 전략은 별도 결정 전까지 유지한다.
+상승 여력 보존의 재현 가능한 개선이 없거나, 기존 risk-first 우선순위와
+사전 사용자 결정에 비추어 Julia의 추가 손실·MAE·MDD·open-at-cutoff·장기
+자금 묶임이 그 이익을 받아들이기 어렵게 만들 때 폐기한다. 단일 위험
+지표 하나만으로 자동 폐기하지 않으며, matched·sequential·강건성 결과를
+함께 확인한다. 폐기하더라도 V2 기본 전략은 별도 결정 전까지 유지한다.
+
+### K.5 사용자 결정 필요
+
+기존 V2 문서는 큰 손실 최소화를 상승 여력보다 우선하지만, Julia가 상승
+여력을 개선하는 대신 손실 빈도·MAE·MDD를 어느 정도까지 허용할지에 대한
+새 숫자 기준은 제공하지 않는다. 따라서 다음 상황은 결과를 본 뒤 임의로
+해석하지 않고 사용자 판단을 먼저 요구한다.
+
+> Julia가 `MFE`·winner 보존·guard 회복을 개선하지만 `<= -20%`, `<= -30%`,
+> MAE 또는 MDD 중 하나 이상을 악화시키는 경우, 그 위험 교환을 공식 전략
+> 채택에 허용할지 결정해야 한다.
+
+사용자 결정이 사전에 없으면 해당 결과는 `HOLD`로 처리한다. 이 결정은
+Loss Guard 임계값이나 다른 전략 규칙을 바꾸는 허가가 아니며, 채택 여부의
+판정 정책만 정한다.
 
 ## L. 과거 연구의 사용 한계
 
@@ -388,20 +465,26 @@ Stage 4가 검토·동결되고 별도 실행 지시가 있을 때만 아래 art
 
 ### 미확정 항목
 
-현재 repository만으로 다음은 Stage 4 검토에서 먼저 결정해야 한다.
+이번 보완으로 가격 기준 경로와 포트폴리오 집계 계약은 다음처럼 정리한다.
 
-1. 현재 V2/Julia runner가 사용하는 legacy `data/raw/stocks` 입력을 공식
-   Julia 검증에 그대로 사용할지, `MarketDataRepository V2`의 adjusted/raw
-   composed authority로 이행한 뒤 사용할지 확정하지 않았다. 두 전략에는
-   동일 경로를 적용해야 하며, 이 결정 전에는 실행하지 않는다.
-2. survivorship-safe effective PIT denominator artifact를 Julia runner에
-   연결하는 시점과 방식이 아직 확정되지 않았다. 현재 Julia 구현의
-   historical market-cap registry와 상위 PIT denominator freeze는 서로
-   다른 책임을 가지므로, 현재 종목 목록을 과거에 방송하는 fallback 없이
-   정확한 authority 경계를 동결해야 한다.
-3. 현재 V2/Julia 실행부에서 공식 portfolio sizing, 거래비용·슬리피지,
-   CAGR 및 총 성과 aggregation의 최종 계약을 별도로 확인해야 한다.
-   이 값이 고정되기 전에는 총 성과 수치를 계산하지 않는다.
+- 가격 기준 경로: `MarketDataRepositoryV2`로 확정하며 이전 방식 fallback은
+  사용하지 않는다.
+- 포트폴리오·비용·슬리피지·집계: 기존
+  `scripts/run_fastcore_vs_julia_portfolio_v01.py`의 200M 계약에서
+  자금·position cap·동시보유·valuation·turnover·`GROSS / NO_COST_MODEL`
+  의미론을 재사용한다. 그 계약의 mcap-only gate와 proxy fallback은
+  공식 Julia 기준에서 제외한다.
+
+Stage 5 실행 전에 해결해야 할 항목은 다음이다.
+
+1. **PIT runner 연결 구현**: 생존편향 방지 effective Population/PIT 기준
+   경로는 확정되어 있다. 현재 Julia 비교 runner가 이를 직접 소비하도록
+   연결하고, current-list broadcast나 nearest-date fallback이 없음을
+   실행 contract와 무결성 gate로 확인해야 한다. 이번 작업에서는 runner를
+   수정하지 않는다.
+2. **위험 교환 사용자 결정**: Julia가 상승 여력을 개선하는 동시에 기존
+   risk-first 경계를 악화시키는 경우의 허용 여부를 결과 산출 전에 정해야
+   한다. 새 숫자 threshold를 임의로 만들지 않는다.
 
 위 항목이 남아 있으므로 이 문서의 상태는 `검토 대기`이며, Julia 생애주기
 4단계는 `미완료`이다. 검토가 끝나기 전에는 Stage 5 백테스트, 결과 생성,
