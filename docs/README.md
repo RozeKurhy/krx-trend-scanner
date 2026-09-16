@@ -1,84 +1,97 @@
-README.md
-
 # KRX Trend Scanner 문서 안내
 
-이 문서는 `docs/` 아래 문서의 위치와 역할을 빠르게 확인하기 위한 안내다.
-각 하위 폴더의 README에서 해당 영역의 상세 문서 위치를 확인할 수 있다.
+이 문서는 `docs/` 아래 문서의 위치와 역할을 안내하고, 프로젝트 문서를
+작성할 때 따를 기준을 정리한다. 각 영역의 README에서 세부 문서 위치를
+확인할 수 있다.
+
+## 어디부터 읽을지
+
+1. 프로젝트 전체 이해 → [README.md](../README.md)
+2. 현재 진행 상태와 향후 작업 → [ROADMAP.md](../ROADMAP.md)
+3. 세부 문서 위치와 작성 기준 → 이 문서
+4. 세부 산식·계약·검증 결과 → 각 영역의 현재 기준 문서
 
 ## 패턴과 전략의 차이
 
-**패턴**은 종목이나 시장에서 어떤 가격 구조나 상태가 나타나고 있는지
-판단하는 기준이다.
+**패턴**은 종목이나 시장에서 어떤 가격 구조와 상태가 나타나는지 판단하는
+기준이다. 즉, 무엇이 보이는지를 판단한다.
 
-쉽게 말하면, **무엇이 보이는지 판단한다.**
+**전략**은 패턴과 다른 조건을 이용해 언제 진입하고, 보유하고, 청산할지
+정하는 매매 규칙이다. 즉, 판단 결과를 바탕으로 무엇을 할지 결정한다.
 
-**전략**은 패턴이나 다른 조건을 이용하여 언제 진입하고, 보유하고, 청산할지
-정하는 매매 규칙이다.
+패턴은 관찰·판단의 기준이고 전략은 행동의 규칙이므로 서로 다른 문서 역할을
+가진다.
 
-쉽게 말하면, **판단한 결과를 바탕으로 무엇을 할지 결정한다.**
-
-패턴은 관찰과 판단의 기준이고 전략은 행동의 규칙이므로, 두 개념은 서로
-다르다.
-
-## 최상위 영역
+## docs 최상위 영역
 
 | 영역 | 이곳에서 다루는 내용 |
 |---|---|
-| [architecture/](architecture/README.md) | 특정 패턴에 속하지 않는 프로젝트 공통 구조, 데이터 처리 방식, 공용 기술 문서 |
-| [patterns/](patterns/README.md) | 종목과 시장의 상태를 판단하는 패턴의 정의, 연구, 검증 기록과 결합된 전략 문서 |
-| [fundamentals/](fundamentals/README.md) | 기업 실적과 재무 정보를 분석하기 위한 OpenDART/XBRL 기반 데이터와 검증 문서 |
-| [reporting/](reporting/README.md) | 패턴, 전략, 펀더멘털 결과를 모아 사용자가 확인하는 종목 보고서 |
-| [strategies/](strategies/README.md) | 패턴의 판단 결과를 바탕으로 실제 매매 방법을 정하는 전략과 독립 전략 |
+| [architecture/](architecture/README.md) | 프로젝트 공통 구조, 데이터 처리 방식, 공용 기술 문서 |
+| [fundamentals/](fundamentals/README.md) | OpenDART/XBRL 기반 기업 실적·재무 데이터와 검증 문서 |
+| [patterns/](patterns/README.md) | 종목·시장 상태를 판단하는 패턴의 정의와 연구·검증 기록 |
+| [relative_strength/](relative_strength/) | 시장·업종 상대강도 계산과 제공 계약 |
+| [reporting/](reporting/README.md) | 패턴·전략·펀더멘털 결과를 모은 종목 보고서 문서 |
+| [strategies/](strategies/README.md) | 패턴 결과를 매매 규칙으로 연결하는 전략과 독립 전략 |
+| [validation/](validation/) | 이전 문서 경로와 현재 기준 문서를 연결하는 호환 안내 |
+| [web/](web/) | 웹 화면에 제공하는 정적 데이터·전달 계약 |
 
-`patterns/`에는 Pattern A와 Pattern A FAST가 있다. `A FAST Core V1/V2/V3`는
-Pattern A FAST와 강하게 결합되어 있으므로 현재 해당 패턴 아래에서 관리한다.
-여러 패턴을 조합하거나 특정 패턴과 독립적인 파생 전략은 `strategies/`에 둔다.
-Julia Strategy처럼 특정 패턴 폴더와 독립적으로 관리하는 전략은 이 영역에 둔다.
+`patterns/`에는 Pattern A와 Pattern A FAST가 있다. A FAST Core 전략 문서는
+Pattern A FAST와 강하게 결합되어 있으므로 해당 패턴 아래에서 관리한다.
+여러 패턴을 조합하거나 특정 패턴과 독립적인 전략은 `strategies/`에 둔다.
 
-## 현재 사용 중인 패턴과 전략
+## 현재 사용 중인 핵심 문서
 
-- **Pattern A** — 현재 운영을 유지하는 패턴이다. 상세 내용은 [Pattern A 안내](patterns/pattern_a/README.md)에서 확인한다. (`FROZEN` / `KEEP_CURRENT_PRODUCTION`)
-- **Pattern A FAST** — Pattern A보다 빠른 상승 전환을 탐지하는 패턴이다. 현재 기본 전략은 A FAST Core V2다. ([Pattern A FAST 안내](patterns/pattern_a_fast/README.md))
-- **A FAST Core V3/V4** — 기존 후보·연구 문서는 보존하지만, 현재 추가 exit-rule 연구나 V2 대체 검증을 재개하지 않는다. 공식 기본 전략은 A FAST Core V2다. ([V3 후보 규칙](patterns/pattern_a_fast/strategy/version_03/README.md))
+- **Pattern A** — 공식 패턴 규격은 [공식 규격 문서](patterns/pattern_a/spec/production_authority.md)를 따른다.
+- **Pattern A FAST** — 의미와 생애주기는 [FAST 명세](patterns/pattern_a_fast/specification/README.md)를 따른다.
+- **A FAST Core V2** — 일반 종목의 현재 기본 전략은 [V2 계약](patterns/pattern_a_fast/strategy/version_02/README.md)의 `PATTERN_A_FAST_FINAL_STRATEGY_V02`다.
+- **Fundamentals V1** — 현재 기준은 [Fundamentals 안내](fundamentals/README.md)와 해당 영역의 기준 문서에서 확인한다.
+- **Stock Report v0.5** — 보고서 계약은 [Stock Report 안내](reporting/stock_report/README.md)와 [v0.5 계약](reporting/stock_report/contract_v05.md)을 따른다.
+- **전략 채택 절차** — 기본 전략 변경과 후보 전략의 공식 채택은 [전략 생애주기와 채택 절차](strategies/strategy_lifecycle.md)를 따른다.
 
-현재 기본 전략 변경과 후보 전략의 공식 채택 절차는 [전략 생애주기와 채택 절차](strategies/strategy_lifecycle.md)에서 확인한다.
+## 현재 문서와 역사 기록의 구분
 
-## 현재 보고서
+문서는 다음 세 가지로 구분한다.
 
-- **Fundamentals V1** — 일반 비금융 보통주와 비금융 지주회사를 지원하는 기업 실적 분석 영역이다. 금융회사 일반 V1은 적용 대상이 아니다. ([Fundamentals 안내](fundamentals/README.md))
-- **Stock Report** — 펀더멘털과 시장·업종 상대강도 정보를 모아 제공하는 종목 보고서다. ([Stock Report 안내](reporting/stock_report/README.md))
-- **Web Report Viewer** — 정적 종목 보고서를 조회하고 검색하는 읽기 전용 화면이다.
+### 현재 기준 문서
 
-## 현재 전략 상태
+현재 구현·운영·전략·계약에서 실제 기준으로 사용하는 문서다.
 
-A FAST Core V2는 현재 기본 전략이며 Pattern A FAST 내부에서 실제 의사결정
-지원에 사용한다. 필요한 기술 상태값은 해당 전략 문서에서 확인한다.
+### 역사 기록
 
-A FAST Core V3/V4 관련 문서는 역사적 후보·연구 기록으로 보존한다. 현재 추가
-exit-rule 연구는 계획하지 않으며, 일반 종목의 공식 기본 전략은
-`PATTERN_A_FAST_FINAL_STRATEGY_V02`다.
+과거 연구, 검증, 후보 전략, 대체된 계획과 결과를 보존하는 문서다. 역사
+기록에 적힌 `NEXT`, `HOLD`, `IN_PROGRESS`, 검증 대기 등의 상태는 당시 상태를
+기록한 것이며 현재 프로젝트 상태를 뜻하지 않을 수 있다.
 
-## 향후 작업 계획
+공식 과거 기준선은 현재 기본 전략은 아니지만 비교·검증 기준으로 보존하는
+문서다. 따라서 단순히 오래되었다는 이유로 일반적인 대체·폐기 문서와 같은
+것으로 취급하지 않는다. 예를 들어 A FAST Core V1은 `HISTORICAL_FROZEN_BASELINE`
+역할을 유지한다.
 
-[ROADMAP.md](../ROADMAP.md)
+### 호환 안내
 
-## 문서 작성 원칙과 파일 이름 규칙
+이전 경로나 이전 문서 구조에서 현재 기준 문서로 연결하기 위한 문서다. 호환
+안내는 과거 경로 접근성을 제공하며, 현재 계약이나 구현의 권위를 대신하지
+않는다.
 
-- 문서는 공통 영역, 패턴, 문서 역할, 구체적인 문서 순으로 찾을 수 있게 구성한다.
+## 문서 작성 원칙
+
+- 문서는 공통 영역, 패턴, 문서 역할, 구체적인 기준 문서 순으로 찾을 수 있게 구성한다.
+- README는 안내와 요약을 담당한다. 세부 산식, 임계값, 계약, 검증 결과는 해당 권위 문서에서 관리한다.
+- README는 필요한 현재 상태를 짧게 요약하고 권위 문서로 연결한다. 상위 README가 하위 권위 문서를 대체하지 않도록 한다.
+- 같은 사실을 여러 README에서 장문으로 반복하지 않는다. 기존 권위 문서가 있으면 링크하거나 참조한다.
 - 경로가 패턴과 역할을 설명하므로 파일명에서 같은 말을 불필요하게 반복하지 않는다.
 - `prereg/` 안에서는 파일명에 `_prereg`나 `_preregistration`을 다시 붙이지 않는다.
 - 문서에 명시되지 않은 버전 번호를 임의로 만들지 않는다.
-- `archive/`에는 현재 기준이 아니고 대체된 문서만 보관한다. 공식 과거 기준선은 해당 역할 폴더에 유지한다.
-- README는 산식이나 결론을 새로 만드는 곳이 아니라, 기준 문서로 안내하는 곳이다.
-- 프로젝트 문서의 일반 설명은 한글을 우선한다. 코드, 파일명, 경로, 공식 식별자, 함수명, 상태 토큰, 널리 쓰는 약어는 원문 표기를 유지할 수 있다.
-- 영어 병기가 필요한 경우 최초 1회 `한글(영문)` 형식으로 쓰고 이후 한글 표현을 우선한다. 과거 문서의 영어 표현을 이유 없이 그대로 복제하지 않는다.
-- 필요한 사실, 기준, 결정, 근거만 기록하고 같은 내용을 여러 문서에 중복해서 장황하게 쓰지 않는다. 기존 권위 문서가 있으면 링크하거나 참조한다.
-- 현재 기준 문서와 과거 연구·실험 문서를 구분하고, 과거 실험값이나 구현값을 별도 승인 없이 현재 공식 기준으로 승격하지 않는다. `검토 대기`, 후보, 공식, 과거·대체됨 등의 상태를 분명히 표시한다.
-- 문서를 작성·수정하는 작업은 이 문서의 문서 작성 원칙을 기본 규칙으로 따른다.
-- 오버엔지니어링을 피하고 현재 작업 목적에 필요한 범위까지만 문서화한다.
+- `archive/`에는 현재 기준이 아니고 대체된 문서를 보관한다. 공식 과거 기준선은 해당 역할 폴더에 유지한다.
+- 일반 설명은 한글을 우선한다. 제목, 소제목, 현재 상태, 전략 설명, 사용자에게 보여주는 문구도 한글로 작성한다.
+- 코드 식별자, 파일명, 경로, 함수·클래스·필드명, JSON 키, 공식 전략 ID, 고정 상태 토큰, Git 식별자, API·KRX·OpenDART·XBRL 같은 고유명과 약어는 영어 표기를 유지할 수 있다.
+- 영어 상태 토큰은 최초 등장 시 사람이 이해할 수 있는 한글 설명을 함께 쓴다. 예: 의사결정 지원 운영 상태 (`PRODUCTION_DECISION_SUPPORT`).
+- 일반 설명에서는 `Current Default Strategy`보다 현재 기본 전략, `Historical Baseline`보다 과거 비교 기준선처럼 한글 표현을 우선한다.
+- 과거 실험값이나 구현값을 별도 승인 없이 현재 공식 기준으로 승격하지 않는다. 검토 대기, 후보, 공식, 과거·대체됨 등의 상태를 분명히 표시한다.
+- 문서 작성·수정은 이 문서의 기준을 따르고, 현재 작업 목적에 필요한 범위까지만 기록한다.
 
 ## 이전 경로 안내
 
 기존 `docs/specs/`와 `docs/validation/`의 문서는 대부분 새 구조로 이동되어
-있다. `docs/validation/`에 남아 있는 일부 파일은 이전 경로 호환을 위해
-보존된 안내 파일이며, 현재 기준 문서는 각 실제 영역의 문서다.
+있다. 현재 `docs/validation/`에 남아 있는 파일은 이전 경로 호환을 위한 안내이며,
+현재 기준은 각 실제 영역의 문서를 따른다.
