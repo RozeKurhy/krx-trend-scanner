@@ -202,8 +202,8 @@ PIT 시가총액 내림차순으로 우선 진입하고, 시가총액 동률은 
 - 체결 전후 현금과 보유 수량
 - 포지션 식별자, 진입·청산 사유, open-at-cutoff 여부
 
-이 원장은 비용이 확정된 뒤 execution contract와 함께 생성한다. 현재 작업에서
-새 runner나 portfolio engine을 만들거나 수정하지 않는다.
+이 원장은 비용이 확정된 뒤 execution contract와 함께 생성한다. 별도 전략
+규칙을 추가하지 않고, 아래의 공통 terminal valuation 의미론을 적용한다.
 
 ## 8. 포트폴리오 평가와 집계
 
@@ -232,6 +232,17 @@ PIT 시가총액 내림차순으로 우선 진입하고, 시가총액 동률은 
 미청산 보유분은 동결된 평가일의 authority 종가로 평가한다. 해당 가격이
 없으면 nearest-date로 대체하지 않고 실행계약의 fail-closed 또는 검토 상태를
 따른다.
+
+identity lifecycle이 global final valuation 이전에 종료된
+`OPEN_AT_CUTOFF` 포지션은 identity의 정확한 `cutoff_date` 종가에서 terminal
+valuation한다. 이는 전략 청산이나 매도 체결이 아니므로 매도 수수료·세금·
+슬리피지, realized return 및 turnover에 포함하지 않는다. 평가금액은 현금으로
+전환하거나 재투자하지 않고 `locked terminal value`로 global final까지
+carry하며, equity·invested market value·exposure·cash conservation에
+포함한다. 실제 처분이 없으므로 position slot을 유지하되, 이후 같은 short
+ticker의 새 identity 진입은 허용할 수 있다. 정확한 cutoff 종가가 없거나
+Sequential의 `cutoff_valuation_price`와 일치하지 않으면 nearest-date나
+post-lifecycle 가격을 사용하지 않고 `UNRESOLVED`·fail-closed로 처리한다.
 
 ## 9. Benchmark
 

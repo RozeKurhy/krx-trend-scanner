@@ -283,6 +283,17 @@ cutoff를 각각 보고한다.
 - KOSPI 지수 `1001`과 KOSDAQ 지수 `2001`을 시장별로 비교하며, 혼합 단일
   benchmark는 만들지 않는다.
 
+identity lifecycle이 global final valuation 이전에 종료된
+`OPEN_AT_CUTOFF` 포지션은 identity의 정확한 `cutoff_date` 종가에서 terminal
+valuation한다. 이는 전략 청산이나 매도 체결이 아니므로 매도 수수료·세금·
+슬리피지, realized return 및 turnover에 포함하지 않는다. 평가금액은 현금으로
+전환하거나 재투자하지 않고 `locked terminal value`로 global final까지
+carry하며, equity·invested market value·exposure·cash conservation에
+포함한다. 실제 처분이 없으므로 position slot을 유지하되, 이후 같은 short
+ticker의 새 identity 진입은 허용할 수 있다. 정확한 cutoff 종가가 없거나
+Sequential의 `cutoff_valuation_price`와 일치하지 않으면 nearest-date나
+post-lifecycle 가격을 사용하지 않고 `UNRESOLVED`·fail-closed로 처리한다.
+
 세 결과축의 의미는 다음과 같이 고정한다.
 
 - `Matched-entry`: 같은 진입에서 Loss Guard ON/OFF의 순수 청산 규칙 효과

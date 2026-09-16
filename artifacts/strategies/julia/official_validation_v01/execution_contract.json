@@ -8,7 +8,7 @@
     "metadata_path": "data/market/index/v01/market_index.meta.json",
     "mixed_single_benchmark": false
   },
-  "contract_sha256": "afdc2461b0ddd92787e0f4dd46c290e6ab5dc6e9ff6eed0e8b75000a28b0c01c",
+  "contract_sha256": "7a50eae0765b28f1cb2460e564ce7237e8af534577eab64ae1d969dcef1697eb",
   "contract_state": "FROZEN_BEFORE_RESULTS",
   "costs": {
     "buy_commission_rate": 0.00015,
@@ -127,6 +127,7 @@
     "partial_fill": false,
     "per_symbol_cash_budget_krw": 5000000.0,
     "sale_proceeds_reusable_from": "NEXT_EVALUABLE_LOCAL_TRADING_DAY_OPEN",
+    "identity_lifecycle_terminal_valuation": "CUTOFF_CLOSE_NON_CASH_NON_REDEPLOYABLE_CARRY_TO_FINAL",
     "same_open_sale_proceeds_reusable": false,
     "same_open_signal_order": [
       "signal_confirmation_date_pit_market_cap_desc",
@@ -142,9 +143,9 @@
   "stage": "STAGE_5_EXECUTION_READY",
   "stage4_authority": {
     "common_conditions_path": "docs/patterns/pattern_a_fast/validation_plan/realistic_backtest_common_conditions_v01.md",
-    "common_conditions_sha256": "d8fbc0e2ae013423d8983bff6ccbf9827b7a68c997b565ed30ac571a3fb2863a",
+    "common_conditions_sha256": "16e02b067f59877afc9166c80c8afd06ec868e7bd35d06468d6f5ad4e70b7726",
     "validation_plan_path": "docs/strategies/julia/validation_plan_v01.md",
-    "validation_plan_sha256": "44f6ee1c24ce00b1e2c7ae53dbd31df5876ef00a96d8d69ea1d572969880dad2"
+    "validation_plan_sha256": "a79b78bfec409a1c13709f437e4bd3130d51409ebffa0a83967b6b70eef3eebc"
   },
   "status": "READY_NOT_RUN",
   "strategies": {

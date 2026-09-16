@@ -62,7 +62,7 @@ SIGNAL_CUTOFF = pd.Timestamp("2026-08-14")
 EVALUATION_END = pd.Timestamp("2026-08-14")
 EXECUTION_SUPPORT_END = pd.Timestamp("2026-08-14")
 FINAL_VALUATION_DATE = pd.Timestamp("2026-08-14")
-FROZEN_EXECUTION_CONTRACT_SHA256 = "afdc2461b0ddd92787e0f4dd46c290e6ab5dc6e9ff6eed0e8b75000a28b0c01c"
+FROZEN_EXECUTION_CONTRACT_SHA256 = "7a50eae0765b28f1cb2460e564ce7237e8af534577eab64ae1d969dcef1697eb"
 OFFICIAL_IDENTITY_LIFECYCLE_COUNT = 2738
 
 MARKET_CAP_THRESHOLD_KRW = 100_000_000_000.0
@@ -72,6 +72,7 @@ POSITION_CASH_BUDGET_KRW = 5_000_000.0
 MAX_POSITIONS = 40
 COMMISSION_RATE = 0.00015
 SLIPPAGE_RATE = 0.001
+TERMINAL_VALUATION_SEMANTICS = "CUTOFF_CLOSE_NON_CASH_NON_REDEPLOYABLE_CARRY_TO_FINAL"
 
 EFFECTIVE_AUTHORITY_REL = Path(
     "artifacts/data/end_to_end_data_parity/v01/survivorship_safe_denominator_freeze/"
@@ -456,6 +457,36 @@ def _identity_key_from_record(record: Any) -> tuple[str, str, str]:
     )
 
 
+def _terminal_valuation_cutoff(record: Any) -> pd.Timestamp | None:
+    """Return the identity cutoff eligible for a locked terminal valuation."""
+    cutoff = _record_date(record, "cutoff_date")
+    effective_to = _record_date(record, "identity_effective_to")
+    if (
+        _record_value(record, "trade_status") != "OPEN_AT_CUTOFF"
+        or _record_date(record, "exit_execution_date") is not None
+        or cutoff is None
+        or effective_to is None
+        or cutoff >= FINAL_VALUATION_DATE
+        or effective_to >= FINAL_VALUATION_DATE
+    ):
+        return None
+    return cutoff
+
+
+def _record_cutoff_price_matches(record: Any, close: float | None) -> bool:
+    """Require the exact cutoff close to agree with Sequential evidence."""
+    expected = _record_value(record, "cutoff_valuation_price")
+    if close is None or expected in (None, ""):
+        return False
+    try:
+        expected_value = float(expected)
+    except (TypeError, ValueError):
+        return False
+    if not math.isfinite(expected_value):
+        return False
+    return math.isclose(float(close), expected_value, rel_tol=1e-9, abs_tol=1e-6)
+
+
 def _normalise_portfolio_market_data(
     market_data_by_identity: Mapping[Any, pd.DataFrame] | None,
 ) -> dict[Any, pd.DataFrame]:
@@ -608,6 +639,7 @@ def build_execution_contract(root: Path = ROOT) -> dict[str, Any]:
             "partial_fill": False,
             "same_open_sale_proceeds_reusable": False,
             "sale_proceeds_reusable_from": "NEXT_EVALUABLE_LOCAL_TRADING_DAY_OPEN",
+            "identity_lifecycle_terminal_valuation": TERMINAL_VALUATION_SEMANTICS,
             "same_open_signal_order": ["signal_confirmation_date_pit_market_cap_desc", "ticker_asc"],
         },
         "unresolved": {
@@ -683,6 +715,7 @@ def _validate_contract_against_runner_constants(contract: Mapping[str, Any]) -> 
         (("portfolio", "max_initial_capital_weight"), 0.025),
         (("portfolio", "partial_fill"), False),
         (("portfolio", "same_open_sale_proceeds_reusable"), False),
+        (("portfolio", "identity_lifecycle_terminal_valuation"), TERMINAL_VALUATION_SEMANTICS),
         (("portfolio", "same_open_signal_order"), [
             "signal_confirmation_date_pit_market_cap_desc",
             "ticker_asc",
@@ -1435,7 +1468,9 @@ class OfficialValidationRunner:
             cash = float(INITIAL_CAPITAL_KRW)
             pending_by_date: dict[pd.Timestamp, float] = {}
             terminal_pending = 0.0
-            positions: dict[str, dict[str, Any]] = {}
+            positions: dict[tuple[tuple[str, str, str], str], dict[str, Any]] = {}
+            terminal_locked_positions: list[dict[str, Any]] = []
+            unresolved_terminal_positions: list[dict[str, Any]] = []
             events: list[dict[str, Any]] = []
             daily_equity: list[dict[str, Any]] = []
             realized_returns: list[float] = []
@@ -1457,10 +1492,11 @@ class OfficialValidationRunner:
 
                 # Existing positions always exit before any same-open entry.
                 exit_iteration_started = time.perf_counter()
-                for ticker, position in sorted(list(positions.items())):
+                for position_key, position in sorted(list(positions.items())):
                     exit_date = position["exit_date"]
                     if exit_date is None or exit_date != day:
                         continue
+                    ticker = position["ticker"]
                     exited_today.add(ticker)
                     record = position["record"]
                     event = event_base(record, strategy_id, day, "EXIT")
@@ -1491,7 +1527,7 @@ class OfficialValidationRunner:
                         terminal_pending += proceeds
                     else:
                         pending_by_date[release_date] = pending_by_date.get(release_date, 0.0) + proceeds
-                    del positions[ticker]
+                    del positions[position_key]
                     total_commission += commission
                     total_sell_tax += sell_tax
                     total_notional += notional
@@ -1526,6 +1562,7 @@ class OfficialValidationRunner:
                 )
                 for record in candidates:
                     ticker = str(_record_value(record, "ticker", ""))
+                    identity_key = _identity_key_from_record(record)
                     event = event_base(record, strategy_id, day, "ENTRY")
                     event["cash_before"] = cash
                     event["entry_or_exit_reason"] = "ENTRY"
@@ -1539,7 +1576,16 @@ class OfficialValidationRunner:
                         )
                         events.append(event)
                         continue
-                    if ticker in positions:
+                    if any(
+                        position["identity_key"] == identity_key
+                        for position in positions.values()
+                    ) or any(
+                        position["identity_key"] == identity_key
+                        for position in terminal_locked_positions
+                    ) or any(
+                        position["identity_key"] == identity_key
+                        for position in unresolved_terminal_positions
+                    ):
                         event.update(
                             event_status="SKIPPED_DUPLICATE_HOLDING",
                             unresolved_reason="DUPLICATE_HOLDING_FORBIDDEN",
@@ -1568,7 +1614,12 @@ class OfficialValidationRunner:
                         events.append(event)
                         unresolved_count += 1
                         continue
-                    if len(positions) >= MAX_POSITIONS:
+                    if (
+                        len(positions)
+                        + len(terminal_locked_positions)
+                        + len(unresolved_terminal_positions)
+                        >= MAX_POSITIONS
+                    ):
                         event.update(
                             event_status="SKIPPED_POSITION_LIMIT",
                             unresolved_reason="NO_EMPTY_SLOT",
@@ -1614,9 +1665,11 @@ class OfficialValidationRunner:
                         continue
                     cash_before = cash
                     cash -= total_cost
-                    positions[ticker] = {
+                    position_key = (identity_key, str(_record_value(record, "trade_id", "")))
+                    positions[position_key] = {
                         "record": record,
                         "ticker": ticker,
+                        "identity_key": identity_key,
                         "market": str(_record_value(record, "market", "")),
                         "shares": shares,
                         "entry_date": day,
@@ -1642,8 +1695,57 @@ class OfficialValidationRunner:
                     events.append(event)
                 profile_add("entry_candidate_iteration_seconds", time.perf_counter() - entry_iteration_started)
 
-                invested_value = 0.0
-                valuation_missing = False
+                terminal_iteration_started = time.perf_counter()
+                for position_key, position in list(positions.items()):
+                    record = position["record"]
+                    cutoff = _terminal_valuation_cutoff(record)
+                    if cutoff is None or cutoff != day:
+                        continue
+                    event = event_base(record, strategy_id, day, "VALUATION")
+                    event.update(
+                        event_status="EXECUTED",
+                        entry_or_exit_reason="IDENTITY_LIFECYCLE_TERMINAL_VALUATION",
+                        open_at_cutoff=True,
+                        cash_before=cash,
+                        cash_after=cash,
+                        shares=int(position["shares"]),
+                        pending_sale_proceeds=sum(pending_by_date.values()) + terminal_pending,
+                    )
+                    close = exact_price(record, cutoff, "close")
+                    if not _record_cutoff_price_matches(record, close):
+                        event["event_status"] = "UNRESOLVED"
+                        event["unresolved_reason"] = (
+                            "MISSING_EXACT_CUTOFF_CLOSE"
+                            if close is None
+                            else "CUTOFF_CLOSE_MISMATCH_CUTOFF_VALUATION_PRICE"
+                        )
+                        unresolved_count += 1
+                        unresolved_terminal_positions.append(position)
+                    else:
+                        terminal_value = close * position["shares"]
+                        event["reference_open"] = close
+                        event["slippage_adjusted_price"] = close
+                        event["notional"] = terminal_value
+                        terminal_locked_positions.append({
+                            "record": record,
+                            "ticker": position["ticker"],
+                            "identity_key": position["identity_key"],
+                            "shares": position["shares"],
+                            "cutoff_date": cutoff,
+                            "terminal_value": terminal_value,
+                        })
+                    events.append(event)
+                    del positions[position_key]
+                profile_add(
+                    "terminal_valuation_iteration_seconds",
+                    time.perf_counter() - terminal_iteration_started,
+                )
+
+                invested_value = sum(
+                    float(position["terminal_value"])
+                    for position in terminal_locked_positions
+                )
+                valuation_missing = bool(unresolved_terminal_positions)
                 valuation_iteration_started = time.perf_counter()
                 for position in positions.values():
                     close = exact_price(position["record"], day, "close")
@@ -1687,14 +1789,7 @@ class OfficialValidationRunner:
                         close = exact_price(position["record"], day, "close")
                         if close is None:
                             event["event_status"] = "UNRESOLVED"
-                            lifecycle_ended = (
-                                _record_value(position["record"], "trade_status") == "OPEN_AT_CUTOFF"
-                                and _record_date(position["record"], "exit_execution_date") is None
-                                and (
-                                    _record_date(position["record"], "cutoff_date") is not None
-                                    and _record_date(position["record"], "cutoff_date") < FINAL_VALUATION_DATE
-                                )
-                            )
+                            lifecycle_ended = _terminal_valuation_cutoff(position["record"]) is not None
                             event["unresolved_reason"] = (
                                 "IDENTITY_LIFECYCLE_ENDED_BEFORE_FINAL_VALUATION"
                                 if lifecycle_ended
@@ -1741,7 +1836,16 @@ class OfficialValidationRunner:
                     "holding_period_days": sum(holding_days) / len(holding_days) if holding_days else None,
                     "win_rate": len(wins) / len(realized_returns) if realized_returns else None,
                     "payoff_ratio": payoff_ratio,
-                    "open_at_cutoff": len(positions),
+                    "open_at_cutoff": (
+                        len(positions)
+                        + len(terminal_locked_positions)
+                        + len(unresolved_terminal_positions)
+                    ),
+                    "terminal_locked_count": len(terminal_locked_positions),
+                    "terminal_locked_value": sum(
+                        float(position["terminal_value"])
+                        for position in terminal_locked_positions
+                    ),
                     "total_commission": total_commission,
                     "total_sell_tax": total_sell_tax,
                     "slippage_impact": slippage_impact,
@@ -1760,6 +1864,7 @@ class OfficialValidationRunner:
             "max_positions": MAX_POSITIONS,
             "sell_tax_mapping": "execution_date_and_market",
             "same_open_sale_proceeds_reusable": False,
+            "identity_lifecycle_terminal_valuation": TERMINAL_VALUATION_SEMANTICS,
             "event_ledger_columns": [
                 "strategy_id", "ticker", "isu_cd", "market", "position_id", "signal_date",
                 "execution_date", "event_type", "event_status", "reference_open",

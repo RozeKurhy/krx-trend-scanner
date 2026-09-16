@@ -362,6 +362,9 @@ def test_contract_contains_required_event_and_equity_fields():
     ]
     assert contract["execution"]["open_at_cutoff"] is True
     assert contract["portfolio"]["partial_fill"] is False
+    assert contract["portfolio"]["identity_lifecycle_terminal_valuation"] == (
+        runner.TERMINAL_VALUATION_SEMANTICS
+    )
 
 
 def _trade_record(
@@ -694,6 +697,7 @@ def test_parallel_performance_parity_compares_workers_one_to_selected_worker(mon
 def _portfolio_record(
     ticker: str,
     *,
+    isu_cd: str | None = None,
     entry_date: str = "2021-01-04",
     exit_date: str | None = None,
     entry_open: float = 100.0,
@@ -707,7 +711,7 @@ def _portfolio_record(
     return SimpleNamespace(
         strategy_id=runner.BASE_STRATEGY_ID,
         ticker=ticker,
-        isu_cd=f"KR{ticker}",
+        isu_cd=isu_cd or f"KR{ticker}",
         name=ticker,
         market="KOSPI",
         trade_id=f"trade-{ticker}-{entry_date}",
@@ -752,11 +756,16 @@ def _run_synthetic_portfolio(records: list[SimpleNamespace], frame_dates: list[s
             for index, date in enumerate(frame_dates):
                 if pd.Timestamp(date).normalize() == exit_date:
                     opens[index] = record.exit_price
+        normalized_frame_dates = [pd.Timestamp(date).normalize() for date in frame_dates]
         closes = [record.entry_open] * len(frame_dates)
-        if record.cutoff_valuation_price is not None:
-            closes[-1] = record.cutoff_valuation_price
-        else:
-            closes[-1] = float("nan")
+        cutoff_date = runner._record_date(record, "cutoff_date")
+        if cutoff_date in normalized_frame_dates:
+            cutoff_index = normalized_frame_dates.index(cutoff_date)
+            closes[cutoff_index] = (
+                float(record.cutoff_valuation_price)
+                if record.cutoff_valuation_price is not None
+                else float("nan")
+            )
         key = runner._identity_key_from_record(record)
         if key not in frames:
             frames[key] = _portfolio_frame(frame_dates, opens=opens, closes=closes)
@@ -765,8 +774,13 @@ def _run_synthetic_portfolio(records: list[SimpleNamespace], frame_dates: list[s
             exit_date = runner._record_date(record, "exit_execution_date")
             if exit_date is not None and record.exit_price is not None and exit_date in existing.index:
                 existing.loc[exit_date, "open"] = record.exit_price
-            if record.cutoff_valuation_price is None:
-                existing.loc[pd.Timestamp(frame_dates[-1]), "close"] = float("nan")
+            cutoff_date = runner._record_date(record, "cutoff_date")
+            if cutoff_date in existing.index:
+                existing.loc[cutoff_date, "close"] = (
+                    float(record.cutoff_valuation_price)
+                    if record.cutoff_valuation_price is not None
+                    else float("nan")
+                )
     return instance.run_realistic_portfolio(
         {runner.BASE_STRATEGY_ID: records},
         market_data_by_identity=frames,
@@ -980,7 +994,7 @@ def test_exact_record_price_rejects_lifecycle_outside_date_even_when_ticker_fram
     assert runner._exact_record_price(record, frame, pd.Timestamp("2026-08-14"), "close") is None
 
 
-def test_reused_ticker_old_identity_is_unresolved_at_final_valuation():
+def test_identity_lifecycle_ending_before_final_is_terminal_valued():
     old_identity = _portfolio_record(
         "REUSE",
         entry_date="2023-06-29",
@@ -993,11 +1007,247 @@ def test_reused_ticker_old_identity_is_unresolved_at_final_valuation():
         [old_identity],
         ["2023-06-29", "2023-06-30", "2024-01-02", "2026-08-14"],
     )
-    assert result["status"] == "INCOMPLETE_REQUIRES_REVIEW"
-    assert result["metrics"]["total_return"] is None
+    assert result["status"] == "PASS"
+    assert result["metrics"]["unresolved_count"] == 0
+    assert result["metrics"]["total_return"] is not None
     valuation = next(event for event in result["event_ledger"] if event["event_type"] == "VALUATION")
-    assert valuation["event_status"] == "UNRESOLVED"
-    assert valuation["unresolved_reason"] == "IDENTITY_LIFECYCLE_ENDED_BEFORE_FINAL_VALUATION"
+    assert valuation["event_status"] == "EXECUTED"
+    assert valuation["entry_or_exit_reason"] == "IDENTITY_LIFECYCLE_TERMINAL_VALUATION"
+    assert valuation["execution_date"] == "2023-06-30"
+    assert valuation["reference_open"] == 999.0
+
+
+def test_terminal_valuation_does_not_create_a_synthetic_sale():
+    record = _portfolio_record(
+        "TERMINAL",
+        entry_date="2023-06-29",
+        cutoff_date="2023-06-30",
+        cutoff_close=120.0,
+        identity_effective_from="2023-01-01",
+        identity_effective_to="2023-06-30",
+    )
+    result = _run_synthetic_portfolio(
+        [record],
+        ["2023-06-29", "2023-06-30", "2024-01-02", "2026-08-14"],
+    )
+    entry = next(event for event in result["event_ledger"] if event["event_type"] == "ENTRY")
+    terminal = next(event for event in result["event_ledger"] if event["event_type"] == "VALUATION")
+    assert not any(event["event_type"] == "EXIT" for event in result["event_ledger"])
+    assert terminal["commission"] == 0.0
+    assert terminal["sell_tax"] == 0.0
+    assert terminal["cash_before"] == terminal["cash_after"]
+    assert result["metrics"]["total_commission"] == pytest.approx(entry["commission"])
+    assert result["metrics"]["total_sell_tax"] == 0.0
+    assert result["metrics"]["holding_period_days"] is None
+    assert result["metrics"]["turnover"] == pytest.approx(
+        entry["notional"] / runner.INITIAL_CAPITAL_KRW
+    )
+
+
+def test_terminal_value_is_not_redeployed_as_cash():
+    records = [
+        _portfolio_record(
+            f"LOCK{i:02d}",
+            isu_cd=f"OLD{i:02d}",
+            entry_date="2023-01-04",
+            cutoff_date="2023-01-05",
+            cutoff_close=10_000_000.0,
+            identity_effective_from="2023-01-01",
+            identity_effective_to="2023-01-05",
+        )
+        for i in range(39)
+    ]
+    records.append(
+        _portfolio_record(
+            "NEW",
+            isu_cd="NEW001",
+            entry_date="2023-01-06",
+            entry_open=100.0,
+            cutoff_date="2026-08-14",
+            cutoff_close=100.0,
+            identity_effective_from="2023-01-06",
+            identity_effective_to="2026-08-14",
+        )
+    )
+    result = _run_synthetic_portfolio(
+        records,
+        ["2023-01-04", "2023-01-05", "2023-01-06", "2026-08-14"],
+    )
+    events = result["event_ledger"]
+    terminal = next(event for event in events if event["event_type"] == "VALUATION")
+    new_entry = next(
+        event for event in events
+        if event["ticker"] == "NEW" and event["event_type"] == "ENTRY"
+    )
+    assert new_entry["event_status"] == "EXECUTED"
+    assert new_entry["cash_before"] == pytest.approx(terminal["cash_after"])
+    assert result["metrics"]["terminal_locked_count"] == 39
+    assert result["metrics"]["terminal_locked_value"] > runner.INITIAL_CAPITAL_KRW
+
+
+def test_terminal_locked_position_retains_a_portfolio_slot():
+    records = [
+        _portfolio_record(
+            f"SLOT{i:02d}",
+            isu_cd=f"SLOT{i:02d}",
+            entry_date="2023-01-04",
+            cutoff_date="2023-01-05",
+            cutoff_close=120.0,
+            identity_effective_from="2023-01-01",
+            identity_effective_to="2023-01-05",
+        )
+        for i in range(runner.MAX_POSITIONS)
+    ]
+    records.append(
+        _portfolio_record(
+            "AFTER",
+            isu_cd="AFTER01",
+            entry_date="2023-01-06",
+            identity_effective_from="2023-01-06",
+            identity_effective_to="2026-08-14",
+        )
+    )
+    result = _run_synthetic_portfolio(
+        records,
+        ["2023-01-04", "2023-01-05", "2023-01-06", "2026-08-14"],
+    )
+    after = next(
+        event for event in result["event_ledger"]
+        if event["ticker"] == "AFTER" and event["event_type"] == "ENTRY"
+    )
+    assert after["event_status"] == "SKIPPED_POSITION_LIMIT"
+    assert result["metrics"]["terminal_locked_count"] == runner.MAX_POSITIONS
+    assert result["metrics"]["open_at_cutoff"] == runner.MAX_POSITIONS
+
+
+def test_terminal_locked_old_identity_allows_new_identity_ticker_reuse():
+    old_identity = _portfolio_record(
+        "REUSE",
+        isu_cd="OLD-REUSE",
+        entry_date="2023-01-04",
+        cutoff_date="2023-01-05",
+        cutoff_close=120.0,
+        identity_effective_from="2023-01-01",
+        identity_effective_to="2023-01-05",
+    )
+    new_identity = _portfolio_record(
+        "REUSE",
+        isu_cd="NEW-REUSE",
+        entry_date="2023-01-06",
+        entry_open=50.0,
+        cutoff_close=55.0,
+        cutoff_date="2026-08-14",
+        identity_effective_from="2023-01-06",
+        identity_effective_to="2026-08-14",
+    )
+    result = _run_synthetic_portfolio(
+        [old_identity, new_identity],
+        ["2023-01-04", "2023-01-05", "2023-01-06", "2026-08-14"],
+    )
+    events = result["event_ledger"]
+    old_terminal = next(
+        event for event in events
+        if event["ticker"] == "REUSE"
+        and event["isu_cd"] == "OLD-REUSE"
+        and event["event_type"] == "VALUATION"
+    )
+    new_entry = next(
+        event for event in events
+        if event["ticker"] == "REUSE"
+        and event["isu_cd"] == "NEW-REUSE"
+        and event["event_type"] == "ENTRY"
+    )
+    assert old_terminal["event_status"] == "EXECUTED"
+    assert old_terminal["reference_open"] == 120.0
+    assert new_entry["event_status"] == "EXECUTED"
+    assert new_entry["reference_open"] == 50.0
+    assert result["metrics"]["terminal_locked_count"] == 1
+
+
+def test_terminal_valuation_requires_exact_cutoff_close_without_fallback():
+    record = _portfolio_record(
+        "MISSING_TERMINAL",
+        entry_date="2023-01-04",
+        cutoff_date="2023-01-05",
+        cutoff_close=120.0,
+        identity_effective_from="2023-01-01",
+        identity_effective_to="2023-01-05",
+    )
+    instance = object.__new__(runner.OfficialValidationRunner)
+    identity = runner._identity_key_from_record(record)
+    frame = _portfolio_frame(
+        ["2023-01-04", "2026-08-14"],
+        opens=[100.0, 999.0],
+        closes=[100.0, 999.0],
+    )
+    result = instance.run_realistic_portfolio(
+        {runner.BASE_STRATEGY_ID: [record]},
+        market_data_by_identity={identity: frame},
+    )["strategies"][runner.BASE_STRATEGY_ID]
+    terminal = next(event for event in result["event_ledger"] if event["event_type"] == "VALUATION")
+    assert result["status"] == "INCOMPLETE_REQUIRES_REVIEW"
+    assert result["metrics"]["unresolved_count"] == 1
+    assert result["metrics"]["total_return"] is None
+    assert terminal["event_status"] == "UNRESOLVED"
+    assert terminal["unresolved_reason"] == "MISSING_EXACT_CUTOFF_CLOSE"
+    assert terminal["execution_date"] == "2023-01-05"
+
+    mismatch_frame = _portfolio_frame(
+        ["2023-01-04", "2023-01-05", "2026-08-14"],
+        opens=[100.0, 100.0, 999.0],
+        closes=[100.0, 119.0, 999.0],
+    )
+    mismatch = instance.run_realistic_portfolio(
+        {runner.BASE_STRATEGY_ID: [record]},
+        market_data_by_identity={identity: mismatch_frame},
+    )["strategies"][runner.BASE_STRATEGY_ID]
+    mismatch_event = next(
+        event for event in mismatch["event_ledger"] if event["event_type"] == "VALUATION"
+    )
+    assert mismatch["status"] == "INCOMPLETE_REQUIRES_REVIEW"
+    assert mismatch_event["unresolved_reason"] == "CUTOFF_CLOSE_MISMATCH_CUTOFF_VALUATION_PRICE"
+
+
+def test_v2_and_julia_share_terminal_lifecycle_semantics():
+    base = _portfolio_record(
+        "COMMON",
+        isu_cd="COMMON-ID",
+        entry_date="2023-01-04",
+        cutoff_date="2023-01-05",
+        cutoff_close=120.0,
+        identity_effective_from="2023-01-01",
+        identity_effective_to="2023-01-05",
+    )
+    julia = SimpleNamespace(**vars(base))
+    julia.strategy_id = runner.JULIA_STRATEGY_ID
+    instance = object.__new__(runner.OfficialValidationRunner)
+    identity = runner._identity_key_from_record(base)
+    frame = _portfolio_frame(
+        ["2023-01-04", "2023-01-05", "2026-08-14"],
+        opens=[100.0, 100.0, 999.0],
+        closes=[100.0, 120.0, 999.0],
+    )
+    result = instance.run_realistic_portfolio(
+        {
+            runner.BASE_STRATEGY_ID: [base],
+            runner.JULIA_STRATEGY_ID: [julia],
+        },
+        market_data_by_identity={identity: frame},
+    )
+    base_result = result["strategies"][runner.BASE_STRATEGY_ID]
+    julia_result = result["strategies"][runner.JULIA_STRATEGY_ID]
+    assert base_result["status"] == julia_result["status"] == "PASS"
+    assert base_result["metrics"]["unresolved_count"] == julia_result["metrics"]["unresolved_count"] == 0
+    assert base_result["metrics"]["terminal_locked_count"] == julia_result["metrics"]["terminal_locked_count"] == 1
+    assert base_result["metrics"]["terminal_locked_value"] == pytest.approx(
+        julia_result["metrics"]["terminal_locked_value"]
+    )
+    for strategy_result in (base_result, julia_result):
+        terminal = next(
+            event for event in strategy_result["event_ledger"]
+            if event["event_type"] == "VALUATION"
+        )
+        assert terminal["entry_or_exit_reason"] == "IDENTITY_LIFECYCLE_TERMINAL_VALUATION"
 
 
 def test_portfolio_event_signal_date_uses_event_specific_signal_fields():
