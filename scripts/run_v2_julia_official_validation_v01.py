@@ -18,6 +18,7 @@ import hashlib
 import json
 import math
 import multiprocessing as mp
+import os
 from pathlib import Path
 import resource
 import socket
@@ -814,12 +815,32 @@ class OfficialValidationRunner:
         validate_execution_contract(self.contract, self.root)
         self.identity_limit = identity_limit
         self.reuse_lifecycle_caches = reuse_lifecycle_caches
+        initialization_started = time.perf_counter()
+        authority_started = time.perf_counter()
         self.authority = load_effective_authority(self.root / EFFECTIVE_AUTHORITY_REL)
+        authority_seconds = time.perf_counter() - authority_started
         self.intervals = _identity_intervals(self.authority)
+        repository_started = time.perf_counter()
         self.repository = build_repository_v2(self.root, end=EXECUTION_SUPPORT_END)
+        repository_seconds = time.perf_counter() - repository_started
+        loader_started = time.perf_counter()
         self.loader = RepositoryV2DailyLoader(self.repository, end=EXECUTION_SUPPORT_END)
+        loader_seconds = time.perf_counter() - loader_started
+        score_started = time.perf_counter()
         self.score_contract = _read_json(self.root / SCORE_CONTRACT_REL)
+        score_seconds = time.perf_counter() - score_started
+        stage_started = time.perf_counter()
         self.stage_contract = _read_json(self.root / STAGE_CONTRACT_REL)
+        stage_seconds = time.perf_counter() - stage_started
+        self.initialization_profile = {
+            "effective_authority_load_seconds": authority_seconds,
+            "identity_interval_build_seconds": repository_started - authority_started - authority_seconds,
+            "repository_v2_build_seconds": repository_seconds,
+            "repository_v2_loader_seconds": loader_seconds,
+            "score_contract_load_seconds": score_seconds,
+            "stage_contract_load_seconds": stage_seconds,
+            "total_seconds": time.perf_counter() - initialization_started,
+        }
         self._daily_cache: dict[str, pd.DataFrame] = {}
         self._ancillary_cache: dict[str, pd.DataFrame] = {}
         self._lifecycle_daily_cache: dict[IdentityTask, pd.DataFrame] = {}
@@ -840,6 +861,7 @@ class OfficialValidationRunner:
             "matched_discovery_seconds": 0.0,
             "matched_strategy_seconds": 0.0,
         }
+        self.discovery_profile_seconds: dict[str, float] = {}
 
     def _ensure_diagnostics(self) -> None:
         if not hasattr(self, "diagnostic_counts"):
@@ -856,6 +878,8 @@ class OfficialValidationRunner:
                 "matched_discovery_seconds": 0.0,
                 "matched_strategy_seconds": 0.0,
             }
+        if not hasattr(self, "discovery_profile_seconds"):
+            self.discovery_profile_seconds = {}
 
     def _ensure_lifecycle_caches(self) -> None:
         if not hasattr(self, "reuse_lifecycle_caches"):
@@ -1033,15 +1057,26 @@ class OfficialValidationRunner:
         if daily is None or daily.empty:
             return ()
         context = self._lifecycle_context(task)
+        weekly_started = time.perf_counter()
         weekly = context.weekly_up_to(EXECUTION_SUPPORT_END)
+        self.discovery_profile_seconds["weekly_context_and_date_selection_seconds"] = (
+            self.discovery_profile_seconds.get("weekly_context_and_date_selection_seconds", 0.0)
+            + time.perf_counter() - weekly_started
+        )
         daily_dates = set(pd.DatetimeIndex(daily.index).normalize())
         valid_weeks = [pd.Timestamp(w).normalize() for w in weekly.index if pd.Timestamp(w).normalize() in daily_dates]
         valid_weeks = [week for week in valid_weeks if START_DATE <= week <= SIGNAL_CUTOFF]
         self.diagnostic_counts["valid_week_count"] += len(valid_weeks)
+        panel_started = time.perf_counter()
         panel = self.identity_raw_panel(task)
+        self.discovery_profile_seconds["raw_panel_access_seconds"] = (
+            self.discovery_profile_seconds.get("raw_panel_access_seconds", 0.0)
+            + time.perf_counter() - panel_started
+        )
         fast_snapshot_cache = self._lifecycle_fast_snapshot_cache(task)
         signals: list[EntrySignal] = []
         for week in valid_weeks:
+            fast_started = time.perf_counter()
             if fast_snapshot_cache is None:
                 result = evaluate_pattern_a_fast(
                     task.ticker,
@@ -1064,10 +1099,20 @@ class OfficialValidationRunner:
                 )
                 if result is None:
                     continue
+            self.discovery_profile_seconds["fast_evaluation_or_cache_seconds"] = (
+                self.discovery_profile_seconds.get("fast_evaluation_or_cache_seconds", 0.0)
+                + time.perf_counter() - fast_started
+            )
             if not is_qualifying_fast_entry(result):
                 continue
+            pit_started = time.perf_counter()
             if not pit_common_for_identity(self.intervals, task.ticker, task.isu_cd, task.market, week):
                 continue
+            self.discovery_profile_seconds["pit_membership_seconds"] = (
+                self.discovery_profile_seconds.get("pit_membership_seconds", 0.0)
+                + time.perf_counter() - pit_started
+            )
+            filter_started = time.perf_counter()
             row = _find_exact_raw_row(panel, week)
             if row is None:
                 continue
@@ -1081,6 +1126,10 @@ class OfficialValidationRunner:
             execution_date = pd.Timestamp(daily.index[positions]).normalize()
             if execution_date > EXECUTION_SUPPORT_END or not pit_common_for_identity(self.intervals, task.ticker, task.isu_cd, task.market, execution_date):
                 continue
+            self.discovery_profile_seconds["filter_and_execution_lookup_seconds"] = (
+                self.discovery_profile_seconds.get("filter_and_execution_lookup_seconds", 0.0)
+                + time.perf_counter() - filter_started
+            )
             signals.append(EntrySignal(task, week, execution_date, float(mcap), float(avg_value)))
             self.diagnostic_counts["candidate_matched_signal_count"] += 1
         return tuple(signals)
@@ -1127,6 +1176,7 @@ class OfficialValidationRunner:
         records_by_strategy: Mapping[str, Sequence[StrategyTradeRecord]],
         *,
         market_data_by_identity: Mapping[Any, pd.DataFrame] | None = None,
+        profile: dict[str, float] | None = None,
     ) -> dict[str, Any]:
         """Execute each strategy's frozen 200M portfolio in memory.
 
@@ -1140,6 +1190,15 @@ class OfficialValidationRunner:
             str(strategy_id): list(records)
             for strategy_id, records in records_by_strategy.items()
         }
+        def profile_add(key: str, value: float) -> None:
+            if profile is not None:
+                profile[key] = profile.get(key, 0.0) + float(value)
+
+        def profile_inc(key: str, value: float = 1.0) -> None:
+            if profile is not None:
+                profile[key] = profile.get(key, 0.0) + float(value)
+
+        market_data_started = time.perf_counter()
         frames = _normalise_portfolio_market_data(market_data_by_identity)
         all_records = [record for records in records_by_strategy.values() for record in records]
 
@@ -1150,10 +1209,13 @@ class OfficialValidationRunner:
         if market_data_by_identity is None and hasattr(self, "loader"):
             tickers = sorted({str(_record_value(record, "ticker", "")) for record in all_records})
             for ticker in tickers:
-                frame = self.loader.load(ticker)
+                frame = self._daily_cache.get(ticker) if hasattr(self, "_daily_cache") else None
+                if frame is None:
+                    frame = self.loader.load(ticker)
                 if frame is not None:
                     normalized = _normalise_portfolio_market_data({ticker: frame})
                     frames[ticker] = normalized[ticker]
+        profile_add("market_data_prepare_seconds", time.perf_counter() - market_data_started)
 
         def frame_for(record: Any) -> pd.DataFrame | None:
             identity = _identity_key_from_record(record)
@@ -1161,8 +1223,13 @@ class OfficialValidationRunner:
             return frames.get(identity, frames.get(ticker))
 
         def exact_price(record: Any, day: pd.Timestamp, column: str) -> float | None:
-            return _exact_record_price(record, frame_for(record), day, column)
+            started = time.perf_counter()
+            value = _exact_record_price(record, frame_for(record), day, column)
+            profile_inc("exact_price_lookup_calls")
+            profile_add("exact_price_lookup_seconds", time.perf_counter() - started)
+            return value
 
+        dates_started = time.perf_counter()
         portfolio_dates: set[pd.Timestamp] = {FINAL_VALUATION_DATE}
         for record in all_records:
             for field in ("entry_execution_date", "exit_execution_date", "cutoff_date"):
@@ -1177,6 +1244,7 @@ class OfficialValidationRunner:
                 )
         dates = tuple(sorted(portfolio_dates))
         next_date = {day: dates[index + 1] for index, day in enumerate(dates[:-1])}
+        profile_add("portfolio_date_set_build_seconds", time.perf_counter() - dates_started)
 
         def event_base(record: Any, strategy_id: str, day: pd.Timestamp, event_type: str) -> dict[str, Any]:
             return {
@@ -1235,12 +1303,14 @@ class OfficialValidationRunner:
             peak_equity = float(INITIAL_CAPITAL_KRW)
             cash_conservation_pass = True
 
+            strategy_loop_started = time.perf_counter()
             for day in dates:
                 released = pending_by_date.pop(day, 0.0)
                 cash += released
                 exited_today: set[str] = set()
 
                 # Existing positions always exit before any same-open entry.
+                exit_iteration_started = time.perf_counter()
                 for ticker, position in sorted(list(positions.items())):
                     exit_date = position["exit_date"]
                     if exit_date is None or exit_date != day:
@@ -1296,7 +1366,9 @@ class OfficialValidationRunner:
                         entry_or_exit_reason=str(_record_value(record, "exit_type", "EXIT")),
                     )
                     events.append(event)
+                profile_add("exit_position_iteration_seconds", time.perf_counter() - exit_iteration_started)
 
+                entry_iteration_started = time.perf_counter()
                 candidates = sorted(
                     entries_by_date.get(day, []),
                     key=lambda record: (
@@ -1422,15 +1494,18 @@ class OfficialValidationRunner:
                         pending_sale_proceeds=sum(pending_by_date.values()) + terminal_pending,
                     )
                     events.append(event)
+                profile_add("entry_candidate_iteration_seconds", time.perf_counter() - entry_iteration_started)
 
                 invested_value = 0.0
                 valuation_missing = False
+                valuation_iteration_started = time.perf_counter()
                 for position in positions.values():
                     close = exact_price(position["record"], day, "close")
                     if close is None:
                         valuation_missing = True
                         continue
                     invested_value += position["shares"] * close
+                profile_add("valuation_position_iteration_seconds", time.perf_counter() - valuation_iteration_started)
                 pending_total = sum(pending_by_date.values()) + terminal_pending
                 equity = None if valuation_missing else cash + pending_total + invested_value
                 if equity is not None:
@@ -1487,6 +1562,7 @@ class OfficialValidationRunner:
                         event["pending_sale_proceeds"] = pending_total
                         events.append(event)
 
+            profile_add("strategy_event_loop_seconds", time.perf_counter() - strategy_loop_started)
             final_rows = [row for row in daily_equity if row["date"] == FINAL_VALUATION_DATE.strftime("%Y-%m-%d")]
             final_equity = final_rows[-1]["equity"] if final_rows and final_rows[-1]["equity"] is not None else None
             total_return = (final_equity / INITIAL_CAPITAL_KRW - 1.0) if final_equity is not None else None
@@ -1572,6 +1648,7 @@ def _run_identity_task_bundle(
 ) -> dict[str, Any]:
     """Run every strategy path for one lifecycle with one cache scope."""
     before_counts = official.diagnostic_snapshot()
+    before_discovery_profile = dict(official.discovery_profile_seconds)
     discovery_started = time.perf_counter()
     signals = official.discover_matched_entry_signals(task)
     discovery_seconds = time.perf_counter() - discovery_started
@@ -1622,6 +1699,10 @@ def _run_identity_task_bundle(
             "sequential_seconds": sequential_seconds,
         },
         "diagnostic_counts": _diagnostic_delta(before_counts, after_counts),
+        "discovery_profile": {
+            key: float(value) - float(before_discovery_profile.get(key, 0.0))
+            for key, value in official.discovery_profile_seconds.items()
+        },
     }
 
 
@@ -1632,10 +1713,26 @@ def _parallel_worker_chunk(tasks: tuple[IdentityTask, ...]) -> dict[str, Any]:
         raise OfficialValidationError("PARALLEL_WORKER_RUNNER_UNAVAILABLE")
     started = time.perf_counter()
     usage_before = _resource_snapshot()
-    bundles = [_run_identity_task_bundle(official, task) for task in tasks]
+    remaining_tickers: dict[str, int] = {}
+    for task in tasks:
+        remaining_tickers[task.ticker] = remaining_tickers.get(task.ticker, 0) + 1
+    bundles = []
+    for task in tasks:
+        bundles.append(_run_identity_task_bundle(official, task))
+        official._lifecycle_daily_cache.pop(task, None)
+        official._lifecycle_context_cache.pop(task, None)
+        official._lifecycle_raw_panel_cache.pop(task, None)
+        official._lifecycle_fast_snapshot_caches.pop(task, None)
+        official._lifecycle_monthly_snapshot_caches.pop(task, None)
+        remaining_tickers[task.ticker] -= 1
+        if remaining_tickers[task.ticker] == 0:
+            official._daily_cache.pop(task.ticker, None)
+            official._ancillary_cache.pop(task.ticker, None)
     usage_after = _resource_snapshot()
     return {
         "bundles": bundles,
+        "worker_pid": os.getpid(),
+        "task_count": len(tasks),
         "worker_seconds": time.perf_counter() - started,
         "user_cpu_seconds": usage_after["user_cpu_seconds"] - usage_before["user_cpu_seconds"],
         "system_cpu_seconds": usage_after["system_cpu_seconds"] - usage_before["system_cpu_seconds"],
@@ -1650,7 +1747,7 @@ def run_parallel_lifecycle_sample(
     workers: int,
 ) -> dict[str, Any]:
     """Run lifecycle bundles with the existing bounded process-pool pattern."""
-    if workers not in {2, 4, 6}:
+    if workers not in {2, 4, 6, 8}:
         raise OfficialValidationError(f"PARALLEL_WORKER_COUNT_UNSUPPORTED:{workers}")
     if not tasks:
         raise OfficialValidationError("PARALLEL_SAMPLE_HAS_NO_TASKS")
@@ -1685,6 +1782,7 @@ def run_parallel_lifecycle_sample(
         JULIA_STRATEGY_ID: [],
     }
     diagnostic_counts: dict[str, int] = {}
+    discovery_profile: dict[str, float] = {}
     phase_work_seconds = {
         "matched_discovery_seconds": 0.0,
         "matched_strategy_seconds": 0.0,
@@ -1709,6 +1807,8 @@ def run_parallel_lifecycle_sample(
                 chunk_timing[key] += float(value)
             for key, value in bundle["diagnostic_counts"].items():
                 diagnostic_counts[key] = diagnostic_counts.get(key, 0) + int(value)
+            for key, value in bundle["discovery_profile"].items():
+                discovery_profile[key] = discovery_profile.get(key, 0.0) + float(value)
         for key, value in chunk_timing.items():
             phase_wall_seconds[key] = max(phase_wall_seconds[key], value)
 
@@ -1718,12 +1818,30 @@ def run_parallel_lifecycle_sample(
     )
     diagnostic_counts["candidate_matched_signal_count"] = candidate_signal_count
     official.diagnostic_counts.update(diagnostic_counts)
+    official.discovery_profile_seconds.update(discovery_profile)
     official.diagnostic_seconds["matched_discovery_seconds"] = phase_wall_seconds[
         "matched_discovery_seconds"
     ]
     official.diagnostic_seconds["matched_strategy_seconds"] = phase_wall_seconds[
         "matched_strategy_seconds"
     ]
+    worker_resources = [
+        {
+            "pid": int(item["worker_pid"]),
+            "task_count": int(item["task_count"]),
+            "worker_seconds": float(item["worker_seconds"]),
+            "peak_rss_mib": float(item["max_rss_mib"]),
+            "valid_week_count": sum(
+                int(bundle["diagnostic_counts"].get("valid_week_count", 0))
+                for bundle in item["bundles"]
+            ),
+            "candidate_signal_count": sum(
+                len(bundle["matched_signals"]) for bundle in item["bundles"]
+            ),
+        }
+        for item in chunk_results
+    ]
+    worker_resources.sort(key=lambda item: item["pid"])
     return {
         "matched_result": {
             "axis": "Matched-entry",
@@ -1732,6 +1850,7 @@ def run_parallel_lifecycle_sample(
         },
         "sequential_result": sequential_result,
         "diagnostic_counts": diagnostic_counts,
+        "discovery_profile": discovery_profile,
         "timing": {
             "pool_seconds": pool_seconds,
             "worker_work_seconds": worker_work_seconds,
@@ -1742,11 +1861,14 @@ def run_parallel_lifecycle_sample(
             "phase_work_seconds": phase_work_seconds,
             "phase_wall_seconds_estimate": phase_wall_seconds,
             "effective_workers": effective_workers,
+            "worker_resources": worker_resources,
         },
         "resource": {
             "user_cpu_seconds": sum(float(item["user_cpu_seconds"]) for item in chunk_results),
             "system_cpu_seconds": sum(float(item["system_cpu_seconds"]) for item in chunk_results),
             "max_rss_mib": max(float(item["max_rss_mib"]) for item in chunk_results),
+            "worker_peak_rss_sum_mib": sum(float(item["max_rss_mib"]) for item in chunk_results),
+            "worker_peak_rss_max_mib": max(float(item["max_rss_mib"]) for item in chunk_results),
         },
     }
 
@@ -2409,11 +2531,12 @@ def run_performance_sample(
     sample_size: int,
     workers: int = 1,
     reuse_lifecycle_caches: bool = True,
+    profile_portfolio: bool = False,
     _return_parity_payload: bool = False,
 ) -> dict[str, Any] | tuple[dict[str, Any], dict[str, Any]]:
     """Measure one bounded sample without persisting official result artifacts."""
     root = Path(root).resolve()
-    if workers not in {1, 2, 4, 6}:
+    if workers not in {1, 2, 4, 6, 8}:
         raise OfficialValidationError(f"PERFORMANCE_WORKER_COUNT_UNSUPPORTED:{workers}")
     if workers > 1 and not reuse_lifecycle_caches:
         raise OfficialValidationError("PARALLEL_SAMPLE_REQUIRES_LIFECYCLE_CACHE_REUSE")
@@ -2465,7 +2588,14 @@ def run_performance_sample(
             sequential_seconds = float(parallel_phase_wall["sequential_seconds"])
 
         portfolio_started = time.perf_counter()
-        portfolio_result = official.run_realistic_portfolio(sequential_result)
+        portfolio_profile: dict[str, float] | None = {} if profile_portfolio else None
+        if portfolio_profile is None:
+            portfolio_result = official.run_realistic_portfolio(sequential_result)
+        else:
+            portfolio_result = official.run_realistic_portfolio(
+                sequential_result,
+                profile=portfolio_profile,
+            )
         portfolio_seconds = time.perf_counter() - portfolio_started
 
         if contract_path.read_bytes() != contract_before:
@@ -2499,6 +2629,11 @@ def run_performance_sample(
         resource_payload = {
             "process_model": "fork_process_pool",
             "workers": workers,
+            "parent_peak_rss_mib": usage_after["max_rss_mib"],
+            "worker_peak_rss_mib": parallel_result["resource"]["worker_peak_rss_max_mib"],
+            "worker_peak_rss_sum_mib": parallel_result["resource"]["worker_peak_rss_sum_mib"],
+            "worker_peak_rss_max_mib": parallel_result["resource"]["worker_peak_rss_max_mib"],
+            "process_tree_peak_rss_sum_estimate_mib": usage_after["max_rss_mib"] + parallel_result["resource"]["worker_peak_rss_sum_mib"],
             "user_cpu_seconds": parent_user_cpu + parallel_result["resource"]["user_cpu_seconds"],
             "system_cpu_seconds": parent_system_cpu + parallel_result["resource"]["system_cpu_seconds"],
             "max_rss_mib": max(
@@ -2510,6 +2645,11 @@ def run_performance_sample(
         resource_payload = {
             "process_model": "single_process",
             "workers": 1,
+            "parent_peak_rss_mib": usage_after["max_rss_mib"],
+            "worker_peak_rss_mib": 0.0,
+            "worker_peak_rss_sum_mib": 0.0,
+            "worker_peak_rss_max_mib": 0.0,
+            "process_tree_peak_rss_sum_estimate_mib": usage_after["max_rss_mib"],
             "user_cpu_seconds": usage_after["user_cpu_seconds"] - usage_before["user_cpu_seconds"],
             "system_cpu_seconds": usage_after["system_cpu_seconds"] - usage_before["system_cpu_seconds"],
             "max_rss_mib": usage_after["max_rss_mib"],
@@ -2546,6 +2686,9 @@ def run_performance_sample(
         },
         "unresolved_counts": unresolved_counts,
         "resource": resource_payload,
+        "initialization_profile": dict(getattr(official, "initialization_profile", {})),
+        "discovery_profile": dict(getattr(official, "discovery_profile_seconds", {})),
+        "portfolio_profile": portfolio_profile,
         "cache_observation": {
             "lifecycle_cache_reuse_enabled": reuse_lifecycle_caches,
             "fast_snapshot_cache_used": reuse_lifecycle_caches,
@@ -2694,9 +2837,14 @@ def main() -> int:
     parser.add_argument(
         "--workers",
         type=int,
-        choices=(1, 2, 4, 6),
+        choices=(1, 2, 4, 6, 8),
         default=1,
         help="bounded worker count for performance samples",
+    )
+    parser.add_argument(
+        "--profile-portfolio",
+        action="store_true",
+        help="collect lightweight Portfolio phase timings in the sample output",
     )
     parser.add_argument(
         "--disable-lifecycle-reuse",
@@ -2741,6 +2889,7 @@ def main() -> int:
             sample_size=args.sample_size,
             workers=args.workers,
             reuse_lifecycle_caches=not args.disable_lifecycle_reuse,
+            profile_portfolio=args.profile_portfolio,
         )
         print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
         return 0
