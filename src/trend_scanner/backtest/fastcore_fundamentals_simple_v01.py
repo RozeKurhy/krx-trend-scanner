@@ -621,8 +621,9 @@ def simulate_ticker_strategy_fundamentals_v01(
             holding_weeks=outcome["holding_weeks"],
             trade_status=outcome["trade_status"],
             cutoff_date=(
-                min(pd.Timestamp(backtest_end), identity_lifecycle.effective_to).strftime("%Y-%m-%d")
+                outcome["cutoff_valuation_date"].strftime("%Y-%m-%d")
                 if outcome["trade_status"] == "OPEN_AT_CUTOFF"
+                and outcome.get("cutoff_valuation_date") is not None
                 else None
             ),
             cutoff_valuation_price=outcome.get("cutoff_close"),
@@ -659,6 +660,7 @@ def _calc_trade_outcome(
     trade_status = "OPEN_AT_CUTOFF"
     realized_ret: float | None = None
     cutoff_close: float | None = None
+    cutoff_valuation_date: pd.Timestamp | None = None
     mark_to_cutoff_ret: float | None = None
 
     if exit_sig_d is not None:
@@ -686,7 +688,11 @@ def _calc_trade_outcome(
         holding_daily = daily[(daily.index >= entry_exec_d) & (daily.index <= cutoff_date)]
         holding_days = len(holding_daily)
         holding_weeks = round(holding_days / 5.0, 1)
-        cutoff_close = float(holding_daily.iloc[-1]["close"]) if not holding_daily.empty else entry_open
+        if not holding_daily.empty:
+            cutoff_valuation_date = pd.Timestamp(holding_daily.index[-1]).normalize()
+            cutoff_close = float(holding_daily.iloc[-1]["close"])
+        else:
+            cutoff_close = entry_open
         mark_to_cutoff_ret = round(((cutoff_close - entry_open) / entry_open) * 100, 2)
         peak_price = float(holding_daily["high"].max()) if not holding_daily.empty else entry_open
         min_price = float(holding_daily["low"].min()) if not holding_daily.empty else entry_open
@@ -707,5 +713,6 @@ def _calc_trade_outcome(
         "holding_days": holding_days,
         "holding_weeks": holding_weeks,
         "cutoff_close": cutoff_close,
+        "cutoff_valuation_date": cutoff_valuation_date,
         "mark_to_cutoff_ret": mark_to_cutoff_ret,
     }
