@@ -1,221 +1,128 @@
-README.md
+# KRX Trend Scanner
 
-# krx-trend-scanner
+코스피·코스닥 일반 종목을 대상으로 상승 추세가 시작되는 후보를 구조적으로
+탐색하고, 투자 판단에 필요한 여러 정보를 한 곳에서 확인하는 의사결정 지원
+시스템이다.
 
-코스피와 코스닥 상장 보통주(`AssetType.COMMON`)를 대상으로 **대세 상승 초입 가능성이 있는 종목을 구조적으로 탐색하고, 투자 가능성·수급·시장 상대강도·전략 상태를 함께 평가하는 의사결정 지원 시스템**입니다.
+이미 크게 오른 종목만 찾는 것이 아니라 가격 구조의 변화와 추세 전환 가능성을
+살핀다. 후보를 찾은 뒤 투자 적합성, 수급, 시장·업종 상대강도, 기업 실적과
+현재 전략 상태를 함께 확인할 수 있도록 구성한다.
 
-단순히 이미 상승 중인 종목을 찾는 것이 아니라, 월봉과 주봉을 중심으로 장기 가격 구조와 추세 변화를 분석해 **상승 추세가 막 만들어지기 시작하는 후보**를 선별하고 체계적인 매매 전략 및 리포트를 제공하는 것을 목표로 합니다.
+자동 주문을 실행하는 시스템이 아니며, 종목과 전략을 검토하기 위한 분석 도구다.
 
----
+## 무엇을 분석하는가
 
-## 🌟 핵심 철학 및 개념 구조
+\`\`\`text
+가격 구조
+→ 투자 적합성
+→ 외국인 수급
+→ 시장·업종 상대강도
+→ 기업 실적·재무
+→ 전략 상태
+→ 종목 분석 리포트
+\`\`\`
 
-```text
-[가격 구조] ➔ [장기 추세] ➔ [투자 적합성 필터] ➔ [수급 확인] ➔ [상대강도] ➔ [전략 실행]
-```
+각 분석 축은 가능한 한 독립적으로 관리한다. 세부 산식과 데이터 계약은
+[문서 안내](docs/README.md)의 각 영역별 기준 문서에서 확인한다.
 
-### Pattern vs Strategy 구분
-* **Pattern (신호 모델)**: 시장의 가격 구조와 추세 상태를 독립적으로 탐지하는 관측 모델.
-  * **Pattern A**: 장기 베이스 수렴 및 초기 추세 전환형 (**공식 Production 신호**, `FROZEN`)
-  * **Pattern A FAST**: 주봉 중심의 조기 전환 탐지형 (**실험적 조기 신호**, `PRODUCTION_HOLD`)
-* **Strategy (매매 정책)**: Pattern, Investability 필터, 손절 및 청산 규칙을 결합하여 진입/보유/청산/재진입을 규정하는 실행 정책.
-  * **A FAST Core V2**: 현재 공식 기본 전략 (**`PRODUCTION_DECISION_SUPPORT`**)
-  * **A FAST Core V1**: 과거 비교 기준선 (**`HISTORICAL_FROZEN_BASELINE`**)
+## 주요 기능
 
----
+- **가격 패턴 분석** — 장기 가격 구조와 추세 전환 상태를 분석해 후보를 찾는다.
+- **투자 적합성 확인** — 시장 규모와 유동성 등 거래 가능성을 별도로 확인한다.
+- **외국인 수급** — 기간별 외국인 순매수와 관련 보조 지표를 제공한다.
+- **시장·업종 상대강도** — 종목의 시장 및 업종 대비 상대적인 흐름을 확인한다.
+- **기업 실적·재무 분석** — OpenDART/XBRL 기반 실적과 주요 재무 지표를 제공한다.
+- **전략 상태 확인** — 현재 전략 기준의 진입·보유·청산 상태를 보여준다.
+- **종목 분석 리포트** — 위 결과를 종목별 리포트로 통합한다.
+- **웹 조회** — 생성된 리포트를 검색하고 읽기 전용 화면에서 확인한다.
 
-## 📐 패턴 탐지 계층
+## 현재 공식 패턴과 전략
 
-### 1. Pattern A: 장기 베이스 수렴 및 초기 추세 전환형 (Frozen Production)
-* **Score v0.2**: 24개월 이평선 기울기(`ma24_slope`) 중심의 조화평균(Harmonic Mean) 결합, Alignment Bonus 및 이격 과열에 대한 Progressed Penalty 적용 (0~100점).
-* **Stage Classifier v0.1**: 주가 사이클 위치를 나타내는 5단계 라이프사이클 (`WEAK` ➔ `BASE` ➔ `TRANSITION` ➔ `EARLY_TREND` ➔ `PROGRESSED`).
-* **Candidate State**: `CANDIDATE` (2026-09-04 기준 raw candidate 256개), `WATCH`, `LATE`, `BLOCKED`, `INSUFFICIENT_DATA`.
-* **Score Momentum v0.1**: 정확한 Calendar 1M, 3M, 6M 시점 간의 Raw & Component Delta 측정.
-* **공식 상태**: **`CLOSED / PRODUCTION / FROZEN`** (`KEEP_CURRENT_PRODUCTION`, [Final Closure: `05d03e1`](docs/patterns/pattern_a/validation/final_production_closure.md))
+| 구분 | 역할 | 현재 상태 |
+|---|---|---|
+| Pattern A | 장기 가격 구조와 상승 초기 후보 탐지 | 현재 공식 패턴 |
+| Pattern A FAST | Pattern A보다 빠른 전환 신호 탐지 | 보조 패턴 |
+| A FAST Core V2 | 진입·보유·청산 규칙 | 현재 일반 종목 기본 전략 |
 
-### 2. Pattern A FAST: 주봉 중심 조기 전환 탐지형 (Experimental / Early Signal)
-* **시간축 구조**: `Monthly grants permission` ➔ `Weekly pulls trigger` ➔ `Daily times entry`.
-* **Lifecycle**: `WATCH` ➔ `SETUP` ➔ `TRIGGER` ➔ `TREND` ➔ `EXTENDED`.
-* **검증 결과 (Investable OOS-B)**: Score Separation `PASS` (diff +21.885), Lead Time `INCONCLUSIVE` (n=2).
-* **공식 상태**: **`RESEARCH_CLOSED / PRODUCTION_HOLD / EXPERIMENTAL`** ([Phase 13 Synthesis](docs/patterns/pattern_a_fast/validation/phase_13_final_synthesis_v01.md))
-* **사용 정책**: 공식 Candidate 판단이나 단독 랭킹에 사용하지 않으며, Stock Report 등에서 Pattern A의 보조 조기 신호로 병렬 표시됩니다.
+현재 기본 전략의 공식 ID는 \`PATTERN_A_FAST_FINAL_STRATEGY_V02\`다. 이 전략은
+\`PRODUCTION_DECISION_SUPPORT\` 상태의 의사결정 지원용이며 자동매매용으로
+승인되지 않았다.
 
----
+세부 규칙은 [Pattern A 공식 규격](docs/patterns/pattern_a/spec/production_authority.md),
+[Pattern A FAST 명세](docs/patterns/pattern_a_fast/specification/README.md),
+[A FAST Core V2 계약](docs/patterns/pattern_a_fast/strategy/version_02/README.md)에서
+확인한다.
 
-## 🚦 필터 및 확인 지표
+과거 전략과 후보 전략의 연구 기록은 문서 영역에 보존되어 있으며 현재 기본
+전략과 구분한다.
 
-### 1. Phase 10 Investability & Tradability Filter (Closed)
-* **목적**: 비투자성·극저유동성 종목을 사전에 분리하는 독립 downstream filter.
-* **기준**: 시가총액 $\ge \text{1,000억원}$ & 20일 평균 거래대금 $\ge \text{3억원}$ (별도 종가 하드 필터 미도입).
-* **분류**: `INVESTABLE`, `FILTERED_MARKET_CAP`, `FILTERED_LIQUIDITY`, `DATA_UNAVAILABLE` (2026-09-04 기준 `INVESTABLE` 133개 — 세부 분포는 production summary 산출물 참고).
+## 데이터 구성
 
-### 2. Phase 11 Foreign Flow Confirmation Infrastructure (Closed)
-* **목적**: 외국인 수급 데이터를 독립된 확인 축(Confirmation Axis)으로 제공.
-* **지표**: Foreign Net Buy (1D, 5D, 20D, 60D) 및 거래대금 대비 Flow Intensity (5D, 20D, 60D).
-* **정책**: 하드 필터나 스코어 합산에 사용하지 않는 순수 정보성 지표 (기관 수급 및 OBV는 현재 미구현).
+- **KRX 시장 데이터** — 가격, 거래량, 시장 구분과 종목 유니버스의 기준 데이터다.
+- **OpenDART/XBRL** — 기업 실적과 재무 정보를 기준일에 맞춰 제공한다.
+- **외국인 수급** — 종목별 기간 수급과 거래대금 대비 보조 지표를 제공한다.
+- **시장·업종 상대강도** — 시장 및 업종 기준 대비 종목 흐름을 계산한다.
+- **로컬 운영 데이터** — 리포트와 화면은 검증된 로컬 데이터·산출물을 사용한다.
 
-### 3. Phase 12 Market Relative Strength (Closed)
-* **공식 상태**: **`CLOSED`**
-* **정의**: 종목 수익률을 해당 종목의 상장 시장 벤치마크와 비교하는 상대강도입니다. KOSPI 종목은 KOSPI, KOSDAQ 종목은 KOSDAQ을 비교 기준으로 사용하며 RSI와는 다른 개념입니다.
-* **기간**: `2W` / `1M` / `3M` / `6M` / `12M`
-* **제공 값**: Market RS level, 기간별 improvement delta, acceleration, 전체 COMMON 시장 기준 rank/percentile.
-* **범위**: KOSPI/KOSDAQ 전체 공식 COMMON universe를 권위 데이터로 사용하며, ETF·ETN·우선주·SPAC·REIT·KONEX 등은 제외합니다. Percentile은 `100 = strongest`, `0 = weakest`입니다.
-* **운영 원칙**: 후보 subset 재계산 없이 전체 시장 snapshot을 exact as-of로 lookup합니다. nearest/future fallback, 리포트별 Full Universe Scan, 네트워크 요청은 사용하지 않습니다.
-* **분석 위치**: RS는 현재 Pattern A Score나 필터에 합산되지 않는 독립 Context / Analysis feature입니다.
-* **Sector RS**: **`CLOSED`** — Stock Report v0.5에 additive production context로 통합되었습니다. approved exact-date SectorMembershipStore snapshot(최신 2026-09-04)과 2026-09-04까지의 local sector index를 사용하며, full-COMMON rank/percentile authority는 만들지 않았습니다.
-* **Sector Membership source**: KRX Data Marketplace 공식 지수구성종목 CSV(수동 로그인 브라우저 다운로드, KOSPI 24 + KOSDAQ 22 native sectors, 46/46 publication gate)입니다. PyKRX membership acquisition/fallback은 사용하지 않습니다.
-* **Foreign Net Buy Ranking Web V01**: **`CLOSED`** — 2026-09-04 foreign-flow production source의 금액 기준 1D/5D/10D/20D/60D 누적 랭킹을 KOSPI/KOSDAQ COMMON 전체에 제공하며, exact-date Repository V2 현재가·기간 등락과 report availability를 함께 표시합니다. 네트워크 요청 없이 정적 payload를 사용합니다.
+데이터 구조와 기준은 [아키텍처 문서](docs/architecture/README.md)와
+[Fundamentals 안내](docs/fundamentals/README.md)에서 확인한다.
 
-### 4. KRX Open API Validation (Complete)
-* **현재 상태**: **`COMPLETE`**
-* 서비스 API 승인이 완료되어 KRX Open API 기반 데이터 계층(Repository V2 / local rolling market-data authority)이 현재 production data path입니다.
+## 종목 리포트와 웹 조회
 
-### 5. OpenDART Fundamentals V1 (Final Closed / Production)
-* **현재 상태**: **`FINAL_CLOSED / PRODUCTION`**. OpenDART/XBRL 기반의 PIT-aware 분기·연간 실적 계층과 필터 상태가 production authority로 고정되었습니다.
-* **제공 범위**: 매출, 영업이익, 당기순이익, 영업현금흐름, ROE, 부채비율, YoY 및 TTM. 각 기준일에는 허용 가능한 최신 비교기간과 `filing availability date <= as_of`인 데이터만 사용해 future filing leakage를 막습니다.
-* **회사 범위**: 일반 비금융 보통주와 비금융 지주회사를 지원합니다. BANK/SECURITIES/INSURANCE/FINANCIAL_HOLDING 등 금융회사의 일반 V1 fundamentals는 `NOT_APPLICABLE`이며, 금융회사 전용 확장은 미래 작업입니다.
-* **외부 검증 역할**: Naver Finance는 sanity validation reference이고, production authority는 OpenDART/XBRL입니다. 세부 문서와 closure evidence는 [`docs/fundamentals/`](docs/fundamentals/README.md)에 정리되어 있습니다.
+Stock Report는 한 종목의 가격 패턴, 투자 적합성, 전략 상태, 외국인 수급,
+시장·업종 상대강도, 기업 실적·재무 정보를 하나의 결과로 묶는다.
 
----
+리포트는 Markdown과 JSON 산출물로 제공되며, 웹 화면에서는 종목을 검색하고
+리포트 내용을 읽을 수 있다. 웹 화면은 생성된 공식 산출물을 조회하는
+읽기 전용 기능이다.
 
-## 🎯 A FAST Core Strategy (의사결정 지원 전략)
+리포트의 문서 역할과 계약은 [Stock Report 안내](docs/reporting/stock_report/README.md)와
+해당 영역의 현재 계약 문서에서 확인한다.
 
-Pattern A의 장기 베이스와 Pattern A FAST의 주봉 타이밍, Investability 필터, 손절 및 청산 규칙을 결합한 통합 매매 전략입니다.
+## 프로젝트 구조
 
-* **A FAST Core V2 (`PATTERN_A_FAST_FINAL_STRATEGY_V02`) — Current Default**:
-  * **진입 (Entry)**: Pattern A가 TRANSITION 또는 EARLY_TREND이고, FAST가 TRIGGER/READY이며, Investability·Monthly Regime·Daily Risk·FAST Score Status 조건이 모두 허용될 때 다음 로컬 거래일 시가 진입.
-  * **손절 (Loss Guard)**: Pre-PROGRESSED 구간에서 entry_open 대비 일봉 종가 -15% 이하 도달 시 다음 로컬 거래일 시가 청산 (최초 PROGRESSED effective date 도달 이후 비활성화).
-  * **청산 (Exit3 / Exit4)**: PROGRESSED에서 다른 유효 Pattern A Stage(WEAK/BASE/TRANSITION/EARLY_TREND)로 이탈 시 Exit3 청산, PROGRESSED 이후 Score HWM 대비 현재 Score가 15pt 이상 하락 시 Exit4 청산 (특수 Coverage lifecycle에서는 Exit3 비활성 및 Exit4만 적용).
-  * **재진입 (Reentry)**: 포지션 청산(FLAT) 후 새로운 진입 조건 충족 시 동일 종목 독립 재진입 허용 (V1 대비 유일한 전략 변경점, No Cooldown / No Max Reentries, 피라미딩 및 중복 포지션 금지).
-  * **공식 상태**: **`FINAL_STRATEGY_FROZEN / PRODUCTION_DECISION_SUPPORT`** ([V2 Contract](docs/patterns/pattern_a_fast/strategy/version_02/README.md))
-  * **최종 비교 상태**: V2 vs Julia realistic portfolio 비교를 완료했으며, 일반 종목 공식 전략으로 V2를 유지합니다. Julia는 일반 종목 V2 대체 전략으로 채택하지 않습니다.
-* **A FAST Core V1 (`PATTERN_A_FAST_FINAL_STRATEGY_V01`) — Historical Baseline**:
-  * 재진입이 금지된 단일 진입 모델로, 영구 보존되는 과거 기준선 (**`HISTORICAL_FROZEN_BASELINE`**).
-* **운용 정책**: 본 전략은 **투자 의사결정 지원(Decision Support)** 목적으로 리포트에 제공되며, 자동 주문 실행(Automated Trading)용으로 승인된 상태가 아닙니다. 회고적 검증(Retrospective, 783 trades / 551 tickers) 기반이며 Fresh OOS 검증은 아직 수행되지 않았습니다.
-
----
-
-## 📄 종목 분석 리포트 (Stock Report v0.5)
-
-단일 종목의 장기 패턴, 투자 적합성, 전략 상태, 수급, 시장·업종 상대강도 및 히스토리 추이를 종합 진단하는 Markdown 및 JSON 리포트 생성기입니다.
-
-* **공식 상태**: **`v0.5 CLOSED / PRODUCTION_DECISION_SUPPORT`** ([v0.5 Contract](docs/reporting/stock_report/contract_v05.md), [v0.5 Schema](docs/reporting/stock_report/schema_v05.json))
-* **현재 production 산출물**: 2026-09-04 canonical 1,836건 (COMMON 1,808 / ETF 26 / PREFERRED 2), 전부 `report_version = 0.5`. 연간 매출액 500억 이상 신규 대상 1,283건을 추가 반영했습니다.
-* **핵심 항목**:
-  1. **Pattern A 진단**: Score v0.2, Stage Classifier, Candidate State, 1M/3M/6M Score Momentum
-  2. **Investability 평가**: 시가총액($\ge \text{1,000억}$), 20D 거래대금($\ge \text{3억}$) 적합성 판정
-  3. **A FAST Core V2 전략 상태**: Canonical Strategy Position (`OPEN` / `FLAT`) 및 Action (`ENTER_NEXT_OPEN`, `HOLD`, `EXIT_NEXT_OPEN`, `WAIT`)
-  4. **Pattern A FAST 조기 신호**: Early Signal Stage & Fast Score
-  5. **월별 히스토리 추이 (Monthly History)**: 과거 월별 Pattern A Score Trend, Stage Transitions, Recent 12M History
-  6. **수급 현황 (Foreign Flow)**: 외국인 기간별(1D/5D/20D/60D) 순매수 및 Flow Intensity
-  7. **시장 상대강도 (Market RS)**: 2W/1M/3M/6M/12M level, improvement delta, acceleration, 전체 시장 rank/percentile
-  8. **업종 상대강도 (Sector RS)**: approved exact-date SectorMembershipStore snapshot과 local sector index 기반 2W/1M/3M/6M/12M additive context
-  9. **거래대금 추이 (Trading Value Trend)**: 5D/20D/60D 평균 거래대금 및 단·중기 확장 상태/비율
-  10. **Fundamentals**: 분기·연간 매출/영업이익/순이익/OCF/ROE/부채비율, YoY·TTM, filter status 및 웹 차트
-  11. **데이터 품질 & Provenance**: 결측치 감사, exact as-of, Zero Network Requests, PIT 무결성 검증
-* **산출물 경로**:
-  * Markdown: `artifacts/reporting/stock_reports/<YYYYMMDD>/*.md`
-  * JSON: `artifacts/reporting/stock_reports/<YYYYMMDD>/json/*.json`
-* **생성 원칙**: local cache와 canonical artifact를 소비하며, report 생성 시 외부 네트워크 요청과 Full Universe Scanner 호출은 0회입니다.
-
-> **주의**: 리포트의 포지션 정보는 사용자의 실제 계좌 보유 내역이 아닌 **A FAST Core 전략의 공인 가상 포지션(Canonical Strategy Position)**입니다.
-
----
-
-## 📂 프로젝트 구조
-
-정보 구조(Docs IA & Artifacts IA) 원칙에 따라 체계적으로 분리되어 있습니다.
-
-```text
+\`\`\`text
 krx-trend-scanner/
-├── src/trend_scanner/              # 핵심 엔진 소스코드
-│   ├── data/                       # Repository V2, rolling market-data authority, Parquet 캐시, PIT 스냅샷 검증
-│   ├── features/                   # 이평선, 피벗, 변동성, 레인지 등 정량 피처
-│   ├── patterns/                   # Pattern A 스코어링, 스테이지, 모멘텀, Evaluator
-│   ├── filters/                    # Phase 10 Investability 필터
-│   ├── flow/                       # Phase 11 Foreign Flow 수급 지표
-│   ├── relative_strength/          # Phase 12 Market RS (CLOSED)
-│   ├── reporting/                  # Stock Report v0.5 (Fundamentals/Market/Sector RS 통합) 생성기
-│   ├── scanner/                    # Pattern A COMMON production scan(2026-09-04 기준 2,555개) Full Universe Scanner
-│   ├── universe/                   # 유니버스 데이터 품질 감사
-│   └── validation/                 # 각 단계별 검증 파이프라인 및 클로저 감사
-│
-├── ROADMAP.md                      # 전체 프로젝트 개발 로드맵 (COMPLETED/CURRENT/NEXT/HOLD)
-├── docs/                           # 설계 및 검증 문서 (Single Source of Truth)
-│   ├── README.md                   # Documentation Authority Index
-│   ├── architecture/               # 시스템 아키텍처 및 공용 데이터 설계
-│   ├── patterns/
-│   │   ├── pattern_a/              # Pattern A 공식 규격 및 검증 보고서
-│   │   └── pattern_a_fast/         # Pattern A FAST 연구 및 A FAST Core 전략 문서
-│   ├── reporting/                  # Stock Report 계약 및 명세서
-│   └── strategies/                 # 크로스 패턴 전략 아키텍처
-│
-├── artifacts/                      # 검증 및 운영 산출물 (Authority & Lifecycle 분리)
-│   ├── README.md                   # Artifacts Authority Index
-│   ├── patterns/
-│   │   ├── pattern_a/              # Pattern A (production/, validation/, research/)
-│   │   └── pattern_a_fast/         # Pattern A Fast (production/, validation/, research/, archive/)
-│   ├── reporting/                  # 생성된 종목별 리포트 (stock_reports/)
-│   └── shared/                     # 공용 캐시 품질 감사 데이터 (cache_population/)
-│
-└── tests/                          # 단위, 통합, 회귀 검증 테스트 스위트
-```
+├── src/        핵심 분석·데이터 처리 코드
+├── scripts/    데이터 처리와 운영 스크립트
+├── data/       로컬 데이터와 캐시
+├── docs/       현재 기준 문서와 연구·검증 기록
+├── artifacts/  생성 결과와 검증 산출물
+├── web/        리포트 조회 화면
+├── tests/      테스트 모음
+├── ROADMAP.md  현재 상태와 향후 작업 계획
+└── README.md   프로젝트 첫 안내 문서
+\`\`\`
 
----
+\`docs/\` 아래의 세부 영역과 문서 종류는 [문서 안내](docs/README.md)에서
+확인한다. 과거 연구·검증 문서는 현재 구현과 혼동하지 않도록 역할과 상태를
+구분해 보존한다.
 
-## 🚀 빠른 시작
+## 문서 안내
 
-### 1. 환경 설정 및 설치
+- [문서 안내와 작성 원칙](docs/README.md)
+- [향후 작업 계획](ROADMAP.md)
+- [Pattern A 공식 규격](docs/patterns/pattern_a/spec/production_authority.md)
+- [Pattern A FAST 명세](docs/patterns/pattern_a_fast/specification/README.md)
+- [A FAST Core V2 계약](docs/patterns/pattern_a_fast/strategy/version_02/README.md)
+- [Fundamentals 안내](docs/fundamentals/README.md)
+- [Stock Report 안내](docs/reporting/stock_report/README.md)
 
-```bash
-# uv 사용 시 (권장)
+README는 프로젝트를 안내하고 핵심 상태를 요약하는 문서다. 세부 산식, 임계값,
+계약, 검증 결과는 각 영역의 권위 문서에서 관리한다.
+
+## 빠른 시작
+
+### 환경 설정
+
+\`\`\`bash
 uv sync
+\`\`\`
 
-# 또는 pip 사용 시
-pip install -e ".[dev]"
-```
+### 기본 검증 테스트
 
-### 2. 테스트 실행
-
-```bash
-# 빠른 검증 테스트 스위트
+\`\`\`bash
 uv run pytest -m "not slow and not integration"
-```
+\`\`\`
 
-### 3. Stock Report 생성 예시
-
-```python
-from pathlib import Path
-from trend_scanner.reporting.stock_report import generate_stock_report
-
-repo_root = Path(".")
-report, json_path, md_path = generate_stock_report(
-    ticker="000660",
-    as_of="2026-08-14",
-    repo_root=repo_root,
-)
-print(f"Pattern A Score: {report.current_snapshot.pattern_a_score}")
-print(f"Pattern A Stage: {report.current_snapshot.official_stage}")
-print(f"A FAST Core V2 State: {report.a_fast_core.strategy_state}")
-print(f"A FAST Core V2 Action: {report.a_fast_core.action}")
-print(f"JSON: {json_path}")
-print(f"Markdown: {md_path}")
-```
-
----
-
-## 🗺️ 현재 상태 및 다음 단계
-
-**Production 기준일**: 2026-09-04 (`production certified boundary`)
-
-* **COMPLETED**: Repository V2 / production data migration, market data refresh & price validation through 2026-09-04, Market RS full-COMMON authority, Pattern A production regeneration, OpenDART Fundamentals V1 및 Fundamentals Filter, Stock Report v0.5 integration, restated comparative/PIT closure, independent validation closure, Web Report Viewer `CLOSED / READ_ONLY`, documentation/artifact consolidation, branch/main integration cleanup
-* **현재 production 사실**: 전체 universe 4,415개, COMMON 2,557개, Stock Report 1,836건(COMMON 1,808 / ETF 26 / PREFERRED 2)
-* **CURRENT**: V2 ↔ Julia 최종 비교를 완료했습니다. 평가기간은 `2021-01-01 ~ 2026-08-14`이며, V2 Portfolio `58.8579%` / Julia Portfolio `38.5329%`, 양쪽 `PASS`, unresolved `0`, cash conservation `PASS`입니다. 일반 종목 공식 전략은 V2로 유지하고 Julia는 채택하지 않습니다.
-* **ETF**: Julia의 ETF 전용 차별화 가능성은 별도 후보로 보존하지만, ETF 공식 전략으로 확정하지 않고 deferred 상태로 둡니다.
-* **RESEARCH CLOSED**: 추가 V3/V4 및 exit-rule 연구는 현재 재개하지 않습니다.
-* **NEXT**: 문서·브랜치 정리 후 최신 데이터 기반 종목 리포트 및 scanner 운영 흐름으로 복귀합니다.
-* **HOLD / FUTURE**: 금융회사 전용 Fundamentals 확장, full-COMMON Sector RS rank/percentile authority, Pattern B~F 및 기타 신규 Pattern
-
-**알려진 현재 한계** (2026-09-04 기준): Scanner의 Foreign Flow와 Sector RS는 candidate-gated 평가가 남아 있지만, Stock Report target COMMON은 local authority를 직접 소비합니다. full-COMMON Sector RS rank/percentile authority는 아직 없습니다. 금융회사의 일반 V1 fundamentals는 `NOT_APPLICABLE`이며 전용 확장은 미래 범위입니다.
-
-전체 Phase 이력과 세부 실행 계획은 [ROADMAP.md](ROADMAP.md)를 참고하세요.
+세부 운영 절차와 전체 작업 순서는 [ROADMAP.md](ROADMAP.md)를 따른다.
