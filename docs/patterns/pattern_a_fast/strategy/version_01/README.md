@@ -2,7 +2,15 @@
 
 > V1은 현재 기본 전략이 아니라, V2와 비교할 때 사용하는 역사적 동결 기준선이다.
 
-## 현재 상태
+## 문서 역할
+
+- **전략 버전**: A FAST Core V1
+- **현재 역할**: 공식 과거 비교 기준선 (`HISTORICAL_FROZEN_BASELINE`)
+- **현재 상태**: 역사 기록
+- **현재 사용 여부**: 일반 종목의 현재 기본 전략으로 사용하지 않음
+- **관련 기준 문서**: [A FAST 전략 안내](../README.md), [V2 현재 기본 전략](../version_02/README.md)
+
+## 역사적 확정 상태
 
 - **전략 ID**: `PATTERN_A_FAST_FINAL_STRATEGY_V01`
 - **전략 상태**: 동결 (`FINAL_STRATEGY_FROZEN`)

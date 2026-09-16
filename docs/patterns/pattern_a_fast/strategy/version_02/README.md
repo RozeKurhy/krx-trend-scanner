@@ -3,6 +3,14 @@
 > Pattern A FAST를 이용하는 현재 기본 전략이다. 종목 리포트의 투자 의사결정을
 > 지원하지만 자동매매 전략은 아니다.
 
+## 문서 역할
+
+- **전략 버전**: A FAST Core V2
+- **현재 역할**: 일반 종목의 공식 기본 전략
+- **현재 상태**: 의사결정 지원 운영 (`PRODUCTION_DECISION_SUPPORT`)
+- **현재 사용 여부**: 종목 리포트의 투자 의사결정 지원에 사용하며 자동매매에는 사용하지 않음
+- **관련 기준 문서**: [A FAST 전략 안내](../README.md), [V1 과거 비교 기준선](../version_01/README.md)
+
 ## 현재 상태
 
 - **전략 ID**: `PATTERN_A_FAST_FINAL_STRATEGY_V02`
