@@ -131,7 +131,11 @@
 
 - **V2 전략 확정**: 완료 (`FAST_CORE_STRATEGY_RESEARCH_STATUS: CLOSED`)
 - **현재 기본 전략**: `PATTERN_A_FAST_FINAL_STRATEGY_V02`
-- **현재 후보 전략**: `PATTERN_A_FAST_FINAL_STRATEGY_V03`
-- **V3 후보 상태**: 규칙 동결 후 동일 진입 코호트 V2 vs V3 A/B 검증 대기 (`FROZEN_CANDIDATE_AWAITING_MATCHED_AB`)
-- **V3의 공식·기본 전략 여부**: 아직 공식 전략이나 기본 전략이 아님
-- **보류 연구**: `PROGRESSED_DOWNSIDE_PROTECTION_PHASE2`
+- **V2 vs Julia 최종 비교**: 완료 (`2021-01-01 ~ 2026-08-14`)
+  - V2 realistic portfolio: Total Return `58.8579%`, CAGR `8.5917%`, MDD `-31.9277%`, trades `249`
+  - Julia realistic portfolio: Total Return `38.5329%`, CAGR `5.9762%`, MDD `-30.6909%`, trades `89`
+  - 양쪽 결과: `PASS`, unresolved `0`, cash conservation `PASS`
+- **Julia 일반 종목 채택 여부**: `NOT ADOPTED / RETIRED AS GENERAL-STOCK OFFICIAL STRATEGY`
+- **Julia ETF 가능성**: ETF 전용 후보로만 보존하며 현재 `DEFERRED`; ETF 공식 전략으로 확정하지 않음
+- **V3/V4 및 추가 exit-rule 연구**: 현재 재개하지 않음
+- **기존 V3 후보·하락 방어 연구 문서**: 역사적 기록으로 보존

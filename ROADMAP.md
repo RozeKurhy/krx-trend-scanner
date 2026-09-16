@@ -5,7 +5,7 @@ ROADMAP.md
 이 문서는 향후 작업 순서의 기준 문서다. 새로운 아이디어가 생겨도 바로
 구현하지 않고, 어느 Phase에 속하는지 먼저 이 문서에서 위치를 정한다.
 
-## Current Status Summary (기준: 2026-09-04, 문서 갱신: 2026-09-10)
+## Current Status Summary (기준: 2026-08-14 최종 비교, 문서 갱신: 2026-09-17)
 
 **COMPLETED**
 - Repository V2 / production data migration (local rolling market-data authority, KRX Open API 기반)
@@ -25,19 +25,21 @@ ROADMAP.md
 - Post-report Branch Cleanup / Integration (remaining branches classified and preserved; no merge/delete)
 
 **CURRENT**
-- V2 ↔ Julia 공식 검증 Stage 4 완료 / 동결 및 Stage 5 실행 준비 완료. Fundamentals는 이번 검증 범위에서 제외하고 공식 결과는 아직 없음
+- V2 ↔ Julia 최종 비교 완료. 일반 종목 공식 전략은 `PATTERN_A_FAST_FINAL_STRATEGY_V02`로 유지하고 Julia는 채택하지 않음
+- 최종 Portfolio: V2 `58.8579%` / Julia `38.5329%`; 양쪽 `PASS`, unresolved `0`, cash conservation `PASS`
+- Julia ETF 전용 가능성은 별도 검증 전까지 `DEFERRED`이며, ETF 공식 전략으로 확정하지 않음
+- 추가 V3/V4 및 exit-rule 연구는 현재 재개하지 않음
 
 **NEXT**
-1. V2 ↔ Julia 공식 백테스트: 동일 진입·순차·현실적 2억 포트폴리오
-2. Strategy robustness comparison
-3. 최종 전략 검토 및 Julia 공식 채택 여부 판단
+1. 문서·브랜치 정리
+2. 최신 데이터 기반 종목 리포트 및 scanner 운영 흐름 복귀
 
-이번 V2 ↔ Julia 검증에서는 Fundamentals Filter, cutoff·threshold·score,
+완료된 V2 ↔ Julia 공식 비교에서는 Fundamentals Filter, cutoff·threshold·score,
 매출·이익 기반 제외 및 펀더멘털 우선순위를 사용하지 않는다. Fundamentals
-production 기능 자체는 유지한다. 백테스트에는 historical PIT, next-day
+production 기능 자체는 유지한다. 해당 비교에는 historical PIT, next-day
 execution, transaction cost, slippage, holding period, win rate, payoff ratio,
 MDD, trade count, benchmark comparison, 연도·시장·집중도 강건성을 명시적으로
-포함한다.
+포함했으며, 동일 비교의 재실행이나 추가 exit-rule 연구는 현재 계획하지 않는다.
 
 **HOLD**
 - New Pattern development (Pattern B~F 등)
@@ -139,11 +141,11 @@ CLOSED고 Production 승격 여부는 별도"임을 한 토큰으로 강조하�
 | | **OpenDART Fundamentals V1** | **FINAL_CLOSED / PRODUCTION** | OpenDART/XBRL PIT-aware 분기·연간 fundamentals 계층 및 일반 V1 filter 상태 |
 | | **Fundamentals Filter / Stock Report Integration** | **CLOSED** | Stock Report v0.5 additive integration 및 filter status 제공 |
 | | **V2 ↔ Julia Official Validation Stage 4** | **CLOSED / FROZEN** | `2021-01-01 ~ 2026-08-14`, 동일 진입·순차·현실적 2억 포트폴리오 3개 결과축 동결 |
-| | **Stage 5 Execution Preparation** | **CLOSED / READY** | survivorship-safe Population/PIT runner 및 execution contract 연결 완료; 공식 결과는 아직 없음 |
-| | **V2 ↔ Julia Official Backtest** | **NEXT** | 동일 진입·순차·현실적 2억 포트폴리오 비교로 실행 |
-| | **Strategy Robustness Comparison** | **AFTER BACKTESTS** | 두 realistic backtest 완료 후 비교 |
+| | **Stage 5 Execution Preparation** | **CLOSED / READY** | survivorship-safe Population/PIT runner 및 execution contract 연결 완료 |
+| | **V2 ↔ Julia Official Backtest** | **CLOSED** | Matched-entry `8,533`, Sequential, Realistic 200M Portfolio 최종 비교 완료 |
+| | **Strategy Robustness Comparison** | **CLOSED** | V2 유지 및 Julia 일반 종목 미채택 결론 확정 |
 | | KRX Open API Validation | COMPLETE | 서비스 API 승인 완료, 현재 production data path (Repository V2) |
-| | Julia Strategy V00 Official PIT (구 proxy 연구) | HISTORICAL / SUPERSEDED | Loss Guard on/off 비교용 구 proxy 연구, 117/215만 확보된 채 종료. 현재 우선순위인 FastCore/Julia Realistic Backtest로 대체됨 |
+| | Julia Strategy V00 Official PIT (구 proxy 연구) | HISTORICAL / SUPERSEDED | Loss Guard on/off 과거 proxy 연구 기록. 최종 realistic 비교 후 Julia 일반 종목 미채택; ETF 전용 가능성만 deferred |
 | | Market Cap Threshold Research (구 proxy 연구 후속) | HISTORICAL / SUPERSEDED | 위 구 proxy 연구에 종속되어 있던 후속 계획, 현재 재개 대상 아님 |
 | **Longer-term** | Phase 14~18. Pattern B ~ F | PLANNED | 장기 파이프라인 |
 | | Phase 19. Market Leader Score | PLANNED | 종합 스코어링 체계 |
@@ -162,9 +164,9 @@ CLOSED고 Production 승격 여부는 별도"임을 한 토큰으로 강조하�
        ↓
 4. Stage 5 runner / execution contract preparation = CLOSED / READY
        ↓
-5. V2 ↔ Julia official backtest (Matched-entry + Sequential + Realistic 200M) = NEXT
+5. V2 ↔ Julia official backtest (Matched-entry + Sequential + Realistic 200M) = CLOSED
        ↓
-6. Strategy Robustness Comparison = AFTER BACKTESTS
+6. V2 유지 / Julia 일반 종목 미채택 결정 = CLOSED
        ↓
 7. Web Report Viewer = CLOSED / READ_ONLY
        ↓
@@ -173,7 +175,7 @@ CLOSED고 Production 승격 여부는 별도"임을 한 토큰으로 강조하�
 9. Sector RS full-COMMON authority and Phase 14~18 Pattern B ~ F = HOLD / LONGER-TERM
 ```
 
-> **Historical / superseded (현재 우선순위 아님)**: Julia Strategy V00 Official PIT 비교 연구(구 loss-guard on/off proxy 연구, 117/215에서 종료)와 그 후속인 Market Cap Threshold Research는 현재 위 순서를 막는 prerequisite가 아니다. 현재 realistic backtest 트랙은 조건 정의가 먼저이며, backtest 실행은 조건과 사용자 범위가 확정된 뒤 진행한다. 이 구 proxy 연구는 재개 예정 없이 역사적 기록으로만 남긴다. 상세 내용은 아래 "Julia Strategy V00" 섹션 참고.
+> **Historical / superseded (현재 우선순위 아님)**: Julia Strategy V00 Official PIT 비교 연구(구 loss-guard on/off proxy 연구, 117/215에서 종료)와 그 후속인 Market Cap Threshold Research는 역사적 기록으로만 보존한다. 최종 V2 vs Julia realistic 비교는 완료되었고 일반 종목 공식 전략은 V2로 유지한다. 상세 내용은 아래 "Julia Strategy V00" 섹션 참고.
 
 ---
 
@@ -448,11 +450,11 @@ Pattern A, Investability, Foreign Flow, Market RS와 독립된 실적 분석 축
 
 ## Julia Strategy V00 — HISTORICAL / SUPERSEDED (구 proxy 연구, 현재 우선순위 아님)
 
-> 이 섹션은 역사적 기록이다. FastCore/Julia Realistic Backtest는 현재 `PAUSED / RESUME_READY`이며, 명시적 사용자 재개 전에는 시작하지 않는다. 이 구 loss-guard on/off proxy 연구는 재개 예정이 없다.
+> 이 섹션은 역사적 기록이다. FastCore/Julia Realistic Backtest는 최종 비교까지 완료되었고, 일반 종목 공식 전략으로 Julia를 채택하지 않는다. Julia의 ETF 전용 가능성은 별도 검증 전까지 `DEFERRED`이며, 이 구 loss-guard on/off proxy 연구와 추가 exit-rule 연구는 재개하지 않는다.
 
 목적: A FAST Core V2의 핵심 보호 규칙인 pre-PROGRESSED $-15\%$ Loss Guard가 회고적 수익률 분포와 대규모 손실 프로필에 미치는 영향을 독립적으로 비교 검증.
 
-현재 Official PIT는 `117 / 215 = 54.42%`이며 98개 reference date가 누락되어 있다. 따라서 현재 결과는 `INCOMPLETE`이고, KRX historical market-cap data availability 확인 전까지 `BLOCKED_BY_KRX_DATA`다.
+이 구 proxy 기록의 당시 Official PIT는 `117 / 215 = 54.42%`이며 98개 reference date가 누락되어 있었다. 따라서 해당 기록은 `INCOMPLETE` 및 `BLOCKED_BY_KRX_DATA` 상태로 종료되었으며, 최종 realistic 비교 결과와 혼동하지 않는다.
 
 ### 검증 규격 (Strict No Tuning Contract)
 * **Base Strategy**: A FAST Core V2
@@ -463,7 +465,7 @@ Pattern A, Investability, Foreign Flow, Market RS와 독립된 실적 분석 축
 * **증거 분류**: `EXPLORATORY / SAME_SAMPLE_RETROSPECTIVE` (Production 미승인).
 * **Proxy research**: `CLOSED / NON_AUTHORITATIVE_PROXY_PIT` (공식 production 근거로 사용하지 않음).
 * **Official production approval**: `NOT_APPROVED`.
-* **다음 Julia 작업**: KRX historical market-cap data가 확보된 뒤 98개 누락 기준일을 official PIT로 채우고, 100% completeness를 확인한 후에만 이 비교 연구를 실행한다.
+* **현재 Julia 작업**: 일반 종목 비교·채택 판단은 종료되었다. ETF 전용 Julia 가능성은 별도 검증 대상으로만 보존하며 현재 `DEFERRED`다.
 
 ## KRX Open API Validation — COMPLETE (2026-09-04 기준 업데이트)
 
@@ -553,8 +555,8 @@ CLI / Web 대시보드, 관심종목 워크플로우, 실시간 알림 등 최�
 18. Fundamentals Filter / Stock Report Integration — **CLOSED**
 19. V2 ↔ Julia official validation Stage 4 — **CLOSED / FROZEN** (`2021-01-01 ~ 2026-08-14`; Fundamentals 제외)
 20. Stage 5 runner / execution contract preparation — **CLOSED / READY**
-21. V2 ↔ Julia Official Backtest (Matched-entry + Sequential + Realistic 200M Portfolio) — **NEXT**
-22. Strategy Robustness Comparison — **AFTER BACKTESTS**
+21. V2 ↔ Julia Official Backtest (Matched-entry + Sequential + Realistic 200M Portfolio) — **CLOSED** (`8,533` matched; both Portfolio `PASS`)
+22. V2 유지 / Julia 일반 종목 미채택 결정 — **CLOSED**
 23. KRX Open API Validation — **COMPLETE**
 24. Sector RS Stock Report v0.5 Integration — **CLOSED / ADDITIVE CONTEXT**
 25. Web Report Viewer — **CLOSED / READ_ONLY**

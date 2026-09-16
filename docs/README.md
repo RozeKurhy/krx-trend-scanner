@@ -39,7 +39,7 @@ Julia Strategy처럼 특정 패턴 폴더와 독립적으로 관리하는 전략
 
 - **Pattern A** — 현재 운영을 유지하는 패턴이다. 상세 내용은 [Pattern A 안내](patterns/pattern_a/README.md)에서 확인한다. (`FROZEN` / `KEEP_CURRENT_PRODUCTION`)
 - **Pattern A FAST** — Pattern A보다 빠른 상승 전환을 탐지하는 패턴이다. 현재 기본 전략은 A FAST Core V2다. ([Pattern A FAST 안내](patterns/pattern_a_fast/README.md))
-- **A FAST Core V3** — 규칙이 동결된 후보 전략이다. 아직 공식 전략이 아니며 기본 전략도 대체하지 않는다. 다음 단계는 V2와 동일 조건으로 비교하는 검증이다. ([V3 후보 규칙](patterns/pattern_a_fast/strategy/version_03/README.md))
+- **A FAST Core V3/V4** — 기존 후보·연구 문서는 보존하지만, 현재 추가 exit-rule 연구나 V2 대체 검증을 재개하지 않는다. 공식 기본 전략은 A FAST Core V2다. ([V3 후보 규칙](patterns/pattern_a_fast/strategy/version_03/README.md))
 
 현재 기본 전략 변경과 후보 전략의 공식 채택 절차는 [전략 생애주기와 채택 절차](strategies/strategy_lifecycle.md)에서 확인한다.
 
@@ -54,9 +54,9 @@ Julia Strategy처럼 특정 패턴 폴더와 독립적으로 관리하는 전략
 A FAST Core V2는 현재 기본 전략이며 Pattern A FAST 내부에서 실제 의사결정
 지원에 사용한다. 필요한 기술 상태값은 해당 전략 문서에서 확인한다.
 
-A FAST Core V3는 `PATTERN_A_FAST_FINAL_STRATEGY_V03` 후보 전략이며,
-`FROZEN_CANDIDATE_AWAITING_MATCHED_AB` 상태다. V2와 동일 조건 비교 검증이
-끝나기 전에는 공식 전략 채택이나 기본 전략 승격을 하지 않는다.
+A FAST Core V3/V4 관련 문서는 역사적 후보·연구 기록으로 보존한다. 현재 추가
+exit-rule 연구는 계획하지 않으며, 일반 종목의 공식 기본 전략은
+`PATTERN_A_FAST_FINAL_STRATEGY_V02`다.
 
 ## 향후 작업 계획
 

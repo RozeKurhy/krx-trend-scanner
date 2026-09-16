@@ -11,9 +11,10 @@
 (`PATTERN_A_FAST_FINAL_STRATEGY_V02`)이며, 패턴과 강하게 결합되어 있어
 관련 문서는 [A FAST 전략 문서](../patterns/pattern_a_fast/strategy/)에 둔다.
 
-`Julia Strategy`는 V2의 변형을 연구하는 후보 전략이다. 연구 기록이 존재한다는
-사실만으로 공식 전략 또는 기본 전략이 되는 것은 아니며, 현재 프로덕션 기본
-전략은 계속 A FAST Core V2이다.
+`Julia Strategy`는 V2의 변형을 연구한 전략이다. 최종 V2 vs Julia realistic
+portfolio 비교 결과 Julia는 일반 종목 공식 전략으로 채택하지 않으며, 현재
+프로덕션 기본 전략은 A FAST Core V2이다. Julia의 ETF 전용 가능성은 별도
+검토 대상으로만 보존하고 현재는 deferred 상태다.
 
 공식 전략의 검증·채택 절차는 [전략 생애주기와 채택 절차](strategy_lifecycle.md)를
 따른다. Julia 관련 현재 상태와 과거 기록은 [Julia 문서](julia/)에서 관리하며,

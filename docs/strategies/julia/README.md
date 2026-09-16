@@ -5,16 +5,19 @@
 
 ## 현재 상태
 
-- 연구 분류: `EXPLORATORY_CANDIDATE` (후보 전략)
-- 공식 전략 여부: 미승인
+- 연구 분류: `HISTORICAL_COMPARISON_RECORD`
+- 일반 종목 공식 전략 여부: `NOT ADOPTED / RETIRED AS GENERAL-STOCK OFFICIAL STRATEGY`
 - 현재 기본 전략: `A FAST Core V2`
 - V2와의 핵심 차이: 사전 진행 단계의 -15% Loss Guard를 끈 변형이다.
 - FastCore 전용 Fundamentals Filter 및 전략 조건: Julia V00에 자동 승계하지 않음
+- 최종 비교: `2021-01-01 ~ 2026-08-14`, Matched `8,533`, 양쪽 Portfolio `PASS`
+- 최종 Portfolio: V2 `58.8579%` vs Julia `38.5329%`; Julia는 V2 대체 전략으로 채택하지 않음
+- ETF 상태: Julia의 ETF 전용 가능성은 `DEFERRED`; ETF 공식 전략으로 확정하지 않음
 - 과거 연구의 실증 방식: `SAME_SAMPLE_RETROSPECTIVE`
 
-Julia 연구 기록과 최신 ETF 비교 결과가 존재하지만, 이는 공식 전략 채택이나
-현재 공식 검증 완료를 뜻하지 않는다. 공식 검증·채택 절차는
-[전략 생애주기와 채택 절차](../strategy_lifecycle.md)를 기준으로 한다.
+Julia 연구 기록과 최신 ETF 비교 결과는 삭제하지 않고 보존한다. 다만 최종
+V2 vs Julia 비교가 완료되었으며 Julia는 일반 종목 공식 전략으로 채택하지
+않는다. ETF 관련 판단은 별도 전용 검증 전까지 deferred로 유지한다.
 
 ## 전략 생애주기 단계
 
@@ -23,21 +26,20 @@ Julia 연구 기록과 최신 ETF 비교 결과가 존재하지만, 이는 공�
 | 1. 전략 아이디어 정의 | 완료 | Loss Guard 제거의 손실 방어·상승 기회 상충 관계가 연구 질문으로 기록됨 |
 | 2. 전략 규칙 명세화 | 완료 | V2 공식 규칙 문서와 동일한 진입·보유·청산·재진입 경로를 사용하며 `enable_loss_guard=False`로 단일 변경점만 적용함 |
 | 3. 후보 전략 동결 | 완료 | 현재 계약에 기준 전략, 단일 변경점, 전략 ID, `no_tuning: true`가 고정되어 결과에 따른 규칙 조정을 하지 않음 |
-| 4. 검증 계획 확정 | 미완료 | [Julia 공식 전략 검증 계획 V01](validation_plan_v01.md) 전략 규칙·데이터·risk-first 원칙 보완 완료, 전략 중립적 FastCore realistic 공통 실행조건 확정 대기 |
-| 5. 동일 조건 비교 백테스트 | 미완료 | 과거 실행은 공식 생애주기 완료로 소급하지 않음 |
-| 6. 핵심 성과 비교 | 미완료 | 과거 연구 수치는 참고 기록으로만 보존함 |
-| 7. 실패 사례 및 부작용 검증 | 미완료 | 현재 공식 검증 범위에서 수행하지 않음 |
-| 8. 강건성 검증 | 미완료 | 현재 공식 검증 범위에서 수행하지 않음 |
-| 9. 최종 전략 검토 | 미완료 | 공식 검토 기록 없음 |
-| 10. 공식 전략 채택 여부 결정 | 미완료 | Julia는 현재 미승인 상태 |
-| 11. 기본 전략 승격 여부 결정 | 미완료 | V2가 현재 기본 전략으로 유지됨 |
-| 12. 버전·문서·결과물 확정 | 미완료 | 공식 검증 버전으로 확정하지 않음 |
+| 4. 검증 계획 확정 | 완료 / 동결 | [Julia 공식 전략 검증 계획 V01](validation_plan_v01.md)에 비교 조건과 판정 기준을 고정함 |
+| 5. 동일 조건 비교 백테스트 | 완료 | Matched-entry, Sequential, Realistic 200M Portfolio를 동일 조건으로 1회 완료함 |
+| 6. 핵심 성과 비교 | 완료 | 최종 Portfolio에서 V2 `58.8579%`, Julia `38.5329%`를 확인함 |
+| 7. 실패 사례 및 부작용 검증 | 완료 | unresolved, terminal unresolved, cash conservation 및 Loss Guard subset을 확인함 |
+| 8. 강건성 검증 | 비교 범위 완료 | 이번 최종 비교 범위에서 완료; 별도 V3/V4·exit-rule 연구는 재개하지 않음 |
+| 9. 최종 전략 검토 | 완료 | 일반 종목 공식 전략은 V2로 유지함 |
+| 10. 공식 전략 채택 여부 결정 | 완료 | `NOT ADOPTED / RETIRED AS GENERAL-STOCK OFFICIAL STRATEGY` |
+| 11. 기본 전략 승격 여부 결정 | 완료 | Julia 승격 없음; V2를 현재 기본 전략으로 유지함 |
+| 12. 버전·문서·결과물 확정 | 완료 | 비교 결과와 현재 결론을 공식 문서에 반영함 |
 | 13. 운영 환경 반영 | 미완료 | 프로덕션 반영 없음 |
 | 14. 사후 성과 확인 | 미완료 | 운영 전략이 아니므로 해당 단계에 진입하지 않음 |
 
-현재 다음 공식 단계는 전략 중립적 FastCore realistic 공통 실행조건 확정 후
-Julia 검증 계획에 해당 조건을 연결하고 4단계를 동결하는 것이다. 계획은
-`검토 대기` 상태이며, 그 조건 연결과 동결 전에는 검증을 시작하지 않는다.
+일반 종목 Julia 비교와 채택 판단은 종료되었다. 현재 다음 작업은 문서·브랜치
+정리 후 최신 데이터 기반 종목 리포트 및 scanner 운영 흐름으로 복귀하는 것이다.
 
 ## 문서 인덱스
 
@@ -45,8 +47,8 @@ Julia 검증 계획에 해당 조건을 연결하고 4단계를 동결하는 것
   PIT 백필 체크포인트. 성과 해석은 억제된 상태다.
 - [proxy_market_cap_v01 과거 비공식 연구](proxy_market_cap_v01.md): 98개
   결측 기준일에 예상 시가총액을 사용한 연구 기록이며 공식 검증 근거가 아니다.
-- [Julia 공식 전략 검증 계획 V01](validation_plan_v01.md): 공식 검증 전
-  비교 조건·데이터·기간·지표·판정 기준을 보완한 검토 대기 문서이다.
+- [Julia 공식 전략 검증 계획 V01](validation_plan_v01.md): Stage 4에서 동결한
+  사전 비교 계획과 최종 비교 후 현재 결정을 함께 보존하는 문서이다.
 - [최신 ETF V3·Julia 통합 비교](../../../artifacts/research/etf_v3_julia_integrated_comparison_v01/final_comparison.md):
   21개 ETF의 비교 증거를 정리한 별도 연구 문서이며 Julia 공식 검증 계획은 아니다.
 - 관련 결과물: `artifacts/strategies/julia/v00/` 및

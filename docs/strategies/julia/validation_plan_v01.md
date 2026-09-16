@@ -1,6 +1,16 @@
 # Julia 공식 전략 검증 계획 V01
 
-> 상태: `STAGE_4_FROZEN`
+> **현재 결정 업데이트 (2026-09-17)**
+>
+> 이 문서의 Stage 4 사전 계획은 역사적 기준으로 보존한다. Stage 5 최종
+> 비교는 `2021-01-01 ~ 2026-08-14` 기간에 완료되었고, Matched-entry
+> `8,533`, Realistic 200M Portfolio는 V2 `58.8579%`, Julia `38.5329%`였다.
+> 양쪽 Portfolio는 `PASS`, unresolved `0`, cash conservation `PASS`였다.
+> 최종 결정은 Julia를 일반 종목 공식 전략으로 채택하지 않는 것이며, Julia의
+> ETF 전용 가능성은 별도 검증 전까지 `DEFERRED`로 둔다. 추가 V3/V4 및
+> exit-rule 연구는 현재 재개하지 않는다.
+
+> 문서 상태: `STAGE_4_FROZEN / HISTORICAL_PLAN`
 >
 > 이 문서는 Julia 후보 전략의 공식 검증을 실행하기 전에 비교 조건과 판정
 > 기준을 사전 고정한 문서다. 이 문서를 작성하는 단계에서는
@@ -11,11 +21,11 @@
 |---|---|
 | 후보 전략 | `JULIA_STRATEGY_V00` |
 | 기준 전략 | `PATTERN_A_FAST_FINAL_STRATEGY_V02` |
-| 계획 단계 | 전략 생애주기 4단계: 검증 계획 확정 완료 / 동결 |
+| 계획 단계 | 전략 생애주기 4단계: 검증 계획 확정 완료 / 동결 (역사적 계획) |
 | 작성 기준 HEAD | `c613dab1297c34b9826f1e35067d2fc32971bd5b` |
 | 공통조건 확정 커밋 | `c613dab1297c34b9826f1e35067d2fc32971bd5b` |
-| 공식 상태 | `STAGE_4_FROZEN` / Stage 4 완료·동결 |
-| 결과 artifact | `artifacts/strategies/julia/official_validation_v01/` (사전 예약만 함) |
+| 공식 상태 | `STAGE_4_FROZEN` / Stage 4 완료·동결; Stage 5 최종 비교 완료 |
+| 결과 artifact | repository official result artifact는 생성하지 않음; raw checkpoint는 외부 경로에 보존 |
 
 ## A. 목적과 공식 질문
 
@@ -40,8 +50,8 @@
 
 - 기준군: `PATTERN_A_FAST_FINAL_STRATEGY_V02`
 - 후보군: `JULIA_STRATEGY_V00`
-- 후보군의 분류: `EXPLORATORY_CANDIDATE`
-- 후보군의 현재 상태: `NOT_APPROVED`
+- 후보군의 분류: `HISTORICAL_COMPARISON_CANDIDATE`
+- 후보군의 현재 상태: `NOT ADOPTED / RETIRED AS GENERAL-STOCK OFFICIAL STRATEGY`
 
 두 전략은 현재 V2 공식 규칙 문서와 Julia V00 계약을 기준으로 비교한다.
 `docs/validation/pattern_a_fast_final_strategy_v02.md`는 과거 artifact
@@ -426,9 +436,11 @@ ticker를 근거로 판정하지 않는다. 현재 V2 canonical authority인
 역사적 배경 자료로만 참고한다. 현재 V2 규칙 authority를 이 과거 문서로
 대체하지 않는다.
 
-### K.1 채택 (`ADOPT`)
+### K.1 채택 (`ADOPT`) — 적용 결과: 일반 종목 채택하지 않음
 
-다음 조건을 모두 만족할 때만 Julia의 공식 전략 채택을 검토한다.
+다음 조건을 모두 만족할 때만 Julia의 공식 전략 채택을 검토한다. 최종
+비교 결과 이 문서의 risk-first 기준에서 Julia는 일반 종목 공식 전략으로
+채택하지 않는다.
 
 1. 데이터 기준 경로, PIT, 미래 정보 유입, 동일 조건, 재현성 및 강건성 gate에
    중대한 실패가 없다.
@@ -518,7 +530,7 @@ Stage 4가 완료·동결되고 별도 실행 지시가 있을 때만 아래 art
 이 문서의 공식 상태는 `STAGE_4_FROZEN`이며, Stage 4는 완료·동결됐다. 이는
 Julia 공식 전략 채택이나 기본 전략 승격을 의미하지 않는다.
 
-### Stage 5 실행 전 구현 조건
+### Stage 5 실행 전 구현 조건 (역사적 계획 기록)
 
 1. **PIT runner 연결 구현**: 생존편향 방지 effective Population/PIT 기준
    경로는 확정되어 있다. 현재 Julia 비교 runner가 이를 직접 소비하도록
@@ -527,10 +539,11 @@ Julia 공식 전략 채택이나 기본 전략 승격을 의미하지 않는다.
    수정하지 않는다. 이 항목은 Stage 4의 실행조건 미확정과 구분되는 Stage 5
    실행 전 구현 조건이다.
 
-Stage 5 실행 전에는 runner가 survivorship-safe effective Population/PIT
+당시 Stage 5 실행 전에는 runner가 survivorship-safe effective Population/PIT
 authority를 직접 소비하도록 연결하고, current-list broadcast와
 nearest-date fallback이 없음을 execution contract와 무결성 gate로 확인한다.
 이 항목은 Stage 4 미완료 사유가 아니다.
 
-Stage 5 연결과 별도 실행 지시 전에는 백테스트, 결과 생성, 공식 채택, 기본
-전략 승격을 시작하지 않는다.
+이 문단은 Stage 5 실행 전의 통제 조건을 보존한 것이다. 실제 Stage 5 최종
+비교는 위의 현재 결정 업데이트에 기록된 범위로 완료되었으며, Julia의 일반
+종목 공식 채택이나 V2 기본 전략 승격은 이루어지지 않았다.

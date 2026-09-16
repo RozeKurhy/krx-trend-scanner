@@ -88,6 +88,7 @@ Pattern A의 장기 베이스와 Pattern A FAST의 주봉 타이밍, Investabili
   * **청산 (Exit3 / Exit4)**: PROGRESSED에서 다른 유효 Pattern A Stage(WEAK/BASE/TRANSITION/EARLY_TREND)로 이탈 시 Exit3 청산, PROGRESSED 이후 Score HWM 대비 현재 Score가 15pt 이상 하락 시 Exit4 청산 (특수 Coverage lifecycle에서는 Exit3 비활성 및 Exit4만 적용).
   * **재진입 (Reentry)**: 포지션 청산(FLAT) 후 새로운 진입 조건 충족 시 동일 종목 독립 재진입 허용 (V1 대비 유일한 전략 변경점, No Cooldown / No Max Reentries, 피라미딩 및 중복 포지션 금지).
   * **공식 상태**: **`FINAL_STRATEGY_FROZEN / PRODUCTION_DECISION_SUPPORT`** ([V2 Contract](docs/patterns/pattern_a_fast/strategy/version_02/README.md))
+  * **최종 비교 상태**: V2 vs Julia realistic portfolio 비교를 완료했으며, 일반 종목 공식 전략으로 V2를 유지합니다. Julia는 일반 종목 V2 대체 전략으로 채택하지 않습니다.
 * **A FAST Core V1 (`PATTERN_A_FAST_FINAL_STRATEGY_V01`) — Historical Baseline**:
   * 재진입이 금지된 단일 진입 모델로, 영구 보존되는 과거 기준선 (**`HISTORICAL_FROZEN_BASELINE`**).
 * **운용 정책**: 본 전략은 **투자 의사결정 지원(Decision Support)** 목적으로 리포트에 제공되며, 자동 주문 실행(Automated Trading)용으로 승인된 상태가 아닙니다. 회고적 검증(Retrospective, 783 trades / 551 tickers) 기반이며 Fresh OOS 검증은 아직 수행되지 않았습니다.
@@ -209,8 +210,10 @@ print(f"Markdown: {md_path}")
 
 * **COMPLETED**: Repository V2 / production data migration, market data refresh & price validation through 2026-09-04, Market RS full-COMMON authority, Pattern A production regeneration, OpenDART Fundamentals V1 및 Fundamentals Filter, Stock Report v0.5 integration, restated comparative/PIT closure, independent validation closure, Web Report Viewer `CLOSED / READ_ONLY`, documentation/artifact consolidation, branch/main integration cleanup
 * **현재 production 사실**: 전체 universe 4,415개, COMMON 2,557개, Stock Report 1,836건(COMMON 1,808 / ETF 26 / PREFERRED 2)
-* **CURRENT**: V2 ↔ Julia 공식 검증 Stage 4 완료/동결 및 Stage 5 실행 준비 완료. 공식 평가기간은 `2021-01-01 ~ 2026-08-14`이며 Fundamentals는 이번 검증에서 제외함. 공식 결과는 아직 없음
-* **NEXT**: V2 ↔ Julia 공식 백테스트 실행(동일 진입·순차·현실적 2억 포트폴리오) → strategy robustness comparison
+* **CURRENT**: V2 ↔ Julia 최종 비교를 완료했습니다. 평가기간은 `2021-01-01 ~ 2026-08-14`이며, V2 Portfolio `58.8579%` / Julia Portfolio `38.5329%`, 양쪽 `PASS`, unresolved `0`, cash conservation `PASS`입니다. 일반 종목 공식 전략은 V2로 유지하고 Julia는 채택하지 않습니다.
+* **ETF**: Julia의 ETF 전용 차별화 가능성은 별도 후보로 보존하지만, ETF 공식 전략으로 확정하지 않고 deferred 상태로 둡니다.
+* **RESEARCH CLOSED**: 추가 V3/V4 및 exit-rule 연구는 현재 재개하지 않습니다.
+* **NEXT**: 문서·브랜치 정리 후 최신 데이터 기반 종목 리포트 및 scanner 운영 흐름으로 복귀합니다.
 * **HOLD / FUTURE**: 금융회사 전용 Fundamentals 확장, full-COMMON Sector RS rank/percentile authority, Pattern B~F 및 기타 신규 Pattern
 
 **알려진 현재 한계** (2026-09-04 기준): Scanner의 Foreign Flow와 Sector RS는 candidate-gated 평가가 남아 있지만, Stock Report target COMMON은 local authority를 직접 소비합니다. full-COMMON Sector RS rank/percentile authority는 아직 없습니다. 금융회사의 일반 V1 fundamentals는 `NOT_APPLICABLE`이며 전용 확장은 미래 범위입니다.
