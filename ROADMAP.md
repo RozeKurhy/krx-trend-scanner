@@ -36,7 +36,7 @@
 
 - `docs/README.md` 정리 완료
 - 루트 `README.md` 정리 완료
-- `ROADMAP.md` 정리 진행 중
+- `ROADMAP.md` 정리 완료
 - 이후 하위 문서 정리 순서:
 
   `patterns/`
