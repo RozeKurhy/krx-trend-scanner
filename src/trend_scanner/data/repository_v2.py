@@ -165,9 +165,9 @@ class _IndexedRawTickerReader:
                 compact[column] = compact[column].astype("int32")
             self._partition_frames[(market, day)] = compact
             self.stats["index_memory_bytes"] += int(compact.memory_usage(deep=True).sum())
+            self.stats["partition_compact_seconds"] += time.perf_counter() - compact_started
             location_started = time.perf_counter()
             if frame.empty:
-                self.stats["partition_compact_seconds"] += time.perf_counter() - compact_started
                 self.stats["ticker_location_index_seconds"] += time.perf_counter() - location_started
                 continue
             # Store row positions rather than copying every ticker's rows into
@@ -179,7 +179,6 @@ class _IndexedRawTickerReader:
                 self._locations.setdefault(key, []).append(
                     (market, day, tuple(int(position) for position in positions))
                 )
-            self.stats["partition_compact_seconds"] += time.perf_counter() - compact_started
             self.stats["ticker_location_index_seconds"] += time.perf_counter() - location_started
         sort_started = time.perf_counter()
         for key in self._locations:

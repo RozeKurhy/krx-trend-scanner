@@ -473,6 +473,23 @@ def _normalise_portfolio_market_data(
     return normalized
 
 
+def _filter_portfolio_market_data_to_sequential_records(
+    records_by_strategy: Mapping[str, Sequence[Any]],
+    market_data_by_identity: Mapping[Any, pd.DataFrame],
+) -> dict[Any, pd.DataFrame]:
+    """Keep only frames for tickers represented by Sequential records."""
+    sequential_tickers = {
+        str(_record_value(record, "ticker", ""))
+        for records in records_by_strategy.values()
+        for record in records
+    }
+    return {
+        key: frame
+        for key, frame in market_data_by_identity.items()
+        if str(key[0] if isinstance(key, tuple) else key) in sequential_tickers
+    }
+
+
 def build_execution_contract(root: Path = ROOT) -> dict[str, Any]:
     """Build the portable, hash-bound contract without running a backtest."""
     root = Path(root).resolve()
@@ -2688,6 +2705,11 @@ def run_performance_sample(
             if parallel_result is not None
             else None
         )
+        if portfolio_market_data is not None:
+            portfolio_market_data = _filter_portfolio_market_data_to_sequential_records(
+                sequential_result,
+                portfolio_market_data,
+            )
         portfolio_kwargs: dict[str, Any] = {}
         if portfolio_market_data is not None:
             portfolio_kwargs["market_data_by_identity"] = portfolio_market_data

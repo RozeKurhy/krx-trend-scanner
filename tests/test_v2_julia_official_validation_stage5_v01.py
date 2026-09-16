@@ -709,6 +709,39 @@ def _run_synthetic_portfolio(records: list[SimpleNamespace], frame_dates: list[s
     )["strategies"][runner.BASE_STRATEGY_ID]
 
 
+def test_portfolio_filter_ignores_unused_ticker_and_extra_dates_exactly():
+    record = _portfolio_record("USED", cutoff_close=125.0)
+    frame_dates = ["2021-01-04", "2026-08-14"]
+    used_frame = _portfolio_frame(frame_dates, closes=[100.0, 125.0])
+    unused_frame = _portfolio_frame(
+        ["2022-02-01", "2026-08-14"],
+        closes=[999.0, 999.0],
+    )
+    records = {runner.BASE_STRATEGY_ID: [record]}
+    instance = object.__new__(runner.OfficialValidationRunner)
+    identity = runner._identity_key_from_record(record)
+
+    baseline = instance.run_realistic_portfolio(
+        records,
+        market_data_by_identity={identity: used_frame},
+    )["strategies"][runner.BASE_STRATEGY_ID]
+    filtered_frames = runner._filter_portfolio_market_data_to_sequential_records(
+        records,
+        {identity: used_frame, "UNUSED": unused_frame},
+    )
+    filtered = instance.run_realistic_portfolio(
+        records,
+        market_data_by_identity=filtered_frames,
+    )["strategies"][runner.BASE_STRATEGY_ID]
+
+    assert list(unused_frame.index) == [
+        pd.Timestamp("2022-02-01"),
+        pd.Timestamp("2026-08-14"),
+    ]
+    assert set(filtered_frames) == {identity}
+    assert filtered == baseline
+
+
 def test_realistic_portfolio_applies_budget_commission_slippage_and_tax():
     record = _portfolio_record("000001", exit_date="2021-01-05", exit_price=110.0)
     result = _run_synthetic_portfolio(record and [record], ["2021-01-04", "2021-01-05", "2026-08-14"])
