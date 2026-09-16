@@ -5,7 +5,7 @@ ROADMAP.md
 이 문서는 향후 작업 순서의 기준 문서다. 새로운 아이디어가 생겨도 바로
 구현하지 않고, 어느 Phase에 속하는지 먼저 이 문서에서 위치를 정한다.
 
-## Current Status Summary (기준: 2026-08-14 최종 비교, 문서 갱신: 2026-09-17)
+## Current Status Summary (문서 갱신: 2026-09-17)
 
 **COMPLETED**
 - Repository V2 / production data migration (local rolling market-data authority, KRX Open API 기반)
@@ -36,10 +36,10 @@ ROADMAP.md
 
 완료된 V2 ↔ Julia 공식 비교에서는 Fundamentals Filter, cutoff·threshold·score,
 매출·이익 기반 제외 및 펀더멘털 우선순위를 사용하지 않는다. Fundamentals
-production 기능 자체는 유지한다. 해당 비교에는 historical PIT, next-day
-execution, transaction cost, slippage, holding period, win rate, payoff ratio,
-MDD, trade count, benchmark comparison, 연도·시장·집중도 강건성을 명시적으로
-포함했으며, 동일 비교의 재실행이나 추가 exit-rule 연구는 현재 계획하지 않는다.
+production 기능 자체는 유지한다. 최종 비교에서 확정한 결과 범위는 동일 진입 비교,
+Loss Guard 발생 하위 집합 분석, 순차 운용, 현실적 2억원 포트폴리오, 벤치마크,
+미해결 건수 0, 현금 보존 검증 통과이다. 동일 비교의 재실행이나 추가 exit-rule
+연구는 현재 계획하지 않는다.
 
 **HOLD**
 - New Pattern development (Pattern B~F 등)
