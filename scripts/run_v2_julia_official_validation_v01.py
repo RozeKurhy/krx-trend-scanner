@@ -62,6 +62,8 @@ SIGNAL_CUTOFF = pd.Timestamp("2026-08-14")
 EVALUATION_END = pd.Timestamp("2026-08-14")
 EXECUTION_SUPPORT_END = pd.Timestamp("2026-08-14")
 FINAL_VALUATION_DATE = pd.Timestamp("2026-08-14")
+FROZEN_EXECUTION_CONTRACT_SHA256 = "afdc2461b0ddd92787e0f4dd46c290e6ab5dc6e9ff6eed0e8b75000a28b0c01c"
+OFFICIAL_IDENTITY_LIFECYCLE_COUNT = 2738
 
 MARKET_CAP_THRESHOLD_KRW = 100_000_000_000.0
 AVG_TRADING_VALUE_20D_THRESHOLD_KRW = 300_000_000.0
@@ -887,6 +889,7 @@ class OfficialValidationRunner:
         }
         self._daily_cache: dict[str, pd.DataFrame] = {}
         self._ancillary_cache: dict[str, pd.DataFrame] = {}
+        self._daily_cache_start: dict[str, pd.Timestamp] = {}
         self._lifecycle_daily_cache: dict[IdentityTask, pd.DataFrame] = {}
         self._lifecycle_context_cache: dict[IdentityTask, Any] = {}
         self._lifecycle_raw_panel_cache: dict[IdentityTask, pd.DataFrame] = {}
@@ -999,15 +1002,38 @@ class OfficialValidationRunner:
         return select_performance_sample_tasks(self._all_identity_tasks, self.identity_limit)
 
     def load_identity_inputs(self, task: IdentityTask) -> tuple[pd.DataFrame, pd.DataFrame]:
-        if task.ticker not in self._daily_cache:
-            daily = self.loader.load(task.ticker)
-            ancillary = self.loader.load_ancillary(task.ticker)
+        # Repository V2 composes adjusted and raw sessions fail-closed.  Some
+        # reused short tickers have raw source history before the adjusted
+        # identity history begins; asking the composed view for the generic
+        # loader default (1900-01-01) would therefore create an unclassified
+        # raw-only prefix and reject an otherwise valid identity.  The frozen
+        # identity task is the authoritative lower bound for this run-scoped
+        # input, while still retaining all pre-2021 rows within that identity
+        # for lookback-only feature construction.
+        task_start = pd.Timestamp(task.effective_from).normalize()
+        loader_start = pd.Timestamp(self.loader.start).normalize()
+        requested_start = max(task_start, loader_start)
+        cached_start = self._daily_cache_start.get(task.ticker)
+        if task.ticker not in self._daily_cache or (
+            cached_start is not None and requested_start < cached_start
+        ):
+            if requested_start == loader_start:
+                scoped_loader = self.loader
+            else:
+                scoped_loader = RepositoryV2DailyLoader(
+                    self.repository,
+                    start=requested_start.strftime("%Y-%m-%d"),
+                    end=self.loader.end,
+                )
+            daily = scoped_loader.load(task.ticker)
+            ancillary = scoped_loader.load_ancillary(task.ticker)
             if daily is None or daily.empty:
                 raise OfficialValidationError(f"REPOSITORY_V2_DAILY_UNAVAILABLE:{task.key}")
             if ancillary is None or ancillary.empty:
                 raise OfficialValidationError(f"REPOSITORY_V2_ANCILLARY_UNAVAILABLE:{task.key}")
             self._daily_cache[task.ticker] = daily
             self._ancillary_cache[task.ticker] = ancillary
+            self._daily_cache_start[task.ticker] = requested_start
         return self._daily_cache[task.ticker], self._ancillary_cache[task.ticker]
 
     def identity_raw_panel(self, task: IdentityTask) -> pd.DataFrame:
@@ -1832,6 +1858,7 @@ def _parallel_worker_chunk(tasks: tuple[IdentityTask, ...]) -> dict[str, Any]:
         if remaining_tickers[task.ticker] == 0:
             official._daily_cache.pop(task.ticker, None)
             official._ancillary_cache.pop(task.ticker, None)
+            official._daily_cache_start.pop(task.ticker, None)
     usage_after = _resource_snapshot()
     return {
         "bundles": bundles,
@@ -2569,14 +2596,303 @@ def persist_official_results(
     }
 
 
+def _validate_official_run_results(
+    root: Path,
+    contract: Mapping[str, Any],
+    tasks: Sequence[IdentityTask],
+    matched_result: Mapping[str, Any],
+    sequential_result: Mapping[str, Sequence[Any]],
+    portfolio_result: Mapping[str, Any],
+    benchmark_summary: Mapping[str, Any],
+    *,
+    source_head: str,
+) -> dict[str, Any]:
+    """Fail closed unless the frozen full-run outputs are complete and auditable."""
+    if len(tasks) != OFFICIAL_IDENTITY_LIFECYCLE_COUNT:
+        raise OfficialValidationError(f"OFFICIAL_IDENTITY_LIFECYCLE_COUNT_MISMATCH:{len(tasks)}")
+    if any(pair.get("status") != "PASS" for pair in matched_result.get("pairs", ())):
+        raise OfficialValidationError("OFFICIAL_MATCHED_ENTRY_UNRESOLVED")
+    expected_strategy_ids = {BASE_STRATEGY_ID, JULIA_STRATEGY_ID}
+    if set(sequential_result) != expected_strategy_ids:
+        raise OfficialValidationError("OFFICIAL_SEQUENTIAL_STRATEGY_SET_MISMATCH")
+    allowed_trade_statuses = {"REALIZED", "OPEN_AT_CUTOFF"}
+    if any(
+        _record_value(record, "trade_status") not in allowed_trade_statuses
+        for records in sequential_result.values()
+        for record in records
+    ):
+        raise OfficialValidationError("OFFICIAL_SEQUENTIAL_UNRESOLVED")
+    if set(portfolio_result.get("strategies", {})) != expected_strategy_ids:
+        raise OfficialValidationError("OFFICIAL_PORTFOLIO_STRATEGY_SET_MISMATCH")
+    for strategy_id in expected_strategy_ids:
+        strategy_result = portfolio_result["strategies"][strategy_id]
+        metrics = strategy_result.get("metrics", {})
+        if strategy_result.get("status") != "PASS":
+            raise OfficialValidationError(f"OFFICIAL_PORTFOLIO_STATUS_UNRESOLVED:{strategy_id}")
+        if int(metrics.get("unresolved_count") or 0) != 0:
+            raise OfficialValidationError(f"OFFICIAL_PORTFOLIO_UNRESOLVED:{strategy_id}")
+        if metrics.get("cash_conservation_pass") is not True:
+            raise OfficialValidationError(f"OFFICIAL_PORTFOLIO_CASH_CONSERVATION_FAIL:{strategy_id}")
+    if set(benchmark_summary) != set(BENCHMARK_CODES):
+        raise OfficialValidationError("OFFICIAL_BENCHMARK_SET_MISMATCH")
+    if any(item.get("status") != "PASS" for item in benchmark_summary.values()):
+        raise OfficialValidationError("OFFICIAL_BENCHMARK_UNRESOLVED")
+    if contract.get("contract_sha256") != FROZEN_EXECUTION_CONTRACT_SHA256:
+        raise OfficialValidationError("OFFICIAL_FROZEN_CONTRACT_SHA_MISMATCH")
+    return {
+        "status": "PASS",
+        "source_head": source_head,
+        "identity_lifecycle_count": len(tasks),
+        "matched_pair_count": len(matched_result.get("pairs", ())),
+        "sequential_trade_counts": {
+            strategy_id: len(records)
+            for strategy_id, records in sequential_result.items()
+        },
+        "portfolio_trade_counts": {
+            strategy_id: int(
+                portfolio_result["strategies"][strategy_id]
+                .get("metrics", {})
+                .get("trade_count")
+                or 0
+            )
+            for strategy_id in expected_strategy_ids
+        },
+        "unresolved_count": 0,
+    }
+
+
+def _validate_persisted_official_artifacts(
+    root: Path,
+    contract: Mapping[str, Any],
+    *,
+    source_head: str,
+    expected_counts: Mapping[str, int],
+) -> dict[str, Any]:
+    """Verify every persisted official artifact and its frozen metadata."""
+    expected_files = [*OFFICIAL_RESULT_FILES, *SUPPORT_RESULT_FILES]
+    present = _result_artifacts_present(root)
+    if sorted(present) != sorted(expected_files):
+        raise OfficialValidationError(f"OFFICIAL_ARTIFACT_SET_MISMATCH:{present}")
+    output_dir = root / OUTPUT_DIR_REL
+    summary = _read_json(output_dir / "aggregate_summary.json")
+    if summary.get("status") != "COMPLETE":
+        raise OfficialValidationError("OFFICIAL_AGGREGATE_STATUS_NOT_COMPLETE")
+    if summary.get("source_head") != source_head:
+        raise OfficialValidationError("OFFICIAL_SOURCE_HEAD_MISMATCH")
+    if summary.get("execution_contract_sha256") != contract.get("contract_sha256"):
+        raise OfficialValidationError("OFFICIAL_ARTIFACT_CONTRACT_SHA_MISMATCH")
+    if summary.get("population_count") != int(contract["population_pit_authority"]["population_count"]):
+        raise OfficialValidationError("OFFICIAL_ARTIFACT_POPULATION_COUNT_MISMATCH")
+    if summary.get("pit_interval_count") != int(contract["population_pit_authority"]["pit_interval_count"]):
+        raise OfficialValidationError("OFFICIAL_ARTIFACT_PIT_COUNT_MISMATCH")
+    period = summary.get("period", {})
+    expected_period = {
+        "evaluation_start": START_DATE.strftime("%Y-%m-%d"),
+        "signal_cutoff": SIGNAL_CUTOFF.strftime("%Y-%m-%d"),
+        "evaluation_end": EVALUATION_END.strftime("%Y-%m-%d"),
+        "execution_support_end": EXECUTION_SUPPORT_END.strftime("%Y-%m-%d"),
+        "final_valuation": f"{FINAL_VALUATION_DATE:%Y-%m-%d} CLOSE",
+    }
+    if any(period.get(key) != value for key, value in expected_period.items()):
+        raise OfficialValidationError("OFFICIAL_ARTIFACT_PERIOD_MISMATCH")
+    csv_counts = {
+        "matched_entry_rows": len(pd.read_csv(output_dir / "matched_entry_comparison.csv")),
+        "sequential_rows": len(pd.read_csv(output_dir / "sequential_comparison.csv")),
+        "failure_and_big_loss_rows": len(pd.read_csv(output_dir / "failure_and_big_loss_cases.csv")),
+        "portfolio_event_rows": len(pd.read_csv(output_dir / "portfolio_event_ledger.csv")),
+        "portfolio_daily_equity_rows": len(pd.read_csv(output_dir / "portfolio_daily_equity.csv")),
+    }
+    if csv_counts != dict(expected_counts) or summary.get("counts") != csv_counts:
+        raise OfficialValidationError("OFFICIAL_ARTIFACT_ROW_COUNT_MISMATCH")
+    sequential_frame = pd.read_csv(output_dir / "sequential_comparison.csv")
+    if not sequential_frame.empty:
+        strategy_ids = set(sequential_frame["strategy_id"].dropna().astype(str))
+        if not strategy_ids.issubset({BASE_STRATEGY_ID, JULIA_STRATEGY_ID}):
+            raise OfficialValidationError("OFFICIAL_SEQUENTIAL_ARTIFACT_STRATEGY_ID_MISMATCH")
+        cutoff_dates = set(sequential_frame["cutoff_date"].dropna().astype(str))
+        if cutoff_dates != {FINAL_VALUATION_DATE.strftime("%Y-%m-%d")}:
+            raise OfficialValidationError("OFFICIAL_SEQUENTIAL_ARTIFACT_CUTOFF_MISMATCH")
+    for name, column in (
+        ("portfolio_event_ledger.csv", "strategy_id"),
+        ("portfolio_daily_equity.csv", "strategy_id"),
+    ):
+        frame = pd.read_csv(output_dir / name)
+        if not frame.empty and not set(frame[column].dropna().astype(str)).issubset(
+            {BASE_STRATEGY_ID, JULIA_STRATEGY_ID}
+        ):
+            raise OfficialValidationError(f"OFFICIAL_PORTFOLIO_ARTIFACT_STRATEGY_ID_MISMATCH:{name}")
+    report = (output_dir / "validation_report.md").read_text(encoding="utf-8")
+    if contract["contract_sha256"] not in report:
+        raise OfficialValidationError("OFFICIAL_REPORT_CONTRACT_SHA_MISSING")
+    return {
+        "status": "PASS",
+        "artifacts": present,
+        "summary_status": summary["status"],
+        "counts": csv_counts,
+    }
+
+
 def run_official(root: Path = ROOT) -> dict[str, Any]:
-    """Fail closed until the bounded performance gate authorizes Full Run."""
+    """Run the frozen official V2 ↔ Julia lifecycle validation exactly once."""
     root = Path(root).resolve()
     with network_guard():
+        preflight_started = time.perf_counter()
         preflight_result = preflight(root, write_contract=False)
         if preflight_result.get("status") != "READY":
             raise OfficialValidationError("OFFICIAL_PREFLIGHT_NOT_READY")
-        raise OfficialValidationError("OFFICIAL_FULL_RUN_BLOCKED_BY_PERFORMANCE_GATE")
+        contract_path = root / CONTRACT_REL
+        contract_before = contract_path.read_bytes()
+        contract = _read_json(contract_path)
+        if contract.get("contract_sha256") != FROZEN_EXECUTION_CONTRACT_SHA256:
+            raise OfficialValidationError("OFFICIAL_FROZEN_CONTRACT_SHA_MISMATCH")
+        if preflight_result.get("contract_validation", {}).get("contract_sha256") != FROZEN_EXECUTION_CONTRACT_SHA256:
+            raise OfficialValidationError("OFFICIAL_PREFLIGHT_CONTRACT_SHA_MISMATCH")
+        if preflight_result.get("identity_lifecycle_count") != OFFICIAL_IDENTITY_LIFECYCLE_COUNT:
+            raise OfficialValidationError("OFFICIAL_PREFLIGHT_LIFECYCLE_COUNT_MISMATCH")
+        if _result_artifacts_present(root):
+            raise OfficialValidationError("OFFICIAL_RESULT_ARTIFACT_PRESENT")
+        preflight_seconds = time.perf_counter() - preflight_started
+        usage_before = _resource_snapshot()
+        total_started = time.perf_counter()
+
+        repository_started = time.perf_counter()
+        repository = build_repository_v2(root, end=EXECUTION_SUPPORT_END)
+        repository_build_seconds = time.perf_counter() - repository_started
+        runner_started = time.perf_counter()
+        official = OfficialValidationRunner(
+            root,
+            contract,
+            identity_limit=None,
+            reuse_lifecycle_caches=True,
+            repository=repository,
+        )
+        runner_initialization_seconds = time.perf_counter() - runner_started
+        tasks = official.identity_tasks()
+        if len(tasks) != OFFICIAL_IDENTITY_LIFECYCLE_COUNT:
+            raise OfficialValidationError(f"OFFICIAL_IDENTITY_LIFECYCLE_COUNT_MISMATCH:{len(tasks)}")
+
+        parallel_result = run_parallel_lifecycle_sample(official, tasks, workers=6)
+        matched_result = parallel_result["matched_result"]
+        sequential_result = parallel_result["sequential_result"]
+        portfolio_market_data = _filter_portfolio_market_data_to_sequential_records(
+            sequential_result,
+            parallel_result["portfolio_daily_frames"],
+        )
+        portfolio_started = time.perf_counter()
+        portfolio_result = official.run_realistic_portfolio(
+            sequential_result,
+            market_data_by_identity=portfolio_market_data,
+        )
+        portfolio_seconds = time.perf_counter() - portfolio_started
+        benchmark_started = time.perf_counter()
+        benchmark_summary = _benchmark_summary(root)
+        benchmark_seconds = time.perf_counter() - benchmark_started
+        source_head = _git_head(root)
+        execution_validation = _validate_official_run_results(
+            root,
+            contract,
+            tasks,
+            matched_result,
+            sequential_result,
+            portfolio_result,
+            benchmark_summary,
+            source_head=source_head,
+        )
+        matched_rows = _matched_rows(matched_result)
+        sequential_rows = _sequential_rows(sequential_result)
+        events, daily = _portfolio_rows(portfolio_result)
+        failures = _failure_rows(matched_result, matched_rows, sequential_rows, portfolio_result)
+        expected_counts = {
+            "matched_entry_rows": len(matched_rows),
+            "sequential_rows": len(sequential_rows),
+            "failure_and_big_loss_rows": len(failures),
+            "portfolio_event_rows": len(events),
+            "portfolio_daily_equity_rows": len(daily),
+        }
+        persisted = persist_official_results(
+            root,
+            contract,
+            matched_result,
+            sequential_result,
+            portfolio_result,
+            source_head=source_head,
+            benchmark_summary=benchmark_summary,
+        )
+        artifact_validation = _validate_persisted_official_artifacts(
+            root,
+            contract,
+            source_head=source_head,
+            expected_counts=expected_counts,
+        )
+        if contract_path.read_bytes() != contract_before:
+            raise OfficialValidationError("FROZEN_EXECUTION_CONTRACT_CHANGED_DURING_OFFICIAL_RUN")
+        usage_after = _resource_snapshot()
+        total_seconds = time.perf_counter() - total_started
+
+    diagnostic_counts = official.diagnostic_snapshot()
+    parent_user_cpu = usage_after["user_cpu_seconds"] - usage_before["user_cpu_seconds"]
+    parent_system_cpu = usage_after["system_cpu_seconds"] - usage_before["system_cpu_seconds"]
+    resource_payload = {
+        "process_model": "fork_process_pool",
+        "workers": 6,
+        "parent_peak_rss_mib": usage_after["max_rss_mib"],
+        "worker_peak_rss_mib": parallel_result["resource"]["worker_peak_rss_max_mib"],
+        "worker_peak_rss_sum_mib": parallel_result["resource"]["worker_peak_rss_sum_mib"],
+        "worker_peak_rss_max_mib": parallel_result["resource"]["worker_peak_rss_max_mib"],
+        "process_tree_peak_rss_sum_estimate_mib": usage_after["max_rss_mib"] + parallel_result["resource"]["worker_peak_rss_sum_mib"],
+        "user_cpu_seconds": parent_user_cpu + parallel_result["resource"]["user_cpu_seconds"],
+        "system_cpu_seconds": parent_system_cpu + parallel_result["resource"]["system_cpu_seconds"],
+        "max_rss_mib": max(usage_after["max_rss_mib"], parallel_result["resource"]["max_rss_mib"]),
+    }
+    return {
+        "schema": "v2_julia_official_full_run_v01",
+        "status": persisted["status"],
+        "official_backtest_executed": True,
+        "network_requests": 0,
+        "source_head": source_head,
+        "execution_contract_sha256": contract["contract_sha256"],
+        "population_count": preflight_result["population_count"],
+        "pit_interval_count": preflight_result["pit_interval_count"],
+        "identity_lifecycle_count": len(tasks),
+        "stages": {
+            "preflight_seconds": preflight_seconds,
+            "repository_build_seconds": repository_build_seconds,
+            "runner_initialization_seconds": runner_initialization_seconds,
+            "initialization_seconds": repository_build_seconds + runner_initialization_seconds,
+            "matched_entry_seconds": parallel_result["timing"]["phase_wall_seconds_estimate"]["matched_entry_seconds"],
+            "matched_discovery_seconds": parallel_result["timing"]["phase_wall_seconds_estimate"]["matched_discovery_seconds"],
+            "matched_strategy_seconds": parallel_result["timing"]["phase_wall_seconds_estimate"]["matched_strategy_seconds"],
+            "sequential_seconds": parallel_result["timing"]["phase_wall_seconds_estimate"]["sequential_seconds"],
+            "portfolio_seconds": portfolio_seconds,
+            "benchmark_seconds": benchmark_seconds,
+            "total_seconds": total_seconds,
+        },
+        "counts": {
+            **diagnostic_counts,
+            "candidate_matched_signal_count": int(matched_result.get("candidate_signal_count", 0)),
+            "matched_pair_count": len(matched_result.get("pairs", ())),
+            "sequential_trade_counts": execution_validation["sequential_trade_counts"],
+            "portfolio_trade_counts": execution_validation["portfolio_trade_counts"],
+        },
+        "unresolved_counts": {
+            "matched_entry": 0,
+            "sequential": 0,
+            "realistic_200m_portfolio": 0,
+            "benchmark": 0,
+            "total": 0,
+        },
+        "portfolio_frame_count": len(portfolio_market_data),
+        "portfolio_frame_bytes": sum(
+            int(frame.memory_usage(deep=True).sum())
+            for frame in portfolio_market_data.values()
+            if frame is not None and not frame.empty
+        ),
+        "portfolio_trade_counts": execution_validation["portfolio_trade_counts"],
+        "benchmark": benchmark_summary,
+        "resource": resource_payload,
+        "worker_resources": parallel_result["timing"]["worker_resources"],
+        "artifacts": artifact_validation["artifacts"],
+    }
 
 
 def _resource_snapshot() -> dict[str, float]:

@@ -168,6 +168,54 @@ def test_identity_raw_panel_resets_twenty_observation_average():
     assert panel["avg_trading_value_20d"].iloc[19] == 100.0
 
 
+def test_identity_inputs_scope_repository_query_to_identity_start(monkeypatch):
+    task = _task()
+    daily = pd.DataFrame(
+        {"open": [1.0], "high": [1.0], "low": [1.0], "close": [1.0]},
+        index=pd.DatetimeIndex(["2020-01-02"]),
+    )
+    ancillary = pd.DataFrame(
+        {
+            "volume": [1.0],
+            "trading_value": [1.0],
+            "market_cap": [1.0],
+            "listed_shares": [1.0],
+        },
+        index=daily.index,
+    )
+    calls: list[tuple[str, str, str]] = []
+
+    class FakeLoader:
+        def __init__(self, _repository, *, start="1900-01-01", end="2026-08-14"):
+            self.start = str(start)[:10]
+            self.end = str(end)[:10]
+
+        def load(self, ticker):
+            calls.append(("daily", ticker, self.start))
+            return daily
+
+        def load_ancillary(self, ticker):
+            calls.append(("ancillary", ticker, self.start))
+            return ancillary
+
+    monkeypatch.setattr(runner, "RepositoryV2DailyLoader", FakeLoader)
+    instance = object.__new__(runner.OfficialValidationRunner)
+    instance.loader = FakeLoader(object(), start="1900-01-01")
+    instance.repository = object()
+    instance._daily_cache = {}
+    instance._ancillary_cache = {}
+    instance._daily_cache_start = {}
+
+    loaded_daily, loaded_ancillary = instance.load_identity_inputs(task)
+
+    assert loaded_daily is daily
+    assert loaded_ancillary is ancillary
+    assert calls == [
+        ("daily", task.ticker, "2020-01-01"),
+        ("ancillary", task.ticker, "2020-01-01"),
+    ]
+
+
 def test_official_investability_has_100b_and_300m_without_price_floor():
     panel = pd.DataFrame(
         {
@@ -501,9 +549,25 @@ def test_run_official_never_constructs_runner_before_preflight(monkeypatch, tmp_
         runner.run_official(tmp_path)
 
 
-def test_run_official_is_blocked_after_ready_preflight(monkeypatch, tmp_path):
-    monkeypatch.setattr(runner, "preflight", lambda *_args, **_kwargs: {"status": "READY"})
-    with pytest.raises(runner.OfficialValidationError, match="OFFICIAL_FULL_RUN_BLOCKED_BY_PERFORMANCE_GATE"):
+def test_run_official_rejects_non_frozen_contract_before_execution(monkeypatch, tmp_path):
+    contract_path = tmp_path / runner.CONTRACT_REL
+    contract_path.parent.mkdir(parents=True)
+    contract_path.write_text('{"contract_sha256":"wrong"}', encoding="utf-8")
+    monkeypatch.setattr(
+        runner,
+        "preflight",
+        lambda *_args, **_kwargs: {
+            "status": "READY",
+            "contract_validation": {"contract_sha256": "wrong"},
+            "identity_lifecycle_count": runner.OFFICIAL_IDENTITY_LIFECYCLE_COUNT,
+        },
+    )
+    monkeypatch.setattr(
+        runner,
+        "build_repository_v2",
+        lambda *_args, **_kwargs: pytest.fail("full execution started before contract validation"),
+    )
+    with pytest.raises(runner.OfficialValidationError, match="OFFICIAL_FROZEN_CONTRACT_SHA_MISMATCH"):
         runner.run_official(tmp_path)
 
 
