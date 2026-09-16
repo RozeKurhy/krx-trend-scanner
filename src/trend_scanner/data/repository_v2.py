@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import time
 from typing import Any
 
 import numpy as np
@@ -118,6 +119,12 @@ class _IndexedRawTickerReader:
             "full_store_scans": 0,
             "full_store_scans_per_ticker": 0,
             "index_memory_bytes": 0,
+            "build_total_seconds": 0.0,
+            "manifest_list_seconds": 0.0,
+            "partition_load_seconds": 0.0,
+            "partition_compact_seconds": 0.0,
+            "ticker_location_index_seconds": 0.0,
+            "location_sort_seconds": 0.0,
         }
 
     @staticmethod
@@ -134,7 +141,10 @@ class _IndexedRawTickerReader:
     def build(self) -> None:
         if self._built:
             return
+        build_started = time.perf_counter()
+        manifest_started = time.perf_counter()
         manifests = self.store.list_manifest()
+        self.stats["manifest_list_seconds"] = time.perf_counter() - manifest_started
         self.stats["manifest_rows_scanned"] = len(manifests)
         self.stats["full_store_scans"] = 1
         for row in manifests:
@@ -142,8 +152,11 @@ class _IndexedRawTickerReader:
                 continue
             market = str(row["market"])
             day = str(row["date"])
+            partition_load_started = time.perf_counter()
             frame = self.store.load_snapshot(market, day)
+            self.stats["partition_load_seconds"] += time.perf_counter() - partition_load_started
             self.stats["partition_files_opened"] += 1
+            compact_started = time.perf_counter()
             compact = frame.loc[:, list(RAW_COLUMNS)].copy()
             # KRX OHLC values are bounded well below int32 for this contract;
             # retain exact integer values while halving the four price-column
@@ -152,7 +165,10 @@ class _IndexedRawTickerReader:
                 compact[column] = compact[column].astype("int32")
             self._partition_frames[(market, day)] = compact
             self.stats["index_memory_bytes"] += int(compact.memory_usage(deep=True).sum())
+            location_started = time.perf_counter()
             if frame.empty:
+                self.stats["partition_compact_seconds"] += time.perf_counter() - compact_started
+                self.stats["ticker_location_index_seconds"] += time.perf_counter() - location_started
                 continue
             # Store row positions rather than copying every ticker's rows into
             # separate DataFrames.  This keeps index construction bounded by
@@ -163,9 +179,14 @@ class _IndexedRawTickerReader:
                 self._locations.setdefault(key, []).append(
                     (market, day, tuple(int(position) for position in positions))
                 )
+            self.stats["partition_compact_seconds"] += time.perf_counter() - compact_started
+            self.stats["ticker_location_index_seconds"] += time.perf_counter() - location_started
+        sort_started = time.perf_counter()
         for key in self._locations:
             self._locations[key] = sorted(self._locations[key], key=lambda item: item[1])
+        self.stats["location_sort_seconds"] = time.perf_counter() - sort_started
         self._built = True
+        self.stats["build_total_seconds"] = time.perf_counter() - build_started
 
     def load_ticker(self, ticker: str, start: Any | None = None, end: Any | None = None) -> pd.DataFrame:
         self.build()
@@ -699,7 +720,7 @@ class MarketDataRepositoryV2:
         return result
 
     @property
-    def raw_reader_stats(self) -> dict[str, int]:
+    def raw_reader_stats(self) -> dict[str, int | float]:
         """Return read-path counters without exposing or mutating source data."""
 
         if self._raw_index is None:
@@ -713,6 +734,12 @@ class MarketDataRepositoryV2:
                 "full_store_scans": 0,
                 "full_store_scans_per_ticker": 0,
                 "index_memory_bytes": 0,
+                "build_total_seconds": 0.0,
+                "manifest_list_seconds": 0.0,
+                "partition_load_seconds": 0.0,
+                "partition_compact_seconds": 0.0,
+                "ticker_location_index_seconds": 0.0,
+                "location_sort_seconds": 0.0,
             }
         return dict(self._raw_index.stats)
 

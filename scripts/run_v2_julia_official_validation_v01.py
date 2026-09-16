@@ -809,6 +809,7 @@ class OfficialValidationRunner:
         *,
         identity_limit: int | None = None,
         reuse_lifecycle_caches: bool = True,
+        repository: MarketDataRepositoryV2 | None = None,
     ) -> None:
         self.root = Path(root).resolve()
         self.contract = dict(contract or _read_json(self.root / CONTRACT_REL))
@@ -821,7 +822,22 @@ class OfficialValidationRunner:
         authority_seconds = time.perf_counter() - authority_started
         self.intervals = _identity_intervals(self.authority)
         repository_started = time.perf_counter()
-        self.repository = build_repository_v2(self.root, end=EXECUTION_SUPPORT_END)
+        if repository is None:
+            self.repository = build_repository_v2(self.root, end=EXECUTION_SUPPORT_END)
+        else:
+            if not isinstance(repository, MarketDataRepositoryV2):
+                raise OfficialValidationError("REPOSITORY_V2_REUSE_SCOPE_MISMATCH")
+            adjusted_root = Path(repository._adjusted_price_store.base_dir).resolve()
+            raw_root = Path(repository._raw_stock_store.root).resolve()
+            expected_adjusted_root = (self.root / "data/market/adjusted/stocks").resolve()
+            expected_raw_root = (self.root / "data/market/raw/krx_stocks/v01").resolve()
+            if (
+                adjusted_root != expected_adjusted_root
+                or raw_root != expected_raw_root
+                or repository._rolling_authority_dir is not None
+            ):
+                raise OfficialValidationError("REPOSITORY_V2_REUSE_SCOPE_MISMATCH")
+            self.repository = repository
         repository_seconds = time.perf_counter() - repository_started
         loader_started = time.perf_counter()
         self.loader = RepositoryV2DailyLoader(self.repository, end=EXECUTION_SUPPORT_END)
@@ -839,6 +855,17 @@ class OfficialValidationRunner:
             "repository_v2_loader_seconds": loader_seconds,
             "score_contract_load_seconds": score_seconds,
             "stage_contract_load_seconds": stage_seconds,
+            "repository_reused": repository is not None,
+            "repository_raw_index_profile": {
+                key: value
+                for key, value in self.repository.raw_reader_stats.items()
+                if key.endswith("_seconds")
+            },
+            "repository_raw_index_stats": {
+                key: value
+                for key, value in self.repository.raw_reader_stats.items()
+                if not key.endswith("_seconds")
+            },
             "total_seconds": time.perf_counter() - initialization_started,
         }
         self._daily_cache: dict[str, pd.DataFrame] = {}
@@ -1199,8 +1226,37 @@ class OfficialValidationRunner:
                 profile[key] = profile.get(key, 0.0) + float(value)
 
         market_data_started = time.perf_counter()
+        input_normalization_started = time.perf_counter()
         frames = _normalise_portfolio_market_data(market_data_by_identity)
+        profile_add(
+            "portfolio_input_normalization_seconds",
+            time.perf_counter() - input_normalization_started,
+        )
         all_records = [record for records in records_by_strategy.values() for record in records]
+        if market_data_by_identity is not None:
+            profile_inc(
+                "portfolio_ticker_count",
+                len({str(_record_value(record, "ticker", "")) for record in all_records}),
+            )
+            profile_inc("portfolio_parent_frame_count", len(frames))
+            profile_add(
+                "portfolio_parent_frame_bytes",
+                sum(
+                    int(frame.memory_usage(deep=True).sum())
+                    for frame in frames.values()
+                    if frame is not None and not frame.empty
+                ),
+            )
+        repository_stats_before = (
+            self.repository.raw_reader_stats
+            if hasattr(self, "repository") and hasattr(self.repository, "raw_reader_stats")
+            else {}
+        )
+        loader_count_before = (
+            int(self.loader.load_count)
+            if hasattr(self, "loader") and hasattr(self.loader, "load_count")
+            else None
+        )
 
         # The official path obtains valuation/fill prices from Repository V2.
         # Synthetic focused tests may pass exact-date frames directly.  The
@@ -1208,13 +1264,40 @@ class OfficialValidationRunner:
         # compatibility case where a test object has no loader or frame.
         if market_data_by_identity is None and hasattr(self, "loader"):
             tickers = sorted({str(_record_value(record, "ticker", "")) for record in all_records})
+            profile_inc("portfolio_ticker_count", len(tickers))
             for ticker in tickers:
+                loader_started = time.perf_counter()
                 frame = self._daily_cache.get(ticker) if hasattr(self, "_daily_cache") else None
                 if frame is None:
                     frame = self.loader.load(ticker)
+                    profile_inc("portfolio_loader_call_count")
+                    profile_add("portfolio_loader_load_seconds", time.perf_counter() - loader_started)
+                else:
+                    profile_inc("portfolio_daily_cache_hit_count")
                 if frame is not None:
+                    normalization_started = time.perf_counter()
                     normalized = _normalise_portfolio_market_data({ticker: frame})
                     frames[ticker] = normalized[ticker]
+                    profile_add(
+                        "portfolio_frame_normalization_seconds",
+                        time.perf_counter() - normalization_started,
+                    )
+            if loader_count_before is not None:
+                profile_add(
+                    "portfolio_loader_count_delta",
+                    int(self.loader.load_count) - loader_count_before,
+                )
+            repository_stats_after = (
+                self.repository.raw_reader_stats
+                if hasattr(self, "repository") and hasattr(self.repository, "raw_reader_stats")
+                else {}
+            )
+            for key in ("index_lookups", "partition_cache_hits", "ticker_rows_returned"):
+                if key in repository_stats_before and key in repository_stats_after:
+                    profile_add(
+                        f"portfolio_repository_{key}_delta",
+                        int(repository_stats_after[key]) - int(repository_stats_before[key]),
+                    )
         profile_add("market_data_prepare_seconds", time.perf_counter() - market_data_started)
 
         def frame_for(record: Any) -> pd.DataFrame | None:
@@ -1717,8 +1800,12 @@ def _parallel_worker_chunk(tasks: tuple[IdentityTask, ...]) -> dict[str, Any]:
     for task in tasks:
         remaining_tickers[task.ticker] = remaining_tickers.get(task.ticker, 0) + 1
     bundles = []
+    portfolio_daily_frames: dict[str, pd.DataFrame] = {}
     for task in tasks:
         bundles.append(_run_identity_task_bundle(official, task))
+        daily_frame = official._daily_cache.get(task.ticker)
+        if daily_frame is not None:
+            portfolio_daily_frames.setdefault(task.ticker, daily_frame)
         official._lifecycle_daily_cache.pop(task, None)
         official._lifecycle_context_cache.pop(task, None)
         official._lifecycle_raw_panel_cache.pop(task, None)
@@ -1731,6 +1818,7 @@ def _parallel_worker_chunk(tasks: tuple[IdentityTask, ...]) -> dict[str, Any]:
     usage_after = _resource_snapshot()
     return {
         "bundles": bundles,
+        "portfolio_daily_frames": portfolio_daily_frames,
         "worker_pid": os.getpid(),
         "task_count": len(tasks),
         "worker_seconds": time.perf_counter() - started,
@@ -1783,6 +1871,7 @@ def run_parallel_lifecycle_sample(
     }
     diagnostic_counts: dict[str, int] = {}
     discovery_profile: dict[str, float] = {}
+    portfolio_daily_frames: dict[str, pd.DataFrame] = {}
     phase_work_seconds = {
         "matched_discovery_seconds": 0.0,
         "matched_strategy_seconds": 0.0,
@@ -1809,6 +1898,8 @@ def run_parallel_lifecycle_sample(
                 diagnostic_counts[key] = diagnostic_counts.get(key, 0) + int(value)
             for key, value in bundle["discovery_profile"].items():
                 discovery_profile[key] = discovery_profile.get(key, 0.0) + float(value)
+        for ticker, frame in chunk_result["portfolio_daily_frames"].items():
+            portfolio_daily_frames.setdefault(str(ticker), frame)
         for key, value in chunk_timing.items():
             phase_wall_seconds[key] = max(phase_wall_seconds[key], value)
 
@@ -1851,6 +1942,7 @@ def run_parallel_lifecycle_sample(
         "sequential_result": sequential_result,
         "diagnostic_counts": diagnostic_counts,
         "discovery_profile": discovery_profile,
+        "portfolio_daily_frames": portfolio_daily_frames,
         "timing": {
             "pool_seconds": pool_seconds,
             "worker_work_seconds": worker_work_seconds,
@@ -2532,6 +2624,7 @@ def run_performance_sample(
     workers: int = 1,
     reuse_lifecycle_caches: bool = True,
     profile_portfolio: bool = False,
+    _repository: MarketDataRepositoryV2 | None = None,
     _return_parity_payload: bool = False,
 ) -> dict[str, Any] | tuple[dict[str, Any], dict[str, Any]]:
     """Measure one bounded sample without persisting official result artifacts."""
@@ -2559,6 +2652,7 @@ def run_performance_sample(
             contract,
             identity_limit=sample_size,
             reuse_lifecycle_caches=reuse_lifecycle_caches,
+            **({"repository": _repository} if _repository is not None else {}),
         )
         runner_initialization_seconds = time.perf_counter() - runner_started
         tasks = official.identity_tasks()
@@ -2589,13 +2683,20 @@ def run_performance_sample(
 
         portfolio_started = time.perf_counter()
         portfolio_profile: dict[str, float] | None = {} if profile_portfolio else None
-        if portfolio_profile is None:
-            portfolio_result = official.run_realistic_portfolio(sequential_result)
-        else:
-            portfolio_result = official.run_realistic_portfolio(
-                sequential_result,
-                profile=portfolio_profile,
-            )
+        portfolio_market_data = (
+            parallel_result.get("portfolio_daily_frames")
+            if parallel_result is not None
+            else None
+        )
+        portfolio_kwargs: dict[str, Any] = {}
+        if portfolio_market_data is not None:
+            portfolio_kwargs["market_data_by_identity"] = portfolio_market_data
+        if portfolio_profile is not None:
+            portfolio_kwargs["profile"] = portfolio_profile
+        portfolio_result = official.run_realistic_portfolio(
+            sequential_result,
+            **portfolio_kwargs,
+        )
         portfolio_seconds = time.perf_counter() - portfolio_started
 
         if contract_path.read_bytes() != contract_before:
@@ -2717,16 +2818,20 @@ def run_performance_sample(
 
 def run_performance_parity_sample(root: Path = ROOT, *, sample_size: int) -> dict[str, Any]:
     """Compare uncached and lifecycle-cache sample outputs for exact equality."""
+    root = Path(root).resolve()
+    shared_repository = _build_parity_repository(root)
     baseline, baseline_payload = run_performance_sample(
         root,
         sample_size=sample_size,
         reuse_lifecycle_caches=False,
+        _repository=shared_repository,
         _return_parity_payload=True,
     )
     optimized, optimized_payload = run_performance_sample(
         root,
         sample_size=sample_size,
         reuse_lifecycle_caches=True,
+        _repository=shared_repository,
         _return_parity_payload=True,
     )
     checks = {
@@ -2752,11 +2857,14 @@ def run_parallel_performance_parity_sample(
     workers: int,
 ) -> dict[str, Any]:
     """Compare the optimized workers=1 path with one bounded worker count."""
+    root = Path(root).resolve()
+    shared_repository = _build_parity_repository(root)
     baseline, baseline_payload = run_performance_sample(
         root,
         sample_size=sample_size,
         workers=1,
         reuse_lifecycle_caches=True,
+        _repository=shared_repository,
         _return_parity_payload=True,
     )
     parallel, parallel_payload = run_performance_sample(
@@ -2764,6 +2872,7 @@ def run_parallel_performance_parity_sample(
         sample_size=sample_size,
         workers=workers,
         reuse_lifecycle_caches=True,
+        _repository=shared_repository,
         _return_parity_payload=True,
     )
     checks = {
@@ -2781,6 +2890,21 @@ def run_parallel_performance_parity_sample(
         "official_backtest_executed": False,
         "network_requests": 0,
     }
+
+
+def _build_parity_repository(root: Path) -> MarketDataRepositoryV2 | None:
+    """Build one in-process repository for parity's repeated sample runs."""
+    if not (
+        (root / CONTRACT_REL).is_file()
+        and (root / "data/market/adjusted/stocks").is_dir()
+        and (root / "data/market/raw/krx_stocks/v01").is_dir()
+    ):
+        return None
+    with network_guard():
+        preflight_result = preflight(root, write_contract=False)
+        if preflight_result.get("status") != "READY":
+            raise OfficialValidationError("PARITY_REPOSITORY_PREFLIGHT_NOT_READY")
+        return build_repository_v2(root, end=EXECUTION_SUPPORT_END)
 
 
 @contextmanager
