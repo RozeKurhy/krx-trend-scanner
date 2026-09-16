@@ -492,6 +492,26 @@ def _filter_portfolio_market_data_to_sequential_records(
     }
 
 
+def _select_widest_portfolio_frame(
+    existing: pd.DataFrame | None,
+    candidate: pd.DataFrame | None,
+) -> pd.DataFrame | None:
+    """Keep one authoritative frame with the earliest available start date."""
+    if existing is None or existing.empty:
+        return candidate
+    if candidate is None or candidate.empty:
+        return existing
+    existing_start = pd.Timestamp(existing.index.min()).normalize()
+    candidate_start = pd.Timestamp(candidate.index.min()).normalize()
+    if candidate_start < existing_start:
+        return candidate
+    if candidate_start > existing_start:
+        return existing
+    existing_end = pd.Timestamp(existing.index.max()).normalize()
+    candidate_end = pd.Timestamp(candidate.index.max()).normalize()
+    return candidate if candidate_end > existing_end else existing
+
+
 def build_execution_contract(root: Path = ROOT) -> dict[str, Any]:
     """Build the portable, hash-bound contract without running a backtest."""
     root = Path(root).resolve()
@@ -1848,7 +1868,10 @@ def _parallel_worker_chunk(tasks: tuple[IdentityTask, ...]) -> dict[str, Any]:
         bundles.append(_run_identity_task_bundle(official, task))
         daily_frame = official._daily_cache.get(task.ticker)
         if daily_frame is not None:
-            portfolio_daily_frames.setdefault(task.ticker, daily_frame)
+            portfolio_daily_frames[task.ticker] = _select_widest_portfolio_frame(
+                portfolio_daily_frames.get(task.ticker),
+                daily_frame,
+            )
         official._lifecycle_daily_cache.pop(task, None)
         official._lifecycle_context_cache.pop(task, None)
         official._lifecycle_raw_panel_cache.pop(task, None)
@@ -1943,7 +1966,11 @@ def run_parallel_lifecycle_sample(
             for key, value in bundle["discovery_profile"].items():
                 discovery_profile[key] = discovery_profile.get(key, 0.0) + float(value)
         for ticker, frame in chunk_result["portfolio_daily_frames"].items():
-            portfolio_daily_frames.setdefault(str(ticker), frame)
+            normalized_ticker = str(ticker)
+            portfolio_daily_frames[normalized_ticker] = _select_widest_portfolio_frame(
+                portfolio_daily_frames.get(normalized_ticker),
+                frame,
+            )
         for key, value in chunk_timing.items():
             phase_wall_seconds[key] = max(phase_wall_seconds[key], value)
 

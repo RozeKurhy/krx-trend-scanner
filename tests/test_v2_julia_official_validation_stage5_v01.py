@@ -806,6 +806,70 @@ def test_portfolio_filter_ignores_unused_ticker_and_extra_dates_exactly():
     assert filtered == baseline
 
 
+def test_ticker_reuse_late_identity_first_keeps_earliest_portfolio_frame():
+    ticker = "REUSE"
+    early = _portfolio_record(
+        ticker,
+        entry_date="2021-01-04",
+        entry_open=100.0,
+        cutoff_close=120.0,
+        identity_effective_from="2020-01-01",
+    )
+    late = _portfolio_record(
+        ticker,
+        entry_date="2021-04-05",
+        entry_open=110.0,
+        cutoff_close=120.0,
+        identity_effective_from="2021-04-01",
+    )
+    early_frame = _portfolio_frame(
+        ["2020-01-02", "2021-01-04", "2021-04-05", "2026-08-14"],
+        opens=[90.0, 100.0, 110.0, 120.0],
+        closes=[90.0, 100.0, 110.0, 120.0],
+    )
+    late_frame = _portfolio_frame(
+        ["2021-04-05", "2026-08-14"],
+        opens=[110.0, 120.0],
+        closes=[110.0, 120.0],
+    )
+
+    worker_frames: dict[str, pd.DataFrame] = {}
+    assert runner._select_widest_portfolio_frame(None, late_frame) is late_frame
+    worker_frames[ticker] = runner._select_widest_portfolio_frame(
+        worker_frames.get(ticker), late_frame
+    )
+    worker_frames[ticker] = runner._select_widest_portfolio_frame(
+        worker_frames.get(ticker), early_frame
+    )
+    assert worker_frames[ticker] is early_frame
+    assert worker_frames[ticker].index.min() == pd.Timestamp("2020-01-02")
+
+    parent_frames: dict[str, pd.DataFrame] = {}
+    for frame in (late_frame, early_frame):
+        parent_frames[ticker] = runner._select_widest_portfolio_frame(
+            parent_frames.get(ticker), frame
+        )
+    assert parent_frames[ticker] is early_frame
+    assert runner._exact_record_price(
+        early, parent_frames[ticker], pd.Timestamp("2021-01-04"), "open"
+    ) == 100.0
+    assert runner._exact_record_price(
+        late, parent_frames[ticker], pd.Timestamp("2021-04-05"), "open"
+    ) == 110.0
+
+    instance = object.__new__(runner.OfficialValidationRunner)
+    records = {runner.BASE_STRATEGY_ID: [early, late]}
+    baseline = instance.run_realistic_portfolio(
+        records,
+        market_data_by_identity={ticker: early_frame},
+    )
+    merged = instance.run_realistic_portfolio(
+        records,
+        market_data_by_identity=parent_frames,
+    )
+    assert merged == baseline
+
+
 def test_realistic_portfolio_applies_budget_commission_slippage_and_tax():
     record = _portfolio_record("000001", exit_date="2021-01-05", exit_price=110.0)
     result = _run_synthetic_portfolio(record and [record], ["2021-01-04", "2021-01-05", "2026-08-14"])
