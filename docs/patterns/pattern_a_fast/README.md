@@ -14,28 +14,28 @@ Pattern A FAST는 Pattern A보다 상승 전환을 빠르게 탐지하기 위한
 | 항목 | 현재 내용 |
 |---|---|
 | 패턴 | Pattern A FAST |
-| 목적 | Pattern A보다 빠른 상승 전환 탐지 |
+| 역할 | Pattern A보다 빠른 전환 신호 탐지 |
 | 현재 기본 전략 | [A FAST Core V2](strategy/version_02/README.md) |
-| 기본 전략 ID | `PATTERN_A_FAST_FINAL_STRATEGY_V02` |
-| 현재 상태 | 의사결정 지원 운영 (`PRODUCTION_DECISION_SUPPORT`) |
+| 전략 ID | `PATTERN_A_FAST_FINAL_STRATEGY_V02` |
+| 사용 목적 | 투자 의사결정 지원 |
+| 현재 운영 상태 | 의사결정 지원 운영 (`PRODUCTION_DECISION_SUPPORT`) |
 | 자동매매 | 승인하지 않음 (`NOT_APPROVED`) |
-| V3 후보 | [A FAST Core V3 후보](strategy/version_03/README.md), V2와 동일 조건 비교 검증 대기 |
+| V1 | 공식 과거 비교 기준선 |
+| V2 | 현재 공식 기본 전략 |
+| V3 | 종료된 후보 전략 기록 |
+| V4 | 종료된 후보 전략 기록 |
 
-A FAST Core V2가 현재 기본 전략이다. A FAST Core V1은 역사적 동결 기준선이고,
-A FAST Core V3는 규칙이 동결된 후보일 뿐 공식 전략이나 기본 전략이 아니다.
-
-- [FastCore 현실적 백테스트 공통 실행조건 V01](validation_plan/realistic_backtest_common_conditions_v01.md): 전략 중립 공통 실행조건 `검토 대기`
-- 아직 현실적 백테스트를 실행하지 않았다.
-- Fundamentals 조건은 별도 정의 대상이며 이 공통조건 문서에 포함하지 않는다.
+현실적 비교 검증과 V2·Julia 공식 비교는 완료되었으며, 일반 종목의 현재
+기본 전략은 V2를 유지한다. Julia는 일반 종목 공식 전략으로 채택하지 않는다.
 
 ## 문서 구조
 
 | 역할 | 위치 | 설명 |
 |---|---|---|
 | 패턴 정의·생애주기 | [specification/](specification/) | Pattern A FAST가 무엇을 의미하고 어떻게 상태가 바뀌는지 |
-| 전략 | [strategy/](strategy/) | V1·V2·V3 후보를 버전별로 구분한 규칙과 이력 |
+| 전략 | [strategy/](strategy/) | V1~V4의 규칙과 현재·과거 역할 안내 |
 | 연구 | [research/](research/) | 기능, 시간 프레임, Pattern A 비교 등 연구 기록 |
-| 검증 계획 | [validation_plan/](validation_plan/) | 검증 전에 등록한 질문·범위·판정 기준 |
+| 검증 계획 | [validation_plan/](validation_plan/) | 검증 전에 작성한 계획과 종료된 비교 계획 기록 |
 | 검증 결과 | [validation/](validation/) | 실제 수행한 사람 검토와 평가 결과 |
 | 과거 문서 | [archive/](archive/) | 현재 기준으로 재사용하지 않는 역사적 계획·아키텍처 |
 
@@ -46,7 +46,8 @@ A FAST Core V3는 규칙이 동결된 후보일 뿐 공식 전략이나 기본 �
 - [전략 안내](strategy/README.md)
 - [A FAST Core V1 — 역사적 기준선](strategy/version_01/README.md)
 - [A FAST Core V2 — 현재 기본 전략](strategy/version_02/README.md)
-- [A FAST Core V3 — 검증 대기 후보](strategy/version_03/README.md)
+- [A FAST Core V3 — 종료된 후보 기록](strategy/version_03/README.md)
+- [A FAST Core V4 — 종료된 후보 기록](strategy/version_04/README.md)
 
 ## 공통 전략 절차
 
