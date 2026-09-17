@@ -27,7 +27,7 @@
 |---|---|---|---|---|---|---|
 | `docs/patterns/README.md` | 패턴 영역 탐색 안내 | 예 | 현재 패턴과 전략 연결을 안내한다. | 현재 위치 | Pattern A·A FAST 진입점 | 없음 |
 | `docs/patterns/pattern_a/README.md` | Pattern A 안내 | 예 | 현재 공식 패턴의 상태와 권위 문서 위치를 안내한다. | 현재 위치 | `spec/production_authority.md`의 탐색 안내 | 역사 기록 링크가 현재 문서와 가까이 노출됨 |
-| `docs/patterns/pattern_a/spec/production_authority.md` | 현재 Pattern A 공식 규격 | 예 | 상단에 현재 Score·Stage·규칙·구현 위치를 정리하고 과거 근거는 접힌 참고 영역으로 분리한다. | 현재 위치 | Pattern A의 최상위 현재 권위 문서 | 현재 요약과 역사 참고 영역의 연결을 유지해야 함 |
+| `docs/patterns/pattern_a/spec/production_authority.md` | 현재 Pattern A 공식 규격 | 예 | 현재 Score·공식 lifecycle Stage·규칙·구현 위치만 남기고 과거 근거는 별도 문서 링크로 연결한다. | 현재 위치 | Pattern A의 최상위 현재 권위 문서 | 역사 근거 링크를 현재 계약과 혼동하지 않게 유지해야 함 |
 | `docs/patterns/pattern_a/spec/investability_policy.md` | 현재 투자 적합성 정책 | 예 | 1,000억·3억·가격필터 없음·`DATA_UNAVAILABLE`과 PIT 판정 순서를 한 문서에서 제공한다. | 현재 위치 | Pattern A 후단 필터의 현재 기준 | 없음 |
 | `docs/patterns/pattern_a_fast/README.md` | Pattern A FAST 안내 | 예 | 현재 기준, 문서 구조, V2와 과거 버전의 관계를 안내한다. | 현재 위치 | FAST 명세·전략 안내의 상위 입구 | 현재 문서와 역사 문서의 시각적 분리 보완 필요 |
 | `docs/patterns/pattern_a_fast/specification/README.md` | Pattern A FAST 정의 | 예 | FAST의 의미, 상태, 시간축, PIT 원칙을 정의한다. | 현재 위치 | FAST 패턴의 개념 권위 문서 | 설명과 이력의 길이가 길어 핵심 계약을 더 앞에 둘 수 있음 |
@@ -176,8 +176,8 @@ docs/patterns/
 
 이번 단계에서 본문은 수정하지 않는다. 다음 정리 단계의 후보만 기록한다.
 
-1. `pattern_a/spec/production_authority.md` — 현재 공식 규격과 장문의 과거
-   검증 근거를 시각적으로 분리한다.
+1. `pattern_a/spec/production_authority.md` — 현재 공식 규격과 역사 근거의
+   링크 경계를 유지하고, 과거 원문을 다시 본문에 복사하지 않는다.
 2. `pattern_a_fast/README.md` 및 `strategy/README.md` — 현재 문서와 archive로
    이동할 역사 문서의 연결을 한눈에 보이게 한다.
 3. `pattern_a_fast/specification/README.md` — 핵심 정의·상태·PIT 계약을 문서
