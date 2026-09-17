@@ -96,13 +96,13 @@ def test_strategy_page_is_connected_and_uses_page_specific_cache_version():
     strategy_js = (ROOT / "web/js/strategy.js").read_text(encoding="utf-8")
     css = (ROOT / "web/css/app.css").read_text(encoding="utf-8")
 
-    assert 'href="./css/app.css?v=web-ui-density-4"' in strategy_html
-    assert 'href="./css/app.css?v=web-ui-density-4"' in index_html
-    assert 'href="./css/app.css?v=web-ui-density-4"' in report_html
+    assert 'href="./css/app.css?v=web-ui-density-5"' in strategy_html
+    assert 'href="./css/app.css?v=web-ui-density-5"' in index_html
+    assert 'href="./css/app.css?v=web-ui-density-5"' in report_html
     for html in (index_html, report_html):
         assert "web-02a-final-2" not in html
         assert "web-03a-final-1" not in html
-    assert 'src="./js/strategy.js?v=web-02c-toss-4"' in strategy_html
+    assert 'src="./js/strategy.js?v=web-02c-toss-5"' in strategy_html
     assert 'src="./js/app.js?v=web-fear-fix02-2"' in index_html
     assert 'src="./js/report.js?v=web-02d-window-12"' in report_html
     assert 'href="./strategy.html"' in index_html
@@ -136,11 +136,15 @@ def test_strategy_page_is_connected_and_uses_page_specific_cache_version():
     assert 'id="strategy-controls-heading"' not in strategy_html
     assert 'id="strategy-results-meta"' not in strategy_html
     assert "전략 현황" not in strategy_html
-    assert '<h2 id="unavailable-heading">기타</h2>' in strategy_html
+    for label in ("보유 종목", "진입 조건 충족", "매도 조건 충족", "관찰 종목", "기타"):
+        assert f'aria-label="{label}"' in strategy_html
+    for removed in ("strategy-section-heading", "strategy-section-count", "hold-heading", "entry-heading", "exit-heading", "watch-heading", "unavailable-heading", "hold-count", "entry-count", "exit-count", "watch-count", "unavailable-count"):
+        assert removed not in strategy_html
     assert 'function renderFilterCounts()' in strategy_js
     assert 'setText(`strategy-filter-count-${category}`, counts[category])' in strategy_js
     assert 'counts.all = monitor.scope.report_count' in strategy_js
     assert 'counts[item.bucket] += 1' in strategy_js
+    assert 'setText(`${category}-count`, items.length)' not in strategy_js
     assert 'strategy-results-meta' not in strategy_js
     assert 'const FILTERS = new Set(["all", ...Object.keys(SECTION_IDS)]);' in strategy_js
     assert 'link.href = `./report.html?ticker=' in strategy_js

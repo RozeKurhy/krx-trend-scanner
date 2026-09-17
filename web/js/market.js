@@ -220,7 +220,7 @@
   function renderScope() {
     const scope = ranking.scope;
     const metricScopeLabel = ranking.metric_scope.label.replace(/^마켓 RS는 전체\s*/, "");
-    setText("market-scope", `기준일 ${formatDate(ranking.as_of)} · 리포트 기준 ${formatNumber(scope.report_count)}종목 · ${metricScopeLabel}`);
+    setText("market-scope", `기준일 ${formatDate(ranking.as_of)} · ${metricScopeLabel}`);
   }
 
   function renderControls() {

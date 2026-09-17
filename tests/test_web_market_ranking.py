@@ -114,8 +114,8 @@ def test_market_page_has_accessible_controls_and_release_contract():
     assert '<section class="page-intro"' not in html
     assert 'id="page-title"' not in html
     assert '<a class="nav-item is-active" href="./market.html" aria-current="page">랭킹</a>' in html
-    assert 'href="./css/app.css?v=web-ui-density-4"' in html
-    assert 'src="./js/market.js?v=web-02c-toss-3"' in html
+    assert 'href="./css/app.css?v=web-ui-density-5"' in html
+    assert 'src="./js/market.js?v=web-02c-toss-4"' in html
     assert '<nav class="ranking-tabs" aria-label="랭킹 종류">' in html
     assert '<a class="ranking-tab is-active" href="./market.html" aria-current="page">마켓 RS</a>' in html
     assert '<a class="ranking-tab" href="./sector.html">섹터 RS</a>' in html
@@ -156,7 +156,10 @@ def test_market_page_has_accessible_controls_and_release_contract():
     assert 'activeMarket === "ALL" || item.market === activeMarket' in js
     assert 'marketSelect.addEventListener("change"' in js
     assert 'activeMarket = marketSelect.value' in js
-    assert '리포트 기준' in js and 'metric_scope.label' in js
+    assert '리포트 기준' not in js and 'metric_scope.label' in js
+    assert 'market-search-input' in html
+    assert '.market-search-input' in css
+    assert 'margin-top: 14px' in css
     assert '`${HORIZON_LABELS[activeHorizon]}${suffix}`' in js
     assert '.market-ranking-row' in css
     assert '.ranking-tabs' in css and '.ranking-tab[aria-disabled="true"]' in css
@@ -166,10 +169,10 @@ def test_market_page_has_accessible_controls_and_release_contract():
 
 def test_market_page_keeps_navigation_and_old_release_cache_out_of_all_pages():
     page_versions = {
-        ROOT / "web/index.html": ("web-ui-density-4", "app", "web-fear-fix02-2"),
-        ROOT / "web/report.html": ("web-ui-density-4", "report", "web-02d-window-12"),
-        ROOT / "web/strategy.html": ("web-ui-density-4", "strategy", "web-02c-toss-4"),
-        ROOT / "web/market.html": ("web-ui-density-4", "market", "web-02c-toss-3"),
+        ROOT / "web/index.html": ("web-ui-density-5", "app", "web-fear-fix02-2"),
+        ROOT / "web/report.html": ("web-ui-density-5", "report", "web-02d-window-12"),
+        ROOT / "web/strategy.html": ("web-ui-density-5", "strategy", "web-02c-toss-5"),
+        ROOT / "web/market.html": ("web-ui-density-5", "market", "web-02c-toss-4"),
     }
     pages = list(page_versions)
     for path, (css_version, script_name, js_version) in page_versions.items():

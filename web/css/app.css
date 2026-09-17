@@ -588,9 +588,6 @@ h2 { margin-bottom: 0; font-size: 18px; letter-spacing: -0.035em; line-height: 1
 .strategy-filter-count { margin-left: 3px; color: var(--ink); font-variant-numeric: tabular-nums; font-weight: 800; }
 .strategy-filter.is-active .strategy-filter-count { color: var(--brand-red); }
 .strategy-section { margin-bottom: 16px; }
-.strategy-section-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
-.strategy-section-heading .eyebrow { margin-bottom: 6px; }
-.strategy-section-count { flex: 0 0 auto; color: var(--ink-faint); font-variant-numeric: tabular-nums; font-size: 12px; }
 .strategy-item-list { display: grid; gap: 8px; }
 .strategy-item { display: grid; grid-template-columns: minmax(190px, 1.55fr) repeat(6, minmax(80px, 1fr)) auto; align-items: center; gap: 12px; min-width: 0; min-height: 108px; border: 1px solid var(--line); padding: 16px; color: var(--ink); background: var(--surface); border-radius: 9px; text-decoration: none; }
 .strategy-item:hover { border-color: var(--line-strong); background: var(--surface-muted); }
@@ -632,6 +629,7 @@ h2 { margin-bottom: 0; font-size: 18px; letter-spacing: -0.035em; line-height: 1
 .market-select-chevron { position: absolute; top: 50%; right: 16px; width: 8px; height: 8px; border-right: 1.5px solid var(--ink-soft); border-bottom: 1.5px solid var(--ink-soft); transform: translateY(-65%) rotate(45deg); pointer-events: none; }
 .market-horizon-group { flex: 1 1 auto; min-width: 0; overflow-x: auto; padding: 1px; }
 .market-horizon-group .market-control { min-height: 46px; display: inline-flex; align-items: center; }
+.market-search-input { display: block; min-height: 46px; margin-top: 14px; padding-block: 10px; }
 .market-ranking-list { display: grid; gap: 8px; }
 .market-ranking-row { display: grid; grid-template-columns: minmax(190px, 1.7fr) repeat(6, minmax(86px, 1fr)) auto; align-items: center; gap: 12px; min-width: 0; min-height: 98px; border: 1px solid var(--line); padding: 16px; color: var(--ink); background: var(--surface); border-radius: 9px; text-decoration: none; }
 .market-ranking-row:hover { border-color: var(--line-strong); background: var(--surface-muted); }

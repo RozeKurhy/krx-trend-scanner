@@ -239,7 +239,6 @@
       while (list.firstChild) list.removeChild(list.firstChild);
       if (!enabled) return;
       const items = filteredItems(category);
-      setText(`${category}-count`, items.length);
       if (!items.length) {
         const message = searchQuery.trim()
           ? "검색 조건에 맞는 종목이 없습니다."
