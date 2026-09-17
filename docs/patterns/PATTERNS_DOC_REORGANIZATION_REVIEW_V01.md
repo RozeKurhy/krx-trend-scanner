@@ -2,21 +2,24 @@
 
 ## 1. 요약
 
-`docs/patterns/` 아래 Markdown 70개를 전수 확인하고 현재 역할을 분류했다.
-이번 단계에서는 문서 이동·삭제·본문 수정 없이 분류표와 실행 계획만 작성한다.
+`docs/patterns/` 아래 Markdown 72개를 전수 확인하고 현재 역할을 분류했다.
+이번 단계에서는 문서 이동·삭제 없이 현재 기준 문서와 분류표를 보정한다.
 
 | 분류 | 건수 | 원칙 |
 |---|---:|---|
-| `KEEP` | 9 | 현재 기준·탐색에 직접 필요한 문서와 공식 과거 비교 기준선 |
-| `ARCHIVE` | 61 | 종료된 연구·검증·사전등록·후보 전략·과거 실행 기록 |
+| `KEEP` | 10 | 현재 기준·탐색에 직접 필요한 문서와 정리 통제 문서 |
+| `ARCHIVE` | 62 | 종료된 연구·검증·사전등록·후보 전략·과거 실행 기록 |
 | `DELETE_CANDIDATE` | 0 | 네 가지 삭제 조건을 모두 만족한다고 확인된 문서 없음 |
 
 `strategy_finalization_v01.md`와 `investable_out_of_sample_v01.md`는 특별 검토
 대상으로 확인했다. 둘 다 현재 실행 지시가 아닌 과거 사전등록 기록이므로
 `ARCHIVE`로 분류한다.
 
-현재 기준은 `PATTERN_A_FAST_FINAL_STRATEGY_V02`이며, V1은 공식 과거 비교
-기준선으로 보존한다. V3와 V4는 현재 기본 전략이 아닌 종료된 후보 기록이다.
+현재 기준은 `PATTERN_A_FAST_FINAL_STRATEGY_V02`이며, V1도 현행 전략 폴더에
+남길 실질적 이유가 없어 archive 대상이다. V3와 V4 역시 현재 기본 전략이
+아닌 종료된 후보 기록이다. 투자 적합성 현재 기준은 새
+`pattern_a/spec/investability_policy.md`, 재사용 가능한 백테스트 공통 기준은
+`docs/validation/backtest_common_rules.md`에서 확인한다.
 
 ## 2. `KEEP`
 
@@ -24,13 +27,14 @@
 |---|---|---|---|---|---|---|
 | `docs/patterns/README.md` | 패턴 영역 탐색 안내 | 예 | 현재 패턴과 전략 연결을 안내한다. | 현재 위치 | Pattern A·A FAST 진입점 | 없음 |
 | `docs/patterns/pattern_a/README.md` | Pattern A 안내 | 예 | 현재 공식 패턴의 상태와 권위 문서 위치를 안내한다. | 현재 위치 | `spec/production_authority.md`의 탐색 안내 | 역사 기록 링크가 현재 문서와 가까이 노출됨 |
-| `docs/patterns/pattern_a/spec/production_authority.md` | Pattern A 공식 규격 | 예 | 현재 Score·Stage의 공식 산식과 운영 권위를 제공한다. | 현재 위치 | Pattern A의 최상위 권위 문서 | 현재 규격과 과거 검증 근거가 한 파일에 많음 |
+| `docs/patterns/pattern_a/spec/production_authority.md` | 현재 Pattern A 공식 규격 | 예 | 상단에 현재 Score·Stage·규칙·구현 위치를 정리하고 과거 근거는 접힌 참고 영역으로 분리한다. | 현재 위치 | Pattern A의 최상위 현재 권위 문서 | 현재 요약과 역사 참고 영역의 연결을 유지해야 함 |
+| `docs/patterns/pattern_a/spec/investability_policy.md` | 현재 투자 적합성 정책 | 예 | 1,000억·3억·가격필터 없음·`DATA_UNAVAILABLE`과 PIT 판정 순서를 한 문서에서 제공한다. | 현재 위치 | Pattern A 후단 필터의 현재 기준 | 없음 |
 | `docs/patterns/pattern_a_fast/README.md` | Pattern A FAST 안내 | 예 | 현재 기준, 문서 구조, V2와 과거 버전의 관계를 안내한다. | 현재 위치 | FAST 명세·전략 안내의 상위 입구 | 현재 문서와 역사 문서의 시각적 분리 보완 필요 |
 | `docs/patterns/pattern_a_fast/specification/README.md` | Pattern A FAST 정의 | 예 | FAST의 의미, 상태, 시간축, PIT 원칙을 정의한다. | 현재 위치 | FAST 패턴의 개념 권위 문서 | 설명과 이력의 길이가 길어 핵심 계약을 더 앞에 둘 수 있음 |
 | `docs/patterns/pattern_a_fast/specification/weekly_lifecycle.md` | FAST 주봉 생애주기 계약 | 예 | WATCH부터 EXTENDED까지의 현재 lifecycle 의미론을 정의한다. | 현재 위치 | FAST 정의의 세부 계약 | 영어 상태 토큰과 일반 설명의 혼용 밀도 개선 여지 |
 | `docs/patterns/pattern_a_fast/strategy/README.md` | FAST 전략 탐색 안내 | 예 | V1~V4의 역할과 현재 V2를 한눈에 구분한다. | 현재 위치 | V2 전략 계약의 상위 입구 | V3·V4 이동 후 링크 갱신 필요 |
-| `docs/patterns/pattern_a_fast/strategy/version_01/README.md` | 공식 과거 비교 기준선 | 예 | V2 비교에 사용하는 불변 역사 기준선이며 단순 중복이 아니다. | 현재 위치 | V2의 역사적 비교 기준 | 역사 문서임을 더 강하게 표시할 수 있음 |
 | `docs/patterns/pattern_a_fast/strategy/version_02/README.md` | 현재 일반 종목 기본 전략 계약 | 예 | `PATTERN_A_FAST_FINAL_STRATEGY_V02`의 현재 규칙·상태·제한을 정의한다. | 현재 위치 | 현재 전략의 최상위 권위 문서 | 없음 |
+| `docs/patterns/PATTERNS_DOC_REORGANIZATION_REVIEW_V01.md` | 문서 재정리 통제·검토 기록 | 예 | 현재 단계의 분류와 다음 archive 실행 계획을 기록한다. | 현재 위치 | 현재 문서 구조 정리의 작업 기준 | 정리 완료 후 역사 기록 전환 여부 재검토 |
 
 ## 3. `ARCHIVE`
 
@@ -88,6 +92,7 @@
 
 | 파일 경로 | 문서 역할 | 현재 필요한가 | 근거 | 목표 위치 | 현재 기준 문서와 관계 | 가독성 문제 |
 |---|---|---|---|---|---|---|
+| `docs/patterns/pattern_a_fast/strategy/version_01/README.md` | 공식 과거 비교 기준선 | 아니오 | 현재 일반 종목 기본 전략은 V2이며, V2에서 archive의 V1로 링크하면 현재 전략 폴더에 남길 실질적 이유가 없다. | `docs/patterns/pattern_a_fast/archive/strategy/version_01/README.md` | V2의 역사적 비교 근거 | 역사 기준선임을 archive 위치로 명확히 할 필요 |
 | `docs/patterns/pattern_a_fast/strategy/version_03/README.md` | 종료된 V3 후보 전략 계약 | 아니오 | V3는 공식 기본 전략으로 채택되지 않은 종료 후보다. | `docs/patterns/pattern_a_fast/archive/strategy/version_03/README.md` | V2와 비교된 역사적 후보 | 현재 전략 폴더에서 권위 문서처럼 보일 수 있음 |
 | `docs/patterns/pattern_a_fast/strategy/version_04/README.md` | 종료된 V4 후보 전략 계약 | 아니오 | V4는 종료된 후보이며 현재 실행 대상이 아니다. | `docs/patterns/pattern_a_fast/archive/strategy/version_04/README.md` | V2/V3 후속 후보의 역사적 규칙 | 문서가 길고 후보 규칙이 현재처럼 보일 수 있음 |
 
@@ -144,6 +149,7 @@ docs/patterns/
 ├── pattern_a/
 │   ├── README.md                                  KEEP
 │   ├── spec/production_authority.md               KEEP
+│   ├── spec/investability_policy.md               KEEP: 현재 투자 적합성 정책
 │   └── archive/
 │       ├── research/                              Pattern A 연구 기록
 │       └── validation/                            Pattern A 검증 기록
@@ -152,9 +158,9 @@ docs/patterns/
     ├── specification/                             KEEP
     ├── strategy/
     │   ├── README.md                              KEEP
-    │   ├── version_01/README.md                   KEEP: 공식 과거 비교 기준선
     │   └── version_02/README.md                   KEEP: 현재 기본 전략
     └── archive/
+        ├── strategy/version_01/                   공식 과거 비교 기준선
         ├── strategy/version_03/                   종료 후보 전략
         ├── strategy/version_04/                   종료 후보 전략
         ├── research/                              FAST 연구 기록
@@ -178,8 +184,13 @@ docs/patterns/
    앞부분에서 더 빠르게 찾을 수 있게 한다.
 4. `pattern_a_fast/specification/weekly_lifecycle.md` — 영어 상태 토큰은
    유지하되 첫 설명과 일반 문장을 한글 중심으로 정리한다.
-5. `pattern_a_fast/strategy/version_01/README.md` — 현재 V2와 혼동하지 않도록
-   공식 과거 비교 기준선이라는 표시를 상단에 강화한다.
+5. `pattern_a/spec/investability_policy.md` 및
+   `docs/validation/backtest_common_rules.md` — 핵심 현재 기준을 짧게
+   유지하고 역사 보고서와 중복 서술하지 않는다.
+
+V1 전략 README는 현재 전략 폴더에서 제외하고 archive 대상으로 재분류했다.
+과거 비교 기준선이라는 역할은 archive 경로와 V2 문서의 링크로 충분히
+보존한다.
 
 ## 7. 다음 실행 단계
 
