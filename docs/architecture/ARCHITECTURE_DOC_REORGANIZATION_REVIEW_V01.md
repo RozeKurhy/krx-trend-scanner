@@ -143,6 +143,7 @@ ARCHIVE 이동을 §8에서 완료했으며, 삭제 후보 처리와 KEEP 문서
 
 실제 이동 외에 6개 archive 문서 본문은 수정하지 않았다.
 
-이동으로 깨질 수 있던 `docs/architecture/README.md`의 validation navigation
-링크 1건만 `archive/validation/`으로 최소 수정했다. 그 외 코드·artifact·문서
-링크는 수정하지 않았다.
+`validation/`은 현재 KEEP 영역으로 유지하고, `archive/validation/`은 과거
+validation/investigation 기록 영역으로 분리했다. 이에 따라 README에서 두
+navigation을 별도 행으로 안내한다. 그 외 코드·artifact·문서 링크는 수정하지
+않았다.
