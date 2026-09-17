@@ -3,18 +3,18 @@
 ## 상태
 
 종목별 일봉 OHLCV를 PyKRX에서 가져와 표준 스키마로 정규화하고, 로컬 Parquet 캐시에
-저장·증분 업데이트하는 최소 구현입니다. Pattern A 점수 로직과는 무관합니다
+저장·증분 업데이트하는 최소 구현이다. Pattern A 점수 로직과는 무관하다
 (Pattern A는 [docs/patterns/pattern_a/README.md](../patterns/pattern_a/README.md) 참고).
 
 현재 구현 경계
 ----------------------------------------------------------------------
 
-이 문서는 legacy Data Layer v0.1의 계약·구현 기록이다. 현재 production data
-authority와 consumer path는
+이 문서는 legacy Data Layer v0.1의 계약·구현 기록이다. 현재 운영 데이터
+기준과 사용 코드 경로는
 [KRX Production Data Architecture](krx_production_data_architecture_v01.md)와
 [Market Data Repository V2](market_data_repository_v02.md)를 따른다. 아래의
 PyKRX, `MarketDataRepository`, `ParquetCache`, `adjusted=True` 설명은 legacy
-compatibility/history로 읽으며, 현재 production authority를 정의하지 않는다.
+호환성/과거 기록으로 읽으며, 현재 운영 기준을 정의하지 않는다.
 
 ## 계층 구조
 
@@ -125,7 +125,7 @@ trading_value   float64   # adjusted=True 경로에서는 NaN일 수 있음
 
 `data/raw/stocks/{ticker}.parquet` (기본 경로, `ParquetCache(base_dir=...)`로 변경 가능).
 `.gitignore`에 `/data/`가 포함돼 있어 캐시 파일은 커밋되지 않습니다. 주봉/월봉은
-캐시하지 않고 `resampler.py`로 runtime에 일봉에서 생성합니다.
+캐시하지 않고 `resampler.py`로 실행 시점에 일봉에서 생성합니다.
 
 ## 증분 업데이트
 

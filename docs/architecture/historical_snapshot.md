@@ -94,7 +94,7 @@ weekly_as_of(completed)  = 2026-08-14   # 그 주 금요일이 곧 effective_as_
 선정 근거와 실제 수치는 완료 보고에 정리합니다. 이 라벨은 사람이 해석하기
 위한 문자열일 뿐, Pattern A 점수나 다른 어떤 계산에도 사용되지 않습니다.
 
-각 종목에는 추가로 `current` label의 snapshot이 하나씩 더 있습니다 —
+각 종목에는 추가로 `current` label의 스냅샷이 하나씩 더 있다 —
 snapshot_date를 캐시의 가장 최근 날짜(보통 월/주 중간)로 둬서, completed와
 live가 실제로 다른 결과를 내는 걸 눈으로 확인할 수 있게 한 참고용
 snapshot입니다.

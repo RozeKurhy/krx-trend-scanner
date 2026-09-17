@@ -11,9 +11,7 @@ rename, 삭제, regeneration은 수행하지 않았다. 근거는 `find`/`rg`/`g
 
 작업 시작 HEAD: `e4b53d6e88b73ab9a5d7d79e49e507c40fa88661`
 
-===============================================================================
 ## 1. 핵심 요약
-===============================================================================
 
 `artifacts/` 아래에는 총 **913개 파일**(png 464 / json 169 / csv 155 / md 122 /
 parquet 3), **12개 top-level 폴더**가 있다. 그중 `pattern_a_fast/`(584 파일,
@@ -64,9 +62,7 @@ parquet 3), **12개 top-level 폴더**가 있다. 그중 `pattern_a_fast/`(584 �
 반영했으며, `BLOCKED_MOVE_COUNT = 0`으로 확정해 STEP 2 실행 설계로
 승격한다.
 
-===============================================================================
 ## 2. 현재 artifact 구조
-===============================================================================
 
 ```
 artifacts/                                   913 files, 12 top-level dirs
@@ -90,9 +86,7 @@ artifacts/                                   913 files, 12 top-level dirs
 chart), json 169, csv 155, md 122(주로 stock_reports 개별 리포트 + A FAST
 evaluation 요약), parquet 3(flow/relative_strength source 원본).
 
-===============================================================================
 ## 3. 분류 규칙
-===============================================================================
 
 w.md §5가 정의한 카테고리를 그대로 사용한다. 하나의 group이 여러 역할을
 가지면 `Primary / Secondary`로 표기한다.
@@ -118,9 +112,7 @@ domain·pattern / role(Primary/Secondary) / current authority 여부 /
 production dependency / frozen 여부 / hash·seal·manifest 보호 / 코드·테스트·
 docs·scripts 참조 여부 / proposed destination / move risk / 비고.
 
-===============================================================================
 ## 4. artifact 목록
-===============================================================================
 
 파일 단위가 아니라 논리적 group 단위로 기록한다(w.md §5 허용). 전체
 913개 파일이 아래 표의 group 중 하나에 속한다.
@@ -166,9 +158,7 @@ docs·scripts 참조 여부 / proposed destination / move risk / 비고.
 
 합계: 3+2+3+6+10+56+2+1+9+2+6+13+108+108+2+26+244+1+94+155+1+1+4+4+4+8+11+6+5+3+3+3+3+4+1+1 = **913** (전체 파일 수와 일치, 교차검증 완료).
 
-===============================================================================
 ## 5. 현재 권위 맵
-===============================================================================
 
 | Pattern/축 | 현재 공식 상태 | Authority 파일/폴더 |
 |---|---|---|
@@ -181,9 +171,7 @@ docs·scripts 참조 여부 / proposed destination / move risk / 비고.
 | Stock Report | v0.2 `CLOSED`, v0.1은 archive | `stock_reports/20260814/`(current), `stock_reports/archive/v0.1/`(archive) |
 | Pattern A FAST 인간 검증(Phase13H/13J) | frozen(seal 기반) | `oos/`, `ground_truth/`, `investable_oos/` |
 
-===============================================================================
 ## 6. Pattern A 감사
-===============================================================================
 
 Pattern A artifact set은 현재 다음과 같은 lifecycle 영역으로 명확히 구분된다:
 
@@ -212,9 +200,7 @@ PIT snapshot)와 **다른 역할**이다: `history/`는 22개 active + 4개 supe
 `investability/` 하위에 있지만 lifecycle이 다르므로 IA 설계에서 분리를
 제안한다(§16).
 
-===============================================================================
 ## 7. Pattern A FAST 감사
-===============================================================================
 
 `pattern_a_fast/`(584파일, 20개 하위 폴더)를 lifecycle 관점으로 재분류하면:
 
@@ -256,9 +242,7 @@ V2 합성 이전 단계의 연구 이력으로 판단되며 ARCHIVE_CANDIDATE.
 문서가 직접 `SUPERSEDED_HISTORICAL_PREREGISTRATION`이라고 선언.
 ARCHIVE_CANDIDATE(가장 확실한 사례).
 
-===============================================================================
 ## 8. Investability 감사
-===============================================================================
 
 Phase10 `CLOSED`. 현재 production contract: market cap >= 1,000억원, 20D
 평균거래대금 >= 3억원(threshold 자체는 이번 audit에서 변경하지 않음).
@@ -277,9 +261,7 @@ Phase10 `CLOSED`. 현재 production contract: market cap >= 1,000억원, 20D
 design 산출물과 production evidence가 현재 같은 `investability/` 레벨에
 평평하게 섞여 있다 — IA 설계에서 `production/`과 `research/`로 분리 제안.
 
-===============================================================================
 ## 9. Foreign Flow 감사
-===============================================================================
 
 Phase11 `CLOSED`. `flow/`(6파일): features/distribution/summary(Pattern A
 production evidence) + `source/`(원본 외국인 수급 csv/parquet/meta,
@@ -287,9 +269,7 @@ SOURCE_INPUT). 이름 자체(`pattern_a_foreign_flow_*`)가 이미 Pattern A
 ownership을 명확히 표현하고 있어 재명명 불필요. OBV 등 향후 연구 아이디어는
 이번 Task 범위 밖(w.md §7.5 명시).
 
-===============================================================================
 ## 10. Relative Strength 감사
-===============================================================================
 
 Phase12 현재 verdict `HOLD_RELATIVE_STRENGTH_INFRA`(infra 존재, market-relative
 RS 존재, sector RS 미해결). `relative_strength/`(9파일): features/
@@ -298,9 +278,7 @@ distribution/summary(infrastructure validation evidence, market-relative RS
 Phase12를 "처음부터 다시 만드는" 방식으로 재해석하지 않았고, 현재 HOLD
 상태 그대로 CURRENT_VALIDATION으로 유지 제안.
 
-===============================================================================
 ## 11. Scanner·Analysis·Chart Review 감사
-===============================================================================
 
 - `scanner/`(2파일): canonical Full Universe Scan 결과(CSV+summary JSON).
   CURRENT_PRODUCTION_EVIDENCE, `pattern_a_investability_audit.py`/여러 docs가
@@ -313,9 +291,7 @@ Phase12를 "처음부터 다시 만드는" 방식으로 재해석하지 않았�
 - `cache_population/`(2파일): 캐시 적재 로그/품질 감사. Pattern에 종속되지
   않는 공용 infra 성격(`scripts/populate_krx_common_cache.py`가 유일한 참조).
 
-===============================================================================
 ## 12. Stage 연구 감사
-===============================================================================
 
 `stage_v03_research/`(6파일)와 `stage_v04_multi_year_research/`(13파일)는
 각각 전용 validation 모듈(`src/trend_scanner/validation/stage_v03_research.py`,
@@ -330,9 +306,7 @@ v04는 `test_deterministic_regeneration`/`test_same_snapshot_repeated_calculatio
 audit에서 그 test의 실행 방식 자체는 변경 대상이 아니다 — IA 이동 risk만
 평가).
 
-===============================================================================
 ## 13. Stock Report 감사
-===============================================================================
 
 ```
 stock_reports/
@@ -347,9 +321,7 @@ stock_reports/
 한다(§21). `artifacts/reporting/stock_reports/`로의 이동은 "제안"만
 가능하며 이번 STEP 1에서 실제 이동은 없다.
 
-===============================================================================
 ## 14. 경로 의존성 감사
-===============================================================================
 
 `rg "artifacts/"` 계열 검색을 `src/ tests/ scripts/ docs/` 전체에 대해
 수행했다. 카테고리별 요약:
@@ -373,9 +345,7 @@ test dependency + frozen-integrity dependency**를 동시에 가진다. 이동 �
 `pattern_a_fast_report.py:78-79`, 그리고 여러 test 파일 전부를 갱신해야
 하므로 STEP 2에서 최우선 검증 대상이다.
 
-===============================================================================
 ## 15. Frozen·Hash·Seal·Manifest 감사
-===============================================================================
 
 `tests/helpers/frozen_integrity.py`(TEST_SUITE_PERFORMANCE_AUDIT_AND_REFACTOR_
 FIX_03에서 신설)이 현재 explicit hash authority다:
@@ -416,9 +386,7 @@ production/test/frozen-integrity dependency 코드들은 path 문자열을
 frozen-integrity가 계속 통과한다. "hash가 같으므로 이동해도 안전"이라는
 결론은 **코드 갱신을 전제로 할 때만** 성립한다.
 
-===============================================================================
 ## 16. 제안하는 canonical artifact 정보 구조
-===============================================================================
 
 docs IA 철학(상위 영역 → Pattern/Domain → 역할)을 artifact lifecycle에 맞게
 적용한다. docs와 달리 artifact는 "언제 계산됐는가"가 중요하므로 역할
@@ -459,9 +427,7 @@ docs IA 철학(상위 영역 → Pattern/Domain → 역할)을 artifact lifecycl
    이동한다.
 6. `pattern_a_final_closure/`는 Pattern A의 `validation/closure/`로.
 
-===============================================================================
 ## 17. 제안 트리
-===============================================================================
 
 ```
 artifacts/
@@ -532,9 +498,7 @@ validation), superseded는 각 `archive/`, Stock Report current output은
 빈 디렉터리는 Git이 유지하지 않으므로 첫 artifact가 생길 때 실제 생성),
 Pattern B는 `patterns/pattern_b/`로 동일 4분류를 복제하면 확장 가능하다.
 
-===============================================================================
 ## 18. Migration 표
-===============================================================================
 
 | Current Path | Role | Authority | Proposed Path | Risk | Path Dependencies | Action |
 |---|---|---|---|---|---|---|
@@ -575,9 +539,7 @@ Pattern B는 `patterns/pattern_b/`로 동일 4분류를 복제하면 확장 가�
 | `stock_reports/20260814/` | REPORT_OUTPUT | 예 | `reporting/stock_reports/20260814/` | **HIGH** | src, tests, 향후 Web Viewer | MOVE(가장 신중하게) |
 | `stock_reports/archive/v0.1/` | REPORT_OUTPUT/SUPERSEDED | 아니오 | `reporting/stock_reports/archive/v0.1/` | MEDIUM | docs 1 | MOVE |
 
-===============================================================================
 ## 19. Archive 후보
-===============================================================================
 
 | Path | 이유 |
 |---|---|
@@ -605,9 +567,7 @@ STEP 2 Phase E(§23) 순서(byte identity 재확인 → provenance parity
 새 authority contract로 수정 → targeted test green → 그 후 제거)를
 그대로 따른다.
 
-===============================================================================
 ## 20. Archive하면 안 되는 과거 기준선
-===============================================================================
 
 | Path | 이유 |
 |---|---|
@@ -615,9 +575,7 @@ STEP 2 Phase E(§23) 순서(byte identity 재확인 → provenance parity
 | `stock_reports/archive/v0.1/20260814/` | 이미 정식 archive 위치에 있으나, "archive"라는 이름과 무관하게 v0.1 계약의 공식 historical 비교본으로 계속 유지되어야 함(단순 이동만 제안, 내용/이름 변경 없음) |
 | `artifacts/investability/history/`의 SUPERSEDED_NON_REFERENCE_SOURCE 4건 | provenance 상 명시적으로 "superseded"라고 표시되어 있지만, 이는 각 시점의 대체 소스 존재를 뜻할 뿐 파일 자체는 KRX 원본 검증 체인(row-level sha256)의 일부이므로 archive 이동 대상이 아니라 `history/` 안에 그대로 유지 |
 
-===============================================================================
 ## 21. 고위험·차단된 이동
-===============================================================================
 
 **HIGH:** (§18 표 기준 HIGH = 13 rows; 아래는 대표 그룹으로 묶은 것이며
 이 목록의 항목 수와 13은 다른 숫자다 — 정확한 개별 row 집계는 §18/§24 참조)
@@ -646,9 +604,7 @@ STEP 2 Phase E(§23) 순서(byte identity 재확인 → provenance parity
 STEP 2 Phase E(§23)에서 canonical 단일화 후 제거 대상이며, 새로 발견된
 blocker는 없다.
 
-===============================================================================
 ## 22. 선택적 향후 파일명 정리
-===============================================================================
 
 이번 STEP 1에서는 rename하지 않는다. 향후 경로 자체가 domain/pattern을
 설명하게 되면 다음과 같은 단순화가 가능하다(`OPTIONAL_FUTURE_RENAME`):
@@ -663,9 +619,7 @@ blocker는 없다.
 DIRECTORY MOVE FIRST 원칙에 따라 STEP 2에서도 rename보다 이동을 우선하고,
 위 표는 별도 후속(STEP 3+)에서만 검토한다.
 
-===============================================================================
 ## 23. STEP 2 재구성 계획
-===============================================================================
 
 **Phase A — Authority Index 준비**
 `artifacts/README.md` 작성 — Current Production Evidence / Current
@@ -727,9 +681,7 @@ Full Suite는 이번에도 사용자가 직접 실행하는 정책을 유지한�
 전체 완료 후 README/Roadmap refresh(이번 Task 범위 밖, w.md §26 순서
 그대로 유지) → Julia Strategy → Phase12 Relative Strength Resume.
 
-===============================================================================
 ## 24. 최종 판정
-===============================================================================
 
 **정확한 집계(§4 Artifact Inventory / §18 Migration Table을 single
 source of truth로 기계적 재계산, 범위/추정 표현 없음).**

@@ -1,25 +1,25 @@
-# 조정·원천 시장데이터 저장소 (MARKET_DATA_REPOSITORY_V02)
+# 수정주가·원천 시장데이터 저장소 (MARKET_DATA_REPOSITORY_V02)
 
 목적
 ----
-AdjustedPriceStore의 조정 OHLC와 KrxRawStockStore의 원천 일별 사실을
-read-only composition layer에서 결합한다. Repository V2는 authority가 아니며
+AdjustedPriceStore의 수정주가 OHLC와 KrxRawStockStore의 원천 일별 사실을
+읽기 전용 결합 계층에서 결합한다. Repository V2는 기준이 아니며
 가격 조정, 원천 보정, corporate action 처리, 네트워크 조회를 수행하지 않는다.
 
 소스 authority
 --------------
-* open/high/low/close: AdjustedPriceStore, NAVER_DIRECT_DATE_RANGE_ADJUSTED, ADJUSTED
+* open/high/low/close: AdjustedPriceStore, NAVER_DIRECT_DATE_RANGE_ADJUSTED, 수정주가
 * volume/trading_value: KrxRawStockStore, KRX_OPEN_API_STOCK_DAILY, RAW
 * market_cap/listed_shares: KrxRawStockStore의 raw ancillary만 제공
 
 현재 구현 경계
 --------------
-이 문서의 FIX01/FIX02 단계 설명은 당시 validation 범위를 보존한다. 현재
-adjusted source는 Naver direct adjusted V02이며, production Stock Report와
+이 문서의 FIX01/FIX02 단계 설명은 당시 검증 범위를 보존한다. 현재
+수정주가 원천은 Naver direct adjusted V02이며, 운영 Stock Report와
 Pattern A scanner는 `build_production_repository_v2`를 통해 rolling authority
-경계를 적용한다. 고정된 과거 평가·validation entrypoint는
-`build_repository_v2`를 계속 사용하므로, 두 factory의 historical frozen mode와
-production rolling mode를 혼동하지 않는다.
+경계를 적용한다. 고정된 과거 평가·검증 진입점은
+`build_repository_v2`를 계속 사용하므로, 두 factory의 과거 고정 모드와
+운영 rolling mode를 혼동하지 않는다.
 
 공식 지원 instrument 계약
 ---------------------------------
@@ -28,11 +28,11 @@ interface로 지원한다. ETF 여부는 `InstrumentMetadataResolver`의 PIT for
 product-master classification으로만 결정하며 ticker 모양/이름/17종 allowlist를
 사용하지 않는다.
 
-* COMMON adjusted authority: `AdjustedPriceStore` / Naver direct adjusted V02
+* COMMON 수정주가 기준 원천: `AdjustedPriceStore` / Naver direct adjusted V02
 * COMMON raw authority: `KrxRawStockStore` / KRX Open API stock daily
-* ETF adjusted authority: `AdjustedPriceStore` / Naver direct adjusted V02
+* ETF 수정주가 기준 원천: `AdjustedPriceStore` / Naver direct adjusted V02
 * ETF raw authority: `KrxRawStockStore` / KRX Open API ETF daily (`/etp/etf_bydd_trd`)
-* ETF volume/trading_value는 ETF raw source field를 그대로 보존한다. adjusted
+* ETF volume/trading_value는 ETF 원천 field를 그대로 보존한다. 수정주가
   OHLC로 재구성하거나 trading_value를 계산하지 않는다.
 * 두 instrument type 모두 exact source date range, explicit session projection,
   PIT lifecycle semantics를 사용한다. forward-fill/backfill/consumer-specific
@@ -44,7 +44,7 @@ ETF source access가 인증/활용 승인되지 않은 경우 Repository V2는 �
 
 Ticker 범위
 -------------
-* adjusted API: 기존 SIX_DIGIT_TICKER numeric domain 유지
+* 수정주가 API: 기존 SIX_DIGIT_TICKER numeric domain 유지
 * raw API: KRX_SHORT_CODE 정규식 ^[0-9A-Z]{6}$를 source-preserving 지원
 * raw suffix 제거, upper 변환, 숫자 coercion, 복구/보정은 하지 않는다.
 
@@ -53,7 +53,7 @@ API schema
 get_daily(ticker, start, end)
   index: timezone-naive, ascending, unique DatetimeIndex
   columns: open, high, low, close, volume, trading_value
-  OHLC는 adjusted, volume/trading_value는 raw.
+  OHLC는 수정주가, volume/trading_value는 원천.
 
 get_raw_daily(ticker, start, end)
   columns: open, high, low, close, volume, trading_value, market_cap, listed_shares
@@ -68,7 +68,7 @@ get_stock_snapshot(ticker, date)
 
 Join 및 missing 의미
 -------------------------
-adjusted/raw 양쪽의 non-empty trading session set은 정확히 같아야 한다.
+수정주가/원천 양쪽의 non-empty trading session set은 정확히 같아야 한다.
 한쪽 날짜를 조용히 drop하거나 forward-fill/bfill/0-fill하지 않는다.
 session set mismatch는 REPOSITORY_V2_TRADING_SESSION_MISMATCH로 fail-closed한다.
 양쪽이 모두 empty인 요청 범위는 typed empty daily frame을 반환할 수 있다.
@@ -78,10 +78,10 @@ Read-only 및 호환성
 --------------------------
 Repository V2는 store를 생성자 주입받고 write/refresh를 호출하지 않는다.
 기존 MarketDataRepository와 tests/test_repository.py는 변경하지 않는다.
-FIX01 당시에는 consumer 자동 migration이 0건이었고 Pattern A, FastCore, Julia,
+FIX01 당시에는 사용 코드 자동 전환이 0건이었고 Pattern A, FastCore, Julia,
 RS, Stock Report 등의 전환을 END_TO_END_DATA_PARITY_V01 이후 별도 결정하도록
-기록했다. 현재 production entrypoint의 Repository V2 wiring은 후속 consumer
-migration finalization 이후 반영되었으며, historical evaluation entrypoint는
+기록했다. 현재 운영 진입점의 Repository V2 연결은 후속 사용 코드
+전환 완료 이후 반영되었으며, 과거 평가 진입점은
 여전히 frozen factory 경계를 사용한다.
 
 성능 한계
@@ -105,19 +105,19 @@ FIX01 실행 경계
 ---------------
 * validator 실행 전에 source/test/doc 변경을 고정하고, bounded regression을
   통과한 커밋 이후에만 live probe를 수행한다.
-* live probe의 adjusted 샘플은 005930(2018-04-01..2018-06-30),
+* live probe의 수정주가 샘플은 005930(2018-04-01..2018-06-30),
   000660(2026-07-01..2026-08-21), 068270(2026-07-01..2026-08-21) 세 건으로
   제한한다. 실제 비교 범위는 임시 store metadata의 actual_date_min/max에서
   파생하며 날짜를 하드코딩하지 않는다.
 * PyKRX adjusted=True 호출만 허용하고 KRX Open API, OpenDART, fallback 및
   retry는 0건이어야 한다. 외부 실패 시 재시도하지 않고 blocker로 기록한다.
-* 임시 AdjustedPriceStore에만 adjusted 데이터를 저장하고 live probe 종료 후
-  경로가 제거되는지 확인한다. production raw/adjusted store와 corporate-action
+* 임시 AdjustedPriceStore에만 수정주가 데이터를 저장하고 live probe 종료 후
+  경로가 제거되는지 확인한다. 운영 원천/수정주가 store와 corporate-action
   state에는 쓰지 않으며 before/after snapshot이 동일해야 한다.
-* 세 샘플 모두 adjusted OHLC, raw volume/trading_value, ancillary 및 날짜 집합이
+* 세 샘플 모두 수정주가 OHLC, 원천 volume/trading_value, ancillary 및 날짜 집합이
   exact match여야 하며, Samsung listed_shares 의미론과 alphanumeric raw ticker
   probe도 별도 gate로 확인한다.
-* FIX01 단계에서는 production adjusted store population과 consumer migration을
+* FIX01 단계에서는 운영 수정주가 store 적재와 사용 코드 전환을
   구현하지 않았다. 둘은 후속 migration 전제조건으로 문서화되었으며, 현재
   production wiring은 이 문서 이후의 후속 단계에서 별도로 반영되었다.
 
@@ -129,7 +129,7 @@ FIX02 raw authority 및 probe evidence
 * raw numeric parseability, NaN/inf, 음수 ancillary 및 volume/trading_value
   범위는 계속 fail-closed로 검증한다. source 값의 repair, fill, clamp, adjust,
   round 또는 대체 의미론 변환은 수행하지 않는다.
-* FIX02 validator는 adjusted provider fetch, temporary store write/readback,
+* FIX02 validator는 수정주가 데이터 제공자 fetch, temporary store write/readback,
   production raw load, repository composition, Samsung semantic 및
   alphanumeric raw probe를 별도 stage와 record로 남긴다.
 * successful_provider_fetch_count, successful_temp_store_integrity_count,
@@ -141,12 +141,12 @@ FIX02 raw authority 및 probe evidence
   temporary store, raw load 실패는 각각 전용 blocker로 기록한다.
 * Network 0 offline raw probe는 005930, 000660, 068270의 raw parity와
   zero-price row count를 확인하고, Samsung listed_shares와 alphanumeric
-  raw domain probe는 adjusted live 샘플과 독립적으로 수행한다.
+  원천 domain probe는 수정주가 live 샘플과 독립적으로 수행한다.
 
 FIX03 거래 세션 투영
 --------------------------------
 * KrxRawStockStore의 모든 row는 PHYSICAL_RAW_OBSERVATION이다. 이 물리 관측치와
-  adjusted price provider가 반환하는 TRADING_SESSION 집합은 동일하다고
+  수정주가 데이터 제공자가 반환하는 TRADING_SESSION 집합은 동일하다고
   가정하지 않는다.
 * get_raw_daily, get_daily_ancillary, get_stock_snapshot은 물리 raw row를
   전부 보존한다. 이 API들은 placeholder를 제거하거나 거래일 집합을 투영하지
@@ -159,11 +159,11 @@ FIX03 거래 세션 투영
   ADJUSTED_PRICE_PROVIDER_PHANTOM_COMPATIBILITY 근거로만 사용한다.
   volume == 0 단독 조건, OHLC 전체 0 조건, trading_value 조건 일부, 또는
   임의의 inner join은 허용하지 않는다.
-* adjusted-only 날짜는 BLOCKED_ADJUSTED_SESSION_WITHOUT_RAW_FACTS로,
+* 수정주가 전용 날짜는 BLOCKED_ADJUSTED_SESSION_WITHOUT_RAW_FACTS로,
   predicate를 만족하지 않는 raw-only 날짜는
   BLOCKED_UNCLASSIFIED_RAW_ONLY_SESSION으로 fail-closed한다. 외부 관측치의
   불일치를 조용히 숨기지 않는다.
-* 투영 결과의 날짜 집합은 adjusted 집합과 exact match여야 하며, 제거된
+* 투영 결과의 날짜 집합은 수정주가 집합과 exact match여야 하며, 제거된
   placeholder 개수와 실제 날짜/필드/분류를 증적에 남긴다. silent inner drop은
   항상 0이어야 한다.
 * FIX03 offline gate는 네트워크 없이 세 표본의 후보를 검사한다. 005930의
@@ -171,12 +171,12 @@ FIX03 거래 세션 투영
   BLOCKED_PLACEHOLDER_SEMANTICS_UNPROVEN으로 live probe를 실행하지 않는다.
   후보 날짜와 실제 raw 필드는 하드코딩하지 않고 저장소에서 산출한다.
 * live composition의 volume/trading_value 비교 대상은 projected raw이고,
-  ancillary 비교 대상은 physical raw다. 성능 증적에는 raw load, adjusted load,
+  ancillary 비교 대상은 physical raw다. 성능 증적에는 원천 load, 수정주가 load,
   projection, join, total elapsed를 ticker별로 기록하며 60초 이상은 warning이다.
 
 FIX04 공통 날짜 의미 충돌
 -----------------------------------
-* adjusted와 raw 양쪽에 같은 날짜가 있어도 raw row가
+* 수정주가와 원천 양쪽에 같은 날짜가 있어도 원천 row가
   NON_TRADING_PLACEHOLDER_V01이면 두 authority의 session 의미가 충돌한다.
   이 상태는 정상 daily row로 합성하지 않고
   REPOSITORY_V2_SESSION_SEMANTIC_CONFLICT로 fail-closed한다.

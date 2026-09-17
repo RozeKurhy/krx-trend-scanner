@@ -2,19 +2,19 @@
 
 목적
 ----
-KOSPI 대표지수 1001과 KOSDAQ 대표지수 2001의 production source를 PyKRX에서
+KOSPI 대표지수 1001과 KOSDAQ 대표지수 2001의 운영 원천을 PyKRX에서
 KRX Open API의 /idx/kospi_dd_trd, /idx/kosdaq_dd_trd로 전환한다.
-이번 문서는 MARKET_INDEX만 다루며 native sector index, membership, RS 수식과
-consumer 기본 wiring은 변경하지 않는다.
+이번 문서는 MARKET_INDEX만 다루며 native sector index, 구성 종목 정보, RS 수식과
+사용 코드 기본 연결은 변경하지 않는다.
 
 현재 상태 경계
 ----------------
 
-이 문서의 migration 계약과 아래 known-limitations token은 당시 phase 기록이다.
-현재 Pattern A production scanner는 기본 market-index 입력으로
+이 문서의 전환 계약과 아래 known-limitations token은 당시 phase 기록이다.
+현재 Pattern A 운영 scanner는 기본 market-index 입력으로
 `data/market/index/v01`의 `IndexStore(MARKET_INDEX)`를 읽고, 기존 relative-strength
-artifact는 parity/comparison evidence로만 유지한다. 현재 adjusted source authority는
-Naver direct date-range와 `AdjustedPriceStore V02`이며, V02 production population
+artifact(산출물)는 parity/comparison 검증 근거로만 유지한다. 현재 수정주가 원천 기준은
+Naver direct date-range와 `AdjustedPriceStore V02`이며, V02 운영 적재
 구현도 후속 단계에서 반영되었다. 다만 full end-to-end parity 전체 상태는 이 문서에서
 새로 해소되었다고 확정하지 않는다.
 
@@ -38,18 +38,18 @@ OHLC, hash를 모두 검증한 뒤 temporary file과 atomic replace로 publish�
 
 거래일 달력·quota·재개
 ----------------------
-historical target은 CLOSED KRXRawStockStore manifest에서 양 시장 COMPLETE인
+과거 대상은 CLOSED KRXRawStockStore manifest에서 양 시장 COMPLETE인
 날짜만 파생한다. 양 시장 NO_DATA는 skip하고 asymmetric 상태는
 BLOCKED_RAW_TRADING_CALENDAR_INCONSISTENT로 중단한다. quota authority는
 .cache/krx_openapi/quota.sqlite3 하나이며 모든 HTTP attempt와 retry를 count한다.
 한 날짜는 두 endpoint를 함께 처리하고, quota 부족 시 whole-date tranche만
-staging에 저장한다. partial staging은 production IndexStore로 publish하지 않는다.
+staging에 저장한다. partial staging은 운영 IndexStore로 publish하지 않는다.
 
 staging·publish
 --------------
 staging은 .cache/krx_openapi/market_index_migration/v01에 둔다. 모든 target
 날짜가 두 row(1001, 2001)로 검증되고 legacy OHLC parity, market RS parity,
-quota audit, secret scan, integrity gate가 통과한 경우에만 production store를
+quota audit, secret scan, integrity gate가 통과한 경우에만 운영 store를
 한 번 publish한다. consumer는 END_TO_END_DATA_PARITY_V01에서 전환한다.
 
 legacy parity·RS parity

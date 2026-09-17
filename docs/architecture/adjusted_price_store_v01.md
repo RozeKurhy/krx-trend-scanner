@@ -1,22 +1,22 @@
-# 조정주가 저장소 (AdjustedPriceStore v01)
+# 수정주가 저장소 (AdjustedPriceStore v01)
 
 상태
 ----------------------------------------------------------------------
 
-이 문서는 frozen Production Data Architecture v01의 adjusted OHLC authority를
-실제 provider/store primitive로 구현한 계약이다. 최종 상태는
+이 문서는 frozen Production Data Architecture v01의 수정주가 OHLC 기준을
+실제 데이터 제공자/store primitive로 구현한 계약이다. 최종 상태는
 `READY_FOR_ARCHITECT_ADJUSTED_PRICE_STORE_V01_FIX01_REVIEW`이며, Architect 승인 전에는
 `ADJUSTED_PRICE_STORE_V01 = CLOSED`로 선언하지 않는다.
 
-현재 authority 경계
+현재 기준 경계
 ----------------------------------------------------------------------
 
 위 상태와 PyKRX `adjusted=True` source 표기는 V01 구현·검증 단계의 역사적
-기록이다. 현재 adjusted OHLC authority는 package-owned
+기록이다. 현재 수정주가 OHLC 기준 원천은 package-owned
 `NaverDirectAdjustedPriceDataProvider`의 Naver direct date-range
 (`requestType=1`)이며, 현재 store contract는 `AdjustedPriceStore V02`다.
-따라서 아래 V01 provider/store 세부사항은 당시 primitive와 parity evidence를
-설명하는 기록으로 읽고, 현재 production source로 해석하지 않는다.
+따라서 아래 V01 데이터 제공자/store 세부사항은 당시 primitive와 parity 검증 근거를
+설명하는 기록으로 읽고, 현재 운영 원천으로 해석하지 않는다.
 
 이번 단계의 범위
 ----------------------------------------------------------------------
@@ -25,8 +25,8 @@
 - `AdjustedPriceStore`가 ticker 단위 mutable full replacement를 지원한다.
 - Parquet physical schema와 metadata sidecar, SHA-256 pair integrity를 보존한다.
 - Store-owned metadata provenance와 caller request context를 분리한다.
-- 새 provider와 기존 legacy adjusted OHLC의 직접 parity evidence를 별도 기록한다.
-- 기존 legacy composite cache와 production consumer는 전환하지 않는다.
+- 새 데이터 제공자와 기존 legacy 수정주가 OHLC의 직접 parity 검증 근거를 별도 기록한다.
+- 기존 legacy composite cache와 운영 사용 코드는 전환하지 않는다.
 - 다음 dirty-refresh phase가 사용할 fail-closed storage primitive를 고정한다.
 
 이번 단계에서 하지 않는 것
@@ -34,38 +34,38 @@
 
 - `adjusted=False`, KRX Open API, OpenDART 호출
 - `PyKrxDataProvider`, `MarketDataRepository`, `ParquetCache` 동작 변경
-- `data/raw/stocks/` migration 또는 overwrite
+- `data/raw/stocks/` 전환 또는 overwrite
 - KRXRawStockStore, corporate-action detector, dirty ticker 자동 탐지
-- 전체 종목 backfill, Pattern A/FastCore/Julia/Stock Report consumer 전환
+- 전체 종목 백필, Pattern A/FastCore/Julia/Stock Report 사용 코드 전환
 - custom adjustment engine
 
-1. 조정주가 provider 계약 (AdjustedPriceDataProvider)
+1. 수정주가 데이터 제공자 계약 (AdjustedPriceDataProvider)
 ----------------------------------------------------------------------
 
-source authority(원천 권위):
+기준 원천:
 
 `pykrx.stock.get_market_ohlcv_by_date(start, end, ticker, adjusted=True)`
 
 한 logical fetch는 adjusted=True 호출 1회만 수행한다. adjusted=False 호출,
 기존 `PyKrxDataProvider(adjusted=True)` 재사용, KRX credential 읽기와 `.env` 로드는
-없다. provider 반환 schema는 정확히 다음 4개 컬럼과 timezone-naive
+없다. 데이터 제공자 반환 schema는 정확히 다음 4개 컬럼과 timezone-naive
 `DatetimeIndex`다.
 
 ---------------------------------------------------------------------
 | 컬럼                         | 의미                                  |
 ---------------------------------------------------------------------
-| open, high, low, close       | adjusted OHLC, float64               |
+| open, high, low, close       | 수정주가 OHLC, float64               |
 ---------------------------------------------------------------------
 
 PyKRX 응답의 `거래량`은 phantom holiday 판정을 위해 transient하게만 사용한다.
 `volume`, `trading_value`, `market_cap`, `listed_shares`는 provider 반환 및 store
 저장 모두 금지한다. `open=high=low=volume=0`, `close>0`인 row는 제거한다.
 
-기존 adjusted path와 같은 1원 correction만 provider 단계에서 수행한다.
+기존 수정주가 경로와 같은 1원 correction만 데이터 제공자 단계에서 수행한다.
 `high < max(open, close)` 또는 `low > min(open, close)`의 위반 폭이 1원 이내일
 때만 정상 관계값으로 보정한다. 2원 이상 위반은 자동 repair하지 않고 fail closed한다.
 
-2. 전용 조정주가 검증
+2. 전용 수정주가 검증
 ----------------------------------------------------------------------
 
 `validate_adjusted_ohlc()`는 기존 `validate_ohlcv()`를 재사용하지 않는다.
@@ -104,14 +104,14 @@ Parquet physical schema는 순서까지 다음과 같다.
 ---------------------------------------------------------------------
 
 `date`와 `ticker`를 파일 안에 저장해 filename-only identity를 피한다. consumer가
-읽는 frame은 `DatetimeIndex`와 `open/high/low/close`만 가진다. Store는 adjusted
+읽는 frame은 `DatetimeIndex`와 `open/high/low/close`만 가진다. Store는 수정주가
 OHLC만 소유하며 raw OHLC, ancillary, master, asset_type, membership, flow, RS는
 소유하지 않는다.
 
 4. 변경 가능한 이력과 원자적 교체
 ----------------------------------------------------------------------
 
-Adjusted history는 향후 corporate action에 의해 과거 값이 변할 수 있으므로
+수정주가 이력은 향후 corporate action에 의해 과거 값이 변할 수 있으므로
 append-only가 아니다. `save_full()`은 ticker 전체 snapshot을 다음 순서로 처리한다.
 
 1) 입력 schema/가격 관계/ticker/date 검증
@@ -166,7 +166,7 @@ timestamps, content hash는 Store-owned reserved field라 override 시 fail clos
 offline validator는 기존 `data/raw/stocks/`에서 OHLC만 추출해 임시 Store에
 round-trip하고 date/row/OHLC parity를 비교한다. 이는 `STORE_ROUND_TRIP` evidence다.
 별도로 live smoke에서 새 `AdjustedPriceDataProvider` output과 동일 요청 범위의
-legacy adjusted OHLC를 직접 비교한다. 값과 날짜는 공통 거래일 intersection에서
+legacy 수정주가 OHLC를 직접 비교한다. 값과 날짜는 공통 거래일 intersection에서
 검증하고, frozen legacy cache에만 없는 provider-only 날짜와 legacy-only 날짜는
 coverage evidence로 별도 기록한다. volume/trading_value는 parity 비교 대상이 아니다.
 validation parquet는 artifacts나 git에 commit하지 않는다.
@@ -181,7 +181,7 @@ live smoke 모드에서만 다음 3개 logical fetch를 수행한다.
 | 068270 | 2026-07-01~08-21                            |
 ---------------------------------------------------------------------
 
-live smoke도 adjusted=True만 허용하며, 결과는 target production path가 아닌
+live smoke도 adjusted=True만 허용하며, 결과는 target 운영 경로가 아닌
 temporary directory에 저장한다. 외부 PyKRX 장애나 empty/error는 성공으로
 위장하지 않고 `BLOCKED_EXTERNAL_PYKRX_UNAVAILABLE`로 기록한다.
 
@@ -190,15 +190,15 @@ provider/legacy/common row 수, provider-only/legacy-only coverage, date mismatc
 open/high/low/close mismatch를 분리한다. Store round-trip artifact
 `offline_parity.csv`와 의미를 혼동하지 않는다.
 
-7. Production 경계
+7. 운영 경계
 ----------------------------------------------------------------------
 
 이번 phase에서 MarketDataRepository는 AdjustedPriceStore를 자동 사용하지 않는다.
-기존 PyKrxDataProvider, ParquetCache, repository 및 분석/report consumer의
+기존 PyKrxDataProvider, ParquetCache, repository 및 분석/report 사용 코드의
 behavioral diff는 0이어야 한다. 향후 `MarketDataRepositoryV2`가
 `AdjustedPriceStore + KRXRawStockStore`를 `(ticker, date)`로 join한다.
 
-8. 검증 artifact
+8. 검증 artifact(산출물)
 ----------------------------------------------------------------------
 
 `artifacts/data/adjusted_price_store/v01/`에 metrics/provenance만 기록한다.
@@ -213,7 +213,7 @@ behavioral diff는 0이어야 한다. 향후 `MarketDataRepositoryV2`가
 - `write_integrity_summary.json`
 - `adjusted_price_store_recommendation.md`
 
-validation parquet, sample stock cache, large historical price file는 commit하지
+validation parquet, sample stock cache, large 과거 가격 파일은 commit하지
 않는다. artifact 내부 `end_head`는 null로 유지하고 실제 END SHA는 completion
 report에만 기록한다.
 

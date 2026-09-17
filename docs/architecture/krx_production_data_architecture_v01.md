@@ -5,19 +5,19 @@ krx_production_data_architecture_v01.md
 상태
 ----------------------------------------------------------------------
 
-이 문서는 production data authority, logical store, Repository V2 target,
-PIT/provenance, data health 계약을 고정한다. 이번 단계의 최종 상태는
+이 문서는 운영 데이터 기준, 논리 저장소, Repository V2 대상,
+PIT/계보, 데이터 상태 계약을 고정한다. 이번 단계의 최종 상태는
 `READY_FOR_ARCHITECT_KRX_PRODUCTION_DATA_ARCHITECTURE_V01_FIX03_REVIEW`이며,
 Architect 승인 전에는 `CLOSED`로 선언하지 않는다.
 
 현재 구현 경계
 ----------------------------------------------------------------------
 
-위 상태와 아래 FIX03 범위·migration 표는 해당 architecture phase의 snapshot이다.
-현재 adjusted OHLC authority는 Naver direct date-range (`requestType=1`)와
-`AdjustedPriceStore V02`이며, production Stock Report와 Pattern A scanner는
-`build_production_repository_v2`를 통해 Repository V2 production wiring을 사용한다.
-Pattern A production scanner의 market-index 기본 경로는
+위 상태와 아래 FIX03 범위·전환 표는 해당 architecture phase의 스냅샷이다.
+현재 수정주가 OHLC 기준 원천은 Naver direct date-range (`requestType=1`)와
+`AdjustedPriceStore V02`이며, 운영 Stock Report와 Pattern A scanner는
+`build_production_repository_v2`를 통해 Repository V2 운영 연결을 사용한다.
+Pattern A 운영 scanner의 market-index 기본 경로는
 `data/market/index/v01`의 `IndexStore(MARKET_INDEX)`이며, 과거 parity artifact는
 비교 증적으로만 유지된다. 따라서 아래의 “후속 phase”, “개념 target”, legacy
 consumer 문구는 이 문서가 작성된 당시의 상태로 읽는다.
@@ -26,23 +26,23 @@ consumer 문구는 이 문서가 작성된 당시의 상태로 읽는다.
 ----------------------------------------------------------------------
 
 - authority와 source semantics를 machine-readable contract로 고정한다.
-- raw/adjusted/master/index/membership/fundamentals/dirty-state store 역할을 분리한다.
+- 원천/수정주가/master/index/구성 종목/fundamentals/dirty-state store 역할을 분리한다.
 - 기존 `data/raw/stocks/<ticker>.parquet`는 `LEGACY_COMPOSITE_STOCK_CACHE`로 분류한다.
-- Repository V2의 adjusted OHLC + raw ancillary join semantics를 고정한다.
+- Repository V2의 수정주가 OHLC + 원천 ancillary 결합 의미를 고정한다.
 - 모든 time-aware layer의 PIT/as_of 및 provenance 필드를 정의한다.
 - Operations Dashboard가 소비할 health/status contract를 정의한다.
 - 오프라인 static validator와 contract tests로 계약을 검증한다.
 - 실제 raw schema와 request/mapping-derived provenance를 구분한다.
 - StockMaster raw fact, canonical market, instrument classification의 경계를 구분한다.
 - KRX `IDX_CLSS` source class와 logical index family를 분리한다.
-- 현재 legacy runtime의 `artifacts/` 소비를 debt registry로 추적한다.
+- 현재 legacy 실행 시점의 `artifacts/` 소비를 debt registry로 추적한다.
 
 이번 단계에서 하지 않는 것
 ----------------------------------------------------------------------
 
 - KRX Open API, PyKRX, OpenDART 네트워크 호출
-- production fetch provider 전환
-- historical backfill 또는 대량 parquet 생성
+- 운영 fetch 데이터 제공자 전환
+- 과거 데이터 백필 또는 대량 parquet 생성
 - 기존 stock cache rewrite/move/delete/bulk rename
 - custom corporate-action adjustment engine
 - market index source 전환
@@ -57,14 +57,14 @@ Machine-readable 원본은
 `src/trend_scanner/data/source_contracts.py`의 `AUTHORITY_FIELDS`다.
 
 ---------------------------------------------------------------------
-| 데이터 의미                  | 현재/목표 authority                         |
+| 데이터 의미                  | 현재/목표 기준                             |
 ---------------------------------------------------------------------
 | raw OHLC                    | KRX Open API `/sto/stk_bydd_trd`,        |
 |                             | `/sto/ksq_bydd_trd`                       |
 | volume/trading_value        | KRX Open API raw                         |
 | market_cap/listed_shares    | KRX Open API raw daily                   |
-| adjusted OHLC               | Naver direct date-range (`requestType=1`) |
-| adjusted volume              | NONE; 제공한다고 선언하지 않음           |
+| 수정주가 OHLC               | Naver direct date-range (`requestType=1`) |
+| 수정주가 거래량              | NONE; 제공한다고 선언하지 않음           |
 | stock master raw facts     | KRX Basic Info + request basDd          |
 | stock master canonical market | `normalize_krx_market(raw_market)`    |
 | instrument asset type      | InstrumentMetadataResolver/formal product-master classification |
@@ -75,7 +75,7 @@ Machine-readable 원본은
 | foreign/institution flow    | PyKRX Foreign Flow                      |
 ---------------------------------------------------------------------
 
-raw와 adjusted의 의미는 절대 합쳐서 하나의 authority로 표현하지 않는다.
+원천과 수정주가의 의미는 절대 합쳐서 하나의 기준으로 표현하지 않는다.
 AdjustedPriceStore는 OHLC만 소유하고 volume, trading_value, market_cap,
 listed_shares를 저장하지 않는다.
 
@@ -125,14 +125,14 @@ Native sector index response의 raw identity는
 ---------------------------------------------------------------------
 | Store                         | 핵심 소유권                           |
 ---------------------------------------------------------------------
-| KRXRawStockStore              | unadjusted OHLC + raw ancillary       |
-| AdjustedPriceStore            | adjusted OHLC only; schema `ADJUSTED_PRICE_V02` / store `ADJUSTED_PRICE_STORE_V02` |
+| KRXRawStockStore              | 미수정 OHLC + 원천 ancillary              |
+| AdjustedPriceStore            | 수정주가 OHLC only; schema `ADJUSTED_PRICE_V02` / store `ADJUSTED_PRICE_STORE_V02` |
 | StockMasterStore              | as_of 포함 PIT raw/canonical master; final asset_type 제외 |
 | InstrumentClassificationStore| PIT asset_type/applicability + provenance |
 | IndexStore                    | market/native-sector/taxonomy family; key=(family,index_code) |
 | SectorMembershipStore         | effective_date 기반 PIT membership   |
 | FundamentalsStore             | OpenDART reported facts              |
-| CorporateActionStateStore     | adjusted cache dirty/refresh state   |
+| CorporateActionStateStore     | 수정주가 cache dirty/refresh state      |
 ---------------------------------------------------------------------
 
 FIX03 당시에는 protocol/dataclass 수준의 계약만 정의했다. 실제 모든 store의
@@ -157,7 +157,7 @@ layer를 사용해야 하며, consumer가 `KIND_STKCERT_TP_NM`, `SECUGRP_NM`, `S
 4. Legacy composite cache
 ----------------------------------------------------------------------
 
-현재 `data/raw/stocks/<ticker>.parquet`는 PyKRX adjusted OHLC와 raw volume,
+현재 `data/raw/stocks/<ticker>.parquet`는 PyKRX 수정주가 OHLC와 원천 volume,
 raw trading_value가 결합된 기존 소비자 호환 캐시다. 이 파일을
 `KRXRawStockStore`라고 부르지 않는다.
 
@@ -169,11 +169,11 @@ FIX03 당시 Pattern A, FastCore, Julia 등 기존 소비자는 당분간 legacy
 5. Repository V2
 ----------------------------------------------------------------------
 
-FIX03 당시 문서상 개념 target은
+FIX03 당시 문서상 개념 대상은
 `MarketDataRepositoryV2(adjusted_price_store, raw_stock_store, ...)`였다.
 
-- `get_daily()`의 open/high/low/close는 ADJUSTED
-- `get_daily()`의 volume/trading_value는 RAW
+- `get_daily()`의 open/high/low/close는 수정주가
+- `get_daily()`의 volume/trading_value는 원천
 - join key는 `(ticker, date)`
 - join은 `INNER_CONSISTENT_TRADING_SESSION_JOIN`
 - 한쪽 layer가 없으면 `DATA_UNAVAILABLE` 또는 명시적 오류
@@ -182,7 +182,7 @@ FIX03 당시 문서상 개념 target은
   `get_stock_snapshot()` 같은 별도 access contract로 노출
 
 주봉/월봉은 authoritative source가 아니며, Repository daily output에서 파생한다.
-가격은 adjusted OHLC, volume/trading_value는 raw daily sum을 사용한다.
+가격은 수정주가 OHLC, volume/trading_value는 원천 일별 합계를 사용한다.
 
 6. Corporate action 및 PIT
 ----------------------------------------------------------------------
@@ -190,9 +190,9 @@ FIX03 당시 문서상 개념 target은
 custom adjustment engine은 이 phase에 없다. `LIST_SHRS` 변화를 primary dirty
 signal로 사용하고 `PARVAL` 변화는 강한 corroboration, raw OHLC discontinuity와
 metadata 변화는 secondary evidence로 정의한다. detector는 oracle이 아니라
-adjusted cache refresh 필요성 신호다.
+수정주가 cache refresh 필요성 신호다.
 
-raw history는 immutable authority로 취급하고, adjusted history는 corporate
+원천 이력은 immutable authority로 취급하고, 수정주가 이력은 corporate
 action 이후 과거 값이 변할 수 있으므로 mutable refresh state를 별도로 둔다.
 dirty scope는 ticker-specific이며 전체 universe refresh를 기본값으로 하지 않는다.
 
@@ -222,12 +222,12 @@ schema에 존재해야 하며, request/mapping-derived field는 `source_field=nu
 `(owner_store, target_field)`다.
 
 TARGET ARCHITECTURE RULE:
-새 production Store/Repository는 `artifacts/`를 runtime source로 사용하지 않는다.
+새 운영 Store/Repository는 `artifacts/`를 실행 시점 원천으로 사용하지 않는다.
 
-현재 adjusted-price runtime authority는 package-owned
-`ADJUSTED_PRICE_AUTHORITY_CONTRACT`의 Naver direct date-range adjusted source다.
+현재 수정주가 실행 시점 기준 원천은 package-owned
+`ADJUSTED_PRICE_AUTHORITY_CONTRACT`의 Naver direct date-range 수정주가 원천이다.
 `NaverDirectAdjustedPriceDataProvider`가 `AdjustedPriceStore V02`에 현재 authoritative
-write를 수행하며, Closure V02 파일은 offline audit evidence로만 사용한다. 기존
+write를 수행하며, Closure V02 파일은 offline 감사 근거로만 사용한다. 기존
 `ADJUSTED_PRICE_V01`/PyKRX cache는 legacy compatibility 또는 validation comparator로
 읽을 수 있지만 current authority가 아니다.
 
@@ -320,11 +320,11 @@ KRX/PyKRX/OpenDART 네트워크 요청을 수행하지 않는다.
 ----------------------------------------------------------------------
 
 - ADR-01 KRX raw authority
-- ADR-02 historical PyKRX adjusted OHLC authority (legacy/comparator)
+- ADR-02 과거 PyKRX 수정주가 OHLC 기준 원천 (legacy/comparator)
 - ADR-03 raw ancillary ownership
 - ADR-04 legacy composite cache classification
 - ADR-05 Repository join semantics
-- ADR-06 adjusted historical mutability
+- ADR-06 수정주가 과거 이력 변경 가능성
 - ADR-07 corporate-action dirty policy
 - ADR-08 endpoint-specific identifier semantics
 - ADR-09 KRX `SECT_TP_NM` non-sector rule

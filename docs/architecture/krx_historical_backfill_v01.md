@@ -14,12 +14,12 @@ KRX Open API의 일별매매정보를 조정하지 않은 raw authority로 보�
   `KrxOpenApiClient`와 `LocalKrxOpenApiQuota`로 호출한다.
 - `OutBlock_1`의 `BAS_DD`, `ISU_CD`, OHLC, 거래량/거래대금/시가총액/LIST_SHRS를
   frozen `KRX_RAW_STOCK_V01` schema로 매핑한다.
-- raw OHLC 보정, adjusted 계산, phantom filtering, instrument filtering,
-  Basic Info 일별 호출, PARVAL backfill, consumer migration은 수행하지 않는다.
-- historical LIST_SHRS를 `CorporateActionStateStore`에 replay하거나 DIRTY refresh를
+- raw OHLC 보정, 수정주가 계산, phantom filtering, instrument filtering,
+  Basic Info 일별 호출, PARVAL 백필, 사용 코드 전환은 수행하지 않는다.
+- 과거 LIST_SHRS를 `CorporateActionStateStore`에 replay하거나 DIRTY refresh를
   발생시키지 않는다.
 
-원천 provider 계약
+원천 데이터 제공자 계약
 ----------------------------------------------------------------------
 
 physical columns는 정확히 다음 순서다.
@@ -72,7 +72,7 @@ candidate date는 `pd.bdate_range()`의 평일 scheduler일 뿐 KRX trading cale
 quota exhaustion은 기존 valid partition을 보존한 채 `BACKFILL_PAUSED_TASK_BUDGET`
 또는 `BACKFILL_PAUSED_QUOTA`로 종료하고 다음 invocation에서 resume한다.
 
-production 목표
+운영 목표
 ----------------------------------------------------------------------
 
 V01 target은 2010-01-04부터 2026-08-21까지다. 완료 gate는 각 weekday candidate가

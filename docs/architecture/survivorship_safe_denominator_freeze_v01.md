@@ -134,7 +134,7 @@ KOSDAQ에서 KOSPI로 이동한 22개 cross-market company의 정확한 집합�
 `BLOCKED_UNION_MISMATCH`). 두 결과가 같은 순회(Section 4)에서 나오므로
 불일치는 예상 가능한 edge case가 아니라 파생 로직의 실제 bug를 뜻한다.
 
-## 7. Alpha membership과 adjusted-price eligibility — 별개의 질문
+## 7. Alpha 구성 종목과 수정주가 적격성 — 별개의 질문
 
 23개의 alphanumeric identifier ticker(예: `0008Z0`, `0009K0`, `0010F0` 형태)는
 정상적인 historical COMMON identity로서 Population Universe에 포함된다. 모두
@@ -147,11 +147,11 @@ KRX의 alphanumeric ticker 발행 규칙에 따라 도입된 현재 active commo
 **제외된다**(intersection count = 0).
 
 이 정상적인 alphanumeric COMMON identifier에 대해 `PyKRX adjusted=True`가
-실제로 adjusted OHLC를 제공할 수 있는지는 **별도로 검증되지 않은** 질문이다.
+실제로 수정주가 OHLC를 제공할 수 있는지는 **별도로 검증되지 않은** 질문이다.
 이 동결은 이를 테스트하지 않으며, source eligibility가 불명확하다는 이유로
 alpha identity를 제외하지 않는다. 여기서 alpha membership을 조용히 누락하면
 실제로 common stock이었는지와 무관한 이유로 historical universe를 축소하는
-survivorship 인접 bug가 된다. adjusted-price source eligibility는
+survivorship 인접 bug가 된다. 수정주가 원천 적격성은
 `ADJUSTED_PRICE_STORE_BOUNDED_LIVE_PILOT_V01`로 명시적으로 미룬다.
 
 ## 8. 미래 사건 누출
@@ -165,8 +165,8 @@ survivorship 인접 bug가 된다. adjusted-price source eligibility는
 
 ## 9. Consumer가 자체 universe를 계산하지 않는다
 
-Historical consumer(backtest engine, market-breadth calculator)는 각자 보유한
-"current" data source에서 ticker 목록을 파생하지 말고 이 동결의 artifact를
+과거 사용 코드(backtest engine, market-breadth calculator)는 각자 보유한
+"current" 데이터 원천에서 ticker 목록을 파생하지 말고 이 동결의 artifact(산출물)를
 로드해야 한다. Consumer별 재계산은 어떤 과거 날짜에 survivorship-bias 보호를
 적용할지 서로 달라지는 위험을 만든다.
 
@@ -184,12 +184,12 @@ Historical consumer(backtest engine, market-breadth calculator)는 각자 보유
 
 Loader API (`src/trend_scanner/universe/survivorship_safe_denominator_freeze.py`):
 
-- `load_historical_common_population(path=...)` — Population Universe record.
-- `load_pit_common_intervals(path=...)` — canonical COMMON interval record.
+- `load_historical_common_population(path=...)` — Population Universe record 목록.
+- `load_pit_common_intervals(path=...)` — canonical COMMON interval record 목록.
 - `get_common_universe_as_of(date, market=None, *, intervals=None)` —
   정확히 동결된 거래일 기준의 identity-aware COMMON 집합을 반환한다.
   Fail-closed: 동결 달력 범위 밖 날짜나 비거래일이면 `FreezeContractError`를
-  발생시키며, 가장 가까운 거래일이나 current universe로 fallback하지 않는다.
+  발생시키며, 가장 가까운 거래일이나 현재 전체 집합으로 fallback하지 않는다.
 
 AdjustedPriceStore/FastCore/Julia/Market Breadth를 이 loader로 실제 전환하는
 작업은 이 freeze 범위 밖이다(`ADJUSTED_PRICE_STORE_BOUNDED_LIVE_PILOT_V01` 및

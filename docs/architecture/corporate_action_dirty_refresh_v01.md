@@ -3,7 +3,7 @@
 상태
 ----------------------------------------------------------------------
 
-이 문서는 adjusted history가 authority 변화로 stale일 가능성이 있을 때
+이 문서는 수정주가 이력이 기준 원천 변화로 오래된 상태가 될 가능성이 있을 때
 이를 감지하고 안전하게 full refresh하는 primitive 계약을 정의한다.
 이번 phase의 최종 상태는
 `READY_FOR_ARCHITECT_CORPORATE_ACTION_DIRTY_REFRESH_V01_REVIEW`이며,
@@ -14,11 +14,11 @@ Architect 승인 전에는 `CORPORATE_ACTION_DIRTY_REFRESH_V01 = CLOSED`로
 ----------------------------------------------------------------------
 
 이 문서의 V01 상태와 PyKRX `adjusted=True` 표기는 dirty-refresh primitive를
-검증하던 당시의 역사적 provider 경계다. 현재 adjusted OHLC authority는
+검증하던 당시의 과거 데이터 제공자 경계다. 현재 수정주가 OHLC 기준 원천은
 `NaverDirectAdjustedPriceDataProvider`의 Naver direct date-range
 (`requestType=1`)와 `AdjustedPriceStore V02`다. 이 문서의
 `LIST_SHRS`/`PARVAL` dirty semantics와 상태 전이 계약은 현재 범위로
-유지하되, V01 provider 표기를 현재 production source로 읽지 않는다.
+유지하되, V01 데이터 제공자 표기를 현재 운영 원천으로 읽지 않는다.
 
 범위와 비범위
 ----------------------------------------------------------------------
@@ -29,7 +29,7 @@ Architect 승인 전에는 `CORPORATE_ACTION_DIRTY_REFRESH_V01 = CLOSED`로
 - `CorporateActionRefreshService`는 `AdjustedPriceDataProvider`와
   `AdjustedPriceStore`를 주입받아 dirty ticker의 retained full history를 교체한다.
 - 기존 `AdjustedPriceStore`가 없는 ticker는 initial backfill하지 않는다.
-- KRX raw fetch, historical backfill, production consumer 전환, custom adjustment
+- KRX raw fetch, 과거 데이터 백필, 운영 사용 코드 전환, custom adjustment
   formula와 event taxonomy는 다음 phase 또는 별도 범위다.
 
 1. Detector 계약
@@ -69,8 +69,8 @@ event type을 출력하거나 OHLC를 직접 조정하지 않는다.
 2. 상태 저장소 계약
 ----------------------------------------------------------------------
 
-runtime state의 기본 경로는 `data/market/state/corporate_action.sqlite3`다.
-`artifacts/`에는 runtime database를 저장하지 않는다. current-state의 핵심
+실행 시점 상태의 기본 경로는 `data/market/state/corporate_action.sqlite3`다.
+`artifacts/`에는 실행 시점 database를 저장하지 않는다. 현재 상태의 핵심
 필드는 다음과 같다.
 
 `ticker`, `as_of`, `status`, `dirty_reason`, `last_success_at`,
@@ -99,7 +99,7 @@ transition log를 수행하며 persisted `as_of`는 절대 감소하지 않는�
 새 authority observation은 `OBSERVATION_DURING_REFRESH`로 fail closed하고 state row를
 변경하지 않는다. refresh 종료 후 caller가 observation을 재제출한다.
 
-관찰값을 기록하는 canonical production entrypoint는 `evaluate_and_record(snapshot)`다.
+관찰값을 기록하는 canonical 운영 진입점은 `evaluate_and_record(snapshot)`다.
 기존 호환성을 위해 `record_observation(snapshot, decision)`을 유지하더라도
 `CorporateActionDecision`은 persisted state를 직접 갱신하는 authority가 아니다.
 public method는 transaction 안에서 현재 persisted snapshot과 incoming snapshot으로
@@ -124,7 +124,7 @@ CLEAN, fake DIRTY 또는 dirty reason을 주입해 state를 우회할 수 없다
 3) metadata `requested_start`를 full-history 시작점으로 사용하고 없으면
    `actual_date_min` fallback
 4) caller의 `refresh_end`를 사용하되 기존 `actual_date_max`보다 이전이면 거부
-5) adjusted=True provider fetch
+5) adjusted=True 데이터 제공자 fetch
 6) typed empty, schema, OHLC 검증
 7) 기존 모든 trading date가 새 frame에 존재하는지 subset 검증
 8) new actual min <= old actual min, new actual max >= old actual max 검증
@@ -148,12 +148,12 @@ process crash로 REFRESHING이 남으면 다음 실행의 explicit recovery가 s
 REFRESHING을 `INTERRUPTED_REFRESH` 사유의 FAILED로 전환한다. FAILED는 caller가
 다시 claim하여 retry할 수 있지만 service 내부 무한 retry는 수행하지 않는다.
 
-5. Authority와 production boundary
+5. 기준과 운영 경계
 ----------------------------------------------------------------------
 
-V01 phase의 adjusted OHLC authority는 `PyKRX adjusted=True`였다. 이번 phase는
+V01 phase의 수정주가 OHLC 기준 원천은 `PyKRX adjusted=True`였다. 이번 phase는
 `LIST_SHRS`/`PARVAL` 값을 입력으로 받는 순수 dirty primitive만 구현하며 KRX
-Open API, OpenDART, legacy cache, production consumer를 변경하지 않는다.
+Open API, OpenDART, legacy cache, 운영 사용 코드를 변경하지 않는다.
 `source_contracts.py`, `adjusted_price_provider.py`, `adjusted_price_store.py`도
 frozen architecture 파일로 재수정하지 않는다.
 
