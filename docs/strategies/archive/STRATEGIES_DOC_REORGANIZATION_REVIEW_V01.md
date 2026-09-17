@@ -56,21 +56,21 @@
 | `julia/validation_plan_v01.md` | `ARCHIVE` | 현재 결정 업데이트가 포함되어도 문서의 본질은 동결된 Stage 4 사전 검증 계획과 역사적 실행 조건이다. 현재 상태 안내는 `julia/README.md`가 담당하므로 archive한다. |
 | `julia/proxy_market_cap_v01.md` | `ARCHIVE` | 공식 PIT가 아닌 예상 시가총액을 사용한 비공식 실험이다. 공식 결과로 유지하지 않되 proxy 오차·위험 분석의 고유 기록은 보존한다. |
 
-## 7. 이동 완료 및 후속 작업 제안
+## 7. 최종 마감 상태
 
-ARCHIVE 3개 이동을 완료했다. 실제 위치는 다음과 같다.
+- 최종 분류: `KEEP = 3`, `ARCHIVE = 3`, `DELETE_CANDIDATE = 0`
+- Julia 역사 문서 3개 archive 이동 완료
+- 이동으로 깨진 실행 코드·테스트 경로 보정 완료
+- Pattern A FAST 공통조건 archive 경로 보정 완료
+- 문서 재배치 후 V2↔Julia execution contract의 문서 경로/SHA 재동결 완료
+- KEEP 3개 현재성·가독성 정리 완료
+- 백테스트 시간 운영 원칙 보강 완료
+- Julia 13·14단계 사람이 읽는 상태값을 `해당 없음`으로 정리
+- 최종 live 문서 직접 검수 및 현재·역사 경계 확인 완료
+- broken link 0건
 
-1. `julia/archive/research/v00.md`
-2. `julia/archive/validation/validation_plan_v01.md`
-3. `julia/archive/research/proxy_market_cap_v01.md`
-
-다음 단계에서는 KEEP 문서 3개(`strategies/README.md`, `strategy_lifecycle.md`,
-`julia/README.md`)를 다시 읽고 현재/역사 경계를 최소 정리한다. 삭제 후보는
-현재 제안하지 않는다.
-
-분류 단계에서는 위 이동·삭제·본문 수정·링크 수정·코드·테스트·백테스트·외부
-API 호출을 수행하지 않았으며, 후속 실제 이동 단계에서는 확정된 ARCHIVE 3개와
-필요한 live 링크 보정만 수행했다.
+분류·문서 정리·경로 보정 과정에서 전략 규칙, 결과 artifact, 백테스트 및 외부
+API 호출은 변경하거나 실행하지 않았다.
 
 ## 8. 셀프 리뷰
 
