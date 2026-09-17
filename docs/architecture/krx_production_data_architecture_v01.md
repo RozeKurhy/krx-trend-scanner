@@ -2,7 +2,146 @@ krx_production_data_architecture_v01.md
 
 # KRX 운영 데이터 아키텍처 (KRX Production Data Architecture v01)
 
-상태
+## 1. 문서 역할
+
+이 문서는 현재 KRX Trend Scanner의 운영 데이터 아키텍처 전체 기준이다.
+현재 운영 구조와 실제 사용 경로를 앞부분에 두고, 세부 저장소·원천·PIT
+계약은 하위 문서로 연결한다. FIX03 당시의 설계·전환·검증 상태는 문서 뒤쪽
+`FIX03 당시 설계·전환 역사 기록`에 보존하며 현재 상태로 해석하지 않는다.
+
+## 2. 현재 운영 아키텍처 한눈에 보기
+
+현재 데이터 흐름은 다음과 같다.
+
+```text
+Naver direct date-range 수정주가
+    -> AdjustedPriceStore V02
+
+KRX Open API 원천 일별 데이터
+    -> KrxRawStockStore
+
+AdjustedPriceStore V02 + KrxRawStockStore
+    -> MarketDataRepositoryV2
+    -> Stock Report / Pattern A 운영 사용 코드
+
+시장·업종 지수
+    -> data/market/index/v01의 IndexStore(MARKET_INDEX)
+
+종목 메타데이터·자산 유형
+    -> InstrumentMetadataResolver
+    -> data/reference/krx_instrument_metadata.parquet
+
+업종 구성 종목
+    -> SectorMembershipStore
+
+펀더멘털
+    -> OpenDART
+```
+
+Stock Report와 Pattern A 운영 scanner는 `build_production_repository_v2`를
+통해 현재 Repository V2 운영 연결을 사용한다. Pattern A의 시장 대표지수
+기본 경로는 `IndexStore(MARKET_INDEX)`이며 과거 parity 산출물은 비교 증적으로만
+남는다. `InstrumentMetadataResolver`의 운영 실행 시점은 로컬 산출물만 읽고
+네트워크를 호출하지 않는다.
+
+## 3. 현재 데이터 기준
+
+현재 운영에서 사용하는 원천과 저장·사용 경로는 다음과 같다. 과거 목표 상태는
+이 표에 섞지 않는다.
+
+| 데이터 의미 | 현재 실제 기준 원천 | 저장·사용 경로 |
+|---|---|---|
+| 수정주가 OHLC | Naver direct date-range (`requestType=1`), `ADJUSTED` | `AdjustedPriceStore V02` → `MarketDataRepositoryV2` |
+| 원천 OHLC | KRX Open API `/sto/stk_bydd_trd`, `/sto/ksq_bydd_trd`, `RAW` | `KrxRawStockStore` → `MarketDataRepositoryV2` |
+| 거래량·거래대금 | KRX Open API 원천 일별 데이터, `RAW` | `KrxRawStockStore`의 raw ancillary |
+| 시가총액·상장주식수 | KRX Open API 원천 일별 데이터 | `KrxRawStockStore`의 raw ancillary 및 snapshot 계약 |
+| 종목 메타데이터·자산 유형 | KRX MDC 공식 원천으로 생성된 로컬 PIT 산출물 | `InstrumentMetadataResolver` |
+| 시장 대표지수 | `data/market/index/v01`의 현재 `IndexStore(MARKET_INDEX)` 경로 | Pattern A 운영 scanner |
+| native 업종지수 | KRX native sector index 원천 | `IndexStore`의 `NATIVE_SECTOR_INDEX` 계열 |
+| 업종 구성 종목 | KRX Data Marketplace 공식 구성 종목 CSV의 승인된 exact-date snapshot | `SectorMembershipStore` |
+| 펀더멘털 | OpenDART 보고 사실 | fundamentals 계층 |
+| 외국인·기관 수급 | PyKRX Foreign Flow 원천을 사용하는 feature 계산 경로 | scanner·Stock Report feature |
+
+수정주가와 원천 데이터의 의미는 하나의 기준으로 합치지 않는다. `AdjustedPriceStore`
+는 OHLC만 소유하고 volume, trading_value, market_cap, listed_shares를 저장하지
+않는다. 공식 의미 토큰은 `ADJUSTED`와 `RAW`를 그대로 보존한다.
+
+## 4. 현재 핵심 저장소와 역할
+
+| 구성요소 | 현재 운영 역할 |
+|---|---|
+| `AdjustedPriceStore V02` | Naver direct date-range 기반 수정주가 OHLC 저장소 |
+| `KrxRawStockStore` | KRX 원천 OHLC와 거래량·거래대금·시가총액·상장주식수 보관 |
+| `MarketDataRepositoryV2` | 두 저장소를 `(ticker, date)`로 결합하고 세션 불일치 시 fail-closed |
+| `IndexStore` | 시장·native 업종·taxonomy 지수를 family와 표준 key로 제공 |
+| `InstrumentMetadataResolver` | 종목 메타데이터와 PIT 자산 유형을 로컬 산출물에서 결정 |
+| `SectorMembershipStore` | 기준일별 업종 구성 종목을 PIT snapshot으로 제공 |
+
+`FundamentalsStore`와 `CorporateActionStateStore`의 세부 계약은 기존 권위
+문서에 남기며, 이 문서에서는 현재 운영 흐름에 필요한 역할만 요약한다.
+
+## 5. 현재 운영 데이터 흐름
+
+1. 수정주가 원천은 `NaverDirectAdjustedPriceDataProvider`가
+   `AdjustedPriceStore V02`에 기록한다.
+2. KRX 원천 일별 데이터는 `KrxRawStockStore`에서 raw 의미를 유지한다.
+3. `build_production_repository_v2`가 두 저장소를 `MarketDataRepositoryV2`로
+   연결하고 Stock Report와 Pattern A 운영 사용 코드에 제공한다.
+4. 과거 평가·검증용 `build_repository_v2`가 별도 동결 경계로 유지되는 경우에는
+   운영용 factory와 혼동하지 않는다.
+5. Pattern A 운영 scanner는 `data/market/index/v01`의
+   `IndexStore(MARKET_INDEX)`를 시장 대표지수 경로로 사용한다.
+6. 업종 구성 종목은 승인된 exact-date `SectorMembershipStore` snapshot을
+   사용하며 이전 snapshot carry-forward나 이후 snapshot의 소급 적용을 하지 않는다.
+7. Stock Report의 메타데이터 판단은 `InstrumentMetadataResolver`의 로컬 PIT
+   산출물을 사용하고, 펀더멘털은 OpenDART 계층에서 별도로 제공한다.
+
+## 6. 현재 PIT·계보·fail-closed 핵심 규칙
+
+- `as_of` 또는 `effective_date`보다 미래인 메타데이터·가격·보고 사실을 사용하지 않는다.
+- 수정주가 OHLC는 `ADJUSTED`, 원천 ancillary는 `RAW`로 의미를 분리한다.
+- Repository 결합은 `(ticker, date)`와 거래 세션 의미를 함께 확인하며, 세션 불일치·원천 누락·명시되지 않은 placeholder는 fail-closed한다.
+- `InstrumentMetadataResolver`는 요청 시점 이하의 가장 최신 PIT 행을 고르고, 신뢰 규칙을 충족하지 못하면 자산 유형을 fail-closed한다.
+- 과거 universe는 [생존편향 방지 분모 동결 계약](survivorship_safe_denominator_freeze_v01.md)의 Population Universe와 PIT Common Denominator를 구분해 사용한다.
+- 운영 Store/Repository는 `artifacts/`를 실행 시점 원천으로 사용하지 않는다.
+- 원천·요청 매개변수·정적 매핑·파생값·상태·계보 메타데이터를 provenance에서 구분한다.
+
+세션 투영, placeholder 분류, 메타데이터 신뢰, 분모 동결의 세부 규칙은
+[시장데이터 Repository 계약](market_data_repository_v02.md),
+[종목 메타데이터 권위](instrument_metadata_authority.md),
+[수정주가 저장소 계약](adjusted_price_store_v01.md) 및
+[생존편향 방지 분모 동결](survivorship_safe_denominator_freeze_v01.md)을 따른다.
+
+## 7. 레거시 경계
+
+- [data_layer.md](data_layer.md)는 과거 공용 Data Layer v0.1 기록이며 현재 운영 데이터 레이어가 아니다.
+- `data/raw/stocks/<ticker>.parquet`는 PyKRX 수정주가와 원천 ancillary가 섞인 `LEGACY_COMPOSITE_STOCK_CACHE`다. 이를 `KRXRawStockStore`로 부르지 않는다.
+- 과거 PyKRX 수정주가 경로와 `ADJUSTED_PRICE_V01` cache는 레거시 호환 또는 검증 비교기로만 읽을 수 있으며 현재 수정주가 기준이 아니다.
+- 일부 기존 analytics/report 흐름의 `artifacts/` 소비는 `LEGACY_RUNTIME_DEPENDENCIES`에 migration debt로 추적한다. 이는 현재 운영 Store/Repository의 권위가 아니다.
+
+## 8. 세부 계약 문서 연결
+
+- [시장데이터 Repository V2](market_data_repository_v02.md)
+- [수정주가 저장소](adjusted_price_store_v01.md)
+- [종목 메타데이터 권위](instrument_metadata_authority.md)
+- [생존편향 방지 분모 동결](survivorship_safe_denominator_freeze_v01.md)
+- [KRX 지수 전환](krx_index_migration_v01.md)
+- [Sector RS KRX 전환](sector_rs_krx_migration_v01.md)
+- [과거 시점 snapshot](historical_snapshot.md)
+
+## 9. 현재 문서의 해석 경계
+
+이 문서 앞부분의 1~8절만으로 현재 운영 데이터 흐름과 권위 경계를 파악할 수
+있어야 한다. 아래 10절 이후는 FIX03 당시의 설계·전환·검증을 보존하기 위한
+역사 기록이며, 현재 운영 상태·목표 상태·후속 작업 상태를 새로 선언하는
+부분이 아니다.
+
+## 10. FIX03 당시 설계·전환 역사 기록
+
+이하의 번호와 표현은 FIX03 당시 원문을 보존한 역사 기록이다. 현재 구조와
+섞어 읽지 않으며, 공식 token·수치·당시 판단은 변경하지 않는다.
+
+### 10.1 FIX03 당시 상태
 ----------------------------------------------------------------------
 
 이 문서는 운영 데이터 기준, 논리 저장소, Repository V2 대상,
@@ -10,7 +149,7 @@ PIT/계보, 데이터 상태 계약을 고정한다. 이번 단계의 최종 상
 `READY_FOR_ARCHITECT_KRX_PRODUCTION_DATA_ARCHITECTURE_V01_FIX03_REVIEW`이며,
 Architect 승인 전에는 `CLOSED`로 선언하지 않는다.
 
-현재 구현 경계
+### 10.2 FIX03 당시 구현 경계 기록
 ----------------------------------------------------------------------
 
 위 상태와 아래 FIX03 범위·전환 표는 해당 architecture phase의 스냅샷이다.
@@ -22,7 +161,7 @@ Pattern A 운영 scanner의 market-index 기본 경로는
 비교 증적으로만 유지된다. 따라서 아래의 “후속 phase”, “개념 target”, legacy
 consumer 문구는 이 문서가 작성된 당시의 상태로 읽는다.
 
-이번 단계의 범위
+### 10.3 FIX03 당시 작업 범위
 ----------------------------------------------------------------------
 
 - 기준과 원천 의미를 기계 판독 가능한 계약으로 고정한다.
@@ -37,7 +176,7 @@ consumer 문구는 이 문서가 작성된 당시의 상태로 읽는다.
 - KRX `IDX_CLSS` source class와 logical index family를 분리한다.
 - 현재 legacy 실행 시점의 `artifacts/` 소비를 debt registry로 추적한다.
 
-이번 단계에서 하지 않는 것
+### 10.4 FIX03 당시 제외 범위
 ----------------------------------------------------------------------
 
 - KRX Open API, PyKRX, OpenDART 네트워크 호출
@@ -50,7 +189,7 @@ consumer 문구는 이 문서가 작성된 당시의 상태로 읽는다.
 - Pattern A, FastCore, Julia, RS formula 변경
 - HTML/dashboard UI 구현
 
-1. Authority 매트릭스
+### 10.5 FIX03 당시 Authority 매트릭스
 ----------------------------------------------------------------------
 
 Machine-readable 원본은
@@ -79,7 +218,7 @@ Machine-readable 원본은
 AdjustedPriceStore는 OHLC만 소유하고 volume, trading_value, market_cap,
 listed_shares를 저장하지 않는다.
 
-2. Endpoint 식별자 의미
+### 10.6 FIX03 당시 Endpoint 식별자 의미
 ----------------------------------------------------------------------
 
 `ISU_CD`는 endpoint-qualified field다.
@@ -115,7 +254,7 @@ Native sector index response의 raw identity는
 `KRX_BRANDED_TAXONOMY` 중 logical family다. `IDX_CLSS`는 `source_index_class`로
 보존하며 logical family로 사용하지 않는다. 표준 key는 `(family, index_code)`다.
 
-3. 논리 저장소
+### 10.7 FIX03 당시 논리 저장소
 ----------------------------------------------------------------------
 
 `source_contracts.py`의 `STORE_CONTRACTS`가 다음 8개 store와 schema version을
@@ -154,7 +293,7 @@ Pattern A, FastCore, Stock Report 등 instrument applicability 판단은 이 cla
 layer를 사용해야 하며, consumer가 `KIND_STKCERT_TP_NM`, `SECUGRP_NM`, `SECT_TP_NM`을
 각자 즉석 해석하는 중복 architecture는 금지한다.
 
-4. Legacy composite cache
+### 10.8 FIX03 당시 Legacy composite cache
 ----------------------------------------------------------------------
 
 현재 `data/raw/stocks/<ticker>.parquet`는 PyKRX 수정주가 OHLC와 원천 volume,
@@ -166,7 +305,7 @@ FIX03 당시 Pattern A, FastCore, Julia 등 기존 소비자는 당분간 legacy
 그대로 사용하도록 기록했다. 현재 운영 사용 코드 연결은 위의 현재 구현
 경계에 적은 후속 Repository V2 경로를 따른다.
 
-5. Repository V2
+### 10.9 FIX03 당시 Repository V2 개념 대상
 ----------------------------------------------------------------------
 
 FIX03 당시 문서상 개념 대상은
@@ -184,7 +323,7 @@ FIX03 당시 문서상 개념 대상은
 주봉/월봉은 authoritative source가 아니며, Repository daily output에서 파생한다.
 가격은 수정주가 OHLC, volume/trading_value는 원천 일별 합계를 사용한다.
 
-6. Corporate action 및 PIT
+### 10.10 FIX03 당시 Corporate action 및 PIT
 ----------------------------------------------------------------------
 
 custom adjustment engine은 이 phase에 없다. `LIST_SHRS` 변화를 primary dirty
@@ -200,7 +339,7 @@ dirty scope는 ticker-specific이며 전체 universe refresh를 기본값으로 
 future price, 허용 availability 이전의 report를 사용하지 않는다. 과거 universe는
 당시 master snapshot을 사용해 survivorship bias를 피한다.
 
-7. 계보와 health
+### 10.11 FIX03 당시 계보와 health
 ----------------------------------------------------------------------
 
 persisted dataset metadata 최소 필드:
@@ -244,7 +383,7 @@ layer/source/date/행/ticker/missing/stale/error와
 last success/attempt/message를 공통으로 노출한다. quota observability는
 `usage_date_kst`, `used`, `limit`, `remaining`, `percentage`, `endpoint_usage`다.
 
-8. 전환 상태(Migration state) — FIX03 당시 snapshot
+### 10.12 FIX03 당시 전환 상태(Migration state) snapshot
 ----------------------------------------------------------------------
 
 ---------------------------------------------------------------------
@@ -269,7 +408,7 @@ target store를 별도 기록한다. `STOCK_MASTER_KRX`의 current source는 현
 `STOCK_MASTER_KRX`는 raw/표준 master 경계만 담당하고, asset type 기준은
 `INSTRUMENT_CLASSIFICATION` layer로 분리한다.
 
-Sector RS 구성 종목 기준
+### 10.13 FIX03 당시 Sector RS 구성 종목 기준
 ----------------------------------------------------------------------
 현재 Sector RS 운영 경로의 구성 종목은
 KRX Data Marketplace 공식 지수구성종목 CSV를 수동 로그인 브라우저로 내려받아
@@ -282,7 +421,7 @@ carry-forward하거나 이후 snapshot을 backward apply하지 않는다. Market
 PyKRX 구성 종목 대체 경로도 수행하지 않는다. Naver taxonomy와 live PyKRX 구성 종목은
 현재 구성 종목 기준이 아니다.
 
-10. Foreign Flow 계보와 production diff guard
+### 10.14 FIX03 당시 Foreign Flow 계보와 production diff guard
 ----------------------------------------------------------------------
 
 `src/trend_scanner/flow/foreign_flow.py`는 foreign flow 상위 원천 기준이
@@ -302,7 +441,7 @@ architecture contract tests 및 `artifacts/data/architecture/krx_production_data
 계약/validator의 금지 import 정적 검사 횟수로 서로 다른 지표다. 이 작업에서는
 KRX/PyKRX/OpenDART 네트워크 요청을 수행하지 않는다.
 
-11. 의존성 graph
+### 10.15 FIX03 당시 의존성 graph
 ----------------------------------------------------------------------
 
 `KRX_PRODUCTION_DATA_ARCHITECTURE_V01`
@@ -316,7 +455,7 @@ KRX/PyKRX/OpenDART 네트워크 요청을 수행하지 않는다.
 그래프는 static validator에서 cycle을 검사한다. Repository V2와 AdjustedPriceStore
 사이의 역방향 dependency는 만들지 않는다.
 
-12. ADR 목록
+### 10.16 FIX03 당시 ADR 목록
 ----------------------------------------------------------------------
 
 - ADR-01 KRX raw authority
@@ -340,7 +479,7 @@ KRX/PyKRX/OpenDART 네트워크 요청을 수행하지 않는다.
 - ADR-19 FIX03 logical index family와 `IDX_CLSS` source class 분리
 - ADR-20 FIX03 PIT classification compatibility와 ETF/ETN authority 보존
 
-검증 및 산출물
+### 10.17 FIX03 당시 검증 및 산출물
 ----------------------------------------------------------------------
 
 오프라인 validator:

@@ -1,24 +1,49 @@
-README.md
-
 # 아키텍처 (Architecture)
 
-특정 Pattern에 종속되지 않는 공용 인프라 문서.
+특정 Pattern에 종속되지 않는 공용 인프라 문서의 내비게이션이다. 현재 운영
+기준을 먼저 확인한 뒤 세부 계약과 과거 기록으로 내려간다.
+
+## A. 현재 핵심 아키텍처
+
+현재 운영 구조를 파악할 때는 다음 네 문서를 먼저 읽는다.
+
+| 문서 | 현재 역할 |
+|---|---|
+| [krx_production_data_architecture_v01.md](krx_production_data_architecture_v01.md) | 현재 운영 데이터 아키텍처 전체 기준 |
+| [market_data_repository_v02.md](market_data_repository_v02.md) | 수정주가와 원천 일별 데이터를 결합해 실제 사용 코드에 제공하는 현재 시장데이터 계층 |
+| [instrument_metadata_authority.md](instrument_metadata_authority.md) | 종목 메타데이터·자산 유형·PIT 분류의 현재 기준 |
+| [survivorship_safe_denominator_freeze_v01.md](survivorship_safe_denominator_freeze_v01.md) | 과거 백테스트와 PIT 종목 집합의 생존편향 방지 기준 |
+
+## B. 현재 세부 데이터 계약
+
+위 네 문서의 세부 저장소·원천·전환 계약은 다음 문서에서 확인한다.
+
+| 문서 | 한 줄 역할 |
+|---|---|
+| [adjusted_price_store_v01.md](adjusted_price_store_v01.md) | 수정주가 OHLC 저장소 계약과 무결성 |
+| [corporate_action_dirty_refresh_v01.md](corporate_action_dirty_refresh_v01.md) | 기업행위 변경 감지와 수정주가 갱신 상태 |
+| [krx_historical_backfill_v01.md](krx_historical_backfill_v01.md) | KRX 원천 과거 데이터 백필 계약 |
+| [krx_index_migration_v01.md](krx_index_migration_v01.md) | KOSPI/KOSDAQ 시장 대표지수 원천 경계 |
+| [sector_rs_krx_migration_v01.md](sector_rs_krx_migration_v01.md) | Sector RS 지수와 기준일별 구성 종목 기준 |
+| [historical_snapshot.md](historical_snapshot.md) | 과거 시점 검증과 엄격한 PIT 스냅샷 |
+
+세부 계약의 원문을 이 README에 반복하지 않는다. 각 문서의 현재 상태와
+권위 표기를 따른다.
+
+## C. 과거·보조·검증 문서
+
+다음 문서는 현재 핵심 아키텍처와 같은 급의 운영 기준이 아니라 과거 기록,
+보정 기록, 정보 구조 감사 또는 검증 자료다.
 
 | 문서 | 역할 |
 |---|---|
-| [data_layer.md](data_layer.md) | legacy 공용 데이터 레이어 v0.1 |
-| [krx_production_data_architecture_v01.md](krx_production_data_architecture_v01.md) | 운영 데이터 권위·저장소·PIT 경계 |
-| [adjusted_price_store_v01.md](adjusted_price_store_v01.md) | 수정주가 OHLC 저장소 계약 및 무결성 |
-| [market_data_repository_v02.md](market_data_repository_v02.md) | 수정주가·원천 데이터 읽기 전용 Repository V2 결합 |
-| [historical_snapshot.md](historical_snapshot.md) | 과거 시점 검증 및 엄격한 PIT 기반 |
-| [instrument_metadata_authority.md](instrument_metadata_authority.md) | KRX 종목 메타데이터 권위·계보·신뢰 규칙 |
-| [krx_dual_provider_contract_v01.md](krx_dual_provider_contract_v01.md) | 원천·수정주가 이중 데이터 제공자 경계와 과거 전환 계약 |
-| [krx_historical_backfill_v01.md](krx_historical_backfill_v01.md) | KRX 원천 전체 시장 과거 백필 계약 |
-| [corporate_action_dirty_refresh_v01.md](corporate_action_dirty_refresh_v01.md) | 기업행위 변경 감지·갱신 상태 계약 |
-| [krx_index_migration_v01.md](krx_index_migration_v01.md) | KOSPI/KOSDAQ 시장 대표지수 원천 전환 경계 |
-| [sector_rs_krx_migration_v01.md](sector_rs_krx_migration_v01.md) | native Sector RS 지수·기준일별 구성 종목 기준 |
-| [survivorship_safe_denominator_freeze_v01.md](survivorship_safe_denominator_freeze_v01.md) | 생존편향 방지 PIT 분모 동결 계약 |
-| [errata/krx_identifier_contract_errata_v01.md](errata/krx_identifier_contract_errata_v01.md) | KRX 식별자 계약 보정 overlay |
-| [artifacts/artifacts_information_architecture_audit_v01.md](artifacts/artifacts_information_architecture_audit_v01.md) | 산출물 정보 구조 및 계보 감사 |
-| [validation/](validation/) | 현재 사용하는 아키텍처 검증·테스트 기반 문서 |
-| [archive/validation/](archive/validation/) | KRX 공용 데이터 원천의 과거 검증·조사 기록(cache population, market cap backfill, sector benchmark source investigation 등) |
+| [data_layer.md](data_layer.md) | 과거 공용 데이터 레이어 v0.1 기록이며 현재 운영 데이터 레이어가 아님 |
+| [krx_dual_provider_contract_v01.md](krx_dual_provider_contract_v01.md) | 과거 데이터 제공자 전환 계약 |
+| [errata/krx_identifier_contract_errata_v01.md](errata/krx_identifier_contract_errata_v01.md) | KRX 식별자 계약 보정 기록 |
+| [artifacts/artifacts_information_architecture_audit_v01.md](artifacts/artifacts_information_architecture_audit_v01.md) | 산출물 정보 구조와 계보 감사 |
+| [validation/](validation/) | 아키텍처 검증과 테스트 기반 문서 |
+| [archive/validation/](archive/validation/) | 과거·대체된 KRX 원천 검증과 조사 기록 |
+
+`archive/`와 이 영역의 과거 문서는 현재 운영 권위를 대신하지 않는다. 현재
+무엇을 먼저 읽어야 하는지는 A 영역의 네 문서와 해당 문서의 링크를 기준으로
+판단한다.
