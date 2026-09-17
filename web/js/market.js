@@ -95,11 +95,10 @@
     button.setAttribute("aria-label", label);
     button.title = label;
     button.setAttribute("aria-pressed", String(resolved === "dark"));
-    setText("theme-toggle-label", label);
     const sun = byId("theme-icon-sun");
     const moon = byId("theme-icon-moon");
-    if (sun) sun.hidden = next !== "light";
-    if (moon) moon.hidden = next !== "dark";
+    if (sun) sun.classList.toggle("is-active", resolved === "light");
+    if (moon) moon.classList.toggle("is-active", resolved === "dark");
   }
 
   function initTheme() {
@@ -219,9 +218,7 @@
 
   function renderScope() {
     const scope = ranking.scope;
-    const metricScope = ranking.metric_scope;
-    setText("market-scope", `기준일 ${formatDate(ranking.as_of)} · ${scope.label} ${formatNumber(scope.report_count)}종목 · ${metricScope.label}`);
-    setText("market-metric-scope", metricScope.label);
+    setText("market-scope", `기준일 ${formatDate(ranking.as_of)} · ${scope.label} ${formatNumber(scope.report_count)}종목 · ${ranking.metric_scope.label}`);
   }
 
   function renderControls() {

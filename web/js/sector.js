@@ -96,11 +96,10 @@
     button.setAttribute("aria-label", label);
     button.title = label;
     button.setAttribute("aria-pressed", String(resolved === "dark"));
-    setText("theme-toggle-label", label);
     const sun = byId("theme-icon-sun");
     const moon = byId("theme-icon-moon");
-    if (sun) sun.hidden = next !== "light";
-    if (moon) moon.hidden = next !== "dark";
+    if (sun) sun.classList.toggle("is-active", resolved === "light");
+    if (moon) moon.classList.toggle("is-active", resolved === "dark");
   }
 
   function initTheme() {

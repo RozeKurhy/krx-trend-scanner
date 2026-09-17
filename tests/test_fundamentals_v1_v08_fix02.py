@@ -66,7 +66,7 @@ def test_fix02_keeps_raw_flow_and_uses_the_new_chart_contract():
     assert "Npay 증권" in html
     assert "차트</a>" in html
     assert "전자공시</a>" in html
-    assert "web-02d-window-11" in html
+    assert "web-02d-window-12" in html
     assert "Math.floor(absolute / 1e7)" in js
     assert "return `${sign}${formatNumber(absolute)}원`;" not in js
     assert "naver_chart" in js and "toss_chart" not in js

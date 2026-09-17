@@ -234,16 +234,16 @@ def test_report_frontend_has_safe_states_and_relative_assets():
     css = (ROOT / "web/css/app.css").read_text(encoding="utf-8")
     favicon = (ROOT / "web/favicon.svg").read_text(encoding="utf-8")
 
-    assert 'href="./css/app.css?v=web-ui-density-1"' in html
-    assert 'href="./css/app.css?v=web-ui-density-1"' in index_html
+    assert 'href="./css/app.css?v=web-ui-density-2"' in html
+    assert 'href="./css/app.css?v=web-ui-density-2"' in index_html
     assert 'href="./favicon.svg"' in html
     assert 'href="./favicon.svg"' in index_html
     assert (ROOT / "web/favicon.svg").exists()
     assert '#9f1d2f' in favicon
-    assert 'src="./js/report.js?v=web-02d-window-11"' in html
-    assert 'src="./js/app.js?v=web-fear-fix02-1"' in index_html
-    assert html.count("web-02d-window-11") == 1
-    assert index_html.count("web-ui-density-1") == 1
+    assert 'src="./js/report.js?v=web-02d-window-12"' in html
+    assert 'src="./js/app.js?v=web-fear-fix02-2"' in index_html
+    assert html.count("web-02d-window-12") == 1
+    assert index_html.count("web-ui-density-2") == 1
     assert "web-03a-final-1" not in html
     assert "web-03a-final-1" not in index_html
     assert "web-02a-final-2" not in html
@@ -268,7 +268,10 @@ def test_report_frontend_has_safe_states_and_relative_assets():
     assert html.count('id="naver-link"') == 1
     assert html.count('id="naver-chart-link"') == 1
     assert html.count('id="dart-link"') == 1
-    assert "검색하여 쉽게 핵심 판단" in html
+    assert '<section class="panel report-search-panel" aria-label="종목 검색">' in html
+    assert "class=\"report-search-label\"" not in html
+    assert "검색하여 쉽게 핵심 판단" not in html
+    assert 'class="page-intro"' not in html
     assert "검색 안내" not in html
     assert 'id="report-request-button"' in html
     assert "reportRequest" in js
@@ -285,6 +288,7 @@ def test_report_frontend_has_safe_states_and_relative_assets():
     assert "일치하는 종목이 없습니다." in html
     assert "Math.random" in js
     assert "report_available === true" in js
+    assert "randomSample(available, 20)" in js
     assert 'setHidden("search-no-results", true);' in js
     assert "PATTERN_STEPS" in js
     assert 'id="pattern-card"' in html

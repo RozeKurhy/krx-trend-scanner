@@ -144,8 +144,8 @@ def test_static_frontend_uses_relative_assets_and_required_dom():
     js = (ROOT / "web/js/app.js").read_text(encoding="utf-8")
     css = (ROOT / "web/css/app.css").read_text(encoding="utf-8")
 
-    assert 'href="./css/app.css?v=web-ui-density-1"' in html
-    assert 'src="./js/app.js?v=web-fear-fix02-1"' in html
+    assert 'href="./css/app.css?v=web-ui-density-2"' in html
+    assert 'src="./js/app.js?v=web-fear-fix02-2"' in html
     assert 'const HEALTH_URL = "./data/health.json";' in js
     assert 'href="/css/app.css"' not in html
     assert 'src="/js/app.js"' not in html
@@ -154,6 +154,10 @@ def test_static_frontend_uses_relative_assets_and_required_dom():
     assert 'id="theme-toggle"' in html
     assert 'id="theme-toggle" class="theme-toggle" type="button"' in html
     assert 'aria-label="어둡게 보기"' in html
+    assert 'id="theme-toggle-label"' not in html
+    assert 'id="theme-icon-sun" class="theme-icon" aria-hidden="true" hidden' not in html
+    assert 'id="theme-icon-moon" class="theme-icon" aria-hidden="true"' in html
+    assert 'class="page-intro"' not in html
     assert 'localStorage' in js
     assert 'krx-theme' in html and 'krx-theme' in js
     assert 'prefers-color-scheme: dark' in html and 'prefers-color-scheme: dark' in js
@@ -207,7 +211,7 @@ def test_web_wording_is_neutral_and_keeps_the_existing_data_contract():
     assert "펀더멘탈 데이터 준비 중" in js
     assert "펀더멘탈 데이터 수집 중" not in html
     assert "펀더멘탈 데이터 수집 중" not in js
-    assert "데이터 기준과 작업 상태를 한눈에!" in html
+    assert "데이터 기준과 작업 상태를 한눈에!" not in html
     assert "데이터 기준과 후속 작업 준비 상태를 한눈에!" not in html
     noscript = re.search(r"<noscript>.*?</noscript>", html, flags=re.DOTALL)
     assert noscript is not None
@@ -237,6 +241,9 @@ def test_theme_contract_supports_system_detection_manual_toggle_and_persistence(
     assert 'button.addEventListener("click"' in js
     assert 'const next = resolved === "dark" ? "light" : "dark";' in js
     assert 'const label = next === "dark" ? "어둡게 보기" : "밝게 보기";' in js
+    assert 'sun.classList.toggle("is-active", resolved === "light")' in js
+    assert 'moon.classList.toggle("is-active", resolved === "dark")' in js
+    assert 'setText("theme-toggle-label", label)' not in js
     assert 'aria-pressed' in js
     assert 'media.addEventListener("change", syncWithSystem)' in js
     assert 'media.addListener(syncWithSystem)' in js

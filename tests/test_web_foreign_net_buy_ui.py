@@ -29,11 +29,11 @@ def test_foreign_page_exposes_default_20d_filters_search_and_report_contract():
     css = _read(ROOT / "web/css/app.css")
 
     assert '<title>외인 순매수 · KRX Trend Scanner</title>' in html
-    assert '<h1 id="page-title">외인 순매수</h1>' in html
-    assert '<p class="lede">외국인 사랑을 받는 종목은?</p>' in html
+    assert '<section class="page-intro"' not in html
+    assert 'id="page-title"' not in html
     assert '외국인 누적 순매수대금으로 보는 종목 흐름' not in html
-    assert 'href="./css/app.css?v=web-ui-density-1"' in html
-    assert 'src="./js/foreign.js?v=web-foreign-net-buy-2"' in html
+    assert 'href="./css/app.css?v=web-ui-density-2"' in html
+    assert 'src="./js/foreign.js?v=web-foreign-net-buy-3"' in html
     assert 'data-horizon="1d"' in html and 'data-horizon="5d"' in html
     assert 'data-horizon="10d"' in html and 'data-horizon="20d"' in html and 'data-horizon="60d"' in html
     assert 'data-horizon="20d" aria-pressed="true"' in html

@@ -92,8 +92,8 @@ def test_main_card_is_full_width_between_overall_and_metric_grid():
 def test_detail_page_has_required_summary_chart_and_accessibility_contract():
     html = (ROOT / "web/fear.html").read_text(encoding="utf-8")
     assert "<title>공포 지수 · KRX Trend Scanner</title>" in html
-    assert '<h1 id="page-title">공포 지수</h1>' in html
-    assert "시장 심리의 흐름을 한눈에!" in html
+    assert '<section class="page-intro"' not in html
+    assert 'id="page-title"' not in html
     assert 'id="fear-chart"' in html and 'role="img"' in html
     assert 'id="fear-tooltip"' in html
     assert 'data-fear-range="all"' in html
@@ -149,10 +149,10 @@ def test_fear_pages_use_new_fix02_asset_versions_and_visible_band_alpha():
     fear_html = (ROOT / "web/fear.html").read_text(encoding="utf-8")
     fear_js = (ROOT / "web/js/fear.js").read_text(encoding="utf-8")
     for html in (index_html, fear_html):
-        assert "web-fear-fix02-1" in html
+        assert "web-fear-fix02-2" in html
         assert "web-02c-toss-1" not in html
-    assert 'href="./css/app.css?v=web-ui-density-1"' in index_html
-    assert 'src="./js/app.js?v=web-fear-fix02-1"' in index_html
-    assert 'href="./css/app.css?v=web-ui-density-1"' in fear_html
-    assert 'src="./js/fear.js?v=web-fear-fix02-1"' in fear_html
+    assert 'href="./css/app.css?v=web-ui-density-2"' in index_html
+    assert 'src="./js/app.js?v=web-fear-fix02-2"' in index_html
+    assert 'href="./css/app.css?v=web-ui-density-2"' in fear_html
+    assert 'src="./js/fear.js?v=web-fear-fix02-2"' in fear_html
     assert 'ctx.globalAlpha = band.regime === "UNKNOWN" ? 0.08 : 0.32;' in fear_js

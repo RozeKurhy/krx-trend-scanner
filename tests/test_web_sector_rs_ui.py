@@ -26,10 +26,10 @@ def _load_payload() -> dict:
 def test_sector_page_activates_only_sector_rs_and_exposes_accessible_controls():
     html = _read(SECTOR_PAGE)
 
-    assert 'href="./css/app.css?v=web-ui-density-1"' in html
-    assert 'src="./js/sector.js?v=web-sector-rs-final-1"' in html
-    assert '<h1 id="page-title">섹터 RS</h1>' in html
-    assert '<p class="lede">상대적으로 강한 종목을 한눈에!</p>' in html
+    assert 'href="./css/app.css?v=web-ui-density-2"' in html
+    assert 'src="./js/sector.js?v=web-sector-rs-final-2"' in html
+    assert '<section class="page-intro"' not in html
+    assert 'id="page-title"' not in html
     assert '<a class="ranking-tab" href="./market.html">마켓 RS</a>' in html
     assert '<a class="ranking-tab is-active" href="./sector.html" aria-current="page">섹터 RS</a>' in html
     assert '<span class="ranking-tab" aria-disabled="true">섹터 랭킹 <small>준비 중</small></span>' in html

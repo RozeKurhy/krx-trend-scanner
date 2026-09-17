@@ -20,7 +20,7 @@
       })();
     </script>
     <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="./css/app.css?v=web-ui-density-1">
+    <link rel="stylesheet" href="./css/app.css?v=web-ui-density-2">
   </head>
   <body>
     <a class="skip-link" href="#main-content">본문으로 건너뛰기</a>
@@ -42,24 +42,18 @@
             <span class="nav-item" aria-disabled="true">전략 설명 <small>준비 중</small></span>
           </nav>
           <button id="theme-toggle" class="theme-toggle" type="button" aria-label="어둡게 보기" title="어둡게 보기" aria-pressed="false">
-            <span id="theme-icon-sun" class="theme-icon" aria-hidden="true" hidden>
+            <span id="theme-icon-sun" class="theme-icon" aria-hidden="true">
               <svg viewBox="0 0 24 24" focusable="false"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"></path></svg>
             </span>
             <span id="theme-icon-moon" class="theme-icon" aria-hidden="true">
               <svg viewBox="0 0 24 24" focusable="false"><path d="M20.4 15.4A8.5 8.5 0 0 1 8.6 3.6 8.5 8.5 0 1 0 20.4 15.4Z"></path></svg>
             </span>
-            <span id="theme-toggle-label">어둡게 보기</span>
           </button>
         </div>
       </div>
     </header>
 
     <main id="main-content" class="shell page-content">
-      <section class="page-intro" aria-labelledby="page-title">
-        <h1 id="page-title">마켓 RS</h1>
-        <p class="lede">상대적으로 강한 종목을 한눈에!</p>
-      </section>
-
       <nav class="ranking-tabs" aria-label="랭킹 종류">
         <a class="ranking-tab is-active" href="./market.html" aria-current="page">마켓 RS</a>
         <a class="ranking-tab" href="./sector.html">섹터 RS</a>
@@ -70,17 +64,6 @@
         <span class="ranking-tab" aria-disabled="true">순이익 성장률 <small>준비 중</small></span>
       </nav>
 
-      <section class="panel market-overview" aria-labelledby="market-overview-heading">
-        <div class="panel-heading">
-          <div>
-            <p class="eyebrow">마켓 RS</p>
-            <h2 id="market-overview-heading">전체 보통주 기준 마켓 RS 비교</h2>
-          </div>
-        </div>
-        <p id="market-scope" class="market-scope">기준일 —</p>
-        <p id="market-metric-scope" class="panel-note">마켓 RS는 전체 보통주 기준</p>
-      </section>
-
       <section class="panel market-controls" aria-labelledby="market-controls-heading">
         <div class="market-controls-heading">
           <div>
@@ -88,6 +71,7 @@
             <p id="market-ranking-meta" class="report-search-meta" role="status">랭킹 목록 불러오는 중</p>
           </div>
         </div>
+        <p id="market-scope" class="market-scope">기준일 —</p>
         <div id="horizon-controls" class="market-control-group" role="group" aria-label="랭킹 기간">
           <button class="market-control" type="button" data-horizon="2w" aria-pressed="false">2주</button>
           <button class="market-control is-active" type="button" data-horizon="1m" aria-pressed="true">1개월</button>
@@ -113,6 +97,6 @@
       </section>
     </main>
 
-    <script src="./js/market.js?v=web-02c-toss-1" defer></script>
+    <script src="./js/market.js?v=web-02c-toss-2" defer></script>
   </body>
 </html>

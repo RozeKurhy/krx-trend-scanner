@@ -96,21 +96,21 @@ def test_strategy_page_is_connected_and_uses_page_specific_cache_version():
     strategy_js = (ROOT / "web/js/strategy.js").read_text(encoding="utf-8")
     css = (ROOT / "web/css/app.css").read_text(encoding="utf-8")
 
-    assert 'href="./css/app.css?v=web-ui-density-1"' in strategy_html
-    assert 'href="./css/app.css?v=web-ui-density-1"' in index_html
-    assert 'href="./css/app.css?v=web-ui-density-1"' in report_html
+    assert 'href="./css/app.css?v=web-ui-density-2"' in strategy_html
+    assert 'href="./css/app.css?v=web-ui-density-2"' in index_html
+    assert 'href="./css/app.css?v=web-ui-density-2"' in report_html
     for html in (index_html, report_html):
         assert "web-02a-final-2" not in html
         assert "web-03a-final-1" not in html
-    assert 'src="./js/strategy.js?v=web-02c-toss-1"' in strategy_html
-    assert 'src="./js/app.js?v=web-fear-fix02-1"' in index_html
-    assert 'src="./js/report.js?v=web-02d-window-1"' in report_html
+    assert 'src="./js/strategy.js?v=web-02c-toss-2"' in strategy_html
+    assert 'src="./js/app.js?v=web-fear-fix02-2"' in index_html
+    assert 'src="./js/report.js?v=web-02d-window-12"' in report_html
     assert 'href="./strategy.html"' in index_html
     assert 'href="./strategy.html"' in report_html
     assert 'class="nav-item is-active" href="./strategy.html"' in strategy_html
 
-    assert '<h1 id="page-title">전략 운용</h1>' in strategy_html
-    assert "전략 신호와 보유 상태를 한눈에!" in strategy_html
+    assert '<section class="page-intro"' not in strategy_html
+    assert 'id="page-title"' not in strategy_html
     assert "A FAST Core" in strategy_html
     assert "Julia" in strategy_html and 'id="julia-option"' in strategy_html and "disabled" in strategy_html
     assert "현재 공개 리포트 기준" in strategy_html
@@ -142,8 +142,10 @@ def test_strategy_page_is_connected_and_uses_page_specific_cache_version():
     assert "window.matchMedia" in strategy_js
     assert ".strategy-item" in css and ".strategy-summary-card" in css
     assert ".strategy-summary-grid" in css
+    assert "grid-template-columns: repeat(6, minmax(0, 1fr))" in css
     assert "grid-template-columns: repeat(3, minmax(0, 1fr))" in css
     assert "grid-template-columns: repeat(2, minmax(0, 1fr))" in css
+    assert "min-height: 94px" in css
     assert ".strategy-item-field.detail-value-positive .strategy-item-value" in css
     assert ".strategy-item-field.detail-value-negative .strategy-item-value" in css
     assert ".strategy-item-position .strategy-item-value" in css
