@@ -234,8 +234,8 @@ def test_report_frontend_has_safe_states_and_relative_assets():
     css = (ROOT / "web/css/app.css").read_text(encoding="utf-8")
     favicon = (ROOT / "web/favicon.svg").read_text(encoding="utf-8")
 
-    assert 'href="./css/app.css?v=web-ui-density-7"' in html
-    assert 'href="./css/app.css?v=web-ui-density-7"' in index_html
+    assert 'href="./css/app.css?v=web-ui-density-8"' in html
+    assert 'href="./css/app.css?v=web-ui-density-8"' in index_html
     assert 'href="./favicon.svg"' in html
     assert 'href="./favicon.svg"' in index_html
     assert (ROOT / "web/favicon.svg").exists()
@@ -243,7 +243,7 @@ def test_report_frontend_has_safe_states_and_relative_assets():
     assert 'src="./js/report.js?v=web-02d-window-13"' in html
     assert 'src="./js/app.js?v=web-fear-fix02-4"' in index_html
     assert html.count("web-02d-window-13") == 1
-    assert index_html.count("web-ui-density-7") == 1
+    assert index_html.count("web-ui-density-8") == 1
     assert "web-03a-final-1" not in html
     assert "web-03a-final-1" not in index_html
     assert "web-02a-final-2" not in html
@@ -312,10 +312,12 @@ def test_report_frontend_has_safe_states_and_relative_assets():
     assert html.index('<article class="panel decision-card"') < html.index('<aside class="panel report-context"')
     assert html.index('id="report-actions"') < html.index('id="report-identity"')
     assert 'class="report-identity"' not in html
-    assert '선택 종목' not in html
     assert 'class="visually-hidden">—</h2>' in html
-    assert 'grid-template-columns: minmax(0, 7fr) minmax(0, 3fr)' in css
+    assert 'grid-template-columns: repeat(3, minmax(0, 1fr))' in css
+    assert '.report-summary-layout .decision-card { grid-column: span 2;' in css
+    assert '.report-context { display: flex; min-width: 0; flex-direction: column; justify-content: flex-start; gap: 14px; }' in css
     assert '.report-summary-layout, .report-card-row, .report-detail-grid { grid-template-columns: 1fr; }' in css
+    assert '.report-summary-layout .decision-card { grid-column: auto; }' in css
     assert 'class="signal-grid"' not in html
     assert 'signal-trend' not in html and 'signal-market' not in html
     assert 'signal-flow' not in html and 'signal-fundamentals' not in html
@@ -384,7 +386,7 @@ def test_report_frontend_has_safe_states_and_relative_assets():
     assert ".pattern-step { padding: 4px 5px;" in css
     assert ".pattern-step, .pattern-arrow" in css
     assert ".report-card-affordance" in css
-    assert ".report-summary-layout { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 3fr);" in css
+    assert ".report-summary-layout { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));" in css
     assert ".report-context { display: flex;" in css
     assert "@media (max-width: 560px)" in css
     assert html.count('<p class="eyebrow">검색 안내</p>') == 0

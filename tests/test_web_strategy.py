@@ -96,9 +96,9 @@ def test_strategy_page_is_connected_and_uses_page_specific_cache_version():
     strategy_js = (ROOT / "web/js/strategy.js").read_text(encoding="utf-8")
     css = (ROOT / "web/css/app.css").read_text(encoding="utf-8")
 
-    assert 'href="./css/app.css?v=web-ui-density-7"' in strategy_html
-    assert 'href="./css/app.css?v=web-ui-density-7"' in index_html
-    assert 'href="./css/app.css?v=web-ui-density-7"' in report_html
+    assert 'href="./css/app.css?v=web-ui-density-8"' in strategy_html
+    assert 'href="./css/app.css?v=web-ui-density-8"' in index_html
+    assert 'href="./css/app.css?v=web-ui-density-8"' in report_html
     for html in (index_html, report_html):
         assert "web-02a-final-2" not in html
         assert "web-03a-final-1" not in html

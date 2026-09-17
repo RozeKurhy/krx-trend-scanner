@@ -114,7 +114,7 @@ def test_market_page_has_accessible_controls_and_release_contract():
     assert '<section class="page-intro"' not in html
     assert 'id="page-title"' not in html
     assert '<a class="nav-item is-active" href="./market.html" aria-current="page">랭킹</a>' in html
-    assert 'href="./css/app.css?v=web-ui-density-7"' in html
+    assert 'href="./css/app.css?v=web-ui-density-8"' in html
     assert 'src="./js/market.js?v=web-02c-toss-4"' in html
     assert '<nav class="ranking-tabs" aria-label="랭킹 종류">' in html
     assert '<a class="ranking-tab is-active" href="./market.html" aria-current="page">마켓 RS</a>' in html
@@ -171,10 +171,10 @@ def test_market_page_has_accessible_controls_and_release_contract():
 
 def test_market_page_keeps_navigation_and_old_release_cache_out_of_all_pages():
     page_versions = {
-        ROOT / "web/index.html": ("web-ui-density-7", "app", "web-fear-fix02-4"),
-        ROOT / "web/report.html": ("web-ui-density-7", "report", "web-02d-window-13"),
-        ROOT / "web/strategy.html": ("web-ui-density-7", "strategy", "web-02c-toss-5"),
-        ROOT / "web/market.html": ("web-ui-density-7", "market", "web-02c-toss-4"),
+        ROOT / "web/index.html": ("web-ui-density-8", "app", "web-fear-fix02-4"),
+        ROOT / "web/report.html": ("web-ui-density-8", "report", "web-02d-window-13"),
+        ROOT / "web/strategy.html": ("web-ui-density-8", "strategy", "web-02c-toss-5"),
+        ROOT / "web/market.html": ("web-ui-density-8", "market", "web-02c-toss-4"),
     }
     pages = list(page_versions)
     for path, (css_version, script_name, js_version) in page_versions.items():

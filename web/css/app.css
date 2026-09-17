@@ -446,9 +446,9 @@ h2 { margin-bottom: 0; font-size: 18px; letter-spacing: -0.035em; line-height: 1
 .search-result-meta, .search-result-status { display: block; margin-top: 2px; color: var(--ink-faint); font-size: 11px; }
 .search-result-status { flex: 0 0 auto; color: var(--brand-red); }
 
-.report-summary-layout { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 3fr); gap: 16px; margin-bottom: 16px; align-items: stretch; }
-.report-summary-layout .decision-card { margin-bottom: 0; }
-.report-context { display: flex; min-width: 0; flex-direction: column; justify-content: space-between; gap: 18px; }
+.report-summary-layout { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-bottom: 16px; align-items: stretch; }
+.report-summary-layout .decision-card { grid-column: span 2; margin-bottom: 0; }
+.report-context { display: flex; min-width: 0; flex-direction: column; justify-content: flex-start; gap: 14px; }
 .report-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .report-context-meta { overflow-wrap: anywhere; margin: 0; color: var(--ink-soft); font-size: 12px; line-height: 1.5; }
 .decision-status { margin: 0 0 8px; color: var(--brand-red); font-size: clamp(24px, 3vw, 34px); font-weight: 800; letter-spacing: -0.05em; line-height: 1.12; }
@@ -722,6 +722,7 @@ h2 { margin-bottom: 0; font-size: 18px; letter-spacing: -0.035em; line-height: 1
   .metric-value { margin-top: 21px; }
   .panel { padding: 20px; }
   .report-summary-layout, .report-card-row, .report-detail-grid { grid-template-columns: 1fr; }
+  .report-summary-layout .decision-card { grid-column: auto; }
   .strategy-overview { padding: 16px; }
   .strategy-overview .panel-heading { align-items: flex-start; flex-direction: column; gap: 4px; }
   .strategy-overview .strategy-scope { text-align: left; }
