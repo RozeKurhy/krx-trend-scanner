@@ -494,13 +494,13 @@ selection_method, §4·§14 참고)**, network requests=0을 기록. 이전
 ALL PASS — HOLD 아님.
 
 --------------------------------------------------------------------------------
-17. Human Review Pending Status
+17. 문서 작성 당시 Human Review 대기 상태
 --------------------------------------------------------------------------------
-이번 commit은 **13C-1 Dataset Preparation = READY_FOR_HUMAN_REVIEW** 까지만
-완료한다. `pattern_a_fast_human_review_v01.csv`의 Human 필드는 전부
-blank/UNLABELED다. 사용자가 실제 chart packet(`charts/`)을 검토해 Human
-Annotation을 완료하고 dataset을 Freeze한 뒤에야 **Phase 13C = CLOSED**로
-처리한다.
+문서 작성 당시 이 commit은 **13C-1 Dataset Preparation = READY_FOR_HUMAN_REVIEW** 까지만
+완료한 상태였다. `pattern_a_fast_human_review_v01.csv`의 Human 필드는 전부
+blank/UNLABELED였다. 문서 작성 당시에는 사용자가 실제 chart packet(`charts/`)을
+검토해 Human Annotation을 완료하고 dataset을 Freeze한 뒤에야 **Phase 13C = CLOSED**로
+처리할 계획이었다.
 
 --------------------------------------------------------------------------------
 18. Non Goals
