@@ -234,8 +234,8 @@ def test_report_frontend_has_safe_states_and_relative_assets():
     css = (ROOT / "web/css/app.css").read_text(encoding="utf-8")
     favicon = (ROOT / "web/favicon.svg").read_text(encoding="utf-8")
 
-    assert 'href="./css/app.css?v=web-ui-density-8"' in html
-    assert 'href="./css/app.css?v=web-ui-density-8"' in index_html
+    assert 'href="./css/app.css?v=web-ui-density-9"' in html
+    assert 'href="./css/app.css?v=web-ui-density-9"' in index_html
     assert 'href="./favicon.svg"' in html
     assert 'href="./favicon.svg"' in index_html
     assert (ROOT / "web/favicon.svg").exists()
@@ -243,7 +243,7 @@ def test_report_frontend_has_safe_states_and_relative_assets():
     assert 'src="./js/report.js?v=web-02d-window-13"' in html
     assert 'src="./js/app.js?v=web-fear-fix02-4"' in index_html
     assert html.count("web-02d-window-13") == 1
-    assert index_html.count("web-ui-density-8") == 1
+    assert index_html.count("web-ui-density-9") == 1
     assert "web-03a-final-1" not in html
     assert "web-03a-final-1" not in index_html
     assert "web-02a-final-2" not in html
@@ -315,7 +315,7 @@ def test_report_frontend_has_safe_states_and_relative_assets():
     assert 'class="visually-hidden">—</h2>' in html
     assert 'grid-template-columns: repeat(3, minmax(0, 1fr))' in css
     assert '.report-summary-layout .decision-card { grid-column: span 2;' in css
-    assert '.report-context { display: flex; min-width: 0; flex-direction: column; justify-content: flex-start; gap: 14px; }' in css
+    assert '.report-context { display: flex; min-width: 0; flex-direction: column; justify-content: center; gap: 14px; }' in css
     assert '.report-summary-layout, .report-card-row, .report-detail-grid { grid-template-columns: 1fr; }' in css
     assert '.report-summary-layout .decision-card { grid-column: auto; }' in css
     assert 'class="signal-grid"' not in html
