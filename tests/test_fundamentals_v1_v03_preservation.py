@@ -96,7 +96,7 @@ def test_v03_web_fundamentals_layout_and_formatting_contract():
     js = (ROOT / "web/js/report.js").read_text(encoding="utf-8")
     css = (ROOT / "web/css/app.css").read_text(encoding="utf-8")
 
-    assert html.count("web-02d-window-12") == 1
+    assert html.count("web-02d-window-13") == 1
     assert "fundamentals-summary-grid" not in html
     assert html.index('<div class="report-card-row">') < html.index(
         '<div class="report-card-row report-card-row--secondary">'
@@ -104,7 +104,8 @@ def test_v03_web_fundamentals_layout_and_formatting_contract():
     assert "fundamentals-detail-meta" not in html
     assert 'id="fundamentals-detail-heading">펀더멘탈</h3>' in html
     assert "Fundamentals 상세" not in html
-    assert "fundamentals-unit-note" in html
+    assert "fundamentals-unit-note" not in html
+    assert "단위: 억원" in html
     assert 'header: "TTM"' in js
     assert '"매출 YoY": "—"' in js
     assert '"영업이익 YoY": "—"' in js

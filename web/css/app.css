@@ -394,11 +394,10 @@ h2 { margin-bottom: 0; font-size: 18px; letter-spacing: -0.035em; line-height: 1
 .status-dot { color: var(--status-color, var(--unknown)); }
 
 .metric-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-bottom: 16px; }
-.metric-card { min-height: 164px; padding: 20px; }
+.metric-card { padding: 20px; }
 .metric-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--ink-soft); font-size: 12px; font-weight: 700; }
 .metric-value { margin: 25px 0 0; font-variant-numeric: tabular-nums; font-size: 29px; font-weight: 760; letter-spacing: -0.06em; line-height: 1; }
 .metric-label { margin: 7px 0 0; color: var(--ink-soft); font-size: 12px; }
-.metric-detail { min-height: 20px; margin: 13px 0 0; color: var(--ink-faint); font-size: 11px; }
 
 .panel { padding: 24px; }
 .panel-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 26px; }
@@ -447,18 +446,13 @@ h2 { margin-bottom: 0; font-size: 18px; letter-spacing: -0.035em; line-height: 1
 .search-result-meta, .search-result-status { display: block; margin-top: 2px; color: var(--ink-faint); font-size: 11px; }
 .search-result-status { flex: 0 0 auto; color: var(--brand-red); }
 
-.report-identity { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 16px; }
-.report-identity-copy { min-width: 0; }
-.report-identity-name { margin-bottom: 4px; font-size: clamp(25px, 3vw, 34px); }
-.report-identity-meta { margin-bottom: 0; color: var(--ink-soft); font-size: 13px; }
-.report-actions { display: flex; flex: 0 0 auto; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
-.decision-card { margin-bottom: 16px; }
+.report-summary-layout { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 3fr); gap: 16px; margin-bottom: 16px; align-items: stretch; }
+.report-summary-layout .decision-card { margin-bottom: 0; }
+.report-context { display: flex; min-width: 0; flex-direction: column; justify-content: space-between; gap: 18px; }
+.report-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.report-context-meta { overflow-wrap: anywhere; margin: 0; color: var(--ink-soft); font-size: 12px; line-height: 1.5; }
 .decision-status { margin: 0 0 8px; color: var(--brand-red); font-size: clamp(24px, 3vw, 34px); font-weight: 800; letter-spacing: -0.05em; line-height: 1.12; }
 .decision-summary { max-width: 760px; margin: 0; color: var(--ink-soft); font-size: 14px; }
-.signal-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
-.signal-card { min-width: 0; padding: 16px; background: var(--surface-muted); border: 1px solid var(--line); border-radius: 10px; }
-.signal-label { margin: 0 0 7px; color: var(--ink-faint); font-size: 11px; }
-.signal-value { margin: 0; overflow-wrap: anywhere; font-size: 14px; font-weight: 750; }
 .report-card-grid { display: flex; flex-direction: column; gap: 16px; margin-bottom: 16px; }
 .report-card-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
 .report-card-row--secondary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -494,7 +488,6 @@ h2 { margin-bottom: 0; font-size: 18px; letter-spacing: -0.035em; line-height: 1
 .fundamentals-detail-panel { margin-bottom: 16px; }
 .fundamentals-detail-panel .report-detail-header { margin-bottom: 0; }
 .fundamentals-detail-panel .eyebrow { margin-bottom: 5px; }
-.fundamentals-unit-note { margin: 5px 0 0; color: var(--ink-faint); font-size: 11px; }
 .fundamentals-trend { margin-top: 22px; }
 .fundamentals-trend-heading { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 4px; }
 .fundamentals-trend-heading h4 { margin: 0; font-size: 14px; letter-spacing: -0.025em; }
@@ -726,10 +719,9 @@ h2 { margin-bottom: 0; font-size: 18px; letter-spacing: -0.035em; line-height: 1
   .page-content { padding-block: 20px 32px; }
   .overall-card { align-items: flex-start; flex-direction: column; padding: 22px; }
   .metric-grid { grid-template-columns: 1fr; }
-  .metric-card { min-height: 145px; }
   .metric-value { margin-top: 21px; }
   .panel { padding: 20px; }
-  .signal-grid, .report-card-row, .report-detail-grid { grid-template-columns: 1fr; }
+  .report-summary-layout, .report-card-row, .report-detail-grid { grid-template-columns: 1fr; }
   .strategy-overview { padding: 16px; }
   .strategy-overview .panel-heading { align-items: flex-start; flex-direction: column; gap: 4px; }
   .strategy-overview .strategy-scope { text-align: left; }
@@ -761,8 +753,6 @@ h2 { margin-bottom: 0; font-size: 18px; letter-spacing: -0.035em; line-height: 1
   .fear-summary-item-primary { grid-column: 1 / -1; }
   .fear-chart-heading { align-items: flex-start; flex-direction: column; gap: 7px; }
   .fear-chart-legend { gap: 9px 14px; }
-  .report-identity { align-items: flex-start; flex-direction: column; gap: 12px; }
-  .report-actions { justify-content: flex-start; width: 100%; }
   .fundamentals-trend-heading { align-items: flex-start; flex-direction: column; gap: 8px; }
   .fundamentals-trend-toggle { width: 100%; }
   .fundamentals-trend-button { flex: 1 1 0; }

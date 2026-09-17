@@ -144,8 +144,8 @@ def test_static_frontend_uses_relative_assets_and_required_dom():
     js = (ROOT / "web/js/app.js").read_text(encoding="utf-8")
     css = (ROOT / "web/css/app.css").read_text(encoding="utf-8")
 
-    assert 'href="./css/app.css?v=web-ui-density-6"' in html
-    assert 'src="./js/app.js?v=web-fear-fix02-3"' in html
+    assert 'href="./css/app.css?v=web-ui-density-7"' in html
+    assert 'src="./js/app.js?v=web-fear-fix02-4"' in html
     assert 'const HEALTH_URL = "./data/health.json";' in js
     assert 'href="/css/app.css"' not in html
     assert 'src="/js/app.js"' not in html
@@ -174,6 +174,8 @@ def test_static_frontend_uses_relative_assets_and_required_dom():
         assert f'id="{element_id}"' in html
     assert 'id="market-detail"' not in html
     assert 'id="universe-detail"' not in html
+    assert 'id="fundamentals-detail"' not in html
+    assert 'id="reports-detail"' not in html
     assert "innerHTML" not in js
     assert "fetch(HEALTH_URL" in js
     assert "@media (max-width: 560px)" in css
@@ -226,8 +228,8 @@ def test_web_wording_is_neutral_and_keeps_the_existing_data_contract():
         assert banned_phrase not in js
     assert 'setText("market-detail",' not in js
     assert 'setText("universe-detail",' not in js
-    assert 'setText("fundamentals-detail", "");' in js
-    assert 'setText("reports-detail", "");' in js
+    assert 'setText("fundamentals-detail", "");' not in js
+    assert 'setText("reports-detail", "");' not in js
     assert "개 남음" not in js
     assert "Stock Report v0.5 and Web Fundamentals artifacts are complete." not in js
     assert 'setText("overall-detail", "데이터 파일 확인 필요");' in js

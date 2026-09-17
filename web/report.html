@@ -20,7 +20,7 @@
       })();
     </script>
     <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./css/app.css?v=web-ui-density-6">
+  <link rel="stylesheet" href="./css/app.css?v=web-ui-density-7">
   </head>
   <body>
     <a class="skip-link" href="#main-content">본문으로 건너뛰기</a>
@@ -84,30 +84,22 @@
       </section>
 
       <section id="report-view" hidden aria-labelledby="report-name">
-        <div class="report-identity">
-          <div class="report-identity-copy">
-            <p class="eyebrow">선택 종목</p>
-            <h2 id="report-name" class="report-identity-name">—</h2>
-            <p id="report-identity" class="report-identity-meta">—</p>
-          </div>
-          <div id="report-actions" class="report-actions" aria-label="종목 외부 링크">
-            <a id="naver-link" class="report-link" href="#" target="_blank" rel="noopener">Npay 증권</a>
-            <a id="naver-chart-link" class="report-link" href="#" target="_blank" rel="noopener">차트</a>
-            <a id="dart-link" class="report-link" href="#" target="_blank" rel="noopener">전자공시</a>
-          </div>
-        </div>
+        <h2 id="report-name" class="visually-hidden">—</h2>
+        <div class="report-summary-layout">
+          <article class="panel decision-card" aria-labelledby="decision-heading">
+            <p class="eyebrow">현재 판단</p>
+            <h2 id="decision-heading" class="decision-status">—</h2>
+            <p id="decision-summary" class="decision-summary">—</p>
+          </article>
 
-        <article class="panel decision-card" aria-labelledby="decision-heading">
-          <p class="eyebrow">현재 판단</p>
-          <h2 id="decision-heading" class="decision-status">—</h2>
-          <p id="decision-summary" class="decision-summary">—</p>
-        </article>
-
-        <div class="signal-grid" aria-label="핵심 신호">
-          <article class="signal-card"><p class="signal-label">추세</p><p id="signal-trend" class="signal-value">—</p></article>
-          <article class="signal-card"><p class="signal-label">마켓 RS</p><p id="signal-market" class="signal-value">—</p></article>
-          <article class="signal-card"><p class="signal-label">수급</p><p id="signal-flow" class="signal-value">—</p></article>
-          <article class="signal-card"><p class="signal-label">펀더멘탈</p><p id="signal-fundamentals" class="signal-value">준비 중</p></article>
+          <aside class="panel report-context" aria-label="종목 정보">
+            <div id="report-actions" class="report-actions" aria-label="종목 외부 링크">
+              <a id="naver-link" class="report-link" href="#" target="_blank" rel="noopener">Npay 증권</a>
+              <a id="naver-chart-link" class="report-link" href="#" target="_blank" rel="noopener">차트</a>
+              <a id="dart-link" class="report-link" href="#" target="_blank" rel="noopener">전자공시</a>
+            </div>
+            <p id="report-identity" class="report-context-meta">—</p>
+          </aside>
         </div>
 
         <div class="report-card-grid" aria-label="종목 핵심 정보">
@@ -148,7 +140,6 @@
             <p id="fundamentals-detail-status" class="status-pill status-unknown">—</p>
           </div>
           <p id="fundamentals-detail-reason" class="detail-note">—</p>
-          <p id="fundamentals-unit-note" class="fundamentals-unit-note"></p>
           <section id="fundamentals-trend" class="fundamentals-trend" aria-labelledby="fundamentals-trend-heading">
             <div class="fundamentals-trend-heading">
               <h4 id="fundamentals-trend-heading">실적 추세</h4>
@@ -180,6 +171,6 @@
       </noscript>
     </main>
 
-    <script src="./js/report.js?v=web-02d-window-12" defer></script>
+    <script src="./js/report.js?v=web-02d-window-13" defer></script>
   </body>
 </html>

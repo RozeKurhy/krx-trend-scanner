@@ -222,7 +222,6 @@
     const fundamentals = health.fundamentals;
     setStatus(byId("fundamentals-status"), fundamentals.status);
     setText("fundamentals-count", `${formatNumber(fundamentals.completed)} / ${formatNumber(fundamentals.total)}`);
-    setText("fundamentals-detail", "");
     setText("progress-percent", formatPercent(fundamentals.percentage));
     setText("progress-completed", `완료 ${formatNumber(fundamentals.completed)}`);
     setText("progress-remaining", `남음 ${formatNumber(fundamentals.remaining)}`);
@@ -236,7 +235,6 @@
     const reports = health.stock_reports;
     setStatus(byId("reports-status"), reports.status);
     setText("reports-count", formatNumber(reports.existing_artifact_count));
-    setText("reports-detail", "");
 
     setText("generated-at", formatDateTime(health.generated_at));
     renderSources(health);

@@ -816,13 +816,11 @@
     const panel = byId("fundamentals-detail-panel");
     const statusElement = byId("fundamentals-detail-status");
     const reasonElement = byId("fundamentals-detail-reason");
-    const unitElement = byId("fundamentals-unit-note");
     const trendElement = byId("fundamentals-trend");
     const periodsElement = byId("fundamentals-periods");
     const fundamentals = report && report.fundamentals;
-    if (!panel || !fundamentals || !unitElement || !periodsElement) return;
+    if (!panel || !fundamentals || !periodsElement) return;
     while (periodsElement.firstChild) periodsElement.removeChild(periodsElement.firstChild);
-    unitElement.hidden = false;
     periodsElement.hidden = false;
     if (statusElement) {
       statusElement.textContent = fundamentalLabel(report);
@@ -837,14 +835,12 @@
       reasonElement.hidden = !detail;
     }
     if (fundamentals.filter_status === "NOT_APPLICABLE") {
-      unitElement.hidden = true;
       if (trendElement) trendElement.hidden = true;
       periodsElement.hidden = true;
       panel.hidden = false;
       return;
     }
     const summary = fundamentals.summary || {};
-    unitElement.textContent = "단위: 억 · 1억원 미만은 소수점 1자리(버림)";
     renderFundamentalTrend(fundamentals);
 
     const quarterly = Array.isArray(fundamentals.quarterly) ? fundamentals.quarterly : [];
@@ -1200,10 +1196,6 @@
     setText("report-identity", identityParts.join(" · "));
     setText("decision-heading", actionLabel(report.decision.action));
     setText("decision-summary", buildSummary(report));
-    setText("signal-trend", stageLabel(report.summary.trend_stage));
-    setText("signal-market", marketStrengthLabel(report.market_strength));
-    setText("signal-flow", flowLabel(report.summary.flow_state));
-    setText("signal-fundamentals", fundamentalLabel(report));
     setText("price-value", formatPrice(report.price_trend.latest_close));
     setText("price-detail", report.price_trend.latest_close == null
       ? "가격 정보 없음"

@@ -63,7 +63,7 @@ def test_v06_web_polish_contract():
     app_js = (ROOT / "web/js/app.js").read_text(encoding="utf-8")
     css = (ROOT / "web/css/app.css").read_text(encoding="utf-8")
 
-    assert report_html.count("web-02d-window-12") == 1
+    assert report_html.count("web-02d-window-13") == 1
     assert "function formatFundamentalTableKrw" in report_js
     assert "formatKrwAsEok" in report_js
     quarter = report_js[report_js.index('renderFundamentalPeriodTable("최근 12개 분기"'):report_js.index('const annual =', report_js.index('renderFundamentalPeriodTable("최근 12개 분기"'))]
@@ -73,10 +73,10 @@ def test_v06_web_polish_contract():
     assert ".fundamental-loss { color: var(--market-up-red)" in css
     assert "var(--brand-red)" not in css[css.index(".fundamental-loss"):css.index(".fundamental-loss") + 120]
     assert "var(--market-down-blue)" in css
-    assert 'setText("fundamentals-detail", "")' in app_js
+    assert 'setText("fundamentals-detail", "")' not in app_js
     assert 'setText("market-detail",' not in app_js
     assert 'setText("universe-detail",' not in app_js
-    assert 'setText("reports-detail", "")' in app_js
+    assert 'setText("reports-detail", "")' not in app_js
     assert "개 남음" not in app_js
     assert "Stock Report v0.5 and Web Fundamentals artifacts are complete." not in app_js
     assert 'id="market-status"' in index_html
