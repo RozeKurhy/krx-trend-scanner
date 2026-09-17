@@ -32,13 +32,6 @@
     PROGRESSED: "상승 진행",
     UNAVAILABLE: "확인 필요",
   };
-  const SECTION_LABELS = {
-    hold: "보유 종목",
-    entry: "진입 조건을 충족한 종목",
-    exit: "매도 조건을 충족한 종목",
-    watch: "관찰 종목",
-    unavailable: "기타",
-  };
   const SECTION_IDS = { hold: "hold", entry: "entry", exit: "exit", watch: "watch", unavailable: "unavailable" };
   const FILTERS = new Set(["all", ...Object.keys(SECTION_IDS)]);
 
@@ -217,9 +210,26 @@
     return (monitor.items || []).filter((item) => item.bucket === category && itemMatches(item));
   }
 
+  function renderFilterCounts() {
+    const counts = { all: 0, hold: 0, entry: 0, exit: 0, watch: 0, unavailable: 0 };
+    if (searchQuery.trim()) {
+      const matched = (monitor.items || []).filter(itemMatches);
+      counts.all = matched.length;
+      matched.forEach((item) => {
+        if (Object.prototype.hasOwnProperty.call(counts, item.bucket)) counts[item.bucket] += 1;
+      });
+    } else {
+      counts.all = monitor.scope.report_count;
+      Object.keys(SECTION_IDS).forEach((category) => {
+        counts[category] = monitor.counts[category] || 0;
+      });
+    }
+    Object.keys(counts).forEach((category) => setText(`strategy-filter-count-${category}`, counts[category]));
+  }
+
   function renderSections() {
     if (!monitor) return;
-    let visibleCount = 0;
+    renderFilterCounts();
     Object.keys(SECTION_IDS).forEach((category) => {
       const section = byId(`${category}-section`);
       const list = byId(`${category}-list`);
@@ -229,7 +239,6 @@
       while (list.firstChild) list.removeChild(list.firstChild);
       if (!enabled) return;
       const items = filteredItems(category);
-      visibleCount += items.length;
       setText(`${category}-count`, items.length);
       if (!items.length) {
         const message = searchQuery.trim()
@@ -248,8 +257,6 @@
         items.forEach((item) => list.appendChild(createStrategyItem(item)));
       }
     });
-    const suffix = searchQuery.trim() ? ` · 검색 결과 ${visibleCount}종목` : ` · ${visibleCount}종목 표시`;
-    setText("strategy-results-meta", `${SECTION_LABELS[activeFilter] || "전체 전략 현황"}${suffix}`);
   }
 
   function setFilter(filter) {
@@ -262,14 +269,7 @@
     renderSections();
   }
 
-  function renderSummary() {
-    const counts = monitor.counts || {};
-    setText("summary-all-count", monitor.scope && monitor.scope.report_count);
-    setText("summary-hold-count", counts.hold);
-    setText("summary-entry-count", counts.entry);
-    setText("summary-exit-count", counts.exit);
-    setText("summary-watch-count", counts.watch);
-    setText("summary-unavailable-count", counts.unavailable);
+  function renderScope() {
     setText("strategy-scope", `기준일 ${formatDate(monitor.as_of)} · ${monitor.scope.label} ${formatNumber(monitor.scope.report_count)}종목`);
   }
 
@@ -287,7 +287,7 @@
     const value = await response.json();
     if (!validateMonitor(value)) throw new Error("strategy monitor schema is incomplete");
     monitor = value;
-    renderSummary();
+    renderScope();
     renderSections();
   }
 

@@ -96,13 +96,13 @@ def test_strategy_page_is_connected_and_uses_page_specific_cache_version():
     strategy_js = (ROOT / "web/js/strategy.js").read_text(encoding="utf-8")
     css = (ROOT / "web/css/app.css").read_text(encoding="utf-8")
 
-    assert 'href="./css/app.css?v=web-ui-density-2"' in strategy_html
-    assert 'href="./css/app.css?v=web-ui-density-2"' in index_html
-    assert 'href="./css/app.css?v=web-ui-density-2"' in report_html
+    assert 'href="./css/app.css?v=web-ui-density-3"' in strategy_html
+    assert 'href="./css/app.css?v=web-ui-density-3"' in index_html
+    assert 'href="./css/app.css?v=web-ui-density-3"' in report_html
     for html in (index_html, report_html):
         assert "web-02a-final-2" not in html
         assert "web-03a-final-1" not in html
-    assert 'src="./js/strategy.js?v=web-02c-toss-2"' in strategy_html
+    assert 'src="./js/strategy.js?v=web-02c-toss-3"' in strategy_html
     assert 'src="./js/app.js?v=web-fear-fix02-2"' in index_html
     assert 'src="./js/report.js?v=web-02d-window-12"' in report_html
     assert 'href="./strategy.html"' in index_html
@@ -120,11 +120,23 @@ def test_strategy_page_is_connected_and_uses_page_specific_cache_version():
     assert 'data-filter="exit"' in strategy_html
     assert 'data-filter="watch"' in strategy_html
     assert 'data-filter="unavailable"' in strategy_html
-    assert 'id="summary-watch-count"' in strategy_html
-    assert 'id="summary-unavailable-count"' in strategy_html
+    assert 'id="strategy-filter-count-all"' in strategy_html
+    assert 'id="strategy-filter-count-hold"' in strategy_html
+    assert 'id="strategy-filter-count-entry"' in strategy_html
+    assert 'id="strategy-filter-count-exit"' in strategy_html
+    assert 'id="strategy-filter-count-watch"' in strategy_html
+    assert 'id="strategy-filter-count-unavailable"' in strategy_html
+    assert 'class="strategy-summary-grid"' not in strategy_html
+    assert 'class="strategy-summary-card"' not in strategy_html
+    assert 'id="strategy-controls-heading"' not in strategy_html
+    assert 'id="strategy-results-meta"' not in strategy_html
+    assert "전략 현황" not in strategy_html
     assert '<h2 id="unavailable-heading">기타</h2>' in strategy_html
-    assert 'setText("summary-watch-count", counts.watch)' in strategy_js
-    assert 'setText("summary-unavailable-count", counts.unavailable)' in strategy_js
+    assert 'function renderFilterCounts()' in strategy_js
+    assert 'setText(`strategy-filter-count-${category}`, counts[category])' in strategy_js
+    assert 'counts.all = monitor.scope.report_count' in strategy_js
+    assert 'counts[item.bucket] += 1' in strategy_js
+    assert 'strategy-results-meta' not in strategy_js
     assert 'const FILTERS = new Set(["all", ...Object.keys(SECTION_IDS)]);' in strategy_js
     assert 'link.href = `./report.html?ticker=' in strategy_js
     assert 'const MONITOR_URL = "./data/strategy-monitor.json";' in strategy_js
@@ -140,9 +152,9 @@ def test_strategy_page_is_connected_and_uses_page_specific_cache_version():
     assert "dataStatus === \"NOT_APPLICABLE\"" in strategy_js
     assert "dataStatus === \"CHECK_REQUIRED\"" in strategy_js
     assert "window.matchMedia" in strategy_js
-    assert ".strategy-item" in css and ".strategy-summary-card" in css
-    assert ".strategy-summary-grid" in css
-    assert "grid-template-columns: repeat(6, minmax(0, 1fr))" in css
+    assert ".strategy-item" in css
+    assert ".strategy-summary-card" not in css
+    assert ".strategy-summary-grid" not in css
     assert "grid-template-columns: repeat(3, minmax(0, 1fr))" in css
     assert "grid-template-columns: repeat(2, minmax(0, 1fr))" in css
     assert "min-height: 94px" in css

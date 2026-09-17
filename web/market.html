@@ -20,7 +20,7 @@
       })();
     </script>
     <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="./css/app.css?v=web-ui-density-2">
+    <link rel="stylesheet" href="./css/app.css?v=web-ui-density-3">
   </head>
   <body>
     <a class="skip-link" href="#main-content">본문으로 건너뛰기</a>
@@ -66,12 +66,9 @@
 
       <section class="panel market-controls" aria-labelledby="market-controls-heading">
         <div class="market-controls-heading">
-          <div>
-            <h2 id="market-controls-heading">마켓 RS 랭킹</h2>
-            <p id="market-ranking-meta" class="report-search-meta" role="status">랭킹 목록 불러오는 중</p>
-          </div>
+          <h2 id="market-controls-heading">마켓 RS 랭킹</h2>
+          <p id="market-scope" class="market-scope">기준일 —</p>
         </div>
-        <p id="market-scope" class="market-scope">기준일 —</p>
         <div id="horizon-controls" class="market-control-group" role="group" aria-label="랭킹 기간">
           <button class="market-control" type="button" data-horizon="2w" aria-pressed="false">2주</button>
           <button class="market-control is-active" type="button" data-horizon="1m" aria-pressed="true">1개월</button>
@@ -86,6 +83,7 @@
         </div>
         <label class="visually-hidden" for="market-search">종목명 또는 종목코드 검색</label>
         <input id="market-search" class="report-search-input" type="search" placeholder="종목명 또는 종목코드 검색" autocomplete="off">
+        <p id="market-ranking-meta" class="report-search-meta" role="status">랭킹 목록 불러오는 중</p>
       </section>
 
       <section id="market-ranking-list" class="market-ranking-list" aria-live="polite" aria-label="마켓 RS 랭킹"></section>

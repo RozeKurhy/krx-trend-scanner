@@ -114,7 +114,7 @@ def test_market_page_has_accessible_controls_and_release_contract():
     assert '<section class="page-intro"' not in html
     assert 'id="page-title"' not in html
     assert '<a class="nav-item is-active" href="./market.html" aria-current="page">랭킹</a>' in html
-    assert 'href="./css/app.css?v=web-ui-density-2"' in html
+    assert 'href="./css/app.css?v=web-ui-density-3"' in html
     assert 'src="./js/market.js?v=web-02c-toss-2"' in html
     assert '<nav class="ranking-tabs" aria-label="랭킹 종류">' in html
     assert '<a class="ranking-tab is-active" href="./market.html" aria-current="page">마켓 RS</a>' in html
@@ -126,6 +126,9 @@ def test_market_page_has_accessible_controls_and_release_contract():
     assert 'data-market="ALL"' in html and 'data-market="KOSPI"' in html and 'data-market="KOSDAQ"' in html
     assert '<section class="panel market-controls"' in html
     assert 'id="market-scope" class="market-scope"' in html
+    assert 'id="market-ranking-meta" class="report-search-meta" role="status"' in html
+    assert html.index('id="market-scope"') < html.index('id="horizon-controls"')
+    assert html.index('id="market-search"') < html.index('id="market-ranking-meta"')
     assert 'market-overview' not in html
     assert 'market-metric-scope' not in html
     assert 'id="market-search"' in html
@@ -152,10 +155,10 @@ def test_market_page_has_accessible_controls_and_release_contract():
 
 def test_market_page_keeps_navigation_and_old_release_cache_out_of_all_pages():
     page_versions = {
-        ROOT / "web/index.html": ("web-ui-density-2", "app", "web-fear-fix02-2"),
-        ROOT / "web/report.html": ("web-ui-density-2", "report", "web-02d-window-12"),
-        ROOT / "web/strategy.html": ("web-ui-density-2", "strategy", "web-02c-toss-2"),
-        ROOT / "web/market.html": ("web-ui-density-2", "market", "web-02c-toss-2"),
+        ROOT / "web/index.html": ("web-ui-density-3", "app", "web-fear-fix02-2"),
+        ROOT / "web/report.html": ("web-ui-density-3", "report", "web-02d-window-12"),
+        ROOT / "web/strategy.html": ("web-ui-density-3", "strategy", "web-02c-toss-3"),
+        ROOT / "web/market.html": ("web-ui-density-3", "market", "web-02c-toss-2"),
     }
     pages = list(page_versions)
     for path, (css_version, script_name, js_version) in page_versions.items():

@@ -144,7 +144,7 @@ def test_static_frontend_uses_relative_assets_and_required_dom():
     js = (ROOT / "web/js/app.js").read_text(encoding="utf-8")
     css = (ROOT / "web/css/app.css").read_text(encoding="utf-8")
 
-    assert 'href="./css/app.css?v=web-ui-density-2"' in html
+    assert 'href="./css/app.css?v=web-ui-density-3"' in html
     assert 'src="./js/app.js?v=web-fear-fix02-2"' in html
     assert 'const HEALTH_URL = "./data/health.json";' in js
     assert 'href="/css/app.css"' not in html
@@ -217,8 +217,8 @@ def test_web_wording_is_neutral_and_keeps_the_existing_data_contract():
     assert noscript is not None
     assert "자바스크립트 필요" in noscript.group(0)
     assert "JavaScript 필요" not in noscript.group(0)
-    assert "읽기 전용" in html
-    assert "이 화면은 공개용 정적 데이터만 사용, 원천 데이터와 비공개 정보는 미포함." in html
+    assert "읽기 전용" not in html
+    assert "이 화면은 공개용 정적 데이터만 사용, 원천 데이터와 비공개 정보는 미포함." not in html
     for banned_phrase in ("중이야", "않아", "해야 해", "확인해야 해", "한눈에 확인해"):
         assert banned_phrase not in html
         assert banned_phrase not in js
