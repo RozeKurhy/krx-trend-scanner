@@ -48,11 +48,11 @@ staging에 저장한다. partial staging은 운영 IndexStore로 publish하지 �
 staging·publish
 --------------
 staging은 .cache/krx_openapi/market_index_migration/v01에 둔다. 모든 대상
-날짜가 두 row(1001, 2001)로 검증되고 legacy OHLC parity, market RS parity,
+날짜가 두 행(1001, 2001)으로 검증되고 legacy OHLC 일치성, market RS 일치성,
 quota audit, secret scan, integrity gate가 통과한 경우에만 운영 store를
-한 번 publish한다. consumer는 END_TO_END_DATA_PARITY_V01에서 전환한다.
+한 번 publish한다. 사용 코드는 END_TO_END_DATA_PARITY_V01에서 전환한다.
 
-legacy parity·RS parity
+legacy 일치성·RS 일치성
 -----------------------
 PyKRX 실시간 parity fetch는 금지한다. 기존
 artifacts/patterns/pattern_a/validation/relative_strength/source/

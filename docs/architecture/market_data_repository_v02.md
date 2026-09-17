@@ -16,14 +16,14 @@ AdjustedPriceStore의 수정주가 OHLC와 KrxRawStockStore의 원천 일별 사
 --------------
 이 문서의 FIX01/FIX02 단계 설명은 당시 검증 범위를 보존한다. 현재
 수정주가 원천은 Naver direct adjusted V02이며, 운영 Stock Report와
-Pattern A scanner는 `build_production_repository_v2`를 통해 rolling authority
+Pattern A scanner는 `build_production_repository_v2`를 통해 현재 기준을 계속 적용하는
 경계를 적용한다. 고정된 과거 평가·검증 진입점은
 `build_repository_v2`를 계속 사용하므로, 두 factory의 과거 고정 모드와
 운영 rolling mode를 혼동하지 않는다.
 
 공식 지원 instrument 계약
 ---------------------------------
-Repository V2는 공식 분류된(formally classified) `COMMON`과 `ETF`를 동일한 결합
+Repository V2는 공식 분류된 `COMMON`과 `ETF`를 동일한 결합
 interface로 지원한다. ETF 여부는 `InstrumentMetadataResolver`의 PIT 공식
 상품 마스터 분류로만 결정하며 ticker 모양/이름/17종 allowlist를
 사용하지 않는다.
@@ -44,8 +44,8 @@ ETF 원천 접근이 인증/활용 승인되지 않은 경우 Repository V2는 �
 
 Ticker 범위
 -------------
-* 수정주가 API: 기존 SIX_DIGIT_TICKER numeric domain 유지
-* raw API: KRX_SHORT_CODE 정규식 ^[0-9A-Z]{6}$를 source-preserving 지원
+* 수정주가 API: 기존 SIX_DIGIT_TICKER 숫자 domain 유지
+* raw API: KRX_SHORT_CODE 정규식 ^[0-9A-Z]{6}$를 원천 보존 방식으로 지원
 * raw suffix 제거, upper 변환, 숫자 coercion, 복구/보정은 하지 않는다.
 
 API schema
@@ -59,7 +59,7 @@ trading_value_semantics = "RAW"
 ```
 
 get_daily(ticker, start, end)
-  index: timezone-naive, ascending, unique DatetimeIndex
+  index: 시간대 없음, 오름차순, unique DatetimeIndex
   columns: open, high, low, close, volume, trading_value
   OHLC는 `ADJUSTED` (수정주가), volume/trading_value는 `RAW` (원천).
 
@@ -79,7 +79,7 @@ Join 및 missing 의미
 수정주가/원천 양쪽의 비어 있지 않은 거래 세션 집합은 정확히 같아야 한다.
 한쪽 날짜를 조용히 drop하거나 forward-fill/bfill/0-fill하지 않는다.
 session set mismatch는 REPOSITORY_V2_TRADING_SESSION_MISMATCH로 fail-closed한다.
-양쪽이 모두 empty인 요청 범위는 typed empty daily frame을 반환할 수 있다.
+양쪽이 모두 empty인 요청 범위는 형식이 지정된 빈 일봉 frame을 반환할 수 있다.
 한쪽만 empty이거나 ticker store가 없으면 DATA_UNAVAILABLE로 종료한다.
 
 읽기 전용 및 호환성
@@ -90,13 +90,13 @@ FIX01 당시에는 사용 코드 자동 전환이 0건이었고 Pattern A, FastC
 RS, Stock Report 등의 전환을 END_TO_END_DATA_PARITY_V01 이후 별도 결정하도록
 기록했다. 현재 운영 진입점의 Repository V2 연결은 후속 사용 코드
 전환 완료 이후 반영되었으며, 과거 평가 진입점은
-여전히 frozen factory 경계를 사용한다.
+여전히 동결된 factory 경계를 사용한다.
 
 성능 한계
 ----------------------
 KrxRawStockStore.load_ticker의 market/date partition scan 비용은
-production probe telemetry로 관찰한다. 전수 materialization, bulk cache 생성,
-storage redesign은 이 phase 범위에 포함하지 않는다.
+운영 probe 계측 정보로 관찰한다. 전수 구체화, bulk cache 생성,
+저장소 재설계는 이 phase 범위에 포함하지 않는다.
 
 검증 증거
 -------------------

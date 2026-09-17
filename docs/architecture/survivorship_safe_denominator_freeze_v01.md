@@ -174,8 +174,8 @@ survivorship 인접 bug가 된다. 수정주가 원천 적격성은
 
 - `artifacts/data/end_to_end_data_parity/v01/survivorship_safe_denominator_freeze/v01/historical_common_population_v01.json`
   — Population Universe records + `population_manifest_sha256`.
-- `.../pit_common_denominator_v01.json` — canonical COMMON interval records
-  (not a per-date manifest — Section 3's interval-first design) +
+- `.../pit_common_denominator_v01.json` — 표준 COMMON interval records
+  (날짜별 manifest가 아님 — Section 3의 interval-first 설계) +
   `pit_common_denominator_sha256` + the calendar's `trading_dates_sha256`.
 - `.../survivorship_safe_denominator_freeze_v01.json` — closure summary:
   status, authority checkpoint SHA, supplemental authority provenance,
@@ -185,11 +185,11 @@ survivorship 인접 bug가 된다. 수정주가 원천 적격성은
 Loader API (`src/trend_scanner/universe/survivorship_safe_denominator_freeze.py`):
 
 - `load_historical_common_population(path=...)` — Population Universe record 목록.
-- `load_pit_common_intervals(path=...)` — canonical COMMON interval record 목록.
+- `load_pit_common_intervals(path=...)` — 표준 COMMON interval record 목록.
 - `get_common_universe_as_of(date, market=None, *, intervals=None)` —
   정확히 동결된 거래일 기준의 identity-aware COMMON 집합을 반환한다.
   Fail-closed: 동결 달력 범위 밖 날짜나 비거래일이면 `FreezeContractError`를
-  발생시키며, 가장 가까운 거래일이나 현재 전체 집합으로 fallback하지 않는다.
+  발생시키며, 가장 가까운 거래일이나 현재 전체 집합으로 대체하지 않는다.
 
 AdjustedPriceStore/FastCore/Julia/Market Breadth를 이 loader로 실제 전환하는
 작업은 이 freeze 범위 밖이다(`ADJUSTED_PRICE_STORE_BOUNDED_LIVE_PILOT_V01` 및

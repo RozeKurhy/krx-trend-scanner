@@ -62,7 +62,7 @@ KRX `/idx/krx_dd_trd` branded taxonomy는 native Sector RS에 사용하지 않�
 - 승인된 정확한 날짜의 snapshot만 사용한다.
 - 현재 보유 스냅샷은 `2026-08-14` 과거 승인 스냅샷과
   `2026-09-04` 현재 최신 승인 스냅샷이다.
-- requested `as_of`와 exact match하는 snapshot이 없으면 fail closed하고
+- requested `as_of`와 정확히 일치하는 snapshot이 없으면 fail closed하고
   Sector RS를 `NOT_EVALUATED`로 반환한다.
 - 이전 snapshot을 자동 carry-forward하지 않고, 이후 snapshot을 backward apply하지 않는다.
 - unmapped COMMON은 삭제하지 않고 `DATA_UNAVAILABLE` /
@@ -91,9 +91,9 @@ Sector index cache 증분 갱신
 
 과거 검증 근거 (현재 운영 취득 경로 아님)
 ----------------------------------------------------------------------
-과거 parity/transport 검증에서 PyKRX 구성 종목 정보 probe를 사용했다는 기록은
+과거 일치성/전송 검증에서 PyKRX 구성 종목 정보 probe를 사용했다는 기록은
 과거 검증 근거로 보존한다. 해당 probe와 replay는 현재 운영 구성 종목 수집 또는
-fallback 경로가 아니다.
+  대체 경로가 아니다.
 
 FIX01 검증 계약
 ----------------------------------------------------------------------
@@ -111,5 +111,5 @@ FIX01 검증 계약
   validation은 `quota_before`/`quota_after` run delta와 현재 run audit만
   비교하며, 과거 cache build의 640회 요청과 legacy task-local 800회 기록은
   현재 audit에 섞지 않는다.
-- live smoke는 2026-08-14/20/21의 3 dates × 2 endpoints로 제한하고,
-  46 sectors × 4 OHLC = 552 fields를 production cache와 exact 비교한다.
+- 실제 호출 간단 검증은 2026-08-14/20/21의 3 dates × 2 endpoints로 제한하고,
+  46 sectors × 4 OHLC = 552 fields를 운영 cache와 정확히 비교한다.

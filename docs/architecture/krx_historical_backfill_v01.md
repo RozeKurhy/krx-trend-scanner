@@ -46,11 +46,11 @@ partition:
 `market=KOSPI/year=YYYY/YYYY-MM-DD.parquet`
 
 `market/date`가 한 번 COMPLETE되면 일반 백필에서 덮어쓰지 않는다.
-동일 canonical content는 `IDEMPOTENT_NOOP`, 다른 content는
+동일한 표준 content는 `IDEMPOTENT_NOOP`, 다른 content는
 `RAW_PARTITION_CONFLICT`다. manifest는 같은 root의 `manifest.sqlite3`이며
-`COMPLETE`, `NO_DATA`, `FAILED` 상태와 source endpoint, row count,
+`COMPLETE`, `NO_DATA`, `FAILED` 상태와 원천 endpoint, 행 수,
 `content_sha256`, `file_sha256`를 보존한다. parquet write → read-back validation →
-hash → atomic replace → manifest transaction 순서를 지킨다. manifest commit 실패
+hash → 원자적 교체 → manifest transaction 순서를 지킨다. manifest commit 실패
 시 새로 만든 파일만 rollback하며 기존 valid partition은 삭제하지 않는다.
 
 `load_ticker()`는 KOSPI/KOSDAQ 두 market을 모두 검색하고 date 순으로 반환한다.
@@ -84,7 +84,7 @@ missing candidate가 0인 것이다. raw parquet와 manifest는 Git에 commit하
 
 - `--offline`: synthetic provider/store contract와 신규 테스트, network=0.
 - `--live-pilot`: 2018-04-27, 2018-05-04, 2026-08-21의 양 market만 bounded 호출.
-- `--production-coverage`: network 없이 현재 local raw store의 manifest, hash, schema,
+- `--production-coverage`: network 없이 현재 로컬 raw 저장소의 manifest, hash, schema,
   date/path, duplicate와 cross-market key를 검사한다.
 
 계보와 실행 정보
@@ -92,7 +92,7 @@ missing candidate가 0인 것이다. raw parquet와 manifest는 Git에 commit하
 
 FIX START HEAD는 승인된 이전 phase가 main에 fast-forward된
 `3a87e780981491fcd2bfaf63b4f933513924b3b6`이다. Commit A에서 implementation과
-offline/live/coverage validation을 실행하고, Commit B에는
+오프라인/실제 호출/범위 검증을 실행하고, Commit B에는
 `artifacts/data/krx_historical_backfill/v01/`만 기록한다.
 
 현재 phase가 Architect 승인 전에는

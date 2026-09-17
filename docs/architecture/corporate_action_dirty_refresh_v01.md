@@ -35,7 +35,7 @@ Architect 승인 전에는 `CORPORATE_ACTION_DIRTY_REFRESH_V01 = CLOSED`로
 1. Detector 계약
 ----------------------------------------------------------------------
 
-`CorporateActionSnapshot`의 필수 입력은 canonical six-digit `ticker`, calendar
+`CorporateActionSnapshot`의 필수 입력은 정식 6자리 `ticker`, calendar
 `as_of`, 0보다 큰 integer-compatible `listed_shares`다. `par_value`는 optional
 numeric이며 missing은 허용하지만 음수와 파싱 실패는 거부한다.
 
@@ -104,7 +104,7 @@ transition log를 수행하며 persisted `as_of`는 절대 감소하지 않는�
 `CorporateActionDecision`은 persisted state를 직접 갱신하는 authority가 아니다.
 public method는 transaction 안에서 현재 persisted snapshot과 incoming snapshot으로
 `CorporateActionDetector.evaluate()`를 다시 호출하고, caller decision의 모든 필드와
-canonical decision을 exact compare한 뒤에만 private writer를 호출한다. 불일치 시
+정식 decision을 정확히 비교한 뒤에만 내부 writer를 호출한다. 불일치 시
 `DECISION_MISMATCH`로 거부하며, semantic namespace 충돌과 날짜 순서 invariant는
 재계산된 detector 결과를 통해 동일하게 fail closed한다. 따라서 외부 caller가 fake
 CLEAN, fake DIRTY 또는 dirty reason을 주입해 state를 우회할 수 없다.
@@ -135,8 +135,8 @@ CLEAN, fake DIRTY 또는 dirty reason을 주입해 state를 우회할 수 없다
 기존 store가 없으면 provider fetch 없이 `ADJUSTED_STORE_MISSING`으로 FAILED가
 된다. empty response는 `EMPTY_REFRESH_RESPONSE`, 기존 날짜 하나라도 빠진
 response는 `PARTIAL_REFRESH_RESPONSE`로 FAILED가 된다. 실패 시 기존 valid
-parquet/metadata pair를 보존하고 `last_error`를 기록한다. 단순 row count 비교는
-coverage 검증으로 사용하지 않는다.
+parquet/metadata 파일 쌍을 보존하고 `last_error`를 기록한다. 단순 행 수 비교는
+범위 검증으로 사용하지 않는다.
 
 hash가 refresh 전후 동일해도 실패가 아니다. dirty evidence가 false positive였을
 가능성을 허용하며 refresh 전체가 성공했다면 CLEAN으로 전환한다.
@@ -164,7 +164,7 @@ FIX02 validator의 provenance 시작 HEAD는
 `f6afc9d5888b2316606bc8ccc986b2c12ea1f477`로 고정한다. validator는 detector cases,
 public observation decision mismatch, state transition matrix, dirty latch, concurrent
 claim, interrupted recovery, successful/failed/partial/empty/missing-store
-refresh를 offline에서 검증한다. live mode는 optional이며 temporary Store만
+refresh를 오프라인에서 검증한다. 실제 호출 모드는 선택 사항이며 임시 Store만
 사용한다. 필수 artifact는 다음과 같다.
 
 - `corporate_action_dirty_refresh_v01_summary.json`

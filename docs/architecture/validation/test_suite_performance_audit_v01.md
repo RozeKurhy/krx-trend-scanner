@@ -3,7 +3,7 @@ test_suite_performance_audit_v01.md
 # 테스트 모음 성능 감사·정리 (Test Suite Performance Audit & Refactor v0.1)
 
 이 문서는 테스트 기반 감사 문서이며, Pattern A / Pattern A FAST strategy
-authority가 아니다. 검증 범위(coverage)나 운영 의미(production semantics)를 바꾸지 않고,
+authority가 아니다. 검증 범위나 운영 의미를 바꾸지 않고,
 테스트 실행 구조(중복 계산 제거, fixture 재사용, slow 격리)만 개선한 기록이다.
 
 ## 1. 문제 배경
@@ -44,7 +44,7 @@ Foreign Flow 파일 전체 실행 (수정 전 구조로 1회 실측)
   test_live_validation_runner(별도 full scan) = 179.63초 — 완전 중복
 
 Investability 파일 tests_scanner_candidate_summary_breakdown 단독
-  = 무제한(limit=None) full scan 1회 (canonical summary와 100% 동일 값 중복 확인)
+  = 무제한(limit=None) full scan 1회 (표준 요약과 100% 동일 값 중복 확인)
 ```
 
 ## 3. 테스트 분류
@@ -94,7 +94,7 @@ P3_REPORTED = 1
     호출하지만 synthetic 4-COMMON universe(mock_scanner_env)만 사용해 실행
     시간이 이미 4초 수준(실측)이다. 심각한 문제가 아니라는 §17 사전 판단이
     실측으로 확인됨 — 수정하지 않음. (warning volume 등 다른 P3 항목은
-    9번 Future recommendations 참고.)
+    9번 향후 권고 참고.)
 ```
 
 ## 5. 수정 내용
@@ -117,9 +117,9 @@ P3_REPORTED = 1
   Gate 1~10을 판정하는 순수 함수. Full Universe Scanner를 호출하지 않는다.
 - `run_relative_strength_validation(...)`: 기존 public API/behavior를 그대로
   유지한다 — 내부적으로 위 두 함수를 호출한 뒤 CSV/JSON/MD 산출물을 기록한다.
-  Production/manual validation 스크립트는 변경 없이 계속 동작한다.
+  운영/수동 검증 스크립트는 변경 없이 계속 동작한다.
 
-**정합성 검증(§38 Gate semantics parity)**: 분리 전/후 동일 실제 production
+**정합성 검증(§38 Gate 의미 일치성)**: 분리 전/후 동일 실제 운영
 데이터(2026-08-14, 2,528종목 실제 scan)로 `evaluate_relative_strength_gates()`를
 1회 실행해, 이미 frozen된
 `artifacts/patterns/pattern_a/validation/relative_strength/pattern_a_relative_strength_summary_20260814.json`의
@@ -128,10 +128,10 @@ P3_REPORTED = 1
 
 `tests/test_pattern_a_relative_strength_infrastructure.py`를 재작성했다:
 
-- `rs_subset_context` (module-scoped fixture): 실제 production 코드 경로로
+- `rs_subset_context` (module-scoped fixture): 실제 운영 코드 경로로
   종목 3개(`001540`, `003100`, `007390` — 실제 2026-08-14 oracle에서
   candidate_state=="candidate" AND investability_status=="INVESTABLE"인
-  실제 종목)만 `target_tickers`로 스캔한 real context. 파일 전체에서
+  실제 종목)만 `target_tickers`로 스캔한 실제 context. 파일 전체에서
   Full Universe Scanner를 정확히 1회(사실상 subset이라 1초 미만)만 호출한다.
 - `rs_clean_context` (function-scoped fixture): 위 context의 oracle
   DataFrame들을 동일 3종목으로만 필터링해 모든 mismatch counter가 0인
@@ -175,8 +175,8 @@ P3_REPORTED = 1
 `test_relative_strength_full_universe_validation`(slow)이 애초에는
 `prepare_relative_strength_validation_context()` + `evaluate_relative_strength_gates()`를
 직접 호출해 "Full Universe Scan + Gate 평가"만 검증하고, public runner
-`run_relative_strength_validation(...)`의 전체 orchestration(오라클 로드 ->
-스캔 -> 평가 -> CSV/JSON/MD 산출물 기록까지)은 실제 production 데이터로
+  `run_relative_strength_validation(...)`의 전체 작업 흐름(오라클 로드 ->
+스캔 -> 평가 -> CSV/JSON/MD 산출물 기록까지)은 실제 운영 데이터로
 한 번도 실행되지 않는 coverage 축소가 있었다. 이 slow test를
 `run_relative_strength_validation(...)`을 직접 호출하도록 수정해 복구했다
 (`isolated_out_dir`/`isolated_doc_path`는 반드시 `tmp_path` 하위 — canonical
@@ -195,9 +195,9 @@ RS_NORMAL_FULL_UNIVERSE_SCAN_CALLS = 0은 변하지 않는다.
 `base_scan_result`(module-scoped, 1회 real full scan) fixture와 완전히
 별개로 `run_foreign_flow_infrastructure_validation()`을 실제 repo_root로
 호출해 추가 Full Universe Scan을 발생시키고 있었다. 이 test가 검증하는
-Gate(1,2,5,6,7)는 이미 `flow_validation_summary`(canonical 요약 파일 기반)
+Gate(1,2,5,6,7)는 이미 `flow_validation_summary`(표준 요약 파일 기반)
 test들이 커버하므로, "실제 live validator 경로가 isolated tmp 출력에서도
-canonical artifact를 건드리지 않는다"는 이 test 고유의 나머지 가치만
+표준 산출물을 건드리지 않는다"는 이 test 고유의 나머지 가치만
 slow로 격리해 보존했다. 삭제가 아니다 — `uv run pytest ... -m slow`로
 계속 실행 가능하며 실제로 재실행해 PASS를 확인했다(179.27초).
 
@@ -235,7 +235,7 @@ breakdown을 올바르게 집계하는가"라는 원래의 scanner aggregation c
 2. `tests/test_full_universe_scanner.py`에
    `test_summary_candidate_investability_breakdown_aggregation`을 신규
    추가했다. 이미 이 파일이 쓰는 `mock_scanner_env`(synthetic 4-COMMON
-   universe, 실제 production `scan_pattern_a_universe()` 코드 경로를 그대로
+   universe, 실제 운영 `scan_pattern_a_universe()` 코드 경로를 그대로
    통과)로 스캔한 뒤, expected count를 **hardcoded 숫자가 아니라 `res.rows`의
    실제 `candidate_state`/`investability_status` 값으로부터 계산**해서
    `summary.candidate_raw_count`/`candidate_investable_count`/
@@ -266,8 +266,8 @@ INVESTABLE)에서는 `candidate_filtered_market_cap_count`/
   `DATA_UNAVAILABLE`
 
 네 ticker 모두 scan 결과 row를 테스트 코드에서 직접 mutate하지 않고, scanner
-입력(synthetic OHLCV + 실제 canonical market cap 값)만 조정해 production
-classification 코드가 스스로 해당 status를 생성하도록 구성했다(실측 확인
+입력(synthetic OHLCV + 실제 표준 market cap 값)만 조정해 운영
+분류 코드가 스스로 해당 status를 생성하도록 구성했다(실측 확인
 완료). 신규 test
 `test_summary_candidate_investability_breakdown_all_branches`가 4개 branch
 모두 `>= 1`임을 먼저 assert한 뒤 summary aggregation을 검증하고, 대표
@@ -358,7 +358,7 @@ FIX_01 이후 실측 (RS_SLOW, public runner 직접 호출로 수정된 뒤 재�
   1 passed, 175.91초 — public runner `run_relative_strength_validation()`이
   실제로 오라클 로드 -> Full Universe Scan -> Gate 1~10 평가 -> CSV/분포
   JSON/요약 JSON/MD를 `tmp_path`에 기록하는 전체 경로를 실행. isolated
-  output artifact 4개 파일 존재 확인, canonical artifact(CSV/JSON) 해시
+  결과 산출물 4개 파일 존재 확인, 표준 산출물(CSV/JSON) 해시
   실행 전후 불변 확인 — 모두 PASS.
 
   FIX_02: 위 test 안에서 Gate 7/8 False + verdict 검증 assertion 3줄이
@@ -427,7 +427,7 @@ FIX_02 완료 후 사용자가 실제 Normal Full Suite를 실행해 성능 개�
 실측했다: **3962.13초(약 66분) → 694.95초(약 11분 35초), 약 82.5% 감소, 약
 5.7배 속도 개선**. 성능 목표(<=15분)는 이미 달성했다.
 
-이 실행에서 5개 test가 FAIL했으나, 원인은 production regression이 아니라
+이 실행에서 5개 test가 FAIL했으나, 원인은 운영 회귀가 아니라
 "오래된 Phase 13 historical BASE commit을 기준으로 특정 디렉터리/production
 source 파일 전체를 `git diff --quiet OLD_BASE -- ...`로 통째 비교"하는 stale
 guard 구조였다 — Docs Information Architecture 재편(commit `beafd30` 등)으로
@@ -473,8 +473,8 @@ FILE: 전체 tests/ (§44)
 REASON: Full Suite 기준 warning 1,122,695건 관측 기록(pandas/numpy
   FutureWarning/RuntimeWarning 다수, 이번 사이클에서도 test_a_fast_core_stock_report.py
   등에서 반복 관측). Runtime에 실질적 영향을 줄 가능성이 있음(OBSERVED/LIKELY).
-RECOMMENDATION: warning root-cause 수정은 별도 작업. Production
-  pandas/numpy semantics는 이번 사이클에서 변경하지 않았다.
+RECOMMENDATION: warning 원인 수정은 별도 작업. 운영
+  pandas/numpy 의미는 이번 사이클에서 변경하지 않았다.
 
 PRIORITY: P3
 FILE: tests/test_a_fast_core_stock_report.py 내 개별 테스트

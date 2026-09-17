@@ -34,7 +34,7 @@ parquet 3), **12개 top-level 폴더**가 있다. 그중 `pattern_a_fast/`(584 �
 3. **`artifacts/pattern_a_fast/strategy_finalization_v01_corrected_pit/`는
    현재 base `strategy_finalization_v01/`와 byte-identical 중복**이고,
    `strategy_finalization_v01_legacy/`는 PIT 보정 이전(pre-fix) 값의 진짜
-   historical 백업이다(diff로 직접 확인). Architect decision: canonical =
+   과거 백업이다(diff로 직접 확인). Architect 결정: 표준 =
    `strategy_finalization_v01/`, `corrected_pit/` = REMOVE_DUPLICATE(STEP 2
    Phase E), `legacy/` = archive 유지(§19).
 4. **6개 A FAST v0.2 계열 연구 산출물**(`entry_gate_v02a`, `coverage_hole_v02d`,
@@ -49,9 +49,9 @@ parquet 3), **12개 top-level 폴더**가 있다. 그중 `pattern_a_fast/`(584 �
 6. **frozen/hash 보호는 이미 명시적 sha256 중심으로 잘 정리되어 있다**
    (FIX_03에서 완료). 다만 그 hash들은 전부 **content identity**만 검증하며
    **path**는 어떤 hash에도 포함돼 있지 않다 — 즉 이동해도 hash 값은 그대로
-   유효하지만, path를 하드코딩해 읽는 production/test 코드(§14/§15) 수만큼
+   유효하지만, path를 하드코딩해 읽는 운영/테스트 코드(§14/§15) 수만큼
    반드시 별도 path migration이 필요하다.
-7. **`ground_truth/charts/`(240개 PNG)는 기존 canonical per-file sha256
+7. **`ground_truth/charts/`(240개 PNG)는 기존 표준 파일별 sha256
    manifest가 없다는 발견을 유지하되, 이것이 이동 불가를 뜻하지는
    않는다.** STEP 2 이동 시 pre/post migration checksum snapshot(240개
    전체 relative path+size+sha256)으로 byte identity를 직접 증명하면
@@ -93,26 +93,26 @@ w.md §5가 정의한 카테고리를 그대로 사용한다. 하나의 group이
 
 | 코드 | 의미 |
 |---|---|
-| CURRENT_PRODUCTION | 현재 production runtime이 직접 소비 |
-| CURRENT_PRODUCTION_EVIDENCE | production 결과의 canonical 증빙(재계산 없이 신뢰되는 output) |
-| CURRENT_VALIDATION | 현재 validation/closure 체인의 일부 |
+| CURRENT_PRODUCTION | 현재 운영 실행 시점이 직접 소비 |
+| CURRENT_PRODUCTION_EVIDENCE | 운영 결과의 표준 증빙(재계산 없이 신뢰되는 결과) |
+| CURRENT_VALIDATION | 현재 검증/closure 체인의 일부 |
 | CURRENT_RESEARCH | 현재도 유효한 연구 결과(폐기 아님) |
 | HISTORICAL_BASELINE | 공식 과거 버전 비교 기준(archive 아님) |
 | SUPERSEDED | 현재 authority 아니고 다른 것으로 대체됨 |
 | SOURCE_INPUT | 외부/캐시 원본 데이터 |
 | GROUND_TRUTH | 사람이 만든 정답/라벨 데이터 |
 | HUMAN_REVIEW | 사람이 직접 검토·입력한 원자료 |
-| CLOSURE_EVIDENCE | Phase/Task 종료를 증빙하는 seal/manifest/audit |
+| CLOSURE_EVIDENCE | Phase/Task 종료를 증빙하는 seal/manifest/감사 |
 | REPORT_OUTPUT | 최종 소비자용 리포트 산출물 |
-| TEMPORARY_OR_DUPLICATE_CANDIDATE | 다른 canonical 파일과 내용이 중복 |
+| TEMPORARY_OR_DUPLICATE_CANDIDATE | 다른 표준 파일과 내용이 중복 |
 | UNKNOWN_REQUIRES_REVIEW | 판단 근거 불충분 |
 
 Group 단위 조사 항목(각 group마다): 현재 경로 / group 설명 / 소유
-domain·pattern / role(Primary/Secondary) / current authority 여부 /
-production dependency / frozen 여부 / hash·seal·manifest 보호 / 코드·테스트·
-docs·scripts 참조 여부 / proposed destination / move risk / 비고.
+domain·pattern / role(Primary/Secondary) / 현재 기준 여부 /
+운영 의존성 / frozen 여부 / hash·seal·manifest 보호 / 코드·테스트·
+docs·scripts 참조 여부 / 제안 위치 / 이동 위험 / 비고.
 
-## 4. artifact 목록
+## 4. 산출물 목록
 
 파일 단위가 아니라 논리적 group 단위로 기록한다(w.md §5 허용). 전체
 913개 파일이 아래 표의 group 중 하나에 속한다.
@@ -121,14 +121,14 @@ docs·scripts 참조 여부 / proposed destination / move risk / 비고.
 |---|---|---|---|---|---|---|---|
 | 1 | `analysis/` | 3 | CURRENT_RESEARCH | Pattern A (local stage filter audit) | 아니오 | 없음 | docs 1건 |
 | 2 | `cache_population/` | 2 | CURRENT_VALIDATION(infra) | 공용 infra(캐시 적재 감사) | 아니오 | 없음 | scripts 1건 |
-| 3 | `chart_review/` | 3 | **CLOSURE_EVIDENCE**/Primary, HUMAN_REVIEW/Secondary | Pattern A | **예(Final Closure 입력)** | 없음(hash 無) | src 3건(runtime 포함), docs 1건, scripts 1건 |
+| 3 | `chart_review/` | 3 | **CLOSURE_EVIDENCE**/Primary, HUMAN_REVIEW/Secondary | Pattern A | **예(Final Closure 입력)** | 없음(hash 無) | src 3건(실행 시점 포함), docs 1건, scripts 1건 |
 | 4 | `flow/` (+source/) | 6 | CURRENT_PRODUCTION_EVIDENCE | Pattern A (Foreign Flow, Phase11 CLOSED) | 예 | 없음 | src 4건, tests 1건, scripts 1건 |
-| 5 | `investability/` top-level 10 | 10 | CURRENT_PRODUCTION_EVIDENCE | Pattern A (Investability, Phase10 CLOSED) | 예 | 없음(2개 canonical CSV는 tests/helpers/frozen_integrity.py에서 sha256) | src 6건, tests 다수, docs 다수 |
+| 5 | `investability/` top-level 10 | 10 | CURRENT_PRODUCTION_EVIDENCE | Pattern A (Investability, Phase10 CLOSED) | 예 | 없음(2개 표준 CSV는 tests/helpers/frozen_integrity.py에서 sha256) | src 6건, tests 다수, docs 다수 |
 | 6 | `investability/history/` (+source/normalized, 56) | 56 | SOURCE_INPUT/Primary, CURRENT_VALIDATION/Secondary | Pattern A (Investability, KRX historical backfill) | 예 | **row-level sha256**(provenance CSV) | tests/test_krx_historical_market_cap_backfill.py |
-| 7 | `investability/source/` | 2 | SOURCE_INPUT | Pattern A (Investability canonical PIT snapshot) | 예 | **explicit sha256**(FIX_03) | src(full_universe_scanner.py 런타임 로드), tests |
+| 7 | `investability/source/` | 2 | SOURCE_INPUT | Pattern A (Investability 표준 PIT snapshot) | 예 | **explicit sha256**(FIX_03) | src(full_universe_scanner.py 런타임 로드), tests |
 | 8 | `pattern_a_final_closure/` | 1 | CLOSURE_EVIDENCE | Pattern A | 예 | EXPECTED_FROZEN_HASHES(간접, source 파일 대상) | src(pattern_a_final_closure.py가 직접 write) |
 | 9 | `relative_strength/` (+source/) | 9 | CURRENT_VALIDATION | Pattern A (RS, Phase12 `HOLD_RELATIVE_STRENGTH_INFRA`) | 예(HOLD 상태) | 없음 | src 3건, tests 2건 |
-| 10 | `scanner/` | 2 | CURRENT_PRODUCTION_EVIDENCE | Pattern A (Full Universe Scan canonical output) | 예 | 없음 | src 1건, docs 다수, scripts 2건 |
+| 10 | `scanner/` | 2 | CURRENT_PRODUCTION_EVIDENCE | Pattern A (Full Universe Scan 표준 결과) | 예 | 없음 | src 1건, docs 다수, scripts 2건 |
 | 11 | `stage_v03_research/` | 6 | CURRENT_VALIDATION/CURRENT_RESEARCH | Pattern A (Stage classifier 연구, 결정론적 재생성 가능) | 예(closed research) | 없음(deterministic regeneration test 존재) | src(stage_v03_research.py), tests |
 | 12 | `stage_v04_multi_year_research/` | 13 | CURRENT_VALIDATION/CURRENT_RESEARCH | Pattern A (Stage classifier 다년도 연구, CLOSED) | 예(closed research) | 없음 | src(stage_v04_multi_year_research.py), tests |
 | 13 | `stock_reports/20260814/` | 108 | REPORT_OUTPUT | 독립 Reporting 계층(Stock Report v0.2) | 예(current) | 없음 | src(stock_report.py), tests |
@@ -177,13 +177,13 @@ Pattern A artifact set은 현재 다음과 같은 lifecycle 영역으로 명확�
 
 - **운영 증적(Production Evidence)**: `scanner/`(canonical Full Universe Scan 결과), `investability/` top-level 10개 파일(Phase10 CLOSED 결과), `flow/`(Phase11 CLOSED 외국인 수급 결과)
 - **운영 실행 원천(Production Runtime Source)**: `investability/source/`(canonical PIT snapshot 2개, 운영 scanner가 매번 직접 로드)
-- **Validation / Hold**: `relative_strength/`(Phase12 `HOLD_RELATIVE_STRENGTH_INFRA` — infra 및 validation evidence, Sector RS 미해결로 production 미승격), `investability/history/`(KRX 과거 시총 백필, row-level sha256 보호), `stage_v03_research/`, `stage_v04_multi_year_research/`(결정론적 재생성 검증 대상)
+- **검증 / 보류(Validation / Hold)**: `relative_strength/`(Phase12 `HOLD_RELATIVE_STRENGTH_INFRA` — 인프라 및 검증 근거, Sector RS 미해결로 운영 미승격), `investability/history/`(KRX 과거 시총 백필, 행 단위 sha256 보호), `stage_v03_research/`, `stage_v04_multi_year_research/`(결정론적 재생성 검증 대상)
 - **Closure Evidence**: `pattern_a_final_closure/`(10-gate closure 감사 결과), `chart_review/`(인간 수동 차트 리뷰 — closure 체인의 입력이자 production dependency)
-- **Research**: `analysis/`(local stage filter 감사 연구), `investability/`의 threshold design 계열
+- **연구(Research)**: `analysis/`(로컬 stage filter 감사 연구), `investability/`의 threshold design 계열
 
 `pattern_a_final_closure/pattern_a_final_closure.json`은 이름에 "closure"가
 들어가지만 **archive 후보가 아니다** — `pattern_a_final_closure.py`가 매번
-실행 시 이 파일을 새로 쓰는 현재 감사 결과물(재실행 가능한 evidence)이다.
+실행 시 이 파일을 새로 쓰는 현재 감사 결과물(재실행 가능한 근거)이다.
 w.md §7.1이 명시적으로 경고한 함정("closure라는 이름만 보고 archive 판단
 금지")과 정확히 일치하는 사례이며, 이 audit에서 실제로 그렇게 처리했다.
 
@@ -280,21 +280,21 @@ Phase12를 "처음부터 다시 만드는" 방식으로 재해석하지 않았�
 
 ## 11. Scanner·Analysis·Chart Review 감사
 
-- `scanner/`(2파일): canonical Full Universe Scan 결과(CSV+summary JSON).
+- `scanner/`(2파일): 표준 Full Universe Scan 결과(CSV+summary JSON).
   CURRENT_PRODUCTION_EVIDENCE, `pattern_a_investability_audit.py`/여러 docs가
   참조.
-- `analysis/`(3파일): local stage filter 감사(전체/후보군 비교),
+- `analysis/`(3파일): 로컬 stage filter 감사(전체/후보군 비교),
   `docs/patterns/pattern_a/validation/full_universe_stage_filter_audit_20260814.md`
   1건만 참조. CURRENT_RESEARCH, 낮은 위험.
 - `chart_review/`(3파일): §6에서 다룬 대로 CLOSURE_EVIDENCE, HIGH risk(
-  production/closure 코드 2곳이 하드코딩 경로로 직접 읽음).
+  운영/closure 코드 2곳이 하드코딩 경로로 직접 읽음).
 - `cache_population/`(2파일): 캐시 적재 로그/품질 감사. Pattern에 종속되지
   않는 공용 infra 성격(`scripts/populate_krx_common_cache.py`가 유일한 참조).
 
 ## 12. Stage 연구 감사
 
 `stage_v03_research/`(6파일)와 `stage_v04_multi_year_research/`(13파일)는
-각각 전용 validation 모듈(`src/trend_scanner/validation/stage_v03_research.py`,
+각각 전용 검증 모듈(`src/trend_scanner/validation/stage_v03_research.py`,
 `stage_v04_multi_year_research.py`)과 전용 test 파일을 가진 **결정론적으로
 재생성 가능한** Stage 분류기 연구 증거다. git log 상 둘 다 "closure"
 커밋으로 마무리되었다(CLOSED). 디렉터리 전체를 historical BASE와 byte
@@ -314,7 +314,7 @@ stock_reports/
 └── archive/v0.1/20260814/  108 files (superseded v0.1)
 ```
 
-이미 current/archive/version-boundary가 잘 구분된 모범 사례(w.md §7.6
+이미 현재/보관/버전 경계가 잘 구분된 모범 사례(w.md §7.6
 그대로 확인됨). `src/trend_scanner/reporting/stock_report.py`, 여러 test가
 `stock_reports/`를 직접 참조하므로 HIGH risk. 향후 Web Stock Report Viewer가
 이 경로를 소비할 가능성이 있어 path stability를 HIGH priority로 유지해야

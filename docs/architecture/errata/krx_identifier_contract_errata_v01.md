@@ -20,8 +20,8 @@ ERRATA overlay로 교정한다.
 경계
 ----
 - Raw KRX 기준은 원천 code를 그대로 보존한다. suffix 제거, 숫자 변환,
-  대문자 자동 변환, row drop을 하지 않는다.
-- `AdjustedPriceProvider`와 숫자 전용 downstream 사용 코드는 이번 ERRATA에서
+  대문자 자동 변환, 행 삭제를 하지 않는다.
+- `AdjustedPriceProvider`와 숫자 전용 하위 사용 코드는 이번 ERRATA에서
   자동 확장하지 않는다. raw whole-market completeness와 strategy eligibility는
   별도 계층이다.
 - 기존 `KRX_PRODUCTION_DATA_ARCHITECTURE_V01` CLOSED artifacts/history는

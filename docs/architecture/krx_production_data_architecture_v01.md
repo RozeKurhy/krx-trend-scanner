@@ -25,7 +25,7 @@ consumer 문구는 이 문서가 작성된 당시의 상태로 읽는다.
 이번 단계의 범위
 ----------------------------------------------------------------------
 
-- authority와 source semantics를 machine-readable contract로 고정한다.
+- 기준과 원천 의미를 기계 판독 가능한 계약으로 고정한다.
 - 원천/수정주가/master/index/구성 종목/fundamentals/dirty-state store 역할을 분리한다.
 - 기존 `data/raw/stocks/<ticker>.parquet`는 `LEGACY_COMPOSITE_STOCK_CACHE`로 분류한다.
 - Repository V2의 수정주가 OHLC + 원천 ancillary 결합 의미를 고정한다.
@@ -33,7 +33,7 @@ consumer 문구는 이 문서가 작성된 당시의 상태로 읽는다.
 - Operations Dashboard가 소비할 health/status contract를 정의한다.
 - 오프라인 static validator와 contract tests로 계약을 검증한다.
 - 실제 raw schema와 request/mapping-derived provenance를 구분한다.
-- StockMaster raw fact, canonical market, instrument classification의 경계를 구분한다.
+- StockMaster raw fact, 표준 market, instrument classification의 경계를 구분한다.
 - KRX `IDX_CLSS` source class와 logical index family를 분리한다.
 - 현재 legacy 실행 시점의 `artifacts/` 소비를 debt registry로 추적한다.
 
@@ -66,8 +66,8 @@ Machine-readable 원본은
 | 수정주가 OHLC (`ADJUSTED`)  | Naver direct date-range (`requestType=1`) |
 | 수정주가 거래량              | NONE; 제공한다고 선언하지 않음           |
 | stock master raw facts     | KRX Basic Info + request basDd          |
-| stock master canonical market | `normalize_krx_market(raw_market)`    |
-| instrument asset type      | InstrumentMetadataResolver/formal product-master classification |
+| stock master 표준 market | `normalize_krx_market(raw_market)`    |
+| instrument asset type      | InstrumentMetadataResolver/공식 product-master classification |
 | native sector index         | KRX Open API native sector index       |
 | market index                | FIX03 snapshot: PyKRX legacy, 목표 KRX Open API |
 | ticker→sector membership    | KRX Data Marketplace official index constituents CSV → exact-date SectorMembershipStore snapshots |
@@ -103,17 +103,17 @@ Basic Info response에는 `BAS_DD`가 없다. `StockMasterStore.as_of`는
 `REQUEST_PARAMETER.basDd`에서 파생된 `REQUESTED_SNAPSHOT_DATE`다.
 
 `StockMasterStore.raw_market`는 `MKT_TP_NM` 원문이다. `StockMasterStore.market`는
-`normalize_krx_market(raw_market)`로 얻는 project canonical value이며, 두 필드를
+`normalize_krx_market(raw_market)`로 얻는 프로젝트 표준 value이며, 두 필드를
 같은 의미의 중복 authority로 취급하지 않는다. `StockMasterStore`는
 `security_group`, `listing_section`, `security_kind` 같은 raw/master fact를 보유하지만
 최종 `asset_type` authority가 아니다.
 
 Native sector index response의 raw identity는
 `(source_api, IDX_CLSS, IDX_NM)`다. `IndexStore.index_code`는 raw response field가
-아니라 frozen `KRX_NATIVE_SECTOR_INDEX_MAP`에서 파생된 canonical code이며,
+아니라 frozen `KRX_NATIVE_SECTOR_INDEX_MAP`에서 파생된 표준 code이며,
 `IndexStore.family`는 `MARKET_INDEX`, `NATIVE_SECTOR_INDEX`,
 `KRX_BRANDED_TAXONOMY` 중 logical family다. `IDX_CLSS`는 `source_index_class`로
-보존하며 logical family로 사용하지 않는다. canonical key는 `(family, index_code)`다.
+보존하며 logical family로 사용하지 않는다. 표준 key는 `(family, index_code)`다.
 
 3. 논리 저장소
 ----------------------------------------------------------------------
@@ -127,7 +127,7 @@ Native sector index response의 raw identity는
 ---------------------------------------------------------------------
 | KRXRawStockStore              | 미수정 OHLC + 원천 ancillary              |
 | AdjustedPriceStore            | 수정주가 OHLC (`ADJUSTED`) only; schema `ADJUSTED_PRICE_V02` / store `ADJUSTED_PRICE_STORE_V02` |
-| StockMasterStore              | as_of 포함 PIT raw/canonical master; final asset_type 제외 |
+| StockMasterStore              | as_of 포함 PIT raw/표준 master; final asset_type 제외 |
 | InstrumentClassificationStore| PIT asset_type/applicability + provenance |
 | IndexStore                    | market/native-sector/taxonomy family; key=(family,index_code) |
 | SectorMembershipStore         | effective_date 기반 PIT membership   |
@@ -143,11 +143,11 @@ InstrumentClassificationStore
 
 required field는 `effective_date`, `ticker`, `asset_type`,
 `classification_authority`, `asset_type_source`다. `(effective_date, ticker)`를
-canonical PIT key로 사용하고 requested `as_of` 이하의 최신 effective date를 조회한다.
+표준 PIT key로 사용하고 requested `as_of` 이하의 최신 effective date를 조회한다.
 `asset_type`은 `StockMasterStore.security_group/listing_section/security_kind`와
-필요한 formal product-master evidence를 해석한 DERIVED 결과다. 현재 production
+필요한 공식 product-master 근거를 해석한 DERIVED 결과다. 현재 운영
 authority인 `InstrumentMetadataResolver -> data/reference/krx_instrument_metadata.parquet`
-와 formal ETF/ETN product-master authority는 이번 phase에서 교체하지 않는다.
+와 공식 ETF/ETN product-master 기준은 이번 phase에서 교체하지 않는다.
 KOSPI/KOSDAQ Basic Info만으로 ETF/ETN까지 분류한다고 선언하지 않는다.
 
 Pattern A, FastCore, Stock Report 등 instrument applicability 판단은 이 classification
@@ -161,9 +161,9 @@ layer를 사용해야 하며, consumer가 `KIND_STKCERT_TP_NM`, `SECUGRP_NM`, `S
 raw trading_value가 결합된 기존 소비자 호환 캐시다. 이 파일을
 `KRXRawStockStore`라고 부르지 않는다.
 
-이번 phase에서 해당 경로의 파일을 rewrite, move, delete, bulk rename하지 않는다.
+이번 단계에서 해당 경로의 파일을 다시 쓰기, 이동, 삭제, 일괄 이름 변경하지 않는다.
 FIX03 당시 Pattern A, FastCore, Julia 등 기존 소비자는 당분간 legacy cache를
-그대로 사용하도록 기록했다. 현재 production consumer wiring은 위의 현재 구현
+그대로 사용하도록 기록했다. 현재 운영 사용 코드 연결은 위의 현재 구현
 경계에 적은 후속 Repository V2 경로를 따른다.
 
 5. Repository V2
@@ -211,7 +211,7 @@ persisted dataset metadata 최소 필드:
 `content_sha256`
 
 network dataset은 `validation_run_id`, `quota_usage_date_kst`, `run_request_count`를
-추가할 수 있다. AUTH_KEY, KRX_ID, KRX_PW 및 실제 credential은 metadata/log/artifact에
+추가할 수 있다. AUTH_KEY, KRX_ID, KRX_PW 및 실제 인증 정보는 metadata/log/artifact에
 저장하지 않는다.
 
 Field provenance origin은 `RESPONSE_FIELD`, `REQUEST_PARAMETER`, `STATIC_MAPPING`,
@@ -224,15 +224,15 @@ schema에 존재해야 하며, request/mapping-derived field는 `source_field=nu
 TARGET ARCHITECTURE RULE:
 새 운영 Store/Repository는 `artifacts/`를 실행 시점 원천으로 사용하지 않는다.
 
-현재 수정주가 실행 시점 기준 원천은 package-owned
+현재 수정주가 실행 시점 기준 원천은 패키지 소유
 `ADJUSTED_PRICE_AUTHORITY_CONTRACT`의 Naver direct date-range 수정주가 원천이다.
-`NaverDirectAdjustedPriceDataProvider`가 `AdjustedPriceStore V02`에 현재 authoritative
-write를 수행하며, Closure V02 파일은 offline 감사 근거로만 사용한다. 기존
-`ADJUSTED_PRICE_V01`/PyKRX cache는 legacy compatibility 또는 validation comparator로
-읽을 수 있지만 current authority가 아니다.
+`NaverDirectAdjustedPriceDataProvider`가 `AdjustedPriceStore V02`에 현재 기준 데이터를
+기록하며, Closure V02 파일은 오프라인 감사 근거로만 사용한다. 기존
+`ADJUSTED_PRICE_V01`/PyKRX cache는 레거시 호환 또는 검증 비교기로
+읽을 수 있지만 현재 기준이 아니다.
 
 CURRENT LEGACY REALITY:
-일부 기존 analytics/report flows는 `artifacts/` 기반 data cache를 runtime에
+일부 기존 analytics/report 흐름은 `artifacts/` 기반 data cache를 실행 시점에
 사용하며 `LEGACY_RUNTIME_DEPENDENCIES`에 migration debt로 등록한다. Dashboard는
 향후 이 registry를 Architecture Debt로 표시할 수 있다.
 
@@ -240,11 +240,11 @@ Health status는 `READY`, `STALE`, `PARTIAL`, `MISSING`, `ERROR`, `NOT_MIGRATED`
 `DIRTY`다. LayerRegistry는 정적 `operational_status`와 `migration_status`를
 분리해 보유하고, `DataHealthSnapshot`은 별도 런타임 `HealthStatus`를 보유한다.
 대시보드는 `layer_id`로 두 상태를 join한다. Snapshot은
-layer/source/date/row/ticker/missing/stale/error와
+layer/source/date/행/ticker/missing/stale/error와
 last success/attempt/message를 공통으로 노출한다. quota observability는
 `usage_date_kst`, `used`, `limit`, `remaining`, `percentage`, `endpoint_usage`다.
 
-8. Migration state — FIX03 당시 snapshot
+8. 전환 상태(Migration state) — FIX03 당시 snapshot
 ----------------------------------------------------------------------
 
 ---------------------------------------------------------------------
@@ -260,33 +260,33 @@ last success/attempt/message를 공통으로 노출한다. quota observability�
 ---------------------------------------------------------------------
 
 아래 표는 FIX03 당시의 migration snapshot이며, token/value는 역사 기록으로
-보존한다. API validation 완료만으로 production migrated/READY라고 표시하지 않는다.
+보존한다. API 검증 완료만으로 운영 전환/READY라고 표시하지 않는다.
 이번 FIX03에서 `STOCK_RAW_KRX`는 실제 production source가 아니라
-`LEGACY_COMPOSITE_STOCK_CACHE`를 current source로 명시하고, 검증 source와
+`LEGACY_COMPOSITE_STOCK_CACHE`를 현재 원천으로 명시하고, 검증 원천과
 target store를 별도 기록한다. `STOCK_MASTER_KRX`의 current source는 현재
 레포의 `InstrumentMetadataResolver -> data/reference/krx_instrument_metadata.parquet`
 동결 artifact authority이며, KRX Basic Info는 validated/target 계약이다.
-`STOCK_MASTER_KRX`는 raw/canonical master 경계만 담당하고, asset type authority는
+`STOCK_MASTER_KRX`는 raw/표준 master 경계만 담당하고, asset type 기준은
 `INSTRUMENT_CLASSIFICATION` layer로 분리한다.
 
-Sector RS membership authority
+Sector RS 구성 종목 기준
 ----------------------------------------------------------------------
-현재 Sector RS production path의 membership은
+현재 Sector RS 운영 경로의 구성 종목은
 KRX Data Marketplace 공식 지수구성종목 CSV를 수동 로그인 브라우저로 내려받아
 46-sector validation을 통과시킨 뒤 `SectorMembershipStore`에 exact-date snapshot으로
-materialize한 것이다. 현재 승인 snapshot은
+구체화한 것이다. 현재 승인 snapshot은
 `data/market/sector_membership/v01/sector_membership_20260814.parquet`와
 `data/market/sector_membership/v01/sector_membership_20260904.parquet`다.
 요청 `as_of`는 snapshot의 `effective_date`와 정확히 일치해야 하며, 이전 snapshot을
 carry-forward하거나 이후 snapshot을 backward apply하지 않는다. Marketplace 실패 시
-PyKRX membership fallback도 수행하지 않는다. Naver taxonomy와 live PyKRX membership은
-현재 membership authority가 아니다.
+PyKRX 구성 종목 대체 경로도 수행하지 않는다. Naver taxonomy와 live PyKRX 구성 종목은
+현재 구성 종목 기준이 아니다.
 
 10. Foreign Flow 계보와 production diff guard
 ----------------------------------------------------------------------
 
-`src/trend_scanner/flow/foreign_flow.py`는 foreign flow upstream authority가
-아니라 feature 계산 엔진이다. 현재 lineage는
+`src/trend_scanner/flow/foreign_flow.py`는 foreign flow 상위 원천 기준이
+아니라 feature 계산 엔진이다. 현재 계보는
 `ForeignFlowDataProvider.fetch_date_batch -> build_historical_cache`와
 `scripts/fetch_foreign_flow_20260814.py`가 PyKRX
 `get_market_net_purchases_of_equities_by_ticker(date, date, "ALL", "외국인")`를
@@ -297,7 +297,7 @@ FIX03 validator는 고정된 start head
 `bba23053b806b3775159acf89cb6a0b143937ebd`부터 implementation head까지의
 `git diff --name-only`를 검사한다. 허용 경로는 contracts, validator, 이 문서,
 architecture contract tests 및 `artifacts/data/architecture/krx_production_data/v01/`
-뿐이며, 그 밖의 production behavior 경로 변경은 blocker다. `network_request_count`는
+뿐이며, 그 밖의 운영 동작 경로 변경은 blocker다. `network_request_count`는
 실행 중 네트워크 요청 횟수이고 `static_forbidden_network_import_count`는
 계약/validator의 금지 import 정적 검사 횟수로 서로 다른 지표다. 이 작업에서는
 KRX/PyKRX/OpenDART 네트워크 요청을 수행하지 않는다.
@@ -352,5 +352,5 @@ contract tests:
 산출물:
 `artifacts/data/architecture/krx_production_data/v01/`
 
-이번 phase의 완료 목표는 새 historical data를 만든 것이 아니라 authority,
-schema, PIT, provenance, health semantics를 혼동 없이 고정하는 것이다.
+이번 단계의 완료 목표는 새 과거 데이터를 만든 것이 아니라 기준,
+schema, PIT, provenance, 상태 의미를 혼동 없이 고정하는 것이다.

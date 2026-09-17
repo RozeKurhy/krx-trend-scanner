@@ -49,7 +49,7 @@ Pattern/Feature/Resampler 계층은 `MarketDataProvider` Protocol과 표준 OHLC
 
 **알려진 한계 2 — 해결됨 (`PyKrxDataProvider`에서 필터링)**: 두 백엔드 모두 휴장일
 (공휴일 등)을 응답에서 제외하지 않고, open/high/low/volume이 전부 0이고 close만
-직전 거래일 값을 그대로 들고 있는 "phantom row"로 포함시키는 경우가 있습니다.
+직전 거래일 값을 그대로 들고 있는 "허위 행(phantom row)"으로 포함시키는 경우가 있습니다.
 실측: 035420(NAVER) 2018-10-08/10/11, 005930(삼성전자) 2018-04-30~05-03. 이런 행은
 `high < close` 등 OHLC 관계를 깨서 `validate_ohlcv`가 거부했습니다. Validator를
 느슨하게 만들지 않고, `_to_standard_schema`에서 `open==0 and high==0 and low==0
@@ -185,7 +185,7 @@ Data Layer는 "이번 달/이번 주 봉이 완성됐는지"를 판단하지 않
 - `pykrx_provider.py`는 import 시점에 `python-dotenv`로 `.env`를 자동으로 읽어
   환경 변수로 등록합니다(이미 export된 환경 변수가 있으면 그걸 우선합니다).
 - Integration test(`tests/test_pykrx_provider_integration.py`)는 `KRX_ID`/`KRX_PW`가
-  없으면 자동으로 skip되고, 일반 unit test는 credential 유무와 무관하게 항상
+없으면 자동으로 건너뛰고, 일반 단위 테스트는 인증 정보 유무와 무관하게 항상
   정상 실행됩니다.
 - **알려진 한계**: PyKRX의 로그인 함수(`pykrx.website.comm.auth.build_krx_session`)가
   로그인 시도 시 `KRX_ID` 값(비밀번호는 아님)을 자체적으로 `print`합니다. 이건
