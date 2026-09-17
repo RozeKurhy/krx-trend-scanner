@@ -27,7 +27,7 @@ Score v0.2와 Stage v0.1은 현재 공식 계약이다. 역사적 검증 문서�
 | Score 계산 | `src/trend_scanner/patterns/pattern_a_score.py`의 `score_pattern_a` |
 | 결과 객체 | `PatternAResult` |
 | 안내 문서 | [`docs/patterns/pattern_a/README.md`](../README.md) |
-| 과거 검증·연구 분류 | [`PATTERNS_DOC_REORGANIZATION_REVIEW_V01.md`](../../PATTERNS_DOC_REORGANIZATION_REVIEW_V01.md) |
+| 과거 검증·연구 분류 | [`PATTERNS_DOC_REORGANIZATION_REVIEW_V01.md`](../../archive/PATTERNS_DOC_REORGANIZATION_REVIEW_V01.md) |
 
 ## 3. 현재 패턴 정의
 
@@ -212,7 +212,7 @@ Stage 분류의 역사적 검증과 알려진 한계는 아래 역사 문서에�
 - [Pattern A 운영 확정 기록](../archive/validation/final_production_closure.md)
 - [Pattern A Score OOS 사례 기록](../archive/validation/oos2.md)
 - [Pattern A Stage OOS 결과](../archive/validation/stage_oos_v01_result.md)
-- [문서 재정리 분류표](../../PATTERNS_DOC_REORGANIZATION_REVIEW_V01.md)
+- [문서 재정리 분류표](../../archive/PATTERNS_DOC_REORGANIZATION_REVIEW_V01.md)
 
 Score 곡선·가중치·감점·Stage 임계값·필수 기준점을 바꾸려면 별도 연구
 문서, 검증 범위, 승인과 함께 변경한다. 이 문서는 새 연구를 시작하는 문서가

@@ -100,7 +100,7 @@ Stage, 후보 수를 재계산하거나 변경하지 않는다.
 
 - [Phase 10B 임계값 설계·검증](../archive/validation/investability_threshold_design_v01.md)
 - [Phase 10C 후단 통합 검증](../archive/validation/investability_integration_v01.md)
-- [문서 재정리 분류표](../../PATTERNS_DOC_REORGANIZATION_REVIEW_V01.md)
+- [문서 재정리 분류표](../../archive/PATTERNS_DOC_REORGANIZATION_REVIEW_V01.md)
 
 현재 구현과 역사 문서가 다르면 현재 구현과 이 현재 기준 문서를 우선 확인하고,
 규칙 변경은 별도 승인된 변경 작업으로만 수행한다.
