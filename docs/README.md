@@ -32,7 +32,7 @@
 | [relative_strength/](relative_strength/) | 시장·업종 상대강도 계산과 제공 계약 |
 | [reporting/](reporting/README.md) | 패턴·전략·펀더멘털 결과를 모은 종목 보고서 문서 |
 | [strategies/](strategies/README.md) | 패턴 결과를 매매 규칙으로 연결하는 전략과 독립 전략 |
-| [validation/](validation/) | 이전 문서 경로와 현재 기준 문서를 연결하는 호환 안내 |
+| [validation/](validation/) | 이전 문서 경로 호환 안내와 영역 공통 현재 기준 문서 |
 | [web/](web/) | 웹 화면에 제공하는 정적 데이터·전달 계약 |
 
 `patterns/`에는 Pattern A와 Pattern A FAST가 있다. A FAST Core 전략 문서는
@@ -93,5 +93,5 @@ Pattern A FAST와 강하게 결합되어 있으므로 해당 패턴 아래에서
 ## 이전 경로 안내
 
 기존 `docs/specs/`와 `docs/validation/`의 문서는 대부분 새 구조로 이동되어
-있다. 현재 `docs/validation/`에 남아 있는 파일은 이전 경로 호환을 위한 안내이며,
-현재 기준은 각 실제 영역의 문서를 따른다.
+있다. `docs/validation/`에는 이전 경로 호환 안내와 영역을 가로지르는 현재
+기준 문서가 함께 있을 수 있으며, 각 문서의 역할과 권위 표기를 따른다.

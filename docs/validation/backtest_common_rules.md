@@ -122,7 +122,8 @@ FastCore 비교에서 사용한 값일 뿐 모든 백테스트의 영구 기본�
 - benchmark와 비교기간은 실행별로 사전에 명시한다.
 - 혼합 포트폴리오에서 임의의 단일 합성 benchmark를 만들지 않으며, 필요한
   경우 시장별 benchmark를 분리해 보고한다.
-- 연도·시장·거래 집중도 등 robustness 범위와 최소 표본 조건을 사전에 정한다.
+- 강건성 분석을 수행하는 경우, 연도·시장·거래 집중도 등 분석 범위와 최소
+  표본 조건을 사전에 정한다.
 - 결과를 본 뒤 특정 구간만 선택하거나 불리한 거래를 제거하지 않는다.
 - 파라미터 grid search, 대규모 튜닝, 결과 기반 threshold 조정은 별도 연구로
   분리하고 현재 실행의 공통조건에 포함하지 않는다.
@@ -161,7 +162,7 @@ FastCore 비교에서 사용한 값일 뿐 모든 백테스트의 영구 기본�
 
 - 데이터·PIT 계약: `docs/architecture/market_data_repository_v02.md` 및
   생존편향 방지 분모 계약
-- 현재 Pattern A 투자 적합성: [`docs/patterns/pattern_a/spec/investability_policy.md`](../patterns/pattern_a/spec/investability_policy.md)
+- 현재 Pattern A 투자 적합성: [`docs/validation/investability_policy.md`](investability_policy.md)
 - 현재 Pattern A 공식 규격: [`docs/patterns/pattern_a/spec/production_authority.md`](../patterns/pattern_a/spec/production_authority.md)
 - 역사적 V2 ↔ Julia 공통조건: [`docs/patterns/pattern_a_fast/validation_plan/realistic_backtest_common_conditions_v01.md`](../patterns/pattern_a_fast/validation_plan/realistic_backtest_common_conditions_v01.md)
 

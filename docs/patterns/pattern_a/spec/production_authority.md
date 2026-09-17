@@ -1,7 +1,7 @@
 # Pattern A: 장기 베이스 수렴형 (Long Term Base Convergence)
 
-> 이 문서는 현재 Pattern A 공식 규격이다. 현재 계약과 구현 위치를 먼저
-> 설명하고, 아래 접힌 영역에는 역사적 연구·검증 근거를 보존한다.
+> 이 문서는 현재 Pattern A 공식 규격이다. 현재 계약과 구현 위치를 설명하고,
+> 역사적 연구·검증 근거는 별도 문서 링크로 제공한다.
 
 ## 1. 현재 상태
 
@@ -175,8 +175,24 @@ Stage 분류의 역사적 검증과 알려진 한계는 아래 역사 문서에�
 
 ## 6. 결측·PIT·출력 계약
 
-- `range_36m`과 `ma24_slope`는 필수 기준 Feature다. 둘 중 하나라도 결측이면
-  `insufficient_data=True`, `pattern_a_score=None`, `stage=None`이다.
+### 6.1 Score 결측
+
+- `range_36m`과 `ma24_slope`는 Score의 필수 기준 Feature다. 둘 중 하나라도
+  결측이면 `pattern_a_score=None`이다.
+- 이 경우 `score_result.stage=None`이다. 이는 `PatternAResult` 안의 legacy
+  Score heuristic Stage 결측이며, 공식 lifecycle Stage 결측을 뜻하지 않는다.
+
+### 6.2 공식 lifecycle Stage 결측
+
+- 공식 lifecycle Stage는 Score와 독립적인 `pattern_a_stage.py`의 필수 raw
+  Feature 조건을 따른다: `ma24_slope`, `weekly_ma12_slope`,
+  `ma24_slope_acceleration`, `avg_price_change_12m`, `ma_spread`,
+  `range_position`, `distance_to_resistance` 중 하나라도 결측이면
+  `stage_result.stage=None` (`insufficient_data`)이다.
+- `range_36m` 결측만으로 공식 lifecycle Stage가 자동으로 `None`이 되지는
+  않는다. 공식 결과는 `PatternAEvaluationResult.stage`와
+  `PatternAEvaluationResult.lifecycle_stage`가 `stage_result.stage`를 그대로
+  따른다.
 - 그 밖의 Base·Supporting Feature 결측은 가능한 축 안에서 가중치를
   재정규화한다. 축 전체가 계산 불가능하면 해당 결과는 결측이다.
 - 입력 Feature는 해당 기준일 이하의 완료된 관측값으로 계산한다. 미래 관측값,

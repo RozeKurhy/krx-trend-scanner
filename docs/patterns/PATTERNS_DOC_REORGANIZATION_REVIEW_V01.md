@@ -2,12 +2,12 @@
 
 ## 1. 요약
 
-`docs/patterns/` 아래 Markdown 72개를 전수 확인하고 현재 역할을 분류했다.
-이번 단계에서는 문서 이동·삭제 없이 현재 기준 문서와 분류표를 보정한다.
+`docs/patterns/` 아래 Markdown 71개를 전수 확인하고 현재 역할을 분류했다.
+이번 단계에서는 archive 대량 이동·삭제 없이 현재 기준 문서와 분류표를 보정한다.
 
 | 분류 | 건수 | 원칙 |
 |---|---:|---|
-| `KEEP` | 10 | 현재 기준·탐색에 직접 필요한 문서와 정리 통제 문서 |
+| `KEEP` | 9 | 현재 기준·탐색에 직접 필요한 문서와 정리 통제 문서 |
 | `ARCHIVE` | 62 | 종료된 연구·검증·사전등록·후보 전략·과거 실행 기록 |
 | `DELETE_CANDIDATE` | 0 | 네 가지 삭제 조건을 모두 만족한다고 확인된 문서 없음 |
 
@@ -17,9 +17,10 @@
 
 현재 기준은 `PATTERN_A_FAST_FINAL_STRATEGY_V02`이며, V1도 현행 전략 폴더에
 남길 실질적 이유가 없어 archive 대상이다. V3와 V4 역시 현재 기본 전략이
-아닌 종료된 후보 기록이다. 투자 적합성 현재 기준은 새
-`pattern_a/spec/investability_policy.md`, 재사용 가능한 백테스트 공통 기준은
-`docs/validation/backtest_common_rules.md`에서 확인한다.
+아닌 종료된 후보 기록이다. 투자 적합성 현재 기준은
+`docs/validation/investability_policy.md`, 재사용 가능한 백테스트 공통 기준은
+`docs/validation/backtest_common_rules.md`에서 확인한다. Investability 문서는
+`docs/patterns/` 71개 분류 숫자에 포함하지 않는다.
 
 ## 2. `KEEP`
 
@@ -28,7 +29,6 @@
 | `docs/patterns/README.md` | 패턴 영역 탐색 안내 | 예 | 현재 패턴과 전략 연결을 안내한다. | 현재 위치 | Pattern A·A FAST 진입점 | 없음 |
 | `docs/patterns/pattern_a/README.md` | Pattern A 안내 | 예 | 현재 공식 패턴의 상태와 권위 문서 위치를 안내한다. | 현재 위치 | `spec/production_authority.md`의 탐색 안내 | 역사 기록 링크가 현재 문서와 가까이 노출됨 |
 | `docs/patterns/pattern_a/spec/production_authority.md` | 현재 Pattern A 공식 규격 | 예 | 현재 Score·공식 lifecycle Stage·규칙·구현 위치만 남기고 과거 근거는 별도 문서 링크로 연결한다. | 현재 위치 | Pattern A의 최상위 현재 권위 문서 | 역사 근거 링크를 현재 계약과 혼동하지 않게 유지해야 함 |
-| `docs/patterns/pattern_a/spec/investability_policy.md` | 현재 투자 적합성 정책 | 예 | 1,000억·3억·가격필터 없음·`DATA_UNAVAILABLE`과 PIT 판정 순서를 한 문서에서 제공한다. | 현재 위치 | Pattern A 후단 필터의 현재 기준 | 없음 |
 | `docs/patterns/pattern_a_fast/README.md` | Pattern A FAST 안내 | 예 | 현재 기준, 문서 구조, V2와 과거 버전의 관계를 안내한다. | 현재 위치 | FAST 명세·전략 안내의 상위 입구 | 현재 문서와 역사 문서의 시각적 분리 보완 필요 |
 | `docs/patterns/pattern_a_fast/specification/README.md` | Pattern A FAST 정의 | 예 | FAST의 의미, 상태, 시간축, PIT 원칙을 정의한다. | 현재 위치 | FAST 패턴의 개념 권위 문서 | 설명과 이력의 길이가 길어 핵심 계약을 더 앞에 둘 수 있음 |
 | `docs/patterns/pattern_a_fast/specification/weekly_lifecycle.md` | FAST 주봉 생애주기 계약 | 예 | WATCH부터 EXTENDED까지의 현재 lifecycle 의미론을 정의한다. | 현재 위치 | FAST 정의의 세부 계약 | 영어 상태 토큰과 일반 설명의 혼용 밀도 개선 여지 |
@@ -149,7 +149,6 @@ docs/patterns/
 ├── pattern_a/
 │   ├── README.md                                  KEEP
 │   ├── spec/production_authority.md               KEEP
-│   ├── spec/investability_policy.md               KEEP: 현재 투자 적합성 정책
 │   └── archive/
 │       ├── research/                              Pattern A 연구 기록
 │       └── validation/                            Pattern A 검증 기록
@@ -172,7 +171,7 @@ docs/patterns/
 그대로 보존한다. 실제 이동 시에는 `README.md`의 링크를 먼저 또는 같은
 커밋에서 갱신하고, 과거 문서의 artifact·commit·경로 참조는 삭제하지 않는다.
 
-## 6. KEEP 문서 중 가독성 개선 필요 목록
+## 6. 현재 기준 문서 중 가독성 개선 필요 목록
 
 이번 단계에서 본문은 수정하지 않는다. 다음 정리 단계의 후보만 기록한다.
 
@@ -184,7 +183,7 @@ docs/patterns/
    앞부분에서 더 빠르게 찾을 수 있게 한다.
 4. `pattern_a_fast/specification/weekly_lifecycle.md` — 영어 상태 토큰은
    유지하되 첫 설명과 일반 문장을 한글 중심으로 정리한다.
-5. `pattern_a/spec/investability_policy.md` 및
+5. `docs/validation/investability_policy.md` 및
    `docs/validation/backtest_common_rules.md` — 핵심 현재 기준을 짧게
    유지하고 역사 보고서와 중복 서술하지 않는다.
 
