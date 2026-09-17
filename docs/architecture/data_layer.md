@@ -1,4 +1,4 @@
-# Data Layer v0.1
+# 공용 데이터 레이어 (Data Layer v0.1)
 
 ## 상태
 
@@ -165,7 +165,7 @@ trading_value   float64   # adjusted=True 경로에서는 NaN일 수 있음
 Data Layer는 "이번 달/이번 주 봉이 완성됐는지"를 판단하지 않습니다. 오늘까지 존재하는
 일봉을 그대로 반환하며, 완료된 봉만 쓸지는 Feature/Pattern 계층의 책임입니다.
 
-## KRX 로그인 credential
+## KRX 로그인 자격 증명
 
 `adjusted=False`(KRX 원천, 거래대금 조회용) 경로는 `KRX_ID`/`KRX_PW` 환경 변수가
 있으면 PyKRX가 내부적으로 로그인 세션을 사용합니다. 없어도 익명 요청으로 폴백은

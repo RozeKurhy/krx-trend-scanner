@@ -1,8 +1,6 @@
 docs/architecture/sector_rs_krx_migration_v01.md
 
-======================================================================
-SECTOR_RS_KRX_MIGRATION_V01
-======================================================================
+# Sector RS용 KRX 전환 (SECTOR_RS_KRX_MIGRATION_V01)
 
 목적
 ----------------------------------------------------------------------
@@ -12,7 +10,7 @@ PyKRX에서 KRX Open API로 교체했다. Sector Membership은 KRX Data Marketpl
 SectorMembershipStore snapshot으로 관리한다. Naver membership fallback과 live
 PyKRX membership은 금지한다.
 
-Production contract
+Production 계약
 ----------------------------------------------------------------------
 - `trend_scanner.data.krx_sector_index.KRX_NATIVE_SECTOR_INDEX_MAP`
   - immutable 46-entry mapping
@@ -20,7 +18,7 @@ Production contract
   - source-qualified `(source_api, idx_class, idx_name)` identity
 - validation artifacts는 contract의 runtime dependency가 아니다.
 
-Cache flow
+Cache 흐름
 ----------------------------------------------------------------------
 KRX `/idx/kospi_dd_trd` + `/idx/kosdaq_dd_trd`
         ↓ (최대 2 snapshot calls / date)
@@ -30,7 +28,7 @@ normalized 46-sector Parquet cache
         ↓
 `compute_relative_strength_features()`
 
-Current membership flow
+현재 membership 흐름
 ----------------------------------------------------------------------
 KRX Data Marketplace official index constituents CSV
         ↓ (manual login → 지수 → 주가지수 → 지수구성종목 → effective date)
@@ -48,7 +46,7 @@ KRX Data Marketplace official index constituents CSV
 Market RS는 기존 market index cache/source를 계속 사용한다.
 KRX `/idx/krx_dd_trd` branded taxonomy는 native Sector RS에 사용하지 않는다.
 
-Cache invariants
+Cache 불변식
 ----------------------------------------------------------------------
 - 표준 컬럼은 date/index_code/index_name/open/high/low/close/volume/trading_value.
 - 정상 거래일은 KOSPI 24 + KOSDAQ 22 rows를 갖는다.
@@ -59,7 +57,7 @@ Cache invariants
 - 한 시장만 성공하면 production cache를 갱신하지 않는다.
 - 초기 cache는 최소 270 complete trading sessions를 요구한다.
 
-Membership invariants
+Membership 불변식
 ----------------------------------------------------------------------
 - approved exact-date snapshot만 사용한다.
 - 현재 보유 snapshot은 `2026-08-14` historical approved snapshot과
@@ -73,13 +71,13 @@ Membership invariants
 - Sector RS cross-section은 전체 COMMON valid 값만으로 계산하며 candidate subset을
   분모로 사용하지 않는다.
 
-Sector index cache incremental update
+Sector index cache 증분 갱신
 ----------------------------------------------------------------------
 기존 cache가 있으면 target date의 KOSPI/KOSDAQ snapshot만 가져온다.
 두 snapshot 검증이 모두 끝난 뒤 임시 Parquet와 metadata를 atomic replace한다.
 동일 날짜 재실행은 해당 날짜를 deterministic replace하며 duplicate를 만들지 않는다.
 
-Current membership acquisition and provenance
+현재 membership 취득 및 계보
 ----------------------------------------------------------------------
 - Source: `KRX Data Marketplace official index constituents`
 - UI path: 수동 로그인 → 지수 → 주가지수 → 지수구성종목 → 기준일 선택
@@ -91,13 +89,13 @@ Current membership acquisition and provenance
 - 검증 결과는 `artifacts/data/krx_openapi/sector_rs_migration/v01/`에 저장하고,
   production cache 자체는 `.cache/` 아래에 둔다.
 
-Historical validation evidence (not current production acquisition)
+과거 검증 증거 (현재 production 취득 경로 아님)
 ----------------------------------------------------------------------
 과거 parity/transport 검증에서 PyKRX membership probe를 사용했다는 기록은
 historical evidence로 보존한다. 해당 probe와 replay는 현재 production
 membership acquisition 또는 fallback 경로가 아니다.
 
-FIX01 validation contract
+FIX01 검증 계약
 ----------------------------------------------------------------------
 - RS parity validation은 production과 동일한
   `(sector_code, sector_name, effective_date)` PIT tuple을 사용한다.

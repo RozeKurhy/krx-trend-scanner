@@ -1,6 +1,6 @@
 test_suite_performance_audit_v01.md
 
-# Test Suite Performance Audit & Refactor v0.1
+# 테스트 모음 성능 감사·정리 (Test Suite Performance Audit & Refactor v0.1)
 
 이 문서는 test infrastructure audit 문서이며, Pattern A / Pattern A FAST strategy
 authority가 아니다. 검증 강도(coverage)나 production semantics를 바꾸지 않고,
@@ -18,7 +18,7 @@ negative test 다수가 "Gate 판정 하나 테스트" = "2,528종목 전체 pro
 scan 재실행" 구조였고, 일부 단일 테스트가 120초 이상, 파일 전체는 수십 분
 이상 소요됐다.
 
-## 2. Before baseline
+## 2. 수정 전 기준선
 
 공식 기록(재실행하지 않고 그대로 사용):
 
@@ -47,7 +47,7 @@ Investability 파일 tests_scanner_candidate_summary_breakdown 단독
   = 무제한(limit=None) full scan 1회 (canonical summary와 100% 동일 값 중복 확인)
 ```
 
-## 3. Test classification
+## 3. 테스트 분류
 
 - LEVEL 1 (UNIT/FAST): pure function, synthetic/소수 row, tmp_path, network 없음.
 - LEVEL 2 (FAST INTEGRATION): 실제 production code path, 소수 ticker(예:
@@ -99,7 +99,7 @@ P3_REPORTED = 1
 
 ## 5. 수정 내용
 
-### 5.1 RS (P0) — Runner 구조 분리
+### 5.1 RS (P0) — 실행기 구조 분리
 
 `src/trend_scanner/validation/pattern_a_relative_strength_infrastructure.py`를
 `prepare_relative_strength_validation_context()` + `evaluate_relative_strength_gates()`
@@ -325,7 +325,7 @@ tests/test_pattern_a_foreign_flow_infrastructure.py::test_live_validation_runner
   (MOVED_TO_SLOW)
 ```
 
-## 7. After timings (실측)
+## 7. 수정 후 소요 시간 (실측)
 
 ```
 RS_NORMAL (test_pattern_a_relative_strength_infrastructure.py, -m "not slow and not integration")
@@ -421,7 +421,7 @@ Full_Universe_Scanner (test_full_universe_scanner.py, 참고용 재확인, V01 �
   §4 P3). FIX_01에서 13개로 증가(위 "FIX_01 이후" 참고).
 ```
 
-## 7.1 FIX_03 — Stale historical freeze guard 정정
+## 7.1 FIX_03 — 오래된 과거 freeze guard 정정
 
 FIX_02 완료 후 사용자가 실제 Normal Full Suite를 실행해 성능 개선 결과를
 실측했다: **3962.13초(약 66분) → 694.95초(약 11분 35초), 약 82.5% 감소, 약
@@ -456,7 +456,7 @@ FAIL_ROOT_CAUSE = STALE / OVER-BROAD HISTORICAL FREEZE GUARDS (1건)
 TEST_STRENGTH_REDUCTION = 0
 ```
 
-## 8. Remaining known expensive tests
+## 8. 남은 고비용 테스트
 
 ```
 PRIORITY: P2 (명확한 이득이 있으면 추후 고려)
@@ -485,7 +485,7 @@ REASON: 서로 다른 ticker/as_of 또는 monkeypatch가 있어 §14/§15 원칙
 RECOMMENDATION: 현재 구조 유지. 억지로 fixture화하지 않는다.
 ```
 
-## 9. Future recommendations
+## 9. 향후 권고
 
 1. Foreign Flow의 `base_scan_result`를 RS와 동일한 prepare/evaluate 분리
    패턴으로 리팩토링하면 178초를 1초 미만으로 더 줄일 수 있다 — 단

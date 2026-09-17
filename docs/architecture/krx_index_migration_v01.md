@@ -1,7 +1,4 @@
-docs/architecture/krx_index_migration_v01.md
-================================================================================
-KRX_INDEX_MIGRATION_V01
-================================================================================
+# KRX 시장 대표지수 전환 (KRX_INDEX_MIGRATION_V01)
 
 목적
 ----
@@ -21,7 +18,7 @@ Naver direct date-range와 `AdjustedPriceStore V02`이며, V02 production popula
 구현도 후속 단계에서 반영되었다. 다만 full end-to-end parity 전체 상태는 이 문서에서
 새로 해소되었다고 확정하지 않는다.
 
-정적 mapping
+정적 매핑
 ------------
 KRX_MARKET_INDEX_MAP_V01은 정확히 두 항목을 가진 immutable mapping이다.
 
@@ -31,16 +28,16 @@ KRX_MARKET_INDEX_MAP_V01은 정확히 두 항목을 가진 immutable mapping이�
 IDX_NM은 정확히 코스피/코스닥이어야 한다. 코스피 (외국주포함), 코스닥
 (외국주포함), 첫 row, contains/startswith 선택은 허용하지 않는다.
 
-IndexStore
-----------
+IndexStore 저장소
+-----------------
 IndexStore는 network/PyKRX/artifact 의존성이 없는 INDEX_STORE_V01 local store다.
 파일은 data/market/index/v01/market_index.parquet와
 data/market/index/v01/market_index.meta.json이며, (date, family, index_code)를
 유일 키로 사용한다. full replacement는 schema, family, code, 날짜, numeric,
 OHLC, hash를 모두 검증한 뒤 temporary file과 atomic replace로 publish한다.
 
-calendar / quota / resume
--------------------------
+거래일 달력·quota·재개
+----------------------
 historical target은 CLOSED KRXRawStockStore manifest에서 양 시장 COMPLETE인
 날짜만 파생한다. 양 시장 NO_DATA는 skip하고 asymmetric 상태는
 BLOCKED_RAW_TRADING_CALENDAR_INCONSISTENT로 중단한다. quota authority는
@@ -48,15 +45,15 @@ BLOCKED_RAW_TRADING_CALENDAR_INCONSISTENT로 중단한다. quota authority는
 한 날짜는 두 endpoint를 함께 처리하고, quota 부족 시 whole-date tranche만
 staging에 저장한다. partial staging은 production IndexStore로 publish하지 않는다.
 
-staging / publish
------------------
+staging·publish
+--------------
 staging은 .cache/krx_openapi/market_index_migration/v01에 둔다. 모든 target
 날짜가 두 row(1001, 2001)로 검증되고 legacy OHLC parity, market RS parity,
 quota audit, secret scan, integrity gate가 통과한 경우에만 production store를
 한 번 publish한다. consumer는 END_TO_END_DATA_PARITY_V01에서 전환한다.
 
-legacy parity / RS parity
--------------------------
+legacy parity·RS parity
+-----------------------
 PyKRX live parity fetch는 금지한다. 기존
 artifacts/patterns/pattern_a/validation/relative_strength/source/
 market_index_daily_20260814.parquet를 고정 SHA-256으로 검증하고 Decimal exact

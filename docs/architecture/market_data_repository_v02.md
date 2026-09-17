@@ -1,8 +1,4 @@
-market_data_repository_v02.md
-
-================================================================================
-MARKET_DATA_REPOSITORY_V02
-================================================================================
+# 조정·원천 시장데이터 저장소 (MARKET_DATA_REPOSITORY_V02)
 
 목적
 ----
@@ -25,7 +21,7 @@ Pattern A scanner는 `build_production_repository_v2`를 통해 rolling authorit
 `build_repository_v2`를 계속 사용하므로, 두 factory의 historical frozen mode와
 production rolling mode를 혼동하지 않는다.
 
-공식 supported instrument contract
+공식 지원 instrument 계약
 ---------------------------------
 Repository V2는 formally classified `COMMON`과 `ETF`를 동일한 composed
 interface로 지원한다. ETF 여부는 `InstrumentMetadataResolver`의 PIT formal
@@ -46,7 +42,7 @@ ETF source access가 인증/활용 승인되지 않은 경우 Repository V2는 �
 가장하지 않고 `DATA_UNAVAILABLE: RAW_MISSING`으로 fail-closed한다. 레거시
 `data/raw/stocks` ETF cache는 이 계약의 source authority가 아니다.
 
-Ticker domain
+Ticker 범위
 -------------
 * adjusted API: 기존 SIX_DIGIT_TICKER numeric domain 유지
 * raw API: KRX_SHORT_CODE 정규식 ^[0-9A-Z]{6}$를 source-preserving 지원
@@ -70,7 +66,7 @@ get_daily_ancillary(ticker, start, end)
 get_stock_snapshot(ticker, date)
   해당 날짜의 정확히 1개 raw row를 반환한다. 없으면 DATA_UNAVAILABLE이다.
 
-Join 및 missing semantics
+Join 및 missing 의미
 -------------------------
 adjusted/raw 양쪽의 non-empty trading session set은 정확히 같아야 한다.
 한쪽 날짜를 조용히 drop하거나 forward-fill/bfill/0-fill하지 않는다.
@@ -78,7 +74,7 @@ session set mismatch는 REPOSITORY_V2_TRADING_SESSION_MISMATCH로 fail-closed한
 양쪽이 모두 empty인 요청 범위는 typed empty daily frame을 반환할 수 있다.
 한쪽만 empty이거나 ticker store가 없으면 DATA_UNAVAILABLE로 종료한다.
 
-Read-only 및 compatibility
+Read-only 및 호환성
 --------------------------
 Repository V2는 store를 생성자 주입받고 write/refresh를 호출하지 않는다.
 기존 MarketDataRepository와 tests/test_repository.py는 변경하지 않는다.
@@ -88,13 +84,13 @@ RS, Stock Report 등의 전환을 END_TO_END_DATA_PARITY_V01 이후 별도 결�
 migration finalization 이후 반영되었으며, historical evaluation entrypoint는
 여전히 frozen factory 경계를 사용한다.
 
-Performance limitation
+성능 한계
 ----------------------
 KrxRawStockStore.load_ticker의 market/date partition scan 비용은
 production probe telemetry로 관찰한다. 전수 materialization, bulk cache 생성,
 storage redesign은 이 phase 범위에 포함하지 않는다.
 
-Validation evidence
+검증 증거
 -------------------
 * tests/test_repository_v2.py: source authority, strict join, domain, missing,
   mutation, cross-market, duplicate-date 및 network isolation 관련 검증
@@ -147,7 +143,7 @@ FIX02 raw authority 및 probe evidence
   zero-price row count를 확인하고, Samsung listed_shares와 alphanumeric
   raw domain probe는 adjusted live 샘플과 독립적으로 수행한다.
 
-FIX03 trading-session projection
+FIX03 거래 세션 투영
 --------------------------------
 * KrxRawStockStore의 모든 row는 PHYSICAL_RAW_OBSERVATION이다. 이 물리 관측치와
   adjusted price provider가 반환하는 TRADING_SESSION 집합은 동일하다고
@@ -178,7 +174,7 @@ FIX03 trading-session projection
   ancillary 비교 대상은 physical raw다. 성능 증적에는 raw load, adjusted load,
   projection, join, total elapsed를 ticker별로 기록하며 60초 이상은 warning이다.
 
-FIX04 shared-date semantic conflict
+FIX04 공통 날짜 의미 충돌
 -----------------------------------
 * adjusted와 raw 양쪽에 같은 날짜가 있어도 raw row가
   NON_TRADING_PLACEHOLDER_V01이면 두 authority의 session 의미가 충돌한다.

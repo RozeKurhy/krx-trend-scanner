@@ -1,8 +1,6 @@
 krx_production_data_architecture_v01.md
 
-======================================================================
-KRX Production Data Architecture v01
-======================================================================
+# KRX 운영 데이터 아키텍처 (KRX Production Data Architecture v01)
 
 상태
 ----------------------------------------------------------------------
@@ -52,7 +50,7 @@ consumer 문구는 이 문서가 작성된 당시의 상태로 읽는다.
 - Pattern A, FastCore, Julia, RS formula 변경
 - HTML/dashboard UI 구현
 
-1. Authority matrix
+1. Authority 매트릭스
 ----------------------------------------------------------------------
 
 Machine-readable 원본은
@@ -81,7 +79,7 @@ raw와 adjusted의 의미는 절대 합쳐서 하나의 authority로 표현하�
 AdjustedPriceStore는 OHLC만 소유하고 volume, trading_value, market_cap,
 listed_shares를 저장하지 않는다.
 
-2. Endpoint identifier semantics
+2. Endpoint 식별자 의미
 ----------------------------------------------------------------------
 
 `ISU_CD`는 endpoint-qualified field다.
@@ -117,7 +115,7 @@ Native sector index response의 raw identity는
 `KRX_BRANDED_TAXONOMY` 중 logical family다. `IDX_CLSS`는 `source_index_class`로
 보존하며 logical family로 사용하지 않는다. canonical key는 `(family, index_code)`다.
 
-3. Logical stores
+3. 논리 저장소
 ----------------------------------------------------------------------
 
 `source_contracts.py`의 `STORE_CONTRACTS`가 다음 8개 store와 schema version을
@@ -202,7 +200,7 @@ dirty scope는 ticker-specific이며 전체 universe refresh를 기본값으로 
 future price, 허용 availability 이전의 report를 사용하지 않는다. 과거 universe는
 당시 master snapshot을 사용해 survivorship bias를 피한다.
 
-7. Provenance와 health
+7. 계보와 health
 ----------------------------------------------------------------------
 
 persisted dataset metadata 최소 필드:
@@ -284,7 +282,7 @@ carry-forward하거나 이후 snapshot을 backward apply하지 않는다. Market
 PyKRX membership fallback도 수행하지 않는다. Naver taxonomy와 live PyKRX membership은
 현재 membership authority가 아니다.
 
-10. Foreign Flow lineage와 production diff guard
+10. Foreign Flow 계보와 production diff guard
 ----------------------------------------------------------------------
 
 `src/trend_scanner/flow/foreign_flow.py`는 foreign flow upstream authority가
@@ -304,7 +302,7 @@ architecture contract tests 및 `artifacts/data/architecture/krx_production_data
 계약/validator의 금지 import 정적 검사 횟수로 서로 다른 지표다. 이 작업에서는
 KRX/PyKRX/OpenDART 네트워크 요청을 수행하지 않는다.
 
-11. Dependency graph
+11. 의존성 graph
 ----------------------------------------------------------------------
 
 `KRX_PRODUCTION_DATA_ARCHITECTURE_V01`

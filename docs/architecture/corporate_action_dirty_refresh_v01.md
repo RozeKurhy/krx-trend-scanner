@@ -1,8 +1,4 @@
-corporate_action_dirty_refresh_v01.md
-
-======================================================================
-Corporate Action Dirty Refresh V01
-======================================================================
+# 기업행위 변경 감지·갱신 (Corporate Action Dirty Refresh V01)
 
 상태
 ----------------------------------------------------------------------
@@ -36,7 +32,7 @@ Architect 승인 전에는 `CORPORATE_ACTION_DIRTY_REFRESH_V01 = CLOSED`로
 - KRX raw fetch, historical backfill, production consumer 전환, custom adjustment
   formula와 event taxonomy는 다음 phase 또는 별도 범위다.
 
-1. Detector contract
+1. Detector 계약
 ----------------------------------------------------------------------
 
 `CorporateActionSnapshot`의 필수 입력은 canonical six-digit `ticker`, calendar
@@ -70,7 +66,7 @@ dirty reason은 다음 factual evidence만 사용한다.
 V01 detector signal이 아니다. split, reverse split, rights, dividend 등
 event type을 출력하거나 OHLC를 직접 조정하지 않는다.
 
-2. State store contract
+2. 상태 저장소 계약
 ----------------------------------------------------------------------
 
 runtime state의 기본 경로는 `data/market/state/corporate_action.sqlite3`다.
@@ -113,7 +109,7 @@ canonical decision을 exact compare한 뒤에만 private writer를 호출한다.
 재계산된 detector 결과를 통해 동일하게 fail closed한다. 따라서 외부 caller가 fake
 CLEAN, fake DIRTY 또는 dirty reason을 주입해 state를 우회할 수 없다.
 
-3. Refresh contract
+3. 갱신 계약
 ----------------------------------------------------------------------
 
 `CorporateActionRefreshService`는 `CorporateActionStateStore`,
@@ -145,7 +141,7 @@ coverage 검증으로 사용하지 않는다.
 hash가 refresh 전후 동일해도 실패가 아니다. dirty evidence가 false positive였을
 가능성을 허용하며 refresh 전체가 성공했다면 CLEAN으로 전환한다.
 
-4. Recovery
+4. 복구
 ----------------------------------------------------------------------
 
 process crash로 REFRESHING이 남으면 다음 실행의 explicit recovery가 stale
@@ -161,7 +157,7 @@ Open API, OpenDART, legacy cache, production consumer를 변경하지 않는다.
 `source_contracts.py`, `adjusted_price_provider.py`, `adjusted_price_store.py`도
 frozen architecture 파일로 재수정하지 않는다.
 
-6. Validation evidence
+6. 검증 증거
 ----------------------------------------------------------------------
 
 FIX02 validator의 provenance 시작 HEAD는

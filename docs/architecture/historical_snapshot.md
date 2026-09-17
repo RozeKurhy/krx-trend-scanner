@@ -1,4 +1,4 @@
-# Historical Snapshot Validation v0.1
+# 과거 시점 검증 (Historical Snapshot Validation v0.1)
 
 ## 상태
 
@@ -32,7 +32,7 @@ sliced = daily[daily.index <= requested]
 미치면 예외를 던지지 않고 해당 Feature가 NaN이 됩니다(`build_feature_row`의
 기존 동작을 그대로 물려받습니다).
 
-## completed monthly/weekly 정책 (v0.1 한계)
+## 완료된 월봉·주봉 정책 (v0.1 한계)
 
 `include_incomplete_periods` 옵션으로 진행 중인 월봉/주봉 포함 여부를 고를
 수 있습니다. validator나 resampler는 건드리지 않고, 이 잘라내기는 전부

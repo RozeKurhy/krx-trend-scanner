@@ -1,7 +1,4 @@
-krx_dual_provider_contract_v01.md
-==================================================
-KRX Dual Provider Contract v0.1
-==================================================
+# KRX 이중 provider 계약 (KRX Dual Provider Contract v0.1)
 
 목적
 --------------------------------------------------
@@ -11,13 +8,10 @@ KRX Dual Provider Contract v0.1
 
 원천 역할
 --------------------------------------------------
-+-------------------------+----------------------------------------------+
-| 원천                    | 책임                                         |
-+-------------------------+----------------------------------------------+
-| KRX Open API            | raw OHLC, volume, trading_value, market_cap, |
-|                         | listed_shares, market index                  |
-| PyKRX adjusted=True     | adjusted historical OHLC                    |
-+-------------------------+----------------------------------------------+
+| 원천 | 책임 |
+|---|---|
+| KRX Open API | raw OHLC, volume, trading_value, market_cap, listed_shares, market index |
+| PyKRX `adjusted=True` | adjusted historical OHLC |
 
 두 원천을 매일 전 종목에 대해 서로 비교하지 않는다. KRX는 일자별 시장 전체
 snapshot이므로 ticker x date 요청 루프를 production에 만들지 않는다.
@@ -39,7 +33,7 @@ primary trigger다. 다만 상장주식수 반영시점과 가격조정시점이
 PARVAL 변화, 큰 설명불가 가격 단절, corporate-action metadata, relisting/merger
 정보를 결합할 수 있다.
 
-향후 workflow:
+향후 작업 흐름:
 
 KRX daily snapshot
         ↓

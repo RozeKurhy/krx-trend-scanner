@@ -1,6 +1,6 @@
 krx_instrument_metadata_authority.md
 
-# KRX Instrument Metadata Authority — Lineage & Trust Rule (Fix Round 07)
+# KRX 종목 메타데이터 권위 — 계보·신뢰 규칙 (Fix Round 07)
 
 이 문서는 `InstrumentMetadataResolver`가 Production Asset Type Authority로 사용하는
 frozen local artifact의 실제 lineage를 기록한다. 확인 불가능한 부분은 "확인 불가"로
@@ -21,7 +21,7 @@ survivorship bias, (2) verified snapshot이 이전 baseline ticker 집합의 재
 문제.
 
 
-## 1. Artifact
+## 1. 기준 artifact
 
 - `data/reference/krx_instrument_metadata.parquet` (1차 read 대상)
 - `data/reference/krx_instrument_metadata.csv` (parquet 없을 때 fallback, 동일 스키마)
@@ -35,7 +35,7 @@ survivorship bias, (2) verified snapshot이 이전 baseline ticker 집합의 재
 유지해야 한다.
 
 
-## 2. Purpose
+## 2. 목적
 
 Production Instrument Metadata Authority.
 Strict PIT(Point-In-Time) local frozen snapshot — 여러 `effective_date` 시점의
@@ -54,7 +54,7 @@ row조차 동일한 라벨을 갖고 있어 이 라벨이 row별 실제 검증�
 파일 전체 상수였음이 드러났다.
 
 
-## 4. Upstream Authority
+## 4. 상위 원천 권위
 
 **UPSTREAM_AUTHORITY** = KRX Market Data Center (data.krx.co.kr), 인증 세션 필요
 
@@ -91,7 +91,7 @@ row조차 동일한 라벨을 갖고 있어 이 라벨이 row별 실제 검증�
 - `artifact_csv_sha256` / `artifact_parquet_sha256`: 생성된 산출물 파일 자체의 SHA-256.
 
 
-## 5. Raw Source Fields
+## 5. 원천 필드
 
 ```
 전종목기본정보 (equity):
@@ -116,7 +116,7 @@ ETF_전종목기본종목 / ETN_전종목기본종목:
 — 단 Verified rows(§8)에 한해서만 채워지며, 과거 legacy row는 빈 값이다 (§9).
 
 
-## 6. Source Category → AssetType Deterministic Mapping (Fix Round 08 갱신)
+## 6. Source Category → AssetType 결정적 매핑 (Fix Round 08 갱신)
 
 `scripts/build_krx_instrument_metadata.py`의 `map_row_to_asset_type()` 실제 로직,
 우선순위 순서(w.md Fix Round 08 §1/§2/§3):
@@ -146,7 +146,7 @@ formal source에서 ticker 자체를 못 찾음                → UNKNOWN
                                                            asset_type_source=UNKNOWN)
 ```
 
-### 6.1 Production AssetType에서 이름 Substring Matching 완전 제거 (Fix Round 08 Major 1)
+### 6.1 Production AssetType에서 이름 substring matching 완전 제거 (Fix Round 08 Major 1)
 
 Fix Round 07에서 SPAC에 대해 종목명 substring matching을 제거한 것에 이어, Fix Round 08에서는
 `종류주권` 판정(`if kind == "종류주권" and "우선주" in isu_nm:`)을 포함한 **모든 종목명 substring matching
@@ -159,7 +159,7 @@ Fix Round 07에서 SPAC에 대해 종목명 substring matching을 제거한 것�
   이름에 "우선주"가 들어있다는 이유로 추측하거나 휴리스틱을 쓰지 않고, 규정에 따라
   `UNKNOWN` + `UNMAPPED_FORMAL_CATEGORY` (`is_trusted_for_production=False`)로 fail closed한다.
 
-### 6.2 KRX Market Normalization: KOSDAQ GLOBAL → KOSDAQ (Fix Round 08 Major 2)
+### 6.2 KRX market 정규화: KOSDAQ GLOBAL → KOSDAQ (Fix Round 08 Major 2)
 
 KRX raw 응답의 `MKT_TP_NM` 중 `"KOSDAQ GLOBAL"`은 독립된 시장이 아니라 코스닥 시장 내부의
 세그먼트(우량기업 세그먼트)이다. 프로젝트 canonical `MarketType` enum은 `KOSPI`, `KOSDAQ`, `KONEX`, `UNKNOWN`으로
@@ -174,7 +174,7 @@ KRX raw 응답의 `MKT_TP_NM` 중 `"KOSDAQ GLOBAL"`은 독립된 시장이 아�
 이 정규화는 `InstrumentMetadataResolver.resolve()`와 `scripts/build_krx_instrument_metadata.py` 모두에
 적용되며, canonical CSV/parquet의 과거 및 현재 전체 77,193개 row에서 `KOSDAQ GLOBAL`이 0건으로 정규화되었다.
 
-### 6.3 Former SPAC + 관리종목 Taxonomy 일치 (Fix Round 08 Minor 1)
+### 6.3 기존 SPAC + 관리종목 분류체계 일치 (Fix Round 08 Minor 1)
 
 KRX formal taxonomy 전수 검증 결과, 관리 관련 `SECT_TP_NM` 값은 오직 `"관리종목(소속부없음)"` 하나뿐이다
 (`MANAGED_ISSUE_SECTIONS = {"관리종목(소속부없음)"}`).
@@ -184,7 +184,7 @@ KRX formal taxonomy 전수 검증 결과, 관리 관련 `SECT_TP_NM` 값은 오�
 - 정상적으로 합병 전환된 369370(현재 SECT_TP_NM="벤처기업부")은 관리종목이 아니므로 깨끗한 COMMON 전환이 유지된다.
 
 
-## 7. Builder Script
+## 7. Builder 스크립트
 
 ```
 BUILDER_SCRIPT   = scripts/build_krx_instrument_metadata.py
@@ -221,7 +221,7 @@ Critical 1, 유지). `--dry-run`으로 파일을 쓰지 않고 변경 미리보�
 동작한다.
 
 
-## 8. Verified Snapshot 범위
+## 8. 검증된 snapshot 범위
 
 이번 build가 실제로 검증한 것은 **build 실행 시점(SOURCE_OBSERVATION_DATE)의 KRX
 실시간 상장 상태** 하나뿐이다. 이제 이 snapshot은 이전 baseline ticker 집합이
@@ -234,7 +234,7 @@ Critical 1, 유지). `--dry-run`으로 파일을 쓰지 않고 변경 미리보�
 manifest에서 동적으로 읽는다(하드코딩 날짜를 쓰지 않는다).
 
 
-## 9. Historical Row 정책 (PIT History Rewrite 금지 및 Market Canonicalization)
+## 9. 과거 row 정책 (PIT 이력 rewrite 금지 및 market 정규화)
 
 **과거 effective_date row의 AssetType 값은 소급 재작성(history rewrite)하지 않고 그대로 보존한다 (`asset_type_history_rewrite = "NOT_PERFORMED"`).**
 오늘 시점 조회 결과로 과거 snapshot의 asset_type을 소급 덮어쓰는 것은 절대 금지되어 있으며, historical row는 기존 asset_type 값을 유지한다.
@@ -299,7 +299,7 @@ metadata trust를 강제로 override하는 테스트 헬퍼 없이 실제 produc
 (`generate_stock_report`)로 직접 검증한다.
 
 
-## 10. PIT Selection Rule (코드로 검증 가능, 선택 알고리즘 자체는 변경 없음)
+## 10. PIT 선택 규칙 (코드로 검증 가능, 선택 알고리즘 자체는 변경 없음)
 
 `InstrumentMetadataResolver.resolve()` (src/trend_scanner/universe/instrument_metadata.py):
 
@@ -314,7 +314,7 @@ Fix Round 07은 이전에 있던 5번째 단계(`requested_as_of` 이후 FORMAL 
 1~4는 Fix Round 05/06/07 어느 라운드에서도 수정하지 않았다.
 
 
-## 11. Trust Rule (변경 없음, Fix Round 04에서 구현)
+## 11. 신뢰 규칙 (변경 없음, Fix Round 04에서 구현)
 
 ```
 is_identified == True
@@ -330,7 +330,7 @@ KRX 시장 구조 자체의 사실이다(ETF/ETN 상품은 전부 KOSPI 시장 �
 (개별 종목 필드가 아니라 상품군 전체에 적용되는 일반 사실).
 
 
-## 12. Fail Closed Rule
+## 12. Fail-Closed 규칙
 
 - `asset_type == UNKNOWN` → 항상 fail closed.
 - `classification_authority`/`asset_type_source`가 `FORMAL_SECURITY_TYPE`이 아님
@@ -379,7 +379,7 @@ removed_from_live_tickers, common_ticker_count, current_coverage_missing_count,
 baseline_name_copied_to_current=false, baseline_market_copied_to_current=false).
 
 
-## 15. Runtime — Zero Network Rule
+## 15. Runtime — 네트워크 0 규칙
 
 `ZERO_NETWORK_RUNTIME = YES` (Stock Report 생성 경로 기준, 변경 없음).
 `scripts/build_krx_instrument_metadata.py`는 build-time 전용 스크립트이며
@@ -389,7 +389,7 @@ Stock Report runtime 경로(`InstrumentMetadataResolver`, `generate_stock_report
 enum으로 강제).
 
 
-## 16. Known UNKNOWN / Unsupported Category 정책
+## 16. UNKNOWN / 미지원 category 정책
 
 Verified rows 중 (Fix Round 07 live universe 전체 기준):
 - formal source에서 ticker 자체를 못 찾음: 0건 (live universe 자체에서 verified
@@ -403,7 +403,7 @@ Verified rows 중 (Fix Round 07 live universe 전체 기준):
   row가 생성되지 않는다 — historical row는 그대로 보존된다(§3.7 delisted 정책).
 
 
-## 17. Historical Metadata Provenance 정책
+## 17. 과거 메타데이터 계보 정책
 
 ```
 Historical effective_date row의 formal provenance가 실제 검증 가능한가?
@@ -421,7 +421,7 @@ Historical effective_date row의 formal provenance가 실제 검증 가능한가
   API를 발견하지 못했다(Option B로 §9.1을 도입해 대응함).
 
 
-## 18. Historical Universe Reconciliation — 별도 모듈, 별도 SECURITY_TYPE_MAPPING
+## 18. 과거 Universe 조정 — 별도 모듈, 별도 SECURITY_TYPE_MAPPING
 
 **주의: 이 섹션은 `InstrumentMetadataResolver`(§1-17, live 현재 시점 전용)가 아니라
 별도 모듈인 `trend_scanner.universe.historical_authority_reconciliation`
@@ -434,7 +434,7 @@ Historical effective_date row의 formal provenance가 실제 검증 가능한가
 Basic Info 8190쌍 실데이터로 처음 발견된 4개 classification gap을 다음과 같이
 해소했다 (frozen target 1,116 기준):
 
-### 18.1 SPAC 이력 + 후속 관리종목 — chronological exception (122건 중 8건 해소)
+### 18.1 SPAC 이력 + 후속 관리종목 — 연대기 예외 (122건 중 8건 해소)
 
 기존 규칙(FIX01 Minor): 이 identity 이력 어딘가에 SPAC 관측이 있고 현재
 `보통주+관리종목(소속부없음)`이면 UNKNOWN. 이 규칙이 실 데이터에서 122건에
@@ -453,7 +453,7 @@ COMMON 확정 전에 나타나는 관리종목 관측은 계속 fail-closed UNKN
 - 8건: COMMON lineage 확정 → HISTORICAL_COMMON_REQUIRED로 해소.
 - 114건: 명시적 COMMON 구간 없음 → 계속 HISTORICAL_AUTHORITY_UNRESOLVED.
 
-### 18.2 선박투자회사 (Ship Investment Company) — NOT_COMMON (49건)
+### 18.2 선박투자회사 — NOT_COMMON (49건)
 
 SECUGRP_NM="선박투자회사"는 §6의 live mapping 카탈로그(주권/부동산투자회사/
 외국주권/주식예탁증권/사회간접자본투융자회사/투자회사)에 없는 값이다 — 현재
@@ -504,7 +504,7 @@ historical reconciliation에서도 동일한 근거(공식 필드만으로는 �
 숫자를 0으로 맞추기 위한 조정은 없었다 — 종류주권 14건과 SPAC 114건은 근거
 부족으로 계속 UNRESOLVED다.
 
-## 19. Supplemental Authority Layer — KRX Basic Info 만으로 부족한 residual 해소
+## 19. 보완 권위 계층 — KRX Basic Info만으로 부족한 residual 해소
 
 `HISTORICAL_UNIVERSE_RESIDUAL_AUTHORITY_RESOLUTION_V01`에서 §18의 잔여
 128건(SPAC 114 + 종류주권 14)을 KRX Basic Info 외부의 공식 source(OpenDART
@@ -593,7 +593,7 @@ KRX가 직접 부여하는 정식 명칭)이 "OOO우선주" 형태임을 확인�
 수정은 순수 표현/추적성 수정이며 어떤 ticker의 최종 classification도 바꾸지
 않는다.
 
-## 20. AS-OF-Cutoff SPAC Semantics — "아직 해산 안 됨" ≠ "근거 부족"
+## 20. AS-OF-Cutoff SPAC 의미 — "아직 해산 안 됨" ≠ "근거 부족"
 
 `HISTORICAL_UNIVERSE_FINAL_RESIDUAL_SPAC_RESOLUTION_V01`에서 §19의 잔여
 3건(465320/471050/472220)이 계속 UNRESOLVED로 남아있던 원인은 evidence
@@ -601,7 +601,7 @@ KRX가 직접 부여하는 정식 명칭)이 "OOO우선주" 형태임을 확인�
 evidence가 있어야만 결론을 낼 수 있다"는 암묵적 전제 자체가 project
 denominator semantics와 맞지 않았다.
 
-### 20.1 핵심 원칙: ACTIVE SPAC은 POSITIVE NOT_COMMON EVIDENCE다
+### 20.1 핵심 원칙: ACTIVE SPAC은 POSITIVE NOT_COMMON 근거다
 
 `HISTORICAL_NOT_COMMON`은 "결국 그 종목이 사라졌다/해산됐다"는 terminal
 label이 아니다. 의미는: **해당 historical interval에서 일반 common-stock
@@ -641,7 +641,7 @@ authority가 결정)이고, `authority_date`는 그 관리종목 상태를 NOT_C
 판정하는 데 사용한 supplemental 문서의 발간일(2차 authority가 결정)이다. 두
 날짜는 서로 다른 질문에 답하며 일치할 필요가 없다.
 
-### 20.3 Future Event Leakage 방지
+### 20.3 미래 사건 누출 방지
 
 이 semantic 수정은 코드 로직 변경이 아니라 **판정 기준(record 작성 원칙)의
 수정**이다 — `_classify_observations`/`_apply_supplemental_authority`는
@@ -656,7 +656,7 @@ attach된 특정 관측(observation)만 override하며, 그 관측 자체의
 판정이 미래의 진짜 COMMON 관측을 막지 않는다(regression test로 고정,
 `test_future_merger_completion_after_cutoff_does_not_leak_backward`).
 
-### 20.4 Population Universe vs Point-In-Time Denominator (다음 단계 계약)
+### 20.4 Population Universe와 Point-In-Time Denominator (다음 단계 계약)
 
 다음 단계(`SURVIVORSHIP_SAFE_DENOMINATOR_FREEZE_V01`)를 위해 명시적으로
 구분해야 하는 두 개념:

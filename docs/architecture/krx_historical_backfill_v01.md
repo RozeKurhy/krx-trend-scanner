@@ -1,8 +1,4 @@
-krx_historical_backfill_v01.md
-
-======================================================================
-KRX Historical Backfill V01
-======================================================================
+# KRX 과거 데이터 백필 (KRX Historical Backfill V01)
 
 목적
 ----------------------------------------------------------------------
@@ -23,7 +19,7 @@ KRX Open API의 일별매매정보를 조정하지 않은 raw authority로 보�
 - historical LIST_SHRS를 `CorporateActionStateStore`에 replay하거나 DIRTY refresh를
   발생시키지 않는다.
 
-raw provider contract
+원천 provider 계약
 ----------------------------------------------------------------------
 
 physical columns는 정확히 다음 순서다.
@@ -38,7 +34,7 @@ records root, required source field, numeric parse, ticker 형식, duplicate tic
 음수 값은 fail closed한다. raw zero row는 보존하고 1원 보정이나 source 값 수정은
 하지 않는다. OHLC relation은 모든 OHLC가 positive인 경우에만 검증한다.
 
-raw store contract
+원천 저장소 계약
 ----------------------------------------------------------------------
 
 기본 root:
@@ -61,7 +57,7 @@ hash → atomic replace → manifest transaction 순서를 지킨다. manifest c
 동일 `(date, ticker)`가 두 market에 있으면 `CROSS_MARKET_TICKER_CONFLICT`로
 fail closed한다.
 
-backfill runner contract
+백필 실행기 계약
 ----------------------------------------------------------------------
 
 candidate date는 `pd.bdate_range()`의 평일 scheduler일 뿐 KRX trading calendar가
@@ -76,14 +72,14 @@ candidate date는 `pd.bdate_range()`의 평일 scheduler일 뿐 KRX trading cale
 quota exhaustion은 기존 valid partition을 보존한 채 `BACKFILL_PAUSED_TASK_BUDGET`
 또는 `BACKFILL_PAUSED_QUOTA`로 종료하고 다음 invocation에서 resume한다.
 
-production target
+production 목표
 ----------------------------------------------------------------------
 
 V01 target은 2010-01-04부터 2026-08-21까지다. 완료 gate는 각 weekday candidate가
 양쪽 COMPLETE 또는 양쪽 finalized NO_DATA이고, FAILED/partial/unexplained
 missing candidate가 0인 것이다. raw parquet와 manifest는 Git에 commit하지 않는다.
 
-validation modes
+검증 모드
 ----------------------------------------------------------------------
 
 - `--offline`: synthetic provider/store contract와 신규 테스트, network=0.
@@ -91,7 +87,7 @@ validation modes
 - `--production-coverage`: network 없이 현재 local raw store의 manifest, hash, schema,
   date/path, duplicate와 cross-market key를 검사한다.
 
-provenance
+계보와 실행 정보
 ----------------------------------------------------------------------
 
 FIX START HEAD는 accepted previous phase가 main에 fast-forward된

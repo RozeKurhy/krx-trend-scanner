@@ -1,8 +1,4 @@
-adjusted_price_store_v01.md
-
-======================================================================
-AdjustedPriceStore v01
-======================================================================
+# 조정주가 저장소 (AdjustedPriceStore v01)
 
 상태
 ----------------------------------------------------------------------
@@ -43,10 +39,10 @@ AdjustedPriceStore v01
 - 전체 종목 backfill, Pattern A/FastCore/Julia/Stock Report consumer 전환
 - custom adjustment engine
 
-1. AdjustedPriceDataProvider
+1. 조정주가 provider 계약 (AdjustedPriceDataProvider)
 ----------------------------------------------------------------------
 
-source authority:
+source authority(원천 권위):
 
 `pykrx.stock.get_market_ohlcv_by_date(start, end, ticker, adjusted=True)`
 
@@ -69,7 +65,7 @@ PyKRX 응답의 `거래량`은 phantom holiday 판정을 위해 transient하게�
 `high < max(open, close)` 또는 `low > min(open, close)`의 위반 폭이 1원 이내일
 때만 정상 관계값으로 보정한다. 2원 이상 위반은 자동 repair하지 않고 fail closed한다.
 
-2. Dedicated adjusted validation
+2. 전용 조정주가 검증
 ----------------------------------------------------------------------
 
 `validate_adjusted_ohlc()`는 기존 `validate_ohlcv()`를 재사용하지 않는다.
@@ -112,7 +108,7 @@ Parquet physical schema는 순서까지 다음과 같다.
 OHLC만 소유하며 raw OHLC, ancillary, master, asset_type, membership, flow, RS는
 소유하지 않는다.
 
-4. Mutable history와 atomic replacement
+4. 변경 가능한 이력과 원자적 교체
 ----------------------------------------------------------------------
 
 Adjusted history는 향후 corporate action에 의해 과거 값이 변할 수 있으므로
@@ -131,7 +127,7 @@ Parquet와 metadata는 단일 filesystem transaction이 아니므로 load 때마
 metadata 누락, schema/version mismatch, ticker mismatch, corrupt parquet는
 조용히 복구하지 않고 fail closed한다.
 
-5. Metadata contract
+5. 메타데이터 계약
 ----------------------------------------------------------------------
 
 sidecar:
@@ -164,7 +160,7 @@ timestamps, content hash는 Store-owned reserved field라 override 시 fail clos
 `source_endpoint`도 `pykrx.stock.get_market_ohlcv_by_date(adjusted=True)`와 완전
 일치해야 한다. filename ticker, metadata ticker, parquet ticker column은 모두 동일해야 한다.
 
-6. Legacy parity와 validation
+6. Legacy parity와 검증
 ----------------------------------------------------------------------
 
 offline validator는 기존 `data/raw/stocks/`에서 OHLC만 추출해 임시 Store에
@@ -194,7 +190,7 @@ provider/legacy/common row 수, provider-only/legacy-only coverage, date mismatc
 open/high/low/close mismatch를 분리한다. Store round-trip artifact
 `offline_parity.csv`와 의미를 혼동하지 않는다.
 
-7. Production boundary
+7. Production 경계
 ----------------------------------------------------------------------
 
 이번 phase에서 MarketDataRepository는 AdjustedPriceStore를 자동 사용하지 않는다.
@@ -202,7 +198,7 @@ open/high/low/close mismatch를 분리한다. Store round-trip artifact
 behavioral diff는 0이어야 한다. 향후 `MarketDataRepositoryV2`가
 `AdjustedPriceStore + KRXRawStockStore`를 `(ticker, date)`로 join한다.
 
-8. Evidence artifacts
+8. 검증 artifact
 ----------------------------------------------------------------------
 
 `artifacts/data/adjusted_price_store/v01/`에 metrics/provenance만 기록한다.
@@ -221,7 +217,7 @@ validation parquet, sample stock cache, large historical price file는 commit하
 않는다. artifact 내부 `end_head`는 null로 유지하고 실제 END SHA는 completion
 report에만 기록한다.
 
-9. Next phase
+9. 다음 단계
 ----------------------------------------------------------------------
 
 이번 phase의 recommendation이 통과하면 다음 단계는

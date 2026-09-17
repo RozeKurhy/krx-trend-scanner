@@ -1,6 +1,6 @@
 artifacts_information_architecture_audit_v01.md
 
-# Artifacts Information Architecture Audit V01
+# Artifact 정보 구조 감사 (Artifacts Information Architecture Audit V01)
 
 이 문서는 `artifacts/` 폴더 전체에 대한 AUDIT + DESIGN 문서다(STEP 1). 실제 `git mv`,
 rename, 삭제, regeneration은 수행하지 않았다. 근거는 `find`/`rg`/`git log`를 통한
@@ -12,7 +12,7 @@ rename, 삭제, regeneration은 수행하지 않았다. 근거는 `find`/`rg`/`g
 작업 시작 HEAD: `e4b53d6e88b73ab9a5d7d79e49e507c40fa88661`
 
 ===============================================================================
-## 1. Executive Summary
+## 1. 핵심 요약
 ===============================================================================
 
 `artifacts/` 아래에는 총 **913개 파일**(png 464 / json 169 / csv 155 / md 122 /
@@ -65,7 +65,7 @@ parquet 3), **12개 top-level 폴더**가 있다. 그중 `pattern_a_fast/`(584 �
 승격한다.
 
 ===============================================================================
-## 2. Current Artifact Topology
+## 2. 현재 artifact 구조
 ===============================================================================
 
 ```
@@ -91,7 +91,7 @@ chart), json 169, csv 155, md 122(주로 stock_reports 개별 리포트 + A FAST
 evaluation 요약), parquet 3(flow/relative_strength source 원본).
 
 ===============================================================================
-## 3. Classification Rules
+## 3. 분류 규칙
 ===============================================================================
 
 w.md §5가 정의한 카테고리를 그대로 사용한다. 하나의 group이 여러 역할을
@@ -119,7 +119,7 @@ production dependency / frozen 여부 / hash·seal·manifest 보호 / 코드·�
 docs·scripts 참조 여부 / proposed destination / move risk / 비고.
 
 ===============================================================================
-## 4. Artifact Inventory
+## 4. artifact 목록
 ===============================================================================
 
 파일 단위가 아니라 논리적 group 단위로 기록한다(w.md §5 허용). 전체
@@ -167,7 +167,7 @@ docs·scripts 참조 여부 / proposed destination / move risk / 비고.
 합계: 3+2+3+6+10+56+2+1+9+2+6+13+108+108+2+26+244+1+94+155+1+1+4+4+4+8+11+6+5+3+3+3+3+4+1+1 = **913** (전체 파일 수와 일치, 교차검증 완료).
 
 ===============================================================================
-## 5. Current Authority Map
+## 5. 현재 권위 맵
 ===============================================================================
 
 | Pattern/축 | 현재 공식 상태 | Authority 파일/폴더 |
@@ -182,7 +182,7 @@ docs·scripts 참조 여부 / proposed destination / move risk / 비고.
 | Pattern A FAST 인간 검증(Phase13H/13J) | frozen(seal 기반) | `oos/`, `ground_truth/`, `investable_oos/` |
 
 ===============================================================================
-## 6. Pattern A Audit
+## 6. Pattern A 감사
 ===============================================================================
 
 Pattern A artifact set은 현재 다음과 같은 lifecycle 영역으로 명확히 구분된다:
@@ -213,7 +213,7 @@ PIT snapshot)와 **다른 역할**이다: `history/`는 22개 active + 4개 supe
 제안한다(§16).
 
 ===============================================================================
-## 7. Pattern A FAST Audit
+## 7. Pattern A FAST 감사
 ===============================================================================
 
 `pattern_a_fast/`(584파일, 20개 하위 폴더)를 lifecycle 관점으로 재분류하면:
@@ -257,7 +257,7 @@ V2 합성 이전 단계의 연구 이력으로 판단되며 ARCHIVE_CANDIDATE.
 ARCHIVE_CANDIDATE(가장 확실한 사례).
 
 ===============================================================================
-## 8. Investability Audit
+## 8. Investability 감사
 ===============================================================================
 
 Phase10 `CLOSED`. 현재 production contract: market cap >= 1,000억원, 20D
@@ -278,7 +278,7 @@ design 산출물과 production evidence가 현재 같은 `investability/` 레벨
 평평하게 섞여 있다 — IA 설계에서 `production/`과 `research/`로 분리 제안.
 
 ===============================================================================
-## 9. Foreign Flow Audit
+## 9. Foreign Flow 감사
 ===============================================================================
 
 Phase11 `CLOSED`. `flow/`(6파일): features/distribution/summary(Pattern A
@@ -288,7 +288,7 @@ ownership을 명확히 표현하고 있어 재명명 불필요. OBV 등 향후 �
 이번 Task 범위 밖(w.md §7.5 명시).
 
 ===============================================================================
-## 10. Relative Strength Audit
+## 10. Relative Strength 감사
 ===============================================================================
 
 Phase12 현재 verdict `HOLD_RELATIVE_STRENGTH_INFRA`(infra 존재, market-relative
@@ -299,7 +299,7 @@ Phase12를 "처음부터 다시 만드는" 방식으로 재해석하지 않았�
 상태 그대로 CURRENT_VALIDATION으로 유지 제안.
 
 ===============================================================================
-## 11. Scanner / Analysis / Chart Review Audit
+## 11. Scanner·Analysis·Chart Review 감사
 ===============================================================================
 
 - `scanner/`(2파일): canonical Full Universe Scan 결과(CSV+summary JSON).
@@ -314,7 +314,7 @@ Phase12를 "처음부터 다시 만드는" 방식으로 재해석하지 않았�
   않는 공용 infra 성격(`scripts/populate_krx_common_cache.py`가 유일한 참조).
 
 ===============================================================================
-## 12. Stage Research Audit
+## 12. Stage 연구 감사
 ===============================================================================
 
 `stage_v03_research/`(6파일)와 `stage_v04_multi_year_research/`(13파일)는
@@ -331,7 +331,7 @@ audit에서 그 test의 실행 방식 자체는 변경 대상이 아니다 — I
 평가).
 
 ===============================================================================
-## 13. Stock Report Audit
+## 13. Stock Report 감사
 ===============================================================================
 
 ```
@@ -348,7 +348,7 @@ stock_reports/
 가능하며 이번 STEP 1에서 실제 이동은 없다.
 
 ===============================================================================
-## 14. Path Dependency Audit
+## 14. 경로 의존성 감사
 ===============================================================================
 
 `rg "artifacts/"` 계열 검색을 `src/ tests/ scripts/ docs/` 전체에 대해
@@ -374,7 +374,7 @@ test dependency + frozen-integrity dependency**를 동시에 가진다. 이동 �
 하므로 STEP 2에서 최우선 검증 대상이다.
 
 ===============================================================================
-## 15. Frozen / Hash / Seal / Manifest Audit
+## 15. Frozen·Hash·Seal·Manifest 감사
 ===============================================================================
 
 `tests/helpers/frozen_integrity.py`(TEST_SUITE_PERFORMANCE_AUDIT_AND_REFACTOR_
@@ -417,7 +417,7 @@ frozen-integrity가 계속 통과한다. "hash가 같으므로 이동해도 안�
 결론은 **코드 갱신을 전제로 할 때만** 성립한다.
 
 ===============================================================================
-## 16. Proposed Canonical Artifact IA
+## 16. 제안하는 canonical artifact 정보 구조
 ===============================================================================
 
 docs IA 철학(상위 영역 → Pattern/Domain → 역할)을 artifact lifecycle에 맞게
@@ -460,7 +460,7 @@ docs IA 철학(상위 영역 → Pattern/Domain → 역할)을 artifact lifecycl
 6. `pattern_a_final_closure/`는 Pattern A의 `validation/closure/`로.
 
 ===============================================================================
-## 17. Proposed Tree
+## 17. 제안 트리
 ===============================================================================
 
 ```
@@ -533,7 +533,7 @@ validation), superseded는 각 `archive/`, Stock Report current output은
 Pattern B는 `patterns/pattern_b/`로 동일 4분류를 복제하면 확장 가능하다.
 
 ===============================================================================
-## 18. Migration Table
+## 18. Migration 표
 ===============================================================================
 
 | Current Path | Role | Authority | Proposed Path | Risk | Path Dependencies | Action |
@@ -576,7 +576,7 @@ Pattern B는 `patterns/pattern_b/`로 동일 4분류를 복제하면 확장 가�
 | `stock_reports/archive/v0.1/` | REPORT_OUTPUT/SUPERSEDED | 아니오 | `reporting/stock_reports/archive/v0.1/` | MEDIUM | docs 1 | MOVE |
 
 ===============================================================================
-## 19. Archive Candidates
+## 19. Archive 후보
 ===============================================================================
 
 | Path | 이유 |
@@ -606,7 +606,7 @@ STEP 2 Phase E(§23) 순서(byte identity 재확인 → provenance parity
 그대로 따른다.
 
 ===============================================================================
-## 20. Historical Baselines That Must NOT Be Archived
+## 20. Archive하면 안 되는 과거 기준선
 ===============================================================================
 
 | Path | 이유 |
@@ -616,7 +616,7 @@ STEP 2 Phase E(§23) 순서(byte identity 재확인 → provenance parity
 | `artifacts/investability/history/`의 SUPERSEDED_NON_REFERENCE_SOURCE 4건 | provenance 상 명시적으로 "superseded"라고 표시되어 있지만, 이는 각 시점의 대체 소스 존재를 뜻할 뿐 파일 자체는 KRX 원본 검증 체인(row-level sha256)의 일부이므로 archive 이동 대상이 아니라 `history/` 안에 그대로 유지 |
 
 ===============================================================================
-## 21. High-Risk / Blocked Moves
+## 21. 고위험·차단된 이동
 ===============================================================================
 
 **HIGH:** (§18 표 기준 HIGH = 13 rows; 아래는 대표 그룹으로 묶은 것이며
@@ -647,7 +647,7 @@ STEP 2 Phase E(§23)에서 canonical 단일화 후 제거 대상이며, 새로 �
 blocker는 없다.
 
 ===============================================================================
-## 22. Optional Future Filename Cleanup
+## 22. 선택적 향후 파일명 정리
 ===============================================================================
 
 이번 STEP 1에서는 rename하지 않는다. 향후 경로 자체가 domain/pattern을
@@ -664,7 +664,7 @@ DIRECTORY MOVE FIRST 원칙에 따라 STEP 2에서도 rename보다 이동을 우
 위 표는 별도 후속(STEP 3+)에서만 검토한다.
 
 ===============================================================================
-## 23. STEP 2 Reorganization Plan
+## 23. STEP 2 재구성 계획
 ===============================================================================
 
 **Phase A — Authority Index 준비**
@@ -728,7 +728,7 @@ Full Suite는 이번에도 사용자가 직접 실행하는 정책을 유지한�
 그대로 유지) → Julia Strategy → Phase12 Relative Strength Resume.
 
 ===============================================================================
-## 24. Final Verdict
+## 24. 최종 판정
 ===============================================================================
 
 **정확한 집계(§4 Artifact Inventory / §18 Migration Table을 single
