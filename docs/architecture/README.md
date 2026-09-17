@@ -20,7 +20,7 @@
 
 | 문서 | 한 줄 역할 |
 |---|---|
-| [adjusted_price_store_v01.md](adjusted_price_store_v01.md) | 수정주가 OHLC 저장소 계약과 무결성 |
+| [adjusted_price_store_v02.md](adjusted_price_store_v02.md) | 현재 수정주가 OHLC 저장소 V02 계약 |
 | [corporate_action_dirty_refresh_v01.md](corporate_action_dirty_refresh_v01.md) | 기업행위 변경 감지와 수정주가 갱신 상태 |
 | [krx_historical_backfill_v01.md](krx_historical_backfill_v01.md) | KRX 원천 과거 데이터 백필 계약 |
 | [krx_index_migration_v01.md](krx_index_migration_v01.md) | KOSPI/KOSDAQ 시장 대표지수 원천 경계 |
@@ -37,6 +37,7 @@
 
 | 문서 | 역할 |
 |---|---|
+| [adjusted_price_store_v01.md](adjusted_price_store_v01.md) | 과거 V01 수정주가 저장소 구현·검증 계약 기록 |
 | [data_layer.md](data_layer.md) | 과거 공용 데이터 레이어 v0.1 기록이며 현재 운영 데이터 레이어가 아님 |
 | [krx_dual_provider_contract_v01.md](krx_dual_provider_contract_v01.md) | 과거 데이터 제공자 전환 계약 |
 | [errata/krx_identifier_contract_errata_v01.md](errata/krx_identifier_contract_errata_v01.md) | KRX 식별자 계약 보정 기록 |
