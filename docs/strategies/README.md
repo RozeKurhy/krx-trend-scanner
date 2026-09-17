@@ -11,14 +11,14 @@
 (`PATTERN_A_FAST_FINAL_STRATEGY_V02`)이며, 패턴과 강하게 결합되어 있어
 관련 문서는 [A FAST 전략 문서](../patterns/pattern_a_fast/strategy/)에 둔다.
 
-`Julia Strategy`는 V2의 변형을 연구한 전략이다. 최종 V2 vs Julia realistic
-portfolio 비교 결과 Julia는 일반 종목 공식 전략으로 채택하지 않으며, 현재
-프로덕션 기본 전략은 A FAST Core V2이다. Julia의 ETF 전용 가능성은 별도
-검토 대상으로만 보존하고 현재는 deferred 상태다.
+`Julia Strategy`는 V2의 변형을 연구한 전략이다. 최종 V2와 Julia의 현실적
+포트폴리오 비교 결과 Julia는 일반 종목 공식 전략으로 채택하지 않으며, 현재
+일반 종목 기본 전략은 A FAST Core V2다. Julia의 ETF 전용 가능성은 별도
+검토 대상으로 보존하고 현재 상태는 보류(`DEFERRED`)로 둔다.
 
 공식 전략의 검증·채택 절차는 [전략 생애주기와 채택 절차](strategy_lifecycle.md)를
 따른다. Julia 관련 현재 상태와 과거 기록은 [Julia 문서](julia/)에서 관리하며,
-최신 ETF 비교 결과는 [V3와 Julia 통합 비교](../../artifacts/research/etf_v3_julia_integrated_comparison_v01/final_comparison.md)에서 확인한다.
+최신 ETF 비교 결과는 공식 전략이 아닌 [V3와 Julia 통합 비교 기록](../../artifacts/research/etf_v3_julia_integrated_comparison_v01/final_comparison.md)에서 확인한다.
 
 이 문서 영역의 사람이 읽는 설명은 한글을 기본으로 작성한다. 전략 ID, 파일명,
 코드 심볼, KRX·OpenDART, MDD·MAE와 같은 고유 식별자나 널리 쓰이는 약어만
