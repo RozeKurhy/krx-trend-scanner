@@ -56,19 +56,21 @@
 | `julia/validation_plan_v01.md` | `ARCHIVE` | 현재 결정 업데이트가 포함되어도 문서의 본질은 동결된 Stage 4 사전 검증 계획과 역사적 실행 조건이다. 현재 상태 안내는 `julia/README.md`가 담당하므로 archive한다. |
 | `julia/proxy_market_cap_v01.md` | `ARCHIVE` | 공식 PIT가 아닌 예상 시가총액을 사용한 비공식 실험이다. 공식 결과로 유지하지 않되 proxy 오차·위험 분석의 고유 기록은 보존한다. |
 
-## 7. 후속 작업 제안
+## 7. 이동 완료 및 후속 작업 제안
 
-다음 단계에서 이동을 수행한다면 파일명 수준의 제안은 다음과 같다.
+ARCHIVE 3개 이동을 완료했다. 실제 위치는 다음과 같다.
 
-1. `julia/v00.md`를 `julia/archive/research/v00.md`로 이동한다.
-2. `julia/validation_plan_v01.md`를 `julia/archive/validation/validation_plan_v01.md`로 이동한다.
-3. `julia/proxy_market_cap_v01.md`를 `julia/archive/research/proxy_market_cap_v01.md`로 이동한다.
-4. 이동 후 KEEP 문서 3개(`strategies/README.md`, `strategy_lifecycle.md`,
-   `julia/README.md`)를 다시 읽고 현재 링크와 현재/역사 경계를 최소 정리한다.
-5. 삭제 후보는 현재 제안하지 않는다.
+1. `julia/archive/research/v00.md`
+2. `julia/archive/validation/validation_plan_v01.md`
+3. `julia/archive/research/proxy_market_cap_v01.md`
 
-이번 단계에서는 위 이동·삭제·본문 수정·링크 수정·코드·테스트·백테스트·외부
-API 호출을 수행하지 않는다.
+다음 단계에서는 KEEP 문서 3개(`strategies/README.md`, `strategy_lifecycle.md`,
+`julia/README.md`)를 다시 읽고 현재/역사 경계를 최소 정리한다. 삭제 후보는
+현재 제안하지 않는다.
+
+분류 단계에서는 위 이동·삭제·본문 수정·링크 수정·코드·테스트·백테스트·외부
+API 호출을 수행하지 않았으며, 후속 실제 이동 단계에서는 확정된 ARCHIVE 3개와
+필요한 live 링크 보정만 수행했다.
 
 ## 8. 셀프 리뷰
 
@@ -78,4 +80,4 @@ API 호출을 수행하지 않는다.
 - 과거 계획 문구를 현재 계획으로 오인하지 않았다: **YES**
 - 삭제 후보를 과도하게 만들지 않았다: **YES**
 - 기존 문서 본문을 수정하지 않았다: **YES**
-- 실제 이동·삭제를 하지 않았다: **YES**
+- 확정된 ARCHIVE 3개만 이동하고 추가 이동·삭제를 하지 않았다: **YES**

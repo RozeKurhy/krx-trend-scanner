@@ -26,7 +26,7 @@ V2 vs Julia 비교가 완료되었으며 Julia는 일반 종목 공식 전략으
 | 1. 전략 아이디어 정의 | 완료 | Loss Guard 제거의 손실 방어·상승 기회 상충 관계가 연구 질문으로 기록됨 |
 | 2. 전략 규칙 명세화 | 완료 | V2 공식 규칙 문서와 동일한 진입·보유·청산·재진입 경로를 사용하며 `enable_loss_guard=False`로 단일 변경점만 적용함 |
 | 3. 후보 전략 동결 | 완료 | 현재 계약에 기준 전략, 단일 변경점, 전략 ID, `no_tuning: true`가 고정되어 결과에 따른 규칙 조정을 하지 않음 |
-| 4. 검증 계획 확정 | 완료 / 동결 | [Julia 공식 전략 검증 계획 V01](validation_plan_v01.md)에 비교 조건과 판정 기준을 고정함 |
+| 4. 검증 계획 확정 | 완료 / 동결 | [Julia 공식 전략 검증 계획 V01](archive/validation/validation_plan_v01.md)에 비교 조건과 판정 기준을 고정함 |
 | 5. 동일 조건 비교 백테스트 | 완료 | Matched-entry, Sequential, Realistic 200M Portfolio를 동일 조건으로 1회 완료함 |
 | 6. 핵심 성과 비교 | 완료 | 최종 Portfolio에서 V2 `58.8579%`, Julia `38.5329%`를 확인함 |
 | 7. 실패 사례 및 부작용 검증 | 완료 | unresolved, terminal unresolved, cash conservation 및 Loss Guard subset을 확인함 |
@@ -43,11 +43,11 @@ V2 vs Julia 비교가 완료되었으며 Julia는 일반 종목 공식 전략으
 
 ## 문서 인덱스
 
-- [V00 과거 연구 기록](v00.md): 공식 PIT 117/215개 기준일에서 중단된 불완전
+- [V00 과거 연구 기록](archive/research/v00.md): 공식 PIT 117/215개 기준일에서 중단된 불완전
   PIT 백필 체크포인트. 성과 해석은 억제된 상태다.
-- [proxy_market_cap_v01 과거 비공식 연구](proxy_market_cap_v01.md): 98개
+- [proxy_market_cap_v01 과거 비공식 연구](archive/research/proxy_market_cap_v01.md): 98개
   결측 기준일에 예상 시가총액을 사용한 연구 기록이며 공식 검증 근거가 아니다.
-- [Julia 공식 전략 검증 계획 V01](validation_plan_v01.md): Stage 4에서 동결한
+- [Julia 공식 전략 검증 계획 V01](archive/validation/validation_plan_v01.md): Stage 4에서 동결한
   사전 비교 계획과 최종 비교 후 현재 결정을 함께 보존하는 문서이다.
 - [최신 ETF V3·Julia 통합 비교](../../../artifacts/research/etf_v3_julia_integrated_comparison_v01/final_comparison.md):
   21개 ETF의 비교 증거를 정리한 별도 연구 문서이며 Julia 공식 검증 계획은 아니다.
