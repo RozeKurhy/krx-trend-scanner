@@ -1,24 +1,24 @@
 pattern_a_fast_daily_timing_feature_research_v01.md
 
 ==================================================
-0. Status / Base SHA
+0. 문서 작성 당시 상태 / 기준 SHA
 ==================================================
 
 Phase: 13F Daily Timing Feature Research
 
 Base Commit: 415583ab97835d6d98c945476de45aafdd6371b7 (Phase 13E Final)
 
-Status:
+문서 작성 당시 상태:
 
 DAILY TIMING FEATURE RESEARCH COMPLETE
 ADVISOR REVIEW PENDING
 
-Phase 13F은 아직 CLOSED로 선언되지 않는다. advisor가 실제 GitHub commit /
+문서 작성 당시 Phase 13F은 아직 CLOSED로 선언되지 않았다. advisor가 실제 GitHub commit /
 artifacts / feature distribution / PIT leakage / daily breakout horizon /
 incremental value를 검토한 뒤 PASS하면 CLOSED로 전환한다.
 
-Phase 13F 종료 시점에도 "최적 매수일"은 정의되지 않는다. 13D + 13E + 13F가
-모두 CLOSED되면 다음 단계는 세 timeframe의 Research Evidence를 합쳐 Feature
+Phase 13F 종료 시점에도 "최적 매수일"은 정의되지 않았다. 13D + 13E + 13F가
+모두 CLOSED되면 당시 다음 단계는 세 timeframe의 Research Evidence를 합쳐 Feature
 Selection / Role Assignment(Gate/Score/Diagnostic 배정)로 진행한다 — 이
 Phase에서 결정하지 않는다.
 
@@ -729,7 +729,7 @@ Feature를 전부 이 40개를 보고 발견했으므로, 향후 OOS 단계(Phas
 unseen reference dates가 필요하다.
 
 ==================================================
-24. Next Phase Recommendation
+24. 당시 다음 연구 권고
 ==================================================
 
 1. §18 HIGH 7개 중 Weekly와 상관 높은 2개(`close_vs_dma200_pct`,

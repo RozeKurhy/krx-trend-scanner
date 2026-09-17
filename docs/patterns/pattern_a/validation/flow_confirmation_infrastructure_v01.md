@@ -1,5 +1,7 @@
 pattern_a_flow_confirmation_infrastructure_v01.md
 
+> 이 문서는 과거 Phase 11 검증의 역사 기록이다. 아래의 다음 단계는 문서 작성 당시 계획이며 현재 작업 상태를 뜻하지 않는다.
+
 ================================================================================
 Phase 11. Foreign Flow Confirmation Infrastructure Validation Report
 ================================================================================
@@ -106,4 +108,4 @@ Point-In-Time Flow Confirmation Infrastructure를 성공적으로 구축하고 �
 --------------------------------------------------------------------------------
 - Hard Gates Result: ALL 10 GATES PASSED (100%)
 - Final Milestone State: FLOW_INFRA_READY
-- Next Step: Phase 11 DONE -> Phase 12. Relative Strength Confirmation Infrastructure
+- 당시 다음 단계: Phase 11 DONE -> Phase 12. Relative Strength Confirmation Infrastructure

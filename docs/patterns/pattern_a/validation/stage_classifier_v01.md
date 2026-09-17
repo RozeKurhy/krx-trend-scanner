@@ -1,5 +1,7 @@
 # Pattern A Stage Classifier v0.1
 
+> 이 문서는 과거 Stage Classifier 연구의 역사 기록이다. 아래의 미실행·다음 단계 표기는 문서 작성 당시 상태이며 현재 작업 상태를 뜻하지 않는다.
+
 ## 목적
 
 `docs/patterns/pattern_a/validation/stage_label_audit_freeze.md`가 확정한 Stage 정의(BASE/TRANSITION/
@@ -122,7 +124,7 @@ blended `stage_score`와 cutoff 대신, 정해진 순서로 조건을 else-if로
 3. `core_turning_positive and expansion_present` -> PROGRESSED.
 4. `breakout_like_structure` -> EARLY_TREND.
 5. `core_turning_positive or weekly_turning_positive` -> TRANSITION.
-6. 그 외 전부 BASE(fallback).
+6. 그 외 전부 BASE(기본값).
 
 `active_decline`은 3-branch OR다(단일 신호 아님): `ma24_slope<=-0.045`
 또는 (`ma24_slope_acceleration<0` and `avg_price_change_12m<=-0.15`) 또는
@@ -372,9 +374,9 @@ Feature(weekly slope, range_position)에서 독립적으로 근거를 대므로
 
 * **Calibration truth set**: 46 snapshots
 * **Exact reproduction**: 38 / 46 (82.6%)
-* **External Stage OOS Validation**: **Not yet performed (NEXT)**
+* **문서 작성 당시 외부 Stage OOS 검증**: **미실행**
 * **Known failure modes**: Documented (4 categories)
-* **Next Step**: Stage Classifier v0.1 OOS Validation Selection Freeze
+* **문서 작성 당시 다음 단계**: Stage Classifier v0.1 OOS Validation Selection Freeze
 
 Score와 독립적이고, 8개 evidence + episode/cycle reset context 전부를
 사람이 reason_codes로 그대로 따라 읽을 수 있는 rule-based classifier를
@@ -387,4 +389,4 @@ avg_price_change_12m 단독 급등, BASE 민감도, active_decline 과다 반응
 했지만, 전체 정확도가 떨어져서 최종적으로 폐기했다).
 
 이로써 Phase 3의 Stage Classifier v0.1 calibration baseline이 고정되었으며,
-다음 작업으로 **Stage Classifier v0.1 OOS Validation**을 진행한다.
+문서 작성 당시 다음 작업으로 **Stage Classifier v0.1 OOS Validation**을 진행하도록 기록했다.

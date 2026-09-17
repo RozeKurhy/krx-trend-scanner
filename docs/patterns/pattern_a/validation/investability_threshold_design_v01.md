@@ -1,5 +1,7 @@
 # Phase 10B. Investability Threshold Design & Validation Report
 
+> 이 문서는 과거 Phase 10B 검증의 역사 기록이다. 아래의 다음 프로젝트 단계는 문서 작성 당시 계획이며 현재 작업 상태를 뜻하지 않는다.
+
 ## 1. Executive Summary
 
 * **문서명**: `pattern_a_investability_threshold_design_v01.md`
@@ -185,6 +187,6 @@ PHASE 10B FINAL STATUS: THRESHOLD_POLICY_READY
 2. Liquidity Policy: avg_trading_value_20d >= 3.0 억원
 3. Price Policy: NOT_NEEDED (시총/유동성 필터로 저가주 99% 자동 정제)
 4. Missing Policy: DATA_UNAVAILABLE (실전 투자 풀 제외)
-5. 다음 프로젝트 단계: Phase 10C. Downstream Filter Integration (Production 연결)
+5. 당시 다음 프로젝트 단계: Phase 10C. Downstream Filter Integration (Production 연결)
 ================================================================================
 ```

@@ -1,5 +1,7 @@
 # Pattern A Final Production Validation & Official Closure
 
+> 이 문서는 Pattern A 운영 확정 시점의 역사 기록이다. `Next Project Phase`는 문서 작성 당시 계획이며 현재 작업 순서를 뜻하지 않는다.
+
 ## 1. Executive Summary
 
 * **문서명**: `pattern_a_final_production_closure.md`
@@ -11,7 +13,7 @@
 * **Stage v0.3 Existing Feature Research**: **`공식 종료 (CLOSED, NO_GENERALIZABLE_RULE_FOUND)`**
 * **Stage v0.4 Multi-Year Structural Feature Research**: **`공식 종료 (CLOSED, NO_USEFUL_MULTI_YEAR_FEATURE_FOUND)`**
 * **Pattern A Stage Research Lifecycle**: **`영구 종료 (CLOSED)`**
-* **Next Project Phase**: **`SCANNER_OPERATION_AND_CANDIDATE_QUALITY_WORKFLOW`**
+* **당시 다음 프로젝트 단계**: **`SCANNER_OPERATION_AND_CANDIDATE_QUALITY_WORKFLOW`**
 
 ---
 

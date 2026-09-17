@@ -68,5 +68,5 @@ OOS_A_012 outcome-label interpretation requires advisor review. Stage/availabili
 12. Production Decision
 이번 OOS 결과만으로 PRODUCTION_GO나 fully OOS validated를 선언하지 않는다. production_frozen은 false다.
 
-13. Next Step
-OOS_A_012 outcome-label interpretation requires advisor review. No tuning occurred after OOS labels were revealed. Next step is advisor review; no new OOS set is designed in this phase.
+13. 당시 다음 단계
+OOS_A_012 outcome-label interpretation requires advisor review. No tuning occurred after OOS labels were revealed. 문서 작성 당시 다음 단계는 advisor review였으며, 이 phase에서는 새 OOS set을 설계하지 않았다.

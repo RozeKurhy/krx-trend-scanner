@@ -3,7 +3,7 @@ pattern_a_fast_investable_oos_human_stage_freeze_v01.md
 Phase 13J-2 Investable OOS-B Human Blind Stage Review Freeze
 ==================================================
 
-1. Status
+1. 문서 작성 당시 상태
 ---------
 HUMAN_STAGE_PASS_A_FROZEN
 READY_FOR_ADVISOR_REVIEW
@@ -60,11 +60,11 @@ Machine stage/score, sampling stratum, selection percentile, Pattern A/Fast futu
 
 - PASS A 후 Human review CSV SHA-256 및 pre-PASS-A blank template SHA-256
 - selection manifest, blind asset manifest, evaluation protocol SHA-256
-- canonical review_order|sample_id mapping SHA-256
+- 공식 기준 review_order|sample_id mapping SHA-256
 - stage/confidence/trigger/status distribution과 PASS B not-started flags
 
 PASS A freeze helper는 authoritative Phase 13J-1 selection manifest와 blind asset manifest를 직접 join하여 `review_order`, `sample_id`, `ticker`, `name`, `historical_market`, `reference_date`, `outcome_review_end`의 36-row frozen identity를 검증한다. market 또는 outcome end를 현재 데이터로 재계산하거나 외부 조회하지 않는다.
 
-7. Next Gate
+7. 당시 다음 관문
 ------------
 이 commit은 Phase 13J-3 Outcome Review를 시작하지 않는다. advisor가 Phase 13J-2 freeze를 PASS/CLOSED/FROZEN으로 검토한 뒤에만 PASS B outcome blind review를 별도 지시로 진행한다.

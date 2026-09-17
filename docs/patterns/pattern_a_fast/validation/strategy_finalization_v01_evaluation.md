@@ -1,10 +1,12 @@
 # Pattern A FAST Strategy Finalization / Candidate Selection v0.1 평가 보고서
 
+> 이 문서는 V1 후보 선택의 역사 기록이다. 현재 일반 종목의 공식 기본 전략은 `PATTERN_A_FAST_FINAL_STRATEGY_V02`이며, 이 문서의 V1 후보 판정은 현재 전략 상태를 뜻하지 않는다.
+
 ================================================================================
 1. Executive Summary & Evidence Reference
 ================================================================================
 - **전략 참조명**: `PATTERN_A_FAST_FINAL_STRATEGY_V01`
-- **선택 권한 (Selection Authority)**: `FINAL_STRATEGY_CONTRACT` (docs/patterns/pattern_a_fast/strategy/version_01/README.md)
+- **선택 기준**: `FINAL_STRATEGY_CONTRACT` (docs/patterns/pattern_a_fast/strategy/version_01/README.md)
 - **연구 분류 (Research Classification)**: `RETROSPECTIVE_STRATEGY_FINALIZATION_CANDIDATE_SELECTION`
 - **재평가 분류 (Reevaluation Classification)**: `CORRECTED_PIT_STRATEGY_FINALIZATION_REEVALUATION`
 - **평가 기준 (Evaluation Basis)**: `CORRECTED_PIT_BASELINE`

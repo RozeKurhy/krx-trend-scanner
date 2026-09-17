@@ -1,13 +1,13 @@
 pattern_a_fast_score_stage_contract_prototype_v01.md
 
 ==================================================
-0. Status / Base SHA
+0. 문서 작성 당시 상태 / 기준 SHA
 ==================================================
 
 Phase: 13G-2 Threshold / Score / Stage Contract Prototype
 Base Commit: 4fc5f9d11c23cd96703c5b066d5f60200fb41703
 
-Status:
+문서 작성 당시 상태:
 PHASE 13G-2
 THRESHOLD / SCORE / STAGE CONTRACT PROTOTYPE COMPLETE
 ADVISOR REVIEW PENDING
@@ -257,7 +257,7 @@ frozen이 아니다.
 time research다.
 
 ==================================================
-24. Next Phase Recommendation
+24. 당시 다음 연구 권고
 ==================================================
 
 advisor가 PIT safety, bounded threshold design, missing semantics, Weekly-only

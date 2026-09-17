@@ -4,7 +4,7 @@
 0. 문서 상태
 ================================================================================
 Phase: 13C-2 — Human Annotation
-Status: **PIT CHECKPOINT / OUTCOME REVIEW PENDING**
+문서 작성 당시 상태: **PIT CHECKPOINT / OUTCOME REVIEW PENDING**
 Base commit: `d121cdf76f72f5b457652fb3f07c04a14e743d52` (Phase 13C-1 최종
 봉인 시점)
 Data cutoff (as_of): 2026-08-14
@@ -161,7 +161,7 @@ tests / Pattern A production logic(`src/trend_scanner/patterns/`) /
 Phase 12(`ROADMAP.md`).
 
 --------------------------------------------------------------------------------
-11. Next Step
+11. 당시 다음 단계
 --------------------------------------------------------------------------------
 1. 이 checkpoint 커밋이 advisor 리뷰에서 PASS되기 전에는 Outcome
    Annotation을 시작하지 않는다(w.md §14 명시 사항).

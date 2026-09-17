@@ -3,6 +3,8 @@ pattern_a_fast_investable_oos_preregistration_v01.md
 Phase 13J-1 Investable OOS-B Preregistration + Blind Package
 ==================================================
 
+이 문서는 종료된 Phase 13J-1의 과거 사전등록 계획 기록이며 현재 실행 지시가 아니다.
+
 1. Purpose
 ----------
 Phase 13J-1은 reference-time에 투자 가능했던 KRX universe에서 frozen HIERARCHICAL_V01 Fast relevance만 사용해 새로운 OOS-B blind human review sample을 동결한다. 이 단계는 Human label 입력, OOS evaluation, score/lead validation, Fast/Pattern A tuning을 수행하지 않는다.
@@ -91,11 +93,11 @@ freeze 뒤 sample 교체/추가/제거, quota substitution, score/stage/feature/
 -----------------------------
 Target/actual = 36/36. strata actual = ADVANCED 10, SETUP 10, WATCH_HIGH 8, EXTENDED 4, WATCH_LOW 4. hard minimum 6/6/5/3/3을 전부 충족한다. deterministic post-firewall eligible pool은 1,609 rows다. stage blind chart 108개와 outcome blind chart 36개가 asset manifest SHA-256으로 봉인됐다.
 
-23. Final Status
+23. 문서 작성 당시 최종 상태
 ----------------
 `READY_FOR_BLIND_HUMAN_INVESTABLE_OOS_LABELING`
 
-Human Stage/Outcome을 입력하지 않는다. OOS evaluation도 실행하지 않는다. Network market request count는 0이다. 다음 행동은 advisor review 후 blind human PASS A stage labeling이며, 이 commit에서 Phase13J-2 이상으로 진행하지 않는다.
+Human Stage/Outcome을 입력하지 않는다. OOS evaluation도 실행하지 않는다. Network market request count는 0이다. 문서 작성 당시 다음 행동은 advisor review 후 blind human PASS A stage labeling이었으며, 이 commit에서 Phase13J-2 이상으로 진행하지 않았다.
 
 24. 13J-1 Blind Review Order ↔ Chart Asset Mapping Correction
 --------------------------------------------------------------
@@ -103,4 +105,4 @@ Advisor review는 blind chart numbering이 selection order를 사용한 반면 H
 
 36-sample membership, selection hash, sampling stratum, machine output, reference date, Human review order, evaluation protocol은 변경하지 않았다. correction generator는 frozen selection manifest와 frozen Human review CSV를 byte-hash 검증 후 읽기만 하며, Human review의 `review_order ↔ sample_id` 1:1 mapping을 stage/outcome chart filename, chart title, blind asset manifest의 유일한 numbering source로 사용한다.
 
-Blind assets만 clean regeneration했고, asset manifest에는 `review_order`를 추가했다. preregistration seal에는 `review_asset_mapping_status = EXACT`와 canonical `review_order|sample_id` mapping SHA-256을 기록한다. PASS A는 advisor correction review가 끝날 때까지 시작하지 않는다.
+Blind assets만 clean regeneration했고, asset manifest에는 `review_order`를 추가했다. preregistration seal에는 `review_asset_mapping_status = EXACT`와 공식 기준 `review_order|sample_id` mapping SHA-256을 기록한다. 문서 작성 당시 PASS A는 advisor correction review가 끝날 때까지 시작하지 않았다.

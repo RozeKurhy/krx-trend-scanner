@@ -1,5 +1,7 @@
 # Pattern A Universe & Data Quality Audit v0.1 보고서
 
+> 이 문서는 과거 데이터 품질·유니버스 준비 단계의 역사 기록이다. 아래의 다음 단계는 문서 작성 당시 계획이며 현재 작업 상태를 뜻하지 않는다.
+
 ## 1. 개요 및 목적
 
 `Pattern A Data Quality / Universe Preparation v0.1`은 Full Universe Scanner로 넘어가기 전에, 실제 공인 KRX 종목 마스터(KOSPI / KOSDAQ)를 authoritative source로 직접 연결하고, 로컬 캐시의 스코프 및 커버리지, 데이터 무결성, 절대 시장 신선도(Absolute Market Freshness), 그리고 **Pattern A Score v0.2, Stage Classifier v0.1, Evaluator v0.1**의 실행 준비도를 엄격히 검증하는 인프라 단계이다.
@@ -110,7 +112,7 @@ Pattern A Feature Set 및 Stage Classifier의 모든 필수 앵커를 결측 없
 
 ---
 
-## 7. Current Status & Next Step
+## 7. 문서 작성 당시 상태와 다음 단계
 
 ### 7.1 확정 상태
 ```text
@@ -122,5 +124,5 @@ Official KRX Universe Master: ESTABLISHED (2,763 Tickers)
 Cached Dataset Quality: 67 / 67 (100.0% Clean & Evaluator Ready)
 Unit & Integration Tests: 260 passed (100% Green)
 Final Judgment: UNIVERSE CONDITIONALLY READY
-Next: Score Momentum
+당시 다음 단계: Score Momentum
 ```

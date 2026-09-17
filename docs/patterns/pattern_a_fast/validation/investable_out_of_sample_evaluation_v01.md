@@ -3,6 +3,8 @@ pattern_a_fast_investable_oos_evaluation_v01.md
 Phase 13J-4 Frozen Investable OOS-B Evaluation
 ==================================================
 
+이 문서는 종료된 Phase 13J-4 평가 결과의 역사 기록이다. 여기의 운영 판정과 수치는 현재 일반 종목 공식 전략을 뜻하지 않는다.
+
 1. Scope and integrity
 Base commit: 753f7601078aad46e3f3329887e3a9c60203bea7
 Population: 36 frozen Investable OOS-B samples. HIERARCHICAL_V01 and frozen Pattern A were evaluated with local cached OHLCV only; network market requests=0 and retuning=false.

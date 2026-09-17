@@ -3,7 +3,7 @@ pattern_a_fast_oos_ground_truth_seal_v01.md
 Phase 13I-1 Reserved OOS Human Ground Truth Seal
 ==================================================
 
-상태: READY_FOR_ADVISOR_GROUND_TRUTH_SEAL_REVIEW
+문서 작성 당시 상태: READY_FOR_ADVISOR_GROUND_TRUTH_SEAL_REVIEW
 Base SHA: 3dbdffcb3277a4bb40fa969f3827075514f13f1e
 
 1. 범위와 경계
@@ -66,5 +66,5 @@ OOS_A_012는 거래정지로 정상적인 가격 outcome을 평가할 수 없었
 4. Preregistered Primary Test 사전 확인
 RESERVED_OOS_A contains no Human POSITIVE_STRUCTURE labels. The preregistered primary score-direction comparison is therefore expected to be sample-size inconclusive. This is a property of the frozen reserved sample and MUST NOT be corrected by adding or replacing OOS samples.
 
-5. 무결성 및 다음 단계
-human review CSV와 보호 파일 SHA-256은 seal JSON에 기록했다. Stage review는 outcome review 이전에 기록되었으며, 인간 양성 anchor 4건은 OOS metric에 포함하지 않는다. OOS_A_012 unavailable 처리의 preregistered evaluation 해석은 advisor review 전에는 결정하지 않는다. 따라서 Phase 13I-2 evaluation은 시작하지 않는다.
+5. 무결성 및 당시 다음 단계
+human review CSV와 보호 파일 SHA-256은 seal JSON에 기록했다. Stage review는 outcome review 이전에 기록되었으며, 인간 양성 anchor 4건은 OOS metric에 포함하지 않는다. 문서 작성 당시 OOS_A_012 unavailable 처리의 preregistered evaluation 해석은 advisor review 전에는 결정하지 않았고, Phase 13I-2 evaluation도 시작하지 않았다.

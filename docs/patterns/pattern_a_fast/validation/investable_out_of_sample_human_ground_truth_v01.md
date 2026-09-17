@@ -3,7 +3,7 @@ pattern_a_fast_investable_oos_human_ground_truth_v01.md
 Phase 13J-3 Investable OOS-B Human PASS B Ground Truth Freeze
 ==================================================
 
-1. Status
+1. 문서 작성 당시 상태
 ---------
 HUMAN_OUTCOME_PASS_B_GROUND_TRUTH_FROZEN
 READY_FOR_ADVISOR_REVIEW
@@ -89,6 +89,6 @@ PASS B helper는 시작 전에 pre-PASS-B Human review SHA-256, immutable PASS A
 
 새 ground-truth seal은 PASS B 전/후 Human review hash, PASS A seal hash, selection/asset/protocol/mapping hash, PASS A stage/trigger 보존, outcome distribution/confidence 및 non-evaluation flags를 봉인한다.
 
-7. Next Gate
+7. 당시 다음 관문
 ------------
 이 commit은 Phase 13J-4 frozen HIERARCHICAL_V01 evaluation을 수행하지 않는다. advisor가 이 ground truth freeze를 PASS/CLOSED/FROZEN으로 검토한 뒤에만 별도 지시로 evaluation을 시작한다.

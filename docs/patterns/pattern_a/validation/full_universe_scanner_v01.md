@@ -1,8 +1,10 @@
 # Pattern A Full Universe Scanner Integration v0.1 설계 및 검증 보고서 (Followup Revision)
 
+> 이 문서는 과거 Phase 8 검증의 역사 기록이다. 아래의 Phase 9 표기는 문서 작성 당시 계획이며 현재 작업 상태를 뜻하지 않는다.
+
 ## 1. 개요 및 목적
 
-`Pattern A Full Universe Scanner Integration v0.1`은 KRX 공인 Universe에서 **AssetType.COMMON (KOSPI / KOSDAQ 보통주 2,528개)**으로 분류된 전 종목을 대상으로, Frozen Pattern A Score v0.2, Stage Classifier v0.1, Candidate State, Score Momentum v0.1, Layer Readiness 및 Data Quality Flags를 종목별 단일 Row로 통합하여 다차원 결과 매트릭스를 생성하고 데이터/스코어 분포를 관찰(Distribution Inspection)하는 Production Integration Layer이다.
+`Pattern A Full Universe Scanner Integration v0.1`은 KRX 공인 유니버스에서 **AssetType.COMMON (KOSPI / KOSDAQ 보통주 2,528개)**으로 분류된 전 종목을 대상으로, Frozen Pattern A Score v0.2, Stage Classifier v0.1, Candidate State, Score Momentum v0.1, Layer Readiness 및 Data Quality Flags를 종목별 단일 Row로 통합한다. 이를 통해 다차원 결과 매트릭스를 만들고 데이터·점수 분포를 점검하는 운영 통합 계층이다.
 
 > [!IMPORTANT]
 > **핵심 설계 및 Temporal Semantics 원칙**:
@@ -31,9 +33,9 @@
 ### 2.1 Universe Snapshot & Row Count
 * **Official COMMON Total (Global)**: **2,528개** (KOSPI 830, KOSDAQ 1,698)
 * **Scan Target Count**: **2,528개**
-* **Scanner Rows Emitted**: **2,528개** (100% 1 ticker = 1 row)
-* **Duplicate Rows**: **0건**
-* **Missing Output Rows**: **0건**
+* **스캐너 출력 행**: **2,528개** (100% 1 ticker = 1 row)
+* **중복 행**: **0건**
+* **누락 출력 행**: **0건**
 * **Cache Present Count**: **2,486개 (98.34%)**
 * **Cache Missing Count**: **42개 (1.66%)** (PyKRX 원천 OHLC 모순으로 격리된 종목, Row 유지)
 * **Scanner Calculation Errors**: **0건 (100% 무오류)**
@@ -142,4 +144,4 @@
 * **Temporal Semantics & Completed Periods**: **`100% ALIGNED`**
 * **Readiness Provenance & Invariants**: **`100% CONSISTENT`**
 * **Phase 8 Status**: **`DONE`**
-* **Phase 9 (Real Candidate Chart Review)**: **`NEXT (Candidate: 180 Stocks)`**
+* **당시 다음 단계 — Phase 9 (Real Candidate Chart Review)**: **`Candidate: 180 Stocks`**

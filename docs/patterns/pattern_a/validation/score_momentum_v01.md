@@ -1,5 +1,7 @@
 # Pattern A Score Momentum v0.1 설계 및 검증 보고서
 
+> 이 문서는 과거 Score Momentum 측정 계층의 역사 기록이다. 아래의 다음 단계는 문서 작성 당시 계획이며 현재 작업 상태를 뜻하지 않는다.
+
 ## 1. 개요 및 목적
 
 `Pattern A Score Momentum v0.1`은 Frozen 상태인 **Pattern A Score v0.2**를 완료된 월봉(Completed Monthly) 기준의 시간축으로 반복 평가하여, 최근 **1개월(1M), 3개월(3M), 6개월(6M)** 동안의 Score 변화량(Raw Delta) 및 세부 구성요소 변화량(Component Delta)을 산출하는 **순수 측정 계층(Pure Measurement Layer)**이다.
@@ -128,7 +130,7 @@ Score 변화의 구체적인 동인을 파악하기 위해 기존 Frozen `Patter
 
 ---
 
-## 7. Current Status & Next Step
+## 7. 문서 작성 당시 상태와 다음 단계
 
 ### 7.1 확정 상태
 ```text
@@ -138,5 +140,5 @@ Pattern A Evaluator Integration v0.1: COMPLETED (51fc202)
 Data Quality & Universe Preparation v0.1: COMPLETED (0ce8012)
 Pattern A Score Momentum v0.1: FROZEN MEASUREMENT CONTRACT (CLEANUP COMPLETED)
 Unit & Integration Tests: 273 passed (100% Green)
-Next: Official Common Stock Cache Population -> Full Universe Scanner Integration
+당시 다음 단계: Official Common Stock Cache Population -> Full Universe Scanner Integration
 ```

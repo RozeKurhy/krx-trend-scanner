@@ -1,11 +1,13 @@
 # Phase 10A. Investability Distribution Comparative Audit
 
+> 이 문서는 과거 Phase 10A 검증의 역사 기록이다. 아래의 최종 판정과 다음 단계는 문서 작성 당시 계획이며 현재 작업 상태를 뜻하지 않는다.
+
 ## 1. Executive Summary
 
 * **문서명**: `pattern_a_investability_distribution_v01.md`
 * **기준일 (Snapshot As-Of)**: **`2026-08-14`** (Lookahead Free Point-in-Time)
-* **목적**: Pattern A Raw Candidate Pool(180개)과 전체 시장(2,528개)의 투자 적합성(시가총액, 종가, 20D/60D 평균 거래대금) 분포를 정량 비교하고, 후속 Phase 10B Threshold 설계를 위한 기초 데이터 및 시나리오 임팩트를 단일 Canonical 파이프라인에서 실측 검증.
-* **핵심 원칙**: 본 단계는 **Analysis / Validation Only**이며, Pattern A Score/Stage/Scanner 알고리즘을 일체 변경하지 않고 Threshold를 임의 확정하지 않음.
+* **목적**: Pattern A Raw Candidate Pool(180개)과 전체 시장(2,528개)의 투자 적합성(시가총액, 종가, 20D/60D 평균 거래대금) 분포를 정량 비교하고, 후속 Phase 10B 임계값 설계를 위한 기초 데이터 및 시나리오 영향을 단일 정본 파이프라인에서 실측 검증.
+* **핵심 원칙**: 본 단계는 **분석·검증 전용**이며, Pattern A Score/Stage/Scanner 알고리즘을 일체 변경하지 않고 임계값을 임의 확정하지 않음.
 * **Phase 10A 최종 결론**: **`READY_FOR_THRESHOLD_DESIGN`** (10대 Dynamic Hard Gates 100% 통과)
 
 ---
@@ -13,7 +15,7 @@
 ## 2. 데이터 소스 및 Point-in-Time 계약
 
 1. **시가총액 (Market Capitalization)**:
-   - **Canonical Source**: `pykrx.stock.get_market_cap_by_ticker (KRX Official Snapshot)`
+   - **정본 출처**: `pykrx.stock.get_market_cap_by_ticker (KRX Official Snapshot)`
    - **Snapshot SHA256**: `c45a496d0a5bb38ea4d4350d3a0a1db8cc141887c22df1ad4ca702a75722b55d`
    - **Effective Date**: `2026-08-14` (소급 적용 및 미래 주식수 사용 원천 차단)
    - **Universe 커버리지**: 2528개 전수 확보 (`missing = 0`)
@@ -137,9 +139,9 @@ Pattern A Candidate가 전체 시장 대비 특정 구간에 치우쳐 있는지
 
 ---
 
-## 7. EARLY 12 Preservation Audit (Canonical Values)
+## 7. EARLY 12 Preservation Audit (정본 값)
 
-12개 EARLY_TREND 종목의 Canonical 실측치 및 수동 검토 매핑 결과입니다.
+12개 EARLY_TREND 종목의 정본 실측치 및 수동 검토 매핑 결과입니다.
 
 ```text
 +--------+------------------+---------+------------+----------+-------------+-------------+------------+-----------+
@@ -179,22 +181,22 @@ Pattern A Candidate가 전체 시장 대비 특정 구간에 치우쳐 있는지
 +----+---------------------------------------------------+--------+---------------------------+
 | No | Gate Name                                         | Status | Verification Detail       |
 +----+---------------------------------------------------+--------+---------------------------+
-| 01 | gate_01_no_lookahead_pass                         | PASS   | Verified in Canonical Run |
-| 02 | gate_02_universe_identity_pass                    | PASS   | Verified in Canonical Run |
-| 03 | gate_03_candidate_identity_pass                   | PASS   | Verified in Canonical Run |
-| 04 | gate_04_stage_split_pass                          | PASS   | Verified in Canonical Run |
-| 05 | gate_05_human42_identity_pass                     | PASS   | Verified in Canonical Run |
-| 06 | gate_06_market_cap_pit_provenance_pass            | PASS   | Verified in Canonical Run |
-| 07 | gate_07_candidate_market_cap_coverage_pass        | PASS   | Verified in Canonical Run |
-| 08 | gate_08_candidate_metric_availability_policy_pass | PASS   | Verified in Canonical Run |
-| 09 | gate_09_early_and_human42_full_coverage_pass      | PASS   | Verified in Canonical Run |
-| 10 | gate_10_artifact_consistency_pass                 | PASS   | Verified in Canonical Run |
+| 01 | gate_01_no_lookahead_pass                         | PASS   | 정본 실행 검증 |
+| 02 | gate_02_universe_identity_pass                    | PASS   | 정본 실행 검증 |
+| 03 | gate_03_candidate_identity_pass                   | PASS   | 정본 실행 검증 |
+| 04 | gate_04_stage_split_pass                          | PASS   | 정본 실행 검증 |
+| 05 | gate_05_human42_identity_pass                     | PASS   | 정본 실행 검증 |
+| 06 | gate_06_market_cap_pit_provenance_pass            | PASS   | 정본 실행 검증 |
+| 07 | gate_07_candidate_market_cap_coverage_pass        | PASS   | 정본 실행 검증 |
+| 08 | gate_08_candidate_metric_availability_policy_pass | PASS   | 정본 실행 검증 |
+| 09 | gate_09_early_and_human42_full_coverage_pass      | PASS   | 정본 실행 검증 |
+| 10 | gate_10_artifact_consistency_pass                 | PASS   | 정본 실행 검증 |
 +----+---------------------------------------------------+--------+---------------------------+
 ```
 
 ---
 
-## 10. Phase 10A 최종 판정 및 다음 단계
+## 10. Phase 10A 최종 판정 및 당시 다음 단계
 
 ```text
 ================================================================================
@@ -203,6 +205,6 @@ PHASE 10A FINAL DECISION: READY_FOR_THRESHOLD_DESIGN
 1. Point-In-Time 시가총액, 종가, 20D/60D 거래대금 데이터가 단일 파이프라인에서 완전 확보됨.
 2. 10대 Dynamic Hard Gates 100% PASS 확인.
 3. Candidate Pool의 약 48%가 비투자성/저유동성 필터에 의해 안전하게 분리 가능함을 실측.
-4. 다음 단계: Phase 10B. Investability Threshold Design & Validation 착수.
+4. 당시 다음 단계: Phase 10B. Investability Threshold Design & Validation 착수.
 ================================================================================
 ```

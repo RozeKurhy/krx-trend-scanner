@@ -3,7 +3,7 @@ pattern_a_fast_phase_13_final_synthesis_v01.md
 Phase 13 Final Research Closure
 ==================================================
 
-1. Final status
+1. Final status (문서 작성 당시)
 Research status: PHASE_13_RESEARCH_CLOSED.
 HIERARCHICAL_V01 production status: HIERARCHICAL_V01_PRODUCTION_HOLD.
 

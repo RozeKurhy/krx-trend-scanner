@@ -1,5 +1,7 @@
 # Pattern A Stage Classifier v0.1: Frozen OOS Validation Run 결과
 
+> 이 문서는 과거 Stage OOS 검증 결과의 역사 기록이다. 아래의 미착수·다음 단계 표기는 문서 작성 당시 상태이며 현재 작업 상태를 뜻하지 않는다.
+
 ## 1. Validation Design
 
 본 문서는 `Stage Classifier v0.1`(commit `43ee01c`)을 사전 봉인된 `Stage OOS Truth Set`(35 snapshots, commit `93f26a0`)에 **처음으로 실행한 공식 외부 검증(External Challenge OOS Validation Run) 결과 보고서**이다.
@@ -78,9 +80,9 @@ Total Predicted          |      10 |       5 |         10 |           3 |       
 | 2 | `024110` | 기업은행 | 2023-11-30 | `quiet_box_base` | BASE | **TRANSITION** | ADJACENT | `ma24_slope` 미세 양수로 `core_pos=True` 발동 |
 | 3 | `271560` | 오리온 | 2024-08-31 | `quiet_box_base` | BASE | **WEAK** | ADJACENT | 24개월선 하향 기울기 잔존으로 `active_decline=True` 발동 |
 | 4 | `068270` | 셀트리온 | 2023-09-30 | `cycle_reset_base` | BASE | **WEAK** | ADJACENT | Cycle Reset 정상 작동, 24개월선 음수로 `active_decline` 발동 |
-| 5 | `000660` | SK하이닉스 | 2023-05-31 | `weekly_leading_transition` | TRANSITION | **BASE** | ADJACENT | 월봉 코어 미회복 및 주봉 기울기 0.03 미달로 fallback |
+| 5 | `000660` | SK하이닉스 | 2023-05-31 | `weekly_leading_transition` | TRANSITION | **BASE** | ADJACENT | 월봉 코어 미회복 및 주봉 기울기 0.03 미달로 기본 분류 |
 | 6 | `006260` | LS | 2022-10-31 | `box_breakout_prep_transition` | TRANSITION | **WEAK** | **SEVERE** | 24개월선 음수로 `active_decline` 발동 (False Negative 방향) |
-| 7 | `028050` | 삼성E&A | 2021-03-31 | `weekly_leading_transition` | TRANSITION | **BASE** | ADJACENT | 월봉 코어 미회복 및 주봉 기울기 0.03 미달로 fallback |
+| 7 | `028050` | 삼성E&A | 2021-03-31 | `weekly_leading_transition` | TRANSITION | **BASE** | ADJACENT | 월봉 코어 미회복 및 주봉 기울기 0.03 미달로 기본 분류 |
 | 8 | `005830` | DB손해보험 | 2023-12-31 | `clean_early_trend` | EARLY_TREND | **TRANSITION** | ADJACENT | `weekly_ma12_slope < 0.03`으로 breakout 미달 (지연) |
 | 9 | `006260` | LS | 2023-02-28 | `clean_early_trend` | EARLY_TREND | **TRANSITION** | ADJACENT | `weekly_ma12_slope < 0.03`으로 breakout 미달 (지연) |
 | 10 | `003230` | 삼양식품 | 2022-11-30 | `clean_early_trend` | EARLY_TREND | **TRANSITION** | ADJACENT | `weekly_ma12_slope < 0.03`으로 breakout 미달 (지연) |
@@ -172,7 +174,7 @@ Total Predicted          |      10 |       5 |         10 |           3 |       
 
 ---
 
-## 11. Current Status & Next Step
+## 11. 문서 작성 당시 상태와 다음 단계
 
 ### 11.1 현재 상태
 ```text
@@ -181,8 +183,8 @@ Calibration Truth Set (46 snapshots): FROZEN
 Stage OOS Truth Set (35 snapshots): FROZEN
 OOS Validation Result: FROZEN (EXACT 68.6%, ADJACENT 28.6%, SEVERE 2.9%, Dangerous 0.0%)
 Final Judgment: OOS CONDITIONALLY ACCEPTED
-Stage v0.2: NOT STARTED (Known limitations documented for future development)
+문서 작성 당시 Stage v0.2: NOT STARTED (Known limitations documented for future development)
 ```
 
-### 11.2 Next Step
-Phase 3를 공식 완료하고, Stage Classifier v0.1을 Pattern A Score와 함께 독립 signal로 다루는 **`Pattern A Evaluator Integration`**으로 이동한다.
+### 11.2 문서 작성 당시 다음 단계
+문서 작성 당시에는 Phase 3를 공식 완료하고, Stage Classifier v0.1을 Pattern A Score와 함께 독립 signal로 다루는 **`Pattern A Evaluator Integration`**으로 이동할 계획이었다.

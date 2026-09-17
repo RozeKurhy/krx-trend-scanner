@@ -1,13 +1,13 @@
 pattern_a_fast_feature_selection_role_assignment_v01.md
 
 ==================================================
-0. Status / Base SHA
+0. 문서 작성 당시 상태 / 기준 SHA
 ==================================================
 
 Phase: 13G-1 Feature Selection / Role Assignment
 Base Commit: 505c412f504dbb1a5a475e2562a0a1749eaa6508
 
-Status:
+문서 작성 당시 상태:
 
 PHASE 13G-1
 FEATURE SELECTION / ROLE ASSIGNMENT COMPLETE
@@ -312,7 +312,7 @@ BUY/SELL logic, optimal entry, production scanner integration도 없다.
 CV accuracy, precision, recall, AUC는 classifier가 없는 13G-1 범위 밖이다.
 
 ==================================================
-26. Next Phase Recommendation
+26. 당시 다음 연구 권고
 ==================================================
 
 advisor review가 candidate architecture와 frozen-input integrity를 PASS하면

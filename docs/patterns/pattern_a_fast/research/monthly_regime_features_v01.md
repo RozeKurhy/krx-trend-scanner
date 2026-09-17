@@ -1,12 +1,12 @@
 # Pattern A Fast Monthly Regime Feature Research v0.1
 
 ================================================================================
-0. 문서 상태
+0. 문서 작성 당시 상태
 ================================================================================
 Phase: 13D — Monthly Regime Feature Research
-Status: **MONTHLY REGIME FEATURE RESEARCH COMPLETE / ADVISOR REVIEW PENDING**
-(advisor가 실제 commit/artifact/feature distribution을 검토해 PASS하기
-전까지 CLOSED로 선언하지 않는다, w.md §30)
+문서 작성 당시 상태: **MONTHLY REGIME FEATURE RESEARCH COMPLETE / ADVISOR REVIEW PENDING**
+(문서 작성 당시 advisor가 실제 commit/artifact/feature distribution을 검토해 PASS하기
+전까지 CLOSED로 선언하지 않았다, w.md §30)
 Base SHA: `2e5a87f8214fe91d6cd2dbfa2bdc03cc2453d696` (Phase 13C-2
 CLOSED/FROZEN 시점)
 Data cutoff (as_of): 2026-08-14
@@ -184,7 +184,7 @@ redundancy 표시 기준일 뿐이다.**
 | 역배열 + 장기 하락 | `ma_alignment_score`, `close_below_ma_count`, `close_vs_ma24_pct`, `return_12m` | YES |
 | 바닥이 아직 없다 | `months_since_12m_low`, `higher_monthly_low_count_12m`, `drawdown_from_12m_high` | YES(근사) — 정확한 "저점 확정" 판단은 Weekly에서 더 명확할 수 있음(§6 Q6) |
 | 이미 너무 많이 올랐다 | `range_position_12m/24m`, `close_vs_ma12_pct`, `recent_3m_return`, `recent_6m_max_runup` | YES |
-| 주봉 200 이평이 위에 있다 | **NONE** | NO — Weekly 책임. `close_vs_ma24_pct`가 월봉 스케일에서 부분적으로 유사한 정보를 주지만(§4/§12 근거), 정확히 같은 개념은 아니다. Next Research: **Phase 13E Weekly Feature** |
+| 주봉 200 이평이 위에 있다 | **NONE** | NO — Weekly 책임. `close_vs_ma24_pct`가 월봉 스케일에서 부분적으로 유사한 정보를 주지만(§4/§12 근거), 정확히 같은 개념은 아니다. 당시 다음 연구: **Phase 13E Weekly Feature** |
 | 이평선 엉킴 | `ma_spread_pct`(≈`max_ma_gap_pct`, §7 중복), `min_ma_gap_pct` | YES(근사) — 세 이평이 어느 정도 벌어져야 "엉킴이 아니다"인지의 정확한 경계는 이번 Phase에서 정하지 않음(§23) |
 | 장기 하락 압력이 둔화 중인가 | `ma12_slope_change_3m`, `recent_3m_return_vs_prior_9m`, `monthly_down_month_ratio_12m` | YES(근사) — deceleration 신호가 존재하지만 효과크기는 크지 않음(§12 참고) |
 
@@ -412,7 +412,7 @@ in-sample calibration data다.** 향후 Phase 13I 또는 OOS Validation
 * Targeted tests: `tests/test_pattern_a_fast_monthly_feature_research.py` (8개, 전부 PASS)
 
 --------------------------------------------------------------------------------
-16. Next Research Recommendation
+16. 당시 다음 연구 권고
 --------------------------------------------------------------------------------
 1. **Phase 13E Weekly Trigger Feature Research**: 이번 Phase가 명시적으로
    Monthly 책임 밖으로 남긴 "주봉 200 이평 저항"(§8), 그리고 우리기술
@@ -425,10 +425,10 @@ in-sample calibration data다.** 향후 Phase 13I 또는 OOS Validation
    중 하나 선택)를 함께 고려해야 한다.
 
 --------------------------------------------------------------------------------
-17. Status
+17. 문서 작성 당시 상태
 --------------------------------------------------------------------------------
 **MONTHLY REGIME FEATURE RESEARCH COMPLETE / ADVISOR REVIEW PENDING.**
-이 commit이 완료되어도 Phase 13D 결과를 자동으로 Production Contract로
-Freeze하지 않는다. advisor가 실제 commit/artifact/feature distribution을
+문서 작성 당시 이 commit이 완료되어도 Phase 13D 결과를 자동으로 Production Contract로
+Freeze하지 않았다. advisor가 실제 commit/artifact/feature distribution을
 검토한 뒤 PASS하면 Phase 13D Research를 CLOSED하고 Phase 13E Weekly
-Trigger Feature Research로 진행한다.
+Trigger Feature Research로 진행할 계획이었다.

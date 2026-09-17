@@ -1,10 +1,10 @@
 pattern_a_fast_vs_pattern_a_lead_time_failure_analysis_v01.md
 
 ==================================================
-0. Status / Base SHA
+0. 문서 작성 당시 상태 / 기준 SHA
 ==================================================
 
-Phase 13H Event Pairing Correction / RESEARCH COMPLETE / ADVISOR REVIEW PENDING
+문서 작성 당시 상태: Phase 13H Event Pairing Correction / RESEARCH COMPLETE / ADVISOR REVIEW PENDING
 
 Base SHA: 2da3fc36744b27ec13edae3f690df72c796906e5
 Fast contract: HIERARCHICAL_V01 (13G-2, read-only)

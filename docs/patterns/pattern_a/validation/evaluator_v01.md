@@ -6,17 +6,17 @@
 1. **Pattern A Score v0.2** (`src/trend_scanner/patterns/pattern_a_score.py`): 장기 베이스 구조와 추세 전환 매력도(Quality / Attractiveness, Raw Score 0~100) 산출
 2. **Pattern A Stage Classifier v0.1** (`src/trend_scanner/patterns/pattern_a_stage.py`, commit `43ee01c`): 추세 생애주기상의 위치(Lifecycle Stage) 판정
 
-을 단일 `HistoricalSnapshot` 컨텍스트에서 독립적으로 계산하고, 하나의 일관된 `PatternAEvaluationResult` 객체로 통합하여 반환하는 **Orchestration & Candidate Interpretation Layer**이다.
+을 단일 `HistoricalSnapshot` 컨텍스트에서 독립적으로 계산하고, 하나의 일관된 `PatternAEvaluationResult` 객체로 통합하여 반환하는 **통합 및 후보 해석 계층**이다.
 
 ### 1.1 두 신호의 엄격한 분리 원칙 (No Cross-Mutation)
 * **Score ≠ Stage**: Score는 "얼마나 구조적으로 매력적인가?"를 평가하고, Stage는 "현재 생애주기 어디에 있는가?"를 판정한다.
 * **상호 변조 금지**: Evaluator는 Stage 결과를 바탕으로 Score를 가감하거나, Score 결과를 바탕으로 Stage를 덮어쓰지 않는다.
 * **단일 숫자 점수화 금지**: Evaluator v0.1은 `Unified Score`, `Meta Score`, `Stage Weighted Score` 같은 인위적인 단일 랭킹 숫자를 강제로 합성하지 않는다.
-* **독립 보존**: 기존 Score와 Stage의 원본 객체(`score_result`, `stage_result`)를 source of truth로 온전히 보존한다.
+* **독립 보존**: 기존 Score와 Stage의 원본 객체(`score_result`, `stage_result`)를 정본으로 온전히 보존한다.
 
 ---
 
-## 2. Data Flow 및 공식 Lifecycle Stage Authority
+## 2. 데이터 흐름 및 공식 생애주기 단계 기준
 
 ### 2.1 단일 평가 컨텍스트 (HistoricalSnapshot Data Flow)
 Evaluator는 하나의 공유 `HistoricalSnapshot`을 공통 평가 컨텍스트로 사용한다.

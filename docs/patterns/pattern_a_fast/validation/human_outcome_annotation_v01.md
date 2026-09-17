@@ -4,8 +4,8 @@
 0. 문서 상태
 ================================================================================
 Phase: 13C-2 — Human Annotation
-Status: **HUMAN OUTCOME ANNOTATION COMPLETE / ADVISOR REVIEW PENDING**
-(이 commit만으로 Phase 13C-2를 CLOSED로 선언하지 않는다 — 사용자가
+문서 작성 당시 상태: **HUMAN OUTCOME ANNOTATION COMPLETE / ADVISOR REVIEW PENDING**
+(문서 작성 당시 이 commit만으로 Phase 13C-2를 CLOSED로 선언하지 않았다 — 사용자가
 advisor 리뷰에서 실제 GitHub diff를 검토해 PASS된 뒤에 최종 봉인한다,
 §19)
 Base PIT checkpoint commit: `9263fcf3c61a126530406edd77fc8f538bb719e3`
@@ -218,10 +218,10 @@ logic(`src/trend_scanner/filters/investability.py`) / Phase
 코드도 추가하지 않았다.
 
 --------------------------------------------------------------------------------
-13. Next Step
+13. 당시 다음 단계
 --------------------------------------------------------------------------------
-이 commit까지는 Phase 13C-2를 자동으로 CLOSED로 선언하지 않는다.
-Status는 **HUMAN OUTCOME ANNOTATION COMPLETE / ADVISOR REVIEW PENDING**
-으로 둔다. 사용자가 commit 결과를 advisor에게 전달하고 실제 GitHub diff
+문서 작성 당시 이 commit까지는 Phase 13C-2를 자동으로 CLOSED로 선언하지 않았다.
+문서 작성 당시 상태는 **HUMAN OUTCOME ANNOTATION COMPLETE / ADVISOR REVIEW PENDING**
+이었다. 사용자가 commit 결과를 advisor에게 전달하고 실제 GitHub diff
 리뷰에서 PASS된 뒤에 **Phase 13C-2 40-SAMPLE HUMAN CALIBRATION SET
-CLOSED/FROZEN**으로 최종 봉인한다.
+CLOSED/FROZEN**으로 최종 봉인할 계획이었다.

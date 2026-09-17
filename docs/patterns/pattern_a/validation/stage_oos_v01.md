@@ -1,5 +1,7 @@
 # Pattern A Stage OOS Validation v0.1: Truth Set Freeze
 
+> 이 문서는 과거 Stage OOS 표본 봉인의 역사 기록이다. 아래의 미실행·다음 단계 표기는 문서 작성 당시 상태이며 현재 작업 상태를 뜻하지 않는다.
+
 ## 1. 목적
 
 이 문서는 `Stage Classifier v0.1`(commit `43ee01c`, 46건 calibration truth set 대상 EXACT 38/46, ADJACENT 5, SEVERE 3 baseline)을 **처음 보는 완전히 새로운 외부 사례(Out-of-Sample, OOS)**에서 엄격하게 검증하기 위해, classifier 예측을 실행하기 전에 **독립적인 OOS Ground Truth 35건을 사전에 봉인(freeze)**하는 selection methodology 및 audit 기록이다.
@@ -155,7 +157,7 @@
 
 ---
 
-## 6. Current Status & Next Step
+## 6. 문서 작성 당시 상태와 다음 단계
 
 ### 6.1 이번 단계 완료 상태
 
@@ -165,6 +167,6 @@
 - **Stage OOS Manual Truth (35 snapshots)**: FROZEN
 - **Stage OOS Prediction**: **NOT RUN**
 
-### 6.2 Next Step
+### 6.2 문서 작성 당시 다음 단계
 
-본 OOS Ground Truth Freeze 후속 커밋이 정상적으로 리뷰 및 승인된 후, 별도의 후속 작업(`Pattern A Stage Classifier v0.1 Frozen OOS Validation Run`)에서 얼려진 Stage Classifier v0.1을 실행하여 정확도와 혼동 행렬(Confusion Matrix) 및 failure mode를 검증한다.
+문서 작성 당시에는 OOS Ground Truth Freeze 후속 커밋이 정상적으로 리뷰 및 승인된 후, 별도의 후속 작업(`Pattern A Stage Classifier v0.1 Frozen OOS Validation Run`)에서 얼려진 Stage Classifier v0.1을 실행하여 정확도와 혼동 행렬(Confusion Matrix) 및 failure mode를 검증할 계획이었다.

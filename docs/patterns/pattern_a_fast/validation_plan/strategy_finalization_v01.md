@@ -1,12 +1,14 @@
 # Pattern A FAST Strategy Finalization / Candidate Selection v0.1 사전등록서
 
+> 이 문서는 V1 후보 선택을 위한 과거 사전등록 계획 기록이다. 현재 일반 종목의 공식 기본 전략은 `PATTERN_A_FAST_FINAL_STRATEGY_V02`이며, 이 계획은 현재 실행 지시가 아니다.
+
 ================================================================================
 1. 연구 목적 및 연구 분류
 ================================================================================
 - **연구명**: Pattern A FAST Strategy Finalization / Candidate Selection v0.1
 - **연구 분류 (Research Classification)**: `RETROSPECTIVE_STRATEGY_FINALIZATION_CANDIDATE_SELECTION`
-- **검증 유형 (Validation Type)**: `SAME_SAMPLE_RETROSPECTIVE_FINALIZATION`
-- **아키텍처 기준 (Architecture Authority)**: `PATTERN_A_FAST_ARCHITECTURE_V03` ([`89df82a`](https://github.com/RozeKurhy/krx-trend-scanner/commit/89df82a938dba1961c2342064db2dc0061a5f2ca))
+- **검증 유형**: `SAME_SAMPLE_RETROSPECTIVE_FINALIZATION`
+- **아키텍처 기준**: `PATTERN_A_FAST_ARCHITECTURE_V03` ([`89df82a`](https://github.com/RozeKurhy/krx-trend-scanner/commit/89df82a938dba1961c2342064db2dc0061a5f2ca))
 - **데이터 기준일 (Data Cutoff)**: `2026-08-14` (**LOCAL CACHE ONLY**, 2026-08-15 이후 데이터 일체 사용 금지)
 - **Fresh OOS 여부**: `NO` (과거 데이터 기반 전략 확정 연구이며, Fresh OOS 증거가 아님)
 - **운영 상태 (Production Status)**: **`PRODUCTION_HOLD` (운영 불변, 연구 전용)**

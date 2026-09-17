@@ -4,7 +4,7 @@
 0. 문서 상태
 ================================================================================
 Phase: 13C-1 — Ground Truth Dataset Preparation
-Status: **READY_FOR_HUMAN_REVIEW / 13C-1 Preparation FINAL** (13C-1 준비
+문서 작성 당시 상태: **READY_FOR_HUMAN_REVIEW / 13C-1 Preparation FINAL** (13C-1 준비
 단계 자체를 이번 correction으로 최종 봉인, w.md "[Phase 13C-1 Final
 Sampling Balance Correction]" §목표 — Human Annotation은 여전히 별도
 13C-2로 대기)
@@ -16,7 +16,7 @@ Gate 도입(§6) → Cohort B 날짜 집중(35/45가 한 주) 발견 후 quarter
 HISTORICAL_COVERAGE 두 stratum으로 분리해 과거 market regime 표본을
 다시 확보)
 
-> **13C-2 PIT annotation IN PROGRESS / checkpoint commit**: 이 문서가
+> **문서 작성 당시 13C-2 PIT annotation IN PROGRESS / checkpoint commit**: 이 문서가
 > 기술하는 13C-1 dataset 구성(60건 sample_id/reference_date/source_cohort
 > /Pattern A Benchmark Context/manifest/reserved set/charts)은 그대로
 > FROZEN이며 이번 checkpoint에서 전혀 수정되지 않았다. 40개 sample의
@@ -25,7 +25,7 @@ HISTORICAL_COVERAGE 두 stratum으로 분리해 과거 market regime 표본을
 > 참고. 그 40개에 대한 Human Outcome Label(`human_label`)까지 완료된
 > 최신 상태는
 > [pattern_a_fast_human_outcome_annotation_v01.md](human_outcome_annotation_v01.md)
-> 참고(advisor 리뷰 대기 중, 아직 Phase 13C-2 CLOSED 아님).
+> 참고(문서 작성 당시 advisor 리뷰 대기 중, 아직 Phase 13C-2 CLOSED 아님).
 Data cutoff (as_of): 2026-08-14
 Network requests: 0 (전부 로컬 `data/raw/stocks/*.parquet` 캐시)
 
@@ -441,7 +441,7 @@ Backfill과 동일한 위반이 된다, §31).
   는 top-N이 아니라 stable hash 선택이므로 대신 `eligible_pool_size`를
   `selection_stats_per_date`(§4, §15)에 기록했다.
 * Network request 0 — `ParquetCache`만 사용, `MarketDataRepository`/
-  `PyKrxDataProvider`는 쓰지 않았다(네트워크 fallback 경로를 원천적으로
+  `PyKrxDataProvider`는 쓰지 않았다(네트워크 대체 경로를 원천적으로
   배제).
 
 --------------------------------------------------------------------------------
@@ -510,7 +510,7 @@ Stage Classifier 구현, `weekly_stage_at_reference`/`human_label` 값,
 Production Scanner 연결.
 
 --------------------------------------------------------------------------------
-19. Next Step
+19. 당시 다음 단계
 --------------------------------------------------------------------------------
 1. **Phase 13C-2 Human Chart Annotation**: 사용자가
    `pattern_a_fast_human_review_v01.csv`와 `charts/`를 이용해

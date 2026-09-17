@@ -1,15 +1,17 @@
 # Phase 10C. Downstream Filter Integration Report
 
+> 이 문서는 과거 Phase 10C 검증의 역사 기록이다. 아래의 다음 단계는 문서 작성 당시 계획이며 현재 작업 상태를 뜻하지 않는다.
+
 ## 1. Executive Summary
 
 * **문서명**: `pattern_a_investability_integration_v01.md`
 * **기준일 (Point-In-Time As-Of)**: **`2026-08-14`**
 * **Base Commit SHA**: `b10ef554daf99b70ce9789467d70715253ef3365`
-* **목적**: Phase 10A 및 Phase 10B에서 설계 및 검증된 Investability & Tradability Policy(시총 >= 1,000억, 20D 거래대금 >= 3.0억)를 **Production Full Universe Scanner의 독립 후단 계층으로 성공적으로 연결**하고 무결성을 실증.
+* **목적**: Phase 10A 및 Phase 10B에서 설계 및 검증된 Investability & Tradability Policy(시총 >= 1,000억, 20D 거래대금 >= 3.0억)를 **운영 전체 유니버스 스캐너의 독립 후단 계층으로 성공적으로 연결**하고 무결성을 실증.
 * **핵심 불변 계약**:
   - **Raw Candidate Preservation**: Pattern A Score, Stage, Candidate 탐지 로직 수정 0건 (180개 Raw Candidate 완벽 보존).
-  - **Single Source of Truth**: Production Scanner의 실제 실행 결과를 Phase 10B Canonical Oracle과 1:1 비교.
-  - **Ticker Level Parity**: 180개 Candidate 전수의 `investability_status` 불일치 **0건 (100% 일치)**.
+  - **정본 일원화**: 운영 스캐너의 실제 실행 결과를 Phase 10B 정본 기준값과 1:1 비교.
+  - **종목 단위 일치**: 180개 Candidate 전수의 `investability_status` 불일치 **0건 (100% 일치)**.
 * **Phase 10C 최종 판정**: **`INTEGRATION_READY`** (8대 Integration Gates 100% 통과)
 
 ---
@@ -109,10 +111,10 @@
 ================================================================================
 PHASE 10C FINAL STATUS: INTEGRATION_READY
 ================================================================================
-1. Downstream Investability Filter Production Integration 100% 완료
+1. 후단 Investability Filter 운영 연결 100% 완료
 2. Pattern A Raw Candidate (180개) 불변 보존 확인
-3. Phase 10B Canonical Oracle과 180개 Candidate Ticker-Level Parity 100% 일치 (Mismatch = 0)
+3. Phase 10B 정본 기준값과 180개 Candidate 종목 단위 일치 100% (Mismatch = 0)
 4. Phase 10. Investability & Tradability Filter 전체 공식 마일스톤 완료 준비 완료 (DONE)
-5. 다음 단계: Phase 11. Flow Confirmation Infrastructure
+5. 당시 다음 단계: Phase 11. Flow Confirmation Infrastructure
 ================================================================================
 ```

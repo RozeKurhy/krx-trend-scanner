@@ -1,11 +1,11 @@
 pattern_a_fast_weekly_trigger_feature_research_v01.md
 
 --------------------------------------------------------------------------------
-0. Status / Base SHA
+0. 문서 작성 당시 상태 / 기준 SHA
 --------------------------------------------------------------------------------
 
-Status: **WEEKLY TRIGGER FEATURE RESEARCH COMPLETE / ADVISOR REVIEW PENDING**
-(§37 Final Status Rule — 이번 커밋으로 Phase 13E를 자동 CLOSED하지 않는다)
+문서 작성 당시 상태: **WEEKLY TRIGGER FEATURE RESEARCH COMPLETE / ADVISOR REVIEW PENDING**
+(§37 Final Status Rule — 문서 작성 당시 이번 커밋으로 Phase 13E를 자동 CLOSED하지 않았다)
 
 Base Commit: `6917b1341553b58fa42390ba1507fc9b80551fee` (Phase 13D CLOSED 시점)
 
@@ -181,8 +181,8 @@ latent concept의 Feature 여러 개를 HIGH에 중복 추천하지 말 것")와
 과도한 복잡성). 이 근사를 formula/missing_behavior에 명시했다.
 
 40개 중 10개는 200주(약 4년) 이력이 부족해 이 family 전체가 NaN이다
-(fail-safe, §7.2 "200주 history가 없는 sample은 NaN, MA100/MA52로 silent
-fallback 금지"를 그대로 준수). `test_insufficient_history_fails_safe_to_nan`
+(fail-safe, §7.2 "200주 history가 없는 sample은 NaN, MA100/MA52로 조용히
+대체 처리하지 않음"을 그대로 준수). `test_insufficient_history_fails_safe_to_nan`
 으로 검증.
 
 Finding: `close_vs_wma200_pct`는 GOOD_TRIGGER vs NO_SETUP Cliff's Delta
@@ -860,7 +860,7 @@ Feature를 보고 후보 선정까지 했으므로, 향후 OOS 성능평가(Phas
 별도 unseen sample을 사용해야 한다.
 
 --------------------------------------------------------------------------------
-22. Next Phase Recommendation
+22. 당시 다음 연구 권고
 --------------------------------------------------------------------------------
 
 Phase 13F Daily Timing Feature Research로 진행하기 전에, w.md §37이
