@@ -64,7 +64,7 @@ from trend_scanner.validation.julia_strategy_v00 import (
 )
 
 PROXY_DIR = ROOT / "artifacts/strategies/julia/proxy_market_cap_v01"
-DOCS_MD_PATH = ROOT / "docs/strategies/julia/proxy_market_cap_v01.md"
+DOCS_MD_PATH = ROOT / "docs/strategies/julia/archive/research/proxy_market_cap_v01.md"
 REBUILD_SCRIPT_PATH = ROOT / "scripts/rebuild_julia_proxy_reports_from_trades.py"
 
 

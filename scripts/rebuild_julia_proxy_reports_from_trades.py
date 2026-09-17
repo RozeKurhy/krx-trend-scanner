@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 
 ROOT = Path(__file__).resolve().parent.parent
 PROXY_DIR = ROOT / "artifacts/strategies/julia/proxy_market_cap_v01"
-DOCS_REPORT_PATH = ROOT / "docs/strategies/julia/proxy_market_cap_v01.md"
+DOCS_REPORT_PATH = ROOT / "docs/strategies/julia/archive/research/proxy_market_cap_v01.md"
 
 EXPERIMENT_BASE_SHA = "030e9c6145d8dd8b584ea8ce6cc0097cbbf4e377"
 PROXY_FULL_RUN_COMMIT = "6cdb5a6b00096d02c9cee4cc74f65ff8270056a1"

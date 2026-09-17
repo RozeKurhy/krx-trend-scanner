@@ -83,7 +83,7 @@ PIT_REL = EFFECTIVE_AUTHORITY_REL / "effective_pit_common_denominator.json"
 EFFECTIVE_MANIFEST_REL = EFFECTIVE_AUTHORITY_REL / "effective_freeze_manifest.json"
 AUTHORITY_CUTOVER_MANIFEST_REL = EFFECTIVE_AUTHORITY_REL / "authority_cutover_manifest.json"
 SOURCE_ELIGIBILITY_REL = EFFECTIVE_AUTHORITY_REL / "effective_source_eligibility_authority.json"
-STAGE4_PLAN_REL = Path("docs/strategies/julia/validation_plan_v01.md")
+STAGE4_PLAN_REL = Path("docs/strategies/julia/archive/validation/validation_plan_v01.md")
 COMMON_CONDITIONS_REL = Path(
     "docs/patterns/pattern_a_fast/validation_plan/realistic_backtest_common_conditions_v01.md"
 )

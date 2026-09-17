@@ -20,7 +20,7 @@ import pandas as pd
 
 ROOT = Path(__file__).resolve().parent.parent
 JULIA_DIR = ROOT / "artifacts/strategies/julia/v00"
-DOC_MD = ROOT / "docs/strategies/julia/v00.md"
+DOC_MD = ROOT / "docs/strategies/julia/archive/research/v00.md"
 MANIFEST_CSV = JULIA_DIR / "historical_market_cap_source_manifest.csv"
 RUN_MANIFEST_JSON = JULIA_DIR / "full_pit_run_manifest.json"
 

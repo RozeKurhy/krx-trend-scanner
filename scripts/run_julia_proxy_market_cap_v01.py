@@ -7,7 +7,7 @@ Runs:
   3. Paired Common Entry Counterfactual and Loss Guard Cohort Recovery Analysis.
   4. Conservative Boundary Sensitivity Analysis (80B ~ 120B exclusion).
   5. Manifest and Artifact Generation in artifacts/strategies/julia/proxy_market_cap_v01/.
-  6. Automatic Research Report generation in docs/strategies/julia/proxy_market_cap_v01.md.
+  6. Automatic Research Report generation in docs/strategies/julia/archive/research/proxy_market_cap_v01.md.
 """
 
 from __future__ import annotations
@@ -45,7 +45,7 @@ ROOT = Path(__file__).resolve().parent.parent
 SCORE_CONTRACT_PATH = ROOT / "artifacts/patterns/pattern_a_fast/production/contract_prototype/pattern_a_fast_score_prototype_v01.json"
 STAGE_CONTRACT_PATH = ROOT / "artifacts/patterns/pattern_a_fast/production/contract_prototype/pattern_a_fast_stage_prototype_v01.json"
 PROXY_DIR = ROOT / "artifacts/strategies/julia/proxy_market_cap_v01"
-DOC_MD = ROOT / "docs/strategies/julia/proxy_market_cap_v01.md"
+DOC_MD = ROOT / "docs/strategies/julia/archive/research/proxy_market_cap_v01.md"
 
 
 def sha256_file(path: Path) -> str:

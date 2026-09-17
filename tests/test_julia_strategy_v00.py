@@ -644,7 +644,7 @@ def test_cohort_accounting_identity():
 
 def test_incomplete_report_performance_suppressed():
     """When final_pit_backtest_ready is False, performance tables must be suppressed."""
-    doc_path = ROOT / "docs/strategies/julia/v00.md"
+    doc_path = ROOT / "docs/strategies/julia/archive/research/v00.md"
     audit_path = JULIA_DIR / "historical_investability_pit_audit.json"
 
     assert doc_path.exists()
@@ -654,8 +654,8 @@ def test_incomplete_report_performance_suppressed():
     doc_text = doc_path.read_text(encoding="utf-8")
 
     if not audit.get("final_pit_backtest_ready", False):
-        assert "EVIDENCE STATUS: NON_AUTHORITATIVE_INCOMPLETE_SOURCE_COVERAGE" in doc_text
-        assert "Performance Interpretation Suppressed" in doc_text
+        assert "NON_AUTHORITATIVE_INCOMPLETE_SOURCE_COVERAGE" in doc_text
+        assert "성과 해석 억제" in doc_text
 
         # Suppressed sections
         assert "Comparative Strategy Performance (2022+)" not in doc_text
@@ -910,8 +910,8 @@ def test_full_ready_accepts_complete_same_run_fixture():
 
 
 def test_no_local_file_uri_in_docs():
-    """Verify docs/strategies/julia/v00.md contains zero local file:/// or /Users/ links."""
-    doc_path = ROOT / "docs/strategies/julia/v00.md"
+    """Verify docs/strategies/julia/archive/research/v00.md contains zero local file:/// or /Users/ links."""
+    doc_path = ROOT / "docs/strategies/julia/archive/research/v00.md"
     assert doc_path.exists()
     text = doc_path.read_text(encoding="utf-8")
 
