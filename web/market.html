@@ -20,7 +20,7 @@
       })();
     </script>
     <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="./css/app.css?v=web-ui-density-5">
+    <link rel="stylesheet" href="./css/app.css?v=web-ui-density-6">
   </head>
   <body>
     <a class="skip-link" href="#main-content">본문으로 건너뛰기</a>
@@ -64,11 +64,7 @@
         <span class="ranking-tab" aria-disabled="true">순이익 성장률 <small>준비 중</small></span>
       </nav>
 
-      <section class="panel market-controls" aria-labelledby="market-controls-heading">
-        <div class="market-controls-heading">
-          <h2 id="market-controls-heading">마켓 RS 랭킹</h2>
-          <p id="market-scope" class="market-scope">기준일 —</p>
-        </div>
+      <section class="panel market-controls" aria-label="마켓 RS 필터">
         <div class="market-primary-row">
           <div class="market-select-wrap">
             <label class="visually-hidden" for="market-select">시장 선택</label>
@@ -86,6 +82,7 @@
             <button class="market-control" type="button" data-horizon="6m" aria-pressed="false">6개월</button>
             <button class="market-control" type="button" data-horizon="12m" aria-pressed="false">12개월</button>
           </div>
+          <p id="market-scope" class="market-scope">기준일 —</p>
         </div>
         <label class="visually-hidden" for="market-search">종목명 또는 종목코드 검색</label>
         <input id="market-search" class="report-search-input market-search-input" type="search" placeholder="종목명 또는 종목코드 검색" autocomplete="off">

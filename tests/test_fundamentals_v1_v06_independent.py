@@ -74,8 +74,8 @@ def test_v06_web_polish_contract():
     assert "var(--brand-red)" not in css[css.index(".fundamental-loss"):css.index(".fundamental-loss") + 120]
     assert "var(--market-down-blue)" in css
     assert 'setText("fundamentals-detail", "")' in app_js
-    assert 'setText("market-detail", `기준일 ${formatDate(market.latest_trading_date)}`)' in app_js
-    assert 'setText("universe-detail", `기준일 ${formatDate(universe.snapshot_date)}`)' in app_js
+    assert 'setText("market-detail",' not in app_js
+    assert 'setText("universe-detail",' not in app_js
     assert 'setText("reports-detail", "")' in app_js
     assert "개 남음" not in app_js
     assert "Stock Report v0.5 and Web Fundamentals artifacts are complete." not in app_js

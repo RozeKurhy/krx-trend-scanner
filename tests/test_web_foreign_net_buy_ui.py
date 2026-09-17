@@ -32,7 +32,7 @@ def test_foreign_page_exposes_default_20d_filters_search_and_report_contract():
     assert '<section class="page-intro"' not in html
     assert 'id="page-title"' not in html
     assert '외국인 누적 순매수대금으로 보는 종목 흐름' not in html
-    assert 'href="./css/app.css?v=web-ui-density-5"' in html
+    assert 'href="./css/app.css?v=web-ui-density-6"' in html
     assert 'src="./js/foreign.js?v=web-foreign-net-buy-4"' in html
     assert 'data-horizon="1d"' in html and 'data-horizon="5d"' in html
     assert 'data-horizon="10d"' in html and 'data-horizon="20d"' in html and 'data-horizon="60d"' in html
@@ -44,6 +44,9 @@ def test_foreign_page_exposes_default_20d_filters_search_and_report_contract():
     assert 'id="foreign-market-filters"' not in html
     assert 'data-market=' not in html
     assert 'class="market-primary-row"' in html
+    assert 'aria-label="외인 순매수 필터"' in html
+    assert 'id="foreign-controls-heading"' not in html
+    assert html.index('id="foreign-horizon-controls"') < html.index('id="foreign-as-of"')
     assert 'id="foreign-search"' in html
     assert 'id="foreign-ranking-meta" class="report-search-meta" role="status"' in html
     assert html.index('id="foreign-search"') < html.index('id="foreign-ranking-meta"')

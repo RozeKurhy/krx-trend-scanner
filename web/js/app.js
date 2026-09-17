@@ -214,12 +214,10 @@
     const market = health.market_data;
     setStatus(byId("market-status"), market.status);
     setText("market-date", formatDate(market.latest_trading_date));
-    setText("market-detail", `기준일 ${formatDate(market.latest_trading_date)}`);
 
     const universe = health.universe;
     setStatus(byId("universe-status"), universe.status);
     setText("universe-count", formatNumber(universe.count));
-    setText("universe-detail", `기준일 ${formatDate(universe.snapshot_date)}`);
 
     const fundamentals = health.fundamentals;
     setStatus(byId("fundamentals-status"), fundamentals.status);

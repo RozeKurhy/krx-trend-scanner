@@ -20,7 +20,7 @@
       })();
     </script>
     <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="./css/app.css?v=web-ui-density-5">
+    <link rel="stylesheet" href="./css/app.css?v=web-ui-density-6">
   </head>
   <body>
     <a class="skip-link" href="#main-content">본문으로 건너뛰기</a>
@@ -64,11 +64,7 @@
         <span class="ranking-tab" aria-disabled="true">순이익 성장률 <small>준비 중</small></span>
       </nav>
 
-      <section class="panel sector-controls" aria-labelledby="sector-controls-heading">
-        <div class="sector-controls-heading">
-          <h2 id="sector-controls-heading">섹터 RS 랭킹</h2>
-          <span id="sector-as-of" class="sector-as-of">기준일 —</span>
-        </div>
+      <section class="panel sector-controls" aria-label="섹터 RS 필터">
         <div class="sector-primary-row">
           <div class="sector-select-wrap">
             <label class="visually-hidden" for="sector-select">섹터 선택</label>
@@ -84,6 +80,7 @@
             <button class="market-control" type="button" data-horizon="6m" aria-pressed="false">6개월</button>
             <button class="market-control" type="button" data-horizon="12m" aria-pressed="false">12개월</button>
           </div>
+          <span id="sector-as-of" class="sector-as-of">기준일 —</span>
         </div>
         <p id="sector-ranking-meta" class="visually-hidden" role="status" aria-live="polite">랭킹 목록 불러오는 중</p>
         <label class="visually-hidden" for="sector-search">종목명 또는 종목코드 검색</label>

@@ -144,8 +144,8 @@ def test_static_frontend_uses_relative_assets_and_required_dom():
     js = (ROOT / "web/js/app.js").read_text(encoding="utf-8")
     css = (ROOT / "web/css/app.css").read_text(encoding="utf-8")
 
-    assert 'href="./css/app.css?v=web-ui-density-5"' in html
-    assert 'src="./js/app.js?v=web-fear-fix02-2"' in html
+    assert 'href="./css/app.css?v=web-ui-density-6"' in html
+    assert 'src="./js/app.js?v=web-fear-fix02-3"' in html
     assert 'const HEALTH_URL = "./data/health.json";' in js
     assert 'href="/css/app.css"' not in html
     assert 'src="/js/app.js"' not in html
@@ -172,6 +172,8 @@ def test_static_frontend_uses_relative_assets_and_required_dom():
         "load-error",
     ):
         assert f'id="{element_id}"' in html
+    assert 'id="market-detail"' not in html
+    assert 'id="universe-detail"' not in html
     assert "innerHTML" not in js
     assert "fetch(HEALTH_URL" in js
     assert "@media (max-width: 560px)" in css
@@ -222,8 +224,8 @@ def test_web_wording_is_neutral_and_keeps_the_existing_data_contract():
     for banned_phrase in ("중이야", "않아", "해야 해", "확인해야 해", "한눈에 확인해"):
         assert banned_phrase not in html
         assert banned_phrase not in js
-    assert 'setText("market-detail", `기준일 ${formatDate(market.latest_trading_date)}`);' in js
-    assert 'setText("universe-detail", `기준일 ${formatDate(universe.snapshot_date)}`);' in js
+    assert 'setText("market-detail",' not in js
+    assert 'setText("universe-detail",' not in js
     assert 'setText("fundamentals-detail", "");' in js
     assert 'setText("reports-detail", "");' in js
     assert "개 남음" not in js

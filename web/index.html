@@ -20,7 +20,7 @@
       })();
     </script>
     <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="./css/app.css?v=web-ui-density-5">
+    <link rel="stylesheet" href="./css/app.css?v=web-ui-density-6">
   </head>
   <body>
     <a class="skip-link" href="#main-content">본문으로 건너뛰기</a>
@@ -62,6 +62,31 @@
         <p id="overall-status" class="status-pill status-unknown" data-status="UNKNOWN">확인 중</p>
       </section>
 
+      <section class="metric-grid" aria-label="핵심 데이터 현황">
+        <article class="metric-card">
+          <div class="metric-heading"><span>시장 데이터</span><span id="market-status" class="status-dot" data-status="UNKNOWN">확인 중</span></div>
+          <p id="market-date" class="metric-value">—</p>
+          <p class="metric-label">최신 거래일</p>
+        </article>
+        <article class="metric-card">
+          <div class="metric-heading"><span>종목 현황</span><span id="universe-status" class="status-dot" data-status="UNKNOWN">확인 중</span></div>
+          <p id="universe-count" class="metric-value">—</p>
+          <p class="metric-label">전체 종목 수</p>
+        </article>
+        <article class="metric-card metric-card-wide-mobile">
+          <div class="metric-heading"><span>펀더멘탈</span><span id="fundamentals-status" class="status-dot" data-status="UNKNOWN">확인 중</span></div>
+          <p id="fundamentals-count" class="metric-value">—</p>
+          <p class="metric-label">완료 / 전체</p>
+          <p id="fundamentals-detail" class="metric-detail"></p>
+        </article>
+        <article class="metric-card">
+          <div class="metric-heading"><span>종목 리포트</span><span id="reports-status" class="status-dot" data-status="UNKNOWN">확인 중</span></div>
+          <p id="reports-count" class="metric-value">—</p>
+          <p class="metric-label">생성된 리포트</p>
+          <p id="reports-detail" class="metric-detail">—</p>
+        </article>
+      </section>
+
       <a id="fear-index-card" class="fear-index-card" href="./fear.html" aria-labelledby="fear-card-title">
         <div class="fear-card-heading">
           <div>
@@ -91,33 +116,6 @@
         <p id="fear-card-date" class="fear-card-date">기준일 확인 중</p>
       </a>
 
-      <section class="metric-grid" aria-label="핵심 데이터 현황">
-        <article class="metric-card">
-          <div class="metric-heading"><span>시장 데이터</span><span id="market-status" class="status-dot" data-status="UNKNOWN">확인 중</span></div>
-          <p id="market-date" class="metric-value">—</p>
-          <p class="metric-label">최신 거래일</p>
-          <p id="market-detail" class="metric-detail">—</p>
-        </article>
-        <article class="metric-card">
-          <div class="metric-heading"><span>종목 현황</span><span id="universe-status" class="status-dot" data-status="UNKNOWN">확인 중</span></div>
-          <p id="universe-count" class="metric-value">—</p>
-          <p class="metric-label">전체 종목 수</p>
-          <p id="universe-detail" class="metric-detail">—</p>
-        </article>
-        <article class="metric-card metric-card-wide-mobile">
-          <div class="metric-heading"><span>펀더멘탈</span><span id="fundamentals-status" class="status-dot" data-status="UNKNOWN">확인 중</span></div>
-          <p id="fundamentals-count" class="metric-value">—</p>
-          <p class="metric-label">완료 / 전체</p>
-          <p id="fundamentals-detail" class="metric-detail"></p>
-        </article>
-        <article class="metric-card">
-          <div class="metric-heading"><span>종목 리포트</span><span id="reports-status" class="status-dot" data-status="UNKNOWN">확인 중</span></div>
-          <p id="reports-count" class="metric-value">—</p>
-          <p class="metric-label">생성된 리포트</p>
-          <p id="reports-detail" class="metric-detail">—</p>
-        </article>
-      </section>
-
       <section id="load-error" class="error-card" hidden aria-live="assertive" aria-labelledby="error-heading">
         <p class="eyebrow">데이터 불러오기 오류</p>
         <h2 id="error-heading">데이터 현황을 불러올 수 없습니다.</h2>
@@ -134,6 +132,6 @@
       </noscript>
     </main>
 
-    <script src="./js/app.js?v=web-fear-fix02-2" defer></script>
+    <script src="./js/app.js?v=web-fear-fix02-3" defer></script>
   </body>
 </html>

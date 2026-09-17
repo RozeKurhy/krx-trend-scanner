@@ -26,7 +26,7 @@ def _load_payload() -> dict:
 def test_sector_page_activates_only_sector_rs_and_exposes_accessible_controls():
     html = _read(SECTOR_PAGE)
 
-    assert 'href="./css/app.css?v=web-ui-density-5"' in html
+    assert 'href="./css/app.css?v=web-ui-density-6"' in html
     assert 'src="./js/sector.js?v=web-sector-rs-final-2"' in html
     assert '<section class="page-intro"' not in html
     assert 'id="page-title"' not in html
@@ -41,7 +41,10 @@ def test_sector_page_activates_only_sector_rs_and_exposes_accessible_controls():
     assert 'class="sector-select-wrap"' in html
     assert 'class="sector-select-chevron"' in html
     assert 'sector-horizon-group' in html
-    assert '<h2 id="sector-controls-heading">섹터 RS 랭킹</h2>' in html
+    assert 'aria-label="섹터 RS 필터"' in html
+    assert '<h2 id="sector-controls-heading">섹터 RS 랭킹</h2>' not in html
+    assert 'id="sector-horizon-controls"' in html
+    assert html.index('id="sector-horizon-controls"') < html.index('id="sector-as-of"')
     assert 'id="sector-as-of"' in html
     assert '기준일 —' in html
     assert 'sector-summary' not in html
@@ -183,7 +186,6 @@ def test_sector_css_has_desktop_mobile_dark_mode_and_focus_support():
     assert ".sector-select:focus-visible" in css
     assert ".sector-search-input" in css
     assert ".sector-horizon-group .market-control" in css
-    assert ".sector-controls-heading" in css
     assert ".sector-as-of" in css
     assert ".sector-summary" not in css
     assert "@media (max-width: 560px)" in css

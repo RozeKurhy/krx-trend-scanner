@@ -77,10 +77,10 @@ def test_exporter_writes_payload_without_manual_json(tmp_path, exporter, payload
     assert json.loads(output.read_text(encoding="utf-8")) == payload
 
 
-def test_main_card_is_full_width_between_overall_and_metric_grid():
+def test_dashboard_order_keeps_metric_grid_before_fear_card():
     html = (ROOT / "web/index.html").read_text(encoding="utf-8")
     assert '<a id="fear-index-card" class="fear-index-card" href="./fear.html"' in html
-    assert html.index('class="overall-card"') < html.index('id="fear-index-card"') < html.index('class="metric-grid"')
+    assert html.index('class="overall-card"') < html.index('class="metric-grid"') < html.index('id="fear-index-card"')
     assert "지금 시장은 어떤 상태일까?" in html
     for label in ("과열·흥분", "정상·안정", "불안", "공포·패닉", "침체·무관심"):
         assert label in html
@@ -148,11 +148,12 @@ def test_fear_pages_use_new_fix02_asset_versions_and_visible_band_alpha():
     index_html = (ROOT / "web/index.html").read_text(encoding="utf-8")
     fear_html = (ROOT / "web/fear.html").read_text(encoding="utf-8")
     fear_js = (ROOT / "web/js/fear.js").read_text(encoding="utf-8")
+    assert "web-fear-fix02-3" in index_html
+    assert "web-fear-fix02-2" in fear_html
     for html in (index_html, fear_html):
-        assert "web-fear-fix02-2" in html
         assert "web-02c-toss-1" not in html
-    assert 'href="./css/app.css?v=web-ui-density-5"' in index_html
-    assert 'src="./js/app.js?v=web-fear-fix02-2"' in index_html
-    assert 'href="./css/app.css?v=web-ui-density-5"' in fear_html
+    assert 'href="./css/app.css?v=web-ui-density-6"' in index_html
+    assert 'src="./js/app.js?v=web-fear-fix02-3"' in index_html
+    assert 'href="./css/app.css?v=web-ui-density-6"' in fear_html
     assert 'src="./js/fear.js?v=web-fear-fix02-2"' in fear_html
     assert 'ctx.globalAlpha = band.regime === "UNKNOWN" ? 0.08 : 0.32;' in fear_js

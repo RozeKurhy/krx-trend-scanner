@@ -20,7 +20,7 @@
       })();
     </script>
     <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="./css/app.css?v=web-ui-density-5">
+    <link rel="stylesheet" href="./css/app.css?v=web-ui-density-6">
   </head>
   <body>
     <a class="skip-link" href="#main-content">본문으로 건너뛰기</a>
@@ -64,11 +64,7 @@
         <span class="ranking-tab" aria-disabled="true">순이익 성장률 <small>준비 중</small></span>
       </nav>
 
-      <section class="panel foreign-controls" aria-labelledby="foreign-controls-heading">
-        <div class="foreign-controls-heading">
-          <h2 id="foreign-controls-heading">외인 순매수 랭킹</h2>
-          <span id="foreign-as-of" class="foreign-as-of">기준일 —</span>
-        </div>
+      <section class="panel foreign-controls" aria-label="외인 순매수 필터">
         <div class="market-primary-row">
           <div class="market-select-wrap">
             <label class="visually-hidden" for="foreign-market-select">시장 선택</label>
@@ -86,6 +82,7 @@
             <button class="market-control is-active" type="button" data-horizon="20d" aria-pressed="true">20일</button>
             <button class="market-control" type="button" data-horizon="60d" aria-pressed="false">60일</button>
           </div>
+          <span id="foreign-as-of" class="foreign-as-of">기준일 —</span>
         </div>
         <label class="visually-hidden" for="foreign-search">종목명, 종목코드 또는 업종 검색</label>
         <input id="foreign-search" class="report-search-input foreign-search-input" type="search" placeholder="종목명, 종목코드 또는 업종 검색" autocomplete="off" aria-controls="foreign-ranking-list">
