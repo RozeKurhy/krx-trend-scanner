@@ -62,7 +62,7 @@ SIGNAL_CUTOFF = pd.Timestamp("2026-08-14")
 EVALUATION_END = pd.Timestamp("2026-08-14")
 EXECUTION_SUPPORT_END = pd.Timestamp("2026-08-14")
 FINAL_VALUATION_DATE = pd.Timestamp("2026-08-14")
-FROZEN_EXECUTION_CONTRACT_SHA256 = "7a50eae0765b28f1cb2460e564ce7237e8af534577eab64ae1d969dcef1697eb"
+FROZEN_EXECUTION_CONTRACT_SHA256 = "26444c55dc84f002e6cd3de43c5ba7455f0abbfb3373c3d699185c2358490b34"
 OFFICIAL_IDENTITY_LIFECYCLE_COUNT = 2738
 
 MARKET_CAP_THRESHOLD_KRW = 100_000_000_000.0
@@ -85,7 +85,7 @@ AUTHORITY_CUTOVER_MANIFEST_REL = EFFECTIVE_AUTHORITY_REL / "authority_cutover_ma
 SOURCE_ELIGIBILITY_REL = EFFECTIVE_AUTHORITY_REL / "effective_source_eligibility_authority.json"
 STAGE4_PLAN_REL = Path("docs/strategies/julia/archive/validation/validation_plan_v01.md")
 COMMON_CONDITIONS_REL = Path(
-    "docs/patterns/pattern_a_fast/validation_plan/realistic_backtest_common_conditions_v01.md"
+    "docs/patterns/pattern_a_fast/archive/validation_plan/realistic_backtest_common_conditions_v01.md"
 )
 SCORE_CONTRACT_REL = Path(
     "artifacts/patterns/pattern_a_fast/production/contract_prototype/"
