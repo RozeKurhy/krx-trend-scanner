@@ -26,7 +26,7 @@ Pattern A 스캐너는 `build_production_repository_v2`를 통해 현재 기준�
 ---------------------------------
 Repository V2는 공식 분류된 `COMMON`과 `ETF`를 동일한 결합
 인터페이스로 지원한다. ETF 여부는 `InstrumentMetadataResolver`의 PIT 공식
-상품 마스터 분류로만 결정하며 ticker 모양·이름·17종 허용 목록을
+상품 마스터 분류로만 결정하며 종목코드 형식·이름·17종 허용 목록을
 사용하지 않는다.
 
 * COMMON 수정주가 기준 원천: `AdjustedPriceStore` (`ADJUSTED_PRICE_STORE_V02`) / Naver 직접 날짜 범위 조회 수정주가 V02
@@ -60,7 +60,7 @@ trading_value_semantics = "RAW"
 ```
 
 `get_daily(ticker, start, end)`
-  index: 시간대 없음, 오름차순, unique DatetimeIndex
+  index: 시간대 없음, 오름차순, 고유한 `DatetimeIndex`
   columns: open, high, low, close, volume, trading_value
   OHLC는 `ADJUSTED` (수정주가), volume/trading_value는 `RAW` (원천).
 
@@ -78,7 +78,7 @@ trading_value_semantics = "RAW"
 결합 및 누락 데이터 의미
 -------------------------
 수정주가/원천 양쪽의 비어 있지 않은 거래 세션 집합은 정확히 같아야 한다.
-한쪽 날짜를 조용히 제거하거나 이전 값 이월·bfill·0-fill하지 않는다.
+한쪽 날짜를 조용히 제거하거나 이전 값 이월·뒤 값 채움(`bfill`)·0 채움(`0-fill`)하지 않는다.
 거래 세션 집합 불일치는 REPOSITORY_V2_TRADING_SESSION_MISMATCH로 fail-closed한다.
 양쪽이 모두 빈 결과인 요청 범위는 형식이 지정된 빈 일봉 데이터 프레임을 반환할 수 있다.
 한쪽만 빈 결과이거나 종목 저장소가 없으면 DATA_UNAVAILABLE로 종료한다.
@@ -104,7 +104,7 @@ RS, 종목 보고서 등의 전환을 END_TO_END_DATA_PARITY_V01 이후 별도 �
 * `tests/test_repository_v2.py`: 원천 기준, 엄격한 결합, 영역, 누락, 변형,
   시장 간, 중복 날짜 및 네트워크 격리 검증
 * `tests/test_market_data_repository_v02_validation.py`: FIX01의 표본 수,
-  메타데이터 파생 범위, 빈 결과 비교, 예외 구조화 및 diff-check 게이트 검증
+  메타데이터 파생 범위, 빈 결과 비교, 예외 구조화 및 차이 검사 게이트 검증
 * `scripts/validate_market_data_repository_v02.py`: FIX01 검증 게이트와 임시
   `AdjustedPriceStore` 기반 제한적 실제 기준 점검
 * `artifacts/data/market_data_repository/v02/`: 계약, 계보, 점검,
@@ -145,7 +145,7 @@ FIX02 원천 기준 및 점검 근거
   successful_composition_probe_count 및 usable_composition_sample_count는
   서로 독립적으로 계산한다. logical_fetch_count가 3보다 작다는 사실만으로
   PyKRX 외부 장애를 추론하지 않는다.
-* 외부 PyKRX 차단 사유는 ADJUSTED_PROVIDER_FETCH 단계의 실제 exception 또는
+* 외부 PyKRX 차단 사유는 ADJUSTED_PROVIDER_FETCH 단계의 실제 예외 또는
   빈 결과·잘못된 제공자 출력이 증적에 존재할 때만 부여한다. 결합, 임시 저장소,
   원천 로드 실패는 각각 전용 차단 사유로 기록한다.
 * 네트워크 0 오프라인 원천 점검은 005930, 000660, 068270의 원천 일치성과
@@ -164,7 +164,7 @@ FIX03 거래 세션 투영
   NON_TRADING_PLACEHOLDER_V01이며 다음 여섯 조건을 모두 만족해야 한다.
   open == 0, high == 0, low == 0, close > 0, volume == 0,
   trading_value == 0.
-* 위 predicate는
+* 위 조건식은
   ADJUSTED_PRICE_PROVIDER_PHANTOM_COMPATIBILITY 근거로만 사용한다.
   volume == 0 단독 조건, OHLC 전체 0 조건, trading_value 조건 일부, 또는
   임의의 내부 결합은 허용하지 않는다.
@@ -173,7 +173,7 @@ FIX03 거래 세션 투영
   BLOCKED_UNCLASSIFIED_RAW_ONLY_SESSION으로 fail-closed한다. 외부 관측치의
   불일치를 조용히 숨기지 않는다.
 * 투영 결과의 날짜 집합은 수정주가 집합과 정확히 일치해야 하며, 제거된
-  자리표시자 개수와 실제 날짜·필드·분류를 증적에 남긴다. 묵시적 inner 제거는
+  자리표시자 개수와 실제 날짜·필드·분류를 증적에 남긴다. 묵시적 내부 제거는
   항상 0이어야 한다.
 * FIX03 오프라인 게이트는 네트워크 없이 세 표본의 후보를 검사한다. 005930의
   2018-04-01..2018-06-30 물리 원천 범위에서 후보가 정확히 3개가 아니면
@@ -181,22 +181,22 @@ FIX03 거래 세션 투영
   후보 날짜와 실제 원천 필드는 하드코딩하지 않고 저장소에서 산출한다.
 * 실제 결합의 volume/trading_value 비교 대상은 투영된 원천이고,
   부가 데이터 비교 대상은 물리 원천이다. 성능 증적에는 원천 로드, 수정주가 로드,
-  투영, 결합, 전체 경과 시간을 종목별로 기록하며 60초 이상은 warning이다.
+  투영, 결합, 전체 경과 시간을 종목별로 기록하며 60초 이상은 경고다.
 
 FIX04 공통 날짜 의미 충돌
 -----------------------------------
 * 수정주가와 원천 양쪽에 같은 날짜가 있어도 원천 행이
-  NON_TRADING_PLACEHOLDER_V01이면 두 authority의 session 의미가 충돌한다.
+  NON_TRADING_PLACEHOLDER_V01이면 두 기준의 세션 의미가 충돌한다.
   이 상태는 정상 daily row로 합성하지 않고
   REPOSITORY_V2_SESSION_SEMANTIC_CONFLICT로 fail-closed한다.
 * 동일 날짜의 자리표시자는 투영·제거 대상이 아니다. 근거에는
   shared_dates, shared_placeholder_conflict_dates,
   shared_placeholder_conflict_count 및 실제 행 세부 내용을 별도로 기록한다.
-* 원천 전용 strict placeholder만 명시적 투영 대상이며,
-  동일 날짜의 strict placeholder는 BLOCKED_SHARED_DATE_PLACEHOLDER_CONFLICT로
+* 원천 전용 엄격한 자리표시자만 명시적 투영 대상이며,
+  동일 날짜의 엄격한 자리표시자는 BLOCKED_SHARED_DATE_PLACEHOLDER_CONFLICT로
   분류한다. 동일 날짜의 정상 원천 행(volume=0 포함)은 자리표시자 조건식과
   일치하지 않으면 정상적으로 PASS한다.
-* closure 근거의 accepted_placeholder_projection_count,
+* 종료 근거의 accepted_placeholder_projection_count,
   rejected_raw_only_count, shared_placeholder_conflict_count는 결합
   레코드에서 검증기가 직접 집계하고 항상 숫자여야 한다.
   null 또는 집계 불일치는 BLOCKED_EVIDENCE_INCONSISTENCY다.

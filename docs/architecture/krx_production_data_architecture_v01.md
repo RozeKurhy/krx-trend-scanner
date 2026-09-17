@@ -88,7 +88,7 @@ AdjustedPriceStore (ADJUSTED_PRICE_STORE_V02 계약) + KrxRawStockStore
 3. `build_production_repository_v2`가 두 저장소를 `MarketDataRepositoryV2`로
    연결하고 종목 보고서와 Pattern A 운영 사용 코드에 제공한다.
 4. 과거 평가·검증용 `build_repository_v2`가 별도 동결 경계로 유지되는 경우에는
-   운영용 factory와 혼동하지 않는다.
+   운영용 생성 함수와 혼동하지 않는다.
 5. Pattern A 운영 스캐너는 `data/market/index/v01`의
    `IndexStore(MARKET_INDEX)`를 시장 대표지수 경로로 사용한다.
 6. 업종 구성 종목은 승인된 정확한 기준일 `SectorMembershipStore` 스냅샷을
@@ -165,13 +165,13 @@ Pattern A 운영 스캐너의 시장 지수 기본 경로는
 ----------------------------------------------------------------------
 
 - 기준과 원천 의미를 기계 판독 가능한 계약으로 고정한다.
-- 원천/수정주가/마스터/지수/구성 종목/펀더멘털/dirty-state 저장소 역할을 분리한다.
+- 원천/수정주가/마스터/지수/구성 종목/갱신 필요 상태 저장소 역할을 분리한다.
 - 기존 `data/raw/stocks/<ticker>.parquet`는 `LEGACY_COMPOSITE_STOCK_CACHE`로 분류한다.
 - Repository V2의 수정주가 OHLC + 원천 부가 데이터 결합 의미를 고정한다.
 - 모든 시간 인식 계층의 PIT/as_of 및 계보 필드를 정의한다.
-- Operations Dashboard가 소비할 상태 계약을 정의한다.
+- 운영 대시보드가 소비할 상태 계약을 정의한다.
 - 오프라인 정적 검증기와 계약 테스트로 계약을 검증한다.
-- 실제 원천 스키마와 request/mapping-derived 계보를 구분한다.
+- 실제 원천 스키마와 요청값/매핑에서 파생된 계보를 구분한다.
 - StockMaster 원천 사실, 표준 시장, 종목 분류의 경계를 구분한다.
 - KRX `IDX_CLSS` 원천 분류와 논리적 지수 분류군을 분리한다.
 - 현재 레거시 실행 시점의 `artifacts/` 소비를 기술 부채 목록으로 추적한다.
@@ -186,13 +186,13 @@ Pattern A 운영 스캐너의 시장 지수 기본 경로는
 - 사용자 정의 기업행위 조정 엔진
 - 시장 지수 원천 전환
 - 이미 승인된 정확한 기준일 `SectorMembershipStore` 스냅샷 변경/재생성
-- Pattern A, FastCore, Julia, RS formula 변경
-- HTML/dashboard UI 구현
+- Pattern A, FastCore, Julia, RS 수식 변경
+- HTML/대시보드 UI 구현
 
 ### 10.5 FIX03 당시 Authority 매트릭스
 ----------------------------------------------------------------------
 
-Machine-readable 원본은
+기계 판독 가능한 원본은
 `src/trend_scanner/data/source_contracts.py`의 `AUTHORITY_FIELDS`다.
 
 | 데이터 의미 | 당시 기준·목표 |
@@ -204,10 +204,10 @@ Machine-readable 원본은
 | 수정주가 거래량 | `NONE`; 제공한다고 선언하지 않음 |
 | 종목 마스터 원천 사실 | KRX Basic Info + request `basDd` |
 | 종목 마스터 표준 시장 | `normalize_krx_market(raw_market)` |
-| instrument asset type | `InstrumentMetadataResolver` / 공식 상품 마스터 분류 |
+| 종목 자산 유형 | `InstrumentMetadataResolver` / 공식 상품 마스터 분류 |
 | KRX 기본 업종지수 | KRX Open API 기본 업종지수 |
 | 시장 대표지수 | FIX03 스냅샷: PyKRX 레거시, 목표 KRX Open API |
-| ticker→sector membership | KRX Data Marketplace 공식 구성 종목 CSV → 정확한 기준일 `SectorMembershipStore` 스냅샷 |
+| ticker→업종 구성 종목 | KRX Data Marketplace 공식 구성 종목 CSV → 정확한 기준일 `SectorMembershipStore` 스냅샷 |
 | 펀더멘털 | OpenDART |
 | 외국인·기관 수급 | PyKRX Foreign Flow |
 
@@ -215,38 +215,38 @@ Machine-readable 원본은
 AdjustedPriceStore는 OHLC만 소유하고 volume, trading_value, market_cap,
 listed_shares를 저장하지 않는다.
 
-### 10.6 FIX03 당시 Endpoint 식별자 의미
+### 10.6 FIX03 당시 엔드포인트 식별자 의미
 ----------------------------------------------------------------------
 
-`ISU_CD`는 endpoint-qualified field다.
+`ISU_CD`는 엔드포인트 기준 필드다.
 
-- Daily trading: `ISU_CD -> ticker` (6자리 종목코드)
-- Basic info: `ISU_CD -> standard_code`
-- Basic info: `ISU_SRT_CD -> ticker`
-- Basic info: `SECUGRP_NM -> security_group`
-- Basic info: `SECT_TP_NM -> listing_section`
-- Basic info: `MKT_TP_NM -> raw_market`
-- Basic info: `KIND_STKCERT_TP_NM -> security_kind`
-- `SECUGRP_NM`과 `SECT_TP_NM`은 모두 `NOT_SECTOR_MEMBERSHIP` namespace이며,
-  어느 필드도 `sector_code` 또는 ticker->sector membership을 의미하지 않는다.
+- 일별 거래: `ISU_CD -> ticker` (6자리 종목코드)
+- 기본 정보: `ISU_CD -> standard_code`
+- 기본 정보: `ISU_SRT_CD -> ticker`
+- 기본 정보: `SECUGRP_NM -> security_group`
+- 기본 정보: `SECT_TP_NM -> listing_section`
+- 기본 정보: `MKT_TP_NM -> raw_market`
+- 기본 정보: `KIND_STKCERT_TP_NM -> security_kind`
+- `SECUGRP_NM`과 `SECT_TP_NM`은 모두 `NOT_SECTOR_MEMBERSHIP` 네임스페이스이며,
+  어느 필드도 `sector_code` 또는 ticker->업종 구성 종목을 의미하지 않는다.
 
-따라서 generic `ISU_CD = ticker` mapping, `SECUGRP_NM -> listing_section`
-mapping, `SECT_TP_NM -> security_group` mapping 및 두 필드를
+따라서 일반적인 `ISU_CD = ticker` 매핑, `SECUGRP_NM -> listing_section`
+매핑, `SECT_TP_NM -> security_group` 매핑 및 두 필드를
 `sector_code`로 재사용하는 것은 금지한다. 구체 계약은
 `ENDPOINT_IDENTIFIER_CONTRACT`로 직렬화한다.
 
-Basic Info response에는 `BAS_DD`가 없다. `StockMasterStore.as_of`는
+Basic Info 응답에는 `BAS_DD`가 없다. `StockMasterStore.as_of`는
 `REQUEST_PARAMETER.basDd`에서 파생된 `REQUESTED_SNAPSHOT_DATE`다.
 
 `StockMasterStore.raw_market`는 `MKT_TP_NM` 원문이다. `StockMasterStore.market`는
 `normalize_krx_market(raw_market)`로 얻는 프로젝트 표준 값이며, 두 필드를
-같은 의미의 중복 authority로 취급하지 않는다. `StockMasterStore`는
+같은 의미의 중복 기준으로 취급하지 않는다. `StockMasterStore`는
 `security_group`, `listing_section`, `security_kind` 같은 원천/마스터 사실을 보유하지만
-최종 `asset_type` authority가 아니다.
+최종 `asset_type` 기준이 아니다.
 
 KRX 기본 업종지수 응답의 원천 정체성은
 `(source_api, IDX_CLSS, IDX_NM)`다. `IndexStore.index_code`는 원천 응답 필드가
-아니라 frozen `KRX_NATIVE_SECTOR_INDEX_MAP`에서 파생된 표준 code이며,
+아니라 동결된 `KRX_NATIVE_SECTOR_INDEX_MAP`에서 파생된 표준 code이며,
 `IndexStore.family`는 `MARKET_INDEX`, `NATIVE_SECTOR_INDEX`,
 `KRX_BRANDED_TAXONOMY` 중 논리 분류군이다. `IDX_CLSS`는 `source_index_class`로
 보존하며 논리 분류군으로 사용하지 않는다. 표준 key는 `(family, index_code)`다.
@@ -255,19 +255,19 @@ KRX 기본 업종지수 응답의 원천 정체성은
 ----------------------------------------------------------------------
 
 `source_contracts.py`의 `STORE_CONTRACTS`가 다음 8개 저장소와 스키마 버전을
-정의한다. 각 required field의 provenance는 전역 필드명이 아니라
+정의한다. 각 필수 필드의 계보는 전역 필드명이 아니라
 `(owner_store, target_field)` 키로 `STORE_FIELD_PROVENANCE`에서 관리한다.
 
 | 저장소 | 핵심 소유권 |
 |---|---|
 | `KrxRawStockStore` | 미수정 OHLC와 원천 부가 데이터 |
 | `AdjustedPriceStore` | 수정주가 OHLC (`ADJUSTED`)만 보유; 스키마 `ADJUSTED_PRICE_V02`, 저장소 계약 `ADJUSTED_PRICE_STORE_V02` |
-| `StockMasterStore` | `as_of`를 포함한 PIT 원천/표준 master; 최종 `asset_type`은 제외 |
+| `StockMasterStore` | `as_of`를 포함한 PIT 원천/표준 마스터; 최종 `asset_type`은 제외 |
 | `InstrumentClassificationStore` | PIT `asset_type`·적용 가능성·계보 |
 | `IndexStore` | 시장/기본 업종/분류 체계 논리 분류군; key=(family,index_code) |
-| `SectorMembershipStore` | `effective_date` 기준 PIT membership |
+| `SectorMembershipStore` | `effective_date` 기준 PIT 구성 종목 |
 | `FundamentalsStore` | OpenDART 보고 사실 |
-| `CorporateActionStateStore` | 수정주가 캐시의 dirty/refresh 상태 |
+| `CorporateActionStateStore` | 수정주가 캐시의 갱신 필요/갱신 상태 |
 
 FIX03 당시에는 protocol/dataclass 수준의 계약만 정의했다. 실제 모든 저장소의
 구현과 대량 데이터 이동은 당시 후속 단계로 남겨 두었다.
@@ -275,20 +275,20 @@ FIX03 당시에는 protocol/dataclass 수준의 계약만 정의했다. 실제 �
 InstrumentClassificationStore
 ----------------------------------------------------------------------
 
-required field는 `effective_date`, `ticker`, `asset_type`,
+필수 필드는 `effective_date`, `ticker`, `asset_type`,
 `classification_authority`, `asset_type_source`다. `(effective_date, ticker)`를
-표준 PIT key로 사용하고 requested `as_of` 이하의 최신 effective date를 조회한다.
+표준 PIT key로 사용하고 요청 기준일 `as_of` 이하의 최신 `effective_date`를 조회한다.
 `asset_type`은 `StockMasterStore.security_group/listing_section/security_kind`와
 필요한 공식 상품 마스터 근거를 해석한 DERIVED 결과다. 현재 운영
-authority인 `InstrumentMetadataResolver -> data/reference/krx_instrument_metadata.parquet`
-와 공식 ETF/ETN 상품 마스터 기준은 이번 phase에서 교체하지 않는다.
+기준인 `InstrumentMetadataResolver -> data/reference/krx_instrument_metadata.parquet`
+와 공식 ETF/ETN 상품 마스터 기준은 이번 단계에서 교체하지 않는다.
 KOSPI/KOSDAQ Basic Info만으로 ETF/ETN까지 분류한다고 선언하지 않는다.
 
-Pattern A, FastCore, 종목 보고서 등 종목 적용 가능성 판단은 이 classification
-layer를 사용해야 하며, consumer가 `KIND_STKCERT_TP_NM`, `SECUGRP_NM`, `SECT_TP_NM`을
-각자 즉석 해석하는 중복 architecture는 금지한다.
+Pattern A, FastCore, 종목 보고서 등 종목 적용 가능성 판단은 이 분류 계층을
+사용해야 하며, 사용 코드가 `KIND_STKCERT_TP_NM`, `SECUGRP_NM`, `SECT_TP_NM`을
+각자 즉석 해석하는 중복 아키텍처는 금지한다.
 
-### 10.8 FIX03 당시 Legacy composite cache
+### 10.8 FIX03 당시 레거시 결합 캐시
 ----------------------------------------------------------------------
 
 현재 `data/raw/stocks/<ticker>.parquet`는 PyKRX 수정주가 OHLC와 원천 volume,
@@ -318,19 +318,19 @@ FIX03 당시 문서상 개념 대상은
 주봉/월봉은 권위 원천이 아니며, Repository 일별 출력에서 파생한다.
 가격은 수정주가 OHLC, volume/trading_value는 원천 일별 합계를 사용한다.
 
-### 10.10 FIX03 당시 Corporate action 및 PIT
+### 10.10 FIX03 당시 기업행위 및 PIT
 ----------------------------------------------------------------------
 
-사용자 정의 조정 엔진은 이 단계에 없다. `LIST_SHRS` 변화를 1차 dirty
+사용자 정의 조정 엔진은 이 단계에 없다. `LIST_SHRS` 변화를 1차 갱신 필요
 신호로 사용하고 `PARVAL` 변화는 강한 보강 근거, 원천 OHLC 불연속과
 메타데이터 변화는 2차 근거로 정의한다. 감지기는 정답 판정기가 아니라
 수정주가 캐시 갱신 필요성 신호다.
 
 원천 이력은 변경 불가 기준으로 취급하고, 수정주가 이력은 기업행위 이후
 과거 값이 변할 수 있으므로 변경 가능한 갱신 상태를 별도로 둔다.
-dirty 범위는 종목별이며 전체 종목 집합 갱신을 기본값으로 하지 않는다.
+갱신 필요 범위는 종목별이며 전체 종목 집합 갱신을 기본값으로 하지 않는다.
 
-모든 시간 인식 저장소는 `as_of`/effective date를 갖고, `effective_date > as_of`,
+모든 시간 인식 저장소는 `as_of`/`effective_date`를 갖고, `effective_date > as_of`,
 미래 가격, 허용 이용 가능 시점 이전의 보고서를 사용하지 않는다. 과거 종목 집합은
 당시 마스터 스냅샷을 사용해 생존편향을 피한다.
 
@@ -376,7 +376,7 @@ dirty 범위는 종목별이며 전체 종목 집합 갱신을 기본값으로 �
 분리해 보유하고, `DataHealthSnapshot`은 별도 실행 시점 `HealthStatus`를 보유한다.
 대시보드는 `layer_id`로 두 상태를 결합한다. 스냅샷은
 layer/source/date/행/ticker/missing/stale/error와
-last success/attempt/message를 공통으로 노출한다. quota observability는
+last success/attempt/message를 공통으로 노출한다. 할당량 관측성은
 `usage_date_kst`, `used`, `limit`, `remaining`, `percentage`, `endpoint_usage`다.
 
 ### 10.12 FIX03 당시 전환 상태 스냅샷
@@ -432,7 +432,7 @@ FIX03 검증기는 고정된 시작 head
 아키텍처 계약 테스트 및 `artifacts/data/architecture/krx_production_data/v01/`
 뿐이며, 그 밖의 운영 동작 경로 변경은 차단 사유다. `network_request_count`는
 실행 중 네트워크 요청 횟수이고 `static_forbidden_network_import_count`는
-계약/validator의 금지 import 정적 검사 횟수로 서로 다른 지표다. 이 작업에서는
+계약/검증기의 금지 import 정적 검사 횟수로 서로 다른 지표다. 이 작업에서는
 KRX/PyKRX/OpenDART 네트워크 요청을 수행하지 않는다.
 
 ### 10.15 FIX03 당시 의존성 그래프
@@ -455,23 +455,23 @@ KRX/PyKRX/OpenDART 네트워크 요청을 수행하지 않는다.
 - ADR-01 KRX 원천 기준
 - ADR-02 과거 PyKRX 수정주가 OHLC 기준 원천 (레거시/비교기)
 - ADR-03 원천 부가 데이터 소유권
-- ADR-04 레거시 composite cache 분류
+- ADR-04 레거시 결합 캐시 분류
 - ADR-05 Repository 결합 의미
 - ADR-06 수정주가 과거 이력 변경 가능성
-- ADR-07 기업행위 dirty 정책
-- ADR-08 endpoint별 식별자 의미
-- ADR-09 KRX `SECT_TP_NM` non-sector rule
+- ADR-07 기업행위 갱신 필요 정책
+- ADR-08 엔드포인트별 식별자 의미
+- ADR-09 KRX `SECT_TP_NM` 비-업종 규칙
 - ADR-10 업종 지수와 시장 지수의 전환 상태
 - ADR-11 PIT 종목 집합 요구사항
 - ADR-12 실행 시점 산출물 의존 금지
-- ADR-13 canonical quota authority
+- ADR-13 표준 할당량 기준
 - ADR-14 데이터 상태 관측성 계약
-- ADR-15 FIX01 store-qualified field provenance and state separation
-- ADR-16 FIX02 raw schema truth and request/mapping provenance
+- ADR-15 FIX01 저장소 지정 필드 계보와 상태 분리
+- ADR-16 FIX02 원천 스키마 사실과 요청/매핑 계보
 - ADR-17 레거시 실행 시점 산출물 의존 기술 부채
-- ADR-18 FIX03 StockMaster raw/canonical market와 instrument classification boundary
-- ADR-19 FIX03 logical index family와 `IDX_CLSS` source class 분리
-- ADR-20 FIX03 PIT classification compatibility와 ETF/ETN authority 보존
+- ADR-18 FIX03 StockMaster 원천/표준 시장과 종목 분류 경계
+- ADR-19 FIX03 논리 지수 분류군과 `IDX_CLSS` 원천 분류 분리
+- ADR-20 FIX03 PIT 분류 호환성과 ETF/ETN 기준 보존
 
 ### 10.17 FIX03 당시 검증 및 산출물
 ----------------------------------------------------------------------
