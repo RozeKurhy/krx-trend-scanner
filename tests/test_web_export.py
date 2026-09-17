@@ -144,7 +144,7 @@ def test_static_frontend_uses_relative_assets_and_required_dom():
     js = (ROOT / "web/js/app.js").read_text(encoding="utf-8")
     css = (ROOT / "web/css/app.css").read_text(encoding="utf-8")
 
-    assert 'href="./css/app.css?v=web-fear-fix02-1"' in html
+    assert 'href="./css/app.css?v=web-ui-density-1"' in html
     assert 'src="./js/app.js?v=web-fear-fix02-1"' in html
     assert 'const HEALTH_URL = "./data/health.json";' in js
     assert 'href="/css/app.css"' not in html
@@ -165,8 +165,6 @@ def test_static_frontend_uses_relative_assets_and_required_dom():
         "market-date",
         "universe-count",
         "fundamentals-count",
-        "fundamentals-progress",
-        "readiness-list",
         "load-error",
     ):
         assert f'id="{element_id}"' in html
