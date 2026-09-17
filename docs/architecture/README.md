@@ -9,4 +9,4 @@ README.md
 | [data_layer.md](data_layer.md) | 공용 데이터 레이어 |
 | [historical_snapshot.md](historical_snapshot.md) | Historical Snapshot Validation / Strict PIT infrastructure |
 | [instrument_metadata_authority.md](instrument_metadata_authority.md) | KRX Instrument Metadata Authority — lineage & trust rule |
-| [validation/](validation/) | KRX 공용 데이터 소스에 대한 validation/investigation 문서(cache population, market cap backfill, sector benchmark source investigation 등) |
+| [archive/validation/](archive/validation/) | KRX 공용 데이터 소스에 대한 과거 validation/investigation 기록(cache population, market cap backfill, sector benchmark source investigation 등) |

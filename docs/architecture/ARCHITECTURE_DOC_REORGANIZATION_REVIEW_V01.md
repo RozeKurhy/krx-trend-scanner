@@ -113,17 +113,36 @@ repository, adjusted store, sector RS, denominator 문서까지 모두 직접 �
 - 원본 `docs/architecture/**/*.md` 22개를 재귀 목록과 대조했고 누락 없음.
 - 분류 합계 `16 + 6 + 0 = 22` 확인.
 - 지정된 3개 문서만 KEEP에서 ARCHIVE로 변경했고 기존 ARCHIVE 3개는 유지함.
-- 기존 Markdown 본문·링크·코드·artifact를 수정하지 않음.
+- 분류 단계에서는 기존 Markdown 본문·링크·코드·artifact를 수정하지 않음.
 - 각 분류는 파일명만이 아니라 본문에 적힌 authority, 상태, runtime/validation
   역할, 역사적 결과를 근거로 작성함.
 - current contract와 historical investigation/실패 기록의 경계를 보수적으로
   유지함.
 - DELETE_CANDIDATE는 고유 정보 손실 가능성을 피하기 위해 0개로 유지함.
-- 새로 만든 파일은 이 통제 문서 1개뿐이며, 실제 archive/move/delete는 수행하지
-  않음.
+- 분류 단계의 새 파일은 이 통제 문서 1개뿐이며, 실제 archive 이동은 §8에서
+  별도로 수행함. 삭제는 수행하지 않음.
 
-## 7. 작업 범위 외
+## 7. 분류 단계의 작업 범위 외
 
 pytest, backtest, 외부 API 호출, production 코드 수정, artifact 생성·수정,
-기존 문서 이동·삭제·본문 정리는 실행하지 않았다. 별도 리뷰 PASS 전에는
-실제 archive 이동, 삭제 후보 처리, KEEP 문서 내용 정리로 넘어가지 않는다.
+KEEP 문서 본문 정리는 분류 단계에서 실행하지 않았다. 별도 리뷰 PASS 후
+ARCHIVE 이동을 §8에서 완료했으며, 삭제 후보 처리와 KEEP 문서 내용 정리는
+아직 시작하지 않았다.
+
+## 8. ARCHIVE 실제 이동 완료
+
+분류 리뷰 PASS 후 ARCHIVE 6개를 실제 이동했다. 원본 분류표의 source path
+기록은 분류 당시 기준이므로 그대로 보존한다.
+
+- `docs/architecture/krx_index_series_mapping_v01.md` → `docs/architecture/archive/krx_index_series_mapping_v01.md`
+- `docs/architecture/krx_open_api_v02_validation.md` → `docs/architecture/archive/krx_open_api_v02_validation.md`
+- `docs/architecture/validation/common_cache_population_v01.md` → `docs/architecture/archive/validation/common_cache_population_v01.md`
+- `docs/architecture/validation/historical_market_cap_backfill_v01.md` → `docs/architecture/archive/validation/historical_market_cap_backfill_v01.md`
+- `docs/architecture/validation/krx_open_api_validation_v01.md` → `docs/architecture/archive/validation/krx_open_api_validation_v01.md`
+- `docs/architecture/validation/phase12_sector_source_investigation.md` → `docs/architecture/archive/validation/phase12_sector_source_investigation.md`
+
+실제 이동 외에 6개 archive 문서 본문은 수정하지 않았다.
+
+이동으로 깨질 수 있던 `docs/architecture/README.md`의 validation navigation
+링크 1건만 `archive/validation/`으로 최소 수정했다. 그 외 코드·artifact·문서
+링크는 수정하지 않았다.
