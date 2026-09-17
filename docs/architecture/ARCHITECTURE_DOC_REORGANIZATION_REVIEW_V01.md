@@ -97,13 +97,13 @@ Branch: `main`
 | `docs/architecture/validation/phase12_sector_source_investigation.md` | Phase 12 sector source 조사 결과 | ARCHIVE | KRX 접근 제한으로 0-row가 된 초기 조사와 HOLD 판정을 기록한다. 현재 sector RS 계약은 공식 Marketplace snapshot과 native index를 사용하는 후속 문서로 대체되었다. | `docs/architecture/archive/validation/phase12_sector_source_investigation.md`로 이동 제안. 원래 제한·실패 근거는 보존한다. |
 | `docs/architecture/validation/test_suite_performance_audit_v01.md` | Test infrastructure 성능 감사·refactor 기준 | KEEP | slow/integration 분리, full-universe scan 재호출 방지, stale guard 정정과 남은 performance debt를 현재 test 운영 기준으로 기록한다. | 유지. 일반 test 실행 정책과 후속 성능 작업의 기준으로 사용한다. |
 
-## 4. 현재 권위와 경계
+## 4. 분류 당시 권위와 경계 (역사 기록)
 
-### 현재 핵심 authority (최종 상태 반영)
+### 분류 당시 핵심 authority
 
 - 공용 데이터 구조: `data_layer.md`
 - production authority matrix와 logical store/PIT/provenance: `krx_production_data_architecture_v01.md`
-- adjusted OHLC: `adjusted_price_store_v02.md` 및 production architecture의 adjusted authority contract. V01은 `archive/adjusted_price_store_v01.md`의 역사 기록이다.
+- adjusted OHLC: `adjusted_price_store_v01.md` 및 production architecture의 adjusted authority contract
 - instrument metadata: `instrument_metadata_authority.md`와 formal product-master 분류
 - raw KRX snapshot/backfill: `krx_historical_backfill_v01.md` 및 production architecture의 raw authority
 - composed daily access: `market_data_repository_v02.md`
