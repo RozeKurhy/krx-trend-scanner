@@ -12,6 +12,16 @@ AdjustedPriceStore v01
 `READY_FOR_ARCHITECT_ADJUSTED_PRICE_STORE_V01_FIX01_REVIEW`이며, Architect 승인 전에는
 `ADJUSTED_PRICE_STORE_V01 = CLOSED`로 선언하지 않는다.
 
+현재 authority 경계
+----------------------------------------------------------------------
+
+위 상태와 PyKRX `adjusted=True` source 표기는 V01 구현·검증 단계의 역사적
+기록이다. 현재 adjusted OHLC authority는 package-owned
+`NaverDirectAdjustedPriceDataProvider`의 Naver direct date-range
+(`requestType=1`)이며, 현재 store contract는 `AdjustedPriceStore V02`다.
+따라서 아래 V01 provider/store 세부사항은 당시 primitive와 parity evidence를
+설명하는 기록으로 읽고, 현재 production source로 해석하지 않는다.
+
 이번 단계의 범위
 ----------------------------------------------------------------------
 

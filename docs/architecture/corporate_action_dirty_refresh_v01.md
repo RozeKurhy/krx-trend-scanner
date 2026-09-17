@@ -14,6 +14,16 @@ Corporate Action Dirty Refresh V01
 Architect 승인 전에는 `CORPORATE_ACTION_DIRTY_REFRESH_V01 = CLOSED`로
 선언하지 않는다.
 
+현재 authority 경계
+----------------------------------------------------------------------
+
+이 문서의 V01 상태와 PyKRX `adjusted=True` 표기는 dirty-refresh primitive를
+검증하던 당시의 역사적 provider 경계다. 현재 adjusted OHLC authority는
+`NaverDirectAdjustedPriceDataProvider`의 Naver direct date-range
+(`requestType=1`)와 `AdjustedPriceStore V02`다. 이 문서의
+`LIST_SHRS`/`PARVAL` dirty semantics와 상태 전이 계약은 현재 범위로
+유지하되, V01 provider 표기를 현재 production source로 읽지 않는다.
+
 범위와 비범위
 ----------------------------------------------------------------------
 
@@ -145,7 +155,7 @@ REFRESHING을 `INTERRUPTED_REFRESH` 사유의 FAILED로 전환한다. FAILED는 
 5. Authority와 production boundary
 ----------------------------------------------------------------------
 
-Adjusted OHLC authority는 계속 `PyKRX adjusted=True`다. 이번 phase는
+V01 phase의 adjusted OHLC authority는 `PyKRX adjusted=True`였다. 이번 phase는
 `LIST_SHRS`/`PARVAL` 값을 입력으로 받는 순수 dirty primitive만 구현하며 KRX
 Open API, OpenDART, legacy cache, production consumer를 변경하지 않는다.
 `source_contracts.py`, `adjusted_price_provider.py`, `adjusted_price_store.py`도

@@ -12,9 +12,18 @@ read-only composition layer에서 결합한다. Repository V2는 authority가 �
 
 소스 authority
 --------------
-* open/high/low/close: AdjustedPriceStore, PYKRX_ADJUSTED_PRICE, ADJUSTED
+* open/high/low/close: AdjustedPriceStore, NAVER_DIRECT_DATE_RANGE_ADJUSTED, ADJUSTED
 * volume/trading_value: KrxRawStockStore, KRX_OPEN_API_STOCK_DAILY, RAW
 * market_cap/listed_shares: KrxRawStockStore의 raw ancillary만 제공
+
+현재 구현 경계
+--------------
+이 문서의 FIX01/FIX02 단계 설명은 당시 validation 범위를 보존한다. 현재
+adjusted source는 Naver direct adjusted V02이며, production Stock Report와
+Pattern A scanner는 `build_production_repository_v2`를 통해 rolling authority
+경계를 적용한다. 고정된 과거 평가·validation entrypoint는
+`build_repository_v2`를 계속 사용하므로, 두 factory의 historical frozen mode와
+production rolling mode를 혼동하지 않는다.
 
 공식 supported instrument contract
 ---------------------------------
@@ -73,8 +82,11 @@ Read-only 및 compatibility
 --------------------------
 Repository V2는 store를 생성자 주입받고 write/refresh를 호출하지 않는다.
 기존 MarketDataRepository와 tests/test_repository.py는 변경하지 않는다.
-consumer 자동 migration은 0건이며 Pattern A, FastCore, Julia, RS, Stock Report
-등의 전환은 END_TO_END_DATA_PARITY_V01 이후 별도 결정한다.
+FIX01 당시에는 consumer 자동 migration이 0건이었고 Pattern A, FastCore, Julia,
+RS, Stock Report 등의 전환을 END_TO_END_DATA_PARITY_V01 이후 별도 결정하도록
+기록했다. 현재 production entrypoint의 Repository V2 wiring은 후속 consumer
+migration finalization 이후 반영되었으며, historical evaluation entrypoint는
+여전히 frozen factory 경계를 사용한다.
 
 Performance limitation
 ----------------------
@@ -109,8 +121,9 @@ FIX01 실행 경계
 * 세 샘플 모두 adjusted OHLC, raw volume/trading_value, ancillary 및 날짜 집합이
   exact match여야 하며, Samsung listed_shares 의미론과 alphanumeric raw ticker
   probe도 별도 gate로 확인한다.
-* production adjusted store population과 consumer migration은 이 단계에서
-  구현하지 않는다. 둘은 후속 migration 전제조건으로 문서화한다.
+* FIX01 단계에서는 production adjusted store population과 consumer migration을
+  구현하지 않았다. 둘은 후속 migration 전제조건으로 문서화되었으며, 현재
+  production wiring은 이 문서 이후의 후속 단계에서 별도로 반영되었다.
 
 FIX02 raw authority 및 probe evidence
 -------------------------------------

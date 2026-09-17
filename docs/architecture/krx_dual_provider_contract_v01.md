@@ -67,3 +67,12 @@ attempt를 opener 호출 직전에 KST 날짜별로 예약하고, timeout/URLErr
 Production migration 상태
 --------------------------------------------------
 NOT CONNECTED IN FIX01
+
+현재 authority 경계
+--------------------------------------------------
+위 표와 `NOT CONNECTED IN FIX01`은 V01 dual-provider 설계·검증 단계의
+역사적 상태다. 당시 adjusted OHLC 경계는 PyKRX `adjusted=True`였지만,
+현재 adjusted authority는 `NaverDirectAdjustedPriceDataProvider`의 Naver
+direct date-range (`requestType=1`)와 `AdjustedPriceStore V02`다. KRX raw
+authority와 이 문서가 정의한 raw/adjusted 의미 분리는 유지하며, 위의 dirty
+refresh 흐름은 V01 역사 기록으로 읽는다.
